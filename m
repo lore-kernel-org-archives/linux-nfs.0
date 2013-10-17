@@ -1,217 +1,180 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:60909 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932549Ab3J1O5f (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 28 Oct 2013 10:57:35 -0400
-From: Anna Schumaker <bjschuma@netapp.com>
-To: <bfields@fieldses.org>, <linux-nfs@vger.kernel.org>
-Subject: [PATCH 4/4] NFSD: Implement SEEK
-Date: Mon, 28 Oct 2013 10:57:26 -0400
-Message-ID: <1382972247-1108-5-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1382972247-1108-1-git-send-email-bjschuma@netapp.com>
-References: <1382972247-1108-1-git-send-email-bjschuma@netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+Received: from userp1040.oracle.com ([156.151.31.81]:18241 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758539Ab3JQSDX convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Oct 2013 14:03:23 -0400
+Content-Type: text/plain; charset=US-ASCII
+Mime-Version: 1.0 (Mac OS X Mail 6.6 \(1510\))
+Subject: Re: 'umount -f /mnt/foo' fails if server IP is gone.
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <52601FED.6070708@candelatech.com>
+Date: Thu, 17 Oct 2013 14:03:05 -0400
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Jeff Layton <jlayton@redhat.com>
+Message-Id: <758E075A-2DCD-4456-848F-FD983FECF5E5@oracle.com>
+References: <525D899F.5010604@candelatech.com> <52601FED.6070708@candelatech.com>
+To: Ben Greear <greearb@candelatech.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch adds in the SEEK operation used by clients doing an llseek on
-a file to find either hole or data sections in a file.  I'm faking the
-"allocated" status right now, since I haven't quite figured out how to
-tell if a range is allocated on disk yet.
 
-This patch is missing correctly determining the "allocated" status of
-the HOLE / DATA range.  I expect I'll need to learn all about how fiemap
-works before properly setting these values.
+On Oct 17, 2013, at 1:35 PM, Ben Greear <greearb@candelatech.com> wrote:
 
-Signed-off-by: Anna Schumaker <bjschuma@netapp.com>
----
- fs/nfsd/nfs4proc.c   | 44 ++++++++++++++++++++++++++++++++++++++++++++
- fs/nfsd/nfs4xdr.c    | 40 ++++++++++++++++++++++++++++++++++++++--
- fs/nfsd/xdr4.h       | 15 +++++++++++++++
- include/linux/nfs4.h |  2 +-
- 4 files changed, 98 insertions(+), 3 deletions(-)
+> On 10/15/2013 11:29 AM, Ben Greear wrote:
+>> Is 'umount -f' supposed to always work, even if the file server
+>> goes away?
+>> 
+>> I have a user's system that just hangs forever in this case.
+>> 
+>> Could be local changes we have made, but I'm curious about
+>> the expected behaviour before I go digging too deep...
+> 
+> Any input on this?  I don't mind trying to fix it, but I
+> would like to know how it is supposed to work.
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 3210c6f..bc45ed2 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1064,6 +1064,45 @@ nfsd4_write_plus(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	return nfserr_union_notsupp;
- }
- 
-+static __be32
-+nfsd4_seek(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
-+		struct nfsd4_seek *seek)
-+{
-+	struct file *file;
-+	loff_t pos, end_pos;
-+	__be32 status;
-+
-+	status = nfs4_preprocess_stateid_op(SVC_NET(rqstp), cstate,
-+					    &seek->seek_stateid,
-+					    RD_STATE | WR_STATE, &file);
-+	if (status != nfs_ok)
-+		return status;
-+
-+	if (seek->seek_whence == NFS4_CONTENT_DATA) {
-+		pos = vfs_llseek(file, seek->seek_offset, SEEK_DATA);
-+		end_pos = vfs_llseek(file, pos, SEEK_HOLE);
-+		seek->seek_allocated = true;
-+	} else {
-+		pos = vfs_llseek(file, seek->seek_offset, SEEK_HOLE);
-+		end_pos = vfs_llseek(file, pos, SEEK_DATA);
-+		seek->seek_allocated = false;
-+	}
-+
-+	if (pos < 0)
-+		return nfserrno(pos);
-+	else if (end_pos == -ENXIO) {
-+		seek->seek_length = 0;
-+		seek->seek_eof = true;
-+	} else if (end_pos < 0)
-+		return nfserrno(end_pos);
-+	else
-+		seek->seek_length = end_pos - pos;
-+
-+	seek->seek_offset = pos;
-+
-+	return nfs_ok;
-+}
-+
- /* This routine never returns NFS_OK!  If there are no other errors, it
-  * will return NFSERR_SAME or NFSERR_NOT_SAME depending on whether the
-  * attributes matched.  VERIFY is implemented by mapping NFSERR_SAME
-@@ -1885,6 +1924,11 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_write_rsize,
- 		.op_get_currentstateid = (stateid_getter)nfsd4_get_writestateid,
- 	},
-+
-+	[OP_SEEK] = {
-+		.op_func = (nfsd4op_func)nfsd4_seek,
-+		.op_name = "OP_SEEK",
-+	},
- };
- 
- #ifdef NFSD_DEBUG
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 1e4e9af..8434740 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1511,6 +1511,22 @@ nfsd4_decode_write_plus(struct nfsd4_compoundargs *argp,
- }
- 
- static __be32
-+nfsd4_decode_seek(struct nfsd4_compoundargs *argp, struct nfsd4_seek *seek)
-+{
-+	DECODE_HEAD;
-+
-+	status = nfsd4_decode_stateid(argp, &seek->seek_stateid);
-+	if (status)
-+		return status;
-+
-+	READ_BUF(12);
-+	READ64(seek->seek_offset);
-+	READ32(seek->seek_whence);
-+
-+	DECODE_TAIL;
-+}
-+
-+static __be32
- nfsd4_decode_noop(struct nfsd4_compoundargs *argp, void *p)
- {
- 	return nfs_ok;
-@@ -1693,7 +1709,7 @@ static nfsd4_dec nfsd42_dec_ops[] = {
- 	[OP_OFFLOAD_STATUS]	= (nfsd4_dec)nfsd4_decode_notsupp,
- 	[OP_WRITE_PLUS]		= (nfsd4_dec)nfsd4_decode_write_plus,
- 	[OP_READ_PLUS]		= (nfsd4_dec)nfsd4_decode_notsupp,
--	[OP_SEEK]		= (nfsd4_dec)nfsd4_decode_notsupp,
-+	[OP_SEEK]		= (nfsd4_dec)nfsd4_decode_seek,
- 	[OP_IO_ADVISE]		= (nfsd4_dec)nfsd4_decode_notsupp,
- };
- 
-@@ -3650,6 +3666,26 @@ nfsd4_encode_write_plus(struct nfsd4_compoundres *resp, __be32 nfserr,
- }
- 
- static __be32
-+nfsd4_encode_seek(struct nfsd4_compoundres *resp, __be32 nfserr,
-+		  struct nfsd4_seek *seek)
-+{
-+	__be32 *p;
-+
-+	if (nfserr)
-+		return nfserr;
-+
-+	RESERVE_SPACE(28);
-+	WRITE32(seek->seek_eof);
-+	WRITE32(seek->seek_whence);
-+	WRITE64(seek->seek_offset);
-+	WRITE64(seek->seek_length);
-+	WRITE32(seek->seek_allocated);
-+	ADJUST_ARGS();
-+
-+	return nfserr;
-+}
-+
-+static __be32
- nfsd4_encode_noop(struct nfsd4_compoundres *resp, __be32 nfserr, void *p)
- {
- 	return nfserr;
-@@ -3730,7 +3766,7 @@ static nfsd4_enc nfsd4_enc_ops[] = {
- 	[OP_OFFLOAD_STATUS]	= (nfsd4_enc)nfsd4_encode_noop,
- 	[OP_WRITE_PLUS]		= (nfsd4_enc)nfsd4_encode_write_plus,
- 	[OP_READ_PLUS]		= (nfsd4_enc)nfsd4_encode_noop,
--	[OP_SEEK]		= (nfsd4_enc)nfsd4_encode_noop,
-+	[OP_SEEK]		= (nfsd4_enc)nfsd4_encode_seek,
- 	[OP_IO_ADVISE]		= (nfsd4_enc)nfsd4_encode_noop,
- };
- 
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index aaef9ab..ae9debc 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -451,6 +451,20 @@ struct nfsd4_write_plus {
- 	struct nfsd42_write_res	wp_res;
- };
- 
-+struct nfsd4_seek {
-+	/* request */
-+	stateid_t	seek_stateid;
-+
-+	/* Shared between request and response */
-+	u64		seek_offset;
-+	u32		seek_whence;
-+
-+	/* response */
-+	u32		seek_eof;
-+	u64		seek_length;
-+	u32		seek_allocated;
-+};
-+
- struct nfsd4_op {
- 	int					opnum;
- 	__be32					status;
-@@ -499,6 +513,7 @@ struct nfsd4_op {
- 
- 		/* NFSv4.2 */
- 		struct nfsd4_write_plus		write_plus;
-+		struct nfsd4_seek		seek;
- 	} u;
- 	struct nfs4_replay *			replay;
- };
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index 55ed991..81d6b09 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -128,7 +128,7 @@ enum nfs_opnum4 {
- Needs to be updated if more operations are defined in future.*/
- 
- #define FIRST_NFS4_OP	OP_ACCESS
--#define LAST_NFS4_OP 	OP_WRITE_PLUS
-+#define LAST_NFS4_OP 	OP_SEEK
- 
- enum nfsstat4 {
- 	NFS4_OK = 0,
+Recent kernels emit a GETATTR at umount time.  It is probably this operation that is stuck.
+
+
+> Older kernels do not hang (we tried 3.0.x), but I'm not sure
+> exactly where the problem started.
+> 
+> Test case was to set up NFSv3 mount, then pull the Ethernet cable
+> on the nfs client machine.  This system is running 3.9.11+ kernel.
+> 
+> From /proc/mounts:
+> 
+> 10.2.46.90:/nfs_export on /mnt/lf/nfs3-001 type nfs (rw,relatime,vers=3,rsize=131072,wsize=131072,namlen=255,hard,proto=tcp,timeo=600,retrans=2,sec=sys,mountaddr=10.2.46.90,mountvers=3,mountport=19408,mountproto=udp,srcaddr=10.2.46.91,local_lock=none,addr=10.2.46.90)
+> 
+> # umount /mnt/lf/nfs3-001
+> ^C
+> # umount -f /mnt/lf/nfs3-001
+> [hangs forever it seems, certainly for a long time]
+> 
+> 
+> Here is a stack trace of hung processes, for instance:
+> 
+> Oct 17 10:24:18 localhost kernel: [688601.930366] SysRq : Show Blocked State
+> Oct 17 10:24:18 localhost kernel: [688601.931016]   task                PC stack   pid father
+> Oct 17 10:24:18 localhost kernel: [688601.931016] mkdir           D f1bf6700     0 16898  16831 0x00000082
+> Oct 17 10:24:18 localhost kernel: [688601.931016]  f070bd8c 00000046 00000282 f1bf6700 f5b55a20 c0d7e400 f5b55a20 c0d7e400
+> Oct 17 10:24:18 localhost kernel: [688601.931016]  c0d7e400 c0d7e400 c0d7e400 f79e9400 f5b55a20 f79e9400 f5b55a20 f58b19c0
+> Oct 17 10:24:18 localhost kernel: [688601.931016]  f8dc4fd0 f070bd50 f0ce9924 f070bd50 f8ec6bff f070bd94 f8dbf9f7 ee91a138
+> Oct 17 10:24:18 localhost kernel: [688601.931016] Call Trace:
+> Oct 17 10:24:18 localhost kernel: [688601.931016]  [<f8ec6bff>] ? rpc_put_task+0xf/0x20 [sunrpc]
+> Oct 17 10:24:18 localhost kernel: [688601.931016]  [<f8dbf9f7>] ? nfs_initiate_write+0xb7/0xe0 [nfs]
+> Oct 17 10:24:18 localhost kernel: [688601.931016]  [<c04a9f0e>] ? ktime_get_ts+0x3e/0x110
+> Oct 17 10:24:18 localhost kernel: [688601.931016]  [<c09cb133>] schedule+0x23/0x60
+> Oct 17 10:24:18 localhost kernel: [688601.931016]  [<c09cb1e6>] io_schedule+0x76/0xc0
+> Oct 17 10:24:18 localhost kernel: [688601.931016]  [<c051607d>] sleep_on_page+0xd/0x20
+> Oct 17 10:24:18 localhost kernel: [688601.931016]  [<c09c8d4d>] __wait_on_bit+0x4d/0x70
+> Oct 17 10:24:18 localhost kernel: [688601.931016]  [<c0516070>] ? __lock_page+0x90/0x90
+> Oct 17 10:24:18 localhost kernel: [688601.931016]  [<c0516301>] wait_on_page_bit+0x91/0xa0
+> Oct 17 10:24:18 localhost kernel: [688601.931016]  [<c0478710>] ? wake_atomic_t_function+0x50/0x50
+> Oct 17 10:24:18 localhost kernel: [688601.931016]  [<c05164cb>] filemap_fdatawait_range+0xcb/0x150
+> Oct 17 10:24:18 localhost kernel: [688601.931016]  [<c05166c7>] filemap_write_and_wait_range+0x97/0xb0
+> Oct 17 10:24:18 localhost kernel: [688601.931016]  [<f8db4074>] nfs_file_fsync+0x44/0xa0 [nfs]
+> Oct 17 10:24:18 localhost kernel: [688601.931016]  [<f8db4030>] ? nfs_file_fsync_commit+0xb0/0xb0 [nfs]
+> Oct 17 10:24:18 localhost kernel: [688601.931016]  [<c058e1f9>] vfs_fsync_range+0x59/0x70
+> Oct 17 10:24:18 localhost kernel: [688601.931016]  [<c058e237>] vfs_fsync+0x27/0x30
+> Oct 17 10:24:18 localhost kernel: [688601.931016]  [<f8db4b0b>] nfs_file_flush+0x6b/0x90 [nfs]
+> Oct 17 10:24:18 localhost kernel: [688601.931016]  [<c05631a1>] filp_close+0x31/0x80
+> Oct 17 10:24:18 localhost kernel: [688601.931016]  [<c057ea55>] put_files_struct+0x85/0xe0
+> Oct 17 10:24:18 localhost kernel: [688601.931016]  [<c057eaf7>] exit_files+0x47/0x60
+> Oct 17 10:24:18 localhost kernel: [688601.931016]  [<c045b83c>] do_exit+0x25c/0x980
+> Oct 17 10:24:18 localhost kernel: [688601.931016]  [<c056a0be>] ? SyS_stat64+0x2e/0x40
+> Oct 17 10:24:18 localhost kernel: [688601.931016]  [<c045bf9e>] do_group_exit+0x3e/0xa0
+> Oct 17 10:24:18 localhost kernel: [688601.931016]  [<c045c018>] SyS_exit_group+0x18/0x20
+> Oct 17 10:24:18 localhost kernel: [688601.931016]  [<c09d370d>] sysenter_do_call+0x12/0x28
+> Oct 17 10:24:18 localhost kernel: [688601.931016] umount.nfs      D f11c4900     0 17150  17149 0x00000080
+> Oct 17 10:24:18 localhost kernel: [688602.225057]  f3955d00 00000082 efea0d8c f11c4900 f3955c8c c08d9f96 f104e700 c0d7e400
+> Oct 17 10:24:18 localhost kernel: [688602.225057]  c0d7e400 c0d7e400 c0d7e400 efea0d8c efea0c80 f79db400 f104e700 c0c3e980
+> Oct 17 10:24:18 localhost kernel: [688602.225057]  f3955cd0 f3955cb4 f3955e90 0000002c 0000005c 132df575 efea0d80 0000005c
+> Oct 17 10:24:18 localhost kernel: [688602.225057] Call Trace:
+> Oct 17 10:24:18 localhost kernel: [688602.225057]  [<c08d9f96>] ? __kfree_skb+0x36/0x90
+> Oct 17 10:24:18 localhost kernel: [688602.225057]  [<c09cb133>] schedule+0x23/0x60
+> Oct 17 10:24:18 localhost kernel: [688602.225057]  [<f8ec6edd>] rpc_wait_bit_killable+0x2d/0x70 [sunrpc]
+> Oct 17 10:24:18 localhost kernel: [688602.225057]  [<c09c8d4d>] __wait_on_bit+0x4d/0x70
+> Oct 17 10:24:18 localhost kernel: [688602.225057]  [<f8ec6eb0>] ? __rpc_wait_for_completion_task+0x30/0x30 [sunrpc]
+> Oct 17 10:24:18 localhost kernel: [688602.225057]  [<f8ec6eb0>] ? __rpc_wait_for_completion_task+0x30/0x30 [sunrpc]
+> Oct 17 10:24:18 localhost kernel: [688602.225057]  [<c09c8e1b>] out_of_line_wait_on_bit+0xab/0xc0
+> Oct 17 10:24:18 localhost kernel: [688602.225057]  [<c0478710>] ? wake_atomic_t_function+0x50/0x50
+> Oct 17 10:24:18 localhost kernel: [688602.225057]  [<f8ec7f9e>] __rpc_execute+0x11e/0x290 [sunrpc]
+> Oct 17 10:24:18 localhost kernel: [688602.225057]  [<f8ebf130>] ? rpcproc_decode_null+0x10/0x10 [sunrpc]
+> Oct 17 10:24:18 localhost kernel: [688602.225057]  [<f8ebf130>] ? rpcproc_decode_null+0x10/0x10 [sunrpc]
+> Oct 17 10:24:18 localhost kernel: [688602.225057]  [<c047865f>] ? wake_up_bit+0x5f/0x70
+> Oct 17 10:24:18 localhost kernel: [688602.225057]  [<f8ec814c>] rpc_execute+0x3c/0xa0 [sunrpc]
+> Oct 17 10:24:18 localhost kernel: [688602.225057]  [<f8ec0f09>] rpc_run_task+0x59/0x70 [sunrpc]
+> Oct 17 10:24:18 localhost kernel: [688602.225057]  [<f8ec1022>] rpc_call_sync+0x42/0xa0 [sunrpc]
+> Oct 17 10:24:18 localhost kernel: [688602.225057]  [<f8e0b46c>] nfs3_rpc_wrapper.clone.0+0x5c/0xa0 [nfsv3]
+> Oct 17 10:24:18 localhost kernel: [688602.225057]  [<f8e0c0d4>] nfs3_proc_getattr+0x34/0x40 [nfsv3]
+> Oct 17 10:24:18 localhost kernel: [688602.225057]  [<f8db7397>] __nfs_revalidate_inode+0xc7/0x140 [nfs]
+> Oct 17 10:24:18 localhost kernel: [688602.225057]  [<f8db743f>] nfs_revalidate_inode+0x2f/0x60 [nfs]
+> Oct 17 10:24:18 localhost kernel: [688602.225057]  [<f8db14a8>] nfs_weak_revalidate+0x38/0x50 [nfs]
+> Oct 17 10:24:18 localhost kernel: [688602.225057]  [<c056fba8>] complete_walk+0xa8/0xf0
+> Oct 17 10:24:18 localhost kernel: [688602.225057]  [<c0571e53>] path_lookupat+0x63/0x690
+> Oct 17 10:24:18 localhost kernel: [688602.225057]  [<c05724ae>] filename_lookup+0x2e/0xc0
+> Oct 17 10:24:18 localhost kernel: [688602.225057]  [<c05733a3>] user_path_at_empty+0x43/0x80
+> Oct 17 10:24:18 localhost kernel: [688602.225057]  [<c0578b9e>] ? __d_free+0x2e/0x50
+> Oct 17 10:24:18 localhost kernel: [688602.225057]  [<c064450c>] ? security_capable+0x1c/0x30
+> Oct 17 10:24:18 localhost kernel: [688602.225057]  [<c05733ff>] user_path_at+0x1f/0x30
+> Oct 17 10:24:18 localhost kernel: [688602.225057]  [<c05807c3>] SyS_umount+0x83/0x380
+> Oct 17 10:24:18 localhost kernel: [688602.225057]  [<c04d2606>] ? __audit_syscall_exit+0x1f6/0x290
+> Oct 17 10:24:18 localhost kernel: [688602.225057]  [<c09d370d>] sysenter_do_call+0x12/0x28
+> 
+> ....
+> 
+> Oct 17 10:24:42 localhost kernel: [688631.186190] INFO: task mkdir:16898 blocked for more than 180 seconds.
+> Oct 17 10:24:42 localhost kernel: [688631.195666] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+> Oct 17 10:24:42 localhost kernel: [688631.206304] mkdir           D f1bf6700     0 16898  16831 0x00000082
+> Oct 17 10:24:42 localhost kernel: [688631.215220]  f070bd8c 00000046 00000282 f1bf6700 f5b55a20 c0d7e400 f5b55a20 c0d7e400
+> Oct 17 10:24:42 localhost kernel: [688631.225933]  c0d7e400 c0d7e400 c0d7e400 f79e9400 f5b55a20 f79e9400 f5b55a20 f58b19c0
+> Oct 17 10:24:42 localhost kernel: [688631.236712]  f8dc4fd0 f070bd50 f0ce9924 f070bd50 f8ec6bff f070bd94 f8dbf9f7 ee91a138
+> Oct 17 10:24:42 localhost kernel: [688631.247550] Call Trace:
+> Oct 17 10:24:42 localhost kernel: [688631.252746]  [<f8ec6bff>] ? rpc_put_task+0xf/0x20 [sunrpc]
+> Oct 17 10:24:42 localhost kernel: [688631.261369]  [<f8dbf9f7>] ? nfs_initiate_write+0xb7/0xe0 [nfs]
+> Oct 17 10:24:42 localhost kernel: [688631.270065]  [<c04a9f0e>] ? ktime_get_ts+0x3e/0x110
+> Oct 17 10:24:42 localhost kernel: [688631.277724]  [<c09cb133>] schedule+0x23/0x60
+> Oct 17 10:24:42 localhost kernel: [688631.285298]  [<c09cb1e6>] io_schedule+0x76/0xc0
+> Oct 17 10:24:42 localhost kernel: [688631.292738]  [<c051607d>] sleep_on_page+0xd/0x20
+> Oct 17 10:24:42 localhost kernel: [688631.300316]  [<c09c8d4d>] __wait_on_bit+0x4d/0x70
+> Oct 17 10:24:42 localhost kernel: [688631.308117]  [<c0516070>] ? __lock_page+0x90/0x90
+> Oct 17 10:24:42 localhost kernel: [688631.315731]  [<c0516301>] wait_on_page_bit+0x91/0xa0
+> Oct 17 10:24:42 localhost kernel: [688631.323630]  [<c0478710>] ? wake_atomic_t_function+0x50/0x50
+> Oct 17 10:24:42 localhost kernel: [688631.332536]  [<c05164cb>] filemap_fdatawait_range+0xcb/0x150
+> Oct 17 10:24:42 localhost kernel: [688631.341221]  [<c05166c7>] filemap_write_and_wait_range+0x97/0xb0
+> Oct 17 10:24:42 localhost kernel: [688631.350224]  [<f8db4074>] nfs_file_fsync+0x44/0xa0 [nfs]
+> Oct 17 10:24:42 localhost kernel: [688631.358569]  [<f8db4030>] ? nfs_file_fsync_commit+0xb0/0xb0 [nfs]
+> Oct 17 10:24:42 localhost kernel: [688631.367764]  [<c058e1f9>] vfs_fsync_range+0x59/0x70
+> Oct 17 10:24:42 localhost kernel: [688631.375818]  [<c058e237>] vfs_fsync+0x27/0x30
+> Oct 17 10:24:42 localhost kernel: [688631.383346]  [<f8db4b0b>] nfs_file_flush+0x6b/0x90 [nfs]
+> Oct 17 10:24:42 localhost kernel: [688631.392117]  [<c05631a1>] filp_close+0x31/0x80
+> Oct 17 10:24:42 localhost kernel: [688631.399741]  [<c057ea55>] put_files_struct+0x85/0xe0
+> Oct 17 10:24:42 localhost kernel: [688631.407871]  [<c057eaf7>] exit_files+0x47/0x60
+> Oct 17 10:24:42 localhost kernel: [688631.415535]  [<c045b83c>] do_exit+0x25c/0x980
+> Oct 17 10:24:42 localhost kernel: [688631.423133]  [<c056a0be>] ? SyS_stat64+0x2e/0x40
+> Oct 17 10:24:42 localhost kernel: [688631.431078]  [<c045bf9e>] do_group_exit+0x3e/0xa0
+> Oct 17 10:24:42 localhost kernel: [688631.439103]  [<c045c018>] SyS_exit_group+0x18/0x20
+> Oct 17 10:24:42 localhost kernel: [688631.447169]  [<c09d370d>] sysenter_do_call+0x12/0x28
+> Oct 17 10:24:54 localhost kernel: [688643.517069] RPC: AUTH_GSS upcall timed out.
+> 
+> 
+> Thanks,
+> Ben
+> 
+> 
+> -- 
+> Ben Greear <greearb@candelatech.com>
+> Candela Technologies Inc  http://www.candelatech.com
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
 -- 
-1.8.4.1
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
