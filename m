@@ -1,120 +1,380 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:44493 "EHLO mx2.suse.de"
+Received: from mx12.netapp.com ([216.240.18.77]:13432 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753511Ab3JWBo6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 Oct 2013 21:44:58 -0400
-Date: Wed, 23 Oct 2013 12:44:44 +1100
-From: NeilBrown <neilb@suse.de>
-To: tasleson@redhat.com
-Cc: linux-nfs@vger.kernel.org, Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH] exportfs: Return non-zero exit value on error
-Message-ID: <20131023124444.65ace6e3@notabene.brown>
-In-Reply-To: <52669862.6030409@redhat.com>
-References: <1380756584-13335-1-git-send-email-tasleson@redhat.com>
-	<20131022092519.4f4683a8@notabene.brown>
-	<52669862.6030409@redhat.com>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/75=hcdMA+8klYd/_0Prt0CF"; protocol="application/pgp-signature"
+	id S1756803Ab3JQQIS convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Oct 2013 12:08:18 -0400
+From: Weston Andros Adamson <dros@netapp.com>
+To: Anna Schumaker <schumaker.anna@gmail.com>
+CC: linux-nfs list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] Add test_sec_options.sh
+Date: Thu, 17 Oct 2013 16:08:14 +0000
+Message-ID: <A0A67C12-504C-4A87-92B4-907DB7788727@netapp.com>
+References: <1381952112-6793-1-git-send-email-dros@netapp.com>
+ <525FF875.8080208@gmail.com>
+ <BAD67995-3EEA-4C34-B66D-984B23C8658A@netapp.com> <5260056F.4@gmail.com>
+In-Reply-To: <5260056F.4@gmail.com>
+Content-Type: text/plain; charset="Windows-1252"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/75=hcdMA+8klYd/_0Prt0CF
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
 
-On Tue, 22 Oct 2013 10:23:14 -0500 Tony Asleson <tasleson@redhat.com> wrote:
+On Oct 17, 2013, at 11:42 AM, Anna Schumaker <schumaker.anna@gmail.com> wrote:
 
-> On 10/21/2013 05:25 PM, NeilBrown wrote:
-> > On Wed,  2 Oct 2013 18:29:44 -0500 Tony Asleson <tasleson@redhat.com> w=
-rote:
-> >=20
-> >> To improve error handling when scripting exportfs it's useful
-> >> to have non-zero exit codes when the requested operation did not
-> >> succeed.
-> >>
-> >> This patch also returns a non-zero exit code if you request to
-> >> unexport a non-existant share.
-> >>
-> >> Signed-off-by: Tony Asleson <tasleson@redhat.com>
-> >=20
-> > This seems the have been forgotten, so maybe by replying to it someone =
-will
-> > notice (hi Steve).
-> >=20
-> > Though I agree with the need for the patch, I don't much like it's shap=
-e.
-> >=20
-> > Why change exportfs and unexportfs to return a status?  The status is o=
-nly
-> > used to set export_errno, and they sometimes set export_errno anyway, s=
-o why
-> > not leave them returning  void and just setting export_errno as needed?
->=20
-> The reason I chose to return values was to make sure requested operation
-> actually completed requested operation.  Unexporting a non-existent
-> export is not considered an error and returns no indication you did
-> absolutely nothing.
+> On Thu 17 Oct 2013 11:26:35 AM EDT, Weston Andros Adamson wrote:
+>> On Oct 17, 2013, at 10:47 AM, Anna Schumaker <schumaker.anna@gmail.com> wrote:
+>> 
+>>> On Wed 16 Oct 2013 03:35:12 PM EDT, Weston Andros Adamson wrote:
+>>>> This script tests the nfs 'sec=' mount option against a server with
+>>>> (possibly) many different exports with different security flavors.
+>>>> 
+>>>> I originally wrote this to test the patch to test my multiple sec= options
+>>>> patch, so set TEST_MULTIPLE_SEC_OPTIONS to something other than "true" to test
+>>>> older kernels.
+>>>> 
+>>>> Most of the config can be passed through as environment variables, but the
+>>>> paths on the remote server and the function to map these paths to the allowed
+>>>> security flavors is not and must be set to what exports the server has defined.
+>>> 
+>>> What are the benefits to passing the config through environment
+>>> variables instead of using command line parameters (getopt or similar)?
+>>> 
+>>> Anna
+>> 
+>> Well, the main benefit is that it's already written and both solutions are functionally equivalent.
+>> 
+>> The reason I went with environment variables over using command line arguments is that some of the config cannot be passed easily as either - the server's export list and mapping to security flavors must be specified by editing the script (I *guess* you could pass a function/script that maps these but… ewww).  The jenkins use of the script can just assume a standard export mapping, but when run by hand the user will probably need to update these.  If there are command line arguments and a usage() error path it would lead users to believe that's how the script is intended to run, but it is not.
+>> 
+>> So, passing any arguments to this script is a hack for jenkins. It's ok since you control the exports on the server(s) for the jenkins setup, but for stand-alone use (one of the goals in sharing this script) it makes little sense.
+> 
+> Fair enough.
+> 
+>> 
+>> Why does this matter to you? FYI, you don't need getopt with shell scripts, you can instead use $[0-9] (see also "shift" and $#). If you must pass as command line arguments, just write a little wrapper.
+> 
+> I was just curious.  I've been using getopt since I think it makes 
+> running scripts over ssh a bit easier to debug, but we can keep it this 
+> way.  Thanks for the patch!
+> 
+> Anna
 
-Hi,
- thanks makes sense - I had missed that (even though you explained it in the
- patch description :-( )
+Oh I think understand what you meant about getopt - you'd like (short and/or long) named variables. That leads to another reason not to do it: most of the script would then be parsing and setting options, but oh by the way you still have to manually edit the script.
 
- With your patch, if asked to unexport something that wasn't exported it
- would not report any error, but would exit with an error status.  Is that
- correct?  I think I would rather have a message printed if there is an err=
-or.
+I think you should just call "env SERVER=<server> VERSION=<version> $PATH_TO_UTIL_DIR/test_sec_options.sh" or something similar.
 
- So would something like this (on top of my patch) address you need, or was
- there something else I missed?
+-dros
 
-Thanks,
-NeilBrown
+>> 
+>> -dros
+>> 
+>>> 
+>>>> 
+>>>> This should be useful as a stand-alone script and as well as a Jenkins test.
+>>>> 
+>>>> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+>>>> ---
+>>>> helper/test_sec_options.sh | 289 +++++++++++++++++++++++++++++++++++++++++++++
+>>>> 1 file changed, 289 insertions(+)
+>>>> create mode 100755 helper/test_sec_options.sh
+>>>> 
+>>>> diff --git a/helper/test_sec_options.sh b/helper/test_sec_options.sh
+>>>> new file mode 100755
+>>>> index 0000000..10b01f4
+>>>> --- /dev/null
+>>>> +++ b/helper/test_sec_options.sh
+>>>> @@ -0,0 +1,289 @@
+>>>> +#!/bin/sh
+>>>> +# Copyright (c) 2013 Netapp, Inc.  All rights reserved
+>>>> +#
+>>>> +# test_sec_options.sh - test NFS mount security options
+>>>> +# by: Weston Andros Adamson <dros@netapp.com>
+>>>> +#
+>>>> +
+>>>> +#
+>>>> +# The example config is for a server (zero) with this /etc/exports:
+>>>> +#
+>>>> +# /export/sys       *(sec=sys,rw,no_root_squash)
+>>>> +# /export/krb5a     *(sec=krb5,rw,no_root_squash)
+>>>> +# /export/krb5i     *(sec=krb5i,rw,no_root_squash)
+>>>> +# /export/krb5p     *(sec=krb5p,rw,no_root_squash)
+>>>> +# /export/krb5ip    *(sec=krb5i:krb5p,rw,no_root_squash)
+>>>> +# /export/krb5aip   *(sec=krb5:krb5i:krb5p,rw,no_root_squash)
+>>>> +#
+>>>> +
+>>>> +# the server to mount
+>>>> +[ -z "$SERVER" ] && SERVER=zero.apikia.fake
+>>>> +
+>>>> +# local mountpoint
+>>>> +[ -z "$LOCALDIR" ] && LOCALDIR=/mnt
+>>>> +
+>>>> +# exports on the server to test - if you add something here, you MUST
+>>>> +# add an entry to path_to_sec_flavors
+>>>> +PATHS="/export/sys /export/krb5a /export/krb5i /export/krb5p /export/krb5ip /export/krb5aip"
+>>>> +
+>>>> +# mapping of path -> space separated list of sec= options
+>>>> +path_to_sec_flavors() {
+>>>> +	case $1 in
+>>>> +	/export/sys)     echo "sys"
+>>>> +	;;
+>>>> +	/export/krb5a)   echo "krb5"
+>>>> +	;;
+>>>> +	/export/krb5i)   echo "krb5i"
+>>>> +	;;
+>>>> +	/export/krb5p)   echo "krb5p"
+>>>> +	;;
+>>>> +	/export/krb5ip)  echo "krb5i krb5p"
+>>>> +	;;
+>>>> +	/export/krb5aip) echo "krb5 krb5i krb5p"
+>>>> +	;;
+>>>> +	esac
+>>>> +}
+>>>> +
+>>>> +# test multiple sec= options too?
+>>>> +[ -z "$TEST_MULTIPLE_SEC_OPTIONS" ] && TEST_MULTIPLE_SEC_OPTIONS=true
+>>>> +
+>>>> +# if defined will pause for $RUN_PAUSE seconds between each run
+>>>> +[ -z "$RUN_PAUSE" ] && RUN_PAUSE=0.25
+>>>> +
+>>>> +[ -z "$GROUP_PAUSE" ] && GROUP_PAUSE=10
+>>>> +
+>>>> +[ -z "$VERSIONS" ] && VERSIONS="v3 v4.0 v4.1"
+>>>> +
+>>>> +##### END CONFIG ####
+>>>> +
+>>>> +# no v2 or v3
+>>>> +VERSIONS_V4=$(echo $VERSIONS | sed 's/v[2-3][^ ]*//g')
+>>>> +
+>>>> +echo "SERVER = $SERVER"
+>>>> +echo "PATHS = $PATHS"
+>>>> +echo "LOCALDIR = $LOCALDIR"
+>>>> +echo "VERSIONS = $VERSIONS"
+>>>> +echo "VERSIONS_V4 = $VERSIONS_V4"
+>>>> +echo "TEST_MULTIPLE_SEC_OPTIONS = $TEST_MULTIPLE_SEC_OPTIONS"
+>>>> +echo "RUN_PAUSE = $RUN_PAUSE"
+>>>> +echo "GROUP_PAUSE = $GROUP_PAUSE"
+>>>> +
+>>>> +SINGLE_SEC_OPTIONS="sys krb5 krb5i krb5p"
+>>>> +MULTIPLE_SEC_OPTIONS="sys krb5 krb5i krb5p sys:krb5 sys:krb5i sys:krb5p sys:krb5:krb5i sys:krb5:krb5p sys:krb5i:krb5p krb5:krb5i krb5:krb5p krb5:krb5i:krb5p krb5i:krb5p sys:krb5:krb5i:krb5p"
+>>>> +
+>>>> +FAILURES=0
+>>>> +SUCCESSES=0
+>>>> +
+>>>> +group_pause() {
+>>>> +	if [ -n "$GROUP_PAUSE" -a "$GROUP_PAUSE" != "0" ] ; then
+>>>> +		echo sleeping for $GROUP_PAUSE seconds...
+>>>> +		sleep $GROUP_PAUSE
+>>>> +	fi
+>>>> +}
+>>>> +
+>>>> +has_mount() {
+>>>> +	_res=$(mount | grep $LOCALDIR  | grep nfs)
+>>>> +
+>>>> +	if [ -n "$_res" ] ; then
+>>>> +		return 0
+>>>> +	fi
+>>>> +
+>>>> +	return 1
+>>>> +}
+>>>> +
+>>>> +if has_mount ; then
+>>>> +	echo "something else mounted on $LOCALDIR"
+>>>> +	exit 1
+>>>> +fi
+>>>> +
+>>>> +_cancel() {
+>>>> +	echo
+>>>> +	echo "exiting on SIGINT"
+>>>> +	while has_mount ; do
+>>>> +		sudo umount $LOCALDIR > /dev/null 2>&1
+>>>> +	done
+>>>> +	exit 1
+>>>> +}
+>>>> +
+>>>> +splitsec() {
+>>>> +	echo $* | tr -s ':' ' '
+>>>> +}
+>>>> +
+>>>> +trap '_cancel' INT
+>>>> +
+>>>> +run() {
+>>>> +	_opts="$1"
+>>>> +	_server="$2"
+>>>> +	_path="$3"
+>>>> +	_local="$4"
+>>>> +	_expected_result="$5"
+>>>> +	_cd="$6"
+>>>> +
+>>>> +	if has_mount ; then
+>>>> +		echo
+>>>> +		echo "something mounted on $LOCALDIR"
+>>>> +		exit 1
+>>>> +	fi
+>>>> +
+>>>> +	echo -n "mount" -o "$_opts" "$_server:$_path" "$_local"
+>>>> +	sudo mount -o "$_opts" "$_server:$_path" "$_local" > /dev/null 2>&1
+>>>> +	_status=$?
+>>>> +
+>>>> +	if [ "$_status" = "0" -a -n "$_cd" ]; then
+>>>> +		echo -n " && ls $_cd"
+>>>> +		sudo ls $_cd > /dev/null 2>&1
+>>>> +		_status=$?
+>>>> +	fi
+>>>> +
+>>>> +
+>>>> +	echo -n "  -> $_status"
+>>>> +
+>>>> +	if [ "$_expected_result" = "$_status" ] ; then
+>>>> +		echo "  [OK]"
+>>>> +		SUCCESSES=$(expr $SUCCESSES + 1)
+>>>> +	else
+>>>> +		echo -n "  [FAIL!!]"
+>>>> +		echo "  --> expected $_expected_result, but got $_status"
+>>>> +		FAILURES=$(expr $FAILURES + 1)
+>>>> +	fi
+>>>> +
+>>>> +	sudo umount $LOCALDIR > /dev/null 2>&1
+>>>> +
+>>>> +	while has_mount ; do
+>>>> +		sudo umount $LOCALDIR > /dev/null 2>&1
+>>>> +		sleep 0.1
+>>>> +	done
+>>>> +
+>>>> +	# sigh, gssd gets angry
+>>>> +	if [ -n "$RUN_PAUSE" -a "$RUN_PAUSE" != "0" ] ; then
+>>>> +		sleep $RUN_PAUSE
+>>>> +	fi
+>>>> +
+>>>> +	return $_status
+>>>> +}
+>>>> +
+>>>> +echo
+>>>> +echo "single sec= tests"
+>>>> +for vers in $VERSIONS ; do
+>>>> +	for sec in $SINGLE_SEC_OPTIONS ; do
+>>>> +		for path in $PATHS; do
+>>>> +			_expected_result=32
+>>>> +			for pathsec in $(path_to_sec_flavors $path) ; do
+>>>> +				if [ "$pathsec" = "$sec" ]; then
+>>>> +					# should work!
+>>>> +					_expected_result=0
+>>>> +				fi
+>>>> +			done
+>>>> +
+>>>> +			run "$vers,sec=$sec" $SERVER $path $LOCALDIR $_expected_result
+>>>> +			_status=$?
+>>>> +
+>>>> +		done
+>>>> +	done
+>>>> +done
+>>>> +
+>>>> +echo
+>>>> +
+>>>> +group_pause
+>>>> +
+>>>> +if [ "$TEST_MULTIPLE_SEC_OPTIONS" = "true" ] ; then
+>>>> +	echo
+>>>> +	echo "multiple sec= tests"
+>>>> +	for vers in $VERSIONS ; do
+>>>> +		for sec in $MULTIPLE_SEC_OPTIONS ; do
+>>>> +			for path in $PATHS; do
+>>>> +				_expected_result=32
+>>>> +				for pathsec in $(path_to_sec_flavors $path) ; do
+>>>> +					for thissec in $(splitsec $sec) ; do
+>>>> +						if [ "$pathsec" = "$thissec" ]; then
+>>>> +							# should work!
+>>>> +							_expected_result=0
+>>>> +						fi
+>>>> +					done
+>>>> +				done
+>>>> +
+>>>> +				run "$vers,sec=$sec" $SERVER $path $LOCALDIR $_expected_result
+>>>> +				_status=$?
+>>>> +
+>>>> +			done
+>>>> +		done
+>>>> +	done
+>>>> +fi
+>>>> +
+>>>> +group_pause
+>>>> +
+>>>> +echo
+>>>> +echo "no sec= tests"
+>>>> +for vers in $VERSIONS ; do
+>>>> +	for path in $PATHS; do
+>>>> +		run "$vers" $SERVER $path $LOCALDIR 0
+>>>> +		_status=$?
+>>>> +	done
+>>>> +done
+>>>> +
+>>>> +group_pause
+>>>> +
+>>>> +echo
+>>>> +echo "v4 secinfo tests"
+>>>> +for vers in $VERSIONS_V4 ; do
+>>>> +	for path in $PATHS; do
+>>>> +		run "$vers" $SERVER / $LOCALDIR 0 $LOCALDIR/$path
+>>>> +		_status=$?
+>>>> +	done
+>>>> +done
+>>>> +
+>>>> +group_pause
+>>>> +
+>>>> +echo
+>>>> +echo "v4.x secinfo with single sec= tests"
+>>>> +for vers in $VERSIONS_V4 ; do
+>>>> +	for sec in $SINGLE_SEC_OPTIONS ; do
+>>>> +		for path in $PATHS; do
+>>>> +			_expected_result=2
+>>>> +			for pathsec in $(path_to_sec_flavors $path) ; do
+>>>> +				if [ "$pathsec" = "$sec" ]; then
+>>>> +					# should work!
+>>>> +					_expected_result=0
+>>>> +				fi
+>>>> +			done
+>>>> +
+>>>> +			run "$vers,sec=$sec" $SERVER / $LOCALDIR $_expected_result $LOCALDIR/$path
+>>>> +			_status=$?
+>>>> +
+>>>> +		done
+>>>> +	done
+>>>> +done
+>>>> +
+>>>> +group_pause
+>>>> +
+>>>> +if [ "$TEST_MULTIPLE_SEC_OPTIONS" = "true" ] ; then
+>>>> +	echo
+>>>> +	echo "v4.x secinfo with multiple sec= tests"
+>>>> +	for vers in $VERSIONS_V4 ; do
+>>>> +		for sec in $MULTIPLE_SEC_OPTIONS ; do
+>>>> +			for path in $PATHS; do
+>>>> +				_expected_result=2
+>>>> +				for pathsec in $(path_to_sec_flavors $path) ; do
+>>>> +					for thissec in $(splitsec $sec) ; do
+>>>> +						if [ "$pathsec" = "$thissec" ]; then
+>>>> +							# should work!
+>>>> +							_expected_result=0
+>>>> +						fi
+>>>> +					done
+>>>> +				done
+>>>> +
+>>>> +				run "$vers,sec=$sec" $SERVER / $LOCALDIR $_expected_result $LOCALDIR/$path
+>>>> +				_status=$?
+>>>> +
+>>>> +			done
+>>>> +		done
+>>>> +	done
+>>>> +fi
+>>>> +
+>>>> +echo
+>>>> +echo "Successfully ran $SUCCESSES tests"
+>>>> +if [ "$FAILURES" != "0" ] ; then
+>>>> +	echo
+>>>> +	echo "$FAILURES failures!"
+>>>> +fi
+>>>> +exit $FAILURES
+>>> 
+>>> 
+>> 
+> 
+> 
 
-diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
-index 52fc03d..c9e12db 100644
---- a/utils/exportfs/exportfs.c
-+++ b/utils/exportfs/exportfs.c
-@@ -351,6 +351,7 @@ unexportfs(char *arg, int verbose)
- 	char		*path;
- 	char		*hname =3D arg;
- 	int		htype;
-+	int		success =3D 0;
-=20
- 	if ((path =3D strchr(arg, ':')) !=3D NULL)
- 		*path++ =3D '\0';
-@@ -397,7 +398,10 @@ unexportfs(char *arg, int verbose)
- #endif
- 		exp->m_xtabent =3D 0;
- 		exp->m_mayexport =3D 0;
-+		success =3D 1;
- 	}
-+	if (!success)
-+		xlog(L_ERROR, "Could not find %s to unexport.\n", arg);
-=20
- 	freeaddrinfo(ai);
- }
-
---Sig_/75=hcdMA+8klYd/_0Prt0CF
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.19 (GNU/Linux)
-
-iQIVAwUBUmcqDDnsnt1WYoG5AQI/YQ/+NOnoPqprVDZlxlNmCxiZt9aREn5CYFDJ
-WEEAGKah4j3k87pelmZoaHIUfY5HDwTC2kcQBT9MqtCVwXs49mUTnjopkg7o+Y8d
-LsKQUJSJtqEdD0pAhJIsDYPrOdg3jbglaoKN2cYMEsuTHbpIZD0h6nz6pu0HsF1f
-r5DgVKWCHkIajf7z2T4nHqGVmVa5/dRib4JxF8KsgvuGoetaboeiJWOh1OZSJ52F
-bUKjOIK5r2ou34XhAvXICHyDexPBZcwWPRCAgMowbSn4lp3O18wwez1uyoCsgF+8
-qlOWyg8LYu33yhPrehbJ3HSgtBFv21YKUKziXB9KK6YN4ZhrokuLYfYpHcz/2ZSa
-tUT+4JulOz9KhuoiFCq/RuIXHVcJvHHZ05TX6H43SuxbNMCjqT6Wy/C4UHh8PIln
-kMu3RwFLVyI2nXm58u18O2eFnD9PLMUiAlit/rqqL7NJkZVrAfkJrhef1nagh6je
-0vFCd6vi0B6UvAzscZtZdCNuJCkn8YGfK5rB5uSEciupSRLr40EMfpp/aPnW4Evm
-6J2LPFud5risNmNh0IY4jRMO10zfTGea6hmgD98WSX27Ro01dJ2x93T0fkTlGTE+
-ivv2PgUETxd1jnQWMyBe6MdI7HgTTCXVXJT70MALlvrpJfscqGaqXvk8fk/7xrtL
-DefyItCsFkE=
-=whjM
------END PGP SIGNATURE-----
-
---Sig_/75=hcdMA+8klYd/_0Prt0CF--
