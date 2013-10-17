@@ -1,73 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:32963 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754507Ab3J1ATM convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Oct 2013 20:19:12 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Christoph Anton Mitterer <calestyo@scientia.net>
-CC: Eshel Marc <eshel@us.ibm.com>,
-        Dr Fields James Bruce <bfields@fieldses.org>,
-        Mailing List Linux NFS <linux-nfs@vger.kernel.org>,
-        "linux-nfs-owner@vger.kernel.org" <linux-nfs-owner@vger.kernel.org>,
-        "Wheeler Ric" <ricwheeler@gmail.com>
-Subject: Re: XATTRs in NFS?
-Date: Mon, 28 Oct 2013 00:19:10 +0000
-Message-ID: <E5AAC597-053A-4150-9041-32885CFFC6C4@netapp.com>
-References: <1382560643.6924.12.camel@heisenberg.scientia.net>
- <EFB2CFAD-FACC-401D-BF0C-1C573B23A873@netapp.com>
- <1382624000.6907.8.camel@heisenberg.scientia.net>
- <E0F4C952-02DE-4778-A779-FB7AE111EC46@netapp.com>
- <1382630468.6907.58.camel@heisenberg.scientia.net>
- <625CAA34-BD6C-4283-86D0-3F8B460D54D0@netapp.com>
- <1382635350.6907.83.camel@heisenberg.scientia.net>
- <20131025140846.GB20497@fieldses.org> <526A8D9A.8090008@gmail.com>
- <7C1323EE-D63F-4F93-A44D-E7DDB0C61BF0@netapp.com>
- <OF01D9818B.36018C0F-ON88257C10.00608BC0-88257C10.006139C6@LocalDomain>
- <OF7F1977B0.3BF0FF3B-ON88257C10.00618038-88257C10.0061AF59@us.ibm.com>
- <4260556F-D57B-407E-A686-808D3D802137@netapp.com>
- <1382919289.6932.35.camel@heisenberg.scientia.net>
-In-Reply-To: <1382919289.6932.35.camel@heisenberg.scientia.net>
-Content-Type: text/plain; charset="us-ascii"
+Received: from userp1040.oracle.com ([156.151.31.81]:22908 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758797Ab3JQSM5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Oct 2013 14:12:57 -0400
+Received: from ucsinet22.oracle.com (ucsinet22.oracle.com [156.151.31.94])
+	by userp1040.oracle.com (Sentrion-MTA-4.3.1/Sentrion-MTA-4.3.1) with ESMTP id r9HICuKx012962
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 17 Oct 2013 18:12:57 GMT
+Received: from nfsvm18.us.oracle.com (nfsvm18.us.oracle.com [10.135.198.118])
+	by ucsinet22.oracle.com (8.14.4+Sun/8.14.4) with ESMTP id r9HICup5026423
+	for <linux-nfs@vger.kernel.org>; Thu, 17 Oct 2013 18:12:56 GMT
+From: Chuck Lever <chuck.lever@oracle.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 08/21] NFS: Add a super_block backpointer to the nfs_server struct
+Date: Thu, 17 Oct 2013 14:12:56 -0400
+Message-Id: <20131017181256.1073.81562.stgit@nfsvm18.us.oracle.com>
+In-Reply-To: <20131017180630.1073.18400.stgit@nfsvm18.us.oracle.com>
+References: <20131017180630.1073.18400.stgit@nfsvm18.us.oracle.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+NFS_SB() returns the pointer to an nfs_server struct, given a
+pointer to a super_block.  But we have no way to go back the other
+way.
 
-On Oct 27, 2013, at 8:14 PM, Christoph Anton Mitterer <calestyo@scientia.net> wrote:
+Add a super_block backpointer field so that, given an nfs_server
+struct, it is easy to get to the filesystem's root dentry.
 
-> On Sun, 2013-10-27 at 12:48 +0000, Myklebust, Trond wrote:
->> Let's get the basic discussion of motivation right first.
-> Actually I might know another use case.
-> 
-> dCache[0] which implements a (p)NFS 4.1 server and is heavily used
-> within the high energy physics community, could benefit from XATTRs as
-> well.
-> 
-> Ever since, dCache has had a concept called PNFS tags (where the PNFS
-> had nothing to do with parallel NFS, but is called so for other
-> historical reasons), which are basically key/value pairs belonging to
-> some file (well at least directory, I don't remember where PNFS tags
-> exist for regular files).
-> 
-> These tags are used to control several things, indirectly, e.g. to which
-> data pool node a file may go, and via that whether it may be moved to
-> tape, whether it is duplicated, etc. pp.
-> 
-> Since there were no XATTRs (at least I guess that's the historical
-> reason), they used special files for this having the name:
-> ".(tag)(key)" and the content of the file is the value.
-> 
-> So for a path,
-> /data/foo/bar/
-> one can set the key "sGroup" (aka storage group) to a value say
-> "ATLAS" (which (very simplified) will tell dCache in the end that this
-> is storage belonging to the ATLAS experiment) by creating a file
-> echo "ATLAS" > '/data/foo/bar/.(tag)(sGroup)'
-> 
-> 
-> Obviously having such special files isn't that nice, and having real
-> XATTRs would be the better solution.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ fs/nfs/super.c            |    1 +
+ include/linux/nfs_fs_sb.h |    1 +
+ 2 files changed, 2 insertions(+)
 
-Ordinary groups can do the same.
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index a03b9c6..5edc613 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -2530,6 +2530,7 @@ struct dentry *nfs_fs_mount_common(struct nfs_server *server,
+ 			mntroot = ERR_PTR(error);
+ 			goto error_splat_bdi;
+ 		}
++		server->super = s;
+ 	}
+ 
+ 	if (!s->s_root) {
+diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
+index b8cedce..a1c80a2 100644
+--- a/include/linux/nfs_fs_sb.h
++++ b/include/linux/nfs_fs_sb.h
+@@ -147,6 +147,7 @@ struct nfs_server {
+ 	__u64			maxfilesize;	/* maximum file size */
+ 	struct timespec		time_delta;	/* smallest time granularity */
+ 	unsigned long		mount_time;	/* when this fs was mounted */
++	struct super_block	*super;		/* VFS super block */
+ 	dev_t			s_dev;		/* superblock dev numbers */
+ 
+ #ifdef CONFIG_NFS_FSCACHE
 
-Trond
