@@ -1,50 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:59080 "EHLO fieldses.org"
+Received: from mout.gmx.net ([212.227.15.19]:52335 "EHLO mout.gmx.net"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752610Ab3JDWPr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 4 Oct 2013 18:15:47 -0400
-Date: Fri, 4 Oct 2013 18:15:23 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: Al Viro <viro@ZenIV.linux.org.uk>, Christoph Hellwig <hch@infradead.org>,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        sandeen@redhat.com
-Subject: Re: [PATCH 2/2] exportfs: fix 32-bit nfsd handling of 64-bit inode
- numbers
-Message-ID: <20131004221522.GD18051@fieldses.org>
-References: <20131002210736.GA20598@fieldses.org>
- <1380749295-20854-1-git-send-email-bfields@redhat.com>
- <1380749295-20854-2-git-send-email-bfields@redhat.com>
- <20131004221216.GC18051@fieldses.org>
+	id S1762348Ab3JQUmT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 17 Oct 2013 16:42:19 -0400
+Received: from [192.168.178.60] ([84.173.47.244]) by mail.gmx.com (mrgmx102)
+ with ESMTPSA (Nemesis) id 0La2Xx-1W130Z0HpF-00lpth for
+ <linux-nfs@vger.kernel.org>; Thu, 17 Oct 2013 22:42:18 +0200
+Message-ID: <52604BA9.20104@gmx.de>
+Date: Thu, 17 Oct 2013 22:42:17 +0200
+From: Helge Deller <deller@gmx.de>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20131004221216.GC18051@fieldses.org>
+To: Linux Kernel Development <linux-kernel@vger.kernel.org>,
+        NFS list <linux-nfs@vger.kernel.org>,
+        list parisc-linux <parisc-linux@lists.parisc-linux.org>
+Subject: 3.12-rcX - NFS regression - kswapd0 / kswapd1 stays using 100% CPU?
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Oct 04, 2013 at 06:12:16PM -0400, bfields wrote:
-> On Wed, Oct 02, 2013 at 05:28:14PM -0400, J. Bruce Fields wrote:
-> > @@ -268,6 +268,16 @@ static int get_name(const struct path *path, char *name, struct dentry *child)
-> >  	if (!dir->i_fop)
-> >  		goto out;
-> >  	/*
-> > +	 * inode->i_ino is unsigned long, kstat->ino is u64, so the
-> > +	 * former would be insufficient on 32-bit hosts when the
-> > +	 * filesystem supports 64-bit inode numbers.  So we need to
-> > +	 * actually call ->getattr, not just read i_ino:
-> > +	 */
-> > +	error = vfs_getattr_nosec(path, &stat);
-> 
-> Doh, "path" here is for the parent....  The following works better!
+I'm seeing a regression with current kernel git head when using NFS-mounts.
+Architecture in my case is parisc, although I don't think that this is relevant.
+At least kernel 3.10 (and I think 3.11) didn't showed that problem.
 
-By the way, I'm testing this with:
+The symtom is, that "top" shows high usage of either kswapd0 or kswapd1.
+Here is an output with kswapd1:
+  PID USER      PR  NI  VIRT  RES  SHR S  %CPU %MEM     TIME+ COMMAND
+   37 root      20   0     0    0    0 R  91.8  0.0  63:00.40 kswapd1
+28448 root      20   0  3252 1428 1060 R  15.3  0.0   0:00.09 top
+    1 root      20   0  2784  988  852 S   0.0  0.0   0:09.95 init
 
-	- create a bunch of nested subdirectories, use
-	  name_to_fhandle_at to get a handle for the bottom directory.
-	- echo 2 >/proc/sys/vm/drop_caches
-	- open_by_fhandle_at on the filehandle
+This is what ps shows:
+lsXXXX:~# ps -ef |  grep mount
+root      1181     1  0 14:51 ?        00:00:18 /usr/sbin/automount --pid-file /var/run/autofs.pid
+root     25331  1181  0 21:25 ?        00:00:00 /bin/mount -n -t nfs -s -o nolock,rw,hard,intr homes:/unixhome1 /net/home1
+root     25332 25331  0 21:25 ?        00:00:00 /sbin/mount.nfs homes:/unixhome1 /net/home1 -s -n -o rw,nolock,hard,intr
 
-But this only actually exercises the reconnect path on the first run
-after boot.  Is there something obvious I'm missing here?
+And using sysrq to show the blocked tasks I get in syslog:
+SysRq : Show Blocked State
+mount.nfs       D 00000000401040c0     0 25332  25331 0x00000010
+Backtrace:
+[<0000000040113a68>] __schedule+0x500/0x810
 
---b.
+I know it's not a problem of the NFS server, since the same mount is still ok on other machines.
+The NFS directory was already mounted and in use when this mount happened again (called by cron-job). 
+ 
+Any ideas?
+
+Helge
