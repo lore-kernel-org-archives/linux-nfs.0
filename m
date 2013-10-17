@@ -1,85 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:59335 "EHLO fieldses.org"
+Received: from mx12.netapp.com ([216.240.18.77]:1933 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755406Ab3JJPPH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 10 Oct 2013 11:15:07 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 4/4] gss_krb5: document that we ignore sequence number
-Date: Thu, 10 Oct 2013 11:15:03 -0400
-Message-Id: <1381418103-3852-5-git-send-email-bfields@redhat.com>
-In-Reply-To: <1381418103-3852-1-git-send-email-bfields@redhat.com>
-References: <1381418103-3852-1-git-send-email-bfields@redhat.com>
+	id S1758121Ab3JQSm2 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Oct 2013 14:42:28 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Ben Greear <greearb@candelatech.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: 'umount -f /mnt/foo' fails if server IP is gone.
+Date: Thu, 17 Oct 2013 18:42:26 +0000
+Message-ID: <1382035346.3216.15.camel@leira.trondhjem.org>
+References: <525D899F.5010604@candelatech.com>
+	   <52601FED.6070708@candelatech.com>
+	  <1382033137.3216.3.camel@leira.trondhjem.org>
+	  <52602835.4000701@candelatech.com>
+	 <1382034747.3216.8.camel@leira.trondhjem.org>
+	 <52602DD7.6050708@candelatech.com>
+In-Reply-To: <52602DD7.6050708@candelatech.com>
+Content-Type: text/plain; charset="utf-7"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Thu, 2013-10-17 at 11:35 -0700, Ben Greear wrote:
++AD4- On 10/17/2013 11:32 AM, Myklebust, Trond wrote:
++AD4- +AD4- On Thu, 2013-10-17 at 11:11 -0700, Ben Greear wrote:
++AD4- +AD4APg- On 10/17/2013 11:05 AM, Myklebust, Trond wrote:
++AD4- +AD4APgA+- On Thu, 2013-10-17 at 10:35 -0700, Ben Greear wrote:
++AD4- +AD4APgA+AD4- On 10/15/2013 11:29 AM, Ben Greear wrote:
++AD4- +AD4APgA+AD4APg- Is 'umount -f' supposed to always work, even if the file server
++AD4- +AD4APgA+AD4APg- goes away?
++AD4- +AD4APgA+AD4APg-
++AD4- +AD4APgA+AD4APg- I have a user's system that just hangs forever in this case.
++AD4- +AD4APgA+AD4APg-
++AD4- +AD4APgA+AD4APg- Could be local changes we have made, but I'm curious about
++AD4- +AD4APgA+AD4APg- the expected behaviour before I go digging too deep...
++AD4- +AD4APgA+AD4-
++AD4- +AD4APgA+AD4- Any input on this?  I don't mind trying to fix it, but I
++AD4- +AD4APgA+AD4- would like to know how it is supposed to work.
++AD4- +AD4APgA+-
++AD4- +AD4APgA+- 'umount -f' has always been iffy. It just kills any pending RPC calls
++AD4- +AD4APgA+- +AF8-before+AF8- trying to unmount. Since the unmount itself can trigger
++AD4- +AD4APgA+- writeback flushes (and hence more RPC calls), the trace you are seeing
++AD4- +AD4APgA+- is indeed possible.
++AD4- +AD4APg-
++AD4- +AD4APg- I tried 'umount -f -l', and that also does not work.
++AD4- +AD4APg-
++AD4- +AD4APg- Any ideas on how to fix this properly?
++AD4- +AD4- 
++AD4- +AD4- 'umount -f -l' should normally work to at least hide the gruesome
++AD4- +AD4- details of your hanging superblock.
++AD4- +AD4- 
++AD4- +AD4- I'm guessing that you're falling afoul of the path revalidation that
++AD4- +AD4- Chuck alluded to. There should already be a fix for that problem with
++AD4- +AD4- the path+AF8-umountat() patches that went into Linux 3.12-rc1. Are those
++AD4- +AD4- failing to help?
++AD4- 
++AD4- I have not tried past 3.9.11 kernel yet.  I will go look for those patches
++AD4- you mention as well.  Did any of this go to -stable by chance?
 
-A couple times recently somebody has noticed that we're ignoring a
-sequence number here and wondered whether there's a bug.
+Not as far as I know.
 
-In fact, there's not.  Thanks to Andy Adamson for pointing out a useful
-explanation in rfc 2203.  Add comments citing that rfc, and remove
-"seqnum" to prevent static checkers complaining about unused variables.
+The commit identifier is 8033426e6bdb2690d302872ac1e1fadaec1a5581 (vfs:
+allow umount to handle mountpoints without revalidating them) in case
+you are interested.
 
-Reported-by: Andi Kleen <andi@firstfloor.org>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- net/sunrpc/auth_gss/gss_krb5_unseal.c |    8 ++++----
- net/sunrpc/auth_gss/gss_krb5_wrap.c   |    6 ++++--
- 2 files changed, 8 insertions(+), 6 deletions(-)
-
-diff --git a/net/sunrpc/auth_gss/gss_krb5_unseal.c b/net/sunrpc/auth_gss/gss_krb5_unseal.c
-index 6cd930f..6c981dd 100644
---- a/net/sunrpc/auth_gss/gss_krb5_unseal.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_unseal.c
-@@ -150,7 +150,6 @@ gss_verify_mic_v2(struct krb5_ctx *ctx,
- 	struct xdr_netobj cksumobj = {.len = sizeof(cksumdata),
- 				      .data = cksumdata};
- 	s32 now;
--	u64 seqnum;
- 	u8 *ptr = read_token->data;
- 	u8 *cksumkey;
- 	u8 flags;
-@@ -197,9 +196,10 @@ gss_verify_mic_v2(struct krb5_ctx *ctx,
- 	if (now > ctx->endtime)
- 		return GSS_S_CONTEXT_EXPIRED;
- 
--	/* do sequencing checks */
--
--	seqnum = be64_to_cpup((__be64 *)ptr + 8);
-+	/*
-+	 * NOTE: the sequence number at ptr + 8 is skipped, rpcsec_gss
-+	 * doesn't want it checked; see page 6 of rfc 2203.
-+	 */
- 
- 	return GSS_S_COMPLETE;
- }
-diff --git a/net/sunrpc/auth_gss/gss_krb5_wrap.c b/net/sunrpc/auth_gss/gss_krb5_wrap.c
-index 1da52d1..5040a46 100644
---- a/net/sunrpc/auth_gss/gss_krb5_wrap.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_wrap.c
-@@ -489,7 +489,6 @@ static u32
- gss_unwrap_kerberos_v2(struct krb5_ctx *kctx, int offset, struct xdr_buf *buf)
- {
- 	s32		now;
--	u64		seqnum;
- 	u8		*ptr;
- 	u8		flags = 0x00;
- 	u16		ec, rrc;
-@@ -525,7 +524,10 @@ gss_unwrap_kerberos_v2(struct krb5_ctx *kctx, int offset, struct xdr_buf *buf)
- 	ec = be16_to_cpup((__be16 *)(ptr + 4));
- 	rrc = be16_to_cpup((__be16 *)(ptr + 6));
- 
--	seqnum = be64_to_cpup((__be64 *)(ptr + 8));
-+	/*
-+	 * NOTE: the sequence number at ptr + 8 is skipped, rpcsec_gss
-+	 * doesn't want it checked; see page 6 of rfc 2203.
-+	 */
- 
- 	if (rrc != 0)
- 		rotate_left(offset + 16, buf, rrc);
 -- 
-1.7.9.5
+Trond Myklebust
+Linux NFS client maintainer
 
+NetApp
+Trond.Myklebust+AEA-netapp.com
+www.netapp.com
