@@ -1,184 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:59508 "EHLO mx1.redhat.com"
+Received: from mx11.netapp.com ([216.240.18.76]:24030 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751196Ab3JVIfr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 Oct 2013 04:35:47 -0400
-Message-ID: <52663908.1090708@RedHat.com>
-Date: Tue, 22 Oct 2013 04:36:24 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S1755326Ab3JQORS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 17 Oct 2013 10:17:18 -0400
+From: Weston Andros Adamson <dros@netapp.com>
+To: <SteveD@redhat.com>
+CC: <linux-nfs@vger.kernel.org>, Weston Andros Adamson <dros@netapp.com>
+Subject: [PATCH] mountstats: fix python2.x support
+Date: Thu, 17 Oct 2013 10:17:14 -0400
+Message-ID: <1382019434-12377-1-git-send-email-dros@netapp.com>
 MIME-Version: 1.0
-To: Tony Asleson <tasleson@redhat.com>
-CC: Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] exportfs: Return non-zero exit value on error
-References: <1380756584-13335-1-git-send-email-tasleson@redhat.com> <52663791.6020605@RedHat.com>
-In-Reply-To: <52663791.6020605@RedHat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Commit b703eabe4c4bc5c2d5fd9a07b6b995d67ea7e77a converted mountstats to using
+python3's print() function, but this doesn't work in python2.x without
+importing the print function from __future__.
 
+Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+---
+ tools/mountstats/mountstats.py | 2 ++
+ 1 file changed, 2 insertions(+)
 
-On 22/10/13 04:30, Steve Dickson wrote:
-> 
-> 
-> On 02/10/13 19:29, Tony Asleson wrote:
->> To improve error handling when scripting exportfs it's useful
->> to have non-zero exit codes when the requested operation did not
->> succeed.
->>
->> This patch also returns a non-zero exit code if you request to
->> unexport a non-existant share.
->>
->> Signed-off-by: Tony Asleson <tasleson@redhat.com>
-> Committed! 
-Unfortunately I did not see Neil's patch before I committed this patch....
-So I'm going to revert this patch in favor of Neil's... 
+diff --git a/tools/mountstats/mountstats.py b/tools/mountstats/mountstats.py
+index 3f5fea5..e46105d 100644
+--- a/tools/mountstats/mountstats.py
++++ b/tools/mountstats/mountstats.py
+@@ -3,6 +3,8 @@
+ """Parse /proc/self/mountstats and display it in human readable form
+ """
+ 
++from __future__ import print_function
++
+ __copyright__ = """
+ Copyright (C) 2005, Chuck Lever <cel@netapp.com>
+ 
+-- 
+1.7.12.4 (Apple Git-37)
 
-steved.
-
-> 
-> steved.
-> 
->> ---
->>  support/export/hostname.c |  2 ++
->>  utils/exportfs/exportfs.c | 37 +++++++++++++++++++++++++++----------
->>  2 files changed, 29 insertions(+), 10 deletions(-)
->>
->> diff --git a/support/export/hostname.c b/support/export/hostname.c
->> index 3e949a1..e53d692 100644
->> --- a/support/export/hostname.c
->> +++ b/support/export/hostname.c
->> @@ -175,10 +175,12 @@ host_addrinfo(const char *hostname)
->>  	case 0:
->>  		return ai;
->>  	case EAI_SYSTEM:
->> +		export_errno = errno;
->>  		xlog(D_GENERAL, "%s: failed to resolve %s: (%d) %m",
->>  				__func__, hostname, errno);
->>  		break;
->>  	default:
->> +		export_errno = EINVAL;
->>  		xlog(D_GENERAL, "%s: failed to resolve %s: %s",
->>  				__func__, hostname, gai_strerror(error));
->>  		break;
->> diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
->> index 52fc03d..318deb3 100644
->> --- a/utils/exportfs/exportfs.c
->> +++ b/utils/exportfs/exportfs.c
->> @@ -35,8 +35,8 @@
->>  #include "xlog.h"
->>  
->>  static void	export_all(int verbose);
->> -static void	exportfs(char *arg, char *options, int verbose);
->> -static void	unexportfs(char *arg, int verbose);
->> +static int	exportfs(char *arg, char *options, int verbose);
->> +static int	unexportfs(char *arg, int verbose);
->>  static void	exports_update(int verbose);
->>  static void	dump(int verbose, int export_format);
->>  static void	error(nfs_export *exp, int err);
->> @@ -187,8 +187,12 @@ main(int argc, char **argv)
->>  		if (f_all)
->>  			export_all(f_verbose);
->>  		else
->> -			for (i = optind; i < argc ; i++)
->> -				exportfs(argv[i], options, f_verbose);
->> +			for (i = optind; i < argc ; i++) {
->> +				if(!exportfs(argv[i], options, f_verbose)) {
->> +					/* Only flag a generic EINVAL if no errno is set */
->> +					export_errno = (export_errno) ? export_errno : EINVAL;
->> +				}
->> +			}
->>  	}
->>  	/* If we are unexporting everything, then
->>  	 * don't care about what should be exported, as that
->> @@ -201,8 +205,12 @@ main(int argc, char **argv)
->>  		if (!f_reexport)
->>  			xtab_export_read();
->>  		if (!f_export)
->> -			for (i = optind ; i < argc ; i++)
->> -				unexportfs(argv[i], f_verbose);
->> +			for (i = optind ; i < argc ; i++) {
->> +				if (!unexportfs(argv[i], f_verbose)) {
->> +					/* Only flag a generic EINVAL if no errno is set */
->> +					export_errno = (export_errno) ? export_errno : EINVAL;
->> +				}
->> +			}
->>  		if (!new_cache)
->>  			rmtab_read();
->>  	}
->> @@ -296,9 +304,10 @@ export_all(int verbose)
->>  }
->>  
->>  
->> -static void
->> +static int
->>  exportfs(char *arg, char *options, int verbose)
->>  {
->> +	int rc = 0;
->>  	struct exportent *eep;
->>  	nfs_export	*exp = NULL;
->>  	struct addrinfo	*ai = NULL;
->> @@ -311,7 +320,8 @@ exportfs(char *arg, char *options, int verbose)
->>  
->>  	if (!path || *path != '/') {
->>  		xlog(L_ERROR, "Invalid exporting option: %s", arg);
->> -		return;
->> +		export_errno = EINVAL;
->> +		return rc;
->>  	}
->>  
->>  	if ((htype = client_gettype(hname)) == MCL_FQDN) {
->> @@ -339,13 +349,16 @@ exportfs(char *arg, char *options, int verbose)
->>  	exp->m_warned = 0;
->>  	validate_export(exp);
->>  
->> +	rc = 1;
->>  out:
->>  	freeaddrinfo(ai);
->> +	return rc;
->>  }
->>  
->> -static void
->> +static int
->>  unexportfs(char *arg, int verbose)
->>  {
->> +	int rc = 0;
->>  	nfs_export	*exp;
->>  	struct addrinfo *ai = NULL;
->>  	char		*path;
->> @@ -357,7 +370,8 @@ unexportfs(char *arg, int verbose)
->>  
->>  	if (!path || *path != '/') {
->>  		xlog(L_ERROR, "Invalid unexporting option: %s", arg);
->> -		return;
->> +		export_errno = EINVAL;
->> +		return rc;
->>  	}
->>  
->>  	if ((htype = client_gettype(hname)) == MCL_FQDN) {
->> @@ -397,9 +411,11 @@ unexportfs(char *arg, int verbose)
->>  #endif
->>  		exp->m_xtabent = 0;
->>  		exp->m_mayexport = 0;
->> +		rc = 1;
->>  	}
->>  
->>  	freeaddrinfo(ai);
->> +	return rc;
->>  }
->>  
->>  static int can_test(void)
->> @@ -728,6 +744,7 @@ error(nfs_export *exp, int err)
->>  {
->>  	xlog(L_ERROR, "%s:%s: %s", exp->m_client->m_hostname,
->>  		exp->m_export.e_path, strerror(err));
->> +	export_errno = (export_errno) ? export_errno : err;
->>  }
->>  
->>  static void
->>
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
