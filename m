@@ -1,54 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:26984 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753793Ab3JXPQQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 24 Oct 2013 11:16:16 -0400
-Subject: Re: XATTRs in NFS?
-From: Simo Sorce <simo@redhat.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Christoph Anton Mitterer <calestyo@scientia.net>,
-        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
-In-Reply-To: <1382627496.6430.2.camel@leira.trondhjem.org>
-References: <1382560643.6924.12.camel@heisenberg.scientia.net>
-	 <EFB2CFAD-FACC-401D-BF0C-1C573B23A873@netapp.com>
-	 <1382624000.6907.8.camel@heisenberg.scientia.net>
-	 <E0F4C952-02DE-4778-A779-FB7AE111EC46@netapp.com>
-	 <1382627225.899.76.camel@willson.li.ssimo.org>
-	 <1382627496.6430.2.camel@leira.trondhjem.org>
-Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 24 Oct 2013 11:16:10 -0400
-Message-ID: <1382627770.899.79.camel@willson.li.ssimo.org>
-Mime-Version: 1.0
+Received: from userp1040.oracle.com ([156.151.31.81]:23040 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758908Ab3JQSNJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Oct 2013 14:13:09 -0400
+Received: from ucsinet22.oracle.com (ucsinet22.oracle.com [156.151.31.94])
+	by userp1040.oracle.com (Sentrion-MTA-4.3.1/Sentrion-MTA-4.3.1) with ESMTP id r9HID86Q013372
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 17 Oct 2013 18:13:08 GMT
+Received: from nfsvm18.us.oracle.com (nfsvm18.us.oracle.com [10.135.198.118])
+	by ucsinet22.oracle.com (8.14.4+Sun/8.14.4) with ESMTP id r9HID7bV027125
+	for <linux-nfs@vger.kernel.org>; Thu, 17 Oct 2013 18:13:08 GMT
+From: Chuck Lever <chuck.lever@oracle.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 10/21] NFS: Re-use exit code in nfs4_async_handle_error()
+Date: Thu, 17 Oct 2013 14:13:07 -0400
+Message-Id: <20131017181307.1073.97554.stgit@nfsvm18.us.oracle.com>
+In-Reply-To: <20131017180630.1073.18400.stgit@nfsvm18.us.oracle.com>
+References: <20131017180630.1073.18400.stgit@nfsvm18.us.oracle.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2013-10-24 at 15:11 +0000, Myklebust, Trond wrote:
-> On Thu, 2013-10-24 at 11:07 -0400, Simo Sorce wrote:
-> 
-> > Because the filesystem can do that when multiple applications are
-> > involved without having to change them all to talk to each other and
-> > invent custom protocol all the time just to keep some additional
-> > metadata associated to a file..
-> > 
-> It's still a custom protocol. The applications need to agree on a data
-> format and store it somewhere. The portable way to do this is to write
-> an application library that they can link to.
+Clean up.
 
-Perhaps I was unclear, you are never going to see that custom library
-linked into the 'mv' command.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ fs/nfs/nfs4proc.c |    9 +++------
+ 1 file changed, 3 insertions(+), 6 deletions(-)
 
-So your approach makes little sense if the object is to maintain data
-coherent when people need to handle files from random applications and
-scripts and general system maintenance.
-
-The data may be relevant only to a specific application.
-
-I am not saying you *have* to implement xattrs support, just saying that
-it is not a mere 'applications should synchronize data themselves'
-problem.
-
-Simo.
-
--- 
-Simo Sorce * Red Hat, Inc * New York
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index f507e54..297bdd0 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -4757,19 +4757,15 @@ nfs4_async_handle_error(struct rpc_task *task, const struct nfs_server *server,
+ 			dprintk("%s ERROR %d, Reset session\n", __func__,
+ 				task->tk_status);
+ 			nfs4_schedule_session_recovery(clp->cl_session, task->tk_status);
+-			task->tk_status = 0;
+-			return -EAGAIN;
++			goto restart_call;
+ #endif /* CONFIG_NFS_V4_1 */
+ 		case -NFS4ERR_DELAY:
+ 			nfs_inc_server_stats(server, NFSIOS_DELAY);
+ 		case -NFS4ERR_GRACE:
+ 			rpc_delay(task, NFS4_POLL_RETRY_MAX);
+-			task->tk_status = 0;
+-			return -EAGAIN;
+ 		case -NFS4ERR_RETRY_UNCACHED_REP:
+ 		case -NFS4ERR_OLD_STATEID:
+-			task->tk_status = 0;
+-			return -EAGAIN;
++			goto restart_call;
+ 	}
+ 	task->tk_status = nfs4_map_errors(task->tk_status);
+ 	return 0;
+@@ -4780,6 +4776,7 @@ wait_on_recovery:
+ 	rpc_sleep_on(&clp->cl_rpcwaitq, task, NULL);
+ 	if (test_bit(NFS4CLNT_MANAGER_RUNNING, &clp->cl_state) == 0)
+ 		rpc_wake_up_queued_task(&clp->cl_rpcwaitq, task);
++restart_call:
+ 	task->tk_status = 0;
+ 	return -EAGAIN;
+ }
 
