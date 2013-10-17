@@ -1,62 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:27195 "EHLO mx1.redhat.com"
+Received: from mx12.netapp.com ([216.240.18.77]:28568 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757091Ab3JQQbh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 17 Oct 2013 12:31:37 -0400
-Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r9HGVaRF011436
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Thu, 17 Oct 2013 12:31:36 -0400
-Received: from smallhat.boston.devel.redhat.com (vpn-61-198.rdu2.redhat.com [10.10.61.198])
-	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id r9HGVZpk009212
-	for <linux-nfs@vger.kernel.org>; Thu, 17 Oct 2013 12:31:36 -0400
-Message-ID: <52601112.3030702@RedHat.com>
-Date: Thu, 17 Oct 2013 12:32:18 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S1758168Ab3JQSc2 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Oct 2013 14:32:28 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Ben Greear <greearb@candelatech.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: 'umount -f /mnt/foo' fails if server IP is gone.
+Date: Thu, 17 Oct 2013 18:32:27 +0000
+Message-ID: <1382034747.3216.8.camel@leira.trondhjem.org>
+References: <525D899F.5010604@candelatech.com>
+	  <52601FED.6070708@candelatech.com>
+	 <1382033137.3216.3.camel@leira.trondhjem.org>
+	 <52602835.4000701@candelatech.com>
+In-Reply-To: <52602835.4000701@candelatech.com>
+Content-Type: text/plain; charset="utf-7"
 MIME-Version: 1.0
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: Linux NFS Town Hall  meeting: Thur 10/17/13
-References: <525EC1C5.80507@RedHat.com>
-In-Reply-To: <525EC1C5.80507@RedHat.com>
-Content-Type: text/plain; charset=ISO-8859-1
-To: unlisted-recipients:; (no To-header on input)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If interested... the meeting will be starting shortly...
+On Thu, 2013-10-17 at 11:11 -0700, Ben Greear wrote:
++AD4- On 10/17/2013 11:05 AM, Myklebust, Trond wrote:
++AD4- +AD4- On Thu, 2013-10-17 at 10:35 -0700, Ben Greear wrote:
++AD4- +AD4APg- On 10/15/2013 11:29 AM, Ben Greear wrote:
++AD4- +AD4APgA+- Is 'umount -f' supposed to always work, even if the file server
++AD4- +AD4APgA+- goes away?
++AD4- +AD4APgA+-
++AD4- +AD4APgA+- I have a user's system that just hangs forever in this case.
++AD4- +AD4APgA+-
++AD4- +AD4APgA+- Could be local changes we have made, but I'm curious about
++AD4- +AD4APgA+- the expected behaviour before I go digging too deep...
++AD4- +AD4APg-
++AD4- +AD4APg- Any input on this?  I don't mind trying to fix it, but I
++AD4- +AD4APg- would like to know how it is supposed to work.
++AD4- +AD4- 
++AD4- +AD4- 'umount -f' has always been iffy. It just kills any pending RPC calls
++AD4- +AD4- +AF8-before+AF8- trying to unmount. Since the unmount itself can trigger
++AD4- +AD4- writeback flushes (and hence more RPC calls), the trace you are seeing
++AD4- +AD4- is indeed possible.
++AD4- 
++AD4- I tried 'umount -f -l', and that also does not work.
++AD4- 
++AD4- Any ideas on how to fix this properly?
 
-steved.
+'umount -f -l' should normally work to at least hide the gruesome
+details of your hanging superblock.
 
-On 16/10/13 12:41, Steve Dickson wrote:
-> Hello,
-> 
-> We have not had ones of these in a while so lets a 
-> A Linux NFS town hall for tomorrow (Thur Oct 17)
-> 
-> The usual agenda is for the maintainers to give a quick 
-> status of what's happening in area's they maintain. Next, 
-> Chuck updates us on what's happen in the FedFS world. Next,
-> we open up the floor to other other contributors,like Andy, 
-> who likes talks about security "stuff" ;-) Finally, we open the 
-> floor to questions, comments, concerns from the community.  
-> 
-> Generally the meeting last between 30 to 45 mins, with 
-> a very hard stop at 60mins. 
-> 
-> It is open to the entire community, so feel free to attend!
-> 
-> Time: 9:30 AM PST (12:30 PM EST)
-> 
-> The call in numbers are:
-> U.S. and Canada: (800) 451-8679
-> International dial-in number: (212) 729-5016
-> Israel Toll-Free: 1-809-462-557
-> Conference code: 564.272.1552
-> 
-> steved.
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+I'm guessing that you're falling afoul of the path revalidation that
+Chuck alluded to. There should already be a fix for that problem with
+the path+AF8-umountat() patches that went into Linux 3.12-rc1. Are those
+failing to help?
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust+AEA-netapp.com
+www.netapp.com
