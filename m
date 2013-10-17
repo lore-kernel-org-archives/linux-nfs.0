@@ -1,107 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:57805 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:27195 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753927Ab3JVPCa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 Oct 2013 11:02:30 -0400
-Subject: Re: [PATCH Version 2 0/3] GSSD: Use gss-ctx keys and gsskeyd to
- sync Kerberos credentials and kernel gss_contexts.
-From: Simo Sorce <simo@redhat.com>
-To: andros@netapp.com
-Cc: steved@redhat.com, linux-nfs@vger.kernel.org
-In-Reply-To: <1382451757-3032-1-git-send-email-andros@netapp.com>
-References: <1382451757-3032-1-git-send-email-andros@netapp.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 22 Oct 2013 11:02:28 -0400
-Message-ID: <1382454148.9794.72.camel@willson.li.ssimo.org>
-Mime-Version: 1.0
+	id S1757091Ab3JQQbh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 17 Oct 2013 12:31:37 -0400
+Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r9HGVaRF011436
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 17 Oct 2013 12:31:36 -0400
+Received: from smallhat.boston.devel.redhat.com (vpn-61-198.rdu2.redhat.com [10.10.61.198])
+	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id r9HGVZpk009212
+	for <linux-nfs@vger.kernel.org>; Thu, 17 Oct 2013 12:31:36 -0400
+Message-ID: <52601112.3030702@RedHat.com>
+Date: Thu, 17 Oct 2013 12:32:18 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: Linux NFS Town Hall  meeting: Thur 10/17/13
+References: <525EC1C5.80507@RedHat.com>
+In-Reply-To: <525EC1C5.80507@RedHat.com>
+Content-Type: text/plain; charset=ISO-8859-1
+To: unlisted-recipients:; (no To-header on input)
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2013-10-22 at 10:22 -0400, andros@netapp.com wrote:
-> From: Andy Adamson <andros@netapp.com>
+If interested... the meeting will be starting shortly...
+
+steved.
+
+On 16/10/13 12:41, Steve Dickson wrote:
+> Hello,
 > 
-> This is an RFC patchset, which will be used for testing.
+> We have not had ones of these in a while so lets a 
+> A Linux NFS town hall for tomorrow (Thur Oct 17)
 > 
-> This patchset requires the "SUNRPC: destroy gss_cred and context on Kerberos credential destruction" kernel patchset.
+> The usual agenda is for the maintainers to give a quick 
+> status of what's happening in area's they maintain. Next, 
+> Chuck updates us on what's happen in the FedFS world. Next,
+> we open up the floor to other other contributors,like Andy, 
+> who likes talks about security "stuff" ;-) Finally, we open the 
+> floor to questions, comments, concerns from the community.  
 > 
-> We need to do a lot of testing to ensure that once kdestroy and gss-ctx
-> gss_user_destroy is called, all existing buffered
-> writes using the 'destroyed gss credential + context' are serviced.
+> Generally the meeting last between 30 to 45 mins, with 
+> a very hard stop at 60mins. 
 > 
-> Differences from version 1:
+> It is open to the entire community, so feel free to attend!
 > 
-> - moved from nfstgt_login and nfstgt_logout to gsskeyd.
-> - gsskeyd automatically creates gss-ctx key on kinit and destroys the gss-ctx
-> key on kdestroy.
+> Time: 9:30 AM PST (12:30 PM EST)
 > 
-> gsskeyd will need to act differently for different krb5 credential caches.
-
-Why ?
-
-> For example, some versions of gssd store FILE credentials in FILE:/tmp/krb5cc_<UID>
-> while this code, written for fedora 19 uses FILE:/run/user/<UID>/krb5cc/tgt.
-
-This is incorrect, Fedora 19 use DIR type ccaches, so you should
-reference a cache withing the dir type, which will notmally be something
-like: DIR:/run/user/<uidnumber>/krb5cc for the whole collection or
-DIR::/run/user/<uidnumber>/krb5cc/txtXXXXXX for the sepcific cache.
-
-However note that due to issues with DIR type caches we are moving to a
-new KEYRING based type of cache in F20, so assuming any specific type of
-cache is a dead start.
-
-> As Trond suggested, if we keep gsskeyd separate from gssd, we could set up a
-> configuration file along the lines of the keytools' request-key.conf file to
-> allow both NFS and CIFS (and other filesystems) to install plugin handlers
-> for kinit/kdestroy events.
-
-Given in many cases (the desirable ones at least) kerberos credentials
-are not inited via kinit, but rather by things like pam_krb5, sssd, or
-directly imported via sshd, I am trying to understand how you are going
-to address the majority of these cases.
-
-Should users put gsskeyd in their .profile/.bashrc files or something ?
-
-> Else, we could have gssd be the process to poll inotify (given
-> that it already polls rpc_pipefs) and then just have it fork off the
-> subprocess if and when it sees an interesting event.
-
-What is an 'interesting' event ?
-
-> We need to investigate how this works when the kernel keyring is used for
-> Kerberos credentials. I believe that in this case gsskeyd can add the gss-ctx
-> key to the kerberos keyring, and it will get destroyed along with all other
-> keys at kdestroy.
-
-Is there any reason why you are doing this work with an utility that is
-separate from gssd or libkrb5 ?
-
-I think the only sensible way to handle something like this is by adding
-support directly in libkrb5, I do not see something external ever
-working reliably.
-I am not against it for testing purposes, but then does it need to be
-committed to nfs-utils ?
-
-Simo.
-
-> Andy Adamson (2):
->   GSSD add cc_name to upcall
->   ANDROS: update gsskeyd to use new /run/user/UID/krb5cc/tgt cache file
+> The call in numbers are:
+> U.S. and Canada: (800) 451-8679
+> International dial-in number: (212) 729-5016
+> Israel Toll-Free: 1-809-462-557
+> Conference code: 564.272.1552
 > 
-> Weston Andros Adamson (1):
->   WIP: Add gsskeyd
+> steved.
 > 
->  configure.ac            |   1 +
->  utils/Makefile.am       |   2 +-
->  utils/gssd/gssd_proc.c  |  37 ++++-
->  utils/gssd/krb5_util.c  |   2 +-
->  utils/gssd/krb5_util.h  |   1 +
->  utils/gsskeyd/gsskeyd.c | 371 ++++++++++++++++++++++++++++++++++++++++++++++++
->  6 files changed, 408 insertions(+), 6 deletions(-)
->  create mode 100644 utils/gsskeyd/gsskeyd.c
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
-
-
--- 
-Simo Sorce * Red Hat, Inc * New York
-
