@@ -1,380 +1,296 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:13432 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756803Ab3JQQIS convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Oct 2013 12:08:18 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: Anna Schumaker <schumaker.anna@gmail.com>
-CC: linux-nfs list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] Add test_sec_options.sh
-Date: Thu, 17 Oct 2013 16:08:14 +0000
-Message-ID: <A0A67C12-504C-4A87-92B4-907DB7788727@netapp.com>
-References: <1381952112-6793-1-git-send-email-dros@netapp.com>
- <525FF875.8080208@gmail.com>
- <BAD67995-3EEA-4C34-B66D-984B23C8658A@netapp.com> <5260056F.4@gmail.com>
-In-Reply-To: <5260056F.4@gmail.com>
-Content-Type: text/plain; charset="Windows-1252"
-MIME-Version: 1.0
+Received: from userp1040.oracle.com ([156.151.31.81]:20651 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755970Ab3JQNO0 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Oct 2013 09:14:26 -0400
+Content-Type: text/plain; charset=utf-8
+Mime-Version: 1.0 (Mac OS X Mail 6.6 \(1510\))
+Subject: Re: Different sequence of "exportfs" produce different effects on nfs client mounts
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <3962238FD7EA0F41B1810E7ABEAFBC314CEFA2F5@szxema505-mbs.china.huawei.com>
+Date: Thu, 17 Oct 2013 09:14:02 -0400
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Message-Id: <CB4DB7B1-5EEA-47D0-9CAD-CC69AF868182@oracle.com>
+References: <3962238FD7EA0F41B1810E7ABEAFBC314CEF9ACF@szxema505-mbs.china.huawei.com> <20131014174540.GA27747@fieldses.org> <3962238FD7EA0F41B1810E7ABEAFBC314CEF9E97@szxema505-mbs.china.huawei.com> <20131015154918.GA6117@fieldses.org> <3962238FD7EA0F41B1810E7ABEAFBC314CEF9FD9@szxema505-mbs.china.huawei.com> <3962238FD7EA0F41B1810E7ABEAFBC314CEFA2F5@szxema505-mbs.china.huawei.com>
+To: Wangminlan <wangminlan@huawei.com>, Neil Brown <neilb@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi-
 
-On Oct 17, 2013, at 11:42 AM, Anna Schumaker <schumaker.anna@gmail.com> wrote:
+281         if (ident[0] == '\0')
+282                 return MCL_ANONYMOUS;
+283         if (ident[0] == '@') {
+284 #ifndef HAVE_INNETGR
+285                 xlog(L_WARNING, "netgroup support not compiled in");
+286 #endif
+287                 return MCL_NETGROUP;
+288         }
+289         for (sp = ident; *sp; sp++) {
+290                 if (*sp == '*' || *sp == '?' || *sp == '[')
+291                         return MCL_WILDCARD;
+292                 if (*sp == '/')
+293                         return MCL_SUBNETWORK;
+294                 if (*sp == '\\' && sp[1])
+295                         sp++;
+296         }
 
-> On Thu 17 Oct 2013 11:26:35 AM EDT, Weston Andros Adamson wrote:
->> On Oct 17, 2013, at 10:47 AM, Anna Schumaker <schumaker.anna@gmail.com> wrote:
+is still in play today.  The "host_pton()" code you posted was added by commit 502edf1d just after this paragraph.  But here is what that commit replaced.
+
+-       /* check for N.N.N.N */
+-       sp = ident;
+-       if(!isdigit(*sp) || strtoul(sp, &sp, 10) > 255 || *sp != '.') return MCL_FQDN;
+-       sp++; if(!isdigit(*sp) || strtoul(sp, &sp, 10) > 255 || *sp != '.') return MCL_F
+-       sp++; if(!isdigit(*sp) || strtoul(sp, &sp, 10) > 255 || *sp != '.') return MCL_F
+-       sp++; if(!isdigit(*sp) || strtoul(sp, &sp, 10) > 255 || *sp != '\0') return MCL_
+-       /* we lie here a bit. but technically N.N.N.N == N.N.N.N/32 :) */
+-       return MCL_SUBNETWORK;
++
++       /*
++        * Treat unadorned IP addresses as MCL_SUBNETWORK.
++        * Everything else is MCL_FQDN.
++        */
++       ai = host_pton(ident);
++       if (ai != NULL) {
++               freeaddrinfo(ai);
++               return MCL_SUBNETWORK;
++       }
++
++       return MCL_FQDN;
+ }
+
+The replaced logic also treats IP addresses as MCL_SUBNETWORK.  That's from commit 54669c98 in 2005.  Neil, do you remember why this semantic change was made?
+
+
+
+On Oct 17, 2013, at 3:16 AM, Wangminlan <wangminlan@huawei.com> wrote:
+
+> Hi, 
+> 	I went through the code of nfs-utils, check the function client_gettype in support/export/client.c:
+> in nfs-utils-1-2-9-rc6, and in nfs-utils-1.2.6, they have this implementation in the final part:
+> 770         /*
+> 771          * Treat unadorned IP addresses as MCL_SUBNETWORK.
+> 772          * Everything else is MCL_FQDN.
+> 773          */
+> 774         ai = host_pton(ident);
+> 775         if (ai != NULL) {
+> 776                 freeaddrinfo(ai);
+> 777                 return MCL_SUBNETWORK;
+> 778         }
+> 779 
+> 780         return MCL_FQDN;
+> 781 }
+> 
+> while back in days of nfs-utils-1.0.7: client_gettype looks like this:
+> 277 client_gettype(char *ident)
+> 278 {
+> 279         char    *sp;
+> 280 
+> 281         if (ident[0] == '\0')
+> 282                 return MCL_ANONYMOUS;
+> 283         if (ident[0] == '@') {
+> 284 #ifndef HAVE_INNETGR
+> 285                 xlog(L_WARNING, "netgroup support not compiled in");
+> 286 #endif
+> 287                 return MCL_NETGROUP;
+> 288         }
+> 289         for (sp = ident; *sp; sp++) {
+> 290                 if (*sp == '*' || *sp == '?' || *sp == '[')
+> 291                         return MCL_WILDCARD;
+> 292                 if (*sp == '/')
+> 293                         return MCL_SUBNETWORK;
+> 294                 if (*sp == '\\' && sp[1])
+> 295                         sp++;
+> 296         }
+> 297         return MCL_FQDN;
+> 298 }
+> 
+> It's simple, and client like "192.168.0.21" is treated as MCL_FQDN. 
+> I tried the same operation in this version, there's no such problem as in nfs-utils-1.2.1 and nfs-utils-1.2.6.
+> 
+>> -----Original Message-----
+>> From: linux-nfs-owner@vger.kernel.org
+>> [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Wangminlan
+>> Sent: Wednesday, October 16, 2013 9:23 AM
+>> To: J. Bruce Fields
+>> Cc: linux-nfs@vger.kernel.org
+>> Subject: RE: Different sequence of "exportfs" produce different effects on nfs
+>> client mounts
 >> 
->>> On Wed 16 Oct 2013 03:35:12 PM EDT, Weston Andros Adamson wrote:
->>>> This script tests the nfs 'sec=' mount option against a server with
->>>> (possibly) many different exports with different security flavors.
->>>> 
->>>> I originally wrote this to test the patch to test my multiple sec= options
->>>> patch, so set TEST_MULTIPLE_SEC_OPTIONS to something other than "true" to test
->>>> older kernels.
->>>> 
->>>> Most of the config can be passed through as environment variables, but the
->>>> paths on the remote server and the function to map these paths to the allowed
->>>> security flavors is not and must be set to what exports the server has defined.
+>> Hi, Bruce,
+>> 	The nfs-utils on my box is nfs-utils-1.2.1-2.6.6, which is Suse distributed.
+>> 	I tried the same experiment on fedora18, which use nfs-utils-1.2.6, and
+>> got the same result.
+>> 	I go through the code of support/export/client.c, found that in
+>> client_get_type(), when the client is specified as an IP address(which can not
+>> be resolved as an FQDN), it actually return the result: MCL_SUBNETWORK.
+>> 	I guess that's the reason that the client "192.168.0.21" and
+>> "192.168.0.0/16" both are sorted to the same category: MCL_SUBNETWORK,
+>> so the order of exports matters here.
+>> 	Is this what exportfs and mountd mean to be?
+>> B.R
+>> Minlan Wang
+>> 
+>> On Tuesday, October 15, 2013 at 03:49AM +0000, Bruce Fields wrote:
+>>> Looking at the mountd code....
 >>> 
->>> What are the benefits to passing the config through environment
->>> variables instead of using command line parameters (getopt or similar)?
+>>> Looks like utils/mountd/cache.c makes no special effort to prioritize
+>>> exports except in the v4root and crossmnt cases, neither an issue in
+>>> your case.
 >>> 
->>> Anna
->> 
->> Well, the main benefit is that it's already written and both solutions are functionally equivalent.
->> 
->> The reason I went with environment variables over using command line arguments is that some of the config cannot be passed easily as either - the server's export list and mapping to security flavors must be specified by editing the script (I *guess* you could pass a function/script that maps these but� ewww).  The jenkins use of the script can just assume a standard export mapping, but when run by hand the user will probably need to update these.  If there are command line arguments and a usage() error path it would lead users to believe that's how the script is intended to run, but it is not.
->> 
->> So, passing any arguments to this script is a hack for jenkins. It's ok since you control the exports on the server(s) for the jenkins setup, but for stand-alone use (one of the goals in sharing this script) it makes little sense.
-> 
-> Fair enough.
-> 
->> 
->> Why does this matter to you? FYI, you don't need getopt with shell scripts, you can instead use $[0-9] (see also "shift" and $#). If you must pass as command line arguments, just write a little wrapper.
-> 
-> I was just curious.  I've been using getopt since I think it makes 
-> running scripts over ssh a bit easier to debug, but we can keep it this 
-> way.  Thanks for the patch!
-> 
-> Anna
-
-Oh I think understand what you meant about getopt - you'd like (short and/or long) named variables. That leads to another reason not to do it: most of the script would then be parsing and setting options, but oh by the way you still have to manually edit the script.
-
-I think you should just call "env SERVER=<server> VERSION=<version> $PATH_TO_UTIL_DIR/test_sec_options.sh" or something similar.
-
--dros
-
->> 
->> -dros
->> 
+>>> So yes it depends on ordering. From man exports:
 >>> 
+>>> 	 If a client matches more than one of the specifications above,
+>>> 	 then the first match from the above list order takes precedence
+>>> 	 - regardless  of the  order they appear on the export line.
+>>> 	 However, if a client matches more than one of the same type of
+>>> 	 specification (e.g.  two  netgroups), then  the  first  match
+>>> 	 from  the order they appear on the export line takes
+>>> 	 precedence.
+>>> 
+>>> The order given is: single host, IP networks, wildcards, negroups,
+>>> anonymous.
+>>> 
+>>> So the single host exports should have taken precedence.
+>>> 
+>>> The code here does look like it corectly implements the above ordering.
+>>> 
+>>> What version of nfs-utils are you using?
+>>> 
+>>> --b.
+>>> 
+>>> On Tue, Oct 15, 2013 at 06:39:59AM +0000, Wangminlan wrote:
+>>>> On Mon, Oct 14, 2013 at 16:46 +0000, Bruce Fields wrote:
+>>>>> On Mon, Oct 14, 2013 at 02:16:58AM +0000, Wangminlan wrote:
+>>>>>> 　　Hi,
+>>>>>> 　　         I’ve got a problem on the nfs exportfs command. I’m
+>>> not
+>>>>> sure if this is the right place to ask this, if not, can you please tell me
+>>> where?
+>>>>>> 
+>>>>>> 　　         Here’s what I need:
+>>>>>> 　　1. I have a folder named /mnt/fs1 to be exported.
+>>>>>> 　　2. All the host in subnetwork 192.168.0.0/16 should be able access
+>>> this
+>>>>> folder, but their root should be squashed.
+>>>>>> 　　3. Some specified host in the same subnetwork can gain the root
+>>>>> permission on the folder, for example: 192.168.0.21, 192.168.0.22.
+>>>>>> 
+>>>>>> 　　I’ve got a SLES11SP1 box as the nfs server, the nfs clients are
+>>> SLES11SP1,
+>>>>> too, and the protocol used between clients and server are NFSv3.
+>>>>>> 　　Here are the commands I used to do the export:
+>>>>>> 　　#exportfs –o rw,root_squash 192.168.0.0/16:/mnt/fs1
+>>>>>> 　　#exportfs –o rw,no_root_squash 192.168.0.21:/mnt/fs1
+>>>>>> 　　#exportfs –o rw,no_root_squash 192.168.0.22:/mnt/fs1
+>>>>>> 　　After this, everything works as expected.
+>>>> After this, the contents of /proc/net/rpc/auth.unix.ip/content and
+>>> /proc/net/rpc/nfsd.export/content are:
+>>>> 	NV200_01:/proc/net/rpc # cat auth.unix.ip/content
+>>>> 	#class IP domain
+>>>> 	nfsd 192.168.0.21 192.168.0.0/16,192.168.0.21
+>>>> 	nfsd 0.0.0.0 -test-client-
+>>>> 	# nfsd 100.43.189.1 -no-domain-
 >>>> 
->>>> This should be useful as a stand-alone script and as well as a Jenkins test.
->>>> 
->>>> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
->>>> ---
->>>> helper/test_sec_options.sh | 289 +++++++++++++++++++++++++++++++++++++++++++++
->>>> 1 file changed, 289 insertions(+)
->>>> create mode 100755 helper/test_sec_options.sh
->>>> 
->>>> diff --git a/helper/test_sec_options.sh b/helper/test_sec_options.sh
->>>> new file mode 100755
->>>> index 0000000..10b01f4
->>>> --- /dev/null
->>>> +++ b/helper/test_sec_options.sh
->>>> @@ -0,0 +1,289 @@
->>>> +#!/bin/sh
->>>> +# Copyright (c) 2013 Netapp, Inc.  All rights reserved
->>>> +#
->>>> +# test_sec_options.sh - test NFS mount security options
->>>> +# by: Weston Andros Adamson <dros@netapp.com>
->>>> +#
->>>> +
->>>> +#
->>>> +# The example config is for a server (zero) with this /etc/exports:
->>>> +#
->>>> +# /export/sys       *(sec=sys,rw,no_root_squash)
->>>> +# /export/krb5a     *(sec=krb5,rw,no_root_squash)
->>>> +# /export/krb5i     *(sec=krb5i,rw,no_root_squash)
->>>> +# /export/krb5p     *(sec=krb5p,rw,no_root_squash)
->>>> +# /export/krb5ip    *(sec=krb5i:krb5p,rw,no_root_squash)
->>>> +# /export/krb5aip   *(sec=krb5:krb5i:krb5p,rw,no_root_squash)
->>>> +#
->>>> +
->>>> +# the server to mount
->>>> +[ -z "$SERVER" ] && SERVER=zero.apikia.fake
->>>> +
->>>> +# local mountpoint
->>>> +[ -z "$LOCALDIR" ] && LOCALDIR=/mnt
->>>> +
->>>> +# exports on the server to test - if you add something here, you MUST
->>>> +# add an entry to path_to_sec_flavors
->>>> +PATHS="/export/sys /export/krb5a /export/krb5i /export/krb5p /export/krb5ip /export/krb5aip"
->>>> +
->>>> +# mapping of path -> space separated list of sec= options
->>>> +path_to_sec_flavors() {
->>>> +	case $1 in
->>>> +	/export/sys)     echo "sys"
->>>> +	;;
->>>> +	/export/krb5a)   echo "krb5"
->>>> +	;;
->>>> +	/export/krb5i)   echo "krb5i"
->>>> +	;;
->>>> +	/export/krb5p)   echo "krb5p"
->>>> +	;;
->>>> +	/export/krb5ip)  echo "krb5i krb5p"
->>>> +	;;
->>>> +	/export/krb5aip) echo "krb5 krb5i krb5p"
->>>> +	;;
->>>> +	esac
->>>> +}
->>>> +
->>>> +# test multiple sec= options too?
->>>> +[ -z "$TEST_MULTIPLE_SEC_OPTIONS" ] && TEST_MULTIPLE_SEC_OPTIONS=true
->>>> +
->>>> +# if defined will pause for $RUN_PAUSE seconds between each run
->>>> +[ -z "$RUN_PAUSE" ] && RUN_PAUSE=0.25
->>>> +
->>>> +[ -z "$GROUP_PAUSE" ] && GROUP_PAUSE=10
->>>> +
->>>> +[ -z "$VERSIONS" ] && VERSIONS="v3 v4.0 v4.1"
->>>> +
->>>> +##### END CONFIG ####
->>>> +
->>>> +# no v2 or v3
->>>> +VERSIONS_V4=$(echo $VERSIONS | sed 's/v[2-3][^ ]*//g')
->>>> +
->>>> +echo "SERVER = $SERVER"
->>>> +echo "PATHS = $PATHS"
->>>> +echo "LOCALDIR = $LOCALDIR"
->>>> +echo "VERSIONS = $VERSIONS"
->>>> +echo "VERSIONS_V4 = $VERSIONS_V4"
->>>> +echo "TEST_MULTIPLE_SEC_OPTIONS = $TEST_MULTIPLE_SEC_OPTIONS"
->>>> +echo "RUN_PAUSE = $RUN_PAUSE"
->>>> +echo "GROUP_PAUSE = $GROUP_PAUSE"
->>>> +
->>>> +SINGLE_SEC_OPTIONS="sys krb5 krb5i krb5p"
->>>> +MULTIPLE_SEC_OPTIONS="sys krb5 krb5i krb5p sys:krb5 sys:krb5i sys:krb5p sys:krb5:krb5i sys:krb5:krb5p sys:krb5i:krb5p krb5:krb5i krb5:krb5p krb5:krb5i:krb5p krb5i:krb5p sys:krb5:krb5i:krb5p"
->>>> +
->>>> +FAILURES=0
->>>> +SUCCESSES=0
->>>> +
->>>> +group_pause() {
->>>> +	if [ -n "$GROUP_PAUSE" -a "$GROUP_PAUSE" != "0" ] ; then
->>>> +		echo sleeping for $GROUP_PAUSE seconds...
->>>> +		sleep $GROUP_PAUSE
->>>> +	fi
->>>> +}
->>>> +
->>>> +has_mount() {
->>>> +	_res=$(mount | grep $LOCALDIR  | grep nfs)
->>>> +
->>>> +	if [ -n "$_res" ] ; then
->>>> +		return 0
->>>> +	fi
->>>> +
->>>> +	return 1
->>>> +}
->>>> +
->>>> +if has_mount ; then
->>>> +	echo "something else mounted on $LOCALDIR"
->>>> +	exit 1
->>>> +fi
->>>> +
->>>> +_cancel() {
->>>> +	echo
->>>> +	echo "exiting on SIGINT"
->>>> +	while has_mount ; do
->>>> +		sudo umount $LOCALDIR > /dev/null 2>&1
->>>> +	done
->>>> +	exit 1
->>>> +}
->>>> +
->>>> +splitsec() {
->>>> +	echo $* | tr -s ':' ' '
->>>> +}
->>>> +
->>>> +trap '_cancel' INT
->>>> +
->>>> +run() {
->>>> +	_opts="$1"
->>>> +	_server="$2"
->>>> +	_path="$3"
->>>> +	_local="$4"
->>>> +	_expected_result="$5"
->>>> +	_cd="$6"
->>>> +
->>>> +	if has_mount ; then
->>>> +		echo
->>>> +		echo "something mounted on $LOCALDIR"
->>>> +		exit 1
->>>> +	fi
->>>> +
->>>> +	echo -n "mount" -o "$_opts" "$_server:$_path" "$_local"
->>>> +	sudo mount -o "$_opts" "$_server:$_path" "$_local" > /dev/null 2>&1
->>>> +	_status=$?
->>>> +
->>>> +	if [ "$_status" = "0" -a -n "$_cd" ]; then
->>>> +		echo -n " && ls $_cd"
->>>> +		sudo ls $_cd > /dev/null 2>&1
->>>> +		_status=$?
->>>> +	fi
->>>> +
->>>> +
->>>> +	echo -n "  -> $_status"
->>>> +
->>>> +	if [ "$_expected_result" = "$_status" ] ; then
->>>> +		echo "  [OK]"
->>>> +		SUCCESSES=$(expr $SUCCESSES + 1)
->>>> +	else
->>>> +		echo -n "  [FAIL!!]"
->>>> +		echo "  --> expected $_expected_result, but got $_status"
->>>> +		FAILURES=$(expr $FAILURES + 1)
->>>> +	fi
->>>> +
->>>> +	sudo umount $LOCALDIR > /dev/null 2>&1
->>>> +
->>>> +	while has_mount ; do
->>>> +		sudo umount $LOCALDIR > /dev/null 2>&1
->>>> +		sleep 0.1
->>>> +	done
->>>> +
->>>> +	# sigh, gssd gets angry
->>>> +	if [ -n "$RUN_PAUSE" -a "$RUN_PAUSE" != "0" ] ; then
->>>> +		sleep $RUN_PAUSE
->>>> +	fi
->>>> +
->>>> +	return $_status
->>>> +}
->>>> +
->>>> +echo
->>>> +echo "single sec= tests"
->>>> +for vers in $VERSIONS ; do
->>>> +	for sec in $SINGLE_SEC_OPTIONS ; do
->>>> +		for path in $PATHS; do
->>>> +			_expected_result=32
->>>> +			for pathsec in $(path_to_sec_flavors $path) ; do
->>>> +				if [ "$pathsec" = "$sec" ]; then
->>>> +					# should work!
->>>> +					_expected_result=0
->>>> +				fi
->>>> +			done
->>>> +
->>>> +			run "$vers,sec=$sec" $SERVER $path $LOCALDIR $_expected_result
->>>> +			_status=$?
->>>> +
->>>> +		done
->>>> +	done
->>>> +done
->>>> +
->>>> +echo
->>>> +
->>>> +group_pause
->>>> +
->>>> +if [ "$TEST_MULTIPLE_SEC_OPTIONS" = "true" ] ; then
->>>> +	echo
->>>> +	echo "multiple sec= tests"
->>>> +	for vers in $VERSIONS ; do
->>>> +		for sec in $MULTIPLE_SEC_OPTIONS ; do
->>>> +			for path in $PATHS; do
->>>> +				_expected_result=32
->>>> +				for pathsec in $(path_to_sec_flavors $path) ; do
->>>> +					for thissec in $(splitsec $sec) ; do
->>>> +						if [ "$pathsec" = "$thissec" ]; then
->>>> +							# should work!
->>>> +							_expected_result=0
->>>> +						fi
->>>> +					done
->>>> +				done
->>>> +
->>>> +				run "$vers,sec=$sec" $SERVER $path $LOCALDIR $_expected_result
->>>> +				_status=$?
->>>> +
->>>> +			done
->>>> +		done
->>>> +	done
->>>> +fi
->>>> +
->>>> +group_pause
->>>> +
->>>> +echo
->>>> +echo "no sec= tests"
->>>> +for vers in $VERSIONS ; do
->>>> +	for path in $PATHS; do
->>>> +		run "$vers" $SERVER $path $LOCALDIR 0
->>>> +		_status=$?
->>>> +	done
->>>> +done
->>>> +
->>>> +group_pause
->>>> +
->>>> +echo
->>>> +echo "v4 secinfo tests"
->>>> +for vers in $VERSIONS_V4 ; do
->>>> +	for path in $PATHS; do
->>>> +		run "$vers" $SERVER / $LOCALDIR 0 $LOCALDIR/$path
->>>> +		_status=$?
->>>> +	done
->>>> +done
->>>> +
->>>> +group_pause
->>>> +
->>>> +echo
->>>> +echo "v4.x secinfo with single sec= tests"
->>>> +for vers in $VERSIONS_V4 ; do
->>>> +	for sec in $SINGLE_SEC_OPTIONS ; do
->>>> +		for path in $PATHS; do
->>>> +			_expected_result=2
->>>> +			for pathsec in $(path_to_sec_flavors $path) ; do
->>>> +				if [ "$pathsec" = "$sec" ]; then
->>>> +					# should work!
->>>> +					_expected_result=0
->>>> +				fi
->>>> +			done
->>>> +
->>>> +			run "$vers,sec=$sec" $SERVER / $LOCALDIR $_expected_result $LOCALDIR/$path
->>>> +			_status=$?
->>>> +
->>>> +		done
->>>> +	done
->>>> +done
->>>> +
->>>> +group_pause
->>>> +
->>>> +if [ "$TEST_MULTIPLE_SEC_OPTIONS" = "true" ] ; then
->>>> +	echo
->>>> +	echo "v4.x secinfo with multiple sec= tests"
->>>> +	for vers in $VERSIONS_V4 ; do
->>>> +		for sec in $MULTIPLE_SEC_OPTIONS ; do
->>>> +			for path in $PATHS; do
->>>> +				_expected_result=2
->>>> +				for pathsec in $(path_to_sec_flavors $path) ; do
->>>> +					for thissec in $(splitsec $sec) ; do
->>>> +						if [ "$pathsec" = "$thissec" ]; then
->>>> +							# should work!
->>>> +							_expected_result=0
->>>> +						fi
->>>> +					done
->>>> +				done
->>>> +
->>>> +				run "$vers,sec=$sec" $SERVER / $LOCALDIR $_expected_result $LOCALDIR/$path
->>>> +				_status=$?
->>>> +
->>>> +			done
->>>> +		done
->>>> +	done
->>>> +fi
->>>> +
->>>> +echo
->>>> +echo "Successfully ran $SUCCESSES tests"
->>>> +if [ "$FAILURES" != "0" ] ; then
->>>> +	echo
->>>> +	echo "$FAILURES failures!"
->>>> +fi
->>>> +exit $FAILURES
+>>>> 	NV200_01:/proc/net/rpc # cat nfsd.export/content
+>>>> 	#path domain(flags)
+>>>> 	/mnt/fs1
+>>> 	-test-client-(rw,no_root_squash,sync,no_wdelay,fsid=0,anonuid=4294967
+>>> 295,anongid=4294967295)
+>>>> 	/mnt/fs1
+>>> 	192.168.0.0/16,192.168.0.21(rw,no_root_squash,sync,wdelay,no_subtree
+>>> _check,uuid=13266f0d:1fbd40d5:b0b5c4fe:cfe104eb)
+>>>> 	# /mnt/fs1
+>>> 	192.168.0.0/16,192.168.0.21(rw,no_root_squash,sync,wdelay,no_subtree
+>>> _check,uuid=13266f0d:1fbd40d5:b0b5c4fe:cfe104eb)
+>>>> Besides, the content of /var/lib/nfs/etab is:
+>>>> 	NV200_01:/proc/net/rpc # cat /var/lib/nfs/etab
+>>>> 	/mnt/fs1
+>>> 	192.168.0.22(rw,sync,wdelay,hide,nocrossmnt,secure,no_root_squash,no
 >>> 
+>> _all_squash,no_subtree_check,secure_locks,acl,anonuid=65534,anongid=6553
+>>> 4)
+>>>> 	/mnt/fs1
+>>> 	192.168.0.21(rw,sync,wdelay,hide,nocrossmnt,secure,no_root_squash,no
 >>> 
+>> _all_squash,no_subtree_check,secure_locks,acl,anonuid=65534,anongid=6553
+>>> 4)
+>>>> 	/mnt/fs1
+>>> 	192.168.0.0/16(rw,sync,wdelay,hide,nocrossmnt,secure,root_squash,no_
+>>> 
+>> all_squash,no_subtree_check,secure_locks,acl,anonuid=65534,anongid=65534
+>>> )
+>>>>>> 
+>>>>>> 　　But, after the following operations:
+>>>>>> 　　#exportfs –u 192.168.0.0/16:/mnt/fs1              /* Delete
+>>> this
+>>>>> export */
+>>>>>> 　　# exportfs –o rw,root_squash 192.168.0.0/16:/mnt/fs1
+>>> /*
+>>>>> And add it again */
+>>>>>> 　　Hosts on 192.168.0.21 and 192.168.0.22 doesn’t get root
+>>> permission
+>>>>> any more. when I tried to write a file, it complains about “Permission
+>>> denied”.
+>>>>>> 
+>>>>>> 　　So, does the order of exportfs command has something to do the
+>>> final
+>>>>> result? Or am I doing something wrong?
+>>>> After this, the contents of /proc/net/rpc/auth.unix.ip/content and
+>>> /proc/net/rpc/nfsd.export/content are:
+>>>> 	NV200_01:/proc/net/rpc # cat auth.unix.ip/content
+>>>> 	#class IP domain
+>>>> 	nfsd 192.168.0.21 192.168.0.0/16,192.168.0.21
+>>>> 	nfsd 0.0.0.0 -test-client-
+>>>> 	# nfsd 100.43.189.1 -no-domain-
+>>>> 
+>>>> 	NV200_01:/proc/net/rpc # cat nfsd
+>>>> 	nfsd         nfsd.export/ nfsd.fh/
+>>>> 	NV200_01:/proc/net/rpc # cat nfsd
+>>>> 	nfsd         nfsd.export/ nfsd.fh/
+>>>> 	NV200_01:/proc/net/rpc # cat nfsd.export/content
+>>>> 	#path domain(flags)
+>>>> 	/mnt/fs1
+>>> 	-test-client-(rw,no_root_squash,sync,no_wdelay,fsid=0,anonuid=4294967
+>>> 295,anongid=4294967295)
+>>>> 	/mnt/fs1
+>>> 	192.168.0.0/16,192.168.0.21(rw,root_squash,sync,wdelay,no_subtree_ch
+>>> eck,uuid=13266f0d:1fbd40d5:b0b5c4fe:cfe104eb)
+>>>> And the content of /var/lib/nfs/etab is:
+>>>> 	NV200_01:/proc/net/rpc # cat /var/lib/nfs/etab
+>>>> 	/mnt/fs1
+>>> 	192.168.0.0/16(rw,sync,wdelay,hide,nocrossmnt,secure,root_squash,no_
+>>> 
+>> all_squash,no_subtree_check,secure_locks,acl,anonuid=65534,anongid=65534
+>>> )
+>>>> 	/mnt/fs1
+>>> 	192.168.0.22(rw,sync,wdelay,hide,nocrossmnt,secure,no_root_squash,no
+>>> 
+>> _all_squash,no_subtree_check,secure_locks,acl,anonuid=65534,anongid=6553
+>>> 4)
+>>>> 	/mnt/fs1
+>>> 	192.168.0.21(rw,sync,wdelay,hide,nocrossmnt,secure,no_root_squash,no
+>>> 
+>> _all_squash,no_subtree_check,secure_locks,acl,anonuid=65534,anongid=6553
+>>> 4)
+>>>>> 
+>>>>> That sounds like a bug.  The contents of
+>>>>> /proc/net/rpc/auth.unix.ip/content and
+>> /proc/net/rpc/nfsd.export/content
+>>>>> after getting the above "permission denied" might be interesting.
+>> ��칻�&�~�&���+-��ݶ��w��˛���m�b��g~ȧ���ܨ}���Ơz�&j:+v���
 >> 
-> 
-> 
+> ����zZ+��+zf���h���~����i���z��w���?����&�)ߢf
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
