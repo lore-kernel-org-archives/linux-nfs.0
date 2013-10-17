@@ -1,70 +1,161 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:48848 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756448Ab3J1ScQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 28 Oct 2013 14:32:16 -0400
-Date: Mon, 28 Oct 2013 14:32:14 -0400
-To: Benny Halevy <bhalevy@primarydata.com>
-Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: no need to unhash_stid before free
-Message-ID: <20131028183214.GH31322@fieldses.org>
-References: <1381730515-18045-1-git-send-email-bhalevy@primarydata.com>
+Received: from aserp1040.oracle.com ([141.146.126.69]:44635 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758652Ab3JQSMf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Oct 2013 14:12:35 -0400
+Received: from ucsinet21.oracle.com (ucsinet21.oracle.com [156.151.31.93])
+	by aserp1040.oracle.com (Sentrion-MTA-4.3.1/Sentrion-MTA-4.3.1) with ESMTP id r9HICY0b004819
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 17 Oct 2013 18:12:35 GMT
+Received: from nfsvm18.us.oracle.com (nfsvm18.us.oracle.com [10.135.198.118])
+	by ucsinet21.oracle.com (8.14.4+Sun/8.14.4) with ESMTP id r9HICY5U004979
+	for <linux-nfs@vger.kernel.org>; Thu, 17 Oct 2013 18:12:34 GMT
+From: Chuck Lever <chuck.lever@oracle.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 04/21] NFS: Add functions to swap transports during migration recovery
+Date: Thu, 17 Oct 2013 14:12:34 -0400
+Message-Id: <20131017181233.1073.82351.stgit@nfsvm18.us.oracle.com>
+In-Reply-To: <20131017180630.1073.18400.stgit@nfsvm18.us.oracle.com>
+References: <20131017180630.1073.18400.stgit@nfsvm18.us.oracle.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1381730515-18045-1-git-send-email-bhalevy@primarydata.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Oct 14, 2013 at 09:01:55AM +0300, Benny Halevy wrote:
-> idr_remove is about to be called before kmem_cache_free so unhashing it
-> is redundant
+Introduce functions that can walk through an array of returned
+fs_locations information and connect a transport to one of the
+destination servers listed therein.
 
-This leaves only two unhash_stid callers, in release_lock_stateid and
-unhash_stid, both called just before destroying the stateid, so perhaps
-we should remove those and unhash_stid?
+Note that NFS minor version 1 introduces "fs_locations_info" which
+extends the locations array sorting criteria available to clients.
+This is not supported yet.
 
---b.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ fs/nfs/nfs4_fs.h       |    2 +
+ fs/nfs/nfs4namespace.c |  101 ++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 103 insertions(+)
 
-> 
-> Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
-> ---
->  fs/nfsd/nfs4state.c | 7 ++-----
->  1 file changed, 2 insertions(+), 5 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 0874998..06984e3 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -668,7 +668,6 @@ static void unhash_open_stateid(struct nfs4_ol_stateid *stp)
->  static void release_open_stateid(struct nfs4_ol_stateid *stp)
->  {
->  	unhash_open_stateid(stp);
-> -	unhash_stid(&stp->st_stid);
->  	free_generic_stateid(stp);
->  }
->  
-> @@ -690,7 +689,6 @@ static void release_last_closed_stateid(struct nfs4_openowner *oo)
->  	struct nfs4_ol_stateid *s = oo->oo_last_closed_stid;
->  
->  	if (s) {
-> -		unhash_stid(&s->st_stid);
->  		free_generic_stateid(s);
->  		oo->oo_last_closed_stid = NULL;
->  	}
-> @@ -3998,10 +3996,9 @@ static void nfsd4_close_open_stateid(struct nfs4_ol_stateid *s)
->  
->  	nfsd4_close_open_stateid(stp);
->  
-> -	if (cstate->minorversion) {
-> -		unhash_stid(&stp->st_stid);
-> +	if (cstate->minorversion)
->  		free_generic_stateid(stp);
-> -	} else
-> +	else
->  		oo->oo_last_closed_stid = stp;
->  
->  	if (list_empty(&oo->oo_owner.so_stateids)) {
-> -- 
-> 1.8.3.1
-> 
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 28842ab..fcae728 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -217,6 +217,8 @@ rpc_authflavor_t nfs_find_best_sec(struct nfs4_secinfo_flavors *);
+ struct rpc_clnt *nfs4_create_sec_client(struct rpc_clnt *, struct inode *, struct qstr *);
+ struct vfsmount *nfs4_submount(struct nfs_server *, struct dentry *,
+ 			       struct nfs_fh *, struct nfs_fattr *);
++int nfs4_replace_transport(struct nfs_server *server,
++				const struct nfs4_fs_locations *locations);
+ 
+ /* nfs4proc.c */
+ extern int nfs4_proc_setclientid(struct nfs_client *, u32, unsigned short, struct rpc_cred *, struct nfs4_setclientid_res *);
+diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
+index 2288cd3..ebd8b06 100644
+--- a/fs/nfs/nfs4namespace.c
++++ b/fs/nfs/nfs4namespace.c
+@@ -400,3 +400,104 @@ out:
+ 	rpc_shutdown_client(client);
+ 	return mnt;
+ }
++
++/*
++ * Try one location from the fs_locations array.
++ *
++ * Returns zero on success, or a negative errno value.
++ */
++static int nfs4_try_replacing_one_location(struct nfs_server *server,
++		char *page, char *page2,
++		const struct nfs4_fs_location *location)
++{
++	const size_t addr_bufsize = sizeof(struct sockaddr_storage);
++	struct sockaddr *sap;
++	unsigned int s;
++	size_t salen;
++	int error;
++
++	sap = kmalloc(addr_bufsize, GFP_KERNEL);
++	if (sap == NULL)
++		return -ENOMEM;
++
++	error = -ENOENT;
++	for (s = 0; s < location->nservers; s++) {
++		const struct nfs4_string *buf = &location->servers[s];
++		char *hostname;
++
++		if (buf->len <= 0 || buf->len > PAGE_SIZE)
++			continue;
++
++		if (memchr(buf->data, IPV6_SCOPE_DELIMITER, buf->len) != NULL)
++			continue;
++
++		salen = nfs_parse_server_name(buf->data, buf->len,
++						sap, addr_bufsize, server);
++		if (salen == 0)
++			continue;
++		rpc_set_port(sap, NFS_PORT);
++
++		error = -ENOMEM;
++		hostname = kstrndup(buf->data, buf->len, GFP_KERNEL);
++		if (hostname == NULL)
++			break;
++
++		error = nfs4_update_server(server, hostname, sap, salen);
++		kfree(hostname);
++		if (error == 0)
++			break;
++	}
++
++	kfree(sap);
++	return error;
++}
++
++/**
++ * nfs4_replace_transport - set up transport to destination server
++ *
++ * @server: export being migrated
++ * @locations: fs_locations array
++ *
++ * Returns zero on success, or a negative errno value.
++ *
++ * The client tries all the entries in the "locations" array, in the
++ * order returned by the server, until one works or the end of the
++ * array is reached.
++ */
++int nfs4_replace_transport(struct nfs_server *server,
++			   const struct nfs4_fs_locations *locations)
++{
++	char *page = NULL, *page2 = NULL;
++	int loc, error;
++
++	error = -ENOENT;
++	if (locations == NULL || locations->nlocations <= 0)
++		goto out;
++
++	error = -ENOMEM;
++	page = (char *) __get_free_page(GFP_USER);
++	if (!page)
++		goto out;
++	page2 = (char *) __get_free_page(GFP_USER);
++	if (!page2)
++		goto out;
++
++	for (loc = 0; loc < locations->nlocations; loc++) {
++		const struct nfs4_fs_location *location =
++						&locations->locations[loc];
++
++		if (location == NULL || location->nservers <= 0 ||
++		    location->rootpath.ncomponents == 0)
++			continue;
++
++		error = nfs4_try_replacing_one_location(server, page,
++							page2, location);
++		if (error == 0)
++			break;
++	}
++
++out:
++	free_page((unsigned long)page);
++	free_page((unsigned long)page2);
++	return error;
++}
+
