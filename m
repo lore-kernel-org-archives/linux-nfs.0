@@ -1,148 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:23028 "EHLO mx1.redhat.com"
+Received: from mout.gmx.net ([212.227.15.18]:61778 "EHLO mout.gmx.net"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752289Ab3JVIhc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 Oct 2013 04:37:32 -0400
-Message-ID: <52663973.8000005@RedHat.com>
-Date: Tue, 22 Oct 2013 04:38:11 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S1752613Ab3JRUDY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 18 Oct 2013 16:03:24 -0400
+Received: from [192.168.178.60] ([84.173.48.237]) by mail.gmx.com (mrgmx003)
+ with ESMTPSA (Nemesis) id 0MZCQ8-1VJ2Gd1896-00L1C4 for
+ <linux-nfs@vger.kernel.org>; Fri, 18 Oct 2013 22:03:23 +0200
+Message-ID: <5261940A.4090101@gmx.de>
+Date: Fri, 18 Oct 2013 22:03:22 +0200
+From: Helge Deller <deller@gmx.de>
 MIME-Version: 1.0
-To: NeilBrown <neilb@suse.de>
-CC: Tony Asleson <tasleson@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] exportfs: Return non-zero exit value on error
-References: <1380756584-13335-1-git-send-email-tasleson@redhat.com> <20131022092519.4f4683a8@notabene.brown>
-In-Reply-To: <20131022092519.4f4683a8@notabene.brown>
-Content-Type: text/plain; charset=ISO-8859-1
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: Linux Kernel Development <linux-kernel@vger.kernel.org>,
+        NFS list <linux-nfs@vger.kernel.org>,
+        linux-parisc <linux-parisc@vger.kernel.org>
+Subject: Re: 3.12-rcX - NFS regression - kswapd0 / kswapd1 stays using 100%
+ CPU?
+References: <52604BA9.20104@gmx.de>	 <1382044045.3216.44.camel@leira.trondhjem.org> <52618B5F.4000508@gmx.de> <1382124981.20461.4.camel@leira.trondhjem.org>
+In-Reply-To: <1382124981.20461.4.camel@leira.trondhjem.org>
+Content-Type: text/plain; charset=UTF-7
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On 10/18/2013 09:36 PM, Myklebust, Trond wrote:
+> On Fri, 2013-10-18 at 21:26 +0200, Helge Deller wrote:
+>> On 10/17/2013 11:07 PM, Myklebust, Trond wrote:
+>>> On Thu, 2013-10-17 at 22:42 m, Helge Deller wrote:
+>>>> I'm seeing a regression with current kernel git head when using NFS-mounts.
+>>>> Architecture in my case is parisc, although I don't think that this is relevant.
+>>>> At least kernel 3.10 (and I think 3.11) didn't showed that problem.
+>>>>
+>>>> The symtom is, that "top" shows high usage of either kswapd0 or kswapd1.
+>>>> Here is an output with kswapd1:
+>>>>   PID USER      PR  NI  VIRT  RES  SHR S  %CPU %MEM     TIME COMMAND
+>>>>    37 root      20   0     0    0    0 R  91.8  0.0  63:00.40 kswapd1
+>>>> 28448 root      20   0  3252 1428 1060 R  15.3  0.0   0:00.09 top
+>>>>     1 root      20   0  2784  988  852 S   0.0  0.0   0:09.95 init
+>>>>
+>>>> This is what ps shows:
+>>>> lsXXXX:~# ps -ef |  grep mount
+>>>> root      1181     1  0 14:51 ?        00:00:18 /usr/sbin/automount --pid-file /var/run/autofs.pid
+>>>> root     25331  1181  0 21:25 ?        00:00:00 /bin/mount -n -t nfs -s -o nolock,rw,hard,intr homes:/unixhome1 /net/home1
+>>>> root     25332 25331  0 21:25 ?        00:00:00 /sbin/mount.nfs homes:/unixhome1 /net/home1 -s -n -o rw,nolock,hard,intr
+>>>>
+>>>> And using sysrq to show the blocked tasks I get in syslog:
+>>>> SysRq : Show Blocked State
+>>>> mount.nfs       D 00000000401040c0     0 25332  25331 0x00000010
+>>>> Backtrace:
+>>>> [<0000000040113a68>] __schedule
+>>>>
+>>>> I know it's not a problem of the NFS server, since the same mount is still ok on other machines.
+>>>> The NFS directory was already mounted and in use when this mount happened again (called by cron-job). 
+>>>>  
+>>>> Any ideas?
+>>>
+>>> If the NFS directory is already mounted, then why is the automounter
+>>> trying to mount it a second time?
+>>
+>> I was wrong in this.
+>> The directory wasn't mounted yet (or at least it was unmounted in the meantime before the new
+>> mount.nfs was called).
+>>
+>> I'm now not even sure, that the high kswapd is really triggered by the NFS problem,
+>> because I now have another machine with the blocked NFS-mount, but without
+>> the high kswapd usage.
+>>
+>> Nevertheless, the blocked nfs mount tasks really make me wonder. There is clearly
+>> some kind of regression since it doesn't happen with older kernels.
+> 
+> Have you ever reproduced it without the automounter?
 
+No, because it happens only after quite some time (>12h) and only if I have it
+under pressure (load is >9 on a 4-way box).
 
-On 21/10/13 18:25, NeilBrown wrote:
-> From 2f63d6c3c38e673216a3351aff47d32059056638 Mon Sep 17 00:00:00 2001
-> From: Neil Brown <neilb@suse.de>
-> Date: Mon, 21 Oct 2013 17:40:55 +1100
-> Subject: [PATCH] exportfs: exit with error code if there was any error.
-> 
-> exportfs currently exits with a non-zero error for some errors,
-> but not for others.
-> 
-> It does this by having various support routines set the global
-> variable "export_errno".
-> 
-> Change this to have 'xlog' set export_errno if an ERROR is
-> reported.  That way all errors will be caught.
-> 
-> Note that the exit error code is changed from 22 (EINVAL)
-> to the more traditional '1'.
-> 
-> Signed-off-by: NeilBrown <neilb@suse.de>
-Committed... 
+I'll try it as soon as possible.
 
-steved.
+> Also, could you please try a sysRQ-t the next time it happens, so that
+> we can get a trace of where the mount program is hanging. Knowing that
+> the mount is stuck in "__schedule()" is not really interesting unless we
+> know from where that was called.
 
-> 
-> diff --git a/support/include/exportfs.h b/support/include/exportfs.h
-> index 1fbf754..97b2327 100644
-> --- a/support/include/exportfs.h
-> +++ b/support/include/exportfs.h
-> @@ -179,7 +179,4 @@ struct export_features {
->  struct export_features *get_export_features(void);
->  void fix_pseudoflavor_flags(struct exportent *ep);
->  
-> -/* Record export error.  */
-> -extern int export_errno;
-> -
->  #endif /* EXPORTFS_H */
-> diff --git a/support/include/xlog.h b/support/include/xlog.h
-> index fd1a3f4..fd34ec2 100644
-> --- a/support/include/xlog.h
-> +++ b/support/include/xlog.h
-> @@ -35,6 +35,7 @@ struct xlog_debugfac {
->  	int		df_fac;
->  };
->  
-> +extern int export_errno;
->  void			xlog_open(char *progname);
->  void			xlog_stderr(int on);
->  void			xlog_syslog(int on);
-> diff --git a/support/nfs/exports.c b/support/nfs/exports.c
-> index d3160d3..d18667f 100644
-> --- a/support/nfs/exports.c
-> +++ b/support/nfs/exports.c
-> @@ -47,8 +47,6 @@ struct flav_info flav_map[] = {
->  
->  const int flav_map_size = sizeof(flav_map)/sizeof(flav_map[0]);
->  
-> -int export_errno;
-> -
->  static char	*efname = NULL;
->  static XFILE	*efp = NULL;
->  static int	first;
-> @@ -133,7 +131,6 @@ getexportent(int fromkernel, int fromexports)
->  	}
->  	if (ok < 0) {
->  		xlog(L_ERROR, "expected client(options...)");
-> -		export_errno = EINVAL;
->  		return NULL;
->  	}
->  	first = 0;
-> @@ -153,7 +150,6 @@ getexportent(int fromkernel, int fromexports)
->  		ok = getexport(exp, sizeof(exp));
->  		if (ok < 0) {
->  			xlog(L_ERROR, "expected client(options...)");
-> -			export_errno = EINVAL;
->  			return NULL;
->  		}
->  	}
-> @@ -173,7 +169,6 @@ getexportent(int fromkernel, int fromexports)
->  		*opt++ = '\0';
->  		if (!(sp = strchr(opt, ')')) || sp[1] != '\0') {
->  			syntaxerr("bad option list");
-> -			export_errno = EINVAL;
->  			return NULL;
->  		}
->  		*sp = '\0';
-> @@ -590,7 +585,6 @@ parseopts(char *cp, struct exportent *ep, int warn, int *had_subtree_opt_ptr)
->  				     flname, flline, opt);	
->  bad_option:
->  				free(opt);
-> -				export_errno = EINVAL;
->  				return -1;
->  			}
->  		} else if (strncmp(opt, "anongid=", 8) == 0) {
-> diff --git a/support/nfs/xlog.c b/support/nfs/xlog.c
-> index 6820346..9f9e63e 100644
-> --- a/support/nfs/xlog.c
-> +++ b/support/nfs/xlog.c
-> @@ -38,6 +38,8 @@ static int  logmask = 0;		/* What will be logged		*/
->  static char log_name[256];		/* name of this program		*/
->  static int  log_pid = -1;		/* PID of this program		*/
->  
-> +int export_errno = 0;
-> +
->  static void	xlog_toggle(int sig);
->  static struct xlog_debugfac	debugnames[] = {
->  	{ "general",	D_GENERAL, },
-> @@ -189,6 +191,8 @@ void
->  xlog(int kind, const char* fmt, ...)
->  {
->  	va_list args;
-> +	if (kind & (L_ERROR|D_GENERAL))
-> +		export_errno = 1;
->  
->  	va_start(args, fmt);
->  	xlog_backend(kind, fmt, args);
-> diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
-> index 4331697..c2cb2fc 100644
-> --- a/utils/exportfs/exportfs.c
-> +++ b/utils/exportfs/exportfs.c
-> @@ -103,8 +103,6 @@ main(int argc, char **argv)
->  	xlog_stderr(1);
->  	xlog_syslog(0);
->  
-> -	export_errno = 0;
-> -
->  	while ((c = getopt(argc, argv, "afhio:ruv")) != EOF) {
->  		switch(c) {
->  		case 'a':
+Actually, the machine was still running in this state.
+Here is sysrq-t:
+[112009.084000] mount           S 00000000401040c0     0 25331      1 0x00000010
+[112009.084000] Backtrace:
+[112009.084000]  [<0000000040113a68>] __schedule+0x500/0x810
+[112009.232000]
+[112009.232000] mount.nfs       D 00000000401040c0     0 25332  25331 0x00000010
+[112009.232000] Backtrace:
+[112009.232000]  [<0000000040113a68>] __schedule+0x500/0x810
+
+Helge
