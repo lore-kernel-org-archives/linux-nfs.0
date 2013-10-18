@@ -1,47 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:48984 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753622Ab3JPHNn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Oct 2013 03:13:43 -0400
-Date: Wed, 16 Oct 2013 00:13:43 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: linux-fsdevel@vger.kernel.org, Christoph Hellwig <hch@infradead.org>,
-        Al Viro <viro@ZenIV.linux.org.uk>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/5] exportfs: clear DISCONNECTED on all parents sooner
-Message-ID: <20131016071343.GB27799@infradead.org>
-References: <1381869574-10662-1-git-send-email-bfields@redhat.com>
- <1381869574-10662-2-git-send-email-bfields@redhat.com>
+Received: from mx11.netapp.com ([216.240.18.76]:30084 "EHLO mx11.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754467Ab3JRTPf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 18 Oct 2013 15:15:35 -0400
+From: Weston Andros Adamson <dros@netapp.com>
+To: <Trond.Myklebust@netapp.com>
+CC: <linux-nfs@vger.kernel.org>, Weston Andros Adamson <dros@netapp.com>
+Subject: [PATCH 0/5] NFS: Add support for multiple sec= mount options
+Date: Fri, 18 Oct 2013 15:15:14 -0400
+Message-ID: <1382123719-25194-1-git-send-email-dros@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1381869574-10662-2-git-send-email-bfields@redhat.com>
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Oct 15, 2013 at 04:39:29PM -0400, J. Bruce Fields wrote:
-> From: "J. Bruce Fields" <bfields@redhat.com>
-> 
-> Once we've found any connected parent, we know all our parents are
-> connected--that's true even if there's a concurrent rename.  May as well
-> clear them all at once.
-> 
-> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+I split up this patchset into multiple patches as Trond requested.
 
-Looks good,
+This also has a few changes:
+ - stop using NFS_MOUNT_SECFLAVOUR server flag
+     - This flag was now redundant (auth_info stored on nfs_server).
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
+ - more consistent use of selected_flavor
+     - It didn't need to be set in nfs_parse_security_flavors
+     - NFSv4 wasn't setting is as it just picked the first flavor in
+       nfs4_init_server then depends on SECINFO.  nfs4_init_server
+       now sets it for consistency. The reason we need selected_flavor
+       is for the mount client to be able to save it's selection
+       (for nfs < 4.0).
 
->  		if (!IS_ROOT(pd)) {
->  			/* must have found a connected parent - great */
-> -			spin_lock(&pd->d_lock);
-> -			pd->d_flags &= ~DCACHE_DISCONNECTED;
-> -			spin_unlock(&pd->d_lock);
-> +			clear_disconnected(target_dir);
->  			noprogress = 0;
->  		} else if (pd == mnt->mnt_sb->s_root) {
->  			printk(KERN_ERR "export: Eeek filesystem root is not connected, impossible\n");
+Again, I created a script to test mount options which has been posted to the
+list as a patch to nfs-ordeal.
 
-You might as well throw a patch in to make this condition a BUG_ON, it
-would indicate a nasty bug in the dcache and has never triggered in the
-last 10 years as far as I know.
+ -dros
+
+Weston Andros Adamson (5):
+  NFSv4: make nfs_find_best_sec static
+  NFS: separate passed security flavs from selected
+  NFS: cache parsed auth_info in nfs_server
+  NFS: stop using NFS_MOUNT_SECFLAVOUR server flag
+  NFS: add support for multiple sec= mount options
+
+ fs/nfs/client.c                |   5 +-
+ fs/nfs/internal.h              |   5 +-
+ fs/nfs/nfs4_fs.h               |   1 -
+ fs/nfs/nfs4client.c            |  26 ++++--
+ fs/nfs/nfs4namespace.c         |  17 +++-
+ fs/nfs/nfs4proc.c              |  32 ++++---
+ fs/nfs/super.c                 | 189 +++++++++++++++++++++++++----------------
+ include/linux/nfs_fs_sb.h      |   1 +
+ include/linux/nfs_xdr.h        |   7 ++
+ include/uapi/linux/nfs_mount.h |   2 +-
+ 10 files changed, 184 insertions(+), 101 deletions(-)
+
+-- 
+1.7.12.4 (Apple Git-37)
 
