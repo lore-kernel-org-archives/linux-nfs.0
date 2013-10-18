@@ -1,168 +1,446 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailgw01.dd24.net ([193.46.215.41]:53602 "EHLO
-	mailgw01.dd24.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756006Ab3J1QQE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Oct 2013 12:16:04 -0400
-Message-ID: <1382976943.8774.10.camel@heisenberg.scientia.net>
-Subject: Re: XATTRs in NFS?
-From: Christoph Anton Mitterer <calestyo@scientia.net>
-To: Ric Wheeler <rwheeler@redhat.com>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Mailing List Linux NFS <linux-nfs@vger.kernel.org>,
-        Dr Fields James Bruce <bfields@fieldses.org>
-Date: Mon, 28 Oct 2013 17:15:43 +0100
-In-Reply-To: <526E8562.3040809@redhat.com>
-References: <1382560643.6924.12.camel@heisenberg.scientia.net>
-	 <EFB2CFAD-FACC-401D-BF0C-1C573B23A873@netapp.com>
-	 <1382624000.6907.8.camel@heisenberg.scientia.net>
-	 <E0F4C952-02DE-4778-A779-FB7AE111EC46@netapp.com>
-	 <1382630468.6907.58.camel@heisenberg.scientia.net>
-	 <625CAA34-BD6C-4283-86D0-3F8B460D54D0@netapp.com>
-	 <1382635350.6907.83.camel@heisenberg.scientia.net>
-	 <20131025140846.GB20497@fieldses.org>
-	 <1382807547.29041.12.camel@heisenberg.scientia.net>
-	 <20131027191512.GA31322@fieldses.org>
-	 <1382911068.6932.20.camel@heisenberg.scientia.net>
-	 <8DB0D7A2-BA2A-4001-A01C-D498C777B243@netapp.com>
-	 <1382920068.6932.46.camel@heisenberg.scientia.net>
-	 <2E672741-FE4F-4287-8D00-B7634A71709E@netapp.com>
-	 <526E8562.3040809@redhat.com>
-Content-Type: multipart/signed; micalg="sha-512";
-	protocol="application/x-pkcs7-signature";
-	boundary="=-yl67PXuL7Ho7mrHGvd3g"
-Mime-Version: 1.0
+Received: from mx11.netapp.com ([216.240.18.76]:51129 "EHLO mx11.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753926Ab3JRTPq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 18 Oct 2013 15:15:46 -0400
+From: Weston Andros Adamson <dros@netapp.com>
+To: <Trond.Myklebust@netapp.com>
+CC: <linux-nfs@vger.kernel.org>, Weston Andros Adamson <dros@netapp.com>
+Subject: [PATCH 5/5] NFS: add support for multiple sec= mount options
+Date: Fri, 18 Oct 2013 15:15:19 -0400
+Message-ID: <1382123719-25194-6-git-send-email-dros@netapp.com>
+In-Reply-To: <1382123719-25194-1-git-send-email-dros@netapp.com>
+References: <1382123719-25194-1-git-send-email-dros@netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+This patch adds support for multiple security options which can be
+specified using a colon-delimited list of security flavors (the same
+syntax as nfsd's exports file).
 
---=-yl67PXuL7Ho7mrHGvd3g
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+This is useful, for instance, when NFSv4.x mounts cross SECINFO
+boundaries. With this patch a user can use "sec=krb5i,krb5p"
+to mount a remote filesystem using krb5i, but can still cross
+into krb5p-only exports.
 
-On Mon, 2013-10-28 at 11:40 -0400, Ric Wheeler wrote:
-> Then you end up with large directories and an extra name per inode that n=
-eeds to=20
-> be stored and extra lookups for each file when you do a whole file system=
- crawl.
->=20
-> Certainly not as easy as adding and xattrs with that information :)
+New mounts will try all security options before failing.  NFSv4.x
+SECINFO results will be compared against the sec= flavors to
+find the first flavor in both lists or if no match is found will
+return -EPERM.
 
-And I think there's another reason why it wouldn't work...
+Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+---
+ fs/nfs/internal.h       |   1 +
+ fs/nfs/nfs4client.c     |   3 +
+ fs/nfs/nfs4namespace.c  |  17 +++--
+ fs/nfs/nfs4proc.c       |  32 ++++++----
+ fs/nfs/super.c          | 160 +++++++++++++++++++++++++++++++-----------------
+ include/linux/nfs_xdr.h |   3 +-
+ 6 files changed, 145 insertions(+), 71 deletions(-)
 
-Imagine I change my system to encode what should be XATTRs in hardlink
-pseudo files...
-
-If I have such pair locally e.g. on my ext4:
-/foo/bar/actual/file
-/meta/<SHA512 identifier>.2342348324
-
-And now move/copy the file via the network to the archive, I'd have to
-copy both files (which is really annoying), and I'd guess the inode
-coupling would get los (and at least the name wouldn't fit anymore).
-
-So the whole thing is IMHO not even a workaround.
-
-
-Cheers,
-Chris.
-
---=-yl67PXuL7Ho7mrHGvd3g
-Content-Type: application/x-pkcs7-signature; name="smime.p7s"
-Content-Disposition: attachment; filename="smime.p7s"
-Content-Transfer-Encoding: base64
-
-MIAGCSqGSIb3DQEHAqCAMIACAQExDzANBglghkgBZQMEAgMFADCABgkqhkiG9w0BBwEAAKCCEP4w
-ggV1MIIDXaADAgECAgMBAYIwDQYJKoZIhvcNAQEFBQAwVDEUMBIGA1UEChMLQ0FjZXJ0IEluYy4x
-HjAcBgNVBAsTFWh0dHA6Ly93d3cuQ0FjZXJ0Lm9yZzEcMBoGA1UEAxMTQ0FjZXJ0IENsYXNzIDMg
-Um9vdDAeFw0xMjA3MjMxNDU2NDVaFw0xNDA3MjMxNDU2NDVaMHwxITAfBgNVBAMTGENocmlzdG9w
-aCBBbnRvbiBNaXR0ZXJlcjEkMCIGCSqGSIb3DQEJARYVY2FsZXN0eW9Ac2NpZW50aWEubmV0MTEw
-LwYJKoZIhvcNAQkBFiJtYWlsQGNocmlzdG9waC5hbnRvbi5taXR0ZXJlci5uYW1lMIIBIjANBgkq
-hkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqv+F91K5vyBwiGFMqj6wTehWdqZnfFeXqT8g5b3qrXWL
-ywSzcoD9xtyoRqAgOCX+PSmBpm6pPhe31VnBtc3HcBMe4rSico9/Z2H9h1l6IMVEnyhabWzoKbE3
-BFrsYJGthJCbhK072G8AhCk+5p+L+knLhQXN0Ph7MJbdY26o3M4vjsXFNbJL8TOYxo80cGD1LIh2
-SUZFqaIG24TVmTW8F4jD5Z9/NEwJa8kQK+VBNHUntXYNah4Reh0jSsGnq9Pg3Hf4KC+F0IR8QgBm
-SnwitMFUX9UnhLEvRQxjDI1tm+h6RxfjlV7moI68Ulh7bcdPhM/z2Q16XmaY12rc85pSRQIDAQAB
-o4IBJjCCASIwDAYDVR0TAQH/BAIwADBWBglghkgBhvhCAQ0ESRZHVG8gZ2V0IHlvdXIgb3duIGNl
-cnRpZmljYXRlIGZvciBGUkVFIGhlYWQgb3ZlciB0byBodHRwOi8vd3d3LkNBY2VydC5vcmcwQAYD
-VR0lBDkwNwYIKwYBBQUHAwQGCCsGAQUFBwMCBgorBgEEAYI3CgMEBgorBgEEAYI3CgMDBglghkgB
-hvhCBAEwMgYIKwYBBQUHAQEEJjAkMCIGCCsGAQUFBzABhhZodHRwOi8vb2NzcC5jYWNlcnQub3Jn
-MEQGA1UdEQQ9MDuBFWNhbGVzdHlvQHNjaWVudGlhLm5ldIEibWFpbEBjaHJpc3RvcGguYW50b24u
-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
-+G8T/HNZ92ZCdB6K4/jc0m+YnMtHmJVABfvpAgMBAAGjgb8wgbwwDwYDVR0TAQH/BAUwAwEB/zBd
-BggrBgEFBQcBAQRRME8wIwYIKwYBBQUHMAGGF2h0dHA6Ly9vY3NwLkNBY2VydC5vcmcvMCgGCCsG
-AQUFBzAChhxodHRwOi8vd3d3LkNBY2VydC5vcmcvY2EuY3J0MEoGA1UdIARDMEEwPwYIKwYBBAGB
-kEowMzAxBggrBgEFBQcCARYlaHR0cDovL3d3dy5DQWNlcnQub3JnL2luZGV4LnBocD9pZD0xMDAN
-BgkqhkiG9w0BAQQFAAOCAgEAfwiIodoaUEnaifuhCHLzivcexDq0eVsgMLFF3sJd02Vp8cJdVFQ8
-hV+5e0KRwpn9G1Gbq0aloRBTnm2IrHNuLDOm8PSe4HXBPohFqeFmQ/5WWtF6QXj3QNpKOvELW6W7
-FgbmwueTuYVNl0+xHjhDgO+bDYzvuKdgAIdXfR5EHMsj75s8mZ2vtSkcRXkWlk0nbfEcbMPCVWSz
-vBTi86QfHjL8JxUFz90urj6CYXvwIRAY9kTqUzn53NCaIODGu+C7Wk/EmcgHvbW9otsuYg1CNEG8
-/4uK9VEiqogwAOKw1Ly+ZbrVA1d5m+jcyE34UO2RpVIooqz7Nlg+6ZQrkVCHG9Ze1ozM9w8QDFJO
-0BZh5eUKbL8Xx3JGV5yY9WxgY3pvXrlOL8i5ubtqhbyYDe35PpeENJSuAK+h5eeSbk698+LZFItc
-0usBbKAXpS0Q65x6Sr297s797SJAq3A4iPUKh2rCqwVgyUgF2lPB3kR3arPzPDztgLymOEopJF/+
-WTubJXpWYwBkuV2kYn1XNk+tg+8fklOgjndX3eVhET0jAJBMPPqjYJMEo6819g5qj09KYKeFBWxG
-oY/0x3bjoVlX93GyxG4UXG1tQWbfG5Ox1ADD7svPPD0hgKlfY2X83eBfpPQr8IVxQdRnJfsasZeu
-1pmCE0HSbqUbmSeA5wupqAAxggLtMIIC6QIBATBbMFQxFDASBgNVBAoTC0NBY2VydCBJbmMuMR4w
-HAYDVQQLExVodHRwOi8vd3d3LkNBY2VydC5vcmcxHDAaBgNVBAMTE0NBY2VydCBDbGFzcyAzIFJv
-b3QCAwEBgjANBglghkgBZQMEAgMFAKCCAWMwGAYJKoZIhvcNAQkDMQsGCSqGSIb3DQEHATAcBgkq
-hkiG9w0BCQUxDxcNMTMxMDI4MTYxNTQzWjBPBgkqhkiG9w0BCQQxQgRAZWLoo6gi2R5BuVMhpApo
-RZvMDWe2Ps6kK7Fk77AYjDZ9qAyguY6/QjGuLNuJG4DgcgIHP89d5o7g6Pn/86ADmjBqBgkrBgEE
-AYI3EAQxXTBbMFQxFDASBgNVBAoTC0NBY2VydCBJbmMuMR4wHAYDVQQLExVodHRwOi8vd3d3LkNB
-Y2VydC5vcmcxHDAaBgNVBAMTE0NBY2VydCBDbGFzcyAzIFJvb3QCAwEBgjBsBgsqhkiG9w0BCRAC
-CzFdoFswVDEUMBIGA1UEChMLQ0FjZXJ0IEluYy4xHjAcBgNVBAsTFWh0dHA6Ly93d3cuQ0FjZXJ0
-Lm9yZzEcMBoGA1UEAxMTQ0FjZXJ0IENsYXNzIDMgUm9vdAIDAQGCMA0GCSqGSIb3DQEBAQUABIIB
-AHA6WH/ay6Dk1nmwFkFwbbslqdQXdA3K3bWyjpGNm6WnpZSGoNpHTeFoBCuI+9sEX1NDlcR+2W48
-UvJPFxWn3ELtlxUd3BUqRGYrUz1MqSdUE/gGpjNLc2P2AOe5BDUPMnXiHWgfc+Q54Mt3s9sL2nfy
-gwrGEtQ12cGPj1Kqe7U7g+O9OTsOY+ufL/49bNwEszTNPPnIuGJSrQoM+85V0Gn7za9eeCAbguv5
-NMXfoqonjmifptmAz1WHyOShu8c61gs33/hTzZ/LktRbpe7yn6W0okPrX2hM6Ikdf4j4VK8n2AsZ
-nwcsaVaiY6okr9AVZu1Yt+BTYNn22MH2KVN8bNwAAAAAAAA=
-
-
---=-yl67PXuL7Ho7mrHGvd3g--
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 5de1ef6c..89d7eb6 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -323,6 +323,7 @@ extern struct file_system_type nfs_xdev_fs_type;
+ extern struct file_system_type nfs4_xdev_fs_type;
+ extern struct file_system_type nfs4_referral_fs_type;
+ #endif
++bool nfs_auth_info_match(const struct nfs_auth_info *, rpc_authflavor_t);
+ struct dentry *nfs_try_mount(int, const char *, struct nfs_mount_info *,
+ 			struct nfs_subversion *);
+ void nfs_initialise_sb(struct super_block *);
+diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+index 0697ef3..2da311c 100644
+--- a/fs/nfs/nfs4client.c
++++ b/fs/nfs/nfs4client.c
+@@ -963,6 +963,9 @@ static int nfs4_init_server(struct nfs_server *server,
+ 	server->options = data->options;
+ 	server->auth_info = data->auth_info;
+ 
++	/* Use the first specified auth flavor. If this flavor isn't
++	 * allowed by the server, use the SECINFO path to try the
++	 * other specified flavors */
+ 	if (data->auth_info.flavor_len >= 1)
+ 		data->selected_flavor = data->auth_info.flavors[0];
+ 	else
+diff --git a/fs/nfs/nfs4namespace.c b/fs/nfs/nfs4namespace.c
+index 2d79be2..3ba8e4e 100644
+--- a/fs/nfs/nfs4namespace.c
++++ b/fs/nfs/nfs4namespace.c
+@@ -137,6 +137,7 @@ static size_t nfs_parse_server_name(char *string, size_t len,
+ 
+ /**
+  * nfs_find_best_sec - Find a security mechanism supported locally
++ * @server: NFS server struct
+  * @flavors: List of security tuples returned by SECINFO procedure
+  *
+  * Return the pseudoflavor of the first security mechanism in
+@@ -145,7 +146,8 @@ static size_t nfs_parse_server_name(char *string, size_t len,
+  * is searched in the order returned from the server, per RFC 3530
+  * recommendation.
+  */
+-static rpc_authflavor_t nfs_find_best_sec(struct nfs4_secinfo_flavors *flavors)
++static rpc_authflavor_t nfs_find_best_sec(struct nfs_server *server,
++					  struct nfs4_secinfo_flavors *flavors)
+ {
+ 	rpc_authflavor_t pseudoflavor;
+ 	struct nfs4_secinfo4 *secinfo;
+@@ -160,12 +162,19 @@ static rpc_authflavor_t nfs_find_best_sec(struct nfs4_secinfo_flavors *flavors)
+ 		case RPC_AUTH_GSS:
+ 			pseudoflavor = rpcauth_get_pseudoflavor(secinfo->flavor,
+ 							&secinfo->flavor_info);
+-			if (pseudoflavor != RPC_AUTH_MAXFLAVOR)
++			/* make sure pseudoflavor matches sec= mount opt */
++			if (pseudoflavor != RPC_AUTH_MAXFLAVOR &&
++			    nfs_auth_info_match(&server->auth_info,
++						pseudoflavor))
+ 				return pseudoflavor;
+ 			break;
+ 		}
+ 	}
+ 
++	/* if there were any sec= options then nothing matched */
++	if (server->auth_info.flavor_len > 0)
++		return -EPERM;
++
+ 	return RPC_AUTH_UNIX;
+ }
+ 
+@@ -187,7 +196,7 @@ static rpc_authflavor_t nfs4_negotiate_security(struct inode *inode, struct qstr
+ 		goto out;
+ 	}
+ 
+-	flavor = nfs_find_best_sec(flavors);
++	flavor = nfs_find_best_sec(NFS_SERVER(inode), flavors);
+ 
+ out:
+ 	put_page(page);
+@@ -390,7 +399,7 @@ struct vfsmount *nfs4_submount(struct nfs_server *server, struct dentry *dentry,
+ 
+ 	if (client->cl_auth->au_flavor != flavor)
+ 		flavor = client->cl_auth->au_flavor;
+-	else if (server->auth_info.flavor_len == 0) {
++	else {
+ 		rpc_authflavor_t new = nfs4_negotiate_security(dir, name);
+ 		if ((int)new >= 0)
+ 			flavor = new;
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 9e0c10e..f646487 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2864,11 +2864,24 @@ static int nfs4_find_root_sec(struct nfs_server *server, struct nfs_fh *fhandle,
+ 	int status = -EPERM;
+ 	size_t i;
+ 
+-	for (i = 0; i < ARRAY_SIZE(flav_array); i++) {
+-		status = nfs4_lookup_root_sec(server, fhandle, info, flav_array[i]);
+-		if (status == -NFS4ERR_WRONGSEC || status == -EACCES)
+-			continue;
+-		break;
++	if (server->auth_info.flavor_len > 0) {
++		/* try each flavor specified by user */
++		for (i = 0; i < server->auth_info.flavor_len; i++) {
++			status = nfs4_lookup_root_sec(server, fhandle, info,
++						server->auth_info.flavors[i]);
++			if (status == -NFS4ERR_WRONGSEC || status == -EACCES)
++				continue;
++			break;
++		}
++	} else {
++		/* no flavors specified by user, try default list */
++		for (i = 0; i < ARRAY_SIZE(flav_array); i++) {
++			status = nfs4_lookup_root_sec(server, fhandle, info,
++						      flav_array[i]);
++			if (status == -NFS4ERR_WRONGSEC || status == -EACCES)
++				continue;
++			break;
++		}
+ 	}
+ 
+ 	/*
+@@ -2910,9 +2923,6 @@ int nfs4_proc_get_rootfh(struct nfs_server *server, struct nfs_fh *fhandle,
+ 		status = nfs4_lookup_root(server, fhandle, info);
+ 		if (status != -NFS4ERR_WRONGSEC)
+ 			break;
+-		/* Did user force a 'sec=' mount option? */
+-		if (server->auth_info.flavor_len > 0)
+-			break;
+ 	default:
+ 		status = nfs4_do_find_root_sec(server, fhandle, info);
+ 	}
+@@ -3165,9 +3175,6 @@ static int nfs4_proc_lookup_common(struct rpc_clnt **clnt, struct inode *dir,
+ 			err = -EPERM;
+ 			if (client != *clnt)
+ 				goto out;
+-			/* No security negotiation if the user specified 'sec=' */
+-			if (NFS_SERVER(dir)->auth_info.flavor_len > 0)
+-				goto out;
+ 			client = nfs4_create_sec_client(client, dir, name);
+ 			if (IS_ERR(client))
+ 				return PTR_ERR(client);
+@@ -7617,6 +7624,9 @@ nfs41_find_root_sec(struct nfs_server *server, struct nfs_fh *fhandle,
+ 			break;
+ 		}
+ 
++		if (!nfs_auth_info_match(&server->auth_info, flavor))
++			flavor = RPC_AUTH_MAXFLAVOR;
++
+ 		if (flavor != RPC_AUTH_MAXFLAVOR) {
+ 			err = nfs4_lookup_root_sec(server, fhandle,
+ 						   info, flavor);
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 1f5b29b..aa377f0 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -497,7 +497,8 @@ static const char *nfs_pseudoflavour_to_name(rpc_authflavor_t flavour)
+ 	static const struct {
+ 		rpc_authflavor_t flavour;
+ 		const char *str;
+-	} sec_flavours[] = {
++	} sec_flavours[NFS_AUTH_INFO_MAX_FLAVORS] = {
++		/* update NFS_AUTH_INFO_MAX_FLAVORS when this list changes! */
+ 		{ RPC_AUTH_NULL, "null" },
+ 		{ RPC_AUTH_UNIX, "sys" },
+ 		{ RPC_AUTH_GSS_KRB5, "krb5" },
+@@ -1019,6 +1020,52 @@ static void nfs_set_mount_transport_protocol(struct nfs_parsed_mount_data *mnt)
+ }
+ 
+ /*
++ * Add 'flavor' to 'auth_info' if not already present.
++ * Returns true if 'flavor' ends up in the list, false otherwise
++ */
++static bool nfs_auth_info_add(struct nfs_auth_info *auth_info,
++			      rpc_authflavor_t flavor)
++{
++	unsigned int i;
++	unsigned int max_flavor_len = (sizeof(auth_info->flavors) /
++				       sizeof(auth_info->flavors[0]));
++
++	/* make sure this flavor isn't already in the list */
++	for (i = 0; i < auth_info->flavor_len; i++) {
++		if (flavor == auth_info->flavors[i])
++			return true;
++	}
++
++	if (auth_info->flavor_len + 1 >= max_flavor_len) {
++		dfprintk(MOUNT, "NFS: too many sec= flavors\n");
++		return false;
++	}
++
++	auth_info->flavors[auth_info->flavor_len++] = flavor;
++	return true;
++}
++
++/*
++ * Return true if 'match' is in auth_info or auth_info is empty.
++ * Return false otherwise.
++ */
++bool nfs_auth_info_match(const struct nfs_auth_info *auth_info,
++			 rpc_authflavor_t match)
++{
++	int i;
++
++	if (!auth_info->flavor_len)
++		return true;
++
++	for (i = 0; i < auth_info->flavor_len; i++) {
++		if (auth_info->flavors[i] == match)
++			return true;
++	}
++	return false;
++}
++EXPORT_SYMBOL_GPL(nfs_auth_info_match);
++
++/*
+  * Parse the value of the 'sec=' option.
+  */
+ static int nfs_parse_security_flavors(char *value,
+@@ -1026,49 +1073,55 @@ static int nfs_parse_security_flavors(char *value,
+ {
+ 	substring_t args[MAX_OPT_ARGS];
+ 	rpc_authflavor_t pseudoflavor;
++	char *p;
+ 
+ 	dfprintk(MOUNT, "NFS: parsing sec=%s option\n", value);
+ 
+-	switch (match_token(value, nfs_secflavor_tokens, args)) {
+-	case Opt_sec_none:
+-		pseudoflavor = RPC_AUTH_NULL;
+-		break;
+-	case Opt_sec_sys:
+-		pseudoflavor = RPC_AUTH_UNIX;
+-		break;
+-	case Opt_sec_krb5:
+-		pseudoflavor = RPC_AUTH_GSS_KRB5;
+-		break;
+-	case Opt_sec_krb5i:
+-		pseudoflavor = RPC_AUTH_GSS_KRB5I;
+-		break;
+-	case Opt_sec_krb5p:
+-		pseudoflavor = RPC_AUTH_GSS_KRB5P;
+-		break;
+-	case Opt_sec_lkey:
+-		pseudoflavor = RPC_AUTH_GSS_LKEY;
+-		break;
+-	case Opt_sec_lkeyi:
+-		pseudoflavor = RPC_AUTH_GSS_LKEYI;
+-		break;
+-	case Opt_sec_lkeyp:
+-		pseudoflavor = RPC_AUTH_GSS_LKEYP;
+-		break;
+-	case Opt_sec_spkm:
+-		pseudoflavor = RPC_AUTH_GSS_SPKM;
+-		break;
+-	case Opt_sec_spkmi:
+-		pseudoflavor = RPC_AUTH_GSS_SPKMI;
+-		break;
+-	case Opt_sec_spkmp:
+-		pseudoflavor = RPC_AUTH_GSS_SPKMP;
+-		break;
+-	default:
+-		return 0;
++	while ((p = strsep(&value, ":")) != NULL) {
++		switch (match_token(p, nfs_secflavor_tokens, args)) {
++		case Opt_sec_none:
++			pseudoflavor = RPC_AUTH_NULL;
++			break;
++		case Opt_sec_sys:
++			pseudoflavor = RPC_AUTH_UNIX;
++			break;
++		case Opt_sec_krb5:
++			pseudoflavor = RPC_AUTH_GSS_KRB5;
++			break;
++		case Opt_sec_krb5i:
++			pseudoflavor = RPC_AUTH_GSS_KRB5I;
++			break;
++		case Opt_sec_krb5p:
++			pseudoflavor = RPC_AUTH_GSS_KRB5P;
++			break;
++		case Opt_sec_lkey:
++			pseudoflavor = RPC_AUTH_GSS_LKEY;
++			break;
++		case Opt_sec_lkeyi:
++			pseudoflavor = RPC_AUTH_GSS_LKEYI;
++			break;
++		case Opt_sec_lkeyp:
++			pseudoflavor = RPC_AUTH_GSS_LKEYP;
++			break;
++		case Opt_sec_spkm:
++			pseudoflavor = RPC_AUTH_GSS_SPKM;
++			break;
++		case Opt_sec_spkmi:
++			pseudoflavor = RPC_AUTH_GSS_SPKMI;
++			break;
++		case Opt_sec_spkmp:
++			pseudoflavor = RPC_AUTH_GSS_SPKMP;
++			break;
++		default:
++			dfprintk(MOUNT,
++				 "NFS: sec= option '%s' not recognized\n", p);
++			return 0;
++		}
++
++		if (!nfs_auth_info_add(&mnt->auth_info, pseudoflavor))
++			return 0;
+ 	}
+ 
+-	mnt->auth_info.flavors[0] = pseudoflavor;
+-	mnt->auth_info.flavor_len = 1;
+ 	return 1;
+ }
+ 
+@@ -1615,12 +1668,14 @@ out_security_failure:
+ }
+ 
+ /*
+- * Ensure that the specified authtype in args->auth_info is supported by
+- * the server. Returns 0 if it's ok, and -EACCES if not.
++ * Ensure that a specified authtype in args->auth_info is supported by
++ * the server. Returns 0 and sets args->selected_flavor if it's ok, and
++ * -EACCES if not.
+  */
+-static int nfs_verify_authflavor(struct nfs_parsed_mount_data *args,
++static int nfs_verify_authflavors(struct nfs_parsed_mount_data *args,
+ 			rpc_authflavor_t *server_authlist, unsigned int count)
+ {
++	rpc_authflavor_t flavor = RPC_AUTH_MAXFLAVOR;
+ 	unsigned int i;
+ 
+ 	/*
+@@ -1632,17 +1687,19 @@ static int nfs_verify_authflavor(struct nfs_parsed_mount_data *args,
+ 	 * can be used.
+ 	 */
+ 	for (i = 0; i < count; i++) {
+-		if (args->auth_info.flavors[0] == server_authlist[i] ||
+-		    server_authlist[i] == RPC_AUTH_NULL)
++		flavor = server_authlist[i];
++
++		if (nfs_auth_info_match(&args->auth_info, flavor) ||
++		    flavor == RPC_AUTH_NULL)
+ 			goto out;
+ 	}
+ 
+-	dfprintk(MOUNT, "NFS: auth flavor %u not supported by server\n",
+-		args->auth_info.flavors[0]);
++	dfprintk(MOUNT,
++		 "NFS: specified auth flavors not supported by server\n");
+ 	return -EACCES;
+ 
+ out:
+-	args->selected_flavor = args->auth_info.flavors[0];
++	args->selected_flavor = flavor;
+ 	dfprintk(MOUNT, "NFS: using auth flavor %u\n", args->selected_flavor);
+ 	return 0;
+ }
+@@ -1732,7 +1789,7 @@ static struct nfs_server *nfs_try_mount_request(struct nfs_mount_info *mount_inf
+ 	 * whether the server supports it, and then just try to use it if so.
+ 	 */
+ 	if (args->auth_info.flavor_len > 0) {
+-		status = nfs_verify_authflavor(args, authlist, authlist_len);
++		status = nfs_verify_authflavors(args, authlist, authlist_len);
+ 		dfprintk(MOUNT, "NFS: using auth flavor %u\n",
+ 			 args->selected_flavor);
+ 		if (status)
+@@ -2102,9 +2159,6 @@ static int nfs_validate_text_mount_data(void *options,
+ 
+ 	nfs_set_port(sap, &args->nfs_server.port, port);
+ 
+-	if (args->auth_info.flavor_len > 1)
+-		goto out_bad_auth;
+-
+ 	return nfs_parse_devname(dev_name,
+ 				   &args->nfs_server.hostname,
+ 				   max_namelen,
+@@ -2124,10 +2178,6 @@ out_invalid_transport_udp:
+ out_no_address:
+ 	dfprintk(MOUNT, "NFS: mount program didn't pass remote address\n");
+ 	return -EINVAL;
+-
+-out_bad_auth:
+-	dfprintk(MOUNT, "NFS: Too many RPC auth flavours specified\n");
+-	return -EINVAL;
+ }
+ 
+ static int
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 305263a..488ce9d 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -592,9 +592,10 @@ struct nfs_renameres {
+ };
+ 
+ /* parsed sec= options */
++#define NFS_AUTH_INFO_MAX_FLAVORS 12 /* see fs/nfs/super.c */
+ struct nfs_auth_info {
+ 	unsigned int            flavor_len;
+-	rpc_authflavor_t        flavors[1];
++	rpc_authflavor_t        flavors[NFS_AUTH_INFO_MAX_FLAVORS];
+ };
+ 
+ /*
+-- 
+1.7.12.4 (Apple Git-37)
 
