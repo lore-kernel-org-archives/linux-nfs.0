@@ -1,74 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:55343 "EHLO fieldses.org"
+Received: from mout.gmx.net ([212.227.15.15]:51718 "EHLO mout.gmx.net"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751262Ab3JASmQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 1 Oct 2013 14:42:16 -0400
-Date: Tue, 1 Oct 2013 14:42:10 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Miklos Szeredi <miklos@szeredi.hu>
-Cc: Ric Wheeler <rwheeler@redhat.com>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Zach Brown <zab@redhat.com>, Anna Schumaker <schumaker.anna@gmail.com>,
-        Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Linux-Fsdevel <linux-fsdevel@vger.kernel.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        "Martin K. Petersen" <mkp@mkp.net>, Jens Axboe <axboe@kernel.dk>,
-        Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>,
-        Eric Wong <normalperson@yhbt.net>
-Subject: Re: [RFC] extending splice for copy offloading
-Message-ID: <20131001184210.GM26382@fieldses.org>
-References: <52474839.2080201@redhat.com>
- <CAJfpegsN7Hu8uecSVQrhax+n+zhq=uUgpzOk=qZ6_n383tdNCQ@mail.gmail.com>
- <20130930143432.GG16579@fieldses.org>
- <CAJfpeguMCzv-UhrXrG7e9Q7F_0aEe3_ZMumFwLu3hxcewA_7gA@mail.gmail.com>
- <52499026.3090802@redhat.com>
- <CAJfpegtpXuh9070ALGy16Y8kdgioBqSf4JQqBBCF4FHvFJWAWQ@mail.gmail.com>
- <52498AA8.2090204@redhat.com>
- <CAJfpegv_C6cLOuA-mNtgtf2QbmmmcHwjQVo8mAnhf_wbJ8iRhg@mail.gmail.com>
- <52498DB6.7060901@redhat.com>
- <CAJfpegsvrr7x3MbdpvxUmzq0ZfDHfZkzAar6Od2G7wg8DgPLYQ@mail.gmail.com>
+	id S1752128Ab3JSS1q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 19 Oct 2013 14:27:46 -0400
+Received: from [192.168.178.60] ([84.173.16.34]) by mail.gmx.com (mrgmx001)
+ with ESMTPSA (Nemesis) id 0M5dMm-1VvbM82pL6-00xZE0 for
+ <linux-nfs@vger.kernel.org>; Sat, 19 Oct 2013 20:27:44 +0200
+Message-ID: <5262CF20.20301@gmx.de>
+Date: Sat, 19 Oct 2013 20:27:44 +0200
+From: Helge Deller <deller@gmx.de>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAJfpegsvrr7x3MbdpvxUmzq0ZfDHfZkzAar6Od2G7wg8DgPLYQ@mail.gmail.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: Linux Kernel Development <linux-kernel@vger.kernel.org>,
+        NFS list <linux-nfs@vger.kernel.org>,
+        linux-parisc <linux-parisc@vger.kernel.org>
+Subject: Re: 3.12-rcX - NFS regression - kswapd0 / kswapd1 stays using 100%
+ CPU?
+References: <52604BA9.20104@gmx.de>		 <1382044045.3216.44.camel@leira.trondhjem.org> <52618B5F.4000508@gmx.de>	 <1382124981.20461.4.camel@leira.trondhjem.org> <5261940A.4090101@gmx.de> <1382127133.20461.9.camel@leira.trondhjem.org>
+In-Reply-To: <1382127133.20461.9.camel@leira.trondhjem.org>
+Content-Type: text/plain; charset=UTF-7
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Sep 30, 2013 at 05:46:38PM +0200, Miklos Szeredi wrote:
-> On Mon, Sep 30, 2013 at 4:41 PM, Ric Wheeler <rwheeler@redhat.com> wrote:
-> > The way the array based offload (and some software side reflink works) is
-> > not a byte by byte copy. We cannot assume that a valid count can be returned
-> > or that such a count would be an indication of a sequential segment of good
-> > data.  The whole thing would normally have to be reissued.
-> >
-> > To make that a true assumption, you would have to mandate that in each of
-> > the specifications (and sw targets)...
+On 10/18/2013 10:12 PM, Myklebust, Trond wrote:
+> On Fri, 2013-10-18 at 22:03 +0200, Helge Deller wrote:
+>> On 10/18/2013 09:36 PM, Myklebust, Trond wrote:
+>>> Also, could you please try a sysRQ-t the next time it happens, so that
+>>> we can get a trace of where the mount program is hanging. Knowing that
+>>> the mount is stuck in "__schedule()" is not really interesting unless we
+>>> know from where that was called.
+>>
+>> Actually, the machine was still running in this state.
+>> Here is sysrq-t:
+>> [112009.084000] mount           S 00000000401040c0     0 25331      1 0x00000010
+>> [112009.084000] Backtrace:
+>> [112009.084000]  [<0000000040113a68>] __schedule
+>> [112009.232000]
+>> [112009.232000] mount.nfs       D 00000000401040c0     0 25332  25331 0x00000010
+>> [112009.232000] Backtrace:
+>> [112009.232000]  [<0000000040113a68>] __schedule
 > 
-> You're missing my point.
-> 
->  - user issues SIZE_MAX splice request
->  - fs issues *64M* (or whatever) request to offload
->  - when that completes *fully* then we return 64M to userspace
->  - if it completes partially, then we return an error to userspace
-> 
-> Again, wouldn't that work?
+> That makes no sense unless sysrq-t works differently on parisc than on
+> other platforms. I'd expect the backtrace to at least include a system
+> call. Parisc experts?
 
-So if implementations fall into two categories:
+sysrq-t doesn't work differently on parisc. For other processes I do get
+a backtrace like the one on x86_64.
+That's the main reason why I asked for ideas here on the list.
+I do see the stuck process, but don't see any indications where it comes from.
 
-	- "instant": latency is on the order of a single IO.
-
-	- "slow": latency is seconds or minutes, but still faster than a
-	  normal copy.  (See Anna's NFS server implementation that does
-	  an ordinary copy internally.)
-
-Then to me it still seems simplest to design only for the "instant"
-case.
-
-But if we want to add some minimal help for the "slow" case then
-Miklos's proposal looks fine: the application doesn't have to know which
-case it's dealing with ahead of time--it always just submits the largest
-range it knows about--but a "slow" implementation isn't forced to leave
-the application waiting in one syscall for minutes with no indication
-what's going on.
-
---b.
+Helge
