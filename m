@@ -1,67 +1,148 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aa.linuxbox.com ([69.128.83.226]:4657 "EHLO aa.linuxbox.com"
+Received: from mx1.redhat.com ([209.132.183.28]:48623 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752248Ab3JCNAP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 3 Oct 2013 09:00:15 -0400
-Date: Thu, 3 Oct 2013 08:58:08 -0400 (EDT)
-From: "Matt W. Benjamin" <matt@linuxbox.com>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org,
-        Benny Halevy <bhalevy@primarydata.com>
-Message-ID: <592699116.20.1380805088543.JavaMail.root@thunderbeast.private.linuxbox.com>
-In-Reply-To: <1588761701.18.1380804942396.JavaMail.root@thunderbeast.private.linuxbox.com>
-Subject: Re: [PATCH RFC v0 05/49] pnfsd: introduce pnfsd header files
+	id S1751111Ab3JUROG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 21 Oct 2013 13:14:06 -0400
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r9LHE5lb026533
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Mon, 21 Oct 2013 13:14:05 -0400
+Message-ID: <52656105.3060207@RedHat.com>
+Date: Mon, 21 Oct 2013 13:14:45 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+To: Tony Asleson <tasleson@redhat.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] exportfs: Add -s option.
+References: <1380734389-8202-1-git-send-email-tasleson@redhat.com>
+In-Reply-To: <1380734389-8202-1-git-send-email-tasleson@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
 
-I think saying exofs is a proof of concept/toy is missing the point.
-Exofs is an implementation baseline that provides insight into the
-scalability/performance values that a pnfs implementation can achieve,
-and potentially how to achieve them.
 
-Matt
-
------ "Christoph Hellwig" <hch@infradead.org> wrote:
-
-> On Thu, Oct 03, 2013 at 03:29:06PM +0300, Benny Halevy wrote:
-> > I picked gfs2 as the initial use case for simplicity and ease of
-> review.
-> > If there is a rough consensus that it's useless and not worthy of
-> inclusion
-> > then the one we care about the most is exofs that has a more
-> complete pnfs
-> > implementation.
+On 02/10/13 13:19, Tony Asleson wrote:
+> Adds '-s' option which outputs the current exports in a format
+> suitable for /etc/exports.
 > 
-> This was in reference to file layout implementation details, so exofs
-> isn't a contender there.
+> Signed-off-by: Tony Asleson <tasleson@redhat.com>
+> ---
+>  utils/exportfs/exportfs.c   | 23 ++++++++++++++---------
+>  utils/exportfs/exportfs.man |  5 ++++-
+>  2 files changed, 18 insertions(+), 10 deletions(-)
+Committed...
+
+steved.
+ 
 > 
-> As far as exofs is concerned a pnfs implementation based on it has
-> just
-> as much toy status as the current gfs2 one.  While the pnfs side of
-> it
-> might as well be a lot better, a filesystem that lacks all the
-> integrity
-> and scalability features developed in the last 30 years can't be
-> considered more than a proof of concept.
+> diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
+> index 4331697..52fc03d 100644
+> --- a/utils/exportfs/exportfs.c
+> +++ b/utils/exportfs/exportfs.c
+> @@ -38,7 +38,7 @@ static void	export_all(int verbose);
+>  static void	exportfs(char *arg, char *options, int verbose);
+>  static void	unexportfs(char *arg, int verbose);
+>  static void	exports_update(int verbose);
+> -static void	dump(int verbose);
+> +static void	dump(int verbose, int export_format);
+>  static void	error(nfs_export *exp, int err);
+>  static void	usage(const char *progname, int n);
+>  static void	validate_export(nfs_export *exp);
+> @@ -88,6 +88,7 @@ main(int argc, char **argv)
+>  	int	f_export = 1;
+>  	int	f_all = 0;
+>  	int	f_verbose = 0;
+> +	int	f_export_format = 0;
+>  	int	f_reexport = 0;
+>  	int	f_ignore = 0;
+>  	int	i, c;
+> @@ -105,7 +106,7 @@ main(int argc, char **argv)
+>  
+>  	export_errno = 0;
+>  
+> -	while ((c = getopt(argc, argv, "afhio:ruv")) != EOF) {
+> +	while ((c = getopt(argc, argv, "afhio:ruvs")) != EOF) {
+>  		switch(c) {
+>  		case 'a':
+>  			f_all = 1;
+> @@ -132,6 +133,9 @@ main(int argc, char **argv)
+>  		case 'v':
+>  			f_verbose = 1;
+>  			break;
+> +		case 's':
+> +			f_export_format = 1;
+> +			break;
+>  		default:
+>  			usage(progname, 1);
+>  			break;
+> @@ -164,7 +168,7 @@ main(int argc, char **argv)
+>  			return 0;
+>  		} else {
+>  			xtab_export_read();
+> -			dump(f_verbose);
+> +			dump(f_verbose, f_export_format);
+>  			return 0;
+>  		}
+>  	}
+> @@ -634,7 +638,7 @@ dumpopt(char c, char *fmt, ...)
+>  }
+>  
+>  static void
+> -dump(int verbose)
+> +dump(int verbose, int export_format)
+>  {
+>  	nfs_export	*exp;
+>  	struct exportent *ep;
+> @@ -647,14 +651,15 @@ dump(int verbose)
+>  			if (!exp->m_xtabent)
+>  			    continue; /* neilb */
+>  			if (htype == MCL_ANONYMOUS)
+> -				hname = "<world>";
+> +				hname = (export_format) ? "*" : "<world>";
+>  			else
+>  				hname = ep->e_hostname;
+> -			if (strlen(ep->e_path) > 14)
+> +			if (strlen(ep->e_path) > 14 && !export_format)
+>  				printf("%-14s\n\t\t%s", ep->e_path, hname);
+>  			else
+> -				printf("%-14s\t%s", ep->e_path, hname);
+> -			if (!verbose) {
+> +				printf(((export_format)? "%s %s" : "%-14s\t%s"), ep->e_path, hname);
+> +
+> +			if (!verbose && !export_format) {
+>  				printf("\n");
+>  				continue;
+>  			}
+> @@ -728,6 +733,6 @@ error(nfs_export *exp, int err)
+>  static void
+>  usage(const char *progname, int n)
+>  {
+> -	fprintf(stderr, "usage: %s [-afhioruv] [host:/path]\n", progname);
+> +	fprintf(stderr, "usage: %s [-afhioruvs] [host:/path]\n", progname);
+>  	exit(n);
+>  }
+> diff --git a/utils/exportfs/exportfs.man b/utils/exportfs/exportfs.man
+> index 8853486..590f9cf 100644
+> --- a/utils/exportfs/exportfs.man
+> +++ b/utils/exportfs/exportfs.man
+> @@ -3,7 +3,7 @@
+>  .\" Copyright (C) 1995 Olaf Kirch <okir@monad.swb.de>
+>  .\" Modifications 1999-2003 Neil Brown <neilb@cse.unsw.edu.au>
+>  .\"
+> -.TH exportfs 8 "31 December 2009"
+> +.TH exportfs 8 "30 September 2013"
+>  .SH NAME
+>  exportfs \- maintain table of exported NFS file systems
+>  .SH SYNOPSIS
+> @@ -133,6 +133,9 @@ when they make their next NFS mount request.
+>  Be verbose. When exporting or unexporting, show what's going on. When
+>  displaying the current export list, also display the list of export
+>  options.
+> +.TP
+> +.B -s
+> +Display the current export list suitable for /etc/exports.
+>  .SH DISCUSSION
+>  .SS Exporting Directories
+>  The first synopsis shows how to invoke
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs"
-> in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
--- 
-Matt Benjamin
-The Linux Box
-206 South Fifth Ave. Suite 150
-Ann Arbor, MI  48104
-
-http://linuxbox.com
-
-tel.  734-761-4689 
-fax.  734-769-8938 
-cel.  734-216-5309 
