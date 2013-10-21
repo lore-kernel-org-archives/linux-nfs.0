@@ -1,31 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:35424 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753482Ab3J0Q4g (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Oct 2013 12:56:36 -0400
-Date: Sun, 27 Oct 2013 09:56:29 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "Matt W. Benjamin" <matt@linuxbox.com>,
-        Dr Fields James Bruce <bfields@fieldses.org>,
-        Christoph Anton Mitterer <calestyo@scientia.net>,
-        Mailing List Linux NFS <linux-nfs@vger.kernel.org>,
-        Wheeler Ric <ricwheeler@gmail.com>
-Subject: Re: XATTRs in NFS?
-Message-ID: <20131027165628.GA447@infradead.org>
-References: <312486415.16.1382796101374.JavaMail.root@thunderbeast.private.linuxbox.com>
- <5FC093E3-1CD3-4AC7-A91F-37C8DEC6BEFE@netapp.com>
+Received: from mail.candelatech.com ([208.74.158.172]:36719 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751808Ab3JUVc0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Oct 2013 17:32:26 -0400
+Received: from [192.168.100.236] (firewall.candelatech.com [70.89.124.249])
+	(authenticated bits=0)
+	by ns3.lanforge.com (8.14.2/8.14.2) with ESMTP id r9LLWPL7024239
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Mon, 21 Oct 2013 14:32:25 -0700
+Message-ID: <52659D69.1020609@candelatech.com>
+Date: Mon, 21 Oct 2013 14:32:25 -0700
+From: Ben Greear <greearb@candelatech.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <5FC093E3-1CD3-4AC7-A91F-37C8DEC6BEFE@netapp.com>
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Getting 'not supported' when trying to mount IPv6 NFS v3 server.
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Oct 27, 2013 at 12:31:46PM +0000, Myklebust, Trond wrote:
-> The NFSv4 working group has no authority to do so. POSIX would be the right address.
+So, the problem I reported earlier with failing to unmount was fixed
+by the back-ported patch.
 
-The complete lack of clue, authority or even defined semantics didn't
-stop them from defining their ACL model.  User extended attributes are
-harmless compared to that, even if everyone has subtly different
-flavours.
+Now, another problem is reported by my user.  In this case, they are
+trying to mount an IPv6 NFS server using NFSv3.  Kernel is 3.9.11+,
+with patches to support binding mount points to local IP (v4/v6) addresses.
+
+Some NFS over IPv6 mounts work fine, but some do not.  A reboot of the
+NFS client machine did not fix the problem.
+
+I have tried to reproduce the problem locally, but so far everything works fine
+for us.
+
+>From my own app's logs:
+
+# mount -t nfs [4001:1::1:1]:/vol/vol1 /mnt/lf/RDnfse11c0 -o srcaddr=4001:1::1:201,vers=3
+# requested NFS version or transport protocol is not supported
+
+When this problem happens, I do not see any network traffic when trying to mount.
+
+
+I am curious if anyone else has seen errors similar to this?
+
+
+Thanks,
+Ben
+
+-- 
+Ben Greear <greearb@candelatech.com>
+Candela Technologies Inc  http://www.candelatech.com
 
