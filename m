@@ -1,49 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-we0-f177.google.com ([74.125.82.177]:40594 "EHLO
-	mail-we0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751339Ab3J2Jj1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Oct 2013 05:39:27 -0400
-Received: by mail-we0-f177.google.com with SMTP id x55so7830579wes.36
-        for <linux-nfs@vger.kernel.org>; Tue, 29 Oct 2013 02:39:26 -0700 (PDT)
-From: Benny Halevy <bhalevy@primarydata.com>
-To: bfields@redhat.com
-Cc: linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@primarydata.com>
-Subject: [PATCH 4/7] nfsd4: hash deleg stateid only on successful nfs4_set_delegation
-Date: Tue, 29 Oct 2013 11:39:21 +0200
-Message-Id: <1383039561-27308-1-git-send-email-bhalevy@primarydata.com>
-In-Reply-To: <526F81DE.6060704@primarydata.com>
-References: <526F81DE.6060704@primarydata.com>
+Received: from mx12.netapp.com ([216.240.18.77]:50643 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753778Ab3JUOE0 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Oct 2013 10:04:26 -0400
+From: Weston Andros Adamson <dros@netapp.com>
+To: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+CC: "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] mountstats: enforce new python syntax
+Date: Mon, 21 Oct 2013 14:04:24 +0000
+Message-ID: <D009ABC0-C071-4597-8B67-11C7A0486383@netapp.com>
+References: <1382346241-20637-1-git-send-email-tigran.mkrtchyan@desy.de>
+In-Reply-To: <1382346241-20637-1-git-send-email-tigran.mkrtchyan@desy.de>
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We don't want the stateid to be found in the hash table before the delegation
-is granted.
+I posted a similar patch last week.
 
-Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
----
- fs/nfsd/nfs4state.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+-dros
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 405649f..64fcdd6 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -375,7 +375,6 @@ static struct nfs4_ol_stateid * nfs4_alloc_stateid(struct nfs4_client *clp)
- 	dp = delegstateid(nfs4_alloc_stid(clp, deleg_slab));
- 	if (dp == NULL)
- 		return dp;
--	dp->dl_stid.sc_type = NFS4_DELEG_STID;
- 	/*
- 	 * delegation seqid's are never incremented.  The 4.1 special
- 	 * meaning of seqid 0 isn't meaningful, really, but let's avoid
-@@ -3079,6 +3078,7 @@ static int nfs4_set_delegation(struct nfs4_delegation *dp, struct nfs4_file *fp)
- 	atomic_inc(&fp->fi_delegees);
- 	hash_delegation_locked(dp, fp);
- 	spin_unlock(&recall_lock);
-+	dp->dl_stid.sc_type = NFS4_DELEG_STID;
- 	return 0;
- out_free:
- 	put_nfs4_file(fp);
--- 
-1.8.3.1
+On Oct 21, 2013, at 5:04 AM, Tigran Mkrtchyan <tigran.mkrtchyan@desy.de> wrote:
+
+> $ mountstats
+>  File "/usr/sbin/mountstats", line 272
+>    (count, ((count * 100) / sends)), end=' ')
+>                                         ^
+> SyntaxError: invalid syntax
+> 
+> Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+> ---
+> tools/mountstats/mountstats.py | 1 +
+> 1 file changed, 1 insertion(+)
+> 
+> diff --git a/tools/mountstats/mountstats.py b/tools/mountstats/mountstats.py
+> index 3f5fea5..351145e 100644
+> --- a/tools/mountstats/mountstats.py
+> +++ b/tools/mountstats/mountstats.py
+> @@ -1,5 +1,6 @@
+> #!/usr/bin/env python
+> # -*- python-mode -*-
+> +from __future__ import print_function
+> """Parse /proc/self/mountstats and display it in human readable form
+> """
+> 
+> -- 
+> 1.8.3.1
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
