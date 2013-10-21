@@ -1,60 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:21371 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1762372Ab3JQVHb convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Oct 2013 17:07:31 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Helge Deller <deller@gmx.de>
-CC: Linux Kernel Development <linux-kernel@vger.kernel.org>,
-        NFS list <linux-nfs@vger.kernel.org>,
-        list parisc-linux <parisc-linux@lists.parisc-linux.org>
-Subject: Re: 3.12-rcX - NFS regression - kswapd0 / kswapd1 stays using 100%
- CPU?
-Date: Thu, 17 Oct 2013 21:07:30 +0000
-Message-ID: <1382044045.3216.44.camel@leira.trondhjem.org>
-References: <52604BA9.20104@gmx.de>
-In-Reply-To: <52604BA9.20104@gmx.de>
-Content-Type: text/plain; charset="utf-7"
+Received: from szxga03-in.huawei.com ([119.145.14.66]:59365 "EHLO
+	szxga03-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753541Ab3JUJuC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Oct 2013 05:50:02 -0400
+From: Wangminlan <wangminlan@huawei.com>
+To: NeilBrown <neilb@suse.de>
+CC: Chuck Lever <chuck.lever@oracle.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: RE: Different sequence of "exportfs" produce different effects on
+ nfs client mounts
+Date: Mon, 21 Oct 2013 09:47:18 +0000
+Message-ID: <3962238FD7EA0F41B1810E7ABEAFBC314CEFA7FB@szxema505-mbs.china.huawei.com>
+References: <3962238FD7EA0F41B1810E7ABEAFBC314CEF9ACF@szxema505-mbs.china.huawei.com>
+	<20131014174540.GA27747@fieldses.org>
+	<3962238FD7EA0F41B1810E7ABEAFBC314CEF9E97@szxema505-mbs.china.huawei.com>
+	<20131015154918.GA6117@fieldses.org>
+	<3962238FD7EA0F41B1810E7ABEAFBC314CEF9FD9@szxema505-mbs.china.huawei.com>
+	<3962238FD7EA0F41B1810E7ABEAFBC314CEFA2F5@szxema505-mbs.china.huawei.com>
+	<CB4DB7B1-5EEA-47D0-9CAD-CC69AF868182@oracle.com>
+	<20131018083253.40e8881e@notabene.brown>
+ <20131021094902.616f2100@notabene.brown>
+In-Reply-To: <20131021094902.616f2100@notabene.brown>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2013-10-17 at 22:42 +-0200, Helge Deller wrote:
-+AD4- I'm seeing a regression with current kernel git head when using NFS-mounts.
-+AD4- Architecture in my case is parisc, although I don't think that this is relevant.
-+AD4- At least kernel 3.10 (and I think 3.11) didn't showed that problem.
-+AD4- 
-+AD4- The symtom is, that +ACI-top+ACI- shows high usage of either kswapd0 or kswapd1.
-+AD4- Here is an output with kswapd1:
-+AD4-   PID USER      PR  NI  VIRT  RES  SHR S  +ACU-CPU +ACU-MEM     TIME+- COMMAND
-+AD4-    37 root      20   0     0    0    0 R  91.8  0.0  63:00.40 kswapd1
-+AD4- 28448 root      20   0  3252 1428 1060 R  15.3  0.0   0:00.09 top
-+AD4-     1 root      20   0  2784  988  852 S   0.0  0.0   0:09.95 init
-+AD4- 
-+AD4- This is what ps shows:
-+AD4- lsXXXX:+AH4AIw- ps -ef +AHw-  grep mount
-+AD4- root      1181     1  0 14:51 ?        00:00:18 /usr/sbin/automount --pid-file /var/run/autofs.pid
-+AD4- root     25331  1181  0 21:25 ?        00:00:00 /bin/mount -n -t nfs -s -o nolock,rw,hard,intr homes:/unixhome1 /net/home1
-+AD4- root     25332 25331  0 21:25 ?        00:00:00 /sbin/mount.nfs homes:/unixhome1 /net/home1 -s -n -o rw,nolock,hard,intr
-+AD4- 
-+AD4- And using sysrq to show the blocked tasks I get in syslog:
-+AD4- SysRq : Show Blocked State
-+AD4- mount.nfs       D 00000000401040c0     0 25332  25331 0x00000010
-+AD4- Backtrace:
-+AD4- +AFsAPA-0000000040113a68+AD4AXQ- +AF8AXw-schedule+-0x500/0x810
-+AD4- 
-+AD4- I know it's not a problem of the NFS server, since the same mount is still ok on other machines.
-+AD4- The NFS directory was already mounted and in use when this mount happened again (called by cron-job). 
-+AD4-  
-+AD4- Any ideas?
-
-If the NFS directory is already mounted, then why is the automounter
-trying to mount it a second time?
-
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust+AEA-netapp.com
-www.netapp.com
+SSBhcHBsaWVkIHRoaXMgcGF0Y2ggdG8gbmZzLXV0aWxzLTEuMi42LCBpdCBmaXhlZCB0aGUgY3Vy
+cmVudCBpc3N1ZS4NCg0KTXkgL2V0Yy9leHBvcnRzIGxvb2tzIGxpa2UgdGhpczoNCi9tZWRpYS9m
+czEvICAgICAxMC4xNTguMC4wLzE2KHJ3LHJvb3Rfc3F1YXNoLG5vX3N1YnRyZWVfY2hlY2spDQov
+bWVkaWEvZnMxLyAgICAgMTAuMTU4LjE5Mi43MShydyxub19yb290X3NxdWFzaCxub19zdWJ0cmVl
+X2NoZWNrKQ0KL21lZGlhL2ZzMS8gICAgIDEwLjE1OC4xOTIuNzIocncsbm9fcm9vdF9zcXVhc2gs
+bm9fc3VidHJlZV9jaGVjaykNCi9tZWRpYS9mczEvICAgICAxMC4xNTguMTkyLjczKHJ3LG5vX3Jv
+b3Rfc3F1YXNoLG5vX3N1YnRyZWVfY2hlY2spDQovbWVkaWEvZnMxLyAgICAgMTAuMTU4LjE5Mi43
+NChydyxub19yb290X3NxdWFzaCxub19zdWJ0cmVlX2NoZWNrKQ0KDQpBbmQgSSBhbHNvIGNhcHR1
+cmVkIGRucyBsb29rdXAgdHJhZmZpYyBieSBjb21tYW5kICJ0Y3BkdW1wIC1pIGV0aDAgLXZ2diBo
+b3N0IGRuc19zZXJ2ZXIiIGR1cmluZyB0aGUgZm9sbG93aW5nIHByb2NlZHVyZToNCiNleHBvcnRm
+cyAtdWENCiNleHBvcnRmcyAtYQ0Kb24gdGhlIHNlcnZlciwgYW5kIHRoZSBuZnMgbW91bnQgcHJv
+Y2VkdXJlIG9uIHRoZSBjbGllbnQuDQpUaGVyZSdzIG5vbmUgZG5zIGxvb2t1cCByZWxhdGVkIHRy
+YWZmaWMsIG5laXRoZXIgYmVmb3JlIHRoZSBwYXRjaCwgbm9yIGFmdGVyIGl0Lg0KDQpUaGFua3Mg
+dG8gYWxsIG9mIHlvdSwgZm9yIGhlbHBpbmcgbWUgZml4IHRoaXMgaXNzdWUsIGFuZCB0aGUgdGlt
+ZSB5b3Ugc3BlbnQgb24gcmV2aWV3aW5nIHRoZSBjb2RlLg0KDQpCLlIuDQpNaW5sYW4gV2FuZw0K
+DQo+IC0tLS0tT3JpZ2luYWwgTWVzc2FnZS0tLS0tDQo+IEZyb206IE5laWxCcm93biBbbWFpbHRv
+Om5laWxiQHN1c2UuZGVdDQo+IFNlbnQ6IE1vbmRheSwgT2N0b2JlciAyMSwgMjAxMyA2OjQ5IEFN
+DQo+IFRvOiBOZWlsQnJvd24NCj4gQ2M6IENodWNrIExldmVyOyBXYW5nbWlubGFuOyBKLiBCcnVj
+ZSBGaWVsZHM7IGxpbnV4LW5mc0B2Z2VyLmtlcm5lbC5vcmcNCj4gU3ViamVjdDogUmU6IERpZmZl
+cmVudCBzZXF1ZW5jZSBvZiAiZXhwb3J0ZnMiIHByb2R1Y2UgZGlmZmVyZW50IGVmZmVjdHMgb24g
+bmZzDQo+IGNsaWVudCBtb3VudHMNCj4gDQo+IA0KPiBVbmZvcnR1bmF0ZWx5IEkgY2Fubm90IHNl
+ZSBob3cgdGhhdCBjaGFuZ2UgZXZlciBtYWRlIGFueSBpbXBvcnRhbnQNCj4gZGlmZmVyZW5jZSwg
+YW5kIHRoZSBlbWFpbCBleGNoYW5nZXMgZW5kcyB3aXRob3V0IHJlc29sdmluZyBhbnl0aGluZy4N
+Cj4gDQo+IEl0IGNvdWxkIG9ubHkgbWFrZSBhIGRpZmZlcmVuY2UgdG8gdGhlIG51bWJlciBvZiBE
+TlMgbG9va3VwcyBpZiB0aGVyZSB3YXMNCj4gc29tZXdoZXJlIGEgdGVzdCBmb3Igd2hldGhlciBj
+bGllbnRsaXN0W01DTF9GUUROXSB3YXMgTlVMTCwgYnV0IHRoZXJlIGlzbid0DQo+IGFuZCBuZXZl
+ciB3YXMuDQo+IA0KPiBTbyBpdCBzZWVtcyB2ZXJ5IGxpa2VseSB0aGF0Og0KPiANCj4gZGlmZiAt
+LWdpdCBhL3N1cHBvcnQvZXhwb3J0L2NsaWVudC5jIGIvc3VwcG9ydC9leHBvcnQvY2xpZW50LmMg
+aW5kZXgNCj4gYmEyZGI4Zi4uYWRiZWVkOCAxMDA2NDQNCj4gLS0tIGEvc3VwcG9ydC9leHBvcnQv
+Y2xpZW50LmMNCj4gKysrIGIvc3VwcG9ydC9leHBvcnQvY2xpZW50LmMNCj4gQEAgLTc2NywxNSAr
+NzY3LDUgQEAgY2xpZW50X2dldHR5cGUoY2hhciAqaWRlbnQpDQo+ICAJCQlzcCsrOw0KPiAgCX0N
+Cj4gDQo+IC0JLyoNCj4gLQkgKiBUcmVhdCB1bmFkb3JuZWQgSVAgYWRkcmVzc2VzIGFzIE1DTF9T
+VUJORVRXT1JLLg0KPiAtCSAqIEV2ZXJ5dGhpbmcgZWxzZSBpcyBNQ0xfRlFETi4NCj4gLQkgKi8N
+Cj4gLQlhaSA9IGhvc3RfcHRvbihpZGVudCk7DQo+IC0JaWYgKGFpICE9IE5VTEwpIHsNCj4gLQkJ
+ZnJlZWFkZHJpbmZvKGFpKTsNCj4gLQkJcmV0dXJuIE1DTF9TVUJORVRXT1JLOw0KPiAtCX0NCj4g
+LQ0KPiAgCXJldHVybiBNQ0xfRlFETjsNCj4gIH0NCj4gDQo+IGlzIGFwcHJvcHJpYXRlIGFuZCBt
+YXkgd2VsbCBmaXggdGhlIGN1cnJlbnQgaXNzdWUuDQo+IA0KPiBJdCB3b3VsZCBiZSBnb29kIHRv
+IHRlc3QgaG93IG1hbnkgRE5TIGxvb2tzIChob3BlZnVsbHkgbm9uZSkgYXJlIHBlcmZvcm1lZA0K
+PiB3aGVuIHVzaW5nIGEgZXhwb3J0cyBmaWxlIHRoYXQgY29udGFpbnMgb25seSBJUCBhZGRyZXNz
+ZXMsIGJvdGggYmVmb3JlIGFuZCBhZnRlcg0KPiB0aGUgcGF0Y2guDQo+IA0KPiBOZWlsQnJvd24N
+Cg==
