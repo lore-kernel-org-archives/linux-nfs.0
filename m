@@ -1,175 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:54321 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751852Ab3JVI3a (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 Oct 2013 04:29:30 -0400
-Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r9M8TTpg030676
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Tue, 22 Oct 2013 04:29:30 -0400
-Message-ID: <52663791.6020605@RedHat.com>
-Date: Tue, 22 Oct 2013 04:30:09 -0400
-From: Steve Dickson <SteveD@redhat.com>
+Received: from mail.candelatech.com ([208.74.158.172]:44332 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751844Ab3JUXy4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Oct 2013 19:54:56 -0400
+Message-ID: <5265BECD.1060601@candelatech.com>
+Date: Mon, 21 Oct 2013 16:54:53 -0700
+From: Ben Greear <greearb@candelatech.com>
 MIME-Version: 1.0
-To: Tony Asleson <tasleson@redhat.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] exportfs: Return non-zero exit value on error
-References: <1380756584-13335-1-git-send-email-tasleson@redhat.com>
-In-Reply-To: <1380756584-13335-1-git-send-email-tasleson@redhat.com>
+To: Weston Andros Adamson <dros@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Getting 'not supported' when trying to mount IPv6 NFS v3 server.
+References: <52659D69.1020609@candelatech.com> <4682F017-7329-4690-B336-233DB50537F0@netapp.com>
+In-Reply-To: <4682F017-7329-4690-B336-233DB50537F0@netapp.com>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On 10/21/2013 04:44 PM, Weston Andros Adamson wrote:
+> 
+> On Oct 21, 2013, at 5:32 PM, Ben Greear <greearb@candelatech.com> wrote:
+> 
+>> So, the problem I reported earlier with failing to unmount was fixed
+>> by the back-ported patch.
+>>
+>> Now, another problem is reported by my user.  In this case, they are
+>> trying to mount an IPv6 NFS server using NFSv3.  Kernel is 3.9.11+,
+>> with patches to support binding mount points to local IP (v4/v6) addresses.
+>>
+>> Some NFS over IPv6 mounts work fine, but some do not.  A reboot of the
+>> NFS client machine did not fix the problem.
+>>
+>> I have tried to reproduce the problem locally, but so far everything works fine
+>> for us.
+>>
+>> From my own app's logs:
+>>
+>> # mount -t nfs [4001:1::1:1]:/vol/vol1 /mnt/lf/RDnfse11c0 -o srcaddr=4001:1::1:201,vers=3
+>> # requested NFS version or transport protocol is not supported
+>>
+>> When this problem happens, I do not see any network traffic when trying to mount.
+> 
+> Did you look for the mount protocol when getting a network trace (filter "rpc" in wireshark).
+
+I saw zero NFS related packets on the wire when hitting this problem.
+But, there could have been packets earlier that put it into a funky
+state, or a bit less likely, they could have been going out some of the
+other virtual interfaces on the system.
+
+> Could you:
+> 
+>   1) run "rpcdebug -m nfs -s mount" before mounting, post output of dmesg after mount fails.
+> 
+>   2) add -v to the mount command and post the output
+
+I can try this.
+
+>   3) maybe get rid of srcaddr= option / post info about the ip configuration
+
+I can't easily do this, as the user's setup requires the srcaddr to route properly
+to the filer.
+
+I am also going to run a kernel with printks added around all the EOPNOTSUPP
+returns that I can find to try to track down what part of the kernel is
+complaining.
+
+Thanks,
+Ben
 
 
-On 02/10/13 19:29, Tony Asleson wrote:
-> To improve error handling when scripting exportfs it's useful
-> to have non-zero exit codes when the requested operation did not
-> succeed.
-> 
-> This patch also returns a non-zero exit code if you request to
-> unexport a non-existant share.
-> 
-> Signed-off-by: Tony Asleson <tasleson@redhat.com>
-Committed! 
+-- 
+Ben Greear <greearb@candelatech.com>
+Candela Technologies Inc  http://www.candelatech.com
 
-steved.
-
-> ---
->  support/export/hostname.c |  2 ++
->  utils/exportfs/exportfs.c | 37 +++++++++++++++++++++++++++----------
->  2 files changed, 29 insertions(+), 10 deletions(-)
-> 
-> diff --git a/support/export/hostname.c b/support/export/hostname.c
-> index 3e949a1..e53d692 100644
-> --- a/support/export/hostname.c
-> +++ b/support/export/hostname.c
-> @@ -175,10 +175,12 @@ host_addrinfo(const char *hostname)
->  	case 0:
->  		return ai;
->  	case EAI_SYSTEM:
-> +		export_errno = errno;
->  		xlog(D_GENERAL, "%s: failed to resolve %s: (%d) %m",
->  				__func__, hostname, errno);
->  		break;
->  	default:
-> +		export_errno = EINVAL;
->  		xlog(D_GENERAL, "%s: failed to resolve %s: %s",
->  				__func__, hostname, gai_strerror(error));
->  		break;
-> diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
-> index 52fc03d..318deb3 100644
-> --- a/utils/exportfs/exportfs.c
-> +++ b/utils/exportfs/exportfs.c
-> @@ -35,8 +35,8 @@
->  #include "xlog.h"
->  
->  static void	export_all(int verbose);
-> -static void	exportfs(char *arg, char *options, int verbose);
-> -static void	unexportfs(char *arg, int verbose);
-> +static int	exportfs(char *arg, char *options, int verbose);
-> +static int	unexportfs(char *arg, int verbose);
->  static void	exports_update(int verbose);
->  static void	dump(int verbose, int export_format);
->  static void	error(nfs_export *exp, int err);
-> @@ -187,8 +187,12 @@ main(int argc, char **argv)
->  		if (f_all)
->  			export_all(f_verbose);
->  		else
-> -			for (i = optind; i < argc ; i++)
-> -				exportfs(argv[i], options, f_verbose);
-> +			for (i = optind; i < argc ; i++) {
-> +				if(!exportfs(argv[i], options, f_verbose)) {
-> +					/* Only flag a generic EINVAL if no errno is set */
-> +					export_errno = (export_errno) ? export_errno : EINVAL;
-> +				}
-> +			}
->  	}
->  	/* If we are unexporting everything, then
->  	 * don't care about what should be exported, as that
-> @@ -201,8 +205,12 @@ main(int argc, char **argv)
->  		if (!f_reexport)
->  			xtab_export_read();
->  		if (!f_export)
-> -			for (i = optind ; i < argc ; i++)
-> -				unexportfs(argv[i], f_verbose);
-> +			for (i = optind ; i < argc ; i++) {
-> +				if (!unexportfs(argv[i], f_verbose)) {
-> +					/* Only flag a generic EINVAL if no errno is set */
-> +					export_errno = (export_errno) ? export_errno : EINVAL;
-> +				}
-> +			}
->  		if (!new_cache)
->  			rmtab_read();
->  	}
-> @@ -296,9 +304,10 @@ export_all(int verbose)
->  }
->  
->  
-> -static void
-> +static int
->  exportfs(char *arg, char *options, int verbose)
->  {
-> +	int rc = 0;
->  	struct exportent *eep;
->  	nfs_export	*exp = NULL;
->  	struct addrinfo	*ai = NULL;
-> @@ -311,7 +320,8 @@ exportfs(char *arg, char *options, int verbose)
->  
->  	if (!path || *path != '/') {
->  		xlog(L_ERROR, "Invalid exporting option: %s", arg);
-> -		return;
-> +		export_errno = EINVAL;
-> +		return rc;
->  	}
->  
->  	if ((htype = client_gettype(hname)) == MCL_FQDN) {
-> @@ -339,13 +349,16 @@ exportfs(char *arg, char *options, int verbose)
->  	exp->m_warned = 0;
->  	validate_export(exp);
->  
-> +	rc = 1;
->  out:
->  	freeaddrinfo(ai);
-> +	return rc;
->  }
->  
-> -static void
-> +static int
->  unexportfs(char *arg, int verbose)
->  {
-> +	int rc = 0;
->  	nfs_export	*exp;
->  	struct addrinfo *ai = NULL;
->  	char		*path;
-> @@ -357,7 +370,8 @@ unexportfs(char *arg, int verbose)
->  
->  	if (!path || *path != '/') {
->  		xlog(L_ERROR, "Invalid unexporting option: %s", arg);
-> -		return;
-> +		export_errno = EINVAL;
-> +		return rc;
->  	}
->  
->  	if ((htype = client_gettype(hname)) == MCL_FQDN) {
-> @@ -397,9 +411,11 @@ unexportfs(char *arg, int verbose)
->  #endif
->  		exp->m_xtabent = 0;
->  		exp->m_mayexport = 0;
-> +		rc = 1;
->  	}
->  
->  	freeaddrinfo(ai);
-> +	return rc;
->  }
->  
->  static int can_test(void)
-> @@ -728,6 +744,7 @@ error(nfs_export *exp, int err)
->  {
->  	xlog(L_ERROR, "%s:%s: %s", exp->m_client->m_hostname,
->  		exp->m_export.e_path, strerror(err));
-> +	export_errno = (export_errno) ? export_errno : err;
->  }
->  
->  static void
-> 
