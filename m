@@ -1,67 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:41563 "EHLO fieldses.org"
+Received: from mx12.netapp.com ([216.240.18.77]:14854 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752977Ab3J2QCL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 29 Oct 2013 12:02:11 -0400
-Date: Tue, 29 Oct 2013 12:02:10 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Benny Halevy <bhalevy@primarydata.com>
-Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/7] nfsd4: need to destroy revoked delegations in
- destroy_client
-Message-ID: <20131029160210.GW31322@fieldses.org>
-References: <526F81DE.6060704@primarydata.com>
- <1383039552-27209-1-git-send-email-bhalevy@primarydata.com>
- <20131029150414.GS31322@fieldses.org>
+	id S1751802Ab3JUUID convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Oct 2013 16:08:03 -0400
+From: Weston Andros Adamson <dros@netapp.com>
+To: linux-nfs list <linux-nfs@vger.kernel.org>
+Subject: Strange cred expiry behavior
+Date: Mon, 21 Oct 2013 20:07:44 +0000
+Message-ID: <85F2BCBA-9565-497F-BFF4-FEB29301D655@netapp.com>
+Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20131029150414.GS31322@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Oct 29, 2013 at 11:04:14AM -0400, bfields wrote:
-> Whoops, yes, looks like a good fix.
-> 
-> I'm not convinced of the need for the recall_lock here for reasons given
-> before.  Could you just drop the recall_lock here and resend?
+I saw this issue when revived my branch for using SP4_MACH_CRED only in the error (EKEYEXPIRED) path, and was able to reproduce it on Trond's testing branch, so this behavior is definitely new.  The client is running F19 updated pretty recently (nfs-utils 1.2.8-4.0.fc19).
 
-Actually never mind I've done that on my local tree.  I'll wait to push
-it out till you've had a chance to object.
+The issue:
 
---b.
+  - mount a kerberos export
 
-> 
-> --b.
-> 
-> On Tue, Oct 29, 2013 at 11:39:12AM +0200, Benny Halevy wrote:
-> > [use list_splice_init]
-> > Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
-> > ---
-> >  fs/nfsd/nfs4state.c | 7 +++++++
-> >  1 file changed, 7 insertions(+)
-> > 
-> > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> > index a403502..a66b0ad 100644
-> > --- a/fs/nfsd/nfs4state.c
-> > +++ b/fs/nfsd/nfs4state.c
-> > @@ -1129,6 +1129,13 @@ static struct nfs4_client *alloc_client(struct xdr_netobj name)
-> >  		dp = list_entry(reaplist.next, struct nfs4_delegation, dl_recall_lru);
-> >  		destroy_delegation(dp);
-> >  	}
-> > +	spin_lock(&recall_lock);
-> > +	list_splice_init(&clp->cl_revoked, &reaplist);
-> > +	spin_unlock(&recall_lock);
-> > +	while (!list_empty(&reaplist)) {
-> > +		dp = list_entry(reaplist.next, struct nfs4_delegation, dl_recall_lru);
-> > +		destroy_revoked_delegation(dp);
-> > +	}
-> >  	while (!list_empty(&clp->cl_openowners)) {
-> >  		oo = list_entry(clp->cl_openowners.next, struct nfs4_openowner, oo_perclient);
-> >  		release_openowner(oo);
-> > -- 
-> > 1.8.3.1
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+  - kinit with a really short lifetime: "kinit -l 1m"
+
+  - run something (like dd) that will hold a file open and write to it for more than the lifetime of the kinit
+
+! - after the credential expire, the number of keys listed in "klist" starts to grow. Notice how the "Valid starting" time is after the "Expires" time.  The list seems to grow forever - my test program writes 4k every second and the list seemed to grow by 1 line per second.  Example klist output:
+
+
+Ticket cache: DIR::/run/user/1749600001/krb5cc/tktYmpGlX
+Default principal: dros@APIKIA.FAKE
+
+Valid starting       Expires              Service principal
+10/21/2013 15:39:38  10/21/2013 15:40:35  krbtgt/APIKIA.FAKE@APIKIA.FAKE
+10/21/2013 15:39:40  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+10/21/2013 15:40:35  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+10/21/2013 15:40:36  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+10/21/2013 15:40:37  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+10/21/2013 15:40:37  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+10/21/2013 15:40:38  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+10/21/2013 15:40:38  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+10/21/2013 15:40:39  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+10/21/2013 15:40:39  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+10/21/2013 15:40:39  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+10/21/2013 15:40:39  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+10/21/2013 15:40:40  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+10/21/2013 15:40:40  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+10/21/2013 15:40:41  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+10/21/2013 15:40:41  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+10/21/2013 15:40:42  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+10/21/2013 15:40:42  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+10/21/2013 15:40:42  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+
+This seems like a gssd bug in handling cred refresh upcalls. I'll debug further and hopefully find a fix.
+
+Has anyone seen this issue before or have any thoughts on recent changes that could cause this? I definitely didn't see this a little more than a month ago when I started testing cred expiry...
+
+-dros
