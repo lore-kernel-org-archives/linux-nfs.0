@@ -1,57 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:30084 "EHLO mx11.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:33846 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754467Ab3JRTPf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 18 Oct 2013 15:15:35 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: <Trond.Myklebust@netapp.com>
-CC: <linux-nfs@vger.kernel.org>, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH 0/5] NFS: Add support for multiple sec= mount options
-Date: Fri, 18 Oct 2013 15:15:14 -0400
-Message-ID: <1382123719-25194-1-git-send-email-dros@netapp.com>
+	id S1753341Ab3JUOEJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 21 Oct 2013 10:04:09 -0400
+Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r9LE4979032642
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Mon, 21 Oct 2013 10:04:09 -0400
+Message-ID: <52653482.1030800@RedHat.com>
+Date: Mon, 21 Oct 2013 10:04:50 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain
+To: Steve Dickson <steved@redhat.com>
+CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 2/2] nfsmount.conf: remove duplicate 'timeo' from the
+ parsing string
+References: <1381267825-27457-1-git-send-email-steved@redhat.com> <1381267825-27457-2-git-send-email-steved@redhat.com>
+In-Reply-To: <1381267825-27457-2-git-send-email-steved@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I split up this patchset into multiple patches as Trond requested.
 
-This also has a few changes:
- - stop using NFS_MOUNT_SECFLAVOUR server flag
-     - This flag was now redundant (auth_info stored on nfs_server).
 
- - more consistent use of selected_flavor
-     - It didn't need to be set in nfs_parse_security_flavors
-     - NFSv4 wasn't setting is as it just picked the first flavor in
-       nfs4_init_server then depends on SECINFO.  nfs4_init_server
-       now sets it for consistency. The reason we need selected_flavor
-       is for the mount client to be able to save it's selection
-       (for nfs < 4.0).
+On 08/10/13 17:30, Steve Dickson wrote:
+> When the 'timeo' option is specified in multiple sections of
+> the nfsmount.conf file, each instance is added to the parsing
+> string. This patch make the first instance override any others.
+> 
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+Committed... 
 
-Again, I created a script to test mount options which has been posted to the
-list as a patch to nfs-ordeal.
-
- -dros
-
-Weston Andros Adamson (5):
-  NFSv4: make nfs_find_best_sec static
-  NFS: separate passed security flavs from selected
-  NFS: cache parsed auth_info in nfs_server
-  NFS: stop using NFS_MOUNT_SECFLAVOUR server flag
-  NFS: add support for multiple sec= mount options
-
- fs/nfs/client.c                |   5 +-
- fs/nfs/internal.h              |   5 +-
- fs/nfs/nfs4_fs.h               |   1 -
- fs/nfs/nfs4client.c            |  26 ++++--
- fs/nfs/nfs4namespace.c         |  17 +++-
- fs/nfs/nfs4proc.c              |  32 ++++---
- fs/nfs/super.c                 | 189 +++++++++++++++++++++++++----------------
- include/linux/nfs_fs_sb.h      |   1 +
- include/linux/nfs_xdr.h        |   7 ++
- include/uapi/linux/nfs_mount.h |   2 +-
- 10 files changed, 184 insertions(+), 101 deletions(-)
-
--- 
-1.7.12.4 (Apple Git-37)
-
+steved.
+> ---
+>  utils/mount/configfile.c | 10 ++++++++++
+>  1 file changed, 10 insertions(+)
+> 
+> diff --git a/utils/mount/configfile.c b/utils/mount/configfile.c
+> index 6985ed9..39d3741 100644
+> --- a/utils/mount/configfile.c
+> +++ b/utils/mount/configfile.c
+> @@ -186,8 +186,18 @@ char *lookup_entry(char *opt)
+>  {
+>  	struct entry *entry;
+>  	char *alias = is_alias(opt);
+> +	char *ptr;
+>  
+>  	SLIST_FOREACH(entry, &head, entries) {
+> +		/*
+> +		 * Only check the left side or options that use '='
+> +		 */
+> +		if ((ptr = strchr(entry->opt, '=')) != 0) {
+> +			int len = (int) (ptr - entry->opt);
+> +
+> +			if (strncasecmp(entry->opt, opt, len) == 0)
+> +				return opt;
+> +		}
+>  		if (strcasecmp(entry->opt, opt) == 0)
+>  			return opt;
+>  		if (alias && strcasecmp(entry->opt, alias) == 0)
+> 
