@@ -1,49 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:43285 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:49759 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1760721Ab3JPQlA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Oct 2013 12:41:00 -0400
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r9GGexxL028856
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Wed, 16 Oct 2013 12:40:59 -0400
-Received: from smallhat.boston.devel.redhat.com (vpn-60-93.rdu2.redhat.com [10.10.60.93])
-	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id r9GGew0A017314
-	for <linux-nfs@vger.kernel.org>; Wed, 16 Oct 2013 12:40:59 -0400
-Message-ID: <525EC1C5.80507@RedHat.com>
-Date: Wed, 16 Oct 2013 12:41:41 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Linux NFS Town Hall  meeting: Thur 10/17/13
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1751559Ab3JUXSI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 21 Oct 2013 19:18:08 -0400
+Date: Tue, 22 Oct 2013 10:17:54 +1100
+From: NeilBrown <neilb@suse.de>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: Wangminlan <wangminlan@huawei.com>, NFS <linux-nfs@vger.kernel.org>
+Subject: [PATCH - nfs-utils] Stop Treat IP addresses a FQDN rather than
+ SUBNETs.
+Message-ID: <20131022101754.462d3f8b@notabene.brown>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/tdYP2xc1BAMjlD3o36W+jf3"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+--Sig_/tdYP2xc1BAMjlD3o36W+jf3
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-We have not had ones of these in a while so lets a 
-A Linux NFS town hall for tomorrow (Thur Oct 17)
 
-The usual agenda is for the maintainers to give a quick 
-status of what's happening in area's they maintain. Next, 
-Chuck updates us on what's happen in the FedFS world. Next,
-we open up the floor to other other contributors,like Andy, 
-who likes talks about security "stuff" ;-) Finally, we open the 
-floor to questions, comments, concerns from the community.  
 
-Generally the meeting last between 30 to 45 mins, with 
-a very hard stop at 60mins. 
+I think there was a reason for this many years ago,
+but I can not find any evidence that it ever really did
+anything useful and it certainly doesn't seem to now.
 
-It is open to the entire community, so feel free to attend!
+And the documentation suggests that IP address take precedence over
+SUBNETs, and that can only happen if they are treated as MCL_FQDN.
 
-Time: 9:30 AM PST (12:30 PM EST)
+So remove this apparently pointless code.
 
-The call in numbers are:
-U.S. and Canada: (800) 451-8679
-International dial-in number: (212) 729-5016
-Israel Toll-Free: 1-809-462-557
-Conference code: 564.272.1552
+Reported-and-tested-by: Wangminlan <wangminlan@huawei.com>
+Signed-off-by: NeilBrown <neilb@suse.de>
 
-steved.
+diff --git a/support/export/client.c b/support/export/client.c
+index ba2db8f..adbeed8 100644
+--- a/support/export/client.c
++++ b/support/export/client.c
+@@ -767,15 +767,5 @@ client_gettype(char *ident)
+ 			sp++;
+ 	}
+=20
+-	/*
+-	 * Treat unadorned IP addresses as MCL_SUBNETWORK.
+-	 * Everything else is MCL_FQDN.
+-	 */
+-	ai =3D host_pton(ident);
+-	if (ai !=3D NULL) {
+-		freeaddrinfo(ai);
+-		return MCL_SUBNETWORK;
+-	}
+-
+ 	return MCL_FQDN;
+ }
 
+--Sig_/tdYP2xc1BAMjlD3o36W+jf3
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.19 (GNU/Linux)
+
+iQIVAwUBUmW2Ijnsnt1WYoG5AQKNhg/+LYwW5K0b9hOpsdPSYnHzIjaGHQZCk1Z0
+TZEfWLgQgfQO1biy+xfRP54+1PjVt/4NOFqp+tuHNC/gFj+R6PZfwZfTYXypDnZ/
+wWp01d61UfSdnYwrZHL6SlFbenuatHbdxYaaxlIPwheAWyqXKaMxLKyej4RyWx88
+Jbhje2JBC8GdNhWkgIMYb6j2d89KNFuj0CRSM4wopYgNE6+G6I2bDqXqO8GVG5sz
+w/1V3lSYku8Xj4VebDO2+EQbMmvtTkPb7cLYfbmm82izqZCPyZtDb9ENibvHRvyg
+MI4VkYS34L6cOJV5FTkgNpL5MUDZa7ICsKp7q6ng/a3n6n0c+6+gGv6ZMa9AXL55
+XZkAdE3e6aCOHocE/8EuqWpijKziHGnYpqds4zuKj/LXOMJRI+6HucXDq82J/s4e
+fFfZ9mhUA97ewXqbHxx3sqJrjgU3//yYg8KYtK84UZI1kFJiTmXYtEYG/xE5Az7m
+wrpNVCxLExr5uO2klmUBV6FJVqF+JXD2NHwruXOyFPjgPC0D+cRPmZuP0/NvSZ91
+KGf+MRubDhb/bo8WrMKmkxdi5og1uZf7CxEk3hF06WqYZr+LuUhfSNK4LmHIskPb
+OMjT65BGyMRvtgBSDDUKoLcI6dX/a+BoiU76cJlYGHc2oEAzdunNUBKpPYe4a8HN
+iA7soAeklrU=
+=5iEE
+-----END PGP SIGNATURE-----
+
+--Sig_/tdYP2xc1BAMjlD3o36W+jf3--
