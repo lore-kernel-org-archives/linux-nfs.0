@@ -1,31 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:51279 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1761842Ab3JPSWl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Oct 2013 14:22:41 -0400
-Date: Wed, 16 Oct 2013 11:22:38 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Benny Halevy <bhalevy@primarydata.com>
-Cc: Christoph Hellwig <hch@infradead.org>, bfields@redhat.com,
-        NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: state lock elimination
-Message-ID: <20131016182238.GA2944@infradead.org>
-References: <20131015211445.GA23636@infradead.org>
- <525DB943.3010707@primarydata.com>
- <20131016064243.GA28758@infradead.org>
- <525E4C88.9050701@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:25704 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753095Ab3JUOH3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 21 Oct 2013 10:07:29 -0400
+Message-ID: <52653549.1040501@RedHat.com>
+Date: Mon, 21 Oct 2013 10:08:09 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <525E4C88.9050701@primarydata.com>
+To: Weston Andros Adamson <dros@netapp.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] mountstats: fix python2.x support
+References: <1382019434-12377-1-git-send-email-dros@netapp.com>
+In-Reply-To: <1382019434-12377-1-git-send-email-dros@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Oct 16, 2013 at 11:21:28AM +0300, Benny Halevy wrote:
-> I tried reducing the lock scope but the problem is that we hash state
-> on objects with different scopes of access, particularly net/client vs. file
-> and the hashing needs to be consistent and atomic.
 
-Lists, Hashes or similar lookup data structures are generally not the
-hard part, as it's enough to lock the data structure that the hash or
-list hangs off.  No need to involve looks in the structure pointed to.
 
+On 17/10/13 10:17, Weston Andros Adamson wrote:
+> Commit b703eabe4c4bc5c2d5fd9a07b6b995d67ea7e77a converted mountstats to using
+> python3's print() function, but this doesn't work in python2.x without
+> importing the print function from __future__.
+> 
+> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+Committed...
+
+steved.
+> ---
+>  tools/mountstats/mountstats.py | 2 ++
+>  1 file changed, 2 insertions(+)
+> 
+> diff --git a/tools/mountstats/mountstats.py b/tools/mountstats/mountstats.py
+> index 3f5fea5..e46105d 100644
+> --- a/tools/mountstats/mountstats.py
+> +++ b/tools/mountstats/mountstats.py
+> @@ -3,6 +3,8 @@
+>  """Parse /proc/self/mountstats and display it in human readable form
+>  """
+>  
+> +from __future__ import print_function
+> +
+>  __copyright__ = """
+>  Copyright (C) 2005, Chuck Lever <cel@netapp.com>
+>  
+> 
