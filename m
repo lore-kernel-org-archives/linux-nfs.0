@@ -1,62 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:22908 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758797Ab3JQSM5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Oct 2013 14:12:57 -0400
-Received: from ucsinet22.oracle.com (ucsinet22.oracle.com [156.151.31.94])
-	by userp1040.oracle.com (Sentrion-MTA-4.3.1/Sentrion-MTA-4.3.1) with ESMTP id r9HICuKx012962
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Thu, 17 Oct 2013 18:12:57 GMT
-Received: from nfsvm18.us.oracle.com (nfsvm18.us.oracle.com [10.135.198.118])
-	by ucsinet22.oracle.com (8.14.4+Sun/8.14.4) with ESMTP id r9HICup5026423
-	for <linux-nfs@vger.kernel.org>; Thu, 17 Oct 2013 18:12:56 GMT
-From: Chuck Lever <chuck.lever@oracle.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 08/21] NFS: Add a super_block backpointer to the nfs_server struct
-Date: Thu, 17 Oct 2013 14:12:56 -0400
-Message-Id: <20131017181256.1073.81562.stgit@nfsvm18.us.oracle.com>
-In-Reply-To: <20131017180630.1073.18400.stgit@nfsvm18.us.oracle.com>
-References: <20131017180630.1073.18400.stgit@nfsvm18.us.oracle.com>
+Received: from mx12.netapp.com ([216.240.18.77]:58418 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751501Ab3JURKW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 21 Oct 2013 13:10:22 -0400
+From: Weston Andros Adamson <dros@netapp.com>
+To: <Trond.Myklebust@netapp.com>
+CC: <linux-nfs@vger.kernel.org>, Weston Andros Adamson <dros@netapp.com>
+Subject: [PATCH 4/5] NFSv4: don't reprocess cached open CLAIM_PREVIOUS
+Date: Mon, 21 Oct 2013 13:10:13 -0400
+Message-ID: <1382375414-5854-5-git-send-email-dros@netapp.com>
+In-Reply-To: <1382375414-5854-1-git-send-email-dros@netapp.com>
+References: <1382375414-5854-1-git-send-email-dros@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-NFS_SB() returns the pointer to an nfs_server struct, given a
-pointer to a super_block.  But we have no way to go back the other
-way.
+Cached opens have already been handled by _nfs4_opendata_reclaim_to_nfs4_state
+and can safely skip being reprocessed, but must still call update_open_stateid
+to make sure that all active fmodes are recovered.
 
-Add a super_block backpointer field so that, given an nfs_server
-struct, it is easy to get to the filesystem's root dentry.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Weston Andros Adamson <dros@netapp.com>
 ---
- fs/nfs/super.c            |    1 +
- include/linux/nfs_fs_sb.h |    1 +
- 2 files changed, 2 insertions(+)
+ fs/nfs/nfs4proc.c | 17 +++++++++++++----
+ 1 file changed, 13 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index a03b9c6..5edc613 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -2530,6 +2530,7 @@ struct dentry *nfs_fs_mount_common(struct nfs_server *server,
- 			mntroot = ERR_PTR(error);
- 			goto error_splat_bdi;
- 		}
-+		server->super = s;
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 8ae1589..a3b78df 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1315,12 +1315,15 @@ _nfs4_opendata_reclaim_to_nfs4_state(struct nfs4_opendata *data)
+ {
+ 	struct inode *inode = data->state->inode;
+ 	struct nfs4_state *state = data->state;
++	bool cached_open = false;
+ 	int ret;
+ 
+-	/* allow cached opens (!rpc_done && !rpc_status) */
+-	if (!data->rpc_done && data->rpc_status) {
+-		ret = data->rpc_status;
+-		goto err;
++	if (!data->rpc_done) {
++		if (data->rpc_status) {
++			ret = data->rpc_status;
++			goto err;
++		} else
++			cached_open = true;
  	}
  
- 	if (!s->s_root) {
-diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-index b8cedce..a1c80a2 100644
---- a/include/linux/nfs_fs_sb.h
-+++ b/include/linux/nfs_fs_sb.h
-@@ -147,6 +147,7 @@ struct nfs_server {
- 	__u64			maxfilesize;	/* maximum file size */
- 	struct timespec		time_delta;	/* smallest time granularity */
- 	unsigned long		mount_time;	/* when this fs was mounted */
-+	struct super_block	*super;		/* VFS super block */
- 	dev_t			s_dev;		/* superblock dev numbers */
+ 	/* referenced the passed state */
+@@ -1328,6 +1331,10 @@ _nfs4_opendata_reclaim_to_nfs4_state(struct nfs4_opendata *data)
+ 	if (state == NULL || !atomic_inc_not_zero(&state->count))
+ 		goto err;
  
- #ifdef CONFIG_NFS_FSCACHE
++	/* cached opens have already been processed */
++	if (cached_open)
++		goto update;
++
+ 	ret = nfs_refresh_inode(inode, &data->f_attr);
+ 	if (ret)
+ 		goto err_put;
+@@ -1336,6 +1343,8 @@ _nfs4_opendata_reclaim_to_nfs4_state(struct nfs4_opendata *data)
+ 
+ 	if (data->o_res.delegation_type != 0)
+ 		nfs4_opendata_check_deleg(data, state);
++
++update:
+ 	update_open_stateid(state, &data->o_res.stateid, NULL,
+ 			    data->o_arg.fmode);
+ 
+-- 
+1.7.12.4 (Apple Git-37)
 
