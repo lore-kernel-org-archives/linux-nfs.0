@@ -1,45 +1,112 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wg0-f49.google.com ([74.125.82.49]:58628 "EHLO
-	mail-wg0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752257Ab3JCM3O (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Oct 2013 08:29:14 -0400
-Received: by mail-wg0-f49.google.com with SMTP id l18so2329689wgh.28
-        for <linux-nfs@vger.kernel.org>; Thu, 03 Oct 2013 05:29:12 -0700 (PDT)
-Message-ID: <524D6312.7020709@primarydata.com>
-Date: Thu, 03 Oct 2013 15:29:06 +0300
-From: Benny Halevy <bhalevy@primarydata.com>
+Received: from mx2.netapp.com ([216.240.18.37]:44741 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751078Ab3JURKV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 21 Oct 2013 13:10:21 -0400
+From: Weston Andros Adamson <dros@netapp.com>
+To: <Trond.Myklebust@netapp.com>
+CC: <linux-nfs@vger.kernel.org>, Weston Andros Adamson <dros@netapp.com>,
+        <stable@vger.kernel.org>
+Subject: [PATCH 1/5] NFSv4: fix NULL dereference in open recover
+Date: Mon, 21 Oct 2013 13:10:10 -0400
+Message-ID: <1382375414-5854-2-git-send-email-dros@netapp.com>
+In-Reply-To: <1382375414-5854-1-git-send-email-dros@netapp.com>
+References: <1382375414-5854-1-git-send-email-dros@netapp.com>
 MIME-Version: 1.0
-To: Christoph Hellwig <hch@infradead.org>
-CC: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH RFC v0 05/49] pnfsd: introduce pnfsd header files
-References: <20130929114327.GB25750@infradead.org> <52481939.7060405@primarydata.com> <20130929121345.GA21083@infradead.org> <52481B11.2080407@primarydata.com> <20130929122130.GI21083@infradead.org> <20130929123553.GA7510@infradead.org> <20131001203047.GH16245@pad.fieldses.org> <524C0556.9070705@primarydata.com> <20131002160759.GB27988@infradead.org> <524D0873.40602@primarydata.com> <20131003095511.GA30147@infradead.org>
-In-Reply-To: <20131003095511.GA30147@infradead.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2013-10-03 12:55, Christoph Hellwig wrote:
-> On Thu, Oct 03, 2013 at 09:02:27AM +0300, Benny Halevy wrote:
->> Just that this is dlm specific logic.
->> For example, using dlm_ino_hash() in nfsd4_pnfs_dlm_layoutget().
->> Or even knowing that
->> 	layout->lg_stripe_type = STRIPE_SPARSE;
->> assumes knowledge of the underlying cluster fs implementation.
-> 
-> Which in-tree or soon in-tree filesystem do you care about?  And why
-> don't we see pnfs support for it submitted instead of the fairly useless
-> gfs2 support?
+_nfs4_opendata_reclaim_to_nfs4_state doesn't expect to see a cached
+open CLAIM_PREVIOUS, but this can happen. An example is when there are
+RDWR openers and RDONLY openers on a delegation stateid. The recovery
+path will first try an open CLAIM_PREVIOUS for the RDWR openers, this
+marks the delegation as not needing RECLAIM anymore, so the open
+CLAIM_PREVIOUS for the RDONLY openers will not actually send an rpc.
 
-I picked gfs2 as the initial use case for simplicity and ease of review.
-If there is a rough consensus that it's useless and not worthy of inclusion
-then the one we care about the most is exofs that has a more complete pnfs
-implementation.
+The NULL dereference is due to _nfs4_opendata_reclaim_to_nfs4_state
+returning PTR_ERR(rpc_status) when !rpc_done. When the open is
+cached, rpc_done == 0 and rpc_status == 0, thus
+_nfs4_opendata_reclaim_to_nfs4_state returns NULL - this is unexpected
+by callers of nfs4_opendata_to_nfs4_state().
 
-Benny
+This can be reproduced easily by opening the same file two times on an
+NFSv4.0 mount with delegations enabled, once as RDWR and once as RDONLY then
+sleeping for a long time.  While the files are held open, kick off state
+recovery and this NULL dereference will be hit every time.
 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+An example OOPS:
+
+[   65.003602] BUG: unable to handle kernel NULL pointer dereference at 00000000
+00000030
+[   65.005312] IP: [<ffffffffa037d6ee>] __nfs4_close+0x1e/0x160 [nfsv4]
+[   65.006820] PGD 7b0ea067 PUD 791ff067 PMD 0
+[   65.008075] Oops: 0000 [#1] SMP
+[   65.008802] Modules linked in: rpcsec_gss_krb5 nfsv4 dns_resolver nfs fscache
+snd_ens1371 gameport nfsd snd_rawmidi snd_ac97_codec ac97_bus btusb snd_seq snd
+_seq_device snd_pcm ppdev bluetooth auth_rpcgss coretemp snd_page_alloc crc32_pc
+lmul crc32c_intel ghash_clmulni_intel microcode rfkill nfs_acl vmw_balloon serio
+_raw snd_timer lockd parport_pc e1000 snd soundcore parport i2c_piix4 shpchp vmw
+_vmci sunrpc ata_generic mperf pata_acpi mptspi vmwgfx ttm scsi_transport_spi dr
+m mptscsih mptbase i2c_core
+[   65.018684] CPU: 0 PID: 473 Comm: 192.168.10.85-m Not tainted 3.11.2-201.fc19
+.x86_64 #1
+[   65.020113] Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop
+Reference Platform, BIOS 6.00 07/31/2013
+[   65.022012] task: ffff88003707e320 ti: ffff88007b906000 task.ti: ffff88007b906000
+[   65.023414] RIP: 0010:[<ffffffffa037d6ee>]  [<ffffffffa037d6ee>] __nfs4_close+0x1e/0x160 [nfsv4]
+[   65.025079] RSP: 0018:ffff88007b907d10  EFLAGS: 00010246
+[   65.026042] RAX: 0000000000000000 RBX: 0000000000000000 RCX: 0000000000000000
+[   65.027321] RDX: 0000000000000050 RSI: 0000000000000001 RDI: 0000000000000000
+[   65.028691] RBP: ffff88007b907d38 R08: 0000000000016f60 R09: 0000000000000000
+[   65.029990] R10: 0000000000000000 R11: 0000000000000000 R12: 0000000000000001
+[   65.031295] R13: 0000000000000050 R14: 0000000000000000 R15: 0000000000000001
+[   65.032527] FS:  0000000000000000(0000) GS:ffff88007f600000(0000) knlGS:0000000000000000
+[   65.033981] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+[   65.035177] CR2: 0000000000000030 CR3: 000000007b27f000 CR4: 00000000000407f0
+[   65.036568] Stack:
+[   65.037011]  0000000000000000 0000000000000001 ffff88007b907d90 ffff88007a880220
+[   65.038472]  ffff88007b768de8 ffff88007b907d48 ffffffffa037e4a5 ffff88007b907d80
+[   65.039935]  ffffffffa036a6c8 ffff880037020e40 ffff88007a880000 ffff880037020e40
+[   65.041468] Call Trace:
+[   65.042050]  [<ffffffffa037e4a5>] nfs4_close_state+0x15/0x20 [nfsv4]
+[   65.043209]  [<ffffffffa036a6c8>] nfs4_open_recover_helper+0x148/0x1f0 [nfsv4]
+[   65.044529]  [<ffffffffa036a886>] nfs4_open_recover+0x116/0x150 [nfsv4]
+[   65.045730]  [<ffffffffa036d98d>] nfs4_open_reclaim+0xad/0x150 [nfsv4]
+[   65.046905]  [<ffffffffa037d979>] nfs4_do_reclaim+0x149/0x5f0 [nfsv4]
+[   65.048071]  [<ffffffffa037e1dc>] nfs4_run_state_manager+0x3bc/0x670 [nfsv4]
+[   65.049436]  [<ffffffffa037de20>] ? nfs4_do_reclaim+0x5f0/0x5f0 [nfsv4]
+[   65.050686]  [<ffffffffa037de20>] ? nfs4_do_reclaim+0x5f0/0x5f0 [nfsv4]
+[   65.051943]  [<ffffffff81088640>] kthread+0xc0/0xd0
+[   65.052831]  [<ffffffff81088580>] ? insert_kthread_work+0x40/0x40
+[   65.054697]  [<ffffffff8165686c>] ret_from_fork+0x7c/0xb0
+[   65.056396]  [<ffffffff81088580>] ? insert_kthread_work+0x40/0x40
+[   65.058208] Code: 5c 41 5d 5d c3 0f 1f 84 00 00 00 00 00 66 66 66 66 90 55 48 89 e5 41 57 41 89 f7 41 56 41 89 ce 41 55 41 89 d5 41 54 53 48 89 fb <4c> 8b 67 30 f0 41 ff 44 24 44 49 8d 7c 24 40 e8 0e 0a 2d e1 44
+[   65.065225] RIP  [<ffffffffa037d6ee>] __nfs4_close+0x1e/0x160 [nfsv4]
+[   65.067175]  RSP <ffff88007b907d10>
+[   65.068570] CR2: 0000000000000030
+[   65.070098] ---[ end trace 0d1fe4f5c7dd6f8b ]---
+
+Cc: <stable@vger.kernel.org> #3.7+
+Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+---
+ fs/nfs/nfs4proc.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index d2b4845..000063e 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1317,7 +1317,8 @@ _nfs4_opendata_reclaim_to_nfs4_state(struct nfs4_opendata *data)
+ 	struct nfs4_state *state = data->state;
+ 	int ret;
+ 
+-	if (!data->rpc_done) {
++	/* allow cached opens (!rpc_done && !rpc_status) */
++	if (!data->rpc_done && data->rpc_status) {
+ 		ret = data->rpc_status;
+ 		goto err;
+ 	}
+-- 
+1.7.12.4 (Apple Git-37)
+
