@@ -1,59 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:22103 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753814Ab3JCQYN convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Oct 2013 12:24:13 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.6 \(1510\))
-Subject: fedfs-utils 0.9.3 packaged in EPEL for RHEL 6
-From: Chuck Lever <chuck.lever@oracle.com>
-Date: Thu, 3 Oct 2013 12:24:07 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        "autofs@vger.kernel.org" <autofs@vger.kernel.org>,
-        "samba-technical@lists.samba.org" <samba-technical@lists.samba.org>
-Message-Id: <48AA1466-A323-4A23-ACFB-66EB121BEFB8@oracle.com>
-To: "fedfs-utils;release announcements"
-	<fedfs-utils-announce@oss.oracle.com>
+Received: from mx1.redhat.com ([209.132.183.28]:20952 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751230Ab3JUQyd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 21 Oct 2013 12:54:33 -0400
+Message-ID: <52655C68.1000604@RedHat.com>
+Date: Mon, 21 Oct 2013 12:55:04 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Tony Asleson <tasleson@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] exportfs: Add -s option.
+References: <1380734389-8202-1-git-send-email-tasleson@redhat.com> <20131002214015.GA20902@fieldses.org> <5265315D.9030008@RedHat.com> <20131021140114.GE18657@fieldses.org>
+In-Reply-To: <20131021140114.GE18657@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We are very pleased to announce the first release of fedfs-utils for RHEL 6, available in the Extra Packages for Enterprise Linux (EPEL) repository.
-
-The fedfs-utils package contains an implementation of the Federated Filesystem (FedFS) Proposed Standard for Linux.  For an introduction to FedFS, see RFC 5716.
-
-This is an ALPHA quality release.  The code in this release is not guaranteed to work. Programming, administrative, and user interfaces may change significantly before the next release.  This release is for technology preview only.
 
 
-This first release is comprised only of the fedfs-utils-client and fedfs-utils-common packages.  The client-side fedfs-utils components can be used in any FedFS-standards compliant domain, including a domain created with the fedfs-utils server components currently packaged in Fedora 18 and later.
+On 21/10/13 10:01, J. Bruce Fields wrote:
+> On Mon, Oct 21, 2013 at 09:51:25AM -0400, Steve Dickson wrote:
+>> I guess we could change -v to used what the -s is proposing,
+>> but that could break someone's existing configuration...  
+> 
+> Also, looking at my home server....  It would be annoying to get:
+> 
+> 	/export *(rw,sync,wdelay,hide,nocrossmnt,insecure,no_root_squash,no_all_squash,no_subtree_check,secure_locks,acl,anonuid=65534,anongid=65534)
+> 
+> when all you need is:
+> 
+> 	/export <world>(rw,wdelay,insecure,no_root_squash,no_subtree_check)
+> 
+> (Actually I wonder why it's even showing wdelay and no_subtree_check
+> when those are both defaults?  But this is on F16, maybe it's different
+> now.  I should really update that machine.)
+No, the defaults have not changed for (quite) a while... 
+The defaults are: 
+    ro, root_squash, wdelay, no_subtree_check
 
-The fedfs-utils server and admin components may be released for RHEL 6/EPEL at a later date.  Watch this space.
+Now it turns out wdelay (aka NFSEXP_GATHERED_WRITES) is a v2 only thing... 
+So do we really need to have that on by default, now that we are 
+slowly moving away from v2 support?
 
-
-To install fedfs-utils on EL6 systems:
-
- 1. Enable the EPEL repo
-
- 2. "sudo yum install fedfs-utils-client"
-
- 3. Add the line "/nfs4	/usr/sbin/fedfs-map-nfs4" to /etc/auto.master
-
- 4. "sudo service autofs restart"
-
-FedFS relies on NFS referral support built into the Linux NFS client.  Be sure the kernel on your NFS clients is up to date.
-
-
-Project web site
-http://wiki.linux-nfs.org/wiki/index.php/FedFsUtilsProject
-
-Installation guide:
-http://wiki.linux-nfs.org/wiki/index.php/FedFsInstallationGuide0.9
-
-Tarball releases available at
-http://git.linux-nfs.org/?p=cel/fedfs-releases.git;a=summary
-
-Git repository available at
-http://git.linux-nfs.org/?p=cel/fedfs-utils.git;a=shortlog;h=refs/heads/0.9-stable
-
-Patchwork available at
-http://patchwork.ozlabs.org/project/fedfs-utils/list/
-
+steved.
