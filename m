@@ -1,45 +1,198 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:54708 "EHLO mx11.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:46735 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756896Ab3J2Bwr convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Oct 2013 21:52:47 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Anand Avati <aavati@redhat.com>
-CC: Wheeler Ric <rwheeler@redhat.com>,
-        Dr Fields James Bruce <bfields@redhat.com>,
-        Christoph Anton Mitterer <calestyo@scientia.net>,
-        Mailing List Linux NFS <linux-nfs@vger.kernel.org>,
-        Dickson Steve <steved@redhat.com>
-Subject: Re: XATTRs in NFS?
-Date: Tue, 29 Oct 2013 01:52:45 +0000
-Message-ID: <AF4F68CE-DF98-47E6-89CC-D052F79591B2@netapp.com>
-References: <20131028180838.GG31322@fieldses.org>
- <526EC3F7.3090601@gmail.com> <526EFFCC.2060506@redhat.com>
- <18F0636D-7CE0-42C1-9249-325DF69516D4@netapp.com>
- <526F0893.5030700@redhat.com>
- <A7C1B206-12CD-4958-9528-A8D9C9847011@netapp.com> <526F0E49.10801@redhat.com>
-In-Reply-To: <526F0E49.10801@redhat.com>
-Content-Type: text/plain; charset=US-ASCII
+	id S1752985Ab3JUOBO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 21 Oct 2013 10:01:14 -0400
+Date: Mon, 21 Oct 2013 10:01:14 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: Tony Asleson <tasleson@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] exportfs: Add -s option.
+Message-ID: <20131021140114.GE18657@fieldses.org>
+References: <1380734389-8202-1-git-send-email-tasleson@redhat.com>
+ <20131002214015.GA20902@fieldses.org>
+ <5265315D.9030008@RedHat.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <5265315D.9030008@RedHat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Oct 28, 2013, at 9:24 PM, Anand Avati <aavati@redhat.com> wrote:
-
-> On 10/28/2013 06:26 PM, Myklebust, Trond wrote:
+On Mon, Oct 21, 2013 at 09:51:25AM -0400, Steve Dickson wrote:
+> On 02/10/13 17:40, J. Bruce Fields wrote:
+> > On Wed, Oct 02, 2013 at 12:19:49PM -0500, Tony Asleson wrote:
+> >> Adds '-s' option which outputs the current exports in a format
+> >> suitable for /etc/exports.
+> > 
+> > Sounds like a good idea....
+> > 
+> > Is there any difference between this and what's written to
+> > /var/lib/nfs/etab?
+> Yes... The following options are in the etab but not in
+> the -s output... 
 > 
->> 
->> That battle may have been fought and won within the glusterfs community, but why should we wave the white flag without a discussion? I don't see how what he described above has anything to do with user defined attributes. He's describing how he wants to export quota information and xtime through a private xattr interface that is currently unique to glusterfs. How is that not a private syscall interface?
->> 
+> sync,hide,nocrossmnt,secure,no_all_squash,secure_locks,acl,anonuid=65534,anongid=65534
 > 
-> Exposing quota informtion is use "from the top". Note the other point I mention about using NFS volumes as "gluster bricks" where we store xattrs as dumb and persistent key/values associated with file/dir inodes (fresh/stale info for replication, hash ranges for dirs, quota acconting info per-dir, xtime per dir).
-
->> Which of the mainstream filesystems have their own private xattr namespaces like the above?
->> 
+> > 
+> > OK looks like the latter is more verbose--it doesn't skip default
+> > options.
+> The only real difference between -v and -s is -v uses the 
+> string "<world>" in for MCL_ANONYMOUS and -s uses "*" 
 > 
-> Why should NFS need to worry? As long as it acts like a pass-through (like every other call it supports).
+> I guess we could change -v to used what the -s is proposing,
+> but that could break someone's existing configuration...  
 
-We need to worry because we don't know what side-effects your private interface will have. How does it affect our caching model? How do we debug any problems that arise? Are there any security implications that we need to know about?
+Also, looking at my home server....  It would be annoying to get:
 
-Trond
+	/export *(rw,sync,wdelay,hide,nocrossmnt,insecure,no_root_squash,no_all_squash,no_subtree_check,secure_locks,acl,anonuid=65534,anongid=65534)
+
+when all you need is:
+
+	/export <world>(rw,wdelay,insecure,no_root_squash,no_subtree_check)
+
+(Actually I wonder why it's even showing wdelay and no_subtree_check
+when those are both defaults?  But this is on F16, maybe it's different
+now.  I should really update that machine.)
+
+> > Still can't help thinking there must be some needlessly duplicated code
+> > here.
+> There is... but I stilling adding the -s makes sense....
+
+Fine by me.
+
+--b.
+
+> 
+> steved.
+> 
+> > 
+> > --b.
+> > 
+> >>
+> >> Signed-off-by: Tony Asleson <tasleson@redhat.com>
+> >> ---
+> >>  utils/exportfs/exportfs.c   | 23 ++++++++++++++---------
+> >>  utils/exportfs/exportfs.man |  5 ++++-
+> >>  2 files changed, 18 insertions(+), 10 deletions(-)
+> >>
+> >> diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
+> >> index 4331697..52fc03d 100644
+> >> --- a/utils/exportfs/exportfs.c
+> >> +++ b/utils/exportfs/exportfs.c
+> >> @@ -38,7 +38,7 @@ static void	export_all(int verbose);
+> >>  static void	exportfs(char *arg, char *options, int verbose);
+> >>  static void	unexportfs(char *arg, int verbose);
+> >>  static void	exports_update(int verbose);
+> >> -static void	dump(int verbose);
+> >> +static void	dump(int verbose, int export_format);
+> >>  static void	error(nfs_export *exp, int err);
+> >>  static void	usage(const char *progname, int n);
+> >>  static void	validate_export(nfs_export *exp);
+> >> @@ -88,6 +88,7 @@ main(int argc, char **argv)
+> >>  	int	f_export = 1;
+> >>  	int	f_all = 0;
+> >>  	int	f_verbose = 0;
+> >> +	int	f_export_format = 0;
+> >>  	int	f_reexport = 0;
+> >>  	int	f_ignore = 0;
+> >>  	int	i, c;
+> >> @@ -105,7 +106,7 @@ main(int argc, char **argv)
+> >>  
+> >>  	export_errno = 0;
+> >>  
+> >> -	while ((c = getopt(argc, argv, "afhio:ruv")) != EOF) {
+> >> +	while ((c = getopt(argc, argv, "afhio:ruvs")) != EOF) {
+> >>  		switch(c) {
+> >>  		case 'a':
+> >>  			f_all = 1;
+> >> @@ -132,6 +133,9 @@ main(int argc, char **argv)
+> >>  		case 'v':
+> >>  			f_verbose = 1;
+> >>  			break;
+> >> +		case 's':
+> >> +			f_export_format = 1;
+> >> +			break;
+> >>  		default:
+> >>  			usage(progname, 1);
+> >>  			break;
+> >> @@ -164,7 +168,7 @@ main(int argc, char **argv)
+> >>  			return 0;
+> >>  		} else {
+> >>  			xtab_export_read();
+> >> -			dump(f_verbose);
+> >> +			dump(f_verbose, f_export_format);
+> >>  			return 0;
+> >>  		}
+> >>  	}
+> >> @@ -634,7 +638,7 @@ dumpopt(char c, char *fmt, ...)
+> >>  }
+> >>  
+> >>  static void
+> >> -dump(int verbose)
+> >> +dump(int verbose, int export_format)
+> >>  {
+> >>  	nfs_export	*exp;
+> >>  	struct exportent *ep;
+> >> @@ -647,14 +651,15 @@ dump(int verbose)
+> >>  			if (!exp->m_xtabent)
+> >>  			    continue; /* neilb */
+> >>  			if (htype == MCL_ANONYMOUS)
+> >> -				hname = "<world>";
+> >> +				hname = (export_format) ? "*" : "<world>";
+> >>  			else
+> >>  				hname = ep->e_hostname;
+> >> -			if (strlen(ep->e_path) > 14)
+> >> +			if (strlen(ep->e_path) > 14 && !export_format)
+> >>  				printf("%-14s\n\t\t%s", ep->e_path, hname);
+> >>  			else
+> >> -				printf("%-14s\t%s", ep->e_path, hname);
+> >> -			if (!verbose) {
+> >> +				printf(((export_format)? "%s %s" : "%-14s\t%s"), ep->e_path, hname);
+> >> +
+> >> +			if (!verbose && !export_format) {
+> >>  				printf("\n");
+> >>  				continue;
+> >>  			}
+> >> @@ -728,6 +733,6 @@ error(nfs_export *exp, int err)
+> >>  static void
+> >>  usage(const char *progname, int n)
+> >>  {
+> >> -	fprintf(stderr, "usage: %s [-afhioruv] [host:/path]\n", progname);
+> >> +	fprintf(stderr, "usage: %s [-afhioruvs] [host:/path]\n", progname);
+> >>  	exit(n);
+> >>  }
+> >> diff --git a/utils/exportfs/exportfs.man b/utils/exportfs/exportfs.man
+> >> index 8853486..590f9cf 100644
+> >> --- a/utils/exportfs/exportfs.man
+> >> +++ b/utils/exportfs/exportfs.man
+> >> @@ -3,7 +3,7 @@
+> >>  .\" Copyright (C) 1995 Olaf Kirch <okir@monad.swb.de>
+> >>  .\" Modifications 1999-2003 Neil Brown <neilb@cse.unsw.edu.au>
+> >>  .\"
+> >> -.TH exportfs 8 "31 December 2009"
+> >> +.TH exportfs 8 "30 September 2013"
+> >>  .SH NAME
+> >>  exportfs \- maintain table of exported NFS file systems
+> >>  .SH SYNOPSIS
+> >> @@ -133,6 +133,9 @@ when they make their next NFS mount request.
+> >>  Be verbose. When exporting or unexporting, show what's going on. When
+> >>  displaying the current export list, also display the list of export
+> >>  options.
+> >> +.TP
+> >> +.B -s
+> >> +Display the current export list suitable for /etc/exports.
+> >>  .SH DISCUSSION
+> >>  .SS Exporting Directories
+> >>  The first synopsis shows how to invoke
+> >> -- 
+> >> 1.8.2.1
+> >>
+> >> --
+> >> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> >> the body of a message to majordomo@vger.kernel.org
+> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > 
