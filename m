@@ -1,32 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:38981 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752945Ab3JANhk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 1 Oct 2013 09:37:40 -0400
-Date: Tue, 1 Oct 2013 06:37:39 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Benny Halevy <bhalevy@primarydata.com>
-Cc: Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH RFC v0 43/49] pnfsd: release state lock around iput in
- put_nfs4_file
-Message-ID: <20131001133739.GA13149@infradead.org>
-References: <52447EA0.7070004@primarydata.com>
- <1380220968-14669-1-git-send-email-bhalevy@primarydata.com>
- <20130929121903.GF21083@infradead.org>
- <524ACEA9.1040304@primarydata.com>
+Received: from mx12.netapp.com ([216.240.18.77]:27850 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751688Ab3JVOtZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 Oct 2013 10:49:25 -0400
+Message-ID: <52669069.5050700@netapp.com>
+Date: Tue, 22 Oct 2013 10:49:13 -0400
+From: Anna Schumaker <bjschuma@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <524ACEA9.1040304@primarydata.com>
+To: NeilBrown <neilb@suse.de>
+CC: NFS <linux-nfs@vger.kernel.org>
+Subject: Re: What is the long term fix for the idmapper key-quota problem.
+References: <20131021160514.4dbcbf12@notabene.brown>
+In-Reply-To: <20131021160514.4dbcbf12@notabene.brown>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Oct 01, 2013 at 04:31:21PM +0300, Benny Halevy wrote:
-> So the reason not to hold it is that the nfs state lock is global to the
-> server and blocks all state modifying operations such as:
-> open, close, lock, clientid, session operations, etc.
+On Mon 21 Oct 2013 01:05:14 AM EDT, NeilBrown wrote:
+>
+> Hi,
+>  as you probably know, request_key() imposes a quota on
+> the number of keys that can be requested, which by default is quite low (200).
+> When idmap exceeds this quota, request_key() returns an error and
+> the result is userspace sees "nobody" as the owner.
+>
+> A short term fix is to fiddle some sysctl values, but I wonder if any long
+> term fix is being planned.
 
-While not really related to this patch: what's the reason it's not
-split?  The way nfsd works there should be almost no state that isn't
-per-export.
+I don't have anything planned.
+
+>
+> Probably the sensible thing would be for nfs-idmap to bypass the quota.
+> As keys are not held active for very long at a time, they should be garbage
+> collected in due course.
+> There is currently no interface to request this but I suspect one could be
+> added.
+
+Adding a new keyring interface might be a better question for David 
+Howells, since he's done a lot of keyring work.
+
+How many idmap keys do you have active at once?  I'm guessing the quota 
+is there for a reason, and increasing it in-kernel would probably be 
+much easier than adding a new interface for short-lived keys.
+
+>
+> (I want to fixed this for openSUSE-13.1, and don't want to diverge too far
+> from mainline).
+>
+> Thanks,
+> NeilBrown
+
 
