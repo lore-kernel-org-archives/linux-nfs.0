@@ -1,32 +1,36 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-we0-f181.google.com ([74.125.82.181]:52265 "EHLO
-	mail-we0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752781Ab3JBORq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Oct 2013 10:17:46 -0400
-Received: by mail-we0-f181.google.com with SMTP id p61so998483wes.40
-        for <linux-nfs@vger.kernel.org>; Wed, 02 Oct 2013 07:17:45 -0700 (PDT)
-Message-ID: <524C2B05.5070809@primarydata.com>
-Date: Wed, 02 Oct 2013 17:17:41 +0300
-From: Benny Halevy <bhalevy@primarydata.com>
+Received: from mail.candelatech.com ([208.74.158.172]:48264 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752854Ab3JVDT0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Oct 2013 23:19:26 -0400
+Message-ID: <5265EE9B.9070505@candelatech.com>
+Date: Mon, 21 Oct 2013 20:18:51 -0700
+From: Ben Greear <greearb@candelatech.com>
 MIME-Version: 1.0
-To: Christoph Hellwig <hch@infradead.org>
-CC: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH RFC v0 44/49] posix_acl: resolve compile dependency in
- posix_acl.h
-References: <52447EA0.7070004@primarydata.com> <1380220974-14716-1-git-send-email-bhalevy@primarydata.com> <20130929121919.GG21083@infradead.org>
-In-Reply-To: <20130929121919.GG21083@infradead.org>
-Content-Type: text/plain; charset=ISO-8859-1
+To: Jim Rees <rees@umich.edu>
+CC: Weston Andros Adamson <dros@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Getting 'not supported' when trying to mount IPv6 NFS v3 server.
+References: <52659D69.1020609@candelatech.com> <4682F017-7329-4690-B336-233DB50537F0@netapp.com> <5265BECD.1060601@candelatech.com> <20131022002051.GA13539@umich.edu>
+In-Reply-To: <20131022002051.GA13539@umich.edu>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2013-09-29 15:19, Christoph Hellwig wrote:
-> Should go straight to Al independent of this series.
+On 10/21/2013 05:20 PM, Jim Rees wrote:
+> Possibly dumb question, are you sure your srcaddr option works for all
+> protocols involved, including portmap, mount, and nfs?
 
-OK.
+Well, I'm not sure, but it has been working pretty well so far.  I
+could have missed something when porting to the 3.9 kernel, as these
+problems appear to be regressions since older code was working...
 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+Thanks,
+Ben
+
+
+
+-- 
+Ben Greear <greearb@candelatech.com>
+Candela Technologies Inc  http://www.candelatech.com
+
