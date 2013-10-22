@@ -1,101 +1,125 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e8.ny.us.ibm.com ([32.97.182.138]:41796 "EHLO e8.ny.us.ibm.com"
+Received: from mx1.netapp.com ([216.240.18.38]:22237 "EHLO mx1.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752065Ab3J2E1Z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 29 Oct 2013 00:27:25 -0400
-Received: from /spool/local
-	by e8.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <eshel@us.ibm.com>;
-	Tue, 29 Oct 2013 00:27:24 -0400
-In-Reply-To: <875BFA1C-0305-49FF-85ED-7B156666AE85@netapp.com>
-References: <20131028180838.GG31322@fieldses.org> <526EC3F7.3090601@gmail.com> <526EFFCC.2060506@redhat.com> <18F0636D-7CE0-42C1-9249-325DF69516D4@netapp.com> <526F0893.5030700@redhat.com> <A7C1B206-12CD-4958-9528-A8D9C9847011@netapp.com> <1383010758.8774.97.camel@heisenberg.scientia.net> <875BFA1C-0305-49FF-85ED-7B156666AE85@netapp.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Anand Avati <aavati@redhat.com>,
-        Christoph Anton Mitterer <calestyo@scientia.net>,
-        Mailing List Linux NFS <linux-nfs@vger.kernel.org>,
-        linux-nfs-owner@vger.kernel.org, nfsv4@ietf.org
+	id S1753582Ab3JVQDb convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Oct 2013 12:03:31 -0400
+From: Weston Andros Adamson <dros@netapp.com>
+To: Simo Sorce <simo@redhat.com>
+CC: "<SteveD@redhat.com>" <SteveD@redhat.com>,
+        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] gssd: validate cred in gssd_acquire_user_cred
+Date: Tue, 22 Oct 2013 16:03:23 +0000
+Message-ID: <0A5F8F19-4730-4D1A-86A5-5533D758AC23@netapp.com>
+References: <1382450675-14636-1-git-send-email-dros@netapp.com>
+ <1382452919.9794.63.camel@willson.li.ssimo.org>
+In-Reply-To: <1382452919.9794.63.camel@willson.li.ssimo.org>
+Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
-Subject: Re: XATTRs in NFS?
-From: Marc Eshel <eshel@us.ibm.com>
-Message-ID: <OFBDEFE8C0.ABF00267-ON88257C13.0014E881-88257C13.00187994@us.ibm.com>
-Date: Mon, 28 Oct 2013 21:27:19 -0700
-Content-Type: text/plain; charset="US-ASCII"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Trond,
-I am just trying to see if there any path here to get xattr over NFS.
 
-Assuming that there is agreement that xattr are used and needed, and we 
-need to build a better case here but just give alternative solutions 
-doesn't mean that is not needed, almost every thing can be done with an 
-additional DB that associates attributes with files but it is not the best 
-or right way.
+On Oct 22, 2013, at 10:41 AM, Simo Sorce <simo@redhat.com> wrote:
 
-So if we had an NFS protocol extension (might not be named attributes) 
-that mapped  to and was semantically compatibly to Linux xattr, as Nico 
-wrote, would that be enough to consider adding it to the Linux NFS?
-
-I see the need to show requirement and better interface over the NFS 
-protocol (with no security holes)  but not sure if we have another problem 
-with standardizing xattr in Linux?
-
-Thanks, Marc. 
-
-
-
-From:   "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To:     Christoph Anton Mitterer <calestyo@scientia.net>, 
-Cc:     Wheeler Ric <rwheeler@redhat.com>, Anand Avati 
-<aavati@redhat.com>, "Dr Fields James Bruce" <bfields@redhat.com>, Mailing 
-List Linux NFS <linux-nfs@vger.kernel.org>, Dickson Steve 
-<steved@redhat.com>
-Date:   10/28/2013 07:28 PM
-Subject:        Re: XATTRs in NFS?
-Sent by:        linux-nfs-owner@vger.kernel.org
-
-
-
-
-On Oct 28, 2013, at 9:39 PM, Christoph Anton Mitterer 
-<calestyo@scientia.net> wrote:
-
-> Trond,... since you ask for motivations pro NFS-XATTRs, I wondered what
-> are the strong reasons against?
-
-As I've already told you: you're asking for the addition of a feature 
-which is inadequately defined, and is not documented in any standard.
-
-> Of course someone has to do the work,... but that's not really and
-> argument pro or con NFS-XATTRs, is it?
+> On Tue, 2013-10-22 at 10:04 -0400, Weston Andros Adamson wrote:
+>> Call gss_inquire_cred after gssd_acquire_krb5_cred check for expired
+>> credentials.
+>> 
+>> This fixes a recent regression (since 302de786930a2c533068f9d8909a817b40f07c32)
+>> that causes the user's ticket cache to grow unbounded with expired service
+>> tickets when the user's credentials expire.
+>> 
+>> To reproduce this issue:
+>> 
+>> - mount kerberos nfs export
+>> - kinit for a short lifetime (ie "kinit -l 1m")
+>> - run a job that opens a file and writes for more than the lifetime
+>> - run klist a few times after expiry and see the list grow, ie:
+>> 
+>> Ticket cache: DIR::/run/user/1749600001/krb5cc/tktYmpGlX
+>> Default principal: dros@APIKIA.FAKE
+>> 
+>> Valid starting       Expires              Service principal
+>> 10/21/2013 15:39:38  10/21/2013 15:40:35  krbtgt/APIKIA.FAKE@APIKIA.FAKE
+>> 10/21/2013 15:39:40  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+>> 10/21/2013 15:40:35  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+>> 10/21/2013 15:40:36  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+>> 10/21/2013 15:40:37  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+>> 10/21/2013 15:40:37  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+>> 10/21/2013 15:40:38  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+>> 10/21/2013 15:40:38  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+>> 10/21/2013 15:40:39  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+>> 10/21/2013 15:40:39  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+>> 10/21/2013 15:40:39  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+>> 10/21/2013 15:40:39  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+>> 10/21/2013 15:40:40  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+>> 10/21/2013 15:40:40  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+>> 10/21/2013 15:40:41  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+>> 10/21/2013 15:40:41  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+>> 10/21/2013 15:40:42  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+>> 10/21/2013 15:40:42  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+>> 10/21/2013 15:40:42  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+>> 
+>> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+>> ---
+>> utils/gssd/krb5_util.c | 7 +++++++
+>> 1 file changed, 7 insertions(+)
+>> 
+>> diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
+>> index c6e52fd..ec5db83 100644
+>> --- a/utils/gssd/krb5_util.c
+>> +++ b/utils/gssd/krb5_util.c
+>> @@ -1405,6 +1405,13 @@ gssd_acquire_user_cred(uid_t uid, gss_cred_id_t *gss_cred)
+>> 
+>> 	ret = gssd_acquire_krb5_cred(name, gss_cred);
+>> 
+>> +	/* force validation of cred to check for expiry */
+>> +	if (ret == 0) {
+>> +		if (gss_inquire_cred(min_stat, gss_cred, NULL, NULL,
+>> +				     NULL, NULL) != GSS_S_COMPLETE)
+>> +			ret = -1;
+>> +	}
+>> +
+>> 	maj_stat = gss_release_name(&min_stat, &name);
+>> 	return ret;
+>> }
 > 
-> The security problems with namespaces like trusted. or so can probably
-> be solved quite easy, e.g. simply by not supporting or
-> ignoring/rejecting them.
+> A good start, but given you are inquiring creds, then I think it would
+> totally make sense to pass in a uint32_t for the 4th argument
+> (lifetime), and check if there is "enough".
+
+Well, from my perspective gssd already gives enough info for you to know what's going on, i.e.:
+
+getting credentials for client with uid 1749600001 for server zero.apikia.fake
+CC '/run/user/1749600001/krb5cc' being considered, with preferred realm 'APIKIA.FAKE'
+CC 'DIR:/run/user/1749600001/krb5cc' is expired or corrupt
+WARNING: Failed to create krb5 context for user with uid 1749600001 for server zero.apikia.fake
+doing error downfall
+
+And it's obvious from the NFS layer as EKEYEXPIRED gets passed through as the error.
+
 > 
-> You've mentioned caching issues,... could you elaborate a bit on that?
-> How is that much different from caching any other file metadata NFS
-> transfers?
+> For example, if it returns a lifetime of 1 second should we continue ?
+> There is a fat chance that it will fail later on.
 
-The standard metadata such as ctime, mtime, size, .... are all part of an 
-existing NFS caching model called close-to-open. We know how they change 
-when the filesystem data changes.
+I think how we handle this now (without the regression this fixes) is fine.  I really don't think users/ admins want to enable verbose debugging in gssd to see this - they should be able to tell what happened when the caller gets an expired cred.
 
-How do I know when it is safe to cache your checksum xattr? I don't even 
-know what it is, let alone what its relation is to the other filesystem 
-objects.
-Let's say client B modifies the file and updates the checksum. When client 
-A opens the file, it will see that the data has changed, but how does it 
-know that it also needs to update the xattr information?
-Alternatively, let's say that client A reads the file and checksum data 
-after client B has updated the file, but before it updates the checksum. 
-What will cause client A to stop caching the stale checksum once client B 
-has updated it?
+> 
+> I think we should at least log it if the credential we are trying to use
+> turns out to be really close to expiring, no ? It may save some gray
+> hairs to server administrators trying to find out what is going wrong
+> (like it happened to you :)
 
-Trond--
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Well, it was obvious to me what was happening when the keys expired - what was not obvious was why the tkt cache was growing unbounded with service tickets that were *never* valid (the regression this patch fixes).
 
+I suppose we could do something more, but I don't really see a reason to.
 
+-dros
+
+> 
+> Simo.
+> 
+> -- 
+> Simo Sorce * Red Hat, Inc * New York
+> 
 
