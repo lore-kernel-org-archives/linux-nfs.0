@@ -1,56 +1,151 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:4955 "EHLO mx12.netapp.com"
+Received: from mx11.netapp.com ([216.240.18.76]:34858 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756448Ab3J1Skd convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Oct 2013 14:40:33 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Jeff Layton <jlayton@redhat.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfs: return -EBUSY on remount when new options can't be
- applied
-Date: Mon, 28 Oct 2013 18:40:32 +0000
-Message-ID: <1382985630.3314.3.camel@leira.trondhjem.org>
-References: <1382363554-6587-1-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1382363554-6587-1-git-send-email-jlayton@redhat.com>
-Content-Type: text/plain; charset="utf-7"
+	id S1752928Ab3JVCiZ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Oct 2013 22:38:25 -0400
+From: Weston Andros Adamson <dros@netapp.com>
+To: Jeff Layton <jlayton@poochiereds.net>
+CC: linux-nfs list <linux-nfs@vger.kernel.org>, Simo Sorce <simo@redhat.com>
+Subject: Re: Strange cred expiry behavior
+Date: Tue, 22 Oct 2013 02:38:23 +0000
+Message-ID: <4BDA1624-63A7-4325-BB4B-4988C1D37127@netapp.com>
+References: <85F2BCBA-9565-497F-BFF4-FEB29301D655@netapp.com>
+ <DCD436E3-9464-4BFB-8C1A-19912522824D@netapp.com>
+ <20131021222339.2f1978d8@corrin.poochiereds.net>
+ <1F9EA3CE-081B-4E9D-B83D-E6B33AE6FE1D@netapp.com>
+In-Reply-To: <1F9EA3CE-081B-4E9D-B83D-E6B33AE6FE1D@netapp.com>
+Content-Type: text/plain; charset="Windows-1252"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2013-10-21 at 09:52 -0400, Jeff Layton wrote:
-+AD4- Currently the kernel returns -EINVAL, which makes it hard to
-+AD4- distinguish this situation from the case where an invalid mount option
-+AD4- was specified.
-+AD4- 
-+AD4- Signed-off-by: Jeff Layton +ADw-jlayton+AEA-redhat.com+AD4-
-+AD4- ---
-+AD4-  fs/nfs/super.c +AHw- 2 +--
-+AD4-  1 file changed, 1 insertion(+-), 1 deletion(-)
-+AD4- 
-+AD4- diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-+AD4- index 3f5a7a8..cebdb26 100644
-+AD4- --- a/fs/nfs/super.c
-+AD4- +-+-+- b/fs/nfs/super.c
-+AD4- +AEAAQA- -2156,7 +-2156,7 +AEAAQA- nfs+AF8-compare+AF8-remount+AF8-data(struct nfs+AF8-server +ACo-nfss,
-+AD4-  	    data-+AD4-nfs+AF8-server.addrlen +ACEAPQ- nfss-+AD4-nfs+AF8-client-+AD4-cl+AF8-addrlen +AHwAfA-
-+AD4-  	    +ACE-rpc+AF8-cmp+AF8-addr((struct sockaddr +ACo-)+ACY-data-+AD4-nfs+AF8-server.address,
-+AD4-  			  (struct sockaddr +ACo-)+ACY-nfss-+AD4-nfs+AF8-client-+AD4-cl+AF8-addr))
-+AD4- -		return -EINVAL+ADs-
-+AD4- +-		return -EBUSY+ADs-
-+AD4-  
-+AD4-  	return 0+ADs-
-+AD4-  +AH0-
 
-The problem is that EBUSY also has a different meaning when it comes to
-remount. According to the manpage it means the source +ACI-cannot be
-remounted read-only, because it still holds files open for writing.+ACI-
+On Oct 21, 2013, at 10:31 PM, Weston Andros Adamson <dros@netapp.com>
+ wrote:
 
-So, as far as I can see, this is a case of pick your poison...
+> 
+> On Oct 21, 2013, at 10:23 PM, Jeff Layton <jlayton@poochiereds.net> wrote:
+> 
+>> On Mon, 21 Oct 2013 23:53:16 +0000
+>> Weston Andros Adamson <dros@netapp.com> wrote:
+>> 
+>>> I traced this behavior back to:
+>>> 
+>>> commit 302de786930a2c533068f9d8909a817b40f07c32
+>>> Author: Simo Sorce <simo@redhat.com>
+>>> Date:   Fri Apr 19 13:02:36 2013 -0400
+>>> 
+>>>   gssd: Allow GSSAPI to try to acquire credentials first.
+>>> 
+>>> 
+>>> And in particular:
+>>> 
+>>> -               for (dirname = ccachesearch; *dirname != NULL; dirname++) {
+>>> +               /* Try first to acquire credentials directly via GSSAPI */
+>>> +               err = gssd_acquire_user_cred(uid, &gss_cred);
+>>> +               if (!err)
+>>> +                       create_resp = create_auth_rpc_client(clp, &rpc_clnt, &auth, uid,
+>>> +                                                            AUTHTYPE_KRB5, gss_cred);
+>>> +               /* if create_auth_rplc_client fails try the traditional method of
+>>> +                * trolling for credentials */
+>>> +               for (dirname = ccachesearch; create_resp != 0 && *dirname != NULL; dirname++) {
+>>> 
+>> 
+>> 
+>>> A couple of things:
+>>> 
+>>> - If I get rid of the "Try first to acquire credentials directly via GSSAPI" part, expiry works as before.
+>>> 
+>> 
+>> 
+>> Steve just merged a couple of patches from me that change this code
+>> some. It's probably worth testing with those before you make any
+>> changes.
+>> 
+> 
+> Thanks, I'll check it out.
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
+Bisecting brought me to 302de786930a2c533068f9d8909a817b40f07c32 and I've confirmed that the problem is still in steved's master branch as of today. Are you sure the patches you're thinking of have been merged?
 
-NetApp
-Trond.Myklebust+AEA-netapp.com
-www.netapp.com
+-dros
+
+> 
+>>> - It says "if create_auth_rplc_client fails try the traditional method of trolling for credentials" but I see nothing that checks to see if create_resp != 0 before falling back to the old method.  I added this check and everything seems right (it doesn't fix the expiry issue).
+>>> 
+>> 
+>> Isn't that what the "create_resp != 0" check in the for loop does?
+> 
+> Heh yeah, thanks!
+> 
+> -dros
+> 
+>> 
+>>> 
+>>> I should have some time tomorrow to look further at the expiry issue…
+>>> 
+>>> -dros
+>>> 
+>>> 
+>> 
+>>> On Oct 21, 2013, at 4:07 PM, Weston Andros Adamson <dros@netapp.com> wrote:
+>>> 
+>>>> I saw this issue when revived my branch for using SP4_MACH_CRED only in the error (EKEYEXPIRED) path, and was able to reproduce it on Trond's testing branch, so this behavior is definitely new.  The client is running F19 updated pretty recently (nfs-utils 1.2.8-4.0.fc19).
+>>>> 
+>>>> The issue:
+>>>> 
+>>>> - mount a kerberos export
+>>>> 
+>>>> - kinit with a really short lifetime: "kinit -l 1m"
+>>>> 
+>>>> - run something (like dd) that will hold a file open and write to it for more than the lifetime of the kinit
+>>>> 
+>>>> ! - after the credential expire, the number of keys listed in "klist" starts to grow. Notice how the "Valid starting" time is after the "Expires" time.  The list seems to grow forever - my test program writes 4k every second and the list seemed to grow by 1 line per second.  Example klist output:
+>>>> 
+>>>> 
+>>>> Ticket cache: DIR::/run/user/1749600001/krb5cc/tktYmpGlX
+>>>> Default principal: dros@APIKIA.FAKE
+>>>> 
+>>>> Valid starting       Expires              Service principal
+>>>> 10/21/2013 15:39:38  10/21/2013 15:40:35  krbtgt/APIKIA.FAKE@APIKIA.FAKE
+>>>> 10/21/2013 15:39:40  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+>>>> 10/21/2013 15:40:35  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+>>>> 10/21/2013 15:40:36  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+>>>> 10/21/2013 15:40:37  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+>>>> 10/21/2013 15:40:37  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+>>>> 10/21/2013 15:40:38  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+>>>> 10/21/2013 15:40:38  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+>>>> 10/21/2013 15:40:39  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+>>>> 10/21/2013 15:40:39  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+>>>> 10/21/2013 15:40:39  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+>>>> 10/21/2013 15:40:39  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+>>>> 10/21/2013 15:40:40  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+>>>> 10/21/2013 15:40:40  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+>>>> 10/21/2013 15:40:41  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+>>>> 10/21/2013 15:40:41  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+>>>> 10/21/2013 15:40:42  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+>>>> 10/21/2013 15:40:42  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+>>>> 10/21/2013 15:40:42  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+>>>> 
+>>>> This seems like a gssd bug in handling cred refresh upcalls. I'll debug further and hopefully find a fix.
+>>>> 
+>>>> Has anyone seen this issue before or have any thoughts on recent changes that could cause this? I definitely didn't see this a little more than a month ago when I started testing cred expiry...
+>>>> 
+>>>> -dros--
+>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>>> the body of a message to majordomo@vger.kernel.org
+>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>> 
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> 
+>> 
+>> -- 
+>> Jeff Layton <jlayton@poochiereds.net>
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
