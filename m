@@ -1,64 +1,175 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:60468 "EHLO mx2.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:54321 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754264Ab3JCQXa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 3 Oct 2013 12:23:30 -0400
-From: <andros@netapp.com>
-To: <bryan.schumaker@netapp.com>
-CC: <trond.myklebust@netapp.com>, <linux-nfs@vger.kernel.org>,
-        Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 6 1/1] NFSv4 Remove zeroing state kern warnings
-Date: Thu, 3 Oct 2013 12:23:24 -0400
-Message-ID: <1380817404-3054-1-git-send-email-andros@netapp.com>
+	id S1751852Ab3JVI3a (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 Oct 2013 04:29:30 -0400
+Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r9M8TTpg030676
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Tue, 22 Oct 2013 04:29:30 -0400
+Message-ID: <52663791.6020605@RedHat.com>
+Date: Tue, 22 Oct 2013 04:30:09 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain
+To: Tony Asleson <tasleson@redhat.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] exportfs: Return non-zero exit value on error
+References: <1380756584-13335-1-git-send-email-tasleson@redhat.com>
+In-Reply-To: <1380756584-13335-1-git-send-email-tasleson@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
 
-As of commit 5d422301f97b821301efcdb6fc9d1a83a5c102d6 we no longer zero the
-state.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/nfs4state.c | 13 +++++--------
- 1 file changed, 5 insertions(+), 8 deletions(-)
+On 02/10/13 19:29, Tony Asleson wrote:
+> To improve error handling when scripting exportfs it's useful
+> to have non-zero exit codes when the requested operation did not
+> succeed.
+> 
+> This patch also returns a non-zero exit code if you request to
+> unexport a non-existant share.
+> 
+> Signed-off-by: Tony Asleson <tasleson@redhat.com>
+Committed! 
 
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index cc14cbb..fa2706a 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1375,8 +1375,8 @@ static int nfs4_reclaim_locks(struct nfs4_state *state, const struct nfs4_state_
- 			case -NFS4ERR_CONN_NOT_BOUND_TO_SESSION:
- 				goto out;
- 			default:
--				printk(KERN_ERR "NFS: %s: unhandled error %d. "
--					"Zeroing state\n", __func__, status);
-+				printk(KERN_ERR "NFS: %s: unhandled error %d\n",
-+					 __func__, status);
- 			case -ENOMEM:
- 			case -NFS4ERR_DENIED:
- 			case -NFS4ERR_RECLAIM_BAD:
-@@ -1439,15 +1439,12 @@ restart:
- 		}
- 		switch (status) {
- 			default:
--				printk(KERN_ERR "NFS: %s: unhandled error %d. "
--					"Zeroing state\n", __func__, status);
-+				printk(KERN_ERR "NFS: %s: unhandled error %d\n",
-+					__func__, status);
- 			case -ENOENT:
- 			case -ENOMEM:
- 			case -ESTALE:
--				/*
--				 * Open state on this file cannot be recovered
--				 * All we can do is revert to using the zero stateid.
--				 */
-+				/* Open state on this file cannot be recovered */
- 				nfs4_state_mark_recovery_failed(state, status);
- 				break;
- 			case -EAGAIN:
--- 
-1.8.3.1
+steved.
 
+> ---
+>  support/export/hostname.c |  2 ++
+>  utils/exportfs/exportfs.c | 37 +++++++++++++++++++++++++++----------
+>  2 files changed, 29 insertions(+), 10 deletions(-)
+> 
+> diff --git a/support/export/hostname.c b/support/export/hostname.c
+> index 3e949a1..e53d692 100644
+> --- a/support/export/hostname.c
+> +++ b/support/export/hostname.c
+> @@ -175,10 +175,12 @@ host_addrinfo(const char *hostname)
+>  	case 0:
+>  		return ai;
+>  	case EAI_SYSTEM:
+> +		export_errno = errno;
+>  		xlog(D_GENERAL, "%s: failed to resolve %s: (%d) %m",
+>  				__func__, hostname, errno);
+>  		break;
+>  	default:
+> +		export_errno = EINVAL;
+>  		xlog(D_GENERAL, "%s: failed to resolve %s: %s",
+>  				__func__, hostname, gai_strerror(error));
+>  		break;
+> diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
+> index 52fc03d..318deb3 100644
+> --- a/utils/exportfs/exportfs.c
+> +++ b/utils/exportfs/exportfs.c
+> @@ -35,8 +35,8 @@
+>  #include "xlog.h"
+>  
+>  static void	export_all(int verbose);
+> -static void	exportfs(char *arg, char *options, int verbose);
+> -static void	unexportfs(char *arg, int verbose);
+> +static int	exportfs(char *arg, char *options, int verbose);
+> +static int	unexportfs(char *arg, int verbose);
+>  static void	exports_update(int verbose);
+>  static void	dump(int verbose, int export_format);
+>  static void	error(nfs_export *exp, int err);
+> @@ -187,8 +187,12 @@ main(int argc, char **argv)
+>  		if (f_all)
+>  			export_all(f_verbose);
+>  		else
+> -			for (i = optind; i < argc ; i++)
+> -				exportfs(argv[i], options, f_verbose);
+> +			for (i = optind; i < argc ; i++) {
+> +				if(!exportfs(argv[i], options, f_verbose)) {
+> +					/* Only flag a generic EINVAL if no errno is set */
+> +					export_errno = (export_errno) ? export_errno : EINVAL;
+> +				}
+> +			}
+>  	}
+>  	/* If we are unexporting everything, then
+>  	 * don't care about what should be exported, as that
+> @@ -201,8 +205,12 @@ main(int argc, char **argv)
+>  		if (!f_reexport)
+>  			xtab_export_read();
+>  		if (!f_export)
+> -			for (i = optind ; i < argc ; i++)
+> -				unexportfs(argv[i], f_verbose);
+> +			for (i = optind ; i < argc ; i++) {
+> +				if (!unexportfs(argv[i], f_verbose)) {
+> +					/* Only flag a generic EINVAL if no errno is set */
+> +					export_errno = (export_errno) ? export_errno : EINVAL;
+> +				}
+> +			}
+>  		if (!new_cache)
+>  			rmtab_read();
+>  	}
+> @@ -296,9 +304,10 @@ export_all(int verbose)
+>  }
+>  
+>  
+> -static void
+> +static int
+>  exportfs(char *arg, char *options, int verbose)
+>  {
+> +	int rc = 0;
+>  	struct exportent *eep;
+>  	nfs_export	*exp = NULL;
+>  	struct addrinfo	*ai = NULL;
+> @@ -311,7 +320,8 @@ exportfs(char *arg, char *options, int verbose)
+>  
+>  	if (!path || *path != '/') {
+>  		xlog(L_ERROR, "Invalid exporting option: %s", arg);
+> -		return;
+> +		export_errno = EINVAL;
+> +		return rc;
+>  	}
+>  
+>  	if ((htype = client_gettype(hname)) == MCL_FQDN) {
+> @@ -339,13 +349,16 @@ exportfs(char *arg, char *options, int verbose)
+>  	exp->m_warned = 0;
+>  	validate_export(exp);
+>  
+> +	rc = 1;
+>  out:
+>  	freeaddrinfo(ai);
+> +	return rc;
+>  }
+>  
+> -static void
+> +static int
+>  unexportfs(char *arg, int verbose)
+>  {
+> +	int rc = 0;
+>  	nfs_export	*exp;
+>  	struct addrinfo *ai = NULL;
+>  	char		*path;
+> @@ -357,7 +370,8 @@ unexportfs(char *arg, int verbose)
+>  
+>  	if (!path || *path != '/') {
+>  		xlog(L_ERROR, "Invalid unexporting option: %s", arg);
+> -		return;
+> +		export_errno = EINVAL;
+> +		return rc;
+>  	}
+>  
+>  	if ((htype = client_gettype(hname)) == MCL_FQDN) {
+> @@ -397,9 +411,11 @@ unexportfs(char *arg, int verbose)
+>  #endif
+>  		exp->m_xtabent = 0;
+>  		exp->m_mayexport = 0;
+> +		rc = 1;
+>  	}
+>  
+>  	freeaddrinfo(ai);
+> +	return rc;
+>  }
+>  
+>  static int can_test(void)
+> @@ -728,6 +744,7 @@ error(nfs_export *exp, int err)
+>  {
+>  	xlog(L_ERROR, "%s:%s: %s", exp->m_client->m_hostname,
+>  		exp->m_export.e_path, strerror(err));
+> +	export_errno = (export_errno) ? export_errno : err;
+>  }
+>  
+>  static void
+> 
