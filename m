@@ -1,81 +1,184 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:60003 "EHLO mx12.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:59508 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752351Ab3JVOVW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 Oct 2013 10:21:22 -0400
-From: <andros@netapp.com>
-To: <trond.myklebust@netapp.com>
-CC: <linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 2 0/5] SUNRPC: destroy gss_cred and context on Kerberos credential destruction
-Date: Tue, 22 Oct 2013 10:21:11 -0400
-Message-ID: <1382451676-2963-1-git-send-email-andros@netapp.com>
+	id S1751196Ab3JVIfr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 Oct 2013 04:35:47 -0400
+Message-ID: <52663908.1090708@RedHat.com>
+Date: Tue, 22 Oct 2013 04:36:24 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain
+To: Tony Asleson <tasleson@redhat.com>
+CC: Neil Brown <neilb@suse.de>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] exportfs: Return non-zero exit value on error
+References: <1380756584-13335-1-git-send-email-tasleson@redhat.com> <52663791.6020605@RedHat.com>
+In-Reply-To: <52663791.6020605@RedHat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
-
-This patchset requires the nfs-utils "GSSD: Use gss-ctx keys and gsskeyd to
-sync Kerber os credentials and kernel gss_contexts" patchset which triggers
-gss-ctx key creation on kinit and destruction on kdestroy.
-
-This is an RFC patch set.
-
-We need to do a lot of testing to ensure that
-once kdestroy and gss-ctx gss_user_destroy is called, all existing buffered
-writes using the 'destroyed gss credential + context' are serviced.
-
-Differences from version1
-
-- Replaced request_key with keyring_search
-- Used flag based method to service buffered writes after kdestroy instead
-of calling sys_sync.
-- Use of the session keyring (KEY_SPEC_USER_SESSION_KEYRING) instead of the user keyring.
 
 
-Version 1 of these patches were presented along with the GSS expiry patch set.
+On 22/10/13 04:30, Steve Dickson wrote:
+> 
+> 
+> On 02/10/13 19:29, Tony Asleson wrote:
+>> To improve error handling when scripting exportfs it's useful
+>> to have non-zero exit codes when the requested operation did not
+>> succeed.
+>>
+>> This patch also returns a non-zero exit code if you request to
+>> unexport a non-existant share.
+>>
+>> Signed-off-by: Tony Asleson <tasleson@redhat.com>
+> Committed! 
+Unfortunately I did not see Neil's patch before I committed this patch....
+So I'm going to revert this patch in favor of Neil's... 
 
+steved.
 
-A new key type, gss-ctx is registered by the auth_gss module. If a gss-ctx 
-key is created at kinit (via gsskeyd), the key serial is saved in the resultant
-gss_cred. When kdestroy triggers the gss-ctx key destruction (via gsskeyd),
-all gss_contexts matching the key-serial are found and the
-gss_cred->base (rpc_cred) cr_flags RPCAUTH_CRED_KEY_DESTROYED bit is set.
-
-The new RPC_TASK_BUF_WRITE task flag is set in the NFS layer in
-nfs_initiate_write, the buffered write path. Pass the flag to the crmatch
-routine via the rpcauth_bindcred lookup_flags.
-
-In gss_match, if the RPCAUTH_CRED_KEY_DESTROYED rpc_cred bit is set and 
-if the RPC_TASK_BUF_WRITE flag is set, return found - e.g. use the 
-DESTROYED gss_cred for the buffered writes.  Return not-found for all other
-calls. The RPC_CRED_KEY_EXPIRE_SOON acred flag is also set which tells the
-NFS layer to discontinue any new buffered writes, turning to sync writes
-instead. Note that these sync writes will fail as gss_match will find but not
-return the DESTROYED gss_cred.
-
-We want to pay close attention to the number of upcalls this code triggers
-as a result of the destroyed Kerberos credentials, and destroyed
-gss_cred/gss_context.
-
-Andy Adamson (5):
-  SUNRPC: register the gss-ctx key type
-  SUNRPC set gss_cred gss-ctx key serial
-  SUNRPC: invalidate gss_context upon gss-ctx keyring key destruction
-  SUNRPC: allow only existing buffered writes on creds with destroyed
-    keys
-  SUNRPC add EKEYEXPIRED case to call_bind_status
-
- fs/nfs/write.c                  |   2 +-
- include/linux/sunrpc/auth.h     |   1 +
- include/linux/sunrpc/auth_gss.h |   1 +
- include/linux/sunrpc/sched.h    |   1 +
- net/sunrpc/auth.c               |   2 +
- net/sunrpc/auth_gss/auth_gss.c  | 170 +++++++++++++++++++++++++++++++++++++++-
- net/sunrpc/clnt.c               |   5 ++
- 7 files changed, 178 insertions(+), 4 deletions(-)
-
--- 
-1.8.3.1
-
+> 
+> steved.
+> 
+>> ---
+>>  support/export/hostname.c |  2 ++
+>>  utils/exportfs/exportfs.c | 37 +++++++++++++++++++++++++++----------
+>>  2 files changed, 29 insertions(+), 10 deletions(-)
+>>
+>> diff --git a/support/export/hostname.c b/support/export/hostname.c
+>> index 3e949a1..e53d692 100644
+>> --- a/support/export/hostname.c
+>> +++ b/support/export/hostname.c
+>> @@ -175,10 +175,12 @@ host_addrinfo(const char *hostname)
+>>  	case 0:
+>>  		return ai;
+>>  	case EAI_SYSTEM:
+>> +		export_errno = errno;
+>>  		xlog(D_GENERAL, "%s: failed to resolve %s: (%d) %m",
+>>  				__func__, hostname, errno);
+>>  		break;
+>>  	default:
+>> +		export_errno = EINVAL;
+>>  		xlog(D_GENERAL, "%s: failed to resolve %s: %s",
+>>  				__func__, hostname, gai_strerror(error));
+>>  		break;
+>> diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
+>> index 52fc03d..318deb3 100644
+>> --- a/utils/exportfs/exportfs.c
+>> +++ b/utils/exportfs/exportfs.c
+>> @@ -35,8 +35,8 @@
+>>  #include "xlog.h"
+>>  
+>>  static void	export_all(int verbose);
+>> -static void	exportfs(char *arg, char *options, int verbose);
+>> -static void	unexportfs(char *arg, int verbose);
+>> +static int	exportfs(char *arg, char *options, int verbose);
+>> +static int	unexportfs(char *arg, int verbose);
+>>  static void	exports_update(int verbose);
+>>  static void	dump(int verbose, int export_format);
+>>  static void	error(nfs_export *exp, int err);
+>> @@ -187,8 +187,12 @@ main(int argc, char **argv)
+>>  		if (f_all)
+>>  			export_all(f_verbose);
+>>  		else
+>> -			for (i = optind; i < argc ; i++)
+>> -				exportfs(argv[i], options, f_verbose);
+>> +			for (i = optind; i < argc ; i++) {
+>> +				if(!exportfs(argv[i], options, f_verbose)) {
+>> +					/* Only flag a generic EINVAL if no errno is set */
+>> +					export_errno = (export_errno) ? export_errno : EINVAL;
+>> +				}
+>> +			}
+>>  	}
+>>  	/* If we are unexporting everything, then
+>>  	 * don't care about what should be exported, as that
+>> @@ -201,8 +205,12 @@ main(int argc, char **argv)
+>>  		if (!f_reexport)
+>>  			xtab_export_read();
+>>  		if (!f_export)
+>> -			for (i = optind ; i < argc ; i++)
+>> -				unexportfs(argv[i], f_verbose);
+>> +			for (i = optind ; i < argc ; i++) {
+>> +				if (!unexportfs(argv[i], f_verbose)) {
+>> +					/* Only flag a generic EINVAL if no errno is set */
+>> +					export_errno = (export_errno) ? export_errno : EINVAL;
+>> +				}
+>> +			}
+>>  		if (!new_cache)
+>>  			rmtab_read();
+>>  	}
+>> @@ -296,9 +304,10 @@ export_all(int verbose)
+>>  }
+>>  
+>>  
+>> -static void
+>> +static int
+>>  exportfs(char *arg, char *options, int verbose)
+>>  {
+>> +	int rc = 0;
+>>  	struct exportent *eep;
+>>  	nfs_export	*exp = NULL;
+>>  	struct addrinfo	*ai = NULL;
+>> @@ -311,7 +320,8 @@ exportfs(char *arg, char *options, int verbose)
+>>  
+>>  	if (!path || *path != '/') {
+>>  		xlog(L_ERROR, "Invalid exporting option: %s", arg);
+>> -		return;
+>> +		export_errno = EINVAL;
+>> +		return rc;
+>>  	}
+>>  
+>>  	if ((htype = client_gettype(hname)) == MCL_FQDN) {
+>> @@ -339,13 +349,16 @@ exportfs(char *arg, char *options, int verbose)
+>>  	exp->m_warned = 0;
+>>  	validate_export(exp);
+>>  
+>> +	rc = 1;
+>>  out:
+>>  	freeaddrinfo(ai);
+>> +	return rc;
+>>  }
+>>  
+>> -static void
+>> +static int
+>>  unexportfs(char *arg, int verbose)
+>>  {
+>> +	int rc = 0;
+>>  	nfs_export	*exp;
+>>  	struct addrinfo *ai = NULL;
+>>  	char		*path;
+>> @@ -357,7 +370,8 @@ unexportfs(char *arg, int verbose)
+>>  
+>>  	if (!path || *path != '/') {
+>>  		xlog(L_ERROR, "Invalid unexporting option: %s", arg);
+>> -		return;
+>> +		export_errno = EINVAL;
+>> +		return rc;
+>>  	}
+>>  
+>>  	if ((htype = client_gettype(hname)) == MCL_FQDN) {
+>> @@ -397,9 +411,11 @@ unexportfs(char *arg, int verbose)
+>>  #endif
+>>  		exp->m_xtabent = 0;
+>>  		exp->m_mayexport = 0;
+>> +		rc = 1;
+>>  	}
+>>  
+>>  	freeaddrinfo(ai);
+>> +	return rc;
+>>  }
+>>  
+>>  static int can_test(void)
+>> @@ -728,6 +744,7 @@ error(nfs_export *exp, int err)
+>>  {
+>>  	xlog(L_ERROR, "%s:%s: %s", exp->m_client->m_hostname,
+>>  		exp->m_export.e_path, strerror(err));
+>> +	export_errno = (export_errno) ? export_errno : err;
+>>  }
+>>  
+>>  static void
+>>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
