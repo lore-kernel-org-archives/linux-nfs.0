@@ -1,74 +1,143 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.candelatech.com ([208.74.158.172]:44332 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751844Ab3JUXy4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Oct 2013 19:54:56 -0400
-Message-ID: <5265BECD.1060601@candelatech.com>
-Date: Mon, 21 Oct 2013 16:54:53 -0700
-From: Ben Greear <greearb@candelatech.com>
-MIME-Version: 1.0
-To: Weston Andros Adamson <dros@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Getting 'not supported' when trying to mount IPv6 NFS v3 server.
-References: <52659D69.1020609@candelatech.com> <4682F017-7329-4690-B336-233DB50537F0@netapp.com>
-In-Reply-To: <4682F017-7329-4690-B336-233DB50537F0@netapp.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx1.redhat.com ([209.132.183.28]:5349 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753391Ab3JVISv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 Oct 2013 04:18:51 -0400
+Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r9M8IouW002461
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Tue, 22 Oct 2013 04:18:51 -0400
+Received: from smallhat.boston.devel.redhat.com.org (vpn-59-139.rdu2.redhat.com [10.10.59.139])
+	by int-mx12.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id r9M8Inoi017257
+	for <linux-nfs@vger.kernel.org>; Tue, 22 Oct 2013 04:18:50 -0400
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 1/3] mountd: Use protocol bit fields to turn protocols off.
+Date: Tue, 22 Oct 2013 04:19:24 -0400
+Message-Id: <1382429966-14531-2-git-send-email-steved@redhat.com>
+In-Reply-To: <1382429966-14531-1-git-send-email-steved@redhat.com>
+References: <1382429966-14531-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 10/21/2013 04:44 PM, Weston Andros Adamson wrote:
-> 
-> On Oct 21, 2013, at 5:32 PM, Ben Greear <greearb@candelatech.com> wrote:
-> 
->> So, the problem I reported earlier with failing to unmount was fixed
->> by the back-ported patch.
->>
->> Now, another problem is reported by my user.  In this case, they are
->> trying to mount an IPv6 NFS server using NFSv3.  Kernel is 3.9.11+,
->> with patches to support binding mount points to local IP (v4/v6) addresses.
->>
->> Some NFS over IPv6 mounts work fine, but some do not.  A reboot of the
->> NFS client machine did not fix the problem.
->>
->> I have tried to reproduce the problem locally, but so far everything works fine
->> for us.
->>
->> From my own app's logs:
->>
->> # mount -t nfs [4001:1::1:1]:/vol/vol1 /mnt/lf/RDnfse11c0 -o srcaddr=4001:1::1:201,vers=3
->> # requested NFS version or transport protocol is not supported
->>
->> When this problem happens, I do not see any network traffic when trying to mount.
-> 
-> Did you look for the mount protocol when getting a network trace (filter "rpc" in wireshark).
+Convert the current code to used the NFSCTL_XXX macros
+to turn off the TCP listener.
 
-I saw zero NFS related packets on the wire when hitting this problem.
-But, there could have been packets earlier that put it into a funky
-state, or a bit less likely, they could have been going out some of the
-other virtual interfaces on the system.
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ support/include/rpcmisc.h |  2 +-
+ support/nfs/rpcmisc.c     | 19 ++++++++++++++-----
+ support/nfs/svc_create.c  |  5 +++++
+ utils/mountd/mountd.c     |  2 +-
+ 4 files changed, 21 insertions(+), 7 deletions(-)
 
-> Could you:
-> 
->   1) run "rpcdebug -m nfs -s mount" before mounting, post output of dmesg after mount fails.
-> 
->   2) add -v to the mount command and post the output
-
-I can try this.
-
->   3) maybe get rid of srcaddr= option / post info about the ip configuration
-
-I can't easily do this, as the user's setup requires the srcaddr to route properly
-to the filer.
-
-I am also going to run a kernel with printks added around all the EOPNOTSUPP
-returns that I can find to try to track down what part of the kernel is
-complaining.
-
-Thanks,
-Ben
-
-
+diff --git a/support/include/rpcmisc.h b/support/include/rpcmisc.h
+index b806227..31c8e5d 100644
+--- a/support/include/rpcmisc.h
++++ b/support/include/rpcmisc.h
+@@ -56,7 +56,7 @@ void		rpc_dispatch(struct svc_req *rq, SVCXPRT *xprt,
+ int		getservport(u_long number, const char *proto);
+ 
+ extern int	_rpcpmstart;
+-extern int	_rpcfdtype;
++extern unsigned int	_rpcprotobits;
+ extern int	_rpcsvcdirty;
+ 
+ static inline struct sockaddr_in *nfs_getrpccaller_in(SVCXPRT *xprt)
+diff --git a/support/nfs/rpcmisc.c b/support/nfs/rpcmisc.c
+index b73187a..64c98ff 100644
+--- a/support/nfs/rpcmisc.c
++++ b/support/nfs/rpcmisc.c
+@@ -39,7 +39,7 @@
+ 
+ #define _RPCSVC_CLOSEDOWN	120
+ int	_rpcpmstart = 0;
+-int	_rpcfdtype = 0;
++unsigned int _rpcprotobits = (NFSCTL_UDPBIT|NFSCTL_TCPBIT);
+ int	_rpcsvcdirty = 0;
+ 
+ static void
+@@ -51,7 +51,7 @@ closedown(int sig)
+ 		static int size;
+ 		int i, openfd;
+ 
+-		if (_rpcfdtype == SOCK_DGRAM)
++		if (NFSCTL_TCPISSET(_rpcprotobits) == 0)
+ 			exit(0);
+ 
+ 		if (size == 0)
+@@ -130,7 +130,16 @@ rpc_init(char *name, int prog, int vers,
+ 		 * listen will fail on a connected TCP socket(passed by rsh).
+ 		 */
+ 		if (!(fdtype == SOCK_STREAM && listen(0,5) == -1)) {
+-			_rpcfdtype = fdtype;
++			switch(fdtype) {
++			case SOCK_DGRAM:
++				NFSCTL_UDPSET(_rpcprotobits);
++				break;
++			case SOCK_STREAM:
++				NFSCTL_TCPSET(_rpcprotobits);
++				break;
++			default:
++				xlog(L_FATAL, "getsockopt returns bad socket type: %d", fdtype);
++			}
+ 			_rpcpmstart = 1;
+ 		}
+ 	}
+@@ -139,7 +148,7 @@ rpc_init(char *name, int prog, int vers,
+ 		sock = RPC_ANYSOCK;
+ 	}
+ 
+-	if ((_rpcfdtype == 0) || (_rpcfdtype == SOCK_DGRAM)) {
++	if (NFSCTL_UDPISSET(_rpcprotobits)) {
+ 		static SVCXPRT *last_transp = NULL;
+ 
+ 		if (_rpcpmstart == 0) {
+@@ -167,7 +176,7 @@ rpc_init(char *name, int prog, int vers,
+ 		last_transp = transp;
+ 	}
+ 
+-	if ((_rpcfdtype == 0) || (_rpcfdtype == SOCK_STREAM)) {
++	if (NFSCTL_TCPISSET(_rpcprotobits)) {
+ 		static SVCXPRT *last_transp = NULL;
+ 
+ 		if (_rpcpmstart == 0) {
+diff --git a/support/nfs/svc_create.c b/support/nfs/svc_create.c
+index c159fc8..9ae2965 100644
+--- a/support/nfs/svc_create.c
++++ b/support/nfs/svc_create.c
+@@ -29,6 +29,7 @@
+ #include <unistd.h>
+ #include <errno.h>
+ #include <netdb.h>
++#include "nfslib.h"
+ 
+ #include <netinet/in.h>
+ 
+@@ -417,6 +418,10 @@ nfs_svc_create(char *name, const rpcprog_t program, const rpcvers_t version,
+ 		if (!(nconf->nc_flag & NC_VISIBLE))
+ 			continue;
+ 		visible++;
++
++		if (!strcmp(nconf->nc_proto, NC_TCP) && !NFSCTL_TCPISSET(_rpcprotobits))
++			continue;
++
+ 		if (port == 0)
+ 			servport = getservport(program, nconf->nc_proto);
+ 		else
+diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
+index 993b6e6..f918472 100644
+--- a/utils/mountd/mountd.c
++++ b/utils/mountd/mountd.c
+@@ -755,7 +755,7 @@ main(int argc, char **argv)
+ 			nfs_version &= ~NFSVERSBIT(vers);
+ 			break;
+ 		case 'n':
+-			_rpcfdtype = SOCK_DGRAM;
++			NFSCTL_TCPUNSET(_rpcprotobits);
+ 			break;
+ 		case 'r':
+ 			reverse_resolve = 1;
 -- 
-Ben Greear <greearb@candelatech.com>
-Candela Technologies Inc  http://www.candelatech.com
+1.8.3.1
 
