@@ -1,59 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtpfb1-g21.free.fr ([212.27.42.9]:46859 "EHLO
-	smtpfb1-g21.free.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750726Ab3JQKhy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Oct 2013 06:37:54 -0400
-Received: from smtp5-g21.free.fr (smtp5-g21.free.fr [212.27.42.5])
-	by smtpfb1-g21.free.fr (Postfix) with ESMTP id AC0EF2D507
-	for <linux-nfs@vger.kernel.org>; Thu, 17 Oct 2013 12:37:50 +0200 (CEST)
-Received: from harpe.intellique.com (unknown [82.225.196.72])
-	by smtp5-g21.free.fr (Postfix) with ESMTP id 16E0AD48294
-	for <linux-nfs@vger.kernel.org>; Thu, 17 Oct 2013 12:37:12 +0200 (CEST)
-Date: Thu, 17 Oct 2013 12:37:13 +0200
-From: Emmanuel Florac <eflorac@intellique.com>
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: nlockmgr freezing when using Ubuntu 13.04 (3.8 kernel) clients
-Message-ID: <20131017123713.588319c2@harpe.intellique.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail.candelatech.com ([208.74.158.172]:49722 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752787Ab3JVRZo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Oct 2013 13:25:44 -0400
+Message-ID: <5266B516.4080507@candelatech.com>
+Date: Tue, 22 Oct 2013 10:25:42 -0700
+From: Ben Greear <greearb@candelatech.com>
+MIME-Version: 1.0
+To: Weston Andros Adamson <dros@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Failure to mount nfsv4 on 3.12.0-rc5-wl+
+References: <5266B15B.4020804@candelatech.com> <8F3401DF-10CB-43BB-956B-76D166C4B3EA@netapp.com>
+In-Reply-To: <8F3401DF-10CB-43BB-956B-76D166C4B3EA@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On 10/22/2013 10:18 AM, Weston Andros Adamson wrote:
+> 
+> On Oct 22, 2013, at 1:09 PM, Ben Greear <greearb@candelatech.com> wrote:
+> 
+>> This is on an un-hacked upstream kernel (ath tree).  Mounting an older
+>> Fedora 13 system with nfsv3 works fine, but mounting a F17 box with
+>> NFSv4 hangs.  Ctrl-c of the process yields this error:
+>>
+>> NFS: nfs4_discover_server_trunking unhandled error -512. Exiting with error EIO
+> 
+> I have seen this error message and I'm currently debugging it - it's due to a hang in GSSD upcall.  This message is generated when the user ^Cs the mount. This is reproducible, but the hang only happens for me every once in a while. I can make it happen pretty reliably if I call mount/unmount a bunch of times (like the test_sec_options.sh script I posted last week).
+> 
+> This issue is next on my list...
 
-Hi list,
-this is probably an Ubuntu bug, however it put two different servers in
-the dumps, running different kernels so I send this in case it may help
-someone.
+Ok, no problem.  The vers=3 thing is fine for me.
 
-Here is the sort of messages clogging the NFS servers logs:
+I do seem to have a good system for reproducing the problem if you
+create some patches for testing...
 
-statd: server rpc.statd not responding, timed out
-lockd: cannot monitor ipntheo12
-statd: server rpc.statd not responding, timed out
-lockd: cannot unmonitor ipnnester13
-statd: server rpc.statd not responding, timed out
-lockd: cannot monitor ipngrid01.in2p3.fr
-statd: server rpc.statd not responding, timed out
-lockd: cannot monitor ipngrid01.in2p3.fr
-statd: server rpc.statd not responding, timed out
-lockd: cannot monitor ipngrid01.in2p3.fr
-statd: server rpc.statd not responding, timed out
-lockd: cannot monitor ipnweb2
-statd: server rpc.statd not responding, timed out
-lockd: cannot monitor ipnweb2
-statd: server rpc.statd not responding, timed out
-lockd: cannot monitor ipnweb2
-lockd: server ipnweb2 not responding, timed out
-lockd: server ipnweb2 not responding, timed out
-
-There are about 80 NFS clients (home directories) on these. They worked
-perfectly for years until 2 clients were upgraded to 13.04.
+Thanks,
+Ben
 
 
 -- 
-------------------------------------------------------------------------
-Emmanuel Florac     |   Direction technique
-                    |   Intellique
-                    |	<eflorac@intellique.com>
-                    |   +33 1 78 94 84 02
-------------------------------------------------------------------------
+Ben Greear <greearb@candelatech.com>
+Candela Technologies Inc  http://www.candelatech.com
+
