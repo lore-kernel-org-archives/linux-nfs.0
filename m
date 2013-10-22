@@ -1,99 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:12067 "EHLO mx1.redhat.com"
+Received: from mx12.netapp.com ([216.240.18.77]:20034 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756558Ab3J1Mn7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 28 Oct 2013 08:43:59 -0400
-Message-ID: <526E5C3C.10405@RedHat.com>
-Date: Mon, 28 Oct 2013 08:44:44 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S1754475Ab3JVRVh convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Oct 2013 13:21:37 -0400
+From: Weston Andros Adamson <dros@netapp.com>
+To: Ben Greear <greearb@candelatech.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Failure to mount nfsv4 on 3.12.0-rc5-wl+
+Date: Tue, 22 Oct 2013 17:21:36 +0000
+Message-ID: <826B52B7-CB6C-470C-A890-03E9B534B059@netapp.com>
+References: <5266B15B.4020804@candelatech.com>
+ <8F3401DF-10CB-43BB-956B-76D166C4B3EA@netapp.com>
+In-Reply-To: <8F3401DF-10CB-43BB-956B-76D166C4B3EA@netapp.com>
+Content-Type: text/plain; charset="Windows-1252"
 MIME-Version: 1.0
-To: Weston Andros Adamson <dros@netapp.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] gssd: validate cred in gssd_acquire_user_cred
-References: <1382720974-2746-1-git-send-email-dros@netapp.com>
-In-Reply-To: <1382720974-2746-1-git-send-email-dros@netapp.com>
-Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+… and I think it makes sense to me that this behavior was recently introduced and vers=3 fixes things, because nfsv4 has to do the upcall to GSSD even when sec=sys because it attempts to do krb5i on non superblock related operations (if possible will use, otherwise just uses sys) and this behavior was recently added. NFSv3 does not do this.
 
+-dros
 
-On 25/10/13 13:09, Weston Andros Adamson wrote:
-> Call gss_inquire_cred after gssd_acquire_krb5_cred check for expired
-> credentials.
-> 
-> This fixes a recent regression (since 302de786930a2c533068f9d8909a817b40f07c32)
-> that causes the user's ticket cache to grow unbounded with expired service
-> tickets when the user's credentials expire.
-> 
-> To reproduce this issue:
-> 
->  - mount kerberos nfs export
->  - kinit for a short lifetime (ie "kinit -l 1m")
->  - run a job that opens a file and writes for more than the lifetime
->  - run klist a few times after expiry and see the list grow, ie:
-> 
-> Ticket cache: DIR::/run/user/1749600001/krb5cc/tktYmpGlX
-> Default principal: dros@APIKIA.FAKE
-> 
-> Valid starting       Expires              Service principal
-> 10/21/2013 15:39:38  10/21/2013 15:40:35  krbtgt/APIKIA.FAKE@APIKIA.FAKE
-> 10/21/2013 15:39:40  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-> 10/21/2013 15:40:35  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-> 10/21/2013 15:40:36  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-> 10/21/2013 15:40:37  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-> 10/21/2013 15:40:37  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-> 10/21/2013 15:40:38  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-> 10/21/2013 15:40:38  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-> 10/21/2013 15:40:39  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-> 10/21/2013 15:40:39  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-> 10/21/2013 15:40:39  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-> 10/21/2013 15:40:39  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-> 10/21/2013 15:40:40  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-> 10/21/2013 15:40:40  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-> 10/21/2013 15:40:41  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-> 10/21/2013 15:40:41  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-> 10/21/2013 15:40:42  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-> 10/21/2013 15:40:42  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-> 10/21/2013 15:40:42  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-> 
-> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
-> Reviewed-by: Simo Sorce <simo@redhat.com>
-Committed...
-
-steved.
+On Oct 22, 2013, at 1:18 PM, Weston Andros Adamson <dros@netapp.com>
+ wrote:
 
 > 
-> ---
+> On Oct 22, 2013, at 1:09 PM, Ben Greear <greearb@candelatech.com> wrote:
 > 
-> Version 2 of the patch - version 1 had compiler warnings I completely missed!
-> I wonder how it worked before... but this now compiles cleanly and I verified
-> that it fixes the growing tkt cache problem.
+>> This is on an un-hacked upstream kernel (ath tree).  Mounting an older
+>> Fedora 13 system with nfsv3 works fine, but mounting a F17 box with
+>> NFSv4 hangs.  Ctrl-c of the process yields this error:
+>> 
+>> NFS: nfs4_discover_server_trunking unhandled error -512. Exiting with error EIO
 > 
-> Thanks,
->   -dros
+> I have seen this error message and I'm currently debugging it - it's due to a hang in GSSD upcall.  This message is generated when the user ^Cs the mount. This is reproducible, but the hang only happens for me every once in a while. I can make it happen pretty reliably if I call mount/unmount a bunch of times (like the test_sec_options.sh script I posted last week).
 > 
+> This issue is next on my list...
 > 
->  utils/gssd/krb5_util.c | 7 +++++++
->  1 file changed, 7 insertions(+)
+> -dros
 > 
-> diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
-> index c6e52fd..697d1d2 100644
-> --- a/utils/gssd/krb5_util.c
-> +++ b/utils/gssd/krb5_util.c
-> @@ -1405,6 +1405,13 @@ gssd_acquire_user_cred(uid_t uid, gss_cred_id_t *gss_cred)
->  
->  	ret = gssd_acquire_krb5_cred(name, gss_cred);
->  
-> +	/* force validation of cred to check for expiry */
-> +	if (ret == 0) {
-> +		if (gss_inquire_cred(&min_stat, *gss_cred, NULL, NULL,
-> +				     NULL, NULL) != GSS_S_COMPLETE)
-> +			ret = -1;
-> +	}
-> +
->  	maj_stat = gss_release_name(&min_stat, &name);
->  	return ret;
->  }
-> -- 1.8.3.1 (Apple Git-46)
+>> 
+>> 3.9 kernels on this same system mount the F17 box fine.
+>> 
+>> If I add 'vers=3' to /etc/fstab, then it mounts the F17 box fine.
+>> 
+>> Thanks,
+>> Ben
+>> 
+>> -- 
+>> Ben Greear <greearb@candelatech.com>
+>> Candela Technologies Inc  http://www.candelatech.com
+>> 
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > 
+
