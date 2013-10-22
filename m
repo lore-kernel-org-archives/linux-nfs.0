@@ -1,97 +1,134 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:42351 "EHLO mx1.redhat.com"
+Received: from mx11.netapp.com ([216.240.18.76]:5908 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756286Ab3JXPzy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 24 Oct 2013 11:55:54 -0400
-Message-ID: <52694336.9050303@RedHat.com>
-Date: Thu, 24 Oct 2013 11:56:38 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S1754129Ab3JVQWS convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Oct 2013 12:22:18 -0400
+From: Weston Andros Adamson <dros@netapp.com>
+To: Simo Sorce <simo@redhat.com>
+CC: "<SteveD@redhat.com>" <SteveD@redhat.com>,
+        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] gssd: validate cred in gssd_acquire_user_cred
+Date: Tue, 22 Oct 2013 16:22:17 +0000
+Message-ID: <E7C76283-6DA1-453B-A386-6C1A2DDC7653@netapp.com>
+References: <1382450675-14636-1-git-send-email-dros@netapp.com>
+ <1382452919.9794.63.camel@willson.li.ssimo.org>
+ <0A5F8F19-4730-4D1A-86A5-5533D758AC23@netapp.com>
+ <1382458386.9794.89.camel@willson.li.ssimo.org>
+In-Reply-To: <1382458386.9794.89.camel@willson.li.ssimo.org>
+Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: NeilBrown <neilb@suse.de>, tasleson@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] exportfs: Return non-zero exit value on error
-References: <1380756584-13335-1-git-send-email-tasleson@redhat.com> <20131022092519.4f4683a8@notabene.brown> <52669862.6030409@redhat.com> <20131023124444.65ace6e3@notabene.brown> <52680917.4010509@redhat.com> <20131024091811.34b06e71@notabene.brown> <D9521932-DDAA-47D2-996F-62D2A37BA5B0@oracle.com>
-In-Reply-To: <D9521932-DDAA-47D2-996F-62D2A37BA5B0@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
+On Oct 22, 2013, at 12:13 PM, Simo Sorce <simo@redhat.com> wrote:
 
-On 23/10/13 19:31, Chuck Lever wrote:
+> On Tue, 2013-10-22 at 16:03 +0000, Weston Andros Adamson wrote:
+>> On Oct 22, 2013, at 10:41 AM, Simo Sorce <simo@redhat.com> wrote:
+>> 
+>>> On Tue, 2013-10-22 at 10:04 -0400, Weston Andros Adamson wrote:
+>>>> Call gss_inquire_cred after gssd_acquire_krb5_cred check for expired
+>>>> credentials.
+>>>> 
+>>>> This fixes a recent regression (since 302de786930a2c533068f9d8909a817b40f07c32)
+>>>> that causes the user's ticket cache to grow unbounded with expired service
+>>>> tickets when the user's credentials expire.
+>>>> 
+>>>> To reproduce this issue:
+>>>> 
+>>>> - mount kerberos nfs export
+>>>> - kinit for a short lifetime (ie "kinit -l 1m")
+>>>> - run a job that opens a file and writes for more than the lifetime
+>>>> - run klist a few times after expiry and see the list grow, ie:
+>>>> 
+>>>> Ticket cache: DIR::/run/user/1749600001/krb5cc/tktYmpGlX
+>>>> Default principal: dros@APIKIA.FAKE
+>>>> 
+>>>> Valid starting       Expires              Service principal
+>>>> 10/21/2013 15:39:38  10/21/2013 15:40:35  krbtgt/APIKIA.FAKE@APIKIA.FAKE
+>>>> 10/21/2013 15:39:40  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+>>>> 10/21/2013 15:40:35  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+>>>> 10/21/2013 15:40:36  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+>>>> 10/21/2013 15:40:37  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+>>>> 10/21/2013 15:40:37  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+>>>> 10/21/2013 15:40:38  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+>>>> 10/21/2013 15:40:38  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+>>>> 10/21/2013 15:40:39  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+>>>> 10/21/2013 15:40:39  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+>>>> 10/21/2013 15:40:39  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+>>>> 10/21/2013 15:40:39  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+>>>> 10/21/2013 15:40:40  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+>>>> 10/21/2013 15:40:40  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+>>>> 10/21/2013 15:40:41  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+>>>> 10/21/2013 15:40:41  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+>>>> 10/21/2013 15:40:42  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+>>>> 10/21/2013 15:40:42  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+>>>> 10/21/2013 15:40:42  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+>>>> 
+>>>> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+>>>> ---
+>>>> utils/gssd/krb5_util.c | 7 +++++++
+>>>> 1 file changed, 7 insertions(+)
+>>>> 
+>>>> diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
+>>>> index c6e52fd..ec5db83 100644
+>>>> --- a/utils/gssd/krb5_util.c
+>>>> +++ b/utils/gssd/krb5_util.c
+>>>> @@ -1405,6 +1405,13 @@ gssd_acquire_user_cred(uid_t uid, gss_cred_id_t *gss_cred)
+>>>> 
+>>>> 	ret = gssd_acquire_krb5_cred(name, gss_cred);
+>>>> 
+>>>> +	/* force validation of cred to check for expiry */
+>>>> +	if (ret == 0) {
+>>>> +		if (gss_inquire_cred(min_stat, gss_cred, NULL, NULL,
+>>>> +				     NULL, NULL) != GSS_S_COMPLETE)
+>>>> +			ret = -1;
+>>>> +	}
+>>>> +
+>>>> 	maj_stat = gss_release_name(&min_stat, &name);
+>>>> 	return ret;
+>>>> }
+>>> 
+>>> A good start, but given you are inquiring creds, then I think it would
+>>> totally make sense to pass in a uint32_t for the 4th argument
+>>> (lifetime), and check if there is "enough".
+>> 
+>> Well, from my perspective gssd already gives enough info for you to know what's going on, i.e.:
+>> 
+>> getting credentials for client with uid 1749600001 for server zero.apikia.fake
+>> CC '/run/user/1749600001/krb5cc' being considered, with preferred realm 'APIKIA.FAKE'
+>> CC 'DIR:/run/user/1749600001/krb5cc' is expired or corrupt
+>> WARNING: Failed to create krb5 context for user with uid 1749600001 for server zero.apikia.fake
+>> doing error downfall
+>> 
+>> And it's obvious from the NFS layer as EKEYEXPIRED gets passed through as the error.
+>> 
+>>> 
+>>> For example, if it returns a lifetime of 1 second should we continue ?
+>>> There is a fat chance that it will fail later on.
+>> 
+>> I think how we handle this now (without the regression this fixes) is fine.  I really don't think users/ admins want to enable verbose debugging in gssd to see this - they should be able to tell what happened when the caller gets an expired cred.
+>> 
+>>> 
+>>> I think we should at least log it if the credential we are trying to use
+>>> turns out to be really close to expiring, no ? It may save some gray
+>>> hairs to server administrators trying to find out what is going wrong
+>>> (like it happened to you :)
+>> 
+>> Well, it was obvious to me what was happening when the keys expired - what was not obvious was why the tkt cache was growing unbounded with service tickets that were *never* valid (the regression this patch fixes).
+>> 
+>> I suppose we could do something more, but I don't really see a reason to.
 > 
-> On Oct 23, 2013, at 6:18 PM, NeilBrown <neilb@suse.de> wrote:
 > 
->> On Wed, 23 Oct 2013 12:36:23 -0500 Tony Asleson <tasleson@redhat.com> wrote:
->>
->>> On 10/22/2013 08:44 PM, NeilBrown wrote:
->>>> On Tue, 22 Oct 2013 10:23:14 -0500 Tony Asleson <tasleson@redhat.com> wrote:
->>>>> The reason I chose to return values was to make sure requested operation
->>>>> actually completed requested operation.  Unexporting a non-existent
->>>>> export is not considered an error and returns no indication you did
->>>>> absolutely nothing.
->>>>
->>>> Hi,
->>>> thanks makes sense - I had missed that (even though you explained it in the
->>>> patch description :-( )
->>>>
->>>> With your patch, if asked to unexport something that wasn't exported it
->>>> would not report any error, but would exit with an error status.  Is that
->>>> correct?  I think I would rather have a message printed if there is an error.
->>>
->>> Correct, I only made changes for the exit status.  I was trying to make
->>> changes that would be mostly invisible to end users.  I have no concerns
->>> adding a printed error output too, but others may.
->>>
->>> Changing the behavior of any command line tool is potentially
->>> problematic when scripted.
->>>
->>>> So would something like this (on top of my patch) address you need, or was
->>>> there something else I missed?
->>>
->>> Yes, this should work for the unexport fs case.
->>>
->>> However, the reason my patch was a little more invasive was to ensure
->>> that both the export and unexport paths were covered.
->>>
->>> For example, if the strdup call fails in function client_init, we fail
->>> the operation and return exit value of 0.  Unlikely, but just the first
->>> example I stumbled across.
->>
->> I think it is a lot closer to "impossible" than just "unlikely".
->> malloc doesn't fail in this sort of context, the OOM killer kills something
->> off instead.
->> My personal preference is to replace all malloc/calloc/strdup calls with
->> the xmalloc, xstrdup etc calls in support/nfs/xcommon.c.
->> If you are worried about malloc failing, I'd much prefer to see a patch which
->> changes nfs-utils to use those uniformly.
->>
->> There might be a question over the best behaviour for daemons like mountd
->> and  gssd.  However as we move towards having systemd manage those, they will
->> be restarted if they ever exit, and they are mostly stateless so that is
->> quite safe.
->>
->> Does anyone else have thoughts on this?
+> you are probably right,
 > 
-> Yes.  My thought is "xmalloc is an abomination."  :-)
-> 
-> We really do not want any of these tools exiting left if there's a memory allocation failure.  
-> For a user, that's no better than a segfault.
-I the past I have agreed with this... But as Neil points out, we now live in
-a systemd world were daemons are restarted, so maybe it does make sense to 
-exit on these types of failures. With daemons like mountd there is 
-really no state that would be lost.... 
+> Reviewed-by: Simo Sorce <simo@redhat.com>
 
-steved.
-> 
-> What's more, if a utility like exportfs isn't very carefully coded, a sideways exit 
-> can leave on-disk files in an inconsistent state.
-> 
-> A rule of thumb is never hide control flow (like exiting) inside macros or libraries.
-> 
-> --
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
-> 
-> 
-> 
+
+Cool, thanks for the help! I'm sure it would have taken me a long time to track down gss_inquire_cred() on my own.
+
+I'm definitely open to improving the debuggability of gssd, so if you really think we need some warning during some window before the cred expires, let's work with the list to figure out how that should look.
+
+-dros
+
+
