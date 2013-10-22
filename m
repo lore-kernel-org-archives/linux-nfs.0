@@ -1,77 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-we0-f171.google.com ([74.125.82.171]:39099 "EHLO
-	mail-we0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753102Ab3J3OCv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Oct 2013 10:02:51 -0400
-Received: by mail-we0-f171.google.com with SMTP id t60so1323111wes.16
-        for <linux-nfs@vger.kernel.org>; Wed, 30 Oct 2013 07:02:50 -0700 (PDT)
-Message-ID: <52711187.10202@primarydata.com>
-Date: Wed, 30 Oct 2013 16:02:47 +0200
-From: Benny Halevy <bhalevy@primarydata.com>
+Received: from mx11.netapp.com ([216.240.18.76]:62738 "EHLO mx11.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753380Ab3JVRSR convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Oct 2013 13:18:17 -0400
+From: Weston Andros Adamson <dros@netapp.com>
+To: Ben Greear <greearb@candelatech.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Failure to mount nfsv4 on 3.12.0-rc5-wl+
+Date: Tue, 22 Oct 2013 17:18:11 +0000
+Message-ID: <8F3401DF-10CB-43BB-956B-76D166C4B3EA@netapp.com>
+References: <5266B15B.4020804@candelatech.com>
+In-Reply-To: <5266B15B.4020804@candelatech.com>
+Content-Type: text/plain; charset=US-ASCII
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: bfields@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/7] nfsd4: fix recall_lock use in unhash_delegation
-References: <526F81DE.6060704@primarydata.com> <1383039544-27157-1-git-send-email-bhalevy@primarydata.com> <20131029144658.GR31322@fieldses.org>
-In-Reply-To: <20131029144658.GR31322@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2013-10-29 16:46, J. Bruce Fields wrote:
-> On Tue, Oct 29, 2013 at 11:39:04AM +0200, Benny Halevy wrote:
->> Access to dp->dl_perclnt must be synchronized by the recall_lock
+
+On Oct 22, 2013, at 1:09 PM, Ben Greear <greearb@candelatech.com> wrote:
+
+> This is on an un-hacked upstream kernel (ath tree).  Mounting an older
+> Fedora 13 system with nfsv3 works fine, but mounting a F17 box with
+> NFSv4 hangs.  Ctrl-c of the process yields this error:
 > 
-> Are you sure?  recall_lock is for stuff that's needed in the delegation
-> break callback (nfsd_break_deleg_cb() and any of the subsequent callback
-> handling).  I don't think that includes dl_perclnt.
+> NFS: nfs4_discover_server_trunking unhandled error -512. Exiting with error EIO
 
-I was mislead by the fact that destroy_client and nfs4_state_shutdown_net
-care to acquire the recall_lock for traversing the clp->cl_delegations
-and nn->del_recall_lru lists, respectively.
+I have seen this error message and I'm currently debugging it - it's due to a hang in GSSD upcall.  This message is generated when the user ^Cs the mount. This is reproducible, but the hang only happens for me every once in a while. I can make it happen pretty reliably if I call mount/unmount a bunch of times (like the test_sec_options.sh script I posted last week).
 
-Now nfs4_state_shutdown_net, although its comment says it should be
-called with the state lock held (SHOULD or should, or should it be MUST? :)
-It doesn't seem like nfsd_shutdown_net acquires the state lock.
+This issue is next on my list...
 
-Therefore, we either need to grab the state lock in nfs4_state_shutdown_net
-which adds yet another problem to fix, or access dl_perclnt always under the
-spin lock.
-
-Benny
+-dros
 
 > 
-> --b.
+> 3.9 kernels on this same system mount the F17 box fine.
 > 
->>
->> Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
->> ---
->>  fs/nfsd/nfs4state.c | 2 +-
->>  1 file changed, 1 insertion(+), 1 deletion(-)
->>
->> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
->> index a90949a..a403502 100644
->> --- a/fs/nfsd/nfs4state.c
->> +++ b/fs/nfsd/nfs4state.c
->> @@ -436,8 +436,8 @@ static void unhash_stid(struct nfs4_stid *s)
->>  static void
->>  unhash_delegation(struct nfs4_delegation *dp)
->>  {
->> -	list_del_init(&dp->dl_perclnt);
->>  	spin_lock(&recall_lock);
->> +	list_del_init(&dp->dl_perclnt);
->>  	list_del_init(&dp->dl_perfile);
->>  	list_del_init(&dp->dl_recall_lru);
->>  	spin_unlock(&recall_lock);
->> -- 
->> 1.8.3.1
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> If I add 'vers=3' to /etc/fstab, then it mounts the F17 box fine.
+> 
+> Thanks,
+> Ben
+> 
+> -- 
+> Ben Greear <greearb@candelatech.com>
+> Candela Technologies Inc  http://www.candelatech.com
+> 
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+
