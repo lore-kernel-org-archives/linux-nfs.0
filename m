@@ -1,91 +1,122 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:61791 "EHLO mx11.netapp.com"
+Received: from cantor2.suse.de ([195.135.220.15]:43056 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751788Ab3JYRJo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Oct 2013 13:09:44 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: <steved@redhat.com>
-CC: <linux-nfs@vger.kernel.org>, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH] gssd: validate cred in gssd_acquire_user_cred
-Date: Fri, 25 Oct 2013 13:09:34 -0400
-Message-ID: <1382720974-2746-1-git-send-email-dros@netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+	id S1753185Ab3JWAYZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 Oct 2013 20:24:25 -0400
+Date: Wed, 23 Oct 2013 08:30:19 +1100
+From: NeilBrown <neilb@suse.de>
+To: Anna Schumaker <bjschuma@netapp.com>
+Cc: NFS <linux-nfs@vger.kernel.org>, David Howells <dhowells@redhat.com>
+Subject: Re: What is the long term fix for the idmapper key-quota problem.
+Message-ID: <20131023083019.7dfc39f9@notabene.brown>
+In-Reply-To: <52669069.5050700@netapp.com>
+References: <20131021160514.4dbcbf12@notabene.brown>
+	<52669069.5050700@netapp.com>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/Q+8qe2g1T3T9g6823IKaUVd"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Call gss_inquire_cred after gssd_acquire_krb5_cred check for expired
-credentials.
+--Sig_/Q+8qe2g1T3T9g6823IKaUVd
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-This fixes a recent regression (since 302de786930a2c533068f9d8909a817b40f07c32)
-that causes the user's ticket cache to grow unbounded with expired service
-tickets when the user's credentials expire.
+On Tue, 22 Oct 2013 10:49:13 -0400 Anna Schumaker <bjschuma@netapp.com> wro=
+te:
 
-To reproduce this issue:
+> On Mon 21 Oct 2013 01:05:14 AM EDT, NeilBrown wrote:
+> >
+> > Hi,
+> >  as you probably know, request_key() imposes a quota on
+> > the number of keys that can be requested, which by default is quite low=
+ (200).
+> > When idmap exceeds this quota, request_key() returns an error and
+> > the result is userspace sees "nobody" as the owner.
+> >
+> > A short term fix is to fiddle some sysctl values, but I wonder if any l=
+ong
+> > term fix is being planned.
+>=20
+> I don't have anything planned.
 
- - mount kerberos nfs export
- - kinit for a short lifetime (ie "kinit -l 1m")
- - run a job that opens a file and writes for more than the lifetime
- - run klist a few times after expiry and see the list grow, ie:
-
-Ticket cache: DIR::/run/user/1749600001/krb5cc/tktYmpGlX
-Default principal: dros@APIKIA.FAKE
-
-Valid starting       Expires              Service principal
-10/21/2013 15:39:38  10/21/2013 15:40:35  krbtgt/APIKIA.FAKE@APIKIA.FAKE
-10/21/2013 15:39:40  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-10/21/2013 15:40:35  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-10/21/2013 15:40:36  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-10/21/2013 15:40:37  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-10/21/2013 15:40:37  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-10/21/2013 15:40:38  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-10/21/2013 15:40:38  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-10/21/2013 15:40:39  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-10/21/2013 15:40:39  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-10/21/2013 15:40:39  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-10/21/2013 15:40:39  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-10/21/2013 15:40:40  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-10/21/2013 15:40:40  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-10/21/2013 15:40:41  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-10/21/2013 15:40:41  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-10/21/2013 15:40:42  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-10/21/2013 15:40:42  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-10/21/2013 15:40:42  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
-Reviewed-by: Simo Sorce <simo@redhat.com>
-
----
-
-Version 2 of the patch - version 1 had compiler warnings I completely missed!
-I wonder how it worked before... but this now compiles cleanly and I verified
-that it fixes the growing tkt cache problem.
-
-Thanks,
-  -dros
+Maybe it is time to start planning then.  This is a very real regression th=
+at
+needs to be fixed.
 
 
- utils/gssd/krb5_util.c | 7 +++++++
- 1 file changed, 7 insertions(+)
+>=20
+> >
+> > Probably the sensible thing would be for nfs-idmap to bypass the quota.
+> > As keys are not held active for very long at a time, they should be gar=
+bage
+> > collected in due course.
+> > There is currently no interface to request this but I suspect one could=
+ be
+> > added.
+>=20
+> Adding a new keyring interface might be a better question for David=20
+> Howells, since he's done a lot of keyring work.
 
-diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
-index c6e52fd..697d1d2 100644
---- a/utils/gssd/krb5_util.c
-+++ b/utils/gssd/krb5_util.c
-@@ -1405,6 +1405,13 @@ gssd_acquire_user_cred(uid_t uid, gss_cred_id_t *gss_cred)
- 
- 	ret = gssd_acquire_krb5_cred(name, gss_cred);
- 
-+	/* force validation of cred to check for expiry */
-+	if (ret == 0) {
-+		if (gss_inquire_cred(&min_stat, *gss_cred, NULL, NULL,
-+				     NULL, NULL) != GSS_S_COMPLETE)
-+			ret = -1;
-+	}
-+
- 	maj_stat = gss_release_name(&min_stat, &name);
- 	return ret;
- }
--- 
-1.8.3.1 (Apple Git-46)
+Let's add David to Cc then.  Hi David!
 
+>=20
+> How many idmap keys do you have active at once?  I'm guessing the quota=20
+> is there for a reason, and increasing it in-kernel would probably be=20
+> much easier than adding a new interface for short-lived keys.
+
+Only 1 or 2 active at once.  Lots active sequentially in a short period of
+time.
+
+The problem, as I see it, is that you are trying to use a keyring like a
+cache, and it doesn't seem to be designed for that purpose.
+
+It certainly has some of the attributes of a cache, like an LRU list and a
+garbage collector.  However the garbage collector doesn't discard entries
+simply because they are old (as you would expect for a cache).  It discards
+them because they have expired or have been marked as dead.
+
+To get the keyring to act like a cache you need some way to discard the
+"oldest" when the keyring is full.
+
+Though as the quotas are per-user rather than per-keyring I'm not sure that
+is really a well defined concept.
+
+I was imagining something like
+  while (request_key(&key_type_id_resolver, ...) =3D=3D -EDQUOT)
+        discard_oldest_key(&key_type_id_resolver);
+
+but it is entirely possible that root's entire quota is used for some other
+key_type so this could fail.
+
+David: is there some way that keyrings can be used as a simple FIFO cache
+with some minimum number of entries?  If not, this might require a major
+redesign.
+
+
+NeilBrown
+
+
+--Sig_/Q+8qe2g1T3T9g6823IKaUVd
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.19 (GNU/Linux)
+
+iQIVAwUBUmbuaznsnt1WYoG5AQJUGQ/5AdR2k1agSRUDbTsTLIihQ1udeU/utZ8M
+fXr5zk6xLVp8/bsF/P70dOdw1pnh90B3ikGiadZv+2i0c1qVtJn/0LcJlUZrVvtw
+xQVBsh13OHR1iL7ifFY0BQIlwHBxZ8YnEUaPnVuy9gNO0G8IDsm0HhTHBykppQ6X
+ybLBQyN1fofb2AjWg5SqhDfk9qnFlUgbssjW6rrGFceNtBZXRsdd5R8dP1nOhF/X
+tCYiKeybZ5iGDjyjJYIaAV+Xai4YIBRIja8N7c6YDTq7WAS5HsLNXVgzxZOOIFH6
+JeY8zf1WQUmdFtgfOSXWxI5JO5MtDyoGzMjhvJibig/dyng/0Imq19Eb79aByRCI
+TjUQ5ZGd8CAEZ1H4prc6oMgnDEaq601s+CwI3evIpcSJDPVnspH/2sL7TDAcbTEl
+wneamb4C1ZGsohwib69QckoCQ2pTfEa+julDKqmoEUdMd25+v8Mg1gtkTzIyqx6P
+23K+CgJwh60JBssNW/e1azK4saWmHyDt6/W8zDlgS7aSmx/w3EZa2aWXVhN4i130
+zKP5Kqi7ma0Pfh/w+lET2FPxoIie+oV3PpPExvXoy3CIa56VK+sGd7R/q59u7xj3
+gx1PleiQvSjZm6BSfPCUr8HCh27igqGPr8PY0lZ+Z1b3XN1REaS36xYYzlzwgusy
+tyaawx95Qxo=
+=Vvxc
+-----END PGP SIGNATURE-----
+
+--Sig_/Q+8qe2g1T3T9g6823IKaUVd--
