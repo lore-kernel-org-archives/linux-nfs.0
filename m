@@ -1,122 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp-o-1.desy.de ([131.169.56.154]:33724 "EHLO smtp-o-1.desy.de"
+Received: from mx12.netapp.com ([216.240.18.77]:13633 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752847Ab3JJJ46 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Oct 2013 05:56:58 -0400
-Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
-	by smtp-o-1.desy.de (DESY-O-1) with ESMTP id 608672805BB
-	for <linux-nfs@vger.kernel.org>; Thu, 10 Oct 2013 11:56:57 +0200 (CEST)
-Received: from ZITSWEEP1.win.desy.de (zitsweep1.win.desy.de [131.169.97.95])
-	by smtp-map-1.desy.de (DESY_MAP_1) with ESMTP id 53E8A13E8F
-	for <linux-nfs@vger.kernel.org>; Thu, 10 Oct 2013 11:56:56 +0200 (MEST)
-Date: Thu, 10 Oct 2013 11:56:56 +0200 (CEST)
-From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
-To: linux-nfs@vger.kernel.org
-Cc: Andy Adamson <william.adamson@netapp.com>,
-        Steve Dickson <steved@redhat.com>
-Message-ID: <1232423514.586176.1381399016371.JavaMail.zimbra@desy.de>
-In-Reply-To: <1667669326.580689.1381351712928.JavaMail.zimbra@desy.de>
-References: <1667669326.580689.1381351712928.JavaMail.zimbra@desy.de>
-Subject: Re: DoS with NFSv4.1 client
+	id S1753537Ab3JVRmi convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Oct 2013 13:42:38 -0400
+From: Weston Andros Adamson <dros@netapp.com>
+To: Ben Greear <greearb@candelatech.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Failure to mount nfsv4 on 3.12.0-rc5-wl+
+Date: Tue, 22 Oct 2013 17:42:35 +0000
+Message-ID: <C85838C2-1267-4CA4-9C17-1F828B33B01B@netapp.com>
+References: <5266B15B.4020804@candelatech.com>
+ <8F3401DF-10CB-43BB-956B-76D166C4B3EA@netapp.com>
+ <826B52B7-CB6C-470C-A890-03E9B534B059@netapp.com>
+ <5266B574.7030607@candelatech.com>
+In-Reply-To: <5266B574.7030607@candelatech.com>
+Content-Type: text/plain; charset="Windows-1252"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
+On Oct 22, 2013, at 1:27 PM, Ben Greear <greearb@candelatech.com>
+ wrote:
 
-Today we was 'luck' to have such situation at day time.
-Here is what happens:
+> On 10/22/2013 10:21 AM, Weston Andros Adamson wrote:
+>> � and I think it makes sense to me that this behavior was recently introduced and vers=3 fixes things, because nfsv4 has to do the upcall to GSSD even when sec=sys because it attempts to do krb5i on non superblock related operations (if possible will use, otherwise just uses sys) and this behavior was recently added. NFSv3 does not do this.
+>> 
+>> -dros
+> 
+> I have a gssd running on the client, from what I can tell, but no idea if it is working properly
+> or not.  It should be whatever is standard with F17.
 
-The client sends an OPEN and gets an open state id.
-This is followed by LAYOUTGET ... and READ to DS.
-At some point, server returns back BAD_STATEID.
-This triggers client to issue a new OPEN and use
-new open stateid with READ request to DS. As new 
-stateid is not known to DS, it keeps returning
-BAD_STATEID and becomes an infinite loop.
+It's my belief that a GSSD bug is causing this hang and that the bug has been in GSSD for a while, but wasn't hit until recent kernel changes.
 
-Regards,
-   Tigran.
+I'll share more as soon as I figure it out!
 
- 
+-dros
 
------ Original Message -----
-> From: "Tigran Mkrtchyan" <tigran.mkrtchyan@desy.de>
-> To: linux-nfs@vger.kernel.org
-> Cc: "Andy Adamson" <william.adamson@netapp.com>, "Steve Dickson" <steved@redhat.com>
-> Sent: Wednesday, October 9, 2013 10:48:32 PM
-> Subject: DoS with NFSv4.1 client
 > 
+> [root@ct523-9292 ~]# ps -auxww|grep gss
+> root       723  0.0  0.0  35192   504 ?        Ss   10:17   0:00 /usr/sbin/rpc.gssd
+> root      5975  0.0  0.0 109408   872 pts/0    S+   10:25   0:00 grep --color=auto gss
 > 
-> Hi,
+> Thanks,
+> Ben
 > 
-> last night we got a DoS attack with one of the NFS clients.
-> The farm node, which was accessing data with pNFS,
-> went mad and have tried to kill dCache NFS server. As usually
-> this have happened over night and we was not able to
-> get a network traffic or bump the debug level.
+> -- 
+> Ben Greear <greearb@candelatech.com>
+> Candela Technologies Inc  http://www.candelatech.com
 > 
-> The symptoms are:
-> 
-> client starts to bombard the MDS with OPEN requests. As we see
-> state created on the server side, the requests was processed by
-> server. Nevertheless, for some reason, client did not like it. Here
-> is the result of mountstats:
-> 
-> OPEN:
-> 	17087065 ops (99%) 	1 retrans (0%) 	0 major timeouts
-> 	avg bytes sent per op: 356	avg bytes received per op: 455
-> 	backlog wait: 0.014707 	RTT: 4.535704 	total execute time: 4.574094
-> 	(milliseconds)
-> CLOSE:
-> 	290 ops (0%) 	0 retrans (0%) 	0 major timeouts
-> 	avg bytes sent per op: 247	avg bytes received per op: 173
-> 	backlog wait: 308.827586 	RTT: 1748.479310 	total execute time: 2057.365517
-> 	(milliseconds)
-> 
-> 
-> As you can see there is a quite a big difference between number of open and
-> close requests.
-> The same picture we can see on the server side as well:
-> 
-> NFSServerV41 Stats:                   average±stderr(ns)       min(ns)
-> max(ns)            Sampes
->   DESTROY_SESSION                          26056±4511.89        13000
->   97000                17
->   OPEN                                    1197297±  0.00       816000
->   31924558000          54398533
->   RESTOREFH                                     0±  0.00            0
->   25018778000          54398533
->   SEQUENCE                                   1000±  0.00         1000
->   26066722000          55601046
->   LOOKUP                                  4607959±  0.00       375000
->   26977455000             32118
->   GETDEVICEINFO                             13158±100.88         4000
->   655000             11378
->   CLOSE                                  16236211±  0.00         5000
->   21021819000             20420
->   LAYOUTGET                             271736361±  0.00     10003000
->   68414723000             21095
-> 
-> The last column is the number of requests.
-> 
-> This is with RHEL6.4 as the client. By looking at the code,
-> I can see a loop at nfs4proc.c#nfs4_do_open() which can be
-> the cause of the problem. Nevertheless, I can't
-> fine any reason why this look turned into an 'infinite' one.
-> 
-> At the and our server ran out of memory and we have returned
-> NFSERR_SERVERFAULT to the client. This triggered client to
-> reestablish the session and all open state ids was
-> invalidated and cleaned up.
-> 
-> I am still trying to reproduce this behavior (on client
-> and server) and any hint is welcome.
-> 
-> Tigran.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+
