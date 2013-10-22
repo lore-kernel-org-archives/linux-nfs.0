@@ -1,119 +1,118 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:44659 "EHLO fieldses.org"
+Received: from mx12.netapp.com ([216.240.18.77]:50927 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756103Ab3J1RJK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 28 Oct 2013 13:09:10 -0400
-Date: Mon, 28 Oct 2013 13:09:04 -0400
-To: Nadav Shemer <nadav@primarydata.com>
-Cc: bfields@redhat.com, linux-nfs@vger.kernel.org, bhalevy@primarydata.com
-Subject: Re: [PATCH] nfsd: unhash client before expiring it
-Message-ID: <20131028170903.GE31322@fieldses.org>
-References: <1381409248-1858-1-git-send-email-nadav@primarydata.com>
+	id S1752918Ab3JVPq1 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Oct 2013 11:46:27 -0400
+From: Weston Andros Adamson <dros@netapp.com>
+To: Simo Sorce <simo@redhat.com>
+CC: "Adamson, Andy" <William.Adamson@netapp.com>,
+        "steved@redhat.com" <steved@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH Version 2 0/3] GSSD: Use gss-ctx keys and gsskeyd to
+ sync Kerberos credentials and kernel gss_contexts.
+Date: Tue, 22 Oct 2013 15:46:26 +0000
+Message-ID: <002FCC76-C58E-4B33-B561-6335AB77AAB4@netapp.com>
+References: <1382451757-3032-1-git-send-email-andros@netapp.com>,<1382454148.9794.72.camel@willson.li.ssimo.org>
+In-Reply-To: <1382454148.9794.72.camel@willson.li.ssimo.org>
+Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1381409248-1858-1-git-send-email-nadav@primarydata.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Oct 10, 2013 at 02:47:28PM +0200, Nadav Shemer wrote:
-> Some client_expire operations (pnfs_expire_client) may release the state
-> lock. To prevent two threads from concurrently expiring the same client,
-> the client is unhashed before any other operation
 
-Sorry for the slow response.  Ignoring this for now as it seems to
-depend on later pnfs stuff (and I'm a little worried about the idea of
-pnfs ops dropping locks).  Resend if I'm confused.
+> On Oct 22, 2013, at 11:02 AM, "Simo Sorce" <simo@redhat.com> wrote:
+> 
+>> On Tue, 2013-10-22 at 10:22 -0400, andros@netapp.com wrote:
+>> From: Andy Adamson <andros@netapp.com>
+>> 
+>> This is an RFC patchset, which will be used for testing.
+>> 
+>> This patchset requires the "SUNRPC: destroy gss_cred and context on Kerberos credential destruction" kernel patchset.
+>> 
+>> We need to do a lot of testing to ensure that once kdestroy and gss-ctx
+>> gss_user_destroy is called, all existing buffered
+>> writes using the 'destroyed gss credential + context' are serviced.
+>> 
+>> Differences from version 1:
+>> 
+>> - moved from nfstgt_login and nfstgt_logout to gsskeyd.
+>> - gsskeyd automatically creates gss-ctx key on kinit and destroys the gss-ctx
+>> key on kdestroy.
+>> 
+>> gsskeyd will need to act differently for different krb5 credential caches.
+> 
+> Why ?
+> 
+>> For example, some versions of gssd store FILE credentials in FILE:/tmp/krb5cc_<UID>
+>> while this code, written for fedora 19 uses FILE:/run/user/<UID>/krb5cc/tgt.
+> 
+> This is incorrect, Fedora 19 use DIR type ccaches, so you should
+> reference a cache withing the dir type, which will notmally be something
+> like: DIR:/run/user/<uidnumber>/krb5cc for the whole collection or
+> DIR::/run/user/<uidnumber>/krb5cc/txtXXXXXX for the sepcific cache.
+> 
+> However note that due to issues with DIR type caches we are moving to a
+> new KEYRING based type of cache in F20, so assuming any specific type of
+> cache is a dead start.
+> 
+>> As Trond suggested, if we keep gsskeyd separate from gssd, we could set up a
+>> configuration file along the lines of the keytools' request-key.conf file to
+>> allow both NFS and CIFS (and other filesystems) to install plugin handlers
+>> for kinit/kdestroy events.
+> 
+> Given in many cases (the desirable ones at least) kerberos credentials
+> are not inited via kinit, but rather by things like pam_krb5, sssd, or
+> directly imported via sshd, I am trying to understand how you are going
+> to address the majority of these cases.
+> 
+> Should users put gsskeyd in their .profile/.bashrc files or something ?
+> 
+>> Else, we could have gssd be the process to poll inotify (given
+>> that it already polls rpc_pipefs) and then just have it fork off the
+>> subprocess if and when it sees an interesting event.
+> 
+> What is an 'interesting' event ?
+> 
+>> We need to investigate how this works when the kernel keyring is used for
+>> Kerberos credentials. I believe that in this case gsskeyd can add the gss-ctx
+>> key to the kerberos keyring, and it will get destroyed along with all other
+>> keys at kdestroy.
+> 
+> Is there any reason why you are doing this work with an utility that is
+> separate from gssd or libkrb5 ?
+> 
 
---b.
+gsskeyd is a separate daemon only for proof of concept. In the commit message it makes it clear that if this is the way we want to go, it should be incorporated into gssd. 
 
+-dros
+
+> I think the only sensible way to handle something like this is by adding
+> support directly in libkrb5, I do not see something external ever
+> working reliably.
+> I am not against it for testing purposes, but then does it need to be
+> committed to nfs-utils ?
 > 
-> Signed-off-by: Nadav Shemer <nadav@primarydata.com>
-> ---
-> Related to the recent patchset from Benny Halevy, expire_client releases the state lock (expire_client->destroy_client->pnfs_expire_client).
-> A different thread processing a SET_CLIENTID/EXCHANGE_ID/etc. might find the client on the confirmed/unconfirmed hash table and also call expire_client on it.
+> Simo.
 > 
-> To correct this, I reshuffled destroy_client to remove the client from hash tables first thing, before the state lock may be released
+>> Andy Adamson (2):
+>>  GSSD add cc_name to upcall
+>>  ANDROS: update gsskeyd to use new /run/user/UID/krb5cc/tgt cache file
+>> 
+>> Weston Andros Adamson (1):
+>>  WIP: Add gsskeyd
+>> 
+>> configure.ac            |   1 +
+>> utils/Makefile.am       |   2 +-
+>> utils/gssd/gssd_proc.c  |  37 ++++-
+>> utils/gssd/krb5_util.c  |   2 +-
+>> utils/gssd/krb5_util.h  |   1 +
+>> utils/gsskeyd/gsskeyd.c | 371 ++++++++++++++++++++++++++++++++++++++++++++++++
+>> 6 files changed, 408 insertions(+), 6 deletions(-)
+>> create mode 100644 utils/gsskeyd/gsskeyd.c
 > 
-> Benny: my previous version of this patch had some plays with reference counts (taking a reference for the duration of the destroy).
-> In the current version of the tree, destroy_client assumes cl_refcount==0 and is the only caller of free_client besides create_client. So I dropped it
 > 
->  fs/nfsd/nfs4state.c | 15 +++++++++------
->  1 file changed, 9 insertions(+), 6 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index b4a28ef..d42434b 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -1154,57 +1154,60 @@ unhash_client_locked(struct nfs4_client *clp)
->  	list_del(&clp->cl_lru);
->  	spin_lock(&clp->cl_lock);
->  	list_for_each_entry(ses, &clp->cl_sessions, se_perclnt)
->  		list_del_init(&ses->se_hash);
->  	spin_unlock(&clp->cl_lock);
->  }
->  
->  static void
->  destroy_client(struct nfs4_client *clp)
->  {
->  	struct nfs4_openowner *oo;
->  	struct nfs4_delegation *dp;
->  	struct list_head reaplist;
->  	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
->  
-> +	list_del(&clp->cl_idhash);
-> +	if (test_bit(NFSD4_CLIENT_CONFIRMED, &clp->cl_flags))
-> +		rb_erase(&clp->cl_namenode, &nn->conf_name_tree);
-> +	else
-> +		rb_erase(&clp->cl_namenode, &nn->unconf_name_tree);
-> +	spin_lock(&nn->client_lock);
-> +	unhash_client_locked(clp);
-> +	spin_unlock(&nn->client_lock);
-> +
->  	INIT_LIST_HEAD(&reaplist);
->  	spin_lock(&recall_lock);
->  	while (!list_empty(&clp->cl_delegations)) {
->  		dp = list_entry(clp->cl_delegations.next, struct nfs4_delegation, dl_perclnt);
->  		list_del_init(&dp->dl_perclnt);
->  		list_move(&dp->dl_recall_lru, &reaplist);
->  	}
->  	spin_unlock(&recall_lock);
->  	while (!list_empty(&reaplist)) {
->  		dp = list_entry(reaplist.next, struct nfs4_delegation, dl_recall_lru);
->  		destroy_delegation(dp);
->  	}
->  	while (!list_empty(&clp->cl_openowners)) {
->  		oo = list_entry(clp->cl_openowners.next, struct nfs4_openowner, oo_perclient);
->  		release_openowner(oo);
->  	}
->  	pnfs_expire_client(clp);
->  	nfsd4_shutdown_callback(clp);
->  	if (clp->cl_cb_conn.cb_xprt)
->  		svc_xprt_put(clp->cl_cb_conn.cb_xprt);
-> -	list_del(&clp->cl_idhash);
-> -	if (test_bit(NFSD4_CLIENT_CONFIRMED, &clp->cl_flags))
-> -		rb_erase(&clp->cl_namenode, &nn->conf_name_tree);
-> -	else
-> -		rb_erase(&clp->cl_namenode, &nn->unconf_name_tree);
->  	spin_lock(&nn->client_lock);
-> -	unhash_client_locked(clp);
->  	WARN_ON_ONCE(atomic_read(&clp->cl_refcount));
->  	free_client(clp);
->  	spin_unlock(&nn->client_lock);
->  }
->  
->  static void expire_client(struct nfs4_client *clp)
->  {
->  	nfsd4_client_record_remove(clp);
->  	destroy_client(clp);
->  }
->  
->  static void copy_verf(struct nfs4_client *target, nfs4_verifier *source)
->  {
->  	memcpy(target->cl_verifier.data, source->data,
->  			sizeof(target->cl_verifier.data));
 > -- 
-> 1.8.3.3.754.g9c3c367
+> Simo Sorce * Red Hat, Inc * New York
 > 
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
