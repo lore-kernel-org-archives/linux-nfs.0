@@ -1,152 +1,153 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f178.google.com ([209.85.212.178]:34851 "EHLO
-	mail-wi0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753353Ab3JBLfp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Oct 2013 07:35:45 -0400
-Received: by mail-wi0-f178.google.com with SMTP id hn9so737998wib.11
-        for <linux-nfs@vger.kernel.org>; Wed, 02 Oct 2013 04:35:44 -0700 (PDT)
-Message-ID: <524C050E.4010102@primarydata.com>
-Date: Wed, 02 Oct 2013 14:35:42 +0300
-From: Benny Halevy <bhalevy@primarydata.com>
-MIME-Version: 1.0
-To: Christoph Hellwig <hch@infradead.org>
-CC: Boaz Harrosh <bharrosh@panasas.com>,
-        "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH RFC v0 05/49] pnfsd: introduce pnfsd header files
-References: <52447EA0.7070004@primarydata.com> <1380220810-12909-1-git-send-email-bhalevy@primarydata.com> <20130929114327.GB25750@infradead.org> <52481939.7060405@primarydata.com> <20130929121345.GA21083@infradead.org> <52481B11.2080407@primarydata.com> <20130929122130.GI21083@infradead.org> <20130929123553.GA7510@infradead.org> <524A1FCE.5030306@panasas.com> <20131001133335.GB32431@infradead.org>
-In-Reply-To: <20131001133335.GB32431@infradead.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx1.redhat.com ([209.132.183.28]:15151 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754129Ab3JVQJ0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 Oct 2013 12:09:26 -0400
+Subject: Re: [PATCH Version 2 0/3] GSSD: Use gss-ctx keys and gsskeyd to
+ sync Kerberos credentials and kernel gss_contexts.
+From: Simo Sorce <simo@redhat.com>
+To: "Adamson, Andy" <William.Adamson@netapp.com>
+Cc: "<steved@redhat.com>" <steved@redhat.com>,
+        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
+In-Reply-To: <A8A66580-CD6F-4141-AE93-B1DD025BFD7A@netapp.com>
+References: <1382451757-3032-1-git-send-email-andros@netapp.com>
+	 <1382454148.9794.72.camel@willson.li.ssimo.org>
+	 <A8A66580-CD6F-4141-AE93-B1DD025BFD7A@netapp.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 22 Oct 2013 12:09:22 -0400
+Message-ID: <1382458162.9794.85.camel@willson.li.ssimo.org>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2013-10-01 16:33, Christoph Hellwig wrote:
-> On Mon, Sep 30, 2013 at 06:05:18PM -0700, Boaz Harrosh wrote:
->> The pnfs protocol and people have plans to, allow a multi typed
->> layouts from the same super-block. It is a per file attribute.
->> It even allows a multi protocol access to the same file.
->> The only flag should be the presence of the layout_get vector
->> that should indicate support or lack of it.
+On Tue, 2013-10-22 at 15:32 +0000, Adamson, Andy wrote:
+> On Oct 22, 2013, at 11:02 AM, Simo Sorce <simo@redhat.com> wrote:
 > 
-> The current method doesn't help with that as it can return a single type
-> only anyway.  So in principle I agree with you, but the way to fix it is
-> not to keep the method, but to make sure it returns a bitmap of
-> supported layouts.
+> > On Tue, 2013-10-22 at 10:22 -0400, andros@netapp.com wrote:
+> >> From: Andy Adamson <andros@netapp.com>
+> >> 
+> >> This is an RFC patchset, which will be used for testing.
+> >> 
+> >> This patchset requires the "SUNRPC: destroy gss_cred and context on Kerberos credential destruction" kernel patchset.
+> >> 
+> >> We need to do a lot of testing to ensure that once kdestroy and gss-ctx
+> >> gss_user_destroy is called, all existing buffered
+> >> writes using the 'destroyed gss credential + context' are serviced.
+> >> 
+> >> Differences from version 1:
+> >> 
+> >> - moved from nfstgt_login and nfstgt_logout to gsskeyd.
+> >> - gsskeyd automatically creates gss-ctx key on kinit and destroys the gss-ctx
+> >> key on kdestroy.
+> >> 
+> >> gsskeyd will need to act differently for different krb5 credential caches.
+> > 
+> > Why ?
 > 
->>>  - there should be a struct pnfs_operations, but it should be confined
->>>    to fs/nfsd: each layout can be a separate loadable module and gets
->>>    registered there.  For the initial file layout that module is
->>>    self-contained, but for e.g. block or objects it would have
->>>    call into the filesystem through export_ops, although way lower level
->>>    than the NFS XDR level, e.g. for block there would be one of to get
->>>    the extent map, and one to allocate an extent.
->>>
->>
->> No! This does not make any sense. What you say does not fit any model of any
->> cluster filesystem today.
->>
->> - Again the FS can support any protocol.
->> - Only the FS understand the structure and layout of the file access. Any
->>   other model is a specific implementation and breaks abstraction. The only true
->>   abstraction is the LO_GET LO_RETURN LO_COMMIT DEVICE_INFO and LO_CB_RECALL. anything
->>   else is making assumptions.
->>
->> There is a pnfs vector and it is at this abstraction level exactly.
+> Just need different parsing to know which directory to poll. 
+> > 
+> >> For example, some versions of gssd store FILE credentials in FILE:/tmp/krb5cc_<UID>
+> >> while this code, written for fedora 19 uses FILE:/run/user/<UID>/krb5cc/tgt.
+> > 
+> > This is incorrect, Fedora 19 use DIR type ccaches, so you should
+> > reference a cache withing the dir type, which will notmally be something
+> > like: DIR:/run/user/<uidnumber>/krb5cc for the whole collection or
+> > DIR::/run/user/<uidnumber>/krb5cc/txtXXXXXX for the sepcific cache.
+> > 
+> > However note that due to issues with DIR type caches we are moving to a
+> > new KEYRING based type of cache in F20, so assuming any specific type of
+> > cache is a dead start.
 > 
-> No, the problem is that the pnfs_export_operations are entirely at the
-> wrong level, as I tried to explain.  The right level is very different
-> for the different layouts:
-> 
->  - for files it needs to boil down to a:
-> 
-> 	 - get a list of devices
-> 	 - given an inode/offset return the layout
-> 
+> But I'm not assuming any kind of kerberos credential cache! I just coded to one type for this RFC.
+> Didn't you see my KEYRING based ccache comment below?
 
-For loosely clustered files-layout file systems the MDS would also
-need to handle LAYOUTCOMMIT, and also generate and handle layout recalls,
-depending on how much of that we can do in a generic way and how much is
-file system specific.
-
->  - for block it's get a block map for a file / create an unwritten
->    extent / convert it to written
-
-Besides converting to written there is also de-allocation of provisionally
-allocated extents and more advanced stuff for client assisted copy-on-write
-where after allocation of uninitialized extents the client can commit
-extents to the block map by replacing existing initialized extents with
-new ones.
-
+Ah sorry, I had not noticed.
+ 
+> >> As Trond suggested, if we keep gsskeyd separate from gssd, we could set up a
+> >> configuration file along the lines of the keytools' request-key.conf file to
+> >> allow both NFS and CIFS (and other filesystems) to install plugin handlers
+> >> for kinit/kdestroy events.
+> > 
+> > Given in many cases (the desirable ones at least) kerberos credentials
+> > are not inited via kinit, but rather by things like pam_krb5, sssd, or
+> > directly imported via sshd, I am trying to understand how you are going
+> > to address the majority of these cases.
 > 
->  - for object it seems (not too familar):
+> All of these cases use a kerberos credential cache which if is of type
+> FILE the gsskeyd can poll inotify and if it is of type KEY: then
+> gsskeyd adds the gss-ctx key to the Kerberos keyring (that is the
+> theory :)) so the same code services kinit/pam_krb5
+
+You wouldn't be able to see it if I set a custom ccache file though
+export KRB5CCNAME=FILE:/random/sir/foofile
+ 
+> > Should users put gsskeyd in their .profile/.bashrc files or something ?
+> > 
+> >> Else, we could have gssd be the process to poll inotify (given
+> >> that it already polls rpc_pipefs) and then just have it fork off the
+> >> subprocess if and when it sees an interesting event.
+> > 
+> > What is an 'interesting' event ?
 > 
->     - get a list of devices for this fs
->     - given an inode/offset return the layout
->     - tell the fs that I/O has finished
+> TGT (used for NFS TGS) creation/destruction
+
+Shouldn't you care for the specific NFS ticket only ?
+Although kdestroy is quite blunt, in theory users can simply destroy the
+specific NFS ticket and keep their TGT.
+
+Also I see a problem with this approach. In order to make user life
+easier we reinit ccaches in sssd when a user for example unlocks the
+screen. If you track a specific TGT or NFS ticket, this would cause the
+immediate destruction of credentials in the nfs client which will also
+kill access to the NFS server. I think this would cause quite some grief
+to users.
+
+> >> We need to investigate how this works when the kernel keyring is used for
+> >> Kerberos credentials. I believe that in this case gsskeyd can add the gss-ctx
+> >> key to the kerberos keyring, and it will get destroyed along with all other
+> >> keys at kdestroy.
+> > 
+> > Is there any reason why you are doing this work with an utility that is
+> > separate from gssd or libkrb5 ?
 > 
-> As all the layouts operate on different data structures it makes sense
-> to make the methods operate on those, and keep the boilerplate code
-> including the XDR encoding/decoding in one single place.
+> Yes  - to allow both NFS and CIFS (and other filesystems) to install
+> plugin handlers for kerberos credential cache creation/destruction
+> events.
 > 
-> Now how these pnfsd object layout drivers communicate with the fs I
-> don't have an opinion on until we see the actual code, maybe we need a
-> pnfs_<layout>_ops if it's complicated enough.
+> But, having gssd do it is fine, or having a client plugin in libkrb5
+> is also fine.
 
-The original design this patchset builds on called for implementing the
-layout type specifics as library code and let file systems supporting pnfs
-implement the high level pnfs methods and use the library for encoding
-and decoding layout-type specific XDR and use other helpers if needed.
-
-You're calling for a "back-end layout driver" kind of layer that will serve
-the layout type and will call into the file system using lower level methods.
-
->  For the files case that
-> can just call into dlm directly currently as we have no other
-> interesting cluster fs in tree it's a mood point.  For block it's simple
-> enough that I'd just add it to export_ops, if not by that time we redo
-> the current get_blocks mess in a way that we can simply piggyback it on
-> that which would be even easier.
+> > 
+> > I think the only sensible way to handle something like this is by adding
+> > support directly in libkrb5, I do not see something external ever
+> > working reliably.
 > 
+> I agree that I should persue a libkrb5 approach.
 
-On the same lines, I think that for now calling directly into exofs makes
-the most sense as we have no other object based pnfs implementation.
+Keep in mind the point above though.
+The issues here is that you do not know what the intention was if you
+try a completely automated approach. you should probably interact with
+the login service and act conditionally in any way.
 
->>> This way we alsod avoid the dependcy on nfsd in the filesystems that the
->>> cureent version introduces.
+I think it may be safer for you to provide a hook that the system can
+call when a user fully logs out. And use that hook to kill any
+credential associated to a particular UID.
 
-Yeah, I agree that this dependency can and should be taken care of.
+Done this way you do not need to poll anything nor change libkrb5. And
+you also allow the creation of a tool that the user can run to force the
+destruction of his credentials if he is not using a compliant login
+manager. Or if he wants to explicitly kill NFS creds in the kernel for
+whatever reason.
 
->>
->> There is no "dependency on nfsd in the filesystems"
+> > I am not against it for testing purposes, but then does it need to be
+> > committed to nfs-utils ?
 > 
-> The patchset as pulled will created a depency on nfsd.ko from gfs2.ko
-> 
+> Did you not see the "This is an RFC patchset"? I'm not asking for a commit to nfs-utils, but "request for comments" which you just did!  Thanks :)
 
-yup, fs/nfsd/nfs4pnfsdlm.c exports pnfs_dlm_export_ops and implements
-the respective methods.  This does not really belong to nfsd but rather
-to the fs/dlm module.
+Yes I was providing feedback :-)
 
-Benny
+Simo.
 
->> The only dependency the FS has is an import of some library routines
->> at exportfs that take an abstract layout and device descriptions and encode
->> them into an XDR buffer. But the FS knows nothing of the XDR and the
->> NFSD is free to unload at any moment without forcing the FS to unload
->> first or at all.
->> This is actually tested, in fact I do this all the time when I want to
->> start fresh and have NFSD close all resources on the FS. 
-> 
-> That's not what happens with the file layout as posted, and it's not
-> something I want to see happen every, btw.  In Linux we're all about
-> proper abstractions, and letting a fs control all pnfs aspects directly
-> instead of having common code is a receipe for tons of copy & pasted
-> code full of different bugs if we ever get additional implementations of
-> a layout.  Not that I really expect any in tree as all the other
-> "interested partied" have shown to be leechers that just want to keep
-> their filesystems out of tree and most of the time as illegal propritary
-> modules anyway.
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+-- 
+Simo Sorce * Red Hat, Inc * New York
+
