@@ -1,59 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:44499 "EHLO mx11.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:31506 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751978Ab3J2NLW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 29 Oct 2013 09:11:22 -0400
-Message-ID: <526FB3F8.9080204@netapp.com>
-Date: Tue, 29 Oct 2013 09:11:20 -0400
-From: Anna Schumaker <bjschuma@netapp.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 3/4] NFSD: Add WRITE_PLUS support for hole punches
-References: <1382972247-1108-1-git-send-email-bjschuma@netapp.com> <1382972247-1108-4-git-send-email-bjschuma@netapp.com> <20131028214030.GO31322@fieldses.org> <526FAF30.3060502@netapp.com> <20131029130649.GA29606@fieldses.org>
-In-Reply-To: <20131029130649.GA29606@fieldses.org>
+	id S1751884Ab3JVMfo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 Oct 2013 08:35:44 -0400
+Subject: Re: Strange cred expiry behavior
+From: Simo Sorce <simo@redhat.com>
+To: Weston Andros Adamson <dros@netapp.com>
+Cc: linux-nfs list <linux-nfs@vger.kernel.org>
+In-Reply-To: <DCD436E3-9464-4BFB-8C1A-19912522824D@netapp.com>
+References: <85F2BCBA-9565-497F-BFF4-FEB29301D655@netapp.com>
+	 <DCD436E3-9464-4BFB-8C1A-19912522824D@netapp.com>
 Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 22 Oct 2013 08:20:01 -0400
+Message-ID: <1382444401.9794.19.camel@willson.li.ssimo.org>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue 29 Oct 2013 09:06:49 AM EDT, J. Bruce Fields wrote:
-> On Tue, Oct 29, 2013 at 08:50:56AM -0400, Anna Schumaker wrote:
->> On Mon 28 Oct 2013 05:40:30 PM EDT, J. Bruce Fields wrote:
->>> On Mon, Oct 28, 2013 at 10:57:25AM -0400, Anna Schumaker wrote:
->>>> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
->>>> index 419572f..3210c6f 100644
->>>> --- a/fs/nfsd/nfs4proc.c
->>>> +++ b/fs/nfsd/nfs4proc.c
->>>> @@ -1028,6 +1028,42 @@ nfsd4_write(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->>>>  	return status;
->>>>  }
->>>>
->>>> +static __be32
->>>> +nfsd4_write_plus_hole(struct file *file, struct nfsd4_write_plus *writeplus,
->>>> +		      struct net *net)
->>>> +{
->>>> +	__be32 status;
->>>> +
->>>> +	status = nfsd4_vfs_fallocate(file, writeplus->wp_allocated,
->>>> +				writeplus->wp_offset, writeplus->wp_length);
->>>> +	if (status == nfs_ok) {
->>>> +		writeplus->wp_res.wr_stid = NULL;
->>>> +		writeplus->wp_res.wr_bytes_written = writeplus->wp_length;
->>>> +		writeplus->wp_res.wr_stable_how = NFS_FILE_SYNC;
->>>
->>> Do we need to sync?
->>
->> I did the sync in nfsd4_vfs_fallocate (below), but I can move it if
->> that would make more sense.
->
-> What I meant was--why are we doing a sync at all, instead of returning
-> NFS_UNSTABLE and making the client commit?
->
-> Honest question, I haven't thought about which is best.
+On Mon, 2013-10-21 at 23:53 +0000, Weston Andros Adamson wrote:
+> I traced this behavior back to:
+> 
+> commit 302de786930a2c533068f9d8909a817b40f07c32
+> Author: Simo Sorce <simo@redhat.com>
+> Date:   Fri Apr 19 13:02:36 2013 -0400
+> 
+>     gssd: Allow GSSAPI to try to acquire credentials first.
+> 
+> 
+> And in particular:
+> 
+> -               for (dirname = ccachesearch; *dirname != NULL; dirname++) {
+> +               /* Try first to acquire credentials directly via GSSAPI */
+> +               err = gssd_acquire_user_cred(uid, &gss_cred);
+> +               if (!err)
+> +                       create_resp = create_auth_rpc_client(clp, &rpc_clnt, &auth, uid,
+> +                                                            AUTHTYPE_KRB5, gss_cred);
+> +               /* if create_auth_rplc_client fails try the traditional method of
+> +                * trolling for credentials */
+> +               for (dirname = ccachesearch; create_resp != 0 && *dirname != NULL; dirname++) {
+> 
+> A couple of things:
+> 
+>   - If I get rid of the "Try first to acquire credentials directly via
+> GSSAPI" part, expiry works as before.
 
-No reason other than it seemed easier for my initial implementation.
+Interesting, this call is necessary to make rpc.gssd work with gss-proxy
+and I had not experienced an issue so far. We can try to add a
+gss_inquire_cred() to gssd_acquire_user_cred() to force checking the
+credentials for expiration, as that check may be deferred in some cases
+in GSSAPI.
 
->
-> --b.
+>   - It says "if create_auth_rplc_client fails try the traditional
+> method of trolling for credentials" but I see nothing that checks to
+> see if create_resp != 0 before falling back to the old method.
 
+It's the check condition in the for loop, that's why I have not repeated
+it before the for loop.
+
+>   I added this check and everything seems right (it doesn't fix the
+> expiry issue).
+
+Yeah I didn't think it would.
+
+> I should have some time tomorrow to look further at the expiry issue…
+
+If you can add an explicit check with gss_inquire_creds() I think you'll
+get the right behavior.
+
+Let me know if you need help.
+Simo.
+
+-- 
+Simo Sorce * Red Hat, Inc * New York
 
