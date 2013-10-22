@@ -1,55 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from tundra.namei.org ([65.99.196.166]:59084 "EHLO tundra.namei.org"
+Received: from mx1.netapp.com ([216.240.18.38]:42788 "EHLO mx1.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755303Ab3J1NW0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 28 Oct 2013 09:22:26 -0400
-Date: Tue, 29 Oct 2013 00:25:33 +1100 (EST)
-From: James Morris <jmorris@namei.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-cc: Eshel Marc <eshel@us.ibm.com>,
-        Dr Fields James Bruce <bfields@fieldses.org>,
-        Christoph Anton Mitterer <calestyo@scientia.net>,
-        Mailing List Linux NFS <linux-nfs@vger.kernel.org>,
-        "linux-nfs-owner@vger.kernel.org" <linux-nfs-owner@vger.kernel.org>,
-        Wheeler Ric <ricwheeler@gmail.com>
-Subject: Re: XATTRs in NFS?
-In-Reply-To: <4260556F-D57B-407E-A686-808D3D802137@netapp.com>
-Message-ID: <alpine.LRH.2.02.1310290022270.18164@tundra.namei.org>
-References: <1382560643.6924.12.camel@heisenberg.scientia.net> <EFB2CFAD-FACC-401D-BF0C-1C573B23A873@netapp.com> <1382624000.6907.8.camel@heisenberg.scientia.net> <E0F4C952-02DE-4778-A779-FB7AE111EC46@netapp.com> <1382630468.6907.58.camel@heisenberg.scientia.net>
- <625CAA34-BD6C-4283-86D0-3F8B460D54D0@netapp.com> <1382635350.6907.83.camel@heisenberg.scientia.net> <20131025140846.GB20497@fieldses.org> <526A8D9A.8090008@gmail.com> <7C1323EE-D63F-4F93-A44D-E7DDB0C61BF0@netapp.com> <OF01D9818B.36018C0F-ON88257C10.00608BC0-88257C10.006139C6@LocalDomain>
- <OF7F1977B0.3BF0FF3B-ON88257C10.00618038-88257C10.0061AF59@us.ibm.com> <4260556F-D57B-407E-A686-808D3D802137@netapp.com>
+	id S1753024Ab3JVM4U convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Oct 2013 08:56:20 -0400
+From: Weston Andros Adamson <dros@netapp.com>
+To: Ben Greear <greearb@candelatech.com>
+CC: Jim Rees <rees@umich.edu>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Getting 'not supported' when trying to mount IPv6 NFS v3 server.
+Date: Tue, 22 Oct 2013 12:56:18 +0000
+Message-ID: <249B6AE5-BE15-4503-819E-C81C55CC7EFD@netapp.com>
+References: <52659D69.1020609@candelatech.com>
+ <4682F017-7329-4690-B336-233DB50537F0@netapp.com>
+ <5265BECD.1060601@candelatech.com> <20131022002051.GA13539@umich.edu>
+ <5265EE9B.9070505@candelatech.com>
+In-Reply-To: <5265EE9B.9070505@candelatech.com>
+Content-Type: text/plain; charset=US-ASCII
 MIME-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, 27 Oct 2013, Myklebust, Trond wrote:
+Are you sure you don't have any firewall rules (remember ip6tables != iptables) blocking nfs, mount, portmap, etc?
 
-> > This sounds more like an NFS server problem than a client side NFS. Can we 
-> > add support to the client side NFS and let server that think that they can 
-> > handle XATTR implement it?
+We should be able to narrow things down when we see the outputs I asked for (rpcdebug, mount -v).
+
+-dros
+
+On Oct 21, 2013, at 11:18 PM, Ben Greear <greearb@candelatech.com>
+ wrote:
+
+> On 10/21/2013 05:20 PM, Jim Rees wrote:
+>> Possibly dumb question, are you sure your srcaddr option works for all
+>> protocols involved, including portmap, mount, and nfs?
 > 
-> No. It's a real problem for clients too if the NFS server starts 
-> exporting ACLs and security labels via this interface. Everything from 
-> integer endianness problems when getfacl attempts to read raw binary 
-> acls from the server, to breakage of caching models when we allow 
-> setfacl and don't invalidate our file access caches...
-
-Right, so any general xattrs for nfs would need to be specified as having 
-no system effects, essentially exporting the Linux 'user' xattr namespace 
-only.
-
-
+> Well, I'm not sure, but it has been working pretty well so far.  I
+> could have missed something when porting to the 3.9 kernel, as these
+> problems appear to be regressions since older code was working...
 > 
-> > We should probably start a discussion in the IETF to resolve the issues 
-> > you see with XATTR at least for NFSv4.3. 
+> Thanks,
+> Ben
 > 
-> Let's get the basic discussion of motivation right first.
+> 
+> 
+> -- 
+> Ben Greear <greearb@candelatech.com>
+> Candela Technologies Inc  http://www.candelatech.com
+> 
 
-It should be for user-managed metadata only.
-
-
-
--- 
-James Morris
-<jmorris@namei.org>
