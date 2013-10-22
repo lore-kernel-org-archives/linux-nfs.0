@@ -1,39 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:36633 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754246Ab3JMLI2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 13 Oct 2013 07:08:28 -0400
-Date: Sun, 13 Oct 2013 04:08:20 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Benny Halevy <bhalevy@primarydata.com>
-Cc: Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH RFC v0 10/49] pnfsd: use sbid hash table to map
- super_blocks to devid major identifiers
-Message-ID: <20131013110820.GA31153@infradead.org>
-References: <52447EA0.7070004@primarydata.com>
- <1380220831-13136-1-git-send-email-bhalevy@primarydata.com>
- <20131011195608.GA18634@infradead.org>
- <525A399C.5040405@primarydata.com>
+Received: from mail.candelatech.com ([208.74.158.172]:52400 "EHLO
+	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753185Ab3JVPy6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Oct 2013 11:54:58 -0400
+Message-ID: <52669FBF.9040808@candelatech.com>
+Date: Tue, 22 Oct 2013 08:54:39 -0700
+From: Ben Greear <greearb@candelatech.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <525A399C.5040405@primarydata.com>
+To: Michael Richardson <mcr@sandelman.ca>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Getting 'not supported' when trying to mount IPv6 NFS v3 server.
+References: <52659D69.1020609@candelatech.com> <357.1382451554@obiwan.sandelman.ca>
+In-Reply-To: <357.1382451554@obiwan.sandelman.ca>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Oct 13, 2013 at 09:11:40AM +0300, Benny Halevy wrote:
-> On 2013-10-11 22:56, Christoph Hellwig wrote:
-> > On Thu, Sep 26, 2013 at 02:40:31PM -0400, Benny Halevy wrote:
-> >> From: Benny Halevy <bhalevy@panasas.com>
-> > 
-> > This is entirely unessecary.  Just make sure all layouts set the sbid
-> > field in getdevicelist to the s_dev value of the filesystem and you
-> > can just use user_get_super.
+On 10/22/2013 07:19 AM, Michael Richardson wrote:
+> Ben Greear <greearb@candelatech.com> wrote:
+>     > From my own app's logs:
 > 
-> That's true for filesystmes that have a meaningful s_dev, unlike exofs,
-> but this functionality can be added later respectively.
+>     > # mount -t nfs [4001:1::1:1]:/vol/vol1 /mnt/lf/RDnfse11c0 -o
+>     > srcaddr=4001:1::1:201,vers=3 # requested NFS version or transport
+>     > protocol is not supported
+> 
+>     > When this problem happens, I do not see any network traffic when trying
+>     > to mount.
+> 
+> That sounds like the error that one would get when *mount* was compiled with
+> the v6-incompatible sunrpc library rather than tirpc.
 
-Even exofs has a s_dev from the anon dev_T allocator.  Given that
-layouts aren't supposed to surived over reboots of the server I don't
-see a problem with it.
+It works sometimes on the problem system, and it always (so far) works in our lab.
+We tried NFSv3 over IPv4, NFSv4 over IPv4, NFSv3 over IPv6 and NFSv4 over IPv6.
+We are using the standard 'mount' that comes with the OS (Fedora 14, in this case),
+but we are re-compiling the mount.nfs binary, so perhaps there is still some
+problem in how we compile it...
+
+Thanks,
+Ben
+
+-- 
+Ben Greear <greearb@candelatech.com>
+Candela Technologies Inc  http://www.candelatech.com
 
