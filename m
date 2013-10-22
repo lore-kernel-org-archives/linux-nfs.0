@@ -1,47 +1,96 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-gg0-f177.google.com ([209.85.161.177]:56100 "EHLO
-	mail-gg0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752893Ab3JUNvv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Oct 2013 09:51:51 -0400
-Received: by mail-gg0-f177.google.com with SMTP id t2so1590511ggn.36
-        for <linux-nfs@vger.kernel.org>; Mon, 21 Oct 2013 06:51:50 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfs: reject version and minorversion changes on remount attempts
-Date: Mon, 21 Oct 2013 09:51:45 -0400
-Message-Id: <1382363505-6481-1-git-send-email-jlayton@redhat.com>
+Received: from mx11.netapp.com ([216.240.18.76]:20518 "EHLO mx11.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752733Ab3JVAEF convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Oct 2013 20:04:05 -0400
+From: Weston Andros Adamson <dros@netapp.com>
+To: Ben Greear <greearb@candelatech.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Getting 'not supported' when trying to mount IPv6 NFS v3 server.
+Date: Tue, 22 Oct 2013 00:04:04 +0000
+Message-ID: <EAF9A96E-EAF9-43C4-A520-B5A971E67DE5@netapp.com>
+References: <52659D69.1020609@candelatech.com>
+ <4682F017-7329-4690-B336-233DB50537F0@netapp.com>
+ <5265BECD.1060601@candelatech.com>
+In-Reply-To: <5265BECD.1060601@candelatech.com>
+Content-Type: text/plain; charset=US-ASCII
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Reported-by: Eric Doutreleau <edoutreleau@genoscope.cns.fr>
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfs/super.c | 4 ++++
- 1 file changed, 4 insertions(+)
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index a03b9c6..137572b 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -2143,6 +2143,8 @@ nfs_compare_remount_data(struct nfs_server *nfss,
- 	if (data->flags != nfss->flags ||
- 	    data->rsize != nfss->rsize ||
- 	    data->wsize != nfss->wsize ||
-+	    data->version != nfss->nfs_client->rpc_ops->version ||
-+	    data->minorversion != nfss->nfs_client->cl_minorversion ||
- 	    data->retrans != nfss->client->cl_timeout->to_retries ||
- 	    data->auth_flavors[0] != nfss->client->cl_auth->au_flavor ||
- 	    data->acregmin != nfss->acregmin / HZ ||
-@@ -2197,6 +2199,8 @@ nfs_remount(struct super_block *sb, int *flags, char *raw_data)
- 	data->timeo = 10U * nfss->client->cl_timeout->to_initval / HZ;
- 	data->nfs_server.port = nfss->port;
- 	data->nfs_server.addrlen = nfss->nfs_client->cl_addrlen;
-+	data->version = nfsvers;
-+	data->minorversion = nfss->nfs_client->cl_minorversion;
- 	memcpy(&data->nfs_server.address, &nfss->nfs_client->cl_addr,
- 		data->nfs_server.addrlen);
- 
--- 
-1.8.3.1
+On Oct 21, 2013, at 7:54 PM, Ben Greear <greearb@candelatech.com>
+ wrote:
+
+> On 10/21/2013 04:44 PM, Weston Andros Adamson wrote:
+>> 
+>> On Oct 21, 2013, at 5:32 PM, Ben Greear <greearb@candelatech.com> wrote:
+>> 
+>>> So, the problem I reported earlier with failing to unmount was fixed
+>>> by the back-ported patch.
+>>> 
+>>> Now, another problem is reported by my user.  In this case, they are
+>>> trying to mount an IPv6 NFS server using NFSv3.  Kernel is 3.9.11+,
+>>> with patches to support binding mount points to local IP (v4/v6) addresses.
+>>> 
+>>> Some NFS over IPv6 mounts work fine, but some do not.  A reboot of the
+>>> NFS client machine did not fix the problem.
+>>> 
+>>> I have tried to reproduce the problem locally, but so far everything works fine
+>>> for us.
+>>> 
+>>> From my own app's logs:
+>>> 
+>>> # mount -t nfs [4001:1::1:1]:/vol/vol1 /mnt/lf/RDnfse11c0 -o srcaddr=4001:1::1:201,vers=3
+>>> # requested NFS version or transport protocol is not supported
+>>> 
+>>> When this problem happens, I do not see any network traffic when trying to mount.
+>> 
+>> Did you look for the mount protocol when getting a network trace (filter "rpc" in wireshark).
+> 
+> I saw zero NFS related packets on the wire when hitting this problem.
+> But, there could have been packets earlier that put it into a funky
+> state, or a bit less likely, they could have been going out some of the
+> other virtual interfaces on the system.
+
+Ok, I wanted to make sure you weren't just looking at port 2049...
+
+> 
+>> Could you:
+>> 
+>>  1) run "rpcdebug -m nfs -s mount" before mounting, post output of dmesg after mount fails.
+>> 
+>>  2) add -v to the mount command and post the output
+> 
+> I can try this.
+> 
+>>  3) maybe get rid of srcaddr= option / post info about the ip configuration
+> 
+> I can't easily do this, as the user's setup requires the srcaddr to route properly
+> to the filer.
+
+I just want to make sure it's not a configuration error, but the outputs of 1) and 2) will help us determine what's happening.
+
+> 
+> I am also going to run a kernel with printks added around all the EOPNOTSUPP
+> returns that I can find to try to track down what part of the kernel is
+> complaining.
+
+The rpcdebug part should help with that.  Maybe you should turn on everything (rpcdebug -m nfs -s all) since it's just a (failed) mount.
+
+-dros
+
+> 
+> Thanks,
+> Ben
+> 
+> 
+> -- 
+> Ben Greear <greearb@candelatech.com>
+> Candela Technologies Inc  http://www.candelatech.com
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
