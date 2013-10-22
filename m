@@ -1,67 +1,107 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:36596 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:57805 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752114Ab3JKPEd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 11 Oct 2013 11:04:33 -0400
-Date: Fri, 11 Oct 2013 11:04:29 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org, Andi Kleen <andi@firstfloor.org>,
-        Trond.Myklebust@netapp.com, kwc@citi.umich.edu
-Subject: Re: [PATCH] sunrpc: trim off EC bytes in addition to the checksum
- blob when doing a GSSAPI v2 unwrap
-Message-ID: <20131011150429.GA20796@fieldses.org>
-References: <1381427810-10633-1-git-send-email-jlayton@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1381427810-10633-1-git-send-email-jlayton@redhat.com>
+	id S1753927Ab3JVPCa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 Oct 2013 11:02:30 -0400
+Subject: Re: [PATCH Version 2 0/3] GSSD: Use gss-ctx keys and gsskeyd to
+ sync Kerberos credentials and kernel gss_contexts.
+From: Simo Sorce <simo@redhat.com>
+To: andros@netapp.com
+Cc: steved@redhat.com, linux-nfs@vger.kernel.org
+In-Reply-To: <1382451757-3032-1-git-send-email-andros@netapp.com>
+References: <1382451757-3032-1-git-send-email-andros@netapp.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 22 Oct 2013 11:02:28 -0400
+Message-ID: <1382454148.9794.72.camel@willson.li.ssimo.org>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Oct 10, 2013 at 01:56:50PM -0400, Jeff Layton wrote:
-> As Bruce points out in RFC 4121, section 4.2.3:
+On Tue, 2013-10-22 at 10:22 -0400, andros@netapp.com wrote:
+> From: Andy Adamson <andros@netapp.com>
 > 
->    "In Wrap tokens that provide for confidentiality, the first 16 octets
->     of the Wrap token (the "header", as defined in section 4.2.6), SHALL
->     be appended to the plaintext data before encryption.  Filler octets
->     MAY be inserted between the plaintext data and the "header.""
+> This is an RFC patchset, which will be used for testing.
 > 
-> ...and...
+> This patchset requires the "SUNRPC: destroy gss_cred and context on Kerberos credential destruction" kernel patchset.
 > 
->    "In Wrap tokens with confidentiality, the EC field SHALL be used to
->     encode the number of octets in the filler..."
+> We need to do a lot of testing to ensure that once kdestroy and gss-ctx
+> gss_user_destroy is called, all existing buffered
+> writes using the 'destroyed gss credential + context' are serviced.
 > 
-> It's possible for the client to stuff different data in that area on a
-> retransmission, which could make the checksum come out wrong in the DRC
-> code.
+> Differences from version 1:
 > 
-> After decrypting the blob, we should trim off any extra count bytes in
-> addition to the checksum blob.
+> - moved from nfstgt_login and nfstgt_logout to gsskeyd.
+> - gsskeyd automatically creates gss-ctx key on kinit and destroys the gss-ctx
+> key on kdestroy.
 > 
-> Reported-by: "J. Bruce Fields" <bfields@fieldses.org>
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> gsskeyd will need to act differently for different krb5 credential caches.
 
-Thanks, applying for 3.13.--b.
+Why ?
 
-> ---
->  net/sunrpc/auth_gss/gss_krb5_wrap.c | 4 ++--
->  1 file changed, 2 insertions(+), 2 deletions(-)
+> For example, some versions of gssd store FILE credentials in FILE:/tmp/krb5cc_<UID>
+> while this code, written for fedora 19 uses FILE:/run/user/<UID>/krb5cc/tgt.
+
+This is incorrect, Fedora 19 use DIR type ccaches, so you should
+reference a cache withing the dir type, which will notmally be something
+like: DIR:/run/user/<uidnumber>/krb5cc for the whole collection or
+DIR::/run/user/<uidnumber>/krb5cc/txtXXXXXX for the sepcific cache.
+
+However note that due to issues with DIR type caches we are moving to a
+new KEYRING based type of cache in F20, so assuming any specific type of
+cache is a dead start.
+
+> As Trond suggested, if we keep gsskeyd separate from gssd, we could set up a
+> configuration file along the lines of the keytools' request-key.conf file to
+> allow both NFS and CIFS (and other filesystems) to install plugin handlers
+> for kinit/kdestroy events.
+
+Given in many cases (the desirable ones at least) kerberos credentials
+are not inited via kinit, but rather by things like pam_krb5, sssd, or
+directly imported via sshd, I am trying to understand how you are going
+to address the majority of these cases.
+
+Should users put gsskeyd in their .profile/.bashrc files or something ?
+
+> Else, we could have gssd be the process to poll inotify (given
+> that it already polls rpc_pipefs) and then just have it fork off the
+> subprocess if and when it sees an interesting event.
+
+What is an 'interesting' event ?
+
+> We need to investigate how this works when the kernel keyring is used for
+> Kerberos credentials. I believe that in this case gsskeyd can add the gss-ctx
+> key to the kerberos keyring, and it will get destroyed along with all other
+> keys at kdestroy.
+
+Is there any reason why you are doing this work with an utility that is
+separate from gssd or libkrb5 ?
+
+I think the only sensible way to handle something like this is by adding
+support directly in libkrb5, I do not see something external ever
+working reliably.
+I am not against it for testing purposes, but then does it need to be
+committed to nfs-utils ?
+
+Simo.
+
+> Andy Adamson (2):
+>   GSSD add cc_name to upcall
+>   ANDROS: update gsskeyd to use new /run/user/UID/krb5cc/tgt cache file
 > 
-> diff --git a/net/sunrpc/auth_gss/gss_krb5_wrap.c b/net/sunrpc/auth_gss/gss_krb5_wrap.c
-> index 1da52d1..ec1f4d0 100644
-> --- a/net/sunrpc/auth_gss/gss_krb5_wrap.c
-> +++ b/net/sunrpc/auth_gss/gss_krb5_wrap.c
-> @@ -574,8 +574,8 @@ gss_unwrap_kerberos_v2(struct krb5_ctx *kctx, int offset, struct xdr_buf *buf)
->  	buf->head[0].iov_len -= GSS_KRB5_TOK_HDR_LEN + headskip;
->  	buf->len -= GSS_KRB5_TOK_HDR_LEN + headskip;
->  
-> -	/* Trim off the checksum blob */
-> -	xdr_buf_trim(buf, GSS_KRB5_TOK_HDR_LEN + tailskip);
-> +	/* Trim off the trailing "extra count" and checksum blob */
-> +	xdr_buf_trim(buf, ec + GSS_KRB5_TOK_HDR_LEN + tailskip);
->  	return GSS_S_COMPLETE;
->  }
->  
-> -- 
-> 1.8.3.1
+> Weston Andros Adamson (1):
+>   WIP: Add gsskeyd
 > 
+>  configure.ac            |   1 +
+>  utils/Makefile.am       |   2 +-
+>  utils/gssd/gssd_proc.c  |  37 ++++-
+>  utils/gssd/krb5_util.c  |   2 +-
+>  utils/gssd/krb5_util.h  |   1 +
+>  utils/gsskeyd/gsskeyd.c | 371 ++++++++++++++++++++++++++++++++++++++++++++++++
+>  6 files changed, 408 insertions(+), 6 deletions(-)
+>  create mode 100644 utils/gsskeyd/gsskeyd.c
+> 
+
+
+-- 
+Simo Sorce * Red Hat, Inc * New York
+
