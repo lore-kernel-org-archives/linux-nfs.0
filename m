@@ -1,56 +1,87 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:38795 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752517Ab3JXIph convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Oct 2013 04:45:37 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Christoph Anton Mitterer <calestyo@scientia.net>
-CC: "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
-Subject: Re: XATTRs in NFS?
-Date: Thu, 24 Oct 2013 08:45:35 +0000
-Message-ID: <EFB2CFAD-FACC-401D-BF0C-1C573B23A873@netapp.com>
-References: <1382560643.6924.12.camel@heisenberg.scientia.net>
-In-Reply-To: <1382560643.6924.12.camel@heisenberg.scientia.net>
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
+Received: from aserp1040.oracle.com ([141.146.126.69]:29279 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752058Ab3JWXb6 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Oct 2013 19:31:58 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 6.6 \(1510\))
+Subject: Re: [PATCH] exportfs: Return non-zero exit value on error
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20131024091811.34b06e71@notabene.brown>
+Date: Wed, 23 Oct 2013 19:31:50 -0400
+Cc: tasleson@redhat.com, linux-nfs@vger.kernel.org,
+        Steve Dickson <SteveD@redhat.com>
+Message-Id: <D9521932-DDAA-47D2-996F-62D2A37BA5B0@oracle.com>
+References: <1380756584-13335-1-git-send-email-tasleson@redhat.com> <20131022092519.4f4683a8@notabene.brown> <52669862.6030409@redhat.com> <20131023124444.65ace6e3@notabene.brown> <52680917.4010509@redhat.com> <20131024091811.34b06e71@notabene.brown>
+To: NeilBrown <neilb@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Oct 23, 2013, at 9:37 PM, Christoph Anton Mitterer <calestyo@scientia.net> wrote:
+On Oct 23, 2013, at 6:18 PM, NeilBrown <neilb@suse.de> wrote:
 
-> Hi.
+> On Wed, 23 Oct 2013 12:36:23 -0500 Tony Asleson <tasleson@redhat.com> wrote:
 > 
-> I just wondered about the current situation (respectively plans)
-> regarding XATTRs in NFS (I personally don't care much about the
-> version,... of course v4 would be nice, but v3 should do either).
+>> On 10/22/2013 08:44 PM, NeilBrown wrote:
+>>> On Tue, 22 Oct 2013 10:23:14 -0500 Tony Asleson <tasleson@redhat.com> wrote:
+>>>> The reason I chose to return values was to make sure requested operation
+>>>> actually completed requested operation.  Unexporting a non-existent
+>>>> export is not considered an error and returns no indication you did
+>>>> absolutely nothing.
+>>> 
+>>> Hi,
+>>> thanks makes sense - I had missed that (even though you explained it in the
+>>> patch description :-( )
+>>> 
+>>> With your patch, if asked to unexport something that wasn't exported it
+>>> would not report any error, but would exit with an error status.  Is that
+>>> correct?  I think I would rather have a message printed if there is an error.
+>> 
+>> Correct, I only made changes for the exit status.  I was trying to make
+>> changes that would be mostly invisible to end users.  I have no concerns
+>> adding a printed error output too, but others may.
+>> 
+>> Changing the behavior of any command line tool is potentially
+>> problematic when scripted.
+>> 
+>>> So would something like this (on top of my patch) address you need, or was
+>>> there something else I missed?
+>> 
+>> Yes, this should work for the unexport fs case.
+>> 
+>> However, the reason my patch was a little more invasive was to ensure
+>> that both the export and unexport paths were covered.
+>> 
+>> For example, if the strdup call fails in function client_init, we fail
+>> the operation and return exit value of 0.  Unlikely, but just the first
+>> example I stumbled across.
 > 
+> I think it is a lot closer to "impossible" than just "unlikely".
+> malloc doesn't fail in this sort of context, the OOM killer kills something
+> off instead.
+> My personal preference is to replace all malloc/calloc/strdup calls with
+> the xmalloc, xstrdup etc calls in support/nfs/xcommon.c.
+> If you are worried about malloc failing, I'd much prefer to see a patch which
+> changes nfs-utils to use those uniformly.
 > 
-> I'm aware about the patches for v3 that James Morris has submitted some
-> time ago, but AFAICS these were never accepted/merged.
+> There might be a question over the best behaviour for daemons like mountd
+> and  gssd.  However as we move towards having systemd manage those, they will
+> be restarted if they ever exit, and they are mostly stateless so that is
+> quite safe.
 > 
-> Asking him (off-list) he mentioned that any such work would need to take
-> place in NFS4.
-> 
-> 
-> I've seen some comments from the past, saying that it should never
-> happen since it would cause performance issues - but I guess one could
-> make it optional.
-> 
-> 
-> I have some use case where I need a network filesystem with XATTR
-> support providing the features of most standard filesystems (locking,
-> etc.).
-> And I'm sure there are plenty more use-cases.
-> 
-> 
-> So are there any plans to get this into NFS?
-> 
+> Does anyone else have thoughts on this?
+
+Yes.  My thought is "xmalloc is an abomination."  :-)
+
+We really do not want any of these tools exiting left if there's a memory allocation failure.  For a user, that's no better than a segfault.
+
+What's more, if a utility like exportfs isn't very carefully coded, a sideways exit can leave on-disk files in an inconsistent state.
+
+A rule of thumb is never hide control flow (like exiting) inside macros or libraries.
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
 
-labeled NFS (i.e. security labels for NFS) is already supported in Linux 3.10 and newer.
 
-There are no plans to merge general purpose xattrs. Please just use an application-specific database.
-
-Cheers
-   Trond
