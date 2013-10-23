@@ -1,80 +1,120 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:63992 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:44493 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753581Ab3JHV34 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 Oct 2013 17:29:56 -0400
-Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r98LTtPi024573
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Tue, 8 Oct 2013 17:29:56 -0400
-Received: from smallhat.boston.devel.redhat.com.org (vpn-53-5.rdu2.redhat.com [10.10.53.5])
-	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id r98LTtAn032123
-	for <linux-nfs@vger.kernel.org>; Tue, 8 Oct 2013 17:29:55 -0400
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 1/2] nfsmount.conf: Remove duplicate 'bg' and 'fg' from parsing string.
-Date: Tue,  8 Oct 2013 17:30:24 -0400
-Message-Id: <1381267825-27457-1-git-send-email-steved@redhat.com>
+	id S1753511Ab3JWBo6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 Oct 2013 21:44:58 -0400
+Date: Wed, 23 Oct 2013 12:44:44 +1100
+From: NeilBrown <neilb@suse.de>
+To: tasleson@redhat.com
+Cc: linux-nfs@vger.kernel.org, Steve Dickson <SteveD@redhat.com>
+Subject: Re: [PATCH] exportfs: Return non-zero exit value on error
+Message-ID: <20131023124444.65ace6e3@notabene.brown>
+In-Reply-To: <52669862.6030409@redhat.com>
+References: <1380756584-13335-1-git-send-email-tasleson@redhat.com>
+	<20131022092519.4f4683a8@notabene.brown>
+	<52669862.6030409@redhat.com>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/75=hcdMA+8klYd/_0Prt0CF"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When the 'Background' and/or 'Foreground' options are set
-in multiple sections of the nfsmount.conf file, each instance
-gets added to the parsing string. This patch makes the first
-instance of either option override the any others.
+--Sig_/75=hcdMA+8klYd/_0Prt0CF
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- utils/mount/configfile.c | 25 +++++++++++++++++++++++++
- 1 file changed, 25 insertions(+)
+On Tue, 22 Oct 2013 10:23:14 -0500 Tony Asleson <tasleson@redhat.com> wrote:
 
-diff --git a/utils/mount/configfile.c b/utils/mount/configfile.c
-index 68b9f93..6985ed9 100644
---- a/utils/mount/configfile.c
-+++ b/utils/mount/configfile.c
-@@ -164,6 +164,20 @@ add_entry(char *opt)
- 	SLIST_INSERT_HEAD(&head, entry, entries);
- }
- /*
-+ * Check the alias list to see if the given 
-+ * opt is a alias
-+ */
-+char *is_alias(char *opt)
-+{
-+	int i;
-+
-+	for (i=0; i < mnt_alias_sz; i++) {
-+		if (strcasecmp(opt, mnt_alias_tab[i].alias) == 0)
-+			return mnt_alias_tab[i].opt; 
-+	}
-+	return NULL;
-+}
-+/*
-  * See if the given entry exists if the link list,
-  * if so return that entry
-  */
-@@ -171,10 +185,21 @@ inline static
- char *lookup_entry(char *opt)
- {
- 	struct entry *entry;
-+	char *alias = is_alias(opt);
- 
- 	SLIST_FOREACH(entry, &head, entries) {
- 		if (strcasecmp(entry->opt, opt) == 0)
- 			return opt;
-+		if (alias && strcasecmp(entry->opt, alias) == 0)
-+			return opt;
-+		if (alias && strcasecmp(alias, "fg") == 0) {
-+			if (strcasecmp(entry->opt, "bg") == 0)
-+				return opt;
-+		}
-+		if (alias && strcasecmp(alias, "bg") == 0) {
-+			if (strcasecmp(entry->opt, "fg") == 0)
-+				return opt;
-+		}
+> On 10/21/2013 05:25 PM, NeilBrown wrote:
+> > On Wed,  2 Oct 2013 18:29:44 -0500 Tony Asleson <tasleson@redhat.com> w=
+rote:
+> >=20
+> >> To improve error handling when scripting exportfs it's useful
+> >> to have non-zero exit codes when the requested operation did not
+> >> succeed.
+> >>
+> >> This patch also returns a non-zero exit code if you request to
+> >> unexport a non-existant share.
+> >>
+> >> Signed-off-by: Tony Asleson <tasleson@redhat.com>
+> >=20
+> > This seems the have been forgotten, so maybe by replying to it someone =
+will
+> > notice (hi Steve).
+> >=20
+> > Though I agree with the need for the patch, I don't much like it's shap=
+e.
+> >=20
+> > Why change exportfs and unexportfs to return a status?  The status is o=
+nly
+> > used to set export_errno, and they sometimes set export_errno anyway, s=
+o why
+> > not leave them returning  void and just setting export_errno as needed?
+>=20
+> The reason I chose to return values was to make sure requested operation
+> actually completed requested operation.  Unexporting a non-existent
+> export is not considered an error and returns no indication you did
+> absolutely nothing.
+
+Hi,
+ thanks makes sense - I had missed that (even though you explained it in the
+ patch description :-( )
+
+ With your patch, if asked to unexport something that wasn't exported it
+ would not report any error, but would exit with an error status.  Is that
+ correct?  I think I would rather have a message printed if there is an err=
+or.
+
+ So would something like this (on top of my patch) address you need, or was
+ there something else I missed?
+
+Thanks,
+NeilBrown
+
+diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
+index 52fc03d..c9e12db 100644
+--- a/utils/exportfs/exportfs.c
++++ b/utils/exportfs/exportfs.c
+@@ -351,6 +351,7 @@ unexportfs(char *arg, int verbose)
+ 	char		*path;
+ 	char		*hname =3D arg;
+ 	int		htype;
++	int		success =3D 0;
+=20
+ 	if ((path =3D strchr(arg, ':')) !=3D NULL)
+ 		*path++ =3D '\0';
+@@ -397,7 +398,10 @@ unexportfs(char *arg, int verbose)
+ #endif
+ 		exp->m_xtabent =3D 0;
+ 		exp->m_mayexport =3D 0;
++		success =3D 1;
  	}
- 	return NULL;
++	if (!success)
++		xlog(L_ERROR, "Could not find %s to unexport.\n", arg);
+=20
+ 	freeaddrinfo(ai);
  }
--- 
-1.8.3.1
 
+--Sig_/75=hcdMA+8klYd/_0Prt0CF
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.19 (GNU/Linux)
+
+iQIVAwUBUmcqDDnsnt1WYoG5AQI/YQ/+NOnoPqprVDZlxlNmCxiZt9aREn5CYFDJ
+WEEAGKah4j3k87pelmZoaHIUfY5HDwTC2kcQBT9MqtCVwXs49mUTnjopkg7o+Y8d
+LsKQUJSJtqEdD0pAhJIsDYPrOdg3jbglaoKN2cYMEsuTHbpIZD0h6nz6pu0HsF1f
+r5DgVKWCHkIajf7z2T4nHqGVmVa5/dRib4JxF8KsgvuGoetaboeiJWOh1OZSJ52F
+bUKjOIK5r2ou34XhAvXICHyDexPBZcwWPRCAgMowbSn4lp3O18wwez1uyoCsgF+8
+qlOWyg8LYu33yhPrehbJ3HSgtBFv21YKUKziXB9KK6YN4ZhrokuLYfYpHcz/2ZSa
+tUT+4JulOz9KhuoiFCq/RuIXHVcJvHHZ05TX6H43SuxbNMCjqT6Wy/C4UHh8PIln
+kMu3RwFLVyI2nXm58u18O2eFnD9PLMUiAlit/rqqL7NJkZVrAfkJrhef1nagh6je
+0vFCd6vi0B6UvAzscZtZdCNuJCkn8YGfK5rB5uSEciupSRLr40EMfpp/aPnW4Evm
+6J2LPFud5risNmNh0IY4jRMO10zfTGea6hmgD98WSX27Ro01dJ2x93T0fkTlGTE+
+ivv2PgUETxd1jnQWMyBe6MdI7HgTTCXVXJT70MALlvrpJfscqGaqXvk8fk/7xrtL
+DefyItCsFkE=
+=whjM
+-----END PGP SIGNATURE-----
+
+--Sig_/75=hcdMA+8klYd/_0Prt0CF--
