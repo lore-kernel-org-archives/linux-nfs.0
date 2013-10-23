@@ -1,55 +1,37 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fifo99.com ([67.223.236.141]:33909 "EHLO fifo99.com"
+Received: from mout.perfora.net ([74.208.4.194]:54996 "EHLO mout.perfora.net"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753856Ab3JZCmv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Oct 2013 22:42:51 -0400
-From: Daniel Walker <dwalker@fifo99.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH 2/3] fs: nfsd: remove calls to simple_strtoll
-Date: Fri, 25 Oct 2013 19:33:12 -0700
-Message-Id: <1382754793-8827-2-git-send-email-dwalker@fifo99.com>
+	id S1751229Ab3JWO7l (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 23 Oct 2013 10:59:41 -0400
+Date: Wed, 23 Oct 2013 10:42:00 -0400
+From: Jim Rees <rees@umich.edu>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 2/3] mountd: Deprecate the ability to disable TCP
+ listeners.
+Message-ID: <20131023144200.GA25132@umich.edu>
+References: <1382429966-14531-1-git-send-email-steved@redhat.com>
+ <1382429966-14531-3-git-send-email-steved@redhat.com>
+ <20131022113940.GA15951@umich.edu>
+ <5267D630.4030909@RedHat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <5267D630.4030909@RedHat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Daniel Walker <dwalker@fifo99.com>
----
- fs/nfsd/fault_inject.c | 12 ++++++++----
- 1 file changed, 8 insertions(+), 4 deletions(-)
+Steve Dickson wrote:
 
-diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
-index d620e7f..41165f0 100644
---- a/fs/nfsd/fault_inject.c
-+++ b/fs/nfsd/fault_inject.c
-@@ -125,20 +125,24 @@ static ssize_t fault_inject_write(struct file *file, const char __user *buf,
- 	size_t size = min(sizeof(write_buf) - 1, len);
- 	struct net *net = current->nsproxy->net_ns;
- 	struct sockaddr_storage sa;
-+	int ret = -EFAULT;
- 	u64 val;
- 
- 	if (copy_from_user(write_buf, buf, size))
--		return -EFAULT;
-+		return ret;
- 	write_buf[size] = '\0';
- 
- 	size = rpc_pton(net, write_buf, size, (struct sockaddr *)&sa, sizeof(sa));
- 	if (size > 0)
- 		nfsd_inject_set_client(file_inode(file)->i_private, &sa, size);
- 	else {
--		val = simple_strtoll(write_buf, NULL, 0);
--		nfsd_inject_set(file_inode(file)->i_private, val);
-+		ret = kstrtoll(write_buf, 0, &val);
-+		if (ret == 0) {
-+			nfsd_inject_set(file_inode(file)->i_private, val);
-+			ret = len;
-+		}
- 	}
--	return len; /* on success, claim we got the whole input */
-+	return ret; /* on success, claim we got the whole input */
- }
- 
- static const struct file_operations fops_nfsd = {
--- 
-1.8.3.2
+  On 22/10/13 07:39, Jim Rees wrote:
+  > Steve Dickson wrote:
+  > 
+  >   -"	[-N version|--no-nfs-version version] [-n|--no-tcp]\n"
+  >   +"	[-N version|--no-nfs-version version] [-n|--no-tcp(deprecate)]\n"
+  > 
+  > I would take this out.
+  > 
+  Take out the word "deprecate" or the "[-n|--no-tcp(deprecate)]" flag?
 
+Like this:
+
+"	[-N version|--no-nfs-version version]\n"
