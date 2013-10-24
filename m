@@ -1,86 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:60473 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759947Ab3JPSxb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Oct 2013 14:53:31 -0400
-Date: Wed, 16 Oct 2013 14:53:14 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Andi Kleen <andi@firstfloor.org>,
-        "kwc@citi.umich.edu" <kwc@citi.umich.edu>
-Subject: Re: [PATCH] sunrpc: trim off EC bytes in addition to the checksum
- blob when doing a GSSAPI v2 unwrap
-Message-ID: <20131016145314.14b2ac32@tlielax.poochiereds.net>
-In-Reply-To: <1381949005.17178.10.camel@leira.trondhjem.org>
-References: <1381427810-10633-1-git-send-email-jlayton@redhat.com>
-	<1381949005.17178.10.camel@leira.trondhjem.org>
+Received: from mailgw02.dd24.net ([193.46.215.43]:36737 "EHLO
+	mailgw02.dd24.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753940Ab3JXQKZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Oct 2013 12:10:25 -0400
+Received: from localhost (amavis01.dd24.net [192.168.1.111])
+	by mailgw02.dd24.net (Postfix) with ESMTP id F3181356BF4
+	for <linux-nfs@vger.kernel.org>; Thu, 24 Oct 2013 16:10:23 +0000 (GMT)
+Received: from mailgw02.dd24.net ([192.168.1.197])
+	by localhost (amavis01.dd24.net [192.168.1.105]) (amavisd-new, port 10197)
+	with ESMTP id OHASqkugndT5 for <linux-nfs@vger.kernel.org>;
+	Thu, 24 Oct 2013 16:10:17 +0000 (GMT)
+Received: from [192.168.0.102] (ppp-88-217-86-191.dynamic.mnet-online.de [88.217.86.191])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by mailgw02.dd24.net (Postfix) with ESMTPSA id 79EF2356BEE
+	for <linux-nfs@vger.kernel.org>; Thu, 24 Oct 2013 16:10:17 +0000 (GMT)
+Message-ID: <1382631016.6907.64.camel@heisenberg.scientia.net>
+Subject: Re: XATTRs in NFS?
+From: Christoph Anton Mitterer <calestyo@scientia.net>
+To: linux-nfs@vger.kernel.org
+Date: Thu, 24 Oct 2013 18:10:16 +0200
+In-Reply-To: <20131024112319.7ad9fd27@tlielax.poochiereds.net>
+References: <1382560643.6924.12.camel@heisenberg.scientia.net>
+	 <EFB2CFAD-FACC-401D-BF0C-1C573B23A873@netapp.com>
+	 <1382624000.6907.8.camel@heisenberg.scientia.net>
+	 <E0F4C952-02DE-4778-A779-FB7AE111EC46@netapp.com>
+	 <1382627225.899.76.camel@willson.li.ssimo.org>
+	 <1382627496.6430.2.camel@leira.trondhjem.org>
+	 <1382627770.899.79.camel@willson.li.ssimo.org>
+	 <20131024112319.7ad9fd27@tlielax.poochiereds.net>
+Content-Type: text/plain; charset="UTF-8"
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 16 Oct 2013 18:43:26 +0000
-"Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+On Thu, 2013-10-24 at 11:23 -0400, Jeff Layton wrote:
+> I think the real solution if people need this is to lead an effort to
+I'm often reading this argument,... "if people need this", respectively
+the argument "XATTRs/ACLs" aren't widely used so we're not going to
+support them.
 
-> On Thu, 2013-10-10 at 13:56 -0400, Jeff Layton wrote:
-> > As Bruce points out in RFC 4121, section 4.2.3:
-> > 
-> >    "In Wrap tokens that provide for confidentiality, the first 16 octets
-> >     of the Wrap token (the "header", as defined in section 4.2.6), SHALL
-> >     be appended to the plaintext data before encryption.  Filler octets
-> >     MAY be inserted between the plaintext data and the "header.""
-> > 
-> > ...and...
-> > 
-> >    "In Wrap tokens with confidentiality, the EC field SHALL be used to
-> >     encode the number of octets in the filler..."
-> > 
-> > It's possible for the client to stuff different data in that area on a
-> > retransmission, which could make the checksum come out wrong in the DRC
-> > code.
-> > 
-> > After decrypting the blob, we should trim off any extra count bytes in
-> > addition to the checksum blob.
-> > 
-> > Reported-by: "J. Bruce Fields" <bfields@fieldses.org>
-> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > ---
-> >  net/sunrpc/auth_gss/gss_krb5_wrap.c | 4 ++--
-> >  1 file changed, 2 insertions(+), 2 deletions(-)
-> > 
-> > diff --git a/net/sunrpc/auth_gss/gss_krb5_wrap.c b/net/sunrpc/auth_gss/gss_krb5_wrap.c
-> > index 1da52d1..ec1f4d0 100644
-> > --- a/net/sunrpc/auth_gss/gss_krb5_wrap.c
-> > +++ b/net/sunrpc/auth_gss/gss_krb5_wrap.c
-> > @@ -574,8 +574,8 @@ gss_unwrap_kerberos_v2(struct krb5_ctx *kctx, int offset, struct xdr_buf *buf)
-> >  	buf->head[0].iov_len -= GSS_KRB5_TOK_HDR_LEN + headskip;
-> >  	buf->len -= GSS_KRB5_TOK_HDR_LEN + headskip;
-> >  
-> > -	/* Trim off the checksum blob */
-> > -	xdr_buf_trim(buf, GSS_KRB5_TOK_HDR_LEN + tailskip);
-> > +	/* Trim off the trailing "extra count" and checksum blob */
-> > +	xdr_buf_trim(buf, ec + GSS_KRB5_TOK_HDR_LEN + tailskip);
-> >  	return GSS_S_COMPLETE;
-> >  }
-> >  
-> 
-> If this is just padding, then why would it be anything other than '0',
-> even on a retransmission? Clients are not supposed to leak random data
-> to the server...
-> 
+IMHO that's no really an argument.... the simple reason that this isn't
+widely used, is likely that there are still many places that don't
+support it.
 
-The Linux client routines are actually set up to fill this with 'X'
-characters, not nulls. See gss_krb5_aes_encrypt, which does this:
+All the major Linux (disk) filesystems support it, right? ext*/btrfs/XFS
+But many (even standard clients) do either not (e.g. normal GNU tar
+format) or behave in a way that somehow break or lose XATTRs/ACLs (e.g.
+vim),... NFS is another example - a very important IMHO since it is THE
+network filesystem.
 
-        memset(ecptr, 'X', ec);
+So sure,... not many people are using XATTRs, ACLs, but the reason is
+simply, that there are still many obstacles in the way - in many cases
+upstream refusing to solve these, for the reason that allegedly noone
+uses XATTRs/ACLs.
+(Which is btw. not fully true,... many modernish stuff like uses e.g.
+ACLs like in /dev/).
 
-AFAICT, the spec doesn't actually say what's supposed to be in the
-padding, just that it's to be ignored. I imagine that most clients will
-just set this to a constant value like Linux does, but there doesn't
-seem to be any guarantee of that, and there's no real point in keeping
-it around.
 
--- 
-Jeff Layton <jlayton@redhat.com>
+
+I do agree that especially the ACLs from POSIX are not the best thing
+(NFS4 ACLs are much better),... but I don't see the big problem with
+key/value pairs from XATTRs.
+
+
+Cheers,
+Chris.
+
