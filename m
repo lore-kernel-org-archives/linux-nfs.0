@@ -1,117 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aa.linuxbox.com ([69.128.83.226]:2298 "EHLO aa.linuxbox.com"
+Received: from mx1.redhat.com ([209.132.183.28]:12556 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754997Ab3JXPKO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 24 Oct 2013 11:10:14 -0400
-Date: Thu, 24 Oct 2013 11:10:07 -0400 (EDT)
-From: "Matt W. Benjamin" <matt@linuxbox.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>,
-        Christoph Anton Mitterer <calestyo@scientia.net>
-Message-ID: <240479729.48.1382627407924.JavaMail.root@thunderbeast.private.linuxbox.com>
-In-Reply-To: <1382627297.6430.0.camel@leira.trondhjem.org>
-Subject: Re: XATTRs in NFS?
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+	id S1755583Ab3JXSpK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 24 Oct 2013 14:45:10 -0400
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r9OIjARq021086
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 24 Oct 2013 14:45:10 -0400
+Date: Thu, 24 Oct 2013 14:45:07 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Steve Dickson <steved@redhat.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 0/3] mountd: disabling turning off TCP listeners (v2)
+Message-ID: <20131024144507.72aa34a8@tlielax.poochiereds.net>
+In-Reply-To: <1382638633-6710-1-git-send-email-steved@redhat.com>
+References: <1382638633-6710-1-git-send-email-steved@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+On Thu, 24 Oct 2013 14:17:10 -0400
+Steve Dickson <steved@redhat.com> wrote:
 
-Sorry I was not clear.  I was not re-stating support for this banned feature.
-
-I'm interested in implementation code I can use privately under GPLv2.
-
-Thanks!
-
-Matt
-
------ "Trond Myklebust" <Trond.Myklebust@netapp.com> wrote:
-
-> On Thu, 2013-10-24 at 11:05 -0400, Matt W. Benjamin wrote:
-> > Hi,
-> > 
-> > Presumably Linux client and server implementations would restrict
-> use of "system."
-> > Perhaps would be more to talk about, if xattrs were implemented
-> experimentally.
-> > 
-> > I'm interested in knowing about patches that might be floating
-> around for the Linux client, for NFSv4.x.  (I've seen NFSv3 work.)
-> > 
-> > Thanks,
-> > 
-> > Matt
+> [ Here is the second try for these patches incorporating the code review..]
 > 
-> We've already talked about this, Matt. The answer is still NO.
+> Recently it was pointed out to me that the [-n | --no-tcp] flags 
+> were broken in mountd. Sure enough they are and they broke 
+> when nfs-utils moved to using libtirpc, which was years ago.
 > 
-> Trond
+> Obviously nobody is using these flags since has not been 
+> notice until now, but it seemed to me it no longer makes 
+> any sense to have flags. We really want people to use TCP 
+> so why should there be a way to turn it off? It should be
+> the opposite... They should be able to turn off UDP listeners
+> not TCP... 
 > 
-> > ----- "Trond Myklebust" <Trond.Myklebust@netapp.com> wrote:
-> > 
-> > > On Oct 24, 2013, at 3:13 PM, Christoph Anton Mitterer
-> > > <calestyo@scientia.net> wrote:
-> > > 
-> > > > On Thu, 2013-10-24 at 08:45 +0000, Myklebust, Trond wrote:
-> > > >> labeled NFS (i.e. security labels for NFS) is already supported
-> in
-> > > Linux 3.10 and newer.
-> > > > Sure, but that doesn't really help me.
-> > > > 
-> > > > 
-> > > >> There are no plans to merge general purpose xattrs.
-> > > > Why not? Is it a big deal?
-> > > > 
-> > > 
-> > > Linux xattrs are a rabid mess.
-> > > 
-> > > The whole "system" namespace is something that cannot and should
-> not
-> > > ever be exposed on a network.
-> > > The "trusted" and "user" namespaces just offer specialised
-> storage.
-> > > Why are they needed?
-> > > 
-> > > > 
-> > > >> Please just use an application-specific database.
-> > > > Well that won't work,... since that wouldn't be updated if e.g.
-> > > > pathnames are changed by any program (cp, mv)
-> > > 
-> > > If the data needs to follow the file, then store it in the file.
-> Why
-> > > do you need the filesystem to manage that for you?
-> > > 
-> > > Cheers
-> > >   Trond--
-> > > To unsubscribe from this list: send the line "unsubscribe
-> linux-nfs"
-> > > in
-> > > the body of a message to majordomo@vger.kernel.org
-> > > More majordomo info at 
-> http://vger.kernel.org/majordomo-info.html
-> > 
 > 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
+> Steve Dickson (3):
+>   mountd: Use protocol bit fields to turn protocols off.
+>   mountd: Deprecate the ability to disable TCP listeners.
+>   mountd: Add the ability to disable UDP listeners.
 > 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs"
-> in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>  support/include/rpcmisc.h |  2 +-
+>  support/nfs/rpcmisc.c     | 19 ++++++++++++++-----
+>  support/nfs/svc_create.c  |  5 +++++
+>  utils/mountd/mountd.c     | 17 ++++++++++++-----
+>  utils/mountd/mountd.man   |  6 +++---
+>  5 files changed, 35 insertions(+), 14 deletions(-)
+> 
+
+Sorry I'm coming in late on this...
+
+I don't think we want to remove the ability to disable TCP listeners.
+
+Why, you ask? We've been on a multi-year effort to move people to
+NFSv4, and with that, there's no reason to have mountd listen on the
+network at all.
+
+So personally, I think it would make sense to:
+
+a) allow people to disable listening on UDP in addition to TCP
+
+...or...
+
+b) add an option that prevents it from listening on any sockets for a
+   v4-only configuration
+
+In addition, we generally do want people to use UDP for the MNT
+protocol because it's less apt to cause issues with reserved port
+exhaustion. Given that it'll continue to listen on a UDP socket by
+default, that last point is less of an issue, but that might be a good
+reason to rethink this whole plan.
 
 -- 
-Matt Benjamin
-The Linux Box
-206 South Fifth Ave. Suite 150
-Ann Arbor, MI  48104
-
-http://linuxbox.com
-
-tel.  734-761-4689 
-fax.  734-769-8938 
-cel.  734-216-5309 
+Jeff Layton <jlayton@redhat.com>
