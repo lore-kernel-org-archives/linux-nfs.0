@@ -1,60 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx3-phx2.redhat.com ([209.132.183.24]:46986 "EHLO
-	mx3-phx2.redhat.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753496Ab3J2CWJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Oct 2013 22:22:09 -0400
-To: Trond.Myklebust@netapp.com
-Cc: rwheeler@redhat.com, bfields@redhat.com, calestyo@scientia.net,
-        linux-nfs@vger.kernel.org, steved@redhat.com
-Date: Mon, 28 Oct 2013 22:22:04 -0400 (EDT)
+Received: from aa.linuxbox.com ([69.128.83.226]:4001 "EHLO aa.linuxbox.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755261Ab3JXP3g (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 24 Oct 2013 11:29:36 -0400
+Date: Thu, 24 Oct 2013 11:29:25 -0400 (EDT)
+From: "Matt W. Benjamin" <matt@linuxbox.com>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Christoph Anton Mitterer <calestyo@scientia.net>,
+        linux-nfs <linux-nfs@vger.kernel.org>, Simo Sorce <simo@redhat.com>
+Message-ID: <2102567502.56.1382628565761.JavaMail.root@thunderbeast.private.linuxbox.com>
+In-Reply-To: <20131024112319.7ad9fd27@tlielax.poochiereds.net>
+Subject: Re: XATTRs in NFS?
 MIME-Version: 1.0
-Subject: =?utf-8?B?UkU6IFhBVFRScyBpbiBORlM/?=
-Message-ID: <1777356958.15530338.1383013324620.JavaMail.root@zmail09.collab.prod.int.phx2.redhat.com>
-Content-Type: multipart/mixed;boundary="__1383013318720TOUCHDOWN_BOUNDARY__"
-From: Anand Avati <aavati@redhat.com>
-In-Reply-To: <AF4F68CE-DF98-47E6-89CC-D052F79591B2@netapp.com>
-References: <20131028180838.GG31322@fieldses.org> <526EC3F7.3090601@gmail.com> <526EFFCC.2060506@redhat.com> <18F0636D-7CE0-42C1-9249-325DF69516D4@netapp.com> <526F0893.5030700@redhat.com> <A7C1B206-12CD-4958-9528-A8D9C9847011@netapp.com> <526F0E49.10801@redhat.com> <AF4F68CE-DF98-47E6-89CC-D052F79591B2@netapp.com>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---__1383013318720TOUCHDOWN_BOUNDARY__
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: 7bit
+Hi,
 
-(Sorry for top post)
+It appears that there could be spec implications, but I have not so far been convinced that
+nfsv4.x named attributes are not an appropriate vehicle for (some set of) extended attributes.
 
-Ah, note that by "glusterfs.<something>" i was meaning "<ns>.glusterfs.<something>" where <ns> is like "user". It just needs to be a mechanism to store key values on the inode.
+The fact that nfsv4.x named attributes are suitable to represent large objects, does not make
+them unsuitable to represent key value properties.
 
-Avati
+Matt
 
-Sent from my Android phone using TouchDown (www.nitrodesk.com)
+----- "Jeff Layton" <jlayton@redhat.com> wrote:
 
-
------Original Message-----
-From: Myklebust, Trond [Trond.Myklebust@netapp.com]
-Received: Monday, 28 Oct 2013, 18:52
-To: Anand Avati [aavati@redhat.com]
-CC: Wheeler Ric [rwheeler@redhat.com]; Dr Fields James Bruce [bfields@redhat.com]; Christoph Anton Mitterer [calestyo@scientia.net]; Mailing List Linux NFS [linux-nfs@vger.kernel.org]; Dickson Steve [steved@redhat.com]
-Subject: Re: XATTRs in NFS?
-
-
-
-On Oct 28, 2013, at 9:24 PM, Anand Avati <aavati@redhat.com> wrote:
-
-> On 10/28/2013 06:26 PM, Myklebust, Trond wrote:
+> On Thu, 24 Oct 2013 11:16:10 -0400
+> Simo Sorce <simo@redhat.com> wrote:
 > 
->> 
->> That battle may have been fought and won within the glusterfs community, but why should we wave the white flag without a discussion? I don't see how what he described above has anything to do with user defined attributes. He's describing how he wants to export quota information and xtime through a private xattr interface that is currently unique to glusterfs. How is that not a private syscall interface?
->> 
+> > On Thu, 2013-10-24 at 15:11 +0000, Myklebust, Trond wrote:
+> > > On Thu, 2013-10-24 at 11:07 -0400, Simo Sorce wrote:
+> > > 
+> > > > Because the filesystem can do that when multiple applications
+> are
+> > > > involved without having to change them all to talk to each other
+> and
+> > > > invent custom protocol all the time just to keep some
+> additional
+> > > > metadata associated to a file..
+> > > > 
+> > > It's still a custom protocol. The applications need to agree on a
+> data
+> > > format and store it somewhere. The portable way to do this is to
+> write
+> > > an application library that they can link to.
+> > 
+> > Perhaps I was unclear, you are never going to see that custom
+> library
+> > linked into the 'mv' command.
+> > 
+> > So your approach makes little sense if the object is to maintain
+> data
+> > coherent when people need to handle files from random applications
+> and
+> > scripts and general system maintenance.
+> > 
+> > The data may be relevant only to a specific application.
+> > 
+> > I am not saying you *have* to implement xattrs support, just saying
+> that
+> > it is not a mere 'applications should synchronize data themselves'
+> > problem.
+> > 
 > 
-> Exposing quota informtion is use "from the top". Note the other point I mention about using NFS volumes as "gluster bricks" where we store xattrs as dumb and persistent key/values associated with file/dir inodes (fresh/stale info for replication, hash ranges for dirs, quota acconting info per-dir, xtime per dir).
-
->> Which of the mainstream filesystems have their own private xattr namespaces like the above?
->> 
+> I think the real solution if people need this is to lead an effort to
+> put xattrs into the spec. I think there is still time to get new
+> features into v4.3 if someone wants to champion it...
 > 
-> Why should NFS need to worry? As long as it acts like a pass-through (like every other call it supports).
+> -- 
+> Jeff Layton <jlayton@redhat.com>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs"
+> in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-We need to worry because we don't know what side-effects your private interface will have. How does it affect our caching model? How do we debug any problems that arise? Are there any security implications that we need to know about?
+-- 
+Matt Benjamin
+The Linux Box
+206 South Fifth Ave. Suite 150
+Ann Arbor, MI  48104
 
-Trond
---__1383013318720TOUCHDOWN_BOUNDARY__--
+http://linuxbox.com
+
+tel.  734-761-4689 
+fax.  734-769-8938 
+cel.  734-216-5309 
