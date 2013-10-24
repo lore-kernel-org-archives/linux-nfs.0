@@ -1,56 +1,126 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:44146 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:1520 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751412Ab3JWRg3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 23 Oct 2013 13:36:29 -0400
-Message-ID: <52680917.4010509@redhat.com>
-Date: Wed, 23 Oct 2013 12:36:23 -0500
-From: Tony Asleson <tasleson@redhat.com>
-Reply-To: tasleson@redhat.com
+	id S1755832Ab3JXUGR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 24 Oct 2013 16:06:17 -0400
+Message-ID: <52697DE6.10806@RedHat.com>
+Date: Thu, 24 Oct 2013 16:07:02 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
 To: NeilBrown <neilb@suse.de>
-CC: linux-nfs@vger.kernel.org, Steve Dickson <SteveD@redhat.com>
-Subject: Re: [PATCH] exportfs: Return non-zero exit value on error
-References: <1380756584-13335-1-git-send-email-tasleson@redhat.com> <20131022092519.4f4683a8@notabene.brown> <52669862.6030409@redhat.com> <20131023124444.65ace6e3@notabene.brown>
-In-Reply-To: <20131023124444.65ace6e3@notabene.brown>
+CC: NFS <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH nfs-utils] mountd: fix bug affecting exports of dirs with
+ 64bit inode number.
+References: <20131022100329.20f37a19@notabene.brown>
+In-Reply-To: <20131022100329.20f37a19@notabene.brown>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 10/22/2013 08:44 PM, NeilBrown wrote:
-> On Tue, 22 Oct 2013 10:23:14 -0500 Tony Asleson <tasleson@redhat.com> wrote:
->> The reason I chose to return values was to make sure requested operation
->> actually completed requested operation.  Unexporting a non-existent
->> export is not considered an error and returns no indication you did
->> absolutely nothing.
+
+
+On 21/10/13 19:03, NeilBrown wrote:
 > 
-> Hi,
->  thanks makes sense - I had missed that (even though you explained it in the
->  patch description :-( )
 > 
->  With your patch, if asked to unexport something that wasn't exported it
->  would not report any error, but would exit with an error status.  Is that
->  correct?  I think I would rather have a message printed if there is an error.
+> parse_fsid() is currently truncating all inode numbers to
+> 32bits, and assumes that 'int' is 32 bits (which it probably is,
+> but we shouldn't assume).
+> 
+> So make the 'inode' field in 'struct parsed_fsid' a 64 bit field.
+> and only memcpy into variables or fields that have been declared
+> to a specific bit size.
+> 
+> Signed-off-by: NeilBrown <neilb@suse.de>
+Committed... 
 
-Correct, I only made changes for the exit status.  I was trying to make
-changes that would be mostly invisible to end users.  I have no concerns
-adding a printed error output too, but others may.
+steved.
 
-Changing the behavior of any command line tool is potentially
-problematic when scripted.
-
->  So would something like this (on top of my patch) address you need, or was
->  there something else I missed?
-
-Yes, this should work for the unexport fs case.
-
-However, the reason my patch was a little more invasive was to ensure
-that both the export and unexport paths were covered.
-
-For example, if the strdup call fails in function client_init, we fail
-the operation and return exit value of 0.  Unlikely, but just the first
-example I stumbled across.
-
-Thanks,
-Tony
-
+> 
+> diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+> index 517aa62..e04b86e 100644
+> --- a/utils/mountd/cache.c
+> +++ b/utils/mountd/cache.c
+> @@ -388,10 +388,10 @@ struct parsed_fsid {
+>  	int fsidtype;
+>  	/* We could use a union for this, but it would be more
+>  	 * complicated; why bother? */
+> -	unsigned int inode;
+> +	uint64_t inode;
+>  	unsigned int minor;
+>  	unsigned int major;
+> -	unsigned int fsidnum;
+> +	uint32_t fsidnum;
+>  	size_t uuidlen;
+>  	char *fhuuid;
+>  };
+> @@ -399,8 +399,8 @@ struct parsed_fsid {
+>  static int parse_fsid(int fsidtype, int fsidlen, char *fsid,
+>  		struct parsed_fsid *parsed)
+>  {
+> -	unsigned int dev;
+> -	unsigned long long inode64;
+> +	uint32_t dev;
+> +	uint32_t inode32;
+>  
+>  	memset(parsed, 0, sizeof(*parsed));
+>  	parsed->fsidtype = fsidtype;
+> @@ -409,7 +409,8 @@ static int parse_fsid(int fsidtype, int fsidlen, char *fsid,
+>  		if (fsidlen != 8)
+>  			return -1;
+>  		memcpy(&dev, fsid, 4);
+> -		memcpy(&parsed->inode, fsid+4, 4);
+> +		memcpy(&inode32, fsid+4, 4);
+> +		parsed->inode = inode32;
+>  		parsed->major = ntohl(dev)>>16;
+>  		parsed->minor = ntohl(dev) & 0xFFFF;
+>  		break;
+> @@ -420,7 +421,7 @@ static int parse_fsid(int fsidtype, int fsidlen, char *fsid,
+>  		memcpy(&parsed->fsidnum, fsid, 4);
+>  		break;
+>  
+> -	case FSID_MAJOR_MINOR: /* 12 bytes: 4 major, 4 minor, 4 inode 
+> +	case FSID_MAJOR_MINOR: /* 12 bytes: 4 major, 4 minor, 4 inode
+>  		 * This format is never actually used but was
+>  		 * an historical accident
+>  		 */
+> @@ -430,7 +431,8 @@ static int parse_fsid(int fsidtype, int fsidlen, char *fsid,
+>  		parsed->major = ntohl(dev);
+>  		memcpy(&dev, fsid+4, 4);
+>  		parsed->minor = ntohl(dev);
+> -		memcpy(&parsed->inode, fsid+8, 4);
+> +		memcpy(&inode32, fsid+8, 4);
+> +		parsed->inode = inode32;
+>  		break;
+>  
+>  	case FSID_ENCODE_DEV: /* 8 bytes: 4 byte packed device number, 4 inode */
+> @@ -440,7 +442,8 @@ static int parse_fsid(int fsidtype, int fsidlen, char *fsid,
+>  		if (fsidlen != 8)
+>  			return -1;
+>  		memcpy(&dev, fsid, 4);
+> -		memcpy(&parsed->inode, fsid+4, 4);
+> +		memcpy(&inode32, fsid+4, 4);
+> +		parsed->inode = inode32;
+>  		parsed->major = (dev & 0xfff00) >> 8;
+>  		parsed->minor = (dev & 0xff) | ((dev >> 12) & 0xfff00);
+>  		break;
+> @@ -448,7 +451,8 @@ static int parse_fsid(int fsidtype, int fsidlen, char *fsid,
+>  	case FSID_UUID4_INUM: /* 4 byte inode number and 4 byte uuid */
+>  		if (fsidlen != 8)
+>  			return -1;
+> -		memcpy(&parsed->inode, fsid, 4);
+> +		memcpy(&inode32, fsid, 4);
+> +		parsed->inode = inode32;
+>  		parsed->uuidlen = 4;
+>  		parsed->fhuuid = fsid+4;
+>  		break;
+> @@ -467,8 +471,7 @@ static int parse_fsid(int fsidtype, int fsidlen, char *fsid,
+>  	case FSID_UUID16_INUM: /* 8 byte inode number and 16 byte uuid */
+>  		if (fsidlen != 24)
+>  			return -1;
+> -		memcpy(&inode64, fsid, 8);
+> -		parsed->inode = inode64;
+> +		memcpy(&parsed->inode, fsid, 8);
+>  		parsed->uuidlen = 16;
+>  		parsed->fhuuid = fsid+8;
+>  		break;
+> 
