@@ -1,34 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:41578 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751803Ab3J2HhU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Oct 2013 03:37:20 -0400
-Date: Tue, 29 Oct 2013 00:37:19 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Anna Schumaker <bjschuma@netapp.com>, linux-nfs@vger.kernel.org
-Subject: Re: [RFC 5/4] NFSD: Add basic CB_OFFLOAD support
-Message-ID: <20131029073719.GB10889@infradead.org>
-References: <1382972247-1108-1-git-send-email-bjschuma@netapp.com>
- <1382972247-1108-6-git-send-email-bjschuma@netapp.com>
- <20131028215221.GQ31322@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20131028215221.GQ31322@fieldses.org>
+Received: from mx1.redhat.com ([209.132.183.28]:26984 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753793Ab3JXPQQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 24 Oct 2013 11:16:16 -0400
+Subject: Re: XATTRs in NFS?
+From: Simo Sorce <simo@redhat.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Christoph Anton Mitterer <calestyo@scientia.net>,
+        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
+In-Reply-To: <1382627496.6430.2.camel@leira.trondhjem.org>
+References: <1382560643.6924.12.camel@heisenberg.scientia.net>
+	 <EFB2CFAD-FACC-401D-BF0C-1C573B23A873@netapp.com>
+	 <1382624000.6907.8.camel@heisenberg.scientia.net>
+	 <E0F4C952-02DE-4778-A779-FB7AE111EC46@netapp.com>
+	 <1382627225.899.76.camel@willson.li.ssimo.org>
+	 <1382627496.6430.2.camel@leira.trondhjem.org>
+Content-Type: text/plain; charset="UTF-8"
+Date: Thu, 24 Oct 2013 11:16:10 -0400
+Message-ID: <1382627770.899.79.camel@willson.li.ssimo.org>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Oct 28, 2013 at 05:52:21PM -0400, J. Bruce Fields wrote:
-> On Mon, Oct 28, 2013 at 10:57:27AM -0400, Anna Schumaker wrote:
-> > This patch adds basic offload support to the WRITE_PLUS operation.
-> > Since I don't implement OFFLOAD_ABORT, OFFLOAD_REVOKE or OFFLOAD_STATUS
-> > this patch is NOT spec compliant and should not be applied without
-> > further work.
+On Thu, 2013-10-24 at 15:11 +0000, Myklebust, Trond wrote:
+> On Thu, 2013-10-24 at 11:07 -0400, Simo Sorce wrote:
 > 
-> Ugh.  I don't understand why we need asynchronous modes for all these
-> operations.
+> > Because the filesystem can do that when multiple applications are
+> > involved without having to change them all to talk to each other and
+> > invent custom protocol all the time just to keep some additional
+> > metadata associated to a file..
+> > 
+> It's still a custom protocol. The applications need to agree on a data
+> format and store it somewhere. The portable way to do this is to write
+> an application library that they can link to.
 
-Hole punches as implemented by any filesystem at the moement are pure
-metadata manipulations and should not require "async" versions that
-offload to a workqueue.
+Perhaps I was unclear, you are never going to see that custom library
+linked into the 'mv' command.
+
+So your approach makes little sense if the object is to maintain data
+coherent when people need to handle files from random applications and
+scripts and general system maintenance.
+
+The data may be relevant only to a specific application.
+
+I am not saying you *have* to implement xattrs support, just saying that
+it is not a mere 'applications should synchronize data themselves'
+problem.
+
+Simo.
+
+-- 
+Simo Sorce * Red Hat, Inc * New York
 
