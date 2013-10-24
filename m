@@ -1,66 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:54731 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754034Ab3J1Srg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 28 Oct 2013 14:47:36 -0400
-Date: Mon, 28 Oct 2013 14:47:32 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfs: return -EBUSY on remount when new options can't be
- applied
-Message-ID: <20131028144732.6bc5f73f@tlielax.poochiereds.net>
-In-Reply-To: <1382985630.3314.3.camel@leira.trondhjem.org>
-References: <1382363554-6587-1-git-send-email-jlayton@redhat.com>
-	<1382985630.3314.3.camel@leira.trondhjem.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from szxga03-in.huawei.com ([119.145.14.66]:1285 "EHLO
+	szxga03-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753711Ab3JXMcF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Oct 2013 08:32:05 -0400
+Message-ID: <526912C1.6070502@huawei.com>
+Date: Thu, 24 Oct 2013 20:29:53 +0800
+From: Ding Tianhong <dingtianhong@huawei.com>
+MIME-Version: 1.0
+To: wangweidong <wangweidong1@huawei.com>
+CC: <davem@davemloft.net>, <Trond.Myklebust@netapp.com>,
+        <bfields@fieldses.org>, <netdev@vger.kernel.org>,
+        <linux-nfs@vger.kernel.org>
+Subject: Re: [PACTH net-next] SUNRPC: remove an unnecessary if statement
+References: <52688768.9020703@huawei.com>
+In-Reply-To: <52688768.9020703@huawei.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 28 Oct 2013 18:40:32 +0000
-"Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
-
-> On Mon, 2013-10-21 at 09:52 -0400, Jeff Layton wrote:
-> > Currently the kernel returns -EINVAL, which makes it hard to
-> > distinguish this situation from the case where an invalid mount option
-> > was specified.
-> > 
-> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > ---
-> >  fs/nfs/super.c | 2 +-
-> >  1 file changed, 1 insertion(+), 1 deletion(-)
-> > 
-> > diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-> > index 3f5a7a8..cebdb26 100644
-> > --- a/fs/nfs/super.c
-> > +++ b/fs/nfs/super.c
-> > @@ -2156,7 +2156,7 @@ nfs_compare_remount_data(struct nfs_server *nfss,
-> >  	    data->nfs_server.addrlen != nfss->nfs_client->cl_addrlen ||
-> >  	    !rpc_cmp_addr((struct sockaddr *)&data->nfs_server.address,
-> >  			  (struct sockaddr *)&nfss->nfs_client->cl_addr))
-> > -		return -EINVAL;
-> > +		return -EBUSY;
-> >  
-> >  	return 0;
-> >  }
+On 2013/10/24 10:35, wangweidong wrote:
+> If req allocated failed just goto out_free, no need to check the
+> 'i < num_prealloc'. There is just code simplification, no
+> functional changes.
 > 
-> The problem is that EBUSY also has a different meaning when it comes to
-> remount. According to the manpage it means the source "cannot be
-> remounted read-only, because it still holds files open for writing."
+> Signed-off-by: Wang Weidong <wangweidong1@huawei.com>
+> ---
+>  net/sunrpc/xprt.c | 4 +---
+>  1 file changed, 1 insertion(+), 3 deletions(-)
 > 
-> So, as far as I can see, this is a case of pick your poison...
+> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+> index 095363e..a8e20de 100644
+> --- a/net/sunrpc/xprt.c
+> +++ b/net/sunrpc/xprt.c
+> @@ -1087,11 +1087,9 @@ struct rpc_xprt *xprt_alloc(struct net *net, size_t size,
+>  	for (i = 0; i < num_prealloc; i++) {
+>  		req = kzalloc(sizeof(struct rpc_rqst), GFP_KERNEL);
+>  		if (!req)
+> -			break;
+> +			goto out_free;
+>  		list_add(&req->rq_list, &xprt->free);
+>  	}
+> -	if (i < num_prealloc)
+> -		goto out_free;
+>  	if (max_alloc > num_prealloc)
+>  		xprt->max_reqs = max_alloc;
+>  	else
+> -- 1.7.12
+> 
 > 
 
-Yes, there is no great return code for this, sadly. The same manpage
-says this for -EINVAL, which isn't exactly correct either:
+Acked-by: Ding Tianhong <dingtianhong@huawei.com>
 
-"Or,  a  remount  (MS_REMOUNT) was  attempted,  but  source  was not
-already mounted on target."
+> 
+> 
+> .
+> 
 
--EBUSY certainly isn't perfect but it does seem a little closer to the
-mark, IMO. That said, I don't feel terribly strongly about it if you
-think we ought to keep it as-is.
 
--- 
-Jeff Layton <jlayton@redhat.com>
