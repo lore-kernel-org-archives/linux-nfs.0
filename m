@@ -1,46 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:9365 "EHLO mx11.netapp.com"
+Received: from mx12.netapp.com ([216.240.18.77]:38795 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754747Ab3JXOcq convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Oct 2013 10:32:46 -0400
+	id S1752517Ab3JXIph convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Oct 2013 04:45:37 -0400
 From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 To: Christoph Anton Mitterer <calestyo@scientia.net>
 CC: "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
 Subject: Re: XATTRs in NFS?
-Date: Thu, 24 Oct 2013 14:32:40 +0000
-Message-ID: <E0F4C952-02DE-4778-A779-FB7AE111EC46@netapp.com>
+Date: Thu, 24 Oct 2013 08:45:35 +0000
+Message-ID: <EFB2CFAD-FACC-401D-BF0C-1C573B23A873@netapp.com>
 References: <1382560643.6924.12.camel@heisenberg.scientia.net>
- <EFB2CFAD-FACC-401D-BF0C-1C573B23A873@netapp.com>
- <1382624000.6907.8.camel@heisenberg.scientia.net>
-In-Reply-To: <1382624000.6907.8.camel@heisenberg.scientia.net>
+In-Reply-To: <1382560643.6924.12.camel@heisenberg.scientia.net>
 Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Oct 24, 2013, at 3:13 PM, Christoph Anton Mitterer <calestyo@scientia.net> wrote:
+On Oct 23, 2013, at 9:37 PM, Christoph Anton Mitterer <calestyo@scientia.net> wrote:
 
-> On Thu, 2013-10-24 at 08:45 +0000, Myklebust, Trond wrote:
->> labeled NFS (i.e. security labels for NFS) is already supported in Linux 3.10 and newer.
-> Sure, but that doesn't really help me.
+> Hi.
+> 
+> I just wondered about the current situation (respectively plans)
+> regarding XATTRs in NFS (I personally don't care much about the
+> version,... of course v4 would be nice, but v3 should do either).
 > 
 > 
->> There are no plans to merge general purpose xattrs.
-> Why not? Is it a big deal?
+> I'm aware about the patches for v3 that James Morris has submitted some
+> time ago, but AFAICS these were never accepted/merged.
+> 
+> Asking him (off-list) he mentioned that any such work would need to take
+> place in NFS4.
+> 
+> 
+> I've seen some comments from the past, saying that it should never
+> happen since it would cause performance issues - but I guess one could
+> make it optional.
+> 
+> 
+> I have some use case where I need a network filesystem with XATTR
+> support providing the features of most standard filesystems (locking,
+> etc.).
+> And I'm sure there are plenty more use-cases.
+> 
+> 
+> So are there any plans to get this into NFS?
 > 
 
-Linux xattrs are a rabid mess.
 
-The whole "system" namespace is something that cannot and should not ever be exposed on a network.
-The "trusted" and "user" namespaces just offer specialised storage. Why are they needed?
+labeled NFS (i.e. security labels for NFS) is already supported in Linux 3.10 and newer.
 
-> 
->> Please just use an application-specific database.
-> Well that won't work,... since that wouldn't be updated if e.g.
-> pathnames are changed by any program (cp, mv)
-
-If the data needs to follow the file, then store it in the file. Why do you need the filesystem to manage that for you?
+There are no plans to merge general purpose xattrs. Please just use an application-specific database.
 
 Cheers
-  Trond
+   Trond
