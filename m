@@ -1,64 +1,101 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:50881 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:18459 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754833Ab3J1Tn2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 28 Oct 2013 15:43:28 -0400
-Date: Mon, 28 Oct 2013 15:43:26 -0400
-To: Benny Halevy <bhalevy@primarydata.com>
-Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2] nfsd: nfs4_free_stid
-Message-ID: <20131028194326.GI31322@fieldses.org>
-References: <1381730691-18105-1-git-send-email-bhalevy@primarydata.com>
- <1381747492-14026-1-git-send-email-bhalevy@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1381747492-14026-1-git-send-email-bhalevy@primarydata.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1755338Ab3JXSQd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 24 Oct 2013 14:16:33 -0400
+Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r9OIGVxK023020
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 24 Oct 2013 14:16:32 -0400
+Received: from smallhat.boston.devel.redhat.com.org (vpn-62-59.rdu2.redhat.com [10.10.62.59])
+	by int-mx11.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id r9OIGSRA030193
+	for <linux-nfs@vger.kernel.org>; Thu, 24 Oct 2013 14:16:31 -0400
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 3/3] mountd: Add the ability to disable UDP listeners.
+Date: Thu, 24 Oct 2013 14:17:13 -0400
+Message-Id: <1382638633-6710-4-git-send-email-steved@redhat.com>
+In-Reply-To: <1382638633-6710-1-git-send-email-steved@redhat.com>
+References: <1382638633-6710-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Oct 14, 2013 at 01:44:52PM +0300, Benny Halevy wrote:
-> Make it symmetric to nfs4_alloc_stid.
+Add the ability to turn off UDP listeners with the
+new "-u | --no-udp" flag.
 
-OK, applying.--b.
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ support/nfs/svc_create.c | 2 +-
+ utils/mountd/mountd.c    | 8 ++++++--
+ utils/mountd/mountd.man  | 3 +++
+ 3 files changed, 10 insertions(+), 3 deletions(-)
 
-> 
-> Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
-> ---
->  fs/nfsd/nfs4state.c | 9 +++++++--
->  1 file changed, 7 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 06984e3..64c167f 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -402,11 +402,16 @@ static void remove_stid(struct nfs4_stid *s)
->  	idr_remove(stateids, s->sc_stateid.si_opaque.so_id);
->  }
->  
-> +static void nfs4_free_stid(struct kmem_cache *slab, struct nfs4_stid *s)
-> +{
-> +	kmem_cache_free(slab, s);
-> +}
-> +
->  void
->  nfs4_put_delegation(struct nfs4_delegation *dp)
->  {
->  	if (atomic_dec_and_test(&dp->dl_count)) {
-> -		kmem_cache_free(deleg_slab, dp);
-> +		nfs4_free_stid(deleg_slab, &dp->dl_stid);
->  		num_delegations--;
->  	}
->  }
-> @@ -610,7 +615,7 @@ static void close_generic_stateid(struct nfs4_ol_stateid *stp)
->  static void free_generic_stateid(struct nfs4_ol_stateid *stp)
->  {
->  	remove_stid(&stp->st_stid);
-> -	kmem_cache_free(stateid_slab, stp);
-> +	nfs4_free_stid(stateid_slab, &stp->st_stid);
->  }
->  
->  static void release_lock_stateid(struct nfs4_ol_stateid *stp)
-> -- 
-> 1.8.3.1
-> 
+diff --git a/support/nfs/svc_create.c b/support/nfs/svc_create.c
+index 9ae2965..dac17d9 100644
+--- a/support/nfs/svc_create.c
++++ b/support/nfs/svc_create.c
+@@ -419,7 +419,7 @@ nfs_svc_create(char *name, const rpcprog_t program, const rpcvers_t version,
+ 			continue;
+ 		visible++;
+ 
+-		if (!strcmp(nconf->nc_proto, NC_TCP) && !NFSCTL_TCPISSET(_rpcprotobits))
++		if (!strcmp(nconf->nc_proto, NC_UDP) && !NFSCTL_UDPISSET(_rpcprotobits))
+ 			continue;
+ 
+ 		if (port == 0)
+diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
+index b762301..fa6cf80 100644
+--- a/utils/mountd/mountd.c
++++ b/utils/mountd/mountd.c
+@@ -68,6 +68,7 @@ static struct option longopts[] =
+ 	{ "num-threads", 1, 0, 't' },
+ 	{ "reverse-lookup", 0, 0, 'r' },
+ 	{ "manage-gids", 0, 0, 'g' },
++	{ "no-udp", 0, 0, 'u' },
+ 	{ NULL, 0, 0, 0 }
+ };
+ 
+@@ -708,7 +709,7 @@ main(int argc, char **argv)
+ 
+ 	/* Parse the command line options and arguments. */
+ 	opterr = 0;
+-	while ((c = getopt_long(argc, argv, "o:nFd:f:p:P:hH:N:V:vrs:t:g", longopts, NULL)) != EOF)
++	while ((c = getopt_long(argc, argv, "o:nFd:f:p:P:hH:N:V:vurs:t:g", longopts, NULL)) != EOF)
+ 		switch (c) {
+ 		case 'g':
+ 			manage_gids = 1;
+@@ -785,6 +786,9 @@ main(int argc, char **argv)
+ 		case 'v':
+ 			printf("%s version " VERSION "\n", progname);
+ 			exit(0);
++		case 'u':
++			NFSCTL_UDPUNSET(_rpcprotobits);
++			break;
+ 		case 0:
+ 			break;
+ 		case '?':
+@@ -910,6 +914,6 @@ usage(const char *prog, int n)
+ "	[-p|--port port] [-V version|--nfs-version version]\n"
+ "	[-N version|--no-nfs-version version] [-H ha-callout-prog]\n"
+ "	[-s|--state-directory-path path][-g|--manage-gids] \n"
+-"	[-t num|--num-threads=num]\n", prog);
++"	[-t num|--num-threads=num] [-u|--no-udp]\n", prog);
+ 	exit(n);
+ }
+diff --git a/utils/mountd/mountd.man b/utils/mountd/mountd.man
+index c049e35..5d99659 100644
+--- a/utils/mountd/mountd.man
++++ b/utils/mountd/mountd.man
+@@ -178,6 +178,9 @@ threads are usually only needed for NFS servers which need to handle
+ mount storms of hundreds of NFS mounts in a few seconds, or when
+ your DNS server is slow or unreliable.
+ .TP
++.B  \-u " or " \-\-no-udp
++Don't advertise UDP for mounting
++.TP
+ .B \-V " or " \-\-nfs-version
+ This option can be used to request that
+ .B rpc.mountd
+-- 
+1.8.3.1
+
