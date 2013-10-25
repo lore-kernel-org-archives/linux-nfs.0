@@ -1,53 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f169.google.com ([209.85.220.169]:52142 "EHLO
-	mail-vc0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756267Ab3JNTMK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Oct 2013 15:12:10 -0400
-From: "Geyslan G. Bem" <geyslan@gmail.com>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        kernel-br@googlegroups.com, "Geyslan G. Bem" <geyslan@gmail.com>
-Subject: [PATCH] nfs: Use PTR_ERR_OR_ZERO in 'nfs/nfs4super.c'
-Date: Mon, 14 Oct 2013 16:07:41 -0300
-Message-Id: <1381777661-28780-2-git-send-email-geyslan@gmail.com>
-In-Reply-To: <1381777661-28780-1-git-send-email-geyslan@gmail.com>
-References: <1381777661-28780-1-git-send-email-geyslan@gmail.com>
+Received: from fieldses.org ([174.143.236.118]:50184 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751774Ab3JYUah (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Oct 2013 16:30:37 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-fsdevel@vger.kernel.org
+Cc: Christoph Hellwig <hch@infradead.org>, Al Viro <viro@ZenIV.linux.org.uk>,
+        linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 2/8] exportfs: more detailed comment for path_reconnect
+Date: Fri, 25 Oct 2013 16:29:59 -0400
+Message-Id: <1382733005-6006-3-git-send-email-bfields@redhat.com>
+In-Reply-To: <1382733005-6006-1-git-send-email-bfields@redhat.com>
+References: <1382733005-6006-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Use 'PTR_ERR_OR_ZERO()' rather than 'IS_ERR(...) ? PTR_ERR(...) : 0'.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Signed-off-by: Geyslan G. Bem <geyslan@gmail.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfs/nfs4super.c | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+ fs/exportfs/expfs.c |   14 +++++++++++++-
+ 1 file changed, 13 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
-index e26acdd..ef71077 100644
---- a/fs/nfs/nfs4super.c
-+++ b/fs/nfs/nfs4super.c
-@@ -262,8 +262,8 @@ struct dentry *nfs4_try_mount(int flags, const char *dev_name,
- 	res = nfs_follow_remote_path(root_mnt, export_path);
- 
- 	dfprintk(MOUNT, "<-- nfs4_try_mount() = %ld%s\n",
--			IS_ERR(res) ? PTR_ERR(res) : 0,
--			IS_ERR(res) ? " [error]" : "");
-+		 PTR_ERR_OR_ZERO(res),
-+		 IS_ERR(res) ? " [error]" : "");
- 	return res;
- }
- 
-@@ -320,8 +320,8 @@ static struct dentry *nfs4_referral_mount(struct file_system_type *fs_type,
- 
- 	res = nfs_follow_remote_path(root_mnt, export_path);
- 	dprintk("<-- nfs4_referral_mount() = %ld%s\n",
--			IS_ERR(res) ? PTR_ERR(res) : 0,
--			IS_ERR(res) ? " [error]" : "");
-+		PTR_ERR_OR_ZERO(res),
-+		IS_ERR(res) ? " [error]" : "");
- 	return res;
- }
- 
+diff --git a/fs/exportfs/expfs.c b/fs/exportfs/expfs.c
+index 6d0a7fa..87e6dca 100644
+--- a/fs/exportfs/expfs.c
++++ b/fs/exportfs/expfs.c
+@@ -93,7 +93,19 @@ find_disconnected_root(struct dentry *dentry)
+ /*
+  * Make sure target_dir is fully connected to the dentry tree.
+  *
+- * It may already be, as the flag isn't always updated when connection happens.
++ * On successful return, DCACHE_DISCONNECTED will be cleared on
++ * target_dir, and target_dir->d_parent->...->d_parent will reach the
++ * root of the filesystem.
++ *
++ * Whenever DCACHE_DISCONNECTED is unset, target_dir is fully connected.
++ * But the converse is not true: target_dir may have DCACHE_DISCONNECTED
++ * set but already be connected.  In that case we'll verify the
++ * connection to root and then clear the flag.
++ *
++ * Note that target_dir could be removed by a concurrent operation.  In
++ * that case reconnect_path may still succeed with target_dir fully
++ * connected, but further operations using the filehandle will fail when
++ * necessary (due to S_DEAD being set on the directory).
+  */
+ static int
+ reconnect_path(struct vfsmount *mnt, struct dentry *target_dir, char *nbuf)
 -- 
-1.8.4
+1.7.9.5
 
