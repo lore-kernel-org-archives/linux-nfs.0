@@ -1,63 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:16420 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754462Ab3JIU0G (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 9 Oct 2013 16:26:06 -0400
-Date: Wed, 9 Oct 2013 16:25:48 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Andy Adamson <androsadamson@gmail.com>
-Cc: Andi Kleen <andi@firstfloor.org>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Jeff Layton <jlayton@redhat.com>, Coffman Kevin <kwc@citi.umich.edu>,
-        NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: unread variables in sunrpc kerberos code
-Message-ID: <20131009202548.GC29734@pad.fieldses.org>
-References: <20130930183926.GB6931@two.firstfloor.org>
- <20131004031643.GA13502@two.firstfloor.org>
- <20131004062915.48772e4b@tlielax.poochiereds.net>
- <DD6C34BD-1F21-4355-BE73-56538E5B29D4@netapp.com>
- <20131007131237.GA20881@pad.fieldses.org>
- <20131008222029.GP6882@two.firstfloor.org>
- <20131009162838.GA29734@pad.fieldses.org>
- <CAHVgHyVXeDPr8vEN=pQz3-1ZH7=f8ouNvWOmxpUV0Lg_8tGP=w@mail.gmail.com>
-MIME-Version: 1.0
+Received: from userp1040.oracle.com ([156.151.31.81]:27642 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752718Ab3JYOcK convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Oct 2013 10:32:10 -0400
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAHVgHyVXeDPr8vEN=pQz3-1ZH7=f8ouNvWOmxpUV0Lg_8tGP=w@mail.gmail.com>
+Mime-Version: 1.0 (Mac OS X Mail 6.6 \(1510\))
+Subject: Re: [PATCH 0/3] mountd: disabling turning off TCP listeners (v2)
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1382638633-6710-1-git-send-email-steved@redhat.com>
+Date: Fri, 25 Oct 2013 10:31:58 -0400
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Message-Id: <69D0FF67-35DE-4BB6-BB95-08D3E3E55845@oracle.com>
+References: <1382638633-6710-1-git-send-email-steved@redhat.com>
+To: Steve Dickson <SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Oct 09, 2013 at 02:33:22PM -0400, Andy Adamson wrote:
-> RPCSEC_GSS requires that the GSS-API level sequencing is turned off -
-> e.g. the sequence_req_flag is set to false.
-> 
-> rfc2203:
-> 
->   When GSS_Init_sec_context() is called, the parameters
->   replay_det_req_flag and sequence_req_flag must be turned off. The
->   reasons for this are:
-> 
->   *    ONC RPC can be used over unreliable transports and provides no
->         layer to reliably re-assemble messages. Thus it is possible for
->         gaps in message sequencing to occur, as well as out of order
->         messages.
-> 
->    *    RPC servers can be multi-threaded, and thus the order in which
->         GSS-API messages are signed or wrapped can be different from the
->         order in which the messages are verified or unwrapped, even if
->         the requests are sent on reliable transports.
-> 
->    *    To maximize convenience of implementation, the order in which an
->         ONC RPC entity will verify the header and verify/unwrap the body
->         of an RPC call or reply is left unspecified.
-> 
->    The RPCSEC_GSS protocol provides for protection from replay attack,
->    yet tolerates out-of-order delivery or processing of messages and
->    tolerates dropped requests.
-> 
-> 
-> So the RPCSEC_GSS layer does the sequencing, not the GSS layer.
 
-Thanks Andy, that RFC text is a good explanation;  I'll add a comment
-referencing that.
+On Oct 24, 2013, at 2:17 PM, Steve Dickson <SteveD@redhat.com> wrote:
 
---b.
+> [ Here is the second try for these patches incorporating the code review..]
+> 
+> Recently it was pointed out to me that the [-n | --no-tcp] flags 
+> were broken in mountd. Sure enough they are and they broke 
+> when nfs-utils moved to using libtirpc, which was years ago.
+> 
+> Obviously nobody is using these flags since has not been 
+> notice until now,
+
+Agreed, we have clear evidence of that.  Removing the "no TCP" flag makes sense.
+
+> but it seemed to me it no longer makes 
+> any sense to have flags. We really want people to use TCP 
+> so why should there be a way to turn it off? It should be
+> the opposite... They should be able to turn off UDP listeners
+> not TCP...
+
+If noone is using --no-tcp now, what makes you believe that anyone would want to use --no-udp?
+
+And, why do we want to force people to use TCP for MNT?  That's going to be a disaster for clients that perform a large number of mounts at once -- I think we even have bugs describing this scenario -- it will suck up the reserved port space on clients faster than you can say "Jack Robinson."
+
+Let's wait for a concrete user request for such a feature.
+
+
+> Steve Dickson (3):
+>  mountd: Use protocol bit fields to turn protocols off.
+>  mountd: Deprecate the ability to disable TCP listeners.
+>  mountd: Add the ability to disable UDP listeners.
+> 
+> support/include/rpcmisc.h |  2 +-
+> support/nfs/rpcmisc.c     | 19 ++++++++++++++-----
+> support/nfs/svc_create.c  |  5 +++++
+> utils/mountd/mountd.c     | 17 ++++++++++++-----
+> utils/mountd/mountd.man   |  6 +++---
+> 5 files changed, 35 insertions(+), 14 deletions(-)
+> 
+> -- 
+> 1.8.3.1
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
