@@ -1,85 +1,135 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from demumfd002.nsn-inter.net ([93.183.12.31]:12703 "EHLO
-	demumfd002.nsn-inter.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750880Ab3JaFyh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 31 Oct 2013 01:54:37 -0400
-Received: from demuprx017.emea.nsn-intra.net ([10.150.129.56])
-	by demumfd002.nsn-inter.net (8.12.11.20060308/8.12.11) with ESMTP id r9V5saLc000564
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=FAIL)
-	for <linux-nfs@vger.kernel.org>; Thu, 31 Oct 2013 06:54:36 +0100
-Received: from ulegcprs1.emea.nsn-net.net ([10.151.15.253])
-	by demuprx017.emea.nsn-intra.net (8.12.11.20060308/8.12.11) with ESMTP id r9V5sZs1003521
-	for <linux-nfs@vger.kernel.org>; Thu, 31 Oct 2013 06:54:36 +0100
-Date: Thu, 31 Oct 2013 06:54:35 +0100
-From: Robert Schiele <rschiele@gmail.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] fix race condition for parallel startup of statd
-Message-ID: <20131031055435.GA27362@ulegcprs1.emea.nsn-net.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Received: from fieldses.org ([174.143.236.118]:50192 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753137Ab3JYUah (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Oct 2013 16:30:37 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-fsdevel@vger.kernel.org
+Cc: Christoph Hellwig <hch@infradead.org>, Al Viro <viro@ZenIV.linux.org.uk>,
+        linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 8/8] exportfs: fix quadratic behavior in filehandle lookup
+Date: Fri, 25 Oct 2013 16:30:05 -0400
+Message-Id: <1382733005-6006-9-git-send-email-bfields@redhat.com>
+In-Reply-To: <1382733005-6006-1-git-send-email-bfields@redhat.com>
+References: <1382733005-6006-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When start_statd figures out that statd is not yet running it starts
-it, waits for the invoked process to complete, and finally verifies
-that statd is working.  This approach works for serially mounting NFS
-file systems but has a race condition for parallel mounting.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-In the parallel case it can happen that two mount commands A and B
-both decide that statd needs to be started. Both of them try to start
-statd.  Obviously only one of them can successfully do so, let's
-assume this is command A in our case.  The statd invoked by B
-terminates because the resource is already claimed by the statd
-invoked by A.  The termination of B's statd though is before the
-statd of A has completely set up all things.  This causes the check
-for a working statd of command B to fail and terminate the mount
-request with an error.
+Suppose we're given the filehandle for a directory whose closest
+ancestor in the dcache is its Nth ancestor.
 
-To prevent this we define a timeout value.  In case the initial check
-after invoking statd fails we try again in a loop 10 times a second
-until the timeout is reached.
+The main loop in reconnect_path searches for an IS_ROOT ancestor of
+target_dir, reconnects that ancestor to its parent, then recommences the
+search for an IS_ROOT ancestor from target_dir.
 
-In our tests when the race occurred we typically were successful
-already on the first retry within the loop.
+This behavior is quadratic in N.  And there's really no need to restart
+the search from target_dir each time: once a directory has been looked
+up, it won't become IS_ROOT again.  So instead of starting from
+target_dir each time, we can continue where we left off.
+
+This simplifies the code and improves performance on very deep directory
+heirachies.  (I can't think of any reason anyone should need heirarchies
+a hundred or more deep, but the performance improvement may be valuable
+if only to limit damage in case of abuse.)
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- utils/mount/network.c | 11 +++++++++++
- 1 file changed, 11 insertions(+)
+ fs/exportfs/expfs.c |   66 ++++++++++-----------------------------------------
+ 1 file changed, 13 insertions(+), 53 deletions(-)
 
-diff --git a/utils/mount/network.c b/utils/mount/network.c
-index e2cdcaf..670767d 100644
---- a/utils/mount/network.c
-+++ b/utils/mount/network.c
-@@ -58,6 +58,7 @@
- #define PMAP_TIMEOUT	(10)
- #define CONNECT_TIMEOUT	(20)
- #define MOUNT_TIMEOUT	(30)
-+#define STATD_TIMEOUT	(10)
+diff --git a/fs/exportfs/expfs.c b/fs/exportfs/expfs.c
+index b33b9c4..48a359d 100644
+--- a/fs/exportfs/expfs.c
++++ b/fs/exportfs/expfs.c
+@@ -69,27 +69,6 @@ find_acceptable_alias(struct dentry *result,
+ 	return NULL;
+ }
  
- #define SAFE_SOCKADDR(x)	(struct sockaddr *)(char *)(x)
+-/*
+- * Find root of a disconnected subtree and return a reference to it.
+- */
+-static struct dentry *
+-find_disconnected_root(struct dentry *dentry)
+-{
+-	dget(dentry);
+-	while (!IS_ROOT(dentry)) {
+-		struct dentry *parent = dget_parent(dentry);
+-
+-		if (!(parent->d_flags & DCACHE_DISCONNECTED)) {
+-			dput(parent);
+-			break;
+-		}
+-
+-		dput(dentry);
+-		dentry = parent;
+-	}
+-	return dentry;
+-}
+-
+ static bool dentry_connected(struct dentry *dentry)
+ {
+ 	dget(dentry);
+@@ -225,45 +204,26 @@ out_reconnected:
+ static int
+ reconnect_path(struct vfsmount *mnt, struct dentry *target_dir, char *nbuf)
+ {
+-	int err = -ESTALE;
++	struct dentry *dentry, *parent;
  
-@@ -773,6 +774,11 @@ int start_statd(void)
- #ifdef START_STATD
- 	if (stat(START_STATD, &stb) == 0) {
- 		if (S_ISREG(stb.st_mode) && (stb.st_mode & S_IXUSR)) {
-+			int cnt = STATD_TIMEOUT * 10;
-+			struct timespec ts = {
-+				.tv_sec = 0,
-+				.tv_nsec = 100000000,
-+			};
- 			pid_t pid = fork();
- 			switch (pid) {
- 			case 0: /* child */
-@@ -788,6 +794,11 @@ int start_statd(void)
- 			}
- 			if (nfs_probe_statd())
- 				return 1;
-+			while (cnt--) {
-+				nanosleep(&ts, NULL);
-+				if (nfs_probe_statd())
-+					return 1;
-+			}
- 		}
+-	while (target_dir->d_flags & DCACHE_DISCONNECTED) {
+-		struct dentry *dentry = find_disconnected_root(target_dir);
++	dentry = dget(target_dir);
+ 
++	while (dentry->d_flags & DCACHE_DISCONNECTED) {
+ 		BUG_ON(dentry == mnt->mnt_sb->s_root);
+ 
+-		if (!IS_ROOT(dentry)) {
+-			/* must have found a connected parent - great */
+-			clear_disconnected(target_dir);
+-			dput(dentry);
++		if (IS_ROOT(dentry))
++			parent = reconnect_one(mnt, dentry, nbuf);
++		else
++			parent = dget_parent(dentry);
++
++		if (!parent)
+ 			break;
+-		} else {
+-			struct dentry *parent;
+-			/*
+-			 * We have hit the top of a disconnected path, try to
+-			 * find parent and connect.
+-			 */
+-			 parent = reconnect_one(mnt, dentry, nbuf);
+-			 if (!parent)
+-				goto out_reconnected;
+-			if (IS_ERR(parent)) {
+-				err = PTR_ERR(parent);
+-				break;
+-			}
+-			dput(parent);
+-		}
+ 		dput(dentry);
++		if (IS_ERR(parent))
++			return PTR_ERR(parent);
++		dentry = parent;
  	}
- #endif
+-
+-	if (target_dir->d_flags & DCACHE_DISCONNECTED) {
+-		/* something went wrong - oh-well */
+-		if (!err)
+-			err = -ESTALE;
+-		return err;
+-	}
+-
+-	return 0;
+-out_reconnected:
++	dput(dentry);
+ 	clear_disconnected(target_dir);
+ 	return 0;
+ }
 -- 
-1.8.1.4
+1.7.9.5
+
