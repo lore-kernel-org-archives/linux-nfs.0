@@ -1,28 +1,37 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:56501 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758238Ab3JKThX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Oct 2013 15:37:23 -0400
-Date: Fri, 11 Oct 2013 12:37:21 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Benny Halevy <bhalevy@primarydata.com>
-Cc: " J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH RFC v0 21/49] nfsd: no need to unhash_stid before free
-Message-ID: <20131011193721.GA4941@infradead.org>
-References: <52447EA0.7070004@primarydata.com>
- <1380220876-13642-1-git-send-email-bhalevy@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:6625 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753478Ab3JYPRQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Oct 2013 11:17:16 -0400
+Message-ID: <526A8BAB.8040704@RedHat.com>
+Date: Fri, 25 Oct 2013 11:18:03 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1380220876-13642-1-git-send-email-bhalevy@primarydata.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Jeff Layton <jlayton@redhat.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 0/3] mountd: disabling turning off TCP listeners (v2)
+References: <1382638633-6710-1-git-send-email-steved@redhat.com> <20131024144507.72aa34a8@tlielax.poochiereds.net> <526978BF.7020202@RedHat.com> <20131025074316.2affe9e9@tlielax.poochiereds.net> <526A62C1.6060803@RedHat.com> <20131025142012.GC20497@fieldses.org>
+In-Reply-To: <20131025142012.GC20497@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Sep 26, 2013 at 02:41:16PM -0400, Benny Halevy wrote:
-> idr_remove is about to be called before kmem_cache_free so unhashing it
-> is redundant
-> 
-> Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
+On 25/10/13 10:20, J. Bruce Fields wrote:
+>> I ideally it would be best not to have mountd at all on NFSv4-only server.
+>> > Basically, have the kernel get its exports like it gets it ID mappings.
+>> > Until that day comes, which I hope fill be soon, the TCP listener 
+>> > only effects v3 mounts and we definitely want people to use TCP
+>> > with v3. 
+> I'm not sure if we want to do that, but note one thing we'll need to do
+> before then is solve the namespace problems.  (We don't currently have a
+> good way to run the usermode helper in the right container.)
 
-This is probably something thast should go straight to Bruce, same for
-the next one in the series.
+Sorry for not keeping up on the container work and possibly asking
+dumb question... but there can be different exports per container?
+I thought it was just different IPs per container....
 
+If so, how does that work today? 
+
+steved.
+ 
