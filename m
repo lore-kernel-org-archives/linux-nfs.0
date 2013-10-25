@@ -1,178 +1,91 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cobra.newdream.net ([66.33.216.30]:58175 "EHLO
-	cobra.newdream.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753500Ab3JBSrX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Oct 2013 14:47:23 -0400
-Date: Wed, 2 Oct 2013 11:47:22 -0700 (PDT)
-From: Sage Weil <sage@inktank.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-cc: Christoph Hellwig <hch@infradead.org>, Al Viro <viro@ZenIV.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        sandeen@redhat.com
-Subject: Re: why is i_ino unsigned long, anyway?
-In-Reply-To: <20131002175328.GF14808@fieldses.org>
-Message-ID: <alpine.DEB.2.00.1310021130280.7765@cobra.newdream.net>
-References: <20130912160324.GE1462@fieldses.org> <20130912193328.GP13318@ZenIV.linux.org.uk> <20130929115454.GA3953@infradead.org> <20131002142527.GD14808@fieldses.org> <20131002160527.GB23875@infradead.org> <20131002175328.GF14808@fieldses.org>
+Received: from mx11.netapp.com ([216.240.18.76]:61791 "EHLO mx11.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751788Ab3JYRJo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Oct 2013 13:09:44 -0400
+From: Weston Andros Adamson <dros@netapp.com>
+To: <steved@redhat.com>
+CC: <linux-nfs@vger.kernel.org>, Weston Andros Adamson <dros@netapp.com>
+Subject: [PATCH] gssd: validate cred in gssd_acquire_user_cred
+Date: Fri, 25 Oct 2013 13:09:34 -0400
+Message-ID: <1382720974-2746-1-git-send-email-dros@netapp.com>
 MIME-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2 Oct 2013, J. Bruce Fields wrote:
-> On Wed, Oct 02, 2013 at 09:05:27AM -0700, Christoph Hellwig wrote:
-> > On Wed, Oct 02, 2013 at 10:25:27AM -0400, J. Bruce Fields wrote:
-> > > If so then it's no huge code duplication to it by hand:
-> > > 
-> > > 	if (inode->i_op->getattr)
-> > > 		inode->i_op->getattr(path->mnt, path->dentry, &stat);
-> > > 	else
-> > > 		generic_fillattr(inode, &stat);
-> > 
-> > Maybe make that a vfs_getattr_nosec and let vfs_getattr call it?
-> > 
-> > Including a proper kerneldoc comment explaining when to use it, please.
-> 
-> Something like this?
+Call gss_inquire_cred after gssd_acquire_krb5_cred check for expired
+credentials.
 
-I'm late to this thread, but: getattr() is a comparatively expensive 
-operation for just getting an (immutable) ino value on a distributed or 
-clustered fs.  It would be nice if there were a separate call that didn't 
-try to populate all the other kstat fields with valid data.  Something 
-like this was part of the xstat series from forever ago (a bit mask passed 
-to getattr indicating which fields were needed), so the approach below 
-might be okay if we think we'll get there sometime soon, but my preference 
-would be for another fix...
+This fixes a recent regression (since 302de786930a2c533068f9d8909a817b40f07c32)
+that causes the user's ticket cache to grow unbounded with expired service
+tickets when the user's credentials expire.
 
-(Ceph also uses 64-bit inos.)
+To reproduce this issue:
 
-Thanks!
-sage
+ - mount kerberos nfs export
+ - kinit for a short lifetime (ie "kinit -l 1m")
+ - run a job that opens a file and writes for more than the lifetime
+ - run klist a few times after expiry and see the list grow, ie:
+
+Ticket cache: DIR::/run/user/1749600001/krb5cc/tktYmpGlX
+Default principal: dros@APIKIA.FAKE
+
+Valid starting       Expires              Service principal
+10/21/2013 15:39:38  10/21/2013 15:40:35  krbtgt/APIKIA.FAKE@APIKIA.FAKE
+10/21/2013 15:39:40  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+10/21/2013 15:40:35  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+10/21/2013 15:40:36  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+10/21/2013 15:40:37  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+10/21/2013 15:40:37  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+10/21/2013 15:40:38  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+10/21/2013 15:40:38  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+10/21/2013 15:40:39  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+10/21/2013 15:40:39  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+10/21/2013 15:40:39  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+10/21/2013 15:40:39  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+10/21/2013 15:40:40  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+10/21/2013 15:40:40  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+10/21/2013 15:40:41  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+10/21/2013 15:40:41  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+10/21/2013 15:40:42  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+10/21/2013 15:40:42  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+10/21/2013 15:40:42  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
+
+Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+Reviewed-by: Simo Sorce <simo@redhat.com>
+
+---
+
+Version 2 of the patch - version 1 had compiler warnings I completely missed!
+I wonder how it worked before... but this now compiles cleanly and I verified
+that it fixes the growing tkt cache problem.
+
+Thanks,
+  -dros
 
 
-> 
-> --b.
-> 
-> commit 8418a41b7192cf2f372ae091207adb29a088f9a0
-> Author: J. Bruce Fields <bfields@redhat.com>
-> Date:   Tue Sep 10 11:41:12 2013 -0400
-> 
->     exportfs: fix 32-bit nfsd handling of 64-bit inode numbers
->     
->     Symptoms were spurious -ENOENTs on stat of an NFS filesystem from a
->     32-bit NFS server exporting a very large XFS filesystem, when the
->     server's cache is cold (so the inodes in question are not in cache).
->     
->     Reported-by: Trevor Cordes <trevor@tecnopolis.ca>
->     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> 
-> diff --git a/fs/exportfs/expfs.c b/fs/exportfs/expfs.c
-> index 293bc2e..811831a 100644
-> --- a/fs/exportfs/expfs.c
-> +++ b/fs/exportfs/expfs.c
-> @@ -215,7 +215,7 @@ struct getdents_callback {
->  	struct dir_context ctx;
->  	char *name;		/* name that was found. It already points to a
->  				   buffer NAME_MAX+1 is size */
-> -	unsigned long ino;	/* the inum we are looking for */
-> +	u64 ino;		/* the inum we are looking for */
->  	int found;		/* inode matched? */
->  	int sequence;		/* sequence counter */
->  };
-> @@ -255,10 +255,10 @@ static int get_name(const struct path *path, char *name, struct dentry *child)
->  	struct inode *dir = path->dentry->d_inode;
->  	int error;
->  	struct file *file;
-> +	struct kstat stat;
->  	struct getdents_callback buffer = {
->  		.ctx.actor = filldir_one,
->  		.name = name,
-> -		.ino = child->d_inode->i_ino
->  	};
->  
->  	error = -ENOTDIR;
-> @@ -268,6 +268,16 @@ static int get_name(const struct path *path, char *name, struct dentry *child)
->  	if (!dir->i_fop)
->  		goto out;
->  	/*
-> +	 * inode->i_ino is unsigned long, kstat->ino is u64, so the
-> +	 * former would be insufficient on 32-bit hosts when the
-> +	 * filesystem supports 64-bit inode numbers.  So we need to
-> +	 * actually call ->getattr, not just read i_ino:
-> +	 */
-> +	error = vfs_getattr_nosec(path, &stat);
-> +	if (error)
-> +		return error;
-> +	buffer.ino = stat.ino;
-> +	/*
->  	 * Open the directory ...
->  	 */
->  	file = dentry_open(path, O_RDONLY, cred);
-> diff --git a/fs/stat.c b/fs/stat.c
-> index 04ce1ac..71a39e8 100644
-> --- a/fs/stat.c
-> +++ b/fs/stat.c
-> @@ -37,14 +37,21 @@ void generic_fillattr(struct inode *inode, struct kstat *stat)
->  
->  EXPORT_SYMBOL(generic_fillattr);
->  
-> -int vfs_getattr(struct path *path, struct kstat *stat)
-> +/**
-> + * vfs_getattr_nosec - getattr without security checks
-> + * @path: file to get attributes from
-> + * @stat: structure to return attributes in
-> + *
-> + * Get attributes without calling security_inode_getattr.
-> + *
-> + * Currently the only caller other than vfs_getattr is internal to the
-> + * filehandle lookup code, which uses only the inode number and returns
-> + * no attributes to any user.  Any other code probably wants
-> + * vfs_getattr.
-> + */
-> +int vfs_getattr_nosec(struct path *path, struct kstat *stat)
->  {
->  	struct inode *inode = path->dentry->d_inode;
-> -	int retval;
-> -
-> -	retval = security_inode_getattr(path->mnt, path->dentry);
-> -	if (retval)
-> -		return retval;
->  
->  	if (inode->i_op->getattr)
->  		return inode->i_op->getattr(path->mnt, path->dentry, stat);
-> @@ -53,6 +60,18 @@ int vfs_getattr(struct path *path, struct kstat *stat)
->  	return 0;
->  }
->  
-> +EXPORT_SYMBOL_GPL(vfs_getattr_nosec);
-> +
-> +int vfs_getattr(struct path *path, struct kstat *stat)
-> +{
-> +	int retval;
-> +
-> +	retval = security_inode_getattr(path->mnt, path->dentry);
-> +	if (retval)
-> +		return retval;
-> +	return vfs_getattr_nosec(path, stat);
-> +}
-> +
->  EXPORT_SYMBOL(vfs_getattr);
->  
->  int vfs_fstat(unsigned int fd, struct kstat *stat)
-> diff --git a/include/linux/fs.h b/include/linux/fs.h
-> index 9818747..5a51faa 100644
-> --- a/include/linux/fs.h
-> +++ b/include/linux/fs.h
-> @@ -2500,6 +2500,7 @@ extern int page_symlink(struct inode *inode, const char *symname, int len);
->  extern const struct inode_operations page_symlink_inode_operations;
->  extern int generic_readlink(struct dentry *, char __user *, int);
->  extern void generic_fillattr(struct inode *, struct kstat *);
-> +int vfs_getattr_nosec(struct path *path, struct kstat *stat);
->  extern int vfs_getattr(struct path *, struct kstat *);
->  void __inode_add_bytes(struct inode *inode, loff_t bytes);
->  void inode_add_bytes(struct inode *inode, loff_t bytes);
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> 
+ utils/gssd/krb5_util.c | 7 +++++++
+ 1 file changed, 7 insertions(+)
+
+diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
+index c6e52fd..697d1d2 100644
+--- a/utils/gssd/krb5_util.c
++++ b/utils/gssd/krb5_util.c
+@@ -1405,6 +1405,13 @@ gssd_acquire_user_cred(uid_t uid, gss_cred_id_t *gss_cred)
+ 
+ 	ret = gssd_acquire_krb5_cred(name, gss_cred);
+ 
++	/* force validation of cred to check for expiry */
++	if (ret == 0) {
++		if (gss_inquire_cred(&min_stat, *gss_cred, NULL, NULL,
++				     NULL, NULL) != GSS_S_COMPLETE)
++			ret = -1;
++	}
++
+ 	maj_stat = gss_release_name(&min_stat, &name);
+ 	return ret;
+ }
+-- 
+1.8.3.1 (Apple Git-46)
+
