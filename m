@@ -1,48 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aa.linuxbox.com ([69.128.83.226]:4826 "EHLO aa.linuxbox.com"
+Received: from aa.linuxbox.com ([69.128.83.226]:1793 "EHLO aa.linuxbox.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752010Ab3JDDPQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 3 Oct 2013 23:15:16 -0400
-Date: Thu, 3 Oct 2013 23:14:26 -0400 (EDT)
+	id S1752402Ab3JYXww (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Oct 2013 19:52:52 -0400
+Date: Fri, 25 Oct 2013 19:52:34 -0400 (EDT)
 From: "Matt W. Benjamin" <matt@linuxbox.com>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org,
-        Benny Halevy <bhalevy@primarydata.com>
-Message-ID: <1002088145.185.1380856466233.JavaMail.root@thunderbeast.private.linuxbox.com>
-In-Reply-To: <20131003130348.GA9634@infradead.org>
-Subject: Re: [PATCH RFC v0 05/49] pnfsd: introduce pnfsd header files
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Christoph Anton Mitterer <calestyo@scientia.net>,
+        linux-nfs@vger.kernel.org, Ric Wheeler <ricwheeler@gmail.com>,
+        nfsv4 <nfsv4@ietf.org>
+Message-ID: <1403457744.302.1382745154408.JavaMail.root@thunderbeast.private.linuxbox.com>
+In-Reply-To: <739187808.295.1382744200733.JavaMail.root@thunderbeast.private.linuxbox.com>
+Subject: Re: XATTRs in NFS?
 MIME-Version: 1.0
 Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Admittedly, I'm not sure.  I'm convinced it will be a big help to have pre-integrated in
-Ganesha, I was only speculating wrt Linux/knfsd.
+Hi Chuck,
+
+>From a standards perspective, could you please elaborate on how local xattrs are
+"subtly incompatible" with NFSv4 named attributes?
+
+It appears to me that the interesting issues (if any) are strictly related to possible lack of well-understood, or recommended, mappings of nfsv4 named attributes to and from whatever file attribute concept(s) exist on the client and server, not with the named attribute interface.
+
+I did find slides in which James Morris asserts that "NFSv4 includes Named Attributes, which are based on the Solaris subfile model and incompatible with name/value schemes"
+(http://www.slideshare.net/jamesmorris/adding-extended-attribute-support-to-nfs).
+However, named attributes as actually specified in RFC 5661, at least, are not in fact a "fully general" subfile mechanism as found in Solaris.  The various restrictions in section 5.3 of RFC 5661 restrict implementations to a single-level namespace of attributes.  With the non-recursion restriction in place, nfsv4 named attributes appear to form a 1-to-1 mapping with Windows alternate data streams and Mac resource forks, and since nfsv4 named attribute data may be of arbitrary length, they also appear able to represent Linux or FreeBSD named attribute, should the an nfsv4 server on one of those platforms wish to do so.  (I presume that is by design.)
+
+There seems to be a long history of mapping precursors of "posix" named attributes into alternate data streams (http://en.wikipedia.org/wiki/Extended_file_attributes#Windows_NT), and even the reverse (e.g., the ntfs3g file system driver for Linux, http://www.tuxera.com/community/ntfs-3g-advanced/extended-attributes/):
+
+"""The extended attributes in user name space are stored on NTFS as alternate data streams whose name is the unprefixed name of the attribute, and whose contents is the value of the attribute. They can be read and modified in Windows by using the standard file access functions, with a colon and the stream name (which is the unprefixed extended attribute name) appended to the file name."""
+
+Finally, we have existing implementation experience.  I'll leave out Solaris, and mention the Windows NFSv4.1 client.  The Windows client implements nfsv4 named attributes as a direct mapping to Windows fs alternate data streams.
+
+Presumably, there could be other differences between a platform attribute
+interface an NFSv4 named attributes, e.g., perhaps update atomicity.  It seems
+though that any issues which might arise from this would also be ones the standard
+could expect the client and/or server implementation to deal appropriately with.
 
 Matt
 
------ "Christoph Hellwig" <hch@infradead.org> wrote:
+----- "Chuck Lever" <chuck.lever@oracle.com> wrote:
 
-> On Thu, Oct 03, 2013 at 08:58:08AM -0400, Matt W. Benjamin wrote:
-> > Hi,
-> > 
-> > I think saying exofs is a proof of concept/toy is missing the
-> point.
-> > Exofs is an implementation baseline that provides insight into the
-> > scalability/performance values that a pnfs implementation can
-> achieve,
-> > and potentially how to achieve them.
 > 
-> Speaking like a true diplomat..
+> NFS has to interoperate with other operating systems that may or may
+> not support xattrs, or may have something that looks like an xattr,
+> but really is subtly incompatible.
 > 
-> What amount of that data are we going to get by merging an exofs
-> based
-> pnfs server that we haven't been able to gather with it out of tree
-> for
-> the last 6 years?  How is merging it and complicating the nfs servers
-> for it going to provide a benefit outside of the small group of about
-> a
-> dozend people that actively care about the T10 OSD support in Linux?
+> Therefore we must have a standard for storing and accessing xattrs
+> locally (POSIX) and a standard for expressing their name and content
+> on the wire (IETF NFS) before we can consider an implementation.
+> 
+> So we would like to see some very clear evidence that it's worth the
+> effort.  Until then, Linux distributors are free to implement NFS
+> xattr support outside the standard NFS protocol (like the Solaris
+> NFSv3 ACL protocol) and support this themselves, perhaps as proof that
+> "if you build it, they will come."
+> 
+> -- 
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
+> 
+> 
+> 
 > 
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs"
