@@ -1,42 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:41970 "EHLO mx12.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:50194 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753331Ab3J0Mbt convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Oct 2013 08:31:49 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Matt W. Benjamin" <matt@linuxbox.com>
-CC: Dr Fields James Bruce <bfields@fieldses.org>,
-        Christoph Anton Mitterer <calestyo@scientia.net>,
-        Mailing List Linux NFS <linux-nfs@vger.kernel.org>,
-        Wheeler Ric <ricwheeler@gmail.com>
-Subject: Re: XATTRs in NFS?
-Date: Sun, 27 Oct 2013 12:31:46 +0000
-Message-ID: <5FC093E3-1CD3-4AC7-A91F-37C8DEC6BEFE@netapp.com>
-References: <312486415.16.1382796101374.JavaMail.root@thunderbeast.private.linuxbox.com>
-In-Reply-To: <312486415.16.1382796101374.JavaMail.root@thunderbeast.private.linuxbox.com>
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
+	id S1751774Ab3JYUai (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Oct 2013 16:30:38 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-fsdevel@vger.kernel.org
+Cc: Christoph Hellwig <hch@infradead.org>, Al Viro <viro@ZenIV.linux.org.uk>,
+        linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 7/8] exportfs: better variable name
+Date: Fri, 25 Oct 2013 16:30:04 -0400
+Message-Id: <1382733005-6006-8-git-send-email-bfields@redhat.com>
+In-Reply-To: <1382733005-6006-1-git-send-email-bfields@redhat.com>
+References: <1382733005-6006-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-On Oct 26, 2013, at 10:01 AM, Matt W. Benjamin <matt@linuxbox.com> wrote:
+Replace another unhelpful acronym.
 
-> Hi,
-> 
-> Surely you don't need NFSv4 to standardize the the (empty?) set of system or magic attributes Linux
-> should export?
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/exportfs/expfs.c |   12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
 
-The NFSv4 working group has no authority to do so. POSIX would be the right address.
+diff --git a/fs/exportfs/expfs.c b/fs/exportfs/expfs.c
+index d32ead9..b33b9c4 100644
+--- a/fs/exportfs/expfs.c
++++ b/fs/exportfs/expfs.c
+@@ -228,14 +228,14 @@ reconnect_path(struct vfsmount *mnt, struct dentry *target_dir, char *nbuf)
+ 	int err = -ESTALE;
+ 
+ 	while (target_dir->d_flags & DCACHE_DISCONNECTED) {
+-		struct dentry *pd = find_disconnected_root(target_dir);
++		struct dentry *dentry = find_disconnected_root(target_dir);
+ 
+-		BUG_ON(pd == mnt->mnt_sb->s_root);
++		BUG_ON(dentry == mnt->mnt_sb->s_root);
+ 
+-		if (!IS_ROOT(pd)) {
++		if (!IS_ROOT(dentry)) {
+ 			/* must have found a connected parent - great */
+ 			clear_disconnected(target_dir);
+-			dput(pd);
++			dput(dentry);
+ 			break;
+ 		} else {
+ 			struct dentry *parent;
+@@ -243,7 +243,7 @@ reconnect_path(struct vfsmount *mnt, struct dentry *target_dir, char *nbuf)
+ 			 * We have hit the top of a disconnected path, try to
+ 			 * find parent and connect.
+ 			 */
+-			 parent = reconnect_one(mnt, pd, nbuf);
++			 parent = reconnect_one(mnt, dentry, nbuf);
+ 			 if (!parent)
+ 				goto out_reconnected;
+ 			if (IS_ERR(parent)) {
+@@ -252,7 +252,7 @@ reconnect_path(struct vfsmount *mnt, struct dentry *target_dir, char *nbuf)
+ 			}
+ 			dput(parent);
+ 		}
+-		dput(pd);
++		dput(dentry);
+ 	}
+ 
+ 	if (target_dir->d_flags & DCACHE_DISCONNECTED) {
+-- 
+1.7.9.5
 
-> Besides, as you're well aware, most people who ask for xattrs are looking for an ability to associate
-> arbitrary specific data, not a back door ioctl interface.  That's clearly what the NFSv4 named attributes as standardized were intended for.
-
-No. I'm not aware of that.
-
-> I'm well aware of other uses and plans that someone would want to standardize, but it seems
-> irrelevant to the discussion.
-
-It's very relevant to the discussion as it defines what namespace applications can expect to work.
-
-Trond
