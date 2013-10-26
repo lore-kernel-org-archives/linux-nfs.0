@@ -1,179 +1,126 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:39249 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:48552 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758028Ab3JOPtJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 15 Oct 2013 11:49:09 -0400
-Subject: Re: [PATCH] KEYS: Fix a race between negating a key and reading
- the error set
-From: David Wysochanski <dwysocha@redhat.com>
-Reply-To: dwysocha@redhat.com
-To: David Howells <dhowells@redhat.com>
-Cc: jmorris@namei.org, Scott Mayhew <smayhew@redhat.com>,
-        keyrings@linux-nfs.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-security-module@vger.kernel.org
-In-Reply-To: <20131011161659.15534.27955.stgit@warthog.procyon.org.uk>
-References: <20131011161659.15534.27955.stgit@warthog.procyon.org.uk>
-Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 15 Oct 2013 11:49:04 -0400
-Message-ID: <1381852144.3906.309.camel@localhost.localdomain>
-Mime-Version: 1.0
+	id S1751958Ab3JZFST (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 26 Oct 2013 01:18:19 -0400
+Date: Sat, 26 Oct 2013 01:18:15 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Matt W. Benjamin" <matt@linuxbox.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+        Christoph Anton Mitterer <calestyo@scientia.net>,
+        linux-nfs@vger.kernel.org, Ric Wheeler <ricwheeler@gmail.com>,
+        nfsv4 <nfsv4@ietf.org>
+Subject: Re: XATTRs in NFS?
+Message-ID: <20131026051815.GA10048@fieldses.org>
+References: <739187808.295.1382744200733.JavaMail.root@thunderbeast.private.linuxbox.com>
+ <1403457744.302.1382745154408.JavaMail.root@thunderbeast.private.linuxbox.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1403457744.302.1382745154408.JavaMail.root@thunderbeast.private.linuxbox.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2013-10-11 at 17:16 +0100, David Howells wrote:
-> key_reject_and_link() marking a key as negative and setting the error with
-> which it was negated races with keyring searches and other things that read
-> that error.
+On Fri, Oct 25, 2013 at 07:52:34PM -0400, Matt W. Benjamin wrote:
+> Hi Chuck,
 > 
-> The fix is to switch the order in which the assignments are done in
-> key_reject_and_link() and to use memory barriers.
+> >From a standards perspective, could you please elaborate on how local xattrs are
+> "subtly incompatible" with NFSv4 named attributes?
 > 
-> Kudos to Dave Wysochanski <dwysocha@redhat.com> and Scott Mayhew
-> <smayhew@redhat.com> for tracking this down.
+> It appears to me that the interesting issues (if any) are strictly related to possible lack of well-understood, or recommended, mappings of nfsv4 named attributes to and from whatever file attribute concept(s) exist on the client and server, not with the named attribute interface.
 > 
-> This may be the cause of:
+> I did find slides in which James Morris asserts that "NFSv4 includes Named Attributes, which are based on the Solaris subfile model and incompatible with name/value schemes"
+> (http://www.slideshare.net/jamesmorris/adding-extended-attribute-support-to-nfs).
+> However, named attributes as actually specified in RFC 5661, at least, are not in fact a "fully general" subfile mechanism as found in Solaris.  The various restrictions in section 5.3 of RFC 5661 restrict implementations to a single-level namespace of attributes.  With the non-recursion restriction in place, nfsv4 named attributes appear to form a 1-to-1 mapping with Windows alternate data streams and Mac resource forks, and since nfsv4 named attribute data may be of arbitrary length, they also appear able to represent Linux or FreeBSD named attribute, should the an nfsv4 server on one of those platforms wish to do so.  (I presume that is by design.)
 > 
-> BUG: unable to handle kernel NULL pointer dereference at 0000000000000070
-> IP: [<ffffffff81219011>] wait_for_key_construction+0x31/0x80
-> PGD c6b2c3067 PUD c59879067 PMD 0
-> Oops: 0000 [#1] SMP
-> last sysfs file: /sys/devices/system/cpu/cpu3/cache/index2/shared_cpu_map
-> CPU 0
-> Modules linked in: ...
+> There seems to be a long history of mapping precursors of "posix" named attributes into alternate data streams (http://en.wikipedia.org/wiki/Extended_file_attributes#Windows_NT), and even the reverse (e.g., the ntfs3g file system driver for Linux, http://www.tuxera.com/community/ntfs-3g-advanced/extended-attributes/):
 > 
-> Pid: 13359, comm: amqzxma0 Not tainted 2.6.32-358.20.1.el6.x86_64 #1 IBM System x3650 M3 -[7945PSJ]-/00J6159
-> RIP: 0010:[<ffffffff81219011>] wait_for_key_construction+0x31/0x80
-> RSP: 0018:ffff880c6ab33758  EFLAGS: 00010246
-> RAX: ffffffff81219080 RBX: 0000000000000000 RCX: 0000000000000002
-> RDX: ffffffff81219060 RSI: 0000000000000000 RDI: 0000000000000000
-> RBP: ffff880c6ab33768 R08: 0000000000000000 R09: 0000000000000000
-> R10: 0000000000000001 R11: 0000000000000000 R12: ffff880adfcbce40
-> R13: ffffffffa03afb84 R14: ffff880adfcbce40 R15: ffff880adfcbce43
-> FS:  00007f29b8042700(0000) GS:ffff880028200000(0000) knlGS:0000000000000000
-> CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-> CR2: 0000000000000070 CR3: 0000000c613dc000 CR4: 00000000000007f0
-> DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-> DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-> Process amqzxma0 (pid: 13359, threadinfo ffff880c6ab32000, task ffff880c610deae0)
-> Stack:
->  ffff880adfcbce40 0000000000000000 ffff880c6ab337b8 ffffffff81219695
-> <d> 0000000000000000 ffff880a000000d0 ffff880c6ab337a8 000000000000000f
-> <d> ffffffffa03afb93 000000000000000f ffff88186c7882c0 0000000000000014
-> Call Trace:
->  [<ffffffff81219695>] request_key+0x65/0xa0
->  [<ffffffffa03a0885>] nfs_idmap_request_key+0xc5/0x170 [nfs]
->  [<ffffffffa03a0eb4>] nfs_idmap_lookup_id+0x34/0x80 [nfs]
->  [<ffffffffa03a1255>] nfs_map_group_to_gid+0x75/0xa0 [nfs]
->  [<ffffffffa039a9ad>] decode_getfattr_attrs+0xbdd/0xfb0 [nfs]
->  [<ffffffff81057310>] ? __dequeue_entity+0x30/0x50
->  [<ffffffff8100988e>] ? __switch_to+0x26e/0x320
->  [<ffffffffa039ae03>] decode_getfattr+0x83/0xe0 [nfs]
->  [<ffffffffa039b610>] ? nfs4_xdr_dec_getattr+0x0/0xa0 [nfs]
->  [<ffffffffa039b69f>] nfs4_xdr_dec_getattr+0x8f/0xa0 [nfs]
->  [<ffffffffa02dada4>] rpcauth_unwrap_resp+0x84/0xb0 [sunrpc]
->  [<ffffffffa039b610>] ? nfs4_xdr_dec_getattr+0x0/0xa0 [nfs]
->  [<ffffffffa02cf923>] call_decode+0x1b3/0x800 [sunrpc]
->  [<ffffffff81096de0>] ? wake_bit_function+0x0/0x50
->  [<ffffffffa02cf770>] ? call_decode+0x0/0x800 [sunrpc]
->  [<ffffffffa02d99a7>] __rpc_execute+0x77/0x350 [sunrpc]
->  [<ffffffff81096c67>] ? bit_waitqueue+0x17/0xd0
->  [<ffffffffa02d9ce1>] rpc_execute+0x61/0xa0 [sunrpc]
->  [<ffffffffa02d03a5>] rpc_run_task+0x75/0x90 [sunrpc]
->  [<ffffffffa02d04c2>] rpc_call_sync+0x42/0x70 [sunrpc]
->  [<ffffffffa038ff80>] _nfs4_call_sync+0x30/0x40 [nfs]
->  [<ffffffffa038836c>] _nfs4_proc_getattr+0xac/0xc0 [nfs]
->  [<ffffffff810aac87>] ? futex_wait+0x227/0x380
->  [<ffffffffa038b856>] nfs4_proc_getattr+0x56/0x80 [nfs]
->  [<ffffffffa0371403>] __nfs_revalidate_inode+0xe3/0x220 [nfs]
->  [<ffffffffa037158e>] nfs_revalidate_mapping+0x4e/0x170 [nfs]
->  [<ffffffffa036f147>] nfs_file_read+0x77/0x130 [nfs]
->  [<ffffffff811811aa>] do_sync_read+0xfa/0x140
->  [<ffffffff81096da0>] ? autoremove_wake_function+0x0/0x40
->  [<ffffffff8100bb8e>] ? apic_timer_interrupt+0xe/0x20
->  [<ffffffff8100b9ce>] ? common_interrupt+0xe/0x13
->  [<ffffffff81228ffb>] ? selinux_file_permission+0xfb/0x150
->  [<ffffffff8121bed6>] ? security_file_permission+0x16/0x20
->  [<ffffffff81181a95>] vfs_read+0xb5/0x1a0
->  [<ffffffff81181bd1>] sys_read+0x51/0x90
->  [<ffffffff810dc685>] ? __audit_syscall_exit+0x265/0x290
->  [<ffffffff8100b072>] system_call_fastpath+0x16/0x1b
+> """The extended attributes in user name space are stored on NTFS as alternate data streams whose name is the unprefixed name of the attribute, and whose contents is the value of the attribute. They can be read and modified in Windows by using the standard file access functions, with a colon and the stream name (which is the unprefixed extended attribute name) appended to the file name."""
 > 
-> Signed-off-by: David Howells <dhowells@redhat.com>
-> cc: Dave Wysochanski <dwysocha@redhat.com>
-> cc: Scott Mayhew <smayhew@redhat.com>
-> ---
+> Finally, we have existing implementation experience.  I'll leave out Solaris, and mention the Windows NFSv4.1 client.  The Windows client implements nfsv4 named attributes as a direct mapping to Windows fs alternate data streams.
 > 
->  security/keys/key.c         |    3 ++-
->  security/keys/keyring.c     |    7 +++++--
->  security/keys/request_key.c |    4 +++-
->  3 files changed, 10 insertions(+), 4 deletions(-)
-> 
-> diff --git a/security/keys/key.c b/security/keys/key.c
-> index 8fb7c7b..eaa9f34 100644
-> --- a/security/keys/key.c
-> +++ b/security/keys/key.c
-> @@ -557,9 +557,10 @@ int key_reject_and_link(struct key *key,
->  	if (!test_bit(KEY_FLAG_INSTANTIATED, &key->flags)) {
->  		/* mark the key as being negatively instantiated */
->  		atomic_inc(&key->user->nikeys);
-> +		key->type_data.reject_error = -error;
-> +		smp_wmb();
->  		set_bit(KEY_FLAG_NEGATIVE, &key->flags);
->  		set_bit(KEY_FLAG_INSTANTIATED, &key->flags);
-> -		key->type_data.reject_error = -error;
->  		now = current_kernel_time();
->  		key->expiry = now.tv_sec + timeout;
->  		key_schedule_gc(key->expiry + key_gc_delay);
-> diff --git a/security/keys/keyring.c b/security/keys/keyring.c
-> index 6ece7f2..d4cf442 100644
-> --- a/security/keys/keyring.c
-> +++ b/security/keys/keyring.c
-> @@ -371,9 +371,11 @@ key_ref_t keyring_search_aux(key_ref_t keyring_ref,
->  			goto error_2;
->  		if (key->expiry && now.tv_sec >= key->expiry)
->  			goto error_2;
-> -		key_ref = ERR_PTR(key->type_data.reject_error);
-> -		if (kflags & (1 << KEY_FLAG_NEGATIVE))
-> +		if (kflags & (1 << KEY_FLAG_NEGATIVE)) {
-> +			smp_rmb();
-> +			key_ref = ERR_PTR(key->type_data.reject_error);
->  			goto error_2;
-> +		}
->  		goto found;
->  	}
->  
-> @@ -432,6 +434,7 @@ descend:
->  
->  		/* we set a different error code if we pass a negative key */
->  		if (kflags & (1 << KEY_FLAG_NEGATIVE)) {
-> +			smp_rmb();
->  			err = key->type_data.reject_error;
->  			continue;
->  		}
-> diff --git a/security/keys/request_key.c b/security/keys/request_key.c
-> index c411f9b..dc6f3be 100644
-> --- a/security/keys/request_key.c
-> +++ b/security/keys/request_key.c
-> @@ -592,8 +592,10 @@ int wait_for_key_construction(struct key *key, bool intr)
->  			  intr ? TASK_INTERRUPTIBLE : TASK_UNINTERRUPTIBLE);
->  	if (ret < 0)
->  		return ret;
-> -	if (test_bit(KEY_FLAG_NEGATIVE, &key->flags))
-> +	if (test_bit(KEY_FLAG_NEGATIVE, &key->flags)) {
-> +		smp_rmb();
->  		return key->type_data.reject_error;
-> +	}
->  	return key_validate(key);
->  }
->  EXPORT_SYMBOL(wait_for_key_construction);
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-kernel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> Please read the FAQ at  http://www.tux.org/lkml/
-> 
-> 
+> Presumably, there could be other differences between a platform attribute
+> interface an NFSv4 named attributes, e.g., perhaps update atomicity.
 
-Definite Ack!
+Right, xattrs are expected to be small-ish and are set and queried
+atomically.  A server that implements named attributes using xattrs has
+to for example implement write as a read-modify-write of the attribute.
+You normally only address xattrs by name, so I guess you'd have to stick
+a hash of the name in the filehandle.
 
+We could probably get *something* working, but I don't know whether the
+semantics would be close enough to not break an application that was
+written to a named-attribute api.
+
+Personally what I'd like to see is a really thorough description of a
+use case or two.  All I've ever heard is either "selinux", or some vague
+ideas about things people think might be cool to try.
+
+It seemed various Linux desktop projects (Beagle?) were using them for a
+while, but I haven't noticed that happening lately.  Did they give up?
+
+Looking at my machines at home....  A "find . -print0 | xargs -0
+getfattr" doesn't find anything on my Fedora machines, but it does find
+"user.xdg.origin.url" and "user.xdg.referrer.url" xattrs set on a few
+downloads created by chromium on a Ubuntu desktop.  Those xattrs are
+documented at
+
+	http://freedesktop.org/wiki/CommonExtendedAttributes/
+
+Can't see anyplace they're used, except that the file manager does have
+a "user attributes" tab in the "properties" dialog that you can pull up
+from a right-click.
+
+The tool I use to keep my home directories in sync (unison) doesn't
+appear to propagate those.
+
+Ho-hum.
+
+--b.
+
+> It seems
+> though that any issues which might arise from this would also be ones the standard
+> could expect the client and/or server implementation to deal appropriately with.
+> 
+> Matt
+> 
+> ----- "Chuck Lever" <chuck.lever@oracle.com> wrote:
+> 
+> > 
+> > NFS has to interoperate with other operating systems that may or may
+> > not support xattrs, or may have something that looks like an xattr,
+> > but really is subtly incompatible.
+> > 
+> > Therefore we must have a standard for storing and accessing xattrs
+> > locally (POSIX) and a standard for expressing their name and content
+> > on the wire (IETF NFS) before we can consider an implementation.
+> > 
+> > So we would like to see some very clear evidence that it's worth the
+> > effort.  Until then, Linux distributors are free to implement NFS
+> > xattr support outside the standard NFS protocol (like the Solaris
+> > NFSv3 ACL protocol) and support this themselves, perhaps as proof that
+> > "if you build it, they will come."
+> > 
+> > -- 
+> > Chuck Lever
+> > chuck[dot]lever[at]oracle[dot]com
+> > 
+> > 
+> > 
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs"
+> > in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> -- 
+> Matt Benjamin
+> The Linux Box
+> 206 South Fifth Ave. Suite 150
+> Ann Arbor, MI  48104
+> 
+> http://linuxbox.com
+> 
+> tel.  734-761-4689 
+> fax.  734-769-8938 
+> cel.  734-216-5309 
