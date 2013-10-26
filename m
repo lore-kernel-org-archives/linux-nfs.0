@@ -1,37 +1,201 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:24218 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753697Ab3JBP1d (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 2 Oct 2013 11:27:33 -0400
-Date: Wed, 2 Oct 2013 11:26:47 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Benny Halevy <bhalevy@primarydata.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH RFC v0 43/49] pnfsd: release state lock around iput in
- put_nfs4_file
-Message-ID: <20131002152647.GD2002@pad.fieldses.org>
-References: <52447EA0.7070004@primarydata.com>
- <1380220968-14669-1-git-send-email-bhalevy@primarydata.com>
- <20130929121903.GF21083@infradead.org>
- <524ACEA9.1040304@primarydata.com>
- <20131001133739.GA13149@infradead.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20131001133739.GA13149@infradead.org>
+Received: from mailgw02.dd24.net ([193.46.215.43]:40904 "EHLO
+	mailgw02.dd24.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751849Ab3JZRMk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 26 Oct 2013 13:12:40 -0400
+Received: from localhost (amavis01.dd24.net [192.168.1.111])
+	by mailgw02.dd24.net (Postfix) with ESMTP id D992A356B9A
+	for <linux-nfs@vger.kernel.org>; Sat, 26 Oct 2013 17:12:35 +0000 (GMT)
+Received: from mailgw02.dd24.net ([192.168.1.197])
+	by localhost (amavis01.dd24.net [192.168.1.105]) (amavisd-new, port 10197)
+	with ESMTP id CqyKhL0ZomTX for <linux-nfs@vger.kernel.org>;
+	Sat, 26 Oct 2013 17:12:30 +0000 (GMT)
+Received: from [192.168.0.101] (p54913AD7.dip0.t-ipconnect.de [84.145.58.215])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by mailgw02.dd24.net (Postfix) with ESMTPSA id 650B83569E5
+	for <linux-nfs@vger.kernel.org>; Sat, 26 Oct 2013 17:12:30 +0000 (GMT)
+Message-ID: <1382807547.29041.12.camel@heisenberg.scientia.net>
+Subject: Re: XATTRs in NFS?
+From: Christoph Anton Mitterer <calestyo@scientia.net>
+To: linux-nfs@vger.kernel.org
+Date: Sat, 26 Oct 2013 19:12:27 +0200
+In-Reply-To: <20131025140846.GB20497@fieldses.org>
+References: <1382560643.6924.12.camel@heisenberg.scientia.net>
+	 <EFB2CFAD-FACC-401D-BF0C-1C573B23A873@netapp.com>
+	 <1382624000.6907.8.camel@heisenberg.scientia.net>
+	 <E0F4C952-02DE-4778-A779-FB7AE111EC46@netapp.com>
+	 <1382630468.6907.58.camel@heisenberg.scientia.net>
+	 <625CAA34-BD6C-4283-86D0-3F8B460D54D0@netapp.com>
+	 <1382635350.6907.83.camel@heisenberg.scientia.net>
+	 <20131025140846.GB20497@fieldses.org>
+Content-Type: multipart/signed; micalg="sha-512";
+	protocol="application/x-pkcs7-signature";
+	boundary="=-6wrQKLlo5HZSZYQ6sfXa"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Oct 01, 2013 at 06:37:39AM -0700, Christoph Hellwig wrote:
-> On Tue, Oct 01, 2013 at 04:31:21PM +0300, Benny Halevy wrote:
-> > So the reason not to hold it is that the nfs state lock is global to the
-> > server and blocks all state modifying operations such as:
-> > open, close, lock, clientid, session operations, etc.
-> 
-> While not really related to this patch: what's the reason it's not
-> split?  The way nfsd works there should be almost no state that isn't
-> per-export.
 
-There's the NFSv4 client, but yes, the global state lock is an
-embarassment....
+--=-6wrQKLlo5HZSZYQ6sfXa
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
---b.
+On Fri, 2013-10-25 at 10:08 -0400, J. Bruce Fields wrote:
+> Can you give any more details about your use case?  (E.g. is there an
+> article describing this system somewhere?)
+Okay let me try to explain the motivation more elaborately.
+
+The general idea is getting data integrity, i.e. being able to see
+whether some files are in a valid state.
+
+This is similar to what e.g. btrfs/zfs provide at (IIRC block/extent
+level) with checksuming.
+But a) btrfs is not yet fully production ready (IMHO) and zfs in Linux
+has it's (license) issues and more important b) the checksuming there
+happens always and automatically as soon as some valid filesystem
+operations occur on the files.
+
+So what you basically notice are errors on the physical medium (or at
+least on block layers below the filesystem).
+
+
+You won't notice many other cases of file "corruptions":
+
+- when you have programs which do subtly manipulate the files and you
+don't notice,...e.g. some image organisation programs store their
+meta-data crap in the Exif/XMP fields, even when you don't actively tell
+them to do so (and sometimes even when the files are read-only)
+
+- when there are e.g. kernel bugs (in some other places of the kernel)
+and you copy the files around. Some years ago I found a bug (not the
+solution) where single bit errors happened more or less randomly every
+40-100 GB of writing data. In the end it was found to be a IOMMU related
+bug and a single one liner of flushing some buffers cleared the problem.
+Since such errors would happen already at earlier stages, when writing
+such files btrfs/zfs would simply write the checksums of the corrupted
+data.
+
+So the idea of my integrity data is, that I really manually say "now the
+data is in the state where I consider it to be consistent and I want to
+have checksums stored and attached to the files, for exactly that
+state", e.g. after I have read out some images from the SD card (perhaps
+even twice with the cache cleared and the results diffed) and placed in
+my archive.
+Afterwards I can regularly verify the whole archive and if at some stage
+corruptions as the above would have happened, I can simply take the
+respective files from backups.
+
+
+Obviously that cannot be stored *in* the files,... and a database
+solution fails since, it wouldn't track the changes when I move files
+around within the archive.
+
+
+So IMHO the best solution were XATTRs, which do work fine for that
+purpose... just the problem that I can't have it via NFS ;)
+
+
+Cheers,
+Chris.
+
+--=-6wrQKLlo5HZSZYQ6sfXa
+Content-Type: application/x-pkcs7-signature; name="smime.p7s"
+Content-Disposition: attachment; filename="smime.p7s"
+Content-Transfer-Encoding: base64
+
+MIAGCSqGSIb3DQEHAqCAMIACAQExDzANBglghkgBZQMEAgMFADCABgkqhkiG9w0BBwEAAKCCEP4w
+ggV1MIIDXaADAgECAgMBAYIwDQYJKoZIhvcNAQEFBQAwVDEUMBIGA1UEChMLQ0FjZXJ0IEluYy4x
+HjAcBgNVBAsTFWh0dHA6Ly93d3cuQ0FjZXJ0Lm9yZzEcMBoGA1UEAxMTQ0FjZXJ0IENsYXNzIDMg
+Um9vdDAeFw0xMjA3MjMxNDU2NDVaFw0xNDA3MjMxNDU2NDVaMHwxITAfBgNVBAMTGENocmlzdG9w
+aCBBbnRvbiBNaXR0ZXJlcjEkMCIGCSqGSIb3DQEJARYVY2FsZXN0eW9Ac2NpZW50aWEubmV0MTEw
+LwYJKoZIhvcNAQkBFiJtYWlsQGNocmlzdG9waC5hbnRvbi5taXR0ZXJlci5uYW1lMIIBIjANBgkq
+hkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqv+F91K5vyBwiGFMqj6wTehWdqZnfFeXqT8g5b3qrXWL
+ywSzcoD9xtyoRqAgOCX+PSmBpm6pPhe31VnBtc3HcBMe4rSico9/Z2H9h1l6IMVEnyhabWzoKbE3
+BFrsYJGthJCbhK072G8AhCk+5p+L+knLhQXN0Ph7MJbdY26o3M4vjsXFNbJL8TOYxo80cGD1LIh2
+SUZFqaIG24TVmTW8F4jD5Z9/NEwJa8kQK+VBNHUntXYNah4Reh0jSsGnq9Pg3Hf4KC+F0IR8QgBm
+SnwitMFUX9UnhLEvRQxjDI1tm+h6RxfjlV7moI68Ulh7bcdPhM/z2Q16XmaY12rc85pSRQIDAQAB
+o4IBJjCCASIwDAYDVR0TAQH/BAIwADBWBglghkgBhvhCAQ0ESRZHVG8gZ2V0IHlvdXIgb3duIGNl
+cnRpZmljYXRlIGZvciBGUkVFIGhlYWQgb3ZlciB0byBodHRwOi8vd3d3LkNBY2VydC5vcmcwQAYD
+VR0lBDkwNwYIKwYBBQUHAwQGCCsGAQUFBwMCBgorBgEEAYI3CgMEBgorBgEEAYI3CgMDBglghkgB
+hvhCBAEwMgYIKwYBBQUHAQEEJjAkMCIGCCsGAQUFBzABhhZodHRwOi8vb2NzcC5jYWNlcnQub3Jn
+MEQGA1UdEQQ9MDuBFWNhbGVzdHlvQHNjaWVudGlhLm5ldIEibWFpbEBjaHJpc3RvcGguYW50b24u
+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
++G8T/HNZ92ZCdB6K4/jc0m+YnMtHmJVABfvpAgMBAAGjgb8wgbwwDwYDVR0TAQH/BAUwAwEB/zBd
+BggrBgEFBQcBAQRRME8wIwYIKwYBBQUHMAGGF2h0dHA6Ly9vY3NwLkNBY2VydC5vcmcvMCgGCCsG
+AQUFBzAChhxodHRwOi8vd3d3LkNBY2VydC5vcmcvY2EuY3J0MEoGA1UdIARDMEEwPwYIKwYBBAGB
+kEowMzAxBggrBgEFBQcCARYlaHR0cDovL3d3dy5DQWNlcnQub3JnL2luZGV4LnBocD9pZD0xMDAN
+BgkqhkiG9w0BAQQFAAOCAgEAfwiIodoaUEnaifuhCHLzivcexDq0eVsgMLFF3sJd02Vp8cJdVFQ8
+hV+5e0KRwpn9G1Gbq0aloRBTnm2IrHNuLDOm8PSe4HXBPohFqeFmQ/5WWtF6QXj3QNpKOvELW6W7
+FgbmwueTuYVNl0+xHjhDgO+bDYzvuKdgAIdXfR5EHMsj75s8mZ2vtSkcRXkWlk0nbfEcbMPCVWSz
+vBTi86QfHjL8JxUFz90urj6CYXvwIRAY9kTqUzn53NCaIODGu+C7Wk/EmcgHvbW9otsuYg1CNEG8
+/4uK9VEiqogwAOKw1Ly+ZbrVA1d5m+jcyE34UO2RpVIooqz7Nlg+6ZQrkVCHG9Ze1ozM9w8QDFJO
+0BZh5eUKbL8Xx3JGV5yY9WxgY3pvXrlOL8i5ubtqhbyYDe35PpeENJSuAK+h5eeSbk698+LZFItc
+0usBbKAXpS0Q65x6Sr297s797SJAq3A4iPUKh2rCqwVgyUgF2lPB3kR3arPzPDztgLymOEopJF/+
+WTubJXpWYwBkuV2kYn1XNk+tg+8fklOgjndX3eVhET0jAJBMPPqjYJMEo6819g5qj09KYKeFBWxG
+oY/0x3bjoVlX93GyxG4UXG1tQWbfG5Ox1ADD7svPPD0hgKlfY2X83eBfpPQr8IVxQdRnJfsasZeu
+1pmCE0HSbqUbmSeA5wupqAAxggLtMIIC6QIBATBbMFQxFDASBgNVBAoTC0NBY2VydCBJbmMuMR4w
+HAYDVQQLExVodHRwOi8vd3d3LkNBY2VydC5vcmcxHDAaBgNVBAMTE0NBY2VydCBDbGFzcyAzIFJv
+b3QCAwEBgjANBglghkgBZQMEAgMFAKCCAWMwGAYJKoZIhvcNAQkDMQsGCSqGSIb3DQEHATAcBgkq
+hkiG9w0BCQUxDxcNMTMxMDI2MTcxMjI3WjBPBgkqhkiG9w0BCQQxQgRA8HxpRy7dyvfZnfXod3w7
+srMi/C0Ko9bJDX5l12/+ozoGXSEdmQRgXww755OOlL6poO4M+crQiR5OszCBGGTsVDBqBgkrBgEE
+AYI3EAQxXTBbMFQxFDASBgNVBAoTC0NBY2VydCBJbmMuMR4wHAYDVQQLExVodHRwOi8vd3d3LkNB
+Y2VydC5vcmcxHDAaBgNVBAMTE0NBY2VydCBDbGFzcyAzIFJvb3QCAwEBgjBsBgsqhkiG9w0BCRAC
+CzFdoFswVDEUMBIGA1UEChMLQ0FjZXJ0IEluYy4xHjAcBgNVBAsTFWh0dHA6Ly93d3cuQ0FjZXJ0
+Lm9yZzEcMBoGA1UEAxMTQ0FjZXJ0IENsYXNzIDMgUm9vdAIDAQGCMA0GCSqGSIb3DQEBAQUABIIB
+AKRagi4Uf0O2ERKla/daC6UY5K0btbtaJ7qBOcUDBhwKz2sGTnZpJ3Bkws/uU0qWrFXlwgGRf4Dh
+dhC7moZ7j3YwNu8Lfc6B/DANY8Lfai2eWN+tatia/HWIo7IFUNWoJZ/5Ik7CEq9UKve+lxXvILod
+6VhmgnWV4pF7WfjJK+SYjnh/PcI07Z1WYQOdG40IRtnYgU9rHy17iWMRJ9TsugkwMyvLOmoy5yMB
++EK76eQEdVVYBpBpo3o2OjLWEnS1eodKO6Qfn0XXJvROqJvhMhYttnfchS+DkCowt8i4r8y/6KDF
+VjYErrteu2fZr3HOBnZtrbp9FMjYZPIBKVcLQDEAAAAAAAA=
+
+
+--=-6wrQKLlo5HZSZYQ6sfXa--
+
