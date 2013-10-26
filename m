@@ -1,62 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:38197 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:40789 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752927Ab3JBO0A (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 2 Oct 2013 10:26:00 -0400
-Date: Wed, 2 Oct 2013 10:25:27 -0400
+	id S1753769Ab3JZSzs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 26 Oct 2013 14:55:48 -0400
+Date: Sat, 26 Oct 2013 14:55:47 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Al Viro <viro@ZenIV.linux.org.uk>, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, sandeen@redhat.com
-Subject: Re: why is i_ino unsigned long, anyway?
-Message-ID: <20131002142527.GD14808@fieldses.org>
-References: <20130912160324.GE1462@fieldses.org>
- <20130912193328.GP13318@ZenIV.linux.org.uk>
- <20130929115454.GA3953@infradead.org>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: Jeff Layton <jlayton@redhat.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 0/3] mountd: disabling turning off TCP listeners (v2)
+Message-ID: <20131026185547.GB17487@fieldses.org>
+References: <1382638633-6710-1-git-send-email-steved@redhat.com>
+ <20131024144507.72aa34a8@tlielax.poochiereds.net>
+ <526978BF.7020202@RedHat.com>
+ <20131025074316.2affe9e9@tlielax.poochiereds.net>
+ <526A62C1.6060803@RedHat.com>
+ <20131025142012.GC20497@fieldses.org>
+ <526A8BAB.8040704@RedHat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130929115454.GA3953@infradead.org>
+In-Reply-To: <526A8BAB.8040704@RedHat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Sep 29, 2013 at 04:54:54AM -0700, Christoph Hellwig wrote:
-> On Thu, Sep 12, 2013 at 08:33:28PM +0100, Al Viro wrote:
-> > i_ino use is entirely up to filesystem; it may be used by library helpers,
-> > provided that the choice of using or not using those is, again, up to
-> > filesystem in question.
+On Fri, Oct 25, 2013 at 11:18:03AM -0400, Steve Dickson wrote:
+> On 25/10/13 10:20, J. Bruce Fields wrote:
+> >> I ideally it would be best not to have mountd at all on NFSv4-only server.
+> >> > Basically, have the kernel get its exports like it gets it ID mappings.
+> >> > Until that day comes, which I hope fill be soon, the TCP listener 
+> >> > only effects v3 mounts and we definitely want people to use TCP
+> >> > with v3. 
+> > I'm not sure if we want to do that, but note one thing we'll need to do
+> > before then is solve the namespace problems.  (We don't currently have a
+> > good way to run the usermode helper in the right container.)
 > 
-> With more and more filesystems using large inode numbers I'm starting to
-> wonder if this still makes sense.  But given that it's been this way for
-> a long time we should have more documentation of it for sure.
+> Sorry for not keeping up on the container work and possibly asking
+> dumb question... but there can be different exports per container?
+
+Yes, definitely.
+
+> I thought it was just different IPs per container....
 > 
-> > NFSD has no damn business looking at it; library
-> > helpers in fs/exportfs might, but that makes them not suitable for use
-> > by filesystems without inode numbers or with 64bit ones.
-> > 
-> > The reason why it's there at all is that it serves as convenient icache
-> > search key for many filesystems.  IOW, it's used by iget_locked() and
-> > avoiding the overhead of 64bit comparisons on 32bit hosts is the main
-> > reason to avoid making it u64.
-> > 
-> > Again, no fs-independent code has any business looking at it, 64bit or
-> > not.  From the VFS point of view there is no such thing as inode number.
-> > And get_name() is just a library helper.  For many fs types it works
-> > as suitable ->s_export_op->get_name() instance, but decision to use it
-> > or not belongs to filesystem in question and frankly, it's probably better
-> > to provide an instance of your own anyway.
-> 
-> Given that these days most exportable filesystems use 64-bit inode
-> numbers I think we should put the patch from Bruce in.  Nevermind that
-> it's in a slow path, so the overhead of vfs_getattr really doesn't hurt.
+> If so, how does that work today? 
 
-Calling vfs_getattr adds a security_inode_getattr() call that wasn't
-there before.  Any chance of that being a problem?
-
-If so then it's no huge code duplication to it by hand:
-
-	if (inode->i_op->getattr)
-		inode->i_op->getattr(path->mnt, path->dentry, &stat);
-	else
-		generic_fillattr(inode, &stat);
+It should work (except possibly for state recovery).  I haven't tested
+it yet, though I hope to.  Stanislav has.
 
 --b.
