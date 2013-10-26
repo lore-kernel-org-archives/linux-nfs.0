@@ -1,83 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:51808 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751243Ab3J2Qky convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Oct 2013 12:40:54 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: Steve Dickson <steved@redhat.com>,
-        linux-nfs list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfs.man: add description of multiple sec= options
-Date: Tue, 29 Oct 2013 16:40:52 +0000
-Message-ID: <310B7CD4-FDE2-420A-AFE6-C798BA70BE90@netapp.com>
-References: <1383064066-1139-1-git-send-email-dros@netapp.com>
- <27470170-8177-4561-A11A-70CA2EF704A8@oracle.com>
-In-Reply-To: <27470170-8177-4561-A11A-70CA2EF704A8@oracle.com>
-Content-Type: text/plain; charset="us-ascii"
+Received: from relay.parallels.com ([195.214.232.42]:56014 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753529Ab3JZTKc convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 26 Oct 2013 15:10:32 -0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Steve Dickson <SteveD@redhat.com>, Jeff Layton <jlayton@redhat.com>,
+        "Linux NFS Mailing list" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 0/3] mountd: disabling turning off TCP listeners (v2)
+Date: Sat, 26 Oct 2013 19:10:22 +0000
+Message-ID: <nguf78hrh9dsldjd23v6itm6.1382814616803@email.android.com>
+References: <1382638633-6710-1-git-send-email-steved@redhat.com>
+ <20131024144507.72aa34a8@tlielax.poochiereds.net>
+ <526978BF.7020202@RedHat.com>
+ <20131025074316.2affe9e9@tlielax.poochiereds.net>
+ <526A62C1.6060803@RedHat.com> <20131025142012.GC20497@fieldses.org>
+ <526A8BAB.8040704@RedHat.com>,<20131026185547.GB17487@fieldses.org>
+In-Reply-To: <20131026185547.GB17487@fieldses.org>
+Content-Type: text/plain; charset="koi8-r"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Guys, feel free to mail me.
+It's a pure luck that I read this mail...
+Yes, different exports for containers definitelly were working in past.
+And, actually, it's not that easy to break this functionaly since there are not special code parts to support sucn exports in containers.
 
-On Oct 29, 2013, at 12:30 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+Пользователь "J. Bruce Fields" <bfields@fieldses.org> писал:
 
-> 
-> On Oct 29, 2013, at 12:27 PM, Weston Andros Adamson <dros@netapp.com> wrote:
-> 
->> The client now supports multiple sec= options as a colon delimited list.
->> 
->> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
->> ---
->> utils/mount/nfs.man | 7 ++++---
->> 1 file changed, 4 insertions(+), 3 deletions(-)
->> 
->> diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
->> index 2a42b93..17b8d88 100644
->> --- a/utils/mount/nfs.man
->> +++ b/utils/mount/nfs.man
->> @@ -380,9 +380,10 @@ If a value of zero is specified, the
->> .BR mount (8)
->> command exits immediately after the first failure.
->> .TP 1.5i
->> -.BI sec= flavor
->> -The security flavor to use for accessing files on this mount point.
->> -If the server does not support this flavor, the mount operation fails.
->> +.BI sec= flavors
->> +A colon-delimited list of security flavors to use for accessing files on
->> +this mount point. If the server does not support any of these flavors,
->> +the mount operation fails.
-> 
-> Just a nit:  The new text kind of suggests that the colons are required.  "sec=single flavor" is also still supported.  Typically man page language is careful to show both.
 
-Good point.
+On Fri, Oct 25, 2013 at 11:18:03AM -0400, Steve Dickson wrote:
+> On 25/10/13 10:20, J. Bruce Fields wrote:
+> >> I ideally it would be best not to have mountd at all on NFSv4-only server.
+> >> > Basically, have the kernel get its exports like it gets it ID mappings.
+> >> > Until that day comes, which I hope fill be soon, the TCP listener
+> >> > only effects v3 mounts and we definitely want people to use TCP
+> >> > with v3.
+> > I'm not sure if we want to do that, but note one thing we'll need to do
+> > before then is solve the namespace problems.  (We don't currently have a
+> > good way to run the usermode helper in the right container.)
+>
+> Sorry for not keeping up on the container work and possibly asking
+> dumb question... but there can be different exports per container?
 
-Should there be separate sections or should we do something like:
+Yes, definitely.
 
-sec=flavor(s)
+> I thought it was just different IPs per container....
+>
+> If so, how does that work today?
 
-The  security flavor or flavors to use for accessing files on this
-mount point.  Multiple security flavors may be specified as a
-colon-delimited list. If the server does not support any of these flavors 
-the mount operation fails.
+It should work (except possibly for state recovery).  I haven't tested
+it yet, though I hope to.  Stanislav has.
 
-...
-
--dros
-
-> 
-> 
->> If
->> .B sec=
->> is not specified, the client attempts to find
->> -- 
->> 1.8.3.1 (Apple Git-46)
->> 
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> -- 
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
-
+--b.
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
