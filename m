@@ -1,223 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:2024 "EHLO mx11.netapp.com"
+Received: from mx11.netapp.com ([216.240.18.76]:1391 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754581Ab3J3OAY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 30 Oct 2013 10:00:24 -0400
-From: Anna Schumaker <bjschuma@netapp.com>
-To: <bfields@fieldses.org>, <linux-nfs@vger.kernel.org>
-Subject: [PATCH v2 (For real this time)] NFSD: Combine decode operations for v4 and v4.1
-Date: Wed, 30 Oct 2013 10:00:20 -0400
-Message-ID: <1383141620-11158-1-git-send-email-bjschuma@netapp.com>
+	id S1753161Ab3J0Msv convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Oct 2013 08:48:51 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Eshel Marc <eshel@us.ibm.com>
+CC: Dr Fields James Bruce <bfields@fieldses.org>,
+        Christoph Anton Mitterer <calestyo@scientia.net>,
+        Mailing List Linux NFS <linux-nfs@vger.kernel.org>,
+        "linux-nfs-owner@vger.kernel.org" <linux-nfs-owner@vger.kernel.org>,
+        "Wheeler Ric" <ricwheeler@gmail.com>
+Subject: Re: XATTRs in NFS?
+Date: Sun, 27 Oct 2013 12:48:49 +0000
+Message-ID: <4260556F-D57B-407E-A686-808D3D802137@netapp.com>
+References: <1382560643.6924.12.camel@heisenberg.scientia.net>
+ <EFB2CFAD-FACC-401D-BF0C-1C573B23A873@netapp.com>
+ <1382624000.6907.8.camel@heisenberg.scientia.net>
+ <E0F4C952-02DE-4778-A779-FB7AE111EC46@netapp.com>
+ <1382630468.6907.58.camel@heisenberg.scientia.net>
+ <625CAA34-BD6C-4283-86D0-3F8B460D54D0@netapp.com>
+ <1382635350.6907.83.camel@heisenberg.scientia.net>
+ <20131025140846.GB20497@fieldses.org> <526A8D9A.8090008@gmail.com>
+ <7C1323EE-D63F-4F93-A44D-E7DDB0C61BF0@netapp.com>
+ <OF01D9818B.36018C0F-ON88257C10.00608BC0-88257C10.006139C6@LocalDomain>
+ <OF7F1977B0.3BF0FF3B-ON88257C10.00618038-88257C10.0061AF59@us.ibm.com>
+In-Reply-To: <OF7F1977B0.3BF0FF3B-ON88257C10.00618038-88257C10.0061AF59@us.ibm.com>
+Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
-Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We were using a different array of function pointers to represent each
-minor version.  This makes adding a new minor version tedious, since it
-needs a step to copy, paste and modify a new version of the same
-functions.
 
-This patch combines the v4 and v4.1 arrays into a single instance and
-will check minor version support inside each decoder function.
+On Oct 26, 2013, at 1:46 PM, Marc Eshel <eshel@us.ibm.com> wrote:
 
-Signed-off-by: Anna Schumaker <bjschuma@netapp.com>
----
- fs/nfsd/nfs4xdr.c | 98 +++++++++++++++++++++++--------------------------------
- 1 file changed, 40 insertions(+), 58 deletions(-)
+> linux-nfs-owner@vger.kernel.org wrote on 10/26/2013 06:20:12 AM:
+> 
+>> I'd rather look bad for not supporting a broken filesystem feature 
+>> than have to deal with the abiove mentioned side-effects. Until the 
+>> xattr interface is properly documented and standardised so that it 
+>> can be exported safely, it should be treated as a unexportable, in 
+>> the same way we treat procfs and sysfs.
+>> 
+> 
+> This sounds more like an NFS server problem than a client side NFS. Can we 
+> add support to the client side NFS and let server that think that they can 
+> handle XATTR implement it?
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index d9454fe..99bebea 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -945,13 +945,16 @@ static __be32
- nfsd4_decode_open_confirm(struct nfsd4_compoundargs *argp, struct nfsd4_open_confirm *open_conf)
- {
- 	DECODE_HEAD;
--		    
-+
-+	if (argp->minorversion >= 1)
-+		return nfserr_notsupp;
-+
- 	status = nfsd4_decode_stateid(argp, &open_conf->oc_req_stateid);
- 	if (status)
- 		return status;
- 	READ_BUF(4);
- 	READ32(open_conf->oc_seqid);
--						        
-+
- 	DECODE_TAIL;
- }
- 
-@@ -991,6 +994,14 @@ nfsd4_decode_putfh(struct nfsd4_compoundargs *argp, struct nfsd4_putfh *putfh)
- }
- 
- static __be32
-+nfsd4_decode_putpubfh(struct nfsd4_compoundargs *argp, void *p)
-+{
-+	if (argp->minorversion == 0)
-+		return nfs_ok;
-+	return nfserr_notsupp;
-+}
-+
-+static __be32
- nfsd4_decode_read(struct nfsd4_compoundargs *argp, struct nfsd4_read *read)
- {
- 	DECODE_HEAD;
-@@ -1061,6 +1072,9 @@ nfsd4_decode_renew(struct nfsd4_compoundargs *argp, clientid_t *clientid)
- {
- 	DECODE_HEAD;
- 
-+	if (argp->minorversion >= 1)
-+		return nfserr_notsupp;
-+
- 	READ_BUF(sizeof(clientid_t));
- 	COPYMEM(clientid, sizeof(clientid_t));
- 
-@@ -1111,6 +1125,9 @@ nfsd4_decode_setclientid(struct nfsd4_compoundargs *argp, struct nfsd4_setclient
- {
- 	DECODE_HEAD;
- 
-+	if (argp->minorversion >= 1)
-+		return nfserr_notsupp;
-+
- 	READ_BUF(NFS4_VERIFIER_SIZE);
- 	COPYMEM(setclientid->se_verf.data, NFS4_VERIFIER_SIZE);
- 
-@@ -1137,6 +1154,9 @@ nfsd4_decode_setclientid_confirm(struct nfsd4_compoundargs *argp, struct nfsd4_s
- {
- 	DECODE_HEAD;
- 
-+	if (argp->minorversion >= 1)
-+		return nfserr_notsupp;
-+
- 	READ_BUF(8 + NFS4_VERIFIER_SIZE);
- 	COPYMEM(&scd_c->sc_clientid, 8);
- 	COPYMEM(&scd_c->sc_confirm, NFS4_VERIFIER_SIZE);
-@@ -1220,6 +1240,9 @@ nfsd4_decode_release_lockowner(struct nfsd4_compoundargs *argp, struct nfsd4_rel
- {
- 	DECODE_HEAD;
- 
-+	if (argp->minorversion >= 1)
-+		return nfserr_notsupp;
-+
- 	READ_BUF(12);
- 	COPYMEM(&rlockowner->rl_clientid, sizeof(clientid_t));
- 	READ32(rlockowner->rl_owner.len);
-@@ -1519,7 +1542,7 @@ static nfsd4_dec nfsd4_dec_ops[] = {
- 	[OP_OPEN_CONFIRM]	= (nfsd4_dec)nfsd4_decode_open_confirm,
- 	[OP_OPEN_DOWNGRADE]	= (nfsd4_dec)nfsd4_decode_open_downgrade,
- 	[OP_PUTFH]		= (nfsd4_dec)nfsd4_decode_putfh,
--	[OP_PUTPUBFH]		= (nfsd4_dec)nfsd4_decode_noop,
-+	[OP_PUTPUBFH]		= (nfsd4_dec)nfsd4_decode_putpubfh,
- 	[OP_PUTROOTFH]		= (nfsd4_dec)nfsd4_decode_noop,
- 	[OP_READ]		= (nfsd4_dec)nfsd4_decode_read,
- 	[OP_READDIR]		= (nfsd4_dec)nfsd4_decode_readdir,
-@@ -1536,46 +1559,6 @@ static nfsd4_dec nfsd4_dec_ops[] = {
- 	[OP_VERIFY]		= (nfsd4_dec)nfsd4_decode_verify,
- 	[OP_WRITE]		= (nfsd4_dec)nfsd4_decode_write,
- 	[OP_RELEASE_LOCKOWNER]	= (nfsd4_dec)nfsd4_decode_release_lockowner,
--};
--
--static nfsd4_dec nfsd41_dec_ops[] = {
--	[OP_ACCESS]		= (nfsd4_dec)nfsd4_decode_access,
--	[OP_CLOSE]		= (nfsd4_dec)nfsd4_decode_close,
--	[OP_COMMIT]		= (nfsd4_dec)nfsd4_decode_commit,
--	[OP_CREATE]		= (nfsd4_dec)nfsd4_decode_create,
--	[OP_DELEGPURGE]		= (nfsd4_dec)nfsd4_decode_notsupp,
--	[OP_DELEGRETURN]	= (nfsd4_dec)nfsd4_decode_delegreturn,
--	[OP_GETATTR]		= (nfsd4_dec)nfsd4_decode_getattr,
--	[OP_GETFH]		= (nfsd4_dec)nfsd4_decode_noop,
--	[OP_LINK]		= (nfsd4_dec)nfsd4_decode_link,
--	[OP_LOCK]		= (nfsd4_dec)nfsd4_decode_lock,
--	[OP_LOCKT]		= (nfsd4_dec)nfsd4_decode_lockt,
--	[OP_LOCKU]		= (nfsd4_dec)nfsd4_decode_locku,
--	[OP_LOOKUP]		= (nfsd4_dec)nfsd4_decode_lookup,
--	[OP_LOOKUPP]		= (nfsd4_dec)nfsd4_decode_noop,
--	[OP_NVERIFY]		= (nfsd4_dec)nfsd4_decode_verify,
--	[OP_OPEN]		= (nfsd4_dec)nfsd4_decode_open,
--	[OP_OPENATTR]		= (nfsd4_dec)nfsd4_decode_notsupp,
--	[OP_OPEN_CONFIRM]	= (nfsd4_dec)nfsd4_decode_notsupp,
--	[OP_OPEN_DOWNGRADE]	= (nfsd4_dec)nfsd4_decode_open_downgrade,
--	[OP_PUTFH]		= (nfsd4_dec)nfsd4_decode_putfh,
--	[OP_PUTPUBFH]		= (nfsd4_dec)nfsd4_decode_notsupp,
--	[OP_PUTROOTFH]		= (nfsd4_dec)nfsd4_decode_noop,
--	[OP_READ]		= (nfsd4_dec)nfsd4_decode_read,
--	[OP_READDIR]		= (nfsd4_dec)nfsd4_decode_readdir,
--	[OP_READLINK]		= (nfsd4_dec)nfsd4_decode_noop,
--	[OP_REMOVE]		= (nfsd4_dec)nfsd4_decode_remove,
--	[OP_RENAME]		= (nfsd4_dec)nfsd4_decode_rename,
--	[OP_RENEW]		= (nfsd4_dec)nfsd4_decode_notsupp,
--	[OP_RESTOREFH]		= (nfsd4_dec)nfsd4_decode_noop,
--	[OP_SAVEFH]		= (nfsd4_dec)nfsd4_decode_noop,
--	[OP_SECINFO]		= (nfsd4_dec)nfsd4_decode_secinfo,
--	[OP_SETATTR]		= (nfsd4_dec)nfsd4_decode_setattr,
--	[OP_SETCLIENTID]	= (nfsd4_dec)nfsd4_decode_notsupp,
--	[OP_SETCLIENTID_CONFIRM]= (nfsd4_dec)nfsd4_decode_notsupp,
--	[OP_VERIFY]		= (nfsd4_dec)nfsd4_decode_verify,
--	[OP_WRITE]		= (nfsd4_dec)nfsd4_decode_write,
--	[OP_RELEASE_LOCKOWNER]	= (nfsd4_dec)nfsd4_decode_notsupp,
- 
- 	/* new operations for NFSv4.1 */
- 	[OP_BACKCHANNEL_CTL]	= (nfsd4_dec)nfsd4_decode_backchannel_ctl,
-@@ -1599,23 +1582,23 @@ static nfsd4_dec nfsd41_dec_ops[] = {
- 	[OP_RECLAIM_COMPLETE]	= (nfsd4_dec)nfsd4_decode_reclaim_complete,
- };
- 
--struct nfsd4_minorversion_ops {
--	nfsd4_dec *decoders;
--	int nops;
--};
--
--static struct nfsd4_minorversion_ops nfsd4_minorversion[] = {
--	[0] = { nfsd4_dec_ops, ARRAY_SIZE(nfsd4_dec_ops) },
--	[1] = { nfsd41_dec_ops, ARRAY_SIZE(nfsd41_dec_ops) },
--	[2] = { nfsd41_dec_ops, ARRAY_SIZE(nfsd41_dec_ops) },
--};
-+static inline bool
-+nfsd4_opnum_in_range(struct nfsd4_compoundargs *argp, struct nfsd4_op *op)
-+{
-+	if (op->opnum < FIRST_NFS4_OP || op->opnum > LAST_NFS4_OP)
-+		return false;
-+	else if (argp->minorversion == 0 && op->opnum > OP_RELEASE_LOCKOWNER)
-+		return false;
-+	else if (argp->minorversion == 1 && op->opnum > OP_RECLAIM_COMPLETE)
-+		return false;
-+	return true;
-+}
- 
- static __be32
- nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
- {
- 	DECODE_HEAD;
- 	struct nfsd4_op *op;
--	struct nfsd4_minorversion_ops *ops;
- 	bool cachethis = false;
- 	int i;
- 
-@@ -1640,10 +1623,9 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
- 		}
- 	}
- 
--	if (argp->minorversion >= ARRAY_SIZE(nfsd4_minorversion))
-+	if (argp->minorversion > NFSD_SUPPORTED_MINOR_VERSION)
- 		argp->opcnt = 0;
- 
--	ops = &nfsd4_minorversion[argp->minorversion];
- 	for (i = 0; i < argp->opcnt; i++) {
- 		op = &argp->ops[i];
- 		op->replay = NULL;
-@@ -1651,8 +1633,8 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
- 		READ_BUF(4);
- 		READ32(op->opnum);
- 
--		if (op->opnum >= FIRST_NFS4_OP && op->opnum <= LAST_NFS4_OP)
--			op->status = ops->decoders[op->opnum](argp, &op->u);
-+		if (nfsd4_opnum_in_range(argp, op))
-+			op->status = nfsd4_dec_ops[op->opnum](argp, &op->u);
- 		else {
- 			op->opnum = OP_ILLEGAL;
- 			op->status = nfserr_op_illegal;
--- 
-1.8.4.2
+No. It's a real problem for clients too if the NFS server starts exporting ACLs and security labels via this interface. Everything from integer endianness problems when getfacl attempts to read raw binary acls from the server, to breakage of caching models when we allow setfacl and don't invalidate our file access caches...
 
+> We should probably start a discussion in the IETF to resolve the issues 
+> you see with XATTR at least for NFSv4.3. 
+
+Let's get the basic discussion of motivation right first.
+
+Trond
