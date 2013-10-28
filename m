@@ -1,211 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:44557 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758540Ab3JQSMY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Oct 2013 14:12:24 -0400
-Received: from acsinet22.oracle.com (acsinet22.oracle.com [141.146.126.238])
-	by aserp1040.oracle.com (Sentrion-MTA-4.3.1/Sentrion-MTA-4.3.1) with ESMTP id r9HICNOR004705
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Thu, 17 Oct 2013 18:12:24 GMT
-Received: from nfsvm18.us.oracle.com (nfsvm18.us.oracle.com [10.135.198.118])
-	by acsinet22.oracle.com (8.14.4+Sun/8.14.4) with ESMTP id r9HICNAF009990
-	for <linux-nfs@vger.kernel.org>; Thu, 17 Oct 2013 18:12:23 GMT
-From: Chuck Lever <chuck.lever@oracle.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 02/21] SUNRPC: Add a helper to switch the transport of an rpc_clnt
-Date: Thu, 17 Oct 2013 14:12:23 -0400
-Message-Id: <20131017181222.1073.37277.stgit@nfsvm18.us.oracle.com>
-In-Reply-To: <20131017180630.1073.18400.stgit@nfsvm18.us.oracle.com>
-References: <20131017180630.1073.18400.stgit@nfsvm18.us.oracle.com>
+Received: from mx12.netapp.com ([216.240.18.77]:40008 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757298Ab3J1Spw convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Oct 2013 14:45:52 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Weston Andros Adamson <dros@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 5/5] NFSv4: clean up nfs4_state reference counting
+Date: Mon, 28 Oct 2013 18:45:50 +0000
+Message-ID: <1382985949.3314.5.camel@leira.trondhjem.org>
+References: <1382375414-5854-1-git-send-email-dros@netapp.com>
+	 <1382375414-5854-6-git-send-email-dros@netapp.com>
+In-Reply-To: <1382375414-5854-6-git-send-email-dros@netapp.com>
+Content-Type: text/plain; charset="utf-7"
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
+On Mon, 2013-10-21 at 13:10 -0400, Weston Andros Adamson wrote:
++AD4- Use atomic+AF8-inc+AF8-not+AF8-zero() to avoid referencing a state that is currently
++AD4- being freed.
++AD4- 
++AD4- Signed-off-by: Weston Andros Adamson +ADw-dros+AEA-netapp.com+AD4-
++AD4- ---
++AD4-  fs/nfs/nfs4proc.c  +AHw- 8 +-+-+-+-+-+---
++AD4-  fs/nfs/nfs4state.c +AHw- 3 +-+--
++AD4-  2 files changed, 8 insertions(+-), 3 deletions(-)
++AD4- 
++AD4- diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
++AD4- index a3b78df..005543d 100644
++AD4- --- a/fs/nfs/nfs4proc.c
++AD4- +-+-+- b/fs/nfs/nfs4proc.c
++AD4- +AEAAQA- -1275,7 +-1275,8 +AEAAQA- static struct nfs4+AF8-state +ACo-nfs4+AF8-try+AF8-open+AF8-cached(struct nfs4+AF8-opendata +ACo-opendata)
++AD4-  out:
++AD4-  	return ERR+AF8-PTR(ret)+ADs-
++AD4-  out+AF8-return+AF8-state:
++AD4- -	atomic+AF8-inc(+ACY-state-+AD4-count)+ADs-
++AD4- +-	if (+ACE-atomic+AF8-inc+AF8-not+AF8-zero(+ACY-state-+AD4-count))
++AD4- +-		return ERR+AF8-PTR(-EINVAL)+ADs-
++AD4-  	return state+ADs-
++AD4-  +AH0-
++AD4-  
++AD4- +AEAAQA- -1429,7 +-1430,10 +AEAAQA- static struct nfs4+AF8-opendata +ACo-nfs4+AF8-open+AF8-recoverdata+AF8-alloc(struct nfs+AF8-open+AF8-context
++AD4-  	if (opendata +AD0APQ- NULL)
++AD4-  		return ERR+AF8-PTR(-ENOMEM)+ADs-
++AD4-  	opendata-+AD4-state +AD0- state+ADs-
++AD4- -	atomic+AF8-inc(+ACY-state-+AD4-count)+ADs-
++AD4- +-	if (+ACE-atomic+AF8-inc+AF8-not+AF8-zero(+ACY-state-+AD4-count)) +AHs-
++AD4- +-		nfs4+AF8-opendata+AF8-put(opendata)+ADs-
++AD4- +-		return ERR+AF8-PTR(-EINVAL)+ADs-
++AD4- +-	+AH0-
++AD4-  	return opendata+ADs-
++AD4-  +AH0-
++AD4-  
++AD4- diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
++AD4- index cc14cbb..1c71907 100644
++AD4- --- a/fs/nfs/nfs4state.c
++AD4- +-+-+- b/fs/nfs/nfs4state.c
++AD4- +AEAAQA- -1416,7 +-1416,8 +AEAAQA- restart:
++AD4-  			continue+ADs-
++AD4-  		if (state-+AD4-state +AD0APQ- 0)
++AD4-  			continue+ADs-
++AD4- -		atomic+AF8-inc(+ACY-state-+AD4-count)+ADs-
++AD4- +-		if (+ACE-atomic+AF8-inc+AF8-not+AF8-zero(+ACY-state-+AD4-count))
++AD4- +-			continue+ADs-
++AD4-  		spin+AF8-unlock(+ACY-sp-+AD4-so+AF8-lock)+ADs-
++AD4-  		status +AD0- ops-+AD4-recover+AF8-open(sp, state)+ADs-
++AD4-  		if (status +AD4APQ- 0) +AHs-
 
-Add an RPC client API to redirect an rpc_clnt's transport from a
-source server to a destination server during a migration event.
+Is this patch needed? We should already be holding a reference to the
+open+AF8-context, so AFAICS we know that the state-+AD4-count is non-zero.
 
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-[ cel: forward ported to 3.12 ]
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- include/linux/sunrpc/clnt.h |    4 ++
- net/sunrpc/clnt.c           |  107 ++++++++++++++++++++++++++++++++++++++++---
- 2 files changed, 104 insertions(+), 7 deletions(-)
+Cheers
+  Trond
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
-diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-index 6740801..e90c543 100644
---- a/include/linux/sunrpc/clnt.h
-+++ b/include/linux/sunrpc/clnt.h
-@@ -134,6 +134,10 @@ void rpc_task_reset_client(struct rpc_task *task, struct rpc_clnt *clnt);
- struct rpc_clnt *rpc_clone_client(struct rpc_clnt *);
- struct rpc_clnt *rpc_clone_client_set_auth(struct rpc_clnt *,
- 				rpc_authflavor_t);
-+int		rpc_switch_client_transport(struct rpc_clnt *,
-+				struct xprt_create *,
-+				const struct rpc_timeout *);
-+
- void		rpc_shutdown_client(struct rpc_clnt *);
- void		rpc_release_client(struct rpc_clnt *);
- void		rpc_task_release_client(struct rpc_task *);
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 1aa361b..d2c8091 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -25,6 +25,7 @@
- #include <linux/namei.h>
- #include <linux/mount.h>
- #include <linux/slab.h>
-+#include <linux/rcupdate.h>
- #include <linux/utsname.h>
- #include <linux/workqueue.h>
- #include <linux/in.h>
-@@ -264,6 +265,25 @@ void rpc_clients_notifier_unregister(void)
- 	return rpc_pipefs_notifier_unregister(&rpc_clients_block);
- }
- 
-+static struct rpc_xprt *rpc_clnt_set_transport(struct rpc_clnt *clnt,
-+		struct rpc_xprt *xprt,
-+		const struct rpc_timeout *timeout)
-+{
-+	struct rpc_xprt *old;
-+
-+	spin_lock(&clnt->cl_lock);
-+	old = clnt->cl_xprt;
-+
-+	if (!xprt_bound(xprt))
-+		clnt->cl_autobind = 1;
-+
-+	clnt->cl_timeout = timeout;
-+	rcu_assign_pointer(clnt->cl_xprt, xprt);
-+	spin_unlock(&clnt->cl_lock);
-+
-+	return old;
-+}
-+
- static void rpc_clnt_set_nodename(struct rpc_clnt *clnt, const char *nodename)
- {
- 	clnt->cl_nodelen = strlen(nodename);
-@@ -338,7 +358,8 @@ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args,
- {
- 	const struct rpc_program *program = args->program;
- 	const struct rpc_version *version;
--	struct rpc_clnt		*clnt = NULL;
-+	struct rpc_clnt *clnt = NULL;
-+	const struct rpc_timeout *timeout;
- 	int err;
- 
- 	/* sanity check the name before trying to print it */
-@@ -366,7 +387,6 @@ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args,
- 	if (err)
- 		goto out_no_clid;
- 
--	rcu_assign_pointer(clnt->cl_xprt, xprt);
- 	clnt->cl_procinfo = version->procs;
- 	clnt->cl_maxproc  = version->nrprocs;
- 	clnt->cl_prog     = args->prognumber ? : program->number;
-@@ -381,16 +401,15 @@ static struct rpc_clnt * rpc_new_client(const struct rpc_create_args *args,
- 	INIT_LIST_HEAD(&clnt->cl_tasks);
- 	spin_lock_init(&clnt->cl_lock);
- 
--	if (!xprt_bound(xprt))
--		clnt->cl_autobind = 1;
--
--	clnt->cl_timeout = xprt->timeout;
-+	timeout = xprt->timeout;
- 	if (args->timeout != NULL) {
- 		memcpy(&clnt->cl_timeout_default, args->timeout,
- 				sizeof(clnt->cl_timeout_default));
--		clnt->cl_timeout = &clnt->cl_timeout_default;
-+		timeout = &clnt->cl_timeout_default;
- 	}
- 
-+	rpc_clnt_set_transport(clnt, xprt, timeout);
-+
- 	clnt->cl_rtt = &clnt->cl_rtt_default;
- 	rpc_init_rtt(&clnt->cl_rtt_default, clnt->cl_timeout->to_initval);
- 
-@@ -601,6 +620,80 @@ rpc_clone_client_set_auth(struct rpc_clnt *clnt, rpc_authflavor_t flavor)
- }
- EXPORT_SYMBOL_GPL(rpc_clone_client_set_auth);
- 
-+/**
-+ * rpc_switch_client_transport: switch the RPC transport on the fly
-+ * @clnt: pointer to a struct rpc_clnt
-+ * @args: pointer to the new transport arguments
-+ * @timeout: pointer to the new timeout parameters
-+ *
-+ * This function allows the caller to switch the RPC transport for the
-+ * rpc_clnt structure 'clnt' to allow it to connect to a mirrored NFS
-+ * server, for instance.  It assumes that the caller has ensured that
-+ * there are no active RPC tasks by using some form of locking.
-+ *
-+ * Returns zero if "clnt" is now using the new xprt.  Otherwise a
-+ * negative errno is returned, and "clnt" continues to use the old
-+ * xprt.
-+ */
-+int rpc_switch_client_transport(struct rpc_clnt *clnt,
-+		struct xprt_create *args,
-+		const struct rpc_timeout *timeout)
-+{
-+	const struct rpc_timeout *old_timeo;
-+	rpc_authflavor_t pseudoflavor;
-+	struct rpc_xprt *xprt, *old;
-+	struct rpc_clnt *parent;
-+	int err;
-+
-+	xprt = xprt_create_transport(args);
-+	if (IS_ERR(xprt)) {
-+		dprintk("RPC:       failed to create new xprt for clnt %p\n",
-+			clnt);
-+		return PTR_ERR(xprt);
-+	}
-+
-+	pseudoflavor = clnt->cl_auth->au_flavor;
-+
-+	old_timeo = clnt->cl_timeout;
-+	old = rpc_clnt_set_transport(clnt, xprt, timeout);
-+
-+	rpc_unregister_client(clnt);
-+	__rpc_clnt_remove_pipedir(clnt);
-+
-+	/*
-+	 * A new transport was created.  "clnt" therefore
-+	 * becomes the root of a new cl_parent tree.  clnt's
-+	 * children, if it has any, still point to the old xprt.
-+	 */
-+	parent = clnt->cl_parent;
-+	clnt->cl_parent = clnt;
-+
-+	/*
-+	 * The old rpc_auth cache cannot be re-used.  GSS
-+	 * contexts in particular are between a single
-+	 * client and server.
-+	 */
-+	err = rpc_client_register(clnt, pseudoflavor, NULL);
-+	if (err)
-+		goto out_revert;
-+
-+	synchronize_rcu();
-+	if (parent != clnt)
-+		rpc_release_client(parent);
-+	xprt_put(old);
-+	dprintk("RPC:       replaced xprt for clnt %p\n", clnt);
-+	return 0;
-+
-+out_revert:
-+	rpc_clnt_set_transport(clnt, old, old_timeo);
-+	clnt->cl_parent = parent;
-+	rpc_client_register(clnt, pseudoflavor, NULL);
-+	xprt_put(xprt);
-+	dprintk("RPC:       failed to switch xprt for clnt %p\n", clnt);
-+	return err;
-+}
-+EXPORT_SYMBOL_GPL(rpc_switch_client_transport);
-+
- /*
-  * Kill all tasks for the given client.
-  * XXX: kill their descendants as well?
-
+NetApp
+Trond.Myklebust+AEA-netapp.com
+www.netapp.com
