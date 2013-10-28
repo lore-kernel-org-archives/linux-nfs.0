@@ -1,138 +1,122 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:49841 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752370Ab3JVPcS convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Oct 2013 11:32:18 -0400
-From: "Adamson, Andy" <William.Adamson@netapp.com>
-To: Simo Sorce <simo@redhat.com>
-CC: "<steved@redhat.com>" <steved@redhat.com>,
-        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH Version 2 0/3] GSSD: Use gss-ctx keys and gsskeyd to
- sync Kerberos credentials and kernel gss_contexts.
-Date: Tue, 22 Oct 2013 15:32:16 +0000
-Message-ID: <A8A66580-CD6F-4141-AE93-B1DD025BFD7A@netapp.com>
-References: <1382451757-3032-1-git-send-email-andros@netapp.com>
- <1382454148.9794.72.camel@willson.li.ssimo.org>
-In-Reply-To: <1382454148.9794.72.camel@willson.li.ssimo.org>
-Content-Type: text/plain; charset="us-ascii"
+Received: from e39.co.us.ibm.com ([32.97.110.160]:60086 "EHLO
+	e39.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755876Ab3J1Uof (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Oct 2013 16:44:35 -0400
+Received: from /spool/local
+	by e39.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <eshel@us.ibm.com>;
+	Mon, 28 Oct 2013 14:44:35 -0600
+In-Reply-To: <526EAD86.6090507@redhat.com>
+References: <1382807547.29041.12.camel@heisenberg.scientia.net> <20131027191512.GA31322@fieldses.org> <1382911068.6932.20.camel@heisenberg.scientia.net> <8DB0D7A2-BA2A-4001-A01C-D498C777B243@netapp.com> <1382920068.6932.46.camel@heisenberg.scientia.net> <2E672741-FE4F-4287-8D00-B7634A71709E@netapp.com> <526E8562.3040809@redhat.com> <1382976943.8774.10.camel@heisenberg.scientia.net> <FD29488A-348B-48BA-9B1D-4ACF997BC794@netapp.com> <526EA65A.7010209@redhat.com> <20131028180838.GG31322@fieldses.org> <526EAD86.6090507@redhat.com>
+To: spencer.shepler@gmail.com
+Cc: Dr Fields James Bruce <bfields@fieldses.org>,
+        Christoph Anton Mitterer <calestyo@scientia.net>,
+        Mailing List Linux NFS <linux-nfs@vger.kernel.org>,
+        linux-nfs-owner@vger.kernel.org, Steve Dickson <SteveD@redhat.com>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "Ric Wheeler" <ric.wheeler@usenix.org>, nfsv4@ietf.org
 MIME-Version: 1.0
+Subject: Re: XATTRs in NFS?
+From: Marc Eshel <eshel@us.ibm.com>
+Message-ID: <OFA4C7B613.86F16AC7-ON88257C12.006FE486-88257C12.0071EE79@us.ibm.com>
+Date: Mon, 28 Oct 2013 13:44:25 -0700
+Content-Type: text/plain; charset="US-ASCII"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi Spencer, 
+Is it still possible to get on the agenda fir IETF 88, I just got approval 
+to travel. We can use about 15 minutes, or what ever is available to 
+discussion the future of named attributes in NFS. The two main questions 
+that we need answer are: 
+1. Do we need them? what applications use them and how. 
+2. Can we have a more simple model that handles just user attributes.
 
-On Oct 22, 2013, at 11:02 AM, Simo Sorce <simo@redhat.com> wrote:
+Input is welcome to help me make the case at the meeting.
 
-> On Tue, 2013-10-22 at 10:22 -0400, andros@netapp.com wrote:
->> From: Andy Adamson <andros@netapp.com>
->> 
->> This is an RFC patchset, which will be used for testing.
->> 
->> This patchset requires the "SUNRPC: destroy gss_cred and context on Kerberos credential destruction" kernel patchset.
->> 
->> We need to do a lot of testing to ensure that once kdestroy and gss-ctx
->> gss_user_destroy is called, all existing buffered
->> writes using the 'destroyed gss credential + context' are serviced.
->> 
->> Differences from version 1:
->> 
->> - moved from nfstgt_login and nfstgt_logout to gsskeyd.
->> - gsskeyd automatically creates gss-ctx key on kinit and destroys the gss-ctx
->> key on kdestroy.
->> 
->> gsskeyd will need to act differently for different krb5 credential caches.
-> 
-> Why ?
+Thanks, Marc.
 
-Just need different parsing to know which directory to poll. 
-> 
->> For example, some versions of gssd store FILE credentials in FILE:/tmp/krb5cc_<UID>
->> while this code, written for fedora 19 uses FILE:/run/user/<UID>/krb5cc/tgt.
-> 
-> This is incorrect, Fedora 19 use DIR type ccaches, so you should
-> reference a cache withing the dir type, which will notmally be something
-> like: DIR:/run/user/<uidnumber>/krb5cc for the whole collection or
-> DIR::/run/user/<uidnumber>/krb5cc/txtXXXXXX for the sepcific cache.
-> 
-> However note that due to issues with DIR type caches we are moving to a
-> new KEYRING based type of cache in F20, so assuming any specific type of
-> cache is a dead start.
 
-But I'm not assuming any kind of kerberos credential cache! I just coded to one type for this RFC.
-Didn't you see my KEYRING based ccache comment below?
 
-> 
->> As Trond suggested, if we keep gsskeyd separate from gssd, we could set up a
->> configuration file along the lines of the keytools' request-key.conf file to
->> allow both NFS and CIFS (and other filesystems) to install plugin handlers
->> for kinit/kdestroy events.
-> 
-> Given in many cases (the desirable ones at least) kerberos credentials
-> are not inited via kinit, but rather by things like pam_krb5, sssd, or
-> directly imported via sshd, I am trying to understand how you are going
-> to address the majority of these cases.
 
-All of these cases use a kerberos credential cache which if is of type FILE the gsskeyd can poll inotify and if it is of type KEY: then gsskeyd adds the gss-ctx key to the Kerberos keyring (that is the theory :)) so the same code services kinit/pam_krb5
+From:   Ric Wheeler <rwheeler@redhat.com>
+To:     Dr Fields James Bruce <bfields@fieldses.org>, 
+Cc:     "Myklebust, Trond" <Trond.Myklebust@netapp.com>, Christoph Anton 
+Mitterer <calestyo@scientia.net>, Mailing List Linux NFS 
+<linux-nfs@vger.kernel.org>, Steve Dickson <SteveD@redhat.com>
+Date:   10/28/2013 11:32 AM
+Subject:        Re: XATTRs in NFS?
+Sent by:        linux-nfs-owner@vger.kernel.org
 
-> 
-> Should users put gsskeyd in their .profile/.bashrc files or something ?
-> 
->> Else, we could have gssd be the process to poll inotify (given
->> that it already polls rpc_pipefs) and then just have it fork off the
->> subprocess if and when it sees an interesting event.
-> 
-> What is an 'interesting' event ?
 
-TGT (used for NFS TGS) creation/destruction
 
-> 
->> We need to investigate how this works when the kernel keyring is used for
->> Kerberos credentials. I believe that in this case gsskeyd can add the gss-ctx
->> key to the kerberos keyring, and it will get destroyed along with all other
->> keys at kdestroy.
-> 
-> Is there any reason why you are doing this work with an utility that is
-> separate from gssd or libkrb5 ?
+On 10/28/2013 02:08 PM, Dr Fields James Bruce wrote:
+> On Mon, Oct 28, 2013 at 02:00:58PM -0400, Ric Wheeler wrote:
+>> On 10/28/2013 01:49 PM, Myklebust, Trond wrote:
+>>> On Oct 28, 2013, at 12:15 PM, Christoph Anton Mitterer 
+<calestyo@scientia.net> wrote:
+>>>
+>>>> On Mon, 2013-10-28 at 11:40 -0400, Ric Wheeler wrote:
+>>>>> Then you end up with large directories and an extra name per inode 
+that needs to
+>>>>> be stored and extra lookups for each file when you do a whole file 
+system crawl.
+>>>>>
+>>>>> Certainly not as easy as adding and xattrs with that information :)
+>>>> And I think there's another reason why it wouldn't work...
+>>>>
+>>>> Imagine I change my system to encode what should be XATTRs in 
+hardlink
+>>>> pseudo files...
+>>>>
+>>>> If I have such pair locally e.g. on my ext4:
+>>>> /foo/bar/actual/file
+>>>> /meta/<SHA512 identifier>.2342348324
+>>>>
+>>>> And now move/copy the file via the network to the archive, I'd have 
+to
+>>>> copy both files (which is really annoying), and I'd guess the inode
+>>>> coupling would get los (and at least the name wouldn't fit anymore).
+>>>>
+>>>> So the whole thing is IMHO not even a workaround.
+>>> OK. So you're going to do XATTRs for us?
+>>>
+>>> Trond
+>> Now that pNFS is perfect and labeled NFS has made it upstream, I
+>> think that Steve D must be looking for something to keep him busy :)
+> I agree with Trond that we first really need good evidence about exactly
+> who wants this and why.
+>
+> --b.
 
-Yes  - to allow both NFS and CIFS (and other filesystems) to install plugin handlers for kerberos credential cache creation/destruction events.
+For the user space xattrs, many applications store various types of 
+metadata. 
+Gluster for example heavily uses xattrs, other programs do things like 
+data 
+scrubbing (look for a long unchanged file, compute a has and store it as 
+an 
+xattr) or simply use it to annotate the file with the name of the program 
+that 
+created it. Think of it as file decorations or annotations.
 
-But, having gssd do it is fine, or having a client plugin in libkrb5 is also fine.
+Today, if we store files in NFS that have xattrs, we do in fact cause data 
+loss.
 
-> 
-> I think the only sensible way to handle something like this is by adding
-> support directly in libkrb5, I do not see something external ever
-> working reliably.
+I can understand an answer of "this would be hard to do for NFS and need 
+to go 
+through IETF" but think that xattrs are well enough established in Linux 
+and 
+supported in the tool chain that it is way too late to question whether or 
+not 
+supporting them is a worth our time.
 
-I agree that I should persue a libkrb5 approach.
+Ric
 
-> I am not against it for testing purposes, but then does it need to be
-> committed to nfs-utils ?
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-Did you not see the "This is an RFC patchset"? I'm not asking for a commit to nfs-utils, but "request for comments" which you just did!  Thanks :)
 
--->Andy
-
-> 
-> Simo.
-> 
->> Andy Adamson (2):
->>  GSSD add cc_name to upcall
->>  ANDROS: update gsskeyd to use new /run/user/UID/krb5cc/tgt cache file
->> 
->> Weston Andros Adamson (1):
->>  WIP: Add gsskeyd
->> 
->> configure.ac            |   1 +
->> utils/Makefile.am       |   2 +-
->> utils/gssd/gssd_proc.c  |  37 ++++-
->> utils/gssd/krb5_util.c  |   2 +-
->> utils/gssd/krb5_util.h  |   1 +
->> utils/gsskeyd/gsskeyd.c | 371 ++++++++++++++++++++++++++++++++++++++++++++++++
->> 6 files changed, 408 insertions(+), 6 deletions(-)
->> create mode 100644 utils/gsskeyd/gsskeyd.c
->> 
-> 
-> 
-> -- 
-> Simo Sorce * Red Hat, Inc * New York
-> 
 
