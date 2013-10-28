@@ -1,791 +1,418 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:16269 "EHLO mx11.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:44152 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755695Ab3JQOSB convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Oct 2013 10:18:01 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: Bohuslav Kabrda <bkabrda@redhat.com>, Steve Dickson <SteveD@redhat.com>
-CC: linux-nfs list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] Make mountstats and nfs-iostat Python 3 compatible
-Date: Thu, 17 Oct 2013 14:17:58 +0000
-Message-ID: <CFE8658A-2407-424A-8C8E-1B3E74556B9A@netapp.com>
-References: <1379409678-15730-1-git-send-email-bkabrda@redhat.com>
- <5239FBFB.8010300@RedHat.com>
- <863050D3-36C8-460D-9BF5-31237C51D4F4@netapp.com>
- <397459728.7504449.1381992772429.JavaMail.root@redhat.com>
-In-Reply-To: <397459728.7504449.1381992772429.JavaMail.root@redhat.com>
-Content-Type: text/plain; charset="us-ascii"
+	id S1751651Ab3J1VwW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 28 Oct 2013 17:52:22 -0400
+Date: Mon, 28 Oct 2013 17:52:21 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Anna Schumaker <bjschuma@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [RFC 5/4] NFSD: Add basic CB_OFFLOAD support
+Message-ID: <20131028215221.GQ31322@fieldses.org>
+References: <1382972247-1108-1-git-send-email-bjschuma@netapp.com>
+ <1382972247-1108-6-git-send-email-bjschuma@netapp.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1382972247-1108-6-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Oct 17, 2013, at 2:52 AM, Bohuslav Kabrda <bkabrda@redhat.com> wrote:
+On Mon, Oct 28, 2013 at 10:57:27AM -0400, Anna Schumaker wrote:
+> This patch adds basic offload support to the WRITE_PLUS operation.
+> Since I don't implement OFFLOAD_ABORT, OFFLOAD_REVOKE or OFFLOAD_STATUS
+> this patch is NOT spec compliant and should not be applied without
+> further work.
 
-> ----- Original Message -----
->> This just made it into f19 and it doesn't work for me:
->> 
->> $ mountstats /mnt
->>  File "/usr/sbin/mountstats", line 272
->>    (count, ((count * 100) / sends)), end=' ')
->>                                         ^
->> SyntaxError: invalid syntax
->> 
->> $ python
->> Python 2.7.5 (default, Oct  8 2013, 12:19:40)
->> [GCC 4.8.1 20130603 (Red Hat 4.8.1-1)] on linux2
->> 
->> 
->> I think mountstats needs this line at the top of the file:
->> 
->> from __future__ import print_function
->> 
-> 
-> True, sorry for the bug.
-> Slavek
+Ugh.  I don't understand why we need asynchronous modes for all these
+operations.
 
-I just posted this fix to the list as a patch.
-
--dros
+--b.
 
 > 
->> At least until python3 is the default on fedora.
->> 
->> -dros
->> 
->> On Sep 18, 2013, at 3:16 PM, Steve Dickson <SteveD@redhat.com> wrote:
->> 
->>> 
->>> 
->>> On 17/09/13 05:21, Bohuslav Kabrda wrote:
->>>> This will make mountstat and nfs-iostat run on Python 2.6, 2.7
->>>> and >= 3.0
->>>> 
->>>> Signed-off-by: Bohuslav Kabrda <bkabrda@redhat.com>
->>> Committed!
->>> 
->>> steved.
->>> 
->>>> ---
->>>> tools/mountstats/mountstats.py | 310
->>>> ++++++++++++++++++++---------------------
->>>> tools/nfs-iostat/nfs-iostat.py |  22 +--
->>>> 2 files changed, 166 insertions(+), 166 deletions(-)
->>>> 
->>>> diff --git a/tools/mountstats/mountstats.py
->>>> b/tools/mountstats/mountstats.py
->>>> index b95b71d..3f5fea5 100644
->>>> --- a/tools/mountstats/mountstats.py
->>>> +++ b/tools/mountstats/mountstats.py
->>>> @@ -53,7 +53,7 @@ class DeviceData:
->>>>            if words[6].find('nfs') != -1:
->>>>                self.__nfs_data['statvers'] = words[7]
->>>>        elif words[0] == 'age:':
->>>> -            self.__nfs_data['age'] = long(words[1])
->>>> +            self.__nfs_data['age'] = int(words[1])
->>>>        elif words[0] == 'opts:':
->>>>            self.__nfs_data['mountoptions'] =
->>>>            ''.join(words[1:]).split(',')
->>>>        elif words[0] == 'caps:':
->>>> @@ -91,12 +91,12 @@ class DeviceData:
->>>>            self.__nfs_data['shortwrites'] = int(words[22])
->>>>            self.__nfs_data['delay'] = int(words[23])
->>>>        elif words[0] == 'bytes:':
->>>> -            self.__nfs_data['normalreadbytes'] = long(words[1])
->>>> -            self.__nfs_data['normalwritebytes'] = long(words[2])
->>>> -            self.__nfs_data['directreadbytes'] = long(words[3])
->>>> -            self.__nfs_data['directwritebytes'] = long(words[4])
->>>> -            self.__nfs_data['serverreadbytes'] = long(words[5])
->>>> -            self.__nfs_data['serverwritebytes'] = long(words[6])
->>>> +            self.__nfs_data['normalreadbytes'] = int(words[1])
->>>> +            self.__nfs_data['normalwritebytes'] = int(words[2])
->>>> +            self.__nfs_data['directreadbytes'] = int(words[3])
->>>> +            self.__nfs_data['directwritebytes'] = int(words[4])
->>>> +            self.__nfs_data['serverreadbytes'] = int(words[5])
->>>> +            self.__nfs_data['serverwritebytes'] = int(words[6])
->>>> 
->>>>    def __parse_rpc_line(self, words):
->>>>        if words[0] == 'RPC':
->>>> @@ -110,8 +110,8 @@ class DeviceData:
->>>>                self.__rpc_data['rpcsends'] = int(words[4])
->>>>                self.__rpc_data['rpcreceives'] = int(words[5])
->>>>                self.__rpc_data['badxids'] = int(words[6])
->>>> -                self.__rpc_data['inflightsends'] = long(words[7])
->>>> -                self.__rpc_data['backlogutil'] = long(words[8])
->>>> +                self.__rpc_data['inflightsends'] = int(words[7])
->>>> +                self.__rpc_data['backlogutil'] = int(words[8])
->>>>            elif words[1] == 'tcp':
->>>>                self.__rpc_data['port'] = words[2]
->>>>                self.__rpc_data['bind_count'] = int(words[3])
->>>> @@ -121,7 +121,7 @@ class DeviceData:
->>>>                self.__rpc_data['rpcsends'] = int(words[7])
->>>>                self.__rpc_data['rpcreceives'] = int(words[8])
->>>>                self.__rpc_data['badxids'] = int(words[9])
->>>> -                self.__rpc_data['inflightsends'] = long(words[10])
->>>> +                self.__rpc_data['inflightsends'] = int(words[10])
->>>>                self.__rpc_data['backlogutil'] = int(words[11])
->>>>            elif words[1] == 'rdma':
->>>>                self.__rpc_data['port'] = words[2]
->>>> @@ -148,7 +148,7 @@ class DeviceData:
->>>>        else:
->>>>            op = words[0][:-1]
->>>>            self.__rpc_data['ops'] += [op]
->>>> -            self.__rpc_data[op] = [long(word) for word in words[1:]]
->>>> +            self.__rpc_data[op] = [int(word) for word in words[1:]]
->>>> 
->>>>    def parse_stats(self, lines):
->>>>        """Turn a list of lines from a mount stat file into a
->>>> @@ -179,81 +179,81 @@ class DeviceData:
->>>>    def display_nfs_options(self):
->>>>        """Pretty-print the NFS options
->>>>        """
->>>> -        print 'Stats for %s mounted on %s:' % \
->>>> -            (self.__nfs_data['export'], self.__nfs_data['mountpoint'])
->>>> -
->>>> -        print '  NFS mount options: %s' %
->>>> ','.join(self.__nfs_data['mountoptions'])
->>>> -        print '  NFS server capabilities: %s' %
->>>> ','.join(self.__nfs_data['servercapabilities'])
->>>> -        if self.__nfs_data.has_key('nfsv4flags'):
->>>> -            print '  NFSv4 capability flags: %s' %
->>>> ','.join(self.__nfs_data['nfsv4flags'])
->>>> -        if self.__nfs_data.has_key('pseudoflavor'):
->>>> -            print '  NFS security flavor: %d  pseudoflavor: %d' % \
->>>> -                (self.__nfs_data['flavor'],
->>>> self.__nfs_data['pseudoflavor'])
->>>> +        print('Stats for %s mounted on %s:' % \
->>>> +            (self.__nfs_data['export'], self.__nfs_data['mountpoint']))
->>>> +
->>>> +        print('  NFS mount options: %s' %
->>>> ','.join(self.__nfs_data['mountoptions']))
->>>> +        print('  NFS server capabilities: %s' %
->>>> ','.join(self.__nfs_data['servercapabilities']))
->>>> +        if 'nfsv4flags' in self.__nfs_data:
->>>> +            print('  NFSv4 capability flags: %s' %
->>>> ','.join(self.__nfs_data['nfsv4flags']))
->>>> +        if 'pseudoflavor' in self.__nfs_data:
->>>> +            print('  NFS security flavor: %d  pseudoflavor: %d' % \
->>>> +                (self.__nfs_data['flavor'],
->>>> self.__nfs_data['pseudoflavor']))
->>>>        else:
->>>> -            print '  NFS security flavor: %d' % self.__nfs_data['flavor']
->>>> +            print('  NFS security flavor: %d' %
->>>> self.__nfs_data['flavor'])
->>>> 
->>>>    def display_nfs_events(self):
->>>>        """Pretty-print the NFS event counters
->>>>        """
->>>> -        print
->>>> -        print 'Cache events:'
->>>> -        print '  data cache invalidated %d times' %
->>>> self.__nfs_data['datainvalidates']
->>>> -        print '  attribute cache invalidated %d times' %
->>>> self.__nfs_data['attrinvalidates']
->>>> -        print '  inodes synced %d times' % self.__nfs_data['syncinodes']
->>>> -        print
->>>> -        print 'VFS calls:'
->>>> -        print '  VFS requested %d inode revalidations' %
->>>> self.__nfs_data['inoderevalidates']
->>>> -        print '  VFS requested %d dentry revalidations' %
->>>> self.__nfs_data['dentryrevalidates']
->>>> -        print
->>>> -        print '  VFS called nfs_readdir() %d times' %
->>>> self.__nfs_data['vfsreaddir']
->>>> -        print '  VFS called nfs_lookup() %d times' %
->>>> self.__nfs_data['vfslookup']
->>>> -        print '  VFS called nfs_permission() %d times' %
->>>> self.__nfs_data['vfspermission']
->>>> -        print '  VFS called nfs_file_open() %d times' %
->>>> self.__nfs_data['vfsopen']
->>>> -        print '  VFS called nfs_file_flush() %d times' %
->>>> self.__nfs_data['vfsflush']
->>>> -        print '  VFS called nfs_lock() %d times' %
->>>> self.__nfs_data['vfslock']
->>>> -        print '  VFS called nfs_fsync() %d times' %
->>>> self.__nfs_data['vfsfsync']
->>>> -        print '  VFS called nfs_file_release() %d times' %
->>>> self.__nfs_data['vfsrelease']
->>>> -        print
->>>> -        print 'VM calls:'
->>>> -        print '  VFS called nfs_readpage() %d times' %
->>>> self.__nfs_data['vfsreadpage']
->>>> -        print '  VFS called nfs_readpages() %d times' %
->>>> self.__nfs_data['vfsreadpages']
->>>> -        print '  VFS called nfs_writepage() %d times' %
->>>> self.__nfs_data['vfswritepage']
->>>> -        print '  VFS called nfs_writepages() %d times' %
->>>> self.__nfs_data['vfswritepages']
->>>> -        print
->>>> -        print 'Generic NFS counters:'
->>>> -        print '  File size changing operations:'
->>>> -        print '    truncating SETATTRs: %d  extending WRITEs: %d' % \
->>>> -            (self.__nfs_data['setattrtrunc'],
->>>> self.__nfs_data['extendwrite'])
->>>> -        print '  %d silly renames' % self.__nfs_data['sillyrenames']
->>>> -        print '  short reads: %d  short writes: %d' % \
->>>> -            (self.__nfs_data['shortreads'],
->>>> self.__nfs_data['shortwrites'])
->>>> -        print '  NFSERR_DELAYs from server: %d' %
->>>> self.__nfs_data['delay']
->>>> +        print()
->>>> +        print('Cache events:')
->>>> +        print('  data cache invalidated %d times' %
->>>> self.__nfs_data['datainvalidates'])
->>>> +        print('  attribute cache invalidated %d times' %
->>>> self.__nfs_data['attrinvalidates'])
->>>> +        print('  inodes synced %d times' % self.__nfs_data['syncinodes'])
->>>> +        print()
->>>> +        print('VFS calls:')
->>>> +        print('  VFS requested %d inode revalidations' %
->>>> self.__nfs_data['inoderevalidates'])
->>>> +        print('  VFS requested %d dentry revalidations' %
->>>> self.__nfs_data['dentryrevalidates'])
->>>> +        print()
->>>> +        print('  VFS called nfs_readdir() %d times' %
->>>> self.__nfs_data['vfsreaddir'])
->>>> +        print('  VFS called nfs_lookup() %d times' %
->>>> self.__nfs_data['vfslookup'])
->>>> +        print('  VFS called nfs_permission() %d times' %
->>>> self.__nfs_data['vfspermission'])
->>>> +        print('  VFS called nfs_file_open() %d times' %
->>>> self.__nfs_data['vfsopen'])
->>>> +        print('  VFS called nfs_file_flush() %d times' %
->>>> self.__nfs_data['vfsflush'])
->>>> +        print('  VFS called nfs_lock() %d times' %
->>>> self.__nfs_data['vfslock'])
->>>> +        print('  VFS called nfs_fsync() %d times' %
->>>> self.__nfs_data['vfsfsync'])
->>>> +        print('  VFS called nfs_file_release() %d times' %
->>>> self.__nfs_data['vfsrelease'])
->>>> +        print()
->>>> +        print('VM calls:')
->>>> +        print('  VFS called nfs_readpage() %d times' %
->>>> self.__nfs_data['vfsreadpage'])
->>>> +        print('  VFS called nfs_readpages() %d times' %
->>>> self.__nfs_data['vfsreadpages'])
->>>> +        print('  VFS called nfs_writepage() %d times' %
->>>> self.__nfs_data['vfswritepage'])
->>>> +        print('  VFS called nfs_writepages() %d times' %
->>>> self.__nfs_data['vfswritepages'])
->>>> +        print()
->>>> +        print('Generic NFS counters:')
->>>> +        print('  File size changing operations:')
->>>> +        print('    truncating SETATTRs: %d  extending WRITEs: %d' % \
->>>> +            (self.__nfs_data['setattrtrunc'],
->>>> self.__nfs_data['extendwrite']))
->>>> +        print('  %d silly renames' % self.__nfs_data['sillyrenames'])
->>>> +        print('  short reads: %d  short writes: %d' % \
->>>> +            (self.__nfs_data['shortreads'],
->>>> self.__nfs_data['shortwrites']))
->>>> +        print('  NFSERR_DELAYs from server: %d' %
->>>> self.__nfs_data['delay'])
->>>> 
->>>>    def display_nfs_bytes(self):
->>>>        """Pretty-print the NFS event counters
->>>>        """
->>>> -        print
->>>> -        print 'NFS byte counts:'
->>>> -        print '  applications read %d bytes via read(2)' %
->>>> self.__nfs_data['normalreadbytes']
->>>> -        print '  applications wrote %d bytes via write(2)' %
->>>> self.__nfs_data['normalwritebytes']
->>>> -        print '  applications read %d bytes via O_DIRECT read(2)' %
->>>> self.__nfs_data['directreadbytes']
->>>> -        print '  applications wrote %d bytes via O_DIRECT write(2)' %
->>>> self.__nfs_data['directwritebytes']
->>>> -        print '  client read %d bytes via NFS READ' %
->>>> self.__nfs_data['serverreadbytes']
->>>> -        print '  client wrote %d bytes via NFS WRITE' %
->>>> self.__nfs_data['serverwritebytes']
->>>> +        print()
->>>> +        print('NFS byte counts:')
->>>> +        print('  applications read %d bytes via read(2)' %
->>>> self.__nfs_data['normalreadbytes'])
->>>> +        print('  applications wrote %d bytes via write(2)' %
->>>> self.__nfs_data['normalwritebytes'])
->>>> +        print('  applications read %d bytes via O_DIRECT read(2)' %
->>>> self.__nfs_data['directreadbytes'])
->>>> +        print('  applications wrote %d bytes via O_DIRECT write(2)' %
->>>> self.__nfs_data['directwritebytes'])
->>>> +        print('  client read %d bytes via NFS READ' %
->>>> self.__nfs_data['serverreadbytes'])
->>>> +        print('  client wrote %d bytes via NFS WRITE' %
->>>> self.__nfs_data['serverwritebytes'])
->>>> 
->>>>    def display_rpc_generic_stats(self):
->>>>        """Pretty-print the generic RPC stats
->>>>        """
->>>>        sends = self.__rpc_data['rpcsends']
->>>> 
->>>> -        print
->>>> -        print 'RPC statistics:'
->>>> +        print()
->>>> +        print('RPC statistics:')
->>>> 
->>>> -        print '  %d RPC requests sent, %d RPC replies received (%d XIDs
->>>> not found)' % \
->>>> -            (sends, self.__rpc_data['rpcreceives'],
->>>> self.__rpc_data['badxids'])
->>>> +        print('  %d RPC requests sent, %d RPC replies received (%d XIDs
->>>> not found)' % \
->>>> +            (sends, self.__rpc_data['rpcreceives'],
->>>> self.__rpc_data['badxids']))
->>>>        if sends != 0:
->>>> -            print '  average backlog queue length: %d' % \
->>>> -                (float(self.__rpc_data['backlogutil']) / sends)
->>>> +            print('  average backlog queue length: %d' % \
->>>> +                (float(self.__rpc_data['backlogutil']) / sends))
->>>> 
->>>>    def display_rpc_op_stats(self):
->>>>        """Pretty-print the per-op stats
->>>> @@ -261,23 +261,23 @@ class DeviceData:
->>>>        sends = self.__rpc_data['rpcsends']
->>>> 
->>>>        # XXX: these should be sorted by 'count'
->>>> -        print
->>>> +        print()
->>>>        for op in self.__rpc_data['ops']:
->>>>            stats = self.__rpc_data[op]
->>>>            count = stats[0]
->>>>            retrans = stats[1] - count
->>>>            if count != 0:
->>>> -                print '%s:' % op
->>>> -                print '\t%d ops (%d%%)' % \
->>>> -                    (count, ((count * 100) / sends)),
->>>> -                print '\t%d retrans (%d%%)' % (retrans, ((retrans * 100)
->>>> / count)),
->>>> -                print '\t%d major timeouts' % stats[2]
->>>> -                print '\tavg bytes sent per op: %d\tavg bytes received
->>>> per op: %d' % \
->>>> -                    (stats[3] / count, stats[4] / count)
->>>> -                print '\tbacklog wait: %f' % (float(stats[5]) / count),
->>>> -                print '\tRTT: %f' % (float(stats[6]) / count),
->>>> -                print '\ttotal execute time: %f (milliseconds)' % \
->>>> -                    (float(stats[7]) / count)
->>>> +                print('%s:' % op)
->>>> +                print('\t%d ops (%d%%)' % \
->>>> +                    (count, ((count * 100) / sends)), end=' ')
->>>> +                print('\t%d retrans (%d%%)' % (retrans, ((retrans * 100)
->>>> / count)), end=' ')
->>>> +                print('\t%d major timeouts' % stats[2])
->>>> +                print('\tavg bytes sent per op: %d\tavg bytes received
->>>> per op: %d' % \
->>>> +                    (stats[3] / count, stats[4] / count))
->>>> +                print('\tbacklog wait: %f' % (float(stats[5]) / count),
->>>> end=' ')
->>>> +                print('\tRTT: %f' % (float(stats[6]) / count), end=' ')
->>>> +                print('\ttotal execute time: %f (milliseconds)' % \
->>>> +                    (float(stats[7]) / count))
->>>> 
->>>>    def compare_iostats(self, old_stats):
->>>>        """Return the difference between two sets of stats
->>>> @@ -285,9 +285,9 @@ class DeviceData:
->>>>        result = DeviceData()
->>>> 
->>>>        # copy self into result
->>>> -        for key, value in self.__nfs_data.iteritems():
->>>> +        for key, value in self.__nfs_data.items():
->>>>            result.__nfs_data[key] = value
->>>> -        for key, value in self.__rpc_data.iteritems():
->>>> +        for key, value in self.__rpc_data.items():
->>>>            result.__rpc_data[key] = value
->>>> 
->>>>        # compute the difference of each item in the list
->>>> @@ -295,7 +295,7 @@ class DeviceData:
->>>>        # the reference to them.  so we build new lists here
->>>>        # for the result object.
->>>>        for op in result.__rpc_data['ops']:
->>>> -            result.__rpc_data[op] = map(difference, self.__rpc_data[op],
->>>> old_stats.__rpc_data[op])
->>>> +            result.__rpc_data[op] = list(map(difference,
->>>> self.__rpc_data[op], old_stats.__rpc_data[op]))
->>>> 
->>>>        # update the remaining keys we care about
->>>>        result.__rpc_data['rpcsends'] -= old_stats.__rpc_data['rpcsends']
->>>> @@ -312,17 +312,17 @@ class DeviceData:
->>>>        if sample_time == 0:
->>>>            sample_time = float(self.__nfs_data['age'])
->>>> 
->>>> -        print
->>>> -        print '%s mounted on %s:' % \
->>>> -            (self.__nfs_data['export'], self.__nfs_data['mountpoint'])
->>>> +        print()
->>>> +        print('%s mounted on %s:' % \
->>>> +            (self.__nfs_data['export'], self.__nfs_data['mountpoint']))
->>>> 
->>>> -        print '\top/s\trpc bklog'
->>>> -        print '\t%.2f' % (sends / sample_time),
->>>> +        print('\top/s\trpc bklog')
->>>> +        print('\t%.2f' % (sends / sample_time), end=' ')
->>>>        if sends != 0:
->>>> -            print '\t%.2f' % \
->>>> -                ((float(self.__rpc_data['backlogutil']) / sends) /
->>>> sample_time)
->>>> +            print('\t%.2f' % \
->>>> +                ((float(self.__rpc_data['backlogutil']) / sends) /
->>>> sample_time))
->>>>        else:
->>>> -            print '\t0.00'
->>>> +            print('\t0.00')
->>>> 
->>>>        # reads:  ops/s, kB/s, avg rtt, and avg exe
->>>>        # XXX: include avg xfer size and retransmits?
->>>> @@ -332,15 +332,15 @@ class DeviceData:
->>>>        rtt = float(read_rpc_stats[6])
->>>>        exe = float(read_rpc_stats[7])
->>>> 
->>>> -        print '\treads:\tops/s\t\tkB/s\t\tavg RTT (ms)\tavg exe (ms)'
->>>> -        print '\t\t%.2f' % (ops / sample_time),
->>>> -        print '\t\t%.2f' % (kilobytes / sample_time),
->>>> +        print('\treads:\tops/s\t\tkB/s\t\tavg RTT (ms)\tavg exe (ms)')
->>>> +        print('\t\t%.2f' % (ops / sample_time), end=' ')
->>>> +        print('\t\t%.2f' % (kilobytes / sample_time), end=' ')
->>>>        if ops != 0:
->>>> -            print '\t\t%.2f' % (rtt / ops),
->>>> -            print '\t\t%.2f' % (exe / ops)
->>>> +            print('\t\t%.2f' % (rtt / ops), end=' ')
->>>> +            print('\t\t%.2f' % (exe / ops))
->>>>        else:
->>>> -            print '\t\t0.00',
->>>> -            print '\t\t0.00'
->>>> +            print('\t\t0.00', end=' ')
->>>> +            print('\t\t0.00')
->>>> 
->>>>        # writes:  ops/s, kB/s, avg rtt, and avg exe
->>>>        # XXX: include avg xfer size and retransmits?
->>>> @@ -350,15 +350,15 @@ class DeviceData:
->>>>        rtt = float(write_rpc_stats[6])
->>>>        exe = float(write_rpc_stats[7])
->>>> 
->>>> -        print '\twrites:\tops/s\t\tkB/s\t\tavg RTT (ms)\tavg exe (ms)'
->>>> -        print '\t\t%.2f' % (ops / sample_time),
->>>> -        print '\t\t%.2f' % (kilobytes / sample_time),
->>>> +        print('\twrites:\tops/s\t\tkB/s\t\tavg RTT (ms)\tavg exe (ms)')
->>>> +        print('\t\t%.2f' % (ops / sample_time), end=' ')
->>>> +        print('\t\t%.2f' % (kilobytes / sample_time), end=' ')
->>>>        if ops != 0:
->>>> -            print '\t\t%.2f' % (rtt / ops),
->>>> -            print '\t\t%.2f' % (exe / ops)
->>>> +            print('\t\t%.2f' % (rtt / ops), end=' ')
->>>> +            print('\t\t%.2f' % (exe / ops))
->>>>        else:
->>>> -            print '\t\t0.00',
->>>> -            print '\t\t0.00'
->>>> +            print('\t\t0.00', end=' ')
->>>> +            print('\t\t0.00')
->>>> 
->>>> def parse_stats_file(filename):
->>>>    """pop the contents of a mountstats file into a dictionary,
->>>> @@ -388,18 +388,18 @@ def parse_stats_file(filename):
->>>>    return ms_dict
->>>> 
->>>> def print_mountstats_help(name):
->>>> -    print 'usage: %s [ options ] <mount point>' % name
->>>> -    print
->>>> -    print ' Version %s' % Mountstats_version
->>>> -    print
->>>> -    print ' Display NFS client per-mount statistics.'
->>>> -    print
->>>> -    print '  --version    display the version of this command'
->>>> -    print '  --nfs        display only the NFS statistics'
->>>> -    print '  --rpc        display only the RPC statistics'
->>>> -    print '  --start      sample and save statistics'
->>>> -    print '  --end        resample statistics and compare them with
->>>> saved'
->>>> -    print
->>>> +    print('usage: %s [ options ] <mount point>' % name)
->>>> +    print()
->>>> +    print(' Version %s' % Mountstats_version)
->>>> +    print()
->>>> +    print(' Display NFS client per-mount statistics.')
->>>> +    print()
->>>> +    print('  --version    display the version of this command')
->>>> +    print('  --nfs        display only the NFS statistics')
->>>> +    print('  --rpc        display only the RPC statistics')
->>>> +    print('  --start      sample and save statistics')
->>>> +    print('  --end        resample statistics and compare them with
->>>> saved')
->>>> +    print()
->>>> 
->>>> def mountstats_command():
->>>>    """Mountstats command
->>>> @@ -414,7 +414,7 @@ def mountstats_command():
->>>>            return
->>>> 
->>>>        if arg in ['-v', '--version', 'version']:
->>>> -            print '%s version %s' % (sys.argv[0], Mountstats_version)
->>>> +            print('%s version %s' % (sys.argv[0], Mountstats_version))
->>>>            sys.exit(0)
->>>> 
->>>>        if arg in ['-n', '--nfs']:
->>>> @@ -426,10 +426,10 @@ def mountstats_command():
->>>>            continue
->>>> 
->>>>        if arg in ['-s', '--start']:
->>>> -            raise Exception, 'Sampling is not yet implemented'
->>>> +            raise Exception('Sampling is not yet implemented')
->>>> 
->>>>        if arg in ['-e', '--end']:
->>>> -            raise Exception, 'Sampling is not yet implemented'
->>>> +            raise Exception('Sampling is not yet implemented')
->>>> 
->>>>        if arg == sys.argv[0]:
->>>>            continue
->>>> @@ -448,14 +448,14 @@ def mountstats_command():
->>>> 
->>>>    for mp in mountpoints:
->>>>        if mp not in mountstats:
->>>> -            print 'Statistics for mount point %s not found' % mp
->>>> +            print('Statistics for mount point %s not found' % mp)
->>>>            continue
->>>> 
->>>>        stats = DeviceData()
->>>>        stats.parse_stats(mountstats[mp])
->>>> 
->>>>        if not stats.is_nfs_mountpoint():
->>>> -            print 'Mount point %s exists but is not an NFS mount' % mp
->>>> +            print('Mount point %s exists but is not an NFS mount' % mp)
->>>>            continue
->>>> 
->>>>        if nfs_only:
->>>> @@ -472,37 +472,37 @@ def mountstats_command():
->>>>           stats.display_rpc_op_stats()
->>>> 
->>>> def print_nfsstat_help(name):
->>>> -    print 'usage: %s [ options ]' % name
->>>> -    print
->>>> -    print ' Version %s' % Mountstats_version
->>>> -    print
->>>> -    print ' nfsstat-like program that uses NFS client per-mount
->>>> statistics.'
->>>> -    print
->>>> +    print('usage: %s [ options ]' % name)
->>>> +    print()
->>>> +    print(' Version %s' % Mountstats_version)
->>>> +    print()
->>>> +    print(' nfsstat-like program that uses NFS client per-mount
->>>> statistics.')
->>>> +    print()
->>>> 
->>>> def nfsstat_command():
->>>>    print_nfsstat_help(prog)
->>>> 
->>>> def print_iostat_help(name):
->>>> -    print 'usage: %s [ <interval> [ <count> ] ] [ <mount point> ] ' %
->>>> name
->>>> -    print
->>>> -    print ' Version %s' % Mountstats_version
->>>> -    print
->>>> -    print ' iostat-like program to display NFS client per-mount
->>>> statistics.'
->>>> -    print
->>>> -    print ' The <interval> parameter specifies the amount of time in
->>>> seconds between'
->>>> -    print ' each report.  The first report contains statistics for the
->>>> time since each'
->>>> -    print ' file system was mounted.  Each subsequent report contains
->>>> statistics'
->>>> -    print ' collected during the interval since the previous report.'
->>>> -    print
->>>> -    print ' If the <count> parameter is specified, the value of <count>
->>>> determines the'
->>>> -    print ' number of reports generated at <interval> seconds apart.  If
->>>> the interval'
->>>> -    print ' parameter is specified without the <count> parameter, the
->>>> command generates'
->>>> -    print ' reports continuously.'
->>>> -    print
->>>> -    print ' If one or more <mount point> names are specified, statistics
->>>> for only these'
->>>> -    print ' mount points will be displayed.  Otherwise, all NFS mount
->>>> points on the'
->>>> -    print ' client are listed.'
->>>> -    print
->>>> +    print('usage: %s [ <interval> [ <count> ] ] [ <mount point> ] ' %
->>>> name)
->>>> +    print()
->>>> +    print(' Version %s' % Mountstats_version)
->>>> +    print()
->>>> +    print(' iostat-like program to display NFS client per-mount
->>>> statistics.')
->>>> +    print()
->>>> +    print(' The <interval> parameter specifies the amount of time in
->>>> seconds between')
->>>> +    print(' each report.  The first report contains statistics for the
->>>> time since each')
->>>> +    print(' file system was mounted.  Each subsequent report contains
->>>> statistics')
->>>> +    print(' collected during the interval since the previous report.')
->>>> +    print()
->>>> +    print(' If the <count> parameter is specified, the value of <count>
->>>> determines the')
->>>> +    print(' number of reports generated at <interval> seconds apart.  If
->>>> the interval')
->>>> +    print(' parameter is specified without the <count> parameter, the
->>>> command generates')
->>>> +    print(' reports continuously.')
->>>> +    print()
->>>> +    print(' If one or more <mount point> names are specified, statistics
->>>> for only these')
->>>> +    print(' mount points will be displayed.  Otherwise, all NFS mount
->>>> points on the')
->>>> +    print(' client are listed.')
->>>> +    print()
->>>> 
->>>> def print_iostat_summary(old, new, devices, time):
->>>>    for device in devices:
->>>> @@ -530,7 +530,7 @@ def iostat_command():
->>>>            return
->>>> 
->>>>        if arg in ['-v', '--version', 'version']:
->>>> -            print '%s version %s' % (sys.argv[0], Mountstats_version)
->>>> +            print('%s version %s' % (sys.argv[0], Mountstats_version))
->>>>            return
->>>> 
->>>>        if arg == sys.argv[0]:
->>>> @@ -543,14 +543,14 @@ def iostat_command():
->>>>            if interval > 0:
->>>>                interval_seen = True
->>>>            else:
->>>> -                print 'Illegal <interval> value'
->>>> +                print('Illegal <interval> value')
->>>>                return
->>>>        elif not count_seen:
->>>>            count = int(arg)
->>>>            if count > 0:
->>>>                count_seen = True
->>>>            else:
->>>> -                print 'Illegal <count> value'
->>>> +                print('Illegal <count> value')
->>>>                return
->>>> 
->>>>    # make certain devices contains only NFS mount points
->>>> @@ -563,13 +563,13 @@ def iostat_command():
->>>>                check += [device]
->>>>        devices = check
->>>>    else:
->>>> -        for device, descr in mountstats.iteritems():
->>>> +        for device, descr in mountstats.items():
->>>>            stats = DeviceData()
->>>>            stats.parse_stats(descr)
->>>>            if stats.is_nfs_mountpoint():
->>>>                devices += [device]
->>>>    if len(devices) == 0:
->>>> -        print 'No NFS mount points were found'
->>>> +        print('No NFS mount points were found')
->>>>        return
->>>> 
->>>>    old_mountstats = None
->>>> @@ -608,7 +608,7 @@ try:
->>>>    elif prog == 'ms-iostat':
->>>>        iostat_command()
->>>> except KeyboardInterrupt:
->>>> -    print 'Caught ^C... exiting'
->>>> +    print('Caught ^C... exiting')
->>>>    sys.exit(1)
->>>> 
->>>> sys.exit(0)
->>>> diff --git a/tools/nfs-iostat/nfs-iostat.py
->>>> b/tools/nfs-iostat/nfs-iostat.py
->>>> index c035537..1c523f9 100644
->>>> --- a/tools/nfs-iostat/nfs-iostat.py
->>>> +++ b/tools/nfs-iostat/nfs-iostat.py
->>>> @@ -95,7 +95,7 @@ class DeviceData:
->>>>            if words[6] == 'nfs':
->>>>                self.__nfs_data['statvers'] = words[7]
->>>>        elif words[0] == 'age:':
->>>> -            self.__nfs_data['age'] = long(words[1])
->>>> +            self.__nfs_data['age'] = int(words[1])
->>>>        elif words[0] == 'opts:':
->>>>            self.__nfs_data['mountoptions'] =
->>>>            ''.join(words[1:]).split(',')
->>>>        elif words[0] == 'caps:':
->>>> @@ -116,7 +116,7 @@ class DeviceData:
->>>>        elif words[0] == 'bytes:':
->>>>            i = 1
->>>>            for key in NfsByteCounters:
->>>> -                self.__nfs_data[key] = long(words[i])
->>>> +                self.__nfs_data[key] = int(words[i])
->>>>                i += 1
->>>> 
->>>>    def __parse_rpc_line(self, words):
->>>> @@ -131,8 +131,8 @@ class DeviceData:
->>>>                self.__rpc_data['rpcsends'] = int(words[4])
->>>>                self.__rpc_data['rpcreceives'] = int(words[5])
->>>>                self.__rpc_data['badxids'] = int(words[6])
->>>> -                self.__rpc_data['inflightsends'] = long(words[7])
->>>> -                self.__rpc_data['backlogutil'] = long(words[8])
->>>> +                self.__rpc_data['inflightsends'] = int(words[7])
->>>> +                self.__rpc_data['backlogutil'] = int(words[8])
->>>>            elif words[1] == 'tcp':
->>>>                self.__rpc_data['port'] = words[2]
->>>>                self.__rpc_data['bind_count'] = int(words[3])
->>>> @@ -142,8 +142,8 @@ class DeviceData:
->>>>                self.__rpc_data['rpcsends'] = int(words[7])
->>>>                self.__rpc_data['rpcreceives'] = int(words[8])
->>>>                self.__rpc_data['badxids'] = int(words[9])
->>>> -                self.__rpc_data['inflightsends'] = long(words[10])
->>>> -                self.__rpc_data['backlogutil'] = long(words[11])
->>>> +                self.__rpc_data['inflightsends'] = int(words[10])
->>>> +                self.__rpc_data['backlogutil'] = int(words[11])
->>>>            elif words[1] == 'rdma':
->>>>                self.__rpc_data['port'] = words[2]
->>>>                self.__rpc_data['bind_count'] = int(words[3])
->>>> @@ -169,7 +169,7 @@ class DeviceData:
->>>>        else:
->>>>            op = words[0][:-1]
->>>>            self.__rpc_data['ops'] += [op]
->>>> -            self.__rpc_data[op] = [long(word) for word in words[1:]]
->>>> +            self.__rpc_data[op] = [int(word) for word in words[1:]]
->>>> 
->>>>    def parse_stats(self, lines):
->>>>        """Turn a list of lines from a mount stat file into a
->>>> @@ -271,7 +271,7 @@ class DeviceData:
->>>>        nfs_stats = self.__nfs_data
->>>>        lookup_ops = self.__rpc_data['LOOKUP'][0]
->>>>        readdir_ops = self.__rpc_data['READDIR'][0]
->>>> -        if self.__rpc_data.has_key('READDIRPLUS'):
->>>> +        if 'READDIRPLUS' in self.__rpc_data:
->>>>            readdir_ops += self.__rpc_data['READDIRPLUS'][0]
->>>> 
->>>>        dentry_revals = nfs_stats['dentryrevalidates']
->>>> @@ -330,7 +330,7 @@ class DeviceData:
->>>>    def __print_rpc_op_stats(self, op, sample_time):
->>>>        """Print generic stats for one RPC op
->>>>        """
->>>> -        if not self.__rpc_data.has_key(op):
->>>> +        if op not in self.__rpc_data:
->>>>            return
->>>> 
->>>>        rpc_stats = self.__rpc_data[op]
->>>> @@ -405,7 +405,7 @@ class DeviceData:
->>>>        elif which == 2:
->>>>            self.__print_rpc_op_stats('LOOKUP', sample_time)
->>>>            self.__print_rpc_op_stats('READDIR', sample_time)
->>>> -            if self.__rpc_data.has_key('READDIRPLUS'):
->>>> +            if 'READDIRPLUS' in self.__rpc_data:
->>>>                self.__print_rpc_op_stats('READDIRPLUS', sample_time)
->>>>            self.__print_dir_cache_stats(sample_time)
->>>>        elif which == 3:
->>>> @@ -450,7 +450,7 @@ def print_iostat_summary(old, new, devices, time,
->>>> options):
->>>>    if old:
->>>>        # Trim device list to only include intersection of old and new
->>>>        data,
->>>>        # this addresses umounts due to autofs mountpoints
->>>> -        devicelist = filter(lambda x:x in devices,old)
->>>> +        devicelist = [x for x in old if x in devices]
->>>>    else:
->>>>        devicelist = devices
->>>> 
->>>> 
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> 
->> 
+> I'm including this patch to show how I handled offloading to test client
+> code.
+> ---
+>  fs/nfsd/nfs4callback.c | 132 +++++++++++++++++++++++++++++++++++++++++++++++++
+>  fs/nfsd/nfs4proc.c     |  56 ++++++++++++++++++---
+>  fs/nfsd/nfs4state.c    |  11 +++++
+>  fs/nfsd/state.h        |   4 ++
+>  fs/nfsd/xdr4.h         |  14 ++++++
+>  fs/nfsd/xdr4cb.h       |   9 ++++
+>  6 files changed, 219 insertions(+), 7 deletions(-)
 > 
+> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+> index 7f05cd1..1f6c150 100644
+> --- a/fs/nfsd/nfs4callback.c
+> +++ b/fs/nfsd/nfs4callback.c
+> @@ -35,6 +35,7 @@
+>  #include <linux/sunrpc/svc_xprt.h>
+>  #include <linux/slab.h>
+>  #include "nfsd.h"
+> +#include "xdr4.h"
+>  #include "state.h"
+>  #include "netns.h"
+>  #include "xdr4cb.h"
+> @@ -52,6 +53,9 @@ enum {
+>  	NFSPROC4_CLNT_CB_NULL = 0,
+>  	NFSPROC4_CLNT_CB_RECALL,
+>  	NFSPROC4_CLNT_CB_SEQUENCE,
+> +
+> +	/* NFS v4.2 callback */
+> +	NFSPROC4_CLNT_CB_OFFLOAD,
+>  };
+>  
+>  struct nfs4_cb_compound_hdr {
+> @@ -110,6 +114,7 @@ enum nfs_cb_opnum4 {
+>  	OP_CB_WANTS_CANCELLED		= 12,
+>  	OP_CB_NOTIFY_LOCK		= 13,
+>  	OP_CB_NOTIFY_DEVICEID		= 14,
+> +	OP_CB_OFFLOAD			= 15,
+>  	OP_CB_ILLEGAL			= 10044
+>  };
+>  
+> @@ -469,6 +474,31 @@ out_default:
+>  	return nfs_cb_stat_to_errno(nfserr);
+>  }
+>  
+> +static void encode_cb_offload4args(struct xdr_stream *xdr,
+> +				   const struct nfsd4_cb_offload *offload,
+> +				   struct nfs4_cb_compound_hdr *hdr)
+> +{
+> +	__be32 *p;
+> +
+> +	if (hdr->minorversion < 2)
+> +		return;
+> +
+> +	encode_nfs_cb_opnum4(xdr, OP_CB_OFFLOAD);
+> +	encode_nfs_fh4(xdr, &offload->co_fh);
+> +	encode_stateid4(xdr, &offload->co_res.wr_stid->sc_stateid);
+> +
+> +	p = xdr_reserve_space(xdr, 4);
+> +	*p = cpu_to_be32(1);
+> +	encode_stateid4(xdr, &offload->co_res.wr_stid->sc_stateid);
+> +
+> +	p = xdr_reserve_space(xdr, 12 + NFS4_VERIFIER_SIZE);
+> +	p = xdr_encode_hyper(p, offload->co_res.wr_bytes_written);
+> +	*p++ = cpu_to_be32(offload->co_res.wr_stable_how);
+> +	xdr_encode_opaque_fixed(p, offload->co_res.wr_verifier.data, NFS4_VERIFIER_SIZE);
+> +
+> +	hdr->nops++;
+> +}
+> +
+>  /*
+>   * NFSv4.0 and NFSv4.1 XDR encode functions
+>   *
+> @@ -505,6 +535,23 @@ static void nfs4_xdr_enc_cb_recall(struct rpc_rqst *req, struct xdr_stream *xdr,
+>  	encode_cb_nops(&hdr);
+>  }
+>  
+> +/*
+> + * CB_OFFLOAD
+> + */
+> +static void nfs4_xdr_enc_cb_offload(struct rpc_rqst *req, struct xdr_stream *xdr,
+> +				    const struct nfsd4_callback *cb)
+> +{
+> +	const struct nfsd4_cb_offload *args = cb->cb_op;
+> +	struct nfs4_cb_compound_hdr hdr = {
+> +		.ident = cb->cb_clp->cl_cb_ident,
+> +		.minorversion = cb->cb_minorversion,
+> +	};
+> +
+> +	encode_cb_compound4args(xdr, &hdr);
+> +	encode_cb_sequence4args(xdr, cb, &hdr);
+> +	encode_cb_offload4args(xdr, args, &hdr);
+> +	encode_cb_nops(&hdr);
+> +}
+>  
+>  /*
+>   * NFSv4.0 and NFSv4.1 XDR decode functions
+> @@ -552,6 +599,36 @@ out:
+>  }
+>  
+>  /*
+> + * CB_OFFLOAD
+> + */
+> +static int nfs4_xdr_dec_cb_offload(struct rpc_rqst *rqstp, struct xdr_stream *xdr,
+> +				   struct nfsd4_callback *cb)
+> +{
+> +	struct nfs4_cb_compound_hdr hdr;
+> +	enum nfsstat4 nfserr;
+> +	int status;
+> +
+> +	status = decode_cb_compound4res(xdr, &hdr);
+> +	if (unlikely(status))
+> +		goto out;
+> +
+> +	if (cb != NULL) {
+> +		status = decode_cb_sequence4res(xdr, cb);
+> +		if (unlikely(status))
+> +			goto out;
+> +	}
+> +
+> +	status = decode_cb_op_status(xdr, OP_CB_OFFLOAD, &nfserr);
+> +	if (unlikely(status))
+> +		goto out;
+> +	if (unlikely(nfserr != NFS4_OK))
+> +		status = nfs_cb_stat_to_errno(nfserr);
+> +
+> +out:
+> +	return status;
+> +}
+> +
+> +/*
+>   * RPC procedure tables
+>   */
+>  #define PROC(proc, call, argtype, restype)				\
+> @@ -568,6 +645,7 @@ out:
+>  static struct rpc_procinfo nfs4_cb_procedures[] = {
+>  	PROC(CB_NULL,	NULL,		cb_null,	cb_null),
+>  	PROC(CB_RECALL,	COMPOUND,	cb_recall,	cb_recall),
+> +	PROC(CB_OFFLOAD, COMPOUND,	cb_offload,	cb_offload),
+>  };
+>  
+>  static struct rpc_version nfs_cb_version4 = {
+> @@ -1036,3 +1114,57 @@ void nfsd4_cb_recall(struct nfs4_delegation *dp)
+>  
+>  	run_nfsd4_cb(&dp->dl_recall);
+>  }
+> +
+> +static void nfsd4_cb_offload_done(struct rpc_task *task, void *calldata)
+> +{
+> +	struct nfsd4_callback *cb = calldata;
+> +	struct nfs4_client *clp = cb->cb_clp;
+> +	struct rpc_clnt *current_rpc_client = clp->cl_cb_client;
+> +
+> +	nfsd4_cb_done(task, calldata);
+> +
+> +	if (current_rpc_client != task->tk_client)
+> +		return;
+> +
+> +	if (cb->cb_done)
+> +		return;
+> +
+> +	if (task->tk_status != 0)
+> +		nfsd4_mark_cb_down(clp, task->tk_status);
+> +	cb->cb_done = true;
+> +}
+> +
+> +static void nfsd4_cb_offload_release(void *calldata)
+> +{
+> +	struct nfsd4_callback *cb = calldata;
+> +	struct nfsd4_cb_offload *offload = container_of(cb, struct nfsd4_cb_offload, co_callback);
+> +
+> +	if (cb->cb_done) {
+> +		nfs4_free_offload_stateid(offload->co_res.wr_stid);
+> +		kfree(offload);
+> +	}
+> +}
+> +
+> +static const struct rpc_call_ops nfsd4_cb_offload_ops = {
+> +	.rpc_call_prepare = nfsd4_cb_prepare,
+> +	.rpc_call_done    = nfsd4_cb_offload_done,
+> +	.rpc_release      = nfsd4_cb_offload_release,
+> +};
+> +
+> +void nfsd4_cb_offload(struct nfsd4_cb_offload *offload)
+> +{
+> +	struct nfsd4_callback *cb = &offload->co_callback;
+> +
+> +	cb->cb_op = offload;
+> +	cb->cb_clp = offload->co_res.wr_stid->sc_client;
+> +	cb->cb_msg.rpc_proc = &nfs4_cb_procedures[NFSPROC4_CLNT_CB_OFFLOAD];
+> +	cb->cb_msg.rpc_argp = cb;
+> +	cb->cb_msg.rpc_resp = cb;
+> +
+> +	cb->cb_ops = &nfsd4_cb_offload_ops;
+> +
+> +	INIT_LIST_HEAD(&cb->cb_per_client);
+> +	cb->cb_done = true;
+> +
+> +	run_nfsd4_cb(cb);
+> +}
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index bc45ed2..d56f7fe 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+> @@ -1028,22 +1028,64 @@ nfsd4_write(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  	return status;
+>  }
+>  
+> -static __be32
+> -nfsd4_write_plus_hole(struct file *file, struct nfsd4_write_plus *writeplus,
+> -		      struct net *net)
+> +static void
+> +nfsd4_offload_work(struct nfsd4_cb_offload *offload,
+> +		   struct nfsd4_compound_state *cstate,
+> +		   struct nfsd42_write_res *write_res,
+> +		   void (*offload_func)(struct work_struct *))
+> +{
+> +	offload->co_res.wr_stid = nfs4_alloc_offload_stateid(cstate->session->se_client);
+> +	memcpy(&offload->co_fh, &cstate->current_fh, sizeof(struct knfsd_fh));
+> +
+> +	write_res->wr_stid = offload->co_res.wr_stid;
+> +	write_res->wr_bytes_written = 0;
+> +	write_res->wr_stable_how = NFS_UNSTABLE;
+> +
+> +	nfsd4_init_callback(&offload->co_callback);
+> +	INIT_WORK(&offload->co_work, offload_func);
+> +	schedule_work(&offload->co_work);
+> +}
+> +
+> +static void
+> +nfsd4_write_plus_hole_async(struct work_struct *work)
+>  {
+> +	struct nfsd4_cb_offload *offload;
+> +	struct nfsd4_write_plus *writeplus;
+>  	__be32 status;
+>  
+> -	status = nfsd4_vfs_fallocate(file, writeplus->wp_allocated,
+> +	offload = container_of(work, struct nfsd4_cb_offload, co_work);
+> +	writeplus = &offload->co_u.write_plus;
+> +
+> +	status = nfsd4_vfs_fallocate(offload->co_file, writeplus->wp_allocated,
+>  				writeplus->wp_offset, writeplus->wp_length);
+>  	if (status == nfs_ok) {
+>  		writeplus->wp_res.wr_stid = NULL;
+>  		writeplus->wp_res.wr_bytes_written = writeplus->wp_length;
+>  		writeplus->wp_res.wr_stable_how = NFS_FILE_SYNC;
+> -		gen_boot_verifier(&writeplus->wp_res.wr_verifier, net);
+> +		gen_boot_verifier(&writeplus->wp_res.wr_verifier, offload->co_net);
+>  	}
+>  
+> -	return status;
+> +	fput(offload->co_file);
+> +	nfsd4_cb_offload(offload);
+> +}
+> +
+> +static __be32
+> +nfsd4_write_plus_hole(struct file *file, struct nfsd4_write_plus *writeplus,
+> +		      struct nfsd4_compound_state *cstate, struct net *net)
+> +{
+> +	struct nfsd4_cb_offload *offload;
+> +
+> +	offload = kmalloc(sizeof(struct nfsd4_cb_offload), GFP_KERNEL);
+> +	if (!offload)
+> +		return nfserrno(PTR_ERR(offload));
+> +
+> +	memcpy(&offload->co_u.write_plus, writeplus, sizeof(struct nfsd4_write_plus));
+> +	offload->co_file = get_file(file);
+> +	offload->co_net  = net;
+> +
+> +	nfsd4_offload_work(offload, cstate, &writeplus->wp_res, nfsd4_write_plus_hole_async);
+> +
+> +	return 0;
+>  }
+>  
+>  static __be32
+> @@ -1060,7 +1102,7 @@ nfsd4_write_plus(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  		return status;
+>  
+>  	if (writeplus->wp_data_content == NFS4_CONTENT_HOLE)
+> -		return nfsd4_write_plus_hole(file, writeplus, net);
+> +		return nfsd4_write_plus_hole(file, writeplus, cstate, net);
+>  	return nfserr_union_notsupp;
+>  }
+>  
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 0874998..6342167 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -364,6 +364,11 @@ static struct nfs4_ol_stateid * nfs4_alloc_stateid(struct nfs4_client *clp)
+>  	return openlockstateid(nfs4_alloc_stid(clp, stateid_slab));
+>  }
+>  
+> +struct nfs4_stid *nfs4_alloc_offload_stateid(struct nfs4_client *clp)
+> +{
+> +	return nfs4_alloc_stid(clp, stateid_slab);
+> +}
+> +
+>  static struct nfs4_delegation *
+>  alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *stp, struct svc_fh *current_fh)
+>  {
+> @@ -613,6 +618,12 @@ static void free_generic_stateid(struct nfs4_ol_stateid *stp)
+>  	kmem_cache_free(stateid_slab, stp);
+>  }
+>  
+> +void nfs4_free_offload_stateid(struct nfs4_stid *stid)
+> +{
+> +	remove_stid(stid);
+> +	kmem_cache_free(stateid_slab, stid);
+> +}
+> +
+>  static void release_lock_stateid(struct nfs4_ol_stateid *stp)
+>  {
+>  	struct file *file;
+> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+> index 424d8f5..a40d29a 100644
+> --- a/fs/nfsd/state.h
+> +++ b/fs/nfsd/state.h
+> @@ -452,6 +452,7 @@ static inline struct nfs4_ol_stateid *openlockstateid(struct nfs4_stid *s)
+>  #define WR_STATE	        0x00000020
+>  
+>  struct nfsd4_compound_state;
+> +struct nfsd4_cb_offload;
+>  struct nfsd_net;
+>  
+>  extern __be32 nfs4_preprocess_stateid_op(struct net *net,
+> @@ -472,6 +473,7 @@ extern void nfsd4_probe_callback(struct nfs4_client *clp);
+>  extern void nfsd4_probe_callback_sync(struct nfs4_client *clp);
+>  extern void nfsd4_change_callback(struct nfs4_client *clp, struct nfs4_cb_conn *);
+>  extern void nfsd4_cb_recall(struct nfs4_delegation *dp);
+> +extern void nfsd4_cb_offload(struct nfsd4_cb_offload *);
+>  extern int nfsd4_create_callback_queue(void);
+>  extern void nfsd4_destroy_callback_queue(void);
+>  extern void nfsd4_shutdown_callback(struct nfs4_client *);
+> @@ -480,6 +482,8 @@ extern struct nfs4_client_reclaim *nfs4_client_to_reclaim(const char *name,
+>  							struct nfsd_net *nn);
+>  extern bool nfs4_has_reclaimed_state(const char *name, struct nfsd_net *nn);
+>  extern void put_client_renew(struct nfs4_client *clp);
+> +extern struct nfs4_stid *nfs4_alloc_offload_stateid(struct nfs4_client *);
+> +extern void nfs4_free_offload_stateid(struct nfs4_stid *);
+>  
+>  /* nfs4recover operations */
+>  extern int nfsd4_client_tracking_init(struct net *net);
+> diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+> index ae9debc..24e2c07 100644
+> --- a/fs/nfsd/xdr4.h
+> +++ b/fs/nfsd/xdr4.h
+> @@ -451,6 +451,20 @@ struct nfsd4_write_plus {
+>  	struct nfsd42_write_res	wp_res;
+>  };
+>  
+> +struct nfsd4_cb_offload {
+> +	union {
+> +		struct nfsd4_write_plus write_plus;
+> +	} co_u;
+> +
+> +	struct knfsd_fh		co_fh;
+> +	struct file		*co_file;
+> +	struct net		*co_net;
+> +
+> +	struct nfsd42_write_res	co_res;
+> +	struct work_struct	co_work;
+> +	struct nfsd4_callback	co_callback;
+> +};
+> +
+>  struct nfsd4_seek {
+>  	/* request */
+>  	stateid_t	seek_stateid;
+> diff --git a/fs/nfsd/xdr4cb.h b/fs/nfsd/xdr4cb.h
+> index c5c55df..75b0ef7 100644
+> --- a/fs/nfsd/xdr4cb.h
+> +++ b/fs/nfsd/xdr4cb.h
+> @@ -21,3 +21,12 @@
+>  #define NFS4_dec_cb_recall_sz		(cb_compound_dec_hdr_sz  +      \
+>  					cb_sequence_dec_sz +            \
+>  					op_dec_sz)
+> +
+> +#define NFS4_enc_cb_offload_sz		(cb_compound_enc_hdr_sz +      \
+> +					 cb_sequence_enc_sz +          \
+> +					 1 + enc_stateid_sz + 2 + 1 +  \
+> +					 XDR_QUADLEN(NFS4_VERIFIER_SIZE))
+> +
+> +#define NFS4_dec_cb_offload_sz		(cb_compound_dec_hdr_sz +  \
+> +					 cb_sequence_dec_sz +      \
+> +					 op_dec_sz)
 > -- 
-> Regards,
-> Bohuslav "Slavek" Kabrda.
-
+> 1.8.4.1
+> 
