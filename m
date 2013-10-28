@@ -1,143 +1,85 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:36770 "EHLO mx1.redhat.com"
+Received: from mx2.netapp.com ([216.240.18.37]:53286 "EHLO mx2.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752724Ab3JXSQa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 24 Oct 2013 14:16:30 -0400
-Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r9OIGU5Z009245
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Thu, 24 Oct 2013 14:16:30 -0400
-Received: from smallhat.boston.devel.redhat.com.org (vpn-62-59.rdu2.redhat.com [10.10.62.59])
-	by int-mx11.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id r9OIGSR8030193
-	for <linux-nfs@vger.kernel.org>; Thu, 24 Oct 2013 14:16:29 -0400
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH 1/3] mountd: Use protocol bit fields to turn protocols off.
-Date: Thu, 24 Oct 2013 14:17:11 -0400
-Message-Id: <1382638633-6710-2-git-send-email-steved@redhat.com>
-In-Reply-To: <1382638633-6710-1-git-send-email-steved@redhat.com>
-References: <1382638633-6710-1-git-send-email-steved@redhat.com>
+	id S1755486Ab3J1VIZ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Oct 2013 17:08:25 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Weston Andros Adamson <dros@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 4/5] NFSv4: don't reprocess cached open CLAIM_PREVIOUS
+Date: Mon, 28 Oct 2013 21:08:24 +0000
+Message-ID: <1382994502.3314.9.camel@leira.trondhjem.org>
+References: <1382375414-5854-1-git-send-email-dros@netapp.com>
+	 <1382375414-5854-5-git-send-email-dros@netapp.com>
+In-Reply-To: <1382375414-5854-5-git-send-email-dros@netapp.com>
+Content-Type: text/plain; charset="utf-7"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Convert the current code to used the NFSCTL_XXX macros
-to turn off the TCP listener.
+On Mon, 2013-10-21 at 13:10 -0400, Weston Andros Adamson wrote:
++AD4- Cached opens have already been handled by +AF8-nfs4+AF8-opendata+AF8-reclaim+AF8-to+AF8-nfs4+AF8-state
++AD4- and can safely skip being reprocessed, but must still call update+AF8-open+AF8-stateid
++AD4- to make sure that all active fmodes are recovered.
++AD4- 
++AD4- Signed-off-by: Weston Andros Adamson +ADw-dros+AEA-netapp.com+AD4-
++AD4- ---
++AD4-  fs/nfs/nfs4proc.c +AHw- 17 +-+-+-+-+-+-+-+-+-+-+-+-+-----
++AD4-  1 file changed, 13 insertions(+-), 4 deletions(-)
++AD4- 
++AD4- diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
++AD4- index 8ae1589..a3b78df 100644
++AD4- --- a/fs/nfs/nfs4proc.c
++AD4- +-+-+- b/fs/nfs/nfs4proc.c
++AD4- +AEAAQA- -1315,12 +-1315,15 +AEAAQA- +AF8-nfs4+AF8-opendata+AF8-reclaim+AF8-to+AF8-nfs4+AF8-state(struct nfs4+AF8-opendata +ACo-data)
++AD4-  +AHs-
++AD4-  	struct inode +ACo-inode +AD0- data-+AD4-state-+AD4-inode+ADs-
++AD4-  	struct nfs4+AF8-state +ACo-state +AD0- data-+AD4-state+ADs-
++AD4- +-	bool cached+AF8-open +AD0- false+ADs-
++AD4-  	int ret+ADs-
++AD4-  
++AD4- -	/+ACo- allow cached opens (+ACE-rpc+AF8-done +ACYAJg- +ACE-rpc+AF8-status) +ACo-/
++AD4- -	if (+ACE-data-+AD4-rpc+AF8-done +ACYAJg- data-+AD4-rpc+AF8-status) +AHs-
++AD4- -		ret +AD0- data-+AD4-rpc+AF8-status+ADs-
++AD4- -		goto err+ADs-
++AD4- +-	if (+ACE-data-+AD4-rpc+AF8-done) +AHs-
++AD4- +-		if (data-+AD4-rpc+AF8-status) +AHs-
++AD4- +-			ret +AD0- data-+AD4-rpc+AF8-status+ADs-
++AD4- +-			goto err+ADs-
++AD4- +-		+AH0- else
++AD4- +-			cached+AF8-open +AD0- true+ADs-
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- support/include/rpcmisc.h |  2 +-
- support/nfs/rpcmisc.c     | 19 ++++++++++++++-----
- support/nfs/svc_create.c  |  5 +++++
- utils/mountd/mountd.c     |  2 +-
- 4 files changed, 21 insertions(+), 7 deletions(-)
+This too was replaced by a simplified version. Once we get rid of the
+state +AD0APQ- NULL check, we can just replace the above with a 'goto update'
 
-diff --git a/support/include/rpcmisc.h b/support/include/rpcmisc.h
-index b806227..31c8e5d 100644
---- a/support/include/rpcmisc.h
-+++ b/support/include/rpcmisc.h
-@@ -56,7 +56,7 @@ void		rpc_dispatch(struct svc_req *rq, SVCXPRT *xprt,
- int		getservport(u_long number, const char *proto);
- 
- extern int	_rpcpmstart;
--extern int	_rpcfdtype;
-+extern unsigned int	_rpcprotobits;
- extern int	_rpcsvcdirty;
- 
- static inline struct sockaddr_in *nfs_getrpccaller_in(SVCXPRT *xprt)
-diff --git a/support/nfs/rpcmisc.c b/support/nfs/rpcmisc.c
-index b73187a..64c98ff 100644
---- a/support/nfs/rpcmisc.c
-+++ b/support/nfs/rpcmisc.c
-@@ -39,7 +39,7 @@
- 
- #define _RPCSVC_CLOSEDOWN	120
- int	_rpcpmstart = 0;
--int	_rpcfdtype = 0;
-+unsigned int _rpcprotobits = (NFSCTL_UDPBIT|NFSCTL_TCPBIT);
- int	_rpcsvcdirty = 0;
- 
- static void
-@@ -51,7 +51,7 @@ closedown(int sig)
- 		static int size;
- 		int i, openfd;
- 
--		if (_rpcfdtype == SOCK_DGRAM)
-+		if (NFSCTL_TCPISSET(_rpcprotobits) == 0)
- 			exit(0);
- 
- 		if (size == 0)
-@@ -130,7 +130,16 @@ rpc_init(char *name, int prog, int vers,
- 		 * listen will fail on a connected TCP socket(passed by rsh).
- 		 */
- 		if (!(fdtype == SOCK_STREAM && listen(0,5) == -1)) {
--			_rpcfdtype = fdtype;
-+			switch(fdtype) {
-+			case SOCK_DGRAM:
-+				NFSCTL_UDPSET(_rpcprotobits);
-+				break;
-+			case SOCK_STREAM:
-+				NFSCTL_TCPSET(_rpcprotobits);
-+				break;
-+			default:
-+				xlog(L_FATAL, "getsockopt returns bad socket type: %d", fdtype);
-+			}
- 			_rpcpmstart = 1;
- 		}
- 	}
-@@ -139,7 +148,7 @@ rpc_init(char *name, int prog, int vers,
- 		sock = RPC_ANYSOCK;
- 	}
- 
--	if ((_rpcfdtype == 0) || (_rpcfdtype == SOCK_DGRAM)) {
-+	if (NFSCTL_UDPISSET(_rpcprotobits)) {
- 		static SVCXPRT *last_transp = NULL;
- 
- 		if (_rpcpmstart == 0) {
-@@ -167,7 +176,7 @@ rpc_init(char *name, int prog, int vers,
- 		last_transp = transp;
- 	}
- 
--	if ((_rpcfdtype == 0) || (_rpcfdtype == SOCK_STREAM)) {
-+	if (NFSCTL_TCPISSET(_rpcprotobits)) {
- 		static SVCXPRT *last_transp = NULL;
- 
- 		if (_rpcpmstart == 0) {
-diff --git a/support/nfs/svc_create.c b/support/nfs/svc_create.c
-index c159fc8..9ae2965 100644
---- a/support/nfs/svc_create.c
-+++ b/support/nfs/svc_create.c
-@@ -29,6 +29,7 @@
- #include <unistd.h>
- #include <errno.h>
- #include <netdb.h>
-+#include "nfslib.h"
- 
- #include <netinet/in.h>
- 
-@@ -417,6 +418,10 @@ nfs_svc_create(char *name, const rpcprog_t program, const rpcvers_t version,
- 		if (!(nconf->nc_flag & NC_VISIBLE))
- 			continue;
- 		visible++;
-+
-+		if (!strcmp(nconf->nc_proto, NC_TCP) && !NFSCTL_TCPISSET(_rpcprotobits))
-+			continue;
-+
- 		if (port == 0)
- 			servport = getservport(program, nconf->nc_proto);
- 		else
-diff --git a/utils/mountd/mountd.c b/utils/mountd/mountd.c
-index 993b6e6..f918472 100644
---- a/utils/mountd/mountd.c
-+++ b/utils/mountd/mountd.c
-@@ -755,7 +755,7 @@ main(int argc, char **argv)
- 			nfs_version &= ~NFSVERSBIT(vers);
- 			break;
- 		case 'n':
--			_rpcfdtype = SOCK_DGRAM;
-+			NFSCTL_TCPUNSET(_rpcprotobits);
- 			break;
- 		case 'r':
- 			reverse_resolve = 1;
++AD4-  	+AH0-
++AD4-  
++AD4-  	/+ACo- referenced the passed state +ACo-/
++AD4- +AEAAQA- -1328,6 +-1331,10 +AEAAQA- +AF8-nfs4+AF8-opendata+AF8-reclaim+AF8-to+AF8-nfs4+AF8-state(struct nfs4+AF8-opendata +ACo-data)
++AD4-  	if (state +AD0APQ- NULL +AHwAfA- +ACE-atomic+AF8-inc+AF8-not+AF8-zero(+ACY-state-+AD4-count))
++AD4-  		goto err+ADs-
++AD4-  
++AD4- +-	/+ACo- cached opens have already been processed +ACo-/
++AD4- +-	if (cached+AF8-open)
++AD4- +-		goto update+ADs-
++AD4- +-
++AD4-  	ret +AD0- nfs+AF8-refresh+AF8-inode(inode, +ACY-data-+AD4-f+AF8-attr)+ADs-
++AD4-  	if (ret)
++AD4-  		goto err+AF8-put+ADs-
++AD4- +AEAAQA- -1336,6 +-1343,8 +AEAAQA- +AF8-nfs4+AF8-opendata+AF8-reclaim+AF8-to+AF8-nfs4+AF8-state(struct nfs4+AF8-opendata +ACo-data)
++AD4-  
++AD4-  	if (data-+AD4-o+AF8-res.delegation+AF8-type +ACEAPQ- 0)
++AD4-  		nfs4+AF8-opendata+AF8-check+AF8-deleg(data, state)+ADs-
++AD4- +-
++AD4- +-update:
++AD4-  	update+AF8-open+AF8-stateid(state, +ACY-data-+AD4-o+AF8-res.stateid, NULL,
++AD4-  			    data-+AD4-o+AF8-arg.fmode)+ADs-
++AD4-  
+
 -- 
-1.8.3.1
+Trond Myklebust
+Linux NFS client maintainer
 
+NetApp
+Trond.Myklebust+AEA-netapp.com
+www.netapp.com
