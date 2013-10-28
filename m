@@ -1,47 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:25704 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:50881 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753095Ab3JUOH3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 21 Oct 2013 10:07:29 -0400
-Message-ID: <52653549.1040501@RedHat.com>
-Date: Mon, 21 Oct 2013 10:08:09 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S1754833Ab3J1Tn2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 28 Oct 2013 15:43:28 -0400
+Date: Mon, 28 Oct 2013 15:43:26 -0400
+To: Benny Halevy <bhalevy@primarydata.com>
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2] nfsd: nfs4_free_stid
+Message-ID: <20131028194326.GI31322@fieldses.org>
+References: <1381730691-18105-1-git-send-email-bhalevy@primarydata.com>
+ <1381747492-14026-1-git-send-email-bhalevy@primarydata.com>
 MIME-Version: 1.0
-To: Weston Andros Adamson <dros@netapp.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] mountstats: fix python2.x support
-References: <1382019434-12377-1-git-send-email-dros@netapp.com>
-In-Reply-To: <1382019434-12377-1-git-send-email-dros@netapp.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1381747492-14026-1-git-send-email-bhalevy@primarydata.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Mon, Oct 14, 2013 at 01:44:52PM +0300, Benny Halevy wrote:
+> Make it symmetric to nfs4_alloc_stid.
 
+OK, applying.--b.
 
-On 17/10/13 10:17, Weston Andros Adamson wrote:
-> Commit b703eabe4c4bc5c2d5fd9a07b6b995d67ea7e77a converted mountstats to using
-> python3's print() function, but this doesn't work in python2.x without
-> importing the print function from __future__.
 > 
-> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
-Committed...
-
-steved.
+> Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
 > ---
->  tools/mountstats/mountstats.py | 2 ++
->  1 file changed, 2 insertions(+)
+>  fs/nfsd/nfs4state.c | 9 +++++++--
+>  1 file changed, 7 insertions(+), 2 deletions(-)
 > 
-> diff --git a/tools/mountstats/mountstats.py b/tools/mountstats/mountstats.py
-> index 3f5fea5..e46105d 100644
-> --- a/tools/mountstats/mountstats.py
-> +++ b/tools/mountstats/mountstats.py
-> @@ -3,6 +3,8 @@
->  """Parse /proc/self/mountstats and display it in human readable form
->  """
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 06984e3..64c167f 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -402,11 +402,16 @@ static void remove_stid(struct nfs4_stid *s)
+>  	idr_remove(stateids, s->sc_stateid.si_opaque.so_id);
+>  }
 >  
-> +from __future__ import print_function
+> +static void nfs4_free_stid(struct kmem_cache *slab, struct nfs4_stid *s)
+> +{
+> +	kmem_cache_free(slab, s);
+> +}
 > +
->  __copyright__ = """
->  Copyright (C) 2005, Chuck Lever <cel@netapp.com>
+>  void
+>  nfs4_put_delegation(struct nfs4_delegation *dp)
+>  {
+>  	if (atomic_dec_and_test(&dp->dl_count)) {
+> -		kmem_cache_free(deleg_slab, dp);
+> +		nfs4_free_stid(deleg_slab, &dp->dl_stid);
+>  		num_delegations--;
+>  	}
+>  }
+> @@ -610,7 +615,7 @@ static void close_generic_stateid(struct nfs4_ol_stateid *stp)
+>  static void free_generic_stateid(struct nfs4_ol_stateid *stp)
+>  {
+>  	remove_stid(&stp->st_stid);
+> -	kmem_cache_free(stateid_slab, stp);
+> +	nfs4_free_stid(stateid_slab, &stp->st_stid);
+>  }
 >  
+>  static void release_lock_stateid(struct nfs4_ol_stateid *stp)
+> -- 
+> 1.8.3.1
 > 
