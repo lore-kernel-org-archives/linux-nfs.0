@@ -1,232 +1,192 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:6617 "EHLO mx12.netapp.com"
+Received: from cantor2.suse.de ([195.135.220.15]:50097 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754896Ab3J2MxI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 29 Oct 2013 08:53:08 -0400
-Message-ID: <526FAFB2.8040300@netapp.com>
-Date: Tue, 29 Oct 2013 08:53:06 -0400
-From: Anna Schumaker <bjschuma@netapp.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 4/4] NFSD: Implement SEEK
-References: <1382972247-1108-1-git-send-email-bjschuma@netapp.com> <1382972247-1108-5-git-send-email-bjschuma@netapp.com> <20131028215126.GP31322@fieldses.org>
-In-Reply-To: <20131028215126.GP31322@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"
+	id S1754546Ab3J1Djh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 27 Oct 2013 23:39:37 -0400
+Date: Mon, 28 Oct 2013 14:39:22 +1100
+From: NeilBrown <neilb@suse.de>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Steve Dickson <SteveD@redhat.com>, tasleson@redhat.com,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] exportfs: Return non-zero exit value on error
+Message-ID: <20131028143922.2131237d@notabene.brown>
+In-Reply-To: <AE4061A2-B0F8-4B1D-9381-873E7322FA54@oracle.com>
+References: <1380756584-13335-1-git-send-email-tasleson@redhat.com>
+	<20131022092519.4f4683a8@notabene.brown>
+	<52669862.6030409@redhat.com>
+	<20131023124444.65ace6e3@notabene.brown>
+	<52680917.4010509@redhat.com>
+	<20131024091811.34b06e71@notabene.brown>
+	<D9521932-DDAA-47D2-996F-62D2A37BA5B0@oracle.com>
+	<52694336.9050303@RedHat.com>
+	<AE4061A2-B0F8-4B1D-9381-873E7322FA54@oracle.com>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/lxrD/2S6XFvt4EYkjgFSOdk"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon 28 Oct 2013 05:51:26 PM EDT, J. Bruce Fields wrote:
-> On Mon, Oct 28, 2013 at 10:57:26AM -0400, Anna Schumaker wrote:
->> This patch adds in the SEEK operation used by clients doing an llseek on
->> a file to find either hole or data sections in a file.  I'm faking the
->> "allocated" status right now, since I haven't quite figured out how to
->> tell if a range is allocated on disk yet.
->>
->> This patch is missing correctly determining the "allocated" status of
->> the HOLE / DATA range.  I expect I'll need to learn all about how fiemap
->> works before properly setting these values.
->>
->> Signed-off-by: Anna Schumaker <bjschuma@netapp.com>
->> ---
->>  fs/nfsd/nfs4proc.c   | 44 ++++++++++++++++++++++++++++++++++++++++++++
->>  fs/nfsd/nfs4xdr.c    | 40 ++++++++++++++++++++++++++++++++++++++--
->>  fs/nfsd/xdr4.h       | 15 +++++++++++++++
->>  include/linux/nfs4.h |  2 +-
->>  4 files changed, 98 insertions(+), 3 deletions(-)
->>
->> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
->> index 3210c6f..bc45ed2 100644
->> --- a/fs/nfsd/nfs4proc.c
->> +++ b/fs/nfsd/nfs4proc.c
->> @@ -1064,6 +1064,45 @@ nfsd4_write_plus(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->>  	return nfserr_union_notsupp;
->>  }
->>
->> +static __be32
->> +nfsd4_seek(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->> +		struct nfsd4_seek *seek)
->> +{
->> +	struct file *file;
->> +	loff_t pos, end_pos;
->> +	__be32 status;
->> +
->> +	status = nfs4_preprocess_stateid_op(SVC_NET(rqstp), cstate,
->> +					    &seek->seek_stateid,
->> +					    RD_STATE | WR_STATE, &file);
->
-> Note nfs4_preprocess_stateid_op requires the caller to hold the state
-> lock.  Andyou want to either hold it till you're done using "file" or
-> take a reference on file before dropping it.
+--Sig_/lxrD/2S6XFvt4EYkjgFSOdk
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-That's useful to know.  I'll fix it up here, and anywhere else I call 
-nfs4_preprocess_stateid_op()!
->
-> --b.
->
->> +	if (status != nfs_ok)
->> +		return status;
->> +
->> +	if (seek->seek_whence == NFS4_CONTENT_DATA) {
->> +		pos = vfs_llseek(file, seek->seek_offset, SEEK_DATA);
->> +		end_pos = vfs_llseek(file, pos, SEEK_HOLE);
->> +		seek->seek_allocated = true;
->> +	} else {
->> +		pos = vfs_llseek(file, seek->seek_offset, SEEK_HOLE);
->> +		end_pos = vfs_llseek(file, pos, SEEK_DATA);
->> +		seek->seek_allocated = false;
->> +	}
->> +
->> +	if (pos < 0)
->> +		return nfserrno(pos);
->> +	else if (end_pos == -ENXIO) {
->> +		seek->seek_length = 0;
->> +		seek->seek_eof = true;
->> +	} else if (end_pos < 0)
->> +		return nfserrno(end_pos);
->> +	else
->> +		seek->seek_length = end_pos - pos;
->> +
->> +	seek->seek_offset = pos;
->> +
->> +	return nfs_ok;
->> +}
->> +
->>  /* This routine never returns NFS_OK!  If there are no other errors, it
->>   * will return NFSERR_SAME or NFSERR_NOT_SAME depending on whether the
->>   * attributes matched.  VERIFY is implemented by mapping NFSERR_SAME
->> @@ -1885,6 +1924,11 @@ static struct nfsd4_operation nfsd4_ops[] = {
->>  		.op_rsize_bop = (nfsd4op_rsize)nfsd4_write_rsize,
->>  		.op_get_currentstateid = (stateid_getter)nfsd4_get_writestateid,
->>  	},
->> +
->> +	[OP_SEEK] = {
->> +		.op_func = (nfsd4op_func)nfsd4_seek,
->> +		.op_name = "OP_SEEK",
->> +	},
->>  };
->>
->>  #ifdef NFSD_DEBUG
->> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
->> index 1e4e9af..8434740 100644
->> --- a/fs/nfsd/nfs4xdr.c
->> +++ b/fs/nfsd/nfs4xdr.c
->> @@ -1511,6 +1511,22 @@ nfsd4_decode_write_plus(struct nfsd4_compoundargs *argp,
->>  }
->>
->>  static __be32
->> +nfsd4_decode_seek(struct nfsd4_compoundargs *argp, struct nfsd4_seek *seek)
->> +{
->> +	DECODE_HEAD;
->> +
->> +	status = nfsd4_decode_stateid(argp, &seek->seek_stateid);
->> +	if (status)
->> +		return status;
->> +
->> +	READ_BUF(12);
->> +	READ64(seek->seek_offset);
->> +	READ32(seek->seek_whence);
->> +
->> +	DECODE_TAIL;
->> +}
->> +
->> +static __be32
->>  nfsd4_decode_noop(struct nfsd4_compoundargs *argp, void *p)
->>  {
->>  	return nfs_ok;
->> @@ -1693,7 +1709,7 @@ static nfsd4_dec nfsd42_dec_ops[] = {
->>  	[OP_OFFLOAD_STATUS]	= (nfsd4_dec)nfsd4_decode_notsupp,
->>  	[OP_WRITE_PLUS]		= (nfsd4_dec)nfsd4_decode_write_plus,
->>  	[OP_READ_PLUS]		= (nfsd4_dec)nfsd4_decode_notsupp,
->> -	[OP_SEEK]		= (nfsd4_dec)nfsd4_decode_notsupp,
->> +	[OP_SEEK]		= (nfsd4_dec)nfsd4_decode_seek,
->>  	[OP_IO_ADVISE]		= (nfsd4_dec)nfsd4_decode_notsupp,
->>  };
->>
->> @@ -3650,6 +3666,26 @@ nfsd4_encode_write_plus(struct nfsd4_compoundres *resp, __be32 nfserr,
->>  }
->>
->>  static __be32
->> +nfsd4_encode_seek(struct nfsd4_compoundres *resp, __be32 nfserr,
->> +		  struct nfsd4_seek *seek)
->> +{
->> +	__be32 *p;
->> +
->> +	if (nfserr)
->> +		return nfserr;
->> +
->> +	RESERVE_SPACE(28);
->> +	WRITE32(seek->seek_eof);
->> +	WRITE32(seek->seek_whence);
->> +	WRITE64(seek->seek_offset);
->> +	WRITE64(seek->seek_length);
->> +	WRITE32(seek->seek_allocated);
->> +	ADJUST_ARGS();
->> +
->> +	return nfserr;
->> +}
->> +
->> +static __be32
->>  nfsd4_encode_noop(struct nfsd4_compoundres *resp, __be32 nfserr, void *p)
->>  {
->>  	return nfserr;
->> @@ -3730,7 +3766,7 @@ static nfsd4_enc nfsd4_enc_ops[] = {
->>  	[OP_OFFLOAD_STATUS]	= (nfsd4_enc)nfsd4_encode_noop,
->>  	[OP_WRITE_PLUS]		= (nfsd4_enc)nfsd4_encode_write_plus,
->>  	[OP_READ_PLUS]		= (nfsd4_enc)nfsd4_encode_noop,
->> -	[OP_SEEK]		= (nfsd4_enc)nfsd4_encode_noop,
->> +	[OP_SEEK]		= (nfsd4_enc)nfsd4_encode_seek,
->>  	[OP_IO_ADVISE]		= (nfsd4_enc)nfsd4_encode_noop,
->>  };
->>
->> diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
->> index aaef9ab..ae9debc 100644
->> --- a/fs/nfsd/xdr4.h
->> +++ b/fs/nfsd/xdr4.h
->> @@ -451,6 +451,20 @@ struct nfsd4_write_plus {
->>  	struct nfsd42_write_res	wp_res;
->>  };
->>
->> +struct nfsd4_seek {
->> +	/* request */
->> +	stateid_t	seek_stateid;
->> +
->> +	/* Shared between request and response */
->> +	u64		seek_offset;
->> +	u32		seek_whence;
->> +
->> +	/* response */
->> +	u32		seek_eof;
->> +	u64		seek_length;
->> +	u32		seek_allocated;
->> +};
->> +
->>  struct nfsd4_op {
->>  	int					opnum;
->>  	__be32					status;
->> @@ -499,6 +513,7 @@ struct nfsd4_op {
->>
->>  		/* NFSv4.2 */
->>  		struct nfsd4_write_plus		write_plus;
->> +		struct nfsd4_seek		seek;
->>  	} u;
->>  	struct nfs4_replay *			replay;
->>  };
->> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
->> index 55ed991..81d6b09 100644
->> --- a/include/linux/nfs4.h
->> +++ b/include/linux/nfs4.h
->> @@ -128,7 +128,7 @@ enum nfs_opnum4 {
->>  Needs to be updated if more operations are defined in future.*/
->>
->>  #define FIRST_NFS4_OP	OP_ACCESS
->> -#define LAST_NFS4_OP 	OP_WRITE_PLUS
->> +#define LAST_NFS4_OP 	OP_SEEK
->>
->>  enum nfsstat4 {
->>  	NFS4_OK = 0,
->> --
->> 1.8.4.1
->>
+On Thu, 24 Oct 2013 12:05:35 -0400 Chuck Lever <chuck.lever@oracle.com> wro=
+te:
+
+>=20
+> On Oct 24, 2013, at 11:56 AM, Steve Dickson <SteveD@redhat.com> wrote:
+>=20
+> >=20
+> >=20
+> > On 23/10/13 19:31, Chuck Lever wrote:
+> >>=20
+> >> On Oct 23, 2013, at 6:18 PM, NeilBrown <neilb@suse.de> wrote:
+> >>=20
+> >>> On Wed, 23 Oct 2013 12:36:23 -0500 Tony Asleson <tasleson@redhat.com>=
+ wrote:
+> >>>=20
+> >>>> On 10/22/2013 08:44 PM, NeilBrown wrote:
+> >>>>> On Tue, 22 Oct 2013 10:23:14 -0500 Tony Asleson <tasleson@redhat.co=
+m> wrote:
+> >>>>>> The reason I chose to return values was to make sure requested ope=
+ration
+> >>>>>> actually completed requested operation.  Unexporting a non-existent
+> >>>>>> export is not considered an error and returns no indication you did
+> >>>>>> absolutely nothing.
+> >>>>>=20
+> >>>>> Hi,
+> >>>>> thanks makes sense - I had missed that (even though you explained i=
+t in the
+> >>>>> patch description :-( )
+> >>>>>=20
+> >>>>> With your patch, if asked to unexport something that wasn't exporte=
+d it
+> >>>>> would not report any error, but would exit with an error status.  I=
+s that
+> >>>>> correct?  I think I would rather have a message printed if there is=
+ an error.
+> >>>>=20
+> >>>> Correct, I only made changes for the exit status.  I was trying to m=
+ake
+> >>>> changes that would be mostly invisible to end users.  I have no conc=
+erns
+> >>>> adding a printed error output too, but others may.
+> >>>>=20
+> >>>> Changing the behavior of any command line tool is potentially
+> >>>> problematic when scripted.
+> >>>>=20
+> >>>>> So would something like this (on top of my patch) address you need,=
+ or was
+> >>>>> there something else I missed?
+> >>>>=20
+> >>>> Yes, this should work for the unexport fs case.
+> >>>>=20
+> >>>> However, the reason my patch was a little more invasive was to ensure
+> >>>> that both the export and unexport paths were covered.
+> >>>>=20
+> >>>> For example, if the strdup call fails in function client_init, we fa=
+il
+> >>>> the operation and return exit value of 0.  Unlikely, but just the fi=
+rst
+> >>>> example I stumbled across.
+> >>>=20
+> >>> I think it is a lot closer to "impossible" than just "unlikely".
+> >>> malloc doesn't fail in this sort of context, the OOM killer kills som=
+ething
+> >>> off instead.
+> >>> My personal preference is to replace all malloc/calloc/strdup calls w=
+ith
+> >>> the xmalloc, xstrdup etc calls in support/nfs/xcommon.c.
+> >>> If you are worried about malloc failing, I'd much prefer to see a pat=
+ch which
+> >>> changes nfs-utils to use those uniformly.
+> >>>=20
+> >>> There might be a question over the best behaviour for daemons like mo=
+untd
+> >>> and  gssd.  However as we move towards having systemd manage those, t=
+hey will
+> >>> be restarted if they ever exit, and they are mostly stateless so that=
+ is
+> >>> quite safe.
+> >>>=20
+> >>> Does anyone else have thoughts on this?
+> >>=20
+> >> Yes.  My thought is "xmalloc is an abomination."  :-)
+> >>=20
+> >> We really do not want any of these tools exiting left if there's a mem=
+ory allocation failure. =20
+> >> For a user, that's no better than a segfault.
+> > I the past I have agreed with this... But as Neil points out, we now li=
+ve in
+> > a systemd world were daemons are restarted, so maybe it does make sense=
+ to=20
+> > exit on these types of failures. With daemons like mountd there is=20
+> > really no state that would be lost....=20
+>=20
+> Neil's arguments are very practical, but ...
+>=20
+> There are other reasons that malloc() can fail.  Software bugs are high o=
+n that list.  It can also fail if user input (or network input) is used to =
+determine the requested allocation size.
+>=20
+> In addition, rpmlint/fedpkg-lint complain if there's an exit(2) call in y=
+our linked libraries.  They would frown on xmalloc() invoking exit (they al=
+so aren't happy with xlog).
+>=20
+> Whether or not it's OK for daemons, I still maintain that for administrat=
+ive tools run directly by users like exportfs, we want to be more careful. =
+ Since the daemons share the same libraries as the user tools, that means x=
+malloc and friends should be avoided everywhere, IMO.
+
+I don't follow this argument.  Why do we need to be more careful for
+administrative tools?
+
+Tools should always be written to be crash-proof, and I believe exportfs is.
+It writes to a temp file and then performs an atomic rename when the new fi=
+le
+is ready.  If anything goes wrong it is perfectly safe to simply exit, and
+the important files will be unchanged.
+
+The memory allocation failures that we are talking about here are for a doz=
+en
+bytes or so and are extremely are.  I would be a lot more confident in 'exi=
+t'
+doing the right thing, than in multiple untested error paths carrying the
+error up and making sure not to write out the file if the malloc error might
+result in it having the wrong value.
+
+(On the question of 'exit' in libraries, I'm ambivalent).
+
+NeilBrown
+
+>=20
+> --
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
+>=20
+>=20
 
 
+--Sig_/lxrD/2S6XFvt4EYkjgFSOdk
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.19 (GNU/Linux)
+
+iQIVAwUBUm3cajnsnt1WYoG5AQLxMw//WZpXzDQ93ZHsCbwCCMmjdpm2rKzvjPJE
+WQzazFZljS+by77j8Uud9ww3PnXJdPIQwN0ObC/DR8IQpRkA8z7Jk3ioSLyUjpuV
+sYt9I+feO73li6g5Cxf0Lm/xxlw/1ya33mXnLKDF4Aimru2f96LfpeM1ftGSLVDg
+EX3YSQWAP0/wqKlsp0z+RoesNoUrkpdQmVxkPa07bNZwR6bWt2iNodzRr5DRsgUM
+d5xpidImcQfmtoC86am5WK6MeJbL2HEcAhdsrFuCv5Md2Am9Zlmug8Jb0T7MMwUf
+lIiwGzF5wWoJM6f1mrzUpPulGUlNJEKXJzgRPKHTlVZovxltaTVZK5M4t7EzEDL8
+6INwmyzCjl6kUlIGMahAsw/m94sJ9tXXj80/V0X/PDff0jpBP1AtlvE7vyWtoic5
+jkSAkDYr/seTQG1xlc4woosuKWFhFQBfed07WgefXQR3cjRWohhVSjsu+ypklgqD
+nD9pwT96UQkSiteirIFgEq50L2mQvBJeMeMrXqdk22C34eMVb5YPbN4oWzs8GLfC
+mqO27QakRw56o9gC515ZLLRAkszZO1fzGubDPO8TSkWFl+MeozdpIFxXhAzAI39V
+ebYcngHlqCJ42eXHnLEkVKK8isZCLZlzF2ImQYPo7txG5MQ+LiNaLDJ749/MTIpt
+kmIxhzLdmCs=
+=womE
+-----END PGP SIGNATURE-----
+
+--Sig_/lxrD/2S6XFvt4EYkjgFSOdk--
