@@ -1,66 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:44742 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758709Ab3JQSMq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Oct 2013 14:12:46 -0400
-Received: from acsinet21.oracle.com (acsinet21.oracle.com [141.146.126.237])
-	by aserp1040.oracle.com (Sentrion-MTA-4.3.1/Sentrion-MTA-4.3.1) with ESMTP id r9HICjHr004996
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Thu, 17 Oct 2013 18:12:46 GMT
-Received: from nfsvm18.us.oracle.com (nfsvm18.us.oracle.com [10.135.198.118])
-	by acsinet21.oracle.com (8.14.4+Sun/8.14.4) with ESMTP id r9HICjrl019321
-	for <linux-nfs@vger.kernel.org>; Thu, 17 Oct 2013 18:12:45 GMT
-From: Chuck Lever <chuck.lever@oracle.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 06/21] NFS: Export _nfs_display_fhandle()
-Date: Thu, 17 Oct 2013 14:12:45 -0400
-Message-Id: <20131017181245.1073.49764.stgit@nfsvm18.us.oracle.com>
-In-Reply-To: <20131017180630.1073.18400.stgit@nfsvm18.us.oracle.com>
-References: <20131017180630.1073.18400.stgit@nfsvm18.us.oracle.com>
+Received: from fieldses.org ([174.143.236.118]:48203 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751167Ab3J1VCx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 28 Oct 2013 17:02:53 -0400
+Date: Mon, 28 Oct 2013 17:02:47 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Haynes, Tom" <Tom.Haynes@netapp.com>
+Cc: Marc Eshel <eshel@us.ibm.com>, Spencer Shepler <spencer.shepler@gmail.com>,
+        Mailing List Linux NFS <linux-nfs@vger.kernel.org>,
+        Christoph Anton Mitterer <calestyo@scientia.net>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Steve Dickson <SteveD@redhat.com>,
+        "nfsv4@ietf.org nfsv4@ietf.org" <nfsv4@ietf.org>,
+        Ric Wheeler <ric.wheeler@usenix.org>,
+        "linux-nfs-owner@vger.kernel.org" <linux-nfs-owner@vger.kernel.org>
+Subject: Re: [nfsv4] XATTRs in NFS?
+Message-ID: <20131028210247.GM31322@fieldses.org>
+References: <1382920068.6932.46.camel@heisenberg.scientia.net>
+ <2E672741-FE4F-4287-8D00-B7634A71709E@netapp.com>
+ <526E8562.3040809@redhat.com>
+ <1382976943.8774.10.camel@heisenberg.scientia.net>
+ <FD29488A-348B-48BA-9B1D-4ACF997BC794@netapp.com>
+ <526EA65A.7010209@redhat.com>
+ <20131028180838.GG31322@fieldses.org>
+ <526EAD86.6090507@redhat.com>
+ <OFA4C7B613.86F16AC7-ON88257C12.006FE486-88257C12.0071EE79@us.ibm.com>
+ <C2C70C2E-100E-40BD-A919-A4F649077059@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <C2C70C2E-100E-40BD-A919-A4F649077059@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Allow code in nfsv4.ko to use _nfs_display_fhandle().
+On Mon, Oct 28, 2013 at 08:55:06PM +0000, Haynes, Tom wrote:
+> 
+> On Oct 28, 2013, at 1:44 PM, Marc Eshel <eshel@us.ibm.com> wrote:
+> 
+> > Hi Spencer, 
+> > Is it still possible to get on the agenda fir IETF 88, I just got approval 
+> > to travel. We can use about 15 minutes, or what ever is available to 
+> > discussion the future of named attributes in NFS. The two main questions 
+> > that we need answer are: 
+> > 1. Do we need them? what applications use them and how. 
+> > 2. Can we have a more simple model that handles just user attributes.
+> > 
+> > Input is welcome to help me make the case at the meeting.
+> > 
+> > Thanks, Marc.
+> > 
+> 
+> 
+> Be sure to call out why they currently do or do not work.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- fs/nfs/inode.c      |    2 ++
- fs/nfs/nfs4client.c |    2 +-
- 2 files changed, 3 insertions(+), 1 deletion(-)
+And we also need to keep clear the distinctions between:
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index eda8879..4bc7538 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -1209,6 +1209,7 @@ u32 _nfs_display_fhandle_hash(const struct nfs_fh *fh)
- 	 * not on the result */
- 	return nfs_fhandle_hash(fh);
- }
-+EXPORT_SYMBOL_GPL(_nfs_display_fhandle_hash);
- 
- /*
-  * _nfs_display_fhandle - display an NFS file handle on the console
-@@ -1253,6 +1254,7 @@ void _nfs_display_fhandle(const struct nfs_fh *fh, const char *caption)
- 		}
- 	}
- }
-+EXPORT_SYMBOL_GPL(_nfs_display_fhandle);
- #endif
- 
- /**
-diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-index 299cf6b..b19c94f 100644
---- a/fs/nfs/nfs4client.c
-+++ b/fs/nfs/nfs4client.c
-@@ -924,7 +924,7 @@ static int nfs4_server_common_setup(struct nfs_server *server,
- 	dprintk("Server FSID: %llx:%llx\n",
- 			(unsigned long long) server->fsid.major,
- 			(unsigned long long) server->fsid.minor);
--	dprintk("Mount FH: %d\n", mntfh->size);
-+	nfs_display_fhandle(mntfh, "Pseudo-fs root FH");
- 
- 	nfs4_session_set_rwsize(server);
- 
+	- NFSv4 named attributes/streams/forks and "extended attributes"
+	  as implemented in Linux and elsewhere.
+	- user.* xattrs and "back-door ioctls".
 
+(Your description above seems to confuse named attributes and Linux
+extended attributes.)
+
+--b.
