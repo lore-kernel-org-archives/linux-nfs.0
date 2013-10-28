@@ -1,205 +1,134 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:22651 "EHLO
+Received: from userp1040.oracle.com ([156.151.31.81]:50422 "EHLO
 	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758391Ab3JQSMa (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Oct 2013 14:12:30 -0400
-Received: from acsinet21.oracle.com (acsinet21.oracle.com [141.146.126.237])
-	by userp1040.oracle.com (Sentrion-MTA-4.3.1/Sentrion-MTA-4.3.1) with ESMTP id r9HICS6j012525
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Thu, 17 Oct 2013 18:12:29 GMT
-Received: from nfsvm18.us.oracle.com (nfsvm18.us.oracle.com [10.135.198.118])
-	by acsinet21.oracle.com (8.14.4+Sun/8.14.4) with ESMTP id r9HICScN018689
-	for <linux-nfs@vger.kernel.org>; Thu, 17 Oct 2013 18:12:28 GMT
+	with ESMTP id S1756629Ab3J1OJN convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Oct 2013 10:09:13 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 6.6 \(1510\))
+Subject: Re: [PATCH] exportfs: Return non-zero exit value on error
 From: Chuck Lever <chuck.lever@oracle.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 03/21] NFS: Add nfs4_update_server
-Date: Thu, 17 Oct 2013 14:12:28 -0400
-Message-Id: <20131017181228.1073.14811.stgit@nfsvm18.us.oracle.com>
-In-Reply-To: <20131017180630.1073.18400.stgit@nfsvm18.us.oracle.com>
-References: <20131017180630.1073.18400.stgit@nfsvm18.us.oracle.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+In-Reply-To: <20131028143922.2131237d@notabene.brown>
+Date: Mon, 28 Oct 2013 10:09:04 -0400
+Cc: Steve Dickson <SteveD@redhat.com>, tasleson@redhat.com,
+        linux-nfs@vger.kernel.org
+Message-Id: <4ECFC35E-54CA-4788-92C1-3D68FCFA2846@oracle.com>
+References: <1380756584-13335-1-git-send-email-tasleson@redhat.com> <20131022092519.4f4683a8@notabene.brown> <52669862.6030409@redhat.com> <20131023124444.65ace6e3@notabene.brown> <52680917.4010509@redhat.com> <20131024091811.34b06e71@notabene.brown> <D9521932-DDAA-47D2-996F-62D2A37BA5B0@oracle.com> <52694336.9050303@RedHat.com> <AE4061A2-B0F8-4B1D-9381-873E7322FA54@oracle.com> <20131028143922.2131237d@notabene.brown>
+To: NeilBrown <neilb@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-New function nfs4_update_server() moves an nfs_server to a different
-nfs_client.  This is done as part of migration recovery.
 
-Though it may be appealing to think of them as the same thing,
-migration recovery is not the same as following a referral.
+On Oct 27, 2013, at 11:39 PM, NeilBrown <neilb@suse.de> wrote:
 
-For a referral, the client has not descended into the file system
-yet: it has no nfs_server, no super block, no inodes or open state.
-It is enough to simply instantiate the nfs_server and super block,
-and perform a referral mount.
+> On Thu, 24 Oct 2013 12:05:35 -0400 Chuck Lever <chuck.lever@oracle.com> wrote:
+> 
+>> 
+>> On Oct 24, 2013, at 11:56 AM, Steve Dickson <SteveD@redhat.com> wrote:
+>> 
+>>> 
+>>> 
+>>> On 23/10/13 19:31, Chuck Lever wrote:
+>>>> 
+>>>> On Oct 23, 2013, at 6:18 PM, NeilBrown <neilb@suse.de> wrote:
+>>>> 
+>>>>> On Wed, 23 Oct 2013 12:36:23 -0500 Tony Asleson <tasleson@redhat.com> wrote:
+>>>>> 
+>>>>>> On 10/22/2013 08:44 PM, NeilBrown wrote:
+>>>>>>> On Tue, 22 Oct 2013 10:23:14 -0500 Tony Asleson <tasleson@redhat.com> wrote:
+>>>>>>>> The reason I chose to return values was to make sure requested operation
+>>>>>>>> actually completed requested operation.  Unexporting a non-existent
+>>>>>>>> export is not considered an error and returns no indication you did
+>>>>>>>> absolutely nothing.
+>>>>>>> 
+>>>>>>> Hi,
+>>>>>>> thanks makes sense - I had missed that (even though you explained it in the
+>>>>>>> patch description :-( )
+>>>>>>> 
+>>>>>>> With your patch, if asked to unexport something that wasn't exported it
+>>>>>>> would not report any error, but would exit with an error status.  Is that
+>>>>>>> correct?  I think I would rather have a message printed if there is an error.
+>>>>>> 
+>>>>>> Correct, I only made changes for the exit status.  I was trying to make
+>>>>>> changes that would be mostly invisible to end users.  I have no concerns
+>>>>>> adding a printed error output too, but others may.
+>>>>>> 
+>>>>>> Changing the behavior of any command line tool is potentially
+>>>>>> problematic when scripted.
+>>>>>> 
+>>>>>>> So would something like this (on top of my patch) address you need, or was
+>>>>>>> there something else I missed?
+>>>>>> 
+>>>>>> Yes, this should work for the unexport fs case.
+>>>>>> 
+>>>>>> However, the reason my patch was a little more invasive was to ensure
+>>>>>> that both the export and unexport paths were covered.
+>>>>>> 
+>>>>>> For example, if the strdup call fails in function client_init, we fail
+>>>>>> the operation and return exit value of 0.  Unlikely, but just the first
+>>>>>> example I stumbled across.
+>>>>> 
+>>>>> I think it is a lot closer to "impossible" than just "unlikely".
+>>>>> malloc doesn't fail in this sort of context, the OOM killer kills something
+>>>>> off instead.
+>>>>> My personal preference is to replace all malloc/calloc/strdup calls with
+>>>>> the xmalloc, xstrdup etc calls in support/nfs/xcommon.c.
+>>>>> If you are worried about malloc failing, I'd much prefer to see a patch which
+>>>>> changes nfs-utils to use those uniformly.
+>>>>> 
+>>>>> There might be a question over the best behaviour for daemons like mountd
+>>>>> and  gssd.  However as we move towards having systemd manage those, they will
+>>>>> be restarted if they ever exit, and they are mostly stateless so that is
+>>>>> quite safe.
+>>>>> 
+>>>>> Does anyone else have thoughts on this?
+>>>> 
+>>>> Yes.  My thought is "xmalloc is an abomination."  :-)
+>>>> 
+>>>> We really do not want any of these tools exiting left if there's a memory allocation failure.  
+>>>> For a user, that's no better than a segfault.
+>>> I the past I have agreed with this... But as Neil points out, we now live in
+>>> a systemd world were daemons are restarted, so maybe it does make sense to 
+>>> exit on these types of failures. With daemons like mountd there is 
+>>> really no state that would be lost.... 
+>> 
+>> Neil's arguments are very practical, but ...
+>> 
+>> There are other reasons that malloc() can fail.  Software bugs are high on that list.  It can also fail if user input (or network input) is used to determine the requested allocation size.
+>> 
+>> In addition, rpmlint/fedpkg-lint complain if there's an exit(2) call in your linked libraries.  They would frown on xmalloc() invoking exit (they also aren't happy with xlog).
+>> 
+>> Whether or not it's OK for daemons, I still maintain that for administrative tools run directly by users like exportfs, we want to be more careful.  Since the daemons share the same libraries as the user tools, that means xmalloc and friends should be avoided everywhere, IMO.
+> 
+> I don't follow this argument.  Why do we need to be more careful for
+> administrative tools?
+> 
+> Tools should always be written to be crash-proof, and I believe exportfs is.
+> It writes to a temp file and then performs an atomic rename when the new file
+> is ready.  If anything goes wrong it is perfectly safe to simply exit, and
+> the important files will be unchanged.
 
-For a migration, however, we have all of those things already, and
-they have to be moved to a different nfs_client.  No local namespace
-changes are needed here.
+Data corruption is only half the argument.  The other half is how this looks to users when it happens.  The tool just stops working with a cryptic error message.  IMO it looks no better than a segfault.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- fs/nfs/client.c     |    3 +
- fs/nfs/internal.h   |    3 +
- fs/nfs/nfs4client.c |  108 +++++++++++++++++++++++++++++++++++++++++++++++++++
- 3 files changed, 113 insertions(+), 1 deletion(-)
+But you may be right; there might be no good alternatives, and the possibility of failure is rare in normal cases.
 
-diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-index 2dceee4..f2e870c 100644
---- a/fs/nfs/client.c
-+++ b/fs/nfs/client.c
-@@ -943,7 +943,7 @@ void nfs_server_insert_lists(struct nfs_server *server)
- }
- EXPORT_SYMBOL_GPL(nfs_server_insert_lists);
- 
--static void nfs_server_remove_lists(struct nfs_server *server)
-+void nfs_server_remove_lists(struct nfs_server *server)
- {
- 	struct nfs_client *clp = server->nfs_client;
- 	struct nfs_net *nn;
-@@ -960,6 +960,7 @@ static void nfs_server_remove_lists(struct nfs_server *server)
- 
- 	synchronize_rcu();
- }
-+EXPORT_SYMBOL_GPL(nfs_server_remove_lists);
- 
- /*
-  * Allocate and initialise a server record
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 38da8c2..e5a6bd1 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -154,6 +154,7 @@ struct nfs_client *nfs_get_client(const struct nfs_client_initdata *,
- 				  rpc_authflavor_t);
- int nfs_probe_fsinfo(struct nfs_server *server, struct nfs_fh *, struct nfs_fattr *);
- void nfs_server_insert_lists(struct nfs_server *);
-+void nfs_server_remove_lists(struct nfs_server *);
- void nfs_init_timeout_values(struct rpc_timeout *, int, unsigned int, unsigned int);
- int nfs_init_server_rpcclient(struct nfs_server *, const struct rpc_timeout *t,
- 		rpc_authflavor_t);
-@@ -174,6 +175,8 @@ extern struct nfs_server *nfs4_create_server(
- 					struct nfs_subversion *);
- extern struct nfs_server *nfs4_create_referral_server(struct nfs_clone_mount *,
- 						      struct nfs_fh *);
-+extern int nfs4_update_server(struct nfs_server *server, const char *hostname,
-+					struct sockaddr *sap, size_t salen);
- extern void nfs_free_server(struct nfs_server *server);
- extern struct nfs_server *nfs_clone_server(struct nfs_server *,
- 					   struct nfs_fh *,
-diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-index a860ab5..299cf6b 100644
---- a/fs/nfs/nfs4client.c
-+++ b/fs/nfs/nfs4client.c
-@@ -1091,3 +1091,111 @@ error:
- 	dprintk("<-- nfs4_create_referral_server() = error %d\n", error);
- 	return ERR_PTR(error);
- }
-+
-+/*
-+ * Grab the destination's particulars, including lease expiry time.
-+ *
-+ * Returns zero if probe succeeded and retrieved FSID matches the FSID
-+ * we have cached.
-+ */
-+static int nfs_probe_destination(struct nfs_server *server)
-+{
-+	struct inode *inode = server->super->s_root->d_inode;
-+	struct nfs_fattr *fattr;
-+	int error;
-+
-+	fattr = nfs_alloc_fattr();
-+	if (fattr == NULL)
-+		return -ENOMEM;
-+
-+	/* Sanity: the probe won't work if the destination server
-+	 * does not recognize the migrated FH. */
-+	error = nfs_probe_fsinfo(server, NFS_FH(inode), fattr);
-+
-+	nfs_free_fattr(fattr);
-+	return error;
-+}
-+
-+/**
-+ * nfs4_update_server - Move an nfs_server to a different nfs_client
-+ *
-+ * @server: represents FSID to be moved
-+ * @hostname: new end-point's hostname
-+ * @sap: new end-point's socket address
-+ * @salen: size of "sap"
-+ *
-+ * The nfs_server must be quiescent before this function is invoked.
-+ * Either its session is drained (NFSv4.1+), or its transport is
-+ * plugged and drained (NFSv4.0).
-+ *
-+ * Returns zero on success, or a negative errno value.
-+ */
-+int nfs4_update_server(struct nfs_server *server, const char *hostname,
-+		       struct sockaddr *sap, size_t salen)
-+{
-+	struct nfs_client *clp = server->nfs_client;
-+	struct rpc_clnt *clnt = server->client;
-+	struct xprt_create xargs = {
-+		.ident		= clp->cl_proto,
-+		.net		= &init_net,
-+		.dstaddr	= sap,
-+		.addrlen	= salen,
-+		.servername	= hostname,
-+	};
-+	char buf[INET6_ADDRSTRLEN + 1];
-+	struct sockaddr_storage address;
-+	struct sockaddr *localaddr = (struct sockaddr *)&address;
-+	int error;
-+
-+	dprintk("--> %s: move FSID %llx:%llx to \"%s\")\n", __func__,
-+			(unsigned long long)server->fsid.major,
-+			(unsigned long long)server->fsid.minor,
-+			hostname);
-+
-+	error = rpc_switch_client_transport(clnt, &xargs, clnt->cl_timeout);
-+	if (error != 0) {
-+		dprintk("<-- %s(): rpc_switch_client_transport returned %d\n",
-+			__func__, error);
-+		goto out;
-+	}
-+
-+	error = rpc_localaddr(clnt, localaddr, sizeof(address));
-+	if (error != 0) {
-+		dprintk("<-- %s(): rpc_localaddr returned %d\n",
-+			__func__, error);
-+		goto out;
-+	}
-+
-+	error = -EAFNOSUPPORT;
-+	if (rpc_ntop(localaddr, buf, sizeof(buf)) == 0) {
-+		dprintk("<-- %s(): rpc_ntop returned %d\n",
-+			__func__, error);
-+		goto out;
-+	}
-+
-+	nfs_server_remove_lists(server);
-+	error = nfs4_set_client(server, hostname, sap, salen, buf,
-+				clp->cl_rpcclient->cl_auth->au_flavor,
-+				clp->cl_proto, clnt->cl_timeout,
-+				clp->cl_minorversion, clp->cl_net);
-+	nfs_put_client(clp);
-+	if (error != 0) {
-+		nfs_server_insert_lists(server);
-+		dprintk("<-- %s(): nfs4_set_client returned %d\n",
-+			__func__, error);
-+		goto out;
-+	}
-+
-+	if (server->nfs_client->cl_hostname == NULL)
-+		server->nfs_client->cl_hostname = kstrdup(hostname, GFP_KERNEL);
-+	nfs_server_insert_lists(server);
-+
-+	error = nfs_probe_destination(server);
-+	if (error < 0)
-+		goto out;
-+
-+	dprintk("<-- %s() succeeded\n", __func__);
-+
-+out:
-+	return error;
-+}
+
+> The memory allocation failures that we are talking about here are for a dozen
+> bytes or so and are extremely are.  I would be a lot more confident in 'exit'
+> doing the right thing, than in multiple untested error paths carrying the
+> error up and making sure not to write out the file if the malloc error might
+> result in it having the wrong value.
+
+As you say, this isn't an issue if the tool is writing to a temp file, then renaming as the last step.
+
+> (On the question of 'exit' in libraries, I'm ambivalent).
+
+While this doesn't apply to exportfs, of course, these days one may also have to think about GUIs, binding to other language environments, or scripts run in "behind the scenes" environments where there is no possibility of reporting an error.  Sideways library exits are quite unhelpful in those cases.  They might make prototyping a little easier, but I can't think of a good user-centric reason to use them.
+
+But, I'm not objecting, just whinging a bit.  If you want to take this course, then go ahead.  It's really an argument about coding style rather than something important ;-)
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
 
