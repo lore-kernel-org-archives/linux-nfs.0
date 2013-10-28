@@ -1,43 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from szxga01-in.huawei.com ([119.145.14.64]:43934 "EHLO
-	szxga01-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755661Ab3JNCRF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 13 Oct 2013 22:17:05 -0400
-From: Wangminlan <wangminlan@huawei.com>
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Different sequence of "exportfs" produce different effects on nfs
- client mounts
-Date: Mon, 14 Oct 2013 02:16:58 +0000
-Message-ID: <3962238FD7EA0F41B1810E7ABEAFBC314CEF9ACF@szxema505-mbs.china.huawei.com>
-Content-Type: text/plain; charset="utf-8"
+Received: from mx12.netapp.com ([216.240.18.77]:50770 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753624Ab3J1VGI convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Oct 2013 17:06:08 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Weston Andros Adamson <dros@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 3/5] NFSv4: clean up state ref counting in open recover
+Date: Mon, 28 Oct 2013 21:06:07 +0000
+Message-ID: <1382994367.3314.7.camel@leira.trondhjem.org>
+References: <1382375414-5854-1-git-send-email-dros@netapp.com>
+	 <1382375414-5854-4-git-send-email-dros@netapp.com>
+In-Reply-To: <1382375414-5854-4-git-send-email-dros@netapp.com>
+Content-Type: text/plain; charset="utf-7"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-44CA44CASGksDQrjgIDjgIAgICAgICAgICBJ4oCZdmUgZ290IGEgcHJvYmxlbSBvbiB0aGUgbmZz
-IGV4cG9ydGZzIGNvbW1hbmQuIEnigJltIG5vdCBzdXJlIGlmIHRoaXMgaXMgdGhlIHJpZ2h0IHBs
-YWNlIHRvIGFzayB0aGlzLCBpZiBub3QsIGNhbiB5b3UgcGxlYXNlIHRlbGwgbWUgd2hlcmU/DQrj
-gIDjgIANCuOAgOOAgCAgICAgICAgIEhlcmXigJlzIHdoYXQgSSBuZWVkOg0K44CA44CAMS4gSSBo
-YXZlIGEgZm9sZGVyIG5hbWVkIC9tbnQvZnMxIHRvIGJlIGV4cG9ydGVkLg0K44CA44CAMi4gQWxs
-IHRoZSBob3N0IGluIHN1Ym5ldHdvcmsgMTkyLjE2OC4wLjAvMTYgc2hvdWxkIGJlIGFibGUgYWNj
-ZXNzIHRoaXMgZm9sZGVyLCBidXQgdGhlaXIgcm9vdCBzaG91bGQgYmUgc3F1YXNoZWQuDQrjgIDj
-gIAzLiBTb21lIHNwZWNpZmllZCBob3N0IGluIHRoZSBzYW1lIHN1Ym5ldHdvcmsgY2FuIGdhaW4g
-dGhlIHJvb3QgcGVybWlzc2lvbiBvbiB0aGUgZm9sZGVyLCBmb3IgZXhhbXBsZTogMTkyLjE2OC4w
-LjIxLCAxOTIuMTY4LjAuMjIuDQrjgIDjgIANCuOAgOOAgEnigJl2ZSBnb3QgYSBTTEVTMTFTUDEg
-Ym94IGFzIHRoZSBuZnMgc2VydmVyLCB0aGUgbmZzIGNsaWVudHMgYXJlIFNMRVMxMVNQMSwgdG9v
-LCBhbmQgdGhlIHByb3RvY29sIHVzZWQgYmV0d2VlbiBjbGllbnRzIGFuZCBzZXJ2ZXIgYXJlIE5G
-U3YzLg0K44CA44CASGVyZSBhcmUgdGhlIGNvbW1hbmRzIEkgdXNlZCB0byBkbyB0aGUgZXhwb3J0
-Og0K44CA44CAI2V4cG9ydGZzIOKAk28gcncscm9vdF9zcXVhc2ggMTkyLjE2OC4wLjAvMTY6L21u
-dC9mczEgDQrjgIDjgIAjZXhwb3J0ZnMg4oCTbyBydyxub19yb290X3NxdWFzaCAxOTIuMTY4LjAu
-MjE6L21udC9mczEgDQrjgIDjgIAjZXhwb3J0ZnMg4oCTbyBydyxub19yb290X3NxdWFzaCAxOTIu
-MTY4LjAuMjI6L21udC9mczENCuOAgOOAgEFmdGVyIHRoaXMsIGV2ZXJ5dGhpbmcgd29ya3MgYXMg
-ZXhwZWN0ZWQuDQrjgIDjgIANCuOAgOOAgEJ1dCwgYWZ0ZXIgdGhlIGZvbGxvd2luZyBvcGVyYXRp
-b25zOg0K44CA44CAI2V4cG9ydGZzIOKAk3UgMTkyLjE2OC4wLjAvMTY6L21udC9mczEgICAgICAg
-ICAgICAgIC8qIERlbGV0ZSB0aGlzIGV4cG9ydCAqLw0K44CA44CAIyBleHBvcnRmcyDigJNvIHJ3
-LHJvb3Rfc3F1YXNoIDE5Mi4xNjguMC4wLzE2Oi9tbnQvZnMxICAgICAgICAgIC8qIEFuZCBhZGQg
-aXQgYWdhaW4gKi8NCuOAgOOAgEhvc3RzIG9uIDE5Mi4xNjguMC4yMSBhbmQgMTkyLjE2OC4wLjIy
-IGRvZXNu4oCZdCBnZXQgcm9vdCBwZXJtaXNzaW9uIGFueSBtb3JlLiB3aGVuIEkgdHJpZWQgdG8g
-d3JpdGUgYSBmaWxlLCBpdCBjb21wbGFpbnMgYWJvdXQg4oCcUGVybWlzc2lvbiBkZW5pZWTigJ0u
-DQrjgIDjgIANCuOAgOOAgFNvLCBkb2VzIHRoZSBvcmRlciBvZiBleHBvcnRmcyBjb21tYW5kIGhh
-cyBzb21ldGhpbmcgdG8gZG8gdGhlIGZpbmFsIHJlc3VsdD8gT3IgYW0gSSBkb2luZyBzb21ldGhp
-bmcgd3Jvbmc/DQrjgIDjgIANCuOAgOOAgEIuUg0K44CA44CATWlubGFuIFdhbmcNCg==
+On Mon, 2013-10-21 at 13:10 -0400, Weston Andros Adamson wrote:
++AD4- There's already a valid state (the one being recovered), so just
++AD4- reference it. Also clean up error paths to avoid ref leaks.
++AD4- 
++AD4- Signed-off-by: Weston Andros Adamson +ADw-dros+AEA-netapp.com+AD4-
++AD4- ---
++AD4-  fs/nfs/nfs4proc.c +AHw- 13 +-+-+-+-+-+-+-+------
++AD4-  1 file changed, 8 insertions(+-), 5 deletions(-)
++AD4- 
++AD4- diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
++AD4- index 8140366..8ae1589 100644
++AD4- --- a/fs/nfs/nfs4proc.c
++AD4- +-+-+- b/fs/nfs/nfs4proc.c
++AD4- +AEAAQA- -1323,14 +-1323,14 +AEAAQA- +AF8-nfs4+AF8-opendata+AF8-reclaim+AF8-to+AF8-nfs4+AF8-state(struct nfs4+AF8-opendata +ACo-data)
++AD4-  		goto err+ADs-
++AD4-  	+AH0-
++AD4-  
++AD4- -	ret +AD0- -ENOMEM+ADs-
++AD4- -	state +AD0- nfs4+AF8-get+AF8-open+AF8-state(inode, data-+AD4-owner)+ADs-
++AD4- -	if (state +AD0APQ- NULL)
++AD4- +-	/+ACo- referenced the passed state +ACo-/
++AD4- +-	ret +AD0- -EINVAL+ADs-
++AD4- +-	if (state +AD0APQ- NULL +AHwAfA- +ACE-atomic+AF8-inc+AF8-not+AF8-zero(+ACY-state-+AD4-count))
++AD4-  		goto err+ADs-
+
+We already know that state +ACEAPQ- NULL, and that state-+AD4-count +ACEAPQ- 0 here, so
+I applied a simplified version of this patch that just does an
+atomic+AF8-inc(+ACY-state-+AD4-count) just before the function return.
+
++AD4-  
++AD4-  	ret +AD0- nfs+AF8-refresh+AF8-inode(inode, +ACY-data-+AD4-f+AF8-attr)+ADs-
++AD4-  	if (ret)
++AD4- -		goto err+ADs-
++AD4- +-		goto err+AF8-put+ADs-
++AD4-  
++AD4-  	nfs+AF8-setsecurity(inode, +ACY-data-+AD4-f+AF8-attr, data-+AD4-f+AF8-label)+ADs-
++AD4-  
++AD4- +AEAAQA- -1340,9 +-1340,12 +AEAAQA- +AF8-nfs4+AF8-opendata+AF8-reclaim+AF8-to+AF8-nfs4+AF8-state(struct nfs4+AF8-opendata +ACo-data)
++AD4-  			    data-+AD4-o+AF8-arg.fmode)+ADs-
++AD4-  
++AD4-  	return state+ADs-
++AD4- +-
++AD4- +-err+AF8-put:
++AD4- +-	nfs4+AF8-put+AF8-open+AF8-state(state)+ADs-
++AD4- +-
++AD4-  err:
++AD4-  	return ERR+AF8-PTR(ret)+ADs-
++AD4- -
++AD4-  +AH0-
++AD4-  
++AD4-  static struct nfs4+AF8-state +ACo-
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust+AEA-netapp.com
+www.netapp.com
