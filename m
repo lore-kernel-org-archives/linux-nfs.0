@@ -1,67 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:45281 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759050Ab3JQSNn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Oct 2013 14:13:43 -0400
-Received: from ucsinet22.oracle.com (ucsinet22.oracle.com [156.151.31.94])
-	by aserp1040.oracle.com (Sentrion-MTA-4.3.1/Sentrion-MTA-4.3.1) with ESMTP id r9HIDgmZ006140
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Thu, 17 Oct 2013 18:13:42 GMT
-Received: from nfsvm18.us.oracle.com (nfsvm18.us.oracle.com [10.135.198.118])
-	by ucsinet22.oracle.com (8.14.4+Sun/8.14.4) with ESMTP id r9HIDfFH028666
-	for <linux-nfs@vger.kernel.org>; Thu, 17 Oct 2013 18:13:41 GMT
-From: Chuck Lever <chuck.lever@oracle.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 16/21] NFS: Implement support for NFS4ERR_LEASE_MOVED
-Date: Thu, 17 Oct 2013 14:13:41 -0400
-Message-Id: <20131017181341.1073.24544.stgit@nfsvm18.us.oracle.com>
-In-Reply-To: <20131017180630.1073.18400.stgit@nfsvm18.us.oracle.com>
-References: <20131017180630.1073.18400.stgit@nfsvm18.us.oracle.com>
+Received: from mx12.netapp.com ([216.240.18.77]:60903 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932188Ab3J1O5c (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 28 Oct 2013 10:57:32 -0400
+From: Anna Schumaker <bjschuma@netapp.com>
+To: <bfields@fieldses.org>, <linux-nfs@vger.kernel.org>
+Subject: [PATCH 0/4] NFSD: Add support for WRITE_PLUS and SEEK
+Date: Mon, 28 Oct 2013 10:57:22 -0400
+Message-ID: <1382972247-1108-1-git-send-email-bjschuma@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Trigger lease-moved recovery when a request returns
-NFS4ERR_LEASE_MOVED.
+This patch series adds server support for the NFS v4.2 operations WRITE_PLUS
+and SEEK.  The first few patches fix up error codes to match the current draft
+of the spec and then add in the NFS v4.2 decode operations array so later
+patches can focus on only adding in the new operations.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- fs/nfs/nfs4proc.c |    9 +++++++++
- 1 file changed, 9 insertions(+)
+Patch 3 (Add WRITE_PLUS support for hole punches) exports the do_fallocate()
+function from fs/open.c.  Should this be its own patch submitted somewhere
+else?  Is there a better way to get into the VFS fallocate routines?
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 360e14e..3a03cd6 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -389,6 +389,9 @@ static int nfs4_handle_exception(struct nfs_server *server, int errorcode, struc
- 			if (ret < 0)
- 				break;
- 			goto wait_on_recovery;
-+		case -NFS4ERR_LEASE_MOVED:
-+			nfs4_schedule_lease_moved_recovery(clp);
-+			goto wait_on_recovery;
- #if defined(CONFIG_NFS_V4_1)
- 		case -NFS4ERR_BADSESSION:
- 		case -NFS4ERR_BADSLOT:
-@@ -1585,6 +1588,9 @@ static int nfs4_handle_delegation_recall_error(struct nfs_server *server, struct
- 		case -NFS4ERR_MOVED:
- 			nfs4_schedule_migration_recovery(server);
- 			return -EAGAIN;
-+		case -NFS4ERR_LEASE_MOVED:
-+			nfs4_schedule_lease_moved_recovery(server->nfs_client);
-+			return -EAGAIN;
- 		case -NFS4ERR_DELEG_REVOKED:
- 		case -NFS4ERR_ADMIN_REVOKED:
- 		case -NFS4ERR_BAD_STATEID:
-@@ -4765,6 +4771,9 @@ nfs4_async_handle_error(struct rpc_task *task, const struct nfs_server *server,
- 			if (nfs4_schedule_migration_recovery(server) < 0)
- 				goto recovery_failed;
- 			goto wait_on_recovery;
-+		case -NFS4ERR_LEASE_MOVED:
-+			nfs4_schedule_lease_moved_recovery(clp);
-+			goto wait_on_recovery;
- #if defined(CONFIG_NFS_V4_1)
- 		case -NFS4ERR_BADSESSION:
- 		case -NFS4ERR_BADSLOT:
+The final patch is not meant to be applied, and is only included as an example
+of what I did to add offload handling to the client.
+
+Questions, comments and thoughts are appreciated!
+
+Anna
+
+Anna Schumaker (4):
+  NFSD: Update error codes
+  NFSD: Create nfs v4.2 decode ops
+  NFSD: Add WRITE_PLUS support for hole punches
+  NFSD: Implement SEEK
+
+ fs/nfsd/nfs4proc.c   |  89 +++++++++++++++++++++++++
+ fs/nfsd/nfs4xdr.c    | 179 ++++++++++++++++++++++++++++++++++++++++++++++++++-
+ fs/nfsd/nfsd.h       |   2 +-
+ fs/nfsd/vfs.c        |  14 ++++
+ fs/nfsd/vfs.h        |   1 +
+ fs/nfsd/xdr4.h       |  39 +++++++++++
+ fs/open.c            |   1 +
+ include/linux/nfs4.h |  21 +++++-
+ 8 files changed, 342 insertions(+), 4 deletions(-)
+
+-- 
+1.8.4.1
 
