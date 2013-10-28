@@ -1,192 +1,409 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:50097 "EHLO mx2.suse.de"
+Received: from mx12.netapp.com ([216.240.18.77]:60912 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754546Ab3J1Djh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 27 Oct 2013 23:39:37 -0400
-Date: Mon, 28 Oct 2013 14:39:22 +1100
-From: NeilBrown <neilb@suse.de>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Steve Dickson <SteveD@redhat.com>, tasleson@redhat.com,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] exportfs: Return non-zero exit value on error
-Message-ID: <20131028143922.2131237d@notabene.brown>
-In-Reply-To: <AE4061A2-B0F8-4B1D-9381-873E7322FA54@oracle.com>
-References: <1380756584-13335-1-git-send-email-tasleson@redhat.com>
-	<20131022092519.4f4683a8@notabene.brown>
-	<52669862.6030409@redhat.com>
-	<20131023124444.65ace6e3@notabene.brown>
-	<52680917.4010509@redhat.com>
-	<20131024091811.34b06e71@notabene.brown>
-	<D9521932-DDAA-47D2-996F-62D2A37BA5B0@oracle.com>
-	<52694336.9050303@RedHat.com>
-	<AE4061A2-B0F8-4B1D-9381-873E7322FA54@oracle.com>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/lxrD/2S6XFvt4EYkjgFSOdk"; protocol="application/pgp-signature"
+	id S932188Ab3J1O5g (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 28 Oct 2013 10:57:36 -0400
+From: Anna Schumaker <bjschuma@netapp.com>
+To: <bfields@fieldses.org>, <linux-nfs@vger.kernel.org>
+Subject: [RFC 5/4] NFSD: Add basic CB_OFFLOAD support
+Date: Mon, 28 Oct 2013 10:57:27 -0400
+Message-ID: <1382972247-1108-6-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1382972247-1108-1-git-send-email-bjschuma@netapp.com>
+References: <1382972247-1108-1-git-send-email-bjschuma@netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/lxrD/2S6XFvt4EYkjgFSOdk
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+This patch adds basic offload support to the WRITE_PLUS operation.
+Since I don't implement OFFLOAD_ABORT, OFFLOAD_REVOKE or OFFLOAD_STATUS
+this patch is NOT spec compliant and should not be applied without
+further work.
 
-On Thu, 24 Oct 2013 12:05:35 -0400 Chuck Lever <chuck.lever@oracle.com> wro=
-te:
+I'm including this patch to show how I handled offloading to test client
+code.
+---
+ fs/nfsd/nfs4callback.c | 132 +++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfsd/nfs4proc.c     |  56 ++++++++++++++++++---
+ fs/nfsd/nfs4state.c    |  11 +++++
+ fs/nfsd/state.h        |   4 ++
+ fs/nfsd/xdr4.h         |  14 ++++++
+ fs/nfsd/xdr4cb.h       |   9 ++++
+ 6 files changed, 219 insertions(+), 7 deletions(-)
 
->=20
-> On Oct 24, 2013, at 11:56 AM, Steve Dickson <SteveD@redhat.com> wrote:
->=20
-> >=20
-> >=20
-> > On 23/10/13 19:31, Chuck Lever wrote:
-> >>=20
-> >> On Oct 23, 2013, at 6:18 PM, NeilBrown <neilb@suse.de> wrote:
-> >>=20
-> >>> On Wed, 23 Oct 2013 12:36:23 -0500 Tony Asleson <tasleson@redhat.com>=
- wrote:
-> >>>=20
-> >>>> On 10/22/2013 08:44 PM, NeilBrown wrote:
-> >>>>> On Tue, 22 Oct 2013 10:23:14 -0500 Tony Asleson <tasleson@redhat.co=
-m> wrote:
-> >>>>>> The reason I chose to return values was to make sure requested ope=
-ration
-> >>>>>> actually completed requested operation.  Unexporting a non-existent
-> >>>>>> export is not considered an error and returns no indication you did
-> >>>>>> absolutely nothing.
-> >>>>>=20
-> >>>>> Hi,
-> >>>>> thanks makes sense - I had missed that (even though you explained i=
-t in the
-> >>>>> patch description :-( )
-> >>>>>=20
-> >>>>> With your patch, if asked to unexport something that wasn't exporte=
-d it
-> >>>>> would not report any error, but would exit with an error status.  I=
-s that
-> >>>>> correct?  I think I would rather have a message printed if there is=
- an error.
-> >>>>=20
-> >>>> Correct, I only made changes for the exit status.  I was trying to m=
-ake
-> >>>> changes that would be mostly invisible to end users.  I have no conc=
-erns
-> >>>> adding a printed error output too, but others may.
-> >>>>=20
-> >>>> Changing the behavior of any command line tool is potentially
-> >>>> problematic when scripted.
-> >>>>=20
-> >>>>> So would something like this (on top of my patch) address you need,=
- or was
-> >>>>> there something else I missed?
-> >>>>=20
-> >>>> Yes, this should work for the unexport fs case.
-> >>>>=20
-> >>>> However, the reason my patch was a little more invasive was to ensure
-> >>>> that both the export and unexport paths were covered.
-> >>>>=20
-> >>>> For example, if the strdup call fails in function client_init, we fa=
-il
-> >>>> the operation and return exit value of 0.  Unlikely, but just the fi=
-rst
-> >>>> example I stumbled across.
-> >>>=20
-> >>> I think it is a lot closer to "impossible" than just "unlikely".
-> >>> malloc doesn't fail in this sort of context, the OOM killer kills som=
-ething
-> >>> off instead.
-> >>> My personal preference is to replace all malloc/calloc/strdup calls w=
-ith
-> >>> the xmalloc, xstrdup etc calls in support/nfs/xcommon.c.
-> >>> If you are worried about malloc failing, I'd much prefer to see a pat=
-ch which
-> >>> changes nfs-utils to use those uniformly.
-> >>>=20
-> >>> There might be a question over the best behaviour for daemons like mo=
-untd
-> >>> and  gssd.  However as we move towards having systemd manage those, t=
-hey will
-> >>> be restarted if they ever exit, and they are mostly stateless so that=
- is
-> >>> quite safe.
-> >>>=20
-> >>> Does anyone else have thoughts on this?
-> >>=20
-> >> Yes.  My thought is "xmalloc is an abomination."  :-)
-> >>=20
-> >> We really do not want any of these tools exiting left if there's a mem=
-ory allocation failure. =20
-> >> For a user, that's no better than a segfault.
-> > I the past I have agreed with this... But as Neil points out, we now li=
-ve in
-> > a systemd world were daemons are restarted, so maybe it does make sense=
- to=20
-> > exit on these types of failures. With daemons like mountd there is=20
-> > really no state that would be lost....=20
->=20
-> Neil's arguments are very practical, but ...
->=20
-> There are other reasons that malloc() can fail.  Software bugs are high o=
-n that list.  It can also fail if user input (or network input) is used to =
-determine the requested allocation size.
->=20
-> In addition, rpmlint/fedpkg-lint complain if there's an exit(2) call in y=
-our linked libraries.  They would frown on xmalloc() invoking exit (they al=
-so aren't happy with xlog).
->=20
-> Whether or not it's OK for daemons, I still maintain that for administrat=
-ive tools run directly by users like exportfs, we want to be more careful. =
- Since the daemons share the same libraries as the user tools, that means x=
-malloc and friends should be avoided everywhere, IMO.
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index 7f05cd1..1f6c150 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -35,6 +35,7 @@
+ #include <linux/sunrpc/svc_xprt.h>
+ #include <linux/slab.h>
+ #include "nfsd.h"
++#include "xdr4.h"
+ #include "state.h"
+ #include "netns.h"
+ #include "xdr4cb.h"
+@@ -52,6 +53,9 @@ enum {
+ 	NFSPROC4_CLNT_CB_NULL = 0,
+ 	NFSPROC4_CLNT_CB_RECALL,
+ 	NFSPROC4_CLNT_CB_SEQUENCE,
++
++	/* NFS v4.2 callback */
++	NFSPROC4_CLNT_CB_OFFLOAD,
+ };
+ 
+ struct nfs4_cb_compound_hdr {
+@@ -110,6 +114,7 @@ enum nfs_cb_opnum4 {
+ 	OP_CB_WANTS_CANCELLED		= 12,
+ 	OP_CB_NOTIFY_LOCK		= 13,
+ 	OP_CB_NOTIFY_DEVICEID		= 14,
++	OP_CB_OFFLOAD			= 15,
+ 	OP_CB_ILLEGAL			= 10044
+ };
+ 
+@@ -469,6 +474,31 @@ out_default:
+ 	return nfs_cb_stat_to_errno(nfserr);
+ }
+ 
++static void encode_cb_offload4args(struct xdr_stream *xdr,
++				   const struct nfsd4_cb_offload *offload,
++				   struct nfs4_cb_compound_hdr *hdr)
++{
++	__be32 *p;
++
++	if (hdr->minorversion < 2)
++		return;
++
++	encode_nfs_cb_opnum4(xdr, OP_CB_OFFLOAD);
++	encode_nfs_fh4(xdr, &offload->co_fh);
++	encode_stateid4(xdr, &offload->co_res.wr_stid->sc_stateid);
++
++	p = xdr_reserve_space(xdr, 4);
++	*p = cpu_to_be32(1);
++	encode_stateid4(xdr, &offload->co_res.wr_stid->sc_stateid);
++
++	p = xdr_reserve_space(xdr, 12 + NFS4_VERIFIER_SIZE);
++	p = xdr_encode_hyper(p, offload->co_res.wr_bytes_written);
++	*p++ = cpu_to_be32(offload->co_res.wr_stable_how);
++	xdr_encode_opaque_fixed(p, offload->co_res.wr_verifier.data, NFS4_VERIFIER_SIZE);
++
++	hdr->nops++;
++}
++
+ /*
+  * NFSv4.0 and NFSv4.1 XDR encode functions
+  *
+@@ -505,6 +535,23 @@ static void nfs4_xdr_enc_cb_recall(struct rpc_rqst *req, struct xdr_stream *xdr,
+ 	encode_cb_nops(&hdr);
+ }
+ 
++/*
++ * CB_OFFLOAD
++ */
++static void nfs4_xdr_enc_cb_offload(struct rpc_rqst *req, struct xdr_stream *xdr,
++				    const struct nfsd4_callback *cb)
++{
++	const struct nfsd4_cb_offload *args = cb->cb_op;
++	struct nfs4_cb_compound_hdr hdr = {
++		.ident = cb->cb_clp->cl_cb_ident,
++		.minorversion = cb->cb_minorversion,
++	};
++
++	encode_cb_compound4args(xdr, &hdr);
++	encode_cb_sequence4args(xdr, cb, &hdr);
++	encode_cb_offload4args(xdr, args, &hdr);
++	encode_cb_nops(&hdr);
++}
+ 
+ /*
+  * NFSv4.0 and NFSv4.1 XDR decode functions
+@@ -552,6 +599,36 @@ out:
+ }
+ 
+ /*
++ * CB_OFFLOAD
++ */
++static int nfs4_xdr_dec_cb_offload(struct rpc_rqst *rqstp, struct xdr_stream *xdr,
++				   struct nfsd4_callback *cb)
++{
++	struct nfs4_cb_compound_hdr hdr;
++	enum nfsstat4 nfserr;
++	int status;
++
++	status = decode_cb_compound4res(xdr, &hdr);
++	if (unlikely(status))
++		goto out;
++
++	if (cb != NULL) {
++		status = decode_cb_sequence4res(xdr, cb);
++		if (unlikely(status))
++			goto out;
++	}
++
++	status = decode_cb_op_status(xdr, OP_CB_OFFLOAD, &nfserr);
++	if (unlikely(status))
++		goto out;
++	if (unlikely(nfserr != NFS4_OK))
++		status = nfs_cb_stat_to_errno(nfserr);
++
++out:
++	return status;
++}
++
++/*
+  * RPC procedure tables
+  */
+ #define PROC(proc, call, argtype, restype)				\
+@@ -568,6 +645,7 @@ out:
+ static struct rpc_procinfo nfs4_cb_procedures[] = {
+ 	PROC(CB_NULL,	NULL,		cb_null,	cb_null),
+ 	PROC(CB_RECALL,	COMPOUND,	cb_recall,	cb_recall),
++	PROC(CB_OFFLOAD, COMPOUND,	cb_offload,	cb_offload),
+ };
+ 
+ static struct rpc_version nfs_cb_version4 = {
+@@ -1036,3 +1114,57 @@ void nfsd4_cb_recall(struct nfs4_delegation *dp)
+ 
+ 	run_nfsd4_cb(&dp->dl_recall);
+ }
++
++static void nfsd4_cb_offload_done(struct rpc_task *task, void *calldata)
++{
++	struct nfsd4_callback *cb = calldata;
++	struct nfs4_client *clp = cb->cb_clp;
++	struct rpc_clnt *current_rpc_client = clp->cl_cb_client;
++
++	nfsd4_cb_done(task, calldata);
++
++	if (current_rpc_client != task->tk_client)
++		return;
++
++	if (cb->cb_done)
++		return;
++
++	if (task->tk_status != 0)
++		nfsd4_mark_cb_down(clp, task->tk_status);
++	cb->cb_done = true;
++}
++
++static void nfsd4_cb_offload_release(void *calldata)
++{
++	struct nfsd4_callback *cb = calldata;
++	struct nfsd4_cb_offload *offload = container_of(cb, struct nfsd4_cb_offload, co_callback);
++
++	if (cb->cb_done) {
++		nfs4_free_offload_stateid(offload->co_res.wr_stid);
++		kfree(offload);
++	}
++}
++
++static const struct rpc_call_ops nfsd4_cb_offload_ops = {
++	.rpc_call_prepare = nfsd4_cb_prepare,
++	.rpc_call_done    = nfsd4_cb_offload_done,
++	.rpc_release      = nfsd4_cb_offload_release,
++};
++
++void nfsd4_cb_offload(struct nfsd4_cb_offload *offload)
++{
++	struct nfsd4_callback *cb = &offload->co_callback;
++
++	cb->cb_op = offload;
++	cb->cb_clp = offload->co_res.wr_stid->sc_client;
++	cb->cb_msg.rpc_proc = &nfs4_cb_procedures[NFSPROC4_CLNT_CB_OFFLOAD];
++	cb->cb_msg.rpc_argp = cb;
++	cb->cb_msg.rpc_resp = cb;
++
++	cb->cb_ops = &nfsd4_cb_offload_ops;
++
++	INIT_LIST_HEAD(&cb->cb_per_client);
++	cb->cb_done = true;
++
++	run_nfsd4_cb(cb);
++}
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index bc45ed2..d56f7fe 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1028,22 +1028,64 @@ nfsd4_write(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	return status;
+ }
+ 
+-static __be32
+-nfsd4_write_plus_hole(struct file *file, struct nfsd4_write_plus *writeplus,
+-		      struct net *net)
++static void
++nfsd4_offload_work(struct nfsd4_cb_offload *offload,
++		   struct nfsd4_compound_state *cstate,
++		   struct nfsd42_write_res *write_res,
++		   void (*offload_func)(struct work_struct *))
++{
++	offload->co_res.wr_stid = nfs4_alloc_offload_stateid(cstate->session->se_client);
++	memcpy(&offload->co_fh, &cstate->current_fh, sizeof(struct knfsd_fh));
++
++	write_res->wr_stid = offload->co_res.wr_stid;
++	write_res->wr_bytes_written = 0;
++	write_res->wr_stable_how = NFS_UNSTABLE;
++
++	nfsd4_init_callback(&offload->co_callback);
++	INIT_WORK(&offload->co_work, offload_func);
++	schedule_work(&offload->co_work);
++}
++
++static void
++nfsd4_write_plus_hole_async(struct work_struct *work)
+ {
++	struct nfsd4_cb_offload *offload;
++	struct nfsd4_write_plus *writeplus;
+ 	__be32 status;
+ 
+-	status = nfsd4_vfs_fallocate(file, writeplus->wp_allocated,
++	offload = container_of(work, struct nfsd4_cb_offload, co_work);
++	writeplus = &offload->co_u.write_plus;
++
++	status = nfsd4_vfs_fallocate(offload->co_file, writeplus->wp_allocated,
+ 				writeplus->wp_offset, writeplus->wp_length);
+ 	if (status == nfs_ok) {
+ 		writeplus->wp_res.wr_stid = NULL;
+ 		writeplus->wp_res.wr_bytes_written = writeplus->wp_length;
+ 		writeplus->wp_res.wr_stable_how = NFS_FILE_SYNC;
+-		gen_boot_verifier(&writeplus->wp_res.wr_verifier, net);
++		gen_boot_verifier(&writeplus->wp_res.wr_verifier, offload->co_net);
+ 	}
+ 
+-	return status;
++	fput(offload->co_file);
++	nfsd4_cb_offload(offload);
++}
++
++static __be32
++nfsd4_write_plus_hole(struct file *file, struct nfsd4_write_plus *writeplus,
++		      struct nfsd4_compound_state *cstate, struct net *net)
++{
++	struct nfsd4_cb_offload *offload;
++
++	offload = kmalloc(sizeof(struct nfsd4_cb_offload), GFP_KERNEL);
++	if (!offload)
++		return nfserrno(PTR_ERR(offload));
++
++	memcpy(&offload->co_u.write_plus, writeplus, sizeof(struct nfsd4_write_plus));
++	offload->co_file = get_file(file);
++	offload->co_net  = net;
++
++	nfsd4_offload_work(offload, cstate, &writeplus->wp_res, nfsd4_write_plus_hole_async);
++
++	return 0;
+ }
+ 
+ static __be32
+@@ -1060,7 +1102,7 @@ nfsd4_write_plus(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		return status;
+ 
+ 	if (writeplus->wp_data_content == NFS4_CONTENT_HOLE)
+-		return nfsd4_write_plus_hole(file, writeplus, net);
++		return nfsd4_write_plus_hole(file, writeplus, cstate, net);
+ 	return nfserr_union_notsupp;
+ }
+ 
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 0874998..6342167 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -364,6 +364,11 @@ static struct nfs4_ol_stateid * nfs4_alloc_stateid(struct nfs4_client *clp)
+ 	return openlockstateid(nfs4_alloc_stid(clp, stateid_slab));
+ }
+ 
++struct nfs4_stid *nfs4_alloc_offload_stateid(struct nfs4_client *clp)
++{
++	return nfs4_alloc_stid(clp, stateid_slab);
++}
++
+ static struct nfs4_delegation *
+ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *stp, struct svc_fh *current_fh)
+ {
+@@ -613,6 +618,12 @@ static void free_generic_stateid(struct nfs4_ol_stateid *stp)
+ 	kmem_cache_free(stateid_slab, stp);
+ }
+ 
++void nfs4_free_offload_stateid(struct nfs4_stid *stid)
++{
++	remove_stid(stid);
++	kmem_cache_free(stateid_slab, stid);
++}
++
+ static void release_lock_stateid(struct nfs4_ol_stateid *stp)
+ {
+ 	struct file *file;
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 424d8f5..a40d29a 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -452,6 +452,7 @@ static inline struct nfs4_ol_stateid *openlockstateid(struct nfs4_stid *s)
+ #define WR_STATE	        0x00000020
+ 
+ struct nfsd4_compound_state;
++struct nfsd4_cb_offload;
+ struct nfsd_net;
+ 
+ extern __be32 nfs4_preprocess_stateid_op(struct net *net,
+@@ -472,6 +473,7 @@ extern void nfsd4_probe_callback(struct nfs4_client *clp);
+ extern void nfsd4_probe_callback_sync(struct nfs4_client *clp);
+ extern void nfsd4_change_callback(struct nfs4_client *clp, struct nfs4_cb_conn *);
+ extern void nfsd4_cb_recall(struct nfs4_delegation *dp);
++extern void nfsd4_cb_offload(struct nfsd4_cb_offload *);
+ extern int nfsd4_create_callback_queue(void);
+ extern void nfsd4_destroy_callback_queue(void);
+ extern void nfsd4_shutdown_callback(struct nfs4_client *);
+@@ -480,6 +482,8 @@ extern struct nfs4_client_reclaim *nfs4_client_to_reclaim(const char *name,
+ 							struct nfsd_net *nn);
+ extern bool nfs4_has_reclaimed_state(const char *name, struct nfsd_net *nn);
+ extern void put_client_renew(struct nfs4_client *clp);
++extern struct nfs4_stid *nfs4_alloc_offload_stateid(struct nfs4_client *);
++extern void nfs4_free_offload_stateid(struct nfs4_stid *);
+ 
+ /* nfs4recover operations */
+ extern int nfsd4_client_tracking_init(struct net *net);
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index ae9debc..24e2c07 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -451,6 +451,20 @@ struct nfsd4_write_plus {
+ 	struct nfsd42_write_res	wp_res;
+ };
+ 
++struct nfsd4_cb_offload {
++	union {
++		struct nfsd4_write_plus write_plus;
++	} co_u;
++
++	struct knfsd_fh		co_fh;
++	struct file		*co_file;
++	struct net		*co_net;
++
++	struct nfsd42_write_res	co_res;
++	struct work_struct	co_work;
++	struct nfsd4_callback	co_callback;
++};
++
+ struct nfsd4_seek {
+ 	/* request */
+ 	stateid_t	seek_stateid;
+diff --git a/fs/nfsd/xdr4cb.h b/fs/nfsd/xdr4cb.h
+index c5c55df..75b0ef7 100644
+--- a/fs/nfsd/xdr4cb.h
++++ b/fs/nfsd/xdr4cb.h
+@@ -21,3 +21,12 @@
+ #define NFS4_dec_cb_recall_sz		(cb_compound_dec_hdr_sz  +      \
+ 					cb_sequence_dec_sz +            \
+ 					op_dec_sz)
++
++#define NFS4_enc_cb_offload_sz		(cb_compound_enc_hdr_sz +      \
++					 cb_sequence_enc_sz +          \
++					 1 + enc_stateid_sz + 2 + 1 +  \
++					 XDR_QUADLEN(NFS4_VERIFIER_SIZE))
++
++#define NFS4_dec_cb_offload_sz		(cb_compound_dec_hdr_sz +  \
++					 cb_sequence_dec_sz +      \
++					 op_dec_sz)
+-- 
+1.8.4.1
 
-I don't follow this argument.  Why do we need to be more careful for
-administrative tools?
-
-Tools should always be written to be crash-proof, and I believe exportfs is.
-It writes to a temp file and then performs an atomic rename when the new fi=
-le
-is ready.  If anything goes wrong it is perfectly safe to simply exit, and
-the important files will be unchanged.
-
-The memory allocation failures that we are talking about here are for a doz=
-en
-bytes or so and are extremely are.  I would be a lot more confident in 'exi=
-t'
-doing the right thing, than in multiple untested error paths carrying the
-error up and making sure not to write out the file if the malloc error might
-result in it having the wrong value.
-
-(On the question of 'exit' in libraries, I'm ambivalent).
-
-NeilBrown
-
->=20
-> --
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
->=20
->=20
-
-
---Sig_/lxrD/2S6XFvt4EYkjgFSOdk
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.19 (GNU/Linux)
-
-iQIVAwUBUm3cajnsnt1WYoG5AQLxMw//WZpXzDQ93ZHsCbwCCMmjdpm2rKzvjPJE
-WQzazFZljS+by77j8Uud9ww3PnXJdPIQwN0ObC/DR8IQpRkA8z7Jk3ioSLyUjpuV
-sYt9I+feO73li6g5Cxf0Lm/xxlw/1ya33mXnLKDF4Aimru2f96LfpeM1ftGSLVDg
-EX3YSQWAP0/wqKlsp0z+RoesNoUrkpdQmVxkPa07bNZwR6bWt2iNodzRr5DRsgUM
-d5xpidImcQfmtoC86am5WK6MeJbL2HEcAhdsrFuCv5Md2Am9Zlmug8Jb0T7MMwUf
-lIiwGzF5wWoJM6f1mrzUpPulGUlNJEKXJzgRPKHTlVZovxltaTVZK5M4t7EzEDL8
-6INwmyzCjl6kUlIGMahAsw/m94sJ9tXXj80/V0X/PDff0jpBP1AtlvE7vyWtoic5
-jkSAkDYr/seTQG1xlc4woosuKWFhFQBfed07WgefXQR3cjRWohhVSjsu+ypklgqD
-nD9pwT96UQkSiteirIFgEq50L2mQvBJeMeMrXqdk22C34eMVb5YPbN4oWzs8GLfC
-mqO27QakRw56o9gC515ZLLRAkszZO1fzGubDPO8TSkWFl+MeozdpIFxXhAzAI39V
-ebYcngHlqCJ42eXHnLEkVKK8isZCLZlzF2ImQYPo7txG5MQ+LiNaLDJ749/MTIpt
-kmIxhzLdmCs=
-=womE
------END PGP SIGNATURE-----
-
---Sig_/lxrD/2S6XFvt4EYkjgFSOdk--
