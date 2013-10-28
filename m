@@ -1,42 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:39266 "EHLO fieldses.org"
+Received: from mx11.netapp.com ([216.240.18.76]:51696 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754189Ab3JBNsT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 2 Oct 2013 09:48:19 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 1/2] rpc: change BUG to WARN in gss_encode_v1_msg
-Date: Wed,  2 Oct 2013 09:48:14 -0400
-Message-Id: <1380721695-14755-1-git-send-email-bfields@redhat.com>
+	id S1754507Ab3J1Ach convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Oct 2013 20:32:37 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Christoph Anton Mitterer <calestyo@scientia.net>
+CC: Simo Sorce <simo@redhat.com>, Hellwig Christoph <hch@infradead.org>,
+        "Matt W. Benjamin" <matt@linuxbox.com>,
+        Dr Fields James Bruce <bfields@fieldses.org>,
+        Mailing List Linux NFS <linux-nfs@vger.kernel.org>,
+        Wheeler Ric <ricwheeler@gmail.com>
+Subject: Re: XATTRs in NFS?
+Date: Mon, 28 Oct 2013 00:32:35 +0000
+Message-ID: <B1BC8908-0495-4D73-96C5-9E3E1AA0D883@netapp.com>
+References: <312486415.16.1382796101374.JavaMail.root@thunderbeast.private.linuxbox.com>
+ <5FC093E3-1CD3-4AC7-A91F-37C8DEC6BEFE@netapp.com>
+ <20131027165628.GA447@infradead.org>
+ <95C57010-2A89-423C-8668-DF963ABF8BB6@netapp.com>
+ <1382898655.899.122.camel@willson.li.ssimo.org>
+ <C586D6EC-47DF-4FAE-8BB3-7D0E7400B86F@netapp.com>
+ <1382912457.6932.21.camel@heisenberg.scientia.net>
+In-Reply-To: <1382912457.6932.21.camel@heisenberg.scientia.net>
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
 
-Failure of this assertion would indeed be serious, but as we've seen a
-BUG() in a worker thread (this can run from rpciod context) can screw up
-the system so badly that the oops doesn't even get to the logs; better
-to WARN() and soldier on.
+On Oct 27, 2013, at 6:20 PM, Christoph Anton Mitterer <calestyo@scientia.net> wrote:
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- net/sunrpc/auth_gss/auth_gss.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+> On Sun, 2013-10-27 at 18:41 +0000, Myklebust, Trond wrote:
+>> I'm not going to start anything...
+> So that's basically a: "XATTRs in NFS - never"?! :(
 
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index 0846566..254a9f0 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -454,7 +454,7 @@ static void gss_encode_v1_msg(struct gss_upcall_msg *gss_msg,
- 	gss_msg->msg.len += len;
- 
- 	gss_msg->msg.data = gss_msg->databuf;
--	BUG_ON(gss_msg->msg.len > UPCALL_BUF_LEN);
-+	WARN_ON_ONCE(gss_msg->msg.len > UPCALL_BUF_LEN);
- }
- 
- static struct gss_upcall_msg *
--- 
-1.7.9.5
+Your case for adding the feature seems to be "I have a couple of programs that use xattrs, so NFS should provide it.".
 
+Well, that means at a minimum going to the IETF (possibly also POSIX) to convince them that the feature is worth adding, helping design the protocol to do so, and achieving consensus in a NFSv4.x spec, then doing the work designing and coding up a Linux implementation. Who is volunteering to do all that?
+
+My statement above was that I'm not volunteering to do all this. You haven't convinced me that your programs cannot be modified to use other more portable solutions. You're not even generating the checksums when creating the data, so there is already an existing window during which corruption can occur.
+
+Trond
