@@ -1,47 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e8.ny.us.ibm.com ([32.97.182.138]:39174 "EHLO e8.ny.us.ibm.com"
+Received: from fieldses.org ([174.143.236.118]:48848 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752822Ab3JZRrG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 26 Oct 2013 13:47:06 -0400
-Received: from /spool/local
-	by e8.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <eshel@us.ibm.com>;
-	Sat, 26 Oct 2013 13:47:05 -0400
-In-Reply-To: <OF01D9818B.36018C0F-ON88257C10.00608BC0-88257C10.006139C6@LocalDomain>
-References: <1382560643.6924.12.camel@heisenberg.scientia.net> <EFB2CFAD-FACC-401D-BF0C-1C573B23A873@netapp.com> <1382624000.6907.8.camel@heisenberg.scientia.net> <E0F4C952-02DE-4778-A779-FB7AE111EC46@netapp.com> <1382630468.6907.58.camel@heisenberg.scientia.net> <625CAA34-BD6C-4283-86D0-3F8B460D54D0@netapp.com> <1382635350.6907.83.camel@heisenberg.scientia.net> <20131025140846.GB20497@fieldses.org> <526A8D9A.8090008@gmail.com> <7C1323EE-D63F-4F93-A44D-E7DDB0C61BF0@netapp.com> <OF01D9818B.36018C0F-ON88257C10.00608BC0-88257C10.006139C6@LocalDomain>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Dr Fields James Bruce <bfields@fieldses.org>,
-        Christoph Anton Mitterer <calestyo@scientia.net>,
-        Mailing List Linux NFS <linux-nfs@vger.kernel.org>,
-        linux-nfs-owner@vger.kernel.org, Wheeler Ric <ricwheeler@gmail.com>
+	id S1756448Ab3J1ScQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 28 Oct 2013 14:32:16 -0400
+Date: Mon, 28 Oct 2013 14:32:14 -0400
+To: Benny Halevy <bhalevy@primarydata.com>
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfsd: no need to unhash_stid before free
+Message-ID: <20131028183214.GH31322@fieldses.org>
+References: <1381730515-18045-1-git-send-email-bhalevy@primarydata.com>
 MIME-Version: 1.0
-Subject: Re: XATTRs in NFS?
-From: Marc Eshel <eshel@us.ibm.com>
-Message-ID: <OF7F1977B0.3BF0FF3B-ON88257C10.00618038-88257C10.0061AF59@us.ibm.com>
-Date: Sat, 26 Oct 2013 10:46:59 -0700
-Content-Type: text/plain; charset="US-ASCII"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1381730515-18045-1-git-send-email-bhalevy@primarydata.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-linux-nfs-owner@vger.kernel.org wrote on 10/26/2013 06:20:12 AM:
+On Mon, Oct 14, 2013 at 09:01:55AM +0300, Benny Halevy wrote:
+> idr_remove is about to be called before kmem_cache_free so unhashing it
+> is redundant
 
-> I'd rather look bad for not supporting a broken filesystem feature 
-> than have to deal with the abiove mentioned side-effects. Until the 
-> xattr interface is properly documented and standardised so that it 
-> can be exported safely, it should be treated as a unexportable, in 
-> the same way we treat procfs and sysfs.
+This leaves only two unhash_stid callers, in release_lock_stateid and
+unhash_stid, both called just before destroying the stateid, so perhaps
+we should remove those and unhash_stid?
+
+--b.
+
 > 
-
-This sounds more like an NFS server problem than a client side NFS. Can we 
-add support to the client side NFS and let server that think that they can 
-handle XATTR implement it?
-
-We should probably start a discussion in the IETF to resolve the issues 
-you see with XATTR at least for NFSv4.3. 
-
-Marc.
-
-> Cheers
->   Trond--
-
-
+> Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
+> ---
+>  fs/nfsd/nfs4state.c | 7 ++-----
+>  1 file changed, 2 insertions(+), 5 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 0874998..06984e3 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -668,7 +668,6 @@ static void unhash_open_stateid(struct nfs4_ol_stateid *stp)
+>  static void release_open_stateid(struct nfs4_ol_stateid *stp)
+>  {
+>  	unhash_open_stateid(stp);
+> -	unhash_stid(&stp->st_stid);
+>  	free_generic_stateid(stp);
+>  }
+>  
+> @@ -690,7 +689,6 @@ static void release_last_closed_stateid(struct nfs4_openowner *oo)
+>  	struct nfs4_ol_stateid *s = oo->oo_last_closed_stid;
+>  
+>  	if (s) {
+> -		unhash_stid(&s->st_stid);
+>  		free_generic_stateid(s);
+>  		oo->oo_last_closed_stid = NULL;
+>  	}
+> @@ -3998,10 +3996,9 @@ static void nfsd4_close_open_stateid(struct nfs4_ol_stateid *s)
+>  
+>  	nfsd4_close_open_stateid(stp);
+>  
+> -	if (cstate->minorversion) {
+> -		unhash_stid(&stp->st_stid);
+> +	if (cstate->minorversion)
+>  		free_generic_stateid(stp);
+> -	} else
+> +	else
+>  		oo->oo_last_closed_stid = stp;
+>  
+>  	if (list_empty(&oo->oo_owner.so_stateids)) {
+> -- 
+> 1.8.3.1
+> 
