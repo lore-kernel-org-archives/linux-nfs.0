@@ -1,73 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:41189 "EHLO mx11.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:4459 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754513Ab3J2Mnt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 29 Oct 2013 08:43:49 -0400
-Message-ID: <526FAD82.9070909@netapp.com>
-Date: Tue, 29 Oct 2013 08:43:46 -0400
-From: Anna Schumaker <bjschuma@netapp.com>
+	id S1756779Ab3J1Pm0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 28 Oct 2013 11:42:26 -0400
+Message-ID: <526E85A4.4090906@redhat.com>
+Date: Mon, 28 Oct 2013 11:41:24 -0400
+From: Ric Wheeler <rwheeler@redhat.com>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "Schumaker, Bryan" <bryan.schumaker@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "Myklebust, Trond" <trond.myklebust@netapp.com>
-Subject: Re: [PATCH 2/4] NFSD: Create nfs v4.2 decode ops
-References: <1382972247-1108-1-git-send-email-bjschuma@netapp.com> <1382972247-1108-3-git-send-email-bjschuma@netapp.com> <20131028205414.GL31322@fieldses.org> <4FA345DA4F4AE44899BD2B03EEEC2FA9534E7CEF@SACEXCMBX04-PRD.hq.netapp.com> <20131028211118.GN31322@fieldses.org>
-In-Reply-To: <20131028211118.GN31322@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"
+To: James Morris <jmorris@namei.org>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: Eshel Marc <eshel@us.ibm.com>,
+        Dr Fields James Bruce <bfields@fieldses.org>,
+        Christoph Anton Mitterer <calestyo@scientia.net>,
+        Mailing List Linux NFS <linux-nfs@vger.kernel.org>,
+        "linux-nfs-owner@vger.kernel.org" <linux-nfs-owner@vger.kernel.org>
+Subject: Re: XATTRs in NFS?
+References: <1382560643.6924.12.camel@heisenberg.scientia.net> <EFB2CFAD-FACC-401D-BF0C-1C573B23A873@netapp.com> <1382624000.6907.8.camel@heisenberg.scientia.net> <E0F4C952-02DE-4778-A779-FB7AE111EC46@netapp.com> <1382630468.6907.58.camel@heisenberg.scientia.net> <625CAA34-BD6C-4283-86D0-3F8B460D54D0@netapp.com> <1382635350.6907.83.camel@heisenberg.scientia.net> <20131025140846.GB20497@fieldses.org> <526A8D9A.8090008@gmail.com> <7C1323EE-D63F-4F93-A44D-E7DDB0C61BF0@netapp.com> <OF01D9818B.36018C0F-ON88257C10.00608BC0-88257C10.006139C6@LocalDomain> <OF7F1977B0.3BF0FF3B-ON88257C10.00618038-88257C10.0061AF59@us.ibm.com> <4260556F-D57B-407E-A686-808D3D802137@netapp.com> <alpine.LRH.2.02.1310290022270.18164@tundra.namei.org>
+In-Reply-To: <alpine.LRH.2.02.1310290022270.18164@tundra.namei.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon 28 Oct 2013 05:11:19 PM EDT, J. Bruce Fields wrote:
-> On Mon, Oct 28, 2013 at 08:59:59PM +0000, Myklebust, Trond wrote:
->>> -----Original Message-----
->>> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
->>> owner@vger.kernel.org] On Behalf Of J. Bruce Fields
->>> Sent: Monday, October 28, 2013 4:54 PM
->>> To: Schumaker, Bryan
->>> Cc: linux-nfs@vger.kernel.org
->>> Subject: Re: [PATCH 2/4] NFSD: Create nfs v4.2 decode ops
->>>
->>> On Mon, Oct 28, 2013 at 10:57:24AM -0400, Anna Schumaker wrote:
->>>> I'm doing this in a separate patch to keep from putting in a lot of
->>>> extra code when I go to add operations to the server for real.
->>>
->>> Makes sense.
->>>
->>> But: now we're duplicating the list of 4.0 op decoders 3 times and the
->>> 4.1 ops twice.  We'll never need different decoders for different
->>> minorversions (worst case we can test for the minorversion in the decoder if
->>> necessary).
->>>
->>> I wonder if there's a better way to organize this....  Maybe something more
->>> like a single array with
->>>
->>> 	[OP_SETCLIENTID] = {
->>> 		.op_decode = (nfsd4_dec)nfsd4_decode_access,
->>> 		.op_unsupported_since_version = 1,
->>> 	}
->>> 	...
->>> 	[OP_EXCHANGE_ID] = {
->>> 		.op_decode = (nfsd4_dec)nfsd4_decode_exchange_id,
->>> 		.op_first_supported_in_version = 1,
->>> 	}
->>>
->>> ?
->>
->> Is that really necessary? Why not just have a single array and have nfsd4_decode_clientid itself check the minor version?
+On 10/28/2013 09:25 AM, James Morris wrote:
+> On Sun, 27 Oct 2013, Myklebust, Trond wrote:
 >
-> That'd work too.  Every operation that's been introduced more recently
-> than 4.0 or that's since been deprecated would need a version check at
-> the top of its decoder.  That'd be a dozen or so.
+>>> This sounds more like an NFS server problem than a client side NFS. Can we
+>>> add support to the client side NFS and let server that think that they can
+>>> handle XATTR implement it?
+>> No. It's a real problem for clients too if the NFS server starts
+>> exporting ACLs and security labels via this interface. Everything from
+>> integer endianness problems when getfacl attempts to read raw binary
+>> acls from the server, to breakage of caching models when we allow
+>> setfacl and don't invalidate our file access caches...
+> Right, so any general xattrs for nfs would need to be specified as having
+> no system effects, essentially exporting the Linux 'user' xattr namespace
+> only.
 >
-> But the information has to go somewhere and perhaps that's more
-> straightforward than sticking this in data....  OK, I'd be fine with
-> that.
-
-Makes sense.  Do you want me to put this in with this patch series or 
-do it as something separate either before or after?
-
 >
-> --b.
+>>> We should probably start a discussion in the IETF to resolve the issues
+>>> you see with XATTR at least for NFSv4.3.
+>> Let's get the basic discussion of motivation right first.
+> It should be for user-managed metadata only.
+>
 
+That would be what I would like to see over NFS...
+
+ric
 
