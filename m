@@ -1,42 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f182.google.com ([209.85.212.182]:52954 "EHLO
-	mail-wi0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1760524Ab3JPMs7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Oct 2013 08:48:59 -0400
-Received: by mail-wi0-f182.google.com with SMTP id ez12so685660wid.9
-        for <linux-nfs@vger.kernel.org>; Wed, 16 Oct 2013 05:48:58 -0700 (PDT)
-Message-ID: <525E8B38.20602@primarydata.com>
-Date: Wed, 16 Oct 2013 15:48:56 +0300
-From: Benny Halevy <bhalevy@primarydata.com>
+Received: from fieldses.org ([174.143.236.118]:34413 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755810Ab3J1T4r (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 28 Oct 2013 15:56:47 -0400
+Date: Mon, 28 Oct 2013 15:56:45 -0400
+To: Benny Halevy <bhalevy@primarydata.com>
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/2] nfsd: nfs4_open_delegation needs to remove_stid
+ rather than unhash_stid
+Message-ID: <20131028195645.GJ31322@fieldses.org>
+References: <525CE711.1040107@primarydata.com>
+ <1381820275-14078-1-git-send-email-bhalevy@primarydata.com>
 MIME-Version: 1.0
-To: Christoph Hellwig <hch@infradead.org>
-CC: bfields@redhat.com, NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: nfs4_file usage
-References: <20131015211445.GA23636@infradead.org> <525E2C5C.4020104@primarydata.com> <20131016064649.GB28758@infradead.org> <525E5228.80200@primarydata.com> <20131016085117.GA21665@infradead.org> <525E840D.3040509@primarydata.com> <20131016123315.GA29454@infradead.org>
-In-Reply-To: <20131016123315.GA29454@infradead.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1381820275-14078-1-git-send-email-bhalevy@primarydata.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2013-10-16 15:33, Christoph Hellwig wrote:
-> On Wed, Oct 16, 2013 at 03:18:21PM +0300, Benny Halevy wrote:
->> The nfs4.1 layout stateid is like any other stateid (open/lock/deleg)
->> but it's life time is a bit different as it is not descending from the
->> open stateid (though the protocol requires the client to use it
->> to acquire the first layout for the file) and it is released via
->> either LAYOUTRETURN or CLOSE (in the "return_on_close" case).
->> The rules here are different enough from open/lock/deleg stateids that
->> pnfsd needs special code to handle the management of the actual layout state
->> under the layout stateid and manipulate it accordingly.
-> 
-> I'm not primarily ocnfused about the protocol even if that isn't all
-> that clear either.  I'm more worried about the code in and around
-> nfs4_find_create_layout_stateid.  I have looked a bit deeper into it
-> and I think the main problem is that struct nfs4_stid isn't refcounted
-> by itself, which really confused me expecting nfsd4_lookup_stateid
-> to return a reference to it.
-> 
+On Tue, Oct 15, 2013 at 09:57:55AM +0300, Benny Halevy wrote:
+> In the out_free: path, the newly allocated stid must be removed rather
+> than unhashed so it can never be found.
 
-True.  That is likely to change with the state lock elimination project
-where a stateid would get refcounted once found and its pointer is returned to
-the caller.
+Applying, thanks.--b.
+
+> 
+> Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
+> ---
+>  fs/nfsd/nfs4state.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 64c167f..b8f3c7e 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -3157,7 +3157,7 @@ static void nfsd4_open_deleg_none_ext(struct nfsd4_open *open, int status)
+>  	open->op_delegate_type = NFS4_OPEN_DELEGATE_READ;
+>  	return;
+>  out_free:
+> -	unhash_stid(&dp->dl_stid);
+> +	remove_stid(&dp->dl_stid);
+>  	nfs4_put_delegation(dp);
+>  out_no_deleg:
+>  	open->op_delegate_type = NFS4_OPEN_DELEGATE_NONE;
+> -- 
+> 1.8.3.1
+> 
