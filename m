@@ -1,78 +1,89 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:60756 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753066Ab3JFP3R (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 6 Oct 2013 11:29:17 -0400
-Date: Sun, 6 Oct 2013 08:29:16 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Benny Halevy <bhalevy@primarydata.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/4] SQUASHME: pnfsd: nfs4_find_create_layout_stateid
-Message-ID: <20131006152916.GA8801@infradead.org>
-References: <5251140B.4000203@primarydata.com>
- <1381045468-30670-1-git-send-email-bhalevy@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:41778 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755041Ab3J1Mqp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 28 Oct 2013 08:46:45 -0400
+Message-ID: <526E5CE0.5010507@RedHat.com>
+Date: Mon, 28 Oct 2013 08:47:28 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1381045468-30670-1-git-send-email-bhalevy@primarydata.com>
+To: NeilBrown <neilb@suse.de>
+CC: Tony Asleson <tasleson@redhat.com>, NFS <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH - nfs-utils] exportfs: report failure if asked to unexport
+ something not exported.
+References: <20131028144305.0f91f025@notabene.brown>
+In-Reply-To: <20131028144305.0f91f025@notabene.brown>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> + * If the layout state was found in cache, grab a reference count on it;
-> + * otherwise, allocate a new layout state if "do_alloc" is set.
+Hello,
 
-There is no do_alloc parameter to the function.
+On 27/10/13 23:43, NeilBrown wrote:
+> 
+> Currently if exportfs is asked to unexport something that is not
+> exported it silently succeeds.  This is not ideal, particularly for
+> scripting situations.
+> 
+> So report an error unless the unexport was successful.
+> 
+> Reported-by: Tony Asleson <tasleson@redhat.com>
+> Signed-off-by: NeilBrown <neilb@suse.de>
+> 
+> diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
+> index 52fc03d..c9e12db 100644
+> --- a/utils/exportfs/exportfs.c
+> +++ b/utils/exportfs/exportfs.c
+> @@ -351,6 +351,7 @@ unexportfs(char *arg, int verbose)
+>  	char		*path;
+>  	char		*hname = arg;
+>  	int		htype;
+> +	int		success = 0;
+>  
+>  	if ((path = strchr(arg, ':')) != NULL)
+>  		*path++ = '\0';
+> @@ -397,7 +398,10 @@ unexportfs(char *arg, int verbose)
+>  #endif
+>  		exp->m_xtabent = 0;
+>  		exp->m_mayexport = 0;
+> +		success = 1;
+>  	}
+> +	if (!success)
+> +		xlog(L_ERROR, "Could not find %s to unexport.\n", arg);
+>  
+>  	freeaddrinfo(ai);
+>  }
+> 
+This does not apply due commit 232eb7ad0... But I agree with doing a xlog
+on failures but I would like to cover it with the -v flag... Something 
+similar to :
 
-> + *
-> + * Called with the state_lock held
-> + * Returns zero and the layout state in *lsp, or error.
-> + */
-> +static __be32
-> +nfs4_find_create_layout_stateid(struct nfs4_client *clp, struct nfs4_file *fp,
-> +				stateid_t *stateid, unsigned char typemask,
-> +				struct nfs4_layout_state **lsp)
-> +{
-> +	struct nfs4_layout_state *ls = NULL;
-> +	__be32 status = 0;
-> +	struct nfs4_stid *stid;
-> +
-> +	dprintk("--> %s clp %p fp %p operation stateid=" STATEID_FMT "\n",
-> +		__func__, clp, fp, STATEID_VAL(stateid));
-> +
-> +	nfs4_assert_state_locked();
-> +	status = nfsd4_lookup_stateid(stateid, typemask, &stid, true,
-> +				      net_generic(clp->net, nfsd_net_id));
-> +	if (status)
-> +		goto out;
-> +
-> +	/* Is this the first use of this layout ? */
-> +	if (stid->sc_type != NFS4_LAYOUT_STID) {
-> +		ls = alloc_init_layout_state(clp, fp, stateid);
-> +		if (!ls) {
-> +			status = nfserr_jukebox;
-> +			goto out;
-> +		}
-> +	} else {
-> +		ls = container_of(stid, struct nfs4_layout_state, ls_stid);
-> +
-> +		/* BAD STATEID */
-> +		if (stateid->si_generation > ls->ls_stid.sc_stateid.si_generation) {
-> +			status = nfserr_bad_stateid;
-> +			goto out;
-> +		}
-> +		get_layout_state(ls);
-> +	}
-> +	status = 0;
-> +
-> +	dprintk("%s: layout stateid=" STATEID_FMT " ref=%d\n", __func__,
-> +		STATEID_VAL(&ls->ls_stid.sc_stateid), atomic_read(&ls->ls_ref.refcount));
-> +
-> +	*lsp = ls;
-> +out:
-> +	dprintk("<-- %s status %d\n", __func__, htonl(status));
-> +
-> +	return status;
-> +}
+[PATCH] exportfs: report failure if asked to unexport something not exported.
 
-Shouldn't there be a corresponding removal of the alloc code from
-nfs4_process_layout_stateid?
+Currently if exportfs is asked to unexport something that is not
+exported it silently succeeds.  This is not ideal, particularly for
+scripting situations.
 
+So report an error when the unexport was successful and the -v flag used.
+
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ utils/exportfs/exportfs.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
+index 318deb3..6962444 100644
+--- a/utils/exportfs/exportfs.c
++++ b/utils/exportfs/exportfs.c
+@@ -413,6 +413,8 @@ unexportfs(char *arg, int verbose)
+        exp->m_mayexport = 0;
+        rc = 1;
+    }
++   if (!rc && verbose)
++       xlog(L_ERROR, "Could not find '%s:%s' to unexport.", arg, path);
+
+    freeaddrinfo(ai);
+    return rc;
+
+
+steved.
