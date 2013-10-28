@@ -1,95 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:30153 "EHLO mx11.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:8171 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753944Ab3JaN3l convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 31 Oct 2013 09:29:41 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: NeilBrown <neilb@suse.de>
-CC: NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] SUNRPC: close a rare race in xs_tcp_setup_socket.
-Date: Thu, 31 Oct 2013 13:29:40 +0000
-Message-ID: <1383226179.18107.8.camel@leira.trondhjem.org>
-References: <20131031161436.22969327@notabene.brown>
-In-Reply-To: <20131031161436.22969327@notabene.brown>
-Content-Type: text/plain; charset="utf-7"
+	id S1756700Ab3J1SB6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 28 Oct 2013 14:01:58 -0400
+Message-ID: <526EA65A.7010209@redhat.com>
+Date: Mon, 28 Oct 2013 14:00:58 -0400
+From: Ric Wheeler <rwheeler@redhat.com>
 MIME-Version: 1.0
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Christoph Anton Mitterer <calestyo@scientia.net>
+CC: Mailing List Linux NFS <linux-nfs@vger.kernel.org>,
+        Dr Fields James Bruce <bfields@fieldses.org>,
+        Steve Dickson <SteveD@redhat.com>
+Subject: Re: XATTRs in NFS?
+References: <1382560643.6924.12.camel@heisenberg.scientia.net> <EFB2CFAD-FACC-401D-BF0C-1C573B23A873@netapp.com> <1382624000.6907.8.camel@heisenberg.scientia.net> <E0F4C952-02DE-4778-A779-FB7AE111EC46@netapp.com> <1382630468.6907.58.camel@heisenberg.scientia.net> <625CAA34-BD6C-4283-86D0-3F8B460D54D0@netapp.com> <1382635350.6907.83.camel@heisenberg.scientia.net> <20131025140846.GB20497@fieldses.org> <1382807547.29041.12.camel@heisenberg.scientia.net> <20131027191512.GA31322@fieldses.org> <1382911068.6932.20.camel@heisenberg.scientia.net> <8DB0D7A2-BA2A-4001-A01C-D498C777B243@netapp.com> <1382920068.6932.46.camel@heisenberg.scientia.net> <2E672741-FE4F-4287-8D00-B7634A71709E@netapp.com> <526E8562.3040809@redhat.com> <1382976943.8774.10.camel@heisenberg.scientia.net> <FD29488A-348B-48BA-9B1D-4ACF997BC794@netapp.com>
+In-Reply-To: <FD29488A-348B-48BA-9B1D-4ACF997BC794@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2013-10-31 at 16:14 +-1100, NeilBrown wrote:
-+AD4- 
-+AD4- We have one report of a crash in xs+AF8-tcp+AF8-setup+AF8-socket.
-+AD4- The call path to the crash is:
-+AD4- 
-+AD4-   xs+AF8-tcp+AF8-setup+AF8-socket -+AD4- inet+AF8-stream+AF8-connect -+AD4- lock+AF8-sock+AF8-nested.
-+AD4- 
-+AD4- The 'sock' passed to that last function is NULL.
-+AD4- 
-+AD4- The only way I can see this happening is a concurrent call to
-+AD4- xs+AF8-close:
-+AD4- 
-+AD4-   xs+AF8-close -+AD4- xs+AF8-reset+AF8-transport -+AD4- sock+AF8-release -+AD4- inet+AF8-release
-+AD4- 
-+AD4- inet+AF8-release sets:
-+AD4-    sock-+AD4-sk +AD0- NULL+ADs-
-+AD4- inet+AF8-stream+AF8-connect calls
-+AD4-    lock+AF8-sock(sock-+AD4-sk)+ADs-
-+AD4- which gets NULL.
-+AD4- 
-+AD4- All calls to xs+AF8-close are protected by XPRT+AF8-LOCKED as are most
-+AD4- activations of the workqueue which runs xs+AF8-tcp+AF8-setup+AF8-socket.
-+AD4- The exception is xs+AF8-tcp+AF8-schedule+AF8-linger+AF8-timeout.
-+AD4- 
-+AD4- So presumably the timeout queued by the later fires exactly when some
-+AD4- other code runs xs+AF8-close().
-+AD4- 
-+AD4- To protect against this we can move the cancel+AF8-delayed+AF8-work+AF8-sync()
-+AD4- call from xs+AF8-destory() to xs+AF8-close().
-+AD4- 
-+AD4- As xs+AF8-close is never called from the worker scheduled on
-+AD4- -+AD4-connect+AF8-worker, this can never deadlock.
-+AD4- 
-+AD4- Signed-off-by: NeilBrown +ADw-neilb+AEA-suse.de+AD4-
-+AD4- 
-+AD4- diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-+AD4- index ee03d35677d9..b19ba535ae1a 100644
-+AD4- --- a/net/sunrpc/xprtsock.c
-+AD4- +-+-+- b/net/sunrpc/xprtsock.c
-+AD4- +AEAAQA- -835,6 +-835,8 +AEAAQA- static void xs+AF8-close(struct rpc+AF8-xprt +ACo-xprt)
-+AD4-  
-+AD4-  	dprintk(+ACI-RPC:       xs+AF8-close xprt +ACU-p+AFw-n+ACI-, xprt)+ADs-
-+AD4-  
-+AD4- +-	cancel+AF8-delayed+AF8-work+AF8-sync(+ACY-transport-+AD4-connect+AF8-worker)+ADs-
-+AD4- +-
-+AD4-  	xs+AF8-reset+AF8-transport(transport)+ADs-
-+AD4-  	xprt-+AD4-reestablish+AF8-timeout +AD0- 0+ADs-
-+AD4-  
-+AD4- +AEAAQA- -869,12 +-871,8 +AEAAQA- static void xs+AF8-local+AF8-destroy(struct rpc+AF8-xprt +ACo-xprt)
-+AD4-   +ACo-/
-+AD4-  static void xs+AF8-destroy(struct rpc+AF8-xprt +ACo-xprt)
-+AD4-  +AHs-
-+AD4- -	struct sock+AF8-xprt +ACo-transport +AD0- container+AF8-of(xprt, struct sock+AF8-xprt, xprt)+ADs-
-+AD4- -
-+AD4-  	dprintk(+ACI-RPC:       xs+AF8-destroy xprt +ACU-p+AFw-n+ACI-, xprt)+ADs-
-+AD4-  
-+AD4- -	cancel+AF8-delayed+AF8-work+AF8-sync(+ACY-transport-+AD4-connect+AF8-worker)+ADs-
-+AD4- -
-+AD4-  	xs+AF8-local+AF8-destroy(xprt)+ADs-
-+AD4-  +AH0-
-+AD4-  
+On 10/28/2013 01:49 PM, Myklebust, Trond wrote:
+> On Oct 28, 2013, at 12:15 PM, Christoph Anton Mitterer <calestyo@scientia.net> wrote:
+>
+>> On Mon, 2013-10-28 at 11:40 -0400, Ric Wheeler wrote:
+>>> Then you end up with large directories and an extra name per inode that needs to
+>>> be stored and extra lookups for each file when you do a whole file system crawl.
+>>>
+>>> Certainly not as easy as adding and xattrs with that information :)
+>> And I think there's another reason why it wouldn't work...
+>>
+>> Imagine I change my system to encode what should be XATTRs in hardlink
+>> pseudo files...
+>>
+>> If I have such pair locally e.g. on my ext4:
+>> /foo/bar/actual/file
+>> /meta/<SHA512 identifier>.2342348324
+>>
+>> And now move/copy the file via the network to the archive, I'd have to
+>> copy both files (which is really annoying), and I'd guess the inode
+>> coupling would get los (and at least the name wouldn't fit anymore).
+>>
+>> So the whole thing is IMHO not even a workaround.
+> OK. So you're going to do XATTRs for us?
+>
+> Trond
 
-Hi Neil,
+Now that pNFS is perfect and labeled NFS has made it upstream, I think that 
+Steve D must be looking for something to keep him busy :)
 
-I noticed one small issue when applying: transport-+AD4-connect+AF8-worker is
-not initialised for the AF+AF8-LOCAL case. I therefore added a dummy
-initialiser to xs+AF8-setup+AF8-local().
+ric
 
-Cheers
-  Trond
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust+AEA-netapp.com
-www.netapp.com
