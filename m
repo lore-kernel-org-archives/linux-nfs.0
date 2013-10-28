@@ -1,69 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:50074 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:60088 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753401Ab3JGPFL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 7 Oct 2013 11:05:11 -0400
-Date: Mon, 7 Oct 2013 11:05:07 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] pynfs: fix reporting of ignored tests
-Message-ID: <20131007150507.GE18051@fieldses.org>
-References: <1381004835-7485-1-git-send-email-tigran.mkrtchyan@desy.de>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1381004835-7485-1-git-send-email-tigran.mkrtchyan@desy.de>
+	id S1756645Ab3J1SDn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 28 Oct 2013 14:03:43 -0400
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r9SI3fAh027010
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Mon, 28 Oct 2013 14:03:42 -0400
+Received: from smallhat.boston.devel.redhat.com (smallhat.boston.devel.redhat.com [10.19.60.65])
+	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id r9SI3eQC004871
+	for <linux-nfs@vger.kernel.org>; Mon, 28 Oct 2013 14:03:41 -0400
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 0/2] mountd: Disabling UDP listeners
+Date: Mon, 28 Oct 2013 14:04:28 -0400
+Message-Id: <1382983470-10063-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Oct 05, 2013 at 10:27:15PM +0200, Tigran Mkrtchyan wrote:
-> currently, ignored tests reported as failure, which
-> makes fixing them quite hard.
+To start down the road of a V4-only environment, 
+there needs to be a way to turn off UDP listeners
+in mountd, similar to how TCP listeners are 
+disabled. 
 
-Thanks.  And it's not counting warnings either?  I wonder if
-printresults and xml_printresults should be sharing some code?
+The patch does that by added the [-u|--no-udp] flags 
+which allows the disabling of the UDP listener
 
---b.
+Steve Dickson (2):
+  mountd: Use protocol bit fields to turn protocols off.
+  mountd: Add the ability to disable UDP listeners.
 
-> 
-> Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-> ---
->  nfs4.1/testmod.py | 8 +++++++-
->  1 file changed, 7 insertions(+), 1 deletion(-)
-> 
-> diff --git a/nfs4.1/testmod.py b/nfs4.1/testmod.py
-> index 3d74efe..68855de 100644
-> --- a/nfs4.1/testmod.py
-> +++ b/nfs4.1/testmod.py
-> @@ -439,6 +439,7 @@ def printresults(tests, opts, file=None):
->  def xml_printresults(tests, file_name, suite='all'):
->      with open(file_name, 'w') as fd:
->          failures = 0
-> +        skipped = 0
->          total_time = 0
->          doc = xml.dom.minidom.Document()
->          testsuite = doc.createElement("testsuite")
-> @@ -455,14 +456,19 @@ def xml_printresults(tests, file_name, suite='all'):
->              testcase.setAttribute("time", str(t.time_taken))
->  
->              total_time += t.time_taken
-> -            if t.result not in (TEST_PASS, TEST_WARN):
-> +            if t.result == TEST_FAIL:
->                  failures += 1
->                  failure = doc.createElement("failure")
->                  failure.setAttribute("message", t.result.msg)
->                  err = doc.createCDATASection(''.join(t.result.tb))
->                  failure.appendChild(err)
->                  testcase.appendChild(failure)
-> +            elif t.result == TEST_OMIT:
-> +                skipped += 1
-> +                skip = doc.createElement("skipped")
-> +                testcase.appendChild(skip)
->  
->          testsuite.setAttribute("failures", str(failures))
-> +        testsuite.setAttribute("skipped", str(skipped))
->          testsuite.setAttribute("time", str(total_time))
->          fd.write(doc.toprettyxml(indent="  "))
-> -- 
-> 1.8.3.1
-> 
+ support/include/rpcmisc.h |  2 +-
+ support/nfs/rpcmisc.c     | 19 ++++++++++++++-----
+ support/nfs/svc_create.c  |  8 ++++++++
+ utils/mountd/mountd.c     | 12 ++++++++----
+ utils/mountd/mountd.man   |  3 +++
+ 5 files changed, 34 insertions(+), 10 deletions(-)
+
+-- 
+1.8.3.1
+
