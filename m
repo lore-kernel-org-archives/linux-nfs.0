@@ -1,70 +1,121 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:58418 "EHLO mx12.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:44659 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751516Ab3JURKX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 21 Oct 2013 13:10:23 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: <Trond.Myklebust@netapp.com>
-CC: <linux-nfs@vger.kernel.org>, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH 5/5] NFSv4: clean up nfs4_state reference counting
-Date: Mon, 21 Oct 2013 13:10:14 -0400
-Message-ID: <1382375414-5854-6-git-send-email-dros@netapp.com>
-In-Reply-To: <1382375414-5854-1-git-send-email-dros@netapp.com>
-References: <1382375414-5854-1-git-send-email-dros@netapp.com>
+	id S1756103Ab3J1RJK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 28 Oct 2013 13:09:10 -0400
+Date: Mon, 28 Oct 2013 13:09:04 -0400
+To: Nadav Shemer <nadav@primarydata.com>
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org, bhalevy@primarydata.com
+Subject: Re: [PATCH] nfsd: unhash client before expiring it
+Message-ID: <20131028170903.GE31322@fieldses.org>
+References: <1381409248-1858-1-git-send-email-nadav@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1381409248-1858-1-git-send-email-nadav@primarydata.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Use atomic_inc_not_zero() to avoid referencing a state that is currently
-being freed.
+On Thu, Oct 10, 2013 at 02:47:28PM +0200, Nadav Shemer wrote:
+> Some client_expire operations (pnfs_expire_client) may release the state
+> lock. To prevent two threads from concurrently expiring the same client,
+> the client is unhashed before any other operation
 
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
----
- fs/nfs/nfs4proc.c  | 8 ++++++--
- fs/nfs/nfs4state.c | 3 ++-
- 2 files changed, 8 insertions(+), 3 deletions(-)
+Sorry for the slow response.  Ignoring this for now as it seems to
+depend on later pnfs stuff (and I'm a little worried about the idea of
+pnfs ops dropping locks).  Resend if I'm confused.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index a3b78df..005543d 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -1275,7 +1275,8 @@ static struct nfs4_state *nfs4_try_open_cached(struct nfs4_opendata *opendata)
- out:
- 	return ERR_PTR(ret);
- out_return_state:
--	atomic_inc(&state->count);
-+	if (!atomic_inc_not_zero(&state->count))
-+		return ERR_PTR(-EINVAL);
- 	return state;
- }
- 
-@@ -1429,7 +1430,10 @@ static struct nfs4_opendata *nfs4_open_recoverdata_alloc(struct nfs_open_context
- 	if (opendata == NULL)
- 		return ERR_PTR(-ENOMEM);
- 	opendata->state = state;
--	atomic_inc(&state->count);
-+	if (!atomic_inc_not_zero(&state->count)) {
-+		nfs4_opendata_put(opendata);
-+		return ERR_PTR(-EINVAL);
-+	}
- 	return opendata;
- }
- 
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index cc14cbb..1c71907 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1416,7 +1416,8 @@ restart:
- 			continue;
- 		if (state->state == 0)
- 			continue;
--		atomic_inc(&state->count);
-+		if (!atomic_inc_not_zero(&state->count))
-+			continue;
- 		spin_unlock(&sp->so_lock);
- 		status = ops->recover_open(sp, state);
- 		if (status >= 0) {
--- 
-1.7.12.4 (Apple Git-37)
+--b.
 
+> 
+> Signed-off-by: Nadav Shemer <nadav@primarydata.com>
+> ---
+> Related to the recent patchset from Benny Halevy, expire_client releases the state lock (expire_client->destroy_client->pnfs_expire_client).
+> A different thread processing a SET_CLIENTID/EXCHANGE_ID/etc. might find the client on the confirmed/unconfirmed hash table and also call expire_client on it.
+> 
+> To correct this, I reshuffled destroy_client to remove the client from hash tables first thing, before the state lock may be released
+> 
+> Benny: my previous version of this patch had some plays with reference counts (taking a reference for the duration of the destroy).
+> In the current version of the tree, destroy_client assumes cl_refcount==0 and is the only caller of free_client besides create_client. So I dropped it
+> 
+>  fs/nfsd/nfs4state.c | 15 +++++++++------
+>  1 file changed, 9 insertions(+), 6 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index b4a28ef..d42434b 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -1154,57 +1154,60 @@ unhash_client_locked(struct nfs4_client *clp)
+>  	list_del(&clp->cl_lru);
+>  	spin_lock(&clp->cl_lock);
+>  	list_for_each_entry(ses, &clp->cl_sessions, se_perclnt)
+>  		list_del_init(&ses->se_hash);
+>  	spin_unlock(&clp->cl_lock);
+>  }
+>  
+>  static void
+>  destroy_client(struct nfs4_client *clp)
+>  {
+>  	struct nfs4_openowner *oo;
+>  	struct nfs4_delegation *dp;
+>  	struct list_head reaplist;
+>  	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
+>  
+> +	list_del(&clp->cl_idhash);
+> +	if (test_bit(NFSD4_CLIENT_CONFIRMED, &clp->cl_flags))
+> +		rb_erase(&clp->cl_namenode, &nn->conf_name_tree);
+> +	else
+> +		rb_erase(&clp->cl_namenode, &nn->unconf_name_tree);
+> +	spin_lock(&nn->client_lock);
+> +	unhash_client_locked(clp);
+> +	spin_unlock(&nn->client_lock);
+> +
+>  	INIT_LIST_HEAD(&reaplist);
+>  	spin_lock(&recall_lock);
+>  	while (!list_empty(&clp->cl_delegations)) {
+>  		dp = list_entry(clp->cl_delegations.next, struct nfs4_delegation, dl_perclnt);
+>  		list_del_init(&dp->dl_perclnt);
+>  		list_move(&dp->dl_recall_lru, &reaplist);
+>  	}
+>  	spin_unlock(&recall_lock);
+>  	while (!list_empty(&reaplist)) {
+>  		dp = list_entry(reaplist.next, struct nfs4_delegation, dl_recall_lru);
+>  		destroy_delegation(dp);
+>  	}
+>  	while (!list_empty(&clp->cl_openowners)) {
+>  		oo = list_entry(clp->cl_openowners.next, struct nfs4_openowner, oo_perclient);
+>  		release_openowner(oo);
+>  	}
+>  	pnfs_expire_client(clp);
+>  	nfsd4_shutdown_callback(clp);
+>  	if (clp->cl_cb_conn.cb_xprt)
+>  		svc_xprt_put(clp->cl_cb_conn.cb_xprt);
+> -	list_del(&clp->cl_idhash);
+> -	if (test_bit(NFSD4_CLIENT_CONFIRMED, &clp->cl_flags))
+> -		rb_erase(&clp->cl_namenode, &nn->conf_name_tree);
+> -	else
+> -		rb_erase(&clp->cl_namenode, &nn->unconf_name_tree);
+>  	spin_lock(&nn->client_lock);
+> -	unhash_client_locked(clp);
+>  	WARN_ON_ONCE(atomic_read(&clp->cl_refcount));
+>  	free_client(clp);
+>  	spin_unlock(&nn->client_lock);
+>  }
+>  
+>  static void expire_client(struct nfs4_client *clp)
+>  {
+>  	nfsd4_client_record_remove(clp);
+>  	destroy_client(clp);
+>  }
+>  
+>  static void copy_verf(struct nfs4_client *target, nfs4_verifier *source)
+>  {
+>  	memcpy(target->cl_verifier.data, source->data,
+>  			sizeof(target->cl_verifier.data));
+> -- 
+> 1.8.3.3.754.g9c3c367
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
