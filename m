@@ -1,212 +1,326 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f177.google.com ([209.85.212.177]:43229 "EHLO
-	mail-wi0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753423Ab3JBLmI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Oct 2013 07:42:08 -0400
-Received: by mail-wi0-f177.google.com with SMTP id cb5so746210wib.10
-        for <linux-nfs@vger.kernel.org>; Wed, 02 Oct 2013 04:42:05 -0700 (PDT)
-Message-ID: <524C068A.9000306@primarydata.com>
-Date: Wed, 02 Oct 2013 14:42:02 +0300
-From: Benny Halevy <bhalevy@primarydata.com>
+Received: from mx11.netapp.com ([216.240.18.76]:7365 "EHLO mx11.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932677Ab3J1PAq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 28 Oct 2013 11:00:46 -0400
+From: Anna Schumaker <bjschuma@netapp.com>
+To: <Trond.Myklebust@netapp.com>, <linux-nfs@vger.kernel.org>
+Subject: [PATCH 3/3] NFS: Implement SEEK
+Date: Mon, 28 Oct 2013 11:00:18 -0400
+Message-ID: <1382972418-2249-4-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1382972418-2249-1-git-send-email-bjschuma@netapp.com>
+References: <1382972418-2249-1-git-send-email-bjschuma@netapp.com>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@redhat.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH RFC v0 08/49] pnfsd: layout verify
-References: <52447EA0.7070004@primarydata.com> <1380220824-13047-1-git-send-email-bhalevy@primarydata.com> <20130927144448.GD9946@pad.fieldses.org> <52480C18.6070105@primarydata.com> <20131001203854.GI16245@pad.fieldses.org>
-In-Reply-To: <20131001203854.GI16245@pad.fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2013-10-01 23:38, J. Bruce Fields wrote:
-> On Sun, Sep 29, 2013 at 02:16:40PM +0300, Benny Halevy wrote:
->> On 2013-09-27 17:44, J. Bruce Fields wrote:
->>> On Thu, Sep 26, 2013 at 02:40:24PM -0400, Benny Halevy wrote:
->>>> From: Benny Halevy <bhalevy@panasas.com>
->>>>
->>>> Verify whether the server and file system support the given layout type.
->>>>
->>>> [was pnfsd: Streamline error code checking for non-pnfs filesystems]
->>>> Signed-off-by: Dean Hildebrand <seattleplus@gmail.com>
->>>> [pnfsd: Add super block to layout_type()]
->>>> Signed-off-by: Marc Eshel <eshel@almaden.ibm.com>
->>>> [pnfsd: Fix order of ops in nfsd4_layout_verify]
->>>> Signed-off-by: Dean Hildebrand <dhildeb@us.ibm.com>
->>>> [pnfsd: convert generic code to use new pnfs api]
->>>> [pnfsd: define pnfs_export_operations]
->>>> [pnfsd: obliterate old vfs api]
->>>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
->>>> [pnfsd: layout verify all layout types]
->>>> Signed-off-by: Andy Adamson <andros@netapp.com>
->>>> [pnfsd: tone nfsd4_layout_verify printk down to dprintk]
->>>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
->>>> [pnfsd: check ex_pnfs in nfsd4_verify_layout]
->>>> Signed-off-by: Andy Adamson <andros@netapp.com>
->>>> [pnfsd: handle s_pnfs_op==NULL]
->>>> [pnfsd: verify export option only if svc_export is present]
->>>> Signed-off-by: Benny Halevy <bhalevy@panasas.com>
->>>> Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
->>>> ---
->>>>  fs/nfsd/export.c                |  6 ++++++
->>>>  fs/nfsd/nfs4proc.c              | 39 +++++++++++++++++++++++++++++++++++++++
->>>>  fs/nfsd/pnfsd.h                 |  2 ++
->>>>  include/linux/nfsd/nfsd4_pnfs.h |  5 ++++-
->>>>  4 files changed, 51 insertions(+), 1 deletion(-)
->>>>
->>>> diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
->>>> index 7730dfd..d803414 100644
->>>> --- a/fs/nfsd/export.c
->>>> +++ b/fs/nfsd/export.c
->>>> @@ -376,6 +376,12 @@ static int check_export(struct inode *inode, int *flags, unsigned char *uuid)
->>>>  		return -EINVAL;
->>>>  	}
->>>>  
->>>> +	if (inode->i_sb->s_pnfs_op &&
->>>> +	    !inode->i_sb->s_pnfs_op->layout_type) {
->>>> +		dprintk("exp_export: export of invalid fs pnfs export ops.\n");
->>>> +		return -EINVAL;
->>>> +	}
->>>> +
->>>
->>> If you haven't already done it you may want to look at modifying
->>> nfs-utils/utils/exportfs/exportfs.c:test_export() to add the pnfs option
->>> when appropriate so the error can be returned at exportfs time.
->>
->> Hmm, I'm not sure I follow your proposal.
->> In fs/nfsd/exportf.c:check_export() we check whether i_sb->s_export_op and
->> respectively, i_sb->s_pnfs_op support the required export methods.
->> How would we know in utils/exportfs when is appropriate to add the pnfs option?
-> 
-> At exportfs time, if somebody requests pnfs, but this filesystem doesn't
-> support that, you probably want to return an error.
-> 
-> The way you'd do that would be by passing that pnfs option to
-> nfs-utils/utils/exportfs/exportfs.c:test_export() and including it on
-> the test-export it passes to the kernel.  That test export will then
-> succeed or fail depending on whether the filesystem supports pnfs or
-> not.
-> 
-> Otherwise the failure in check_export() above won't be noticed until
-> it's too late to give helpful feedback to the user.
+The SEEK operation is used when an application makes an lseek call with
+either the SEEK_HOLE or SEEK_DATA flags set.  I fall back on
+nfs_file_llseek() when other flags are set or in the NFS < 4.2 case.
 
-I see. Thanks.
+Signed-off-by: Anna Schumaker <bjschuma@netapp.com>
+---
+ fs/nfs/nfs4_fs.h        |  1 +
+ fs/nfs/nfs4file.c       | 38 +++++++++++++++++++++
+ fs/nfs/nfs4proc.c       | 29 ++++++++++++++++
+ fs/nfs/nfs4xdr.c        | 91 +++++++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/nfs4.h    |  1 +
+ include/linux/nfs_xdr.h | 20 +++++++++++
+ 6 files changed, 180 insertions(+)
 
-> 
-> --b.
-> 
->>
->> Benny
->>
->>>
->>>>  	return 0;
->>>>  
->>>>  }
->>>> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
->>>> index 419572f..576b635 100644
->>>> --- a/fs/nfsd/nfs4proc.c
->>>> +++ b/fs/nfsd/nfs4proc.c
->>>> @@ -41,6 +41,7 @@
->>>>  #include "vfs.h"
->>>>  #include "current_stateid.h"
->>>>  #include "netns.h"
->>>> +#include "pnfsd.h"
->>>>  
->>>>  #ifdef CONFIG_NFSD_V4_SECURITY_LABEL
->>>>  #include <linux/security.h>
->>>> @@ -1109,6 +1110,44 @@ static int fill_in_write_vector(struct kvec *vec, struct nfsd4_write *write)
->>>>  	return status == nfserr_same ? nfs_ok : status;
->>>>  }
->>>>  
->>>> +#if defined(CONFIG_PNFSD)
->>>> +static __be32
->>>> +nfsd4_layout_verify(struct super_block *sb, struct svc_export *exp,
->>>> +		    unsigned int layout_type)
->>>> +{
->>>> +	int status, type;
->>>> +
->>>> +	/* check to see if pNFS  is supported. */
->>>> +	status = nfserr_layoutunavailable;
->>>> +	if (exp && exp->ex_pnfs == 0) {
->>>
->>> Can this really be called with exp == NULL?  If so don't you want to
->>> fail that as well?
->>
->> It is called with exp == NULL from nfsd4_getdevinfo where it shouldn't
->> cause an error return.
->>
->> Benny
->>
->>>
->>>> +		dprintk("%s: Underlying file system "
->>>> +			"is not exported over pNFS\n", __func__);
->>>> +		goto out;
->>>> +	}
->>>> +	if (!sb->s_pnfs_op || !sb->s_pnfs_op->layout_type) {
->>>> +		dprintk("%s: Underlying file system "
->>>> +			"does not support pNFS\n", __func__);
->>>> +		goto out;
->>>> +	}
->>>> +
->>>> +	type = sb->s_pnfs_op->layout_type(sb);
->>>> +
->>>> +	/* check to see if requested layout type is supported. */
->>>> +	status = nfserr_unknown_layouttype;
->>>> +	if (!type)
->>>> +		dprintk("BUG: %s: layout_type 0 is reserved and must not be "
->>>> +			"used by filesystem\n", __func__);
->>>> +	else if (type != layout_type)
->>>> +		dprintk("%s: requested layout type %d "
->>>> +		       "does not match supported type %d\n",
->>>> +			__func__, layout_type, type);
->>>> +	else
->>>> +		status = nfs_ok;
->>>> +out:
->>>> +	return status;
->>>> +}
->>>> +#endif /* CONFIG_PNFSD */
->>>> +
->>>>  /*
->>>>   * NULL call.
->>>>   */
->>>> diff --git a/fs/nfsd/pnfsd.h b/fs/nfsd/pnfsd.h
->>>> index 65fb57e..7c46791 100644
->>>> --- a/fs/nfsd/pnfsd.h
->>>> +++ b/fs/nfsd/pnfsd.h
->>>> @@ -34,4 +34,6 @@
->>>>  #ifndef LINUX_NFSD_PNFSD_H
->>>>  #define LINUX_NFSD_PNFSD_H
->>>>  
->>>> +#include <linux/nfsd/nfsd4_pnfs.h>
->>>> +
->>>>  #endif /* LINUX_NFSD_PNFSD_H */
->>>> diff --git a/include/linux/nfsd/nfsd4_pnfs.h b/include/linux/nfsd/nfsd4_pnfs.h
->>>> index ff6613e..d44669e 100644
->>>> --- a/include/linux/nfsd/nfsd4_pnfs.h
->>>> +++ b/include/linux/nfsd/nfsd4_pnfs.h
->>>> @@ -34,6 +34,8 @@
->>>>  #ifndef _LINUX_NFSD_NFSD4_PNFS_H
->>>>  #define _LINUX_NFSD_NFSD4_PNFS_H
->>>>  
->>>> +#include <linux/exportfs.h>
->>>> +
->>>>  /*
->>>>   * pNFS export operations vector.
->>>>   *
->>>> @@ -45,7 +47,8 @@
->>>>   * All other methods are optional and can be set to NULL if not implemented.
->>>>   */
->>>>  struct pnfs_export_operations {
->>>> -	/* stub */
->>>> +	/* Returns the supported pnfs_layouttype4. */
->>>> +	int (*layout_type) (struct super_block *);
->>>>  };
->>>>  
->>>>  #endif /* _LINUX_NFSD_NFSD4_PNFS_H */
->>>> -- 
->>>> 1.8.3.1
->>>>
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index f52fc5f..badc1fa 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -355,6 +355,7 @@ nfs4_state_protect_write(struct nfs_client *clp, struct rpc_clnt **clntp,
+ #ifdef CONFIG_NFS_V4_2
+ int nfs42_proc_fallocate(struct nfs_server *, struct nfs42_write_plus_args *,
+ 			 struct nfs42_write_res *, struct rpc_cred *);
++loff_t nfs42_proc_llseek(struct inode *, nfs4_stateid *, loff_t, int);
+ #endif /* CONFIG_NFS_V4_2 */
+ 
+ extern const struct nfs4_minor_version_ops *nfs_v4_minor_ops[];
+diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
+index caf0658..b88ba0c 100644
+--- a/fs/nfs/nfs4file.c
++++ b/fs/nfs/nfs4file.c
+@@ -218,10 +218,48 @@ static long nfs42_fallocate(struct file *file, int mode, loff_t offset, loff_t l
+ 		err = nfs_wait_for_offload(&res);
+ 	return err;
+ }
++
++static loff_t nfs42_file_llseek(struct file *filep, loff_t offset, int whence)
++{
++	nfs4_stateid stateid;
++	struct nfs_open_context *ctx;
++	struct inode *inode = file_inode(filep);
++	loff_t pos;
++
++	pos = nfs42_select_stateid(filep, &stateid, FMODE_READ | FMODE_WRITE, &ctx);
++	if (pos < 0)
++		return pos;
++
++	nfs_wb_all(inode);
++	pos = nfs42_proc_llseek(inode, &stateid, offset, whence);
++	if (pos < 0)
++		return pos;
++	return vfs_setpos(filep, pos, inode->i_sb->s_maxbytes);
++}
++
++static loff_t nfs4_file_llseek(struct file *filep, loff_t offset, int whence)
++{
++	struct nfs_server *server = NFS_SERVER(file_inode(filep));
++
++	if (server->nfs_client->cl_minorversion < 2)
++		return nfs_file_llseek(filep, offset, whence);
++
++	switch (whence) {
++	case SEEK_HOLE:
++	case SEEK_DATA:
++		return nfs42_file_llseek(filep, offset, whence);
++	default:
++		return nfs_file_llseek(filep, offset, whence);
++	}
++}
+ #endif /* CONFIG_NFS_V4_2 */
+ 
+ const struct file_operations nfs4_file_operations = {
++#ifdef CONFIG_NFS_V4_2
++	.llseek		= nfs4_file_llseek,
++#else
+ 	.llseek		= nfs_file_llseek,
++#endif
+ 	.read		= do_sync_read,
+ 	.write		= do_sync_write,
+ 	.aio_read	= nfs_file_read,
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 003bacb..79f1295 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -7865,6 +7865,35 @@ int nfs42_proc_fallocate(struct nfs_server *server,
+ 
+ 	return err;
+ }
++
++loff_t nfs42_proc_llseek(struct inode *inode, nfs4_stateid *stateid,
++			 loff_t offset, int whence)
++{
++	struct nfs42_seek_args args = {
++		.sa_fh		= NFS_FH(inode),
++		.sa_stateid	= stateid,
++		.sa_offset	= offset,
++	};
++	struct nfs42_seek_res res;
++	struct rpc_message msg = {
++		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_SEEK],
++		.rpc_argp = &args,
++		.rpc_resp = &res,
++	};
++	struct nfs_server *server = NFS_SERVER(inode);
++	int status;
++
++	if (whence == SEEK_HOLE)
++		args.sa_what = NFS4_CONTENT_HOLE;
++	else
++		args.sa_what = NFS4_CONTENT_DATA;
++
++	status = nfs4_call_sync(server->client, server, &msg,
++				&args.seq_args, &res.seq_res, 0);
++	if (status)
++		return status;
++	return res.sr_offset;
++}
+ #endif /* CONFIG_NFS_V4_2 */
+ 
+ static bool nfs4_match_stateid(const nfs4_stateid *s1,
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 28e2fad..f7ced39 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -435,6 +435,10 @@ static int nfs4_stat_to_errno(int);
+ 					 2 /* bytes written */ + \
+ 					 1 /* committed */ + \
+ 					 XDR_QUADLEN(NFS4_VERIFIER_SIZE))
++#define encode_seek_maxsz		(op_encode_hdr_maxsz + \
++					 XDR_QUADLEN(NFS4_STATEID_SIZE) + \
++					 2 + 1)
++#define decode_seek_maxsz		(op_decode_hdr_maxsz + 1 + 1 + 5)
+ #endif /* CONFIG_NFS_V4_2 */
+ 
+ #define NFS4_enc_compound_sz	(1024)  /* XXX: large enough? */
+@@ -903,6 +907,12 @@ EXPORT_SYMBOL_GPL(nfs41_maxgetdevinfo_overhead);
+ #define NFS4_dec_write_plus_sz		(compound_decode_hdr_maxsz + \
+ 					 decode_putfh_maxsz + \
+ 					 decode_write_plus_maxsz)
++#define NFS4_enc_seek_sz		(compound_encode_hdr_maxsz + \
++					 encode_putfh_maxsz + \
++					 encode_seek_maxsz)
++#define NFS4_dec_seek_sz		(compound_decode_hdr_maxsz + \
++					 decode_putfh_maxsz + \
++					 decode_seek_maxsz)
+ #endif /* CONFIG_NFS_V4_2 */
+ 
+ static const umode_t nfs_type2fmt[] = {
+@@ -2104,6 +2114,16 @@ static void encode_write_plus(struct xdr_stream *xdr,
+ 	encode_uint32(xdr, 1);
+ 	encode_write_plus_hole(xdr, args);
+ }
++
++static void encode_seek(struct xdr_stream *xdr,
++			struct nfs42_seek_args *args,
++			struct compound_hdr *hdr)
++{
++	encode_op_hdr(xdr, OP_SEEK, decode_seek_maxsz, hdr);
++	encode_nfs4_stateid(xdr, args->sa_stateid);
++	encode_uint64(xdr, args->sa_offset);
++	encode_uint32(xdr, args->sa_what);
++}
+ #endif /* CONFIG_NFS_V4_2 */
+ 
+ /*
+@@ -3071,6 +3091,25 @@ static void nfs4_xdr_enc_write_plus(struct rpc_rqst *req,
+ 	encode_nops(&hdr);
+ 	return;
+ }
++
++/*
++ * Encode SEEK request
++ */
++static void nfs4_xdr_enc_seek(struct rpc_rqst *req,
++			      struct xdr_stream *xdr,
++			      struct nfs42_seek_args *args)
++{
++	struct compound_hdr hdr = {
++		.minorversion = nfs4_xdr_minorversion(&args->seq_args),
++	};
++
++	encode_compound_hdr(xdr, req, &hdr);
++	encode_sequence(xdr, &args->seq_args, &hdr);
++	encode_putfh(xdr, args->sa_fh, &hdr);
++	encode_seek(xdr, args, &hdr);
++	encode_nops(&hdr);
++	return;
++}
+ #endif /* CONFIG_NFS_V4_2 */
+ 
+ static void print_overflow_msg(const char *func, const struct xdr_stream *xdr)
+@@ -6081,6 +6120,33 @@ static int decode_writeplus(struct xdr_stream *xdr, struct nfs42_write_res *res)
+ 
+ 	return decode_write_response(xdr, res);
+ }
++
++static int decode_seek(struct xdr_stream *xdr, struct nfs42_seek_res *res)
++{
++	int status;
++	__be32 *p;
++
++	status = decode_op_hdr(xdr, OP_SEEK);
++	if (status)
++		return status;
++
++	p = xdr_inline_decode(xdr, 28);
++	if (unlikely(!p))
++		goto out_overflow;
++
++	res->sr_eof = be32_to_cpup(p++);
++	res->sr_whence = be32_to_cpup(p++);
++	p = xdr_decode_hyper(p, &res->sr_offset);
++	p = xdr_decode_hyper(p, &res->sr_length);
++	res->sr_allocated = be32_to_cpup(p);
++	return 0;
++
++out_overflow:
++	print_overflow_msg(__func__, xdr);
++	return -EIO;
++
++	return 0;
++}
+ #endif /* CONFIG_NFS_V4_2 */
+ 
+ /*
+@@ -7320,6 +7386,30 @@ static int nfs4_xdr_dec_write_plus(struct rpc_rqst *rqstp,
+ out:
+ 	return status;
+ }
++
++/*
++ * Decode SEEK request
++ */
++static int nfs4_xdr_dec_seek(struct rpc_rqst *rqstp,
++			     struct xdr_stream *xdr,
++			     struct nfs42_seek_res *res)
++{
++	struct compound_hdr hdr;
++	int status;
++
++	status = decode_compound_hdr(xdr, &hdr);
++	if (status)
++		goto out;
++	status = decode_sequence(xdr, &res->seq_res, rqstp);
++	if (status)
++		goto out;
++	status = decode_putfh(xdr);
++	if (status)
++		goto out;
++	status = decode_seek(xdr, res);
++out:
++	return status;
++}
+ #endif /* CONFIG_NFS_V4_2 */
+ 
+ /**
+@@ -7533,6 +7623,7 @@ struct rpc_procinfo	nfs4_procedures[] = {
+ #endif /* CONFIG_NFS_V4_1 */
+ #if defined(CONFIG_NFS_V4_2)
+ 	PROC(WRITE_PLUS,	enc_write_plus,		dec_write_plus),
++	PROC(SEEK,		enc_seek,		dec_seek),
+ #endif /* CONFIG_NFS_V4_2 */
+ };
+ 
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 237016a..0d9033a 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -492,6 +492,7 @@ enum {
+ 
+ 	/* nfs42 */
+ 	NFSPROC4_CLNT_WRITE_PLUS,
++	NFSPROC4_CLNT_SEEK,
+ };
+ 
+ /* nfs41 types */
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index d8cbe5a..a46f803 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1236,6 +1236,26 @@ struct nfs42_write_plus_args {
+ 	u32				wp_allocated;
+ };
+ 
++struct nfs42_seek_args {
++	struct nfs4_sequence_args	seq_args;
++
++	struct nfs_fh			*sa_fh;
++	nfs4_stateid			*sa_stateid;
++	u64				sa_offset;
++	u32				sa_what;
++};
++
++struct nfs42_seek_res {
++	struct nfs4_sequence_res	seq_res;
++	unsigned int			status;
++
++	u32	sr_eof;
++	u32	sr_whence;
++	u64	sr_offset;
++	u64	sr_length;
++	u32	sr_allocated;
++};
++
+ struct nfs42_write_res
+ {
+ 	struct nfs4_sequence_res	seq_res;
+-- 
+1.8.4.1
+
