@@ -1,98 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-bk0-f47.google.com ([209.85.214.47]:58066 "EHLO
-	mail-bk0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754230Ab3J3OnH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Oct 2013 10:43:07 -0400
-Received: by mail-bk0-f47.google.com with SMTP id d7so303428bkh.34
-        for <linux-nfs@vger.kernel.org>; Wed, 30 Oct 2013 07:43:05 -0700 (PDT)
-Message-ID: <52711AF7.4070100@primarydata.com>
-Date: Wed, 30 Oct 2013 16:43:03 +0200
-From: Benny Halevy <bhalevy@primarydata.com>
+Received: from mx12.netapp.com ([216.240.18.77]:42303 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757527Ab3J1W4D (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 28 Oct 2013 18:56:03 -0400
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: <linux-nfs@vger.kernel.org>, Chuck Lever <Chuck.Lever@oracle.com>
+Subject: [PATCH] SUNRPC: Add correct rcu_dereference annotation in rpc_clnt_set_transport
+Date: Mon, 28 Oct 2013 18:55:55 -0400
+Message-ID: <1383000955-62175-1-git-send-email-Trond.Myklebust@netapp.com>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: bfields@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/7] nfsd4: fix recall_lock use in unhash_delegation
-References: <526F81DE.6060704@primarydata.com> <1383039544-27157-1-git-send-email-bhalevy@primarydata.com> <20131029144658.GR31322@fieldses.org> <52711187.10202@primarydata.com> <20131030143552.GE3227@fieldses.org>
-In-Reply-To: <20131030143552.GE3227@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2013-10-30 16:35, J. Bruce Fields wrote:
-> On Wed, Oct 30, 2013 at 04:02:47PM +0200, Benny Halevy wrote:
->> On 2013-10-29 16:46, J. Bruce Fields wrote:
->>> On Tue, Oct 29, 2013 at 11:39:04AM +0200, Benny Halevy wrote:
->>>> Access to dp->dl_perclnt must be synchronized by the recall_lock
->>>
->>> Are you sure?  recall_lock is for stuff that's needed in the delegation
->>> break callback (nfsd_break_deleg_cb() and any of the subsequent callback
->>> handling).  I don't think that includes dl_perclnt.
->>
->> I was mislead by the fact that destroy_client and nfs4_state_shutdown_net
->> care to acquire the recall_lock for traversing the clp->cl_delegations
->> and nn->del_recall_lru lists, respectively.
->>
->> Now nfs4_state_shutdown_net, although its comment says it should be
->> called with the state lock held (SHOULD or should, or should it be MUST? :)
->> It doesn't seem like nfsd_shutdown_net acquires the state lock.
-> 
-> Good point.
-> 
->> Therefore, we either need to grab the state lock in nfs4_state_shutdown_net
->> which adds yet another problem to fix,
-> 
-> That sounds simplest as the short-term fix....  What problem do you see?
+rpc_clnt_set_transport should use rcu_derefence_protected(), as it is
+only safe to be called with the rpc_clnt::cl_lock held.
 
-Nothing specific, just the general use of the global state lock...
+Cc: Chuck Lever <Chuck.Lever@oracle.com>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ net/sunrpc/clnt.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-> 
-> --b.
-> 
-> commit 2c9407ae694dad8a1ad6394d9bf6077024b9fae7
-> Author: J. Bruce Fields <bfields@redhat.com>
-> Date:   Wed Oct 30 10:33:09 2013 -0400
-> 
->     nfsd4: nfsd_shutdown_net needs state lock
->     
->     A comment claims the caller should take it, but that's not being done.
->     Note we don't want it around the cancel_delayed_work_sync since that may
->     wait on work which holds the client lock.
->     
->     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index f167d9c8d7dd..759b78b056a7 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -272,7 +272,8 @@ static struct rpc_xprt *rpc_clnt_set_transport(struct rpc_clnt *clnt,
+ 	struct rpc_xprt *old;
+ 
+ 	spin_lock(&clnt->cl_lock);
+-	old = clnt->cl_xprt;
++	old = rcu_dereference_protected(clnt->cl_xprt,
++			lockdep_is_held(&clnt->cl_lock));
+ 
+ 	if (!xprt_bound(xprt))
+ 		clnt->cl_autobind = 1;
+-- 
+1.8.3.1
 
-Ack
-
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 21eb678..e03e8ef 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -5124,7 +5124,6 @@ out_recovery:
->  	return ret;
->  }
->  
-> -/* should be called with the state lock held */
->  void
->  nfs4_state_shutdown_net(struct net *net)
->  {
-> @@ -5135,6 +5134,7 @@ nfs4_state_shutdown_net(struct net *net)
->  	cancel_delayed_work_sync(&nn->laundromat_work);
->  	locks_end_grace(&nn->nfsd4_manager);
->  
-> +	nfs4_lock_state();
->  	INIT_LIST_HEAD(&reaplist);
->  	spin_lock(&recall_lock);
->  	list_for_each_safe(pos, next, &nn->del_recall_lru) {
-> @@ -5149,6 +5149,7 @@ nfs4_state_shutdown_net(struct net *net)
->  
->  	nfsd4_client_tracking_exit(net);
->  	nfs4_state_destroy_net(net);
-> +	nfs4_unlock_state();
->  }
->  
->  void
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
