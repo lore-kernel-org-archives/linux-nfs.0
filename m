@@ -1,181 +1,227 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:34672 "EHLO mx11.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:44150 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755007Ab3JQOVG convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Oct 2013 10:21:06 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFSv4: Fix NULL dereference in recovery path
-Date: Thu, 17 Oct 2013 14:21:04 +0000
-Message-ID: <D7AFB465-CFB1-4BCF-ACD4-8E45B4D15960@netapp.com>
-References: <1381188833-3728-1-git-send-email-dros@netapp.com>
- <1381954731.17178.28.camel@leira.trondhjem.org>
-In-Reply-To: <1381954731.17178.28.camel@leira.trondhjem.org>
-Content-Type: text/plain; charset="us-ascii"
+	id S1751756Ab3J1Vv1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 28 Oct 2013 17:51:27 -0400
+Date: Mon, 28 Oct 2013 17:51:26 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Anna Schumaker <bjschuma@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 4/4] NFSD: Implement SEEK
+Message-ID: <20131028215126.GP31322@fieldses.org>
+References: <1382972247-1108-1-git-send-email-bjschuma@netapp.com>
+ <1382972247-1108-5-git-send-email-bjschuma@netapp.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1382972247-1108-5-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
--dros
-
-On Oct 16, 2013, at 4:18 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
-
-> On Mon, 2013-10-07 at 19:33 -0400, Weston Andros Adamson wrote:
->> _nfs4_opendata_reclaim_to_nfs4_state doesn't expect to see a cached
->> open CLAIM_PREVIOUS, but this can happen. An example is when there are
->> RDWR openers and RDONLY openers on a delegation stateid. The recovery
->> path will first try an open CLAIM_PREVIOUS for the RDWR openers, this
->> marks the delegation as not needing RECLAIM anymore, so the open
->> CLAIM_PREVIOUS for the RDONLY openers will not actually send an rpc.
->> 
->> The NULL dereference is due to _nfs4_opendata_reclaim_to_nfs4_state
->> returning PTR_ERR(rpc_status) when !rpc_done. When the open is
->> cached, rpc_done == 0 and rpc_status == 0, thus
->> _nfs4_opendata_reclaim_to_nfs4_state returns NULL - this is unexpected
->> by callers of nfs4_opendata_to_nfs4_state().
->> 
->> This can be reproduced easily by opening the same file two times on an
->> NFSv4.0 mount with delegations enabled, once as RDONLY and once as RDWR then
->> sleeping for a long time.  While the files are held open, kick off state
->> recovery and this NULL dereference will be hit every time.
->> 
->> An example OOPS:
->> 
->> [   65.003602] BUG: unable to handle kernel NULL pointer dereference at 00000000
->> 00000030
->> [   65.005312] IP: [<ffffffffa037d6ee>] __nfs4_close+0x1e/0x160 [nfsv4]
->> [   65.006820] PGD 7b0ea067 PUD 791ff067 PMD 0
->> [   65.008075] Oops: 0000 [#1] SMP
->> [   65.008802] Modules linked in: rpcsec_gss_krb5 nfsv4 dns_resolver nfs fscache
->> snd_ens1371 gameport nfsd snd_rawmidi snd_ac97_codec ac97_bus btusb snd_seq snd
->> _seq_device snd_pcm ppdev bluetooth auth_rpcgss coretemp snd_page_alloc crc32_pc
->> lmul crc32c_intel ghash_clmulni_intel microcode rfkill nfs_acl vmw_balloon serio
->> _raw snd_timer lockd parport_pc e1000 snd soundcore parport i2c_piix4 shpchp vmw
->> _vmci sunrpc ata_generic mperf pata_acpi mptspi vmwgfx ttm scsi_transport_spi dr
->> m mptscsih mptbase i2c_core
->> [   65.018684] CPU: 0 PID: 473 Comm: 192.168.10.85-m Not tainted 3.11.2-201.fc19
->> .x86_64 #1
->> [   65.020113] Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop
->> Reference Platform, BIOS 6.00 07/31/2013
->> [   65.022012] task: ffff88003707e320 ti: ffff88007b906000 task.ti: ffff88007b906000
->> [   65.023414] RIP: 0010:[<ffffffffa037d6ee>]  [<ffffffffa037d6ee>] __nfs4_close+0x1e/0x160 [nfsv4]
->> [   65.025079] RSP: 0018:ffff88007b907d10  EFLAGS: 00010246
->> [   65.026042] RAX: 0000000000000000 RBX: 0000000000000000 RCX: 0000000000000000
->> [   65.027321] RDX: 0000000000000050 RSI: 0000000000000001 RDI: 0000000000000000
->> [   65.028691] RBP: ffff88007b907d38 R08: 0000000000016f60 R09: 0000000000000000
->> [   65.029990] R10: 0000000000000000 R11: 0000000000000000 R12: 0000000000000001
->> [   65.031295] R13: 0000000000000050 R14: 0000000000000000 R15: 0000000000000001
->> [   65.032527] FS:  0000000000000000(0000) GS:ffff88007f600000(0000) knlGS:0000000000000000
->> [   65.033981] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
->> [   65.035177] CR2: 0000000000000030 CR3: 000000007b27f000 CR4: 00000000000407f0
->> [   65.036568] Stack:
->> [   65.037011]  0000000000000000 0000000000000001 ffff88007b907d90 ffff88007a880220
->> [   65.038472]  ffff88007b768de8 ffff88007b907d48 ffffffffa037e4a5 ffff88007b907d80
->> [   65.039935]  ffffffffa036a6c8 ffff880037020e40 ffff88007a880000 ffff880037020e40
->> [   65.041468] Call Trace:
->> [   65.042050]  [<ffffffffa037e4a5>] nfs4_close_state+0x15/0x20 [nfsv4]
->> [   65.043209]  [<ffffffffa036a6c8>] nfs4_open_recover_helper+0x148/0x1f0 [nfsv4]
->> [   65.044529]  [<ffffffffa036a886>] nfs4_open_recover+0x116/0x150 [nfsv4]
->> [   65.045730]  [<ffffffffa036d98d>] nfs4_open_reclaim+0xad/0x150 [nfsv4]
->> [   65.046905]  [<ffffffffa037d979>] nfs4_do_reclaim+0x149/0x5f0 [nfsv4]
->> [   65.048071]  [<ffffffffa037e1dc>] nfs4_run_state_manager+0x3bc/0x670 [nfsv4]
->> [   65.049436]  [<ffffffffa037de20>] ? nfs4_do_reclaim+0x5f0/0x5f0 [nfsv4]
->> [   65.050686]  [<ffffffffa037de20>] ? nfs4_do_reclaim+0x5f0/0x5f0 [nfsv4]
->> [   65.051943]  [<ffffffff81088640>] kthread+0xc0/0xd0
->> [   65.052831]  [<ffffffff81088580>] ? insert_kthread_work+0x40/0x40
->> [   65.054697]  [<ffffffff8165686c>] ret_from_fork+0x7c/0xb0
->> [   65.056396]  [<ffffffff81088580>] ? insert_kthread_work+0x40/0x40
->> [   65.058208] Code: 5c 41 5d 5d c3 0f 1f 84 00 00 00 00 00 66 66 66 66 90 55 48 89 e5 41 57 41 89 f7 41 56 41 89 ce 41 55 41 89 d5 41 54 53 48 89 fb <4c> 8b 67 30 f0 41 ff 44 24 44 49 8d 7c 24 40 e8 0e 0a 2d e1 44
->> [   65.065225] RIP  [<ffffffffa037d6ee>] __nfs4_close+0x1e/0x160 [nfsv4]
->> [   65.067175]  RSP <ffff88007b907d10>
->> [   65.068570] CR2: 0000000000000030
->> [   65.070098] ---[ end trace 0d1fe4f5c7dd6f8b ]---
->> 
->> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
->> ---
->> fs/nfs/nfs4proc.c | 25 ++++++++++++++++++++-----
->> 1 file changed, 20 insertions(+), 5 deletions(-)
->> 
->> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->> index d2b4845..58658db 100644
->> --- a/fs/nfs/nfs4proc.c
->> +++ b/fs/nfs/nfs4proc.c
->> @@ -1316,16 +1316,27 @@ _nfs4_opendata_reclaim_to_nfs4_state(struct nfs4_opendata *data)
->> 	struct inode *inode = data->state->inode;
->> 	struct nfs4_state *state = data->state;
->> 	int ret;
->> +	bool cached_open = false;
->> 
->> 	if (!data->rpc_done) {
->> -		ret = data->rpc_status;
->> -		goto err;
->> +		if (data->rpc_status) {
->> +			ret = data->rpc_status;
->> +			goto err;
->> +		} else
->> +			/*
->> +			 * This is a cached open from an earlier operation
->> +			 * of the current state recovery event so there is
->> +			 * no need to update or check anything, just lookup
->> +			 * the open state.
->> +			 */
->> +			cached_open = true;
->> 	}
->> 
->> 	ret = -ESTALE;
->> -	if (!(data->f_attr.valid & NFS_ATTR_FATTR_TYPE) ||
->> -	    !(data->f_attr.valid & NFS_ATTR_FATTR_FILEID) ||
->> -	    !(data->f_attr.valid & NFS_ATTR_FATTR_CHANGE))
->> +	if (!cached_open &&
->> +	    (!(data->f_attr.valid & NFS_ATTR_FATTR_TYPE) ||
->> +	     !(data->f_attr.valid & NFS_ATTR_FATTR_FILEID) ||
->> +	     !(data->f_attr.valid & NFS_ATTR_FATTR_CHANGE)))
->> 		goto err;
->> 
->> 	ret = -ENOMEM;
->> @@ -1333,6 +1344,9 @@ _nfs4_opendata_reclaim_to_nfs4_state(struct nfs4_opendata *data)
->> 	if (state == NULL)
->> 		goto err;
->> 
->> +	if (cached_open)
->> +		goto out;
->> +
->> 	ret = nfs_refresh_inode(inode, &data->f_attr);
->> 	if (ret)
->> 		goto err;
->> @@ -1344,6 +1358,7 @@ _nfs4_opendata_reclaim_to_nfs4_state(struct nfs4_opendata *data)
->> 	update_open_stateid(state, &data->o_res.stateid, NULL,
->> 			    data->o_arg.fmode);
->> 
->> +out:
->> 	return state;
->> err:
->> 	return ERR_PTR(ret);
+On Mon, Oct 28, 2013 at 10:57:26AM -0400, Anna Schumaker wrote:
+> This patch adds in the SEEK operation used by clients doing an llseek on
+> a file to find either hole or data sections in a file.  I'm faking the
+> "allocated" status right now, since I haven't quite figured out how to
+> tell if a range is allocated on disk yet.
 > 
-> OK. Looking at what _nfs4_opendata_reclaim_to_nfs4_state is supposed to
-> do, there appear to be several more problems.
+> This patch is missing correctly determining the "allocated" status of
+> the HOLE / DATA range.  I expect I'll need to learn all about how fiemap
+> works before properly setting these values.
 > 
->     1. Why are we calling nfs4_get_open_state? We already have a value
->        for state, and all we want to do is to update it (and bump the
->        reference counter).
->     2. Why do we care about whether or not the GETATTR succeeded? We
->        just did an open by filehandle.
->     3. Don't we have a state reference leak when nfs_refresh_inode
->        fails?
-
-Interesting questions, I'll need to look at this code path a bit more and get back to you.
-
--dros
-
+> Signed-off-by: Anna Schumaker <bjschuma@netapp.com>
+> ---
+>  fs/nfsd/nfs4proc.c   | 44 ++++++++++++++++++++++++++++++++++++++++++++
+>  fs/nfsd/nfs4xdr.c    | 40 ++++++++++++++++++++++++++++++++++++++--
+>  fs/nfsd/xdr4.h       | 15 +++++++++++++++
+>  include/linux/nfs4.h |  2 +-
+>  4 files changed, 98 insertions(+), 3 deletions(-)
 > 
-> 
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index 3210c6f..bc45ed2 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+> @@ -1064,6 +1064,45 @@ nfsd4_write_plus(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+>  	return nfserr_union_notsupp;
+>  }
+>  
+> +static __be32
+> +nfsd4_seek(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+> +		struct nfsd4_seek *seek)
+> +{
+> +	struct file *file;
+> +	loff_t pos, end_pos;
+> +	__be32 status;
+> +
+> +	status = nfs4_preprocess_stateid_op(SVC_NET(rqstp), cstate,
+> +					    &seek->seek_stateid,
+> +					    RD_STATE | WR_STATE, &file);
+
+Note nfs4_preprocess_stateid_op requires the caller to hold the state
+lock.  Andyou want to either hold it till you're done using "file" or
+take a reference on file before dropping it.
+
+--b.
+
+> +	if (status != nfs_ok)
+> +		return status;
+> +
+> +	if (seek->seek_whence == NFS4_CONTENT_DATA) {
+> +		pos = vfs_llseek(file, seek->seek_offset, SEEK_DATA);
+> +		end_pos = vfs_llseek(file, pos, SEEK_HOLE);
+> +		seek->seek_allocated = true;
+> +	} else {
+> +		pos = vfs_llseek(file, seek->seek_offset, SEEK_HOLE);
+> +		end_pos = vfs_llseek(file, pos, SEEK_DATA);
+> +		seek->seek_allocated = false;
+> +	}
+> +
+> +	if (pos < 0)
+> +		return nfserrno(pos);
+> +	else if (end_pos == -ENXIO) {
+> +		seek->seek_length = 0;
+> +		seek->seek_eof = true;
+> +	} else if (end_pos < 0)
+> +		return nfserrno(end_pos);
+> +	else
+> +		seek->seek_length = end_pos - pos;
+> +
+> +	seek->seek_offset = pos;
+> +
+> +	return nfs_ok;
+> +}
+> +
+>  /* This routine never returns NFS_OK!  If there are no other errors, it
+>   * will return NFSERR_SAME or NFSERR_NOT_SAME depending on whether the
+>   * attributes matched.  VERIFY is implemented by mapping NFSERR_SAME
+> @@ -1885,6 +1924,11 @@ static struct nfsd4_operation nfsd4_ops[] = {
+>  		.op_rsize_bop = (nfsd4op_rsize)nfsd4_write_rsize,
+>  		.op_get_currentstateid = (stateid_getter)nfsd4_get_writestateid,
+>  	},
+> +
+> +	[OP_SEEK] = {
+> +		.op_func = (nfsd4op_func)nfsd4_seek,
+> +		.op_name = "OP_SEEK",
+> +	},
+>  };
+>  
+>  #ifdef NFSD_DEBUG
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index 1e4e9af..8434740 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -1511,6 +1511,22 @@ nfsd4_decode_write_plus(struct nfsd4_compoundargs *argp,
+>  }
+>  
+>  static __be32
+> +nfsd4_decode_seek(struct nfsd4_compoundargs *argp, struct nfsd4_seek *seek)
+> +{
+> +	DECODE_HEAD;
+> +
+> +	status = nfsd4_decode_stateid(argp, &seek->seek_stateid);
+> +	if (status)
+> +		return status;
+> +
+> +	READ_BUF(12);
+> +	READ64(seek->seek_offset);
+> +	READ32(seek->seek_whence);
+> +
+> +	DECODE_TAIL;
+> +}
+> +
+> +static __be32
+>  nfsd4_decode_noop(struct nfsd4_compoundargs *argp, void *p)
+>  {
+>  	return nfs_ok;
+> @@ -1693,7 +1709,7 @@ static nfsd4_dec nfsd42_dec_ops[] = {
+>  	[OP_OFFLOAD_STATUS]	= (nfsd4_dec)nfsd4_decode_notsupp,
+>  	[OP_WRITE_PLUS]		= (nfsd4_dec)nfsd4_decode_write_plus,
+>  	[OP_READ_PLUS]		= (nfsd4_dec)nfsd4_decode_notsupp,
+> -	[OP_SEEK]		= (nfsd4_dec)nfsd4_decode_notsupp,
+> +	[OP_SEEK]		= (nfsd4_dec)nfsd4_decode_seek,
+>  	[OP_IO_ADVISE]		= (nfsd4_dec)nfsd4_decode_notsupp,
+>  };
+>  
+> @@ -3650,6 +3666,26 @@ nfsd4_encode_write_plus(struct nfsd4_compoundres *resp, __be32 nfserr,
+>  }
+>  
+>  static __be32
+> +nfsd4_encode_seek(struct nfsd4_compoundres *resp, __be32 nfserr,
+> +		  struct nfsd4_seek *seek)
+> +{
+> +	__be32 *p;
+> +
+> +	if (nfserr)
+> +		return nfserr;
+> +
+> +	RESERVE_SPACE(28);
+> +	WRITE32(seek->seek_eof);
+> +	WRITE32(seek->seek_whence);
+> +	WRITE64(seek->seek_offset);
+> +	WRITE64(seek->seek_length);
+> +	WRITE32(seek->seek_allocated);
+> +	ADJUST_ARGS();
+> +
+> +	return nfserr;
+> +}
+> +
+> +static __be32
+>  nfsd4_encode_noop(struct nfsd4_compoundres *resp, __be32 nfserr, void *p)
+>  {
+>  	return nfserr;
+> @@ -3730,7 +3766,7 @@ static nfsd4_enc nfsd4_enc_ops[] = {
+>  	[OP_OFFLOAD_STATUS]	= (nfsd4_enc)nfsd4_encode_noop,
+>  	[OP_WRITE_PLUS]		= (nfsd4_enc)nfsd4_encode_write_plus,
+>  	[OP_READ_PLUS]		= (nfsd4_enc)nfsd4_encode_noop,
+> -	[OP_SEEK]		= (nfsd4_enc)nfsd4_encode_noop,
+> +	[OP_SEEK]		= (nfsd4_enc)nfsd4_encode_seek,
+>  	[OP_IO_ADVISE]		= (nfsd4_enc)nfsd4_encode_noop,
+>  };
+>  
+> diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+> index aaef9ab..ae9debc 100644
+> --- a/fs/nfsd/xdr4.h
+> +++ b/fs/nfsd/xdr4.h
+> @@ -451,6 +451,20 @@ struct nfsd4_write_plus {
+>  	struct nfsd42_write_res	wp_res;
+>  };
+>  
+> +struct nfsd4_seek {
+> +	/* request */
+> +	stateid_t	seek_stateid;
+> +
+> +	/* Shared between request and response */
+> +	u64		seek_offset;
+> +	u32		seek_whence;
+> +
+> +	/* response */
+> +	u32		seek_eof;
+> +	u64		seek_length;
+> +	u32		seek_allocated;
+> +};
+> +
+>  struct nfsd4_op {
+>  	int					opnum;
+>  	__be32					status;
+> @@ -499,6 +513,7 @@ struct nfsd4_op {
+>  
+>  		/* NFSv4.2 */
+>  		struct nfsd4_write_plus		write_plus;
+> +		struct nfsd4_seek		seek;
+>  	} u;
+>  	struct nfs4_replay *			replay;
+>  };
+> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+> index 55ed991..81d6b09 100644
+> --- a/include/linux/nfs4.h
+> +++ b/include/linux/nfs4.h
+> @@ -128,7 +128,7 @@ enum nfs_opnum4 {
+>  Needs to be updated if more operations are defined in future.*/
+>  
+>  #define FIRST_NFS4_OP	OP_ACCESS
+> -#define LAST_NFS4_OP 	OP_WRITE_PLUS
+> +#define LAST_NFS4_OP 	OP_SEEK
+>  
+>  enum nfsstat4 {
+>  	NFS4_OK = 0,
 > -- 
-> Trond Myklebust
-> Linux NFS client maintainer
+> 1.8.4.1
 > 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
-
