@@ -1,187 +1,156 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:56518 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753993Ab3JRTds convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Oct 2013 15:33:48 -0400
-From: Weston Andros Adamson <dros@netapp.com>
+Received: from mailgw02.dd24.net ([193.46.215.43]:48052 "EHLO
+	mailgw02.dd24.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754507Ab3J1AXW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Oct 2013 20:23:22 -0400
+Message-ID: <1382919793.6932.41.camel@heisenberg.scientia.net>
+Subject: Re: XATTRs in NFS?
+From: Christoph Anton Mitterer <calestyo@scientia.net>
 To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFSv4: Fix NULL dereference in recovery path
-Date: Fri, 18 Oct 2013 19:33:43 +0000
-Message-ID: <0B620A28-2793-417C-BB67-519B9E40939B@netapp.com>
-References: <1381188833-3728-1-git-send-email-dros@netapp.com>
- <1381954731.17178.28.camel@leira.trondhjem.org>
-In-Reply-To: <1381954731.17178.28.camel@leira.trondhjem.org>
-Content-Type: text/plain; charset="Windows-1252"
-MIME-Version: 1.0
+Cc: Eshel Marc <eshel@us.ibm.com>,
+        Dr Fields James Bruce <bfields@fieldses.org>,
+        Mailing List Linux NFS <linux-nfs@vger.kernel.org>,
+        "linux-nfs-owner@vger.kernel.org" <linux-nfs-owner@vger.kernel.org>,
+        Wheeler Ric <ricwheeler@gmail.com>
+Date: Mon, 28 Oct 2013 01:23:13 +0100
+In-Reply-To: <E5AAC597-053A-4150-9041-32885CFFC6C4@netapp.com>
+References: <1382560643.6924.12.camel@heisenberg.scientia.net>
+	 <EFB2CFAD-FACC-401D-BF0C-1C573B23A873@netapp.com>
+	 <1382624000.6907.8.camel@heisenberg.scientia.net>
+	 <E0F4C952-02DE-4778-A779-FB7AE111EC46@netapp.com>
+	 <1382630468.6907.58.camel@heisenberg.scientia.net>
+	 <625CAA34-BD6C-4283-86D0-3F8B460D54D0@netapp.com>
+	 <1382635350.6907.83.camel@heisenberg.scientia.net>
+	 <20131025140846.GB20497@fieldses.org> <526A8D9A.8090008@gmail.com>
+	 <7C1323EE-D63F-4F93-A44D-E7DDB0C61BF0@netapp.com>
+	 <OF01D9818B.36018C0F-ON88257C10.00608BC0-88257C10.006139C6@LocalDomain>
+	 <OF7F1977B0.3BF0FF3B-ON88257C10.00618038-88257C10.0061AF59@us.ibm.com>
+	 <4260556F-D57B-407E-A686-808D3D802137@netapp.com>
+	 <1382919289.6932.35.camel@heisenberg.scientia.net>
+	 <E5AAC597-053A-4150-9041-32885CFFC6C4@netapp.com>
+Content-Type: multipart/signed; micalg="sha-512";
+	protocol="application/x-pkcs7-signature";
+	boundary="=-Tawp+PlfbVv/7jWP4oan"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Oct 16, 2013, at 4:18 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+--=-Tawp+PlfbVv/7jWP4oan
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-> On Mon, 2013-10-07 at 19:33 -0400, Weston Andros Adamson wrote:
->> _nfs4_opendata_reclaim_to_nfs4_state doesn't expect to see a cached
->> open CLAIM_PREVIOUS, but this can happen. An example is when there are
->> RDWR openers and RDONLY openers on a delegation stateid. The recovery
->> path will first try an open CLAIM_PREVIOUS for the RDWR openers, this
->> marks the delegation as not needing RECLAIM anymore, so the open
->> CLAIM_PREVIOUS for the RDONLY openers will not actually send an rpc.
->> 
->> The NULL dereference is due to _nfs4_opendata_reclaim_to_nfs4_state
->> returning PTR_ERR(rpc_status) when !rpc_done. When the open is
->> cached, rpc_done == 0 and rpc_status == 0, thus
->> _nfs4_opendata_reclaim_to_nfs4_state returns NULL - this is unexpected
->> by callers of nfs4_opendata_to_nfs4_state().
->> 
->> This can be reproduced easily by opening the same file two times on an
->> NFSv4.0 mount with delegations enabled, once as RDONLY and once as RDWR then
->> sleeping for a long time.  While the files are held open, kick off state
->> recovery and this NULL dereference will be hit every time.
->> 
->> An example OOPS:
->> 
->> [   65.003602] BUG: unable to handle kernel NULL pointer dereference at 00000000
->> 00000030
->> [   65.005312] IP: [<ffffffffa037d6ee>] __nfs4_close+0x1e/0x160 [nfsv4]
->> [   65.006820] PGD 7b0ea067 PUD 791ff067 PMD 0
->> [   65.008075] Oops: 0000 [#1] SMP
->> [   65.008802] Modules linked in: rpcsec_gss_krb5 nfsv4 dns_resolver nfs fscache
->> snd_ens1371 gameport nfsd snd_rawmidi snd_ac97_codec ac97_bus btusb snd_seq snd
->> _seq_device snd_pcm ppdev bluetooth auth_rpcgss coretemp snd_page_alloc crc32_pc
->> lmul crc32c_intel ghash_clmulni_intel microcode rfkill nfs_acl vmw_balloon serio
->> _raw snd_timer lockd parport_pc e1000 snd soundcore parport i2c_piix4 shpchp vmw
->> _vmci sunrpc ata_generic mperf pata_acpi mptspi vmwgfx ttm scsi_transport_spi dr
->> m mptscsih mptbase i2c_core
->> [   65.018684] CPU: 0 PID: 473 Comm: 192.168.10.85-m Not tainted 3.11.2-201.fc19
->> .x86_64 #1
->> [   65.020113] Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop
->> Reference Platform, BIOS 6.00 07/31/2013
->> [   65.022012] task: ffff88003707e320 ti: ffff88007b906000 task.ti: ffff88007b906000
->> [   65.023414] RIP: 0010:[<ffffffffa037d6ee>]  [<ffffffffa037d6ee>] __nfs4_close+0x1e/0x160 [nfsv4]
->> [   65.025079] RSP: 0018:ffff88007b907d10  EFLAGS: 00010246
->> [   65.026042] RAX: 0000000000000000 RBX: 0000000000000000 RCX: 0000000000000000
->> [   65.027321] RDX: 0000000000000050 RSI: 0000000000000001 RDI: 0000000000000000
->> [   65.028691] RBP: ffff88007b907d38 R08: 0000000000016f60 R09: 0000000000000000
->> [   65.029990] R10: 0000000000000000 R11: 0000000000000000 R12: 0000000000000001
->> [   65.031295] R13: 0000000000000050 R14: 0000000000000000 R15: 0000000000000001
->> [   65.032527] FS:  0000000000000000(0000) GS:ffff88007f600000(0000) knlGS:0000000000000000
->> [   65.033981] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
->> [   65.035177] CR2: 0000000000000030 CR3: 000000007b27f000 CR4: 00000000000407f0
->> [   65.036568] Stack:
->> [   65.037011]  0000000000000000 0000000000000001 ffff88007b907d90 ffff88007a880220
->> [   65.038472]  ffff88007b768de8 ffff88007b907d48 ffffffffa037e4a5 ffff88007b907d80
->> [   65.039935]  ffffffffa036a6c8 ffff880037020e40 ffff88007a880000 ffff880037020e40
->> [   65.041468] Call Trace:
->> [   65.042050]  [<ffffffffa037e4a5>] nfs4_close_state+0x15/0x20 [nfsv4]
->> [   65.043209]  [<ffffffffa036a6c8>] nfs4_open_recover_helper+0x148/0x1f0 [nfsv4]
->> [   65.044529]  [<ffffffffa036a886>] nfs4_open_recover+0x116/0x150 [nfsv4]
->> [   65.045730]  [<ffffffffa036d98d>] nfs4_open_reclaim+0xad/0x150 [nfsv4]
->> [   65.046905]  [<ffffffffa037d979>] nfs4_do_reclaim+0x149/0x5f0 [nfsv4]
->> [   65.048071]  [<ffffffffa037e1dc>] nfs4_run_state_manager+0x3bc/0x670 [nfsv4]
->> [   65.049436]  [<ffffffffa037de20>] ? nfs4_do_reclaim+0x5f0/0x5f0 [nfsv4]
->> [   65.050686]  [<ffffffffa037de20>] ? nfs4_do_reclaim+0x5f0/0x5f0 [nfsv4]
->> [   65.051943]  [<ffffffff81088640>] kthread+0xc0/0xd0
->> [   65.052831]  [<ffffffff81088580>] ? insert_kthread_work+0x40/0x40
->> [   65.054697]  [<ffffffff8165686c>] ret_from_fork+0x7c/0xb0
->> [   65.056396]  [<ffffffff81088580>] ? insert_kthread_work+0x40/0x40
->> [   65.058208] Code: 5c 41 5d 5d c3 0f 1f 84 00 00 00 00 00 66 66 66 66 90 55 48 89 e5 41 57 41 89 f7 41 56 41 89 ce 41 55 41 89 d5 41 54 53 48 89 fb <4c> 8b 67 30 f0 41 ff 44 24 44 49 8d 7c 24 40 e8 0e 0a 2d e1 44
->> [   65.065225] RIP  [<ffffffffa037d6ee>] __nfs4_close+0x1e/0x160 [nfsv4]
->> [   65.067175]  RSP <ffff88007b907d10>
->> [   65.068570] CR2: 0000000000000030
->> [   65.070098] ---[ end trace 0d1fe4f5c7dd6f8b ]---
->> 
->> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
->> ---
->> fs/nfs/nfs4proc.c | 25 ++++++++++++++++++++-----
->> 1 file changed, 20 insertions(+), 5 deletions(-)
->> 
->> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->> index d2b4845..58658db 100644
->> --- a/fs/nfs/nfs4proc.c
->> +++ b/fs/nfs/nfs4proc.c
->> @@ -1316,16 +1316,27 @@ _nfs4_opendata_reclaim_to_nfs4_state(struct nfs4_opendata *data)
->> 	struct inode *inode = data->state->inode;
->> 	struct nfs4_state *state = data->state;
->> 	int ret;
->> +	bool cached_open = false;
->> 
->> 	if (!data->rpc_done) {
->> -		ret = data->rpc_status;
->> -		goto err;
->> +		if (data->rpc_status) {
->> +			ret = data->rpc_status;
->> +			goto err;
->> +		} else
->> +			/*
->> +			 * This is a cached open from an earlier operation
->> +			 * of the current state recovery event so there is
->> +			 * no need to update or check anything, just lookup
->> +			 * the open state.
->> +			 */
->> +			cached_open = true;
->> 	}
->> 
->> 	ret = -ESTALE;
->> -	if (!(data->f_attr.valid & NFS_ATTR_FATTR_TYPE) ||
->> -	    !(data->f_attr.valid & NFS_ATTR_FATTR_FILEID) ||
->> -	    !(data->f_attr.valid & NFS_ATTR_FATTR_CHANGE))
->> +	if (!cached_open &&
->> +	    (!(data->f_attr.valid & NFS_ATTR_FATTR_TYPE) ||
->> +	     !(data->f_attr.valid & NFS_ATTR_FATTR_FILEID) ||
->> +	     !(data->f_attr.valid & NFS_ATTR_FATTR_CHANGE)))
->> 		goto err;
->> 
->> 	ret = -ENOMEM;
->> @@ -1333,6 +1344,9 @@ _nfs4_opendata_reclaim_to_nfs4_state(struct nfs4_opendata *data)
->> 	if (state == NULL)
->> 		goto err;
->> 
->> +	if (cached_open)
->> +		goto out;
->> +
->> 	ret = nfs_refresh_inode(inode, &data->f_attr);
->> 	if (ret)
->> 		goto err;
->> @@ -1344,6 +1358,7 @@ _nfs4_opendata_reclaim_to_nfs4_state(struct nfs4_opendata *data)
->> 	update_open_stateid(state, &data->o_res.stateid, NULL,
->> 			    data->o_arg.fmode);
->> 
->> +out:
->> 	return state;
->> err:
->> 	return ERR_PTR(ret);
-> 
-> OK. Looking at what _nfs4_opendata_reclaim_to_nfs4_state is supposed to
-> do, there appear to be several more problems.
-> 
->     1. Why are we calling nfs4_get_open_state? We already have a value
->        for state, and all we want to do is to update it (and bump the
->        reference counter).
+On Mon, 2013-10-28 at 00:19 +0000, Myklebust, Trond wrote:
+> Ordinary groups can do the same.
+For sure not,.. a) groups are already used for something else (namely
+the normal semantics of groups, and the sGroup does not necessarily need
+to correspond to the UNIX owning group (actually it usually does not).
 
-Yeah, this is clearly not right.
+b) sGroup is only one of several tags,... there are tags which control
+space tokens, there are tags which contain dCache's own file checksums,
+etc. pp.
 
->     2. Why do we care about whether or not the GETATTR succeeded? We
->        just did an open by file handle.
 
-I'm not 100% about this one, but it seems like we can just remove those checks.
+Cheers,
+Chris.
 
->     3. Don't we have a state reference leak when nfs_refresh_inode
->        fails?
+--=-Tawp+PlfbVv/7jWP4oan
+Content-Type: application/x-pkcs7-signature; name="smime.p7s"
+Content-Disposition: attachment; filename="smime.p7s"
+Content-Transfer-Encoding: base64
 
-Looks like it.
+MIAGCSqGSIb3DQEHAqCAMIACAQExDzANBglghkgBZQMEAgMFADCABgkqhkiG9w0BBwEAAKCCEP4w
+ggV1MIIDXaADAgECAgMBAYIwDQYJKoZIhvcNAQEFBQAwVDEUMBIGA1UEChMLQ0FjZXJ0IEluYy4x
+HjAcBgNVBAsTFWh0dHA6Ly93d3cuQ0FjZXJ0Lm9yZzEcMBoGA1UEAxMTQ0FjZXJ0IENsYXNzIDMg
+Um9vdDAeFw0xMjA3MjMxNDU2NDVaFw0xNDA3MjMxNDU2NDVaMHwxITAfBgNVBAMTGENocmlzdG9w
+aCBBbnRvbiBNaXR0ZXJlcjEkMCIGCSqGSIb3DQEJARYVY2FsZXN0eW9Ac2NpZW50aWEubmV0MTEw
+LwYJKoZIhvcNAQkBFiJtYWlsQGNocmlzdG9waC5hbnRvbi5taXR0ZXJlci5uYW1lMIIBIjANBgkq
+hkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqv+F91K5vyBwiGFMqj6wTehWdqZnfFeXqT8g5b3qrXWL
+ywSzcoD9xtyoRqAgOCX+PSmBpm6pPhe31VnBtc3HcBMe4rSico9/Z2H9h1l6IMVEnyhabWzoKbE3
+BFrsYJGthJCbhK072G8AhCk+5p+L+knLhQXN0Ph7MJbdY26o3M4vjsXFNbJL8TOYxo80cGD1LIh2
+SUZFqaIG24TVmTW8F4jD5Z9/NEwJa8kQK+VBNHUntXYNah4Reh0jSsGnq9Pg3Hf4KC+F0IR8QgBm
+SnwitMFUX9UnhLEvRQxjDI1tm+h6RxfjlV7moI68Ulh7bcdPhM/z2Q16XmaY12rc85pSRQIDAQAB
+o4IBJjCCASIwDAYDVR0TAQH/BAIwADBWBglghkgBhvhCAQ0ESRZHVG8gZ2V0IHlvdXIgb3duIGNl
+cnRpZmljYXRlIGZvciBGUkVFIGhlYWQgb3ZlciB0byBodHRwOi8vd3d3LkNBY2VydC5vcmcwQAYD
+VR0lBDkwNwYIKwYBBQUHAwQGCCsGAQUFBwMCBgorBgEEAYI3CgMEBgorBgEEAYI3CgMDBglghkgB
+hvhCBAEwMgYIKwYBBQUHAQEEJjAkMCIGCCsGAQUFBzABhhZodHRwOi8vb2NzcC5jYWNlcnQub3Jn
+MEQGA1UdEQQ9MDuBFWNhbGVzdHlvQHNjaWVudGlhLm5ldIEibWFpbEBjaHJpc3RvcGguYW50b24u
+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
++G8T/HNZ92ZCdB6K4/jc0m+YnMtHmJVABfvpAgMBAAGjgb8wgbwwDwYDVR0TAQH/BAUwAwEB/zBd
+BggrBgEFBQcBAQRRME8wIwYIKwYBBQUHMAGGF2h0dHA6Ly9vY3NwLkNBY2VydC5vcmcvMCgGCCsG
+AQUFBzAChhxodHRwOi8vd3d3LkNBY2VydC5vcmcvY2EuY3J0MEoGA1UdIARDMEEwPwYIKwYBBAGB
+kEowMzAxBggrBgEFBQcCARYlaHR0cDovL3d3dy5DQWNlcnQub3JnL2luZGV4LnBocD9pZD0xMDAN
+BgkqhkiG9w0BAQQFAAOCAgEAfwiIodoaUEnaifuhCHLzivcexDq0eVsgMLFF3sJd02Vp8cJdVFQ8
+hV+5e0KRwpn9G1Gbq0aloRBTnm2IrHNuLDOm8PSe4HXBPohFqeFmQ/5WWtF6QXj3QNpKOvELW6W7
+FgbmwueTuYVNl0+xHjhDgO+bDYzvuKdgAIdXfR5EHMsj75s8mZ2vtSkcRXkWlk0nbfEcbMPCVWSz
+vBTi86QfHjL8JxUFz90urj6CYXvwIRAY9kTqUzn53NCaIODGu+C7Wk/EmcgHvbW9otsuYg1CNEG8
+/4uK9VEiqogwAOKw1Ly+ZbrVA1d5m+jcyE34UO2RpVIooqz7Nlg+6ZQrkVCHG9Ze1ozM9w8QDFJO
+0BZh5eUKbL8Xx3JGV5yY9WxgY3pvXrlOL8i5ubtqhbyYDe35PpeENJSuAK+h5eeSbk698+LZFItc
+0usBbKAXpS0Q65x6Sr297s797SJAq3A4iPUKh2rCqwVgyUgF2lPB3kR3arPzPDztgLymOEopJF/+
+WTubJXpWYwBkuV2kYn1XNk+tg+8fklOgjndX3eVhET0jAJBMPPqjYJMEo6819g5qj09KYKeFBWxG
+oY/0x3bjoVlX93GyxG4UXG1tQWbfG5Ox1ADD7svPPD0hgKlfY2X83eBfpPQr8IVxQdRnJfsasZeu
+1pmCE0HSbqUbmSeA5wupqAAxggLtMIIC6QIBATBbMFQxFDASBgNVBAoTC0NBY2VydCBJbmMuMR4w
+HAYDVQQLExVodHRwOi8vd3d3LkNBY2VydC5vcmcxHDAaBgNVBAMTE0NBY2VydCBDbGFzcyAzIFJv
+b3QCAwEBgjANBglghkgBZQMEAgMFAKCCAWMwGAYJKoZIhvcNAQkDMQsGCSqGSIb3DQEHATAcBgkq
+hkiG9w0BCQUxDxcNMTMxMDI4MDAyMzEzWjBPBgkqhkiG9w0BCQQxQgRANynREn4gfmV3kealEO8s
+AhzI9aeB/fBa9828cM64d8Vwrs748gF4pTBiuC4dwNsXsSfxBGJHtUvUprUB7pK7ADBqBgkrBgEE
+AYI3EAQxXTBbMFQxFDASBgNVBAoTC0NBY2VydCBJbmMuMR4wHAYDVQQLExVodHRwOi8vd3d3LkNB
+Y2VydC5vcmcxHDAaBgNVBAMTE0NBY2VydCBDbGFzcyAzIFJvb3QCAwEBgjBsBgsqhkiG9w0BCRAC
+CzFdoFswVDEUMBIGA1UEChMLQ0FjZXJ0IEluYy4xHjAcBgNVBAsTFWh0dHA6Ly93d3cuQ0FjZXJ0
+Lm9yZzEcMBoGA1UEAxMTQ0FjZXJ0IENsYXNzIDMgUm9vdAIDAQGCMA0GCSqGSIb3DQEBAQUABIIB
+AFGhVU6AHH1k/aPr7nrQ4CxvwDR8/vvogF718PLmLZXaeHNbaSMvlAiXAws128yTBaxD5gI7NKz2
+ZEMEp678T0mlVoaHWU0Fa0eHNXOkKHCsZ2fkdLikiCReADY7NOpJuBhCslF1kpeAf9WYY1bOq9N1
+WuZPngtrmpUWer6nIh34UhWDezcmuTsnNKU4NUd/obE2qHeWd1XFR1N0JcdmlCUAAC7t842jAtYM
+ooXdf9Y1X46rWyepBC6ibWMX0qverhHto6N7TMYmZQivN6QOCfKFVIlMTH1y0nRtetRE/5LZL+wF
+dSFVwYVPuTXo8a1zK8sqroOTSJ+Snid1ubLSW1sAAAAAAAA=
 
-I'll clean this function up. I'm not sure how I should separate the issues into patches… Maybe first I'll clean these things up then see where I'm at with handling cached opens (the NULL deref problem).
 
--dros
-
-> 
-> 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
+--=-Tawp+PlfbVv/7jWP4oan--
 
