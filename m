@@ -1,134 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:5908 "EHLO mx11.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:46146 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754129Ab3JVQWS convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Oct 2013 12:22:18 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: Simo Sorce <simo@redhat.com>
-CC: "<SteveD@redhat.com>" <SteveD@redhat.com>,
-        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] gssd: validate cred in gssd_acquire_user_cred
-Date: Tue, 22 Oct 2013 16:22:17 +0000
-Message-ID: <E7C76283-6DA1-453B-A386-6C1A2DDC7653@netapp.com>
-References: <1382450675-14636-1-git-send-email-dros@netapp.com>
- <1382452919.9794.63.camel@willson.li.ssimo.org>
- <0A5F8F19-4730-4D1A-86A5-5533D758AC23@netapp.com>
- <1382458386.9794.89.camel@willson.li.ssimo.org>
-In-Reply-To: <1382458386.9794.89.camel@willson.li.ssimo.org>
-Content-Type: text/plain; charset="us-ascii"
+	id S1751756Ab3J1VLT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 28 Oct 2013 17:11:19 -0400
+Date: Mon, 28 Oct 2013 17:11:19 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 2/4] NFSD: Create nfs v4.2 decode ops
+Message-ID: <20131028211118.GN31322@fieldses.org>
+References: <1382972247-1108-1-git-send-email-bjschuma@netapp.com>
+ <1382972247-1108-3-git-send-email-bjschuma@netapp.com>
+ <20131028205414.GL31322@fieldses.org>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA9534E7CEF@SACEXCMBX04-PRD.hq.netapp.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA9534E7CEF@SACEXCMBX04-PRD.hq.netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Oct 22, 2013, at 12:13 PM, Simo Sorce <simo@redhat.com> wrote:
-
-> On Tue, 2013-10-22 at 16:03 +0000, Weston Andros Adamson wrote:
->> On Oct 22, 2013, at 10:41 AM, Simo Sorce <simo@redhat.com> wrote:
->> 
->>> On Tue, 2013-10-22 at 10:04 -0400, Weston Andros Adamson wrote:
->>>> Call gss_inquire_cred after gssd_acquire_krb5_cred check for expired
->>>> credentials.
->>>> 
->>>> This fixes a recent regression (since 302de786930a2c533068f9d8909a817b40f07c32)
->>>> that causes the user's ticket cache to grow unbounded with expired service
->>>> tickets when the user's credentials expire.
->>>> 
->>>> To reproduce this issue:
->>>> 
->>>> - mount kerberos nfs export
->>>> - kinit for a short lifetime (ie "kinit -l 1m")
->>>> - run a job that opens a file and writes for more than the lifetime
->>>> - run klist a few times after expiry and see the list grow, ie:
->>>> 
->>>> Ticket cache: DIR::/run/user/1749600001/krb5cc/tktYmpGlX
->>>> Default principal: dros@APIKIA.FAKE
->>>> 
->>>> Valid starting       Expires              Service principal
->>>> 10/21/2013 15:39:38  10/21/2013 15:40:35  krbtgt/APIKIA.FAKE@APIKIA.FAKE
->>>> 10/21/2013 15:39:40  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
->>>> 10/21/2013 15:40:35  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
->>>> 10/21/2013 15:40:36  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
->>>> 10/21/2013 15:40:37  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
->>>> 10/21/2013 15:40:37  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
->>>> 10/21/2013 15:40:38  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
->>>> 10/21/2013 15:40:38  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
->>>> 10/21/2013 15:40:39  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
->>>> 10/21/2013 15:40:39  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
->>>> 10/21/2013 15:40:39  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
->>>> 10/21/2013 15:40:39  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
->>>> 10/21/2013 15:40:40  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
->>>> 10/21/2013 15:40:40  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
->>>> 10/21/2013 15:40:41  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
->>>> 10/21/2013 15:40:41  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
->>>> 10/21/2013 15:40:42  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
->>>> 10/21/2013 15:40:42  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
->>>> 10/21/2013 15:40:42  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
->>>> 
->>>> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
->>>> ---
->>>> utils/gssd/krb5_util.c | 7 +++++++
->>>> 1 file changed, 7 insertions(+)
->>>> 
->>>> diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
->>>> index c6e52fd..ec5db83 100644
->>>> --- a/utils/gssd/krb5_util.c
->>>> +++ b/utils/gssd/krb5_util.c
->>>> @@ -1405,6 +1405,13 @@ gssd_acquire_user_cred(uid_t uid, gss_cred_id_t *gss_cred)
->>>> 
->>>> 	ret = gssd_acquire_krb5_cred(name, gss_cred);
->>>> 
->>>> +	/* force validation of cred to check for expiry */
->>>> +	if (ret == 0) {
->>>> +		if (gss_inquire_cred(min_stat, gss_cred, NULL, NULL,
->>>> +				     NULL, NULL) != GSS_S_COMPLETE)
->>>> +			ret = -1;
->>>> +	}
->>>> +
->>>> 	maj_stat = gss_release_name(&min_stat, &name);
->>>> 	return ret;
->>>> }
->>> 
->>> A good start, but given you are inquiring creds, then I think it would
->>> totally make sense to pass in a uint32_t for the 4th argument
->>> (lifetime), and check if there is "enough".
->> 
->> Well, from my perspective gssd already gives enough info for you to know what's going on, i.e.:
->> 
->> getting credentials for client with uid 1749600001 for server zero.apikia.fake
->> CC '/run/user/1749600001/krb5cc' being considered, with preferred realm 'APIKIA.FAKE'
->> CC 'DIR:/run/user/1749600001/krb5cc' is expired or corrupt
->> WARNING: Failed to create krb5 context for user with uid 1749600001 for server zero.apikia.fake
->> doing error downfall
->> 
->> And it's obvious from the NFS layer as EKEYEXPIRED gets passed through as the error.
->> 
->>> 
->>> For example, if it returns a lifetime of 1 second should we continue ?
->>> There is a fat chance that it will fail later on.
->> 
->> I think how we handle this now (without the regression this fixes) is fine.  I really don't think users/ admins want to enable verbose debugging in gssd to see this - they should be able to tell what happened when the caller gets an expired cred.
->> 
->>> 
->>> I think we should at least log it if the credential we are trying to use
->>> turns out to be really close to expiring, no ? It may save some gray
->>> hairs to server administrators trying to find out what is going wrong
->>> (like it happened to you :)
->> 
->> Well, it was obvious to me what was happening when the keys expired - what was not obvious was why the tkt cache was growing unbounded with service tickets that were *never* valid (the regression this patch fixes).
->> 
->> I suppose we could do something more, but I don't really see a reason to.
+On Mon, Oct 28, 2013 at 08:59:59PM +0000, Myklebust, Trond wrote:
+> > -----Original Message-----
+> > From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
+> > owner@vger.kernel.org] On Behalf Of J. Bruce Fields
+> > Sent: Monday, October 28, 2013 4:54 PM
+> > To: Schumaker, Bryan
+> > Cc: linux-nfs@vger.kernel.org
+> > Subject: Re: [PATCH 2/4] NFSD: Create nfs v4.2 decode ops
+> > 
+> > On Mon, Oct 28, 2013 at 10:57:24AM -0400, Anna Schumaker wrote:
+> > > I'm doing this in a separate patch to keep from putting in a lot of
+> > > extra code when I go to add operations to the server for real.
+> > 
+> > Makes sense.
+> > 
+> > But: now we're duplicating the list of 4.0 op decoders 3 times and the
+> > 4.1 ops twice.  We'll never need different decoders for different
+> > minorversions (worst case we can test for the minorversion in the decoder if
+> > necessary).
+> > 
+> > I wonder if there's a better way to organize this....  Maybe something more
+> > like a single array with
+> > 
+> > 	[OP_SETCLIENTID] = {
+> > 		.op_decode = (nfsd4_dec)nfsd4_decode_access,
+> > 		.op_unsupported_since_version = 1,
+> > 	}
+> > 	...
+> > 	[OP_EXCHANGE_ID] = {
+> > 		.op_decode = (nfsd4_dec)nfsd4_decode_exchange_id,
+> > 		.op_first_supported_in_version = 1,
+> > 	}
+> > 
+> > ?
 > 
-> 
-> you are probably right,
-> 
-> Reviewed-by: Simo Sorce <simo@redhat.com>
+> Is that really necessary? Why not just have a single array and have nfsd4_decode_clientid itself check the minor version?
 
+That'd work too.  Every operation that's been introduced more recently
+than 4.0 or that's since been deprecated would need a version check at
+the top of its decoder.  That'd be a dozen or so.
 
-Cool, thanks for the help! I'm sure it would have taken me a long time to track down gss_inquire_cred() on my own.
+But the information has to go somewhere and perhaps that's more
+straightforward than sticking this in data....  OK, I'd be fine with
+that.
 
-I'm definitely open to improving the debuggability of gssd, so if you really think we need some warning during some window before the cred expires, let's work with the list to figure out how that should look.
-
--dros
-
-
+--b.
