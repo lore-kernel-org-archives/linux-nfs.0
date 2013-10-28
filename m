@@ -1,59 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ea0-f176.google.com ([209.85.215.176]:64219 "EHLO
-	mail-ea0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752670Ab3JMG0h (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 13 Oct 2013 02:26:37 -0400
-Received: by mail-ea0-f176.google.com with SMTP id q16so2698426ead.35
-        for <linux-nfs@vger.kernel.org>; Sat, 12 Oct 2013 23:26:36 -0700 (PDT)
-Message-ID: <525A3D19.9000004@primarydata.com>
-Date: Sun, 13 Oct 2013 09:26:33 +0300
-From: Benny Halevy <bhalevy@primarydata.com>
+Received: from mx12.netapp.com ([216.240.18.77]:65359 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932164Ab3J1Rtv convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Oct 2013 13:49:51 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Christoph Anton Mitterer <calestyo@scientia.net>
+CC: Wheeler Ric <rwheeler@redhat.com>,
+        Mailing List Linux NFS <linux-nfs@vger.kernel.org>,
+        Dr Fields James Bruce <bfields@fieldses.org>
+Subject: Re: XATTRs in NFS?
+Date: Mon, 28 Oct 2013 17:49:38 +0000
+Message-ID: <FD29488A-348B-48BA-9B1D-4ACF997BC794@netapp.com>
+References: <1382560643.6924.12.camel@heisenberg.scientia.net>
+ <EFB2CFAD-FACC-401D-BF0C-1C573B23A873@netapp.com>
+ <1382624000.6907.8.camel@heisenberg.scientia.net>
+ <E0F4C952-02DE-4778-A779-FB7AE111EC46@netapp.com>
+ <1382630468.6907.58.camel@heisenberg.scientia.net>
+ <625CAA34-BD6C-4283-86D0-3F8B460D54D0@netapp.com>
+ <1382635350.6907.83.camel@heisenberg.scientia.net>
+ <20131025140846.GB20497@fieldses.org>
+ <1382807547.29041.12.camel@heisenberg.scientia.net>
+ <20131027191512.GA31322@fieldses.org>
+ <1382911068.6932.20.camel@heisenberg.scientia.net>
+ <8DB0D7A2-BA2A-4001-A01C-D498C777B243@netapp.com>
+ <1382920068.6932.46.camel@heisenberg.scientia.net>
+ <2E672741-FE4F-4287-8D00-B7634A71709E@netapp.com>
+ <526E8562.3040809@redhat.com>
+ <1382976943.8774.10.camel@heisenberg.scientia.net>
+In-Reply-To: <1382976943.8774.10.camel@heisenberg.scientia.net>
+Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
-To: Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@redhat.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH RFC v0 43/49] pnfsd: release state lock around iput in
- put_nfs4_file
-References: <52447EA0.7070004@primarydata.com> <1380220968-14669-1-git-send-email-bhalevy@primarydata.com> <20131011194746.GB4941@infradead.org>
-In-Reply-To: <20131011194746.GB4941@infradead.org>
-Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2013-10-11 22:47, Christoph Hellwig wrote:
-> I've been looking at this patch and the surrounding code a bit more and
-> start to really dislike it.
-> 
-> put_nfs4_file is very much unrelated to the state lock, so having a
-> version that internally drops it seems wrong.  If we look at the usage
-> of your new locked version there's very few callers:
-> 
-> 
->  put_nfs4_file_locked
->   + destroy_layout_state
->      + put_layout_state
->         + destroy_layout
-> 	  + destroy_layout_list
-> 	     + nfs4_pnfs_return_layout
-> 	     + pnfs_expire_client
-> 	+ nfs4_pnfs_get_layout
-> 	+ nfs4_pnfs_return_layout
-> 
-> Except for pnfs_expire_client all these are right near the places where
-> the state lock is dropped, so simply refactoring the code sounds like
-> a very valid option.
 
-I hear you.  Makes sense.
+On Oct 28, 2013, at 12:15 PM, Christoph Anton Mitterer <calestyo@scientia.net> wrote:
 
+> On Mon, 2013-10-28 at 11:40 -0400, Ric Wheeler wrote:
+>> Then you end up with large directories and an extra name per inode that needs to 
+>> be stored and extra lookups for each file when you do a whole file system crawl.
+>> 
+>> Certainly not as easy as adding and xattrs with that information :)
 > 
+> And I think there's another reason why it wouldn't work...
 > 
-> And btw, the state locking is even more of a mess than I though.  I
-> think it really needs to be split up sooner or later.
+> Imagine I change my system to encode what should be XATTRs in hardlink
+> pseudo files...
 > 
+> If I have such pair locally e.g. on my ext4:
+> /foo/bar/actual/file
+> /meta/<SHA512 identifier>.2342348324
+> 
+> And now move/copy the file via the network to the archive, I'd have to
+> copy both files (which is really annoying), and I'd guess the inode
+> coupling would get los (and at least the name wouldn't fit anymore).
+> 
+> So the whole thing is IMHO not even a workaround.
 
-I'm working on patches eliminating the state lock by refactoring the code
-that is currently protected by it, moving all blocking calls to either before
-or after the critical section.  I'll send a RFC patchset as soon as I have
-the first stab at it completed.
+OK. So you're going to do XATTRs for us?
 
-Benny
+Trond
