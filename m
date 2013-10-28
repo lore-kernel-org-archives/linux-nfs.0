@@ -1,42 +1,37 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wg0-f48.google.com ([74.125.82.48]:35072 "EHLO
-	mail-wg0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753791Ab3JCGCb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Oct 2013 02:02:31 -0400
-Received: by mail-wg0-f48.google.com with SMTP id n12so1891656wgh.3
-        for <linux-nfs@vger.kernel.org>; Wed, 02 Oct 2013 23:02:30 -0700 (PDT)
-Message-ID: <524D0873.40602@primarydata.com>
-Date: Thu, 03 Oct 2013 09:02:27 +0300
-From: Benny Halevy <bhalevy@primarydata.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:37952 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752718Ab3J1JxJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Oct 2013 05:53:09 -0400
+Date: Mon, 28 Oct 2013 02:53:01 -0700
+From: Hellwig Christoph <hch@infradead.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Hellwig Christoph <hch@infradead.org>,
+        "Matt W. Benjamin" <matt@linuxbox.com>,
+        Dr Fields James Bruce <bfields@fieldses.org>,
+        Christoph Anton Mitterer <calestyo@scientia.net>,
+        Mailing List Linux NFS <linux-nfs@vger.kernel.org>,
+        Wheeler Ric <ricwheeler@gmail.com>
+Subject: Re: XATTRs in NFS?
+Message-ID: <20131028095301.GA23614@infradead.org>
+References: <312486415.16.1382796101374.JavaMail.root@thunderbeast.private.linuxbox.com>
+ <5FC093E3-1CD3-4AC7-A91F-37C8DEC6BEFE@netapp.com>
+ <20131027165628.GA447@infradead.org>
+ <95C57010-2A89-423C-8668-DF963ABF8BB6@netapp.com>
 MIME-Version: 1.0
-To: Christoph Hellwig <hch@infradead.org>
-CC: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH RFC v0 05/49] pnfsd: introduce pnfsd header files
-References: <52447EA0.7070004@primarydata.com> <1380220810-12909-1-git-send-email-bhalevy@primarydata.com> <20130929114327.GB25750@infradead.org> <52481939.7060405@primarydata.com> <20130929121345.GA21083@infradead.org> <52481B11.2080407@primarydata.com> <20130929122130.GI21083@infradead.org> <20130929123553.GA7510@infradead.org> <20131001203047.GH16245@pad.fieldses.org> <524C0556.9070705@primarydata.com> <20131002160759.GB27988@infradead.org>
-In-Reply-To: <20131002160759.GB27988@infradead.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <95C57010-2A89-423C-8668-DF963ABF8BB6@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2013-10-02 19:07, Christoph Hellwig wrote:
-> On Wed, Oct 02, 2013 at 02:36:54PM +0300, Benny Halevy wrote:
->> I suggest moving the code in fs/nfsd/nfs4pnfsdlm.c to
->> fs/dlm.
-> 
-> I don't reall care where in the tree it lives, but it needs to be
-> neither part of nfsd or the filesystem (respectively dlm in this case).
+On Sun, Oct 27, 2013 at 06:07:46PM +0000, Myklebust, Trond wrote:
+> The user xattrs are in principle harmless. What about "trusted.*"?
 
-Just that this is dlm specific logic.
-For example, using dlm_ino_hash() in nfsd4_pnfs_dlm_layoutget().
-Or even knowing that
-	layout->lg_stripe_type = STRIPE_SPARSE;
-assumes knowledge of the underlying cluster fs implementation.
+trusted ones are still fairly harmless and exist in most implementations
+under a slightly different name.  They aren't quite as essential,
+though.
 
-Benny
-
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+The important point is to not carry over the system and security namespacs.
+Those are a bad and Linux specific mistake to abuse the xattr interface for
+all kinds of other interfaces.  This isn't something that should be carried
+over to other standards.
