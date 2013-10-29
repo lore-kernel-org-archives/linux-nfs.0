@@ -1,126 +1,153 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:1520 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755832Ab3JXUGR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 24 Oct 2013 16:06:17 -0400
-Message-ID: <52697DE6.10806@RedHat.com>
-Date: Thu, 24 Oct 2013 16:07:02 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: NeilBrown <neilb@suse.de>
-CC: NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH nfs-utils] mountd: fix bug affecting exports of dirs with
- 64bit inode number.
-References: <20131022100329.20f37a19@notabene.brown>
-In-Reply-To: <20131022100329.20f37a19@notabene.brown>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mailgw02.dd24.net ([193.46.215.43]:55492 "EHLO
+	mailgw02.dd24.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754034Ab3J2Bj3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Oct 2013 21:39:29 -0400
+Message-ID: <1383010758.8774.97.camel@heisenberg.scientia.net>
+Subject: Re: XATTRs in NFS?
+From: Christoph Anton Mitterer <calestyo@scientia.net>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Wheeler Ric <rwheeler@redhat.com>, Anand Avati <aavati@redhat.com>,
+        Dr Fields James Bruce <bfields@redhat.com>,
+        Mailing List Linux NFS <linux-nfs@vger.kernel.org>,
+        Dickson Steve <steved@redhat.com>
+Date: Tue, 29 Oct 2013 02:39:18 +0100
+In-Reply-To: <A7C1B206-12CD-4958-9528-A8D9C9847011@netapp.com>
+References: <20131028180838.GG31322@fieldses.org>
+	 <526EC3F7.3090601@gmail.com> <526EFFCC.2060506@redhat.com>
+	 <18F0636D-7CE0-42C1-9249-325DF69516D4@netapp.com>
+	 <526F0893.5030700@redhat.com>
+	 <A7C1B206-12CD-4958-9528-A8D9C9847011@netapp.com>
+Content-Type: multipart/signed; micalg="sha-512";
+	protocol="application/x-pkcs7-signature";
+	boundary="=-D/LYwflJSFlWboDZHCJG"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
+--=-D/LYwflJSFlWboDZHCJG
+Content-Type: text/plain; charset="UTF-8"
+Content-Transfer-Encoding: quoted-printable
 
-On 21/10/13 19:03, NeilBrown wrote:
-> 
-> 
-> parse_fsid() is currently truncating all inode numbers to
-> 32bits, and assumes that 'int' is 32 bits (which it probably is,
-> but we shouldn't assume).
-> 
-> So make the 'inode' field in 'struct parsed_fsid' a 64 bit field.
-> and only memcpy into variables or fields that have been declared
-> to a specific bit size.
-> 
-> Signed-off-by: NeilBrown <neilb@suse.de>
-Committed... 
+Trond,... since you ask for motivations pro NFS-XATTRs, I wondered what
+are the strong reasons against?
 
-steved.
 
-> 
-> diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-> index 517aa62..e04b86e 100644
-> --- a/utils/mountd/cache.c
-> +++ b/utils/mountd/cache.c
-> @@ -388,10 +388,10 @@ struct parsed_fsid {
->  	int fsidtype;
->  	/* We could use a union for this, but it would be more
->  	 * complicated; why bother? */
-> -	unsigned int inode;
-> +	uint64_t inode;
->  	unsigned int minor;
->  	unsigned int major;
-> -	unsigned int fsidnum;
-> +	uint32_t fsidnum;
->  	size_t uuidlen;
->  	char *fhuuid;
->  };
-> @@ -399,8 +399,8 @@ struct parsed_fsid {
->  static int parse_fsid(int fsidtype, int fsidlen, char *fsid,
->  		struct parsed_fsid *parsed)
->  {
-> -	unsigned int dev;
-> -	unsigned long long inode64;
-> +	uint32_t dev;
-> +	uint32_t inode32;
->  
->  	memset(parsed, 0, sizeof(*parsed));
->  	parsed->fsidtype = fsidtype;
-> @@ -409,7 +409,8 @@ static int parse_fsid(int fsidtype, int fsidlen, char *fsid,
->  		if (fsidlen != 8)
->  			return -1;
->  		memcpy(&dev, fsid, 4);
-> -		memcpy(&parsed->inode, fsid+4, 4);
-> +		memcpy(&inode32, fsid+4, 4);
-> +		parsed->inode = inode32;
->  		parsed->major = ntohl(dev)>>16;
->  		parsed->minor = ntohl(dev) & 0xFFFF;
->  		break;
-> @@ -420,7 +421,7 @@ static int parse_fsid(int fsidtype, int fsidlen, char *fsid,
->  		memcpy(&parsed->fsidnum, fsid, 4);
->  		break;
->  
-> -	case FSID_MAJOR_MINOR: /* 12 bytes: 4 major, 4 minor, 4 inode 
-> +	case FSID_MAJOR_MINOR: /* 12 bytes: 4 major, 4 minor, 4 inode
->  		 * This format is never actually used but was
->  		 * an historical accident
->  		 */
-> @@ -430,7 +431,8 @@ static int parse_fsid(int fsidtype, int fsidlen, char *fsid,
->  		parsed->major = ntohl(dev);
->  		memcpy(&dev, fsid+4, 4);
->  		parsed->minor = ntohl(dev);
-> -		memcpy(&parsed->inode, fsid+8, 4);
-> +		memcpy(&inode32, fsid+8, 4);
-> +		parsed->inode = inode32;
->  		break;
->  
->  	case FSID_ENCODE_DEV: /* 8 bytes: 4 byte packed device number, 4 inode */
-> @@ -440,7 +442,8 @@ static int parse_fsid(int fsidtype, int fsidlen, char *fsid,
->  		if (fsidlen != 8)
->  			return -1;
->  		memcpy(&dev, fsid, 4);
-> -		memcpy(&parsed->inode, fsid+4, 4);
-> +		memcpy(&inode32, fsid+4, 4);
-> +		parsed->inode = inode32;
->  		parsed->major = (dev & 0xfff00) >> 8;
->  		parsed->minor = (dev & 0xff) | ((dev >> 12) & 0xfff00);
->  		break;
-> @@ -448,7 +451,8 @@ static int parse_fsid(int fsidtype, int fsidlen, char *fsid,
->  	case FSID_UUID4_INUM: /* 4 byte inode number and 4 byte uuid */
->  		if (fsidlen != 8)
->  			return -1;
-> -		memcpy(&parsed->inode, fsid, 4);
-> +		memcpy(&inode32, fsid, 4);
-> +		parsed->inode = inode32;
->  		parsed->uuidlen = 4;
->  		parsed->fhuuid = fsid+4;
->  		break;
-> @@ -467,8 +471,7 @@ static int parse_fsid(int fsidtype, int fsidlen, char *fsid,
->  	case FSID_UUID16_INUM: /* 8 byte inode number and 16 byte uuid */
->  		if (fsidlen != 24)
->  			return -1;
-> -		memcpy(&inode64, fsid, 8);
-> -		parsed->inode = inode64;
-> +		memcpy(&parsed->inode, fsid, 8);
->  		parsed->uuidlen = 16;
->  		parsed->fhuuid = fsid+8;
->  		break;
-> 
+Of course someone has to do the work,... but that's not really and
+argument pro or con NFS-XATTRs, is it?
+
+The security problems with namespaces like trusted. or so can probably
+be solved quite easy, e.g. simply by not supporting or
+ignoring/rejecting them.
+
+You've mentioned caching issues,... could you elaborate a bit on that?
+How is that much different from caching any other file metadata NFS
+transfers?
+
+Are there other (technical) reasons?
+
+
+Cheers,
+Chris.
+
+--=-D/LYwflJSFlWboDZHCJG
+Content-Type: application/x-pkcs7-signature; name="smime.p7s"
+Content-Disposition: attachment; filename="smime.p7s"
+Content-Transfer-Encoding: base64
+
+MIAGCSqGSIb3DQEHAqCAMIACAQExDzANBglghkgBZQMEAgMFADCABgkqhkiG9w0BBwEAAKCCEP4w
+ggV1MIIDXaADAgECAgMBAYIwDQYJKoZIhvcNAQEFBQAwVDEUMBIGA1UEChMLQ0FjZXJ0IEluYy4x
+HjAcBgNVBAsTFWh0dHA6Ly93d3cuQ0FjZXJ0Lm9yZzEcMBoGA1UEAxMTQ0FjZXJ0IENsYXNzIDMg
+Um9vdDAeFw0xMjA3MjMxNDU2NDVaFw0xNDA3MjMxNDU2NDVaMHwxITAfBgNVBAMTGENocmlzdG9w
+aCBBbnRvbiBNaXR0ZXJlcjEkMCIGCSqGSIb3DQEJARYVY2FsZXN0eW9Ac2NpZW50aWEubmV0MTEw
+LwYJKoZIhvcNAQkBFiJtYWlsQGNocmlzdG9waC5hbnRvbi5taXR0ZXJlci5uYW1lMIIBIjANBgkq
+hkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqv+F91K5vyBwiGFMqj6wTehWdqZnfFeXqT8g5b3qrXWL
+ywSzcoD9xtyoRqAgOCX+PSmBpm6pPhe31VnBtc3HcBMe4rSico9/Z2H9h1l6IMVEnyhabWzoKbE3
+BFrsYJGthJCbhK072G8AhCk+5p+L+knLhQXN0Ph7MJbdY26o3M4vjsXFNbJL8TOYxo80cGD1LIh2
+SUZFqaIG24TVmTW8F4jD5Z9/NEwJa8kQK+VBNHUntXYNah4Reh0jSsGnq9Pg3Hf4KC+F0IR8QgBm
+SnwitMFUX9UnhLEvRQxjDI1tm+h6RxfjlV7moI68Ulh7bcdPhM/z2Q16XmaY12rc85pSRQIDAQAB
+o4IBJjCCASIwDAYDVR0TAQH/BAIwADBWBglghkgBhvhCAQ0ESRZHVG8gZ2V0IHlvdXIgb3duIGNl
+cnRpZmljYXRlIGZvciBGUkVFIGhlYWQgb3ZlciB0byBodHRwOi8vd3d3LkNBY2VydC5vcmcwQAYD
+VR0lBDkwNwYIKwYBBQUHAwQGCCsGAQUFBwMCBgorBgEEAYI3CgMEBgorBgEEAYI3CgMDBglghkgB
+hvhCBAEwMgYIKwYBBQUHAQEEJjAkMCIGCCsGAQUFBzABhhZodHRwOi8vb2NzcC5jYWNlcnQub3Jn
+MEQGA1UdEQQ9MDuBFWNhbGVzdHlvQHNjaWVudGlhLm5ldIEibWFpbEBjaHJpc3RvcGguYW50b24u
+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
++G8T/HNZ92ZCdB6K4/jc0m+YnMtHmJVABfvpAgMBAAGjgb8wgbwwDwYDVR0TAQH/BAUwAwEB/zBd
+BggrBgEFBQcBAQRRME8wIwYIKwYBBQUHMAGGF2h0dHA6Ly9vY3NwLkNBY2VydC5vcmcvMCgGCCsG
+AQUFBzAChhxodHRwOi8vd3d3LkNBY2VydC5vcmcvY2EuY3J0MEoGA1UdIARDMEEwPwYIKwYBBAGB
+kEowMzAxBggrBgEFBQcCARYlaHR0cDovL3d3dy5DQWNlcnQub3JnL2luZGV4LnBocD9pZD0xMDAN
+BgkqhkiG9w0BAQQFAAOCAgEAfwiIodoaUEnaifuhCHLzivcexDq0eVsgMLFF3sJd02Vp8cJdVFQ8
+hV+5e0KRwpn9G1Gbq0aloRBTnm2IrHNuLDOm8PSe4HXBPohFqeFmQ/5WWtF6QXj3QNpKOvELW6W7
+FgbmwueTuYVNl0+xHjhDgO+bDYzvuKdgAIdXfR5EHMsj75s8mZ2vtSkcRXkWlk0nbfEcbMPCVWSz
+vBTi86QfHjL8JxUFz90urj6CYXvwIRAY9kTqUzn53NCaIODGu+C7Wk/EmcgHvbW9otsuYg1CNEG8
+/4uK9VEiqogwAOKw1Ly+ZbrVA1d5m+jcyE34UO2RpVIooqz7Nlg+6ZQrkVCHG9Ze1ozM9w8QDFJO
+0BZh5eUKbL8Xx3JGV5yY9WxgY3pvXrlOL8i5ubtqhbyYDe35PpeENJSuAK+h5eeSbk698+LZFItc
+0usBbKAXpS0Q65x6Sr297s797SJAq3A4iPUKh2rCqwVgyUgF2lPB3kR3arPzPDztgLymOEopJF/+
+WTubJXpWYwBkuV2kYn1XNk+tg+8fklOgjndX3eVhET0jAJBMPPqjYJMEo6819g5qj09KYKeFBWxG
+oY/0x3bjoVlX93GyxG4UXG1tQWbfG5Ox1ADD7svPPD0hgKlfY2X83eBfpPQr8IVxQdRnJfsasZeu
+1pmCE0HSbqUbmSeA5wupqAAxggLtMIIC6QIBATBbMFQxFDASBgNVBAoTC0NBY2VydCBJbmMuMR4w
+HAYDVQQLExVodHRwOi8vd3d3LkNBY2VydC5vcmcxHDAaBgNVBAMTE0NBY2VydCBDbGFzcyAzIFJv
+b3QCAwEBgjANBglghkgBZQMEAgMFAKCCAWMwGAYJKoZIhvcNAQkDMQsGCSqGSIb3DQEHATAcBgkq
+hkiG9w0BCQUxDxcNMTMxMDI5MDEzOTE4WjBPBgkqhkiG9w0BCQQxQgRAQZ8J0za0nul/1LJ903tQ
+iIMLHpgsIWWHqBXi8UC0O/m65LfZSNxwhd4j8vdaZuy7OYjGOlaZvV2W9CkfpUp4wjBqBgkrBgEE
+AYI3EAQxXTBbMFQxFDASBgNVBAoTC0NBY2VydCBJbmMuMR4wHAYDVQQLExVodHRwOi8vd3d3LkNB
+Y2VydC5vcmcxHDAaBgNVBAMTE0NBY2VydCBDbGFzcyAzIFJvb3QCAwEBgjBsBgsqhkiG9w0BCRAC
+CzFdoFswVDEUMBIGA1UEChMLQ0FjZXJ0IEluYy4xHjAcBgNVBAsTFWh0dHA6Ly93d3cuQ0FjZXJ0
+Lm9yZzEcMBoGA1UEAxMTQ0FjZXJ0IENsYXNzIDMgUm9vdAIDAQGCMA0GCSqGSIb3DQEBAQUABIIB
+AJGbnoVy0PfddTlIcDwrldVzv6Aay8zyj8FWU3WvEXKngyxCZzwxWfvY85re2OtMqE6s+CG53KCr
+c6mIVdQksmqHmX9G3c5pv63uZjVjZg2np+PUIC/9O5ZBROprV0DPNsDf7/97HNhJf/5lqdAI6ApQ
+DuWguDkaVEgdFcyaPv0MRagnAMEjXrU+HjKbcWTFgfYGcXdTTz6qaj9++R+fpDnyIINmjqMuKb1C
+K5SNrFC2mEzJppTrnzSfKfmj4+JDaybN6+He2dKDmGkBclk+WZ3AlI5UZGgbP/DqS1kE0+RS3ej/
+ZJsP+tmBSsJ7h5B7sMz4aHvzTQQRcTCrUq/Bk88AAAAAAAA=
+
+
+--=-D/LYwflJSFlWboDZHCJG--
+
