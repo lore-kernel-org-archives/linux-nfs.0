@@ -1,70 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:43397 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:35843 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752964Ab3JAUbN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 1 Oct 2013 16:31:13 -0400
-Date: Tue, 1 Oct 2013 16:30:47 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
+	id S1753241Ab3J2NaL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 29 Oct 2013 09:30:11 -0400
+Date: Tue, 29 Oct 2013 09:30:06 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
 To: Christoph Hellwig <hch@infradead.org>
-Cc: Benny Halevy <bhalevy@primarydata.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH RFC v0 05/49] pnfsd: introduce pnfsd header files
-Message-ID: <20131001203047.GH16245@pad.fieldses.org>
-References: <52447EA0.7070004@primarydata.com>
- <1380220810-12909-1-git-send-email-bhalevy@primarydata.com>
- <20130929114327.GB25750@infradead.org>
- <52481939.7060405@primarydata.com>
- <20130929121345.GA21083@infradead.org>
- <52481B11.2080407@primarydata.com>
- <20130929122130.GI21083@infradead.org>
- <20130929123553.GA7510@infradead.org>
+Cc: Anna Schumaker <bjschuma@netapp.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 4/4] NFSD: Implement SEEK
+Message-ID: <20131029133006.GB29606@fieldses.org>
+References: <1382972247-1108-1-git-send-email-bjschuma@netapp.com>
+ <1382972247-1108-5-git-send-email-bjschuma@netapp.com>
+ <20131029073558.GA10889@infradead.org>
+ <526FB180.1060003@netapp.com>
+ <20131029130721.GA32094@infradead.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20130929123553.GA7510@infradead.org>
+In-Reply-To: <20131029130721.GA32094@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Sep 29, 2013 at 05:35:53AM -0700, Christoph Hellwig wrote:
-> On Sun, Sep 29, 2013 at 05:21:30AM -0700, Christoph Hellwig wrote:
-> > > Bruce - are you ok with moving the pnfs interface definitions to
-> > > include/linux/exportfs.h along with struct export_operations?
-> > > 
-> > > In fact we can actually extend struct export_operations rather
-> > > than adding pnfs_export_operations...
-> > 
-> > Yes, it probably should go into the export ops, although the actual
-> > method signatures might need to be made a litle less nfs-specific for
-> > that.
+On Tue, Oct 29, 2013 at 06:07:21AM -0700, Christoph Hellwig wrote:
+> On Tue, Oct 29, 2013 at 09:00:48AM -0400, Anna Schumaker wrote:
+> >  From what I can tell, I think the allocated flag will just tell the 
+> > clients if all the blocks exist on disk or not.  Is there a way to have 
+> > a hole with allocated blocks?  Or maybe it's supposed to represent 
+> > partially allocated blocks?  I checked the draft, and it doesn't 
+> > actually say what they expect allocated to represent...
 > 
-> I jsut took a brief look over the diff for the whole series in the git
-> tree and the old tree that still had block and exofs servers and have
-> revised my opinion a little bit:
+> You can have preallocated space, which behaves like a hole in that
+> reads return zeroes.  As far as SEEK_DATA/SEEK_HOLE is concerned we
+> tend to treat them as holes when we can as that's what the users expect.
 > 
-> 
->  - the should be a layout_type field in struct export_operations,
->    indicating that a filesystem support some sort of pnfs-like export.
->  - there should be a struct pnfs_operations, but it should be confined
->    to fs/nfsd: each layout can be a separate loadable module and gets
->    registered there.  For the initial file layout that module is
->    self-contained, but for e.g. block or objects it would have
->    call into the filesystem through export_ops, although way lower level
->    than the NFS XDR level, e.g. for block there would be one of to get
->    the extent map, and one to allocate an extent.
+> Note that at least the pnfs block rfc has a special state representing
+> this kind of preallocated space.
 
-That sounds OK to me.
+http://tools.ietf.org/html/draft-ietf-nfsv4-minorversion2-20#section-5.2
 
-My (possibly faulty) memory of how the xdr-encoding-in-the-fs came
-about: I think people weren't willing to commit to any reasonable upper
-limit on the size of the layout.  So they originally considered
-something more like readdir that would loop over extents and pass them
-to a callback for encoding.  But xdr isn't complicated so you could
-instead give the filesystem a simple library of xdr encoders to call.
+E.g. "Hole:  A byte range within a Sparse file that contains regions of
+all zeroes.  For block-based file systems, this could also be an
+unallocated region of the file."
 
-But it sounds like that's not exactly what got implemented.  And maybe
-nobody actually has such big layouts.
+So it sounds like a hole can either be allocated or not, which seems to
+agree with what you expect?
 
-> This way we alsod avoid the dependcy on nfsd in the filesystems that the
-> cureent version introduces.
-
-Ugh--thanks for catching that.
+I haven't read these parts of the spec yet at all....
 
 --b.
