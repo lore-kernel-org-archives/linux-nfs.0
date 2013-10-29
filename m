@@ -1,47 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:59261 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:36346 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755275Ab3JGPh5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 7 Oct 2013 11:37:57 -0400
-Date: Mon, 7 Oct 2013 11:37:55 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] st_destroy_session: remove invalid testcase
-Message-ID: <20131007153755.GG18051@fieldses.org>
-References: <1380918492-8413-1-git-send-email-tigran.mkrtchyan@desy.de>
+	id S1755465Ab3J2NcV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 29 Oct 2013 09:32:21 -0400
+Date: Tue, 29 Oct 2013 09:32:20 -0400
+From: Dr Fields James Bruce <bfields@fieldses.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        Mailing List Linux NFS <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 3/4] NFSD: Add WRITE_PLUS support for hole punches
+Message-ID: <20131029133220.GC29606@fieldses.org>
+References: <1382972247-1108-1-git-send-email-bjschuma@netapp.com>
+ <1382972247-1108-4-git-send-email-bjschuma@netapp.com>
+ <20131028214030.GO31322@fieldses.org>
+ <526FAF30.3060502@netapp.com>
+ <20131029130649.GA29606@fieldses.org>
+ <C034E301-5FCB-4CD1-B01B-1BE5AF6087C0@netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1380918492-8413-1-git-send-email-tigran.mkrtchyan@desy.de>
+In-Reply-To: <C034E301-5FCB-4CD1-B01B-1BE5AF6087C0@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Oct 04, 2013 at 10:28:12PM +0200, Tigran Mkrtchyan wrote:
-> we cant expect NFS4ERR_NOT_ONLY_OP if spec
-> enforces NFS4ERR_OP_NOT_IN_SESSION
+On Tue, Oct 29, 2013 at 01:23:19PM +0000, Myklebust, Trond wrote:
+> 
+> On Oct 29, 2013, at 9:06 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> 
+> > On Tue, Oct 29, 2013 at 08:50:56AM -0400, Anna Schumaker wrote:
+> >> On Mon 28 Oct 2013 05:40:30 PM EDT, J. Bruce Fields wrote:
+> >>> On Mon, Oct 28, 2013 at 10:57:25AM -0400, Anna Schumaker wrote:
+> >>>> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> >>>> index 419572f..3210c6f 100644
+> >>>> --- a/fs/nfsd/nfs4proc.c
+> >>>> +++ b/fs/nfsd/nfs4proc.c
+> >>>> @@ -1028,6 +1028,42 @@ nfsd4_write(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+> >>>> 	return status;
+> >>>> }
+> >>>> 
+> >>>> +static __be32
+> >>>> +nfsd4_write_plus_hole(struct file *file, struct nfsd4_write_plus *writeplus,
+> >>>> +		      struct net *net)
+> >>>> +{
+> >>>> +	__be32 status;
+> >>>> +
+> >>>> +	status = nfsd4_vfs_fallocate(file, writeplus->wp_allocated,
+> >>>> +				writeplus->wp_offset, writeplus->wp_length);
+> >>>> +	if (status == nfs_ok) {
+> >>>> +		writeplus->wp_res.wr_stid = NULL;
+> >>>> +		writeplus->wp_res.wr_bytes_written = writeplus->wp_length;
+> >>>> +		writeplus->wp_res.wr_stable_how = NFS_FILE_SYNC;
+> >>> 
+> >>> Do we need to sync?
+> >> 
+> >> I did the sync in nfsd4_vfs_fallocate (below), but I can move it if 
+> >> that would make more sense.
+> > 
+> > What I meant was--why are we doing a sync at all, instead of returning
+> > NFS_UNSTABLE and making the client commit?
+> 
+> What if the client specifies FILE_SYNC? The spec doesn't allow the server to return UNSTABLE in that situation.
 
-I guess we could just add that to the list of allowable error returns,
-but... yeah, OK, let's just remove that test.  Applied.
+Of course, sorry for being unclear.  I was just wondering if there's
+some particular reason we're not using NFS_UNSTABLE when the client
+allows it.
+
+But "because it's easier" is a fine answer.  We can always add that
+later if it turns out to be useful.
 
 --b.
-
-> 
-> Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-> ---
->  nfs4.1/server41tests/st_destroy_session.py | 3 ---
->  1 file changed, 3 deletions(-)
-> 
-> diff --git a/nfs4.1/server41tests/st_destroy_session.py b/nfs4.1/server41tests/st_destroy_session.py
-> index 1feb671..f4f0762 100644
-> --- a/nfs4.1/server41tests/st_destroy_session.py
-> +++ b/nfs4.1/server41tests/st_destroy_session.py
-> @@ -164,6 +164,3 @@ def testDestoryNotSoleOps(t, env):
->      sid = sess1.sessionid
->      res = c.c.compound([op.destroy_session(sess1.sessionid), op.putrootfh()])
->      check(res, NFS4ERR_NOT_ONLY_OP)
-> -
-> -    res = c.c.compound([op.putrootfh(), op.destroy_session(sess1.sessionid)])
-> -    check(res, NFS4ERR_NOT_ONLY_OP)
-> -- 
-> 1.8.3.1
-> 
