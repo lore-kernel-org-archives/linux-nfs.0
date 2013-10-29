@@ -1,72 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:31316 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753904Ab3J2Qk3 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Oct 2013 12:40:29 -0400
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 6.6 \(1510\))
-Subject: Re: [PATCH] nfs.man: add description of multiple sec= options
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA9534ED3E0@SACEXCMBX04-PRD.hq.netapp.com>
-Date: Tue, 29 Oct 2013 12:40:17 -0400
-Cc: Weston Andros Adamson <dros@netapp.com>,
-        "steved@redhat.com" <steved@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Message-Id: <B43CC736-DA71-4A68-B35A-C6A6BA53D28A@oracle.com>
-References: <1383064066-1139-1-git-send-email-dros@netapp.com> <27470170-8177-4561-A11A-70CA2EF704A8@oracle.com> <4FA345DA4F4AE44899BD2B03EEEC2FA9534ED3E0@SACEXCMBX04-PRD.hq.netapp.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Received: from mx12.netapp.com ([216.240.18.77]:47584 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752757Ab3J2NFp convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Oct 2013 09:05:45 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Hellwig Christoph <hch@infradead.org>
+CC: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        Mailing List Linux NFS <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 2/3] NFS: Allow for asynchronous WRITE_PLUS calls
+Date: Tue, 29 Oct 2013 13:05:44 +0000
+Message-ID: <58212CB2-A01A-43F1-8760-5ED8ED75E081@netapp.com>
+References: <1382972418-2249-1-git-send-email-bjschuma@netapp.com>
+ <1382972418-2249-3-git-send-email-bjschuma@netapp.com>
+ <20131029073943.GD10889@infradead.org>
+ <BF996CAD-1032-4434-A538-B678D047884B@netapp.com>
+ <20131029124836.GA13482@infradead.org>
+In-Reply-To: <20131029124836.GA13482@infradead.org>
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Oct 29, 2013, at 12:36 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+On Oct 29, 2013, at 8:48 AM, Hellwig Christoph <hch@infradead.org> wrote:
 
->> -----Original Message-----
->> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
->> owner@vger.kernel.org] On Behalf Of Chuck Lever
->> Sent: Tuesday, October 29, 2013 12:30 PM
->> To: Weston Andros Adamson
->> Cc: steved@redhat.com; linux-nfs@vger.kernel.org
->> Subject: Re: [PATCH] nfs.man: add description of multiple sec= options
->> 
->> 
->> On Oct 29, 2013, at 12:27 PM, Weston Andros Adamson <dros@netapp.com>
->> wrote:
->> 
->>> The client now supports multiple sec= options as a colon delimited list.
->>> 
->>> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
->>> ---
->>> utils/mount/nfs.man | 7 ++++---
->>> 1 file changed, 4 insertions(+), 3 deletions(-)
->>> 
->>> diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man index
->>> 2a42b93..17b8d88 100644
->>> --- a/utils/mount/nfs.man
->>> +++ b/utils/mount/nfs.man
->>> @@ -380,9 +380,10 @@ If a value of zero is specified, the .BR mount
->>> (8) command exits immediately after the first failure.
->>> .TP 1.5i
->>> -.BI sec= flavor
->>> -The security flavor to use for accessing files on this mount point.
->>> -If the server does not support this flavor, the mount operation fails.
->>> +.BI sec= flavors
->>> +A colon-delimited list of security flavors to use for accessing files
->>> +on this mount point. If the server does not support any of these
->>> +flavors, the mount operation fails.
->> 
->> Just a nit:  The new text kind of suggests that the colons are required.
->> "sec=single flavor" is also still supported.  Typically man page language is
->> careful to show both.
+> On Tue, Oct 29, 2013 at 12:44:50PM +0000, Myklebust, Trond wrote:
+>> It exists because the server vendors were worried that operations such as preallocation and/or hole punching can take a more or less unbounded amount of time due to the 64-bit size. By using an (optional) callback method, the server can free up the RPC slot that would otherwise be kept waiting in the synchronous case.
 > 
-> How about "colon-separated list of one or more security flavours"? That's less ambiguous than "colon-delimited"...
+> Must be some horried filesystems on those vendors servers.  Both
+> operations should be O(nr_extents), where nr_extents should be extremely
+> low for the preallocation and still reasonably low for hole punches,
+> although users control the allocastion pattern.
+> 
+> There's a reason why these aren't aio operations locally either.
+> 
 
-Maybe Dros could also update the EXAMPLES section with one of each.  Just a thought.
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
+Imagine someone wanting to punch a 50TB hole in NTFS, for instance. It doesn't have real holes, so you'd end up needing to zero out the existing extents in that region of the file. That will take time, even with an O(nr_extents) algorithm.
 
 
