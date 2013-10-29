@@ -1,33 +1,87 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:42536 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754878Ab3J2Msg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Oct 2013 08:48:36 -0400
-Date: Tue, 29 Oct 2013 05:48:36 -0700
-From: Hellwig Christoph <hch@infradead.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Hellwig Christoph <hch@infradead.org>,
-        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        Mailing List Linux NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/3] NFS: Allow for asynchronous WRITE_PLUS calls
-Message-ID: <20131029124836.GA13482@infradead.org>
-References: <1382972418-2249-1-git-send-email-bjschuma@netapp.com>
- <1382972418-2249-3-git-send-email-bjschuma@netapp.com>
- <20131029073943.GD10889@infradead.org>
- <BF996CAD-1032-4434-A538-B678D047884B@netapp.com>
+Received: from mail-we0-f174.google.com ([74.125.82.174]:34015 "EHLO
+	mail-we0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752014Ab3J2HAT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Oct 2013 03:00:19 -0400
+Received: by mail-we0-f174.google.com with SMTP id u56so7652454wes.5
+        for <linux-nfs@vger.kernel.org>; Tue, 29 Oct 2013 00:00:18 -0700 (PDT)
+Message-ID: <526F5CFF.2080003@primarydata.com>
+Date: Tue, 29 Oct 2013 09:00:15 +0200
+From: Benny Halevy <bhalevy@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <BF996CAD-1032-4434-A538-B678D047884B@netapp.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: bfields@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfsd: no need to unhash_stid before free
+References: <1381730515-18045-1-git-send-email-bhalevy@primarydata.com> <20131028183214.GH31322@fieldses.org>
+In-Reply-To: <20131028183214.GH31322@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Oct 29, 2013 at 12:44:50PM +0000, Myklebust, Trond wrote:
-> It exists because the server vendors were worried that operations such as preallocation and/or hole punching can take a more or less unbounded amount of time due to the 64-bit size. By using an (optional) callback method, the server can free up the RPC slot that would otherwise be kept waiting in the synchronous case.
+On 2013-10-28 20:32, J. Bruce Fields wrote:
+> On Mon, Oct 14, 2013 at 09:01:55AM +0300, Benny Halevy wrote:
+>> idr_remove is about to be called before kmem_cache_free so unhashing it
+>> is redundant
+> 
+> This leaves only two unhash_stid callers, in release_lock_stateid and
+> unhash_stid, both called just before destroying the stateid, so perhaps
+> we should remove those and unhash_stid?
 
-Must be some horried filesystems on those vendors servers.  Both
-operations should be O(nr_extents), where nr_extents should be extremely
-low for the preallocation and still reasonably low for hole punches,
-although users control the allocastion pattern.
+In my state lock elimination patchset I actually keep using unhash_stid
+after refactoring non-blocking unhashing from the blocking release
+so I don't think it's worth it to remove the call.
+That said, we can still open code it but encapsulating the assignment
+in unhash_stid() which the compiler can inline anyway seems cleaner to me.
 
-There's a reason why these aren't aio operations locally either.
+Benny
 
+> 
+> --b.
+> 
+>>
+>> Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
+>> ---
+>>  fs/nfsd/nfs4state.c | 7 ++-----
+>>  1 file changed, 2 insertions(+), 5 deletions(-)
+>>
+>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+>> index 0874998..06984e3 100644
+>> --- a/fs/nfsd/nfs4state.c
+>> +++ b/fs/nfsd/nfs4state.c
+>> @@ -668,7 +668,6 @@ static void unhash_open_stateid(struct nfs4_ol_stateid *stp)
+>>  static void release_open_stateid(struct nfs4_ol_stateid *stp)
+>>  {
+>>  	unhash_open_stateid(stp);
+>> -	unhash_stid(&stp->st_stid);
+>>  	free_generic_stateid(stp);
+>>  }
+>>  
+>> @@ -690,7 +689,6 @@ static void release_last_closed_stateid(struct nfs4_openowner *oo)
+>>  	struct nfs4_ol_stateid *s = oo->oo_last_closed_stid;
+>>  
+>>  	if (s) {
+>> -		unhash_stid(&s->st_stid);
+>>  		free_generic_stateid(s);
+>>  		oo->oo_last_closed_stid = NULL;
+>>  	}
+>> @@ -3998,10 +3996,9 @@ static void nfsd4_close_open_stateid(struct nfs4_ol_stateid *s)
+>>  
+>>  	nfsd4_close_open_stateid(stp);
+>>  
+>> -	if (cstate->minorversion) {
+>> -		unhash_stid(&stp->st_stid);
+>> +	if (cstate->minorversion)
+>>  		free_generic_stateid(stp);
+>> -	} else
+>> +	else
+>>  		oo->oo_last_closed_stid = stp;
+>>  
+>>  	if (list_empty(&oo->oo_owner.so_stateids)) {
+>> -- 
+>> 1.8.3.1
+>>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
