@@ -1,74 +1,240 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:58418 "EHLO mx12.netapp.com"
+Received: from mx12.netapp.com ([216.240.18.77]:55205 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751501Ab3JURKW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 21 Oct 2013 13:10:22 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: <Trond.Myklebust@netapp.com>
-CC: <linux-nfs@vger.kernel.org>, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH 4/5] NFSv4: don't reprocess cached open CLAIM_PREVIOUS
-Date: Mon, 21 Oct 2013 13:10:13 -0400
-Message-ID: <1382375414-5854-5-git-send-email-dros@netapp.com>
-In-Reply-To: <1382375414-5854-1-git-send-email-dros@netapp.com>
-References: <1382375414-5854-1-git-send-email-dros@netapp.com>
+	id S1751517Ab3J2VN1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 29 Oct 2013 17:13:27 -0400
+Message-ID: <527024F5.9080401@netapp.com>
+Date: Tue, 29 Oct 2013 17:13:25 -0400
+From: Anna Schumaker <bjschuma@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFSD: Combine decode operations for v4 and v4.1
+References: <1383080676-1479-1-git-send-email-bjschuma@netapp.com> <20131029210659.GA3227@fieldses.org>
+In-Reply-To: <20131029210659.GA3227@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Cached opens have already been handled by _nfs4_opendata_reclaim_to_nfs4_state
-and can safely skip being reprocessed, but must still call update_open_stateid
-to make sure that all active fmodes are recovered.
+On Tue 29 Oct 2013 05:06:59 PM EDT, J. Bruce Fields wrote:
+> On Tue, Oct 29, 2013 at 05:04:36PM -0400, Anna Schumaker wrote:
+>> We were using a different array of function pointers to represent each
+>> minor version.  This makes adding a new minor version tedious, since it
+>> needs a step to copy, paste and modify a new version of the same
+>> functions.
+>>
+>> This patch combines the v4 and v4.1 arrays into a single instance and
+>> will check minor version support inside each decoder function.
+>
+> This also needs checks in all the new operations.  (E.g. exchange_id
+> needs to return nfserr_notsupp on minorversion=0.)
+>
 
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
----
- fs/nfs/nfs4proc.c | 17 +++++++++++++----
- 1 file changed, 13 insertions(+), 4 deletions(-)
+nfsd4_verify_opnum() should do some of that, but I'll add the checks to 
+the new operations since it probably makes more sense there.  Should I 
+return nfserr_notsupp or nfserr_illegal in this case?
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 8ae1589..a3b78df 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -1315,12 +1315,15 @@ _nfs4_opendata_reclaim_to_nfs4_state(struct nfs4_opendata *data)
- {
- 	struct inode *inode = data->state->inode;
- 	struct nfs4_state *state = data->state;
-+	bool cached_open = false;
- 	int ret;
- 
--	/* allow cached opens (!rpc_done && !rpc_status) */
--	if (!data->rpc_done && data->rpc_status) {
--		ret = data->rpc_status;
--		goto err;
-+	if (!data->rpc_done) {
-+		if (data->rpc_status) {
-+			ret = data->rpc_status;
-+			goto err;
-+		} else
-+			cached_open = true;
- 	}
- 
- 	/* referenced the passed state */
-@@ -1328,6 +1331,10 @@ _nfs4_opendata_reclaim_to_nfs4_state(struct nfs4_opendata *data)
- 	if (state == NULL || !atomic_inc_not_zero(&state->count))
- 		goto err;
- 
-+	/* cached opens have already been processed */
-+	if (cached_open)
-+		goto update;
-+
- 	ret = nfs_refresh_inode(inode, &data->f_attr);
- 	if (ret)
- 		goto err_put;
-@@ -1336,6 +1343,8 @@ _nfs4_opendata_reclaim_to_nfs4_state(struct nfs4_opendata *data)
- 
- 	if (data->o_res.delegation_type != 0)
- 		nfs4_opendata_check_deleg(data, state);
-+
-+update:
- 	update_open_stateid(state, &data->o_res.stateid, NULL,
- 			    data->o_arg.fmode);
- 
--- 
-1.7.12.4 (Apple Git-37)
+> --b.
+>
+>>
+>> Signed-off-by: Anna Schumaker <bjschuma@netapp.com>
+>> ---
+>>  fs/nfsd/nfs4xdr.c | 97 ++++++++++++++++++++++---------------------------------
+>>  1 file changed, 39 insertions(+), 58 deletions(-)
+>>
+>> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+>> index d9454fe..7ea5ad8 100644
+>> --- a/fs/nfsd/nfs4xdr.c
+>> +++ b/fs/nfsd/nfs4xdr.c
+>> @@ -945,13 +945,16 @@ static __be32
+>>  nfsd4_decode_open_confirm(struct nfsd4_compoundargs *argp, struct nfsd4_open_confirm *open_conf)
+>>  {
+>>  	DECODE_HEAD;
+>> -		
+>> +
+>> +	if (argp->minorversion >= 1)
+>> +		return nfserr_notsupp;
+>> +
+>>  	status = nfsd4_decode_stateid(argp, &open_conf->oc_req_stateid);
+>>  	if (status)
+>>  		return status;
+>>  	READ_BUF(4);
+>>  	READ32(open_conf->oc_seqid);
+>> -						
+>> +
+>>  	DECODE_TAIL;
+>>  }
+>>
+>> @@ -991,6 +994,14 @@ nfsd4_decode_putfh(struct nfsd4_compoundargs *argp, struct nfsd4_putfh *putfh)
+>>  }
+>>
+>>  static __be32
+>> +nfsd4_decode_putpubfh(struct nfsd4_compoundargs *argp, void *p)
+>> +{
+>> +	if (argp->minorversion == 0)
+>> +		return nfs_ok;
+>> +	return nfserr_notsupp;
+>> +}
+>> +
+>> +static __be32
+>>  nfsd4_decode_read(struct nfsd4_compoundargs *argp, struct nfsd4_read *read)
+>>  {
+>>  	DECODE_HEAD;
+>> @@ -1061,6 +1072,9 @@ nfsd4_decode_renew(struct nfsd4_compoundargs *argp, clientid_t *clientid)
+>>  {
+>>  	DECODE_HEAD;
+>>
+>> +	if (argp->minorversion >= 1)
+>> +		return nfserr_notsupp;
+>> +
+>>  	READ_BUF(sizeof(clientid_t));
+>>  	COPYMEM(clientid, sizeof(clientid_t));
+>>
+>> @@ -1111,6 +1125,9 @@ nfsd4_decode_setclientid(struct nfsd4_compoundargs *argp, struct nfsd4_setclient
+>>  {
+>>  	DECODE_HEAD;
+>>
+>> +	if (argp->minorversion >= 1)
+>> +		return nfserr_notsupp;
+>> +
+>>  	READ_BUF(NFS4_VERIFIER_SIZE);
+>>  	COPYMEM(setclientid->se_verf.data, NFS4_VERIFIER_SIZE);
+>>
+>> @@ -1137,6 +1154,9 @@ nfsd4_decode_setclientid_confirm(struct nfsd4_compoundargs *argp, struct nfsd4_s
+>>  {
+>>  	DECODE_HEAD;
+>>
+>> +	if (argp->minorversion >= 1)
+>> +		return nfserr_notsupp;
+>> +
+>>  	READ_BUF(8 + NFS4_VERIFIER_SIZE);
+>>  	COPYMEM(&scd_c->sc_clientid, 8);
+>>  	COPYMEM(&scd_c->sc_confirm, NFS4_VERIFIER_SIZE);
+>> @@ -1220,6 +1240,9 @@ nfsd4_decode_release_lockowner(struct nfsd4_compoundargs *argp, struct nfsd4_rel
+>>  {
+>>  	DECODE_HEAD;
+>>
+>> +	if (argp->minorversion >= 1)
+>> +		return nfserr_notsupp;
+>> +
+>>  	READ_BUF(12);
+>>  	COPYMEM(&rlockowner->rl_clientid, sizeof(clientid_t));
+>>  	READ32(rlockowner->rl_owner.len);
+>> @@ -1519,7 +1542,7 @@ static nfsd4_dec nfsd4_dec_ops[] = {
+>>  	[OP_OPEN_CONFIRM]	= (nfsd4_dec)nfsd4_decode_open_confirm,
+>>  	[OP_OPEN_DOWNGRADE]	= (nfsd4_dec)nfsd4_decode_open_downgrade,
+>>  	[OP_PUTFH]		= (nfsd4_dec)nfsd4_decode_putfh,
+>> -	[OP_PUTPUBFH]		= (nfsd4_dec)nfsd4_decode_noop,
+>> +	[OP_PUTPUBFH]		= (nfsd4_dec)nfsd4_decode_putpubfh,
+>>  	[OP_PUTROOTFH]		= (nfsd4_dec)nfsd4_decode_noop,
+>>  	[OP_READ]		= (nfsd4_dec)nfsd4_decode_read,
+>>  	[OP_READDIR]		= (nfsd4_dec)nfsd4_decode_readdir,
+>> @@ -1536,46 +1559,6 @@ static nfsd4_dec nfsd4_dec_ops[] = {
+>>  	[OP_VERIFY]		= (nfsd4_dec)nfsd4_decode_verify,
+>>  	[OP_WRITE]		= (nfsd4_dec)nfsd4_decode_write,
+>>  	[OP_RELEASE_LOCKOWNER]	= (nfsd4_dec)nfsd4_decode_release_lockowner,
+>> -};
+>> -
+>> -static nfsd4_dec nfsd41_dec_ops[] = {
+>> -	[OP_ACCESS]		= (nfsd4_dec)nfsd4_decode_access,
+>> -	[OP_CLOSE]		= (nfsd4_dec)nfsd4_decode_close,
+>> -	[OP_COMMIT]		= (nfsd4_dec)nfsd4_decode_commit,
+>> -	[OP_CREATE]		= (nfsd4_dec)nfsd4_decode_create,
+>> -	[OP_DELEGPURGE]		= (nfsd4_dec)nfsd4_decode_notsupp,
+>> -	[OP_DELEGRETURN]	= (nfsd4_dec)nfsd4_decode_delegreturn,
+>> -	[OP_GETATTR]		= (nfsd4_dec)nfsd4_decode_getattr,
+>> -	[OP_GETFH]		= (nfsd4_dec)nfsd4_decode_noop,
+>> -	[OP_LINK]		= (nfsd4_dec)nfsd4_decode_link,
+>> -	[OP_LOCK]		= (nfsd4_dec)nfsd4_decode_lock,
+>> -	[OP_LOCKT]		= (nfsd4_dec)nfsd4_decode_lockt,
+>> -	[OP_LOCKU]		= (nfsd4_dec)nfsd4_decode_locku,
+>> -	[OP_LOOKUP]		= (nfsd4_dec)nfsd4_decode_lookup,
+>> -	[OP_LOOKUPP]		= (nfsd4_dec)nfsd4_decode_noop,
+>> -	[OP_NVERIFY]		= (nfsd4_dec)nfsd4_decode_verify,
+>> -	[OP_OPEN]		= (nfsd4_dec)nfsd4_decode_open,
+>> -	[OP_OPENATTR]		= (nfsd4_dec)nfsd4_decode_notsupp,
+>> -	[OP_OPEN_CONFIRM]	= (nfsd4_dec)nfsd4_decode_notsupp,
+>> -	[OP_OPEN_DOWNGRADE]	= (nfsd4_dec)nfsd4_decode_open_downgrade,
+>> -	[OP_PUTFH]		= (nfsd4_dec)nfsd4_decode_putfh,
+>> -	[OP_PUTPUBFH]		= (nfsd4_dec)nfsd4_decode_notsupp,
+>> -	[OP_PUTROOTFH]		= (nfsd4_dec)nfsd4_decode_noop,
+>> -	[OP_READ]		= (nfsd4_dec)nfsd4_decode_read,
+>> -	[OP_READDIR]		= (nfsd4_dec)nfsd4_decode_readdir,
+>> -	[OP_READLINK]		= (nfsd4_dec)nfsd4_decode_noop,
+>> -	[OP_REMOVE]		= (nfsd4_dec)nfsd4_decode_remove,
+>> -	[OP_RENAME]		= (nfsd4_dec)nfsd4_decode_rename,
+>> -	[OP_RENEW]		= (nfsd4_dec)nfsd4_decode_notsupp,
+>> -	[OP_RESTOREFH]		= (nfsd4_dec)nfsd4_decode_noop,
+>> -	[OP_SAVEFH]		= (nfsd4_dec)nfsd4_decode_noop,
+>> -	[OP_SECINFO]		= (nfsd4_dec)nfsd4_decode_secinfo,
+>> -	[OP_SETATTR]		= (nfsd4_dec)nfsd4_decode_setattr,
+>> -	[OP_SETCLIENTID]	= (nfsd4_dec)nfsd4_decode_notsupp,
+>> -	[OP_SETCLIENTID_CONFIRM]= (nfsd4_dec)nfsd4_decode_notsupp,
+>> -	[OP_VERIFY]		= (nfsd4_dec)nfsd4_decode_verify,
+>> -	[OP_WRITE]		= (nfsd4_dec)nfsd4_decode_write,
+>> -	[OP_RELEASE_LOCKOWNER]	= (nfsd4_dec)nfsd4_decode_notsupp,
+>>
+>>  	/* new operations for NFSv4.1 */
+>>  	[OP_BACKCHANNEL_CTL]	= (nfsd4_dec)nfsd4_decode_backchannel_ctl,
+>> @@ -1599,23 +1582,22 @@ static nfsd4_dec nfsd41_dec_ops[] = {
+>>  	[OP_RECLAIM_COMPLETE]	= (nfsd4_dec)nfsd4_decode_reclaim_complete,
+>>  };
+>>
+>> -struct nfsd4_minorversion_ops {
+>> -	nfsd4_dec *decoders;
+>> -	int nops;
+>> -};
+>> -
+>> -static struct nfsd4_minorversion_ops nfsd4_minorversion[] = {
+>> -	[0] = { nfsd4_dec_ops, ARRAY_SIZE(nfsd4_dec_ops) },
+>> -	[1] = { nfsd41_dec_ops, ARRAY_SIZE(nfsd41_dec_ops) },
+>> -	[2] = { nfsd41_dec_ops, ARRAY_SIZE(nfsd41_dec_ops) },
+>> -};
+>> +static __be32 nfsd4_verify_opnum(struct nfsd4_compoundargs *argp, struct nfsd4_op *op)
+>> +{
+>> +	if (op->opnum < FIRST_NFS4_OP || op->opnum > LAST_NFS4_OP)
+>> +		return nfserr_op_illegal;
+>> +	else if (argp->minorversion == 0 && op->opnum > OP_RELEASE_LOCKOWNER)
+>> +		return nfserr_op_illegal;
+>> +	else if (argp->minorversion == 1 && op->opnum > OP_RECLAIM_COMPLETE)
+>> +		return nfserr_op_illegal;
+>> +	return nfs_ok;
+>> +}
+>>
+>>  static __be32
+>>  nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
+>>  {
+>>  	DECODE_HEAD;
+>>  	struct nfsd4_op *op;
+>> -	struct nfsd4_minorversion_ops *ops;
+>>  	bool cachethis = false;
+>>  	int i;
+>>
+>> @@ -1640,10 +1622,9 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
+>>  		}
+>>  	}
+>>
+>> -	if (argp->minorversion >= ARRAY_SIZE(nfsd4_minorversion))
+>> +	if (argp->minorversion > NFSD_SUPPORTED_MINOR_VERSION)
+>>  		argp->opcnt = 0;
+>>
+>> -	ops = &nfsd4_minorversion[argp->minorversion];
+>>  	for (i = 0; i < argp->opcnt; i++) {
+>>  		op = &argp->ops[i];
+>>  		op->replay = NULL;
+>> @@ -1651,8 +1632,8 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
+>>  		READ_BUF(4);
+>>  		READ32(op->opnum);
+>>
+>> -		if (op->opnum >= FIRST_NFS4_OP && op->opnum <= LAST_NFS4_OP)
+>> -			op->status = ops->decoders[op->opnum](argp, &op->u);
+>> +		if (nfsd4_verify_opnum(argp, op) == nfs_ok)
+>> +			op->status = nfsd4_dec_ops[op->opnum](argp, &op->u);
+>>  		else {
+>>  			op->opnum = OP_ILLEGAL;
+>>  			op->status = nfserr_op_illegal;
+>> --
+>> 1.8.4.1
+>>
+
 
