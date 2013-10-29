@@ -1,103 +1,103 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:52082 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:10971 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751475Ab3JGSZI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 7 Oct 2013 14:25:08 -0400
-Date: Mon, 7 Oct 2013 14:25:06 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] pynfs: fix reporting of ignored tests
-Message-ID: <20131007182506.GA26432@fieldses.org>
-References: <1381004835-7485-1-git-send-email-tigran.mkrtchyan@desy.de>
- <20131007150507.GE18051@fieldses.org>
- <926019798.530894.1381168078530.JavaMail.zimbra@desy.de>
+	id S1751825Ab3J2AaX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 28 Oct 2013 20:30:23 -0400
+Message-ID: <526EFFCC.2060506@redhat.com>
+Date: Mon, 28 Oct 2013 17:22:36 -0700
+From: Anand Avati <aavati@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <926019798.530894.1381168078530.JavaMail.zimbra@desy.de>
+To: "J. Bruce Fields" <bfields@redhat.com>
+CC: Ric Wheeler <rwheeler@redhat.com>, Trond.Myklebust@netapp.com,
+        Christoph Anton Mitterer <calestyo@scientia.net>,
+        linux-nfs@vger.kernel.org, Steve Dickson <steved@redhat.com>
+Subject: Re: Fwd: Re: XATTRs in NFS?
+References: <20131028180838.GG31322@fieldses.org> <526EC3F7.3090601@gmail.com>
+In-Reply-To: <526EC3F7.3090601@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Oct 07, 2013 at 07:47:58PM +0200, Mkrtchyan, Tigran wrote:
-> 
-> 
-> ----- Original Message -----
-> > From: "J. Bruce Fields" <bfields@fieldses.org>
-> > To: "Tigran Mkrtchyan" <tigran.mkrtchyan@desy.de>
-> > Cc: linux-nfs@vger.kernel.org
-> > Sent: Monday, October 7, 2013 5:05:07 PM
-> > Subject: Re: [PATCH] pynfs: fix reporting of ignored tests
-> > 
-> > On Sat, Oct 05, 2013 at 10:27:15PM +0200, Tigran Mkrtchyan wrote:
-> > > currently, ignored tests reported as failure, which
-> > > makes fixing them quite hard.
-> > 
-> > Thanks.  And it's not counting warnings either?  I wonder if
-> 
-> The JUnit format does not have WARN. I can count them as failed.
-> > printresults and xml_printresults should be sharing some code?
-> 
-> I can will check how code duplication can be reduced
+On 10/28/2013 01:07 PM, Ric Wheeler wrote:
+> On Mon, Oct 28, 2013 at 02:00:58PM -0400, Ric Wheeler wrote:
+>> On 10/28/2013 01:49 PM, Myklebust, Trond wrote:
+>> >On Oct 28, 2013, at 12:15 PM, Christoph Anton Mitterer
+>> <calestyo@scientia.net> wrote:
+>> >
+>> >>On Mon, 2013-10-28 at 11:40 -0400, Ric Wheeler wrote:
+>> >>>Then you end up with large directories and an extra name per inode
+>> that needs to
+>> >>>be stored and extra lookups for each file when you do a whole file
+>> system crawl.
+>> >>>
+>> >>>Certainly not as easy as adding and xattrs with that information :)
+>> >>And I think there's another reason why it wouldn't work...
+>> >>
+>> >>Imagine I change my system to encode what should be XATTRs in hardlink
+>> >>pseudo files...
+>> >>
+>> >>If I have such pair locally e.g. on my ext4:
+>> >>/foo/bar/actual/file
+>> >>/meta/<SHA512 identifier>.2342348324
+>> >>
+>> >>And now move/copy the file via the network to the archive, I'd have to
+>> >>copy both files (which is really annoying), and I'd guess the inode
+>> >>coupling would get los (and at least the name wouldn't fit anymore).
+>> >>
+>> >>So the whole thing is IMHO not even a workaround.
+>> >OK. So you're going to do XATTRs for us?
+>> >
+>> >Trond
+>>
+>> Now that pNFS is perfect and labeled NFS has made it upstream, I
+>> think that Steve D must be looking for something to keep him busy :)
+>
+> I agree with Trond that we first really need good evidence about exactly
+> who wants this and why.
+>
 
-Thanks!
+Some reasons why XATTRs in NFS could be useful w/ glusterfs:
 
-> as well as make nfsv4.0 able to use it as well.
+- glusterfs exposes data locality through virtual extended attributes. 
+One could do a getxattr("filename", "glusterfs.pathinfo") and get a 
+parsable response about which servers store what parts and copies of the 
+file. Such a mechanism is already used to implement Hadoop plugins for 
+example (Hadoop plugin internally mounts gluster through FUSE where 
+xattrs work). In some use-cases we really want to use NFS and still 
+retain the ability to expose data locality through virtual xattrs, but 
+lack of xattr support limits that possibility.
 
-Note testmod.py is actually shared between the two (it's a symlink), so
-this should be done.
+- gluster implements a "merkel tree" like inode attribute called "xtime" 
+which is the recursive max mtime of all files/dirs in a subtree, 
+maintained in real-time on all dirs. This is an extremely handy and 
+powerful feature for implementing backups. This xtime is both stored as 
+an xattr and exposed as an xattr. Users who chose to mount gluster 
+through NFS protocol are giving up access this feature which is 
+available only through xattrs.
 
---b.
+- A very similar recursive function also provided by gluster is 
+real-time size of dir subtrees, also exposed as extended attributes. For 
+e.g a user instead of doing "du -hs /mnt/gluster/some/subdir" can 
+instead do "getfattr -n glusterfs.quota.size /mnt/gluster/some/dir" and 
+get instantaneous results. Again such a feature is not available for 
+users mounting through NFS because of the lack of generic xattrs.
 
+- A lot of our users have asked many times for the ability to use 
+existing NFS servers as "gluster bricks" - because they have paid a ton 
+of money and/or have a lot of data in there and do not want to "move it 
+out". A major roadblocker for such a use case is the lack of xattr 
+support. Gluster stores a lot of metadata in xattrs and therefore avoids 
+having a "metadata server" (for e.g it stores details about which of the 
+copies of a file/dir is fresh and stale in xattrs of that inode, it 
+stores "hash ranges" of directories as xattrs on the directory inode, 
+etc.) If only NFS mounts supported storing of these xattrs, we could 
+support pre-existing NFS volumes as gluster bricks.
 
-> 
-> Tigran.
-> > 
-> > --b.
-> > 
-> > > 
-> > > Signed-off-by: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
-> > > ---
-> > >  nfs4.1/testmod.py | 8 +++++++-
-> > >  1 file changed, 7 insertions(+), 1 deletion(-)
-> > > 
-> > > diff --git a/nfs4.1/testmod.py b/nfs4.1/testmod.py
-> > > index 3d74efe..68855de 100644
-> > > --- a/nfs4.1/testmod.py
-> > > +++ b/nfs4.1/testmod.py
-> > > @@ -439,6 +439,7 @@ def printresults(tests, opts, file=None):
-> > >  def xml_printresults(tests, file_name, suite='all'):
-> > >      with open(file_name, 'w') as fd:
-> > >          failures = 0
-> > > +        skipped = 0
-> > >          total_time = 0
-> > >          doc = xml.dom.minidom.Document()
-> > >          testsuite = doc.createElement("testsuite")
-> > > @@ -455,14 +456,19 @@ def xml_printresults(tests, file_name, suite='all'):
-> > >              testcase.setAttribute("time", str(t.time_taken))
-> > >  
-> > >              total_time += t.time_taken
-> > > -            if t.result not in (TEST_PASS, TEST_WARN):
-> > > +            if t.result == TEST_FAIL:
-> > >                  failures += 1
-> > >                  failure = doc.createElement("failure")
-> > >                  failure.setAttribute("message", t.result.msg)
-> > >                  err = doc.createCDATASection(''.join(t.result.tb))
-> > >                  failure.appendChild(err)
-> > >                  testcase.appendChild(failure)
-> > > +            elif t.result == TEST_OMIT:
-> > > +                skipped += 1
-> > > +                skip = doc.createElement("skipped")
-> > > +                testcase.appendChild(skip)
-> > >  
-> > >          testsuite.setAttribute("failures", str(failures))
-> > > +        testsuite.setAttribute("skipped", str(skipped))
-> > >          testsuite.setAttribute("time", str(total_time))
-> > >          fd.write(doc.toprettyxml(indent="  "))
-> > > --
-> > > 1.8.3.1
-> > > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > 
+These are just some reasons on how implementing xattrs in NFS can be 
+useful to one project.
+
+It would be interesting to see how the server can control the caching 
+behavior of such xattrs. For ex some of the (virtual) xattrs are better 
+not cached by the client ever.
+
+Avati
