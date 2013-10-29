@@ -1,102 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from szxga02-in.huawei.com ([119.145.14.65]:7444 "EHLO
-	szxga02-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751805Ab3JLGmi convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 12 Oct 2013 02:42:38 -0400
-From: Wangminlan <wangminlan@huawei.com>
-To: Ming Lei <mlei@riverbed.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: RE: nfs4.1  pseudo filesystem
-Date: Sat, 12 Oct 2013 06:40:24 +0000
-Message-ID: <3962238FD7EA0F41B1810E7ABEAFBC314CEF99D0@szxema505-mbs.china.huawei.com>
-References: <loom.20131010T232229-437@post.gmane.org>
-In-Reply-To: <loom.20131010T232229-437@post.gmane.org>
-Content-Type: text/plain; charset="us-ascii"
+Received: from fieldses.org ([174.143.236.118]:41563 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752977Ab3J2QCL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 29 Oct 2013 12:02:11 -0400
+Date: Tue, 29 Oct 2013 12:02:10 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Benny Halevy <bhalevy@primarydata.com>
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/7] nfsd4: need to destroy revoked delegations in
+ destroy_client
+Message-ID: <20131029160210.GW31322@fieldses.org>
+References: <526F81DE.6060704@primarydata.com>
+ <1383039552-27209-1-git-send-email-bhalevy@primarydata.com>
+ <20131029150414.GS31322@fieldses.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20131029150414.GS31322@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi, Ming,
-	I guess the problem here is that the filesystem on "/root", "/root/Downloads/linux-2.6.39.4", and "/root/linux3/Documentation/filesystems" are the same filesystem.
-	So when your client tried to access anything within the three directories, they all use the export "/root *(ro,fsid=0,crossmnt,no_root_squash)" to determin their permission.
-	Try to mount some other filesystems on your "real" exports, I mean, the exports with fsid other than 0, then do your tests.
+On Tue, Oct 29, 2013 at 11:04:14AM -0400, bfields wrote:
+> Whoops, yes, looks like a good fix.
+> 
+> I'm not convinced of the need for the recall_lock here for reasons given
+> before.  Could you just drop the recall_lock here and resend?
 
-B.R
-Minlan Wang
+Actually never mind I've done that on my local tree.  I'll wait to push
+it out till you've had a chance to object.
 
+--b.
 
------Original Message-----
-From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Ming Lei
-Sent: Friday, October 11, 2013 5:40 AM
-To: linux-nfs@vger.kernel.org
-Subject: nfs4.1 pseudo filesystem
-
-
-I want to set up the real directory as the root of the pseudo filesystem 
-got exported from the server. Can I do it or I have to create /export 
-empty directory as the root of the pseudo FS and then bind the real 
-directories?
-
-I have this test, both server and client running 3.11.0+:
-
-On the server, there is /root directory.
-[root@xxx ~] ls /root
-anaconda-ks.cfg  disk    Documents  fs_log.old   install.log.syslog  Public
-Desktop          disk.c  Downloads  install.log  linux3              
-rpmbuild
-[root@xxx ~]# ls /root/Downloads/linux-2.6.39.4
-arch       crypto         firmware  Kconfig      Module.symvers  security
-block      cscope.in.out  fs        kernel       net             sound
-config     cscope.out     include   lib          README          tools
-config-rh  cscope.po.out  init      MAINTAINERS  REPORTING-BUGS  usr
-COPYING    Documentation  ipc       Makefile     samples         virt
-CREDITS    drivers        Kbuild    mm           scripts
-
-I have this /etc/exports on the server:
-/root *(ro,fsid=0,crossmnt,no_root_squash)
-/root/Downloads/linux-2.6.39.4 *(rw,no_root_squash,nohide)
-/root/linux3/Documentation/filesystems *(rw,no_root_squash,nohide)
-
-[root@xxx ~]# cat /proc/net/rpc/nfsd.export/content 
-#path domain(flags)
-# /root/.gvfs	*()
-/root	*
-(ro,no_root_squash,sync,wdelay,crossmnt,no_subtree_check,fsid=0,uuid=46bb42
-56:d3c84b6f:bbbfff3a:8b0d912c)
-[root@xxx ~]# cat /proc/net/rpc/nfsd.fh/content 
-#domain fsidtype fsid [path]
-* 1 0x00000000 /root
-
-
-On the client side, what I saw:
-[root@xxx /]# mount -o vers=4.1 10.1.13.66:/ /mnt
-[root@xxx /]# cd /mnt
-[root@xxx mnt]# ls
-anaconda-ks.cfg  disk    Documents  fs_log.old   install.log.syslog  Public
-Desktop          disk.c  Downloads  install.log  linux3              
-rpmbuild
-[root@xxx mnt]# cd Downloads/linux-2.6.39.4
-[root@xxx linux-2.6.39.4]# ls
-arch       COPYING        cscope.out     firmware  ipc      lib          
-Module.symvers  samples   tools
-block      CREDITS        cscope.po.out  fs        Kbuild   MAINTAINERS  
-net             scripts   usr
-config     crypto         Documentation  include   Kconfig  Makefile     
-README          security  virt
-config-rh  cscope.in.out  drivers        init      kernel   mm           
-REPORTING-BUGS  sound
-[root@xxx linux-2.6.39.4]# rm REPORTING-BUGS 
-rm: remove regular file `REPORTING-BUGS'? y
-rm: cannot remove `REPORTING-BUGS': Read-only file system
-
-The question is:
-Why can I delete this file even I specify the 
-mountpoint /root/Downloads/linux-2.6.39.4 to allow RW access?
-
-Thanks
-Ming
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> --b.
+> 
+> On Tue, Oct 29, 2013 at 11:39:12AM +0200, Benny Halevy wrote:
+> > [use list_splice_init]
+> > Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
+> > ---
+> >  fs/nfsd/nfs4state.c | 7 +++++++
+> >  1 file changed, 7 insertions(+)
+> > 
+> > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> > index a403502..a66b0ad 100644
+> > --- a/fs/nfsd/nfs4state.c
+> > +++ b/fs/nfsd/nfs4state.c
+> > @@ -1129,6 +1129,13 @@ static struct nfs4_client *alloc_client(struct xdr_netobj name)
+> >  		dp = list_entry(reaplist.next, struct nfs4_delegation, dl_recall_lru);
+> >  		destroy_delegation(dp);
+> >  	}
+> > +	spin_lock(&recall_lock);
+> > +	list_splice_init(&clp->cl_revoked, &reaplist);
+> > +	spin_unlock(&recall_lock);
+> > +	while (!list_empty(&reaplist)) {
+> > +		dp = list_entry(reaplist.next, struct nfs4_delegation, dl_recall_lru);
+> > +		destroy_revoked_delegation(dp);
+> > +	}
+> >  	while (!list_empty(&clp->cl_openowners)) {
+> >  		oo = list_entry(clp->cl_openowners.next, struct nfs4_openowner, oo_perclient);
+> >  		release_openowner(oo);
+> > -- 
+> > 1.8.3.1
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
