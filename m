@@ -1,127 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:49222 "EHLO mx1.redhat.com"
+Received: from mx12.netapp.com ([216.240.18.77]:22038 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753600Ab3JVQNI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 Oct 2013 12:13:08 -0400
-Subject: Re: [PATCH] gssd: validate cred in gssd_acquire_user_cred
-From: Simo Sorce <simo@redhat.com>
-To: Weston Andros Adamson <dros@netapp.com>
-Cc: "<SteveD@redhat.com>" <SteveD@redhat.com>,
-        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
-In-Reply-To: <0A5F8F19-4730-4D1A-86A5-5533D758AC23@netapp.com>
-References: <1382450675-14636-1-git-send-email-dros@netapp.com>
-	 <1382452919.9794.63.camel@willson.li.ssimo.org>
-	 <0A5F8F19-4730-4D1A-86A5-5533D758AC23@netapp.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 22 Oct 2013 12:13:06 -0400
-Message-ID: <1382458386.9794.89.camel@willson.li.ssimo.org>
-Mime-Version: 1.0
+	id S1754131Ab3J2Q1v (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 29 Oct 2013 12:27:51 -0400
+From: Weston Andros Adamson <dros@netapp.com>
+To: <steved@redhat.com>
+CC: <linux-nfs@vger.kernel.org>, Weston Andros Adamson <dros@netapp.com>
+Subject: [PATCH] nfs.man: add description of multiple sec= options
+Date: Tue, 29 Oct 2013 12:27:46 -0400
+Message-ID: <1383064066-1139-1-git-send-email-dros@netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2013-10-22 at 16:03 +0000, Weston Andros Adamson wrote:
-> On Oct 22, 2013, at 10:41 AM, Simo Sorce <simo@redhat.com> wrote:
-> 
-> > On Tue, 2013-10-22 at 10:04 -0400, Weston Andros Adamson wrote:
-> >> Call gss_inquire_cred after gssd_acquire_krb5_cred check for expired
-> >> credentials.
-> >> 
-> >> This fixes a recent regression (since 302de786930a2c533068f9d8909a817b40f07c32)
-> >> that causes the user's ticket cache to grow unbounded with expired service
-> >> tickets when the user's credentials expire.
-> >> 
-> >> To reproduce this issue:
-> >> 
-> >> - mount kerberos nfs export
-> >> - kinit for a short lifetime (ie "kinit -l 1m")
-> >> - run a job that opens a file and writes for more than the lifetime
-> >> - run klist a few times after expiry and see the list grow, ie:
-> >> 
-> >> Ticket cache: DIR::/run/user/1749600001/krb5cc/tktYmpGlX
-> >> Default principal: dros@APIKIA.FAKE
-> >> 
-> >> Valid starting       Expires              Service principal
-> >> 10/21/2013 15:39:38  10/21/2013 15:40:35  krbtgt/APIKIA.FAKE@APIKIA.FAKE
-> >> 10/21/2013 15:39:40  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-> >> 10/21/2013 15:40:35  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-> >> 10/21/2013 15:40:36  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-> >> 10/21/2013 15:40:37  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-> >> 10/21/2013 15:40:37  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-> >> 10/21/2013 15:40:38  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-> >> 10/21/2013 15:40:38  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-> >> 10/21/2013 15:40:39  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-> >> 10/21/2013 15:40:39  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-> >> 10/21/2013 15:40:39  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-> >> 10/21/2013 15:40:39  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-> >> 10/21/2013 15:40:40  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-> >> 10/21/2013 15:40:40  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-> >> 10/21/2013 15:40:41  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-> >> 10/21/2013 15:40:41  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-> >> 10/21/2013 15:40:42  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-> >> 10/21/2013 15:40:42  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-> >> 10/21/2013 15:40:42  10/21/2013 15:40:35  nfs/zero.apikia.fake@APIKIA.FAKE
-> >> 
-> >> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
-> >> ---
-> >> utils/gssd/krb5_util.c | 7 +++++++
-> >> 1 file changed, 7 insertions(+)
-> >> 
-> >> diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
-> >> index c6e52fd..ec5db83 100644
-> >> --- a/utils/gssd/krb5_util.c
-> >> +++ b/utils/gssd/krb5_util.c
-> >> @@ -1405,6 +1405,13 @@ gssd_acquire_user_cred(uid_t uid, gss_cred_id_t *gss_cred)
-> >> 
-> >> 	ret = gssd_acquire_krb5_cred(name, gss_cred);
-> >> 
-> >> +	/* force validation of cred to check for expiry */
-> >> +	if (ret == 0) {
-> >> +		if (gss_inquire_cred(min_stat, gss_cred, NULL, NULL,
-> >> +				     NULL, NULL) != GSS_S_COMPLETE)
-> >> +			ret = -1;
-> >> +	}
-> >> +
-> >> 	maj_stat = gss_release_name(&min_stat, &name);
-> >> 	return ret;
-> >> }
-> > 
-> > A good start, but given you are inquiring creds, then I think it would
-> > totally make sense to pass in a uint32_t for the 4th argument
-> > (lifetime), and check if there is "enough".
-> 
-> Well, from my perspective gssd already gives enough info for you to know what's going on, i.e.:
-> 
-> getting credentials for client with uid 1749600001 for server zero.apikia.fake
-> CC '/run/user/1749600001/krb5cc' being considered, with preferred realm 'APIKIA.FAKE'
-> CC 'DIR:/run/user/1749600001/krb5cc' is expired or corrupt
-> WARNING: Failed to create krb5 context for user with uid 1749600001 for server zero.apikia.fake
-> doing error downfall
-> 
-> And it's obvious from the NFS layer as EKEYEXPIRED gets passed through as the error.
-> 
-> > 
-> > For example, if it returns a lifetime of 1 second should we continue ?
-> > There is a fat chance that it will fail later on.
-> 
-> I think how we handle this now (without the regression this fixes) is fine.  I really don't think users/ admins want to enable verbose debugging in gssd to see this - they should be able to tell what happened when the caller gets an expired cred.
-> 
-> > 
-> > I think we should at least log it if the credential we are trying to use
-> > turns out to be really close to expiring, no ? It may save some gray
-> > hairs to server administrators trying to find out what is going wrong
-> > (like it happened to you :)
-> 
-> Well, it was obvious to me what was happening when the keys expired - what was not obvious was why the tkt cache was growing unbounded with service tickets that were *never* valid (the regression this patch fixes).
-> 
-> I suppose we could do something more, but I don't really see a reason to.
+The client now supports multiple sec= options as a colon delimited list.
 
+Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+---
+ utils/mount/nfs.man | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
 
-you are probably right,
-
-Reviewed-by: Simo Sorce <simo@redhat.com>
-
-Simo.
-
+diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
+index 2a42b93..17b8d88 100644
+--- a/utils/mount/nfs.man
++++ b/utils/mount/nfs.man
+@@ -380,9 +380,10 @@ If a value of zero is specified, the
+ .BR mount (8)
+ command exits immediately after the first failure.
+ .TP 1.5i
+-.BI sec= flavor
+-The security flavor to use for accessing files on this mount point.
+-If the server does not support this flavor, the mount operation fails.
++.BI sec= flavors
++A colon-delimited list of security flavors to use for accessing files on
++this mount point. If the server does not support any of these flavors,
++the mount operation fails.
+ If
+ .B sec=
+ is not specified, the client attempts to find
 -- 
-Simo Sorce * Red Hat, Inc * New York
+1.8.3.1 (Apple Git-46)
 
