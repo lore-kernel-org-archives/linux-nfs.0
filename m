@@ -1,137 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:51253 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:41938 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753837Ab3JBNy1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 2 Oct 2013 09:54:27 -0400
-Date: Wed, 2 Oct 2013 09:54:23 -0400
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, jlayton@redhat.com,
-        Dave Chinner <david@fromorbit.com>
-Subject: Re: [PATCH 00/13] Implement NFSv4 delegations, take 12
-Message-ID: <20131002135423.GA14808@fieldses.org>
-References: <1379623837-30798-1-git-send-email-bfields@redhat.com>
+	id S1756860Ab3J2BA3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 28 Oct 2013 21:00:29 -0400
+Message-ID: <526F0893.5030700@redhat.com>
+Date: Mon, 28 Oct 2013 21:00:03 -0400
+From: Ric Wheeler <rwheeler@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1379623837-30798-1-git-send-email-bfields@redhat.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: Anand Avati <aavati@redhat.com>,
+        Dr Fields James Bruce <bfields@redhat.com>,
+        Christoph Anton Mitterer <calestyo@scientia.net>,
+        Mailing List Linux NFS <linux-nfs@vger.kernel.org>,
+        Dickson Steve <steved@redhat.com>
+Subject: Re: XATTRs in NFS?
+References: <20131028180838.GG31322@fieldses.org> <526EC3F7.3090601@gmail.com> <526EFFCC.2060506@redhat.com> <18F0636D-7CE0-42C1-9249-325DF69516D4@netapp.com>
+In-Reply-To: <18F0636D-7CE0-42C1-9249-325DF69516D4@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Sep 19, 2013 at 04:50:24PM -0400, J. Bruce Fields wrote:
-> From: "J. Bruce Fields" <bfields@redhat.com>
-> 
-> Al, if you don't see any objections, could you queue this up for 3.13?
+On 10/28/2013 08:49 PM, Myklebust, Trond wrote:
+> On Oct 28, 2013, at 8:22 PM, Anand Avati <aavati@redhat.com> wrote:
+>
+>> On 10/28/2013 01:07 PM, Ric Wheeler wrote:
+>>> On Mon, Oct 28, 2013 at 02:00:58PM -0400, Ric Wheeler wrote:
+>>>> On 10/28/2013 01:49 PM, Myklebust, Trond wrote:
+>>>>> On Oct 28, 2013, at 12:15 PM, Christoph Anton Mitterer
+>>>> <calestyo@scientia.net> wrote:
+>>>>>> On Mon, 2013-10-28 at 11:40 -0400, Ric Wheeler wrote:
+>>>>>>> Then you end up with large directories and an extra name per inode
+>>>> that needs to
+>>>>>>> be stored and extra lookups for each file when you do a whole file
+>>>> system crawl.
+>>>>>>> Certainly not as easy as adding and xattrs with that information :)
+>>>>>> And I think there's another reason why it wouldn't work...
+>>>>>>
+>>>>>> Imagine I change my system to encode what should be XATTRs in hardlink
+>>>>>> pseudo files...
+>>>>>>
+>>>>>> If I have such pair locally e.g. on my ext4:
+>>>>>> /foo/bar/actual/file
+>>>>>> /meta/<SHA512 identifier>.2342348324
+>>>>>>
+>>>>>> And now move/copy the file via the network to the archive, I'd have to
+>>>>>> copy both files (which is really annoying), and I'd guess the inode
+>>>>>> coupling would get los (and at least the name wouldn't fit anymore).
+>>>>>>
+>>>>>> So the whole thing is IMHO not even a workaround.
+>>>>> OK. So you're going to do XATTRs for us?
+>>>>>
+>>>>> Trond
+>>>> Now that pNFS is perfect and labeled NFS has made it upstream, I
+>>>> think that Steve D must be looking for something to keep him busy :)
+>>> I agree with Trond that we first really need good evidence about exactly
+>>> who wants this and why.
+>>>
+>> Some reasons why XATTRs in NFS could be useful w/ glusterfs:
+>>
+>> - glusterfs exposes data locality through virtual extended attributes. One could do a getxattr("filename", "glusterfs.pathinfo") and get a parsable response about which servers store what parts and copies of the file. Such a mechanism is already used to implement Hadoop plugins for example (Hadoop plugin internally mounts gluster through FUSE where xattrs work). In some use-cases we really want to use NFS and still retain the ability to expose data locality through virtual xattrs, but lack of xattr support limits that possibility.
+>>
+>> - gluster implements a "merkel tree" like inode attribute called "xtime" which is the recursive max mtime of all files/dirs in a subtree, maintained in real-time on all dirs. This is an extremely handy and powerful feature for implementing backups. This xtime is both stored as an xattr and exposed as an xattr. Users who chose to mount gluster through NFS protocol are giving up access this feature which is available only through xattrs.
+>>
+>> - A very similar recursive function also provided by gluster is real-time size of dir subtrees, also exposed as extended attributes. For e.g a user instead of doing "du -hs /mnt/gluster/some/subdir" can instead do "getfattr -n glusterfs.quota.size /mnt/gluster/some/dir" and get instantaneous results. Again such a feature is not available for users mounting through NFS because of the lack of generic xattrs.
+>>
+>> - A lot of our users have asked many times for the ability to use existing NFS servers as "gluster bricks" - because they have paid a ton of money and/or have a lot of data in there and do not want to "move it out". A major roadblocker for such a use case is the lack of xattr support. Gluster stores a lot of metadata in xattrs and therefore avoids having a "metadata server" (for e.g it stores details about which of the copies of a file/dir is fresh and stale in xattrs of that inode, it stores "hash ranges" of directories as xattrs on the directory inode, etc.) If only NFS mounts supported storing of these xattrs, we could support pre-existing NFS volumes as gluster bricks.
+>>
+>> These are just some reasons on how implementing xattrs in NFS can be useful to one project.
+>>
+>> It would be interesting to see how the server can control the caching behavior of such xattrs. For ex some of the (virtual) xattrs are better not cached by the client ever.
+>>
+>> Avati
+> ..and here is a perfect example of exactly what is wrong with xattrs. You're describing a private syscall interface, not a data storage format.
+>
+> Trond
 
-Note: if it's more convenient, the identical patches are also available
-from
+What Avati described is having an application store user defined attributes in a 
+file in a standard way - pretty much every local file system does this.  I don't 
+get the private syscall interface comment or the need to re-argue a battle that 
+was waged and lost effectively *years* ago :)
 
-	git://linux-nfs.org/~bfields/linux.git for-viro
+Ric
 
---b.
-
-> 
-> Changes since version 11:
-> 	- rebase to 3.12-rc1
-> 	- fix to lock class in single-lock case of
-> 	  lock_two_nondirectories
-> 
-> Changes since version 10:
-> 	- appended Jeff's fix for a setlease/open race (otherwise
-> 	  unrelated to this series, but there are some minor conficts to
-> 	  resolve).
-> 
-> Changes since version 9:
-> 	- just a rebase to 3.11-rc6
-> 
-> Changes since version 8:
-> 	- additional warnings in lock_two_nondirectories
-> 	- lock_two_nondirectories handles NULL second argument,
-> 	  simplifying vfs_rename_other
-> 	- kerneldoc comments on notify_change, vfs_link, vfs_rename,
-> 	  vfs_unlink, to explain delegated_inode argument.
-> 	- make clear non-support of write delegations in
-> 	  generic_add_lease
-> 	- rebase to 3.11-rc1
-> 
-> Introduction copied from previous posting:
-> 
-> This patch series implements read delegations, which allow NFSv4 clients
-> to perform read opens without contacting the server, by promising to
-> call back to clients before modifying the data, metadata, or set of
-> links pointing to a file.
-> 
-> The main recent change was in response to review from Linus, who didn't
-> want us to hang under directory i_mutex's on timeouts communicating with
-> unresponsive clients.
-> 
-> So, this version of the series drops the i_mutex before waiting.  The
-> logic ends up looking something like:
-> 
->         acquire locks
->         look up inode
->         test for delegation; if found:
->                 take reference on inode
->                 release locks
->                 wait for delegation break
->                 drop reference on inode
->                 retry
-> 
-> The initial test for a delegation happens after the lock on the
-> delegated inode is acquired, but additional directory mutexes may have
-> been acquired further up the call stack.  I therefore add a "struct
-> inode **" argument to any intervening functions, which we use to pass
-> the inode back up to the caller in the case it needs to wait for the
-> delegation to be broken.
-> 
-> I also allow callers to pass in NULL for the "struct inode **" argument
-> to indicate they'd rather just fail than wait for a delegation.  For
-> example, as long as ecryptfs isn't exportable I assume they'd rather not
-> see retry logic there that they won't use.  But I may have misjudged in
-> some of these cases.
-> 
-> J. Bruce Fields (12):
->   vfs: pull ext4's double-i_mutex-locking into common code
->   vfs: don't use PARENT/CHILD lock classes for non-directories
->   vfs: rename I_MUTEX_QUOTA now that it's not used for quotas
->   vfs: take i_mutex on renamed file
->   locks: introduce new FL_DELEG lock flag
->   locks: implement delegations
->   namei: minor vfs_unlink cleanup
->   locks: break delegations on unlink
->   locks: helper functions for delegation breaking
->   locks: break delegations on rename
->   locks: break delegations on link
->   locks: break delegations on any attribute modification
-> 
-> Jeff Layton (1):
->   locks: close potential race between setlease and open
-> 
->  Documentation/filesystems/directory-locking |   31 ++++--
->  drivers/base/devtmpfs.c                     |    6 +-
->  fs/attr.c                                   |   25 ++++-
->  fs/cachefiles/interface.c                   |    4 +-
->  fs/cachefiles/namei.c                       |    4 +-
->  fs/ecryptfs/inode.c                         |    6 +-
->  fs/ext4/ext4.h                              |    2 -
->  fs/ext4/ioctl.c                             |    4 +-
->  fs/ext4/move_extent.c                       |   40 +-------
->  fs/hpfs/namei.c                             |    2 +-
->  fs/inode.c                                  |   42 ++++++++-
->  fs/locks.c                                  |  130 +++++++++++++++++++++-----
->  fs/namei.c                                  |  135 +++++++++++++++++++++++----
->  fs/nfsd/nfs4state.c                         |    2 +-
->  fs/nfsd/vfs.c                               |   14 ++-
->  fs/open.c                                   |   22 ++++-
->  fs/utimes.c                                 |    9 +-
->  include/linux/fs.h                          |   78 +++++++++++++---
->  ipc/mqueue.c                                |    2 +-
->  19 files changed, 428 insertions(+), 130 deletions(-)
-> 
-> -- 
-> 1.7.9.5
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
