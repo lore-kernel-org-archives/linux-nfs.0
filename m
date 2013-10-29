@@ -1,26 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:41586 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751774Ab3J2Hjn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Oct 2013 03:39:43 -0400
-Date: Tue, 29 Oct 2013 00:39:43 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Anna Schumaker <bjschuma@netapp.com>
-Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/3] NFS: Allow for asynchronous WRITE_PLUS calls
-Message-ID: <20131029073943.GD10889@infradead.org>
-References: <1382972418-2249-1-git-send-email-bjschuma@netapp.com>
- <1382972418-2249-3-git-send-email-bjschuma@netapp.com>
+Received: from mx12.netapp.com ([216.240.18.77]:20457 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753618Ab3J2PCh convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Oct 2013 11:02:37 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: NeilBrown <neilb@suse.de>
+CC: NFS <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH/RFC] - hard-to-hit race in xprtsock.
+Date: Tue, 29 Oct 2013 15:02:36 +0000
+Message-ID: <1383058955.7805.2.camel@leira.trondhjem.org>
+References: <20131029174204.7f6578d4@notabene.brown>
+In-Reply-To: <20131029174204.7f6578d4@notabene.brown>
+Content-Type: text/plain; charset="utf-7"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1382972418-2249-3-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Oct 28, 2013 at 11:00:17AM -0400, Anna Schumaker wrote:
-> Clients are required to support CB_OFFLOAD for the NFS4_CONTENT_HOLE arm
-> of the WRITE_PLUS union.
+On Tue, 2013-10-29 at 17:42 +-1100, NeilBrown wrote:
++AD4- We have a customer who hit a rare race in sunrpc (in a 3.0 based kernel,
++AD4- but the relevant code doesn't seem to have changed much).
++AD4- 
++AD4- The thread that crashed was in 
++AD4-   xs+AF8-tcp+AF8-setup+AF8-socket -+AD4- inet+AF8-stream+AF8-connect -+AD4- lock+AF8-sock+AF8-nested.
++AD4- 
++AD4- 'sock' in this last function is NULL.
++AD4- 
++AD4- The only way I can imagine this happening is if some other thread called
++AD4- 
++AD4-  xs+AF8-close -+AD4- xs+AF8-reset+AF8-transport -+AD4- sock+AF8-release -+AD4- inet+AF8-release
++AD4- 
++AD4- in a very small window a moment earlier.
++AD4- 
++AD4- As far as I can tell, xs+AF8-close is only called with XPRT+AF8-LOCKED set.
++AD4- 
++AD4- xs+AF8-tcp+AF8-setup+AF8-socket is mostly scheduled with XPRT+AF8-LOCKED set to which would
++AD4- exclude them from running at the same time.
++AD4- 
++AD4- 
++AD4- However xs+AF8-tcp+AF8-schedule+AF8-linger+AF8-timeout can schedule the thread which runs
++AD4- xs+AF8-tcp+AF8-setup+AF8-socket without first claiming XPRT+AF8-LOCKED.
++AD4- So I assume that is what is happening.
++AD4- 
++AD4- I imagine some race between the client closing the socket, and getting
++AD4- TCP+AF8-FIN+AF8-WAIT1 from the server and somehow the two threads racing.
++AD4- 
++AD4- I wonder if it might make sense to always abort 'connect+AF8-worker' in
++AD4- xs+AF8-close()?
++AD4- I think the connect+AF8-worker really mustn't be running or queued at this point,
++AD4- so cancelling it is either a no-op, or vitally important.
++AD4- 
++AD4- So: does the following patch seem reasonable?  If so I'll submit it properly
++AD4- with a coherent description etc.
 
-This sounds pretty stupid.  Just curious, who got this braindamage into
-the standard?
+Hi Neil,
 
+Will that do the right thing if the connect+AF8-worker and close are running
+on the same rpciod thread? I think it should, but I never manage to keep
+100+ACU- up to date with the ever changing semantics of
+cancel+AF8-delayed+AF8-work+AF8-sync() and friends...
+
+Cheers,
+  Trond
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust+AEA-netapp.com
+www.netapp.com
