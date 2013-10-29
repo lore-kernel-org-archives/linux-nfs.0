@@ -1,42 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-we0-f173.google.com ([74.125.82.173]:58255 "EHLO
-	mail-we0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752206Ab3JOG6B (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Oct 2013 02:58:01 -0400
-Received: by mail-we0-f173.google.com with SMTP id u57so7943318wes.18
-        for <linux-nfs@vger.kernel.org>; Mon, 14 Oct 2013 23:57:59 -0700 (PDT)
-From: Benny Halevy <bhalevy@primarydata.com>
-To: bfields@redhat.com
-Cc: linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@primarydata.com>
-Subject: [PATCH 1/2] nfsd: nfs4_open_delegation needs to remove_stid rather than unhash_stid
-Date: Tue, 15 Oct 2013 09:57:55 +0300
-Message-Id: <1381820275-14078-1-git-send-email-bhalevy@primarydata.com>
-In-Reply-To: <525CE711.1040107@primarydata.com>
-References: <525CE711.1040107@primarydata.com>
+Received: from mx12.netapp.com ([216.240.18.77]:9006 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751825Ab3J2AxL convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Oct 2013 20:53:11 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Christoph Anton Mitterer <calestyo@scientia.net>
+CC: Anand Avati <aavati@redhat.com>,
+        Dr Fields James Bruce <bfields@redhat.com>,
+        Wheeler Ric <rwheeler@redhat.com>,
+        "Mailing List Linux NFS" <linux-nfs@vger.kernel.org>,
+        Dickson Steve <steved@redhat.com>
+Subject: Re: XATTRs in NFS?
+Date: Tue, 29 Oct 2013 00:53:09 +0000
+Message-ID: <05E44689-68BD-43AE-A5C8-409883E84227@netapp.com>
+References: <20131028180838.GG31322@fieldses.org>
+ <526EC3F7.3090601@gmail.com> <526EFFCC.2060506@redhat.com>
+ <1383007167.8774.52.camel@heisenberg.scientia.net>
+In-Reply-To: <1383007167.8774.52.camel@heisenberg.scientia.net>
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In the out_free: path, the newly allocated stid must be removed rather
-than unhashed so it can never be found.
 
-Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
----
- fs/nfsd/nfs4state.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+On Oct 28, 2013, at 8:39 PM, Christoph Anton Mitterer <calestyo@scientia.net> wrote:
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 64c167f..b8f3c7e 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -3157,7 +3157,7 @@ static void nfsd4_open_deleg_none_ext(struct nfsd4_open *open, int status)
- 	open->op_delegate_type = NFS4_OPEN_DELEGATE_READ;
- 	return;
- out_free:
--	unhash_stid(&dp->dl_stid);
-+	remove_stid(&dp->dl_stid);
- 	nfs4_put_delegation(dp);
- out_no_deleg:
- 	open->op_delegate_type = NFS4_OPEN_DELEGATE_NONE;
--- 
-1.8.3.1
+> I might add a similar use case which we have at the faculty respectively
+> the local supercomputing centre:
+> 
+> What we have there is big cluster filesystems (used to be Lustre but
+> nowadays I think they use GPFS).
+> There are custom (i.e. local) applications where XATTRs are used to
+> attach some metadata to files, which works fine in these cluster
+> filesystems since they have native support.
+> 
+> Now what they sometimes do (AFAIU) is, export the cluster fs via NFS, to
+> nodes which don't have support for the cluster fs itself (sometimes the
+> OS is simply too old, but one common use case is also, that they simply
+> don't allow direct mounts outside of e.g. the super computer).
+> 
+> At that point, NFS looses the XATTRs.
 
+Why do these nodes need access to the xattrs? What applications are they running that need them? Why can't those applications run on the native cluster instead?
+
+Trond
