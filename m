@@ -1,29 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:37488 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753542Ab3J1Ixt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Oct 2013 04:53:49 -0400
-Date: Mon, 28 Oct 2013 01:53:48 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: NeilBrown <neilb@suse.de>
-Cc: "J. Bruce Fields" <bfields@redhat.com>, linux-fsdevel@vger.kernel.org,
-        Christoph Hellwig <hch@infradead.org>,
-        Al Viro <viro@ZenIV.linux.org.uk>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 4/8] exportfs: stop retrying once we race with
- rename/remove
-Message-ID: <20131028085348.GA3673@infradead.org>
-References: <1382733005-6006-1-git-send-email-bfields@redhat.com>
- <1382733005-6006-5-git-send-email-bfields@redhat.com>
- <20131027180409.66037e01@notabene.brown>
+Received: from mx3-phx2.redhat.com ([209.132.183.24]:46986 "EHLO
+	mx3-phx2.redhat.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753496Ab3J2CWJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Oct 2013 22:22:09 -0400
+To: Trond.Myklebust@netapp.com
+Cc: rwheeler@redhat.com, bfields@redhat.com, calestyo@scientia.net,
+        linux-nfs@vger.kernel.org, steved@redhat.com
+Date: Mon, 28 Oct 2013 22:22:04 -0400 (EDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20131027180409.66037e01@notabene.brown>
+Subject: =?utf-8?B?UkU6IFhBVFRScyBpbiBORlM/?=
+Message-ID: <1777356958.15530338.1383013324620.JavaMail.root@zmail09.collab.prod.int.phx2.redhat.com>
+Content-Type: multipart/mixed;boundary="__1383013318720TOUCHDOWN_BOUNDARY__"
+From: Anand Avati <aavati@redhat.com>
+In-Reply-To: <AF4F68CE-DF98-47E6-89CC-D052F79591B2@netapp.com>
+References: <20131028180838.GG31322@fieldses.org> <526EC3F7.3090601@gmail.com> <526EFFCC.2060506@redhat.com> <18F0636D-7CE0-42C1-9249-325DF69516D4@netapp.com> <526F0893.5030700@redhat.com> <A7C1B206-12CD-4958-9528-A8D9C9847011@netapp.com> <526F0E49.10801@redhat.com> <AF4F68CE-DF98-47E6-89CC-D052F79591B2@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Oct 27, 2013 at 06:04:09PM +1100, NeilBrown wrote:
-> This looks remarkably similar to find_disconnected_root().
+--__1383013318720TOUCHDOWN_BOUNDARY__
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
 
-It does, but that function is going away in the last patch of the
-series.
+(Sorry for top post)
 
+Ah, note that by "glusterfs.<something>" i was meaning "<ns>.glusterfs.<something>" where <ns> is like "user". It just needs to be a mechanism to store key values on the inode.
+
+Avati
+
+Sent from my Android phone using TouchDown (www.nitrodesk.com)
+
+
+-----Original Message-----
+From: Myklebust, Trond [Trond.Myklebust@netapp.com]
+Received: Monday, 28 Oct 2013, 18:52
+To: Anand Avati [aavati@redhat.com]
+CC: Wheeler Ric [rwheeler@redhat.com]; Dr Fields James Bruce [bfields@redhat.com]; Christoph Anton Mitterer [calestyo@scientia.net]; Mailing List Linux NFS [linux-nfs@vger.kernel.org]; Dickson Steve [steved@redhat.com]
+Subject: Re: XATTRs in NFS?
+
+
+
+On Oct 28, 2013, at 9:24 PM, Anand Avati <aavati@redhat.com> wrote:
+
+> On 10/28/2013 06:26 PM, Myklebust, Trond wrote:
+> 
+>> 
+>> That battle may have been fought and won within the glusterfs community, but why should we wave the white flag without a discussion? I don't see how what he described above has anything to do with user defined attributes. He's describing how he wants to export quota information and xtime through a private xattr interface that is currently unique to glusterfs. How is that not a private syscall interface?
+>> 
+> 
+> Exposing quota informtion is use "from the top". Note the other point I mention about using NFS volumes as "gluster bricks" where we store xattrs as dumb and persistent key/values associated with file/dir inodes (fresh/stale info for replication, hash ranges for dirs, quota acconting info per-dir, xtime per dir).
+
+>> Which of the mainstream filesystems have their own private xattr namespaces like the above?
+>> 
+> 
+> Why should NFS need to worry? As long as it acts like a pass-through (like every other call it supports).
+
+We need to worry because we don't know what side-effects your private interface will have. How does it affect our caching model? How do we debug any problems that arise? Are there any security implications that we need to know about?
+
+Trond
+--__1383013318720TOUCHDOWN_BOUNDARY__--
