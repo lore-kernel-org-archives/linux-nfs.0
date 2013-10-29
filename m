@@ -1,52 +1,151 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:45477 "EHLO mx12.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:33051 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753496Ab3J2C2o convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Oct 2013 22:28:44 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Christoph Anton Mitterer <calestyo@scientia.net>
-CC: Wheeler Ric <rwheeler@redhat.com>, Anand Avati <aavati@redhat.com>,
-        "Dr Fields James Bruce" <bfields@redhat.com>,
-        Mailing List Linux NFS <linux-nfs@vger.kernel.org>,
-        Dickson Steve <steved@redhat.com>
-Subject: Re: XATTRs in NFS?
-Date: Tue, 29 Oct 2013 02:28:40 +0000
-Message-ID: <875BFA1C-0305-49FF-85ED-7B156666AE85@netapp.com>
-References: <20131028180838.GG31322@fieldses.org>
- <526EC3F7.3090601@gmail.com> <526EFFCC.2060506@redhat.com>
- <18F0636D-7CE0-42C1-9249-325DF69516D4@netapp.com>
- <526F0893.5030700@redhat.com>
- <A7C1B206-12CD-4958-9528-A8D9C9847011@netapp.com>
- <1383010758.8774.97.camel@heisenberg.scientia.net>
-In-Reply-To: <1383010758.8774.97.camel@heisenberg.scientia.net>
-Content-Type: text/plain; charset="us-ascii"
+	id S1751825Ab3J2AvR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 28 Oct 2013 20:51:17 -0400
+Date: Mon, 28 Oct 2013 20:51:16 -0400
+From: Bruce Fields <bfields@fieldses.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/2] SUNRPC: Fix buffer overflow checking in
+ gss_encode_v0_msg/gss_encode_v1_msg
+Message-ID: <20131029005116.GB20393@fieldses.org>
+References: <1383001027-62282-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1383001027-62282-2-git-send-email-Trond.Myklebust@netapp.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1383001027-62282-2-git-send-email-Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Oct 28, 2013, at 9:39 PM, Christoph Anton Mitterer <calestyo@scientia.net> wrote:
-
-> Trond,... since you ask for motivations pro NFS-XATTRs, I wondered what
-> are the strong reasons against?
-
-As I've already told you: you're asking for the addition of a feature which is inadequately defined, and is not documented in any standard.
-
-> Of course someone has to do the work,... but that's not really and
-> argument pro or con NFS-XATTRs, is it?
+On Mon, Oct 28, 2013 at 06:57:07PM -0400, Trond Myklebust wrote:
+> In gss_encode_v1_msg, it is pointless to BUG() after the overflow has
+> happened. Replace the existing sprintf()-based code with scnprintf(),
+> and warn if an overflow is ever triggered.
 > 
-> The security problems with namespaces like trusted. or so can probably
-> be solved quite easy, e.g. simply by not supporting or
-> ignoring/rejecting them.
+> In gss_encode_v0_msg, replace the runtime BUG_ON() with an appropriate
+> compile-time BUILD_BUG_ON.
+
+ACK, looks good to me, thanks for fixing this.
+
+--b.
+
 > 
-> You've mentioned caching issues,... could you elaborate a bit on that?
-> How is that much different from caching any other file metadata NFS
-> transfers?
-
-The standard metadata such as ctime, mtime, size, .... are all part of an existing NFS caching model called close-to-open. We know how they change when the filesystem data changes.
-
-How do I know when it is safe to cache your checksum xattr? I don't even know what it is, let alone what its relation is to the other filesystem objects.
-Let's say client B modifies the file and updates the checksum. When client A opens the file, it will see that the data has changed, but how does it know that it also needs to update the xattr information?
-Alternatively, let's say that client A reads the file and checksum data after client B has updated the file, but before it updates the checksum. What will cause client A to stop caching the stale checksum once client B has updated it?
-
-Trond
+> Reported-by: Bruce Fields <bfields@fieldses.org>
+> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> ---
+>  net/sunrpc/auth_gss/auth_gss.c | 56 ++++++++++++++++++++++++++++--------------
+>  1 file changed, 37 insertions(+), 19 deletions(-)
+> 
+> diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+> index cc24323d3045..97912b40c254 100644
+> --- a/net/sunrpc/auth_gss/auth_gss.c
+> +++ b/net/sunrpc/auth_gss/auth_gss.c
+> @@ -420,41 +420,53 @@ static void gss_encode_v0_msg(struct gss_upcall_msg *gss_msg)
+>  	memcpy(gss_msg->databuf, &uid, sizeof(uid));
+>  	gss_msg->msg.data = gss_msg->databuf;
+>  	gss_msg->msg.len = sizeof(uid);
+> -	BUG_ON(sizeof(uid) > UPCALL_BUF_LEN);
+> +
+> +	BUILD_BUG_ON(sizeof(uid) > sizeof(gss_msg->databuf));
+>  }
+>  
+> -static void gss_encode_v1_msg(struct gss_upcall_msg *gss_msg,
+> +static int gss_encode_v1_msg(struct gss_upcall_msg *gss_msg,
+>  				const char *service_name,
+>  				const char *target_name)
+>  {
+>  	struct gss_api_mech *mech = gss_msg->auth->mech;
+>  	char *p = gss_msg->databuf;
+> -	int len = 0;
+> -
+> -	gss_msg->msg.len = sprintf(gss_msg->databuf, "mech=%s uid=%d ",
+> -				   mech->gm_name,
+> -				   from_kuid(&init_user_ns, gss_msg->uid));
+> -	p += gss_msg->msg.len;
+> +	size_t buflen = sizeof(gss_msg->databuf);
+> +	int len;
+> +
+> +	len = scnprintf(p, buflen, "mech=%s uid=%d ", mech->gm_name,
+> +			from_kuid(&init_user_ns, gss_msg->uid));
+> +	buflen -= len;
+> +	p += len;
+> +	gss_msg->msg.len = len;
+>  	if (target_name) {
+> -		len = sprintf(p, "target=%s ", target_name);
+> +		len = scnprintf(p, buflen, "target=%s ", target_name);
+> +		buflen -= len;
+>  		p += len;
+>  		gss_msg->msg.len += len;
+>  	}
+>  	if (service_name != NULL) {
+> -		len = sprintf(p, "service=%s ", service_name);
+> +		len = scnprintf(p, buflen, "service=%s ", service_name);
+> +		buflen -= len;
+>  		p += len;
+>  		gss_msg->msg.len += len;
+>  	}
+>  	if (mech->gm_upcall_enctypes) {
+> -		len = sprintf(p, "enctypes=%s ", mech->gm_upcall_enctypes);
+> +		len = scnprintf(p, buflen, "enctypes=%s ",
+> +				mech->gm_upcall_enctypes);
+> +		buflen -= len;
+>  		p += len;
+>  		gss_msg->msg.len += len;
+>  	}
+> -	len = sprintf(p, "\n");
+> +	len = scnprintf(p, buflen, "\n");
+> +	if (len == 0)
+> +		goto out_overflow;
+>  	gss_msg->msg.len += len;
+>  
+>  	gss_msg->msg.data = gss_msg->databuf;
+> -	BUG_ON(gss_msg->msg.len > UPCALL_BUF_LEN);
+> +	return 0;
+> +out_overflow:
+> +	WARN_ON_ONCE(1);
+> +	return -ENOMEM;
+>  }
+>  
+>  static struct gss_upcall_msg *
+> @@ -463,15 +475,15 @@ gss_alloc_msg(struct gss_auth *gss_auth,
+>  {
+>  	struct gss_upcall_msg *gss_msg;
+>  	int vers;
+> +	int err = -ENOMEM;
+>  
+>  	gss_msg = kzalloc(sizeof(*gss_msg), GFP_NOFS);
+>  	if (gss_msg == NULL)
+> -		return ERR_PTR(-ENOMEM);
+> +		goto err;
+>  	vers = get_pipe_version(gss_auth->net);
+> -	if (vers < 0) {
+> -		kfree(gss_msg);
+> -		return ERR_PTR(vers);
+> -	}
+> +	err = vers;
+> +	if (err < 0)
+> +		goto err_free_msg;
+>  	gss_msg->pipe = gss_auth->gss_pipe[vers]->pipe;
+>  	INIT_LIST_HEAD(&gss_msg->list);
+>  	rpc_init_wait_queue(&gss_msg->rpc_waitqueue, "RPCSEC_GSS upcall waitq");
+> @@ -484,9 +496,15 @@ gss_alloc_msg(struct gss_auth *gss_auth,
+>  		gss_encode_v0_msg(gss_msg);
+>  		break;
+>  	default:
+> -		gss_encode_v1_msg(gss_msg, service_name, gss_auth->target_name);
+> +		err = gss_encode_v1_msg(gss_msg, service_name, gss_auth->target_name);
+> +		if (err)
+> +			goto err_free_msg;
+>  	};
+>  	return gss_msg;
+> +err_free_msg:
+> +	kfree(gss_msg);
+> +err:
+> +	return ERR_PTR(err);
+>  }
+>  
+>  static struct gss_upcall_msg *
+> -- 
+> 1.8.3.1
+> 
