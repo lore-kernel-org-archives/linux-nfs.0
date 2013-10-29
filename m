@@ -1,68 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:56861 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:47394 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932585Ab3JONeV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 15 Oct 2013 09:34:21 -0400
-Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r9FDYKRR009290
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Tue, 15 Oct 2013 09:34:21 -0400
-Date: Tue, 15 Oct 2013 09:34:19 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: steved@redhat.com
-Cc: ssorce@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v3 0/2] gssd: allow gssd to work with KEYRING:
- credcaches
-Message-ID: <20131015093419.789e4d2a@tlielax.poochiereds.net>
-In-Reply-To: <1381350116-10464-1-git-send-email-jlayton@redhat.com>
-References: <1381350116-10464-1-git-send-email-jlayton@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1753264Ab3J2Py2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 29 Oct 2013 11:54:28 -0400
+Date: Tue, 29 Oct 2013 11:54:27 -0400
+To: Benny Halevy <bhalevy@primarydata.com>
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 4/7] nfsd4: hash deleg stateid only on successful
+ nfs4_set_delegation
+Message-ID: <20131029155427.GU31322@fieldses.org>
+References: <526F81DE.6060704@primarydata.com>
+ <1383039561-27308-1-git-send-email-bhalevy@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1383039561-27308-1-git-send-email-bhalevy@primarydata.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed,  9 Oct 2013 16:21:54 -0400
-Jeff Layton <jlayton@redhat.com> wrote:
+On Tue, Oct 29, 2013 at 11:39:21AM +0200, Benny Halevy wrote:
+> We don't want the stateid to be found in the hash table before the delegation
+> is granted.
 
-> Changes since original set:
-> v3:
-> - have parent check to see if child was signalled and log a warning if so
-> - drop supplimentary groups and change gid before acquiring creds. Keep
->   suid and sgid as well to hamper ptrace.
-> 
-> v2:
-> - fix bisectability. The original set added includes in the wrong
->   place in patch #1 and then fixed it in patch #2. The final result
->   of this set is the same but should bisect cleanly.
-> 
-> This patchset fixes up gssd to work with KEYRING: style credcaches. At
-> the same time, it also fixes gssd not to need to trawl through likely
-> credcache locations by allowing GSSAPI to find them in the intended
-> fashion.
-> 
-> The basic idea is to have gssd fork() after reading off the pipe, but
-> before handling the upcall and to do a more thorough job of changing
-> credentials.
-> 
-> Jeff Layton (2):
->   gssd: have process_krb5_upcall fork before handling upcall
->   gssd: do a more thorough change of identity after forking
-> 
->  utils/gssd/gssd_proc.c | 106 +++++++++++++++++++++++++++++++++++++++++--------
->  1 file changed, 89 insertions(+), 17 deletions(-)
-> 
+With all this code and any find_stateid calls under the state lock, this
+isn't currently an issue, right?
 
-I had asked Steve to hold off on applying these until now. While they
-work as expected for the most part, they break a the case where gssd is
-set up to use gssproxy to get credentials. Older versions of gssproxy
-relied on the caller having and euid of 0. Simo now has a set of fixes
-queued up for gssproxy to address the problem, so the way should now be
-clear to merge this set into nfs-utils.
+The changelog needs to make clear whether this is fixing a current bug
+or preparing to allow dropping of the state lock somewhere.  If the
+latter, it needs to outline what the expected change is that we're
+preparing for.
 
-One thing we will probably want to do for Fedora at least is to add a
-"Conflicts:" with older versions of gssproxy. That should ensure that
-people relying on gssd + gssproxy won't get any surprises when updating.
+--b.
 
-Steve, sound reasonable?
--- 
-Jeff Layton <jlayton@redhat.com>
+> 
+> Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
+> ---
+>  fs/nfsd/nfs4state.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 405649f..64fcdd6 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -375,7 +375,6 @@ static struct nfs4_ol_stateid * nfs4_alloc_stateid(struct nfs4_client *clp)
+>  	dp = delegstateid(nfs4_alloc_stid(clp, deleg_slab));
+>  	if (dp == NULL)
+>  		return dp;
+> -	dp->dl_stid.sc_type = NFS4_DELEG_STID;
+>  	/*
+>  	 * delegation seqid's are never incremented.  The 4.1 special
+>  	 * meaning of seqid 0 isn't meaningful, really, but let's avoid
+> @@ -3079,6 +3078,7 @@ static int nfs4_set_delegation(struct nfs4_delegation *dp, struct nfs4_file *fp)
+>  	atomic_inc(&fp->fi_delegees);
+>  	hash_delegation_locked(dp, fp);
+>  	spin_unlock(&recall_lock);
+> +	dp->dl_stid.sc_type = NFS4_DELEG_STID;
+>  	return 0;
+>  out_free:
+>  	put_nfs4_file(fp);
+> -- 
+> 1.8.3.1
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
