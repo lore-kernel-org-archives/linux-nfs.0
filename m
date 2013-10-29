@@ -1,56 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:1391 "EHLO mx11.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:33357 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753161Ab3J0Msv convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Oct 2013 08:48:51 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Eshel Marc <eshel@us.ibm.com>
-CC: Dr Fields James Bruce <bfields@fieldses.org>,
-        Christoph Anton Mitterer <calestyo@scientia.net>,
-        Mailing List Linux NFS <linux-nfs@vger.kernel.org>,
-        "linux-nfs-owner@vger.kernel.org" <linux-nfs-owner@vger.kernel.org>,
-        "Wheeler Ric" <ricwheeler@gmail.com>
-Subject: Re: XATTRs in NFS?
-Date: Sun, 27 Oct 2013 12:48:49 +0000
-Message-ID: <4260556F-D57B-407E-A686-808D3D802137@netapp.com>
-References: <1382560643.6924.12.camel@heisenberg.scientia.net>
- <EFB2CFAD-FACC-401D-BF0C-1C573B23A873@netapp.com>
- <1382624000.6907.8.camel@heisenberg.scientia.net>
- <E0F4C952-02DE-4778-A779-FB7AE111EC46@netapp.com>
- <1382630468.6907.58.camel@heisenberg.scientia.net>
- <625CAA34-BD6C-4283-86D0-3F8B460D54D0@netapp.com>
- <1382635350.6907.83.camel@heisenberg.scientia.net>
- <20131025140846.GB20497@fieldses.org> <526A8D9A.8090008@gmail.com>
- <7C1323EE-D63F-4F93-A44D-E7DDB0C61BF0@netapp.com>
- <OF01D9818B.36018C0F-ON88257C10.00608BC0-88257C10.006139C6@LocalDomain>
- <OF7F1977B0.3BF0FF3B-ON88257C10.00618038-88257C10.0061AF59@us.ibm.com>
-In-Reply-To: <OF7F1977B0.3BF0FF3B-ON88257C10.00618038-88257C10.0061AF59@us.ibm.com>
-Content-Type: text/plain; charset="us-ascii"
+	id S1754041Ab3J2P7H (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 29 Oct 2013 11:59:07 -0400
+Date: Tue, 29 Oct 2013 11:59:07 -0400
+To: Benny Halevy <bhalevy@primarydata.com>
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 6/7] nfsd4: move nfs4_put_file from unhash to put
+ delegation
+Message-ID: <20131029155906.GV31322@fieldses.org>
+References: <526F81DE.6060704@primarydata.com>
+ <1383039572-27405-1-git-send-email-bhalevy@primarydata.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1383039572-27405-1-git-send-email-bhalevy@primarydata.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Tue, Oct 29, 2013 at 11:39:32AM +0200, Benny Halevy wrote:
+> revoked delegations are unhashed but are kept around in nfsv4.1	and we better
+> hang on to dp_file in this case.
 
-On Oct 26, 2013, at 1:46 PM, Marc Eshel <eshel@us.ibm.com> wrote:
+I don't agree: we shouldn't need dl_file any more once the delegation is
+revoked.  It exists only to process delegreturns and set
+SEQ4_STATUS_RECALLABLE_STATE_REVOKED.
 
-> linux-nfs-owner@vger.kernel.org wrote on 10/26/2013 06:20:12 AM:
+If some other code (like delegreturn) *is* attempting to use dl_file on
+revoked delegation, then that sounds like a delegreturn bug.
+
+Among other things I think we'd like to be able to free up the reference
+and deallocate the file on disk if necessary once the delegation has
+been revoked.
+
+--b.
+
 > 
->> I'd rather look bad for not supporting a broken filesystem feature 
->> than have to deal with the abiove mentioned side-effects. Until the 
->> xattr interface is properly documented and standardised so that it 
->> can be exported safely, it should be treated as a unexportable, in 
->> the same way we treat procfs and sysfs.
->> 
+> Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
+> ---
+>  fs/nfsd/nfs4state.c | 4 ++--
+>  1 file changed, 2 insertions(+), 2 deletions(-)
 > 
-> This sounds more like an NFS server problem than a client side NFS. Can we 
-> add support to the client side NFS and let server that think that they can 
-> handle XATTR implement it?
-
-No. It's a real problem for clients too if the NFS server starts exporting ACLs and security labels via this interface. Everything from integer endianness problems when getfacl attempts to read raw binary acls from the server, to breakage of caching models when we allow setfacl and don't invalidate our file access caches...
-
-> We should probably start a discussion in the IETF to resolve the issues 
-> you see with XATTR at least for NFSv4.3. 
-
-Let's get the basic discussion of motivation right first.
-
-Trond
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 8840206..7f78ff5 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -411,6 +411,8 @@ static void nfs4_free_stid(struct kmem_cache *slab, struct nfs4_stid *s)
+>  {
+>  	remove_stid(&dp->dl_stid);
+>  	if (atomic_dec_and_test(&dp->dl_count)) {
+> +		if (dp->dl_file)
+> +			put_nfs4_file(dp->dl_file);
+>  		nfs4_free_stid(deleg_slab, &dp->dl_stid);
+>  		num_delegations--;
+>  	}
+> @@ -450,8 +452,6 @@ static void unhash_stid(struct nfs4_stid *s)
+>  	dp->dl_stid.sc_type = 0;
+>  	nfs4_put_deleg_lease(dp->dl_file);
+>  	spin_unlock(&recall_lock);
+> -	put_nfs4_file(dp->dl_file);
+> -	dp->dl_file = NULL;
+>  }
+>  
+>  
+> -- 
+> 1.8.3.1
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
