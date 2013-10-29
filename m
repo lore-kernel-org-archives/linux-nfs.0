@@ -1,69 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-we0-f171.google.com ([74.125.82.171]:39478 "EHLO
-	mail-we0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932406Ab3JPMSY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Oct 2013 08:18:24 -0400
-Received: by mail-we0-f171.google.com with SMTP id t60so610521wes.30
-        for <linux-nfs@vger.kernel.org>; Wed, 16 Oct 2013 05:18:23 -0700 (PDT)
-Message-ID: <525E840D.3040509@primarydata.com>
-Date: Wed, 16 Oct 2013 15:18:21 +0300
-From: Benny Halevy <bhalevy@primarydata.com>
-MIME-Version: 1.0
-To: Christoph Hellwig <hch@infradead.org>
-CC: bfields@redhat.com, NFS list <linux-nfs@vger.kernel.org>
-Subject: Re: nfs4_file usage
-References: <20131015211445.GA23636@infradead.org> <525E2C5C.4020104@primarydata.com> <20131016064649.GB28758@infradead.org> <525E5228.80200@primarydata.com> <20131016085117.GA21665@infradead.org>
-In-Reply-To: <20131016085117.GA21665@infradead.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from aserp1040.oracle.com ([141.146.126.69]:31316 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753904Ab3J2Qk3 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Oct 2013 12:40:29 -0400
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 6.6 \(1510\))
+Subject: Re: [PATCH] nfs.man: add description of multiple sec= options
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA9534ED3E0@SACEXCMBX04-PRD.hq.netapp.com>
+Date: Tue, 29 Oct 2013 12:40:17 -0400
+Cc: Weston Andros Adamson <dros@netapp.com>,
+        "steved@redhat.com" <steved@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Message-Id: <B43CC736-DA71-4A68-B35A-C6A6BA53D28A@oracle.com>
+References: <1383064066-1139-1-git-send-email-dros@netapp.com> <27470170-8177-4561-A11A-70CA2EF704A8@oracle.com> <4FA345DA4F4AE44899BD2B03EEEC2FA9534ED3E0@SACEXCMBX04-PRD.hq.netapp.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2013-10-16 11:51, Christoph Hellwig wrote:
-> On Wed, Oct 16, 2013 at 11:45:28AM +0300, Benny Halevy wrote:
->> I'm reluctant about the layout stateids as it uses common hashing data structs
->> locking infrastructure, and code with all other nfsd4 stateids.
-> 
-> The layout stateids are another thing that confuses me in the current
-> pnfs code.  Depending on what we find the generic state id might be
-> embedded into the layout stateid or they might be separate, but there
-> don't seem to be clear rules on how to deal with freeing things in the
-> later case.  I haven't brought this up because I didn't dig deep into it
-> enough, but it's for sure more than confusing.
-> 
 
-The nfs4.1 layout stateid is like any other stateid (open/lock/deleg)
-but it's life time is a bit different as it is not descending from the
-open stateid (though the protocol requires the client to use it
-to acquire the first layout for the file) and it is released via
-either LAYOUTRETURN or CLOSE (in the "return_on_close" case).
-The rules here are different enough from open/lock/deleg stateids that
-pnfsd needs special code to handle the management of the actual layout state
-under the layout stateid and manipulate it accordingly.
+On Oct 29, 2013, at 12:36 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
 
->> We can have a similar hash table for pnfsd_inode similar to nfs4_file
+>> -----Original Message-----
+>> From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-
+>> owner@vger.kernel.org] On Behalf Of Chuck Lever
+>> Sent: Tuesday, October 29, 2013 12:30 PM
+>> To: Weston Andros Adamson
+>> Cc: steved@redhat.com; linux-nfs@vger.kernel.org
+>> Subject: Re: [PATCH] nfs.man: add description of multiple sec= options
+>> 
+>> 
+>> On Oct 29, 2013, at 12:27 PM, Weston Andros Adamson <dros@netapp.com>
+>> wrote:
+>> 
+>>> The client now supports multiple sec= options as a colon delimited list.
+>>> 
+>>> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+>>> ---
+>>> utils/mount/nfs.man | 7 ++++---
+>>> 1 file changed, 4 insertions(+), 3 deletions(-)
+>>> 
+>>> diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man index
+>>> 2a42b93..17b8d88 100644
+>>> --- a/utils/mount/nfs.man
+>>> +++ b/utils/mount/nfs.man
+>>> @@ -380,9 +380,10 @@ If a value of zero is specified, the .BR mount
+>>> (8) command exits immediately after the first failure.
+>>> .TP 1.5i
+>>> -.BI sec= flavor
+>>> -The security flavor to use for accessing files on this mount point.
+>>> -If the server does not support this flavor, the mount operation fails.
+>>> +.BI sec= flavors
+>>> +A colon-delimited list of security flavors to use for accessing files
+>>> +on this mount point. If the server does not support any of these
+>>> +flavors, the mount operation fails.
+>> 
+>> Just a nit:  The new text kind of suggests that the colons are required.
+>> "sec=single flavor" is also still supported.  Typically man page language is
+>> careful to show both.
 > 
-> Yes, that was the plan.
-> 
->> Note that nfs4_file is also per inode, not per file as might be reflected from its name.
->> Maybe moving it nfs4state.c also warrants renaming it to something more accurate.
-> 
-> Yes, it should have an inode instead of file in the name, and it really
-> should be nfsd4_ prefix instead of using the client namespace. Given
-> that it's open/locking specific I'm not even sure that name should be
-> that generic.
+> How about "colon-separated list of one or more security flavours"? That's less ambiguous than "colon-delimited"...
 
-Yeah, the server naming conventions are confusing and in many cases
-conflicting with client names (file names, data types, functions, etc.)
+Maybe Dros could also update the EXAMPLES section with one of each.  Just a thought.
 
-> 
->> And while there, change file_hashval to hash on i_ino rather than the inode ptr.
-> 
-> That's a bad idea.  i_ino is 32-bit only while many NFS-exported
-> filesystems have 64-bit inode numbers.  Hashing on kernel pointers
-> genetrally is a fairly good idea, and we do it for the inode in other
-> places, too.
-> 
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-How many bits in the kernel address space are unique?
-I am under the impression that they'd differ mostly in their least significant bits anyway.
-Regardless, if it works well now then no reason to change it.
+
+
+
