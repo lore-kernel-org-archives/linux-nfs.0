@@ -1,70 +1,232 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:20457 "EHLO mx12.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:41807 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753618Ab3J2PCh convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Oct 2013 11:02:37 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: NeilBrown <neilb@suse.de>
-CC: NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH/RFC] - hard-to-hit race in xprtsock.
-Date: Tue, 29 Oct 2013 15:02:36 +0000
-Message-ID: <1383058955.7805.2.camel@leira.trondhjem.org>
-References: <20131029174204.7f6578d4@notabene.brown>
-In-Reply-To: <20131029174204.7f6578d4@notabene.brown>
-Content-Type: text/plain; charset="utf-7"
+	id S1751469Ab3J2VHD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 29 Oct 2013 17:07:03 -0400
+Date: Tue, 29 Oct 2013 17:06:59 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Anna Schumaker <bjschuma@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] NFSD: Combine decode operations for v4 and v4.1
+Message-ID: <20131029210659.GA3227@fieldses.org>
+References: <1383080676-1479-1-git-send-email-bjschuma@netapp.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1383080676-1479-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2013-10-29 at 17:42 +-1100, NeilBrown wrote:
-+AD4- We have a customer who hit a rare race in sunrpc (in a 3.0 based kernel,
-+AD4- but the relevant code doesn't seem to have changed much).
-+AD4- 
-+AD4- The thread that crashed was in 
-+AD4-   xs+AF8-tcp+AF8-setup+AF8-socket -+AD4- inet+AF8-stream+AF8-connect -+AD4- lock+AF8-sock+AF8-nested.
-+AD4- 
-+AD4- 'sock' in this last function is NULL.
-+AD4- 
-+AD4- The only way I can imagine this happening is if some other thread called
-+AD4- 
-+AD4-  xs+AF8-close -+AD4- xs+AF8-reset+AF8-transport -+AD4- sock+AF8-release -+AD4- inet+AF8-release
-+AD4- 
-+AD4- in a very small window a moment earlier.
-+AD4- 
-+AD4- As far as I can tell, xs+AF8-close is only called with XPRT+AF8-LOCKED set.
-+AD4- 
-+AD4- xs+AF8-tcp+AF8-setup+AF8-socket is mostly scheduled with XPRT+AF8-LOCKED set to which would
-+AD4- exclude them from running at the same time.
-+AD4- 
-+AD4- 
-+AD4- However xs+AF8-tcp+AF8-schedule+AF8-linger+AF8-timeout can schedule the thread which runs
-+AD4- xs+AF8-tcp+AF8-setup+AF8-socket without first claiming XPRT+AF8-LOCKED.
-+AD4- So I assume that is what is happening.
-+AD4- 
-+AD4- I imagine some race between the client closing the socket, and getting
-+AD4- TCP+AF8-FIN+AF8-WAIT1 from the server and somehow the two threads racing.
-+AD4- 
-+AD4- I wonder if it might make sense to always abort 'connect+AF8-worker' in
-+AD4- xs+AF8-close()?
-+AD4- I think the connect+AF8-worker really mustn't be running or queued at this point,
-+AD4- so cancelling it is either a no-op, or vitally important.
-+AD4- 
-+AD4- So: does the following patch seem reasonable?  If so I'll submit it properly
-+AD4- with a coherent description etc.
+On Tue, Oct 29, 2013 at 05:04:36PM -0400, Anna Schumaker wrote:
+> We were using a different array of function pointers to represent each
+> minor version.  This makes adding a new minor version tedious, since it
+> needs a step to copy, paste and modify a new version of the same
+> functions.
+> 
+> This patch combines the v4 and v4.1 arrays into a single instance and
+> will check minor version support inside each decoder function.
 
-Hi Neil,
+This also needs checks in all the new operations.  (E.g. exchange_id
+needs to return nfserr_notsupp on minorversion=0.)
 
-Will that do the right thing if the connect+AF8-worker and close are running
-on the same rpciod thread? I think it should, but I never manage to keep
-100+ACU- up to date with the ever changing semantics of
-cancel+AF8-delayed+AF8-work+AF8-sync() and friends...
+--b.
 
-Cheers,
-  Trond
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust+AEA-netapp.com
-www.netapp.com
+> 
+> Signed-off-by: Anna Schumaker <bjschuma@netapp.com>
+> ---
+>  fs/nfsd/nfs4xdr.c | 97 ++++++++++++++++++++++---------------------------------
+>  1 file changed, 39 insertions(+), 58 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index d9454fe..7ea5ad8 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -945,13 +945,16 @@ static __be32
+>  nfsd4_decode_open_confirm(struct nfsd4_compoundargs *argp, struct nfsd4_open_confirm *open_conf)
+>  {
+>  	DECODE_HEAD;
+> -		    
+> +
+> +	if (argp->minorversion >= 1)
+> +		return nfserr_notsupp;
+> +
+>  	status = nfsd4_decode_stateid(argp, &open_conf->oc_req_stateid);
+>  	if (status)
+>  		return status;
+>  	READ_BUF(4);
+>  	READ32(open_conf->oc_seqid);
+> -						        
+> +
+>  	DECODE_TAIL;
+>  }
+>  
+> @@ -991,6 +994,14 @@ nfsd4_decode_putfh(struct nfsd4_compoundargs *argp, struct nfsd4_putfh *putfh)
+>  }
+>  
+>  static __be32
+> +nfsd4_decode_putpubfh(struct nfsd4_compoundargs *argp, void *p)
+> +{
+> +	if (argp->minorversion == 0)
+> +		return nfs_ok;
+> +	return nfserr_notsupp;
+> +}
+> +
+> +static __be32
+>  nfsd4_decode_read(struct nfsd4_compoundargs *argp, struct nfsd4_read *read)
+>  {
+>  	DECODE_HEAD;
+> @@ -1061,6 +1072,9 @@ nfsd4_decode_renew(struct nfsd4_compoundargs *argp, clientid_t *clientid)
+>  {
+>  	DECODE_HEAD;
+>  
+> +	if (argp->minorversion >= 1)
+> +		return nfserr_notsupp;
+> +
+>  	READ_BUF(sizeof(clientid_t));
+>  	COPYMEM(clientid, sizeof(clientid_t));
+>  
+> @@ -1111,6 +1125,9 @@ nfsd4_decode_setclientid(struct nfsd4_compoundargs *argp, struct nfsd4_setclient
+>  {
+>  	DECODE_HEAD;
+>  
+> +	if (argp->minorversion >= 1)
+> +		return nfserr_notsupp;
+> +
+>  	READ_BUF(NFS4_VERIFIER_SIZE);
+>  	COPYMEM(setclientid->se_verf.data, NFS4_VERIFIER_SIZE);
+>  
+> @@ -1137,6 +1154,9 @@ nfsd4_decode_setclientid_confirm(struct nfsd4_compoundargs *argp, struct nfsd4_s
+>  {
+>  	DECODE_HEAD;
+>  
+> +	if (argp->minorversion >= 1)
+> +		return nfserr_notsupp;
+> +
+>  	READ_BUF(8 + NFS4_VERIFIER_SIZE);
+>  	COPYMEM(&scd_c->sc_clientid, 8);
+>  	COPYMEM(&scd_c->sc_confirm, NFS4_VERIFIER_SIZE);
+> @@ -1220,6 +1240,9 @@ nfsd4_decode_release_lockowner(struct nfsd4_compoundargs *argp, struct nfsd4_rel
+>  {
+>  	DECODE_HEAD;
+>  
+> +	if (argp->minorversion >= 1)
+> +		return nfserr_notsupp;
+> +
+>  	READ_BUF(12);
+>  	COPYMEM(&rlockowner->rl_clientid, sizeof(clientid_t));
+>  	READ32(rlockowner->rl_owner.len);
+> @@ -1519,7 +1542,7 @@ static nfsd4_dec nfsd4_dec_ops[] = {
+>  	[OP_OPEN_CONFIRM]	= (nfsd4_dec)nfsd4_decode_open_confirm,
+>  	[OP_OPEN_DOWNGRADE]	= (nfsd4_dec)nfsd4_decode_open_downgrade,
+>  	[OP_PUTFH]		= (nfsd4_dec)nfsd4_decode_putfh,
+> -	[OP_PUTPUBFH]		= (nfsd4_dec)nfsd4_decode_noop,
+> +	[OP_PUTPUBFH]		= (nfsd4_dec)nfsd4_decode_putpubfh,
+>  	[OP_PUTROOTFH]		= (nfsd4_dec)nfsd4_decode_noop,
+>  	[OP_READ]		= (nfsd4_dec)nfsd4_decode_read,
+>  	[OP_READDIR]		= (nfsd4_dec)nfsd4_decode_readdir,
+> @@ -1536,46 +1559,6 @@ static nfsd4_dec nfsd4_dec_ops[] = {
+>  	[OP_VERIFY]		= (nfsd4_dec)nfsd4_decode_verify,
+>  	[OP_WRITE]		= (nfsd4_dec)nfsd4_decode_write,
+>  	[OP_RELEASE_LOCKOWNER]	= (nfsd4_dec)nfsd4_decode_release_lockowner,
+> -};
+> -
+> -static nfsd4_dec nfsd41_dec_ops[] = {
+> -	[OP_ACCESS]		= (nfsd4_dec)nfsd4_decode_access,
+> -	[OP_CLOSE]		= (nfsd4_dec)nfsd4_decode_close,
+> -	[OP_COMMIT]		= (nfsd4_dec)nfsd4_decode_commit,
+> -	[OP_CREATE]		= (nfsd4_dec)nfsd4_decode_create,
+> -	[OP_DELEGPURGE]		= (nfsd4_dec)nfsd4_decode_notsupp,
+> -	[OP_DELEGRETURN]	= (nfsd4_dec)nfsd4_decode_delegreturn,
+> -	[OP_GETATTR]		= (nfsd4_dec)nfsd4_decode_getattr,
+> -	[OP_GETFH]		= (nfsd4_dec)nfsd4_decode_noop,
+> -	[OP_LINK]		= (nfsd4_dec)nfsd4_decode_link,
+> -	[OP_LOCK]		= (nfsd4_dec)nfsd4_decode_lock,
+> -	[OP_LOCKT]		= (nfsd4_dec)nfsd4_decode_lockt,
+> -	[OP_LOCKU]		= (nfsd4_dec)nfsd4_decode_locku,
+> -	[OP_LOOKUP]		= (nfsd4_dec)nfsd4_decode_lookup,
+> -	[OP_LOOKUPP]		= (nfsd4_dec)nfsd4_decode_noop,
+> -	[OP_NVERIFY]		= (nfsd4_dec)nfsd4_decode_verify,
+> -	[OP_OPEN]		= (nfsd4_dec)nfsd4_decode_open,
+> -	[OP_OPENATTR]		= (nfsd4_dec)nfsd4_decode_notsupp,
+> -	[OP_OPEN_CONFIRM]	= (nfsd4_dec)nfsd4_decode_notsupp,
+> -	[OP_OPEN_DOWNGRADE]	= (nfsd4_dec)nfsd4_decode_open_downgrade,
+> -	[OP_PUTFH]		= (nfsd4_dec)nfsd4_decode_putfh,
+> -	[OP_PUTPUBFH]		= (nfsd4_dec)nfsd4_decode_notsupp,
+> -	[OP_PUTROOTFH]		= (nfsd4_dec)nfsd4_decode_noop,
+> -	[OP_READ]		= (nfsd4_dec)nfsd4_decode_read,
+> -	[OP_READDIR]		= (nfsd4_dec)nfsd4_decode_readdir,
+> -	[OP_READLINK]		= (nfsd4_dec)nfsd4_decode_noop,
+> -	[OP_REMOVE]		= (nfsd4_dec)nfsd4_decode_remove,
+> -	[OP_RENAME]		= (nfsd4_dec)nfsd4_decode_rename,
+> -	[OP_RENEW]		= (nfsd4_dec)nfsd4_decode_notsupp,
+> -	[OP_RESTOREFH]		= (nfsd4_dec)nfsd4_decode_noop,
+> -	[OP_SAVEFH]		= (nfsd4_dec)nfsd4_decode_noop,
+> -	[OP_SECINFO]		= (nfsd4_dec)nfsd4_decode_secinfo,
+> -	[OP_SETATTR]		= (nfsd4_dec)nfsd4_decode_setattr,
+> -	[OP_SETCLIENTID]	= (nfsd4_dec)nfsd4_decode_notsupp,
+> -	[OP_SETCLIENTID_CONFIRM]= (nfsd4_dec)nfsd4_decode_notsupp,
+> -	[OP_VERIFY]		= (nfsd4_dec)nfsd4_decode_verify,
+> -	[OP_WRITE]		= (nfsd4_dec)nfsd4_decode_write,
+> -	[OP_RELEASE_LOCKOWNER]	= (nfsd4_dec)nfsd4_decode_notsupp,
+>  
+>  	/* new operations for NFSv4.1 */
+>  	[OP_BACKCHANNEL_CTL]	= (nfsd4_dec)nfsd4_decode_backchannel_ctl,
+> @@ -1599,23 +1582,22 @@ static nfsd4_dec nfsd41_dec_ops[] = {
+>  	[OP_RECLAIM_COMPLETE]	= (nfsd4_dec)nfsd4_decode_reclaim_complete,
+>  };
+>  
+> -struct nfsd4_minorversion_ops {
+> -	nfsd4_dec *decoders;
+> -	int nops;
+> -};
+> -
+> -static struct nfsd4_minorversion_ops nfsd4_minorversion[] = {
+> -	[0] = { nfsd4_dec_ops, ARRAY_SIZE(nfsd4_dec_ops) },
+> -	[1] = { nfsd41_dec_ops, ARRAY_SIZE(nfsd41_dec_ops) },
+> -	[2] = { nfsd41_dec_ops, ARRAY_SIZE(nfsd41_dec_ops) },
+> -};
+> +static __be32 nfsd4_verify_opnum(struct nfsd4_compoundargs *argp, struct nfsd4_op *op)
+> +{
+> +	if (op->opnum < FIRST_NFS4_OP || op->opnum > LAST_NFS4_OP)
+> +		return nfserr_op_illegal;
+> +	else if (argp->minorversion == 0 && op->opnum > OP_RELEASE_LOCKOWNER)
+> +		return nfserr_op_illegal;
+> +	else if (argp->minorversion == 1 && op->opnum > OP_RECLAIM_COMPLETE)
+> +		return nfserr_op_illegal;
+> +	return nfs_ok;
+> +}
+>  
+>  static __be32
+>  nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
+>  {
+>  	DECODE_HEAD;
+>  	struct nfsd4_op *op;
+> -	struct nfsd4_minorversion_ops *ops;
+>  	bool cachethis = false;
+>  	int i;
+>  
+> @@ -1640,10 +1622,9 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
+>  		}
+>  	}
+>  
+> -	if (argp->minorversion >= ARRAY_SIZE(nfsd4_minorversion))
+> +	if (argp->minorversion > NFSD_SUPPORTED_MINOR_VERSION)
+>  		argp->opcnt = 0;
+>  
+> -	ops = &nfsd4_minorversion[argp->minorversion];
+>  	for (i = 0; i < argp->opcnt; i++) {
+>  		op = &argp->ops[i];
+>  		op->replay = NULL;
+> @@ -1651,8 +1632,8 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
+>  		READ_BUF(4);
+>  		READ32(op->opnum);
+>  
+> -		if (op->opnum >= FIRST_NFS4_OP && op->opnum <= LAST_NFS4_OP)
+> -			op->status = ops->decoders[op->opnum](argp, &op->u);
+> +		if (nfsd4_verify_opnum(argp, op) == nfs_ok)
+> +			op->status = nfsd4_dec_ops[op->opnum](argp, &op->u);
+>  		else {
+>  			op->opnum = OP_ILLEGAL;
+>  			op->status = nfserr_op_illegal;
+> -- 
+> 1.8.4.1
+> 
