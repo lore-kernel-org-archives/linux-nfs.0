@@ -1,99 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from szxga02-in.huawei.com ([119.145.14.65]:4563 "EHLO
-	szxga02-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750769Ab3JOGk1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Oct 2013 02:40:27 -0400
-From: Wangminlan <wangminlan@huawei.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: RE: Different sequence of "exportfs" produce different effects on
- nfs client mounts
-Date: Tue, 15 Oct 2013 06:39:59 +0000
-Message-ID: <3962238FD7EA0F41B1810E7ABEAFBC314CEF9E97@szxema505-mbs.china.huawei.com>
-References: <3962238FD7EA0F41B1810E7ABEAFBC314CEF9ACF@szxema505-mbs.china.huawei.com>
- <20131014174540.GA27747@fieldses.org>
-In-Reply-To: <20131014174540.GA27747@fieldses.org>
-Content-Type: text/plain; charset="utf-8"
+Received: from mail.linuxfoundation.org ([140.211.169.12]:35298 "EHLO
+	mail.linuxfoundation.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755121Ab3J2PMa (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Oct 2013 11:12:30 -0400
+Date: Tue, 29 Oct 2013 08:12:29 -0700
+From: Greg KH <gregkh@linuxfoundation.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        Bruce Fields <bfields@fieldses.org>,
+        "stable@vger.kernel.org" <stable@vger.kernel.org>
+Subject: Re: [PATCH 1/2] SUNRPC: gss_alloc_msg - choose _either_ a v0 message
+ or a v1 message
+Message-ID: <20131029151229.GA31890@kroah.com>
+References: <1383001027-62282-1-git-send-email-Trond.Myklebust@netapp.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA9534E866F@SACEXCMBX04-PRD.hq.netapp.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA9534E866F@SACEXCMBX04-PRD.hq.netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-T24gTW9uLCBPY3QgMTQsIDIwMTMgYXQgMTY6NDYgKzAwMDAsIEJydWNlIEZpZWxkcyB3cm90ZToN
-Cj4gT24gTW9uLCBPY3QgMTQsIDIwMTMgYXQgMDI6MTY6NThBTSArMDAwMCwgV2FuZ21pbmxhbiB3
-cm90ZToNCj4gPiDjgIDjgIBIaSwNCj4gPiDjgIDjgIAgICAgICAgICBJ4oCZdmUgZ290IGEgcHJv
-YmxlbSBvbiB0aGUgbmZzIGV4cG9ydGZzIGNvbW1hbmQuIEnigJltIG5vdA0KPiBzdXJlIGlmIHRo
-aXMgaXMgdGhlIHJpZ2h0IHBsYWNlIHRvIGFzayB0aGlzLCBpZiBub3QsIGNhbiB5b3UgcGxlYXNl
-IHRlbGwgbWUgd2hlcmU/DQo+ID4NCj4gPiDjgIDjgIAgICAgICAgICBIZXJl4oCZcyB3aGF0IEkg
-bmVlZDoNCj4gPiDjgIDjgIAxLiBJIGhhdmUgYSBmb2xkZXIgbmFtZWQgL21udC9mczEgdG8gYmUg
-ZXhwb3J0ZWQuDQo+ID4g44CA44CAMi4gQWxsIHRoZSBob3N0IGluIHN1Ym5ldHdvcmsgMTkyLjE2
-OC4wLjAvMTYgc2hvdWxkIGJlIGFibGUgYWNjZXNzIHRoaXMNCj4gZm9sZGVyLCBidXQgdGhlaXIg
-cm9vdCBzaG91bGQgYmUgc3F1YXNoZWQuDQo+ID4g44CA44CAMy4gU29tZSBzcGVjaWZpZWQgaG9z
-dCBpbiB0aGUgc2FtZSBzdWJuZXR3b3JrIGNhbiBnYWluIHRoZSByb290DQo+IHBlcm1pc3Npb24g
-b24gdGhlIGZvbGRlciwgZm9yIGV4YW1wbGU6IDE5Mi4xNjguMC4yMSwgMTkyLjE2OC4wLjIyLg0K
-PiA+DQo+ID4g44CA44CASeKAmXZlIGdvdCBhIFNMRVMxMVNQMSBib3ggYXMgdGhlIG5mcyBzZXJ2
-ZXIsIHRoZSBuZnMgY2xpZW50cyBhcmUgU0xFUzExU1AxLA0KPiB0b28sIGFuZCB0aGUgcHJvdG9j
-b2wgdXNlZCBiZXR3ZWVuIGNsaWVudHMgYW5kIHNlcnZlciBhcmUgTkZTdjMuDQo+ID4g44CA44CA
-SGVyZSBhcmUgdGhlIGNvbW1hbmRzIEkgdXNlZCB0byBkbyB0aGUgZXhwb3J0Og0KPiA+IOOAgOOA
-gCNleHBvcnRmcyDigJNvIHJ3LHJvb3Rfc3F1YXNoIDE5Mi4xNjguMC4wLzE2Oi9tbnQvZnMxDQo+
-ID4g44CA44CAI2V4cG9ydGZzIOKAk28gcncsbm9fcm9vdF9zcXVhc2ggMTkyLjE2OC4wLjIxOi9t
-bnQvZnMxDQo+ID4g44CA44CAI2V4cG9ydGZzIOKAk28gcncsbm9fcm9vdF9zcXVhc2ggMTkyLjE2
-OC4wLjIyOi9tbnQvZnMxDQo+ID4g44CA44CAQWZ0ZXIgdGhpcywgZXZlcnl0aGluZyB3b3JrcyBh
-cyBleHBlY3RlZC4NCkFmdGVyIHRoaXMsIHRoZSBjb250ZW50cyBvZiAvcHJvYy9uZXQvcnBjL2F1
-dGgudW5peC5pcC9jb250ZW50IGFuZCAvcHJvYy9uZXQvcnBjL25mc2QuZXhwb3J0L2NvbnRlbnQg
-YXJlOg0KCU5WMjAwXzAxOi9wcm9jL25ldC9ycGMgIyBjYXQgYXV0aC51bml4LmlwL2NvbnRlbnQg
-DQoJI2NsYXNzIElQIGRvbWFpbg0KCW5mc2QgMTkyLjE2OC4wLjIxIDE5Mi4xNjguMC4wLzE2LDE5
-Mi4xNjguMC4yMQ0KCW5mc2QgMC4wLjAuMCAtdGVzdC1jbGllbnQtDQoJIyBuZnNkIDEwMC40My4x
-ODkuMSAtbm8tZG9tYWluLQ0KDQoJTlYyMDBfMDE6L3Byb2MvbmV0L3JwYyAjIGNhdCBuZnNkLmV4
-cG9ydC9jb250ZW50IA0KCSNwYXRoIGRvbWFpbihmbGFncykNCgkvbW50L2ZzMQktdGVzdC1jbGll
-bnQtKHJ3LG5vX3Jvb3Rfc3F1YXNoLHN5bmMsbm9fd2RlbGF5LGZzaWQ9MCxhbm9udWlkPTQyOTQ5
-NjcyOTUsYW5vbmdpZD00Mjk0OTY3Mjk1KQ0KCS9tbnQvZnMxCTE5Mi4xNjguMC4wLzE2LDE5Mi4x
-NjguMC4yMShydyxub19yb290X3NxdWFzaCxzeW5jLHdkZWxheSxub19zdWJ0cmVlX2NoZWNrLHV1
-aWQ9MTMyNjZmMGQ6MWZiZDQwZDU6YjBiNWM0ZmU6Y2ZlMTA0ZWIpDQoJIyAvbW50L2ZzMQkxOTIu
-MTY4LjAuMC8xNiwxOTIuMTY4LjAuMjEocncsbm9fcm9vdF9zcXVhc2gsc3luYyx3ZGVsYXksbm9f
-c3VidHJlZV9jaGVjayx1dWlkPTEzMjY2ZjBkOjFmYmQ0MGQ1OmIwYjVjNGZlOmNmZTEwNGViKQ0K
-QmVzaWRlcywgdGhlIGNvbnRlbnQgb2YgL3Zhci9saWIvbmZzL2V0YWIgaXM6DQoJTlYyMDBfMDE6
-L3Byb2MvbmV0L3JwYyAjIGNhdCAvdmFyL2xpYi9uZnMvZXRhYiANCgkvbW50L2ZzMQkxOTIuMTY4
-LjAuMjIocncsc3luYyx3ZGVsYXksaGlkZSxub2Nyb3NzbW50LHNlY3VyZSxub19yb290X3NxdWFz
-aCxub19hbGxfc3F1YXNoLG5vX3N1YnRyZWVfY2hlY2ssc2VjdXJlX2xvY2tzLGFjbCxhbm9udWlk
-PTY1NTM0LGFub25naWQ9NjU1MzQpDQoJL21udC9mczEJMTkyLjE2OC4wLjIxKHJ3LHN5bmMsd2Rl
-bGF5LGhpZGUsbm9jcm9zc21udCxzZWN1cmUsbm9fcm9vdF9zcXVhc2gsbm9fYWxsX3NxdWFzaCxu
-b19zdWJ0cmVlX2NoZWNrLHNlY3VyZV9sb2NrcyxhY2wsYW5vbnVpZD02NTUzNCxhbm9uZ2lkPTY1
-NTM0KQ0KCS9tbnQvZnMxCTE5Mi4xNjguMC4wLzE2KHJ3LHN5bmMsd2RlbGF5LGhpZGUsbm9jcm9z
-c21udCxzZWN1cmUscm9vdF9zcXVhc2gsbm9fYWxsX3NxdWFzaCxub19zdWJ0cmVlX2NoZWNrLHNl
-Y3VyZV9sb2NrcyxhY2wsYW5vbnVpZD02NTUzNCxhbm9uZ2lkPTY1NTM0KQ0KPiA+DQo+ID4g44CA
-44CAQnV0LCBhZnRlciB0aGUgZm9sbG93aW5nIG9wZXJhdGlvbnM6DQo+ID4g44CA44CAI2V4cG9y
-dGZzIOKAk3UgMTkyLjE2OC4wLjAvMTY6L21udC9mczEgICAgICAgICAgICAgIC8qIERlbGV0ZSB0
-aGlzDQo+IGV4cG9ydCAqLw0KPiA+IOOAgOOAgCMgZXhwb3J0ZnMg4oCTbyBydyxyb290X3NxdWFz
-aCAxOTIuMTY4LjAuMC8xNjovbW50L2ZzMSAgICAgICAgICAvKg0KPiBBbmQgYWRkIGl0IGFnYWlu
-ICovDQo+ID4g44CA44CASG9zdHMgb24gMTkyLjE2OC4wLjIxIGFuZCAxOTIuMTY4LjAuMjIgZG9l
-c27igJl0IGdldCByb290IHBlcm1pc3Npb24NCj4gYW55IG1vcmUuIHdoZW4gSSB0cmllZCB0byB3
-cml0ZSBhIGZpbGUsIGl0IGNvbXBsYWlucyBhYm91dCDigJxQZXJtaXNzaW9uIGRlbmllZOKAnS4N
-Cj4gPg0KPiA+IOOAgOOAgFNvLCBkb2VzIHRoZSBvcmRlciBvZiBleHBvcnRmcyBjb21tYW5kIGhh
-cyBzb21ldGhpbmcgdG8gZG8gdGhlIGZpbmFsDQo+IHJlc3VsdD8gT3IgYW0gSSBkb2luZyBzb21l
-dGhpbmcgd3Jvbmc/DQpBZnRlciB0aGlzLCB0aGUgY29udGVudHMgb2YgL3Byb2MvbmV0L3JwYy9h
-dXRoLnVuaXguaXAvY29udGVudCBhbmQgL3Byb2MvbmV0L3JwYy9uZnNkLmV4cG9ydC9jb250ZW50
-IGFyZToNCglOVjIwMF8wMTovcHJvYy9uZXQvcnBjICMgY2F0IGF1dGgudW5peC5pcC9jb250ZW50
-IA0KCSNjbGFzcyBJUCBkb21haW4NCgluZnNkIDE5Mi4xNjguMC4yMSAxOTIuMTY4LjAuMC8xNiwx
-OTIuMTY4LjAuMjENCgluZnNkIDAuMC4wLjAgLXRlc3QtY2xpZW50LQ0KCSMgbmZzZCAxMDAuNDMu
-MTg5LjEgLW5vLWRvbWFpbi0NCg0KCU5WMjAwXzAxOi9wcm9jL25ldC9ycGMgIyBjYXQgbmZzZA0K
-CW5mc2QgICAgICAgICBuZnNkLmV4cG9ydC8gbmZzZC5maC8gICAgIA0KCU5WMjAwXzAxOi9wcm9j
-L25ldC9ycGMgIyBjYXQgbmZzZA0KCW5mc2QgICAgICAgICBuZnNkLmV4cG9ydC8gbmZzZC5maC8g
-ICAgIA0KCU5WMjAwXzAxOi9wcm9jL25ldC9ycGMgIyBjYXQgbmZzZC5leHBvcnQvY29udGVudCAN
-CgkjcGF0aCBkb21haW4oZmxhZ3MpDQoJL21udC9mczEJLXRlc3QtY2xpZW50LShydyxub19yb290
-X3NxdWFzaCxzeW5jLG5vX3dkZWxheSxmc2lkPTAsYW5vbnVpZD00Mjk0OTY3Mjk1LGFub25naWQ9
-NDI5NDk2NzI5NSkNCgkvbW50L2ZzMQkxOTIuMTY4LjAuMC8xNiwxOTIuMTY4LjAuMjEocncscm9v
-dF9zcXVhc2gsc3luYyx3ZGVsYXksbm9fc3VidHJlZV9jaGVjayx1dWlkPTEzMjY2ZjBkOjFmYmQ0
-MGQ1OmIwYjVjNGZlOmNmZTEwNGViKQ0KQW5kIHRoZSBjb250ZW50IG9mIC92YXIvbGliL25mcy9l
-dGFiIGlzOg0KCU5WMjAwXzAxOi9wcm9jL25ldC9ycGMgIyBjYXQgL3Zhci9saWIvbmZzL2V0YWIg
-DQoJL21udC9mczEJMTkyLjE2OC4wLjAvMTYocncsc3luYyx3ZGVsYXksaGlkZSxub2Nyb3NzbW50
-LHNlY3VyZSxyb290X3NxdWFzaCxub19hbGxfc3F1YXNoLG5vX3N1YnRyZWVfY2hlY2ssc2VjdXJl
-X2xvY2tzLGFjbCxhbm9udWlkPTY1NTM0LGFub25naWQ9NjU1MzQpDQoJL21udC9mczEJMTkyLjE2
-OC4wLjIyKHJ3LHN5bmMsd2RlbGF5LGhpZGUsbm9jcm9zc21udCxzZWN1cmUsbm9fcm9vdF9zcXVh
-c2gsbm9fYWxsX3NxdWFzaCxub19zdWJ0cmVlX2NoZWNrLHNlY3VyZV9sb2NrcyxhY2wsYW5vbnVp
-ZD02NTUzNCxhbm9uZ2lkPTY1NTM0KQ0KCS9tbnQvZnMxCTE5Mi4xNjguMC4yMShydyxzeW5jLHdk
-ZWxheSxoaWRlLG5vY3Jvc3NtbnQsc2VjdXJlLG5vX3Jvb3Rfc3F1YXNoLG5vX2FsbF9zcXVhc2gs
-bm9fc3VidHJlZV9jaGVjayxzZWN1cmVfbG9ja3MsYWNsLGFub251aWQ9NjU1MzQsYW5vbmdpZD02
-NTUzNCkNCj4gDQo+IFRoYXQgc291bmRzIGxpa2UgYSBidWcuICBUaGUgY29udGVudHMgb2YNCj4g
-L3Byb2MvbmV0L3JwYy9hdXRoLnVuaXguaXAvY29udGVudCBhbmQgL3Byb2MvbmV0L3JwYy9uZnNk
-LmV4cG9ydC9jb250ZW50DQo+IGFmdGVyIGdldHRpbmcgdGhlIGFib3ZlICJwZXJtaXNzaW9uIGRl
-bmllZCIgbWlnaHQgYmUgaW50ZXJlc3RpbmcuDQo=
+On Mon, Oct 28, 2013 at 10:59:45PM +0000, Myklebust, Trond wrote:
+> > -----Original Message-----
+> > From: Myklebust, Trond
+> > Sent: Monday, October 28, 2013 6:57 PM
+> > To: linux-nfs@vger.kernel.org; Bruce Fields
+> > Cc: stable@vger.kernel.org
+> > Subject: [PATCH 1/2] SUNRPC: gss_alloc_msg - choose _either_ a v0 message
+> > or a v1 message
+> > 
+> > Add the missing 'break' to ensure that we don't corrupt a legacy 'v0' type
+> > message by appending the 'v1'.
+> > 
+> > Cc: Bruce Fields <bfields@fieldses.org>
+> > Cc: stable@vger.kernel.org
+> > Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> > ---
+> 
+> I did not intend to send this to stable@vger.kernel .org before it has hit upstream...
+
+Don't worry, as you were just cc: stable@ with your normal patch
+submission process, I can tell that this isn't to be applied now, it's
+part of the development process.  So don't feel bad at all, lots of
+other subsystems do it, and it doesn't bother me at all, no need to
+filter it away.
+
+greg k-h
