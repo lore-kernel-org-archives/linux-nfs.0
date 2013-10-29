@@ -1,156 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-bl2lp0203.outbound.protection.outlook.com ([207.46.163.203]:49292
-	"EHLO na01-bl2-obe.outbound.protection.outlook.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1753624Ab3J1VGP convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Oct 2013 17:06:15 -0400
-From: Spencer Shepler <sshepler@microsoft.com>
-To: Marc Eshel <eshel@us.ibm.com>,
-        "spencer.shepler@gmail.com" <spencer.shepler@gmail.com>
-CC: Mailing List Linux NFS <linux-nfs@vger.kernel.org>,
-        "Christoph Anton Mitterer" <calestyo@scientia.net>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Steve Dickson <SteveD@redhat.com>, "nfsv4@ietf.org" <nfsv4@ietf.org>,
-        Dr Fields James Bruce <bfields@fieldses.org>,
-        Ric Wheeler <ric.wheeler@usenix.org>,
-        "linux-nfs-owner@vger.kernel.org" <linux-nfs-owner@vger.kernel.org>
-Subject: RE: [nfsv4] XATTRs in NFS?
-Date: Mon, 28 Oct 2013 20:49:53 +0000
-Message-ID: <039D3CB813A4D544863BB7D4F46A18573CA6F5E9@TK5EX14MBXC296.redmond.corp.microsoft.com>
-References: <1382807547.29041.12.camel@heisenberg.scientia.net>
-	<20131027191512.GA31322@fieldses.org>
-	<1382911068.6932.20.camel@heisenberg.scientia.net>
-	<8DB0D7A2-BA2A-4001-A01C-D498C777B243@netapp.com>
-	<1382920068.6932.46.camel@heisenberg.scientia.net>
-	<2E672741-FE4F-4287-8D00-B7634A71709E@netapp.com>
-	<526E8562.3040809@redhat.com>
-	<1382976943.8774.10.camel@heisenberg.scientia.net>
-	<FD29488A-348B-48BA-9B1D-4ACF997BC794@netapp.com>
-	<526EA65A.7010209@redhat.com> <20131028180838.GG31322@fieldses.org>
-	<526EAD86.6090507@redhat.com>
- <OFA4C7B613.86F16AC7-ON88257C12.006FE486-88257C12.0071EE79@us.ibm.com>
-In-Reply-To: <OFA4C7B613.86F16AC7-ON88257C12.006FE486-88257C12.0071EE79@us.ibm.com>
-Content-Type: text/plain; charset="us-ascii"
+Received: from mx11.netapp.com ([216.240.18.76]:20137 "EHLO mx11.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752823Ab3J2NAv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 29 Oct 2013 09:00:51 -0400
+Message-ID: <526FB180.1060003@netapp.com>
+Date: Tue, 29 Oct 2013 09:00:48 -0400
+From: Anna Schumaker <bjschuma@netapp.com>
 MIME-Version: 1.0
+To: Christoph Hellwig <hch@infradead.org>
+CC: <bfields@fieldses.org>, <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 4/4] NFSD: Implement SEEK
+References: <1382972247-1108-1-git-send-email-bjschuma@netapp.com> <1382972247-1108-5-git-send-email-bjschuma@netapp.com> <20131029073558.GA10889@infradead.org>
+In-Reply-To: <20131029073558.GA10889@infradead.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Tue 29 Oct 2013 03:35:58 AM EDT, Christoph Hellwig wrote:
+> On Mon, Oct 28, 2013 at 10:57:26AM -0400, Anna Schumaker wrote:
+>> This patch adds in the SEEK operation used by clients doing an llseek on
+>> a file to find either hole or data sections in a file.  I'm faking the
+>> "allocated" status right now, since I haven't quite figured out how to
+>> tell if a range is allocated on disk yet.
+>>
+>> This patch is missing correctly determining the "allocated" status of
+>> the HOLE / DATA range.  I expect I'll need to learn all about how fiemap
+>> works before properly setting these values.
+>
+> What is the definition of allocated in this context?  Specificly how
+> does it different from meaning of allocated as used by SEEK_DATA?
 
-Hi, Marc.
+ From what I can tell, I think the allocated flag will just tell the 
+clients if all the blocks exist on disk or not.  Is there a way to have 
+a hole with allocated blocks?  Or maybe it's supposed to represent 
+partially allocated blocks?  I checked the draft, and it doesn't 
+actually say what they expect allocated to represent...
 
-At this point the agenda is full .. based on maximum time.  But I am open to shifting things around a little if the other presenters are willing to adjust their time allotment. 
+>
+> Going out to fiemap is something we should absolutely avoid.
+>
 
-I suggest that  you and I work this together off the cc'd aliases and you can send a summary when we work out the details.
 
-Spencer
-
-> -----Original Message-----
-> From: nfsv4-bounces@ietf.org [mailto:nfsv4-bounces@ietf.org] On Behalf
-> Of Marc Eshel
-> Sent: Monday, October 28, 2013 1:44 PM
-> To: spencer.shepler@gmail.com
-> Cc: Mailing List Linux NFS; Christoph Anton Mitterer; Myklebust, Trond; Steve
-> Dickson; nfsv4@ietf.org; Dr Fields James Bruce; Ric Wheeler; linux-nfs-
-> owner@vger.kernel.org
-> Subject: Re: [nfsv4] XATTRs in NFS?
-> 
-> Hi Spencer,
-> Is it still possible to get on the agenda fir IETF 88, I just got approval to travel.
-> We can use about 15 minutes, or what ever is available to discussion the
-> future of named attributes in NFS. The two main questions that we need
-> answer are:
-> 1. Do we need them? what applications use them and how.
-> 2. Can we have a more simple model that handles just user attributes.
-> 
-> Input is welcome to help me make the case at the meeting.
-> 
-> Thanks, Marc.
-> 
-> 
-> 
-> 
-> From:   Ric Wheeler <rwheeler@redhat.com>
-> To:     Dr Fields James Bruce <bfields@fieldses.org>,
-> Cc:     "Myklebust, Trond" <Trond.Myklebust@netapp.com>, Christoph
-> Anton
-> Mitterer <calestyo@scientia.net>, Mailing List Linux NFS <linux-
-> nfs@vger.kernel.org>, Steve Dickson <SteveD@redhat.com>
-> Date:   10/28/2013 11:32 AM
-> Subject:        Re: XATTRs in NFS?
-> Sent by:        linux-nfs-owner@vger.kernel.org
-> 
-> 
-> 
-> On 10/28/2013 02:08 PM, Dr Fields James Bruce wrote:
-> > On Mon, Oct 28, 2013 at 02:00:58PM -0400, Ric Wheeler wrote:
-> >> On 10/28/2013 01:49 PM, Myklebust, Trond wrote:
-> >>> On Oct 28, 2013, at 12:15 PM, Christoph Anton Mitterer
-> <calestyo@scientia.net> wrote:
-> >>>
-> >>>> On Mon, 2013-10-28 at 11:40 -0400, Ric Wheeler wrote:
-> >>>>> Then you end up with large directories and an extra name per inode
-> that needs to
-> >>>>> be stored and extra lookups for each file when you do a whole file
-> system crawl.
-> >>>>>
-> >>>>> Certainly not as easy as adding and xattrs with that information :)
-> >>>> And I think there's another reason why it wouldn't work...
-> >>>>
-> >>>> Imagine I change my system to encode what should be XATTRs in
-> hardlink
-> >>>> pseudo files...
-> >>>>
-> >>>> If I have such pair locally e.g. on my ext4:
-> >>>> /foo/bar/actual/file
-> >>>> /meta/<SHA512 identifier>.2342348324
-> >>>>
-> >>>> And now move/copy the file via the network to the archive, I'd have
-> to
-> >>>> copy both files (which is really annoying), and I'd guess the inode
-> >>>> coupling would get los (and at least the name wouldn't fit anymore).
-> >>>>
-> >>>> So the whole thing is IMHO not even a workaround.
-> >>> OK. So you're going to do XATTRs for us?
-> >>>
-> >>> Trond
-> >> Now that pNFS is perfect and labeled NFS has made it upstream, I
-> >> think that Steve D must be looking for something to keep him busy :)
-> > I agree with Trond that we first really need good evidence about exactly
-> > who wants this and why.
-> >
-> > --b.
-> 
-> For the user space xattrs, many applications store various types of
-> metadata.
-> Gluster for example heavily uses xattrs, other programs do things like
-> data
-> scrubbing (look for a long unchanged file, compute a has and store it as
-> an
-> xattr) or simply use it to annotate the file with the name of the program
-> that
-> created it. Think of it as file decorations or annotations.
-> 
-> Today, if we store files in NFS that have xattrs, we do in fact cause data
-> loss.
-> 
-> I can understand an answer of "this would be hard to do for NFS and need
-> to go
-> through IETF" but think that xattrs are well enough established in Linux
-> and
-> supported in the tool chain that it is way too late to question whether or
-> not
-> supporting them is a worth our time.
-> 
-> Ric
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> 
-> 
-> _______________________________________________
-> nfsv4 mailing list
-> nfsv4@ietf.org
-> https://www.ietf.org/mailman/listinfo/nfsv4
