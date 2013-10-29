@@ -1,63 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wg0-f44.google.com ([74.125.82.44]:59938 "EHLO
-	mail-wg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752206Ab3JOG6E (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Oct 2013 02:58:04 -0400
-Received: by mail-wg0-f44.google.com with SMTP id n12so6963209wgh.11
-        for <linux-nfs@vger.kernel.org>; Mon, 14 Oct 2013 23:58:03 -0700 (PDT)
-From: Benny Halevy <bhalevy@primarydata.com>
-To: bfields@redhat.com
-Cc: linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@primarydata.com>
-Subject: [PATCH 2/2] nfsd: remove_stid can be incorporated into nfs4_put_delegation
-Date: Tue, 15 Oct 2013 09:58:00 +0300
-Message-Id: <1381820280-14120-1-git-send-email-bhalevy@primarydata.com>
-In-Reply-To: <525CE711.1040107@primarydata.com>
-References: <525CE711.1040107@primarydata.com>
+Received: from fieldses.org ([174.143.236.118]:40834 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751723Ab3J2PEQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 29 Oct 2013 11:04:16 -0400
+Date: Tue, 29 Oct 2013 11:04:14 -0400
+To: Benny Halevy <bhalevy@primarydata.com>
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/7] nfsd4: need to destroy revoked delegations in
+ destroy_client
+Message-ID: <20131029150414.GS31322@fieldses.org>
+References: <526F81DE.6060704@primarydata.com>
+ <1383039552-27209-1-git-send-email-bhalevy@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1383039552-27209-1-git-send-email-bhalevy@primarydata.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-All calls to nfs4_put_delegation are preceded with remove_stid.
+Whoops, yes, looks like a good fix.
 
-Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
----
- fs/nfsd/nfs4state.c | 4 +---
- 1 file changed, 1 insertion(+), 3 deletions(-)
+I'm not convinced of the need for the recall_lock here for reasons given
+before.  Could you just drop the recall_lock here and resend?
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index b8f3c7e..93160b6 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -410,6 +410,7 @@ static void nfs4_free_stid(struct kmem_cache *slab, struct nfs4_stid *s)
- void
- nfs4_put_delegation(struct nfs4_delegation *dp)
- {
-+	remove_stid(&dp->dl_stid);
- 	if (atomic_dec_and_test(&dp->dl_count)) {
- 		nfs4_free_stid(deleg_slab, &dp->dl_stid);
- 		num_delegations--;
-@@ -450,14 +451,12 @@ static void unhash_stid(struct nfs4_stid *s)
- static void destroy_revoked_delegation(struct nfs4_delegation *dp)
- {
- 	list_del_init(&dp->dl_recall_lru);
--	remove_stid(&dp->dl_stid);
- 	nfs4_put_delegation(dp);
- }
- 
- static void destroy_delegation(struct nfs4_delegation *dp)
- {
- 	unhash_delegation(dp);
--	remove_stid(&dp->dl_stid);
- 	nfs4_put_delegation(dp);
- }
- 
-@@ -3157,7 +3156,6 @@ static void nfsd4_open_deleg_none_ext(struct nfsd4_open *open, int status)
- 	open->op_delegate_type = NFS4_OPEN_DELEGATE_READ;
- 	return;
- out_free:
--	remove_stid(&dp->dl_stid);
- 	nfs4_put_delegation(dp);
- out_no_deleg:
- 	open->op_delegate_type = NFS4_OPEN_DELEGATE_NONE;
--- 
-1.8.3.1
+--b.
 
+On Tue, Oct 29, 2013 at 11:39:12AM +0200, Benny Halevy wrote:
+> [use list_splice_init]
+> Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
+> ---
+>  fs/nfsd/nfs4state.c | 7 +++++++
+>  1 file changed, 7 insertions(+)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index a403502..a66b0ad 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -1129,6 +1129,13 @@ static struct nfs4_client *alloc_client(struct xdr_netobj name)
+>  		dp = list_entry(reaplist.next, struct nfs4_delegation, dl_recall_lru);
+>  		destroy_delegation(dp);
+>  	}
+> +	spin_lock(&recall_lock);
+> +	list_splice_init(&clp->cl_revoked, &reaplist);
+> +	spin_unlock(&recall_lock);
+> +	while (!list_empty(&reaplist)) {
+> +		dp = list_entry(reaplist.next, struct nfs4_delegation, dl_recall_lru);
+> +		destroy_revoked_delegation(dp);
+> +	}
+>  	while (!list_empty(&clp->cl_openowners)) {
+>  		oo = list_entry(clp->cl_openowners.next, struct nfs4_openowner, oo_perclient);
+>  		release_openowner(oo);
+> -- 
+> 1.8.3.1
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
