@@ -1,59 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from szxga03-in.huawei.com ([119.145.14.66]:1285 "EHLO
-	szxga03-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753711Ab3JXMcF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Oct 2013 08:32:05 -0400
-Message-ID: <526912C1.6070502@huawei.com>
-Date: Thu, 24 Oct 2013 20:29:53 +0800
-From: Ding Tianhong <dingtianhong@huawei.com>
+Received: from mx12.netapp.com ([216.240.18.77]:58040 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753880Ab3J2Qyh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 29 Oct 2013 12:54:37 -0400
+From: Weston Andros Adamson <dros@netapp.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: Chuck Lever <chuck.lever@oracle.com>, Steve Dickson <steved@redhat.com>,
+        linux-nfs list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfs.man: add description of multiple sec= options
+Date: Tue, 29 Oct 2013 16:54:35 +0000
+Message-ID: <A6D4D98E-7671-453E-B805-5AC2BB5BD781@netapp.com>
+References: <1383064066-1139-1-git-send-email-dros@netapp.com>
+ <27470170-8177-4561-A11A-70CA2EF704A8@oracle.com>
+ <4FA345DA4F4AE44899BD2B03EEEC2FA9534ED3E0@SACEXCMBX04-PRD.hq.netapp.com>
+In-Reply-To: <4FA345DA4F4AE44899BD2B03EEEC2FA9534ED3E0@SACEXCMBX04-PRD.hq.netapp.com>
+Content-Type: text/plain; charset="utf-8"
 MIME-Version: 1.0
-To: wangweidong <wangweidong1@huawei.com>
-CC: <davem@davemloft.net>, <Trond.Myklebust@netapp.com>,
-        <bfields@fieldses.org>, <netdev@vger.kernel.org>,
-        <linux-nfs@vger.kernel.org>
-Subject: Re: [PACTH net-next] SUNRPC: remove an unnecessary if statement
-References: <52688768.9020703@huawei.com>
-In-Reply-To: <52688768.9020703@huawei.com>
-Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2013/10/24 10:35, wangweidong wrote:
-> If req allocated failed just goto out_free, no need to check the
-> 'i < num_prealloc'. There is just code simplification, no
-> functional changes.
-> 
-> Signed-off-by: Wang Weidong <wangweidong1@huawei.com>
-> ---
->  net/sunrpc/xprt.c | 4 +---
->  1 file changed, 1 insertion(+), 3 deletions(-)
-> 
-> diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-> index 095363e..a8e20de 100644
-> --- a/net/sunrpc/xprt.c
-> +++ b/net/sunrpc/xprt.c
-> @@ -1087,11 +1087,9 @@ struct rpc_xprt *xprt_alloc(struct net *net, size_t size,
->  	for (i = 0; i < num_prealloc; i++) {
->  		req = kzalloc(sizeof(struct rpc_rqst), GFP_KERNEL);
->  		if (!req)
-> -			break;
-> +			goto out_free;
->  		list_add(&req->rq_list, &xprt->free);
->  	}
-> -	if (i < num_prealloc)
-> -		goto out_free;
->  	if (max_alloc > num_prealloc)
->  		xprt->max_reqs = max_alloc;
->  	else
-> -- 1.7.12
-> 
-> 
-
-Acked-by: Ding Tianhong <dingtianhong@huawei.com>
-
-> 
-> 
-> .
-> 
-
-
+DQpPbiBPY3QgMjksIDIwMTMsIGF0IDEyOjM2IFBNLCBNeWtsZWJ1c3QsIFRyb25kIDxUcm9uZC5N
+eWtsZWJ1c3RAbmV0YXBwLmNvbT4gd3JvdGU6DQoNCj4+IC0tLS0tT3JpZ2luYWwgTWVzc2FnZS0t
+LS0tDQo+PiBGcm9tOiBsaW51eC1uZnMtb3duZXJAdmdlci5rZXJuZWwub3JnIFttYWlsdG86bGlu
+dXgtbmZzLQ0KPj4gb3duZXJAdmdlci5rZXJuZWwub3JnXSBPbiBCZWhhbGYgT2YgQ2h1Y2sgTGV2
+ZXINCj4+IFNlbnQ6IFR1ZXNkYXksIE9jdG9iZXIgMjksIDIwMTMgMTI6MzAgUE0NCj4+IFRvOiBX
+ZXN0b24gQW5kcm9zIEFkYW1zb24NCj4+IENjOiBzdGV2ZWRAcmVkaGF0LmNvbTsgbGludXgtbmZz
+QHZnZXIua2VybmVsLm9yZw0KPj4gU3ViamVjdDogUmU6IFtQQVRDSF0gbmZzLm1hbjogYWRkIGRl
+c2NyaXB0aW9uIG9mIG11bHRpcGxlIHNlYz0gb3B0aW9ucw0KPj4gDQo+PiANCj4+IE9uIE9jdCAy
+OSwgMjAxMywgYXQgMTI6MjcgUE0sIFdlc3RvbiBBbmRyb3MgQWRhbXNvbiA8ZHJvc0BuZXRhcHAu
+Y29tPg0KPj4gd3JvdGU6DQo+PiANCj4+PiBUaGUgY2xpZW50IG5vdyBzdXBwb3J0cyBtdWx0aXBs
+ZSBzZWM9IG9wdGlvbnMgYXMgYSBjb2xvbiBkZWxpbWl0ZWQgbGlzdC4NCj4+PiANCj4+PiBTaWdu
+ZWQtb2ZmLWJ5OiBXZXN0b24gQW5kcm9zIEFkYW1zb24gPGRyb3NAbmV0YXBwLmNvbT4NCj4+PiAt
+LS0NCj4+PiB1dGlscy9tb3VudC9uZnMubWFuIHwgNyArKysrLS0tDQo+Pj4gMSBmaWxlIGNoYW5n
+ZWQsIDQgaW5zZXJ0aW9ucygrKSwgMyBkZWxldGlvbnMoLSkNCj4+PiANCj4+PiBkaWZmIC0tZ2l0
+IGEvdXRpbHMvbW91bnQvbmZzLm1hbiBiL3V0aWxzL21vdW50L25mcy5tYW4gaW5kZXgNCj4+PiAy
+YTQyYjkzLi4xN2I4ZDg4IDEwMDY0NA0KPj4+IC0tLSBhL3V0aWxzL21vdW50L25mcy5tYW4NCj4+
+PiArKysgYi91dGlscy9tb3VudC9uZnMubWFuDQo+Pj4gQEAgLTM4MCw5ICszODAsMTAgQEAgSWYg
+YSB2YWx1ZSBvZiB6ZXJvIGlzIHNwZWNpZmllZCwgdGhlIC5CUiBtb3VudA0KPj4+ICg4KSBjb21t
+YW5kIGV4aXRzIGltbWVkaWF0ZWx5IGFmdGVyIHRoZSBmaXJzdCBmYWlsdXJlLg0KPj4+IC5UUCAx
+LjVpDQo+Pj4gLS5CSSBzZWM9IGZsYXZvcg0KPj4+IC1UaGUgc2VjdXJpdHkgZmxhdm9yIHRvIHVz
+ZSBmb3IgYWNjZXNzaW5nIGZpbGVzIG9uIHRoaXMgbW91bnQgcG9pbnQuDQo+Pj4gLUlmIHRoZSBz
+ZXJ2ZXIgZG9lcyBub3Qgc3VwcG9ydCB0aGlzIGZsYXZvciwgdGhlIG1vdW50IG9wZXJhdGlvbiBm
+YWlscy4NCj4+PiArLkJJIHNlYz0gZmxhdm9ycw0KPj4+ICtBIGNvbG9uLWRlbGltaXRlZCBsaXN0
+IG9mIHNlY3VyaXR5IGZsYXZvcnMgdG8gdXNlIGZvciBhY2Nlc3NpbmcgZmlsZXMNCj4+PiArb24g
+dGhpcyBtb3VudCBwb2ludC4gSWYgdGhlIHNlcnZlciBkb2VzIG5vdCBzdXBwb3J0IGFueSBvZiB0
+aGVzZQ0KPj4+ICtmbGF2b3JzLCB0aGUgbW91bnQgb3BlcmF0aW9uIGZhaWxzLg0KPj4gDQo+PiBK
+dXN0IGEgbml0OiAgVGhlIG5ldyB0ZXh0IGtpbmQgb2Ygc3VnZ2VzdHMgdGhhdCB0aGUgY29sb25z
+IGFyZSByZXF1aXJlZC4NCj4+ICJzZWM9c2luZ2xlIGZsYXZvciIgaXMgYWxzbyBzdGlsbCBzdXBw
+b3J0ZWQuICBUeXBpY2FsbHkgbWFuIHBhZ2UgbGFuZ3VhZ2UgaXMNCj4+IGNhcmVmdWwgdG8gc2hv
+dyBib3RoLg0KPiANCj4gSG93IGFib3V0ICJjb2xvbi1zZXBhcmF0ZWQgbGlzdCBvZiBvbmUgb3Ig
+bW9yZSBzZWN1cml0eSBmbGF2b3VycyI/IFRoYXQncyBsZXNzIGFtYmlndW91cyB0aGFuICJjb2xv
+bi1kZWxpbWl0ZWQi4oCmDQoNCk9LLCBidXQgZndpdyBJIGFwZWQgdGhhdCBmcm9tIHRoZSBleHBv
+cnRzIG1hbnBhZ2U6DQoNCiAgICAgICBzZWM9ICAgVGhlICBzZWM9IG9wdGlvbiwgZm9sbG93ZWQg
+YnkgYSBjb2xvbi1kZWxpbWl0ZWQgbGlzdCBvZiBzZWN1cml0eQ0KICAgICAgICAgICAgICBmbGF2
+b3JzLCByZXN0cmljdHMgdGhlIGV4cG9ydCB0byBjbGllbnRzICB1c2luZyAgdGhvc2UgIGZsYXZv
+cnMuDQogICAgICAgICAgICAgIEF2YWlsYWJsZSAgc2VjdXJpdHkgZmxhdm9ycyBpbmNsdWRlIHN5
+cyAodGhlIGRlZmF1bHQtLW5vIGNyeXB0b+KAkA0K4oCmDQoNClNvIGl0Og0KIDEpIGlzbuKAmXQg
+Y2xlYXIgdGhhdCBvbmUgZmxhdm9yIGlzIGFuIG9wdGlvbi4NCiAyKSBzYXlzIOKAnGNvbG9uLWRl
+bGltaXRlZCINCg0KU2hvdWxkIHdlIGNsZWFuIHRoaXMgdXAgdG9vPw0KDQotZHJvcw==
