@@ -1,75 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from tuna.sandelman.ca ([209.87.252.184]:58549 "EHLO
-	tuna.sandelman.ca" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752738Ab3JaOp6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 31 Oct 2013 10:45:58 -0400
-From: Michael Richardson <mcr@sandelman.ca>
-To: linux-nfs@vger.kernel.org
-cc: Shyam Kaushik <shyamnfs1@gmail.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: Need help with NFS Server SUNRPC performance issue
-In-Reply-To: <20131031141538.GA621@fieldses.org>
-References: <CA+uAZNPquD-JA1SDpFHtx9ZawQA5=o+fBigOTy+9NEiDL+hmyw@mail.gmail.com> <20131031141538.GA621@fieldses.org>
-MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="=-=-=";
-	micalg=pgp-sha1; protocol="application/pgp-signature"
-Date: Thu, 31 Oct 2013 10:45:46 -0400
-Message-ID: <29447.1383230746@obiwan.sandelman.ca>
+Received: from mail-wi0-f174.google.com ([209.85.212.174]:59986 "EHLO
+	mail-wi0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753786Ab3J2Jjc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Oct 2013 05:39:32 -0400
+Received: by mail-wi0-f174.google.com with SMTP id cb5so4875235wib.7
+        for <linux-nfs@vger.kernel.org>; Tue, 29 Oct 2013 02:39:30 -0700 (PDT)
+From: Benny Halevy <bhalevy@primarydata.com>
+To: bfields@redhat.com
+Cc: linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@primarydata.com>
+Subject: [PATCH 5/7] nfsd4: cleanup hash and unhash delegation
+Date: Tue, 29 Oct 2013 11:39:27 +0200
+Message-Id: <1383039567-27356-1-git-send-email-bhalevy@primarydata.com>
+In-Reply-To: <526F81DE.6060704@primarydata.com>
+References: <526F81DE.6060704@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-=-=
+make sure all atomic ops are under the recall_lock
 
+Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
 
-    >> I am chasing a NFS server performance issue on Ubuntu
-    >> 3.8.13-030813-generic kernel. We setup 32 NFSD threads on our NFS
-    >> server.
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 64fcdd6..8840206 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -436,6 +436,7 @@ static void unhash_stid(struct nfs4_stid *s)
+ {
+ 	list_add(&dp->dl_perfile, &fp->fi_delegations);
+ 	list_add(&dp->dl_perclnt, &dp->dl_stid.sc_client->cl_delegations);
++	dp->dl_stid.sc_type = NFS4_DELEG_STID;
+ }
+ 
+ /* Called under the state lock. */
+@@ -446,8 +447,9 @@ static void unhash_stid(struct nfs4_stid *s)
+ 	list_del_init(&dp->dl_perclnt);
+ 	list_del_init(&dp->dl_perfile);
+ 	list_del_init(&dp->dl_recall_lru);
+-	spin_unlock(&recall_lock);
++	dp->dl_stid.sc_type = 0;
+ 	nfs4_put_deleg_lease(dp->dl_file);
++	spin_unlock(&recall_lock);
+ 	put_nfs4_file(dp->dl_file);
+ 	dp->dl_file = NULL;
+ }
+@@ -3078,7 +3080,6 @@ static int nfs4_set_delegation(struct nfs4_delegation *dp, struct nfs4_file *fp)
+ 	atomic_inc(&fp->fi_delegees);
+ 	hash_delegation_locked(dp, fp);
+ 	spin_unlock(&recall_lock);
+-	dp->dl_stid.sc_type = NFS4_DELEG_STID;
+ 	return 0;
+ out_free:
+ 	put_nfs4_file(fp);
+-- 
+1.8.3.1
 
-I have been also trying to figure out NFS performance issues at my home
-office.  Server is ubuntu precise (3.2.0-55, old, true) kernel, and clients
-are mostly a mix of Debian versions (mostly virtualized XEN).
-GbE over a VLAN is setup just for storage, and mostly IPv6 connections.
-
-J. Bruce Fields <bfields@fieldses.org> wrote:
-    > Would you be willing to test an upstream kernel and/or some patches?
-    > Sounds like you're using only NFSv4?
-
-I'm also willing to; my preference would be to build a generic 3.10 or 3.11
-kernel with NFS as a module, and then update the NFS code, but I
-haven't gotten around to scheduling some time to reboot a bunch.
-
-What I observe is huge TCP send queues on the server and what appears to be
-head of queue blocking on the client.  This looks like a client issue to me,
-and for at least one client (my mpd/shoutcast server), I'm happy to reboot
-it regularly... I notice the NFS delays because the music stops :-)
-
-There are some potential instabilities in frequency of IPv6 Router
-Advertisements due to a bug in the CeroWRT, which initially I was blaming,
-but I'm no longer convinced, since it happens over IPv4 on the storage VLAN
-too.
-
-Shyam, please share with me your testing strategy.
-
---
-]               Never tell me the odds!                 | ipv6 mesh networks [
-]   Michael Richardson, Sandelman Software Works        | network architect  [
-]     mcr@sandelman.ca  http://www.sandelman.ca/        |   ruby on rails    [
-
-
-
-
-
-
---=-=-=
-Content-Type: application/pgp-signature
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.12 (GNU/Linux)
-
-iQCVAwUBUnJtF4qHRg3pndX9AQIHBwQA4+FPBZq0By6SiFfsZ9CnFKcvt0DJep08
-tbSlkSw8cRQxngvQAUBS42Am1DhyBWjegJE9/gBDkY9FVWWpa2hHvh5/IfdKfBTN
-l33hZsDU+7nZ6oXvXU1b9Titymk+tYRGqN38PIalBANJ+S6tN7Kd9OyD1eR/ey6D
-cM9tKFny1PY=
-=qnAi
------END PGP SIGNATURE-----
---=-=-=--
