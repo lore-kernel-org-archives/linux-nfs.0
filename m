@@ -1,80 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:49759 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751559Ab3JUXSI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 21 Oct 2013 19:18:08 -0400
-Date: Tue, 22 Oct 2013 10:17:54 +1100
-From: NeilBrown <neilb@suse.de>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Wangminlan <wangminlan@huawei.com>, NFS <linux-nfs@vger.kernel.org>
-Subject: [PATCH - nfs-utils] Stop Treat IP addresses a FQDN rather than
- SUBNETs.
-Message-ID: <20131022101754.462d3f8b@notabene.brown>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/tdYP2xc1BAMjlD3o36W+jf3"; protocol="application/pgp-signature"
+Received: from mail-wg0-f49.google.com ([74.125.82.49]:37187 "EHLO
+	mail-wg0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752935Ab3J3OHt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Oct 2013 10:07:49 -0400
+Received: by mail-wg0-f49.google.com with SMTP id x12so1388542wgg.16
+        for <linux-nfs@vger.kernel.org>; Wed, 30 Oct 2013 07:07:48 -0700 (PDT)
+Message-ID: <527112AA.3090104@primarydata.com>
+Date: Wed, 30 Oct 2013 16:07:38 +0200
+From: Benny Halevy <bhalevy@primarydata.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: bfields@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/7] nfsd4: need to destroy revoked delegations in destroy_client
+References: <526F81DE.6060704@primarydata.com> <1383039552-27209-1-git-send-email-bhalevy@primarydata.com> <20131029150414.GS31322@fieldses.org> <20131029160210.GW31322@fieldses.org>
+In-Reply-To: <20131029160210.GW31322@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/tdYP2xc1BAMjlD3o36W+jf3
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+On 2013-10-29 18:02, J. Bruce Fields wrote:
+> On Tue, Oct 29, 2013 at 11:04:14AM -0400, bfields wrote:
+>> Whoops, yes, looks like a good fix.
+>>
+>> I'm not convinced of the need for the recall_lock here for reasons given
+>> before.  Could you just drop the recall_lock here and resend?
+> 
+> Actually never mind I've done that on my local tree.  I'll wait to push
+> it out till you've had a chance to object.
 
+no objection. thanks.
 
-
-I think there was a reason for this many years ago,
-but I can not find any evidence that it ever really did
-anything useful and it certainly doesn't seem to now.
-
-And the documentation suggests that IP address take precedence over
-SUBNETs, and that can only happen if they are treated as MCL_FQDN.
-
-So remove this apparently pointless code.
-
-Reported-and-tested-by: Wangminlan <wangminlan@huawei.com>
-Signed-off-by: NeilBrown <neilb@suse.de>
-
-diff --git a/support/export/client.c b/support/export/client.c
-index ba2db8f..adbeed8 100644
---- a/support/export/client.c
-+++ b/support/export/client.c
-@@ -767,15 +767,5 @@ client_gettype(char *ident)
- 			sp++;
- 	}
-=20
--	/*
--	 * Treat unadorned IP addresses as MCL_SUBNETWORK.
--	 * Everything else is MCL_FQDN.
--	 */
--	ai =3D host_pton(ident);
--	if (ai !=3D NULL) {
--		freeaddrinfo(ai);
--		return MCL_SUBNETWORK;
--	}
--
- 	return MCL_FQDN;
- }
-
---Sig_/tdYP2xc1BAMjlD3o36W+jf3
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.19 (GNU/Linux)
-
-iQIVAwUBUmW2Ijnsnt1WYoG5AQKNhg/+LYwW5K0b9hOpsdPSYnHzIjaGHQZCk1Z0
-TZEfWLgQgfQO1biy+xfRP54+1PjVt/4NOFqp+tuHNC/gFj+R6PZfwZfTYXypDnZ/
-wWp01d61UfSdnYwrZHL6SlFbenuatHbdxYaaxlIPwheAWyqXKaMxLKyej4RyWx88
-Jbhje2JBC8GdNhWkgIMYb6j2d89KNFuj0CRSM4wopYgNE6+G6I2bDqXqO8GVG5sz
-w/1V3lSYku8Xj4VebDO2+EQbMmvtTkPb7cLYfbmm82izqZCPyZtDb9ENibvHRvyg
-MI4VkYS34L6cOJV5FTkgNpL5MUDZa7ICsKp7q6ng/a3n6n0c+6+gGv6ZMa9AXL55
-XZkAdE3e6aCOHocE/8EuqWpijKziHGnYpqds4zuKj/LXOMJRI+6HucXDq82J/s4e
-fFfZ9mhUA97ewXqbHxx3sqJrjgU3//yYg8KYtK84UZI1kFJiTmXYtEYG/xE5Az7m
-wrpNVCxLExr5uO2klmUBV6FJVqF+JXD2NHwruXOyFPjgPC0D+cRPmZuP0/NvSZ91
-KGf+MRubDhb/bo8WrMKmkxdi5og1uZf7CxEk3hF06WqYZr+LuUhfSNK4LmHIskPb
-OMjT65BGyMRvtgBSDDUKoLcI6dX/a+BoiU76cJlYGHc2oEAzdunNUBKpPYe4a8HN
-iA7soAeklrU=
-=5iEE
------END PGP SIGNATURE-----
-
---Sig_/tdYP2xc1BAMjlD3o36W+jf3--
+> 
+> --b.
+> 
+>>
+>> --b.
+>>
+>> On Tue, Oct 29, 2013 at 11:39:12AM +0200, Benny Halevy wrote:
+>>> [use list_splice_init]
+>>> Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
+>>> ---
+>>>  fs/nfsd/nfs4state.c | 7 +++++++
+>>>  1 file changed, 7 insertions(+)
+>>>
+>>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+>>> index a403502..a66b0ad 100644
+>>> --- a/fs/nfsd/nfs4state.c
+>>> +++ b/fs/nfsd/nfs4state.c
+>>> @@ -1129,6 +1129,13 @@ static struct nfs4_client *alloc_client(struct xdr_netobj name)
+>>>  		dp = list_entry(reaplist.next, struct nfs4_delegation, dl_recall_lru);
+>>>  		destroy_delegation(dp);
+>>>  	}
+>>> +	spin_lock(&recall_lock);
+>>> +	list_splice_init(&clp->cl_revoked, &reaplist);
+>>> +	spin_unlock(&recall_lock);
+>>> +	while (!list_empty(&reaplist)) {
+>>> +		dp = list_entry(reaplist.next, struct nfs4_delegation, dl_recall_lru);
+>>> +		destroy_revoked_delegation(dp);
+>>> +	}
+>>>  	while (!list_empty(&clp->cl_openowners)) {
+>>>  		oo = list_entry(clp->cl_openowners.next, struct nfs4_openowner, oo_perclient);
+>>>  		release_openowner(oo);
+>>> -- 
+>>> 1.8.3.1
+>>>
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
