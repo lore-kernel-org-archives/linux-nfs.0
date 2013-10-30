@@ -1,59 +1,228 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:20034 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754475Ab3JVRVh convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Oct 2013 13:21:37 -0400
-From: Weston Andros Adamson <dros@netapp.com>
-To: Ben Greear <greearb@candelatech.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Failure to mount nfsv4 on 3.12.0-rc5-wl+
-Date: Tue, 22 Oct 2013 17:21:36 +0000
-Message-ID: <826B52B7-CB6C-470C-A890-03E9B534B059@netapp.com>
-References: <5266B15B.4020804@candelatech.com>
- <8F3401DF-10CB-43BB-956B-76D166C4B3EA@netapp.com>
-In-Reply-To: <8F3401DF-10CB-43BB-956B-76D166C4B3EA@netapp.com>
-Content-Type: text/plain; charset="Windows-1252"
+Received: from mail-yh0-f42.google.com ([209.85.213.42]:61706 "EHLO
+	mail-yh0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752548Ab3J3OGh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Oct 2013 10:06:37 -0400
+Received: by mail-yh0-f42.google.com with SMTP id z6so588512yhz.1
+        for <linux-nfs@vger.kernel.org>; Wed, 30 Oct 2013 07:06:36 -0700 (PDT)
+Message-ID: <52711094.2010608@gmail.com>
+Date: Wed, 30 Oct 2013 09:58:44 -0400
+From: Anna Schumaker <schumaker.anna@gmail.com>
 MIME-Version: 1.0
+To: bfields@fieldses.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2] NFSD: Combine decode operations for v4 and v4.1
+References: <1383141269-9675-1-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1383141269-9675-1-git-send-email-bjschuma@netapp.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-… and I think it makes sense to me that this behavior was recently introduced and vers=3 fixes things, because nfsv4 has to do the upcall to GSSD even when sec=sys because it attempts to do krb5i on non superblock related operations (if possible will use, otherwise just uses sys) and this behavior was recently added. NFSv3 does not do this.
+Please ignore this, I forgot to `git add` my changes...
 
--dros
+On Wed 30 Oct 2013 09:54:29 AM EDT, Anna Schumaker wrote:
+> We were using a different array of function pointers to represent each
+> minor version.  This makes adding a new minor version tedious, since it
+> needs a step to copy, paste and modify a new version of the same
+> functions.
+>
+> This patch combines the v4 and v4.1 arrays into a single instance and
+> will check minor version support inside each decoder function.
+>
+> Signed-off-by: Anna Schumaker <bjschuma@netapp.com>
+> ---
+>  fs/nfsd/nfs4xdr.c | 97 ++++++++++++++++++++++---------------------------------
+>  1 file changed, 39 insertions(+), 58 deletions(-)
+>
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index d9454fe..7ea5ad8 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -945,13 +945,16 @@ static __be32
+>  nfsd4_decode_open_confirm(struct nfsd4_compoundargs *argp, struct nfsd4_open_confirm *open_conf)
+>  {
+>  	DECODE_HEAD;
+> -		
+> +
+> +	if (argp->minorversion >= 1)
+> +		return nfserr_notsupp;
+> +
+>  	status = nfsd4_decode_stateid(argp, &open_conf->oc_req_stateid);
+>  	if (status)
+>  		return status;
+>  	READ_BUF(4);
+>  	READ32(open_conf->oc_seqid);
+> -						
+> +
+>  	DECODE_TAIL;
+>  }
+>
+> @@ -991,6 +994,14 @@ nfsd4_decode_putfh(struct nfsd4_compoundargs *argp, struct nfsd4_putfh *putfh)
+>  }
+>
+>  static __be32
+> +nfsd4_decode_putpubfh(struct nfsd4_compoundargs *argp, void *p)
+> +{
+> +	if (argp->minorversion == 0)
+> +		return nfs_ok;
+> +	return nfserr_notsupp;
+> +}
+> +
+> +static __be32
+>  nfsd4_decode_read(struct nfsd4_compoundargs *argp, struct nfsd4_read *read)
+>  {
+>  	DECODE_HEAD;
+> @@ -1061,6 +1072,9 @@ nfsd4_decode_renew(struct nfsd4_compoundargs *argp, clientid_t *clientid)
+>  {
+>  	DECODE_HEAD;
+>
+> +	if (argp->minorversion >= 1)
+> +		return nfserr_notsupp;
+> +
+>  	READ_BUF(sizeof(clientid_t));
+>  	COPYMEM(clientid, sizeof(clientid_t));
+>
+> @@ -1111,6 +1125,9 @@ nfsd4_decode_setclientid(struct nfsd4_compoundargs *argp, struct nfsd4_setclient
+>  {
+>  	DECODE_HEAD;
+>
+> +	if (argp->minorversion >= 1)
+> +		return nfserr_notsupp;
+> +
+>  	READ_BUF(NFS4_VERIFIER_SIZE);
+>  	COPYMEM(setclientid->se_verf.data, NFS4_VERIFIER_SIZE);
+>
+> @@ -1137,6 +1154,9 @@ nfsd4_decode_setclientid_confirm(struct nfsd4_compoundargs *argp, struct nfsd4_s
+>  {
+>  	DECODE_HEAD;
+>
+> +	if (argp->minorversion >= 1)
+> +		return nfserr_notsupp;
+> +
+>  	READ_BUF(8 + NFS4_VERIFIER_SIZE);
+>  	COPYMEM(&scd_c->sc_clientid, 8);
+>  	COPYMEM(&scd_c->sc_confirm, NFS4_VERIFIER_SIZE);
+> @@ -1220,6 +1240,9 @@ nfsd4_decode_release_lockowner(struct nfsd4_compoundargs *argp, struct nfsd4_rel
+>  {
+>  	DECODE_HEAD;
+>
+> +	if (argp->minorversion >= 1)
+> +		return nfserr_notsupp;
+> +
+>  	READ_BUF(12);
+>  	COPYMEM(&rlockowner->rl_clientid, sizeof(clientid_t));
+>  	READ32(rlockowner->rl_owner.len);
+> @@ -1519,7 +1542,7 @@ static nfsd4_dec nfsd4_dec_ops[] = {
+>  	[OP_OPEN_CONFIRM]	= (nfsd4_dec)nfsd4_decode_open_confirm,
+>  	[OP_OPEN_DOWNGRADE]	= (nfsd4_dec)nfsd4_decode_open_downgrade,
+>  	[OP_PUTFH]		= (nfsd4_dec)nfsd4_decode_putfh,
+> -	[OP_PUTPUBFH]		= (nfsd4_dec)nfsd4_decode_noop,
+> +	[OP_PUTPUBFH]		= (nfsd4_dec)nfsd4_decode_putpubfh,
+>  	[OP_PUTROOTFH]		= (nfsd4_dec)nfsd4_decode_noop,
+>  	[OP_READ]		= (nfsd4_dec)nfsd4_decode_read,
+>  	[OP_READDIR]		= (nfsd4_dec)nfsd4_decode_readdir,
+> @@ -1536,46 +1559,6 @@ static nfsd4_dec nfsd4_dec_ops[] = {
+>  	[OP_VERIFY]		= (nfsd4_dec)nfsd4_decode_verify,
+>  	[OP_WRITE]		= (nfsd4_dec)nfsd4_decode_write,
+>  	[OP_RELEASE_LOCKOWNER]	= (nfsd4_dec)nfsd4_decode_release_lockowner,
+> -};
+> -
+> -static nfsd4_dec nfsd41_dec_ops[] = {
+> -	[OP_ACCESS]		= (nfsd4_dec)nfsd4_decode_access,
+> -	[OP_CLOSE]		= (nfsd4_dec)nfsd4_decode_close,
+> -	[OP_COMMIT]		= (nfsd4_dec)nfsd4_decode_commit,
+> -	[OP_CREATE]		= (nfsd4_dec)nfsd4_decode_create,
+> -	[OP_DELEGPURGE]		= (nfsd4_dec)nfsd4_decode_notsupp,
+> -	[OP_DELEGRETURN]	= (nfsd4_dec)nfsd4_decode_delegreturn,
+> -	[OP_GETATTR]		= (nfsd4_dec)nfsd4_decode_getattr,
+> -	[OP_GETFH]		= (nfsd4_dec)nfsd4_decode_noop,
+> -	[OP_LINK]		= (nfsd4_dec)nfsd4_decode_link,
+> -	[OP_LOCK]		= (nfsd4_dec)nfsd4_decode_lock,
+> -	[OP_LOCKT]		= (nfsd4_dec)nfsd4_decode_lockt,
+> -	[OP_LOCKU]		= (nfsd4_dec)nfsd4_decode_locku,
+> -	[OP_LOOKUP]		= (nfsd4_dec)nfsd4_decode_lookup,
+> -	[OP_LOOKUPP]		= (nfsd4_dec)nfsd4_decode_noop,
+> -	[OP_NVERIFY]		= (nfsd4_dec)nfsd4_decode_verify,
+> -	[OP_OPEN]		= (nfsd4_dec)nfsd4_decode_open,
+> -	[OP_OPENATTR]		= (nfsd4_dec)nfsd4_decode_notsupp,
+> -	[OP_OPEN_CONFIRM]	= (nfsd4_dec)nfsd4_decode_notsupp,
+> -	[OP_OPEN_DOWNGRADE]	= (nfsd4_dec)nfsd4_decode_open_downgrade,
+> -	[OP_PUTFH]		= (nfsd4_dec)nfsd4_decode_putfh,
+> -	[OP_PUTPUBFH]		= (nfsd4_dec)nfsd4_decode_notsupp,
+> -	[OP_PUTROOTFH]		= (nfsd4_dec)nfsd4_decode_noop,
+> -	[OP_READ]		= (nfsd4_dec)nfsd4_decode_read,
+> -	[OP_READDIR]		= (nfsd4_dec)nfsd4_decode_readdir,
+> -	[OP_READLINK]		= (nfsd4_dec)nfsd4_decode_noop,
+> -	[OP_REMOVE]		= (nfsd4_dec)nfsd4_decode_remove,
+> -	[OP_RENAME]		= (nfsd4_dec)nfsd4_decode_rename,
+> -	[OP_RENEW]		= (nfsd4_dec)nfsd4_decode_notsupp,
+> -	[OP_RESTOREFH]		= (nfsd4_dec)nfsd4_decode_noop,
+> -	[OP_SAVEFH]		= (nfsd4_dec)nfsd4_decode_noop,
+> -	[OP_SECINFO]		= (nfsd4_dec)nfsd4_decode_secinfo,
+> -	[OP_SETATTR]		= (nfsd4_dec)nfsd4_decode_setattr,
+> -	[OP_SETCLIENTID]	= (nfsd4_dec)nfsd4_decode_notsupp,
+> -	[OP_SETCLIENTID_CONFIRM]= (nfsd4_dec)nfsd4_decode_notsupp,
+> -	[OP_VERIFY]		= (nfsd4_dec)nfsd4_decode_verify,
+> -	[OP_WRITE]		= (nfsd4_dec)nfsd4_decode_write,
+> -	[OP_RELEASE_LOCKOWNER]	= (nfsd4_dec)nfsd4_decode_notsupp,
+>
+>  	/* new operations for NFSv4.1 */
+>  	[OP_BACKCHANNEL_CTL]	= (nfsd4_dec)nfsd4_decode_backchannel_ctl,
+> @@ -1599,23 +1582,22 @@ static nfsd4_dec nfsd41_dec_ops[] = {
+>  	[OP_RECLAIM_COMPLETE]	= (nfsd4_dec)nfsd4_decode_reclaim_complete,
+>  };
+>
+> -struct nfsd4_minorversion_ops {
+> -	nfsd4_dec *decoders;
+> -	int nops;
+> -};
+> -
+> -static struct nfsd4_minorversion_ops nfsd4_minorversion[] = {
+> -	[0] = { nfsd4_dec_ops, ARRAY_SIZE(nfsd4_dec_ops) },
+> -	[1] = { nfsd41_dec_ops, ARRAY_SIZE(nfsd41_dec_ops) },
+> -	[2] = { nfsd41_dec_ops, ARRAY_SIZE(nfsd41_dec_ops) },
+> -};
+> +static __be32 nfsd4_verify_opnum(struct nfsd4_compoundargs *argp, struct nfsd4_op *op)
+> +{
+> +	if (op->opnum < FIRST_NFS4_OP || op->opnum > LAST_NFS4_OP)
+> +		return nfserr_op_illegal;
+> +	else if (argp->minorversion == 0 && op->opnum > OP_RELEASE_LOCKOWNER)
+> +		return nfserr_op_illegal;
+> +	else if (argp->minorversion == 1 && op->opnum > OP_RECLAIM_COMPLETE)
+> +		return nfserr_op_illegal;
+> +	return nfs_ok;
+> +}
+>
+>  static __be32
+>  nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
+>  {
+>  	DECODE_HEAD;
+>  	struct nfsd4_op *op;
+> -	struct nfsd4_minorversion_ops *ops;
+>  	bool cachethis = false;
+>  	int i;
+>
+> @@ -1640,10 +1622,9 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
+>  		}
+>  	}
+>
+> -	if (argp->minorversion >= ARRAY_SIZE(nfsd4_minorversion))
+> +	if (argp->minorversion > NFSD_SUPPORTED_MINOR_VERSION)
+>  		argp->opcnt = 0;
+>
+> -	ops = &nfsd4_minorversion[argp->minorversion];
+>  	for (i = 0; i < argp->opcnt; i++) {
+>  		op = &argp->ops[i];
+>  		op->replay = NULL;
+> @@ -1651,8 +1632,8 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
+>  		READ_BUF(4);
+>  		READ32(op->opnum);
+>
+> -		if (op->opnum >= FIRST_NFS4_OP && op->opnum <= LAST_NFS4_OP)
+> -			op->status = ops->decoders[op->opnum](argp, &op->u);
+> +		if (nfsd4_verify_opnum(argp, op) == nfs_ok)
+> +			op->status = nfsd4_dec_ops[op->opnum](argp, &op->u);
+>  		else {
+>  			op->opnum = OP_ILLEGAL;
+>  			op->status = nfserr_op_illegal;
 
-On Oct 22, 2013, at 1:18 PM, Weston Andros Adamson <dros@netapp.com>
- wrote:
-
-> 
-> On Oct 22, 2013, at 1:09 PM, Ben Greear <greearb@candelatech.com> wrote:
-> 
->> This is on an un-hacked upstream kernel (ath tree).  Mounting an older
->> Fedora 13 system with nfsv3 works fine, but mounting a F17 box with
->> NFSv4 hangs.  Ctrl-c of the process yields this error:
->> 
->> NFS: nfs4_discover_server_trunking unhandled error -512. Exiting with error EIO
-> 
-> I have seen this error message and I'm currently debugging it - it's due to a hang in GSSD upcall.  This message is generated when the user ^Cs the mount. This is reproducible, but the hang only happens for me every once in a while. I can make it happen pretty reliably if I call mount/unmount a bunch of times (like the test_sec_options.sh script I posted last week).
-> 
-> This issue is next on my list...
-> 
-> -dros
-> 
->> 
->> 3.9 kernels on this same system mount the F17 box fine.
->> 
->> If I add 'vers=3' to /etc/fstab, then it mounts the F17 box fine.
->> 
->> Thanks,
->> Ben
->> 
->> -- 
->> Ben Greear <greearb@candelatech.com>
->> Candela Technologies Inc  http://www.candelatech.com
->> 
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
 
