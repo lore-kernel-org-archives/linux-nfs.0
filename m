@@ -1,222 +1,91 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:11598 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751044Ab3J2VEl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 29 Oct 2013 17:04:41 -0400
-From: Anna Schumaker <bjschuma@netapp.com>
-To: <bfields@fieldses.org>, <linux-nfs@vger.kernel.org>
-Subject: [PATCH] NFSD: Combine decode operations for v4 and v4.1
-Date: Tue, 29 Oct 2013 17:04:36 -0400
-Message-ID: <1383080676-1479-1-git-send-email-bjschuma@netapp.com>
+Received: from mail-we0-f181.google.com ([74.125.82.181]:40198 "EHLO
+	mail-we0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754581Ab3J3ORE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Oct 2013 10:17:04 -0400
+Received: by mail-we0-f181.google.com with SMTP id t60so1378341wes.12
+        for <linux-nfs@vger.kernel.org>; Wed, 30 Oct 2013 07:17:02 -0700 (PDT)
+Message-ID: <527114DB.1050803@primarydata.com>
+Date: Wed, 30 Oct 2013 16:16:59 +0200
+From: Benny Halevy <bhalevy@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: bfields@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 6/7] nfsd4: move nfs4_put_file from unhash to put delegation
+References: <526F81DE.6060704@primarydata.com> <1383039572-27405-1-git-send-email-bhalevy@primarydata.com> <20131029155906.GV31322@fieldses.org>
+In-Reply-To: <20131029155906.GV31322@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We were using a different array of function pointers to represent each
-minor version.  This makes adding a new minor version tedious, since it
-needs a step to copy, paste and modify a new version of the same
-functions.
+On 2013-10-29 17:59, J. Bruce Fields wrote:
+> On Tue, Oct 29, 2013 at 11:39:32AM +0200, Benny Halevy wrote:
+>> revoked delegations are unhashed but are kept around in nfsv4.1	and we better
+>> hang on to dp_file in this case.
+> 
+> I don't agree: we shouldn't need dl_file any more once the delegation is
+> revoked.  It exists only to process delegreturns and set
+> SEQ4_STATUS_RECALLABLE_STATE_REVOKED.
 
-This patch combines the v4 and v4.1 arrays into a single instance and
-will check minor version support inside each decoder function.
+OK, makes sense.
 
-Signed-off-by: Anna Schumaker <bjschuma@netapp.com>
----
- fs/nfsd/nfs4xdr.c | 97 ++++++++++++++++++++++---------------------------------
- 1 file changed, 39 insertions(+), 58 deletions(-)
+> 
+> If some other code (like delegreturn) *is* attempting to use dl_file on
+> revoked delegation, then that sounds like a delegreturn bug.
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index d9454fe..7ea5ad8 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -945,13 +945,16 @@ static __be32
- nfsd4_decode_open_confirm(struct nfsd4_compoundargs *argp, struct nfsd4_open_confirm *open_conf)
- {
- 	DECODE_HEAD;
--		    
-+
-+	if (argp->minorversion >= 1)
-+		return nfserr_notsupp;
-+
- 	status = nfsd4_decode_stateid(argp, &open_conf->oc_req_stateid);
- 	if (status)
- 		return status;
- 	READ_BUF(4);
- 	READ32(open_conf->oc_seqid);
--						        
-+
- 	DECODE_TAIL;
- }
- 
-@@ -991,6 +994,14 @@ nfsd4_decode_putfh(struct nfsd4_compoundargs *argp, struct nfsd4_putfh *putfh)
- }
- 
- static __be32
-+nfsd4_decode_putpubfh(struct nfsd4_compoundargs *argp, void *p)
-+{
-+	if (argp->minorversion == 0)
-+		return nfs_ok;
-+	return nfserr_notsupp;
-+}
-+
-+static __be32
- nfsd4_decode_read(struct nfsd4_compoundargs *argp, struct nfsd4_read *read)
- {
- 	DECODE_HEAD;
-@@ -1061,6 +1072,9 @@ nfsd4_decode_renew(struct nfsd4_compoundargs *argp, clientid_t *clientid)
- {
- 	DECODE_HEAD;
- 
-+	if (argp->minorversion >= 1)
-+		return nfserr_notsupp;
-+
- 	READ_BUF(sizeof(clientid_t));
- 	COPYMEM(clientid, sizeof(clientid_t));
- 
-@@ -1111,6 +1125,9 @@ nfsd4_decode_setclientid(struct nfsd4_compoundargs *argp, struct nfsd4_setclient
- {
- 	DECODE_HEAD;
- 
-+	if (argp->minorversion >= 1)
-+		return nfserr_notsupp;
-+
- 	READ_BUF(NFS4_VERIFIER_SIZE);
- 	COPYMEM(setclientid->se_verf.data, NFS4_VERIFIER_SIZE);
- 
-@@ -1137,6 +1154,9 @@ nfsd4_decode_setclientid_confirm(struct nfsd4_compoundargs *argp, struct nfsd4_s
- {
- 	DECODE_HEAD;
- 
-+	if (argp->minorversion >= 1)
-+		return nfserr_notsupp;
-+
- 	READ_BUF(8 + NFS4_VERIFIER_SIZE);
- 	COPYMEM(&scd_c->sc_clientid, 8);
- 	COPYMEM(&scd_c->sc_confirm, NFS4_VERIFIER_SIZE);
-@@ -1220,6 +1240,9 @@ nfsd4_decode_release_lockowner(struct nfsd4_compoundargs *argp, struct nfsd4_rel
- {
- 	DECODE_HEAD;
- 
-+	if (argp->minorversion >= 1)
-+		return nfserr_notsupp;
-+
- 	READ_BUF(12);
- 	COPYMEM(&rlockowner->rl_clientid, sizeof(clientid_t));
- 	READ32(rlockowner->rl_owner.len);
-@@ -1519,7 +1542,7 @@ static nfsd4_dec nfsd4_dec_ops[] = {
- 	[OP_OPEN_CONFIRM]	= (nfsd4_dec)nfsd4_decode_open_confirm,
- 	[OP_OPEN_DOWNGRADE]	= (nfsd4_dec)nfsd4_decode_open_downgrade,
- 	[OP_PUTFH]		= (nfsd4_dec)nfsd4_decode_putfh,
--	[OP_PUTPUBFH]		= (nfsd4_dec)nfsd4_decode_noop,
-+	[OP_PUTPUBFH]		= (nfsd4_dec)nfsd4_decode_putpubfh,
- 	[OP_PUTROOTFH]		= (nfsd4_dec)nfsd4_decode_noop,
- 	[OP_READ]		= (nfsd4_dec)nfsd4_decode_read,
- 	[OP_READDIR]		= (nfsd4_dec)nfsd4_decode_readdir,
-@@ -1536,46 +1559,6 @@ static nfsd4_dec nfsd4_dec_ops[] = {
- 	[OP_VERIFY]		= (nfsd4_dec)nfsd4_decode_verify,
- 	[OP_WRITE]		= (nfsd4_dec)nfsd4_decode_write,
- 	[OP_RELEASE_LOCKOWNER]	= (nfsd4_dec)nfsd4_decode_release_lockowner,
--};
--
--static nfsd4_dec nfsd41_dec_ops[] = {
--	[OP_ACCESS]		= (nfsd4_dec)nfsd4_decode_access,
--	[OP_CLOSE]		= (nfsd4_dec)nfsd4_decode_close,
--	[OP_COMMIT]		= (nfsd4_dec)nfsd4_decode_commit,
--	[OP_CREATE]		= (nfsd4_dec)nfsd4_decode_create,
--	[OP_DELEGPURGE]		= (nfsd4_dec)nfsd4_decode_notsupp,
--	[OP_DELEGRETURN]	= (nfsd4_dec)nfsd4_decode_delegreturn,
--	[OP_GETATTR]		= (nfsd4_dec)nfsd4_decode_getattr,
--	[OP_GETFH]		= (nfsd4_dec)nfsd4_decode_noop,
--	[OP_LINK]		= (nfsd4_dec)nfsd4_decode_link,
--	[OP_LOCK]		= (nfsd4_dec)nfsd4_decode_lock,
--	[OP_LOCKT]		= (nfsd4_dec)nfsd4_decode_lockt,
--	[OP_LOCKU]		= (nfsd4_dec)nfsd4_decode_locku,
--	[OP_LOOKUP]		= (nfsd4_dec)nfsd4_decode_lookup,
--	[OP_LOOKUPP]		= (nfsd4_dec)nfsd4_decode_noop,
--	[OP_NVERIFY]		= (nfsd4_dec)nfsd4_decode_verify,
--	[OP_OPEN]		= (nfsd4_dec)nfsd4_decode_open,
--	[OP_OPENATTR]		= (nfsd4_dec)nfsd4_decode_notsupp,
--	[OP_OPEN_CONFIRM]	= (nfsd4_dec)nfsd4_decode_notsupp,
--	[OP_OPEN_DOWNGRADE]	= (nfsd4_dec)nfsd4_decode_open_downgrade,
--	[OP_PUTFH]		= (nfsd4_dec)nfsd4_decode_putfh,
--	[OP_PUTPUBFH]		= (nfsd4_dec)nfsd4_decode_notsupp,
--	[OP_PUTROOTFH]		= (nfsd4_dec)nfsd4_decode_noop,
--	[OP_READ]		= (nfsd4_dec)nfsd4_decode_read,
--	[OP_READDIR]		= (nfsd4_dec)nfsd4_decode_readdir,
--	[OP_READLINK]		= (nfsd4_dec)nfsd4_decode_noop,
--	[OP_REMOVE]		= (nfsd4_dec)nfsd4_decode_remove,
--	[OP_RENAME]		= (nfsd4_dec)nfsd4_decode_rename,
--	[OP_RENEW]		= (nfsd4_dec)nfsd4_decode_notsupp,
--	[OP_RESTOREFH]		= (nfsd4_dec)nfsd4_decode_noop,
--	[OP_SAVEFH]		= (nfsd4_dec)nfsd4_decode_noop,
--	[OP_SECINFO]		= (nfsd4_dec)nfsd4_decode_secinfo,
--	[OP_SETATTR]		= (nfsd4_dec)nfsd4_decode_setattr,
--	[OP_SETCLIENTID]	= (nfsd4_dec)nfsd4_decode_notsupp,
--	[OP_SETCLIENTID_CONFIRM]= (nfsd4_dec)nfsd4_decode_notsupp,
--	[OP_VERIFY]		= (nfsd4_dec)nfsd4_decode_verify,
--	[OP_WRITE]		= (nfsd4_dec)nfsd4_decode_write,
--	[OP_RELEASE_LOCKOWNER]	= (nfsd4_dec)nfsd4_decode_notsupp,
- 
- 	/* new operations for NFSv4.1 */
- 	[OP_BACKCHANNEL_CTL]	= (nfsd4_dec)nfsd4_decode_backchannel_ctl,
-@@ -1599,23 +1582,22 @@ static nfsd4_dec nfsd41_dec_ops[] = {
- 	[OP_RECLAIM_COMPLETE]	= (nfsd4_dec)nfsd4_decode_reclaim_complete,
- };
- 
--struct nfsd4_minorversion_ops {
--	nfsd4_dec *decoders;
--	int nops;
--};
--
--static struct nfsd4_minorversion_ops nfsd4_minorversion[] = {
--	[0] = { nfsd4_dec_ops, ARRAY_SIZE(nfsd4_dec_ops) },
--	[1] = { nfsd41_dec_ops, ARRAY_SIZE(nfsd41_dec_ops) },
--	[2] = { nfsd41_dec_ops, ARRAY_SIZE(nfsd41_dec_ops) },
--};
-+static __be32 nfsd4_verify_opnum(struct nfsd4_compoundargs *argp, struct nfsd4_op *op)
-+{
-+	if (op->opnum < FIRST_NFS4_OP || op->opnum > LAST_NFS4_OP)
-+		return nfserr_op_illegal;
-+	else if (argp->minorversion == 0 && op->opnum > OP_RELEASE_LOCKOWNER)
-+		return nfserr_op_illegal;
-+	else if (argp->minorversion == 1 && op->opnum > OP_RECLAIM_COMPLETE)
-+		return nfserr_op_illegal;
-+	return nfs_ok;
-+}
- 
- static __be32
- nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
- {
- 	DECODE_HEAD;
- 	struct nfsd4_op *op;
--	struct nfsd4_minorversion_ops *ops;
- 	bool cachethis = false;
- 	int i;
- 
-@@ -1640,10 +1622,9 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
- 		}
- 	}
- 
--	if (argp->minorversion >= ARRAY_SIZE(nfsd4_minorversion))
-+	if (argp->minorversion > NFSD_SUPPORTED_MINOR_VERSION)
- 		argp->opcnt = 0;
- 
--	ops = &nfsd4_minorversion[argp->minorversion];
- 	for (i = 0; i < argp->opcnt; i++) {
- 		op = &argp->ops[i];
- 		op->replay = NULL;
-@@ -1651,8 +1632,8 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
- 		READ_BUF(4);
- 		READ32(op->opnum);
- 
--		if (op->opnum >= FIRST_NFS4_OP && op->opnum <= LAST_NFS4_OP)
--			op->status = ops->decoders[op->opnum](argp, &op->u);
-+		if (nfsd4_verify_opnum(argp, op) == nfs_ok)
-+			op->status = nfsd4_dec_ops[op->opnum](argp, &op->u);
- 		else {
- 			op->opnum = OP_ILLEGAL;
- 			op->status = nfserr_op_illegal;
--- 
-1.8.4.1
+It doesn't seem so.
 
+> 
+> Among other things I think we'd like to be able to free up the reference
+> and deallocate the file on disk if necessary once the delegation has
+> been revoked.
+
+OK, I'll deal with blocking case in my patchset, but putting the file will
+need to beseparated from unhashing as the latter will be done under a spin lock
+and put_nfs4_file -> iput may block.
+
+Benny
+
+> 
+> --b.
+> 
+>>
+>> Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
+>> ---
+>>  fs/nfsd/nfs4state.c | 4 ++--
+>>  1 file changed, 2 insertions(+), 2 deletions(-)
+>>
+>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+>> index 8840206..7f78ff5 100644
+>> --- a/fs/nfsd/nfs4state.c
+>> +++ b/fs/nfsd/nfs4state.c
+>> @@ -411,6 +411,8 @@ static void nfs4_free_stid(struct kmem_cache *slab, struct nfs4_stid *s)
+>>  {
+>>  	remove_stid(&dp->dl_stid);
+>>  	if (atomic_dec_and_test(&dp->dl_count)) {
+>> +		if (dp->dl_file)
+>> +			put_nfs4_file(dp->dl_file);
+>>  		nfs4_free_stid(deleg_slab, &dp->dl_stid);
+>>  		num_delegations--;
+>>  	}
+>> @@ -450,8 +452,6 @@ static void unhash_stid(struct nfs4_stid *s)
+>>  	dp->dl_stid.sc_type = 0;
+>>  	nfs4_put_deleg_lease(dp->dl_file);
+>>  	spin_unlock(&recall_lock);
+>> -	put_nfs4_file(dp->dl_file);
+>> -	dp->dl_file = NULL;
+>>  }
+>>  
+>>  
+>> -- 
+>> 1.8.3.1
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
