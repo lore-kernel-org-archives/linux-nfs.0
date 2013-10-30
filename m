@@ -1,97 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:59416 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752932Ab3J2Njw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 29 Oct 2013 09:39:52 -0400
-Date: Tue, 29 Oct 2013 09:39:51 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Benny Halevy <bhalevy@primarydata.com>
-Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: no need to unhash_stid before free
-Message-ID: <20131029133951.GG29606@fieldses.org>
-References: <1381730515-18045-1-git-send-email-bhalevy@primarydata.com>
- <20131028183214.GH31322@fieldses.org>
- <526F5CFF.2080003@primarydata.com>
+Received: from mail-wi0-f169.google.com ([209.85.212.169]:40050 "EHLO
+	mail-wi0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752532Ab3J3OKX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Oct 2013 10:10:23 -0400
+Received: by mail-wi0-f169.google.com with SMTP id cb5so6449119wib.4
+        for <linux-nfs@vger.kernel.org>; Wed, 30 Oct 2013 07:10:22 -0700 (PDT)
+Message-ID: <5271134C.1080607@primarydata.com>
+Date: Wed, 30 Oct 2013 16:10:20 +0200
+From: Benny Halevy <bhalevy@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <526F5CFF.2080003@primarydata.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: bfields@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 4/7] nfsd4: hash deleg stateid only on successful nfs4_set_delegation
+References: <526F81DE.6060704@primarydata.com> <1383039561-27308-1-git-send-email-bhalevy@primarydata.com> <20131029155427.GU31322@fieldses.org>
+In-Reply-To: <20131029155427.GU31322@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Oct 29, 2013 at 09:00:15AM +0200, Benny Halevy wrote:
-> On 2013-10-28 20:32, J. Bruce Fields wrote:
-> > On Mon, Oct 14, 2013 at 09:01:55AM +0300, Benny Halevy wrote:
-> >> idr_remove is about to be called before kmem_cache_free so unhashing it
-> >> is redundant
-> > 
-> > This leaves only two unhash_stid callers, in release_lock_stateid and
-> > unhash_stid, both called just before destroying the stateid, so perhaps
-> > we should remove those and unhash_stid?
+On 2013-10-29 17:54, J. Bruce Fields wrote:
+> On Tue, Oct 29, 2013 at 11:39:21AM +0200, Benny Halevy wrote:
+>> We don't want the stateid to be found in the hash table before the delegation
+>> is granted.
 > 
-> In my state lock elimination patchset I actually keep using unhash_stid
-> after refactoring non-blocking unhashing from the blocking release
-> so I don't think it's worth it to remove the call.
-> That said, we can still open code it but encapsulating the assignment
-> in unhash_stid() which the compiler can inline anyway seems cleaner to me.
+> With all this code and any find_stateid calls under the state lock, this
+> isn't currently an issue, right?
 
-OK, sure, sounds fine.
-
---b.
+Right.
 
 > 
-> Benny
+> The changelog needs to make clear whether this is fixing a current bug
+> or preparing to allow dropping of the state lock somewhere.  If the
+> latter, it needs to outline what the expected change is that we're
+> preparing for.
+
+Agreed.  We can delay this patch to the state lock elimination series.
+
+Benny
+
 > 
-> > 
-> > --b.
-> > 
-> >>
-> >> Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
-> >> ---
-> >>  fs/nfsd/nfs4state.c | 7 ++-----
-> >>  1 file changed, 2 insertions(+), 5 deletions(-)
-> >>
-> >> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> >> index 0874998..06984e3 100644
-> >> --- a/fs/nfsd/nfs4state.c
-> >> +++ b/fs/nfsd/nfs4state.c
-> >> @@ -668,7 +668,6 @@ static void unhash_open_stateid(struct nfs4_ol_stateid *stp)
-> >>  static void release_open_stateid(struct nfs4_ol_stateid *stp)
-> >>  {
-> >>  	unhash_open_stateid(stp);
-> >> -	unhash_stid(&stp->st_stid);
-> >>  	free_generic_stateid(stp);
-> >>  }
-> >>  
-> >> @@ -690,7 +689,6 @@ static void release_last_closed_stateid(struct nfs4_openowner *oo)
-> >>  	struct nfs4_ol_stateid *s = oo->oo_last_closed_stid;
-> >>  
-> >>  	if (s) {
-> >> -		unhash_stid(&s->st_stid);
-> >>  		free_generic_stateid(s);
-> >>  		oo->oo_last_closed_stid = NULL;
-> >>  	}
-> >> @@ -3998,10 +3996,9 @@ static void nfsd4_close_open_stateid(struct nfs4_ol_stateid *s)
-> >>  
-> >>  	nfsd4_close_open_stateid(stp);
-> >>  
-> >> -	if (cstate->minorversion) {
-> >> -		unhash_stid(&stp->st_stid);
-> >> +	if (cstate->minorversion)
-> >>  		free_generic_stateid(stp);
-> >> -	} else
-> >> +	else
-> >>  		oo->oo_last_closed_stid = stp;
-> >>  
-> >>  	if (list_empty(&oo->oo_owner.so_stateids)) {
-> >> -- 
-> >> 1.8.3.1
-> >>
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > 
+> --b.
+> 
+>>
+>> Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
+>> ---
+>>  fs/nfsd/nfs4state.c | 2 +-
+>>  1 file changed, 1 insertion(+), 1 deletion(-)
+>>
+>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+>> index 405649f..64fcdd6 100644
+>> --- a/fs/nfsd/nfs4state.c
+>> +++ b/fs/nfsd/nfs4state.c
+>> @@ -375,7 +375,6 @@ static struct nfs4_ol_stateid * nfs4_alloc_stateid(struct nfs4_client *clp)
+>>  	dp = delegstateid(nfs4_alloc_stid(clp, deleg_slab));
+>>  	if (dp == NULL)
+>>  		return dp;
+>> -	dp->dl_stid.sc_type = NFS4_DELEG_STID;
+>>  	/*
+>>  	 * delegation seqid's are never incremented.  The 4.1 special
+>>  	 * meaning of seqid 0 isn't meaningful, really, but let's avoid
+>> @@ -3079,6 +3078,7 @@ static int nfs4_set_delegation(struct nfs4_delegation *dp, struct nfs4_file *fp)
+>>  	atomic_inc(&fp->fi_delegees);
+>>  	hash_delegation_locked(dp, fp);
+>>  	spin_unlock(&recall_lock);
+>> +	dp->dl_stid.sc_type = NFS4_DELEG_STID;
+>>  	return 0;
+>>  out_free:
+>>  	put_nfs4_file(fp);
+>> -- 
+>> 1.8.3.1
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
