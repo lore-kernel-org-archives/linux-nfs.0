@@ -1,84 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:37071 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:56256 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751937Ab3JUSBE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 21 Oct 2013 14:01:04 -0400
-Date: Mon, 21 Oct 2013 14:01:03 -0400
+	id S1751642Ab3J3W0V (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 30 Oct 2013 18:26:21 -0400
+Date: Wed, 30 Oct 2013 18:26:19 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Tony Asleson <tasleson@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] exportfs: Add -s option.
-Message-ID: <20131021180103.GF18657@fieldses.org>
-References: <1380734389-8202-1-git-send-email-tasleson@redhat.com>
- <20131002214015.GA20902@fieldses.org>
- <5265315D.9030008@RedHat.com>
- <20131021140114.GE18657@fieldses.org>
- <52655C68.1000604@RedHat.com>
+To: Anna Schumaker <bjschuma@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] NFSD: Add support for NFS v4.2 operation checking
+Message-ID: <20131030222619.GB24795@fieldses.org>
+References: <1383154693-29741-1-git-send-email-bjschuma@netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <52655C68.1000604@RedHat.com>
+In-Reply-To: <1383154693-29741-1-git-send-email-bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Oct 21, 2013 at 12:55:04PM -0400, Steve Dickson wrote:
+On Wed, Oct 30, 2013 at 01:38:13PM -0400, Anna Schumaker wrote:
+> The server does allow NFS over v4.2, even if it doesn't add any new
+> operations yet.
 > 
-> 
-> On 21/10/13 10:01, J. Bruce Fields wrote:
-> > On Mon, Oct 21, 2013 at 09:51:25AM -0400, Steve Dickson wrote:
-> >> I guess we could change -v to used what the -s is proposing,
-> >> but that could break someone's existing configuration...  
-> > 
-> > Also, looking at my home server....  It would be annoying to get:
-> > 
-> > 	/export *(rw,sync,wdelay,hide,nocrossmnt,insecure,no_root_squash,no_all_squash,no_subtree_check,secure_locks,acl,anonuid=65534,anongid=65534)
-> > 
-> > when all you need is:
-> > 
-> > 	/export <world>(rw,wdelay,insecure,no_root_squash,no_subtree_check)
-> > 
-> > (Actually I wonder why it's even showing wdelay and no_subtree_check
-> > when those are both defaults?  But this is on F16, maybe it's different
-> > now.  I should really update that machine.)
-> No, the defaults have not changed for (quite) a while... 
-> The defaults are: 
->     ro, root_squash, wdelay, no_subtree_check
-> 
-> Now it turns out wdelay (aka NFSEXP_GATHERED_WRITES) is a v2 only thing... 
-> So do we really need to have that on by default, now that we are 
-> slowly moving away from v2 support?
+> I also switch to using constants to represent the last operation for
+> each minor version since this makes the code cleaner and easier to
+> understand at a quick glance.
 
-Yeah, it should stay on by default.
-
-Anyway it wasn't the defaults I was wondering about so much as why
-exportfs -v was printing out some options that were already set at their
-defaults.
-
-I guess that stuff is just hardwired into
-utils/exportfs/exportfs.c:dump().  So we may want the following.
-
-(Anyway, ACK to the -s patch.)
+Looks good to me.  Thanks!
 
 --b.
 
-diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
-index 4331697..0cde3e9 100644
---- a/utils/exportfs/exportfs.c
-+++ b/utils/exportfs/exportfs.c
-@@ -665,7 +665,7 @@ dump(int verbose)
- 				c = dumpopt(c, "rw");
- 			if (ep->e_flags & NFSEXP_ASYNC)
- 				c = dumpopt(c, "async");
--			if (ep->e_flags & NFSEXP_GATHERED_WRITES)
-+			if (!(ep->e_flags & NFSEXP_GATHERED_WRITES))
- 				c = dumpopt(c, "wdelay");
- 			if (ep->e_flags & NFSEXP_NOHIDE)
- 				c = dumpopt(c, "nohide");
-@@ -679,7 +679,7 @@ dump(int verbose)
- 				c = dumpopt(c, "no_root_squash");
- 			if (ep->e_flags & NFSEXP_ALLSQUASH)
- 				c = dumpopt(c, "all_squash");
--			if (ep->e_flags & NFSEXP_NOSUBTREECHECK)
-+			if (!(ep->e_flags & NFSEXP_NOSUBTREECHECK))
- 				c = dumpopt(c, "no_subtree_check");
- 			if (ep->e_flags & NFSEXP_NOAUTHNLM)
- 				c = dumpopt(c, "insecure_locks");
+> 
+> Signed-off-by: Anna Schumaker <bjschuma@netapp.com>
+> ---
+>  fs/nfsd/nfs4xdr.c    | 8 +++++---
+>  include/linux/nfs4.h | 3 +++
+>  2 files changed, 8 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index 99bebea..83db5a7 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -1585,11 +1585,13 @@ static nfsd4_dec nfsd4_dec_ops[] = {
+>  static inline bool
+>  nfsd4_opnum_in_range(struct nfsd4_compoundargs *argp, struct nfsd4_op *op)
+>  {
+> -	if (op->opnum < FIRST_NFS4_OP || op->opnum > LAST_NFS4_OP)
+> +	if (op->opnum < FIRST_NFS4_OP)
+>  		return false;
+> -	else if (argp->minorversion == 0 && op->opnum > OP_RELEASE_LOCKOWNER)
+> +	else if (argp->minorversion == 0 && op->opnum > LAST_NFS40_OP)
+>  		return false;
+> -	else if (argp->minorversion == 1 && op->opnum > OP_RECLAIM_COMPLETE)
+> +	else if (argp->minorversion == 1 && op->opnum > LAST_NFS41_OP)
+> +		return false;
+> +	else if (argp->minorversion == 2 && op->opnum > LAST_NFS42_OP)
+>  		return false;
+>  	return true;
+>  }
+> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+> index c56fa8f..9577769 100644
+> --- a/include/linux/nfs4.h
+> +++ b/include/linux/nfs4.h
+> @@ -118,6 +118,9 @@ Needs to be updated if more operations are defined in future.*/
+>  
+>  #define FIRST_NFS4_OP	OP_ACCESS
+>  #define LAST_NFS4_OP 	OP_RECLAIM_COMPLETE
+> +#define LAST_NFS40_OP	OP_RELEASE_LOCKOWNER
+> +#define LAST_NFS41_OP	OP_RECLAIM_COMPLETE
+> +#define LAST_NFS42_OP	OP_RECLAIM_COMPLETE
+>  
+>  enum nfsstat4 {
+>  	NFS4_OK = 0,
+> -- 
+> 1.8.4.2
+> 
