@@ -1,76 +1,109 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:53262 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:36887 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753957Ab3JQNSO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 17 Oct 2013 09:18:14 -0400
-Date: Thu, 17 Oct 2013 09:18:10 -0400
+	id S1754061Ab3J3WUB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 30 Oct 2013 18:20:01 -0400
+Date: Wed, 30 Oct 2013 18:19:59 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Wangminlan <wangminlan@huawei.com>, Neil Brown <neilb@suse.de>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Different sequence of "exportfs" produce different effects on
- nfs client mounts
-Message-ID: <20131017131810.GG19067@fieldses.org>
-References: <3962238FD7EA0F41B1810E7ABEAFBC314CEF9ACF@szxema505-mbs.china.huawei.com>
- <20131014174540.GA27747@fieldses.org>
- <3962238FD7EA0F41B1810E7ABEAFBC314CEF9E97@szxema505-mbs.china.huawei.com>
- <20131015154918.GA6117@fieldses.org>
- <3962238FD7EA0F41B1810E7ABEAFBC314CEF9FD9@szxema505-mbs.china.huawei.com>
- <3962238FD7EA0F41B1810E7ABEAFBC314CEFA2F5@szxema505-mbs.china.huawei.com>
- <CB4DB7B1-5EEA-47D0-9CAD-CC69AF868182@oracle.com>
+To: Benny Halevy <bhalevy@primarydata.com>
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/7] nfsd4: fix recall_lock use in unhash_delegation
+Message-ID: <20131030221958.GA24795@fieldses.org>
+References: <526F81DE.6060704@primarydata.com>
+ <1383039544-27157-1-git-send-email-bhalevy@primarydata.com>
+ <20131029144658.GR31322@fieldses.org>
+ <52711187.10202@primarydata.com>
+ <20131030143552.GE3227@fieldses.org>
+ <52711AF7.4070100@primarydata.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CB4DB7B1-5EEA-47D0-9CAD-CC69AF868182@oracle.com>
+In-Reply-To: <52711AF7.4070100@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Oct 17, 2013 at 09:14:02AM -0400, Chuck Lever wrote:
-> Hi-
+On Wed, Oct 30, 2013 at 04:43:03PM +0200, Benny Halevy wrote:
+> On 2013-10-30 16:35, J. Bruce Fields wrote:
+> > On Wed, Oct 30, 2013 at 04:02:47PM +0200, Benny Halevy wrote:
+> >> On 2013-10-29 16:46, J. Bruce Fields wrote:
+> >>> On Tue, Oct 29, 2013 at 11:39:04AM +0200, Benny Halevy wrote:
+> >>>> Access to dp->dl_perclnt must be synchronized by the recall_lock
+> >>>
+> >>> Are you sure?  recall_lock is for stuff that's needed in the delegation
+> >>> break callback (nfsd_break_deleg_cb() and any of the subsequent callback
+> >>> handling).  I don't think that includes dl_perclnt.
+> >>
+> >> I was mislead by the fact that destroy_client and nfs4_state_shutdown_net
+> >> care to acquire the recall_lock for traversing the clp->cl_delegations
+> >> and nn->del_recall_lru lists, respectively.
+> >>
+> >> Now nfs4_state_shutdown_net, although its comment says it should be
+> >> called with the state lock held (SHOULD or should, or should it be MUST? :)
+> >> It doesn't seem like nfsd_shutdown_net acquires the state lock.
+> > 
+> > Good point.
+> > 
+> >> Therefore, we either need to grab the state lock in nfs4_state_shutdown_net
+> >> which adds yet another problem to fix,
+> > 
+> > That sounds simplest as the short-term fix....  What problem do you see?
 > 
-> 281         if (ident[0] == '\0')
-> 282                 return MCL_ANONYMOUS;
-> 283         if (ident[0] == '@') {
-> 284 #ifndef HAVE_INNETGR
-> 285                 xlog(L_WARNING, "netgroup support not compiled in");
-> 286 #endif
-> 287                 return MCL_NETGROUP;
-> 288         }
-> 289         for (sp = ident; *sp; sp++) {
-> 290                 if (*sp == '*' || *sp == '?' || *sp == '[')
-> 291                         return MCL_WILDCARD;
-> 292                 if (*sp == '/')
-> 293                         return MCL_SUBNETWORK;
-> 294                 if (*sp == '\\' && sp[1])
-> 295                         sp++;
-> 296         }
+> Nothing specific, just the general use of the global state lock...
 > 
-> is still in play today.  The "host_pton()" code you posted was added by commit 502edf1d just after this paragraph.  But here is what that commit replaced.
+> > 
+> > --b.
+> > 
+> > commit 2c9407ae694dad8a1ad6394d9bf6077024b9fae7
+> > Author: J. Bruce Fields <bfields@redhat.com>
+> > Date:   Wed Oct 30 10:33:09 2013 -0400
+> > 
+> >     nfsd4: nfsd_shutdown_net needs state lock
+> >     
+> >     A comment claims the caller should take it, but that's not being done.
+> >     Note we don't want it around the cancel_delayed_work_sync since that may
+> >     wait on work which holds the client lock.
+> >     
+> >     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 > 
-> -       /* check for N.N.N.N */
-> -       sp = ident;
-> -       if(!isdigit(*sp) || strtoul(sp, &sp, 10) > 255 || *sp != '.') return MCL_FQDN;
-> -       sp++; if(!isdigit(*sp) || strtoul(sp, &sp, 10) > 255 || *sp != '.') return MCL_F
-> -       sp++; if(!isdigit(*sp) || strtoul(sp, &sp, 10) > 255 || *sp != '.') return MCL_F
-> -       sp++; if(!isdigit(*sp) || strtoul(sp, &sp, 10) > 255 || *sp != '\0') return MCL_
-> -       /* we lie here a bit. but technically N.N.N.N == N.N.N.N/32 :) */
-> -       return MCL_SUBNETWORK;
-> +
-> +       /*
-> +        * Treat unadorned IP addresses as MCL_SUBNETWORK.
-> +        * Everything else is MCL_FQDN.
-> +        */
-> +       ai = host_pton(ident);
-> +       if (ai != NULL) {
-> +               freeaddrinfo(ai);
-> +               return MCL_SUBNETWORK;
-> +       }
-> +
-> +       return MCL_FQDN;
->  }
-> 
-> The replaced logic also treats IP addresses as MCL_SUBNETWORK.  That's from commit 54669c98 in 2005.  Neil, do you remember why this semantic change was made?
+> Ack
 
-Um, sorry Neil, looks like Chuck and I were both searching the git logs
-at the same time!
+Thanks, done, and pushed out to
+
+	git://linux-nfs.org/~bfields/linux.git for-3.13
 
 --b.
+
+> 
+> > 
+> > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> > index 21eb678..e03e8ef 100644
+> > --- a/fs/nfsd/nfs4state.c
+> > +++ b/fs/nfsd/nfs4state.c
+> > @@ -5124,7 +5124,6 @@ out_recovery:
+> >  	return ret;
+> >  }
+> >  
+> > -/* should be called with the state lock held */
+> >  void
+> >  nfs4_state_shutdown_net(struct net *net)
+> >  {
+> > @@ -5135,6 +5134,7 @@ nfs4_state_shutdown_net(struct net *net)
+> >  	cancel_delayed_work_sync(&nn->laundromat_work);
+> >  	locks_end_grace(&nn->nfsd4_manager);
+> >  
+> > +	nfs4_lock_state();
+> >  	INIT_LIST_HEAD(&reaplist);
+> >  	spin_lock(&recall_lock);
+> >  	list_for_each_safe(pos, next, &nn->del_recall_lru) {
+> > @@ -5149,6 +5149,7 @@ nfs4_state_shutdown_net(struct net *net)
+> >  
+> >  	nfsd4_client_tracking_exit(net);
+> >  	nfs4_state_destroy_net(net);
+> > +	nfs4_unlock_state();
+> >  }
+> >  
+> >  void
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > 
