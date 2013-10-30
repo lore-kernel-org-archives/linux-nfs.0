@@ -1,69 +1,223 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mout.gmx.net ([212.227.17.20]:54073 "EHLO mout.gmx.net"
+Received: from mx11.netapp.com ([216.240.18.76]:2024 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753728Ab3JRT0a (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 18 Oct 2013 15:26:30 -0400
-Received: from [192.168.178.60] ([84.173.48.237]) by mail.gmx.com (mrgmx003)
- with ESMTPSA (Nemesis) id 0McVns-1VFio11HjU-00HjQI for
- <linux-nfs@vger.kernel.org>; Fri, 18 Oct 2013 21:26:29 +0200
-Message-ID: <52618B5F.4000508@gmx.de>
-Date: Fri, 18 Oct 2013 21:26:23 +0200
-From: Helge Deller <deller@gmx.de>
+	id S1754581Ab3J3OAY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 30 Oct 2013 10:00:24 -0400
+From: Anna Schumaker <bjschuma@netapp.com>
+To: <bfields@fieldses.org>, <linux-nfs@vger.kernel.org>
+Subject: [PATCH v2 (For real this time)] NFSD: Combine decode operations for v4 and v4.1
+Date: Wed, 30 Oct 2013 10:00:20 -0400
+Message-ID: <1383141620-11158-1-git-send-email-bjschuma@netapp.com>
 MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: Linux Kernel Development <linux-kernel@vger.kernel.org>,
-        NFS list <linux-nfs@vger.kernel.org>,
-        linux-parisc <linux-parisc@vger.kernel.org>
-Subject: Re: 3.12-rcX - NFS regression - kswapd0 / kswapd1 stays using 100%
- CPU?
-References: <52604BA9.20104@gmx.de> <1382044045.3216.44.camel@leira.trondhjem.org>
-In-Reply-To: <1382044045.3216.44.camel@leira.trondhjem.org>
-Content-Type: text/plain; charset=UTF-7
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 10/17/2013 11:07 PM, Myklebust, Trond wrote:
-> On Thu, 2013-10-17 at 22:42 +0200, Helge Deller wrote:
->> I'm seeing a regression with current kernel git head when using NFS-mounts.
->> Architecture in my case is parisc, although I don't think that this is relevant.
->> At least kernel 3.10 (and I think 3.11) didn't showed that problem.
->>
->> The symtom is, that "top" shows high usage of either kswapd0 or kswapd1.
->> Here is an output with kswapd1:
->>   PID USER      PR  NI  VIRT  RES  SHR S  %CPU %MEM     TIME+ COMMAND
->>    37 root      20   0     0    0    0 R  91.8  0.0  63:00.40 kswapd1
->> 28448 root      20   0  3252 1428 1060 R  15.3  0.0   0:00.09 top
->>     1 root      20   0  2784  988  852 S   0.0  0.0   0:09.95 init
->>
->> This is what ps shows:
->> lsXXXX:~# ps -ef |  grep mount
->> root      1181     1  0 14:51 ?        00:00:18 /usr/sbin/automount --pid-file /var/run/autofs.pid
->> root     25331  1181  0 21:25 ?        00:00:00 /bin/mount -n -t nfs -s -o nolock,rw,hard,intr homes:/unixhome1 /net/home1
->> root     25332 25331  0 21:25 ?        00:00:00 /sbin/mount.nfs homes:/unixhome1 /net/home1 -s -n -o rw,nolock,hard,intr
->>
->> And using sysrq to show the blocked tasks I get in syslog:
->> SysRq : Show Blocked State
->> mount.nfs       D 00000000401040c0     0 25332  25331 0x00000010
->> Backtrace:
->> [<0000000040113a68>] __schedule+0x500/0x810
->>
->> I know it's not a problem of the NFS server, since the same mount is still ok on other machines.
->> The NFS directory was already mounted and in use when this mount happened again (called by cron-job). 
->>  
->> Any ideas?
-> 
-> If the NFS directory is already mounted, then why is the automounter
-> trying to mount it a second time?
+We were using a different array of function pointers to represent each
+minor version.  This makes adding a new minor version tedious, since it
+needs a step to copy, paste and modify a new version of the same
+functions.
 
-I was wrong in this.
-The directory wasn't mounted yet (or at least it was unmounted in the meantime before the new
-mount.nfs was called).
+This patch combines the v4 and v4.1 arrays into a single instance and
+will check minor version support inside each decoder function.
 
-I'm now not even sure, that the high kswapd is really triggered by the NFS problem,
-because I now have another machine with the blocked NFS-mount, but without
-the high kswapd usage.
+Signed-off-by: Anna Schumaker <bjschuma@netapp.com>
+---
+ fs/nfsd/nfs4xdr.c | 98 +++++++++++++++++++++++--------------------------------
+ 1 file changed, 40 insertions(+), 58 deletions(-)
 
-Nevertheless, the blocked nfs mount tasks really make me wonder. There is clearly
-some kind of regression since it doesn't happen with older kernels.
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index d9454fe..99bebea 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -945,13 +945,16 @@ static __be32
+ nfsd4_decode_open_confirm(struct nfsd4_compoundargs *argp, struct nfsd4_open_confirm *open_conf)
+ {
+ 	DECODE_HEAD;
+-		    
++
++	if (argp->minorversion >= 1)
++		return nfserr_notsupp;
++
+ 	status = nfsd4_decode_stateid(argp, &open_conf->oc_req_stateid);
+ 	if (status)
+ 		return status;
+ 	READ_BUF(4);
+ 	READ32(open_conf->oc_seqid);
+-						        
++
+ 	DECODE_TAIL;
+ }
+ 
+@@ -991,6 +994,14 @@ nfsd4_decode_putfh(struct nfsd4_compoundargs *argp, struct nfsd4_putfh *putfh)
+ }
+ 
+ static __be32
++nfsd4_decode_putpubfh(struct nfsd4_compoundargs *argp, void *p)
++{
++	if (argp->minorversion == 0)
++		return nfs_ok;
++	return nfserr_notsupp;
++}
++
++static __be32
+ nfsd4_decode_read(struct nfsd4_compoundargs *argp, struct nfsd4_read *read)
+ {
+ 	DECODE_HEAD;
+@@ -1061,6 +1072,9 @@ nfsd4_decode_renew(struct nfsd4_compoundargs *argp, clientid_t *clientid)
+ {
+ 	DECODE_HEAD;
+ 
++	if (argp->minorversion >= 1)
++		return nfserr_notsupp;
++
+ 	READ_BUF(sizeof(clientid_t));
+ 	COPYMEM(clientid, sizeof(clientid_t));
+ 
+@@ -1111,6 +1125,9 @@ nfsd4_decode_setclientid(struct nfsd4_compoundargs *argp, struct nfsd4_setclient
+ {
+ 	DECODE_HEAD;
+ 
++	if (argp->minorversion >= 1)
++		return nfserr_notsupp;
++
+ 	READ_BUF(NFS4_VERIFIER_SIZE);
+ 	COPYMEM(setclientid->se_verf.data, NFS4_VERIFIER_SIZE);
+ 
+@@ -1137,6 +1154,9 @@ nfsd4_decode_setclientid_confirm(struct nfsd4_compoundargs *argp, struct nfsd4_s
+ {
+ 	DECODE_HEAD;
+ 
++	if (argp->minorversion >= 1)
++		return nfserr_notsupp;
++
+ 	READ_BUF(8 + NFS4_VERIFIER_SIZE);
+ 	COPYMEM(&scd_c->sc_clientid, 8);
+ 	COPYMEM(&scd_c->sc_confirm, NFS4_VERIFIER_SIZE);
+@@ -1220,6 +1240,9 @@ nfsd4_decode_release_lockowner(struct nfsd4_compoundargs *argp, struct nfsd4_rel
+ {
+ 	DECODE_HEAD;
+ 
++	if (argp->minorversion >= 1)
++		return nfserr_notsupp;
++
+ 	READ_BUF(12);
+ 	COPYMEM(&rlockowner->rl_clientid, sizeof(clientid_t));
+ 	READ32(rlockowner->rl_owner.len);
+@@ -1519,7 +1542,7 @@ static nfsd4_dec nfsd4_dec_ops[] = {
+ 	[OP_OPEN_CONFIRM]	= (nfsd4_dec)nfsd4_decode_open_confirm,
+ 	[OP_OPEN_DOWNGRADE]	= (nfsd4_dec)nfsd4_decode_open_downgrade,
+ 	[OP_PUTFH]		= (nfsd4_dec)nfsd4_decode_putfh,
+-	[OP_PUTPUBFH]		= (nfsd4_dec)nfsd4_decode_noop,
++	[OP_PUTPUBFH]		= (nfsd4_dec)nfsd4_decode_putpubfh,
+ 	[OP_PUTROOTFH]		= (nfsd4_dec)nfsd4_decode_noop,
+ 	[OP_READ]		= (nfsd4_dec)nfsd4_decode_read,
+ 	[OP_READDIR]		= (nfsd4_dec)nfsd4_decode_readdir,
+@@ -1536,46 +1559,6 @@ static nfsd4_dec nfsd4_dec_ops[] = {
+ 	[OP_VERIFY]		= (nfsd4_dec)nfsd4_decode_verify,
+ 	[OP_WRITE]		= (nfsd4_dec)nfsd4_decode_write,
+ 	[OP_RELEASE_LOCKOWNER]	= (nfsd4_dec)nfsd4_decode_release_lockowner,
+-};
+-
+-static nfsd4_dec nfsd41_dec_ops[] = {
+-	[OP_ACCESS]		= (nfsd4_dec)nfsd4_decode_access,
+-	[OP_CLOSE]		= (nfsd4_dec)nfsd4_decode_close,
+-	[OP_COMMIT]		= (nfsd4_dec)nfsd4_decode_commit,
+-	[OP_CREATE]		= (nfsd4_dec)nfsd4_decode_create,
+-	[OP_DELEGPURGE]		= (nfsd4_dec)nfsd4_decode_notsupp,
+-	[OP_DELEGRETURN]	= (nfsd4_dec)nfsd4_decode_delegreturn,
+-	[OP_GETATTR]		= (nfsd4_dec)nfsd4_decode_getattr,
+-	[OP_GETFH]		= (nfsd4_dec)nfsd4_decode_noop,
+-	[OP_LINK]		= (nfsd4_dec)nfsd4_decode_link,
+-	[OP_LOCK]		= (nfsd4_dec)nfsd4_decode_lock,
+-	[OP_LOCKT]		= (nfsd4_dec)nfsd4_decode_lockt,
+-	[OP_LOCKU]		= (nfsd4_dec)nfsd4_decode_locku,
+-	[OP_LOOKUP]		= (nfsd4_dec)nfsd4_decode_lookup,
+-	[OP_LOOKUPP]		= (nfsd4_dec)nfsd4_decode_noop,
+-	[OP_NVERIFY]		= (nfsd4_dec)nfsd4_decode_verify,
+-	[OP_OPEN]		= (nfsd4_dec)nfsd4_decode_open,
+-	[OP_OPENATTR]		= (nfsd4_dec)nfsd4_decode_notsupp,
+-	[OP_OPEN_CONFIRM]	= (nfsd4_dec)nfsd4_decode_notsupp,
+-	[OP_OPEN_DOWNGRADE]	= (nfsd4_dec)nfsd4_decode_open_downgrade,
+-	[OP_PUTFH]		= (nfsd4_dec)nfsd4_decode_putfh,
+-	[OP_PUTPUBFH]		= (nfsd4_dec)nfsd4_decode_notsupp,
+-	[OP_PUTROOTFH]		= (nfsd4_dec)nfsd4_decode_noop,
+-	[OP_READ]		= (nfsd4_dec)nfsd4_decode_read,
+-	[OP_READDIR]		= (nfsd4_dec)nfsd4_decode_readdir,
+-	[OP_READLINK]		= (nfsd4_dec)nfsd4_decode_noop,
+-	[OP_REMOVE]		= (nfsd4_dec)nfsd4_decode_remove,
+-	[OP_RENAME]		= (nfsd4_dec)nfsd4_decode_rename,
+-	[OP_RENEW]		= (nfsd4_dec)nfsd4_decode_notsupp,
+-	[OP_RESTOREFH]		= (nfsd4_dec)nfsd4_decode_noop,
+-	[OP_SAVEFH]		= (nfsd4_dec)nfsd4_decode_noop,
+-	[OP_SECINFO]		= (nfsd4_dec)nfsd4_decode_secinfo,
+-	[OP_SETATTR]		= (nfsd4_dec)nfsd4_decode_setattr,
+-	[OP_SETCLIENTID]	= (nfsd4_dec)nfsd4_decode_notsupp,
+-	[OP_SETCLIENTID_CONFIRM]= (nfsd4_dec)nfsd4_decode_notsupp,
+-	[OP_VERIFY]		= (nfsd4_dec)nfsd4_decode_verify,
+-	[OP_WRITE]		= (nfsd4_dec)nfsd4_decode_write,
+-	[OP_RELEASE_LOCKOWNER]	= (nfsd4_dec)nfsd4_decode_notsupp,
+ 
+ 	/* new operations for NFSv4.1 */
+ 	[OP_BACKCHANNEL_CTL]	= (nfsd4_dec)nfsd4_decode_backchannel_ctl,
+@@ -1599,23 +1582,23 @@ static nfsd4_dec nfsd41_dec_ops[] = {
+ 	[OP_RECLAIM_COMPLETE]	= (nfsd4_dec)nfsd4_decode_reclaim_complete,
+ };
+ 
+-struct nfsd4_minorversion_ops {
+-	nfsd4_dec *decoders;
+-	int nops;
+-};
+-
+-static struct nfsd4_minorversion_ops nfsd4_minorversion[] = {
+-	[0] = { nfsd4_dec_ops, ARRAY_SIZE(nfsd4_dec_ops) },
+-	[1] = { nfsd41_dec_ops, ARRAY_SIZE(nfsd41_dec_ops) },
+-	[2] = { nfsd41_dec_ops, ARRAY_SIZE(nfsd41_dec_ops) },
+-};
++static inline bool
++nfsd4_opnum_in_range(struct nfsd4_compoundargs *argp, struct nfsd4_op *op)
++{
++	if (op->opnum < FIRST_NFS4_OP || op->opnum > LAST_NFS4_OP)
++		return false;
++	else if (argp->minorversion == 0 && op->opnum > OP_RELEASE_LOCKOWNER)
++		return false;
++	else if (argp->minorversion == 1 && op->opnum > OP_RECLAIM_COMPLETE)
++		return false;
++	return true;
++}
+ 
+ static __be32
+ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
+ {
+ 	DECODE_HEAD;
+ 	struct nfsd4_op *op;
+-	struct nfsd4_minorversion_ops *ops;
+ 	bool cachethis = false;
+ 	int i;
+ 
+@@ -1640,10 +1623,9 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
+ 		}
+ 	}
+ 
+-	if (argp->minorversion >= ARRAY_SIZE(nfsd4_minorversion))
++	if (argp->minorversion > NFSD_SUPPORTED_MINOR_VERSION)
+ 		argp->opcnt = 0;
+ 
+-	ops = &nfsd4_minorversion[argp->minorversion];
+ 	for (i = 0; i < argp->opcnt; i++) {
+ 		op = &argp->ops[i];
+ 		op->replay = NULL;
+@@ -1651,8 +1633,8 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
+ 		READ_BUF(4);
+ 		READ32(op->opnum);
+ 
+-		if (op->opnum >= FIRST_NFS4_OP && op->opnum <= LAST_NFS4_OP)
+-			op->status = ops->decoders[op->opnum](argp, &op->u);
++		if (nfsd4_opnum_in_range(argp, op))
++			op->status = nfsd4_dec_ops[op->opnum](argp, &op->u);
+ 		else {
+ 			op->opnum = OP_ILLEGAL;
+ 			op->status = nfserr_op_illegal;
+-- 
+1.8.4.2
 
-Helge
