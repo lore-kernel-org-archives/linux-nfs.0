@@ -1,41 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from nm30-vm9.bullet.mail.sg3.yahoo.com ([106.10.151.184]:35694 "EHLO
-	nm30-vm9.bullet.mail.sg3.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754453Ab3JZDnP convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Oct 2013 23:43:15 -0400
-References: <1382520968.55729.YahooMailNeo@web193705.mail.sg3.yahoo.com>
-Message-ID: <1382758657.1289.YahooMailNeo@web193704.mail.sg3.yahoo.com>
-Date: Sat, 26 Oct 2013 11:37:37 +0800 (SGT)
-From: siva sankar <siva_sankar43@yahoo.com>
-Reply-To: siva sankar <siva_sankar43@yahoo.com>
-Subject: Regarding NFSv4 File Open Operation
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-In-Reply-To: <1382520968.55729.YahooMailNeo@web193705.mail.sg3.yahoo.com>
+Received: from mail-bk0-f41.google.com ([209.85.214.41]:44865 "EHLO
+	mail-bk0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751379Ab3J3FcR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Oct 2013 01:32:17 -0400
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Date: Wed, 30 Oct 2013 13:32:15 +0800
+Message-ID: <CAPgLHd-12jZsZCqyeo0Bu=us_ZQHps4YzcgOfNA_Z4jkSUA4rA@mail.gmail.com>
+Subject: [PATCH -next] SUNRPC: remove duplicated include from clnt.c
+From: Wei Yongjun <weiyj.lk@gmail.com>
+To: Trond.Myklebust@netapp.com, bfields@fieldses.org, davem@davemloft.net
+Cc: yongjun_wei@trendmicro.com.cn, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: Wei Yongjun <yongjun_wei@trendmicro.com.cn>
 
+Remove duplicated include.
 
-Hi,
+Signed-off-by: Wei Yongjun <yongjun_wei@trendmicro.com.cn>
+---
+ net/sunrpc/clnt.c | 1 -
+ 1 file changed, 1 deletion(-)
 
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 759b78b..dab09da 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -31,7 +31,6 @@
+ #include <linux/in.h>
+ #include <linux/in6.h>
+ #include <linux/un.h>
+-#include <linux/rcupdate.h>
+ 
+ #include <linux/sunrpc/clnt.h>
+ #include <linux/sunrpc/addr.h>
 
-I am trying out to patch the kernel NFSv4 file_operations open() call.
-
-But, from the logs, i don't see open() call being fired for file(present on shared nfs server) open operartion(cat /mnt/share/abc.txt).
-
-However, in case of NFSv3, i could see open() call being fired for same file(present on shared nfs server) open operation.
-
-Can anybody let me me how to patch open() system call in NFSv4?
-Basically, i want my patch function to be fired first which will internally invoke the actual NFSv4's open call.
-
-
-I am working on RHEL6.4 kernel v2.6.32 64-Bit.
-
-
-Thanks in advance.
-
-Regards,
-Siva
