@@ -1,84 +1,87 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:61472 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:44239 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755373Ab3JGKmE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 7 Oct 2013 06:42:04 -0400
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r97Ag3Vi022295
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Mon, 7 Oct 2013 06:42:04 -0400
-Date: Mon, 7 Oct 2013 06:00:05 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Simo Sorce <ssorce@redhat.com>, steved@redhat.com,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 2/2] gssd: switch real uid instead of just fsuid when
- looking for user creds
-Message-ID: <20131007060005.0d07e3fa@tlielax.poochiereds.net>
-In-Reply-To: <20131005180403.12301e80@corrin.poochiereds.net>
-References: <1380829760-4928-1-git-send-email-jlayton@redhat.com>
-	<1380829760-4928-3-git-send-email-jlayton@redhat.com>
-	<1937105088.1804058.1380916002471.JavaMail.root@redhat.com>
-	<20131005180403.12301e80@corrin.poochiereds.net>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1754473Ab3J3Ofy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 30 Oct 2013 10:35:54 -0400
+Date: Wed, 30 Oct 2013 10:35:52 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Benny Halevy <bhalevy@primarydata.com>
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/7] nfsd4: fix recall_lock use in unhash_delegation
+Message-ID: <20131030143552.GE3227@fieldses.org>
+References: <526F81DE.6060704@primarydata.com>
+ <1383039544-27157-1-git-send-email-bhalevy@primarydata.com>
+ <20131029144658.GR31322@fieldses.org>
+ <52711187.10202@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <52711187.10202@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, 5 Oct 2013 18:04:03 -0400
-Jeff Layton <jlayton@redhat.com> wrote:
-
-> On Fri, 4 Oct 2013 15:46:42 -0400 (EDT)
-> Simo Sorce <ssorce@redhat.com> wrote:
+On Wed, Oct 30, 2013 at 04:02:47PM +0200, Benny Halevy wrote:
+> On 2013-10-29 16:46, J. Bruce Fields wrote:
+> > On Tue, Oct 29, 2013 at 11:39:04AM +0200, Benny Halevy wrote:
+> >> Access to dp->dl_perclnt must be synchronized by the recall_lock
+> > 
+> > Are you sure?  recall_lock is for stuff that's needed in the delegation
+> > break callback (nfsd_break_deleg_cb() and any of the subsequent callback
+> > handling).  I don't think that includes dl_perclnt.
 > 
-> > 
-> > 
-> > ----- Original Message -----
-> > > The part of process_krb5_upcall that handles non-machine user creds
-> > > first tries to query GSSAPI for credentials. If that fails, it then
-> > > falls back to trawling through likely credcache locations to find them
-> > > and then points $KRB5CCNAME at it before proceeding. There are a number
-> > > of bugs in this code that this patch attempts to address.
-> > > 
-> > > The code that queries GSSAPI for credentials does it as root and that
-> > > almost universally fails to do anything useful unless we happen to be
-> > > looking for non-machine root creds. Because of this, gssd almost always
-> > > falls back to having to search for credcaches "manually" and then set
-> > > $KRB5CCNAME if and when they are found. The code that handles credential
-> > > switching is in create_auth_rpc_client, so it's too late to be of any
-> > > use here.
-> > > 
-> > > Worse yet, the GSSAPI code that handles finding credcaches does it based
-> > > on the return from getuid(), so just switching the fsuid or even euid is
-> > > insufficient. You must switch the real uid.
-> > 
-> > In what case does it do this ?
-> > If it is unconditional this is a bug in GSSAPI and we should fix it there.
-> > 
+> I was mislead by the fact that destroy_client and nfs4_state_shutdown_net
+> care to acquire the recall_lock for traversing the clp->cl_delegations
+> and nn->del_recall_lru lists, respectively.
 > 
-> As far as I can tell (primarily from stracing and experimenting) it
-> always does this. Additionally it looks like KEYRING: support might
-> also depend on this.
-> 
+> Now nfs4_state_shutdown_net, although its comment says it should be
+> called with the state lock held (SHOULD or should, or should it be MUST? :)
+> It doesn't seem like nfsd_shutdown_net acquires the state lock.
 
-I took a closer look at this this morning and I think I see the
-problem. The issue is in libkrb5 and the default definitions of the
-credcache locations. For instance:
+Good point.
 
-    default_ccache_name = KEYRING:persistent:%{uid}
+> Therefore, we either need to grab the state lock in nfs4_state_shutdown_net
+> which adds yet another problem to fix,
 
-%{uid} expands to the real uid, not the effective one. If you change
-that to:
+That sounds simplest as the short-term fix....  What problem do you see?
 
-    default_ccache_name = KEYRING:persistent:%{euid}
+--b.
 
-...then it all works just by swapping the euid.
+commit 2c9407ae694dad8a1ad6394d9bf6077024b9fae7
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Wed Oct 30 10:33:09 2013 -0400
 
-So, not a bug in libkrb5 or libgssapi per-se, but I think we're sort of
-stuck with switching the real uid due to this.
+    nfsd4: nfsd_shutdown_net needs state lock
+    
+    A comment claims the caller should take it, but that's not being done.
+    Note we don't want it around the cancel_delayed_work_sync since that may
+    wait on work which holds the client lock.
+    
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 
-The fact that the first patch in this series makes the daemon fork
-before doing this should help mitigate any damage that an unprivileged
-user can do.
--- 
-Jeff Layton <jlayton@redhat.com>
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 21eb678..e03e8ef 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -5124,7 +5124,6 @@ out_recovery:
+ 	return ret;
+ }
+ 
+-/* should be called with the state lock held */
+ void
+ nfs4_state_shutdown_net(struct net *net)
+ {
+@@ -5135,6 +5134,7 @@ nfs4_state_shutdown_net(struct net *net)
+ 	cancel_delayed_work_sync(&nn->laundromat_work);
+ 	locks_end_grace(&nn->nfsd4_manager);
+ 
++	nfs4_lock_state();
+ 	INIT_LIST_HEAD(&reaplist);
+ 	spin_lock(&recall_lock);
+ 	list_for_each_safe(pos, next, &nn->del_recall_lru) {
+@@ -5149,6 +5149,7 @@ nfs4_state_shutdown_net(struct net *net)
+ 
+ 	nfsd4_client_tracking_exit(net);
+ 	nfs4_state_destroy_net(net);
++	nfs4_unlock_state();
+ }
+ 
+ void
