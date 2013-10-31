@@ -1,70 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from szxga03-in.huawei.com ([119.145.14.66]:59365 "EHLO
-	szxga03-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753541Ab3JUJuC (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Oct 2013 05:50:02 -0400
-From: Wangminlan <wangminlan@huawei.com>
-To: NeilBrown <neilb@suse.de>
-CC: Chuck Lever <chuck.lever@oracle.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: RE: Different sequence of "exportfs" produce different effects on
- nfs client mounts
-Date: Mon, 21 Oct 2013 09:47:18 +0000
-Message-ID: <3962238FD7EA0F41B1810E7ABEAFBC314CEFA7FB@szxema505-mbs.china.huawei.com>
-References: <3962238FD7EA0F41B1810E7ABEAFBC314CEF9ACF@szxema505-mbs.china.huawei.com>
-	<20131014174540.GA27747@fieldses.org>
-	<3962238FD7EA0F41B1810E7ABEAFBC314CEF9E97@szxema505-mbs.china.huawei.com>
-	<20131015154918.GA6117@fieldses.org>
-	<3962238FD7EA0F41B1810E7ABEAFBC314CEF9FD9@szxema505-mbs.china.huawei.com>
-	<3962238FD7EA0F41B1810E7ABEAFBC314CEFA2F5@szxema505-mbs.china.huawei.com>
-	<CB4DB7B1-5EEA-47D0-9CAD-CC69AF868182@oracle.com>
-	<20131018083253.40e8881e@notabene.brown>
- <20131021094902.616f2100@notabene.brown>
-In-Reply-To: <20131021094902.616f2100@notabene.brown>
-Content-Type: text/plain; charset="utf-8"
+Received: from mx1.redhat.com ([209.132.183.28]:32097 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751330Ab3JaUyq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 31 Oct 2013 16:54:46 -0400
+Message-ID: <5272C397.6020201@redhat.com>
+Date: Thu, 31 Oct 2013 13:54:47 -0700
+From: Anand Avati <aavati@redhat.com>
 MIME-Version: 1.0
+To: eshel@us.ibm.com, Linux NFS list <linux-nfs@vger.kernel.org>,
+        nfsv4@ietf.org, nfsv4-bounces@ietf.org,
+        Steve Dickson <SteveD@redhat.com>
+Subject: Re: XATTRs in NFS
+References: <OF7DBE5533.A67587D8-ON88257C12.007C1560-88257C12.007CA986@us.ibm.com> <5272742D.7000905@redhat.com>
+In-Reply-To: <5272742D.7000905@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-SSBhcHBsaWVkIHRoaXMgcGF0Y2ggdG8gbmZzLXV0aWxzLTEuMi42LCBpdCBmaXhlZCB0aGUgY3Vy
-cmVudCBpc3N1ZS4NCg0KTXkgL2V0Yy9leHBvcnRzIGxvb2tzIGxpa2UgdGhpczoNCi9tZWRpYS9m
-czEvICAgICAxMC4xNTguMC4wLzE2KHJ3LHJvb3Rfc3F1YXNoLG5vX3N1YnRyZWVfY2hlY2spDQov
-bWVkaWEvZnMxLyAgICAgMTAuMTU4LjE5Mi43MShydyxub19yb290X3NxdWFzaCxub19zdWJ0cmVl
-X2NoZWNrKQ0KL21lZGlhL2ZzMS8gICAgIDEwLjE1OC4xOTIuNzIocncsbm9fcm9vdF9zcXVhc2gs
-bm9fc3VidHJlZV9jaGVjaykNCi9tZWRpYS9mczEvICAgICAxMC4xNTguMTkyLjczKHJ3LG5vX3Jv
-b3Rfc3F1YXNoLG5vX3N1YnRyZWVfY2hlY2spDQovbWVkaWEvZnMxLyAgICAgMTAuMTU4LjE5Mi43
-NChydyxub19yb290X3NxdWFzaCxub19zdWJ0cmVlX2NoZWNrKQ0KDQpBbmQgSSBhbHNvIGNhcHR1
-cmVkIGRucyBsb29rdXAgdHJhZmZpYyBieSBjb21tYW5kICJ0Y3BkdW1wIC1pIGV0aDAgLXZ2diBo
-b3N0IGRuc19zZXJ2ZXIiIGR1cmluZyB0aGUgZm9sbG93aW5nIHByb2NlZHVyZToNCiNleHBvcnRm
-cyAtdWENCiNleHBvcnRmcyAtYQ0Kb24gdGhlIHNlcnZlciwgYW5kIHRoZSBuZnMgbW91bnQgcHJv
-Y2VkdXJlIG9uIHRoZSBjbGllbnQuDQpUaGVyZSdzIG5vbmUgZG5zIGxvb2t1cCByZWxhdGVkIHRy
-YWZmaWMsIG5laXRoZXIgYmVmb3JlIHRoZSBwYXRjaCwgbm9yIGFmdGVyIGl0Lg0KDQpUaGFua3Mg
-dG8gYWxsIG9mIHlvdSwgZm9yIGhlbHBpbmcgbWUgZml4IHRoaXMgaXNzdWUsIGFuZCB0aGUgdGlt
-ZSB5b3Ugc3BlbnQgb24gcmV2aWV3aW5nIHRoZSBjb2RlLg0KDQpCLlIuDQpNaW5sYW4gV2FuZw0K
-DQo+IC0tLS0tT3JpZ2luYWwgTWVzc2FnZS0tLS0tDQo+IEZyb206IE5laWxCcm93biBbbWFpbHRv
-Om5laWxiQHN1c2UuZGVdDQo+IFNlbnQ6IE1vbmRheSwgT2N0b2JlciAyMSwgMjAxMyA2OjQ5IEFN
-DQo+IFRvOiBOZWlsQnJvd24NCj4gQ2M6IENodWNrIExldmVyOyBXYW5nbWlubGFuOyBKLiBCcnVj
-ZSBGaWVsZHM7IGxpbnV4LW5mc0B2Z2VyLmtlcm5lbC5vcmcNCj4gU3ViamVjdDogUmU6IERpZmZl
-cmVudCBzZXF1ZW5jZSBvZiAiZXhwb3J0ZnMiIHByb2R1Y2UgZGlmZmVyZW50IGVmZmVjdHMgb24g
-bmZzDQo+IGNsaWVudCBtb3VudHMNCj4gDQo+IA0KPiBVbmZvcnR1bmF0ZWx5IEkgY2Fubm90IHNl
-ZSBob3cgdGhhdCBjaGFuZ2UgZXZlciBtYWRlIGFueSBpbXBvcnRhbnQNCj4gZGlmZmVyZW5jZSwg
-YW5kIHRoZSBlbWFpbCBleGNoYW5nZXMgZW5kcyB3aXRob3V0IHJlc29sdmluZyBhbnl0aGluZy4N
-Cj4gDQo+IEl0IGNvdWxkIG9ubHkgbWFrZSBhIGRpZmZlcmVuY2UgdG8gdGhlIG51bWJlciBvZiBE
-TlMgbG9va3VwcyBpZiB0aGVyZSB3YXMNCj4gc29tZXdoZXJlIGEgdGVzdCBmb3Igd2hldGhlciBj
-bGllbnRsaXN0W01DTF9GUUROXSB3YXMgTlVMTCwgYnV0IHRoZXJlIGlzbid0DQo+IGFuZCBuZXZl
-ciB3YXMuDQo+IA0KPiBTbyBpdCBzZWVtcyB2ZXJ5IGxpa2VseSB0aGF0Og0KPiANCj4gZGlmZiAt
-LWdpdCBhL3N1cHBvcnQvZXhwb3J0L2NsaWVudC5jIGIvc3VwcG9ydC9leHBvcnQvY2xpZW50LmMg
-aW5kZXgNCj4gYmEyZGI4Zi4uYWRiZWVkOCAxMDA2NDQNCj4gLS0tIGEvc3VwcG9ydC9leHBvcnQv
-Y2xpZW50LmMNCj4gKysrIGIvc3VwcG9ydC9leHBvcnQvY2xpZW50LmMNCj4gQEAgLTc2NywxNSAr
-NzY3LDUgQEAgY2xpZW50X2dldHR5cGUoY2hhciAqaWRlbnQpDQo+ICAJCQlzcCsrOw0KPiAgCX0N
-Cj4gDQo+IC0JLyoNCj4gLQkgKiBUcmVhdCB1bmFkb3JuZWQgSVAgYWRkcmVzc2VzIGFzIE1DTF9T
-VUJORVRXT1JLLg0KPiAtCSAqIEV2ZXJ5dGhpbmcgZWxzZSBpcyBNQ0xfRlFETi4NCj4gLQkgKi8N
-Cj4gLQlhaSA9IGhvc3RfcHRvbihpZGVudCk7DQo+IC0JaWYgKGFpICE9IE5VTEwpIHsNCj4gLQkJ
-ZnJlZWFkZHJpbmZvKGFpKTsNCj4gLQkJcmV0dXJuIE1DTF9TVUJORVRXT1JLOw0KPiAtCX0NCj4g
-LQ0KPiAgCXJldHVybiBNQ0xfRlFETjsNCj4gIH0NCj4gDQo+IGlzIGFwcHJvcHJpYXRlIGFuZCBt
-YXkgd2VsbCBmaXggdGhlIGN1cnJlbnQgaXNzdWUuDQo+IA0KPiBJdCB3b3VsZCBiZSBnb29kIHRv
-IHRlc3QgaG93IG1hbnkgRE5TIGxvb2tzIChob3BlZnVsbHkgbm9uZSkgYXJlIHBlcmZvcm1lZA0K
-PiB3aGVuIHVzaW5nIGEgZXhwb3J0cyBmaWxlIHRoYXQgY29udGFpbnMgb25seSBJUCBhZGRyZXNz
-ZXMsIGJvdGggYmVmb3JlIGFuZCBhZnRlcg0KPiB0aGUgcGF0Y2guDQo+IA0KPiBOZWlsQnJvd24N
-Cg==
+
+> -------- Original Message --------
+> Subject:     XATTRs in NFS
+> Date:     Mon, 28 Oct 2013 15:41:37 -0700
+> From:     Marc Eshel <eshel@us.ibm.com>
+> To:     Marc Eshel <eshel@us.ibm.com>
+> CC:     Mailing List Linux NFS <linux-nfs@vger.kernel.org>,
+> nfsv4@ietf.org, nfsv4-bounces@ietf.org
+>
+>
+>
+> This is a clean start to discuss extended attributes over NFS in the
+> mailing list first.
+>
+> 1. What are the requirements and why? which applications are using them
+> and how.
+
+Reiterating, one of the applications (glusterfs - a distributed 
+filesystem) has been using filesystems with extended attribute support 
+by annotating files and dirs with crucial info for its operation (uses 
+xattrs as a dumb key/value store). Usage of xattrs is crucial for the 
+operation as glusterfs avoids using any sort of "external" meta-data 
+database or metadata server for its operation (as a philosophy/design 
+principle focused on robustness). Lack of xattrs on NFS prevents using 
+NFS volumes as gluster bricks.
+
+To that end, if NFS can map user.XXX values to user.XXX named attributes 
+and vice versa in the NFS client and NFS server respectively, that would 
+make NFS volumes be usable as gluster bricks.
+
+> 2. Why are current named attributes in NFS not the right answer.
+
+I think they might be, if we can map user.XXXX xattrs to named 
+attributes and avoid any sort of interpretation of they key/values by 
+NFS. Though from my point of view, all I care is for getxattr/setxattr 
+of user.XXX keys to "just work" (whether they are mapped to named 
+attributes or implemented as a separate feature).
+
+Avati
+
+> 3. What does the new protocol enhancements should look like?
+>
+> Thanks, Marc.
+>
+
+
