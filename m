@@ -1,117 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wg0-f44.google.com ([74.125.82.44]:58753 "EHLO
-	mail-wg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755911Ab3JJNM4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Oct 2013 09:12:56 -0400
-Received: by mail-wg0-f44.google.com with SMTP id n12so2072559wgh.35
-        for <linux-nfs@vger.kernel.org>; Thu, 10 Oct 2013 06:12:55 -0700 (PDT)
-Message-ID: <5256A7D4.2050509@primarydata.com>
-Date: Thu, 10 Oct 2013 16:12:52 +0300
-From: Benny Halevy <bhalevy@primarydata.com>
+Received: from mail-pd0-f175.google.com ([209.85.192.175]:39837 "EHLO
+	mail-pd0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751710Ab3JaVWs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 31 Oct 2013 17:22:48 -0400
+Received: by mail-pd0-f175.google.com with SMTP id g10so2927192pdj.6
+        for <linux-nfs@vger.kernel.org>; Thu, 31 Oct 2013 14:22:48 -0700 (PDT)
+Received: from [128.95.176.96] (moist.atmos.washington.edu. [128.95.176.96])
+        by mx.google.com with ESMTPSA id i6sm6309599pbc.1.2013.10.31.14.22.47
+        for <linux-nfs@vger.kernel.org>
+        (version=TLSv1 cipher=ECDHE-RSA-RC4-SHA bits=128/128);
+        Thu, 31 Oct 2013 14:22:47 -0700 (PDT)
+Message-ID: <5272CA26.8010304@uw.edu>
+Date: Thu, 31 Oct 2013 14:22:46 -0700
+From: Harry Edmon <harry@uw.edu>
 MIME-Version: 1.0
-To: Nadav Shemer <nadav@primarydata.com>
-CC: bfields@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: unhash client before expiring it
-References: <1381409248-1858-1-git-send-email-nadav@primarydata.com>
-In-Reply-To: <1381409248-1858-1-git-send-email-nadav@primarydata.com>
-Content-Type: text/plain; charset=ISO-8859-1
+To: linux-nfs@vger.kernel.org
+Subject: Re: clientid is in use
+References: <51FBDB14.4040801@uw.edu> <BE9C4EAA-B835-4021-86C2-D91F66BFF7C8@oracle.com>
+In-Reply-To: <BE9C4EAA-B835-4021-86C2-D91F66BFF7C8@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2013-10-10 15:47, Nadav Shemer wrote:
-> Some client_expire operations (pnfs_expire_client) may release the state
-> lock. To prevent two threads from concurrently expiring the same client,
-> the client is unhashed before any other operation
-> 
-> Signed-off-by: Nadav Shemer <nadav@primarydata.com>
-> ---
-> Related to the recent patchset from Benny Halevy, expire_client releases the state lock (expire_client->destroy_client->pnfs_expire_client).
-> A different thread processing a SET_CLIENTID/EXCHANGE_ID/etc. might find the client on the confirmed/unconfirmed hash table and also call expire_client on it.
-> 
-> To correct this, I reshuffled destroy_client to remove the client from hash tables first thing, before the state lock may be released
-> 
-> Benny: my previous version of this patch had some plays with reference counts (taking a reference for the duration of the destroy).
-> In the current version of the tree, destroy_client assumes cl_refcount==0 and is the only caller of free_client besides create_client. So I dropped it
+On 08/04/13 12:20, Chuck Lever wrote:
+> On Aug 2, 2013, at 12:15 PM, Harry Edmon <harry@uw.edu> wrote:
+>
+>> Occasionally I am seeing the following in our kernel log on a NFS client:
+>>
+>> [2321389.137595] NFS: Server enkf reports our clientid is in use
+>> [2321389.137615] NFS: state manager: lease expired failed on NFSv4 server enkf with error 1
+>>
+>> The result is that the read of the file in question fails.   This occurs for multiple kernel versions on multiple machines.  Anyone have an idea how I should start debugging this?  How is the clientid calculated/assigned?
+> It depends on the kernel version.  You can look in fs/nfs/nfs4proc.c for the nfs4_proc_setclientid function.
+>
+I am still occasionally seeing this error.   The last time was with the NFS client and server both running kernel 3.11.6.   The message was on the client.   Here is the mount info from /proc/mounts:
 
-OK.
-In my state lock elimination branch this hunk is factored out and done under a spin lock
-while the heavy lifting of managing the tracking record will be done under a mutex.
+margaret:/home/margaret/margaret /home/disk/margaret nfs4
+rw,relatime,vers=4.0,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=140.142.113.26,local_lock=none,addr=128.95.89.30
+0 0
 
-Benny
+I am still looking for ideas on how to debug this.
 
-> 
->  fs/nfsd/nfs4state.c | 15 +++++++++------
->  1 file changed, 9 insertions(+), 6 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index b4a28ef..d42434b 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -1154,57 +1154,60 @@ unhash_client_locked(struct nfs4_client *clp)
->  	list_del(&clp->cl_lru);
->  	spin_lock(&clp->cl_lock);
->  	list_for_each_entry(ses, &clp->cl_sessions, se_perclnt)
->  		list_del_init(&ses->se_hash);
->  	spin_unlock(&clp->cl_lock);
->  }
->  
->  static void
->  destroy_client(struct nfs4_client *clp)
->  {
->  	struct nfs4_openowner *oo;
->  	struct nfs4_delegation *dp;
->  	struct list_head reaplist;
->  	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
->  
-> +	list_del(&clp->cl_idhash);
-> +	if (test_bit(NFSD4_CLIENT_CONFIRMED, &clp->cl_flags))
-> +		rb_erase(&clp->cl_namenode, &nn->conf_name_tree);
-> +	else
-> +		rb_erase(&clp->cl_namenode, &nn->unconf_name_tree);
-> +	spin_lock(&nn->client_lock);
-> +	unhash_client_locked(clp);
-> +	spin_unlock(&nn->client_lock);
-> +
->  	INIT_LIST_HEAD(&reaplist);
->  	spin_lock(&recall_lock);
->  	while (!list_empty(&clp->cl_delegations)) {
->  		dp = list_entry(clp->cl_delegations.next, struct nfs4_delegation, dl_perclnt);
->  		list_del_init(&dp->dl_perclnt);
->  		list_move(&dp->dl_recall_lru, &reaplist);
->  	}
->  	spin_unlock(&recall_lock);
->  	while (!list_empty(&reaplist)) {
->  		dp = list_entry(reaplist.next, struct nfs4_delegation, dl_recall_lru);
->  		destroy_delegation(dp);
->  	}
->  	while (!list_empty(&clp->cl_openowners)) {
->  		oo = list_entry(clp->cl_openowners.next, struct nfs4_openowner, oo_perclient);
->  		release_openowner(oo);
->  	}
->  	pnfs_expire_client(clp);
->  	nfsd4_shutdown_callback(clp);
->  	if (clp->cl_cb_conn.cb_xprt)
->  		svc_xprt_put(clp->cl_cb_conn.cb_xprt);
-> -	list_del(&clp->cl_idhash);
-> -	if (test_bit(NFSD4_CLIENT_CONFIRMED, &clp->cl_flags))
-> -		rb_erase(&clp->cl_namenode, &nn->conf_name_tree);
-> -	else
-> -		rb_erase(&clp->cl_namenode, &nn->unconf_name_tree);
->  	spin_lock(&nn->client_lock);
-> -	unhash_client_locked(clp);
->  	WARN_ON_ONCE(atomic_read(&clp->cl_refcount));
->  	free_client(clp);
->  	spin_unlock(&nn->client_lock);
->  }
->  
->  static void expire_client(struct nfs4_client *clp)
->  {
->  	nfsd4_client_record_remove(clp);
->  	destroy_client(clp);
->  }
->  
->  static void copy_verf(struct nfs4_client *target, nfs4_verifier *source)
->  {
->  	memcpy(target->cl_verifier.data, source->data,
->  			sizeof(target->cl_verifier.data));
-> 
+-- 
+Dr. Harry Edmon
+harry@uw.edu, 206-543-0547, FAX: 206-543-0308
+Director of IT, College of the Environment and
+Director of Computing, Dept of Atmospheric Sciences
+University of Washington, Box 351640, Seattle, WA 98195-1640
