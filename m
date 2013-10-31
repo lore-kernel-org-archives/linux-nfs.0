@@ -1,141 +1,95 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:12416 "EHLO mx1.redhat.com"
+Received: from mx11.netapp.com ([216.240.18.76]:30153 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754410Ab3JBRTu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 2 Oct 2013 13:19:50 -0400
-Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id r92HJokA004735
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Wed, 2 Oct 2013 13:19:50 -0400
-Received: from tasleson.csb (vpn-239-58.phx2.redhat.com [10.3.239.58])
-	by int-mx11.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id r92HJnVQ005776
-	for <linux-nfs@vger.kernel.org>; Wed, 2 Oct 2013 13:19:49 -0400
-From: Tony Asleson <tasleson@redhat.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] exportfs: Add -s option.
-Date: Wed,  2 Oct 2013 12:19:49 -0500
-Message-Id: <1380734389-8202-1-git-send-email-tasleson@redhat.com>
+	id S1753944Ab3JaN3l convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 31 Oct 2013 09:29:41 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: NeilBrown <neilb@suse.de>
+CC: NFS <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] SUNRPC: close a rare race in xs_tcp_setup_socket.
+Date: Thu, 31 Oct 2013 13:29:40 +0000
+Message-ID: <1383226179.18107.8.camel@leira.trondhjem.org>
+References: <20131031161436.22969327@notabene.brown>
+In-Reply-To: <20131031161436.22969327@notabene.brown>
+Content-Type: text/plain; charset="utf-7"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Adds '-s' option which outputs the current exports in a format
-suitable for /etc/exports.
+On Thu, 2013-10-31 at 16:14 +-1100, NeilBrown wrote:
++AD4- 
++AD4- We have one report of a crash in xs+AF8-tcp+AF8-setup+AF8-socket.
++AD4- The call path to the crash is:
++AD4- 
++AD4-   xs+AF8-tcp+AF8-setup+AF8-socket -+AD4- inet+AF8-stream+AF8-connect -+AD4- lock+AF8-sock+AF8-nested.
++AD4- 
++AD4- The 'sock' passed to that last function is NULL.
++AD4- 
++AD4- The only way I can see this happening is a concurrent call to
++AD4- xs+AF8-close:
++AD4- 
++AD4-   xs+AF8-close -+AD4- xs+AF8-reset+AF8-transport -+AD4- sock+AF8-release -+AD4- inet+AF8-release
++AD4- 
++AD4- inet+AF8-release sets:
++AD4-    sock-+AD4-sk +AD0- NULL+ADs-
++AD4- inet+AF8-stream+AF8-connect calls
++AD4-    lock+AF8-sock(sock-+AD4-sk)+ADs-
++AD4- which gets NULL.
++AD4- 
++AD4- All calls to xs+AF8-close are protected by XPRT+AF8-LOCKED as are most
++AD4- activations of the workqueue which runs xs+AF8-tcp+AF8-setup+AF8-socket.
++AD4- The exception is xs+AF8-tcp+AF8-schedule+AF8-linger+AF8-timeout.
++AD4- 
++AD4- So presumably the timeout queued by the later fires exactly when some
++AD4- other code runs xs+AF8-close().
++AD4- 
++AD4- To protect against this we can move the cancel+AF8-delayed+AF8-work+AF8-sync()
++AD4- call from xs+AF8-destory() to xs+AF8-close().
++AD4- 
++AD4- As xs+AF8-close is never called from the worker scheduled on
++AD4- -+AD4-connect+AF8-worker, this can never deadlock.
++AD4- 
++AD4- Signed-off-by: NeilBrown +ADw-neilb+AEA-suse.de+AD4-
++AD4- 
++AD4- diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
++AD4- index ee03d35677d9..b19ba535ae1a 100644
++AD4- --- a/net/sunrpc/xprtsock.c
++AD4- +-+-+- b/net/sunrpc/xprtsock.c
++AD4- +AEAAQA- -835,6 +-835,8 +AEAAQA- static void xs+AF8-close(struct rpc+AF8-xprt +ACo-xprt)
++AD4-  
++AD4-  	dprintk(+ACI-RPC:       xs+AF8-close xprt +ACU-p+AFw-n+ACI-, xprt)+ADs-
++AD4-  
++AD4- +-	cancel+AF8-delayed+AF8-work+AF8-sync(+ACY-transport-+AD4-connect+AF8-worker)+ADs-
++AD4- +-
++AD4-  	xs+AF8-reset+AF8-transport(transport)+ADs-
++AD4-  	xprt-+AD4-reestablish+AF8-timeout +AD0- 0+ADs-
++AD4-  
++AD4- +AEAAQA- -869,12 +-871,8 +AEAAQA- static void xs+AF8-local+AF8-destroy(struct rpc+AF8-xprt +ACo-xprt)
++AD4-   +ACo-/
++AD4-  static void xs+AF8-destroy(struct rpc+AF8-xprt +ACo-xprt)
++AD4-  +AHs-
++AD4- -	struct sock+AF8-xprt +ACo-transport +AD0- container+AF8-of(xprt, struct sock+AF8-xprt, xprt)+ADs-
++AD4- -
++AD4-  	dprintk(+ACI-RPC:       xs+AF8-destroy xprt +ACU-p+AFw-n+ACI-, xprt)+ADs-
++AD4-  
++AD4- -	cancel+AF8-delayed+AF8-work+AF8-sync(+ACY-transport-+AD4-connect+AF8-worker)+ADs-
++AD4- -
++AD4-  	xs+AF8-local+AF8-destroy(xprt)+ADs-
++AD4-  +AH0-
++AD4-  
 
-Signed-off-by: Tony Asleson <tasleson@redhat.com>
----
- utils/exportfs/exportfs.c   | 23 ++++++++++++++---------
- utils/exportfs/exportfs.man |  5 ++++-
- 2 files changed, 18 insertions(+), 10 deletions(-)
+Hi Neil,
 
-diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
-index 4331697..52fc03d 100644
---- a/utils/exportfs/exportfs.c
-+++ b/utils/exportfs/exportfs.c
-@@ -38,7 +38,7 @@ static void	export_all(int verbose);
- static void	exportfs(char *arg, char *options, int verbose);
- static void	unexportfs(char *arg, int verbose);
- static void	exports_update(int verbose);
--static void	dump(int verbose);
-+static void	dump(int verbose, int export_format);
- static void	error(nfs_export *exp, int err);
- static void	usage(const char *progname, int n);
- static void	validate_export(nfs_export *exp);
-@@ -88,6 +88,7 @@ main(int argc, char **argv)
- 	int	f_export = 1;
- 	int	f_all = 0;
- 	int	f_verbose = 0;
-+	int	f_export_format = 0;
- 	int	f_reexport = 0;
- 	int	f_ignore = 0;
- 	int	i, c;
-@@ -105,7 +106,7 @@ main(int argc, char **argv)
- 
- 	export_errno = 0;
- 
--	while ((c = getopt(argc, argv, "afhio:ruv")) != EOF) {
-+	while ((c = getopt(argc, argv, "afhio:ruvs")) != EOF) {
- 		switch(c) {
- 		case 'a':
- 			f_all = 1;
-@@ -132,6 +133,9 @@ main(int argc, char **argv)
- 		case 'v':
- 			f_verbose = 1;
- 			break;
-+		case 's':
-+			f_export_format = 1;
-+			break;
- 		default:
- 			usage(progname, 1);
- 			break;
-@@ -164,7 +168,7 @@ main(int argc, char **argv)
- 			return 0;
- 		} else {
- 			xtab_export_read();
--			dump(f_verbose);
-+			dump(f_verbose, f_export_format);
- 			return 0;
- 		}
- 	}
-@@ -634,7 +638,7 @@ dumpopt(char c, char *fmt, ...)
- }
- 
- static void
--dump(int verbose)
-+dump(int verbose, int export_format)
- {
- 	nfs_export	*exp;
- 	struct exportent *ep;
-@@ -647,14 +651,15 @@ dump(int verbose)
- 			if (!exp->m_xtabent)
- 			    continue; /* neilb */
- 			if (htype == MCL_ANONYMOUS)
--				hname = "<world>";
-+				hname = (export_format) ? "*" : "<world>";
- 			else
- 				hname = ep->e_hostname;
--			if (strlen(ep->e_path) > 14)
-+			if (strlen(ep->e_path) > 14 && !export_format)
- 				printf("%-14s\n\t\t%s", ep->e_path, hname);
- 			else
--				printf("%-14s\t%s", ep->e_path, hname);
--			if (!verbose) {
-+				printf(((export_format)? "%s %s" : "%-14s\t%s"), ep->e_path, hname);
-+
-+			if (!verbose && !export_format) {
- 				printf("\n");
- 				continue;
- 			}
-@@ -728,6 +733,6 @@ error(nfs_export *exp, int err)
- static void
- usage(const char *progname, int n)
- {
--	fprintf(stderr, "usage: %s [-afhioruv] [host:/path]\n", progname);
-+	fprintf(stderr, "usage: %s [-afhioruvs] [host:/path]\n", progname);
- 	exit(n);
- }
-diff --git a/utils/exportfs/exportfs.man b/utils/exportfs/exportfs.man
-index 8853486..590f9cf 100644
---- a/utils/exportfs/exportfs.man
-+++ b/utils/exportfs/exportfs.man
-@@ -3,7 +3,7 @@
- .\" Copyright (C) 1995 Olaf Kirch <okir@monad.swb.de>
- .\" Modifications 1999-2003 Neil Brown <neilb@cse.unsw.edu.au>
- .\"
--.TH exportfs 8 "31 December 2009"
-+.TH exportfs 8 "30 September 2013"
- .SH NAME
- exportfs \- maintain table of exported NFS file systems
- .SH SYNOPSIS
-@@ -133,6 +133,9 @@ when they make their next NFS mount request.
- Be verbose. When exporting or unexporting, show what's going on. When
- displaying the current export list, also display the list of export
- options.
-+.TP
-+.B -s
-+Display the current export list suitable for /etc/exports.
- .SH DISCUSSION
- .SS Exporting Directories
- The first synopsis shows how to invoke
+I noticed one small issue when applying: transport-+AD4-connect+AF8-worker is
+not initialised for the AF+AF8-LOCAL case. I therefore added a dummy
+initialiser to xs+AF8-setup+AF8-local().
+
+Cheers
+  Trond
 -- 
-1.8.2.1
+Trond Myklebust
+Linux NFS client maintainer
 
+NetApp
+Trond.Myklebust+AEA-netapp.com
+www.netapp.com
