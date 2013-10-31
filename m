@@ -1,113 +1,27 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ipmail04.adl6.internode.on.net ([150.101.137.141]:65496 "EHLO
-	ipmail04.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751857Ab3JJWeq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Oct 2013 18:34:46 -0400
-Date: Fri, 11 Oct 2013 09:28:07 +1100
-From: Dave Chinner <david@fromorbit.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: "J. Bruce Fields" <bfields@redhat.com>, Al Viro <viro@ZenIV.linux.org.uk>,
-        Christoph Hellwig <hch@infradead.org>, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, sandeen@redhat.com
-Subject: Re: [PATCH 2/2] exportfs: fix 32-bit nfsd handling of 64-bit inode
- numbers
-Message-ID: <20131010222807.GB4446@dastard>
-References: <20131002210736.GA20598@fieldses.org>
- <1380749295-20854-1-git-send-email-bfields@redhat.com>
- <1380749295-20854-2-git-send-email-bfields@redhat.com>
- <20131004221216.GC18051@fieldses.org>
- <20131004221522.GD18051@fieldses.org>
- <20131008215656.GA3456@fieldses.org>
- <20131009001631.GD4446@dastard>
- <20131009145320.GD3456@fieldses.org>
+Received: from mx1.netapp.com ([216.240.18.38]:51911 "EHLO mx1.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751456Ab3JaQHU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 31 Oct 2013 12:07:20 -0400
+Message-ID: <5272802B.2030008@netapp.com>
+Date: Thu, 31 Oct 2013 12:07:07 -0400
+From: Anna Schumaker <bjschuma@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20131009145320.GD3456@fieldses.org>
+To: Christoph Hellwig <hch@infradead.org>
+CC: <bfields@fieldses.org>, <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 4/4] NFSD: Implement SEEK
+References: <1382972247-1108-1-git-send-email-bjschuma@netapp.com> <1382972247-1108-5-git-send-email-bjschuma@netapp.com> <20131031160440.GA30108@infradead.org>
+In-Reply-To: <20131031160440.GA30108@infradead.org>
+Content-Type: text/plain; charset="ISO-8859-1"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Oct 09, 2013 at 10:53:20AM -0400, J. Bruce Fields wrote:
-> On Wed, Oct 09, 2013 at 11:16:31AM +1100, Dave Chinner wrote:
-> > On Tue, Oct 08, 2013 at 05:56:56PM -0400, J. Bruce Fields wrote:
-> > > On Fri, Oct 04, 2013 at 06:15:22PM -0400, J. Bruce Fields wrote:
-> > > > On Fri, Oct 04, 2013 at 06:12:16PM -0400, bfields wrote:
-> > > > > On Wed, Oct 02, 2013 at 05:28:14PM -0400, J. Bruce Fields wrote:
-> > > > > > @@ -268,6 +268,16 @@ static int get_name(const struct path *path, char *name, struct dentry *child)
-> > > > > >  	if (!dir->i_fop)
-> > > > > >  		goto out;
-> > > > > >  	/*
-> > > > > > +	 * inode->i_ino is unsigned long, kstat->ino is u64, so the
-> > > > > > +	 * former would be insufficient on 32-bit hosts when the
-> > > > > > +	 * filesystem supports 64-bit inode numbers.  So we need to
-> > > > > > +	 * actually call ->getattr, not just read i_ino:
-> > > > > > +	 */
-> > > > > > +	error = vfs_getattr_nosec(path, &stat);
-> > > > > 
-> > > > > Doh, "path" here is for the parent....  The following works better!
-> > > > 
-> > > > By the way, I'm testing this with:
-> > > > 
-> > > > 	- create a bunch of nested subdirectories, use
-> > > > 	  name_to_fhandle_at to get a handle for the bottom directory.
-> > > > 	- echo 2 >/proc/sys/vm/drop_caches
-> > > > 	- open_by_fhandle_at on the filehandle
-> > > > 
-> > > > But this only actually exercises the reconnect path on the first run
-> > > > after boot.  Is there something obvious I'm missing here?
-> > > 
-> > > Looking at the code....  OK, most of the work of drop_caches is done by
-> > > shrink_slab_node, which doesn't actually try to free every single thing
-> > > that it could free--in particular, it won't try to free anything if it
-> > > thinks there are less than shrinker->batch_size (1024 in the
-> > > super_block->s_shrink case) objects to free.
+On 10/31/2013 12:04 PM, Christoph Hellwig wrote:
+> Btw, I just noticed that current nfs mainline fails xfstests 286 which
+> test SEEK_DATA/SEEK_HOLE.   That sounds like a useful test case for your
+> patches.
 > 
-> (Oops, sorry, that should have been "less than half of
-> shrinker->batch_size", see below.)
-> 
-> > That's not quite right. Yes, the shrinker won't be called if the
-> > calculated scan count is less than the batch size, but the left over
-> > is added back the shrinker scan count to carry over to the next call
-> > to the shrinker. Hence if you repeated call the shrinker on a small
-> > cache with a large batch size, it will eventually aggregate the scan
-> > counts to over the batch size and trim the cache....
-> 
-> No, in shrink_slab_count, we do this:
-> 
-> 	if (total_scan > max_pass * 2)
-> 		total_scan = max_pass * 2;
-> 
-> 	while (total_scan >= batch_size) {
-> 		...
-> 	}
-> 
-> where max_pass is the value returned from count_objects.  So as long as
-> count_objects returns less than half batch_size, nothing ever happens.
 
-Ah, right - I hadn't considered what that does to small caches - the
-intended purpose of that is to limit the scan size when caches are
-extremely large and lots of deferral has occurred. Perhaps we need
-to consider the batch size in this? e.g.:
+Yeah, I've been using it to test this.  I'm having trouble getting the last few parts of both test 11 and 12 to pass, which is better than what's happening now!
 
-	total_scan = min(total_scan, max(max_pass * 2, batch_size));
-
-Hence for small caches (max_pass <<< batch_size), it evaluates as:
-
-	total_scan = min(total_scan, batch_size);
-
-and hence once aggregation of repeated calls pushes us over the
-batch size we run the shrinker.
-
-For large caches (max_pass >>> batch_size), it evaluates as:
-
-	total_scan = min(total_scan, max_pass * 2);
-
-which gives us the same behaviour as the current code.
-
-I'll write up a patch to do this...
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+Anna
