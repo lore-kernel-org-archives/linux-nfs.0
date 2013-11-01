@@ -1,40 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:13565 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753868Ab3KUNgH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 21 Nov 2013 08:36:07 -0500
-Message-ID: <528E0C8A.9070608@RedHat.com>
-Date: Thu, 21 Nov 2013 08:37:14 -0500
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Simo Sorce <simo@redhat.com>, "Adamson, Andy" <William.Adamson@netapp.com>
-CC: "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH Version 2 0/3] GSSD: Use gss-ctx keys and gsskeyd to sync
- Kerberos credentials and kernel gss_contexts.
-References: <1382451757-3032-1-git-send-email-andros@netapp.com>	 <1382454148.9794.72.camel@willson.li.ssimo.org>	 <A8A66580-CD6F-4141-AE93-B1DD025BFD7A@netapp.com>	 <1382458162.9794.85.camel@willson.li.ssimo.org>	 <9C15298B-8915-46E2-85E1-5098F1A12832@netapp.com>	 <1382462720.9794.131.camel@willson.li.ssimo.org>	 <096F13FC-A99E-4C19-ACCA-01C244D7420F@netapp.com> <1384980587.17044.49.camel@willson.li.ssimo.org>
-In-Reply-To: <1384980587.17044.49.camel@willson.li.ssimo.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from aserp1040.oracle.com ([141.146.126.69]:25804 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752383Ab3KAQix convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Nov 2013 12:38:53 -0400
+Content-Type: text/plain; charset=US-ASCII
+Mime-Version: 1.0 (Mac OS X Mail 6.6 \(1510\))
+Subject: Re: clientid is in use
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <5272CA26.8010304@uw.edu>
+Date: Fri, 1 Nov 2013 12:38:47 -0400
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <BE23E12D-D5F5-4E04-ACBA-E62C9EE558EA@oracle.com>
+References: <51FBDB14.4040801@uw.edu> <BE9C4EAA-B835-4021-86C2-D91F66BFF7C8@oracle.com> <5272CA26.8010304@uw.edu>
+To: Harry Edmon <harry@uw.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
+On Oct 31, 2013, at 5:22 PM, Harry Edmon <harry@uw.edu> wrote:
 
-On 20/11/13 15:49, Simo Sorce wrote:
->> I think Solution 3: [nfslog/nfslogout interfaces invoked from PAM or
->> > other login system facility] is a good way to go.  Note that a PAM
->> > based solution where in the PAM would get us most of the way towards
->> > providing users with a way to login and logout of NFS kerberized
->> > shares.
->> > 
->> > Comments on an NFS PAM that will destroy GSS context for a UID upon
->> > logout?
-> I prefer 3 too, let it to the login system (whether PAM based or other)
-> to determine when it is time to destroy credentials, that's the only
-> component that have a chance of guessing right.
-> Of course you could also provide a user utility to force a purge.
+> On 08/04/13 12:20, Chuck Lever wrote:
+>> On Aug 2, 2013, at 12:15 PM, Harry Edmon <harry@uw.edu> wrote:
+>> 
+>>> Occasionally I am seeing the following in our kernel log on a NFS client:
+>>> 
+>>> [2321389.137595] NFS: Server enkf reports our clientid is in use
+>>> [2321389.137615] NFS: state manager: lease expired failed on NFSv4 server enkf with error 1
+>>> 
+>>> The result is that the read of the file in question fails.   This occurs for multiple kernel versions on multiple machines.  Anyone have an idea how I should start debugging this?  How is the clientid calculated/assigned?
+>> It depends on the kernel version.  You can look in fs/nfs/nfs4proc.c for the nfs4_proc_setclientid function.
+>> 
+> I am still occasionally seeing this error.   The last time was with the NFS client and server both running kernel 3.11.6.   The message was on the client.   Here is the mount info from /proc/mounts:
 > 
-+1 for me on this options as well... 
+> margaret:/home/margaret/margaret /home/disk/margaret nfs4
+> rw,relatime,vers=4.0,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=140.142.113.26,local_lock=none,addr=128.95.89.30
+> 0 0
+> 
+> I am still looking for ideas on how to debug this.
 
-But how is it known when somebody logs out? Is that PAM-able as well?
+The server is reporting that your clients are using the same client ID.  The client ID is based on the client's hostname.  Are your clients dynamically named?
 
-steved.
+The description of the nfs4_unique_id parameter in linux/Documentation/filesystems/nfs/nfs.txt might be helpful.
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
