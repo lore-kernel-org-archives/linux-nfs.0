@@ -1,72 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:12631 "EHLO mx11.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:56023 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752626Ab3KMQBT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 13 Nov 2013 11:01:19 -0500
-Message-ID: <5283A24D.4010309@netapp.com>
-Date: Wed, 13 Nov 2013 11:01:17 -0500
-From: Anna Schumaker <bjschuma@netapp.com>
+	id S1751457Ab3KASkE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 1 Nov 2013 14:40:04 -0400
+Date: Fri, 1 Nov 2013 14:39:57 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: linux-nfs@vger.kernel.org
+Cc: jlayton@redhat.com
+Subject: Re: [PATCH] nfsd4: fix discarded security labels on setattr
+Message-ID: <20131101183957.GC17294@fieldses.org>
+References: <20131101144903.GA15493@fieldses.org>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v2 0/3] NFSD: Implement SEEK
-References: <1384283048-7699-1-git-send-email-bjschuma@netapp.com> <20131112194529.GA26341@fieldses.org> <52828767.3030909@netapp.com> <20131112195911.GA28033@fieldses.org>
-In-Reply-To: <20131112195911.GA28033@fieldses.org>
-Content-Type: text/plain; charset="ISO-8859-1"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20131101144903.GA15493@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/12/2013 02:59 PM, J. Bruce Fields wrote:
-> On Tue, Nov 12, 2013 at 02:54:15PM -0500, Anna Schumaker wrote:
->> On 11/12/2013 02:45 PM, J. Bruce Fields wrote:
->>> On Tue, Nov 12, 2013 at 02:04:05PM -0500, Anna Schumaker wrote:
->>>> These patches implement just the SEEK NFS v4.2 operation.  WRITE_PLUS is
->>>> still under discussion with the IETF after my last series of patches, so I
->>>> am holding off on resubmitting until after spec discussion dies down.
->>>>
->>>> Questions?  Comments?  Thoughts?
->>>> Anna
->>>>
->>>> Anna Schumaker (3):
->>>>   NFSD: Update error codes
->>>
->>> I don't think I got this first patch.
->>
->> It's in the "patches" directory I used, but I don't see it in my gmail inbox either.  I'll send it out in a minute.
->>
->>>
->>>>   NFSD: Create nfs v4.2 decode ops
->>>>   NFSD: Implement SEEK
->>>
->>> I'd like to be reassured the protocol is reasonably stable before we
->>> commit this.  I haven't been following the ietf wg discussion closely.
->>>
->>> And this should initially be disabled by default.  So, probably either:
->>>
->>> 	- Introduce a new NFSD_V4_SEEK option, or
->>> 	- Combine this and NFSD_V4_SECURITY_LABEL and this into a single
->>> 	  NFSD_V4_2 option.
->>>
->>> And recommend "N" for now.
->>>
->>> Probably the latter I guess, to be consistent with the client.  And
->>> because otherwise we could end up with an awful lot of config options.
->>
->> Sure, I can do that easily enough.
-> 
-> OK.  In that case, you'll probably want to do an additional patch at the
-> beginning just to replace NFSD_V4_SECURITY_LABEL by NFSD_V4_2.  Note
-> it's not a pure search-and-replace since the latter covers a little more
-> code.
+On Fri, Nov 01, 2013 at 10:49:03AM -0400, J. Bruce Fields wrote:
+> Jeff just noticed this.  Argh.
 
-Would you accept a patch that instead introduces CONFIG_NFSD_V4_2 and then makes the security label depend on that config option?
+Applying for 3.13.--b.
 
-> 
-> The only thing that worries me a bit is the features may mature at
-> different times.  I guess when the time comes we could split it into
-> NFSD_V4_2 and NFSD_V4_2_EXPERIMENTAL and recommend distros and
-> non-developers turn on only the former?
 > 
 > --b.
 > 
-
+> commit 1012e867f57b3ae5712ea329065a9ab899c7986c
+> Author: J. Bruce Fields <bfields@redhat.com>
+> Date:   Fri Nov 1 10:42:15 2013 -0400
+> 
+>     nfsd4: fix discarded security labels on setattr
+>     
+>     Security labels in setattr calls are currently ignored because we forget
+>     to set label->len.
+>     
+>     Reported-by: Jeff Layton <jlayton@redhat.com>
+>     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> 
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index d9454fe..438d818 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -411,6 +411,7 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
+>  		label->data = kzalloc(dummy32 + 1, GFP_KERNEL);
+>  		if (!label->data)
+>  			return nfserr_jukebox;
+> +		label->len = dummy32;
+>  		defer_free(argp, kfree, label->data);
+>  		memcpy(label->data, buf, dummy32);
+>  	}
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
