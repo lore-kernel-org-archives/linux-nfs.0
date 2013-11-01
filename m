@@ -1,56 +1,106 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:34535 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752641Ab3KLQrC convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Nov 2013 11:47:02 -0500
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 6.6 \(1510\))
-Subject: Re: [PATCH] Adding the nfs4_secure_mounts bool
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <52825648.5090907@RedHat.com>
-Date: Tue, 12 Nov 2013 11:46:42 -0500
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <3DB05606-0818-45DF-88FE-7045B6F026F8@oracle.com>
-References: <1384037221-7224-1-git-send-email-steved@redhat.com> <E061C7A8-DC27-49BA-93C2-DC2E9C19EA7B@netapp.com> <52811CBB.3070204@RedHat.com> <E520DD5F-7E5A-4B6C-9FF6-6B74DA36FD1E@oracle.com> <5281290B.6000201@RedHat.com> <E0FBCF46-C70F-41E5-BA67-48406253CD7E@oracle.com> <52814876.7080604@RedHat.com> <A59DDCD0-5622-4497-A93E-80493EDCED27@oracle.com> <5281618A.1050604@RedHat.com> <784A1C68-59DA-4248-AF91-BAF472CDD37E@oracle.com> <52825648.5090907@RedHat.com>
-To: Steve Dickson <SteveD@redhat.com>
+Received: from mail-wi0-f179.google.com ([209.85.212.179]:57451 "EHLO
+	mail-wi0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750738Ab3KAEiU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Nov 2013 00:38:20 -0400
+Received: by mail-wi0-f179.google.com with SMTP id hm4so607956wib.12
+        for <linux-nfs@vger.kernel.org>; Thu, 31 Oct 2013 21:38:18 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <20131031141538.GA621@fieldses.org>
+References: <CA+uAZNPquD-JA1SDpFHtx9ZawQA5=o+fBigOTy+9NEiDL+hmyw@mail.gmail.com>
+	<20131031141538.GA621@fieldses.org>
+Date: Fri, 1 Nov 2013 10:08:18 +0530
+Message-ID: <CA+uAZNO7VrBA1MLgGoqGpXGPHMMy0VF_3KBr93Y5w1M=ZO7s4w@mail.gmail.com>
+Subject: Re: Need help with NFS Server SUNRPC performance issue
+From: Shyam Kaushik <shyamnfs1@gmail.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi Bruce,
 
-On Nov 12, 2013, at 11:24 AM, Steve Dickson <SteveD@redhat.com> wrote:
+Yes I am using NFSv4. I am willing to test any kernel/patches that you
+suggest. Please let me know where we can start. Also I have
+sunrpc/nfsd/lockd etc compiled as modules & can readily debug it as
+needed.
 
-> 
-> 
-> On 12/11/13 11:09, Chuck Lever wrote:
->>> In the past, if admins want rpc.gssd in the mount path they had to configure it.
->>>> Now we are silently adding, yet another, daemon to the mount path and if 
->>>> rpc.gssd starts falling on its face, I think it will be difficult to debug,
->>>> since the daemon is not expected to be there...
->> Our only real choice here is to fix gssd.  Anything else is punting the problem down the road.
->> 
-> No. The last there was a daemon was involved in all NFS client mounts 
-> (at least that I can remember) was when lockd was a user level daemon.
-> The main reason it was ported to the kernel was to get ride of the
-> bottle neck it caused... Now we adding similar bottle neck back??
-> 
-> Architecturally, put a daemon in the direct NFS mount path just does 
-> not make sense... IMHO...
+I digged this a bit further & I think you are on dot that the issue is
+with rcp layer + buffer space. From tcpdump I see that the initial
+request comes from client to server according to the number of
+outstanding IOs that fio initiates, but then there are multiple back &
+forth packets (RPC continuation & acks) that is slowing up things. I
+thought waking up the NFSD threads that are sleeping within
+svc_get_next_xprt() was an issue initially & made the
+schedule_timeout() with a smaller timeout, but then all the threads
+wakeup & saw there was no work enqueued & went back to sleep again. So
+from sunrpc server standpoint enqueue() is not happening as it should
+be.
 
-Don't be ridiculous.  rpc.gssd is ALREADY in the direct mount path for all Kerberos mounts, and has been for years.
+In the meantime from NFS client side I see a single rpc thread thats
+working all the time.
 
-Forget lease management security for a moment, and consider this: There is no possibility of moving forward with a secure NFS solution on Linux if we can't depend on rpc.gssd.  Therefore, our only real choice if we want Kerberos to be a first class NFS feature on Linux is to make sure rpc.gssd works reliably.
+Thanks.
 
-Last I checked, we are making a robust effort to harden Kerberos support for NFS.  So I don't see any contradiction here.
-
-Now, specifically regarding when rpc.gssd is invoked for lease management security: it is invoked the first time each new server is contacted.  If you mount the same server many times, there should be just one upcall.
-
-And, if auth_rpcgss.ko is not loaded, there will be no upcall.  Ever.
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+--Shyam
 
 
 
-
+On Thu, Oct 31, 2013 at 7:45 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> On Thu, Oct 31, 2013 at 12:19:01PM +0530, Shyam Kaushik wrote:
+>> Hi Folks,
+>>
+>> I am chasing a NFS server performance issue on Ubuntu
+>> 3.8.13-030813-generic kernel. We setup 32 NFSD threads on our NFS
+>> server.
+>>
+>> The issue is:
+>> # I am using fio to generate 4K random writes (over a sync mounted NFS
+>> server filesystem) with 64 outstanding IOs per job for 10 jobs. fio
+>> direct flag is set.
+>> # When doing fio randwrite 4K IOs, realized that we cannot exceed 2.5K
+>> IOPs on the NFS server from a single client.
+>> # With multiple clients we can do more IOPs (like 3x more IOPs with 3 clients)
+>> # Further chasing the issue, I realized that at any point in time only
+>> 8 NFSD threads are active doing vfs_wrte(). Remaining 24 threads are
+>> sleeping within svc_recv()/svc_get_next_xprt().
+>> # First I thought its TCP socket contention/sleeping at the wrong
+>> time. I introduced a one-sec sleep around vfs_write() within NFSD
+>> using msleep(). With this I can clearly see that only 8 NFSD threads
+>> are active doing the write+sleep loop while all other threads are
+>> sleeping.
+>> # I enabled rpcdebug/nfs debug on NFS client side + used tcpdump on
+>> NFS server side to confirm that client is queuing all the outstanding
+>> IOs concurrently & its not a NFS client side problem.
+>>
+>> Now the question is what is holding up the sunrpc layer to do only 8
+>> outstanding IOs? Is there some TCP level buffer size limitation or so
+>> that is causing this issue? I also added counters around which all
+>> nfsd threads get to process the SVC xport & I see always only the
+>> first 10 threads being used up all the time. The rest of the NFSD
+>> threads never receive a packet at all to handle.
+>>
+>> I already setup number of RPC slots tuneable to 128 on both server &
+>> client before the mount, so this is not the issue.
+>>
+>> Are there some other tuneables that control this behaviour? I think if
+>> I cross the 8 concurrent IOs per client<>server, I will be able to get
+>> >2.5K IOPs.
+>>
+>> I also confirmed that each NFS multi-step operation that comes from
+>> client has an OP_PUTFH/OP_WRITE/OP_GETATTR. I dont see any other
+>> unnecessary NFS packets in the flow.
+>>
+>> Any help/inputs on this topic greatly appreciated.
+>
+> There's some logic in the rpc layer that tries not to accept requests
+> unless there's adequate send buffer space for the worst case reply.  It
+> could be that logic interfering.....  I'm not sure how to test that
+> quickly.
+>
+> Would you be willing to test an upstream kernel and/or some patches?
+>
+> Sounds like you're using only NFSv4?
+>
+> --b.
