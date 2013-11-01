@@ -1,100 +1,125 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:8404 "EHLO mx1.redhat.com"
+Received: from mx11.netapp.com ([216.240.18.76]:4538 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757823Ab3KHQ1I (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 8 Nov 2013 11:27:08 -0500
-Message-ID: <527D1112.3050903@RedHat.com>
-Date: Fri, 08 Nov 2013 11:28:02 -0500
-From: Steve Dickson <SteveD@redhat.com>
+	id S1752627Ab3KAS3o convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Nov 2013 14:29:44 -0400
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Jeff Layton <jlayton@redhat.com>
+CC: "cye@redhat.com" <cye@redhat.com>,
+        "dpquigl@davequigley.com" <dpquigl@davequigley.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfs: fix oops when trying to set SELinux label
+Date: Fri, 1 Nov 2013 18:29:43 +0000
+Message-ID: <1383330580.6626.22.camel@leira.trondhjem.org>
+References: <1383317372-3373-1-git-send-email-jlayton@redhat.com>
+	 <20131101120211.586aef7a@corrin.poochiereds.net>
+	 <1383324599.2911.2.camel@leira.trondhjem.org>
+	 <20131101125719.38843cfb@tlielax.poochiereds.net>
+	 <A1A30425-FA21-4D8B-ABB4-F7E02C2D5DEA@netapp.com>
+	 <20131101131855.224ddb4b@tlielax.poochiereds.net>
+	 <1383328062.6626.5.camel@leira.trondhjem.org>
+	 <20131101135805.56d266bd@tlielax.poochiereds.net>
+In-Reply-To: <20131101135805.56d266bd@tlielax.poochiereds.net>
+Content-Type: text/plain; charset="utf-7"
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Jeff Layton <jlayton@redhat.com>, Chuck Lever <chuck.lever@oracle.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] Adding the nfs4_use_min_auth module parameter
-References: <A8E8F2C4-8CB7-434E-8520-B2B53F0582D9@oracle.com> <527C07B4.800@RedHat.com> <44CA89EA-8B5E-4B83-A622-78A78F760FF1@oracle.com> <527CDBFC.3070903@RedHat.com> <20131108082202.4032f1a2@tlielax.poochiereds.net> <527CFC72.2030907@RedHat.com> <20131108101232.10d49851@tlielax.poochiereds.net> <527D0CE6.2020401@RedHat.com> <20131108161707.GD3533@fieldses.org> <527D0F21.3050200@RedHat.com> <20131108162203.GE3533@fieldses.org>
-In-Reply-To: <20131108162203.GE3533@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Fri, 2013-11-01 at 13:58 -0400, Jeff Layton wrote:
++AD4- On Fri, 1 Nov 2013 17:47:46 +-0000
++AD4- +ACI-Myklebust, Trond+ACI- +ADw-Trond.Myklebust+AEA-netapp.com+AD4- wrote:
++AD4- 
++AD4- +AD4- On Fri, 2013-11-01 at 13:18 -0400, Jeff Layton wrote:
++AD4- +AD4- +AD4- On Fri, 1 Nov 2013 17:05:08 +-0000
++AD4- +AD4- +AD4- +ACI-Myklebust, Trond+ACI- +ADw-Trond.Myklebust+AEA-netapp.com+AD4- wrote:
++AD4- +AD4- +AD4- 
++AD4- +AD4- +AD4- +AD4- 
++AD4- +AD4- +AD4- +AD4- On Nov 1, 2013, at 12:57, Jeff Layton +ADw-jlayton+AEA-redhat.com+AD4- wrote:
++AD4- +AD4- +AD4- +AD4- 
++AD4- +AD4- +AD4- +AD4- +AD4- On Fri, 1 Nov 2013 16:50:00 +-0000
++AD4- +AD4- +AD4- +AD4- +AD4- +ACI-Myklebust, Trond+ACI- +ADw-Trond.Myklebust+AEA-netapp.com+AD4- wrote:
++AD4- +AD4- +AD4- +AD4- +AD4- 
++AD4- +AD4- +AD4- +AD4- +AD4APg- On Fri, 2013-11-01 at 12:02 -0400, Jeff Layton wrote:
++AD4- +AD4- +AD4- +AD4- +AD4APgA+- It looks like +AF8-nfs4+AF8-get+AF8-security+AF8-label() has the same problem, but I've
++AD4- +AD4- +AD4- +AD4- +AD4APgA+- so far been unable to get it to be called, so I didn't patch it. It
++AD4- +AD4- +AD4- +AD4- +AD4APgA+- seems like getxattr does some special stuff for SELinux labels that
++AD4- +AD4- +AD4- +AD4- +AD4APgA+- cause them only to ever be fetched once.
++AD4- +AD4- +AD4- +AD4- +AD4APgA+- 
++AD4- +AD4- +AD4- +AD4- +AD4APgA+- Is there some trick to it?
++AD4- +AD4- +AD4- +AD4- +AD4APgA+- 
++AD4- +AD4- +AD4- +AD4- +AD4APg- 
++AD4- +AD4- +AD4- +AD4- +AD4APg- Doesn't 'ls -Z' cause them to security label to be read again?
++AD4- +AD4- +AD4- +AD4- +AD4APg- 
++AD4- +AD4- +AD4- +AD4- +AD4- 
++AD4- +AD4- +AD4- +AD4- +AD4- As best I can tell, security labels are set on the inode when the inode
++AD4- +AD4- +AD4- +AD4- +AD4- is instantiated, and then are reset on changes (i.e. setxattr). If
++AD4- +AD4- +AD4- +AD4- 
++AD4- +AD4- +AD4- +AD4- +ICY-and on getxattr, afaics.
++AD4- +AD4- +AD4- +AD4- 
++AD4- +AD4- +AD4- 
++AD4- +AD4- +AD4- I don't see that. The call chain is something like this:
++AD4- +AD4- +AD4- 
++AD4- +AD4- +AD4- vfs+AF8-getxattr
++AD4- +AD4- +AD4-   xattr+AF8-getsecurity
++AD4- +AD4- +AD4-     security+AF8-inode+AF8-getsecurity
++AD4- +AD4- +AD4-        selinux+AF8-inode+AF8-getsecurity
++AD4- +AD4- +AD4- 
++AD4- +AD4- +AD4- ...and that function looks like it just converts the current security
++AD4- +AD4- +AD4- context on the inode to text and plops that into the buffer.
++AD4- +AD4- 
++AD4- +AD4- Ah, you're right. You have to turn off SELinux in order to hit
++AD4- +AD4- nfs4+AF8-xattr+AF8-get+AF8-nfs4+AF8-label.
++AD4- +AD4- 
++AD4- +AD4- +AD4- +AD4- +AD4- another client changes the label though, it's not clear to me how your
++AD4- +AD4- +AD4- +AD4- +AD4- client would ever notice it until the inode is dropped from the cache.
++AD4- +AD4- +AD4- +AD4- +AD4- 
++AD4- +AD4- +AD4- +AD4- +AD4- ISTR Eric Paris explaining to me that they do that for performance
++AD4- +AD4- +AD4- +AD4- +AD4- reasons but it seems like something that needs to be reconsidered in
++AD4- +AD4- +AD4- +AD4- +AD4- light of labeled NFS. Not picking up a security label change seems like
++AD4- +AD4- +AD4- +AD4- +AD4- a bug, IMO...
++AD4- +AD4- +AD4- +AD4- 
++AD4- +AD4- +AD4- +AD4- To be effective, the security label should normally be set at file creation time. It should rarely, if ever, change. Why would you need to change it from a different client?
++AD4- +AD4- +AD4- +AD4- 
++AD4- +AD4- +AD4- 
++AD4- +AD4- +AD4- At least in Fedora, there are SELinux policy changes all the time.
++AD4- +AD4- +AD4- Sometimes that involves changing how files are labeled. I don't think
++AD4- +AD4- +AD4- it's reasonable to assume that they only get set at creation time.
++AD4- +AD4- +AD4- 
++AD4- +AD4- 
++AD4- +AD4- That doesn't answer the question. Again, why would you need to do this
++AD4- +AD4- from another client? If you don't have a real-life use case, then it's
++AD4- +AD4- just another 'doctor it hurts' problem. Stop doing it...
++AD4- +AD4- 
++AD4- 
++AD4- Ok, how about this then: +ADs-)
++AD4- 
++AD4- NFS doesn't have O+AF8-TMPFILE, so you really +ACo-can't+ACo- set the context at
++AD4- creation time, at least with normal syscalls. There will always be a
++AD4- race window between creating a file and setting the SELinux context on
++AD4- it.
 
+Ummm. This is supposed to be a security feature. How can you tolerate race windows?
 
-On 08/11/13 11:22, J. Bruce Fields wrote:
-> On Fri, Nov 08, 2013 at 11:19:45AM -0500, Steve Dickson wrote:
->>
->>
->> On 08/11/13 11:17, J. Bruce Fields wrote:
->>> On Fri, Nov 08, 2013 at 11:10:14AM -0500, Steve Dickson wrote:
->>>>
->>>>
->>>> On 08/11/13 10:12, Jeff Layton wrote:
->>>>> On Fri, 08 Nov 2013 10:00:02 -0500
->>>>> Steve Dickson <SteveD@redhat.com> wrote:
->>>>>
->>>>>>
->>>>>>
->>>>>> On 08/11/13 08:22, Jeff Layton wrote:
->>>>>>> On Fri, 08 Nov 2013 07:41:32 -0500
->>>>>>> Steve Dickson <SteveD@redhat.com> wrote:
->>>>>>>
->>>>>>>>
->>>>>>>>
->>>>>>>> On 07/11/13 18:05, Chuck Lever wrote:
->>>>>>>>>
->>>>>>>>> On Nov 7, 2013, at 1:35 PM, Steve Dickson <SteveD@redhat.com> wrote:
->>>>>>>>>
->>>>>>>>>> Hey mrchuck... 
->>>>>>>>>>
->>>>>>>>>> On 07/11/13 14:25, Chuck Lever wrote:
->>>>>>>>>>> Hi Steve-
->>>>>>>>>>>
->>>>>>>>>>> On Nov 7, 2013, at 11:09 AM, Steve Dickson <steved@redhat.com> wrote:
->>>>>>>>>>>
->>>>>>>>>>>> This new module parameter makes the v4 client
->>>>>>>>>>>> use the minimal authentication flavor (AUTH_UNIX)
->>>>>>>>>>>> when establishing NFSV4 state and doing the
->>>>>>>>>>>> pseudoroot lookup
->>>>>>>>>>>
->>>>>>>>>>> The patch description doesn't say, but is this change to work 
->>>>>>>>>>> around the 15 second GSSD upcall timeout? 
->>>>>>>>>> Yes. A 15 second delay on every mount due to security that
->>>>>>>>>> nobody is requesting is just not good.. IMHO..
->>>>>>>>>
->>>>>>>>> One thing we haven't discussed is reducing the upcall timeout to 5 seconds or less, 
->>>>>>>>> as a form of immediate relief.  15 seconds is arbitrary, and is onerous even when 
->>>>>>>>> you expect the mount to work (ie why would it be good for any properly configured 
->>>>>>>>> environment to take 15 seconds to establish a GSS context?).
->>>>>>>>>
->>>>>>>>> In other words, there are still cases where users wait 15 seconds unnecessarily, 
->>>>>>>>> and not because of the use of krb5i for lease management.  Aren't those of concern?
->>>>>>>> No. I think the concern here, at least my concern, is the lack of management.
->>>>>>>> We are forcing admins to use krb5i in lease management when its not necessary
->>>>>>>> and there is no way to turn it off.
->>>>>>>>   
->>>>>>>
->>>>>>> I don't think that's really the case. The idea was to have the client
->>>>>>> attempt to use krb5i if it's available, and then to fall back to
->>>>>>> AUTH_SYS if it isn't. This would be *absolutely* no big deal if the
->>>>>>> GSSAPI upcall succeeded or failed immediately instead of requiring this
->>>>>>> timeout when the daemon isn't running.
->>>>>> What server makes krb5i available today in state setup and pseudoroot lookups?
->>>>>>
->>>>>
->>>>> That I don't know...sorry...
->>>> Then what is the justification to take all these extra steps
->>>> there they going to fail %100 of the time??
->>>
->>> Any server can support krb5 for state setup and pseudoroot operations if
->>> it's configured.  This isn't a problem.
->> Would is this done on a Linux server? Is there a wiki?
-> 
-> It's allowed by default, there should be nothing to configure beyond the
-> usual krb5 setup.
-Great! So you are saying when rpc.gssd is up and  Kerberos is correctly 
-configured on both the server and client the state setup and pseudoroot
-become secured? 
+IOW: If I get the security label +ACI-wrong+ACI- on lookup due to such a race,
+then how am I supposed to know not to act on it?
 
-And this is the case with other non-Linux servers? 
++AD4- FWIW, I just started playing with this stuff and this behavior just
++AD4- gave me pause. This is the sort of thing that will give people fits
++AD4- since it's unexpected behavior.
++AD4- 
++AD4- When I change something on the server, I typically expect the client to
++AD4- see that change in a timely fashion. As it stands now, it won't -- at
++AD4- least until the inode gets purged from the cache.
 
-steved.
+See my previous answer: don't do that... If you want a different answer,
+then feel free to propose a caching model, but note that it's going to
+be very hard to deal sensibly with your race condition above. That's the
+reason why we went with the current caching model.
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust+AEA-netapp.com
+www.netapp.com
