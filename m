@@ -1,70 +1,108 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:29018 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:64897 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752205Ab3KGV4O (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 7 Nov 2013 16:56:14 -0500
-Message-ID: <527C0CB6.8090308@RedHat.com>
-Date: Thu, 07 Nov 2013 16:57:10 -0500
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
+	id S1751732Ab3KAR6K (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 1 Nov 2013 13:58:10 -0400
+Date: Fri, 1 Nov 2013 13:58:05 -0400
+From: Jeff Layton <jlayton@redhat.com>
 To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] Adding the nfs4_use_min_auth module parameter
-References: <1383851364-8370-1-git-send-email-steved@redhat.com>	 <1383852380.12966.5.camel@leira.trondhjem.org>	 <527C0548.1090205@RedHat.com> <1383860381.12966.37.camel@leira.trondhjem.org>
-In-Reply-To: <1383860381.12966.37.camel@leira.trondhjem.org>
-Content-Type: text/plain; charset=UTF-7
+Cc: "cye@redhat.com" <cye@redhat.com>,
+        "dpquigl@davequigley.com" <dpquigl@davequigley.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfs: fix oops when trying to set SELinux label
+Message-ID: <20131101135805.56d266bd@tlielax.poochiereds.net>
+In-Reply-To: <1383328062.6626.5.camel@leira.trondhjem.org>
+References: <1383317372-3373-1-git-send-email-jlayton@redhat.com>
+	<20131101120211.586aef7a@corrin.poochiereds.net>
+	<1383324599.2911.2.camel@leira.trondhjem.org>
+	<20131101125719.38843cfb@tlielax.poochiereds.net>
+	<A1A30425-FA21-4D8B-ABB4-F7E02C2D5DEA@netapp.com>
+	<20131101131855.224ddb4b@tlielax.poochiereds.net>
+	<1383328062.6626.5.camel@leira.trondhjem.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=utf-7
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Fri, 1 Nov 2013 17:47:46 +-0000
++ACI-Myklebust, Trond+ACI +ADw-Trond.Myklebust+AEA-netapp.com+AD4 wrote:
 
++AD4 On Fri, 2013-11-01 at 13:18 -0400, Jeff Layton wrote:
++AD4 +AD4 On Fri, 1 Nov 2013 17:05:08 +-0000
++AD4 +AD4 +ACI-Myklebust, Trond+ACI +ADw-Trond.Myklebust+AEA-netapp.com+AD4 wrote:
++AD4 +AD4 
++AD4 +AD4 +AD4 
++AD4 +AD4 +AD4 On Nov 1, 2013, at 12:57, Jeff Layton +ADw-jlayton+AEA-redhat.com+AD4 wrote:
++AD4 +AD4 +AD4 
++AD4 +AD4 +AD4 +AD4 On Fri, 1 Nov 2013 16:50:00 +-0000
++AD4 +AD4 +AD4 +AD4 +ACI-Myklebust, Trond+ACI +ADw-Trond.Myklebust+AEA-netapp.com+AD4 wrote:
++AD4 +AD4 +AD4 +AD4 
++AD4 +AD4 +AD4 +AD4APg On Fri, 2013-11-01 at 12:02 -0400, Jeff Layton wrote:
++AD4 +AD4 +AD4 +AD4APgA+ It looks like +AF8-nfs4+AF8-get+AF8-security+AF8-label() has the same problem, but I've
++AD4 +AD4 +AD4 +AD4APgA+ so far been unable to get it to be called, so I didn't patch it. It
++AD4 +AD4 +AD4 +AD4APgA+ seems like getxattr does some special stuff for SELinux labels that
++AD4 +AD4 +AD4 +AD4APgA+ cause them only to ever be fetched once.
++AD4 +AD4 +AD4 +AD4APgA+ 
++AD4 +AD4 +AD4 +AD4APgA+ Is there some trick to it?
++AD4 +AD4 +AD4 +AD4APgA+ 
++AD4 +AD4 +AD4 +AD4APg 
++AD4 +AD4 +AD4 +AD4APg Doesn't 'ls -Z' cause them to security label to be read again?
++AD4 +AD4 +AD4 +AD4APg 
++AD4 +AD4 +AD4 +AD4 
++AD4 +AD4 +AD4 +AD4 As best I can tell, security labels are set on the inode when the inode
++AD4 +AD4 +AD4 +AD4 is instantiated, and then are reset on changes (i.e. setxattr). If
++AD4 +AD4 +AD4 
++AD4 +AD4 +AD4 +ICY-and on getxattr, afaics.
++AD4 +AD4 +AD4 
++AD4 +AD4 
++AD4 +AD4 I don't see that. The call chain is something like this:
++AD4 +AD4 
++AD4 +AD4 vfs+AF8-getxattr
++AD4 +AD4   xattr+AF8-getsecurity
++AD4 +AD4     security+AF8-inode+AF8-getsecurity
++AD4 +AD4        selinux+AF8-inode+AF8-getsecurity
++AD4 +AD4 
++AD4 +AD4 ...and that function looks like it just converts the current security
++AD4 +AD4 context on the inode to text and plops that into the buffer.
++AD4 
++AD4 Ah, you're right. You have to turn off SELinux in order to hit
++AD4 nfs4+AF8-xattr+AF8-get+AF8-nfs4+AF8-label.
++AD4 
++AD4 +AD4 +AD4 +AD4 another client changes the label though, it's not clear to me how your
++AD4 +AD4 +AD4 +AD4 client would ever notice it until the inode is dropped from the cache.
++AD4 +AD4 +AD4 +AD4 
++AD4 +AD4 +AD4 +AD4 ISTR Eric Paris explaining to me that they do that for performance
++AD4 +AD4 +AD4 +AD4 reasons but it seems like something that needs to be reconsidered in
++AD4 +AD4 +AD4 +AD4 light of labeled NFS. Not picking up a security label change seems like
++AD4 +AD4 +AD4 +AD4 a bug, IMO...
++AD4 +AD4 +AD4 
++AD4 +AD4 +AD4 To be effective, the security label should normally be set at file creation time. It should rarely, if ever, change. Why would you need to change it from a different client?
++AD4 +AD4 +AD4 
++AD4 +AD4 
++AD4 +AD4 At least in Fedora, there are SELinux policy changes all the time.
++AD4 +AD4 Sometimes that involves changing how files are labeled. I don't think
++AD4 +AD4 it's reasonable to assume that they only get set at creation time.
++AD4 +AD4 
++AD4 
++AD4 That doesn't answer the question. Again, why would you need to do this
++AD4 from another client? If you don't have a real-life use case, then it's
++AD4 just another 'doctor it hurts' problem. Stop doing it...
++AD4 
 
-On 07/11/13 16:39, Myklebust, Trond wrote:
->> If we blacklist those module(s) then we are disabling secure mounts
->> > altogether... 
-> What's the difference? If you use secure mounts, you really do want the
-> NFSv4 state to be secure too.
-Maybe I'm missing something via my testing.. It seems only the establishment
-of the state is insecure not the actual transactions using that state.
-So there is a window... but... 
+Ok, how about this then: +ADs)
 
-Again, what servers, today, support this type of secure state establishment?
-Having this type of security in the client I think is good... but if
-the client is not talking with any servers that support this type 
-of security, why not have a way to turn it off?
+NFS doesn't have O+AF8-TMPFILE, so you really +ACo-can't+ACo set the context at
+creation time, at least with normal syscalls. There will always be a
+race window between creating a file and setting the SELinux context on
+it.
 
-> 
->>> > > I think we should rather looks at adding a new mount option for
->>> > > specifying the security flavour to use when establishing basic NFSv4.x
->>> > > state, and then perhaps specifying the _default_ for that mount option
->>> > > using a module parameter.
->> > The problem is everything is hard code in these two areas so having
->> > a mount option would not work... 
-> We can change that code.
-> 
->> > The fact that -o sec=sys does not turn off the use of AUTH_GSS_KRB5x 
->> > is simple wrong... IMHO...
-> I beg to differ. The problem previously was that it _did_ set the policy
-> for the state management, and that meant that if you has 2 mounts on the
-> same server with different security flavours, then then client behaviour
-> depended on the order of the mounts. Get the order wrong, and you get
-> anything from outright errors (CLID_IN_USE) to insecure behaviour.
-I see your point... but requiring all mounts to use some form 
-of security I don't think is the answer either... 
+FWIW, I just started playing with this stuff and this behavior just
+gave me pause. This is the sort of thing that will give people fits
+since it's unexpected behavior.
 
-> 
->> >  Not having way to override this behavior
->> > is not a good thing... again... IMHO... 
->> > 
->> > Finally, Are there any servers out there today that support this type
->> > of behavior? Requiring secure state establishment or secure 
->> > pseudoroot lookups. 
->> > 
->> > Bruce, can we configure the Linux server to require this type security behavior? 
->> > Can any server out there require these type of security behavior?  
->> > 
->> > If the answer is no, then we really need a way to disable this type
->> > of behavior....
-> I don't disagree with the goal, I disagree with the method.
-I don't understand what you mean here... I did I say something right??? 8-) 
+When I change something on the server, I typically expect the client to
+see that change in a timely fashion. As it stands now, it won't -- at
+least until the inode gets purged from the cache.
 
-steved.
+-- 
+Jeff Layton +ADw-jlayton+AEA-redhat.com+AD4
