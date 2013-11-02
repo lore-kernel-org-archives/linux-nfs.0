@@ -1,51 +1,34 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:47686 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:35526 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752716Ab3KDQrH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 4 Nov 2013 11:47:07 -0500
-Date: Mon, 4 Nov 2013 11:46:58 -0500
+	id S1752841Ab3KBOom (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 2 Nov 2013 10:44:42 -0400
+Date: Sat, 2 Nov 2013 10:44:31 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
 To: Christoph Hellwig <hch@infradead.org>
 Cc: Anna Schumaker <bjschuma@netapp.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 4/4] NFSD: Implement SEEK
-Message-ID: <20131104164658.GA4427@fieldses.org>
+Subject: Re: [PATCH 3/4] NFSD: Add WRITE_PLUS support for hole punches
+Message-ID: <20131102144431.GB26983@fieldses.org>
 References: <1382972247-1108-1-git-send-email-bjschuma@netapp.com>
- <1382972247-1108-5-git-send-email-bjschuma@netapp.com>
- <20131029073558.GA10889@infradead.org>
- <526FB180.1060003@netapp.com>
- <20131029130721.GA32094@infradead.org>
- <20131029133006.GB29606@fieldses.org>
- <20131102134837.GA18961@infradead.org>
- <20131102143729.GA26983@fieldses.org>
- <20131102144107.GA28743@infradead.org>
+ <1382972247-1108-4-git-send-email-bjschuma@netapp.com>
+ <20131028214030.GO31322@fieldses.org>
+ <526FAF30.3060502@netapp.com>
+ <20131029130649.GA29606@fieldses.org>
+ <20131102135409.GC18961@infradead.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20131102144107.GA28743@infradead.org>
+In-Reply-To: <20131102135409.GC18961@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Nov 02, 2013 at 07:41:07AM -0700, Christoph Hellwig wrote:
-> On Sat, Nov 02, 2013 at 10:37:29AM -0400, J. Bruce Fields wrote:
-> > On Sat, Nov 02, 2013 at 06:48:37AM -0700, Christoph Hellwig wrote:
-> > > On Tue, Oct 29, 2013 at 09:30:06AM -0400, J. Bruce Fields wrote:
-> > > > I haven't read these parts of the spec yet at all....
-> > > 
-> > > Btw, is there a way do to something like a git blame for the spec?  I'd
-> > > really love to confront people personally with some of the odd bits they
-> > > came up with.
-> > 
-> > It *is* in git, so you can literally run git blame:
-> > 
-> > 	https://github.com/loghyr/NFSv4.2
-> > 
-> > But it'll probably credit almost everything to Tom and he's typically
-> > just the messenger....
+On Sat, Nov 02, 2013 at 06:54:09AM -0700, Christoph Hellwig wrote:
+> On Tue, Oct 29, 2013 at 09:06:49AM -0400, J. Bruce Fields wrote:
+> > What I meant was--why are we doing a sync at all, instead of returning
+> > NFS_UNSTABLE and making the client commit?
 > 
-> Indeed, a quick try attributes everything to him.  No good way to figure
-> out who is to blame for the whole WRITE PLUS idiocy.
+> Did NFSv4.2 introduce a concept of unstable metadata operations?
 
-Imagine it was me, if it helps.
-
-The important thing is that we understand what should be fixed.
+No, but I think WRITE_PLUS does have a stable/unstable bit so I think we
+could choose not to do the sync if that'd make sense.
 
 --b.
