@@ -1,65 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:59622 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750732Ab3KECHQ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Nov 2013 21:07:16 -0500
-From: "Haynes, Tom" <Tom.Haynes@netapp.com>
-To: Christoph Hellwig <hch@infradead.org>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        Mailing List Linux NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 4/4] NFSD: Implement SEEK
-Date: Tue, 5 Nov 2013 02:07:15 +0000
-Message-ID: <12D9C342-D7DC-41B1-B2D5-C13A89E5BDE1@netapp.com>
-References: <1382972247-1108-5-git-send-email-bjschuma@netapp.com>
- <20131029073558.GA10889@infradead.org> <526FB180.1060003@netapp.com>
- <20131029130721.GA32094@infradead.org> <20131029133006.GB29606@fieldses.org>
- <20131102134837.GA18961@infradead.org> <20131102143729.GA26983@fieldses.org>
- <20131102144107.GA28743@infradead.org> <20131104164658.GA4427@fieldses.org>
- <5BAB86A3-045A-4CA9-A08F-7B0E38DBAC7D@excfb.com>
- <20131105010332.GA32189@infradead.org>
-In-Reply-To: <20131105010332.GA32189@infradead.org>
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
+Received: from mail-qa0-f45.google.com ([209.85.216.45]:39275 "EHLO
+	mail-qa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751847Ab3KBK5Y (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 2 Nov 2013 06:57:24 -0400
+Received: by mail-qa0-f45.google.com with SMTP id ii20so1159914qab.11
+        for <linux-nfs@vger.kernel.org>; Sat, 02 Nov 2013 03:57:23 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, dpquigl@davequigley.com
+Subject: [PATCH] nfs: set security label when revalidating inode
+Date: Sat,  2 Nov 2013 06:57:18 -0400
+Message-Id: <1383389838-1858-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Currently, we fetch the security label when revalidating an inode's
+attributes, but don't apply it. This is in contrast to the readdir()
+codepath where we do apply label changes.
 
-On Nov 4, 2013, at 5:03 PM, Christoph Hellwig <hch@infradead.org> wrote:
+Cc: Dave Quigley <dpquigl@davequigley.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfs/inode.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-> On Mon, Nov 04, 2013 at 01:56:39PM -0800, Thomas Haynes wrote:
->> Nah, most likely me, no imagination needed.
->> 
->> We were also looking at bringing larger WRITEs during 4.3 and I wanted
->> to have WRITE_PLUS already in place for that.
-> 
-> What exactly does a WRITE PLUS with various non-related overloads in 4.2
-> buy you for introducing large writes in 4.3?
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 4bc7538..6ae6160 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -923,6 +923,8 @@ __nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
+ 	if (nfsi->cache_validity & NFS_INO_INVALID_ACL)
+ 		nfs_zap_acl_cache(inode);
+ 
++	nfs_setsecurity(inode, fattr, label);
++
+ 	dfprintk(PAGECACHE, "NFS: (%s/%Ld) revalidation complete\n",
+ 		inode->i_sb->s_id,
+ 		(long long)NFS_FILEID(inode));
+-- 
+1.8.3.1
 
-In 4.3, READ_PLUS would be extended for large reads. We would at that
-time need a WRITE_PLUS to be extended for large writes.
-
-The relationship falls from having WRITE_PLUS handle all of the variants
-handled by READ_PLUS. It needs to accept all of them because it
-does not know what will be returned.
-
-We did not want many new operators and also wanted the operators to
-be extensible. With this approach, you can define a new arm of the
-discriminated union, not have to implement it, and not burn an
-operator.
-
-Some of the history is captured here:
-
-http://www.ietf.org/mail-archive/web/nfsv4/current/msg11235.html
-http://www.ietf.org/mail-archive/web/nfsv4/current/msg11470.html
-http://www.ietf.org/proceedings/84/slides/slides-84-nfsv4-1.pdf (slide 6)
-
-It doesn't capture the intent of NFS4ERR_UNION_NOTSUPP in
-this decision.
-
-11.1.1.1.  NFS4ERR_UNION_NOTSUPP (Error Code 10090)
-
-   One of the arguments to the operation is a discriminated union and
-   while the server supports the given operation, it does not support
-   the selected arm of the discriminated union.  For an example, see
-   READ_PLUS (Section 14.10).
