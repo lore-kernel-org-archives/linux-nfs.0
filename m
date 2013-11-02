@@ -1,71 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:25563 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751067Ab3KOQ5n convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Nov 2013 11:57:43 -0500
+Received: from bombadil.infradead.org ([198.137.202.9]:60301 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752965Ab3KBOvI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 2 Nov 2013 10:51:08 -0400
+Date: Sat, 2 Nov 2013 07:51:05 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Christoph Hellwig <hch@infradead.org>,
+        Anna Schumaker <bjschuma@netapp.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 3/4] NFSD: Add WRITE_PLUS support for hole punches
+Message-ID: <20131102145105.GA4450@infradead.org>
+References: <1382972247-1108-1-git-send-email-bjschuma@netapp.com>
+ <1382972247-1108-4-git-send-email-bjschuma@netapp.com>
+ <20131028214030.GO31322@fieldses.org>
+ <526FAF30.3060502@netapp.com>
+ <20131029130649.GA29606@fieldses.org>
+ <20131102135409.GC18961@infradead.org>
+ <20131102144431.GB26983@fieldses.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.6 \(1510\))
-Subject: Re: [PATCH] NFS: -EIO from decode_bitmap if too many bitmaps
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1384533481-2254-1-git-send-email-dros@netapp.com>
-Date: Fri, 15 Nov 2013 11:57:39 -0500
-Cc: <Trond.Myklebust@netapp.com>, <linux-nfs@vger.kernel.org>
-Message-Id: <98411E2E-3D5D-44F6-9254-C2248C57F741@oracle.com>
-References: <1384533481-2254-1-git-send-email-dros@netapp.com>
-To: Weston Andros Adamson <dros@netapp.com>
+In-Reply-To: <20131102144431.GB26983@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Nov 15, 2013, at 11:38 AM, Weston Andros Adamson <dros@netapp.com> wrote:
-
-> decode_bitmap will only decode up to three bitmaps.  If the xdr buffer
-> has more than three bitmaps, return -EIO here instead of bailing out in
-> a later xdr decode.
+On Sat, Nov 02, 2013 at 10:44:31AM -0400, J. Bruce Fields wrote:
+> On Sat, Nov 02, 2013 at 06:54:09AM -0700, Christoph Hellwig wrote:
+> > On Tue, Oct 29, 2013 at 09:06:49AM -0400, J. Bruce Fields wrote:
+> > > What I meant was--why are we doing a sync at all, instead of returning
+> > > NFS_UNSTABLE and making the client commit?
+> > 
+> > Did NFSv4.2 introduce a concept of unstable metadata operations?
 > 
-> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
-> ---
-> 
-> This is related to my "NFSv4: fix getacl ERANGE for some ACL buffer sizes"
-> patch - I noticed that even though we'll only ever parse 3 bitmaps, we don't
-> error out correctly if more are sent.
-> 
-> This condition is probably never hit, but if it ever is, it'd be nice to
-> have the code error out where the problem actually occurred.
-> 
-> fs/nfs/nfs4xdr.c | 3 +++
-> 1 file changed, 3 insertions(+)
-> 
-> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-> index 5be2868..3866a69 100644
-> --- a/fs/nfs/nfs4xdr.c
-> +++ b/fs/nfs/nfs4xdr.c
-> @@ -3146,6 +3146,9 @@ static int decode_attr_bitmap(struct xdr_stream *xdr, uint32_t *bitmap)
-> 		goto out_overflow;
-> 	bmlen = be32_to_cpup(p);
-> 
-> +	if (unlikely(bmlen > 3))
-> +		goto out_overflow;
-> +
+> No, but I think WRITE_PLUS does have a stable/unstable bit so I think we
+> could choose not to do the sync if that'd make sense.
 
-Nit: Using a naked integer should be avoid, if we can.  Is there somewhere in the code that documents the "we only handle up t 3 bitmaps" constraint?
-
-
-> 	bitmap[0] = bitmap[1] = bitmap[2] = 0;
-> 	p = xdr_inline_decode(xdr, (bmlen << 2));
-> 	if (unlikely(!p))
-> -- 
-> 1.8.3.1 (Apple Git-46)
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+Both operations are idempotent, so supporting it shouldn't be a major
+obstactle.  But suddenly having some metadata operations that can be
+unstable seems like a major wart in the spec.
 
