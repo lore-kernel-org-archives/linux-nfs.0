@@ -1,61 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:36426 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751762Ab3KDRX3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 4 Nov 2013 12:23:29 -0500
-Message-ID: <5277D80F.8050106@netapp.com>
-Date: Mon, 4 Nov 2013 12:23:27 -0500
-From: Anna Schumaker <bjschuma@netapp.com>
+Received: from countercultured.net ([209.51.175.25]:36334 "HELO
+	countercultured.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with SMTP id S1751609Ab3KCAqz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 2 Nov 2013 20:46:55 -0400
+Message-ID: <52759CFD.5070804@davequigley.com>
+Date: Sat, 02 Nov 2013 20:46:53 -0400
+From: Dave Quigley <dpquigl@davequigley.com>
 MIME-Version: 1.0
-To: Christoph Hellwig <hch@infradead.org>
-CC: <bfields@fieldses.org>, <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 3/4] NFSD: Add WRITE_PLUS support for hole punches
-References: <1382972247-1108-1-git-send-email-bjschuma@netapp.com> <1382972247-1108-4-git-send-email-bjschuma@netapp.com> <20131102135238.GB18961@infradead.org> <5277CE23.6010207@netapp.com> <20131104170345.GA31499@infradead.org>
-In-Reply-To: <20131104170345.GA31499@infradead.org>
-Content-Type: text/plain; charset="ISO-8859-1"
+To: Jeff Layton <jlayton@redhat.com>, trond.myklebust@netapp.com
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfs: set security label when revalidating inode
+References: <1383389838-1858-1-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1383389838-1858-1-git-send-email-jlayton@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/04/2013 12:03 PM, Christoph Hellwig wrote:
-> On Mon, Nov 04, 2013 at 11:41:07AM -0500, Anna Schumaker wrote:
->>> what else it would be for.
->>
->> My understanding is that if I call fallocate with a mode of "0" it will write a range of 0s to the file.
-> 
-> While writing zeroes to the file would be a correct implementation,
-> that's now how the operation is defined or usually implemented.  The
-> defintion is that the blocks in the range will be allocated, and reads
-> from it will return zero (and the file size will be updated if needed).
-> 
-> The usual way to implement it is to created extents in an "unwritten
-> state" that will return zeroes when read, even if those zeroes didn't
-> make it to disk.
+On 11/2/2013 6:57 AM, Jeff Layton wrote:
+> Currently, we fetch the security label when revalidating an inode's
+> attributes, but don't apply it. This is in contrast to the readdir()
+> codepath where we do apply label changes.
+>
+> Cc: Dave Quigley <dpquigl@davequigley.com>
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>   fs/nfs/inode.c | 2 ++
+>   1 file changed, 2 insertions(+)
+>
+> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+> index 4bc7538..6ae6160 100644
+> --- a/fs/nfs/inode.c
+> +++ b/fs/nfs/inode.c
+> @@ -923,6 +923,8 @@ __nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
+>   	if (nfsi->cache_validity & NFS_INO_INVALID_ACL)
+>   		nfs_zap_acl_cache(inode);
+>
+> +	nfs_setsecurity(inode, fattr, label);
+> +
+>   	dfprintk(PAGECACHE, "NFS: (%s/%Ld) revalidation complete\n",
+>   		inode->i_sb->s_id,
+>   		(long long)NFS_FILEID(inode));
+>
 
-And that's all done through metadata?  Doing the commit_metadata() call makes a bit more sense now.
 
-> 
->> I'll move the fsync() call here and only do it if the client doesn't ask for NFS_UNSTABLE.
-> 
-> As said the right way to handle it would be to use commit_metadata, as
-> the cache flushes a fsync does would be unessecary and too expensive for
-> many workloads typically using fallocate.
+I'm pretty sure (almost 100000%) that this was originally in the patch 
+set and it got lost somewhere. So You have an ACK from me on it.
 
-Okay, sorry for me not understanding earlier!
-
-> 
->>>
->>> Btw, how did anyone come up with the name WRITE PLUS for something that
->>> doesn't actually involve any writes?
->>>
->>
->> Write plus does write more than just holes, I just didn't implement that part of the spec.  I'm implementing the NFS4_CONTENT_HOLE arm, but NFS4_CONTENT_DATA is intended to eventually replace the WRITE operation.
-> 
-> Where is WRITE PLUS defined?  I the various
-> draft-ietf-nfsv4-minorversion2-*.txt I can only find what appears to be
-> the predecessor, but that doesn't have a data arm.
-> 
-> Also what does the data arm buy us over good old WRITE?
-> 
-
-I've been working off of draft #21, the most recent commit is 2b3ab1740b1ea843faa59566fb4213a42d8c724a from Aug 19.  The eventual goal is to phase out WRITE and replace it with WRITE_PLUS, but that won't happen until at least 4.3.  I don't know why it's being done this way instead of just adding an FALLOCATE operation.
-
+Dave
