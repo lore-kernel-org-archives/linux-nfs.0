@@ -1,80 +1,96 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.netapp.com ([216.240.18.38]:6552 "EHLO mx1.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:59492 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755903Ab3KHPQg convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Nov 2013 10:16:36 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Steve Dickson <SteveD@redhat.com>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] Adding the nfs4_use_min_auth module parameter
-Date: Fri, 8 Nov 2013 15:16:34 +0000
-Message-ID: <C0AAACC4-B692-4B2B-91D3-6953E4A99B61@netapp.com>
-References: <1383851364-8370-1-git-send-email-steved@redhat.com>
-		 <1383852380.12966.5.camel@leira.trondhjem.org>
-		 <527C0548.1090205@RedHat.com>
-	 <1383860381.12966.37.camel@leira.trondhjem.org>
-	 <527C0CB6.8090308@RedHat.com>
- <1383863394.12966.63.camel@leira.trondhjem.org>
- <527CD765.1000903@RedHat.com>
- <EDB1FCDB-A6B6-4595-A46F-B73AF9FAA990@netapp.com>
- <527CFE57.9030106@RedHat.com>
-In-Reply-To: <527CFE57.9030106@RedHat.com>
-Content-Type: text/plain; charset=US-ASCII
-MIME-Version: 1.0
+	id S1752149Ab3KCRBe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 3 Nov 2013 12:01:34 -0500
+Date: Sun, 3 Nov 2013 12:01:30 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        "dpquigl@davequigley.com" <dpquigl@davequigley.com>
+Subject: Re: [PATCH] nfs: set security label when revalidating inode
+Message-ID: <20131103120130.68430d53@tlielax.poochiereds.net>
+In-Reply-To: <32FF43CF-D4D7-41AD-9B2F-8BAD6C2F846C@netapp.com>
+References: <1383389838-1858-1-git-send-email-jlayton@redhat.com>
+	<C85EF88C-B4F8-484C-A00D-5A86ACB61C10@netapp.com>
+	<20131103051438.3a4db316@tlielax.poochiereds.net>
+	<20131103060145.73443e75@tlielax.poochiereds.net>
+	<32FF43CF-D4D7-41AD-9B2F-8BAD6C2F846C@netapp.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=Windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Nov 8, 2013, at 10:08, Steve Dickson <SteveD@redhat.com> wrote:
+On Sun, 3 Nov 2013 16:40:12 +0000
+"Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
 
 > 
+> On Nov 3, 2013, at 6:01, Jeff Layton <jlayton@redhat.com<mailto:jlayton@redhat.com>> wrote:
 > 
-> On 08/11/13 09:30, Myklebust, Trond wrote:
->> 
->> On Nov 8, 2013, at 7:21, Steve Dickson <SteveD@redhat.com> wrote:
->> 
->>> 
->>> 
->>> On 07/11/13 17:29, Myklebust, Trond wrote:
->>>>> Again, what servers, today, support this type of secure state establishment?
->>>>>> Having this type of security in the client I think is good... but if
->>>>>> the client is not talking with any servers that support this type 
->>>>>> of security, why not have a way to turn it off?
->>>> I don't understand. Servers are _required_ to support RPCSEC_GSS with
->>>> krb5 by both RFC3530 and RFC5661. AUTH_SYS is, in fact, the optional
->>>> flavour.
->>> Agreed... 100% of the NFSv4 server have to support RPCSEC_GSS. its mandated
->>> by the spec(s). 
->>> 
->>>> 
->>>> The problem here is that sometimes kerberos isn't configured by the
->>>> admin, who then expects that it shouldn't be necessary to run rpc.gssd
->>>> or rpc.svcgssd. It is necessary because we first try the
->>>> mandatory-to-implement and secure RPCSEC_GSS/krb5i flavour before
->>>> falling back to the less secure AUTH_SYS...
->>> Sometimes? Its generally not.. from my experience... 
->>> 
->>> Basically how I interpret this last paragraph, is we will be requiring 
->>> admins set up secure mounts for them to avoid the 15sec delay mount
->>> times... aka... running a daemon that will say "no, no there is no 
->>> security here" while spewing of log messages when Kerberos is not setup...
->> 
->> No. All we are requiring is that they run rpc.gssd.
-> Even when they do not want any secure mounts at all?
+> On Sun, 3 Nov 2013 05:14:38 -0500
+> Jeff Layton <jlayton@redhat.com<mailto:jlayton@redhat.com>> wrote:
 > 
-> What is that justification?
+> On Sun, 3 Nov 2013 02:23:29 +0000
+> "Myklebust, Trond" <Trond.Myklebust@netapp.com<mailto:Trond.Myklebust@netapp.com>> wrote:
+> 
+> 
+> On Nov 2, 2013, at 6:57, Jeff Layton <jlayton@redhat.com<mailto:jlayton@redhat.com>> wrote:
+> 
+> Currently, we fetch the security label when revalidating an inode's
+> attributes, but don't apply it. This is in contrast to the readdir()
+> codepath where we do apply label changes.
+> 
+> OK. Why should we not just throw out the code that fetches the security label here?
+> 
+> IOW: what is the caching model that is being implemented in this patch; is it just “fetch label at random intervals” or is there real method to the madness?
+> 
+> Trond
+> 
+> I think that we should apply the new security label as soon as we
+> realize that it has changed. Why should we treat the security label
+> differently from any other inode attribute (e.g. ownership or mode)?
+> 
+> 
+> Ok, I think I understand what you're getting at now that I've had a cup
+> of coffee ;)
+> 
+> I guess you're pointing out a problem with the overall model, given that
+> the current implementation doesn't send anything in the RPC to denote
+> the security context of the client's task?
+> 
+> It's a fair point, and not one I have a great answer for. I think that
+> you're correct that for the most part that they won't change. But when
+> they do, what's to be gained by ignoring that?
+> 
+> They'll never be permanent anyway...as soon as the inode gets tossed
+> out of the cache or the client reboots then you'll see the change on
+> the next access of it.
+> 
+> I’m not saying that we must ignore changes, I’m saying that nobody else, so far, has been willing to step up and propose a model for how these things are supposed to change.
+> 
+> All I’ve heard has been that “a polling model would be better because labels can change”. OK, but a polling model has a number of adjustable parameters; the frequency of polling being the most obvious. I want someone to explain to me, based on how we expect labels to change, how those parameters need to be set.
+> If the expectation is that they will change once in a lifetime (just after file creation), then that would justify trying to poll once or twice, but it does not justify polling for the entire lifetime of the file. Perhaps a better solution would be to just have the server change the NFS filehandle (e.g. by bumping the generation counter)?
+> 
 
-They get to skip a 15 second wait without having to blacklist the krb5 module.
+Ugh...that sounds ugly and prone to cause ESTALE errors. 
 
-So, this is what I mean when I say that we _might_ need a mount option to specify the security flavour that the client uses for the lease. It solves the problem that Bruce mentioned about what to do when krb5i fails, and it allows admins to not have to run rpc.gssd or blacklist any modules.
+I don't think we can make any assumption on how they will change, any
+more than we do for something like the ownership or mode. It comes down
+to an action by an administrator, and people are notoriously
+unpredictable.
 
-Trond
+Maybe this is a naive question, but...why treat this differently from
+any other inode attribute?
 
---
-Trond Myklebust
-Linux NFS client maintainer
+Granted, we do expect the client to enforce "permissions" based on this
+label, so that does warrant extra caution. But, since we aren't
+currently stuffing a "task context" into the RPC so that the server can
+do the enforcement, all of this is inherently racy anyway.
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+As far as I'm concerned, this just comes down to the principle of least
+surprise. As an administrator, if I change an attribute from a
+different client, I don't expect to see that attribute "stuck" on all
+of the other clients.
 
+-- 
+Jeff Layton <jlayton@redhat.com>
