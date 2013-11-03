@@ -1,31 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:41426 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752326Ab3KKVK3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Nov 2013 16:10:29 -0500
-Date: Mon, 11 Nov 2013 13:10:29 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfs: fix pnfs Kconfig defaults
-Message-ID: <20131111211029.GA19062@infradead.org>
-References: <20131102102201.GA3860@infradead.org>
- <6C8CF6D6-0456-4195-B00B-F35A37B64E12@netapp.com>
- <20131111210141.GB13942@infradead.org>
- <1384203889.7614.17.camel@leira.trondhjem.org>
+Received: from mx12.netapp.com ([216.240.18.77]:22767 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752926Ab3KCSlp convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 3 Nov 2013 13:41:45 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Jeff Layton <jlayton@redhat.com>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        "dpquigl@davequigley.com" <dpquigl@davequigley.com>
+Subject: Re: [PATCH] nfs: set security label when revalidating inode
+Date: Sun, 3 Nov 2013 18:41:43 +0000
+Message-ID: <37FC8791-6CAF-4852-ADEF-0CF3497FD3CA@netapp.com>
+References: <1383389838-1858-1-git-send-email-jlayton@redhat.com>
+ <C85EF88C-B4F8-484C-A00D-5A86ACB61C10@netapp.com>
+ <20131103051438.3a4db316@tlielax.poochiereds.net>
+ <20131103060145.73443e75@tlielax.poochiereds.net>
+ <32FF43CF-D4D7-41AD-9B2F-8BAD6C2F846C@netapp.com>
+ <20131103120130.68430d53@tlielax.poochiereds.net>
+In-Reply-To: <20131103120130.68430d53@tlielax.poochiereds.net>
+Content-Type: text/plain; charset="Windows-1252"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1384203889.7614.17.camel@leira.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Nov 11, 2013 at 09:04:54PM +0000, Myklebust, Trond wrote:
-> > Probably should.  For some reason I had NFS_V4_1 in mind as a bool.
+
+On Nov 3, 2013, at 12:01, Jeff Layton <jlayton@redhat.com> wrote:
+
+> On Sun, 3 Nov 2013 16:40:12 +0000
+> "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
 > 
-> NFS_V4_1 is indeed a bool, but it just defines whether or not we compile
-> v4.1 behaviour into the 'nfsv4 module' (which is controlled by the
-> tristate NFS_V4).
+>> 
+>> On Nov 3, 2013, at 6:01, Jeff Layton <jlayton@redhat.com<mailto:jlayton@redhat.com>> wrote:
+>> 
+>> On Sun, 3 Nov 2013 05:14:38 -0500
+>> Jeff Layton <jlayton@redhat.com<mailto:jlayton@redhat.com>> wrote:
+>> 
+>> On Sun, 3 Nov 2013 02:23:29 +0000
+>> "Myklebust, Trond" <Trond.Myklebust@netapp.com<mailto:Trond.Myklebust@netapp.com>> wrote:
+>> 
+>> 
+>> On Nov 2, 2013, at 6:57, Jeff Layton <jlayton@redhat.com<mailto:jlayton@redhat.com>> wrote:
+>> 
+>> Currently, we fetch the security label when revalidating an inode's
+>> attributes, but don't apply it. This is in contrast to the readdir()
+>> codepath where we do apply label changes.
+>> 
+>> OK. Why should we not just throw out the code that fetches the security label here?
+>> 
+>> IOW: what is the caching model that is being implemented in this patch; is it just “fetch label at random intervals” or is there real method to the madness?
+>> 
+>> Trond
+>> 
+>> I think that we should apply the new security label as soon as we
+>> realize that it has changed. Why should we treat the security label
+>> differently from any other inode attribute (e.g. ownership or mode)?
+>> 
+>> 
+>> Ok, I think I understand what you're getting at now that I've had a cup
+>> of coffee ;)
+>> 
+>> I guess you're pointing out a problem with the overall model, given that
+>> the current implementation doesn't send anything in the RPC to denote
+>> the security context of the client's task?
+>> 
+>> It's a fair point, and not one I have a great answer for. I think that
+>> you're correct that for the most part that they won't change. But when
+>> they do, what's to be gained by ignoring that?
+>> 
+>> They'll never be permanent anyway...as soon as the inode gets tossed
+>> out of the cache or the client reboots then you'll see the change on
+>> the next access of it.
+>> 
+>> I’m not saying that we must ignore changes, I’m saying that nobody else, so far, has been willing to step up and propose a model for how these things are supposed to change.
+>> 
+>> All I’ve heard has been that “a polling model would be better because labels can change”. OK, but a polling model has a number of adjustable parameters; the frequency of polling being the most obvious. I want someone to explain to me, based on how we expect labels to change, how those parameters need to be set.
+>> If the expectation is that they will change once in a lifetime (just after file creation), then that would justify trying to poll once or twice, but it does not justify polling for the entire lifetime of the file. Perhaps a better solution would be to just have the server change the NFS filehandle (e.g. by bumping the generation counter)?
+>> 
+> 
+> Ugh...that sounds ugly and prone to cause ESTALE errors. 
+> 
+> I don't think we can make any assumption on how they will change, any
+> more than we do for something like the ownership or mode. It comes down
+> to an action by an administrator, and people are notoriously
+> unpredictable.
 
-Oh right, nfsv4 is a module, but 4.1 is just a flavor inside it.  I'll
-resend it after testing that it will actually work is intended.
+???? You’re saying that people choose security policies on a whim?
 
+> Maybe this is a naive question, but...why treat this differently from
+> any other inode attribute?
+
+That’s another “What if we were to do X?” question. Please see above.
+
+Trond
