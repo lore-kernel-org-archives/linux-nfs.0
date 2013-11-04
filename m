@@ -1,70 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:9023 "EHLO mx12.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:55558 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751783Ab3KORWP convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Nov 2013 12:22:15 -0500
-From: Weston Andros Adamson <dros@netapp.com>
+	id S1751385Ab3KDVYW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 4 Nov 2013 16:24:22 -0500
+Date: Mon, 4 Nov 2013 16:24:10 -0500
+From: Jeff Layton <jlayton@redhat.com>
 To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: Chuck Lever <chuck.lever@oracle.com>,
-        linux-nfs list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFS: -EIO from decode_bitmap if too many bitmaps
-Date: Fri, 15 Nov 2013 17:22:07 +0000
-Message-ID: <D5B7F898-04F4-40DB-92E2-F013339CBA4B@netapp.com>
-References: <1384533481-2254-1-git-send-email-dros@netapp.com>
- <1384534841.4046.11.camel@leira.trondhjem.org>
- <1384535149.4046.13.camel@leira.trondhjem.org>
- <C9A7EFC4-6B93-44D4-8ADC-AAC440D4CFB2@oracle.com>
- <1384535424.4046.15.camel@leira.trondhjem.org>
-In-Reply-To: <1384535424.4046.15.camel@leira.trondhjem.org>
-Content-Type: text/plain; charset="Windows-1252"
-MIME-Version: 1.0
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Bruce Fields <bfields@fieldses.org>, Steve Dickson <steved@redhat.com>,
+        David Quigley <dpquigl@davequigley.com>
+Subject: Re: [PATCH 2/5] NFS: __nfs_revalidate_inode() - use the nfs4_label
+ to update file security info
+Message-ID: <20131104162410.2e2580bf@tlielax.poochiereds.net>
+In-Reply-To: <0719A451-70BA-4AF8-8A3F-ECF9A221C5BB@netapp.com>
+References: <1383598272-17737-1-git-send-email-Trond.Myklebust@netapp.com>
+	<1383598272-17737-2-git-send-email-Trond.Myklebust@netapp.com>
+	<0719A451-70BA-4AF8-8A3F-ECF9A221C5BB@netapp.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=Windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Mon, 4 Nov 2013 21:00:46 +0000
+"Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
 
-On Nov 15, 2013, at 12:10 PM, Myklebust, Trond <Trond.Myklebust@netapp.com> wrote:
-
-> On Fri, 2013-11-15 at 12:07 -0500, Chuck Lever wrote:
->> On Nov 15, 2013, at 12:05 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
->> 
->>> On Fri, 2013-11-15 at 12:00 -0500, Trond Myklebust wrote:
->>>> On Fri, 2013-11-15 at 11:38 -0500, Weston Andros Adamson wrote:
->>>>> decode_bitmap will only decode up to three bitmaps.  If the xdr buffer
->>>>> has more than three bitmaps, return -EIO here instead of bailing out in
->>>>> a later xdr decode.
->>>>> 
->>>> 
->>>> No. decode_bitmap will only _save_ 3 words in the bitmap[] argment, but
->>>> it will decode arbitrary sized bitmaps:
->>>> 
->>>> 	p = xdr_inline_decode(xdr, (bmlen << 2));
->>>> 
-
-Oh, yeah.
-
->>> 
->>> That said, we should probably check that the server isn't setting those
->>> bitmap words to any non-zero values. That would be a reason to return
->>> EIO.
-
-Ok, I’ll rework this.
-
--dros
-
->> 
->> Why wouldn't the client simply warn and ignore the extraneous data?
->> 
 > 
-> ...because unless the GETATTR is the very last operation, we'd end up
-> failing to decode things correctly. Anyway, a server that returns
-> attributes that we haven't requested must clearly be borken. It's
-> definitely violating the spec.
+> On Nov 4, 2013, at 15:51, Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
 > 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
+> > Currently, we just discard the nfs4_label information, instead of using it
+> > to update the file LSM security info.
+> > 
+> > Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 > 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
+> I forgot to add a "Reported-by: Jeff Layton <jlayton@redhat.com>”. Fixed now...
+> 
+> > ---
+> > fs/nfs/inode.c | 1 +
+> > 1 file changed, 1 insertion(+)
+> > 
+> > diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+> > index 471ba59c42f9..09d4df5f588a 100644
+> > --- a/fs/nfs/inode.c
+> > +++ b/fs/nfs/inode.c
+> > @@ -920,6 +920,7 @@ __nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
+> > 		goto err_out;
+> > 	}
+> > 
+> > +	nfs_setsecurity(inode, fattr, label);
+> > 	if (nfsi->cache_validity & NFS_INO_INVALID_ACL)
+> > 		nfs_zap_acl_cache(inode);
+> > 
+> > -- 
+> > 1.8.3.1
+> > 
+> 
 
+No worries -- looks fine.
+
+Out of curiousity, is there a reason to call nfs_setsecurity prior to
+zapping the ACL cache? The patch I had proposed did it afterward, but I
+didn't think it mattered much either way...
+
+Thanks,
+-- 
+Jeff Layton <jlayton@redhat.com>
