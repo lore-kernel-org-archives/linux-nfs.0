@@ -1,163 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:53522 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757760Ab3KNQun (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Nov 2013 11:50:43 -0500
-Message-Id: <20131114165041.628633448@bombadil.infradead.org>
-Date: Thu, 14 Nov 2013 08:50:31 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 4/7] nfs: merge nfs_direct_read into nfs_file_direct_read
-References: <20131114165027.355613182@bombadil.infradead.org>
+Received: from mx12.netapp.com ([216.240.18.77]:37667 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751707Ab3KDUvY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 4 Nov 2013 15:51:24 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Linux NFS <linux-nfs@vger.kernel.org>
+CC: J Bruce Fields <bfields@fieldses.org>, Steve Dickson <steved@redhat.com>,
+        Jeff Layton <jlayton@redhat.com>,
+        David Quigley <dpquigl@davequigley.com>
+Subject: [PATCH 5/5] NFSv4.2: Remove redundant checks in nfs_setsecurity+nfs4_label_init_security
+Date: Mon, 4 Nov 2013 15:51:12 -0500
+Message-ID: <1383598272-17737-5-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1383598272-17737-4-git-send-email-Trond.Myklebust@netapp.com>
+References: <1383598272-17737-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1383598272-17737-2-git-send-email-Trond.Myklebust@netapp.com>
+ <1383598272-17737-3-git-send-email-Trond.Myklebust@netapp.com>
+ <1383598272-17737-4-git-send-email-Trond.Myklebust@netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Simple code cleanup to prepare for later fixes.
+We already check for nfs_server_capable(inode, NFS_CAP_SECURITY_LABEL)
+in nfs4_label_alloc()
+We check the minor version in _nfs4_server_capabilities before setting
+NFS_CAP_SECURITY_LABEL.
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 ---
- fs/nfs/direct.c |  107 +++++++++++++++++++++++++------------------------------
- 1 file changed, 49 insertions(+), 58 deletions(-)
+ fs/nfs/inode.c    | 6 ------
+ fs/nfs/nfs4proc.c | 3 ---
+ 2 files changed, 9 deletions(-)
 
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index 62ea415..8312796 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -458,14 +458,55 @@ static ssize_t nfs_direct_read_schedule_iovec(struct nfs_direct_req *dreq,
- 	return 0;
- }
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 09d4df5f588a..4ae41a26844f 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -274,12 +274,6 @@ void nfs_setsecurity(struct inode *inode, struct nfs_fattr *fattr,
+ 	if (label == NULL)
+ 		return;
  
--static ssize_t nfs_direct_read(struct kiocb *iocb, const struct iovec *iov,
--			       unsigned long nr_segs, loff_t pos, bool uio)
-+/**
-+ * nfs_file_direct_read - file direct read operation for NFS files
-+ * @iocb: target I/O control block
-+ * @iov: vector of user buffers into which to read data
-+ * @nr_segs: size of iov vector
-+ * @pos: byte offset in file where reading starts
-+ *
-+ * We use this function for direct reads instead of calling
-+ * generic_file_aio_read() in order to avoid gfar's check to see if
-+ * the request starts before the end of the file.  For that check
-+ * to work, we must generate a GETATTR before each direct read, and
-+ * even then there is a window between the GETATTR and the subsequent
-+ * READ where the file size could change.  Our preference is simply
-+ * to do all reads the application wants, and the server will take
-+ * care of managing the end of file boundary.
-+ *
-+ * This function also eliminates unnecessarily updating the file's
-+ * atime locally, as the NFS server sets the file's atime, and this
-+ * client must read the updated atime from the server back into its
-+ * cache.
-+ */
-+ssize_t nfs_file_direct_read(struct kiocb *iocb, const struct iovec *iov,
-+				unsigned long nr_segs, loff_t pos, bool uio)
- {
--	ssize_t result = -ENOMEM;
--	struct inode *inode = iocb->ki_filp->f_mapping->host;
-+	struct file *file = iocb->ki_filp;
-+	struct address_space *mapping = file->f_mapping;
-+	struct inode *inode = mapping->host;
- 	struct nfs_direct_req *dreq;
- 	struct nfs_lock_context *l_ctx;
-+	ssize_t result = -EINVAL;
-+	size_t count;
-+
-+	count = iov_length(iov, nr_segs);
-+	nfs_add_stats(mapping->host, NFSIOS_DIRECTREADBYTES, count);
-+
-+	dfprintk(FILE, "NFS: direct read(%pD2, %zd@%Ld)\n",
-+		file, count, (long long) pos);
-+
-+	result = 0;
-+	if (!count)
-+		goto out;
-+
-+	result = nfs_sync_mapping(mapping);
-+	if (result)
-+		goto out;
-+
-+	task_io_account_read(count);
+-	if (nfs_server_capable(inode, NFS_CAP_SECURITY_LABEL) == 0)
+-		return;
+-
+-	if (NFS_SERVER(inode)->nfs_client->cl_minorversion < 2)
+-		return;
+-
+ 	if ((fattr->valid & NFS_ATTR_FATTR_V4_SECURITY_LABEL) && inode->i_security) {
+ 		error = security_inode_notifysecctx(inode, label->label,
+ 				label->len);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index ed2a0e6b9aed..5ab33c0792df 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -105,9 +105,6 @@ nfs4_label_init_security(struct inode *dir, struct dentry *dentry,
+ 	if (nfs_server_capable(dir, NFS_CAP_SECURITY_LABEL) == 0)
+ 		return NULL;
  
-+	result = -ENOMEM;
- 	dreq = nfs_direct_req_alloc();
- 	if (dreq == NULL)
- 		goto out;
-@@ -484,8 +525,11 @@ static ssize_t nfs_direct_read(struct kiocb *iocb, const struct iovec *iov,
- 
- 	NFS_I(inode)->read_io += iov_length(iov, nr_segs);
- 	result = nfs_direct_read_schedule_iovec(dreq, iov, nr_segs, pos, uio);
--	if (!result)
-+	if (!result) {
- 		result = nfs_direct_wait(dreq);
-+		if (result > 0)
-+			iocb->ki_pos = pos + result;
-+	}
- out_release:
- 	nfs_direct_req_release(dreq);
- out:
-@@ -889,59 +933,6 @@ out:
- }
- 
- /**
-- * nfs_file_direct_read - file direct read operation for NFS files
-- * @iocb: target I/O control block
-- * @iov: vector of user buffers into which to read data
-- * @nr_segs: size of iov vector
-- * @pos: byte offset in file where reading starts
-- *
-- * We use this function for direct reads instead of calling
-- * generic_file_aio_read() in order to avoid gfar's check to see if
-- * the request starts before the end of the file.  For that check
-- * to work, we must generate a GETATTR before each direct read, and
-- * even then there is a window between the GETATTR and the subsequent
-- * READ where the file size could change.  Our preference is simply
-- * to do all reads the application wants, and the server will take
-- * care of managing the end of file boundary.
-- *
-- * This function also eliminates unnecessarily updating the file's
-- * atime locally, as the NFS server sets the file's atime, and this
-- * client must read the updated atime from the server back into its
-- * cache.
-- */
--ssize_t nfs_file_direct_read(struct kiocb *iocb, const struct iovec *iov,
--				unsigned long nr_segs, loff_t pos, bool uio)
--{
--	ssize_t retval = -EINVAL;
--	struct file *file = iocb->ki_filp;
--	struct address_space *mapping = file->f_mapping;
--	size_t count;
+-	if (NFS_SERVER(dir)->nfs_client->cl_minorversion < 2)
+-		return NULL;
 -
--	count = iov_length(iov, nr_segs);
--	nfs_add_stats(mapping->host, NFSIOS_DIRECTREADBYTES, count);
--
--	dfprintk(FILE, "NFS: direct read(%pD2, %zd@%Ld)\n",
--		file, count, (long long) pos);
--
--	retval = 0;
--	if (!count)
--		goto out;
--
--	retval = nfs_sync_mapping(mapping);
--	if (retval)
--		goto out;
--
--	task_io_account_read(count);
--
--	retval = nfs_direct_read(iocb, iov, nr_segs, pos, uio);
--	if (retval > 0)
--		iocb->ki_pos = pos + retval;
--
--out:
--	return retval;
--}
--
--/**
-  * nfs_file_direct_write - file direct write operation for NFS files
-  * @iocb: target I/O control block
-  * @iov: vector of user buffers from which to write data
+ 	err = security_dentry_init_security(dentry, sattr->ia_mode,
+ 				&dentry->d_name, (void **)&label->label, &label->len);
+ 	if (err == 0)
 -- 
-1.7.10.4
-
+1.8.3.1
 
