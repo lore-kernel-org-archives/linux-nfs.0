@@ -1,38 +1,37 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:2054 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751986Ab3KRSh7 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Nov 2013 13:37:59 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFS: Fix kbuild errors due to missing symbols
-Date: Mon, 18 Nov 2013 18:37:56 +0000
-Message-ID: <3D379D5B-C02D-4AAD-9A21-08A70BA3AF48@netapp.com>
-References: <1384554636-25330-1-git-send-email-bjschuma@netapp.com>
- <1384557410.3222.2.camel@leira.trondhjem.org> <528A5360.4000206@netapp.com>
-In-Reply-To: <528A5360.4000206@netapp.com>
-Content-Type: text/plain; charset="Windows-1252"
+Received: from bombadil.infradead.org ([198.137.202.9]:39550 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750749Ab3KDRFK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Nov 2013 12:05:10 -0500
+Date: Mon, 4 Nov 2013 09:05:10 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Anna Schumaker <bjschuma@netapp.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 4/4] NFSD: Implement SEEK
+Message-ID: <20131104170510.GB31499@infradead.org>
+References: <1382972247-1108-1-git-send-email-bjschuma@netapp.com>
+ <1382972247-1108-5-git-send-email-bjschuma@netapp.com>
+ <20131029073558.GA10889@infradead.org>
+ <526FB180.1060003@netapp.com>
+ <20131029130721.GA32094@infradead.org>
+ <20131029133006.GB29606@fieldses.org>
+ <20131102134837.GA18961@infradead.org>
+ <20131102143729.GA26983@fieldses.org>
+ <20131102144107.GA28743@infradead.org>
+ <20131104164658.GA4427@fieldses.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20131104164658.GA4427@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Nov 18, 2013, at 12:50, Anna Schumaker <bjschuma@netapp.com> wrote:
+On Mon, Nov 04, 2013 at 11:46:58AM -0500, J. Bruce Fields wrote:
+> Imagine it was me, if it helps.
 > 
-> It's a poorly phrased commit message, actually.  I meant that just setting CONFIG_NFS_USE_LEGACY_DNS=y causes build problems, and then setting CONFIG_NFS_V4=n causes a different set of errors.
+> The important thing is that we understand what should be fixed.
 
-Ah. OK, now I see why you need it. The code in fs/nfs/super.c relies on it when !defined CONFIG_NFS_V4.
-
-You also need to move the CONFIG_NFS_V4_SECURITY_LABEL section outside the CONFIG_NFS_V4, since fs/nfs/dir.c and others need the dummy nfs4_label_alloc and nfs4_label_free inline functions (see Stephen Rothwell
-’s email).
-
-
---
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+The important part is how someone got the idea for the pattern writing
+and the weird ADBs from and why they believe they should overload a
+single command for all of them.  And apparently reqular data writes as
+well, even if I haven't found that part of the spec yet.
 
