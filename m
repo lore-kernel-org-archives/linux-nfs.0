@@ -1,111 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.netapp.com ([216.240.18.38]:26005 "EHLO mx1.netapp.com"
+Received: from mx12.netapp.com ([216.240.18.77]:56096 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753035Ab3KLWgO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 12 Nov 2013 17:36:14 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: <linux-nfs@vger.kernel.org>
-CC: Jeff Layton <jlayton@redhat.com>, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH] SUNRPC: Avoid deep recursion in rpc_release_client
-Date: Tue, 12 Nov 2013 17:36:07 -0500
-Message-ID: <1384295767-16456-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S1751558Ab3KDUD6 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Nov 2013 15:03:58 -0500
+From: "Haynes, Tom" <Tom.Haynes@netapp.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: Christoph Hellwig <hch@infradead.org>,
+        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Mailing List Linux NFS <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 3/4] NFSD: Add WRITE_PLUS support for hole punches
+Date: Mon, 4 Nov 2013 20:03:58 +0000
+Message-ID: <1A74FF84-00E2-4C5F-A209-350792D2E0AE@netapp.com>
+References: <1382972247-1108-1-git-send-email-bjschuma@netapp.com>
+ <1382972247-1108-4-git-send-email-bjschuma@netapp.com>
+ <20131102135238.GB18961@infradead.org> <5277CE23.6010207@netapp.com>
+ <20131104170345.GA31499@infradead.org> <5277D80F.8050106@netapp.com>
+ <20131104185309.GA14378@infradead.org>
+ <3AC4ECC6-0496-4593-8791-92BCAD2567CC@oracle.com>
+ <20131104191907.GA9337@infradead.org>
+ <8EB0049A-9225-4C4A-8099-774B2EB48323@oracle.com>
+In-Reply-To: <8EB0049A-9225-4C4A-8099-774B2EB48323@oracle.com>
+Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
-Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In cases where an rpc client has a parent hierarchy, then
-rpc_free_client may end up calling rpc_release_client() on the
-parent, thus recursing back into rpc_free_client. If the hierarchy
-is deep enough, then we can get into situations where the stack
-simply overflows.
 
-The fix is to have rpc_release_client() loop so that it can take
-care of the parent rpc client hierarchy without needing to
-recurse.
+On Nov 4, 2013, at 11:50 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
 
-Reported-by: Jeff Layton <jlayton@redhat.com>
-Reported-by: Weston Andros Adamson <dros@netapp.com>
-Cc: stable@vger.kernel.org
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- net/sunrpc/clnt.c | 29 +++++++++++++++++------------
- 1 file changed, 17 insertions(+), 12 deletions(-)
+> 
+> On Nov 4, 2013, at 11:19 AM, Christoph Hellwig <hch@infradead.org> wrote:
+> 
+>> On Mon, Nov 04, 2013 at 11:16:13AM -0800, Chuck Lever wrote:
+>>>> I still don't understand why anyone would phase out WRITE in favour of
+>>>> something that doesn't actually add any value for the write case.
+>>> 
+>>> Protocol extensibility.  WRITE_PLUS adds a discriminated union of data types that can be extended easily to include initialization patterns, integrity metadata, and other things like holes.  It's entirely another question as to whether any particular extension is tasteful.
+>> 
+>> Maybe I'm missing something, but what does multiplexing entirely
+>> different operation actually buy you?  It is different operation after
+>> all.
 
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index dab09dac8fc7..fb9830903213 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -750,14 +750,16 @@ EXPORT_SYMBOL_GPL(rpc_shutdown_client);
- /*
-  * Free an RPC client
-  */
--static void
-+static struct rpc_clnt *
- rpc_free_client(struct rpc_clnt *clnt)
- {
-+	struct rpc_clnt *parent = NULL;
-+
- 	dprintk_rcu("RPC:       destroying %s client for %s\n",
- 			clnt->cl_program->name,
- 			rcu_dereference(clnt->cl_xprt)->servername);
- 	if (clnt->cl_parent != clnt)
--		rpc_release_client(clnt->cl_parent);
-+		parent = clnt->cl_parent;
- 	rpc_clnt_remove_pipedir(clnt);
- 	rpc_unregister_client(clnt);
- 	rpc_free_iostats(clnt->cl_metrics);
-@@ -766,18 +768,17 @@ rpc_free_client(struct rpc_clnt *clnt)
- 	rpciod_down();
- 	rpc_free_clid(clnt);
- 	kfree(clnt);
-+	return parent;
- }
- 
- /*
-  * Free an RPC client
-  */
--static void
-+static struct rpc_clnt * 
- rpc_free_auth(struct rpc_clnt *clnt)
- {
--	if (clnt->cl_auth == NULL) {
--		rpc_free_client(clnt);
--		return;
--	}
-+	if (clnt->cl_auth == NULL)
-+		return rpc_free_client(clnt);
- 
- 	/*
- 	 * Note: RPCSEC_GSS may need to send NULL RPC calls in order to
-@@ -788,7 +789,8 @@ rpc_free_auth(struct rpc_clnt *clnt)
- 	rpcauth_release(clnt->cl_auth);
- 	clnt->cl_auth = NULL;
- 	if (atomic_dec_and_test(&clnt->cl_count))
--		rpc_free_client(clnt);
-+		return rpc_free_client(clnt);
-+	return NULL;
- }
- 
- /*
-@@ -799,10 +801,13 @@ rpc_release_client(struct rpc_clnt *clnt)
- {
- 	dprintk("RPC:       rpc_release_client(%p)\n", clnt);
- 
--	if (list_empty(&clnt->cl_tasks))
--		wake_up(&destroy_wait);
--	if (atomic_dec_and_test(&clnt->cl_count))
--		rpc_free_auth(clnt);
-+	for (;;) {
-+		if (list_empty(&clnt->cl_tasks))
-+			wake_up(&destroy_wait);
-+		if (!atomic_dec_and_test(&clnt->cl_count))
-+			break;
-+		clnt = rpc_free_auth(clnt);
-+	}
- }
- EXPORT_SYMBOL_GPL(rpc_release_client);
- 
--- 
-1.8.3.1
+
+Do you have an issue with READ_PLUS?
+
+I.e., are you okay with that operation because the answer is not known beforehand?
+
+
+> 
+> I think a successful argument could be made that initialization or hole punching may not belong in a WRITE_PLUS operation.  For example, using a COMMIT for a long-running server-performed file initialization doesn't make sense to me.  The infrastructure we introduced for COPY_OFFLOAD seems better suited for file initialization.
+
+WRITE_PLUS does utilize COPY_OFFLOAD for such actions.
+
+
+> 
+>> It's not like adding new operations to NFS is all that hard.
+> 
+> Actually, it is harder than you think.  For various reasons, it takes five or more years to create a new NFS protocol specification, something we hope to address.
+> 
+>>> The mailing list is not the only place where they are discussed.  We also use conference calls, and there are face-to-face meetings too.  Not all of that content is distilled into a public record.  Very much like Linux kernel development.
+>> 
+>> Linux development strives very hard documenting rationales, something I
+>> haven't found on the NFS list or in the repository.
+
+
+There was a strong consensus in the biweekly calls to merge all of the operations together into WRITE_PLUS.
+I think we also voted on this at one of the meetings.
+
+But in any event, the document is still open and I'm glad Anna is funneling implementation experience into
+it. 
+
+
 
