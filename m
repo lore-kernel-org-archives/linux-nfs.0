@@ -1,80 +1,104 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:53434 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756605Ab3KNQkq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Nov 2013 11:40:46 -0500
-Date: Thu, 14 Nov 2013 08:40:46 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: sharing protocol defintions between client and server?
-Message-ID: <20131114164046.GA32275@infradead.org>
-References: <20131113162116.GA14577@infradead.org>
- <20131114150546.GA21152@fieldses.org>
+Received: from mx1.redhat.com ([209.132.183.28]:24981 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750760Ab3KDRzT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 4 Nov 2013 12:55:19 -0500
+Message-ID: <5277DFBB.1010901@RedHat.com>
+Date: Mon, 04 Nov 2013 12:56:11 -0500
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20131114150546.GA21152@fieldses.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: Jeff Layton <jlayton@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        "dpquigl@davequigley.com" <dpquigl@davequigley.com>
+Subject: Re: [PATCH] nfs: set security label when revalidating inode
+References: <1383389838-1858-1-git-send-email-jlayton@redhat.com> <C85EF88C-B4F8-484C-A00D-5A86ACB61C10@netapp.com> <5277BAFB.9070109@RedHat.com> <48054582-1F6A-4A27-AE62-C9B0AE8F9619@netapp.com>
+In-Reply-To: <48054582-1F6A-4A27-AE62-C9B0AE8F9619@netapp.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Nov 14, 2013 at 10:05:46AM -0500, J. Bruce Fields wrote:
-> On Wed, Nov 13, 2013 at 08:21:16AM -0800, Christoph Hellwig wrote:
-> > >From a lot of the recent work it seems like there's basically no
-> > sharing of protocol definitions between the Linux NFS client and
-> > server, which seems fairly annoying to me.
+
+
+On 04/11/13 11:03, Myklebust, Trond wrote:
 > 
-> What are you thinking of exactly?
+> On Nov 4, 2013, at 10:19, Steve Dickson <SteveD@redhat.com> wrote:
 > 
-> I suspect that there could be more sharing.
+>>
+>>
+>> On 02/11/13 22:23, Myklebust, Trond wrote:
+>>>
+>>> On Nov 2, 2013, at 6:57, Jeff Layton <jlayton@redhat.com> wrote:
+>>>
+>>>> Currently, we fetch the security label when revalidating an inode's
+>>>> attributes, but don't apply it. This is in contrast to the readdir()
+>>>> codepath where we do apply label changes.
+>>>
+>>> OK. Why should we not just throw out the code that fetches the security label here?
+>> Looking back at the original code (aka David's tree), the label was being set 
+>> in  nfs_refresh_inode() after the nfs_refresh_inode_locked() call:
+>>
+>> int nfs_refresh_inode(struct inode *inode, struct nfs_fattr *fattr, struct nfs4_label *label)
+>> {
+>>    int status;
+>>
+>>    if ((fattr->valid & NFS_ATTR_FATTR) == 0)
+>>        return 0;
+>>    spin_lock(&inode->i_lock);
+>>    status = nfs_refresh_inode_locked(inode, fattr, label);
+>>    spin_unlock(&inode->i_lock);
+>>    if (nfs_server_capable(inode, NFS_CAP_SECURITY_LABEL)) {
+>>        if (label && !status)
+>>            nfs_setsecurity(inode, fattr, label);
+>>    }
+>>
+>>    return status; 
+>> }
+>>
+>> This code chunk got remove when I removed the setting of labels from 
+>> all the original places they were being set (aka access, commits, etc).
+> 
+>> There is an outstanding bug on how the client is not recognizing the
+>> changing of a label.. So this patch will probably fix that bug…
+> 
+> I understood the question to be about why the client isn’t recognising changes 
+> that are made on the server. Are you saying that we’re failing to set the label 
+> correctly when the client itself changes it? That would be a bug under the 
+> existing caching rules.
+Yes... On app changes the label via nfs4_xattr_set_nfs4_label() 
+but another app won't see the change since the label was not updated
+by the getattr... Now would the label eventually get updated? 
+Probably... through a lookup or open or something... 
 
-To make it easy I'll just quote from the SEEK patches.
+Basically this is a bug in my forward port of Dave's code.  
 
-client:
+Now I think you are questioning does the label even need
+to be part of the getattr... As I just explained, I think 
+so... How else will change be noticed?
 
-+struct nfs42_seek_args {
-+	struct nfs4_sequence_args	seq_args;
-+
-+	struct nfs_fh			*sa_fh;
-+	nfs4_stateid			*sa_stateid;
-+	u64				sa_offset;
-+	u32				sa_what;
-+};
-+
-+struct nfs42_seek_res {
-+	struct nfs4_sequence_res	seq_res;
-+	unsigned int			status;
-+
-+	u32	sr_eof;
-+	u32	sr_whence;
-+	u64	sr_offset;
-+	u64	sr_length;
-+	u32	sr_allocated;
-+};
-+#endif
+steved.
 
-server:
-
-+struct nfsd4_seek {
-+	/* request */
-+	stateid_t	seek_stateid;
-+	loff_t		seek_offset;
-+	u32		seek_whence;
-+
-+	/* response */
-+	u64		seek_pos;
-+	u32		seek_eof;
-+	u64		seek_length;
-+	u32		seek_allocated;
-+};
-
-note that a lot of server operations also seem to have separate
-args and result substrutures.  In general I'd love to have one
-structure for the actual on-the wire operation in a header, and then
-client and server could build in-memory versions around them.
-
-Of course just generating those from the XDR would be even better.
-
-Maybe I'll play around with doing a krpcgen that we can initially
-just use for producing the structures, for which it should be
-pretty clear benefit.  If we're lucky we might be to also move
-some marshalling/unmarshalling over to it later.
+> 
+>>>
+>>> IOW: what is the caching model that is being implemented in this patch; 
+>>> is it just “fetch label at random intervals” or is there real method to the madness?
+>> There is no caching model per say... I really don't think there needs to be
+>> one... Labels are a client only thing meaning the server is not expect to
+>> change the label and an application is expect to set them... So if there
+>> is any caching to be done it should be done by the application, not the 
+>> filesystem... IMHO...  
+> 
+> Right, but this argues against the need for polling.
+> 
+> Cheers,
+>   Trond
+> 
+> 
+> --
+> Trond Myklebust
+> Linux NFS client maintainer
+> 
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+> 
