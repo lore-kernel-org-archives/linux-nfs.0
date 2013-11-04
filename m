@@ -1,127 +1,97 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:28617 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753677Ab3KLRfz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 12 Nov 2013 12:35:55 -0500
-Subject: [PATCH 3/3] statxat: AFS: Return enhanced basic attributes
-To: viro@ZenIV.linux.org.uk
-From: David Howells <dhowells@redhat.com>
-Cc: linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        libc-alpha@sourceware.org, linux-api@vger.kernel.org,
-        andreas.gruenbacher@gmail.com, samba-technical@lists.samba.org,
-        linux-fsdevel@vger.kernel.org
-Date: Tue, 12 Nov 2013 17:35:42 +0000
-Message-ID: <20131112173542.25813.86363.stgit@warthog.procyon.org.uk>
-In-Reply-To: <20131112173518.25813.67568.stgit@warthog.procyon.org.uk>
-References: <20131112173518.25813.67568.stgit@warthog.procyon.org.uk>
+Received: from demumfd001.nsn-inter.net ([93.183.12.32]:11596 "EHLO
+	demumfd001.nsn-inter.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752900Ab3KDGxG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Nov 2013 01:53:06 -0500
+Date: Mon, 4 Nov 2013 07:52:59 +0100
+From: Robert Schiele <rschiele@gmail.com>
+To: linux-nfs@vger.kernel.org
+Cc: Jim Rees <rees@umich.edu>
+Subject: [PATCH] fix race condition for parallel startup of statd
+Message-ID: <20131104065259.GA21230@ulegcprs1.emea.nsn-net.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Return enhanced basic attributes from the AFS filesystem.  This includes the
-following:
+When start_statd figures out that statd is not yet running it starts
+it, waits for the invoked process to complete, and finally verifies
+that statd is working.  This approach works for serially mounting NFS
+file systems but has a race condition for parallel mounting.
 
- (1) The data version number as st_data_version.
+In the parallel case it can happen that two mount commands A and B
+both decide that statd needs to be started. Both of them try to start
+statd.  Obviously only one of them can successfully do so, let's
+assume this is command A in our case.  The statd invoked by B
+terminates because the resource is already claimed by the statd
+invoked by A.  The termination of B's statd though is before the
+statd of A has completely set up all things.  This causes the check
+for a working statd of command B to fail and terminate the mount
+request with an error.
 
- (2) STATX_INFO_AUTOMOUNT will be set on automount directories by virtue of
-     S_AUTOMOUNT being set on the inode.  These are referrals to other volumes
-     or other cells.
+To prevent this we define a timeout value.  In case the initial check
+after invoking statd fails we try again in a loop 10 times a second
+until the timeout is reached.
 
- (3) STATX_INFO_AUTODIR on a directory that does cell lookup for non-existent
-     names and mounts them (typically mounted on /afs with -o autocell).  The
-     resulting directories are marked STATX_INFO_FABRICATED as they do not
-     actually exist in the mounted AFS directory.
-
- (4) Files, directories and symlinks accessed over AFS are marked
-     STATX_INFO_REMOTE.  Local fake directories are marked
-     STATX_INFO_FABRICATED.
-
- (5) STATX_INFO_NONSYSTEM_OWNERSHIP is set as the UID and GID retrieved from an
-     AFS share may not be applicable on the system.
-
-and also some auxiliary data:
-
- (6) The volume ID and type.
-
- (7) The volume name.
-
- (8) The cell name.
-
-Signed-off-by: David Howells <dhowells@redhat.com>
+In our tests when the race occurred we typically were successful
+already on the first retry within the loop.
 ---
 
- fs/afs/inode.c |   47 +++++++++++++++++++++++++++++++++++++++--------
- 1 file changed, 39 insertions(+), 8 deletions(-)
+This is the modified version of the patch with the loop calling
+nfs_probe_statd only in one place but still leaving the loop without
+a useless sleep nefore the first or after the last check.
 
-diff --git a/fs/afs/inode.c b/fs/afs/inode.c
-index ce25d755b7aa..793d5009b60b 100644
---- a/fs/afs/inode.c
-+++ b/fs/afs/inode.c
-@@ -71,9 +71,9 @@ static int afs_inode_map_status(struct afs_vnode *vnode, struct key *key)
- 	inode->i_uid		= vnode->status.owner;
- 	inode->i_gid		= GLOBAL_ROOT_GID;
- 	inode->i_size		= vnode->status.size;
--	inode->i_ctime.tv_sec	= vnode->status.mtime_server;
--	inode->i_ctime.tv_nsec	= 0;
--	inode->i_atime		= inode->i_mtime = inode->i_ctime;
-+	inode->i_mtime.tv_sec	= vnode->status.mtime_server;
-+	inode->i_mtime.tv_nsec	= 0;
-+	inode->i_atime		= inode->i_ctime = inode->i_mtime;
- 	inode->i_blocks		= 0;
- 	inode->i_generation	= vnode->fid.unique;
- 	inode->i_version	= vnode->status.data_version;
-@@ -374,16 +374,47 @@ error_unlock:
- /*
-  * read the attributes of an inode
-  */
--int afs_getattr(struct vfsmount *mnt, struct dentry *dentry,
--		      struct kstat *stat)
-+int afs_getattr(struct vfsmount *mnt, struct dentry *dentry, struct kstat *stat)
- {
--	struct inode *inode;
--
--	inode = dentry->d_inode;
-+	struct inode *inode = dentry->d_inode;
- 
- 	_enter("{ ino=%lu v=%u }", inode->i_ino, inode->i_generation);
- 
- 	generic_fillattr(inode, stat);
-+
-+	stat->result_mask &= ~(STATX_ATIME | STATX_CTIME | STATX_BLOCKS);
-+	stat->result_mask |= STATX_VERSION;
-+	stat->version = inode->i_version;
-+
-+	if (test_bit(AFS_VNODE_AUTOCELL, &AFS_FS_I(inode)->flags))
-+		stat->information |= STATX_INFO_AUTODIR;
-+
-+	if (test_bit(AFS_VNODE_PSEUDODIR, &AFS_FS_I(inode)->flags))
-+		stat->information |= STATX_INFO_FABRICATED;
-+	else
-+		stat->information |= STATX_INFO_REMOTE;
-+
-+	stat->information |=
-+		STATX_INFO_NONSYSTEM_OWNERSHIP | STATX_INFO_HAS_ACL;
-+
-+	if (stat->auxinfo) {
-+		struct afs_super_info *as = inode->i_sb->s_fs_info;
-+		struct statx_auxinfo *aux = stat->auxinfo;
-+
-+		aux->sx_fsid = as->volume->vid;
-+		/* construct a volume ID from the AFS volume ID and type */
-+		aux->sx_volume_id[0] = as->volume->vid >> 24;
-+		aux->sx_volume_id[1] = as->volume->vid >> 16;
-+		aux->sx_volume_id[2] = as->volume->vid >> 8;
-+		aux->sx_volume_id[3] = as->volume->vid >> 0;
-+		aux->sx_volume_id[4] = as->volume->type;
-+
-+		strcpy(aux->sx_volume_name, as->volume->vlocation->vldb.name);
-+		strcpy(aux->sx_domain_name, as->volume->cell->name);
-+
-+		aux->sx_mask = STATX_FSID | STATX_VOLUME_ID |
-+			STATX_VOLUME_NAME | STATX_DOMAIN_NAME;
-+	}
- 	return 0;
- }
- 
+Additionally I declared ts with a const qualifier now to make the
+nature of this variable more clear.
 
+By accident I replied to Jim only personally and not to the list and
+thus the discussion leading to this modification was not reflected
+there.  I am sorry for that.
+
+Robert
+
+ utils/mount/network.c | 15 +++++++++++++--
+ 1 file changed, 13 insertions(+), 2 deletions(-)
+
+diff --git a/utils/mount/network.c b/utils/mount/network.c
+index e2cdcaf..e8e55a5 100644
+--- a/utils/mount/network.c
++++ b/utils/mount/network.c
+@@ -58,6 +58,7 @@
+ #define PMAP_TIMEOUT	(10)
+ #define CONNECT_TIMEOUT	(20)
+ #define MOUNT_TIMEOUT	(30)
++#define STATD_TIMEOUT	(10)
+ 
+ #define SAFE_SOCKADDR(x)	(struct sockaddr *)(char *)(x)
+ 
+@@ -773,6 +774,11 @@ int start_statd(void)
+ #ifdef START_STATD
+ 	if (stat(START_STATD, &stb) == 0) {
+ 		if (S_ISREG(stb.st_mode) && (stb.st_mode & S_IXUSR)) {
++			int cnt = STATD_TIMEOUT * 10;
++			const struct timespec ts = {
++				.tv_sec = 0,
++				.tv_nsec = 100000000,
++			};
+ 			pid_t pid = fork();
+ 			switch (pid) {
+ 			case 0: /* child */
+@@ -786,8 +792,13 @@ int start_statd(void)
+ 				waitpid(pid, NULL,0);
+ 				break;
+ 			}
+-			if (nfs_probe_statd())
+-				return 1;
++			while (1) {
++				if (nfs_probe_statd())
++					return 1;
++				if (! cnt--)
++					return 0;
++				nanosleep(&ts, NULL);
++			}
+ 		}
+ 	}
+ #endif
+-- 
+1.8.1.4
