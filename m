@@ -1,35 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:64368 "EHLO mx11.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:47686 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751138Ab3KKUcr convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Nov 2013 15:32:47 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Charles Edward Lever <chuck.lever@oracle.com>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: NFS atime behavior is not documented
-Date: Mon, 11 Nov 2013 17:33:10 +0000
-Message-ID: <6EE5262F-5B2E-4F10-A600-A60F30C0A23E@netapp.com>
-References: <E4BE40FF-9F81-4688-BD39-1E583DDCEA4A@oracle.com>
-In-Reply-To: <E4BE40FF-9F81-4688-BD39-1E583DDCEA4A@oracle.com>
-Content-Type: text/plain; charset="us-ascii"
+	id S1752716Ab3KDQrH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 4 Nov 2013 11:47:07 -0500
+Date: Mon, 4 Nov 2013 11:46:58 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Anna Schumaker <bjschuma@netapp.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 4/4] NFSD: Implement SEEK
+Message-ID: <20131104164658.GA4427@fieldses.org>
+References: <1382972247-1108-1-git-send-email-bjschuma@netapp.com>
+ <1382972247-1108-5-git-send-email-bjschuma@netapp.com>
+ <20131029073558.GA10889@infradead.org>
+ <526FB180.1060003@netapp.com>
+ <20131029130721.GA32094@infradead.org>
+ <20131029133006.GB29606@fieldses.org>
+ <20131102134837.GA18961@infradead.org>
+ <20131102143729.GA26983@fieldses.org>
+ <20131102144107.GA28743@infradead.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20131102144107.GA28743@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Nov 11, 2013, at 11:50, Chuck Lever <chuck.lever@oracle.com> wrote:
-
-> Hi-
+On Sat, Nov 02, 2013 at 07:41:07AM -0700, Christoph Hellwig wrote:
+> On Sat, Nov 02, 2013 at 10:37:29AM -0400, J. Bruce Fields wrote:
+> > On Sat, Nov 02, 2013 at 06:48:37AM -0700, Christoph Hellwig wrote:
+> > > On Tue, Oct 29, 2013 at 09:30:06AM -0400, J. Bruce Fields wrote:
+> > > > I haven't read these parts of the spec yet at all....
+> > > 
+> > > Btw, is there a way do to something like a git blame for the spec?  I'd
+> > > really love to confront people personally with some of the odd bits they
+> > > came up with.
+> > 
+> > It *is* in git, so you can literally run git blame:
+> > 
+> > 	https://github.com/loghyr/NFSv4.2
+> > 
+> > But it'll probably credit almost everything to Tom and he's typically
+> > just the messenger....
 > 
-> It was recently pointed out to me that the behavior of atime on NFS mount points is pretty dodgy, yet this is not documented anywhere, not even in the venerable and unmaintained Linux NFS FAQ.
-> 
-> A good place to cover this topic might be nfs(5).  It could discuss how the Linux NFS client deals with the various *atime mount options (mostly be collapsing them into relatime, all the time).  And it could discuss how file timestamps are updated when the physical backing store is on another system.
-> 
-> Thoughts?  Comments?
+> Indeed, a quick try attributes everything to him.  No good way to figure
+> out who is to blame for the whole WRITE PLUS idiocy.
 
-NFS atime is not the same as relatime.
+Imagine it was me, if it helps.
 
-Our atime is only updated when a READ rpc call goes to the server. Cached reads do not, for instance, trigger an atime update. That is a very different model than the relatime model.
+The important thing is that we understand what should be fixed.
 
-Cheers
-  Trond
+--b.
