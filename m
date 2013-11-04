@@ -1,112 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:59635 "EHLO mx1.redhat.com"
+Received: from mx11.netapp.com ([216.240.18.76]:38463 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750940Ab3KGTJ1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 7 Nov 2013 14:09:27 -0500
-From: Steve Dickson <steved@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH] Adding the nfs4_use_min_auth module parameter
-Date: Thu,  7 Nov 2013 14:09:24 -0500
-Message-Id: <1383851364-8370-1-git-send-email-steved@redhat.com>
+	id S1751278Ab3KDVjB convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Nov 2013 16:39:01 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Jeff Layton <jlayton@redhat.com>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Bruce Fields <bfields@fieldses.org>, Steve Dickson <steved@redhat.com>,
+        David Quigley <dpquigl@davequigley.com>
+Subject: Re: [PATCH 2/5] NFS: __nfs_revalidate_inode() - use the nfs4_label
+ to update file security info
+Date: Mon, 4 Nov 2013 21:38:59 +0000
+Message-ID: <E7A8C8BC-B302-4EAA-8CFE-51FAC8099089@netapp.com>
+References: <1383598272-17737-1-git-send-email-Trond.Myklebust@netapp.com>
+ <1383598272-17737-2-git-send-email-Trond.Myklebust@netapp.com>
+ <0719A451-70BA-4AF8-8A3F-ECF9A221C5BB@netapp.com>
+ <20131104162410.2e2580bf@tlielax.poochiereds.net>
+In-Reply-To: <20131104162410.2e2580bf@tlielax.poochiereds.net>
+Content-Type: text/plain; charset="Windows-1252"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This new module parameter makes the v4 client
-use the minimal authentication flavor (AUTH_UNIX)
-when establishing NFSV4 state and doing the
-pseudoroot lookup
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- fs/nfs/nfs4_fs.h    |    1 +
- fs/nfs/nfs4client.c |    8 ++++++--
- fs/nfs/nfs4proc.c   |    4 +++-
- fs/nfs/super.c      |    6 +++++-
- 4 files changed, 15 insertions(+), 4 deletions(-)
+On Nov 4, 2013, at 16:24, Jeff Layton <jlayton@redhat.com> wrote:
 
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 28842ab..20bf925 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -438,6 +438,7 @@ extern bool nfs4_disable_idmapping;
- extern unsigned short max_session_slots;
- extern unsigned short send_implementation_id;
- extern bool recover_lost_locks;
-+extern bool nfs4_use_min_auth;
- 
- #define NFS4_CLIENT_ID_UNIQ_LEN		(64)
- extern char nfs4_client_id_uniquifier[NFS4_CLIENT_ID_UNIQ_LEN];
-diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-index a860ab5..ff85991 100644
---- a/fs/nfs/nfs4client.c
-+++ b/fs/nfs/nfs4client.c
-@@ -355,6 +355,7 @@ struct nfs_client *nfs4_init_client(struct nfs_client *clp,
- 	char buf[INET6_ADDRSTRLEN + 1];
- 	struct nfs_client *old;
- 	int error;
-+	rpc_authflavor_t flavor = RPC_AUTH_GSS_KRB5I;
- 
- 	if (clp->cl_cons_state == NFS_CS_READY) {
- 		/* the client is initialised already */
-@@ -368,8 +369,11 @@ struct nfs_client *nfs4_init_client(struct nfs_client *clp,
- 	if (clp->cl_minorversion != 0)
- 		__set_bit(NFS_CS_INFINITE_SLOTS, &clp->cl_flags);
- 	__set_bit(NFS_CS_DISCRTRY, &clp->cl_flags);
--	error = nfs_create_rpc_client(clp, timeparms, RPC_AUTH_GSS_KRB5I);
--	if (error == -EINVAL)
-+
-+	if (nfs4_use_min_auth)
-+		flavor = RPC_AUTH_UNIX;
-+	error = nfs_create_rpc_client(clp, timeparms, flavor);
-+	if (error == -EINVAL && flavor != RPC_AUTH_UNIX)
- 		error = nfs_create_rpc_client(clp, timeparms, RPC_AUTH_UNIX);
- 	if (error < 0)
- 		goto error;
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index d53d678..00162cb 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2864,7 +2864,9 @@ static int nfs4_find_root_sec(struct nfs_server *server, struct nfs_fh *fhandle,
- 	int status = -EPERM;
- 	size_t i;
- 
--	for (i = 0; i < ARRAY_SIZE(flav_array); i++) {
-+	if (nfs4_use_min_auth)
-+		status = nfs4_lookup_root_sec(server, fhandle, info, RPC_AUTH_UNIX);
-+	else for (i = 0; i < ARRAY_SIZE(flav_array); i++) {
- 		status = nfs4_lookup_root_sec(server, fhandle, info, flav_array[i]);
- 		if (status == -NFS4ERR_WRONGSEC || status == -EACCES)
- 			continue;
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index a03b9c6..42b4f9b 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -2791,6 +2791,7 @@ unsigned short max_session_slots = NFS4_DEF_SLOT_TABLE_SIZE;
- unsigned short send_implementation_id = 1;
- char nfs4_client_id_uniquifier[NFS4_CLIENT_ID_UNIQ_LEN] = "";
- bool recover_lost_locks = false;
-+bool nfs4_use_min_auth = false;
- 
- EXPORT_SYMBOL_GPL(nfs_callback_set_tcpport);
- EXPORT_SYMBOL_GPL(nfs_callback_tcpport);
-@@ -2800,6 +2801,7 @@ EXPORT_SYMBOL_GPL(max_session_slots);
- EXPORT_SYMBOL_GPL(send_implementation_id);
- EXPORT_SYMBOL_GPL(nfs4_client_id_uniquifier);
- EXPORT_SYMBOL_GPL(recover_lost_locks);
-+EXPORT_SYMBOL_GPL(nfs4_use_min_auth);
- 
- #define NFS_CALLBACK_MAXPORTNR (65535U)
- 
-@@ -2842,5 +2844,7 @@ MODULE_PARM_DESC(recover_lost_locks,
- 		 "If the server reports that a lock might be lost, "
- 		 "try to recover it risking data corruption.");
- 
--
-+module_param(nfs4_use_min_auth, bool, 0644);
-+MODULE_PARM_DESC(nfs4_use_min_auth,
-+		"Use mimnal auth in SETCLIENTID operation");
- #endif /* CONFIG_NFS_V4 */
--- 
-1.7.1
+> On Mon, 4 Nov 2013 21:00:46 +0000
+> "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+> 
+>> 
+>> On Nov 4, 2013, at 15:51, Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+>> 
+>>> Currently, we just discard the nfs4_label information, instead of using it
+>>> to update the file LSM security info.
+>>> 
+>>> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+>> 
+>> I forgot to add a "Reported-by: Jeff Layton <jlayton@redhat.com>”. Fixed now...
+>> 
+>>> ---
+>>> fs/nfs/inode.c | 1 +
+>>> 1 file changed, 1 insertion(+)
+>>> 
+>>> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+>>> index 471ba59c42f9..09d4df5f588a 100644
+>>> --- a/fs/nfs/inode.c
+>>> +++ b/fs/nfs/inode.c
+>>> @@ -920,6 +920,7 @@ __nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
+>>> 		goto err_out;
+>>> 	}
+>>> 
+>>> +	nfs_setsecurity(inode, fattr, label);
+>>> 	if (nfsi->cache_validity & NFS_INO_INVALID_ACL)
+>>> 		nfs_zap_acl_cache(inode);
+>>> 
+>>> -- 
+>>> 1.8.3.1
+>>> 
+>> 
+> 
+> No worries -- looks fine.
+> 
+> Out of curiousity, is there a reason to call nfs_setsecurity prior to
+> zapping the ACL cache? The patch I had proposed did it afterward, but I
+> didn't think it mattered much either way...
 
+It shouldn’t make a huge difference, no; either way, there be plenty races here…
+
+Trond
