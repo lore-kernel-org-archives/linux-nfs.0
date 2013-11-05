@@ -1,37 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:8919 "EHLO mx1.redhat.com"
+Received: from mx12.netapp.com ([216.240.18.77]:59622 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752280Ab3KLQXl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 12 Nov 2013 11:23:41 -0500
-Message-ID: <52825648.5090907@RedHat.com>
-Date: Tue, 12 Nov 2013 11:24:40 -0500
-From: Steve Dickson <SteveD@redhat.com>
+	id S1750732Ab3KECHQ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Nov 2013 21:07:16 -0500
+From: "Haynes, Tom" <Tom.Haynes@netapp.com>
+To: Christoph Hellwig <hch@infradead.org>
+CC: "J. Bruce Fields" <bfields@fieldses.org>,
+        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
+        Mailing List Linux NFS <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 4/4] NFSD: Implement SEEK
+Date: Tue, 5 Nov 2013 02:07:15 +0000
+Message-ID: <12D9C342-D7DC-41B1-B2D5-C13A89E5BDE1@netapp.com>
+References: <1382972247-1108-5-git-send-email-bjschuma@netapp.com>
+ <20131029073558.GA10889@infradead.org> <526FB180.1060003@netapp.com>
+ <20131029130721.GA32094@infradead.org> <20131029133006.GB29606@fieldses.org>
+ <20131102134837.GA18961@infradead.org> <20131102143729.GA26983@fieldses.org>
+ <20131102144107.GA28743@infradead.org> <20131104164658.GA4427@fieldses.org>
+ <5BAB86A3-045A-4CA9-A08F-7B0E38DBAC7D@excfb.com>
+ <20131105010332.GA32189@infradead.org>
+In-Reply-To: <20131105010332.GA32189@infradead.org>
+Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] Adding the nfs4_secure_mounts bool
-References: <1384037221-7224-1-git-send-email-steved@redhat.com> <E061C7A8-DC27-49BA-93C2-DC2E9C19EA7B@netapp.com> <52811CBB.3070204@RedHat.com> <E520DD5F-7E5A-4B6C-9FF6-6B74DA36FD1E@oracle.com> <5281290B.6000201@RedHat.com> <E0FBCF46-C70F-41E5-BA67-48406253CD7E@oracle.com> <52814876.7080604@RedHat.com> <A59DDCD0-5622-4497-A93E-80493EDCED27@oracle.com> <5281618A.1050604@RedHat.com> <784A1C68-59DA-4248-AF91-BAF472CDD37E@oracle.com>
-In-Reply-To: <784A1C68-59DA-4248-AF91-BAF472CDD37E@oracle.com>
-Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
+On Nov 4, 2013, at 5:03 PM, Christoph Hellwig <hch@infradead.org> wrote:
 
-On 12/11/13 11:09, Chuck Lever wrote:
->> In the past, if admins want rpc.gssd in the mount path they had to configure it.
->> > Now we are silently adding, yet another, daemon to the mount path and if 
->> > rpc.gssd starts falling on its face, I think it will be difficult to debug,
->> > since the daemon is not expected to be there...
-> Our only real choice here is to fix gssd.  Anything else is punting the problem down the road.
+> On Mon, Nov 04, 2013 at 01:56:39PM -0800, Thomas Haynes wrote:
+>> Nah, most likely me, no imagination needed.
+>> 
+>> We were also looking at bringing larger WRITEs during 4.3 and I wanted
+>> to have WRITE_PLUS already in place for that.
 > 
-No. The last there was a daemon was involved in all NFS client mounts 
-(at least that I can remember) was when lockd was a user level daemon.
-The main reason it was ported to the kernel was to get ride of the
-bottle neck it caused... Now we adding similar bottle neck back??
+> What exactly does a WRITE PLUS with various non-related overloads in 4.2
+> buy you for introducing large writes in 4.3?
 
-Architecturally, put a daemon in the direct NFS mount path just does 
-not make sense... IMHO...
+In 4.3, READ_PLUS would be extended for large reads. We would at that
+time need a WRITE_PLUS to be extended for large writes.
 
-steved.
+The relationship falls from having WRITE_PLUS handle all of the variants
+handled by READ_PLUS. It needs to accept all of them because it
+does not know what will be returned.
+
+We did not want many new operators and also wanted the operators to
+be extensible. With this approach, you can define a new arm of the
+discriminated union, not have to implement it, and not burn an
+operator.
+
+Some of the history is captured here:
+
+http://www.ietf.org/mail-archive/web/nfsv4/current/msg11235.html
+http://www.ietf.org/mail-archive/web/nfsv4/current/msg11470.html
+http://www.ietf.org/proceedings/84/slides/slides-84-nfsv4-1.pdf (slide 6)
+
+It doesn't capture the intent of NFS4ERR_UNION_NOTSUPP in
+this decision.
+
+11.1.1.1.  NFS4ERR_UNION_NOTSUPP (Error Code 10090)
+
+   One of the arguments to the operation is a discriminated union and
+   while the server supports the given operation, it does not support
+   the selected arm of the discriminated union.  For an example, see
+   READ_PLUS (Section 14.10).
