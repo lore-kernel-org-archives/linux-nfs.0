@@ -1,42 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:37317 "EHLO fieldses.org"
+Received: from mx12.netapp.com ([216.240.18.77]:43219 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751030Ab3KROjU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 18 Nov 2013 09:39:20 -0500
-Date: Mon, 18 Nov 2013 09:39:18 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/2] nfsd: split up nfsd_setattr
-Message-ID: <20131118143918.GB3203@fieldses.org>
-References: <20131118130730.GA17184@infradead.org>
- <20131118141031.GA3203@fieldses.org>
- <20131118141624.GA15744@infradead.org>
+	id S1755068Ab3KEOYE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 5 Nov 2013 09:24:04 -0500
+Message-ID: <5278FF7F.4020000@netapp.com>
+Date: Tue, 5 Nov 2013 09:23:59 -0500
+From: Anna Schumaker <bjschuma@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20131118141624.GA15744@infradead.org>
+To: Christoph Hellwig <hch@infradead.org>
+CC: <bfields@fieldses.org>, <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 3/4] NFSD: Add WRITE_PLUS support for hole punches
+References: <1382972247-1108-1-git-send-email-bjschuma@netapp.com> <1382972247-1108-4-git-send-email-bjschuma@netapp.com> <20131105094016.GA7186@infradead.org>
+In-Reply-To: <20131105094016.GA7186@infradead.org>
+Content-Type: text/plain; charset="ISO-8859-1"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Nov 18, 2013 at 06:16:24AM -0800, Christoph Hellwig wrote:
-> On Mon, Nov 18, 2013 at 09:10:31AM -0500, J. Bruce Fields wrote:
-> > On Mon, Nov 18, 2013 at 05:07:30AM -0800, Christoph Hellwig wrote:
-> > > Split out two helpers to make the code more readable and easier to verify
-> > > for correctness.
-> > 
-> > Thanks, both queued up for 2.14.
+On 11/05/2013 04:40 AM, Christoph Hellwig wrote:
+>> +{
+>> +	int error, mode = 0;
+>> +
+>> +	if (allocated == false)
+>> +		mode = FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE;
+>> +
+>> +	error = do_fallocate(file, mode, offset, len);
+>> +	if (error == 0)
+>> +		error = vfs_fsync_range(file, offset, offset + len, 0);
+>> +	return nfserrno(error);
 > 
-> The write counter leak on a break_lease failure is quite serious,
-> given that nfsd_break_lease passes O_NONBLOCK and thus remote users
-> can arbitrarily trigger it.
+> Same problem with the falloc vs WRITE_PLUS mismatch here.  For XFS you
+> could make the allocated case all XFS_IOC_ZERO_RANGE, but the proposed
+> VFS equivalent never seemed to have made it in.
+> 
+> Also no need for the FALLOC_FL_KEEP_SIZE in the hole punch case, it is
+> ignored.
+> 
 
-Oops, I read too quickly and thought it was just cleanup.
-
-Looks like I introduced that bug into 2.6.38 with
-6a76bebefe15d9a08864f824d7f8d5beaf37c997 "nfsd4: break lease on nfsd
-setattr"
-
-OK, added a sentence saying that to the second path and I'll pass it
-along with stable cc:'s after some testing.
-
---b.
+It's not ignored in do_fallocate() (fs/open.c) where it returns -EOPNOTSUPP if FALLOC_FL_PUNCH_HOLE is set without FALLOC_FL_KEEP_SIZE :)
