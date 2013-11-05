@@ -1,134 +1,31 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:10109 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752828Ab3KAQeN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 1 Nov 2013 12:34:13 -0400
-Date: Fri, 1 Nov 2013 12:02:11 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: trond.myklebust@netapp.com, cye@redhat.com, dpquigl@davequigley.com,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfs: fix oops when trying to set SELinux label
-Message-ID: <20131101120211.586aef7a@corrin.poochiereds.net>
-In-Reply-To: <1383317372-3373-1-git-send-email-jlayton@redhat.com>
-References: <1383317372-3373-1-git-send-email-jlayton@redhat.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from bombadil.infradead.org ([198.137.202.9]:42393 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752153Ab3KEI2R (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Nov 2013 03:28:17 -0500
+Date: Tue, 5 Nov 2013 00:28:11 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: Shirish Pargaonkar <shirishpargaonkar@gmail.com>
+Cc: Jeff Layton <jlayton@redhat.com>, viro@zeniv.linux.org.uk,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        linux-nfs@vger.kernel.org, LKML <linux-kernel@vger.kernel.org>,
+        chutzpah@gentoo.org, liguangc@cn.ibm.com
+Subject: Re: [PATCH] [RFC] vfs: don't revalidate dentries that serve as
+ mountpoints
+Message-ID: <20131105082811.GA7774@infradead.org>
+References: <1383614186-8039-1-git-send-email-jlayton@redhat.com>
+ <CADT32eJ_cqej0wnjKOZk1x0UtRqoNy201hFt8hQLLShjcbp3Dg@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CADT32eJ_cqej0wnjKOZk1x0UtRqoNy201hFt8hQLLShjcbp3Dg@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri,  1 Nov 2013 10:49:32 -0400
-Jeff Layton <jlayton@redhat.com> wrote:
+On Mon, Nov 04, 2013 at 09:00:23PM -0600, Shirish Pargaonkar wrote:
+> For a similar issue in cifs vfs (samba bugzilla 8950), I was going to try
+> unset the bit DCACHE_OP_REVALIDATE of d_flags of the
+> dentry.  Would something like work for the mountpoint dentry?
 
-> Chao reported the following oops when testing labeled NFS:
-> 
-> BUG: unable to handle kernel NULL pointer dereference at           (null)
-> IP: [<ffffffffa0568703>] nfs4_xdr_enc_setattr+0x43/0x110 [nfsv4]
-> PGD 277bbd067 PUD 2777ea067 PMD 0
-> Oops: 0000 [#1] SMP
-> Modules linked in: rpcsec_gss_krb5 nfsv4 dns_resolver nfs fscache sg coretemp kvm_intel kvm crc32_pclmul crc32c_intel ghash_clmulni_intel aesni_intel lrw gf128mul iTCO_wdt glue_helper ablk_helper cryptd iTCO_vendor_support bnx2 pcspkr serio_raw i7core_edac cdc_ether microcode usbnet edac_core mii lpc_ich i2c_i801 mfd_core shpchp ioatdma dca acpi_cpufreq mperf nfsd auth_rpcgss nfs_acl lockd sunrpc xfs libcrc32c sr_mod sd_mod cdrom crc_t10dif mgag200 syscopyarea sysfillrect sysimgblt i2c_algo_bit drm_kms_helper ata_generic ttm pata_acpi drm ata_piix libata megaraid_sas i2c_core dm_mirror dm_region_hash dm_log dm_mod
-> CPU: 4 PID: 25657 Comm: chcon Not tainted 3.10.0-33.el7.x86_64 #1
-> Hardware name: IBM System x3550 M3 -[7944OEJ]-/90Y4784     , BIOS -[D6E150CUS-1.11]- 02/08/2011
-> task: ffff880178397220 ti: ffff8801595d2000 task.ti: ffff8801595d2000
-> RIP: 0010:[<ffffffffa0568703>]  [<ffffffffa0568703>] nfs4_xdr_enc_setattr+0x43/0x110 [nfsv4]
-> RSP: 0018:ffff8801595d3888  EFLAGS: 00010296
-> RAX: 0000000000000000 RBX: ffff8801595d3b30 RCX: 0000000000000b4c
-> RDX: ffff8801595d3b30 RSI: ffff8801595d38e0 RDI: ffff880278b6ec00
-> RBP: ffff8801595d38c8 R08: ffff8801595d3b30 R09: 0000000000000001
-> R10: 0000000000000000 R11: 0000000000000000 R12: ffff8801595d38e0
-> R13: ffff880277a4a780 R14: ffffffffa05686c0 R15: ffff8802765f206c
-> FS:  00007f2c68486800(0000) GS:ffff88027fc00000(0000) knlGS:0000000000000000
-> CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-> CR2: 0000000000000000 CR3: 000000027651a000 CR4: 00000000000007e0
-> DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-> DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-> Stack:
->  0000000000000000 0000000000000000 0000000000000000 0000000000000000
->  0000000000000000 ffff880277865800 ffff880278b6ec00 ffff880277a4a780
->  ffff8801595d3948 ffffffffa02ad926 ffff8801595d3b30 ffff8802765f206c
-> Call Trace:
->  [<ffffffffa02ad926>] rpcauth_wrap_req+0x86/0xd0 [sunrpc]
->  [<ffffffffa02a1d40>] ? call_connect+0xb0/0xb0 [sunrpc]
->  [<ffffffffa02a1d40>] ? call_connect+0xb0/0xb0 [sunrpc]
->  [<ffffffffa02a1ecb>] call_transmit+0x18b/0x290 [sunrpc]
->  [<ffffffffa02a1d40>] ? call_connect+0xb0/0xb0 [sunrpc]
->  [<ffffffffa02aae14>] __rpc_execute+0x84/0x400 [sunrpc]
->  [<ffffffffa02ac40e>] rpc_execute+0x5e/0xa0 [sunrpc]
->  [<ffffffffa02a2ea0>] rpc_run_task+0x70/0x90 [sunrpc]
->  [<ffffffffa02a2f03>] rpc_call_sync+0x43/0xa0 [sunrpc]
->  [<ffffffffa055284d>] _nfs4_do_set_security_label+0x11d/0x170 [nfsv4]
->  [<ffffffffa0558861>] nfs4_set_security_label.isra.69+0xf1/0x1d0 [nfsv4]
->  [<ffffffff815fca8b>] ? avc_alloc_node+0x24/0x125
->  [<ffffffff815fcd2f>] ? avc_compute_av+0x1a3/0x1b5
->  [<ffffffffa055897b>] nfs4_xattr_set_nfs4_label+0x3b/0x50 [nfsv4]
->  [<ffffffff811bc772>] generic_setxattr+0x62/0x80
->  [<ffffffff811bcfc3>] __vfs_setxattr_noperm+0x63/0x1b0
->  [<ffffffff811bd1c5>] vfs_setxattr+0xb5/0xc0
->  [<ffffffff811bd2fe>] setxattr+0x12e/0x1c0
->  [<ffffffff811a4d22>] ? final_putname+0x22/0x50
->  [<ffffffff811a4f2b>] ? putname+0x2b/0x40
->  [<ffffffff811aa1cf>] ? user_path_at_empty+0x5f/0x90
->  [<ffffffff8119bc29>] ? __sb_start_write+0x49/0x100
->  [<ffffffff811bd66f>] SyS_lsetxattr+0x8f/0xd0
->  [<ffffffff8160cf99>] system_call_fastpath+0x16/0x1b
-> Code: 48 8b 02 48 c7 45 c0 00 00 00 00 48 c7 45 c8 00 00 00 00 48 c7 45 d0 00 00 00 00 48 c7 45 d8 00 00 00 00 48 c7 45 e0 00 00 00 00 <48> 8b 00 48 8b 00 48 85 c0 0f 84 ae 00 00 00 48 8b 80 b8 03 00
-> RIP  [<ffffffffa0568703>] nfs4_xdr_enc_setattr+0x43/0x110 [nfsv4]
->  RSP <ffff8801595d3888>
-> CR2: 0000000000000000
-> 
-> The problem is that _nfs4_do_set_security_label calls rpc_call_sync()
-> directly which fails to do any setup of the SEQUENCE call. Have it use
-> nfs4_call_sync() instead which does the right thing. While we're at it
-> change the name of "args" to "arg" to better match the pattern in
-> _nfs4_do_setattr.
-> 
-> Reported-by: Chao Ye <cye@redhat.com>
-> Cc: David Quigley <dpquigl@davequigley.com>
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  fs/nfs/nfs4proc.c | 8 ++++----
->  1 file changed, 4 insertions(+), 4 deletions(-)
-> 
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index b02c4cc..d436c57 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -4657,7 +4657,7 @@ static int _nfs4_do_set_security_label(struct inode *inode,
->  	struct iattr sattr = {0};
->  	struct nfs_server *server = NFS_SERVER(inode);
->  	const u32 bitmask[3] = { 0, 0, FATTR4_WORD2_SECURITY_LABEL };
-> -	struct nfs_setattrargs args = {
-> +	struct nfs_setattrargs arg = {
->  		.fh             = NFS_FH(inode),
->  		.iap            = &sattr,
->  		.server		= server,
-> @@ -4671,14 +4671,14 @@ static int _nfs4_do_set_security_label(struct inode *inode,
->  	};
->  	struct rpc_message msg = {
->  		.rpc_proc       = &nfs4_procedures[NFSPROC4_CLNT_SETATTR],
-> -		.rpc_argp       = &args,
-> +		.rpc_argp       = &arg,
->  		.rpc_resp       = &res,
->  	};
->  	int status;
->  
-> -	nfs4_stateid_copy(&args.stateid, &zero_stateid);
-> +	nfs4_stateid_copy(&arg.stateid, &zero_stateid);
->  
-> -	status = rpc_call_sync(server->client, &msg, 0);
-> +	status = nfs4_call_sync(server->client, server, &msg, &arg.seq_args, &res.seq_res, 1);
->  	if (status)
->  		dprintk("%s failed: %d\n", __func__, status);
->  
+The DCACHE_OP_REVALIDATE are just caches of the available dentry
+operations, please don't manipulate those flags on their own.
 
-Oh and btw...
-
-It looks like _nfs4_get_security_label() has the same problem, but I've
-so far been unable to get it to be called, so I didn't patch it. It
-seems like getxattr does some special stuff for SELinux labels that
-cause them only to ever be fetched once.
-
-Is there some trick to it?
-
--- 
-Jeff Layton <jlayton@redhat.com>
