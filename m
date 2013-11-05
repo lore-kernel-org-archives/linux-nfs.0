@@ -1,67 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:38983 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751253Ab3KORXT convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Nov 2013 12:23:19 -0500
+Received: from bombadil.infradead.org ([198.137.202.9]:43192 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754348Ab3KEMdP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 5 Nov 2013 07:33:15 -0500
+Date: Tue, 5 Nov 2013 04:33:09 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Anna Schumaker <bjschuma@netapp.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 4/4] NFSD: Implement SEEK
+Message-ID: <20131105123309.GA30798@infradead.org>
+References: <20131029073558.GA10889@infradead.org>
+ <526FB180.1060003@netapp.com>
+ <20131029130721.GA32094@infradead.org>
+ <20131029133006.GB29606@fieldses.org>
+ <20131102134837.GA18961@infradead.org>
+ <20131102143729.GA26983@fieldses.org>
+ <20131102144107.GA28743@infradead.org>
+ <20131104164658.GA4427@fieldses.org>
+ <20131104170510.GB31499@infradead.org>
+ <89CF7DF4-50B3-4EF4-B756-FDAFAC44F298@oracle.com>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.6 \(1510\))
-Subject: Re: [PATCH] NFS: -EIO from decode_bitmap if too many bitmaps
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1384535424.4046.15.camel@leira.trondhjem.org>
-Date: Fri, 15 Nov 2013 12:23:15 -0500
-Cc: Weston Andros Adamson <dros@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Message-Id: <3D7E0A6D-4009-4B28-8B43-588631A8EFD4@oracle.com>
-References: <1384533481-2254-1-git-send-email-dros@netapp.com> <1384534841.4046.11.camel@leira.trondhjem.org> <1384535149.4046.13.camel@leira.trondhjem.org> <C9A7EFC4-6B93-44D4-8ADC-AAC440D4CFB2@oracle.com> <1384535424.4046.15.camel@leira.trondhjem.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+In-Reply-To: <89CF7DF4-50B3-4EF4-B756-FDAFAC44F298@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Nov 15, 2013, at 12:10 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
-
-> On Fri, 2013-11-15 at 12:07 -0500, Chuck Lever wrote:
->> On Nov 15, 2013, at 12:05 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
->> 
->>> On Fri, 2013-11-15 at 12:00 -0500, Trond Myklebust wrote:
->>>> On Fri, 2013-11-15 at 11:38 -0500, Weston Andros Adamson wrote:
->>>>> decode_bitmap will only decode up to three bitmaps.  If the xdr buffer
->>>>> has more than three bitmaps, return -EIO here instead of bailing out in
->>>>> a later xdr decode.
->>>>> 
->>>> 
->>>> No. decode_bitmap will only _save_ 3 words in the bitmap[] argment, but
->>>> it will decode arbitrary sized bitmaps:
->>>> 
->>>> 	p = xdr_inline_decode(xdr, (bmlen << 2));
->>>> 
->>> 
->>> That said, we should probably check that the server isn't setting those
->>> bitmap words to any non-zero values. That would be a reason to return
->>> EIO.
->> 
->> Why wouldn't the client simply warn and ignore the extraneous data?
->> 
+On Mon, Nov 04, 2013 at 09:22:11AM -0800, Chuck Lever wrote:
+> The original proposal is
 > 
-> ...because unless the GETATTR is the very last operation, we'd end up
-> failing to decode things correctly.
+>   http://tools.ietf.org/html/draft-eisler-nfsv4-enterprise-apps-01
+> 
+> and has been somewhat modified in its expression in NFSv4.2.
 
-Surely that's only if the returned bitmap length doesn't match the number of bitmap words returned.  The server can return a properly encoded result without overwriting the next operation in the compound, can't it?
-
-> Anyway, a server that returns
-> attributes that we haven't requested must clearly be borken. It's
-> definitely violating the spec.
-
-Definitely, but "be lenient in what you accept."
-
-The reason I bring this up is that we had exactly this problem with NFSv4.2, where the third bitmap word was added.
-
-Anyway, just an observation.
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+The INITIALIZE operation in that proposal look like a sane translation of
+the SCSI WRITE SAME commands to NFS, but I have no idea
+how that eveloved into the monster of ADHs in the NFS4.2 draft.
 
