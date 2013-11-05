@@ -1,129 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:46881 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754385Ab3KTQlA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Nov 2013 11:41:00 -0500
-Date: Wed, 20 Nov 2013 08:40:53 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: Benny Halevy <bhalevy@primarydata.com>
-Cc: chenditang <chendt.fnst@cn.fujitsu.com>,
-        "J. Bruce Fields" <bfields@redhat.com>,
-        Benny Halevy <bhalevy@tonian.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] pnfsd-file: cause oops when stop the nfs server
-Message-ID: <20131120164053.GA16928@infradead.org>
-References: <51517A15.3010805@cn.fujitsu.com>
- <51776397.2050504@cn.fujitsu.com>
- <5242FA2F.1000302@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <5242FA2F.1000302@primarydata.com>
+Received: from mail-qc0-f182.google.com ([209.85.216.182]:40571 "EHLO
+	mail-qc0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750719Ab3KEBQd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Nov 2013 20:16:33 -0500
+Received: by mail-qc0-f182.google.com with SMTP id n7so4486657qcx.27
+        for <linux-nfs@vger.kernel.org>; Mon, 04 Nov 2013 17:16:33 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: viro@ZenIV.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, chutzpah@gentoo.org, liguangc@cn.ibm.com
+Subject: [PATCH] [RFC] vfs: don't revalidate dentries that serve as mountpoints
+Date: Mon,  4 Nov 2013 20:16:26 -0500
+Message-Id: <1383614186-8039-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Sep 25, 2013 at 10:58:55AM -0400, Benny Halevy wrote:
-> Chenditang, I see that this patch was never subimtted upstream.
-> Is there anything specific to pnfs that causes this bug?
+We had a couple of reports of people that are mounting NFS filesystems,
+and then bind mounting certain local files onto dentries in that nfs
+mount (sort of like a poor-man's unionmount).
 
-It's not.  I've just reproduced it without pnfs, by shutting down
-the server after running xfstests over a NFSv4.1 mount.
+This all works well until the dentry serving as the mountpoint fails
+d_revalidate. The dentry will end up being invalidated which makes the
+bind mount unreachable via pathwalk.
 
-> The fix itself is completely generic
-> and if so can be back-ported to stable since v3.8
-> 
-> Thanks,
-> 
-> Benny
-> 
-> On 2013-04-24 00:46, chenditang wrote:
-> > mount nfs dir in the client, and then restart the NFS service in MDS,
-> > that will cause oops for client_mutex_owner is NULL in the
-> > destroy_client() function.
-> > 
-> > kernel BUG at fs/nfsd/nfs4state.c:1130!
-> > invalid opcode: 0000 [#1] SMP
-> > Modules linked in: nfsd(OF) lockd exportfs nfs_acl auth_rpcgss autofs4
-> > dlm sctp libcrc32c configfs sunrpc be2iscsi iscsi_boot_sysfs bnx2i cnic
-> > uio cxgb4i cxgb4 cxgb3i libcxgbi cxgb3 mdio ib_iser rdma_cm ib_cm iw_cm
-> > ib_sa ib_mad ib_core ib_addr ipv6 iscsi_tcp libiscsi_tcp libiscsi
-> > scsi_transport_iscsi dm_mirror dm_region_hash dm_log dm_mod ppdev
-> > parport_pc parport microcode pcspkr i2c_piix4 i2c_core e1000 sg ext4(F)
-> > mbcache(F) jbd2(F) sr_mod(F) cdrom(F) sd_mod(F) crc_t10dif(F)
-> > pata_acpi(F) ata_generic(F) ata_piix(F) ahci(F) libahci(F) [last
-> > unloaded: speedstep_lib]
-> > CPU 0
-> > Pid: 2893, comm: nfsd Tainted: GF O 3.8.0-rc4_fl+ #2 innotek GmbH
-> > VirtualBox/VirtualBox
-> > RIP: 0010:[<ffffffffa045a4cf>] [<ffffffffa045a4cf>]
-> > destroy_client+0x2ff/0x330 [nfsd]
-> > RSP: 0018:ffff8800256b9d38 EFLAGS: 00010203
-> > RAX: 0000000000000010 RBX: ffff880025630000 RCX: 0000000000001440
-> > RDX: 00000000000025fc RSI: 0000000000000082 RDI: 0000000000000246
-> > RBP: ffff8800256b9d88 R08: ffffffff81cdfba0 R09: 0000000000007768
-> > R10: 00000000000001b1 R11: 00000000000001b1 R12: ffff880037988400
-> > R13: ffff88003d58ea80 R14: ffffffff81ab2080 R15: 0000000000000000
-> > FS: 0000000000000000(0000) GS:ffff88003fc00000(0000) knlGS:0000000000000000
-> > CS: 0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-> > CR2: 00000000006d39d8 CR3: 00000000255be000 CR4: 00000000000006f0
-> > DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-> > DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-> > Process nfsd (pid: 2893, threadinfo ffff8800256b8000, task ffff88003d58ea80)
-> > Stack:
-> > ffff8800256b9d78 ffff88003d51bdc0 ffff8800256b9d58 ffff880037988400
-> > ffffffff81ab2080 ffff880037988400 0000000000000020 ffffffffa04709b0
-> > ffffffff81ab2080 0000000000000000 ffff8800256b9dc8 ffffffffa045a555
-> > Call Trace:
-> > [<ffffffffa045a555>] nfs4_state_destroy_net+0x55/0x120 [nfsd]
-> > [<ffffffffa045a718>] nfs4_state_shutdown_net+0xf8/0x140 [nfsd]
-> > [<ffffffffa04349b0>] ? nfsd_pool_stats_release+0x50/0x50 [nfsd]
-> > [<ffffffffa0434835>] nfsd_shutdown_net+0x35/0x60 [nfsd]
-> > [<ffffffffa04348ad>] nfsd_last_thread+0x4d/0x80 [nfsd]
-> > [<ffffffffa037f3e5>] svc_shutdown_net+0x35/0x40 [sunrpc]
-> > [<ffffffffa0434935>] nfsd_destroy+0x55/0x80 [nfsd]
-> > [<ffffffffa0434ab4>] nfsd+0x104/0x130 [nfsd]
-> > [<ffffffffa04349b0>] ? nfsd_pool_stats_release+0x50/0x50 [nfsd]
-> > [<ffffffff8107951e>] kthread+0xce/0xe0
-> > [<ffffffff81079450>] ? kthread_freezable_should_stop+0x70/0x70
-> > [<ffffffff8155c56c>] ret_from_fork+0x7c/0xb0
-> > [<ffffffff81079450>] ? kthread_freezable_should_stop+0x70/0x70
-> > Code: 38 d1 e0 48 89 df e8 81 38 d1 e0 e9 2f ff ff ff 0f 1f 40 00 48 c7
-> > c7 72 8a 46 a0 31 c0 e8 86 6b 0f e1 e9 70 fd ff ff 0f 0b eb fe <0f> 0b
-> > eb fe 0f 0b 66 66 2e 0f 1f 84 00 00 00 00 00 eb f3 0f 0b
-> > RIP [<ffffffffa045a4cf>] destroy_client+0x2ff/0x330 [nfsd]
-> > RSP <ffff8800256b9d38>
-> > ---[ end trace c2d9f251eabc7c2d ]---
-> > 
-> > Signed-off-by: chendt.fnst <chendt.fnst@cn.fujitsu.com>
-> > Reviewed-by: fanchaoting <fanchaoting@cn.fujitsu.com>
-> > ---
-> > fs/nfsd/nfs4state.c | 3 +++
-> > 1 file changed, 3 insertions(+)
-> > 
-> > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> > index 13bc266..40b2348 100644
-> > --- a/fs/nfsd/nfs4state.c
-> > +++ b/fs/nfsd/nfs4state.c
-> > @@ -4936,6 +4936,8 @@ nfs4_state_destroy_net(struct net *net)
-> > struct nfsd_net *nn = net_generic(net, nfsd_net_id);
-> > struct rb_node *node, *tmp;
-> > 
-> > + nfs4_lock_state();
-> > +
-> > for (i = 0; i < CLIENT_HASH_SIZE; i++) {
-> > while (!list_empty(&nn->conf_id_hashtbl[i])) {
-> > clp = list_entry(nn->conf_id_hashtbl[i].next, struct nfs4_client,
-> > cl_idhash);
-> > @@ -4952,6 +4954,7 @@ nfs4_state_destroy_net(struct net *net)
-> > destroy_client(clp);
-> > }
-> > 
-> > + nfs4_unlock_state();
-> > kfree(nn->sessionid_hashtbl);
-> > kfree(nn->lockowner_ino_hashtbl);
-> > kfree(nn->ownerstr_hashtbl);
-> > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
----end quoted text---
+It doesn't make much sense to me to allow dentries to serve as
+mountpoints to end up invalidated, so there's no real point in
+attempting to d_revalidate them at all.
+
+Reported-by: Patrick McLean <chutzpah@gentoo.org>
+Reported-by: Guang Cheng Li <liguangc@cn.ibm.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/namei.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/fs/namei.c b/fs/namei.c
+index caa2805..5b10ad0 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -585,6 +585,9 @@ drop_root_mnt:
+ 
+ static inline int d_revalidate(struct dentry *dentry, unsigned int flags)
+ {
++	/* dentries that serve as mountpoints are always considered valid */
++	if (d_mountpoint(dentry))
++		return 1;
+ 	return dentry->d_op->d_revalidate(dentry, flags);
+ }
+ 
+-- 
+1.8.3.1
+
