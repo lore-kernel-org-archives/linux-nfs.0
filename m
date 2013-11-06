@@ -1,58 +1,226 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:48002 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753840Ab3KKTEI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 11 Nov 2013 14:04:08 -0500
-Message-ID: <52812A63.3000609@RedHat.com>
-Date: Mon, 11 Nov 2013 14:05:07 -0500
-From: Steve Dickson <SteveD@redhat.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:47683 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756520Ab3KFL4s (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 6 Nov 2013 06:56:48 -0500
+Date: Wed, 6 Nov 2013 03:56:48 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: linux-nfs@vger.kernel.org
+Cc: xfs@oss.sgi.com
+Subject: nfs vs xfstests 193
+Message-ID: <20131106115648.GA24804@infradead.org>
 MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] Adding the nfs4_secure_mounts bool
-References: <1384037221-7224-1-git-send-email-steved@redhat.com> <E061C7A8-DC27-49BA-93C2-DC2E9C19EA7B@netapp.com> <52811CBB.3070204@RedHat.com> <607B1346-570D-4CD6-8018-6F9C0A2B5318@netapp.com> <52812539.8030805@RedHat.com> <80321082-AFEF-48DF-A70D-6577974F8F07@netapp.com>
-In-Reply-To: <80321082-AFEF-48DF-A70D-6577974F8F07@netapp.com>
-Content-Type: text/plain; charset=windows-1252
+Content-Type: multipart/mixed; boundary="Dxnq1zWXvFF0Q93v"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
+--Dxnq1zWXvFF0Q93v
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: inline
 
-On 11/11/13 13:53, Myklebust, Trond wrote:
-> 
-> On Nov 11, 2013, at 13:43, Steve Dickson <SteveD@redhat.com> wrote:
-> 
->>
->>
->> On 11/11/13 13:25, Myklebust, Trond wrote:
->>>
->>> On Nov 11, 2013, at 13:06, Steve Dickson <SteveD@redhat.com> wrote:
->>>
->>>>
->>>>
->>>> On 09/11/13 18:12, Myklebust, Trond wrote:
->>>>> One alternative to the above scheme, which I believe that I’ve 
->>>>> suggested before, is to have a permanent entry in rpc_pipefs 
->>>>> that rpc.gssd can open and that the kernel can use to detect 
->>>>> that it is running. If we make it /var/lib/nfs/rpc_pipefs/gssd/clnt00/gssd, 
->>>>> then AFAICS we don’t need to change nfs-utils at all, since all newer 
->>>>> versions of rpc.gssd will try to open for read anything of the form 
->>>>> /var/lib/nfs/rpc_pipefs/*/clntXX/gssd...
->>>>
->>>> After further review I am going going have to disagree with you on this.
->>>> Since all the context is cached on the initial mount the kernel
->>>
->>> What context?
->> The krb5 blob that the kernel is call up to rpc.gssd to get.. Maybe
->> I'm using the wrong terminology???
-> 
-> That’s only the machine cred. User credentials get allocated and freed all the time.
-> 
-> When the server reboots, then all GSS contexts need to be re-established, 
-> which can be a lot of call_usermodehelper() upcalls; that’s one of the 
-> reasons why we decided in favour of a gssd daemon in the first place.
-Just curious... Why is the call_usermodehelper() upcalls more expensive
-than the rpc_pipefs upcalls?
+I've noticed that xfstests 193 fails when run over NFS talking to an
+XFS-based Linux server.  The test checks that we behave correctly
+vs Posix 1003.1 for the various operations that end up in ->setattr.
 
-steved.
+Without the no_root_squash export flag we're not even able to run
+something resembling the test as we get permission problems all through
+it, see the first attachment for details.
 
+With the root_squash export op we fail to clear the setuid/setgid
+bits in various truncate and chown subtests, see the second attachment
+for details.
+
+--Dxnq1zWXvFF0Q93v
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: attachment; filename="193.no_root_squash"
+
+--- tests/generic/193.out	2013-10-24 15:41:33.000000000 +0000
++++ /root/xfstests/results//generic/193.out.bad	2013-11-06 11:55:39.000000000 +0000
+@@ -35,26 +35,26 @@
+ after:  -rw-r-Sr--
+ with user exec perm
+ before: -rwsr-Sr--
+-after:  -rwxr-Sr--
++after:  -rwsr-Sr--
+ with group exec perm
+ before: -rwSr-sr--
+-after:  -rw-r-xr--
++after:  -rwSr-sr--
+ with user+group exec perm
+ before: -rwsr-sr--
+-after:  -rwxr-xr--
++after:  -rwsr-sr--
+ check that suid/sgid bits are cleared after successful truncate...
+ with no exec perm
+ before: -rwSr-Sr--
+-after:  -rw-r-Sr--
++after:  -rwSr-Sr--
+ with user exec perm
+ before: -rwsr-Sr--
+-after:  -rwxr-Sr--
++after:  -rwsr-Sr--
+ with group exec perm
+ before: -rwSr-sr--
+-after:  -rw-r-xr--
++after:  -rwSr-sr--
+ with user+group exec perm
+ before: -rwsr-sr--
+-after:  -rwxr-xr--
++after:  -rwsr-sr--
+ 
+ testing ATTR_*TIMES_SET
+ 
+
+--Dxnq1zWXvFF0Q93v
+Content-Type: text/plain; charset=us-ascii
+Content-Disposition: attachment; filename="193.root_squash"
+
+--- tests/generic/193.out	2013-10-24 15:41:33.000000000 +0000
++++ /root/xfstests/results//generic/193.out.bad	2013-11-06 11:52:05.000000000 +0000
+@@ -2,63 +2,118 @@
+ 
+ testing ATTR_UID
+ 
++touch: cannot touch '/mnt/nfs1/193.3516.root': Permission denied
++touch: cannot touch '/mnt/nfs1/193.3516.user': Permission denied
++chown: cannot access '/mnt/nfs1/193.3516.user': No such file or directory
+ user: chown root owned file to qa_user (should fail)
+-chown: changing ownership of 'test.root': Operation not permitted
++chown: cannot access 'test.root': No such file or directory
+ user: chown root owned file to root (should fail)
+-chown: changing ownership of 'test.root': Operation not permitted
++chown: cannot access 'test.root': No such file or directory
+ user: chown qa_user owned file to qa_user (should succeed)
++chown: cannot access '/mnt/nfs1/193.3516.user': No such file or directory
+ user: chown qa_user owned file to root (should fail)
+-chown: changing ownership of 'test.user': Operation not permitted
++chown: cannot access 'test.user': No such file or directory
+ 
+ testing ATTR_GID
+ 
++touch: cannot touch '/mnt/nfs1/193.3516.root': Permission denied
++touch: cannot touch '/mnt/nfs1/193.3516.user': Permission denied
++chown: cannot access '/mnt/nfs1/193.3516.user': No such file or directory
+ user: chgrp root owned file to root (should fail)
+-chgrp: changing group of 'test.root': Operation not permitted
++chgrp: cannot access 'test.root': No such file or directory
+ user: chgrp qa_user owned file to root (should fail)
+-chgrp: changing group of 'test.user': Operation not permitted
++chgrp: cannot access 'test.user': No such file or directory
+ user: chgrp root owned file to qa_user (should fail)
+-chgrp: changing group of 'test.root': Operation not permitted
++chgrp: cannot access 'test.root': No such file or directory
+ user: chgrp qa_user owned file to qa_user (should succeed)
++chgrp: cannot access '/mnt/nfs1/193.3516.user': No such file or directory
+ 
+ testing ATTR_MODE
+ 
++touch: cannot touch '/mnt/nfs1/193.3516.root': Permission denied
++touch: cannot touch '/mnt/nfs1/193.3516.user': Permission denied
++chown: cannot access '/mnt/nfs1/193.3516.user': No such file or directory
+ user: chmod a+r on qa_user owned file (should succeed)
++chmod: cannot access '/mnt/nfs1/193.3516.user': No such file or directory
+ user: chmod a+r on root owned file (should fail)
+-chmod: changing permissions of 'test.root': Operation not permitted
++chmod: cannot access 'test.root': No such file or directory
+ check that the sgid bit is cleared
+--rw-rw-rw-
++chown: cannot access '/mnt/nfs1/193.3516.user': No such file or directory
++chmod: cannot access '/mnt/nfs1/193.3516.user': No such file or directory
++chmod: cannot access '/mnt/nfs1/193.3516.user': No such file or directory
++stat: cannot stat '/mnt/nfs1/193.3516.user': No such file or directory
+ check that suid bit is not cleared
+--rwSrw-rw-
++chmod: cannot access '/mnt/nfs1/193.3516.user': No such file or directory
++chmod: cannot access '/mnt/nfs1/193.3516.user': No such file or directory
++stat: cannot stat '/mnt/nfs1/193.3516.user': No such file or directory
++touch: cannot touch '/mnt/nfs1/193.3516.root': Permission denied
++touch: cannot touch '/mnt/nfs1/193.3516.user': Permission denied
++chown: cannot access '/mnt/nfs1/193.3516.user': No such file or directory
+ check that suid/sgid bits are cleared after successful chown...
+ with no exec perm
+-before: -rwSr-Sr--
+-after:  -rw-r-Sr--
++chmod: cannot access '/mnt/nfs1/193.3516.user': No such file or directory
++before: stat: cannot stat '/mnt/nfs1/193.3516.user': No such file or directory
++chown: cannot access '/mnt/nfs1/193.3516.user': No such file or directory
++after:  stat: cannot stat '/mnt/nfs1/193.3516.user': No such file or directory
+ with user exec perm
+-before: -rwsr-Sr--
+-after:  -rwxr-Sr--
++chmod: cannot access '/mnt/nfs1/193.3516.user': No such file or directory
++chmod: cannot access '/mnt/nfs1/193.3516.user': No such file or directory
++before: stat: cannot stat '/mnt/nfs1/193.3516.user': No such file or directory
++chown: cannot access '/mnt/nfs1/193.3516.user': No such file or directory
++after:  stat: cannot stat '/mnt/nfs1/193.3516.user': No such file or directory
+ with group exec perm
+-before: -rwSr-sr--
+-after:  -rw-r-xr--
++chmod: cannot access '/mnt/nfs1/193.3516.user': No such file or directory
++chmod: cannot access '/mnt/nfs1/193.3516.user': No such file or directory
++chmod: cannot access '/mnt/nfs1/193.3516.user': No such file or directory
++before: stat: cannot stat '/mnt/nfs1/193.3516.user': No such file or directory
++chown: cannot access '/mnt/nfs1/193.3516.user': No such file or directory
++after:  stat: cannot stat '/mnt/nfs1/193.3516.user': No such file or directory
+ with user+group exec perm
+-before: -rwsr-sr--
+-after:  -rwxr-xr--
++chmod: cannot access '/mnt/nfs1/193.3516.user': No such file or directory
++chmod: cannot access '/mnt/nfs1/193.3516.user': No such file or directory
++before: stat: cannot stat '/mnt/nfs1/193.3516.user': No such file or directory
++chown: cannot access '/mnt/nfs1/193.3516.user': No such file or directory
++after:  stat: cannot stat '/mnt/nfs1/193.3516.user': No such file or directory
++touch: cannot touch '/mnt/nfs1/193.3516.root': Permission denied
++touch: cannot touch '/mnt/nfs1/193.3516.user': Permission denied
++chown: cannot access '/mnt/nfs1/193.3516.user': No such file or directory
+ check that suid/sgid bits are cleared after successful truncate...
+ with no exec perm
+-before: -rwSr-Sr--
+-after:  -rw-r-Sr--
++./tests/generic/193: line 242: /mnt/nfs1/193.3516.user: Permission denied
++chmod: cannot access '/mnt/nfs1/193.3516.user': No such file or directory
++before: stat: cannot stat '/mnt/nfs1/193.3516.user': No such file or directory
++bash: /mnt/nfs1/193.3516.user: Permission denied
++after:  stat: cannot stat '/mnt/nfs1/193.3516.user': No such file or directory
+ with user exec perm
+-before: -rwsr-Sr--
+-after:  -rwxr-Sr--
++./tests/generic/193: line 249: /mnt/nfs1/193.3516.user: Permission denied
++chmod: cannot access '/mnt/nfs1/193.3516.user': No such file or directory
++chmod: cannot access '/mnt/nfs1/193.3516.user': No such file or directory
++before: stat: cannot stat '/mnt/nfs1/193.3516.user': No such file or directory
++bash: /mnt/nfs1/193.3516.user: Permission denied
++after:  stat: cannot stat '/mnt/nfs1/193.3516.user': No such file or directory
+ with group exec perm
+-before: -rwSr-sr--
+-after:  -rw-r-xr--
++./tests/generic/193: line 257: /mnt/nfs1/193.3516.user: Permission denied
++chmod: cannot access '/mnt/nfs1/193.3516.user': No such file or directory
++chmod: cannot access '/mnt/nfs1/193.3516.user': No such file or directory
++chmod: cannot access '/mnt/nfs1/193.3516.user': No such file or directory
++before: stat: cannot stat '/mnt/nfs1/193.3516.user': No such file or directory
++bash: /mnt/nfs1/193.3516.user: Permission denied
++after:  stat: cannot stat '/mnt/nfs1/193.3516.user': No such file or directory
+ with user+group exec perm
+-before: -rwsr-sr--
+-after:  -rwxr-xr--
++./tests/generic/193: line 266: /mnt/nfs1/193.3516.user: Permission denied
++chmod: cannot access '/mnt/nfs1/193.3516.user': No such file or directory
++chmod: cannot access '/mnt/nfs1/193.3516.user': No such file or directory
++before: stat: cannot stat '/mnt/nfs1/193.3516.user': No such file or directory
++bash: /mnt/nfs1/193.3516.user: Permission denied
++after:  stat: cannot stat '/mnt/nfs1/193.3516.user': No such file or directory
+ 
+ testing ATTR_*TIMES_SET
+ 
++touch: cannot touch '/mnt/nfs1/193.3516.root': Permission denied
++touch: cannot touch '/mnt/nfs1/193.3516.user': Permission denied
++chown: cannot access '/mnt/nfs1/193.3516.user': No such file or directory
+ user: touch qa_user file (should succeed)
++touch: cannot touch '/mnt/nfs1/193.3516.user': Permission denied
+ user: touch root file (should fail)
+ touch: cannot touch 'test.root': Permission denied
+ *** done
+
+--Dxnq1zWXvFF0Q93v--
