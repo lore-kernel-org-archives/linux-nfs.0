@@ -1,105 +1,102 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:6439 "EHLO mx12.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:32976 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752622Ab3KPVKB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 16 Nov 2013 16:10:01 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Linus Torvalds <torvalds@linux-foundation.org>
-CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-        linux-kernel <linux-kernel@vger.kernel.org>
-Subject: [GIT PULL] Please pull NFS client bugfixes
-Date: Sat, 16 Nov 2013 21:09:57 +0000
-Message-ID: <1384636196.5080.1.camel@leira.trondhjem.org>
-Content-Type: multipart/signed; micalg=pgp-sha1;
-	protocol="application/pgp-signature"; boundary="=-HViyGKp+Wz80BcrajNY/"
-MIME-Version: 1.0
+	id S1751405Ab3KGQ4c (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 7 Nov 2013 11:56:32 -0500
+Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id rA7GuVMF002964
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 7 Nov 2013 11:56:32 -0500
+Date: Thu, 7 Nov 2013 11:56:29 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] gssd: cut down log chatter in gssd_search_krb5_keytab
+Message-ID: <20131107115629.37a56446@tlielax.poochiereds.net>
+In-Reply-To: <527BC43B.5070405@RedHat.com>
+References: <1383839253-8223-1-git-send-email-jlayton@redhat.com>
+	<527BC43B.5070405@RedHat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---=-HViyGKp+Wz80BcrajNY/
-Content-Type: text/plain; charset="UTF-7"
-Content-Transfer-Encoding: quoted-printable
+On Thu, 07 Nov 2013 11:47:55 -0500
+Steve Dickson <SteveD@redhat.com> wrote:
 
-Hi Linus
+> Hello,
+> 
+> My thoughts... 
+> 
+> On 07/11/13 10:47, Jeff Layton wrote:
+> > Because the kernel now looks for krb5 creds by default when mounting, we
+> > need to always have clients run rpc.gssd to avoid the 15s hang on the
+> > first mount attempt.
+> > 
+> > In situations however where people don't have krb5 set up, this leads to
+> > a lot of log spamming on mount attempts. Try to cut down on some of the
+> > log chatter by lowering the priority of the log messages in
+> > gssd_search_krb5_keytab().
+> > 
+> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > ---
+> >  utils/gssd/krb5_util.c | 8 ++++----
+> >  1 file changed, 4 insertions(+), 4 deletions(-)
+> > 
+> > diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
+> > index 697d1d2..2ca3adc 100644
+> > --- a/utils/gssd/krb5_util.c
+> > +++ b/utils/gssd/krb5_util.c
+> > @@ -711,13 +711,13 @@ gssd_search_krb5_keytab(krb5_context context, krb5_keytab kt,
+> >  	 */
+> >  	if ((code = krb5_kt_get_name(context, kt, kt_name, BUFSIZ))) {
+> >  		k5err = gssd_k5_err_msg(context, code);
+> > -		printerr(0, "ERROR: %s attempting to get keytab name\n", k5err);
+> > +		printerr(1, "ERROR: %s attempting to get keytab name\n", k5err);
+> >  		retval = code;
+> >  		goto out;
+> >  	}
+> >  	if ((code = krb5_kt_start_seq_get(context, kt, &cursor))) {
+> >  		k5err = gssd_k5_err_msg(context, code);
+> > -		printerr(0, "ERROR: %s while beginning keytab scan "
+> > +		printerr(1, "ERROR: %s while beginning keytab scan "
+> >  			    "for keytab '%s'\n", k5err, kt_name);
+> >  		retval = code;
+> >  		goto out;
+> I'm thinking these need to stay... I don't think is a good idea 
+> to mask out messages describing failures...
+>  
 
-The following changes since commit fab99ebe39fe7d11fbd9b5fb84f07432af9ba36f=
-:
+The above message is the one that's the problem when there is no
+keytab. I just went ahead and lowered the priority on the others for
+good measure. If you don't want to take the above hunk, then there's
+probably no need to bother with this patch at all.
 
-  NFSv4.2: Remove redundant checks in nfs+AF8-setsecurity+-nfs4+AF8-label+A=
-F8-init+AF8-security (2013-11-04 16:42:52 -0500)
 
-are available in the git repository at:
+> > @@ -727,7 +727,7 @@ gssd_search_krb5_keytab(krb5_context context, krb5_keytab kt,
+> >  		if ((code = krb5_unparse_name(context, kte->principal,
+> >  					      &pname))) {
+> >  			k5err = gssd_k5_err_msg(context, code);
+> > -			printerr(0, "WARNING: Skipping keytab entry because "
+> > +			printerr(1, "WARNING: Skipping keytab entry because "
+> >  				 "we failed to unparse principal name: %s\n",
+> >  				 k5err);
+> >  			k5_free_kt_entry(context, kte);
+> > @@ -768,7 +768,7 @@ gssd_search_krb5_keytab(krb5_context context, krb5_keytab kt,
+> >  
+> >  	if ((code = krb5_kt_end_seq_get(context, kt, &cursor))) {
+> >  		k5err = gssd_k5_err_msg(context, code);
+> > -		printerr(0, "WARNING: %s while ending keytab scan for "
+> > +		printerr(1, "WARNING: %s while ending keytab scan for "
+> >  			    "keytab '%s'\n", k5err, kt_name);
+> >  	}
+> I think warnings would be ok to mask out... 
+> 
+> steved.
+> 
+> >  
+> > 
 
-  git://git.linux-nfs.org/projects/trondmy/linux-nfs.git tags/nfs-for-3.13-=
-2
 
-for you to fetch changes up to 8c2fabc6542d9d0f8b16bd1045c2eda59bdcde13:
-
-  nfs: fix pnfs Kconfig defaults (2013-11-15 13:41:43 -0500)
-
-----------------------------------------------------------------
-NFS client bugfixes:
-
-- Stable fix for data corruption when retransmitting O+AF8-DIRECT writes
-- Stable fix for a deep recursion/stack overflow bug in rpc+AF8-release+AF8=
--client
-- Stable fix for infinite looping when mounting a NFSv4.x volume
-- Fix a typo in the nfs mount option parser
-- Allow pNFS layouts to be compiled into the kernel when NFSv4.1 is
-
-----------------------------------------------------------------
-Christoph Hellwig (1):
-      nfs: fix pnfs Kconfig defaults
-
-Jeff Layton (1):
-      nfs: don't retry detect+AF8-trunking with RPC+AF8-AUTH+AF8-UNIX more =
-than once
-
-NeilBrown (1):
-      NFS: correctly report misuse of +ACI-migration+ACI mount option.
-
-Trond Myklebust (2):
-      SUNRPC: Fix a data corruption issue when retransmitting RPC calls
-      SUNRPC: Avoid deep recursion in rpc+AF8-release+AF8-client
-
- fs/nfs/Kconfig        +AHw  6 +-+-+----
- fs/nfs/nfs4state.c    +AHw  7 +-+-+-+-+-+--
- fs/nfs/super.c        +AHw  2 +--
- net/sunrpc/clnt.c     +AHw 29 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-----------=
---
- net/sunrpc/xprtsock.c +AHw 28 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+---=
------
- 5 files changed, 48 insertions(+-), 24 deletions(-)
-
---=20
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust+AEA-netapp.com
-www.netapp.com
-
---=-HViyGKp+Wz80BcrajNY/
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: This is a digitally signed message part
-Content-Transfer-Encoding: 7bit
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.4.15 (GNU/Linux)
-
-iQIcBAABAgAGBQJSh98kAAoJEGcL54qWCgDyYVQP/i0uI/ul1H0rblNNahDNnSXR
-kILqPdlKJkIx+JqF7zK+YaY9vHB17BnLsCNVwM9K6zQZmzDl8wzEQp8uO0ZNzkVX
-DVpDEn2j6i2vDti9L7BI8uFa9OVW438DEi8CU6ceYNqjpg3bQ35v9tOKV1qRB5kv
-uLnokTs+86TCc/FhZj0iJHdXfuYqyZGvMZQHQlCnHa6Q6/wl5Qk8AfuVy+U9rd9/
-U+uV5ZlcavDJl2ZpIy5UZOpMJwUVwQRbwfuxV0gEQW5bE2yOs/9LxdvAtndDUN4Q
-Of4PlU2kroAyv8CTh9bNnHDc3dXygTznPlD4qmlV0JGU/iWs490L31DobVEFmJ7A
-9RgwZIBTFHABb4pEvtoIf7btIyiGCuNsNRb7HGHd3KRwEc33Q+Ws9Xj1OrgHxP/V
-u/8ghU/ZqAwssmNzVQtUq7qzZPL7Dl6WzRsReD6CcnGWNpYbFd3s6iKX4jLyh6WP
-7khPzZwfiTRC6rTU7W8nmJuCLDxKd+uqLZMjLiiVs28G9Us1r9nM7/1L+byEwEE4
-8O7NyVrXFeJPgc2T0SJ3OPMzSnY4g41IWUKnHoE5MKP3Gjrxid4Av/xMrO2aezHm
-W+QRHp/mY306nW6/IDlx5tnJpSWCKFovu3YAxPDaFBQmknRdXXvULbfpWi6gJYsf
-Zbsj+FoQJDMGhypm/Nbk
-=SwEk
------END PGP SIGNATURE-----
-
---=-HViyGKp+Wz80BcrajNY/--
+-- 
+Jeff Layton <jlayton@redhat.com>
