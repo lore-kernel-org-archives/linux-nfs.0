@@ -1,55 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:34124 "EHLO mx11.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:53389 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756935Ab3KMTbB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 13 Nov 2013 14:31:01 -0500
-From: Anna Schumaker <bjschuma@netapp.com>
-To: <bfields@fieldses.org>, <linux-nfs@vger.kernel.org>
-Subject: [PATCH v3 1/3] NFSD: Update error codes
-Date: Wed, 13 Nov 2013 14:30:55 -0500
-Message-ID: <1384371057-16454-2-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1384371057-16454-1-git-send-email-bjschuma@netapp.com>
-References: <1384371057-16454-1-git-send-email-bjschuma@netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+	id S1752683Ab3KGQdf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 7 Nov 2013 11:33:35 -0500
+Date: Thu, 7 Nov 2013 11:33:10 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: steved@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] gssd: cut down log chatter in gssd_search_krb5_keytab
+Message-ID: <20131107113310.567c3b64@tlielax.poochiereds.net>
+In-Reply-To: <20131107162123.GA9411@infradead.org>
+References: <1383839253-8223-1-git-send-email-jlayton@redhat.com>
+	<20131107155837.GA16658@infradead.org>
+	<20131107110928.68244ea7@tlielax.poochiereds.net>
+	<20131107162123.GA9411@infradead.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Recent NFS v4.2 drafts have removed NFS4ERR_METADATA_NOTSUPP and
-reassigned the error code to NFS4ERR_UNION_NOTSUPP.
+On Thu, 7 Nov 2013 08:21:23 -0800
+Christoph Hellwig <hch@infradead.org> wrote:
 
-Signed-off-by: Anna Schumaker <bjschuma@netapp.com>
----
- fs/nfsd/nfsd.h       | 2 +-
- include/linux/nfs4.h | 2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
+> On Thu, Nov 07, 2013 at 11:09:28AM -0500, Jeff Layton wrote:
+> > It may be the same issue. IIRC, the attempt to use krb5i by default
+> > is done in the SETCLIENTID call (see kernel commit 4edaa30888 for some
+> > background, but there were some later tweaks to this approach).
+> 
+> I'm still seing my issue after reverting that commit by hand.
 
-diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-index 30f34ab..4fe49e9 100644
---- a/fs/nfsd/nfsd.h
-+++ b/fs/nfsd/nfsd.h
-@@ -244,7 +244,7 @@ void		nfsd_lockd_shutdown(void);
- #define nfserr_deleg_revoked		cpu_to_be32(NFS4ERR_DELEG_REVOKED)
- #define nfserr_partner_notsupp		cpu_to_be32(NFS4ERR_PARTNER_NOTSUPP)
- #define nfserr_partner_no_auth		cpu_to_be32(NFS4ERR_PARTNER_NO_AUTH)
--#define nfserr_metadata_notsupp		cpu_to_be32(NFS4ERR_METADATA_NOTSUPP)
-+#define nfserr_union_notsupp		cpu_to_be32(NFS4ERR_UNION_NOTSUPP)
- #define nfserr_offload_denied		cpu_to_be32(NFS4ERR_OFFLOAD_DENIED)
- #define nfserr_wrong_lfs		cpu_to_be32(NFS4ERR_WRONG_LFS)
- #define nfserr_badlabel		cpu_to_be32(NFS4ERR_BADLABEL)
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index c163706..d9e30fb 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -235,7 +235,7 @@ enum nfsstat4 {
- 	/* nfs42 */
- 	NFS4ERR_PARTNER_NOTSUPP	= 10088,
- 	NFS4ERR_PARTNER_NO_AUTH	= 10089,
--	NFS4ERR_METADATA_NOTSUPP = 10090,
-+	NFS4ERR_UNION_NOTSUPP = 10090,
- 	NFS4ERR_OFFLOAD_DENIED = 10091,
- 	NFS4ERR_WRONG_LFS = 10092,
- 	NFS4ERR_BADLABEL = 10093,
+Hrm...
+
+You'd also see these messages in the log if it were the same problem:
+
+     RPC: AUTH_GSS upcall timed out.
+
+...it could also be a delay when trying to set up the callback channel
+if you're running v4.0. Do you have the callback port firewalled off?
+
 -- 
-1.8.4.2
-
+Jeff Layton <jlayton@redhat.com>
