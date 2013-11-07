@@ -1,48 +1,35 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:15888 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751744Ab3KBPCh convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 2 Nov 2013 11:02:37 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Christoph Hellwig <hch@infradead.org>
-CC: Bruce Fields <bfields@fieldses.org>,
-        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 3/4] NFSD: Add WRITE_PLUS support for hole punches
-Date: Sat, 2 Nov 2013 15:02:29 +0000
-Message-ID: <38D14516-BAA4-45BB-8054-ED05AEC22C8F@netapp.com>
-References: <1382972247-1108-1-git-send-email-bjschuma@netapp.com>
- <1382972247-1108-4-git-send-email-bjschuma@netapp.com>
- <20131028214030.GO31322@fieldses.org> <526FAF30.3060502@netapp.com>
- <20131029130649.GA29606@fieldses.org> <20131102135409.GC18961@infradead.org>
- <20131102144431.GB26983@fieldses.org> <20131102145105.GA4450@infradead.org>
-In-Reply-To: <20131102145105.GA4450@infradead.org>
-Content-Type: text/plain; charset="us-ascii"
+Received: from bombadil.infradead.org ([198.137.202.9]:53359 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754694Ab3KGP6h (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Nov 2013 10:58:37 -0500
+Date: Thu, 7 Nov 2013 07:58:37 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: steved@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] gssd: cut down log chatter in gssd_search_krb5_keytab
+Message-ID: <20131107155837.GA16658@infradead.org>
+References: <1383839253-8223-1-git-send-email-jlayton@redhat.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1383839253-8223-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Thu, Nov 07, 2013 at 10:47:33AM -0500, Jeff Layton wrote:
+> Because the kernel now looks for krb5 creds by default when mounting, we
+> need to always have clients run rpc.gssd to avoid the 15s hang on the
+> first mount attempt.
 
-On Nov 2, 2013, at 10:51, Christoph Hellwig <hch@infradead.org> wrote:
+Not sure if it's the same hangs, but I see about the same length of a
+hang on my Debian wheezy systems when accessing the first file for a
+data operation, with rpc.gssd running or not.  Funnily enough this also
+happens when trying to read a non-existand file, but not for things like
+a simple readdir.
 
-> On Sat, Nov 02, 2013 at 10:44:31AM -0400, J. Bruce Fields wrote:
->> On Sat, Nov 02, 2013 at 06:54:09AM -0700, Christoph Hellwig wrote:
->>> On Tue, Oct 29, 2013 at 09:06:49AM -0400, J. Bruce Fields wrote:
->>>> What I meant was--why are we doing a sync at all, instead of returning
->>>> NFS_UNSTABLE and making the client commit?
->>> 
->>> Did NFSv4.2 introduce a concept of unstable metadata operations?
->> 
->> No, but I think WRITE_PLUS does have a stable/unstable bit so I think we
->> could choose not to do the sync if that'd make sense.
-> 
-> Both operations are idempotent, so supporting it shouldn't be a major
-> obstactle.  But suddenly having some metadata operations that can be
-> unstable seems like a major wart in the spec.
+Still looking into it, but being a non-interruptible sleep it's fairly
+annoying.
 
-COMMIT has always had a metadata part to it, though. It guarantees stability of the ctime/mime and change attributes in addition to the file size and data.
+That being said Debian wheezy also only starts rpc.gssd from the init
+scripts if it sees a krb option in /etc/fstab, which I don't have.
 
-IOW: it really is more akin to fsync() than to fdatasync().
-
-Cheers
-  Trond
