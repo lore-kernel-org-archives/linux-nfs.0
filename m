@@ -1,59 +1,151 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:43117 "EHLO mx11.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:55189 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750833Ab3KARFK convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Nov 2013 13:05:10 -0400
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Jeff Layton <jlayton@redhat.com>
-CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "cye@redhat.com" <cye@redhat.com>,
-        "dpquigl@davequigley.com" <dpquigl@davequigley.com>,
-        "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfs: fix oops when trying to set SELinux label
-Date: Fri, 1 Nov 2013 17:05:08 +0000
-Message-ID: <A1A30425-FA21-4D8B-ABB4-F7E02C2D5DEA@netapp.com>
-References: <1383317372-3373-1-git-send-email-jlayton@redhat.com>
- <20131101120211.586aef7a@corrin.poochiereds.net>
- <1383324599.2911.2.camel@leira.trondhjem.org>
- <20131101125719.38843cfb@tlielax.poochiereds.net>
-In-Reply-To: <20131101125719.38843cfb@tlielax.poochiereds.net>
-Content-Type: text/plain; charset="Windows-1252"
+	id S1752511Ab3KGVex (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 7 Nov 2013 16:34:53 -0500
+Message-ID: <527C07B4.800@RedHat.com>
+Date: Thu, 07 Nov 2013 16:35:48 -0500
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] Adding the nfs4_use_min_auth module parameter
+References: <1383851364-8370-1-git-send-email-steved@redhat.com> <A8E8F2C4-8CB7-434E-8520-B2B53F0582D9@oracle.com>
+In-Reply-To: <A8E8F2C4-8CB7-434E-8520-B2B53F0582D9@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hey mrchuck... 
 
-On Nov 1, 2013, at 12:57, Jeff Layton <jlayton@redhat.com> wrote:
-
-> On Fri, 1 Nov 2013 16:50:00 +0000
-> "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+On 07/11/13 14:25, Chuck Lever wrote:
+> Hi Steve-
 > 
->> On Fri, 2013-11-01 at 12:02 -0400, Jeff Layton wrote:
->>> It looks like _nfs4_get_security_label() has the same problem, but I've
->>> so far been unable to get it to be called, so I didn't patch it. It
->>> seems like getxattr does some special stuff for SELinux labels that
->>> cause them only to ever be fetched once.
->>> 
->>> Is there some trick to it?
->>> 
->> 
->> Doesn't 'ls -Z' cause them to security label to be read again?
->> 
+> On Nov 7, 2013, at 11:09 AM, Steve Dickson <steved@redhat.com> wrote:
 > 
-> As best I can tell, security labels are set on the inode when the inode
-> is instantiated, and then are reset on changes (i.e. setxattr). If
-
-…and on getxattr, afaics.
-
-> another client changes the label though, it's not clear to me how your
-> client would ever notice it until the inode is dropped from the cache.
+>> This new module parameter makes the v4 client
+>> use the minimal authentication flavor (AUTH_UNIX)
+>> when establishing NFSV4 state and doing the
+>> pseudoroot lookup
 > 
-> ISTR Eric Paris explaining to me that they do that for performance
-> reasons but it seems like something that needs to be reconsidered in
-> light of labeled NFS. Not picking up a security label change seems like
-> a bug, IMO...
+> The patch description doesn't say, but is this change to work 
+> around the 15 second GSSD upcall timeout? 
+Yes. A 15 second delay on every mount due to security that
+nobody is requesting is just not good.. IMHO.. Also running
+a security daemon for non-secure mounts just seems wrong to me.
 
-To be effective, the security label should normally be set at file creation time. It should rarely, if ever, change. Why would you need to change it from a different client?
+> Have we completely given up on fixing the upcall?
+Back when we were looking on to introduce gss-proxy into
+the client, it was decided the upcall on the client
+was not going to change. I'm just going with that!
 
-Cheers,
-  Trond
+steved.
+
+
+> 
+> 
+>> Signed-off-by: Steve Dickson <steved@redhat.com>
+>> ---
+>> fs/nfs/nfs4_fs.h    |    1 +
+>> fs/nfs/nfs4client.c |    8 ++++++--
+>> fs/nfs/nfs4proc.c   |    4 +++-
+>> fs/nfs/super.c      |    6 +++++-
+>> 4 files changed, 15 insertions(+), 4 deletions(-)
+>>
+>> diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+>> index 28842ab..20bf925 100644
+>> --- a/fs/nfs/nfs4_fs.h
+>> +++ b/fs/nfs/nfs4_fs.h
+>> @@ -438,6 +438,7 @@ extern bool nfs4_disable_idmapping;
+>> extern unsigned short max_session_slots;
+>> extern unsigned short send_implementation_id;
+>> extern bool recover_lost_locks;
+>> +extern bool nfs4_use_min_auth;
+>>
+>> #define NFS4_CLIENT_ID_UNIQ_LEN		(64)
+>> extern char nfs4_client_id_uniquifier[NFS4_CLIENT_ID_UNIQ_LEN];
+>> diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+>> index a860ab5..ff85991 100644
+>> --- a/fs/nfs/nfs4client.c
+>> +++ b/fs/nfs/nfs4client.c
+>> @@ -355,6 +355,7 @@ struct nfs_client *nfs4_init_client(struct nfs_client *clp,
+>> 	char buf[INET6_ADDRSTRLEN + 1];
+>> 	struct nfs_client *old;
+>> 	int error;
+>> +	rpc_authflavor_t flavor = RPC_AUTH_GSS_KRB5I;
+>>
+>> 	if (clp->cl_cons_state == NFS_CS_READY) {
+>> 		/* the client is initialised already */
+>> @@ -368,8 +369,11 @@ struct nfs_client *nfs4_init_client(struct nfs_client *clp,
+>> 	if (clp->cl_minorversion != 0)
+>> 		__set_bit(NFS_CS_INFINITE_SLOTS, &clp->cl_flags);
+>> 	__set_bit(NFS_CS_DISCRTRY, &clp->cl_flags);
+>> -	error = nfs_create_rpc_client(clp, timeparms, RPC_AUTH_GSS_KRB5I);
+>> -	if (error == -EINVAL)
+>> +
+>> +	if (nfs4_use_min_auth)
+>> +		flavor = RPC_AUTH_UNIX;
+>> +	error = nfs_create_rpc_client(clp, timeparms, flavor);
+>> +	if (error == -EINVAL && flavor != RPC_AUTH_UNIX)
+>> 		error = nfs_create_rpc_client(clp, timeparms, RPC_AUTH_UNIX);
+>> 	if (error < 0)
+>> 		goto error;
+>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>> index d53d678..00162cb 100644
+>> --- a/fs/nfs/nfs4proc.c
+>> +++ b/fs/nfs/nfs4proc.c
+>> @@ -2864,7 +2864,9 @@ static int nfs4_find_root_sec(struct nfs_server *server, struct nfs_fh *fhandle,
+>> 	int status = -EPERM;
+>> 	size_t i;
+>>
+>> -	for (i = 0; i < ARRAY_SIZE(flav_array); i++) {
+>> +	if (nfs4_use_min_auth)
+>> +		status = nfs4_lookup_root_sec(server, fhandle, info, RPC_AUTH_UNIX);
+>> +	else for (i = 0; i < ARRAY_SIZE(flav_array); i++) {
+>> 		status = nfs4_lookup_root_sec(server, fhandle, info, flav_array[i]);
+>> 		if (status == -NFS4ERR_WRONGSEC || status == -EACCES)
+>> 			continue;
+>> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+>> index a03b9c6..42b4f9b 100644
+>> --- a/fs/nfs/super.c
+>> +++ b/fs/nfs/super.c
+>> @@ -2791,6 +2791,7 @@ unsigned short max_session_slots = NFS4_DEF_SLOT_TABLE_SIZE;
+>> unsigned short send_implementation_id = 1;
+>> char nfs4_client_id_uniquifier[NFS4_CLIENT_ID_UNIQ_LEN] = "";
+>> bool recover_lost_locks = false;
+>> +bool nfs4_use_min_auth = false;
+>>
+>> EXPORT_SYMBOL_GPL(nfs_callback_set_tcpport);
+>> EXPORT_SYMBOL_GPL(nfs_callback_tcpport);
+>> @@ -2800,6 +2801,7 @@ EXPORT_SYMBOL_GPL(max_session_slots);
+>> EXPORT_SYMBOL_GPL(send_implementation_id);
+>> EXPORT_SYMBOL_GPL(nfs4_client_id_uniquifier);
+>> EXPORT_SYMBOL_GPL(recover_lost_locks);
+>> +EXPORT_SYMBOL_GPL(nfs4_use_min_auth);
+>>
+>> #define NFS_CALLBACK_MAXPORTNR (65535U)
+>>
+>> @@ -2842,5 +2844,7 @@ MODULE_PARM_DESC(recover_lost_locks,
+>> 		 "If the server reports that a lock might be lost, "
+>> 		 "try to recover it risking data corruption.");
+>>
+>> -
+>> +module_param(nfs4_use_min_auth, bool, 0644);
+>> +MODULE_PARM_DESC(nfs4_use_min_auth,
+>> +		"Use mimnal auth in SETCLIENTID operation");
+>> #endif /* CONFIG_NFS_V4 */
+>> -- 
+>> 1.7.1
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> --
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
+> 
+> 
+> 
