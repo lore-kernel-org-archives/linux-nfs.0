@@ -1,99 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:35273 "EHLO mx1.redhat.com"
+Received: from mx12.netapp.com ([216.240.18.77]:3067 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751132Ab3KMVMM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 13 Nov 2013 16:12:12 -0500
-Date: Wed, 13 Nov 2013 16:12:07 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Weston Andros Adamson <dros@netapp.com>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        linux-nfs list <linux-nfs@vger.kernel.org>,
-        Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH v2] nfs: don't retry detect_trunking with RPC_AUTH_UNIX
- more than once
-Message-ID: <20131113161207.76c216fe@tlielax.poochiereds.net>
-In-Reply-To: <EBCF8527-3031-4BFE-9559-9CAF50C4633D@netapp.com>
-References: <1384351701-29572-1-git-send-email-jlayton@redhat.com>
-	<EBCF8527-3031-4BFE-9559-9CAF50C4633D@netapp.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=Windows-1252
+	id S1753828Ab3KGVjp convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Nov 2013 16:39:45 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Steve Dickson <SteveD@redhat.com>
+CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] Adding the nfs4_use_min_auth module parameter
+Date: Thu, 7 Nov 2013 21:39:43 +0000
+Message-ID: <1383860381.12966.37.camel@leira.trondhjem.org>
+References: <1383851364-8370-1-git-send-email-steved@redhat.com>
+	 <1383852380.12966.5.camel@leira.trondhjem.org>
+	 <527C0548.1090205@RedHat.com>
+In-Reply-To: <527C0548.1090205@RedHat.com>
+Content-Type: text/plain; charset="utf-7"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 13 Nov 2013 20:48:04 +0000
-Weston Andros Adamson <dros@netapp.com> wrote:
+On Thu, 2013-11-07 at 16:25 -0500, Steve Dickson wrote:
++AD4- Hey,
++AD4- 
++AD4- On 07/11/13 14:26, Myklebust, Trond wrote:
++AD4- +AD4- On Thu, 2013-11-07 at 14:09 -0500, Steve Dickson wrote:
++AD4- +AD4APg- This new module parameter makes the v4 client
++AD4- +AD4APg- use the minimal authentication flavor (AUTH+AF8-UNIX)
++AD4- +AD4APg- when establishing NFSV4 state and doing the
++AD4- +AD4APg- pseudoroot lookup
++AD4- +AD4APg-
++AD4- +AD4- 
++AD4- +AD4- That looks very ad-hoc. Quite frankly, you can do the exact same thing
++AD4- +AD4- already by simply blacklisting the rpcsec+AF8-gss+AF8-krb5 and/or auth+AF8-rpcgss
++AD4- +AD4- modules.
++AD4- I tried to keep a very small foot print... I'm not sure why that 
++AD4- looks ad-hoc to you... 
++AD4- 
++AD4- If we blacklist those module(s) then we are disabling secure mounts
++AD4- altogether... 
 
-> I tested v2 and everything looks good.
-> 
+What's the difference? If you use secure mounts, you really do want the
+NFSv4 state to be secure too.
 
-Thanks for testing it.
++AD4- +AD4- I think we should rather looks at adding a new mount option for
++AD4- +AD4- specifying the security flavour to use when establishing basic NFSv4.x
++AD4- +AD4- state, and then perhaps specifying the +AF8-default+AF8- for that mount option
++AD4- +AD4- using a module parameter.
++AD4- The problem is everything is hard code in these two areas so having
++AD4- a mount option would not work... 
 
-> Also, it seems like I’m no longer able to reproduce the "NFS: nfs4_discover_server_trunking unhandled error -512. Exiting with error EIO” dmesg.
-> 
-> -dros
-> 
+We can change that code.
 
-Interesting. I suspect that's due to the fact that we give up retrying
-quickly enough now that you can't signal it fast enough there. It's
-still probably reasonable to add in handling for -ERESTARTSYS in that
-switch statement however. I imagine that it's still possible to race in
-with a signal at the right time and trigger that message.
++AD4- The fact that -o sec+AD0-sys does not turn off the use of AUTH+AF8-GSS+AF8-KRB5x 
++AD4- is simple wrong... IMHO...
 
-> On Nov 13, 2013, at 9:08 AM, Jeff Layton <jlayton@redhat.com> wrote:
-> 
-> > Currently, when we try to mount and get back NFS4ERR_CLID_IN_USE or
-> > NFS4ERR_WRONGSEC, we create a new rpc_clnt and then try the call again.
-> > There is no guarantee that doing so will work however, so we can end up
-> > retrying the call in an infinite loop.
-> > 
-> > Worse yet, we create the new client using rpc_clone_client_set_auth,
-> > which creates the new client as a child of the old one. Thus, we can end
-> > up with a *very* long lineage of rpc_clnts. When we go to put all of the
-> > references to them, we can end up with a long call chain that can smash
-> > the stack as each rpc_free_client() call can recurse back into itself.
-> > 
-> > This patch fixes this by simply ensuring that the SETCLIENTID call will
-> > only be retried in this situation if the last attempt did not use
-> > RPC_AUTH_UNIX.
-> > 
-> > Note too that with this change, we don't need the (i > 2) check in the
-> > -EACCES case since we now have a more reliable test as to whether we
-> > should reattempt.
-> > 
-> > Cc: stable@vger.kernel.org # v3.10+
-> > Cc: Chuck Lever <chuck.lever@oracle.com>
-> > Tested-by/Acked-by: Weston Andros Adamson <dros@netapp.com>
-> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > ---
-> > fs/nfs/nfs4state.c | 7 ++++++-
-> > 1 file changed, 6 insertions(+), 1 deletion(-)
-> > 
-> > diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-> > index c8e729d..6f04706 100644
-> > --- a/fs/nfs/nfs4state.c
-> > +++ b/fs/nfs/nfs4state.c
-> > @@ -2093,10 +2093,15 @@ again:
-> > 			nfs4_root_machine_cred(clp);
-> > 			goto again;
-> > 		}
-> > -		if (i > 2)
-> > +		if (clnt->cl_auth->au_flavor == RPC_AUTH_UNIX)
-> > 			break;
-> > 	case -NFS4ERR_CLID_INUSE:
-> > 	case -NFS4ERR_WRONGSEC:
-> > +		/* No point in retrying if we already used RPC_AUTH_UNIX */
-> > +		if (clnt->cl_auth->au_flavor == RPC_AUTH_UNIX) {
-> > +			status = -EPERM;
-> > +			break;
-> > +		}
-> > 		clnt = rpc_clone_client_set_auth(clnt, RPC_AUTH_UNIX);
-> > 		if (IS_ERR(clnt)) {
-> > 			status = PTR_ERR(clnt);
-> > -- 
-> > 1.8.3.1
-> > 
-> 
+I beg to differ. The problem previously was that it +AF8-did+AF8- set the policy
+for the state management, and that meant that if you has 2 mounts on the
+same server with different security flavours, then then client behaviour
+depended on the order of the mounts. Get the order wrong, and you get
+anything from outright errors (CLID+AF8-IN+AF8-USE) to insecure behaviour.
 
++AD4-  Not having way to override this behavior
++AD4- is not a good thing... again... IMHO... 
++AD4- 
++AD4- Finally, Are there any servers out there today that support this type
++AD4- of behavior? Requiring secure state establishment or secure 
++AD4- pseudoroot lookups. 
++AD4- 
++AD4- Bruce, can we configure the Linux server to require this type security behavior? 
++AD4- Can any server out there require these type of security behavior?  
++AD4- 
++AD4- If the answer is no, then we really need a way to disable this type
++AD4- of behavior....
+
+I don't disagree with the goal, I disagree with the method.
 
 -- 
-Jeff Layton <jlayton@redhat.com>
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust+AEA-netapp.com
+www.netapp.com
