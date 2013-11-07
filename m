@@ -1,35 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:53359 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754694Ab3KGP6h (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Nov 2013 10:58:37 -0500
-Date: Thu, 7 Nov 2013 07:58:37 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: steved@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] gssd: cut down log chatter in gssd_search_krb5_keytab
-Message-ID: <20131107155837.GA16658@infradead.org>
-References: <1383839253-8223-1-git-send-email-jlayton@redhat.com>
+Received: from mail-pb0-f41.google.com ([209.85.160.41]:36815 "EHLO
+	mail-pb0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752191Ab3KGUB7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Nov 2013 15:01:59 -0500
+Received: by mail-pb0-f41.google.com with SMTP id wy17so1092105pbc.14
+        for <linux-nfs@vger.kernel.org>; Thu, 07 Nov 2013 12:01:58 -0800 (PST)
+Message-ID: <527BF1B5.4070508@primarydata.com>
+Date: Thu, 07 Nov 2013 12:01:57 -0800
+From: Benny Halevy <bhalevy@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1383839253-8223-1-git-send-email-jlayton@redhat.com>
+To: Christoph Hellwig <hch@infradead.org>
+CC: "J. Bruce Fields" <bfields@fieldses.org>, bfields@redhat.com,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/2] nfsd: remove_stid can be incorporated into nfs4_put_delegation
+References: <525CE711.1040107@primarydata.com> <1381820280-14120-1-git-send-email-bhalevy@primarydata.com> <20131104224758.GB8828@fieldses.org> <52786E74.8030505@primarydata.com> <20131107170204.GA10530@infradead.org>
+In-Reply-To: <20131107170204.GA10530@infradead.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Nov 07, 2013 at 10:47:33AM -0500, Jeff Layton wrote:
-> Because the kernel now looks for krb5 creds by default when mounting, we
-> need to always have clients run rpc.gssd to avoid the 15s hang on the
-> first mount attempt.
+On 2013-11-07 09:02, Christoph Hellwig wrote:
+> On Mon, Nov 04, 2013 at 08:05:08PM -0800, Benny Halevy wrote:
+>> On 2013-11-04 14:47, J. Bruce Fields wrote:
+>>> On Tue, Oct 15, 2013 at 09:58:00AM +0300, Benny Halevy wrote:
+>>>> All calls to nfs4_put_delegation are preceded with remove_stid.
+>>>
+>>> Whoops, no, we missed the nfs4_put_delegation call in
+>>> fs/nfsd/nfs4callback.c.
+>>>
+>>> Noticed because some pynfs tests triggered idr warnings about freeing
+>>> the same id twice.
+>>>
+>>> I guess I'll revert.
+>>
+>> OK.
+> 
+> Not sure which patch in your submitted series it was, but with the
+> whole series xfstests on NFS 4.1 crashed and burned early on.  I'd
+> recommend you run xfstests to test any future changes to the state
+> handling code in nfsd.
+> 
 
-Not sure if it's the same hangs, but I see about the same length of a
-hang on my Debian wheezy systems when accessing the first file for a
-data operation, with rpc.gssd running or not.  Funnily enough this also
-happens when trying to read a non-existand file, but not for things like
-a simple readdir.
-
-Still looking into it, but being a non-interruptible sleep it's fairly
-annoying.
-
-That being said Debian wheezy also only starts rpc.gssd from the init
-scripts if it sees a krb option in /etc/fstab, which I don't have.
-
+Thanks. Will do.
