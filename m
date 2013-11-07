@@ -1,51 +1,38 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:25804 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752383Ab3KAQix convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Nov 2013 12:38:53 -0400
-Content-Type: text/plain; charset=US-ASCII
-Mime-Version: 1.0 (Mac OS X Mail 6.6 \(1510\))
-Subject: Re: clientid is in use
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <5272CA26.8010304@uw.edu>
-Date: Fri, 1 Nov 2013 12:38:47 -0400
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <BE23E12D-D5F5-4E04-ACBA-E62C9EE558EA@oracle.com>
-References: <51FBDB14.4040801@uw.edu> <BE9C4EAA-B835-4021-86C2-D91F66BFF7C8@oracle.com> <5272CA26.8010304@uw.edu>
-To: Harry Edmon <harry@uw.edu>
+Received: from bombadil.infradead.org ([198.137.202.9]:53494 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752474Ab3KGQfV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Nov 2013 11:35:21 -0500
+Date: Thu, 7 Nov 2013 08:35:20 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: steved@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] gssd: cut down log chatter in gssd_search_krb5_keytab
+Message-ID: <20131107163520.GA17857@infradead.org>
+References: <1383839253-8223-1-git-send-email-jlayton@redhat.com>
+ <20131107155837.GA16658@infradead.org>
+ <20131107110928.68244ea7@tlielax.poochiereds.net>
+ <20131107162123.GA9411@infradead.org>
+ <20131107113310.567c3b64@tlielax.poochiereds.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20131107113310.567c3b64@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Oct 31, 2013, at 5:22 PM, Harry Edmon <harry@uw.edu> wrote:
-
-> On 08/04/13 12:20, Chuck Lever wrote:
->> On Aug 2, 2013, at 12:15 PM, Harry Edmon <harry@uw.edu> wrote:
->> 
->>> Occasionally I am seeing the following in our kernel log on a NFS client:
->>> 
->>> [2321389.137595] NFS: Server enkf reports our clientid is in use
->>> [2321389.137615] NFS: state manager: lease expired failed on NFSv4 server enkf with error 1
->>> 
->>> The result is that the read of the file in question fails.   This occurs for multiple kernel versions on multiple machines.  Anyone have an idea how I should start debugging this?  How is the clientid calculated/assigned?
->> It depends on the kernel version.  You can look in fs/nfs/nfs4proc.c for the nfs4_proc_setclientid function.
->> 
-> I am still occasionally seeing this error.   The last time was with the NFS client and server both running kernel 3.11.6.   The message was on the client.   Here is the mount info from /proc/mounts:
+On Thu, Nov 07, 2013 at 11:33:10AM -0500, Jeff Layton wrote:
+> > I'm still seing my issue after reverting that commit by hand.
 > 
-> margaret:/home/margaret/margaret /home/disk/margaret nfs4
-> rw,relatime,vers=4.0,rsize=1048576,wsize=1048576,namlen=255,hard,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,clientaddr=140.142.113.26,local_lock=none,addr=128.95.89.30
-> 0 0
+> Hrm...
 > 
-> I am still looking for ideas on how to debug this.
+> You'd also see these messages in the log if it were the same problem:
+> 
+>      RPC: AUTH_GSS upcall timed out.
+> 
+> ...it could also be a delay when trying to set up the callback channel
+> if you're running v4.0. Do you have the callback port firewalled off?
 
-The server is reporting that your clients are using the same client ID.  The client ID is based on the client's hostname.  Are your clients dynamically named?
-
-The description of the nfs4_unique_id parameter in linux/Documentation/filesystems/nfs/nfs.txt might be helpful.
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+Not seeing any of those, and running with 4.1 at the moment, although I
+could try 4.0.  Talking to a server on the same host, so firewalling is
+unlikely.
 
