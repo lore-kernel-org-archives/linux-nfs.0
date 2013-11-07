@@ -1,115 +1,180 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:54460 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751027Ab3KNBLX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 13 Nov 2013 20:11:23 -0500
-Date: Thu, 14 Nov 2013 12:05:33 +1100
-From: NeilBrown <neilb@suse.de>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Charles Edward Lever <chuck.lever@oracle.com>,
-        Steve Dickson <SteveD@redhat.com>,
-        "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] Adding the nfs4_secure_mounts bool
-Message-ID: <20131114120533.1df06f5c@notabene.brown>
-In-Reply-To: <1384306012.15992.9.camel@leira.trondhjem.org>
-References: <1384037221-7224-1-git-send-email-steved@redhat.com>
-	<E061C7A8-DC27-49BA-93C2-DC2E9C19EA7B@netapp.com>
-	<52811CBB.3070204@RedHat.com>
-	<E520DD5F-7E5A-4B6C-9FF6-6B74DA36FD1E@oracle.com>
-	<5281290B.6000201@RedHat.com>
-	<E0FBCF46-C70F-41E5-BA67-48406253CD7E@oracle.com>
-	<20131112161135.25a487da@notabene.brown>
-	<F58540AB-00BE-4AC5-B823-7260F30F8D58@netapp.com>
-	<20131112161634.GC15060@fieldses.org>
-	<20131113112346.3f5f3bd0@notabene.brown>
-	<1384302651.15992.3.camel@leira.trondhjem.org>
-	<20131113121333.2a16f646@notabene.brown>
-	<1384306012.15992.9.camel@leira.trondhjem.org>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/SuTCoi/+i_ZIqe0I2myv=wG"; protocol="application/pgp-signature"
+Received: from userp1040.oracle.com ([156.151.31.81]:18865 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751010Ab3KGXgC convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Nov 2013 18:36:02 -0500
+MIME-Version: 1.0
+Message-ID: <44CA89EA-8B5E-4B83-A622-78A78F760FF1@oracle.com>
+Date: Thu, 7 Nov 2013 15:05:55 -0800 (PST)
+From: Chuck Lever <chuck.lever@oracle.com>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] Adding the nfs4_use_min_auth module parameter
+References: <1383851364-8370-1-git-send-email-steved@redhat.com>
+ <A8E8F2C4-8CB7-434E-8520-B2B53F0582D9@oracle.com> <527C07B4.800@RedHat.com>
+In-Reply-To: <527C07B4.800@RedHat.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/SuTCoi/+i_ZIqe0I2myv=wG
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
 
-On Wed, 13 Nov 2013 01:26:56 +0000 "Myklebust, Trond"
-<Trond.Myklebust@netapp.com> wrote:
+On Nov 7, 2013, at 1:35 PM, Steve Dickson <SteveD@redhat.com> wrote:
 
-> On Wed, 2013-11-13 at 12:13 +1100, NeilBrown wrote:
-> > On Wed, 13 Nov 2013 00:30:53 +0000 "Myklebust, Trond"
-> > <Trond.Myklebust@netapp.com> wrote:
-> >=20
-> > > On Wed, 2013-11-13 at 11:23 +1100, NeilBrown wrote:
-> > > > But back to my problem:  Following Trond's suggestion I've come up =
-with the
-> > > > following patch.  Does it look right?
-> > > >=20
-> > > > The "fd =3D -1" is just to stop us trying to close a non-open fd in=
- an error
-> > > > path.
-> > > >=20
-> > > > The change from testing ->servicename to ->prog stops us from repea=
-ting the
-> > > > failed DNS lookup on every request, not that the failure isn't fata=
-l.
-> > > >=20
-> > > > The last stanza makes sure we always reply to an upcall, with EINVA=
-L if
-> > > > nothing else seems appropriate.
-> > >=20
-> > > Wouldn't EACCES be more appropriate as a default?
-> > >=20
-> >=20
-> > Maybe.  And that is what you suggested before and I mis-remembered - so=
-rry.
-> >=20
-> > However EACCES is "Permission denied" which doesn't quite seem right to=
- me.
-> > It isn't really "you aren't allowed to do that", but "your question doe=
-sn't
-> > make sense".
-> >=20
-> > However I'm not fussed.  If you prefer EACCES, then I'll make it EACCES.
->=20
-> If you look at gss_pipe_downcall(), then you'll note that it treats
-> EINVAL as a temporary error, and converts it to EAGAIN. That again
-> causes call_refreshresult to retry the upcall 2 more times before
-> failing with EACCES anyway...
->=20
+> Hey mrchuck... 
+> 
+> On 07/11/13 14:25, Chuck Lever wrote:
+>> Hi Steve-
+>> 
+>> On Nov 7, 2013, at 11:09 AM, Steve Dickson <steved@redhat.com> wrote:
+>> 
+>>> This new module parameter makes the v4 client
+>>> use the minimal authentication flavor (AUTH_UNIX)
+>>> when establishing NFSV4 state and doing the
+>>> pseudoroot lookup
+>> 
+>> The patch description doesn't say, but is this change to work 
+>> around the 15 second GSSD upcall timeout? 
+> Yes. A 15 second delay on every mount due to security that
+> nobody is requesting is just not good.. IMHO..
 
-Yes, I see now, thanks.
+One thing we haven't discussed is reducing the upcall timeout to 5 seconds or less, as a form of immediate relief.  15 seconds is arbitrary, and is onerous even when you expect the mount to work (ie why would it be good for any properly configured environment to take 15 seconds to establish a GSS context?).
 
-I also see a 'BUG()' in there if the error code returned from user-space
-isn't in the known list.  I suspect that should at most be a WARN, and
-probably removed altogether.
+In other words, there are still cases where users wait 15 seconds unnecessarily, and not because of the use of krb5i for lease management.  Aren't those of concern?
 
-Thanks,
-NeilBrown
+> Also running
+> a security daemon for non-secure mounts just seems wrong to me.
 
---Sig_/SuTCoi/+i_ZIqe0I2myv=wG
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
+It seems wrong to me to keep auth_rpcgss loaded if no mounts use Kerberos security.  What's the difference between that and running gssd all the time?
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.19 (GNU/Linux)
+The new SETCLIENTID architecture would be transparent if our security infrastructure was reliable.  We really need to address the upcall issue.  We've been working around it for a very long time.
 
-iQIVAwUBUoQh3Tnsnt1WYoG5AQLi+g/7B1S3NnEcwN/k/gVBGYrnRsCP758Ida45
-m2xp1MyQ0xn0yq6b1rV9baxAEfQBN3OKu7o3EVSSG6HoyoNkXGuwJACzhKwYOmub
-leIplyDbZpdyRp/EULRM2MSJ+/vR2vkEopu976mOmzwWy/bpYykQDQXCJhkdlQA7
-P8GCxsCC0D+txJy8f21RZT1FFGy0gj3d8ZXhTPYENaVnan5B6Guh/kpgHICTaeiP
-OdiYo/5FQLaWbK8l8SctopEzsvB7i0ai9LGp8z2yscLQ8Cce0NPX2JddT6VU32jv
-0QoiYPOPKT9vBAcGpHAs98v2nkfzrJjEDkJsTUmrPUCxpxo/nTIgxjKGSH2bFNpp
-xhE57Bx3YZHYncuCya9uYYy/SV2jOZvhx20LRb88KGzjG5GQfDmdw7ul2dwN8h4k
-HdEffcZ8zg5tyOed79eI+QQKMrbvsLM5ky2wT5qE5LZ1wB2Bopdd7yMvRg+fyLao
-Yv72qtodquak3mRexvmQGrnsSIoGGVoIW+ELhWlaa0tUDNJpBAvavP4xohL9V7d8
-DDHBhyI+prduASUJMdkejk4j0uc0aaTQ/2sYHt5tEoKnbqrLv9pxHRqEfMVQ1o3l
-M3hg98mhWcUndxr153fcaQ1Db1I1/DbDcoQRWDzfI1ajdm6oD3ez79yoTIu07UMU
-RysuIvOBIxI=
-=S9hp
------END PGP SIGNATURE-----
+> 
+>> Have we completely given up on fixing the upcall?
+> Back when we were looking on to introduce gss-proxy into
+> the client, it was decided the upcall on the client
+> was not going to change. I'm just going with that!
 
---Sig_/SuTCoi/+i_ZIqe0I2myv=wG--
+I don't remember that discussion.  Or if it occurred, I didn't realize at the time that it was referring to fixing bugs.  Do you have a link to the thread?
+
+
+> steved.
+> 
+> 
+>> 
+>> 
+>>> Signed-off-by: Steve Dickson <steved@redhat.com>
+>>> ---
+>>> fs/nfs/nfs4_fs.h    |    1 +
+>>> fs/nfs/nfs4client.c |    8 ++++++--
+>>> fs/nfs/nfs4proc.c   |    4 +++-
+>>> fs/nfs/super.c      |    6 +++++-
+>>> 4 files changed, 15 insertions(+), 4 deletions(-)
+>>> 
+>>> diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+>>> index 28842ab..20bf925 100644
+>>> --- a/fs/nfs/nfs4_fs.h
+>>> +++ b/fs/nfs/nfs4_fs.h
+>>> @@ -438,6 +438,7 @@ extern bool nfs4_disable_idmapping;
+>>> extern unsigned short max_session_slots;
+>>> extern unsigned short send_implementation_id;
+>>> extern bool recover_lost_locks;
+>>> +extern bool nfs4_use_min_auth;
+>>> 
+>>> #define NFS4_CLIENT_ID_UNIQ_LEN		(64)
+>>> extern char nfs4_client_id_uniquifier[NFS4_CLIENT_ID_UNIQ_LEN];
+>>> diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+>>> index a860ab5..ff85991 100644
+>>> --- a/fs/nfs/nfs4client.c
+>>> +++ b/fs/nfs/nfs4client.c
+>>> @@ -355,6 +355,7 @@ struct nfs_client *nfs4_init_client(struct nfs_client *clp,
+>>> 	char buf[INET6_ADDRSTRLEN + 1];
+>>> 	struct nfs_client *old;
+>>> 	int error;
+>>> +	rpc_authflavor_t flavor = RPC_AUTH_GSS_KRB5I;
+>>> 
+>>> 	if (clp->cl_cons_state == NFS_CS_READY) {
+>>> 		/* the client is initialised already */
+>>> @@ -368,8 +369,11 @@ struct nfs_client *nfs4_init_client(struct nfs_client *clp,
+>>> 	if (clp->cl_minorversion != 0)
+>>> 		__set_bit(NFS_CS_INFINITE_SLOTS, &clp->cl_flags);
+>>> 	__set_bit(NFS_CS_DISCRTRY, &clp->cl_flags);
+>>> -	error = nfs_create_rpc_client(clp, timeparms, RPC_AUTH_GSS_KRB5I);
+>>> -	if (error == -EINVAL)
+>>> +
+>>> +	if (nfs4_use_min_auth)
+>>> +		flavor = RPC_AUTH_UNIX;
+>>> +	error = nfs_create_rpc_client(clp, timeparms, flavor);
+>>> +	if (error == -EINVAL && flavor != RPC_AUTH_UNIX)
+>>> 		error = nfs_create_rpc_client(clp, timeparms, RPC_AUTH_UNIX);
+>>> 	if (error < 0)
+>>> 		goto error;
+>>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>>> index d53d678..00162cb 100644
+>>> --- a/fs/nfs/nfs4proc.c
+>>> +++ b/fs/nfs/nfs4proc.c
+>>> @@ -2864,7 +2864,9 @@ static int nfs4_find_root_sec(struct nfs_server *server, struct nfs_fh *fhandle,
+>>> 	int status = -EPERM;
+>>> 	size_t i;
+>>> 
+>>> -	for (i = 0; i < ARRAY_SIZE(flav_array); i++) {
+>>> +	if (nfs4_use_min_auth)
+>>> +		status = nfs4_lookup_root_sec(server, fhandle, info, RPC_AUTH_UNIX);
+>>> +	else for (i = 0; i < ARRAY_SIZE(flav_array); i++) {
+>>> 		status = nfs4_lookup_root_sec(server, fhandle, info, flav_array[i]);
+>>> 		if (status == -NFS4ERR_WRONGSEC || status == -EACCES)
+>>> 			continue;
+>>> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+>>> index a03b9c6..42b4f9b 100644
+>>> --- a/fs/nfs/super.c
+>>> +++ b/fs/nfs/super.c
+>>> @@ -2791,6 +2791,7 @@ unsigned short max_session_slots = NFS4_DEF_SLOT_TABLE_SIZE;
+>>> unsigned short send_implementation_id = 1;
+>>> char nfs4_client_id_uniquifier[NFS4_CLIENT_ID_UNIQ_LEN] = "";
+>>> bool recover_lost_locks = false;
+>>> +bool nfs4_use_min_auth = false;
+>>> 
+>>> EXPORT_SYMBOL_GPL(nfs_callback_set_tcpport);
+>>> EXPORT_SYMBOL_GPL(nfs_callback_tcpport);
+>>> @@ -2800,6 +2801,7 @@ EXPORT_SYMBOL_GPL(max_session_slots);
+>>> EXPORT_SYMBOL_GPL(send_implementation_id);
+>>> EXPORT_SYMBOL_GPL(nfs4_client_id_uniquifier);
+>>> EXPORT_SYMBOL_GPL(recover_lost_locks);
+>>> +EXPORT_SYMBOL_GPL(nfs4_use_min_auth);
+>>> 
+>>> #define NFS_CALLBACK_MAXPORTNR (65535U)
+>>> 
+>>> @@ -2842,5 +2844,7 @@ MODULE_PARM_DESC(recover_lost_locks,
+>>> 		 "If the server reports that a lock might be lost, "
+>>> 		 "try to recover it risking data corruption.");
+>>> 
+>>> -
+>>> +module_param(nfs4_use_min_auth, bool, 0644);
+>>> +MODULE_PARM_DESC(nfs4_use_min_auth,
+>>> +		"Use mimnal auth in SETCLIENTID operation");
+>>> #endif /* CONFIG_NFS_V4 */
+>>> -- 
+>>> 1.7.1
+>>> 
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> 
+>> --
+>> Chuck Lever
+>> chuck[dot]lever[at]oracle[dot]com
+>> 
+>> 
+>> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
