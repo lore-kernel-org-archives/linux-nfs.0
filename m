@@ -1,52 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:29274 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:37942 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757248Ab3KHQhN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 8 Nov 2013 11:37:13 -0500
-Message-ID: <527D1372.20001@RedHat.com>
-Date: Fri, 08 Nov 2013 11:38:10 -0500
+	id S932221Ab3KHPHI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 8 Nov 2013 10:07:08 -0500
+Message-ID: <527CFE57.9030106@RedHat.com>
+Date: Fri, 08 Nov 2013 10:08:07 -0500
 From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-To: Weston Andros Adamson <dros@netapp.com>
-CC: Jeff Layton <jlayton@redhat.com>, Chuck Lever <chuck.lever@oracle.com>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        linux-nfs list <linux-nfs@vger.kernel.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 Subject: Re: [PATCH] Adding the nfs4_use_min_auth module parameter
-References: <1383851364-8370-1-git-send-email-steved@redhat.com>	<A8E8F2C4-8CB7-434E-8520-B2B53F0582D9@oracle.com>	<527C07B4.800@RedHat.com>	<44CA89EA-8B5E-4B83-A622-78A78F760FF1@oracle.com>	<527CDBFC.3070903@RedHat.com> <20131108082202.4032f1a2@tlielax.poochiereds.net> <527CFC72.2030907@RedHat.com> <10EF251E-CE2B-4761-BBE9-CAFF253610D7@netapp.com>
-In-Reply-To: <10EF251E-CE2B-4761-BBE9-CAFF253610D7@netapp.com>
-Content-Type: text/plain; charset=windows-1252
+References: <1383851364-8370-1-git-send-email-steved@redhat.com>		 <1383852380.12966.5.camel@leira.trondhjem.org>		 <527C0548.1090205@RedHat.com>	 <1383860381.12966.37.camel@leira.trondhjem.org>	 <527C0CB6.8090308@RedHat.com> <1383863394.12966.63.camel@leira.trondhjem.org> <527CD765.1000903@RedHat.com> <EDB1FCDB-A6B6-4595-A46F-B73AF9FAA990@netapp.com>
+In-Reply-To: <EDB1FCDB-A6B6-4595-A46F-B73AF9FAA990@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
-On 08/11/13 11:27, Weston Andros Adamson wrote:
+On 08/11/13 09:30, Myklebust, Trond wrote:
 > 
-> On Nov 8, 2013, at 10:00 AM, Steve Dickson <SteveD@redhat.com> wrote:
+> On Nov 8, 2013, at 7:21, Steve Dickson <SteveD@redhat.com> wrote:
 > 
->> What server makes krb5i available today in state setup and pseudoroot lookups?
+>>
+>>
+>> On 07/11/13 17:29, Myklebust, Trond wrote:
+>>>> Again, what servers, today, support this type of secure state establishment?
+>>>>> Having this type of security in the client I think is good... but if
+>>>>> the client is not talking with any servers that support this type 
+>>>>> of security, why not have a way to turn it off?
+>>> I don't understand. Servers are _required_ to support RPCSEC_GSS with
+>>> krb5 by both RFC3530 and RFC5661. AUTH_SYS is, in fact, the optional
+>>> flavour.
+>> Agreed... 100% of the NFSv4 server have to support RPCSEC_GSS. its mandated
+>> by the spec(s). 
+>>
+>>>
+>>> The problem here is that sometimes kerberos isn't configured by the
+>>> admin, who then expects that it shouldn't be necessary to run rpc.gssd
+>>> or rpc.svcgssd. It is necessary because we first try the
+>>> mandatory-to-implement and secure RPCSEC_GSS/krb5i flavour before
+>>> falling back to the less secure AUTH_SYS...
+>> Sometimes? Its generally not.. from my experience... 
+>>
+>> Basically how I interpret this last paragraph, is we will be requiring 
+>> admins set up secure mounts for them to avoid the 15sec delay mount
+>> times... aka... running a daemon that will say "no, no there is no 
+>> security here" while spewing of log messages when Kerberos is not setup...
 > 
-> Linux nfsd, among others…
-> 
-> The real issue I see here is what Trond was mentioning earlier - the order of multiple mounts of the same server matters, i.e.:
-> 
-> 1) mount sec=krb5i server:/foo /mnt1
-> 2) mount sec=sys server:/foo /mnt2
-> 
-> This leads to the state operations to server using krb5i, but:
-> 
-> 1) mount sec=sys server:/foo /mnt2
-> 2) mount sec=krb5i server:/foo /mnt1
-> 
-> this leads to the state operations to server using AUTH_SYS. yuck.
-> 
-> I don’t think we can just upgrade the state connection from AUTH_SYS to krb5i 
-> when this happens, that is why we try krb5i first, then fall back to AUTH_SYS.
+> No. All we are requiring is that they run rpc.gssd.
+Even when they do not want any secure mounts at all?
 
-Excellent explanation! Thanks you! But... ;-) This assumes the admin is
-actually trying to krb5i which means he/she has set up a functioning 
-Kerberos environment. But we can't assume every client has a valid 
-Kerberos environment, which is what the code is doing today!
+What is that justification?
+
 
 steved.
-
