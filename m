@@ -1,107 +1,128 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:20601 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:60698 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755341Ab3KTVXW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Nov 2013 16:23:22 -0500
-Message-ID: <528D2889.2080508@RedHat.com>
-Date: Wed, 20 Nov 2013 16:24:25 -0500
+	id S1752041Ab3KHO7F (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 8 Nov 2013 09:59:05 -0500
+Message-ID: <527CFC72.2030907@RedHat.com>
+Date: Fri, 08 Nov 2013 10:00:02 -0500
 From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
 To: Jeff Layton <jlayton@redhat.com>
-CC: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/2] gssd: don't let parent exit until child has a chance
- to scan directory once
-References: <1384542931-18753-1-git-send-email-jlayton@redhat.com> <1384542931-18753-3-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1384542931-18753-3-git-send-email-jlayton@redhat.com>
+CC: Chuck Lever <chuck.lever@oracle.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] Adding the nfs4_use_min_auth module parameter
+References: <1383851364-8370-1-git-send-email-steved@redhat.com>	<A8E8F2C4-8CB7-434E-8520-B2B53F0582D9@oracle.com>	<527C07B4.800@RedHat.com>	<44CA89EA-8B5E-4B83-A622-78A78F760FF1@oracle.com>	<527CDBFC.3070903@RedHat.com> <20131108082202.4032f1a2@tlielax.poochiereds.net>
+In-Reply-To: <20131108082202.4032f1a2@tlielax.poochiereds.net>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
-On 15/11/13 14:15, Jeff Layton wrote:
-> With some proposed kernel changes, it won't even attempt to upcall
-> sometimes if it doesn't appear that gssd is running. This means that
-> we have a theoretical race between gssd starting up at boot time and
-> the init process attempting to mount kerberized filesystems.
+On 08/11/13 08:22, Jeff Layton wrote:
+> On Fri, 08 Nov 2013 07:41:32 -0500
+> Steve Dickson <SteveD@redhat.com> wrote:
 > 
-> Fix this by switching gssd to use mydaemon() and having the child
-> only release the parent after it has processed the directory once.
+>>
+>>
+>> On 07/11/13 18:05, Chuck Lever wrote:
+>>>
+>>> On Nov 7, 2013, at 1:35 PM, Steve Dickson <SteveD@redhat.com> wrote:
+>>>
+>>>> Hey mrchuck... 
+>>>>
+>>>> On 07/11/13 14:25, Chuck Lever wrote:
+>>>>> Hi Steve-
+>>>>>
+>>>>> On Nov 7, 2013, at 11:09 AM, Steve Dickson <steved@redhat.com> wrote:
+>>>>>
+>>>>>> This new module parameter makes the v4 client
+>>>>>> use the minimal authentication flavor (AUTH_UNIX)
+>>>>>> when establishing NFSV4 state and doing the
+>>>>>> pseudoroot lookup
+>>>>>
+>>>>> The patch description doesn't say, but is this change to work 
+>>>>> around the 15 second GSSD upcall timeout? 
+>>>> Yes. A 15 second delay on every mount due to security that
+>>>> nobody is requesting is just not good.. IMHO..
+>>>
+>>> One thing we haven't discussed is reducing the upcall timeout to 5 seconds or less, 
+>>> as a form of immediate relief.  15 seconds is arbitrary, and is onerous even when 
+>>> you expect the mount to work (ie why would it be good for any properly configured 
+>>> environment to take 15 seconds to establish a GSS context?).
+>>>
+>>> In other words, there are still cases where users wait 15 seconds unnecessarily, 
+>>> and not because of the use of krb5i for lease management.  Aren't those of concern?
+>> No. I think the concern here, at least my concern, is the lack of management.
+>> We are forcing admins to use krb5i in lease management when its not necessary
+>> and there is no way to turn it off.
+>>   
 > 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-Committed (tag: nfs-utils-1-2-10-rc1)
+> I don't think that's really the case. The idea was to have the client
+> attempt to use krb5i if it's available, and then to fall back to
+> AUTH_SYS if it isn't. This would be *absolutely* no big deal if the
+> GSSAPI upcall succeeded or failed immediately instead of requiring this
+> timeout when the daemon isn't running.
+What server makes krb5i available today in state setup and pseudoroot lookups?
+
+> 
+>>>
+>>>> Also running
+>>>> a security daemon for non-secure mounts just seems wrong to me.
+>>>
+>>> It seems wrong to me to keep auth_rpcgss loaded if no mounts use Kerberos security.  
+>>> What's the difference between that and running gssd all the time?
+>> You can say thing about %99 of all the modules load in a Fedora kernel today.
+>> lsmod | wc -l show there is 107 modules load on a f19 system. Do you think
+>> all those modules are used? Of course not, but they are not spewing 25
+>> log messages per mount or sucking up CPU cycles unnecessarily. 
+>>
+> 
+> rpc.gssd spends most of its time sleeping, unless there is
+> nfs mount or "real" gssapi activity. CPU cycles shouldn't be an issue.
+> The RSS for the process on my 64-bit box is ~2k so I wouldn't even be
+> concerned about memory usage. For comparison, we don't worry much about
+> running rpc.statd these days and it's of similar size and duty cycle.
+rpc.statd is needed by the V3 protocol to support file locking which
+is a bit more needed that a rpc.gssd to do unsecured mounts.
+
+> 
+> The log messages are another matter. rpc.gssd is just too chatty by
+> default. That's fixable, but it would mean that we'd need to tell
+> people to run it in verbose mode when tracking down problems instead of
+> assuming that all of those messages would go to the logs. That seems
+> like a reasonable thing to do anyway. Most people don't care about
+> rpc.gssd log messages once they have kerberized NFS working.
+So we should remove error and warning messages that in the
+pass help us debug very difficult code so we can run rpc.gssd
+just for normal unsecured mounts? 
+
+My apologies... but that makes absolutely no sense to me. 
+
+Let talk about scalability... Does anybody have idea what
+this needless upcall will cost on a client that does 
+a very large number of mounts all at once? 
+
+Please let me reiterate my point. The new securing of
+SETCLIENTIDs and pseudoroot lookups is good! I have
+no problem with the actual technology. What I'm having
+a problem with is I can not manage this new technology.
+
+Could you image the push back there would be if, 
+back in the day when secure mounts became available, 
+we required *everyone* to use secure mounts. The 
+only way you could use NFS  was through a secure mount.
+
+That's basically what we are doing today! We are requiring
+every mount to try a secure flavor that fails %100 time
+because there is no server support for this technology. 
+
+Again its not the technology, its the management of the
+technology that this new module parameter address. All
+I'm looking for is switch that enables or disables 
+this new technology... 
 
 steved.
 
-> ---
->  utils/gssd/gssd.c           | 6 ++++--
->  utils/gssd/gssd.h           | 1 +
->  utils/gssd/gssd_main_loop.c | 4 ++++
->  3 files changed, 9 insertions(+), 2 deletions(-)
-> 
-> diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
-> index 8ee478b..fdad153 100644
-> --- a/utils/gssd/gssd.c
-> +++ b/utils/gssd/gssd.c
-> @@ -54,6 +54,7 @@
->  #include "err_util.h"
->  #include "gss_util.h"
->  #include "krb5_util.h"
-> +#include "nfslib.h"
->  
->  char pipefs_dir[PATH_MAX] = GSSD_PIPEFS_DIR;
->  char keytabfile[PATH_MAX] = GSSD_DEFAULT_KEYTAB_FILE;
-> @@ -63,6 +64,7 @@ int  use_memcache = 0;
->  int  root_uses_machine_creds = 1;
->  unsigned int  context_timeout = 0;
->  char *preferred_realm = NULL;
-> +int pipefds[2] = { -1, -1 };
->  
->  void
->  sig_die(int signal)
-> @@ -187,8 +189,8 @@ main(int argc, char *argv[])
->  	if (gssd_check_mechs() != 0)
->  		errx(1, "Problem with gssapi library");
->  
-> -	if (!fg && daemon(0, 0) < 0)
-> -		errx(1, "fork");
-> +	if (!fg)
-> +		mydaemon(0, 0, pipefds);
->  
->  	signal(SIGINT, sig_die);
->  	signal(SIGTERM, sig_die);
-> diff --git a/utils/gssd/gssd.h b/utils/gssd/gssd.h
-> index 86472a1..47995b7 100644
-> --- a/utils/gssd/gssd.h
-> +++ b/utils/gssd/gssd.h
-> @@ -67,6 +67,7 @@ extern int			use_memcache;
->  extern int			root_uses_machine_creds;
->  extern unsigned int 		context_timeout;
->  extern char			*preferred_realm;
-> +extern int			pipefds[2];
->  
->  TAILQ_HEAD(clnt_list_head, clnt_info) clnt_list;
->  
-> diff --git a/utils/gssd/gssd_main_loop.c b/utils/gssd/gssd_main_loop.c
-> index ccf7fe5..9970028 100644
-> --- a/utils/gssd/gssd_main_loop.c
-> +++ b/utils/gssd/gssd_main_loop.c
-> @@ -53,6 +53,7 @@
->  
->  #include "gssd.h"
->  #include "err_util.h"
-> +#include "nfslib.h"
->  
->  extern struct pollfd *pollarray;
->  extern unsigned long pollsize;
-> @@ -245,6 +246,9 @@ gssd_run()
->  				/* Error msg is already printed */
->  				exit(1);
->  			}
-> +
-> +			/* release the parent after the initial dir scan */
-> +			release_parent(pipefds);
->  		}
->  		gssd_poll(pollarray, pollsize);
->  	}
-> 
+
