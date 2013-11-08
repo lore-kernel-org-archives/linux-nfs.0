@@ -1,40 +1,149 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:60301 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752965Ab3KBOvI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 2 Nov 2013 10:51:08 -0400
-Date: Sat, 2 Nov 2013 07:51:05 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Christoph Hellwig <hch@infradead.org>,
-        Anna Schumaker <bjschuma@netapp.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 3/4] NFSD: Add WRITE_PLUS support for hole punches
-Message-ID: <20131102145105.GA4450@infradead.org>
-References: <1382972247-1108-1-git-send-email-bjschuma@netapp.com>
- <1382972247-1108-4-git-send-email-bjschuma@netapp.com>
- <20131028214030.GO31322@fieldses.org>
- <526FAF30.3060502@netapp.com>
- <20131029130649.GA29606@fieldses.org>
- <20131102135409.GC18961@infradead.org>
- <20131102144431.GB26983@fieldses.org>
+Received: from mail.ims.co.at ([81.223.138.19]:52920 "EHLO mail.ims.co.at"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751254Ab3KHOZD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 8 Nov 2013 09:25:03 -0500
+Received: from localhost (localhost [127.0.0.1])
+	by mail.ims.co.at (Postfix) with ESMTP id 399EF139FD
+	for <linux-nfs@vger.kernel.org>; Fri,  8 Nov 2013 15:14:41 +0100 (CET)
+Received: from mail.ims.co.at ([127.0.0.1])
+	by localhost (mail.ims.co.at [127.0.0.1]) (amavisd-new, port 10024)
+	with LMTP id tAJN-mWKkYpe for <linux-nfs@vger.kernel.org>;
+	Fri,  8 Nov 2013 15:14:39 +0100 (CET)
+Received: from imap.ims.co.at (imap.ims.co.at [192.168.100.12])
+	by mail.ims.co.at (Postfix) with ESMTP id 86AD5139FD
+	for <linux-nfs@vger.kernel.org>; Fri,  8 Nov 2013 15:14:39 +0100 (CET)
+Received: from [192.168.100.167] (pc-52-ks.ims.co.at [192.168.100.167])
+	by imap.ims.co.at (Postfix) with ESMTPSA id 4506A210D315
+	for <linux-nfs@vger.kernel.org>; Fri,  8 Nov 2013 15:14:39 +0100 (CET)
+Message-ID: <527CF1CF.3070101@ims.co.at>
+Date: Fri, 08 Nov 2013 15:14:39 +0100
+From: Klemens Senn <klemens.senn@ims.co.at>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20131102144431.GB26983@fieldses.org>
+To: linux-nfs@vger.kernel.org
+Subject: NFS over RDMA stops working for data larger than 812 Bytes
+References: <527CECD8.2000208@ims.co.at>
+In-Reply-To: <527CECD8.2000208@ims.co.at>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Nov 02, 2013 at 10:44:31AM -0400, J. Bruce Fields wrote:
-> On Sat, Nov 02, 2013 at 06:54:09AM -0700, Christoph Hellwig wrote:
-> > On Tue, Oct 29, 2013 at 09:06:49AM -0400, J. Bruce Fields wrote:
-> > > What I meant was--why are we doing a sync at all, instead of returning
-> > > NFS_UNSTABLE and making the client commit?
-> > 
-> > Did NFSv4.2 introduce a concept of unstable metadata operations?
-> 
-> No, but I think WRITE_PLUS does have a stable/unstable bit so I think we
-> could choose not to do the sync if that'd make sense.
+Hi,
 
-Both operations are idempotent, so supporting it shouldn't be a major
-obstactle.  But suddenly having some metadata operations that can be
-unstable seems like a major wart in the spec.
+I started setting up NFS over RDMA on a OpenSUSE 12.3 machine using the
+3.7.10-1.16-default kernel.
+Mounting the NFS share works and getting a file with 812 Bytes succeeds.
+Reading 813 Bytes raises a Input/output error.
 
+The export on the server side is done with
+/data
+172.16.100.0/24(rw,wdelay,crossmnt,insecure,no_root_squash,no_subtree_check,fsid=0,mountpoint)
+
+Following command is used for mounting the NFSv4 share:
+  mount -t nfs -o port=20049,rdma,vers=4.0,timeo=900 172.16.100.2:/ /mnt/
+
+Testing the client side with older kernels stated that the mount is
+working properly with the 3.4.67 kernel. I continued testing with the
+3.10.17 kernel and enabled the debug level and noticed the message
+  "server cheating in read reply: count 813 > recvd 0"
+
+Here is the syslog output:
+NFS: read(//813_bytes, 262144@0)
+NFS: nfs_readpage (ffffea001db1e898 4096@0)
+NFS:     0 initiated read call (req 0:33/70, 813 bytes @ offset 0)
+RPC:       new task initialized, procpid 9881
+RPC:       allocated task ffff88105dacabf8
+RPC:  1631 __rpc_execute flags=0x1
+<-- nfs4_setup_sequence status=0
+RPC:  1631 call_start nfs4 proc READ (async)
+RPC:  1631 call_reserve (status 0)
+RPC:  1631 reserved req ffff88085e641c00 xid 3f6a89a6
+RPC:  1631 call_reserveresult (status 0)
+RPC:  1631 call_refresh (status 0)
+RPC:  1631 refreshing UNIX cred ffff88087c2108c0
+RPC:  1631 call_refreshresult (status 0)
+RPC:  1631 call_allocate (status 0)
+RPC:       xprt_rdma_allocate: size 684, request 0xffff88084a342000
+RPC:  1631 call_bind (status 0)
+RPC:  1631 call_connect xprt ffff88085f297000 is connected
+RPC:  1631 call_transmit (status 0)
+RPC:  1631 xprt_prepare_transmit
+RPC:  1631 xprt_cwnd_limited cong = 0 cwnd = 4096
+RPC:  1631 rpc_xdr_encode (status 0)
+RPC:  1631 marshaling UNIX cred ffff88087c2108c0
+RPC:  1631 using AUTH_UNIX cred ffff88087c2108c0 to wrap rpc data
+RPC:  1631 xprt_transmit(144)
+RPC:       rpcrdma_inline_pullup: pad 0 destp 0xffff88084a3437f0 len 144
+hdrlen 144
+RPC:       rpcrdma_register_frmr_external: Using frmr ffff88084b612d10
+to map 1 segments
+RPC:       rpcrdma_create_chunks: write chunk elem
+813@0x87bf95000:0x8a905 (more)
+RPC:       rpcrdma_register_frmr_external: Using frmr ffff88084b612d38
+to map 1 segments
+RPC:       rpcrdma_create_chunks: write chunk elem
+152@0x84a343974:0x8aa01 (last)
+RPC:       rpcrdma_marshal_req: write chunk: hdrlen 68 rpclen 144 padlen
+0 headerp 0xffff88084a343100 base 0xffff88084a343760 lkey 0x8000
+RPC:       rpcrdma_event_process: event rep ffff88084b612d10 status 0
+opcode 8 length 4294936584
+RPC:       rpcrdma_event_process: event rep ffff88084b612d38 status 0
+opcode 8 length 4294936584
+RPC:  1631 xmit complete
+RPC:  1631 sleep_on(queue "xprt_pending" time 4296115067)
+RPC:  1631 added to queue ffff88085f297258 "xprt_pending"
+RPC:  1631 setting alarm for 90000 ms
+RPC:       wake_up_first(ffff88085f297190 "xprt_sending")
+RPC:       rpcrdma_event_process: event rep ffff88085e8bf000 status 0
+opcode 80 length 128
+RPC:       rpcrdma_reply_handler: reply 0xffff88085e8bf000 completes
+request 0xffff88084a342000
+                   RPC request 0xffff88085e641c00 xid 0xa6896a3f
+RPC:       rpcrdma_count_chunks: chunk 813@0x87bf95000:0x8a905
+RPC:       rpcrdma_count_chunks: chunk 3@0x84a343974:0x8aa01
+RPC:       rpcrdma_inline_fixup: srcp 0xffff88085e8bf0a4 len 60 hdrlen 60
+RPC:       rpcrdma_reply_handler: xprt_complete_rqst(0xffff88085f297000,
+0xffff88085e641c00, 876)
+RPC:  1631 xid 3f6a89a6 complete (876 bytes received)
+RPC:  1631 __rpc_wake_up_task (now 4296115067)
+RPC:  1631 disabling timer
+RPC:  1631 removed from queue ffff88085f297258 "xprt_pending"
+RPC:       __rpc_wake_up_task done
+RPC:  1631 __rpc_execute flags=0x801
+RPC:  1631 call_status (status 876)
+RPC:  1631 call_decode (status 876)
+RPC:  1631 validating UNIX cred ffff88087c2108c0
+RPC:  1631 using AUTH_UNIX cred ffff88087c2108c0 to unwrap rpc data
+NFS: server cheating in read reply: count 813 > recvd 0
+RPC:  1631 call_decode result 0
+NFS: nfs_readpage_result:  1631, (status 0)
+--> nfs4_read_done
+
+Adding other debug prints to the kernel module told me that
+buf->page_len is set to 0 in xdr_align_pages (in file net/sunrpc/xdr.c).
+Comparing this piece of code with older kernel versions showed that the
+comparison with buf->page_len was introduces in kernel 3.7.
+By disabling this check the file transfer seems to work.
+
+Here is the patch for kernel 3.10.17:
+
+--- net/sunrpc/xdr.c	2013-10-18 19:44:19.000000000 +0200
++++ net/sunrpc/xdr_new.c	2013-11-08 14:06:00.241217773 +0100
+@@ -747,7 +747,7 @@
+ 		nwords = xdr->nwords;
+ 		len = nwords << 2;
+ 	}
+-	if (buf->page_len <= len)
++	if (buf->page_len && buf->page_len <= len)
+ 		len = buf->page_len;
+ 	else if (nwords < xdr->nwords) {
+ 		/* Truncate page data and move it into the tail */
+
+
+Can you please tell me which entity sets (or does not set) the total
+length (buf->page_len) after receiving the data from the RDMA_SEND
+operation from the server?
+
+Please advise
+
+Klemens
