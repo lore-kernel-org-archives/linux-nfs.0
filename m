@@ -1,54 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:27422 "EHLO mx11.netapp.com"
+Received: from mx1.netapp.com ([216.240.18.38]:6552 "EHLO mx1.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751927Ab3KDVAy convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Nov 2013 16:00:54 -0500
+	id S1755903Ab3KHPQg convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Nov 2013 10:16:36 -0500
 From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-CC: Bruce Fields <bfields@fieldses.org>, Steve Dickson <steved@redhat.com>,
-        Jeff Layton <jlayton@redhat.com>,
-        David Quigley <dpquigl@davequigley.com>
-Subject: Re: [PATCH 2/5] NFS: __nfs_revalidate_inode() - use the nfs4_label
- to update file security info
-Date: Mon, 4 Nov 2013 21:00:46 +0000
-Message-ID: <0719A451-70BA-4AF8-8A3F-ECF9A221C5BB@netapp.com>
-References: <1383598272-17737-1-git-send-email-Trond.Myklebust@netapp.com>
- <1383598272-17737-2-git-send-email-Trond.Myklebust@netapp.com>
-In-Reply-To: <1383598272-17737-2-git-send-email-Trond.Myklebust@netapp.com>
-Content-Type: text/plain; charset="Windows-1252"
+To: Steve Dickson <SteveD@redhat.com>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] Adding the nfs4_use_min_auth module parameter
+Date: Fri, 8 Nov 2013 15:16:34 +0000
+Message-ID: <C0AAACC4-B692-4B2B-91D3-6953E4A99B61@netapp.com>
+References: <1383851364-8370-1-git-send-email-steved@redhat.com>
+		 <1383852380.12966.5.camel@leira.trondhjem.org>
+		 <527C0548.1090205@RedHat.com>
+	 <1383860381.12966.37.camel@leira.trondhjem.org>
+	 <527C0CB6.8090308@RedHat.com>
+ <1383863394.12966.63.camel@leira.trondhjem.org>
+ <527CD765.1000903@RedHat.com>
+ <EDB1FCDB-A6B6-4595-A46F-B73AF9FAA990@netapp.com>
+ <527CFE57.9030106@RedHat.com>
+In-Reply-To: <527CFE57.9030106@RedHat.com>
+Content-Type: text/plain; charset=US-ASCII
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Nov 4, 2013, at 15:51, Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+On Nov 8, 2013, at 10:08, Steve Dickson <SteveD@redhat.com> wrote:
 
-> Currently, we just discard the nfs4_label information, instead of using it
-> to update the file LSM security info.
 > 
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+> 
+> On 08/11/13 09:30, Myklebust, Trond wrote:
+>> 
+>> On Nov 8, 2013, at 7:21, Steve Dickson <SteveD@redhat.com> wrote:
+>> 
+>>> 
+>>> 
+>>> On 07/11/13 17:29, Myklebust, Trond wrote:
+>>>>> Again, what servers, today, support this type of secure state establishment?
+>>>>>> Having this type of security in the client I think is good... but if
+>>>>>> the client is not talking with any servers that support this type 
+>>>>>> of security, why not have a way to turn it off?
+>>>> I don't understand. Servers are _required_ to support RPCSEC_GSS with
+>>>> krb5 by both RFC3530 and RFC5661. AUTH_SYS is, in fact, the optional
+>>>> flavour.
+>>> Agreed... 100% of the NFSv4 server have to support RPCSEC_GSS. its mandated
+>>> by the spec(s). 
+>>> 
+>>>> 
+>>>> The problem here is that sometimes kerberos isn't configured by the
+>>>> admin, who then expects that it shouldn't be necessary to run rpc.gssd
+>>>> or rpc.svcgssd. It is necessary because we first try the
+>>>> mandatory-to-implement and secure RPCSEC_GSS/krb5i flavour before
+>>>> falling back to the less secure AUTH_SYS...
+>>> Sometimes? Its generally not.. from my experience... 
+>>> 
+>>> Basically how I interpret this last paragraph, is we will be requiring 
+>>> admins set up secure mounts for them to avoid the 15sec delay mount
+>>> times... aka... running a daemon that will say "no, no there is no 
+>>> security here" while spewing of log messages when Kerberos is not setup...
+>> 
+>> No. All we are requiring is that they run rpc.gssd.
+> Even when they do not want any secure mounts at all?
+> 
+> What is that justification?
 
-I forgot to add a "Reported-by: Jeff Layton <jlayton@redhat.com>”. Fixed now...
+They get to skip a 15 second wait without having to blacklist the krb5 module.
 
-> ---
-> fs/nfs/inode.c | 1 +
-> 1 file changed, 1 insertion(+)
-> 
-> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-> index 471ba59c42f9..09d4df5f588a 100644
-> --- a/fs/nfs/inode.c
-> +++ b/fs/nfs/inode.c
-> @@ -920,6 +920,7 @@ __nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
-> 		goto err_out;
-> 	}
-> 
-> +	nfs_setsecurity(inode, fattr, label);
-> 	if (nfsi->cache_validity & NFS_INO_INVALID_ACL)
-> 		nfs_zap_acl_cache(inode);
-> 
-> -- 
-> 1.8.3.1
-> 
+So, this is what I mean when I say that we _might_ need a mount option to specify the security flavour that the client uses for the lease. It solves the problem that Bruce mentioned about what to do when krb5i fails, and it allows admins to not have to run rpc.gssd or blacklist any modules.
+
+Trond
 
 --
 Trond Myklebust
