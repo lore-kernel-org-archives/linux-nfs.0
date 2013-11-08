@@ -1,110 +1,126 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:14491 "EHLO mx11.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:56156 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750900Ab3KMVdh convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Nov 2013 16:33:37 -0500
-From: Weston Andros Adamson <dros@netapp.com>
-To: Jeff Layton <jlayton@redhat.com>
-CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        linux-nfs list <linux-nfs@vger.kernel.org>,
-        Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH v2] nfs: don't retry detect_trunking with RPC_AUTH_UNIX
- more than once
-Date: Wed, 13 Nov 2013 21:33:36 +0000
-Message-ID: <72CA86AD-5543-43C8-A736-3D4118B0824B@netapp.com>
-References: <1384351701-29572-1-git-send-email-jlayton@redhat.com>
- <EBCF8527-3031-4BFE-9559-9CAF50C4633D@netapp.com>
- <20131113161207.76c216fe@tlielax.poochiereds.net>
-In-Reply-To: <20131113161207.76c216fe@tlielax.poochiereds.net>
-Content-Type: text/plain; charset="Windows-1252"
+	id S1757076Ab3KHQjT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 8 Nov 2013 11:39:19 -0500
+Date: Fri, 8 Nov 2013 11:39:14 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: Jeff Layton <jlayton@redhat.com>, Chuck Lever <chuck.lever@oracle.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] Adding the nfs4_use_min_auth module parameter
+Message-ID: <20131108163913.GF3533@fieldses.org>
+References: <44CA89EA-8B5E-4B83-A622-78A78F760FF1@oracle.com>
+ <527CDBFC.3070903@RedHat.com>
+ <20131108082202.4032f1a2@tlielax.poochiereds.net>
+ <527CFC72.2030907@RedHat.com>
+ <20131108101232.10d49851@tlielax.poochiereds.net>
+ <527D0CE6.2020401@RedHat.com>
+ <20131108161707.GD3533@fieldses.org>
+ <527D0F21.3050200@RedHat.com>
+ <20131108162203.GE3533@fieldses.org>
+ <527D1112.3050903@RedHat.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <527D1112.3050903@RedHat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Nov 13, 2013, at 4:12 PM, Jeff Layton <jlayton@redhat.com> wrote:
-
-> On Wed, 13 Nov 2013 20:48:04 +0000
-> Weston Andros Adamson <dros@netapp.com> wrote:
-> 
->> I tested v2 and everything looks good.
->> 
-> 
-> Thanks for testing it.
-> 
->> Also, it seems like I’m no longer able to reproduce the "NFS: nfs4_discover_server_trunking unhandled error -512. Exiting with error EIO” dmesg.
->> 
->> -dros
->> 
-> 
-> Interesting. I suspect that's due to the fact that we give up retrying
-> quickly enough now that you can't signal it fast enough there. It's
-> still probably reasonable to add in handling for -ERESTARTSYS in that
-> switch statement however. I imagine that it's still possible to race in
-> with a signal at the right time and trigger that message.
-> 
-
-I just realized that I’ve been testing with a locally modified gssd - with the fd leak fix I posted yesterday.  This might have something to do with the gssd hang that when ^C’d will generate the line in dmesg.
-
--dros
-
-
->> On Nov 13, 2013, at 9:08 AM, Jeff Layton <jlayton@redhat.com> wrote:
->> 
->>> Currently, when we try to mount and get back NFS4ERR_CLID_IN_USE or
->>> NFS4ERR_WRONGSEC, we create a new rpc_clnt and then try the call again.
->>> There is no guarantee that doing so will work however, so we can end up
->>> retrying the call in an infinite loop.
->>> 
->>> Worse yet, we create the new client using rpc_clone_client_set_auth,
->>> which creates the new client as a child of the old one. Thus, we can end
->>> up with a *very* long lineage of rpc_clnts. When we go to put all of the
->>> references to them, we can end up with a long call chain that can smash
->>> the stack as each rpc_free_client() call can recurse back into itself.
->>> 
->>> This patch fixes this by simply ensuring that the SETCLIENTID call will
->>> only be retried in this situation if the last attempt did not use
->>> RPC_AUTH_UNIX.
->>> 
->>> Note too that with this change, we don't need the (i > 2) check in the
->>> -EACCES case since we now have a more reliable test as to whether we
->>> should reattempt.
->>> 
->>> Cc: stable@vger.kernel.org # v3.10+
->>> Cc: Chuck Lever <chuck.lever@oracle.com>
->>> Tested-by/Acked-by: Weston Andros Adamson <dros@netapp.com>
->>> Signed-off-by: Jeff Layton <jlayton@redhat.com>
->>> ---
->>> fs/nfs/nfs4state.c | 7 ++++++-
->>> 1 file changed, 6 insertions(+), 1 deletion(-)
->>> 
->>> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
->>> index c8e729d..6f04706 100644
->>> --- a/fs/nfs/nfs4state.c
->>> +++ b/fs/nfs/nfs4state.c
->>> @@ -2093,10 +2093,15 @@ again:
->>> 			nfs4_root_machine_cred(clp);
->>> 			goto again;
->>> 		}
->>> -		if (i > 2)
->>> +		if (clnt->cl_auth->au_flavor == RPC_AUTH_UNIX)
->>> 			break;
->>> 	case -NFS4ERR_CLID_INUSE:
->>> 	case -NFS4ERR_WRONGSEC:
->>> +		/* No point in retrying if we already used RPC_AUTH_UNIX */
->>> +		if (clnt->cl_auth->au_flavor == RPC_AUTH_UNIX) {
->>> +			status = -EPERM;
->>> +			break;
->>> +		}
->>> 		clnt = rpc_clone_client_set_auth(clnt, RPC_AUTH_UNIX);
->>> 		if (IS_ERR(clnt)) {
->>> 			status = PTR_ERR(clnt);
->>> -- 
->>> 1.8.3.1
->>> 
->> 
+On Fri, Nov 08, 2013 at 11:28:02AM -0500, Steve Dickson wrote:
 > 
 > 
-> -- 
-> Jeff Layton <jlayton@redhat.com>
+> On 08/11/13 11:22, J. Bruce Fields wrote:
+> > On Fri, Nov 08, 2013 at 11:19:45AM -0500, Steve Dickson wrote:
+> >>
+> >>
+> >> On 08/11/13 11:17, J. Bruce Fields wrote:
+> >>> On Fri, Nov 08, 2013 at 11:10:14AM -0500, Steve Dickson wrote:
+> >>>>
+> >>>>
+> >>>> On 08/11/13 10:12, Jeff Layton wrote:
+> >>>>> On Fri, 08 Nov 2013 10:00:02 -0500
+> >>>>> Steve Dickson <SteveD@redhat.com> wrote:
+> >>>>>
+> >>>>>>
+> >>>>>>
+> >>>>>> On 08/11/13 08:22, Jeff Layton wrote:
+> >>>>>>> On Fri, 08 Nov 2013 07:41:32 -0500
+> >>>>>>> Steve Dickson <SteveD@redhat.com> wrote:
+> >>>>>>>
+> >>>>>>>>
+> >>>>>>>>
+> >>>>>>>> On 07/11/13 18:05, Chuck Lever wrote:
+> >>>>>>>>>
+> >>>>>>>>> On Nov 7, 2013, at 1:35 PM, Steve Dickson <SteveD@redhat.com> wrote:
+> >>>>>>>>>
+> >>>>>>>>>> Hey mrchuck... 
+> >>>>>>>>>>
+> >>>>>>>>>> On 07/11/13 14:25, Chuck Lever wrote:
+> >>>>>>>>>>> Hi Steve-
+> >>>>>>>>>>>
+> >>>>>>>>>>> On Nov 7, 2013, at 11:09 AM, Steve Dickson <steved@redhat.com> wrote:
+> >>>>>>>>>>>
+> >>>>>>>>>>>> This new module parameter makes the v4 client
+> >>>>>>>>>>>> use the minimal authentication flavor (AUTH_UNIX)
+> >>>>>>>>>>>> when establishing NFSV4 state and doing the
+> >>>>>>>>>>>> pseudoroot lookup
+> >>>>>>>>>>>
+> >>>>>>>>>>> The patch description doesn't say, but is this change to work 
+> >>>>>>>>>>> around the 15 second GSSD upcall timeout? 
+> >>>>>>>>>> Yes. A 15 second delay on every mount due to security that
+> >>>>>>>>>> nobody is requesting is just not good.. IMHO..
+> >>>>>>>>>
+> >>>>>>>>> One thing we haven't discussed is reducing the upcall timeout to 5 seconds or less, 
+> >>>>>>>>> as a form of immediate relief.  15 seconds is arbitrary, and is onerous even when 
+> >>>>>>>>> you expect the mount to work (ie why would it be good for any properly configured 
+> >>>>>>>>> environment to take 15 seconds to establish a GSS context?).
+> >>>>>>>>>
+> >>>>>>>>> In other words, there are still cases where users wait 15 seconds unnecessarily, 
+> >>>>>>>>> and not because of the use of krb5i for lease management.  Aren't those of concern?
+> >>>>>>>> No. I think the concern here, at least my concern, is the lack of management.
+> >>>>>>>> We are forcing admins to use krb5i in lease management when its not necessary
+> >>>>>>>> and there is no way to turn it off.
+> >>>>>>>>   
+> >>>>>>>
+> >>>>>>> I don't think that's really the case. The idea was to have the client
+> >>>>>>> attempt to use krb5i if it's available, and then to fall back to
+> >>>>>>> AUTH_SYS if it isn't. This would be *absolutely* no big deal if the
+> >>>>>>> GSSAPI upcall succeeded or failed immediately instead of requiring this
+> >>>>>>> timeout when the daemon isn't running.
+> >>>>>> What server makes krb5i available today in state setup and pseudoroot lookups?
+> >>>>>>
+> >>>>>
+> >>>>> That I don't know...sorry...
+> >>>> Then what is the justification to take all these extra steps
+> >>>> there they going to fail %100 of the time??
+> >>>
+> >>> Any server can support krb5 for state setup and pseudoroot operations if
+> >>> it's configured.  This isn't a problem.
+> >> Would is this done on a Linux server? Is there a wiki?
+> > 
+> > It's allowed by default, there should be nothing to configure beyond the
+> > usual krb5 setup.
+> Great! So you are saying when rpc.gssd is up and  Kerberos is correctly 
+> configured on both the server and client the state setup and pseudoroot
+> become secured? 
 
+Yes.
+
+There's one possible exception: I think mountd currently may not allow
+krb5 on the pseudoroot if it's not allowed on some export?
+
+We could fix that if it's a problem here.  (I don't think it is, because
+a client mounting with auth_sys will fall back on auth_sys in this case,
+and a client mounting with sec=krb5 is going to fail eventually anyway.)
+
+The server will allow state setup regardless.
+
+> And this is the case with other non-Linux servers? 
+
+Yes, the client's always used krb5 for all that setup at least in the
+case where the first mount uses sec=krb5.  And we test that at
+connectathon/bakeathon, and it's probably one of the first things anyone
+writing new gss support for a server would try.
+
+--b.
