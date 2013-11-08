@@ -1,54 +1,129 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:14541 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751428Ab3K0PCe convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Nov 2013 10:02:34 -0500
-From: Weston Andros Adamson <dros@netapp.com>
-To: Albert Fluegel <af@muc.de>
-CC: linux-nfs list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v2] NFSv4: fix getacl ERANGE for some ACL buffer sizes
-Date: Wed, 27 Nov 2013 15:02:33 +0000
-Message-ID: <894EFA1F-C576-4A36-8589-9B645E0742BF@netapp.com>
-References: <20131127084300.GA37104@colin.muc.de>
-In-Reply-To: <20131127084300.GA37104@colin.muc.de>
-Content-Type: text/plain; charset="Windows-1252"
-MIME-Version: 1.0
+Received: from aserp1040.oracle.com ([141.146.126.69]:41769 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757037Ab3KHSMy convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 8 Nov 2013 13:12:54 -0500
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 6.6 \(1510\))
+Subject: Re: [PATCH] Adding the nfs4_use_min_auth module parameter
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20131108163913.GF3533@fieldses.org>
+Date: Fri, 8 Nov 2013 10:12:43 -0800
+Cc: Steve Dickson <SteveD@redhat.com>, Jeff Layton <jlayton@redhat.com>,
+        Trond Myklebust <Trond.Myklebust@netapp.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Message-Id: <7D9C2526-24F7-4B56-8DBF-696E8BA261C3@oracle.com>
+References: <44CA89EA-8B5E-4B83-A622-78A78F760FF1@oracle.com> <527CDBFC.3070903@RedHat.com> <20131108082202.4032f1a2@tlielax.poochiereds.net> <527CFC72.2030907@RedHat.com> <20131108101232.10d49851@tlielax.poochiereds.net> <527D0CE6.2020401@RedHat.com> <20131108161707.GD3533@fieldses.org> <527D0F21.3050200@RedHat.com> <20131108162203.GE3533@fieldses.org> <527D1112.3050903@RedHat.com> <20131108163913.GF3533@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I’ll update the bugzilla and ask redhat to backport this once it’s accepted by Trond.
 
--dros
+On Nov 8, 2013, at 8:39 AM, "J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-On Nov 27, 2013, at 3:43 AM, Albert Fluegel <af@muc.de> wrote:
+> On Fri, Nov 08, 2013 at 11:28:02AM -0500, Steve Dickson wrote:
+>> 
+>> 
+>> On 08/11/13 11:22, J. Bruce Fields wrote:
+>>> On Fri, Nov 08, 2013 at 11:19:45AM -0500, Steve Dickson wrote:
+>>>> 
+>>>> 
+>>>> On 08/11/13 11:17, J. Bruce Fields wrote:
+>>>>> On Fri, Nov 08, 2013 at 11:10:14AM -0500, Steve Dickson wrote:
+>>>>>> 
+>>>>>> 
+>>>>>> On 08/11/13 10:12, Jeff Layton wrote:
+>>>>>>> On Fri, 08 Nov 2013 10:00:02 -0500
+>>>>>>> Steve Dickson <SteveD@redhat.com> wrote:
+>>>>>>> 
+>>>>>>>> 
+>>>>>>>> 
+>>>>>>>> On 08/11/13 08:22, Jeff Layton wrote:
+>>>>>>>>> On Fri, 08 Nov 2013 07:41:32 -0500
+>>>>>>>>> Steve Dickson <SteveD@redhat.com> wrote:
+>>>>>>>>> 
+>>>>>>>>>> 
+>>>>>>>>>> 
+>>>>>>>>>> On 07/11/13 18:05, Chuck Lever wrote:
+>>>>>>>>>>> 
+>>>>>>>>>>> On Nov 7, 2013, at 1:35 PM, Steve Dickson <SteveD@redhat.com> wrote:
+>>>>>>>>>>> 
+>>>>>>>>>>>> Hey mrchuck... 
+>>>>>>>>>>>> 
+>>>>>>>>>>>> On 07/11/13 14:25, Chuck Lever wrote:
+>>>>>>>>>>>>> Hi Steve-
+>>>>>>>>>>>>> 
+>>>>>>>>>>>>> On Nov 7, 2013, at 11:09 AM, Steve Dickson <steved@redhat.com> wrote:
+>>>>>>>>>>>>> 
+>>>>>>>>>>>>>> This new module parameter makes the v4 client
+>>>>>>>>>>>>>> use the minimal authentication flavor (AUTH_UNIX)
+>>>>>>>>>>>>>> when establishing NFSV4 state and doing the
+>>>>>>>>>>>>>> pseudoroot lookup
+>>>>>>>>>>>>> 
+>>>>>>>>>>>>> The patch description doesn't say, but is this change to work 
+>>>>>>>>>>>>> around the 15 second GSSD upcall timeout? 
+>>>>>>>>>>>> Yes. A 15 second delay on every mount due to security that
+>>>>>>>>>>>> nobody is requesting is just not good.. IMHO..
+>>>>>>>>>>> 
+>>>>>>>>>>> One thing we haven't discussed is reducing the upcall timeout to 5 seconds or less, 
+>>>>>>>>>>> as a form of immediate relief.  15 seconds is arbitrary, and is onerous even when 
+>>>>>>>>>>> you expect the mount to work (ie why would it be good for any properly configured 
+>>>>>>>>>>> environment to take 15 seconds to establish a GSS context?).
+>>>>>>>>>>> 
+>>>>>>>>>>> In other words, there are still cases where users wait 15 seconds unnecessarily, 
+>>>>>>>>>>> and not because of the use of krb5i for lease management.  Aren't those of concern?
+>>>>>>>>>> No. I think the concern here, at least my concern, is the lack of management.
+>>>>>>>>>> We are forcing admins to use krb5i in lease management when its not necessary
+>>>>>>>>>> and there is no way to turn it off.
+>>>>>>>>>> 
+>>>>>>>>> 
+>>>>>>>>> I don't think that's really the case. The idea was to have the client
+>>>>>>>>> attempt to use krb5i if it's available, and then to fall back to
+>>>>>>>>> AUTH_SYS if it isn't. This would be *absolutely* no big deal if the
+>>>>>>>>> GSSAPI upcall succeeded or failed immediately instead of requiring this
+>>>>>>>>> timeout when the daemon isn't running.
+>>>>>>>> What server makes krb5i available today in state setup and pseudoroot lookups?
+>>>>>>>> 
+>>>>>>> 
+>>>>>>> That I don't know...sorry...
+>>>>>> Then what is the justification to take all these extra steps
+>>>>>> there they going to fail %100 of the time??
+>>>>> 
+>>>>> Any server can support krb5 for state setup and pseudoroot operations if
+>>>>> it's configured.  This isn't a problem.
+>>>> Would is this done on a Linux server? Is there a wiki?
+>>> 
+>>> It's allowed by default, there should be nothing to configure beyond the
+>>> usual krb5 setup.
+>> Great! So you are saying when rpc.gssd is up and  Kerberos is correctly 
+>> configured on both the server and client the state setup and pseudoroot
+>> become secured? 
+> 
+> Yes.
+> 
+> There's one possible exception: I think mountd currently may not allow
+> krb5 on the pseudoroot if it's not allowed on some export?
 
-> Hi,
+See earlier e-mail:  pseudo-fs access is done using the mount's specified security flavor, not by the lease management security flavor.
+
+> We could fix that if it's a problem here.  (I don't think it is, because
+> a client mounting with auth_sys will fall back on auth_sys in this case,
+> and a client mounting with sec=krb5 is going to fail eventually anyway.)
 > 
-> sorry, i missed and deleted this posting from Weston Andros Adamson:
-> http://www.spinics.net/lists/linux-nfs/msg40622.html
-> so i cannot directly reply anymore. Apologies for messing up the mail
-> threads a bit.
+> The server will allow state setup regardless.
+
+Correct.
+
+>> And this is the case with other non-Linux servers? 
 > 
-> I reported this issue to Redhat 2012-10-25, please see here:
-> https://bugzilla.redhat.com/show_bug.cgi?id=869942
-> and suggested a fix. I'd greatly appreciate, if someone could confirm
-> to Redhat, that the problem and the approach to fix that is basically the
-> same, so they'll hopefully backport the patch.
-> 
-> Thank you very much,
-> Albert
-> 
-> -- 
-> Albert Flügel
-> Lindwurmstraße 51
-> 80337 München
-> Telefon: +49-89-2010895
-> Telefon: +49-170-5665444
-> E-Mail: af@muc.de
-> ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-> ~~~~~~~~~~~~ jslwkerbiS4kjaZoifUSDfaworu394kjKLw728K2L1NlwkNSD8 ~~~~~~~~~~~~~
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Yes, the client's always used krb5 for all that setup at least in the
+> case where the first mount uses sec=krb5.  And we test that at
+> connectathon/bakeathon, and it's probably one of the first things anyone
+> writing new gss support for a server would try.
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
 
