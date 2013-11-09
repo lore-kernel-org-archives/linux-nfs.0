@@ -1,161 +1,162 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:33875 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752550Ab3KOWba convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Nov 2013 17:31:30 -0500
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.6 \(1510\))
-Subject: Re: NFS over RDMA stops working for data larger than 812 Bytes
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <4673A7C9-3424-48F4-B64C-976EFE16017C@netapp.com>
-Date: Fri, 15 Nov 2013 17:31:22 -0500
-Cc: Klemens Senn <klemens.senn@ims.co.at>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <F3A43D4C-2A30-44AC-ABDA-E66F5F4AA719@oracle.com>
-References: <24663A6D-A54A-441B-880E-BB7FD6BBB3F2@oracle.com> <4673A7C9-3424-48F4-B64C-976EFE16017C@netapp.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Received: from mx12.netapp.com ([216.240.18.77]:18397 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751325Ab3KISUP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 9 Nov 2013 13:20:15 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH] SUNRPC: Fix a data corruption issue when retransmitting RPC calls
+Date: Sat, 9 Nov 2013 13:20:09 -0500
+Message-ID: <1384021209-2586-1-git-send-email-Trond.Myklebust@netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+The following scenario can cause silent data corruption when doing
+NFS writes. It has mainly been observed when doing database writes
+using O_DIRECT.
 
-On Nov 15, 2013, at 5:29 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+1) The RPC client uses sendpage() to do zero-copy of the page data.
+2) Due to networking issues, the reply from the server is delayed,
+   and so the RPC client times out.
 
-> 
-> On Nov 15, 2013, at 16:39, Chuck Lever <chuck.lever@oracle.com> wrote:
-> 
->> Hi Trond-
->> 
->> Klemens Senn <klemens.senn@ims.co.at> says:
->>> Hi,
->>> 
->>> I started setting up NFS over RDMA on a OpenSUSE 12.3 machine using the
->>> 3.7.10-1.16-default kernel.
->>> Mounting the NFS share works and getting a file with 812 Bytes succeeds.
->>> Reading 813 Bytes raises a Input/output error.
->>> 
->>> The export on the server side is done with
->>> /data
->>> 172.16.100.0/24(rw,wdelay,crossmnt,insecure,no_root_squash,no_subtree_check,fsid=0,mountpoint)
->>> 
->>> Following command is used for mounting the NFSv4 share:
->>> mount -t nfs -o port=20049,rdma,vers=4.0,timeo=900 172.16.100.2:/ /mnt/
->>> 
->>> Testing the client side with older kernels stated that the mount is
->>> working properly with the 3.4.67 kernel. I continued testing with the
->>> 3.10.17 kernel and enabled the debug level and noticed the message
->>> "server cheating in read reply: count 813 > recvd 0"
->>> 
->>> Here is the syslog output:
->>> NFS: read(//813_bytes, 262144@0)
->>> NFS: nfs_readpage (ffffea001db1e898 4096@0)
->>> NFS:     0 initiated read call (req 0:33/70, 813 bytes @ offset 0)
->>> RPC:       new task initialized, procpid 9881
->>> RPC:       allocated task ffff88105dacabf8
->>> RPC:  1631 __rpc_execute flags=0x1
->>> <-- nfs4_setup_sequence status=0
->>> RPC:  1631 call_start nfs4 proc READ (async)
->>> RPC:  1631 call_reserve (status 0)
->>> RPC:  1631 reserved req ffff88085e641c00 xid 3f6a89a6
->>> RPC:  1631 call_reserveresult (status 0)
->>> RPC:  1631 call_refresh (status 0)
->>> RPC:  1631 refreshing UNIX cred ffff88087c2108c0
->>> RPC:  1631 call_refreshresult (status 0)
->>> RPC:  1631 call_allocate (status 0)
->>> RPC:       xprt_rdma_allocate: size 684, request 0xffff88084a342000
->>> RPC:  1631 call_bind (status 0)
->>> RPC:  1631 call_connect xprt ffff88085f297000 is connected
->>> RPC:  1631 call_transmit (status 0)
->>> RPC:  1631 xprt_prepare_transmit
->>> RPC:  1631 xprt_cwnd_limited cong = 0 cwnd = 4096
->>> RPC:  1631 rpc_xdr_encode (status 0)
->>> RPC:  1631 marshaling UNIX cred ffff88087c2108c0
->>> RPC:  1631 using AUTH_UNIX cred ffff88087c2108c0 to wrap rpc data
->>> RPC:  1631 xprt_transmit(144)
->>> RPC:       rpcrdma_inline_pullup: pad 0 destp 0xffff88084a3437f0 len 144
->>> hdrlen 144
->>> RPC:       rpcrdma_register_frmr_external: Using frmr ffff88084b612d10
->>> to map 1 segments
->>> RPC:       rpcrdma_create_chunks: write chunk elem
->>> 813@0x87bf95000:0x8a905 (more)
->>> RPC:       rpcrdma_register_frmr_external: Using frmr ffff88084b612d38
->>> to map 1 segments
->>> RPC:       rpcrdma_create_chunks: write chunk elem
->>> 152@0x84a343974:0x8aa01 (last)
->>> RPC:       rpcrdma_marshal_req: write chunk: hdrlen 68 rpclen 144 padlen
->>> 0 headerp 0xffff88084a343100 base 0xffff88084a343760 lkey 0x8000
->>> RPC:       rpcrdma_event_process: event rep ffff88084b612d10 status 0
->>> opcode 8 length 4294936584
->>> RPC:       rpcrdma_event_process: event rep ffff88084b612d38 status 0
->>> opcode 8 length 4294936584
->>> RPC:  1631 xmit complete
->>> RPC:  1631 sleep_on(queue "xprt_pending" time 4296115067)
->>> RPC:  1631 added to queue ffff88085f297258 "xprt_pending"
->>> RPC:  1631 setting alarm for 90000 ms
->>> RPC:       wake_up_first(ffff88085f297190 "xprt_sending")
->>> RPC:       rpcrdma_event_process: event rep ffff88085e8bf000 status 0
->>> opcode 80 length 128
->>> RPC:       rpcrdma_reply_handler: reply 0xffff88085e8bf000 completes
->>> request 0xffff88084a342000
->>>                 RPC request 0xffff88085e641c00 xid 0xa6896a3f
->>> RPC:       rpcrdma_count_chunks: chunk 813@0x87bf95000:0x8a905
->>> RPC:       rpcrdma_count_chunks: chunk 3@0x84a343974:0x8aa01
->>> RPC:       rpcrdma_inline_fixup: srcp 0xffff88085e8bf0a4 len 60 hdrlen 60
->>> RPC:       rpcrdma_reply_handler: xprt_complete_rqst(0xffff88085f297000,
->>> 0xffff88085e641c00, 876)
->>> RPC:  1631 xid 3f6a89a6 complete (876 bytes received)
->>> RPC:  1631 __rpc_wake_up_task (now 4296115067)
->>> RPC:  1631 disabling timer
->>> RPC:  1631 removed from queue ffff88085f297258 "xprt_pending"
->>> RPC:       __rpc_wake_up_task done
->>> RPC:  1631 __rpc_execute flags=0x801
->>> RPC:  1631 call_status (status 876)
->>> RPC:  1631 call_decode (status 876)
->>> RPC:  1631 validating UNIX cred ffff88087c2108c0
->>> RPC:  1631 using AUTH_UNIX cred ffff88087c2108c0 to unwrap rpc data
->>> NFS: server cheating in read reply: count 813 > recvd 0
->>> RPC:  1631 call_decode result 0
->>> NFS: nfs_readpage_result:  1631, (status 0)
->>> --> nfs4_read_done
->>> 
->>> Adding other debug prints to the kernel module told me that
->>> buf->page_len is set to 0 in xdr_align_pages (in file net/sunrpc/xdr.c).
->>> Comparing this piece of code with older kernel versions showed that the
->>> comparison with buf->page_len was introduces in kernel 3.7.
->>> By disabling this check the file transfer seems to work.
->>> 
->>> Here is the patch for kernel 3.10.17:
->>> 
->>> --- net/sunrpc/xdr.c	2013-10-18 19:44:19.000000000 +0200
->>> +++ net/sunrpc/xdr_new.c	2013-11-08 14:06:00.241217773 +0100
->>> @@ -747,7 +747,7 @@
->>> 		nwords = xdr->nwords;
->>> 		len = nwords << 2;
->>> 	}
->>> -	if (buf->page_len <= len)
->>> +	if (buf->page_len && buf->page_len <= len)
->>> 		len = buf->page_len;
->>> 	else if (nwords < xdr->nwords) {
->>> 		/* Truncate page data and move it into the tail */
->>> 
->>> 
->>> Can you please tell me which entity sets (or does not set) the total
->>> length (buf->page_len) after receiving the data from the RDMA_SEND
->>> operation from the server?
->>> 
->>> Please advise
->>> 
->>> Klemens
->> 
->> Comparing xdr_align_pages() before commit a11a2bf4 and afterwords, it appears that it no longer handles cases where buf->page_len == 0 the same way it used to.  xdr_align_pages() would never return zero unless xdr->nwords was zero.
-> 
-> Why would the buf->page_len == 0 in a READ call? Has RDMA been relying on some kind of undocumented behaviour?
+3) The client issues a second sendpage of the page data as part of
+   an RPC call retransmission.
 
-See rpcrdma_inline_fixup().
+4) The reply to the first transmission arrives from the server
+   _before_ the client hardware has emptied the TCP socket send
+   buffer.
+5) After processing the reply, the RPC state machine rules that
+   the call to be done, and triggers the completion callbacks.
+6) The application notices the RPC call is done, and reuses the
+   pages to store something else (e.g. a new write).
 
+7) The client NIC drains the TCP socket send buffer. Since the
+   page data has now changed, it reads a corrupted version of the
+   initial RPC call, and puts it on the wire.
+
+This patch fixes the problem in the following manner:
+
+The ordering guarantees of TCP ensure that when the server sends a
+reply, then we know that the _first_ transmission has completed. Using
+zero-copy in that situation is therefore safe.
+If a time out occurs, we then send the retransmission using sendmsg()
+(i.e. no zero-copy), We then know that the socket contains a full copy of
+the data, and so it will retransmit a faithful reproduction even if the
+RPC call completes, and the application reuses the O_DIRECT buffer in
+the meantime.
+
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: stable@vger.kernel.org
+---
+ net/sunrpc/xprtsock.c | 28 +++++++++++++++++++++-------
+ 1 file changed, 21 insertions(+), 7 deletions(-)
+
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 17c88928b7db..dd9d295813cf 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -393,8 +393,10 @@ static int xs_send_kvec(struct socket *sock, struct sockaddr *addr, int addrlen,
+ 	return kernel_sendmsg(sock, &msg, NULL, 0, 0);
+ }
+ 
+-static int xs_send_pagedata(struct socket *sock, struct xdr_buf *xdr, unsigned int base, int more)
++static int xs_send_pagedata(struct socket *sock, struct xdr_buf *xdr, unsigned int base, int more, bool zerocopy)
+ {
++	ssize_t (*do_sendpage)(struct socket *sock, struct page *page,
++			int offset, size_t size, int flags);
+ 	struct page **ppage;
+ 	unsigned int remainder;
+ 	int err, sent = 0;
+@@ -403,6 +405,9 @@ static int xs_send_pagedata(struct socket *sock, struct xdr_buf *xdr, unsigned i
+ 	base += xdr->page_base;
+ 	ppage = xdr->pages + (base >> PAGE_SHIFT);
+ 	base &= ~PAGE_MASK;
++	do_sendpage = sock->ops->sendpage;
++	if (!zerocopy)
++		do_sendpage = sock_no_sendpage;
+ 	for(;;) {
+ 		unsigned int len = min_t(unsigned int, PAGE_SIZE - base, remainder);
+ 		int flags = XS_SENDMSG_FLAGS;
+@@ -410,7 +415,7 @@ static int xs_send_pagedata(struct socket *sock, struct xdr_buf *xdr, unsigned i
+ 		remainder -= len;
+ 		if (remainder != 0 || more)
+ 			flags |= MSG_MORE;
+-		err = sock->ops->sendpage(sock, *ppage, base, len, flags);
++		err = do_sendpage(sock, *ppage, base, len, flags);
+ 		if (remainder == 0 || err != len)
+ 			break;
+ 		sent += err;
+@@ -431,9 +436,10 @@ static int xs_send_pagedata(struct socket *sock, struct xdr_buf *xdr, unsigned i
+  * @addrlen: UDP only -- length of destination address
+  * @xdr: buffer containing this request
+  * @base: starting position in the buffer
++ * @zerocopy: true if it is safe to use sendpage()
+  *
+  */
+-static int xs_sendpages(struct socket *sock, struct sockaddr *addr, int addrlen, struct xdr_buf *xdr, unsigned int base)
++static int xs_sendpages(struct socket *sock, struct sockaddr *addr, int addrlen, struct xdr_buf *xdr, unsigned int base, bool zerocopy)
+ {
+ 	unsigned int remainder = xdr->len - base;
+ 	int err, sent = 0;
+@@ -461,7 +467,7 @@ static int xs_sendpages(struct socket *sock, struct sockaddr *addr, int addrlen,
+ 	if (base < xdr->page_len) {
+ 		unsigned int len = xdr->page_len - base;
+ 		remainder -= len;
+-		err = xs_send_pagedata(sock, xdr, base, remainder != 0);
++		err = xs_send_pagedata(sock, xdr, base, remainder != 0, zerocopy);
+ 		if (remainder == 0 || err != len)
+ 			goto out;
+ 		sent += err;
+@@ -564,7 +570,7 @@ static int xs_local_send_request(struct rpc_task *task)
+ 			req->rq_svec->iov_base, req->rq_svec->iov_len);
+ 
+ 	status = xs_sendpages(transport->sock, NULL, 0,
+-						xdr, req->rq_bytes_sent);
++						xdr, req->rq_bytes_sent, true);
+ 	dprintk("RPC:       %s(%u) = %d\n",
+ 			__func__, xdr->len - req->rq_bytes_sent, status);
+ 	if (likely(status >= 0)) {
+@@ -620,7 +626,7 @@ static int xs_udp_send_request(struct rpc_task *task)
+ 	status = xs_sendpages(transport->sock,
+ 			      xs_addr(xprt),
+ 			      xprt->addrlen, xdr,
+-			      req->rq_bytes_sent);
++			      req->rq_bytes_sent, true);
+ 
+ 	dprintk("RPC:       xs_udp_send_request(%u) = %d\n",
+ 			xdr->len - req->rq_bytes_sent, status);
+@@ -693,6 +699,7 @@ static int xs_tcp_send_request(struct rpc_task *task)
+ 	struct rpc_xprt *xprt = req->rq_xprt;
+ 	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
+ 	struct xdr_buf *xdr = &req->rq_snd_buf;
++	bool zerocopy = true;
+ 	int status;
+ 
+ 	xs_encode_stream_record_marker(&req->rq_snd_buf);
+@@ -700,13 +707,20 @@ static int xs_tcp_send_request(struct rpc_task *task)
+ 	xs_pktdump("packet data:",
+ 				req->rq_svec->iov_base,
+ 				req->rq_svec->iov_len);
++	/* Don't use zero copy if this is a resend. If the RPC call
++	 * completes while the socket holds a reference to the pages,
++	 * then we may end up resending corrupted data.
++	 */
++	if (task->tk_flags & RPC_TASK_SENT)
++		zerocopy = false;
+ 
+ 	/* Continue transmitting the packet/record. We must be careful
+ 	 * to cope with writespace callbacks arriving _after_ we have
+ 	 * called sendmsg(). */
+ 	while (1) {
+ 		status = xs_sendpages(transport->sock,
+-					NULL, 0, xdr, req->rq_bytes_sent);
++					NULL, 0, xdr, req->rq_bytes_sent,
++					zerocopy);
+ 
+ 		dprintk("RPC:       xs_tcp_send_request(%u) = %d\n",
+ 				xdr->len - req->rq_bytes_sent, status);
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.8.3.1
 
