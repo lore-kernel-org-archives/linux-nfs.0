@@ -1,137 +1,190 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay.parallels.com ([195.214.232.42]:47069 "EHLO
-	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752940Ab3KOKkc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Nov 2013 05:40:32 -0500
-Message-ID: <5285FA0A.2080802@parallels.com>
-Date: Fri, 15 Nov 2013 14:40:10 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Received: from mx1.netapp.com ([216.240.18.38]:65063 "EHLO mx1.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752147Ab3KJWSE convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 10 Nov 2013 17:18:04 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Charles Edward Lever <chuck.lever@oracle.com>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] SUNRPC: Fix a data corruption issue when retransmitting
+ RPC calls
+Date: Sun, 10 Nov 2013 22:18:01 +0000
+Message-ID: <22DFDC53-6301-4878-B49E-1D061D845062@netapp.com>
+References: <1384021209-2586-1-git-send-email-Trond.Myklebust@netapp.com>
+ <E3F68432-AA7D-4735-A457-6BDE83839AC0@oracle.com>
+In-Reply-To: <E3F68432-AA7D-4735-A457-6BDE83839AC0@oracle.com>
+Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
-To: Jeff Layton <jlayton@redhat.com>
-CC: Greg KH <gregkh@linuxfoundation.org>, <linux-kernel@vger.kernel.org>,
-        <linux-fsdevel@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
-        <devel@openvz.org>, <ebiederm@xmission.com>, <oleg@redhat.com>,
-        <bfields@fieldses.org>, <bharrosh@panasas.com>
-Subject: Re: call_usermodehelper in containers
-References: <20131111071825.62da01d1@tlielax.poochiereds.net>	<20131112004703.GB15377@kroah.com>	<20131112061201.04cf25ab@tlielax.poochiereds.net>	<528226EC.4050701@parallels.com> <20131112083043.0ab78e67@tlielax.poochiereds.net>
-In-Reply-To: <20131112083043.0ab78e67@tlielax.poochiereds.net>
-Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-12.11.2013 17:30, Jeff Layton пишет:
-> On Tue, 12 Nov 2013 17:02:36 +0400
-> Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
->
->> 12.11.2013 15:12, Jeff Layton пишет:
->>> On Mon, 11 Nov 2013 16:47:03 -0800
->>> Greg KH <gregkh@linuxfoundation.org> wrote:
->>>
->>>> On Mon, Nov 11, 2013 at 07:18:25AM -0500, Jeff Layton wrote:
->>>>> We have a bit of a problem wrt to upcalls that use call_usermodehelper
->>>>> with containers and I'd like to bring this to some sort of resolution...
->>>>>
->>>>> A particularly problematic case (though there are others) is the
->>>>> nfsdcltrack upcall. It basically uses call_usermodehelper to run a
->>>>> program in userland to track some information on stable storage for
->>>>> nfsd.
->>>>
->>>> I thought the discussion at the kernel summit about this issue was:
->>>> 	- don't do this.
->>>> 	- don't do it.
->>>> 	- if you really need to do this, fix nfsd
->>>>
->>>
->>> Sorry, I couldn't make the kernel summit so I missed that discussion. I
->>> guess LWN didn't cover it?
->>>
->>> In any case, I guess then that we'll either have to come up with some
->>> way to fix nfsd here, or simply ensure that nfsd can never be started
->>> unless root in the container has a full set of a full set of
->>> capabilities.
->>>
->>> One sort of Rube Goldberg possibility to fix nfsd is:
->>>
->>> - when we start nfsd in a container, fork off an extra kernel thread
->>>     that just sits idle. That thread would need to be a descendant of the
->>>     userland process that started nfsd, so we'd need to create it with
->>>     kernel_thread().
->>>
->>> - Have the kernel just start up the UMH program in the init_ns mount
->>>     namespace as it currently does, but also pass the pid of the idle
->>>     kernel thread to the UMH upcall.
->>>
->>> - The program will then use /proc/<pid>/root and /proc/<pid>/ns/* to set
->>>     itself up for doing things properly.
->>>
->>> Note that with this mechanism we can't actually run a different binary
->>> per container, but that's probably fine for most purposes.
->>>
->>
->> Hmmm... Why we can't? We can go a bit further with userspace idea.
->>
->> We use UMH some very limited number of user programs. For 2, actually:
->> 1) /sbin/nfs_cache_getent
->> 2) /sbin/nfsdcltrack
->>
->
-> No, the kernel uses them for a lot more than that. Pretty much all of
-> the keys API upcalls use it. See all of the callers of
-> call_usermodehelper. All of them are running user binaries out of the
-> kernel, and almost all of them are certainly broken wrt containers.
->
->> If we convert them into proxies, which use /proc/<pid>/root and /proc/<pid>/ns/*, this will allow us to lookup the right binary.
->> The only limitation here is presence of this "proxy" binaries on "host".
->>
->
-> Suppose I spawn my own container as a user, using all of this spiffy
-> new user namespace stuff. Then I make the kernel use
-> call_usermodehelper to call the upcall in the init_ns, and then trick
-> it into running my new "escape_from_namespace" program with "real" root
-> privileges.
->
-> I don't think we can reasonably assume that having the kernel exec an
-> arbitrary binary inside of a container is safe. Doing so inside of the
-> init_ns is marginally more safe, but only marginally so...
->
->> And we don't need any significant changes in kernel.
->>
->> BTW, Jeff, could you remind me, please, why exactly we need to use UMH to run the binary?
->> What are this capabilities, which force us to do so?
->>
->
-> Nothing _forces_ us to do so, but upcalls are very difficult to handle,
-> and UMH has a lot of advantages over a long-running daemon launched by
-> userland.
->
-> Originally, I created the nfsdcltrack upcall as a running daemon called
-> nfsdcld, and the kernel used rpc_pipefs to communicate with it.
->
-> Everyone hated it because no one likes to have to run daemons for
-> infrequently used upcalls. It's a pain for users to ensure that it's
-> running and it's a pain to handle when it isn't. So, I was encouraged
-> to turn that instead into a UMH upcall.
->
-> But leaving that aside, this problem is a lot larger than just nfsd. We
-> have a *lot* of UMH upcalls in the kernel, so this problem is more
-> general than just "fixing" nfsd's.
->
 
-Ok. So we are talking about generic approach to UMH support in a container (and/or namespace).
+On Nov 10, 2013, at 15:33, Chuck Lever <chuck.lever@oracle.com> wrote:
 
-Actually, as far as I can see, there are more that one aspect, which is not supported.
-One one them is executing of the right binary. Another one is capabilities (and maybe there are more, like user namespaces), but I don't really care about them 
-for now.
-Executing the right binary, actually, is not about namespaces at all. This is about lookup implementation in VFS (do_execve_common).
+> 
+> On Nov 9, 2013, at 1:20 PM, Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+> 
+>> The following scenario can cause silent data corruption when doing
+>> NFS writes. It has mainly been observed when doing database writes
+>> using O_DIRECT.
+>> 
+>> 1) The RPC client uses sendpage() to do zero-copy of the page data.
+>> 2) Due to networking issues, the reply from the server is delayed,
+>>  and so the RPC client times out.
+>> 
+>> 3) The client issues a second sendpage of the page data as part of
+>>  an RPC call retransmission.
+>> 
+>> 4) The reply to the first transmission arrives from the server
+>>  _before_ the client hardware has emptied the TCP socket send
+>>  buffer.
+>> 5) After processing the reply, the RPC state machine rules that
+>>  the call to be done, and triggers the completion callbacks.
+>> 6) The application notices the RPC call is done, and reuses the
+>>  pages to store something else (e.g. a new write).
+>> 
+>> 7) The client NIC drains the TCP socket send buffer. Since the
+>>  page data has now changed, it reads a corrupted version of the
+>>  initial RPC call, and puts it on the wire.
+>> 
+>> This patch fixes the problem in the following manner:
+>> 
+>> The ordering guarantees of TCP ensure that when the server sends a
+>> reply, then we know that the _first_ transmission has completed. Using
+>> zero-copy in that situation is therefore safe.
+>> If a time out occurs, we then send the retransmission using sendmsg()
+>> (i.e. no zero-copy), We then know that the socket contains a full copy of
+>> the data, and so it will retransmit a faithful reproduction even if the
+>> RPC call completes, and the application reuses the O_DIRECT buffer in
+>> the meantime.
+> 
+> Clever!
+> 
+> But if wsize is large, the retransmission will require a potentially large contiguous piece of memory to complete a WRITE RPC. In low memory scenarios, that might be hard to come by.  Should be safe for direct I/O, but if this I/O is driven by memory reclaim, it could deadlock.
 
-Would be great to unshare FS for forked UHM kthread and swap it to desired root. This will solve the problem with proper lookup. However, as far as I 
-understand, this approach is not welcome by the community.
+> We see this all the time when using NFS on network devices that do not support scatter/gather (and thus have no sock_sendpage() method to begin with).
 
-This problem, probably, can be solved by constructing full binary path (i.e. not in a container, but in kernel thread root context) in UMH "init" callack. 
-However, this will help only is the dentry is accessible from "init" root. Which is usually no true in case on mount namespaces, if I understand them right.
+On TCP? I thought that the memory reclaim can override the MSG_MORE flag if it needs to.
 
+>> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+>> Cc: stable@vger.kernel.org
+>> ---
+>> net/sunrpc/xprtsock.c | 28 +++++++++++++++++++++-------
+>> 1 file changed, 21 insertions(+), 7 deletions(-)
+>> 
+>> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+>> index 17c88928b7db..dd9d295813cf 100644
+>> --- a/net/sunrpc/xprtsock.c
+>> +++ b/net/sunrpc/xprtsock.c
+>> @@ -393,8 +393,10 @@ static int xs_send_kvec(struct socket *sock, struct sockaddr *addr, int addrlen,
+>> 	return kernel_sendmsg(sock, &msg, NULL, 0, 0);
+>> }
+>> 
+>> -static int xs_send_pagedata(struct socket *sock, struct xdr_buf *xdr, unsigned int base, int more)
+>> +static int xs_send_pagedata(struct socket *sock, struct xdr_buf *xdr, unsigned int base, int more, bool zerocopy)
+>> {
+>> +	ssize_t (*do_sendpage)(struct socket *sock, struct page *page,
+>> +			int offset, size_t size, int flags);
+>> 	struct page **ppage;
+>> 	unsigned int remainder;
+>> 	int err, sent = 0;
+>> @@ -403,6 +405,9 @@ static int xs_send_pagedata(struct socket *sock, struct xdr_buf *xdr, unsigned i
+>> 	base += xdr->page_base;
+>> 	ppage = xdr->pages + (base >> PAGE_SHIFT);
+>> 	base &= ~PAGE_MASK;
+>> +	do_sendpage = sock->ops->sendpage;
+>> +	if (!zerocopy)
+>> +		do_sendpage = sock_no_sendpage;
+>> 	for(;;) {
+>> 		unsigned int len = min_t(unsigned int, PAGE_SIZE - base, remainder);
+>> 		int flags = XS_SENDMSG_FLAGS;
+>> @@ -410,7 +415,7 @@ static int xs_send_pagedata(struct socket *sock, struct xdr_buf *xdr, unsigned i
+>> 		remainder -= len;
+>> 		if (remainder != 0 || more)
+>> 			flags |= MSG_MORE;
+>> -		err = sock->ops->sendpage(sock, *ppage, base, len, flags);
+>> +		err = do_sendpage(sock, *ppage, base, len, flags);
+>> 		if (remainder == 0 || err != len)
+>> 			break;
+>> 		sent += err;
+>> @@ -431,9 +436,10 @@ static int xs_send_pagedata(struct socket *sock, struct xdr_buf *xdr, unsigned i
+>> * @addrlen: UDP only -- length of destination address
+>> * @xdr: buffer containing this request
+>> * @base: starting position in the buffer
+>> + * @zerocopy: true if it is safe to use sendpage()
+>> *
+>> */
+>> -static int xs_sendpages(struct socket *sock, struct sockaddr *addr, int addrlen, struct xdr_buf *xdr, unsigned int base)
+>> +static int xs_sendpages(struct socket *sock, struct sockaddr *addr, int addrlen, struct xdr_buf *xdr, unsigned int base, bool zerocopy)
+>> {
+>> 	unsigned int remainder = xdr->len - base;
+>> 	int err, sent = 0;
+>> @@ -461,7 +467,7 @@ static int xs_sendpages(struct socket *sock, struct sockaddr *addr, int addrlen,
+>> 	if (base < xdr->page_len) {
+>> 		unsigned int len = xdr->page_len - base;
+>> 		remainder -= len;
+>> -		err = xs_send_pagedata(sock, xdr, base, remainder != 0);
+>> +		err = xs_send_pagedata(sock, xdr, base, remainder != 0, zerocopy);
+>> 		if (remainder == 0 || err != len)
+>> 			goto out;
+>> 		sent += err;
+>> @@ -564,7 +570,7 @@ static int xs_local_send_request(struct rpc_task *task)
+>> 			req->rq_svec->iov_base, req->rq_svec->iov_len);
+>> 
+>> 	status = xs_sendpages(transport->sock, NULL, 0,
+>> -						xdr, req->rq_bytes_sent);
+>> +						xdr, req->rq_bytes_sent, true);
+>> 	dprintk("RPC:       %s(%u) = %d\n",
+>> 			__func__, xdr->len - req->rq_bytes_sent, status);
+>> 	if (likely(status >= 0)) {
+>> @@ -620,7 +626,7 @@ static int xs_udp_send_request(struct rpc_task *task)
+>> 	status = xs_sendpages(transport->sock,
+>> 			      xs_addr(xprt),
+>> 			      xprt->addrlen, xdr,
+>> -			      req->rq_bytes_sent);
+>> +			      req->rq_bytes_sent, true);
+>> 
+>> 	dprintk("RPC:       xs_udp_send_request(%u) = %d\n",
+>> 			xdr->len - req->rq_bytes_sent, status);
+>> @@ -693,6 +699,7 @@ static int xs_tcp_send_request(struct rpc_task *task)
+>> 	struct rpc_xprt *xprt = req->rq_xprt;
+>> 	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
+>> 	struct xdr_buf *xdr = &req->rq_snd_buf;
+>> +	bool zerocopy = true;
+>> 	int status;
+>> 
+>> 	xs_encode_stream_record_marker(&req->rq_snd_buf);
+>> @@ -700,13 +707,20 @@ static int xs_tcp_send_request(struct rpc_task *task)
+>> 	xs_pktdump("packet data:",
+>> 				req->rq_svec->iov_base,
+>> 				req->rq_svec->iov_len);
+>> +	/* Don't use zero copy if this is a resend. If the RPC call
+>> +	 * completes while the socket holds a reference to the pages,
+>> +	 * then we may end up resending corrupted data.
+>> +	 */
+>> +	if (task->tk_flags & RPC_TASK_SENT)
+>> +		zerocopy = false;
+>> 
+>> 	/* Continue transmitting the packet/record. We must be careful
+>> 	 * to cope with writespace callbacks arriving _after_ we have
+>> 	 * called sendmsg(). */
+>> 	while (1) {
+>> 		status = xs_sendpages(transport->sock,
+>> -					NULL, 0, xdr, req->rq_bytes_sent);
+>> +					NULL, 0, xdr, req->rq_bytes_sent,
+>> +					zerocopy);
+>> 
+>> 		dprintk("RPC:       xs_tcp_send_request(%u) = %d\n",
+>> 				xdr->len - req->rq_bytes_sent, status);
+>> -- 
+>> 1.8.3.1
+>> 
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> -- 
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
 
-
--- 
-Best regards,
-Stanislav Kinsbursky
