@@ -1,50 +1,137 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:30812 "EHLO mx11.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:55147 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752490Ab3KRStu convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Nov 2013 13:49:50 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
-CC: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFS: Fix kbuild errors due to missing symbols
-Date: Mon, 18 Nov 2013 18:48:46 +0000
-Message-ID: <429AE3F1-15C7-4F26-BBF7-2BD803DF9EDF@netapp.com>
-References: <1384554636-25330-1-git-send-email-bjschuma@netapp.com>
- <1384557410.3222.2.camel@leira.trondhjem.org> <528A5360.4000206@netapp.com>
- <3D379D5B-C02D-4AAD-9A21-08A70BA3AF48@netapp.com>
- <528A5F4F.4050201@netapp.com>
-In-Reply-To: <528A5F4F.4050201@netapp.com>
-Content-Type: text/plain; charset="Windows-1252"
-MIME-Version: 1.0
+	id S1751477Ab3KKHUm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 11 Nov 2013 02:20:42 -0500
+Message-ID: <1384154434.16759.39.camel@serendib>
+Subject: [PATCH] exportfs: modify can_test() to use LONG_MAX when appropriate
+From: Harshula Jayasuriya <harshula@redhat.com>
+To: Steve Dickson <steved@redhat.com>, linux-nfs@vger.kernel.org
+Cc: Jeff Layton <jlayton@redhat.com>,
+        "J.Bruce Fields" <bfields@citi.umich.edu>, NeilBrown <neilb@suse.de>
+Date: Mon, 11 Nov 2013 18:20:34 +1100
+In-Reply-To: <20130815175258.GS17781@fieldses.org>
+References: <1376588800.17754.14.camel@serendib>
+	 <20130815175258.GS17781@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+This patch is the nfs-utils patch corresponding to the kernel patch 
+commit 2f74f972d4cc7d83408ea0c32d424edcb44887bf "sunrpc: prepare NFS 
+for 2038": "The kernel sunrpc code needs to handle seconds since epoch 
+greater than 2147483647. This means functions that parse time as an 
+int need to handle it as time_t."
 
-On Nov 18, 2013, at 13:41, Anna Schumaker <bjschuma@netapp.com> wrote:
+When appropriate exportfs should use LONG_MAX in can_test() instead of
+INT_MAX.
 
-> On 11/18/2013 01:37 PM, Myklebust, Trond wrote:
->> 
->> On Nov 18, 2013, at 12:50, Anna Schumaker <bjschuma@netapp.com> wrote:
->>> 
->>> It's a poorly phrased commit message, actually.  I meant that just setting CONFIG_NFS_USE_LEGACY_DNS=y causes build problems, and then setting CONFIG_NFS_V4=n causes a different set of errors.
->> 
->> Ah. OK, now I see why you need it. The code in fs/nfs/super.c relies on it when !defined CONFIG_NFS_V4.
->> 
->> You also need to move the CONFIG_NFS_V4_SECURITY_LABEL section outside the CONFIG_NFS_V4, since fs/nfs/dir.c and others need the dummy nfs4_label_alloc and nfs4_label_free inline functions (see Stephen Rothwell
->> ’s email).
-> 
-> Right.  I have a patch that moves them to internal.h instead to get around the whole-file #ifdef that's in nfs4_fs.h.  Would you prefer me to submit that independently or as a v2 to this patch?
+kernel INT_MAX + exportfs INT_MAX: "Tue Jan 19 03:14:08 UTC 2038"
+=================================================================
 
-Please do it as a v2.
+exportfs: /mnt/export does not support NFS export:
+------------------------------------------------------------
+ # cat /proc/net/rpc/auth.unix.ip/content
+ #class IP domain
+------------------------------------------------------------
 
-> As a bonus, I've used Jenkins to compile as many combinations as possible without an error (I probably should have done that the first time, though...)
++ mount fail:
+------------------------------------------------------------
+ # cat /proc/net/rpc/auth.unix.ip/content
+ #class IP domain
+ # expiry=2147483768 refcnt=2 flags=4
+ # nfsd 192.168.1.6 -no-domain-
+------------------------------------------------------------
 
---
-Trond Myklebust
-Linux NFS client maintainer
+kernel LONG_MAX + exportfs INT_MAX: "Tue Jan 19 03:14:08 UTC 2038"
+==================================================================
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+"exportfs: /mnt/export does not support NFS export":
+------------------------------------------------------------
+ # cat /proc/net/rpc/auth.unix.ip/content
+ #class IP domain
+------------------------------------------------------------
+
++ mount success:
+------------------------------------------------------------
+ # cat /proc/net/rpc/auth.unix.ip/content
+ #class IP domain
+ # expiry=2147485448 refcnt=2 flags=1
+ nfsd 192.168.1.6 *
+------------------------------------------------------------
+
+kernel LONG_MAX + exportfs LONG_MAX: "Tue Jan 19 03:14:08 UTC 2038"
+===================================================================
+
+exportfs:
+------------------------------------------------------------
+ # cat /proc/net/rpc/auth.unix.ip/content
+ #class IP domain
+ # expiry=9223372036854775807 refcnt=1 flags=1
+ nfsd 0.0.0.0 -test-client-
+------------------------------------------------------------
+
++ mount success:
+------------------------------------------------------------
+ # cat /proc/net/rpc/auth.unix.ip/content
+ #class IP domain
+ # expiry=2147485448 refcnt=2 flags=1
+ nfsd 192.168.1.6 *
+ # expiry=9223372036854775807 refcnt=1 flags=1
+ nfsd 0.0.0.0 -test-client-
+------------------------------------------------------------
+
+Signed-off-by: Harshula Jayasuriya <harshula@redhat.com>
+---
+ utils/exportfs/exportfs.c | 20 ++++++++++++++++----
+ 1 file changed, 16 insertions(+), 4 deletions(-)
+
+diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
+index da5fe21..bccbed5 100644
+--- a/utils/exportfs/exportfs.c
++++ b/utils/exportfs/exportfs.c
+@@ -27,6 +27,8 @@
+ #include <netdb.h>
+ #include <errno.h>
+ #include <dirent.h>
++#include <limits.h>
++#include <time.h>
+ 
+ #include "sockaddr.h"
+ #include "misc.h"
+@@ -406,17 +408,27 @@ unexportfs(char *arg, int verbose)
+ 
+ static int can_test(void)
+ {
++	char buf[1024];
+ 	int fd;
+ 	int n;
+-	char *setup = "nfsd 0.0.0.0 2147483647 -test-client-\n";
++
+ 	fd = open("/proc/net/rpc/auth.unix.ip/channel", O_WRONLY);
+-	if ( fd < 0) return 0;
+-	n = write(fd, setup, strlen(setup));
++	if (fd < 0)
++		return 0;
++
++	if (time(NULL) > INT_MAX)
++		sprintf(buf, "nfsd 0.0.0.0 %ld -test-client-\n", LONG_MAX);
++	else
++		sprintf(buf, "nfsd 0.0.0.0 %d -test-client-\n", INT_MAX);
++
++	n = write(fd, buf, strlen(buf));
+ 	close(fd);
+ 	if (n < 0)
+ 		return 0;
++
+ 	fd = open("/proc/net/rpc/nfsd.export/channel", O_WRONLY);
+-	if ( fd < 0) return 0;
++	if (fd < 0)
++		return 0;
+ 	close(fd);
+ 	return 1;
+ }
+-- 
+1.8.3.1
 
