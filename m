@@ -1,47 +1,79 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:43574 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:47768 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751373Ab3KRRBl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 18 Nov 2013 12:01:41 -0500
-Date: Mon, 18 Nov 2013 12:01:32 -0500
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Albert Fluegel <af@muc.de>, linux-nfs@vger.kernel.org
-Subject: Re: Bugs / Patch in nfsd
-Message-ID: <20131118170132.GD3203@fieldses.org>
-References: <20131118124406.GA46678@colin.muc.de>
- <20131118130026.GA4153@infradead.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20131118130026.GA4153@infradead.org>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1753756Ab3KKN2W (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 11 Nov 2013 08:28:22 -0500
+Date: Mon, 11 Nov 2013 08:26:41 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Vasily Kulikov <segoon@openwall.com>
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org,
+        Stanislav Kinsbursky <skinsbursky@parallels.com>, bfields@fieldses.org,
+        bharrosh@panasas.com, devel@openvz.org, oleg@redhat.com
+Subject: Re: [Devel] call_usermodehelper in containers
+Message-ID: <20131111082641.048696f3@tlielax.poochiereds.net>
+In-Reply-To: <20131111124321.GA18028@cachalot>
+References: <20131111071825.62da01d1@tlielax.poochiereds.net>
+	<20131111124321.GA18028@cachalot>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Nov 18, 2013 at 05:00:26AM -0800, Christoph Hellwig wrote:
-> On Mon, Nov 18, 2013 at 01:44:06PM +0100, Albert Fluegel wrote:
-> >  	*p++ = htonl(nfs3_ftypes[(stat->mode & S_IFMT) >> 12]);
-> > -	*p++ = htonl((u32) stat->mode);
-> > +	*p++ = htonl((u32) (stat->mode & (S_IRWXU | S_IRWXG | S_IRWXO | S_ISUID | S_ISGID | S_ISVTX)));
+On Mon, 11 Nov 2013 16:43:21 +0400
+Vasily Kulikov <segoon@openwall.com> wrote:
+
+> Hi Jeff,
 > 
-> Should be S_IALLUGO instead of manually repeating the flags.  While this
-> is a good practice and I'm in favour of it, I'd love to know what other
-> value you see in the mode field.  Do you have a wireshark dump or a
-> trace?
+> On Mon, Nov 11, 2013 at 07:18 -0500, Jeff Layton wrote:
+> > What's the correct approach to fix this? One possibility would be to
+> > keep a kernel thread around that sits in the correct namespace(s) and
+> > has the right privileges, and then use that to launch UMH programs.
+> > That thread could be spawned whenever someone runs rpc.nfsd inside a
+> > container.
+> > 
+> > Not very elegant, but it seems like something that would work.
+> > 
+> > Are there better approaches?
+> 
+> What's the reasoning behind this?  I mean, it is not very obvious what
+> we should keep here.  Compare 2 cases:
+> 
+> 1) root process with all caps spawns new ns, then drops some of caps;
+> 
+> 2) root process with all caps drops some of his caps and then spawns new ns.
+> 
+> From the programmer's POV both cases are valid and lead to absolutely
+> the same limitations inside of the new namespace.  However, from kernel
+> POV they differ -- if save cap set when ns is created then in (1) we'll
+> have cap'ed UMH, in (2) we'll have UMH with only several caps.  It might
+> significantly influence on ability of UMH to do its job and ability of
+> this limited ns to escape from the sandbox.
+> 
+> So, what semantic should UMH privileges have?
+> 
+> 
+> Also, an orthogonal addition: you might want to keep only minimum
+> information about capabilities or something -- keep only cap_t field in
+> namespace structure without explicit kernel thread for each ns.  When UMH is
+> created, just fill the required caps in it.
+> 
+> Thanks,
+> 
 
-Just tracing a v3 mount I can confirm that S_IFDIR (0x4000, 040000)
-gets set in GETATTR replies.
+I don't have a particular affinity for either approach.
 
-Which definitely looks wrong.  But we've been doing this forever (as far
-as I can see nfs3xdr.c got added in 2.1.32, and the code was the same
-way there), so I wonder if there's any undocumented lore about use of
-these high bits.
+I think from a safety POV, it's less error prone to spawn the UMH
+programs as a descendent of the userland process that originally
+started up nfsd. That way we ensure that it inherits all of the
+limitations of the original task.
 
-Also if a client's actually behaving differently depending on how those
-high bits are set, that might be worth reporting to the client
-implementers, as it may represent an unintentional failure to sanitize
-the returned bits.
+If we try instead to start with a process that is running with all
+capabilities and then drop some of them selectively, then it seems
+quite possible to miss something.
 
-Anyway, absent objections my default is to queue this up for 3.14 (using
-S_IALLUGO).
+But...namespaces aren't really my "thing", and I might have the
+terminology wrong or be missing some other crux of the issue.
 
---b.
+-- 
+Jeff Layton <jlayton@redhat.com>
