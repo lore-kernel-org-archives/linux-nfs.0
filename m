@@ -1,101 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yh0-f43.google.com ([209.85.213.43]:38146 "EHLO
-	mail-yh0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757291Ab3KMObA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Nov 2013 09:31:00 -0500
-Received: by mail-yh0-f43.google.com with SMTP id v1so217694yhn.30
-        for <linux-nfs@vger.kernel.org>; Wed, 13 Nov 2013 06:30:59 -0800 (PST)
-From: Jeff Layton <jlayton@redhat.com>
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, neilb@suse.de, chuck.lever@oracle.com,
-        steved@redhat.com
-Subject: [PATCH v2 0/3] sunrpc/nfs: more reliable detection of running gssd
-Date: Wed, 13 Nov 2013 09:30:50 -0500
-Message-Id: <1384353053-30002-1-git-send-email-jlayton@redhat.com>
+Received: from mx12.netapp.com ([216.240.18.77]:48495 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752434Ab3KKXZL convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Nov 2013 18:25:11 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Malahal Naineni <malahal@us.ibm.com>
+CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] SUNRPC: Fix a data corruption issue when retransmitting
+ RPC calls
+Date: Mon, 11 Nov 2013 23:25:10 +0000
+Message-ID: <1384212310.7614.29.camel@leira.trondhjem.org>
+References: <1384021209-2586-1-git-send-email-Trond.Myklebust@netapp.com>
+	 <20131111231541.GA31826@us.ibm.com>
+In-Reply-To: <20131111231541.GA31826@us.ibm.com>
+Content-Type: text/plain; charset="utf-7"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-v2:
-- change name of toplevel pipefs dir from "dummy" to "gssd" (per
-  Trond's suggestion)
+On Mon, 2013-11-11 at 17:15 -0600, Malahal Naineni wrote:
++AD4- Trond Myklebust +AFs-Trond.Myklebust+AEA-netapp.com+AF0- wrote:
++AD4- +AD4- +AEAAQA- -700,13 +-707,20 +AEAAQA- static int xs+AF8-tcp+AF8-send+AF8-request(struct rpc+AF8-task +ACo-task)
++AD4- +AD4-  	xs+AF8-pktdump(+ACI-packet data:+ACI-,
++AD4- +AD4-  				req-+AD4-rq+AF8-svec-+AD4-iov+AF8-base,
++AD4- +AD4-  				req-+AD4-rq+AF8-svec-+AD4-iov+AF8-len)+ADs-
++AD4- +AD4- +-	/+ACo- Don't use zero copy if this is a resend. If the RPC call
++AD4- +AD4- +-	 +ACo- completes while the socket holds a reference to the pages,
++AD4- +AD4- +-	 +ACo- then we may end up resending corrupted data.
++AD4- +AD4- +-	 +ACo-/
++AD4- +AD4- +-	if (task-+AD4-tk+AF8-flags +ACY- RPC+AF8-TASK+AF8-SENT)
++AD4- 
++AD4- How about RPC+AF8-WAS+AF8-SENT() ?
 
-- when gssd isn't running, don't bother to upcall (per Neil B.'s
-  suggestion)
-
-- fix lifecycle of rpc_pipe data. Previously it would have leaked
-  after umount. With this set, it's created and destroyed along with
-  the netns, and just attached to the pipe inode on mount/unmount
-  of rpc_pipefs.
-
-- patch has been added to skip attempting setclientid with krb5i
-  if gssd isn't running. This avoids the "AUTH_GSS upcall timed out"
-  message when gssd isn't running and you mount with sec=sys. It also
-  shortens the delay when gssd isn't up.
-
-The original cover letter from the v1 posting follows. Note that this
-set does address the warnings about the AUTH_GSS upcall timing out.
-
--------------------------[snip]-----------------------------
-
-We've gotten a lot of complaints recently about the 15s delay when
-doing a sec=sys mount without gssd running.
-
-A large part of the problem is that the kernel isn't able to reliably
-detect when rpc.gssd is running. What we currently have is a
-gssd_running flag that is initially set to 1. When an upcall times out,
-that gets set to 0, and subsequent upcalls get a much shorter timeout
-(1/4s instead of 15s). It's reset back to '1' when a pipe is reopened.
-
-The approach of using a flag like this is pretty inadequate. First, it
-doesn't eliminate the long delay on the initial upcall attempt. Also,
-if gssd spontaneously dies, then the flag will still be set to 1 until
-the next upcall attempt times out. Finally, it currently requires that
-the pipe be reopened in order to reset the flag back to true.
-
-This patchset replaces that flag with a more reliable mechanism for
-detecting when gssd is running. When rpc_pipefs is mounted, it creates a
-new "dummy" pipe that gssd will naturally find and hold open. We'll
-never send an upcall down this pipe, and writing to it always fails.
-But, since we can detect when something is holding it open, we can use
-that to determine whether gssd is running.
-
-The current patch just uses this mechanism to replace the gssd_running
-flag with this new mechanism. This shortens the long delay when mounting
-without gssd running, but does not silence these warnings:
-
-    RPC: AUTH_GSS upcall timed out.
-    Please check user daemon is running.
-
-I'm willing to add a patch to do that, but I'm a little unclear on the
-best way to do so. Those messages are generated by the auth_gss code. We
-probably do want to print them if someone mounted with sec=krb5, but
-suppress them when mounting with sec=sys.
-
-Do we need to somehow pass down that intent to auth_gss? Another idea
-would be to call gssd_running() from the nfs mount code and use that to
-determine whether to try and use krb5 at all...
-
-Discuss!
-
-Jeff Layton (3):
-  sunrpc: create a new dummy pipe for gssd to hold open
-  sunrpc: replace sunrpc_net->gssd_running flag with a more reliable
-    check
-  nfs: check if gssd is running before attempting to use krb5i auth in
-    SETCLIENTID call
-
- fs/nfs/client.c                    |   5 +-
- fs/nfs/internal.h                  |   4 +-
- fs/nfs/nfs4client.c                |   8 ++-
- include/linux/nfs_xdr.h            |   2 +-
- include/linux/sunrpc/auth_gss.h    |  10 ++++
- include/linux/sunrpc/rpc_pipe_fs.h |   7 ++-
- net/sunrpc/auth_gss/auth_gss.c     |  19 +++++--
- net/sunrpc/netns.h                 |   3 +-
- net/sunrpc/rpc_pipe.c              | 104 ++++++++++++++++++++++++++++++++++---
- net/sunrpc/sunrpc_syms.c           |   8 ++-
- 10 files changed, 147 insertions(+), 23 deletions(-)
++ADw-shrug+AD4-that evaluates to the same+ADw-/shrug+AD4-
 
 -- 
-1.8.3.1
+Trond Myklebust
+Linux NFS client maintainer
 
+NetApp
+Trond.Myklebust+AEA-netapp.com
+www.netapp.com
