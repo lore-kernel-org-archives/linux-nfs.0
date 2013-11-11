@@ -1,286 +1,106 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:46418 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757359Ab3KMUBb convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Nov 2013 15:01:31 -0500
-From: Weston Andros Adamson <dros@netapp.com>
-To: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
-CC: Bruce Fields <bfields@fieldses.org>,
-        linux-nfs list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v3 3/3] NFSD: Implement SEEK
-Date: Wed, 13 Nov 2013 20:01:26 +0000
-Message-ID: <5000397E-1879-4ED1-B761-8C7BB8D87F81@netapp.com>
-References: <1384371057-16454-1-git-send-email-bjschuma@netapp.com>
- <1384371057-16454-4-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1384371057-16454-4-git-send-email-bjschuma@netapp.com>
-Content-Type: text/plain; charset="Windows-1252"
-MIME-Version: 1.0
+Received: from aserp1040.oracle.com ([141.146.126.69]:28378 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750964Ab3KKVrM convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Nov 2013 16:47:12 -0500
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 6.6 \(1510\))
+Subject: Re: [PATCH] Adding the nfs4_secure_mounts bool
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <52814876.7080604@RedHat.com>
+Date: Mon, 11 Nov 2013 16:47:05 -0500
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <A59DDCD0-5622-4497-A93E-80493EDCED27@oracle.com>
+References: <1384037221-7224-1-git-send-email-steved@redhat.com> <E061C7A8-DC27-49BA-93C2-DC2E9C19EA7B@netapp.com> <52811CBB.3070204@RedHat.com> <E520DD5F-7E5A-4B6C-9FF6-6B74DA36FD1E@oracle.com> <5281290B.6000201@RedHat.com> <E0FBCF46-C70F-41E5-BA67-48406253CD7E@oracle.com> <52814876.7080604@RedHat.com>
+To: Steve Dickson <SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Nov 13, 2013, at 2:30 PM, Anna Schumaker <bjschuma@netapp.com> wrote:
+On Nov 11, 2013, at 4:13 PM, Steve Dickson <SteveD@redhat.com> wrote:
 
-> This patch adds in the SEEK operation used by clients doing an llseek on
-> a file to find either hole or data segments.  I am making the assumption
-> that allocated == true in the NFS4_CONTENT_DATA case and false for the
-> NFS4_CONTENT_HOLE case.
 > 
-> Signed-off-by: Anna Schumaker <bjschuma@netapp.com>
 > 
-> ---
-> Changed in V3:
-> - SEEK is only compiled in when CONFIG_NFSD_V4_2_SEEK is enabled
-> 
-> fs/nfsd/Kconfig      | 12 +++++++++++
-> fs/nfsd/nfs4proc.c   | 60 ++++++++++++++++++++++++++++++++++++++++++++++++++++
-> fs/nfsd/nfs4xdr.c    | 48 +++++++++++++++++++++++++++++++++++++++++
-> fs/nfsd/xdr4.h       | 16 ++++++++++++++
-> include/linux/nfs4.h |  6 ++++++
-> 5 files changed, 142 insertions(+)
-> 
-> diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
-> index dc8f1ef..680e017 100644
-> --- a/fs/nfsd/Kconfig
-> +++ b/fs/nfsd/Kconfig
-> @@ -81,6 +81,18 @@ config NFSD_V4
-> 
-> 	  If unsure, say N.
-> 
-> +config NFSD_V4_2_SEEK
-> +	bool "Enable SEEK support for the NFS v4.2 server"
-> +	depends on NFSD_V4
-> +	help
-> +	  Say Y here if you want to enable support for the NFS v4.2 operation
-> +	  SEEK, which adds in SEEK_HOLE and SEEK_DATA support.
-> +
-> +	  WARNING: there is still a chance of backwards-incompatible protocol
-> +	  changes.  This feature is targeted at developers and testers only.
-> +
-> +	  If unsure, say N.
-> +
-> config NFSD_V4_SECURITY_LABEL
-> 	bool "Provide Security Label support for NFSv4 server"
-> 	depends on NFSD_V4 && SECURITY
-> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> index 419572f..1283ca7 100644
-> --- a/fs/nfsd/nfs4proc.c
-> +++ b/fs/nfsd/nfs4proc.c
-> @@ -1028,6 +1028,59 @@ nfsd4_write(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
-> 	return status;
-> }
-> 
-> +#ifdef CONFIG_NFSD_V4_2_SEEK
-> +static __be32
-> +nfsd4_seek(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
-> +		struct nfsd4_seek *seek)
-> +{
-> +	struct file *file;
-> +	loff_t end_pos = 0;
-> +	__be32 status;
-> +
-> +	nfs4_lock_state();
-> +	status = nfs4_preprocess_stateid_op(SVC_NET(rqstp), cstate,
-> +					    &seek->seek_stateid,
-> +					    RD_STATE | WR_STATE, &file);
-> +	if (status != nfs_ok) {
-> +		nfs4_unlock_state();
-> +		return status;
-> +	} else
+> On 11/11/13 15:33, Chuck Lever wrote:
+>>>> 
+>>>> We have workarounds already that work on every kernel since 3.8.
+>>>> 
+>>> The one that logs 5 to 20 lines (depending on thins are setup or not)
+>>> per mount? That does work in some environments but no all. ;-)
+>> 
+>> When does running rpc.gssd not work?
+> Define "work"... ;-) Logging 20 error messages on every mount
+> when the keytab does not exist is not working or not very well.... IMHO..
 
-this else isn’t needed.
+At first it was 5 warnings.  Then it was "10-15 errors".  Now it's 20 on every mount!
 
--dros
+How many "-v" options do you specify on your rpc.gssd command line?  I normally run rpc.gssd with "-vv" or even "-vvv".  Leaving those options off makes it much quieter, and it's the default.  Only crazy people crank up the verbosity of rpc.gssd.
 
-> +		get_file(file);
-> +	nfs4_unlock_state();
-> +
-> +	switch (seek->seek_whence) {
-> +	case NFS4_CONTENT_APP_DATA_HOLE:
-> +		status = nfserr_union_notsupp;
-> +		break;
-> +	case NFS4_CONTENT_DATA:
-> +		seek->seek_pos = vfs_llseek(file, seek->seek_offset, SEEK_DATA);
-> +		end_pos = vfs_llseek(file, seek->seek_pos, SEEK_HOLE);
-> +		seek->seek_allocated = true;
-> +		break;
-> +	case NFS4_CONTENT_HOLE:
-> +		seek->seek_pos = vfs_llseek(file, seek->seek_offset, SEEK_HOLE);
-> +		end_pos = vfs_llseek(file, seek->seek_pos, SEEK_DATA);
-> +		seek->seek_allocated = false;
-> +		break;
-> +	default:
-> +		status = nfs_ok;
-> +		seek->seek_eof = true;
-> +		goto out;
-> +	}
-> +
-> +	if (seek->seek_pos < 0) {
-> +		status = nfserrno(seek->seek_pos);
-> +		goto out;
-> +	}
-> +
-> +	seek->seek_length = end_pos - seek->seek_pos;
-> +
-> +out:
-> +	fput(file);
-> +	return status;
-> +}
-> +#endif /* CONFIG_NFSD_V4_2_SEEK */
-> +
-> /* This routine never returns NFS_OK!  If there are no other errors, it
->  * will return NFSERR_SAME or NFSERR_NOT_SAME depending on whether the
->  * attributes matched.  VERIFY is implemented by mapping NFSERR_SAME
-> @@ -1840,6 +1893,13 @@ static struct nfsd4_operation nfsd4_ops[] = {
-> 		.op_get_currentstateid = (stateid_getter)nfsd4_get_freestateid,
-> 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_only_status_rsize,
-> 	},
-> +
-> +#ifdef CONFIG_NFSD_V4_2_SEEK
-> +	[OP_SEEK] = {
-> +		.op_func = (nfsd4op_func)nfsd4_seek,
-> +		.op_name = "OP_SEEK",
-> +	},
-> +#endif /* CONFIG_NFSD_V4_2_SEEK */
-> };
+Is a mount failing in that case?  Too many error messages is a nit compared to "no longer mounts."  If gssd error messages are your only beef, then it seems like the solution is pretty obvious.
+
+>> 
+>>> Or am I missing one? Please tell me I am!!! :-) 
+>> 
+>> OK: You're missing one.
+> Thank you... 
 > 
-> #ifdef NFSD_DEBUG
-> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> index 3af6c46..7041039 100644
-> --- a/fs/nfsd/nfs4xdr.c
-> +++ b/fs/nfsd/nfs4xdr.c
-> @@ -1507,6 +1507,24 @@ static __be32 nfsd4_decode_reclaim_complete(struct nfsd4_compoundargs *argp, str
-> 	DECODE_TAIL;
-> }
+>> 
+>> Client configurations that have auth_rpcgss.ko loaded but do not run rpc.gssd are, quite simply, broken.  The gss upcall will not work in that configuration.  There is no reason to load auth_rpcgss.ko if user space does not have rpc.gssd enabled and running.
+>> 
+>> This has been a problem for a very long time, but use cases where the 15 second upcall timeout is encountered have until recently been infrequent, and only occur in situations where the mount options don't work anyway, so no one has bothered to address it.
+>> 
+>> This broken configuration is due to incorrect system initialization scripts.
+> Which initialization scripts are you referring to?
+
+The NFS initialization scripts.  What else deals with auth_rpcgss.ko and rpc.gssd?
+
 > 
-> +#ifdef CONFIG_NFSD_V4_2_SEEK
-> +static __be32
-> +nfsd4_decode_seek(struct nfsd4_compoundargs *argp, struct nfsd4_seek *seek)
-> +{
-> +	DECODE_HEAD;
-> +
-> +	status = nfsd4_decode_stateid(argp, &seek->seek_stateid);
-> +	if (status)
-> +		return status;
-> +
-> +	READ_BUF(12);
-> +	READ64(seek->seek_offset);
-> +	READ32(seek->seek_whence);
-> +
-> +	DECODE_TAIL;
-> +}
-> +#endif /* CONFIG_NFSD_V4_2_SEEK */
-> +
-> static __be32
-> nfsd4_decode_noop(struct nfsd4_compoundargs *argp, void *p)
-> {
-> @@ -1589,7 +1607,11 @@ static nfsd4_dec nfsd4_dec_ops[] = {
-> 	[OP_OFFLOAD_STATUS]	= (nfsd4_dec)nfsd4_decode_notsupp,
-> 	[OP_WRITE_PLUS]		= (nfsd4_dec)nfsd4_decode_notsupp,
-> 	[OP_READ_PLUS]		= (nfsd4_dec)nfsd4_decode_notsupp,
-> +#ifdef CONFIG_NFSD_V4_2_SEEK
-> +	[OP_SEEK]		= (nfsd4_dec)nfsd4_decode_seek,
-> +#else
-> 	[OP_SEEK]		= (nfsd4_dec)nfsd4_decode_notsupp,
-> +#endif /* CONFIG_NFSD_V4_2_SEEK */
-> 	[OP_IO_ADVISE]		= (nfsd4_dec)nfsd4_decode_notsupp,
-> };
+>> 
+>> If an administrator chooses not to run rpc.gssd, then auth_rpcgss.ko should not be loaded.  The kernel deals quite correctly when auth_rpcgss.ko is not loaded -- GSS flavors are simply not supported, and the kernel uses AUTH_SYS by default for everything.  (Right there is your magical administrative interface for controlling what security flavors are used and supported).
+>> 
+>> But the current init scripts load auth_rpcgss.ko unconditionally.  Thus any gss upcall will fail until rpc.gssd is started.
+>> 
+>> With upstream kernel commit 4edaa308 (and following) I added a use case that exposes the upcall timeout much more often.  It's a latent bug, but we now hit it during the first mount after every client reboot, so it is noticeable to anyone who leaves nfs-secure.service disabled.
+>> 
+>> Therefore the scenario we want to avoid is where auth_rpcgss.ko is loaded, but rpc.gssd is not running.  There are two obvious ways to avoid this scenario:
+>> 
+>>  A.  If auth_rpcgss.ko is loaded unconditionally, make sure rpc.gssd is running unconditionally (and cull the warnings)
+>> 
+>>  B.  If you do not want to run rpc.gssd, make sure auth_rpcgss.ko is not loaded
+> Isn't the case that nfsd will also loads auth_rpcgss. So if server was started we
+> would be right back to the 15 sec delay?
+
+Only if NFSD wants to make GSS upcalls and rpc.gssd isn't running.  Is that ever the case?
+
+The point is we currently have a very direct method of telling the kernel NFS components not to use GSS or make upcalls.  We should use it.
+
+
 > 
-> @@ -3514,6 +3536,28 @@ nfsd4_encode_test_stateid(struct nfsd4_compoundres *resp, __be32 nfserr,
-> 	return nfserr;
-> }
+> steved.
 > 
-> +#ifdef CONFIG_NFSD_V4_2_SEEK
-> +static __be32
-> +nfsd4_encode_seek(struct nfsd4_compoundres *resp, __be32 nfserr,
-> +		  struct nfsd4_seek *seek)
-> +{
-> +	__be32 *p;
-> +
-> +	if (nfserr)
-> +		return nfserr;
-> +
-> +	RESERVE_SPACE(28);
-> +	WRITE32(seek->seek_eof);
-> +	WRITE32(seek->seek_whence);
-> +	WRITE64(seek->seek_pos);
-> +	WRITE64(seek->seek_length);
-> +	WRITE32(seek->seek_allocated);
-> +	ADJUST_ARGS();
-> +
-> +	return nfserr;
-> +}
-> +#endif /* CONFIG_NFSD_V4_2_SEEK */
-> +
-> static __be32
-> nfsd4_encode_noop(struct nfsd4_compoundres *resp, __be32 nfserr, void *p)
-> {
-> @@ -3595,7 +3639,11 @@ static nfsd4_enc nfsd4_enc_ops[] = {
-> 	[OP_OFFLOAD_STATUS]	= (nfsd4_enc)nfsd4_encode_noop,
-> 	[OP_WRITE_PLUS]		= (nfsd4_enc)nfsd4_encode_noop,
-> 	[OP_READ_PLUS]		= (nfsd4_enc)nfsd4_encode_noop,
-> +#ifdef CONFIG_NFSD_V4_2_SEEK
-> +	[OP_SEEK]		= (nfsd4_enc)nfsd4_encode_seek,
-> +#else
-> 	[OP_SEEK]		= (nfsd4_enc)nfsd4_encode_noop,
-> +#endif /* CONFIG_NFSD_V4_2_SEEK */
-> 	[OP_IO_ADVISE]		= (nfsd4_enc)nfsd4_encode_noop,
-> };
-> 
-> diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-> index b3ed644..c2f4e30 100644
-> --- a/fs/nfsd/xdr4.h
-> +++ b/fs/nfsd/xdr4.h
-> @@ -430,6 +430,19 @@ struct nfsd4_reclaim_complete {
-> 	u32 rca_one_fs;
-> };
-> 
-> +struct nfsd4_seek {
-> +	/* request */
-> +	stateid_t	seek_stateid;
-> +	loff_t		seek_offset;
-> +	u32		seek_whence;
-> +
-> +	/* response */
-> +	u64		seek_pos;
-> +	u32		seek_eof;
-> +	u64		seek_length;
-> +	u32		seek_allocated;
-> +};
-> +
-> struct nfsd4_op {
-> 	int					opnum;
-> 	__be32					status;
-> @@ -475,6 +488,9 @@ struct nfsd4_op {
-> 		struct nfsd4_reclaim_complete	reclaim_complete;
-> 		struct nfsd4_test_stateid	test_stateid;
-> 		struct nfsd4_free_stateid	free_stateid;
-> +
-> +		/* NFSv4.2 */
-> +		struct nfsd4_seek		seek;
-> 	} u;
-> 	struct nfs4_replay *			replay;
-> };
-> diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-> index e58e0eb..a35b0b6 100644
-> --- a/include/linux/nfs4.h
-> +++ b/include/linux/nfs4.h
-> @@ -558,4 +558,10 @@ struct nfs4_deviceid {
-> 	char data[NFS4_DEVICEID4_SIZE];
-> };
-> 
-> +enum data_content4 {
-> +	NFS4_CONTENT_DATA		= 0,
-> +	NFS4_CONTENT_APP_DATA_HOLE	= 1,
-> +	NFS4_CONTENT_HOLE		= 2,
-> +};
-> +
-> #endif
-> -- 
-> 1.8.4.2
-> 
+>> 
+>> Both of these workarounds are configuration changes, not code changes.  B. is accomplished simply by blacklisting auth_rpcgss.ko.
+>> 
+>> We could go a step further and remove the module alias added by upstream kernel commit 71afa85e to prevent the kernel from loading auth_rpcgss.ko automatically, and then make sure the nfs-secure.service script (and the server-side equivalent) loads auth_rpcgss.ko before starting rpc.gssd.
+>> 
+>> Since you are opposed to running rpc.gssd, blacklisting auth_rpcgss.ko is the easy choice.  Adding auth_rpcgss.ko to the module blacklist is no more difficult than setting a kernel module parameter or toggling nfs-secure.service.
+>> 
+>> However, IMO, in the long run Linux should be installed with rpc.gssd running unconditionally, or dynamically start-able by mount.nfs (like statd works today).  We cannot guess a priori whether a user or administrator will want NFS support for GSS flavors, just as we cannot guess a priori whether the user wants support for NFSv3.
+>> 
+>> Yet we always have NFSv3 support available.  Likewise, support for GSS should always be available, and there really is no good reason any more not to leave it running all the time.
+>> 
+>> As Trond points out, NFSv4 implementations are required to implement GSS security.
+>> 
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
