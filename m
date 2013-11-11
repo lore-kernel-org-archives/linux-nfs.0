@@ -1,62 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from countercultured.net ([209.51.175.25]:59378 "HELO
-	countercultured.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1753516Ab3KBCuS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Nov 2013 22:50:18 -0400
-Message-ID: <527466DA.3060007@davequigley.com>
-Date: Fri, 01 Nov 2013 22:43:38 -0400
-From: Dave Quigley <dpquigl@davequigley.com>
-MIME-Version: 1.0
-To: Jeff Layton <jlayton@redhat.com>,
-        "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "cye@redhat.com" <cye@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfs: fix oops when trying to set SELinux label
-References: <1383317372-3373-1-git-send-email-jlayton@redhat.com>	<20131101120211.586aef7a@corrin.poochiereds.net>	<1383324599.2911.2.camel@leira.trondhjem.org> <20131101125719.38843cfb@tlielax.poochiereds.net>
-In-Reply-To: <20131101125719.38843cfb@tlielax.poochiereds.net>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from aserp1040.oracle.com ([141.146.126.69]:43390 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754301Ab3KKSaS convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Nov 2013 13:30:18 -0500
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 6.6 \(1510\))
+Subject: Re: [PATCH] Adding the nfs4_secure_mounts bool
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <52811CBB.3070204@RedHat.com>
+Date: Mon, 11 Nov 2013 13:30:08 -0500
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <E520DD5F-7E5A-4B6C-9FF6-6B74DA36FD1E@oracle.com>
+References: <1384037221-7224-1-git-send-email-steved@redhat.com> <E061C7A8-DC27-49BA-93C2-DC2E9C19EA7B@netapp.com> <52811CBB.3070204@RedHat.com>
+To: Steve Dickson <SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/1/2013 12:57 PM, Jeff Layton wrote:
-> On Fri, 1 Nov 2013 16:50:00 +0000
-> "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
->
->> On Fri, 2013-11-01 at 12:02 -0400, Jeff Layton wrote:
->>> It looks like _nfs4_get_security_label() has the same problem, but I've
->>> so far been unable to get it to be called, so I didn't patch it. It
->>> seems like getxattr does some special stuff for SELinux labels that
->>> cause them only to ever be fetched once.
->>>
->>> Is there some trick to it?
->>>
->>
->> Doesn't 'ls -Z' cause them to security label to be read again?
->>
->
-> As best I can tell, security labels are set on the inode when the inode
-> is instantiated, and then are reset on changes (i.e. setxattr). If
-> another client changes the label though, it's not clear to me how your
-> client would ever notice it until the inode is dropped from the cache.
->
-> ISTR Eric Paris explaining to me that they do that for performance
-> reasons but it seems like something that needs to be reconsidered in
-> light of labeled NFS. Not picking up a security label change seems like
-> a bug, IMO...
->
->> Either way, the fix is clearly needed, so I've added the patch, and Cced
->> stable.
->>
->
-> Thanks!
->
 
-This was the point of the original requirement for a label change 
-notification. Its important for us to pick up that label change when it 
-gets changed from another client or on the server directly. As of when 
-we implemented the prototype the cache invalidation for the security 
-attribute in NFSv4 was 5 seconds and we questioned whether or not it was 
-necessary to have an explicit change notification or if waiting 5 
-seconds was sufficient.
+On Nov 11, 2013, at 1:06 PM, Steve Dickson <SteveD@redhat.com> wrote:
 
-Dave
+> 
+> 
+> On 09/11/13 18:12, Myklebust, Trond wrote:
+>> One alternative to the above scheme, which I believe that I’ve 
+>> suggested before, is to have a permanent entry in rpc_pipefs 
+>> that rpc.gssd can open and that the kernel can use to detect 
+>> that it is running. If we make it /var/lib/nfs/rpc_pipefs/gssd/clnt00/gssd, 
+>> then AFAICS we don’t need to change nfs-utils at all, since all newer 
+>> versions of rpc.gssd will try to open for read anything of the form 
+>> /var/lib/nfs/rpc_pipefs/*/clntXX/gssd...
+> 
+> After further review I am going going have to disagree with you on this.
+> Since all the context is cached on the initial mount the kernel
+> should be using the call_usermodehelper() to call up to rpc.gssd 
+> to get the context, which means we could put this upcall noise 
+> to bed... forever! :-)
+
+Ask Al Viro for his comments on whether the kernel should start gssd (either a daemon or a script).  Hint: wear your kevlar underpants.
+
+Have you tried Trond's approach yet?
+
+> I realize this is not going happen overnight, so I would still
+> like to propose my  nfs4_secure_mounts bool patch as bridge
+> to the new call_usermodehelper()  since its the cleanest 
+> solution so far... 
+> 
+> Thoughts?
+
+We have workarounds already that work on every kernel since 3.8.
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
