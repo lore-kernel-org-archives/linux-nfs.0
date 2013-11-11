@@ -1,40 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:53627 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753492Ab3KGRTK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Nov 2013 12:19:10 -0500
-Date: Thu, 7 Nov 2013 09:19:08 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Christoph Hellwig <hch@infradead.org>,
-        Benny Halevy <bhalevy@primarydata.com>, bfields@redhat.com,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/2] nfsd: remove_stid can be incorporated into
- nfs4_put_delegation
-Message-ID: <20131107171908.GA23455@infradead.org>
-References: <525CE711.1040107@primarydata.com>
- <1381820280-14120-1-git-send-email-bhalevy@primarydata.com>
- <20131104224758.GB8828@fieldses.org>
- <52786E74.8030505@primarydata.com>
- <20131107170204.GA10530@infradead.org>
- <20131107170553.GD21932@fieldses.org>
-MIME-Version: 1.0
+Received: from aserp1040.oracle.com ([141.146.126.69]:27904 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753833Ab3KKQuG convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Nov 2013 11:50:06 -0500
+Received: from acsinet21.oracle.com (acsinet21.oracle.com [141.146.126.237])
+	by aserp1040.oracle.com (Sentrion-MTA-4.3.1/Sentrion-MTA-4.3.1) with ESMTP id rABGo4Tp018545
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Mon, 11 Nov 2013 16:50:04 GMT
+Received: from userz7021.oracle.com (userz7021.oracle.com [156.151.31.85])
+	by acsinet21.oracle.com (8.14.4+Sun/8.14.4) with ESMTP id rABGo36P018217
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Mon, 11 Nov 2013 16:50:04 GMT
+Received: from abhmp0003.oracle.com (abhmp0003.oracle.com [141.146.116.9])
+	by userz7021.oracle.com (8.14.4+Sun/8.14.4) with ESMTP id rABGo32V021816
+	for <linux-nfs@vger.kernel.org>; Mon, 11 Nov 2013 16:50:03 GMT
+From: Chuck Lever <chuck.lever@oracle.com>
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20131107170553.GD21932@fieldses.org>
+Subject: NFS atime behavior is not documented
+Message-Id: <E4BE40FF-9F81-4688-BD39-1E583DDCEA4A@oracle.com>
+Date: Mon, 11 Nov 2013 11:50:01 -0500
+To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Mime-Version: 1.0 (Mac OS X Mail 6.6 \(1510\))
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Nov 07, 2013 at 12:05:53PM -0500, J. Bruce Fields wrote:
-> What did you run it on exactly?  (One of my branches or one of Benny's?)
+Hi-
 
-Bennys tree (+ some local changes)
+It was recently pointed out to me that the behavior of atime on NFS mount points is pretty dodgy, yet this is not documented anywhere, not even in the venerable and unmaintained Linux NFS FAQ.
 
-> I keep saying I should do regular xfstest runs and keep not doing it.
-> Do you have a sample commandline to share for nfs testing?
+A good place to cover this topic might be nfs(5).  It could discuss how the Linux NFS client deals with the various *atime mount options (mostly be collapsing them into relatime, all the time).  And it could discuss how file timestamps are updated when the physical backing store is on another system.
 
-cat > /etc/xfsqa.config << EOF
-TEST_DIR=/mnt/nfs1
-TEST_DEV=127.0.0.1:/mnt/test
-EOF
+Thoughts?  Comments?
 
-./check -nfs -g auto
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
