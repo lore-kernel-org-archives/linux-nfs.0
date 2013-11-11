@@ -1,162 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:43847 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751821Ab3K0Lsj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Nov 2013 06:48:39 -0500
-Date: Wed, 27 Nov 2013 03:48:38 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: David Howells <dhowells@redhat.com>
-Cc: viro@ZenIV.linux.org.uk, linux-cifs@vger.kernel.org,
-        linux-nfs@vger.kernel.org, libc-alpha@sourceware.org,
-        linux-api@vger.kernel.org, andreas.gruenbacher@gmail.com,
-        samba-technical@lists.samba.org, linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH 2/3] statxat: Add a system call to make extended file
- stats available
-Message-ID: <20131127114838.GB13491@infradead.org>
-References: <20131112173518.25813.67568.stgit@warthog.procyon.org.uk>
- <20131112173534.25813.70732.stgit@warthog.procyon.org.uk>
-MIME-Version: 1.0
+Received: from aserp1040.oracle.com ([141.146.126.69]:48837 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751341Ab3KKVMz convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Nov 2013 16:12:55 -0500
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20131112173534.25813.70732.stgit@warthog.procyon.org.uk>
+Mime-Version: 1.0 (Mac OS X Mail 6.6 \(1510\))
+Subject: Re: NFS atime behavior is not documented
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1384203736.7614.15.camel@leira.trondhjem.org>
+Date: Mon, 11 Nov 2013 16:12:50 -0500
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <803EA92F-97E6-4856-9860-04E1B1984868@oracle.com>
+References: <E4BE40FF-9F81-4688-BD39-1E583DDCEA4A@oracle.com> <6EE5262F-5B2E-4F10-A600-A60F30C0A23E@netapp.com> <2EFADFB9-6520-4ED3-A7A0-B87451885DFB@oracle.com> <1384203736.7614.15.camel@leira.trondhjem.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Nov 12, 2013 at 05:35:34PM +0000, David Howells wrote:
-> Add a system call to make extended file stats available, including file
-> creation time, inode version and data version where available through the
-> underlying filesystem.
 
-Adding the glibc list as a new stat version that can't be nicely
-exposed to user program is rather pointless, and as it tends to have
-a higher concentration of people involved in the standards processes,
-which would be useful input here.
+On Nov 11, 2013, at 4:02 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
 
+> On Mon, 2013-11-11 at 15:35 -0500, Chuck Lever wrote:
+>> On Nov 11, 2013, at 12:33 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+>> 
+>>> 
+>>> On Nov 11, 2013, at 11:50, Chuck Lever <chuck.lever@oracle.com> wrote:
+>>> 
+>>>> Hi-
+>>>> 
+>>>> It was recently pointed out to me that the behavior of atime on NFS mount points is pretty dodgy, yet this is not documented anywhere, not even in the venerable and unmaintained Linux NFS FAQ.
+>>>> 
+>>>> A good place to cover this topic might be nfs(5).  It could discuss how the Linux NFS client deals with the various *atime mount options (mostly be collapsing them into relatime, all the time).  And it could discuss how file timestamps are updated when the physical backing store is on another system.
+>>>> 
+>>>> Thoughts?  Comments?
+>>> 
+>>> NFS atime is not the same as relatime.
+>>> 
+>>> Our atime is only updated when a READ rpc call goes to the server. Cached reads do not, for instance, trigger an atime update. That is a very different model than the relatime model.
+>> 
+>> Yes, but /proc/mounts shows the "relatime" option on NFS mounts.  And apparently it doesn't go away if you specify "noatime," for example.
+>> 
+>> Basically it looks to some people like NFS ignores all the atime mount options.  We should document how NFS behaves, or fix it.
 > 
->  (1) Creation time: The SMB protocol carries the creation time, which could be
->      exported by Samba, which will in turn help CIFS make use of FS-Cache as
->      that can be used for coherency data.
+> We _should_ ignore all atime mount options.
 
-We'll want this in the next stat version for sure.
+Makes sense.
 
->  (2) Lightweight stat: Ask for just those details of interest, and allow a
->      netfs (such as NFS) to approximate anything not of interest, possibly
->      without going to the server [Trond Myklebust, Ulrich Drepper, Andreas
->      Dilger].
+> I'm fine with documenting the behaviour somewhere, but my point was that
+> documenting it in terms of "relatime" is not correct. We could, however,
+> clear that default MNT_RELATIME flag that 'do_mount' conveniently sets
+> for us.
 
-Seems useful, too.
+I'm operating from what users can observe, and they see "relatime" in /proc/mounts, which is why I described it that way.  /proc/mounts is clearly wrong, then.
 
->  (3) Heavyweight stat: Force a netfs to go to the server, even if it thinks its
->      cached attributes are up to date [Trond Myklebust].
+Can you make the kernel work the way you prefer?  I'm happy to provide an update to nfs(5) that documents that preference.  I think we do need to discuss how timestamps work on NFS, and exactly what happens when "*atime" mount options are specified.
 
-Needs a much better rational an explanation.  Unless I get that I'm
-very much tempted to say no here.
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
->  (4) Data version number: Could be used by userspace NFS servers [Aneesh Kumar].
-> 
->      Can also be used to modify fill_post_wcc() in NFSD which retrieves
->      i_version directly, but has just called vfs_getattr().  It could get it
->      from the kstat struct if it used vfs_xgetattr() instead.
 
-Way to NFS specific to export it I think.
 
->  (5) BSD stat compatibility: Including more fields from the BSD stat such as
->      creation time (st_btime) and inode generation number (st_gen) [Jeremy
->      Allison, Bernd Schubert].
-
-We already mentioned the creation time earlier.  The inode generation is
-an implementation detail and should not be exported.
-
->  (6) Inode generation number: Useful for FUSE and userspace NFS servers [Bernd
->      Schubert].  This was asked for but later deemed unnecessary with the
->      open-by-handle capability available
-
-Your lists seem to have some duplication, don't they?
-
->  (8) Allow the filesystem to indicate what it can/cannot provide: A filesystem
->      can now say it doesn't support a standard stat feature if that isn't
->      available, so if, for instance, inode numbers or UIDs don't exist or are
->      fabricated locally...
-
-What should a usr do about that?
-
-> 	int ret = statxat(int dfd,
-> 			  const char *filename,
-> 			  unsigned int flags,
-> 			  unsigned int mask,
-> 			  struct statx *buffer,
-> 			  struct statx_auxinfo *auxinfo_buffer);
-
-Please make the whole AUX thing a separate system call.
-
-> 
-> The dfd, filename and flags parameters indicate the file to query.  There is no
-> equivalent of lstat() as that can be emulated with statxat() by passing
-> AT_SYMLINK_NOFOLLOW in flags.  There is also no equivalent of fstat() as that
-> can be emulated by passing a NULL filename to statxat() with the fd of interest
-> in dfd.
-> 
-> AT_FORCE_ATTR_SYNC can also be set in flags.  This will require a network
-> filesystem to synchronise its attributes with the server.
-> 
-> mask is a bitmask indicating the fields in struct statx that are of interest to
-> the caller.  The user should set this to STATX_BASIC_STATS to get the basic set
-> returned by stat().
-> 
-> buffer points to the destination for the main data and auxinfo_buffer points to
-> the destination for the optional auxiliary data.  auxinfo_buffer can be NULL if
-> the auxiliary data is not required.
-> 
-> At the moment, this will only work on x86_64 and i386 as it requires the system
-> call to be wired up.
-> 
-> 
-> ======================
-> MAIN ATTRIBUTES RECORD
-> ======================
-> 
-> The following structures are defined in which to return the main attribute set:
-> 
-> 	struct statx_dev {
-> 		uint32_t		major, minor;
-> 	};
-
-Having a special, oddly named dev_t that isn't compatible to any other
-of the userspace APIs doesn't make sense. 
-
-> 
-> 	struct statx {
-> 		uint32_t		st_mask;
-> 		uint32_t		st_information;
-
-Pleae provide a detailed specification of the semantics for each
-field.
-
-> 		uint16_t		st_mode;
-> 		uint16_t		__spare0[1];
-> 		uint32_t		st_nlink;
-> 		uint32_t		st_uid;
-> 		uint32_t		st_gid;
-> 		uint32_t		st_alloc_blksize;
-> 		uint32_t		st_blksize;
-> 		uint32_t		st_small_io_size;
-> 		uint32_t		st_large_io_size;
-
-Exporting a per-file I/O toplogy makes sense similar to how we do
-this for block devices.  Forcing this into every stat call make
-less sense.  Also pleae provide the dio alignment information in
-an I/O topology call.
-
-> 		struct statx_dev	st_rdev;
-> 		struct statx_dev	st_dev;
-> 		int32_t			st_atime_ns;
-> 		int32_t			st_btime_ns;
-> 		int32_t			st_ctime_ns;
-> 		int32_t			st_mtime_ns;
-> 		int64_t			st_atime;
-> 		int64_t			st_btime;
-> 		int64_t			st_ctime;
-> 		int64_t			st_mtime;
-
-Same argument as above, don't introduce incompatible time formats that
-nothing else in the syscall layer can deal with.
 
