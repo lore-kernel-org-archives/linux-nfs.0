@@ -1,183 +1,112 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:15447 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751589Ab3KLRoh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 12 Nov 2013 12:44:37 -0500
-Date: Tue, 12 Nov 2013 12:44:34 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "steved@redhat.com" <steved@redhat.com>
-Subject: Re: [PATCH 1/2] sunrpc: create a new dummy pipe for gssd to hold
- open
-Message-ID: <20131112124434.4e1c36b0@tlielax.poochiereds.net>
-In-Reply-To: <1384277770.4779.27.camel@leira.trondhjem.org>
-References: <1384261225-28559-1-git-send-email-jlayton@redhat.com>
-	<1384261225-28559-2-git-send-email-jlayton@redhat.com>
-	<1384277770.4779.27.camel@leira.trondhjem.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from userp1040.oracle.com ([156.151.31.81]:20720 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751138Ab3KKUdV convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Nov 2013 15:33:21 -0500
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 6.6 \(1510\))
+Subject: Re: [PATCH] Adding the nfs4_secure_mounts bool
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <5281290B.6000201@RedHat.com>
+Date: Mon, 11 Nov 2013 15:33:14 -0500
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <E0FBCF46-C70F-41E5-BA67-48406253CD7E@oracle.com>
+References: <1384037221-7224-1-git-send-email-steved@redhat.com> <E061C7A8-DC27-49BA-93C2-DC2E9C19EA7B@netapp.com> <52811CBB.3070204@RedHat.com> <E520DD5F-7E5A-4B6C-9FF6-6B74DA36FD1E@oracle.com> <5281290B.6000201@RedHat.com>
+To: Steve Dickson <SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 12 Nov 2013 17:36:15 +0000
-"Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
 
-> On Tue, 2013-11-12 at 08:00 -0500, Jeff Layton wrote:
-> > rpc.gssd will naturally hold open any pipe named */clnt*/gssd that shows
-> > up under rpc_pipefs. That behavior gives us a reliable mechanism to tell
-> > whether it's actually running or not.
-> > 
-> > Create a new toplevel "dummy" directory in rpc_pipefs when it's mounted.
-> > Under that directory create another directory called "clntXX", and then
-> > within that a pipe called "gssd".
-> > 
-> > We'll never send an upcall along that pipe, and any downcall written to
-> > it will just return -EINVAL.
-> > 
-> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > ---
-> >  net/sunrpc/netns.h    |  1 +
-> >  net/sunrpc/rpc_pipe.c | 84 +++++++++++++++++++++++++++++++++++++++++++++++++++
-> >  2 files changed, 85 insertions(+)
-> > 
-> > diff --git a/net/sunrpc/netns.h b/net/sunrpc/netns.h
-> > index 779742c..6b82968 100644
-> > --- a/net/sunrpc/netns.h
-> > +++ b/net/sunrpc/netns.h
-> > @@ -15,6 +15,7 @@ struct sunrpc_net {
-> >  
-> >  	struct super_block *pipefs_sb;
-> >  	struct mutex pipefs_sb_lock;
-> > +	struct dentry *gssd_dummy;
-> >  
-> >  	struct list_head all_clients;
-> >  	spinlock_t rpc_client_lock;
-> > diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-> > index f94567b..1c54de6 100644
-> > --- a/net/sunrpc/rpc_pipe.c
-> > +++ b/net/sunrpc/rpc_pipe.c
-> > @@ -1168,6 +1168,7 @@ enum {
-> >  	RPCAUTH_nfsd4_cb,
-> >  	RPCAUTH_cache,
-> >  	RPCAUTH_nfsd,
-> > +	RPCAUTH_dummy,
-> >  	RPCAUTH_RootEOF
-> >  };
-> >  
-> > @@ -1204,6 +1205,10 @@ static const struct rpc_filelist files[] = {
-> >  		.name = "nfsd",
-> >  		.mode = S_IFDIR | S_IRUGO | S_IXUGO,
-> >  	},
-> > +	[RPCAUTH_dummy] = {
-> > +		.name = "dummy",
+On Nov 11, 2013, at 1:59 PM, Steve Dickson <SteveD@redhat.com> wrote:
+
+> On 11/11/13 13:30, Chuck Lever wrote:
+>> 
+>> On Nov 11, 2013, at 1:06 PM, Steve Dickson <SteveD@redhat.com> wrote:
+>> 
+>>> 
+>>> 
+>>> On 09/11/13 18:12, Myklebust, Trond wrote:
+>>>> One alternative to the above scheme, which I believe that I’ve 
+>>>> suggested before, is to have a permanent entry in rpc_pipefs 
+>>>> that rpc.gssd can open and that the kernel can use to detect 
+>>>> that it is running. If we make it /var/lib/nfs/rpc_pipefs/gssd/clnt00/gssd, 
+>>>> then AFAICS we don’t need to change nfs-utils at all, since all newer 
+>>>> versions of rpc.gssd will try to open for read anything of the form 
+>>>> /var/lib/nfs/rpc_pipefs/*/clntXX/gssd...
+>>> 
+>>> After further review I am going going have to disagree with you on this.
+>>> Since all the context is cached on the initial mount the kernel
+>>> should be using the call_usermodehelper() to call up to rpc.gssd 
+>>> to get the context, which means we could put this upcall noise 
+>>> to bed... forever! :-)
+>> 
+>> Ask Al Viro for his comments on whether the kernel should start 
+>> gssd (either a daemon or a script).  Hint: wear your kevlar underpants.
+> I was thinking gssd would become a the gssd-cmd command... Al does not
+> like the call_usermodehelper() interface?
+
+He doesn't have a problem with call_usermodehelper() in general.  However, the kernel cannot guarantee security if it has to run a fixed command line.  Go ask him to explain.
+
+
 > 
-> "gssd" would be nicer.
+>> 
+>> Have you tried Trond's approach yet?
+> Looking into it... But nothing is trivial in that code... 
 > 
+>> 
+>>> I realize this is not going happen overnight, so I would still
+>>> like to propose my  nfs4_secure_mounts bool patch as bridge
+>>> to the new call_usermodehelper()  since its the cleanest 
+>>> solution so far... 
+>>> 
+>>> Thoughts?
+>> 
+>> We have workarounds already that work on every kernel since 3.8.
+>> 
+> The one that logs 5 to 20 lines (depending on thins are setup or not)
+> per mount? That does work in some environments but no all. ;-)
 
-Ha! That's what my original patch had, but I thought that made it look
-too legit. I can respin and change it though if you like...
+When does running rpc.gssd not work?
 
-> > +		.mode = S_IFDIR | S_IRUGO | S_IXUGO,
-> > +	},
-> >  };
-> >  
-> >  /*
-> > @@ -1253,6 +1258,80 @@ void rpc_put_sb_net(const struct net *net)
-> >  }
-> >  EXPORT_SYMBOL_GPL(rpc_put_sb_net);
-> >  
-> > +static const struct rpc_filelist dummy_clnt_dir[] = {
-> > +	[0] = {
-> > +		.name = "clntXX",
-> > +		.mode = S_IFDIR | S_IRUGO | S_IXUGO,
-> > +	},
-> > +};
-> > +
-> > +static ssize_t
-> > +dummy_downcall(struct file *filp, const char __user *src, size_t len)
-> > +{
-> > +	return -EINVAL;
-> > +}
-> > +
-> > +static const struct rpc_pipe_ops dummy_pipe_ops = {
-> > +	.upcall		= rpc_pipe_generic_upcall,
-> > +	.downcall	= dummy_downcall,
-> > +};
-> > +
-> > +/**
-> > + * rpc_gssd_dummy_populate - create a dummy gssd pipe
-> > + * @root: root of the rpc_pipefs filesystem
-> > + *
-> > + * Create a dummy set of directories and a pipe that gssd can hold open to
-> > + * indicate that it is up and running.
-> > + */
-> > +static struct dentry *
-> > +rpc_gssd_dummy_populate(struct dentry *root)
-> > +{
-> > +	int ret = 0;
-> > +	struct dentry *gssd_dentry;
-> > +	struct dentry *clnt_dentry = NULL;
-> > +	struct dentry *pipe_dentry = NULL;
-> > +	struct rpc_pipe *pipe_data = NULL;
-> > +	struct qstr q = QSTR_INIT(files[RPCAUTH_dummy].name,
-> > +				  strlen(files[RPCAUTH_dummy].name));
-> > +
-> > +	/* We should never get this far if "gssd" doesn't exist */
-> > +	gssd_dentry = d_hash_and_lookup(root, &q);
-> > +	if (!gssd_dentry)
-> > +		return ERR_PTR(-ENOENT);
-> > +
-> > +	ret = rpc_populate(gssd_dentry, dummy_clnt_dir, 0, 1, NULL);
-> > +	if (ret) {
-> > +		pipe_dentry = ERR_PTR(ret);
-> > +		goto out;
-> > +	}
-> > +
-> > +	pipe_data = rpc_mkpipe_data(&dummy_pipe_ops, 0);
-> > +	if (IS_ERR(pipe_data)) {
-> > +		pipe_dentry = ERR_CAST(pipe_data);
-> > +		pipe_data = NULL;
-> > +		goto out;
-> > +	}
-> > +
-> > +	q.name = dummy_clnt_dir[0].name;
-> > +	q.len = strlen(dummy_clnt_dir[0].name);
-> > +	clnt_dentry = d_hash_and_lookup(gssd_dentry, &q);
-> > +	if (!clnt_dentry) {
-> > +		pipe_dentry = ERR_PTR(-ENOENT);
-> > +		goto out;
-> > +	}
-> > +
-> > +	pipe_dentry = rpc_mkpipe_dentry(clnt_dentry, "gssd", NULL, pipe_data);
-> > +	if (IS_ERR(pipe_dentry))
-> > +		goto out;
-> > +
-> > +	pipe_data = NULL;
-> > +out:
-> > +	rpc_destroy_pipe_data(pipe_data);
-> > +	dput(clnt_dentry);
-> > +	dput(gssd_dentry);
-> > +	return pipe_dentry;
-> > +}
-> > +
-> >  static int
-> >  rpc_fill_super(struct super_block *sb, void *data, int silent)
-> >  {
-> > @@ -1275,6 +1354,11 @@ rpc_fill_super(struct super_block *sb, void *data, int silent)
-> >  		return -ENOMEM;
-> >  	if (rpc_populate(root, files, RPCAUTH_lockd, RPCAUTH_RootEOF, NULL))
-> >  		return -ENOMEM;
-> > +
-> > +	sn->gssd_dummy = rpc_gssd_dummy_populate(root);
-> > +	if (IS_ERR(sn->gssd_dummy))
-> > +		return PTR_ERR(sn->gssd_dummy);
-> > +
-> >  	dprintk("RPC:       sending pipefs MOUNT notification for net %p%s\n",
-> >  		net, NET_NAME(net));
-> >  	mutex_lock(&sn->pipefs_sb_lock);
-> 
+> Or am I missing one? Please tell me I am!!! :-) 
 
+OK: You're missing one.
+
+Client configurations that have auth_rpcgss.ko loaded but do not run rpc.gssd are, quite simply, broken.  The gss upcall will not work in that configuration.  There is no reason to load auth_rpcgss.ko if user space does not have rpc.gssd enabled and running.
+
+This has been a problem for a very long time, but use cases where the 15 second upcall timeout is encountered have until recently been infrequent, and only occur in situations where the mount options don't work anyway, so no one has bothered to address it.
+
+This broken configuration is due to incorrect system initialization scripts.
+
+If an administrator chooses not to run rpc.gssd, then auth_rpcgss.ko should not be loaded.  The kernel deals quite correctly when auth_rpcgss.ko is not loaded -- GSS flavors are simply not supported, and the kernel uses AUTH_SYS by default for everything.  (Right there is your magical administrative interface for controlling what security flavors are used and supported).
+
+But the current init scripts load auth_rpcgss.ko unconditionally.  Thus any gss upcall will fail until rpc.gssd is started.
+
+With upstream kernel commit 4edaa308 (and following) I added a use case that exposes the upcall timeout much more often.  It's a latent bug, but we now hit it during the first mount after every client reboot, so it is noticeable to anyone who leaves nfs-secure.service disabled.
+
+Therefore the scenario we want to avoid is where auth_rpcgss.ko is loaded, but rpc.gssd is not running.  There are two obvious ways to avoid this scenario:
+
+  A.  If auth_rpcgss.ko is loaded unconditionally, make sure rpc.gssd is running unconditionally (and cull the warnings)
+
+  B.  If you do not want to run rpc.gssd, make sure auth_rpcgss.ko is not loaded
+
+Both of these workarounds are configuration changes, not code changes.  B. is accomplished simply by blacklisting auth_rpcgss.ko.
+
+We could go a step further and remove the module alias added by upstream kernel commit 71afa85e to prevent the kernel from loading auth_rpcgss.ko automatically, and then make sure the nfs-secure.service script (and the server-side equivalent) loads auth_rpcgss.ko before starting rpc.gssd.
+
+Since you are opposed to running rpc.gssd, blacklisting auth_rpcgss.ko is the easy choice.  Adding auth_rpcgss.ko to the module blacklist is no more difficult than setting a kernel module parameter or toggling nfs-secure.service.
+
+However, IMO, in the long run Linux should be installed with rpc.gssd running unconditionally, or dynamically start-able by mount.nfs (like statd works today).  We cannot guess a priori whether a user or administrator will want NFS support for GSS flavors, just as we cannot guess a priori whether the user wants support for NFSv3.
+
+Yet we always have NFSv3 support available.  Likewise, support for GSS should always be available, and there really is no good reason any more not to leave it running all the time.
+
+As Trond points out, NFSv4 implementations are required to implement GSS security.
 
 -- 
-Jeff Layton <jlayton@redhat.com>
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
