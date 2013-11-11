@@ -1,61 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:53410 "EHLO fieldses.org"
+Received: from mx1.netapp.com ([216.240.18.38]:8197 "EHLO mx1.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759107Ab3KMSqo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 13 Nov 2013 13:46:44 -0500
-Date: Wed, 13 Nov 2013 13:46:38 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Anna Schumaker <bjschuma@netapp.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 0/3] NFSD: Implement SEEK
-Message-ID: <20131113184637.GM28033@fieldses.org>
-References: <1384283048-7699-1-git-send-email-bjschuma@netapp.com>
- <20131112194529.GA26341@fieldses.org>
- <52828767.3030909@netapp.com>
- <20131112195911.GA28033@fieldses.org>
- <5283A24D.4010309@netapp.com>
- <5283A3B7.8080405@netapp.com>
- <20131113161527.GA10046@infradead.org>
- <20131113164959.GL28033@fieldses.org>
- <20131113165204.GB8676@infradead.org>
+	id S1754985Ab3KKSxP convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Nov 2013 13:53:15 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Steve Dickson <SteveD@redhat.com>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] Adding the nfs4_secure_mounts bool
+Date: Mon, 11 Nov 2013 18:53:12 +0000
+Message-ID: <80321082-AFEF-48DF-A70D-6577974F8F07@netapp.com>
+References: <1384037221-7224-1-git-send-email-steved@redhat.com>
+ <E061C7A8-DC27-49BA-93C2-DC2E9C19EA7B@netapp.com>
+ <52811CBB.3070204@RedHat.com>
+ <607B1346-570D-4CD6-8018-6F9C0A2B5318@netapp.com>
+ <52812539.8030805@RedHat.com>
+In-Reply-To: <52812539.8030805@RedHat.com>
+Content-Type: text/plain; charset="Windows-1252"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20131113165204.GB8676@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Nov 13, 2013 at 08:52:04AM -0800, Christoph Hellwig wrote:
-> On Wed, Nov 13, 2013 at 11:49:59AM -0500, J. Bruce Fields wrote:
-> > This isn't a candidate for 3.13, and SEEK didn't look like the most
-> > problematic bit, so with a couple more months I'm hoping we'll be more
-> > confident about the protocol?
+
+On Nov 11, 2013, at 13:43, Steve Dickson <SteveD@redhat.com> wrote:
+
 > 
-> Wish I knew.  The ieft list seems to be at an awfully small pace,
+> 
+> On 11/11/13 13:25, Myklebust, Trond wrote:
+>> 
+>> On Nov 11, 2013, at 13:06, Steve Dickson <SteveD@redhat.com> wrote:
+>> 
+>>> 
+>>> 
+>>> On 09/11/13 18:12, Myklebust, Trond wrote:
+>>>> One alternative to the above scheme, which I believe that I’ve 
+>>>> suggested before, is to have a permanent entry in rpc_pipefs 
+>>>> that rpc.gssd can open and that the kernel can use to detect 
+>>>> that it is running. If we make it /var/lib/nfs/rpc_pipefs/gssd/clnt00/gssd, 
+>>>> then AFAICS we don’t need to change nfs-utils at all, since all newer 
+>>>> versions of rpc.gssd will try to open for read anything of the form 
+>>>> /var/lib/nfs/rpc_pipefs/*/clntXX/gssd...
+>>> 
+>>> After further review I am going going have to disagree with you on this.
+>>> Since all the context is cached on the initial mount the kernel
+>> 
+>> What context?
+> The krb5 blob that the kernel is call up to rpc.gssd to get.. Maybe
+> I'm using the wrong terminology???
 
-It just varies depending on who's paying attention, I think.  Tom's
-actually been taking changes pretty quickly once there's patches.
+That’s only the machine cred. User credentials get allocated and freed all the time.
 
-> and the actual spec seems another layer separated from that.  People
-> who are more familar with the process might have to chime in.
+When the server reboots, then all GSS contexts need to be re-established, which can be a lot of call_usermodehelper() upcalls; that’s one of the reasons why we decided in favour of a gssd daemon in the first place.
 
-Trond actually goes to those meetings on a regular basis, so he's
-probably the one to chime in.
-
-4.0 and 4.1 were both kind of huge and monolithic, and I don't remember
-facing the problem of knowing when the specs were "done": the code
-wasn't going to be ready before the rfc's were published anyway.
-
-A lot of these 4.2 things look much simpler to implement, so now we've
-got the option of releasing things into the wild before there's an rfc.
-And if we screw up then we could end up sticking someone else with
-behavior they don't want.
-
-Better than specifying behavior that nobody wanted, which was more
-likely before--it's good to be reviewing specs and patches at the same
-time.  But now I'm more vague on when to declare some part of the new
-spec stable.
-
-If there's no magic milestone then we just review and communicate as
-best we can, I guess....
-
---b.
