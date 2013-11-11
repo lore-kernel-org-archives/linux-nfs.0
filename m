@@ -1,54 +1,160 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:7459 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:12357 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753821Ab3KKSmG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 11 Nov 2013 13:42:06 -0500
-Message-ID: <52812539.8030805@RedHat.com>
-Date: Mon, 11 Nov 2013 13:43:05 -0500
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] Adding the nfs4_secure_mounts bool
-References: <1384037221-7224-1-git-send-email-steved@redhat.com> <E061C7A8-DC27-49BA-93C2-DC2E9C19EA7B@netapp.com> <52811CBB.3070204@RedHat.com> <607B1346-570D-4CD6-8018-6F9C0A2B5318@netapp.com>
-In-Reply-To: <607B1346-570D-4CD6-8018-6F9C0A2B5318@netapp.com>
-Content-Type: text/plain; charset=windows-1252
+	id S1753293Ab3KKLUt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 11 Nov 2013 06:20:49 -0500
+Message-ID: <1384168843.16759.50.camel@serendib>
+Subject: Re: [PATCH] exportfs: modify can_test() to use LONG_MAX when
+ appropriate
+From: Harshula Jayasuriya <harshula@redhat.com>
+To: NeilBrown <neilb@suse.de>
+Cc: Steve Dickson <steved@redhat.com>, linux-nfs@vger.kernel.org,
+        Jeff Layton <jlayton@redhat.com>,
+        "J.Bruce Fields" <bfields@citi.umich.edu>
+Date: Mon, 11 Nov 2013 22:20:43 +1100
+In-Reply-To: <20131111185356.6e0fd0a9@notabene.brown>
+References: <1376588800.17754.14.camel@serendib>
+	 <20130815175258.GS17781@fieldses.org> <1384154434.16759.39.camel@serendib>
+	 <20131111185356.6e0fd0a9@notabene.brown>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Mon, 2013-11-11 at 18:53 +1100, NeilBrown wrote:
+> On Mon, 11 Nov 2013 18:20:34 +1100 Harshula Jayasuriya <harshula@redhat.com>
+> wrote:
+> 
+> > This patch is the nfs-utils patch corresponding to the kernel patch 
+> > commit 2f74f972d4cc7d83408ea0c32d424edcb44887bf "sunrpc: prepare NFS 
+> > for 2038": "The kernel sunrpc code needs to handle seconds since epoch 
+> > greater than 2147483647. This means functions that parse time as an 
+> > int need to handle it as time_t."
+> > 
+> > When appropriate exportfs should use LONG_MAX in can_test() instead of
+> > INT_MAX.
+> > 
+> > kernel INT_MAX + exportfs INT_MAX: "Tue Jan 19 03:14:08 UTC 2038"
+> > =================================================================
+> > 
+> > exportfs: /mnt/export does not support NFS export:
+> > ------------------------------------------------------------
+> >  # cat /proc/net/rpc/auth.unix.ip/content
+> >  #class IP domain
+> > ------------------------------------------------------------
+> > 
+> > + mount fail:
+> > ------------------------------------------------------------
+> >  # cat /proc/net/rpc/auth.unix.ip/content
+> >  #class IP domain
+> >  # expiry=2147483768 refcnt=2 flags=4
+> >  # nfsd 192.168.1.6 -no-domain-
+> > ------------------------------------------------------------
+> > 
+> > kernel LONG_MAX + exportfs INT_MAX: "Tue Jan 19 03:14:08 UTC 2038"
+> > ==================================================================
+> > 
+> > "exportfs: /mnt/export does not support NFS export":
+> > ------------------------------------------------------------
+> >  # cat /proc/net/rpc/auth.unix.ip/content
+> >  #class IP domain
+> > ------------------------------------------------------------
+> > 
+> > + mount success:
+> > ------------------------------------------------------------
+> >  # cat /proc/net/rpc/auth.unix.ip/content
+> >  #class IP domain
+> >  # expiry=2147485448 refcnt=2 flags=1
+> >  nfsd 192.168.1.6 *
+> > ------------------------------------------------------------
+> > 
+> > kernel LONG_MAX + exportfs LONG_MAX: "Tue Jan 19 03:14:08 UTC 2038"
+> > ===================================================================
+> > 
+> > exportfs:
+> > ------------------------------------------------------------
+> >  # cat /proc/net/rpc/auth.unix.ip/content
+> >  #class IP domain
+> >  # expiry=9223372036854775807 refcnt=1 flags=1
+> >  nfsd 0.0.0.0 -test-client-
+> > ------------------------------------------------------------
+> > 
+> > + mount success:
+> > ------------------------------------------------------------
+> >  # cat /proc/net/rpc/auth.unix.ip/content
+> >  #class IP domain
+> >  # expiry=2147485448 refcnt=2 flags=1
+> >  nfsd 192.168.1.6 *
+> >  # expiry=9223372036854775807 refcnt=1 flags=1
+> >  nfsd 0.0.0.0 -test-client-
+> > ------------------------------------------------------------
+> > 
+> > Signed-off-by: Harshula Jayasuriya <harshula@redhat.com>
+> > ---
+> >  utils/exportfs/exportfs.c | 20 ++++++++++++++++----
+> >  1 file changed, 16 insertions(+), 4 deletions(-)
+> > 
+> > diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
+> > index da5fe21..bccbed5 100644
+> > --- a/utils/exportfs/exportfs.c
+> > +++ b/utils/exportfs/exportfs.c
+> > @@ -27,6 +27,8 @@
+> >  #include <netdb.h>
+> >  #include <errno.h>
+> >  #include <dirent.h>
+> > +#include <limits.h>
+> > +#include <time.h>
+> >  
+> >  #include "sockaddr.h"
+> >  #include "misc.h"
+> > @@ -406,17 +408,27 @@ unexportfs(char *arg, int verbose)
+> >  
+> >  static int can_test(void)
+> >  {
+> > +	char buf[1024];
+> >  	int fd;
+> >  	int n;
+> > -	char *setup = "nfsd 0.0.0.0 2147483647 -test-client-\n";
+> > +
+> >  	fd = open("/proc/net/rpc/auth.unix.ip/channel", O_WRONLY);
+> > -	if ( fd < 0) return 0;
+> > -	n = write(fd, setup, strlen(setup));
+> > +	if (fd < 0)
+> > +		return 0;
+> > +
+> > +	if (time(NULL) > INT_MAX)
+> > +		sprintf(buf, "nfsd 0.0.0.0 %ld -test-client-\n", LONG_MAX);
+> > +	else
+> > +		sprintf(buf, "nfsd 0.0.0.0 %d -test-client-\n", INT_MAX);
+> 
+> This generally makes sense, but I think the cut-off is a bit too fine.
+> If time(NULL) is exactly INT_MAX, then this might not do what is required.
+> How about
+>    if (time(NULL) > INT_MAX - (24*3600))
+> ??
+
+Good point. Mount attempts seem to fail not because of when exportfs is
+run, but when the first mount request is made.
+
+Is 1 day the right amount of tolerance? Or should we just go for a much
+larger tolerance, on the assumption that the running kernel will have
+commit 2f74f972d4cc7d83408ea0c32d424edcb44887bf by then? :-)
+
+cya,
+#
 
 
-On 11/11/13 13:25, Myklebust, Trond wrote:
-> 
-> On Nov 11, 2013, at 13:06, Steve Dickson <SteveD@redhat.com> wrote:
-> 
->>
->>
->> On 09/11/13 18:12, Myklebust, Trond wrote:
->>> One alternative to the above scheme, which I believe that I’ve 
->>> suggested before, is to have a permanent entry in rpc_pipefs 
->>> that rpc.gssd can open and that the kernel can use to detect 
->>> that it is running. If we make it /var/lib/nfs/rpc_pipefs/gssd/clnt00/gssd, 
->>> then AFAICS we don’t need to change nfs-utils at all, since all newer 
->>> versions of rpc.gssd will try to open for read anything of the form 
->>> /var/lib/nfs/rpc_pipefs/*/clntXX/gssd...
->>
->> After further review I am going going have to disagree with you on this.
->> Since all the context is cached on the initial mount the kernel
-> 
-> What context?
-The krb5 blob that the kernel is call up to rpc.gssd to get.. Maybe
-I'm using the wrong terminology???
+> > +
+> > +	n = write(fd, buf, strlen(buf));
+> >  	close(fd);
+> >  	if (n < 0)
+> >  		return 0;
+> > +
+> >  	fd = open("/proc/net/rpc/nfsd.export/channel", O_WRONLY);
+> > -	if ( fd < 0) return 0;
+> > +	if (fd < 0)
+> > +		return 0;
+> >  	close(fd);
+> >  	return 1;
+> >  }
 
-> 
->> should be using the call_usermodehelper() to call up to rpc.gssd 
->> to get the context, which means we could put this upcall noise 
->> to bed... forever! :-) 
-> 
-> No. We’re not adding yet another up call. We’ve already got two...
-> 
-I was thinking the call_usermodehelper() would replace the rpc_pipfs()
-upcall... but just remembered call_usermodehelper() does not have 
-a clean way to pass data back into the kernel... darn! 
-
-steved.
