@@ -1,231 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:48839 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752940Ab3KOKj0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 15 Nov 2013 05:39:26 -0500
-Message-ID: <1384511960.14391.115.camel@serendib>
-Subject: Re: [PATCH] exportfs: modify can_test() to use LONG_MAX when
- appropriate
-From: Harshula Jayasuriya <harshula@redhat.com>
-To: NeilBrown <neilb@suse.de>
-Cc: Steve Dickson <steved@redhat.com>, linux-nfs@vger.kernel.org,
-        Jeff Layton <jlayton@redhat.com>,
-        "J.Bruce Fields" <bfields@citi.umich.edu>
-Date: Fri, 15 Nov 2013 21:39:20 +1100
-In-Reply-To: <20131115173845.5ff064cd@notabene.brown>
-References: <1376588800.17754.14.camel@serendib>
-	 <20130815175258.GS17781@fieldses.org> <1384154434.16759.39.camel@serendib>
-	 <20131111185356.6e0fd0a9@notabene.brown>
-	 <1384168843.16759.50.camel@serendib> <1384496133.14391.112.camel@serendib>
-	 <20131115173845.5ff064cd@notabene.brown>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from userp1040.oracle.com ([156.151.31.81]:21703 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751222Ab3KKUfj convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Nov 2013 15:35:39 -0500
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 6.6 \(1510\))
+Subject: Re: NFS atime behavior is not documented
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <6EE5262F-5B2E-4F10-A600-A60F30C0A23E@netapp.com>
+Date: Mon, 11 Nov 2013 15:35:34 -0500
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <2EFADFB9-6520-4ED3-A7A0-B87451885DFB@oracle.com>
+References: <E4BE40FF-9F81-4688-BD39-1E583DDCEA4A@oracle.com> <6EE5262F-5B2E-4F10-A600-A60F30C0A23E@netapp.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2013-11-15 at 17:38 +1100, NeilBrown wrote:
-> On Fri, 15 Nov 2013 17:15:33 +1100 Harshula Jayasuriya <harshula@redhat.com>
-> wrote:
-> 
-> > On Mon, 2013-11-11 at 22:20 +1100, Harshula Jayasuriya wrote:
-> > > On Mon, 2013-11-11 at 18:53 +1100, NeilBrown wrote:
-> > > > On Mon, 11 Nov 2013 18:20:34 +1100 Harshula Jayasuriya <harshula@redhat.com>
-> > > > wrote:
-> > > > 
-> > > > > This patch is the nfs-utils patch corresponding to the kernel patch 
-> > > > > commit 2f74f972d4cc7d83408ea0c32d424edcb44887bf "sunrpc: prepare NFS 
-> > > > > for 2038": "The kernel sunrpc code needs to handle seconds since epoch 
-> > > > > greater than 2147483647. This means functions that parse time as an 
-> > > > > int need to handle it as time_t."
-> > > > > 
-> > > > > When appropriate exportfs should use LONG_MAX in can_test() instead of
-> > > > > INT_MAX.
-> > > > > 
-> > > > > kernel INT_MAX + exportfs INT_MAX: "Tue Jan 19 03:14:08 UTC 2038"
-> > > > > =================================================================
-> > > > > 
-> > > > > exportfs: /mnt/export does not support NFS export:
-> > > > > ------------------------------------------------------------
-> > > > >  # cat /proc/net/rpc/auth.unix.ip/content
-> > > > >  #class IP domain
-> > > > > ------------------------------------------------------------
-> > > > > 
-> > > > > + mount fail:
-> > > > > ------------------------------------------------------------
-> > > > >  # cat /proc/net/rpc/auth.unix.ip/content
-> > > > >  #class IP domain
-> > > > >  # expiry=2147483768 refcnt=2 flags=4
-> > > > >  # nfsd 192.168.1.6 -no-domain-
-> > > > > ------------------------------------------------------------
-> > > > > 
-> > > > > kernel LONG_MAX + exportfs INT_MAX: "Tue Jan 19 03:14:08 UTC 2038"
-> > > > > ==================================================================
-> > > > > 
-> > > > > "exportfs: /mnt/export does not support NFS export":
-> > > > > ------------------------------------------------------------
-> > > > >  # cat /proc/net/rpc/auth.unix.ip/content
-> > > > >  #class IP domain
-> > > > > ------------------------------------------------------------
-> > > > > 
-> > > > > + mount success:
-> > > > > ------------------------------------------------------------
-> > > > >  # cat /proc/net/rpc/auth.unix.ip/content
-> > > > >  #class IP domain
-> > > > >  # expiry=2147485448 refcnt=2 flags=1
-> > > > >  nfsd 192.168.1.6 *
-> > > > > ------------------------------------------------------------
-> > > > > 
-> > > > > kernel LONG_MAX + exportfs LONG_MAX: "Tue Jan 19 03:14:08 UTC 2038"
-> > > > > ===================================================================
-> > > > > 
-> > > > > exportfs:
-> > > > > ------------------------------------------------------------
-> > > > >  # cat /proc/net/rpc/auth.unix.ip/content
-> > > > >  #class IP domain
-> > > > >  # expiry=9223372036854775807 refcnt=1 flags=1
-> > > > >  nfsd 0.0.0.0 -test-client-
-> > > > > ------------------------------------------------------------
-> > > > > 
-> > > > > + mount success:
-> > > > > ------------------------------------------------------------
-> > > > >  # cat /proc/net/rpc/auth.unix.ip/content
-> > > > >  #class IP domain
-> > > > >  # expiry=2147485448 refcnt=2 flags=1
-> > > > >  nfsd 192.168.1.6 *
-> > > > >  # expiry=9223372036854775807 refcnt=1 flags=1
-> > > > >  nfsd 0.0.0.0 -test-client-
-> > > > > ------------------------------------------------------------
-> > > > > 
-> > > > > Signed-off-by: Harshula Jayasuriya <harshula@redhat.com>
-> > > > > ---
-> > > > >  utils/exportfs/exportfs.c | 20 ++++++++++++++++----
-> > > > >  1 file changed, 16 insertions(+), 4 deletions(-)
-> > > > > 
-> > > > > diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
-> > > > > index da5fe21..bccbed5 100644
-> > > > > --- a/utils/exportfs/exportfs.c
-> > > > > +++ b/utils/exportfs/exportfs.c
-> > > > > @@ -27,6 +27,8 @@
-> > > > >  #include <netdb.h>
-> > > > >  #include <errno.h>
-> > > > >  #include <dirent.h>
-> > > > > +#include <limits.h>
-> > > > > +#include <time.h>
-> > > > >  
-> > > > >  #include "sockaddr.h"
-> > > > >  #include "misc.h"
-> > > > > @@ -406,17 +408,27 @@ unexportfs(char *arg, int verbose)
-> > > > >  
-> > > > >  static int can_test(void)
-> > > > >  {
-> > > > > +	char buf[1024];
-> > > > >  	int fd;
-> > > > >  	int n;
-> > > > > -	char *setup = "nfsd 0.0.0.0 2147483647 -test-client-\n";
-> > > > > +
-> > > > >  	fd = open("/proc/net/rpc/auth.unix.ip/channel", O_WRONLY);
-> > > > > -	if ( fd < 0) return 0;
-> > > > > -	n = write(fd, setup, strlen(setup));
-> > > > > +	if (fd < 0)
-> > > > > +		return 0;
-> > > > > +
-> > > > > +	if (time(NULL) > INT_MAX)
-> > > > > +		sprintf(buf, "nfsd 0.0.0.0 %ld -test-client-\n", LONG_MAX);
-> > > > > +	else
-> > > > > +		sprintf(buf, "nfsd 0.0.0.0 %d -test-client-\n", INT_MAX);
-> > > > 
-> > > > This generally makes sense, but I think the cut-off is a bit too fine.
-> > > > If time(NULL) is exactly INT_MAX, then this might not do what is required.
-> > > > How about
-> > > >    if (time(NULL) > INT_MAX - (24*3600))
-> > > > ??
-> > > 
-> > > Good point. Mount attempts seem to fail not because of when exportfs is
-> > > run, but when the first mount request is made.
-> > 
-> > Clarification, what I said above is only true when the kernel does *not*
-> > have commit 2f74f972d4cc7d83408ea0c32d424edcb44887bf.
-> > 
-> > I did a few more tests with kernel commit
-> > 2f74f972d4cc7d83408ea0c32d424edcb44887bf and found:
-> > 
-> > 1) When the mount attempt arrives before the expiry time, set in
-> > can_test(), is reached, /proc/net/rpc/auth.unix.ip/content will contain
-> > the entry for the real mount attempt and test_export()'s "-test-client-"
-> > entry. If the mount attempt arrives after the expiry time, only the
-> > entry for the real mount attempt will appear. In both cases the mount
-> > attempt succeeds.
-> > 
-> > 2) If the expiry time, set in can_test(), is older than the time when
-> > exportfs is run, then test_export() will fail (write
-> > to /proc/net/rpc/nfsd.export/channel fails) and validate_export() will
-> > print the following error "exportfs: /mnt/export does not support NFS
-> > export". However, the mount attempt still succeeds.
-> > 
-> > Neil, have I missed something here? It looks like we don't need to add
-> > the tolerance to the time check.
-> 
-> The problem scenario that I imagine is:
-> 
-> > > > > +	if (time(NULL) > INT_MAX)
-> 
-> happens towards the end ofthe second when time(NULL) == INT_MAX.  The test
-> fails and INT_MAX is stored in 'buf'.
-> 
-> By the time buf gets written to the kernel, time has passed and so the kernel
-> sees that the entry written has passed.
-> So an already-expired entry gets stored in the cache, which is clearly
-> pointless and could conceivably result in the in the subsequent
-> 'test_export()' call failing incorrectly.
 
-True.
+On Nov 11, 2013, at 12:33 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
 
-> It is admittedly a tiny window and it may not cause a problem.
-> It just seems to me that waiting until the very last moment to switch over to
-> used the new max-time value is pointless brinkmanship.
-> It is obviously correct to use LONG_MAX a day (or even a month) before the
-> change over.  So just do it and don't worry about trying to prove whether it
-> is actually necessary or not.
+> 
+> On Nov 11, 2013, at 11:50, Chuck Lever <chuck.lever@oracle.com> wrote:
+> 
+>> Hi-
+>> 
+>> It was recently pointed out to me that the behavior of atime on NFS mount points is pretty dodgy, yet this is not documented anywhere, not even in the venerable and unmaintained Linux NFS FAQ.
+>> 
+>> A good place to cover this topic might be nfs(5).  It could discuss how the Linux NFS client deals with the various *atime mount options (mostly be collapsing them into relatime, all the time).  And it could discuss how file timestamps are updated when the physical backing store is on another system.
+>> 
+>> Thoughts?  Comments?
+> 
+> NFS atime is not the same as relatime.
+> 
+> Our atime is only updated when a READ rpc call goes to the server. Cached reads do not, for instance, trigger an atime update. That is a very different model than the relatime model.
 
-Sure :-)
+Yes, but /proc/mounts shows the "relatime" option on NFS mounts.  And apparently it doesn't go away if you specify "noatime," for example.
 
-cya,
-#
+Basically it looks to some people like NFS ignores all the atime mount options.  We should document how NFS behaves, or fix it.
 
-> NeilBrown
-> 
-> 
-> 
-> > cya,
-> > #
-> > 
-> > > Is 1 day the right amount of tolerance? Or should we just go for a much
-> > > larger tolerance, on the assumption that the running kernel will have
-> > > commit 2f74f972d4cc7d83408ea0c32d424edcb44887bf by then? :-)
-> > > 
-> > > cya,
-> > > #
-> > > 
-> > > 
-> > > > > +
-> > > > > +	n = write(fd, buf, strlen(buf));
-> > > > >  	close(fd);
-> > > > >  	if (n < 0)
-> > > > >  		return 0;
-> > > > > +
-> > > > >  	fd = open("/proc/net/rpc/nfsd.export/channel", O_WRONLY);
-> > > > > -	if ( fd < 0) return 0;
-> > > > > +	if (fd < 0)
-> > > > > +		return 0;
-> > > > >  	close(fd);
-> > > > >  	return 1;
-> > > > >  }
-> > > 
-> > > --
-> > > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > > the body of a message to majordomo@vger.kernel.org
-> > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > 
-> 
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
 
 
