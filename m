@@ -1,134 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:28669 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753181Ab3KYUKa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 25 Nov 2013 15:10:30 -0500
-Message-ID: <5293AEF3.5030505@RedHat.com>
-Date: Mon, 25 Nov 2013 15:11:31 -0500
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Susant Sahani <ssahani@redhat.com>,
-        Libtirpc-devel Mailing List
-	<libtirpc-devel@lists.sourceforge.net>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [Libtirpc-devel] [PATCH 1/1] data race in bindresvport_sa
-References: <1384966173-6229-1-git-send-email-ssahani@redhat.com>	<528F8631.2070604@RedHat.com> <52938D8E.7020806@redhat.com>
-In-Reply-To: <52938D8E.7020806@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from aserp1040.oracle.com ([141.146.126.69]:50628 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753484Ab3KLRMy convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Nov 2013 12:12:54 -0500
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 6.6 \(1510\))
+Subject: Re: [PATCH 0/2] sunrpc: more reliable detection of running gssd
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1384275379.4779.8.camel@leira.trondhjem.org>
+Date: Tue, 12 Nov 2013 12:12:48 -0500
+Cc: Jeff Layton <jlayton@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "steved@redhat.com" <steved@redhat.com>
+Message-Id: <F4648E75-0F7B-4948-860A-FCDE9D3F86B6@oracle.com>
+References: <1384261225-28559-1-git-send-email-jlayton@redhat.com> <A0488E98-0DF9-4ECE-A39D-C8E460E4C546@oracle.com> <20131112110831.72234c64@tlielax.poochiereds.net> <B9D2C1A3-ABD1-4A87-9AFD-BC9C2F1BA55C@oracle.com> <1384275379.4779.8.camel@leira.trondhjem.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
+On Nov 12, 2013, at 11:56 AM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
 
-On 25/11/13 12:49, Susant Sahani wrote:
-> Hi Steved,
->      I am sorry not for giving proper description . I have addressed your comments attached the patches .
-> Thanks,
-All three committed... 
+> On Tue, 2013-11-12 at 11:15 -0500, Chuck Lever wrote:
+>> On Nov 12, 2013, at 11:08 AM, Jeff Layton <jlayton@redhat.com> wrote:
+>> 
+>>> On Tue, 12 Nov 2013 11:02:42 -0500
+>>> Chuck Lever <chuck.lever@oracle.com> wrote:
+>>> 
+>>>> 
+>>>> On Nov 12, 2013, at 8:00 AM, Jeff Layton <jlayton@redhat.com> wrote:
+>>>> 
+>>> What's the module loading solution?
+>> 
+>> Load auth_rpcgss.ko only when rpc.gssd has been started.  See the "[PATCH] Adding the nfs4_secure_mounts bool" thread... If auth_rpcgss.ko is not loaded, the kernel won't ever try to do an upcall.
+>> 
+>> Then, systemd can be used to restart rpc.gssd if it crashes, maybe?  Just a thought.
+> 
+> You can trivially defeat that by compiling the gss code into the kernel.
 
-Next time please send the patches in separate emails and
-in-line the patches instead of attaching them...
+My solution is a workaround.  It works for distributions that do not compile auth_rpcgss into the kernel, since they are the ones who provide an appropriate init script architecture.
 
-Thanks!
+But it does not require a kernel code change, and it applies to every distribution I'm aware of.  Since distributions typically do not use built-in GSS support, I'm not too concerned about whoever might be left over.
 
-steved.
+And I never said that we shouldn't continue to mitigate the upcall timeout.  Note that Jeff's solution didn't entirely eliminate the problem either.  With either or both of these solutions in place, we are better off than we were before.
 
-> Susant
-> 
-> 
-> On 11/22/2013 09:58 PM, Steve Dickson wrote:
->> Hello,
->>
->> Would it be possible to get a little better description as
->> to what this patch does and why its needed...
->> "data race in bindresvport_sa" have very little
->> meaning, at least to me...
->>
->> More comments below...
->>
->> On 20/11/13 11:49, Susant Sahani wrote:
->>> Signed-off-by: Susant Sahani <ssahani@redhat.com>
->>> ---
->>>   src/bindresvport.c | 16 +++++++++++++---
->>>   1 file changed, 13 insertions(+), 3 deletions(-)
->>>
->>> diff --git a/src/bindresvport.c b/src/bindresvport.c
->>> index 6ce3e81..d26d754 100644
->>> --- a/src/bindresvport.c
->>> +++ b/src/bindresvport.c
->>> @@ -46,6 +46,7 @@
->>>   #include <rpc/rpc.h>
->>>     #include <string.h>
->>> +#include <reentrant.h>
->>>     /*
->>>    * Bind a socket to a privileged IP port
->>> @@ -79,17 +80,23 @@ bindresvport_sa(sd, sa)
->>>       u_int16_t *portp;
->>>       static u_int16_t port;
->>>       static short startport = STARTPORT;
->>> +    static pthread_mutex_t port_lock = PTHREAD_MUTEX_INITIALIZER;
->> How come you define this mutex statically instead in src/mt_misc.c
->> like the rest of the mutexes?
->>
->> Would you mind moving this (and the other two in the patches)
->> to src/mt_misc.c and added a commit talking about what they
->> are protecting
->>
->> tia!
->>
->> steved.
->>
->>>       socklen_t salen;
->>> -    int nports = ENDPORT - startport + 1;
->>> +    int nports;
->>>       int endport = ENDPORT;
->>>       int i;
->>>   +    mutex_lock(&port_lock);
->>> +    nports = ENDPORT - startport + 1;
->>> +
->>>           if (sa == NULL) {
->>>                   salen = sizeof(myaddr);
->>>                   sa = (struct sockaddr *)&myaddr;
->>>   -                if (getsockname(sd, (struct sockaddr *)&myaddr, &salen) == -1)
->>> -                        return -1;      /* errno is correctly set */
->>> +                if (getsockname(sd, (struct sockaddr *)&myaddr, &salen) == -1) {
->>> +                    mutex_unlock(&port_lock);
->>> +                    return -1;      /* errno is correctly set */
->>> +                }
->>>                     af = myaddr.ss_family;
->>>           } else
->>> @@ -112,6 +119,7 @@ bindresvport_sa(sd, sa)
->>>   #endif
->>>           default:
->>>                   errno = EPFNOSUPPORT;
->>> +                mutex_unlock(&port_lock);
->>>                   return (-1);
->>>           }
->>>           sa->sa_family = af;
->>> @@ -137,6 +145,8 @@ bindresvport_sa(sd, sa)
->>>           port = LOWPORT + port % (STARTPORT - LOWPORT);
->>>           goto again;
->>>       }
->>> +    mutex_unlock(&port_lock);
->>> +
->>>           return (res);
->>>   }
->>>   #else
->>>
-> 
-> 
-> 
-> ------------------------------------------------------------------------------
-> Shape the Mobile Experience: Free Subscription
-> Software experts and developers: Be at the forefront of tech innovation.
-> Intel(R) Software Adrenaline delivers strategic insight and game-changing 
-> conversations that shape the rapidly evolving mobile landscape. Sign up now. 
-> http://pubads.g.doubleclick.net/gampad/clk?id=63431311&iu=/4140/ostg.clktrk
-> 
-> 
-> 
-> _______________________________________________
-> Libtirpc-devel mailing list
-> Libtirpc-devel@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/libtirpc-devel
-> 
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
