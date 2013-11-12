@@ -1,112 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:19373 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753061Ab3KTDlq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 19 Nov 2013 22:41:46 -0500
-Message-ID: <528C2FA7.7060701@redhat.com>
-Date: Wed, 20 Nov 2013 09:12:31 +0530
-From: Susant Sahani <ssahani@redhat.com>
-MIME-Version: 1.0
-To: steved@redhat.com
-CC: libtirpc-devel@lists.sourceforge.net, linux-nfs@vger.kernel.org
-Subject: Re: [Libtirpc-devel] Missing NULL check in  __nc_error()
-References: <5286846E.2040503@redhat.com>	<ABA154D0-8846-4673-ADBF-3E701E087590@gmail.com> <52868EF3.4000405@redhat.com>
-In-Reply-To: <52868EF3.4000405@redhat.com>
-Content-Type: multipart/mixed;
- boundary="------------080809050607000506080304"
+Received: from userp1040.oracle.com ([156.151.31.81]:22381 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756298Ab3KLWI7 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Nov 2013 17:08:59 -0500
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 6.6 \(1510\))
+Subject: Re: [PATCH] nfs: don't retry detect_trunking with RPC_AUTH_UNIX more than once
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1384291851-11154-1-git-send-email-jlayton@redhat.com>
+Date: Tue, 12 Nov 2013 17:08:53 -0500
+Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org, dros@netapp.com
+Message-Id: <B8BE037C-F0E9-4900-A218-67EE146E9BED@oracle.com>
+References: <1384291851-11154-1-git-send-email-jlayton@redhat.com>
+To: Jeff Layton <jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is a multi-part message in MIME format.
---------------080809050607000506080304
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
 
-Hi Steve,
-      In the file: getnetconfig.c __nc_error() does not check return 
-value from malloc() and can pass NULL pointer to thr_setspecific() which 
-can lead to crash. Attached fix.
+On Nov 12, 2013, at 4:30 PM, Jeff Layton <jlayton@redhat.com> wrote:
 
-Thanks,
-Susant
+> Currently, when we try to mount and get back NFS4ERR_CLID_IN_USE or
+> NFS4ERR_WRONGSEC, we create a new rpc_clnt and then try the call again.
+> There is no guarantee that doing so will work however, so we can end up
+> retrying the call in an infinite loop.
+> 
+> Worse yet, we create the new client using rpc_clone_client_set_auth,
+> which creates the new client as a child of the old one. Thus, we can end
+> up with a *very* long lineage of rpc_clnts. When we go to put all of the
+> references to them, we can end up with a long call chain that can smash
+> the stack as each rpc_free_client() call can recurse back into itself.
+> 
+> This patch fixes this by simply ensuring that the SETCLIENTID call will
+> only be retried in this situation if the last attempt did not use
+> RPC_AUTH_UNIX.
+> 
+> Cc: stable@vger.kernel.org # v3.10+
+> Cc: Weston Andros Adamson <dros@netapp.com>
+> Cc: Chuck Lever <chuck.lever@oracle.com>
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+> fs/nfs/nfs4state.c | 5 +++++
+> 1 file changed, 5 insertions(+)
+> 
+> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+> index c8e729d..4c26c01 100644
+> --- a/fs/nfs/nfs4state.c
+> +++ b/fs/nfs/nfs4state.c
+> @@ -2097,6 +2097,11 @@ again:
+> 			break;
 
-On 11/16/2013 02:45 AM, Susant Sahani wrote:
-> Yes was reading out the code. Could be because of out of memory also .
->
-> On 11/16/2013 02:15 AM, Chuck Lever wrote:
->> Hi-
->>
->> On Nov 15, 2013, at 3:30 PM, Susant Sahani <ssahani@redhat.com> wrote:
->>
->>> Hi,
->>>
->>> __nc_error() does not check return value from malloc() can lead to crash .
->> Curious.  Did you see an actual NULL return from malloc(), or did you notice this via code inspection?  A NULL return is rare and usually indicates a deeper problem.
->>
->>>      trying get familiar with with patch submission
->> Start here for details on formatting your submission, and legal requirements:
->>
->>     https://www.kernel.org/doc/Documentation/SubmittingPatches
->>
->> Send patches to Steve Dickson <steved@redhat.com>, and cc this mailing list.
->>
->> Thanks.
->>
->> --
->> Chuck Lever
->> chucklever[at]gmail[dot]com
->>
->>
->>
-> Thanks,
-> Susant
->
-> ------------------------------------------------------------------------------
-> DreamFactory - Open Source REST & JSON Services for HTML5 & Native Apps
-> OAuth, Users, Roles, SQL, NoSQL, BLOB Storage and External API Access
-> Free app hosting. Or install the open source package on any LAMP server.
-> Sign up and see examples for AngularJS, jQuery, Sencha Touch and Native!
-> http://pubads.g.doubleclick.net/gampad/clk?id=63469471&iu=/4140/ostg.clktrk
-> _______________________________________________
-> Libtirpc-devel mailing list
-> Libtirpc-devel@lists.sourceforge.net
-> https://lists.sourceforge.net/lists/listinfo/libtirpc-devel
+Note that the -EACCES case falls through.  I guess it is safe to use the new logic for that case?
 
+There is an "i++" in the EACCES case that is supposed to prevent the looping you describe.  Maybe that should just be removed, now that there is a more robust test here.
 
---------------080809050607000506080304
-Content-Type: text/x-patch;
- name="0001-__nc_error-does-not-check-return-value-from-malloc.patch"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename*0="0001-__nc_error-does-not-check-return-value-from-malloc.patc";
- filename*1="h"
+> 	case -NFS4ERR_CLID_INUSE:
+> 	case -NFS4ERR_WRONGSEC:
+> +		/* No point in retrying if we already used RPC_AUTH_UNIX */
+> +		if (clnt->cl_auth->au_flavor == RPC_AUTH_UNIX) {
+> +			status = -EPERM;
+> +			break;
+> +		}
+> 		clnt = rpc_clone_client_set_auth(clnt, RPC_AUTH_UNIX);
+> 		if (IS_ERR(clnt)) {
+> 			status = PTR_ERR(clnt);
 
->From 72d43756f09599da9d0907c9f62c6a8e1e0cb261 Mon Sep 17 00:00:00 2001
-From: Susant Sahani <ssahani@redhat.com>
-Date: Tue, 19 Nov 2013 08:40:00 +0530
-Subject: [PATCH] __nc_error() does not check return value from malloc
-
-Signed-off-by: Susant Sahani <ssahani@redhat.com>
----
- src/getnetconfig.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
-
-diff --git a/src/getnetconfig.c b/src/getnetconfig.c
-index af4a484..2460a6e 100644
---- a/src/getnetconfig.c
-+++ b/src/getnetconfig.c
-@@ -146,7 +146,8 @@ __nc_error()
- 			return (&nc_error);
- 	}
- 	if ((nc_addr = (int *)thr_getspecific(nc_key)) == NULL) {
--		nc_addr = (int *)malloc(sizeof (int));
-+		if((nc_addr = (int *)malloc(sizeof (int))) == NULL)
-+			return (&nc_error);
- 		if (thr_setspecific(nc_key, (void *) nc_addr) != 0) {
- 			if (nc_addr)
- 				free(nc_addr);
 -- 
-1.8.4.2
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
 
---------------080809050607000506080304--
+
+
