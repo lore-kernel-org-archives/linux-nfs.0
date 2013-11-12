@@ -1,131 +1,37 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ducie-dc1.codethink.co.uk ([37.128.190.40]:54090 "EHLO
-	ducie-dc1.codethink.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755231Ab3KUCO0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Nov 2013 21:14:26 -0500
-From: mark.doffman@codethink.co.uk
-To: ceph-devel@vger.kernel.org
-Cc: Mark Doffman <mark.doffman@codethink.co.uk>, sage@inktank.com,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, rob.taylor@codethink.co.uk
-Subject: [PATCH 3/4] cephroot: Add DHCP option 17 configuration to ceph root fs.
-Date: Wed, 20 Nov 2013 20:13:43 -0600
-Message-Id: <1385000024-23463-4-git-send-email-mark.doffman@codethink.co.uk>
-In-Reply-To: <1385000024-23463-1-git-send-email-mark.doffman@codethink.co.uk>
-References: <1385000024-23463-1-git-send-email-mark.doffman@codethink.co.uk>
+Received: from mx1.redhat.com ([209.132.183.28]:8919 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752280Ab3KLQXl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 Nov 2013 11:23:41 -0500
+Message-ID: <52825648.5090907@RedHat.com>
+Date: Tue, 12 Nov 2013 11:24:40 -0500
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] Adding the nfs4_secure_mounts bool
+References: <1384037221-7224-1-git-send-email-steved@redhat.com> <E061C7A8-DC27-49BA-93C2-DC2E9C19EA7B@netapp.com> <52811CBB.3070204@RedHat.com> <E520DD5F-7E5A-4B6C-9FF6-6B74DA36FD1E@oracle.com> <5281290B.6000201@RedHat.com> <E0FBCF46-C70F-41E5-BA67-48406253CD7E@oracle.com> <52814876.7080604@RedHat.com> <A59DDCD0-5622-4497-A93E-80493EDCED27@oracle.com> <5281618A.1050604@RedHat.com> <784A1C68-59DA-4248-AF91-BAF472CDD37E@oracle.com>
+In-Reply-To: <784A1C68-59DA-4248-AF91-BAF472CDD37E@oracle.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Mark Doffman <mark.doffman@codethink.co.uk>
 
-When not configured via kernel parameters add to cephroot
-the ability to configure server address, path and options
-from DHCP option 17.
 
-Signed-off-by: Mark Doffman <mark.doffman@codethink.co.uk>
-Reviewed-by: Ian Molton <ian.molton@codethink.co.uk>
----
- Documentation/filesystems/ceph/cephroot.txt |  4 ++++
- fs/ceph/root.c                              | 12 +++++++-----
- net/ipv4/ipconfig.c                         | 10 ++++++++--
- 3 files changed, 19 insertions(+), 7 deletions(-)
+On 12/11/13 11:09, Chuck Lever wrote:
+>> In the past, if admins want rpc.gssd in the mount path they had to configure it.
+>> > Now we are silently adding, yet another, daemon to the mount path and if 
+>> > rpc.gssd starts falling on its face, I think it will be difficult to debug,
+>> > since the daemon is not expected to be there...
+> Our only real choice here is to fix gssd.  Anything else is punting the problem down the road.
+> 
+No. The last there was a daemon was involved in all NFS client mounts 
+(at least that I can remember) was when lockd was a user level daemon.
+The main reason it was ported to the kernel was to get ride of the
+bottle neck it caused... Now we adding similar bottle neck back??
 
-diff --git a/Documentation/filesystems/ceph/cephroot.txt b/Documentation/filesystems/ceph/cephroot.txt
-index ae0f5bb..4f12573 100644
---- a/Documentation/filesystems/ceph/cephroot.txt
-+++ b/Documentation/filesystems/ceph/cephroot.txt
-@@ -49,6 +49,9 @@ This is necessary to enable the pseudo-Ceph-device. Note that it's not a
- real device but just a synonym to tell the kernel to use Ceph instead of
- a real device.
- 
-+If cephroot is not specified, it is expected that that a valid mount will be
-+found via DHCP option 17, Root Path [1]
-+
- cephroot=<monaddr>:/[<subdir>],<ceph-opts>
- 
-   <monaddr>     Monitor address. Each takes the form host[:port]. If the port
-@@ -64,6 +67,7 @@ cephroot=<monaddr>:/[<subdir>],<ceph-opts>
- 4.) References
-     ----------
- 
-+[1] http://tools.ietf.org/html/rfc2132
- 
- 5.) Credits
-     -------
-diff --git a/fs/ceph/root.c b/fs/ceph/root.c
-index bff67fb..24b8dcf 100644
---- a/fs/ceph/root.c
-+++ b/fs/ceph/root.c
-@@ -37,9 +37,6 @@ static char ceph_root_options[256] __initdata;
- /* server:path string passed to mount */
- static char ceph_root_device[MAXPATHLEN + 1] __initdata;
- 
--/* Address of CEPH server */
--static __be32 root_ceph_server_addr = htonl(INADDR_NONE);
--
- /*
-  * Parse out root export path and mount options from
-  * passed-in string @incoming.
-@@ -97,7 +94,7 @@ static int __init ceph_root_setup(char *line)
- 	 * Note: root_nfs_parse_addr() removes the server-ip from
- 	 * ceph_root_params, if it exists.
- 	 */
--	root_ceph_server_addr = root_nfs_parse_addr(ceph_root_params);
-+	root_server_addr = root_nfs_parse_addr(ceph_root_params);
- 
- 	return 1;
- }
-@@ -120,7 +117,7 @@ int __init ceph_root_data(char **root_device, char **root_data)
- 	int len;
- 	int ret = -E2BIG;
- 
--	servaddr = root_ceph_server_addr;
-+	servaddr = root_server_addr;
- 	if (servaddr == htonl(INADDR_NONE))
- 		return -ENOENT;
- 
-@@ -128,6 +125,11 @@ int __init ceph_root_data(char **root_device, char **root_data)
- 	if (tmp == NULL)
- 		return -ENOMEM;
- 
-+	if (root_server_path[0] != '\0') {
-+		if (root_ceph_parse_options(root_server_path, tmp, tmplen))
-+			goto out;
-+	}
-+
- 	if (ceph_root_params[0] != '\0') {
- 		if (root_ceph_parse_options(ceph_root_params, tmp, tmplen))
- 			goto out;
-diff --git a/net/ipv4/ipconfig.c b/net/ipv4/ipconfig.c
-index efa1138..765eea4 100644
---- a/net/ipv4/ipconfig.c
-+++ b/net/ipv4/ipconfig.c
-@@ -1435,10 +1435,10 @@ static int __init ip_auto_config(void)
- 	 * missing values.
- 	 */
- 	if (ic_myaddr == NONE ||
--#ifdef CONFIG_ROOT_NFS
-+#if defined(CONFIG_ROOT_NFS) || defined(CONFIG_ROOT_CEPH)
- 	    (root_server_addr == NONE &&
- 	     ic_servaddr == NONE &&
--	     ROOT_DEV == Root_NFS) ||
-+	     (ROOT_DEV == Root_NFS || ROOT_DEV == Root_CEPH)) ||
- #endif
- 	    ic_first_dev->next) {
- #ifdef IPCONFIG_DYNAMIC
-@@ -1465,6 +1465,12 @@ static int __init ip_auto_config(void)
- 				goto try_try_again;
- 			}
- #endif
-+#ifdef CONFIG_ROOT_CEPH
-+			if (ROOT_DEV ==  Root_CEPH) {
-+				pr_err("IP-Config: Retrying forever (CEPH root)...\n");
-+				goto try_try_again;
-+			}
-+#endif
- 
- 			if (--retries) {
- 				pr_err("IP-Config: Reopening network devices...\n");
--- 
-1.8.4
+Architecturally, put a daemon in the direct NFS mount path just does 
+not make sense... IMHO...
 
+steved.
