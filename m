@@ -1,93 +1,116 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:22767 "EHLO mx12.netapp.com"
+Received: from mx11.netapp.com ([216.240.18.76]:21243 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752926Ab3KCSlp convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 3 Nov 2013 13:41:45 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Jeff Layton <jlayton@redhat.com>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        "dpquigl@davequigley.com" <dpquigl@davequigley.com>
-Subject: Re: [PATCH] nfs: set security label when revalidating inode
-Date: Sun, 3 Nov 2013 18:41:43 +0000
-Message-ID: <37FC8791-6CAF-4852-ADEF-0CF3497FD3CA@netapp.com>
-References: <1383389838-1858-1-git-send-email-jlayton@redhat.com>
- <C85EF88C-B4F8-484C-A00D-5A86ACB61C10@netapp.com>
- <20131103051438.3a4db316@tlielax.poochiereds.net>
- <20131103060145.73443e75@tlielax.poochiereds.net>
- <32FF43CF-D4D7-41AD-9B2F-8BAD6C2F846C@netapp.com>
- <20131103120130.68430d53@tlielax.poochiereds.net>
-In-Reply-To: <20131103120130.68430d53@tlielax.poochiereds.net>
-Content-Type: text/plain; charset="Windows-1252"
+	id S1756138Ab3KLWuk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 Nov 2013 17:50:40 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: <linux-nfs@vger.kernel.org>
+CC: Jeff Layton <jlayton@redhat.com>, Weston Andros Adamson <dros@netapp.com>
+Subject: [PATCH v2] SUNRPC: Avoid deep recursion in rpc_release_client
+Date: Tue, 12 Nov 2013 17:50:15 -0500
+Message-ID: <1384296615-17963-1-git-send-email-Trond.Myklebust@netapp.com>
+In-Reply-To: <1384295767-16456-1-git-send-email-Trond.Myklebust@netapp.com>
+References: <1384295767-16456-1-git-send-email-Trond.Myklebust@netapp.com>
 MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+In cases where an rpc client has a parent hierarchy, then
+rpc_free_client may end up calling rpc_release_client() on the
+parent, thus recursing back into rpc_free_client. If the hierarchy
+is deep enough, then we can get into situations where the stack
+simply overflows.
 
-On Nov 3, 2013, at 12:01, Jeff Layton <jlayton@redhat.com> wrote:
+The fix is to have rpc_release_client() loop so that it can take
+care of the parent rpc client hierarchy without needing to
+recurse.
 
-> On Sun, 3 Nov 2013 16:40:12 +0000
-> "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
-> 
->> 
->> On Nov 3, 2013, at 6:01, Jeff Layton <jlayton@redhat.com<mailto:jlayton@redhat.com>> wrote:
->> 
->> On Sun, 3 Nov 2013 05:14:38 -0500
->> Jeff Layton <jlayton@redhat.com<mailto:jlayton@redhat.com>> wrote:
->> 
->> On Sun, 3 Nov 2013 02:23:29 +0000
->> "Myklebust, Trond" <Trond.Myklebust@netapp.com<mailto:Trond.Myklebust@netapp.com>> wrote:
->> 
->> 
->> On Nov 2, 2013, at 6:57, Jeff Layton <jlayton@redhat.com<mailto:jlayton@redhat.com>> wrote:
->> 
->> Currently, we fetch the security label when revalidating an inode's
->> attributes, but don't apply it. This is in contrast to the readdir()
->> codepath where we do apply label changes.
->> 
->> OK. Why should we not just throw out the code that fetches the security label here?
->> 
->> IOW: what is the caching model that is being implemented in this patch; is it just “fetch label at random intervals” or is there real method to the madness?
->> 
->> Trond
->> 
->> I think that we should apply the new security label as soon as we
->> realize that it has changed. Why should we treat the security label
->> differently from any other inode attribute (e.g. ownership or mode)?
->> 
->> 
->> Ok, I think I understand what you're getting at now that I've had a cup
->> of coffee ;)
->> 
->> I guess you're pointing out a problem with the overall model, given that
->> the current implementation doesn't send anything in the RPC to denote
->> the security context of the client's task?
->> 
->> It's a fair point, and not one I have a great answer for. I think that
->> you're correct that for the most part that they won't change. But when
->> they do, what's to be gained by ignoring that?
->> 
->> They'll never be permanent anyway...as soon as the inode gets tossed
->> out of the cache or the client reboots then you'll see the change on
->> the next access of it.
->> 
->> I’m not saying that we must ignore changes, I’m saying that nobody else, so far, has been willing to step up and propose a model for how these things are supposed to change.
->> 
->> All I’ve heard has been that “a polling model would be better because labels can change”. OK, but a polling model has a number of adjustable parameters; the frequency of polling being the most obvious. I want someone to explain to me, based on how we expect labels to change, how those parameters need to be set.
->> If the expectation is that they will change once in a lifetime (just after file creation), then that would justify trying to poll once or twice, but it does not justify polling for the entire lifetime of the file. Perhaps a better solution would be to just have the server change the NFS filehandle (e.g. by bumping the generation counter)?
->> 
-> 
-> Ugh...that sounds ugly and prone to cause ESTALE errors. 
-> 
-> I don't think we can make any assumption on how they will change, any
-> more than we do for something like the ownership or mode. It comes down
-> to an action by an administrator, and people are notoriously
-> unpredictable.
+Reported-by: Jeff Layton <jlayton@redhat.com>
+Reported-by: Weston Andros Adamson <dros@netapp.com>
+Cc: stable@vger.kernel.org
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+v2: Don't recurse if parent == NULL (Doh!)
 
-???? You’re saying that people choose security policies on a whim?
 
-> Maybe this is a naive question, but...why treat this differently from
-> any other inode attribute?
+ net/sunrpc/clnt.c | 29 +++++++++++++++++------------
+ 1 file changed, 17 insertions(+), 12 deletions(-)
 
-That’s another “What if we were to do X?” question. Please see above.
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index dab09dac8fc7..f09b7db2c492 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -750,14 +750,16 @@ EXPORT_SYMBOL_GPL(rpc_shutdown_client);
+ /*
+  * Free an RPC client
+  */
+-static void
++static struct rpc_clnt *
+ rpc_free_client(struct rpc_clnt *clnt)
+ {
++	struct rpc_clnt *parent = NULL;
++
+ 	dprintk_rcu("RPC:       destroying %s client for %s\n",
+ 			clnt->cl_program->name,
+ 			rcu_dereference(clnt->cl_xprt)->servername);
+ 	if (clnt->cl_parent != clnt)
+-		rpc_release_client(clnt->cl_parent);
++		parent = clnt->cl_parent;
+ 	rpc_clnt_remove_pipedir(clnt);
+ 	rpc_unregister_client(clnt);
+ 	rpc_free_iostats(clnt->cl_metrics);
+@@ -766,18 +768,17 @@ rpc_free_client(struct rpc_clnt *clnt)
+ 	rpciod_down();
+ 	rpc_free_clid(clnt);
+ 	kfree(clnt);
++	return parent;
+ }
+ 
+ /*
+  * Free an RPC client
+  */
+-static void
++static struct rpc_clnt * 
+ rpc_free_auth(struct rpc_clnt *clnt)
+ {
+-	if (clnt->cl_auth == NULL) {
+-		rpc_free_client(clnt);
+-		return;
+-	}
++	if (clnt->cl_auth == NULL)
++		return rpc_free_client(clnt);
+ 
+ 	/*
+ 	 * Note: RPCSEC_GSS may need to send NULL RPC calls in order to
+@@ -788,7 +789,8 @@ rpc_free_auth(struct rpc_clnt *clnt)
+ 	rpcauth_release(clnt->cl_auth);
+ 	clnt->cl_auth = NULL;
+ 	if (atomic_dec_and_test(&clnt->cl_count))
+-		rpc_free_client(clnt);
++		return rpc_free_client(clnt);
++	return NULL;
+ }
+ 
+ /*
+@@ -799,10 +801,13 @@ rpc_release_client(struct rpc_clnt *clnt)
+ {
+ 	dprintk("RPC:       rpc_release_client(%p)\n", clnt);
+ 
+-	if (list_empty(&clnt->cl_tasks))
+-		wake_up(&destroy_wait);
+-	if (atomic_dec_and_test(&clnt->cl_count))
+-		rpc_free_auth(clnt);
++	do {
++		if (list_empty(&clnt->cl_tasks))
++			wake_up(&destroy_wait);
++		if (!atomic_dec_and_test(&clnt->cl_count))
++			break;
++		clnt = rpc_free_auth(clnt);
++	} while (clnt != NULL);
+ }
+ EXPORT_SYMBOL_GPL(rpc_release_client);
+ 
+-- 
+1.8.3.1
 
-Trond
