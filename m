@@ -1,155 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f51.google.com ([209.85.216.51]:54241 "EHLO
-	mail-qa0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753410Ab3KNMZ3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Nov 2013 07:25:29 -0500
-Received: by mail-qa0-f51.google.com with SMTP id i13so97374qae.10
-        for <linux-nfs@vger.kernel.org>; Thu, 14 Nov 2013 04:25:29 -0800 (PST)
-From: Jeff Layton <jlayton@redhat.com>
-To: trond.myklebust@netapp.com
-Cc: chuck.lever@oracle.com, neilb@suse.de, steved@redhat.com,
-        linux-nfs@vger.kernel.org
-Subject: [PATCH v4 2/3] sunrpc: replace sunrpc_net->gssd_running flag with a more reliable check
-Date: Thu, 14 Nov 2013 07:25:18 -0500
-Message-Id: <1384431919-20921-3-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1384431919-20921-1-git-send-email-jlayton@redhat.com>
-References: <1384431919-20921-1-git-send-email-jlayton@redhat.com>
+Received: from mx11.netapp.com ([216.240.18.76]:15961 "EHLO mx11.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752756Ab3KLRwq convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Nov 2013 12:52:46 -0500
+From: Weston Andros Adamson <dros@netapp.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: Chuck Lever <chuck.lever@oracle.com>, Jeff Layton <jlayton@redhat.com>,
+        linux-nfs list <linux-nfs@vger.kernel.org>
+Subject: Re: Thread overran stack, or stack corrupted BUG on mount
+Date: Tue, 12 Nov 2013 17:52:36 +0000
+Message-ID: <58C6E313-A58C-4D09-A546-8EE2B1EF2D6E@netapp.com>
+References: <2C73011F-0939-434C-9E4D-13A1EB1403D7@netapp.com>
+ <20131112105539.4f804fc6@tlielax.poochiereds.net>
+ <20131112112021.1a0a60ca@tlielax.poochiereds.net>
+ <E4B641E5-34C5-4779-8FAB-DCB6C74D1546@oracle.com>
+ <1384277451.4779.24.camel@leira.trondhjem.org>
+In-Reply-To: <1384277451.4779.24.camel@leira.trondhjem.org>
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Now that we have a more reliable method to tell if gssd is running, we
-can replace the sn->gssd_running flag with a function that will query to
-see if it's up and running.
 
-There's also no need to attempt an upcall that we know will fail, so
-just return -EACCES if gssd isn't running. Finally, fix the warn_gss()
-message not to claim that that the upcall timed out since we don't
-necesarily perform one now when gssd isn't running, and remove the
-extraneous newline from the message.
+On Nov 12, 2013, at 12:30 PM, Myklebust, Trond <Trond.Myklebust@netapp.com> wrote:
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- include/linux/sunrpc/rpc_pipe_fs.h |  2 ++
- net/sunrpc/auth_gss/auth_gss.c     | 17 +++++++----------
- net/sunrpc/netns.h                 |  2 --
- net/sunrpc/rpc_pipe.c              | 14 ++++++++++----
- 4 files changed, 19 insertions(+), 16 deletions(-)
+> On Tue, 2013-11-12 at 11:23 -0500, Chuck Lever wrote:
+>> On Nov 12, 2013, at 11:20 AM, Jeff Layton <jlayton@redhat.com> wrote:
+>>> Ok, I think I see the problem. The looping comes from this block in
+>>> nfs4_discover_server_trunking:
+>>> 
+>>> -----------------[snip]-----------------
+>>>       case -NFS4ERR_CLID_INUSE:
+>>>       case -NFS4ERR_WRONGSEC:
+>>>               clnt = rpc_clone_client_set_auth(clnt, RPC_AUTH_UNIX);
+>>>               if (IS_ERR(clnt)) {
+>>>                       status = PTR_ERR(clnt);
+>>>                       break;
+>>>               }
+>>>               /* Note: this is safe because we haven't yet marked the
+>>>                * client as ready, so we are the only user of
+>>>                * clp->cl_rpcclient
+>>>                */
+>>>               clnt = xchg(&clp->cl_rpcclient, clnt);
+>>>               rpc_shutdown_client(clnt);
+>>>               clnt = clp->cl_rpcclient;
+>>>               goto again;
+>>> -----------------[snip]-----------------
+>>> 
+>>> ...so in the case of the reproducer, we get back -NFS4ERR_CLID_IN_USE,
+>>> at that point we call rpc_clone_client_set_auth(), which creates a new
+>>> rpc_clnt, but it's created as a child of the original.
+>>> 
+>>> When rpc_shutdown_client is called, the original clnt is not destroyed
+>>> because the child still holds a reference to it. So, we go and try the
+>>> call again and it fails with the same error over and over again, and we
+>>> end up with a long chain of rpc_clnt's.
+>>> 
+>>> How that ends up smashing the stack, I'm not sure though. I'm also not
+>>> sure of the remedy. It seems like we might ought to have some upper
+>>> bound on the number of SETCLIENTID attempts?
+>> 
+>> CLID_INUSE is supposed to be a permanent error now.  I think one retry, if any, is all that is appropriate.
+> 
+> Right. If we hit CLID_INUSE in nfs4_discover_server_trunking then
+> 
+> a) we know this is a server that we've already mounted
+> b) we know that either nfs4_init_client set us up with RPC_AUTH_UNIX to
+> begin with, or that rpc.gssd was started only after we'd already sent a
+> SETCLIENTID/EXCHANGE_ID using RPC_AUTH_UNIX to this server
+> 
+> so the correct thing to do is to retry once if we know that we're not
+> already using AUTH_SYS, and then to EPERM.
+> 
+> 
+> Now that said, I agree that this should not be able to trigger a stack
+> overflow. Is this NFSv4 or NFSv4.1/NFSv4.2? Have either of you (Jeff and
+> Dros) tried enabling DEBUG_STACKOVERFLOW?
 
-diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
-index 85f1342..7f490be 100644
---- a/include/linux/sunrpc/rpc_pipe_fs.h
-+++ b/include/linux/sunrpc/rpc_pipe_fs.h
-@@ -131,5 +131,7 @@ extern int rpc_unlink(struct dentry *);
- extern int register_rpc_pipefs(void);
- extern void unregister_rpc_pipefs(void);
- 
-+extern bool gssd_running(struct net *net);
-+
- #endif
- #endif
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index 97912b4..0316b8d 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -536,8 +536,7 @@ static void warn_gssd(void)
- 	unsigned long now = jiffies;
- 
- 	if (time_after(now, ratelimit)) {
--		printk(KERN_WARNING "RPC: AUTH_GSS upcall timed out.\n"
--				"Please check user daemon is running.\n");
-+		pr_warn("RPC: AUTH_GSS upcall failed. Please check user daemon is running.\n");
- 		ratelimit = now + 15*HZ;
- 	}
- }
-@@ -600,7 +599,6 @@ gss_create_upcall(struct gss_auth *gss_auth, struct gss_cred *gss_cred)
- 	struct rpc_pipe *pipe;
- 	struct rpc_cred *cred = &gss_cred->gc_base;
- 	struct gss_upcall_msg *gss_msg;
--	unsigned long timeout;
- 	DEFINE_WAIT(wait);
- 	int err;
- 
-@@ -608,17 +606,16 @@ gss_create_upcall(struct gss_auth *gss_auth, struct gss_cred *gss_cred)
- 		__func__, from_kuid(&init_user_ns, cred->cr_uid));
- retry:
- 	err = 0;
--	/* Default timeout is 15s unless we know that gssd is not running */
--	timeout = 15 * HZ;
--	if (!sn->gssd_running)
--		timeout = HZ >> 2;
-+	/* if gssd is down, just skip upcalling altogether */
-+	if (!gssd_running(net)) {
-+		warn_gssd();
-+		return -EACCES;
-+	}
- 	gss_msg = gss_setup_upcall(gss_auth, cred);
- 	if (PTR_ERR(gss_msg) == -EAGAIN) {
- 		err = wait_event_interruptible_timeout(pipe_version_waitqueue,
--				sn->pipe_version >= 0, timeout);
-+				sn->pipe_version >= 0, 15 * HZ);
- 		if (sn->pipe_version < 0) {
--			if (err == 0)
--				sn->gssd_running = 0;
- 			warn_gssd();
- 			err = -EACCES;
- 		}
-diff --git a/net/sunrpc/netns.h b/net/sunrpc/netns.h
-index 8a8e841..94e506f 100644
---- a/net/sunrpc/netns.h
-+++ b/net/sunrpc/netns.h
-@@ -33,8 +33,6 @@ struct sunrpc_net {
- 	int pipe_version;
- 	atomic_t pipe_users;
- 	struct proc_dir_entry *use_gssp_proc;
--
--	unsigned int gssd_running;
- };
- 
- extern int sunrpc_net_id;
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index 34efdbf..9ce0082 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -216,14 +216,11 @@ rpc_destroy_inode(struct inode *inode)
- static int
- rpc_pipe_open(struct inode *inode, struct file *filp)
- {
--	struct net *net = inode->i_sb->s_fs_info;
--	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
- 	struct rpc_pipe *pipe;
- 	int first_open;
- 	int res = -ENXIO;
- 
- 	mutex_lock(&inode->i_mutex);
--	sn->gssd_running = 1;
- 	pipe = RPC_I(inode)->pipe;
- 	if (pipe == NULL)
- 		goto out;
-@@ -1231,7 +1228,6 @@ int rpc_pipefs_init_net(struct net *net)
- 		return PTR_ERR(sn->gssd_dummy);
- 
- 	mutex_init(&sn->pipefs_sb_lock);
--	sn->gssd_running = 1;
- 	sn->pipe_version = -1;
- 	return 0;
- }
-@@ -1385,6 +1381,16 @@ err_depopulate:
- 	return err;
- }
- 
-+bool
-+gssd_running(struct net *net)
-+{
-+	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
-+	struct rpc_pipe *pipe = sn->gssd_dummy;
-+
-+	return pipe->nreaders || pipe->nwriters;
-+}
-+EXPORT_SYMBOL_GPL(gssd_running);
-+
- static struct dentry *
- rpc_mount(struct file_system_type *fs_type,
- 		int flags, const char *dev_name, void *data)
--- 
-1.8.3.1
+IIRC it was a v4.0 mount when I hit this.  Yes, I have CONFIG_DEBUG_STACKOVERFLOW=y.
+
+-dros
+
+> 
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer
+> 
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
 
