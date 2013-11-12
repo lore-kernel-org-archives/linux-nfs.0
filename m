@@ -1,88 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:53224 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751053Ab3KOQSo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 15 Nov 2013 11:18:44 -0500
-Date: Fri, 15 Nov 2013 11:18:43 -0500
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org
-Subject: nfsd changes for 3.13
-Message-ID: <20131115161843.GD3371@fieldses.org>
+Received: from mail-yh0-f41.google.com ([209.85.213.41]:35569 "EHLO
+	mail-yh0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757289Ab3KLUuB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Nov 2013 15:50:01 -0500
+Received: by mail-yh0-f41.google.com with SMTP id f11so849343yha.0
+        for <linux-nfs@vger.kernel.org>; Tue, 12 Nov 2013 12:49:59 -0800 (PST)
+Message-ID: <5282929E.60207@gmail.com>
+Date: Tue, 12 Nov 2013 15:42:06 -0500
+From: Anna Schumaker <schumaker.anna@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Anna Schumaker <bjschuma@netapp.com>, bfields@fieldses.org,
+        linux-nfs@vger.kernel.org
+Subject: [PATCH v2 1/3] NFSD: Update error codes
+References: <1384283048-7699-1-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1384283048-7699-1-git-send-email-bjschuma@netapp.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Please pull nfsd changes for 3.13 from
+Recent NFS v4.2 drafts have removed NFS4ERR_METADATA_NOTSUPP and
+reassigned the error code to NFS4ERR_UNION_NOTSUPP.
 
-  git://linux-nfs.org/~bfields/linux.git nfsd-next
+Signed-off-by: Anna Schumaker <bjschuma@netapp.com>
+---
+ fs/nfsd/nfsd.h       | 2 +-
+ include/linux/nfs4.h | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-This includes miscellaneous bugfixes and cleanup and a performance fix
-for write-heavy NFSv4 workloads.
+diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+index 30f34ab..4fe49e9 100644
+--- a/fs/nfsd/nfsd.h
++++ b/fs/nfsd/nfsd.h
+@@ -244,7 +244,7 @@ void        nfsd_lockd_shutdown(void);
+ #define nfserr_deleg_revoked        cpu_to_be32(NFS4ERR_DELEG_REVOKED)
+ #define nfserr_partner_notsupp        cpu_to_be32(NFS4ERR_PARTNER_NOTSUPP)
+ #define nfserr_partner_no_auth        cpu_to_be32(NFS4ERR_PARTNER_NO_AUTH)
+-#define nfserr_metadata_notsupp        cpu_to_be32(NFS4ERR_METADATA_NOTSUPP)
++#define nfserr_union_notsupp        cpu_to_be32(NFS4ERR_UNION_NOTSUPP)
+ #define nfserr_offload_denied        cpu_to_be32(NFS4ERR_OFFLOAD_DENIED)
+ #define nfserr_wrong_lfs        cpu_to_be32(NFS4ERR_WRONG_LFS)
+ #define nfserr_badlabel        cpu_to_be32(NFS4ERR_BADLABEL)
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 9577769..6d79deb 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -235,7 +235,7 @@ enum nfsstat4 {
+     /* nfs42 */
+     NFS4ERR_PARTNER_NOTSUPP    = 10088,
+     NFS4ERR_PARTNER_NO_AUTH    = 10089,
+-    NFS4ERR_METADATA_NOTSUPP = 10090,
++    NFS4ERR_UNION_NOTSUPP = 10090,
+     NFS4ERR_OFFLOAD_DENIED = 10091,
+     NFS4ERR_WRONG_LFS = 10092,
+     NFS4ERR_BADLABEL = 10093,
+-- 
+1.8.4.2
 
-(The most significant nfsd-relevant change this time is actually in the
-delegation patches that went through Viro, fixing a long-standing bug
-that can cause NFSv4 clients to miss updates made by non-nfs users of
-the filesystem.  Those enable some followup nfsd patches which I have
-queued locally, but those can wait till 3.14.)
-
---b.
-
-----------------------------------------------------------------
-Al Viro (1):
-      nfsd: switch to %p[dD]
-
-Anna Schumaker (2):
-      NFSD: Combine decode operations for v4 and v4.1
-      NFSD: Add support for NFS v4.2 operation checking
-
-Benny Halevy (5):
-      nfsd: nfs4_free_stid
-      nfsd: nfs4_open_delegation needs to remove_stid rather than unhash_stid
-      nfsd: remove_stid can be incorporated into nfs4_put_delegation
-      nfsd: no need to unhash_stid before free
-      nfsd4: need to destroy revoked delegations in destroy_client
-
-Christoph Hellwig (2):
-      nfsd: fix Kconfig syntax
-      nfsd: export proper maximum file size to the client
-
-J. Bruce Fields (12):
-      svcrpc: fix gss-proxy NULL dereference in some error cases
-      svcrpc: fix error-handling on badd gssproxy downcall
-      svcrpc: handle some gssproxy encoding errors
-      gss_krb5: document that we ignore sequence number
-      nfsd: fh_update should error out in unexpected cases
-      nfsd: return better errors to exportfs
-      nfsd: -EINVAL on invalid anonuid/gid instead of silent failure
-      nfsd4: nfsd_shutdown_net needs state lock
-      nfsd4: fix discarded security labels on setattr
-      Revert "nfsd: remove_stid can be incorporated into nfs4_put_delegation"
-      sunrpc: comment typo fix
-      nfsd4: improve write performance with better sendspace reservations
-
-Jeff Layton (1):
-      sunrpc: trim off EC bytes in GSSAPI v2 unwrap
-
-Weng Meiling (1):
-      svcrpc: remove an unnecessary assignment
-
- fs/nfsd/Kconfig                       |    2 +-
- fs/nfsd/export.c                      |   24 +++++-
- fs/nfsd/nfs4recover.c                 |   12 +--
- fs/nfsd/nfs4state.c                   |   41 +++++-----
- fs/nfsd/nfs4xdr.c                     |  132 ++++++++++++++++++---------------
- fs/nfsd/nfsfh.c                       |   36 ++++-----
- fs/nfsd/nfsfh.h                       |    4 +-
- fs/nfsd/vfs.c                         |    9 +--
- include/linux/nfs4.h                  |    3 +
- net/sunrpc/auth_gss/gss_krb5_unseal.c |    8 +-
- net/sunrpc/auth_gss/gss_krb5_wrap.c   |   10 ++-
- net/sunrpc/auth_gss/gss_rpc_upcall.c  |    3 +-
- net/sunrpc/auth_gss/gss_rpc_xdr.c     |   29 ++++----
- net/sunrpc/auth_gss/svcauth_gss.c     |    4 +-
- net/sunrpc/svc.c                      |    2 -
- net/sunrpc/xprtsock.c                 |    4 +-
- 16 files changed, 179 insertions(+), 144 deletions(-)
