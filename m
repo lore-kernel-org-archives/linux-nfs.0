@@ -1,92 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:60488 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757374Ab3KHQSv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 8 Nov 2013 11:18:51 -0500
-Message-ID: <527D0F21.3050200@RedHat.com>
-Date: Fri, 08 Nov 2013 11:19:45 -0500
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Jeff Layton <jlayton@redhat.com>, Chuck Lever <chuck.lever@oracle.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] Adding the nfs4_use_min_auth module parameter
-References: <1383851364-8370-1-git-send-email-steved@redhat.com> <A8E8F2C4-8CB7-434E-8520-B2B53F0582D9@oracle.com> <527C07B4.800@RedHat.com> <44CA89EA-8B5E-4B83-A622-78A78F760FF1@oracle.com> <527CDBFC.3070903@RedHat.com> <20131108082202.4032f1a2@tlielax.poochiereds.net> <527CFC72.2030907@RedHat.com> <20131108101232.10d49851@tlielax.poochiereds.net> <527D0CE6.2020401@RedHat.com> <20131108161707.GD3533@fieldses.org>
-In-Reply-To: <20131108161707.GD3533@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-qa0-f49.google.com ([209.85.216.49]:55217 "EHLO
+	mail-qa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756817Ab3KLVa5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Nov 2013 16:30:57 -0500
+Received: by mail-qa0-f49.google.com with SMTP id cm18so3233044qab.15
+        for <linux-nfs@vger.kernel.org>; Tue, 12 Nov 2013 13:30:57 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, chuck.lever@oracle.com, dros@netapp.com
+Subject: [PATCH] nfs: don't retry detect_trunking with RPC_AUTH_UNIX more than once
+Date: Tue, 12 Nov 2013 16:30:51 -0500
+Message-Id: <1384291851-11154-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Currently, when we try to mount and get back NFS4ERR_CLID_IN_USE or
+NFS4ERR_WRONGSEC, we create a new rpc_clnt and then try the call again.
+There is no guarantee that doing so will work however, so we can end up
+retrying the call in an infinite loop.
 
+Worse yet, we create the new client using rpc_clone_client_set_auth,
+which creates the new client as a child of the old one. Thus, we can end
+up with a *very* long lineage of rpc_clnts. When we go to put all of the
+references to them, we can end up with a long call chain that can smash
+the stack as each rpc_free_client() call can recurse back into itself.
 
-On 08/11/13 11:17, J. Bruce Fields wrote:
-> On Fri, Nov 08, 2013 at 11:10:14AM -0500, Steve Dickson wrote:
->>
->>
->> On 08/11/13 10:12, Jeff Layton wrote:
->>> On Fri, 08 Nov 2013 10:00:02 -0500
->>> Steve Dickson <SteveD@redhat.com> wrote:
->>>
->>>>
->>>>
->>>> On 08/11/13 08:22, Jeff Layton wrote:
->>>>> On Fri, 08 Nov 2013 07:41:32 -0500
->>>>> Steve Dickson <SteveD@redhat.com> wrote:
->>>>>
->>>>>>
->>>>>>
->>>>>> On 07/11/13 18:05, Chuck Lever wrote:
->>>>>>>
->>>>>>> On Nov 7, 2013, at 1:35 PM, Steve Dickson <SteveD@redhat.com> wrote:
->>>>>>>
->>>>>>>> Hey mrchuck... 
->>>>>>>>
->>>>>>>> On 07/11/13 14:25, Chuck Lever wrote:
->>>>>>>>> Hi Steve-
->>>>>>>>>
->>>>>>>>> On Nov 7, 2013, at 11:09 AM, Steve Dickson <steved@redhat.com> wrote:
->>>>>>>>>
->>>>>>>>>> This new module parameter makes the v4 client
->>>>>>>>>> use the minimal authentication flavor (AUTH_UNIX)
->>>>>>>>>> when establishing NFSV4 state and doing the
->>>>>>>>>> pseudoroot lookup
->>>>>>>>>
->>>>>>>>> The patch description doesn't say, but is this change to work 
->>>>>>>>> around the 15 second GSSD upcall timeout? 
->>>>>>>> Yes. A 15 second delay on every mount due to security that
->>>>>>>> nobody is requesting is just not good.. IMHO..
->>>>>>>
->>>>>>> One thing we haven't discussed is reducing the upcall timeout to 5 seconds or less, 
->>>>>>> as a form of immediate relief.  15 seconds is arbitrary, and is onerous even when 
->>>>>>> you expect the mount to work (ie why would it be good for any properly configured 
->>>>>>> environment to take 15 seconds to establish a GSS context?).
->>>>>>>
->>>>>>> In other words, there are still cases where users wait 15 seconds unnecessarily, 
->>>>>>> and not because of the use of krb5i for lease management.  Aren't those of concern?
->>>>>> No. I think the concern here, at least my concern, is the lack of management.
->>>>>> We are forcing admins to use krb5i in lease management when its not necessary
->>>>>> and there is no way to turn it off.
->>>>>>   
->>>>>
->>>>> I don't think that's really the case. The idea was to have the client
->>>>> attempt to use krb5i if it's available, and then to fall back to
->>>>> AUTH_SYS if it isn't. This would be *absolutely* no big deal if the
->>>>> GSSAPI upcall succeeded or failed immediately instead of requiring this
->>>>> timeout when the daemon isn't running.
->>>> What server makes krb5i available today in state setup and pseudoroot lookups?
->>>>
->>>
->>> That I don't know...sorry...
->> Then what is the justification to take all these extra steps
->> there they going to fail %100 of the time??
-> 
-> Any server can support krb5 for state setup and pseudoroot operations if
-> it's configured.  This isn't a problem.
-Would is this done on a Linux server? Is there a wiki?
+This patch fixes this by simply ensuring that the SETCLIENTID call will
+only be retried in this situation if the last attempt did not use
+RPC_AUTH_UNIX.
 
-steved.
+Cc: stable@vger.kernel.org # v3.10+
+Cc: Weston Andros Adamson <dros@netapp.com>
+Cc: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfs/nfs4state.c | 5 +++++
+ 1 file changed, 5 insertions(+)
 
-> 
-> --b.
-> 
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index c8e729d..4c26c01 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -2097,6 +2097,11 @@ again:
+ 			break;
+ 	case -NFS4ERR_CLID_INUSE:
+ 	case -NFS4ERR_WRONGSEC:
++		/* No point in retrying if we already used RPC_AUTH_UNIX */
++		if (clnt->cl_auth->au_flavor == RPC_AUTH_UNIX) {
++			status = -EPERM;
++			break;
++		}
+ 		clnt = rpc_clone_client_set_auth(clnt, RPC_AUTH_UNIX);
+ 		if (IS_ERR(clnt)) {
+ 			status = PTR_ERR(clnt);
+-- 
+1.8.3.1
+
