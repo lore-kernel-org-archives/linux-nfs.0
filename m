@@ -1,270 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:60761 "EHLO mx11.netapp.com"
+Received: from mx11.netapp.com ([216.240.18.76]:62612 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756841Ab3KMTcP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 13 Nov 2013 14:32:15 -0500
-From: Anna Schumaker <bjschuma@netapp.com>
-To: <bfields@fieldses.org>, <linux-nfs@vger.kernel.org>
-Subject: [PATCH v3 3/3] NFSD: Implement SEEK
-Date: Wed, 13 Nov 2013 14:30:57 -0500
-Message-ID: <1384371057-16454-4-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1384371057-16454-1-git-send-email-bjschuma@netapp.com>
-References: <1384371057-16454-1-git-send-email-bjschuma@netapp.com>
+	id S1754327Ab3KLR4C convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Nov 2013 12:56:02 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Jeff Layton <jlayton@redhat.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "steved@redhat.com" <steved@redhat.com>
+Subject: Re: [PATCH 1/2] sunrpc: create a new dummy pipe for gssd to hold
+ open
+Date: Tue, 12 Nov 2013 17:56:00 +0000
+Message-ID: <1384278957.4779.33.camel@leira.trondhjem.org>
+References: <1384261225-28559-1-git-send-email-jlayton@redhat.com>
+	 <1384261225-28559-2-git-send-email-jlayton@redhat.com>
+	 <1384277770.4779.27.camel@leira.trondhjem.org>
+	 <20131112124434.4e1c36b0@tlielax.poochiereds.net>
+In-Reply-To: <20131112124434.4e1c36b0@tlielax.poochiereds.net>
+Content-Type: text/plain; charset="utf-7"
 MIME-Version: 1.0
-Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch adds in the SEEK operation used by clients doing an llseek on
-a file to find either hole or data segments.  I am making the assumption
-that allocated == true in the NFS4_CONTENT_DATA case and false for the
-NFS4_CONTENT_HOLE case.
+On Tue, 2013-11-12 at 12:44 -0500, Jeff Layton wrote:
++AD4- On Tue, 12 Nov 2013 17:36:15 +-0000
++AD4- +ACI-Myklebust, Trond+ACI- +ADw-Trond.Myklebust+AEA-netapp.com+AD4- wrote:
++AD4- 
++AD4- +AD4- On Tue, 2013-11-12 at 08:00 -0500, Jeff Layton wrote:
++AD4- +AD4- +AD4- rpc.gssd will naturally hold open any pipe named +ACo-/clnt+ACo-/gssd that shows
++AD4- +AD4- +AD4- up under rpc+AF8-pipefs. That behavior gives us a reliable mechanism to tell
++AD4- +AD4- +AD4- whether it's actually running or not.
++AD4- +AD4- +AD4- 
++AD4- +AD4- +AD4- Create a new toplevel +ACI-dummy+ACI- directory in rpc+AF8-pipefs when it's mounted.
++AD4- +AD4- +AD4- Under that directory create another directory called +ACI-clntXX+ACI-, and then
++AD4- +AD4- +AD4- within that a pipe called +ACI-gssd+ACI-.
++AD4- +AD4- +AD4- 
++AD4- +AD4- +AD4- We'll never send an upcall along that pipe, and any downcall written to
++AD4- +AD4- +AD4- it will just return -EINVAL.
++AD4- +AD4- +AD4- 
++AD4- +AD4- +AD4- Signed-off-by: Jeff Layton +ADw-jlayton+AEA-redhat.com+AD4-
++AD4- +AD4- +AD4- ---
++AD4- +AD4- +AD4-  net/sunrpc/netns.h    +AHw-  1 +-
++AD4- +AD4- +AD4-  net/sunrpc/rpc+AF8-pipe.c +AHw- 84 +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-
++AD4- +AD4- +AD4-  2 files changed, 85 insertions(+-)
++AD4- +AD4- +AD4- 
++AD4- +AD4- +AD4- diff --git a/net/sunrpc/netns.h b/net/sunrpc/netns.h
++AD4- +AD4- +AD4- index 779742c..6b82968 100644
++AD4- +AD4- +AD4- --- a/net/sunrpc/netns.h
++AD4- +AD4- +AD4- +-+-+- b/net/sunrpc/netns.h
++AD4- +AD4- +AD4- +AEAAQA- -15,6 +-15,7 +AEAAQA- struct sunrpc+AF8-net +AHs-
++AD4- +AD4- +AD4-  
++AD4- +AD4- +AD4-  	struct super+AF8-block +ACo-pipefs+AF8-sb+ADs-
++AD4- +AD4- +AD4-  	struct mutex pipefs+AF8-sb+AF8-lock+ADs-
++AD4- +AD4- +AD4- +-	struct dentry +ACo-gssd+AF8-dummy+ADs-
++AD4- +AD4- +AD4-  
++AD4- +AD4- +AD4-  	struct list+AF8-head all+AF8-clients+ADs-
++AD4- +AD4- +AD4-  	spinlock+AF8-t rpc+AF8-client+AF8-lock+ADs-
++AD4- +AD4- +AD4- diff --git a/net/sunrpc/rpc+AF8-pipe.c b/net/sunrpc/rpc+AF8-pipe.c
++AD4- +AD4- +AD4- index f94567b..1c54de6 100644
++AD4- +AD4- +AD4- --- a/net/sunrpc/rpc+AF8-pipe.c
++AD4- +AD4- +AD4- +-+-+- b/net/sunrpc/rpc+AF8-pipe.c
++AD4- +AD4- +AD4- +AEAAQA- -1168,6 +-1168,7 +AEAAQA- enum +AHs-
++AD4- +AD4- +AD4-  	RPCAUTH+AF8-nfsd4+AF8-cb,
++AD4- +AD4- +AD4-  	RPCAUTH+AF8-cache,
++AD4- +AD4- +AD4-  	RPCAUTH+AF8-nfsd,
++AD4- +AD4- +AD4- +-	RPCAUTH+AF8-dummy,
++AD4- +AD4- +AD4-  	RPCAUTH+AF8-RootEOF
++AD4- +AD4- +AD4-  +AH0AOw-
++AD4- +AD4- +AD4-  
++AD4- +AD4- +AD4- +AEAAQA- -1204,6 +-1205,10 +AEAAQA- static const struct rpc+AF8-filelist files+AFsAXQ- +AD0- +AHs-
++AD4- +AD4- +AD4-  		.name +AD0- +ACI-nfsd+ACI-,
++AD4- +AD4- +AD4-  		.mode +AD0- S+AF8-IFDIR +AHw- S+AF8-IRUGO +AHw- S+AF8-IXUGO,
++AD4- +AD4- +AD4-  	+AH0-,
++AD4- +AD4- +AD4- +-	+AFs-RPCAUTH+AF8-dummy+AF0- +AD0- +AHs-
++AD4- +AD4- +AD4- +-		.name +AD0- +ACI-dummy+ACI-,
++AD4- +AD4- 
++AD4- +AD4- +ACI-gssd+ACI- would be nicer.
++AD4- +AD4- 
++AD4- 
++AD4- Ha+ACE- That's what my original patch had, but I thought that made it look
++AD4- too legit. I can respin and change it though if you like...
 
-Signed-off-by: Anna Schumaker <bjschuma@netapp.com>
+I'd prefer that. At least 'gssd' makes it clear that this is a directory
+that we want gssd to be snooping.
 
----
-Changed in V3:
-- SEEK is only compiled in when CONFIG_NFSD_V4_2_SEEK is enabled
-
- fs/nfsd/Kconfig      | 12 +++++++++++
- fs/nfsd/nfs4proc.c   | 60 ++++++++++++++++++++++++++++++++++++++++++++++++++++
- fs/nfsd/nfs4xdr.c    | 48 +++++++++++++++++++++++++++++++++++++++++
- fs/nfsd/xdr4.h       | 16 ++++++++++++++
- include/linux/nfs4.h |  6 ++++++
- 5 files changed, 142 insertions(+)
-
-diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
-index dc8f1ef..680e017 100644
---- a/fs/nfsd/Kconfig
-+++ b/fs/nfsd/Kconfig
-@@ -81,6 +81,18 @@ config NFSD_V4
- 
- 	  If unsure, say N.
- 
-+config NFSD_V4_2_SEEK
-+	bool "Enable SEEK support for the NFS v4.2 server"
-+	depends on NFSD_V4
-+	help
-+	  Say Y here if you want to enable support for the NFS v4.2 operation
-+	  SEEK, which adds in SEEK_HOLE and SEEK_DATA support.
-+
-+	  WARNING: there is still a chance of backwards-incompatible protocol
-+	  changes.  This feature is targeted at developers and testers only.
-+
-+	  If unsure, say N.
-+
- config NFSD_V4_SECURITY_LABEL
- 	bool "Provide Security Label support for NFSv4 server"
- 	depends on NFSD_V4 && SECURITY
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 419572f..1283ca7 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1028,6 +1028,59 @@ nfsd4_write(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	return status;
- }
- 
-+#ifdef CONFIG_NFSD_V4_2_SEEK
-+static __be32
-+nfsd4_seek(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
-+		struct nfsd4_seek *seek)
-+{
-+	struct file *file;
-+	loff_t end_pos = 0;
-+	__be32 status;
-+
-+	nfs4_lock_state();
-+	status = nfs4_preprocess_stateid_op(SVC_NET(rqstp), cstate,
-+					    &seek->seek_stateid,
-+					    RD_STATE | WR_STATE, &file);
-+	if (status != nfs_ok) {
-+		nfs4_unlock_state();
-+		return status;
-+	} else
-+		get_file(file);
-+	nfs4_unlock_state();
-+
-+	switch (seek->seek_whence) {
-+	case NFS4_CONTENT_APP_DATA_HOLE:
-+		status = nfserr_union_notsupp;
-+		break;
-+	case NFS4_CONTENT_DATA:
-+		seek->seek_pos = vfs_llseek(file, seek->seek_offset, SEEK_DATA);
-+		end_pos = vfs_llseek(file, seek->seek_pos, SEEK_HOLE);
-+		seek->seek_allocated = true;
-+		break;
-+	case NFS4_CONTENT_HOLE:
-+		seek->seek_pos = vfs_llseek(file, seek->seek_offset, SEEK_HOLE);
-+		end_pos = vfs_llseek(file, seek->seek_pos, SEEK_DATA);
-+		seek->seek_allocated = false;
-+		break;
-+	default:
-+		status = nfs_ok;
-+		seek->seek_eof = true;
-+		goto out;
-+	}
-+
-+	if (seek->seek_pos < 0) {
-+		status = nfserrno(seek->seek_pos);
-+		goto out;
-+	}
-+
-+	seek->seek_length = end_pos - seek->seek_pos;
-+
-+out:
-+	fput(file);
-+	return status;
-+}
-+#endif /* CONFIG_NFSD_V4_2_SEEK */
-+
- /* This routine never returns NFS_OK!  If there are no other errors, it
-  * will return NFSERR_SAME or NFSERR_NOT_SAME depending on whether the
-  * attributes matched.  VERIFY is implemented by mapping NFSERR_SAME
-@@ -1840,6 +1893,13 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 		.op_get_currentstateid = (stateid_getter)nfsd4_get_freestateid,
- 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_only_status_rsize,
- 	},
-+
-+#ifdef CONFIG_NFSD_V4_2_SEEK
-+	[OP_SEEK] = {
-+		.op_func = (nfsd4op_func)nfsd4_seek,
-+		.op_name = "OP_SEEK",
-+	},
-+#endif /* CONFIG_NFSD_V4_2_SEEK */
- };
- 
- #ifdef NFSD_DEBUG
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 3af6c46..7041039 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1507,6 +1507,24 @@ static __be32 nfsd4_decode_reclaim_complete(struct nfsd4_compoundargs *argp, str
- 	DECODE_TAIL;
- }
- 
-+#ifdef CONFIG_NFSD_V4_2_SEEK
-+static __be32
-+nfsd4_decode_seek(struct nfsd4_compoundargs *argp, struct nfsd4_seek *seek)
-+{
-+	DECODE_HEAD;
-+
-+	status = nfsd4_decode_stateid(argp, &seek->seek_stateid);
-+	if (status)
-+		return status;
-+
-+	READ_BUF(12);
-+	READ64(seek->seek_offset);
-+	READ32(seek->seek_whence);
-+
-+	DECODE_TAIL;
-+}
-+#endif /* CONFIG_NFSD_V4_2_SEEK */
-+
- static __be32
- nfsd4_decode_noop(struct nfsd4_compoundargs *argp, void *p)
- {
-@@ -1589,7 +1607,11 @@ static nfsd4_dec nfsd4_dec_ops[] = {
- 	[OP_OFFLOAD_STATUS]	= (nfsd4_dec)nfsd4_decode_notsupp,
- 	[OP_WRITE_PLUS]		= (nfsd4_dec)nfsd4_decode_notsupp,
- 	[OP_READ_PLUS]		= (nfsd4_dec)nfsd4_decode_notsupp,
-+#ifdef CONFIG_NFSD_V4_2_SEEK
-+	[OP_SEEK]		= (nfsd4_dec)nfsd4_decode_seek,
-+#else
- 	[OP_SEEK]		= (nfsd4_dec)nfsd4_decode_notsupp,
-+#endif /* CONFIG_NFSD_V4_2_SEEK */
- 	[OP_IO_ADVISE]		= (nfsd4_dec)nfsd4_decode_notsupp,
- };
- 
-@@ -3514,6 +3536,28 @@ nfsd4_encode_test_stateid(struct nfsd4_compoundres *resp, __be32 nfserr,
- 	return nfserr;
- }
- 
-+#ifdef CONFIG_NFSD_V4_2_SEEK
-+static __be32
-+nfsd4_encode_seek(struct nfsd4_compoundres *resp, __be32 nfserr,
-+		  struct nfsd4_seek *seek)
-+{
-+	__be32 *p;
-+
-+	if (nfserr)
-+		return nfserr;
-+
-+	RESERVE_SPACE(28);
-+	WRITE32(seek->seek_eof);
-+	WRITE32(seek->seek_whence);
-+	WRITE64(seek->seek_pos);
-+	WRITE64(seek->seek_length);
-+	WRITE32(seek->seek_allocated);
-+	ADJUST_ARGS();
-+
-+	return nfserr;
-+}
-+#endif /* CONFIG_NFSD_V4_2_SEEK */
-+
- static __be32
- nfsd4_encode_noop(struct nfsd4_compoundres *resp, __be32 nfserr, void *p)
- {
-@@ -3595,7 +3639,11 @@ static nfsd4_enc nfsd4_enc_ops[] = {
- 	[OP_OFFLOAD_STATUS]	= (nfsd4_enc)nfsd4_encode_noop,
- 	[OP_WRITE_PLUS]		= (nfsd4_enc)nfsd4_encode_noop,
- 	[OP_READ_PLUS]		= (nfsd4_enc)nfsd4_encode_noop,
-+#ifdef CONFIG_NFSD_V4_2_SEEK
-+	[OP_SEEK]		= (nfsd4_enc)nfsd4_encode_seek,
-+#else
- 	[OP_SEEK]		= (nfsd4_enc)nfsd4_encode_noop,
-+#endif /* CONFIG_NFSD_V4_2_SEEK */
- 	[OP_IO_ADVISE]		= (nfsd4_enc)nfsd4_encode_noop,
- };
- 
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index b3ed644..c2f4e30 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -430,6 +430,19 @@ struct nfsd4_reclaim_complete {
- 	u32 rca_one_fs;
- };
- 
-+struct nfsd4_seek {
-+	/* request */
-+	stateid_t	seek_stateid;
-+	loff_t		seek_offset;
-+	u32		seek_whence;
-+
-+	/* response */
-+	u64		seek_pos;
-+	u32		seek_eof;
-+	u64		seek_length;
-+	u32		seek_allocated;
-+};
-+
- struct nfsd4_op {
- 	int					opnum;
- 	__be32					status;
-@@ -475,6 +488,9 @@ struct nfsd4_op {
- 		struct nfsd4_reclaim_complete	reclaim_complete;
- 		struct nfsd4_test_stateid	test_stateid;
- 		struct nfsd4_free_stateid	free_stateid;
-+
-+		/* NFSv4.2 */
-+		struct nfsd4_seek		seek;
- 	} u;
- 	struct nfs4_replay *			replay;
- };
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index e58e0eb..a35b0b6 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -558,4 +558,10 @@ struct nfs4_deviceid {
- 	char data[NFS4_DEVICEID4_SIZE];
- };
- 
-+enum data_content4 {
-+	NFS4_CONTENT_DATA		= 0,
-+	NFS4_CONTENT_APP_DATA_HOLE	= 1,
-+	NFS4_CONTENT_HOLE		= 2,
-+};
-+
- #endif
 -- 
-1.8.4.2
+Trond Myklebust
+Linux NFS client maintainer
 
+NetApp
+Trond.Myklebust+AEA-netapp.com
+www.netapp.com
