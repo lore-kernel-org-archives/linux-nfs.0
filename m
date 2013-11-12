@@ -1,142 +1,101 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:23759 "EHLO mx12.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:16697 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755250Ab3KTVYs convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Nov 2013 16:24:48 -0500
-From: "Adamson, Andy" <William.Adamson@netapp.com>
-To: "Adamson, Andy" <William.Adamson@netapp.com>
-CC: Simo Sorce <simo@redhat.com>, "<steved@redhat.com>" <steved@redhat.com>,
-        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH Version 2 0/3] GSSD: Use gss-ctx keys and gsskeyd to
- sync Kerberos credentials and kernel gss_contexts.
-Date: Wed, 20 Nov 2013 21:24:47 +0000
-Message-ID: <98D9FE6D-B423-4255-B75D-7A24876F8185@netapp.com>
-References: <1382451757-3032-1-git-send-email-andros@netapp.com>
- <1382454148.9794.72.camel@willson.li.ssimo.org>
- <A8A66580-CD6F-4141-AE93-B1DD025BFD7A@netapp.com>
- <1382458162.9794.85.camel@willson.li.ssimo.org>
- <9C15298B-8915-46E2-85E1-5098F1A12832@netapp.com>
- <1382462720.9794.131.camel@willson.li.ssimo.org>
- <096F13FC-A99E-4C19-ACCA-01C244D7420F@netapp.com>
- <1384980587.17044.49.camel@willson.li.ssimo.org>
- <7841DFC0-4F05-42CB-AD84-0A3324588EC1@netapp.com>
-In-Reply-To: <7841DFC0-4F05-42CB-AD84-0A3324588EC1@netapp.com>
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
+	id S1755537Ab3KLOzt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 Nov 2013 09:55:49 -0500
+Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id rACEtmt4029131
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Tue, 12 Nov 2013 09:55:48 -0500
+Received: from tlielax.poochiereds.net (vpn-57-82.rdu2.redhat.com [10.10.57.82])
+	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id rACEtm7q007508
+	for <linux-nfs@vger.kernel.org>; Tue, 12 Nov 2013 09:55:48 -0500
+Date: Tue, 12 Nov 2013 09:55:47 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: linux-nfs@vger.kernel.org
+Subject: reproducible stack corruption in nfs mount codepath
+Message-ID: <20131112095547.283a1b8b@tlielax.poochiereds.net>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+While testing the patches that add the new infrastructure to test
+whether gssd is running, I found a way to apparently reliably reproduce
+some stack corruption:
 
-On Nov 20, 2013, at 4:21 PM, "Adamson, Andy" <William.Adamson@netapp.com>
- wrote:
+[ 7535.626147] RPC: AUTH_GSS upcall timed out.
+[ 7535.626147] Please check user daemon is running.
+[ 7535.643063] BUG: unable to handle kernel paging request at 000000037fea6be0
+[ 7535.644041] IP: [<ffffffff810aca07>] cpuacct_charge+0x27/0x40
+[ 7535.644041] PGD 0 
+[ 7535.644041] Thread overran stack, or stack corrupted
+[ 7535.644041] Oops: 0000 [#1] SMP 
+[ 7535.644041] Modules linked in: cts rpcsec_gss_krb5(OF) nfsv4 dns_resolver nfs fscache kvm virtio_balloon virtio_net i2c_piix4 serio_raw nfsd auth_rpcgss(OF) nfs_acl lockd sunrpc(OF) cirrus drm_kms_helper virtio_blk ttm drm i2c_core virtio_pci virtio_ring virtio ata_generic pata_acpi
+[ 7535.644041] CPU: 0 PID: 1419 Comm: mount.nfs Tainted: GF          O 3.12.0-2.fc21.x86_64 #1
+[ 7535.644041] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
+[ 7535.644041] task: ffff88007bef6300 ti: ffff88007be86000 task.ti: ffff88007be86000
+[ 7535.644041] RIP: 0010:[<ffffffff810aca07>]  [<ffffffff810aca07>] cpuacct_charge+0x27/0x40
+[ 7535.644041] RSP: 0018:ffff88007fc03d88  EFLAGS: 00010046
+[ 7535.644041] RAX: 000000000000e6a0 RBX: ffff88007bef6368 RCX: 000000007fc36200
+[ 7535.644041] RDX: ffffffff81c48d20 RSI: 00000000000c1c64 RDI: ffff88007bef6300
+[ 7535.644041] RBP: ffff88007fc03d88 R08: 00000000000000f0 R09: 0000000000000000
+[ 7535.644041] R10: 0000000000000001 R11: ffffea0001edf800 R12: ffff8800375d0000
+[ 7535.644041] R13: ffff88007bef6300 R14: 00000000000c1c64 R15: 0000000000000000
+[ 7535.644041] FS:  00007fdd196208c0(0000) GS:ffff88007fc00000(0000) knlGS:0000000000000000
+[ 7535.644041] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+[ 7535.644041] CR2: 000000037fea6be0 CR3: 000000007aaa7000 CR4: 00000000000006f0
+[ 7535.644041] Stack:
+[ 7535.644041]  ffff88007fc03dc8 ffffffff810a18ac 000000008389773d ffff88007bef6368
+[ 7535.644041]  0000000000000000 ffff8800375d0000 ffff88007fc14540 0000000000000000
+[ 7535.644041]  ffff88007fc03e28 ffffffff810a3259 ffff88007fc03e00 ffffffff8109dc08
+[ 7535.644041] Call Trace:
+[ 7535.644041]  <IRQ> 
+[ 7535.644041]  [<ffffffff810a18ac>] update_curr+0xcc/0x160
+[ 7535.644041]  [<ffffffff810a3259>] task_tick_fair+0x2b9/0x680
+[ 7535.644041]  [<ffffffff8109dc08>] ? sched_clock_cpu+0xa8/0x100
+[ 7535.644041]  [<ffffffff81099b81>] scheduler_tick+0x61/0xe0
+[ 7535.644041]  [<ffffffff81076dc6>] update_process_times+0x66/0x80
+[ 7535.644041]  [<ffffffff810cab95>] tick_sched_handle.isra.15+0x25/0x60
+[ 7535.644041]  [<ffffffff810cac11>] tick_sched_timer+0x41/0x60
+[ 7535.644041]  [<ffffffff8108e6e4>] __run_hrtimer+0x74/0x1d0
+[ 7535.644041]  [<ffffffff810cabd0>] ? tick_sched_handle.isra.15+0x60/0x60
+[ 7535.644041]  [<ffffffff8108eef7>] hrtimer_interrupt+0xf7/0x240
+[ 7535.644041]  [<ffffffff81041ab7>] local_apic_timer_interrupt+0x37/0x60
+[ 7535.644041]  [<ffffffff8167323f>] smp_apic_timer_interrupt+0x3f/0x60
+[ 7535.644041]  [<ffffffff81671bdd>] apic_timer_interrupt+0x6d/0x80
+[ 7535.644041]  <EOI> 
+[ 7535.644041] Code: 5d eb d7 90 66 66 66 66 90 48 8b 47 08 55 48 89 e5 48 63 48 18 48 8b 87 b8 06 00 00 48 8b 50 48 0f 1f 40 00 48 8b 82 88 00 00 00 <48> 03 04 cd e0 5b cf 81 48 01 30 48 8b 52 40 48 85 d2 75 e5 5d 
+[ 7535.644041] RIP  [<ffffffff810aca07>] cpuacct_charge+0x27/0x40
+[ 7535.644041]  RSP <ffff88007fc03d88>
+[ 7535.644041] CR2: 000000037fea6be0
 
-> 
-> On Nov 20, 2013, at 3:49 PM, Simo Sorce <simo@redhat.com>
-> wrote:
-> 
->> On Wed, 2013-11-20 at 20:35 +0000, Adamson, Andy wrote:
->>> Hi
->>> 
->>> As suggested, I approached the Kerberos@mit.edu about the possibility
->>> of a plugin architecture for libkrb5 credential cache manipulation
->>> functions so that we could trigger the kernel GSS_context management
->>> functions.
->> 
->> [..]
->>> 
->>> It appears that Solution 4: [plugin architecture to libkrb for
->>> callouts on functions that manipulate kerberos credentials.] is a
->>> no-go. 
->>> 
->>> I agree that Solution 1: [inotify on FILE credentials] is clunky and
->>> won't work well.
->>> 
->>> Solution 2: [integrate with KEYRING credentials] could work if we
->>> insist that all NFS Kerberos credentials use the KEYRING: - e.g. the
->>> proposed new 'big-key' type. Note there is no backporting of this
->>> solution.
->> 
->> Note that solution 2 is semantically identical to solution 4, you are
->> going to try to guess what user space is doing, based on how it
->> manipulates caches, and would have the same side effects.
->> 
->>> I think Solution 3: [nfslog/nfslogout interfaces invoked from PAM or
->>> other login system facility] is a good way to go.  Note that a PAM
->>> based solution where in the PAM would get us most of the way towards
->>> providing users with a way to login and logout of NFS kerberized
->>> shares.
->>> 
->>> Comments on an NFS PAM that will destroy GSS context for a UID upon
->>> logout?
->> 
->> I prefer 3 too, let it to the login system (whether PAM based or other)
->> to determine when it is time to destroy credentials, that's the only
->> component that have a chance of guessing right.
->> Of course you could also provide a user utility to force a purge.
-> 
-> Good.
-> 
->> 
->>> Simo - I answered your latest comments below in-line.
->> 
->> [..]
->> 
->>> I think a PAM based solution will get us most of the way there.
->> 
->> Agree.
->> 
->> 
->>>> So the way I see it you probably want to keep the tracking in
->>>> whatever tool you want to use to experiment (say gsskeyd) and only
->>>> provide a downcall to the kernel that will tell it: destroy any
->>>> cache for 'uid number (optionally pass in a session id too ?)'.
->>> 
->>> This is what the gss-ctx keyring destroy method is - a downcall to the
->>> kernel telling it to destroy all GSS_contexts for a UID.
->> 
->> Why do you need to abuse the keyring interface to implement a syscall ?
-> 
-> Do you think this job requires a system call? 
-> 
-> I felt the keyring interface gives us what we want: a way to pass some information and trigger a behavior.  The gss-ctx key caches the relationship between the principals Kerberos credentials and the associated RPC layer gss_cred (which in turn has the gss_context).  When a gss-ctx key exists, the principal associated with the UID has kerberos credentials (located in the Kerberos ccache
+This happens with or without the patchset I proposed earlier. I've also
+seen it double fault, and spontaneously reboot. Here's how I'm able to
+reproduce it:
 
-this is confusing: the _location_ of the KRB5 ccache is stored in the gss-ctxkey, not the actual creds...
+I have this in /etc/fstab:
 
-> stored in the key) that are used for NFS, and the key serial is stored in the gss_cred.
-> 
-> From kernel documentation: Documentation/security/keys.txt
-> 
-> "This service allows cryptographic keys, authentication tokens, cross-domain
-> user mappings, and similar to be cached in the kernel for the use of
-> filesystems and other kernel services."
-> 
-> I think the gss-ctx key fits into the above description (under "similar"), so  I don't think of this use as an abuse.
-> 
->> Or did I misunderstand what you mean by "telling the kernel to do X" ?
->> 
->>>> This way you can replace the logic of how to keep track of what is
->>>> going on completely in user space, where it can easily be adjusted
->>>> and adapted  as experience is gained.
->>>> 
->>>> IE: track it completely in userspace for now and only provide a
->>>> syscall to kill creds per UID, no tracking on the kernel side.
->>> 
->>> Yes - I believe that is what the gss-ctx keyring code I wrote does.
->> 
->> A keyring is not a syscall.
-> 
-> Yes, but it does as you suggested "provide a downcall to the kernel that will tell it: destroy any
-> cache for 'uid number"
-> 
-> What is the disadvantage of using the keyring?
-> 
-> --Andy
-> 
->> 
->> Simo.
->> 
->> -- 
->> Simo Sorce * Red Hat, Inc * New York
->> 
-> 
+server:/scratch		/mnt/nfs	nfs	sec=krb5,noauto	0 0
 
+...start with rpc.gssd running.
+
+# mount /mnt/nfs
+# umount /mnt/nfs
+# service rpcgssd stop
+# mount /mnt/nfs
+
+...at this point, the mount command will hang as expected due to gssd
+being down, but it then continues hanging even after printing this
+message:
+
+    RPC: AUTH_GSS upcall timed out.
+
+...a little while later, I either get the stack trace above, or one
+reporting a double fault, or a spontaneous reboot.
+
+Perhaps we've got something on the stack (maybe a timer?) and then
+aren't cancelling it before returning from the function that owns it?
+
+-- 
+Jeff Layton <jlayton@redhat.com>
