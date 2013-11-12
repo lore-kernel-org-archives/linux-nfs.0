@@ -1,148 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:15845 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751750Ab3KQXpz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 17 Nov 2013 18:45:55 -0500
-Message-ID: <1384731949.14391.120.camel@serendib>
-Subject: [PATCH v2] exportfs: modify can_test() to use LONG_MAX when
- appropriate
-From: Harshula Jayasuriya <harshula@redhat.com>
-To: Steve Dickson <steved@redhat.com>, linux-nfs@vger.kernel.org
-Cc: Jeff Layton <jlayton@redhat.com>,
-        "J.Bruce Fields" <bfields@citi.umich.edu>, NeilBrown <neilb@suse.de>
-Date: Mon, 18 Nov 2013 10:45:49 +1100
-In-Reply-To: <1384511960.14391.115.camel@serendib>
-References: <1376588800.17754.14.camel@serendib>
-	 <20130815175258.GS17781@fieldses.org> <1384154434.16759.39.camel@serendib>
-	 <20131111185356.6e0fd0a9@notabene.brown>
-	 <1384168843.16759.50.camel@serendib> <1384496133.14391.112.camel@serendib>
-	 <20131115173845.5ff064cd@notabene.brown>
-	 <1384511960.14391.115.camel@serendib>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from e39.co.us.ibm.com ([32.97.110.160]:36850 "EHLO
+	e39.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756722Ab3KLWo0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Nov 2013 17:44:26 -0500
+Received: from /spool/local
+	by e39.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <eshel@us.ibm.com>;
+	Tue, 12 Nov 2013 15:44:26 -0700
+In-Reply-To: <5282929E.60207@gmail.com>
+References: <1384283048-7699-1-git-send-email-bjschuma@netapp.com> <5282929E.60207@gmail.com>
+To: Anna Schumaker <schumaker.anna@gmail.com>
+Cc: bfields@fieldses.org, Anna Schumaker <bjschuma@netapp.com>,
+        linux-nfs@vger.kernel.org, linux-nfs-owner@vger.kernel.org
+MIME-Version: 1.0
+Subject: Re: [PATCH v2 1/3] NFSD: Update error codes
+From: Marc Eshel <eshel@us.ibm.com>
+Message-ID: <OF7E555129.8213C5FE-ON88257C21.007BF318-88257C21.007CE9CA@us.ibm.com>
+Date: Tue, 12 Nov 2013 14:44:21 -0800
+Content-Type: text/plain; charset="US-ASCII"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch is the nfs-utils patch corresponding to the kernel patch
-"sunrpc: prepare NFS for 2038": "The kernel sunrpc code needs to handle
-seconds since epoch greater than 2147483647. This means functions that
-parse time as an int need to handle it as time_t."
+where do you see this change?, the last version 20 don't show it.
+Thanks, Marc.
 
-When appropriate exportfs should use LONG_MAX in can_test() instead of
-INT_MAX.
 
-kernel INT_MAX + exportfs INT_MAX: "Tue Jan 19 03:14:08 UTC 2038"
-=================================================================
 
-exportfs: /mnt/export does not support NFS export:
-------------------------------------------------------------
- # cat /proc/net/rpc/auth.unix.ip/content
- #class IP domain
-------------------------------------------------------------
+From:   Anna Schumaker <schumaker.anna@gmail.com>
+To:     Anna Schumaker <bjschuma@netapp.com>, bfields@fieldses.org, 
+linux-nfs@vger.kernel.org, 
+Date:   11/12/2013 12:50 PM
+Subject:        [PATCH v2 1/3] NFSD: Update error codes
+Sent by:        linux-nfs-owner@vger.kernel.org
 
-+ mount fail:
-------------------------------------------------------------
- # cat /proc/net/rpc/auth.unix.ip/content
- #class IP domain
- # expiry=2147483768 refcnt=2 flags=4
- # nfsd 192.168.1.6 -no-domain-
-------------------------------------------------------------
 
-kernel LONG_MAX + exportfs INT_MAX: "Tue Jan 19 03:14:08 UTC 2038"
-==================================================================
 
-"exportfs: /mnt/export does not support NFS export":
-------------------------------------------------------------
- # cat /proc/net/rpc/auth.unix.ip/content
- #class IP domain
-------------------------------------------------------------
+Recent NFS v4.2 drafts have removed NFS4ERR_METADATA_NOTSUPP and
+reassigned the error code to NFS4ERR_UNION_NOTSUPP.
 
-+ mount success:
-------------------------------------------------------------
- # cat /proc/net/rpc/auth.unix.ip/content
- #class IP domain
- # expiry=2147485448 refcnt=2 flags=1
- nfsd 192.168.1.6 *
-------------------------------------------------------------
-
-kernel LONG_MAX + exportfs LONG_MAX: "Tue Jan 19 03:14:08 UTC 2038"
-===================================================================
-
-exportfs:
-------------------------------------------------------------
- # cat /proc/net/rpc/auth.unix.ip/content
- #class IP domain
- # expiry=9223372036854775807 refcnt=1 flags=1
- nfsd 0.0.0.0 -test-client-
-------------------------------------------------------------
-
-+ mount success:
-------------------------------------------------------------
- # cat /proc/net/rpc/auth.unix.ip/content
- #class IP domain
- # expiry=2147485448 refcnt=2 flags=1
- nfsd 192.168.1.6 *
- # expiry=9223372036854775807 refcnt=1 flags=1
- nfsd 0.0.0.0 -test-client-
-------------------------------------------------------------
-
-Signed-off-by: Harshula Jayasuriya <harshula@redhat.com>
+Signed-off-by: Anna Schumaker <bjschuma@netapp.com>
 ---
- utils/exportfs/exportfs.c | 27 +++++++++++++++++++++++----
- 1 file changed, 23 insertions(+), 4 deletions(-)
+ fs/nfsd/nfsd.h       | 2 +-
+ include/linux/nfs4.h | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
-index da5fe21..9f13858 100644
---- a/utils/exportfs/exportfs.c
-+++ b/utils/exportfs/exportfs.c
-@@ -27,6 +27,8 @@
- #include <netdb.h>
- #include <errno.h>
- #include <dirent.h>
-+#include <limits.h>
-+#include <time.h>
- 
- #include "sockaddr.h"
- #include "misc.h"
-@@ -406,17 +408,34 @@ unexportfs(char *arg, int verbose)
- 
- static int can_test(void)
- {
-+	char buf[1024];
- 	int fd;
- 	int n;
--	char *setup = "nfsd 0.0.0.0 2147483647 -test-client-\n";
-+
- 	fd = open("/proc/net/rpc/auth.unix.ip/channel", O_WRONLY);
--	if ( fd < 0) return 0;
--	n = write(fd, setup, strlen(setup));
-+	if (fd < 0)
-+		return 0;
-+
-+	/* We introduce tolerance of 1 day to ensure that we use a
-+	 * LONG_MAX for the expiry timestamp before it is actually
-+	 * needed. To use LONG_MAX, the kernel code must have commit
-+	 * 2f74f972d4cc7d83408ea0c32d424edcb44887bf
-+	 * (sunrpc: prepare NFS for 2038).
-+	 */
-+#define INT_TO_LONG_THRESHOLD_SECS (INT_MAX - (60 * 60 * 24))
-+	if (time(NULL) > INT_TO_LONG_THRESHOLD_SECS)
-+		sprintf(buf, "nfsd 0.0.0.0 %ld -test-client-\n", LONG_MAX);
-+	else
-+		sprintf(buf, "nfsd 0.0.0.0 %d -test-client-\n", INT_MAX);
-+
-+	n = write(fd, buf, strlen(buf));
- 	close(fd);
- 	if (n < 0)
- 		return 0;
-+
- 	fd = open("/proc/net/rpc/nfsd.export/channel", O_WRONLY);
--	if ( fd < 0) return 0;
-+	if (fd < 0)
-+		return 0;
- 	close(fd);
- 	return 1;
- }
+diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+index 30f34ab..4fe49e9 100644
+--- a/fs/nfsd/nfsd.h
++++ b/fs/nfsd/nfsd.h
+@@ -244,7 +244,7 @@ void        nfsd_lockd_shutdown(void);
+ #define nfserr_deleg_revoked        cpu_to_be32(NFS4ERR_DELEG_REVOKED)
+ #define nfserr_partner_notsupp cpu_to_be32(NFS4ERR_PARTNER_NOTSUPP)
+ #define nfserr_partner_no_auth cpu_to_be32(NFS4ERR_PARTNER_NO_AUTH)
+-#define nfserr_metadata_notsupp cpu_to_be32(NFS4ERR_METADATA_NOTSUPP)
++#define nfserr_union_notsupp        cpu_to_be32(NFS4ERR_UNION_NOTSUPP)
+ #define nfserr_offload_denied        cpu_to_be32(NFS4ERR_OFFLOAD_DENIED)
+ #define nfserr_wrong_lfs        cpu_to_be32(NFS4ERR_WRONG_LFS)
+ #define nfserr_badlabel        cpu_to_be32(NFS4ERR_BADLABEL)
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index 9577769..6d79deb 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -235,7 +235,7 @@ enum nfsstat4 {
+     /* nfs42 */
+     NFS4ERR_PARTNER_NOTSUPP    = 10088,
+     NFS4ERR_PARTNER_NO_AUTH    = 10089,
+-    NFS4ERR_METADATA_NOTSUPP = 10090,
++    NFS4ERR_UNION_NOTSUPP = 10090,
+     NFS4ERR_OFFLOAD_DENIED = 10091,
+     NFS4ERR_WRONG_LFS = 10092,
+     NFS4ERR_BADLABEL = 10093,
 -- 
-1.8.3.1
+1.8.4.2
+
+--
+To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+the body of a message to majordomo@vger.kernel.org
+More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
 
