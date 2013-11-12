@@ -1,83 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:28134 "EHLO mx11.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:24865 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757352Ab3KMPO1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 13 Nov 2013 10:14:27 -0500
-From: Weston Andros Adamson <dros@netapp.com>
-To: <steved@redhat.com>
-CC: <linux-nfs@vger.kernel.org>, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH] mount.nfs: Recognize v4.x mount options
-Date: Wed, 13 Nov 2013 10:14:22 -0500
-Message-ID: <1384355662-70913-1-git-send-email-dros@netapp.com>
+	id S1753677Ab3KLRg0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 Nov 2013 12:36:26 -0500
+Subject: [PATCH 1/3] statxat: Provide IOC flags for Windows fs attributes
+To: viro@ZenIV.linux.org.uk
+From: David Howells <dhowells@redhat.com>
+Cc: linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
+        libc-alpha@sourceware.org, linux-api@vger.kernel.org,
+        andreas.gruenbacher@gmail.com, samba-technical@lists.samba.org,
+        linux-fsdevel@vger.kernel.org
+Date: Tue, 12 Nov 2013 17:35:26 +0000
+Message-ID: <20131112173526.25813.85546.stgit@warthog.procyon.org.uk>
+In-Reply-To: <20131112173518.25813.67568.stgit@warthog.procyon.org.uk>
+References: <20131112173518.25813.67568.stgit@warthog.procyon.org.uk>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The kernel understands text options of the form "v4.x" (ie "v4.1"), but
-mount.nfs does not and this leads to weird errors when the requested
-mount fails: a line in dmesg about version 3 not supporting minorversions
-and mount.nfs returning EINVAL no matter what the real error was.
+Provide IOC flags for Windows fs attributes so that they can be retrieved (or
+even altered) using the FS_IOC_[GS]ETFLAGS ioctl and read using statxat().
 
-This happens because mount.nfs thinks no version was specified so it starts
-probing other versions which conflicts with the v4.X option once it gets
-parsed by the kernel.
-
-$ sudo mount -v -o v4.1 zero:/invalid_export /mnt
-mount.nfs: timeout set for Wed Nov 13 10:09:48 2013
-mount.nfs: trying text-based options 'v4.1,vers=4,addr=192.168.100.10,clientaddr=192.168.100.11'
-mount.nfs: mount(2): No such file or directory
-mount.nfs: trying text-based options 'v4.1,addr=192.168.100.10'
-mount.nfs: prog 100003, trying vers=3, prot=6
-mount.nfs: trying 192.168.100.10 prog 100003 vers 3 prot TCP port 2049
-mount.nfs: prog 100005, trying vers=3, prot=17
-mount.nfs: trying 192.168.100.10 prog 100005 vers 3 prot UDP port 20048
-mount.nfs: mount(2): Invalid argument
-mount.nfs: an incorrect mount option was specified
-
-And you get this in dmesg:
-
-NFS: mount option vers=3 does not support minorversion=1
-
-but if you use another form of the same options, this doesn't happen:
-
-$ sudo mount -v -o vers=4,minorversion=1 zero:/invalid_export /mnt
-mount.nfs: timeout set for Wed Nov 13 10:10:28 2013
-mount.nfs: trying text-based options 'vers=4,minorversion=1,addr=192.168.100.10,clientaddr=192.168.100.11'
-mount.nfs: mount(2): No such file or directory
-mount.nfs: mounting zero:/invalid_export failed, reason given by server: No such file or directory
-
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+Signed-off-by: David Howells <dhowells@redhat.com>
 ---
- utils/mount/network.c | 8 ++++++++
- 1 file changed, 8 insertions(+)
 
-diff --git a/utils/mount/network.c b/utils/mount/network.c
-index e8e55a5..2853d00 100644
---- a/utils/mount/network.c
-+++ b/utils/mount/network.c
-@@ -92,6 +92,9 @@ static const char *nfs_version_opttbl[] = {
- 	"v4",
- 	"vers",
- 	"nfsvers",
-+	"v4.0",
-+	"v4.1",
-+	"v4.2",
- 	NULL,
- };
+ include/uapi/linux/fs.h |    7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/include/uapi/linux/fs.h b/include/uapi/linux/fs.h
+index 6c28b61bb690..8b966f48dd41 100644
+--- a/include/uapi/linux/fs.h
++++ b/include/uapi/linux/fs.h
+@@ -191,10 +191,13 @@ struct inodes_stat_t {
+ #define FS_EXTENT_FL			0x00080000 /* Extents */
+ #define FS_DIRECTIO_FL			0x00100000 /* Use direct i/o */
+ #define FS_NOCOW_FL			0x00800000 /* Do not cow file */
++#define FS_HIDDEN_FL			0x10000000 /* Windows hidden file attribute */
++#define FS_SYSTEM_FL			0x20000000 /* Windows system file attribute */
++#define FS_ARCHIVE_FL			0x40000000 /* Windows archive file attribute */
+ #define FS_RESERVED_FL			0x80000000 /* reserved for ext2 lib */
  
-@@ -1269,6 +1272,11 @@ nfs_nfs_version(struct mount_options *options, unsigned long *version)
- 					progname);
- 			return 0;
- 		}
-+	case 5: /* v4.0 */
-+	case 6: /* v4.1 */
-+	case 7: /* v4.2 */
-+		*version = 4;
-+		return 1;
- 	}
+-#define FS_FL_USER_VISIBLE		0x0003DFFF /* User visible flags */
+-#define FS_FL_USER_MODIFIABLE		0x000380FF /* User modifiable flags */
++#define FS_FL_USER_VISIBLE		0x7003DFFF /* User visible flags */
++#define FS_FL_USER_MODIFIABLE		0x700380FF /* User modifiable flags */
  
- 	/*
--- 
-1.8.3.1 (Apple Git-46)
+ 
+ #define SYNC_FILE_RANGE_WAIT_BEFORE	1
 
