@@ -1,254 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qe0-f49.google.com ([209.85.128.49]:51595 "EHLO
-	mail-qe0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753194Ab3KNMZ2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Nov 2013 07:25:28 -0500
-Received: by mail-qe0-f49.google.com with SMTP id i11so1163543qej.36
-        for <linux-nfs@vger.kernel.org>; Thu, 14 Nov 2013 04:25:28 -0800 (PST)
+Received: from mx1.redhat.com ([209.132.183.28]:19398 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751472Ab3KLLMz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 Nov 2013 06:12:55 -0500
+Date: Tue, 12 Nov 2013 06:12:01 -0500
 From: Jeff Layton <jlayton@redhat.com>
-To: trond.myklebust@netapp.com
-Cc: chuck.lever@oracle.com, neilb@suse.de, steved@redhat.com,
-        linux-nfs@vger.kernel.org
-Subject: [PATCH v4 1/3] sunrpc: create a new dummy pipe for gssd to hold open
-Date: Thu, 14 Nov 2013 07:25:17 -0500
-Message-Id: <1384431919-20921-2-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1384431919-20921-1-git-send-email-jlayton@redhat.com>
-References: <1384431919-20921-1-git-send-email-jlayton@redhat.com>
+To: Greg KH <gregkh@linuxfoundation.org>
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org,
+        Stanislav Kinsbursky <skinsbursky@parallels.com>, devel@openvz.org,
+        ebiederm@xmission.com, oleg@redhat.com, bfields@fieldses.org,
+        bharrosh@panasas.com
+Subject: Re: call_usermodehelper in containers
+Message-ID: <20131112061201.04cf25ab@tlielax.poochiereds.net>
+In-Reply-To: <20131112004703.GB15377@kroah.com>
+References: <20131111071825.62da01d1@tlielax.poochiereds.net>
+	<20131112004703.GB15377@kroah.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-rpc.gssd will naturally hold open any pipe named */clnt*/gssd that shows
-up under rpc_pipefs. That behavior gives us a reliable mechanism to tell
-whether it's actually running or not.
+On Mon, 11 Nov 2013 16:47:03 -0800
+Greg KH <gregkh@linuxfoundation.org> wrote:
 
-Create a new toplevel "gssd" directory in rpc_pipefs when it's mounted.
-Under that directory create another directory called "clntXX", and then
-within that a pipe called "gssd".
+> On Mon, Nov 11, 2013 at 07:18:25AM -0500, Jeff Layton wrote:
+> > We have a bit of a problem wrt to upcalls that use call_usermodehelper
+> > with containers and I'd like to bring this to some sort of resolution...
+> > 
+> > A particularly problematic case (though there are others) is the
+> > nfsdcltrack upcall. It basically uses call_usermodehelper to run a
+> > program in userland to track some information on stable storage for
+> > nfsd.
+> 
+> I thought the discussion at the kernel summit about this issue was:
+> 	- don't do this.
+> 	- don't do it.
+> 	- if you really need to do this, fix nfsd
+> 
 
-We'll never send an upcall along that pipe, and any downcall written to
-it will just return -EINVAL.
+Sorry, I couldn't make the kernel summit so I missed that discussion. I
+guess LWN didn't cover it?
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- include/linux/sunrpc/rpc_pipe_fs.h |  3 +-
- net/sunrpc/netns.h                 |  1 +
- net/sunrpc/rpc_pipe.c              | 93 ++++++++++++++++++++++++++++++++++++--
- net/sunrpc/sunrpc_syms.c           |  8 +++-
- 4 files changed, 100 insertions(+), 5 deletions(-)
+In any case, I guess then that we'll either have to come up with some
+way to fix nfsd here, or simply ensure that nfsd can never be started
+unless root in the container has a full set of a full set of
+capabilities.
 
-diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
-index a353e03..85f1342 100644
---- a/include/linux/sunrpc/rpc_pipe_fs.h
-+++ b/include/linux/sunrpc/rpc_pipe_fs.h
-@@ -84,7 +84,8 @@ enum {
- 
- extern struct dentry *rpc_d_lookup_sb(const struct super_block *sb,
- 				      const unsigned char *dir_name);
--extern void rpc_pipefs_init_net(struct net *net);
-+extern int rpc_pipefs_init_net(struct net *net);
-+extern void rpc_pipefs_exit_net(struct net *net);
- extern struct super_block *rpc_get_sb_net(const struct net *net);
- extern void rpc_put_sb_net(const struct net *net);
- 
-diff --git a/net/sunrpc/netns.h b/net/sunrpc/netns.h
-index 779742c..8a8e841 100644
---- a/net/sunrpc/netns.h
-+++ b/net/sunrpc/netns.h
-@@ -14,6 +14,7 @@ struct sunrpc_net {
- 	struct cache_detail *rsi_cache;
- 
- 	struct super_block *pipefs_sb;
-+	struct rpc_pipe *gssd_dummy;
- 	struct mutex pipefs_sb_lock;
- 
- 	struct list_head all_clients;
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index d0d14a0..34efdbf 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -38,7 +38,7 @@
- #define NET_NAME(net)	((net == &init_net) ? " (init_net)" : "")
- 
- static struct file_system_type rpc_pipe_fs_type;
--
-+static const struct rpc_pipe_ops gssd_dummy_pipe_ops;
- 
- static struct kmem_cache *rpc_inode_cachep __read_mostly;
- 
-@@ -1168,6 +1168,7 @@ enum {
- 	RPCAUTH_nfsd4_cb,
- 	RPCAUTH_cache,
- 	RPCAUTH_nfsd,
-+	RPCAUTH_gssd,
- 	RPCAUTH_RootEOF
- };
- 
-@@ -1204,6 +1205,10 @@ static const struct rpc_filelist files[] = {
- 		.name = "nfsd",
- 		.mode = S_IFDIR | S_IRUGO | S_IXUGO,
- 	},
-+	[RPCAUTH_gssd] = {
-+		.name = "gssd",
-+		.mode = S_IFDIR | S_IRUGO | S_IXUGO,
-+	},
- };
- 
- /*
-@@ -1217,13 +1222,25 @@ struct dentry *rpc_d_lookup_sb(const struct super_block *sb,
- }
- EXPORT_SYMBOL_GPL(rpc_d_lookup_sb);
- 
--void rpc_pipefs_init_net(struct net *net)
-+int rpc_pipefs_init_net(struct net *net)
- {
- 	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
- 
-+	sn->gssd_dummy = rpc_mkpipe_data(&gssd_dummy_pipe_ops, 0);
-+	if (IS_ERR(sn->gssd_dummy))
-+		return PTR_ERR(sn->gssd_dummy);
-+
- 	mutex_init(&sn->pipefs_sb_lock);
- 	sn->gssd_running = 1;
- 	sn->pipe_version = -1;
-+	return 0;
-+}
-+
-+void rpc_pipefs_exit_net(struct net *net)
-+{
-+	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
-+
-+	rpc_destroy_pipe_data(sn->gssd_dummy);
- }
- 
- /*
-@@ -1253,11 +1270,73 @@ void rpc_put_sb_net(const struct net *net)
- }
- EXPORT_SYMBOL_GPL(rpc_put_sb_net);
- 
-+static const struct rpc_filelist gssd_dummy_clnt_dir[] = {
-+	[0] = {
-+		.name = "clntXX",
-+		.mode = S_IFDIR | S_IRUGO | S_IXUGO,
-+	},
-+};
-+
-+static ssize_t
-+dummy_downcall(struct file *filp, const char __user *src, size_t len)
-+{
-+	return -EINVAL;
-+}
-+
-+static const struct rpc_pipe_ops gssd_dummy_pipe_ops = {
-+	.upcall		= rpc_pipe_generic_upcall,
-+	.downcall	= dummy_downcall,
-+};
-+
-+/**
-+ * rpc_gssd_dummy_populate - create a dummy gssd pipe
-+ * @root:	root of the rpc_pipefs filesystem
-+ * @pipe_data:	pipe data created when netns is initialized
-+ *
-+ * Create a dummy set of directories and a pipe that gssd can hold open to
-+ * indicate that it is up and running.
-+ */
-+static struct dentry *
-+rpc_gssd_dummy_populate(struct dentry *root, struct rpc_pipe *pipe_data)
-+{
-+	int ret = 0;
-+	struct dentry *gssd_dentry;
-+	struct dentry *clnt_dentry = NULL;
-+	struct dentry *pipe_dentry = NULL;
-+	struct qstr q = QSTR_INIT(files[RPCAUTH_gssd].name,
-+				  strlen(files[RPCAUTH_gssd].name));
-+
-+	/* We should never get this far if "gssd" doesn't exist */
-+	gssd_dentry = d_hash_and_lookup(root, &q);
-+	if (!gssd_dentry)
-+		return ERR_PTR(-ENOENT);
-+
-+	ret = rpc_populate(gssd_dentry, gssd_dummy_clnt_dir, 0, 1, NULL);
-+	if (ret) {
-+		pipe_dentry = ERR_PTR(ret);
-+		goto out;
-+	}
-+
-+	q.name = gssd_dummy_clnt_dir[0].name;
-+	q.len = strlen(gssd_dummy_clnt_dir[0].name);
-+	clnt_dentry = d_hash_and_lookup(gssd_dentry, &q);
-+	if (!clnt_dentry) {
-+		pipe_dentry = ERR_PTR(-ENOENT);
-+		goto out;
-+	}
-+
-+	pipe_dentry = rpc_mkpipe_dentry(clnt_dentry, "gssd", NULL, pipe_data);
-+out:
-+	dput(clnt_dentry);
-+	dput(gssd_dentry);
-+	return pipe_dentry;
-+}
-+
- static int
- rpc_fill_super(struct super_block *sb, void *data, int silent)
- {
- 	struct inode *inode;
--	struct dentry *root;
-+	struct dentry *root, *gssd_dentry;
- 	struct net *net = data;
- 	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
- 	int err;
-@@ -1275,6 +1354,13 @@ rpc_fill_super(struct super_block *sb, void *data, int silent)
- 		return -ENOMEM;
- 	if (rpc_populate(root, files, RPCAUTH_lockd, RPCAUTH_RootEOF, NULL))
- 		return -ENOMEM;
-+
-+	gssd_dentry = rpc_gssd_dummy_populate(root, sn->gssd_dummy);
-+	if (IS_ERR(gssd_dentry)) {
-+		__rpc_depopulate(root, files, RPCAUTH_lockd, RPCAUTH_RootEOF);
-+		return PTR_ERR(gssd_dentry);
-+	}
-+
- 	dprintk("RPC:       sending pipefs MOUNT notification for net %p%s\n",
- 		net, NET_NAME(net));
- 	mutex_lock(&sn->pipefs_sb_lock);
-@@ -1289,6 +1375,7 @@ rpc_fill_super(struct super_block *sb, void *data, int silent)
- 	return 0;
- 
- err_depopulate:
-+	dput(gssd_dentry);
- 	blocking_notifier_call_chain(&rpc_pipefs_notifier_list,
- 					   RPC_PIPEFS_UMOUNT,
- 					   sb);
-diff --git a/net/sunrpc/sunrpc_syms.c b/net/sunrpc/sunrpc_syms.c
-index 3d6498a..cd30120 100644
---- a/net/sunrpc/sunrpc_syms.c
-+++ b/net/sunrpc/sunrpc_syms.c
-@@ -44,12 +44,17 @@ static __net_init int sunrpc_init_net(struct net *net)
- 	if (err)
- 		goto err_unixgid;
- 
--	rpc_pipefs_init_net(net);
-+	err = rpc_pipefs_init_net(net);
-+	if (err)
-+		goto err_pipefs;
-+
- 	INIT_LIST_HEAD(&sn->all_clients);
- 	spin_lock_init(&sn->rpc_client_lock);
- 	spin_lock_init(&sn->rpcb_clnt_lock);
- 	return 0;
- 
-+err_pipefs:
-+	unix_gid_cache_destroy(net);
- err_unixgid:
- 	ip_map_cache_destroy(net);
- err_ipmap:
-@@ -60,6 +65,7 @@ err_proc:
- 
- static __net_exit void sunrpc_exit_net(struct net *net)
- {
-+	rpc_pipefs_exit_net(net);
- 	unix_gid_cache_destroy(net);
- 	ip_map_cache_destroy(net);
- 	rpc_proc_exit(net);
+One sort of Rube Goldberg possibility to fix nfsd is:
+
+- when we start nfsd in a container, fork off an extra kernel thread
+  that just sits idle. That thread would need to be a descendant of the
+  userland process that started nfsd, so we'd need to create it with
+  kernel_thread().
+
+- Have the kernel just start up the UMH program in the init_ns mount
+  namespace as it currently does, but also pass the pid of the idle
+  kernel thread to the UMH upcall.
+
+- The program will then use /proc/<pid>/root and /proc/<pid>/ns/* to set
+  itself up for doing things properly.
+
+Note that with this mechanism we can't actually run a different binary
+per container, but that's probably fine for most purposes.
+
 -- 
-1.8.3.1
-
+Jeff Layton <jlayton@redhat.com>
