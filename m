@@ -1,112 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f45.google.com ([209.85.216.45]:48725 "EHLO
-	mail-qa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752901Ab3KNMZ2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Nov 2013 07:25:28 -0500
-Received: by mail-qa0-f45.google.com with SMTP id i13so98151qae.18
-        for <linux-nfs@vger.kernel.org>; Thu, 14 Nov 2013 04:25:27 -0800 (PST)
-From: Jeff Layton <jlayton@redhat.com>
-To: trond.myklebust@netapp.com
-Cc: chuck.lever@oracle.com, neilb@suse.de, steved@redhat.com,
-        linux-nfs@vger.kernel.org
-Subject: [PATCH v4 0/3] sunrpc/nfs: more reliable detection of running gssd
-Date: Thu, 14 Nov 2013 07:25:16 -0500
-Message-Id: <1384431919-20921-1-git-send-email-jlayton@redhat.com>
+Received: from mx11.netapp.com ([216.240.18.76]:3836 "EHLO mx11.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755695Ab3KLTy1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 Nov 2013 14:54:27 -0500
+Message-ID: <52828767.3030909@netapp.com>
+Date: Tue, 12 Nov 2013 14:54:15 -0500
+From: Anna Schumaker <bjschuma@netapp.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v2 0/3] NFSD: Implement SEEK
+References: <1384283048-7699-1-git-send-email-bjschuma@netapp.com> <20131112194529.GA26341@fieldses.org>
+In-Reply-To: <20131112194529.GA26341@fieldses.org>
+Content-Type: text/plain; charset="ISO-8859-1"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-v4:
-- fix commit message in first patch (s/"dummy"/"gssd"/)
+On 11/12/2013 02:45 PM, J. Bruce Fields wrote:
+> On Tue, Nov 12, 2013 at 02:04:05PM -0500, Anna Schumaker wrote:
+>> These patches implement just the SEEK NFS v4.2 operation.  WRITE_PLUS is
+>> still under discussion with the IETF after my last series of patches, so I
+>> am holding off on resubmitting until after spec discussion dies down.
+>>
+>> Questions?  Comments?  Thoughts?
+>> Anna
+>>
+>> Anna Schumaker (3):
+>>   NFSD: Update error codes
+> 
+> I don't think I got this first patch.
 
-- remove #if IS_ENABLED(CONFIG_SUNRPC_GSS) compile-time dependency
+It's in the "patches" directory I used, but I don't see it in my gmail inbox either.  I'll send it out in a minute.
 
-- added cleanup of warn_gssd() message
+> 
+>>   NFSD: Create nfs v4.2 decode ops
+>>   NFSD: Implement SEEK
+> 
+> I'd like to be reassured the protocol is reasonably stable before we
+> commit this.  I haven't been following the ietf wg discussion closely.
+> 
+> And this should initially be disabled by default.  So, probably either:
+> 
+> 	- Introduce a new NFSD_V4_SEEK option, or
+> 	- Combine this and NFSD_V4_SECURITY_LABEL and this into a single
+> 	  NFSD_V4_2 option.
+> 
+> And recommend "N" for now.
+> 
+> Probably the latter I guess, to be consistent with the client.  And
+> because otherwise we could end up with an awful lot of config options.
 
-- fix minor checkpatch.pl warnings
+Sure, I can do that easily enough.
 
-v3:
-- get rid of unneeded argument to init_client nfs op
+Anna
 
-- move gssd_running check into rpc_pipe.c to eliminate dependency on
-  auth_gss.ko
-
-v2:
-- change name of toplevel pipefs dir from "dummy" to "gssd" (per
-  Trond's suggestion)
-
-- when gssd isn't running, don't bother to upcall (per Neil B.'s
-  suggestion)
-
-- fix lifecycle of rpc_pipe data. Previously it would have leaked
-  after umount. With this set, it's created and destroyed along with
-  the netns, and just attached to the pipe inode on mount/unmount
-  of rpc_pipefs.
-
-- patch has been added to skip attempting setclientid with krb5i
-  if gssd isn't running. This avoids the "AUTH_GSS upcall timed out"
-  message when gssd isn't running and you mount with sec=sys. It also
-  shortens the delay when gssd isn't up.
-
-The original cover letter from the v1 posting follows. Note that this
-set does address the warnings about the AUTH_GSS upcall timing out.
-
--------------------------[snip]-----------------------------
-
-We've gotten a lot of complaints recently about the 15s delay when
-doing a sec=sys mount without gssd running.
-
-A large part of the problem is that the kernel isn't able to reliably
-detect when rpc.gssd is running. What we currently have is a
-gssd_running flag that is initially set to 1. When an upcall times out,
-that gets set to 0, and subsequent upcalls get a much shorter timeout
-(1/4s instead of 15s). It's reset back to '1' when a pipe is reopened.
-
-The approach of using a flag like this is pretty inadequate. First, it
-doesn't eliminate the long delay on the initial upcall attempt. Also,
-if gssd spontaneously dies, then the flag will still be set to 1 until
-the next upcall attempt times out. Finally, it currently requires that
-the pipe be reopened in order to reset the flag back to true.
-
-This patchset replaces that flag with a more reliable mechanism for
-detecting when gssd is running. When rpc_pipefs is mounted, it creates a
-new "dummy" pipe that gssd will naturally find and hold open. We'll
-never send an upcall down this pipe, and writing to it always fails.
-But, since we can detect when something is holding it open, we can use
-that to determine whether gssd is running.
-
-The current patch just uses this mechanism to replace the gssd_running
-flag with this new mechanism. This shortens the long delay when mounting
-without gssd running, but does not silence these warnings:
-
-    RPC: AUTH_GSS upcall timed out.
-    Please check user daemon is running.
-
-I'm willing to add a patch to do that, but I'm a little unclear on the
-best way to do so. Those messages are generated by the auth_gss code. We
-probably do want to print them if someone mounted with sec=krb5, but
-suppress them when mounting with sec=sys.
-
-Do we need to somehow pass down that intent to auth_gss? Another idea
-would be to call gssd_running() from the nfs mount code and use that to
-determine whether to try and use krb5 at all...
-
-Discuss!
-
-Jeff Layton (3):
-  sunrpc: create a new dummy pipe for gssd to hold open
-  sunrpc: replace sunrpc_net->gssd_running flag with a more reliable
-    check
-  nfs: check if gssd is running before attempting to use krb5i auth in
-    SETCLIENTID call
-
- fs/nfs/nfs4client.c                |   7 ++-
- include/linux/sunrpc/rpc_pipe_fs.h |   5 +-
- net/sunrpc/auth_gss/auth_gss.c     |  17 +++---
- net/sunrpc/netns.h                 |   3 +-
- net/sunrpc/rpc_pipe.c              | 107 ++++++++++++++++++++++++++++++++++---
- net/sunrpc/sunrpc_syms.c           |   8 ++-
- 6 files changed, 125 insertions(+), 22 deletions(-)
-
--- 
-1.8.3.1
+> 
+> --b.
+> 
+>>
+>>  fs/nfsd/nfs4proc.c   | 56 ++++++++++++++++++++++++++++++++++++++++++++++++++
+>>  fs/nfsd/nfs4xdr.c    | 58 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+>>  fs/nfsd/nfsd.h       |  2 +-
+>>  fs/nfsd/xdr4.h       | 16 +++++++++++++++
+>>  include/linux/nfs4.h | 23 ++++++++++++++++++---
+>>  5 files changed, 151 insertions(+), 4 deletions(-)
+>>
+>> -- 
+>> 1.8.4.2
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
