@@ -1,67 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:21891 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757674Ab3KYSRw convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Nov 2013 13:17:52 -0500
-From: "Adamson, Andy" <William.Adamson@netapp.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: "Adamson, Andy" <William.Adamson@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/1] NFSv4.1 fix a kswap nfs4_state_manger race
-Date: Mon, 25 Nov 2013 18:17:49 +0000
-Message-ID: <7E331FE8-EF05-434D-8434-0C35C3EF2F8B@netapp.com>
-References: <1385402270-14284-1-git-send-email-andros@netapp.com>
- <1385402270-14284-2-git-send-email-andros@netapp.com>
- <5B8C7A9D-CD9E-487A-AC62-B1292649835D@netapp.com>
-In-Reply-To: <5B8C7A9D-CD9E-487A-AC62-B1292649835D@netapp.com>
-Content-Type: text/plain; charset="Windows-1252"
-MIME-Version: 1.0
+Received: from mail-qc0-f182.google.com ([209.85.216.182]:44510 "EHLO
+	mail-qc0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754656Ab3KLNAb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Nov 2013 08:00:31 -0500
+Received: by mail-qc0-f182.google.com with SMTP id n7so5219211qcx.27
+        for <linux-nfs@vger.kernel.org>; Tue, 12 Nov 2013 05:00:31 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, steved@redhat.com
+Subject: [PATCH 0/2] sunrpc: more reliable detection of running gssd
+Date: Tue, 12 Nov 2013 08:00:23 -0500
+Message-Id: <1384261225-28559-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+We've gotten a lot of complaints recently about the 15s delay when
+doing a sec=sys mount without gssd running.
 
-On Nov 25, 2013, at 1:13 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com>
- wrote:
+A large part of the problem is that the kernel isn't able to reliably
+detect when rpc.gssd is running. What we currently have is a
+gssd_running flag that is initially set to 1. When an upcall times out,
+that gets set to 0, and subsequent upcalls get a much shorter timeout
+(1/4s instead of 15s). It's reset back to '1' when a pipe is reopened.
 
-> 
-> On Nov 25, 2013, at 12:57, <andros@netapp.com> <andros@netapp.com> wrote:
-> 
->> From: Andy Adamson <andros@netapp.com>
->> 
->> The state manager is recovering expired state and recovery OPENs are being
->> processed. If kswapd is pruning inodes at the same time, a deadlock can occur
->> when kswapd calls evict_inode on an NFSv4.1 inode with a layout, and the
->> resultant layoutreturn gets an error that the state mangager is to handle,
->> causing the layoutreturn to wait on the (NFS client) cl_rpcwaitq.
->> 
->> At the same time an open is waiting for the inode deletion to complete in
->> __wait_on_freeing_inode.
->> 
->> If the open is either the open called by the state manager, or an open from
->> the same open owner that is holding the NFSv4.0 sequence id which causes the
->> OPEN from the state manager to wait for the sequence id on the Seqid_waitqueue,
->> then the state is deadlocked with kswapd.
->> 
->> Do not handle LAYOUTRETURN errors when called from nfs4_evict_inode.
-> 
-> Why are we waiting for recovery in LAYOUTRETURN at all? Layouts are automatically lost when the server reboots or when the lease is otherwise lost.
-> 
-> IOW: Is there any reason why we need to special-case nfs4_evict_inode? Shouldn’t we just bail out on error in _all_ cases?
+The approach of using a flag like this is pretty inadequate. First, it
+doesn't eliminate the long delay on the initial upcall attempt. Also,
+if gssd spontaneously dies, then the flag will still be set to 1 until
+the next upcall attempt times out. Finally, it currently requires that
+the pipe be reopened in order to reset the flag back to true.
 
-Yeah, I was thinking about this as well - perhaps recovering from session-level errors or grace/delay errors would be useful for the block client.
+This patchset replaces that flag with a more reliable mechanism for
+detecting when gssd is running. When rpc_pipefs is mounted, it creates a
+new "dummy" pipe that gssd will naturally find and hold open. We'll
+never send an upcall down this pipe, and writing to it always fails.
+But, since we can detect when something is holding it open, we can use
+that to determine whether gssd is running.
 
--->Andy
+The current patch just uses this mechanism to replace the gssd_running
+flag with this new mechanism. This shortens the long delay when mounting
+without gssd running, but does not silence these warnings:
 
-> 
-> Cheers
->  Trond
-> 
-> --
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
-> 
+    RPC: AUTH_GSS upcall timed out.
+    Please check user daemon is running.
+
+I'm willing to add a patch to do that, but I'm a little unclear on the
+best way to do so. Those messages are generated by the auth_gss code. We
+probably do want to print them if someone mounted with sec=krb5, but
+suppress them when mounting with sec=sys.
+
+Do we need to somehow pass down that intent to auth_gss? Another idea
+would be to call gssd_running() from the nfs mount code and use that to
+determine whether to try and use krb5 at all...
+
+Discuss!
+
+Jeff Layton (2):
+  sunrpc: create a new dummy pipe for gssd to hold open
+  sunrpc: replace sunrpc_net->gssd_running flag with a better mechanism
+
+ include/linux/sunrpc/rpc_pipe_fs.h |  4 ++
+ net/sunrpc/auth_gss/auth_gss.c     | 13 ++++--
+ net/sunrpc/netns.h                 |  3 +-
+ net/sunrpc/rpc_pipe.c              | 95 ++++++++++++++++++++++++++++++++++++--
+ 4 files changed, 106 insertions(+), 9 deletions(-)
+
+-- 
+1.8.3.1
 
