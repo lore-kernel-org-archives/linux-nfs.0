@@ -1,42 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:1093 "EHLO mx1.redhat.com"
+Received: from mx12.netapp.com ([216.240.18.77]:32025 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756343Ab3KFMH4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 6 Nov 2013 07:07:56 -0500
-Message-ID: <527A3152.3040202@RedHat.com>
-Date: Wed, 06 Nov 2013 07:08:50 -0500
-From: Steve Dickson <SteveD@redhat.com>
+	id S1753735Ab3KLWdy convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Nov 2013 17:33:54 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Jeff Layton <jlayton@redhat.com>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Charles Edward Lever <chuck.lever@oracle.com>,
+        Weston Andros Adamson <dros@netapp.com>
+Subject: Re: [PATCH] nfs: don't retry detect_trunking with RPC_AUTH_UNIX
+ more than once
+Date: Tue, 12 Nov 2013 22:33:49 +0000
+Message-ID: <3A135082-6C37-41A8-9B37-AAF0AA884DEC@netapp.com>
+References: <1384291851-11154-1-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1384291851-11154-1-git-send-email-jlayton@redhat.com>
+Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-CC: "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-Subject: ANNOUNCE: nfs-utils-1.2.9 released.
-Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Some of the new features in this release:
-   * Both nfsiostat and mountstats are now Python 3 compatible 
-   * A number of improvements in the parsing of /etc/nfsmount.conf
-   * NFS v2 is no longer enable on the server by default
-   * NFS v2 is no longer negotiated on mounts
-   * A large number or rpc.gssd changes including working
-     with the latest gss-proxy release. 
 
-As well as the usual assorted bug fixes...  
+On Nov 12, 2013, at 16:30, Jeff Layton <jlayton@redhat.com> wrote:
 
-The tarballs can be found at
-  http://kernel.org/pub/linux/utils/nfs-utils/1.2.9/
-or
-  http://sourceforge.net/projects/nfs
+> Currently, when we try to mount and get back NFS4ERR_CLID_IN_USE or
+> NFS4ERR_WRONGSEC, we create a new rpc_clnt and then try the call again.
+> There is no guarantee that doing so will work however, so we can end up
+> retrying the call in an infinite loop.
+> 
+> Worse yet, we create the new client using rpc_clone_client_set_auth,
+> which creates the new client as a child of the old one. Thus, we can end
+> up with a *very* long lineage of rpc_clnts. When we go to put all of the
+> references to them, we can end up with a long call chain that can smash
+> the stack as each rpc_free_client() call can recurse back into itself.
 
-The change log is at 
-   http://kernel.org/pub/linux/utils/nfs-utils/1.2.9/1.2.9-ChangeLog
-or
-   http://sourceforge.net/projects/nfs/files/nfs-utils/1.2.9/1.2.9-Changelog
+Note that we should perhaps also try to fix rpc_free_client. I have a patch for that...
 
-The git tree is at:
-   git://linux-nfs.org/nfs-utils
-
-Please send comments/bugs to linux-nfs@vger.kernel.org
-
-steved.
+Cheers
+  Trond
