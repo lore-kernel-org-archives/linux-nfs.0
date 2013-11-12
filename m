@@ -1,66 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:37336 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753215Ab3KTBm3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 19 Nov 2013 20:42:29 -0500
-Received: from bfields by fieldses.org with local (Exim 4.76)
-	(envelope-from <bfields@fieldses.org>)
-	id 1ViwoG-0008DY-V3
-	for linux-nfs@vger.kernel.org; Tue, 19 Nov 2013 20:42:29 -0500
-Date: Tue, 19 Nov 2013 20:42:28 -0500
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfsd4: fix xdr decoding of large non-write compounds
-Message-ID: <20131120014228.GB27364@fieldses.org>
-MIME-Version: 1.0
+Received: from aserp1040.oracle.com ([141.146.126.69]:51249 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753728Ab3KLRNy convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Nov 2013 12:13:54 -0500
 Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Mime-Version: 1.0 (Mac OS X Mail 6.6 \(1510\))
+Subject: Re: [PATCH 0/2] sunrpc: more reliable detection of running gssd
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1384275379.4779.8.camel@leira.trondhjem.org>
+Date: Tue, 12 Nov 2013 12:13:48 -0500
+Cc: Jeff Layton <jlayton@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "steved@redhat.com" <steved@redhat.com>
+Message-Id: <DE63408F-9474-4786-9C48-4E3B80CEE78B@oracle.com>
+References: <1384261225-28559-1-git-send-email-jlayton@redhat.com> <A0488E98-0DF9-4ECE-A39D-C8E460E4C546@oracle.com> <20131112110831.72234c64@tlielax.poochiereds.net> <B9D2C1A3-ABD1-4A87-9AFD-BC9C2F1BA55C@oracle.com> <1384275379.4779.8.camel@leira.trondhjem.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
 
-This fixes a regression from 247500820ebd02ad87525db5d9b199e5b66f6636
-"nfsd4: fix decoding of compounds across page boundaries".  The previous
-code was correct: argp->pagelist is initialized in
-nfs4svc_deocde_compoundargs to rqstp->rq_arg.pages, and is therefore a
-pointer to the page *after* the page we are currently decoding.
+On Nov 12, 2013, at 11:56 AM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
 
-The reason that patch nevertheless fixed a problem with decoding
-compounds containing write was a bug in the write decoding introduced by
-5a80a54d21c96590d013378d8c5f65f879451ab4 "nfsd4: reorganize write
-decoding", after which write decoding no longer adhered to the rule that
-argp->pagelist point to the next page.
+> On Tue, 2013-11-12 at 11:15 -0500, Chuck Lever wrote:
+>> On Nov 12, 2013, at 11:08 AM, Jeff Layton <jlayton@redhat.com> wrote:
+>> 
+>>> On Tue, 12 Nov 2013 11:02:42 -0500
+>>> Chuck Lever <chuck.lever@oracle.com> wrote:
+>>> 
+>>>> 
+>>>> On Nov 12, 2013, at 8:00 AM, Jeff Layton <jlayton@redhat.com> wrote:
+>>>> 
+>>> What's the module loading solution?
+>> 
+>> Load auth_rpcgss.ko only when rpc.gssd has been started.  See the "[PATCH] Adding the nfs4_secure_mounts bool" thread... If auth_rpcgss.ko is not loaded, the kernel won't ever try to do an upcall.
+>> 
+>> Then, systemd can be used to restart rpc.gssd if it crashes, maybe?  Just a thought.
+> 
+> You can trivially defeat that by compiling the gss code into the kernel.
 
-Cc: stable@vger.kernel.org
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4xdr.c |    3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+And also: my preferred solution is to run rpc.gssd unconditionally.  But some find that onerous.
 
-I'm queueing this up for 3.13.
-
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 088de13..ee7237f 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -141,8 +141,8 @@ xdr_error:					\
- 
- static void next_decode_page(struct nfsd4_compoundargs *argp)
- {
--	argp->pagelist++;
- 	argp->p = page_address(argp->pagelist[0]);
-+	argp->pagelist++;
- 	if (argp->pagelen < PAGE_SIZE) {
- 		argp->end = argp->p + (argp->pagelen>>2);
- 		argp->pagelen = 0;
-@@ -1229,6 +1229,7 @@ nfsd4_decode_write(struct nfsd4_compoundargs *argp, struct nfsd4_write *write)
- 		len -= pages * PAGE_SIZE;
- 
- 		argp->p = (__be32 *)page_address(argp->pagelist[0]);
-+		argp->pagelist++;
- 		argp->end = argp->p + XDR_QUADLEN(PAGE_SIZE);
- 	}
- 	argp->p += XDR_QUADLEN(len);
 -- 
-1.7.9.5
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
