@@ -1,51 +1,127 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:37939 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750819Ab3KDTvW convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Nov 2013 14:51:22 -0500
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.6 \(1510\))
-Subject: Re: [PATCH 3/4] NFSD: Add WRITE_PLUS support for hole punches
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20131104191907.GA9337@infradead.org>
-Date: Mon, 4 Nov 2013 11:50:51 -0800
-Cc: Anna Schumaker <bjschuma@netapp.com>, bfields@fieldses.org,
-        linux-nfs@vger.kernel.org
-Message-Id: <8EB0049A-9225-4C4A-8099-774B2EB48323@oracle.com>
-References: <1382972247-1108-1-git-send-email-bjschuma@netapp.com> <1382972247-1108-4-git-send-email-bjschuma@netapp.com> <20131102135238.GB18961@infradead.org> <5277CE23.6010207@netapp.com> <20131104170345.GA31499@infradead.org> <5277D80F.8050106@netapp.com> <20131104185309.GA14378@infradead.org> <3AC4ECC6-0496-4593-8791-92BCAD2567CC@oracle.com> <20131104191907.GA9337@infradead.org>
-To: Christoph Hellwig <hch@infradead.org>
+Received: from mx1.redhat.com ([209.132.183.28]:28617 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753677Ab3KLRfz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 Nov 2013 12:35:55 -0500
+Subject: [PATCH 3/3] statxat: AFS: Return enhanced basic attributes
+To: viro@ZenIV.linux.org.uk
+From: David Howells <dhowells@redhat.com>
+Cc: linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
+        libc-alpha@sourceware.org, linux-api@vger.kernel.org,
+        andreas.gruenbacher@gmail.com, samba-technical@lists.samba.org,
+        linux-fsdevel@vger.kernel.org
+Date: Tue, 12 Nov 2013 17:35:42 +0000
+Message-ID: <20131112173542.25813.86363.stgit@warthog.procyon.org.uk>
+In-Reply-To: <20131112173518.25813.67568.stgit@warthog.procyon.org.uk>
+References: <20131112173518.25813.67568.stgit@warthog.procyon.org.uk>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Return enhanced basic attributes from the AFS filesystem.  This includes the
+following:
 
-On Nov 4, 2013, at 11:19 AM, Christoph Hellwig <hch@infradead.org> wrote:
+ (1) The data version number as st_data_version.
 
-> On Mon, Nov 04, 2013 at 11:16:13AM -0800, Chuck Lever wrote:
->>> I still don't understand why anyone would phase out WRITE in favour of
->>> something that doesn't actually add any value for the write case.
->> 
->> Protocol extensibility.  WRITE_PLUS adds a discriminated union of data types that can be extended easily to include initialization patterns, integrity metadata, and other things like holes.  It's entirely another question as to whether any particular extension is tasteful.
-> 
-> Maybe I'm missing something, but what does multiplexing entirely
-> different operation actually buy you?  It is different operation after
-> all.
+ (2) STATX_INFO_AUTOMOUNT will be set on automount directories by virtue of
+     S_AUTOMOUNT being set on the inode.  These are referrals to other volumes
+     or other cells.
 
-I think a successful argument could be made that initialization or hole punching may not belong in a WRITE_PLUS operation.  For example, using a COMMIT for a long-running server-performed file initialization doesn't make sense to me.  The infrastructure we introduced for COPY_OFFLOAD seems better suited for file initialization.
+ (3) STATX_INFO_AUTODIR on a directory that does cell lookup for non-existent
+     names and mounts them (typically mounted on /afs with -o autocell).  The
+     resulting directories are marked STATX_INFO_FABRICATED as they do not
+     actually exist in the mounted AFS directory.
 
-> It's not like adding new operations to NFS is all that hard.
+ (4) Files, directories and symlinks accessed over AFS are marked
+     STATX_INFO_REMOTE.  Local fake directories are marked
+     STATX_INFO_FABRICATED.
 
-Actually, it is harder than you think.  For various reasons, it takes five or more years to create a new NFS protocol specification, something we hope to address.
+ (5) STATX_INFO_NONSYSTEM_OWNERSHIP is set as the UID and GID retrieved from an
+     AFS share may not be applicable on the system.
 
->> The mailing list is not the only place where they are discussed.  We also use conference calls, and there are face-to-face meetings too.  Not all of that content is distilled into a public record.  Very much like Linux kernel development.
-> 
-> Linux development strives very hard documenting rationales, something I
-> haven't found on the NFS list or in the repository.
+and also some auxiliary data:
 
-There are plenty of times where I find the kernel git log or e-mail archives entirely unhelpful in understanding the why's and wherefor's.  It's a human endeavor, and like all such things, is imperfect, and is often a matter of knowing who to ask rather than where to look.
+ (6) The volume ID and type.
 
-By the way, e-mail from non-members to nfsv4@ietf.org is moderated.  The moderator may be traveling or otherwise unavailable, as IETF 88 is happening this week.  If you subscribe to the list, you should be able to post without restriction.
+ (7) The volume name.
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+ (8) The cell name.
+
+Signed-off-by: David Howells <dhowells@redhat.com>
+---
+
+ fs/afs/inode.c |   47 +++++++++++++++++++++++++++++++++++++++--------
+ 1 file changed, 39 insertions(+), 8 deletions(-)
+
+diff --git a/fs/afs/inode.c b/fs/afs/inode.c
+index ce25d755b7aa..793d5009b60b 100644
+--- a/fs/afs/inode.c
++++ b/fs/afs/inode.c
+@@ -71,9 +71,9 @@ static int afs_inode_map_status(struct afs_vnode *vnode, struct key *key)
+ 	inode->i_uid		= vnode->status.owner;
+ 	inode->i_gid		= GLOBAL_ROOT_GID;
+ 	inode->i_size		= vnode->status.size;
+-	inode->i_ctime.tv_sec	= vnode->status.mtime_server;
+-	inode->i_ctime.tv_nsec	= 0;
+-	inode->i_atime		= inode->i_mtime = inode->i_ctime;
++	inode->i_mtime.tv_sec	= vnode->status.mtime_server;
++	inode->i_mtime.tv_nsec	= 0;
++	inode->i_atime		= inode->i_ctime = inode->i_mtime;
+ 	inode->i_blocks		= 0;
+ 	inode->i_generation	= vnode->fid.unique;
+ 	inode->i_version	= vnode->status.data_version;
+@@ -374,16 +374,47 @@ error_unlock:
+ /*
+  * read the attributes of an inode
+  */
+-int afs_getattr(struct vfsmount *mnt, struct dentry *dentry,
+-		      struct kstat *stat)
++int afs_getattr(struct vfsmount *mnt, struct dentry *dentry, struct kstat *stat)
+ {
+-	struct inode *inode;
+-
+-	inode = dentry->d_inode;
++	struct inode *inode = dentry->d_inode;
+ 
+ 	_enter("{ ino=%lu v=%u }", inode->i_ino, inode->i_generation);
+ 
+ 	generic_fillattr(inode, stat);
++
++	stat->result_mask &= ~(STATX_ATIME | STATX_CTIME | STATX_BLOCKS);
++	stat->result_mask |= STATX_VERSION;
++	stat->version = inode->i_version;
++
++	if (test_bit(AFS_VNODE_AUTOCELL, &AFS_FS_I(inode)->flags))
++		stat->information |= STATX_INFO_AUTODIR;
++
++	if (test_bit(AFS_VNODE_PSEUDODIR, &AFS_FS_I(inode)->flags))
++		stat->information |= STATX_INFO_FABRICATED;
++	else
++		stat->information |= STATX_INFO_REMOTE;
++
++	stat->information |=
++		STATX_INFO_NONSYSTEM_OWNERSHIP | STATX_INFO_HAS_ACL;
++
++	if (stat->auxinfo) {
++		struct afs_super_info *as = inode->i_sb->s_fs_info;
++		struct statx_auxinfo *aux = stat->auxinfo;
++
++		aux->sx_fsid = as->volume->vid;
++		/* construct a volume ID from the AFS volume ID and type */
++		aux->sx_volume_id[0] = as->volume->vid >> 24;
++		aux->sx_volume_id[1] = as->volume->vid >> 16;
++		aux->sx_volume_id[2] = as->volume->vid >> 8;
++		aux->sx_volume_id[3] = as->volume->vid >> 0;
++		aux->sx_volume_id[4] = as->volume->type;
++
++		strcpy(aux->sx_volume_name, as->volume->vlocation->vldb.name);
++		strcpy(aux->sx_domain_name, as->volume->cell->name);
++
++		aux->sx_mask = STATX_FSID | STATX_VOLUME_ID |
++			STATX_VOLUME_NAME | STATX_DOMAIN_NAME;
++	}
+ 	return 0;
+ }
+ 
 
