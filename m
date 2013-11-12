@@ -1,120 +1,122 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:5648 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:27996 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757548Ab3KHVYx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 8 Nov 2013 16:24:53 -0500
-Message-ID: <527D56DD.6080009@RedHat.com>
-Date: Fri, 08 Nov 2013 16:25:49 -0500
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] Adding the nfs4_use_min_auth module parameter
-References: <1383851364-8370-1-git-send-email-steved@redhat.com> <A8E8F2C4-8CB7-434E-8520-B2B53F0582D9@oracle.com> <527C07B4.800@RedHat.com> <44CA89EA-8B5E-4B83-A622-78A78F760FF1@oracle.com> <527CDBFC.3070903@RedHat.com> <A0F58102-E1A4-4C6B-81EF-91BC31E6A43C@oracle.com>
-In-Reply-To: <A0F58102-E1A4-4C6B-81EF-91BC31E6A43C@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1754841Ab3KLNbo convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Nov 2013 08:31:44 -0500
+Date: Tue, 12 Nov 2013 08:30:43 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: Greg KH <gregkh@linuxfoundation.org>, <linux-kernel@vger.kernel.org>,
+        <linux-fsdevel@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
+        <devel@openvz.org>, <ebiederm@xmission.com>, <oleg@redhat.com>,
+        <bfields@fieldses.org>, <bharrosh@panasas.com>
+Subject: Re: call_usermodehelper in containers
+Message-ID: <20131112083043.0ab78e67@tlielax.poochiereds.net>
+In-Reply-To: <528226EC.4050701@parallels.com>
+References: <20131111071825.62da01d1@tlielax.poochiereds.net>
+	<20131112004703.GB15377@kroah.com>
+	<20131112061201.04cf25ab@tlielax.poochiereds.net>
+	<528226EC.4050701@parallels.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hey,
+On Tue, 12 Nov 2013 17:02:36 +0400
+Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
 
-On 08/11/13 10:46, Chuck Lever wrote:
+> 12.11.2013 15:12, Jeff Layton пишет:
+> > On Mon, 11 Nov 2013 16:47:03 -0800
+> > Greg KH <gregkh@linuxfoundation.org> wrote:
+> >
+> >> On Mon, Nov 11, 2013 at 07:18:25AM -0500, Jeff Layton wrote:
+> >>> We have a bit of a problem wrt to upcalls that use call_usermodehelper
+> >>> with containers and I'd like to bring this to some sort of resolution...
+> >>>
+> >>> A particularly problematic case (though there are others) is the
+> >>> nfsdcltrack upcall. It basically uses call_usermodehelper to run a
+> >>> program in userland to track some information on stable storage for
+> >>> nfsd.
+> >>
+> >> I thought the discussion at the kernel summit about this issue was:
+> >> 	- don't do this.
+> >> 	- don't do it.
+> >> 	- if you really need to do this, fix nfsd
+> >>
+> >
+> > Sorry, I couldn't make the kernel summit so I missed that discussion. I
+> > guess LWN didn't cover it?
+> >
+> > In any case, I guess then that we'll either have to come up with some
+> > way to fix nfsd here, or simply ensure that nfsd can never be started
+> > unless root in the container has a full set of a full set of
+> > capabilities.
+> >
+> > One sort of Rube Goldberg possibility to fix nfsd is:
+> >
+> > - when we start nfsd in a container, fork off an extra kernel thread
+> >    that just sits idle. That thread would need to be a descendant of the
+> >    userland process that started nfsd, so we'd need to create it with
+> >    kernel_thread().
+> >
+> > - Have the kernel just start up the UMH program in the init_ns mount
+> >    namespace as it currently does, but also pass the pid of the idle
+> >    kernel thread to the UMH upcall.
+> >
+> > - The program will then use /proc/<pid>/root and /proc/<pid>/ns/* to set
+> >    itself up for doing things properly.
+> >
+> > Note that with this mechanism we can't actually run a different binary
+> > per container, but that's probably fine for most purposes.
+> >
 > 
-> On Nov 8, 2013, at 4:41 AM, Steve Dickson <SteveD@redhat.com> wrote:
+> Hmmm... Why we can't? We can go a bit further with userspace idea.
 > 
->>
->>
->> On 07/11/13 18:05, Chuck Lever wrote:
->>>
->>> On Nov 7, 2013, at 1:35 PM, Steve Dickson <SteveD@redhat.com> wrote:
->>>
->>>> Hey mrchuck... 
->>>>
->>>> On 07/11/13 14:25, Chuck Lever wrote:
->>>>> Hi Steve-
->>>>>
->>>>> On Nov 7, 2013, at 11:09 AM, Steve Dickson <steved@redhat.com> wrote:
->>>>>
->>>>>> This new module parameter makes the v4 client
->>>>>> use the minimal authentication flavor (AUTH_UNIX)
->>>>>> when establishing NFSV4 state and doing the
->>>>>> pseudoroot lookup
->>>>>
->>>>> The patch description doesn't say, but is this change to work 
->>>>> around the 15 second GSSD upcall timeout? 
->>>> Yes. A 15 second delay on every mount due to security that
->>>> nobody is requesting is just not good.. IMHO..
->>>
->>> One thing we haven't discussed is reducing the upcall timeout to 5 seconds or less, 
->>> as a form of immediate relief.  15 seconds is arbitrary, and is onerous even when 
->>> you expect the mount to work (ie why would it be good for any properly configured 
->>> environment to take 15 seconds to establish a GSS context?).
->>>
->>> In other words, there are still cases where users wait 15 seconds unnecessarily, 
->>> and not because of the use of krb5i for lease management.  Aren't those of concern?
->> No. I think the concern here, at least my concern, is the lack of management.
->> We are forcing admins to use krb5i in lease management when its not necessary
->> and there is no way to turn it off.
+> We use UMH some very limited number of user programs. For 2, actually:
+> 1) /sbin/nfs_cache_getent
+> 2) /sbin/nfsdcltrack
 > 
-> Before, we were "forcing" admins to use AUTH_SYS on some mounts even 
-> though they had chosen to use sec=krb5 on some mounts.  How is that a good thing?
-It was not, but it was a small window of where AUTH_SYS was used then
-krb5* took over... I think that was better than a 15 sec delay.
 
-> 
-> Now, we are "forcing" admins to use security, but only when it is available.  
-> In other words, our default now is to be more secure rather than insecure.  Why is that a bad thing?
-Again its not... But if the technology is not there to make it a
-seamless transition then we should wait until the transition is  seamless 
-before we force things on admins... IMHO..
- 
-> 
-> The IETF has now reached consensus to require security in every new 
-> protocol it specifies.  They want to enable security and not give ways to turn it off.
-> They are even considering re-specifying existing widely deployed protocols to increase 
-> their security.
-I'll refer to my previous comments... When it becomes seamless... its good to go... 
+No, the kernel uses them for a lot more than that. Pretty much all of
+the keys API upcalls use it. See all of the callers of
+call_usermodehelper. All of them are running user binaries out of the
+kernel, and almost all of them are certainly broken wrt containers.
 
-Remember when SELinux first came out? How it caused everything to fail, especially
-on the server side? The first they did was to give us a way to turn in off. How
-many times did you use setenforce 0 ? ;-) Heck, I think I'm the reason they
-came up with that command! 8-) 
- 
+> If we convert them into proxies, which use /proc/<pid>/root and /proc/<pid>/ns/*, this will allow us to lookup the right binary.
+> The only limitation here is presence of this "proxy" binaries on "host".
 > 
-> "it's not necessary" is no longer an excuse not to use security. Read the minutes of
-> Wednesday's IAB technical plenary if you doubt me (yes, someone actually said that during t
-> he open mic, and there was some applause).
-Dictating or taking away choice on how people can configure their environment 
-is not a good thing IMHO... One size security does not fit all...
- 
+
+Suppose I spawn my own container as a user, using all of this spiffy
+new user namespace stuff. Then I make the kernel use
+call_usermodehelper to call the upcall in the init_ns, and then trick
+it into running my new "escape_from_namespace" program with "real" root
+privileges.
+
+I don't think we can reasonably assume that having the kernel exec an
+arbitrary binary inside of a container is safe. Doing so inside of the
+init_ns is marginally more safe, but only marginally so...
+
+> And we don't need any significant changes in kernel.
 > 
-> Earlier Trond noted that NFSv4 REQUIRES implementations to support RPCSEC GSS.  That 
-> requirement has been there since RFC 3010.  There is a reason for that.
-Yes it is a requirement, which was a good thing, but admins had a *choice* 
-on whether they wanted to use it... I disagree with taking that choice away.
-
+> BTW, Jeff, could you remind me, please, why exactly we need to use UMH to run the binary?
+> What are this capabilities, which force us to do so?
 > 
-> The only reason you are arguing to disable security here is because it is a mild annoyance.
-Mild? You are saying a 15 second delay on every mount is mild? :-) Boy I would
-hate to see you though disruptive was... ;-)
 
-> And instead of addressing the annoyance, you want to allow users to disable security.
-Yes, I want to give admins the same choice they the have always had.. On or off.
-and that is bad? 
+Nothing _forces_ us to do so, but upcalls are very difficult to handle,
+and UMH has a lot of advantages over a long-running daemon launched by
+userland.
 
-> 
-> I'd like a solution that chooses to use security when its available, rather than 
-> blindly sticking with an insecure default.  I'd like a solution that makes that choice 
-> automatically without adding yet another obscure setting to our panoply of obscure settings.
-> It should "just work."
-If it did "just work" fine.. but it does not. Why not give a bridge to people until 
-we get things to "just work"?
+Originally, I created the nfsdcltrack upcall as a running daemon called
+nfsdcld, and the kernel used rpc_pipefs to communicate with it.
 
-> 
-> We are "this close" to getting that.  Let's not take a step backwards.
-But we are not there yet... So sometimes you have to take one step backwards to 
-take two step forwards as the old saying goes... 
+Everyone hated it because no one likes to have to run daemons for
+infrequently used upcalls. It's a pain for users to ensure that it's
+running and it's a pain to handle when it isn't. So, I was encouraged
+to turn that instead into a UMH upcall.
 
-steved.
+But leaving that aside, this problem is a lot larger than just nfsd. We
+have a *lot* of UMH upcalls in the kernel, so this problem is more
+general than just "fixing" nfsd's.
 
+-- 
+Jeff Layton <jlayton@redhat.com>
