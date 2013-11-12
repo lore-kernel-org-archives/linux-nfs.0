@@ -1,160 +1,111 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:12357 "EHLO mx1.redhat.com"
+Received: from mx1.netapp.com ([216.240.18.38]:26005 "EHLO mx1.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753293Ab3KKLUt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 11 Nov 2013 06:20:49 -0500
-Message-ID: <1384168843.16759.50.camel@serendib>
-Subject: Re: [PATCH] exportfs: modify can_test() to use LONG_MAX when
- appropriate
-From: Harshula Jayasuriya <harshula@redhat.com>
-To: NeilBrown <neilb@suse.de>
-Cc: Steve Dickson <steved@redhat.com>, linux-nfs@vger.kernel.org,
-        Jeff Layton <jlayton@redhat.com>,
-        "J.Bruce Fields" <bfields@citi.umich.edu>
-Date: Mon, 11 Nov 2013 22:20:43 +1100
-In-Reply-To: <20131111185356.6e0fd0a9@notabene.brown>
-References: <1376588800.17754.14.camel@serendib>
-	 <20130815175258.GS17781@fieldses.org> <1384154434.16759.39.camel@serendib>
-	 <20131111185356.6e0fd0a9@notabene.brown>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+	id S1753035Ab3KLWgO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 Nov 2013 17:36:14 -0500
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+To: <linux-nfs@vger.kernel.org>
+CC: Jeff Layton <jlayton@redhat.com>, Weston Andros Adamson <dros@netapp.com>
+Subject: [PATCH] SUNRPC: Avoid deep recursion in rpc_release_client
+Date: Tue, 12 Nov 2013 17:36:07 -0500
+Message-ID: <1384295767-16456-1-git-send-email-Trond.Myklebust@netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2013-11-11 at 18:53 +1100, NeilBrown wrote:
-> On Mon, 11 Nov 2013 18:20:34 +1100 Harshula Jayasuriya <harshula@redhat.com>
-> wrote:
-> 
-> > This patch is the nfs-utils patch corresponding to the kernel patch 
-> > commit 2f74f972d4cc7d83408ea0c32d424edcb44887bf "sunrpc: prepare NFS 
-> > for 2038": "The kernel sunrpc code needs to handle seconds since epoch 
-> > greater than 2147483647. This means functions that parse time as an 
-> > int need to handle it as time_t."
-> > 
-> > When appropriate exportfs should use LONG_MAX in can_test() instead of
-> > INT_MAX.
-> > 
-> > kernel INT_MAX + exportfs INT_MAX: "Tue Jan 19 03:14:08 UTC 2038"
-> > =================================================================
-> > 
-> > exportfs: /mnt/export does not support NFS export:
-> > ------------------------------------------------------------
-> >  # cat /proc/net/rpc/auth.unix.ip/content
-> >  #class IP domain
-> > ------------------------------------------------------------
-> > 
-> > + mount fail:
-> > ------------------------------------------------------------
-> >  # cat /proc/net/rpc/auth.unix.ip/content
-> >  #class IP domain
-> >  # expiry=2147483768 refcnt=2 flags=4
-> >  # nfsd 192.168.1.6 -no-domain-
-> > ------------------------------------------------------------
-> > 
-> > kernel LONG_MAX + exportfs INT_MAX: "Tue Jan 19 03:14:08 UTC 2038"
-> > ==================================================================
-> > 
-> > "exportfs: /mnt/export does not support NFS export":
-> > ------------------------------------------------------------
-> >  # cat /proc/net/rpc/auth.unix.ip/content
-> >  #class IP domain
-> > ------------------------------------------------------------
-> > 
-> > + mount success:
-> > ------------------------------------------------------------
-> >  # cat /proc/net/rpc/auth.unix.ip/content
-> >  #class IP domain
-> >  # expiry=2147485448 refcnt=2 flags=1
-> >  nfsd 192.168.1.6 *
-> > ------------------------------------------------------------
-> > 
-> > kernel LONG_MAX + exportfs LONG_MAX: "Tue Jan 19 03:14:08 UTC 2038"
-> > ===================================================================
-> > 
-> > exportfs:
-> > ------------------------------------------------------------
-> >  # cat /proc/net/rpc/auth.unix.ip/content
-> >  #class IP domain
-> >  # expiry=9223372036854775807 refcnt=1 flags=1
-> >  nfsd 0.0.0.0 -test-client-
-> > ------------------------------------------------------------
-> > 
-> > + mount success:
-> > ------------------------------------------------------------
-> >  # cat /proc/net/rpc/auth.unix.ip/content
-> >  #class IP domain
-> >  # expiry=2147485448 refcnt=2 flags=1
-> >  nfsd 192.168.1.6 *
-> >  # expiry=9223372036854775807 refcnt=1 flags=1
-> >  nfsd 0.0.0.0 -test-client-
-> > ------------------------------------------------------------
-> > 
-> > Signed-off-by: Harshula Jayasuriya <harshula@redhat.com>
-> > ---
-> >  utils/exportfs/exportfs.c | 20 ++++++++++++++++----
-> >  1 file changed, 16 insertions(+), 4 deletions(-)
-> > 
-> > diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
-> > index da5fe21..bccbed5 100644
-> > --- a/utils/exportfs/exportfs.c
-> > +++ b/utils/exportfs/exportfs.c
-> > @@ -27,6 +27,8 @@
-> >  #include <netdb.h>
-> >  #include <errno.h>
-> >  #include <dirent.h>
-> > +#include <limits.h>
-> > +#include <time.h>
-> >  
-> >  #include "sockaddr.h"
-> >  #include "misc.h"
-> > @@ -406,17 +408,27 @@ unexportfs(char *arg, int verbose)
-> >  
-> >  static int can_test(void)
-> >  {
-> > +	char buf[1024];
-> >  	int fd;
-> >  	int n;
-> > -	char *setup = "nfsd 0.0.0.0 2147483647 -test-client-\n";
-> > +
-> >  	fd = open("/proc/net/rpc/auth.unix.ip/channel", O_WRONLY);
-> > -	if ( fd < 0) return 0;
-> > -	n = write(fd, setup, strlen(setup));
-> > +	if (fd < 0)
-> > +		return 0;
-> > +
-> > +	if (time(NULL) > INT_MAX)
-> > +		sprintf(buf, "nfsd 0.0.0.0 %ld -test-client-\n", LONG_MAX);
-> > +	else
-> > +		sprintf(buf, "nfsd 0.0.0.0 %d -test-client-\n", INT_MAX);
-> 
-> This generally makes sense, but I think the cut-off is a bit too fine.
-> If time(NULL) is exactly INT_MAX, then this might not do what is required.
-> How about
->    if (time(NULL) > INT_MAX - (24*3600))
-> ??
+In cases where an rpc client has a parent hierarchy, then
+rpc_free_client may end up calling rpc_release_client() on the
+parent, thus recursing back into rpc_free_client. If the hierarchy
+is deep enough, then we can get into situations where the stack
+simply overflows.
 
-Good point. Mount attempts seem to fail not because of when exportfs is
-run, but when the first mount request is made.
+The fix is to have rpc_release_client() loop so that it can take
+care of the parent rpc client hierarchy without needing to
+recurse.
 
-Is 1 day the right amount of tolerance? Or should we just go for a much
-larger tolerance, on the assumption that the running kernel will have
-commit 2f74f972d4cc7d83408ea0c32d424edcb44887bf by then? :-)
+Reported-by: Jeff Layton <jlayton@redhat.com>
+Reported-by: Weston Andros Adamson <dros@netapp.com>
+Cc: stable@vger.kernel.org
+Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
+---
+ net/sunrpc/clnt.c | 29 +++++++++++++++++------------
+ 1 file changed, 17 insertions(+), 12 deletions(-)
 
-cya,
-#
-
-
-> > +
-> > +	n = write(fd, buf, strlen(buf));
-> >  	close(fd);
-> >  	if (n < 0)
-> >  		return 0;
-> > +
-> >  	fd = open("/proc/net/rpc/nfsd.export/channel", O_WRONLY);
-> > -	if ( fd < 0) return 0;
-> > +	if (fd < 0)
-> > +		return 0;
-> >  	close(fd);
-> >  	return 1;
-> >  }
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index dab09dac8fc7..fb9830903213 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -750,14 +750,16 @@ EXPORT_SYMBOL_GPL(rpc_shutdown_client);
+ /*
+  * Free an RPC client
+  */
+-static void
++static struct rpc_clnt *
+ rpc_free_client(struct rpc_clnt *clnt)
+ {
++	struct rpc_clnt *parent = NULL;
++
+ 	dprintk_rcu("RPC:       destroying %s client for %s\n",
+ 			clnt->cl_program->name,
+ 			rcu_dereference(clnt->cl_xprt)->servername);
+ 	if (clnt->cl_parent != clnt)
+-		rpc_release_client(clnt->cl_parent);
++		parent = clnt->cl_parent;
+ 	rpc_clnt_remove_pipedir(clnt);
+ 	rpc_unregister_client(clnt);
+ 	rpc_free_iostats(clnt->cl_metrics);
+@@ -766,18 +768,17 @@ rpc_free_client(struct rpc_clnt *clnt)
+ 	rpciod_down();
+ 	rpc_free_clid(clnt);
+ 	kfree(clnt);
++	return parent;
+ }
+ 
+ /*
+  * Free an RPC client
+  */
+-static void
++static struct rpc_clnt * 
+ rpc_free_auth(struct rpc_clnt *clnt)
+ {
+-	if (clnt->cl_auth == NULL) {
+-		rpc_free_client(clnt);
+-		return;
+-	}
++	if (clnt->cl_auth == NULL)
++		return rpc_free_client(clnt);
+ 
+ 	/*
+ 	 * Note: RPCSEC_GSS may need to send NULL RPC calls in order to
+@@ -788,7 +789,8 @@ rpc_free_auth(struct rpc_clnt *clnt)
+ 	rpcauth_release(clnt->cl_auth);
+ 	clnt->cl_auth = NULL;
+ 	if (atomic_dec_and_test(&clnt->cl_count))
+-		rpc_free_client(clnt);
++		return rpc_free_client(clnt);
++	return NULL;
+ }
+ 
+ /*
+@@ -799,10 +801,13 @@ rpc_release_client(struct rpc_clnt *clnt)
+ {
+ 	dprintk("RPC:       rpc_release_client(%p)\n", clnt);
+ 
+-	if (list_empty(&clnt->cl_tasks))
+-		wake_up(&destroy_wait);
+-	if (atomic_dec_and_test(&clnt->cl_count))
+-		rpc_free_auth(clnt);
++	for (;;) {
++		if (list_empty(&clnt->cl_tasks))
++			wake_up(&destroy_wait);
++		if (!atomic_dec_and_test(&clnt->cl_count))
++			break;
++		clnt = rpc_free_auth(clnt);
++	}
+ }
+ EXPORT_SYMBOL_GPL(rpc_release_client);
+ 
+-- 
+1.8.3.1
 
