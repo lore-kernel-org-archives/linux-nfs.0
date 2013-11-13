@@ -1,62 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f171.google.com ([209.85.220.171]:33148 "EHLO
-	mail-vc0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752124Ab3KTJaK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Nov 2013 04:30:10 -0500
-Received: by mail-vc0-f171.google.com with SMTP id ik5so163741vcb.16
-        for <linux-nfs@vger.kernel.org>; Wed, 20 Nov 2013 01:30:09 -0800 (PST)
+Received: from mx11.netapp.com ([216.240.18.76]:28134 "EHLO mx11.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757352Ab3KMPO1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 13 Nov 2013 10:14:27 -0500
+From: Weston Andros Adamson <dros@netapp.com>
+To: <steved@redhat.com>
+CC: <linux-nfs@vger.kernel.org>, Weston Andros Adamson <dros@netapp.com>
+Subject: [PATCH] mount.nfs: Recognize v4.x mount options
+Date: Wed, 13 Nov 2013 10:14:22 -0500
+Message-ID: <1384355662-70913-1-git-send-email-dros@netapp.com>
 MIME-Version: 1.0
-In-Reply-To: <1384897797.45997.1.camel@leira.trondhjem.org>
-References: <1384551376-8734-1-git-send-email-andros@netapp.com> <1384897797.45997.1.camel@leira.trondhjem.org>
-From: William Dauchy <wdauchy@gmail.com>
-Date: Wed, 20 Nov 2013 10:29:49 +0100
-Message-ID: <CAJ75kXahPFSMsec27Eu2cR2N7cNrv_cwtL9cN3At5RNU1fZC-Q@mail.gmail.com>
-Subject: Re: [PATCH Version 3 1/1] NFSv4 wait on recovery for async session errors
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "Adamson, Andy" <William.Adamson@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Trond,
+The kernel understands text options of the form "v4.x" (ie "v4.1"), but
+mount.nfs does not and this leads to weird errors when the requested
+mount fails: a line in dmesg about version 3 not supporting minorversions
+and mount.nfs returning EINVAL no matter what the real error was.
 
-On Tue, Nov 19, 2013 at 10:49 PM, Myklebust, Trond
-<Trond.Myklebust@netapp.com> wrote:
-> There is a second patch that goes with this problem. Please see the
-> following attachment.
+This happens because mount.nfs thinks no version was specified so it starts
+probing other versions which conflicts with the v4.X option once it gets
+parsed by the kernel.
 
-ba64b36 NFSv4: Update list of irrecoverable errors on DELEGRETURN
-is cc'ed for stable
+$ sudo mount -v -o v4.1 zero:/invalid_export /mnt
+mount.nfs: timeout set for Wed Nov 13 10:09:48 2013
+mount.nfs: trying text-based options 'v4.1,vers=4,addr=192.168.100.10,clientaddr=192.168.100.11'
+mount.nfs: mount(2): No such file or directory
+mount.nfs: trying text-based options 'v4.1,addr=192.168.100.10'
+mount.nfs: prog 100003, trying vers=3, prot=6
+mount.nfs: trying 192.168.100.10 prog 100003 vers 3 prot TCP port 2049
+mount.nfs: prog 100005, trying vers=3, prot=17
+mount.nfs: trying 192.168.100.10 prog 100005 vers 3 prot UDP port 20048
+mount.nfs: mount(2): Invalid argument
+mount.nfs: an incorrect mount option was specified
 
-If these two patches are connected, why the first one:
-d3b173a NFSv4 wait on recovery for async session errors
-is not cc'ed for stable as well?
+And you get this in dmesg:
 
-For example in stable v3.10.x we currently have:
+NFS: mount option vers=3 does not support minorversion=1
 
-        case -NFS4ERR_SEQ_MISORDERED:
-            dprintk("%s ERROR %d, Reset session\n", __func__,
-                task->tk_status);
-            nfs4_schedule_session_recovery(clp->cl_session, task->tk_status);
-            task->tk_status = 0;
-            return -EAGAIN;
+but if you use another form of the same options, this doesn't happen:
 
-but with the last pacthes we now have in mainline:
+$ sudo mount -v -o vers=4,minorversion=1 zero:/invalid_export /mnt
+mount.nfs: timeout set for Wed Nov 13 10:10:28 2013
+mount.nfs: trying text-based options 'vers=4,minorversion=1,addr=192.168.100.10,clientaddr=192.168.100.11'
+mount.nfs: mount(2): No such file or directory
+mount.nfs: mounting zero:/invalid_export failed, reason given by server: No such file or directory
 
-        case -NFS4ERR_SEQ_MISORDERED:
-            dprintk("%s ERROR: %d Reset session\n", __func__,
-                errorcode);
-            nfs4_schedule_session_recovery(clp->cl_session, errorcode);
-            goto wait_on_recovery;
+Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+---
+ utils/mount/network.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
 
-
-and this was orignally change because of commit
-f1478c1 NFS: Re-use exit code in nfs4_async_handle_error()
-
-The result in stable v3.10.x doesn't really make sense to me. Did I
-missed something?
-
-Regards,
+diff --git a/utils/mount/network.c b/utils/mount/network.c
+index e8e55a5..2853d00 100644
+--- a/utils/mount/network.c
++++ b/utils/mount/network.c
+@@ -92,6 +92,9 @@ static const char *nfs_version_opttbl[] = {
+ 	"v4",
+ 	"vers",
+ 	"nfsvers",
++	"v4.0",
++	"v4.1",
++	"v4.2",
+ 	NULL,
+ };
+ 
+@@ -1269,6 +1272,11 @@ nfs_nfs_version(struct mount_options *options, unsigned long *version)
+ 					progname);
+ 			return 0;
+ 		}
++	case 5: /* v4.0 */
++	case 6: /* v4.1 */
++	case 7: /* v4.2 */
++		*version = 4;
++		return 1;
+ 	}
+ 
+ 	/*
 -- 
-William
+1.8.3.1 (Apple Git-46)
+
