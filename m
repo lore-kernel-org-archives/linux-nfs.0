@@ -1,254 +1,110 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yh0-f47.google.com ([209.85.213.47]:59840 "EHLO
-	mail-yh0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757291Ab3KMObC (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Nov 2013 09:31:02 -0500
-Received: by mail-yh0-f47.google.com with SMTP id l109so211216yhq.6
-        for <linux-nfs@vger.kernel.org>; Wed, 13 Nov 2013 06:31:01 -0800 (PST)
-From: Jeff Layton <jlayton@redhat.com>
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, neilb@suse.de, chuck.lever@oracle.com,
-        steved@redhat.com
-Subject: [PATCH v2 1/3] sunrpc: create a new dummy pipe for gssd to hold open
-Date: Wed, 13 Nov 2013 09:30:51 -0500
-Message-Id: <1384353053-30002-2-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1384353053-30002-1-git-send-email-jlayton@redhat.com>
-References: <1384353053-30002-1-git-send-email-jlayton@redhat.com>
+Received: from mx11.netapp.com ([216.240.18.76]:14491 "EHLO mx11.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750900Ab3KMVdh convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Nov 2013 16:33:37 -0500
+From: Weston Andros Adamson <dros@netapp.com>
+To: Jeff Layton <jlayton@redhat.com>
+CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        linux-nfs list <linux-nfs@vger.kernel.org>,
+        Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH v2] nfs: don't retry detect_trunking with RPC_AUTH_UNIX
+ more than once
+Date: Wed, 13 Nov 2013 21:33:36 +0000
+Message-ID: <72CA86AD-5543-43C8-A736-3D4118B0824B@netapp.com>
+References: <1384351701-29572-1-git-send-email-jlayton@redhat.com>
+ <EBCF8527-3031-4BFE-9559-9CAF50C4633D@netapp.com>
+ <20131113161207.76c216fe@tlielax.poochiereds.net>
+In-Reply-To: <20131113161207.76c216fe@tlielax.poochiereds.net>
+Content-Type: text/plain; charset="Windows-1252"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-rpc.gssd will naturally hold open any pipe named */clnt*/gssd that shows
-up under rpc_pipefs. That behavior gives us a reliable mechanism to tell
-whether it's actually running or not.
 
-Create a new toplevel "dummy" directory in rpc_pipefs when it's mounted.
-Under that directory create another directory called "clntXX", and then
-within that a pipe called "gssd".
+On Nov 13, 2013, at 4:12 PM, Jeff Layton <jlayton@redhat.com> wrote:
 
-We'll never send an upcall along that pipe, and any downcall written to
-it will just return -EINVAL.
+> On Wed, 13 Nov 2013 20:48:04 +0000
+> Weston Andros Adamson <dros@netapp.com> wrote:
+> 
+>> I tested v2 and everything looks good.
+>> 
+> 
+> Thanks for testing it.
+> 
+>> Also, it seems like I’m no longer able to reproduce the "NFS: nfs4_discover_server_trunking unhandled error -512. Exiting with error EIO” dmesg.
+>> 
+>> -dros
+>> 
+> 
+> Interesting. I suspect that's due to the fact that we give up retrying
+> quickly enough now that you can't signal it fast enough there. It's
+> still probably reasonable to add in handling for -ERESTARTSYS in that
+> switch statement however. I imagine that it's still possible to race in
+> with a signal at the right time and trigger that message.
+> 
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- include/linux/sunrpc/rpc_pipe_fs.h |  3 +-
- net/sunrpc/netns.h                 |  1 +
- net/sunrpc/rpc_pipe.c              | 93 ++++++++++++++++++++++++++++++++++++--
- net/sunrpc/sunrpc_syms.c           |  8 +++-
- 4 files changed, 100 insertions(+), 5 deletions(-)
+I just realized that I’ve been testing with a locally modified gssd - with the fd leak fix I posted yesterday.  This might have something to do with the gssd hang that when ^C’d will generate the line in dmesg.
 
-diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
-index a353e03..85f1342 100644
---- a/include/linux/sunrpc/rpc_pipe_fs.h
-+++ b/include/linux/sunrpc/rpc_pipe_fs.h
-@@ -84,7 +84,8 @@ enum {
- 
- extern struct dentry *rpc_d_lookup_sb(const struct super_block *sb,
- 				      const unsigned char *dir_name);
--extern void rpc_pipefs_init_net(struct net *net);
-+extern int rpc_pipefs_init_net(struct net *net);
-+extern void rpc_pipefs_exit_net(struct net *net);
- extern struct super_block *rpc_get_sb_net(const struct net *net);
- extern void rpc_put_sb_net(const struct net *net);
- 
-diff --git a/net/sunrpc/netns.h b/net/sunrpc/netns.h
-index 779742c..8a8e841 100644
---- a/net/sunrpc/netns.h
-+++ b/net/sunrpc/netns.h
-@@ -14,6 +14,7 @@ struct sunrpc_net {
- 	struct cache_detail *rsi_cache;
- 
- 	struct super_block *pipefs_sb;
-+	struct rpc_pipe *gssd_dummy;
- 	struct mutex pipefs_sb_lock;
- 
- 	struct list_head all_clients;
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index d0d14a0..34efdbf 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -38,7 +38,7 @@
- #define NET_NAME(net)	((net == &init_net) ? " (init_net)" : "")
- 
- static struct file_system_type rpc_pipe_fs_type;
--
-+static const struct rpc_pipe_ops gssd_dummy_pipe_ops;
- 
- static struct kmem_cache *rpc_inode_cachep __read_mostly;
- 
-@@ -1168,6 +1168,7 @@ enum {
- 	RPCAUTH_nfsd4_cb,
- 	RPCAUTH_cache,
- 	RPCAUTH_nfsd,
-+	RPCAUTH_gssd,
- 	RPCAUTH_RootEOF
- };
- 
-@@ -1204,6 +1205,10 @@ static const struct rpc_filelist files[] = {
- 		.name = "nfsd",
- 		.mode = S_IFDIR | S_IRUGO | S_IXUGO,
- 	},
-+	[RPCAUTH_gssd] = {
-+		.name = "gssd",
-+		.mode = S_IFDIR | S_IRUGO | S_IXUGO,
-+	},
- };
- 
- /*
-@@ -1217,13 +1222,25 @@ struct dentry *rpc_d_lookup_sb(const struct super_block *sb,
- }
- EXPORT_SYMBOL_GPL(rpc_d_lookup_sb);
- 
--void rpc_pipefs_init_net(struct net *net)
-+int rpc_pipefs_init_net(struct net *net)
- {
- 	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
- 
-+	sn->gssd_dummy = rpc_mkpipe_data(&gssd_dummy_pipe_ops, 0);
-+	if (IS_ERR(sn->gssd_dummy))
-+		return PTR_ERR(sn->gssd_dummy);
-+
- 	mutex_init(&sn->pipefs_sb_lock);
- 	sn->gssd_running = 1;
- 	sn->pipe_version = -1;
-+	return 0;
-+}
-+
-+void rpc_pipefs_exit_net(struct net *net)
-+{
-+	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
-+
-+	rpc_destroy_pipe_data(sn->gssd_dummy);
- }
- 
- /*
-@@ -1253,11 +1270,73 @@ void rpc_put_sb_net(const struct net *net)
- }
- EXPORT_SYMBOL_GPL(rpc_put_sb_net);
- 
-+static const struct rpc_filelist gssd_dummy_clnt_dir[] = {
-+	[0] = {
-+		.name = "clntXX",
-+		.mode = S_IFDIR | S_IRUGO | S_IXUGO,
-+	},
-+};
-+
-+static ssize_t
-+dummy_downcall(struct file *filp, const char __user *src, size_t len)
-+{
-+	return -EINVAL;
-+}
-+
-+static const struct rpc_pipe_ops gssd_dummy_pipe_ops = {
-+	.upcall		= rpc_pipe_generic_upcall,
-+	.downcall	= dummy_downcall,
-+};
-+
-+/**
-+ * rpc_gssd_dummy_populate - create a dummy gssd pipe
-+ * @root:	root of the rpc_pipefs filesystem
-+ * @pipe_data:	pipe data created when netns is initialized
-+ *
-+ * Create a dummy set of directories and a pipe that gssd can hold open to
-+ * indicate that it is up and running.
-+ */
-+static struct dentry *
-+rpc_gssd_dummy_populate(struct dentry *root, struct rpc_pipe *pipe_data)
-+{
-+	int ret = 0;
-+	struct dentry *gssd_dentry;
-+	struct dentry *clnt_dentry = NULL;
-+	struct dentry *pipe_dentry = NULL;
-+	struct qstr q = QSTR_INIT(files[RPCAUTH_gssd].name,
-+				  strlen(files[RPCAUTH_gssd].name));
-+
-+	/* We should never get this far if "gssd" doesn't exist */
-+	gssd_dentry = d_hash_and_lookup(root, &q);
-+	if (!gssd_dentry)
-+		return ERR_PTR(-ENOENT);
-+
-+	ret = rpc_populate(gssd_dentry, gssd_dummy_clnt_dir, 0, 1, NULL);
-+	if (ret) {
-+		pipe_dentry = ERR_PTR(ret);
-+		goto out;
-+	}
-+
-+	q.name = gssd_dummy_clnt_dir[0].name;
-+	q.len = strlen(gssd_dummy_clnt_dir[0].name);
-+	clnt_dentry = d_hash_and_lookup(gssd_dentry, &q);
-+	if (!clnt_dentry) {
-+		pipe_dentry = ERR_PTR(-ENOENT);
-+		goto out;
-+	}
-+
-+	pipe_dentry = rpc_mkpipe_dentry(clnt_dentry, "gssd", NULL, pipe_data);
-+out:
-+	dput(clnt_dentry);
-+	dput(gssd_dentry);
-+	return pipe_dentry;
-+}
-+
- static int
- rpc_fill_super(struct super_block *sb, void *data, int silent)
- {
- 	struct inode *inode;
--	struct dentry *root;
-+	struct dentry *root, *gssd_dentry;
- 	struct net *net = data;
- 	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
- 	int err;
-@@ -1275,6 +1354,13 @@ rpc_fill_super(struct super_block *sb, void *data, int silent)
- 		return -ENOMEM;
- 	if (rpc_populate(root, files, RPCAUTH_lockd, RPCAUTH_RootEOF, NULL))
- 		return -ENOMEM;
-+
-+	gssd_dentry = rpc_gssd_dummy_populate(root, sn->gssd_dummy);
-+	if (IS_ERR(gssd_dentry)) {
-+		__rpc_depopulate(root, files, RPCAUTH_lockd, RPCAUTH_RootEOF);
-+		return PTR_ERR(gssd_dentry);
-+	}
-+
- 	dprintk("RPC:       sending pipefs MOUNT notification for net %p%s\n",
- 		net, NET_NAME(net));
- 	mutex_lock(&sn->pipefs_sb_lock);
-@@ -1289,6 +1375,7 @@ rpc_fill_super(struct super_block *sb, void *data, int silent)
- 	return 0;
- 
- err_depopulate:
-+	dput(gssd_dentry);
- 	blocking_notifier_call_chain(&rpc_pipefs_notifier_list,
- 					   RPC_PIPEFS_UMOUNT,
- 					   sb);
-diff --git a/net/sunrpc/sunrpc_syms.c b/net/sunrpc/sunrpc_syms.c
-index 3d6498a..cd30120 100644
---- a/net/sunrpc/sunrpc_syms.c
-+++ b/net/sunrpc/sunrpc_syms.c
-@@ -44,12 +44,17 @@ static __net_init int sunrpc_init_net(struct net *net)
- 	if (err)
- 		goto err_unixgid;
- 
--	rpc_pipefs_init_net(net);
-+	err = rpc_pipefs_init_net(net);
-+	if (err)
-+		goto err_pipefs;
-+
- 	INIT_LIST_HEAD(&sn->all_clients);
- 	spin_lock_init(&sn->rpc_client_lock);
- 	spin_lock_init(&sn->rpcb_clnt_lock);
- 	return 0;
- 
-+err_pipefs:
-+	unix_gid_cache_destroy(net);
- err_unixgid:
- 	ip_map_cache_destroy(net);
- err_ipmap:
-@@ -60,6 +65,7 @@ err_proc:
- 
- static __net_exit void sunrpc_exit_net(struct net *net)
- {
-+	rpc_pipefs_exit_net(net);
- 	unix_gid_cache_destroy(net);
- 	ip_map_cache_destroy(net);
- 	rpc_proc_exit(net);
--- 
-1.8.3.1
+-dros
+
+
+>> On Nov 13, 2013, at 9:08 AM, Jeff Layton <jlayton@redhat.com> wrote:
+>> 
+>>> Currently, when we try to mount and get back NFS4ERR_CLID_IN_USE or
+>>> NFS4ERR_WRONGSEC, we create a new rpc_clnt and then try the call again.
+>>> There is no guarantee that doing so will work however, so we can end up
+>>> retrying the call in an infinite loop.
+>>> 
+>>> Worse yet, we create the new client using rpc_clone_client_set_auth,
+>>> which creates the new client as a child of the old one. Thus, we can end
+>>> up with a *very* long lineage of rpc_clnts. When we go to put all of the
+>>> references to them, we can end up with a long call chain that can smash
+>>> the stack as each rpc_free_client() call can recurse back into itself.
+>>> 
+>>> This patch fixes this by simply ensuring that the SETCLIENTID call will
+>>> only be retried in this situation if the last attempt did not use
+>>> RPC_AUTH_UNIX.
+>>> 
+>>> Note too that with this change, we don't need the (i > 2) check in the
+>>> -EACCES case since we now have a more reliable test as to whether we
+>>> should reattempt.
+>>> 
+>>> Cc: stable@vger.kernel.org # v3.10+
+>>> Cc: Chuck Lever <chuck.lever@oracle.com>
+>>> Tested-by/Acked-by: Weston Andros Adamson <dros@netapp.com>
+>>> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+>>> ---
+>>> fs/nfs/nfs4state.c | 7 ++++++-
+>>> 1 file changed, 6 insertions(+), 1 deletion(-)
+>>> 
+>>> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+>>> index c8e729d..6f04706 100644
+>>> --- a/fs/nfs/nfs4state.c
+>>> +++ b/fs/nfs/nfs4state.c
+>>> @@ -2093,10 +2093,15 @@ again:
+>>> 			nfs4_root_machine_cred(clp);
+>>> 			goto again;
+>>> 		}
+>>> -		if (i > 2)
+>>> +		if (clnt->cl_auth->au_flavor == RPC_AUTH_UNIX)
+>>> 			break;
+>>> 	case -NFS4ERR_CLID_INUSE:
+>>> 	case -NFS4ERR_WRONGSEC:
+>>> +		/* No point in retrying if we already used RPC_AUTH_UNIX */
+>>> +		if (clnt->cl_auth->au_flavor == RPC_AUTH_UNIX) {
+>>> +			status = -EPERM;
+>>> +			break;
+>>> +		}
+>>> 		clnt = rpc_clone_client_set_auth(clnt, RPC_AUTH_UNIX);
+>>> 		if (IS_ERR(clnt)) {
+>>> 			status = PTR_ERR(clnt);
+>>> -- 
+>>> 1.8.3.1
+>>> 
+>> 
+> 
+> 
+> -- 
+> Jeff Layton <jlayton@redhat.com>
 
