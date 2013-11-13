@@ -1,108 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:64897 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751732Ab3KAR6K (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 1 Nov 2013 13:58:10 -0400
-Date: Fri, 1 Nov 2013 13:58:05 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: "cye@redhat.com" <cye@redhat.com>,
-        "dpquigl@davequigley.com" <dpquigl@davequigley.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfs: fix oops when trying to set SELinux label
-Message-ID: <20131101135805.56d266bd@tlielax.poochiereds.net>
-In-Reply-To: <1383328062.6626.5.camel@leira.trondhjem.org>
-References: <1383317372-3373-1-git-send-email-jlayton@redhat.com>
-	<20131101120211.586aef7a@corrin.poochiereds.net>
-	<1383324599.2911.2.camel@leira.trondhjem.org>
-	<20131101125719.38843cfb@tlielax.poochiereds.net>
-	<A1A30425-FA21-4D8B-ABB4-F7E02C2D5DEA@netapp.com>
-	<20131101131855.224ddb4b@tlielax.poochiereds.net>
-	<1383328062.6626.5.camel@leira.trondhjem.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-7
+Received: from mail-wi0-f178.google.com ([209.85.212.178]:50704 "EHLO
+	mail-wi0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756652Ab3KMEHV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Nov 2013 23:07:21 -0500
+Received: by mail-wi0-f178.google.com with SMTP id hn6so205120wib.11
+        for <linux-nfs@vger.kernel.org>; Tue, 12 Nov 2013 20:07:20 -0800 (PST)
+MIME-Version: 1.0
+In-Reply-To: <29447.1383230746@obiwan.sandelman.ca>
+References: <CA+uAZNPquD-JA1SDpFHtx9ZawQA5=o+fBigOTy+9NEiDL+hmyw@mail.gmail.com>
+	<20131031141538.GA621@fieldses.org>
+	<29447.1383230746@obiwan.sandelman.ca>
+Date: Wed, 13 Nov 2013 09:37:20 +0530
+Message-ID: <CA+uAZNNS+dBom1CWh8rGAzLnXc5kEsq80LpH-X_EJ_cV6HHP+w@mail.gmail.com>
+Subject: Re: Need help with NFS Server SUNRPC performance issue
+From: Shyam Kaushik <shyamnfs1@gmail.com>
+To: Bruce Fields <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 1 Nov 2013 17:47:46 +-0000
-+ACI-Myklebust, Trond+ACI +ADw-Trond.Myklebust+AEA-netapp.com+AD4 wrote:
+Hi Bruce,
 
-+AD4 On Fri, 2013-11-01 at 13:18 -0400, Jeff Layton wrote:
-+AD4 +AD4 On Fri, 1 Nov 2013 17:05:08 +-0000
-+AD4 +AD4 +ACI-Myklebust, Trond+ACI +ADw-Trond.Myklebust+AEA-netapp.com+AD4 wrote:
-+AD4 +AD4 
-+AD4 +AD4 +AD4 
-+AD4 +AD4 +AD4 On Nov 1, 2013, at 12:57, Jeff Layton +ADw-jlayton+AEA-redhat.com+AD4 wrote:
-+AD4 +AD4 +AD4 
-+AD4 +AD4 +AD4 +AD4 On Fri, 1 Nov 2013 16:50:00 +-0000
-+AD4 +AD4 +AD4 +AD4 +ACI-Myklebust, Trond+ACI +ADw-Trond.Myklebust+AEA-netapp.com+AD4 wrote:
-+AD4 +AD4 +AD4 +AD4 
-+AD4 +AD4 +AD4 +AD4APg On Fri, 2013-11-01 at 12:02 -0400, Jeff Layton wrote:
-+AD4 +AD4 +AD4 +AD4APgA+ It looks like +AF8-nfs4+AF8-get+AF8-security+AF8-label() has the same problem, but I've
-+AD4 +AD4 +AD4 +AD4APgA+ so far been unable to get it to be called, so I didn't patch it. It
-+AD4 +AD4 +AD4 +AD4APgA+ seems like getxattr does some special stuff for SELinux labels that
-+AD4 +AD4 +AD4 +AD4APgA+ cause them only to ever be fetched once.
-+AD4 +AD4 +AD4 +AD4APgA+ 
-+AD4 +AD4 +AD4 +AD4APgA+ Is there some trick to it?
-+AD4 +AD4 +AD4 +AD4APgA+ 
-+AD4 +AD4 +AD4 +AD4APg 
-+AD4 +AD4 +AD4 +AD4APg Doesn't 'ls -Z' cause them to security label to be read again?
-+AD4 +AD4 +AD4 +AD4APg 
-+AD4 +AD4 +AD4 +AD4 
-+AD4 +AD4 +AD4 +AD4 As best I can tell, security labels are set on the inode when the inode
-+AD4 +AD4 +AD4 +AD4 is instantiated, and then are reset on changes (i.e. setxattr). If
-+AD4 +AD4 +AD4 
-+AD4 +AD4 +AD4 +ICY-and on getxattr, afaics.
-+AD4 +AD4 +AD4 
-+AD4 +AD4 
-+AD4 +AD4 I don't see that. The call chain is something like this:
-+AD4 +AD4 
-+AD4 +AD4 vfs+AF8-getxattr
-+AD4 +AD4   xattr+AF8-getsecurity
-+AD4 +AD4     security+AF8-inode+AF8-getsecurity
-+AD4 +AD4        selinux+AF8-inode+AF8-getsecurity
-+AD4 +AD4 
-+AD4 +AD4 ...and that function looks like it just converts the current security
-+AD4 +AD4 context on the inode to text and plops that into the buffer.
-+AD4 
-+AD4 Ah, you're right. You have to turn off SELinux in order to hit
-+AD4 nfs4+AF8-xattr+AF8-get+AF8-nfs4+AF8-label.
-+AD4 
-+AD4 +AD4 +AD4 +AD4 another client changes the label though, it's not clear to me how your
-+AD4 +AD4 +AD4 +AD4 client would ever notice it until the inode is dropped from the cache.
-+AD4 +AD4 +AD4 +AD4 
-+AD4 +AD4 +AD4 +AD4 ISTR Eric Paris explaining to me that they do that for performance
-+AD4 +AD4 +AD4 +AD4 reasons but it seems like something that needs to be reconsidered in
-+AD4 +AD4 +AD4 +AD4 light of labeled NFS. Not picking up a security label change seems like
-+AD4 +AD4 +AD4 +AD4 a bug, IMO...
-+AD4 +AD4 +AD4 
-+AD4 +AD4 +AD4 To be effective, the security label should normally be set at file creation time. It should rarely, if ever, change. Why would you need to change it from a different client?
-+AD4 +AD4 +AD4 
-+AD4 +AD4 
-+AD4 +AD4 At least in Fedora, there are SELinux policy changes all the time.
-+AD4 +AD4 Sometimes that involves changing how files are labeled. I don't think
-+AD4 +AD4 it's reasonable to assume that they only get set at creation time.
-+AD4 +AD4 
-+AD4 
-+AD4 That doesn't answer the question. Again, why would you need to do this
-+AD4 from another client? If you don't have a real-life use case, then it's
-+AD4 just another 'doctor it hurts' problem. Stop doing it...
-+AD4 
+Can you pls suggest how we can formalize this hack into a proper fix?
 
-Ok, how about this then: +ADs)
+Thanks.
 
-NFS doesn't have O+AF8-TMPFILE, so you really +ACo-can't+ACo set the context at
-creation time, at least with normal syscalls. There will always be a
-race window between creating a file and setting the SELinux context on
-it.
+--Shyam
 
-FWIW, I just started playing with this stuff and this behavior just
-gave me pause. This is the sort of thing that will give people fits
-since it's unexpected behavior.
-
-When I change something on the server, I typically expect the client to
-see that change in a timely fashion. As it stands now, it won't -- at
-least until the inode gets purged from the cache.
-
--- 
-Jeff Layton +ADw-jlayton+AEA-redhat.com+AD4
+On Thu, Oct 31, 2013 at 8:15 PM, Michael Richardson <mcr@sandelman.ca> wrote:
+>
+>     >> I am chasing a NFS server performance issue on Ubuntu
+>     >> 3.8.13-030813-generic kernel. We setup 32 NFSD threads on our NFS
+>     >> server.
+>
+> I have been also trying to figure out NFS performance issues at my home
+> office.  Server is ubuntu precise (3.2.0-55, old, true) kernel, and clients
+> are mostly a mix of Debian versions (mostly virtualized XEN).
+> GbE over a VLAN is setup just for storage, and mostly IPv6 connections.
+>
+> J. Bruce Fields <bfields@fieldses.org> wrote:
+>     > Would you be willing to test an upstream kernel and/or some patches?
+>     > Sounds like you're using only NFSv4?
+>
+> I'm also willing to; my preference would be to build a generic 3.10 or 3.11
+> kernel with NFS as a module, and then update the NFS code, but I
+> haven't gotten around to scheduling some time to reboot a bunch.
+>
+> What I observe is huge TCP send queues on the server and what appears to be
+> head of queue blocking on the client.  This looks like a client issue to me,
+> and for at least one client (my mpd/shoutcast server), I'm happy to reboot
+> it regularly... I notice the NFS delays because the music stops :-)
+>
+> There are some potential instabilities in frequency of IPv6 Router
+> Advertisements due to a bug in the CeroWRT, which initially I was blaming,
+> but I'm no longer convinced, since it happens over IPv4 on the storage VLAN
+> too.
+>
+> Shyam, please share with me your testing strategy.
+>
+> --
+> ]               Never tell me the odds!                 | ipv6 mesh networks [
+> ]   Michael Richardson, Sandelman Software Works        | network architect  [
+> ]     mcr@sandelman.ca  http://www.sandelman.ca/        |   ruby on rails    [
+>
+>
+>
+>
+>
