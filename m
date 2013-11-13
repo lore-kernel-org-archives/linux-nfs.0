@@ -1,133 +1,254 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:23123 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755706Ab3KMQNA convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Nov 2013 11:13:00 -0500
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 6.6 \(1510\))
-Subject: Re: [PATCH v2 3/3] nfs: check if gssd is running before attempting to use krb5i auth in SETCLIENTID call
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <A8619700-BAA2-4E99-AFFA-579115D4B68A@netapp.com>
-Date: Wed, 13 Nov 2013 11:12:48 -0500
-Cc: Jeff Layton <jlayton@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Neil Brown <neilb@suse.de>, Steve Dickson <steved@redhat.com>
-Message-Id: <D6D5CD40-F750-49C3-B56F-82BEAAD7427E@oracle.com>
-References: <1384353053-30002-1-git-send-email-jlayton@redhat.com> <1384353053-30002-4-git-send-email-jlayton@redhat.com> <DF1DECB2-B736-4B70-87DC-52CD695C44F3@oracle.com> <1CFBCCB6-37CE-4C49-91EE-0FB33D11B57A@netapp.com> <4226B463-0DB1-4847-9C30-252E67B46859@oracle.com> <20131113103510.6f89a998@corrin.poochiereds.net> <A8619700-BAA2-4E99-AFFA-579115D4B68A@netapp.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Received: from mail-yh0-f47.google.com ([209.85.213.47]:59840 "EHLO
+	mail-yh0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757291Ab3KMObC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Nov 2013 09:31:02 -0500
+Received: by mail-yh0-f47.google.com with SMTP id l109so211216yhq.6
+        for <linux-nfs@vger.kernel.org>; Wed, 13 Nov 2013 06:31:01 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, neilb@suse.de, chuck.lever@oracle.com,
+        steved@redhat.com
+Subject: [PATCH v2 1/3] sunrpc: create a new dummy pipe for gssd to hold open
+Date: Wed, 13 Nov 2013 09:30:51 -0500
+Message-Id: <1384353053-30002-2-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1384353053-30002-1-git-send-email-jlayton@redhat.com>
+References: <1384353053-30002-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+rpc.gssd will naturally hold open any pipe named */clnt*/gssd that shows
+up under rpc_pipefs. That behavior gives us a reliable mechanism to tell
+whether it's actually running or not.
 
-On Nov 13, 2013, at 10:49 AM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+Create a new toplevel "dummy" directory in rpc_pipefs when it's mounted.
+Under that directory create another directory called "clntXX", and then
+within that a pipe called "gssd".
 
-> 
-> On Nov 13, 2013, at 10:35, Jeff Layton <jlayton@redhat.com> wrote:
-> 
->> On Wed, 13 Nov 2013 10:14:30 -0500
->> Chuck Lever <chuck.lever@oracle.com> wrote:
->> 
->>> 
->>> On Nov 13, 2013, at 9:48 AM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
->>> 
->>>> 
->>>> On Nov 13, 2013, at 9:38, Chuck Lever <chuck.lever@oracle.com> wrote:
->>>> 
->>>>> 
->>>>> On Nov 13, 2013, at 9:30 AM, Jeff Layton <jlayton@redhat.com> wrote:
->>>>> 
->>>>>> Currently, the client will attempt to use krb5i in the SETCLIENTID call
->>>>>> even if rpc.gssd is running. If that fails, it'll then fall back to
->>>>>> RPC_AUTH_UNIX. This introduced a delay when mounting if rpc.gssd isn't
->>>>>> running, and causes warning messages to pop up in the ring buffer.
->>>>>> 
->>>>>> Check to see if rpc.gssd is running before even attempting to use krb5i
->>>>>> auth, and just silently skip trying to do so if it isn't.
->>>>>> 
->>>>>> Signed-off-by: Jeff Layton <jlayton@redhat.com>
->>>>>> ---
->>>>>> 
->>>>>> diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
->>>>>> index b4a160a..988aebf 100644
->>>>>> --- a/fs/nfs/nfs4client.c
->>>>>> +++ b/fs/nfs/nfs4client.c
->>>>>> @@ -8,6 +8,7 @@
->>>>>> #include <linux/nfs_mount.h>
->>>>>> #include <linux/sunrpc/addr.h>
->>>>>> #include <linux/sunrpc/auth.h>
->>>>>> +#include <linux/sunrpc/auth_gss.h>
->>>>>> #include <linux/sunrpc/xprt.h>
->>>>>> #include <linux/sunrpc/bc_xprt.h>
->>>>>> #include "internal.h"
->>>>>> @@ -351,7 +352,7 @@ static int nfs4_init_client_minor_version(struct nfs_client *clp)
->>>>>> */
->>>>>> struct nfs_client *nfs4_init_client(struct nfs_client *clp,
->>>>>> 				    const struct rpc_timeout *timeparms,
->>>>>> -				    const char *ip_addr)
->>>>>> +				    const char *ip_addr, struct net *net)
->>>> 
->>>> Why the ‘struct net’ argument? clp->cl_net should already be initialized here.
->>>> 
->>>>>> {
->>>>>> 	char buf[INET6_ADDRSTRLEN + 1];
->>>>>> 	struct nfs_client *old;
->>>>>> @@ -370,7 +371,10 @@ struct nfs_client *nfs4_init_client(struct nfs_client *clp,
->>>>>> 		__set_bit(NFS_CS_INFINITE_SLOTS, &clp->cl_flags);
->>>>>> 	__set_bit(NFS_CS_DISCRTRY, &clp->cl_flags);
->>>>>> 	__set_bit(NFS_CS_NO_RETRANS_TIMEOUT, &clp->cl_flags);
->>>>>> -	error = nfs_create_rpc_client(clp, timeparms, RPC_AUTH_GSS_KRB5I);
->>>>>> +
->>>>>> +	error = -EINVAL;
->>>>>> +	if (gssd_running(net))
->>>>>> +		error = nfs_create_rpc_client(clp, timeparms,RPC_AUTH_GSS_KRB5I);
->>>>>> 	if (error == -EINVAL)
->>>>>> 		error = nfs_create_rpc_client(clp, timeparms, RPC_AUTH_UNIX);
->>>>> 
->>>>> This feels like a layering violation.  Why wouldn't you put a gssd_running check in gss_create(), for example, and have rpcauth_create() return -EINVAL?
->>>>> 
->>>> 
->>>> It would be better to put it in the upcall.
->>> 
->>> Waiting until the upcall has its benefits.  At that point, GSSD (if it is running) can report other errors, such as that there is no material to form a machine credential.
->>> 
->>> My point to Jeff is that, aside from architectural aesthetics, direct calls from RPC consumers to the GSS layer causes a module dependency problem.  The right way to plumb this is to create an RPC client API that invokes gssd_running() but only if auth_rpcgss.ko is loaded.
-> 
-> Chuck, I’ve already told you that the auth_rpcgss dependency is a non-starter.
+We'll never send an upcall along that pipe, and any downcall written to
+it will just return -EINVAL.
 
-Maybe you thought that in your brain, but look at the e-mail archive: You actually haven't explicitly objected yet.  You simply observed that this mechanism doesn't work for built-in scenarios, and I agree with that observation.  It isn't supposed to work for built-in.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ include/linux/sunrpc/rpc_pipe_fs.h |  3 +-
+ net/sunrpc/netns.h                 |  1 +
+ net/sunrpc/rpc_pipe.c              | 93 ++++++++++++++++++++++++++++++++++++--
+ net/sunrpc/sunrpc_syms.c           |  8 +++-
+ 4 files changed, 100 insertions(+), 5 deletions(-)
 
-But I don't think you understand my full proposal or my objection to Jeff's third patch.
-
-> Turning off automatic loading of rpcsec_gss modules is a _worse_ regression than the ones we already have and (as I already said) can be trivially defeated by just compiling them into the kernel.
-
-Automatic loading of auth_rpcgss never worked until 71afa85e (March 16).  It simply isn't possible that we've depended on automatic loading of auth_rpcgss.ko in the past, because it has never worked until recently.
-
-> We _want_ the kernel to be able to autoload modules so that we can add new security flavours etc without having to recompile.
-
-I'm not proposing to turn off automatic loading of the GSS mechanisms.  If auth_rpcgss.ko is loaded, the mechanisms get loaded automatically.
-
-> 
->>> However, I don't see why the existing RPC client APIs shouldn't just fail where appropriate if GSSD isn't available.  Is there a strong need to expose gssd_running() as a separate API?
->>> 
->> 
->> One of the complaints about this whole "use krb5i by default" change is
->> that we now get the warnings in the ring buffer when gssd isn't
->> running. That's a good thing if krb5 was explicitly requested, but is
->> useless and confusing if the user just wants to use AUTH_SYS.
->> 
->> If we wait until gss_create, it's too late to know what the "intent"
->> was. We'll either fire the warning inappropriately like we do now, or
->> miss it altogether when we actually should have printed it.
-> 
-> What if the user intended to use krb5i, but the daemon failed to start?
-> This whole “kernel second guessing what the admin _actually_ wanted to do” thing is a red herring. Let’s just fix the real problem and then leave it at that.
-
-I agree that the kernel shouldn't guess.  Autoloading auth_rpcgss is guessing what the admin wanted, IMO.
-
+diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
+index a353e03..85f1342 100644
+--- a/include/linux/sunrpc/rpc_pipe_fs.h
++++ b/include/linux/sunrpc/rpc_pipe_fs.h
+@@ -84,7 +84,8 @@ enum {
+ 
+ extern struct dentry *rpc_d_lookup_sb(const struct super_block *sb,
+ 				      const unsigned char *dir_name);
+-extern void rpc_pipefs_init_net(struct net *net);
++extern int rpc_pipefs_init_net(struct net *net);
++extern void rpc_pipefs_exit_net(struct net *net);
+ extern struct super_block *rpc_get_sb_net(const struct net *net);
+ extern void rpc_put_sb_net(const struct net *net);
+ 
+diff --git a/net/sunrpc/netns.h b/net/sunrpc/netns.h
+index 779742c..8a8e841 100644
+--- a/net/sunrpc/netns.h
++++ b/net/sunrpc/netns.h
+@@ -14,6 +14,7 @@ struct sunrpc_net {
+ 	struct cache_detail *rsi_cache;
+ 
+ 	struct super_block *pipefs_sb;
++	struct rpc_pipe *gssd_dummy;
+ 	struct mutex pipefs_sb_lock;
+ 
+ 	struct list_head all_clients;
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index d0d14a0..34efdbf 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -38,7 +38,7 @@
+ #define NET_NAME(net)	((net == &init_net) ? " (init_net)" : "")
+ 
+ static struct file_system_type rpc_pipe_fs_type;
+-
++static const struct rpc_pipe_ops gssd_dummy_pipe_ops;
+ 
+ static struct kmem_cache *rpc_inode_cachep __read_mostly;
+ 
+@@ -1168,6 +1168,7 @@ enum {
+ 	RPCAUTH_nfsd4_cb,
+ 	RPCAUTH_cache,
+ 	RPCAUTH_nfsd,
++	RPCAUTH_gssd,
+ 	RPCAUTH_RootEOF
+ };
+ 
+@@ -1204,6 +1205,10 @@ static const struct rpc_filelist files[] = {
+ 		.name = "nfsd",
+ 		.mode = S_IFDIR | S_IRUGO | S_IXUGO,
+ 	},
++	[RPCAUTH_gssd] = {
++		.name = "gssd",
++		.mode = S_IFDIR | S_IRUGO | S_IXUGO,
++	},
+ };
+ 
+ /*
+@@ -1217,13 +1222,25 @@ struct dentry *rpc_d_lookup_sb(const struct super_block *sb,
+ }
+ EXPORT_SYMBOL_GPL(rpc_d_lookup_sb);
+ 
+-void rpc_pipefs_init_net(struct net *net)
++int rpc_pipefs_init_net(struct net *net)
+ {
+ 	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
+ 
++	sn->gssd_dummy = rpc_mkpipe_data(&gssd_dummy_pipe_ops, 0);
++	if (IS_ERR(sn->gssd_dummy))
++		return PTR_ERR(sn->gssd_dummy);
++
+ 	mutex_init(&sn->pipefs_sb_lock);
+ 	sn->gssd_running = 1;
+ 	sn->pipe_version = -1;
++	return 0;
++}
++
++void rpc_pipefs_exit_net(struct net *net)
++{
++	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
++
++	rpc_destroy_pipe_data(sn->gssd_dummy);
+ }
+ 
+ /*
+@@ -1253,11 +1270,73 @@ void rpc_put_sb_net(const struct net *net)
+ }
+ EXPORT_SYMBOL_GPL(rpc_put_sb_net);
+ 
++static const struct rpc_filelist gssd_dummy_clnt_dir[] = {
++	[0] = {
++		.name = "clntXX",
++		.mode = S_IFDIR | S_IRUGO | S_IXUGO,
++	},
++};
++
++static ssize_t
++dummy_downcall(struct file *filp, const char __user *src, size_t len)
++{
++	return -EINVAL;
++}
++
++static const struct rpc_pipe_ops gssd_dummy_pipe_ops = {
++	.upcall		= rpc_pipe_generic_upcall,
++	.downcall	= dummy_downcall,
++};
++
++/**
++ * rpc_gssd_dummy_populate - create a dummy gssd pipe
++ * @root:	root of the rpc_pipefs filesystem
++ * @pipe_data:	pipe data created when netns is initialized
++ *
++ * Create a dummy set of directories and a pipe that gssd can hold open to
++ * indicate that it is up and running.
++ */
++static struct dentry *
++rpc_gssd_dummy_populate(struct dentry *root, struct rpc_pipe *pipe_data)
++{
++	int ret = 0;
++	struct dentry *gssd_dentry;
++	struct dentry *clnt_dentry = NULL;
++	struct dentry *pipe_dentry = NULL;
++	struct qstr q = QSTR_INIT(files[RPCAUTH_gssd].name,
++				  strlen(files[RPCAUTH_gssd].name));
++
++	/* We should never get this far if "gssd" doesn't exist */
++	gssd_dentry = d_hash_and_lookup(root, &q);
++	if (!gssd_dentry)
++		return ERR_PTR(-ENOENT);
++
++	ret = rpc_populate(gssd_dentry, gssd_dummy_clnt_dir, 0, 1, NULL);
++	if (ret) {
++		pipe_dentry = ERR_PTR(ret);
++		goto out;
++	}
++
++	q.name = gssd_dummy_clnt_dir[0].name;
++	q.len = strlen(gssd_dummy_clnt_dir[0].name);
++	clnt_dentry = d_hash_and_lookup(gssd_dentry, &q);
++	if (!clnt_dentry) {
++		pipe_dentry = ERR_PTR(-ENOENT);
++		goto out;
++	}
++
++	pipe_dentry = rpc_mkpipe_dentry(clnt_dentry, "gssd", NULL, pipe_data);
++out:
++	dput(clnt_dentry);
++	dput(gssd_dentry);
++	return pipe_dentry;
++}
++
+ static int
+ rpc_fill_super(struct super_block *sb, void *data, int silent)
+ {
+ 	struct inode *inode;
+-	struct dentry *root;
++	struct dentry *root, *gssd_dentry;
+ 	struct net *net = data;
+ 	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
+ 	int err;
+@@ -1275,6 +1354,13 @@ rpc_fill_super(struct super_block *sb, void *data, int silent)
+ 		return -ENOMEM;
+ 	if (rpc_populate(root, files, RPCAUTH_lockd, RPCAUTH_RootEOF, NULL))
+ 		return -ENOMEM;
++
++	gssd_dentry = rpc_gssd_dummy_populate(root, sn->gssd_dummy);
++	if (IS_ERR(gssd_dentry)) {
++		__rpc_depopulate(root, files, RPCAUTH_lockd, RPCAUTH_RootEOF);
++		return PTR_ERR(gssd_dentry);
++	}
++
+ 	dprintk("RPC:       sending pipefs MOUNT notification for net %p%s\n",
+ 		net, NET_NAME(net));
+ 	mutex_lock(&sn->pipefs_sb_lock);
+@@ -1289,6 +1375,7 @@ rpc_fill_super(struct super_block *sb, void *data, int silent)
+ 	return 0;
+ 
+ err_depopulate:
++	dput(gssd_dentry);
+ 	blocking_notifier_call_chain(&rpc_pipefs_notifier_list,
+ 					   RPC_PIPEFS_UMOUNT,
+ 					   sb);
+diff --git a/net/sunrpc/sunrpc_syms.c b/net/sunrpc/sunrpc_syms.c
+index 3d6498a..cd30120 100644
+--- a/net/sunrpc/sunrpc_syms.c
++++ b/net/sunrpc/sunrpc_syms.c
+@@ -44,12 +44,17 @@ static __net_init int sunrpc_init_net(struct net *net)
+ 	if (err)
+ 		goto err_unixgid;
+ 
+-	rpc_pipefs_init_net(net);
++	err = rpc_pipefs_init_net(net);
++	if (err)
++		goto err_pipefs;
++
+ 	INIT_LIST_HEAD(&sn->all_clients);
+ 	spin_lock_init(&sn->rpc_client_lock);
+ 	spin_lock_init(&sn->rpcb_clnt_lock);
+ 	return 0;
+ 
++err_pipefs:
++	unix_gid_cache_destroy(net);
+ err_unixgid:
+ 	ip_map_cache_destroy(net);
+ err_ipmap:
+@@ -60,6 +65,7 @@ err_proc:
+ 
+ static __net_exit void sunrpc_exit_net(struct net *net)
+ {
++	rpc_pipefs_exit_net(net);
+ 	unix_gid_cache_destroy(net);
+ 	ip_map_cache_destroy(net);
+ 	rpc_proc_exit(net);
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+1.8.3.1
 
