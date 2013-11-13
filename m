@@ -1,42 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:55349 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752343Ab3KDXDR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 4 Nov 2013 18:03:17 -0500
-Date: Mon, 4 Nov 2013 18:03:16 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Michael Richardson <mcr@sandelman.ca>
-Cc: linux-nfs@vger.kernel.org, Shyam Kaushik <shyamnfs1@gmail.com>
-Subject: Re: Need help with NFS Server SUNRPC performance issue
-Message-ID: <20131104230316.GE8828@fieldses.org>
-References: <CA+uAZNPquD-JA1SDpFHtx9ZawQA5=o+fBigOTy+9NEiDL+hmyw@mail.gmail.com>
- <20131031141538.GA621@fieldses.org>
- <29447.1383230746@obiwan.sandelman.ca>
- <20131031151442.GB621@fieldses.org>
- <10920.1383332943@sandelman.ca>
+Received: from bombadil.infradead.org ([198.137.202.9]:49096 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757277Ab3KMQud (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Nov 2013 11:50:33 -0500
+Date: Wed, 13 Nov 2013 08:50:33 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2] nfs: fix pnfs Kconfig defaults
+Message-ID: <20131113165033.GA8676@infradead.org>
+References: <20131102102201.GA3860@infradead.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <10920.1383332943@sandelman.ca>
+In-Reply-To: <20131102102201.GA3860@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Nov 01, 2013 at 03:09:03PM -0400, Michael Richardson wrote:
-> 
-> J. Bruce Fields <bfields@fieldses.org> wrote:
-> > > There are some potential instabilities in frequency of IPv6 Router
-> > > Advertisements due to a bug in the CeroWRT, which initially I was blaming,
-> > > but I'm no longer convinced, since it happens over IPv4 on the storage VLAN
-> > > too.
-> > > 
-> > > Shyam, please share with me your testing strategy.
-> > 
-> > Your problem sounds different; among other things, it's with reads
-> > rather than writes.
-> 
-> Well.... I sure have problems with writes too.
-> sshfs is way faster across a LAN, which is just wrong :-)
+Defaulting to m seem to prevent building the pnfs layout modules into the
+kernel.  Default to the value of CONFIG_NFS_V4 make sure they are
+built in for built-in NFSv4 support and modular for a modular NFSv4.
 
-That sounds suspect, yes, but we'd need some more details (exactly
-what's your test, and what results do you get?).
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ fs/nfs/Kconfig |    6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
---b.
+Index: linux/fs/nfs/Kconfig
+===================================================================
+--- linux.orig/fs/nfs/Kconfig	2013-11-12 18:42:14.952113008 +0100
++++ linux/fs/nfs/Kconfig	2013-11-13 17:35:24.984154196 +0100
+@@ -116,17 +116,17 @@ config NFS_V4_2
+ config PNFS_FILE_LAYOUT
+ 	tristate
+ 	depends on NFS_V4_1
+-	default m
++	default NFS_V4
+ 
+ config PNFS_BLOCK
+ 	tristate
+ 	depends on NFS_V4_1 && BLK_DEV_DM
+-	default m
++	default NFS_V4
+ 
+ config PNFS_OBJLAYOUT
+ 	tristate
+ 	depends on NFS_V4_1 && SCSI_OSD_ULD
+-	default m
++	default NFS_V4
+ 
+ config NFS_V4_1_IMPLEMENTATION_ID_DOMAIN
+ 	string "NFSv4.1 Implementation ID Domain"
