@@ -1,92 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:15961 "EHLO mx11.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:44415 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752756Ab3KLRwq convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Nov 2013 12:52:46 -0500
-From: Weston Andros Adamson <dros@netapp.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: Chuck Lever <chuck.lever@oracle.com>, Jeff Layton <jlayton@redhat.com>,
-        linux-nfs list <linux-nfs@vger.kernel.org>
-Subject: Re: Thread overran stack, or stack corrupted BUG on mount
-Date: Tue, 12 Nov 2013 17:52:36 +0000
-Message-ID: <58C6E313-A58C-4D09-A546-8EE2B1EF2D6E@netapp.com>
-References: <2C73011F-0939-434C-9E4D-13A1EB1403D7@netapp.com>
- <20131112105539.4f804fc6@tlielax.poochiereds.net>
- <20131112112021.1a0a60ca@tlielax.poochiereds.net>
- <E4B641E5-34C5-4779-8FAB-DCB6C74D1546@oracle.com>
- <1384277451.4779.24.camel@leira.trondhjem.org>
-In-Reply-To: <1384277451.4779.24.camel@leira.trondhjem.org>
-Content-Type: text/plain; charset="us-ascii"
+	id S1753881Ab3KMQuH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 13 Nov 2013 11:50:07 -0500
+Date: Wed, 13 Nov 2013 11:49:59 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Anna Schumaker <bjschuma@netapp.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 0/3] NFSD: Implement SEEK
+Message-ID: <20131113164959.GL28033@fieldses.org>
+References: <1384283048-7699-1-git-send-email-bjschuma@netapp.com>
+ <20131112194529.GA26341@fieldses.org>
+ <52828767.3030909@netapp.com>
+ <20131112195911.GA28033@fieldses.org>
+ <5283A24D.4010309@netapp.com>
+ <5283A3B7.8080405@netapp.com>
+ <20131113161527.GA10046@infradead.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20131113161527.GA10046@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Wed, Nov 13, 2013 at 08:15:27AM -0800, Christoph Hellwig wrote:
+> On Wed, Nov 13, 2013 at 11:07:19AM -0500, Anna Schumaker wrote:
+> > I'm thinking something like this:
+> 
+> Given that the whole sparse file support seems more experimental than
+> the security labels requiring the former for the latter seems a bit odd.
+> 
+> I have to admit that I don't really know how to deal with those changes,
+> on the one hand I'd love to expose it as soon as possible, on the other
+> hand the spec has so many higher level flaws related to their concepts
+> of sparse files that I'd feel really bad about locking even parts of it
+> in at the moment.
 
-On Nov 12, 2013, at 12:30 PM, Myklebust, Trond <Trond.Myklebust@netapp.com> wrote:
+This isn't a candidate for 3.13, and SEEK didn't look like the most
+problematic bit, so with a couple more months I'm hoping we'll be more
+confident about the protocol?
 
-> On Tue, 2013-11-12 at 11:23 -0500, Chuck Lever wrote:
->> On Nov 12, 2013, at 11:20 AM, Jeff Layton <jlayton@redhat.com> wrote:
->>> Ok, I think I see the problem. The looping comes from this block in
->>> nfs4_discover_server_trunking:
->>> 
->>> -----------------[snip]-----------------
->>>       case -NFS4ERR_CLID_INUSE:
->>>       case -NFS4ERR_WRONGSEC:
->>>               clnt = rpc_clone_client_set_auth(clnt, RPC_AUTH_UNIX);
->>>               if (IS_ERR(clnt)) {
->>>                       status = PTR_ERR(clnt);
->>>                       break;
->>>               }
->>>               /* Note: this is safe because we haven't yet marked the
->>>                * client as ready, so we are the only user of
->>>                * clp->cl_rpcclient
->>>                */
->>>               clnt = xchg(&clp->cl_rpcclient, clnt);
->>>               rpc_shutdown_client(clnt);
->>>               clnt = clp->cl_rpcclient;
->>>               goto again;
->>> -----------------[snip]-----------------
->>> 
->>> ...so in the case of the reproducer, we get back -NFS4ERR_CLID_IN_USE,
->>> at that point we call rpc_clone_client_set_auth(), which creates a new
->>> rpc_clnt, but it's created as a child of the original.
->>> 
->>> When rpc_shutdown_client is called, the original clnt is not destroyed
->>> because the child still holds a reference to it. So, we go and try the
->>> call again and it fails with the same error over and over again, and we
->>> end up with a long chain of rpc_clnt's.
->>> 
->>> How that ends up smashing the stack, I'm not sure though. I'm also not
->>> sure of the remedy. It seems like we might ought to have some upper
->>> bound on the number of SETCLIENTID attempts?
->> 
->> CLID_INUSE is supposed to be a permanent error now.  I think one retry, if any, is all that is appropriate.
-> 
-> Right. If we hit CLID_INUSE in nfs4_discover_server_trunking then
-> 
-> a) we know this is a server that we've already mounted
-> b) we know that either nfs4_init_client set us up with RPC_AUTH_UNIX to
-> begin with, or that rpc.gssd was started only after we'd already sent a
-> SETCLIENTID/EXCHANGE_ID using RPC_AUTH_UNIX to this server
-> 
-> so the correct thing to do is to retry once if we know that we're not
-> already using AUTH_SYS, and then to EPERM.
-> 
-> 
-> Now that said, I agree that this should not be able to trigger a stack
-> overflow. Is this NFSv4 or NFSv4.1/NFSv4.2? Have either of you (Jeff and
-> Dros) tried enabling DEBUG_STACKOVERFLOW?
+Actually now that I look, I forget: even if security labels are built
+in, 4.2 is still off by default at runtime for now.
 
-IIRC it was a v4.0 mount when I hit this.  Yes, I have CONFIG_DEBUG_STACKOVERFLOW=y.
+We could add another interface to toggle individual features at run time
+but I think that's definitely too complicated.
 
--dros
+Maybe:
 
-> 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
+	- keep 4.2 off by default a runtime for now.
+	- keep each feature under its individual config option:
+	  NFSD_V4_SECURITY_LABEL, NFSD_V4_SEEK, NFSD_V4_SEND_PONIES....
+	- when an individual feature matures, ditch its config option
+	  and build it unconditionally.  We're always getting little
+	  build bugs due to untested build options so I'd rather not
+	  keep them around indefinitely.
+	- once 4.2 has at least one feature that we think is mature
+	  enough, switch the runtime 4.2 default to on and depend on
+	  scary warnings on the remaining build options to keep people
+	  from exposing them in production.
 
+?
+
+--b.
