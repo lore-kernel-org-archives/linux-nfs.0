@@ -1,31 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:57439 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751407Ab3KOPCF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Nov 2013 10:02:05 -0500
-Date: Fri, 15 Nov 2013 07:02:04 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Christoph Hellwig <hch@infradead.org>, Trond.Myklebust@netapp.com,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 7/7] nfs: page cache invalidation for dio
-Message-ID: <20131115150204.GA8105@infradead.org>
-References: <20131114165027.355613182@bombadil.infradead.org>
- <20131114165042.205194841@bombadil.infradead.org>
- <20131114133551.5d08b5cd@tlielax.poochiereds.net>
- <20131115142847.GA1107@infradead.org>
- <20131115095241.2c5e1cfb@tlielax.poochiereds.net>
+Received: from mx11.netapp.com ([216.240.18.76]:41341 "EHLO mx11.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755485Ab3KMAay convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Nov 2013 19:30:54 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: NeilBrown <neilb@suse.de>
+CC: "J. Bruce Fields" <bfields@fieldses.org>,
+        Charles Edward Lever <chuck.lever@oracle.com>,
+        Steve Dickson <SteveD@redhat.com>,
+        "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] Adding the nfs4_secure_mounts bool
+Date: Wed, 13 Nov 2013 00:30:53 +0000
+Message-ID: <1384302651.15992.3.camel@leira.trondhjem.org>
+References: <1384037221-7224-1-git-send-email-steved@redhat.com>
+	 <E061C7A8-DC27-49BA-93C2-DC2E9C19EA7B@netapp.com>
+	 <52811CBB.3070204@RedHat.com>
+	 <E520DD5F-7E5A-4B6C-9FF6-6B74DA36FD1E@oracle.com>
+	 <5281290B.6000201@RedHat.com>
+	 <E0FBCF46-C70F-41E5-BA67-48406253CD7E@oracle.com>
+	 <20131112161135.25a487da@notabene.brown>
+	 <F58540AB-00BE-4AC5-B823-7260F30F8D58@netapp.com>
+	 <20131112161634.GC15060@fieldses.org>
+	 <20131113112346.3f5f3bd0@notabene.brown>
+In-Reply-To: <20131113112346.3f5f3bd0@notabene.brown>
+Content-Type: text/plain; charset="utf-7"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20131115095241.2c5e1cfb@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Nov 15, 2013 at 09:52:41AM -0500, Jeff Layton wrote:
-> Do you have these patches in a git tree someplace? If so, I wouldn't
-> mind running this reproducer against it to see if it helps. It's a bit
-> of a longshot, but what the heck...
+On Wed, 2013-11-13 at 11:23 +-1100, NeilBrown wrote:
++AD4- But back to my problem:  Following Trond's suggestion I've come up with the
++AD4- following patch.  Does it look right?
++AD4- 
++AD4- The +ACI-fd +AD0- -1+ACI- is just to stop us trying to close a non-open fd in an error
++AD4- path.
++AD4- 
++AD4- The change from testing -+AD4-servicename to -+AD4-prog stops us from repeating the
++AD4- failed DNS lookup on every request, not that the failure isn't fatal.
++AD4- 
++AD4- The last stanza makes sure we always reply to an upcall, with EINVAL if
++AD4- nothing else seems appropriate.
 
-While I do have a local git tree I don't really have anywhere to push
-it to.  But applying these patches shouldn't be all that hard.
+Wouldn't EACCES be more appropriate as a default?
 
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust+AEA-netapp.com
+www.netapp.com
