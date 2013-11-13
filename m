@@ -1,39 +1,89 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:20330 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:57526 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750822Ab3KYJgh convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Nov 2013 04:36:37 -0500
-From: David Howells <dhowells@redhat.com>
-In-Reply-To: <CAMuHMdUiK4CHXESCEYvGJfE1ROGa=MC_c=qAQgKVS7GmkBXz=Q@mail.gmail.com>
-References: <CAMuHMdUiK4CHXESCEYvGJfE1ROGa=MC_c=qAQgKVS7GmkBXz=Q@mail.gmail.com>
-To: Geert Uytterhoeven <geert@linux-m68k.org>
-Cc: dhowells@redhat.com, keyrings@linux-nfs.org,
-        linux-security-module@vger.kernel.org,
-        "open list\:NFS\, SUNRPC\, AND..." <linux-nfs@vger.kernel.org>,
-        "linux-kernel\@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        Linus Torvalds <torvalds@linux-foundation.org>
-Subject: Re: assoc_array.c uninitialized variable (was: Re: [PATCH 02/10] Add a generic associative array implementation.)
+	id S1754386Ab3KMNhs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 13 Nov 2013 08:37:48 -0500
+Date: Wed, 13 Nov 2013 08:37:44 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Marc Eshel <eshel@us.ibm.com>
+Cc: Anna Schumaker <bjschuma@netapp.com>, linux-nfs@vger.kernel.org,
+        linux-nfs-owner@vger.kernel.org
+Subject: Re: [PATCH v2 0/3] NFSD: Implement SEEK
+Message-ID: <20131113133744.GD28033@fieldses.org>
+References: <1384283048-7699-1-git-send-email-bjschuma@netapp.com>
+ <20131112194529.GA26341@fieldses.org>
+ <OF83A00AE9.3A2F46C6-ON88257C21.007C6003-88257C21.007CE9E4@us.ibm.com>
+ <20131112230201.GB28033@fieldses.org>
+ <OFFBE22971.98BDE120-ON88257C22.0002C427-88257C22.000302F8@us.ibm.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-Date: Mon, 25 Nov 2013 09:36:29 +0000
-Message-ID: <19201.1385372189@warthog.procyon.org.uk>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <OFFBE22971.98BDE120-ON88257C22.0002C427-88257C22.000302F8@us.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Geert Uytterhoeven <geert@linux-m68k.org> wrote:
-
-> > +       int slot, next_slot, free_slot, i, j;
+On Tue, Nov 12, 2013 at 04:32:51PM -0800, Marc Eshel wrote:
+> "J. Bruce Fields" <bfields@fieldses.org> wrote on 11/12/2013 03:02:01 PM:
 > 
-> lib/assoc_array.c: In function ‘assoc_array_insert_into_terminal_node’:
-> lib/assoc_array.c:502: warning: ‘j’ may be used uninitialized in this function
+> > From: "J. Bruce Fields" <bfields@fieldses.org>
+> > To: Marc Eshel/Almaden/IBM@IBMUS, 
+> > Cc: Anna Schumaker <bjschuma@netapp.com>, linux-nfs@vger.kernel.org,
+> > linux-nfs-owner@vger.kernel.org
+> > Date: 11/12/2013 03:19 PM
+> > Subject: Re: [PATCH v2 0/3] NFSD: Implement SEEK
+> > 
+> > On Tue, Nov 12, 2013 at 02:44:21PM -0800, Marc Eshel wrote:
+> > > linux-nfs-owner@vger.kernel.org wrote on 11/12/2013 11:45:29 AM:
+> > > 
+> > > > From: "J. Bruce Fields" <bfields@fieldses.org>
+> > > > To: Anna Schumaker <bjschuma@netapp.com>, 
+> > > > Cc: linux-nfs@vger.kernel.org
+> > > > Date: 11/12/2013 12:07 PM
+> > > > Subject: Re: [PATCH v2 0/3] NFSD: Implement SEEK
+> > > > Sent by: linux-nfs-owner@vger.kernel.org
+> > > > 
+> > > > On Tue, Nov 12, 2013 at 02:04:05PM -0500, Anna Schumaker wrote:
+> > > > > These patches implement just the SEEK NFS v4.2 operation. 
+> WRITE_PLUS 
+> > > is
+> > > > > still under discussion with the IETF after my last series of 
+> patches, 
+> > > so I
+> > > > > am holding off on resubmitting until after spec discussion dies 
+> down.
+> > > > > 
+> > > > > Questions?  Comments?  Thoughts?
+> > > > > Anna
+> > > > > 
+> > > > > Anna Schumaker (3):
+> > > > >   NFSD: Update error codes
+> > > > 
+> > > > I don't think I got this first patch.
+> > > > 
+> > > > >   NFSD: Create nfs v4.2 decode ops
+> > > > >   NFSD: Implement SEEK
+> > > > 
+> > > > I'd like to be reassured the protocol is reasonably stable before we
+> > > > commit this.  I haven't been following the ietf wg discussion 
+> closely.
+> > > > 
+> > > > And this should initially be disabled by default.  So, probably 
+> either:
+> > > 
+> > > It is not enough that it is usable only for client the mount 
+> > > minorversion=2
+> > > anyone using this option knows that they are using a prototype.
+> > 
+> > The client may default to minorversion=2 some day, so, no, the user
+> > doesn't necessarily know they're using a prototype.
+> > 
+> > And the server doesn't have any control over what kernel or distro the
+> > client's running.  We want future clients to be able to default to 4.2,
+> > and we don't require servers and clients to be upgraded in lockstep.
+> 
+> The server accepting 4.2 mount can be under config options but once it is 
+> mounted it can support the new features by checking for the the version, 
+> right?
 
-What compiler are you using?  Mine doesn't show this.
+Sorry, I don't understand the question.
 
-Technically, the compiler is correct - but we should never see the variable
-undefined following the found_slot_for_multiple_occupancy unless the tree
-changes under us. Out of a set of N+1 integers that can only be in the range
-0..N-1 there must be at least two the same.
-
-I guess I could preclear j to make the warning go away.
-
-David
+--b.
