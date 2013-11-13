@@ -1,89 +1,111 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-we0-f179.google.com ([74.125.82.179]:54462 "EHLO
-	mail-we0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750738Ab3KAEnR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Nov 2013 00:43:17 -0400
-Received: by mail-we0-f179.google.com with SMTP id w61so3587807wes.10
-        for <linux-nfs@vger.kernel.org>; Thu, 31 Oct 2013 21:43:16 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <29447.1383230746@obiwan.sandelman.ca>
-References: <CA+uAZNPquD-JA1SDpFHtx9ZawQA5=o+fBigOTy+9NEiDL+hmyw@mail.gmail.com>
-	<20131031141538.GA621@fieldses.org>
-	<29447.1383230746@obiwan.sandelman.ca>
-Date: Fri, 1 Nov 2013 10:13:16 +0530
-Message-ID: <CA+uAZNOhHPwErtKQP6Vy4RQtE=AXNdL8U90U5B6DuCpDLnyE8w@mail.gmail.com>
-Subject: Re: Need help with NFS Server SUNRPC performance issue
-From: Shyam Kaushik <shyamnfs1@gmail.com>
-To: Michael Richardson <mcr@sandelman.ca>
-Cc: linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-yh0-f45.google.com ([209.85.213.45]:46418 "EHLO
+	mail-yh0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750895Ab3KMVxB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Nov 2013 16:53:01 -0500
+Received: by mail-yh0-f45.google.com with SMTP id i7so581852yha.32
+        for <linux-nfs@vger.kernel.org>; Wed, 13 Nov 2013 13:53:00 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: trond.myklebust@netapp.com
+Cc: chuck.lever@oracle.com, neilb@suse.de, steved@redhat.com,
+        linux-nfs@vger.kernel.org
+Subject: [PATCH v3 0/3] sunrpc/nfs: more reliable detection of running gssd
+Date: Wed, 13 Nov 2013 16:52:52 -0500
+Message-Id: <1384379575-8997-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Michael,
+(Apologies for the resend to people on the cc list. I forgot to
+ cc linux-nfs@vger...)
 
-For your testing strategy question:
+v3:
+- get rid of unneeded argument to init_client nfs op
 
-Here is the fio config file that I use
+- move gssd_running check into rpc_pipe.c to eliminate dependency on
+  auth_gss.ko
 
-[global]
-ioengine=libaio
-iodepth=64
-rw=randwrite
-bs=4k
-direct=1
-size=4gb
-loops=1
-overwrite=0
-norandommap=1
-numjobs=10
-blockalign=4k
+v2:
+- change name of toplevel pipefs dir from "dummy" to "gssd" (per
+  Trond's suggestion)
 
-[job1]
-directory=/mnt/NFS_data_2/
+- when gssd isn't running, don't bother to upcall (per Neil B.'s
+  suggestion)
 
-If you have a good performing BE on the NFS server you will get to see
-that you are limited at 2.5K IOPs.
+- fix lifecycle of rpc_pipe data. Previously it would have leaked
+  after umount. With this set, it's created and destroyed along with
+  the netns, and just attached to the pipe inode on mount/unmount
+  of rpc_pipefs.
 
---Shyam
+- patch has been added to skip attempting setclientid with krb5i
+  if gssd isn't running. This avoids the "AUTH_GSS upcall timed out"
+  message when gssd isn't running and you mount with sec=sys. It also
+  shortens the delay when gssd isn't up.
 
-On Thu, Oct 31, 2013 at 8:15 PM, Michael Richardson <mcr@sandelman.ca> wrote:
->
->     >> I am chasing a NFS server performance issue on Ubuntu
->     >> 3.8.13-030813-generic kernel. We setup 32 NFSD threads on our NFS
->     >> server.
->
-> I have been also trying to figure out NFS performance issues at my home
-> office.  Server is ubuntu precise (3.2.0-55, old, true) kernel, and clients
-> are mostly a mix of Debian versions (mostly virtualized XEN).
-> GbE over a VLAN is setup just for storage, and mostly IPv6 connections.
->
-> J. Bruce Fields <bfields@fieldses.org> wrote:
->     > Would you be willing to test an upstream kernel and/or some patches?
->     > Sounds like you're using only NFSv4?
->
-> I'm also willing to; my preference would be to build a generic 3.10 or 3.11
-> kernel with NFS as a module, and then update the NFS code, but I
-> haven't gotten around to scheduling some time to reboot a bunch.
->
-> What I observe is huge TCP send queues on the server and what appears to be
-> head of queue blocking on the client.  This looks like a client issue to me,
-> and for at least one client (my mpd/shoutcast server), I'm happy to reboot
-> it regularly... I notice the NFS delays because the music stops :-)
->
-> There are some potential instabilities in frequency of IPv6 Router
-> Advertisements due to a bug in the CeroWRT, which initially I was blaming,
-> but I'm no longer convinced, since it happens over IPv4 on the storage VLAN
-> too.
->
-> Shyam, please share with me your testing strategy.
->
-> --
-> ]               Never tell me the odds!                 | ipv6 mesh networks [
-> ]   Michael Richardson, Sandelman Software Works        | network architect  [
-> ]     mcr@sandelman.ca  http://www.sandelman.ca/        |   ruby on rails    [
->
->
->
->
->
+The original cover letter from the v1 posting follows. Note that this
+set does address the warnings about the AUTH_GSS upcall timing out.
+
+-------------------------[snip]-----------------------------
+
+We've gotten a lot of complaints recently about the 15s delay when
+doing a sec=sys mount without gssd running.
+
+A large part of the problem is that the kernel isn't able to reliably
+detect when rpc.gssd is running. What we currently have is a
+gssd_running flag that is initially set to 1. When an upcall times out,
+that gets set to 0, and subsequent upcalls get a much shorter timeout
+(1/4s instead of 15s). It's reset back to '1' when a pipe is reopened.
+
+The approach of using a flag like this is pretty inadequate. First, it
+doesn't eliminate the long delay on the initial upcall attempt. Also,
+if gssd spontaneously dies, then the flag will still be set to 1 until
+the next upcall attempt times out. Finally, it currently requires that
+the pipe be reopened in order to reset the flag back to true.
+
+This patchset replaces that flag with a more reliable mechanism for
+detecting when gssd is running. When rpc_pipefs is mounted, it creates a
+new "dummy" pipe that gssd will naturally find and hold open. We'll
+never send an upcall down this pipe, and writing to it always fails.
+But, since we can detect when something is holding it open, we can use
+that to determine whether gssd is running.
+
+The current patch just uses this mechanism to replace the gssd_running
+flag with this new mechanism. This shortens the long delay when mounting
+without gssd running, but does not silence these warnings:
+
+    RPC: AUTH_GSS upcall timed out.
+    Please check user daemon is running.
+
+I'm willing to add a patch to do that, but I'm a little unclear on the
+best way to do so. Those messages are generated by the auth_gss code. We
+probably do want to print them if someone mounted with sec=krb5, but
+suppress them when mounting with sec=sys.
+
+Do we need to somehow pass down that intent to auth_gss? Another idea
+would be to call gssd_running() from the nfs mount code and use that to
+determine whether to try and use krb5 at all...
+
+Discuss!
+
+
+*** BLURB HERE ***
+
+clone of "master"
+
+Jeff Layton (3):
+  sunrpc: create a new dummy pipe for gssd to hold open
+  sunrpc: replace sunrpc_net->gssd_running flag with a more reliable
+    check
+  nfs: check if gssd is running before attempting to use krb5i auth in
+    SETCLIENTID call
+
+ fs/nfs/nfs4client.c                |   6 +-
+ include/linux/sunrpc/rpc_pipe_fs.h |  17 +++++-
+ net/sunrpc/auth_gss/auth_gss.c     |  10 ++--
+ net/sunrpc/netns.h                 |   3 +-
+ net/sunrpc/rpc_pipe.c              | 109 ++++++++++++++++++++++++++++++++++---
+ net/sunrpc/sunrpc_syms.c           |   8 ++-
+ 6 files changed, 136 insertions(+), 17 deletions(-)
+
+-- 
+1.8.3.1
+
