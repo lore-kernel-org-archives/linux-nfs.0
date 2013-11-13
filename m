@@ -1,78 +1,254 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:38126 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751253Ab3KOR2Q convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Nov 2013 12:28:16 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Weston Andros Adamson <dros@netapp.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFS: -EIO from decode_bitmap if too many bitmaps
-Date: Fri, 15 Nov 2013 17:28:07 +0000
-Message-ID: <1384536486.4046.19.camel@leira.trondhjem.org>
-References: <1384533481-2254-1-git-send-email-dros@netapp.com>
-	 <1384534841.4046.11.camel@leira.trondhjem.org>
-	 <1384535149.4046.13.camel@leira.trondhjem.org>
-	 <C9A7EFC4-6B93-44D4-8ADC-AAC440D4CFB2@oracle.com>
-	 <1384535424.4046.15.camel@leira.trondhjem.org>
-	 <3D7E0A6D-4009-4B28-8B43-588631A8EFD4@oracle.com>
-In-Reply-To: <3D7E0A6D-4009-4B28-8B43-588631A8EFD4@oracle.com>
-Content-Type: text/plain; charset="utf-7"
-MIME-Version: 1.0
+Received: from mail-gg0-f179.google.com ([209.85.161.179]:35966 "EHLO
+	mail-gg0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751883Ab3KMVxD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Nov 2013 16:53:03 -0500
+Received: by mail-gg0-f179.google.com with SMTP id q6so448473ggc.38
+        for <linux-nfs@vger.kernel.org>; Wed, 13 Nov 2013 13:53:02 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: trond.myklebust@netapp.com
+Cc: chuck.lever@oracle.com, neilb@suse.de, steved@redhat.com,
+        linux-nfs@vger.kernel.org
+Subject: [PATCH v3 1/3] sunrpc: create a new dummy pipe for gssd to hold open
+Date: Wed, 13 Nov 2013 16:52:53 -0500
+Message-Id: <1384379575-8997-2-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1384379575-8997-1-git-send-email-jlayton@redhat.com>
+References: <1384379575-8997-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2013-11-15 at 12:23 -0500, Chuck Lever wrote:
-+AD4- On Nov 15, 2013, at 12:10 PM, +ACI-Myklebust, Trond+ACI- +ADw-Trond.Myklebust+AEA-netapp.com+AD4- wrote:
-+AD4- 
-+AD4- +AD4- On Fri, 2013-11-15 at 12:07 -0500, Chuck Lever wrote:
-+AD4- +AD4APg- On Nov 15, 2013, at 12:05 PM, +ACI-Myklebust, Trond+ACI- +ADw-Trond.Myklebust+AEA-netapp.com+AD4- wrote:
-+AD4- +AD4APg- 
-+AD4- +AD4APgA+- On Fri, 2013-11-15 at 12:00 -0500, Trond Myklebust wrote:
-+AD4- +AD4APgA+AD4- On Fri, 2013-11-15 at 11:38 -0500, Weston Andros Adamson wrote:
-+AD4- +AD4APgA+AD4APg- decode+AF8-bitmap will only decode up to three bitmaps.  If the xdr buffer
-+AD4- +AD4APgA+AD4APg- has more than three bitmaps, return -EIO here instead of bailing out in
-+AD4- +AD4APgA+AD4APg- a later xdr decode.
-+AD4- +AD4APgA+AD4APg- 
-+AD4- +AD4APgA+AD4- 
-+AD4- +AD4APgA+AD4- No. decode+AF8-bitmap will only +AF8-save+AF8- 3 words in the bitmap+AFsAXQ- argment, but
-+AD4- +AD4APgA+AD4- it will decode arbitrary sized bitmaps:
-+AD4- +AD4APgA+AD4- 
-+AD4- +AD4APgA+AD4- 	p +AD0- xdr+AF8-inline+AF8-decode(xdr, (bmlen +ADwAPA- 2))+ADs-
-+AD4- +AD4APgA+AD4- 
-+AD4- +AD4APgA+- 
-+AD4- +AD4APgA+- That said, we should probably check that the server isn't setting those
-+AD4- +AD4APgA+- bitmap words to any non-zero values. That would be a reason to return
-+AD4- +AD4APgA+- EIO.
-+AD4- +AD4APg- 
-+AD4- +AD4APg- Why wouldn't the client simply warn and ignore the extraneous data?
-+AD4- +AD4APg- 
-+AD4- +AD4- 
-+AD4- +AD4- ...because unless the GETATTR is the very last operation, we'd end up
-+AD4- +AD4- failing to decode things correctly.
-+AD4- 
-+AD4- Surely that's only if the returned bitmap length doesn't match the number of bitmap words returned.  The server can return a properly encoded result without overwriting the next operation in the compound, can't it?
+rpc.gssd will naturally hold open any pipe named */clnt*/gssd that shows
+up under rpc_pipefs. That behavior gives us a reliable mechanism to tell
+whether it's actually running or not.
 
-How do we know? You're already talking about a broken server.
+Create a new toplevel "dummy" directory in rpc_pipefs when it's mounted.
+Under that directory create another directory called "clntXX", and then
+within that a pipe called "gssd".
 
-+AD4- +AD4- Anyway, a server that returns
-+AD4- +AD4- attributes that we haven't requested must clearly be borken. It's
-+AD4- +AD4- definitely violating the spec.
-+AD4- 
-+AD4- Definitely, but +ACI-be lenient in what you accept.+ACI-
-+AD4- 
-+AD4- The reason I bring this up is that we had exactly this problem with NFSv4.2, where the third bitmap word was added.
+We'll never send an upcall along that pipe, and any downcall written to
+it will just return -EINVAL.
 
-We've never had servers returning attributes that are not requested
-AFAIK. In the current code, they are free to add in as many zero fillers
-in the bitmap as they want, and that's exactly what we should be
-accepting.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ include/linux/sunrpc/rpc_pipe_fs.h |  3 +-
+ net/sunrpc/netns.h                 |  1 +
+ net/sunrpc/rpc_pipe.c              | 93 ++++++++++++++++++++++++++++++++++++--
+ net/sunrpc/sunrpc_syms.c           |  8 +++-
+ 4 files changed, 100 insertions(+), 5 deletions(-)
 
+diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
+index a353e03..85f1342 100644
+--- a/include/linux/sunrpc/rpc_pipe_fs.h
++++ b/include/linux/sunrpc/rpc_pipe_fs.h
+@@ -84,7 +84,8 @@ enum {
+ 
+ extern struct dentry *rpc_d_lookup_sb(const struct super_block *sb,
+ 				      const unsigned char *dir_name);
+-extern void rpc_pipefs_init_net(struct net *net);
++extern int rpc_pipefs_init_net(struct net *net);
++extern void rpc_pipefs_exit_net(struct net *net);
+ extern struct super_block *rpc_get_sb_net(const struct net *net);
+ extern void rpc_put_sb_net(const struct net *net);
+ 
+diff --git a/net/sunrpc/netns.h b/net/sunrpc/netns.h
+index 779742c..8a8e841 100644
+--- a/net/sunrpc/netns.h
++++ b/net/sunrpc/netns.h
+@@ -14,6 +14,7 @@ struct sunrpc_net {
+ 	struct cache_detail *rsi_cache;
+ 
+ 	struct super_block *pipefs_sb;
++	struct rpc_pipe *gssd_dummy;
+ 	struct mutex pipefs_sb_lock;
+ 
+ 	struct list_head all_clients;
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index d0d14a0..34efdbf 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -38,7 +38,7 @@
+ #define NET_NAME(net)	((net == &init_net) ? " (init_net)" : "")
+ 
+ static struct file_system_type rpc_pipe_fs_type;
+-
++static const struct rpc_pipe_ops gssd_dummy_pipe_ops;
+ 
+ static struct kmem_cache *rpc_inode_cachep __read_mostly;
+ 
+@@ -1168,6 +1168,7 @@ enum {
+ 	RPCAUTH_nfsd4_cb,
+ 	RPCAUTH_cache,
+ 	RPCAUTH_nfsd,
++	RPCAUTH_gssd,
+ 	RPCAUTH_RootEOF
+ };
+ 
+@@ -1204,6 +1205,10 @@ static const struct rpc_filelist files[] = {
+ 		.name = "nfsd",
+ 		.mode = S_IFDIR | S_IRUGO | S_IXUGO,
+ 	},
++	[RPCAUTH_gssd] = {
++		.name = "gssd",
++		.mode = S_IFDIR | S_IRUGO | S_IXUGO,
++	},
+ };
+ 
+ /*
+@@ -1217,13 +1222,25 @@ struct dentry *rpc_d_lookup_sb(const struct super_block *sb,
+ }
+ EXPORT_SYMBOL_GPL(rpc_d_lookup_sb);
+ 
+-void rpc_pipefs_init_net(struct net *net)
++int rpc_pipefs_init_net(struct net *net)
+ {
+ 	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
+ 
++	sn->gssd_dummy = rpc_mkpipe_data(&gssd_dummy_pipe_ops, 0);
++	if (IS_ERR(sn->gssd_dummy))
++		return PTR_ERR(sn->gssd_dummy);
++
+ 	mutex_init(&sn->pipefs_sb_lock);
+ 	sn->gssd_running = 1;
+ 	sn->pipe_version = -1;
++	return 0;
++}
++
++void rpc_pipefs_exit_net(struct net *net)
++{
++	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
++
++	rpc_destroy_pipe_data(sn->gssd_dummy);
+ }
+ 
+ /*
+@@ -1253,11 +1270,73 @@ void rpc_put_sb_net(const struct net *net)
+ }
+ EXPORT_SYMBOL_GPL(rpc_put_sb_net);
+ 
++static const struct rpc_filelist gssd_dummy_clnt_dir[] = {
++	[0] = {
++		.name = "clntXX",
++		.mode = S_IFDIR | S_IRUGO | S_IXUGO,
++	},
++};
++
++static ssize_t
++dummy_downcall(struct file *filp, const char __user *src, size_t len)
++{
++	return -EINVAL;
++}
++
++static const struct rpc_pipe_ops gssd_dummy_pipe_ops = {
++	.upcall		= rpc_pipe_generic_upcall,
++	.downcall	= dummy_downcall,
++};
++
++/**
++ * rpc_gssd_dummy_populate - create a dummy gssd pipe
++ * @root:	root of the rpc_pipefs filesystem
++ * @pipe_data:	pipe data created when netns is initialized
++ *
++ * Create a dummy set of directories and a pipe that gssd can hold open to
++ * indicate that it is up and running.
++ */
++static struct dentry *
++rpc_gssd_dummy_populate(struct dentry *root, struct rpc_pipe *pipe_data)
++{
++	int ret = 0;
++	struct dentry *gssd_dentry;
++	struct dentry *clnt_dentry = NULL;
++	struct dentry *pipe_dentry = NULL;
++	struct qstr q = QSTR_INIT(files[RPCAUTH_gssd].name,
++				  strlen(files[RPCAUTH_gssd].name));
++
++	/* We should never get this far if "gssd" doesn't exist */
++	gssd_dentry = d_hash_and_lookup(root, &q);
++	if (!gssd_dentry)
++		return ERR_PTR(-ENOENT);
++
++	ret = rpc_populate(gssd_dentry, gssd_dummy_clnt_dir, 0, 1, NULL);
++	if (ret) {
++		pipe_dentry = ERR_PTR(ret);
++		goto out;
++	}
++
++	q.name = gssd_dummy_clnt_dir[0].name;
++	q.len = strlen(gssd_dummy_clnt_dir[0].name);
++	clnt_dentry = d_hash_and_lookup(gssd_dentry, &q);
++	if (!clnt_dentry) {
++		pipe_dentry = ERR_PTR(-ENOENT);
++		goto out;
++	}
++
++	pipe_dentry = rpc_mkpipe_dentry(clnt_dentry, "gssd", NULL, pipe_data);
++out:
++	dput(clnt_dentry);
++	dput(gssd_dentry);
++	return pipe_dentry;
++}
++
+ static int
+ rpc_fill_super(struct super_block *sb, void *data, int silent)
+ {
+ 	struct inode *inode;
+-	struct dentry *root;
++	struct dentry *root, *gssd_dentry;
+ 	struct net *net = data;
+ 	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
+ 	int err;
+@@ -1275,6 +1354,13 @@ rpc_fill_super(struct super_block *sb, void *data, int silent)
+ 		return -ENOMEM;
+ 	if (rpc_populate(root, files, RPCAUTH_lockd, RPCAUTH_RootEOF, NULL))
+ 		return -ENOMEM;
++
++	gssd_dentry = rpc_gssd_dummy_populate(root, sn->gssd_dummy);
++	if (IS_ERR(gssd_dentry)) {
++		__rpc_depopulate(root, files, RPCAUTH_lockd, RPCAUTH_RootEOF);
++		return PTR_ERR(gssd_dentry);
++	}
++
+ 	dprintk("RPC:       sending pipefs MOUNT notification for net %p%s\n",
+ 		net, NET_NAME(net));
+ 	mutex_lock(&sn->pipefs_sb_lock);
+@@ -1289,6 +1375,7 @@ rpc_fill_super(struct super_block *sb, void *data, int silent)
+ 	return 0;
+ 
+ err_depopulate:
++	dput(gssd_dentry);
+ 	blocking_notifier_call_chain(&rpc_pipefs_notifier_list,
+ 					   RPC_PIPEFS_UMOUNT,
+ 					   sb);
+diff --git a/net/sunrpc/sunrpc_syms.c b/net/sunrpc/sunrpc_syms.c
+index 3d6498a..cd30120 100644
+--- a/net/sunrpc/sunrpc_syms.c
++++ b/net/sunrpc/sunrpc_syms.c
+@@ -44,12 +44,17 @@ static __net_init int sunrpc_init_net(struct net *net)
+ 	if (err)
+ 		goto err_unixgid;
+ 
+-	rpc_pipefs_init_net(net);
++	err = rpc_pipefs_init_net(net);
++	if (err)
++		goto err_pipefs;
++
+ 	INIT_LIST_HEAD(&sn->all_clients);
+ 	spin_lock_init(&sn->rpc_client_lock);
+ 	spin_lock_init(&sn->rpcb_clnt_lock);
+ 	return 0;
+ 
++err_pipefs:
++	unix_gid_cache_destroy(net);
+ err_unixgid:
+ 	ip_map_cache_destroy(net);
+ err_ipmap:
+@@ -60,6 +65,7 @@ err_proc:
+ 
+ static __net_exit void sunrpc_exit_net(struct net *net)
+ {
++	rpc_pipefs_exit_net(net);
+ 	unix_gid_cache_destroy(net);
+ 	ip_map_cache_destroy(net);
+ 	rpc_proc_exit(net);
 -- 
-Trond Myklebust
-Linux NFS client maintainer
+1.8.3.1
 
-NetApp
-Trond.Myklebust+AEA-netapp.com
-www.netapp.com
