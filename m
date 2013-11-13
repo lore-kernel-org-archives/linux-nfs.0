@@ -1,57 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yh0-f41.google.com ([209.85.213.41]:34560 "EHLO
-	mail-yh0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754765Ab3KNQf4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Nov 2013 11:35:56 -0500
-Received: by mail-yh0-f41.google.com with SMTP id f11so1143064yha.0
-        for <linux-nfs@vger.kernel.org>; Thu, 14 Nov 2013 08:35:55 -0800 (PST)
-Subject: [PATCH] nfs(5): Document the "migration" mount option
-To: steved@redhat.com
-From: Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-nfs@vger.kernel.org
-Date: Thu, 14 Nov 2013 11:35:53 -0500
-Message-ID: <20131114163552.19821.30799.stgit@manray.1015granger.net>
+Received: from mx11.netapp.com ([216.240.18.76]:6277 "EHLO mx11.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750900Ab3KMUsF convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Nov 2013 15:48:05 -0500
+From: Weston Andros Adamson <dros@netapp.com>
+To: Jeff Layton <jlayton@redhat.com>
+CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        linux-nfs list <linux-nfs@vger.kernel.org>,
+        Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH v2] nfs: don't retry detect_trunking with RPC_AUTH_UNIX
+ more than once
+Date: Wed, 13 Nov 2013 20:48:04 +0000
+Message-ID: <EBCF8527-3031-4BFE-9559-9CAF50C4633D@netapp.com>
+References: <1384351701-29572-1-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1384351701-29572-1-git-send-email-jlayton@redhat.com>
+Content-Type: text/plain; charset="Windows-1252"
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Support for NFSv4 migration was merged in 3.13.
+I tested v2 and everything looks good.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
- utils/mount/nfs.man |   20 ++++++++++++++++++++
- 1 file changed, 20 insertions(+)
+Also, it seems like I’m no longer able to reproduce the "NFS: nfs4_discover_server_trunking unhandled error -512. Exiting with error EIO” dmesg.
 
-diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
-index 2a42b93..8535aec 100644
---- a/utils/mount/nfs.man
-+++ b/utils/mount/nfs.man
-@@ -855,6 +855,26 @@ In the presence of multiple client network interfaces,
- special routing policies,
- or atypical network topologies,
- the exact address to use for callbacks may be nontrivial to determine.
-+.TP 1.5i
-+.BR migration " / " nomigration
-+Selects whether the client uses an identification string that is compatible
-+with NFSv4 Transparent State Migration (TSM).
-+If the mounted server supports NFSv4 migration with TSM, specify the
-+.B migration
-+option.
-+.IP
-+Some server features misbehave in the face of a migration-compatible
-+identification string.
-+The
-+.B nomigration
-+option retains the use of a traditional client indentification string
-+which is compatible with legacy NFS servers.
-+This is also the behavior if neither option is specified.
-+A client's open and lock state cannot be migrated transparently
-+when it identifies itself via a traditional identification string.
-+.IP
-+This mount option has no effect with NFSv4 minor versions newer than zero,
-+which always use TSM-compatible client identification strings.
- .SH nfs4 FILE SYSTEM TYPE
- The
- .BR nfs4
+-dros
+
+On Nov 13, 2013, at 9:08 AM, Jeff Layton <jlayton@redhat.com> wrote:
+
+> Currently, when we try to mount and get back NFS4ERR_CLID_IN_USE or
+> NFS4ERR_WRONGSEC, we create a new rpc_clnt and then try the call again.
+> There is no guarantee that doing so will work however, so we can end up
+> retrying the call in an infinite loop.
+> 
+> Worse yet, we create the new client using rpc_clone_client_set_auth,
+> which creates the new client as a child of the old one. Thus, we can end
+> up with a *very* long lineage of rpc_clnts. When we go to put all of the
+> references to them, we can end up with a long call chain that can smash
+> the stack as each rpc_free_client() call can recurse back into itself.
+> 
+> This patch fixes this by simply ensuring that the SETCLIENTID call will
+> only be retried in this situation if the last attempt did not use
+> RPC_AUTH_UNIX.
+> 
+> Note too that with this change, we don't need the (i > 2) check in the
+> -EACCES case since we now have a more reliable test as to whether we
+> should reattempt.
+> 
+> Cc: stable@vger.kernel.org # v3.10+
+> Cc: Chuck Lever <chuck.lever@oracle.com>
+> Tested-by/Acked-by: Weston Andros Adamson <dros@netapp.com>
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+> fs/nfs/nfs4state.c | 7 ++++++-
+> 1 file changed, 6 insertions(+), 1 deletion(-)
+> 
+> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+> index c8e729d..6f04706 100644
+> --- a/fs/nfs/nfs4state.c
+> +++ b/fs/nfs/nfs4state.c
+> @@ -2093,10 +2093,15 @@ again:
+> 			nfs4_root_machine_cred(clp);
+> 			goto again;
+> 		}
+> -		if (i > 2)
+> +		if (clnt->cl_auth->au_flavor == RPC_AUTH_UNIX)
+> 			break;
+> 	case -NFS4ERR_CLID_INUSE:
+> 	case -NFS4ERR_WRONGSEC:
+> +		/* No point in retrying if we already used RPC_AUTH_UNIX */
+> +		if (clnt->cl_auth->au_flavor == RPC_AUTH_UNIX) {
+> +			status = -EPERM;
+> +			break;
+> +		}
+> 		clnt = rpc_clone_client_set_auth(clnt, RPC_AUTH_UNIX);
+> 		if (IS_ERR(clnt)) {
+> 			status = PTR_ERR(clnt);
+> -- 
+> 1.8.3.1
+> 
 
