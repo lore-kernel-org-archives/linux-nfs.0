@@ -1,51 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:20534 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752768Ab3KDQlU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 4 Nov 2013 11:41:20 -0500
-Message-ID: <5277CE23.6010207@netapp.com>
-Date: Mon, 4 Nov 2013 11:41:07 -0500
-From: Anna Schumaker <bjschuma@netapp.com>
+Received: from mail-ve0-f173.google.com ([209.85.128.173]:60267 "EHLO
+	mail-ve0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753533Ab3KMRCU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Nov 2013 12:02:20 -0500
+Received: by mail-ve0-f173.google.com with SMTP id c14so530288vea.32
+        for <linux-nfs@vger.kernel.org>; Wed, 13 Nov 2013 09:02:19 -0800 (PST)
 MIME-Version: 1.0
-To: Christoph Hellwig <hch@infradead.org>
-CC: <bfields@fieldses.org>, <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 3/4] NFSD: Add WRITE_PLUS support for hole punches
-References: <1382972247-1108-1-git-send-email-bjschuma@netapp.com> <1382972247-1108-4-git-send-email-bjschuma@netapp.com> <20131102135238.GB18961@infradead.org>
-In-Reply-To: <20131102135238.GB18961@infradead.org>
-Content-Type: text/plain; charset="ISO-8859-1"
+In-Reply-To: <20131113164959.GL28033@fieldses.org>
+References: <1384283048-7699-1-git-send-email-bjschuma@netapp.com>
+	<20131112194529.GA26341@fieldses.org>
+	<52828767.3030909@netapp.com>
+	<20131112195911.GA28033@fieldses.org>
+	<5283A24D.4010309@netapp.com>
+	<5283A3B7.8080405@netapp.com>
+	<20131113161527.GA10046@infradead.org>
+	<20131113164959.GL28033@fieldses.org>
+Date: Wed, 13 Nov 2013 18:02:19 +0100
+Message-ID: <CAEEMktOL2zdgUsH5AvcQthEL5rvp3NWMi_=aX75LAb8YuHdv4Q@mail.gmail.com>
+Subject: Re: [PATCH v2 0/3] NFSD: Implement SEEK
+From: Joshuah Hurst <joshhurst@gmail.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Christoph Hellwig <hch@infradead.org>,
+        Anna Schumaker <bjschuma@netapp.com>, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/02/2013 09:52 AM, Christoph Hellwig wrote:
->> +__be32 nfsd4_vfs_fallocate(struct file *file, bool allocated, loff_t offset, loff_t len)
->> +{
->> +	int error, mode = 0;
->> +
->> +	if (allocated == false)
->> +		mode = FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE;
->> +
->> +	error = do_fallocate(file, mode, offset, len);
->> +	if (error == 0)
->> +		error = vfs_fsync_range(file, offset, offset + len, 0);
-> 
-> What are you trying to do with the fsync_range here?  If it's just to
-> make sure the metadata operation is stable on disk please use commit_metadata()
-> from fs/nfsd/vfs.c.  As there's no data involved here I can't really see
-> what else it would be for.
+On Wed, Nov 13, 2013 at 5:49 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> On Wed, Nov 13, 2013 at 08:15:27AM -0800, Christoph Hellwig wrote:
+>> On Wed, Nov 13, 2013 at 11:07:19AM -0500, Anna Schumaker wrote:
+>> > I'm thinking something like this:
+>>
+>> Given that the whole sparse file support seems more experimental than
+>> the security labels requiring the former for the latter seems a bit odd.
+>>
+>> I have to admit that I don't really know how to deal with those changes,
+>> on the one hand I'd love to expose it as soon as possible, on the other
+>> hand the spec has so many higher level flaws related to their concepts
+>> of sparse files that I'd feel really bad about locking even parts of it
+>> in at the moment.
+>
+> This isn't a candidate for 3.13, and SEEK didn't look like the most
+> problematic bit, so with a couple more months I'm hoping we'll be more
+> confident about the protocol?
+>
+> Actually now that I look, I forget: even if security labels are built
+> in, 4.2 is still off by default at runtime for now.
+>
+> We could add another interface to toggle individual features at run time
+> but I think that's definitely too complicated.
+>
+> Maybe:
+>
+>         - keep 4.2 off by default a runtime for now.
+>         - keep each feature under its individual config option:
+>           NFSD_V4_SECURITY_LABEL, NFSD_V4_SEEK, NFSD_V4_SEND_PONIES....
+>         - when an individual feature matures, ditch its config option
+>           and build it unconditionally.  We're always getting little
+>           build bugs due to untested build options so I'd rather not
+>           keep them around indefinitely.
+>         - once 4.2 has at least one feature that we think is mature
+>           enough, switch the runtime 4.2 default to on and depend on
+>           scary warnings on the remaining build options to keep people
+>           from exposing them in production.
 
-My understanding is that if I call fallocate with a mode of "0" it will write a range of 0s to the file.  I'll move the fsync() call here and only do it if the client doesn't ask for NFS_UNSTABLE.
+NFSD_V4_SEND_PONIES is mandatory for 3.13!!!!!
 
-> 
-> 
-> Also the allocated flag doesn't make any sense for people not taking the
-> same drugs as the spec authors, please add a comment what it means.
+:)
 
-Sure
-
-> 
-> Btw, how did anyone come up with the name WRITE PLUS for something that
-> doesn't actually involve any writes?
-> 
-
-Write plus does write more than just holes, I just didn't implement that part of the spec.  I'm implementing the NFS4_CONTENT_HOLE arm, but NFS4_CONTENT_DATA is intended to eventually replace the WRITE operation.
-
+Josh
