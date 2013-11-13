@@ -1,84 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:23414 "EHLO mx1.redhat.com"
+Received: from plane.gmane.org ([80.91.229.3]:33751 "EHLO plane.gmane.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755635Ab3KVVjf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 22 Nov 2013 16:39:35 -0500
-Subject: Re: [PATCH Version 2 0/3] GSSD: Use gss-ctx keys and gsskeyd to
- sync Kerberos credentials and kernel gss_contexts.
-From: Simo Sorce <simo@redhat.com>
-To: Trond Myklebust <trondmy@gmail.com>
-Cc: Steve Dickson <SteveD@redhat.com>,
-        Andy Adamson <William.Adamson@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-In-Reply-To: <3ABF556D-FA65-4A9E-9880-5AA5ADF80F55@gmail.com>
-References: <1382451757-3032-1-git-send-email-andros@netapp.com>
-	 <1382454148.9794.72.camel@willson.li.ssimo.org>
-	 <A8A66580-CD6F-4141-AE93-B1DD025BFD7A@netapp.com>
-	 <1382458162.9794.85.camel@willson.li.ssimo.org>
-	 <9C15298B-8915-46E2-85E1-5098F1A12832@netapp.com>
-	 <1382462720.9794.131.camel@willson.li.ssimo.org>
-	 <096F13FC-A99E-4C19-ACCA-01C244D7420F@netapp.com>
-	 <1384980587.17044.49.camel@willson.li.ssimo.org>
-	 <528E0C8A.9070608@RedHat.com>
-	 <1385147500.3912.68.camel@willson.li.ssimo.org>
-	 <3ABF556D-FA65-4A9E-9880-5AA5ADF80F55@gmail.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Fri, 22 Nov 2013 16:39:31 -0500
-Message-ID: <1385156371.22025.5.camel@willson.li.ssimo.org>
+	id S1756241Ab3KMCaJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 Nov 2013 21:30:09 -0500
+Received: from list by plane.gmane.org with local (Exim 4.69)
+	(envelope-from <glN-linux-nfs@m.gmane.org>)
+	id 1VgQDU-0001Qi-Lo
+	for linux-nfs@vger.kernel.org; Wed, 13 Nov 2013 03:30:04 +0100
+Received: from static-50-46-232-229.evrt.wa.frontiernet.net ([static-50-46-232-229.evrt.wa.frontiernet.net])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Wed, 13 Nov 2013 03:30:04 +0100
+Received: from harry by static-50-46-232-229.evrt.wa.frontiernet.net with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Wed, 13 Nov 2013 03:30:04 +0100
+To: linux-nfs@vger.kernel.org
+From: Harry Edmon <harry@uw.edu>
+Subject: Re: NFS over RDMA stops working for data larger than 812 Bytes
+Date: Wed, 13 Nov 2013 02:18:35 +0000 (UTC)
+Message-ID: <loom.20131113T031545-225@post.gmane.org>
+References: <527CECD8.2000208@ims.co.at> <527CF1CF.3070101@ims.co.at>
 Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2013-11-22 at 16:28 -0500, Trond Myklebust wrote:
-> On Nov 22, 2013, at 14:11, Simo Sorce <simo@redhat.com> wrote:
+Klemens Senn <klemens.senn@...> writes:
+
 > 
-> > On Thu, 2013-11-21 at 08:37 -0500, Steve Dickson wrote:
-> >> 
-> >> On 20/11/13 15:49, Simo Sorce wrote:
-> >>>> I think Solution 3: [nfslog/nfslogout interfaces invoked from PAM or
-> >>>>> other login system facility] is a good way to go.  Note that a PAM
-> >>>>> based solution where in the PAM would get us most of the way towards
-> >>>>> providing users with a way to login and logout of NFS kerberized
-> >>>>> shares.
-> >>>>> 
-> >>>>> Comments on an NFS PAM that will destroy GSS context for a UID upon
-> >>>>> logout?
-> >>> I prefer 3 too, let it to the login system (whether PAM based or other)
-> >>> to determine when it is time to destroy credentials, that's the only
-> >>> component that have a chance of guessing right.
+> Hi,
 > 
-> Really? How do you deal with backgrounded tasks?
-
-for  background tasks you still need to keep your kerberos credentials
-around somehow, if you are doing that then the kernel will be able to
-get a new session key if needed.
-If you instruct your system to destroy everything then background tasks
-will fail. In any case it needs to be a user space decision, the kernel
-can't guess.
-
-> >>> Of course you could also provide a user utility to force a purge.
-> >>> 
-> >> +1 for me on this options as well... 
-> >> 
-> >> But how is it known when somebody logs out? Is that PAM-able as well?
-> > 
-> > I would say "login process" more than pam, but the basic idea is the
-> > same, a user space program that knows when the user is logging out for
-> > good and is privileged enough to go an tell the kernel to nuke creds.
+> I started setting up NFS over RDMA on a OpenSUSE 12.3 machine using the
+> 3.7.10-1.16-default kernel.
+> Mounting the NFS share works and getting a file with 812 Bytes succeeds.
+> Reading 813 Bytes raises a Input/output error.
 > 
-> What’s such a process going to use as an indicator that the user is “logging out for good”?
+> The export on the server side is done with
+> /data
+> 
+172.16.100.0/24(rw,wdelay,crossmnt,insecure,no_root_squash,no_subtree_check,
+fsid=0,mountpoint)
+> 
+> Following command is used for mounting the NFSv4 share:
+>   mount -t nfs -o port=20049,rdma,vers=4.0,timeo=900 172.16.100.2:/ /mnt/
+> 
+> Testing the client side with older kernels stated that the mount is
+> working properly with the 3.4.67 kernel. I continued testing with the
+> 3.10.17 kernel and enabled the debug level and noticed the message
+>   "server cheating in read reply: count 813 > recvd 0"
 
-If you do logout from a graphical login manager that's a pretty good
-indication I would say. Whether that will work for all use cases is
-debatable of course, I am sure cases can be found where that will not
-the right option.
 
-On a system where it is too difficult to properly assess automatically
-when a user is logged out for good the only option is to disable any
-automatism and let the user call a cmdline tool.
+I am seeing the same thing on an Debian 7.2 RDMA client running the 3.12 
+kernel.
 
-Simo.
-
--- 
-Simo Sorce * Red Hat, Inc * New York
 
