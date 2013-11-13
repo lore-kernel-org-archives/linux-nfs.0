@@ -1,195 +1,113 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:58718 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:16519 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756350Ab3KHQJS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 8 Nov 2013 11:09:18 -0500
-Message-ID: <527D0CE6.2020401@RedHat.com>
-Date: Fri, 08 Nov 2013 11:10:14 -0500
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Jeff Layton <jlayton@redhat.com>
-CC: Chuck Lever <chuck.lever@oracle.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] Adding the nfs4_use_min_auth module parameter
-References: <1383851364-8370-1-git-send-email-steved@redhat.com>	<A8E8F2C4-8CB7-434E-8520-B2B53F0582D9@oracle.com>	<527C07B4.800@RedHat.com>	<44CA89EA-8B5E-4B83-A622-78A78F760FF1@oracle.com>	<527CDBFC.3070903@RedHat.com>	<20131108082202.4032f1a2@tlielax.poochiereds.net>	<527CFC72.2030907@RedHat.com> <20131108101232.10d49851@tlielax.poochiereds.net>
-In-Reply-To: <20131108101232.10d49851@tlielax.poochiereds.net>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1759358Ab3KMPcz convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Nov 2013 10:32:55 -0500
+Date: Wed, 13 Nov 2013 10:35:10 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Neil Brown <neilb@suse.de>, Steve Dickson <steved@redhat.com>
+Subject: Re: [PATCH v2 3/3] nfs: check if gssd is running before attempting
+ to use krb5i auth in SETCLIENTID call
+Message-ID: <20131113103510.6f89a998@corrin.poochiereds.net>
+In-Reply-To: <4226B463-0DB1-4847-9C30-252E67B46859@oracle.com>
+References: <1384353053-30002-1-git-send-email-jlayton@redhat.com>
+	<1384353053-30002-4-git-send-email-jlayton@redhat.com>
+	<DF1DECB2-B736-4B70-87DC-52CD695C44F3@oracle.com>
+	<1CFBCCB6-37CE-4C49-91EE-0FB33D11B57A@netapp.com>
+	<4226B463-0DB1-4847-9C30-252E67B46859@oracle.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 08/11/13 10:12, Jeff Layton wrote:
-> On Fri, 08 Nov 2013 10:00:02 -0500
-> Steve Dickson <SteveD@redhat.com> wrote:
-> 
->>
->>
->> On 08/11/13 08:22, Jeff Layton wrote:
->>> On Fri, 08 Nov 2013 07:41:32 -0500
->>> Steve Dickson <SteveD@redhat.com> wrote:
->>>
->>>>
->>>>
->>>> On 07/11/13 18:05, Chuck Lever wrote:
->>>>>
->>>>> On Nov 7, 2013, at 1:35 PM, Steve Dickson <SteveD@redhat.com> wrote:
->>>>>
->>>>>> Hey mrchuck... 
->>>>>>
->>>>>> On 07/11/13 14:25, Chuck Lever wrote:
->>>>>>> Hi Steve-
->>>>>>>
->>>>>>> On Nov 7, 2013, at 11:09 AM, Steve Dickson <steved@redhat.com> wrote:
->>>>>>>
->>>>>>>> This new module parameter makes the v4 client
->>>>>>>> use the minimal authentication flavor (AUTH_UNIX)
->>>>>>>> when establishing NFSV4 state and doing the
->>>>>>>> pseudoroot lookup
->>>>>>>
->>>>>>> The patch description doesn't say, but is this change to work 
->>>>>>> around the 15 second GSSD upcall timeout? 
->>>>>> Yes. A 15 second delay on every mount due to security that
->>>>>> nobody is requesting is just not good.. IMHO..
->>>>>
->>>>> One thing we haven't discussed is reducing the upcall timeout to 5 seconds or less, 
->>>>> as a form of immediate relief.  15 seconds is arbitrary, and is onerous even when 
->>>>> you expect the mount to work (ie why would it be good for any properly configured 
->>>>> environment to take 15 seconds to establish a GSS context?).
->>>>>
->>>>> In other words, there are still cases where users wait 15 seconds unnecessarily, 
->>>>> and not because of the use of krb5i for lease management.  Aren't those of concern?
->>>> No. I think the concern here, at least my concern, is the lack of management.
->>>> We are forcing admins to use krb5i in lease management when its not necessary
->>>> and there is no way to turn it off.
->>>>   
->>>
->>> I don't think that's really the case. The idea was to have the client
->>> attempt to use krb5i if it's available, and then to fall back to
->>> AUTH_SYS if it isn't. This would be *absolutely* no big deal if the
->>> GSSAPI upcall succeeded or failed immediately instead of requiring this
->>> timeout when the daemon isn't running.
->> What server makes krb5i available today in state setup and pseudoroot lookups?
->>
-> 
-> That I don't know...sorry...
-Then what is the justification to take all these extra steps
-there they going to fail %100 of the time??
-
- 
-> 
->>>
->>>>>
->>>>>> Also running
->>>>>> a security daemon for non-secure mounts just seems wrong to me.
->>>>>
->>>>> It seems wrong to me to keep auth_rpcgss loaded if no mounts use Kerberos security.  
->>>>> What's the difference between that and running gssd all the time?
->>>> You can say thing about %99 of all the modules load in a Fedora kernel today.
->>>> lsmod | wc -l show there is 107 modules load on a f19 system. Do you think
->>>> all those modules are used? Of course not, but they are not spewing 25
->>>> log messages per mount or sucking up CPU cycles unnecessarily. 
->>>>
->>>
->>> rpc.gssd spends most of its time sleeping, unless there is
->>> nfs mount or "real" gssapi activity. CPU cycles shouldn't be an issue.
->>> The RSS for the process on my 64-bit box is ~2k so I wouldn't even be
->>> concerned about memory usage. For comparison, we don't worry much about
->>> running rpc.statd these days and it's of similar size and duty cycle.
->> rpc.statd is needed by the V3 protocol to support file locking which
->> is a bit more needed that a rpc.gssd to do unsecured mounts.
->>
-> 
-> Right, but we've defaulted to v4 for *years* now. Most people run statd
-> and don't actually use it. No one seems to get bent out of shape about
-> that though.
-So you using that justify another needless daemon? 
+On Wed, 13 Nov 2013 10:14:30 -0500
+Chuck Lever <chuck.lever@oracle.com> wrote:
 
 > 
->>>
->>> The log messages are another matter. rpc.gssd is just too chatty by
->>> default. That's fixable, but it would mean that we'd need to tell
->>> people to run it in verbose mode when tracking down problems instead of
->>> assuming that all of those messages would go to the logs. That seems
->>> like a reasonable thing to do anyway. Most people don't care about
->>> rpc.gssd log messages once they have kerberized NFS working.
->>
->> So we should remove error and warning messages that in the
->> pass help us debug very difficult code so we can run rpc.gssd
->> just for normal unsecured mounts? 
->>
+> On Nov 13, 2013, at 9:48 AM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
 > 
-> Yes. Because in the case where you don't have a keytab or a credcache,
-> failure is expected. There's no need to log messages due to those sorts
-> of problems. Once you have it working correctly, there's just no need to
-> keep logging that junk. Most of those log messages should only be
-> enabled when rpc.gssd is run with -v(vvv). Admins can (and often do)
-> run rpc.gssd in foreground with those flags while they sort through the
-> setup.
-When there is no keytab or credcache there should be to start rpc.gssd.
-Non-secure mount should not depend on the existence of a user level 
-daemon... When has ever been the case a NFS mount was dependent on
-user level daemon? 
+> > 
+> > On Nov 13, 2013, at 9:38, Chuck Lever <chuck.lever@oracle.com> wrote:
+> > 
+> >> 
+> >> On Nov 13, 2013, at 9:30 AM, Jeff Layton <jlayton@redhat.com> wrote:
+> >> 
+> >>> Currently, the client will attempt to use krb5i in the SETCLIENTID call
+> >>> even if rpc.gssd is running. If that fails, it'll then fall back to
+> >>> RPC_AUTH_UNIX. This introduced a delay when mounting if rpc.gssd isn't
+> >>> running, and causes warning messages to pop up in the ring buffer.
+> >>> 
+> >>> Check to see if rpc.gssd is running before even attempting to use krb5i
+> >>> auth, and just silently skip trying to do so if it isn't.
+> >>> 
+> >>> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> >>> ---
+> >>> 
+> >>> diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+> >>> index b4a160a..988aebf 100644
+> >>> --- a/fs/nfs/nfs4client.c
+> >>> +++ b/fs/nfs/nfs4client.c
+> >>> @@ -8,6 +8,7 @@
+> >>> #include <linux/nfs_mount.h>
+> >>> #include <linux/sunrpc/addr.h>
+> >>> #include <linux/sunrpc/auth.h>
+> >>> +#include <linux/sunrpc/auth_gss.h>
+> >>> #include <linux/sunrpc/xprt.h>
+> >>> #include <linux/sunrpc/bc_xprt.h>
+> >>> #include "internal.h"
+> >>> @@ -351,7 +352,7 @@ static int nfs4_init_client_minor_version(struct nfs_client *clp)
+> >>> */
+> >>> struct nfs_client *nfs4_init_client(struct nfs_client *clp,
+> >>> 				    const struct rpc_timeout *timeparms,
+> >>> -				    const char *ip_addr)
+> >>> +				    const char *ip_addr, struct net *net)
+> > 
+> > Why the ‘struct net’ argument? clp->cl_net should already be initialized here.
+> > 
+> >>> {
+> >>> 	char buf[INET6_ADDRSTRLEN + 1];
+> >>> 	struct nfs_client *old;
+> >>> @@ -370,7 +371,10 @@ struct nfs_client *nfs4_init_client(struct nfs_client *clp,
+> >>> 		__set_bit(NFS_CS_INFINITE_SLOTS, &clp->cl_flags);
+> >>> 	__set_bit(NFS_CS_DISCRTRY, &clp->cl_flags);
+> >>> 	__set_bit(NFS_CS_NO_RETRANS_TIMEOUT, &clp->cl_flags);
+> >>> -	error = nfs_create_rpc_client(clp, timeparms, RPC_AUTH_GSS_KRB5I);
+> >>> +
+> >>> +	error = -EINVAL;
+> >>> +	if (gssd_running(net))
+> >>> +		error = nfs_create_rpc_client(clp, timeparms,RPC_AUTH_GSS_KRB5I);
+> >>> 	if (error == -EINVAL)
+> >>> 		error = nfs_create_rpc_client(clp, timeparms, RPC_AUTH_UNIX);
+> >> 
+> >> This feels like a layering violation.  Why wouldn't you put a gssd_running check in gss_create(), for example, and have rpcauth_create() return -EINVAL?
+> >> 
+> > 
+> > It would be better to put it in the upcall.
+> 
+> Waiting until the upcall has its benefits.  At that point, GSSD (if it is running) can report other errors, such as that there is no material to form a machine credential.
+> 
+> My point to Jeff is that, aside from architectural aesthetics, direct calls from RPC consumers to the GSS layer causes a module dependency problem.  The right way to plumb this is to create an RPC client API that invokes gssd_running() but only if auth_rpcgss.ko is loaded.
+> 
+> However, I don't see why the existing RPC client APIs shouldn't just fail where appropriate if GSSD isn't available.  Is there a strong need to expose gssd_running() as a separate API?
+> 
 
+One of the complaints about this whole "use krb5i by default" change is
+that we now get the warnings in the ring buffer when gssd isn't
+running. That's a good thing if krb5 was explicitly requested, but is
+useless and confusing if the user just wants to use AUTH_SYS.
 
+If we wait until gss_create, it's too late to know what the "intent"
+was. We'll either fire the warning inappropriately like we do now, or
+miss it altogether when we actually should have printed it.
 
-> 
->> My apologies... but that makes absolutely no sense to me. 
->>
->> Let talk about scalability... Does anybody have idea what
->> this needless upcall will cost on a client that does 
->> a very large number of mounts all at once? 
->>
-> 
-> Virtually nothing -- a couple of pipe reads/writes.
-Until rpc.gssd dies and everything comes to a halt... ;-)
+So, that was the main reason for the layering violation here. I do
+however get your point on the module dependency, but IIUC...don't we get
+that anyway? Now that you try using krb5i by default for SETCLIENTID,
+don't we end up loading auth_gss.ko anyway on every nfsv4 mount
+regardless?
 
-> 
->> Please let me reiterate my point. The new securing of
->> SETCLIENTIDs and pseudoroot lookups is good! I have
->> no problem with the actual technology. What I'm having
->> a problem with is I can not manage this new technology.
->>
->> Could you image the push back there would be if, 
->> back in the day when secure mounts became available, 
->> we required *everyone* to use secure mounts. The 
->> only way you could use NFS  was through a secure mount.
->>
->> That's basically what we are doing today! We are requiring
->> every mount to try a secure flavor that fails %100 time
->> because there is no server support for this technology. 
->>
->> Again its not the technology, its the management of the
->> technology that this new module parameter address. All
->> I'm looking for is switch that enables or disables 
->> this new technology... 
->>
-> 
-> No one is requiring anyone to do anything. IMO, running rpc.gssd by
-> default is simply a reasonable workaround for this long delay in
-> mounting until we have a real solution for this problem.
-The client code is hard code to try security flavor on every
-mount. There is no way around it. That is I mean by requiring
-all mounts to use security flavor.
-> 
-> I'd like to see us transition to a more sensible upcall in the future
-> that doesn't require this timeout, but we're not there yet. Once we
-> have that, we won't need to run rpc.gssd at all anymore.
-So we all agree, this code needs work... So why not have 
-a way to disable the trying of security flavor until
-its ready for prime time??? We done that in the past??
-
-Or may this... Disable it until there is server support!
-What is wrong with that??? 
-
-steved.
-
-> 
-> FWIW, I'm perfectly happy do the work on such an upcall. I think
-> call_usermodehelper (or maybe keys API) makes a lot of sense for this.
-> The only real problem I can see with doing this today is the damnable
-> namespaces. The nfs client is currently net-namespacified, but running
-> something like call_usermodehelper sort of requires that you switch the
-> mnt namespace too.
-> 
+-- 
+Jeff Layton <jlayton@redhat.com>
