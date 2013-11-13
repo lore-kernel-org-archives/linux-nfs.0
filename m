@@ -1,82 +1,133 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e39.co.us.ibm.com ([32.97.110.160]:36850 "EHLO
-	e39.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756722Ab3KLWo0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Nov 2013 17:44:26 -0500
-Received: from /spool/local
-	by e39.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <eshel@us.ibm.com>;
-	Tue, 12 Nov 2013 15:44:26 -0700
-In-Reply-To: <5282929E.60207@gmail.com>
-References: <1384283048-7699-1-git-send-email-bjschuma@netapp.com> <5282929E.60207@gmail.com>
-To: Anna Schumaker <schumaker.anna@gmail.com>
-Cc: bfields@fieldses.org, Anna Schumaker <bjschuma@netapp.com>,
-        linux-nfs@vger.kernel.org, linux-nfs-owner@vger.kernel.org
-MIME-Version: 1.0
-Subject: Re: [PATCH v2 1/3] NFSD: Update error codes
-From: Marc Eshel <eshel@us.ibm.com>
-Message-ID: <OF7E555129.8213C5FE-ON88257C21.007BF318-88257C21.007CE9CA@us.ibm.com>
-Date: Tue, 12 Nov 2013 14:44:21 -0800
-Content-Type: text/plain; charset="US-ASCII"
+Received: from userp1040.oracle.com ([156.151.31.81]:23123 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755706Ab3KMQNA convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Nov 2013 11:13:00 -0500
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 6.6 \(1510\))
+Subject: Re: [PATCH v2 3/3] nfs: check if gssd is running before attempting to use krb5i auth in SETCLIENTID call
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <A8619700-BAA2-4E99-AFFA-579115D4B68A@netapp.com>
+Date: Wed, 13 Nov 2013 11:12:48 -0500
+Cc: Jeff Layton <jlayton@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Neil Brown <neilb@suse.de>, Steve Dickson <steved@redhat.com>
+Message-Id: <D6D5CD40-F750-49C3-B56F-82BEAAD7427E@oracle.com>
+References: <1384353053-30002-1-git-send-email-jlayton@redhat.com> <1384353053-30002-4-git-send-email-jlayton@redhat.com> <DF1DECB2-B736-4B70-87DC-52CD695C44F3@oracle.com> <1CFBCCB6-37CE-4C49-91EE-0FB33D11B57A@netapp.com> <4226B463-0DB1-4847-9C30-252E67B46859@oracle.com> <20131113103510.6f89a998@corrin.poochiereds.net> <A8619700-BAA2-4E99-AFFA-579115D4B68A@netapp.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-where do you see this change?, the last version 20 don't show it.
-Thanks, Marc.
 
+On Nov 13, 2013, at 10:49 AM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
 
+> 
+> On Nov 13, 2013, at 10:35, Jeff Layton <jlayton@redhat.com> wrote:
+> 
+>> On Wed, 13 Nov 2013 10:14:30 -0500
+>> Chuck Lever <chuck.lever@oracle.com> wrote:
+>> 
+>>> 
+>>> On Nov 13, 2013, at 9:48 AM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+>>> 
+>>>> 
+>>>> On Nov 13, 2013, at 9:38, Chuck Lever <chuck.lever@oracle.com> wrote:
+>>>> 
+>>>>> 
+>>>>> On Nov 13, 2013, at 9:30 AM, Jeff Layton <jlayton@redhat.com> wrote:
+>>>>> 
+>>>>>> Currently, the client will attempt to use krb5i in the SETCLIENTID call
+>>>>>> even if rpc.gssd is running. If that fails, it'll then fall back to
+>>>>>> RPC_AUTH_UNIX. This introduced a delay when mounting if rpc.gssd isn't
+>>>>>> running, and causes warning messages to pop up in the ring buffer.
+>>>>>> 
+>>>>>> Check to see if rpc.gssd is running before even attempting to use krb5i
+>>>>>> auth, and just silently skip trying to do so if it isn't.
+>>>>>> 
+>>>>>> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+>>>>>> ---
+>>>>>> 
+>>>>>> diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+>>>>>> index b4a160a..988aebf 100644
+>>>>>> --- a/fs/nfs/nfs4client.c
+>>>>>> +++ b/fs/nfs/nfs4client.c
+>>>>>> @@ -8,6 +8,7 @@
+>>>>>> #include <linux/nfs_mount.h>
+>>>>>> #include <linux/sunrpc/addr.h>
+>>>>>> #include <linux/sunrpc/auth.h>
+>>>>>> +#include <linux/sunrpc/auth_gss.h>
+>>>>>> #include <linux/sunrpc/xprt.h>
+>>>>>> #include <linux/sunrpc/bc_xprt.h>
+>>>>>> #include "internal.h"
+>>>>>> @@ -351,7 +352,7 @@ static int nfs4_init_client_minor_version(struct nfs_client *clp)
+>>>>>> */
+>>>>>> struct nfs_client *nfs4_init_client(struct nfs_client *clp,
+>>>>>> 				    const struct rpc_timeout *timeparms,
+>>>>>> -				    const char *ip_addr)
+>>>>>> +				    const char *ip_addr, struct net *net)
+>>>> 
+>>>> Why the ‘struct net’ argument? clp->cl_net should already be initialized here.
+>>>> 
+>>>>>> {
+>>>>>> 	char buf[INET6_ADDRSTRLEN + 1];
+>>>>>> 	struct nfs_client *old;
+>>>>>> @@ -370,7 +371,10 @@ struct nfs_client *nfs4_init_client(struct nfs_client *clp,
+>>>>>> 		__set_bit(NFS_CS_INFINITE_SLOTS, &clp->cl_flags);
+>>>>>> 	__set_bit(NFS_CS_DISCRTRY, &clp->cl_flags);
+>>>>>> 	__set_bit(NFS_CS_NO_RETRANS_TIMEOUT, &clp->cl_flags);
+>>>>>> -	error = nfs_create_rpc_client(clp, timeparms, RPC_AUTH_GSS_KRB5I);
+>>>>>> +
+>>>>>> +	error = -EINVAL;
+>>>>>> +	if (gssd_running(net))
+>>>>>> +		error = nfs_create_rpc_client(clp, timeparms,RPC_AUTH_GSS_KRB5I);
+>>>>>> 	if (error == -EINVAL)
+>>>>>> 		error = nfs_create_rpc_client(clp, timeparms, RPC_AUTH_UNIX);
+>>>>> 
+>>>>> This feels like a layering violation.  Why wouldn't you put a gssd_running check in gss_create(), for example, and have rpcauth_create() return -EINVAL?
+>>>>> 
+>>>> 
+>>>> It would be better to put it in the upcall.
+>>> 
+>>> Waiting until the upcall has its benefits.  At that point, GSSD (if it is running) can report other errors, such as that there is no material to form a machine credential.
+>>> 
+>>> My point to Jeff is that, aside from architectural aesthetics, direct calls from RPC consumers to the GSS layer causes a module dependency problem.  The right way to plumb this is to create an RPC client API that invokes gssd_running() but only if auth_rpcgss.ko is loaded.
+> 
+> Chuck, I’ve already told you that the auth_rpcgss dependency is a non-starter.
 
-From:   Anna Schumaker <schumaker.anna@gmail.com>
-To:     Anna Schumaker <bjschuma@netapp.com>, bfields@fieldses.org, 
-linux-nfs@vger.kernel.org, 
-Date:   11/12/2013 12:50 PM
-Subject:        [PATCH v2 1/3] NFSD: Update error codes
-Sent by:        linux-nfs-owner@vger.kernel.org
+Maybe you thought that in your brain, but look at the e-mail archive: You actually haven't explicitly objected yet.  You simply observed that this mechanism doesn't work for built-in scenarios, and I agree with that observation.  It isn't supposed to work for built-in.
 
+But I don't think you understand my full proposal or my objection to Jeff's third patch.
 
+> Turning off automatic loading of rpcsec_gss modules is a _worse_ regression than the ones we already have and (as I already said) can be trivially defeated by just compiling them into the kernel.
 
-Recent NFS v4.2 drafts have removed NFS4ERR_METADATA_NOTSUPP and
-reassigned the error code to NFS4ERR_UNION_NOTSUPP.
+Automatic loading of auth_rpcgss never worked until 71afa85e (March 16).  It simply isn't possible that we've depended on automatic loading of auth_rpcgss.ko in the past, because it has never worked until recently.
 
-Signed-off-by: Anna Schumaker <bjschuma@netapp.com>
----
- fs/nfsd/nfsd.h       | 2 +-
- include/linux/nfs4.h | 2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
+> We _want_ the kernel to be able to autoload modules so that we can add new security flavours etc without having to recompile.
 
-diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-index 30f34ab..4fe49e9 100644
---- a/fs/nfsd/nfsd.h
-+++ b/fs/nfsd/nfsd.h
-@@ -244,7 +244,7 @@ void        nfsd_lockd_shutdown(void);
- #define nfserr_deleg_revoked        cpu_to_be32(NFS4ERR_DELEG_REVOKED)
- #define nfserr_partner_notsupp cpu_to_be32(NFS4ERR_PARTNER_NOTSUPP)
- #define nfserr_partner_no_auth cpu_to_be32(NFS4ERR_PARTNER_NO_AUTH)
--#define nfserr_metadata_notsupp cpu_to_be32(NFS4ERR_METADATA_NOTSUPP)
-+#define nfserr_union_notsupp        cpu_to_be32(NFS4ERR_UNION_NOTSUPP)
- #define nfserr_offload_denied        cpu_to_be32(NFS4ERR_OFFLOAD_DENIED)
- #define nfserr_wrong_lfs        cpu_to_be32(NFS4ERR_WRONG_LFS)
- #define nfserr_badlabel        cpu_to_be32(NFS4ERR_BADLABEL)
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index 9577769..6d79deb 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -235,7 +235,7 @@ enum nfsstat4 {
-     /* nfs42 */
-     NFS4ERR_PARTNER_NOTSUPP    = 10088,
-     NFS4ERR_PARTNER_NO_AUTH    = 10089,
--    NFS4ERR_METADATA_NOTSUPP = 10090,
-+    NFS4ERR_UNION_NOTSUPP = 10090,
-     NFS4ERR_OFFLOAD_DENIED = 10091,
-     NFS4ERR_WRONG_LFS = 10092,
-     NFS4ERR_BADLABEL = 10093,
+I'm not proposing to turn off automatic loading of the GSS mechanisms.  If auth_rpcgss.ko is loaded, the mechanisms get loaded automatically.
+
+> 
+>>> However, I don't see why the existing RPC client APIs shouldn't just fail where appropriate if GSSD isn't available.  Is there a strong need to expose gssd_running() as a separate API?
+>>> 
+>> 
+>> One of the complaints about this whole "use krb5i by default" change is
+>> that we now get the warnings in the ring buffer when gssd isn't
+>> running. That's a good thing if krb5 was explicitly requested, but is
+>> useless and confusing if the user just wants to use AUTH_SYS.
+>> 
+>> If we wait until gss_create, it's too late to know what the "intent"
+>> was. We'll either fire the warning inappropriately like we do now, or
+>> miss it altogether when we actually should have printed it.
+> 
+> What if the user intended to use krb5i, but the daemon failed to start?
+> This whole “kernel second guessing what the admin _actually_ wanted to do” thing is a red herring. Let’s just fix the real problem and then leave it at that.
+
+I agree that the kernel shouldn't guess.  Autoloading auth_rpcgss is guessing what the admin wanted, IMO.
+
 -- 
-1.8.4.2
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
 
 
