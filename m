@@ -1,53 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:50628 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753484Ab3KLRMy convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Nov 2013 12:12:54 -0500
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.6 \(1510\))
-Subject: Re: [PATCH 0/2] sunrpc: more reliable detection of running gssd
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1384275379.4779.8.camel@leira.trondhjem.org>
-Date: Tue, 12 Nov 2013 12:12:48 -0500
-Cc: Jeff Layton <jlayton@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "steved@redhat.com" <steved@redhat.com>
-Message-Id: <F4648E75-0F7B-4948-860A-FCDE9D3F86B6@oracle.com>
-References: <1384261225-28559-1-git-send-email-jlayton@redhat.com> <A0488E98-0DF9-4ECE-A39D-C8E460E4C546@oracle.com> <20131112110831.72234c64@tlielax.poochiereds.net> <B9D2C1A3-ABD1-4A87-9AFD-BC9C2F1BA55C@oracle.com> <1384275379.4779.8.camel@leira.trondhjem.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Received: from mx11.netapp.com ([216.240.18.76]:12631 "EHLO mx11.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752626Ab3KMQBT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 13 Nov 2013 11:01:19 -0500
+Message-ID: <5283A24D.4010309@netapp.com>
+Date: Wed, 13 Nov 2013 11:01:17 -0500
+From: Anna Schumaker <bjschuma@netapp.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v2 0/3] NFSD: Implement SEEK
+References: <1384283048-7699-1-git-send-email-bjschuma@netapp.com> <20131112194529.GA26341@fieldses.org> <52828767.3030909@netapp.com> <20131112195911.GA28033@fieldses.org>
+In-Reply-To: <20131112195911.GA28033@fieldses.org>
+Content-Type: text/plain; charset="ISO-8859-1"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Nov 12, 2013, at 11:56 AM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
-
-> On Tue, 2013-11-12 at 11:15 -0500, Chuck Lever wrote:
->> On Nov 12, 2013, at 11:08 AM, Jeff Layton <jlayton@redhat.com> wrote:
->> 
->>> On Tue, 12 Nov 2013 11:02:42 -0500
->>> Chuck Lever <chuck.lever@oracle.com> wrote:
->>> 
->>>> 
->>>> On Nov 12, 2013, at 8:00 AM, Jeff Layton <jlayton@redhat.com> wrote:
->>>> 
->>> What's the module loading solution?
->> 
->> Load auth_rpcgss.ko only when rpc.gssd has been started.  See the "[PATCH] Adding the nfs4_secure_mounts bool" thread... If auth_rpcgss.ko is not loaded, the kernel won't ever try to do an upcall.
->> 
->> Then, systemd can be used to restart rpc.gssd if it crashes, maybe?  Just a thought.
+On 11/12/2013 02:59 PM, J. Bruce Fields wrote:
+> On Tue, Nov 12, 2013 at 02:54:15PM -0500, Anna Schumaker wrote:
+>> On 11/12/2013 02:45 PM, J. Bruce Fields wrote:
+>>> On Tue, Nov 12, 2013 at 02:04:05PM -0500, Anna Schumaker wrote:
+>>>> These patches implement just the SEEK NFS v4.2 operation.  WRITE_PLUS is
+>>>> still under discussion with the IETF after my last series of patches, so I
+>>>> am holding off on resubmitting until after spec discussion dies down.
+>>>>
+>>>> Questions?  Comments?  Thoughts?
+>>>> Anna
+>>>>
+>>>> Anna Schumaker (3):
+>>>>   NFSD: Update error codes
+>>>
+>>> I don't think I got this first patch.
+>>
+>> It's in the "patches" directory I used, but I don't see it in my gmail inbox either.  I'll send it out in a minute.
+>>
+>>>
+>>>>   NFSD: Create nfs v4.2 decode ops
+>>>>   NFSD: Implement SEEK
+>>>
+>>> I'd like to be reassured the protocol is reasonably stable before we
+>>> commit this.  I haven't been following the ietf wg discussion closely.
+>>>
+>>> And this should initially be disabled by default.  So, probably either:
+>>>
+>>> 	- Introduce a new NFSD_V4_SEEK option, or
+>>> 	- Combine this and NFSD_V4_SECURITY_LABEL and this into a single
+>>> 	  NFSD_V4_2 option.
+>>>
+>>> And recommend "N" for now.
+>>>
+>>> Probably the latter I guess, to be consistent with the client.  And
+>>> because otherwise we could end up with an awful lot of config options.
+>>
+>> Sure, I can do that easily enough.
 > 
-> You can trivially defeat that by compiling the gss code into the kernel.
+> OK.  In that case, you'll probably want to do an additional patch at the
+> beginning just to replace NFSD_V4_SECURITY_LABEL by NFSD_V4_2.  Note
+> it's not a pure search-and-replace since the latter covers a little more
+> code.
 
-My solution is a workaround.  It works for distributions that do not compile auth_rpcgss into the kernel, since they are the ones who provide an appropriate init script architecture.
+Would you accept a patch that instead introduces CONFIG_NFSD_V4_2 and then makes the security label depend on that config option?
 
-But it does not require a kernel code change, and it applies to every distribution I'm aware of.  Since distributions typically do not use built-in GSS support, I'm not too concerned about whoever might be left over.
-
-And I never said that we shouldn't continue to mitigate the upcall timeout.  Note that Jeff's solution didn't entirely eliminate the problem either.  With either or both of these solutions in place, we are better off than we were before.
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+> 
+> The only thing that worries me a bit is the features may mature at
+> different times.  I guess when the time comes we could split it into
+> NFSD_V4_2 and NFSD_V4_2_EXPERIMENTAL and recommend distros and
+> non-developers turn on only the former?
+> 
+> --b.
+> 
 
