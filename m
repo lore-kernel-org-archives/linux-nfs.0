@@ -1,77 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:60862 "EHLO mx12.netapp.com"
+Received: from cantor2.suse.de ([195.135.220.15]:56295 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754614Ab3KLWRo convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Nov 2013 17:17:44 -0500
-From: Weston Andros Adamson <dros@netapp.com>
-To: Jeff Layton <jlayton@redhat.com>
-CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        linux-nfs list <linux-nfs@vger.kernel.org>,
-        Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [PATCH] nfs: don't retry detect_trunking with RPC_AUTH_UNIX
- more than once
-Date: Tue, 12 Nov 2013 22:17:41 +0000
-Message-ID: <6BD3F476-A74C-42FD-9A20-B8028BA26155@netapp.com>
-References: <1384291851-11154-1-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1384291851-11154-1-git-send-email-jlayton@redhat.com>
-Content-Type: text/plain; charset="Windows-1252"
-MIME-Version: 1.0
+	id S1754327Ab3KMBNr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 Nov 2013 20:13:47 -0500
+Date: Wed, 13 Nov 2013 12:13:33 +1100
+From: NeilBrown <neilb@suse.de>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Charles Edward Lever <chuck.lever@oracle.com>,
+        Steve Dickson <SteveD@redhat.com>,
+        "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] Adding the nfs4_secure_mounts bool
+Message-ID: <20131113121333.2a16f646@notabene.brown>
+In-Reply-To: <1384302651.15992.3.camel@leira.trondhjem.org>
+References: <1384037221-7224-1-git-send-email-steved@redhat.com>
+	<E061C7A8-DC27-49BA-93C2-DC2E9C19EA7B@netapp.com>
+	<52811CBB.3070204@RedHat.com>
+	<E520DD5F-7E5A-4B6C-9FF6-6B74DA36FD1E@oracle.com>
+	<5281290B.6000201@RedHat.com>
+	<E0FBCF46-C70F-41E5-BA67-48406253CD7E@oracle.com>
+	<20131112161135.25a487da@notabene.brown>
+	<F58540AB-00BE-4AC5-B823-7260F30F8D58@netapp.com>
+	<20131112161634.GC15060@fieldses.org>
+	<20131113112346.3f5f3bd0@notabene.brown>
+	<1384302651.15992.3.camel@leira.trondhjem.org>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/HelAUhBpOvEE6ORq55AbHt/"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Tested-by/Acked-by: Weston Andros Adamson <dros@netapp.com>
+--Sig_/HelAUhBpOvEE6ORq55AbHt/
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-I can’t reproduce the BUG() with this patch applied.
+On Wed, 13 Nov 2013 00:30:53 +0000 "Myklebust, Trond"
+<Trond.Myklebust@netapp.com> wrote:
 
-Besides the patch making complete sense to me, I have more evidence to back your explanation of the bug:
+> On Wed, 2013-11-13 at 11:23 +1100, NeilBrown wrote:
+> > But back to my problem:  Following Trond's suggestion I've come up with=
+ the
+> > following patch.  Does it look right?
+> >=20
+> > The "fd =3D -1" is just to stop us trying to close a non-open fd in an =
+error
+> > path.
+> >=20
+> > The change from testing ->servicename to ->prog stops us from repeating=
+ the
+> > failed DNS lookup on every request, not that the failure isn't fatal.
+> >=20
+> > The last stanza makes sure we always reply to an upcall, with EINVAL if
+> > nothing else seems appropriate.
+>=20
+> Wouldn't EACCES be more appropriate as a default?
+>=20
 
-Without this patch I can run a ton of mount/umounts and eventually hit the crash. Before the crash there will be *many* (10s of thousands) pipes in /var/lib/nfs/rpc_pipefs/nfs/, which kills gssd (too many fds).
+Maybe.  And that is what you suggested before and I mis-remembered - sorry.
 
--dros
+However EACCES is "Permission denied" which doesn't quite seem right to me.
+It isn't really "you aren't allowed to do that", but "your question doesn't
+make sense".
 
+However I'm not fussed.  If you prefer EACCES, then I'll make it EACCES.
 
-On Nov 12, 2013, at 4:30 PM, Jeff Layton <jlayton@redhat.com> wrote:
+Thanks,
+NeilBrown
 
-> Currently, when we try to mount and get back NFS4ERR_CLID_IN_USE or
-> NFS4ERR_WRONGSEC, we create a new rpc_clnt and then try the call again.
-> There is no guarantee that doing so will work however, so we can end up
-> retrying the call in an infinite loop.
-> 
-> Worse yet, we create the new client using rpc_clone_client_set_auth,
-> which creates the new client as a child of the old one. Thus, we can end
-> up with a *very* long lineage of rpc_clnts. When we go to put all of the
-> references to them, we can end up with a long call chain that can smash
-> the stack as each rpc_free_client() call can recurse back into itself.
-> 
-> This patch fixes this by simply ensuring that the SETCLIENTID call will
-> only be retried in this situation if the last attempt did not use
-> RPC_AUTH_UNIX.
-> 
-> Cc: stable@vger.kernel.org # v3.10+
-> Cc: Weston Andros Adamson <dros@netapp.com>
-> Cc: Chuck Lever <chuck.lever@oracle.com>
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
-> fs/nfs/nfs4state.c | 5 +++++
-> 1 file changed, 5 insertions(+)
-> 
-> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-> index c8e729d..4c26c01 100644
-> --- a/fs/nfs/nfs4state.c
-> +++ b/fs/nfs/nfs4state.c
-> @@ -2097,6 +2097,11 @@ again:
-> 			break;
-> 	case -NFS4ERR_CLID_INUSE:
-> 	case -NFS4ERR_WRONGSEC:
-> +		/* No point in retrying if we already used RPC_AUTH_UNIX */
-> +		if (clnt->cl_auth->au_flavor == RPC_AUTH_UNIX) {
-> +			status = -EPERM;
-> +			break;
-> +		}
-> 		clnt = rpc_clone_client_set_auth(clnt, RPC_AUTH_UNIX);
-> 		if (IS_ERR(clnt)) {
-> 			status = PTR_ERR(clnt);
-> -- 
-> 1.8.3.1
-> 
+--Sig_/HelAUhBpOvEE6ORq55AbHt/
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
 
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.19 (GNU/Linux)
+
+iQIVAwUBUoLSPTnsnt1WYoG5AQIbKA/+KxEAyU70Q0iRG/tDavopBpRD09XFv0u1
+unDFZjSoZIzwFiVvhsQFebNECqb8M+R/jf8ZR7is3Ny2wp7cwKgjwAXBHY+RcrB9
+s/S1Kc8CWLyk6aMI/ePplD8s5B6LhrkMOlR3LFsap4rox9IpwhrHwYcWZTHDQZmy
+ij8CU12TJZPd82qOLGOX56v4hGfZWAr0jzeW7lvsDt5LDROIsjatrqx7hklnPEwU
+9bJ74vWy/zJptKLMRBD+SvP5CHzfHBsHqDGE/zF/k8ML9S6x7ebeADGVh8es6zJA
+M78qP082bDpv5nJGKV4iFZfCy9VLUTXDhM/AESWDwdBpdwvBhQYFa/qSND/ZvPcI
+eHYulXX15k9zVMfDc7tmEAR9HgJHm+DlY5ISppOVEh9JKXWdeG6odUn9MLaOu3Pj
++ENmjpT/GLuMag/lqz5MlynA8h8e8vX8xnvbNOQ+gnR5dQaKDRxcv7ZqyOuR1/GG
+ZUaG+9+aqKZd24QUzmhQ8poHVxFLkSucoFuMPeMbK5cTTIyDiWWdF4sNWVoClW/h
+NTqJfy9aWVXmkvjMV+rSKrCIZahpirQFVNtoQJLVhGHtV0hGUXjlOvbDDsGevnQ+
+VVZflSja2Xi2CvD48TLz4HciFbhabhtNUuxF7fJGRBxolDerqCOCjuvZmhUVkcoL
+7a4yKiWoyuw=
+=NC/m
+-----END PGP SIGNATURE-----
+
+--Sig_/HelAUhBpOvEE6ORq55AbHt/--
