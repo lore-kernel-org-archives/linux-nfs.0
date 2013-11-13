@@ -1,55 +1,141 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e9.ny.us.ibm.com ([32.97.182.139]:41878 "EHLO e9.ny.us.ibm.com"
+Received: from fieldses.org ([174.143.236.118]:58164 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753978Ab3KLAPw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 11 Nov 2013 19:15:52 -0500
-Received: from /spool/local
-	by e9.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
-	Mon, 11 Nov 2013 19:15:51 -0500
-Received: from b01cxnp22036.gho.pok.ibm.com (b01cxnp22036.gho.pok.ibm.com [9.57.198.26])
-	by d01dlp02.pok.ibm.com (Postfix) with ESMTP id D9F366E803C
-	for <linux-nfs@vger.kernel.org>; Mon, 11 Nov 2013 19:15:45 -0500 (EST)
-Received: from d03av02.boulder.ibm.com (d03av02.boulder.ibm.com [9.17.195.168])
-	by b01cxnp22036.gho.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id rAC0Fl7M60621054
-	for <linux-nfs@vger.kernel.org>; Tue, 12 Nov 2013 00:15:47 GMT
-Received: from d03av02.boulder.ibm.com (localhost [127.0.0.1])
-	by d03av02.boulder.ibm.com (8.14.4/8.14.4/NCO v10.0 AVout) with ESMTP id rAC0FkBa016975
-	for <linux-nfs@vger.kernel.org>; Mon, 11 Nov 2013 17:15:47 -0700
-Date: Mon, 11 Nov 2013 18:15:45 -0600
-From: Malahal Naineni <malahal@us.ibm.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] SUNRPC: Fix a data corruption issue when
- retransmitting RPC calls
-Message-ID: <20131112001545.GB31826@us.ibm.com>
-References: <1384021209-2586-1-git-send-email-Trond.Myklebust@netapp.com>
- <20131111231541.GA31826@us.ibm.com>
- <1384212310.7614.29.camel@leira.trondhjem.org>
+	id S1751654Ab3KMWAh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 13 Nov 2013 17:00:37 -0500
+Date: Wed, 13 Nov 2013 17:00:36 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Shyam Kaushik <shyamnfs1@gmail.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: Need help with NFS Server SUNRPC performance issue
+Message-ID: <20131113220036.GO28033@fieldses.org>
+References: <CA+uAZNPquD-JA1SDpFHtx9ZawQA5=o+fBigOTy+9NEiDL+hmyw@mail.gmail.com>
+ <20131031141538.GA621@fieldses.org>
+ <CA+uAZNO7VrBA1MLgGoqGpXGPHMMy0VF_3KBr93Y5w1M=ZO7s4w@mail.gmail.com>
+ <20131104230244.GD8828@fieldses.org>
+ <CA+uAZNOJg3Jeu8uyCEeHx71JwHwC0P0d=mx1BiyKnyoS04KUsw@mail.gmail.com>
+ <20131105195810.GC23329@fieldses.org>
+ <CA+uAZNNfchaju7GrHcwUQ1O5qnaoTxJt0W0bkmFyS7YJwxKJLQ@mail.gmail.com>
+ <20131113162443.GK28033@fieldses.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1384212310.7614.29.camel@leira.trondhjem.org>
+In-Reply-To: <20131113162443.GK28033@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Myklebust, Trond [Trond.Myklebust@netapp.com] wrote:
-> On Mon, 2013-11-11 at 17:15 -0600, Malahal Naineni wrote:
-> > Trond Myklebust [Trond.Myklebust@netapp.com] wrote:
-> > > @@ -700,13 +707,20 @@ static int xs_tcp_send_request(struct rpc_task *task)
-> > >  	xs_pktdump("packet data:",
-> > >  				req->rq_svec->iov_base,
-> > >  				req->rq_svec->iov_len);
-> > > +	/* Don't use zero copy if this is a resend. If the RPC call
-> > > +	 * completes while the socket holds a reference to the pages,
-> > > +	 * then we may end up resending corrupted data.
-> > > +	 */
-> > > +	if (task->tk_flags & RPC_TASK_SENT)
+On Wed, Nov 13, 2013 at 11:24:44AM -0500, J. Bruce Fields wrote:
+> On Wed, Nov 06, 2013 at 12:57:38PM +0530, Shyam Kaushik wrote:
+> > Hi Bruce,
 > > 
-> > How about RPC_WAS_SENT() ?
+> > This hack works great. All 32 of configured NFSD threads end up doing
+> > nfsd_write() which is great & I get higher IOPs/bandwidth from NFS
+> > client side.
+> > 
+> > What do you think if we vary the signature of
+> > typedef __be32(*nfsd4_dec)(struct nfsd4_compoundargs *argp, void *);
+> > 
+> > to include an additional return argument of the size estimate. This
+> > way we get size estimate from the decoders (like nfsd4_decode_read
+> > could return this estimate as rd_length + overhead) & in the worst
+> > case if decoder says cant estimate (like a special return code -1) we
+> > dont do svc_reserve() & leave it like it is. So when we run through
+> > the compound we have a sum of size estimate & just do svc_reserve() at
+> > the end of nfsd4_decode_compound() like your hack has.
+> > 
+> > Does this sound reasonable to you? If not, perhaps can we just use the
+> > hack for now & worry about readdir etc when they support >4K buffer?
 > 
-> <shrug>that evaluates to the same</shrug>
+> Yep.  Actually looking at it again I think it needs a couple more
+> special cases (for readlink, readdir), but that should be good enough
+> for now.
 
-Yes, but what is the point of having a macro then?
+So I'm planning to commit the following.
 
-Regards, Malahal.
+But eventually I agree we'd rather do the calculation in the decoder.
+(Which would make it easier for example to take into account whether a
+getattr op includes a request for an ACL.)
 
+--b.
+
+commit 6ff40decff0ef35a5d755ec60182d7f803356dfb
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Tue Nov 5 15:07:16 2013 -0500
+
+    nfsd4: improve write performance with better sendspace reservations
+    
+    Currently the rpc code conservatively refuses to accept rpc's from a
+    client if the sum of its worst-case estimates of the replies it owes
+    that client exceed the send buffer space.
+    
+    Unfortunately our estimate of the worst-case reply for an NFSv4 compound
+    is always the maximum read size.  This can unnecessarily limit the
+    number of operations we handle concurrently, for example in the case
+    most operations are writes (which have small replies).
+    
+    We can do a little better if we check which ops the compound contains.
+    
+    This is still a rough estimate, we'll need to improve on it some day.
+    
+    Reported-by: Shyam Kaushik <shyamnfs1@gmail.com>
+    Tested-by: Shyam Kaushik <shyamnfs1@gmail.com>
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index d9d7fa9..9d76ee3 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -1597,12 +1597,39 @@ nfsd4_opnum_in_range(struct nfsd4_compoundargs *argp, struct nfsd4_op *op)
+ 	return true;
+ }
+ 
++/*
++ * Return a rough estimate of the maximum possible reply size.  Note the
++ * estimate includes rpc headers so is meant to be passed to
++ * svc_reserve, not svc_reserve_auth.
++ *
++ * Also note the current compound encoding permits only one operation to
++ * use pages beyond the first one, so the maximum possible length is the
++ * maximum over these values, not the sum.
++ */
++static int nfsd4_max_reply(u32 opnum)
++{
++	switch (opnum) {
++	case OP_READLINK:
++	case OP_READDIR:
++		/*
++		 * Both of these ops take a single page for data and put
++		 * the head and tail in another page:
++		 */
++		return 2 * PAGE_SIZE;
++	case OP_READ:
++		return INT_MAX;
++	default:
++		return PAGE_SIZE;
++	}
++}
++
+ static __be32
+ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
+ {
+ 	DECODE_HEAD;
+ 	struct nfsd4_op *op;
+ 	bool cachethis = false;
++	int max_reply = PAGE_SIZE;
+ 	int i;
+ 
+ 	READ_BUF(4);
+@@ -1652,10 +1679,14 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
+ 		 * op in the compound wants to be cached:
+ 		 */
+ 		cachethis |= nfsd4_cache_this_op(op);
++
++		max_reply = max(max_reply, nfsd4_max_reply(op->opnum));
+ 	}
+ 	/* Sessions make the DRC unnecessary: */
+ 	if (argp->minorversion)
+ 		cachethis = false;
++	if (max_reply != INT_MAX)
++		svc_reserve(argp->rqstp, max_reply);
+ 	argp->rqstp->rq_cachetype = cachethis ? RC_REPLBUFF : RC_NOCACHE;
+ 
+ 	DECODE_TAIL;
