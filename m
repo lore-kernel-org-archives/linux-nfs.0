@@ -1,54 +1,154 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:10054 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752466Ab3KLRu0 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Nov 2013 12:50:26 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Jeff Layton <jlayton@redhat.com>, Weston Andros Adamson <dros@netapp.com>,
-        linux-nfs list <linux-nfs@vger.kernel.org>,
-        "chuck.lever@oracle.com" <chuck.lever@oracle.com>
-Subject: Re: Thread overran stack, or stack corrupted BUG on mount
-Date: Tue, 12 Nov 2013 17:50:22 +0000
-Message-ID: <1384278619.4779.31.camel@leira.trondhjem.org>
-References: <2C73011F-0939-434C-9E4D-13A1EB1403D7@netapp.com>
-	 <20131112105539.4f804fc6@tlielax.poochiereds.net>
-	 <20131112112021.1a0a60ca@tlielax.poochiereds.net>
-	 <20131112165731.GD15060@fieldses.org>
-In-Reply-To: <20131112165731.GD15060@fieldses.org>
-Content-Type: text/plain; charset="utf-7"
-MIME-Version: 1.0
+Received: from mail-gg0-f179.google.com ([209.85.161.179]:47135 "EHLO
+	mail-gg0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759000Ab3KMObD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Nov 2013 09:31:03 -0500
+Received: by mail-gg0-f179.google.com with SMTP id q6so178427ggc.10
+        for <linux-nfs@vger.kernel.org>; Wed, 13 Nov 2013 06:31:03 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: trond.myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org, neilb@suse.de, chuck.lever@oracle.com,
+        steved@redhat.com
+Subject: [PATCH v2 2/3] sunrpc: replace sunrpc_net->gssd_running flag with a more reliable check
+Date: Wed, 13 Nov 2013 09:30:52 -0500
+Message-Id: <1384353053-30002-3-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1384353053-30002-1-git-send-email-jlayton@redhat.com>
+References: <1384353053-30002-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2013-11-12 at 11:57 -0500, J. Bruce Fields wrote:
-+AD4- On Tue, Nov 12, 2013 at 11:20:21AM -0500, Jeff Layton wrote:
-+AD4- +AD4- On Tue, 12 Nov 2013 10:55:39 -0500
-+AD4- +AD4- Jeff Layton +ADw-jlayton+AEA-redhat.com+AD4- wrote:
-+AD4- +AD4- 
-+AD4- +AD4- +AD4- On Tue, 12 Nov 2013 15:31:34 +-0000
-+AD4- +AD4- +AD4- Weston Andros Adamson +ADw-dros+AEA-netapp.com+AD4- wrote:
-+AD4- +AD4- 
-+AD4- +AD4- How that ends up smashing the stack, I'm not sure though.
-+AD4- 
-+AD4- rpc+AF8-free+AF8-client(clnt)
-+AD4- 	rpc+AF8-release+AF8-client(clnt-+AD4-cl+AF8-parent)
-+AD4- 		rpc+AF8-free+AF8-auth(clnt)
-+AD4- 			free+AF8-free+AF8-client(clnt)
-+AD4- 
-+AD4- So freeing a client with N ancestors can take N times the stack as
-+AD4- freeing a single client.
-+AD4- 
-+AD4- (Are there any other cases that can create arbitrarily long cl+AF8-parent
-+AD4- chains?)
+Now that we have a more reliable method to tell if gssd is running, we
+can replace the sn->gssd_running flag with a function that will query to
+see if it's up and running.
 
-Ewww.... At this point, that would be pretty much anything that calls
-rpc+AF8-clone+AF8-client+AF8-set+AF8-auth() in response to a NFS4ERR+AF8-WRONG+AF8-SEC.
+There's also no need to attempt an upcall that we know will fail, so
+just return -EACCES if gssd isn't running in that case.
 
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ include/linux/sunrpc/rpc_pipe_fs.h |  4 ++++
+ net/sunrpc/auth_gss/auth_gss.c     | 18 +++++++++++++-----
+ net/sunrpc/netns.h                 |  2 --
+ net/sunrpc/rpc_pipe.c              | 11 +++++++----
+ 4 files changed, 24 insertions(+), 11 deletions(-)
+
+diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
+index 85f1342..6312d5d 100644
+--- a/include/linux/sunrpc/rpc_pipe_fs.h
++++ b/include/linux/sunrpc/rpc_pipe_fs.h
+@@ -5,6 +5,8 @@
+ 
+ #include <linux/workqueue.h>
+ 
++struct sunrpc_net;
++
+ struct rpc_pipe_dir_head {
+ 	struct list_head pdh_entries;
+ 	struct dentry *pdh_dentry;
+@@ -131,5 +133,7 @@ extern int rpc_unlink(struct dentry *);
+ extern int register_rpc_pipefs(void);
+ extern void unregister_rpc_pipefs(void);
+ 
++extern bool rpc_pipe_is_open(struct rpc_pipe *pipe);
++
+ #endif
+ #endif
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index 97912b4..399390e 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -592,6 +592,14 @@ out:
+ 	return err;
+ }
+ 
++static bool
++gssd_running(struct net *net)
++{
++	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
++
++	return rpc_pipe_is_open(sn->gssd_dummy);
++}
++
+ static inline int
+ gss_create_upcall(struct gss_auth *gss_auth, struct gss_cred *gss_cred)
+ {
+@@ -608,17 +616,17 @@ gss_create_upcall(struct gss_auth *gss_auth, struct gss_cred *gss_cred)
+ 		__func__, from_kuid(&init_user_ns, cred->cr_uid));
+ retry:
+ 	err = 0;
+-	/* Default timeout is 15s unless we know that gssd is not running */
++	/* if gssd is down, just skip upcalling altogether */
++	if (!gssd_running(net)) {
++		warn_gssd();
++		return -EACCES;
++	}
+ 	timeout = 15 * HZ;
+-	if (!sn->gssd_running)
+-		timeout = HZ >> 2;
+ 	gss_msg = gss_setup_upcall(gss_auth, cred);
+ 	if (PTR_ERR(gss_msg) == -EAGAIN) {
+ 		err = wait_event_interruptible_timeout(pipe_version_waitqueue,
+ 				sn->pipe_version >= 0, timeout);
+ 		if (sn->pipe_version < 0) {
+-			if (err == 0)
+-				sn->gssd_running = 0;
+ 			warn_gssd();
+ 			err = -EACCES;
+ 		}
+diff --git a/net/sunrpc/netns.h b/net/sunrpc/netns.h
+index 8a8e841..94e506f 100644
+--- a/net/sunrpc/netns.h
++++ b/net/sunrpc/netns.h
+@@ -33,8 +33,6 @@ struct sunrpc_net {
+ 	int pipe_version;
+ 	atomic_t pipe_users;
+ 	struct proc_dir_entry *use_gssp_proc;
+-
+-	unsigned int gssd_running;
+ };
+ 
+ extern int sunrpc_net_id;
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index 34efdbf..917e385 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -216,14 +216,11 @@ rpc_destroy_inode(struct inode *inode)
+ static int
+ rpc_pipe_open(struct inode *inode, struct file *filp)
+ {
+-	struct net *net = inode->i_sb->s_fs_info;
+-	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
+ 	struct rpc_pipe *pipe;
+ 	int first_open;
+ 	int res = -ENXIO;
+ 
+ 	mutex_lock(&inode->i_mutex);
+-	sn->gssd_running = 1;
+ 	pipe = RPC_I(inode)->pipe;
+ 	if (pipe == NULL)
+ 		goto out;
+@@ -1231,7 +1228,6 @@ int rpc_pipefs_init_net(struct net *net)
+ 		return PTR_ERR(sn->gssd_dummy);
+ 
+ 	mutex_init(&sn->pipefs_sb_lock);
+-	sn->gssd_running = 1;
+ 	sn->pipe_version = -1;
+ 	return 0;
+ }
+@@ -1385,6 +1381,13 @@ err_depopulate:
+ 	return err;
+ }
+ 
++bool
++rpc_pipe_is_open(struct rpc_pipe *pipe)
++{
++	return (pipe->nreaders || pipe->nwriters);
++}
++EXPORT_SYMBOL_GPL(rpc_pipe_is_open);
++
+ static struct dentry *
+ rpc_mount(struct file_system_type *fs_type,
+ 		int flags, const char *dev_name, void *data)
 -- 
-Trond Myklebust
-Linux NFS client maintainer
+1.8.3.1
 
-NetApp
-Trond.Myklebust+AEA-netapp.com
-www.netapp.com
