@@ -1,124 +1,155 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:40850 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:22927 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754832Ab3KNSgR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 14 Nov 2013 13:36:17 -0500
-Date: Thu, 14 Nov 2013 13:35:51 -0500
+	id S1753533Ab3KMQGu convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Nov 2013 11:06:50 -0500
+Date: Wed, 13 Nov 2013 11:09:05 -0500
 From: Jeff Layton <jlayton@redhat.com>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 7/7] nfs: page cache invalidation for dio
-Message-ID: <20131114133551.5d08b5cd@tlielax.poochiereds.net>
-In-Reply-To: <20131114165042.205194841@bombadil.infradead.org>
-References: <20131114165027.355613182@bombadil.infradead.org>
-	<20131114165042.205194841@bombadil.infradead.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Charles Edward Lever <chuck.lever@oracle.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Neil Brown <neilb@suse.de>, Steve Dickson <steved@redhat.com>
+Subject: Re: [PATCH v2 3/3] nfs: check if gssd is running before attempting
+ to use krb5i auth in SETCLIENTID call
+Message-ID: <20131113110905.1e0cc276@corrin.poochiereds.net>
+In-Reply-To: <20131113105702.6196aef0@corrin.poochiereds.net>
+References: <1384353053-30002-1-git-send-email-jlayton@redhat.com>
+	<1384353053-30002-4-git-send-email-jlayton@redhat.com>
+	<DF1DECB2-B736-4B70-87DC-52CD695C44F3@oracle.com>
+	<1CFBCCB6-37CE-4C49-91EE-0FB33D11B57A@netapp.com>
+	<4226B463-0DB1-4847-9C30-252E67B46859@oracle.com>
+	<20131113103510.6f89a998@corrin.poochiereds.net>
+	<A8619700-BAA2-4E99-AFFA-579115D4B68A@netapp.com>
+	<20131113105702.6196aef0@corrin.poochiereds.net>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 14 Nov 2013 08:50:34 -0800
-Christoph Hellwig <hch@infradead.org> wrote:
+On Wed, 13 Nov 2013 10:57:02 -0500
+Jeff Layton <jlayton@redhat.com> wrote:
 
-> Make sure to properly invalidate the pagecache before performing direct I/O,
-> so that no stale pages are left around.  This matches what the generic
-> direct I/O code does.  Also take the i_mutex over the direct write submission
-> to avoid the lifelock vs truncate waiting for i_dio_count to decrease, and
-> to avoid having the pagecache easily repopulated while direct I/O is in
-> progrss.  Again matching the generic direct I/O code.
+> On Wed, 13 Nov 2013 15:49:13 +0000
+> "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
 > 
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
-> ---
->  fs/nfs/direct.c |   29 +++++++++++++++++++++++++++--
->  1 file changed, 27 insertions(+), 2 deletions(-)
+> > 
+> > On Nov 13, 2013, at 10:35, Jeff Layton <jlayton@redhat.com> wrote:
+> > 
+> > > On Wed, 13 Nov 2013 10:14:30 -0500
+> > > Chuck Lever <chuck.lever@oracle.com> wrote:
+> > > 
+> > >> 
+> > >> On Nov 13, 2013, at 9:48 AM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+> > >> 
+> > >>> 
+> > >>> On Nov 13, 2013, at 9:38, Chuck Lever <chuck.lever@oracle.com> wrote:
+> > >>> 
+> > >>>> 
+> > >>>> On Nov 13, 2013, at 9:30 AM, Jeff Layton <jlayton@redhat.com> wrote:
+> > >>>> 
+> > >>>>> Currently, the client will attempt to use krb5i in the SETCLIENTID call
+> > >>>>> even if rpc.gssd is running. If that fails, it'll then fall back to
+> > >>>>> RPC_AUTH_UNIX. This introduced a delay when mounting if rpc.gssd isn't
+> > >>>>> running, and causes warning messages to pop up in the ring buffer.
+> > >>>>> 
+> > >>>>> Check to see if rpc.gssd is running before even attempting to use krb5i
+> > >>>>> auth, and just silently skip trying to do so if it isn't.
+> > >>>>> 
+> > >>>>> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > >>>>> ---
+> > >>>>> 
+> > >>>>> diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+> > >>>>> index b4a160a..988aebf 100644
+> > >>>>> --- a/fs/nfs/nfs4client.c
+> > >>>>> +++ b/fs/nfs/nfs4client.c
+> > >>>>> @@ -8,6 +8,7 @@
+> > >>>>> #include <linux/nfs_mount.h>
+> > >>>>> #include <linux/sunrpc/addr.h>
+> > >>>>> #include <linux/sunrpc/auth.h>
+> > >>>>> +#include <linux/sunrpc/auth_gss.h>
+> > >>>>> #include <linux/sunrpc/xprt.h>
+> > >>>>> #include <linux/sunrpc/bc_xprt.h>
+> > >>>>> #include "internal.h"
+> > >>>>> @@ -351,7 +352,7 @@ static int nfs4_init_client_minor_version(struct nfs_client *clp)
+> > >>>>> */
+> > >>>>> struct nfs_client *nfs4_init_client(struct nfs_client *clp,
+> > >>>>> 				    const struct rpc_timeout *timeparms,
+> > >>>>> -				    const char *ip_addr)
+> > >>>>> +				    const char *ip_addr, struct net *net)
+> > >>> 
+> > >>> Why the ‘struct net’ argument? clp->cl_net should already be initialized here.
+> > >>> 
+> > >>>>> {
+> > >>>>> 	char buf[INET6_ADDRSTRLEN + 1];
+> > >>>>> 	struct nfs_client *old;
+> > >>>>> @@ -370,7 +371,10 @@ struct nfs_client *nfs4_init_client(struct nfs_client *clp,
+> > >>>>> 		__set_bit(NFS_CS_INFINITE_SLOTS, &clp->cl_flags);
+> > >>>>> 	__set_bit(NFS_CS_DISCRTRY, &clp->cl_flags);
+> > >>>>> 	__set_bit(NFS_CS_NO_RETRANS_TIMEOUT, &clp->cl_flags);
+> > >>>>> -	error = nfs_create_rpc_client(clp, timeparms, RPC_AUTH_GSS_KRB5I);
+> > >>>>> +
+> > >>>>> +	error = -EINVAL;
+> > >>>>> +	if (gssd_running(net))
+> > >>>>> +		error = nfs_create_rpc_client(clp, timeparms,RPC_AUTH_GSS_KRB5I);
+> > >>>>> 	if (error == -EINVAL)
+> > >>>>> 		error = nfs_create_rpc_client(clp, timeparms, RPC_AUTH_UNIX);
+> > >>>> 
+> > >>>> This feels like a layering violation.  Why wouldn't you put a gssd_running check in gss_create(), for example, and have rpcauth_create() return -EINVAL?
+> > >>>> 
+> > >>> 
+> > >>> It would be better to put it in the upcall.
+> > >> 
+> > >> Waiting until the upcall has its benefits.  At that point, GSSD (if it is running) can report other errors, such as that there is no material to form a machine credential.
+> > >> 
+> > >> My point to Jeff is that, aside from architectural aesthetics, direct calls from RPC consumers to the GSS layer causes a module dependency problem.  The right way to plumb this is to create an RPC client API that invokes gssd_running() but only if auth_rpcgss.ko is loaded.
+> > 
+> > Chuck, I’ve already told you that the auth_rpcgss dependency is a non-starter. Turning off automatic loading of rpcsec_gss modules is a _worse_ regression than the ones we already have and (as I already said) can be trivially defeated by just compiling them into the kernel.
+> > 
+> > We _want_ the kernel to be able to autoload modules so that we can add new security flavours etc without having to recompile.
+> > 
+
+Right, and just because auth_gss isn't currently plugged in, doesn't
+mean that it's not able to be plugged in. If this is the first mount
+attempt then it's likely that auth_gss isn't loaded yet, even if
+rpc.gssd is running.
+
+> > >> However, I don't see why the existing RPC client APIs shouldn't just fail where appropriate if GSSD isn't available.  Is there a strong need to expose gssd_running() as a separate API?
+> > >> 
+> > > 
+> > > One of the complaints about this whole "use krb5i by default" change is
+> > > that we now get the warnings in the ring buffer when gssd isn't
+> > > running. That's a good thing if krb5 was explicitly requested, but is
+> > > useless and confusing if the user just wants to use AUTH_SYS.
+> > > 
+> > > If we wait until gss_create, it's too late to know what the "intent"
+> > > was. We'll either fire the warning inappropriately like we do now, or
+> > > miss it altogether when we actually should have printed it.
+> > 
+> > What if the user intended to use krb5i, but the daemon failed to start? This whole “kernel second guessing what the admin _actually_ wanted to do” thing is a red herring. Let’s just fix the real problem and then leave it at that.
+> > 
 > 
-> diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-> index 6cc7fe1..2b778fc 100644
-> --- a/fs/nfs/direct.c
-> +++ b/fs/nfs/direct.c
-> @@ -939,9 +939,12 @@ ssize_t nfs_file_direct_write(struct kiocb *iocb, const struct iovec *iov,
->  	struct inode *inode = mapping->host;
->  	struct nfs_direct_req *dreq;
->  	struct nfs_lock_context *l_ctx;
-> +	loff_t end;
->  	size_t count;
->  
->  	count = iov_length(iov, nr_segs);
-> +	end = (pos + count - 1) >> PAGE_CACHE_SHIFT;
-> +
->  	nfs_add_stats(mapping->host, NFSIOS_DIRECTWRITTENBYTES, count);
->  
->  	dfprintk(FILE, "NFS: direct write(%pD2, %zd@%Ld)\n",
-> @@ -958,16 +961,25 @@ ssize_t nfs_file_direct_write(struct kiocb *iocb, const struct iovec *iov,
->  	if (!count)
->  		goto out;
->  
-> +	mutex_lock(&inode->i_mutex);
-> +
->  	result = nfs_sync_mapping(mapping);
->  	if (result)
-> -		goto out;
-> +		goto out_unlock;
-> +
-> +	if (mapping->nrpages) {
-> +		result = invalidate_inode_pages2_range(mapping,
-> +					pos >> PAGE_CACHE_SHIFT, end);
-> +		if (result)
-> +			goto out_unlock;
-> +	}
->  
->  	task_io_account_write(count);
->  
->  	result = -ENOMEM;
->  	dreq = nfs_direct_req_alloc();
->  	if (!dreq)
-> -		goto out;
-> +		goto out_unlock;
->  
->  	dreq->inode = inode;
->  	dreq->bytes_left = count;
-> @@ -982,6 +994,14 @@ ssize_t nfs_file_direct_write(struct kiocb *iocb, const struct iovec *iov,
->  		dreq->iocb = iocb;
->  
->  	result = nfs_direct_write_schedule_iovec(dreq, iov, nr_segs, pos, uio);
-> +	
-> +	if (mapping->nrpages) {
-> +		invalidate_inode_pages2_range(mapping,
-> +					      pos >> PAGE_CACHE_SHIFT, end);
-> +	}
-> +
-> +	mutex_unlock(&inode->i_mutex);
-> +
->  	if (!result) {
->  		result = nfs_direct_wait(dreq);
->  		if (result > 0) {
-> @@ -994,8 +1014,13 @@ ssize_t nfs_file_direct_write(struct kiocb *iocb, const struct iovec *iov,
->  			spin_unlock(&inode->i_lock);
->  		}
->  	}
-> +	nfs_direct_req_release(dreq);
-> +	return result;
-> +
->  out_release:
->  	nfs_direct_req_release(dreq);
-> +out_unlock:
-> +	mutex_unlock(&inode->i_mutex);
->  out:
->  	return result;
->  }
+> In that case, they will get a failure and warning when they go to the
+> next stage of the mount (I forget which RPC it is). With this change,
+> krb5/krb5i mounts will still fail just like they do today when gssd
+> isn't running. You just get a single warning in the ring buffer about
+> it instead of two.
+> 
 
-Hrm... I started chasing down a bug reported by our QA group last week
-that's showing up when you mix DIO writes and buffered reads
-(basically, diotest3 in the LTP suite is failing). The bug is marked
-private for dumb reasons but I'll see if I can make it public. I'll
-also plan to give this series a spin to see if it helps fix that bug...
+So to clarify...today we do this when gssd isn't running and we try an
+AUTH_GSS mount:
 
-In any case, the DIO write code calls nfs_zap_mapping after it gets the
-WRITE reply. That sets NFS_INO_INVALID_DATA and should prevent buffered
-read() calls from getting data out of the cache after the write reply
-comes in.
+- attempt SETCLIENTID with krb5i
+- when that fails, log a warning to ring buffer
+- attempt SETCLIENTID with AUTH_SYS
+- attempt rest of mount with krb5i
+- log another warning to ring buffer when it fails
 
-Why is that not sufficient here?
+...with the first two patches, that doesn't really change. With the
+third patch in place, we just skip the first two steps if gssd isn't
+running. You'll still get a single warning in the ring buffer (which is
+as expected).
+
+Trond, is that acceptable or do you want me to just drop the 3rd patch?
 
 -- 
 Jeff Layton <jlayton@redhat.com>
