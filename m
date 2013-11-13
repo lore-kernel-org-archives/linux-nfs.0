@@ -1,55 +1,99 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f182.google.com ([209.85.223.182]:32832 "EHLO
-	mail-ie0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755278Ab3KVV2s convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Nov 2013 16:28:48 -0500
-Received: by mail-ie0-f182.google.com with SMTP id as1so3056003iec.41
-        for <linux-nfs@vger.kernel.org>; Fri, 22 Nov 2013 13:28:48 -0800 (PST)
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.0 \(1812\))
-Subject: Re: [PATCH Version 2 0/3] GSSD: Use gss-ctx keys and gsskeyd to sync Kerberos credentials and kernel gss_contexts.
-From: Trond Myklebust <trondmy@gmail.com>
-In-Reply-To: <1385147500.3912.68.camel@willson.li.ssimo.org>
-Date: Fri, 22 Nov 2013 16:28:45 -0500
-Cc: Steve Dickson <SteveD@redhat.com>,
-        Andy Adamson <William.Adamson@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <3ABF556D-FA65-4A9E-9880-5AA5ADF80F55@gmail.com>
-References: <1382451757-3032-1-git-send-email-andros@netapp.com> <1382454148.9794.72.camel@willson.li.ssimo.org> <A8A66580-CD6F-4141-AE93-B1DD025BFD7A@netapp.com> <1382458162.9794.85.camel@willson.li.ssimo.org> <9C15298B-8915-46E2-85E1-5098F1A12832@netapp.com> <1382462720.9794.131.camel@willson.li.ssimo.org> <096F13FC-A99E-4C19-ACCA-01C244D7420F@netapp.com> <1384980587.17044.49.camel@willson.li.ssimo.org> <528E0C8A.9070608@RedHat.com> <1385147500.3912.68.camel@willson.li.ssimo.org>
-To: Simo Sorce <simo@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:35273 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751132Ab3KMVMM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 13 Nov 2013 16:12:12 -0500
+Date: Wed, 13 Nov 2013 16:12:07 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Weston Andros Adamson <dros@netapp.com>
+Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        linux-nfs list <linux-nfs@vger.kernel.org>,
+        Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: [PATCH v2] nfs: don't retry detect_trunking with RPC_AUTH_UNIX
+ more than once
+Message-ID: <20131113161207.76c216fe@tlielax.poochiereds.net>
+In-Reply-To: <EBCF8527-3031-4BFE-9559-9CAF50C4633D@netapp.com>
+References: <1384351701-29572-1-git-send-email-jlayton@redhat.com>
+	<EBCF8527-3031-4BFE-9559-9CAF50C4633D@netapp.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=Windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Wed, 13 Nov 2013 20:48:04 +0000
+Weston Andros Adamson <dros@netapp.com> wrote:
 
-On Nov 22, 2013, at 14:11, Simo Sorce <simo@redhat.com> wrote:
-
-> On Thu, 2013-11-21 at 08:37 -0500, Steve Dickson wrote:
->> 
->> On 20/11/13 15:49, Simo Sorce wrote:
->>>> I think Solution 3: [nfslog/nfslogout interfaces invoked from PAM or
->>>>> other login system facility] is a good way to go.  Note that a PAM
->>>>> based solution where in the PAM would get us most of the way towards
->>>>> providing users with a way to login and logout of NFS kerberized
->>>>> shares.
->>>>> 
->>>>> Comments on an NFS PAM that will destroy GSS context for a UID upon
->>>>> logout?
->>> I prefer 3 too, let it to the login system (whether PAM based or other)
->>> to determine when it is time to destroy credentials, that's the only
->>> component that have a chance of guessing right.
-
-Really? How do you deal with backgrounded tasks?
-
->>> Of course you could also provide a user utility to force a purge.
->>> 
->> +1 for me on this options as well... 
->> 
->> But how is it known when somebody logs out? Is that PAM-able as well?
+> I tested v2 and everything looks good.
 > 
-> I would say "login process" more than pam, but the basic idea is the
-> same, a user space program that knows when the user is logging out for
-> good and is privileged enough to go an tell the kernel to nuke creds.
 
-What’s such a process going to use as an indicator that the user is “logging out for good”?
+Thanks for testing it.
 
-Trond
+> Also, it seems like I’m no longer able to reproduce the "NFS: nfs4_discover_server_trunking unhandled error -512. Exiting with error EIO” dmesg.
+> 
+> -dros
+> 
+
+Interesting. I suspect that's due to the fact that we give up retrying
+quickly enough now that you can't signal it fast enough there. It's
+still probably reasonable to add in handling for -ERESTARTSYS in that
+switch statement however. I imagine that it's still possible to race in
+with a signal at the right time and trigger that message.
+
+> On Nov 13, 2013, at 9:08 AM, Jeff Layton <jlayton@redhat.com> wrote:
+> 
+> > Currently, when we try to mount and get back NFS4ERR_CLID_IN_USE or
+> > NFS4ERR_WRONGSEC, we create a new rpc_clnt and then try the call again.
+> > There is no guarantee that doing so will work however, so we can end up
+> > retrying the call in an infinite loop.
+> > 
+> > Worse yet, we create the new client using rpc_clone_client_set_auth,
+> > which creates the new client as a child of the old one. Thus, we can end
+> > up with a *very* long lineage of rpc_clnts. When we go to put all of the
+> > references to them, we can end up with a long call chain that can smash
+> > the stack as each rpc_free_client() call can recurse back into itself.
+> > 
+> > This patch fixes this by simply ensuring that the SETCLIENTID call will
+> > only be retried in this situation if the last attempt did not use
+> > RPC_AUTH_UNIX.
+> > 
+> > Note too that with this change, we don't need the (i > 2) check in the
+> > -EACCES case since we now have a more reliable test as to whether we
+> > should reattempt.
+> > 
+> > Cc: stable@vger.kernel.org # v3.10+
+> > Cc: Chuck Lever <chuck.lever@oracle.com>
+> > Tested-by/Acked-by: Weston Andros Adamson <dros@netapp.com>
+> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > ---
+> > fs/nfs/nfs4state.c | 7 ++++++-
+> > 1 file changed, 6 insertions(+), 1 deletion(-)
+> > 
+> > diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+> > index c8e729d..6f04706 100644
+> > --- a/fs/nfs/nfs4state.c
+> > +++ b/fs/nfs/nfs4state.c
+> > @@ -2093,10 +2093,15 @@ again:
+> > 			nfs4_root_machine_cred(clp);
+> > 			goto again;
+> > 		}
+> > -		if (i > 2)
+> > +		if (clnt->cl_auth->au_flavor == RPC_AUTH_UNIX)
+> > 			break;
+> > 	case -NFS4ERR_CLID_INUSE:
+> > 	case -NFS4ERR_WRONGSEC:
+> > +		/* No point in retrying if we already used RPC_AUTH_UNIX */
+> > +		if (clnt->cl_auth->au_flavor == RPC_AUTH_UNIX) {
+> > +			status = -EPERM;
+> > +			break;
+> > +		}
+> > 		clnt = rpc_clone_client_set_auth(clnt, RPC_AUTH_UNIX);
+> > 		if (IS_ERR(clnt)) {
+> > 			status = PTR_ERR(clnt);
+> > -- 
+> > 1.8.3.1
+> > 
+> 
+
+
+-- 
+Jeff Layton <jlayton@redhat.com>
