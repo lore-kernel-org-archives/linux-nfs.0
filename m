@@ -1,102 +1,128 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:32976 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:48378 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751405Ab3KGQ4c (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 7 Nov 2013 11:56:32 -0500
-Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id rA7GuVMF002964
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Thu, 7 Nov 2013 11:56:32 -0500
-Date: Thu, 7 Nov 2013 11:56:29 -0500
+	id S1755348Ab3KMPyt convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Nov 2013 10:54:49 -0500
+Date: Wed, 13 Nov 2013 10:57:02 -0500
 From: Jeff Layton <jlayton@redhat.com>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] gssd: cut down log chatter in gssd_search_krb5_keytab
-Message-ID: <20131107115629.37a56446@tlielax.poochiereds.net>
-In-Reply-To: <527BC43B.5070405@RedHat.com>
-References: <1383839253-8223-1-git-send-email-jlayton@redhat.com>
-	<527BC43B.5070405@RedHat.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Charles Edward Lever <chuck.lever@oracle.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Neil Brown <neilb@suse.de>, Steve Dickson <steved@redhat.com>
+Subject: Re: [PATCH v2 3/3] nfs: check if gssd is running before attempting
+ to use krb5i auth in SETCLIENTID call
+Message-ID: <20131113105702.6196aef0@corrin.poochiereds.net>
+In-Reply-To: <A8619700-BAA2-4E99-AFFA-579115D4B68A@netapp.com>
+References: <1384353053-30002-1-git-send-email-jlayton@redhat.com>
+	<1384353053-30002-4-git-send-email-jlayton@redhat.com>
+	<DF1DECB2-B736-4B70-87DC-52CD695C44F3@oracle.com>
+	<1CFBCCB6-37CE-4C49-91EE-0FB33D11B57A@netapp.com>
+	<4226B463-0DB1-4847-9C30-252E67B46859@oracle.com>
+	<20131113103510.6f89a998@corrin.poochiereds.net>
+	<A8619700-BAA2-4E99-AFFA-579115D4B68A@netapp.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 07 Nov 2013 11:47:55 -0500
-Steve Dickson <SteveD@redhat.com> wrote:
+On Wed, 13 Nov 2013 15:49:13 +0000
+"Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
 
-> Hello,
 > 
-> My thoughts... 
+> On Nov 13, 2013, at 10:35, Jeff Layton <jlayton@redhat.com> wrote:
 > 
-> On 07/11/13 10:47, Jeff Layton wrote:
-> > Because the kernel now looks for krb5 creds by default when mounting, we
-> > need to always have clients run rpc.gssd to avoid the 15s hang on the
-> > first mount attempt.
+> > On Wed, 13 Nov 2013 10:14:30 -0500
+> > Chuck Lever <chuck.lever@oracle.com> wrote:
 > > 
-> > In situations however where people don't have krb5 set up, this leads to
-> > a lot of log spamming on mount attempts. Try to cut down on some of the
-> > log chatter by lowering the priority of the log messages in
-> > gssd_search_krb5_keytab().
-> > 
-> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > ---
-> >  utils/gssd/krb5_util.c | 8 ++++----
-> >  1 file changed, 4 insertions(+), 4 deletions(-)
-> > 
-> > diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
-> > index 697d1d2..2ca3adc 100644
-> > --- a/utils/gssd/krb5_util.c
-> > +++ b/utils/gssd/krb5_util.c
-> > @@ -711,13 +711,13 @@ gssd_search_krb5_keytab(krb5_context context, krb5_keytab kt,
-> >  	 */
-> >  	if ((code = krb5_kt_get_name(context, kt, kt_name, BUFSIZ))) {
-> >  		k5err = gssd_k5_err_msg(context, code);
-> > -		printerr(0, "ERROR: %s attempting to get keytab name\n", k5err);
-> > +		printerr(1, "ERROR: %s attempting to get keytab name\n", k5err);
-> >  		retval = code;
-> >  		goto out;
-> >  	}
-> >  	if ((code = krb5_kt_start_seq_get(context, kt, &cursor))) {
-> >  		k5err = gssd_k5_err_msg(context, code);
-> > -		printerr(0, "ERROR: %s while beginning keytab scan "
-> > +		printerr(1, "ERROR: %s while beginning keytab scan "
-> >  			    "for keytab '%s'\n", k5err, kt_name);
-> >  		retval = code;
-> >  		goto out;
-> I'm thinking these need to stay... I don't think is a good idea 
-> to mask out messages describing failures...
->  
-
-The above message is the one that's the problem when there is no
-keytab. I just went ahead and lowered the priority on the others for
-good measure. If you don't want to take the above hunk, then there's
-probably no need to bother with this patch at all.
-
-
-> > @@ -727,7 +727,7 @@ gssd_search_krb5_keytab(krb5_context context, krb5_keytab kt,
-> >  		if ((code = krb5_unparse_name(context, kte->principal,
-> >  					      &pname))) {
-> >  			k5err = gssd_k5_err_msg(context, code);
-> > -			printerr(0, "WARNING: Skipping keytab entry because "
-> > +			printerr(1, "WARNING: Skipping keytab entry because "
-> >  				 "we failed to unparse principal name: %s\n",
-> >  				 k5err);
-> >  			k5_free_kt_entry(context, kte);
-> > @@ -768,7 +768,7 @@ gssd_search_krb5_keytab(krb5_context context, krb5_keytab kt,
-> >  
-> >  	if ((code = krb5_kt_end_seq_get(context, kt, &cursor))) {
-> >  		k5err = gssd_k5_err_msg(context, code);
-> > -		printerr(0, "WARNING: %s while ending keytab scan for "
-> > +		printerr(1, "WARNING: %s while ending keytab scan for "
-> >  			    "keytab '%s'\n", k5err, kt_name);
-> >  	}
-> I think warnings would be ok to mask out... 
+> >> 
+> >> On Nov 13, 2013, at 9:48 AM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+> >> 
+> >>> 
+> >>> On Nov 13, 2013, at 9:38, Chuck Lever <chuck.lever@oracle.com> wrote:
+> >>> 
+> >>>> 
+> >>>> On Nov 13, 2013, at 9:30 AM, Jeff Layton <jlayton@redhat.com> wrote:
+> >>>> 
+> >>>>> Currently, the client will attempt to use krb5i in the SETCLIENTID call
+> >>>>> even if rpc.gssd is running. If that fails, it'll then fall back to
+> >>>>> RPC_AUTH_UNIX. This introduced a delay when mounting if rpc.gssd isn't
+> >>>>> running, and causes warning messages to pop up in the ring buffer.
+> >>>>> 
+> >>>>> Check to see if rpc.gssd is running before even attempting to use krb5i
+> >>>>> auth, and just silently skip trying to do so if it isn't.
+> >>>>> 
+> >>>>> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> >>>>> ---
+> >>>>> 
+> >>>>> diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+> >>>>> index b4a160a..988aebf 100644
+> >>>>> --- a/fs/nfs/nfs4client.c
+> >>>>> +++ b/fs/nfs/nfs4client.c
+> >>>>> @@ -8,6 +8,7 @@
+> >>>>> #include <linux/nfs_mount.h>
+> >>>>> #include <linux/sunrpc/addr.h>
+> >>>>> #include <linux/sunrpc/auth.h>
+> >>>>> +#include <linux/sunrpc/auth_gss.h>
+> >>>>> #include <linux/sunrpc/xprt.h>
+> >>>>> #include <linux/sunrpc/bc_xprt.h>
+> >>>>> #include "internal.h"
+> >>>>> @@ -351,7 +352,7 @@ static int nfs4_init_client_minor_version(struct nfs_client *clp)
+> >>>>> */
+> >>>>> struct nfs_client *nfs4_init_client(struct nfs_client *clp,
+> >>>>> 				    const struct rpc_timeout *timeparms,
+> >>>>> -				    const char *ip_addr)
+> >>>>> +				    const char *ip_addr, struct net *net)
+> >>> 
+> >>> Why the ‘struct net’ argument? clp->cl_net should already be initialized here.
+> >>> 
+> >>>>> {
+> >>>>> 	char buf[INET6_ADDRSTRLEN + 1];
+> >>>>> 	struct nfs_client *old;
+> >>>>> @@ -370,7 +371,10 @@ struct nfs_client *nfs4_init_client(struct nfs_client *clp,
+> >>>>> 		__set_bit(NFS_CS_INFINITE_SLOTS, &clp->cl_flags);
+> >>>>> 	__set_bit(NFS_CS_DISCRTRY, &clp->cl_flags);
+> >>>>> 	__set_bit(NFS_CS_NO_RETRANS_TIMEOUT, &clp->cl_flags);
+> >>>>> -	error = nfs_create_rpc_client(clp, timeparms, RPC_AUTH_GSS_KRB5I);
+> >>>>> +
+> >>>>> +	error = -EINVAL;
+> >>>>> +	if (gssd_running(net))
+> >>>>> +		error = nfs_create_rpc_client(clp, timeparms,RPC_AUTH_GSS_KRB5I);
+> >>>>> 	if (error == -EINVAL)
+> >>>>> 		error = nfs_create_rpc_client(clp, timeparms, RPC_AUTH_UNIX);
+> >>>> 
+> >>>> This feels like a layering violation.  Why wouldn't you put a gssd_running check in gss_create(), for example, and have rpcauth_create() return -EINVAL?
+> >>>> 
+> >>> 
+> >>> It would be better to put it in the upcall.
+> >> 
+> >> Waiting until the upcall has its benefits.  At that point, GSSD (if it is running) can report other errors, such as that there is no material to form a machine credential.
+> >> 
+> >> My point to Jeff is that, aside from architectural aesthetics, direct calls from RPC consumers to the GSS layer causes a module dependency problem.  The right way to plumb this is to create an RPC client API that invokes gssd_running() but only if auth_rpcgss.ko is loaded.
 > 
-> steved.
+> Chuck, I’ve already told you that the auth_rpcgss dependency is a non-starter. Turning off automatic loading of rpcsec_gss modules is a _worse_ regression than the ones we already have and (as I already said) can be trivially defeated by just compiling them into the kernel.
 > 
-> >  
+> We _want_ the kernel to be able to autoload modules so that we can add new security flavours etc without having to recompile.
+> 
+> >> However, I don't see why the existing RPC client APIs shouldn't just fail where appropriate if GSSD isn't available.  Is there a strong need to expose gssd_running() as a separate API?
+> >> 
 > > 
+> > One of the complaints about this whole "use krb5i by default" change is
+> > that we now get the warnings in the ring buffer when gssd isn't
+> > running. That's a good thing if krb5 was explicitly requested, but is
+> > useless and confusing if the user just wants to use AUTH_SYS.
+> > 
+> > If we wait until gss_create, it's too late to know what the "intent"
+> > was. We'll either fire the warning inappropriately like we do now, or
+> > miss it altogether when we actually should have printed it.
+> 
+> What if the user intended to use krb5i, but the daemon failed to start? This whole “kernel second guessing what the admin _actually_ wanted to do” thing is a red herring. Let’s just fix the real problem and then leave it at that.
+> 
 
+In that case, they will get a failure and warning when they go to the
+next stage of the mount (I forget which RPC it is). With this change,
+krb5/krb5i mounts will still fail just like they do today when gssd
+isn't running. You just get a single warning in the ring buffer about
+it instead of two.
 
 -- 
 Jeff Layton <jlayton@redhat.com>
