@@ -1,102 +1,270 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:30003 "EHLO mx1.redhat.com"
+Received: from mx11.netapp.com ([216.240.18.76]:60761 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755205Ab3KTUtu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Nov 2013 15:49:50 -0500
-Subject: Re: [PATCH Version 2 0/3] GSSD: Use gss-ctx keys and gsskeyd to
- sync Kerberos credentials and kernel gss_contexts.
-From: Simo Sorce <simo@redhat.com>
-To: "Adamson, Andy" <William.Adamson@netapp.com>
-Cc: "<steved@redhat.com>" <steved@redhat.com>,
-        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
-In-Reply-To: <096F13FC-A99E-4C19-ACCA-01C244D7420F@netapp.com>
-References: <1382451757-3032-1-git-send-email-andros@netapp.com>
-	 <1382454148.9794.72.camel@willson.li.ssimo.org>
-	 <A8A66580-CD6F-4141-AE93-B1DD025BFD7A@netapp.com>
-	 <1382458162.9794.85.camel@willson.li.ssimo.org>
-	 <9C15298B-8915-46E2-85E1-5098F1A12832@netapp.com>
-	 <1382462720.9794.131.camel@willson.li.ssimo.org>
-	 <096F13FC-A99E-4C19-ACCA-01C244D7420F@netapp.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 20 Nov 2013 15:49:47 -0500
-Message-ID: <1384980587.17044.49.camel@willson.li.ssimo.org>
-Mime-Version: 1.0
+	id S1756841Ab3KMTcP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 13 Nov 2013 14:32:15 -0500
+From: Anna Schumaker <bjschuma@netapp.com>
+To: <bfields@fieldses.org>, <linux-nfs@vger.kernel.org>
+Subject: [PATCH v3 3/3] NFSD: Implement SEEK
+Date: Wed, 13 Nov 2013 14:30:57 -0500
+Message-ID: <1384371057-16454-4-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <1384371057-16454-1-git-send-email-bjschuma@netapp.com>
+References: <1384371057-16454-1-git-send-email-bjschuma@netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2013-11-20 at 20:35 +0000, Adamson, Andy wrote:
-> Hi
-> 
-> As suggested, I approached the Kerberos@mit.edu about the possibility
-> of a plugin architecture for libkrb5 credential cache manipulation
-> functions so that we could trigger the kernel GSS_context management
-> functions.
+This patch adds in the SEEK operation used by clients doing an llseek on
+a file to find either hole or data segments.  I am making the assumption
+that allocated == true in the NFS4_CONTENT_DATA case and false for the
+NFS4_CONTENT_HOLE case.
 
-[..]
-> 
-> It appears that Solution 4: [plugin architecture to libkrb for
-> callouts on functions that manipulate kerberos credentials.] is a
-> no-go. 
-> 
-> I agree that Solution 1: [inotify on FILE credentials] is clunky and
-> won't work well.
-> 
-> Solution 2: [integrate with KEYRING credentials] could work if we
-> insist that all NFS Kerberos credentials use the KEYRING: - e.g. the
-> proposed new 'big-key' type. Note there is no backporting of this
-> solution.
+Signed-off-by: Anna Schumaker <bjschuma@netapp.com>
 
-Note that solution 2 is semantically identical to solution 4, you are
-going to try to guess what user space is doing, based on how it
-manipulates caches, and would have the same side effects.
+---
+Changed in V3:
+- SEEK is only compiled in when CONFIG_NFSD_V4_2_SEEK is enabled
 
-> I think Solution 3: [nfslog/nfslogout interfaces invoked from PAM or
-> other login system facility] is a good way to go.  Note that a PAM
-> based solution where in the PAM would get us most of the way towards
-> providing users with a way to login and logout of NFS kerberized
-> shares.
-> 
-> Comments on an NFS PAM that will destroy GSS context for a UID upon
-> logout?
+ fs/nfsd/Kconfig      | 12 +++++++++++
+ fs/nfsd/nfs4proc.c   | 60 ++++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfsd/nfs4xdr.c    | 48 +++++++++++++++++++++++++++++++++++++++++
+ fs/nfsd/xdr4.h       | 16 ++++++++++++++
+ include/linux/nfs4.h |  6 ++++++
+ 5 files changed, 142 insertions(+)
 
-I prefer 3 too, let it to the login system (whether PAM based or other)
-to determine when it is time to destroy credentials, that's the only
-component that have a chance of guessing right.
-Of course you could also provide a user utility to force a purge.
-
-> Simo - I answered your latest comments below in-line.
-
-[..]
-
-> I think a PAM based solution will get us most of the way there.
-
-Agree.
-
-
-> > So the way I see it you probably want to keep the tracking in
-> > whatever tool you want to use to experiment (say gsskeyd) and only
-> > provide a downcall to the kernel that will tell it: destroy any
-> > cache for 'uid number (optionally pass in a session id too ?)'.
-> 
-> This is what the gss-ctx keyring destroy method is - a downcall to the
-> kernel telling it to destroy all GSS_contexts for a UID.
-
-Why do you need to abuse the keyring interface to implement a syscall ?
-Or did I misunderstand what you mean by "telling the kernel to do X" ?
-
-> > This way you can replace the logic of how to keep track of what is
-> > going on completely in user space, where it can easily be adjusted
-> > and adapted  as experience is gained.
-> > 
-> > IE: track it completely in userspace for now and only provide a
-> > syscall to kill creds per UID, no tracking on the kernel side.
-> 
-> Yes - I believe that is what the gss-ctx keyring code I wrote does.
-
-A keyring is not a syscall.
-
-Simo.
-
+diff --git a/fs/nfsd/Kconfig b/fs/nfsd/Kconfig
+index dc8f1ef..680e017 100644
+--- a/fs/nfsd/Kconfig
++++ b/fs/nfsd/Kconfig
+@@ -81,6 +81,18 @@ config NFSD_V4
+ 
+ 	  If unsure, say N.
+ 
++config NFSD_V4_2_SEEK
++	bool "Enable SEEK support for the NFS v4.2 server"
++	depends on NFSD_V4
++	help
++	  Say Y here if you want to enable support for the NFS v4.2 operation
++	  SEEK, which adds in SEEK_HOLE and SEEK_DATA support.
++
++	  WARNING: there is still a chance of backwards-incompatible protocol
++	  changes.  This feature is targeted at developers and testers only.
++
++	  If unsure, say N.
++
+ config NFSD_V4_SECURITY_LABEL
+ 	bool "Provide Security Label support for NFSv4 server"
+ 	depends on NFSD_V4 && SECURITY
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 419572f..1283ca7 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1028,6 +1028,59 @@ nfsd4_write(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	return status;
+ }
+ 
++#ifdef CONFIG_NFSD_V4_2_SEEK
++static __be32
++nfsd4_seek(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
++		struct nfsd4_seek *seek)
++{
++	struct file *file;
++	loff_t end_pos = 0;
++	__be32 status;
++
++	nfs4_lock_state();
++	status = nfs4_preprocess_stateid_op(SVC_NET(rqstp), cstate,
++					    &seek->seek_stateid,
++					    RD_STATE | WR_STATE, &file);
++	if (status != nfs_ok) {
++		nfs4_unlock_state();
++		return status;
++	} else
++		get_file(file);
++	nfs4_unlock_state();
++
++	switch (seek->seek_whence) {
++	case NFS4_CONTENT_APP_DATA_HOLE:
++		status = nfserr_union_notsupp;
++		break;
++	case NFS4_CONTENT_DATA:
++		seek->seek_pos = vfs_llseek(file, seek->seek_offset, SEEK_DATA);
++		end_pos = vfs_llseek(file, seek->seek_pos, SEEK_HOLE);
++		seek->seek_allocated = true;
++		break;
++	case NFS4_CONTENT_HOLE:
++		seek->seek_pos = vfs_llseek(file, seek->seek_offset, SEEK_HOLE);
++		end_pos = vfs_llseek(file, seek->seek_pos, SEEK_DATA);
++		seek->seek_allocated = false;
++		break;
++	default:
++		status = nfs_ok;
++		seek->seek_eof = true;
++		goto out;
++	}
++
++	if (seek->seek_pos < 0) {
++		status = nfserrno(seek->seek_pos);
++		goto out;
++	}
++
++	seek->seek_length = end_pos - seek->seek_pos;
++
++out:
++	fput(file);
++	return status;
++}
++#endif /* CONFIG_NFSD_V4_2_SEEK */
++
+ /* This routine never returns NFS_OK!  If there are no other errors, it
+  * will return NFSERR_SAME or NFSERR_NOT_SAME depending on whether the
+  * attributes matched.  VERIFY is implemented by mapping NFSERR_SAME
+@@ -1840,6 +1893,13 @@ static struct nfsd4_operation nfsd4_ops[] = {
+ 		.op_get_currentstateid = (stateid_getter)nfsd4_get_freestateid,
+ 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_only_status_rsize,
+ 	},
++
++#ifdef CONFIG_NFSD_V4_2_SEEK
++	[OP_SEEK] = {
++		.op_func = (nfsd4op_func)nfsd4_seek,
++		.op_name = "OP_SEEK",
++	},
++#endif /* CONFIG_NFSD_V4_2_SEEK */
+ };
+ 
+ #ifdef NFSD_DEBUG
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 3af6c46..7041039 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -1507,6 +1507,24 @@ static __be32 nfsd4_decode_reclaim_complete(struct nfsd4_compoundargs *argp, str
+ 	DECODE_TAIL;
+ }
+ 
++#ifdef CONFIG_NFSD_V4_2_SEEK
++static __be32
++nfsd4_decode_seek(struct nfsd4_compoundargs *argp, struct nfsd4_seek *seek)
++{
++	DECODE_HEAD;
++
++	status = nfsd4_decode_stateid(argp, &seek->seek_stateid);
++	if (status)
++		return status;
++
++	READ_BUF(12);
++	READ64(seek->seek_offset);
++	READ32(seek->seek_whence);
++
++	DECODE_TAIL;
++}
++#endif /* CONFIG_NFSD_V4_2_SEEK */
++
+ static __be32
+ nfsd4_decode_noop(struct nfsd4_compoundargs *argp, void *p)
+ {
+@@ -1589,7 +1607,11 @@ static nfsd4_dec nfsd4_dec_ops[] = {
+ 	[OP_OFFLOAD_STATUS]	= (nfsd4_dec)nfsd4_decode_notsupp,
+ 	[OP_WRITE_PLUS]		= (nfsd4_dec)nfsd4_decode_notsupp,
+ 	[OP_READ_PLUS]		= (nfsd4_dec)nfsd4_decode_notsupp,
++#ifdef CONFIG_NFSD_V4_2_SEEK
++	[OP_SEEK]		= (nfsd4_dec)nfsd4_decode_seek,
++#else
+ 	[OP_SEEK]		= (nfsd4_dec)nfsd4_decode_notsupp,
++#endif /* CONFIG_NFSD_V4_2_SEEK */
+ 	[OP_IO_ADVISE]		= (nfsd4_dec)nfsd4_decode_notsupp,
+ };
+ 
+@@ -3514,6 +3536,28 @@ nfsd4_encode_test_stateid(struct nfsd4_compoundres *resp, __be32 nfserr,
+ 	return nfserr;
+ }
+ 
++#ifdef CONFIG_NFSD_V4_2_SEEK
++static __be32
++nfsd4_encode_seek(struct nfsd4_compoundres *resp, __be32 nfserr,
++		  struct nfsd4_seek *seek)
++{
++	__be32 *p;
++
++	if (nfserr)
++		return nfserr;
++
++	RESERVE_SPACE(28);
++	WRITE32(seek->seek_eof);
++	WRITE32(seek->seek_whence);
++	WRITE64(seek->seek_pos);
++	WRITE64(seek->seek_length);
++	WRITE32(seek->seek_allocated);
++	ADJUST_ARGS();
++
++	return nfserr;
++}
++#endif /* CONFIG_NFSD_V4_2_SEEK */
++
+ static __be32
+ nfsd4_encode_noop(struct nfsd4_compoundres *resp, __be32 nfserr, void *p)
+ {
+@@ -3595,7 +3639,11 @@ static nfsd4_enc nfsd4_enc_ops[] = {
+ 	[OP_OFFLOAD_STATUS]	= (nfsd4_enc)nfsd4_encode_noop,
+ 	[OP_WRITE_PLUS]		= (nfsd4_enc)nfsd4_encode_noop,
+ 	[OP_READ_PLUS]		= (nfsd4_enc)nfsd4_encode_noop,
++#ifdef CONFIG_NFSD_V4_2_SEEK
++	[OP_SEEK]		= (nfsd4_enc)nfsd4_encode_seek,
++#else
+ 	[OP_SEEK]		= (nfsd4_enc)nfsd4_encode_noop,
++#endif /* CONFIG_NFSD_V4_2_SEEK */
+ 	[OP_IO_ADVISE]		= (nfsd4_enc)nfsd4_encode_noop,
+ };
+ 
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index b3ed644..c2f4e30 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -430,6 +430,19 @@ struct nfsd4_reclaim_complete {
+ 	u32 rca_one_fs;
+ };
+ 
++struct nfsd4_seek {
++	/* request */
++	stateid_t	seek_stateid;
++	loff_t		seek_offset;
++	u32		seek_whence;
++
++	/* response */
++	u64		seek_pos;
++	u32		seek_eof;
++	u64		seek_length;
++	u32		seek_allocated;
++};
++
+ struct nfsd4_op {
+ 	int					opnum;
+ 	__be32					status;
+@@ -475,6 +488,9 @@ struct nfsd4_op {
+ 		struct nfsd4_reclaim_complete	reclaim_complete;
+ 		struct nfsd4_test_stateid	test_stateid;
+ 		struct nfsd4_free_stateid	free_stateid;
++
++		/* NFSv4.2 */
++		struct nfsd4_seek		seek;
+ 	} u;
+ 	struct nfs4_replay *			replay;
+ };
+diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
+index e58e0eb..a35b0b6 100644
+--- a/include/linux/nfs4.h
++++ b/include/linux/nfs4.h
+@@ -558,4 +558,10 @@ struct nfs4_deviceid {
+ 	char data[NFS4_DEVICEID4_SIZE];
+ };
+ 
++enum data_content4 {
++	NFS4_CONTENT_DATA		= 0,
++	NFS4_CONTENT_APP_DATA_HOLE	= 1,
++	NFS4_CONTENT_HOLE		= 2,
++};
++
+ #endif
 -- 
-Simo Sorce * Red Hat, Inc * New York
+1.8.4.2
 
