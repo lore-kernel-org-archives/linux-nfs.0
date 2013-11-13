@@ -1,47 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:39957 "EHLO mx11.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:9880 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752778Ab3KRSlW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 18 Nov 2013 13:41:22 -0500
-Message-ID: <528A5F4F.4050201@netapp.com>
-Date: Mon, 18 Nov 2013 13:41:19 -0500
-From: Anna Schumaker <bjschuma@netapp.com>
+	id S1757943Ab3KMEP1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 12 Nov 2013 23:15:27 -0500
+Message-ID: <5282FCD0.6030307@redhat.com>
+Date: Tue, 12 Nov 2013 23:15:12 -0500
+From: "Carlos O'Donell" <carlos@redhat.com>
 MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFS: Fix kbuild errors due to missing symbols
-References: <1384554636-25330-1-git-send-email-bjschuma@netapp.com> <1384557410.3222.2.camel@leira.trondhjem.org> <528A5360.4000206@netapp.com> <3D379D5B-C02D-4AAD-9A21-08A70BA3AF48@netapp.com>
-In-Reply-To: <3D379D5B-C02D-4AAD-9A21-08A70BA3AF48@netapp.com>
-Content-Type: text/plain; charset="windows-1252"
+To: David Howells <dhowells@redhat.com>, viro@ZenIV.linux.org.uk
+CC: linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
+        libc-alpha@sourceware.org, linux-api@vger.kernel.org,
+        andreas.gruenbacher@gmail.com, samba-technical@lists.samba.org,
+        linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH 0/3] Extended file stat system call [ver #2]
+References: <20131112184127.2880.24025.stgit@warthog.procyon.org.uk>
+In-Reply-To: <20131112184127.2880.24025.stgit@warthog.procyon.org.uk>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/18/2013 01:37 PM, Myklebust, Trond wrote:
+On 11/12/2013 01:41 PM, David Howells wrote:
 > 
-> On Nov 18, 2013, at 12:50, Anna Schumaker <bjschuma@netapp.com> wrote:
->>
->> It's a poorly phrased commit message, actually.  I meant that just setting CONFIG_NFS_USE_LEGACY_DNS=y causes build problems, and then setting CONFIG_NFS_V4=n causes a different set of errors.
+> Implement a new system call to provide an extended and further extensible stat
+> function.
 > 
-> Ah. OK, now I see why you need it. The code in fs/nfs/super.c relies on it when !defined CONFIG_NFS_V4.
+> =======
+> CHANGES
+> =======
 > 
-> You also need to move the CONFIG_NFS_V4_SECURITY_LABEL section outside the CONFIG_NFS_V4, since fs/nfs/dir.c and others need the dummy nfs4_label_alloc and nfs4_label_free inline functions (see Stephen Rothwell
-> ’s email).
+>  (*) Added an optional auxiliary data buffer pointer argument to sys_statxat()
+>      and moved some of the stuff into it.
+> 
+>  (*) Discarded "has an ACL info flag" for now.
+> 
+>  (*) AFS doesn't need to set time granularity itself as the default is 1s
+>      anyway.
 
-Right.  I have a patch that moves them to internal.h instead to get around the whole-file #ifdef that's in nfs4_fs.h.  Would you prefer me to submit that independently or as a v2 to this patch?
+David,
 
-As a bonus, I've used Jenkins to compile as many combinations as possible without an error (I probably should have done that the first time, though...)
+This looks like great work. I admire the thoroughness and
+the detail of the patches. I don't have much more to say
+other than it looks robust and very well put together.
 
-Anna
+You have CC'd the glibc development list on these changes
+and I appreciate that as a heads up on new syscalls is very
+very useful for the developers.
 
-> 
-> 
-> --
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
-> 
+Do you have any other expectations from the glibc development
+community? Are you looking for help wiring this up or will
+you be posting glibc patches at a later date?
 
+Cheers,
+Carlos.
