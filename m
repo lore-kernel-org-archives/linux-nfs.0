@@ -1,94 +1,105 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:46706 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753622Ab3KYUVH convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Nov 2013 15:21:07 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Andy" <William.Adamson@netapp.com>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/1] NFSv4.1 fix a kswap nfs4_state_manger race
-Date: Mon, 25 Nov 2013 20:20:57 +0000
-Message-ID: <A18682DD-86C4-47C0-89F4-B8298F918AC9@netapp.com>
-References: <1385402270-14284-1-git-send-email-andros@netapp.com>
- <1385402270-14284-2-git-send-email-andros@netapp.com>
- <5B8C7A9D-CD9E-487A-AC62-B1292649835D@netapp.com>
- <496E7DBC-183B-43A2-91D4-837FC092E88A@netapp.com>
- <676D25D8-B845-42BC-BB1E-6441B6B8E5E3@netapp.com>
- <5BE68579-3F17-4786-89B9-21CEC1A94E8E@netapp.com>
- <48468258-591E-49A8-9EAA-2DD8E3993100@netapp.com>
-In-Reply-To: <48468258-591E-49A8-9EAA-2DD8E3993100@netapp.com>
-Content-Type: text/plain; charset="Windows-1252"
-MIME-Version: 1.0
+Received: from aserp1040.oracle.com ([141.146.126.69]:31240 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756929Ab3KMPRE convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Nov 2013 10:17:04 -0500
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 6.6 \(1510\))
+Subject: Re: [PATCH] mount.nfs: Recognize v4.x mount options
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1384355662-70913-1-git-send-email-dros@netapp.com>
+Date: Wed, 13 Nov 2013 10:16:55 -0500
+Cc: <steved@redhat.com>, <linux-nfs@vger.kernel.org>
+Message-Id: <6B62D984-796E-4282-9F64-FD3780FE331E@oracle.com>
+References: <1384355662-70913-1-git-send-email-dros@netapp.com>
+To: Weston Andros Adamson <dros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Nov 25, 2013, at 15:10, Adamson, Andy <William.Adamson@netapp.com> wrote:
+On Nov 13, 2013, at 10:14 AM, Weston Andros Adamson <dros@netapp.com> wrote:
 
+> The kernel understands text options of the form "v4.x" (ie "v4.1"), but
+> mount.nfs does not and this leads to weird errors when the requested
+> mount fails: a line in dmesg about version 3 not supporting minorversions
+> and mount.nfs returning EINVAL no matter what the real error was.
 > 
-> On Nov 25, 2013, at 2:53 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-> wrote:
+> This happens because mount.nfs thinks no version was specified so it starts
+> probing other versions which conflicts with the v4.X option once it gets
+> parsed by the kernel.
 > 
->> 
->> On Nov 25, 2013, at 14:27, Adamson, Andy <William.Adamson@netapp.com> wrote:
->> 
->>> 
->>> On Nov 25, 2013, at 1:33 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com>
->>> wrote:
->>> 
->>>> 
->>>> On Nov 25, 2013, at 13:13, Myklebust, Trond <Trond.Myklebust@netapp.com> wrote:
->>>> 
->>>>> 
->>>>> On Nov 25, 2013, at 12:57, <andros@netapp.com> <andros@netapp.com> wrote:
->>>>> 
->>>>>> From: Andy Adamson <andros@netapp.com>
->>>>>> 
->>>>>> The state manager is recovering expired state and recovery OPENs are being
->>>>>> processed. If kswapd is pruning inodes at the same time, a deadlock can occur
->>>>>> when kswapd calls evict_inode on an NFSv4.1 inode with a layout, and the
->>>>>> resultant layoutreturn gets an error that the state mangager is to handle,
->>>>>> causing the layoutreturn to wait on the (NFS client) cl_rpcwaitq.
->>>>>> 
->>>>>> At the same time an open is waiting for the inode deletion to complete in
->>>>>> __wait_on_freeing_inode.
->>>>>> 
->>>>>> If the open is either the open called by the state manager, or an open from
->>>>>> the same open owner that is holding the NFSv4.0 sequence id which causes the
->>>>>> OPEN from the state manager to wait for the sequence id on the Seqid_waitqueue,
->>>>>> then the state is deadlocked with kswapd.
->>>>>> 
->>>>>> Do not handle LAYOUTRETURN errors when called from nfs4_evict_inode.
->>>>> 
->>>>> Why are we waiting for recovery in LAYOUTRETURN at all? Layouts are automatically lost when the server reboots or when the lease is otherwise lost.
->>>>> 
->>>>> IOW: Is there any reason why we need to special-case nfs4_evict_inode? Shouldn’t we just bail out on error in _all_ cases?
->>>> 
->>>> BTW: Is it possible that we might have a similar problem with delegreturn? That too can be called from nfs4_evict_inode…
->>> 
->>> Yes, good point.  kswapd could be waiting for a delegation to return which has an error along with the same scenario with sys_open and the state manager running.
->>> 
->>> With delegreturn, we most definately want to limit 'no error handling' to the evict inode case.
->> 
->> Ah… I forgot that the delegreturn in nfs4_evict_inode is asynchronous and doesn’t wait for completion, so it shouldn’t be a problem here.
+> $ sudo mount -v -o v4.1 zero:/invalid_export /mnt
+> mount.nfs: timeout set for Wed Nov 13 10:09:48 2013
+> mount.nfs: trying text-based options 'v4.1,vers=4,addr=192.168.100.10,clientaddr=192.168.100.11'
+> mount.nfs: mount(2): No such file or directory
+> mount.nfs: trying text-based options 'v4.1,addr=192.168.100.10'
+> mount.nfs: prog 100003, trying vers=3, prot=6
+> mount.nfs: trying 192.168.100.10 prog 100003 vers 3 prot TCP port 2049
+> mount.nfs: prog 100005, trying vers=3, prot=17
+> mount.nfs: trying 192.168.100.10 prog 100005 vers 3 prot UDP port 20048
+> mount.nfs: mount(2): Invalid argument
+> mount.nfs: an incorrect mount option was specified
 > 
-> Except we just changed that to fix a different state manager hang:
+> And you get this in dmesg:
 > 
-> commit 4a82fd7c4e78a1b7a224f9ae8bb7e1fd95f670e0
-> Author: Andy Adamson <andros@netapp.com>
-> Date:   Fri Nov 15 16:36:16 2013 -0500
+> NFS: mount option vers=3 does not support minorversion=1
 > 
->    NFSv4 wait on recovery for async session errors
+> but if you use another form of the same options, this doesn't happen:
+> 
+> $ sudo mount -v -o vers=4,minorversion=1 zero:/invalid_export /mnt
+> mount.nfs: timeout set for Wed Nov 13 10:10:28 2013
+> mount.nfs: trying text-based options 'vers=4,minorversion=1,addr=192.168.100.10,clientaddr=192.168.100.11'
+> mount.nfs: mount(2): No such file or directory
+> mount.nfs: mounting zero:/invalid_export failed, reason given by server: No such file or directory
 
-Right, but that won’t prevent nfs4_evict_inode from completing, and hence the OPEN that is waiting in nfs_fhget() can also complete, and so there is no deadlock with the state manager thread.
+Actually, I have been wondering how all this worked without any changes to mount.nfs.  :-)
 
-Cheers
-  Trond
---
-Trond Myklebust
-Linux NFS client maintainer
+Acked-by: Chuck Lever <chuck.lever@oracle.com>
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+
+> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+> ---
+> utils/mount/network.c | 8 ++++++++
+> 1 file changed, 8 insertions(+)
+> 
+> diff --git a/utils/mount/network.c b/utils/mount/network.c
+> index e8e55a5..2853d00 100644
+> --- a/utils/mount/network.c
+> +++ b/utils/mount/network.c
+> @@ -92,6 +92,9 @@ static const char *nfs_version_opttbl[] = {
+> 	"v4",
+> 	"vers",
+> 	"nfsvers",
+> +	"v4.0",
+> +	"v4.1",
+> +	"v4.2",
+> 	NULL,
+> };
+> 
+> @@ -1269,6 +1272,11 @@ nfs_nfs_version(struct mount_options *options, unsigned long *version)
+> 					progname);
+> 			return 0;
+> 		}
+> +	case 5: /* v4.0 */
+> +	case 6: /* v4.1 */
+> +	case 7: /* v4.2 */
+> +		*version = 4;
+> +		return 1;
+> 	}
+> 
+> 	/*
+> -- 
+> 1.8.3.1 (Apple Git-46)
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
