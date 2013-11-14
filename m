@@ -1,39 +1,112 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:57282 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751104Ab3KOO2u (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Nov 2013 09:28:50 -0500
-Date: Fri, 15 Nov 2013 06:28:47 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Christoph Hellwig <hch@infradead.org>, Trond.Myklebust@netapp.com,
+Received: from mail-qa0-f45.google.com ([209.85.216.45]:48725 "EHLO
+	mail-qa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752901Ab3KNMZ2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Nov 2013 07:25:28 -0500
+Received: by mail-qa0-f45.google.com with SMTP id i13so98151qae.18
+        for <linux-nfs@vger.kernel.org>; Thu, 14 Nov 2013 04:25:27 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: trond.myklebust@netapp.com
+Cc: chuck.lever@oracle.com, neilb@suse.de, steved@redhat.com,
         linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 7/7] nfs: page cache invalidation for dio
-Message-ID: <20131115142847.GA1107@infradead.org>
-References: <20131114165027.355613182@bombadil.infradead.org>
- <20131114165042.205194841@bombadil.infradead.org>
- <20131114133551.5d08b5cd@tlielax.poochiereds.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20131114133551.5d08b5cd@tlielax.poochiereds.net>
+Subject: [PATCH v4 0/3] sunrpc/nfs: more reliable detection of running gssd
+Date: Thu, 14 Nov 2013 07:25:16 -0500
+Message-Id: <1384431919-20921-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Nov 14, 2013 at 01:35:51PM -0500, Jeff Layton wrote:
-> Hrm... I started chasing down a bug reported by our QA group last week
-> that's showing up when you mix DIO writes and buffered reads
-> (basically, diotest3 in the LTP suite is failing). The bug is marked
-> private for dumb reasons but I'll see if I can make it public. I'll
-> also plan to give this series a spin to see if it helps fix that bug...
-> 
-> In any case, the DIO write code calls nfs_zap_mapping after it gets the
-> WRITE reply. That sets NFS_INO_INVALID_DATA and should prevent buffered
-> read() calls from getting data out of the cache after the write reply
-> comes in.
-> 
-> Why is that not sufficient here?
+v4:
+- fix commit message in first patch (s/"dummy"/"gssd"/)
 
-Sounds like it should actually be fine, although I had similar testcases
-fail.  I didn't even notice we were doing the invalidation, but delaying
-it.  Can't see how that helps when bringing mmap into the game, although
-that was always an best effort and pray that it works scenario.
+- remove #if IS_ENABLED(CONFIG_SUNRPC_GSS) compile-time dependency
+
+- added cleanup of warn_gssd() message
+
+- fix minor checkpatch.pl warnings
+
+v3:
+- get rid of unneeded argument to init_client nfs op
+
+- move gssd_running check into rpc_pipe.c to eliminate dependency on
+  auth_gss.ko
+
+v2:
+- change name of toplevel pipefs dir from "dummy" to "gssd" (per
+  Trond's suggestion)
+
+- when gssd isn't running, don't bother to upcall (per Neil B.'s
+  suggestion)
+
+- fix lifecycle of rpc_pipe data. Previously it would have leaked
+  after umount. With this set, it's created and destroyed along with
+  the netns, and just attached to the pipe inode on mount/unmount
+  of rpc_pipefs.
+
+- patch has been added to skip attempting setclientid with krb5i
+  if gssd isn't running. This avoids the "AUTH_GSS upcall timed out"
+  message when gssd isn't running and you mount with sec=sys. It also
+  shortens the delay when gssd isn't up.
+
+The original cover letter from the v1 posting follows. Note that this
+set does address the warnings about the AUTH_GSS upcall timing out.
+
+-------------------------[snip]-----------------------------
+
+We've gotten a lot of complaints recently about the 15s delay when
+doing a sec=sys mount without gssd running.
+
+A large part of the problem is that the kernel isn't able to reliably
+detect when rpc.gssd is running. What we currently have is a
+gssd_running flag that is initially set to 1. When an upcall times out,
+that gets set to 0, and subsequent upcalls get a much shorter timeout
+(1/4s instead of 15s). It's reset back to '1' when a pipe is reopened.
+
+The approach of using a flag like this is pretty inadequate. First, it
+doesn't eliminate the long delay on the initial upcall attempt. Also,
+if gssd spontaneously dies, then the flag will still be set to 1 until
+the next upcall attempt times out. Finally, it currently requires that
+the pipe be reopened in order to reset the flag back to true.
+
+This patchset replaces that flag with a more reliable mechanism for
+detecting when gssd is running. When rpc_pipefs is mounted, it creates a
+new "dummy" pipe that gssd will naturally find and hold open. We'll
+never send an upcall down this pipe, and writing to it always fails.
+But, since we can detect when something is holding it open, we can use
+that to determine whether gssd is running.
+
+The current patch just uses this mechanism to replace the gssd_running
+flag with this new mechanism. This shortens the long delay when mounting
+without gssd running, but does not silence these warnings:
+
+    RPC: AUTH_GSS upcall timed out.
+    Please check user daemon is running.
+
+I'm willing to add a patch to do that, but I'm a little unclear on the
+best way to do so. Those messages are generated by the auth_gss code. We
+probably do want to print them if someone mounted with sec=krb5, but
+suppress them when mounting with sec=sys.
+
+Do we need to somehow pass down that intent to auth_gss? Another idea
+would be to call gssd_running() from the nfs mount code and use that to
+determine whether to try and use krb5 at all...
+
+Discuss!
+
+Jeff Layton (3):
+  sunrpc: create a new dummy pipe for gssd to hold open
+  sunrpc: replace sunrpc_net->gssd_running flag with a more reliable
+    check
+  nfs: check if gssd is running before attempting to use krb5i auth in
+    SETCLIENTID call
+
+ fs/nfs/nfs4client.c                |   7 ++-
+ include/linux/sunrpc/rpc_pipe_fs.h |   5 +-
+ net/sunrpc/auth_gss/auth_gss.c     |  17 +++---
+ net/sunrpc/netns.h                 |   3 +-
+ net/sunrpc/rpc_pipe.c              | 107 ++++++++++++++++++++++++++++++++++---
+ net/sunrpc/sunrpc_syms.c           |   8 ++-
+ 6 files changed, 125 insertions(+), 22 deletions(-)
+
+-- 
+1.8.3.1
+
