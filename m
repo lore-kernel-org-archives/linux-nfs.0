@@ -1,77 +1,198 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:26016 "EHLO mx11.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:37553 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753652Ab3KGW3z convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Nov 2013 17:29:55 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Steve Dickson <SteveD@redhat.com>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] Adding the nfs4_use_min_auth module parameter
-Date: Thu, 7 Nov 2013 22:29:54 +0000
-Message-ID: <1383863394.12966.63.camel@leira.trondhjem.org>
-References: <1383851364-8370-1-git-send-email-steved@redhat.com>
-		 <1383852380.12966.5.camel@leira.trondhjem.org>
-		 <527C0548.1090205@RedHat.com>
-	 <1383860381.12966.37.camel@leira.trondhjem.org>
-	 <527C0CB6.8090308@RedHat.com>
-In-Reply-To: <527C0CB6.8090308@RedHat.com>
-Content-Type: text/plain; charset="utf-7"
+	id S1754775Ab3KNTUI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 14 Nov 2013 14:20:08 -0500
+Date: Thu, 14 Nov 2013 14:19:54 -0500
+To: David Howells <dhowells@redhat.com>
+Cc: viro@ZenIV.linux.org.uk, linux-cifs@vger.kernel.org,
+        linux-nfs@vger.kernel.org, libc-alpha@sourceware.org,
+        linux-api@vger.kernel.org, andreas.gruenbacher@gmail.com,
+        samba-technical@lists.samba.org, linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH 0/3] Extended file stat system call [ver #2]
+Message-ID: <20131114191953.GB21152@fieldses.org>
+References: <20131112184127.2880.24025.stgit@warthog.procyon.org.uk>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20131112184127.2880.24025.stgit@warthog.procyon.org.uk>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2013-11-07 at 16:57 -0500, Steve Dickson wrote:
-+AD4- 
-+AD4- On 07/11/13 16:39, Myklebust, Trond wrote:
-+AD4- +AD4APg- If we blacklist those module(s) then we are disabling secure mounts
-+AD4- +AD4APg- +AD4- altogether... 
-+AD4- +AD4- What's the difference? If you use secure mounts, you really do want the
-+AD4- +AD4- NFSv4 state to be secure too.
-+AD4- Maybe I'm missing something via my testing.. It seems only the establishment
-+AD4- of the state is insecure not the actual transactions using that state.
-+AD4- So there is a window... but... 
-+AD4- 
-+AD4- Again, what servers, today, support this type of secure state establishment?
-+AD4- Having this type of security in the client I think is good... but if
-+AD4- the client is not talking with any servers that support this type 
-+AD4- of security, why not have a way to turn it off?
+On Tue, Nov 12, 2013 at 06:41:27PM +0000, David Howells wrote:
+> 
+> Implement a new system call to provide an extended and further extensible stat
+> function.
+> 
+> =======
+> CHANGES
+> =======
+> 
+>  (*) Added an optional auxiliary data buffer pointer argument to sys_statxat()
+>      and moved some of the stuff into it.
+> 
+>  (*) Discarded "has an ACL info flag" for now.
+> 
+>  (*) AFS doesn't need to set time granularity itself as the default is 1s
+>      anyway.
+> 
+> 
+> ===========
+> DESCRIPTION
+> ===========
+> 
+> The second of the associated patches is the main patch that provides this new
+> system call:
+> 
+> 	long ret = statxat(int dfd,
+> 			   const char *filename,
+> 			   unsigned atflag,
+> 			   unsigned mask,
+> 			   struct statx *buffer,
+> 			   struct statx_auxinfo *auxinfo);
+> 
+> which is more fully documented in the main patch's description.
+> 
+> This new stat function provides a number of useful features, in summary:
+> 
+>  (1) More information: creation time, data version number, flags/attributes.
+>      A subset of these is available through a number of filesystems (such as
+>      CIFS, NFS, AFS, Ext4 and BTRFS).
+> 
+>  (2) Lightweight stat: Ask for just those details of interest, and allow a
+>      netfs (such as NFS) to approximate anything not of interest, possibly
+>      without going to the server.
+> 
+>  (3) Heavyweight stat: Force a netfs to go to the server, even if it thinks its
+>      cached attributes are up to date.
 
-I don't understand. Servers are +AF8-required+AF8- to support RPCSEC+AF8-GSS with
-krb5 by both RFC3530 and RFC5661. AUTH+AF8-SYS is, in fact, the optional
-flavour.
+I'm not following the lightweight/heavyweight thing: so this is encoded
+in the mask?  So it's just a 1-bit value per attribute?  Because it
+seems like there are potentially 3 different behaviors:
 
-The problem here is that sometimes kerberos isn't configured by the
-admin, who then expects that it shouldn't be necessary to run rpc.gssd
-or rpc.svcgssd. It is necessary because we first try the
-mandatory-to-implement and secure RPCSEC+AF8-GSS/krb5i flavour before
-falling back to the less secure AUTH+AF8-SYS...
+	- definitely get this from the server now even if you normally
+	  wouldn't.
+	- definitely don't go to the server even if you know your cache
+	  is stale.
+	- do whatever you'd normally do (check how old your cache is or
+	  whatever).
 
-+AD4- +AD4APgA+- +AD4- +AD4- I think we should rather looks at adding a new mount option for
-+AD4- +AD4APgA+- +AD4- +AD4- specifying the security flavour to use when establishing basic NFSv4.x
-+AD4- +AD4APgA+- +AD4- +AD4- state, and then perhaps specifying the +AF8-default+AF8- for that mount option
-+AD4- +AD4APgA+- +AD4- +AD4- using a module parameter.
-+AD4- +AD4APg- +AD4- The problem is everything is hard code in these two areas so having
-+AD4- +AD4APg- +AD4- a mount option would not work... 
-+AD4- +AD4- We can change that code.
-+AD4- +AD4- 
-+AD4- +AD4APg- +AD4- The fact that -o sec+AD0-sys does not turn off the use of AUTH+AF8-GSS+AF8-KRB5x 
-+AD4- +AD4APg- +AD4- is simple wrong... IMHO...
-+AD4- +AD4- I beg to differ. The problem previously was that it +AF8-did+AF8- set the policy
-+AD4- +AD4- for the state management, and that meant that if you has 2 mounts on the
-+AD4- +AD4- same server with different security flavours, then then client behaviour
-+AD4- +AD4- depended on the order of the mounts. Get the order wrong, and you get
-+AD4- +AD4- anything from outright errors (CLID+AF8-IN+AF8-USE) to insecure behaviour.
-+AD4- I see your point... but requiring all mounts to use some form 
-+AD4- of security I don't think is the answer either... 
+I guess this is what you're asking in "considerations" below.
 
-I'm saying that we may need a way to specify the security flavour to be
-used by the client's state manager when establishing the NFSv4 lease,
-and that would need to be done on a per-server basis.
+--b.
 
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust+AEA-netapp.com
-www.netapp.com
+>  (4) Allow the filesystem to indicate what it can/cannot provide: A filesystem
+>      can now say it doesn't support a standard stat feature if that isn't
+>      available.
+> 
+>  (5) Make the fields a consistent size on all arches, and make them large.
+> 
+>  (6) Can be extended by using more request flags and appending further data
+>      after the end of the standard return data.
+> 
+> Note that no lstat() equivalent is required as that can be implemented through
+> statxat() with atflag == 0.  There is also no fstat() equivalent as that can be
+> implemented through statxat() with filename == NULL and the relevant fd passed
+> as dfd.
+> 
+> 
+> =======
+> PATCHES
+> =======
+> 
+> Patch 1 introduces IOC flags for Windows Hidden, Archive and System attributes.
+> 
+> Patch 2 defines the statxat() system call.
+> 
+> Patch 3 implements extended stat facilities for AFS.  Other fs patches to go
+> through their respective trees once the core is in.
+> 
+> 
+> ==============
+> CONSIDERATIONS
+> ==============
+> 
+> Should the default for a network fs be to do an unconditional (heavyweight)
+> stat with a flag to suppress going to the server to update the locally held
+> attributes and flushing pending writebacks?
+> 
+> Is it useful to pass the volume ID out?  Or should statfs() be used for this?
+> 
+> Is there anything else I can usefully add at the moment?
+> 
+> 
+> ==========
+> TO BE DONE
+> ==========
+> 
+> Autofs, ntfs, btrfs, ...
+> 
+> I should perhaps use u8/u32/u64 rather than uint8/32/64_t.
+> 
+> Handle remote filesystems being offline and indicate this with
+> STATX_INFO_OFFLINE.
+> 
+> Should a "light stat" be explicitly requested by its own AT_ flag?
+> 
+> 
+> =======
+> TESTING
+> =======
+> 
+> There's a test program attached to the description for the main patch.  It can
+> be run as follows:
+> [root@andromeda tmp]# ./xstat -R /mnt/foo
+> 
+> 	xstat(/mnt/foo) = 0
+> 	0000: 000081a40000ffef 0000000000000001 0000020000000000 0000100000080000
+> 	0020: 0000000000000000 0000000600000008 000000004f88499a 0000000136fd9208
+> 	0040: 000000004f88499a 0000000136fd9208 000000004f8849b9 0000000106daf187
+> 	0060: 000000004f8849b9 0000000106daf187 000000000000000c 000000000000000f
+> 	0080: 0000000000000008 00000000484ebbef 0000000000000025 5949ebd4711efd82
+> 	00a0: d3250b5c15d5e380 0000000000000000 0000000000000000 0000000000000000
+> 	00c0: 0000000000000000 0000000000000000 0000000000000000 0000000000000000
+> 	00e0: 0000000000000000 0000000000000000 0000000000000000 0000000000000000
+> 	results=ffef
+> 	  Size: 15              Blocks: 8          IO Block: 4096    regular file
+> 	Device: 08:06           Inode: 12          Links: 1    
+> 	Access: (0644/-rw-r--r--)  Uid: 0   
+> 	Gid: 0
+> 	Access: 2012-04-13 16:43:22.922587656+0100
+> 	Modify: 2012-04-13 16:43:53.115011975+0100
+> 	Change: 2012-04-13 16:43:53.115011975+0100
+> 	Create: 2012-04-13 16:43:22.922587656+0100
+> 	Inode version: 484ebbefh
+> 	Data version: 25h
+> 	Inode flags: 00080000 (-------- ----e--- -------- --------)
+> 	Information: 00000200 (-------- -------- ------a- --------)
+> 	Volume ID: 82fd1e71d4eb4959-80e3d5155c0b25d3
+> 
+> David
+> ---
+> David Howells (3):
+>       statxat: Provide IOC flags for Windows fs attributes
+>       statxat: Add a system call to make extended file stats available
+>       statxat: AFS: Return enhanced basic attributes
+> 
+> 
+>  arch/x86/ia32/sys_ia32.c         |    2 
+>  arch/x86/syscalls/syscall_32.tbl |    1 
+>  arch/x86/syscalls/syscall_64.tbl |    1 
+>  fs/afs/inode.c                   |   46 ++++-
+>  fs/ceph/inode.c                  |    2 
+>  fs/cifs/inode.c                  |    5 -
+>  fs/compat.c                      |    2 
+>  fs/nfsd/nfsxdr.c                 |    2 
+>  fs/stat.c                        |  348 ++++++++++++++++++++++++++++++++++++--
+>  include/linux/fs.h               |    3 
+>  include/linux/stat.h             |   16 ++
+>  include/linux/syscalls.h         |    6 +
+>  include/uapi/linux/fcntl.h       |    1 
+>  include/uapi/linux/fs.h          |    7 +
+>  include/uapi/linux/stat.h        |  164 ++++++++++++++++++
+>  15 files changed, 567 insertions(+), 39 deletions(-)
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
