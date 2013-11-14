@@ -1,79 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:47768 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753756Ab3KKN2W (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 11 Nov 2013 08:28:22 -0500
-Date: Mon, 11 Nov 2013 08:26:41 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Vasily Kulikov <segoon@openwall.com>
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org,
-        Stanislav Kinsbursky <skinsbursky@parallels.com>, bfields@fieldses.org,
-        bharrosh@panasas.com, devel@openvz.org, oleg@redhat.com
-Subject: Re: [Devel] call_usermodehelper in containers
-Message-ID: <20131111082641.048696f3@tlielax.poochiereds.net>
-In-Reply-To: <20131111124321.GA18028@cachalot>
-References: <20131111071825.62da01d1@tlielax.poochiereds.net>
-	<20131111124321.GA18028@cachalot>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from szxga02-in.huawei.com ([119.145.14.65]:6881 "EHLO
+	szxga02-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753631Ab3KNMoF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Nov 2013 07:44:05 -0500
+Message-ID: <5284C45F.5050400@huawei.com>
+Date: Thu, 14 Nov 2013 20:38:55 +0800
+From: Weng Meiling <wengmeiling.weng@huawei.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: <linux-nfs@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
+        Li Zefan <lizefan@huawei.com>
+Subject: Re: [PATCH] nfsd:add '\n' when read file supported_krb5_enctypes
+References: <52786412.5030403@huawei.com> <527C9170.9030005@huawei.com> <20131113160937.GI28033@fieldses.org>
+In-Reply-To: <20131113160937.GI28033@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 11 Nov 2013 16:43:21 +0400
-Vasily Kulikov <segoon@openwall.com> wrote:
+On 2013/11/14 0:09, J. Bruce Fields wrote:
+> On Fri, Nov 08, 2013 at 03:23:28PM +0800, Weng Meiling wrote:
+>>
+>> From: Weng Meiling <wengmeiling.weng@huawei.com>
+> 
+> I agree completely that a \n at the end would make more sense.
+> 
+> Have you tested that this nfs-utils is OK with this change?
+> 
+> I suspect that the only code that reads this file anywhere is
+> 
+> 	nfs-utils/utils/gssd/svcgssd_krb5.c:parse_enctypes()
+> 
+> And on a quick skim of that function.... I *think* it should be fine.
+> But I'd be happier if you could confirm that you've tested it.
+> 
+> --b.
+> 
+After this change， starting the nfs server， other host can use the
+server's shared files normally :-).
 
-> Hi Jeff,
+Thanks！
+Weng Meilling
+>>
+>> Signed-off-by: Weng Meiling <wengmeiling.weng@huawei.com>
+>> ---
+>>  fs/nfsd/nfsctl.c | 2 +-
+>>  1 file changed, 1 insertion(+), 1 deletion(-)
+>>
+>> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+>> index 7f55517..31db42c 100644
+>> --- a/fs/nfsd/nfsctl.c
+>> +++ b/fs/nfsd/nfsctl.c
+>> @@ -188,7 +188,7 @@ static const struct file_operations export_features_operations = {
+>>  #if defined(CONFIG_SUNRPC_GSS) || defined(CONFIG_SUNRPC_GSS_MODULE)
+>>  static int supported_enctypes_show(struct seq_file *m, void *v)
+>>  {
+>> -	seq_printf(m, KRB5_SUPPORTED_ENCTYPES);
+>> +	seq_printf(m, "%s\n", KRB5_SUPPORTED_ENCTYPES);
+>>  	return 0;
+>>  }
+>>
+>> -- 
+>> 1.8.3.1
+>>
+>>
+>>
+>>
 > 
-> On Mon, Nov 11, 2013 at 07:18 -0500, Jeff Layton wrote:
-> > What's the correct approach to fix this? One possibility would be to
-> > keep a kernel thread around that sits in the correct namespace(s) and
-> > has the right privileges, and then use that to launch UMH programs.
-> > That thread could be spawned whenever someone runs rpc.nfsd inside a
-> > container.
-> > 
-> > Not very elegant, but it seems like something that would work.
-> > 
-> > Are there better approaches?
-> 
-> What's the reasoning behind this?  I mean, it is not very obvious what
-> we should keep here.  Compare 2 cases:
-> 
-> 1) root process with all caps spawns new ns, then drops some of caps;
-> 
-> 2) root process with all caps drops some of his caps and then spawns new ns.
-> 
-> From the programmer's POV both cases are valid and lead to absolutely
-> the same limitations inside of the new namespace.  However, from kernel
-> POV they differ -- if save cap set when ns is created then in (1) we'll
-> have cap'ed UMH, in (2) we'll have UMH with only several caps.  It might
-> significantly influence on ability of UMH to do its job and ability of
-> this limited ns to escape from the sandbox.
-> 
-> So, what semantic should UMH privileges have?
-> 
-> 
-> Also, an orthogonal addition: you might want to keep only minimum
-> information about capabilities or something -- keep only cap_t field in
-> namespace structure without explicit kernel thread for each ns.  When UMH is
-> created, just fill the required caps in it.
-> 
-> Thanks,
 > 
 
-I don't have a particular affinity for either approach.
 
-I think from a safety POV, it's less error prone to spawn the UMH
-programs as a descendent of the userland process that originally
-started up nfsd. That way we ensure that it inherits all of the
-limitations of the original task.
-
-If we try instead to start with a process that is running with all
-capabilities and then drop some of them selectively, then it seems
-quite possible to miss something.
-
-But...namespaces aren't really my "thing", and I might have the
-terminology wrong or be missing some other crux of the issue.
-
--- 
-Jeff Layton <jlayton@redhat.com>
