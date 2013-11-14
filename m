@@ -1,467 +1,155 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qe0-f52.google.com ([209.85.128.52]:64505 "EHLO
-	mail-qe0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753118Ab3KOTPi (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Nov 2013 14:15:38 -0500
-Received: by mail-qe0-f52.google.com with SMTP id cz11so2002385qeb.25
-        for <linux-nfs@vger.kernel.org>; Fri, 15 Nov 2013 11:15:38 -0800 (PST)
+Received: from mail-qa0-f51.google.com ([209.85.216.51]:54241 "EHLO
+	mail-qa0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753410Ab3KNMZ3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Nov 2013 07:25:29 -0500
+Received: by mail-qa0-f51.google.com with SMTP id i13so97374qae.10
+        for <linux-nfs@vger.kernel.org>; Thu, 14 Nov 2013 04:25:29 -0800 (PST)
 From: Jeff Layton <jlayton@redhat.com>
-To: steved@redhat.com
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: [PATCH 1/2] nfs-utils: consolidate mydaemon() and release_parent() implementations
-Date: Fri, 15 Nov 2013 14:15:30 -0500
-Message-Id: <1384542931-18753-2-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1384542931-18753-1-git-send-email-jlayton@redhat.com>
-References: <1384542931-18753-1-git-send-email-jlayton@redhat.com>
+To: trond.myklebust@netapp.com
+Cc: chuck.lever@oracle.com, neilb@suse.de, steved@redhat.com,
+        linux-nfs@vger.kernel.org
+Subject: [PATCH v4 2/3] sunrpc: replace sunrpc_net->gssd_running flag with a more reliable check
+Date: Thu, 14 Nov 2013 07:25:18 -0500
+Message-Id: <1384431919-20921-3-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1384431919-20921-1-git-send-email-jlayton@redhat.com>
+References: <1384431919-20921-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We currently have 2 cut-and-paste versions of this code. One for idmapd
-and one for svcgssd.[1]
+Now that we have a more reliable method to tell if gssd is running, we
+can replace the sn->gssd_running flag with a function that will query to
+see if it's up and running.
 
-The two are basically equivalent but there are some small differences,
-mostly related to how errors in that function are logged. svcgssd uses
-printerr() with a priority of 1, which only prints errors if -v was
-specified. That doesn't seem to be quite right. Daemonizing errors are
-necessarily fatal and should be logged as such. The one for idmapd uses
-err(), which always prints to stderr even though we have the xlog
-facility set up. Since both have xlog configured at this point, log the
-errors using xlog_err() instead.
-
-The only other significant difference I see is that the idmapd version
-will open "/" if it's unable to open "/dev/null". I believe that however
-was a holdover from an earlier version of that function that did not
-error out when we were unable to open a file descriptor. Since the
-function does that now, I don't believe we need that fallback anymore.
-
-[1]: technically, we have a third in statd too, but it's different
-     enough that I don't want to touch it here.
+There's also no need to attempt an upcall that we know will fail, so
+just return -EACCES if gssd isn't running. Finally, fix the warn_gss()
+message not to claim that that the upcall timed out since we don't
+necesarily perform one now when gssd isn't running, and remove the
+extraneous newline from the message.
 
 Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- support/include/nfslib.h |   4 ++
- support/nfs/Makefile.am  |   2 +-
- support/nfs/mydaemon.c   | 148 +++++++++++++++++++++++++++++++++++++++++++++++
- utils/gssd/svcgssd.c     |  90 +---------------------------
- utils/idmapd/idmapd.c    |  82 +-------------------------
- 5 files changed, 159 insertions(+), 167 deletions(-)
- create mode 100644 support/nfs/mydaemon.c
+ include/linux/sunrpc/rpc_pipe_fs.h |  2 ++
+ net/sunrpc/auth_gss/auth_gss.c     | 17 +++++++----------
+ net/sunrpc/netns.h                 |  2 --
+ net/sunrpc/rpc_pipe.c              | 14 ++++++++++----
+ 4 files changed, 19 insertions(+), 16 deletions(-)
 
-diff --git a/support/include/nfslib.h b/support/include/nfslib.h
-index f210a06..ce4b14b 100644
---- a/support/include/nfslib.h
-+++ b/support/include/nfslib.h
-@@ -128,6 +128,10 @@ void			fputrmtabent(FILE *fp, struct rmtabent *xep, long *pos);
- void			fendrmtabent(FILE *fp);
- void			frewindrmtabent(FILE *fp);
+diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
+index 85f1342..7f490be 100644
+--- a/include/linux/sunrpc/rpc_pipe_fs.h
++++ b/include/linux/sunrpc/rpc_pipe_fs.h
+@@ -131,5 +131,7 @@ extern int rpc_unlink(struct dentry *);
+ extern int register_rpc_pipefs(void);
+ extern void unregister_rpc_pipefs(void);
  
-+/* mydaemon */
-+void mydaemon(int nochdir, int noclose, int *pipefds);
-+void release_parent(int *pipefds);
++extern bool gssd_running(struct net *net);
 +
- /*
-  * wildmat borrowed from INN
-  */
-diff --git a/support/nfs/Makefile.am b/support/nfs/Makefile.am
-index 05c2fc4..fb9b8c1 100644
---- a/support/nfs/Makefile.am
-+++ b/support/nfs/Makefile.am
-@@ -2,7 +2,7 @@
+ #endif
+ #endif
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index 97912b4..0316b8d 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -536,8 +536,7 @@ static void warn_gssd(void)
+ 	unsigned long now = jiffies;
  
- noinst_LIBRARIES = libnfs.a
- libnfs_a_SOURCES = exports.c rmtab.c xio.c rpcmisc.c rpcdispatch.c \
--		   xlog.c xcommon.c wildmat.c nfsclient.c \
-+		   xlog.c xcommon.c wildmat.c mydaemon.c nfsclient.c \
- 		   nfsexport.c getfh.c nfsctl.c rpc_socket.c getport.c \
- 		   svc_socket.c cacheio.c closeall.c nfs_mntent.c conffile.c \
- 		   svc_create.c atomicio.c strlcpy.c strlcat.c
-diff --git a/support/nfs/mydaemon.c b/support/nfs/mydaemon.c
-new file mode 100644
-index 0000000..e885d60
---- /dev/null
-+++ b/support/nfs/mydaemon.c
-@@ -0,0 +1,148 @@
-+/*
-+  mydaemon.c
-+
-+  Copyright (c) 2000 The Regents of the University of Michigan.
-+  All rights reserved.
-+
-+  Copyright (c) 2000 Dug Song <dugsong@UMICH.EDU>.
-+  Copyright (c) 2002 Andy Adamson <andros@UMICH.EDU>.
-+  Copyright (c) 2002 Marius Aamodt Eriksen <marius@UMICH.EDU>.
-+  Copyright (c) 2002 J. Bruce Fields <bfields@UMICH.EDU>.
-+  Copyright (c) 2013 Jeff Layton <jlayton@redhat.com>
-+
-+  All rights reserved, all wrongs reversed.
-+
-+  Redistribution and use in source and binary forms, with or without
-+  modification, are permitted provided that the following conditions
-+  are met:
-+
-+  1. Redistributions of source code must retain the above copyright
-+     notice, this list of conditions and the following disclaimer.
-+  2. Redistributions in binary form must reproduce the above copyright
-+     notice, this list of conditions and the following disclaimer in the
-+     documentation and/or other materials provided with the distribution.
-+  3. Neither the name of the University nor the names of its
-+     contributors may be used to endorse or promote products derived
-+     from this software without specific prior written permission.
-+
-+  THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED
-+  WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
-+  MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
-+  DISCLAIMED. IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
-+  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
-+  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
-+  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
-+  BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
-+  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
-+  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
-+  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
-+
-+*/
-+
-+#include <sys/param.h>
-+#include <sys/types.h>
-+#include <sys/stat.h>
-+#include <fcntl.h>
-+#include <errno.h>
-+#include <unistd.h>
-+#include <stdio.h>
-+#include <stdlib.h>
-+#include <string.h>
-+#include <xlog.h>
-+
-+/**
-+ * mydaemon - daemonize, but have parent wait to exit
-+ * @nochdir:	skip chdir()'ing the child to / after forking if true
-+ * @noclose:	skip closing stdin/stdout/stderr if true
-+ * @pipefds:	pointer to 2 element array of pipefds
-+ *
-+ * This function is like daemon(), but with our own special sauce to delay
-+ * the exit of the parent until the child is set up properly. A pipe is created
-+ * between parent and child. The parent process will wait to exit until the
-+ * child dies or writes a '1' on the pipe signaling that it started
-+ * successfully.
-+ */
-+void
-+mydaemon(int nochdir, int noclose, int *pipefds)
-+{
-+	int pid, status, tempfd;
-+
-+	if (pipe(pipefds) < 0) {
-+		xlog_err("mydaemon: pipe() failed: errno %d (%s)\n",
-+			 errno, strerror(errno));
-+		exit(1);
-+	}
-+	if ((pid = fork ()) < 0) {
-+		xlog_err("mydaemon: fork() failed: errno %d (%s)\n",
-+			 errno, strerror(errno));
-+		exit(1);
-+	}
-+
-+	if (pid != 0) {
-+		/*
-+		 * Parent. Wait for status from child.
-+		 */
-+		close(pipefds[1]);
-+		if (read(pipefds[0], &status, 1) != 1)
-+			exit(1);
-+		exit (0);
-+	}
-+	/* Child.	*/
-+	close(pipefds[0]);
-+	setsid ();
-+	if (nochdir == 0) {
-+		if (chdir ("/") == -1) {
-+			xlog_err("mydaemon: chdir() failed: errno %d (%s)\n",
-+				 errno, strerror(errno));
-+			exit(1);
-+		}
-+	}
-+
-+	while (pipefds[1] <= 2) {
-+		pipefds[1] = dup(pipefds[1]);
-+		if (pipefds[1] < 0) {
-+			xlog_err("mydaemon: dup() failed: errno %d (%s)\n",
-+				 errno, strerror(errno));
-+			exit(1);
-+		}
-+	}
-+
-+	if (noclose == 0) {
-+		tempfd = open("/dev/null", O_RDWR);
-+		if (tempfd >= 0) {
-+			dup2(tempfd, 0);
-+			dup2(tempfd, 1);
-+			dup2(tempfd, 2);
-+			close(tempfd);
-+		} else {
-+			xlog_err("mydaemon: can't open /dev/null: errno %d "
-+				 "(%s)\n", errno, strerror(errno));
-+			exit(1);
-+		}
-+	}
-+
-+	return;
-+}
-+
-+/**
-+ * release_parent - tell the parent that it can exit now
-+ * @pipefds:	pipefd array that was previously passed to mydaemon()
-+ *
-+ * This function tells the parent process of mydaemon() that it's now clear
-+ * to exit(0).
-+ */
-+void
-+release_parent(int *pipefds)
-+{
-+	int status;
-+
-+	if (pipefds[1] > 0) {
-+		if (write(pipefds[1], &status, 1) != 1) {
-+			xlog_err("WARN: writing to parent pipe failed: errno "
-+				 "%d (%s)\n", errno, strerror(errno));
-+		}
-+		close(pipefds[1]);
-+		pipefds[1] = -1;
-+	}
-+}
-+
-diff --git a/utils/gssd/svcgssd.c b/utils/gssd/svcgssd.c
-index 8aee3b2..0385725 100644
---- a/utils/gssd/svcgssd.c
-+++ b/utils/gssd/svcgssd.c
-@@ -62,91 +62,7 @@
- #include "gss_util.h"
- #include "err_util.h"
- 
--/*
-- * mydaemon creates a pipe between the partent and child
-- * process. The parent process will wait until the
-- * child dies or writes a '1' on the pipe signaling
-- * that it started successfully.
-- */
--int pipefds[2] = { -1, -1};
--
--static void
--mydaemon(int nochdir, int noclose)
--{
--	int pid, status, tempfd;
--
--	if (pipe(pipefds) < 0) {
--		printerr(1, "mydaemon: pipe() failed: errno %d (%s)\n",
--			errno, strerror(errno));
--		exit(1);
--	}
--	if ((pid = fork ()) < 0) {
--		printerr(1, "mydaemon: fork() failed: errno %d (%s)\n",
--			errno, strerror(errno));
--		exit(1);
--	}
--
--	if (pid != 0) {
--		/*
--		 * Parent. Wait for status from child.
--		 */
--		close(pipefds[1]);
--		if (read(pipefds[0], &status, 1) != 1)
--			exit(1);
--		exit (0);
--	}
--	/* Child.	*/
--	close(pipefds[0]);
--	setsid ();
--	if (nochdir == 0) {
--		if (chdir ("/") == -1) {
--			printerr(1, "mydaemon: chdir() failed: errno %d (%s)\n",
--				errno, strerror(errno));
--			exit(1);
--		}
--	}
--
--	while (pipefds[1] <= 2) {
--		pipefds[1] = dup(pipefds[1]);
--		if (pipefds[1] < 0) {
--			printerr(1, "mydaemon: dup() failed: errno %d (%s)\n",
--				errno, strerror(errno));
--			exit(1);
--		}
--	}
--
--	if (noclose == 0) {
--		tempfd = open("/dev/null", O_RDWR);
--		if (tempfd >= 0) {
--			dup2(tempfd, 0);
--			dup2(tempfd, 1);
--			dup2(tempfd, 2);
--			close(tempfd);
--		} else {
--			printerr(1, "mydaemon: can't open /dev/null: errno %d "
--				    "(%s)\n", errno, strerror(errno));
--			exit(1);
--		}
--	}
--
--	return;
--}
--
--static void
--release_parent(void)
--{
--	int status;
--
--	if (pipefds[1] > 0) {
--		if (write(pipefds[1], &status, 1) != 1) {
--			printerr(1, 
--				"WARN: writing to parent pipe failed: errno %d (%s)\n",
--				errno, strerror(errno));
--		}
--		close(pipefds[1]);
--		pipefds[1] = -1;
--	}
--}
-+static int pipefds[2] = { -1, -1 };
- 
- void
- sig_die(int signal)
-@@ -242,7 +158,7 @@ main(int argc, char *argv[])
+ 	if (time_after(now, ratelimit)) {
+-		printk(KERN_WARNING "RPC: AUTH_GSS upcall timed out.\n"
+-				"Please check user daemon is running.\n");
++		pr_warn("RPC: AUTH_GSS upcall failed. Please check user daemon is running.\n");
+ 		ratelimit = now + 15*HZ;
  	}
- 
- 	if (!fg)
--		mydaemon(0, 0);
-+		mydaemon(0, 0, pipefds);
- 
- 	signal(SIGINT, sig_die);
- 	signal(SIGTERM, sig_die);
-@@ -272,7 +188,7 @@ main(int argc, char *argv[])
- 	}
- 
- 	if (!fg)
--		release_parent();
-+		release_parent(pipefds);
- 
- 	nfs4_init_name_mapping(NULL); /* XXX: should only do this once */
- 	gssd_run();
-diff --git a/utils/idmapd/idmapd.c b/utils/idmapd/idmapd.c
-index b6c6231..c02849b 100644
---- a/utils/idmapd/idmapd.c
-+++ b/utils/idmapd/idmapd.c
-@@ -157,9 +157,6 @@ static int nfsdopenone(struct idmap_client *);
- static void nfsdreopen_one(struct idmap_client *);
- static void nfsdreopen(void);
- 
--void    mydaemon(int, int);
--void    release_parent(void);
--
- static int verbose = 0;
- #define DEFAULT_IDMAP_CACHE_EXPIRY 600 /* seconds */
- static int cache_entry_expiration = 0;
-@@ -167,6 +164,7 @@ static char pipefsdir[PATH_MAX];
- static char *nobodyuser, *nobodygroup;
- static uid_t nobodyuid;
- static gid_t nobodygid;
-+static int pipefds[2] = { -1, -1 };
- 
- /* Used by conffile.c in libnfs.a */
- char *conf_path;
-@@ -305,7 +303,7 @@ main(int argc, char **argv)
- 		errx(1, "Unable to create name to user id mappings.");
- 
- 	if (!fg)
--		mydaemon(0, 0);
-+		mydaemon(0, 0, pipefds);
- 
- 	event_init();
- 
-@@ -382,7 +380,7 @@ main(int argc, char **argv)
- 	if (nfsdret != 0 && fd == 0)
- 		xlog_err("main: Neither NFS client nor NFSd found");
- 
--	release_parent();
-+	release_parent(pipefds);
- 
- 	if (event_dispatch() < 0)
- 		xlog_err("main: event_dispatch returns errno %d (%s)",
-@@ -929,77 +927,3 @@ getfield(char **bpp, char *fld, size_t fldsz)
- 
- 	return (0);
  }
--/*
-- * mydaemon creates a pipe between the partent and child
-- * process. The parent process will wait until the
-- * child dies or writes a '1' on the pipe signaling
-- * that it started successfully.
-- */
--int pipefds[2] = { -1, -1};
+@@ -600,7 +599,6 @@ gss_create_upcall(struct gss_auth *gss_auth, struct gss_cred *gss_cred)
+ 	struct rpc_pipe *pipe;
+ 	struct rpc_cred *cred = &gss_cred->gc_base;
+ 	struct gss_upcall_msg *gss_msg;
+-	unsigned long timeout;
+ 	DEFINE_WAIT(wait);
+ 	int err;
+ 
+@@ -608,17 +606,16 @@ gss_create_upcall(struct gss_auth *gss_auth, struct gss_cred *gss_cred)
+ 		__func__, from_kuid(&init_user_ns, cred->cr_uid));
+ retry:
+ 	err = 0;
+-	/* Default timeout is 15s unless we know that gssd is not running */
+-	timeout = 15 * HZ;
+-	if (!sn->gssd_running)
+-		timeout = HZ >> 2;
++	/* if gssd is down, just skip upcalling altogether */
++	if (!gssd_running(net)) {
++		warn_gssd();
++		return -EACCES;
++	}
+ 	gss_msg = gss_setup_upcall(gss_auth, cred);
+ 	if (PTR_ERR(gss_msg) == -EAGAIN) {
+ 		err = wait_event_interruptible_timeout(pipe_version_waitqueue,
+-				sn->pipe_version >= 0, timeout);
++				sn->pipe_version >= 0, 15 * HZ);
+ 		if (sn->pipe_version < 0) {
+-			if (err == 0)
+-				sn->gssd_running = 0;
+ 			warn_gssd();
+ 			err = -EACCES;
+ 		}
+diff --git a/net/sunrpc/netns.h b/net/sunrpc/netns.h
+index 8a8e841..94e506f 100644
+--- a/net/sunrpc/netns.h
++++ b/net/sunrpc/netns.h
+@@ -33,8 +33,6 @@ struct sunrpc_net {
+ 	int pipe_version;
+ 	atomic_t pipe_users;
+ 	struct proc_dir_entry *use_gssp_proc;
 -
--void
--mydaemon(int nochdir, int noclose)
--{
--	int pid, status, tempfd;
--
--	if (pipe(pipefds) < 0)
--		err(1, "mydaemon: pipe() failed: errno %d", errno);
--
--	if ((pid = fork ()) < 0)
--		err(1, "mydaemon: fork() failed: errno %d", errno);
--
--	if (pid != 0) {
--		/*
--		 * Parent. Wait for status from child.
--		 */
--		close(pipefds[1]);
--		if (read(pipefds[0], &status, 1) != 1)
--			exit(1);
--		exit (0);
--	}
--	/* Child.	*/
--	close(pipefds[0]);
--	setsid ();
--	if (nochdir == 0) {
--		if (chdir ("/") == -1)
--			err(1, "mydaemon: chdir() failed: errno %d", errno);
--	}
--
--	while (pipefds[1] <= 2) {
--		pipefds[1] = dup(pipefds[1]);
--		if (pipefds[1] < 0)
--			err(1, "mydaemon: dup() failed: errno %d", errno);
--	}
--
--	if (noclose == 0) {
--		tempfd = open("/dev/null", O_RDWR);
--		if (tempfd < 0)
--			tempfd = open("/", O_RDONLY);
--		if (tempfd >= 0) {
--			dup2(tempfd, 0);
--			dup2(tempfd, 1);
--			dup2(tempfd, 2);
--			close(tempfd);
--		} else {
--			err(1, "mydaemon: can't open /dev/null: errno %d",
--			       errno);
--			exit(1);
--		}
--	}
--
--	return;
--}
--void
--release_parent(void)
--{
--	int status;
--
--	if (pipefds[1] > 0) {
--		if (write(pipefds[1], &status, 1) != 1) {
--			err(1, "Writing to parent pipe failed: errno %d (%s)\n",
--				errno, strerror(errno));
--		}
--		close(pipefds[1]);
--		pipefds[1] = -1;
--	}
--}
+-	unsigned int gssd_running;
+ };
+ 
+ extern int sunrpc_net_id;
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index 34efdbf..9ce0082 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -216,14 +216,11 @@ rpc_destroy_inode(struct inode *inode)
+ static int
+ rpc_pipe_open(struct inode *inode, struct file *filp)
+ {
+-	struct net *net = inode->i_sb->s_fs_info;
+-	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
+ 	struct rpc_pipe *pipe;
+ 	int first_open;
+ 	int res = -ENXIO;
+ 
+ 	mutex_lock(&inode->i_mutex);
+-	sn->gssd_running = 1;
+ 	pipe = RPC_I(inode)->pipe;
+ 	if (pipe == NULL)
+ 		goto out;
+@@ -1231,7 +1228,6 @@ int rpc_pipefs_init_net(struct net *net)
+ 		return PTR_ERR(sn->gssd_dummy);
+ 
+ 	mutex_init(&sn->pipefs_sb_lock);
+-	sn->gssd_running = 1;
+ 	sn->pipe_version = -1;
+ 	return 0;
+ }
+@@ -1385,6 +1381,16 @@ err_depopulate:
+ 	return err;
+ }
+ 
++bool
++gssd_running(struct net *net)
++{
++	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
++	struct rpc_pipe *pipe = sn->gssd_dummy;
++
++	return pipe->nreaders || pipe->nwriters;
++}
++EXPORT_SYMBOL_GPL(gssd_running);
++
+ static struct dentry *
+ rpc_mount(struct file_system_type *fs_type,
+ 		int flags, const char *dev_name, void *data)
 -- 
 1.8.3.1
 
