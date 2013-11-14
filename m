@@ -1,58 +1,124 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f169.google.com ([209.85.223.169]:42485 "EHLO
-	mail-ie0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751422Ab3KOPXF convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Nov 2013 10:23:05 -0500
-Received: by mail-ie0-f169.google.com with SMTP id tp5so4922774ieb.14
-        for <linux-nfs@vger.kernel.org>; Fri, 15 Nov 2013 07:23:05 -0800 (PST)
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.0 \(1822\))
-Subject: Re: [PATCH 6/7] nfs: take i_mutex during direct I/O reads
-From: Trond Myklebust <trondmy@gmail.com>
-In-Reply-To: <20131115143237.GC1107@infradead.org>
-Date: Fri, 15 Nov 2013 10:23:01 -0500
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <B39AEFF9-86F1-4427-B413-72B03548FAEE@gmail.com>
-References: <20131114165027.355613182@bombadil.infradead.org> <20131114165042.013211118@bombadil.infradead.org> <C0D328CF-8E30-49E7-AE2C-A05EC463921B@gmail.com> <20131115143237.GC1107@infradead.org>
+Received: from mx1.redhat.com ([209.132.183.28]:40850 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754832Ab3KNSgR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 14 Nov 2013 13:36:17 -0500
+Date: Thu, 14 Nov 2013 13:35:51 -0500
+From: Jeff Layton <jlayton@redhat.com>
 To: Christoph Hellwig <hch@infradead.org>
+Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 7/7] nfs: page cache invalidation for dio
+Message-ID: <20131114133551.5d08b5cd@tlielax.poochiereds.net>
+In-Reply-To: <20131114165042.205194841@bombadil.infradead.org>
+References: <20131114165027.355613182@bombadil.infradead.org>
+	<20131114165042.205194841@bombadil.infradead.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Thu, 14 Nov 2013 08:50:34 -0800
+Christoph Hellwig <hch@infradead.org> wrote:
 
-On Nov 15, 2013, at 9:32, Christoph Hellwig <hch@infradead.org> wrote:
-
-> On Thu, Nov 14, 2013 at 03:43:21PM -0500, Trond Myklebust wrote:
->> 
->> Hi Christoph,
->> 
->> Why do we need to protect the page cache here? Using O_DIRECT and the page cache without some kind of application-specific synchronization method is technically not supported, since that violates close-to-open cache consistency.
+> Make sure to properly invalidate the pagecache before performing direct I/O,
+> so that no stale pages are left around.  This matches what the generic
+> direct I/O code does.  Also take the i_mutex over the direct write submission
+> to avoid the lifelock vs truncate waiting for i_dio_count to decrease, and
+> to avoid having the pagecache easily repopulated while direct I/O is in
+> progrss.  Again matching the generic direct I/O code.
 > 
-> As far as I understand close to open matter for synchronizations with
-> access from different clients.  Linux applications do expect tight
-> synchronization locally.
-
-Yes, but it seems to me that if you’re adding locking in order to synchronize O_DIRECT with the page cache, then something is very wrong. It is hard to close the races, and you are really mixing 2 models that shouldn’t coexist.
-
-It seems a lot more correct in that case to have the kernel convert those O_DIRECT writes into O_SYNC if we really need page cache consistency. That’s the only way we can really _guarantee_ that consistency.
-
->> What we _do_ want to support, though, is parallel reads and writes to the server by applications that know what they are doing. If we were to only protect the i_dio_count, then we could fix the truncate race, while continuing to allow parallelism. Is there any reason why we cannot do this?
+> Signed-off-by: Christoph Hellwig <hch@lst.de>
+> ---
+>  fs/nfs/direct.c |   29 +++++++++++++++++++++++++++--
+>  1 file changed, 27 insertions(+), 2 deletions(-)
 > 
-> To just fix that race we could do it.  Note that even with the patch we
-> only do the setup and I/O submission under the lock, and wait for it
-> outside, similar to what the local filesystems do for aio, but not for
-> synchronous direct I/O.
-> 
-> Another good way to speed this up is to use locking scheme XFS uses with
-> a shared exclusive lock:
-> 
-> buffered write:			exclusive
-> buffered read:			shared
-> direct I/O			exclusive if pagecache is present, then
-> 				demote to shared for actual I/O,
-> 				shared only if no pages are present on
-> 				the file
+> diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+> index 6cc7fe1..2b778fc 100644
+> --- a/fs/nfs/direct.c
+> +++ b/fs/nfs/direct.c
+> @@ -939,9 +939,12 @@ ssize_t nfs_file_direct_write(struct kiocb *iocb, const struct iovec *iov,
+>  	struct inode *inode = mapping->host;
+>  	struct nfs_direct_req *dreq;
+>  	struct nfs_lock_context *l_ctx;
+> +	loff_t end;
+>  	size_t count;
+>  
+>  	count = iov_length(iov, nr_segs);
+> +	end = (pos + count - 1) >> PAGE_CACHE_SHIFT;
+> +
+>  	nfs_add_stats(mapping->host, NFSIOS_DIRECTWRITTENBYTES, count);
+>  
+>  	dfprintk(FILE, "NFS: direct write(%pD2, %zd@%Ld)\n",
+> @@ -958,16 +961,25 @@ ssize_t nfs_file_direct_write(struct kiocb *iocb, const struct iovec *iov,
+>  	if (!count)
+>  		goto out;
+>  
+> +	mutex_lock(&inode->i_mutex);
+> +
+>  	result = nfs_sync_mapping(mapping);
+>  	if (result)
+> -		goto out;
+> +		goto out_unlock;
+> +
+> +	if (mapping->nrpages) {
+> +		result = invalidate_inode_pages2_range(mapping,
+> +					pos >> PAGE_CACHE_SHIFT, end);
+> +		if (result)
+> +			goto out_unlock;
+> +	}
+>  
+>  	task_io_account_write(count);
+>  
+>  	result = -ENOMEM;
+>  	dreq = nfs_direct_req_alloc();
+>  	if (!dreq)
+> -		goto out;
+> +		goto out_unlock;
+>  
+>  	dreq->inode = inode;
+>  	dreq->bytes_left = count;
+> @@ -982,6 +994,14 @@ ssize_t nfs_file_direct_write(struct kiocb *iocb, const struct iovec *iov,
+>  		dreq->iocb = iocb;
+>  
+>  	result = nfs_direct_write_schedule_iovec(dreq, iov, nr_segs, pos, uio);
+> +	
+> +	if (mapping->nrpages) {
+> +		invalidate_inode_pages2_range(mapping,
+> +					      pos >> PAGE_CACHE_SHIFT, end);
+> +	}
+> +
+> +	mutex_unlock(&inode->i_mutex);
+> +
+>  	if (!result) {
+>  		result = nfs_direct_wait(dreq);
+>  		if (result > 0) {
+> @@ -994,8 +1014,13 @@ ssize_t nfs_file_direct_write(struct kiocb *iocb, const struct iovec *iov,
+>  			spin_unlock(&inode->i_lock);
+>  		}
+>  	}
+> +	nfs_direct_req_release(dreq);
+> +	return result;
+> +
+>  out_release:
+>  	nfs_direct_req_release(dreq);
+> +out_unlock:
+> +	mutex_unlock(&inode->i_mutex);
+>  out:
+>  	return result;
+>  }
 
-I think we should try to close the truncate race first. Then let’s look at whether or not people need better consistency with the page cache.
+Hrm... I started chasing down a bug reported by our QA group last week
+that's showing up when you mix DIO writes and buffered reads
+(basically, diotest3 in the LTP suite is failing). The bug is marked
+private for dumb reasons but I'll see if I can make it public. I'll
+also plan to give this series a spin to see if it helps fix that bug...
 
-Cheers,
-  Trond
+In any case, the DIO write code calls nfs_zap_mapping after it gets the
+WRITE reply. That sets NFS_INO_INVALID_DATA and should prevent buffered
+read() calls from getting data out of the cache after the write reply
+comes in.
+
+Why is that not sufficient here?
+
+-- 
+Jeff Layton <jlayton@redhat.com>
