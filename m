@@ -1,67 +1,105 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:23222 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757545Ab3KMRJb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 13 Nov 2013 12:09:31 -0500
-Message-ID: <5283B1DF.1020007@netapp.com>
-Date: Wed, 13 Nov 2013 12:07:43 -0500
-From: Anna Schumaker <bjschuma@netapp.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-        Christoph Hellwig <hch@infradead.org>
-CC: <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v2 0/3] NFSD: Implement SEEK
-References: <1384283048-7699-1-git-send-email-bjschuma@netapp.com> <20131112194529.GA26341@fieldses.org> <52828767.3030909@netapp.com> <20131112195911.GA28033@fieldses.org> <5283A24D.4010309@netapp.com> <5283A3B7.8080405@netapp.com> <20131113161527.GA10046@infradead.org> <20131113164959.GL28033@fieldses.org>
-In-Reply-To: <20131113164959.GL28033@fieldses.org>
-Content-Type: text/plain; charset="ISO-8859-1"
+Received: from bombadil.infradead.org ([198.137.202.9]:53513 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757755Ab3KNQun (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Nov 2013 11:50:43 -0500
+Message-Id: <20131114165042.205194841@bombadil.infradead.org>
+Date: Thu, 14 Nov 2013 08:50:34 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 7/7] nfs: page cache invalidation for dio
+References: <20131114165027.355613182@bombadil.infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/13/2013 11:49 AM, J. Bruce Fields wrote:
-> On Wed, Nov 13, 2013 at 08:15:27AM -0800, Christoph Hellwig wrote:
->> On Wed, Nov 13, 2013 at 11:07:19AM -0500, Anna Schumaker wrote:
->>> I'm thinking something like this:
->>
->> Given that the whole sparse file support seems more experimental than
->> the security labels requiring the former for the latter seems a bit odd.
->>
->> I have to admit that I don't really know how to deal with those changes,
->> on the one hand I'd love to expose it as soon as possible, on the other
->> hand the spec has so many higher level flaws related to their concepts
->> of sparse files that I'd feel really bad about locking even parts of it
->> in at the moment.
-> 
-> This isn't a candidate for 3.13, and SEEK didn't look like the most
-> problematic bit, so with a couple more months I'm hoping we'll be more
-> confident about the protocol?
-> 
-> Actually now that I look, I forget: even if security labels are built
-> in, 4.2 is still off by default at runtime for now.
-> 
-> We could add another interface to toggle individual features at run time
-> but I think that's definitely too complicated.
-> 
-> Maybe:
-> 
-> 	- keep 4.2 off by default a runtime for now.
-> 	- keep each feature under its individual config option:
-> 	  NFSD_V4_SECURITY_LABEL, NFSD_V4_SEEK, NFSD_V4_SEND_PONIES....
-> 	- when an individual feature matures, ditch its config option
-> 	  and build it unconditionally.  We're always getting little
-> 	  build bugs due to untested build options so I'd rather not
-> 	  keep them around indefinitely.
-> 	- once 4.2 has at least one feature that we think is mature
-> 	  enough, switch the runtime 4.2 default to on and depend on
-> 	  scary warnings on the remaining build options to keep people
-> 	  from exposing them in production.
-> 
-> ?
+Make sure to properly invalidate the pagecache before performing direct I/O,
+so that no stale pages are left around.  This matches what the generic
+direct I/O code does.  Also take the i_mutex over the direct write submission
+to avoid the lifelock vs truncate waiting for i_dio_count to decrease, and
+to avoid having the pagecache easily repopulated while direct I/O is in
+progrss.  Again matching the generic direct I/O code.
 
-That's doable too.  And it keeps me from having to touch security label code that I don't know a whole lot about!
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ fs/nfs/direct.c |   29 +++++++++++++++++++++++++++--
+ 1 file changed, 27 insertions(+), 2 deletions(-)
 
-Anna
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index 6cc7fe1..2b778fc 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -939,9 +939,12 @@ ssize_t nfs_file_direct_write(struct kiocb *iocb, const struct iovec *iov,
+ 	struct inode *inode = mapping->host;
+ 	struct nfs_direct_req *dreq;
+ 	struct nfs_lock_context *l_ctx;
++	loff_t end;
+ 	size_t count;
+ 
+ 	count = iov_length(iov, nr_segs);
++	end = (pos + count - 1) >> PAGE_CACHE_SHIFT;
++
+ 	nfs_add_stats(mapping->host, NFSIOS_DIRECTWRITTENBYTES, count);
+ 
+ 	dfprintk(FILE, "NFS: direct write(%pD2, %zd@%Ld)\n",
+@@ -958,16 +961,25 @@ ssize_t nfs_file_direct_write(struct kiocb *iocb, const struct iovec *iov,
+ 	if (!count)
+ 		goto out;
+ 
++	mutex_lock(&inode->i_mutex);
++
+ 	result = nfs_sync_mapping(mapping);
+ 	if (result)
+-		goto out;
++		goto out_unlock;
++
++	if (mapping->nrpages) {
++		result = invalidate_inode_pages2_range(mapping,
++					pos >> PAGE_CACHE_SHIFT, end);
++		if (result)
++			goto out_unlock;
++	}
+ 
+ 	task_io_account_write(count);
+ 
+ 	result = -ENOMEM;
+ 	dreq = nfs_direct_req_alloc();
+ 	if (!dreq)
+-		goto out;
++		goto out_unlock;
+ 
+ 	dreq->inode = inode;
+ 	dreq->bytes_left = count;
+@@ -982,6 +994,14 @@ ssize_t nfs_file_direct_write(struct kiocb *iocb, const struct iovec *iov,
+ 		dreq->iocb = iocb;
+ 
+ 	result = nfs_direct_write_schedule_iovec(dreq, iov, nr_segs, pos, uio);
++	
++	if (mapping->nrpages) {
++		invalidate_inode_pages2_range(mapping,
++					      pos >> PAGE_CACHE_SHIFT, end);
++	}
++
++	mutex_unlock(&inode->i_mutex);
++
+ 	if (!result) {
+ 		result = nfs_direct_wait(dreq);
+ 		if (result > 0) {
+@@ -994,8 +1014,13 @@ ssize_t nfs_file_direct_write(struct kiocb *iocb, const struct iovec *iov,
+ 			spin_unlock(&inode->i_lock);
+ 		}
+ 	}
++	nfs_direct_req_release(dreq);
++	return result;
++
+ out_release:
+ 	nfs_direct_req_release(dreq);
++out_unlock:
++	mutex_unlock(&inode->i_mutex);
+ out:
+ 	return result;
+ }
+-- 
+1.7.10.4
 
-> 
-> --b.
-> 
 
