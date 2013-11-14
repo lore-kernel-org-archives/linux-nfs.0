@@ -1,97 +1,97 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:33094 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754113Ab3KNRAi convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Nov 2013 12:00:38 -0500
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.6 \(1510\))
-Subject: Re: [PATCH 6/7] nfs: take i_mutex during direct I/O reads
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20131114165042.013211118@bombadil.infradead.org>
-Date: Thu, 14 Nov 2013 12:00:06 -0500
-Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
-Message-Id: <71EA5383-5AAD-4BDE-B93A-BEE22D691CD8@oracle.com>
-References: <20131114165027.355613182@bombadil.infradead.org> <20131114165042.013211118@bombadil.infradead.org>
+Received: from fieldses.org ([174.143.236.118]:36185 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755049Ab3KNTfe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 14 Nov 2013 14:35:34 -0500
+Date: Thu, 14 Nov 2013 14:35:24 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
 To: Christoph Hellwig <hch@infradead.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: sharing protocol defintions between client and server?
+Message-ID: <20131114193524.GD21152@fieldses.org>
+References: <20131113162116.GA14577@infradead.org>
+ <20131114150546.GA21152@fieldses.org>
+ <20131114164046.GA32275@infradead.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20131114164046.GA32275@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Christoph-
-
-On Nov 14, 2013, at 11:50 AM, Christoph Hellwig <hch@infradead.org> wrote:
-
-> We'll need the i_mutex to prevent i_dio_count from incrementing while
-> truncate is waiting for it to reach zero, and protects against having
-> the pagecache repopulated after we flushed it.
-
-How was the performance impact of this change measured?
-
-
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
-> ---
-> fs/nfs/direct.c |   14 ++++++++++++--
-> 1 file changed, 12 insertions(+), 2 deletions(-)
+On Thu, Nov 14, 2013 at 08:40:46AM -0800, Christoph Hellwig wrote:
+> On Thu, Nov 14, 2013 at 10:05:46AM -0500, J. Bruce Fields wrote:
+> > On Wed, Nov 13, 2013 at 08:21:16AM -0800, Christoph Hellwig wrote:
+> > > >From a lot of the recent work it seems like there's basically no
+> > > sharing of protocol definitions between the Linux NFS client and
+> > > server, which seems fairly annoying to me.
+> > 
+> > What are you thinking of exactly?
+> > 
+> > I suspect that there could be more sharing.
 > 
-> diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-> index c32db2a..6cc7fe1 100644
-> --- a/fs/nfs/direct.c
-> +++ b/fs/nfs/direct.c
-> @@ -500,16 +500,17 @@ ssize_t nfs_file_direct_read(struct kiocb *iocb, const struct iovec *iov,
-> 	if (!count)
-> 		goto out;
+> To make it easy I'll just quote from the SEEK patches.
 > 
-> +	mutex_lock(&inode->i_mutex);
-> 	result = nfs_sync_mapping(mapping);
-> 	if (result)
-> -		goto out;
-> +		goto out_unlock;
+> client:
 > 
-> 	task_io_account_read(count);
-> 
-> 	result = -ENOMEM;
-> 	dreq = nfs_direct_req_alloc();
-> 	if (dreq == NULL)
-> -		goto out;
-> +		goto out_unlock;
-> 
-> 	dreq->inode = inode;
-> 	dreq->bytes_left = iov_length(iov, nr_segs);
-> @@ -525,13 +526,22 @@ ssize_t nfs_file_direct_read(struct kiocb *iocb, const struct iovec *iov,
-> 
-> 	NFS_I(inode)->read_io += iov_length(iov, nr_segs);
-> 	result = nfs_direct_read_schedule_iovec(dreq, iov, nr_segs, pos, uio);
+> +struct nfs42_seek_args {
+> +	struct nfs4_sequence_args	seq_args;
 > +
-> +	mutex_unlock(&inode->i_mutex);
+> +	struct nfs_fh			*sa_fh;
+> +	nfs4_stateid			*sa_stateid;
+> +	u64				sa_offset;
+> +	u32				sa_what;
+> +};
 > +
-> 	if (!result) {
-> 		result = nfs_direct_wait(dreq);
-> 		if (result > 0)
-> 			iocb->ki_pos = pos + result;
-> 	}
+> +struct nfs42_seek_res {
+> +	struct nfs4_sequence_res	seq_res;
+> +	unsigned int			status;
 > +
-> +	nfs_direct_req_release(dreq);
-> +	return result;
-> +
-> out_release:
-> 	nfs_direct_req_release(dreq);
-> +out_unlock:
-> +	mutex_unlock(&inode->i_mutex);
-> out:
-> 	return result;
-> }
-> -- 
-> 1.7.10.4
+> +	u32	sr_eof;
+> +	u32	sr_whence;
+> +	u64	sr_offset;
+> +	u64	sr_length;
+> +	u32	sr_allocated;
+> +};
+> +#endif
 > 
+> server:
 > 
+> +struct nfsd4_seek {
+> +	/* request */
+> +	stateid_t	seek_stateid;
+> +	loff_t		seek_offset;
+> +	u32		seek_whence;
+> +
+> +	/* response */
+> +	u64		seek_pos;
+> +	u32		seek_eof;
+> +	u64		seek_length;
+> +	u32		seek_allocated;
+> +};
+> 
+> note that a lot of server operations also seem to have separate
+> args and result substrutures.  In general I'd love to have one
+> structure for the actual on-the wire operation in a header, and then
+> client and server could build in-memory versions around them.
+> 
+> Of course just generating those from the XDR would be even better.
+
+Sometimes a lot of those fields are unused.  And we can currently do
+things like read/write directly from/to the data structures these are
+eventually going to end up in.
+
+So in theory the existing code might be more efficient.
+
+In practice I don't know if it is.  And it'd be nice to be able to
+autogenerate huge swaths of boring code.
+
+--b.
+
+> Maybe I'll play around with doing a krpcgen that we can initially
+> just use for producing the structures, for which it should be
+> pretty clear benefit.  If we're lucky we might be to also move
+> some marshalling/unmarshalling over to it later.
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
