@@ -1,50 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:32868 "EHLO mx11.netapp.com"
+Received: from cantor2.suse.de ([195.135.220.15]:56040 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751346Ab3KOPCN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 15 Nov 2013 10:02:13 -0500
-From: Weston Andros Adamson <dros@netapp.com>
-To: <Trond.Myklebust@netapp.com>
-CC: <linux-nfs@vger.kernel.org>, Weston Andros Adamson <dros@netapp.com>
-Subject: [PATCH] NFSv4: fix getacl ERANGE for some ACL buffer sizes
-Date: Fri, 15 Nov 2013 10:02:08 -0500
-Message-ID: <1384527728-1487-1-git-send-email-dros@netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+	id S1751170Ab3KNCAl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 13 Nov 2013 21:00:41 -0500
+Date: Thu, 14 Nov 2013 13:00:17 +1100
+From: NeilBrown <neilb@suse.de>
+To: Charles Edward Lever <chuck.lever@oracle.com>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        NFS <linux-nfs@vger.kernel.org>
+Subject: [PATCH] NFS: correctly report misuse of "migration" mount option.
+Message-ID: <20131114130017.374c0f3d@notabene.brown>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/K3ItMduO.lDT=6R0/a5jHq0"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Besides storing the ACL buffer, the getacl decoder uses the inline
-pages for the attr bitmap and buffer length. __nfs4_get_acl_uncached
-must allocate enough page space for all of the data to be decoded.
+--Sig_/K3ItMduO.lDT=6R0/a5jHq0
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-This bug results in getxattr() returning ERANGE when the attr buffer
-length is close enough to the nearest PAGE_SIZE multiple that adding
-the extra bytes leaves too little room for the ACL buffer.
 
-Signed-off-by: Weston Andros Adamson <dros@netapp.com>
----
- fs/nfs/nfs4proc.c | 7 ++++++-
- 1 file changed, 6 insertions(+), 1 deletion(-)
+The current test on valid use of the "migration" mount option can never
+report an error as it will only do so if
+    mnt->version !=3D4 && mnt->minor_version !=3D 0
+(and some other condition), but if that test would succeed, then the previo=
+us
+test has already gone-to  out_minorversion_mismatch.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 5ab33c0..006cba1 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -4453,7 +4453,12 @@ static ssize_t __nfs4_get_acl_uncached(struct inode *inode, void *buf, size_t bu
- 		.rpc_argp = &args,
- 		.rpc_resp = &res,
- 	};
--	unsigned int npages = DIV_ROUND_UP(buflen, PAGE_SIZE);
-+	/*
-+	 * extra space needed for attr bitmap and length in getacl decoder.
-+	 * 1 word for bitmap len, 3 words for bitmaps and 1 word for attr len.
-+	 */
-+	unsigned int preamble_len = 20;
-+	unsigned int npages = DIV_ROUND_UP(preamble_len + buflen, PAGE_SIZE);
- 	int ret = -ENOMEM, i;
- 
- 	/* As long as we're doing a round trip to the server anyway,
--- 
-1.8.3.1 (Apple Git-46)
+So change the && to an || to get correct semantics.
 
+Signed-off-by: NeilBrown <neilb@suse.de>
+
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 317d6fc2160e..910ed906eb82 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -1613,9 +1613,9 @@ static int nfs_parse_mount_options(char *raw,
+ 	if (mnt->minorversion && mnt->version !=3D 4)
+ 		goto out_minorversion_mismatch;
+=20
+ 	if (mnt->options & NFS_OPTION_MIGRATION &&
+-	    mnt->version !=3D 4 && mnt->minorversion !=3D 0)
++	    (mnt->version !=3D 4 || mnt->minorversion !=3D 0))
+ 		goto out_migration_misuse;
+=20
+ 	/*
+ 	 * verify that any proto=3D/mountproto=3D options match the address
+
+--Sig_/K3ItMduO.lDT=6R0/a5jHq0
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.19 (GNU/Linux)
+
+iQIVAwUBUoQusTnsnt1WYoG5AQLneg//WsEa8HIlYPOa44IZGwumsVkjXH7PTc/A
+1eY7Cc3nAB/iPqKhqoAKmf8rpeYgoB9FsUu0OjwKTHZlw35u1BDr+64sVdk1gbPj
+nZp9EkyorEaUtGFI1aZqgAkK79YPO9aRl4eb2jCo9wglAV7fxvUNynLYepPGuAKf
+2Jfs7q568Hhsw8CcZ+taJReK759D/7LeOgF1PpwCctjma+YiTyeW88KXa+ERbbfK
+fUZyqpuJIoBMasxlHFZUBj5/C7H7KOBf+usP3jgyWIEEmtEIFkGiC3tKSsFBQTqP
+24VqoVMamk08P+3xR1y+9xrRxgZmit0StgCSNz182UNB1jK5ksRztivSXWpEZ3M+
+210RZQUteWuLzqjIxZvZB9dUVeplPSa2ob9TBpUMNWqAd6cQ9HvIVT0ebMWt6fH4
+e74mDOBhvNoxmyettEwuS9nigWY5UehfeuFjFoiwVhy1lxO2UDqb01kcpknk8tTP
+WmIXwBo7lyEq8FJrnNSKxl6FWmC65wibBCU6+dupvZ+x0IczfM/AWnMxTK28hvSb
+ZzmB6sjfwBj8qhaldD/rXini/7BVhHl2RcFUs+PznZ4+OGqYQsxKuadkAHb7h8Ui
++9+XUaroWz3vYKaSLVjjA7WSUJ07cc0v6Tg07wecZ6C8FgYS0Z4qWT2LaRim6Ga7
+/0DqhrH57R8=
+=aFNP
+-----END PGP SIGNATURE-----
+
+--Sig_/K3ItMduO.lDT=6R0/a5jHq0--
