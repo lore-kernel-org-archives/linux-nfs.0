@@ -1,92 +1,119 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:50935 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:43005 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756350Ab3KHQRO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 8 Nov 2013 11:17:14 -0500
-Date: Fri, 8 Nov 2013 11:17:07 -0500
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Jeff Layton <jlayton@redhat.com>, Chuck Lever <chuck.lever@oracle.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] Adding the nfs4_use_min_auth module parameter
-Message-ID: <20131108161707.GD3533@fieldses.org>
-References: <1383851364-8370-1-git-send-email-steved@redhat.com>
- <A8E8F2C4-8CB7-434E-8520-B2B53F0582D9@oracle.com>
- <527C07B4.800@RedHat.com>
- <44CA89EA-8B5E-4B83-A622-78A78F760FF1@oracle.com>
- <527CDBFC.3070903@RedHat.com>
- <20131108082202.4032f1a2@tlielax.poochiereds.net>
- <527CFC72.2030907@RedHat.com>
- <20131108101232.10d49851@tlielax.poochiereds.net>
- <527D0CE6.2020401@RedHat.com>
+	id S1754931Ab3KNT0C (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 14 Nov 2013 14:26:02 -0500
+Date: Thu, 14 Nov 2013 14:26:01 -0500
+To: Jeff Layton <jlayton@redhat.com>
+Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org, neilb@suse.de,
+        chuck.lever@oracle.com, steved@redhat.com
+Subject: Re: [PATCH v2 0/3] sunrpc/nfs: more reliable detection of running
+ gssd
+Message-ID: <20131114192601.GC21152@fieldses.org>
+References: <1384353053-30002-1-git-send-email-jlayton@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <527D0CE6.2020401@RedHat.com>
+In-Reply-To: <1384353053-30002-1-git-send-email-jlayton@redhat.com>
 From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Nov 08, 2013 at 11:10:14AM -0500, Steve Dickson wrote:
+On Wed, Nov 13, 2013 at 09:30:50AM -0500, Jeff Layton wrote:
+> v2:
+> - change name of toplevel pipefs dir from "dummy" to "gssd" (per
+>   Trond's suggestion)
 > 
+> - when gssd isn't running, don't bother to upcall (per Neil B.'s
+>   suggestion)
 > 
-> On 08/11/13 10:12, Jeff Layton wrote:
-> > On Fri, 08 Nov 2013 10:00:02 -0500
-> > Steve Dickson <SteveD@redhat.com> wrote:
-> > 
-> >>
-> >>
-> >> On 08/11/13 08:22, Jeff Layton wrote:
-> >>> On Fri, 08 Nov 2013 07:41:32 -0500
-> >>> Steve Dickson <SteveD@redhat.com> wrote:
-> >>>
-> >>>>
-> >>>>
-> >>>> On 07/11/13 18:05, Chuck Lever wrote:
-> >>>>>
-> >>>>> On Nov 7, 2013, at 1:35 PM, Steve Dickson <SteveD@redhat.com> wrote:
-> >>>>>
-> >>>>>> Hey mrchuck... 
-> >>>>>>
-> >>>>>> On 07/11/13 14:25, Chuck Lever wrote:
-> >>>>>>> Hi Steve-
-> >>>>>>>
-> >>>>>>> On Nov 7, 2013, at 11:09 AM, Steve Dickson <steved@redhat.com> wrote:
-> >>>>>>>
-> >>>>>>>> This new module parameter makes the v4 client
-> >>>>>>>> use the minimal authentication flavor (AUTH_UNIX)
-> >>>>>>>> when establishing NFSV4 state and doing the
-> >>>>>>>> pseudoroot lookup
-> >>>>>>>
-> >>>>>>> The patch description doesn't say, but is this change to work 
-> >>>>>>> around the 15 second GSSD upcall timeout? 
-> >>>>>> Yes. A 15 second delay on every mount due to security that
-> >>>>>> nobody is requesting is just not good.. IMHO..
-> >>>>>
-> >>>>> One thing we haven't discussed is reducing the upcall timeout to 5 seconds or less, 
-> >>>>> as a form of immediate relief.  15 seconds is arbitrary, and is onerous even when 
-> >>>>> you expect the mount to work (ie why would it be good for any properly configured 
-> >>>>> environment to take 15 seconds to establish a GSS context?).
-> >>>>>
-> >>>>> In other words, there are still cases where users wait 15 seconds unnecessarily, 
-> >>>>> and not because of the use of krb5i for lease management.  Aren't those of concern?
-> >>>> No. I think the concern here, at least my concern, is the lack of management.
-> >>>> We are forcing admins to use krb5i in lease management when its not necessary
-> >>>> and there is no way to turn it off.
-> >>>>   
-> >>>
-> >>> I don't think that's really the case. The idea was to have the client
-> >>> attempt to use krb5i if it's available, and then to fall back to
-> >>> AUTH_SYS if it isn't. This would be *absolutely* no big deal if the
-> >>> GSSAPI upcall succeeded or failed immediately instead of requiring this
-> >>> timeout when the daemon isn't running.
-> >> What server makes krb5i available today in state setup and pseudoroot lookups?
-> >>
-> > 
-> > That I don't know...sorry...
-> Then what is the justification to take all these extra steps
-> there they going to fail %100 of the time??
+> - fix lifecycle of rpc_pipe data. Previously it would have leaked
+>   after umount. With this set, it's created and destroyed along with
+>   the netns, and just attached to the pipe inode on mount/unmount
+>   of rpc_pipefs.
+> 
+> - patch has been added to skip attempting setclientid with krb5i
+>   if gssd isn't running. This avoids the "AUTH_GSS upcall timed out"
+>   message when gssd isn't running and you mount with sec=sys. It also
+>   shortens the delay when gssd isn't up.
+> 
+> The original cover letter from the v1 posting follows. Note that this
+> set does address the warnings about the AUTH_GSS upcall timing out.
+> 
+> -------------------------[snip]-----------------------------
+> 
+> We've gotten a lot of complaints recently about the 15s delay when
+> doing a sec=sys mount without gssd running.
+> 
+> A large part of the problem is that the kernel isn't able to reliably
+> detect when rpc.gssd is running. What we currently have is a
+> gssd_running flag that is initially set to 1. When an upcall times out,
+> that gets set to 0, and subsequent upcalls get a much shorter timeout
+> (1/4s instead of 15s). It's reset back to '1' when a pipe is reopened.
+> 
+> The approach of using a flag like this is pretty inadequate. First, it
+> doesn't eliminate the long delay on the initial upcall attempt. Also,
+> if gssd spontaneously dies, then the flag will still be set to 1 until
+> the next upcall attempt times out. Finally, it currently requires that
+> the pipe be reopened in order to reset the flag back to true.
+> 
+> This patchset replaces that flag with a more reliable mechanism for
+> detecting when gssd is running. When rpc_pipefs is mounted, it creates a
+> new "dummy" pipe that gssd will naturally find and hold open. We'll
+> never send an upcall down this pipe, and writing to it always fails.
+> But, since we can detect when something is holding it open, we can use
+> that to determine whether gssd is running.
 
-Any server can support krb5 for state setup and pseudoroot operations if
-it's configured.  This isn't a problem.
+I think this might have been addressed before, I don't remember: does
+the init system currently have a way to wait till gssd has gotten as far
+as scanning pipefs before allowing mounts?
+
+(To avoid the race where a krb5 mount fails because gssd is still in the
+process of being started.)
 
 --b.
+
+> 
+> The current patch just uses this mechanism to replace the gssd_running
+> flag with this new mechanism. This shortens the long delay when mounting
+> without gssd running, but does not silence these warnings:
+> 
+>     RPC: AUTH_GSS upcall timed out.
+>     Please check user daemon is running.
+> 
+> I'm willing to add a patch to do that, but I'm a little unclear on the
+> best way to do so. Those messages are generated by the auth_gss code. We
+> probably do want to print them if someone mounted with sec=krb5, but
+> suppress them when mounting with sec=sys.
+> 
+> Do we need to somehow pass down that intent to auth_gss? Another idea
+> would be to call gssd_running() from the nfs mount code and use that to
+> determine whether to try and use krb5 at all...
+> 
+> Discuss!
+> 
+> Jeff Layton (3):
+>   sunrpc: create a new dummy pipe for gssd to hold open
+>   sunrpc: replace sunrpc_net->gssd_running flag with a more reliable
+>     check
+>   nfs: check if gssd is running before attempting to use krb5i auth in
+>     SETCLIENTID call
+> 
+>  fs/nfs/client.c                    |   5 +-
+>  fs/nfs/internal.h                  |   4 +-
+>  fs/nfs/nfs4client.c                |   8 ++-
+>  include/linux/nfs_xdr.h            |   2 +-
+>  include/linux/sunrpc/auth_gss.h    |  10 ++++
+>  include/linux/sunrpc/rpc_pipe_fs.h |   7 ++-
+>  net/sunrpc/auth_gss/auth_gss.c     |  19 +++++--
+>  net/sunrpc/netns.h                 |   3 +-
+>  net/sunrpc/rpc_pipe.c              | 104 ++++++++++++++++++++++++++++++++++---
+>  net/sunrpc/sunrpc_syms.c           |   8 ++-
+>  10 files changed, 147 insertions(+), 23 deletions(-)
+> 
+> -- 
+> 1.8.3.1
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
