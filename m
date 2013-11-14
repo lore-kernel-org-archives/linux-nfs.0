@@ -1,89 +1,97 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:57526 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754386Ab3KMNhs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 13 Nov 2013 08:37:48 -0500
-Date: Wed, 13 Nov 2013 08:37:44 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Marc Eshel <eshel@us.ibm.com>
-Cc: Anna Schumaker <bjschuma@netapp.com>, linux-nfs@vger.kernel.org,
-        linux-nfs-owner@vger.kernel.org
-Subject: Re: [PATCH v2 0/3] NFSD: Implement SEEK
-Message-ID: <20131113133744.GD28033@fieldses.org>
-References: <1384283048-7699-1-git-send-email-bjschuma@netapp.com>
- <20131112194529.GA26341@fieldses.org>
- <OF83A00AE9.3A2F46C6-ON88257C21.007C6003-88257C21.007CE9E4@us.ibm.com>
- <20131112230201.GB28033@fieldses.org>
- <OFFBE22971.98BDE120-ON88257C22.0002C427-88257C22.000302F8@us.ibm.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <OFFBE22971.98BDE120-ON88257C22.0002C427-88257C22.000302F8@us.ibm.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:53519 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757754Ab3KNQun (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Nov 2013 11:50:43 -0500
+Message-Id: <20131114165041.295995198@bombadil.infradead.org>
+Date: Thu, 14 Nov 2013 08:50:29 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 2/7] nfs: defer inode_dio_done call until size update is done
+References: <20131114165027.355613182@bombadil.infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Nov 12, 2013 at 04:32:51PM -0800, Marc Eshel wrote:
-> "J. Bruce Fields" <bfields@fieldses.org> wrote on 11/12/2013 03:02:01 PM:
-> 
-> > From: "J. Bruce Fields" <bfields@fieldses.org>
-> > To: Marc Eshel/Almaden/IBM@IBMUS, 
-> > Cc: Anna Schumaker <bjschuma@netapp.com>, linux-nfs@vger.kernel.org,
-> > linux-nfs-owner@vger.kernel.org
-> > Date: 11/12/2013 03:19 PM
-> > Subject: Re: [PATCH v2 0/3] NFSD: Implement SEEK
-> > 
-> > On Tue, Nov 12, 2013 at 02:44:21PM -0800, Marc Eshel wrote:
-> > > linux-nfs-owner@vger.kernel.org wrote on 11/12/2013 11:45:29 AM:
-> > > 
-> > > > From: "J. Bruce Fields" <bfields@fieldses.org>
-> > > > To: Anna Schumaker <bjschuma@netapp.com>, 
-> > > > Cc: linux-nfs@vger.kernel.org
-> > > > Date: 11/12/2013 12:07 PM
-> > > > Subject: Re: [PATCH v2 0/3] NFSD: Implement SEEK
-> > > > Sent by: linux-nfs-owner@vger.kernel.org
-> > > > 
-> > > > On Tue, Nov 12, 2013 at 02:04:05PM -0500, Anna Schumaker wrote:
-> > > > > These patches implement just the SEEK NFS v4.2 operation. 
-> WRITE_PLUS 
-> > > is
-> > > > > still under discussion with the IETF after my last series of 
-> patches, 
-> > > so I
-> > > > > am holding off on resubmitting until after spec discussion dies 
-> down.
-> > > > > 
-> > > > > Questions?  Comments?  Thoughts?
-> > > > > Anna
-> > > > > 
-> > > > > Anna Schumaker (3):
-> > > > >   NFSD: Update error codes
-> > > > 
-> > > > I don't think I got this first patch.
-> > > > 
-> > > > >   NFSD: Create nfs v4.2 decode ops
-> > > > >   NFSD: Implement SEEK
-> > > > 
-> > > > I'd like to be reassured the protocol is reasonably stable before we
-> > > > commit this.  I haven't been following the ietf wg discussion 
-> closely.
-> > > > 
-> > > > And this should initially be disabled by default.  So, probably 
-> either:
-> > > 
-> > > It is not enough that it is usable only for client the mount 
-> > > minorversion=2
-> > > anyone using this option knows that they are using a prototype.
-> > 
-> > The client may default to minorversion=2 some day, so, no, the user
-> > doesn't necessarily know they're using a prototype.
-> > 
-> > And the server doesn't have any control over what kernel or distro the
-> > client's running.  We want future clients to be able to default to 4.2,
-> > and we don't require servers and clients to be upgraded in lockstep.
-> 
-> The server accepting 4.2 mount can be under config options but once it is 
-> mounted it can support the new features by checking for the the version, 
-> right?
+We need to have the I/O fully finished before telling the truncate code
+that we are done.
 
-Sorry, I don't understand the question.
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ fs/nfs/direct.c |   32 +++++++++++++++-----------------
+ 1 file changed, 15 insertions(+), 17 deletions(-)
 
---b.
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index 653c2e8..3dd8823 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -226,21 +226,27 @@ static void nfs_direct_complete(struct nfs_direct_req *dreq, bool write)
+ {
+ 	struct inode *inode = dreq->inode;
+ 
+-	if (dreq->iocb) {
++	if (dreq->iocb && write) {
+ 		loff_t pos = dreq->iocb->ki_pos + dreq->count;
++
++		spin_lock(&inode->i_lock);
++		if (i_size_read(inode) < pos)
++			i_size_write(inode, pos);
++		spin_unlock(&inode->i_lock);
++	}
++
++	if (write) {
++		nfs_zap_mapping(inode, inode->i_mapping);
++		inode_dio_done(inode);
++	}
++
++	if (dreq->iocb) {
+ 		long res = (long) dreq->error;
+ 		if (!res)
+ 			res = (long) dreq->count;
+-
+-		if (write) {
+-			spin_lock(&inode->i_lock);
+-			if (i_size_read(inode) < pos)
+-				i_size_write(inode, pos);
+-			spin_unlock(&inode->i_lock);
+-		}
+-
+ 		aio_complete(dreq->iocb, res, 0);
+ 	}
++
+ 	complete_all(&dreq->completion);
+ 
+ 	nfs_direct_req_release(dreq);
+@@ -483,12 +489,6 @@ out:
+ 	return result;
+ }
+ 
+-static void nfs_inode_dio_write_done(struct inode *inode)
+-{
+-	nfs_zap_mapping(inode, inode->i_mapping);
+-	inode_dio_done(inode);
+-}
+-
+ #if IS_ENABLED(CONFIG_NFS_V3) || IS_ENABLED(CONFIG_NFS_V4)
+ static void nfs_direct_write_reschedule(struct nfs_direct_req *dreq)
+ {
+@@ -604,7 +604,6 @@ static void nfs_direct_write_schedule_work(struct work_struct *work)
+ 			nfs_direct_write_reschedule(dreq);
+ 			break;
+ 		default:
+-			nfs_inode_dio_write_done(dreq->inode);
+ 			nfs_direct_complete(dreq, true);
+ 	}
+ }
+@@ -621,7 +620,6 @@ static void nfs_direct_write_schedule_work(struct work_struct *work)
+ 
+ static void nfs_direct_write_complete(struct nfs_direct_req *dreq, struct inode *inode)
+ {
+-	nfs_inode_dio_write_done(inode);
+ 	nfs_direct_complete(dreq, true);
+ }
+ #endif
+-- 
+1.7.10.4
+
+
