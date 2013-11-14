@@ -1,30 +1,28 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:57292 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752182Ab3KOO3Y (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Nov 2013 09:29:24 -0500
-Date: Fri, 15 Nov 2013 06:29:23 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Christoph Hellwig <hch@infradead.org>, Trond.Myklebust@netapp.com,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 6/7] nfs: take i_mutex during direct I/O reads
-Message-ID: <20131115142923.GB1107@infradead.org>
-References: <20131114165027.355613182@bombadil.infradead.org>
- <20131114165042.013211118@bombadil.infradead.org>
- <71EA5383-5AAD-4BDE-B93A-BEE22D691CD8@oracle.com>
+Received: from mout.perfora.net ([74.208.4.195]:54661 "EHLO mout.perfora.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751150Ab3KNDM7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 13 Nov 2013 22:12:59 -0500
+Date: Wed, 13 Nov 2013 22:12:53 -0500
+From: Jim Rees <rees@umich.edu>
+To: NeilBrown <neilb@suse.de>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Charles Edward Lever <chuck.lever@oracle.com>
+Subject: Re: please proof-read: updates to nfs.man for some missing options.
+Message-ID: <20131114031253.GA9522@umich.edu>
+References: <20131114140244.6f7c0094@notabene.brown>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <71EA5383-5AAD-4BDE-B93A-BEE22D691CD8@oracle.com>
+In-Reply-To: <20131114140244.6f7c0094@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Nov 14, 2013 at 12:00:06PM -0500, Chuck Lever wrote:
-> > We'll need the i_mutex to prevent i_dio_count from incrementing while
-> > truncate is waiting for it to reach zero, and protects against having
-> > the pagecache repopulated after we flushed it.
-> 
-> How was the performance impact of this change measured?
+NeilBrown wrote:
 
-I've only done correctness tests.
+  +.BR addr= ip-address
+  +This option is rarely used but can provide an explicit IP address of
+  +the NFS server in cases where the server is multi-homed.
+  +.TP 1.5i
 
+I would change "rarely used" to "usually not needed." Also I think you have
+this option in here twice.
