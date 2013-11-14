@@ -1,151 +1,254 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:55189 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752511Ab3KGVex (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 7 Nov 2013 16:34:53 -0500
-Message-ID: <527C07B4.800@RedHat.com>
-Date: Thu, 07 Nov 2013 16:35:48 -0500
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] Adding the nfs4_use_min_auth module parameter
-References: <1383851364-8370-1-git-send-email-steved@redhat.com> <A8E8F2C4-8CB7-434E-8520-B2B53F0582D9@oracle.com>
-In-Reply-To: <A8E8F2C4-8CB7-434E-8520-B2B53F0582D9@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-qe0-f49.google.com ([209.85.128.49]:51595 "EHLO
+	mail-qe0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753194Ab3KNMZ2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Nov 2013 07:25:28 -0500
+Received: by mail-qe0-f49.google.com with SMTP id i11so1163543qej.36
+        for <linux-nfs@vger.kernel.org>; Thu, 14 Nov 2013 04:25:28 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: trond.myklebust@netapp.com
+Cc: chuck.lever@oracle.com, neilb@suse.de, steved@redhat.com,
+        linux-nfs@vger.kernel.org
+Subject: [PATCH v4 1/3] sunrpc: create a new dummy pipe for gssd to hold open
+Date: Thu, 14 Nov 2013 07:25:17 -0500
+Message-Id: <1384431919-20921-2-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1384431919-20921-1-git-send-email-jlayton@redhat.com>
+References: <1384431919-20921-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hey mrchuck... 
+rpc.gssd will naturally hold open any pipe named */clnt*/gssd that shows
+up under rpc_pipefs. That behavior gives us a reliable mechanism to tell
+whether it's actually running or not.
 
-On 07/11/13 14:25, Chuck Lever wrote:
-> Hi Steve-
-> 
-> On Nov 7, 2013, at 11:09 AM, Steve Dickson <steved@redhat.com> wrote:
-> 
->> This new module parameter makes the v4 client
->> use the minimal authentication flavor (AUTH_UNIX)
->> when establishing NFSV4 state and doing the
->> pseudoroot lookup
-> 
-> The patch description doesn't say, but is this change to work 
-> around the 15 second GSSD upcall timeout? 
-Yes. A 15 second delay on every mount due to security that
-nobody is requesting is just not good.. IMHO.. Also running
-a security daemon for non-secure mounts just seems wrong to me.
+Create a new toplevel "gssd" directory in rpc_pipefs when it's mounted.
+Under that directory create another directory called "clntXX", and then
+within that a pipe called "gssd".
 
-> Have we completely given up on fixing the upcall?
-Back when we were looking on to introduce gss-proxy into
-the client, it was decided the upcall on the client
-was not going to change. I'm just going with that!
+We'll never send an upcall along that pipe, and any downcall written to
+it will just return -EINVAL.
 
-steved.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ include/linux/sunrpc/rpc_pipe_fs.h |  3 +-
+ net/sunrpc/netns.h                 |  1 +
+ net/sunrpc/rpc_pipe.c              | 93 ++++++++++++++++++++++++++++++++++++--
+ net/sunrpc/sunrpc_syms.c           |  8 +++-
+ 4 files changed, 100 insertions(+), 5 deletions(-)
 
+diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
+index a353e03..85f1342 100644
+--- a/include/linux/sunrpc/rpc_pipe_fs.h
++++ b/include/linux/sunrpc/rpc_pipe_fs.h
+@@ -84,7 +84,8 @@ enum {
+ 
+ extern struct dentry *rpc_d_lookup_sb(const struct super_block *sb,
+ 				      const unsigned char *dir_name);
+-extern void rpc_pipefs_init_net(struct net *net);
++extern int rpc_pipefs_init_net(struct net *net);
++extern void rpc_pipefs_exit_net(struct net *net);
+ extern struct super_block *rpc_get_sb_net(const struct net *net);
+ extern void rpc_put_sb_net(const struct net *net);
+ 
+diff --git a/net/sunrpc/netns.h b/net/sunrpc/netns.h
+index 779742c..8a8e841 100644
+--- a/net/sunrpc/netns.h
++++ b/net/sunrpc/netns.h
+@@ -14,6 +14,7 @@ struct sunrpc_net {
+ 	struct cache_detail *rsi_cache;
+ 
+ 	struct super_block *pipefs_sb;
++	struct rpc_pipe *gssd_dummy;
+ 	struct mutex pipefs_sb_lock;
+ 
+ 	struct list_head all_clients;
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index d0d14a0..34efdbf 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -38,7 +38,7 @@
+ #define NET_NAME(net)	((net == &init_net) ? " (init_net)" : "")
+ 
+ static struct file_system_type rpc_pipe_fs_type;
+-
++static const struct rpc_pipe_ops gssd_dummy_pipe_ops;
+ 
+ static struct kmem_cache *rpc_inode_cachep __read_mostly;
+ 
+@@ -1168,6 +1168,7 @@ enum {
+ 	RPCAUTH_nfsd4_cb,
+ 	RPCAUTH_cache,
+ 	RPCAUTH_nfsd,
++	RPCAUTH_gssd,
+ 	RPCAUTH_RootEOF
+ };
+ 
+@@ -1204,6 +1205,10 @@ static const struct rpc_filelist files[] = {
+ 		.name = "nfsd",
+ 		.mode = S_IFDIR | S_IRUGO | S_IXUGO,
+ 	},
++	[RPCAUTH_gssd] = {
++		.name = "gssd",
++		.mode = S_IFDIR | S_IRUGO | S_IXUGO,
++	},
+ };
+ 
+ /*
+@@ -1217,13 +1222,25 @@ struct dentry *rpc_d_lookup_sb(const struct super_block *sb,
+ }
+ EXPORT_SYMBOL_GPL(rpc_d_lookup_sb);
+ 
+-void rpc_pipefs_init_net(struct net *net)
++int rpc_pipefs_init_net(struct net *net)
+ {
+ 	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
+ 
++	sn->gssd_dummy = rpc_mkpipe_data(&gssd_dummy_pipe_ops, 0);
++	if (IS_ERR(sn->gssd_dummy))
++		return PTR_ERR(sn->gssd_dummy);
++
+ 	mutex_init(&sn->pipefs_sb_lock);
+ 	sn->gssd_running = 1;
+ 	sn->pipe_version = -1;
++	return 0;
++}
++
++void rpc_pipefs_exit_net(struct net *net)
++{
++	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
++
++	rpc_destroy_pipe_data(sn->gssd_dummy);
+ }
+ 
+ /*
+@@ -1253,11 +1270,73 @@ void rpc_put_sb_net(const struct net *net)
+ }
+ EXPORT_SYMBOL_GPL(rpc_put_sb_net);
+ 
++static const struct rpc_filelist gssd_dummy_clnt_dir[] = {
++	[0] = {
++		.name = "clntXX",
++		.mode = S_IFDIR | S_IRUGO | S_IXUGO,
++	},
++};
++
++static ssize_t
++dummy_downcall(struct file *filp, const char __user *src, size_t len)
++{
++	return -EINVAL;
++}
++
++static const struct rpc_pipe_ops gssd_dummy_pipe_ops = {
++	.upcall		= rpc_pipe_generic_upcall,
++	.downcall	= dummy_downcall,
++};
++
++/**
++ * rpc_gssd_dummy_populate - create a dummy gssd pipe
++ * @root:	root of the rpc_pipefs filesystem
++ * @pipe_data:	pipe data created when netns is initialized
++ *
++ * Create a dummy set of directories and a pipe that gssd can hold open to
++ * indicate that it is up and running.
++ */
++static struct dentry *
++rpc_gssd_dummy_populate(struct dentry *root, struct rpc_pipe *pipe_data)
++{
++	int ret = 0;
++	struct dentry *gssd_dentry;
++	struct dentry *clnt_dentry = NULL;
++	struct dentry *pipe_dentry = NULL;
++	struct qstr q = QSTR_INIT(files[RPCAUTH_gssd].name,
++				  strlen(files[RPCAUTH_gssd].name));
++
++	/* We should never get this far if "gssd" doesn't exist */
++	gssd_dentry = d_hash_and_lookup(root, &q);
++	if (!gssd_dentry)
++		return ERR_PTR(-ENOENT);
++
++	ret = rpc_populate(gssd_dentry, gssd_dummy_clnt_dir, 0, 1, NULL);
++	if (ret) {
++		pipe_dentry = ERR_PTR(ret);
++		goto out;
++	}
++
++	q.name = gssd_dummy_clnt_dir[0].name;
++	q.len = strlen(gssd_dummy_clnt_dir[0].name);
++	clnt_dentry = d_hash_and_lookup(gssd_dentry, &q);
++	if (!clnt_dentry) {
++		pipe_dentry = ERR_PTR(-ENOENT);
++		goto out;
++	}
++
++	pipe_dentry = rpc_mkpipe_dentry(clnt_dentry, "gssd", NULL, pipe_data);
++out:
++	dput(clnt_dentry);
++	dput(gssd_dentry);
++	return pipe_dentry;
++}
++
+ static int
+ rpc_fill_super(struct super_block *sb, void *data, int silent)
+ {
+ 	struct inode *inode;
+-	struct dentry *root;
++	struct dentry *root, *gssd_dentry;
+ 	struct net *net = data;
+ 	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
+ 	int err;
+@@ -1275,6 +1354,13 @@ rpc_fill_super(struct super_block *sb, void *data, int silent)
+ 		return -ENOMEM;
+ 	if (rpc_populate(root, files, RPCAUTH_lockd, RPCAUTH_RootEOF, NULL))
+ 		return -ENOMEM;
++
++	gssd_dentry = rpc_gssd_dummy_populate(root, sn->gssd_dummy);
++	if (IS_ERR(gssd_dentry)) {
++		__rpc_depopulate(root, files, RPCAUTH_lockd, RPCAUTH_RootEOF);
++		return PTR_ERR(gssd_dentry);
++	}
++
+ 	dprintk("RPC:       sending pipefs MOUNT notification for net %p%s\n",
+ 		net, NET_NAME(net));
+ 	mutex_lock(&sn->pipefs_sb_lock);
+@@ -1289,6 +1375,7 @@ rpc_fill_super(struct super_block *sb, void *data, int silent)
+ 	return 0;
+ 
+ err_depopulate:
++	dput(gssd_dentry);
+ 	blocking_notifier_call_chain(&rpc_pipefs_notifier_list,
+ 					   RPC_PIPEFS_UMOUNT,
+ 					   sb);
+diff --git a/net/sunrpc/sunrpc_syms.c b/net/sunrpc/sunrpc_syms.c
+index 3d6498a..cd30120 100644
+--- a/net/sunrpc/sunrpc_syms.c
++++ b/net/sunrpc/sunrpc_syms.c
+@@ -44,12 +44,17 @@ static __net_init int sunrpc_init_net(struct net *net)
+ 	if (err)
+ 		goto err_unixgid;
+ 
+-	rpc_pipefs_init_net(net);
++	err = rpc_pipefs_init_net(net);
++	if (err)
++		goto err_pipefs;
++
+ 	INIT_LIST_HEAD(&sn->all_clients);
+ 	spin_lock_init(&sn->rpc_client_lock);
+ 	spin_lock_init(&sn->rpcb_clnt_lock);
+ 	return 0;
+ 
++err_pipefs:
++	unix_gid_cache_destroy(net);
+ err_unixgid:
+ 	ip_map_cache_destroy(net);
+ err_ipmap:
+@@ -60,6 +65,7 @@ err_proc:
+ 
+ static __net_exit void sunrpc_exit_net(struct net *net)
+ {
++	rpc_pipefs_exit_net(net);
+ 	unix_gid_cache_destroy(net);
+ 	ip_map_cache_destroy(net);
+ 	rpc_proc_exit(net);
+-- 
+1.8.3.1
 
-> 
-> 
->> Signed-off-by: Steve Dickson <steved@redhat.com>
->> ---
->> fs/nfs/nfs4_fs.h    |    1 +
->> fs/nfs/nfs4client.c |    8 ++++++--
->> fs/nfs/nfs4proc.c   |    4 +++-
->> fs/nfs/super.c      |    6 +++++-
->> 4 files changed, 15 insertions(+), 4 deletions(-)
->>
->> diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
->> index 28842ab..20bf925 100644
->> --- a/fs/nfs/nfs4_fs.h
->> +++ b/fs/nfs/nfs4_fs.h
->> @@ -438,6 +438,7 @@ extern bool nfs4_disable_idmapping;
->> extern unsigned short max_session_slots;
->> extern unsigned short send_implementation_id;
->> extern bool recover_lost_locks;
->> +extern bool nfs4_use_min_auth;
->>
->> #define NFS4_CLIENT_ID_UNIQ_LEN		(64)
->> extern char nfs4_client_id_uniquifier[NFS4_CLIENT_ID_UNIQ_LEN];
->> diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
->> index a860ab5..ff85991 100644
->> --- a/fs/nfs/nfs4client.c
->> +++ b/fs/nfs/nfs4client.c
->> @@ -355,6 +355,7 @@ struct nfs_client *nfs4_init_client(struct nfs_client *clp,
->> 	char buf[INET6_ADDRSTRLEN + 1];
->> 	struct nfs_client *old;
->> 	int error;
->> +	rpc_authflavor_t flavor = RPC_AUTH_GSS_KRB5I;
->>
->> 	if (clp->cl_cons_state == NFS_CS_READY) {
->> 		/* the client is initialised already */
->> @@ -368,8 +369,11 @@ struct nfs_client *nfs4_init_client(struct nfs_client *clp,
->> 	if (clp->cl_minorversion != 0)
->> 		__set_bit(NFS_CS_INFINITE_SLOTS, &clp->cl_flags);
->> 	__set_bit(NFS_CS_DISCRTRY, &clp->cl_flags);
->> -	error = nfs_create_rpc_client(clp, timeparms, RPC_AUTH_GSS_KRB5I);
->> -	if (error == -EINVAL)
->> +
->> +	if (nfs4_use_min_auth)
->> +		flavor = RPC_AUTH_UNIX;
->> +	error = nfs_create_rpc_client(clp, timeparms, flavor);
->> +	if (error == -EINVAL && flavor != RPC_AUTH_UNIX)
->> 		error = nfs_create_rpc_client(clp, timeparms, RPC_AUTH_UNIX);
->> 	if (error < 0)
->> 		goto error;
->> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->> index d53d678..00162cb 100644
->> --- a/fs/nfs/nfs4proc.c
->> +++ b/fs/nfs/nfs4proc.c
->> @@ -2864,7 +2864,9 @@ static int nfs4_find_root_sec(struct nfs_server *server, struct nfs_fh *fhandle,
->> 	int status = -EPERM;
->> 	size_t i;
->>
->> -	for (i = 0; i < ARRAY_SIZE(flav_array); i++) {
->> +	if (nfs4_use_min_auth)
->> +		status = nfs4_lookup_root_sec(server, fhandle, info, RPC_AUTH_UNIX);
->> +	else for (i = 0; i < ARRAY_SIZE(flav_array); i++) {
->> 		status = nfs4_lookup_root_sec(server, fhandle, info, flav_array[i]);
->> 		if (status == -NFS4ERR_WRONGSEC || status == -EACCES)
->> 			continue;
->> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
->> index a03b9c6..42b4f9b 100644
->> --- a/fs/nfs/super.c
->> +++ b/fs/nfs/super.c
->> @@ -2791,6 +2791,7 @@ unsigned short max_session_slots = NFS4_DEF_SLOT_TABLE_SIZE;
->> unsigned short send_implementation_id = 1;
->> char nfs4_client_id_uniquifier[NFS4_CLIENT_ID_UNIQ_LEN] = "";
->> bool recover_lost_locks = false;
->> +bool nfs4_use_min_auth = false;
->>
->> EXPORT_SYMBOL_GPL(nfs_callback_set_tcpport);
->> EXPORT_SYMBOL_GPL(nfs_callback_tcpport);
->> @@ -2800,6 +2801,7 @@ EXPORT_SYMBOL_GPL(max_session_slots);
->> EXPORT_SYMBOL_GPL(send_implementation_id);
->> EXPORT_SYMBOL_GPL(nfs4_client_id_uniquifier);
->> EXPORT_SYMBOL_GPL(recover_lost_locks);
->> +EXPORT_SYMBOL_GPL(nfs4_use_min_auth);
->>
->> #define NFS_CALLBACK_MAXPORTNR (65535U)
->>
->> @@ -2842,5 +2844,7 @@ MODULE_PARM_DESC(recover_lost_locks,
->> 		 "If the server reports that a lock might be lost, "
->> 		 "try to recover it risking data corruption.");
->>
->> -
->> +module_param(nfs4_use_min_auth, bool, 0644);
->> +MODULE_PARM_DESC(nfs4_use_min_auth,
->> +		"Use mimnal auth in SETCLIENTID operation");
->> #endif /* CONFIG_NFS_V4 */
->> -- 
->> 1.7.1
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> --
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
-> 
-> 
-> 
