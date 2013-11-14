@@ -1,53 +1,97 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:48671 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756953Ab3KHPEi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 8 Nov 2013 10:04:38 -0500
-Date: Fri, 8 Nov 2013 10:04:35 -0500
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Steve Dickson <SteveD@redhat.com>, Chuck Lever <chuck.lever@oracle.com>,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] Adding the nfs4_use_min_auth module parameter
-Message-ID: <20131108150435.GA3533@fieldses.org>
-References: <1383851364-8370-1-git-send-email-steved@redhat.com>
- <A8E8F2C4-8CB7-434E-8520-B2B53F0582D9@oracle.com>
- <527C07B4.800@RedHat.com>
- <44CA89EA-8B5E-4B83-A622-78A78F760FF1@oracle.com>
- <527CDBFC.3070903@RedHat.com>
- <20131108082202.4032f1a2@tlielax.poochiereds.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20131108082202.4032f1a2@tlielax.poochiereds.net>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from bombadil.infradead.org ([198.137.202.9]:53524 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757762Ab3KNQun (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Nov 2013 11:50:43 -0500
+Message-Id: <20131114165041.155176197@bombadil.infradead.org>
+Date: Thu, 14 Nov 2013 08:50:28 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: Trond.Myklebust@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 1/7] nfs: fix size updates for aio writes
+References: <20131114165027.355613182@bombadil.infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Nov 08, 2013 at 08:22:02AM -0500, Jeff Layton wrote:
-> On Fri, 08 Nov 2013 07:41:32 -0500
-> Steve Dickson <SteveD@redhat.com> wrote:
-> > No. I think the concern here, at least my concern, is the lack of management.
-> > We are forcing admins to use krb5i in lease management when its not necessary
-> > and there is no way to turn it off.
-> >   
-> 
-> I don't think that's really the case. The idea was to have the client
-> attempt to use krb5i if it's available, and then to fall back to
-> AUTH_SYS if it isn't. This would be *absolutely* no big deal if the
-> GSSAPI upcall succeeded or failed immediately instead of requiring this
-> timeout when the daemon isn't running.
+nfs_file_direct_write only updates the inode size if it succeeded and
+returned the number of bytes written.  But in the AIO case nfs_direct_wait
+turns the return value into -EIOCBQUEUED and we skip the size update.
 
-I'm also still a little confused about the security model.  We discussed
-it before but I can't remember if it was really resolved.
+Instead the aio completion path should updated it, which this patch
+does.  The implementation is a little hacky because there is no obvious
+way to find out we are called for a write in nfs_direct_complete.
 
-It makes sense to me as long as we insist on krb5i whenever we find a
-keytab.
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ fs/nfs/direct.c |   21 ++++++++++++++++-----
+ 1 file changed, 16 insertions(+), 5 deletions(-)
 
-But my understanding was that with the current implementation it's
-possible we could find a keytab, attempt the krb5i connection, and
-*then* fallback silently on auth_sys if krb5i fails.  Is that right?
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index d71d66c..653c2e8 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -222,12 +222,23 @@ out:
+  * Synchronous I/O uses a stack-allocated iocb.  Thus we can't trust
+  * the iocb is still valid here if this is a synchronous request.
+  */
+-static void nfs_direct_complete(struct nfs_direct_req *dreq)
++static void nfs_direct_complete(struct nfs_direct_req *dreq, bool write)
+ {
++	struct inode *inode = dreq->inode;
++
+ 	if (dreq->iocb) {
++		loff_t pos = dreq->iocb->ki_pos + dreq->count;
+ 		long res = (long) dreq->error;
+ 		if (!res)
+ 			res = (long) dreq->count;
++
++		if (write) {
++			spin_lock(&inode->i_lock);
++			if (i_size_read(inode) < pos)
++				i_size_write(inode, pos);
++			spin_unlock(&inode->i_lock);
++		}
++
+ 		aio_complete(dreq->iocb, res, 0);
+ 	}
+ 	complete_all(&dreq->completion);
+@@ -272,7 +283,7 @@ static void nfs_direct_read_completion(struct nfs_pgio_header *hdr)
+ 	}
+ out_put:
+ 	if (put_dreq(dreq))
+-		nfs_direct_complete(dreq);
++		nfs_direct_complete(dreq, false);
+ 	hdr->release(hdr);
+ }
+ 
+@@ -434,7 +445,7 @@ static ssize_t nfs_direct_read_schedule_iovec(struct nfs_direct_req *dreq,
+ 	}
+ 
+ 	if (put_dreq(dreq))
+-		nfs_direct_complete(dreq);
++		nfs_direct_complete(dreq, false);
+ 	return 0;
+ }
+ 
+@@ -594,7 +605,7 @@ static void nfs_direct_write_schedule_work(struct work_struct *work)
+ 			break;
+ 		default:
+ 			nfs_inode_dio_write_done(dreq->inode);
+-			nfs_direct_complete(dreq);
++			nfs_direct_complete(dreq, true);
+ 	}
+ }
+ 
+@@ -611,7 +622,7 @@ static void nfs_direct_write_schedule_work(struct work_struct *work)
+ static void nfs_direct_write_complete(struct nfs_direct_req *dreq, struct inode *inode)
+ {
+ 	nfs_inode_dio_write_done(inode);
+-	nfs_direct_complete(dreq);
++	nfs_direct_complete(dreq, true);
+ }
+ #endif
+ 
+-- 
+1.7.10.4
 
-In that case I don't see the point of the krb5i any more: any attacker
-that can spoof rpc replies can force the fallback to auth_sys.
 
---b.
