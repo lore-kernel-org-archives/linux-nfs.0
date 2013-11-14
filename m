@@ -1,96 +1,127 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:17024 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754337Ab3KLRdf convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Nov 2013 12:33:35 -0500
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.6 \(1510\))
-Subject: Re: Thread overran stack, or stack corrupted BUG on mount
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1384277451.4779.24.camel@leira.trondhjem.org>
-Date: Tue, 12 Nov 2013 12:33:28 -0500
-Cc: Jeff Layton <jlayton@redhat.com>, Weston Andros Adamson <dros@netapp.com>,
-        linux-nfs list <linux-nfs@vger.kernel.org>
-Message-Id: <6EF1AA2E-18B4-42F9-8ADD-8BBF86A9FD4A@oracle.com>
-References: <2C73011F-0939-434C-9E4D-13A1EB1403D7@netapp.com> <20131112105539.4f804fc6@tlielax.poochiereds.net> <20131112112021.1a0a60ca@tlielax.poochiereds.net> <E4B641E5-34C5-4779-8FAB-DCB6C74D1546@oracle.com> <1384277451.4779.24.camel@leira.trondhjem.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Received: from mx1.redhat.com ([209.132.183.28]:33345 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753146Ab3KNNeU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 14 Nov 2013 08:34:20 -0500
+Date: Thu, 14 Nov 2013 08:34:09 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: NeilBrown <neilb@suse.de>
+Cc: Steve Dickson <SteveD@redhat.com>,
+        "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Charles Edward Lever <chuck.lever@oracle.com>,
+        "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH - nfs-utils] gssd: always reply to rpc-pipe requests
+ from kernel.
+Message-ID: <20131114083409.2c328bfb@tlielax.poochiereds.net>
+In-Reply-To: <20131114120711.4043a60f@notabene.brown>
+References: <1384037221-7224-1-git-send-email-steved@redhat.com>
+	<E061C7A8-DC27-49BA-93C2-DC2E9C19EA7B@netapp.com>
+	<52811CBB.3070204@RedHat.com>
+	<E520DD5F-7E5A-4B6C-9FF6-6B74DA36FD1E@oracle.com>
+	<5281290B.6000201@RedHat.com>
+	<E0FBCF46-C70F-41E5-BA67-48406253CD7E@oracle.com>
+	<20131112161135.25a487da@notabene.brown>
+	<F58540AB-00BE-4AC5-B823-7260F30F8D58@netapp.com>
+	<20131112161634.GC15060@fieldses.org>
+	<20131113112346.3f5f3bd0@notabene.brown>
+	<1384302651.15992.3.camel@leira.trondhjem.org>
+	<20131113121333.2a16f646@notabene.brown>
+	<1384306012.15992.9.camel@leira.trondhjem.org>
+	<20131114120711.4043a60f@notabene.brown>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Thu, 14 Nov 2013 12:07:11 +1100
+NeilBrown <neilb@suse.de> wrote:
 
-On Nov 12, 2013, at 12:30 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
-
-> On Tue, 2013-11-12 at 11:23 -0500, Chuck Lever wrote:
->> On Nov 12, 2013, at 11:20 AM, Jeff Layton <jlayton@redhat.com> wrote:
->>> Ok, I think I see the problem. The looping comes from this block in
->>> nfs4_discover_server_trunking:
->>> 
->>> -----------------[snip]-----------------
->>>       case -NFS4ERR_CLID_INUSE:
->>>       case -NFS4ERR_WRONGSEC:
->>>               clnt = rpc_clone_client_set_auth(clnt, RPC_AUTH_UNIX);
->>>               if (IS_ERR(clnt)) {
->>>                       status = PTR_ERR(clnt);
->>>                       break;
->>>               }
->>>               /* Note: this is safe because we haven't yet marked the
->>>                * client as ready, so we are the only user of
->>>                * clp->cl_rpcclient
->>>                */
->>>               clnt = xchg(&clp->cl_rpcclient, clnt);
->>>               rpc_shutdown_client(clnt);
->>>               clnt = clp->cl_rpcclient;
->>>               goto again;
->>> -----------------[snip]-----------------
->>> 
->>> ...so in the case of the reproducer, we get back -NFS4ERR_CLID_IN_USE,
->>> at that point we call rpc_clone_client_set_auth(), which creates a new
->>> rpc_clnt, but it's created as a child of the original.
->>> 
->>> When rpc_shutdown_client is called, the original clnt is not destroyed
->>> because the child still holds a reference to it. So, we go and try the
->>> call again and it fails with the same error over and over again, and we
->>> end up with a long chain of rpc_clnt's.
->>> 
->>> How that ends up smashing the stack, I'm not sure though. I'm also not
->>> sure of the remedy. It seems like we might ought to have some upper
->>> bound on the number of SETCLIENTID attempts?
->> 
->> CLID_INUSE is supposed to be a permanent error now.  I think one retry, if any, is all that is appropriate.
 > 
-> Right. If we hit CLID_INUSE in nfs4_discover_server_trunking then
+> Sometimes gssd will open a new rpc-pipe but never read requests from it
+> or reply to them.  This causes the kernel to wait forever for a reply.
 > 
-> a) we know this is a server that we've already mounted
-> b) we know that either nfs4_init_client set us up with RPC_AUTH_UNIX to
-> begin with, or that rpc.gssd was started only after we'd already sent a
-> SETCLIENTID/EXCHANGE_ID using RPC_AUTH_UNIX to this server
+> In particular, if a filesystem is mounted by IP, and the IP has no
+> hostname recorded in /etc/hosts or DNS, then gssd will not listen to
+> requests and the mount will hang indefinitely.
 > 
-> so the correct thing to do is to retry once if we know that we're not
-> already using AUTH_SYS, and then to EPERM.
-
-Agree.  Sorry I didn't spell that out.
-
-
-> Now that said, I agree that this should not be able to trigger a stack
-> overflow. Is this NFSv4 or NFSv4.1/NFSv4.2? Have either of you (Jeff and
-> Dros) tried enabling DEBUG_STACKOVERFLOW?
+> The comment in process_clnt_dir() for the "fail_keep_client:" branch
+> suggests that it is for the case where we couldn't open some
+> subdirectories.  However it is currently also taken if reverse DNS
+> lookup fails (as well as some other lookup failures).  Those failures
+> should not be treated the same as failure-to-open directories.
 > 
-> -- 
-> Trond Myklebust
-> Linux NFS client maintainer
+> So this patch causes a failure from read_service_info() to *not* be
+> reported by process_clnt_dir_files.  This ensures that insert_clnt_poll()
+> will be called and requests will be handled.
 > 
-> NetApp
-> Trond.Myklebust@netapp.com
-> www.netapp.com
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> In handle_gssd_upcall, the current error path (taken when the mech is
+> not "krb5") does not reply to the upcall.  This is wrong.  A reply is
+> always appropriate.  The only replies which aren't treated as
+> transient errors are EACCES and EKEYEXPIRED, so we return the former.
+> 
+> If read_service_info() fails then ->servicename will be NULL which will
+> cause process_krb5_upcall() (quite reasonably) to become confused.  So
+> in that case we don't even try to process the up-call but just reply
+> with EACCES.
+> 
+> As clp->servicename==NULL is no longer treated as fatal, it is not
+> appropraite to use it to test if read_service_info() has been already
+> called on a client.  Instread test clp->prog.
+> 
+> Finally, the error path of read_service_info() will close 'fd' if it
+> isn't -1, so when we close it, we should set fd to -1.
+> 
+> Signed-off-by: NeilBrown <neilb@suse.de>
+> 
+> diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+> index b48d1637cd36..58c2a282524f 100644
+> --- a/utils/gssd/gssd_proc.c
+> +++ b/utils/gssd/gssd_proc.c
+> @@ -256,6 +256,7 @@ read_service_info(char *info_file_name, char **servicename, char **servername,
+>  	if ((nbytes = read(fd, buf, INFOBUFLEN)) == -1)
+>  		goto fail;
+>  	close(fd);
+> +	fd = -1;
+>  	buf[nbytes] = '\0';
+>  
+>  	numfields = sscanf(buf,"RPC server: %127s\n"
+> @@ -403,11 +404,10 @@ process_clnt_dir_files(struct clnt_info * clp)
+>  		return -1;
+>  	snprintf(info_file_name, sizeof(info_file_name), "%s/info",
+>  			clp->dirname);
+> -	if ((clp->servicename == NULL) &&
+> -	     read_service_info(info_file_name, &clp->servicename,
+> -				&clp->servername, &clp->prog, &clp->vers,
+> -				&clp->protocol, (struct sockaddr *) &clp->addr))
+> -		return -1;
+> +	if (clp->prog == 0)
+> +		read_service_info(info_file_name, &clp->servicename,
+> +				  &clp->servername, &clp->prog, &clp->vers,
+> +				  &clp->protocol, (struct sockaddr *) &clp->addr);
+>  	return 0;
+>  }
+>  
+> @@ -1320,11 +1320,14 @@ handle_gssd_upcall(struct clnt_info *clp)
+>  		}
+>  	}
+>  
+> -	if (strcmp(mech, "krb5") == 0)
+> +	if (strcmp(mech, "krb5") == 0 && clp->servername)
+>  		process_krb5_upcall(clp, uid, clp->gssd_fd, target, service);
+> -	else
+> -		printerr(0, "WARNING: handle_gssd_upcall: "
+> -			    "received unknown gss mech '%s'\n", mech);
+> +	else {
+> +		if (clp->servername)
+> +			printerr(0, "WARNING: handle_gssd_upcall: "
+> +				 "received unknown gss mech '%s'\n", mech);
+> +		do_error_downcall(clp->gssd_fd, uid, -EACCES);
+> +	}
+>  
+>  out:
+>  	free(lbuf);
 
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+Looks good.
 
-
-
-
+Acked-by: Jeff Layton <jlayton@redhat.com>
