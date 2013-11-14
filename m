@@ -1,106 +1,115 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:52499 "EHLO fieldses.org"
+Received: from cantor2.suse.de ([195.135.220.15]:54460 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752636Ab3KSO4E (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 19 Nov 2013 09:56:04 -0500
-Date: Tue, 19 Nov 2013 09:56:01 -0500
-To: linux-nfs@vger.kernel.org
-Cc: Christoph Hellwig <hch@infradead.org>
-Subject: [PATCH] nfsd4: update 4.1 nfsd status documentation
-Message-ID: <20131119145601.GB17460@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1751027Ab3KNBLX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 13 Nov 2013 20:11:23 -0500
+Date: Thu, 14 Nov 2013 12:05:33 +1100
+From: NeilBrown <neilb@suse.de>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Charles Edward Lever <chuck.lever@oracle.com>,
+        Steve Dickson <SteveD@redhat.com>,
+        "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] Adding the nfs4_secure_mounts bool
+Message-ID: <20131114120533.1df06f5c@notabene.brown>
+In-Reply-To: <1384306012.15992.9.camel@leira.trondhjem.org>
+References: <1384037221-7224-1-git-send-email-steved@redhat.com>
+	<E061C7A8-DC27-49BA-93C2-DC2E9C19EA7B@netapp.com>
+	<52811CBB.3070204@RedHat.com>
+	<E520DD5F-7E5A-4B6C-9FF6-6B74DA36FD1E@oracle.com>
+	<5281290B.6000201@RedHat.com>
+	<E0FBCF46-C70F-41E5-BA67-48406253CD7E@oracle.com>
+	<20131112161135.25a487da@notabene.brown>
+	<F58540AB-00BE-4AC5-B823-7260F30F8D58@netapp.com>
+	<20131112161634.GC15060@fieldses.org>
+	<20131113112346.3f5f3bd0@notabene.brown>
+	<1384302651.15992.3.camel@leira.trondhjem.org>
+	<20131113121333.2a16f646@notabene.brown>
+	<1384306012.15992.9.camel@leira.trondhjem.org>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/SuTCoi/+i_ZIqe0I2myv=wG"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+--Sig_/SuTCoi/+i_ZIqe0I2myv=wG
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-This has gone a little stale.
+On Wed, 13 Nov 2013 01:26:56 +0000 "Myklebust, Trond"
+<Trond.Myklebust@netapp.com> wrote:
 
-Reported-by: Christoph Hellwig <hch@infradead.org>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- Documentation/filesystems/nfs/nfs41-server.txt |   42 ++++++++----------------
- 1 file changed, 14 insertions(+), 28 deletions(-)
+> On Wed, 2013-11-13 at 12:13 +1100, NeilBrown wrote:
+> > On Wed, 13 Nov 2013 00:30:53 +0000 "Myklebust, Trond"
+> > <Trond.Myklebust@netapp.com> wrote:
+> >=20
+> > > On Wed, 2013-11-13 at 11:23 +1100, NeilBrown wrote:
+> > > > But back to my problem:  Following Trond's suggestion I've come up =
+with the
+> > > > following patch.  Does it look right?
+> > > >=20
+> > > > The "fd =3D -1" is just to stop us trying to close a non-open fd in=
+ an error
+> > > > path.
+> > > >=20
+> > > > The change from testing ->servicename to ->prog stops us from repea=
+ting the
+> > > > failed DNS lookup on every request, not that the failure isn't fata=
+l.
+> > > >=20
+> > > > The last stanza makes sure we always reply to an upcall, with EINVA=
+L if
+> > > > nothing else seems appropriate.
+> > >=20
+> > > Wouldn't EACCES be more appropriate as a default?
+> > >=20
+> >=20
+> > Maybe.  And that is what you suggested before and I mis-remembered - so=
+rry.
+> >=20
+> > However EACCES is "Permission denied" which doesn't quite seem right to=
+ me.
+> > It isn't really "you aren't allowed to do that", but "your question doe=
+sn't
+> > make sense".
+> >=20
+> > However I'm not fussed.  If you prefer EACCES, then I'll make it EACCES.
+>=20
+> If you look at gss_pipe_downcall(), then you'll note that it treats
+> EINVAL as a temporary error, and converts it to EAGAIN. That again
+> causes call_refreshresult to retry the upcall 2 more times before
+> failing with EACCES anyway...
+>=20
 
-Queuing up for 2.6.14.
+Yes, I see now, thanks.
 
-diff --git a/Documentation/filesystems/nfs/nfs41-server.txt b/Documentation/filesystems/nfs/nfs41-server.txt
-index 01c2db7..b930ad0 100644
---- a/Documentation/filesystems/nfs/nfs41-server.txt
-+++ b/Documentation/filesystems/nfs/nfs41-server.txt
-@@ -5,11 +5,11 @@ Server support for minorversion 1 can be controlled using the
- by reading this file will contain either "+4.1" or "-4.1"
- correspondingly.
- 
--Currently, server support for minorversion 1 is disabled by default.
--It can be enabled at run time by writing the string "+4.1" to
-+Currently, server support for minorversion 1 is enabled by default.
-+It can be disabled at run time by writing the string "-4.1" to
- the /proc/fs/nfsd/versions control file.  Note that to write this
--control file, the nfsd service must be taken down.  Use your user-mode
--nfs-utils to set this up; see rpc.nfsd(8)
-+control file, the nfsd service must be taken down.  You can use rpc.nfsd
-+for this; see rpc.nfsd(8).
- 
- (Warning: older servers will interpret "+4.1" and "-4.1" as "+4" and
- "-4", respectively.  Therefore, code meant to work on both new and old
-@@ -29,29 +29,6 @@ are still under development out of tree.
- See http://wiki.linux-nfs.org/wiki/index.php/PNFS_prototype_design
- for more information.
- 
--The current implementation is intended for developers only: while it
--does support ordinary file operations on clients we have tested against
--(including the linux client), it is incomplete in ways which may limit
--features unexpectedly, cause known bugs in rare cases, or cause
--interoperability problems with future clients.  Known issues:
--
--	- gss support is questionable: currently mounts with kerberos
--	  from a linux client are possible, but we aren't really
--	  conformant with the spec (for example, we don't use kerberos
--	  on the backchannel correctly).
--	- We do not support SSV, which provides security for shared
--	  client-server state (thus preventing unauthorized tampering
--	  with locks and opens, for example).  It is mandatory for
--	  servers to support this, though no clients use it yet.
--
--In addition, some limitations are inherited from the current NFSv4
--implementation:
--
--	- Incomplete delegation enforcement: if a file is renamed or
--	  unlinked by a local process, a client holding a delegation may
--	  continue to indefinitely allow opens of the file under the old
--	  name.
--
- The table below, taken from the NFSv4.1 document, lists
- the operations that are mandatory to implement (REQ), optional
- (OPT), and NFSv4.0 operations that are required not to implement (MNI)
-@@ -169,6 +146,16 @@ NS*| CB_WANTS_CANCELLED      | OPT       | FDELG,      | Section 20.10 |
- 
- Implementation notes:
- 
-+SSV:
-+* The spec claims this is mandatory, but we don't actually know of any
-+  implementations, so we're ignoring it for now.  The server returns
-+  NFS4ERR_ENCR_ALG_UNSUPP on EXCHANGE_ID, which should be future-proof.
-+
-+GSS on the backchannel:
-+* Again, theoretically required but not widely implemented (in
-+  particular, the current Linux client doesn't request it).  We return
-+  NFS4ERR_ENCR_ALG_UNSUPP on CREATE_SESSION.
-+
- DELEGPURGE:
- * mandatory only for servers that support CLAIM_DELEGATE_PREV and/or
-   CLAIM_DELEG_PREV_FH (which allows clients to keep delegations that
-@@ -176,7 +163,6 @@ DELEGPURGE:
-   now.
- 
- EXCHANGE_ID:
--* only SP4_NONE state protection supported
- * implementation ids are ignored
- 
- CREATE_SESSION:
--- 
-1.7.9.5
+I also see a 'BUG()' in there if the error code returned from user-space
+isn't in the known list.  I suspect that should at most be a WARN, and
+probably removed altogether.
 
+Thanks,
+NeilBrown
+
+--Sig_/SuTCoi/+i_ZIqe0I2myv=wG
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.19 (GNU/Linux)
+
+iQIVAwUBUoQh3Tnsnt1WYoG5AQLi+g/7B1S3NnEcwN/k/gVBGYrnRsCP758Ida45
+m2xp1MyQ0xn0yq6b1rV9baxAEfQBN3OKu7o3EVSSG6HoyoNkXGuwJACzhKwYOmub
+leIplyDbZpdyRp/EULRM2MSJ+/vR2vkEopu976mOmzwWy/bpYykQDQXCJhkdlQA7
+P8GCxsCC0D+txJy8f21RZT1FFGy0gj3d8ZXhTPYENaVnan5B6Guh/kpgHICTaeiP
+OdiYo/5FQLaWbK8l8SctopEzsvB7i0ai9LGp8z2yscLQ8Cce0NPX2JddT6VU32jv
+0QoiYPOPKT9vBAcGpHAs98v2nkfzrJjEDkJsTUmrPUCxpxo/nTIgxjKGSH2bFNpp
+xhE57Bx3YZHYncuCya9uYYy/SV2jOZvhx20LRb88KGzjG5GQfDmdw7ul2dwN8h4k
+HdEffcZ8zg5tyOed79eI+QQKMrbvsLM5ky2wT5qE5LZ1wB2Bopdd7yMvRg+fyLao
+Yv72qtodquak3mRexvmQGrnsSIoGGVoIW+ELhWlaa0tUDNJpBAvavP4xohL9V7d8
+DDHBhyI+prduASUJMdkejk4j0uc0aaTQ/2sYHt5tEoKnbqrLv9pxHRqEfMVQ1o3l
+M3hg98mhWcUndxr153fcaQ1Db1I1/DbDcoQRWDzfI1ajdm6oD3ez79yoTIu07UMU
+RysuIvOBIxI=
+=S9hp
+-----END PGP SIGNATURE-----
+
+--Sig_/SuTCoi/+i_ZIqe0I2myv=wG--
