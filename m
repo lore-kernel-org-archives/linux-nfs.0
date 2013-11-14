@@ -1,39 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.linuxfoundation.org ([140.211.169.12]:54052 "EHLO
-	mail.linuxfoundation.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754838Ab3KLHdA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Nov 2013 02:33:00 -0500
-Date: Mon, 11 Nov 2013 16:47:03 -0800
-From: Greg KH <gregkh@linuxfoundation.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org,
-        Stanislav Kinsbursky <skinsbursky@parallels.com>, devel@openvz.org,
-        ebiederm@xmission.com, oleg@redhat.com, bfields@fieldses.org,
-        bharrosh@panasas.com
-Subject: Re: call_usermodehelper in containers
-Message-ID: <20131112004703.GB15377@kroah.com>
-References: <20131111071825.62da01d1@tlielax.poochiereds.net>
-MIME-Version: 1.0
+Received: from userp1040.oracle.com ([156.151.31.81]:25418 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751150Ab3KNDOD convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Nov 2013 22:14:03 -0500
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20131111071825.62da01d1@tlielax.poochiereds.net>
+Mime-Version: 1.0 (Mac OS X Mail 6.6 \(1510\))
+Subject: Re: please proof-read: updates to nfs.man for some missing options.
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20131114031253.GA9522@umich.edu>
+Date: Wed, 13 Nov 2013 22:13:56 -0500
+Cc: NeilBrown <neilb@suse.de>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <1AF110D7-1CE6-491B-85C6-F6A2692F93B6@oracle.com>
+References: <20131114140244.6f7c0094@notabene.brown> <20131114031253.GA9522@umich.edu>
+To: Jim Rees <rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Nov 11, 2013 at 07:18:25AM -0500, Jeff Layton wrote:
-> We have a bit of a problem wrt to upcalls that use call_usermodehelper
-> with containers and I'd like to bring this to some sort of resolution...
+
+On Nov 13, 2013, at 10:12 PM, Jim Rees <rees@umich.edu> wrote:
+
+> NeilBrown wrote:
 > 
-> A particularly problematic case (though there are others) is the
-> nfsdcltrack upcall. It basically uses call_usermodehelper to run a
-> program in userland to track some information on stable storage for
-> nfsd.
+>  +.BR addr= ip-address
+>  +This option is rarely used but can provide an explicit IP address of
+>  +the NFS server in cases where the server is multi-homed.
+>  +.TP 1.5i
+> 
+> I would change "rarely used" to "usually not needed." Also I think you have
+> this option in here twice.
 
-I thought the discussion at the kernel summit about this issue was:
-	- don't do this.
-	- don't do it.
-	- if you really need to do this, fix nfsd
+I actually think mount.nfs may strip this option out of the list if a user specifies it.
 
-thanks,
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-greg k-h
+
+
+
