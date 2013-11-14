@@ -1,109 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:6827 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:58459 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755208Ab3KTVYH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Nov 2013 16:24:07 -0500
-Message-ID: <528D28B6.7060009@RedHat.com>
-Date: Wed, 20 Nov 2013 16:25:10 -0500
-From: Steve Dickson <SteveD@redhat.com>
+	id S1753146Ab3KNOSG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 14 Nov 2013 09:18:06 -0500
+Date: Thu, 14 Nov 2013 09:18:03 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfsd: export proper maximum file size to the client
+Message-ID: <20131114141802.GA20733@fieldses.org>
+References: <20131114135010.GA2869@infradead.org>
 MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: linux-nfs@vger.kernel.org, trond.myklebust@netapp.com
-Subject: Re: [PATCH] nfs(5): Treatment of *atime mount options
-References: <20131118153645.912.68903.stgit@seurat.1015granger.net>
-In-Reply-To: <20131118153645.912.68903.stgit@seurat.1015granger.net>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20131114135010.GA2869@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Thu, Nov 14, 2013 at 05:50:10AM -0800, Christoph Hellwig wrote:
+> I noticed that we export a way to high value for the maxfilesize
+> attribute when debugging a client issue.  The issue didn't turn
+> out to be related to it, but I think we should export it, so that
+> clients can limit what write sizes they accept before hitting
+> the server.
 
+Thanks, applying.--b.
 
-On 18/11/13 10:36, Chuck Lever wrote:
-> I was reminded recently that NFS treats file atime time stamps
-> differently than other filesystems.  It also ignores the generic
-> *atime mount options because it cannot support the atime semantics
-> of local filesystems.
+>     
+> Signed-off-by: Christoph Hellwig <hch@lst.de>
 > 
-> We should document that somewhere.  nfs(5) seems like a logical
-> place for it.
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Committed (tag: nfs-utils-1-2-10-rc1)
-
-steved.
-
-> ---
->  utils/mount/nfs.man |   59 +++++++++++++++++++++++++++++++++++++++++++++++++++
->  1 file changed, 59 insertions(+)
-> 
-> diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
-> index 67031b5..2250963 100644
-> --- a/utils/mount/nfs.man
-> +++ b/utils/mount/nfs.man
-> @@ -1227,6 +1227,65 @@ If absolute cache coherence among clients is required,
->  applications should use file locking. Alternatively, applications
->  can also open their files with the O_DIRECT flag
->  to disable data caching entirely.
-> +.SS "File timestamp maintainence"
-> +NFS servers are responsible for managing file and directory timestamps
-> +.RB ( atime ,
-> +.BR ctime ", and"
-> +.BR mtime ).
-> +When a file is accessed or updated on an NFS server,
-> +the file's timestamps are updated just like they would be on a filesystem
-> +local to an application.
-> +.P
-> +NFS clients cache file attributes, including timestamps.
-> +A file's timestamps are updated on NFS clients when its attributes
-> +are retrieved from the NFS server.
-> +Thus there may be some delay before timestamp updates
-> +on an NFS server appear to applications on NFS clients.
-> +.P
-> +To comply with the POSIX filesystem standard, the Linux NFS client
-> +relies on NFS servers to keep a file's
-> +.B mtime
-> +and
-> +.B ctime
-> +timestamps properly up to date.
-> +It does this by flushing local data changes to the server
-> +before reporting
-> +.B mtime
-> +to applications via system calls such as
-> +.BR stat (2).
-> +.P
-> +The Linux client handles
-> +.B atime
-> +updates more loosely, however.
-> +NFS clients maintain good performance by caching data,
-> +but that means that application reads, which normally update
-> +.BR atime ,
-> +are not reflected to the server where a file's
-> +.B atime
-> +is actually maintained.
-> +.P
-> +Because of this caching behavior,
-> +the Linux NFS client does not support generic atime-related mount options.
-> +See
-> +.BR mount (8)
-> +for details on these options.
-> +.P
-> +In particular, the
-> +.BR atime / noatime ,
-> +.BR diratime / nodiratime ,
-> +.BR relatime / norelatime ,
-> +and
-> +.BR strictatime / nostrictatime
-> +mount options have no effect on NFS mounts.
-> +.P
-> +.I /proc/mounts
-> +may report that the
-> +.B relatime
-> +mount option is set on NFS mounts, but in fact the
-> +.B atime
-> +semantics are always as described here, and are not like
-> +.B relatime
-> +semantics.
->  .SS "Directory entry caching"
->  The Linux NFS client caches the result of all NFS LOOKUP requests.
->  If the requested directory entry exists on the server,
-> 
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index 9423522..a3c9347 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -2488,7 +2488,7 @@ out_acl:
+>  	if (bmval0 & FATTR4_WORD0_MAXFILESIZE) {
+>  		if ((buflen -= 8) < 0)
+>  			goto out_resource;
+> -		WRITE64(~(u64)0);
+> +		WRITE64(exp->ex_path.mnt->mnt_sb->s_maxbytes);
+>  	}
+>  	if (bmval0 & FATTR4_WORD0_MAXLINK) {
+>  		if ((buflen -= 4) < 0)
