@@ -1,46 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:63974 "EHLO mx11.netapp.com"
+Received: from mx12.netapp.com ([216.240.18.77]:9023 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751707Ab3KDUvX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 4 Nov 2013 15:51:23 -0500
-From: Trond Myklebust <Trond.Myklebust@netapp.com>
-To: Linux NFS <linux-nfs@vger.kernel.org>
-CC: J Bruce Fields <bfields@fieldses.org>, Steve Dickson <steved@redhat.com>,
-        Jeff Layton <jlayton@redhat.com>,
-        David Quigley <dpquigl@davequigley.com>
-Subject: [PATCH 1/5] NFSv4.2: Fix a mismatch between Linux labeled NFS and the NFSv4.2 spec
-Date: Mon, 4 Nov 2013 15:51:08 -0500
-Message-ID: <1383598272-17737-1-git-send-email-Trond.Myklebust@netapp.com>
+	id S1751783Ab3KORWP convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Nov 2013 12:22:15 -0500
+From: Weston Andros Adamson <dros@netapp.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: Chuck Lever <chuck.lever@oracle.com>,
+        linux-nfs list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFS: -EIO from decode_bitmap if too many bitmaps
+Date: Fri, 15 Nov 2013 17:22:07 +0000
+Message-ID: <D5B7F898-04F4-40DB-92E2-F013339CBA4B@netapp.com>
+References: <1384533481-2254-1-git-send-email-dros@netapp.com>
+ <1384534841.4046.11.camel@leira.trondhjem.org>
+ <1384535149.4046.13.camel@leira.trondhjem.org>
+ <C9A7EFC4-6B93-44D4-8ADC-AAC440D4CFB2@oracle.com>
+ <1384535424.4046.15.camel@leira.trondhjem.org>
+In-Reply-To: <1384535424.4046.15.camel@leira.trondhjem.org>
+Content-Type: text/plain; charset="Windows-1252"
 MIME-Version: 1.0
-Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In the spec, the security label attribute id is '80', which means that
-it should be bit number 80-64 == 16 in the 3rd word of the bitmap.
 
-Fixes: 4488cc96c581: NFS: Add NFSv4.2 protocol constants
-Cc: J. Bruce Fields <bfields@fieldses.org>
-Cc: Steve Dickson <steved@redhat.com>
-Cc: stable@vger.kernel.org # 3.11+
-Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
----
- include/linux/nfs4.h | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+On Nov 15, 2013, at 12:10 PM, Myklebust, Trond <Trond.Myklebust@netapp.com> wrote:
 
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index c56fa8fedce9..bfe6c379a24e 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -395,7 +395,7 @@ enum lock_type4 {
- #define FATTR4_WORD1_FS_LAYOUT_TYPES    (1UL << 30)
- #define FATTR4_WORD2_LAYOUT_BLKSIZE     (1UL << 1)
- #define FATTR4_WORD2_MDSTHRESHOLD       (1UL << 4)
--#define FATTR4_WORD2_SECURITY_LABEL     (1UL << 17)
-+#define FATTR4_WORD2_SECURITY_LABEL     (1UL << 16)
- 
- /* MDS threshold bitmap bits */
- #define THRESHOLD_RD                    (1UL << 0)
--- 
-1.8.3.1
+> On Fri, 2013-11-15 at 12:07 -0500, Chuck Lever wrote:
+>> On Nov 15, 2013, at 12:05 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
+>> 
+>>> On Fri, 2013-11-15 at 12:00 -0500, Trond Myklebust wrote:
+>>>> On Fri, 2013-11-15 at 11:38 -0500, Weston Andros Adamson wrote:
+>>>>> decode_bitmap will only decode up to three bitmaps.  If the xdr buffer
+>>>>> has more than three bitmaps, return -EIO here instead of bailing out in
+>>>>> a later xdr decode.
+>>>>> 
+>>>> 
+>>>> No. decode_bitmap will only _save_ 3 words in the bitmap[] argment, but
+>>>> it will decode arbitrary sized bitmaps:
+>>>> 
+>>>> 	p = xdr_inline_decode(xdr, (bmlen << 2));
+>>>> 
+
+Oh, yeah.
+
+>>> 
+>>> That said, we should probably check that the server isn't setting those
+>>> bitmap words to any non-zero values. That would be a reason to return
+>>> EIO.
+
+Ok, I’ll rework this.
+
+-dros
+
+>> 
+>> Why wouldn't the client simply warn and ignore the extraneous data?
+>> 
+> 
+> ...because unless the GETATTR is the very last operation, we'd end up
+> failing to decode things correctly. Anyway, a server that returns
+> attributes that we haven't requested must clearly be borken. It's
+> definitely violating the spec.
+> 
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer
+> 
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
 
