@@ -1,40 +1,88 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:59244 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753157Ab3KNPFw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 14 Nov 2013 10:05:52 -0500
-Date: Thu, 14 Nov 2013 10:05:46 -0500
-To: Christoph Hellwig <hch@infradead.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: sharing protocol defintions between client and server?
-Message-ID: <20131114150546.GA21152@fieldses.org>
-References: <20131113162116.GA14577@infradead.org>
+Received: from szxga02-in.huawei.com ([119.145.14.65]:6696 "EHLO
+	szxga02-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752540Ab3KOAcp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Nov 2013 19:32:45 -0500
+Message-ID: <52856B9B.7000307@huawei.com>
+Date: Fri, 15 Nov 2013 08:32:27 +0800
+From: Weng Meiling <wengmeiling.weng@huawei.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20131113162116.GA14577@infradead.org>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: <linux-nfs@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
+        Li Zefan <lizefan@huawei.com>
+Subject: Re: [PATCH] nfsd:add '\n' when read file supported_krb5_enctypes
+References: <52786412.5030403@huawei.com> <527C9170.9030005@huawei.com> <20131113160937.GI28033@fieldses.org> <5284C45F.5050400@huawei.com> <20131114132517.GA20059@fieldses.org>
+In-Reply-To: <20131114132517.GA20059@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Nov 13, 2013 at 08:21:16AM -0800, Christoph Hellwig wrote:
-> >From a lot of the recent work it seems like there's basically no
-> sharing of protocol definitions between the Linux NFS client and
-> server, which seems fairly annoying to me.
+On 2013/11/14 21:25, J. Bruce Fields wrote:
+> On Thu, Nov 14, 2013 at 08:38:55PM +0800, Weng Meiling wrote:
+>> On 2013/11/14 0:09, J. Bruce Fields wrote:
+>>> On Fri, Nov 08, 2013 at 03:23:28PM +0800, Weng Meiling wrote:
+>>>>
+>>>> From: Weng Meiling <wengmeiling.weng@huawei.com>
+>>>
+>>> I agree completely that a \n at the end would make more sense.
+>>>
+>>> Have you tested that this nfs-utils is OK with this change?
+>>>
+>>> I suspect that the only code that reads this file anywhere is
+>>>
+>>> 	nfs-utils/utils/gssd/svcgssd_krb5.c:parse_enctypes()
+>>>
+>>> And on a quick skim of that function.... I *think* it should be fine.
+>>> But I'd be happier if you could confirm that you've tested it.
+>>>
+>>> --b.
+>>>
+>> After this change， starting the nfs server， other host can use the
+>> server's shared files normally :-).
+> 
+> I don't see how that tests parse_enctypes().
+> 
+> --b.
+> 
+yes，this did not test parse_enctypes() specially, I just try to use nfs with this change,
+I'll test it later.
 
-What are you thinking of exactly?
+Thanks!
+Weng Meiling
+>>
+>> Thanks！
+>> Weng Meilling
+>>>>
+>>>> Signed-off-by: Weng Meiling <wengmeiling.weng@huawei.com>
+>>>> ---
+>>>>  fs/nfsd/nfsctl.c | 2 +-
+>>>>  1 file changed, 1 insertion(+), 1 deletion(-)
+>>>>
+>>>> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+>>>> index 7f55517..31db42c 100644
+>>>> --- a/fs/nfsd/nfsctl.c
+>>>> +++ b/fs/nfsd/nfsctl.c
+>>>> @@ -188,7 +188,7 @@ static const struct file_operations export_features_operations = {
+>>>>  #if defined(CONFIG_SUNRPC_GSS) || defined(CONFIG_SUNRPC_GSS_MODULE)
+>>>>  static int supported_enctypes_show(struct seq_file *m, void *v)
+>>>>  {
+>>>> -	seq_printf(m, KRB5_SUPPORTED_ENCTYPES);
+>>>> +	seq_printf(m, "%s\n", KRB5_SUPPORTED_ENCTYPES);
+>>>>  	return 0;
+>>>>  }
+>>>>
+>>>> -- 
+>>>> 1.8.3.1
+>>>>
+>>>>
+>>>>
+>>>>
+>>>
+>>>
+>>
+>>
+> 
+> .
+> 
 
-I suspect that there could be more sharing.
 
-> Is there a good historic
-> reason for this and did we ever attempt to change it?  Maybe even
-> use some kernel-specific rpcgen variant to generate them directly
-> from the spec?
-
-I don't know if anyone's looked into it.
-
-There's a lot of hand-written xdr code (the encoders/decoders
-themselves, the maxsz constants in fs/nfs/nfs*xdr.c, the _rsize junk in
-fs/nfsd/nfs4proc.c, ...).  It seems error-prone to me though I can't
-recall if we've had a lot of bugs there in practice.
-
---b.
