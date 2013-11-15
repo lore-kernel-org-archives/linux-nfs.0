@@ -1,49 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:53756 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750961Ab3KGRr2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Nov 2013 12:47:28 -0500
-Date: Thu, 7 Nov 2013 09:47:24 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Christoph Hellwig <hch@infradead.org>,
-        Benny Halevy <bhalevy@primarydata.com>, bfields@redhat.com,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/2] nfsd: remove_stid can be incorporated into
- nfs4_put_delegation
-Message-ID: <20131107174724.GA17242@infradead.org>
-References: <525CE711.1040107@primarydata.com>
- <1381820280-14120-1-git-send-email-bhalevy@primarydata.com>
- <20131104224758.GB8828@fieldses.org>
- <52786E74.8030505@primarydata.com>
- <20131107170204.GA10530@infradead.org>
- <20131107170553.GD21932@fieldses.org>
- <20131107171908.GA23455@infradead.org>
+Received: from mx11.netapp.com ([216.240.18.76]:31062 "EHLO mx11.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750968Ab3KOQ4x convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Nov 2013 11:56:53 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: Jeff Layton <jlayton@redhat.com>
+CC: "chuck.lever@oracle.com" <chuck.lever@oracle.com>,
+        "neilb@suse.de" <neilb@suse.de>,
+        "steved@redhat.com" <steved@redhat.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v4 1/3] sunrpc: create a new dummy pipe for gssd to hold
+ open
+Date: Fri, 15 Nov 2013 16:56:51 +0000
+Message-ID: <1384534611.4046.8.camel@leira.trondhjem.org>
+References: <1384431919-20921-1-git-send-email-jlayton@redhat.com>
+	 <1384431919-20921-2-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1384431919-20921-2-git-send-email-jlayton@redhat.com>
+Content-Type: text/plain; charset="utf-7"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20131107171908.GA23455@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Nov 07, 2013 at 09:19:08AM -0800, Christoph Hellwig wrote:
-> On Thu, Nov 07, 2013 at 12:05:53PM -0500, J. Bruce Fields wrote:
-> > What did you run it on exactly?  (One of my branches or one of Benny's?)
-> 
-> Bennys tree (+ some local changes)
-> 
-> > I keep saying I should do regular xfstest runs and keep not doing it.
-> > Do you have a sample commandline to share for nfs testing?
-> 
-> cat > /etc/xfsqa.config << EOF
-> TEST_DIR=/mnt/nfs1
-> TEST_DEV=127.0.0.1:/mnt/test
-> EOF
+On Thu, 2013-11-14 at 07:25 -0500, Jeff Layton wrote:
++AD4- rpc.gssd will naturally hold open any pipe named +ACo-/clnt+ACo-/gssd that shows
++AD4- up under rpc+AF8-pipefs. That behavior gives us a reliable mechanism to tell
++AD4- whether it's actually running or not.
++AD4- 
++AD4- Create a new toplevel +ACI-gssd+ACI- directory in rpc+AF8-pipefs when it's mounted.
++AD4- Under that directory create another directory called +ACI-clntXX+ACI-, and then
++AD4- within that a pipe called +ACI-gssd+ACI-.
++AD4- 
++AD4- We'll never send an upcall along that pipe, and any downcall written to
++AD4- it will just return -EINVAL.
++AD4- 
++AD4- Signed-off-by: Jeff Layton +ADw-jlayton+AEA-redhat.com+AD4-
 
-Sorry, this missed half of what's needed:
+Hi Jeff,
 
-SCRATCH_MNT=/mnt/nfs1
-SCRATCH_DEV=127.0.0.1:/mnt/scratch
+Don't you need something in rpc+AF8-kill+AF8-sb() in order to remove the pipe
+and the clntXX directory?
 
-For historical reason xfstests mixes up the scratch and test devices
-for NFS in many older tests.
+Also please see rpc+AF8-mkdir+AF8-populate() and rpc+AF8-mkdir+AF8-depopulate() for how
+you can simplify the creation/destruction of the clntXX+-clntXX/gssd.
 
+Cheers
+  Trond
