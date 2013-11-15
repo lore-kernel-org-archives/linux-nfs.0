@@ -1,42 +1,149 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f45.google.com ([209.85.216.45]:39275 "EHLO
-	mail-qa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751847Ab3KBK5Y (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 2 Nov 2013 06:57:24 -0400
-Received: by mail-qa0-f45.google.com with SMTP id ii20so1159914qab.11
-        for <linux-nfs@vger.kernel.org>; Sat, 02 Nov 2013 03:57:23 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, dpquigl@davequigley.com
-Subject: [PATCH] nfs: set security label when revalidating inode
-Date: Sat,  2 Nov 2013 06:57:18 -0400
-Message-Id: <1383389838-1858-1-git-send-email-jlayton@redhat.com>
+Received: from aserp1040.oracle.com ([141.146.126.69]:51045 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751996Ab3KOVjy convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Nov 2013 16:39:54 -0500
+From: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=us-ascii
+Subject: Re: NFS over RDMA stops working for data larger than 812 Bytes
+Date: Fri, 15 Nov 2013 16:39:46 -0500
+Message-Id: <24663A6D-A54A-441B-880E-BB7FD6BBB3F2@oracle.com>
+Cc: Klemens Senn <klemens.senn@ims.co.at>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Mime-Version: 1.0 (Mac OS X Mail 6.6 \(1510\))
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently, we fetch the security label when revalidating an inode's
-attributes, but don't apply it. This is in contrast to the readdir()
-codepath where we do apply label changes.
+Hi Trond-
 
-Cc: Dave Quigley <dpquigl@davequigley.com>
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfs/inode.c | 2 ++
- 1 file changed, 2 insertions(+)
+Klemens Senn <klemens.senn@ims.co.at> says:
+> Hi,
+> 
+> I started setting up NFS over RDMA on a OpenSUSE 12.3 machine using the
+> 3.7.10-1.16-default kernel.
+> Mounting the NFS share works and getting a file with 812 Bytes succeeds.
+> Reading 813 Bytes raises a Input/output error.
+> 
+> The export on the server side is done with
+> /data
+> 172.16.100.0/24(rw,wdelay,crossmnt,insecure,no_root_squash,no_subtree_check,fsid=0,mountpoint)
+> 
+> Following command is used for mounting the NFSv4 share:
+>  mount -t nfs -o port=20049,rdma,vers=4.0,timeo=900 172.16.100.2:/ /mnt/
+> 
+> Testing the client side with older kernels stated that the mount is
+> working properly with the 3.4.67 kernel. I continued testing with the
+> 3.10.17 kernel and enabled the debug level and noticed the message
+>  "server cheating in read reply: count 813 > recvd 0"
+> 
+> Here is the syslog output:
+> NFS: read(//813_bytes, 262144@0)
+> NFS: nfs_readpage (ffffea001db1e898 4096@0)
+> NFS:     0 initiated read call (req 0:33/70, 813 bytes @ offset 0)
+> RPC:       new task initialized, procpid 9881
+> RPC:       allocated task ffff88105dacabf8
+> RPC:  1631 __rpc_execute flags=0x1
+> <-- nfs4_setup_sequence status=0
+> RPC:  1631 call_start nfs4 proc READ (async)
+> RPC:  1631 call_reserve (status 0)
+> RPC:  1631 reserved req ffff88085e641c00 xid 3f6a89a6
+> RPC:  1631 call_reserveresult (status 0)
+> RPC:  1631 call_refresh (status 0)
+> RPC:  1631 refreshing UNIX cred ffff88087c2108c0
+> RPC:  1631 call_refreshresult (status 0)
+> RPC:  1631 call_allocate (status 0)
+> RPC:       xprt_rdma_allocate: size 684, request 0xffff88084a342000
+> RPC:  1631 call_bind (status 0)
+> RPC:  1631 call_connect xprt ffff88085f297000 is connected
+> RPC:  1631 call_transmit (status 0)
+> RPC:  1631 xprt_prepare_transmit
+> RPC:  1631 xprt_cwnd_limited cong = 0 cwnd = 4096
+> RPC:  1631 rpc_xdr_encode (status 0)
+> RPC:  1631 marshaling UNIX cred ffff88087c2108c0
+> RPC:  1631 using AUTH_UNIX cred ffff88087c2108c0 to wrap rpc data
+> RPC:  1631 xprt_transmit(144)
+> RPC:       rpcrdma_inline_pullup: pad 0 destp 0xffff88084a3437f0 len 144
+> hdrlen 144
+> RPC:       rpcrdma_register_frmr_external: Using frmr ffff88084b612d10
+> to map 1 segments
+> RPC:       rpcrdma_create_chunks: write chunk elem
+> 813@0x87bf95000:0x8a905 (more)
+> RPC:       rpcrdma_register_frmr_external: Using frmr ffff88084b612d38
+> to map 1 segments
+> RPC:       rpcrdma_create_chunks: write chunk elem
+> 152@0x84a343974:0x8aa01 (last)
+> RPC:       rpcrdma_marshal_req: write chunk: hdrlen 68 rpclen 144 padlen
+> 0 headerp 0xffff88084a343100 base 0xffff88084a343760 lkey 0x8000
+> RPC:       rpcrdma_event_process: event rep ffff88084b612d10 status 0
+> opcode 8 length 4294936584
+> RPC:       rpcrdma_event_process: event rep ffff88084b612d38 status 0
+> opcode 8 length 4294936584
+> RPC:  1631 xmit complete
+> RPC:  1631 sleep_on(queue "xprt_pending" time 4296115067)
+> RPC:  1631 added to queue ffff88085f297258 "xprt_pending"
+> RPC:  1631 setting alarm for 90000 ms
+> RPC:       wake_up_first(ffff88085f297190 "xprt_sending")
+> RPC:       rpcrdma_event_process: event rep ffff88085e8bf000 status 0
+> opcode 80 length 128
+> RPC:       rpcrdma_reply_handler: reply 0xffff88085e8bf000 completes
+> request 0xffff88084a342000
+>                   RPC request 0xffff88085e641c00 xid 0xa6896a3f
+> RPC:       rpcrdma_count_chunks: chunk 813@0x87bf95000:0x8a905
+> RPC:       rpcrdma_count_chunks: chunk 3@0x84a343974:0x8aa01
+> RPC:       rpcrdma_inline_fixup: srcp 0xffff88085e8bf0a4 len 60 hdrlen 60
+> RPC:       rpcrdma_reply_handler: xprt_complete_rqst(0xffff88085f297000,
+> 0xffff88085e641c00, 876)
+> RPC:  1631 xid 3f6a89a6 complete (876 bytes received)
+> RPC:  1631 __rpc_wake_up_task (now 4296115067)
+> RPC:  1631 disabling timer
+> RPC:  1631 removed from queue ffff88085f297258 "xprt_pending"
+> RPC:       __rpc_wake_up_task done
+> RPC:  1631 __rpc_execute flags=0x801
+> RPC:  1631 call_status (status 876)
+> RPC:  1631 call_decode (status 876)
+> RPC:  1631 validating UNIX cred ffff88087c2108c0
+> RPC:  1631 using AUTH_UNIX cred ffff88087c2108c0 to unwrap rpc data
+> NFS: server cheating in read reply: count 813 > recvd 0
+> RPC:  1631 call_decode result 0
+> NFS: nfs_readpage_result:  1631, (status 0)
+> --> nfs4_read_done
+> 
+> Adding other debug prints to the kernel module told me that
+> buf->page_len is set to 0 in xdr_align_pages (in file net/sunrpc/xdr.c).
+> Comparing this piece of code with older kernel versions showed that the
+> comparison with buf->page_len was introduces in kernel 3.7.
+> By disabling this check the file transfer seems to work.
+> 
+> Here is the patch for kernel 3.10.17:
+> 
+> --- net/sunrpc/xdr.c	2013-10-18 19:44:19.000000000 +0200
+> +++ net/sunrpc/xdr_new.c	2013-11-08 14:06:00.241217773 +0100
+> @@ -747,7 +747,7 @@
+> 		nwords = xdr->nwords;
+> 		len = nwords << 2;
+> 	}
+> -	if (buf->page_len <= len)
+> +	if (buf->page_len && buf->page_len <= len)
+> 		len = buf->page_len;
+> 	else if (nwords < xdr->nwords) {
+> 		/* Truncate page data and move it into the tail */
+> 
+> 
+> Can you please tell me which entity sets (or does not set) the total
+> length (buf->page_len) after receiving the data from the RDMA_SEND
+> operation from the server?
+> 
+> Please advise
+> 
+> Klemens
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 4bc7538..6ae6160 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -923,6 +923,8 @@ __nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
- 	if (nfsi->cache_validity & NFS_INO_INVALID_ACL)
- 		nfs_zap_acl_cache(inode);
- 
-+	nfs_setsecurity(inode, fattr, label);
-+
- 	dfprintk(PAGECACHE, "NFS: (%s/%Ld) revalidation complete\n",
- 		inode->i_sb->s_id,
- 		(long long)NFS_FILEID(inode));
+Comparing xdr_align_pages() before commit a11a2bf4 and afterwords, it appears that it no longer handles cases where buf->page_len == 0 the same way it used to.  xdr_align_pages() would never return zero unless xdr->nwords was zero.
+
 -- 
-1.8.3.1
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
