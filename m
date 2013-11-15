@@ -1,105 +1,161 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:3328 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753735Ab3KLTET (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 12 Nov 2013 14:04:19 -0500
-From: Anna Schumaker <bjschuma@netapp.com>
-To: <bfields@fieldses.org>, <linux-nfs@vger.kernel.org>
-Subject: [PATCH v2 2/3] NFSD: Create nfs v4.2 decode ops
-Date: Tue, 12 Nov 2013 14:04:07 -0500
-Message-ID: <1384283048-7699-3-git-send-email-bjschuma@netapp.com>
-In-Reply-To: <1384283048-7699-1-git-send-email-bjschuma@netapp.com>
-References: <1384283048-7699-1-git-send-email-bjschuma@netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+Received: from userp1040.oracle.com ([156.151.31.81]:33875 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752550Ab3KOWba convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Nov 2013 17:31:30 -0500
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 6.6 \(1510\))
+Subject: Re: NFS over RDMA stops working for data larger than 812 Bytes
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <4673A7C9-3424-48F4-B64C-976EFE16017C@netapp.com>
+Date: Fri, 15 Nov 2013 17:31:22 -0500
+Cc: Klemens Senn <klemens.senn@ims.co.at>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <F3A43D4C-2A30-44AC-ABDA-E66F5F4AA719@oracle.com>
+References: <24663A6D-A54A-441B-880E-BB7FD6BBB3F2@oracle.com> <4673A7C9-3424-48F4-B64C-976EFE16017C@netapp.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-It's cleaner to introduce everything at once and have the server reply
-with "not supported" than it would be to introduce extra operations when
-implementing a specific one in the middle of the list.
 
-Signed-off-by: Anna Schumaker <bjschuma@netapp.com>
----
- fs/nfsd/nfs4xdr.c    | 22 ++++++++++++++++++++++
- include/linux/nfs4.h | 15 +++++++++++++--
- 2 files changed, 35 insertions(+), 2 deletions(-)
+On Nov 15, 2013, at 5:29 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 83db5a7..3af6c46 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1580,6 +1580,17 @@ static nfsd4_dec nfsd4_dec_ops[] = {
- 	[OP_WANT_DELEGATION]	= (nfsd4_dec)nfsd4_decode_notsupp,
- 	[OP_DESTROY_CLIENTID]	= (nfsd4_dec)nfsd4_decode_destroy_clientid,
- 	[OP_RECLAIM_COMPLETE]	= (nfsd4_dec)nfsd4_decode_reclaim_complete,
-+
-+	/* new operations for NFSv4.2 */
-+	[OP_COPY]		= (nfsd4_dec)nfsd4_decode_notsupp,
-+	[OP_OFFLOAD_ABORT]	= (nfsd4_dec)nfsd4_decode_notsupp,
-+	[OP_COPY_NOTIFY]	= (nfsd4_dec)nfsd4_decode_notsupp,
-+	[OP_OFFLOAD_REVOKE]	= (nfsd4_dec)nfsd4_decode_notsupp,
-+	[OP_OFFLOAD_STATUS]	= (nfsd4_dec)nfsd4_decode_notsupp,
-+	[OP_WRITE_PLUS]		= (nfsd4_dec)nfsd4_decode_notsupp,
-+	[OP_READ_PLUS]		= (nfsd4_dec)nfsd4_decode_notsupp,
-+	[OP_SEEK]		= (nfsd4_dec)nfsd4_decode_notsupp,
-+	[OP_IO_ADVISE]		= (nfsd4_dec)nfsd4_decode_notsupp,
- };
- 
- static inline bool
-@@ -3575,6 +3586,17 @@ static nfsd4_enc nfsd4_enc_ops[] = {
- 	[OP_WANT_DELEGATION]	= (nfsd4_enc)nfsd4_encode_noop,
- 	[OP_DESTROY_CLIENTID]	= (nfsd4_enc)nfsd4_encode_noop,
- 	[OP_RECLAIM_COMPLETE]	= (nfsd4_enc)nfsd4_encode_noop,
-+
-+	/* NFSv4.2 operations */
-+	[OP_COPY]		= (nfsd4_enc)nfsd4_encode_noop,
-+	[OP_OFFLOAD_ABORT]	= (nfsd4_enc)nfsd4_encode_noop,
-+	[OP_COPY_NOTIFY]	= (nfsd4_enc)nfsd4_encode_noop,
-+	[OP_OFFLOAD_REVOKE]	= (nfsd4_enc)nfsd4_encode_noop,
-+	[OP_OFFLOAD_STATUS]	= (nfsd4_enc)nfsd4_encode_noop,
-+	[OP_WRITE_PLUS]		= (nfsd4_enc)nfsd4_encode_noop,
-+	[OP_READ_PLUS]		= (nfsd4_enc)nfsd4_encode_noop,
-+	[OP_SEEK]		= (nfsd4_enc)nfsd4_encode_noop,
-+	[OP_IO_ADVISE]		= (nfsd4_enc)nfsd4_encode_noop,
- };
- 
- /*
-diff --git a/include/linux/nfs4.h b/include/linux/nfs4.h
-index 6d79deb..01119ed 100644
---- a/include/linux/nfs4.h
-+++ b/include/linux/nfs4.h
-@@ -110,6 +110,17 @@ enum nfs_opnum4 {
- 	OP_DESTROY_CLIENTID = 57,
- 	OP_RECLAIM_COMPLETE = 58,
- 
-+	/* nfs42 */
-+	OP_COPY = 59,
-+	OP_OFFLOAD_ABORT = 60,
-+	OP_COPY_NOTIFY = 61,
-+	OP_OFFLOAD_REVOKE = 62,
-+	OP_OFFLOAD_STATUS = 63,
-+	OP_WRITE_PLUS = 64,
-+	OP_READ_PLUS = 65,
-+	OP_SEEK = 66,
-+	OP_IO_ADVISE = 67,
-+
- 	OP_ILLEGAL = 10044,
- };
- 
-@@ -117,10 +128,10 @@ enum nfs_opnum4 {
- Needs to be updated if more operations are defined in future.*/
- 
- #define FIRST_NFS4_OP	OP_ACCESS
--#define LAST_NFS4_OP 	OP_RECLAIM_COMPLETE
-+#define LAST_NFS4_OP 	OP_IO_ADVISE
- #define LAST_NFS40_OP	OP_RELEASE_LOCKOWNER
- #define LAST_NFS41_OP	OP_RECLAIM_COMPLETE
--#define LAST_NFS42_OP	OP_RECLAIM_COMPLETE
-+#define LAST_NFS42_OP	OP_IO_ADVISE
- 
- enum nfsstat4 {
- 	NFS4_OK = 0,
+> 
+> On Nov 15, 2013, at 16:39, Chuck Lever <chuck.lever@oracle.com> wrote:
+> 
+>> Hi Trond-
+>> 
+>> Klemens Senn <klemens.senn@ims.co.at> says:
+>>> Hi,
+>>> 
+>>> I started setting up NFS over RDMA on a OpenSUSE 12.3 machine using the
+>>> 3.7.10-1.16-default kernel.
+>>> Mounting the NFS share works and getting a file with 812 Bytes succeeds.
+>>> Reading 813 Bytes raises a Input/output error.
+>>> 
+>>> The export on the server side is done with
+>>> /data
+>>> 172.16.100.0/24(rw,wdelay,crossmnt,insecure,no_root_squash,no_subtree_check,fsid=0,mountpoint)
+>>> 
+>>> Following command is used for mounting the NFSv4 share:
+>>> mount -t nfs -o port=20049,rdma,vers=4.0,timeo=900 172.16.100.2:/ /mnt/
+>>> 
+>>> Testing the client side with older kernels stated that the mount is
+>>> working properly with the 3.4.67 kernel. I continued testing with the
+>>> 3.10.17 kernel and enabled the debug level and noticed the message
+>>> "server cheating in read reply: count 813 > recvd 0"
+>>> 
+>>> Here is the syslog output:
+>>> NFS: read(//813_bytes, 262144@0)
+>>> NFS: nfs_readpage (ffffea001db1e898 4096@0)
+>>> NFS:     0 initiated read call (req 0:33/70, 813 bytes @ offset 0)
+>>> RPC:       new task initialized, procpid 9881
+>>> RPC:       allocated task ffff88105dacabf8
+>>> RPC:  1631 __rpc_execute flags=0x1
+>>> <-- nfs4_setup_sequence status=0
+>>> RPC:  1631 call_start nfs4 proc READ (async)
+>>> RPC:  1631 call_reserve (status 0)
+>>> RPC:  1631 reserved req ffff88085e641c00 xid 3f6a89a6
+>>> RPC:  1631 call_reserveresult (status 0)
+>>> RPC:  1631 call_refresh (status 0)
+>>> RPC:  1631 refreshing UNIX cred ffff88087c2108c0
+>>> RPC:  1631 call_refreshresult (status 0)
+>>> RPC:  1631 call_allocate (status 0)
+>>> RPC:       xprt_rdma_allocate: size 684, request 0xffff88084a342000
+>>> RPC:  1631 call_bind (status 0)
+>>> RPC:  1631 call_connect xprt ffff88085f297000 is connected
+>>> RPC:  1631 call_transmit (status 0)
+>>> RPC:  1631 xprt_prepare_transmit
+>>> RPC:  1631 xprt_cwnd_limited cong = 0 cwnd = 4096
+>>> RPC:  1631 rpc_xdr_encode (status 0)
+>>> RPC:  1631 marshaling UNIX cred ffff88087c2108c0
+>>> RPC:  1631 using AUTH_UNIX cred ffff88087c2108c0 to wrap rpc data
+>>> RPC:  1631 xprt_transmit(144)
+>>> RPC:       rpcrdma_inline_pullup: pad 0 destp 0xffff88084a3437f0 len 144
+>>> hdrlen 144
+>>> RPC:       rpcrdma_register_frmr_external: Using frmr ffff88084b612d10
+>>> to map 1 segments
+>>> RPC:       rpcrdma_create_chunks: write chunk elem
+>>> 813@0x87bf95000:0x8a905 (more)
+>>> RPC:       rpcrdma_register_frmr_external: Using frmr ffff88084b612d38
+>>> to map 1 segments
+>>> RPC:       rpcrdma_create_chunks: write chunk elem
+>>> 152@0x84a343974:0x8aa01 (last)
+>>> RPC:       rpcrdma_marshal_req: write chunk: hdrlen 68 rpclen 144 padlen
+>>> 0 headerp 0xffff88084a343100 base 0xffff88084a343760 lkey 0x8000
+>>> RPC:       rpcrdma_event_process: event rep ffff88084b612d10 status 0
+>>> opcode 8 length 4294936584
+>>> RPC:       rpcrdma_event_process: event rep ffff88084b612d38 status 0
+>>> opcode 8 length 4294936584
+>>> RPC:  1631 xmit complete
+>>> RPC:  1631 sleep_on(queue "xprt_pending" time 4296115067)
+>>> RPC:  1631 added to queue ffff88085f297258 "xprt_pending"
+>>> RPC:  1631 setting alarm for 90000 ms
+>>> RPC:       wake_up_first(ffff88085f297190 "xprt_sending")
+>>> RPC:       rpcrdma_event_process: event rep ffff88085e8bf000 status 0
+>>> opcode 80 length 128
+>>> RPC:       rpcrdma_reply_handler: reply 0xffff88085e8bf000 completes
+>>> request 0xffff88084a342000
+>>>                 RPC request 0xffff88085e641c00 xid 0xa6896a3f
+>>> RPC:       rpcrdma_count_chunks: chunk 813@0x87bf95000:0x8a905
+>>> RPC:       rpcrdma_count_chunks: chunk 3@0x84a343974:0x8aa01
+>>> RPC:       rpcrdma_inline_fixup: srcp 0xffff88085e8bf0a4 len 60 hdrlen 60
+>>> RPC:       rpcrdma_reply_handler: xprt_complete_rqst(0xffff88085f297000,
+>>> 0xffff88085e641c00, 876)
+>>> RPC:  1631 xid 3f6a89a6 complete (876 bytes received)
+>>> RPC:  1631 __rpc_wake_up_task (now 4296115067)
+>>> RPC:  1631 disabling timer
+>>> RPC:  1631 removed from queue ffff88085f297258 "xprt_pending"
+>>> RPC:       __rpc_wake_up_task done
+>>> RPC:  1631 __rpc_execute flags=0x801
+>>> RPC:  1631 call_status (status 876)
+>>> RPC:  1631 call_decode (status 876)
+>>> RPC:  1631 validating UNIX cred ffff88087c2108c0
+>>> RPC:  1631 using AUTH_UNIX cred ffff88087c2108c0 to unwrap rpc data
+>>> NFS: server cheating in read reply: count 813 > recvd 0
+>>> RPC:  1631 call_decode result 0
+>>> NFS: nfs_readpage_result:  1631, (status 0)
+>>> --> nfs4_read_done
+>>> 
+>>> Adding other debug prints to the kernel module told me that
+>>> buf->page_len is set to 0 in xdr_align_pages (in file net/sunrpc/xdr.c).
+>>> Comparing this piece of code with older kernel versions showed that the
+>>> comparison with buf->page_len was introduces in kernel 3.7.
+>>> By disabling this check the file transfer seems to work.
+>>> 
+>>> Here is the patch for kernel 3.10.17:
+>>> 
+>>> --- net/sunrpc/xdr.c	2013-10-18 19:44:19.000000000 +0200
+>>> +++ net/sunrpc/xdr_new.c	2013-11-08 14:06:00.241217773 +0100
+>>> @@ -747,7 +747,7 @@
+>>> 		nwords = xdr->nwords;
+>>> 		len = nwords << 2;
+>>> 	}
+>>> -	if (buf->page_len <= len)
+>>> +	if (buf->page_len && buf->page_len <= len)
+>>> 		len = buf->page_len;
+>>> 	else if (nwords < xdr->nwords) {
+>>> 		/* Truncate page data and move it into the tail */
+>>> 
+>>> 
+>>> Can you please tell me which entity sets (or does not set) the total
+>>> length (buf->page_len) after receiving the data from the RDMA_SEND
+>>> operation from the server?
+>>> 
+>>> Please advise
+>>> 
+>>> Klemens
+>> 
+>> Comparing xdr_align_pages() before commit a11a2bf4 and afterwords, it appears that it no longer handles cases where buf->page_len == 0 the same way it used to.  xdr_align_pages() would never return zero unless xdr->nwords was zero.
+> 
+> Why would the buf->page_len == 0 in a READ call? Has RDMA been relying on some kind of undocumented behaviour?
+
+See rpcrdma_inline_fixup().
+
 -- 
-1.8.4.2
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
 
