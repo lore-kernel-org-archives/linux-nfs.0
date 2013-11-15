@@ -1,105 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from master.debian.org ([82.195.75.110]:36492 "EHLO
-	master.debian.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750945Ab3KWLeg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 23 Nov 2013 06:34:36 -0500
-Date: Sat, 23 Nov 2013 22:20:11 +1100
-From: =?iso-8859-1?Q?An=EDbal?= Monsalve Salazar <anibal@debian.org>
-To: linux-nfs@vger.kernel.org
-Cc: Samuel Thibault <sthibault@debian.org>, 729177@bugs.debian.org
-Subject: Re: [patch] librpcsecgss: FTBFS on hurd-i386
-Message-ID: <20131123112011.GA15347@master.debian.org>
-References: <20131109212446.GA24648@type.youpi.perso.aquilenet.fr>
+Received: from bombadil.infradead.org ([198.137.202.9]:57311 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752023Ab3KOOch (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Nov 2013 09:32:37 -0500
+Date: Fri, 15 Nov 2013 06:32:37 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: Trond Myklebust <trondmy@gmail.com>
+Cc: Christoph Hellwig <hch@infradead.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 6/7] nfs: take i_mutex during direct I/O reads
+Message-ID: <20131115143237.GC1107@infradead.org>
+References: <20131114165027.355613182@bombadil.infradead.org>
+ <20131114165042.013211118@bombadil.infradead.org>
+ <C0D328CF-8E30-49E7-AE2C-A05EC463921B@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
-In-Reply-To: <20131109212446.GA24648@type.youpi.perso.aquilenet.fr>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <C0D328CF-8E30-49E7-AE2C-A05EC463921B@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Nov 09, 2013 at 10:24:46PM +0100, Samuel Thibault wrote:
-> Package: librpcsecgss
-> Version: 0.19-5
-> Severity: important
-> Tags: patch
-> User: debian-hurd@lists.debian.org
-> User-tags: hurd
+On Thu, Nov 14, 2013 at 03:43:21PM -0500, Trond Myklebust wrote:
 > 
-> Hello,
+> Hi Christoph,
 > 
-> librpcsecgss currently FTBFS on hurd-i386, attached is a patch to fix
-> it.
-> 
-> Samuel
-> 
-> -- System Information:
-> Debian Release: jessie/sid
->   APT prefers testing
->   APT policy: (990, 'testing'), (500, 'unstable'), (500, 'stable'), (1, 'experimental')
-> Architecture: amd64 (x86_64)
-> Foreign Architectures: i386
-> 
-> Kernel: Linux 3.12.0 (SMP w/8 CPU cores)
-> Locale: LANG=fr_FR.UTF-8, LC_CTYPE=fr_FR.UTF-8 (charmap=UTF-8)
-> Shell: /bin/sh linked to /bin/bash
-> 
-> -- 
-> Samuel
-> <studdud> what the fuck is wtf
+> Why do we need to protect the page cache here? Using O_DIRECT and the page cache without some kind of application-specific synchronization method is technically not supported, since that violates close-to-open cache consistency.
 
-> --- src/svc_tcp.c	2013-11-09 21:22:12.000000000 +0000
-> +++ src/svc_tcp.c	2013-11-09 21:21:45.000000000 +0000
-> @@ -52,7 +52,7 @@
->  #include <netinet/in_systm.h>
->  #include <netinet/in.h>
->  #include <netinet/ip.h>
-> -#ifndef __linux__
-> +#if !defined(__linux__) && !defined(__GNU__)
->  #include <netinet/ip_var.h>
->  #endif
->  
-> @@ -262,7 +262,7 @@
->  
->  #ifdef IP_OPTIONS
->  	{
-> -#ifdef __linux__
-> +#if defined(__linux__) || defined(__GNU__)
->  #define ipopt_list	ip_opts
->  		struct ip_opts opts;
->  #else
+As far as I understand close to open matter for synchronizations with
+access from different clients.  Linux applications do expect tight
+synchronization locally.
 
->From 6d6ec15cbad84124ecd190fe5fe28177fb131eb9 Mon Sep 17 00:00:00 2001
-From: Samuel Thibault <sthibault@debian.org>
-Date: Sat, 9 Nov 2013 22:24:46 +0100
-Subject: Bug#729177: librpcsecgss: FTBFS on hurd-i386
+> What we _do_ want to support, though, is parallel reads and writes to the server by applications that know what they are doing. If we were to only protect the i_dio_count, then we could fix the truncate race, while continuing to allow parallelism. Is there any reason why we cannot do this?
 
-librpcsecgss currently FTBFS on hurd-i386, attached is a patch to fix it.
+To just fix that race we could do it.  Note that even with the patch we
+only do the setup and I/O submission under the lock, and wait for it
+outside, similar to what the local filesystems do for aio, but not for
+synchronous direct I/O.
 
-Signed-off-by: Anibal Monsalve Salazar <anibal@debian.org>
----
- src/svc_tcp.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+Another good way to speed this up is to use locking scheme XFS uses with
+a shared exclusive lock:
 
-diff --git a/src/svc_tcp.c b/src/svc_tcp.c
-index e5e0a7f..c6210c3 100644
---- a/src/svc_tcp.c
-+++ b/src/svc_tcp.c
-@@ -52,7 +52,7 @@ static char *rcsid = "$OpenBSD: svc_tcp.c,v 1.18 1998/05/22 04:23:01 deraadt Exp
- #include <netinet/in_systm.h>
- #include <netinet/in.h>
- #include <netinet/ip.h>
--#ifndef __linux__
-+#if !defined(__linux__) && !defined(__GNU__)
- #include <netinet/ip_var.h>
- #endif
- 
-@@ -262,7 +262,7 @@ rendezvous_request(xprt)
- 
- #ifdef IP_OPTIONS
- 	{
--#ifdef __linux__
-+#if defined(__linux__) || defined(__GNU__)
- #define ipopt_list	ip_opts
- 		struct ip_opts opts;
- #else
--- 
-1.8.4.2
+buffered write:			exclusive
+buffered read:			shared
+direct I/O			exclusive if pagecache is present, then
+				demote to shared for actual I/O,
+				shared only if no pages are present on
+				the file
+
