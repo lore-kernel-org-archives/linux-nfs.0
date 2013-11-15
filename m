@@ -1,56 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from plane.gmane.org ([80.91.229.3]:33751 "EHLO plane.gmane.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756241Ab3KMCaJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 12 Nov 2013 21:30:09 -0500
-Received: from list by plane.gmane.org with local (Exim 4.69)
-	(envelope-from <glN-linux-nfs@m.gmane.org>)
-	id 1VgQDU-0001Qi-Lo
-	for linux-nfs@vger.kernel.org; Wed, 13 Nov 2013 03:30:04 +0100
-Received: from static-50-46-232-229.evrt.wa.frontiernet.net ([static-50-46-232-229.evrt.wa.frontiernet.net])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Wed, 13 Nov 2013 03:30:04 +0100
-Received: from harry by static-50-46-232-229.evrt.wa.frontiernet.net with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Wed, 13 Nov 2013 03:30:04 +0100
-To: linux-nfs@vger.kernel.org
-From: Harry Edmon <harry@uw.edu>
-Subject: Re: NFS over RDMA stops working for data larger than 812 Bytes
-Date: Wed, 13 Nov 2013 02:18:35 +0000 (UTC)
-Message-ID: <loom.20131113T031545-225@post.gmane.org>
-References: <527CECD8.2000208@ims.co.at> <527CF1CF.3070101@ims.co.at>
-Mime-Version: 1.0
+Received: from aserp1040.oracle.com ([141.146.126.69]:25563 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751067Ab3KOQ5n convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Nov 2013 11:57:43 -0500
 Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 6.6 \(1510\))
+Subject: Re: [PATCH] NFS: -EIO from decode_bitmap if too many bitmaps
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1384533481-2254-1-git-send-email-dros@netapp.com>
+Date: Fri, 15 Nov 2013 11:57:39 -0500
+Cc: <Trond.Myklebust@netapp.com>, <linux-nfs@vger.kernel.org>
+Message-Id: <98411E2E-3D5D-44F6-9254-C2248C57F741@oracle.com>
+References: <1384533481-2254-1-git-send-email-dros@netapp.com>
+To: Weston Andros Adamson <dros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Klemens Senn <klemens.senn@...> writes:
 
+On Nov 15, 2013, at 11:38 AM, Weston Andros Adamson <dros@netapp.com> wrote:
+
+> decode_bitmap will only decode up to three bitmaps.  If the xdr buffer
+> has more than three bitmaps, return -EIO here instead of bailing out in
+> a later xdr decode.
 > 
-> Hi,
+> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+> ---
 > 
-> I started setting up NFS over RDMA on a OpenSUSE 12.3 machine using the
-> 3.7.10-1.16-default kernel.
-> Mounting the NFS share works and getting a file with 812 Bytes succeeds.
-> Reading 813 Bytes raises a Input/output error.
+> This is related to my "NFSv4: fix getacl ERANGE for some ACL buffer sizes"
+> patch - I noticed that even though we'll only ever parse 3 bitmaps, we don't
+> error out correctly if more are sent.
 > 
-> The export on the server side is done with
-> /data
+> This condition is probably never hit, but if it ever is, it'd be nice to
+> have the code error out where the problem actually occurred.
 > 
-172.16.100.0/24(rw,wdelay,crossmnt,insecure,no_root_squash,no_subtree_check,
-fsid=0,mountpoint)
+> fs/nfs/nfs4xdr.c | 3 +++
+> 1 file changed, 3 insertions(+)
 > 
-> Following command is used for mounting the NFSv4 share:
->   mount -t nfs -o port=20049,rdma,vers=4.0,timeo=900 172.16.100.2:/ /mnt/
+> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+> index 5be2868..3866a69 100644
+> --- a/fs/nfs/nfs4xdr.c
+> +++ b/fs/nfs/nfs4xdr.c
+> @@ -3146,6 +3146,9 @@ static int decode_attr_bitmap(struct xdr_stream *xdr, uint32_t *bitmap)
+> 		goto out_overflow;
+> 	bmlen = be32_to_cpup(p);
 > 
-> Testing the client side with older kernels stated that the mount is
-> working properly with the 3.4.67 kernel. I continued testing with the
-> 3.10.17 kernel and enabled the debug level and noticed the message
->   "server cheating in read reply: count 813 > recvd 0"
+> +	if (unlikely(bmlen > 3))
+> +		goto out_overflow;
+> +
+
+Nit: Using a naked integer should be avoid, if we can.  Is there somewhere in the code that documents the "we only handle up t 3 bitmaps" constraint?
 
 
-I am seeing the same thing on an Debian 7.2 RDMA client running the 3.12 
-kernel.
+> 	bitmap[0] = bitmap[1] = bitmap[2] = 0;
+> 	p = xdr_inline_decode(xdr, (bmlen << 2));
+> 	if (unlikely(!p))
+> -- 
+> 1.8.3.1 (Apple Git-46)
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
 
 
