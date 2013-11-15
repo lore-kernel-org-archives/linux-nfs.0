@@ -1,42 +1,31 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:60120 "EHLO
+Received: from bombadil.infradead.org ([198.137.202.9]:57439 "EHLO
 	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753311Ab3KBNwj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 2 Nov 2013 09:52:39 -0400
-Date: Sat, 2 Nov 2013 06:52:38 -0700
+	with ESMTP id S1751407Ab3KOPCF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Nov 2013 10:02:05 -0500
+Date: Fri, 15 Nov 2013 07:02:04 -0800
 From: Christoph Hellwig <hch@infradead.org>
-To: Anna Schumaker <bjschuma@netapp.com>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 3/4] NFSD: Add WRITE_PLUS support for hole punches
-Message-ID: <20131102135238.GB18961@infradead.org>
-References: <1382972247-1108-1-git-send-email-bjschuma@netapp.com>
- <1382972247-1108-4-git-send-email-bjschuma@netapp.com>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: Christoph Hellwig <hch@infradead.org>, Trond.Myklebust@netapp.com,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 7/7] nfs: page cache invalidation for dio
+Message-ID: <20131115150204.GA8105@infradead.org>
+References: <20131114165027.355613182@bombadil.infradead.org>
+ <20131114165042.205194841@bombadil.infradead.org>
+ <20131114133551.5d08b5cd@tlielax.poochiereds.net>
+ <20131115142847.GA1107@infradead.org>
+ <20131115095241.2c5e1cfb@tlielax.poochiereds.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1382972247-1108-4-git-send-email-bjschuma@netapp.com>
+In-Reply-To: <20131115095241.2c5e1cfb@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> +__be32 nfsd4_vfs_fallocate(struct file *file, bool allocated, loff_t offset, loff_t len)
-> +{
-> +	int error, mode = 0;
-> +
-> +	if (allocated == false)
-> +		mode = FALLOC_FL_PUNCH_HOLE | FALLOC_FL_KEEP_SIZE;
-> +
-> +	error = do_fallocate(file, mode, offset, len);
-> +	if (error == 0)
-> +		error = vfs_fsync_range(file, offset, offset + len, 0);
+On Fri, Nov 15, 2013 at 09:52:41AM -0500, Jeff Layton wrote:
+> Do you have these patches in a git tree someplace? If so, I wouldn't
+> mind running this reproducer against it to see if it helps. It's a bit
+> of a longshot, but what the heck...
 
-What are you trying to do with the fsync_range here?  If it's just to
-make sure the metadata operation is stable on disk please use commit_metadata()
-from fs/nfsd/vfs.c.  As there's no data involved here I can't really see
-what else it would be for.
-
-
-Also the allocated flag doesn't make any sense for people not taking the
-same drugs as the spec authors, please add a comment what it means.
-
-Btw, how did anyone come up with the name WRITE PLUS for something that
-doesn't actually involve any writes?
+While I do have a local git tree I don't really have anywhere to push
+it to.  But applying these patches shouldn't be all that hard.
 
