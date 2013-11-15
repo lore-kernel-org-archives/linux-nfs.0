@@ -1,119 +1,30 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:43005 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754931Ab3KNT0C (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 14 Nov 2013 14:26:02 -0500
-Date: Thu, 14 Nov 2013 14:26:01 -0500
-To: Jeff Layton <jlayton@redhat.com>
-Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org, neilb@suse.de,
-        chuck.lever@oracle.com, steved@redhat.com
-Subject: Re: [PATCH v2 0/3] sunrpc/nfs: more reliable detection of running
- gssd
-Message-ID: <20131114192601.GC21152@fieldses.org>
-References: <1384353053-30002-1-git-send-email-jlayton@redhat.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:57292 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752182Ab3KOO3Y (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Nov 2013 09:29:24 -0500
+Date: Fri, 15 Nov 2013 06:29:23 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Christoph Hellwig <hch@infradead.org>, Trond.Myklebust@netapp.com,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 6/7] nfs: take i_mutex during direct I/O reads
+Message-ID: <20131115142923.GB1107@infradead.org>
+References: <20131114165027.355613182@bombadil.infradead.org>
+ <20131114165042.013211118@bombadil.infradead.org>
+ <71EA5383-5AAD-4BDE-B93A-BEE22D691CD8@oracle.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1384353053-30002-1-git-send-email-jlayton@redhat.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <71EA5383-5AAD-4BDE-B93A-BEE22D691CD8@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Nov 13, 2013 at 09:30:50AM -0500, Jeff Layton wrote:
-> v2:
-> - change name of toplevel pipefs dir from "dummy" to "gssd" (per
->   Trond's suggestion)
+On Thu, Nov 14, 2013 at 12:00:06PM -0500, Chuck Lever wrote:
+> > We'll need the i_mutex to prevent i_dio_count from incrementing while
+> > truncate is waiting for it to reach zero, and protects against having
+> > the pagecache repopulated after we flushed it.
 > 
-> - when gssd isn't running, don't bother to upcall (per Neil B.'s
->   suggestion)
-> 
-> - fix lifecycle of rpc_pipe data. Previously it would have leaked
->   after umount. With this set, it's created and destroyed along with
->   the netns, and just attached to the pipe inode on mount/unmount
->   of rpc_pipefs.
-> 
-> - patch has been added to skip attempting setclientid with krb5i
->   if gssd isn't running. This avoids the "AUTH_GSS upcall timed out"
->   message when gssd isn't running and you mount with sec=sys. It also
->   shortens the delay when gssd isn't up.
-> 
-> The original cover letter from the v1 posting follows. Note that this
-> set does address the warnings about the AUTH_GSS upcall timing out.
-> 
-> -------------------------[snip]-----------------------------
-> 
-> We've gotten a lot of complaints recently about the 15s delay when
-> doing a sec=sys mount without gssd running.
-> 
-> A large part of the problem is that the kernel isn't able to reliably
-> detect when rpc.gssd is running. What we currently have is a
-> gssd_running flag that is initially set to 1. When an upcall times out,
-> that gets set to 0, and subsequent upcalls get a much shorter timeout
-> (1/4s instead of 15s). It's reset back to '1' when a pipe is reopened.
-> 
-> The approach of using a flag like this is pretty inadequate. First, it
-> doesn't eliminate the long delay on the initial upcall attempt. Also,
-> if gssd spontaneously dies, then the flag will still be set to 1 until
-> the next upcall attempt times out. Finally, it currently requires that
-> the pipe be reopened in order to reset the flag back to true.
-> 
-> This patchset replaces that flag with a more reliable mechanism for
-> detecting when gssd is running. When rpc_pipefs is mounted, it creates a
-> new "dummy" pipe that gssd will naturally find and hold open. We'll
-> never send an upcall down this pipe, and writing to it always fails.
-> But, since we can detect when something is holding it open, we can use
-> that to determine whether gssd is running.
+> How was the performance impact of this change measured?
 
-I think this might have been addressed before, I don't remember: does
-the init system currently have a way to wait till gssd has gotten as far
-as scanning pipefs before allowing mounts?
+I've only done correctness tests.
 
-(To avoid the race where a krb5 mount fails because gssd is still in the
-process of being started.)
-
---b.
-
-> 
-> The current patch just uses this mechanism to replace the gssd_running
-> flag with this new mechanism. This shortens the long delay when mounting
-> without gssd running, but does not silence these warnings:
-> 
->     RPC: AUTH_GSS upcall timed out.
->     Please check user daemon is running.
-> 
-> I'm willing to add a patch to do that, but I'm a little unclear on the
-> best way to do so. Those messages are generated by the auth_gss code. We
-> probably do want to print them if someone mounted with sec=krb5, but
-> suppress them when mounting with sec=sys.
-> 
-> Do we need to somehow pass down that intent to auth_gss? Another idea
-> would be to call gssd_running() from the nfs mount code and use that to
-> determine whether to try and use krb5 at all...
-> 
-> Discuss!
-> 
-> Jeff Layton (3):
->   sunrpc: create a new dummy pipe for gssd to hold open
->   sunrpc: replace sunrpc_net->gssd_running flag with a more reliable
->     check
->   nfs: check if gssd is running before attempting to use krb5i auth in
->     SETCLIENTID call
-> 
->  fs/nfs/client.c                    |   5 +-
->  fs/nfs/internal.h                  |   4 +-
->  fs/nfs/nfs4client.c                |   8 ++-
->  include/linux/nfs_xdr.h            |   2 +-
->  include/linux/sunrpc/auth_gss.h    |  10 ++++
->  include/linux/sunrpc/rpc_pipe_fs.h |   7 ++-
->  net/sunrpc/auth_gss/auth_gss.c     |  19 +++++--
->  net/sunrpc/netns.h                 |   3 +-
->  net/sunrpc/rpc_pipe.c              | 104 ++++++++++++++++++++++++++++++++++---
->  net/sunrpc/sunrpc_syms.c           |   8 ++-
->  10 files changed, 147 insertions(+), 23 deletions(-)
-> 
-> -- 
-> 1.8.3.1
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
