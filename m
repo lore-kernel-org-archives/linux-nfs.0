@@ -1,59 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:52956 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753499Ab3KKMTO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 11 Nov 2013 07:19:14 -0500
-Date: Mon, 11 Nov 2013 07:18:25 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org,
-        Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: devel@openvz.org, ebiederm@xmission.com, oleg@redhat.com,
-        bfields@fieldses.org, bharrosh@panasas.com
-Subject: call_usermodehelper in containers
-Message-ID: <20131111071825.62da01d1@tlielax.poochiereds.net>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-ie0-f182.google.com ([209.85.223.182]:45916 "EHLO
+	mail-ie0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753599Ab3KOXZm convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Nov 2013 18:25:42 -0500
+Received: by mail-ie0-f182.google.com with SMTP id e14so5737557iej.41
+        for <linux-nfs@vger.kernel.org>; Fri, 15 Nov 2013 15:25:42 -0800 (PST)
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.0 \(1822\))
+Subject: Re: [PATCH] NFS: Fix kbuild errors due to missing symbols
+From: Trond Myklebust <trondmy@gmail.com>
+In-Reply-To: <1384557410.3222.2.camel@leira.trondhjem.org>
+Date: Fri, 15 Nov 2013 18:25:39 -0500
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <F23E03C4-BFA2-43AD-9D52-4071280B5126@gmail.com>
+References: <1384554636-25330-1-git-send-email-bjschuma@netapp.com> <1384557410.3222.2.camel@leira.trondhjem.org>
+To: Anna Schumaker <bjschuma@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We have a bit of a problem wrt to upcalls that use call_usermodehelper
-with containers and I'd like to bring this to some sort of resolution...
 
-A particularly problematic case (though there are others) is the
-nfsdcltrack upcall. It basically uses call_usermodehelper to run a
-program in userland to track some information on stable storage for
-nfsd.
+On Nov 15, 2013, at 18:16, Trond Myklebust <trondmy@gmail.com> wrote:
 
-One could envision nfsd running on a machine with several containers,
-and each would need to track its own database of info on stable
-storage. When processing RPCs that come into the network address within
-a certain container, we want to ensure that it tracks this info inside
-the mount namespace within that container as well.
+> On Fri, 2013-11-15 at 17:30 -0500, Anna Schumaker wrote:
+>> My recent patch 644aa303: "NFS: Enabling v4.2 should not recompile nfsd
+>> and lockd" caused build errors when CONFIG_NFS_USE_LEGACY_DNS=y and when
+>> CONFIG_NFS_V4=n.  This patch fixes those errors.
+>> 
+> 
+> Wait... 
+> 
+>        config NFS_USE_LEGACY_DNS
+>                bool "Use the legacy NFS DNS resolver"
+>                depends on NFS_V4
+>                help
+>                  The kernel now provides a method for translating a host name into an
+>                  IP address.  Select Y here if you would rather use your own DNS
+>                  resolver script.
+> 
+>                  If unsure, say N
+> 
+>        config NFS_USE_KERNEL_DNS
+>                bool
+>                depends on NFS_V4 && !NFS_USE_LEGACY_DNS
+>                select DNS_RESOLVER
+>                default y
+> 
+> How can that result in NFS_V4=n && NFS_USE_LEGACY_DNS=y?
 
-So, we ideally need to ensure that when this upcall is run, that we run
-the correct binary in the container *and* that it does all of its file
-I/O within the correct mount namespace. We might also need other
-namespace swapping as well.
+OK. The problem is resolved using an include of nfs_fs.h in the right spot. Will fix…
 
-Stanislav posted a patch a few months ago that tried to address this:
-
-    https://lkml.org/lkml/2013/5/22/80
-
-However, it failed to address some problems -- namely that we have to
-consider the case where a container may be running with reduced
-capabilities. We want to ensure that the UMH upcall inherits the
-correct capability set for its container as well.
-
-What's the correct approach to fix this? One possibility would be to
-keep a kernel thread around that sits in the correct namespace(s) and
-has the right privileges, and then use that to launch UMH programs.
-That thread could be spawned whenever someone runs rpc.nfsd inside a
-container.
-
-Not very elegant, but it seems like something that would work.
-
-Are there better approaches?
-
--- 
-Jeff Layton <jlayton@redhat.com>
