@@ -1,90 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:51880 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752185Ab3KJWpX convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 10 Nov 2013 17:45:23 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Steve Dickson <SteveD@redhat.com>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] Adding the nfs4_secure_mounts bool
-Date: Sun, 10 Nov 2013 22:45:21 +0000
-Message-ID: <CF19CE53-6F84-4FD2-9A97-69A068ED4A72@netapp.com>
-References: <1384037221-7224-1-git-send-email-steved@redhat.com>
- <E061C7A8-DC27-49BA-93C2-DC2E9C19EA7B@netapp.com> <5280092E.60008@RedHat.com>
-In-Reply-To: <5280092E.60008@RedHat.com>
-Content-Type: text/plain; charset="Windows-1252"
-MIME-Version: 1.0
+Received: from userp1040.oracle.com ([156.151.31.81]:26740 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751362Ab3KORHQ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Nov 2013 12:07:16 -0500
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 6.6 \(1510\))
+Subject: Re: [PATCH] NFS: -EIO from decode_bitmap if too many bitmaps
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1384535149.4046.13.camel@leira.trondhjem.org>
+Date: Fri, 15 Nov 2013 12:07:13 -0500
+Cc: Weston Andros Adamson <dros@netapp.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Message-Id: <C9A7EFC4-6B93-44D4-8ADC-AAC440D4CFB2@oracle.com>
+References: <1384533481-2254-1-git-send-email-dros@netapp.com> <1384534841.4046.11.camel@leira.trondhjem.org> <1384535149.4046.13.camel@leira.trondhjem.org>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Nov 10, 2013, at 17:31, Steve Dickson <SteveD@redhat.com> wrote:
+On Nov 15, 2013, at 12:05 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
 
-> Hey Trond,
-> 
-> On 09/11/13 18:12, Myklebust, Trond wrote:
->> 
->> On Nov 9, 2013, at 17:47, Steve Dickson <SteveD@redhat.com> wrote:
->> 
->>> The nfs4_secure_mounts controls whether security
->>> flavors will be tried during the establishing of
->>> NFSv4 state and the pseudoroot lookups.
+> On Fri, 2013-11-15 at 12:00 -0500, Trond Myklebust wrote:
+>> On Fri, 2013-11-15 at 11:38 -0500, Weston Andros Adamson wrote:
+>>> decode_bitmap will only decode up to three bitmaps.  If the xdr buffer
+>>> has more than three bitmaps, return -EIO here instead of bailing out in
+>>> a later xdr decode.
 >>> 
->>> This allows security daemon like rpc.gssd to
->>> tell the kernel that secure mounts should be tried.
->>> 
->>> To enable secure mounts:
->>>  echo "on" >  /proc/fs/nfsfs/secure
->>> 
->>> To disable secure mounts:
->>>  echo "off" >  /proc/fs/nfsfs/secure
->>> 
->>> Signed-off-by: Steve Dickson <steved@redhat.com>
 >> 
->> Hi Steve,
+>> No. decode_bitmap will only _save_ 3 words in the bitmap[] argment, but
+>> it will decode arbitrary sized bitmaps:
 >> 
->> So the rpc.gssd would flip the switch to “on” when it starts up and 
->> to “off” when it quits? 
-> Yes that is the idea... rpc.gssd would be the gatekeeper if you will...
-> I think its better than a mount option or module parameter since
-> they, to used Jeff's words, "tend to live forever!" 
-> 
->> What if someone does a ‘kill -9’?
-> Things always break when they are killed with -9... It is what it is... :-)
-> I am planning on used the atexit() API to manage this...  
-> 
+>> 	p = xdr_inline_decode(xdr, (bmlen << 2));
 >> 
->> One alternative to the above scheme, which I believe that I’ve 
->> suggested before, is to have a permanent entry in rpc_pipefs 
->> that rpc.gssd can open and that the kernel can use to detect that 
->> it is running. If we make it /var/lib/nfs/rpc_pipefs/gssd/clnt00/gssd, 
->> then AFAICS we don’t need to change nfs-utils at all, since all newer 
->> versions of rpc.gssd will try to open for read anything of the form 
->> /var/lib/nfs/rpc_pipefs/*/clntXX/gssd...
-> This seems like this would be reasonable... But from my understanding
-> (which is limited in this area) this would not be an easy thing to do.
-
-Actually, it should be very easy. We have all the machinery to create new pipes today, and they already track whether or not there is a gssd daemon listening.
-The nice thing about this scheme is that if the gssd daemon dies, then the pipe is automatically closed, and the kernel tracking will immediately notice that.
-
-> So I'm hoping we could used this patch as a bridge from here to there.
-> To give the community a seamless way out of this 15 second delay, today!
 > 
-> This patch does not create a API changes like a module parameter or mount
-> option would, plus it eliminates needless message being logged whether
-> rpc.gssd is or is not running. Since it is seamless, pulling it out
-> would will also be seamless…
-> At the end of the day... rpc.gssd is going to have to change in the 
-> short term. I think having rpc.gssd enabling secure mounts, like it
-> has since Fedora 2, is still the right path. 
+> That said, we should probably check that the server isn't setting those
+> bitmap words to any non-zero values. That would be a reason to return
+> EIO.
 
-I disagree. I think that we can solve this particular problem without changing rpc.gssd or any of the sysinit/systemd start/end scripts.
+Why wouldn't the client simply warn and ignore the extraneous data?
 
---
-Trond Myklebust
-Linux NFS client maintainer
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+
+
 
