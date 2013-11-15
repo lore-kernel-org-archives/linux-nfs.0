@@ -1,82 +1,231 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:39277 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:48839 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754610Ab3KTQpj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Nov 2013 11:45:39 -0500
-Date: Wed, 20 Nov 2013 11:45:32 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Albert Fluegel <af@muc.de>
-Cc: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org
-Subject: Re: Bugs / Patch in nfsd
-Message-ID: <20131120164532.GB5380@fieldses.org>
-References: <20131118124406.GA46678@colin.muc.de>
- <20131118130026.GA4153@infradead.org>
- <20131118170132.GD3203@fieldses.org>
- <20131118172315.GA20339@infradead.org>
- <20131118173731.GF3203@fieldses.org>
- <20131120162810.GA25173@colin.muc.de>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20131120162810.GA25173@colin.muc.de>
+	id S1752940Ab3KOKj0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 15 Nov 2013 05:39:26 -0500
+Message-ID: <1384511960.14391.115.camel@serendib>
+Subject: Re: [PATCH] exportfs: modify can_test() to use LONG_MAX when
+ appropriate
+From: Harshula Jayasuriya <harshula@redhat.com>
+To: NeilBrown <neilb@suse.de>
+Cc: Steve Dickson <steved@redhat.com>, linux-nfs@vger.kernel.org,
+        Jeff Layton <jlayton@redhat.com>,
+        "J.Bruce Fields" <bfields@citi.umich.edu>
+Date: Fri, 15 Nov 2013 21:39:20 +1100
+In-Reply-To: <20131115173845.5ff064cd@notabene.brown>
+References: <1376588800.17754.14.camel@serendib>
+	 <20130815175258.GS17781@fieldses.org> <1384154434.16759.39.camel@serendib>
+	 <20131111185356.6e0fd0a9@notabene.brown>
+	 <1384168843.16759.50.camel@serendib> <1384496133.14391.112.camel@serendib>
+	 <20131115173845.5ff064cd@notabene.brown>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Nov 20, 2013 at 05:28:10PM +0100, Albert Fluegel wrote:
-> On Mon, Nov 18, 2013 at 12:37:31PM -0500, J. Bruce Fields wrote:
-> > > > Anyway, absent objections my default is to queue this up for 3.14 (using
-> > > > S_IALLUGO).
-> This is great ! Thank you.
+On Fri, 2013-11-15 at 17:38 +1100, NeilBrown wrote:
+> On Fri, 15 Nov 2013 17:15:33 +1100 Harshula Jayasuriya <harshula@redhat.com>
+> wrote:
 > 
-> > > > ...
-> > One problem he's seeing was RHEL5-specific, the other is the known ext4
-> > problem that's been discussed before.
+> > On Mon, 2013-11-11 at 22:20 +1100, Harshula Jayasuriya wrote:
+> > > On Mon, 2013-11-11 at 18:53 +1100, NeilBrown wrote:
+> > > > On Mon, 11 Nov 2013 18:20:34 +1100 Harshula Jayasuriya <harshula@redhat.com>
+> > > > wrote:
+> > > > 
+> > > > > This patch is the nfs-utils patch corresponding to the kernel patch 
+> > > > > commit 2f74f972d4cc7d83408ea0c32d424edcb44887bf "sunrpc: prepare NFS 
+> > > > > for 2038": "The kernel sunrpc code needs to handle seconds since epoch 
+> > > > > greater than 2147483647. This means functions that parse time as an 
+> > > > > int need to handle it as time_t."
+> > > > > 
+> > > > > When appropriate exportfs should use LONG_MAX in can_test() instead of
+> > > > > INT_MAX.
+> > > > > 
+> > > > > kernel INT_MAX + exportfs INT_MAX: "Tue Jan 19 03:14:08 UTC 2038"
+> > > > > =================================================================
+> > > > > 
+> > > > > exportfs: /mnt/export does not support NFS export:
+> > > > > ------------------------------------------------------------
+> > > > >  # cat /proc/net/rpc/auth.unix.ip/content
+> > > > >  #class IP domain
+> > > > > ------------------------------------------------------------
+> > > > > 
+> > > > > + mount fail:
+> > > > > ------------------------------------------------------------
+> > > > >  # cat /proc/net/rpc/auth.unix.ip/content
+> > > > >  #class IP domain
+> > > > >  # expiry=2147483768 refcnt=2 flags=4
+> > > > >  # nfsd 192.168.1.6 -no-domain-
+> > > > > ------------------------------------------------------------
+> > > > > 
+> > > > > kernel LONG_MAX + exportfs INT_MAX: "Tue Jan 19 03:14:08 UTC 2038"
+> > > > > ==================================================================
+> > > > > 
+> > > > > "exportfs: /mnt/export does not support NFS export":
+> > > > > ------------------------------------------------------------
+> > > > >  # cat /proc/net/rpc/auth.unix.ip/content
+> > > > >  #class IP domain
+> > > > > ------------------------------------------------------------
+> > > > > 
+> > > > > + mount success:
+> > > > > ------------------------------------------------------------
+> > > > >  # cat /proc/net/rpc/auth.unix.ip/content
+> > > > >  #class IP domain
+> > > > >  # expiry=2147485448 refcnt=2 flags=1
+> > > > >  nfsd 192.168.1.6 *
+> > > > > ------------------------------------------------------------
+> > > > > 
+> > > > > kernel LONG_MAX + exportfs LONG_MAX: "Tue Jan 19 03:14:08 UTC 2038"
+> > > > > ===================================================================
+> > > > > 
+> > > > > exportfs:
+> > > > > ------------------------------------------------------------
+> > > > >  # cat /proc/net/rpc/auth.unix.ip/content
+> > > > >  #class IP domain
+> > > > >  # expiry=9223372036854775807 refcnt=1 flags=1
+> > > > >  nfsd 0.0.0.0 -test-client-
+> > > > > ------------------------------------------------------------
+> > > > > 
+> > > > > + mount success:
+> > > > > ------------------------------------------------------------
+> > > > >  # cat /proc/net/rpc/auth.unix.ip/content
+> > > > >  #class IP domain
+> > > > >  # expiry=2147485448 refcnt=2 flags=1
+> > > > >  nfsd 192.168.1.6 *
+> > > > >  # expiry=9223372036854775807 refcnt=1 flags=1
+> > > > >  nfsd 0.0.0.0 -test-client-
+> > > > > ------------------------------------------------------------
+> > > > > 
+> > > > > Signed-off-by: Harshula Jayasuriya <harshula@redhat.com>
+> > > > > ---
+> > > > >  utils/exportfs/exportfs.c | 20 ++++++++++++++++----
+> > > > >  1 file changed, 16 insertions(+), 4 deletions(-)
+> > > > > 
+> > > > > diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
+> > > > > index da5fe21..bccbed5 100644
+> > > > > --- a/utils/exportfs/exportfs.c
+> > > > > +++ b/utils/exportfs/exportfs.c
+> > > > > @@ -27,6 +27,8 @@
+> > > > >  #include <netdb.h>
+> > > > >  #include <errno.h>
+> > > > >  #include <dirent.h>
+> > > > > +#include <limits.h>
+> > > > > +#include <time.h>
+> > > > >  
+> > > > >  #include "sockaddr.h"
+> > > > >  #include "misc.h"
+> > > > > @@ -406,17 +408,27 @@ unexportfs(char *arg, int verbose)
+> > > > >  
+> > > > >  static int can_test(void)
+> > > > >  {
+> > > > > +	char buf[1024];
+> > > > >  	int fd;
+> > > > >  	int n;
+> > > > > -	char *setup = "nfsd 0.0.0.0 2147483647 -test-client-\n";
+> > > > > +
+> > > > >  	fd = open("/proc/net/rpc/auth.unix.ip/channel", O_WRONLY);
+> > > > > -	if ( fd < 0) return 0;
+> > > > > -	n = write(fd, setup, strlen(setup));
+> > > > > +	if (fd < 0)
+> > > > > +		return 0;
+> > > > > +
+> > > > > +	if (time(NULL) > INT_MAX)
+> > > > > +		sprintf(buf, "nfsd 0.0.0.0 %ld -test-client-\n", LONG_MAX);
+> > > > > +	else
+> > > > > +		sprintf(buf, "nfsd 0.0.0.0 %d -test-client-\n", INT_MAX);
+> > > > 
+> > > > This generally makes sense, but I think the cut-off is a bit too fine.
+> > > > If time(NULL) is exactly INT_MAX, then this might not do what is required.
+> > > > How about
+> > > >    if (time(NULL) > INT_MAX - (24*3600))
+> > > > ??
+> > > 
+> > > Good point. Mount attempts seem to fail not because of when exportfs is
+> > > run, but when the first mount request is made.
 > > 
-> > (Basically, ext4 has a tradeoff between correctness, lookup performance,
-> > and compatibility with some buggy old clients:
+> > Clarification, what I said above is only true when the kernel does *not*
+> > have commit 2f74f972d4cc7d83408ea0c32d424edcb44887bf.
 > > 
-> > 	1. turn off dir_index and performance on large directories may
-> > 	   suffer, but it's correct and any client will be happy.
-> > 	2. turn on dir_index and return 32-bit cookies: now you get
-> > 	   directory loops on large directories due to random hash
-> > 	   collisions.
-> > 	3. turn on dir_index and return 64-bit cookies: some clients seem
-> > 	   to then return errors to 32-bit applications doing readdirs.
-> > 	   Cookies have been 64-bit since NFSv3 and 32-bit Linux clients
-> > 	   deal with this fine (it fakes up its own small integer offsets
-> > 	   to return to applications), but apparently some other clients
-> > 	   return errors on readdir.
+> > I did a few more tests with kernel commit
+> > 2f74f972d4cc7d83408ea0c32d424edcb44887bf and found:
 > > 
-> > So currently we default to 3 and if people complain, tell them to turn
-> > off dir_index and complain to their client vendor....)
-> I agree with that. Did some "research" in the meantime. It's a real abyss.
-> I think it does not make much sense to continue this thread. Thanks to
-> all contributors bringing more light into this.
+> > 1) When the mount attempt arrives before the expiry time, set in
+> > can_test(), is reached, /proc/net/rpc/auth.unix.ip/content will contain
+> > the entry for the real mount attempt and test_export()'s "-test-client-"
+> > entry. If the mount attempt arrives after the expiry time, only the
+> > entry for the real mount attempt will appear. In both cases the mount
+> > attempt succeeds.
+> > 
+> > 2) If the expiry time, set in can_test(), is older than the time when
+> > exportfs is run, then test_export() will fail (write
+> > to /proc/net/rpc/nfsd.export/channel fails) and validate_export() will
+> > print the following error "exportfs: /mnt/export does not support NFS
+> > export". However, the mount attempt still succeeds.
+> > 
+> > Neil, have I missed something here? It looks like we don't need to add
+> > the tolerance to the time check.
 > 
-> So this is for the records:
-> With current RHEL5/6 + ext3 there is no problem over NFS. With ext4 + dir_index
-> Solaris-8 fails with EOVERFLOW on a directory read. Solaris-2.5.1 complains
-> (RPC: Can't decode result). There are 2 differences when turning off dir_index:
-> The cookies have very low values then (in contrast to using all 64 bits with
-> dir_index on) and the order returned by readdir is different (does not start
-> with . and ..) Don't know, which one makes which Solaris fail.
-> HP-UX fails differently on a ext4, even with dir_index turned off, but not
-> always. If in the reply of a getattr the nanoseconds are not 0, HPUX fails
-> with "stale file handle".
+> The problem scenario that I imagine is:
+> 
+> > > > > +	if (time(NULL) > INT_MAX)
+> 
+> happens towards the end ofthe second when time(NULL) == INT_MAX.  The test
+> fails and INT_MAX is stored in 'buf'.
+> 
+> By the time buf gets written to the kernel, time has passed and so the kernel
+> sees that the entry written has passed.
+> So an already-expired entry gets stored in the cache, which is clearly
+> pointless and could conceivably result in the in the subsequent
+> 'test_export()' call failing incorrectly.
 
-This is in the ctime/mtime/atime fields?
+True.
 
-> Could it be, it mixes some of these bytes into the handle ?
+> It is admittedly a tiny window and it may not cause a problem.
+> It just seems to me that waiting until the very last moment to switch over to
+> used the new max-time value is pointless brinkmanship.
+> It is obviously correct to use LONG_MAX a day (or even a month) before the
+> change over.  So just do it and don't worry about trying to prove whether it
+> is actually necessary or not.
 
-More likely some sort of bug when they try to fill their attribute cache
-for the new file.
+Sure :-)
 
-Anyway, sounds like a pretty egregious client bug if that's accurate.  I
-don't know if there's any easy way to force ext4 to truncate those
-times.  Probably the only workaround is to stick to ext3.
+cya,
+#
 
---b.
+> NeilBrown
+> 
+> 
+> 
+> > cya,
+> > #
+> > 
+> > > Is 1 day the right amount of tolerance? Or should we just go for a much
+> > > larger tolerance, on the assumption that the running kernel will have
+> > > commit 2f74f972d4cc7d83408ea0c32d424edcb44887bf by then? :-)
+> > > 
+> > > cya,
+> > > #
+> > > 
+> > > 
+> > > > > +
+> > > > > +	n = write(fd, buf, strlen(buf));
+> > > > >  	close(fd);
+> > > > >  	if (n < 0)
+> > > > >  		return 0;
+> > > > > +
+> > > > >  	fd = open("/proc/net/rpc/nfsd.export/channel", O_WRONLY);
+> > > > > -	if ( fd < 0) return 0;
+> > > > > +	if (fd < 0)
+> > > > > +		return 0;
+> > > > >  	close(fd);
+> > > > >  	return 1;
+> > > > >  }
+> > > 
+> > > --
+> > > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > > the body of a message to majordomo@vger.kernel.org
+> > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > 
+> 
 
-> If in the reply the nanoseconds are all 0, HPUX works even
-> with 64 bit cookies (dir_index on) on an ext4. On a xfs they all work.
-> In the NFS replies on an xfs i've seen all nanoseconds set to 0, so this is
-> consistent and the faulty behaviour seems definitely on the client side.
+
