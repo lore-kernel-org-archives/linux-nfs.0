@@ -1,53 +1,148 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:34526 "EHLO mx11.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:15845 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753921Ab3KUOds convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Nov 2013 09:33:48 -0500
-From: Weston Andros Adamson <dros@netapp.com>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: linux-nfs list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFSv4: fix getacl ERANGE for some ACL buffer sizes
-Date: Thu, 21 Nov 2013 14:33:45 +0000
-Message-ID: <D42B6332-2A01-4188-B805-90CAF35A242E@netapp.com>
-References: <1384527728-1487-1-git-send-email-dros@netapp.com>
- <E1BD19D4-40C6-456D-A6EE-73D3BA2F1E4B@netapp.com>
- <910547E4-9A70-4258-92C4-233D9DC1C169@netapp.com>
-In-Reply-To: <910547E4-9A70-4258-92C4-233D9DC1C169@netapp.com>
-Content-Type: text/plain; charset="Windows-1252"
-MIME-Version: 1.0
+	id S1751750Ab3KQXpz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 17 Nov 2013 18:45:55 -0500
+Message-ID: <1384731949.14391.120.camel@serendib>
+Subject: [PATCH v2] exportfs: modify can_test() to use LONG_MAX when
+ appropriate
+From: Harshula Jayasuriya <harshula@redhat.com>
+To: Steve Dickson <steved@redhat.com>, linux-nfs@vger.kernel.org
+Cc: Jeff Layton <jlayton@redhat.com>,
+        "J.Bruce Fields" <bfields@citi.umich.edu>, NeilBrown <neilb@suse.de>
+Date: Mon, 18 Nov 2013 10:45:49 +1100
+In-Reply-To: <1384511960.14391.115.camel@serendib>
+References: <1376588800.17754.14.camel@serendib>
+	 <20130815175258.GS17781@fieldses.org> <1384154434.16759.39.camel@serendib>
+	 <20131111185356.6e0fd0a9@notabene.brown>
+	 <1384168843.16759.50.camel@serendib> <1384496133.14391.112.camel@serendib>
+	 <20131115173845.5ff064cd@notabene.brown>
+	 <1384511960.14391.115.camel@serendib>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Nov 16, 2013, at 3:12 PM, Myklebust, Trond <Trond.Myklebust@netapp.com> wrote:
+This patch is the nfs-utils patch corresponding to the kernel patch
+"sunrpc: prepare NFS for 2038": "The kernel sunrpc code needs to handle
+seconds since epoch greater than 2147483647. This means functions that
+parse time as an int need to handle it as time_t."
 
-> 
-> On Nov 16, 2013, at 14:15, Weston Andros Adamson <dros@netapp.com> wrote:
-> 
->> I'm going to rethink this, as the server may return arbitrarily long bitmaps.
->> 
->> I'll probably just always allocate an extra page...
-> 
-> Perhaps we should do the same thing for NFSv4 that we do in nfs3_proc_getacl and just have xdr_partial_copy_from_skb allocate the pages for us?
+When appropriate exportfs should use LONG_MAX in can_test() instead of
+INT_MAX.
 
-This sounds good - the nice part about this is that we’ll be able to cache the ACL the first time we ask for it instead of having the first getacl fail due to not having enough buffer space (this is currently just used to get the ACL length for the next call).
+kernel INT_MAX + exportfs INT_MAX: "Tue Jan 19 03:14:08 UTC 2038"
+=================================================================
 
-So I have a patch almost ready, but I still have the same problem as before: what value should we use for the ‘len’ argument of xdr_inline_pages?
+exportfs: /mnt/export does not support NFS export:
+------------------------------------------------------------
+ # cat /proc/net/rpc/auth.unix.ip/content
+ #class IP domain
+------------------------------------------------------------
 
-nfs3_xdr_enc_getacl3args uses "NFSACL_MAXPAGES << PAGE_SHIFT”, which is fine because the inline pages only hold the ACL data, but for nfs4 we must have enough room for:
- - a bitmap4 type
- - the length of the ACL data
- - the ACL data
++ mount fail:
+------------------------------------------------------------
+ # cat /proc/net/rpc/auth.unix.ip/content
+ #class IP domain
+ # expiry=2147483768 refcnt=2 flags=4
+ # nfsd 192.168.1.6 -no-domain-
+------------------------------------------------------------
 
-The ACL length is known beforehand (we know the max is NFS4ACL_MAXPAGES << PAGE_SHIFT), but from the spec it looks like there can be 2^32-1 words in a bitmap4 since it’s defined as "typedef uint32_t bitmap4<>” (no maximum size specified in the <>). We certainly cannot allocate this many pages, so maybe can we agree on a reasonable number and add it as a #define?
+kernel LONG_MAX + exportfs INT_MAX: "Tue Jan 19 03:14:08 UTC 2038"
+==================================================================
 
-I still don’t understand why we need to support more than three bitmaps here, it sounds like supporting a buggy server and that’s usually a no-no.  Also, nfs4xdr.h has #defines:
+"exportfs: /mnt/export does not support NFS export":
+------------------------------------------------------------
+ # cat /proc/net/rpc/auth.unix.ip/content
+ #class IP domain
+------------------------------------------------------------
 
-#define nfs4_fattr_bitmap_maxsz 4
-...
-#define decode_getacl_maxsz     (op_decode_hdr_maxsz + \
-                                 nfs4_fattr_bitmap_maxsz + 1)
++ mount success:
+------------------------------------------------------------
+ # cat /proc/net/rpc/auth.unix.ip/content
+ #class IP domain
+ # expiry=2147485448 refcnt=2 flags=1
+ nfsd 192.168.1.6 *
+------------------------------------------------------------
 
-so that looks like we only expect 3 bitmap words...
+kernel LONG_MAX + exportfs LONG_MAX: "Tue Jan 19 03:14:08 UTC 2038"
+===================================================================
 
--dros
+exportfs:
+------------------------------------------------------------
+ # cat /proc/net/rpc/auth.unix.ip/content
+ #class IP domain
+ # expiry=9223372036854775807 refcnt=1 flags=1
+ nfsd 0.0.0.0 -test-client-
+------------------------------------------------------------
+
++ mount success:
+------------------------------------------------------------
+ # cat /proc/net/rpc/auth.unix.ip/content
+ #class IP domain
+ # expiry=2147485448 refcnt=2 flags=1
+ nfsd 192.168.1.6 *
+ # expiry=9223372036854775807 refcnt=1 flags=1
+ nfsd 0.0.0.0 -test-client-
+------------------------------------------------------------
+
+Signed-off-by: Harshula Jayasuriya <harshula@redhat.com>
+---
+ utils/exportfs/exportfs.c | 27 +++++++++++++++++++++++----
+ 1 file changed, 23 insertions(+), 4 deletions(-)
+
+diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
+index da5fe21..9f13858 100644
+--- a/utils/exportfs/exportfs.c
++++ b/utils/exportfs/exportfs.c
+@@ -27,6 +27,8 @@
+ #include <netdb.h>
+ #include <errno.h>
+ #include <dirent.h>
++#include <limits.h>
++#include <time.h>
+ 
+ #include "sockaddr.h"
+ #include "misc.h"
+@@ -406,17 +408,34 @@ unexportfs(char *arg, int verbose)
+ 
+ static int can_test(void)
+ {
++	char buf[1024];
+ 	int fd;
+ 	int n;
+-	char *setup = "nfsd 0.0.0.0 2147483647 -test-client-\n";
++
+ 	fd = open("/proc/net/rpc/auth.unix.ip/channel", O_WRONLY);
+-	if ( fd < 0) return 0;
+-	n = write(fd, setup, strlen(setup));
++	if (fd < 0)
++		return 0;
++
++	/* We introduce tolerance of 1 day to ensure that we use a
++	 * LONG_MAX for the expiry timestamp before it is actually
++	 * needed. To use LONG_MAX, the kernel code must have commit
++	 * 2f74f972d4cc7d83408ea0c32d424edcb44887bf
++	 * (sunrpc: prepare NFS for 2038).
++	 */
++#define INT_TO_LONG_THRESHOLD_SECS (INT_MAX - (60 * 60 * 24))
++	if (time(NULL) > INT_TO_LONG_THRESHOLD_SECS)
++		sprintf(buf, "nfsd 0.0.0.0 %ld -test-client-\n", LONG_MAX);
++	else
++		sprintf(buf, "nfsd 0.0.0.0 %d -test-client-\n", INT_MAX);
++
++	n = write(fd, buf, strlen(buf));
+ 	close(fd);
+ 	if (n < 0)
+ 		return 0;
++
+ 	fd = open("/proc/net/rpc/nfsd.export/channel", O_WRONLY);
+-	if ( fd < 0) return 0;
++	if (fd < 0)
++		return 0;
+ 	close(fd);
+ 	return 1;
+ }
+-- 
+1.8.3.1
 
