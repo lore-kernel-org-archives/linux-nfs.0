@@ -1,72 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:53511 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756330Ab3KNQun (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Nov 2013 11:50:43 -0500
-Message-Id: <20131114165041.425130333@bombadil.infradead.org>
-Date: Thu, 14 Nov 2013 08:50:30 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 3/7] nfs: increment i_dio_count for reads, too
-References: <20131114165027.355613182@bombadil.infradead.org>
+Received: from mx1.redhat.com ([209.132.183.28]:41174 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751171Ab3KRQyE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 18 Nov 2013 11:54:04 -0500
+Date: Mon, 18 Nov 2013 11:53:59 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+Cc: Bruce Fields <bfields@fieldses.org>, Steve Dickson <steved@redhat.com>,
+        "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 2/2] gssd: don't let parent exit until child has a
+ chance to scan directory once
+Message-ID: <20131118115359.21e5f562@tlielax.poochiereds.net>
+In-Reply-To: <B3D4C4F6-511B-4114-9C2F-196A08F3DD54@netapp.com>
+References: <1384542931-18753-1-git-send-email-jlayton@redhat.com>
+	<1384542931-18753-3-git-send-email-jlayton@redhat.com>
+	<20131118163829.GC3203@fieldses.org>
+	<B3D4C4F6-511B-4114-9C2F-196A08F3DD54@netapp.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-i_dio_count is used to protect dio access against truncate.  We want
-to make sure there are no dio reads pending either when doing a
-truncate.  I suspect on plain NFS things might work even without
-this, but once we use a pnfs layout driver that access backing devices
-directly things will go bad without the proper synchronization.
+On Mon, 18 Nov 2013 16:48:14 +0000
+"Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
----
- fs/nfs/direct.c |    9 ++++++---
- 1 file changed, 6 insertions(+), 3 deletions(-)
+> 
+> On Nov 18, 2013, at 11:38, J. Bruce Fields <bfields@fieldses.org> wrote:
+> 
+> > On Fri, Nov 15, 2013 at 02:15:31PM -0500, Jeff Layton wrote:
+> >> With some proposed kernel changes, it won't even attempt to upcall
+> >> sometimes if it doesn't appear that gssd is running. This means that
+> >> we have a theoretical race between gssd starting up at boot time and
+> >> the init process attempting to mount kerberized filesystems.
+> >> 
+> >> Fix this by switching gssd to use mydaemon() and having the child
+> >> only release the parent after it has processed the directory once.
+> > 
+> > Makes sense to me, thanks--ACK.
+> 
+> We now appear to have 2 more or less identical copies of mydaemon in nfs-utils (one in utils/gssd/svcgssd.c and one in utils/idmapd/idmapd.c). Time to make it a common library function?
+> 
 
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index 3dd8823..62ea415 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -235,10 +235,10 @@ static void nfs_direct_complete(struct nfs_direct_req *dreq, bool write)
- 		spin_unlock(&inode->i_lock);
- 	}
- 
--	if (write) {
-+	if (write)
- 		nfs_zap_mapping(inode, inode->i_mapping);
--		inode_dio_done(inode);
--	}
-+
-+	inode_dio_done(inode);
- 
- 	if (dreq->iocb) {
- 		long res = (long) dreq->error;
-@@ -419,6 +419,7 @@ static ssize_t nfs_direct_read_schedule_iovec(struct nfs_direct_req *dreq,
- 					      loff_t pos, bool uio)
- {
- 	struct nfs_pageio_descriptor desc;
-+	struct inode *inode = dreq->inode;
- 	ssize_t result = -EINVAL;
- 	size_t requested_bytes = 0;
- 	unsigned long seg;
-@@ -427,6 +428,7 @@ static ssize_t nfs_direct_read_schedule_iovec(struct nfs_direct_req *dreq,
- 			     &nfs_direct_read_completion_ops);
- 	get_dreq(dreq);
- 	desc.pg_dreq = dreq;
-+	atomic_inc(&inode->i_dio_count);
- 
- 	for (seg = 0; seg < nr_segs; seg++) {
- 		const struct iovec *vec = &iov[seg];
-@@ -446,6 +448,7 @@ static ssize_t nfs_direct_read_schedule_iovec(struct nfs_direct_req *dreq,
- 	 * generic layer handle the completion.
- 	 */
- 	if (requested_bytes == 0) {
-+		inode_dio_done(inode);
- 		nfs_direct_req_release(dreq);
- 		return result < 0 ? result : -EIO;
- 	}
+See patch 1 in the series. That's exactly what I did...
+
 -- 
-1.7.10.4
-
-
+Jeff Layton <jlayton@redhat.com>
