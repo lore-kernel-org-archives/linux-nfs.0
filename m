@@ -1,277 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:16235 "EHLO mx12.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:40745 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755300Ab3KLPbh convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Nov 2013 10:31:37 -0500
-From: Weston Andros Adamson <dros@netapp.com>
-To: linux-nfs list <linux-nfs@vger.kernel.org>
-Subject: Thread overran stack, or stack corrupted BUG on mount
-Date: Tue, 12 Nov 2013 15:31:34 +0000
-Message-ID: <2C73011F-0939-434C-9E4D-13A1EB1403D7@netapp.com>
-Content-Type: text/plain; charset="Windows-1252"
+	id S1751281Ab3KRSCY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 18 Nov 2013 13:02:24 -0500
+Date: Mon, 18 Nov 2013 19:02:59 +0100
+From: Oleg Nesterov <oleg@redhat.com>
+To: "Eric W. Biederman" <ebiederm@xmission.com>
+Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>,
+        Jeff Layton <jlayton@redhat.com>, Greg KH <gregkh@linuxfoundation.org>,
+        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, devel@openvz.org, bfields@fieldses.org,
+        bharrosh@panasas.com
+Subject: Re: call_usermodehelper in containers
+Message-ID: <20131118180259.GA11722@redhat.com>
+References: <20131111071825.62da01d1@tlielax.poochiereds.net> <20131112004703.GB15377@kroah.com> <20131112061201.04cf25ab@tlielax.poochiereds.net> <528226EC.4050701@parallels.com> <20131112083043.0ab78e67@tlielax.poochiereds.net> <5285FA0A.2080802@parallels.com> <871u2incyo.fsf@xmission.com> <20131118172844.GA10005@redhat.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20131118172844.GA10005@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I got this oops yesterday running the “test_sec_options.sh” script I recently posted as a patch to Anna’s nfs-ordeal repo (tons of mount/umount).
+On 11/18, Oleg Nesterov wrote:
+>
+> On 11/15, Eric W. Biederman wrote:
+> >
+> > I don't understand that one.  Having a preforked thread with the proper
+> > environment that can act like kthreadd in terms of spawning user mode
+> > helpers works and is simple.
+>
+> Can't we ask ->child_reaper to create the non-daemonized kernel thread
+> with the "right" ->nsproxy, ->fs, etc?
+>
+> IOW. Please the the "patch" below. It is obviously incomplete and wrong,
+> and it can be more clear/clean. And probably we need another API. Just
+> to explain what I mean.
 
-At this point GSSD had died (I was tracking down a fd leak).  I haven’t been able to reproduce this yet.
+Or, perhaps UMH_IN_MY_NS should only work if ->child_reaper explicitly
+does, say, prctl(PR_SPAWN_UMH_IN_NS_HELPER) which forks the non-daemonized
+kernel kthread_worker thread, I dunno.
 
-Any idea if I should trust the stack trace? Could this be related to the issue Jeff just posted?
-
--dros
-
-BUG: unable to handle kernel paging request at ffff88017a604030
-IP: [<ffffffff81063089>] __wake_up+0x22/0x4d
-PGD 2651067 PUD 0 
-Thread overran stack, or stack corrupted
-Oops: 0000 [#1] SMP DEBUG_PAGEALLOC
-Modules linked in: nfsv4 cts rpcsec_gss_krb5 nfsv3 nfs fscache crc32c_intel aesni_intel aes_x86_64 glue_helper lrw gf128mul ppdev ablk_helper cryptd serio_raw i2c_piix4 i2c_core e1000 nfsd parport_pc parport shpchp auth_rpcgss oid_registry exportfs nfs_acl lockd floppy freq_table sunrpc autofs4 mptspi scsi_transport_spi mptscsih mptbase ata_generic
-CPU: 0 PID: 10547 Comm: mount.nfs Not tainted 3.12.0-rc3-branch-dros_testing+ #1
-Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform, BIOS 6.00 07/31/2013
-task: ffff8800798f2100 ti: ffff88007a604000 task.ti: ffff88007a604000
-RIP: 0010:[<ffffffff81063089>]  [<ffffffff81063089>] __wake_up+0x22/0x4d
-RSP: 0018:ffff88007a604028  EFLAGS: 00010092
-RAX: 0000000000000296 RBX: ffffffffa006a980 RCX: 000000009a519a50
-RDX: 000000009a509a50 RSI: 000000000000038a RDI: ffffffffa006a980
-RBP: ffff88017a604058 R08: 0000000000000003 R09: 0000000000000001
-R10: ffff88006d41d7c0 R11: ffff88007f20b000 R12: ffff88007a6058e0
-R13: ffff8800645d8018 R14: ffff88007a6058f8 R15: ffff8800798f2100
-FS:  00007fb2765b3880(0000) GS:ffff88007f200000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-CR2: ffff88017a604030 CR3: 000000007a6ba000 CR4: 00000000001407f0
-Stack:
- ffff88007a604038 0000000000000000 ffff880000000001 0000000000000003
- ffff88006453a0d0 ffff88007a6058e0 ffff88007a604078 ffffffffa0045de2
- ffff88006453dbe0 ffff88006453dbe0 ffff88007a604098 ffffffffa0045d27
-Call Trace:
- [<ffffffffa0045de2>] ? rpc_release_client+0x4a/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045d27>] ? rpc_free_client+0x56/0xc7 [sunrpc]
- [<ffffffffa0045e00>] ? rpc_release_client+0x68/0x9a [sunrpc]
- [<ffffffffa0045f39>] ? rpc_shutdown_client+0x107/0x116 [sunrpc]
- [<ffffffffa02a6456>] ? __fscache_cookie_put+0x43/0x4f [fscache]
- [<ffffffffa02a65ca>] ? __fscache_relinquish_cookie+0x168/0x16d [fscache]
- [<ffffffffa02bdc2b>] ? nfs_free_client+0x4c/0xaf [nfs]
- [<ffffffffa0340e4a>] ? nfs4_free_client+0x97/0x9b [nfsv4]
- [<ffffffffa02bcfd9>] ? nfs_put_client+0xe8/0xed [nfs]
- [<ffffffffa0341126>] ? nfs4_init_client+0x22e/0x29d [nfsv4]
- [<ffffffffa02bc95f>] ? nfs_probe_fsinfo+0x2c7/0x2c7 [nfs]
- [<ffffffffa02bd1af>] ? nfs_get_client+0x8a/0x2bf [nfs]
- [<ffffffffa02bd37f>] ? nfs_get_client+0x25a/0x2bf [nfs]
- [<ffffffffa034059c>] ? nfs4_set_client+0x9f/0xf1 [nfsv4]
- [<ffffffffa004e917>] ? __rpc_init_priority_wait_queue+0x98/0xcf [sunrpc]
- [<ffffffffa0341999>] ? nfs4_create_server+0xfe/0x264 [nfsv4]
- [<ffffffffa033ac59>] ? nfs4_remote_mount+0x2f/0x57 [nfsv4]
- [<ffffffff8112a846>] ? mount_fs+0x69/0x157
- [<ffffffff810fb79b>] ? __alloc_percpu+0x10/0x12
- [<ffffffff8113fcbd>] ? vfs_kern_mount+0x62/0xd9
- [<ffffffffa033ac02>] ? nfs_do_root_mount+0x8c/0xb4 [nfsv4]
- [<ffffffffa033aea9>] ? nfs4_try_mount+0x60/0xbb [nfsv4]
- [<ffffffffa02c80eb>] ? nfs_fs_mount+0x88f/0x97a [nfs]
- [<ffffffffa02c8620>] ? nfs_clone_super+0x6b/0x6b [nfs]
- [<ffffffffa02c59ce>] ? nfs_set_super+0x53/0x53 [nfs]
- [<ffffffff8112a846>] ? mount_fs+0x69/0x157
- [<ffffffff810fb79b>] ? __alloc_percpu+0x10/0x12
- [<ffffffff8113fcbd>] ? vfs_kern_mount+0x62/0xd9
- [<ffffffff81141fa6>] ? do_mount+0x6ce/0x871
- [<ffffffff81141833>] ? copy_mount_options+0xc2/0x12f
- [<ffffffff811421ce>] ? SyS_mount+0x85/0xbe
- [<ffffffff814a4292>] ? system_call_fastpath+0x16/0x1b
-Code: 89 e5 e8 98 ff ff ff 5d c3 0f 1f 44 00 00 55 48 89 e5 41 54 53 48 89 fb 48 83 ec 20 89 55 e0 89 75 e8 48 89 4d d8 e8 0c 99 43 00 <4c> 8b 45 d8 48 89 df 8b 55 e0 49 89 c4 31 c9 8b 75 e8 e8 b4 d0 
-RIP  [<ffffffff81063089>] __wake_up+0x22/0x4d
- RSP <ffff88007a604028>
-CR2: ffff88017a604030
----[ end trace 1122f3f8cf98e4c2 ]---
+Oleg.
 
