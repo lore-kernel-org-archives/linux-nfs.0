@@ -1,71 +1,113 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from countercultured.net ([209.51.175.25]:59385 "HELO
-	countercultured.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with SMTP id S1753759Ab3KBCwv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 1 Nov 2013 22:52:51 -0400
-Message-ID: <52746772.4050803@davequigley.com>
-Date: Fri, 01 Nov 2013 22:46:10 -0400
-From: Dave Quigley <dpquigl@davequigley.com>
+Received: from fieldses.org ([174.143.236.118]:50519 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751254Ab3KRQia (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 18 Nov 2013 11:38:30 -0500
+Date: Mon, 18 Nov 2013 11:38:29 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: steved@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/2] gssd: don't let parent exit until child has a chance
+ to scan directory once
+Message-ID: <20131118163829.GC3203@fieldses.org>
+References: <1384542931-18753-1-git-send-email-jlayton@redhat.com>
+ <1384542931-18753-3-git-send-email-jlayton@redhat.com>
 MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Jeff Layton <jlayton@redhat.com>
-CC: "cye@redhat.com" <cye@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfs: fix oops when trying to set SELinux label
-References: <1383317372-3373-1-git-send-email-jlayton@redhat.com> <20131101120211.586aef7a@corrin.poochiereds.net> <1383324599.2911.2.camel@leira.trondhjem.org> <20131101125719.38843cfb@tlielax.poochiereds.net> <A1A30425-FA21-4D8B-ABB4-F7E02C2D5DEA@netapp.com>
-In-Reply-To: <A1A30425-FA21-4D8B-ABB4-F7E02C2D5DEA@netapp.com>
-Content-Type: text/plain; charset=windows-1252; format=flowed
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1384542931-18753-3-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/1/2013 1:05 PM, Myklebust, Trond wrote:
->
-> On Nov 1, 2013, at 12:57, Jeff Layton <jlayton@redhat.com> wrote:
->
->> On Fri, 1 Nov 2013 16:50:00 +0000
->> "Myklebust, Trond" <Trond.Myklebust@netapp.com> wrote:
->>
->>> On Fri, 2013-11-01 at 12:02 -0400, Jeff Layton wrote:
->>>> It looks like _nfs4_get_security_label() has the same problem, but I've
->>>> so far been unable to get it to be called, so I didn't patch it. It
->>>> seems like getxattr does some special stuff for SELinux labels that
->>>> cause them only to ever be fetched once.
->>>>
->>>> Is there some trick to it?
->>>>
->>>
->>> Doesn't 'ls -Z' cause them to security label to be read again?
->>>
->>
->> As best I can tell, security labels are set on the inode when the inode
->> is instantiated, and then are reset on changes (i.e. setxattr). If
->
-> …and on getxattr, afaics.
->
->> another client changes the label though, it's not clear to me how your
->> client would ever notice it until the inode is dropped from the cache.
->>
->> ISTR Eric Paris explaining to me that they do that for performance
->> reasons but it seems like something that needs to be reconsidered in
->> light of labeled NFS. Not picking up a security label change seems like
->> a bug, IMO...
->
-> To be effective, the security label should normally be set at file creation time. It should rarely, if ever, change. Why would you need to change it from a different client?
->
-> Cheers,
->    Trond
->
+On Fri, Nov 15, 2013 at 02:15:31PM -0500, Jeff Layton wrote:
+> With some proposed kernel changes, it won't even attempt to upcall
+> sometimes if it doesn't appear that gssd is running. This means that
+> we have a theoretical race between gssd starting up at boot time and
+> the init process attempting to mount kerberized filesystems.
+> 
+> Fix this by switching gssd to use mydaemon() and having the child
+> only release the parent after it has processed the directory once.
 
-That isn't completely true. Security labels should be set on creation 
-but they may change. An SELinux label consists of 
-user:role:type:level/categories. In RHEL and Fedora level/categories 
-implements something called multi category security. One level multiple 
-categories with the constraint on categories being that all must match 
-for access to be allowed. This is how sVirt work. It picks two 
-categories and setups the qemu process to start with these categories 
-and then manipulates the files  on disk to have these categories such 
-that even though the qemu_t proess can access the files type enforcement 
-wise the categories deny it. Its what allows for SELinux based per 
-process separation of a type.
+Makes sense to me, thanks--ACK.
 
-Dave
+--b.
+
+> 
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  utils/gssd/gssd.c           | 6 ++++--
+>  utils/gssd/gssd.h           | 1 +
+>  utils/gssd/gssd_main_loop.c | 4 ++++
+>  3 files changed, 9 insertions(+), 2 deletions(-)
+> 
+> diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
+> index 8ee478b..fdad153 100644
+> --- a/utils/gssd/gssd.c
+> +++ b/utils/gssd/gssd.c
+> @@ -54,6 +54,7 @@
+>  #include "err_util.h"
+>  #include "gss_util.h"
+>  #include "krb5_util.h"
+> +#include "nfslib.h"
+>  
+>  char pipefs_dir[PATH_MAX] = GSSD_PIPEFS_DIR;
+>  char keytabfile[PATH_MAX] = GSSD_DEFAULT_KEYTAB_FILE;
+> @@ -63,6 +64,7 @@ int  use_memcache = 0;
+>  int  root_uses_machine_creds = 1;
+>  unsigned int  context_timeout = 0;
+>  char *preferred_realm = NULL;
+> +int pipefds[2] = { -1, -1 };
+>  
+>  void
+>  sig_die(int signal)
+> @@ -187,8 +189,8 @@ main(int argc, char *argv[])
+>  	if (gssd_check_mechs() != 0)
+>  		errx(1, "Problem with gssapi library");
+>  
+> -	if (!fg && daemon(0, 0) < 0)
+> -		errx(1, "fork");
+> +	if (!fg)
+> +		mydaemon(0, 0, pipefds);
+>  
+>  	signal(SIGINT, sig_die);
+>  	signal(SIGTERM, sig_die);
+> diff --git a/utils/gssd/gssd.h b/utils/gssd/gssd.h
+> index 86472a1..47995b7 100644
+> --- a/utils/gssd/gssd.h
+> +++ b/utils/gssd/gssd.h
+> @@ -67,6 +67,7 @@ extern int			use_memcache;
+>  extern int			root_uses_machine_creds;
+>  extern unsigned int 		context_timeout;
+>  extern char			*preferred_realm;
+> +extern int			pipefds[2];
+>  
+>  TAILQ_HEAD(clnt_list_head, clnt_info) clnt_list;
+>  
+> diff --git a/utils/gssd/gssd_main_loop.c b/utils/gssd/gssd_main_loop.c
+> index ccf7fe5..9970028 100644
+> --- a/utils/gssd/gssd_main_loop.c
+> +++ b/utils/gssd/gssd_main_loop.c
+> @@ -53,6 +53,7 @@
+>  
+>  #include "gssd.h"
+>  #include "err_util.h"
+> +#include "nfslib.h"
+>  
+>  extern struct pollfd *pollarray;
+>  extern unsigned long pollsize;
+> @@ -245,6 +246,9 @@ gssd_run()
+>  				/* Error msg is already printed */
+>  				exit(1);
+>  			}
+> +
+> +			/* release the parent after the initial dir scan */
+> +			release_parent(pipefds);
+>  		}
+>  		gssd_poll(pollarray, pollsize);
+>  	}
+> -- 
+> 1.8.3.1
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
