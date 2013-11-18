@@ -1,97 +1,38 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:53519 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757754Ab3KNQun (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Nov 2013 11:50:43 -0500
-Message-Id: <20131114165041.295995198@bombadil.infradead.org>
-Date: Thu, 14 Nov 2013 08:50:29 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: Trond.Myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 2/7] nfs: defer inode_dio_done call until size update is done
-References: <20131114165027.355613182@bombadil.infradead.org>
+Received: from mx12.netapp.com ([216.240.18.77]:2054 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751986Ab3KRSh7 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Nov 2013 13:37:59 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFS: Fix kbuild errors due to missing symbols
+Date: Mon, 18 Nov 2013 18:37:56 +0000
+Message-ID: <3D379D5B-C02D-4AAD-9A21-08A70BA3AF48@netapp.com>
+References: <1384554636-25330-1-git-send-email-bjschuma@netapp.com>
+ <1384557410.3222.2.camel@leira.trondhjem.org> <528A5360.4000206@netapp.com>
+In-Reply-To: <528A5360.4000206@netapp.com>
+Content-Type: text/plain; charset="Windows-1252"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We need to have the I/O fully finished before telling the truncate code
-that we are done.
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
----
- fs/nfs/direct.c |   32 +++++++++++++++-----------------
- 1 file changed, 15 insertions(+), 17 deletions(-)
+On Nov 18, 2013, at 12:50, Anna Schumaker <bjschuma@netapp.com> wrote:
+> 
+> It's a poorly phrased commit message, actually.  I meant that just setting CONFIG_NFS_USE_LEGACY_DNS=y causes build problems, and then setting CONFIG_NFS_V4=n causes a different set of errors.
 
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index 653c2e8..3dd8823 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -226,21 +226,27 @@ static void nfs_direct_complete(struct nfs_direct_req *dreq, bool write)
- {
- 	struct inode *inode = dreq->inode;
- 
--	if (dreq->iocb) {
-+	if (dreq->iocb && write) {
- 		loff_t pos = dreq->iocb->ki_pos + dreq->count;
-+
-+		spin_lock(&inode->i_lock);
-+		if (i_size_read(inode) < pos)
-+			i_size_write(inode, pos);
-+		spin_unlock(&inode->i_lock);
-+	}
-+
-+	if (write) {
-+		nfs_zap_mapping(inode, inode->i_mapping);
-+		inode_dio_done(inode);
-+	}
-+
-+	if (dreq->iocb) {
- 		long res = (long) dreq->error;
- 		if (!res)
- 			res = (long) dreq->count;
--
--		if (write) {
--			spin_lock(&inode->i_lock);
--			if (i_size_read(inode) < pos)
--				i_size_write(inode, pos);
--			spin_unlock(&inode->i_lock);
--		}
--
- 		aio_complete(dreq->iocb, res, 0);
- 	}
-+
- 	complete_all(&dreq->completion);
- 
- 	nfs_direct_req_release(dreq);
-@@ -483,12 +489,6 @@ out:
- 	return result;
- }
- 
--static void nfs_inode_dio_write_done(struct inode *inode)
--{
--	nfs_zap_mapping(inode, inode->i_mapping);
--	inode_dio_done(inode);
--}
--
- #if IS_ENABLED(CONFIG_NFS_V3) || IS_ENABLED(CONFIG_NFS_V4)
- static void nfs_direct_write_reschedule(struct nfs_direct_req *dreq)
- {
-@@ -604,7 +604,6 @@ static void nfs_direct_write_schedule_work(struct work_struct *work)
- 			nfs_direct_write_reschedule(dreq);
- 			break;
- 		default:
--			nfs_inode_dio_write_done(dreq->inode);
- 			nfs_direct_complete(dreq, true);
- 	}
- }
-@@ -621,7 +620,6 @@ static void nfs_direct_write_schedule_work(struct work_struct *work)
- 
- static void nfs_direct_write_complete(struct nfs_direct_req *dreq, struct inode *inode)
- {
--	nfs_inode_dio_write_done(inode);
- 	nfs_direct_complete(dreq, true);
- }
- #endif
--- 
-1.7.10.4
+Ah. OK, now I see why you need it. The code in fs/nfs/super.c relies on it when !defined CONFIG_NFS_V4.
 
+You also need to move the CONFIG_NFS_V4_SECURITY_LABEL section outside the CONFIG_NFS_V4, since fs/nfs/dir.c and others need the dummy nfs4_label_alloc and nfs4_label_free inline functions (see Stephen Rothwell
+’s email).
+
+
+--
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
