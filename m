@@ -1,39 +1,204 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ducie-dc1.codethink.co.uk ([37.128.190.40]:36290 "EHLO
-	ducie-dc1.codethink.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932099Ab3KVQx1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Nov 2013 11:53:27 -0500
-Message-ID: <528F8C01.8020603@codethink.co.uk>
-Date: Fri, 22 Nov 2013 10:53:21 -0600
-From: Mark Doffman <mark.doffman@codethink.co.uk>
+Received: from bombadil.infradead.org ([198.137.202.9]:38152 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751755Ab3KRNHb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 18 Nov 2013 08:07:31 -0500
+Date: Mon, 18 Nov 2013 05:07:30 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 1/2] nfsd: split up nfsd_setattr
+Message-ID: <20131118130730.GA17184@infradead.org>
 MIME-Version: 1.0
-To: David Dillow <dave@thedillows.org>
-CC: ceph-devel@vger.kernel.org, sage@inktank.com, netdev@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        rob.taylor@codethink.co.uk
-Subject: Re: [PATCH 0/4] Add ceph root filesystem functionality and documentation.
-References: <1385000024-23463-1-git-send-email-mark.doffman@codethink.co.uk> <1385065186.18238.0.camel@frustration.ornl.gov>
-In-Reply-To: <1385065186.18238.0.camel@frustration.ornl.gov>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/21/2013 02:19 PM, David Dillow wrote:
-> On Wed, 2013-11-20 at 20:13 -0600, mark.doffman@codethink.co.uk wrote:
->> The following patch series adds the ability to use a ceph distributed
->> file system as the root device. The functionality is similar to
->> NFS root but for the ceph filesystem.
->
-> Why do this in the kernel vs in the initramfs? Dracut would be a more
-> appropriate place, I think, as it has support for other network root
-> devices already.
+Split out two helpers to make the code more readable and easier to verify
+for correctness.
 
-I don't know if its a good idea to require an initramfs for mounting a
-rootfs over the network. NFS root is currently in the kernel, and
-frequently used without an initramfs.
+Signed-off-by: Christoph Hellwig <hch@lst.de>
 
-Booting from ceph using a root device is relatively simple compared to
-generating an initramfs and it has the possibility of producing smaller
-images for memory constrained devices.
+---
+ fs/nfsd/vfs.c |  144 +++++++++++++++++++++++++++++++++-------------------------
+ 1 file changed, 84 insertions(+), 60 deletions(-)
 
-
+Index: linux/fs/nfsd/vfs.c
+===================================================================
+--- linux.orig/fs/nfsd/vfs.c	2013-11-17 19:32:05.807321620 +0100
++++ linux/fs/nfsd/vfs.c	2013-11-18 11:45:09.971804080 +0100
+@@ -298,41 +298,12 @@ commit_metadata(struct svc_fh *fhp)
+ }
+ 
+ /*
+- * Set various file attributes.
+- * N.B. After this call fhp needs an fh_put
++ * Go over the attributes and take care of the small differences between
++ * NFS semantics and what Linux expects.
+  */
+-__be32
+-nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
+-	     int check_guard, time_t guardtime)
++static void
++nfsd_sanitize_attrs(struct inode *inode, struct iattr *iap)
+ {
+-	struct dentry	*dentry;
+-	struct inode	*inode;
+-	int		accmode = NFSD_MAY_SATTR;
+-	umode_t		ftype = 0;
+-	__be32		err;
+-	int		host_err;
+-	int		size_change = 0;
+-
+-	if (iap->ia_valid & (ATTR_ATIME | ATTR_MTIME | ATTR_SIZE))
+-		accmode |= NFSD_MAY_WRITE|NFSD_MAY_OWNER_OVERRIDE;
+-	if (iap->ia_valid & ATTR_SIZE)
+-		ftype = S_IFREG;
+-
+-	/* Get inode */
+-	err = fh_verify(rqstp, fhp, ftype, accmode);
+-	if (err)
+-		goto out;
+-
+-	dentry = fhp->fh_dentry;
+-	inode = dentry->d_inode;
+-
+-	/* Ignore any mode updates on symlinks */
+-	if (S_ISLNK(inode->i_mode))
+-		iap->ia_valid &= ~ATTR_MODE;
+-
+-	if (!iap->ia_valid)
+-		goto out;
+-
+ 	/*
+ 	 * NFSv2 does not differentiate between "set-[ac]time-to-now"
+ 	 * which only requires access, and "set-[ac]time-to-X" which
+@@ -342,8 +313,7 @@ nfsd_setattr(struct svc_rqst *rqstp, str
+ 	 * convert to "set to now" instead of "set to explicit time"
+ 	 *
+ 	 * We only call inode_change_ok as the last test as technically
+-	 * it is not an interface that we should be using.  It is only
+-	 * valid if the filesystem does not define it's own i_op->setattr.
++	 * it is not an interface that we should be using.
+ 	 */
+ #define BOTH_TIME_SET (ATTR_ATIME_SET | ATTR_MTIME_SET)
+ #define	MAX_TOUCH_TIME_ERROR (30*60)
+@@ -369,30 +339,6 @@ nfsd_setattr(struct svc_rqst *rqstp, str
+ 			iap->ia_valid &= ~BOTH_TIME_SET;
+ 		}
+ 	}
+-	    
+-	/*
+-	 * The size case is special.
+-	 * It changes the file as well as the attributes.
+-	 */
+-	if (iap->ia_valid & ATTR_SIZE) {
+-		if (iap->ia_size < inode->i_size) {
+-			err = nfsd_permission(rqstp, fhp->fh_export, dentry,
+-					NFSD_MAY_TRUNC|NFSD_MAY_OWNER_OVERRIDE);
+-			if (err)
+-				goto out;
+-		}
+-
+-		host_err = get_write_access(inode);
+-		if (host_err)
+-			goto out_nfserr;
+-
+-		size_change = 1;
+-		host_err = locks_verify_truncate(inode, NULL, iap->ia_size);
+-		if (host_err) {
+-			put_write_access(inode);
+-			goto out_nfserr;
+-		}
+-	}
+ 
+ 	/* sanitize the mode change */
+ 	if (iap->ia_valid & ATTR_MODE) {
+@@ -415,8 +361,86 @@ nfsd_setattr(struct svc_rqst *rqstp, str
+ 			iap->ia_valid |= (ATTR_KILL_SUID | ATTR_KILL_SGID);
+ 		}
+ 	}
++}
++
++static __be32
++nfsd_get_write_access(struct svc_rqst *rqstp, struct svc_fh *fhp,
++		struct iattr *iap)
++{
++	struct inode *inode = fhp->fh_dentry->d_inode;
++	int host_err;
++
++	if (iap->ia_size < inode->i_size) {
++		__be32 err;
++
++		err = nfsd_permission(rqstp, fhp->fh_export, fhp->fh_dentry,
++				NFSD_MAY_TRUNC | NFSD_MAY_OWNER_OVERRIDE);
++		if (err)
++			return err;
++	}
++
++	host_err = get_write_access(inode);
++	if (host_err)
++		goto out_nfserrno;
++
++	host_err = locks_verify_truncate(inode, NULL, iap->ia_size);
++	if (host_err)
++		goto out_put_write_access;
++	return 0;
++
++out_put_write_access:
++	put_write_access(inode);
++out_nfserrno:
++	return nfserrno(host_err);
++}
++
++/*
++ * Set various file attributes.  After this call fhp needs an fh_put.
++ */
++__be32
++nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
++	     int check_guard, time_t guardtime)
++{
++	struct dentry	*dentry;
++	struct inode	*inode;
++	int		accmode = NFSD_MAY_SATTR;
++	umode_t		ftype = 0;
++	__be32		err;
++	int		host_err;
++	int		size_change = 0;
++
++	if (iap->ia_valid & (ATTR_ATIME | ATTR_MTIME | ATTR_SIZE))
++		accmode |= NFSD_MAY_WRITE|NFSD_MAY_OWNER_OVERRIDE;
++	if (iap->ia_valid & ATTR_SIZE)
++		ftype = S_IFREG;
++
++	/* Get inode */
++	err = fh_verify(rqstp, fhp, ftype, accmode);
++	if (err)
++		goto out;
++
++	dentry = fhp->fh_dentry;
++	inode = dentry->d_inode;
++
++	/* Ignore any mode updates on symlinks */
++	if (S_ISLNK(inode->i_mode))
++		iap->ia_valid &= ~ATTR_MODE;
++
++	if (!iap->ia_valid)
++		goto out;
++
++	nfsd_sanitize_attrs(inode, iap);
+ 
+-	/* Change the attributes. */
++	/*
++	 * The size case is special, it changes the file in addition to the
++	 * attributes.
++	 */
++	if (iap->ia_valid & ATTR_SIZE) {
++		err = nfsd_get_write_access(rqstp, fhp, iap);
++		if (err)
++			goto out;
++		size_change = 1;
++	}
+ 
+ 	iap->ia_valid |= ATTR_CTIME;
+ 
