@@ -1,102 +1,137 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:56565 "EHLO mx12.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:35108 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751939Ab3KSVuD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 19 Nov 2013 16:50:03 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Andy" <William.Adamson@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH Version 3 1/1] NFSv4 wait on recovery for async session
- errors
-Date: Tue, 19 Nov 2013 21:49:58 +0000
-Message-ID: <1384897797.45997.1.camel@leira.trondhjem.org>
-References: <1384551376-8734-1-git-send-email-andros@netapp.com>
-In-Reply-To: <1384551376-8734-1-git-send-email-andros@netapp.com>
-Content-Type: multipart/mixed;
-	boundary="_002_1384897797459971camelleiratrondhjemorg_"
+	id S1751377Ab3KRR2I (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 18 Nov 2013 12:28:08 -0500
+Date: Mon, 18 Nov 2013 18:28:44 +0100
+From: Oleg Nesterov <oleg@redhat.com>
+To: "Eric W. Biederman" <ebiederm@xmission.com>
+Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>,
+        Jeff Layton <jlayton@redhat.com>, Greg KH <gregkh@linuxfoundation.org>,
+        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, devel@openvz.org, bfields@fieldses.org,
+        bharrosh@panasas.com
+Subject: Re: call_usermodehelper in containers
+Message-ID: <20131118172844.GA10005@redhat.com>
+References: <20131111071825.62da01d1@tlielax.poochiereds.net> <20131112004703.GB15377@kroah.com> <20131112061201.04cf25ab@tlielax.poochiereds.net> <528226EC.4050701@parallels.com> <20131112083043.0ab78e67@tlielax.poochiereds.net> <5285FA0A.2080802@parallels.com> <871u2incyo.fsf@xmission.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <871u2incyo.fsf@xmission.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---_002_1384897797459971camelleiratrondhjemorg_
-Content-Type: text/plain; charset="utf-7"
-Content-ID: <58343AF993D973488D92138258725D35@hq.netapp.com>
-Content-Transfer-Encoding: quoted-printable
+On 11/15, Eric W. Biederman wrote:
+>
+> I don't understand that one.  Having a preforked thread with the proper
+> environment that can act like kthreadd in terms of spawning user mode
+> helpers works and is simple.
 
-On Fri, 2013-11-15 at 16:36 -0500, andros+AEA-netapp.com wrote:
-+AD4- From: Andy Adamson +ADw-andros+AEA-netapp.com+AD4-
-+AD4-=20
-+AD4- When the state manager is processing the NFS4CLNT+AF8-DELEGRETURN fla=
-g, session
-+AD4- draining is off, but DELEGRETURN can still get a session error.
-+AD4- The async handler calls nfs4+AF8-schedule+AF8-session+AF8-recovery re=
-turns -EAGAIN, and
-+AD4- the DELEGRETURN done then restarts the RPC task in the prepare state.
-+AD4- With the state manager still processing the NFS4CLNT+AF8-DELEGRETURN =
-flag with
-+AD4- session draining off, these DELEGRETURNs will cycle with errors filli=
-ng up the
-+AD4- session slots.
-+AD4-=20
-+AD4- This prevents OPEN reclaims (from nfs+AF8-delegation+AF8-claim+AF8-op=
-ens) required by the
-+AD4- NFS4CLNT+AF8-DELEGRETURN state manager processing from completing, ha=
-nging the
-+AD4- state manager in the +AF8AXw-rpc+AF8-wait+AF8-for+AF8-completion+AF8-=
-task in nfs4+AF8-run+AF8-open+AF8-task
-+AD4- as seen in this kernel thread dump:
-+AD4-=20
+Can't we ask ->child_reaper to create the non-daemonized kernel thread
+with the "right" ->nsproxy, ->fs, etc?
 
-Hi Andy,
+IOW. Please the the "patch" below. It is obviously incomplete and wrong,
+and it can be more clear/clean. And probably we need another API. Just
+to explain what I mean.
 
-There is a second patch that goes with this problem. Please see the
-following attachment.
+With this patch call_usermodehelper(..., UMH_IN_MY_NS) should do exec
+from the caller's namespace.
 
-Cheers
-  Trond
---=20
-Trond Myklebust
-Linux NFS client maintainer
+Oleg.
+---
 
-NetApp
-Trond.Myklebust+AEA-netapp.com
-www.netapp.com
+--- a/include/linux/kmod.h
++++ b/include/linux/kmod.h
+@@ -24,6 +24,7 @@
+ #include <linux/errno.h>
+ #include <linux/compiler.h>
+ #include <linux/workqueue.h>
++#include <linux/task_work.h>
+ #include <linux/sysctl.h>
+ 
+ #define KMOD_PATH_LEN 256
+@@ -53,8 +54,14 @@ struct file;
+ #define UMH_WAIT_PROC	2	/* wait for the process to complete */
+ #define UMH_KILLABLE	4	/* wait for EXEC/PROC killable */
+ 
++// FIXME: IMH_* is not actually a mask
++#define UMH_IN_MY_NS	8
++
+ struct subprocess_info {
+-	struct work_struct work;
++	union {
++		struct work_struct work;
++		struct callback_head twork;
++	};
+ 	struct completion *complete;
+ 	char *path;
+ 	char **argv;
+--- a/kernel/kmod.c
++++ b/kernel/kmod.c
+@@ -541,7 +541,6 @@ struct subprocess_info *call_usermodehelper_setup(char *path, char **argv,
+ 	if (!sub_info)
+ 		goto out;
+ 
+-	INIT_WORK(&sub_info->work, __call_usermodehelper);
+ 	sub_info->path = path;
+ 	sub_info->argv = argv;
+ 	sub_info->envp = envp;
+@@ -554,6 +553,24 @@ struct subprocess_info *call_usermodehelper_setup(char *path, char **argv,
+ }
+ EXPORT_SYMBOL(call_usermodehelper_setup);
+ 
++static int call_call_usermodehelper(void *twork)
++{
++	struct subprocess_info *sub_info =
++		container_of(twork, struct subprocess_info, twork);
++
++	__call_usermodehelper(&sub_info->work);
++	do_exit(0);
++
++}
++
++static void fork_umh_helper(struct callback_head *twork)
++{
++	if (current->flags & PF_EXITING)
++		return;	// WRONG, FIXME
++
++	kernel_thread(call_call_usermodehelper, twork, SIGCHLD);
++}
++
+ /**
+  * call_usermodehelper_exec - start a usermode application
+  * @sub_info: information about the subprocessa
+@@ -570,6 +587,10 @@ int call_usermodehelper_exec(struct subprocess_info *sub_info, int wait)
+ {
+ 	DECLARE_COMPLETION_ONSTACK(done);
+ 	int retval = 0;
++	bool in_my_ns;
++
++	in_my_ns = wait & UMH_IN_MY_NS;
++	wait &= ~UMH_IN_MY_NS;
+ 
+ 	if (!sub_info->path) {
+ 		call_usermodehelper_freeinfo(sub_info);
+@@ -594,7 +615,21 @@ int call_usermodehelper_exec(struct subprocess_info *sub_info, int wait)
+ 	sub_info->complete = &done;
+ 	sub_info->wait = wait;
+ 
+-	queue_work(khelper_wq, &sub_info->work);
++	if (likely(!in_my_ns)) {
++		INIT_WORK(&sub_info->work, __call_usermodehelper);
++		queue_work(khelper_wq, &sub_info->work);
++	} else {
++		// RACY, WRONG, ETC
++		struct task_struct *my_init = task_active_pid_ns(current)->child_reaper;
++
++		init_task_work(&sub_info->twork, fork_umh_helper);
++		task_work_add(my_init, &sub_info->twork, false);
++
++		// until we have task_work_add_interruptibel()
++		do_send_sig_info(SIGCHLD, SEND_SIG_FORCED, my_init, false);
++
++	}
++
+ 	if (wait == UMH_NO_WAIT)	/* task has freed sub_info */
+ 		goto unlock;
+ 
 
---_002_1384897797459971camelleiratrondhjemorg_
-Content-Type: text/x-patch;
-	name="0001-NFSv4-Update-list-of-irrecoverable-errors-on-DELEGRE.patch"
-Content-Description: 0001-NFSv4-Update-list-of-irrecoverable-errors-on-DELEGRE.patch
-Content-Disposition: attachment;
-	filename="0001-NFSv4-Update-list-of-irrecoverable-errors-on-DELEGRE.patch";
-	size=1398; creation-date="Tue, 19 Nov 2013 21:49:58 GMT";
-	modification-date="Tue, 19 Nov 2013 21:49:58 GMT"
-Content-ID: <1F0AACFC30A4EA4481BEB628E5BC9DEA@hq.netapp.com>
-Content-Transfer-Encoding: base64
-
-RnJvbSAyMGE0MDY3MjQzZjgxYzE0MTdiZjYyZWNlYTc2OTdiNzk5MDE5MjZmIE1vbiBTZXAgMTcg
-MDA6MDA6MDAgMjAwMQ0KRnJvbTogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0
-YXBwLmNvbT4NCkRhdGU6IFR1ZSwgMTkgTm92IDIwMTMgMTY6MzQ6MTQgLTA1MDANClN1YmplY3Q6
-IFtQQVRDSF0gTkZTdjQ6IFVwZGF0ZSBsaXN0IG9mIGlycmVjb3ZlcmFibGUgZXJyb3JzIG9uIERF
-TEVHUkVUVVJODQoNCklmIHRoZSBERUxFR1JFVFVSTiBlcnJvcnMgb3V0IHdpdGggc29tZXRoaW5n
-IGxpa2UgTkZTNEVSUl9CQURfU1RBVEVJRA0KdGhlbiB0aGVyZSBpcyBubyByZWNvdmVyeSBwb3Nz
-aWJsZS4NCg0KQWxzbywgdGhlIGNsaWVudCBtdXN0IG5vdCBhc3N1bWUgdGhhdCB0aGUgTkZTdjQg
-bGVhc2UgaGFzIGJlZW4gcmVuZXdlZA0Kd2hlbiBpdCBzZWVzIGFuIGVycm9yIG9uIERFTEVHUkVU
-VVJOLg0KDQpTaWduZWQtb2ZmLWJ5OiBUcm9uZCBNeWtsZWJ1c3QgPFRyb25kLk15a2xlYnVzdEBu
-ZXRhcHAuY29tPg0KQ2M6IHN0YWJsZUB2Z2VyLmtlcm5lbC5vcmcNCi0tLQ0KIGZzL25mcy9uZnM0
-cHJvYy5jIHwgOCArKysrKystLQ0KIDEgZmlsZSBjaGFuZ2VkLCA2IGluc2VydGlvbnMoKyksIDIg
-ZGVsZXRpb25zKC0pDQoNCmRpZmYgLS1naXQgYS9mcy9uZnMvbmZzNHByb2MuYyBiL2ZzL25mcy9u
-ZnM0cHJvYy5jDQppbmRleCAxZjRlZGZiYjRhNzAuLmFhMTZhMjJhZDM0OSAxMDA2NDQNCi0tLSBh
-L2ZzL25mcy9uZnM0cHJvYy5jDQorKysgYi9mcy9uZnMvbmZzNHByb2MuYw0KQEAgLTQ5ODgsMTAg
-KzQ5ODgsMTQgQEAgc3RhdGljIHZvaWQgbmZzNF9kZWxlZ3JldHVybl9kb25lKHN0cnVjdCBycGNf
-dGFzayAqdGFzaywgdm9pZCAqY2FsbGRhdGEpDQogDQogCXRyYWNlX25mczRfZGVsZWdyZXR1cm5f
-ZXhpdCgmZGF0YS0+YXJncywgJmRhdGEtPnJlcywgdGFzay0+dGtfc3RhdHVzKTsNCiAJc3dpdGNo
-ICh0YXNrLT50a19zdGF0dXMpIHsNCi0JY2FzZSAtTkZTNEVSUl9TVEFMRV9TVEFURUlEOg0KLQlj
-YXNlIC1ORlM0RVJSX0VYUElSRUQ6DQogCWNhc2UgMDoNCiAJCXJlbmV3X2xlYXNlKGRhdGEtPnJl
-cy5zZXJ2ZXIsIGRhdGEtPnRpbWVzdGFtcCk7DQorCWNhc2UgLU5GUzRFUlJfQURNSU5fUkVWT0tF
-RDoNCisJY2FzZSAtTkZTNEVSUl9ERUxFR19SRVZPS0VEOg0KKwljYXNlIC1ORlM0RVJSX0JBRF9T
-VEFURUlEOg0KKwljYXNlIC1ORlM0RVJSX09MRF9TVEFURUlEOg0KKwljYXNlIC1ORlM0RVJSX1NU
-QUxFX1NUQVRFSUQ6DQorCWNhc2UgLU5GUzRFUlJfRVhQSVJFRDoNCiAJCWJyZWFrOw0KIAlkZWZh
-dWx0Og0KIAkJaWYgKG5mczRfYXN5bmNfaGFuZGxlX2Vycm9yKHRhc2ssIGRhdGEtPnJlcy5zZXJ2
-ZXIsIE5VTEwpID09DQotLSANCjEuOC4zLjENCg0K
-
---_002_1384897797459971camelleiratrondhjemorg_--
