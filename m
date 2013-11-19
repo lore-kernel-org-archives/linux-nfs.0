@@ -1,68 +1,102 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:19398 "EHLO mx1.redhat.com"
+Received: from mx12.netapp.com ([216.240.18.77]:56565 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751472Ab3KLLMz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 12 Nov 2013 06:12:55 -0500
-Date: Tue, 12 Nov 2013 06:12:01 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Greg KH <gregkh@linuxfoundation.org>
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org,
-        Stanislav Kinsbursky <skinsbursky@parallels.com>, devel@openvz.org,
-        ebiederm@xmission.com, oleg@redhat.com, bfields@fieldses.org,
-        bharrosh@panasas.com
-Subject: Re: call_usermodehelper in containers
-Message-ID: <20131112061201.04cf25ab@tlielax.poochiereds.net>
-In-Reply-To: <20131112004703.GB15377@kroah.com>
-References: <20131111071825.62da01d1@tlielax.poochiereds.net>
-	<20131112004703.GB15377@kroah.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1751939Ab3KSVuD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 19 Nov 2013 16:50:03 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Andy" <William.Adamson@netapp.com>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH Version 3 1/1] NFSv4 wait on recovery for async session
+ errors
+Date: Tue, 19 Nov 2013 21:49:58 +0000
+Message-ID: <1384897797.45997.1.camel@leira.trondhjem.org>
+References: <1384551376-8734-1-git-send-email-andros@netapp.com>
+In-Reply-To: <1384551376-8734-1-git-send-email-andros@netapp.com>
+Content-Type: multipart/mixed;
+	boundary="_002_1384897797459971camelleiratrondhjemorg_"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 11 Nov 2013 16:47:03 -0800
-Greg KH <gregkh@linuxfoundation.org> wrote:
+--_002_1384897797459971camelleiratrondhjemorg_
+Content-Type: text/plain; charset="utf-7"
+Content-ID: <58343AF993D973488D92138258725D35@hq.netapp.com>
+Content-Transfer-Encoding: quoted-printable
 
-> On Mon, Nov 11, 2013 at 07:18:25AM -0500, Jeff Layton wrote:
-> > We have a bit of a problem wrt to upcalls that use call_usermodehelper
-> > with containers and I'd like to bring this to some sort of resolution...
-> > 
-> > A particularly problematic case (though there are others) is the
-> > nfsdcltrack upcall. It basically uses call_usermodehelper to run a
-> > program in userland to track some information on stable storage for
-> > nfsd.
-> 
-> I thought the discussion at the kernel summit about this issue was:
-> 	- don't do this.
-> 	- don't do it.
-> 	- if you really need to do this, fix nfsd
-> 
+On Fri, 2013-11-15 at 16:36 -0500, andros+AEA-netapp.com wrote:
++AD4- From: Andy Adamson +ADw-andros+AEA-netapp.com+AD4-
++AD4-=20
++AD4- When the state manager is processing the NFS4CLNT+AF8-DELEGRETURN fla=
+g, session
++AD4- draining is off, but DELEGRETURN can still get a session error.
++AD4- The async handler calls nfs4+AF8-schedule+AF8-session+AF8-recovery re=
+turns -EAGAIN, and
++AD4- the DELEGRETURN done then restarts the RPC task in the prepare state.
++AD4- With the state manager still processing the NFS4CLNT+AF8-DELEGRETURN =
+flag with
++AD4- session draining off, these DELEGRETURNs will cycle with errors filli=
+ng up the
++AD4- session slots.
++AD4-=20
++AD4- This prevents OPEN reclaims (from nfs+AF8-delegation+AF8-claim+AF8-op=
+ens) required by the
++AD4- NFS4CLNT+AF8-DELEGRETURN state manager processing from completing, ha=
+nging the
++AD4- state manager in the +AF8AXw-rpc+AF8-wait+AF8-for+AF8-completion+AF8-=
+task in nfs4+AF8-run+AF8-open+AF8-task
++AD4- as seen in this kernel thread dump:
++AD4-=20
 
-Sorry, I couldn't make the kernel summit so I missed that discussion. I
-guess LWN didn't cover it?
+Hi Andy,
 
-In any case, I guess then that we'll either have to come up with some
-way to fix nfsd here, or simply ensure that nfsd can never be started
-unless root in the container has a full set of a full set of
-capabilities.
+There is a second patch that goes with this problem. Please see the
+following attachment.
 
-One sort of Rube Goldberg possibility to fix nfsd is:
+Cheers
+  Trond
+--=20
+Trond Myklebust
+Linux NFS client maintainer
 
-- when we start nfsd in a container, fork off an extra kernel thread
-  that just sits idle. That thread would need to be a descendant of the
-  userland process that started nfsd, so we'd need to create it with
-  kernel_thread().
+NetApp
+Trond.Myklebust+AEA-netapp.com
+www.netapp.com
 
-- Have the kernel just start up the UMH program in the init_ns mount
-  namespace as it currently does, but also pass the pid of the idle
-  kernel thread to the UMH upcall.
+--_002_1384897797459971camelleiratrondhjemorg_
+Content-Type: text/x-patch;
+	name="0001-NFSv4-Update-list-of-irrecoverable-errors-on-DELEGRE.patch"
+Content-Description: 0001-NFSv4-Update-list-of-irrecoverable-errors-on-DELEGRE.patch
+Content-Disposition: attachment;
+	filename="0001-NFSv4-Update-list-of-irrecoverable-errors-on-DELEGRE.patch";
+	size=1398; creation-date="Tue, 19 Nov 2013 21:49:58 GMT";
+	modification-date="Tue, 19 Nov 2013 21:49:58 GMT"
+Content-ID: <1F0AACFC30A4EA4481BEB628E5BC9DEA@hq.netapp.com>
+Content-Transfer-Encoding: base64
 
-- The program will then use /proc/<pid>/root and /proc/<pid>/ns/* to set
-  itself up for doing things properly.
+RnJvbSAyMGE0MDY3MjQzZjgxYzE0MTdiZjYyZWNlYTc2OTdiNzk5MDE5MjZmIE1vbiBTZXAgMTcg
+MDA6MDA6MDAgMjAwMQ0KRnJvbTogVHJvbmQgTXlrbGVidXN0IDxUcm9uZC5NeWtsZWJ1c3RAbmV0
+YXBwLmNvbT4NCkRhdGU6IFR1ZSwgMTkgTm92IDIwMTMgMTY6MzQ6MTQgLTA1MDANClN1YmplY3Q6
+IFtQQVRDSF0gTkZTdjQ6IFVwZGF0ZSBsaXN0IG9mIGlycmVjb3ZlcmFibGUgZXJyb3JzIG9uIERF
+TEVHUkVUVVJODQoNCklmIHRoZSBERUxFR1JFVFVSTiBlcnJvcnMgb3V0IHdpdGggc29tZXRoaW5n
+IGxpa2UgTkZTNEVSUl9CQURfU1RBVEVJRA0KdGhlbiB0aGVyZSBpcyBubyByZWNvdmVyeSBwb3Nz
+aWJsZS4NCg0KQWxzbywgdGhlIGNsaWVudCBtdXN0IG5vdCBhc3N1bWUgdGhhdCB0aGUgTkZTdjQg
+bGVhc2UgaGFzIGJlZW4gcmVuZXdlZA0Kd2hlbiBpdCBzZWVzIGFuIGVycm9yIG9uIERFTEVHUkVU
+VVJOLg0KDQpTaWduZWQtb2ZmLWJ5OiBUcm9uZCBNeWtsZWJ1c3QgPFRyb25kLk15a2xlYnVzdEBu
+ZXRhcHAuY29tPg0KQ2M6IHN0YWJsZUB2Z2VyLmtlcm5lbC5vcmcNCi0tLQ0KIGZzL25mcy9uZnM0
+cHJvYy5jIHwgOCArKysrKystLQ0KIDEgZmlsZSBjaGFuZ2VkLCA2IGluc2VydGlvbnMoKyksIDIg
+ZGVsZXRpb25zKC0pDQoNCmRpZmYgLS1naXQgYS9mcy9uZnMvbmZzNHByb2MuYyBiL2ZzL25mcy9u
+ZnM0cHJvYy5jDQppbmRleCAxZjRlZGZiYjRhNzAuLmFhMTZhMjJhZDM0OSAxMDA2NDQNCi0tLSBh
+L2ZzL25mcy9uZnM0cHJvYy5jDQorKysgYi9mcy9uZnMvbmZzNHByb2MuYw0KQEAgLTQ5ODgsMTAg
+KzQ5ODgsMTQgQEAgc3RhdGljIHZvaWQgbmZzNF9kZWxlZ3JldHVybl9kb25lKHN0cnVjdCBycGNf
+dGFzayAqdGFzaywgdm9pZCAqY2FsbGRhdGEpDQogDQogCXRyYWNlX25mczRfZGVsZWdyZXR1cm5f
+ZXhpdCgmZGF0YS0+YXJncywgJmRhdGEtPnJlcywgdGFzay0+dGtfc3RhdHVzKTsNCiAJc3dpdGNo
+ICh0YXNrLT50a19zdGF0dXMpIHsNCi0JY2FzZSAtTkZTNEVSUl9TVEFMRV9TVEFURUlEOg0KLQlj
+YXNlIC1ORlM0RVJSX0VYUElSRUQ6DQogCWNhc2UgMDoNCiAJCXJlbmV3X2xlYXNlKGRhdGEtPnJl
+cy5zZXJ2ZXIsIGRhdGEtPnRpbWVzdGFtcCk7DQorCWNhc2UgLU5GUzRFUlJfQURNSU5fUkVWT0tF
+RDoNCisJY2FzZSAtTkZTNEVSUl9ERUxFR19SRVZPS0VEOg0KKwljYXNlIC1ORlM0RVJSX0JBRF9T
+VEFURUlEOg0KKwljYXNlIC1ORlM0RVJSX09MRF9TVEFURUlEOg0KKwljYXNlIC1ORlM0RVJSX1NU
+QUxFX1NUQVRFSUQ6DQorCWNhc2UgLU5GUzRFUlJfRVhQSVJFRDoNCiAJCWJyZWFrOw0KIAlkZWZh
+dWx0Og0KIAkJaWYgKG5mczRfYXN5bmNfaGFuZGxlX2Vycm9yKHRhc2ssIGRhdGEtPnJlcy5zZXJ2
+ZXIsIE5VTEwpID09DQotLSANCjEuOC4zLjENCg0K
 
-Note that with this mechanism we can't actually run a different binary
-per container, but that's probably fine for most purposes.
-
--- 
-Jeff Layton <jlayton@redhat.com>
+--_002_1384897797459971camelleiratrondhjemorg_--
