@@ -1,52 +1,112 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:12308 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:19373 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755386Ab3KLSnD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 12 Nov 2013 13:43:03 -0500
-Subject: [PATCH 1/3] statxat: Provide IOC flags for Windows fs attributes
- [ver #2]
-To: viro@ZenIV.linux.org.uk
-From: David Howells <dhowells@redhat.com>
-Cc: linux-cifs@vger.kernel.org, linux-nfs@vger.kernel.org,
-        libc-alpha@sourceware.org, linux-api@vger.kernel.org,
-        andreas.gruenbacher@gmail.com, samba-technical@lists.samba.org,
-        linux-fsdevel@vger.kernel.org
-Date: Tue, 12 Nov 2013 18:41:35 +0000
-Message-ID: <20131112184134.2880.9974.stgit@warthog.procyon.org.uk>
-In-Reply-To: <20131112184127.2880.24025.stgit@warthog.procyon.org.uk>
-References: <20131112184127.2880.24025.stgit@warthog.procyon.org.uk>
+	id S1753061Ab3KTDlq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 19 Nov 2013 22:41:46 -0500
+Message-ID: <528C2FA7.7060701@redhat.com>
+Date: Wed, 20 Nov 2013 09:12:31 +0530
+From: Susant Sahani <ssahani@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: steved@redhat.com
+CC: libtirpc-devel@lists.sourceforge.net, linux-nfs@vger.kernel.org
+Subject: Re: [Libtirpc-devel] Missing NULL check in  __nc_error()
+References: <5286846E.2040503@redhat.com>	<ABA154D0-8846-4673-ADBF-3E701E087590@gmail.com> <52868EF3.4000405@redhat.com>
+In-Reply-To: <52868EF3.4000405@redhat.com>
+Content-Type: multipart/mixed;
+ boundary="------------080809050607000506080304"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Provide IOC flags for Windows fs attributes so that they can be retrieved (or
-even altered) using the FS_IOC_[GS]ETFLAGS ioctl and read using statxat().
+This is a multi-part message in MIME format.
+--------------080809050607000506080304
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
-Signed-off-by: David Howells <dhowells@redhat.com>
+Hi Steve,
+      In the file: getnetconfig.c __nc_error() does not check return 
+value from malloc() and can pass NULL pointer to thr_setspecific() which 
+can lead to crash. Attached fix.
+
+Thanks,
+Susant
+
+On 11/16/2013 02:45 AM, Susant Sahani wrote:
+> Yes was reading out the code. Could be because of out of memory also .
+>
+> On 11/16/2013 02:15 AM, Chuck Lever wrote:
+>> Hi-
+>>
+>> On Nov 15, 2013, at 3:30 PM, Susant Sahani <ssahani@redhat.com> wrote:
+>>
+>>> Hi,
+>>>
+>>> __nc_error() does not check return value from malloc() can lead to crash .
+>> Curious.  Did you see an actual NULL return from malloc(), or did you notice this via code inspection?  A NULL return is rare and usually indicates a deeper problem.
+>>
+>>>      trying get familiar with with patch submission
+>> Start here for details on formatting your submission, and legal requirements:
+>>
+>>     https://www.kernel.org/doc/Documentation/SubmittingPatches
+>>
+>> Send patches to Steve Dickson <steved@redhat.com>, and cc this mailing list.
+>>
+>> Thanks.
+>>
+>> --
+>> Chuck Lever
+>> chucklever[at]gmail[dot]com
+>>
+>>
+>>
+> Thanks,
+> Susant
+>
+> ------------------------------------------------------------------------------
+> DreamFactory - Open Source REST & JSON Services for HTML5 & Native Apps
+> OAuth, Users, Roles, SQL, NoSQL, BLOB Storage and External API Access
+> Free app hosting. Or install the open source package on any LAMP server.
+> Sign up and see examples for AngularJS, jQuery, Sencha Touch and Native!
+> http://pubads.g.doubleclick.net/gampad/clk?id=63469471&iu=/4140/ostg.clktrk
+> _______________________________________________
+> Libtirpc-devel mailing list
+> Libtirpc-devel@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/libtirpc-devel
+
+
+--------------080809050607000506080304
+Content-Type: text/x-patch;
+ name="0001-__nc_error-does-not-check-return-value-from-malloc.patch"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename*0="0001-__nc_error-does-not-check-return-value-from-malloc.patc";
+ filename*1="h"
+
+>From 72d43756f09599da9d0907c9f62c6a8e1e0cb261 Mon Sep 17 00:00:00 2001
+From: Susant Sahani <ssahani@redhat.com>
+Date: Tue, 19 Nov 2013 08:40:00 +0530
+Subject: [PATCH] __nc_error() does not check return value from malloc
+
+Signed-off-by: Susant Sahani <ssahani@redhat.com>
 ---
+ src/getnetconfig.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
- include/uapi/linux/fs.h |    7 +++++--
- 1 file changed, 5 insertions(+), 2 deletions(-)
+diff --git a/src/getnetconfig.c b/src/getnetconfig.c
+index af4a484..2460a6e 100644
+--- a/src/getnetconfig.c
++++ b/src/getnetconfig.c
+@@ -146,7 +146,8 @@ __nc_error()
+ 			return (&nc_error);
+ 	}
+ 	if ((nc_addr = (int *)thr_getspecific(nc_key)) == NULL) {
+-		nc_addr = (int *)malloc(sizeof (int));
++		if((nc_addr = (int *)malloc(sizeof (int))) == NULL)
++			return (&nc_error);
+ 		if (thr_setspecific(nc_key, (void *) nc_addr) != 0) {
+ 			if (nc_addr)
+ 				free(nc_addr);
+-- 
+1.8.4.2
 
-diff --git a/include/uapi/linux/fs.h b/include/uapi/linux/fs.h
-index 6c28b61bb690..8b966f48dd41 100644
---- a/include/uapi/linux/fs.h
-+++ b/include/uapi/linux/fs.h
-@@ -191,10 +191,13 @@ struct inodes_stat_t {
- #define FS_EXTENT_FL			0x00080000 /* Extents */
- #define FS_DIRECTIO_FL			0x00100000 /* Use direct i/o */
- #define FS_NOCOW_FL			0x00800000 /* Do not cow file */
-+#define FS_HIDDEN_FL			0x10000000 /* Windows hidden file attribute */
-+#define FS_SYSTEM_FL			0x20000000 /* Windows system file attribute */
-+#define FS_ARCHIVE_FL			0x40000000 /* Windows archive file attribute */
- #define FS_RESERVED_FL			0x80000000 /* reserved for ext2 lib */
- 
--#define FS_FL_USER_VISIBLE		0x0003DFFF /* User visible flags */
--#define FS_FL_USER_MODIFIABLE		0x000380FF /* User modifiable flags */
-+#define FS_FL_USER_VISIBLE		0x7003DFFF /* User visible flags */
-+#define FS_FL_USER_MODIFIABLE		0x700380FF /* User modifiable flags */
- 
- 
- #define SYNC_FILE_RANGE_WAIT_BEFORE	1
 
+--------------080809050607000506080304--
