@@ -1,180 +1,142 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:18865 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751010Ab3KGXgC convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Nov 2013 18:36:02 -0500
+Received: from mx12.netapp.com ([216.240.18.77]:23759 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755250Ab3KTVYs convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Nov 2013 16:24:48 -0500
+From: "Adamson, Andy" <William.Adamson@netapp.com>
+To: "Adamson, Andy" <William.Adamson@netapp.com>
+CC: Simo Sorce <simo@redhat.com>, "<steved@redhat.com>" <steved@redhat.com>,
+        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH Version 2 0/3] GSSD: Use gss-ctx keys and gsskeyd to
+ sync Kerberos credentials and kernel gss_contexts.
+Date: Wed, 20 Nov 2013 21:24:47 +0000
+Message-ID: <98D9FE6D-B423-4255-B75D-7A24876F8185@netapp.com>
+References: <1382451757-3032-1-git-send-email-andros@netapp.com>
+ <1382454148.9794.72.camel@willson.li.ssimo.org>
+ <A8A66580-CD6F-4141-AE93-B1DD025BFD7A@netapp.com>
+ <1382458162.9794.85.camel@willson.li.ssimo.org>
+ <9C15298B-8915-46E2-85E1-5098F1A12832@netapp.com>
+ <1382462720.9794.131.camel@willson.li.ssimo.org>
+ <096F13FC-A99E-4C19-ACCA-01C244D7420F@netapp.com>
+ <1384980587.17044.49.camel@willson.li.ssimo.org>
+ <7841DFC0-4F05-42CB-AD84-0A3324588EC1@netapp.com>
+In-Reply-To: <7841DFC0-4F05-42CB-AD84-0A3324588EC1@netapp.com>
+Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
-Message-ID: <44CA89EA-8B5E-4B83-A622-78A78F760FF1@oracle.com>
-Date: Thu, 7 Nov 2013 15:05:55 -0800 (PST)
-From: Chuck Lever <chuck.lever@oracle.com>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] Adding the nfs4_use_min_auth module parameter
-References: <1383851364-8370-1-git-send-email-steved@redhat.com>
- <A8E8F2C4-8CB7-434E-8520-B2B53F0582D9@oracle.com> <527C07B4.800@RedHat.com>
-In-Reply-To: <527C07B4.800@RedHat.com>
-Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Nov 7, 2013, at 1:35 PM, Steve Dickson <SteveD@redhat.com> wrote:
-
-> Hey mrchuck... 
-> 
-> On 07/11/13 14:25, Chuck Lever wrote:
->> Hi Steve-
->> 
->> On Nov 7, 2013, at 11:09 AM, Steve Dickson <steved@redhat.com> wrote:
->> 
->>> This new module parameter makes the v4 client
->>> use the minimal authentication flavor (AUTH_UNIX)
->>> when establishing NFSV4 state and doing the
->>> pseudoroot lookup
->> 
->> The patch description doesn't say, but is this change to work 
->> around the 15 second GSSD upcall timeout? 
-> Yes. A 15 second delay on every mount due to security that
-> nobody is requesting is just not good.. IMHO..
-
-One thing we haven't discussed is reducing the upcall timeout to 5 seconds or less, as a form of immediate relief.  15 seconds is arbitrary, and is onerous even when you expect the mount to work (ie why would it be good for any properly configured environment to take 15 seconds to establish a GSS context?).
-
-In other words, there are still cases where users wait 15 seconds unnecessarily, and not because of the use of krb5i for lease management.  Aren't those of concern?
-
-> Also running
-> a security daemon for non-secure mounts just seems wrong to me.
-
-It seems wrong to me to keep auth_rpcgss loaded if no mounts use Kerberos security.  What's the difference between that and running gssd all the time?
-
-The new SETCLIENTID architecture would be transparent if our security infrastructure was reliable.  We really need to address the upcall issue.  We've been working around it for a very long time.
+On Nov 20, 2013, at 4:21 PM, "Adamson, Andy" <William.Adamson@netapp.com>
+ wrote:
 
 > 
->> Have we completely given up on fixing the upcall?
-> Back when we were looking on to introduce gss-proxy into
-> the client, it was decided the upcall on the client
-> was not going to change. I'm just going with that!
-
-I don't remember that discussion.  Or if it occurred, I didn't realize at the time that it was referring to fixing bugs.  Do you have a link to the thread?
-
-
-> steved.
+> On Nov 20, 2013, at 3:49 PM, Simo Sorce <simo@redhat.com>
+> wrote:
 > 
+>> On Wed, 2013-11-20 at 20:35 +0000, Adamson, Andy wrote:
+>>> Hi
+>>> 
+>>> As suggested, I approached the Kerberos@mit.edu about the possibility
+>>> of a plugin architecture for libkrb5 credential cache manipulation
+>>> functions so that we could trigger the kernel GSS_context management
+>>> functions.
+>> 
+>> [..]
+>>> 
+>>> It appears that Solution 4: [plugin architecture to libkrb for
+>>> callouts on functions that manipulate kerberos credentials.] is a
+>>> no-go. 
+>>> 
+>>> I agree that Solution 1: [inotify on FILE credentials] is clunky and
+>>> won't work well.
+>>> 
+>>> Solution 2: [integrate with KEYRING credentials] could work if we
+>>> insist that all NFS Kerberos credentials use the KEYRING: - e.g. the
+>>> proposed new 'big-key' type. Note there is no backporting of this
+>>> solution.
+>> 
+>> Note that solution 2 is semantically identical to solution 4, you are
+>> going to try to guess what user space is doing, based on how it
+>> manipulates caches, and would have the same side effects.
+>> 
+>>> I think Solution 3: [nfslog/nfslogout interfaces invoked from PAM or
+>>> other login system facility] is a good way to go.  Note that a PAM
+>>> based solution where in the PAM would get us most of the way towards
+>>> providing users with a way to login and logout of NFS kerberized
+>>> shares.
+>>> 
+>>> Comments on an NFS PAM that will destroy GSS context for a UID upon
+>>> logout?
+>> 
+>> I prefer 3 too, let it to the login system (whether PAM based or other)
+>> to determine when it is time to destroy credentials, that's the only
+>> component that have a chance of guessing right.
+>> Of course you could also provide a user utility to force a purge.
+> 
+> Good.
 > 
 >> 
+>>> Simo - I answered your latest comments below in-line.
 >> 
->>> Signed-off-by: Steve Dickson <steved@redhat.com>
->>> ---
->>> fs/nfs/nfs4_fs.h    |    1 +
->>> fs/nfs/nfs4client.c |    8 ++++++--
->>> fs/nfs/nfs4proc.c   |    4 +++-
->>> fs/nfs/super.c      |    6 +++++-
->>> 4 files changed, 15 insertions(+), 4 deletions(-)
->>> 
->>> diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
->>> index 28842ab..20bf925 100644
->>> --- a/fs/nfs/nfs4_fs.h
->>> +++ b/fs/nfs/nfs4_fs.h
->>> @@ -438,6 +438,7 @@ extern bool nfs4_disable_idmapping;
->>> extern unsigned short max_session_slots;
->>> extern unsigned short send_implementation_id;
->>> extern bool recover_lost_locks;
->>> +extern bool nfs4_use_min_auth;
->>> 
->>> #define NFS4_CLIENT_ID_UNIQ_LEN		(64)
->>> extern char nfs4_client_id_uniquifier[NFS4_CLIENT_ID_UNIQ_LEN];
->>> diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
->>> index a860ab5..ff85991 100644
->>> --- a/fs/nfs/nfs4client.c
->>> +++ b/fs/nfs/nfs4client.c
->>> @@ -355,6 +355,7 @@ struct nfs_client *nfs4_init_client(struct nfs_client *clp,
->>> 	char buf[INET6_ADDRSTRLEN + 1];
->>> 	struct nfs_client *old;
->>> 	int error;
->>> +	rpc_authflavor_t flavor = RPC_AUTH_GSS_KRB5I;
->>> 
->>> 	if (clp->cl_cons_state == NFS_CS_READY) {
->>> 		/* the client is initialised already */
->>> @@ -368,8 +369,11 @@ struct nfs_client *nfs4_init_client(struct nfs_client *clp,
->>> 	if (clp->cl_minorversion != 0)
->>> 		__set_bit(NFS_CS_INFINITE_SLOTS, &clp->cl_flags);
->>> 	__set_bit(NFS_CS_DISCRTRY, &clp->cl_flags);
->>> -	error = nfs_create_rpc_client(clp, timeparms, RPC_AUTH_GSS_KRB5I);
->>> -	if (error == -EINVAL)
->>> +
->>> +	if (nfs4_use_min_auth)
->>> +		flavor = RPC_AUTH_UNIX;
->>> +	error = nfs_create_rpc_client(clp, timeparms, flavor);
->>> +	if (error == -EINVAL && flavor != RPC_AUTH_UNIX)
->>> 		error = nfs_create_rpc_client(clp, timeparms, RPC_AUTH_UNIX);
->>> 	if (error < 0)
->>> 		goto error;
->>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->>> index d53d678..00162cb 100644
->>> --- a/fs/nfs/nfs4proc.c
->>> +++ b/fs/nfs/nfs4proc.c
->>> @@ -2864,7 +2864,9 @@ static int nfs4_find_root_sec(struct nfs_server *server, struct nfs_fh *fhandle,
->>> 	int status = -EPERM;
->>> 	size_t i;
->>> 
->>> -	for (i = 0; i < ARRAY_SIZE(flav_array); i++) {
->>> +	if (nfs4_use_min_auth)
->>> +		status = nfs4_lookup_root_sec(server, fhandle, info, RPC_AUTH_UNIX);
->>> +	else for (i = 0; i < ARRAY_SIZE(flav_array); i++) {
->>> 		status = nfs4_lookup_root_sec(server, fhandle, info, flav_array[i]);
->>> 		if (status == -NFS4ERR_WRONGSEC || status == -EACCES)
->>> 			continue;
->>> diff --git a/fs/nfs/super.c b/fs/nfs/super.c
->>> index a03b9c6..42b4f9b 100644
->>> --- a/fs/nfs/super.c
->>> +++ b/fs/nfs/super.c
->>> @@ -2791,6 +2791,7 @@ unsigned short max_session_slots = NFS4_DEF_SLOT_TABLE_SIZE;
->>> unsigned short send_implementation_id = 1;
->>> char nfs4_client_id_uniquifier[NFS4_CLIENT_ID_UNIQ_LEN] = "";
->>> bool recover_lost_locks = false;
->>> +bool nfs4_use_min_auth = false;
->>> 
->>> EXPORT_SYMBOL_GPL(nfs_callback_set_tcpport);
->>> EXPORT_SYMBOL_GPL(nfs_callback_tcpport);
->>> @@ -2800,6 +2801,7 @@ EXPORT_SYMBOL_GPL(max_session_slots);
->>> EXPORT_SYMBOL_GPL(send_implementation_id);
->>> EXPORT_SYMBOL_GPL(nfs4_client_id_uniquifier);
->>> EXPORT_SYMBOL_GPL(recover_lost_locks);
->>> +EXPORT_SYMBOL_GPL(nfs4_use_min_auth);
->>> 
->>> #define NFS_CALLBACK_MAXPORTNR (65535U)
->>> 
->>> @@ -2842,5 +2844,7 @@ MODULE_PARM_DESC(recover_lost_locks,
->>> 		 "If the server reports that a lock might be lost, "
->>> 		 "try to recover it risking data corruption.");
->>> 
->>> -
->>> +module_param(nfs4_use_min_auth, bool, 0644);
->>> +MODULE_PARM_DESC(nfs4_use_min_auth,
->>> +		"Use mimnal auth in SETCLIENTID operation");
->>> #endif /* CONFIG_NFS_V4 */
->>> -- 
->>> 1.7.1
->>> 
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> [..]
 >> 
->> --
->> Chuck Lever
->> chuck[dot]lever[at]oracle[dot]com
+>>> I think a PAM based solution will get us most of the way there.
+>> 
+>> Agree.
 >> 
 >> 
+>>>> So the way I see it you probably want to keep the tracking in
+>>>> whatever tool you want to use to experiment (say gsskeyd) and only
+>>>> provide a downcall to the kernel that will tell it: destroy any
+>>>> cache for 'uid number (optionally pass in a session id too ?)'.
+>>> 
+>>> This is what the gss-ctx keyring destroy method is - a downcall to the
+>>> kernel telling it to destroy all GSS_contexts for a UID.
 >> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> Why do you need to abuse the keyring interface to implement a syscall ?
+> 
+> Do you think this job requires a system call? 
+> 
+> I felt the keyring interface gives us what we want: a way to pass some information and trigger a behavior.  The gss-ctx key caches the relationship between the principals Kerberos credentials and the associated RPC layer gss_cred (which in turn has the gss_context).  When a gss-ctx key exists, the principal associated with the UID has kerberos credentials (located in the Kerberos ccache
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+this is confusing: the _location_ of the KRB5 ccache is stored in the gss-ctxkey, not the actual creds...
 
-
+> stored in the key) that are used for NFS, and the key serial is stored in the gss_cred.
+> 
+> From kernel documentation: Documentation/security/keys.txt
+> 
+> "This service allows cryptographic keys, authentication tokens, cross-domain
+> user mappings, and similar to be cached in the kernel for the use of
+> filesystems and other kernel services."
+> 
+> I think the gss-ctx key fits into the above description (under "similar"), so  I don't think of this use as an abuse.
+> 
+>> Or did I misunderstand what you mean by "telling the kernel to do X" ?
+>> 
+>>>> This way you can replace the logic of how to keep track of what is
+>>>> going on completely in user space, where it can easily be adjusted
+>>>> and adapted  as experience is gained.
+>>>> 
+>>>> IE: track it completely in userspace for now and only provide a
+>>>> syscall to kill creds per UID, no tracking on the kernel side.
+>>> 
+>>> Yes - I believe that is what the gss-ctx keyring code I wrote does.
+>> 
+>> A keyring is not a syscall.
+> 
+> Yes, but it does as you suggested "provide a downcall to the kernel that will tell it: destroy any
+> cache for 'uid number"
+> 
+> What is the disadvantage of using the keyring?
+> 
+> --Andy
+> 
+>> 
+>> Simo.
+>> 
+>> -- 
+>> Simo Sorce * Red Hat, Inc * New York
+>> 
+> 
 
