@@ -1,44 +1,86 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:28318 "EHLO mx12.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:29555 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751497Ab3KDTUL convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Nov 2013 14:20:11 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Steve Dickson <SteveD@redhat.com>, Bruce Fields <bfields@fieldses.org>
-CC: Jeff Layton <jlayton@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        "dpquigl@davequigley.com" <dpquigl@davequigley.com>
-Subject: Labeled NFS: Is the value of FATTR4_WORD2_SECURITY_LABEL correct?
-Date: Mon, 4 Nov 2013 19:20:09 +0000
-Message-ID: <58879923-7AE9-4E5B-A29E-4EA26E8330DD@netapp.com>
-References: <1383389838-1858-1-git-send-email-jlayton@redhat.com>
- <C85EF88C-B4F8-484C-A00D-5A86ACB61C10@netapp.com>
- <5277BAFB.9070109@RedHat.com>
- <48054582-1F6A-4A27-AE62-C9B0AE8F9619@netapp.com>
- <5277DFBB.1010901@RedHat.com>
-In-Reply-To: <5277DFBB.1010901@RedHat.com>
-Content-Type: text/plain; charset="Windows-1252"
+	id S1755167Ab3KTVUW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Nov 2013 16:20:22 -0500
+Message-ID: <528D27D5.4010608@RedHat.com>
+Date: Wed, 20 Nov 2013 16:21:25 -0500
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
+To: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfs(5): Document the "migration" mount option
+References: <20130910192730.2394.8803.stgit@seurat.1015granger.net>
+In-Reply-To: <20130910192730.2394.8803.stgit@seurat.1015granger.net>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-AFAICS from draft-ietf-nfsv4-minorversion2-20.txt, the ‘sec_label’ attribute has Id == 80.
 
-Shouldn’t that mean that FATTR4_WORD2_SECURITY_LABEL should take the value (1 << (80-64))?
 
-i.e.
+On 10/09/13 15:28, Chuck Lever wrote:
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> 
+> This has been floating around for a while in my nfs-utils repo.
+> Now that migration support is getting merged upstream, I propose
+> this minor change to nfs(5).
+> 
+> Note that my pending migration patches currently allow migration
+> even if the "migration" option is not specified.  In this case,
+> standard state recovery will occur on the destination server (aka a
+> non-TSM migration) since the destination server can't match up a
+> client using the traditional clientid string with incoming migrated
+> state.
+> 
+> If we think this is dangerous to allow, then the client can be
+> changed to require the "migration" option to enable migration
+> support on NFSv4.0 mount points.
+> 
+> Non-TSM migration can still occur if the servers for some reason
+> fail to transfer open and lock state during a migration.
+> 
+> Comments...?
+Committed (tag: nfs-utils-1-2-10-rc1)
 
-#define FATTR4_WORD2_SECURITY_LABEL (1UL << 16)
-
-instead of the current value of (1UL << 17)…
-
-Trond
-
---
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
-
+steved.
+> 
+>  utils/mount/nfs.man |   20 ++++++++++++++++++++
+>  1 file changed, 20 insertions(+)
+> 
+> diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
+> index 2a42b93..e93bd16 100644
+> --- a/utils/mount/nfs.man
+> +++ b/utils/mount/nfs.man
+> @@ -855,6 +855,26 @@ In the presence of multiple client network interfaces,
+>  special routing policies,
+>  or atypical network topologies,
+>  the exact address to use for callbacks may be nontrivial to determine.
+> +.TP 1.5i
+> +.BR migration " / " nomigration
+> +Selects whether the client uses an identification string that is compatible
+> +with NFSv4 Transparent State Migration (TSM).
+> +If the mounted server supports NFSv4 migration with TSM, specify the
+> +.B migration
+> +option.
+> +.IP
+> +Some server features misbehave in the face of a migration-compatible
+> +identification string.
+> +The
+> +.B nomigration
+> +option retains the use of a traditional client indentification string
+> +which is compatible with legacy NFS servers.
+> +This is also the behavior if neither option is specified.
+> +A client's open and lock state cannot be migrated transparently
+> +when it identifies itself via a traditional identification string.
+> +.IP
+> +This mount option has no effect with NFSv4 minor versions greater than zero,
+> +as these versions always use TSM-compatible client identification strings.
+>  .SH nfs4 FILE SYSTEM TYPE
+>  The
+>  .BR nfs4
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
