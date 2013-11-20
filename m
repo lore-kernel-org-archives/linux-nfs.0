@@ -1,43 +1,107 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:10508 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:20601 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751190Ab3KOPdu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 15 Nov 2013 10:33:50 -0500
-Date: Fri, 15 Nov 2013 10:33:24 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 7/7] nfs: page cache invalidation for dio
-Message-ID: <20131115103324.6a3cf978@tlielax.poochiereds.net>
-In-Reply-To: <20131115150204.GA8105@infradead.org>
-References: <20131114165027.355613182@bombadil.infradead.org>
-	<20131114165042.205194841@bombadil.infradead.org>
-	<20131114133551.5d08b5cd@tlielax.poochiereds.net>
-	<20131115142847.GA1107@infradead.org>
-	<20131115095241.2c5e1cfb@tlielax.poochiereds.net>
-	<20131115150204.GA8105@infradead.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1755341Ab3KTVXW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Nov 2013 16:23:22 -0500
+Message-ID: <528D2889.2080508@RedHat.com>
+Date: Wed, 20 Nov 2013 16:24:25 -0500
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Jeff Layton <jlayton@redhat.com>
+CC: bfields@fieldses.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/2] gssd: don't let parent exit until child has a chance
+ to scan directory once
+References: <1384542931-18753-1-git-send-email-jlayton@redhat.com> <1384542931-18753-3-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1384542931-18753-3-git-send-email-jlayton@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 15 Nov 2013 07:02:04 -0800
-Christoph Hellwig <hch@infradead.org> wrote:
 
-> On Fri, Nov 15, 2013 at 09:52:41AM -0500, Jeff Layton wrote:
-> > Do you have these patches in a git tree someplace? If so, I wouldn't
-> > mind running this reproducer against it to see if it helps. It's a bit
-> > of a longshot, but what the heck...
+
+On 15/11/13 14:15, Jeff Layton wrote:
+> With some proposed kernel changes, it won't even attempt to upcall
+> sometimes if it doesn't appear that gssd is running. This means that
+> we have a theoretical race between gssd starting up at boot time and
+> the init process attempting to mount kerberized filesystems.
 > 
-> While I do have a local git tree I don't really have anywhere to push
-> it to.  But applying these patches shouldn't be all that hard.
+> Fix this by switching gssd to use mydaemon() and having the child
+> only release the parent after it has processed the directory once.
 > 
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Committed (tag: nfs-utils-1-2-10-rc1)
 
-It's not -- I'm just lazy...
+steved.
 
-FWIW, I tried this set and it didn't make any difference on the bug, so
-I'll just keep soldiering on to track it down...
-
-Thanks,
--- 
-Jeff Layton <jlayton@redhat.com>
+> ---
+>  utils/gssd/gssd.c           | 6 ++++--
+>  utils/gssd/gssd.h           | 1 +
+>  utils/gssd/gssd_main_loop.c | 4 ++++
+>  3 files changed, 9 insertions(+), 2 deletions(-)
+> 
+> diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
+> index 8ee478b..fdad153 100644
+> --- a/utils/gssd/gssd.c
+> +++ b/utils/gssd/gssd.c
+> @@ -54,6 +54,7 @@
+>  #include "err_util.h"
+>  #include "gss_util.h"
+>  #include "krb5_util.h"
+> +#include "nfslib.h"
+>  
+>  char pipefs_dir[PATH_MAX] = GSSD_PIPEFS_DIR;
+>  char keytabfile[PATH_MAX] = GSSD_DEFAULT_KEYTAB_FILE;
+> @@ -63,6 +64,7 @@ int  use_memcache = 0;
+>  int  root_uses_machine_creds = 1;
+>  unsigned int  context_timeout = 0;
+>  char *preferred_realm = NULL;
+> +int pipefds[2] = { -1, -1 };
+>  
+>  void
+>  sig_die(int signal)
+> @@ -187,8 +189,8 @@ main(int argc, char *argv[])
+>  	if (gssd_check_mechs() != 0)
+>  		errx(1, "Problem with gssapi library");
+>  
+> -	if (!fg && daemon(0, 0) < 0)
+> -		errx(1, "fork");
+> +	if (!fg)
+> +		mydaemon(0, 0, pipefds);
+>  
+>  	signal(SIGINT, sig_die);
+>  	signal(SIGTERM, sig_die);
+> diff --git a/utils/gssd/gssd.h b/utils/gssd/gssd.h
+> index 86472a1..47995b7 100644
+> --- a/utils/gssd/gssd.h
+> +++ b/utils/gssd/gssd.h
+> @@ -67,6 +67,7 @@ extern int			use_memcache;
+>  extern int			root_uses_machine_creds;
+>  extern unsigned int 		context_timeout;
+>  extern char			*preferred_realm;
+> +extern int			pipefds[2];
+>  
+>  TAILQ_HEAD(clnt_list_head, clnt_info) clnt_list;
+>  
+> diff --git a/utils/gssd/gssd_main_loop.c b/utils/gssd/gssd_main_loop.c
+> index ccf7fe5..9970028 100644
+> --- a/utils/gssd/gssd_main_loop.c
+> +++ b/utils/gssd/gssd_main_loop.c
+> @@ -53,6 +53,7 @@
+>  
+>  #include "gssd.h"
+>  #include "err_util.h"
+> +#include "nfslib.h"
+>  
+>  extern struct pollfd *pollarray;
+>  extern unsigned long pollsize;
+> @@ -245,6 +246,9 @@ gssd_run()
+>  				/* Error msg is already printed */
+>  				exit(1);
+>  			}
+> +
+> +			/* release the parent after the initial dir scan */
+> +			release_parent(pipefds);
+>  		}
+>  		gssd_poll(pollarray, pollsize);
+>  	}
+> 
