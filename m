@@ -1,78 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from colin.muc.de ([193.149.48.1]:22841 "EHLO mail.muc.de"
+Received: from mx1.redhat.com ([209.132.183.28]:26703 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754384Ab3KTQ2O (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 20 Nov 2013 11:28:14 -0500
-Date: Wed, 20 Nov 2013 17:28:10 +0100
-From: Albert Fluegel <af@muc.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org
-Subject: Re: Bugs / Patch in nfsd
-Message-ID: <20131120162810.GA25173@colin.muc.de>
-References: <20131118124406.GA46678@colin.muc.de>
- <20131118130026.GA4153@infradead.org>
- <20131118170132.GD3203@fieldses.org>
- <20131118172315.GA20339@infradead.org>
- <20131118173731.GF3203@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=unknown-8bit
-In-Reply-To: <20131118173731.GF3203@fieldses.org>
+	id S1753952Ab3KTQsx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Nov 2013 11:48:53 -0500
+From: Susant Sahani <ssahani@redhat.com>
+To: Libtirpc-devel Mailing List <libtirpc-devel@lists.sourceforge.net>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH 1/1] race in clnt_vc_create
+Date: Wed, 20 Nov 2013 22:19:32 +0530
+Message-Id: <1384966173-6229-3-git-send-email-ssahani@redhat.com>
+In-Reply-To: <1384966173-6229-1-git-send-email-ssahani@redhat.com>
+References: <1384966173-6229-1-git-send-email-ssahani@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Nov 18, 2013 at 12:37:31PM -0500, J. Bruce Fields wrote:
-> > > Anyway, absent objections my default is to queue this up for 3.14 (using
-> > > S_IALLUGO).
-This is great ! Thank you.
+Signed-off-by: Susant Sahani <ssahani@redhat.com>
+---
+ src/clnt_vc.c | 5 +++++
+ 1 file changed, 5 insertions(+)
 
-> > > ...
-> One problem he's seeing was RHEL5-specific, the other is the known ext4
-> problem that's been discussed before.
-> 
-> (Basically, ext4 has a tradeoff between correctness, lookup performance,
-> and compatibility with some buggy old clients:
-> 
-> 	1. turn off dir_index and performance on large directories may
-> 	   suffer, but it's correct and any client will be happy.
-> 	2. turn on dir_index and return 32-bit cookies: now you get
-> 	   directory loops on large directories due to random hash
-> 	   collisions.
-> 	3. turn on dir_index and return 64-bit cookies: some clients seem
-> 	   to then return errors to 32-bit applications doing readdirs.
-> 	   Cookies have been 64-bit since NFSv3 and 32-bit Linux clients
-> 	   deal with this fine (it fakes up its own small integer offsets
-> 	   to return to applications), but apparently some other clients
-> 	   return errors on readdir.
-> 
-> So currently we default to 3 and if people complain, tell them to turn
-> off dir_index and complain to their client vendor....)
-I agree with that. Did some "research" in the meantime. It's a real abyss.
-I think it does not make much sense to continue this thread. Thanks to
-all contributors bringing more light into this.
-
-So this is for the records:
-With current RHEL5/6 + ext3 there is no problem over NFS. With ext4 + dir_index
-Solaris-8 fails with EOVERFLOW on a directory read. Solaris-2.5.1 complains
-(RPC: Can't decode result). There are 2 differences when turning off dir_index:
-The cookies have very low values then (in contrast to using all 64 bits with
-dir_index on) and the order returned by readdir is different (does not start
-with . and ..) Don't know, which one makes which Solaris fail.
-HP-UX fails differently on a ext4, even with dir_index turned off, but not
-always. If in the reply of a getattr the nanoseconds are not 0, HPUX fails
-with "stale file handle". Could it be, it mixes some of these bytes into
-the handle ? If in the reply the nanoseconds are all 0, HPUX works even
-with 64 bit cookies (dir_index on) on an ext4. On a xfs they all work.
-In the NFS replies on an xfs i've seen all nanoseconds set to 0, so this is
-consistent and the faulty behaviour seems definitely on the client side.
-
-- AF
-
+diff --git a/src/clnt_vc.c b/src/clnt_vc.c
+index 2eab9e4..bf3f13c 100644
+--- a/src/clnt_vc.c
++++ b/src/clnt_vc.c
+@@ -173,14 +173,17 @@ clnt_vc_create(fd, raddr, prog, vers, sendsz, recvsz)
+ 	struct timeval now;
+ 	struct rpc_msg call_msg;
+ 	static u_int32_t disrupt;
++	static pthread_mutex_t disrupt_lock = PTHREAD_MUTEX_INITIALIZER;
+ 	sigset_t mask;
+ 	sigset_t newmask;
+ 	struct sockaddr_storage ss;
+ 	socklen_t slen;
+ 	struct __rpc_sockinfo si;
+ 
++	mutex_lock(&disrupt_lock);
+ 	if (disrupt == 0)
+ 		disrupt = (u_int32_t)(long)raddr;
++	mutex_unlock(&disrupt_lock);
+ 
+ 	cl = (CLIENT *)mem_alloc(sizeof (*cl));
+ 	ct = (struct ct_data *)mem_alloc(sizeof (*ct));
+@@ -270,7 +273,9 @@ clnt_vc_create(fd, raddr, prog, vers, sendsz, recvsz)
+ 	 * Initialize call message
+ 	 */
+ 	(void)gettimeofday(&now, NULL);
++	mutex_lock(&disrupt_lock);
+ 	call_msg.rm_xid = ((u_int32_t)++disrupt) ^ __RPC_GETXID(&now);
++	mutex_unlock(&disrupt_lock);
+ 	call_msg.rm_direction = CALL;
+ 	call_msg.rm_call.cb_rpcvers = RPC_MSG_VERSION;
+ 	call_msg.rm_call.cb_prog = (u_int32_t)prog;
 -- 
-Albert Flügel
-Lindwurmstraße 51
-80337 München
-Telefon: +49-89-2010895
-Telefon: +49-170-5665444
-E-Mail: af@muc.de
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-~~~~~~~~~~~~ jslwkerbiS4kjaZoifUSDfaworu394kjKLw728K2L1NlwkNSD8 ~~~~~~~~~~~~~
+1.8.4.2
+
