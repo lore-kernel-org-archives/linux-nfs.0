@@ -1,58 +1,133 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.netapp.com ([216.240.18.38]:11048 "EHLO mx1.netapp.com"
+Received: from mx11.netapp.com ([216.240.18.76]:25652 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757066Ab3KYSdX convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Nov 2013 13:33:23 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Andy" <William.Adamson@netapp.com>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/1] NFSv4.1 fix a kswap nfs4_state_manger race
-Date: Mon, 25 Nov 2013 18:33:11 +0000
-Message-ID: <496E7DBC-183B-43A2-91D4-837FC092E88A@netapp.com>
-References: <1385402270-14284-1-git-send-email-andros@netapp.com>
- <1385402270-14284-2-git-send-email-andros@netapp.com>
- <5B8C7A9D-CD9E-487A-AC62-B1292649835D@netapp.com>
-In-Reply-To: <5B8C7A9D-CD9E-487A-AC62-B1292649835D@netapp.com>
-Content-Type: text/plain; charset="Windows-1252"
+	id S1755103Ab3KTVVJ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Nov 2013 16:21:09 -0500
+From: "Adamson, Andy" <William.Adamson@netapp.com>
+To: Simo Sorce <simo@redhat.com>
+CC: "Adamson, Andy" <William.Adamson@netapp.com>,
+        "<steved@redhat.com>" <steved@redhat.com>,
+        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH Version 2 0/3] GSSD: Use gss-ctx keys and gsskeyd to
+ sync Kerberos credentials and kernel gss_contexts.
+Date: Wed, 20 Nov 2013 21:21:08 +0000
+Message-ID: <7841DFC0-4F05-42CB-AD84-0A3324588EC1@netapp.com>
+References: <1382451757-3032-1-git-send-email-andros@netapp.com>
+ <1382454148.9794.72.camel@willson.li.ssimo.org>
+ <A8A66580-CD6F-4141-AE93-B1DD025BFD7A@netapp.com>
+ <1382458162.9794.85.camel@willson.li.ssimo.org>
+ <9C15298B-8915-46E2-85E1-5098F1A12832@netapp.com>
+ <1382462720.9794.131.camel@willson.li.ssimo.org>
+ <096F13FC-A99E-4C19-ACCA-01C244D7420F@netapp.com>
+ <1384980587.17044.49.camel@willson.li.ssimo.org>
+In-Reply-To: <1384980587.17044.49.camel@willson.li.ssimo.org>
+Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Nov 25, 2013, at 13:13, Myklebust, Trond <Trond.Myklebust@netapp.com> wrote:
+On Nov 20, 2013, at 3:49 PM, Simo Sorce <simo@redhat.com>
+ wrote:
+
+> On Wed, 2013-11-20 at 20:35 +0000, Adamson, Andy wrote:
+>> Hi
+>> 
+>> As suggested, I approached the Kerberos@mit.edu about the possibility
+>> of a plugin architecture for libkrb5 credential cache manipulation
+>> functions so that we could trigger the kernel GSS_context management
+>> functions.
+> 
+> [..]
+>> 
+>> It appears that Solution 4: [plugin architecture to libkrb for
+>> callouts on functions that manipulate kerberos credentials.] is a
+>> no-go. 
+>> 
+>> I agree that Solution 1: [inotify on FILE credentials] is clunky and
+>> won't work well.
+>> 
+>> Solution 2: [integrate with KEYRING credentials] could work if we
+>> insist that all NFS Kerberos credentials use the KEYRING: - e.g. the
+>> proposed new 'big-key' type. Note there is no backporting of this
+>> solution.
+> 
+> Note that solution 2 is semantically identical to solution 4, you are
+> going to try to guess what user space is doing, based on how it
+> manipulates caches, and would have the same side effects.
+> 
+>> I think Solution 3: [nfslog/nfslogout interfaces invoked from PAM or
+>> other login system facility] is a good way to go.  Note that a PAM
+>> based solution where in the PAM would get us most of the way towards
+>> providing users with a way to login and logout of NFS kerberized
+>> shares.
+>> 
+>> Comments on an NFS PAM that will destroy GSS context for a UID upon
+>> logout?
+> 
+> I prefer 3 too, let it to the login system (whether PAM based or other)
+> to determine when it is time to destroy credentials, that's the only
+> component that have a chance of guessing right.
+> Of course you could also provide a user utility to force a purge.
+
+Good.
 
 > 
-> On Nov 25, 2013, at 12:57, <andros@netapp.com> <andros@netapp.com> wrote:
+>> Simo - I answered your latest comments below in-line.
 > 
->> From: Andy Adamson <andros@netapp.com>
->> 
->> The state manager is recovering expired state and recovery OPENs are being
->> processed. If kswapd is pruning inodes at the same time, a deadlock can occur
->> when kswapd calls evict_inode on an NFSv4.1 inode with a layout, and the
->> resultant layoutreturn gets an error that the state mangager is to handle,
->> causing the layoutreturn to wait on the (NFS client) cl_rpcwaitq.
->> 
->> At the same time an open is waiting for the inode deletion to complete in
->> __wait_on_freeing_inode.
->> 
->> If the open is either the open called by the state manager, or an open from
->> the same open owner that is holding the NFSv4.0 sequence id which causes the
->> OPEN from the state manager to wait for the sequence id on the Seqid_waitqueue,
->> then the state is deadlocked with kswapd.
->> 
->> Do not handle LAYOUTRETURN errors when called from nfs4_evict_inode.
+> [..]
 > 
-> Why are we waiting for recovery in LAYOUTRETURN at all? Layouts are automatically lost when the server reboots or when the lease is otherwise lost.
+>> I think a PAM based solution will get us most of the way there.
 > 
-> IOW: Is there any reason why we need to special-case nfs4_evict_inode? Shouldn’t we just bail out on error in _all_ cases?
+> Agree.
+> 
+> 
+>>> So the way I see it you probably want to keep the tracking in
+>>> whatever tool you want to use to experiment (say gsskeyd) and only
+>>> provide a downcall to the kernel that will tell it: destroy any
+>>> cache for 'uid number (optionally pass in a session id too ?)'.
+>> 
+>> This is what the gss-ctx keyring destroy method is - a downcall to the
+>> kernel telling it to destroy all GSS_contexts for a UID.
+> 
+> Why do you need to abuse the keyring interface to implement a syscall ?
 
-BTW: Is it possible that we might have a similar problem with delegreturn? That too can be called from nfs4_evict_inode...
+Do you think this job requires a system call? 
 
---
-Trond Myklebust
-Linux NFS client maintainer
+I felt the keyring interface gives us what we want: a way to pass some information and trigger a behavior.  The gss-ctx key caches the relationship between the principals Kerberos credentials and the associated RPC layer gss_cred (which in turn has the gss_context).  When a gss-ctx key exists, the principal associated with the UID has kerberos credentials (located in the Kerberos ccache stored in the key) that are used for NFS, and the key serial is stored in the gss_cred.
 
-NetApp
-Trond.Myklebust@netapp.com
-www.netapp.com
+>From kernel documentation: Documentation/security/keys.txt
+
+"This service allows cryptographic keys, authentication tokens, cross-domain
+user mappings, and similar to be cached in the kernel for the use of
+filesystems and other kernel services."
+
+I think the gss-ctx key fits into the above description (under "similar"), so  I don't think of this use as an abuse.
+
+> Or did I misunderstand what you mean by "telling the kernel to do X" ?
+> 
+>>> This way you can replace the logic of how to keep track of what is
+>>> going on completely in user space, where it can easily be adjusted
+>>> and adapted  as experience is gained.
+>>> 
+>>> IE: track it completely in userspace for now and only provide a
+>>> syscall to kill creds per UID, no tracking on the kernel side.
+>> 
+>> Yes - I believe that is what the gss-ctx keyring code I wrote does.
+> 
+> A keyring is not a syscall.
+
+Yes, but it does as you suggested "provide a downcall to the kernel that will tell it: destroy any
+cache for 'uid number"
+
+What is the disadvantage of using the keyring?
+
+--Andy
+
+> 
+> Simo.
+> 
+> -- 
+> Simo Sorce * Red Hat, Inc * New York
+> 
 
