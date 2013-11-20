@@ -1,122 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:27996 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:39277 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754841Ab3KLNbo convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Nov 2013 08:31:44 -0500
-Date: Tue, 12 Nov 2013 08:30:43 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: Greg KH <gregkh@linuxfoundation.org>, <linux-kernel@vger.kernel.org>,
-        <linux-fsdevel@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
-        <devel@openvz.org>, <ebiederm@xmission.com>, <oleg@redhat.com>,
-        <bfields@fieldses.org>, <bharrosh@panasas.com>
-Subject: Re: call_usermodehelper in containers
-Message-ID: <20131112083043.0ab78e67@tlielax.poochiereds.net>
-In-Reply-To: <528226EC.4050701@parallels.com>
-References: <20131111071825.62da01d1@tlielax.poochiereds.net>
-	<20131112004703.GB15377@kroah.com>
-	<20131112061201.04cf25ab@tlielax.poochiereds.net>
-	<528226EC.4050701@parallels.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+	id S1754610Ab3KTQpj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Nov 2013 11:45:39 -0500
+Date: Wed, 20 Nov 2013 11:45:32 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Albert Fluegel <af@muc.de>
+Cc: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org
+Subject: Re: Bugs / Patch in nfsd
+Message-ID: <20131120164532.GB5380@fieldses.org>
+References: <20131118124406.GA46678@colin.muc.de>
+ <20131118130026.GA4153@infradead.org>
+ <20131118170132.GD3203@fieldses.org>
+ <20131118172315.GA20339@infradead.org>
+ <20131118173731.GF3203@fieldses.org>
+ <20131120162810.GA25173@colin.muc.de>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20131120162810.GA25173@colin.muc.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 12 Nov 2013 17:02:36 +0400
-Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
-
-> 12.11.2013 15:12, Jeff Layton пишет:
-> > On Mon, 11 Nov 2013 16:47:03 -0800
-> > Greg KH <gregkh@linuxfoundation.org> wrote:
-> >
-> >> On Mon, Nov 11, 2013 at 07:18:25AM -0500, Jeff Layton wrote:
-> >>> We have a bit of a problem wrt to upcalls that use call_usermodehelper
-> >>> with containers and I'd like to bring this to some sort of resolution...
-> >>>
-> >>> A particularly problematic case (though there are others) is the
-> >>> nfsdcltrack upcall. It basically uses call_usermodehelper to run a
-> >>> program in userland to track some information on stable storage for
-> >>> nfsd.
-> >>
-> >> I thought the discussion at the kernel summit about this issue was:
-> >> 	- don't do this.
-> >> 	- don't do it.
-> >> 	- if you really need to do this, fix nfsd
-> >>
-> >
-> > Sorry, I couldn't make the kernel summit so I missed that discussion. I
-> > guess LWN didn't cover it?
-> >
-> > In any case, I guess then that we'll either have to come up with some
-> > way to fix nfsd here, or simply ensure that nfsd can never be started
-> > unless root in the container has a full set of a full set of
-> > capabilities.
-> >
-> > One sort of Rube Goldberg possibility to fix nfsd is:
-> >
-> > - when we start nfsd in a container, fork off an extra kernel thread
-> >    that just sits idle. That thread would need to be a descendant of the
-> >    userland process that started nfsd, so we'd need to create it with
-> >    kernel_thread().
-> >
-> > - Have the kernel just start up the UMH program in the init_ns mount
-> >    namespace as it currently does, but also pass the pid of the idle
-> >    kernel thread to the UMH upcall.
-> >
-> > - The program will then use /proc/<pid>/root and /proc/<pid>/ns/* to set
-> >    itself up for doing things properly.
-> >
-> > Note that with this mechanism we can't actually run a different binary
-> > per container, but that's probably fine for most purposes.
-> >
+On Wed, Nov 20, 2013 at 05:28:10PM +0100, Albert Fluegel wrote:
+> On Mon, Nov 18, 2013 at 12:37:31PM -0500, J. Bruce Fields wrote:
+> > > > Anyway, absent objections my default is to queue this up for 3.14 (using
+> > > > S_IALLUGO).
+> This is great ! Thank you.
 > 
-> Hmmm... Why we can't? We can go a bit further with userspace idea.
+> > > > ...
+> > One problem he's seeing was RHEL5-specific, the other is the known ext4
+> > problem that's been discussed before.
+> > 
+> > (Basically, ext4 has a tradeoff between correctness, lookup performance,
+> > and compatibility with some buggy old clients:
+> > 
+> > 	1. turn off dir_index and performance on large directories may
+> > 	   suffer, but it's correct and any client will be happy.
+> > 	2. turn on dir_index and return 32-bit cookies: now you get
+> > 	   directory loops on large directories due to random hash
+> > 	   collisions.
+> > 	3. turn on dir_index and return 64-bit cookies: some clients seem
+> > 	   to then return errors to 32-bit applications doing readdirs.
+> > 	   Cookies have been 64-bit since NFSv3 and 32-bit Linux clients
+> > 	   deal with this fine (it fakes up its own small integer offsets
+> > 	   to return to applications), but apparently some other clients
+> > 	   return errors on readdir.
+> > 
+> > So currently we default to 3 and if people complain, tell them to turn
+> > off dir_index and complain to their client vendor....)
+> I agree with that. Did some "research" in the meantime. It's a real abyss.
+> I think it does not make much sense to continue this thread. Thanks to
+> all contributors bringing more light into this.
 > 
-> We use UMH some very limited number of user programs. For 2, actually:
-> 1) /sbin/nfs_cache_getent
-> 2) /sbin/nfsdcltrack
-> 
+> So this is for the records:
+> With current RHEL5/6 + ext3 there is no problem over NFS. With ext4 + dir_index
+> Solaris-8 fails with EOVERFLOW on a directory read. Solaris-2.5.1 complains
+> (RPC: Can't decode result). There are 2 differences when turning off dir_index:
+> The cookies have very low values then (in contrast to using all 64 bits with
+> dir_index on) and the order returned by readdir is different (does not start
+> with . and ..) Don't know, which one makes which Solaris fail.
+> HP-UX fails differently on a ext4, even with dir_index turned off, but not
+> always. If in the reply of a getattr the nanoseconds are not 0, HPUX fails
+> with "stale file handle".
 
-No, the kernel uses them for a lot more than that. Pretty much all of
-the keys API upcalls use it. See all of the callers of
-call_usermodehelper. All of them are running user binaries out of the
-kernel, and almost all of them are certainly broken wrt containers.
+This is in the ctime/mtime/atime fields?
 
-> If we convert them into proxies, which use /proc/<pid>/root and /proc/<pid>/ns/*, this will allow us to lookup the right binary.
-> The only limitation here is presence of this "proxy" binaries on "host".
-> 
+> Could it be, it mixes some of these bytes into the handle ?
 
-Suppose I spawn my own container as a user, using all of this spiffy
-new user namespace stuff. Then I make the kernel use
-call_usermodehelper to call the upcall in the init_ns, and then trick
-it into running my new "escape_from_namespace" program with "real" root
-privileges.
+More likely some sort of bug when they try to fill their attribute cache
+for the new file.
 
-I don't think we can reasonably assume that having the kernel exec an
-arbitrary binary inside of a container is safe. Doing so inside of the
-init_ns is marginally more safe, but only marginally so...
+Anyway, sounds like a pretty egregious client bug if that's accurate.  I
+don't know if there's any easy way to force ext4 to truncate those
+times.  Probably the only workaround is to stick to ext3.
 
-> And we don't need any significant changes in kernel.
-> 
-> BTW, Jeff, could you remind me, please, why exactly we need to use UMH to run the binary?
-> What are this capabilities, which force us to do so?
-> 
+--b.
 
-Nothing _forces_ us to do so, but upcalls are very difficult to handle,
-and UMH has a lot of advantages over a long-running daemon launched by
-userland.
-
-Originally, I created the nfsdcltrack upcall as a running daemon called
-nfsdcld, and the kernel used rpc_pipefs to communicate with it.
-
-Everyone hated it because no one likes to have to run daemons for
-infrequently used upcalls. It's a pain for users to ensure that it's
-running and it's a pain to handle when it isn't. So, I was encouraged
-to turn that instead into a UMH upcall.
-
-But leaving that aside, this problem is a lot larger than just nfsd. We
-have a *lot* of UMH upcalls in the kernel, so this problem is more
-general than just "fixing" nfsd's.
-
--- 
-Jeff Layton <jlayton@redhat.com>
+> If in the reply the nanoseconds are all 0, HPUX works even
+> with 64 bit cookies (dir_index on) on an ext4. On a xfs they all work.
+> In the NFS replies on an xfs i've seen all nanoseconds set to 0, so this is
+> consistent and the faulty behaviour seems definitely on the client side.
