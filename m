@@ -1,58 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx2.netapp.com ([216.240.18.37]:36305 "EHLO mx2.netapp.com"
+Received: from colin.muc.de ([193.149.48.1]:22841 "EHLO mail.muc.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752102Ab3KSWrN convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 19 Nov 2013 17:47:13 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: "Adamson, Andy" <William.Adamson@netapp.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH Version 3 1/1] NFSv4 wait on recovery for async session
- errors
-Date: Tue, 19 Nov 2013 22:47:12 +0000
-Message-ID: <1384901232.45997.4.camel@leira.trondhjem.org>
-References: <1384551376-8734-1-git-send-email-andros@netapp.com>
-	 <1384897797.45997.1.camel@leira.trondhjem.org>
-	 <1384900469.45997.2.camel@leira.trondhjem.org>
-	 <C662575C-1FBD-4E72-B569-0BD4FC6BFE47@netapp.com>
-In-Reply-To: <C662575C-1FBD-4E72-B569-0BD4FC6BFE47@netapp.com>
-Content-Type: text/plain; charset="utf-7"
+	id S1754384Ab3KTQ2O (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 20 Nov 2013 11:28:14 -0500
+Date: Wed, 20 Nov 2013 17:28:10 +0100
+From: Albert Fluegel <af@muc.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org
+Subject: Re: Bugs / Patch in nfsd
+Message-ID: <20131120162810.GA25173@colin.muc.de>
+References: <20131118124406.GA46678@colin.muc.de>
+ <20131118130026.GA4153@infradead.org>
+ <20131118170132.GD3203@fieldses.org>
+ <20131118172315.GA20339@infradead.org>
+ <20131118173731.GF3203@fieldses.org>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=unknown-8bit
+In-Reply-To: <20131118173731.GF3203@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2013-11-19 at 22:43 +-0000, Adamson, Andy wrote:
-+AD4- Why not recover the lease? Shouldn't NFS4ERR+AF8-EXPIRED be left for the async handler?
+On Mon, Nov 18, 2013 at 12:37:31PM -0500, J. Bruce Fields wrote:
+> > > Anyway, absent objections my default is to queue this up for 3.14 (using
+> > > S_IALLUGO).
+This is great ! Thank you.
 
-No, because then it will retry the operation. Since it is impossible to
-recover the delegation at this point, then that will result in another
-failure.
+> > > ...
+> One problem he's seeing was RHEL5-specific, the other is the known ext4
+> problem that's been discussed before.
+> 
+> (Basically, ext4 has a tradeoff between correctness, lookup performance,
+> and compatibility with some buggy old clients:
+> 
+> 	1. turn off dir_index and performance on large directories may
+> 	   suffer, but it's correct and any client will be happy.
+> 	2. turn on dir_index and return 32-bit cookies: now you get
+> 	   directory loops on large directories due to random hash
+> 	   collisions.
+> 	3. turn on dir_index and return 64-bit cookies: some clients seem
+> 	   to then return errors to 32-bit applications doing readdirs.
+> 	   Cookies have been 64-bit since NFSv3 and 32-bit Linux clients
+> 	   deal with this fine (it fakes up its own small integer offsets
+> 	   to return to applications), but apparently some other clients
+> 	   return errors on readdir.
+> 
+> So currently we default to 3 and if people complain, tell them to turn
+> off dir_index and complain to their client vendor....)
+I agree with that. Did some "research" in the meantime. It's a real abyss.
+I think it does not make much sense to continue this thread. Thanks to
+all contributors bringing more light into this.
 
-+AD4- --+AD4-Andy
-+AD4- 
-+AD4- On Nov 19, 2013, at 5:34 PM, +ACI-Myklebust, Trond+ACI- +ADw-Trond.Myklebust+AEA-netapp.com+AD4-
-+AD4-  wrote:
-+AD4- 
-+AD4- +AD4- On Tue, 2013-11-19 at 16:49 -0500, Trond Myklebust wrote:
-+AD4- +AD4APg- There is a second patch that goes with this problem. Please see the
-+AD4- +AD4APg- following attachment.
-+AD4- +AD4- 
-+AD4- +AD4- V2: Don't return an error when we know that the stateid is no longer
-+AD4- +AD4- valid.
-+AD4- +AD4- 
-+AD4- +AD4- -- 
-+AD4- +AD4- Trond Myklebust
-+AD4- +AD4- Linux NFS client maintainer
-+AD4- +AD4- 
-+AD4- +AD4- NetApp
-+AD4- +AD4- Trond.Myklebust+AEA-netapp.com
-+AD4- +AD4- www.netapp.com
-+AD4- +AD4- +ADw-0001-NFSv4-Update-list-of-irrecoverable-errors-on-DELEGRE.patch+AD4-
-+AD4- 
+So this is for the records:
+With current RHEL5/6 + ext3 there is no problem over NFS. With ext4 + dir_index
+Solaris-8 fails with EOVERFLOW on a directory read. Solaris-2.5.1 complains
+(RPC: Can't decode result). There are 2 differences when turning off dir_index:
+The cookies have very low values then (in contrast to using all 64 bits with
+dir_index on) and the order returned by readdir is different (does not start
+with . and ..) Don't know, which one makes which Solaris fail.
+HP-UX fails differently on a ext4, even with dir_index turned off, but not
+always. If in the reply of a getattr the nanoseconds are not 0, HPUX fails
+with "stale file handle". Could it be, it mixes some of these bytes into
+the handle ? If in the reply the nanoseconds are all 0, HPUX works even
+with 64 bit cookies (dir_index on) on an ext4. On a xfs they all work.
+In the NFS replies on an xfs i've seen all nanoseconds set to 0, so this is
+consistent and the faulty behaviour seems definitely on the client side.
+
+- AF
 
 -- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust+AEA-netapp.com
-www.netapp.com
+Albert Flügel
+Lindwurmstraße 51
+80337 München
+Telefon: +49-89-2010895
+Telefon: +49-170-5665444
+E-Mail: af@muc.de
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~ jslwkerbiS4kjaZoifUSDfaworu394kjKLw728K2L1NlwkNSD8 ~~~~~~~~~~~~~
