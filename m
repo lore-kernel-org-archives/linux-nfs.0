@@ -1,145 +1,141 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qe0-f43.google.com ([209.85.128.43]:37701 "EHLO
-	mail-qe0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755194Ab3KLNAe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Nov 2013 08:00:34 -0500
-Received: by mail-qe0-f43.google.com with SMTP id nc12so5448056qeb.2
-        for <linux-nfs@vger.kernel.org>; Tue, 12 Nov 2013 05:00:33 -0800 (PST)
-From: Jeff Layton <jlayton@redhat.com>
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, steved@redhat.com
-Subject: [PATCH 2/2] sunrpc: replace sunrpc_net->gssd_running flag with a better mechanism
-Date: Tue, 12 Nov 2013 08:00:25 -0500
-Message-Id: <1384261225-28559-3-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1384261225-28559-1-git-send-email-jlayton@redhat.com>
-References: <1384261225-28559-1-git-send-email-jlayton@redhat.com>
+Received: from mx11.netapp.com ([216.240.18.76]:14531 "EHLO mx11.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752163Ab3KUVUU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 21 Nov 2013 16:20:20 -0500
+From: Weston Andros Adamson <dros@netapp.com>
+To: <Trond.Myklebust@netapp.com>
+CC: <linux-nfs@vger.kernel.org>, Weston Andros Adamson <dros@netapp.com>
+Subject: [PATCH v2] NFSv4: fix getacl ERANGE for some ACL buffer sizes
+Date: Thu, 21 Nov 2013 16:20:13 -0500
+Message-ID: <1385068813-5491-1-git-send-email-dros@netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Now that we have a more reliable method to tell if gssd is running, we
-can replace the sn->gssd_running flag with a function that will query to
-see if it's up and running.
+Fix a bug where getxattr returns ERANGE when the attr buffer
+length is close enough to the nearest PAGE_SIZE multiple that adding
+the extra bytes leaves too little room for the ACL buffer.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Besides storing the ACL buffer, the getacl decoder uses the inline
+pages for the attr bitmap and buffer length. __nfs4_get_acl_uncached
+must allocate enough page space for all of the data to be decoded.
+
+This patch uses xdr_partial_copy_from_skb to allocate any needed
+pages past the first one. This allows the client to always cache the acl
+on the first getacl call and not just if it fits in one page.
+
+Signed-off-by: Weston Andros Adamson <dros@netapp.com>
 ---
- include/linux/sunrpc/rpc_pipe_fs.h |  4 ++++
- net/sunrpc/auth_gss/auth_gss.c     | 13 ++++++++++---
- net/sunrpc/netns.h                 |  2 --
- net/sunrpc/rpc_pipe.c              | 11 +++++++----
- 4 files changed, 21 insertions(+), 9 deletions(-)
 
-diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
-index a353e03..0ba459f 100644
---- a/include/linux/sunrpc/rpc_pipe_fs.h
-+++ b/include/linux/sunrpc/rpc_pipe_fs.h
-@@ -5,6 +5,8 @@
- 
- #include <linux/workqueue.h>
- 
-+struct sunrpc_net;
-+
- struct rpc_pipe_dir_head {
- 	struct list_head pdh_entries;
- 	struct dentry *pdh_dentry;
-@@ -130,5 +132,7 @@ extern int rpc_unlink(struct dentry *);
- extern int register_rpc_pipefs(void);
- extern void unregister_rpc_pipefs(void);
- 
-+extern bool rpc_pipe_is_open(struct rpc_pipe *pipe);
-+
- #endif
- #endif
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index 97912b4..d324563 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -592,6 +592,15 @@ out:
- 	return err;
- }
- 
-+static bool
-+gssd_running(struct sunrpc_net *sn)
-+{
-+	struct inode *inode = sn->gssd_dummy->d_inode;
-+	struct rpc_pipe *pipe = RPC_I(inode)->pipe;
-+
-+	return rpc_pipe_is_open(pipe);
-+}
-+
- static inline int
- gss_create_upcall(struct gss_auth *gss_auth, struct gss_cred *gss_cred)
+Version 2 of this patch changes things up a bit:
+
+ - rely on xdr_partial_copy_from_skb to allocate pages as needed
+ - always allocate 1 page as there will be some data
+ - allow xdr_partial_copy_from_skb to allocate up to NFS4ACL_MAXPAGES + 1 pages
+   to hold the max size ACL and the extra page for the bitmap and acl length
+ - this allows the first request for an ACL to be cached - not just when it
+   fits in one page
+
+ fs/nfs/nfs4proc.c | 40 +++++++++++++++-------------------------
+ fs/nfs/nfs4xdr.c  |  2 --
+ 2 files changed, 15 insertions(+), 27 deletions(-)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index ca36d0d..dc8e4f5 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -4430,20 +4430,17 @@ out:
+ /*
+  * The getxattr API returns the required buffer length when called with a
+  * NULL buf. The NFSv4 acl tool then calls getxattr again after allocating
+- * the required buf.  On a NULL buf, we send a page of data to the server
+- * guessing that the ACL request can be serviced by a page. If so, we cache
+- * up to the page of ACL data, and the 2nd call to getxattr is serviced by
+- * the cache. If not so, we throw away the page, and cache the required
+- * length. The next getxattr call will then produce another round trip to
+- * the server, this time with the input buf of the required size.
++ * the required buf. Cache the result from the first getxattr call to avoid
++ * sending another RPC.
+  */
+ static ssize_t __nfs4_get_acl_uncached(struct inode *inode, void *buf, size_t buflen)
  {
-@@ -610,15 +619,13 @@ retry:
- 	err = 0;
- 	/* Default timeout is 15s unless we know that gssd is not running */
- 	timeout = 15 * HZ;
--	if (!sn->gssd_running)
-+	if (!gssd_running(sn))
- 		timeout = HZ >> 2;
- 	gss_msg = gss_setup_upcall(gss_auth, cred);
- 	if (PTR_ERR(gss_msg) == -EAGAIN) {
- 		err = wait_event_interruptible_timeout(pipe_version_waitqueue,
- 				sn->pipe_version >= 0, timeout);
- 		if (sn->pipe_version < 0) {
--			if (err == 0)
--				sn->gssd_running = 0;
- 			warn_gssd();
- 			err = -EACCES;
- 		}
-diff --git a/net/sunrpc/netns.h b/net/sunrpc/netns.h
-index 6b82968..39ab6bc 100644
---- a/net/sunrpc/netns.h
-+++ b/net/sunrpc/netns.h
-@@ -33,8 +33,6 @@ struct sunrpc_net {
- 	int pipe_version;
- 	atomic_t pipe_users;
- 	struct proc_dir_entry *use_gssp_proc;
+-	struct page *pages[NFS4ACL_MAXPAGES] = {NULL, };
++	/* enough pages to hold ACL data plus the bitmap and acl length */
++	struct page *pages[NFS4ACL_MAXPAGES + 1] = {NULL, };
+ 	struct nfs_getaclargs args = {
+ 		.fh = NFS_FH(inode),
++		/* The xdr layer may allocate pages here. */
+ 		.acl_pages = pages,
+-		.acl_len = buflen,
+ 	};
+ 	struct nfs_getaclres res = {
+ 		.acl_len = buflen,
+@@ -4453,32 +4450,25 @@ static ssize_t __nfs4_get_acl_uncached(struct inode *inode, void *buf, size_t bu
+ 		.rpc_argp = &args,
+ 		.rpc_resp = &res,
+ 	};
+-	unsigned int npages = DIV_ROUND_UP(buflen, PAGE_SIZE);
+ 	int ret = -ENOMEM, i;
+ 
+-	/* As long as we're doing a round trip to the server anyway,
+-	 * let's be prepared for a page of acl data. */
+-	if (npages == 0)
+-		npages = 1;
+-	if (npages > ARRAY_SIZE(pages))
+-		return -ERANGE;
 -
--	unsigned int gssd_running;
- };
+-	for (i = 0; i < npages; i++) {
+-		pages[i] = alloc_page(GFP_KERNEL);
+-		if (!pages[i])
+-			goto out_free;
+-	}
++	/*
++	 * There will be some data returned by the server, how much is not
++	 * known yet. Allocate one page and let the XDR layer allocate
++	 * more if needed.
++	 */
++	pages[0] = alloc_page(GFP_KERNEL);
  
- extern int sunrpc_net_id;
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index 1c54de6..497261f 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -216,14 +216,11 @@ rpc_destroy_inode(struct inode *inode)
- static int
- rpc_pipe_open(struct inode *inode, struct file *filp)
- {
--	struct net *net = inode->i_sb->s_fs_info;
--	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
- 	struct rpc_pipe *pipe;
- 	int first_open;
- 	int res = -ENXIO;
+ 	/* for decoding across pages */
+ 	res.acl_scratch = alloc_page(GFP_KERNEL);
+ 	if (!res.acl_scratch)
+ 		goto out_free;
  
- 	mutex_lock(&inode->i_mutex);
--	sn->gssd_running = 1;
- 	pipe = RPC_I(inode)->pipe;
- 	if (pipe == NULL)
+-	args.acl_len = npages * PAGE_SIZE;
++	args.acl_len = ARRAY_SIZE(pages) << PAGE_SHIFT;
+ 	args.acl_pgbase = 0;
+ 
+-	dprintk("%s  buf %p buflen %zu npages %d args.acl_len %zu\n",
+-		__func__, buf, buflen, npages, args.acl_len);
++	dprintk("%s  buf %p buflen %zu args.acl_len %zu\n",
++		__func__, buf, buflen, args.acl_len);
+ 	ret = nfs4_call_sync(NFS_SERVER(inode)->client, NFS_SERVER(inode),
+ 			     &msg, &args.seq_args, &res.seq_res, 0);
+ 	if (ret)
+@@ -4503,7 +4493,7 @@ static ssize_t __nfs4_get_acl_uncached(struct inode *inode, void *buf, size_t bu
+ out_ok:
+ 	ret = res.acl_len;
+ out_free:
+-	for (i = 0; i < npages; i++)
++	for (i = 0; i < ARRAY_SIZE(pages) && pages[i]; i++)
+ 		if (pages[i])
+ 			__free_page(pages[i]);
+ 	if (res.acl_scratch)
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 5be2868..4e2e2da 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -5207,8 +5207,6 @@ static int decode_getacl(struct xdr_stream *xdr, struct rpc_rqst *req,
+ 	if ((status = decode_op_hdr(xdr, OP_GETATTR)) != 0)
  		goto out;
-@@ -1227,7 +1224,6 @@ void rpc_pipefs_init_net(struct net *net)
- 	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
  
- 	mutex_init(&sn->pipefs_sb_lock);
--	sn->gssd_running = 1;
- 	sn->pipe_version = -1;
- }
+-	xdr_enter_page(xdr, xdr->buf->page_len);
+-
+ 	/* Calculate the offset of the page data */
+ 	pg_offset = xdr->buf->head[0].iov_len;
  
-@@ -1382,6 +1378,13 @@ err_depopulate:
- 	return err;
- }
- 
-+bool
-+rpc_pipe_is_open(struct rpc_pipe *pipe)
-+{
-+	return (pipe->nreaders || pipe->nwriters);
-+}
-+EXPORT_SYMBOL_GPL(rpc_pipe_is_open);
-+
- static struct dentry *
- rpc_mount(struct file_system_type *fs_type,
- 		int flags, const char *dev_name, void *data)
 -- 
-1.8.3.1
+1.8.3.1 (Apple Git-46)
 
