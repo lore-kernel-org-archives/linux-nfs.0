@@ -1,48 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f51.google.com ([209.85.216.51]:39244 "EHLO
-	mail-qa0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751723Ab3KOTPh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Nov 2013 14:15:37 -0500
-Received: by mail-qa0-f51.google.com with SMTP id i13so786170qae.17
-        for <linux-nfs@vger.kernel.org>; Fri, 15 Nov 2013 11:15:36 -0800 (PST)
-From: Jeff Layton <jlayton@redhat.com>
-To: steved@redhat.com
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: [PATCH 0/2] gssd: prevent race between gssd startup and fstab mounts
-Date: Fri, 15 Nov 2013 14:15:29 -0500
-Message-Id: <1384542931-18753-1-git-send-email-jlayton@redhat.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:49130 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750805Ab3KUHTj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 21 Nov 2013 02:19:39 -0500
+Date: Wed, 20 Nov 2013 23:19:33 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: Benny Halevy <bhalevy@primarydata.com>
+Cc: Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@redhat.com>,
+        chenditang <chendt.fnst@cn.fujitsu.com>,
+        Benny Halevy <bhalevy@tonian.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] pnfsd-file: cause oops when stop the nfs server
+Message-ID: <20131121071933.GA2619@infradead.org>
+References: <51517A15.3010805@cn.fujitsu.com>
+ <51776397.2050504@cn.fujitsu.com>
+ <5242FA2F.1000302@primarydata.com>
+ <20131120164053.GA16928@infradead.org>
+ <528DAF90.6000702@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <528DAF90.6000702@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I recently proposed a patchset that allows the kernel to figure out
-if gssd is running in a more robust fashion than it has in the past.
+On Thu, Nov 21, 2013 at 09:00:32AM +0200, Benny Halevy wrote:
+> On 2013-11-20 18:40, Christoph Hellwig wrote:
+> > On Wed, Sep 25, 2013 at 10:58:55AM -0400, Benny Halevy wrote:
+> >> Chenditang, I see that this patch was never subimtted upstream.
+> >> Is there anything specific to pnfs that causes this bug?
+> > 
+> > It's not.  I've just reproduced it without pnfs, by shutting down
+> > the server after running xfstests over a NFSv4.1 mount.
+> > 
+> 
+> This should be covered by this patch:
+> http://git.linux-nfs.org/?p=bfields/linux.git;a=commitdiff;h=e50a26d
 
-While reviewing that, Bruce pointed out that that mechanism may cause
-us to race with mounts that are happening at init time since the
-parent process does not wait until the child is set up when daemonizing.
-
-This patchset aims to correct that by switching gssd to use the
-mydaemon() function that we use in other tools for a similar purpose.
-Instead of cut and pasting that though like has been done in the past,
-I've gone ahead and moved the function into libnfs.a and made the
-existing users link that in at compile time.
-
-Jeff Layton (2):
-  nfs-utils: consolidate mydaemon() and release_parent() implementations
-  gssd: don't let parent exit until child has a chance to scan directory
-    once
-
- support/include/nfslib.h    |   4 ++
- support/nfs/Makefile.am     |   2 +-
- support/nfs/mydaemon.c      | 148 ++++++++++++++++++++++++++++++++++++++++++++
- utils/gssd/gssd.c           |   6 +-
- utils/gssd/gssd.h           |   1 +
- utils/gssd/gssd_main_loop.c |   4 ++
- utils/gssd/svcgssd.c        |  90 +--------------------------
- utils/idmapd/idmapd.c       |  82 +-----------------------
- 8 files changed, 168 insertions(+), 169 deletions(-)
- create mode 100644 support/nfs/mydaemon.c
-
--- 
-1.8.3.1
+Indeed, that fixes it as well.
 
