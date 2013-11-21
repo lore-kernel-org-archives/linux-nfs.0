@@ -1,63 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:45691 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:13565 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752807Ab3KUQqV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 21 Nov 2013 11:46:21 -0500
-Date: Thu, 21 Nov 2013 11:46:15 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: start documenting some XDR handling functions
-Message-ID: <20131121164615.GD27364@fieldses.org>
-References: <20131120082411.GA30072@infradead.org>
+	id S1753868Ab3KUNgH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 21 Nov 2013 08:36:07 -0500
+Message-ID: <528E0C8A.9070608@RedHat.com>
+Date: Thu, 21 Nov 2013 08:37:14 -0500
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20131120082411.GA30072@infradead.org>
+To: Simo Sorce <simo@redhat.com>, "Adamson, Andy" <William.Adamson@netapp.com>
+CC: "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH Version 2 0/3] GSSD: Use gss-ctx keys and gsskeyd to sync
+ Kerberos credentials and kernel gss_contexts.
+References: <1382451757-3032-1-git-send-email-andros@netapp.com>	 <1382454148.9794.72.camel@willson.li.ssimo.org>	 <A8A66580-CD6F-4141-AE93-B1DD025BFD7A@netapp.com>	 <1382458162.9794.85.camel@willson.li.ssimo.org>	 <9C15298B-8915-46E2-85E1-5098F1A12832@netapp.com>	 <1382462720.9794.131.camel@willson.li.ssimo.org>	 <096F13FC-A99E-4C19-ACCA-01C244D7420F@netapp.com> <1384980587.17044.49.camel@willson.li.ssimo.org>
+In-Reply-To: <1384980587.17044.49.camel@willson.li.ssimo.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Nov 20, 2013 at 12:24:11AM -0800, Christoph Hellwig wrote:
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
 
-Thanks, applying for 3.14.
 
---b.
-
+On 20/11/13 15:49, Simo Sorce wrote:
+>> I think Solution 3: [nfslog/nfslogout interfaces invoked from PAM or
+>> > other login system facility] is a good way to go.  Note that a PAM
+>> > based solution where in the PAM would get us most of the way towards
+>> > providing users with a way to login and logout of NFS kerberized
+>> > shares.
+>> > 
+>> > Comments on an NFS PAM that will destroy GSS context for a UID upon
+>> > logout?
+> I prefer 3 too, let it to the login system (whether PAM based or other)
+> to determine when it is time to destroy credentials, that's the only
+> component that have a chance of guessing right.
+> Of course you could also provide a user utility to force a purge.
 > 
-> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> index fc10dd7..9423522 100644
-> --- a/fs/nfsd/nfs4xdr.c
-> +++ b/fs/nfsd/nfs4xdr.c
-> @@ -193,6 +193,15 @@ static int zero_clientid(clientid_t *clid)
->  	return (clid->cl_boot == 0) && (clid->cl_id == 0);
->  }
->  
-> +/**
-> + * defer_free - mark an allocation as deferred freed
-> + * @argp: NFSv4 compound argument structure to be freed with
-> + * @release: release callback to free @p, typically kfree()
-> + * @p: pointer to be freed
-> + *
-> + * Marks @p to be freed when processing the compound operation
-> + * described in @argp finishes.
-> + */
->  static int
->  defer_free(struct nfsd4_compoundargs *argp,
->  		void (*release)(const void *), void *p)
-> @@ -209,6 +218,16 @@ defer_free(struct nfsd4_compoundargs *argp,
->  	return 0;
->  }
->  
-> +/**
-> + * savemem - duplicate a chunk of memory for later processing
-> + * @argp: NFSv4 compound argument structure to be freed with
-> + * @p: pointer to be duplicated
-> + * @nbytes: length to be duplicated
-> + *
-> + * Returns a pointer to a copy of @nbytes bytes of memory at @p
-> + * that are preserved until processing of the NFSv4 compound
-> + * operation described by @argp finishes.
-> + */
->  static char *savemem(struct nfsd4_compoundargs *argp, __be32 *p, int nbytes)
->  {
->  	if (p == argp->tmp) {
++1 for me on this options as well... 
+
+But how is it known when somebody logs out? Is that PAM-able as well?
+
+steved.
