@@ -1,79 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:48681 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750756Ab3KYXXQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 25 Nov 2013 18:23:16 -0500
-Date: Tue, 26 Nov 2013 10:23:01 +1100
-From: NeilBrown <neilb@suse.de>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        NFS <linux-nfs@vger.kernel.org>
-Subject: Re: The return of the hanging "ls"...
-Message-ID: <20131126102301.6cbbdb94@notabene.brown>
-In-Reply-To: <A7CF3941-980F-4B96-B473-ECB46375CFCF@oracle.com>
-References: <20131125155942.0a3e4ca1@notabene.brown>
-	<A7CF3941-980F-4B96-B473-ECB46375CFCF@oracle.com>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/.8ZkQgAqVXC.DOIxg8Sd3Kg"; protocol="application/pgp-signature"
+Received: from ducie-dc1.codethink.co.uk ([37.128.190.40]:54051 "EHLO
+	ducie-dc1.codethink.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753481Ab3KUCOF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 20 Nov 2013 21:14:05 -0500
+From: mark.doffman@codethink.co.uk
+To: ceph-devel@vger.kernel.org
+Cc: Mark Doffman <mark.doffman@codethink.co.uk>, sage@inktank.com,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, rob.taylor@codethink.co.uk
+Subject: [PATCH 0/4] Add ceph root filesystem functionality and documentation.
+Date: Wed, 20 Nov 2013 20:13:40 -0600
+Message-Id: <1385000024-23463-1-git-send-email-mark.doffman@codethink.co.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/.8ZkQgAqVXC.DOIxg8Sd3Kg
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+From: Mark Doffman <mark.doffman@codethink.co.uk>
 
-On Mon, 25 Nov 2013 09:59:39 -0500 Chuck Lever <chuck.lever@oracle.com> wro=
-te:
+Hi All,
 
-> Hi Neil-
->=20
-> On Nov 24, 2013, at 11:59 PM, NeilBrown <neilb@suse.de> wrote:
->=20
-> >=20
-> > Hi Trond,
-> > I just noticed commit acdc53b2146c7ee67feb1f02f7bc3020126514b8 from 2010
-> > reverts the effect commit 28c494c5c8d425e15b7b82571e4df6d6bc34594d from=
- Chunk
-> > in 2007.
->=20
-> I'm wondering if a subsequent commit changed filemap_write_and_wait().
+The following patch series adds the ability to use a ceph distributed
+file system as the root device. The functionality is similar to
+NFS root but for the ceph filesystem.
 
-I hadn't thought of that possibility.  I've just had a look at the
-differences between  acdc53b2146c7ee6  and now and cannot find anything that
-could be related.
+The patch series adds a new root device option '/dev/ceph'.
+Configuration is passed either via a new kernel parameter 'cephroot'
+or DHCP option 17.
 
-Thanks,
-NeilBrown
+The patch series applies to v3.12-10714-gd085eb6
 
->=20
-> There was some recent clean up that (very likely unintentionally) changed=
- the serialization of some of these VFS utility functions.
->=20
->=20
->=20
+Thanks
 
+Mark
 
---Sig_/.8ZkQgAqVXC.DOIxg8Sd3Kg
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
+Mark Doffman (3):
+  init: Add a new root device option, the Ceph file system
+  cephroot: Add DHCP option 17 configuration to ceph root fs.
+  Reuse root_nfs_parse_addr() for NFS and CEPH
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.22 (GNU/Linux)
+Rob Taylor (1):
+  Documentation: Document the cephroot functionality
 
-iQIVAwUBUpPb1Tnsnt1WYoG5AQJLTg//VjXW40ectoLS+1C6/Y/gdIPn4LDFaldN
-kTxBom5vZ5zqYQ15Q374TiMq/8/gUvoxApkKTUM0ES5vyV8OXHl3219V6t/4JE4F
-3I+Jq1DyXCKCX0gpWLew2E5a5Jia31rclBXoK71CsDQS2F46FDBq/WA8eNzhSK1k
-nI130simJJ5j6jmZVbxLQHPSrNGIrYND1SYeGYe5A0q80pn/05MulG9pDvAerWi2
-V13fLbgl2blTSXJAtADTbhQCpqBiFloJCvb5OQDHV2d0KoFtJKQpKuzLpVHAjFSf
-8N3Gn3X76HsR2yds7ocrmcEhWanM1G8Y4+GkPsORf7C+jMdbOyklBu+4gC+GR+Ef
-I1UMWFAF+iIZFLS//fCwkxxjzIDNPvGc/zwmQjZgQuEjBVbP8iTkJsGgW8XlJyrw
-QaM/NxkRfYuLxSA2o8ua0Ufmyw5pztpt+nZq0LG+euQ2FTukFVuxcQa8dY1oPtjA
-kEtVqCcBO4caqH78vjJ7qTpLdvsNM0NL9jBDXzZ+Pf3H/1Pjs2A+ALZzNt+lVRve
-SefnEGBhA5VPvbLWItJShhp91wAe28QEGOjpGXWCrkEC+OPJTjL9kXGm6s4fVOfJ
-NP2LXpFe9oYJJ+0g9GlNOWKekE8jxedh6bBHndW/UGIx+Oh0NbO9PQ+QBs9D+A3q
-xn94NNel3/Y=
-=eRKj
------END PGP SIGNATURE-----
+ Documentation/filesystems/{ => ceph}/ceph.txt |   0
+ Documentation/filesystems/ceph/cephroot.txt   |  85 +++++++++++++
+ fs/ceph/Kconfig                               |  10 ++
+ fs/ceph/Makefile                              |   1 +
+ fs/ceph/root.c                                | 165 ++++++++++++++++++++++++++
+ fs/nfs/nfsroot.c                              |   4 +-
+ include/linux/ceph/ceph_root.h                |  10 ++
+ include/linux/nfs_fs.h                        |   2 +-
+ include/linux/root_dev.h                      |   1 +
+ init/do_mounts.c                              |  32 ++++-
+ net/ipv4/ipconfig.c                           |  16 ++-
+ 11 files changed, 317 insertions(+), 9 deletions(-)
+ rename Documentation/filesystems/{ => ceph}/ceph.txt (100%)
+ create mode 100644 Documentation/filesystems/ceph/cephroot.txt
+ create mode 100644 fs/ceph/root.c
+ create mode 100644 include/linux/ceph/ceph_root.h
 
---Sig_/.8ZkQgAqVXC.DOIxg8Sd3Kg--
+-- 
+1.8.4
+
