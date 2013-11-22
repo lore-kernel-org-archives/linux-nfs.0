@@ -1,71 +1,103 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qe0-f42.google.com ([209.85.128.42]:64153 "EHLO
-	mail-qe0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751258Ab3KGPrj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Nov 2013 10:47:39 -0500
-Received: by mail-qe0-f42.google.com with SMTP id gc15so629948qeb.1
-        for <linux-nfs@vger.kernel.org>; Thu, 07 Nov 2013 07:47:38 -0800 (PST)
-From: Jeff Layton <jlayton@redhat.com>
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] gssd: cut down log chatter in gssd_search_krb5_keytab
-Date: Thu,  7 Nov 2013 10:47:33 -0500
-Message-Id: <1383839253-8223-1-git-send-email-jlayton@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:54241 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756136Ab3KVQ1d (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 22 Nov 2013 11:27:33 -0500
+Message-ID: <528F8631.2070604@RedHat.com>
+Date: Fri, 22 Nov 2013 11:28:33 -0500
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Susant Sahani <ssahani@redhat.com>,
+        Libtirpc-devel Mailing List
+	<libtirpc-devel@lists.sourceforge.net>
+CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/1] data race in bindresvport_sa
+References: <1384966173-6229-1-git-send-email-ssahani@redhat.com>
+In-Reply-To: <1384966173-6229-1-git-send-email-ssahani@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Because the kernel now looks for krb5 creds by default when mounting, we
-need to always have clients run rpc.gssd to avoid the 15s hang on the
-first mount attempt.
+Hello,
 
-In situations however where people don't have krb5 set up, this leads to
-a lot of log spamming on mount attempts. Try to cut down on some of the
-log chatter by lowering the priority of the log messages in
-gssd_search_krb5_keytab().
+Would it be possible to get a little better description as 
+to what this patch does and why its needed... 
+"data race in bindresvport_sa" have very little 
+meaning, at least to me... 
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- utils/gssd/krb5_util.c | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+More comments below... 
 
-diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
-index 697d1d2..2ca3adc 100644
---- a/utils/gssd/krb5_util.c
-+++ b/utils/gssd/krb5_util.c
-@@ -711,13 +711,13 @@ gssd_search_krb5_keytab(krb5_context context, krb5_keytab kt,
- 	 */
- 	if ((code = krb5_kt_get_name(context, kt, kt_name, BUFSIZ))) {
- 		k5err = gssd_k5_err_msg(context, code);
--		printerr(0, "ERROR: %s attempting to get keytab name\n", k5err);
-+		printerr(1, "ERROR: %s attempting to get keytab name\n", k5err);
- 		retval = code;
- 		goto out;
- 	}
- 	if ((code = krb5_kt_start_seq_get(context, kt, &cursor))) {
- 		k5err = gssd_k5_err_msg(context, code);
--		printerr(0, "ERROR: %s while beginning keytab scan "
-+		printerr(1, "ERROR: %s while beginning keytab scan "
- 			    "for keytab '%s'\n", k5err, kt_name);
- 		retval = code;
- 		goto out;
-@@ -727,7 +727,7 @@ gssd_search_krb5_keytab(krb5_context context, krb5_keytab kt,
- 		if ((code = krb5_unparse_name(context, kte->principal,
- 					      &pname))) {
- 			k5err = gssd_k5_err_msg(context, code);
--			printerr(0, "WARNING: Skipping keytab entry because "
-+			printerr(1, "WARNING: Skipping keytab entry because "
- 				 "we failed to unparse principal name: %s\n",
- 				 k5err);
- 			k5_free_kt_entry(context, kte);
-@@ -768,7 +768,7 @@ gssd_search_krb5_keytab(krb5_context context, krb5_keytab kt,
- 
- 	if ((code = krb5_kt_end_seq_get(context, kt, &cursor))) {
- 		k5err = gssd_k5_err_msg(context, code);
--		printerr(0, "WARNING: %s while ending keytab scan for "
-+		printerr(1, "WARNING: %s while ending keytab scan for "
- 			    "keytab '%s'\n", k5err, kt_name);
- 	}
- 
--- 
-1.8.3.1
+On 20/11/13 11:49, Susant Sahani wrote:
+> Signed-off-by: Susant Sahani <ssahani@redhat.com>
+> ---
+>  src/bindresvport.c | 16 +++++++++++++---
+>  1 file changed, 13 insertions(+), 3 deletions(-)
+> 
+> diff --git a/src/bindresvport.c b/src/bindresvport.c
+> index 6ce3e81..d26d754 100644
+> --- a/src/bindresvport.c
+> +++ b/src/bindresvport.c
+> @@ -46,6 +46,7 @@
+>  #include <rpc/rpc.h>
+>  
+>  #include <string.h>
+> +#include <reentrant.h>
+>  
+>  /*
+>   * Bind a socket to a privileged IP port
+> @@ -79,17 +80,23 @@ bindresvport_sa(sd, sa)
+>  	u_int16_t *portp;
+>  	static u_int16_t port;
+>  	static short startport = STARTPORT;
+> +	static pthread_mutex_t port_lock = PTHREAD_MUTEX_INITIALIZER;
+How come you define this mutex statically instead in src/mt_misc.c
+like the rest of the mutexes? 
 
+Would you mind moving this (and the other two in the patches) 
+to src/mt_misc.c and added a commit talking about what they
+are protecting
+
+tia!
+
+steved.
+
+>  	socklen_t salen;
+> -	int nports = ENDPORT - startport + 1;
+> +	int nports;
+>  	int endport = ENDPORT;
+>  	int i;
+>  
+> +	mutex_lock(&port_lock);
+> +	nports = ENDPORT - startport + 1;
+> +
+>          if (sa == NULL) {
+>                  salen = sizeof(myaddr);
+>                  sa = (struct sockaddr *)&myaddr;
+>  
+> -                if (getsockname(sd, (struct sockaddr *)&myaddr, &salen) == -1)
+> -                        return -1;      /* errno is correctly set */
+> +                if (getsockname(sd, (struct sockaddr *)&myaddr, &salen) == -1) {
+> +                    mutex_unlock(&port_lock);
+> +                    return -1;      /* errno is correctly set */
+> +                }
+>  
+>                  af = myaddr.ss_family;
+>          } else
+> @@ -112,6 +119,7 @@ bindresvport_sa(sd, sa)
+>  #endif
+>          default:
+>                  errno = EPFNOSUPPORT;
+> +                mutex_unlock(&port_lock);
+>                  return (-1);
+>          }
+>          sa->sa_family = af;
+> @@ -137,6 +145,8 @@ bindresvport_sa(sd, sa)
+>  	    port = LOWPORT + port % (STARTPORT - LOWPORT);
+>  	    goto again;
+>  	}
+> +	mutex_unlock(&port_lock);
+> +
+>          return (res);
+>  }
+>  #else
+> 
