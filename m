@@ -1,60 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:53177 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754785Ab3KGVYb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 7 Nov 2013 16:24:31 -0500
-Message-ID: <527C0548.1090205@RedHat.com>
-Date: Thu, 07 Nov 2013 16:25:28 -0500
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] Adding the nfs4_use_min_auth module parameter
-References: <1383851364-8370-1-git-send-email-steved@redhat.com> <1383852380.12966.5.camel@leira.trondhjem.org>
-In-Reply-To: <1383852380.12966.5.camel@leira.trondhjem.org>
-Content-Type: text/plain; charset=UTF-7
+Received: from mail-ie0-f182.google.com ([209.85.223.182]:32832 "EHLO
+	mail-ie0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755278Ab3KVV2s convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 22 Nov 2013 16:28:48 -0500
+Received: by mail-ie0-f182.google.com with SMTP id as1so3056003iec.41
+        for <linux-nfs@vger.kernel.org>; Fri, 22 Nov 2013 13:28:48 -0800 (PST)
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.0 \(1812\))
+Subject: Re: [PATCH Version 2 0/3] GSSD: Use gss-ctx keys and gsskeyd to sync Kerberos credentials and kernel gss_contexts.
+From: Trond Myklebust <trondmy@gmail.com>
+In-Reply-To: <1385147500.3912.68.camel@willson.li.ssimo.org>
+Date: Fri, 22 Nov 2013 16:28:45 -0500
+Cc: Steve Dickson <SteveD@redhat.com>,
+        Andy Adamson <William.Adamson@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <3ABF556D-FA65-4A9E-9880-5AA5ADF80F55@gmail.com>
+References: <1382451757-3032-1-git-send-email-andros@netapp.com> <1382454148.9794.72.camel@willson.li.ssimo.org> <A8A66580-CD6F-4141-AE93-B1DD025BFD7A@netapp.com> <1382458162.9794.85.camel@willson.li.ssimo.org> <9C15298B-8915-46E2-85E1-5098F1A12832@netapp.com> <1382462720.9794.131.camel@willson.li.ssimo.org> <096F13FC-A99E-4C19-ACCA-01C244D7420F@netapp.com> <1384980587.17044.49.camel@willson.li.ssimo.org> <528E0C8A.9070608@RedHat.com> <1385147500.3912.68.camel@willson.li.ssimo.org>
+To: Simo Sorce <simo@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hey,
 
-On 07/11/13 14:26, Myklebust, Trond wrote:
-> On Thu, 2013-11-07 at 14:09 -0500, Steve Dickson wrote:
->> This new module parameter makes the v4 client
->> use the minimal authentication flavor (AUTH_UNIX)
->> when establishing NFSV4 state and doing the
->> pseudoroot lookup
->>
+On Nov 22, 2013, at 14:11, Simo Sorce <simo@redhat.com> wrote:
+
+> On Thu, 2013-11-21 at 08:37 -0500, Steve Dickson wrote:
+>> 
+>> On 20/11/13 15:49, Simo Sorce wrote:
+>>>> I think Solution 3: [nfslog/nfslogout interfaces invoked from PAM or
+>>>>> other login system facility] is a good way to go.  Note that a PAM
+>>>>> based solution where in the PAM would get us most of the way towards
+>>>>> providing users with a way to login and logout of NFS kerberized
+>>>>> shares.
+>>>>> 
+>>>>> Comments on an NFS PAM that will destroy GSS context for a UID upon
+>>>>> logout?
+>>> I prefer 3 too, let it to the login system (whether PAM based or other)
+>>> to determine when it is time to destroy credentials, that's the only
+>>> component that have a chance of guessing right.
+
+Really? How do you deal with backgrounded tasks?
+
+>>> Of course you could also provide a user utility to force a purge.
+>>> 
+>> +1 for me on this options as well... 
+>> 
+>> But how is it known when somebody logs out? Is that PAM-able as well?
 > 
-> That looks very ad-hoc. Quite frankly, you can do the exact same thing
-> already by simply blacklisting the rpcsec_gss_krb5 and/or auth_rpcgss
-> modules.
-I tried to keep a very small foot print... I'm not sure why that 
-looks ad-hoc to you... 
+> I would say "login process" more than pam, but the basic idea is the
+> same, a user space program that knows when the user is logging out for
+> good and is privileged enough to go an tell the kernel to nuke creds.
 
-If we blacklist those module(s) then we are disabling secure mounts
-altogether... 
+What’s such a process going to use as an indicator that the user is “logging out for good”?
 
-> 
-> I think we should rather looks at adding a new mount option for
-> specifying the security flavour to use when establishing basic NFSv4.x
-> state, and then perhaps specifying the _default_ for that mount option
-> using a module parameter.
-The problem is everything is hard code in these two areas so having
-a mount option would not work... 
-
-The fact that -o sec=sys does not turn off the use of AUTH_GSS_KRB5x 
-is simple wrong... IMHO... Not having way to override this behavior
-is not a good thing... again... IMHO... 
-
-Finally, Are there any servers out there today that support this type
-of behavior? Requiring secure state establishment or secure 
-pseudoroot lookups. 
-
-Bruce, can we configure the Linux server to require this type security behavior? 
-Can any server out there require these type of security behavior?  
-
-If the answer is no, then we really need a way to disable this type
-of behavior....
-
-steved.
+Trond
