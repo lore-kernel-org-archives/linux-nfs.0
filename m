@@ -1,39 +1,107 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:60365 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750749Ab3KBPHi (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 2 Nov 2013 11:07:38 -0400
-Date: Sat, 2 Nov 2013 08:07:38 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-Cc: Christoph Hellwig <hch@infradead.org>, Bruce Fields <bfields@fieldses.org>,
-        "Schumaker, Bryan" <Bryan.Schumaker@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 3/4] NFSD: Add WRITE_PLUS support for hole punches
-Message-ID: <20131102150738.GA21133@infradead.org>
-References: <1382972247-1108-1-git-send-email-bjschuma@netapp.com>
- <1382972247-1108-4-git-send-email-bjschuma@netapp.com>
- <20131028214030.GO31322@fieldses.org>
- <526FAF30.3060502@netapp.com>
- <20131029130649.GA29606@fieldses.org>
- <20131102135409.GC18961@infradead.org>
- <20131102144431.GB26983@fieldses.org>
- <20131102145105.GA4450@infradead.org>
- <38D14516-BAA4-45BB-8054-ED05AEC22C8F@netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <38D14516-BAA4-45BB-8054-ED05AEC22C8F@netapp.com>
+Received: from mx1.redhat.com ([209.132.183.28]:25050 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755495Ab3KVTJl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 22 Nov 2013 14:09:41 -0500
+Subject: Re: [PATCH Version 2 0/3] GSSD: Use gss-ctx keys and gsskeyd to
+ sync Kerberos credentials and kernel gss_contexts.
+From: Simo Sorce <simo@redhat.com>
+To: "Adamson, Andy" <William.Adamson@netapp.com>
+Cc: "<steved@redhat.com>" <steved@redhat.com>,
+        "<linux-nfs@vger.kernel.org>" <linux-nfs@vger.kernel.org>
+In-Reply-To: <7841DFC0-4F05-42CB-AD84-0A3324588EC1@netapp.com>
+References: <1382451757-3032-1-git-send-email-andros@netapp.com>
+	 <1382454148.9794.72.camel@willson.li.ssimo.org>
+	 <A8A66580-CD6F-4141-AE93-B1DD025BFD7A@netapp.com>
+	 <1382458162.9794.85.camel@willson.li.ssimo.org>
+	 <9C15298B-8915-46E2-85E1-5098F1A12832@netapp.com>
+	 <1382462720.9794.131.camel@willson.li.ssimo.org>
+	 <096F13FC-A99E-4C19-ACCA-01C244D7420F@netapp.com>
+	 <1384980587.17044.49.camel@willson.li.ssimo.org>
+	 <7841DFC0-4F05-42CB-AD84-0A3324588EC1@netapp.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Fri, 22 Nov 2013 14:09:39 -0500
+Message-ID: <1385147379.3912.66.camel@willson.li.ssimo.org>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Nov 02, 2013 at 03:02:29PM +0000, Myklebust, Trond wrote:
-> COMMIT has always had a metadata part to it, though. It guarantees stability of the ctime/mime and change attributes in addition to the file size and data.
+On Wed, 2013-11-20 at 21:21 +0000, Adamson, Andy wrote:
+
+> > Why do you need to abuse the keyring interface to implement a syscall ?
 > 
-> IOW: it really is more akin to fsync() than to fdatasync().
+> Do you think this job requires a system call? 
+> 
+> I felt the keyring interface gives us what we want: a way to pass some
+> information and trigger a behavior.  The gss-ctx key caches the
+> relationship between the principals Kerberos credentials and the
+> associated RPC layer gss_cred (which in turn has the gss_context).
+> When a gss-ctx key exists, the principal associated with the UID has
+> kerberos credentials (located in the Kerberos ccache stored in the
+> key) that are used for NFS, and the key serial is stored in the
+> gss_cred.
+> 
+> From kernel documentation: Documentation/security/keys.txt
+> 
+> "This service allows cryptographic keys, authentication tokens, cross-domain
+> user mappings, and similar to be cached in the kernel for the use of
+> filesystems and other kernel services."
+> 
+> I think the gss-ctx key fits into the above description (under
+> "similar"), so  I don't think of this use as an abuse.
 
-That's fine, but so far it wasn't used for any purely metadata
-operation.  E.g. if we allow it for a preallocation we should also
-allow it for updating the size put the current file size.
+You walk a fine line here.
 
-And diverting from the spec to your implementation: we'd need a lot more
-generic infrastructure to deal with unstable random non-data operations.
+IMHO the kernel keyring is a place where you store information. It is
+true that based on the information you store there you can take
+additional actions (in the user space usually). But I think that the
+gss-ctx usage is overstepping the  boundary and using the presence of a
+key as a trigger to perform actions in the kernel. This is something
+that is traditionally done via a syscall.
+
+My main concern is around things like access control, how is that
+performed ?
+
+Also I think it introduces a lot more code than is needed for the
+simplest implementation.
+The simplest implementation in my mind is that the login system can call
+the syscall no matter what the current status in the kernel and ask the
+nfs client subsystem to nuke any credentials associated to uid 1234
+whether that uid has any credentials on the system or not. So it allows
+to ignore completely any real tracking and just simply be sure each and
+all creds associated to that user id are nuked.
+this could actually be extended beyond NFS, ideally any kernel driver
+that stores some form of credential or data associated to a specific UID
+may hook to the syscall to be notified when it is time to blast away the
+data.
+
+Your model seem more fragile in the sense that you need to set up the
+whole tracking part to, so if you have a bug there you'll end up not
+removing creds from the kernel. It is also very specific to the NFS
+client, but that may or may not be an issue.
+
+> > Or did I misunderstand what you mean by "telling the kernel to do X" ?
+> > 
+> >>> This way you can replace the logic of how to keep track of what is
+> >>> going on completely in user space, where it can easily be adjusted
+> >>> and adapted  as experience is gained.
+> >>> 
+> >>> IE: track it completely in userspace for now and only provide a
+> >>> syscall to kill creds per UID, no tracking on the kernel side.
+> >> 
+> >> Yes - I believe that is what the gss-ctx keyring code I wrote does.
+> > 
+> > A keyring is not a syscall.
+> 
+> Yes, but it does as you suggested "provide a downcall to the kernel that will tell it: destroy any
+> cache for 'uid number"
+> 
+> What is the disadvantage of using the keyring?
+
+Hopefully I answered above.
+
+Simo.
+
+-- 
+Simo Sorce * Red Hat, Inc * New York
+
