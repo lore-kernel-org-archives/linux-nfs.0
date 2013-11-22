@@ -1,188 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:33084 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751882Ab3KJUd0 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 10 Nov 2013 15:33:26 -0500
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.6 \(1510\))
-Subject: Re: [PATCH] SUNRPC: Fix a data corruption issue when retransmitting RPC calls
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1384021209-2586-1-git-send-email-Trond.Myklebust@netapp.com>
-Date: Sun, 10 Nov 2013 15:33:22 -0500
-Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>
-Message-Id: <E3F68432-AA7D-4735-A457-6BDE83839AC0@oracle.com>
-References: <1384021209-2586-1-git-send-email-Trond.Myklebust@netapp.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Received: from mx1.redhat.com ([209.132.183.28]:23414 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755635Ab3KVVjf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 22 Nov 2013 16:39:35 -0500
+Subject: Re: [PATCH Version 2 0/3] GSSD: Use gss-ctx keys and gsskeyd to
+ sync Kerberos credentials and kernel gss_contexts.
+From: Simo Sorce <simo@redhat.com>
+To: Trond Myklebust <trondmy@gmail.com>
+Cc: Steve Dickson <SteveD@redhat.com>,
+        Andy Adamson <William.Adamson@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+In-Reply-To: <3ABF556D-FA65-4A9E-9880-5AA5ADF80F55@gmail.com>
+References: <1382451757-3032-1-git-send-email-andros@netapp.com>
+	 <1382454148.9794.72.camel@willson.li.ssimo.org>
+	 <A8A66580-CD6F-4141-AE93-B1DD025BFD7A@netapp.com>
+	 <1382458162.9794.85.camel@willson.li.ssimo.org>
+	 <9C15298B-8915-46E2-85E1-5098F1A12832@netapp.com>
+	 <1382462720.9794.131.camel@willson.li.ssimo.org>
+	 <096F13FC-A99E-4C19-ACCA-01C244D7420F@netapp.com>
+	 <1384980587.17044.49.camel@willson.li.ssimo.org>
+	 <528E0C8A.9070608@RedHat.com>
+	 <1385147500.3912.68.camel@willson.li.ssimo.org>
+	 <3ABF556D-FA65-4A9E-9880-5AA5ADF80F55@gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Fri, 22 Nov 2013 16:39:31 -0500
+Message-ID: <1385156371.22025.5.camel@willson.li.ssimo.org>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Fri, 2013-11-22 at 16:28 -0500, Trond Myklebust wrote:
+> On Nov 22, 2013, at 14:11, Simo Sorce <simo@redhat.com> wrote:
+> 
+> > On Thu, 2013-11-21 at 08:37 -0500, Steve Dickson wrote:
+> >> 
+> >> On 20/11/13 15:49, Simo Sorce wrote:
+> >>>> I think Solution 3: [nfslog/nfslogout interfaces invoked from PAM or
+> >>>>> other login system facility] is a good way to go.  Note that a PAM
+> >>>>> based solution where in the PAM would get us most of the way towards
+> >>>>> providing users with a way to login and logout of NFS kerberized
+> >>>>> shares.
+> >>>>> 
+> >>>>> Comments on an NFS PAM that will destroy GSS context for a UID upon
+> >>>>> logout?
+> >>> I prefer 3 too, let it to the login system (whether PAM based or other)
+> >>> to determine when it is time to destroy credentials, that's the only
+> >>> component that have a chance of guessing right.
+> 
+> Really? How do you deal with backgrounded tasks?
 
-On Nov 9, 2013, at 1:20 PM, Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
+for  background tasks you still need to keep your kerberos credentials
+around somehow, if you are doing that then the kernel will be able to
+get a new session key if needed.
+If you instruct your system to destroy everything then background tasks
+will fail. In any case it needs to be a user space decision, the kernel
+can't guess.
 
-> The following scenario can cause silent data corruption when doing
-> NFS writes. It has mainly been observed when doing database writes
-> using O_DIRECT.
+> >>> Of course you could also provide a user utility to force a purge.
+> >>> 
+> >> +1 for me on this options as well... 
+> >> 
+> >> But how is it known when somebody logs out? Is that PAM-able as well?
+> > 
+> > I would say "login process" more than pam, but the basic idea is the
+> > same, a user space program that knows when the user is logging out for
+> > good and is privileged enough to go an tell the kernel to nuke creds.
 > 
-> 1) The RPC client uses sendpage() to do zero-copy of the page data.
-> 2) Due to networking issues, the reply from the server is delayed,
->   and so the RPC client times out.
-> 
-> 3) The client issues a second sendpage of the page data as part of
->   an RPC call retransmission.
-> 
-> 4) The reply to the first transmission arrives from the server
->   _before_ the client hardware has emptied the TCP socket send
->   buffer.
-> 5) After processing the reply, the RPC state machine rules that
->   the call to be done, and triggers the completion callbacks.
-> 6) The application notices the RPC call is done, and reuses the
->   pages to store something else (e.g. a new write).
-> 
-> 7) The client NIC drains the TCP socket send buffer. Since the
->   page data has now changed, it reads a corrupted version of the
->   initial RPC call, and puts it on the wire.
-> 
-> This patch fixes the problem in the following manner:
-> 
-> The ordering guarantees of TCP ensure that when the server sends a
-> reply, then we know that the _first_ transmission has completed. Using
-> zero-copy in that situation is therefore safe.
-> If a time out occurs, we then send the retransmission using sendmsg()
-> (i.e. no zero-copy), We then know that the socket contains a full copy of
-> the data, and so it will retransmit a faithful reproduction even if the
-> RPC call completes, and the application reuses the O_DIRECT buffer in
-> the meantime.
+> What’s such a process going to use as an indicator that the user is “logging out for good”?
 
-Clever!
+If you do logout from a graphical login manager that's a pretty good
+indication I would say. Whether that will work for all use cases is
+debatable of course, I am sure cases can be found where that will not
+the right option.
 
-But if wsize is large, the retransmission will require a potentially large contiguous piece of memory to complete a WRITE RPC.  In low memory scenarios, that might be hard to come by.  Should be safe for direct I/O, but if this I/O is driven by memory reclaim, it could deadlock.
+On a system where it is too difficult to properly assess automatically
+when a user is logged out for good the only option is to disable any
+automatism and let the user call a cmdline tool.
 
-We see this all the time when using NFS on network devices that do not support scatter/gather (and thus have no sock_sendpage() method to begin with).
-
-
-
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> Cc: stable@vger.kernel.org
-> ---
-> net/sunrpc/xprtsock.c | 28 +++++++++++++++++++++-------
-> 1 file changed, 21 insertions(+), 7 deletions(-)
-> 
-> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-> index 17c88928b7db..dd9d295813cf 100644
-> --- a/net/sunrpc/xprtsock.c
-> +++ b/net/sunrpc/xprtsock.c
-> @@ -393,8 +393,10 @@ static int xs_send_kvec(struct socket *sock, struct sockaddr *addr, int addrlen,
-> 	return kernel_sendmsg(sock, &msg, NULL, 0, 0);
-> }
-> 
-> -static int xs_send_pagedata(struct socket *sock, struct xdr_buf *xdr, unsigned int base, int more)
-> +static int xs_send_pagedata(struct socket *sock, struct xdr_buf *xdr, unsigned int base, int more, bool zerocopy)
-> {
-> +	ssize_t (*do_sendpage)(struct socket *sock, struct page *page,
-> +			int offset, size_t size, int flags);
-> 	struct page **ppage;
-> 	unsigned int remainder;
-> 	int err, sent = 0;
-> @@ -403,6 +405,9 @@ static int xs_send_pagedata(struct socket *sock, struct xdr_buf *xdr, unsigned i
-> 	base += xdr->page_base;
-> 	ppage = xdr->pages + (base >> PAGE_SHIFT);
-> 	base &= ~PAGE_MASK;
-> +	do_sendpage = sock->ops->sendpage;
-> +	if (!zerocopy)
-> +		do_sendpage = sock_no_sendpage;
-> 	for(;;) {
-> 		unsigned int len = min_t(unsigned int, PAGE_SIZE - base, remainder);
-> 		int flags = XS_SENDMSG_FLAGS;
-> @@ -410,7 +415,7 @@ static int xs_send_pagedata(struct socket *sock, struct xdr_buf *xdr, unsigned i
-> 		remainder -= len;
-> 		if (remainder != 0 || more)
-> 			flags |= MSG_MORE;
-> -		err = sock->ops->sendpage(sock, *ppage, base, len, flags);
-> +		err = do_sendpage(sock, *ppage, base, len, flags);
-> 		if (remainder == 0 || err != len)
-> 			break;
-> 		sent += err;
-> @@ -431,9 +436,10 @@ static int xs_send_pagedata(struct socket *sock, struct xdr_buf *xdr, unsigned i
->  * @addrlen: UDP only -- length of destination address
->  * @xdr: buffer containing this request
->  * @base: starting position in the buffer
-> + * @zerocopy: true if it is safe to use sendpage()
->  *
->  */
-> -static int xs_sendpages(struct socket *sock, struct sockaddr *addr, int addrlen, struct xdr_buf *xdr, unsigned int base)
-> +static int xs_sendpages(struct socket *sock, struct sockaddr *addr, int addrlen, struct xdr_buf *xdr, unsigned int base, bool zerocopy)
-> {
-> 	unsigned int remainder = xdr->len - base;
-> 	int err, sent = 0;
-> @@ -461,7 +467,7 @@ static int xs_sendpages(struct socket *sock, struct sockaddr *addr, int addrlen,
-> 	if (base < xdr->page_len) {
-> 		unsigned int len = xdr->page_len - base;
-> 		remainder -= len;
-> -		err = xs_send_pagedata(sock, xdr, base, remainder != 0);
-> +		err = xs_send_pagedata(sock, xdr, base, remainder != 0, zerocopy);
-> 		if (remainder == 0 || err != len)
-> 			goto out;
-> 		sent += err;
-> @@ -564,7 +570,7 @@ static int xs_local_send_request(struct rpc_task *task)
-> 			req->rq_svec->iov_base, req->rq_svec->iov_len);
-> 
-> 	status = xs_sendpages(transport->sock, NULL, 0,
-> -						xdr, req->rq_bytes_sent);
-> +						xdr, req->rq_bytes_sent, true);
-> 	dprintk("RPC:       %s(%u) = %d\n",
-> 			__func__, xdr->len - req->rq_bytes_sent, status);
-> 	if (likely(status >= 0)) {
-> @@ -620,7 +626,7 @@ static int xs_udp_send_request(struct rpc_task *task)
-> 	status = xs_sendpages(transport->sock,
-> 			      xs_addr(xprt),
-> 			      xprt->addrlen, xdr,
-> -			      req->rq_bytes_sent);
-> +			      req->rq_bytes_sent, true);
-> 
-> 	dprintk("RPC:       xs_udp_send_request(%u) = %d\n",
-> 			xdr->len - req->rq_bytes_sent, status);
-> @@ -693,6 +699,7 @@ static int xs_tcp_send_request(struct rpc_task *task)
-> 	struct rpc_xprt *xprt = req->rq_xprt;
-> 	struct sock_xprt *transport = container_of(xprt, struct sock_xprt, xprt);
-> 	struct xdr_buf *xdr = &req->rq_snd_buf;
-> +	bool zerocopy = true;
-> 	int status;
-> 
-> 	xs_encode_stream_record_marker(&req->rq_snd_buf);
-> @@ -700,13 +707,20 @@ static int xs_tcp_send_request(struct rpc_task *task)
-> 	xs_pktdump("packet data:",
-> 				req->rq_svec->iov_base,
-> 				req->rq_svec->iov_len);
-> +	/* Don't use zero copy if this is a resend. If the RPC call
-> +	 * completes while the socket holds a reference to the pages,
-> +	 * then we may end up resending corrupted data.
-> +	 */
-> +	if (task->tk_flags & RPC_TASK_SENT)
-> +		zerocopy = false;
-> 
-> 	/* Continue transmitting the packet/record. We must be careful
-> 	 * to cope with writespace callbacks arriving _after_ we have
-> 	 * called sendmsg(). */
-> 	while (1) {
-> 		status = xs_sendpages(transport->sock,
-> -					NULL, 0, xdr, req->rq_bytes_sent);
-> +					NULL, 0, xdr, req->rq_bytes_sent,
-> +					zerocopy);
-> 
-> 		dprintk("RPC:       xs_tcp_send_request(%u) = %d\n",
-> 				xdr->len - req->rq_bytes_sent, status);
-> -- 
-> 1.8.3.1
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Simo.
 
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+Simo Sorce * Red Hat, Inc * New York
 
