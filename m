@@ -1,46 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:40223 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751263Ab3KDTyM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 4 Nov 2013 14:54:12 -0500
-Date: Mon, 4 Nov 2013 11:54:08 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Christoph Hellwig <hch@infradead.org>,
-        Anna Schumaker <bjschuma@netapp.com>, bfields@fieldses.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 3/4] NFSD: Add WRITE_PLUS support for hole punches
-Message-ID: <20131104195408.GA7383@infradead.org>
-References: <1382972247-1108-1-git-send-email-bjschuma@netapp.com>
- <1382972247-1108-4-git-send-email-bjschuma@netapp.com>
- <20131102135238.GB18961@infradead.org>
- <5277CE23.6010207@netapp.com>
- <20131104170345.GA31499@infradead.org>
- <5277D80F.8050106@netapp.com>
- <20131104185309.GA14378@infradead.org>
- <3AC4ECC6-0496-4593-8791-92BCAD2567CC@oracle.com>
- <20131104191907.GA9337@infradead.org>
- <8EB0049A-9225-4C4A-8099-774B2EB48323@oracle.com>
+Received: from master.debian.org ([82.195.75.110]:48817 "EHLO
+	master.debian.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751683Ab3KXFTN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 24 Nov 2013 00:19:13 -0500
+Date: Sun, 24 Nov 2013 16:19:04 +1100
+From: =?iso-8859-1?Q?An=EDbal?= Monsalve Salazar <anibal@debian.org>
+To: linux-nfs@vger.kernel.org
+Subject: Re: librpcsecgss: FTBFS on GNU/kFreeBSD
+Message-ID: <20131124051904.GA16651@master.debian.org>
+References: <20090703133142.14887.33854.reportbug@localhost.localdomain>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <8EB0049A-9225-4C4A-8099-774B2EB48323@oracle.com>
+Content-Type: text/plain; charset=iso-8859-1
+In-Reply-To: <20090703133142.14887.33854.reportbug@localhost.localdomain>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Nov 04, 2013 at 11:50:51AM -0800, Chuck Lever wrote:
-> I think a successful argument could be made that initialization or hole punching may not belong in a WRITE_PLUS operation.  For example, using a COMMIT for a long-running server-performed file initialization doesn't make sense to me.  The infrastructure we introduced for COPY_OFFLOAD seems better suited for file initialization.
-
-I've been going through the latest draft and will submit a counter
-proposal in a few days time.
-
-> > It's not like adding new operations to NFS is all that hard.
+On Fri, Jul 03, 2009 at 03:31:42PM +0200, Cyril Brulebois wrote:
+> Package: librpcsecgss
+> Version: 0.18-1
+> Severity: important
+> Tags: patch pending
+> User: glibc-bsd-devel@lists.alioth.debian.org
+> Usertags: kfreebsd
 > 
-> Actually, it is harder than you think.  For various reasons, it takes five or more years to create a new NFS protocol specification, something we hope to address.
+> Hi,
+> 
+> please find attached a trivial patch to fix the FTBFS on GNU/kFreeBSD:
+> [...] 
 
-I see the pain in getting new minor versions out.  But that pain is
-shared between adding a new operation and a new arm to an union.
+I've carried the patch below in Debian for a long time. Please consider
+merging it.
 
-> By the way, e-mail from non-members to nfsv4@ietf.org is moderated.  The moderator may be traveling or otherwise unavailable, as IETF 88 is happening this week.  If you subscribe to the list, you should be able to post without restriction.
+>From dc2b55a7f83d6c505ba79b83089f365bb0c24bf1 Mon Sep 17 00:00:00 2001
+From: Cyril Brulebois <kibi@debian.org>
+Date: Fri, 3 Jul 2009 15:31:42 +0200
+Subject: librpcsecgss: FTBFS on GNU/kFreeBSD
 
-I have been subscribed longer than I've been posting to it.
+Fix FTBFS on GNU/kFreeBSD by using getpid() (rather than arc4random())                                                               
+not only if __linux__ is defined, but also if __GLIBC__ is defined.
+
+Signed-off-by: Anibal Monsalve Salazar <anibal@debian.org>
+---
+ src/clnt_tcp.c | 2 +-
+ src/clnt_udp.c | 2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/clnt_tcp.c b/src/clnt_tcp.c
+index 4da0d31..f2c3da0 100644
+--- a/src/clnt_tcp.c
++++ b/src/clnt_tcp.c
+@@ -225,7 +225,7 @@ clnttcp_create(raddr, prog, vers, sockp, sendsz, recvsz)
+ 	 * Initialize call message
+ 	 */
+ 	(void)gettimeofday(&now, (struct timezone *)0);
+-#ifdef __linux__
++#if defined (__linux__) || defined(__GLIBC__)
+ 	call_msg.rm_xid = getpid() ^ now.tv_sec ^ now.tv_usec;
+ #else
+ 	call_msg.rm_xid = arc4random();
+diff --git a/src/clnt_udp.c b/src/clnt_udp.c
+index fc803b2..fe95ed2 100644
+--- a/src/clnt_udp.c
++++ b/src/clnt_udp.c
+@@ -153,7 +153,7 @@ clntudp_bufcreate(raddr, program, version, wait, sockp, sendsz, recvsz)
+ 	cu->cu_total.tv_usec = -1;
+ 	cu->cu_sendsz = sendsz;
+ 	cu->cu_recvsz = recvsz;
+-#ifdef __linux__
++#if defined (__linux__) || defined(__GLIBC__)
+ 	call_msg.rm_xid = getpid() ^ now.tv_sec ^ now.tv_usec;
+ #else
+ 	call_msg.rm_xid = arc4random();
+-- 
+1.8.4.2
 
