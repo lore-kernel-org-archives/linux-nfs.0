@@ -1,46 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pb0-f46.google.com ([209.85.160.46]:34036 "EHLO
-	mail-pb0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752010Ab3KOXRA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 15 Nov 2013 18:17:00 -0500
-Received: by mail-pb0-f46.google.com with SMTP id un15so4232129pbc.19
-        for <linux-nfs@vger.kernel.org>; Fri, 15 Nov 2013 15:16:59 -0800 (PST)
-Message-ID: <1384557410.3222.2.camel@leira.trondhjem.org>
-Subject: Re: [PATCH] NFS: Fix kbuild errors due to missing symbols
-From: Trond Myklebust <trondmy@gmail.com>
-To: Anna Schumaker <bjschuma@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Date: Fri, 15 Nov 2013 18:16:50 -0500
-In-Reply-To: <1384554636-25330-1-git-send-email-bjschuma@netapp.com>
-References: <1384554636-25330-1-git-send-email-bjschuma@netapp.com>
-Content-Type: text/plain; charset="UTF-7"
-Mime-Version: 1.0
+Received: from mx12.netapp.com ([216.240.18.77]:1569 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754593Ab3KYSck convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Nov 2013 13:32:40 -0500
+From: "Adamson, Andy" <William.Adamson@netapp.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "Adamson, Andy" <William.Adamson@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/1] NFSv4.1 fix a kswap nfs4_state_manger race
+Date: Mon, 25 Nov 2013 18:31:40 +0000
+Message-ID: <5C9A93DA-2EE7-4E8C-A6DD-722ACDEB6F7C@netapp.com>
+References: <1385402270-14284-1-git-send-email-andros@netapp.com>
+ <1385402270-14284-2-git-send-email-andros@netapp.com>
+ <5B8C7A9D-CD9E-487A-AC62-B1292649835D@netapp.com>
+ <7E331FE8-EF05-434D-8434-0C35C3EF2F8B@netapp.com>
+ <FFEC0299-5989-4AB1-AB1B-CA1458667D33@netapp.com>
+In-Reply-To: <FFEC0299-5989-4AB1-AB1B-CA1458667D33@netapp.com>
+Content-Type: text/plain; charset="Windows-1252"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2013-11-15 at 17:30 -0500, Anna Schumaker wrote:
-+AD4 My recent patch 644aa303: +ACI-NFS: Enabling v4.2 should not recompile nfsd
-+AD4 and lockd+ACI caused build errors when CONFIG+AF8-NFS+AF8-USE+AF8-LEGACY+AF8-DNS+AD0-y and when
-+AD4 CONFIG+AF8-NFS+AF8-V4+AD0-n.  This patch fixes those errors.
-+AD4 
 
-Wait... 
+On Nov 25, 2013, at 1:28 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+ wrote:
 
-        config NFS+AF8-USE+AF8-LEGACY+AF8-DNS
-                bool +ACI-Use the legacy NFS DNS resolver+ACI
-                depends on NFS+AF8-V4
-                help
-                  The kernel now provides a method for translating a host name into an
-                  IP address.  Select Y here if you would rather use your own DNS
-                  resolver script.
-        
-                  If unsure, say N
-        
-        config NFS+AF8-USE+AF8-KERNEL+AF8-DNS
-                bool
-                depends on NFS+AF8-V4 +ACYAJg +ACE-NFS+AF8-USE+AF8-LEGACY+AF8-DNS
-                select DNS+AF8-RESOLVER
-                default y
+> 
+> On Nov 25, 2013, at 13:17, Adamson, Andy <William.Adamson@netapp.com> wrote:
+> 
+>> 
+>> On Nov 25, 2013, at 1:13 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+>> wrote:
+>> 
+>>> 
+>>> On Nov 25, 2013, at 12:57, <andros@netapp.com> <andros@netapp.com> wrote:
+>>> 
+>>>> From: Andy Adamson <andros@netapp.com>
+>>>> 
+>>>> The state manager is recovering expired state and recovery OPENs are being
+>>>> processed. If kswapd is pruning inodes at the same time, a deadlock can occur
+>>>> when kswapd calls evict_inode on an NFSv4.1 inode with a layout, and the
+>>>> resultant layoutreturn gets an error that the state mangager is to handle,
+>>>> causing the layoutreturn to wait on the (NFS client) cl_rpcwaitq.
+>>>> 
+>>>> At the same time an open is waiting for the inode deletion to complete in
+>>>> __wait_on_freeing_inode.
+>>>> 
+>>>> If the open is either the open called by the state manager, or an open from
+>>>> the same open owner that is holding the NFSv4.0 sequence id which causes the
+>>>> OPEN from the state manager to wait for the sequence id on the Seqid_waitqueue,
+>>>> then the state is deadlocked with kswapd.
+>>>> 
+>>>> Do not handle LAYOUTRETURN errors when called from nfs4_evict_inode.
+>>> 
+>>> Why are we waiting for recovery in LAYOUTRETURN at all? Layouts are automatically lost when the server reboots or when the lease is otherwise lost.
+>>> 
+>>> IOW: Is there any reason why we need to special-case nfs4_evict_inode? Shouldn’t we just bail out on error in _all_ cases?
+>> 
+>> Yeah, I was thinking about this as well - perhaps recovering from session-level errors or grace/delay errors would be useful for the block client.
+> 
+> NFS4ERR_DELAY, probably, yes.
+> 
+> NFS4ERR_GRACE, no… That’s a reboot situation
+> 
+> As for session level errors, I’d say that complicates things too much, since several of those can basically end up masking a NFS4ERR_STALE_CLIENTID error.
+> 
+> 
+> Either way, all the layout types (including blocks) should be able to continue on even if we miss a layout return or two. The server has to be coded to expect a forgetful client.
 
-How can that result in NFS+AF8-V4+AD0-n +ACYAJg NFS+AF8-USE+AF8-LEGACY+AF8-DNS+AD0-y?
+OK - I'll resend the patch.
+
+-->Andy
+> 
+> --
+> Trond Myklebust
+> Linux NFS client maintainer
+> 
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+> 
 
