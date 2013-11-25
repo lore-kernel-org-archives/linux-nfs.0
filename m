@@ -1,106 +1,112 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:28378 "EHLO
+Received: from aserp1040.oracle.com ([141.146.126.69]:46234 "EHLO
 	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750964Ab3KKVrM convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 11 Nov 2013 16:47:12 -0500
-Content-Type: text/plain; charset=windows-1252
+	with ESMTP id S1753681Ab3KYO7r convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Nov 2013 09:59:47 -0500
+Content-Type: text/plain; charset=us-ascii
 Mime-Version: 1.0 (Mac OS X Mail 6.6 \(1510\))
-Subject: Re: [PATCH] Adding the nfs4_secure_mounts bool
+Subject: Re: The return of the hanging "ls"...
 From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <52814876.7080604@RedHat.com>
-Date: Mon, 11 Nov 2013 16:47:05 -0500
+In-Reply-To: <20131125155942.0a3e4ca1@notabene.brown>
+Date: Mon, 25 Nov 2013 09:59:39 -0500
 Cc: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <A59DDCD0-5622-4497-A93E-80493EDCED27@oracle.com>
-References: <1384037221-7224-1-git-send-email-steved@redhat.com> <E061C7A8-DC27-49BA-93C2-DC2E9C19EA7B@netapp.com> <52811CBB.3070204@RedHat.com> <E520DD5F-7E5A-4B6C-9FF6-6B74DA36FD1E@oracle.com> <5281290B.6000201@RedHat.com> <E0FBCF46-C70F-41E5-BA67-48406253CD7E@oracle.com> <52814876.7080604@RedHat.com>
-To: Steve Dickson <SteveD@redhat.com>
+        NFS <linux-nfs@vger.kernel.org>
+Message-Id: <A7CF3941-980F-4B96-B473-ECB46375CFCF@oracle.com>
+References: <20131125155942.0a3e4ca1@notabene.brown>
+To: NeilBrown <neilb@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi Neil-
 
-On Nov 11, 2013, at 4:13 PM, Steve Dickson <SteveD@redhat.com> wrote:
-
-> 
-> 
-> On 11/11/13 15:33, Chuck Lever wrote:
->>>> 
->>>> We have workarounds already that work on every kernel since 3.8.
->>>> 
->>> The one that logs 5 to 20 lines (depending on thins are setup or not)
->>> per mount? That does work in some environments but no all. ;-)
->> 
->> When does running rpc.gssd not work?
-> Define "work"... ;-) Logging 20 error messages on every mount
-> when the keytab does not exist is not working or not very well.... IMHO..
-
-At first it was 5 warnings.  Then it was "10-15 errors".  Now it's 20 on every mount!
-
-How many "-v" options do you specify on your rpc.gssd command line?  I normally run rpc.gssd with "-vv" or even "-vvv".  Leaving those options off makes it much quieter, and it's the default.  Only crazy people crank up the verbosity of rpc.gssd.
-
-Is a mount failing in that case?  Too many error messages is a nit compared to "no longer mounts."  If gssd error messages are your only beef, then it seems like the solution is pretty obvious.
-
->> 
->>> Or am I missing one? Please tell me I am!!! :-) 
->> 
->> OK: You're missing one.
-> Thank you... 
-> 
->> 
->> Client configurations that have auth_rpcgss.ko loaded but do not run rpc.gssd are, quite simply, broken.  The gss upcall will not work in that configuration.  There is no reason to load auth_rpcgss.ko if user space does not have rpc.gssd enabled and running.
->> 
->> This has been a problem for a very long time, but use cases where the 15 second upcall timeout is encountered have until recently been infrequent, and only occur in situations where the mount options don't work anyway, so no one has bothered to address it.
->> 
->> This broken configuration is due to incorrect system initialization scripts.
-> Which initialization scripts are you referring to?
-
-The NFS initialization scripts.  What else deals with auth_rpcgss.ko and rpc.gssd?
+On Nov 24, 2013, at 11:59 PM, NeilBrown <neilb@suse.de> wrote:
 
 > 
->> 
->> If an administrator chooses not to run rpc.gssd, then auth_rpcgss.ko should not be loaded.  The kernel deals quite correctly when auth_rpcgss.ko is not loaded -- GSS flavors are simply not supported, and the kernel uses AUTH_SYS by default for everything.  (Right there is your magical administrative interface for controlling what security flavors are used and supported).
->> 
->> But the current init scripts load auth_rpcgss.ko unconditionally.  Thus any gss upcall will fail until rpc.gssd is started.
->> 
->> With upstream kernel commit 4edaa308 (and following) I added a use case that exposes the upcall timeout much more often.  It's a latent bug, but we now hit it during the first mount after every client reboot, so it is noticeable to anyone who leaves nfs-secure.service disabled.
->> 
->> Therefore the scenario we want to avoid is where auth_rpcgss.ko is loaded, but rpc.gssd is not running.  There are two obvious ways to avoid this scenario:
->> 
->>  A.  If auth_rpcgss.ko is loaded unconditionally, make sure rpc.gssd is running unconditionally (and cull the warnings)
->> 
->>  B.  If you do not want to run rpc.gssd, make sure auth_rpcgss.ko is not loaded
-> Isn't the case that nfsd will also loads auth_rpcgss. So if server was started we
-> would be right back to the 15 sec delay?
+> Hi Trond,
+> I just noticed commit acdc53b2146c7ee67feb1f02f7bc3020126514b8 from 2010
+> reverts the effect commit 28c494c5c8d425e15b7b82571e4df6d6bc34594d from Chunk
+> in 2007.
 
-Only if NFSD wants to make GSS upcalls and rpc.gssd isn't running.  Is that ever the case?
+I'm wondering if a subsequent commit changed filemap_write_and_wait().
 
-The point is we currently have a very direct method of telling the kernel NFS components not to use GSS or make upcalls.  We should use it.
+There was some recent clean up that (very likely unintentionally) changed the serialization of some of these VFS utility functions.
 
 
+
+> Specifically it removes mutex lock/unlock in nfs_getattr.
+> Chuck added them:
 > 
-> steved.
+> -       /* Flush out writes to the server in order to update c/mtime */
+> -       if (S_ISREG(inode->i_mode))
+> +       /*
+> +        * Flush out writes to the server in order to update c/mtime.
+> +        *
+> +        * Hold the i_mutex to suspend application writes temporarily;
+> +        * this prevents long-running writing applications from blocking
+> +        * nfs_wb_nocommit.
+> +        */
+> +       if (S_ISREG(inode->i_mode)) {
+> +               mutex_lock(&inode->i_mutex);
+>                nfs_wb_nocommit(inode);
+> +               mutex_unlock(&inode->i_mutex);
+> +       }
 > 
->> 
->> Both of these workarounds are configuration changes, not code changes.  B. is accomplished simply by blacklisting auth_rpcgss.ko.
->> 
->> We could go a step further and remove the module alias added by upstream kernel commit 71afa85e to prevent the kernel from loading auth_rpcgss.ko automatically, and then make sure the nfs-secure.service script (and the server-side equivalent) loads auth_rpcgss.ko before starting rpc.gssd.
->> 
->> Since you are opposed to running rpc.gssd, blacklisting auth_rpcgss.ko is the easy choice.  Adding auth_rpcgss.ko to the module blacklist is no more difficult than setting a kernel module parameter or toggling nfs-secure.service.
->> 
->> However, IMO, in the long run Linux should be installed with rpc.gssd running unconditionally, or dynamically start-able by mount.nfs (like statd works today).  We cannot guess a priori whether a user or administrator will want NFS support for GSS flavors, just as we cannot guess a priori whether the user wants support for NFSv3.
->> 
->> Yet we always have NFSv3 support available.  Likewise, support for GSS should always be available, and there really is no good reason any more not to leave it running all the time.
->> 
->> As Trond points out, NFSv4 implementations are required to implement GSS security.
->> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> You removed them.
+> 
+> -       /*
+> -        * Flush out writes to the server in order to update c/mtime.
+> -        *
+> -        * Hold the i_mutex to suspend application writes temporarily;
+> -        * this prevents long-running writing applications from blocking
+> -        * nfs_wb_nocommit.
+> -        */
+> +       /* Flush out writes to the server in order to update c/mtime.  */
+>        if (S_ISREG(inode->i_mode)) {
+> -               mutex_lock(&inode->i_mutex);
+> -               nfs_wb_nocommit(inode);
+> -               mutex_unlock(&inode->i_mutex);
+> +               err = filemap_write_and_wait(inode->i_mapping);
+> +               if (err)
+> +                       goto out;
+>        }
+> 
+>        /*
+> 
+> 
+> Do you recall why?
+> 
+> I noticed because a customer reported exactly the same symptoms the were
+> fixed by Chucks patch some years ago.
+> 
+> 
+> The comment on your patch says (in part):
+> 
+>    Also replace nfs_wb_nocommit() with a
+>    call to filemap_write_and_wait(), which doesn't need to hold the
+>    inode->i_mutex.
+> 
+> It is certainly true that filemap_write_and_wait doesn't need to hold the
+> mutex, but neither did nfs_wb_nocommit.  The mutex is held to stop "suspend
+> application writes temporarily" so no more pages get dirtied until all
+> the current dirty pages have been written out.  i.e. to stop
+> generic_file_aio_write() from proceeding.
+> 
+> The particular test that shows the problem is a large write like
+>  dd if=/dev/zero of=/mnt/nfs/somefile count=2000000
+> then in another window
+>  ls -l /mnt/nfs
+> 
+> the "ls -l" will hang until the "dd" completes.
+> 
+> Can we put the mutex lock/unlock back please?
+> 
+> Thanks,
+> NeilBrown
 
--- 
+--
 Chuck Lever
 chuck[dot]lever[at]oracle[dot]com
-
 
 
 
