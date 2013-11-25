@@ -1,90 +1,94 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e39.co.us.ibm.com ([32.97.110.160]:48545 "EHLO
-	e39.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753178Ab3KMAdr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Nov 2013 19:33:47 -0500
-Received: from /spool/local
-	by e39.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <eshel@us.ibm.com>;
-	Tue, 12 Nov 2013 17:33:47 -0700
-In-Reply-To: <20131112230201.GB28033@fieldses.org>
-References: <1384283048-7699-1-git-send-email-bjschuma@netapp.com> <20131112194529.GA26341@fieldses.org> <OF83A00AE9.3A2F46C6-ON88257C21.007C6003-88257C21.007CE9E4@us.ibm.com> <20131112230201.GB28033@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Anna Schumaker <bjschuma@netapp.com>, linux-nfs@vger.kernel.org,
-        linux-nfs-owner@vger.kernel.org, Marc Eshel <eshel@us.ibm.com>
+Received: from mx12.netapp.com ([216.240.18.77]:46706 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753622Ab3KYUVH convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Nov 2013 15:21:07 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Andy" <William.Adamson@netapp.com>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/1] NFSv4.1 fix a kswap nfs4_state_manger race
+Date: Mon, 25 Nov 2013 20:20:57 +0000
+Message-ID: <A18682DD-86C4-47C0-89F4-B8298F918AC9@netapp.com>
+References: <1385402270-14284-1-git-send-email-andros@netapp.com>
+ <1385402270-14284-2-git-send-email-andros@netapp.com>
+ <5B8C7A9D-CD9E-487A-AC62-B1292649835D@netapp.com>
+ <496E7DBC-183B-43A2-91D4-837FC092E88A@netapp.com>
+ <676D25D8-B845-42BC-BB1E-6441B6B8E5E3@netapp.com>
+ <5BE68579-3F17-4786-89B9-21CEC1A94E8E@netapp.com>
+ <48468258-591E-49A8-9EAA-2DD8E3993100@netapp.com>
+In-Reply-To: <48468258-591E-49A8-9EAA-2DD8E3993100@netapp.com>
+Content-Type: text/plain; charset="Windows-1252"
 MIME-Version: 1.0
-Subject: Re: [PATCH v2 0/3] NFSD: Implement SEEK
-From: Marc Eshel <eshel@us.ibm.com>
-Message-ID: <OFFBE22971.98BDE120-ON88257C22.0002C427-88257C22.000302F8@us.ibm.com>
-Date: Tue, 12 Nov 2013 16:32:51 -0800
-Content-Type: text/plain; charset="US-ASCII"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-"J. Bruce Fields" <bfields@fieldses.org> wrote on 11/12/2013 03:02:01 PM:
 
-> From: "J. Bruce Fields" <bfields@fieldses.org>
-> To: Marc Eshel/Almaden/IBM@IBMUS, 
-> Cc: Anna Schumaker <bjschuma@netapp.com>, linux-nfs@vger.kernel.org,
-> linux-nfs-owner@vger.kernel.org
-> Date: 11/12/2013 03:19 PM
-> Subject: Re: [PATCH v2 0/3] NFSD: Implement SEEK
-> 
-> On Tue, Nov 12, 2013 at 02:44:21PM -0800, Marc Eshel wrote:
-> > linux-nfs-owner@vger.kernel.org wrote on 11/12/2013 11:45:29 AM:
-> > 
-> > > From: "J. Bruce Fields" <bfields@fieldses.org>
-> > > To: Anna Schumaker <bjschuma@netapp.com>, 
-> > > Cc: linux-nfs@vger.kernel.org
-> > > Date: 11/12/2013 12:07 PM
-> > > Subject: Re: [PATCH v2 0/3] NFSD: Implement SEEK
-> > > Sent by: linux-nfs-owner@vger.kernel.org
-> > > 
-> > > On Tue, Nov 12, 2013 at 02:04:05PM -0500, Anna Schumaker wrote:
-> > > > These patches implement just the SEEK NFS v4.2 operation. 
-WRITE_PLUS 
-> > is
-> > > > still under discussion with the IETF after my last series of 
-patches, 
-> > so I
-> > > > am holding off on resubmitting until after spec discussion dies 
-down.
-> > > > 
-> > > > Questions?  Comments?  Thoughts?
-> > > > Anna
-> > > > 
-> > > > Anna Schumaker (3):
-> > > >   NFSD: Update error codes
-> > > 
-> > > I don't think I got this first patch.
-> > > 
-> > > >   NFSD: Create nfs v4.2 decode ops
-> > > >   NFSD: Implement SEEK
-> > > 
-> > > I'd like to be reassured the protocol is reasonably stable before we
-> > > commit this.  I haven't been following the ietf wg discussion 
-closely.
-> > > 
-> > > And this should initially be disabled by default.  So, probably 
-either:
-> > 
-> > It is not enough that it is usable only for client the mount 
-> > minorversion=2
-> > anyone using this option knows that they are using a prototype.
-> 
-> The client may default to minorversion=2 some day, so, no, the user
-> doesn't necessarily know they're using a prototype.
-> 
-> And the server doesn't have any control over what kernel or distro the
-> client's running.  We want future clients to be able to default to 4.2,
-> and we don't require servers and clients to be upgraded in lockstep.
-
-The server accepting 4.2 mount can be under config options but once it is 
-mounted it can support the new features by checking for the the version, 
-right?
-Marc.
+On Nov 25, 2013, at 15:10, Adamson, Andy <William.Adamson@netapp.com> wrote:
 
 > 
-> --b.
+> On Nov 25, 2013, at 2:53 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+> wrote:
 > 
+>> 
+>> On Nov 25, 2013, at 14:27, Adamson, Andy <William.Adamson@netapp.com> wrote:
+>> 
+>>> 
+>>> On Nov 25, 2013, at 1:33 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+>>> wrote:
+>>> 
+>>>> 
+>>>> On Nov 25, 2013, at 13:13, Myklebust, Trond <Trond.Myklebust@netapp.com> wrote:
+>>>> 
+>>>>> 
+>>>>> On Nov 25, 2013, at 12:57, <andros@netapp.com> <andros@netapp.com> wrote:
+>>>>> 
+>>>>>> From: Andy Adamson <andros@netapp.com>
+>>>>>> 
+>>>>>> The state manager is recovering expired state and recovery OPENs are being
+>>>>>> processed. If kswapd is pruning inodes at the same time, a deadlock can occur
+>>>>>> when kswapd calls evict_inode on an NFSv4.1 inode with a layout, and the
+>>>>>> resultant layoutreturn gets an error that the state mangager is to handle,
+>>>>>> causing the layoutreturn to wait on the (NFS client) cl_rpcwaitq.
+>>>>>> 
+>>>>>> At the same time an open is waiting for the inode deletion to complete in
+>>>>>> __wait_on_freeing_inode.
+>>>>>> 
+>>>>>> If the open is either the open called by the state manager, or an open from
+>>>>>> the same open owner that is holding the NFSv4.0 sequence id which causes the
+>>>>>> OPEN from the state manager to wait for the sequence id on the Seqid_waitqueue,
+>>>>>> then the state is deadlocked with kswapd.
+>>>>>> 
+>>>>>> Do not handle LAYOUTRETURN errors when called from nfs4_evict_inode.
+>>>>> 
+>>>>> Why are we waiting for recovery in LAYOUTRETURN at all? Layouts are automatically lost when the server reboots or when the lease is otherwise lost.
+>>>>> 
+>>>>> IOW: Is there any reason why we need to special-case nfs4_evict_inode? Shouldn’t we just bail out on error in _all_ cases?
+>>>> 
+>>>> BTW: Is it possible that we might have a similar problem with delegreturn? That too can be called from nfs4_evict_inode…
+>>> 
+>>> Yes, good point.  kswapd could be waiting for a delegation to return which has an error along with the same scenario with sys_open and the state manager running.
+>>> 
+>>> With delegreturn, we most definately want to limit 'no error handling' to the evict inode case.
+>> 
+>> Ah… I forgot that the delegreturn in nfs4_evict_inode is asynchronous and doesn’t wait for completion, so it shouldn’t be a problem here.
+> 
+> Except we just changed that to fix a different state manager hang:
+> 
+> commit 4a82fd7c4e78a1b7a224f9ae8bb7e1fd95f670e0
+> Author: Andy Adamson <andros@netapp.com>
+> Date:   Fri Nov 15 16:36:16 2013 -0500
+> 
+>    NFSv4 wait on recovery for async session errors
+
+Right, but that won’t prevent nfs4_evict_inode from completing, and hence the OPEN that is waiting in nfs_fhget() can also complete, and so there is no deadlock with the state manager thread.
+
+Cheers
+  Trond
+--
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
 
