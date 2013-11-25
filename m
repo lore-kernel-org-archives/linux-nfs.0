@@ -1,121 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:49426 "EHLO mx1.redhat.com"
+Received: from mx1.netapp.com ([216.240.18.38]:11048 "EHLO mx1.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752833Ab3KNLN3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 14 Nov 2013 06:13:29 -0500
-Date: Thu, 14 Nov 2013 06:13:04 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: <linux-nfs@vger.kernel.org>, Weston Andros Adamson <dros@netapp.com>
-Subject: Re: [PATCH v2] SUNRPC: Avoid deep recursion in rpc_release_client
-Message-ID: <20131114061304.44aea650@tlielax.poochiereds.net>
-In-Reply-To: <1384296615-17963-1-git-send-email-Trond.Myklebust@netapp.com>
-References: <1384295767-16456-1-git-send-email-Trond.Myklebust@netapp.com>
-	<1384296615-17963-1-git-send-email-Trond.Myklebust@netapp.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1757066Ab3KYSdX convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Nov 2013 13:33:23 -0500
+From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+To: "Adamson, Andy" <William.Adamson@netapp.com>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/1] NFSv4.1 fix a kswap nfs4_state_manger race
+Date: Mon, 25 Nov 2013 18:33:11 +0000
+Message-ID: <496E7DBC-183B-43A2-91D4-837FC092E88A@netapp.com>
+References: <1385402270-14284-1-git-send-email-andros@netapp.com>
+ <1385402270-14284-2-git-send-email-andros@netapp.com>
+ <5B8C7A9D-CD9E-487A-AC62-B1292649835D@netapp.com>
+In-Reply-To: <5B8C7A9D-CD9E-487A-AC62-B1292649835D@netapp.com>
+Content-Type: text/plain; charset="Windows-1252"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 12 Nov 2013 17:50:15 -0500
-Trond Myklebust <Trond.Myklebust@netapp.com> wrote:
 
-> In cases where an rpc client has a parent hierarchy, then
-> rpc_free_client may end up calling rpc_release_client() on the
-> parent, thus recursing back into rpc_free_client. If the hierarchy
-> is deep enough, then we can get into situations where the stack
-> simply overflows.
-> 
-> The fix is to have rpc_release_client() loop so that it can take
-> care of the parent rpc client hierarchy without needing to
-> recurse.
-> 
-> Reported-by: Jeff Layton <jlayton@redhat.com>
-> Reported-by: Weston Andros Adamson <dros@netapp.com>
-> Cc: stable@vger.kernel.org
-> Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
-> ---
-> v2: Don't recurse if parent == NULL (Doh!)
-> 
-> 
->  net/sunrpc/clnt.c | 29 +++++++++++++++++------------
->  1 file changed, 17 insertions(+), 12 deletions(-)
-> 
-> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-> index dab09dac8fc7..f09b7db2c492 100644
-> --- a/net/sunrpc/clnt.c
-> +++ b/net/sunrpc/clnt.c
-> @@ -750,14 +750,16 @@ EXPORT_SYMBOL_GPL(rpc_shutdown_client);
->  /*
->   * Free an RPC client
->   */
-> -static void
-> +static struct rpc_clnt *
->  rpc_free_client(struct rpc_clnt *clnt)
->  {
-> +	struct rpc_clnt *parent = NULL;
-> +
->  	dprintk_rcu("RPC:       destroying %s client for %s\n",
->  			clnt->cl_program->name,
->  			rcu_dereference(clnt->cl_xprt)->servername);
->  	if (clnt->cl_parent != clnt)
-> -		rpc_release_client(clnt->cl_parent);
-> +		parent = clnt->cl_parent;
->  	rpc_clnt_remove_pipedir(clnt);
->  	rpc_unregister_client(clnt);
->  	rpc_free_iostats(clnt->cl_metrics);
-> @@ -766,18 +768,17 @@ rpc_free_client(struct rpc_clnt *clnt)
->  	rpciod_down();
->  	rpc_free_clid(clnt);
->  	kfree(clnt);
-> +	return parent;
->  }
->  
->  /*
->   * Free an RPC client
->   */
-> -static void
-> +static struct rpc_clnt * 
->  rpc_free_auth(struct rpc_clnt *clnt)
->  {
-> -	if (clnt->cl_auth == NULL) {
-> -		rpc_free_client(clnt);
-> -		return;
-> -	}
-> +	if (clnt->cl_auth == NULL)
-> +		return rpc_free_client(clnt);
->  
->  	/*
->  	 * Note: RPCSEC_GSS may need to send NULL RPC calls in order to
-> @@ -788,7 +789,8 @@ rpc_free_auth(struct rpc_clnt *clnt)
->  	rpcauth_release(clnt->cl_auth);
->  	clnt->cl_auth = NULL;
->  	if (atomic_dec_and_test(&clnt->cl_count))
-> -		rpc_free_client(clnt);
-> +		return rpc_free_client(clnt);
-> +	return NULL;
->  }
->  
->  /*
-> @@ -799,10 +801,13 @@ rpc_release_client(struct rpc_clnt *clnt)
->  {
->  	dprintk("RPC:       rpc_release_client(%p)\n", clnt);
->  
-> -	if (list_empty(&clnt->cl_tasks))
-> -		wake_up(&destroy_wait);
-> -	if (atomic_dec_and_test(&clnt->cl_count))
-> -		rpc_free_auth(clnt);
-> +	do {
-> +		if (list_empty(&clnt->cl_tasks))
-> +			wake_up(&destroy_wait);
-> +		if (!atomic_dec_and_test(&clnt->cl_count))
-> +			break;
-> +		clnt = rpc_free_auth(clnt);
-> +	} while (clnt != NULL);
->  }
->  EXPORT_SYMBOL_GPL(rpc_release_client);
->  
+On Nov 25, 2013, at 13:13, Myklebust, Trond <Trond.Myklebust@netapp.com> wrote:
 
-Much better!
+> 
+> On Nov 25, 2013, at 12:57, <andros@netapp.com> <andros@netapp.com> wrote:
+> 
+>> From: Andy Adamson <andros@netapp.com>
+>> 
+>> The state manager is recovering expired state and recovery OPENs are being
+>> processed. If kswapd is pruning inodes at the same time, a deadlock can occur
+>> when kswapd calls evict_inode on an NFSv4.1 inode with a layout, and the
+>> resultant layoutreturn gets an error that the state mangager is to handle,
+>> causing the layoutreturn to wait on the (NFS client) cl_rpcwaitq.
+>> 
+>> At the same time an open is waiting for the inode deletion to complete in
+>> __wait_on_freeing_inode.
+>> 
+>> If the open is either the open called by the state manager, or an open from
+>> the same open owner that is holding the NFSv4.0 sequence id which causes the
+>> OPEN from the state manager to wait for the sequence id on the Seqid_waitqueue,
+>> then the state is deadlocked with kswapd.
+>> 
+>> Do not handle LAYOUTRETURN errors when called from nfs4_evict_inode.
+> 
+> Why are we waiting for recovery in LAYOUTRETURN at all? Layouts are automatically lost when the server reboots or when the lease is otherwise lost.
+> 
+> IOW: Is there any reason why we need to special-case nfs4_evict_inode? Shouldn’t we just bail out on error in _all_ cases?
 
-Reviewed-by: Jeff Layton <jlayton@redhat.com>
+BTW: Is it possible that we might have a similar problem with delegreturn? That too can be called from nfs4_evict_inode...
+
+--
+Trond Myklebust
+Linux NFS client maintainer
+
+NetApp
+Trond.Myklebust@netapp.com
+www.netapp.com
+
