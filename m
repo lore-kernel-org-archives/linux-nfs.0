@@ -1,53 +1,105 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:54273 "EHLO mx1.redhat.com"
+Received: from mx1.netapp.com ([216.240.18.38]:11444 "EHLO mx1.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751185Ab3KOOxG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 15 Nov 2013 09:53:06 -0500
-Date: Fri, 15 Nov 2013 09:52:41 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 7/7] nfs: page cache invalidation for dio
-Message-ID: <20131115095241.2c5e1cfb@tlielax.poochiereds.net>
-In-Reply-To: <20131115142847.GA1107@infradead.org>
-References: <20131114165027.355613182@bombadil.infradead.org>
-	<20131114165042.205194841@bombadil.infradead.org>
-	<20131114133551.5d08b5cd@tlielax.poochiereds.net>
-	<20131115142847.GA1107@infradead.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1754850Ab3KYR54 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 25 Nov 2013 12:57:56 -0500
+From: <andros@netapp.com>
+To: <trond.myklebust@netapp.com>
+CC: <linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 1/1] NFSv4.1 fix a kswap nfs4_state_manger race
+Date: Mon, 25 Nov 2013 12:57:50 -0500
+Message-ID: <1385402270-14284-2-git-send-email-andros@netapp.com>
+In-Reply-To: <1385402270-14284-1-git-send-email-andros@netapp.com>
+References: <1385402270-14284-1-git-send-email-andros@netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 15 Nov 2013 06:28:47 -0800
-Christoph Hellwig <hch@infradead.org> wrote:
+From: Andy Adamson <andros@netapp.com>
 
-> On Thu, Nov 14, 2013 at 01:35:51PM -0500, Jeff Layton wrote:
-> > Hrm... I started chasing down a bug reported by our QA group last week
-> > that's showing up when you mix DIO writes and buffered reads
-> > (basically, diotest3 in the LTP suite is failing). The bug is marked
-> > private for dumb reasons but I'll see if I can make it public. I'll
-> > also plan to give this series a spin to see if it helps fix that bug...
-> > 
-> > In any case, the DIO write code calls nfs_zap_mapping after it gets the
-> > WRITE reply. That sets NFS_INO_INVALID_DATA and should prevent buffered
-> > read() calls from getting data out of the cache after the write reply
-> > comes in.
-> > 
-> > Why is that not sufficient here?
-> 
-> Sounds like it should actually be fine, although I had similar testcases
-> fail.  I didn't even notice we were doing the invalidation, but delaying
-> it.  Can't see how that helps when bringing mmap into the game, although
-> that was always an best effort and pray that it works scenario.
->
+The state manager is recovering expired state and recovery OPENs are being
+processed. If kswapd is pruning inodes at the same time, a deadlock can occur
+when kswapd calls evict_inode on an NFSv4.1 inode with a layout, and the
+resultant layoutreturn gets an error that the state mangager is to handle,
+causing the layoutreturn to wait on the (NFS client) cl_rpcwaitq.
 
-Ok, cool. The bug that I've been looking at with Trond's help is here:
+At the same time an open is waiting for the inode deletion to complete in
+__wait_on_freeing_inode.
 
-    https://bugzilla.redhat.com/show_bug.cgi?id=919382
+If the open is either the open called by the state manager, or an open from
+the same open owner that is holding the NFSv4.0 sequence id which causes the
+OPEN from the state manager to wait for the sequence id on the Seqid_waitqueue,
+then the state is deadlocked with kswapd.
 
-Do you have these patches in a git tree someplace? If so, I wouldn't
-mind running this reproducer against it to see if it helps. It's a bit
-of a longshot, but what the heck...
+Do not handle LAYOUTRETURN errors when called from nfs4_evict_inode.
+
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/nfs4proc.c       | 6 ++++++
+ fs/nfs/pnfs.c           | 5 ++++-
+ include/linux/nfs_xdr.h | 1 +
+ 3 files changed, 11 insertions(+), 1 deletion(-)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index ca36d0d..fbeadf3 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -7596,6 +7596,12 @@ static void nfs4_layoutreturn_done(struct rpc_task *task, void *calldata)
+ 		return;
+ 
+ 	server = NFS_SERVER(lrp->args.inode);
++
++	/* Error handling can dead lock the state manager running open
++	 * recovery when kswapd is also pruning inodes. */
++	if (lrp->ino_freeing)
++		return;
++
+ 	if (nfs4_async_handle_error(task, server, NULL) == -EAGAIN) {
+ 		rpc_restart_call_prepare(task);
+ 		return;
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index d75d938..a55ebf2 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -819,7 +819,7 @@ _pnfs_return_layout(struct inode *ino)
+ 	LIST_HEAD(tmp_list);
+ 	struct nfs4_layoutreturn *lrp;
+ 	nfs4_stateid stateid;
+-	int status = 0, empty;
++	int status = 0, empty, freeing = 0;
+ 
+ 	dprintk("NFS: %s for inode %lu\n", __func__, ino->i_ino);
+ 
+@@ -844,6 +844,8 @@ _pnfs_return_layout(struct inode *ino)
+ 		goto out;
+ 	}
+ 	lo->plh_block_lgets++;
++	if (ino->i_state & I_FREEING)
++		freeing = 1;
+ 	spin_unlock(&ino->i_lock);
+ 	pnfs_free_lseg_list(&tmp_list);
+ 
+@@ -863,6 +865,7 @@ _pnfs_return_layout(struct inode *ino)
+ 	lrp->args.layout = lo;
+ 	lrp->clp = NFS_SERVER(ino)->nfs_client;
+ 	lrp->cred = lo->plh_lc_cred;
++	lrp->ino_freeing = freeing;
+ 
+ 	status = nfs4_proc_layoutreturn(lrp);
+ out:
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 3ccfcec..b815345 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -316,6 +316,7 @@ struct nfs4_layoutreturn {
+ 	struct nfs4_layoutreturn_res res;
+ 	struct rpc_cred *cred;
+ 	struct nfs_client *clp;
++	int ino_freeing;
+ 	int rpc_status;
+ };
+ 
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.8.3.1
+
