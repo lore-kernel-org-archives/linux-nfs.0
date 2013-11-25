@@ -1,95 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e39.co.us.ibm.com ([32.97.110.160]:36857 "EHLO
-	e39.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757104Ab3KLWo2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Nov 2013 17:44:28 -0500
-Received: from /spool/local
-	by e39.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <eshel@us.ibm.com>;
-	Tue, 12 Nov 2013 15:44:28 -0700
-In-Reply-To: <20131112194529.GA26341@fieldses.org>
-References: <1384283048-7699-1-git-send-email-bjschuma@netapp.com> <20131112194529.GA26341@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Anna Schumaker <bjschuma@netapp.com>, linux-nfs@vger.kernel.org,
-        linux-nfs-owner@vger.kernel.org
+Received: from mail-pd0-f174.google.com ([209.85.192.174]:37797 "EHLO
+	mail-pd0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753710Ab3KYKFk convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Nov 2013 05:05:40 -0500
 MIME-Version: 1.0
-Subject: Re: [PATCH v2 0/3] NFSD: Implement SEEK
-From: Marc Eshel <eshel@us.ibm.com>
-Message-ID: <OF83A00AE9.3A2F46C6-ON88257C21.007C6003-88257C21.007CE9E4@us.ibm.com>
-Date: Tue, 12 Nov 2013 14:44:21 -0800
-Content-Type: text/plain; charset="US-ASCII"
+In-Reply-To: <19201.1385372189@warthog.procyon.org.uk>
+References: <CAMuHMdUiK4CHXESCEYvGJfE1ROGa=MC_c=qAQgKVS7GmkBXz=Q@mail.gmail.com>
+	<19201.1385372189@warthog.procyon.org.uk>
+Date: Mon, 25 Nov 2013 11:05:39 +0100
+Message-ID: <CAMuHMdWNKJP6wA0AGvEN1dEKNw9Vux+5sSv=6An8M-TdBCCGZA@mail.gmail.com>
+Subject: Re: assoc_array.c uninitialized variable (was: Re: [PATCH 02/10] Add
+ a generic associative array implementation.)
+From: Geert Uytterhoeven <geert@linux-m68k.org>
+To: David Howells <dhowells@redhat.com>
+Cc: keyrings@linux-nfs.org, linux-security-module@vger.kernel.org,
+        "open list:NFS, SUNRPC, AND..." <linux-nfs@vger.kernel.org>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        Linus Torvalds <torvalds@linux-foundation.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-linux-nfs-owner@vger.kernel.org wrote on 11/12/2013 11:45:29 AM:
+Hi David,
 
-> From: "J. Bruce Fields" <bfields@fieldses.org>
-> To: Anna Schumaker <bjschuma@netapp.com>, 
-> Cc: linux-nfs@vger.kernel.org
-> Date: 11/12/2013 12:07 PM
-> Subject: Re: [PATCH v2 0/3] NFSD: Implement SEEK
-> Sent by: linux-nfs-owner@vger.kernel.org
-> 
-> On Tue, Nov 12, 2013 at 02:04:05PM -0500, Anna Schumaker wrote:
-> > These patches implement just the SEEK NFS v4.2 operation.  WRITE_PLUS 
-is
-> > still under discussion with the IETF after my last series of patches, 
-so I
-> > am holding off on resubmitting until after spec discussion dies down.
-> > 
-> > Questions?  Comments?  Thoughts?
-> > Anna
-> > 
-> > Anna Schumaker (3):
-> >   NFSD: Update error codes
-> 
-> I don't think I got this first patch.
-> 
-> >   NFSD: Create nfs v4.2 decode ops
-> >   NFSD: Implement SEEK
-> 
-> I'd like to be reassured the protocol is reasonably stable before we
-> commit this.  I haven't been following the ietf wg discussion closely.
-> 
-> And this should initially be disabled by default.  So, probably either:
+On Mon, Nov 25, 2013 at 10:36 AM, David Howells <dhowells@redhat.com> wrote:
+> Geert Uytterhoeven <geert@linux-m68k.org> wrote:
+>
+>> > +       int slot, next_slot, free_slot, i, j;
+>>
+>> lib/assoc_array.c: In function ‘assoc_array_insert_into_terminal_node’:
+>> lib/assoc_array.c:502: warning: ‘j’ may be used uninitialized in this function
+>
+> What compiler are you using?  Mine doesn't show this.
 
-It is not enough that it is usable only for client the mount 
-minorversion=2
-anyone using this option knows that they are using a prototype.
-Marc.
-> 
->    - Introduce a new NFSD_V4_SEEK option, or
->    - Combine this and NFSD_V4_SECURITY_LABEL and this into a single
->      NFSD_V4_2 option.
-> 
-> And recommend "N" for now.
-> 
-> Probably the latter I guess, to be consistent with the client.  And
-> because otherwise we could end up with an awful lot of config options.
-> 
-> --b.
-> 
-> > 
-> >  fs/nfsd/nfs4proc.c   | 56 +++++++++++++++++++++++++++++++++++++++
-> +++++++++++
-> >  fs/nfsd/nfs4xdr.c    | 58 +++++++++++++++++++++++++++++++++++++++
-> +++++++++++++
-> >  fs/nfsd/nfsd.h       |  2 +-
-> >  fs/nfsd/xdr4.h       | 16 +++++++++++++++
-> >  include/linux/nfs4.h | 23 ++++++++++++++++++---
-> >  5 files changed, 151 insertions(+), 4 deletions(-)
-> > 
-> > -- 
-> > 1.8.4.2
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" 
-in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+Good old 4.2.1. Newer compilers don't give these warnings anymore, presumably
+because there were too many false positives. But from time to time, there's
+a real issue.
 
+> Technically, the compiler is correct - but we should never see the variable
+> undefined following the found_slot_for_multiple_occupancy unless the tree
+> changes under us. Out of a set of N+1 integers that can only be in the range
+> 0..N-1 there must be at least two the same.
+
+OK.
+
+> I guess I could preclear j to make the warning go away.
+
+Please use a big number instead of zero, so the
+
+        BUG_ON(j >= ASSOC_ARRAY_FAN_OUT + 1);
+
+will catch it later.
+
+Gr{oetje,eeting}s,
+
+                        Geert
+
+--
+Geert Uytterhoeven -- There's lots of Linux beyond ia32 -- geert@linux-m68k.org
+
+In personal conversations with technical people, I call myself a hacker. But
+when I'm talking to journalists I just say "programmer" or something like that.
+                                -- Linus Torvalds
