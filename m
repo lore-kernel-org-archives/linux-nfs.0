@@ -1,67 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f51.google.com ([209.85.216.51]:35523 "EHLO
-	mail-qa0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759153Ab3KMOIa (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 13 Nov 2013 09:08:30 -0500
-Received: by mail-qa0-f51.google.com with SMTP id hu16so460503qab.3
-        for <linux-nfs@vger.kernel.org>; Wed, 13 Nov 2013 06:08:29 -0800 (PST)
-From: Jeff Layton <jlayton@redhat.com>
-To: trond.myklebust@netapp.com
-Cc: linux-nfs@vger.kernel.org, chuck.lever@oracle.com, dros@netapp.com
-Subject: [PATCH v2] nfs: don't retry detect_trunking with RPC_AUTH_UNIX more than once
-Date: Wed, 13 Nov 2013 09:08:21 -0500
-Message-Id: <1384351701-29572-1-git-send-email-jlayton@redhat.com>
+Received: from mx11.netapp.com ([216.240.18.76]:55162 "EHLO mx11.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754636Ab3KYUKb convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Nov 2013 15:10:31 -0500
+From: "Adamson, Andy" <William.Adamson@netapp.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "Adamson, Andy" <William.Adamson@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/1] NFSv4.1 fix a kswap nfs4_state_manger race
+Date: Mon, 25 Nov 2013 20:10:29 +0000
+Message-ID: <48468258-591E-49A8-9EAA-2DD8E3993100@netapp.com>
+References: <1385402270-14284-1-git-send-email-andros@netapp.com>
+ <1385402270-14284-2-git-send-email-andros@netapp.com>
+ <5B8C7A9D-CD9E-487A-AC62-B1292649835D@netapp.com>
+ <496E7DBC-183B-43A2-91D4-837FC092E88A@netapp.com>
+ <676D25D8-B845-42BC-BB1E-6441B6B8E5E3@netapp.com>
+ <5BE68579-3F17-4786-89B9-21CEC1A94E8E@netapp.com>
+In-Reply-To: <5BE68579-3F17-4786-89B9-21CEC1A94E8E@netapp.com>
+Content-Type: text/plain; charset="Windows-1252"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently, when we try to mount and get back NFS4ERR_CLID_IN_USE or
-NFS4ERR_WRONGSEC, we create a new rpc_clnt and then try the call again.
-There is no guarantee that doing so will work however, so we can end up
-retrying the call in an infinite loop.
 
-Worse yet, we create the new client using rpc_clone_client_set_auth,
-which creates the new client as a child of the old one. Thus, we can end
-up with a *very* long lineage of rpc_clnts. When we go to put all of the
-references to them, we can end up with a long call chain that can smash
-the stack as each rpc_free_client() call can recurse back into itself.
+On Nov 25, 2013, at 2:53 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+ wrote:
 
-This patch fixes this by simply ensuring that the SETCLIENTID call will
-only be retried in this situation if the last attempt did not use
-RPC_AUTH_UNIX.
+> 
+> On Nov 25, 2013, at 14:27, Adamson, Andy <William.Adamson@netapp.com> wrote:
+> 
+>> 
+>> On Nov 25, 2013, at 1:33 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+>> wrote:
+>> 
+>>> 
+>>> On Nov 25, 2013, at 13:13, Myklebust, Trond <Trond.Myklebust@netapp.com> wrote:
+>>> 
+>>>> 
+>>>> On Nov 25, 2013, at 12:57, <andros@netapp.com> <andros@netapp.com> wrote:
+>>>> 
+>>>>> From: Andy Adamson <andros@netapp.com>
+>>>>> 
+>>>>> The state manager is recovering expired state and recovery OPENs are being
+>>>>> processed. If kswapd is pruning inodes at the same time, a deadlock can occur
+>>>>> when kswapd calls evict_inode on an NFSv4.1 inode with a layout, and the
+>>>>> resultant layoutreturn gets an error that the state mangager is to handle,
+>>>>> causing the layoutreturn to wait on the (NFS client) cl_rpcwaitq.
+>>>>> 
+>>>>> At the same time an open is waiting for the inode deletion to complete in
+>>>>> __wait_on_freeing_inode.
+>>>>> 
+>>>>> If the open is either the open called by the state manager, or an open from
+>>>>> the same open owner that is holding the NFSv4.0 sequence id which causes the
+>>>>> OPEN from the state manager to wait for the sequence id on the Seqid_waitqueue,
+>>>>> then the state is deadlocked with kswapd.
+>>>>> 
+>>>>> Do not handle LAYOUTRETURN errors when called from nfs4_evict_inode.
+>>>> 
+>>>> Why are we waiting for recovery in LAYOUTRETURN at all? Layouts are automatically lost when the server reboots or when the lease is otherwise lost.
+>>>> 
+>>>> IOW: Is there any reason why we need to special-case nfs4_evict_inode? Shouldn’t we just bail out on error in _all_ cases?
+>>> 
+>>> BTW: Is it possible that we might have a similar problem with delegreturn? That too can be called from nfs4_evict_inode…
+>> 
+>> Yes, good point.  kswapd could be waiting for a delegation to return which has an error along with the same scenario with sys_open and the state manager running.
+>> 
+>> With delegreturn, we most definately want to limit 'no error handling' to the evict inode case.
+> 
+> Ah… I forgot that the delegreturn in nfs4_evict_inode is asynchronous and doesn’t wait for completion, so it shouldn’t be a problem here.
 
-Note too that with this change, we don't need the (i > 2) check in the
--EACCES case since we now have a more reliable test as to whether we
-should reattempt.
+Except we just changed that to fix a different state manager hang:
 
-Cc: stable@vger.kernel.org # v3.10+
-Cc: Chuck Lever <chuck.lever@oracle.com>
-Tested-by/Acked-by: Weston Andros Adamson <dros@netapp.com>
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfs/nfs4state.c | 7 ++++++-
- 1 file changed, 6 insertions(+), 1 deletion(-)
+commit 4a82fd7c4e78a1b7a224f9ae8bb7e1fd95f670e0
+Author: Andy Adamson <andros@netapp.com>
+Date:   Fri Nov 15 16:36:16 2013 -0500
 
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index c8e729d..6f04706 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -2093,10 +2093,15 @@ again:
- 			nfs4_root_machine_cred(clp);
- 			goto again;
- 		}
--		if (i > 2)
-+		if (clnt->cl_auth->au_flavor == RPC_AUTH_UNIX)
- 			break;
- 	case -NFS4ERR_CLID_INUSE:
- 	case -NFS4ERR_WRONGSEC:
-+		/* No point in retrying if we already used RPC_AUTH_UNIX */
-+		if (clnt->cl_auth->au_flavor == RPC_AUTH_UNIX) {
-+			status = -EPERM;
-+			break;
-+		}
- 		clnt = rpc_clone_client_set_auth(clnt, RPC_AUTH_UNIX);
- 		if (IS_ERR(clnt)) {
- 			status = PTR_ERR(clnt);
--- 
-1.8.3.1
+    NFSv4 wait on recovery for async session errors
+
+> 
+> Cheers
+>  Trond
 
