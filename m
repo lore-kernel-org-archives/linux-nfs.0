@@ -1,133 +1,519 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:6707 "EHLO mx11.netapp.com"
+Received: from mx1.redhat.com ([209.132.183.28]:58514 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751796Ab3KYUyH convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Nov 2013 15:54:07 -0500
-From: "Adamson, Andy" <William.Adamson@netapp.com>
-To: "Adamson, Andy" <William.Adamson@netapp.com>
-CC: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/1] NFSv4.1 fix a kswap nfs4_state_manger race
-Date: Mon, 25 Nov 2013 20:54:05 +0000
-Message-ID: <532C2C5F-C00C-41F2-BEC5-8D4DEBB4F20A@netapp.com>
-References: <1385402270-14284-1-git-send-email-andros@netapp.com>
- <1385402270-14284-2-git-send-email-andros@netapp.com>
- <5B8C7A9D-CD9E-487A-AC62-B1292649835D@netapp.com>
- <496E7DBC-183B-43A2-91D4-837FC092E88A@netapp.com>
- <676D25D8-B845-42BC-BB1E-6441B6B8E5E3@netapp.com>
- <5BE68579-3F17-4786-89B9-21CEC1A94E8E@netapp.com>
- <48468258-591E-49A8-9EAA-2DD8E3993100@netapp.com>
- <A18682DD-86C4-47C0-89F4-B8298F918AC9@netapp.com>
- <3A65AD2F-797E-4292-BA9C-4CF20BD075CB@netapp.com>
- <79AE6267-FF17-4299-B127-EB10E0B243D1@netapp.com>
-In-Reply-To: <79AE6267-FF17-4299-B127-EB10E0B243D1@netapp.com>
-Content-Type: text/plain; charset="Windows-1252"
+	id S1755071Ab3KYRsS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 25 Nov 2013 12:48:18 -0500
+Message-ID: <52938D8E.7020806@redhat.com>
+Date: Mon, 25 Nov 2013 23:19:02 +0530
+From: Susant Sahani <ssahani@redhat.com>
 MIME-Version: 1.0
+To: Steve Dickson <SteveD@redhat.com>,
+        Libtirpc-devel Mailing List
+	<libtirpc-devel@lists.sourceforge.net>
+CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/1] data race in bindresvport_sa
+References: <1384966173-6229-1-git-send-email-ssahani@redhat.com> <528F8631.2070604@RedHat.com>
+In-Reply-To: <528F8631.2070604@RedHat.com>
+Content-Type: multipart/mixed;
+ boundary="------------060408070601060409070600"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+This is a multi-part message in MIME format.
+--------------060408070601060409070600
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
-On Nov 25, 2013, at 3:51 PM, "Adamson, Andy" <William.Adamson@netapp.com>
- wrote:
-
-> 
-> On Nov 25, 2013, at 3:29 PM, "Adamson, Andy" <William.Adamson@netapp.com>
-> wrote:
-> 
->> 
->> On Nov 25, 2013, at 3:20 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com>
->> wrote:
->> 
->>> 
->>> On Nov 25, 2013, at 15:10, Adamson, Andy <William.Adamson@netapp.com> wrote:
->>> 
->>>> 
->>>> On Nov 25, 2013, at 2:53 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com>
->>>> wrote:
->>>> 
->>>>> 
->>>>> On Nov 25, 2013, at 14:27, Adamson, Andy <William.Adamson@netapp.com> wrote:
->>>>> 
->>>>>> 
->>>>>> On Nov 25, 2013, at 1:33 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com>
->>>>>> wrote:
->>>>>> 
->>>>>>> 
->>>>>>> On Nov 25, 2013, at 13:13, Myklebust, Trond <Trond.Myklebust@netapp.com> wrote:
->>>>>>> 
->>>>>>>> 
->>>>>>>> On Nov 25, 2013, at 12:57, <andros@netapp.com> <andros@netapp.com> wrote:
->>>>>>>> 
->>>>>>>>> From: Andy Adamson <andros@netapp.com>
->>>>>>>>> 
->>>>>>>>> The state manager is recovering expired state and recovery OPENs are being
->>>>>>>>> processed. If kswapd is pruning inodes at the same time, a deadlock can occur
->>>>>>>>> when kswapd calls evict_inode on an NFSv4.1 inode with a layout, and the
->>>>>>>>> resultant layoutreturn gets an error that the state mangager is to handle,
->>>>>>>>> causing the layoutreturn to wait on the (NFS client) cl_rpcwaitq.
->>>>>>>>> 
->>>>>>>>> At the same time an open is waiting for the inode deletion to complete in
->>>>>>>>> __wait_on_freeing_inode.
->>>>>>>>> 
->>>>>>>>> If the open is either the open called by the state manager, or an open from
->>>>>>>>> the same open owner that is holding the NFSv4.0 sequence id which causes the
->>>>>>>>> OPEN from the state manager to wait for the sequence id on the Seqid_waitqueue,
->>>>>>>>> then the state is deadlocked with kswapd.
->>>>>>>>> 
->>>>>>>>> Do not handle LAYOUTRETURN errors when called from nfs4_evict_inode.
->>>>>>>> 
->>>>>>>> Why are we waiting for recovery in LAYOUTRETURN at all? Layouts are automatically lost when the server reboots or when the lease is otherwise lost.
->>>>>>>> 
->>>>>>>> IOW: Is there any reason why we need to special-case nfs4_evict_inode? Shouldn’t we just bail out on error in _all_ cases?
->>>>>>> 
->>>>>>> BTW: Is it possible that we might have a similar problem with delegreturn? That too can be called from nfs4_evict_inode…
->>>>>> 
->>>>>> Yes, good point.  kswapd could be waiting for a delegation to return which has an error along with the same scenario with sys_open and the state manager running.
->>>>>> 
->>>>>> With delegreturn, we most definately want to limit 'no error handling' to the evict inode case.
->>>>> 
->>>>> Ah… I forgot that the delegreturn in nfs4_evict_inode is asynchronous and doesn’t wait for completion, so it shouldn’t be a problem here.
->>>> 
->>>> Except we just changed that to fix a different state manager hang:
->>>> 
->>>> commit 4a82fd7c4e78a1b7a224f9ae8bb7e1fd95f670e0
->>>> Author: Andy Adamson <andros@netapp.com>
->>>> Date:   Fri Nov 15 16:36:16 2013 -0500
->>>> 
->>>> NFSv4 wait on recovery for async session errors
->>> 
->>> Right, but that won’t prevent nfs4_evict_inode from completing,
->> 
->> Ah - I was thinking of the synchronous handlers call to nfs4_wait_clnt_recover - so yes, no problem
-> 
-> In fact, this issue is NOT an upstream issue!  RHEL6.5-pre has nfs4_proc_layoutreturn as as SYNC rpc call, and _that_ is the bug that is fixed upstream.
-> 
-> Really sorry for the confusion. I'll back port a solution for RHEL6.5
+Hi Steved,
+      I am sorry not for giving proper description . I have addressed 
+your comments attached the patches .
+Thanks,
+Susant
 
 
-please ignore this message.
+On 11/22/2013 09:58 PM, Steve Dickson wrote:
+> Hello,
+>
+> Would it be possible to get a little better description as
+> to what this patch does and why its needed...
+> "data race in bindresvport_sa" have very little
+> meaning, at least to me...
+>
+> More comments below...
+>
+> On 20/11/13 11:49, Susant Sahani wrote:
+>> Signed-off-by: Susant Sahani <ssahani@redhat.com>
+>> ---
+>>   src/bindresvport.c | 16 +++++++++++++---
+>>   1 file changed, 13 insertions(+), 3 deletions(-)
+>>
+>> diff --git a/src/bindresvport.c b/src/bindresvport.c
+>> index 6ce3e81..d26d754 100644
+>> --- a/src/bindresvport.c
+>> +++ b/src/bindresvport.c
+>> @@ -46,6 +46,7 @@
+>>   #include <rpc/rpc.h>
+>>   
+>>   #include <string.h>
+>> +#include <reentrant.h>
+>>   
+>>   /*
+>>    * Bind a socket to a privileged IP port
+>> @@ -79,17 +80,23 @@ bindresvport_sa(sd, sa)
+>>   	u_int16_t *portp;
+>>   	static u_int16_t port;
+>>   	static short startport = STARTPORT;
+>> +	static pthread_mutex_t port_lock = PTHREAD_MUTEX_INITIALIZER;
+> How come you define this mutex statically instead in src/mt_misc.c
+> like the rest of the mutexes?
+>
+> Would you mind moving this (and the other two in the patches)
+> to src/mt_misc.c and added a commit talking about what they
+> are protecting
+>
+> tia!
+>
+> steved.
+>
+>>   	socklen_t salen;
+>> -	int nports = ENDPORT - startport + 1;
+>> +	int nports;
+>>   	int endport = ENDPORT;
+>>   	int i;
+>>   
+>> +	mutex_lock(&port_lock);
+>> +	nports = ENDPORT - startport + 1;
+>> +
+>>           if (sa == NULL) {
+>>                   salen = sizeof(myaddr);
+>>                   sa = (struct sockaddr *)&myaddr;
+>>   
+>> -                if (getsockname(sd, (struct sockaddr *)&myaddr, &salen) == -1)
+>> -                        return -1;      /* errno is correctly set */
+>> +                if (getsockname(sd, (struct sockaddr *)&myaddr, &salen) == -1) {
+>> +                    mutex_unlock(&port_lock);
+>> +                    return -1;      /* errno is correctly set */
+>> +                }
+>>   
+>>                   af = myaddr.ss_family;
+>>           } else
+>> @@ -112,6 +119,7 @@ bindresvport_sa(sd, sa)
+>>   #endif
+>>           default:
+>>                   errno = EPFNOSUPPORT;
+>> +                mutex_unlock(&port_lock);
+>>                   return (-1);
+>>           }
+>>           sa->sa_family = af;
+>> @@ -137,6 +145,8 @@ bindresvport_sa(sd, sa)
+>>   	    port = LOWPORT + port % (STARTPORT - LOWPORT);
+>>   	    goto again;
+>>   	}
+>> +	mutex_unlock(&port_lock);
+>> +
+>>           return (res);
+>>   }
+>>   #else
+>>
 
 
-> 
-> -->Andy
-> 
-> 
->> 
->> -->Andy
->> 
->>> and hence the OPEN that is waiting in nfs_fhget() can also complete, and so there is no deadlock with the state manager thread.
->> 
->>> 
->>> Cheers
->>> Trond
->>> --
->>> Trond Myklebust
->>> Linux NFS client maintainer
->>> 
->>> NetApp
->>> Trond.Myklebust@netapp.com
->>> www.netapp.com
->>> 
->> 
-> 
+--------------060408070601060409070600
+Content-Type: text/x-patch;
+ name="0001-Race-conditions-in-getnetconfig.patch"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="0001-Race-conditions-in-getnetconfig.patch"
 
+>From 37ce9e21d64f98e79be9da4415a78cb4f644737f Mon Sep 17 00:00:00 2001
+From: Susant Sahani <ssahani@redhat.com>
+Date: Sat, 23 Nov 2013 13:07:14 +0530
+Subject: [PATCH 1/3] Race conditions in getnetconfig
+
+ The clnt_* functions are *not* thread safe. Race conditions are caused
+by the functions setnetconfig , getnetconfig, endnetconfig and
+getnetconfigent that accesses global static data nc_file and ni which
+are defined in the file getnetconfig are *not* protected by any mutex.
+When more than one thread access them the variables become a nonlocal
+side effect . These race conditions causing process to give undesired
+behavior and leading to crash on file operations mostly on fclose. By
+introducing the mutex nc_db_lock the netconfig database is synchronized
+and prevented from crash.
+
+Signed-off-by: Susant Sahani <ssahani@redhat.com>
+---
+ src/getnetconfig.c | 51 +++++++++++++++++++++++++++++++++++++++++----------
+ src/mt_misc.c      |  3 +++
+ 2 files changed, 44 insertions(+), 10 deletions(-)
+
+diff --git a/src/getnetconfig.c b/src/getnetconfig.c
+index af4a484..3d9a9ea 100644
+--- a/src/getnetconfig.c
++++ b/src/getnetconfig.c
+@@ -120,6 +120,7 @@ static struct netconfig *dup_ncp(struct netconfig *);
+ 
+ static FILE *nc_file;		/* for netconfig db */
+ static struct netconfig_info	ni = { 0, 0, NULL, NULL};
++extern pthread_mutex_t nc_db_lock;
+ 
+ #define MAXNETCONFIGLINE    1000
+ 
+@@ -191,14 +192,17 @@ setnetconfig()
+      * For multiple calls, i.e. nc_file is not NULL, we just return the
+      * handle without reopening the netconfig db.
+      */
++    mutex_lock(&nc_db_lock);
+     ni.ref++;
+     if ((nc_file != NULL) || (nc_file = fopen(NETCONFIG, "r")) != NULL) {
+ 	nc_vars->valid = NC_VALID;
+ 	nc_vars->flag = 0;
+ 	nc_vars->nc_configs = ni.head;
++	mutex_unlock(&nc_db_lock);
+ 	return ((void *)nc_vars);
+     }
+     ni.ref--;
++    mutex_unlock(&nc_db_lock);
+     nc_error = NC_NONETCONFIG;
+     free(nc_vars);
+     return (NULL);
+@@ -221,12 +225,15 @@ void *handlep;
+     char *stringp;		/* tmp string pointer */
+     struct netconfig_list	*list;
+     struct netconfig *np;
++    struct netconfig *result;
+ 
+     /*
+      * Verify that handle is valid
+      */
++    mutex_lock(&nc_db_lock);
+     if (ncp == NULL || nc_file == NULL) {
+ 	nc_error = NC_NOTINIT;
++	mutex_unlock(&nc_db_lock);
+ 	return (NULL);
+     }
+ 
+@@ -243,11 +250,14 @@ void *handlep;
+ 	if (ncp->flag == 0) {	/* first time */
+ 	    ncp->flag = 1;
+ 	    ncp->nc_configs = ni.head;
+-	    if (ncp->nc_configs != NULL)	/* entry already exist */
++	    if (ncp->nc_configs != NULL)	/* entry already exist */ {
++		mutex_unlock(&nc_db_lock);
+ 		return(ncp->nc_configs->ncp);
++            }
+ 	}
+ 	else if (ncp->nc_configs != NULL && ncp->nc_configs->next != NULL) {
+ 	    ncp->nc_configs = ncp->nc_configs->next;
++	    mutex_unlock(&nc_db_lock);
+ 	    return(ncp->nc_configs->ncp);
+ 	}
+ 
+@@ -255,16 +265,22 @@ void *handlep;
+ 	 * If we cannot find the entry in the list and is end of file,
+ 	 * we give up.
+ 	 */
+-	if (ni.eof == 1)	return(NULL);
++	if (ni.eof == 1) {
++            mutex_unlock(&nc_db_lock);
++            return(NULL);
++        }
+ 	break;
+     default:
+ 	nc_error = NC_NOTINIT;
++	mutex_unlock(&nc_db_lock);
+ 	return (NULL);
+     }
+ 
+     stringp = (char *) malloc(MAXNETCONFIGLINE);
+-    if (stringp == NULL)
++    if (stringp == NULL) {
++	mutex_unlock(&nc_db_lock);
+     	return (NULL);
++    }
+ 
+ #ifdef MEM_CHK
+     if (malloc_verify() == 0) {
+@@ -280,6 +296,7 @@ void *handlep;
+ 	if (fgets(stringp, MAXNETCONFIGLINE, nc_file) == NULL) {
+ 	    free(stringp);
+ 	    ni.eof = 1;
++	    mutex_unlock(&nc_db_lock);
+ 	    return (NULL);
+         }
+     } while (*stringp == '#');
+@@ -287,12 +304,14 @@ void *handlep;
+     list = (struct netconfig_list *) malloc(sizeof (struct netconfig_list));
+     if (list == NULL) {
+     	free(stringp);
++	mutex_unlock(&nc_db_lock);
+     	return(NULL);
+     }
+     np = (struct netconfig *) malloc(sizeof (struct netconfig));
+     if (np == NULL) {
+     	free(stringp);
+ 	free(list);
++	mutex_unlock(&nc_db_lock);
+     	return(NULL);
+     }
+     list->ncp = np;
+@@ -303,6 +322,7 @@ void *handlep;
+ 	free(stringp);
+ 	free(np);
+ 	free(list);
++	mutex_unlock(&nc_db_lock);
+ 	return (NULL);
+     }
+     else {
+@@ -320,7 +340,9 @@ void *handlep;
+     	    ni.tail = ni.tail->next;
+     	}
+ 	ncp->nc_configs = ni.tail;
+-	return(ni.tail->ncp);
++	result = ni.tail->ncp;
++	mutex_unlock(&nc_db_lock);
++	return result;
+     }
+ }
+ 
+@@ -354,7 +376,9 @@ void *handlep;
+     nc_handlep->valid = NC_INVALID;
+     nc_handlep->flag = 0;
+     nc_handlep->nc_configs = NULL;
++    mutex_lock(&nc_db_lock);
+     if (--ni.ref > 0) {
++	mutex_unlock(&nc_db_lock);
+     	free(nc_handlep);
+ 	return(0);
+     }
+@@ -376,9 +400,11 @@ void *handlep;
+ 	q = p;
+     }
+     free(nc_handlep);
+-
+-    fclose(nc_file);
++    if(nc_file != NULL) {
++        fclose(nc_file);
++    }
+     nc_file = NULL;
++    mutex_unlock(&nc_db_lock);
+     return (0);
+ }
+ 
+@@ -426,16 +452,21 @@ getnetconfigent(netid)
+      * If all the netconfig db has been read and placed into the list and
+      * there is no match for the netid, return NULL.
+      */
++    mutex_lock(&nc_db_lock);
+     if (ni.head != NULL) {
+ 	for (list = ni.head; list; list = list->next) {
+ 	    if (strcmp(list->ncp->nc_netid, netid) == 0) {
+-	        return(dup_ncp(list->ncp));
++		ncp = dup_ncp(list->ncp);
++		mutex_unlock(&nc_db_lock);
++		return ncp;
+ 	    }
+ 	}
+-	if (ni.eof == 1)	/* that's all the entries */
+-		return(NULL);
++        if (ni.eof == 1) {	/* that's all the entries */
++	    mutex_unlock(&nc_db_lock);
++	    return(NULL);
++        }
+     }
+-
++    mutex_unlock(&nc_db_lock);
+ 
+     if ((file = fopen(NETCONFIG, "r")) == NULL) {
+ 	nc_error = NC_NONETCONFIG;
+diff --git a/src/mt_misc.c b/src/mt_misc.c
+index fe12c31..b24c130 100644
+--- a/src/mt_misc.c
++++ b/src/mt_misc.c
+@@ -91,6 +91,9 @@ pthread_mutex_t	xprtlist_lock = PTHREAD_MUTEX_INITIALIZER;
+ /* serializes calls to public key routines */
+ pthread_mutex_t serialize_pkey = PTHREAD_MUTEX_INITIALIZER;
+ 
++/* protects global variables ni and nc_file (getnetconfig.c) */
++pthread_mutex_t nc_db_lock = PTHREAD_MUTEX_INITIALIZER;
++
+ #undef	rpc_createerr
+ 
+ struct rpc_createerr rpc_createerr;
+-- 
+1.8.4.2
+
+
+--------------060408070601060409070600
+Content-Type: text/x-patch;
+ name="0002-Race-condition-in-bindresvport.patch"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="0002-Race-condition-in-bindresvport.patch"
+
+>From 08af7bdaf61fc69b5dbc6136d8311d51b586ed63 Mon Sep 17 00:00:00 2001
+From: Susant Sahani <ssahani@redhat.com>
+Date: Sat, 23 Nov 2013 13:10:32 +0530
+Subject: [PATCH 2/3] Race condition in bindresvport
+
+ The function clnt_create is *not* thread safe . Race conditions in
+the function bindresvport that accesses static data port and startport,
+which are *not* protected by any mutex. When more than one thread
+access them the variables become a nonlocal side effect. These race conditions
+can lead to undesired behaviour . By introducing the mutex port_lock
+the function bindresvport is serialized.
+
+Signed-off-by: Susant Sahani <ssahani@redhat.com>
+---
+ src/bindresvport.c | 16 +++++++++++++---
+ src/mt_misc.c      |  3 +++
+ 2 files changed, 16 insertions(+), 3 deletions(-)
+
+diff --git a/src/bindresvport.c b/src/bindresvport.c
+index 6ce3e81..910056e 100644
+--- a/src/bindresvport.c
++++ b/src/bindresvport.c
+@@ -46,6 +46,7 @@
+ #include <rpc/rpc.h>
+ 
+ #include <string.h>
++#include <reentrant.h>
+ 
+ /*
+  * Bind a socket to a privileged IP port
+@@ -79,17 +80,23 @@ bindresvport_sa(sd, sa)
+ 	u_int16_t *portp;
+ 	static u_int16_t port;
+ 	static short startport = STARTPORT;
++	extern pthread_mutex_t port_lock;
+ 	socklen_t salen;
+-	int nports = ENDPORT - startport + 1;
++	int nports;
+ 	int endport = ENDPORT;
+ 	int i;
+ 
++	mutex_lock(&port_lock);
++	nports = ENDPORT - startport + 1;
++
+         if (sa == NULL) {
+                 salen = sizeof(myaddr);
+                 sa = (struct sockaddr *)&myaddr;
+ 
+-                if (getsockname(sd, (struct sockaddr *)&myaddr, &salen) == -1)
+-                        return -1;      /* errno is correctly set */
++                if (getsockname(sd, (struct sockaddr *)&myaddr, &salen) == -1) {
++                    mutex_unlock(&port_lock);
++                    return -1;      /* errno is correctly set */
++                }
+ 
+                 af = myaddr.ss_family;
+         } else
+@@ -112,6 +119,7 @@ bindresvport_sa(sd, sa)
+ #endif
+         default:
+                 errno = EPFNOSUPPORT;
++                mutex_unlock(&port_lock);
+                 return (-1);
+         }
+         sa->sa_family = af;
+@@ -137,6 +145,8 @@ bindresvport_sa(sd, sa)
+ 	    port = LOWPORT + port % (STARTPORT - LOWPORT);
+ 	    goto again;
+ 	}
++	mutex_unlock(&port_lock);
++
+         return (res);
+ }
+ #else
+diff --git a/src/mt_misc.c b/src/mt_misc.c
+index b24c130..ddbb0a5 100644
+--- a/src/mt_misc.c
++++ b/src/mt_misc.c
+@@ -94,6 +94,9 @@ pthread_mutex_t serialize_pkey = PTHREAD_MUTEX_INITIALIZER;
+ /* protects global variables ni and nc_file (getnetconfig.c) */
+ pthread_mutex_t nc_db_lock = PTHREAD_MUTEX_INITIALIZER;
+ 
++/* protects static port and startport (bindresvport.c) */
++pthread_mutex_t port_lock = PTHREAD_MUTEX_INITIALIZER;
++
+ #undef	rpc_createerr
+ 
+ struct rpc_createerr rpc_createerr;
+-- 
+1.8.4.2
+
+
+--------------060408070601060409070600
+Content-Type: text/x-patch;
+ name="0003-Race-in-Race-in-clnt_vc_create.patch"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="0003-Race-in-Race-in-clnt_vc_create.patch"
+
+>From f850621962cb57c7bebfc93bd28db1f26be213aa Mon Sep 17 00:00:00 2001
+From: Susant Sahani <ssahani@redhat.com>
+Date: Sat, 23 Nov 2013 13:12:59 +0530
+Subject: [PATCH 3/3] Race in Race in clnt_vc_create
+
+ The function clnt_create is *not* thread safe. Race conditions in the
+function clnt_vc_create that accesses static data disrupt, which is
+*not* protected by any mutex. When more than one thread access it
+it has become a nonlocal side effect . This race conditions can lead to
+undesired behaviour . By introducing the mutex disrupt_lock
+the function clnt_vc_create is serialized
+
+Signed-off-by: Susant Sahani <ssahani@redhat.com>
+---
+ src/clnt_vc.c | 5 +++++
+ src/mt_misc.c | 3 +++
+ 2 files changed, 8 insertions(+)
+
+diff --git a/src/clnt_vc.c b/src/clnt_vc.c
+index 2eab9e4..cbbfc58 100644
+--- a/src/clnt_vc.c
++++ b/src/clnt_vc.c
+@@ -173,14 +173,17 @@ clnt_vc_create(fd, raddr, prog, vers, sendsz, recvsz)
+ 	struct timeval now;
+ 	struct rpc_msg call_msg;
+ 	static u_int32_t disrupt;
++	extern pthread_mutex_t disrupt_lock;
+ 	sigset_t mask;
+ 	sigset_t newmask;
+ 	struct sockaddr_storage ss;
+ 	socklen_t slen;
+ 	struct __rpc_sockinfo si;
+ 
++	mutex_lock(&disrupt_lock);
+ 	if (disrupt == 0)
+ 		disrupt = (u_int32_t)(long)raddr;
++	mutex_unlock(&disrupt_lock);
+ 
+ 	cl = (CLIENT *)mem_alloc(sizeof (*cl));
+ 	ct = (struct ct_data *)mem_alloc(sizeof (*ct));
+@@ -270,7 +273,9 @@ clnt_vc_create(fd, raddr, prog, vers, sendsz, recvsz)
+ 	 * Initialize call message
+ 	 */
+ 	(void)gettimeofday(&now, NULL);
++	mutex_lock(&disrupt_lock);
+ 	call_msg.rm_xid = ((u_int32_t)++disrupt) ^ __RPC_GETXID(&now);
++	mutex_unlock(&disrupt_lock);
+ 	call_msg.rm_direction = CALL;
+ 	call_msg.rm_call.cb_rpcvers = RPC_MSG_VERSION;
+ 	call_msg.rm_call.cb_prog = (u_int32_t)prog;
+diff --git a/src/mt_misc.c b/src/mt_misc.c
+index ddbb0a5..d459dec 100644
+--- a/src/mt_misc.c
++++ b/src/mt_misc.c
+@@ -97,6 +97,9 @@ pthread_mutex_t nc_db_lock = PTHREAD_MUTEX_INITIALIZER;
+ /* protects static port and startport (bindresvport.c) */
+ pthread_mutex_t port_lock = PTHREAD_MUTEX_INITIALIZER;
+ 
++/* protects static disrupt (clnt_vc.c) */
++pthread_mutex_t disrupt_lock = PTHREAD_MUTEX_INITIALIZER;
++
+ #undef	rpc_createerr
+ 
+ struct rpc_createerr rpc_createerr;
+-- 
+1.8.4.2
+
+
+--------------060408070601060409070600--
