@@ -1,83 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:3067 "EHLO mx12.netapp.com"
+Received: from mx11.netapp.com ([216.240.18.76]:21891 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753828Ab3KGVjp convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Nov 2013 16:39:45 -0500
-From: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
-To: Steve Dickson <SteveD@redhat.com>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] Adding the nfs4_use_min_auth module parameter
-Date: Thu, 7 Nov 2013 21:39:43 +0000
-Message-ID: <1383860381.12966.37.camel@leira.trondhjem.org>
-References: <1383851364-8370-1-git-send-email-steved@redhat.com>
-	 <1383852380.12966.5.camel@leira.trondhjem.org>
-	 <527C0548.1090205@RedHat.com>
-In-Reply-To: <527C0548.1090205@RedHat.com>
-Content-Type: text/plain; charset="utf-7"
+	id S1757674Ab3KYSRw convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 25 Nov 2013 13:17:52 -0500
+From: "Adamson, Andy" <William.Adamson@netapp.com>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+CC: "Adamson, Andy" <William.Adamson@netapp.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/1] NFSv4.1 fix a kswap nfs4_state_manger race
+Date: Mon, 25 Nov 2013 18:17:49 +0000
+Message-ID: <7E331FE8-EF05-434D-8434-0C35C3EF2F8B@netapp.com>
+References: <1385402270-14284-1-git-send-email-andros@netapp.com>
+ <1385402270-14284-2-git-send-email-andros@netapp.com>
+ <5B8C7A9D-CD9E-487A-AC62-B1292649835D@netapp.com>
+In-Reply-To: <5B8C7A9D-CD9E-487A-AC62-B1292649835D@netapp.com>
+Content-Type: text/plain; charset="Windows-1252"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2013-11-07 at 16:25 -0500, Steve Dickson wrote:
-+AD4- Hey,
-+AD4- 
-+AD4- On 07/11/13 14:26, Myklebust, Trond wrote:
-+AD4- +AD4- On Thu, 2013-11-07 at 14:09 -0500, Steve Dickson wrote:
-+AD4- +AD4APg- This new module parameter makes the v4 client
-+AD4- +AD4APg- use the minimal authentication flavor (AUTH+AF8-UNIX)
-+AD4- +AD4APg- when establishing NFSV4 state and doing the
-+AD4- +AD4APg- pseudoroot lookup
-+AD4- +AD4APg-
-+AD4- +AD4- 
-+AD4- +AD4- That looks very ad-hoc. Quite frankly, you can do the exact same thing
-+AD4- +AD4- already by simply blacklisting the rpcsec+AF8-gss+AF8-krb5 and/or auth+AF8-rpcgss
-+AD4- +AD4- modules.
-+AD4- I tried to keep a very small foot print... I'm not sure why that 
-+AD4- looks ad-hoc to you... 
-+AD4- 
-+AD4- If we blacklist those module(s) then we are disabling secure mounts
-+AD4- altogether... 
 
-What's the difference? If you use secure mounts, you really do want the
-NFSv4 state to be secure too.
+On Nov 25, 2013, at 1:13 PM, "Myklebust, Trond" <Trond.Myklebust@netapp.com>
+ wrote:
 
-+AD4- +AD4- I think we should rather looks at adding a new mount option for
-+AD4- +AD4- specifying the security flavour to use when establishing basic NFSv4.x
-+AD4- +AD4- state, and then perhaps specifying the +AF8-default+AF8- for that mount option
-+AD4- +AD4- using a module parameter.
-+AD4- The problem is everything is hard code in these two areas so having
-+AD4- a mount option would not work... 
+> 
+> On Nov 25, 2013, at 12:57, <andros@netapp.com> <andros@netapp.com> wrote:
+> 
+>> From: Andy Adamson <andros@netapp.com>
+>> 
+>> The state manager is recovering expired state and recovery OPENs are being
+>> processed. If kswapd is pruning inodes at the same time, a deadlock can occur
+>> when kswapd calls evict_inode on an NFSv4.1 inode with a layout, and the
+>> resultant layoutreturn gets an error that the state mangager is to handle,
+>> causing the layoutreturn to wait on the (NFS client) cl_rpcwaitq.
+>> 
+>> At the same time an open is waiting for the inode deletion to complete in
+>> __wait_on_freeing_inode.
+>> 
+>> If the open is either the open called by the state manager, or an open from
+>> the same open owner that is holding the NFSv4.0 sequence id which causes the
+>> OPEN from the state manager to wait for the sequence id on the Seqid_waitqueue,
+>> then the state is deadlocked with kswapd.
+>> 
+>> Do not handle LAYOUTRETURN errors when called from nfs4_evict_inode.
+> 
+> Why are we waiting for recovery in LAYOUTRETURN at all? Layouts are automatically lost when the server reboots or when the lease is otherwise lost.
+> 
+> IOW: Is there any reason why we need to special-case nfs4_evict_inode? Shouldn’t we just bail out on error in _all_ cases?
 
-We can change that code.
+Yeah, I was thinking about this as well - perhaps recovering from session-level errors or grace/delay errors would be useful for the block client.
 
-+AD4- The fact that -o sec+AD0-sys does not turn off the use of AUTH+AF8-GSS+AF8-KRB5x 
-+AD4- is simple wrong... IMHO...
+-->Andy
 
-I beg to differ. The problem previously was that it +AF8-did+AF8- set the policy
-for the state management, and that meant that if you has 2 mounts on the
-same server with different security flavours, then then client behaviour
-depended on the order of the mounts. Get the order wrong, and you get
-anything from outright errors (CLID+AF8-IN+AF8-USE) to insecure behaviour.
+> 
+> Cheers
+>  Trond
+> 
+> --
+> Trond Myklebust
+> Linux NFS client maintainer
+> 
+> NetApp
+> Trond.Myklebust@netapp.com
+> www.netapp.com
+> 
 
-+AD4-  Not having way to override this behavior
-+AD4- is not a good thing... again... IMHO... 
-+AD4- 
-+AD4- Finally, Are there any servers out there today that support this type
-+AD4- of behavior? Requiring secure state establishment or secure 
-+AD4- pseudoroot lookups. 
-+AD4- 
-+AD4- Bruce, can we configure the Linux server to require this type security behavior? 
-+AD4- Can any server out there require these type of security behavior?  
-+AD4- 
-+AD4- If the answer is no, then we really need a way to disable this type
-+AD4- of behavior....
-
-I don't disagree with the goal, I disagree with the method.
-
--- 
-Trond Myklebust
-Linux NFS client maintainer
-
-NetApp
-Trond.Myklebust+AEA-netapp.com
-www.netapp.com
