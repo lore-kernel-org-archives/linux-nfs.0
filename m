@@ -1,38 +1,123 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f178.google.com ([209.85.223.178]:53613 "EHLO
-	mail-ie0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755078Ab3KNUnY convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 14 Nov 2013 15:43:24 -0500
-Received: by mail-ie0-f178.google.com with SMTP id aq17so3615691iec.9
-        for <linux-nfs@vger.kernel.org>; Thu, 14 Nov 2013 12:43:24 -0800 (PST)
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 7.0 \(1822\))
-Subject: Re: [PATCH 6/7] nfs: take i_mutex during direct I/O reads
-From: Trond Myklebust <trondmy@gmail.com>
-In-Reply-To: <20131114165042.013211118@bombadil.infradead.org>
-Date: Thu, 14 Nov 2013 15:43:21 -0500
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <C0D328CF-8E30-49E7-AE2C-A05EC463921B@gmail.com>
-References: <20131114165027.355613182@bombadil.infradead.org> <20131114165042.013211118@bombadil.infradead.org>
-To: Christoph Hellwig <hch@infradead.org>
+Received: from cantor2.suse.de ([195.135.220.15]:59174 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753398Ab3KYE74 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 24 Nov 2013 23:59:56 -0500
+Date: Mon, 25 Nov 2013 15:59:42 +1100
+From: NeilBrown <neilb@suse.de>
+To: "Myklebust, Trond" <Trond.Myklebust@netapp.com>,
+        Chuck Lever <chuck.lever@oracle.com>
+Cc: NFS <linux-nfs@vger.kernel.org>
+Subject: The return of the hanging "ls"...
+Message-ID: <20131125155942.0a3e4ca1@notabene.brown>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/dy9J4RgxK3S7Ljv_kSDwZ/n"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+--Sig_/dy9J4RgxK3S7Ljv_kSDwZ/n
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-On Nov 14, 2013, at 11:50, Christoph Hellwig <hch@infradead.org> wrote:
 
-> We'll need the i_mutex to prevent i_dio_count from incrementing while
-> truncate is waiting for it to reach zero, and protects against having
-> the pagecache repopulated after we flushed it.
-> 
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
+Hi Trond,
+ I just noticed commit acdc53b2146c7ee67feb1f02f7bc3020126514b8 from 2010
+reverts the effect commit 28c494c5c8d425e15b7b82571e4df6d6bc34594d from Chu=
+nk
+in 2007.
 
-Hi Christoph,
+Specifically it removes mutex lock/unlock in nfs_getattr.
+Chuck added them:
 
-Why do we need to protect the page cache here? Using O_DIRECT and the page cache without some kind of application-specific synchronization method is technically not supported, since that violates close-to-open cache consistency.
-What we _do_ want to support, though, is parallel reads and writes to the server by applications that know what they are doing. If we were to only protect the i_dio_count, then we could fix the truncate race, while continuing to allow parallelism. Is there any reason why we cannot do this?
+-       /* Flush out writes to the server in order to update c/mtime */
+-       if (S_ISREG(inode->i_mode))
++       /*
++        * Flush out writes to the server in order to update c/mtime.
++        *
++        * Hold the i_mutex to suspend application writes temporarily;
++        * this prevents long-running writing applications from blocking
++        * nfs_wb_nocommit.
++        */
++       if (S_ISREG(inode->i_mode)) {
++               mutex_lock(&inode->i_mutex);
+                nfs_wb_nocommit(inode);
++               mutex_unlock(&inode->i_mutex);
++       }
 
-Cheers
-  Trond
 
-PS: I appear to be missing 7/7 in this patch series. Should I have seen it?
+You removed them.
+
+-       /*
+-        * Flush out writes to the server in order to update c/mtime.
+-        *
+-        * Hold the i_mutex to suspend application writes temporarily;
+-        * this prevents long-running writing applications from blocking
+-        * nfs_wb_nocommit.
+-        */
++       /* Flush out writes to the server in order to update c/mtime.  */
+        if (S_ISREG(inode->i_mode)) {
+-               mutex_lock(&inode->i_mutex);
+-               nfs_wb_nocommit(inode);
+-               mutex_unlock(&inode->i_mutex);
++               err =3D filemap_write_and_wait(inode->i_mapping);
++               if (err)
++                       goto out;
+        }
+=20
+        /*
+
+
+Do you recall why?
+
+I noticed because a customer reported exactly the same symptoms the were
+fixed by Chucks patch some years ago.
+
+
+The comment on your patch says (in part):
+
+    Also replace nfs_wb_nocommit() with a
+    call to filemap_write_and_wait(), which doesn't need to hold the
+    inode->i_mutex.
+
+It is certainly true that filemap_write_and_wait doesn't need to hold the
+mutex, but neither did nfs_wb_nocommit.  The mutex is held to stop "suspend
+application writes temporarily" so no more pages get dirtied until all
+the current dirty pages have been written out.  i.e. to stop
+generic_file_aio_write() from proceeding.
+
+The particular test that shows the problem is a large write like
+  dd if=3D/dev/zero of=3D/mnt/nfs/somefile count=3D2000000
+then in another window
+  ls -l /mnt/nfs
+
+the "ls -l" will hang until the "dd" completes.
+
+Can we put the mutex lock/unlock back please?
+
+Thanks,
+NeilBrown
+
+--Sig_/dy9J4RgxK3S7Ljv_kSDwZ/n
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.22 (GNU/Linux)
+
+iQIVAwUBUpLZPjnsnt1WYoG5AQLRnhAAjtXtKouLAvIbwL1bQSfoyIbiJqqa6YpQ
+MvKgFVvIjjwdHFdq+Br5/y5wL8q16dh3fQY85wKSrgPhQH2qZDzhSH9Nz7nJVv/j
+vFzZbLmj39i609UxoyUtCPgZ13c5jlIlTIzwslhjepbq73MpblDsEQ5aumsD8mYc
+Ib2UuVVHX8WTswdYDbBkpquTx1RQDe/f5/D73nT7HHWQQxcMkCEJrRAO36fdx3IH
+mK1fXo8PyKGcZWVvmrcS8uiQtNENkG03OEMlf8UM0KyZmN5IZdhilV9YXJKZy7CR
+oQbbebC8sUf/oo0t/3NokSvcNKwZVMruGN1hPSNxagwPgCdq/5b18XXFVVSwv7Qq
+gwUMbhINgYLK4SLAtr1LiG0I3iaVoIC+xGWDqi9I2drXOopSm1Ph1P5GdpY0lpy2
+feMFpZdcHEWuRt8ex/W3NDQ7lQQWDsm7W0DrJehPpd+k9by66lVDQAJy64B2ti/C
+iyWhLc/gVyf7DCrda7s/ZVXUWksIjZYhLCe3tgTfQKychanzmxLIz529+d8/C+98
+Vw/xDEt2+jyfCOWGvFWUVV0IPf/g1d1RjVARbDUTCqBLhq0ffju6lCVlnEbPXGYf
+ctycilNs1p/SDDL8BBt3Cm516Jx3KuRQ09DytAEvd+bnmu9fk7LJhHDMAKFIdGI9
+Lf96GD2Tkm8=
+=fnDG
+-----END PGP SIGNATURE-----
+
+--Sig_/dy9J4RgxK3S7Ljv_kSDwZ/n--
