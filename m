@@ -1,73 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:22381 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756298Ab3KLWI7 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 12 Nov 2013 17:08:59 -0500
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.6 \(1510\))
-Subject: Re: [PATCH] nfs: don't retry detect_trunking with RPC_AUTH_UNIX more than once
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1384291851-11154-1-git-send-email-jlayton@redhat.com>
-Date: Tue, 12 Nov 2013 17:08:53 -0500
-Cc: trond.myklebust@netapp.com, linux-nfs@vger.kernel.org, dros@netapp.com
-Message-Id: <B8BE037C-F0E9-4900-A218-67EE146E9BED@oracle.com>
-References: <1384291851-11154-1-git-send-email-jlayton@redhat.com>
-To: Jeff Layton <jlayton@redhat.com>
+Received: from mail-pd0-f172.google.com ([209.85.192.172]:58133 "EHLO
+	mail-pd0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752873Ab3K0K3Z (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Nov 2013 05:29:25 -0500
+Received: by mail-pd0-f172.google.com with SMTP id g10so9653671pdj.31
+        for <linux-nfs@vger.kernel.org>; Wed, 27 Nov 2013 02:29:25 -0800 (PST)
+Message-ID: <5295C982.1030904@gmail.com>
+Date: Wed, 27 Nov 2013 18:29:22 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
+MIME-Version: 1.0
+To: bfields@fieldses.org, linux-nfs@vger.kernel.org
+Subject: [PATCH] Do not enter setup_callback_client when finding backchannel
+ failed
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+If finding backchannel failed, nfsd should not enter setup_callback_client.
 
-On Nov 12, 2013, at 4:30 PM, Jeff Layton <jlayton@redhat.com> wrote:
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+---
+ fs/nfsd/nfs4callback.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-> Currently, when we try to mount and get back NFS4ERR_CLID_IN_USE or
-> NFS4ERR_WRONGSEC, we create a new rpc_clnt and then try the call again.
-> There is no guarantee that doing so will work however, so we can end up
-> retrying the call in an infinite loop.
-> 
-> Worse yet, we create the new client using rpc_clone_client_set_auth,
-> which creates the new client as a child of the old one. Thus, we can end
-> up with a *very* long lineage of rpc_clnts. When we go to put all of the
-> references to them, we can end up with a long call chain that can smash
-> the stack as each rpc_free_client() call can recurse back into itself.
-> 
-> This patch fixes this by simply ensuring that the SETCLIENTID call will
-> only be retried in this situation if the last attempt did not use
-> RPC_AUTH_UNIX.
-> 
-> Cc: stable@vger.kernel.org # v3.10+
-> Cc: Weston Andros Adamson <dros@netapp.com>
-> Cc: Chuck Lever <chuck.lever@oracle.com>
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
-> fs/nfs/nfs4state.c | 5 +++++
-> 1 file changed, 5 insertions(+)
-> 
-> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-> index c8e729d..4c26c01 100644
-> --- a/fs/nfs/nfs4state.c
-> +++ b/fs/nfs/nfs4state.c
-> @@ -2097,6 +2097,11 @@ again:
-> 			break;
-
-Note that the -EACCES case falls through.  I guess it is safe to use the new logic for that case?
-
-There is an "i++" in the EACCES case that is supposed to prevent the looping you describe.  Maybe that should just be removed, now that there is a more robust test here.
-
-> 	case -NFS4ERR_CLID_INUSE:
-> 	case -NFS4ERR_WRONGSEC:
-> +		/* No point in retrying if we already used RPC_AUTH_UNIX */
-> +		if (clnt->cl_auth->au_flavor == RPC_AUTH_UNIX) {
-> +			status = -EPERM;
-> +			break;
-> +		}
-> 		clnt = rpc_clone_client_set_auth(clnt, RPC_AUTH_UNIX);
-> 		if (IS_ERR(clnt)) {
-> 			status = PTR_ERR(clnt);
-
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index 7f05cd1..755d6d6 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -664,7 +664,7 @@ static int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *c
+ 		args.authflavor = clp->cl_cred.cr_flavor;
+ 		clp->cl_cb_ident = conn->cb_ident;
+ 	} else {
+-		if (!conn->cb_xprt)
++		if (!conn->cb_xprt || !ses)
+ 			return -EINVAL;
+ 		clp->cl_cb_conn.cb_xprt = conn->cb_xprt;
+ 		clp->cl_cb_session = ses;
+@@ -982,7 +982,7 @@ static void nfsd4_process_cb_update(struct nfsd4_callback *cb)
+ 	}
+ 	spin_unlock(&clp->cl_lock);
+ 
+-	err = setup_callback_client(clp, &conn, ses);
++	err = c ? setup_callback_client(clp, &conn, ses) : -ENOENT;
+ 	if (err) {
+ 		nfsd4_mark_cb_down(clp, err);
+ 		return;
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
-
+1.8.4.2
