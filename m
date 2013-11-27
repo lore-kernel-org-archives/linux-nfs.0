@@ -1,43 +1,33 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:40745 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751281Ab3KRSCY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 18 Nov 2013 13:02:24 -0500
-Date: Mon, 18 Nov 2013 19:02:59 +0100
-From: Oleg Nesterov <oleg@redhat.com>
-To: "Eric W. Biederman" <ebiederm@xmission.com>
-Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>,
-        Jeff Layton <jlayton@redhat.com>, Greg KH <gregkh@linuxfoundation.org>,
-        linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, devel@openvz.org, bfields@fieldses.org,
-        bharrosh@panasas.com
-Subject: Re: call_usermodehelper in containers
-Message-ID: <20131118180259.GA11722@redhat.com>
-References: <20131111071825.62da01d1@tlielax.poochiereds.net> <20131112004703.GB15377@kroah.com> <20131112061201.04cf25ab@tlielax.poochiereds.net> <528226EC.4050701@parallels.com> <20131112083043.0ab78e67@tlielax.poochiereds.net> <5285FA0A.2080802@parallels.com> <871u2incyo.fsf@xmission.com> <20131118172844.GA10005@redhat.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:43816 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751749Ab3K0Lkg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Nov 2013 06:40:36 -0500
+Date: Wed, 27 Nov 2013 03:40:34 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: David Howells <dhowells@redhat.com>
+Cc: viro@ZenIV.linux.org.uk, linux-cifs@vger.kernel.org,
+        linux-nfs@vger.kernel.org, libc-alpha@sourceware.org,
+        linux-api@vger.kernel.org, andreas.gruenbacher@gmail.com,
+        samba-technical@lists.samba.org, linux-fsdevel@vger.kernel.org
+Subject: Re: [PATCH 1/3] statxat: Provide IOC flags for Windows fs attributes
+Message-ID: <20131127114034.GA13491@infradead.org>
+References: <20131112173518.25813.67568.stgit@warthog.procyon.org.uk>
+ <20131112173526.25813.85546.stgit@warthog.procyon.org.uk>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20131118172844.GA10005@redhat.com>
+In-Reply-To: <20131112173526.25813.85546.stgit@warthog.procyon.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 11/18, Oleg Nesterov wrote:
->
-> On 11/15, Eric W. Biederman wrote:
-> >
-> > I don't understand that one.  Having a preforked thread with the proper
-> > environment that can act like kthreadd in terms of spawning user mode
-> > helpers works and is simple.
->
-> Can't we ask ->child_reaper to create the non-daemonized kernel thread
-> with the "right" ->nsproxy, ->fs, etc?
->
-> IOW. Please the the "patch" below. It is obviously incomplete and wrong,
-> and it can be more clear/clean. And probably we need another API. Just
-> to explain what I mean.
+On Tue, Nov 12, 2013 at 05:35:26PM +0000, David Howells wrote:
+> Provide IOC flags for Windows fs attributes so that they can be retrieved (or
+> even altered) using the FS_IOC_[GS]ETFLAGS ioctl and read using statxat().
 
-Or, perhaps UMH_IN_MY_NS should only work if ->child_reaper explicitly
-does, say, prctl(PR_SPAWN_UMH_IN_NS_HELPER) which forks the non-daemonized
-kernel kthread_worker thread, I dunno.
+As mentioned before we're running out of these flags and we already have
+a horrible mash up between filesystem specific implementation details
+an generally useful ones, so if you want to add them to a stat-like
+call you better define an entirely new namespaces.
 
-Oleg.
+Also each of the added ones needs a good justification either way.
 
