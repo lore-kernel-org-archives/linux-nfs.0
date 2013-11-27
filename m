@@ -1,33 +1,27 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:53502 "EHLO
+Received: from bombadil.infradead.org ([198.137.202.9]:44731 "EHLO
 	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752683Ab3KGQiy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 7 Nov 2013 11:38:54 -0500
-Date: Thu, 7 Nov 2013 08:38:54 -0800
+	with ESMTP id S1751921Ab3K0Pri (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 27 Nov 2013 10:47:38 -0500
+Date: Wed, 27 Nov 2013 07:47:30 -0800
 From: Christoph Hellwig <hch@infradead.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: steved@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] gssd: cut down log chatter in gssd_search_krb5_keytab
-Message-ID: <20131107163854.GA21919@infradead.org>
-References: <1383839253-8223-1-git-send-email-jlayton@redhat.com>
- <20131107155837.GA16658@infradead.org>
- <20131107110928.68244ea7@tlielax.poochiereds.net>
- <20131107162123.GA9411@infradead.org>
- <20131107113310.567c3b64@tlielax.poochiereds.net>
- <20131107163520.GA17857@infradead.org>
- <20131107113656.33034055@tlielax.poochiereds.net>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] proc: change permission of /proc/self/mountstats to 0644
+Message-ID: <20131127154730.GA26985@infradead.org>
+References: <1385553135-23131-1-git-send-email-tigran.mkrtchyan@desy.de>
+ <5069B68E-67AA-46C9-99C4-EE4839F71DFA@oracle.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20131107113656.33034055@tlielax.poochiereds.net>
+In-Reply-To: <5069B68E-67AA-46C9-99C4-EE4839F71DFA@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Nov 07, 2013 at 11:36:56AM -0500, Jeff Layton wrote:
-> No idea then, sorry...
+On Wed, Nov 27, 2013 at 10:21:29AM -0500, Chuck Lever wrote:
+> That is true only if there is a single mount namespace on your system.  The content of mountstats depends on each process's mount namespace.
+> 
+> However, I see that mounts and mountinfo, which also depend on a process's mount namespace, are all S_IRUGO.  I don't see a good reason mountstats should be different.
 
-4.0 is also affected, interestingly it's only reproducible on the first
-mount of a volume after the server started, so I'll assume a server
-issue.  I'm trying to drill it down time permitting, but so far I have
-no clue what's going on.  Doesn't help that recent versions of
-latencytop are unusable..
+Could any of the counters be used as a covert channel?  Any leakage of
+information related to RPCSEC_GSS that could helper attackers?
 
