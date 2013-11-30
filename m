@@ -1,193 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:19506 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750998Ab3KOGPl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 15 Nov 2013 01:15:41 -0500
-Message-ID: <1384496133.14391.112.camel@serendib>
-Subject: Re: [PATCH] exportfs: modify can_test() to use LONG_MAX when
- appropriate
-From: Harshula Jayasuriya <harshula@redhat.com>
-To: NeilBrown <neilb@suse.de>
-Cc: Steve Dickson <steved@redhat.com>, linux-nfs@vger.kernel.org,
-        Jeff Layton <jlayton@redhat.com>,
-        "J.Bruce Fields" <bfields@citi.umich.edu>
-Date: Fri, 15 Nov 2013 17:15:33 +1100
-In-Reply-To: <1384168843.16759.50.camel@serendib>
-References: <1376588800.17754.14.camel@serendib>
-	 <20130815175258.GS17781@fieldses.org> <1384154434.16759.39.camel@serendib>
-	 <20131111185356.6e0fd0a9@notabene.brown>
-	 <1384168843.16759.50.camel@serendib>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from szxga01-in.huawei.com ([119.145.14.64]:46387 "EHLO
+	szxga01-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751204Ab3K3J7I (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 30 Nov 2013 04:59:08 -0500
+Message-ID: <5299B65C.4070700@huawei.com>
+Date: Sat, 30 Nov 2013 17:56:44 +0800
+From: Weng Meiling <wengmeiling.weng@huawei.com>
+MIME-Version: 1.0
+To: <linux-nfs@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
+        <netdev@vger.kernel.org>, "J. Bruce Fields" <bfields@fieldses.org>,
+        <Trond.Myklebust@netapp.com>, <davem@davemloft.net>
+CC: Li Zefan <lizefan@huawei.com>, Huang Qiang <h.huangqiang@huawei.com>
+Subject: [PATCH] sunrpc: fix some typos
+Content-Type: text/plain; charset="ISO-8859-1"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2013-11-11 at 22:20 +1100, Harshula Jayasuriya wrote:
-> On Mon, 2013-11-11 at 18:53 +1100, NeilBrown wrote:
-> > On Mon, 11 Nov 2013 18:20:34 +1100 Harshula Jayasuriya <harshula@redhat.com>
-> > wrote:
-> > 
-> > > This patch is the nfs-utils patch corresponding to the kernel patch 
-> > > commit 2f74f972d4cc7d83408ea0c32d424edcb44887bf "sunrpc: prepare NFS 
-> > > for 2038": "The kernel sunrpc code needs to handle seconds since epoch 
-> > > greater than 2147483647. This means functions that parse time as an 
-> > > int need to handle it as time_t."
-> > > 
-> > > When appropriate exportfs should use LONG_MAX in can_test() instead of
-> > > INT_MAX.
-> > > 
-> > > kernel INT_MAX + exportfs INT_MAX: "Tue Jan 19 03:14:08 UTC 2038"
-> > > =================================================================
-> > > 
-> > > exportfs: /mnt/export does not support NFS export:
-> > > ------------------------------------------------------------
-> > >  # cat /proc/net/rpc/auth.unix.ip/content
-> > >  #class IP domain
-> > > ------------------------------------------------------------
-> > > 
-> > > + mount fail:
-> > > ------------------------------------------------------------
-> > >  # cat /proc/net/rpc/auth.unix.ip/content
-> > >  #class IP domain
-> > >  # expiry=2147483768 refcnt=2 flags=4
-> > >  # nfsd 192.168.1.6 -no-domain-
-> > > ------------------------------------------------------------
-> > > 
-> > > kernel LONG_MAX + exportfs INT_MAX: "Tue Jan 19 03:14:08 UTC 2038"
-> > > ==================================================================
-> > > 
-> > > "exportfs: /mnt/export does not support NFS export":
-> > > ------------------------------------------------------------
-> > >  # cat /proc/net/rpc/auth.unix.ip/content
-> > >  #class IP domain
-> > > ------------------------------------------------------------
-> > > 
-> > > + mount success:
-> > > ------------------------------------------------------------
-> > >  # cat /proc/net/rpc/auth.unix.ip/content
-> > >  #class IP domain
-> > >  # expiry=2147485448 refcnt=2 flags=1
-> > >  nfsd 192.168.1.6 *
-> > > ------------------------------------------------------------
-> > > 
-> > > kernel LONG_MAX + exportfs LONG_MAX: "Tue Jan 19 03:14:08 UTC 2038"
-> > > ===================================================================
-> > > 
-> > > exportfs:
-> > > ------------------------------------------------------------
-> > >  # cat /proc/net/rpc/auth.unix.ip/content
-> > >  #class IP domain
-> > >  # expiry=9223372036854775807 refcnt=1 flags=1
-> > >  nfsd 0.0.0.0 -test-client-
-> > > ------------------------------------------------------------
-> > > 
-> > > + mount success:
-> > > ------------------------------------------------------------
-> > >  # cat /proc/net/rpc/auth.unix.ip/content
-> > >  #class IP domain
-> > >  # expiry=2147485448 refcnt=2 flags=1
-> > >  nfsd 192.168.1.6 *
-> > >  # expiry=9223372036854775807 refcnt=1 flags=1
-> > >  nfsd 0.0.0.0 -test-client-
-> > > ------------------------------------------------------------
-> > > 
-> > > Signed-off-by: Harshula Jayasuriya <harshula@redhat.com>
-> > > ---
-> > >  utils/exportfs/exportfs.c | 20 ++++++++++++++++----
-> > >  1 file changed, 16 insertions(+), 4 deletions(-)
-> > > 
-> > > diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
-> > > index da5fe21..bccbed5 100644
-> > > --- a/utils/exportfs/exportfs.c
-> > > +++ b/utils/exportfs/exportfs.c
-> > > @@ -27,6 +27,8 @@
-> > >  #include <netdb.h>
-> > >  #include <errno.h>
-> > >  #include <dirent.h>
-> > > +#include <limits.h>
-> > > +#include <time.h>
-> > >  
-> > >  #include "sockaddr.h"
-> > >  #include "misc.h"
-> > > @@ -406,17 +408,27 @@ unexportfs(char *arg, int verbose)
-> > >  
-> > >  static int can_test(void)
-> > >  {
-> > > +	char buf[1024];
-> > >  	int fd;
-> > >  	int n;
-> > > -	char *setup = "nfsd 0.0.0.0 2147483647 -test-client-\n";
-> > > +
-> > >  	fd = open("/proc/net/rpc/auth.unix.ip/channel", O_WRONLY);
-> > > -	if ( fd < 0) return 0;
-> > > -	n = write(fd, setup, strlen(setup));
-> > > +	if (fd < 0)
-> > > +		return 0;
-> > > +
-> > > +	if (time(NULL) > INT_MAX)
-> > > +		sprintf(buf, "nfsd 0.0.0.0 %ld -test-client-\n", LONG_MAX);
-> > > +	else
-> > > +		sprintf(buf, "nfsd 0.0.0.0 %d -test-client-\n", INT_MAX);
-> > 
-> > This generally makes sense, but I think the cut-off is a bit too fine.
-> > If time(NULL) is exactly INT_MAX, then this might not do what is required.
-> > How about
-> >    if (time(NULL) > INT_MAX - (24*3600))
-> > ??
-> 
-> Good point. Mount attempts seem to fail not because of when exportfs is
-> run, but when the first mount request is made.
 
-Clarification, what I said above is only true when the kernel does *not*
-have commit 2f74f972d4cc7d83408ea0c32d424edcb44887bf.
+From: Weng Meiling <wengmeiling.weng@huawei.com>
 
-I did a few more tests with kernel commit
-2f74f972d4cc7d83408ea0c32d424edcb44887bf and found:
+Signed-off-by: Weng Meiling <wengmeiling.weng@huawei.com>
+---
+ include/linux/sunrpc/svc.h | 2 +-
+ net/sunrpc/xprtsock.c      | 7 +++----
+ 2 files changed, 4 insertions(+), 5 deletions(-)
 
-1) When the mount attempt arrives before the expiry time, set in
-can_test(), is reached, /proc/net/rpc/auth.unix.ip/content will contain
-the entry for the real mount attempt and test_export()'s "-test-client-"
-entry. If the mount attempt arrives after the expiry time, only the
-entry for the real mount attempt will appear. In both cases the mount
-attempt succeeds.
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index 6eecfc2..b6316423 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -368,7 +368,7 @@ struct svc_program {
+ 	struct svc_program *	pg_next;	/* other programs (same xprt) */
+ 	u32			pg_prog;	/* program number */
+ 	unsigned int		pg_lovers;	/* lowest version */
+-	unsigned int		pg_hivers;	/* lowest version */
++	unsigned int		pg_hivers;	/* highest version */
+ 	unsigned int		pg_nvers;	/* number of versions */
+ 	struct svc_version **	pg_vers;	/* version array */
+ 	char *			pg_name;	/* service name */
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index dd9d295..0f4f391 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -2932,10 +2932,9 @@ static struct rpc_xprt *xs_setup_bc_tcp(struct xprt_create *args)
 
-2) If the expiry time, set in can_test(), is older than the time when
-exportfs is run, then test_export() will fail (write
-to /proc/net/rpc/nfsd.export/channel fails) and validate_export() will
-print the following error "exportfs: /mnt/export does not support NFS
-export". However, the mount attempt still succeeds.
-
-Neil, have I missed something here? It looks like we don't need to add
-the tolerance to the time check.
-
-cya,
-#
-
-> Is 1 day the right amount of tolerance? Or should we just go for a much
-> larger tolerance, on the assumption that the running kernel will have
-> commit 2f74f972d4cc7d83408ea0c32d424edcb44887bf by then? :-)
-> 
-> cya,
-> #
-> 
-> 
-> > > +
-> > > +	n = write(fd, buf, strlen(buf));
-> > >  	close(fd);
-> > >  	if (n < 0)
-> > >  		return 0;
-> > > +
-> > >  	fd = open("/proc/net/rpc/nfsd.export/channel", O_WRONLY);
-> > > -	if ( fd < 0) return 0;
-> > > +	if (fd < 0)
-> > > +		return 0;
-> > >  	close(fd);
-> > >  	return 1;
-> > >  }
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+ 	/*
+ 	 * Once we've associated a backchannel xprt with a connection,
+-	 * we want to keep it around as long as long as the connection
+-	 * lasts, in case we need to start using it for a backchannel
+-	 * again; this reference won't be dropped until bc_xprt is
+-	 * destroyed.
++	 * we want to keep it around as long as the connection lasts,
++	 * in case we need to start using it for a backchannel again;
++	 * this reference won't be dropped until bc_xprt is destroyed.
+ 	 */
+ 	xprt_get(xprt);
+ 	args->bc_xprt->xpt_bc_xprt = xprt;
+-- 
+1.8.3
 
 
