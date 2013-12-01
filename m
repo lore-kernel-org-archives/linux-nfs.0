@@ -1,64 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:33093 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752311Ab3LBQiB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 2 Dec 2013 11:38:01 -0500
-Date: Mon, 2 Dec 2013 11:37:35 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Christoph Hellwig <hch@infradead.org>,
-        Viro Alexander <viro@ZenIV.linux.org.uk>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Devel FS Linux <linux-fsdevel@vger.kernel.org>,
-        Torvalds Linus <torvalds@linux-foundation.org>,
-        Eric Biederman <ebiederm@xmission.com>
-Subject: Re: [PATCH 00/11] [RFC] repair net namespace damage to rpc_pipefs
-Message-ID: <20131202163735.GK1960@fieldses.org>
-References: <20131201131441.790963326@bombadil.infradead.org>
- <20131201181329.GC10323@ZenIV.linux.org.uk>
- <20131202081233.GA6953@infradead.org>
- <3C65EB4C-6592-44F8-B08D-E5A9EFD6C8C6@primarydata.com>
- <20131202153435.GA2804@infradead.org>
- <BCED1826-0743-4420-AD45-B38D67EF3D99@primarydata.com>
- <20131202113319.36ac5332@tlielax.poochiereds.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20131202113319.36ac5332@tlielax.poochiereds.net>
+Received: from bombadil.infradead.org ([198.137.202.9]:59163 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750896Ab3LAMG4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 1 Dec 2013 07:06:56 -0500
+Message-Id: <20131201120654.027611567@bombadil.infradead.org>
+Date: Sun, 01 Dec 2013 03:59:06 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: viro@zeniv.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-mtd@lists.infradead.org, Mark Fasheh <mfasheh@suse.com>,
+        Joel Becker <jlbec@evilplan.org>, reiserfs-devel@vger.kernel.org,
+        xfs@oss.sgi.com, jfs-discussion@lists.sourceforge.net,
+        cluster-devel@redhat.com, linux-nfs@vger.kernel.org
+Subject: [PATCH 03/18] fs: add a set_acl inode operation
+References: <20131201115903.910559036@bombadil.infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Dec 02, 2013 at 11:33:19AM -0500, Jeff Layton wrote:
-> On Mon, 2 Dec 2013 11:00:50 -0500
-> Trond Myklebust <trond.myklebust@primarydata.com> wrote:
-> 
-> > 
-> > On Dec 2, 2013, at 10:34, Christoph Hellwig <hch@infradead.org> wrote:
-> > 
-> > > On Mon, Dec 02, 2013 at 08:44:25AM -0500, Trond Myklebust wrote:
-> > >> The lifetime of the kernel mount only needs to match that of the rpc_client, since each rpc_client is associated to a single net namespace, and each net namespace is in a 1-1 relationship with an rpc_pipefs super block.
-> > > 
-> > > Except for the non-rpc_client users of rpc_pipefs?
-> > 
-> > There is the idmapper pipe which is created as part of setting up a NFSv4 mount: that could either call rpc_get_mount(), or just rely on the fact that the nfs_client has an rpc_client. Ditto for the DNS resolver pipe.
-> > 
-> > Any more?
-> >
-> 
-> There's the nfsdcld pipe stuff, but that was supposed to have been
-> ripped out in 3.10. Bruce wasn't ready to do that since we didn't have
-> a solution to the problem of using a UMH upcall in a container.
-> 
-> As far as I'm concerned, we should go ahead and rip that out and worry
-> about the UMH in a container problem later. Bruce, any objection to
-> going ahead and doing that? I can respin/resend the patch to do that if
-> you're ready for it...
+This will allow moving all the Posix ACL handling into the VFS and clean
+up tons of cruft in the filesystems.
 
-I still haven't seen a solution to the UMH problem.  Do we even expect
-that there will be one at this point?
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ include/linux/fs.h |    1 +
+ 1 file changed, 1 insertion(+)
 
-I just want to avoid the worst case where we decide that UMH was just
-not designed for this kind of upcall, period, and then need to backtrack
-again....
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 121f11f..09f553c 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1580,6 +1580,7 @@ struct inode_operations {
+ 			   struct file *, unsigned open_flag,
+ 			   umode_t create_mode, int *opened);
+ 	int (*tmpfile) (struct inode *, struct dentry *, umode_t);
++	int (*set_acl)(struct inode *, struct posix_acl *, int);
+ } ____cacheline_aligned;
+ 
+ ssize_t rw_copy_check_uvector(int type, const struct iovec __user * uvector,
+-- 
+1.7.10.4
 
---b.
+
