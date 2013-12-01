@@ -1,70 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:59594 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753325Ab3LQPY4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 Dec 2013 10:24:56 -0500
-Date: Tue, 17 Dec 2013 10:24:54 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Joakim Tjernlund <joakim.tjernlund@transmode.se>
-Cc: linux-nfs@vger.kernel.org, steved@redhat.com
-Subject: Re: nfs-utils-1.2.9 does not play well with linux 3.10.x
-Message-ID: <20131217152454.GB9019@fieldses.org>
-References: <OFDD407A92.688D29A1-ONC1257C43.00634FC8-C1257C43.00645775@transmode.se>
- <20131216185419.GB31816@fieldses.org>
- <20131216200301.GD31816@fieldses.org>
- <OF149AE409.624B2B0A-ONC1257C43.006F77D7-C1257C43.006FCED2@transmode.se>
- <20131216202345.GF31816@fieldses.org>
- <OF942071D7.5EC379B1-ONC1257C43.007AB858-C1257C43.007B0CFB@transmode.se>
- <20131217033849.GA3490@fieldses.org>
- <OF378044B8.DD299A9C-ONC1257C44.002378D5-C1257C44.0023C391@transmode.se>
+Received: from bombadil.infradead.org ([198.137.202.9]:58886 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751389Ab3LAK3y (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 1 Dec 2013 05:29:54 -0500
+Received: from hch by bombadil.infradead.org with local (Exim 4.80.1 #2 (Red Hat Linux))
+	id 1Vn4Hi-000722-6U
+	for linux-nfs@vger.kernel.org; Sun, 01 Dec 2013 10:29:54 +0000
+Date: Sun, 1 Dec 2013 02:29:54 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: linux-nfs@vger.kernel.org
+Subject: 3.12-rc2 nfsd oops in nfsd_cache_lookup
+Message-ID: <20131201102954.GA26976@infradead.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <OF378044B8.DD299A9C-ONC1257C44.002378D5-C1257C44.0023C391@transmode.se>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Dec 17, 2013 at 07:30:38AM +0100, Joakim Tjernlund wrote:
-> "J. Bruce Fields" <bfields@fieldses.org> wrote on 2013/12/17 04:38:49:
-> > 
-> > On Mon, Dec 16, 2013 at 11:24:03PM +0100, Joakim Tjernlund wrote:
-> > > "J. Bruce Fields" <bfields@fieldses.org> wrote on 2013/12/16 21:23:45:
-> > > 
-> > > > From: "J. Bruce Fields" <bfields@fieldses.org>
-> > > > To: Joakim Tjernlund <joakim.tjernlund@transmode.se>, 
-> > > > Cc: linux-nfs@vger.kernel.org, steved@redhat.com
-> > > > Date: 2013/12/16 21:23
-> > > > Subject: Re: nfs-utils-1.2.9 does not play well with linux 3.10.x
-> > > > 
-> > > > On Mon, Dec 16, 2013 at 09:21:15PM +0100, Joakim Tjernlund wrote:
-> > > > > I tested this on my system(which has the above kernel patch) and I 
-> 
-> > > noticed
-> > > > > a difference:
-> > > > 
-> > > > Thanks!
-> > > > 
-> > > > >   rpc.nfsd: Writing version string to kernel: -2 +3 +4 
-> > > > > which is different than previous
-> > > > >  rpc.nfsd: Writing version string to kernel: +4.1 -4.2 -2 +3 +4
-> > > > > 
-> > > > > The "+4.1" is missing.
-> > > > 
-> > > > Yes, that's intentional.  Is it causing you any problem?
-> > > 
-> > > I don't know yet, but I don't think it would be a problem for me.
-> > > However, are you not changing the defaults here? In that
-> > > case someone else relying on 4.1 might have a problem I guess.
-> > 
-> > That's just restoring the behavior we had before
-> > 12a590f8d556c00a9502eeebaa763d906222d521, and will still result in 4.1
-> > being turned on if the kernel is recent enough.
-> 
-> What is an recent enough kernel? Does not 3.10.24 patched with the patch I 
-> mentioned
-> earlier? I thought it would make 3.10 look like a 3.11 which have 4.2 
-> supported.
-> If I am mistaken we good I guess.
 
-Sorry, I don't understand exactly what your concern is.
+Running xfstests against a local server on XFS:
 
---b.
+generic/075 23s ...[  605.063602] nfs: server 127.0.0.1 not responding, still trying
+[  605.064398] general protection fault: 0000 [#1] SMP 
+[  605.064994] Modules linked in:
+[  605.065386] CPU: 2 PID: 3469 Comm: nfsd Not tainted 3.13.0-rc2 #58
+[  605.066051] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2007
+[  605.066704] task: ffff8800762e6010 ti: ffff8800756d8000 task.ti: ffff8800756d8000
+[  605.066843] RIP: 0010:[<ffffffff81331f1b>]  [<ffffffff81331f1b>] lru_put_end+0x1b/0x60
+[  605.066843] RSP: 0018:ffff8800756d9d28  EFLAGS: 00010246
+[  605.066843] RAX: dead000000200200 RBX: ffff8800754a4e90 RCX: dead000000100100
+[  605.066843] RDX: ffff8800754a4ea0 RSI: ffff8800762e66c0 RDI: ffff8800754a4e90
+[  605.066843] RBP: ffff8800756d9d28 R08: 0000000000000006 R09: 0000000000000001
+[  605.066843] R10: 0000000000000000 R11: 0000000000000000 R12: 0000000000000001
+[  605.066843] R13: 0000000000000000 R14: 000000000cb5731d R15: ffff88007b4dc000
+[  605.066843] FS:  0000000000000000(0000) GS:ffff88007fd00000(0000) knlGS:0000000000000000
+[  605.066843] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+[  605.066843] CR2: ffffffffff600400 CR3: 000000006fe87000 CR4: 00000000000006e0
+[  605.066843] Stack:
+[  605.066843]  ffff8800756d9d88 ffffffff81332498 ffff88007cf33600 ffffffff0cb5731d
+[  605.066843]  0000000300000002 4d36e16d00000006 ffff88007b4dc000 ffff88007b4dc000
+[  605.066843]  ffffffff82211230 ffff880076216018 ffffffff822111a0 ffff880076216018
+[  605.066843] Call Trace:
+[  605.066843]  [<ffffffff81332498>] nfsd_cache_lookup+0x3c8/0x730
+[  605.066843]  [<ffffffff8132763e>] nfsd_dispatch+0x5e/0x1b0
+[  605.066843]  [<ffffffff81b6f551>] svc_process+0x4b1/0x760
+[  605.066843]  [<ffffffff81326f9f>] nfsd+0xbf/0x130
+[  605.066843]  [<ffffffff81326ee0>] ? nfsd_destroy+0xc0/0xc0
+[  605.066843]  [<ffffffff810b6b0f>] kthread+0xdf/0x100
+[  605.066843]  [<ffffffff81c4130b>] ? _raw_spin_unlock_irq+0x2b/0x40
+[  605.066843]  [<ffffffff810b6a30>] ? __init_kthread_worker+0x70/0x70
+[  605.066843]  [<ffffffff81c4970c>] ret_from_fork+0x7c/0xb0
+[  605.066843]  [<ffffffff810b6a30>] ? __init_kthread_worker+0x70/0x70
