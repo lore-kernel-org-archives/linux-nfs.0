@@ -1,197 +1,108 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:51176 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754394Ab3L0Tkh convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 27 Dec 2013 14:40:37 -0500
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
-Subject: Re: Question ref Running NFS at V4 Only
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20131227184309.GA9161@fieldses.org>
-Date: Fri, 27 Dec 2013 14:40:04 -0500
-Cc: Kinglong Mee <kinglongmee@gmail.com>,
-        Gareth Williams <gareth@garethwilliams.me.uk>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <01763B6D-C8CB-46B7-87AC-CE189496019A@oracle.com>
-References: <52B47A12.2070202@garethwilliams.me.uk> <20131223173956.GA9221@fieldses.org> <52BD53CA.5050205@gmail.com> <7FD776EA-EAA8-41E0-9567-BF3924D365AC@oracle.com> <20131227184309.GA9161@fieldses.org>
-To: "J.;Bruce Fields" <bfields@fieldses.org>
+Received: from bombadil.infradead.org ([198.137.202.9]:59166 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751003Ab3LAMG4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 1 Dec 2013 07:06:56 -0500
+Message-Id: <20131201120653.694912626@bombadil.infradead.org>
+Date: Sun, 01 Dec 2013 03:59:04 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: viro@zeniv.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-mtd@lists.infradead.org, Mark Fasheh <mfasheh@suse.com>,
+        Joel Becker <jlbec@evilplan.org>, reiserfs-devel@vger.kernel.org,
+        xfs@oss.sgi.com, jfs-discussion@lists.sourceforge.net,
+        cluster-devel@redhat.com, linux-nfs@vger.kernel.org
+Subject: [PATCH 01/18] reiserfs: prefix ACL symbols with reiserfs_
+References: <20131201115903.910559036@bombadil.infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ fs/reiserfs/xattr_acl.c |   20 ++++++++++----------
+ 1 file changed, 10 insertions(+), 10 deletions(-)
 
-On Dec 27, 2013, at 1:43 PM, J.;Bruce Fields <bfields@fieldses.org> wrote:
-
-> On Fri, Dec 27, 2013 at 11:05:05AM -0500, Chuck Lever wrote:
->> Hi-
->> 
->> On Dec 27, 2013, at 5:17 AM, Kinglong Mee <kinglongmee@gmail.com> wrote:
->> 
->>> On 12/24/2013 01:39 AM, J. Bruce Fields wrote:
->>>> On Fri, Dec 20, 2013 at 05:10:42PM +0000, Gareth Williams wrote:
->>>>> Hi,
->>>>> 
->>>>> I'm trying to run NFS with protocol version 4 only (that is, with v2
->>>>> & v3 disabled) on a CentOS 6.5 install running as a KVM guest.
->>>>> 
->>>>> The RedHat documentation (amongst others) states that rpcbind isn't
->>>>> needed with v4, but if I start nfs without rpcbind I get errors.
->>>> 
->>>> I suspect the kernel code needs to be fixed to not attempt to register
->>>> with rpcbind n the v4-only case.  (Or to attempt to register but ignore
->>>> any error, I'm not sure which is best.)
->>>> 
->>>> And this may not be the only issue in the v4-only case.  This isn't
->>>> really a priority for me right now, but I'd happily look at patches.
->>> 
->>> Hi all,
->>> 
->>> I make a patch for this problem, please have a check, thanks.
->>> 
->>> From 64c1f96348213f39b9411ab25699a292edbef4ef Mon Sep 17 00:00:00 2001
->>> From: Kinglong Mee <kinglongmee@gmail.com>
->>> Date: Fri, 27 Dec 2013 18:06:25 +0800
->>> Subject: [PATCH] NFSD: supports nfsv4 service without rpcbind
->>> 
->>> 1. set vs_hidden in nfsd_version4 to avoid register nfsv4 to rpcbind
->> 
->> IMO we do want the NFS port registered if rpcbind is running.  NFSv4 is not a hidden service, like the client's callback server which can only be discovered by a forward advertisement (SETCLIENTID).
->> 
->> I think I prefer ignoring the rpcb_set error for NFSv4.
-> 
-> Agreed.  My only concern would be that there be no unnecessary delays or
-> errors logged in the v4-only case if rpcbind isn't running.
-
-I believe the rpcb_set upcall now uses the AF_LOCAL transport, which should be able to detect immediately that rpcbind is not listening.
-
-The OP did not report a delay or hang, thankfully.
-
-> 
-> --b.
-> 
->> 
->> 
->>> 2. don't start lockd when only supports nfsv4.
->>> 
->>> Reported-by: Gareth Williams <gareth@garethwilliams.me.uk>
->>> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
->>> ---
->>> fs/nfsd/netns.h    |  3 +++
->>> fs/nfsd/nfs4proc.c |  1 +
->>> fs/nfsd/nfsctl.c   |  3 +++
->>> fs/nfsd/nfssvc.c   | 21 ++++++++++++++++-----
->>> 4 files changed, 23 insertions(+), 5 deletions(-)
->>> 
->>> diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
->>> index 849a7c3..ae2c179 100644
->>> --- a/fs/nfsd/netns.h
->>> +++ b/fs/nfsd/netns.h
->>> @@ -96,6 +96,9 @@ struct nfsd_net {
->>> 
->>> 	bool nfsd_net_up;
->>> 
->>> +	bool lockd_up;
->>> +	u32 nfsd_needs_lockd;
->>> +
->>> 	/*
->>> 	 * Time of server startup
->>> 	 */
->>> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
->>> index 419572f..1496376 100644
->>> --- a/fs/nfsd/nfs4proc.c
->>> +++ b/fs/nfsd/nfs4proc.c
->>> @@ -1881,6 +1881,7 @@ struct svc_version	nfsd_version4 = {
->>> 		.vs_proc	= nfsd_procedures4,
->>> 		.vs_dispatch	= nfsd_dispatch,
->>> 		.vs_xdrsize	= NFS4_SVC_XDRSIZE,
->>> +		.vs_hidden	= 1,
->>> };
->>> 
->>> /*
->>> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
->>> index 7f55517..8c7b0f0 100644
->>> --- a/fs/nfsd/nfsctl.c
->>> +++ b/fs/nfsd/nfsctl.c
->>> @@ -575,6 +575,9 @@ static ssize_t __write_versions(struct file *file, char *buf, size_t size)
->>> 			switch(num) {
->>> 			case 2:
->>> 			case 3:
->>> +				nfsd_vers(num, sign == '-' ? NFSD_CLEAR : NFSD_SET);
->>> +				nn->nfsd_needs_lockd = nfsd_vers(num, NFSD_TEST);
->>> +				break;
->>> 			case 4:
->>> 				nfsd_vers(num, sign == '-' ? NFSD_CLEAR : NFSD_SET);
->>> 				break;
->>> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
->>> index 760c85a..2b841d8 100644
->>> --- a/fs/nfsd/nfssvc.c
->>> +++ b/fs/nfsd/nfssvc.c
->>> @@ -255,9 +255,14 @@ static int nfsd_startup_net(int nrservs, struct net *net)
->>> 	ret = nfsd_init_socks(net);
->>> 	if (ret)
->>> 		goto out_socks;
->>> -	ret = lockd_up(net);
->>> -	if (ret)
->>> -		goto out_socks;
->>> +
->>> +	if (nn->nfsd_needs_lockd && !nn->lockd_up) {
->>> +		ret = lockd_up(net);
->>> +		if (ret)
->>> +			goto out_socks;
->>> +		nn->lockd_up = 1;
->>> +	}
->>> +
->>> 	ret = nfs4_state_start_net(net);
->>> 	if (ret)
->>> 		goto out_lockd;
->>> @@ -266,7 +271,10 @@ static int nfsd_startup_net(int nrservs, struct net *net)
->>> 	return 0;
->>> 
->>> out_lockd:
->>> -	lockd_down(net);
->>> +	if (nn->lockd_up) {
->>> +		lockd_down(net);
->>> +		nn->lockd_up = 0;
->>> +	}
->>> out_socks:
->>> 	nfsd_shutdown_generic();
->>> 	return ret;
->>> @@ -277,7 +285,10 @@ static void nfsd_shutdown_net(struct net *net)
->>> 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
->>> 
->>> 	nfs4_state_shutdown_net(net);
->>> -	lockd_down(net);
->>> +	if (nn->lockd_up) {
->>> +		lockd_down(net);
->>> +		nn->lockd_up = 0;
->>> +	}
->>> 	nn->nfsd_net_up = false;
->>> 	nfsd_shutdown_generic();
->>> }
->>> -- 
->>> 1.8.4.2
->>> 
->>> 
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> 
->> -- 
->> Chuck Lever
->> chuck[dot]lever[at]oracle[dot]com
->> 
->> 
->> 
->> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+diff --git a/fs/reiserfs/xattr_acl.c b/fs/reiserfs/xattr_acl.c
+index 06c04f7..6f721ea 100644
+--- a/fs/reiserfs/xattr_acl.c
++++ b/fs/reiserfs/xattr_acl.c
+@@ -16,7 +16,7 @@ static int reiserfs_set_acl(struct reiserfs_transaction_handle *th,
+ 			    struct posix_acl *acl);
+ 
+ static int
+-posix_acl_set(struct dentry *dentry, const char *name, const void *value,
++reiserfs_posix_acl_set(struct dentry *dentry, const char *name, const void *value,
+ 		size_t size, int flags, int type)
+ {
+ 	struct inode *inode = dentry->d_inode;
+@@ -65,7 +65,7 @@ posix_acl_set(struct dentry *dentry, const char *name, const void *value,
+ }
+ 
+ static int
+-posix_acl_get(struct dentry *dentry, const char *name, void *buffer,
++reiserfs_posix_acl_get(struct dentry *dentry, const char *name, void *buffer,
+ 		size_t size, int type)
+ {
+ 	struct posix_acl *acl;
+@@ -88,7 +88,7 @@ posix_acl_get(struct dentry *dentry, const char *name, void *buffer,
+ /*
+  * Convert from filesystem to in-memory representation.
+  */
+-static struct posix_acl *posix_acl_from_disk(const void *value, size_t size)
++static struct posix_acl *reiserfs_posix_acl_from_disk(const void *value, size_t size)
+ {
+ 	const char *end = (char *)value + size;
+ 	int n, count;
+@@ -158,7 +158,7 @@ static struct posix_acl *posix_acl_from_disk(const void *value, size_t size)
+ /*
+  * Convert from in-memory to filesystem representation.
+  */
+-static void *posix_acl_to_disk(const struct posix_acl *acl, size_t * size)
++static void *reiserfs_posix_acl_to_disk(const struct posix_acl *acl, size_t * size)
+ {
+ 	reiserfs_acl_header *ext_acl;
+ 	char *e;
+@@ -257,7 +257,7 @@ struct posix_acl *reiserfs_get_acl(struct inode *inode, int type)
+ 	} else if (retval < 0) {
+ 		acl = ERR_PTR(retval);
+ 	} else {
+-		acl = posix_acl_from_disk(value, retval);
++		acl = reiserfs_posix_acl_from_disk(value, retval);
+ 	}
+ 	if (!IS_ERR(acl))
+ 		set_cached_acl(inode, type, acl);
+@@ -307,7 +307,7 @@ reiserfs_set_acl(struct reiserfs_transaction_handle *th, struct inode *inode,
+ 	}
+ 
+ 	if (acl) {
+-		value = posix_acl_to_disk(acl, &size);
++		value = reiserfs_posix_acl_to_disk(acl, &size);
+ 		if (IS_ERR(value))
+ 			return (int)PTR_ERR(value);
+ 	}
+@@ -499,8 +499,8 @@ static size_t posix_acl_access_list(struct dentry *dentry, char *list,
+ const struct xattr_handler reiserfs_posix_acl_access_handler = {
+ 	.prefix = POSIX_ACL_XATTR_ACCESS,
+ 	.flags = ACL_TYPE_ACCESS,
+-	.get = posix_acl_get,
+-	.set = posix_acl_set,
++	.get = reiserfs_posix_acl_get,
++	.set = reiserfs_posix_acl_set,
+ 	.list = posix_acl_access_list,
+ };
+ 
+@@ -519,7 +519,7 @@ static size_t posix_acl_default_list(struct dentry *dentry, char *list,
+ const struct xattr_handler reiserfs_posix_acl_default_handler = {
+ 	.prefix = POSIX_ACL_XATTR_DEFAULT,
+ 	.flags = ACL_TYPE_DEFAULT,
+-	.get = posix_acl_get,
+-	.set = posix_acl_set,
++	.get = reiserfs_posix_acl_get,
++	.set = reiserfs_posix_acl_set,
+ 	.list = posix_acl_default_list,
+ };
 -- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
+1.7.10.4
 
 
