@@ -1,68 +1,142 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:23459 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751519Ab3LLRsm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 12 Dec 2013 12:48:42 -0500
-Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id rBCHmf6S012945
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Thu, 12 Dec 2013 12:48:42 -0500
-Received: from smallhat.boston.devel.redhat.com (vpn-61-174.rdu2.redhat.com [10.10.61.174])
-	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id rBCHmf6A029651
-	for <linux-nfs@vger.kernel.org>; Thu, 12 Dec 2013 12:48:41 -0500
-Message-ID: <52A9F74E.7020101@RedHat.com>
-Date: Thu, 12 Dec 2013 12:50:06 -0500
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: Linux NFS Town Hall  meeting: Thur 12/12/13
-References: <52A8A9D7.1060401@RedHat.com>
-In-Reply-To: <52A8A9D7.1060401@RedHat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from bombadil.infradead.org ([198.137.202.9]:59555 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751838Ab3LANUV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 1 Dec 2013 08:20:21 -0500
+Message-Id: <20131201132011.305242374@bombadil.infradead.org>
+Date: Sun, 01 Dec 2013 05:14:50 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: linux-nfs@vger.kernel.org, viro@zeniv.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org
+Subject: [PATCH 09/11] nfs: convert idmapper to rpc_mkpipe_clnt
+References: <20131201131441.790963326@bombadil.infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Just a quick reminder... If you interested... This will be starting in a few..
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ fs/nfs/idmap.c |   74 +++++++-------------------------------------------------
+ 1 file changed, 9 insertions(+), 65 deletions(-)
 
-steved.
+diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
+index 567983d..91459b0 100644
+--- a/fs/nfs/idmap.c
++++ b/fs/nfs/idmap.c
+@@ -64,7 +64,6 @@ struct idmap_legacy_upcalldata {
+ };
+ 
+ struct idmap {
+-	struct rpc_pipe_dir_object idmap_pdo;
+ 	struct rpc_pipe		*idmap_pipe;
+ 	struct idmap_legacy_upcalldata *idmap_upcall_data;
+ 	struct mutex		idmap_mutex;
+@@ -403,73 +402,25 @@ static struct key_type key_type_id_resolver_legacy = {
+ 	.request_key	= nfs_idmap_legacy_upcall,
+ };
+ 
+-static void nfs_idmap_pipe_destroy(struct dentry *dir,
+-		struct rpc_pipe_dir_object *pdo)
+-{
+-	struct idmap *idmap = pdo->pdo_data;
+-	struct rpc_pipe *pipe = idmap->idmap_pipe;
+-
+-	if (pipe->dentry) {
+-		rpc_unlink(pipe->dentry);
+-		pipe->dentry = NULL;
+-	}
+-}
+-
+-static int nfs_idmap_pipe_create(struct dentry *dir,
+-		struct rpc_pipe_dir_object *pdo)
+-{
+-	struct idmap *idmap = pdo->pdo_data;
+-	struct rpc_pipe *pipe = idmap->idmap_pipe;
+-	struct dentry *dentry;
+-
+-	dentry = rpc_mkpipe_dentry(dir, "idmap", idmap, pipe);
+-	if (IS_ERR(dentry))
+-		return PTR_ERR(dentry);
+-	pipe->dentry = dentry;
+-	return 0;
+-}
+-
+-static const struct rpc_pipe_dir_object_ops nfs_idmap_pipe_dir_object_ops = {
+-	.create = nfs_idmap_pipe_create,
+-	.destroy = nfs_idmap_pipe_destroy,
+-};
+-
+ int
+ nfs_idmap_new(struct nfs_client *clp)
+ {
+ 	struct idmap *idmap;
+-	struct rpc_pipe *pipe;
+-	int error;
+ 
+ 	idmap = kzalloc(sizeof(*idmap), GFP_KERNEL);
+ 	if (idmap == NULL)
+ 		return -ENOMEM;
+-
+-	rpc_init_pipe_dir_object(&idmap->idmap_pdo,
+-			&nfs_idmap_pipe_dir_object_ops,
+-			idmap);
+-
+-	pipe = rpc_mkpipe_data(&idmap_upcall_ops, 0);
+-	if (IS_ERR(pipe)) {
+-		error = PTR_ERR(pipe);
+-		goto err;
+-	}
+-	idmap->idmap_pipe = pipe;
+ 	mutex_init(&idmap->idmap_mutex);
+ 
+-	error = rpc_add_pipe_dir_object(clp->cl_net,
+-			&clp->cl_rpcclient->cl_pipedir_objects,
+-			&idmap->idmap_pdo);
+-	if (error)
+-		goto err_destroy_pipe;
++	idmap->idmap_pipe = rpc_mkpipe_clnt(clp->cl_rpcclient, "idmap",
++				&idmap_upcall_ops, idmap, 0);
++	if (IS_ERR(idmap->idmap_pipe)) {
++		kfree(idmap);
++		return PTR_ERR(idmap->idmap_pipe);
++	}
+ 
+ 	clp->cl_idmap = idmap;
+ 	return 0;
+-err_destroy_pipe:
+-	rpc_destroy_pipe_data(idmap->idmap_pipe);
+-err:
+-	kfree(idmap);
+-	return error;
+ }
+ 
+ void
+@@ -479,22 +430,15 @@ nfs_idmap_delete(struct nfs_client *clp)
+ 
+ 	if (!idmap)
+ 		return;
++
++	rpc_rmpipe(idmap->idmap_pipe);
+ 	clp->cl_idmap = NULL;
+-	rpc_remove_pipe_dir_object(clp->cl_net,
+-			&clp->cl_rpcclient->cl_pipedir_objects,
+-			&idmap->idmap_pdo);
+-	rpc_destroy_pipe_data(idmap->idmap_pipe);
+ 	kfree(idmap);
+ }
+ 
+ int nfs_idmap_init(void)
+ {
+-	int ret;
+-	ret = nfs_idmap_init_keyring();
+-	if (ret != 0)
+-		goto out;
+-out:
+-	return ret;
++	return nfs_idmap_init_keyring();
+ }
+ 
+ void nfs_idmap_quit(void)
+-- 
+1.7.10.4
 
-On 11/12/13 13:07, Steve Dickson wrote:
-> Hello,
-> 
-> We have not had ones of these in a while so lets 
-> have a Linux NFS town hall for tomorrow (Thur Dec 10)
-> 
-> Please note there is a *time change*. I was asked
-> to bump up the staring time up by 30mins. So the new
-> starting time is *10:00am PST (01:00 EST)*.
-> 
-> The usual agenda will apply. The maintainers will give
-> a quick status of what is happening in their worlds.
-> 
-> Next we'll get updates from major contributors on what
-> they have been doing and are planing on doing.. 
->   
-> Finally, we'll open the floor to questions, comments, 
-> concerns from the community.  
-> 
-> Generally the meeting last between 30 to 45 mins, with 
-> a very hard stop at 60mins. 
-> 
-> Please feel to attend and participate!
-> 
-> *Again note the time change*
-> Time: 10:00 AM PST (01:00 PM EST)
-> 
-> The call in numbers are:
-> U.S. and Canada: (800) 451-8679
-> International dial-in number: (212) 729-5016
-> Israel Toll-Free: 1-809-462-557
-> Conference code: 564.272.1552
-> 
-> steved.
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+
