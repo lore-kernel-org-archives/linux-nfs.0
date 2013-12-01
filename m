@@ -1,87 +1,322 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:51665 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751617Ab3LLQBk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 12 Dec 2013 11:01:40 -0500
-Date: Thu, 12 Dec 2013 11:01:28 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Stanislav Kholmanskikh <stanislav.kholmanskikh@oracle.com>
-Cc: linux-nfs@vger.kernel.org, vasily.isaenko@oracle.com, hch@infradead.org,
-        xfs@oss.sgi.com, sprabhu@redhat.com
-Subject: Re: [PATCH] nfsd: revoking of suid/sgid bits after chown() in a
- consistent way
-Message-ID: <20131212160128.GC11521@fieldses.org>
-References: <20131206204747.GB12613@fieldses.org>
- <1386756996-28083-1-git-send-email-stanislav.kholmanskikh@oracle.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1386756996-28083-1-git-send-email-stanislav.kholmanskikh@oracle.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:59170 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751529Ab3LAMG4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 1 Dec 2013 07:06:56 -0500
+Message-Id: <20131201120654.812851020@bombadil.infradead.org>
+Date: Sun, 01 Dec 2013 03:59:10 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: viro@zeniv.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-mtd@lists.infradead.org, Mark Fasheh <mfasheh@suse.com>,
+        Joel Becker <jlbec@evilplan.org>, reiserfs-devel@vger.kernel.org,
+        xfs@oss.sgi.com, jfs-discussion@lists.sourceforge.net,
+        cluster-devel@redhat.com, linux-nfs@vger.kernel.org
+Subject: [PATCH 07/18] btrfs: use generic posix ACL infrastructure
+References: <20131201115903.910559036@bombadil.infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks, applying for 3.14.--b.
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ fs/btrfs/acl.c   |  135 ++++++++----------------------------------------------
+ fs/btrfs/ctree.h |    7 +--
+ fs/btrfs/inode.c |    7 ++-
+ fs/btrfs/xattr.c |    5 +-
+ fs/btrfs/xattr.h |    2 -
+ 5 files changed, 29 insertions(+), 127 deletions(-)
 
-On Wed, Dec 11, 2013 at 02:16:36PM +0400, Stanislav Kholmanskikh wrote:
-> There is an inconsistency in the handling of SUID/SGID file
-> bits after chown() between NFS and other local file systems.
-> 
-> Local file systems (for example, ext3, ext4, xfs, btrfs) revoke
-> SUID/SGID bits after chown() on a regular file even if
-> the owner/group of the file has not been changed:
-> 
-> ~# touch file; chmod ug+s file; chmod u+x file
-> ~# ls -l file
-> -rwsr-Sr-- 1 root root 0 Dec  6 04:49 file
-> ~# chown root file; ls -l file
-> -rwxr-Sr-- 1 root root 0 Dec  6 04:49 file
-> 
-> but NFS doesn't do that:
-> 
-> ~# touch file; chmod ug+s file; chmod u+x file
-> ~# ls -l file
-> -rwsr-Sr-- 1 root root 0 Dec  6 04:49 file
-> ~# chown root file; ls -l file
-> -rwsr-Sr-- 1 root root 0 Dec  6 04:49 file
-> 
-> NFS does that only if the owner/group has been changed:
-> 
-> ~# touch file; chmod ug+s file; chmod u+x file
-> ~# ls -l file
-> -rwsr-Sr-- 1 root root 0 Dec  6 05:02 file
-> ~# chown bin file; ls -l file
-> -rwxr-Sr-- 1 bin root 0 Dec  6 05:02 file
-> 
-> See: http://pubs.opengroup.org/onlinepubs/9699919799/functions/chown.html
-> 
->  "If the specified file is a regular file, one or more of
->  the S_IXUSR, S_IXGRP, or S_IXOTH bits of the file mode are set,
->  and the process has appropriate privileges, it is
->  implementation-defined whether the set-user-ID and set-group-ID
->  bits are altered."
-> 
-> So both variants are acceptable by POSIX.
-> 
-> This patch makes NFS to behave like local file systems.
-> 
-> Signed-off-by: Stanislav Kholmanskikh <stanislav.kholmanskikh@oracle.com>
-> ---
->  fs/nfsd/vfs.c |    3 +--
->  1 files changed, 1 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-> index 72cb28e..8226991 100644
-> --- a/fs/nfsd/vfs.c
-> +++ b/fs/nfsd/vfs.c
-> @@ -348,8 +348,7 @@ nfsd_sanitize_attrs(struct inode *inode, struct iattr *iap)
->  
->  	/* Revoke setuid/setgid on chown */
->  	if (!S_ISDIR(inode->i_mode) &&
-> -	    (((iap->ia_valid & ATTR_UID) && !uid_eq(iap->ia_uid, inode->i_uid)) ||
-> -	     ((iap->ia_valid & ATTR_GID) && !gid_eq(iap->ia_gid, inode->i_gid)))) {
-> +	    ((iap->ia_valid & ATTR_UID) || (iap->ia_valid & ATTR_GID))) {
->  		iap->ia_valid |= ATTR_KILL_PRIV;
->  		if (iap->ia_valid & ATTR_MODE) {
->  			/* we're setting mode too, just clear the s*id bits */
-> -- 
-> 1.7.1
-> 
+diff --git a/fs/btrfs/acl.c b/fs/btrfs/acl.c
+index b56519d..c76c900 100644
+--- a/fs/btrfs/acl.c
++++ b/fs/btrfs/acl.c
+@@ -76,31 +76,10 @@ struct posix_acl *btrfs_get_acl(struct inode *inode, int type)
+ 	return acl;
+ }
+ 
+-static int btrfs_xattr_acl_get(struct dentry *dentry, const char *name,
+-		void *value, size_t size, int type)
+-{
+-	struct posix_acl *acl;
+-	int ret = 0;
+-
+-	if (!IS_POSIXACL(dentry->d_inode))
+-		return -EOPNOTSUPP;
+-
+-	acl = btrfs_get_acl(dentry->d_inode, type);
+-
+-	if (IS_ERR(acl))
+-		return PTR_ERR(acl);
+-	if (acl == NULL)
+-		return -ENODATA;
+-	ret = posix_acl_to_xattr(&init_user_ns, acl, value, size);
+-	posix_acl_release(acl);
+-
+-	return ret;
+-}
+-
+ /*
+  * Needs to be called with fs_mutex held
+  */
+-static int btrfs_set_acl(struct btrfs_trans_handle *trans,
++static int __btrfs_set_acl(struct btrfs_trans_handle *trans,
+ 			 struct inode *inode, struct posix_acl *acl, int type)
+ {
+ 	int ret, size = 0;
+@@ -158,35 +137,9 @@ out:
+ 	return ret;
+ }
+ 
+-static int btrfs_xattr_acl_set(struct dentry *dentry, const char *name,
+-		const void *value, size_t size, int flags, int type)
++int btrfs_set_acl(struct inode *inode, struct posix_acl *acl, int type)
+ {
+-	int ret;
+-	struct posix_acl *acl = NULL;
+-
+-	if (!inode_owner_or_capable(dentry->d_inode))
+-		return -EPERM;
+-
+-	if (!IS_POSIXACL(dentry->d_inode))
+-		return -EOPNOTSUPP;
+-
+-	if (value) {
+-		acl = posix_acl_from_xattr(&init_user_ns, value, size);
+-		if (IS_ERR(acl))
+-			return PTR_ERR(acl);
+-
+-		if (acl) {
+-			ret = posix_acl_valid(acl);
+-			if (ret)
+-				goto out;
+-		}
+-	}
+-
+-	ret = btrfs_set_acl(NULL, dentry->d_inode, acl, type);
+-out:
+-	posix_acl_release(acl);
+-
+-	return ret;
++	return __btrfs_set_acl(NULL, inode, acl, type);
+ }
+ 
+ /*
+@@ -197,83 +150,31 @@ out:
+ int btrfs_init_acl(struct btrfs_trans_handle *trans,
+ 		   struct inode *inode, struct inode *dir)
+ {
+-	struct posix_acl *acl = NULL;
++	struct posix_acl *default_acl, *acl;
+ 	int ret = 0;
+ 
+ 	/* this happens with subvols */
+ 	if (!dir)
+ 		return 0;
+ 
+-	if (!S_ISLNK(inode->i_mode)) {
+-		if (IS_POSIXACL(dir)) {
+-			acl = btrfs_get_acl(dir, ACL_TYPE_DEFAULT);
+-			if (IS_ERR(acl))
+-				return PTR_ERR(acl);
+-		}
++	ret = posix_acl_create(dir, &inode->i_mode, &default_acl, &acl);
++	if (ret)
++		return ret;
+ 
+-		if (!acl)
+-			inode->i_mode &= ~current_umask();
++	if (default_acl) {
++		ret = __btrfs_set_acl(trans, inode, default_acl,
++				      ACL_TYPE_DEFAULT);
++		posix_acl_release(default_acl);
+ 	}
+ 
+-	if (IS_POSIXACL(dir) && acl) {
+-		if (S_ISDIR(inode->i_mode)) {
+-			ret = btrfs_set_acl(trans, inode, acl,
+-					    ACL_TYPE_DEFAULT);
+-			if (ret)
+-				goto failed;
+-		}
+-		ret = __posix_acl_create(&acl, GFP_NOFS, &inode->i_mode);
+-		if (ret < 0)
+-			return ret;
+-
+-		if (ret > 0) {
+-			/* we need an acl */
+-			ret = btrfs_set_acl(trans, inode, acl, ACL_TYPE_ACCESS);
+-		} else if (ret < 0) {
+-			cache_no_acl(inode);
+-		}
+-	} else {
+-		cache_no_acl(inode);
++	if (acl) {
++		if (!ret)
++			ret = __btrfs_set_acl(trans, inode, acl,
++					      ACL_TYPE_ACCESS);
++		posix_acl_release(acl);
+ 	}
+-failed:
+-	posix_acl_release(acl);
+-
+-	return ret;
+-}
+ 
+-int btrfs_acl_chmod(struct inode *inode)
+-{
+-	struct posix_acl *acl;
+-	int ret = 0;
+-
+-	if (S_ISLNK(inode->i_mode))
+-		return -EOPNOTSUPP;
+-
+-	if (!IS_POSIXACL(inode))
+-		return 0;
+-
+-	acl = btrfs_get_acl(inode, ACL_TYPE_ACCESS);
+-	if (IS_ERR_OR_NULL(acl))
+-		return PTR_ERR(acl);
+-
+-	ret = __posix_acl_chmod(&acl, GFP_KERNEL, inode->i_mode);
+-	if (ret)
+-		return ret;
+-	ret = btrfs_set_acl(NULL, inode, acl, ACL_TYPE_ACCESS);
+-	posix_acl_release(acl);
++	if (!default_acl && !acl)
++		cache_no_acl(inode);
+ 	return ret;
+ }
+-
+-const struct xattr_handler btrfs_xattr_acl_default_handler = {
+-	.prefix = POSIX_ACL_XATTR_DEFAULT,
+-	.flags	= ACL_TYPE_DEFAULT,
+-	.get	= btrfs_xattr_acl_get,
+-	.set	= btrfs_xattr_acl_set,
+-};
+-
+-const struct xattr_handler btrfs_xattr_acl_access_handler = {
+-	.prefix = POSIX_ACL_XATTR_ACCESS,
+-	.flags	= ACL_TYPE_ACCESS,
+-	.get	= btrfs_xattr_acl_get,
+-	.set	= btrfs_xattr_acl_set,
+-};
+diff --git a/fs/btrfs/ctree.h b/fs/btrfs/ctree.h
+index 54ab861..7506825 100644
+--- a/fs/btrfs/ctree.h
++++ b/fs/btrfs/ctree.h
+@@ -3899,20 +3899,17 @@ do {									\
+ /* acl.c */
+ #ifdef CONFIG_BTRFS_FS_POSIX_ACL
+ struct posix_acl *btrfs_get_acl(struct inode *inode, int type);
++int btrfs_set_acl(struct inode *inode, struct posix_acl *acl, int type);
+ int btrfs_init_acl(struct btrfs_trans_handle *trans,
+ 		   struct inode *inode, struct inode *dir);
+-int btrfs_acl_chmod(struct inode *inode);
+ #else
+ #define btrfs_get_acl NULL
++#define btrfs_set_acl NULL
+ static inline int btrfs_init_acl(struct btrfs_trans_handle *trans,
+ 				 struct inode *inode, struct inode *dir)
+ {
+ 	return 0;
+ }
+-static inline int btrfs_acl_chmod(struct inode *inode)
+-{
+-	return 0;
+-}
+ #endif
+ 
+ /* relocation.c */
+diff --git a/fs/btrfs/inode.c b/fs/btrfs/inode.c
+index f1a7744..972e12b 100644
+--- a/fs/btrfs/inode.c
++++ b/fs/btrfs/inode.c
+@@ -4464,7 +4464,7 @@ static int btrfs_setattr(struct dentry *dentry, struct iattr *attr)
+ 		err = btrfs_dirty_inode(inode);
+ 
+ 		if (!err && attr->ia_valid & ATTR_MODE)
+-			err = btrfs_acl_chmod(inode);
++			err = posix_acl_chmod(inode);
+ 	}
+ 
+ 	return err;
+@@ -8649,12 +8649,14 @@ static const struct inode_operations btrfs_dir_inode_operations = {
+ 	.removexattr	= btrfs_removexattr,
+ 	.permission	= btrfs_permission,
+ 	.get_acl	= btrfs_get_acl,
++	.set_acl	= btrfs_set_acl,
+ 	.update_time	= btrfs_update_time,
+ };
+ static const struct inode_operations btrfs_dir_ro_inode_operations = {
+ 	.lookup		= btrfs_lookup,
+ 	.permission	= btrfs_permission,
+ 	.get_acl	= btrfs_get_acl,
++	.set_acl	= btrfs_set_acl,
+ 	.update_time	= btrfs_update_time,
+ };
+ 
+@@ -8724,6 +8726,7 @@ static const struct inode_operations btrfs_file_inode_operations = {
+ 	.permission	= btrfs_permission,
+ 	.fiemap		= btrfs_fiemap,
+ 	.get_acl	= btrfs_get_acl,
++	.set_acl	= btrfs_set_acl,
+ 	.update_time	= btrfs_update_time,
+ };
+ static const struct inode_operations btrfs_special_inode_operations = {
+@@ -8735,6 +8738,7 @@ static const struct inode_operations btrfs_special_inode_operations = {
+ 	.listxattr	= btrfs_listxattr,
+ 	.removexattr	= btrfs_removexattr,
+ 	.get_acl	= btrfs_get_acl,
++	.set_acl	= btrfs_set_acl,
+ 	.update_time	= btrfs_update_time,
+ };
+ static const struct inode_operations btrfs_symlink_inode_operations = {
+@@ -8749,6 +8753,7 @@ static const struct inode_operations btrfs_symlink_inode_operations = {
+ 	.listxattr	= btrfs_listxattr,
+ 	.removexattr	= btrfs_removexattr,
+ 	.get_acl	= btrfs_get_acl,
++	.set_acl	= btrfs_set_acl,
+ 	.update_time	= btrfs_update_time,
+ };
+ 
+diff --git a/fs/btrfs/xattr.c b/fs/btrfs/xattr.c
+index 05740b9..3d1c301 100644
+--- a/fs/btrfs/xattr.c
++++ b/fs/btrfs/xattr.c
+@@ -22,6 +22,7 @@
+ #include <linux/rwsem.h>
+ #include <linux/xattr.h>
+ #include <linux/security.h>
++#include <linux/posix_acl_xattr.h>
+ #include "ctree.h"
+ #include "btrfs_inode.h"
+ #include "transaction.h"
+@@ -313,8 +314,8 @@ err:
+  */
+ const struct xattr_handler *btrfs_xattr_handlers[] = {
+ #ifdef CONFIG_BTRFS_FS_POSIX_ACL
+-	&btrfs_xattr_acl_access_handler,
+-	&btrfs_xattr_acl_default_handler,
++	&posix_acl_access_xattr_handler,
++	&posix_acl_default_xattr_handler,
+ #endif
+ 	NULL,
+ };
+diff --git a/fs/btrfs/xattr.h b/fs/btrfs/xattr.h
+index b3cc803..5049608 100644
+--- a/fs/btrfs/xattr.h
++++ b/fs/btrfs/xattr.h
+@@ -21,8 +21,6 @@
+ 
+ #include <linux/xattr.h>
+ 
+-extern const struct xattr_handler btrfs_xattr_acl_access_handler;
+-extern const struct xattr_handler btrfs_xattr_acl_default_handler;
+ extern const struct xattr_handler *btrfs_xattr_handlers[];
+ 
+ extern ssize_t __btrfs_getxattr(struct inode *inode, const char *name,
+-- 
+1.7.10.4
+
+
