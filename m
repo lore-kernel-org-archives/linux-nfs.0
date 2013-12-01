@@ -1,226 +1,124 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.pictura-hosting.nl ([195.93.224.144]:37758 "EHLO
-	mail.pictura-dp.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751406Ab3LLKWj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Dec 2013 05:22:39 -0500
-Received: from mail.pictura-dp.nl (localhost [127.0.0.1])
-	by mail.pictura-dp.nl (Postfix) with ESMTP id 45CCF29AC2
-	for <linux-nfs@vger.kernel.org>; Thu, 12 Dec 2013 11:13:11 +0100 (CET)
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8;
- format=flowed
-Date: Thu, 12 Dec 2013 11:13:11 +0100
-From: Sander Klein <roedie@roedie.nl>
-To: linux-nfs@vger.kernel.org
-Subject: rpc.mountd high cpu usage
-Message-ID: <889b64df295ba04d47f941762ebe0bac@roedie.nl>
+Received: from bombadil.infradead.org ([198.137.202.9]:59537 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751531Ab3LANUV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 1 Dec 2013 08:20:21 -0500
+Message-Id: <20131201132009.999380353@bombadil.infradead.org>
+Date: Sun, 01 Dec 2013 05:14:43 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: linux-nfs@vger.kernel.org, viro@zeniv.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org
+Subject: [PATCH 02/11] rpc_pipefs: always mount on net namespace initialization
+References: <20131201131441.790963326@bombadil.infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+Make sure every network namespace has an rpc_pipefs mount available.
+This makes creating a pipes a heck lot easier.
 
-We have an NFS server with about 186 exports currently. Every time we 
-add an export or mount an export the rpc.mountd starts eating 100% of 
-the CPU for a long time and clients get timeouts during mounts.
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ include/linux/sunrpc/rpc_pipe_fs.h |    1 -
+ net/sunrpc/netns.h                 |    4 ++++
+ net/sunrpc/rpc_pipe.c              |   14 +++++++++++++-
+ net/sunrpc/sunrpc_syms.c           |    8 +++++++-
+ 4 files changed, 24 insertions(+), 3 deletions(-)
 
-At first I thought this was because of a mount storm so I created more 
-rpc.mountd threads (16 currently on a 16 core CPU) to see if that would 
-help. We also made sure that not all of our clients mount the export at 
-the same time. But it didn't help.
+diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
+index a353e03..d5807e7 100644
+--- a/include/linux/sunrpc/rpc_pipe_fs.h
++++ b/include/linux/sunrpc/rpc_pipe_fs.h
+@@ -84,7 +84,6 @@ enum {
+ 
+ extern struct dentry *rpc_d_lookup_sb(const struct super_block *sb,
+ 				      const unsigned char *dir_name);
+-extern void rpc_pipefs_init_net(struct net *net);
+ extern struct super_block *rpc_get_sb_net(const struct net *net);
+ extern void rpc_put_sb_net(const struct net *net);
+ 
+diff --git a/net/sunrpc/netns.h b/net/sunrpc/netns.h
+index 779742c..a80b069 100644
+--- a/net/sunrpc/netns.h
++++ b/net/sunrpc/netns.h
+@@ -13,6 +13,7 @@ struct sunrpc_net {
+ 	struct cache_detail *rsc_cache;
+ 	struct cache_detail *rsi_cache;
+ 
++	struct vfsmount *pipefs_mnt;
+ 	struct super_block *pipefs_sb;
+ 	struct mutex pipefs_sb_lock;
+ 
+@@ -41,4 +42,7 @@ extern int sunrpc_net_id;
+ int ip_map_cache_create(struct net *);
+ void ip_map_cache_destroy(struct net *);
+ 
++extern int rpc_pipefs_init_net(struct net *net);
++extern void rpc_pipefs_exit_net(struct net *net);
++
+ #endif
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index 395eb5f..e654b65 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -1203,13 +1203,25 @@ struct dentry *rpc_d_lookup_sb(const struct super_block *sb,
+ }
+ EXPORT_SYMBOL_GPL(rpc_d_lookup_sb);
+ 
+-void rpc_pipefs_init_net(struct net *net)
++int rpc_pipefs_init_net(struct net *net)
+ {
+ 	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
+ 
+ 	mutex_init(&sn->pipefs_sb_lock);
+ 	sn->gssd_running = 1;
+ 	sn->pipe_version = -1;
++
++	sn->pipefs_mnt = kern_mount(&rpc_pipe_fs_type);
++	if (IS_ERR(sn->pipefs_mnt))
++		return PTR_ERR(sn->pipefs_mnt);
++	return 0;
++}
++
++void rpc_pipefs_exit_net(struct net *net)
++{
++	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
++
++	kern_unmount(sn->pipefs_mnt);
+ }
+ 
+ /*
+diff --git a/net/sunrpc/sunrpc_syms.c b/net/sunrpc/sunrpc_syms.c
+index 3d6498a..5d7e961 100644
+--- a/net/sunrpc/sunrpc_syms.c
++++ b/net/sunrpc/sunrpc_syms.c
+@@ -44,12 +44,17 @@ static __net_init int sunrpc_init_net(struct net *net)
+ 	if (err)
+ 		goto err_unixgid;
+ 
+-	rpc_pipefs_init_net(net);
++	err = rpc_pipefs_init_net(net);
++	if (err)
++		goto err_gidcache;
++
+ 	INIT_LIST_HEAD(&sn->all_clients);
+ 	spin_lock_init(&sn->rpc_client_lock);
+ 	spin_lock_init(&sn->rpcb_clnt_lock);
+ 	return 0;
+ 
++err_gidcache:
++	unix_gid_cache_destroy(net);
+ err_unixgid:
+ 	ip_map_cache_destroy(net);
+ err_ipmap:
+@@ -60,6 +65,7 @@ err_proc:
+ 
+ static __net_exit void sunrpc_exit_net(struct net *net)
+ {
++	rpc_pipefs_exit_net(net);
+ 	unix_gid_cache_destroy(net);
+ 	ip_map_cache_destroy(net);
+ 	rpc_proc_exit(net);
+-- 
+1.7.10.4
 
-After attaching a strace to one of the rpc.mountd processes I found out 
-that a lot of newfstatat's are being done. For every export we create a 
-newfstatat is being done for every way the a harddisk is seen the OS. 
-Our system has 180 harddisks which are all multipathed so a these are a 
-*LOT* of stats. 7206 per export in our case. Just a small part from the 
-strace (sorry for the big paste):
-
-
-statfs("/some/export", {f_type=0x2fc12fc1, f_bsize=131072, 
-f_blocks=50331648, f_bfree=8355553, f_bavail=8355553, 
-f_files=2139121087, f_ffree=2139021753, f_fsid={1912623216, 10933642}, 
-f_namelen=255, f_frsize=131072}) = 0
-stat("/some/export", {st_mode=S_IFDIR|0775, st_size=15, ...}) = 0
-lstat("/some/export", {st_mode=S_IFDIR|0775, st_size=15, ...}) = 0
-lstat("/some/export/..", {st_mode=S_IFDIR|0755, st_size=12288, ...}) = 0
-stat("/some/export", {st_mode=S_IFDIR|0775, st_size=15, ...}) = 0
-open("/sys/dev/block/0:187", O_RDONLY)  = -1 ENOENT (No such file or 
-directory)
-open("/dev", O_RDONLY|O_NONBLOCK|O_DIRECTORY|O_CLOEXEC) = 21
-getdents(21, /* 1093 entries */, 32768) = 30680
-newfstatat(21, "dm-185", {st_mode=S_IFBLK|S_ISVTX|0660, 
-st_rdev=makedev(254, 185), ...}, 0) = 0
-newfstatat(21, "dm-184", {st_mode=S_IFBLK|S_ISVTX|0660, 
-st_rdev=makedev(254, 184), ...}, 0) = 0
-newfstatat(21, "dm-183", {st_mode=S_IFBLK|S_ISVTX|0660, 
-st_rdev=makedev(254, 183), ...}, 0) = 0
-newfstatat(21, "dm-182", {st_mode=S_IFBLK|S_ISVTX|0660, 
-st_rdev=makedev(254, 182), ...}, 0) = 0
-newfstatat(21, "dm-181", {st_mode=S_IFBLK|S_ISVTX|0660, 
-st_rdev=makedev(254, 181), ...}, 0) = 0
-newfstatat(21, "dm-180", {st_mode=S_IFBLK|S_ISVTX|0660, 
-st_rdev=makedev(254, 180), ...}, 0) = 0
-[...]
-newfstatat(21, "dm-3", {st_mode=S_IFBLK|S_ISVTX|0660, 
-st_rdev=makedev(254, 3), ...}, 0) = 0
-newfstatat(21, "dm-2", {st_mode=S_IFBLK|S_ISVTX|0660, 
-st_rdev=makedev(254, 2), ...}, 0) = 0
-newfstatat(21, "loop7", {st_mode=S_IFBLK|S_ISVTX|0660, 
-st_rdev=makedev(7, 7), ...}, 0) = 0
-newfstatat(21, "loop6", {st_mode=S_IFBLK|S_ISVTX|0660, 
-st_rdev=makedev(7, 6), ...}, 0) = 0
-newfstatat(21, "loop5", {st_mode=S_IFBLK|S_ISVTX|0660, 
-st_rdev=makedev(7, 5), ...}, 0) = 0
-newfstatat(21, "loop4", {st_mode=S_IFBLK|S_ISVTX|0660, 
-st_rdev=makedev(7, 4), ...}, 0) = 0
-newfstatat(21, "loop3", {st_mode=S_IFBLK|S_ISVTX|0660, 
-st_rdev=makedev(7, 3), ...}, 0) = 0
-newfstatat(21, "loop2", {st_mode=S_IFBLK|S_ISVTX|0660, 
-st_rdev=makedev(7, 2), ...}, 0) = 0
-newfstatat(21, "loop1", {st_mode=S_IFBLK|S_ISVTX|0660, 
-st_rdev=makedev(7, 1), ...}, 0) = 0
-newfstatat(21, "shm", {st_mode=S_IFDIR|S_ISVTX|0777, st_size=60, ...}, 
-0) = 0
-newfstatat(21, "sndstat", {st_mode=S_IFREG|0444, st_size=0, ...}, 0) = 0
-newfstatat(21, "root", {st_mode=S_IFBLK|S_ISVTX|0660, 
-st_rdev=makedev(254, 0), ...}, 0) = 0
-newfstatat(21, "MAKEDEV", {st_mode=S_IFREG|0755, st_size=22880, ...}, 0) 
-= 0
-newfstatat(21, "dvdrw", {st_mode=S_IFBLK|S_ISVTX|0660, 
-st_rdev=makedev(11, 0), ...}, 0) = 0
-newfstatat(21, "dvd", {st_mode=S_IFBLK|S_ISVTX|0660, st_rdev=makedev(11, 
-0), ...}, 0) = 0
-newfstatat(21, "cdrw", {st_mode=S_IFBLK|S_ISVTX|0660, 
-st_rdev=makedev(11, 0), ...}, 0) = 0
-newfstatat(21, "cdrom", {st_mode=S_IFBLK|S_ISVTX|0660, 
-st_rdev=makedev(11, 0), ...}, 0) = 0
-newfstatat(21, "hpilo", {st_mode=S_IFDIR|0755, st_size=200, ...}, 0) = 0
-newfstatat(21, "snd", {st_mode=S_IFDIR|0755, st_size=80, ...}, 0) = 0
-newfstatat(21, "loop0", {st_mode=S_IFBLK|S_ISVTX|0660, 
-st_rdev=makedev(7, 0), ...}, 0) = 0
-newfstatat(21, "dm-1", {st_mode=S_IFBLK|S_ISVTX|0660, 
-st_rdev=makedev(254, 1), ...}, 0) = 0
-newfstatat(21, "os", {st_mode=S_IFDIR|0755, st_size=160, ...}, 0) = 0
-newfstatat(21, "dm-0", {st_mode=S_IFBLK|S_ISVTX|0660, 
-st_rdev=makedev(254, 0), ...}, 0) = 0
-newfstatat(21, "sdnc", {st_mode=S_IFBLK|S_ISVTX|0660, 
-st_rdev=makedev(70, 480), ...}, 0) = 0
-newfstatat(21, "sdnb", {st_mode=S_IFBLK|S_ISVTX|0660, 
-st_rdev=makedev(70, 464), ...}, 0) = 0
-newfstatat(21, "sdna", {st_mode=S_IFBLK|S_ISVTX|0660, 
-st_rdev=makedev(70, 448), ...}, 0) = 0
-newfstatat(21, "sdmz", {st_mode=S_IFBLK|S_ISVTX|0660, 
-st_rdev=makedev(70, 432), ...}, 0) = 0
-newfstatat(21, "sdmy", {st_mode=S_IFBLK|S_ISVTX|0660, 
-st_rdev=makedev(70, 416), ...}, 0) = 0
-newfstatat(21, "sdmx", {st_mode=S_IFBLK|S_ISVTX|0660, 
-st_rdev=makedev(70, 400), ...}, 0) = 0
-newfstatat(21, "sdmw", {st_mode=S_IFBLK|S_ISVTX|0660, 
-st_rdev=makedev(70, 384), ...}, 0) = 0
-[...]
-newfstatat(21, "sdd", {st_mode=S_IFBLK|S_ISVTX|0660, st_rdev=makedev(8, 
-48), ...}, 0) = 0
-newfstatat(21, "sdc", {st_mode=S_IFBLK|S_ISVTX|0660, st_rdev=makedev(8, 
-32), ...}, 0) = 0
-newfstatat(21, "sdb", {st_mode=S_IFBLK|S_ISVTX|0660, st_rdev=makedev(8, 
-16), ...}, 0) = 0
-newfstatat(21, "bus", {st_mode=S_IFDIR|0755, st_size=60, ...}, 0) = 0
-newfstatat(21, "bsg", {st_mode=S_IFDIR|0755, st_size=15280, ...}, 0) = 0
-newfstatat(21, "rtc", {st_mode=S_IFCHR|0600, st_rdev=makedev(254, 0), 
-...}, 0) = 0
-newfstatat(21, "char", {st_mode=S_IFDIR|0755, st_size=25320, ...}, 0) = 
-0
-newfstatat(21, "mapper", {st_mode=S_IFDIR|0755, st_size=3780, ...}, 0) = 
-0
-newfstatat(21, "net", {st_mode=S_IFDIR|0755, st_size=60, ...}, 0) = 0
-newfstatat(21, "cpu", {st_mode=S_IFDIR|0755, st_size=60, ...}, 0) = 0
-newfstatat(21, "stderr", {st_mode=S_IFCHR|0666, st_rdev=makedev(1, 3), 
-...}, 0) = 0
-newfstatat(21, "stdout", {st_mode=S_IFCHR|0666, st_rdev=makedev(1, 3), 
-...}, 0) = 0
-newfstatat(21, "stdin", {st_mode=S_IFCHR|0666, st_rdev=makedev(1, 3), 
-...}, 0) = 0
-newfstatat(21, "fd", {st_mode=S_IFDIR|0500, st_size=0, ...}, 0) = 0
-newfstatat(21, "core", {st_mode=S_IFREG|0400, st_size=140737486262272, 
-...}, 0) = 0
-newfstatat(21, "pts", {st_mode=S_IFDIR|0755, st_size=0, ...}, 0) = 0
-newfstatat(21, "input", {st_mode=S_IFDIR|0755, st_size=120, ...}, 0) = 0
-getdents(21, /* 0 entries */, 32768)    = 0
-close(21)                               = 0
-open("/devfs", O_RDONLY|O_NONBLOCK|O_DIRECTORY|O_CLOEXEC) = -1 ENOENT 
-(No such file or directory)
-open("/devices", O_RDONLY|O_NONBLOCK|O_DIRECTORY|O_CLOEXEC) = -1 ENOENT 
-(No such file or directory)
-open("/dev/input", O_RDONLY|O_NONBLOCK|O_DIRECTORY|O_CLOEXEC) = 21
-getdents(21, /* 6 entries */, 32768)    = 168
-newfstatat(21, "by-path", {st_mode=S_IFDIR|0755, st_size=60, ...}, 0) = 
-0
-getdents(21, /* 0 entries */, 32768)    = 0
-close(21)                               = 0
-open("/dev/pts", O_RDONLY|O_NONBLOCK|O_DIRECTORY|O_CLOEXEC) = 21
-getdents(21, /* 6 entries */, 32768)    = 144
-getdents(21, /* 0 entries */, 32768)    = 0
-close(21)                               = 0
-open("/dev/cpu", O_RDONLY|O_NONBLOCK|O_DIRECTORY|O_CLOEXEC) = 21
-getdents(21, /* 3 entries */, 32768)    = 80
-getdents(21, /* 0 entries */, 32768)    = 0
-close(21)                               = 0
-open("/dev/net", O_RDONLY|O_NONBLOCK|O_DIRECTORY|O_CLOEXEC) = 21
-getdents(21, /* 3 entries */, 32768)    = 72
-getdents(21, /* 0 entries */, 32768)    = 0
-close(21)                               = 0
-open("/dev/mapper", O_RDONLY|O_NONBLOCK|O_DIRECTORY|O_CLOEXEC) = 21
-getdents(21, /* 189 entries */, 32768)  = 7472
-newfstatat(21, "os-home", {st_mode=S_IFBLK|S_ISVTX|0660, 
-st_rdev=makedev(254, 185), ...}, 0) = 0
-newfstatat(21, "os-var", {st_mode=S_IFBLK|S_ISVTX|0660, 
-st_rdev=makedev(254, 184), ...}, 0) = 0
-newfstatat(21, "os-usr", {st_mode=S_IFBLK|S_ISVTX|0660, 
-st_rdev=makedev(254, 183), ...}, 0) = 0
-newfstatat(21, "os-boot", {st_mode=S_IFBLK|S_ISVTX|0660, 
-st_rdev=makedev(254, 182), ...}, 0) = 0
-newfstatat(21, "35000cca01a8db828", {st_mode=S_IFBLK|S_ISVTX|0660, 
-st_rdev=makedev(254, 181), ...}, 0) = 0
-newfstatat(21, "35000cca01a9a63e8", {st_mode=S_IFBLK|S_ISVTX|0660, 
-st_rdev=makedev(254, 180), ...}, 0) = 0
-newfstatat(21, "35000cca01a89cae4", {st_mode=S_IFBLK|S_ISVTX|0660, 
-st_rdev=makedev(254, 179), ...}, 0) = 0
-newfstatat(21, "35000cca01a89dd04", {st_mode=S_IFBLK|S_ISVTX|0660, 
-st_rdev=makedev(254, 178), ...}, 0) = 0
-[...]
-newfstatat(21, "35000cca03e40bd84", {st_mode=S_IFBLK|S_ISVTX|0660, 
-st_rdev=makedev(254, 6), ...}, 0) = 0
-newfstatat(21, "35000cca03e4b0250", {st_mode=S_IFBLK|S_ISVTX|0660, 
-st_rdev=makedev(254, 3), ...}, 0) = 0
-newfstatat(21, "35000cca03e368408", {st_mode=S_IFBLK|S_ISVTX|0660, 
-st_rdev=makedev(254, 7), ...}, 0) = 0
-newfstatat(21, "os-swap", {st_mode=S_IFBLK|S_ISVTX|0660, 
-st_rdev=makedev(254, 1), ...}, 0) = 0
-newfstatat(21, "os-root", {st_mode=S_IFBLK|S_ISVTX|0660, 
-st_rdev=makedev(254, 0), ...}, 0) = 0
-getdents(21, /* 0 entries */, 32768)    = 0
-close(21)                               = 0
-open("/dev/char", O_RDONLY|O_NONBLOCK|O_DIRECTORY|O_CLOEXEC) = 21
-getdents(21, /* 1027 entries */, 32768) = 32768
-newfstatat(21, "10:237", {st_mode=S_IFCHR|S_ISVTX|0600, 
-st_rdev=makedev(10, 237), ...}, 0) = 0
-newfstatat(21, "7:134", {st_mode=S_IFCHR|0600, st_rdev=makedev(7, 134), 
-...}, 0) = 0
-newfstatat(21, "7:6", {st_mode=S_IFCHR|0600, st_rdev=makedev(7, 6), 
-...}, 0) = 0
-newfstatat(21, "7:133", {st_mode=S_IFCHR|0600, st_rdev=makedev(7, 133), 
-...}, 0) = 0
-[...etc etc etc...]
-
-
-Is this expected behavour or is this some kind of bug?
-
-I'm using nfs-utils 1.2.8 from Debian testing, but also had this problem 
-with 1.2.6. The kernel is 3.2.51.
-
-If any more info is needed please let me know.
-
-Regards,
-
-Sander Klein
 
