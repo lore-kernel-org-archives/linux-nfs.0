@@ -1,206 +1,496 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from szxga02-in.huawei.com ([119.145.14.65]:63740 "EHLO
-	szxga02-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752141Ab3LPB1j (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 15 Dec 2013 20:27:39 -0500
-Message-ID: <52AE56D7.5010302@huawei.com>
-Date: Mon, 16 Dec 2013 09:26:47 +0800
-From: Weng Meiling <wengmeiling.weng@huawei.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>, <skinsbursky@parallels.com>
-CC: <stable@vger.kernel.org>, <linux-nfs@vger.kernel.org>,
-        <lizefan@huawei.com>, <h.huangqiang@huawei.com>
-Subject: Re: NFSd 3.13 bug (Was "Re: [PATCH 3.4 9/9] nfsd: use the current
- net ns in write_threads() and write_ports()")
-References: <1386136415-30976-1-git-send-email-wengmeiling.weng@huawei.com> <1386136415-30976-10-git-send-email-wengmeiling.weng@huawei.com> <20131204212532.GB19452@fieldses.org> <52A686A7.8060208@huawei.com>
-In-Reply-To: <52A686A7.8060208@huawei.com>
-Content-Type: text/plain; charset="ISO-8859-1"
+Received: from bombadil.infradead.org ([198.137.202.9]:59191 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751766Ab3LAMG6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 1 Dec 2013 07:06:58 -0500
+Message-Id: <20131201120656.685815467@bombadil.infradead.org>
+Date: Sun, 01 Dec 2013 03:59:20 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: viro@zeniv.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-mtd@lists.infradead.org, Mark Fasheh <mfasheh@suse.com>,
+        Joel Becker <jlbec@evilplan.org>, reiserfs-devel@vger.kernel.org,
+        xfs@oss.sgi.com, jfs-discussion@lists.sourceforge.net,
+        cluster-devel@redhat.com, linux-nfs@vger.kernel.org
+Subject: [PATCH 17/18] nfs: use generic posix ACL infrastructure for v3 Posix ACLs
+References: <20131201115903.910559036@bombadil.infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Bruce, Stanislav:
-Do you have any ideas about this problem?
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ fs/nfs/inode.c         |    4 -
+ fs/nfs/nfs3acl.c       |  287 ++++++++++--------------------------------------
+ fs/nfs/nfs3proc.c      |   26 +++--
+ fs/nfs/nfs3super.c     |    3 +
+ include/linux/nfs_fs.h |   10 +-
+ 5 files changed, 79 insertions(+), 251 deletions(-)
 
-On 2013/12/10 11:12, Weng Meiling wrote:
-> Hi guys,
-> 
-> When I test NFS in different network namespace with the
-> 3.13-rc2 kernel, I trigger a kernel panic.
-> 
-> On 2013/12/5 5:25, J. Bruce Fields wrote:
->> On Wed, Dec 04, 2013 at 01:53:35PM +0800, Weng Meiling wrote:
->>> Upstream commit f7fb86c6e639360ad9c253cec534819ef928a674 (nfsd: use
->>> "init_net" for portmapper) introduced a bug.
->>>
->>> Starting NFSd in a non init_net network namespace will lead to
->>> NULL pointer deference. Because RPCBIND client will be NULL when register
->>> RPC service with the local portmapper in svc_addsock().
->>>
->>> BUG: unable to handle kernel NULL pointer dereference at 0000000000000060
->>> IP: [<ffffffffa0439150>] call_start+0x10/0x30 [sunrpc]
->>> ...
->>> Pid: 27770, comm: rpc.nfsd ...
->>> RIP: 0010:[<ffffffffa0439150>]  [<ffffffffa0439150>] call_start+0x10/0x30 [sunrpc]
->>> ...
->>>   [<ffffffffa0442841>] __rpc_execute+0x91/0x160 [sunrpc]
->>>   [<ffffffffa0442981>] rpc_execute+0x71/0x80 [sunrpc]
->>>   [<ffffffffa043ab49>] rpc_run_task+0x89/0xa0 [sunrpc]
->>>   [<ffffffffa043ac5d>] rpc_call_sync+0x3d/0x70 [sunrpc]
->>>   [<ffffffffa044b316>] rpcb_register+0xa6/0xd0 [sunrpc]
->>>   [<ffffffffa0444ede>] __svc_register+0x1ae/0x1c0 [sunrpc]
->>>   [<ffffffff8114f975>] ? cache_alloc_refill+0x85/0x290
->>>   [<ffffffffa0444f7f>] svc_register+0x8f/0xc0 [sunrpc]
->>>   [<ffffffff811504f3>] ? kmem_cache_alloc_trace+0xc3/0x1d0
->>>   [<ffffffffa04472f8>] svc_setup_socket+0x1a8/0x2c0 [sunrpc]
->>>   [<ffffffff81009546>] ? read_tsc+0x16/0x40
->>>   [<ffffffffa0448078>] svc_addsock+0x118/0x1c0 [sunrpc]
->>>   [<ffffffff81090ee5>] ? do_gettimeofday+0x15/0x50
->>>   [<ffffffffa049e69c>] ? nfsd_create_serv+0xdc/0x150 [nfsd]
->>>   [<ffffffff8125605c>] ? simple_strtoull+0x2c/0x50
->>>   [<ffffffffa049fdce>] __write_ports+0x1fe/0x230 [nfsd]
->>>   [<ffffffffa049fe37>] write_ports+0x37/0x60 [nfsd]
->>>   [<ffffffffa049fe00>] ? __write_ports+0x230/0x230 [nfsd]
->>>   [<ffffffffa049edd2>] nfsctl_transaction_write+0x72/0x90 [nfsd]
->>>   [<ffffffff8116573b>] vfs_write+0xcb/0x130
->>>   [<ffffffff81165890>] sys_write+0x50/0x90
->>>
->>> Fix it by using the current's network namespace so NFSd uses the
->>> consistent net ns all the time.
->>
->> Everything else looks like a straightforward backport, but doing this
->> differently from upstream makes me nervous.  Don't we also want to take
->> 11f779421a39b86da8a523d97e5fd3477878d44f "nfsd: containerize NFSd
->> filesystem" ?  (Stanislav?)
->>
->> --b.
->>
-> 
-> I backport the patch 11f779421a39b86da8a523d97e5fd3477878d44f "nfsd: containerize NFSd
-> filesystem" and test. But I trigger a bug, this bug still exists in 3.13 kernel. The following
-> is what I do:
-> 
-> The steps:
-> 
-> step 1: start NFS server in init_net net ns
-> #service nfsserver start
-> 
-> step 2: stop NFS server in non init_net net ns
-> #ip netns add test
-> #ip netns list
-> test
-> #ip netns exec test service nfsserver stop
-> 
-> step 3: start NFS server again in the non init_net net ns
-> #ip netns exec test service nfsserver start
-> 
-> This step 3 will trigger kernel panic. The reason seems that "ip
-> netns exec" creates a new mount namespace, the changes to the
-> new mount namespace don't propgate to other namespaces. So
-> when stop NFS server in second step, the NFSD filesystem isn't
-> umounted.  When restart NFS server in third step, the NFSD
-> filesystem will not remount,  this result to the NFSD file
-> system superblock's net ns is still init_net and RPCBIND client
-> will be NULL when register RPC service with the local portmapper
-> in svc_addsock(). Do you have any ideas about this problem?
-> 
-> the detail call trace:
-> [  497.554677] BUG: unable to handle kernel NULL pointer dereference at 0000000000000058
-> [  497.554687] IP: [<ffffffffa031a170>] call_start+0x10/0x30 [sunrpc]
-> [  497.554707] PGD 0
-> [  497.554711] Oops: 0000 [#1] SMP
-> [  497.554716] Modules linked in: nfsd lockd nfs_acl auth_rpcgss sunrpc oid_registry edd af_packet cpufreq_conservative cpufreq_userspace cpufreq_powersave loop dm_mod e1000e iTCO_wdt
-> iTCO_vendor_support i2c_i801 bnx2 ipv6 lpc_ich i7core_edac edac_core acpi_cpufreq ehci_pci button ses enclosure serio_raw sg rtc_cmos mfd_core ptp hid_generic pps_core i2c_core pcspkr ext3 jbd mbcache
-> usbhid hid uhci_hcd ehci_hcd usbcore sd_mod usb_common crc_t10dif crct10dif_common processor thermal_sys hwmon scsi_dh_rdac scsi_dh_hp_sw scsi_dh_emc scsi_dh_alua scsi_dh ata_generic ata_piix libata
-> megaraid_sas scsi_mod
-> [  497.554788] CPU: 2 PID: 7837 Comm: rpc.nfsd Not tainted 3.13.0-rc2-0.1-default+ #1
-> [  497.554793] Hardware name: Huawei Technologies Co., Ltd. Tecal RH2285          /BC11BTSA              , BIOS CTSAV036 04/27/2011
-> [  497.554800] task: ffff8800ba76e2d0 ti: ffff88043e8e8000 task.ti: ffff88043e8e8000
-> [  497.554805] RIP: 0010:[<ffffffffa031a170>]  [<ffffffffa031a170>] call_start+0x10/0x30 [sunrpc]
-> [  497.554819] RSP: 0018:ffff88043e8e9aa8  EFLAGS: 00010202
-> [  497.554823] RAX: ffffffffa033f4b8 RBX: ffff8800bb030040 RCX: 0000000000000034
-> [  497.554828] RDX: 0000000000000000 RSI: ffff8800bb0300b0 RDI: ffff8800bb030040
-> [  497.554832] RBP: ffff88043e8e9aa8 R08: 0040000000000000 R09: 0200000000000000
-> [  497.554836] R10: 0000000000000000 R11: ffff8802348fe040 R12: ffff8800bb030040
-> [  497.554841] R13: ffffffffa031a160 R14: 0000000000000000 R15: ffffffffa031a160
-> [  497.554846] FS:  00007f2fa0536700(0000) GS:ffff88023fc40000(0000) knlGS:0000000000000000
-> [  497.554851] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-> [  497.554855] CR2: 0000000000000058 CR3: 0000000434e30000 CR4: 00000000000007e0
-> [  497.554859] Stack:
-> [  497.554862]  ffff88043e8e9af8 ffffffffa0323f61 ffff00066c0a0100 ffff8800bb0300b0
-> [  497.554871]  000000003e8e9ae8 ffff8800bb030040 ffff8800bb030040 0000000000000000
-> [  497.554878]  0000000000000000 0000000000000002 ffff88043e8e9b28 ffffffffa03240ed
-> [  497.554886] Call Trace:
-> [  497.554902]  [<ffffffffa0323f61>] __rpc_execute+0xa1/0x190 [sunrpc]
-> [  497.554918]  [<ffffffffa03240ed>] rpc_execute+0x9d/0xc0 [sunrpc]
-> [  497.554930]  [<ffffffffa031c3e9>] rpc_run_task+0x89/0xa0 [sunrpc]
-> [  497.554943]  [<ffffffffa031c4fe>] rpc_call_sync+0x3e/0xa0 [sunrpc]
-> [  497.554961]  [<ffffffffa032d337>] rpcb_register_call+0x37/0x60 [sunrpc]
-> [  497.554979]  [<ffffffffa032d53c>] rpcb_register+0x9c/0xb0 [sunrpc]
-> [  497.554996]  [<ffffffffa03270ee>] __svc_register+0x1ae/0x1c0 [sunrpc]
-> [  497.555012]  [<ffffffffa0327190>] svc_register+0x90/0xe0 [sunrpc]
-> [  497.555029]  [<ffffffffa032a157>] svc_setup_socket+0x1e7/0x300 [sunrpc]
-> [  497.555038]  [<ffffffff810b39b3>] ? __getnstimeofday+0x43/0xd0
-> [  497.555055]  [<ffffffffa032a78a>] svc_addsock+0xca/0x1e0 [sunrpc]
-> [  497.555068]  [<ffffffffa0396b31>] ? nfsd_create_serv+0x111/0x180 [nfsd]
-> [  497.555075]  [<ffffffff8128d47e>] ? simple_strtol+0xe/0x30
-> [  497.555084]  [<ffffffffa03972b7>] ? get_int+0x57/0x70 [nfsd]
-> [  497.555094]  [<ffffffffa03977e9>] __write_ports+0x119/0x140 [nfsd]
-> [  497.555103]  [<ffffffffa039788a>] write_ports+0x7a/0xb0 [nfsd]
-> [  497.555112]  [<ffffffffa0397810>] ? __write_ports+0x140/0x140 [nfsd]
-> [  497.555122]  [<ffffffffa039713a>] nfsctl_transaction_write+0x6a/0x80 [nfsd]
-> [  497.555129]  [<ffffffff81186207>] vfs_write+0xc7/0x1e0
-> [  497.555134]  [<ffffffff8118643d>] SyS_write+0x5d/0xa0
-> [  497.555142]  [<ffffffff814deaa2>] system_call_fastpath+0x16/0x1b
-> [  497.555146] Code: 00 00 00 01 55 48 89 e5 75 0d 48 c7 47 50 60 a1 31 a0 b8 01 00 00 00 c9 c3 66 90 48 8b 47 28 48 8b 57 18 55 83 40 20 01 48 89 e5 <48> 8b 42 58 83 40 1c 01 48 c7 47 50 f0 a1 31 a0
-> c9 c3 66 66 66
-> [  497.555189] RIP  [<ffffffffa031a170>] call_start+0x10/0x30 [sunrpc]
-> [  497.555200]  RSP <ffff88043e8e9aa8>
-> [  497.555203] CR2: 0000000000000058
-> [  497.555208] ---[ end trace 34ca8d40727792e2 ]---
-> 
->>>
->>> Signed-off-by: Weng Meiling <wengmeiling.weng@huawei.com>
->>> ---
->>>  fs/nfsd/nfsctl.c | 5 +++--
->>>  1 file changed, 3 insertions(+), 2 deletions(-)
->>>
->>> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
->>> index 1d74af2..4ff0db9 100644
->>> --- a/fs/nfsd/nfsctl.c
->>> +++ b/fs/nfsd/nfsctl.c
->>> @@ -15,6 +15,7 @@
->>>  #include <linux/sunrpc/gss_krb5_enctypes.h>
->>>  #include <linux/sunrpc/rpc_pipe_fs.h>
->>>  #include <linux/module.h>
->>> +#include <linux/nsproxy.h>
->>>  
->>>  #include "idmap.h"
->>>  #include "nfsd.h"
->>> @@ -389,7 +390,7 @@ static ssize_t write_threads(struct file *file, char *buf, size_t size)
->>>  {
->>>  	char *mesg = buf;
->>>  	int rv;
->>> -	struct net *net = &init_net;
->>> +	struct net *net = current->nsproxy->net_ns;
->>>  
->>>  	if (size > 0) {
->>>  		int newthreads;
->>> @@ -857,7 +858,7 @@ static ssize_t __write_ports(struct file *file, char *buf, size_t size,
->>>  static ssize_t write_ports(struct file *file, char *buf, size_t size)
->>>  {
->>>  	ssize_t rv;
->>> -	struct net *net = &init_net;
->>> +	struct net *net = current->nsproxy->net_ns;
->>>  
->>>  	mutex_lock(&nfsd_mutex);
->>>  	rv = __write_ports(file, buf, size, net);
->>> -- 
->>> 1.8.2.2
->>>
->>>
->>
->> .
->>
-> 
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 18ab2da..53b5cfe 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -1641,10 +1641,6 @@ struct inode *nfs_alloc_inode(struct super_block *sb)
+ 		return NULL;
+ 	nfsi->flags = 0UL;
+ 	nfsi->cache_validity = 0UL;
+-#ifdef CONFIG_NFS_V3_ACL
+-	nfsi->acl_access = ERR_PTR(-EAGAIN);
+-	nfsi->acl_default = ERR_PTR(-EAGAIN);
+-#endif
+ #if IS_ENABLED(CONFIG_NFS_V4)
+ 	nfsi->nfs4_acl = NULL;
+ #endif /* CONFIG_NFS_V4 */
+diff --git a/fs/nfs/nfs3acl.c b/fs/nfs/nfs3acl.c
+index e859675..015c567 100644
+--- a/fs/nfs/nfs3acl.c
++++ b/fs/nfs/nfs3acl.c
+@@ -10,179 +10,7 @@
+ 
+ #define NFSDBG_FACILITY	NFSDBG_PROC
+ 
+-ssize_t nfs3_listxattr(struct dentry *dentry, char *buffer, size_t size)
+-{
+-	struct inode *inode = dentry->d_inode;
+-	struct posix_acl *acl;
+-	int pos=0, len=0;
+-
+-#	define output(s) do {						\
+-			if (pos + sizeof(s) <= size) {			\
+-				memcpy(buffer + pos, s, sizeof(s));	\
+-				pos += sizeof(s);			\
+-			}						\
+-			len += sizeof(s);				\
+-		} while(0)
+-
+-	acl = nfs3_proc_getacl(inode, ACL_TYPE_ACCESS);
+-	if (IS_ERR(acl))
+-		return PTR_ERR(acl);
+-	if (acl) {
+-		output("system.posix_acl_access");
+-		posix_acl_release(acl);
+-	}
+-
+-	if (S_ISDIR(inode->i_mode)) {
+-		acl = nfs3_proc_getacl(inode, ACL_TYPE_DEFAULT);
+-		if (IS_ERR(acl))
+-			return PTR_ERR(acl);
+-		if (acl) {
+-			output("system.posix_acl_default");
+-			posix_acl_release(acl);
+-		}
+-	}
+-
+-#	undef output
+-
+-	if (!buffer || len <= size)
+-		return len;
+-	return -ERANGE;
+-}
+-
+-ssize_t nfs3_getxattr(struct dentry *dentry, const char *name,
+-		void *buffer, size_t size)
+-{
+-	struct inode *inode = dentry->d_inode;
+-	struct posix_acl *acl;
+-	int type, error = 0;
+-
+-	if (strcmp(name, POSIX_ACL_XATTR_ACCESS) == 0)
+-		type = ACL_TYPE_ACCESS;
+-	else if (strcmp(name, POSIX_ACL_XATTR_DEFAULT) == 0)
+-		type = ACL_TYPE_DEFAULT;
+-	else
+-		return -EOPNOTSUPP;
+-
+-	acl = nfs3_proc_getacl(inode, type);
+-	if (IS_ERR(acl))
+-		return PTR_ERR(acl);
+-	else if (acl) {
+-		if (type == ACL_TYPE_ACCESS && acl->a_count == 0)
+-			error = -ENODATA;
+-		else
+-			error = posix_acl_to_xattr(&init_user_ns, acl, buffer, size);
+-		posix_acl_release(acl);
+-	} else
+-		error = -ENODATA;
+-
+-	return error;
+-}
+-
+-int nfs3_setxattr(struct dentry *dentry, const char *name,
+-	     const void *value, size_t size, int flags)
+-{
+-	struct inode *inode = dentry->d_inode;
+-	struct posix_acl *acl;
+-	int type, error;
+-
+-	if (strcmp(name, POSIX_ACL_XATTR_ACCESS) == 0)
+-		type = ACL_TYPE_ACCESS;
+-	else if (strcmp(name, POSIX_ACL_XATTR_DEFAULT) == 0)
+-		type = ACL_TYPE_DEFAULT;
+-	else
+-		return -EOPNOTSUPP;
+-
+-	acl = posix_acl_from_xattr(&init_user_ns, value, size);
+-	if (IS_ERR(acl))
+-		return PTR_ERR(acl);
+-	error = nfs3_proc_setacl(inode, type, acl);
+-	posix_acl_release(acl);
+-
+-	return error;
+-}
+-
+-int nfs3_removexattr(struct dentry *dentry, const char *name)
+-{
+-	struct inode *inode = dentry->d_inode;
+-	int type;
+-
+-	if (strcmp(name, POSIX_ACL_XATTR_ACCESS) == 0)
+-		type = ACL_TYPE_ACCESS;
+-	else if (strcmp(name, POSIX_ACL_XATTR_DEFAULT) == 0)
+-		type = ACL_TYPE_DEFAULT;
+-	else
+-		return -EOPNOTSUPP;
+-
+-	return nfs3_proc_setacl(inode, type, NULL);
+-}
+-
+-static void __nfs3_forget_cached_acls(struct nfs_inode *nfsi)
+-{
+-	if (!IS_ERR(nfsi->acl_access)) {
+-		posix_acl_release(nfsi->acl_access);
+-		nfsi->acl_access = ERR_PTR(-EAGAIN);
+-	}
+-	if (!IS_ERR(nfsi->acl_default)) {
+-		posix_acl_release(nfsi->acl_default);
+-		nfsi->acl_default = ERR_PTR(-EAGAIN);
+-	}
+-}
+-
+-void nfs3_forget_cached_acls(struct inode *inode)
+-{
+-	dprintk("NFS: nfs3_forget_cached_acls(%s/%ld)\n", inode->i_sb->s_id,
+-		inode->i_ino);
+-	spin_lock(&inode->i_lock);
+-	__nfs3_forget_cached_acls(NFS_I(inode));
+-	spin_unlock(&inode->i_lock);
+-}
+-
+-static struct posix_acl *nfs3_get_cached_acl(struct inode *inode, int type)
+-{
+-	struct nfs_inode *nfsi = NFS_I(inode);
+-	struct posix_acl *acl = ERR_PTR(-EINVAL);
+-
+-	spin_lock(&inode->i_lock);
+-	switch(type) {
+-		case ACL_TYPE_ACCESS:
+-			acl = nfsi->acl_access;
+-			break;
+-
+-		case ACL_TYPE_DEFAULT:
+-			acl = nfsi->acl_default;
+-			break;
+-
+-		default:
+-			goto out;
+-	}
+-	if (IS_ERR(acl))
+-		acl = ERR_PTR(-EAGAIN);
+-	else
+-		acl = posix_acl_dup(acl);
+-out:
+-	spin_unlock(&inode->i_lock);
+-	dprintk("NFS: nfs3_get_cached_acl(%s/%ld, %d) = %p\n", inode->i_sb->s_id,
+-		inode->i_ino, type, acl);
+-	return acl;
+-}
+-
+-static void nfs3_cache_acls(struct inode *inode, struct posix_acl *acl,
+-		    struct posix_acl *dfacl)
+-{
+-	struct nfs_inode *nfsi = NFS_I(inode);
+-
+-	dprintk("nfs3_cache_acls(%s/%ld, %p, %p)\n", inode->i_sb->s_id,
+-		inode->i_ino, acl, dfacl);
+-	spin_lock(&inode->i_lock);
+-	__nfs3_forget_cached_acls(NFS_I(inode));
+-	if (!IS_ERR(acl))
+-		nfsi->acl_access = posix_acl_dup(acl);
+-	if (!IS_ERR(dfacl))
+-		nfsi->acl_default = posix_acl_dup(dfacl);
+-	spin_unlock(&inode->i_lock);
+-}
+-
+-struct posix_acl *nfs3_proc_getacl(struct inode *inode, int type)
++struct posix_acl *nfs3_get_acl(struct inode *inode, int type)
+ {
+ 	struct nfs_server *server = NFS_SERVER(inode);
+ 	struct page *pages[NFSACL_MAXPAGES] = { };
+@@ -207,8 +35,9 @@ struct posix_acl *nfs3_proc_getacl(struct inode *inode, int type)
+ 	status = nfs_revalidate_inode(server, inode);
+ 	if (status < 0)
+ 		return ERR_PTR(status);
+-	acl = nfs3_get_cached_acl(inode, type);
+-	if (acl != ERR_PTR(-EAGAIN))
++
++	acl = get_cached_acl(inode, type);
++	if (acl != ACL_NOT_CACHED)
+ 		return acl;
+ 	acl = NULL;
+ 
+@@ -257,36 +86,37 @@ struct posix_acl *nfs3_proc_getacl(struct inode *inode, int type)
+ 	}
+ 
+ 	if (res.acl_access != NULL) {
+-		if (posix_acl_equiv_mode(res.acl_access, NULL) == 0) {
++		if (posix_acl_equiv_mode(res.acl_access, NULL) ||
++		    res.acl_access->a_count == 0) {
+ 			posix_acl_release(res.acl_access);
+ 			res.acl_access = NULL;
+ 		}
+ 	}
+-	nfs3_cache_acls(inode,
+-		(res.mask & NFS_ACL)   ? res.acl_access  : ERR_PTR(-EINVAL),
+-		(res.mask & NFS_DFACL) ? res.acl_default : ERR_PTR(-EINVAL));
+ 
+-	switch(type) {
+-		case ACL_TYPE_ACCESS:
+-			acl = res.acl_access;
+-			res.acl_access = NULL;
+-			break;
++	if (res.mask & NFS_ACL)
++		set_cached_acl(inode, ACL_TYPE_ACCESS, res.acl_access);
++	else
++		forget_cached_acl(inode, ACL_TYPE_ACCESS);
+ 
+-		case ACL_TYPE_DEFAULT:
+-			acl = res.acl_default;
+-			res.acl_default = NULL;
++	if (res.mask & NFS_DFACL)
++		set_cached_acl(inode, ACL_TYPE_DEFAULT, res.acl_default);
++	else
++		forget_cached_acl(inode, ACL_TYPE_DEFAULT);
++
++	nfs_free_fattr(res.fattr);
++	if (type == ACL_TYPE_ACCESS) {
++		posix_acl_release(res.acl_default);
++		return res.acl_access;
++	} else {
++		posix_acl_release(res.acl_access);
++		return res.acl_default;
+ 	}
+ 
+ getout:
+ 	posix_acl_release(res.acl_access);
+ 	posix_acl_release(res.acl_default);
+ 	nfs_free_fattr(res.fattr);
+-
+-	if (status != 0) {
+-		posix_acl_release(acl);
+-		acl = ERR_PTR(status);
+-	}
+-	return acl;
++	return ERR_PTR(status);
+ }
+ 
+ static int nfs3_proc_setacls(struct inode *inode, struct posix_acl *acl,
+@@ -353,7 +183,8 @@ static int nfs3_proc_setacls(struct inode *inode, struct posix_acl *acl,
+ 	switch (status) {
+ 		case 0:
+ 			status = nfs_refresh_inode(inode, fattr);
+-			nfs3_cache_acls(inode, acl, dfacl);
++			set_cached_acl(inode, ACL_TYPE_ACCESS, acl);
++			set_cached_acl(inode, ACL_TYPE_DEFAULT, dfacl);
+ 			break;
+ 		case -EPFNOSUPPORT:
+ 		case -EPROTONOSUPPORT:
+@@ -373,33 +204,27 @@ out:
+ 	return status;
+ }
+ 
+-int nfs3_proc_setacl(struct inode *inode, int type, struct posix_acl *acl)
++int nfs3_set_acl(struct inode *inode, struct posix_acl *acl, int type)
+ {
+ 	struct posix_acl *alloc = NULL, *dfacl = NULL;
+ 	int status;
+ 
+ 	if (S_ISDIR(inode->i_mode)) {
+ 		switch(type) {
+-			case ACL_TYPE_ACCESS:
+-				alloc = dfacl = nfs3_proc_getacl(inode,
+-						ACL_TYPE_DEFAULT);
+-				if (IS_ERR(alloc))
+-					goto fail;
+-				break;
+-
+-			case ACL_TYPE_DEFAULT:
+-				dfacl = acl;
+-				alloc = acl = nfs3_proc_getacl(inode,
+-						ACL_TYPE_ACCESS);
+-				if (IS_ERR(alloc))
+-					goto fail;
+-				break;
+-
+-			default:
+-				return -EINVAL;
++		case ACL_TYPE_ACCESS:
++			alloc = dfacl = nfs3_get_acl(inode, ACL_TYPE_DEFAULT);
++			if (IS_ERR(alloc))
++				goto fail;
++			break;
++
++		case ACL_TYPE_DEFAULT:
++			dfacl = acl;
++			alloc = acl = nfs3_get_acl(inode, ACL_TYPE_ACCESS);
++			if (IS_ERR(alloc))
++				goto fail;
++			break;
+ 		}
+-	} else if (type != ACL_TYPE_ACCESS)
+-			return -EINVAL;
++	}
+ 
+ 	if (acl == NULL) {
+ 		alloc = acl = posix_acl_from_mode(inode->i_mode, GFP_KERNEL);
+@@ -417,24 +242,24 @@ fail:
+ int nfs3_proc_set_default_acl(struct inode *dir, struct inode *inode,
+ 		umode_t mode)
+ {
+-	struct posix_acl *dfacl, *acl;
+-	int error = 0;
++	struct posix_acl *default_acl, *acl;
++	int error;
+ 
+-	dfacl = nfs3_proc_getacl(dir, ACL_TYPE_DEFAULT);
+-	if (IS_ERR(dfacl)) {
+-		error = PTR_ERR(dfacl);
++	error = posix_acl_create(dir, &mode, &default_acl, &acl);
++	if (error)
+ 		return (error == -EOPNOTSUPP) ? 0 : error;
+-	}
+-	if (!dfacl)
+-		return 0;
+-	acl = posix_acl_dup(dfacl);
+-	error = __posix_acl_create(&acl, GFP_KERNEL, &mode);
+-	if (error < 0)
+-		goto out_release_dfacl;
+-	error = nfs3_proc_setacls(inode, acl, S_ISDIR(inode->i_mode) ?
+-						      dfacl : NULL);
+-	posix_acl_release(acl);
+-out_release_dfacl:
+-	posix_acl_release(dfacl);
++
++	error = nfs3_proc_setacls(inode, acl, default_acl);
++
++	if (acl)
++		posix_acl_release(acl);
++	if (default_acl)
++		posix_acl_release(default_acl);
+ 	return error;
+ }
++
++const struct xattr_handler *nfs3_xattr_handlers[] = {
++	&posix_acl_access_xattr_handler,
++	&posix_acl_default_xattr_handler,
++	NULL,
++};
+diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
+index 01b6f6a..ab27a7d1 100644
+--- a/fs/nfs/nfs3proc.c
++++ b/fs/nfs/nfs3proc.c
+@@ -904,20 +904,28 @@ static const struct inode_operations nfs3_dir_inode_operations = {
+ 	.permission	= nfs_permission,
+ 	.getattr	= nfs_getattr,
+ 	.setattr	= nfs_setattr,
+-	.listxattr	= nfs3_listxattr,
+-	.getxattr	= nfs3_getxattr,
+-	.setxattr	= nfs3_setxattr,
+-	.removexattr	= nfs3_removexattr,
++	.listxattr	= generic_listxattr,
++	.getxattr	= generic_getxattr,
++	.setxattr	= generic_setxattr,
++	.removexattr	= generic_removexattr,
++#ifdef CONFIG_NFS_V3_ACL
++	.get_acl	= nfs3_get_acl,
++	.set_acl	= nfs3_set_acl,
++#endif
+ };
+ 
+ static const struct inode_operations nfs3_file_inode_operations = {
+ 	.permission	= nfs_permission,
+ 	.getattr	= nfs_getattr,
+ 	.setattr	= nfs_setattr,
+-	.listxattr	= nfs3_listxattr,
+-	.getxattr	= nfs3_getxattr,
+-	.setxattr	= nfs3_setxattr,
+-	.removexattr	= nfs3_removexattr,
++	.listxattr	= generic_listxattr,
++	.getxattr	= generic_getxattr,
++	.setxattr	= generic_setxattr,
++	.removexattr	= generic_removexattr,
++#ifdef CONFIG_NFS_V3_ACL
++	.get_acl	= nfs3_get_acl,
++	.set_acl	= nfs3_set_acl,
++#endif
+ };
+ 
+ const struct nfs_rpc_ops nfs_v3_clientops = {
+@@ -965,7 +973,7 @@ const struct nfs_rpc_ops nfs_v3_clientops = {
+ 	.commit_rpc_prepare = nfs3_proc_commit_rpc_prepare,
+ 	.commit_done	= nfs3_commit_done,
+ 	.lock		= nfs3_proc_lock,
+-	.clear_acl_cache = nfs3_forget_cached_acls,
++	.clear_acl_cache = forget_all_cached_acls,
+ 	.close_context	= nfs_close_context,
+ 	.have_delegation = nfs3_have_delegation,
+ 	.return_delegation = nfs3_return_delegation,
+diff --git a/fs/nfs/nfs3super.c b/fs/nfs/nfs3super.c
+index cc471c7..d6a9894 100644
+--- a/fs/nfs/nfs3super.c
++++ b/fs/nfs/nfs3super.c
+@@ -12,6 +12,9 @@ static struct nfs_subversion nfs_v3 = {
+ 	.rpc_vers = &nfs_version3,
+ 	.rpc_ops  = &nfs_v3_clientops,
+ 	.sops     = &nfs_sops,
++#ifdef CONFIG_NFS_V3_ACL
++	.xattr    = nfs3_xattr_handlers,
++#endif
+ };
+ 
+ static int __init init_nfs_v3(void)
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 14a4820..632d2bf 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -154,10 +154,6 @@ struct nfs_inode {
+ 	struct rb_root		access_cache;
+ 	struct list_head	access_cache_entry_lru;
+ 	struct list_head	access_cache_inode_lru;
+-#ifdef CONFIG_NFS_V3_ACL
+-	struct posix_acl	*acl_access;
+-	struct posix_acl	*acl_default;
+-#endif
+ 
+ 	/*
+ 	 * This is the cookie verifier used for NFSv3 readdir
+@@ -582,12 +578,12 @@ extern int  nfs_readpage_async(struct nfs_open_context *, struct inode *,
+  * linux/fs/nfs3proc.c
+  */
+ #ifdef CONFIG_NFS_V3_ACL
+-extern struct posix_acl *nfs3_proc_getacl(struct inode *inode, int type);
+-extern int nfs3_proc_setacl(struct inode *inode, int type,
+-			    struct posix_acl *acl);
++extern struct posix_acl *nfs3_get_acl(struct inode *inode, int type);
++extern int nfs3_set_acl(struct inode *inode, struct posix_acl *acl, int type);
+ extern int nfs3_proc_set_default_acl(struct inode *dir, struct inode *inode,
+ 		umode_t mode);
+ extern void nfs3_forget_cached_acls(struct inode *inode);
++extern const struct xattr_handler *nfs3_xattr_handlers[];
+ #else
+ static inline int nfs3_proc_set_default_acl(struct inode *dir,
+ 					    struct inode *inode,
+-- 
+1.7.10.4
 
 
