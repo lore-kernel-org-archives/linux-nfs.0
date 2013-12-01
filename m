@@ -1,65 +1,300 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f50.google.com ([209.85.220.50]:48384 "EHLO
-	mail-pa0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751827Ab3LCCJK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Dec 2013 21:09:10 -0500
-Received: by mail-pa0-f50.google.com with SMTP id kl14so2233976pab.9
-        for <linux-nfs@vger.kernel.org>; Mon, 02 Dec 2013 18:09:09 -0800 (PST)
-Message-ID: <529D3D3B.7060204@gmail.com>
-Date: Tue, 03 Dec 2013 10:08:59 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: bfields@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] Add missing recording of back channel attrs in nfsd4_session
-References: <2BCCA4EF-9FCC-4320-85E1-AD500467C95D@gmail.com> <20131202165505.GL1960@fieldses.org>
-In-Reply-To: <20131202165505.GL1960@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from bombadil.infradead.org ([198.137.202.9]:59171 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751435Ab3LAMG4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 1 Dec 2013 07:06:56 -0500
+Message-Id: <20131201120655.205206019@bombadil.infradead.org>
+Date: Sun, 01 Dec 2013 03:59:12 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: viro@zeniv.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-mtd@lists.infradead.org, Mark Fasheh <mfasheh@suse.com>,
+        Joel Becker <jlbec@evilplan.org>, reiserfs-devel@vger.kernel.org,
+        xfs@oss.sgi.com, jfs-discussion@lists.sourceforge.net,
+        cluster-devel@redhat.com, linux-nfs@vger.kernel.org
+Subject: [PATCH 09/18] f2fs: use generic posix ACL infrastructure
+References: <20131201115903.910559036@bombadil.infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 12/03/2013 12:55 AM, J. Bruce Fields wrote:
-> On Tue, Nov 26, 2013 at 10:25:20PM +0800, Kinglong Mee wrote:
->> commit 5b6feee9608dce7afd2646f457c93e612526d1d8 forgot
->> recording the back channel attrs in nfsd4_session.
->>
->> nfsd just check the back channel attars by check_backchannel_attrs,
->> but do not  record it in nfsd4_session in the latest kernel.
-> 
-> Whoops.  So the current server is returning random uninitialized data in
-> those fields, or all zeros?
-> 
-> It would be easy enough to write a pynfs test for this, I think.
+f2fs has some weird mode bit handling, so still using the old
+chmod code for now.
 
-No, server returns right data for nfsd4_encode_create_session encoding
-back-channel attrs from struct nfsd4_create_session, not from nfsd4_session.
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ fs/f2fs/acl.c   |  140 +++++++++----------------------------------------------
+ fs/f2fs/acl.h   |    1 +
+ fs/f2fs/file.c  |    1 +
+ fs/f2fs/namei.c |    2 +
+ fs/f2fs/xattr.c |    9 ++--
+ fs/f2fs/xattr.h |    2 -
+ 6 files changed, 30 insertions(+), 125 deletions(-)
 
-Without this patch, se_bchannel in struct nfsd4_session contains data with all zeros.
+diff --git a/fs/f2fs/acl.c b/fs/f2fs/acl.c
+index 45e8430..4f52fe0f 100644
+--- a/fs/f2fs/acl.c
++++ b/fs/f2fs/acl.c
+@@ -205,7 +205,7 @@ struct posix_acl *f2fs_get_acl(struct inode *inode, int type)
+ 	return acl;
+ }
+ 
+-static int f2fs_set_acl(struct inode *inode, int type,
++static int __f2fs_set_acl(struct inode *inode, int type,
+ 			struct posix_acl *acl, struct page *ipage)
+ {
+ 	struct f2fs_sb_info *sbi = F2FS_SB(inode->i_sb);
+@@ -261,37 +261,32 @@ static int f2fs_set_acl(struct inode *inode, int type,
+ 	return error;
+ }
+ 
++int f2fs_set_acl(struct inode *inode, struct posix_acl *acl, int type)
++{
++	return __f2fs_set_acl(inode, type, acl, NULL);
++}
++
+ int f2fs_init_acl(struct inode *inode, struct inode *dir, struct page *ipage)
+ {
+-	struct f2fs_sb_info *sbi = F2FS_SB(dir->i_sb);
+-	struct posix_acl *acl = NULL;
++	struct posix_acl *default_acl, *acl;
+ 	int error = 0;
+ 
+-	if (!S_ISLNK(inode->i_mode)) {
+-		if (test_opt(sbi, POSIX_ACL)) {
+-			acl = f2fs_get_acl(dir, ACL_TYPE_DEFAULT);
+-			if (IS_ERR(acl))
+-				return PTR_ERR(acl);
+-		}
+-		if (!acl)
+-			inode->i_mode &= ~current_umask();
+-	}
+-
+-	if (!test_opt(sbi, POSIX_ACL) || !acl)
+-		goto cleanup;
++	error = posix_acl_create(dir, &inode->i_mode, &default_acl, &acl);
++	if (error)
++		return error;
+ 
+-	if (S_ISDIR(inode->i_mode)) {
+-		error = f2fs_set_acl(inode, ACL_TYPE_DEFAULT, acl, ipage);
++	if (default_acl) {
++		error = __f2fs_set_acl(inode, ACL_TYPE_DEFAULT, default_acl,
++				       ipage);
++		posix_acl_release(default_acl);
++	}
++	if (acl) {
+ 		if (error)
+-			goto cleanup;
++			error = __f2fs_set_acl(inode, ACL_TYPE_ACCESS, acl,
++					       ipage);
++		posix_acl_release(acl);
+ 	}
+-	error = __posix_acl_create(&acl, GFP_KERNEL, &inode->i_mode);
+-	if (error < 0)
+-		return error;
+-	if (error > 0)
+-		error = f2fs_set_acl(inode, ACL_TYPE_ACCESS, acl, ipage);
+-cleanup:
+-	posix_acl_release(acl);
++
+ 	return error;
+ }
+ 
+@@ -315,100 +310,7 @@ int f2fs_acl_chmod(struct inode *inode)
+ 	if (error)
+ 		return error;
+ 
+-	error = f2fs_set_acl(inode, ACL_TYPE_ACCESS, acl, NULL);
+-	posix_acl_release(acl);
+-	return error;
+-}
+-
+-static size_t f2fs_xattr_list_acl(struct dentry *dentry, char *list,
+-		size_t list_size, const char *name, size_t name_len, int type)
+-{
+-	struct f2fs_sb_info *sbi = F2FS_SB(dentry->d_sb);
+-	const char *xname = POSIX_ACL_XATTR_DEFAULT;
+-	size_t size;
+-
+-	if (!test_opt(sbi, POSIX_ACL))
+-		return 0;
+-
+-	if (type == ACL_TYPE_ACCESS)
+-		xname = POSIX_ACL_XATTR_ACCESS;
+-
+-	size = strlen(xname) + 1;
+-	if (list && size <= list_size)
+-		memcpy(list, xname, size);
+-	return size;
+-}
+-
+-static int f2fs_xattr_get_acl(struct dentry *dentry, const char *name,
+-		void *buffer, size_t size, int type)
+-{
+-	struct f2fs_sb_info *sbi = F2FS_SB(dentry->d_sb);
+-	struct posix_acl *acl;
+-	int error;
+-
+-	if (strcmp(name, "") != 0)
+-		return -EINVAL;
+-	if (!test_opt(sbi, POSIX_ACL))
+-		return -EOPNOTSUPP;
+-
+-	acl = f2fs_get_acl(dentry->d_inode, type);
+-	if (IS_ERR(acl))
+-		return PTR_ERR(acl);
+-	if (!acl)
+-		return -ENODATA;
+-	error = posix_acl_to_xattr(&init_user_ns, acl, buffer, size);
+-	posix_acl_release(acl);
+-
+-	return error;
+-}
+-
+-static int f2fs_xattr_set_acl(struct dentry *dentry, const char *name,
+-		const void *value, size_t size, int flags, int type)
+-{
+-	struct f2fs_sb_info *sbi = F2FS_SB(dentry->d_sb);
+-	struct inode *inode = dentry->d_inode;
+-	struct posix_acl *acl = NULL;
+-	int error;
+-
+-	if (strcmp(name, "") != 0)
+-		return -EINVAL;
+-	if (!test_opt(sbi, POSIX_ACL))
+-		return -EOPNOTSUPP;
+-	if (!inode_owner_or_capable(inode))
+-		return -EPERM;
+-
+-	if (value) {
+-		acl = posix_acl_from_xattr(&init_user_ns, value, size);
+-		if (IS_ERR(acl))
+-			return PTR_ERR(acl);
+-		if (acl) {
+-			error = posix_acl_valid(acl);
+-			if (error)
+-				goto release_and_out;
+-		}
+-	} else {
+-		acl = NULL;
+-	}
+-
+-	error = f2fs_set_acl(inode, type, acl, NULL);
+-
+-release_and_out:
++	error = __f2fs_set_acl(inode, ACL_TYPE_ACCESS, acl, NULL);
+ 	posix_acl_release(acl);
+ 	return error;
+ }
+-
+-const struct xattr_handler f2fs_xattr_acl_default_handler = {
+-	.prefix = POSIX_ACL_XATTR_DEFAULT,
+-	.flags = ACL_TYPE_DEFAULT,
+-	.list = f2fs_xattr_list_acl,
+-	.get = f2fs_xattr_get_acl,
+-	.set = f2fs_xattr_set_acl,
+-};
+-
+-const struct xattr_handler f2fs_xattr_acl_access_handler = {
+-	.prefix = POSIX_ACL_XATTR_ACCESS,
+-	.flags = ACL_TYPE_ACCESS,
+-	.list = f2fs_xattr_list_acl,
+-	.get = f2fs_xattr_get_acl,
+-	.set = f2fs_xattr_set_acl,
+-};
+diff --git a/fs/f2fs/acl.h b/fs/f2fs/acl.h
+index 4963313..2af31fe 100644
+--- a/fs/f2fs/acl.h
++++ b/fs/f2fs/acl.h
+@@ -37,6 +37,7 @@ struct f2fs_acl_header {
+ #ifdef CONFIG_F2FS_FS_POSIX_ACL
+ 
+ extern struct posix_acl *f2fs_get_acl(struct inode *, int);
++extern int f2fs_set_acl(struct inode *inode, struct posix_acl *acl, int type);
+ extern int f2fs_acl_chmod(struct inode *);
+ extern int f2fs_init_acl(struct inode *, struct inode *, struct page *);
+ #else
+diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
+index 7d714f4..13eff60 100644
+--- a/fs/f2fs/file.c
++++ b/fs/f2fs/file.c
+@@ -405,6 +405,7 @@ const struct inode_operations f2fs_file_inode_operations = {
+ 	.getattr	= f2fs_getattr,
+ 	.setattr	= f2fs_setattr,
+ 	.get_acl	= f2fs_get_acl,
++	.set_acl	= f2fs_set_acl,
+ #ifdef CONFIG_F2FS_FS_XATTR
+ 	.setxattr	= generic_setxattr,
+ 	.getxattr	= generic_getxattr,
+diff --git a/fs/f2fs/namei.c b/fs/f2fs/namei.c
+index 575adac..5846eeb 100644
+--- a/fs/f2fs/namei.c
++++ b/fs/f2fs/namei.c
+@@ -496,6 +496,7 @@ const struct inode_operations f2fs_dir_inode_operations = {
+ 	.getattr	= f2fs_getattr,
+ 	.setattr	= f2fs_setattr,
+ 	.get_acl	= f2fs_get_acl,
++	.set_acl	= f2fs_set_acl,
+ #ifdef CONFIG_F2FS_FS_XATTR
+ 	.setxattr	= generic_setxattr,
+ 	.getxattr	= generic_getxattr,
+@@ -522,6 +523,7 @@ const struct inode_operations f2fs_special_inode_operations = {
+ 	.getattr	= f2fs_getattr,
+ 	.setattr        = f2fs_setattr,
+ 	.get_acl	= f2fs_get_acl,
++	.set_acl	= f2fs_set_acl,
+ #ifdef CONFIG_F2FS_FS_XATTR
+ 	.setxattr       = generic_setxattr,
+ 	.getxattr       = generic_getxattr,
+diff --git a/fs/f2fs/xattr.c b/fs/f2fs/xattr.c
+index aa7a3f1..e2b9299 100644
+--- a/fs/f2fs/xattr.c
++++ b/fs/f2fs/xattr.c
+@@ -21,6 +21,7 @@
+ #include <linux/rwsem.h>
+ #include <linux/f2fs_fs.h>
+ #include <linux/security.h>
++#include <linux/posix_acl_xattr.h>
+ #include "f2fs.h"
+ #include "xattr.h"
+ 
+@@ -216,8 +217,8 @@ const struct xattr_handler f2fs_xattr_security_handler = {
+ static const struct xattr_handler *f2fs_xattr_handler_map[] = {
+ 	[F2FS_XATTR_INDEX_USER] = &f2fs_xattr_user_handler,
+ #ifdef CONFIG_F2FS_FS_POSIX_ACL
+-	[F2FS_XATTR_INDEX_POSIX_ACL_ACCESS] = &f2fs_xattr_acl_access_handler,
+-	[F2FS_XATTR_INDEX_POSIX_ACL_DEFAULT] = &f2fs_xattr_acl_default_handler,
++	[F2FS_XATTR_INDEX_POSIX_ACL_ACCESS] = &posix_acl_access_xattr_handler,
++	[F2FS_XATTR_INDEX_POSIX_ACL_DEFAULT] = &posix_acl_default_xattr_handler,
+ #endif
+ 	[F2FS_XATTR_INDEX_TRUSTED] = &f2fs_xattr_trusted_handler,
+ #ifdef CONFIG_F2FS_FS_SECURITY
+@@ -229,8 +230,8 @@ static const struct xattr_handler *f2fs_xattr_handler_map[] = {
+ const struct xattr_handler *f2fs_xattr_handlers[] = {
+ 	&f2fs_xattr_user_handler,
+ #ifdef CONFIG_F2FS_FS_POSIX_ACL
+-	&f2fs_xattr_acl_access_handler,
+-	&f2fs_xattr_acl_default_handler,
++	&posix_acl_access_xattr_handler,
++	&posix_acl_default_xattr_handler,
+ #endif
+ 	&f2fs_xattr_trusted_handler,
+ #ifdef CONFIG_F2FS_FS_SECURITY
+diff --git a/fs/f2fs/xattr.h b/fs/f2fs/xattr.h
+index 02a08fb..b21d9eb 100644
+--- a/fs/f2fs/xattr.h
++++ b/fs/f2fs/xattr.h
+@@ -108,8 +108,6 @@ struct f2fs_xattr_entry {
+ #ifdef CONFIG_F2FS_FS_XATTR
+ extern const struct xattr_handler f2fs_xattr_user_handler;
+ extern const struct xattr_handler f2fs_xattr_trusted_handler;
+-extern const struct xattr_handler f2fs_xattr_acl_access_handler;
+-extern const struct xattr_handler f2fs_xattr_acl_default_handler;
+ extern const struct xattr_handler f2fs_xattr_advise_handler;
+ extern const struct xattr_handler f2fs_xattr_security_handler;
+ 
+-- 
+1.7.10.4
 
-thanks,
-Kinglong Mee
-
->>
->> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
->> ---
->>  fs/nfsd/nfs4state.c | 2 ++
->>  1 file changed, 2 insertions(+)
->>
->> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
->> index 105d6fa..1aed9be 100644
->> --- a/fs/nfsd/nfs4state.c
->> +++ b/fs/nfsd/nfs4state.c
->> @@ -999,6 +999,8 @@ static void init_session(struct svc_rqst *rqstp, struct nfsd4_session *new, stru
->>  	spin_unlock(&nn->client_lock);
->>  	memcpy(&new->se_fchannel, &cses->fore_channel,
->>  			sizeof(struct nfsd4_channel_attrs));
->> +	memcpy(&new->se_bchannel, &cses->back_channel,
->> +			sizeof(struct nfsd4_channel_attrs));
->>  	if (cses->flags & SESSION4_BACK_CHAN) {
->>  		struct sockaddr *sa = svc_addr(rqstp);
->>  		/*
->> -- 
->> 1.8.1.4
->>
-> 
 
