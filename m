@@ -1,38 +1,34 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f178.google.com ([209.85.223.178]:39668 "EHLO
-	mail-ie0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752355Ab3LBQAw convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Dec 2013 11:00:52 -0500
-Received: by mail-ie0-f178.google.com with SMTP id lx4so20785301iec.23
-        for <linux-nfs@vger.kernel.org>; Mon, 02 Dec 2013 08:00:52 -0800 (PST)
-Content-Type: text/plain; charset=us-ascii
+Received: from mail-ie0-f173.google.com ([209.85.223.173]:54541 "EHLO
+	mail-ie0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751515Ab3LBN3E convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Dec 2013 08:29:04 -0500
+Received: by mail-ie0-f173.google.com with SMTP id to1so20181624ieb.4
+        for <linux-nfs@vger.kernel.org>; Mon, 02 Dec 2013 05:29:03 -0800 (PST)
+Content-Type: text/plain; charset=windows-1252
 Mime-Version: 1.0 (Mac OS X Mail 7.0 \(1812\))
-Subject: Re: [PATCH 00/11] [RFC] repair net namespace damage to rpc_pipefs
+Subject: Re: Linux client access to NFSv4 Alternate Data Streams (O_XATTR)?
 From: Trond Myklebust <trond.myklebust@primarydata.com>
-In-Reply-To: <20131202153435.GA2804@infradead.org>
-Date: Mon, 2 Dec 2013 11:00:50 -0500
-Cc: Viro Alexander <viro@ZenIV.linux.org.uk>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Devel FS Linux <linux-fsdevel@vger.kernel.org>,
-        Torvalds Linus <torvalds@linux-foundation.org>,
-        Eric Biederman <ebiederm@xmission.com>
-Message-Id: <BCED1826-0743-4420-AD45-B38D67EF3D99@primarydata.com>
-References: <20131201131441.790963326@bombadil.infradead.org> <20131201181329.GC10323@ZenIV.linux.org.uk> <20131202081233.GA6953@infradead.org> <3C65EB4C-6592-44F8-B08D-E5A9EFD6C8C6@primarydata.com> <20131202153435.GA2804@infradead.org>
-To: Christoph Hellwig <hch@infradead.org>
+In-Reply-To: <CAEEMktPamgjSHA_OmHj73ti5G01DcC_ykYb=-_bfOYqy4nW8BA@mail.gmail.com>
+Date: Mon, 2 Dec 2013 08:29:01 -0500
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <5B7CDA5C-C3F1-4CFD-9A72-013523068FBB@primarydata.com>
+References: <CAEEMktPamgjSHA_OmHj73ti5G01DcC_ykYb=-_bfOYqy4nW8BA@mail.gmail.com>
+To: Joshuah Hurst <joshhurst@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Dec 2, 2013, at 10:34, Christoph Hellwig <hch@infradead.org> wrote:
+On Dec 2, 2013, at 7:13, Joshuah Hurst <joshhurst@gmail.com> wrote:
 
-> On Mon, Dec 02, 2013 at 08:44:25AM -0500, Trond Myklebust wrote:
->> The lifetime of the kernel mount only needs to match that of the rpc_client, since each rpc_client is associated to a single net namespace, and each net namespace is in a 1-1 relationship with an rpc_pipefs super block.
+> We need to access NFSv4 Alternate Data Streams (what Solaris,
+> NexentaOS, Omnios and SmartOS can openat() with the O_XATTR flag) from
+> a (Suse) Linux client.
 > 
-> Except for the non-rpc_client users of rpc_pipefs?
+> OS is Suse Linux 12.3, x86-64, 64bit
+> 
+> Does anyone know how to archive this?
 
-There is the idmapper pipe which is created as part of setting up a NFSv4 mount: that could either call rpc_get_mount(), or just rely on the fact that the nfs_client has an rpc_client. Ditto for the DNS resolver pipe.
+Why can’t you access Solaris-specific extensions from a Solaris client?
 
-Any more?
-
-Cheers
-  Trond
+Trond
