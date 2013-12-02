@@ -1,47 +1,35 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:48226 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751510Ab3LLQgV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 12 Dec 2013 11:36:21 -0500
-Date: Thu, 12 Dec 2013 11:36:21 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: get rid of unused macro definition
-Message-ID: <20131212163621.GJ11521@fieldses.org>
-References: <52A5972D.7080705@gmail.com>
+Received: from relay.parallels.com ([195.214.232.42]:58324 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751049Ab3LBHXL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Dec 2013 02:23:11 -0500
+Message-ID: <529C355C.3000609@parallels.com>
+Date: Mon, 2 Dec 2013 11:23:08 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <52A5972D.7080705@gmail.com>
+To: Christoph Hellwig <hch@infradead.org>, <linux-nfs@vger.kernel.org>,
+        <viro@zeniv.linux.org.uk>
+CC: <linux-fsdevel@vger.kernel.org>
+Subject: Re: [PATCH 00/11] [RFC] repair net namespace damage to rpc_pipefs
+References: <20131201131441.790963326@bombadil.infradead.org>
+In-Reply-To: <20131201131441.790963326@bombadil.infradead.org>
+Content-Type: text/plain; charset="windows-1251"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Dec 09, 2013 at 06:10:53PM +0800, Kinglong Mee wrote:
-> Since defined in Linux-2.6.12-rc2, READTIME has not been used.
+01.12.2013 17:14, Christoph Hellwig пишет:
+> As-is this has one major downside: because the initial mount already grabs
+> a reference to the network namespace we'll create a cyclic reference and
+> will never free the network namespace.  To get around this we'd need
+> some way to only grab it once user mounts show up / disapear in the VFS.
 
-Thanks, applying.--b.
+That's a great cleanup of the whole PipeFS mount/umount logic. And it actually
+moves code to the state it was (with  minor changes) before net namespace
+changes.
+But the reason for all this "damage" was exactly to remove this major downside
+and do _not_ tie network namespace to mount point..
+So, please, solve the problem before reverting all this notifiers and friends.
 
-> 
-> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-> ---
->  fs/nfsd/nfs4xdr.c | 5 -----
->  1 file changed, 5 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> index ee7237f..fd48536 100644
-> --- a/fs/nfsd/nfs4xdr.c
-> +++ b/fs/nfsd/nfs4xdr.c
-> @@ -103,11 +103,6 @@ xdr_error:					\
->  	(x) = (u64)ntohl(*p++) << 32;		\
->  	(x) |= ntohl(*p++);			\
->  } while (0)
-> -#define READTIME(x)       do {			\
-> -	p++;					\
-> -	(x) = ntohl(*p++);			\
-> -	p++;					\
-> -} while (0)
->  #define READMEM(x,nbytes) do {			\
->  	x = (char *)p;				\
->  	p += XDR_QUADLEN(nbytes);		\
-> -- 
-> 1.8.4.2
+-- 
+Best regards,
+Stanislav Kinsbursky
