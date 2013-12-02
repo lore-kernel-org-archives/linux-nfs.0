@@ -1,69 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:48225 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:11025 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751789Ab3LLQfu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 12 Dec 2013 11:35:50 -0500
-Date: Thu, 12 Dec 2013 11:35:49 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Kinglong Mee <kinglongmee@gmail.com>
+	id S1752867Ab3LBRWp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 2 Dec 2013 12:22:45 -0500
+Date: Mon, 2 Dec 2013 12:22:19 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Christoph Hellwig <hch@infradead.org>
 Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: clean up unnecessary temporary variable in
- nfsd4_decode_fattr
-Message-ID: <20131212163549.GI11521@fieldses.org>
-References: <52A59A32.10500@gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <52A59A32.10500@gmail.com>
+Subject: Re: 3.12-rc2 nfsd oops in nfsd_cache_lookup
+Message-ID: <20131202122219.043174d6@tlielax.poochiereds.net>
+In-Reply-To: <20131201102954.GA26976@infradead.org>
+References: <20131201102954.GA26976@infradead.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks, applying.--b.
+On Sun, 1 Dec 2013 02:29:54 -0800
+Christoph Hellwig <hch@infradead.org> wrote:
 
-On Mon, Dec 09, 2013 at 06:23:46PM +0800, Kinglong Mee wrote:
-> host_err was only used for nfs4_acl_new.
-> This patch delete it, and return nfserr_jukebox directly.
 > 
-> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-> ---
->  fs/nfsd/nfs4xdr.c | 12 +++---------
->  1 file changed, 3 insertions(+), 9 deletions(-)
+> Running xfstests against a local server on XFS:
 > 
-> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> index fd48536..91afb1c 100644
-> --- a/fs/nfsd/nfs4xdr.c
-> +++ b/fs/nfsd/nfs4xdr.c
-> @@ -252,7 +252,6 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
->  	int expected_len, len = 0;
->  	u32 dummy32;
->  	char *buf;
-> -	int host_err;
->  
->  	DECODE_HEAD;
->  	iattr->ia_valid = 0;
-> @@ -279,10 +278,9 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
->  			return nfserr_resource;
->  
->  		*acl = nfs4_acl_new(nace);
-> -		if (*acl == NULL) {
-> -			host_err = -ENOMEM;
-> -			goto out_nfserr;
-> -		}
-> +		if (*acl == NULL)
-> +			return nfserr_jukebox;
-> +
->  		defer_free(argp, kfree, *acl);
->  
->  		(*acl)->naces = nace;
-> @@ -420,10 +418,6 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
->  		goto xdr_error;
->  
->  	DECODE_TAIL;
-> -
-> -out_nfserr:
-> -	status = nfserrno(host_err);
-> -	goto out;
->  }
->  
->  static __be32
-> -- 
-> 1.8.4.2
+> generic/075 23s ...[  605.063602] nfs: server 127.0.0.1 not responding, still trying
+> [  605.064398] general protection fault: 0000 [#1] SMP 
+> [  605.064994] Modules linked in:
+> [  605.065386] CPU: 2 PID: 3469 Comm: nfsd Not tainted 3.13.0-rc2 #58
+> [  605.066051] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2007
+> [  605.066704] task: ffff8800762e6010 ti: ffff8800756d8000 task.ti: ffff8800756d8000
+> [  605.066843] RIP: 0010:[<ffffffff81331f1b>]  [<ffffffff81331f1b>] lru_put_end+0x1b/0x60
+> [  605.066843] RSP: 0018:ffff8800756d9d28  EFLAGS: 00010246
+> [  605.066843] RAX: dead000000200200 RBX: ffff8800754a4e90 RCX: dead000000100100
+> [  605.066843] RDX: ffff8800754a4ea0 RSI: ffff8800762e66c0 RDI: ffff8800754a4e90
+> [  605.066843] RBP: ffff8800756d9d28 R08: 0000000000000006 R09: 0000000000000001
+> [  605.066843] R10: 0000000000000000 R11: 0000000000000000 R12: 0000000000000001
+> [  605.066843] R13: 0000000000000000 R14: 000000000cb5731d R15: ffff88007b4dc000
+> [  605.066843] FS:  0000000000000000(0000) GS:ffff88007fd00000(0000) knlGS:0000000000000000
+> [  605.066843] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+> [  605.066843] CR2: ffffffffff600400 CR3: 000000006fe87000 CR4: 00000000000006e0
+> [  605.066843] Stack:
+> [  605.066843]  ffff8800756d9d88 ffffffff81332498 ffff88007cf33600 ffffffff0cb5731d
+> [  605.066843]  0000000300000002 4d36e16d00000006 ffff88007b4dc000 ffff88007b4dc000
+> [  605.066843]  ffffffff82211230 ffff880076216018 ffffffff822111a0 ffff880076216018
+> [  605.066843] Call Trace:
+> [  605.066843]  [<ffffffff81332498>] nfsd_cache_lookup+0x3c8/0x730
+> [  605.066843]  [<ffffffff8132763e>] nfsd_dispatch+0x5e/0x1b0
+> [  605.066843]  [<ffffffff81b6f551>] svc_process+0x4b1/0x760
+> [  605.066843]  [<ffffffff81326f9f>] nfsd+0xbf/0x130
+> [  605.066843]  [<ffffffff81326ee0>] ? nfsd_destroy+0xc0/0xc0
+> [  605.066843]  [<ffffffff810b6b0f>] kthread+0xdf/0x100
+> [  605.066843]  [<ffffffff81c4130b>] ? _raw_spin_unlock_irq+0x2b/0x40
+> [  605.066843]  [<ffffffff810b6a30>] ? __init_kthread_worker+0x70/0x70
+> [  605.066843]  [<ffffffff81c4970c>] ret_from_fork+0x7c/0xb0
+> [  605.066843]  [<ffffffff810b6a30>] ? __init_kthread_worker+0x70/0x70
+
+
+Looks like a similar oops to the one reported here:
+
+    https://bugzilla.redhat.com/show_bug.cgi?id=1025907
+
+Do you have a way to reproduce this reliably?
+-- 
+Jeff Layton <jlayton@redhat.com>
