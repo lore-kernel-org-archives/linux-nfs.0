@@ -1,113 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pb0-f49.google.com ([209.85.160.49]:49245 "EHLO
-	mail-pb0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753673Ab3LCCqy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Dec 2013 21:46:54 -0500
-Received: by mail-pb0-f49.google.com with SMTP id jt11so19999156pbb.8
-        for <linux-nfs@vger.kernel.org>; Mon, 02 Dec 2013 18:46:53 -0800 (PST)
-Message-ID: <529D4617.6080505@gmail.com>
-Date: Tue, 03 Dec 2013 10:46:47 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] Do not enter setup_callback_client when finding backchannel
- failed
-References: <5295C982.1030904@gmail.com> <20131202145917.GF1960@fieldses.org>
-In-Reply-To: <20131202145917.GF1960@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx1.redhat.com ([209.132.183.28]:53897 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752107Ab3LBQdu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 2 Dec 2013 11:33:50 -0500
+Date: Mon, 2 Dec 2013 11:33:19 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>, bfields@fieldses.org
+Cc: Christoph Hellwig <hch@infradead.org>,
+        Viro Alexander <viro@ZenIV.linux.org.uk>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Devel FS Linux <linux-fsdevel@vger.kernel.org>,
+        Torvalds Linus <torvalds@linux-foundation.org>,
+        Eric Biederman <ebiederm@xmission.com>
+Subject: Re: [PATCH 00/11] [RFC] repair net namespace damage to rpc_pipefs
+Message-ID: <20131202113319.36ac5332@tlielax.poochiereds.net>
+In-Reply-To: <BCED1826-0743-4420-AD45-B38D67EF3D99@primarydata.com>
+References: <20131201131441.790963326@bombadil.infradead.org>
+	<20131201181329.GC10323@ZenIV.linux.org.uk>
+	<20131202081233.GA6953@infradead.org>
+	<3C65EB4C-6592-44F8-B08D-E5A9EFD6C8C6@primarydata.com>
+	<20131202153435.GA2804@infradead.org>
+	<BCED1826-0743-4420-AD45-B38D67EF3D99@primarydata.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 12/02/2013 10:59 PM, J. Bruce Fields wrote:
-> On Wed, Nov 27, 2013 at 06:29:22PM +0800, Kinglong Mee wrote:
->> If finding backchannel failed, nfsd should not enter setup_callback_client.
->>
->> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
->> ---
->>  fs/nfsd/nfs4callback.c | 4 ++--
->>  1 file changed, 2 insertions(+), 2 deletions(-)
->>
->> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
->> index 7f05cd1..755d6d6 100644
->> --- a/fs/nfsd/nfs4callback.c
->> +++ b/fs/nfsd/nfs4callback.c
->> @@ -664,7 +664,7 @@ static int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *c
->>  		args.authflavor = clp->cl_cred.cr_flavor;
->>  		clp->cl_cb_ident = conn->cb_ident;
->>  	} else {
->> -		if (!conn->cb_xprt)
->> +		if (!conn->cb_xprt || !ses)
-> 
-> It looks to me like ses should be set whenenver conn is.  Do you have
-> reason to believe the contrary?
-
-No. It just a double check as conn->cb_xprt.
-I will drop it in v2 of this path.
+On Mon, 2 Dec 2013 11:00:50 -0500
+Trond Myklebust <trond.myklebust@primarydata.com> wrote:
 
 > 
->>  			return -EINVAL;
->>  		clp->cl_cb_conn.cb_xprt = conn->cb_xprt;
->>  		clp->cl_cb_session = ses;
->> @@ -982,7 +982,7 @@ static void nfsd4_process_cb_update(struct nfsd4_callback *cb)
->>  	}
->>  	spin_unlock(&clp->cl_lock);
->>  
->> -	err = setup_callback_client(clp, &conn, ses);
->> +	err = c ? setup_callback_client(clp, &conn, ses) : -ENOENT;
+> On Dec 2, 2013, at 10:34, Christoph Hellwig <hch@infradead.org> wrote:
 > 
-> But, whoops, yes, this looks like a good fix.  (Have you hit this
-> failure in practice?)  
-
-Yes. When destroying the last session from client, nfsd4_probe_callback_sync
-will be called in function nfsd4_destroy_session.
-
-As that, callback client will be update in function nfsd4_process_cb_update,
-so __nfsd4_find_backchannel always failed with returning NULL. (Ps: Maybe needs
-another patch to avoid updating callback connect when destroying the last session ?)
-
-For debugging, add message when finding backchannel failed.
-Just testing mount/umount at client, the debug message will be print every umount.
-
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 7f05cd1..1be4c61 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -979,6 +979,8 @@ static void nfsd4_process_cb_update(struct nfsd4_callback *cb)
-                svc_xprt_get(c->cn_xprt);
-                conn.cb_xprt = c->cn_xprt;
-                ses = c->cn_session;
-+       } else {
-+               printk("%s: found connet failed.\n", __func__);
-        }
-        spin_unlock(&clp->cl_lock);
-
-> But I think we should probably adopt the sort of
-> control flow that's more idiomatic in the kernel:
+> > On Mon, Dec 02, 2013 at 08:44:25AM -0500, Trond Myklebust wrote:
+> >> The lifetime of the kernel mount only needs to match that of the rpc_client, since each rpc_client is associated to a single net namespace, and each net namespace is in a 1-1 relationship with an rpc_pipefs super block.
+> > 
+> > Except for the non-rpc_client users of rpc_pipefs?
 > 
-> 	c = __nfsd4_find_backchannel(clp)
-> 	if (!c)
-> 		goto out_unlock;
-> 	...
-> 	spin_unlock(&clp->cl_lock);
-> 	err = setup_callback_client(clp, &conn, ses);
-> 	if (err)
-> 		goto out_err;
+> There is the idmapper pipe which is created as part of setting up a NFSv4 mount: that could either call rpc_get_mount(), or just rely on the fact that the nfs_client has an rpc_client. Ditto for the DNS resolver pipe.
 > 
+> Any more?
+>
 
-OK, it is really better.
+There's the nfsdcld pipe stuff, but that was supposed to have been
+ripped out in 3.10. Bruce wasn't ready to do that since we didn't have
+a solution to the problem of using a UMH upcall in a container.
 
-thanks,
-Kinglong Mee
+As far as I'm concerned, we should go ahead and rip that out and worry
+about the UMH in a container problem later. Bruce, any objection to
+going ahead and doing that? I can respin/resend the patch to do that if
+you're ready for it...
 
-> etc.
-> 
-> --b.
-> 
->>  	if (err) {
->>  		nfsd4_mark_cb_down(clp, err);
->>  		return;
->> -- 
->> 1.8.4.2
-> 
-
+-- 
+Jeff Layton <jlayton@redhat.com>
