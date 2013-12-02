@@ -1,149 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:60025 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750958Ab3LNCMA convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Dec 2013 21:12:00 -0500
-From: Weston Andros Adamson <dros@netapp.com>
-To: Jeff Layton <jlayton@poochiereds.net>
-CC: William Andros Adamson <androsadamson@gmail.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-nfs list <linux-nfs@vger.kernel.org>
-Subject: Re: Recently introduced hang on reboot with auth_gss
-Date: Sat, 14 Dec 2013 02:11:42 +0000
-Message-ID: <EAE7464A-3036-4CCD-A21C-3A3C202193D7@netapp.com>
-References: <9852CC37-D035-4645-ACB7-8E0B902AF3F8@netapp.com>
- <CAHVgHyXbx9psUevMT6mFkZ8Pfv_o4GM+G3D9RVDDv=60Ghh5Jw@mail.gmail.com>
- <FFE92BE0-2FFF-40E9-8971-A1A75F529699@netapp.com>
- <CAHVgHyVw=rhWcD=Q++nwb85Kg7wzNjfZ=ih7TtZM3j-8bH23JQ@mail.gmail.com>
- <20131213152245.55e18385@tlielax.poochiereds.net>
-In-Reply-To: <20131213152245.55e18385@tlielax.poochiereds.net>
-Content-Type: text/plain; charset="Windows-1252"
+Received: from bombadil.infradead.org ([198.137.202.9]:35767 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751432Ab3LBQ1T (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Dec 2013 11:27:19 -0500
+Date: Mon, 2 Dec 2013 08:27:16 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Christoph Hellwig <hch@infradead.org>,
+        Viro Alexander <viro@ZenIV.linux.org.uk>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Devel FS Linux <linux-fsdevel@vger.kernel.org>,
+        Torvalds Linus <torvalds@linux-foundation.org>,
+        Eric Biederman <ebiederm@xmission.com>
+Subject: Re: [PATCH 00/11] [RFC] repair net namespace damage to rpc_pipefs
+Message-ID: <20131202162716.GA17417@infradead.org>
+References: <20131201131441.790963326@bombadil.infradead.org>
+ <20131201181329.GC10323@ZenIV.linux.org.uk>
+ <20131202081233.GA6953@infradead.org>
+ <3C65EB4C-6592-44F8-B08D-E5A9EFD6C8C6@primarydata.com>
+ <20131202153435.GA2804@infradead.org>
+ <BCED1826-0743-4420-AD45-B38D67EF3D99@primarydata.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <BCED1826-0743-4420-AD45-B38D67EF3D99@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Mon, Dec 02, 2013 at 11:00:50AM -0500, Trond Myklebust wrote:
+> > Except for the non-rpc_client users of rpc_pipefs?
+> 
+> There is the idmapper pipe which is created as part of setting up a NFSv4 mount: that could either call rpc_get_mount(), or just rely on the fact that the nfs_client has an rpc_client. Ditto for the DNS resolver pipe.
 
-On Dec 13, 2013, at 3:22 PM, Jeff Layton <jlayton@poochiereds.net> wrote:
+We got idmapper, dns, pnfs-block upcall.
 
-> On Fri, 13 Dec 2013 14:58:12 -0500
-> Andy Adamson <androsadamson@gmail.com> wrote:
-> 
->> On Fri, Dec 13, 2013 at 2:56 PM, Weston Andros Adamson <dros@netapp.com> wrote:
->>> So should we make this fix generic and check gssd_running for every upcall, or should we just handle this regression and return -EACCES in gss_refresh_null when !gssd_running?
->> 
->> I can't see any reason to attempt an upcall if gssd is not running.
->> 
->> -->Andy
->> 
-> 
-> commit e2f0c83a9d in Trond's tree just adds an "info" file for the new
-> dummy pipe. That silences some warnings from gssd, but it doesn't
-> actually do much else.
-> 
-> The patch that adds real detection for running gssd is 89f842435c. With
-> that patch, we'll never upcall to gssd if gssd_running comes back
-> false. You just get back -EACCES on the upcall in that case.
-> 
-> Note that there is one more patch that Trond hasn't merged yet:
-> 
->    [PATCH] rpc_pipe: fix cleanup of dummy gssd directory when notification fails
-> 
-> But notifier failure should only rarely happen so it's not a huge deal
-> if you don't have it.
+idmapper seems per-nfs_client, the other two are created on module load
+and removed at unload time.
 
-Ah, but gssd_running is only checked in gss_create_upcall and not in the gss_refresh_upcall path.  I’ll submit a patch.
-
-Thanks,
-
--dros
-
-
-> 
->>> 
->>> -dros
->>> 
->>> 
->>> On Dec 13, 2013, at 2:02 PM, Andy Adamson <androsadamson@gmail.com> wrote:
->>> 
->>>> On Fri, Dec 13, 2013 at 12:32 PM, Weston Andros Adamson <dros@netapp.com> wrote:
->>>>> Commit c297c8b99b07f496ff69a719cfb8e8fe852832ed (SUNRPC: do not fail gss proc NULL calls with EACCES) introduces a hang on reboot if there are any mounts that use AUTH_GSS.
->>>>> 
->>>>> Due to recent changes, this can even happen when mounting sec=sys, because the non-fsid specific operations use KRB5 if possible.
->>>>> 
->>>>> To reproduce:
->>>>> 
->>>>> 1) mount a server with sec=krb5 (or sec=sys if you know krb5 will work for nfs_client ops)
->>>>> 2) reboot
->>>>> 3) notice hang (output below)
->>>>> 
->>>>> 
->>>>> I can see why it’s hanging - the reboot forced unmount is happening after gssd is killed, so the upcall will never succeed…. Any ideas on how this should be fixed?  Should we timeout after a certain number of tries? Should we detect that gssd isn’t running anymore (if this is even possible)?
->>>> 
->>>> This patch : commit e2f0c83a9de331d9352185ca3642616c13127539
->>>> Author: Jeff Layton <jlayton@redhat.com>
->>>> Date:   Thu Dec 5 07:34:44 2013 -0500
->>>> 
->>>>   sunrpc: add an "info" file for the dummy gssd pipe
->>>> 
->>>> solves the "is gssd running" problem.
->>>> 
->>>> -->Andy
->>>> 
->>>>> 
->>>>> -dros
->>>>> 
->>>>> 
->>>>> BUG: soft lockup - CPU#0 stuck for 22s! [kworker/0:1:27]
->>>>> Modules linked in: rpcsec_gss_krb5 nfsv4 nfs fscache crc32c_intel ppdev i2c_piix4 aesni_intel aes_x86_64 glue_helper lrw gf128mul serio_raw ablk_helper cryptd i2c_core e1000 parport_pc parport shpchp nfsd auth_rpcgss oid_registry exportfs nfs_acl lockd sunrpc autofs4 mptspi scsi_transport_spi mptscsih mptbase ata_generic floppy
->>>>> irq event stamp: 279178
->>>>> hardirqs last  enabled at (279177): [<ffffffff814a925c>] restore_args+0x0/0x30
->>>>> hardirqs last disabled at (279178): [<ffffffff814b0a6a>] apic_timer_interrupt+0x6a/0x80
->>>>> softirqs last  enabled at (279176): [<ffffffff8103f583>] __do_softirq+0x1df/0x276
->>>>> softirqs last disabled at (279171): [<ffffffff8103f852>] irq_exit+0x53/0x9a
->>>>> CPU: 0 PID: 27 Comm: kworker/0:1 Not tainted 3.13.0-rc3-branch-dros_testing+ #1
->>>>> Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform, BIOS 6.00 07/31/2013
->>>>> Workqueue: rpciod rpc_async_schedule [sunrpc]
->>>>> task: ffff88007b87a130 ti: ffff88007ad08000 task.ti: ffff88007ad08000
->>>>> RIP: 0010:[<ffffffffa00a562d>]  [<ffffffffa00a562d>] rpcauth_refreshcred+0x17/0x15f [sunrpc]
->>>>> RSP: 0018:ffff88007ad09c88  EFLAGS: 00000286
->>>>> RAX: ffffffffa02ba650 RBX: ffffffff81073f47 RCX: 0000000000000007
->>>>> RDX: 0000000000000007 RSI: ffff88007a885d70 RDI: ffff88007a158b40
->>>>> RBP: ffff88007ad09ce8 R08: ffff88007a5ce9f8 R09: ffffffffa00993d7
->>>>> R10: ffff88007a5ce7b0 R11: ffff88007a158b40 R12: ffffffffa009943d
->>>>> R13: 0000000000000a81 R14: ffff88007a158bb0 R15: ffffffff814a925c
->>>>> FS:  0000000000000000(0000) GS:ffff88007f200000(0000) knlGS:0000000000000000
->>>>> CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
->>>>> CR2: 00007f2d03056000 CR3: 0000000001a0b000 CR4: 00000000001407f0
->>>>> Stack:
->>>>> ffffffffa009943d ffff88007a5ce9f8 0000000000000000 0000000000000007
->>>>> 0000000000000007 ffff88007a885d70 ffff88007a158b40 ffffffffffffff10
->>>>> ffff88007a158b40 0000000000000000 ffff88007a158bb0 0000000000000a81
->>>>> Call Trace:
->>>>> [<ffffffffa009943d>] ? call_refresh+0x66/0x66 [sunrpc]
->>>>> [<ffffffffa0099438>] call_refresh+0x61/0x66 [sunrpc]
->>>>> [<ffffffffa00a403b>] __rpc_execute+0xf1/0x362 [sunrpc]
->>>>> [<ffffffff81073f47>] ? trace_hardirqs_on_caller+0x145/0x1a1
->>>>> [<ffffffffa00a42d3>] rpc_async_schedule+0x27/0x32 [sunrpc]
->>>>> [<ffffffff81052974>] process_one_work+0x211/0x3a5
->>>>> [<ffffffff810528d5>] ? process_one_work+0x172/0x3a5
->>>>> [<ffffffff81052eeb>] worker_thread+0x134/0x202
->>>>> [<ffffffff81052db7>] ? rescuer_thread+0x280/0x280
->>>>> [<ffffffff81052db7>] ? rescuer_thread+0x280/0x280
->>>>> [<ffffffff810584a0>] kthread+0xc9/0xd1
->>>>> [<ffffffff810583d7>] ? __kthread_parkme+0x61/0x61
->>>>> [<ffffffff814afd6c>] ret_from_fork+0x7c/0xb0
->>>>> [<ffffffff810583d7>] ? __kthread_parkme+0x61/0x61
->>>>> Code: 89 c2 41 ff d6 48 83 c4 58 5b 41 5c 41 5d 41 5e 41 5f 5d c3 0f 1f 44 00 00 55 48 89 e5 41 56 41 55 41 54 53 48 89 fb 48 83 ec 40 <4c> 8b 6f 20 4d 8b a5 90 00 00 00 4d 85 e4 0f 85 e4 00 00 00 8b--
->>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>>>> the body of a message to majordomo@vger.kernel.org
->>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>> 
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> 
-> -- 
-> Jeff Layton <jlayton@poochiereds.net>
-
+Similarly the pipe in nfsd works globally as well.
