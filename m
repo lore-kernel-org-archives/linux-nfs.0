@@ -1,47 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:43320 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750960Ab3LKKp3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Dec 2013 05:45:29 -0500
-Message-Id: <20131211104526.835233009@bombadil.infradead.org>
-Date: Wed, 11 Dec 2013 02:42:46 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: viro@zeniv.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-mtd@lists.infradead.org, Mark Fasheh <mfasheh@suse.com>,
-        Joel Becker <jlbec@evilplan.org>, reiserfs-devel@vger.kernel.org,
-        xfs@oss.sgi.com, jfs-discussion@lists.sourceforge.net,
-        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
-        Andreas Gruenbacher <andreas.gruenbacher@linbit.com>,
-        Jan Kara <jack@suse.cz>
-Subject: [PATCH 03/18] fs: add a set_acl inode operation
-References: <20131211104243.148113893@bombadil.infradead.org>
+Received: from mail-ie0-f173.google.com ([209.85.223.173]:62975 "EHLO
+	mail-ie0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754066Ab3LBT1X (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Dec 2013 14:27:23 -0500
+Received: by mail-ie0-f173.google.com with SMTP id to1so21184755ieb.4
+        for <linux-nfs@vger.kernel.org>; Mon, 02 Dec 2013 11:27:23 -0800 (PST)
+MIME-Version: 1.0
+In-Reply-To: <20131202152102.GA20458@infradead.org>
+References: <CAEEMktPamgjSHA_OmHj73ti5G01DcC_ykYb=-_bfOYqy4nW8BA@mail.gmail.com>
+	<5B7CDA5C-C3F1-4CFD-9A72-013523068FBB@primarydata.com>
+	<CAHnbEG+cJGjx7o=+ZASNo7ddc0O9hYG4fE0EAQ2hoh688nBBeQ@mail.gmail.com>
+	<20131202152102.GA20458@infradead.org>
+Date: Mon, 2 Dec 2013 20:27:22 +0100
+Message-ID: <CALXu0Ufugu6F0fKA_azkjCt8Nat+y0g4QFGZkLXZeXqATUzV0Q@mail.gmail.com>
+Subject: Re: Linux client access to NFSv4 Alternate Data Streams (O_XATTR)?
+From: Cedric Blancher <cedric.blancher@gmail.com>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Sebastian Feld <sebastian.n.feld@gmail.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Joshuah Hurst <joshhurst@gmail.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This will allow moving all the Posix ACL handling into the VFS and clean
-up tons of cruft in the filesystems.
+On 2 December 2013 16:21, Christoph Hellwig <hch@infradead.org> wrote:
+> On Mon, Dec 02, 2013 at 03:27:20PM +0100, Sebastian Feld wrote:
+>> This isn't a Solaris-specific extension, its part of the original Sun
+>> NFSv4 spec. Unfortunately the ARC/ARchitecture Cases from
+>> Opensolaris.org are no longer available, otherwise the background,
+>> e.g. feature parity with CIFS/NTFS, and the overall usefulness of such
+>> a feature, would be clearer.
+>
+> It's a dumb part of the spec, and Linux has no intent support pretty
+> braindead file/directory mixups.  Just store all your separate streams
+> in separate files, that's how it's implemented underneath anyway.
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
-Reviewed-by: Jan Kara <jack@suse.cz>
----
- include/linux/fs.h |    1 +
- 1 file changed, 1 insertion(+)
+Please. Please do me the favour and not rule something out that way.
+Please hear the arguments and have a discussion.
 
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 121f11f..09f553c 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1580,6 +1580,7 @@ struct inode_operations {
- 			   struct file *, unsigned open_flag,
- 			   umode_t create_mode, int *opened);
- 	int (*tmpfile) (struct inode *, struct dentry *, umode_t);
-+	int (*set_acl)(struct inode *, struct posix_acl *, int);
- } ____cacheline_aligned;
- 
- ssize_t rw_copy_check_uvector(int type, const struct iovec __user * uvector,
+Ced
 -- 
-1.7.10.4
-
-
+Cedric Blancher <cedric.blancher@gmail.com>
+Institute Pasteur
