@@ -1,59 +1,129 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f173.google.com ([209.85.223.173]:60507 "EHLO
-	mail-ie0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752879Ab3LBNo1 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Dec 2013 08:44:27 -0500
-Received: by mail-ie0-f173.google.com with SMTP id to1so20667828ieb.18
-        for <linux-nfs@vger.kernel.org>; Mon, 02 Dec 2013 05:44:26 -0800 (PST)
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 7.0 \(1812\))
-Subject: Re: [PATCH 00/11] [RFC] repair net namespace damage to rpc_pipefs
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-In-Reply-To: <20131202081233.GA6953@infradead.org>
-Date: Mon, 2 Dec 2013 08:44:25 -0500
-Cc: Viro Alexander <viro@ZenIV.linux.org.uk>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Devel FS Linux <linux-fsdevel@vger.kernel.org>,
-        Torvalds Linus <torvalds@linux-foundation.org>,
-        Eric Biederman <ebiederm@xmission.com>
-Message-Id: <3C65EB4C-6592-44F8-B08D-E5A9EFD6C8C6@primarydata.com>
-References: <20131201131441.790963326@bombadil.infradead.org> <20131201181329.GC10323@ZenIV.linux.org.uk> <20131202081233.GA6953@infradead.org>
+Received: from cantor2.suse.de ([195.135.220.15]:58580 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752051Ab3LBUOg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 2 Dec 2013 15:14:36 -0500
+Date: Mon, 2 Dec 2013 21:14:34 +0100
+From: Jan Kara <jack@suse.cz>
 To: Christoph Hellwig <hch@infradead.org>
+Cc: viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net, linux-mtd@lists.infradead.org,
+        Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>,
+        reiserfs-devel@vger.kernel.org, xfs@oss.sgi.com,
+        jfs-discussion@lists.sourceforge.net, cluster-devel@redhat.com,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 02/18] fs: add get_acl helper
+Message-ID: <20131202201434.GB12253@quack.suse.cz>
+References: <20131201115903.910559036@bombadil.infradead.org>
+ <20131201120653.841554822@bombadil.infradead.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20131201120653.841554822@bombadil.infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Dec 2, 2013, at 3:12, Christoph Hellwig <hch@infradead.org> wrote:
-
-> On Sun, Dec 01, 2013 at 06:13:29PM +0000, Al Viro wrote:
->> Making the series no-go in that form, obviously.
+On Sun 01-12-13 03:59:05, Christoph Hellwig wrote:
+> Factor out the code to get an ACL either from the inode or disk from
+> check_acl, so that it can be used elsewhere later on.
 > 
-> Looking at the mess it made I'd almost be tempted to say a little leak
-> for a less used features is better than lots of pain for everyone..
-> 
-> Looking at the mess it made I'm really upset.
-> 
->>> Given that the namespace kraken has infected various internal filesystem
->>> and will get more soon I suspect this problem is or will become generic
->>> and will need a proper solution anyway.  Al, any good ideas how to deal
->>> with this?  Most straight forward way would be to add a counter of
->>> user vfsmount to the superblock and methods when it goes to 1 and 0,
->>> but that seems a bit ugly.
->> 
->> Folks, please, _please_, let's formulate the lifecycle rules first; we
->> already had way too much trouble from putting mechanism first only to
->> run into questions like the above ("what happens if somebody tries to
->> allocate a PID in pid_ns that is already scheduled for shutdown?").
->> Remember the (recurring) fun with kobject-related lifetime issues?
->> Or rpc_pipefs notifier ugliness, for that matter...
-> 
-> I'll have to let the net namespace folks chime in for that, as far as
-> I'm concerned it's a featured better config'ed off.  If they can't come
-> up with anything better the procfs hack above would be it.
+> Signed-off-by: Christoph Hellwig <hch@lst.de>
+  Looks good. You can add:
+Reviewed-by: Jan Kara <jack@suse.cz>
 
-The lifetime of the kernel mount only needs to match that of the rpc_client, since each rpc_client is associated to a single net namespace, and each net namespace is in a 1-1 relationship with an rpc_pipefs super block.
+								Honza
 
-IOW: move the kernel mount/umount back to the rpc_client create/destroy methods and all should be well.
-
-Cheers
-  Trond
+> ---
+>  fs/namei.c                |   24 +++---------------------
+>  fs/posix_acl.c            |   23 +++++++++++++++++++++++
+>  include/linux/posix_acl.h |    2 ++
+>  3 files changed, 28 insertions(+), 21 deletions(-)
+> 
+> diff --git a/fs/namei.c b/fs/namei.c
+> index c53d3a9..8acd1e8 100644
+> --- a/fs/namei.c
+> +++ b/fs/namei.c
+> @@ -235,27 +235,9 @@ static int check_acl(struct inode *inode, int mask)
+>  	        return posix_acl_permission(inode, acl, mask & ~MAY_NOT_BLOCK);
+>  	}
+>  
+> -	acl = get_cached_acl(inode, ACL_TYPE_ACCESS);
+> -
+> -	/*
+> -	 * A filesystem can force a ACL callback by just never filling the
+> -	 * ACL cache. But normally you'd fill the cache either at inode
+> -	 * instantiation time, or on the first ->get_acl call.
+> -	 *
+> -	 * If the filesystem doesn't have a get_acl() function at all, we'll
+> -	 * just create the negative cache entry.
+> -	 */
+> -	if (acl == ACL_NOT_CACHED) {
+> -	        if (inode->i_op->get_acl) {
+> -			acl = inode->i_op->get_acl(inode, ACL_TYPE_ACCESS);
+> -			if (IS_ERR(acl))
+> -				return PTR_ERR(acl);
+> -		} else {
+> -		        set_cached_acl(inode, ACL_TYPE_ACCESS, NULL);
+> -		        return -EAGAIN;
+> -		}
+> -	}
+> -
+> +	acl = get_acl(inode, ACL_TYPE_ACCESS);
+> +	if (IS_ERR(acl))
+> +		return PTR_ERR(acl);
+>  	if (acl) {
+>  	        int error = posix_acl_permission(inode, acl, mask);
+>  	        posix_acl_release(acl);
+> diff --git a/fs/posix_acl.c b/fs/posix_acl.c
+> index 8bd2135..9dd03e0 100644
+> --- a/fs/posix_acl.c
+> +++ b/fs/posix_acl.c
+> @@ -418,3 +418,26 @@ posix_acl_chmod(struct posix_acl **acl, gfp_t gfp, umode_t mode)
+>  	return err;
+>  }
+>  EXPORT_SYMBOL(posix_acl_chmod);
+> +
+> +struct posix_acl *get_acl(struct inode *inode, int type)
+> +{
+> +	struct posix_acl *acl;
+> +
+> +	acl = get_cached_acl(inode, type);
+> +	if (acl != ACL_NOT_CACHED)
+> +		return acl;
+> +
+> +	/*
+> +	 * A filesystem can force a ACL callback by just never filling the
+> +	 * ACL cache. But normally you'd fill the cache either at inode
+> +	 * instantiation time, or on the first ->get_acl call.
+> +	 *
+> +	 * If the filesystem doesn't have a get_acl() function at all, we'll
+> +	 * just create the negative cache entry.
+> +	 */
+> +        if (!inode->i_op->get_acl) {
+> +	        set_cached_acl(inode, type, NULL);
+> +	        return ERR_PTR(-EAGAIN);
+> +	}
+> +	return inode->i_op->get_acl(inode, type);
+> +}
+> diff --git a/include/linux/posix_acl.h b/include/linux/posix_acl.h
+> index 7931efe..a8d9918 100644
+> --- a/include/linux/posix_acl.h
+> +++ b/include/linux/posix_acl.h
+> @@ -175,4 +175,6 @@ static inline void cache_no_acl(struct inode *inode)
+>  #endif
+>  }
+>  
+> +struct posix_acl *get_acl(struct inode *inode, int type);
+> +
+>  #endif  /* __LINUX_POSIX_ACL_H */
+> -- 
+> 1.7.10.4
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
