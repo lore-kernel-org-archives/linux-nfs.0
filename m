@@ -1,81 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ee0-f47.google.com ([74.125.83.47]:37370 "EHLO
-	mail-ee0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752676Ab3LQToJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Dec 2013 14:44:09 -0500
-Received: by mail-ee0-f47.google.com with SMTP id e51so2614480eek.20
-        for <linux-nfs@vger.kernel.org>; Tue, 17 Dec 2013 11:44:08 -0800 (PST)
-Message-ID: <52B0A982.6020001@primarydata.com>
-Date: Tue, 17 Dec 2013 21:44:02 +0200
-From: Benny Halevy <bhalevy@primarydata.com>
+Received: from fieldses.org ([174.143.236.118]:53656 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751432Ab3LBOvF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 2 Dec 2013 09:51:05 -0500
+Date: Mon, 2 Dec 2013 09:51:01 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Weng Meiling <wengmeiling.weng@huawei.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        netdev@vger.kernel.org, Trond.Myklebust@netapp.com,
+        davem@davemloft.net, Li Zefan <lizefan@huawei.com>,
+        Huang Qiang <h.huangqiang@huawei.com>
+Subject: Re: [PATCH] sunrpc: fix some typos
+Message-ID: <20131202145101.GE1960@fieldses.org>
+References: <5299B65C.4070700@huawei.com>
 MIME-Version: 1.0
-To: Peng Tao <bergwolf@gmail.com>
-CC: bfields@redhat.com, linuxnfs <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v2 1/2] nfsd4: break from inner lookup loop in nfsd4_release_lockowner
- on first match
-References: <52ADCFC2.7060504@gmail.com> <1387122710-23603-1-git-send-email-bhalevy@primarydata.com> <CA+a=Yy6PeAZ_3Sbb4aHVMHTEOevkGzMmevTbKqxZ8K0dVpqFRg@mail.gmail.com>
-In-Reply-To: <CA+a=Yy6PeAZ_3Sbb4aHVMHTEOevkGzMmevTbKqxZ8K0dVpqFRg@mail.gmail.com>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <5299B65C.4070700@huawei.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Thanks, applying.--b.
 
-
-On 12/16/2013 05:43 PM, Peng Tao wrote:
-> Hi Benny,
+On Sat, Nov 30, 2013 at 05:56:44PM +0800, Weng Meiling wrote:
 > 
-> On Sun, Dec 15, 2013 at 11:51 PM, Benny Halevy <bhalevy@primarydata.com> wrote:
->> Otherwise the lockowner may by added to "matches" more than once.
->>
->> Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
->> ---
->>  fs/nfsd/nfs4state.c | 17 +++++++++++------
->>  1 file changed, 11 insertions(+), 6 deletions(-)
->>
->> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
->> index 0874998..b04f765 100644
->> --- a/fs/nfsd/nfs4state.c
->> +++ b/fs/nfsd/nfs4state.c
->> @@ -4192,6 +4192,7 @@ alloc_init_lock_stateowner(unsigned int strhashval, struct nfs4_client *clp, str
->>         /* It is the openowner seqid that will be incremented in encode in the
->>          * case of new lockowners; so increment the lock seqid manually: */
->>         lo->lo_owner.so_seqid = lock->lk_new_lock_seqid + 1;
->> +       INIT_LIST_HEAD(&lo->lo_list);
->>         hash_lockowner(lo, strhashval, clp, open_stp);
->>         return lo;
->>  }
->> @@ -4646,7 +4647,6 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
->>         if (status)
->>                 goto out;
->>
->> -       status = nfserr_locks_held;
->>         INIT_LIST_HEAD(&matches);
->>
->>         list_for_each_entry(sop, &nn->ownerstr_hashtbl[hashval], so_strhash) {
->> @@ -4654,25 +4654,30 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
->>                         continue;
->>                 if (!same_owner_str(sop, owner, clid))
->>                         continue;
->> +               lo = lockowner(sop);
->>                 list_for_each_entry(stp, &sop->so_stateids,
->>                                 st_perstateowner) {
->> -                       lo = lockowner(sop);
->> -                       if (check_for_locks(stp->st_file, lo))
->> -                               goto out;
->> +                       if (check_for_locks(stp->st_file, lo)) {
->> +                               status = nfserr_locks_held;
->> +                               goto locks_held;
->> +                       }
->>                         list_add(&lo->lo_list, &matches);
->> +                       break;
-> If so_stateids is empty, lockowner is skipped. It was skipped before
-> the patch as well but I guess that need to be fixed, right?
-
-I'm not sure that's a valid state at all.
-
-Benny
-
+> From: Weng Meiling <wengmeiling.weng@huawei.com>
 > 
-> Thanks,
-> Tao
+> Signed-off-by: Weng Meiling <wengmeiling.weng@huawei.com>
+> ---
+>  include/linux/sunrpc/svc.h | 2 +-
+>  net/sunrpc/xprtsock.c      | 7 +++----
+>  2 files changed, 4 insertions(+), 5 deletions(-)
+> 
+> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+> index 6eecfc2..b6316423 100644
+> --- a/include/linux/sunrpc/svc.h
+> +++ b/include/linux/sunrpc/svc.h
+> @@ -368,7 +368,7 @@ struct svc_program {
+>  	struct svc_program *	pg_next;	/* other programs (same xprt) */
+>  	u32			pg_prog;	/* program number */
+>  	unsigned int		pg_lovers;	/* lowest version */
+> -	unsigned int		pg_hivers;	/* lowest version */
+> +	unsigned int		pg_hivers;	/* highest version */
+>  	unsigned int		pg_nvers;	/* number of versions */
+>  	struct svc_version **	pg_vers;	/* version array */
+>  	char *			pg_name;	/* service name */
+> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+> index dd9d295..0f4f391 100644
+> --- a/net/sunrpc/xprtsock.c
+> +++ b/net/sunrpc/xprtsock.c
+> @@ -2932,10 +2932,9 @@ static struct rpc_xprt *xs_setup_bc_tcp(struct xprt_create *args)
+> 
+>  	/*
+>  	 * Once we've associated a backchannel xprt with a connection,
+> -	 * we want to keep it around as long as long as the connection
+> -	 * lasts, in case we need to start using it for a backchannel
+> -	 * again; this reference won't be dropped until bc_xprt is
+> -	 * destroyed.
+> +	 * we want to keep it around as long as the connection lasts,
+> +	 * in case we need to start using it for a backchannel again;
+> +	 * this reference won't be dropped until bc_xprt is destroyed.
+>  	 */
+>  	xprt_get(xprt);
+>  	args->bc_xprt->xpt_bc_xprt = xprt;
+> -- 
+> 1.8.3
+> 
 > 
