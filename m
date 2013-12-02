@@ -1,194 +1,174 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ee0-f50.google.com ([74.125.83.50]:43703 "EHLO
-	mail-ee0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753904Ab3LJRBZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Dec 2013 12:01:25 -0500
-Received: by mail-ee0-f50.google.com with SMTP id c41so2341228eek.37
-        for <linux-nfs@vger.kernel.org>; Tue, 10 Dec 2013 09:01:24 -0800 (PST)
-Message-ID: <1386694881.2879.16.camel@leira.trondhjem.org>
-Subject: Re: NFS file size anomaly?
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Jan Kara <jack@suse.cz>
-Cc: Chuck Lever <chuck.lever@oracle.com>, Dan Duval <dan.duval@oracle.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>
-Date: Tue, 10 Dec 2013 19:01:21 +0200
-In-Reply-To: <20131210143643.GD1543@quack.suse.cz>
-References: <3a1854bb-6a06-4924-810a-aa8ba69f642b@default>
-	 <9FBE3B61-C265-460A-A92E-A4DFE8D27114@oracle.com>
-	 <4233F512-B1BB-4DEA-91B9-6B2566A02AC8@oracle.com>
-	 <20131210143643.GD1543@quack.suse.cz>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from cantor2.suse.de ([195.135.220.15]:60511 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753814Ab3LBU7e (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 2 Dec 2013 15:59:34 -0500
+Date: Mon, 2 Dec 2013 21:59:32 +0100
+From: Jan Kara <jack@suse.cz>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net, linux-mtd@lists.infradead.org,
+        Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>,
+        reiserfs-devel@vger.kernel.org, xfs@oss.sgi.com,
+        jfs-discussion@lists.sourceforge.net, cluster-devel@redhat.com,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 04/18] fs: add generic xattr_acl handlers
+Message-ID: <20131202205932.GE12253@quack.suse.cz>
+References: <20131201115903.910559036@bombadil.infradead.org>
+ <20131201120654.211328224@bombadil.infradead.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20131201120654.211328224@bombadil.infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2013-12-10 at 15:36 +0100, Jan Kara wrote:
-> On Mon 09-12-13 19:56:16, Chuck Lever wrote:
-> > On Dec 9, 2013, at 4:05 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
-> > > Copying Trond's new work address.
-> > > 
-> > > Begin forwarded message:
-> > > 
-> > >> From: Dan Duval <dan.duval@oracle.com>
-> > >> Subject: NFS file size anomaly?
-> > >> Date: December 9, 2013 3:04:27 PM EST
-> > >> To: Trond Myklebust <Trond.Myklebust@netapp.com>
-> > >> Cc: <linux-nfs@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>
-> > >> 
-> > >> [NOTE: cross-posted to linux-nfs and linux-fsdevel]
-> > >> 
-> > >> I'm seeing some unexpected behavior with NFS and file sizes.
-> > >> 
-> > >> The test cases are from the LTP (Linux Test Project), tests
-> > >> ftest01, ftest05, and ftest07.  I'll concentrate on ftest01
-> > >> to explain what I've found.
-> > >> 
-> > >> ftest01 fires off 5 subprocesses, each of which opens an empty
-> > >> file and does the following, repeatedly:
-> > >> 
-> > >>       . lseek to some point in the file
-> > >>       . read 2048 bytes
-> > >>       . lseek back to the same point
-> > >>       . write 2048 bytes
-> > >> 
-> > >> The "point in the file" is determined by a pseudo-random
-> > >> sequence.  All such points are on 2048-byte boundaries.
-> > >> 
-> > >> Occasionally, also driven pseudo-randomly, ftest01 will throw
-> > >> in a call to ftruncate(), truncate(), sync(), or fstat().
-> > >> 
-> > >> With the fstat() calls, the returned .st_size is compared
-> > >> with the test's expected size for the file, and an error is
-> > >> declared if they don't match.
-> > >> 
-> > >> What's happening is that, some way into the test, this fstat()
-> > >> check is failing.  Specifically, the .st_size reported by
-> > >> fstat() is greater than the computed size.
-> > >> 
-> > >> The sequence of operations leading up to this is:
-> > >> 
-> > >>       lseek 1034240 0
-> > >>       read 2048
-> > >>       lseek 0 1
-> > >>       write 2048
-> > >> 
-> > >>       lseek 638976 0
-> > >>       (read, lseek, write)
-> > >> 
-> > >>       lseek 708608 0
-> > >>       (read, lseek, write)
-> > >> 
-> > >>       lseek 708608 0
-> > >>       (read, lseek, write)
-> > >> 
-> > >>       lseek 679584 0
-> > >>       (read, lseek, write)
-> > >> 
-> > >>       truncate 266240
-> > >> 
-> > >>       lseek 960512 0
-> > >>       (read, lseek, write)
-> > >> 
-> > >>       (a bunch of lseek/read/lseek/write ops that do not
-> > >>        extend the file)
-> > >> 
-> > >>       fstat
-> > >> 
-> > >> So the expected size of the file is 960512 + 2048 == 960560.
-> > >> But the fstat reports a size of 1036288.
-> > >> 
-> > >> A look at what's happening on the wire, distilled from the
-> > >> output of tethereal, is instructive.
-> > >> 
-> > >>       READ Call 638976 4096 (byte offset and size to read)
-> > >>       READ Reply 4096 995382 (bytes read and current file size)
-> > >> 
-> > >>       SETATTR Call 266240 (this corresponds to the truncate() call)
-> > >> 
-> > >>       WRITE Call 638976 4096 (byte offset and size to write)
-> > >>       WRITE Call 708608 4096
-> > >>       WRITE Call 1032192 4096
-> > >> 
-> > >>       SETATTR Reply 266240 (current size of file)
-> > >> 
-> > >>       WRITE Reply 643072 (current size of file after write)
-> > >>       WRITE Reply 1036288
-> > >>       WRITE Reply 1036288
-> > >> 
-> > >>       GETATTR (initiated internally by NFS code?)
-> > >> 
-> > >>       READ Call 958464 4096 READ Reply 4096 1036288
-> > >> 
-> > >>       ... (a bunch of READ and WRITE ops that do not extend the file)
-> > >> 
-> > >>       GETATTR Call (this corresponds to the fstat() call)
-> > >>       GETATTR Reply 1036288
-> > >> 
-> > >> So what appears to have happened here is that three of the
-> > >> WRITE operations that the program issued before the truncate()
-> > >> call have "bled past" the SETATTR, extending the file further
-> > >> than the SETATTR did.  Since none of the operations issued
-> > >> after SETATTR extends the file further, by the time we get to
-> > >> the GETATTR, the file is larger than the test expects.
-> > >> 
-> > >> There are two strange things going on here.  The first,
-> > >> identified above, is that write()s that were initiated before
-> > >> the truncate() call are being processed after the resulting
-> > >> SETATTR call.  The second is that WRITE operations are being
-> > >> initiated while the SETATTR is outstanding.
-> > >> 
-> > >> It seems to me that a size-changing SETATTR operation should
-> > >> act essentially as an I/O barrier. It should wait for all outstanding
-> > >> read/write requests to complete, then issue the SETATTR,
-> > >> wait for the reply, and only then re-enable read/write requests.
-> > >> 
-> > >> In other words, SETATTR should be atomic with respect to other
-> > >> I/O operations.
-> > 
-> > nfs_setattr() relies on writeback_single_inode() [ via nfs_setattr() ->
-> > nfs_wb_all() -> sync_inode() -> writeback_single_inode() ] to serialize
-> > itself with other pending I/O operations.  The NFS client already treats
-> > SETATTR as an I/O barrier. 
-> > 
-> > >> A git bisect indicates that this problem first appeared (or
-> > >> was first uncovered) with this commit:
-> > >> 
-> > >>   4f8ad65 writeback: Refactor writeback_single_inode()
-> > >> 
-> > >> It continues to the most recent mainline kernels.
-> > >> 
-> > >> NFS v3 vs. v4 doesn't seem to matter.
-> > >> 
-> > >> Has anyone else seen this?  Any pointers you can provide?
-> > 
-> > After commit 4f8ad65, writeback_single_inode() occasionally returns
-> > immediately instead of waiting for writeback to finish.  The behavior
-> > would be difficult or impossible to spot with a local filesystem, but
-> > with NFS, a race is clearly exposed.
->   That looks like a bug. But the only thing that's changed by 4f8ad65 is
-> the additional test:
-> 	if (!(inode->i_state & I_DIRTY))
-> 		goto out;
-> So it seems NFS has inodes that have dirty data but don't have (any of) inode
-> dirty bits set? But I've been staring at the code and don't see any
-> problem. Any idea Chuck? Otherwise I guess I'll have to reproduce this and
-> debug what's going on.
+On Sun 01-12-13 03:59:07, Christoph Hellwig wrote:
+> With the ->set_acl inode operation we can implement the Posix ACL
+> xattr handlers in generic code instead of duplicating them all
+> over the tree.
+  Looks good. You can add:
+Reviewed-by: Jan Kara <jack@suse.cz>
 
-Hi Jan,
+							Honza
 
-I'm guessing that the problem is the fact that you can clear the
-I_DIRTY_PAGES flag inside __writeback_single_inode() on a non-waiting
-call (i.e. one which does not have WB_SYNC_ALL set).
-When that happens, the NFS client ends up with inode->i_state == 0 until
-one of the WRITEs returns with the "unstable" flag set (which triggers a
-call to __mark_inode_dirty(inode, I_DIRTY_DATASYNC) so that we call
-write_inode()).
-
-Basically, if you have WB_SYNC_ALL set, I think that you cannot apply
-the test for (inode->i_state & I_DIRTY) until you have called 
-filemap_fdatawait().
-
-Cheers
-  Trond
-
+> 
+> Signed-off-by: Christoph Hellwig <hch@lst.de>
+> ---
+>  fs/xattr_acl.c                  |   95 +++++++++++++++++++++++++++++++++++++++
+>  include/linux/posix_acl_xattr.h |    3 ++
+>  2 files changed, 98 insertions(+)
+> 
+> diff --git a/fs/xattr_acl.c b/fs/xattr_acl.c
+> index 9fbea87..932ec76 100644
+> --- a/fs/xattr_acl.c
+> +++ b/fs/xattr_acl.c
+> @@ -10,6 +10,7 @@
+>  #include <linux/posix_acl_xattr.h>
+>  #include <linux/gfp.h>
+>  #include <linux/user_namespace.h>
+> +#include <linux/xattr.h>
+>  
+>  /*
+>   * Fix up the uids and gids in posix acl extended attributes in place.
+> @@ -178,3 +179,97 @@ posix_acl_to_xattr(struct user_namespace *user_ns, const struct posix_acl *acl,
+>  	return real_size;
+>  }
+>  EXPORT_SYMBOL (posix_acl_to_xattr);
+> +
+> +static int
+> +posix_acl_xattr_get(struct dentry *dentry, const char *name,
+> +		void *value, size_t size, int type)
+> +{
+> +	struct posix_acl *acl;
+> +	int error;
+> +
+> +	if (!IS_POSIXACL(dentry->d_inode))
+> +		return -EOPNOTSUPP;
+> +
+> +	acl = get_acl(dentry->d_inode, type);
+> +	if (IS_ERR(acl))
+> +		return PTR_ERR(acl);
+> +	if (acl == NULL)
+> +		return -ENODATA;
+> +
+> +	error = posix_acl_to_xattr(&init_user_ns, acl, value, size);
+> +	posix_acl_release(acl);
+> +
+> +	return error;
+> +}
+> +
+> +static int
+> +posix_acl_xattr_set(struct dentry *dentry, const char *name,
+> +		const void *value, size_t size, int flags, int type)
+> +{
+> +	struct inode *inode = dentry->d_inode;
+> +	struct posix_acl *acl = NULL;
+> +	int ret;
+> +
+> +	if (type == ACL_TYPE_DEFAULT && !S_ISDIR(inode->i_mode))
+> +		return value ? -EACCES : 0;
+> +	if (!inode_owner_or_capable(inode))
+> +		return -EPERM;
+> +	if (!IS_POSIXACL(inode))
+> +		return -EOPNOTSUPP;
+> +
+> +	if (value) {
+> +		acl = posix_acl_from_xattr(&init_user_ns, value, size);
+> +		if (IS_ERR(acl))
+> +			return PTR_ERR(acl);
+> +
+> +		if (acl) {
+> +			ret = posix_acl_valid(acl);
+> +			if (ret)
+> +				goto out;
+> +		}
+> +	}
+> +
+> +	ret = inode->i_op->set_acl(inode, acl, type);
+> +out:
+> +	posix_acl_release(acl);
+> +	return ret;
+> +}
+> +
+> +static size_t
+> +posix_acl_xattr_list(struct dentry *dentry, char *list, size_t list_size,
+> +		const char *name, size_t name_len, int type)
+> +{
+> +	const char *xname;
+> +	size_t size;
+> +
+> +	if (!IS_POSIXACL(dentry->d_inode))
+> +		return -EOPNOTSUPP;
+> +
+> +	if (type == ACL_TYPE_ACCESS)
+> +		xname = POSIX_ACL_XATTR_ACCESS;
+> +	else
+> +		xname = POSIX_ACL_XATTR_DEFAULT;
+> +
+> +	size = strlen(xname) + 1;
+> +	if (list && size <= list_size)
+> +		memcpy(list, xname, size);
+> +	return size;
+> +}
+> +
+> +const struct xattr_handler posix_acl_access_xattr_handler = {
+> +	.prefix = POSIX_ACL_XATTR_ACCESS,
+> +	.flags = ACL_TYPE_ACCESS,
+> +	.list = posix_acl_xattr_list,
+> +	.get = posix_acl_xattr_get,
+> +	.set = posix_acl_xattr_set,
+> +};
+> +EXPORT_SYMBOL_GPL(posix_acl_access_xattr_handler);
+> +
+> +const struct xattr_handler posix_acl_default_xattr_handler = {
+> +	.prefix = POSIX_ACL_XATTR_DEFAULT,
+> +	.flags = ACL_TYPE_DEFAULT,
+> +	.list = posix_acl_xattr_list,
+> +	.get = posix_acl_xattr_get,
+> +	.set = posix_acl_xattr_set,
+> +};
+> +EXPORT_SYMBOL_GPL(posix_acl_default_xattr_handler);
+> diff --git a/include/linux/posix_acl_xattr.h b/include/linux/posix_acl_xattr.h
+> index ad93ad0..6f14ee2 100644
+> --- a/include/linux/posix_acl_xattr.h
+> +++ b/include/linux/posix_acl_xattr.h
+> @@ -69,4 +69,7 @@ struct posix_acl *posix_acl_from_xattr(struct user_namespace *user_ns,
+>  int posix_acl_to_xattr(struct user_namespace *user_ns,
+>  		       const struct posix_acl *acl, void *buffer, size_t size);
+>  
+> +extern const struct xattr_handler posix_acl_access_xattr_handler;
+> +extern const struct xattr_handler posix_acl_default_xattr_handler;
+> +
+>  #endif	/* _POSIX_ACL_XATTR_H */
+> -- 
+> 1.7.10.4
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-ext4" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
