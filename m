@@ -1,90 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:44693 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751469Ab3LLQcG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 12 Dec 2013 11:32:06 -0500
-Date: Thu, 12 Dec 2013 11:32:05 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: using nfsd4_encode_noop for encoding
- destroy_session/free_stateid
-Message-ID: <20131212163205.GH11521@fieldses.org>
-References: <52A5A3B7.2000303@gmail.com>
+Received: from mx1.pingtimeout.net ([194.187.214.64]:46761 "EHLO
+	mx1.pingtimeout.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757714Ab3LBU2x (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Dec 2013 15:28:53 -0500
+Message-ID: <529CEBC3.8060505@pingtimeout.net>
+Date: Mon, 02 Dec 2013 22:21:23 +0200
+From: =?ISO-8859-1?Q?Antti_T=F6nkyr=E4?= <daedalus@pingtimeout.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <52A5A3B7.2000303@gmail.com>
+To: bfields@fieldses.org
+CC: linux-nfs@vger.kernel.org
+Subject: Patch for mapping EILSEQ into NFSERR_INVAL
+Content-Type: multipart/mixed;
+ boundary="------------060306060709040602020102"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Dec 09, 2013 at 07:04:23PM +0800, Kinglong Mee wrote:
-> Get rid of the extra code, using nfsd4_encode_noop for encoding destroy_session and free_stateid.
-> And, delete unused argument (fr_status) int nfsd4_free_stateid.
+This is a multi-part message in MIME format.
+--------------060306060709040602020102
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Transfer-Encoding: 7bit
 
-Thanks, applying.--b.
+Hello,
 
-> 
-> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-> ---
->  fs/nfsd/nfs4xdr.c | 26 ++------------------------
->  fs/nfsd/xdr4.h    |  1 -
->  2 files changed, 2 insertions(+), 25 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> index 91afb1c..b0b886e 100644
-> --- a/fs/nfsd/nfs4xdr.c
-> +++ b/fs/nfsd/nfs4xdr.c
-> @@ -3463,28 +3463,6 @@ nfsd4_encode_create_session(struct nfsd4_compoundres *resp, __be32 nfserr,
->  }
->  
->  static __be32
-> -nfsd4_encode_destroy_session(struct nfsd4_compoundres *resp, __be32 nfserr,
-> -			     struct nfsd4_destroy_session *destroy_session)
-> -{
-> -	return nfserr;
-> -}
-> -
-> -static __be32
-> -nfsd4_encode_free_stateid(struct nfsd4_compoundres *resp, __be32 nfserr,
-> -			  struct nfsd4_free_stateid *free_stateid)
-> -{
-> -	__be32 *p;
-> -
-> -	if (nfserr)
-> -		return nfserr;
-> -
-> -	RESERVE_SPACE(4);
-> -	*p++ = nfserr;
-> -	ADJUST_ARGS();
-> -	return nfserr;
-> -}
-> -
-> -static __be32
->  nfsd4_encode_sequence(struct nfsd4_compoundres *resp, __be32 nfserr,
->  		      struct nfsd4_sequence *seq)
->  {
-> @@ -3582,8 +3560,8 @@ static nfsd4_enc nfsd4_enc_ops[] = {
->  	[OP_BIND_CONN_TO_SESSION] = (nfsd4_enc)nfsd4_encode_bind_conn_to_session,
->  	[OP_EXCHANGE_ID]	= (nfsd4_enc)nfsd4_encode_exchange_id,
->  	[OP_CREATE_SESSION]	= (nfsd4_enc)nfsd4_encode_create_session,
-> -	[OP_DESTROY_SESSION]	= (nfsd4_enc)nfsd4_encode_destroy_session,
-> -	[OP_FREE_STATEID]	= (nfsd4_enc)nfsd4_encode_free_stateid,
-> +	[OP_DESTROY_SESSION]	= (nfsd4_enc)nfsd4_encode_noop,
-> +	[OP_FREE_STATEID]	= (nfsd4_enc)nfsd4_encode_noop,
->  	[OP_GET_DIR_DELEGATION]	= (nfsd4_enc)nfsd4_encode_noop,
->  	[OP_GETDEVICEINFO]	= (nfsd4_enc)nfsd4_encode_noop,
->  	[OP_GETDEVICELIST]	= (nfsd4_enc)nfsd4_encode_noop,
-> diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-> index b3ed644..916a407 100644
-> --- a/fs/nfsd/xdr4.h
-> +++ b/fs/nfsd/xdr4.h
-> @@ -374,7 +374,6 @@ struct nfsd4_test_stateid {
->  
->  struct nfsd4_free_stateid {
->  	stateid_t	fr_stateid;         /* request */
-> -	__be32		fr_status;          /* response */
->  };
->  
->  /* also used for NVERIFY */
-> -- 
-> 1.8.4.2
+NTFS file system and some other filesystems seem to return EILSEQ when 
+user passes badly formatted data. Current NFSv4 implementation does not 
+map EILSEQ into any known NFSv4 error code which causes problems in some 
+use cases. In my case I observed that if filesystem returns EILSEQ, the 
+NFS share will begin I/O erroring until it's able to recover (If there 
+are handles open to the files in the share, I/O errors will continue 
+until they are closed after which the share recovers after small period 
+of time).
+
+Given that widely used ntfs-3g FUSE module also returns EILSEQ on the 
+same case (I tested this) I would argue that a fix should be done for 
+upstream especially since RFC5661 clearly defines that invalid UTF-8 
+sequence should map into NFSERR_INVAL, exact quote: "Where the client 
+sends an invalid UTF-8 string, the server should return NFS4ERR_INVAL 
+(see Table 5)".
+
+Other way of fixing this would be to change all EILSEQs to return 
+something else but I think this is a wrong way to fix the problem since 
+it takes the sane error message away (Invalid or incomplete multibyte or 
+wide character).
+
+If we simply do a mapping here then isn't the fix straightforward 
+(attached)?
+
+BR, Antti
+
+--------------060306060709040602020102
+Content-Type: text/plain; charset=windows-1252;
+ name="proposed_mapping.patch"
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="proposed_mapping.patch"
+
+diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
+index 54c6b3d..a022a23 100644
+--- a/fs/nfsd/nfsproc.c
++++ b/fs/nfsd/nfsproc.c
+@@ -724,6 +724,7 @@ nfserrno (int errno)
+                { nfserr_notdir, -ENOTDIR },
+                { nfserr_isdir, -EISDIR },
+                { nfserr_inval, -EINVAL },
++               { nfserr_inval, -EILSEQ },
+                { nfserr_fbig, -EFBIG },
+                { nfserr_nospc, -ENOSPC },
+                { nfserr_rofs, -EROFS },
+
+--------------060306060709040602020102--
