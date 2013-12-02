@@ -1,111 +1,38 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:54502 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932822Ab3LTNZY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Dec 2013 08:25:24 -0500
-Message-Id: <20131220132521.164507154@bombadil.infradead.org>
-Date: Fri, 20 Dec 2013 05:16:36 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: viro@zeniv.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-mtd@lists.infradead.org, Mark Fasheh <mfasheh@suse.com>,
-        Joel Becker <jlbec@evilplan.org>, reiserfs-devel@vger.kernel.org,
-        xfs@oss.sgi.com, jfs-discussion@lists.sourceforge.net,
-        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
-        Andreas Gruenbacher <andreas.gruenbacher@linbit.com>,
-        Jan Kara <jack@suse.cz>
-Subject: [PATCH 01/21] reiserfs: prefix ACL symbols with reiserfs_
-References: <20131220131635.650823732@bombadil.infradead.org>
+Received: from mail-ie0-f178.google.com ([209.85.223.178]:39668 "EHLO
+	mail-ie0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752355Ab3LBQAw convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Dec 2013 11:00:52 -0500
+Received: by mail-ie0-f178.google.com with SMTP id lx4so20785301iec.23
+        for <linux-nfs@vger.kernel.org>; Mon, 02 Dec 2013 08:00:52 -0800 (PST)
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 7.0 \(1812\))
+Subject: Re: [PATCH 00/11] [RFC] repair net namespace damage to rpc_pipefs
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+In-Reply-To: <20131202153435.GA2804@infradead.org>
+Date: Mon, 2 Dec 2013 11:00:50 -0500
+Cc: Viro Alexander <viro@ZenIV.linux.org.uk>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Devel FS Linux <linux-fsdevel@vger.kernel.org>,
+        Torvalds Linus <torvalds@linux-foundation.org>,
+        Eric Biederman <ebiederm@xmission.com>
+Message-Id: <BCED1826-0743-4420-AD45-B38D67EF3D99@primarydata.com>
+References: <20131201131441.790963326@bombadil.infradead.org> <20131201181329.GC10323@ZenIV.linux.org.uk> <20131202081233.GA6953@infradead.org> <3C65EB4C-6592-44F8-B08D-E5A9EFD6C8C6@primarydata.com> <20131202153435.GA2804@infradead.org>
+To: Christoph Hellwig <hch@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
-Reviewed-by: Jan Kara <jack@suse.cz>
----
- fs/reiserfs/xattr_acl.c |   20 ++++++++++----------
- 1 file changed, 10 insertions(+), 10 deletions(-)
 
-diff --git a/fs/reiserfs/xattr_acl.c b/fs/reiserfs/xattr_acl.c
-index 06c04f7..6f721ea 100644
---- a/fs/reiserfs/xattr_acl.c
-+++ b/fs/reiserfs/xattr_acl.c
-@@ -16,7 +16,7 @@ static int reiserfs_set_acl(struct reiserfs_transaction_handle *th,
- 			    struct posix_acl *acl);
- 
- static int
--posix_acl_set(struct dentry *dentry, const char *name, const void *value,
-+reiserfs_posix_acl_set(struct dentry *dentry, const char *name, const void *value,
- 		size_t size, int flags, int type)
- {
- 	struct inode *inode = dentry->d_inode;
-@@ -65,7 +65,7 @@ posix_acl_set(struct dentry *dentry, const char *name, const void *value,
- }
- 
- static int
--posix_acl_get(struct dentry *dentry, const char *name, void *buffer,
-+reiserfs_posix_acl_get(struct dentry *dentry, const char *name, void *buffer,
- 		size_t size, int type)
- {
- 	struct posix_acl *acl;
-@@ -88,7 +88,7 @@ posix_acl_get(struct dentry *dentry, const char *name, void *buffer,
- /*
-  * Convert from filesystem to in-memory representation.
-  */
--static struct posix_acl *posix_acl_from_disk(const void *value, size_t size)
-+static struct posix_acl *reiserfs_posix_acl_from_disk(const void *value, size_t size)
- {
- 	const char *end = (char *)value + size;
- 	int n, count;
-@@ -158,7 +158,7 @@ static struct posix_acl *posix_acl_from_disk(const void *value, size_t size)
- /*
-  * Convert from in-memory to filesystem representation.
-  */
--static void *posix_acl_to_disk(const struct posix_acl *acl, size_t * size)
-+static void *reiserfs_posix_acl_to_disk(const struct posix_acl *acl, size_t * size)
- {
- 	reiserfs_acl_header *ext_acl;
- 	char *e;
-@@ -257,7 +257,7 @@ struct posix_acl *reiserfs_get_acl(struct inode *inode, int type)
- 	} else if (retval < 0) {
- 		acl = ERR_PTR(retval);
- 	} else {
--		acl = posix_acl_from_disk(value, retval);
-+		acl = reiserfs_posix_acl_from_disk(value, retval);
- 	}
- 	if (!IS_ERR(acl))
- 		set_cached_acl(inode, type, acl);
-@@ -307,7 +307,7 @@ reiserfs_set_acl(struct reiserfs_transaction_handle *th, struct inode *inode,
- 	}
- 
- 	if (acl) {
--		value = posix_acl_to_disk(acl, &size);
-+		value = reiserfs_posix_acl_to_disk(acl, &size);
- 		if (IS_ERR(value))
- 			return (int)PTR_ERR(value);
- 	}
-@@ -499,8 +499,8 @@ static size_t posix_acl_access_list(struct dentry *dentry, char *list,
- const struct xattr_handler reiserfs_posix_acl_access_handler = {
- 	.prefix = POSIX_ACL_XATTR_ACCESS,
- 	.flags = ACL_TYPE_ACCESS,
--	.get = posix_acl_get,
--	.set = posix_acl_set,
-+	.get = reiserfs_posix_acl_get,
-+	.set = reiserfs_posix_acl_set,
- 	.list = posix_acl_access_list,
- };
- 
-@@ -519,7 +519,7 @@ static size_t posix_acl_default_list(struct dentry *dentry, char *list,
- const struct xattr_handler reiserfs_posix_acl_default_handler = {
- 	.prefix = POSIX_ACL_XATTR_DEFAULT,
- 	.flags = ACL_TYPE_DEFAULT,
--	.get = posix_acl_get,
--	.set = posix_acl_set,
-+	.get = reiserfs_posix_acl_get,
-+	.set = reiserfs_posix_acl_set,
- 	.list = posix_acl_default_list,
- };
--- 
-1.7.10.4
+On Dec 2, 2013, at 10:34, Christoph Hellwig <hch@infradead.org> wrote:
 
+> On Mon, Dec 02, 2013 at 08:44:25AM -0500, Trond Myklebust wrote:
+>> The lifetime of the kernel mount only needs to match that of the rpc_client, since each rpc_client is associated to a single net namespace, and each net namespace is in a 1-1 relationship with an rpc_pipefs super block.
+> 
+> Except for the non-rpc_client users of rpc_pipefs?
 
+There is the idmapper pipe which is created as part of setting up a NFSv4 mount: that could either call rpc_get_mount(), or just rely on the fact that the nfs_client has an rpc_client. Ditto for the DNS resolver pipe.
+
+Any more?
+
+Cheers
+  Trond
