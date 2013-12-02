@@ -1,158 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f50.google.com ([209.85.220.50]:57556 "EHLO
-	mail-pa0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750708Ab3LaDS3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Dec 2013 22:18:29 -0500
-Received: by mail-pa0-f50.google.com with SMTP id kp14so10438552pab.9
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Dec 2013 19:18:29 -0800 (PST)
-Message-ID: <52C2377E.8040006@gmail.com>
-Date: Tue, 31 Dec 2013 11:18:22 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
+Received: from mout.gmx.net ([212.227.17.20]:52392 "EHLO mout.gmx.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752727Ab3LBS7f (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 2 Dec 2013 13:59:35 -0500
+Received: from ls3530.box ([84.173.46.184]) by mail.gmx.com (mrgmx102) with
+ ESMTPSA (Nemesis) id 0Me5Q2-1Vxv7y3iz0-00PrF9 for
+ <linux-nfs@vger.kernel.org>; Mon, 02 Dec 2013 19:59:33 +0100
+Date: Mon, 2 Dec 2013 19:59:31 +0100
+From: Helge Deller <deller@gmx.de>
+To: linux-nfs@vger.kernel.org, Linux Kernel <linux-kernel@vger.kernel.org>,
+        linux-parisc@vger.kernel.org
+Subject: [PATCH] nfs: fix do_div() warning by instead using sector_div()
+Message-ID: <20131202185931.GA1992@ls3530.box>
 MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "J.,Bruce Fields" <bfields@fieldses.org>,
-        Gareth Williams <gareth@garethwilliams.me.uk>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        trond.myklebust@primarydata.com
-Subject: Re: [PATCH 2/2] NFSD: supports nfsv4 service without rpcbind
-References: <52B47A12.2070202@garethwilliams.me.uk>	<20131223173956.GA9221@fieldses.org>	<52BD53CA.5050205@gmail.com>	<7FD776EA-EAA8-41E0-9567-BF3924D365AC@oracle.com>	<20131227184309.GA9161@fieldses.org>	<01763B6D-C8CB-46B7-87AC-CE189496019A@oracle.com>	<6E281EC9-49CB-4BDA-BDF3-7A6F4B703156@gmail.com>	<CAB6yy34woYZaJ=k=Ga9iT_mmBWBiCUj1SprT=Se2SVrOu6YO_Q@mail.gmail.com>	<5D65FDE6-D1AB-442C-BFD8-141AB87FF321@gmail.com> <CAB6yy379-A8fgLpQo+ppx5V93P9pXcabvmBJNTZ5hXxeJMuxBg@mail.gmail.com> <52C1577B.9080100@gmail.com> <52C15847.9030208@gmail.com> <68E6D30F-B2D6-4919-9748-E7F1162AC3B7@oracle.com>
-In-Reply-To: <68E6D30F-B2D6-4919-9748-E7F1162AC3B7@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 12/31/2013 01:54 AM, Chuck Lever wrote:
-> 
-> On Dec 30, 2013, at 6:25 AM, Kinglong Mee <kinglongmee@gmail.com> wrote:
-> 
->> 1. set vs_ignore_err for nfsd_version4
->> 2. don't start lockd when only supports nfsv4
->>
->> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
->> ---
->> fs/nfsd/netns.h    |  1 +
->> fs/nfsd/nfs4proc.c |  1 +
->> fs/nfsd/nfssvc.c   | 26 +++++++++++++++++++++-----
->> 3 files changed, 23 insertions(+), 5 deletions(-)
->>
->> diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
->> index 849a7c3..d32b3aa 100644
->> --- a/fs/nfsd/netns.h
->> +++ b/fs/nfsd/netns.h
->> @@ -95,6 +95,7 @@ struct nfsd_net {
->> 	time_t nfsd4_grace;
->>
->> 	bool nfsd_net_up;
->> +	bool lockd_up;
->>
->> 	/*
->> 	 * Time of server startup
->> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
->> index 419572f..9320986 100644
->> --- a/fs/nfsd/nfs4proc.c
->> +++ b/fs/nfsd/nfs4proc.c
->> @@ -1881,6 +1881,7 @@ struct svc_version	nfsd_version4 = {
->> 		.vs_proc	= nfsd_procedures4,
->> 		.vs_dispatch	= nfsd_dispatch,
->> 		.vs_xdrsize	= NFS4_SVC_XDRSIZE,
->> +		.vs_ignore_err	= 1,
-> 
-> It's better, I think, to include this hunk in 1/1.  That way, that one patch can be merged into stable, or cherry-picked by a distribution.
-> 
-> Also, just a nit: ".vs_ignore_err" is a rather generic name.  Something more specific like ".vs_rpcb_optnl" would be nicer, or reverse the logic and call it ".vs_rpcb_needed".
+When compiling a 32bit kernel with CONFIG_LBDAF=n the compiler complains like
+shown below.  Fix this warning by instead using sector_div() which is provided
+by the kernel.h header file.
+ 
+fs/nfs/blocklayout/extents.c: In function ‘normalize’:
+include/asm-generic/div64.h:43:28: warning: comparison of distinct pointer types lacks a cast [enabled by default]
+fs/nfs/blocklayout/extents.c:47:13: note: in expansion of macro ‘do_div’
+nfs/blocklayout/extents.c:47:2: warning: right shift count >= width of type [enabled by default]
+fs/nfs/blocklayout/extents.c:47:2: warning: passing argument 1 of ‘__div64_32’ from incompatible pointer type [enabled by default]
+include/asm-generic/div64.h:35:17: note: expected ‘uint64_t *’ but argument is of type ‘sector_t *’
+ extern uint32_t __div64_32(uint64_t *dividend, uint32_t divisor);
 
-Make sense.
-Thanks for you suggestion.
+Signed-off-by: Helge Deller <deller@gmx.de>
 
-> 
->> };
->>
->> /*
->> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
->> index 760c85a..55b5b57 100644
->> --- a/fs/nfsd/nfssvc.c
->> +++ b/fs/nfsd/nfssvc.c
->> @@ -241,6 +241,11 @@ static void nfsd_shutdown_generic(void)
->> 	nfsd_racache_shutdown();
->> }
->>
->> +static bool nfsd_needs_lockd(void)
->> +{
->> +	return (nfsd_versions[2] != NULL) || (nfsd_versions[3] != NULL);
->> +}
-> 
-> How does this logic know which version of nfsd is being started?
-
-In the latest kernel (3.13), nfsd_versions records the version of nfsd which being started,
-nfsd_version records the version of nfsd which can be supported by codes.
-
-In function named nfsd_vers, when setting a version of nfsd, nfsd_versions[vers] will be signed
-to nfsd_version[vers], in contrast, when clearing, nfsd_versions[vers] will be signed to NULL.
-
-So, we can check nfsd_versions[vers] directly for according version.
-
-thanks,
-Kinglong Mee
-
-> 
->> +
->> static int nfsd_startup_net(int nrservs, struct net *net)
->> {
->> 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
->> @@ -255,9 +260,14 @@ static int nfsd_startup_net(int nrservs, struct net *net)
->> 	ret = nfsd_init_socks(net);
->> 	if (ret)
->> 		goto out_socks;
->> -	ret = lockd_up(net);
->> -	if (ret)
->> -		goto out_socks;
->> +
->> +	if (nfsd_needs_lockd() && !nn->lockd_up) {
->> +		ret = lockd_up(net);
->> +		if (ret)
->> +			goto out_socks;
->> +		nn->lockd_up = 1;
->> +	}
->> +
->> 	ret = nfs4_state_start_net(net);
->> 	if (ret)
->> 		goto out_lockd;
->> @@ -266,7 +276,10 @@ static int nfsd_startup_net(int nrservs, struct net *net)
->> 	return 0;
->>
->> out_lockd:
->> -	lockd_down(net);
->> +	if (nn->lockd_up) {
->> +		lockd_down(net);
->> +		nn->lockd_up = 0;
->> +	}
->> out_socks:
->> 	nfsd_shutdown_generic();
->> 	return ret;
->> @@ -277,7 +290,10 @@ static void nfsd_shutdown_net(struct net *net)
->> 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
->>
->> 	nfs4_state_shutdown_net(net);
->> -	lockd_down(net);
->> +	if (nn->lockd_up) {
->> +		lockd_down(net);
->> +		nn->lockd_up = 0;
->> +	}
->> 	nn->nfsd_net_up = false;
->> 	nfsd_shutdown_generic();
->> }
->> -- 
->> 1.8.4.2
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> --
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
-> 
-> 
-> 
-> 
-
+diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
+index 9c3e117..4d01614 100644
+--- a/fs/nfs/blocklayout/extents.c
++++ b/fs/nfs/blocklayout/extents.c
+@@ -44,7 +44,7 @@
+ static inline sector_t normalize(sector_t s, int base)
+ {
+ 	sector_t tmp = s; /* Since do_div modifies its argument */
+-	return s - do_div(tmp, base);
++	return s - sector_div(tmp, base);
+ }
+ 
+ static inline sector_t normalize_up(sector_t s, int base)
