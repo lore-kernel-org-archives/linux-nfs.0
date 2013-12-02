@@ -1,67 +1,126 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:32274 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932311Ab3LDSPR convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Dec 2013 13:15:17 -0500
+Received: from cantor2.suse.de ([195.135.220.15]:58607 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754770Ab3LBUPR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 2 Dec 2013 15:15:17 -0500
+Date: Mon, 2 Dec 2013 21:15:15 +0100
+From: Jan Kara <jack@suse.cz>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net, linux-mtd@lists.infradead.org,
+        Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>,
+        reiserfs-devel@vger.kernel.org, xfs@oss.sgi.com,
+        jfs-discussion@lists.sourceforge.net, cluster-devel@redhat.com,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 01/18] reiserfs: prefix ACL symbols with reiserfs_
+Message-ID: <20131202201515.GC12253@quack.suse.cz>
+References: <20131201115903.910559036@bombadil.infradead.org>
+ <20131201120653.694912626@bombadil.infradead.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 6.6 \(1510\))
-Subject: Re: librpcsecgss: FTBFS on GNU/kFreeBSD
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1021B36D-17B9-477F-A8AE-86D6A7750B80@gmail.com>
-Date: Wed, 4 Dec 2013 13:14:47 -0500
-Cc: Christoph Hellwig <hch@infradead.org>, Jim Rees <rees@umich.edu>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <09856BCA-A255-4975-8144-D38775DC44A8@oracle.com>
-References: <20090703133142.14887.33854.reportbug@localhost.localdomain> <20131124051904.GA16651@master.debian.org> <20131124090924.GA29659@infradead.org> <20131124130753.GA15178@umich.edu> <20131204131317.GA7776@infradead.org> <108D7BCB-5869-45BB-A287-C6593257F193@oracle.com> <1021B36D-17B9-477F-A8AE-86D6A7750B80@gmail.com>
-To: Trond Myklebust <trondmy@gmail.com>
+In-Reply-To: <20131201120653.694912626@bombadil.infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Sun 01-12-13 03:59:04, Christoph Hellwig wrote:
+> Signed-off-by: Christoph Hellwig <hch@lst.de>
+  Looks good. You can add:
+Reviewed-by: Jan Kara <jack@suse.cz>
 
-On Dec 4, 2013, at 12:53 PM, Trond Myklebust <trondmy@gmail.com> wrote:
+								Honza
 
+> ---
+>  fs/reiserfs/xattr_acl.c |   20 ++++++++++----------
+>  1 file changed, 10 insertions(+), 10 deletions(-)
 > 
-> On Dec 4, 2013, at 12:14, Chuck Lever <chuck.lever@oracle.com> wrote:
+> diff --git a/fs/reiserfs/xattr_acl.c b/fs/reiserfs/xattr_acl.c
+> index 06c04f7..6f721ea 100644
+> --- a/fs/reiserfs/xattr_acl.c
+> +++ b/fs/reiserfs/xattr_acl.c
+> @@ -16,7 +16,7 @@ static int reiserfs_set_acl(struct reiserfs_transaction_handle *th,
+>  			    struct posix_acl *acl);
+>  
+>  static int
+> -posix_acl_set(struct dentry *dentry, const char *name, const void *value,
+> +reiserfs_posix_acl_set(struct dentry *dentry, const char *name, const void *value,
+>  		size_t size, int flags, int type)
+>  {
+>  	struct inode *inode = dentry->d_inode;
+> @@ -65,7 +65,7 @@ posix_acl_set(struct dentry *dentry, const char *name, const void *value,
+>  }
+>  
+>  static int
+> -posix_acl_get(struct dentry *dentry, const char *name, void *buffer,
+> +reiserfs_posix_acl_get(struct dentry *dentry, const char *name, void *buffer,
+>  		size_t size, int type)
+>  {
+>  	struct posix_acl *acl;
+> @@ -88,7 +88,7 @@ posix_acl_get(struct dentry *dentry, const char *name, void *buffer,
+>  /*
+>   * Convert from filesystem to in-memory representation.
+>   */
+> -static struct posix_acl *posix_acl_from_disk(const void *value, size_t size)
+> +static struct posix_acl *reiserfs_posix_acl_from_disk(const void *value, size_t size)
+>  {
+>  	const char *end = (char *)value + size;
+>  	int n, count;
+> @@ -158,7 +158,7 @@ static struct posix_acl *posix_acl_from_disk(const void *value, size_t size)
+>  /*
+>   * Convert from in-memory to filesystem representation.
+>   */
+> -static void *posix_acl_to_disk(const struct posix_acl *acl, size_t * size)
+> +static void *reiserfs_posix_acl_to_disk(const struct posix_acl *acl, size_t * size)
+>  {
+>  	reiserfs_acl_header *ext_acl;
+>  	char *e;
+> @@ -257,7 +257,7 @@ struct posix_acl *reiserfs_get_acl(struct inode *inode, int type)
+>  	} else if (retval < 0) {
+>  		acl = ERR_PTR(retval);
+>  	} else {
+> -		acl = posix_acl_from_disk(value, retval);
+> +		acl = reiserfs_posix_acl_from_disk(value, retval);
+>  	}
+>  	if (!IS_ERR(acl))
+>  		set_cached_acl(inode, type, acl);
+> @@ -307,7 +307,7 @@ reiserfs_set_acl(struct reiserfs_transaction_handle *th, struct inode *inode,
+>  	}
+>  
+>  	if (acl) {
+> -		value = posix_acl_to_disk(acl, &size);
+> +		value = reiserfs_posix_acl_to_disk(acl, &size);
+>  		if (IS_ERR(value))
+>  			return (int)PTR_ERR(value);
+>  	}
+> @@ -499,8 +499,8 @@ static size_t posix_acl_access_list(struct dentry *dentry, char *list,
+>  const struct xattr_handler reiserfs_posix_acl_access_handler = {
+>  	.prefix = POSIX_ACL_XATTR_ACCESS,
+>  	.flags = ACL_TYPE_ACCESS,
+> -	.get = posix_acl_get,
+> -	.set = posix_acl_set,
+> +	.get = reiserfs_posix_acl_get,
+> +	.set = reiserfs_posix_acl_set,
+>  	.list = posix_acl_access_list,
+>  };
+>  
+> @@ -519,7 +519,7 @@ static size_t posix_acl_default_list(struct dentry *dentry, char *list,
+>  const struct xattr_handler reiserfs_posix_acl_default_handler = {
+>  	.prefix = POSIX_ACL_XATTR_DEFAULT,
+>  	.flags = ACL_TYPE_DEFAULT,
+> -	.get = posix_acl_get,
+> -	.set = posix_acl_set,
+> +	.get = reiserfs_posix_acl_get,
+> +	.set = reiserfs_posix_acl_set,
+>  	.list = posix_acl_default_list,
+>  };
+> -- 
+> 1.7.10.4
 > 
->> 
->> On Dec 4, 2013, at 8:13 AM, Christoph Hellwig <hch@infradead.org> wrote:
->> 
->>> Btw, looks like librpcsecgss is indeed pretty much unmaintained.  The
->>> last upstream release is a tarball drop from CITI in 2009 and there
->>> doesn't appear to be a source repository of any kind.
->>> 
->>> I think the best idea would be to merge it into the libtirpc repo,
->>> as both the heritage and usage of the codebases is the same.
->> 
->> Comparing what's packaged in nfs-utils-lib and what's in libtirpc: it appears libtirpc already has librpcsecgss.
 > 
-> It does? AFAICS a freshly cloned copy of libtirpc only contains the prehistoric krb4/DES implementation. I see no GSS library.
-
-I pulled from:
-
-  git://git.infradead.org/~steved/libtirpc.git
-
-Yes, there's AUTH_DES support in libtirpc, and who knows if our implementation works.
-
-But I'm looking at tirpc/rpc/auth_gss.h.  Both libraries provide roughly the same API.  And I'm able to build a working GSS-enabled version of rpc.fedfsd and clients.  "git log" tells me src/auth_gss.c and tirpc/rpc/auth_gss.h have been in libtirpc since at least 0.1.7.
-
-libtirpc applications currently have to link explicitly with libgssapi_krb5 (provided by MIT Kerberos), AFAICT, to get GSS support.
-
-I'd like to add support in libtirpc for dynamically loading libgssapi_krb5 when it is needed.  Then applications would need only invoke rpc_gss_*() (or the legacy authgss_*() equivalent) to get RPCSECGSS, if libgssapi_krb5 is already installed on their system.
-
-> I thought the reason why we deprecated librpcsecgss was that the MIT Kerberos libraries now have the equivalent hooks.
-
-My understanding:
-
-MIT Kerberos provides libgssapi_krb5.
-
-libtirpc provides the RPCSEC APIs based on the Kerberos v5 mechanism provided in libgssapi_krb5.
-
-librpcsecgss provides RPCSEC APIs based on the GSSAPI Kerberos v5 mechanism provided in libgssglue, which is deprecated.
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+Jan Kara <jack@suse.cz>
+SUSE Labs, CR
