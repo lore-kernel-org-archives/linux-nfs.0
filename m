@@ -1,77 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:35724 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:51172 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752989Ab3LBQpk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 2 Dec 2013 11:45:40 -0500
-Date: Mon, 2 Dec 2013 11:45:07 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Christoph Hellwig <hch@infradead.org>,
-        Viro Alexander <viro@ZenIV.linux.org.uk>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Devel FS Linux <linux-fsdevel@vger.kernel.org>,
-        Torvalds Linus <torvalds@linux-foundation.org>,
-        Eric Biederman <ebiederm@xmission.com>
-Subject: Re: [PATCH 00/11] [RFC] repair net namespace damage to rpc_pipefs
-Message-ID: <20131202114507.303bf016@tlielax.poochiereds.net>
-In-Reply-To: <20131202163735.GK1960@fieldses.org>
-References: <20131201131441.790963326@bombadil.infradead.org>
-	<20131201181329.GC10323@ZenIV.linux.org.uk>
-	<20131202081233.GA6953@infradead.org>
-	<3C65EB4C-6592-44F8-B08D-E5A9EFD6C8C6@primarydata.com>
-	<20131202153435.GA2804@infradead.org>
-	<BCED1826-0743-4420-AD45-B38D67EF3D99@primarydata.com>
-	<20131202113319.36ac5332@tlielax.poochiereds.net>
-	<20131202163735.GK1960@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1755098Ab3LCUym (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 3 Dec 2013 15:54:42 -0500
+Date: Tue, 3 Dec 2013 15:54:33 -0500
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: Christoph Hellwig <hch@infradead.org>, linux-fsdevel@vger.kernel.org,
+        xfs@oss.sgi.com, NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] fs: fix iversion handling
+Message-ID: <20131203205433.GB2648@fieldses.org>
+References: <20131119151707.GA13412@infradead.org>
+ <20131202173636.GA17724@infradead.org>
+ <529DA5C6.7040403@panasas.com>
+ <20131203094507.GD4906@infradead.org>
+ <529DB536.7050008@panasas.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <529DB536.7050008@panasas.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2 Dec 2013 11:37:35 -0500
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
-
-> On Mon, Dec 02, 2013 at 11:33:19AM -0500, Jeff Layton wrote:
-> > On Mon, 2 Dec 2013 11:00:50 -0500
-> > Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+On Tue, Dec 03, 2013 at 12:40:54PM +0200, Boaz Harrosh wrote:
+> On 12/03/2013 11:45 AM, Christoph Hellwig wrote:
+> > On Tue, Dec 03, 2013 at 11:35:02AM +0200, Boaz Harrosh wrote:
+> >> Hi Christoph
+> >>
+> >> What happens with all other filesystems exported under KNFSD?
+> >>
+> >> As I understand inode_inc_iversion() is used in NFSv4 and up,
+> >> what will increment the inode-version on changed attributes
+> >> for them?
 > > 
-> > > 
-> > > On Dec 2, 2013, at 10:34, Christoph Hellwig <hch@infradead.org> wrote:
-> > > 
-> > > > On Mon, Dec 02, 2013 at 08:44:25AM -0500, Trond Myklebust wrote:
-> > > >> The lifetime of the kernel mount only needs to match that of the rpc_client, since each rpc_client is associated to a single net namespace, and each net namespace is in a 1-1 relationship with an rpc_pipefs super block.
-> > > > 
-> > > > Except for the non-rpc_client users of rpc_pipefs?
-> > > 
-> > > There is the idmapper pipe which is created as part of setting up a NFSv4 mount: that could either call rpc_get_mount(), or just rely on the fact that the nfs_client has an rpc_client. Ditto for the DNS resolver pipe.
-> > > 
-> > > Any more?
-> > >
+> > It's used by the filesystem for the change attribute that NFSDd
+> > can optionally use.  Most filesystsems don't support it and work
+> > okay enough when NFS exported.  No other filesystem will need
+> > to adopt for this patch specificly, given that no other filesystem
+> > uses this infrastructure.
 > > 
-> > There's the nfsdcld pipe stuff, but that was supposed to have been
-> > ripped out in 3.10. Bruce wasn't ready to do that since we didn't have
-> > a solution to the problem of using a UMH upcall in a container.
-> > 
-> > As far as I'm concerned, we should go ahead and rip that out and worry
-> > about the UMH in a container problem later. Bruce, any objection to
-> > going ahead and doing that? I can respin/resend the patch to do that if
-> > you're ready for it...
 > 
-> I still haven't seen a solution to the UMH problem.  Do we even expect
-> that there will be one at this point?
+> OK Thanks, I did not know that. I assumed change-attribute is
+> naturally supported.
 > 
-> I just want to avoid the worst case where we decide that UMH was just
-> not designed for this kind of upcall, period, and then need to backtrack
-> again....
-> 
+> I will look at ext4 example and wire up exofs. Because it is very
+> important for me to support the change-attribute properly.
 
-I don't think there's a solution as of yet...
+Just please don't follow ext4's example of making support dependent on a
+mount option.
 
-I'd like to avoid that too, but I expect that no one is actually using
-that code anyway. If we have to put it back in (ugh) then we'll
-probably need to rethink parts of it anyhow. I'm not aware of any
-distro that ever shipped with it enabled.
-
--- 
-Jeff Layton <jlayton@redhat.com>
+--b.
