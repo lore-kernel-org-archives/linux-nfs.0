@@ -1,60 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ea0-f176.google.com ([209.85.215.176]:43527 "EHLO
-	mail-ea0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751654Ab3LMJzr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Dec 2013 04:55:47 -0500
-Received: by mail-ea0-f176.google.com with SMTP id h14so763085eaj.7
-        for <linux-nfs@vger.kernel.org>; Fri, 13 Dec 2013 01:55:46 -0800 (PST)
-Message-ID: <52AAD99E.40706@primarydata.com>
-Date: Fri, 13 Dec 2013 11:55:42 +0200
-From: Benny Halevy <bhalevy@primarydata.com>
+Received: from mx1.pingtimeout.net ([194.187.214.64]:51955 "EHLO
+	mx1.pingtimeout.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753946Ab3LDVIP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Dec 2013 16:08:15 -0500
+Message-ID: <529F99BA.6060106@pingtimeout.net>
+Date: Wed, 04 Dec 2013 23:08:10 +0200
+From: =?UTF-8?B?QW50dGkgVMO2bmt5csOk?= <daedalus@pingtimeout.net>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: bfields@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd4: fix printk format string in nfsd4_open
-References: <1386608743-23718-1-git-send-email-bhalevy@primarydata.com> <20131212161931.GF11521@fieldses.org>
-In-Reply-To: <20131212161931.GF11521@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+To: Dr Fields James Bruce <bfields@fieldses.org>
+CC: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: Patch for mapping EILSEQ into NFSERR_INVAL
+References: <529CEBC3.8060505@pingtimeout.net> <FA468B61-5F7E-4A88-A0BD-13BCF115282E@primarydata.com> <529CF322.4080701@pingtimeout.net> <20131203204806.GA2648@fieldses.org> <20131203212210.GC2648@fieldses.org> <529ED1C8.70208@pingtimeout.net> <20131204154104.GB14646@fieldses.org> <529F943D.30004@pingtimeout.net> <20131204210356.GA19452@fieldses.org>
+In-Reply-To: <20131204210356.GA19452@fieldses.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 12/12/2013 06:19 PM, J. Bruce Fields wrote:
-> On Mon, Dec 09, 2013 at 07:05:43PM +0200, Benny Halevy wrote:
->> Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
-> 
-> Are you sure?  Reminding myself from the sprintf man page.... %*s
-> provides padding, %.*s limits the number of characters taken from the
-> string.  We need that limit since there's no guarantee of null
-> termination here.
-
-Well, the .* format doesn't seem to be supported in the kernel library as
-far as I could tell. At least it doesn't work for me. We may need to copy
-the string and null terminate it if it's indeed the case.
-
-Benny
-
-> 
+On 2013-12-04 23:03, Dr Fields James Bruce wrote:
+> On Wed, Dec 04, 2013 at 10:44:45PM +0200, Antti Tönkyrä wrote:
+>> Looks like I can strace it and I did an example strace, if you need
+>> something more specific please do tell. Command log has completion
+>> timestamps for associating what part of strace happened at what
+>> command.
+>>
+>> http://daedalus.pingtimeout.net/dbg/strace-ioerr.txt
+>> http://daedalus.pingtimeout.net/dbg/strace-commandlog.txt
+> Eh, not much use without knowing fuse's protocol, but:
+>
+>> And just in case you missed my other mail, the I/O error doesn't
+>> kill the share if using NFSv3 (mount -t nfs -o vers=3,intr,hard
+>> ...). The initial I/O error happens but the share doesn't die even
+>> when there are file handles open there.
+> Oh, I overlooked that.  So that merits another look at the network
+> trace:
+>
+>>>> http://daedalus.pingtimeout.net/dbg/eilseq_ioerr.pcap
+> And I see something I'd overlooked before: the client is sending the
+> later opens with the same open owner and sequence id.  But NFS4ERR_IO is
+> a seqid-mutating error.  So now I think this probably *is* a client
+> bug....
+>
+> What's the client kernel version?
+>
 > --b.
-> 
->> ---
->>  fs/nfsd/nfs4proc.c | 2 +-
->>  1 file changed, 1 insertion(+), 1 deletion(-)
->>
->> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
->> index 0a964f1..8624bee 100644
->> --- a/fs/nfsd/nfs4proc.c
->> +++ b/fs/nfsd/nfs4proc.c
->> @@ -361,7 +361,7 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->>  	struct net *net = SVC_NET(rqstp);
->>  	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
->>  
->> -	dprintk("NFSD: nfsd4_open filename %.*s op_openowner %p\n",
->> +	dprintk("NFSD: nfsd4_open filename %*s op_openowner %p\n",
->>  		(int)open->op_fname.len, open->op_fname.data,
->>  		open->op_openowner);
->>  
->> -- 
->> 1.8.3.1
->>
+Tests were mostly conducted using 3.8.0-29 (ubuntu flavour). Original 
+bug was triggered with 3.8.10.
+
+- Antti
