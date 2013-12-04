@@ -1,37 +1,28 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:54028 "EHLO
+Received: from bombadil.infradead.org ([198.137.202.9]:43942 "EHLO
 	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753248Ab3LFTqm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Dec 2013 14:46:42 -0500
-Date: Fri, 6 Dec 2013 11:46:37 -0800
+	with ESMTP id S932290Ab3LDNNS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Dec 2013 08:13:18 -0500
+Date: Wed, 4 Dec 2013 05:13:17 -0800
 From: Christoph Hellwig <hch@infradead.org>
-To: Andreas Gruenbacher <andreas.gruenbacher@linbit.com>
-Cc: Christoph Hellwig <hch@infradead.org>, viro@zeniv.linux.org.uk,
-        linux-fsdevel@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-mtd@lists.infradead.org, Mark Fasheh <mfasheh@suse.com>,
-        Joel Becker <jlbec@evilplan.org>, reiserfs-devel@vger.kernel.org,
-        xfs@oss.sgi.com, jfs-discussion@lists.sourceforge.net,
-        cluster-devel@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 00/18] Consolidate Posix ACL implementation
-Message-ID: <20131206194637.GA32122@infradead.org>
-References: <20131201115903.910559036@bombadil.infradead.org>
- <279325185.39210.1386266234086.JavaMail.zimbra@linbit.com>
+To: Jim Rees <rees@umich.edu>
+Cc: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org
+Subject: Re: librpcsecgss: FTBFS on GNU/kFreeBSD
+Message-ID: <20131204131317.GA7776@infradead.org>
+References: <20090703133142.14887.33854.reportbug@localhost.localdomain>
+ <20131124051904.GA16651@master.debian.org>
+ <20131124090924.GA29659@infradead.org>
+ <20131124130753.GA15178@umich.edu>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <279325185.39210.1386266234086.JavaMail.zimbra@linbit.com>
+In-Reply-To: <20131124130753.GA15178@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Dec 05, 2013 at 06:57:14PM +0100, Andreas Gruenbacher wrote:
-> I see that get_acl and set_acl are being defined in some but not all symlink inode operations (for example, btrfs them while ext4 does not), and that posix_acl_xattr_set() doesn't check if set_acl is defined.  Symlinks cannot have ACLs, so set_acl should either never be defined for symlinks (and a NULL check is then needed in posix_acl_xattr_set()), or it is defined in all inode operations, and S_ISNLNK() check is needed in posix_acl_xattr_set().  That latter check should probably be added in any case to be on the safe side.
+Btw, looks like librpcsecgss is indeed pretty much unmaintained.  The
+last upstream release is a tarball drop from CITI in 2009 and there
+doesn't appear to be a source repository of any kind.
 
-Yes, we should add the check.  We also in general should not have
-set_acl/get_acl on links and I'll look over it.
-
-> Patch 6 also declares posix_acl_prepare() but this function is never introduced; this must be a leftover from a previous version.
-
-Indeed.
-
-Thanks for the review!
+I think the best idea would be to merge it into the libtirpc repo,
+as both the heritage and usage of the codebases is the same.
 
