@@ -1,46 +1,122 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mout.gmx.net ([212.227.17.20]:52392 "EHLO mout.gmx.net"
+Received: from fieldses.org ([174.143.236.118]:53609 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752727Ab3LBS7f (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 2 Dec 2013 13:59:35 -0500
-Received: from ls3530.box ([84.173.46.184]) by mail.gmx.com (mrgmx102) with
- ESMTPSA (Nemesis) id 0Me5Q2-1Vxv7y3iz0-00PrF9 for
- <linux-nfs@vger.kernel.org>; Mon, 02 Dec 2013 19:59:33 +0100
-Date: Mon, 2 Dec 2013 19:59:31 +0100
-From: Helge Deller <deller@gmx.de>
-To: linux-nfs@vger.kernel.org, Linux Kernel <linux-kernel@vger.kernel.org>,
-        linux-parisc@vger.kernel.org
-Subject: [PATCH] nfs: fix do_div() warning by instead using sector_div()
-Message-ID: <20131202185931.GA1992@ls3530.box>
+	id S932683Ab3LDRKx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 4 Dec 2013 12:10:53 -0500
+Date: Wed, 4 Dec 2013 12:10:52 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] Do not enter setup_callback_client when finding
+ backchannel failed
+Message-ID: <20131204171052.GE14646@fieldses.org>
+References: <5295C982.1030904@gmail.com>
+ <20131202145917.GF1960@fieldses.org>
+ <529D4617.6080505@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <529D4617.6080505@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When compiling a 32bit kernel with CONFIG_LBDAF=n the compiler complains like
-shown below.  Fix this warning by instead using sector_div() which is provided
-by the kernel.h header file.
- 
-fs/nfs/blocklayout/extents.c: In function ‘normalize’:
-include/asm-generic/div64.h:43:28: warning: comparison of distinct pointer types lacks a cast [enabled by default]
-fs/nfs/blocklayout/extents.c:47:13: note: in expansion of macro ‘do_div’
-nfs/blocklayout/extents.c:47:2: warning: right shift count >= width of type [enabled by default]
-fs/nfs/blocklayout/extents.c:47:2: warning: passing argument 1 of ‘__div64_32’ from incompatible pointer type [enabled by default]
-include/asm-generic/div64.h:35:17: note: expected ‘uint64_t *’ but argument is of type ‘sector_t *’
- extern uint32_t __div64_32(uint64_t *dividend, uint32_t divisor);
+On Tue, Dec 03, 2013 at 10:46:47AM +0800, Kinglong Mee wrote:
+> On 12/02/2013 10:59 PM, J. Bruce Fields wrote:
+> > On Wed, Nov 27, 2013 at 06:29:22PM +0800, Kinglong Mee wrote:
+> >> If finding backchannel failed, nfsd should not enter setup_callback_client.
+> >>
+> >> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> >> ---
+> >>  fs/nfsd/nfs4callback.c | 4 ++--
+> >>  1 file changed, 2 insertions(+), 2 deletions(-)
+> >>
+> >> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+> >> index 7f05cd1..755d6d6 100644
+> >> --- a/fs/nfsd/nfs4callback.c
+> >> +++ b/fs/nfsd/nfs4callback.c
+> >> @@ -664,7 +664,7 @@ static int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *c
+> >>  		args.authflavor = clp->cl_cred.cr_flavor;
+> >>  		clp->cl_cb_ident = conn->cb_ident;
+> >>  	} else {
+> >> -		if (!conn->cb_xprt)
+> >> +		if (!conn->cb_xprt || !ses)
+> > 
+> > It looks to me like ses should be set whenenver conn is.  Do you have
+> > reason to believe the contrary?
+> 
+> No. It just a double check as conn->cb_xprt.
+> I will drop it in v2 of this path.
+> 
+> > 
+> >>  			return -EINVAL;
+> >>  		clp->cl_cb_conn.cb_xprt = conn->cb_xprt;
+> >>  		clp->cl_cb_session = ses;
+> >> @@ -982,7 +982,7 @@ static void nfsd4_process_cb_update(struct nfsd4_callback *cb)
+> >>  	}
+> >>  	spin_unlock(&clp->cl_lock);
+> >>  
+> >> -	err = setup_callback_client(clp, &conn, ses);
+> >> +	err = c ? setup_callback_client(clp, &conn, ses) : -ENOENT;
+> > 
+> > But, whoops, yes, this looks like a good fix.  (Have you hit this
+> > failure in practice?)  
+> 
+> Yes. When destroying the last session from client, nfsd4_probe_callback_sync
+> will be called in function nfsd4_destroy_session.
+> 
+> As that, callback client will be update in function nfsd4_process_cb_update,
+> so __nfsd4_find_backchannel always failed with returning NULL.
 
-Signed-off-by: Helge Deller <deller@gmx.de>
+On second thoughts, why is that actually a problem?
+setup_callback_client() will fail and you'll get an unnecessary printk
+from nfsd4_mark_cb_down, I guess.  Is that the only problem?
 
-diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
-index 9c3e117..4d01614 100644
---- a/fs/nfs/blocklayout/extents.c
-+++ b/fs/nfs/blocklayout/extents.c
-@@ -44,7 +44,7 @@
- static inline sector_t normalize(sector_t s, int base)
- {
- 	sector_t tmp = s; /* Since do_div modifies its argument */
--	return s - do_div(tmp, base);
-+	return s - sector_div(tmp, base);
- }
- 
- static inline sector_t normalize_up(sector_t s, int base)
+--b.
+
+> (Ps: Maybe needs
+> another patch to avoid updating callback connect when destroying the last session ?)
+> 
+> For debugging, add message when finding backchannel failed.
+> Just testing mount/umount at client, the debug message will be print every umount.
+> 
+> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+> index 7f05cd1..1be4c61 100644
+> --- a/fs/nfsd/nfs4callback.c
+> +++ b/fs/nfsd/nfs4callback.c
+> @@ -979,6 +979,8 @@ static void nfsd4_process_cb_update(struct nfsd4_callback *cb)
+>                 svc_xprt_get(c->cn_xprt);
+>                 conn.cb_xprt = c->cn_xprt;
+>                 ses = c->cn_session;
+> +       } else {
+> +               printk("%s: found connet failed.\n", __func__);
+>         }
+>         spin_unlock(&clp->cl_lock);
+> 
+> > But I think we should probably adopt the sort of
+> > control flow that's more idiomatic in the kernel:
+> > 
+> > 	c = __nfsd4_find_backchannel(clp)
+> > 	if (!c)
+> > 		goto out_unlock;
+> > 	...
+> > 	spin_unlock(&clp->cl_lock);
+> > 	err = setup_callback_client(clp, &conn, ses);
+> > 	if (err)
+> > 		goto out_err;
+> > 
+> 
+> OK, it is really better.
+> 
+> thanks,
+> Kinglong Mee
+> 
+> > etc.
+> > 
+> > --b.
+> > 
+> >>  	if (err) {
+> >>  		nfsd4_mark_cb_down(clp, err);
+> >>  		return;
+> >> -- 
+> >> 1.8.4.2
+> > 
+> 
