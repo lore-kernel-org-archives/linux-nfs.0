@@ -1,156 +1,164 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:59165 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750964Ab3LAMG4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 1 Dec 2013 07:06:56 -0500
-Message-Id: <20131201120654.211328224@bombadil.infradead.org>
-Date: Sun, 01 Dec 2013 03:59:07 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: viro@zeniv.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-mtd@lists.infradead.org, Mark Fasheh <mfasheh@suse.com>,
-        Joel Becker <jlbec@evilplan.org>, reiserfs-devel@vger.kernel.org,
-        xfs@oss.sgi.com, jfs-discussion@lists.sourceforge.net,
-        cluster-devel@redhat.com, linux-nfs@vger.kernel.org
-Subject: [PATCH 04/18] fs: add generic xattr_acl handlers
-References: <20131201115903.910559036@bombadil.infradead.org>
+Received: from mail-ie0-f178.google.com ([209.85.223.178]:54540 "EHLO
+	mail-ie0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756027Ab3LDWtN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Dec 2013 17:49:13 -0500
+Received: by mail-ie0-f178.google.com with SMTP id lx4so27862755iec.37
+        for <linux-nfs@vger.kernel.org>; Wed, 04 Dec 2013 14:49:13 -0800 (PST)
+Message-ID: <1386197350.31895.2.camel@leira.trondhjem.org>
+Subject: Re: Patch for mapping EILSEQ into NFSERR_INVAL
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Dr Fields James Bruce <bfields@fieldses.org>
+Cc: Antti =?ISO-8859-1?Q?T=F6nkyr=E4?= <daedalus@pingtimeout.net>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Date: Wed, 04 Dec 2013 17:49:10 -0500
+In-Reply-To: <20131204213804.GC19452@fieldses.org>
+References: <529CEBC3.8060505@pingtimeout.net>
+	 <FA468B61-5F7E-4A88-A0BD-13BCF115282E@primarydata.com>
+	 <529CF322.4080701@pingtimeout.net> <20131203204806.GA2648@fieldses.org>
+	 <20131203212210.GC2648@fieldses.org> <529ED1C8.70208@pingtimeout.net>
+	 <20131204154104.GB14646@fieldses.org> <529F943D.30004@pingtimeout.net>
+	 <20131204210356.GA19452@fieldses.org>
+	 <22997028-AB15-4D61-A263-011867EE7512@primarydata.com>
+	 <20131204213804.GC19452@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-With the ->set_acl inode operation we can implement the Posix ACL
-xattr handlers in generic code instead of duplicating them all
-over the tree.
+On Wed, 2013-12-04 at 16:38 -0500, Dr Fields James Bruce wrote:
+> On Wed, Dec 04, 2013 at 04:22:48PM -0500, Trond Myklebust wrote:
+> > 
+> > On Dec 4, 2013, at 16:03, Dr Fields James Bruce <bfields@fieldses.org> wrote:
+> > 
+> > > On Wed, Dec 04, 2013 at 10:44:45PM +0200, Antti Tönkyrä wrote:
+> > > 
+> > >>>> http://daedalus.pingtimeout.net/dbg/eilseq_ioerr.pcap
+> > > 
+> > > And I see something I'd overlooked before: the client is sending the
+> > > later opens with the same open owner and sequence id.  But NFS4ERR_IO is
+> > > a seqid-mutating error.  So now I think this probably *is* a client
+> > > bug....
+> > 
+> > Umm… Yes and no. The client should be able to recover when it discovers that the seqid is out of sync.
+> >
+> > That said, I see that we do
+> > 
+> >        status = decode_op_hdr(xdr, OP_OPEN);
+> >         if (status != -EIO)
+> >                 nfs_increment_open_seqid(status, res->seqid);
+> > 
+> > and since NFS4ERR_IO == EIO, that means we skip the seqid update when you send us NFS4ERR_IO.
+> 
+> Oh, OK.  Maybe decode_op_hdr could use -NFS4ERR_BADXDR for the two
+> decoding errors it catches and eliminate the need for this special -EIO
+> case?
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
+That is sort of hackish. How about something like the following patch.
+
+> I think NFS4ERR_IO is a legal error for these operations.  (Even if the
+> server should have returned something else in this case.)
+
+It is legal for OPEN. It does not seem to be legal for OPEN_CONFIRM,
+LOCK, LOCKU, CLOSE or OPEN_DOWNGRADE according to RFC3530bis.
+
+Cheers
+  Trond
+
+8<--------------------------------------------------------
+>From 968a89bfaf176d70352bb1c0003bf496fdc180aa Mon Sep 17 00:00:00 2001
+From: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date: Wed, 4 Dec 2013 17:39:23 -0500
+Subject: [PATCH] NFSv4: OPEN must handle the NFS4ERR_IO return code correctly
+
+decode_op_hdr() cannot distinguish between an XDR decoding error and
+the perfectly valid errorcode NFS4ERR_IO. This is normally not a
+problem, but for the particular case of OPEN, we need to be able
+to increment the NFSv4 open sequence id when the server returns
+a valid response.
+
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/xattr_acl.c                  |   95 +++++++++++++++++++++++++++++++++++++++
- include/linux/posix_acl_xattr.h |    3 ++
- 2 files changed, 98 insertions(+)
+ fs/nfs/nfs4xdr.c | 47 +++++++++++++++++++++++++++++++----------------
+ 1 file changed, 31 insertions(+), 16 deletions(-)
 
-diff --git a/fs/xattr_acl.c b/fs/xattr_acl.c
-index 9fbea87..932ec76 100644
---- a/fs/xattr_acl.c
-+++ b/fs/xattr_acl.c
-@@ -10,6 +10,7 @@
- #include <linux/posix_acl_xattr.h>
- #include <linux/gfp.h>
- #include <linux/user_namespace.h>
-+#include <linux/xattr.h>
- 
- /*
-  * Fix up the uids and gids in posix acl extended attributes in place.
-@@ -178,3 +179,97 @@ posix_acl_to_xattr(struct user_namespace *user_ns, const struct posix_acl *acl,
- 	return real_size;
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 5be2868c02f1..8c21d69a9dc1 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -3097,7 +3097,8 @@ out_overflow:
+ 	return -EIO;
  }
- EXPORT_SYMBOL (posix_acl_to_xattr);
-+
-+static int
-+posix_acl_xattr_get(struct dentry *dentry, const char *name,
-+		void *value, size_t size, int type)
-+{
-+	struct posix_acl *acl;
-+	int error;
-+
-+	if (!IS_POSIXACL(dentry->d_inode))
-+		return -EOPNOTSUPP;
-+
-+	acl = get_acl(dentry->d_inode, type);
-+	if (IS_ERR(acl))
-+		return PTR_ERR(acl);
-+	if (acl == NULL)
-+		return -ENODATA;
-+
-+	error = posix_acl_to_xattr(&init_user_ns, acl, value, size);
-+	posix_acl_release(acl);
-+
-+	return error;
-+}
-+
-+static int
-+posix_acl_xattr_set(struct dentry *dentry, const char *name,
-+		const void *value, size_t size, int flags, int type)
-+{
-+	struct inode *inode = dentry->d_inode;
-+	struct posix_acl *acl = NULL;
-+	int ret;
-+
-+	if (type == ACL_TYPE_DEFAULT && !S_ISDIR(inode->i_mode))
-+		return value ? -EACCES : 0;
-+	if (!inode_owner_or_capable(inode))
-+		return -EPERM;
-+	if (!IS_POSIXACL(inode))
-+		return -EOPNOTSUPP;
-+
-+	if (value) {
-+		acl = posix_acl_from_xattr(&init_user_ns, value, size);
-+		if (IS_ERR(acl))
-+			return PTR_ERR(acl);
-+
-+		if (acl) {
-+			ret = posix_acl_valid(acl);
-+			if (ret)
-+				goto out;
-+		}
-+	}
-+
-+	ret = inode->i_op->set_acl(inode, acl, type);
-+out:
-+	posix_acl_release(acl);
-+	return ret;
-+}
-+
-+static size_t
-+posix_acl_xattr_list(struct dentry *dentry, char *list, size_t list_size,
-+		const char *name, size_t name_len, int type)
-+{
-+	const char *xname;
-+	size_t size;
-+
-+	if (!IS_POSIXACL(dentry->d_inode))
-+		return -EOPNOTSUPP;
-+
-+	if (type == ACL_TYPE_ACCESS)
-+		xname = POSIX_ACL_XATTR_ACCESS;
-+	else
-+		xname = POSIX_ACL_XATTR_DEFAULT;
-+
-+	size = strlen(xname) + 1;
-+	if (list && size <= list_size)
-+		memcpy(list, xname, size);
-+	return size;
-+}
-+
-+const struct xattr_handler posix_acl_access_xattr_handler = {
-+	.prefix = POSIX_ACL_XATTR_ACCESS,
-+	.flags = ACL_TYPE_ACCESS,
-+	.list = posix_acl_xattr_list,
-+	.get = posix_acl_xattr_get,
-+	.set = posix_acl_xattr_set,
-+};
-+EXPORT_SYMBOL_GPL(posix_acl_access_xattr_handler);
-+
-+const struct xattr_handler posix_acl_default_xattr_handler = {
-+	.prefix = POSIX_ACL_XATTR_DEFAULT,
-+	.flags = ACL_TYPE_DEFAULT,
-+	.list = posix_acl_xattr_list,
-+	.get = posix_acl_xattr_get,
-+	.set = posix_acl_xattr_set,
-+};
-+EXPORT_SYMBOL_GPL(posix_acl_default_xattr_handler);
-diff --git a/include/linux/posix_acl_xattr.h b/include/linux/posix_acl_xattr.h
-index ad93ad0..6f14ee2 100644
---- a/include/linux/posix_acl_xattr.h
-+++ b/include/linux/posix_acl_xattr.h
-@@ -69,4 +69,7 @@ struct posix_acl *posix_acl_from_xattr(struct user_namespace *user_ns,
- int posix_acl_to_xattr(struct user_namespace *user_ns,
- 		       const struct posix_acl *acl, void *buffer, size_t size);
  
-+extern const struct xattr_handler posix_acl_access_xattr_handler;
-+extern const struct xattr_handler posix_acl_default_xattr_handler;
+-static int decode_op_hdr(struct xdr_stream *xdr, enum nfs_opnum4 expected)
++static bool __decode_op_hdr(struct xdr_stream *xdr, enum nfs_opnum4 expected,
++		int *nfs_retval)
+ {
+ 	__be32 *p;
+ 	uint32_t opnum;
+@@ -3107,19 +3108,32 @@ static int decode_op_hdr(struct xdr_stream *xdr, enum nfs_opnum4 expected)
+ 	if (unlikely(!p))
+ 		goto out_overflow;
+ 	opnum = be32_to_cpup(p++);
+-	if (opnum != expected) {
+-		dprintk("nfs: Server returned operation"
+-			" %d but we issued a request for %d\n",
+-				opnum, expected);
+-		return -EIO;
+-	}
++	if (unlikely(opnum != expected))
++		goto out_bad_operation;
+ 	nfserr = be32_to_cpup(p);
+-	if (nfserr != NFS_OK)
+-		return nfs4_stat_to_errno(nfserr);
+-	return 0;
++	if (nfserr == NFS_OK)
++		*nfs_retval = 0;
++	else
++		*nfs_retval = nfs4_stat_to_errno(nfserr);
++	return true;
++out_bad_operation:
++	dprintk("nfs: Server returned operation"
++		" %d but we issued a request for %d\n",
++			opnum, expected);
++	*nfs_retval = -EREMOTEIO;
++	return false;
+ out_overflow:
+ 	print_overflow_msg(__func__, xdr);
+-	return -EIO;
++	*nfs_retval = -EIO;
++	return false;
++}
 +
- #endif	/* _POSIX_ACL_XATTR_H */
++static int decode_op_hdr(struct xdr_stream *xdr, enum nfs_opnum4 expected)
++{
++	int retval;
++
++	__decode_op_hdr(xdr, expected, &retval);
++	return retval;
+ }
+ 
+ /* Dummy routine */
+@@ -5001,11 +5015,12 @@ static int decode_open(struct xdr_stream *xdr, struct nfs_openres *res)
+ 	uint32_t savewords, bmlen, i;
+ 	int status;
+ 
+-	status = decode_op_hdr(xdr, OP_OPEN);
+-	if (status != -EIO)
+-		nfs_increment_open_seqid(status, res->seqid);
+-	if (!status)
+-		status = decode_stateid(xdr, &res->stateid);
++	if (!__decode_op_hdr(xdr, OP_OPEN, &status))
++		return status;
++	nfs_increment_open_seqid(status, res->seqid);
++	if (status)
++		return status;
++	status = decode_stateid(xdr, &res->stateid);
+ 	if (unlikely(status))
+ 		return status;
+ 
 -- 
-1.7.10.4
+1.8.3.1
+
 
 
