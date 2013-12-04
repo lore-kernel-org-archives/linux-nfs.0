@@ -1,129 +1,103 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:57848 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751088Ab3LQDnd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 16 Dec 2013 22:43:33 -0500
-Date: Mon, 16 Dec 2013 22:43:31 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: steved@redhat.com
-Cc: Joakim Tjernlund <joakim.tjernlund@transmode.se>,
-        linux-nfs@vger.kernel.org
-Subject: [PATCH] nfsd: fix minorversion-choosing interface
-Message-ID: <20131217034331.GB3490@fieldses.org>
-References: <OFDD407A92.688D29A1-ONC1257C43.00634FC8-C1257C43.00645775@transmode.se>
- <20131216185419.GB31816@fieldses.org>
- <20131216200301.GD31816@fieldses.org>
- <OF149AE409.624B2B0A-ONC1257C43.006F77D7-C1257C43.006FCED2@transmode.se>
- <20131216202345.GF31816@fieldses.org>
- <OF942071D7.5EC379B1-ONC1257C43.007AB858-C1257C43.007B0CFB@transmode.se>
+Received: from bombadil.infradead.org ([198.137.202.9]:44074 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932320Ab3LDNy6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Dec 2013 08:54:58 -0500
+Date: Wed, 4 Dec 2013 05:54:57 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: Christoph Hellwig <hch@infradead.org>, bfields@fieldses.org,
+        gartim@gmail.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfsd: when reusing an existing repcache entry, unhash it
+ first
+Message-ID: <20131204135457.GA16205@infradead.org>
+References: <1386015979-27511-1-git-send-email-jlayton@redhat.com>
+ <20131203102517.GA12576@infradead.org>
+ <20131203132112.1f19c014@tlielax.poochiereds.net>
+ <20131204083336.GB30216@infradead.org>
+ <20131204075402.7b00d09d@tlielax.poochiereds.net>
+ <20131204130944.GA3464@infradead.org>
+ <20131204083101.6422fb40@tlielax.poochiereds.net>
+ <20131204134036.GA3953@infradead.org>
+ <20131204084503.5f94ad81@tlielax.poochiereds.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <OF942071D7.5EC379B1-ONC1257C43.007AB858-C1257C43.007B0CFB@transmode.se>
+In-Reply-To: <20131204084503.5f94ad81@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+> Yeah, I've noticed the same hang, but hadn't able to determine why it
+> was hanging. I suspect that that hang is what's tickles the bug that my
+> patch fixes. With the hang, we see the client doing retransmits and not
+> getting replies and that means that we exercise the DRC more...
 
-By unconditionally adding +/-4.2 to the version string written to the
-kernel we make nfs-utils incompatible with pre-4.2-supporting kernels.
+FYI here is the one that just kills the silly direct reclaim.  It also
+fixes the oops, but I still see the hang:
 
-Ditto for 4.1.  This problem was introduced by
-12a590f8d556c00a9502eeebaa763d906222d521 "rpc.nfsd: Allow v4.2 server
-support with the -V option", which also change nfsd to unconditionally
-pass +/-4.2.
 
-Instead, just don't mention 4.1 or 4.2 unless the commandline has
-specifically requested that one or the other be turned on or off.
-
-Tested-by: Joakim Tjernlund <joakim.tjernlund@transmode.se>
-Reported-by: Joakim Tjernlund <joakim.tjernlund@transmode.se>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- support/include/nfs/nfs.h | 1 -
- utils/nfsd/nfsd.c         | 6 +++---
- utils/nfsd/nfssvc.c       | 6 +++---
- utils/nfsd/nfssvc.h       | 2 +-
- 4 files changed, 7 insertions(+), 8 deletions(-)
-
-diff --git a/support/include/nfs/nfs.h b/support/include/nfs/nfs.h
-index 38db5b5..df4ad76 100644
---- a/support/include/nfs/nfs.h
-+++ b/support/include/nfs/nfs.h
-@@ -17,7 +17,6 @@
- 
- #define NFS4_MINMINOR 1
- #define NFS4_MAXMINOR 2
--#define NFS4_VERDEFAULT  0x1  /* minor verion 1 */
- 
- struct nfs_fh_len {
- 	int		fh_size;
-diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
-index 6db92f0..a9d77ab 100644
---- a/utils/nfsd/nfsd.c
-+++ b/utils/nfsd/nfsd.c
-@@ -99,7 +99,7 @@ main(int argc, char **argv)
- 	char *p, *progname, *port;
- 	char *haddr = NULL;
- 	int	socket_up = 0;
--	int minorvers = NFS4_VERDEFAULT;	/* nfsv4 minor version */
-+	int minorvers[NFS4_MAXMINOR + 1] = {0};
- 	unsigned int versbits = NFSCTL_VERDEFAULT;
- 	unsigned int protobits = NFSCTL_ALLBITS;
- 	unsigned int proto4 = 0;
-@@ -164,7 +164,7 @@ main(int argc, char **argv)
- 						fprintf(stderr, "%s: unsupported minor version\n", optarg);
- 						exit(1);
- 					}
--					NFSCTL_VERUNSET(minorvers, i);
-+					minorvers[i] = -1;
- 					break;
- 				}
- 			case 3:
-@@ -185,7 +185,7 @@ main(int argc, char **argv)
- 						fprintf(stderr, "%s: unsupported minor version\n", optarg);
- 						exit(1);
- 					}
--					NFSCTL_VERSET(minorvers, i);
-+					minorvers[i] = 1;
- 					break;
- 				}
- 			case 3:
-diff --git a/utils/nfsd/nfssvc.c b/utils/nfsd/nfssvc.c
-index 8b85846..1b50aba 100644
---- a/utils/nfsd/nfssvc.c
-+++ b/utils/nfsd/nfssvc.c
-@@ -269,7 +269,7 @@ nfssvc_set_sockets(const int family, const unsigned int protobits,
+diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
+index 9186c7c..dd260a1 100644
+--- a/fs/nfsd/nfscache.c
++++ b/fs/nfsd/nfscache.c
+@@ -380,11 +380,8 @@ nfsd_cache_search(struct svc_rqst *rqstp, __wsum csum)
  }
  
- void
--nfssvc_setvers(unsigned int ctlbits, int minorvers)
-+nfssvc_setvers(unsigned int ctlbits, int minorvers[])
- {
- 	int fd, n, off;
- 	char *ptr;
-@@ -281,9 +281,9 @@ nfssvc_setvers(unsigned int ctlbits, int minorvers)
- 		return;
+ /*
+- * Try to find an entry matching the current call in the cache. When none
+- * is found, we try to grab the oldest expired entry off the LRU list. If
+- * a suitable one isn't there, then drop the cache_lock and allocate a
+- * new one, then search again in case one got inserted while this thread
+- * didn't hold the lock.
++ * Try to find an entry matching the current call in the cache and if none is
++ * found allocate and insert a new one.
+  */
+ int
+ nfsd_cache_lookup(struct svc_rqst *rqstp)
+@@ -409,22 +406,8 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
  
- 	for (n = NFS4_MINMINOR; n <= NFS4_MAXMINOR; n++) {
--		if (NFSCTL_VERISSET(minorvers, n)) 
-+		if (minorvers[n] == 1)
- 			off += snprintf(ptr+off, sizeof(buf) - off, "+4.%d ", n);
--		else			
-+		else if (minorvers[n] == -1)
- 			off += snprintf(ptr+off, sizeof(buf) - off, "-4.%d ", n);
+ 	/*
+ 	 * Since the common case is a cache miss followed by an insert,
+-	 * preallocate an entry. First, try to reuse the first entry on the LRU
+-	 * if it works, then go ahead and prune the LRU list.
++	 * preallocate an entry.
+ 	 */
+-	spin_lock(&cache_lock);
+-	if (!list_empty(&lru_head)) {
+-		rp = list_first_entry(&lru_head, struct svc_cacherep, c_lru);
+-		if (nfsd_cache_entry_expired(rp) ||
+-		    num_drc_entries >= max_drc_entries) {
+-			lru_put_end(rp);
+-			prune_cache_entries();
+-			goto search_cache;
+-		}
+-	}
+-
+-	/* No expired ones available, allocate a new one. */
+-	spin_unlock(&cache_lock);
+ 	rp = nfsd_reply_cache_alloc();
+ 	spin_lock(&cache_lock);
+ 	if (likely(rp)) {
+@@ -432,7 +415,6 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
+ 		drc_mem_usage += sizeof(*rp);
  	}
- 	for (n = NFSD_MINVERS; n <= NFSD_MAXVERS; n++) {
-diff --git a/utils/nfsd/nfssvc.h b/utils/nfsd/nfssvc.h
-index 08de0fe..2bbd3d3 100644
---- a/utils/nfsd/nfssvc.h
-+++ b/utils/nfsd/nfssvc.h
-@@ -24,5 +24,5 @@ void	nfssvc_mount_nfsdfs(char *progname);
- int	nfssvc_inuse(void);
- int	nfssvc_set_sockets(const int family, const unsigned int protobits,
- 			   const char *host, const char *port);
--void	nfssvc_setvers(unsigned int ctlbits, int minorvers4);
-+void	nfssvc_setvers(unsigned int ctlbits, int minorvers4[]);
- int	nfssvc_threads(unsigned short port, int nrservs);
--- 
-1.8.3.1
-
+ 
+-search_cache:
+ 	found = nfsd_cache_search(rqstp, csum);
+ 	if (found) {
+ 		if (likely(rp))
+@@ -446,15 +428,6 @@ search_cache:
+ 		goto out;
+ 	}
+ 
+-	/*
+-	 * We're keeping the one we just allocated. Are we now over the
+-	 * limit? Prune one off the tip of the LRU in trade for the one we
+-	 * just allocated if so.
+-	 */
+-	if (num_drc_entries >= max_drc_entries)
+-		nfsd_reply_cache_free_locked(list_first_entry(&lru_head,
+-						struct svc_cacherep, c_lru));
+-
+ 	nfsdstats.rcmisses++;
+ 	rqstp->rq_cacherep = rp;
+ 	rp->c_state = RC_INPROG;
