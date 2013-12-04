@@ -1,66 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f176.google.com ([209.85.212.176]:32866 "EHLO
-	mail-wi0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753342Ab3LTRKq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Dec 2013 12:10:46 -0500
-Received: by mail-wi0-f176.google.com with SMTP id hq4so8706512wib.15
-        for <linux-nfs@vger.kernel.org>; Fri, 20 Dec 2013 09:10:45 -0800 (PST)
-Received: from pavillion.lo (1.200.208.46.dyn.plus.net. [46.208.200.1])
-        by mx.google.com with ESMTPSA id ko3sm3019494wjb.23.2013.12.20.09.10.42
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1 cipher=ECDHE-RSA-RC4-SHA bits=128/128);
-        Fri, 20 Dec 2013 09:10:44 -0800 (PST)
-Message-ID: <52B47A12.2070202@garethwilliams.me.uk>
-Date: Fri, 20 Dec 2013 17:10:42 +0000
-From: Gareth Williams <gareth@garethwilliams.me.uk>
-MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org
-Subject: Question ref Running NFS at V4 Only
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mx1.redhat.com ([209.132.183.28]:2978 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932708Ab3LDSlr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 4 Dec 2013 13:41:47 -0500
+Date: Wed, 4 Dec 2013 13:43:57 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, gartim@gmail.com,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfsd: when reusing an existing repcache entry, unhash
+ it first
+Message-ID: <20131204134357.6de3ae51@corrin.poochiereds.net>
+In-Reply-To: <20131204170602.GA13308@infradead.org>
+References: <1386015979-27511-1-git-send-email-jlayton@redhat.com>
+	<20131203102517.GA12576@infradead.org>
+	<20131203132112.1f19c014@tlielax.poochiereds.net>
+	<20131204083336.GB30216@infradead.org>
+	<20131204075402.7b00d09d@tlielax.poochiereds.net>
+	<20131204130944.GA3464@infradead.org>
+	<20131204142509.GA14646@fieldses.org>
+	<20131204120616.464e79d8@corrin.poochiereds.net>
+	<20131204170602.GA13308@infradead.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+On Wed, 4 Dec 2013 09:06:02 -0800
+Christoph Hellwig <hch@infradead.org> wrote:
 
-I'm trying to run NFS with protocol version 4 only (that is, with v2 & 
-v3 disabled) on a CentOS 6.5 install running as a KVM guest.
+> On Wed, Dec 04, 2013 at 12:06:16PM -0500, Jeff Layton wrote:
+> > That is another tricky question. Currently, we size the number of hash
+> > buckets based on the max size of the cache. If we allow it to grow
+> > without bound, then how do we determine how many hash buckets we need?
+> 
+> It won't grow without bound as long as it's trimmed below the size
+> by both the periodic workqueue and the shrinker.
+> 
 
-The RedHat documentation (amongst others) states that rpcbind isn't 
-needed with v4, but if I start nfs without rpcbind I get errors.
+Right, but we don't know a priori how big the cache can grow, so that
+makes determining the number of buckets to allocate a little tricky.
 
-I've spent a couple of days (on and off) on Google trying to get an 
-answer and have posted on the CentOS forum, but the nearest I can find  
-is an archive on this mailing list from over two years ago (and it's not 
-identical):-
+> Of course replacing the hash with an autoscaling data structure would be
+> useful, but given that 4.1 obsoletes the DRC I'm not sure how much
+> effort we want to put into it.
 
-http://www.spinics.net/lists/linux-nfs/msg16907.html
+Agreed.
 
-In /etc/sysconfig/nfs I have:-
-
-MOUNTD_NFS_V2="no"
-MOUNTD_NFS_V3="no"
-
-RPCNFSDARGS="-N 2 -N 3"
-
-When I attempt to start NFS either using the init scripts  or manually 
-with:-
-
-rpc.nfsd -N 2 -N 3
-
-I get:-
-
-rpc.nfsd: writing fd to kernel failed: errno 111 (Connection refused)
-rpc.nfsd: unable to set any sockets for nfsd
-
-The mailing list archive's answer was that the kernel was too old, so I 
-installed 3.10.24 from elrepo but the symptom doesn't change.
-
-If I start rpcbind, then everything works, but as far as I can see, I 
-shouldn't have to do that unless I'm supporting v2 & v3.
-
-Finally, please accept my apologies for wasting your time if I've missed 
-something obvious.
-
-Kind regards,
-
-Gareth
+-- 
+Jeff Layton <jlayton@redhat.com>
