@@ -1,52 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:58886 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751389Ab3LAK3y (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 1 Dec 2013 05:29:54 -0500
-Received: from hch by bombadil.infradead.org with local (Exim 4.80.1 #2 (Red Hat Linux))
-	id 1Vn4Hi-000722-6U
-	for linux-nfs@vger.kernel.org; Sun, 01 Dec 2013 10:29:54 +0000
-Date: Sun, 1 Dec 2013 02:29:54 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: linux-nfs@vger.kernel.org
-Subject: 3.12-rc2 nfsd oops in nfsd_cache_lookup
-Message-ID: <20131201102954.GA26976@infradead.org>
-MIME-Version: 1.0
+Received: from userp1040.oracle.com ([156.151.31.81]:36090 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932899Ab3LDROx convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Dec 2013 12:14:53 -0500
 Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 6.6 \(1510\))
+Subject: Re: librpcsecgss: FTBFS on GNU/kFreeBSD
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20131204131317.GA7776@infradead.org>
+Date: Wed, 4 Dec 2013 12:14:23 -0500
+Cc: Jim Rees <rees@umich.edu>, linux-nfs@vger.kernel.org
+Message-Id: <108D7BCB-5869-45BB-A287-C6593257F193@oracle.com>
+References: <20090703133142.14887.33854.reportbug@localhost.localdomain> <20131124051904.GA16651@master.debian.org> <20131124090924.GA29659@infradead.org> <20131124130753.GA15178@umich.edu> <20131204131317.GA7776@infradead.org>
+To: Christoph Hellwig <hch@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-Running xfstests against a local server on XFS:
+On Dec 4, 2013, at 8:13 AM, Christoph Hellwig <hch@infradead.org> wrote:
 
-generic/075 23s ...[  605.063602] nfs: server 127.0.0.1 not responding, still trying
-[  605.064398] general protection fault: 0000 [#1] SMP 
-[  605.064994] Modules linked in:
-[  605.065386] CPU: 2 PID: 3469 Comm: nfsd Not tainted 3.13.0-rc2 #58
-[  605.066051] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2007
-[  605.066704] task: ffff8800762e6010 ti: ffff8800756d8000 task.ti: ffff8800756d8000
-[  605.066843] RIP: 0010:[<ffffffff81331f1b>]  [<ffffffff81331f1b>] lru_put_end+0x1b/0x60
-[  605.066843] RSP: 0018:ffff8800756d9d28  EFLAGS: 00010246
-[  605.066843] RAX: dead000000200200 RBX: ffff8800754a4e90 RCX: dead000000100100
-[  605.066843] RDX: ffff8800754a4ea0 RSI: ffff8800762e66c0 RDI: ffff8800754a4e90
-[  605.066843] RBP: ffff8800756d9d28 R08: 0000000000000006 R09: 0000000000000001
-[  605.066843] R10: 0000000000000000 R11: 0000000000000000 R12: 0000000000000001
-[  605.066843] R13: 0000000000000000 R14: 000000000cb5731d R15: ffff88007b4dc000
-[  605.066843] FS:  0000000000000000(0000) GS:ffff88007fd00000(0000) knlGS:0000000000000000
-[  605.066843] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-[  605.066843] CR2: ffffffffff600400 CR3: 000000006fe87000 CR4: 00000000000006e0
-[  605.066843] Stack:
-[  605.066843]  ffff8800756d9d88 ffffffff81332498 ffff88007cf33600 ffffffff0cb5731d
-[  605.066843]  0000000300000002 4d36e16d00000006 ffff88007b4dc000 ffff88007b4dc000
-[  605.066843]  ffffffff82211230 ffff880076216018 ffffffff822111a0 ffff880076216018
-[  605.066843] Call Trace:
-[  605.066843]  [<ffffffff81332498>] nfsd_cache_lookup+0x3c8/0x730
-[  605.066843]  [<ffffffff8132763e>] nfsd_dispatch+0x5e/0x1b0
-[  605.066843]  [<ffffffff81b6f551>] svc_process+0x4b1/0x760
-[  605.066843]  [<ffffffff81326f9f>] nfsd+0xbf/0x130
-[  605.066843]  [<ffffffff81326ee0>] ? nfsd_destroy+0xc0/0xc0
-[  605.066843]  [<ffffffff810b6b0f>] kthread+0xdf/0x100
-[  605.066843]  [<ffffffff81c4130b>] ? _raw_spin_unlock_irq+0x2b/0x40
-[  605.066843]  [<ffffffff810b6a30>] ? __init_kthread_worker+0x70/0x70
-[  605.066843]  [<ffffffff81c4970c>] ret_from_fork+0x7c/0xb0
-[  605.066843]  [<ffffffff810b6a30>] ? __init_kthread_worker+0x70/0x70
+> Btw, looks like librpcsecgss is indeed pretty much unmaintained.  The
+> last upstream release is a tarball drop from CITI in 2009 and there
+> doesn't appear to be a source repository of any kind.
+> 
+> I think the best idea would be to merge it into the libtirpc repo,
+> as both the heritage and usage of the codebases is the same.
+
+Comparing what's packaged in nfs-utils-lib and what's in libtirpc: it appears libtirpc already has librpcsecgss.
+
+I assume librpcsecgss is still required on systems that use glibc's RPC implementation.  But for systems that have libtirpc, maybe librpcsecgss is unneeded?
+
+Note: the GSS API provided here is not documented, AFAICT, and does not match the de facto standard provided by a modern Solaris libtirpc.  I'd like to add the standard API to libtirpc and deprecate (but not remove) the current GSS API.
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
