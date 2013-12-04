@@ -1,55 +1,95 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:55749 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752355Ab3LBQzG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 2 Dec 2013 11:55:06 -0500
-Date: Mon, 2 Dec 2013 11:55:05 -0500
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] Add missing recording of back channel attrs in
- nfsd4_session
-Message-ID: <20131202165505.GL1960@fieldses.org>
-References: <2BCCA4EF-9FCC-4320-85E1-AD500467C95D@gmail.com>
+Received: from szxga01-in.huawei.com ([119.145.14.64]:52260 "EHLO
+	szxga01-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753200Ab3LDFyj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Dec 2013 00:54:39 -0500
+From: Weng Meiling <wengmeiling.weng@huawei.com>
+To: <stable@vger.kernel.org>
+CC: <bfields@fieldses.org>, <skinsbursky@parallels.com>,
+        <linux-nfs@vger.kernel.org>, <lizefan@huawei.com>,
+        <h.huangqiang@huawei.com>
+Subject: [PATCH 3.4 5/9] nfsd: pass net to nfsd_svc()
+Date: Wed, 4 Dec 2013 13:53:31 +0800
+Message-ID: <1386136415-30976-6-git-send-email-wengmeiling.weng@huawei.com>
+In-Reply-To: <1386136415-30976-1-git-send-email-wengmeiling.weng@huawei.com>
+References: <1386136415-30976-1-git-send-email-wengmeiling.weng@huawei.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <2BCCA4EF-9FCC-4320-85E1-AD500467C95D@gmail.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Nov 26, 2013 at 10:25:20PM +0800, Kinglong Mee wrote:
-> commit 5b6feee9608dce7afd2646f457c93e612526d1d8 forgot
-> recording the back channel attrs in nfsd4_session.
-> 
-> nfsd just check the back channel attars by check_backchannel_attrs,
-> but do not  record it in nfsd4_session in the latest kernel.
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-Whoops.  So the current server is returning random uninitialized data in
-those fields, or all zeros?
+commit d41a9417cd89a69f58a26935034b4264a2d882d6 upstream.
 
-It would be easy enough to write a pynfs test for this, I think.
+Precursor patch. Hard-coded "init_net" will be replaced by proper one in
+future.
 
---b.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+[wengmeiling: backport to 3.4:
+ - adjust context
+ - one more parameter(int port) for nfsd_svc()]
+Signed-off-by: Weng Meiling <wengmeiling.weng@huawei.com>
+---
+ fs/nfsd/nfsctl.c | 4 +++-
+ fs/nfsd/nfsd.h   | 2 +-
+ fs/nfsd/nfssvc.c | 3 +--
+ 3 files changed, 5 insertions(+), 4 deletions(-)
 
-> 
-> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-> ---
->  fs/nfsd/nfs4state.c | 2 ++
->  1 file changed, 2 insertions(+)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 105d6fa..1aed9be 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -999,6 +999,8 @@ static void init_session(struct svc_rqst *rqstp, struct nfsd4_session *new, stru
->  	spin_unlock(&nn->client_lock);
->  	memcpy(&new->se_fchannel, &cses->fore_channel,
->  			sizeof(struct nfsd4_channel_attrs));
-> +	memcpy(&new->se_bchannel, &cses->back_channel,
-> +			sizeof(struct nfsd4_channel_attrs));
->  	if (cses->flags & SESSION4_BACK_CHAN) {
->  		struct sockaddr *sa = svc_addr(rqstp);
->  		/*
-> -- 
-> 1.8.1.4
-> 
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index e18f0a5..9463bc0 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -389,6 +389,8 @@ static ssize_t write_threads(struct file *file, char *buf, size_t size)
+ {
+ 	char *mesg = buf;
+ 	int rv;
++	struct net *net = &init_net;
++
+ 	if (size > 0) {
+ 		int newthreads;
+ 		rv = get_int(&mesg, &newthreads);
+@@ -396,7 +398,7 @@ static ssize_t write_threads(struct file *file, char *buf, size_t size)
+ 			return rv;
+ 		if (newthreads < 0)
+ 			return -EINVAL;
+-		rv = nfsd_svc(NFS_PORT, newthreads);
++		rv = nfsd_svc(NFS_PORT, newthreads, net);
+ 		if (rv < 0)
+ 			return rv;
+ 	} else
+diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+index 356da43..5007654 100644
+--- a/fs/nfsd/nfsd.h
++++ b/fs/nfsd/nfsd.h
+@@ -65,7 +65,7 @@ extern const struct seq_operations nfs_exports_op;
+ /*
+  * Function prototypes.
+  */
+-int		nfsd_svc(unsigned short port, int nrservs);
++int		nfsd_svc(unsigned short port, int nrservs, struct net *net);
+ int		nfsd_dispatch(struct svc_rqst *rqstp, __be32 *statp);
+ 
+ int		nfsd_nrthreads(void);
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index 632d11e..b8aea64 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -434,11 +434,10 @@ int nfsd_set_nrthreads(int n, int *nthreads)
+  * this is the first time nrservs is nonzero.
+  */
+ int
+-nfsd_svc(unsigned short port, int nrservs)
++nfsd_svc(unsigned short port, int nrservs, struct net *net)
+ {
+ 	int	error;
+ 	bool	nfsd_up_before;
+-	struct net *net = &init_net;
+ 
+ 	mutex_lock(&nfsd_mutex);
+ 	dprintk("nfsd: creating service\n");
+-- 
+1.8.2.2
+
+
