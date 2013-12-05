@@ -1,56 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f175.google.com ([209.85.223.175]:45411 "EHLO
-	mail-ie0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756427Ab3LaTkF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 31 Dec 2013 14:40:05 -0500
-Received: by mail-ie0-f175.google.com with SMTP id x13so13365043ief.20
-        for <linux-nfs@vger.kernel.org>; Tue, 31 Dec 2013 11:40:05 -0800 (PST)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Cc: Kinglong Mee <kinglongmee@gmail.com>, Chuck Lever <chuck.lever@oracle.com>,
-        Bruce Fields <bfields@fieldses.com>,
-        Gareth Williams <gareth@garethwilliams.me.uk>
-Subject: [PATCH 4/4] SUNRPC: Add tracepoint for socket errors
-Date: Tue, 31 Dec 2013 14:39:41 -0500
-Message-Id: <1388518781-33571-4-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1388518781-33571-3-git-send-email-trond.myklebust@primarydata.com>
-References: <CAB6yy379-A8fgLpQo+ppx5V93P9pXcabvmBJNTZ5hXxeJMuxBg@mail.gmail.com>
- <1388518781-33571-1-git-send-email-trond.myklebust@primarydata.com>
- <1388518781-33571-2-git-send-email-trond.myklebust@primarydata.com>
- <1388518781-33571-3-git-send-email-trond.myklebust@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:16715 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751595Ab3LEQWx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Dec 2013 11:22:53 -0500
+Date: Thu, 5 Dec 2013 11:22:22 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH RFC 1/3] nfsd: don't try to reuse an expired DRC entry
+ off the list
+Message-ID: <20131205112222.152e1ee0@tlielax.poochiereds.net>
+In-Reply-To: <20131205155024.GC30113@fieldses.org>
+References: <1386241253-5781-1-git-send-email-jlayton@redhat.com>
+	<1386241253-5781-2-git-send-email-jlayton@redhat.com>
+	<20131205132919.GC3381@infradead.org>
+	<20131205084156.5a9a2545@tlielax.poochiereds.net>
+	<20131205155024.GC30113@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- include/trace/events/sunrpc.h | 1 +
- net/sunrpc/xprtsock.c         | 1 +
- 2 files changed, 2 insertions(+)
+On Thu, 5 Dec 2013 10:50:24 -0500
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
-index d51d16c7afd8..ddc179b7a105 100644
---- a/include/trace/events/sunrpc.h
-+++ b/include/trace/events/sunrpc.h
-@@ -301,6 +301,7 @@ DECLARE_EVENT_CLASS(xs_socket_event_done,
- 
- DEFINE_RPC_SOCKET_EVENT(rpc_socket_state_change);
- DEFINE_RPC_SOCKET_EVENT_DONE(rpc_socket_connect);
-+DEFINE_RPC_SOCKET_EVENT_DONE(rpc_socket_error);
- DEFINE_RPC_SOCKET_EVENT_DONE(rpc_socket_reset_connection);
- DEFINE_RPC_SOCKET_EVENT(rpc_socket_close);
- DEFINE_RPC_SOCKET_EVENT(rpc_socket_shutdown);
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index ab006b7b7ab8..25dbfa971948 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -837,6 +837,7 @@ static void xs_error_report(struct sock *sk)
- 		goto out;
- 	dprintk("RPC:       xs_error_report client %p, error=%d...\n",
- 			xprt, -err);
-+	trace_rpc_socket_error(xprt, sk->sk_socket, err);
- 	xprt_wake_pending_tasks(xprt, err);
-  out:
- 	read_unlock_bh(&sk->sk_callback_lock);
+> On Thu, Dec 05, 2013 at 08:41:56AM -0500, Jeff Layton wrote:
+> > On Thu, 5 Dec 2013 05:29:19 -0800
+> > Christoph Hellwig <hch@infradead.org> wrote:
+> > 
+> > > On Thu, Dec 05, 2013 at 06:00:51AM -0500, Jeff Layton wrote:
+> > > > Currently when we are processing a request, we try to scrape an expired
+> > > > or over-limit entry off the list in preference to allocating a new one
+> > > > from the slab.
+> > > > 
+> > > > This is unnecessarily complicated. Just use the slab layer.
+> > > 
+> > > I really don't think pruning caches from lookup functions is a good
+> > > idea. To many chances for locking inversions, unbounded runtime and
+> > > other issues.  So I'd prefer my earlier version of the patch to
+> > > remove it entirely if we want to change anything beyond your minimal
+> > > fix.
+> > > 
+> > 
+> > It's not likely to hit a locking inversion here since we don't have a
+> > lot of different locks, but point taken...
+> > 
+> > If we take that out, then that does mean that the cache may grow larger
+> > than the max...possibly much larger since the pruner workqueue job
+> > only runs every 120s and you can put a lot more entries into the cache
+> > in that period.
+> 
+> Yeah, this scares me.
+> 
+> I looked through my old mail but couldn't find your previous results:
+> how long did you find the hash buckets needed to be before the
+> difference was noticeable on your setup?
+> 
+> We typically do a failed-lookup-and-insert on every cached operation so
+> I wouldn't be surprised if a workload of small random writes, for
+> example, could produce an unreasonably large cache in that time.
+> 
+
+I don't think I ever measured that. I did some some measurement of how
+long it took to generate checksums, but that's a different phase of
+this stuff. I just sort of went with "too long a chain == bad, so keep
+them as short as possible".
+
+
+> 
+> > 
+> > That said, I don't feel too strongly about it, so if you think leaving
+> > it to the workqueue job and the shrinker is the right thing to do, then
+> > so be it.
+> > 
+> > -- 
+> > Jeff Layton <jlayton@redhat.com>
+
+
 -- 
-1.8.4.2
-
+Jeff Layton <jlayton@redhat.com>
