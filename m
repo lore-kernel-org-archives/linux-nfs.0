@@ -1,39 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pb0-f47.google.com ([209.85.160.47]:47012 "EHLO
-	mail-pb0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754023Ab3LEDH0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Dec 2013 22:07:26 -0500
-Received: by mail-pb0-f47.google.com with SMTP id um1so24834997pbc.20
-        for <linux-nfs@vger.kernel.org>; Wed, 04 Dec 2013 19:07:25 -0800 (PST)
-Message-ID: <529FEDE8.50207@gmail.com>
-Date: Thu, 05 Dec 2013 11:07:20 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfsd: get rid of unused function definition
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-qe0-f54.google.com ([209.85.128.54]:65162 "EHLO
+	mail-qe0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752475Ab3LELBA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Dec 2013 06:01:00 -0500
+Received: by mail-qe0-f54.google.com with SMTP id cy11so15199914qeb.41
+        for <linux-nfs@vger.kernel.org>; Thu, 05 Dec 2013 03:01:00 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@fieldses.org>
+Subject: [PATCH RFC 0/3] nfsd: convert nfsd DRC code to use list_lru infrastructure
+Date: Thu,  5 Dec 2013 06:00:50 -0500
+Message-Id: <1386241253-5781-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+This patchset converts the LRU list in the nfsd duplicate reply cache to
+use the new list_lru infrastrucure. Note that this is based on top of
+the patch that I sent to Bruce earlier this week that fixes the
+svc_cacherep direct reclaim bug. I'm sending this as an RFC since I'm
+not 100% convinced it's an improvement.
 
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
----
- fs/nfsd/vfs.h | 2 --
- 1 file changed, 2 deletions(-)
+The majorly unintuitive thing about list_lru that I've found is that
+you can't call call list_lru_del from list_lru_walk. So, you need
+different routines to free an object depending on how it's being freed.
 
-diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
-index a4be2e3..fd8c0cc 100644
---- a/fs/nfsd/vfs.h
-+++ b/fs/nfsd/vfs.h
-@@ -89,8 +89,6 @@ __be32		nfsd_link(struct svc_rqst *, struct svc_fh *,
- __be32		nfsd_rename(struct svc_rqst *,
- 				struct svc_fh *, char *, int,
- 				struct svc_fh *, char *, int);
--__be32		nfsd_remove(struct svc_rqst *,
--				struct svc_fh *, char *, int);
- __be32		nfsd_unlink(struct svc_rqst *, struct svc_fh *, int type,
- 				char *name, int len);
- __be32		nfsd_readdir(struct svc_rqst *, struct svc_fh *,
+Using list_lru also means extra spinlocking since we'd be moving to a
+per-node LRU, but that's probably not a big deal since all of this is
+done under the cache_lock anyway.
+
+In any case, here's what a conversion to list_lru would look like...
+
+Discuss!
+
+Jeff Layton (3):
+  nfsd: don't try to reuse an expired DRC entry off the list
+  list_lru: add a new LRU_SKIP_REST lru_status value and handling
+  nfsd: convert DRC code to use list_lru
+
+ fs/nfsd/nfscache.c       | 130 +++++++++++++++++++++++++----------------------
+ include/linux/list_lru.h |   2 +
+ mm/list_lru.c            |   4 +-
+ 3 files changed, 75 insertions(+), 61 deletions(-)
+
 -- 
 1.8.4.2
+
