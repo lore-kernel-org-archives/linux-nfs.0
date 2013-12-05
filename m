@@ -1,43 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:54938 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:56123 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932320Ab3LDNb1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 4 Dec 2013 08:31:27 -0500
-Date: Wed, 4 Dec 2013 08:31:01 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: bfields@fieldses.org, gartim@gmail.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: when reusing an existing repcache entry, unhash
- it first
-Message-ID: <20131204083101.6422fb40@tlielax.poochiereds.net>
-In-Reply-To: <20131204130944.GA3464@infradead.org>
-References: <1386015979-27511-1-git-send-email-jlayton@redhat.com>
-	<20131203102517.GA12576@infradead.org>
-	<20131203132112.1f19c014@tlielax.poochiereds.net>
-	<20131204083336.GB30216@infradead.org>
-	<20131204075402.7b00d09d@tlielax.poochiereds.net>
-	<20131204130944.GA3464@infradead.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1751244Ab3LEO5Z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Dec 2013 09:57:25 -0500
+Date: Thu, 5 Dec 2013 09:57:23 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfsd: get rid of unused function definition
+Message-ID: <20131205145723.GB30113@fieldses.org>
+References: <529FEDE8.50207@gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <529FEDE8.50207@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 4 Dec 2013 05:09:44 -0800
-Christoph Hellwig <hch@infradead.org> wrote:
+Thanks, applying.--b.
 
-> On Wed, Dec 04, 2013 at 07:54:02AM -0500, Jeff Layton wrote:
-> > Are you suggesting that we shouldn't try to bound the cache at all and
-> > should instead just let it grow and rely on the shrinker to keep it in
-> > check?
+On Thu, Dec 05, 2013 at 11:07:20AM +0800, Kinglong Mee wrote:
 > 
-> Exactly.  Btw, what about the comment that the DRC should be per-client
-> on top of the file?  That also seems like some very low hanging fruit.
+> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> ---
+>  fs/nfsd/vfs.h | 2 --
+>  1 file changed, 2 deletions(-)
 > 
-
-Ok, I'll see about spinning up a patchset that does that. We'll also
-probably want to just allocate entries out of the slabcache in that
-case, so that'll make things quite a bit simpler.
-
-As far as making this a per-client cache...sounds great! Go for it!
--- 
-Jeff Layton <jlayton@redhat.com>
+> diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
+> index a4be2e3..fd8c0cc 100644
+> --- a/fs/nfsd/vfs.h
+> +++ b/fs/nfsd/vfs.h
+> @@ -89,8 +89,6 @@ __be32		nfsd_link(struct svc_rqst *, struct svc_fh *,
+>  __be32		nfsd_rename(struct svc_rqst *,
+>  				struct svc_fh *, char *, int,
+>  				struct svc_fh *, char *, int);
+> -__be32		nfsd_remove(struct svc_rqst *,
+> -				struct svc_fh *, char *, int);
+>  __be32		nfsd_unlink(struct svc_rqst *, struct svc_fh *, int type,
+>  				char *name, int len);
+>  __be32		nfsd_readdir(struct svc_rqst *, struct svc_fh *,
+> -- 
+> 1.8.4.2
