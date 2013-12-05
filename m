@@ -1,28 +1,34 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:43942 "EHLO
+Received: from bombadil.infradead.org ([198.137.202.9]:48185 "EHLO
 	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932290Ab3LDNNS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Dec 2013 08:13:18 -0500
-Date: Wed, 4 Dec 2013 05:13:17 -0800
+	with ESMTP id S1755863Ab3LEN3U (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Dec 2013 08:29:20 -0500
+Date: Thu, 5 Dec 2013 05:29:19 -0800
 From: Christoph Hellwig <hch@infradead.org>
-To: Jim Rees <rees@umich.edu>
-Cc: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org
-Subject: Re: librpcsecgss: FTBFS on GNU/kFreeBSD
-Message-ID: <20131204131317.GA7776@infradead.org>
-References: <20090703133142.14887.33854.reportbug@localhost.localdomain>
- <20131124051904.GA16651@master.debian.org>
- <20131124090924.GA29659@infradead.org>
- <20131124130753.GA15178@umich.edu>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org, Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH RFC 1/3] nfsd: don't try to reuse an expired DRC entry
+ off the list
+Message-ID: <20131205132919.GC3381@infradead.org>
+References: <1386241253-5781-1-git-send-email-jlayton@redhat.com>
+ <1386241253-5781-2-git-send-email-jlayton@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20131124130753.GA15178@umich.edu>
+In-Reply-To: <1386241253-5781-2-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Btw, looks like librpcsecgss is indeed pretty much unmaintained.  The
-last upstream release is a tarball drop from CITI in 2009 and there
-doesn't appear to be a source repository of any kind.
+On Thu, Dec 05, 2013 at 06:00:51AM -0500, Jeff Layton wrote:
+> Currently when we are processing a request, we try to scrape an expired
+> or over-limit entry off the list in preference to allocating a new one
+> from the slab.
+> 
+> This is unnecessarily complicated. Just use the slab layer.
 
-I think the best idea would be to merge it into the libtirpc repo,
-as both the heritage and usage of the codebases is the same.
+I really don't think pruning caches from lookup functions is a good
+idea. To many chances for locking inversions, unbounded runtime and
+other issues.  So I'd prefer my earlier version of the patch to
+remove it entirely if we want to change anything beyond your minimal
+fix.
 
