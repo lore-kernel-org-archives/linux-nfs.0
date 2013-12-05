@@ -1,64 +1,34 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from szxga01-in.huawei.com ([119.145.14.64]:52255 "EHLO
-	szxga01-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751298Ab3LDFye (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Dec 2013 00:54:34 -0500
-From: Weng Meiling <wengmeiling.weng@huawei.com>
-To: <stable@vger.kernel.org>
-CC: <bfields@fieldses.org>, <skinsbursky@parallels.com>,
-        <linux-nfs@vger.kernel.org>, <lizefan@huawei.com>,
-        <h.huangqiang@huawei.com>
-Subject: [PATCH 3.4 8/9] nfsd: pass proper net to nfsd_destroy() from NFSd kthreads
-Date: Wed, 4 Dec 2013 13:53:34 +0800
-Message-ID: <1386136415-30976-9-git-send-email-wengmeiling.weng@huawei.com>
-In-Reply-To: <1386136415-30976-1-git-send-email-wengmeiling.weng@huawei.com>
-References: <1386136415-30976-1-git-send-email-wengmeiling.weng@huawei.com>
+Received: from fieldses.org ([174.143.236.118]:57875 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756808Ab3LEP6Z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Dec 2013 10:58:25 -0500
+Date: Thu, 5 Dec 2013 10:58:23 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH RFC 3/3] nfsd: convert DRC code to use list_lru
+Message-ID: <20131205155823.GD30113@fieldses.org>
+References: <1386241253-5781-1-git-send-email-jlayton@redhat.com>
+ <1386241253-5781-4-git-send-email-jlayton@redhat.com>
+ <20131205134129.GE3381@infradead.org>
+ <20131205084825.2bf1726d@tlielax.poochiereds.net>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20131205084825.2bf1726d@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
- 
-commit 88c47666171989ed4c5b1a5687df09511e8c5e35 upstream.
+On Thu, Dec 05, 2013 at 08:48:25AM -0500, Jeff Layton wrote:
+> On Thu, 5 Dec 2013 05:41:29 -0800
+> Christoph Hellwig <hch@infradead.org> wrote:
+> > All together doesn't seem to helpful as long as the DRC keeps
+> > it's own timing based purge and similar bits unfortunatel.
+> 
+> Agreed. It might make sense to do this in the context of a larger
+> redesign but otherwise I can't get too excited about this set, TBH...
 
-Since NFSd service is per-net now, we have to pass proper network
-context in nfsd_shutdown() from NFSd kthreads.
+Well, patch 1/3 still deletes some code and doesn't have any obvious
+downsides.
 
-The simplest way I found is to get proper net from one of transports
-with permanent sockets.
-
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-[wengmeiling: backport to 3.4: adjust context]
-Signed-off-by: Weng Meiling <wengmeiling.weng@huawei.com>
----
- fs/nfsd/nfssvc.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
-
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index 0974818..5bc9380 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -483,6 +483,8 @@ static int
- nfsd(void *vrqstp)
- {
- 	struct svc_rqst *rqstp = (struct svc_rqst *) vrqstp;
-+	struct svc_xprt *perm_sock = list_entry(rqstp->rq_server->sv_permsocks.next, typeof(struct svc_xprt), xpt_list);
-+	struct net *net = perm_sock->xpt_net;
- 	int err, preverr = 0;
- 
- 	/* Lock module and set up kernel thread */
-@@ -557,7 +559,7 @@ out:
- 	/* Release the thread */
- 	svc_exit_thread(rqstp);
- 
--	nfsd_destroy(&init_net);
-+	nfsd_destroy(net);
- 
- 	/* Release module */
- 	mutex_unlock(&nfsd_mutex);
--- 
-1.8.2.2
-
-
+--b.
