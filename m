@@ -1,129 +1,110 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from gw1.transmode.se ([195.58.98.146]:51951 "EHLO gw1.transmode.se"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750930Ab3LQGak (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 17 Dec 2013 01:30:40 -0500
-In-Reply-To: <20131217033849.GA3490@fieldses.org>
-References: <OFDD407A92.688D29A1-ONC1257C43.00634FC8-C1257C43.00645775@transmode.se> <20131216185419.GB31816@fieldses.org> <20131216200301.GD31816@fieldses.org> <OF149AE409.624B2B0A-ONC1257C43.006F77D7-C1257C43.006FCED2@transmode.se> <20131216202345.GF31816@fieldses.org> <OF942071D7.5EC379B1-ONC1257C43.007AB858-C1257C43.007B0CFB@transmode.se> <20131217033849.GA3490@fieldses.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org, steved@redhat.com
-MIME-Version: 1.0
-Subject: Re: nfs-utils-1.2.9 does not play well with linux 3.10.x
-From: Joakim Tjernlund <joakim.tjernlund@transmode.se>
-Message-ID: <OF378044B8.DD299A9C-ONC1257C44.002378D5-C1257C44.0023C391@transmode.se>
-Date: Tue, 17 Dec 2013 07:30:38 +0100
-Content-Type: text/plain; charset="US-ASCII"
+Received: from mail-qe0-f51.google.com ([209.85.128.51]:59693 "EHLO
+	mail-qe0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756056Ab3LEMet (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Dec 2013 07:34:49 -0500
+Received: by mail-qe0-f51.google.com with SMTP id 1so14972554qee.24
+        for <linux-nfs@vger.kernel.org>; Thu, 05 Dec 2013 04:34:49 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: steved@redhat.com, linux-nfs@vger.kernel.org
+Subject: [PATCH] sunrpc: add an "info" file for the dummy gssd pipe
+Date: Thu,  5 Dec 2013 07:34:44 -0500
+Message-Id: <1386246884-13364-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-"J. Bruce Fields" <bfields@fieldses.org> wrote on 2013/12/17 04:38:49:
-> 
-> On Mon, Dec 16, 2013 at 11:24:03PM +0100, Joakim Tjernlund wrote:
-> > "J. Bruce Fields" <bfields@fieldses.org> wrote on 2013/12/16 21:23:45:
-> > 
-> > > From: "J. Bruce Fields" <bfields@fieldses.org>
-> > > To: Joakim Tjernlund <joakim.tjernlund@transmode.se>, 
-> > > Cc: linux-nfs@vger.kernel.org, steved@redhat.com
-> > > Date: 2013/12/16 21:23
-> > > Subject: Re: nfs-utils-1.2.9 does not play well with linux 3.10.x
-> > > 
-> > > On Mon, Dec 16, 2013 at 09:21:15PM +0100, Joakim Tjernlund wrote:
-> > > > "J. Bruce Fields" <bfields@fieldses.org> wrote on 2013/12/16 
-21:03:01:
-> > > > 
-> > > > > From: "J. Bruce Fields" <bfields@fieldses.org>
-> > > > > To: Joakim Tjernlund <joakim.tjernlund@transmode.se>, 
-> > > > > Cc: linux-nfs@vger.kernel.org, steved@redhat.com
-> > > > > Date: 2013/12/16 21:03
-> > > > > Subject: Re: nfs-utils-1.2.9 does not play well with linux 
-3.10.x
-> > > > > 
-> > > > > On Mon, Dec 16, 2013 at 01:54:19PM -0500, bfields wrote:
-> > > > > > On Mon, Dec 16, 2013 at 07:16:00PM +0100, Joakim Tjernlund 
-wrote:
-> > > > > > > rpc.nfsd insists on adding "-4.2" when writing 
-> > > > /proc/fs/nfsd/versions :
-> > > > > > >   rpc.nfsd: Writing version string to kernel: +4.1 -4.2 -2 
-+3 +4
-> > > > > > > Which causes Linux to return an EIVAL error as 3.10 has no 
-> > support 
-> > > > for 4.2 
-> > > > > > > and
-> > > > > > > does not accept any reference to 4.2
-> > > > > > > 
-> > > > > > > It seems reasonable to me that Linux should accpect -4.2 as 
-a 
-> > noop 
-> > > > and 
-> > > > > > > continue
-> > > > > > > processing the rest of the options but I am just guessing.
-> > > > > > > Anyhow, just to test I applied this commit to my 3.10.24 
-kernel:
-> > > > > > > 
-> > > > > > > 
-> > > > 
-> > 
-http://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=4bdc33ed5bd9fbaa243bda6fdccb22674aed6305
+rpc.gssd expects to see an "info" file in each clntXX dir. Since adding
+the dummy gssd pipe, users that run rpc.gssd see a lot of these messages
+spamming the logs:
 
-> > 
-> > > > 
-> > > > > > > and now it accepts the "-4.2" but I have no idea if this 
-messes 
-> > up 
-> > > > > > > something else.
-> > > > > > 
-> > > > > > That should be perfectly safe.
-> > > > 
-> > > > Thanks, I will keep this then until nfs-utils is working.
-> > > > 
-> > > > > > 
-> > > > > > I agree that we should teach the kernel to treat "-4.x" at 
-least 
-> > as a
-> > > > > > no-op for unknown .x.  But nfs-utils also has to keep working 
-with 
-> > 
-> > > > older
-> > > > > > kernels which don't do that.
-> > > > > > 
-> > > > > > The problem was introduced by 
-> > 12a590f8d556c00a9502eeebaa763d906222d521
-> > > > > > "rpc.nfsd: Allow v4.2 server support with the -V option". That 
+    rpc.gssd[508]: ERROR: can't open /var/lib/nfs/rpc_pipefs/gssd/clntXX/info: No such file or directory
+    rpc.gssd[508]: ERROR: failed to read service info
 
-> > should
-> > > > > > be using an array of ints not a bit array, so it can make the
-> > > > > > distinction between "off", "on", and "don't care".
-> > > > > 
-> > > > > So, something like this (untested).--b.
-> > > > 
-> > > > I tested this on my system(which has the above kernel patch) and I 
+Add a dummy gssd/clntXX/info file to help silence these messages.
 
-> > noticed
-> > > > a difference:
-> > > 
-> > > Thanks!
-> > > 
-> > > >   rpc.nfsd: Writing version string to kernel: -2 +3 +4 
-> > > > which is different than previous
-> > > >  rpc.nfsd: Writing version string to kernel: +4.1 -4.2 -2 +3 +4
-> > > > 
-> > > > The "+4.1" is missing.
-> > > 
-> > > Yes, that's intentional.  Is it causing you any problem?
-> > 
-> > I don't know yet, but I don't think it would be a problem for me.
-> > However, are you not changing the defaults here? In that
-> > case someone else relying on 4.1 might have a problem I guess.
-> 
-> That's just restoring the behavior we had before
-> 12a590f8d556c00a9502eeebaa763d906222d521, and will still result in 4.1
-> being turned on if the kernel is recent enough.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ net/sunrpc/rpc_pipe.c | 50 +++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 49 insertions(+), 1 deletion(-)
 
-What is an recent enough kernel? Does not 3.10.24 patched with the patch I 
-mentioned
-earlier? I thought it would make 3.10 look like a 3.11 which have 4.2 
-supported.
-If I am mistaken we good I guess.
-
- Jocke 
+diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
+index 0b74c61..5d973b2 100644
+--- a/net/sunrpc/rpc_pipe.c
++++ b/net/sunrpc/rpc_pipe.c
+@@ -17,6 +17,7 @@
+ #include <linux/fsnotify.h>
+ #include <linux/kernel.h>
+ #include <linux/rcupdate.h>
++#include <linux/utsname.h>
+ 
+ #include <asm/ioctls.h>
+ #include <linux/poll.h>
+@@ -1275,6 +1276,44 @@ static const struct rpc_pipe_ops gssd_dummy_pipe_ops = {
+ 	.downcall	= dummy_downcall,
+ };
+ 
++/*
++ * Here we present a bogus "info" file to keep rpc.gssd happy. We don't expect
++ * that it will ever use this info to handle an upcall, but rpc.gssd expects
++ * that this file will be there and have a certain format.
++ */
++static int
++rpc_show_dummy_info(struct seq_file *m, void *v)
++{
++	seq_printf(m, "RPC server: %s\n", utsname()->nodename);
++	seq_printf(m, "service: foo (1) version 0\n");
++	seq_printf(m, "address: 127.0.0.1\n");
++	seq_printf(m, "protocol: tcp\n");
++	seq_printf(m, "port: 0\n");
++	return 0;
++}
++
++static int
++rpc_dummy_info_open(struct inode *inode, struct file *file)
++{
++	return single_open(file, rpc_show_dummy_info, NULL);
++}
++
++static const struct file_operations rpc_dummy_info_operations = {
++	.owner		= THIS_MODULE,
++	.open		= rpc_dummy_info_open,
++	.read		= seq_read,
++	.llseek		= seq_lseek,
++	.release	= single_release,
++};
++
++static const struct rpc_filelist gssd_dummy_info_file[] = {
++	[0] = {
++		.name = "info",
++		.i_fop = &rpc_dummy_info_operations,
++		.mode = S_IFREG | S_IRUSR,
++	},
++};
++
+ /**
+  * rpc_gssd_dummy_populate - create a dummy gssd pipe
+  * @root:	root of the rpc_pipefs filesystem
+@@ -1312,9 +1351,18 @@ rpc_gssd_dummy_populate(struct dentry *root, struct rpc_pipe *pipe_data)
+ 		goto out;
+ 	}
+ 
++	ret = rpc_populate(clnt_dentry, gssd_dummy_info_file, 0, 1, NULL);
++	if (ret) {
++		__rpc_depopulate(gssd_dentry, gssd_dummy_clnt_dir, 0, 1);
++		pipe_dentry = ERR_PTR(ret);
++		goto out;
++	}
++
+ 	pipe_dentry = rpc_mkpipe_dentry(clnt_dentry, "gssd", NULL, pipe_data);
+-	if (IS_ERR(pipe_dentry))
++	if (IS_ERR(pipe_dentry)) {
++		__rpc_depopulate(clnt_dentry, gssd_dummy_info_file, 0, 1);
+ 		__rpc_depopulate(gssd_dentry, gssd_dummy_clnt_dir, 0, 1);
++	}
+ out:
+ 	dput(clnt_dentry);
+ 	dput(gssd_dentry);
+-- 
+1.8.4.2
 
