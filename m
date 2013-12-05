@@ -1,106 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:18177 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1161917Ab3LFNVJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Dec 2013 08:21:09 -0500
-Message-ID: <52A1CF22.106@oracle.com>
-Date: Fri, 06 Dec 2013 17:20:34 +0400
-From: Stanislav Kholmanskikh <stanislav.kholmanskikh@oracle.com>
-MIME-Version: 1.0
-To: Christoph Hellwig <hch@infradead.org>
-CC: xfs@oss.sgi.com, linux-nfs@vger.kernel.org,
-        Vasily Isaenko <vasily.isaenko@oracle.com>
-Subject: Re: nfs vs xfstests 193
-References: <20131106115648.GA24804@infradead.org>
-In-Reply-To: <20131106115648.GA24804@infradead.org>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mail-qc0-f176.google.com ([209.85.216.176]:59833 "EHLO
+	mail-qc0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752475Ab3LELBD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Dec 2013 06:01:03 -0500
+Received: by mail-qc0-f176.google.com with SMTP id i8so4562627qcq.21
+        for <linux-nfs@vger.kernel.org>; Thu, 05 Dec 2013 03:01:02 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@fieldses.org>
+Subject: [PATCH RFC 2/3] list_lru: add a new LRU_SKIP_REST lru_status value and handling
+Date: Thu,  5 Dec 2013 06:00:52 -0500
+Message-Id: <1386241253-5781-3-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1386241253-5781-1-git-send-email-jlayton@redhat.com>
+References: <1386241253-5781-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+The current list_lru_walk_node implementation always walks the entire
+list. In some cases, we can be sure that when an entry isn't freeable
+that none of the rest of the entries on the list will be either.
 
-On 11/06/2013 03:56 PM, Christoph Hellwig wrote:
-> I've noticed that xfstests 193 fails when run over NFS talking to an
-> XFS-based Linux server.  The test checks that we behave correctly
-> vs Posix 1003.1 for the various operations that end up in ->setattr.
->
-> Without the no_root_squash export flag we're not even able to run
-> something resembling the test as we get permission problems all through
-> it, see the first attachment for details.
->
-> With the root_squash export op we fail to clear the setuid/setgid
-> bits in various truncate and chown subtests, see the second attachment
-> for details.
-Hi!
+Create a new LRU_SKIP_REST return value that not only indicates that
+the current entry was skipped, but that caller should stop scanning
+the current node.
 
-I've come across  the same issue. But NFS server is backed by ext4 file 
-system in my environment.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ include/linux/list_lru.h | 2 ++
+ mm/list_lru.c            | 4 +++-
+ 2 files changed, 5 insertions(+), 1 deletion(-)
 
-The test case quotes POSIX:
-
-"If the specified file is a regular file, one or more of the S_IXUSR, 
-S_IXGRP, or S_IXOTH bits of the
-file mode are set, and the process has appropriate privileges, it is 
-implementation-defined whether the set-user-ID and set-group-ID
-bits are altered."
-
-So the difference that what we have now:
-
-between nfs:
-~# touch file; chmod ug+s file; chmod u+x file; ls -l file; chown root 
-file; ls -l file; rm -f file
--rwsr-Sr-- 1 root root 0 Dec  6 04:49 file
--rwsr-Sr-- 1 root root 0 Dec  6 04:49 file
-
-and ext3, ext4, xfs, btrfs:
-~# touch file; chmod ug+s file; chmod u+x file; ls -l file; chown root 
-file; ls -l file; rm -f file
--rwsr-Sr-- 1 root root 0 Dec  6 04:49 file
--rwxr-Sr-- 1 root root 0 Dec  6 04:49 file
-
-is not a violation of this POSIX statement. But It's just an 
-"implementation-defined" behaviour.
-
-I suppose that the difference raises because of this part of code in 
-fs/nfsd/vfs.c:
-
-         /* Revoke setuid/setgid on chown */
-         if (!S_ISDIR(inode->i_mode) &&
-             (((iap->ia_valid & ATTR_UID) && !uid_eq(iap->ia_uid, 
-inode->i_uid)) ||
-              ((iap->ia_valid & ATTR_GID) && !gid_eq(iap->ia_gid, 
-inode->i_gid)))) {
-                 iap->ia_valid |= ATTR_KILL_PRIV;
-                 if (iap->ia_valid & ATTR_MODE) {
-                         /* we're setting mode too, just clear the s*id 
-bits */
-                         iap->ia_mode &= ~S_ISUID;
-                         if (iap->ia_mode & S_IXGRP)
-                                 iap->ia_mode &= ~S_ISGID;
-                 } else {
-                         /* set ATTR_KILL_* bits and let VFS handle it */
-                         iap->ia_valid |= (ATTR_KILL_SUID | ATTR_KILL_SGID);
-                 }
-         }
-
-uid_eq() and gid_eq() checkings allow removal of s*id bits only if the 
-owner/group of the file is changed during chown().
-
-I.e. on nfs:
-~# touch file; chmod ug+s file; chmod u+x file; ls -l file; chown bin 
-file; ls -l file; rm -f file
--rwsr-Sr-- 1 root root 0 Dec  6 05:02 file
--rwxr-Sr-- 1 bin root 0 Dec  6 05:02 file
-
-Is it acceptable to change NFS kernel server behaviour by removal of 
-!uid_eq(iap->ia_uid, inode->i_uid) and !gid_eq(iap->ia_gid, 
-inode->i_gid) from the condition above?
-
-Just to make the behaviour more consistent between NFS and other "local" 
-file systems as It was done by
-commit 
-https://git.kernel.org/cgit/linux/kernel/git/stable/linux-stable.git/commit/?id=0953e620de0538cbd081f1b45126f6098112a598
-
-Thank you!
-
-
+diff --git a/include/linux/list_lru.h b/include/linux/list_lru.h
+index 3ce5417..6140c3a 100644
+--- a/include/linux/list_lru.h
++++ b/include/linux/list_lru.h
+@@ -15,6 +15,8 @@ enum lru_status {
+ 	LRU_REMOVED,		/* item removed from list */
+ 	LRU_ROTATE,		/* item referenced, give another pass */
+ 	LRU_SKIP,		/* item cannot be locked, skip */
++	LRU_SKIP_REST,		/* item isn't freeable, and none of the rest
++				   on the list will be either */
+ 	LRU_RETRY,		/* item not freeable. May drop the lock
+ 				   internally, but has to return locked. */
+ };
+diff --git a/mm/list_lru.c b/mm/list_lru.c
+index 72f9dec..abec7fb 100644
+--- a/mm/list_lru.c
++++ b/mm/list_lru.c
+@@ -98,6 +98,8 @@ restart:
+ 			break;
+ 		case LRU_SKIP:
+ 			break;
++		case LRU_SKIP_REST:
++			goto done;
+ 		case LRU_RETRY:
+ 			/*
+ 			 * The lru lock has been dropped, our list traversal is
+@@ -108,7 +110,7 @@ restart:
+ 			BUG();
+ 		}
+ 	}
+-
++done:
+ 	spin_unlock(&nlru->lock);
+ 	return isolated;
+ }
+-- 
+1.8.4.2
 
