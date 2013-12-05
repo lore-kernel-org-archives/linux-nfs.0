@@ -1,130 +1,228 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from szxga03-in.huawei.com ([119.145.14.66]:4966 "EHLO
-	szxga03-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753455Ab3LDFzJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Dec 2013 00:55:09 -0500
-From: Weng Meiling <wengmeiling.weng@huawei.com>
-To: <stable@vger.kernel.org>
-CC: <bfields@fieldses.org>, <skinsbursky@parallels.com>,
-        <linux-nfs@vger.kernel.org>, <lizefan@huawei.com>,
-        <h.huangqiang@huawei.com>
-Subject: [PATCH 3.4 7/9] nfsd: pass net to __write_ports() and down
-Date: Wed, 4 Dec 2013 13:53:33 +0800
-Message-ID: <1386136415-30976-8-git-send-email-wengmeiling.weng@huawei.com>
-In-Reply-To: <1386136415-30976-1-git-send-email-wengmeiling.weng@huawei.com>
-References: <1386136415-30976-1-git-send-email-wengmeiling.weng@huawei.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+Received: from mail-qa0-f46.google.com ([209.85.216.46]:33088 "EHLO
+	mail-qa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755648Ab3LELBE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Dec 2013 06:01:04 -0500
+Received: by mail-qa0-f46.google.com with SMTP id f11so7486814qae.5
+        for <linux-nfs@vger.kernel.org>; Thu, 05 Dec 2013 03:01:03 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@fieldses.org>
+Subject: [PATCH RFC 3/3] nfsd: convert DRC code to use list_lru
+Date: Thu,  5 Dec 2013 06:00:53 -0500
+Message-Id: <1386241253-5781-4-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1386241253-5781-1-git-send-email-jlayton@redhat.com>
+References: <1386241253-5781-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Rather than keeping our own LRU list, convert the nfsd DRC code to use
+the new list_lru routines.
 
-commit 081603520b25f7b35ef63a363376a17c36ef74ed upstream.
-
-Precursor patch. Hard-coded "init_net" will be replaced by proper one in
-future.
-
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-[wengmeiling: backport to 3.4:
- - adjust context
- - add net_ns parameter to __write_ports_delxprt()]
-Signed-off-by: Weng Meiling <wengmeiling.weng@huawei.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nfsd/nfsctl.c | 22 +++++++++++-----------
- 1 file changed, 11 insertions(+), 11 deletions(-)
+ fs/nfsd/nfscache.c | 94 ++++++++++++++++++++++++++++++++++++++----------------
+ 1 file changed, 66 insertions(+), 28 deletions(-)
 
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index f58e0f9..1d74af2 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -650,11 +650,10 @@ static ssize_t __write_ports_names(char *buf)
-  * a socket of a supported family/protocol, and we use it as an
-  * nfsd listener.
-  */
--static ssize_t __write_ports_addfd(char *buf)
-+static ssize_t __write_ports_addfd(char *buf, struct net *net)
+diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
+index f8f060f..7f5480f 100644
+--- a/fs/nfsd/nfscache.c
++++ b/fs/nfsd/nfscache.c
+@@ -13,6 +13,7 @@
+ #include <linux/highmem.h>
+ #include <linux/log2.h>
+ #include <linux/hash.h>
++#include <linux/list_lru.h>
+ #include <net/checksum.h>
+ 
+ #include "nfsd.h"
+@@ -28,7 +29,7 @@
+ #define TARGET_BUCKET_SIZE	64
+ 
+ static struct hlist_head *	cache_hash;
+-static struct list_head 	lru_head;
++static struct list_lru		lru_head;
+ static struct kmem_cache	*drc_slab;
+ 
+ /* max number of entries allowed in the cache */
+@@ -132,7 +133,7 @@ nfsd_reply_cache_alloc(void)
+ }
+ 
+ static void
+-nfsd_reply_cache_free_locked(struct svc_cacherep *rp)
++__nfsd_reply_cache_free_locked(struct svc_cacherep *rp)
  {
- 	char *mesg = buf;
- 	int fd, err;
--	struct net *net = &init_net;
+ 	if (rp->c_type == RC_REPLBUFF && rp->c_replvec.iov_base) {
+ 		drc_mem_usage -= rp->c_replvec.iov_len;
+@@ -140,13 +141,26 @@ nfsd_reply_cache_free_locked(struct svc_cacherep *rp)
+ 	}
+ 	if (!hlist_unhashed(&rp->c_hash))
+ 		hlist_del(&rp->c_hash);
+-	list_del(&rp->c_lru);
+ 	--num_drc_entries;
+ 	drc_mem_usage -= sizeof(*rp);
+ 	kmem_cache_free(drc_slab, rp);
+ }
  
- 	err = get_int(&mesg, &fd);
- 	if (err != 0 || fd < 0)
-@@ -698,12 +697,11 @@ static ssize_t __write_ports_delfd(char *buf)
-  * A transport listener is added by writing it's transport name and
-  * a port number.
-  */
--static ssize_t __write_ports_addxprt(char *buf)
-+static ssize_t __write_ports_addxprt(char *buf, struct net *net)
+ static void
++nfsd_reply_cache_free_locked(struct svc_cacherep *rp)
++{
++	list_lru_del(&lru_head, &rp->c_lru);
++	__nfsd_reply_cache_free_locked(rp);
++}
++
++static void
++nfsd_reply_cache_free_isolate(struct svc_cacherep *rp)
++{
++	list_del(&rp->c_lru);
++	__nfsd_reply_cache_free_locked(rp);
++}
++
++static void
+ nfsd_reply_cache_free(struct svc_cacherep *rp)
  {
- 	char transport[16];
- 	struct svc_xprt *xprt;
- 	int port, err;
--	struct net *net = &init_net;
+ 	spin_lock(&cache_lock);
+@@ -156,50 +170,66 @@ nfsd_reply_cache_free(struct svc_cacherep *rp)
  
- 	if (sscanf(buf, "%15s %4u", transport, &port) != 2)
- 		return -EINVAL;
-@@ -743,7 +741,7 @@ out_err:
-  * A transport listener is removed by writing a "-", it's transport
-  * name, and it's port number.
-  */
--static ssize_t __write_ports_delxprt(char *buf)
-+static ssize_t __write_ports_delxprt(char *buf, struct net *net)
+ int nfsd_reply_cache_init(void)
  {
- 	struct svc_xprt *xprt;
- 	char transport[16];
-@@ -755,7 +753,7 @@ static ssize_t __write_ports_delxprt(char *buf)
- 	if (port < 1 || port > USHRT_MAX || nfsd_serv == NULL)
- 		return -EINVAL;
++	int ret;
+ 	unsigned int hashsize;
  
--	xprt = svc_find_xprt(nfsd_serv, transport, &init_net, AF_UNSPEC, port);
-+	xprt = svc_find_xprt(nfsd_serv, transport, net, AF_UNSPEC, port);
- 	if (xprt == NULL)
- 		return -ENOTCONN;
+-	INIT_LIST_HEAD(&lru_head);
+ 	max_drc_entries = nfsd_cache_size_limit();
+ 	num_drc_entries = 0;
+ 	hashsize = nfsd_hashsize(max_drc_entries);
+ 	maskbits = ilog2(hashsize);
  
-@@ -764,22 +762,23 @@ static ssize_t __write_ports_delxprt(char *buf)
+ 	register_shrinker(&nfsd_reply_cache_shrinker);
++
++	ret = list_lru_init(&lru_head);
++	if (ret)
++		goto out_error;
++
++	ret = -ENOMEM;
+ 	drc_slab = kmem_cache_create("nfsd_drc", sizeof(struct svc_cacherep),
+ 					0, 0, NULL);
+ 	if (!drc_slab)
+-		goto out_nomem;
++		goto out_error;
+ 
+ 	cache_hash = kcalloc(hashsize, sizeof(struct hlist_head), GFP_KERNEL);
+ 	if (!cache_hash)
+-		goto out_nomem;
++		goto out_error;
+ 
  	return 0;
+-out_nomem:
+-	printk(KERN_ERR "nfsd: failed to allocate reply cache\n");
++out_error:
++	printk(KERN_ERR "nfsd: failed to setup reply cache: %d\n", ret);
+ 	nfsd_reply_cache_shutdown();
+-	return -ENOMEM;
++	return ret;
  }
  
--static ssize_t __write_ports(struct file *file, char *buf, size_t size)
-+static ssize_t __write_ports(struct file *file, char *buf, size_t size,
-+				struct net *net)
+-void nfsd_reply_cache_shutdown(void)
++static enum lru_status
++nfsd_purge_lru_entry(struct list_head *item, spinlock_t *lock, void *cb_arg)
  {
- 	if (size == 0)
- 		return __write_ports_names(buf);
+-	struct svc_cacherep	*rp;
++	struct svc_cacherep *rp = list_entry(item, struct svc_cacherep, c_lru);
  
- 	if (isdigit(buf[0]))
--		return __write_ports_addfd(buf);
-+		return __write_ports_addfd(buf, net);
++	nfsd_reply_cache_free_locked(rp);
++	return LRU_REMOVED;
++}
++
++void nfsd_reply_cache_shutdown(void)
++{
+ 	unregister_shrinker(&nfsd_reply_cache_shrinker);
+ 	cancel_delayed_work_sync(&cache_cleaner);
  
- 	if (buf[0] == '-' && isdigit(buf[1]))
- 		return __write_ports_delfd(buf);
+-	while (!list_empty(&lru_head)) {
+-		rp = list_entry(lru_head.next, struct svc_cacherep, c_lru);
+-		nfsd_reply_cache_free_locked(rp);
+-	}
++	/* In principle, nothing should be altering the list now, but... */
++	spin_lock(&cache_lock);
++	list_lru_walk(&lru_head, nfsd_purge_lru_entry, NULL, ULONG_MAX);
++	spin_unlock(&cache_lock);
  
- 	if (isalpha(buf[0]))
--		return __write_ports_addxprt(buf);
-+		return __write_ports_addxprt(buf, net);
+-	kfree (cache_hash);
++	kfree(cache_hash);
+ 	cache_hash = NULL;
  
- 	if (buf[0] == '-' && isalpha(buf[1]))
--		return __write_ports_delxprt(buf);
-+		return __write_ports_delxprt(buf, net);
- 
- 	return -EINVAL;
+ 	if (drc_slab) {
+ 		kmem_cache_destroy(drc_slab);
+ 		drc_slab = NULL;
+ 	}
++
++	list_lru_destroy(&lru_head);
++	memset(&lru_head, 0, sizeof(lru_head));
  }
-@@ -858,9 +857,10 @@ static ssize_t __write_ports(struct file *file, char *buf, size_t size)
- static ssize_t write_ports(struct file *file, char *buf, size_t size)
+ 
+ /*
+@@ -210,7 +240,8 @@ static void
+ lru_put_end(struct svc_cacherep *rp)
  {
- 	ssize_t rv;
-+	struct net *net = &init_net;
- 
- 	mutex_lock(&nfsd_mutex);
--	rv = __write_ports(file, buf, size);
-+	rv = __write_ports(file, buf, size, net);
- 	mutex_unlock(&nfsd_mutex);
- 	return rv;
+ 	rp->c_timestamp = jiffies;
+-	list_move_tail(&rp->c_lru, &lru_head);
++	list_lru_del(&lru_head, &rp->c_lru);
++	list_lru_add(&lru_head, &rp->c_lru);
+ 	schedule_delayed_work(&cache_cleaner, RC_EXPIRE);
  }
+ 
+@@ -231,23 +262,30 @@ nfsd_cache_entry_expired(struct svc_cacherep *rp)
+ 	       time_after(jiffies, rp->c_timestamp + RC_EXPIRE);
+ }
+ 
++static enum lru_status
++nfsd_purge_expired_entry(struct list_head *item, spinlock_t *lock, void *cb_arg)
++{
++	struct svc_cacherep *rp = list_entry(item, struct svc_cacherep, c_lru);
++
++	if (!nfsd_cache_entry_expired(rp) &&
++	    num_drc_entries <= max_drc_entries)
++		return LRU_SKIP_REST;
++
++	nfsd_reply_cache_free_isolate(rp);
++	return LRU_REMOVED;
++}
++
+ /*
+  * Walk the LRU list and prune off entries that are older than RC_EXPIRE.
+  * Also prune the oldest ones when the total exceeds the max number of entries.
+  */
+-static long
++static unsigned long
+ prune_cache_entries(void)
+ {
+-	struct svc_cacherep *rp, *tmp;
+-	long freed = 0;
++	unsigned long freed;
+ 
+-	list_for_each_entry_safe(rp, tmp, &lru_head, c_lru) {
+-		if (!nfsd_cache_entry_expired(rp) &&
+-		    num_drc_entries <= max_drc_entries)
+-			break;
+-		nfsd_reply_cache_free_locked(rp);
+-		freed++;
+-	}
++	freed = list_lru_walk(&lru_head, nfsd_purge_expired_entry, NULL,
++				ULONG_MAX);
+ 
+ 	/*
+ 	 * Conditionally rearm the job. If we cleaned out the list, then
+@@ -255,7 +293,7 @@ prune_cache_entries(void)
+ 	 * Otherwise, we rearm the job or modify the existing one to run in
+ 	 * RC_EXPIRE since we just ran the pruner.
+ 	 */
+-	if (list_empty(&lru_head))
++	if (num_drc_entries == 0)
+ 		cancel_delayed_work(&cache_cleaner);
+ 	else
+ 		mod_delayed_work(system_wq, &cache_cleaner, RC_EXPIRE);
 -- 
-1.8.2.2
-
+1.8.4.2
 
