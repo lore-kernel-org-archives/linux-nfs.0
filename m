@@ -1,442 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:43341 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751453Ab3LKKpa (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Dec 2013 05:45:30 -0500
-Message-Id: <20131211104529.004281601@bombadil.infradead.org>
-Date: Wed, 11 Dec 2013 02:42:58 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: viro@zeniv.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-mtd@lists.infradead.org, Mark Fasheh <mfasheh@suse.com>,
-        Joel Becker <jlbec@evilplan.org>, reiserfs-devel@vger.kernel.org,
-        xfs@oss.sgi.com, jfs-discussion@lists.sourceforge.net,
-        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
-        Andreas Gruenbacher <andreas.gruenbacher@linbit.com>,
-        Dave Kleikamp <dave.kleikamp@oracle.com>
-Subject: [PATCH 15/18] jfs: use generic posix ACL infrastructure
-References: <20131211104243.148113893@bombadil.infradead.org>
+Received: from mx1.redhat.com ([209.132.183.28]:22662 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932716Ab3LEQhA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Dec 2013 11:37:00 -0500
+Message-ID: <52A0ABDA.8090903@RedHat.com>
+Date: Thu, 05 Dec 2013 11:37:46 -0500
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Trond Myklebust <trondmy@gmail.com>, Christoph Hellwig <hch@infradead.org>
+CC: Lever Charles Edward <chuck.lever@oracle.com>, Jim Rees <rees@umich.edu>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        An?bal Monsalve Salazar <anibal@debian.org>,
+        "Steinar H. Gunderson" <sesse@debian.org>
+Subject: Re: librpcsecgss: FTBFS on GNU/kFreeBSD
+References: <20090703133142.14887.33854.reportbug@localhost.localdomain> <20131124051904.GA16651@master.debian.org> <20131124090924.GA29659@infradead.org> <20131124130753.GA15178@umich.edu> <20131204131317.GA7776@infradead.org> <108D7BCB-5869-45BB-A287-C6593257F193@oracle.com> <1021B36D-17B9-477F-A8AE-86D6A7750B80@gmail.com> <09856BCA-A255-4975-8144-D38775DC44A8@oracle.com> <20131205132341.GA3381@infradead.org> <274DEB30-A80C-49C2-9487-BAD980C86F63@gmail.com> <20131205134325.GA25933@infradead.org> <7AB02817-E6DE-486A-A4CB-8A67AF44972A@gmail.com>
+In-Reply-To: <7AB02817-E6DE-486A-A4CB-8A67AF44972A@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Copy the scheme I introduced to btrfs many years ago to only use the
-xattr handler for ACLs, but pass plain attrs straight through.
-
-Signed-off-by: Christoph Hellwig <hch@lst.de>
-Reviewed-by: Dave Kleikamp <dave.kleikamp@oracle.com>
----
- fs/jfs/acl.c       |  105 ++++++++++++++++++++------------------------------
- fs/jfs/file.c      |    4 +-
- fs/jfs/jfs_acl.h   |    7 +---
- fs/jfs/jfs_xattr.h |    2 +
- fs/jfs/namei.c     |    1 +
- fs/jfs/super.c     |    2 +
- fs/jfs/xattr.c     |  108 ++++++++++++++++++----------------------------------
- 7 files changed, 89 insertions(+), 140 deletions(-)
-
-diff --git a/fs/jfs/acl.c b/fs/jfs/acl.c
-index 28d529a..e973b85 100644
---- a/fs/jfs/acl.c
-+++ b/fs/jfs/acl.c
-@@ -72,7 +72,7 @@ struct posix_acl *jfs_get_acl(struct inode *inode, int type)
- 	return acl;
- }
- 
--static int jfs_set_acl(tid_t tid, struct inode *inode, int type,
-+static int __jfs_set_acl(tid_t tid, struct inode *inode, int type,
- 		       struct posix_acl *acl)
- {
- 	char *ea_name;
-@@ -80,21 +80,22 @@ static int jfs_set_acl(tid_t tid, struct inode *inode, int type,
- 	int size = 0;
- 	char *value = NULL;
- 
--	if (S_ISLNK(inode->i_mode))
--		return -EOPNOTSUPP;
--
--	switch(type) {
--		case ACL_TYPE_ACCESS:
--			ea_name = POSIX_ACL_XATTR_ACCESS;
--			break;
--		case ACL_TYPE_DEFAULT:
--			ea_name = POSIX_ACL_XATTR_DEFAULT;
--			if (!S_ISDIR(inode->i_mode))
--				return acl ? -EACCES : 0;
--			break;
--		default:
--			return -EINVAL;
-+	switch (type) {
-+	case ACL_TYPE_ACCESS:
-+		ea_name = POSIX_ACL_XATTR_ACCESS;
-+		rc = posix_acl_equiv_mode(acl, &inode->i_mode);
-+		if (rc < 0)
-+			return rc;
-+		if (rc == 0)
-+			acl = NULL;
-+		break;
-+	case ACL_TYPE_DEFAULT:
-+		ea_name = POSIX_ACL_XATTR_DEFAULT;
-+		break;
-+	default:
-+		return -EINVAL;
- 	}
-+
- 	if (acl) {
- 		size = posix_acl_xattr_size(acl->a_count);
- 		value = kmalloc(size, GFP_KERNEL);
-@@ -114,65 +115,43 @@ out:
- 	return rc;
- }
- 
-+int jfs_set_acl(struct inode *inode, struct posix_acl *acl, int type)
-+{
-+	int rc;
-+	tid_t tid;
-+
-+	tid = txBegin(inode->i_sb, 0);
-+	mutex_lock(&JFS_IP(inode)->commit_mutex);
-+	rc = __jfs_set_acl(tid, inode, type, acl);
-+	if (!rc)
-+		rc = txCommit(tid, 1, &inode, 0);
-+	txEnd(tid);
-+	mutex_unlock(&JFS_IP(inode)->commit_mutex);
-+	return rc;
-+}
-+
- int jfs_init_acl(tid_t tid, struct inode *inode, struct inode *dir)
- {
--	struct posix_acl *acl = NULL;
-+	struct posix_acl *default_acl, *acl;
- 	int rc = 0;
- 
--	if (S_ISLNK(inode->i_mode))
--		return 0;
-+	rc = posix_acl_create(dir, &inode->i_mode, &default_acl, &acl);
-+	if (rc)
-+		return rc;
- 
--	acl = jfs_get_acl(dir, ACL_TYPE_DEFAULT);
--	if (IS_ERR(acl))
--		return PTR_ERR(acl);
-+	if (default_acl) {
-+		rc = __jfs_set_acl(tid, inode, ACL_TYPE_DEFAULT, default_acl);
-+		posix_acl_release(default_acl);
-+	}
- 
- 	if (acl) {
--		if (S_ISDIR(inode->i_mode)) {
--			rc = jfs_set_acl(tid, inode, ACL_TYPE_DEFAULT, acl);
--			if (rc)
--				goto cleanup;
--		}
--		rc = __posix_acl_create(&acl, GFP_KERNEL, &inode->i_mode);
--		if (rc < 0)
--			goto cleanup; /* posix_acl_release(NULL) is no-op */
--		if (rc > 0)
--			rc = jfs_set_acl(tid, inode, ACL_TYPE_ACCESS, acl);
--cleanup:
-+		if (!rc)
-+			rc = __jfs_set_acl(tid, inode, ACL_TYPE_ACCESS, acl);
- 		posix_acl_release(acl);
--	} else
--		inode->i_mode &= ~current_umask();
-+	}
- 
- 	JFS_IP(inode)->mode2 = (JFS_IP(inode)->mode2 & 0xffff0000) |
- 			       inode->i_mode;
- 
- 	return rc;
- }
--
--int jfs_acl_chmod(struct inode *inode)
--{
--	struct posix_acl *acl;
--	int rc;
--	tid_t tid;
--
--	if (S_ISLNK(inode->i_mode))
--		return -EOPNOTSUPP;
--
--	acl = jfs_get_acl(inode, ACL_TYPE_ACCESS);
--	if (IS_ERR(acl) || !acl)
--		return PTR_ERR(acl);
--
--	rc = __posix_acl_chmod(&acl, GFP_KERNEL, inode->i_mode);
--	if (rc)
--		return rc;
--
--	tid = txBegin(inode->i_sb, 0);
--	mutex_lock(&JFS_IP(inode)->commit_mutex);
--	rc = jfs_set_acl(tid, inode, ACL_TYPE_ACCESS, acl);
--	if (!rc)
--		rc = txCommit(tid, 1, &inode, 0);
--	txEnd(tid);
--	mutex_unlock(&JFS_IP(inode)->commit_mutex);
--
--	posix_acl_release(acl);
--	return rc;
--}
-diff --git a/fs/jfs/file.c b/fs/jfs/file.c
-index dd7442c..794da94 100644
---- a/fs/jfs/file.c
-+++ b/fs/jfs/file.c
-@@ -19,6 +19,7 @@
- 
- #include <linux/mm.h>
- #include <linux/fs.h>
-+#include <linux/posix_acl.h>
- #include <linux/quotaops.h>
- #include "jfs_incore.h"
- #include "jfs_inode.h"
-@@ -131,7 +132,7 @@ int jfs_setattr(struct dentry *dentry, struct iattr *iattr)
- 	mark_inode_dirty(inode);
- 
- 	if (iattr->ia_valid & ATTR_MODE)
--		rc = jfs_acl_chmod(inode);
-+		rc = posix_acl_chmod(inode, inode->i_mode);
- 	return rc;
- }
- 
-@@ -143,6 +144,7 @@ const struct inode_operations jfs_file_inode_operations = {
- 	.setattr	= jfs_setattr,
- #ifdef CONFIG_JFS_POSIX_ACL
- 	.get_acl	= jfs_get_acl,
-+	.set_acl	= jfs_set_acl,
- #endif
- };
- 
-diff --git a/fs/jfs/jfs_acl.h b/fs/jfs/jfs_acl.h
-index ad84fe5..489f993 100644
---- a/fs/jfs/jfs_acl.h
-+++ b/fs/jfs/jfs_acl.h
-@@ -21,8 +21,8 @@
- #ifdef CONFIG_JFS_POSIX_ACL
- 
- struct posix_acl *jfs_get_acl(struct inode *inode, int type);
-+int jfs_set_acl(struct inode *inode, struct posix_acl *acl, int type);
- int jfs_init_acl(tid_t, struct inode *, struct inode *);
--int jfs_acl_chmod(struct inode *inode);
- 
- #else
- 
-@@ -32,10 +32,5 @@ static inline int jfs_init_acl(tid_t tid, struct inode *inode,
- 	return 0;
- }
- 
--static inline int jfs_acl_chmod(struct inode *inode)
--{
--	return 0;
--}
--
- #endif
- #endif		/* _H_JFS_ACL */
-diff --git a/fs/jfs/jfs_xattr.h b/fs/jfs/jfs_xattr.h
-index e9e100f..e8d717d 100644
---- a/fs/jfs/jfs_xattr.h
-+++ b/fs/jfs/jfs_xattr.h
-@@ -61,6 +61,8 @@ extern ssize_t jfs_getxattr(struct dentry *, const char *, void *, size_t);
- extern ssize_t jfs_listxattr(struct dentry *, char *, size_t);
- extern int jfs_removexattr(struct dentry *, const char *);
- 
-+extern const struct xattr_handler *jfs_xattr_handlers[];
-+
- #ifdef CONFIG_JFS_SECURITY
- extern int jfs_init_security(tid_t, struct inode *, struct inode *,
- 			     const struct qstr *);
-diff --git a/fs/jfs/namei.c b/fs/jfs/namei.c
-index aa8a337..d59c7de 100644
---- a/fs/jfs/namei.c
-+++ b/fs/jfs/namei.c
-@@ -1524,6 +1524,7 @@ const struct inode_operations jfs_dir_inode_operations = {
- 	.setattr	= jfs_setattr,
- #ifdef CONFIG_JFS_POSIX_ACL
- 	.get_acl	= jfs_get_acl,
-+	.set_acl	= jfs_set_acl,
- #endif
- };
- 
-diff --git a/fs/jfs/super.c b/fs/jfs/super.c
-index 6669aa2..e2b7483 100644
---- a/fs/jfs/super.c
-+++ b/fs/jfs/super.c
-@@ -44,6 +44,7 @@
- #include "jfs_imap.h"
- #include "jfs_acl.h"
- #include "jfs_debug.h"
-+#include "jfs_xattr.h"
- 
- MODULE_DESCRIPTION("The Journaled Filesystem (JFS)");
- MODULE_AUTHOR("Steve Best/Dave Kleikamp/Barry Arndt, IBM");
-@@ -522,6 +523,7 @@ static int jfs_fill_super(struct super_block *sb, void *data, int silent)
- 	 */
- 	sb->s_op = &jfs_super_operations;
- 	sb->s_export_op = &jfs_export_operations;
-+	sb->s_xattr = jfs_xattr_handlers;
- #ifdef CONFIG_QUOTA
- 	sb->dq_op = &dquot_operations;
- 	sb->s_qcop = &dquot_quotactl_ops;
-diff --git a/fs/jfs/xattr.c b/fs/jfs/xattr.c
-index d3472f4..5324e4e 100644
---- a/fs/jfs/xattr.c
-+++ b/fs/jfs/xattr.c
-@@ -666,81 +666,12 @@ static int ea_put(tid_t tid, struct inode *inode, struct ea_buffer *ea_buf,
- }
- 
- /*
-- * can_set_system_xattr
-- *
-- * This code is specific to the system.* namespace.  It contains policy
-- * which doesn't belong in the main xattr codepath.
-- */
--static int can_set_system_xattr(struct inode *inode, const char *name,
--				const void *value, size_t value_len)
--{
--#ifdef CONFIG_JFS_POSIX_ACL
--	struct posix_acl *acl;
--	int rc;
--
--	if (!inode_owner_or_capable(inode))
--		return -EPERM;
--
--	/*
--	 * POSIX_ACL_XATTR_ACCESS is tied to i_mode
--	 */
--	if (strcmp(name, POSIX_ACL_XATTR_ACCESS) == 0) {
--		acl = posix_acl_from_xattr(&init_user_ns, value, value_len);
--		if (IS_ERR(acl)) {
--			rc = PTR_ERR(acl);
--			printk(KERN_ERR "posix_acl_from_xattr returned %d\n",
--			       rc);
--			return rc;
--		}
--		if (acl) {
--			rc = posix_acl_equiv_mode(acl, &inode->i_mode);
--			posix_acl_release(acl);
--			if (rc < 0) {
--				printk(KERN_ERR
--				       "posix_acl_equiv_mode returned %d\n",
--				       rc);
--				return rc;
--			}
--			mark_inode_dirty(inode);
--		}
--		/*
--		 * We're changing the ACL.  Get rid of the cached one
--		 */
--		forget_cached_acl(inode, ACL_TYPE_ACCESS);
--
--		return 0;
--	} else if (strcmp(name, POSIX_ACL_XATTR_DEFAULT) == 0) {
--		acl = posix_acl_from_xattr(&init_user_ns, value, value_len);
--		if (IS_ERR(acl)) {
--			rc = PTR_ERR(acl);
--			printk(KERN_ERR "posix_acl_from_xattr returned %d\n",
--			       rc);
--			return rc;
--		}
--		posix_acl_release(acl);
--
--		/*
--		 * We're changing the default ACL.  Get rid of the cached one
--		 */
--		forget_cached_acl(inode, ACL_TYPE_DEFAULT);
--
--		return 0;
--	}
--#endif			/* CONFIG_JFS_POSIX_ACL */
--	return -EOPNOTSUPP;
--}
--
--/*
-  * Most of the permission checking is done by xattr_permission in the vfs.
-- * The local file system is responsible for handling the system.* namespace.
-  * We also need to verify that this is a namespace that we recognize.
-  */
- static int can_set_xattr(struct inode *inode, const char *name,
- 			 const void *value, size_t value_len)
- {
--	if (!strncmp(name, XATTR_SYSTEM_PREFIX, XATTR_SYSTEM_PREFIX_LEN))
--		return can_set_system_xattr(inode, name, value, value_len);
--
- 	if (!strncmp(name, XATTR_OS2_PREFIX, XATTR_OS2_PREFIX_LEN)) {
- 		/*
- 		 * This makes sure that we aren't trying to set an
-@@ -748,7 +679,7 @@ static int can_set_xattr(struct inode *inode, const char *name,
- 		 * with "os2."
- 		 */
- 		if (is_known_namespace(name + XATTR_OS2_PREFIX_LEN))
--				return -EOPNOTSUPP;
-+			return -EOPNOTSUPP;
- 		return 0;
- 	}
- 
-@@ -913,6 +844,14 @@ int jfs_setxattr(struct dentry *dentry, const char *name, const void *value,
- 	if ((rc = can_set_xattr(inode, name, value, value_len)))
- 		return rc;
- 
-+	/*
-+	 * If this is a request for a synthetic attribute in the system.*
-+	 * namespace use the generic infrastructure to resolve a handler
-+	 * for it via sb->s_xattr.
-+	 */
-+	if (!strncmp(name, XATTR_SYSTEM_PREFIX, XATTR_SYSTEM_PREFIX_LEN))
-+		return generic_setxattr(dentry, name, value, value_len, flags);
-+
- 	if (value == NULL) {	/* empty EA, do not remove */
- 		value = "";
- 		value_len = 0;
-@@ -986,6 +925,14 @@ ssize_t jfs_getxattr(struct dentry *dentry, const char *name, void *data,
- {
- 	int err;
- 
-+	/*
-+	 * If this is a request for a synthetic attribute in the system.*
-+	 * namespace use the generic infrastructure to resolve a handler
-+	 * for it via sb->s_xattr.
-+	 */
-+	if (!strncmp(name, XATTR_SYSTEM_PREFIX, XATTR_SYSTEM_PREFIX_LEN))
-+		return generic_getxattr(dentry, name, data, buf_size);
-+
- 	if (strncmp(name, XATTR_OS2_PREFIX, XATTR_OS2_PREFIX_LEN) == 0) {
- 		/*
- 		 * skip past "os2." prefix
-@@ -1077,6 +1024,14 @@ int jfs_removexattr(struct dentry *dentry, const char *name)
- 	if ((rc = can_set_xattr(inode, name, NULL, 0)))
- 		return rc;
- 
-+	/*
-+	 * If this is a request for a synthetic attribute in the system.*
-+	 * namespace use the generic infrastructure to resolve a handler
-+	 * for it via sb->s_xattr.
-+	 */
-+	if (!strncmp(name, XATTR_SYSTEM_PREFIX, XATTR_SYSTEM_PREFIX_LEN))
-+		return generic_removexattr(dentry, name);
-+
- 	tid = txBegin(inode->i_sb, 0);
- 	mutex_lock(&ji->commit_mutex);
- 	rc = __jfs_setxattr(tid, dentry->d_inode, name, NULL, 0, XATTR_REPLACE);
-@@ -1088,6 +1043,19 @@ int jfs_removexattr(struct dentry *dentry, const char *name)
- 	return rc;
- }
- 
-+/*
-+ * List of handlers for synthetic system.* attributes.  All real ondisk
-+ * attributes are handled directly.
-+ */
-+const struct xattr_handler *jfs_xattr_handlers[] = {
-+#ifdef JFS_POSIX_ACL
-+	&posix_acl_access_xattr_handler,
-+	&posix_acl_default_xattr_handler,
-+#endif
-+	NULL,
-+};
-+
-+
- #ifdef CONFIG_JFS_SECURITY
- static int jfs_initxattrs(struct inode *inode, const struct xattr *xattr_array,
- 			  void *fs_info)
--- 
-1.7.10.4
 
 
+On 05/12/13 08:45, Trond Myklebust wrote:
+> 
+> On Dec 5, 2013, at 8:43, Christoph Hellwig <hch@infradead.org> wrote:
+> 
+>> On Thu, Dec 05, 2013 at 08:41:27AM -0500, Trond Myklebust wrote:
+>>>> libgssapi-krb5-2 seems to have dropped the libgssglue dependency in
+>>>> unstable, but the others still seem to be be around.
+>>>
+>>> I thought that Debian installs the Heimdal kerberos libraries by default. Does it have the gssapi hooks?
+>>
+>> libgssapi-krb5-2 is described as "MIT Kerberos runtime libraries - krb5
+>> GSS-API Mechanism" and depends on libkrb5-3 which is "MIT Kerberos
+>> runtime libraries".  Nothing Heimdal related in this dependency chain.
+> 
+> Then it should be able to drop the CITI librpcsecgss and libgssglue.
+I would think so.... 
+
+librpcsecgss has already been remove from Fedora and I'll do the
+same for libgssglue once f18 is no longer supported...
+
+steved.
+
+> 
+> Cheers
+>   Trond--
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
