@@ -1,208 +1,124 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from alt-proxy6.mail.unifiedlayer.com ([66.147.245.65]:57440 "HELO
-	alt-proxy6.mail.unifiedlayer.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1754190Ab3LUQL7 convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 21 Dec 2013 11:11:59 -0500
-Subject: Re: [PATCH 21/21] hfsplus: remove can_set_xattr
-Mime-Version: 1.0 (Apple Message framework v1085)
-Content-Type: text/plain; charset=us-ascii
-From: Vyacheslav Dubeyko <slava@dubeyko.com>
-In-Reply-To: <20131220132524.900291394@bombadil.infradead.org>
-Date: Sat, 21 Dec 2013 20:07:51 +0300
-Cc: viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net, linux-mtd@lists.infradead.org,
-        Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>,
-        reiserfs-devel@vger.kernel.org, xfs@oss.sgi.com,
-        jfs-discussion@lists.sourceforge.net, cluster-devel@redhat.com,
-        linux-nfs@vger.kernel.org,
-        Andreas Gruenbacher <andreas.gruenbacher@linbit.com>
-Message-Id: <636E01BC-12FD-452B-8B1C-320B6EADAEFD@dubeyko.com>
-References: <20131220131635.650823732@bombadil.infradead.org> <20131220132524.900291394@bombadil.infradead.org>
+Received: from mx1.redhat.com ([209.132.183.28]:14328 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932315Ab3LENsw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 5 Dec 2013 08:48:52 -0500
+Date: Thu, 5 Dec 2013 08:48:25 -0500
+From: Jeff Layton <jlayton@redhat.com>
 To: Christoph Hellwig <hch@infradead.org>
+Cc: linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH RFC 3/3] nfsd: convert DRC code to use list_lru
+Message-ID: <20131205084825.2bf1726d@tlielax.poochiereds.net>
+In-Reply-To: <20131205134129.GE3381@infradead.org>
+References: <1386241253-5781-1-git-send-email-jlayton@redhat.com>
+	<1386241253-5781-4-git-send-email-jlayton@redhat.com>
+	<20131205134129.GE3381@infradead.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Thu, 5 Dec 2013 05:41:29 -0800
+Christoph Hellwig <hch@infradead.org> wrote:
 
-On Dec 20, 2013, at 4:16 PM, Christoph Hellwig wrote:
-
-> When using the per-superblock xattr handlers permission checking is
-> done by the generic code.  hfsplus just needs to check for the magic
-> osx attribute not to leak into protected namespaces.
+> >  static void
+> > -nfsd_reply_cache_free_locked(struct svc_cacherep *rp)
+> > +__nfsd_reply_cache_free_locked(struct svc_cacherep *rp)
+> >  {
+> >  	if (rp->c_type == RC_REPLBUFF && rp->c_replvec.iov_base) {
+> >  		drc_mem_usage -= rp->c_replvec.iov_len;
+> > @@ -140,13 +141,26 @@ nfsd_reply_cache_free_locked(struct svc_cacherep *rp)
+> >  	}
+> >  	if (!hlist_unhashed(&rp->c_hash))
+> >  		hlist_del(&rp->c_hash);
+> > -	list_del(&rp->c_lru);
+> >  	--num_drc_entries;
+> >  	drc_mem_usage -= sizeof(*rp);
+> >  	kmem_cache_free(drc_slab, rp);
 > 
-> Also given that the code was obviously copied from JFS the proper
-> attribution was missing.
+> I would be better to move the hash list deletion out of this and
+> keep this as a plain nfsd_reply_cache_free().  E.g. in the lookup
+> cache hit case we've never linked any item and would want this low-level
+> function.
 > 
 
-I don't think that this code changing is correct. Current modification
-breaks logic. Please, see my comments below.
+Ok.
 
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
-> ---
-> fs/hfsplus/xattr.c |   87 ++--------------------------------------------------
-> 1 file changed, 3 insertions(+), 84 deletions(-)
+> >  }
+> >  
+> >  static void
+> > +nfsd_reply_cache_free_locked(struct svc_cacherep *rp)
+> > +{
+> > +	list_lru_del(&lru_head, &rp->c_lru);
+> > +	__nfsd_reply_cache_free_locked(rp);
+> > +}
+> > +
+> > +static void
+> > +nfsd_reply_cache_free_isolate(struct svc_cacherep *rp)
+> > +{
+> > +	list_del(&rp->c_lru);
+> > +	__nfsd_reply_cache_free_locked(rp);
+> > +}
 > 
-> diff --git a/fs/hfsplus/xattr.c b/fs/hfsplus/xattr.c
-> index bf88baa..0b4a5c9 100644
-> --- a/fs/hfsplus/xattr.c
-> +++ b/fs/hfsplus/xattr.c
-> @@ -52,82 +52,6 @@ static inline int is_known_namespace(const char *name)
-> 	return true;
-> }
+> Should be merged into the only caller.
 > 
-> -static int can_set_system_xattr(struct inode *inode, const char *name,
-> -				const void *value, size_t size)
 
-I agree that it makes sense to remove this code if permission checking
-is done by generic code.
+Ok.
 
-> -{
-> -#ifdef CONFIG_HFSPLUS_FS_POSIX_ACL
-> -	struct posix_acl *acl;
-> -	int err;
-> -
-> -	if (!inode_owner_or_capable(inode))
-> -		return -EPERM;
-> -
-> -	/*
-> -	 * POSIX_ACL_XATTR_ACCESS is tied to i_mode
-> -	 */
-> -	if (strcmp(name, POSIX_ACL_XATTR_ACCESS) == 0) {
-> -		acl = posix_acl_from_xattr(&init_user_ns, value, size);
-> -		if (IS_ERR(acl))
-> -			return PTR_ERR(acl);
-> -		if (acl) {
-> -			err = posix_acl_equiv_mode(acl, &inode->i_mode);
-> -			posix_acl_release(acl);
-> -			if (err < 0)
-> -				return err;
-> -			mark_inode_dirty(inode);
-> -		}
-> -		/*
-> -		 * We're changing the ACL.  Get rid of the cached one
-> -		 */
-> -		forget_cached_acl(inode, ACL_TYPE_ACCESS);
-> -
-> -		return 0;
-> -	} else if (strcmp(name, POSIX_ACL_XATTR_DEFAULT) == 0) {
-> -		acl = posix_acl_from_xattr(&init_user_ns, value, size);
-> -		if (IS_ERR(acl))
-> -			return PTR_ERR(acl);
-> -		posix_acl_release(acl);
-> -
-> -		/*
-> -		 * We're changing the default ACL.  Get rid of the cached one
-> -		 */
-> -		forget_cached_acl(inode, ACL_TYPE_DEFAULT);
-> -
-> -		return 0;
-> -	}
-> -#endif /* CONFIG_HFSPLUS_FS_POSIX_ACL */
-> -	return -EOPNOTSUPP;
-> -}
-> -
-> -static int can_set_xattr(struct inode *inode, const char *name,
-> -				const void *value, size_t value_len)
-
-This function works for all handlers. So, I don't think that it makes sense
-to delete it.
-
-> -{
-> -	if (!strncmp(name, XATTR_SYSTEM_PREFIX, XATTR_SYSTEM_PREFIX_LEN))
-> -		return can_set_system_xattr(inode, name, value, value_len);
-> -
-
-I agree that it needs to remove this check for XATTR_SYSTEM_PREFIX case.
-
-> -	if (!strncmp(name, XATTR_MAC_OSX_PREFIX, XATTR_MAC_OSX_PREFIX_LEN)) {
-> -		/*
-> -		 * This makes sure that we aren't trying to set an
-> -		 * attribute in a different namespace by prefixing it
-> -		 * with "osx."
-> -		 */
-> -		if (is_known_namespace(name + XATTR_MAC_OSX_PREFIX_LEN))
-> -			return -EOPNOTSUPP;
-
-I think that this check is important. It forbids such combinations as "osx.system.*" or
-"osx.trusted.*", for example. Because "osx.*" is virtual namespace for xattrs that
-it can be under Mac OS X. If you want to set xattr from "system.*" namespace, for example,
-then you need to use another handler. And such namespace should be without
-addition of "osx." prefix.
-
-> -
-> -		return 0;
-> -	}
-> -
-> -	/*
-> -	 * Don't allow setting an attribute in an unknown namespace.
-> -	 */
-> -	if (strncmp(name, XATTR_TRUSTED_PREFIX, XATTR_TRUSTED_PREFIX_LEN) &&
-> -	    strncmp(name, XATTR_SECURITY_PREFIX, XATTR_SECURITY_PREFIX_LEN) &&
-> -	    strncmp(name, XATTR_USER_PREFIX, XATTR_USER_PREFIX_LEN))
-> -		return -EOPNOTSUPP;
-> -
-> -	return 0;
-> -}
-> -
-> static void hfsplus_init_header_node(struct inode *attr_file,
-> 					u32 clump_size,
-> 					char *buf, u16 node_size)
-> @@ -350,10 +274,6 @@ int __hfsplus_setxattr(struct inode *inode, const char *name,
-> 				HFSPLUS_IS_RSRC(inode))
-> 		return -EOPNOTSUPP;
+> > +
+> > +static void
+> >  nfsd_reply_cache_free(struct svc_cacherep *rp)
+> >  {
+> >  	spin_lock(&cache_lock);
+> > @@ -156,50 +170,66 @@ nfsd_reply_cache_free(struct svc_cacherep *rp)
+> >  
 > 
-> -	err = can_set_xattr(inode, name, value, size);
-
-The __hfsplus_setxattr() is common method for all handlers. So, removing
-this call means that we don't check validity of namespace. I don't think
-that such modification is a right way.
-
-> -	if (err)
-> -		return err;
-> -
-> 	if (strncmp(name, XATTR_MAC_OSX_PREFIX,
-> 				XATTR_MAC_OSX_PREFIX_LEN) == 0)
-> 		name += XATTR_MAC_OSX_PREFIX_LEN;
-> @@ -841,10 +761,6 @@ int hfsplus_removexattr(struct dentry *dentry, const char *name)
-> 	if (!HFSPLUS_SB(inode->i_sb)->attr_tree)
-> 		return -EOPNOTSUPP;
+> > +static enum lru_status
+> > +nfsd_purge_lru_entry(struct list_head *item, spinlock_t *lock, void *cb_arg)
+> >  {
+> > -	struct svc_cacherep	*rp;
+> > +	struct svc_cacherep *rp = list_entry(item, struct svc_cacherep, c_lru);
+> >  
+> > +	nfsd_reply_cache_free_locked(rp);
+> > +	return LRU_REMOVED;
+> > +}
+> > +
+> > +void nfsd_reply_cache_shutdown(void)
+> > +{
+> >  	unregister_shrinker(&nfsd_reply_cache_shrinker);
+> >  	cancel_delayed_work_sync(&cache_cleaner);
+> >  
+> > -	while (!list_empty(&lru_head)) {
+> > -		rp = list_entry(lru_head.next, struct svc_cacherep, c_lru);
+> > -		nfsd_reply_cache_free_locked(rp);
+> > -	}
+> > +	/* In principle, nothing should be altering the list now, but... */
+> > +	spin_lock(&cache_lock);
+> > +	list_lru_walk(&lru_head, nfsd_purge_lru_entry, NULL, ULONG_MAX);
+> > +	spin_unlock(&cache_lock);
 > 
-> -	err = can_set_xattr(inode, name, NULL, 0);
-
-Ditto. Moreover, it is used namely hfsplus_removexattr() and not
-__hfsplus_setxattr() for removing xattrs in hfsplus driver. So, removing
-this check is not good way.
-
-> -	if (err)
-> -		return err;
-> -
-> 	if (strncmp(name, XATTR_MAC_OSX_PREFIX,
-> 				XATTR_MAC_OSX_PREFIX_LEN) == 0)
-> 		name += XATTR_MAC_OSX_PREFIX_LEN;
-> @@ -941,6 +857,9 @@ static int hfsplus_osx_setxattr(struct dentry *dentry, const char *name,
-> 	if (len > HFSPLUS_ATTR_MAX_STRLEN)
-> 		return -EOPNOTSUPP;
+> This needs the version that does the list_del internally to, doesn't
+> it?  I'd suggest to just use sd_purge_expired_entry with a forced
+> flag in the argument.
 > 
-> +	if (is_known_namespace(name))
-> +		return -EOPNOTSUPP;
 
-If common check in __hfsplus_setxattr() will be on the same place then
-this addition doesn't make sense.
+Yes it does. Good catch.
 
-Thanks,
-Vyacheslav Dubeyko.
-
-> +
-> 	strcpy(xattr_name, XATTR_MAC_OSX_PREFIX);
-> 	strcpy(xattr_name + XATTR_MAC_OSX_PREFIX_LEN, name);
+> > +	memset(&lru_head, 0, sizeof(lru_head));
 > 
-> -- 
-> 1.7.10.4
+> don't think there's much of a point.
 > 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
+Yeah, I got spooked by the fact that lru->node isn't zeroed out in
+list_lru_destroy, but on list_lru_init it should get clobbered anyway
+so the memset is pointless.
+
+> 
+> All together doesn't seem to helpful as long as the DRC keeps
+> it's own timing based purge and similar bits unfortunatel.
+
+Agreed. It might make sense to do this in the context of a larger
+redesign but otherwise I can't get too excited about this set, TBH...
+
+-- 
+Jeff Layton <jlayton@redhat.com>
