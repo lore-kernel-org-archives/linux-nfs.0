@@ -1,30 +1,134 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from order.stressinduktion.org ([87.106.68.36]:46795 "EHLO
-	order.stressinduktion.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756682Ab3LWDSr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 22 Dec 2013 22:18:47 -0500
-Date: Mon, 23 Dec 2013 04:18:45 +0100
-From: Hannes Frederic Sowa <hannes@stressinduktion.org>
-To: Alexander Aring <alex.aring@gmail.com>
-Cc: linux-nfs@vger.kernel.org, netdev@vger.kernel.org, stable@vger.kernel.org,
-        werner@almesberger.net
-Subject: Re: [PATCH v2] nfs: fix dead code of ipv6_addr_scope
-Message-ID: <20131223031845.GM14073@order.stressinduktion.org>
-References: <1387753276-27009-1-git-send-email-alex.aring@gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <1387753276-27009-1-git-send-email-alex.aring@gmail.com>
+Received: from mail-pd0-f176.google.com ([209.85.192.176]:43657 "EHLO
+	mail-pd0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756269Ab3LECKC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Dec 2013 21:10:02 -0500
+Received: by mail-pd0-f176.google.com with SMTP id w10so23514866pde.21
+        for <linux-nfs@vger.kernel.org>; Wed, 04 Dec 2013 18:10:01 -0800 (PST)
+Message-ID: <529FE070.4030306@gmail.com>
+Date: Thu, 05 Dec 2013 10:09:52 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] Do not enter setup_callback_client when finding backchannel
+ failed
+References: <5295C982.1030904@gmail.com> <20131202145917.GF1960@fieldses.org> <529D4617.6080505@gmail.com> <20131204171052.GE14646@fieldses.org>
+In-Reply-To: <20131204171052.GE14646@fieldses.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Dec 23, 2013 at 12:01:16AM +0100, Alexander Aring wrote:
-> This patch corrects the check on a linklocal address.
+On 12/05/2013 01:10 AM, J. Bruce Fields wrote:
+> On Tue, Dec 03, 2013 at 10:46:47AM +0800, Kinglong Mee wrote:
+>> On 12/02/2013 10:59 PM, J. Bruce Fields wrote:
+>>> On Wed, Nov 27, 2013 at 06:29:22PM +0800, Kinglong Mee wrote:
+>>>> If finding backchannel failed, nfsd should not enter setup_callback_client.
+>>>>
+>>>> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+>>>> ---
+>>>>  fs/nfsd/nfs4callback.c | 4 ++--
+>>>>  1 file changed, 2 insertions(+), 2 deletions(-)
+>>>>
+>>>> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+>>>> index 7f05cd1..755d6d6 100644
+>>>> --- a/fs/nfsd/nfs4callback.c
+>>>> +++ b/fs/nfsd/nfs4callback.c
+>>>> @@ -664,7 +664,7 @@ static int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *c
+>>>>  		args.authflavor = clp->cl_cred.cr_flavor;
+>>>>  		clp->cl_cb_ident = conn->cb_ident;
+>>>>  	} else {
+>>>> -		if (!conn->cb_xprt)
+>>>> +		if (!conn->cb_xprt || !ses)
+>>>
+>>> It looks to me like ses should be set whenenver conn is.  Do you have
+>>> reason to believe the contrary?
+>>
+>> No. It just a double check as conn->cb_xprt.
+>> I will drop it in v2 of this path.
+>>
+>>>
+>>>>  			return -EINVAL;
+>>>>  		clp->cl_cb_conn.cb_xprt = conn->cb_xprt;
+>>>>  		clp->cl_cb_session = ses;
+>>>> @@ -982,7 +982,7 @@ static void nfsd4_process_cb_update(struct nfsd4_callback *cb)
+>>>>  	}
+>>>>  	spin_unlock(&clp->cl_lock);
+>>>>  
+>>>> -	err = setup_callback_client(clp, &conn, ses);
+>>>> +	err = c ? setup_callback_client(clp, &conn, ses) : -ENOENT;
+>>>
+>>> But, whoops, yes, this looks like a good fix.  (Have you hit this
+>>> failure in practice?)  
+>>
+>> Yes. When destroying the last session from client, nfsd4_probe_callback_sync
+>> will be called in function nfsd4_destroy_session.
+>>
+>> As that, callback client will be update in function nfsd4_process_cb_update,
+>> so __nfsd4_find_backchannel always failed with returning NULL.
 > 
-> Currently this can't be work, because ipv6_addr_scope returns a int with
-> a mask of IPV6_ADDR_SCOPE_MASK (0x00f0U) and IPV6_ADDR_SCOPE_LINKLOCAL
-> is 0x02. So the condition is always false.
-> 
-> Signed-off-by: Alexander Aring <alex.aring@gmail.com>
+> On second thoughts, why is that actually a problem?
+> setup_callback_client() will fail and you'll get an unnecessary printk
+> from nfsd4_mark_cb_down, I guess. 
 
-Acked-by: Hannes Frederic Sowa <hannes@stressinduktion.org>
+Yes, that's right. setup_callback_client will failed with －EINVAL.
+This patch just changes the logic, function returns immediately when finding backchannel failed,
+instead of enter setup_callback_client.
+
+>  Is that the only problem?
+
+Yes, this path only focus the logic problem. 
+
+thanks,
+Kinglong Mee
+
+>> (Ps: Maybe needs
+>> another patch to avoid updating callback connect when destroying the last session ?)
+>>
+>> For debugging, add message when finding backchannel failed.
+>> Just testing mount/umount at client, the debug message will be print every umount.
+>>
+>> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+>> index 7f05cd1..1be4c61 100644
+>> --- a/fs/nfsd/nfs4callback.c
+>> +++ b/fs/nfsd/nfs4callback.c
+>> @@ -979,6 +979,8 @@ static void nfsd4_process_cb_update(struct nfsd4_callback *cb)
+>>                 svc_xprt_get(c->cn_xprt);
+>>                 conn.cb_xprt = c->cn_xprt;
+>>                 ses = c->cn_session;
+>> +       } else {
+>> +               printk("%s: found connet failed.\n", __func__);
+>>         }
+>>         spin_unlock(&clp->cl_lock);
+>>
+>>> But I think we should probably adopt the sort of
+>>> control flow that's more idiomatic in the kernel:
+>>>
+>>> 	c = __nfsd4_find_backchannel(clp)
+>>> 	if (!c)
+>>> 		goto out_unlock;
+>>> 	...
+>>> 	spin_unlock(&clp->cl_lock);
+>>> 	err = setup_callback_client(clp, &conn, ses);
+>>> 	if (err)
+>>> 		goto out_err;
+>>>
+>>
+>> OK, it is really better.
+>>
+>> thanks,
+>> Kinglong Mee
+>>
+>>> etc.
+>>>
+>>> --b.
+>>>
+>>>>  	if (err) {
+>>>>  		nfsd4_mark_cb_down(clp, err);
+>>>>  		return;
+>>>> -- 
+>>>> 1.8.4.2
+>>>
+>>
+> 
 
