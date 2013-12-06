@@ -1,115 +1,85 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:59545 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751815Ab3LANUV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 1 Dec 2013 08:20:21 -0500
-Message-Id: <20131201132009.815675002@bombadil.infradead.org>
-Date: Sun, 01 Dec 2013 05:14:42 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: linux-nfs@vger.kernel.org, viro@zeniv.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org
-Subject: [PATCH 01/11] sunrpc: allocate pipefs inodes using kmalloc
-References: <20131201131441.790963326@bombadil.infradead.org>
+Received: from fieldses.org ([174.143.236.118]:51032 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756101Ab3LFPgT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 6 Dec 2013 10:36:19 -0500
+Date: Fri, 6 Dec 2013 10:36:17 -0500
+To: Rui Xiang <rui.xiang@huawei.com>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/2] nfs/nfsd: return err directly while malloc failing
+Message-ID: <20131206153617.GA9020@fieldses.org>
+References: <1386322217-27436-1-git-send-email-rui.xiang@huawei.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1386322217-27436-1-git-send-email-rui.xiang@huawei.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-There's not a lot of them, and not needing our own slab makes
-initialization ordering a whole lot simpler.
+On Fri, Dec 06, 2013 at 05:30:16PM +0800, Rui Xiang wrote:
+> while nthreads malloc fails, return err value directory
+> without kfree.
+> 
+> And the same issue arises in nfs_lookup, so return res
+> directly without freeing fh and fattr.
+> 
+> Signed-off-by: Rui Xiang <rui.xiang@huawei.com>
+> ---
+>  fs/nfs/dir.c     | 4 ++--
+>  fs/nfsd/nfsctl.c | 7 ++++---
+>  2 files changed, 6 insertions(+), 5 deletions(-)
+> 
+> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+> index 812154a..2518865 100644
+> --- a/fs/nfs/dir.c
+> +++ b/fs/nfs/dir.c
+> @@ -1278,7 +1278,7 @@ struct dentry *nfs_lookup(struct inode *dir, struct dentry * dentry, unsigned in
+>  
+>  	res = ERR_PTR(-ENAMETOOLONG);
+>  	if (dentry->d_name.len > NFS_SERVER(dir)->namelen)
+> -		goto out;
+> +		return res;
+>  
+>  	/*
+>  	 * If we're doing an exclusive create, optimize away the lookup
+> @@ -1287,7 +1287,7 @@ struct dentry *nfs_lookup(struct inode *dir, struct dentry * dentry, unsigned in
+>  	if (nfs_is_exclusive_create(dir, flags)) {
+>  		d_instantiate(dentry, NULL);
+>  		res = NULL;
+> -		goto out;
+> +		return res;
+>  	}
+>  
+>  	res = ERR_PTR(-ENOMEM);
+> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+> index 7f55517..3c5e748 100644
+> --- a/fs/nfsd/nfsctl.c
+> +++ b/fs/nfsd/nfsctl.c
+> @@ -491,9 +491,10 @@ static ssize_t write_pool_threads(struct file *file, char *buf, size_t size)
+>  	}
+>  
+>  	nthreads = kcalloc(npools, sizeof(int), GFP_KERNEL);
+> -	rv = -ENOMEM;
+> -	if (nthreads == NULL)
+> -		goto out_free;
+> +	if (nthreads == NULL) {
+> +		mutex_unlock(&nfsd_mutex);
+> +		return -ENOENT;
+> +	}
+>  
+>  	if (size > 0) {
+>  		for (i = 0; i < npools; i++) {
+> -- 
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
----
- net/sunrpc/rpc_pipe.c |   39 +++++++--------------------------------
- 1 file changed, 7 insertions(+), 32 deletions(-)
+Looks fine.  Could you send this last chunk to me as a separate patch?
 
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index bf04b30..395eb5f 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -40,8 +40,6 @@
- static struct file_system_type rpc_pipe_fs_type;
- 
- 
--static struct kmem_cache *rpc_inode_cachep __read_mostly;
--
- #define RPC_UPCALL_TIMEOUT (30*HZ)
- 
- static BLOCKING_NOTIFIER_HEAD(rpc_pipefs_notifier_list);
-@@ -193,24 +191,21 @@ rpc_close_pipes(struct inode *inode)
- static struct inode *
- rpc_alloc_inode(struct super_block *sb)
- {
--	struct rpc_inode *rpci;
--	rpci = (struct rpc_inode *)kmem_cache_alloc(rpc_inode_cachep, GFP_KERNEL);
-+	struct rpc_inode *rpci = kmalloc(sizeof(struct rpc_inode), GFP_KERNEL);
- 	if (!rpci)
- 		return NULL;
--	return &rpci->vfs_inode;
--}
- 
--static void
--rpc_i_callback(struct rcu_head *head)
--{
--	struct inode *inode = container_of(head, struct inode, i_rcu);
--	kmem_cache_free(rpc_inode_cachep, RPC_I(inode));
-+	inode_init_once(&rpci->vfs_inode);
-+	rpci->private = NULL;
-+	rpci->pipe = NULL;
-+	init_waitqueue_head(&rpci->waitq);
-+	return &rpci->vfs_inode;
- }
- 
- static void
- rpc_destroy_inode(struct inode *inode)
- {
--	call_rcu(&inode->i_rcu, rpc_i_callback);
-+	kfree_rcu(inode, i_rcu);
- }
- 
- static int
-@@ -1327,28 +1322,10 @@ static struct file_system_type rpc_pipe_fs_type = {
- MODULE_ALIAS_FS("rpc_pipefs");
- MODULE_ALIAS("rpc_pipefs");
- 
--static void
--init_once(void *foo)
--{
--	struct rpc_inode *rpci = (struct rpc_inode *) foo;
--
--	inode_init_once(&rpci->vfs_inode);
--	rpci->private = NULL;
--	rpci->pipe = NULL;
--	init_waitqueue_head(&rpci->waitq);
--}
--
- int register_rpc_pipefs(void)
- {
- 	int err;
- 
--	rpc_inode_cachep = kmem_cache_create("rpc_inode_cache",
--				sizeof(struct rpc_inode),
--				0, (SLAB_HWCACHE_ALIGN|SLAB_RECLAIM_ACCOUNT|
--						SLAB_MEM_SPREAD),
--				init_once);
--	if (!rpc_inode_cachep)
--		return -ENOMEM;
- 	err = rpc_clients_notifier_register();
- 	if (err)
- 		goto err_notifier;
-@@ -1360,13 +1337,11 @@ int register_rpc_pipefs(void)
- err_register:
- 	rpc_clients_notifier_unregister();
- err_notifier:
--	kmem_cache_destroy(rpc_inode_cachep);
- 	return err;
- }
- 
- void unregister_rpc_pipefs(void)
- {
- 	rpc_clients_notifier_unregister();
--	kmem_cache_destroy(rpc_inode_cachep);
- 	unregister_filesystem(&rpc_pipe_fs_type);
- }
--- 
-1.7.10.4
+--b.
 
-
+> 1.8.2.2
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
