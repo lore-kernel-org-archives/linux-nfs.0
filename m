@@ -1,141 +1,28 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:51118 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755964Ab3LIUEb convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Dec 2013 15:04:31 -0500
+Received: from bombadil.infradead.org ([198.137.202.9]:53694 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758523Ab3LFSJA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Dec 2013 13:09:00 -0500
+Date: Fri, 6 Dec 2013 10:08:58 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: Stanislav Kholmanskikh <stanislav.kholmanskikh@oracle.com>
+Cc: Christoph Hellwig <hch@infradead.org>, xfs@oss.sgi.com,
+        linux-nfs@vger.kernel.org, Vasily Isaenko <vasily.isaenko@oracle.com>
+Subject: Re: nfs vs xfstests 193
+Message-ID: <20131206180858.GA2803@infradead.org>
+References: <20131106115648.GA24804@infradead.org>
+ <52A1CF22.106@oracle.com>
 MIME-Version: 1.0
-Message-ID: <3a1854bb-6a06-4924-810a-aa8ba69f642b@default>
-Date: Mon, 9 Dec 2013 12:04:27 -0800 (PST)
-From: Dan Duval <dan.duval@oracle.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: <linux-nfs@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>
-Subject: NFS file size anomaly?
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <52A1CF22.106@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-[NOTE: cross-posted to linux-nfs and linux-fsdevel]
+On Fri, Dec 06, 2013 at 05:20:34PM +0400, Stanislav Kholmanskikh wrote:
+> Just to make the behaviour more consistent between NFS and other
+> "local" file systems as It was done by
+> commit https://git.kernel.org/cgit/linux/kernel/git/stable/linux-stable.git/commit/?id=0953e620de0538cbd081f1b45126f6098112a598
 
-I'm seeing some unexpected behavior with NFS and file sizes.
-
-The test cases are from the LTP (Linux Test Project), tests
-ftest01, ftest05, and ftest07.  I'll concentrate on ftest01
-to explain what I've found.
-
-ftest01 fires off 5 subprocesses, each of which opens an empty
-file and does the following, repeatedly:
-
-        . lseek to some point in the file
-        . read 2048 bytes
-        . lseek back to the same point
-        . write 2048 bytes
-
-The "point in the file" is determined by a pseudo-random
-sequence.  All such points are on 2048-byte boundaries.
-
-Occasionally, also driven pseudo-randomly, ftest01 will throw
-in a call to ftruncate(), truncate(), sync(), or fstat().
-
-With the fstat() calls, the returned .st_size is compared
-with the test's expected size for the file, and an error is
-declared if they don't match.
-
-What's happening is that, some way into the test, this fstat()
-check is failing.  Specifically, the .st_size reported by
-fstat() is greater than the computed size.
-
-The sequence of operations leading up to this is:
-
-        lseek 1034240 0
-        read 2048
-        lseek 0 1
-        write 2048
-
-        lseek 638976 0
-        (read, lseek, write)
-
-        lseek 708608 0
-        (read, lseek, write)
-
-        lseek 708608 0
-        (read, lseek, write)
-
-        lseek 679584 0
-        (read, lseek, write)
-
-        truncate 266240
-
-        lseek 960512 0
-        (read, lseek, write)
-
-        (a bunch of lseek/read/lseek/write ops that do not
-         extend the file)
-
-        fstat
-
-So the expected size of the file is 960512 + 2048 == 960560.
-But the fstat reports a size of 1036288.
-
-A look at what's happening on the wire, distilled from the
-output of tethereal, is instructive.
-
-        READ Call 638976 4096 (byte offset and size to read)
-        READ Reply 4096 995382 (bytes read and current file size)
-
-        SETATTR Call 266240 (this corresponds to the truncate() call)
-
-        WRITE Call 638976 4096 (byte offset and size to write)
-        WRITE Call 708608 4096
-        WRITE Call 1032192 4096
-
-        SETATTR Reply 266240 (current size of file)
-
-        WRITE Reply 643072 (current size of file after write)
-        WRITE Reply 1036288
-        WRITE Reply 1036288
-
-        GETATTR (initiated internally by NFS code?)
-
-        READ Call 958464 4096 READ Reply 4096 1036288
-
-        ... (a bunch of READ and WRITE ops that do not extend the file)
-
-        GETATTR Call (this corresponds to the fstat() call)
-        GETATTR Reply 1036288
-
-So what appears to have happened here is that three of the
-WRITE operations that the program issued before the truncate()
-call have "bled past" the SETATTR, extending the file further
-than the SETATTR did.  Since none of the operations issued
-after SETATTR extends the file further, by the time we get to
-the GETATTR, the file is larger than the test expects.
-
-There are two strange things going on here.  The first,
-identified above, is that write()s that were initiated before
-the truncate() call are being processed after the resulting
-SETATTR call.  The second is that WRITE operations are being
-initiated while the SETATTR is outstanding.
-
-It seems to me that a size-changing SETATTR operation should
-act essentially as an I/O barrier. It should wait for all outstanding
-read/write requests to complete, then issue the SETATTR,
-wait for the reply, and only then re-enable read/write requests.
-
-In other words, SETATTR should be atomic with respect to other
-I/O operations.
-
-A git bisect indicates that this problem first appeared (or
-was first uncovered) with this commit:
-
-    4f8ad65 writeback: Refactor writeback_single_inode()
-
-It continues to the most recent mainline kernels.
-
-NFS v3 vs. v4 doesn't seem to matter.
-
-Has anyone else seen this?  Any pointers you can provide?
-
-Thanks,
-Dan Duval
-Oracle Corp.
+Seems like we got others in line with XFS behavior.  I'd prefer to
+have NFS follow this as well.
 
