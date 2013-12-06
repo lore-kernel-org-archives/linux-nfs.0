@@ -1,51 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:38303 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:34067 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752440Ab3LPDTI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 15 Dec 2013 22:19:08 -0500
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id rBG3J8AT005603
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Sun, 15 Dec 2013 22:19:08 -0500
-Received: from tasleson.csb (vpn-61-38.rdu2.redhat.com [10.10.61.38])
-	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id rBG3J7Ml007231
-	for <linux-nfs@vger.kernel.org>; Sun, 15 Dec 2013 22:19:07 -0500
-Message-ID: <52AE712B.3060404@redhat.com>
-Date: Sun, 15 Dec 2013 21:19:07 -0600
-From: Tony Asleson <tasleson@redhat.com>
-Reply-To: tasleson@redhat.com
+	id S1751294Ab3LFUoS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 6 Dec 2013 15:44:18 -0500
+Date: Fri, 6 Dec 2013 15:44:04 -0500
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Stanislav Kholmanskikh <stanislav.kholmanskikh@oracle.com>,
+        xfs@oss.sgi.com, linux-nfs@vger.kernel.org,
+        Vasily Isaenko <vasily.isaenko@oracle.com>,
+        "Sachin S. Prabhu" <sprabhu@redhat.com>
+Subject: Re: nfs vs xfstests 193
+Message-ID: <20131206204404.GA12613@fieldses.org>
+References: <20131106115648.GA24804@infradead.org>
+ <52A1CF22.106@oracle.com>
+ <20131206180858.GA2803@infradead.org>
 MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org
-Subject: exportfs: Messages indicating unsupported operation that works
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20131206180858.GA2803@infradead.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When I try to export a directory that has a space in it I get the following:
+On Fri, Dec 06, 2013 at 10:08:58AM -0800, Christoph Hellwig wrote:
+> On Fri, Dec 06, 2013 at 05:20:34PM +0400, Stanislav Kholmanskikh wrote:
+> > Just to make the behaviour more consistent between NFS and other
+> > "local" file systems as It was done by
+> > commit https://git.kernel.org/cgit/linux/kernel/git/stable/linux-stable.git/commit/?id=0953e620de0538cbd081f1b45126f6098112a598
+> 
+> Seems like we got others in line with XFS behavior.
 
-# exportfs *:"/mnt/has space"
-exportfs: /mnt/has space does not support NFS export
+But, not having tested the behavior, it looks like fs/open.c has a
+simlar !S_ISDIR() check.  Where's that behavior implemented?
 
-exit code is 0.
+> I'd prefer to have NFS follow this as well.
 
-If I do:
+Huh.  Sachin, do you remember if there was any other motivation behind
+that patch?
 
-# exportfs -v
-/mnt/has space	<world>(ro,wdelay,root_squash,no_subtree_check,
-sec=sys,ro,secure,root_squash,no_all_squash)
-
-It exists and I can mount it from a client and everything appears fine.
-
-I took a peek at the code and we are failing in test_export.  We are
-getting a -1 returned when we write to: /proc/net/rpc/nfsd.export/channel .
-
-This seems like a confusing message when it appears that everything is
-working, thoughts?
-
-Notes:
-- Kernel Linux rawhide 3.13.0-0.rc3.git1.2.fc21.x86_64
-- nfs-utils: Latest from git, but this happens on older released
-versions tested too.
-
-Thanks,
-Tony
+--b.
