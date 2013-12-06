@@ -1,9 +1,9 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:52006 "EHLO
+Received: from bombadil.infradead.org ([198.137.202.9]:54028 "EHLO
 	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751815Ab3LLVEq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Dec 2013 16:04:46 -0500
-Date: Thu, 12 Dec 2013 13:04:39 -0800
+	with ESMTP id S1753248Ab3LFTqm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Dec 2013 14:46:42 -0500
+Date: Fri, 6 Dec 2013 11:46:37 -0800
 From: Christoph Hellwig <hch@infradead.org>
 To: Andreas Gruenbacher <andreas.gruenbacher@linbit.com>
 Cc: Christoph Hellwig <hch@infradead.org>, viro@zeniv.linux.org.uk,
@@ -12,33 +12,26 @@ Cc: Christoph Hellwig <hch@infradead.org>, viro@zeniv.linux.org.uk,
         linux-mtd@lists.infradead.org, Mark Fasheh <mfasheh@suse.com>,
         Joel Becker <jlbec@evilplan.org>, reiserfs-devel@vger.kernel.org,
         xfs@oss.sgi.com, jfs-discussion@lists.sourceforge.net,
-        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
-        Jan Kara <jack@suse.cz>
-Subject: Re: [PATCH 02/18] fs: add get_acl helper
-Message-ID: <20131212210439.GA27686@infradead.org>
-References: <20131211104243.148113893@bombadil.infradead.org>
- <20131211104526.648135334@bombadil.infradead.org>
- <1724169901.69108.1386875169382.JavaMail.zimbra@linbit.com>
+        cluster-devel@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 00/18] Consolidate Posix ACL implementation
+Message-ID: <20131206194637.GA32122@infradead.org>
+References: <20131201115903.910559036@bombadil.infradead.org>
+ <279325185.39210.1386266234086.JavaMail.zimbra@linbit.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1724169901.69108.1386875169382.JavaMail.zimbra@linbit.com>
+In-Reply-To: <279325185.39210.1386266234086.JavaMail.zimbra@linbit.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Dec 12, 2013 at 08:06:09PM +0100, Andreas Gruenbacher wrote:
-> > +	/*
-> > +	 * A filesystem can force a ACL callback by just never filling the
-> > +	 * ACL cache. But normally you'd fill the cache either at inode
-> > +	 * instantiation time, or on the first ->get_acl call.
-> > +	 *
-> > +	 * If the filesystem doesn't have a get_acl() function at all, we'll
-> > +	 * just create the negative cache entry.
-> > +	 */
-> > +	if (!inode->i_op->get_acl) {
-> > +		set_cached_acl(inode, type, NULL);
-> > +		return ERR_PTR(-EAGAIN);
-> 
-> The function should return NULL here.
+On Thu, Dec 05, 2013 at 06:57:14PM +0100, Andreas Gruenbacher wrote:
+> I see that get_acl and set_acl are being defined in some but not all symlink inode operations (for example, btrfs them while ext4 does not), and that posix_acl_xattr_set() doesn't check if set_acl is defined.  Symlinks cannot have ACLs, so set_acl should either never be defined for symlinks (and a NULL check is then needed in posix_acl_xattr_set()), or it is defined in all inode operations, and S_ISNLNK() check is needed in posix_acl_xattr_set().  That latter check should probably be added in any case to be on the safe side.
 
-Indeed.  EAGAIN is the convention check_acl() in fs/namei.c uses,
-but it will return that automatically if we just return NULL here.
+Yes, we should add the check.  We also in general should not have
+set_acl/get_acl on links and I'll look over it.
+
+> Patch 6 also declares posix_acl_prepare() but this function is never introduced; this must be a leftover from a previous version.
+
+Indeed.
+
+Thanks for the review!
+
