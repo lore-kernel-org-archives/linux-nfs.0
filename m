@@ -1,36 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:47528 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751399Ab3LLIOG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Dec 2013 03:14:06 -0500
-Date: Thu, 12 Dec 2013 00:13:59 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Stanislav Kholmanskikh <stanislav.kholmanskikh@oracle.com>,
-        linux-nfs@vger.kernel.org, vasily.isaenko@oracle.com,
-        hch@infradead.org, xfs@oss.sgi.com, sprabhu@redhat.com
-Subject: Re: [PATCH] nfsd: revoking of suid/sgid bits after chown() in a
- consistent way
-Message-ID: <20131212081359.GB2325@infradead.org>
-References: <20131206204747.GB12613@fieldses.org>
- <1386756996-28083-1-git-send-email-stanislav.kholmanskikh@oracle.com>
- <52A845C6.2080109@oracle.com>
- <20131212033859.GA5978@fieldses.org>
+Received: from out2-smtp.messagingengine.com ([66.111.4.26]:41256 "EHLO
+	out2-smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754654Ab3LFScb (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Dec 2013 13:32:31 -0500
+Date: Fri, 6 Dec 2013 10:32:29 -0800
+From: Greg KH <greg@kroah.com>
+To: Weng Meiling <wengmeiling.weng@huawei.com>
+Cc: stable@vger.kernel.org, bfields@fieldses.org, skinsbursky@parallels.com,
+        linux-nfs@vger.kernel.org, lizefan@huawei.com, h.huangqiang@huawei.com
+Subject: Re: [PATCH 3.4 2/9] nfsd: pass net to nfsd_init_socks()
+Message-ID: <20131206183229.GA4379@kroah.com>
+References: <1386136415-30976-1-git-send-email-wengmeiling.weng@huawei.com>
+ <1386136415-30976-3-git-send-email-wengmeiling.weng@huawei.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20131212033859.GA5978@fieldses.org>
+In-Reply-To: <1386136415-30976-3-git-send-email-wengmeiling.weng@huawei.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Dec 11, 2013 at 10:38:59PM -0500, J. Bruce Fields wrote:
-> In the v3 case I'd expect the open O_TRUNC to result in a SETATTR rpc,
-> in the v4 case an OPEN rpc.  Both result in a call to nfsd_setattr,
-> though I only see nfsd_setattr turning off the SUID/SGID bits in the
-> chown case.  Are you sure it isn't the subsequent write that clears
-> those bits?
+On Wed, Dec 04, 2013 at 01:53:28PM +0800, Weng Meiling wrote:
+> From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+> 
+> commit db6e182c17cb1a7069f7f8924721ce58ac05d9a3 upstream.
+> 
+> Precursor patch. Hard-coded "init_net" will be replaced by proper one in
+> future.
+> 
+> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> [wengmeiling: backport to 3.4:
+>  - adjust context
+>  - one more parameter(int port) for nfsd_init_socks()]
 
-We've traditionally cleared the suid bits for O_TRUNC for local
-filesystem, although this is more a convention than a real security
-need.  It would still be good if NFSv4 would follow the general
-semantics.
+This patch breaks the build, so I can't take it, sorry.
 
+I took the first patch in the series, but had to stop here.
+
+Care to fix this up and resend?
+
+thanks,
+
+greg k-h
