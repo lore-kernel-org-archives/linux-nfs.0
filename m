@@ -1,71 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.pingtimeout.net ([194.187.214.64]:46761 "EHLO
-	mx1.pingtimeout.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757714Ab3LBU2x (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Dec 2013 15:28:53 -0500
-Message-ID: <529CEBC3.8060505@pingtimeout.net>
-Date: Mon, 02 Dec 2013 22:21:23 +0200
-From: =?ISO-8859-1?Q?Antti_T=F6nkyr=E4?= <daedalus@pingtimeout.net>
+Received: from bombadil.infradead.org ([198.137.202.9]:54038 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758023Ab3LFTrW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Dec 2013 14:47:22 -0500
+Date: Fri, 6 Dec 2013 11:47:20 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: Steven Whitehouse <swhiteho@redhat.com>
+Cc: Christoph Hellwig <hch@infradead.org>, viro@zeniv.linux.org.uk,
+        xfs@oss.sgi.com, reiserfs-devel@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net, cluster-devel@redhat.com,
+        linux-mtd@lists.infradead.org, jfs-discussion@lists.sourceforge.net,
+        linux-fsdevel@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-btrfs@vger.kernel.org
+Subject: Re: [Cluster-devel] [PATCH 16/18] gfs2: use generic posix ACL
+ infrastructure
+Message-ID: <20131206194720.GB32122@infradead.org>
+References: <20131201115903.910559036@bombadil.infradead.org>
+ <20131201120656.539995924@bombadil.infradead.org>
+ <1386159157.2711.11.camel@menhir>
 MIME-Version: 1.0
-To: bfields@fieldses.org
-CC: linux-nfs@vger.kernel.org
-Subject: Patch for mapping EILSEQ into NFSERR_INVAL
-Content-Type: multipart/mixed;
- boundary="------------060306060709040602020102"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1386159157.2711.11.camel@menhir>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is a multi-part message in MIME format.
---------------060306060709040602020102
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
+On Wed, Dec 04, 2013 at 12:12:37PM +0000, Steven Whitehouse wrote:
+> >  		error = posix_acl_equiv_mode(acl, &mode);
+> > +		if (error < 0)
+> >  
+> Andy Price has pointed out a missing "return error;" here
+> 
+> > -		if (error <= 0) {
+> > -			posix_acl_release(acl);
+> > +		if (error == 0)
+> >  			acl = NULL;
+> >  
+> > -			if (error < 0)
+> > -				return error;
+> > -		}
+> > -
+> 
+> Also, there seems to be a white space error in the xfs patch around line
+> 170 in fs/xfs/xfs_iops.c where there is an added "if (default_acl)" with
+> a space before the tab,
 
-Hello,
-
-NTFS file system and some other filesystems seem to return EILSEQ when 
-user passes badly formatted data. Current NFSv4 implementation does not 
-map EILSEQ into any known NFSv4 error code which causes problems in some 
-use cases. In my case I observed that if filesystem returns EILSEQ, the 
-NFS share will begin I/O erroring until it's able to recover (If there 
-are handles open to the files in the share, I/O errors will continue 
-until they are closed after which the share recovers after small period 
-of time).
-
-Given that widely used ntfs-3g FUSE module also returns EILSEQ on the 
-same case (I tested this) I would argue that a fix should be done for 
-upstream especially since RFC5661 clearly defines that invalid UTF-8 
-sequence should map into NFSERR_INVAL, exact quote: "Where the client 
-sends an invalid UTF-8 string, the server should return NFS4ERR_INVAL 
-(see Table 5)".
-
-Other way of fixing this would be to change all EILSEQs to return 
-something else but I think this is a wrong way to fix the problem since 
-it takes the sane error message away (Invalid or incomplete multibyte or 
-wide character).
-
-If we simply do a mapping here then isn't the fix straightforward 
-(attached)?
-
-BR, Antti
-
---------------060306060709040602020102
-Content-Type: text/plain; charset=windows-1252;
- name="proposed_mapping.patch"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="proposed_mapping.patch"
-
-diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
-index 54c6b3d..a022a23 100644
---- a/fs/nfsd/nfsproc.c
-+++ b/fs/nfsd/nfsproc.c
-@@ -724,6 +724,7 @@ nfserrno (int errno)
-                { nfserr_notdir, -ENOTDIR },
-                { nfserr_isdir, -EISDIR },
-                { nfserr_inval, -EINVAL },
-+               { nfserr_inval, -EILSEQ },
-                { nfserr_fbig, -EFBIG },
-                { nfserr_nospc, -ENOSPC },
-                { nfserr_rofs, -EROFS },
-
---------------060306060709040602020102--
+I'll take care of these for the next version.
