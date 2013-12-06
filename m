@@ -1,60 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from order.stressinduktion.org ([87.106.68.36]:44329 "EHLO
-	order.stressinduktion.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752571Ab3LUMom (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 21 Dec 2013 07:44:42 -0500
-Date: Sat, 21 Dec 2013 13:44:40 +0100
-From: Hannes Frederic Sowa <hannes@stressinduktion.org>
-To: Alexander Aring <alex.aring@gmail.com>
-Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org,
-        netdev@vger.kernel.org, werner@almesberger.net
-Subject: Re: [PATCH] nfs: fix dead code of ipv6_addr_scope
-Message-ID: <20131221124440.GG14073@order.stressinduktion.org>
-References: <1387600744-11366-1-git-send-email-alex.aring@gmail.com>
-Mime-Version: 1.0
+Received: from fieldses.org ([174.143.236.118]:49665 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753208Ab3LFSAp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 6 Dec 2013 13:00:45 -0500
+Date: Fri, 6 Dec 2013 13:00:44 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] Do not enter setup_callback_client when finding
+ backchannel failed
+Message-ID: <20131206180044.GB9020@fieldses.org>
+References: <5295C982.1030904@gmail.com>
+ <20131202145917.GF1960@fieldses.org>
+ <529D4617.6080505@gmail.com>
+ <20131204171052.GE14646@fieldses.org>
+ <529FE070.4030306@gmail.com>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=utf-8
-In-Reply-To: <1387600744-11366-1-git-send-email-alex.aring@gmail.com>
+In-Reply-To: <529FE070.4030306@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Dec 21, 2013 at 05:39:04AM +0100, Alexander Aring wrote:
-> The correct way to check on IPV6_ADDR_SCOPE_LINKLOCAL is to check with
-> the ipv6_addr_src_scope function.
+On Thu, Dec 05, 2013 at 10:09:52AM +0800, Kinglong Mee wrote:
+> On 12/05/2013 01:10 AM, J. Bruce Fields wrote:
+> > On Tue, Dec 03, 2013 at 10:46:47AM +0800, Kinglong Mee wrote:
+> >> On 12/02/2013 10:59 PM, J. Bruce Fields wrote:
+> >>> On Wed, Nov 27, 2013 at 06:29:22PM +0800, Kinglong Mee wrote:
+> >>>> If finding backchannel failed, nfsd should not enter setup_callback_client.
+> >>>>
+> >>>> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> >>>> ---
+> >>>>  fs/nfsd/nfs4callback.c | 4 ++--
+> >>>>  1 file changed, 2 insertions(+), 2 deletions(-)
+> >>>>
+> >>>> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+> >>>> index 7f05cd1..755d6d6 100644
+> >>>> --- a/fs/nfsd/nfs4callback.c
+> >>>> +++ b/fs/nfsd/nfs4callback.c
+> >>>> @@ -664,7 +664,7 @@ static int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *c
+> >>>>  		args.authflavor = clp->cl_cred.cr_flavor;
+> >>>>  		clp->cl_cb_ident = conn->cb_ident;
+> >>>>  	} else {
+> >>>> -		if (!conn->cb_xprt)
+> >>>> +		if (!conn->cb_xprt || !ses)
+> >>>
+> >>> It looks to me like ses should be set whenenver conn is.  Do you have
+> >>> reason to believe the contrary?
+> >>
+> >> No. It just a double check as conn->cb_xprt.
+> >> I will drop it in v2 of this path.
+> >>
+> >>>
+> >>>>  			return -EINVAL;
+> >>>>  		clp->cl_cb_conn.cb_xprt = conn->cb_xprt;
+> >>>>  		clp->cl_cb_session = ses;
+> >>>> @@ -982,7 +982,7 @@ static void nfsd4_process_cb_update(struct nfsd4_callback *cb)
+> >>>>  	}
+> >>>>  	spin_unlock(&clp->cl_lock);
+> >>>>  
+> >>>> -	err = setup_callback_client(clp, &conn, ses);
+> >>>> +	err = c ? setup_callback_client(clp, &conn, ses) : -ENOENT;
+> >>>
+> >>> But, whoops, yes, this looks like a good fix.  (Have you hit this
+> >>> failure in practice?)  
+> >>
+> >> Yes. When destroying the last session from client, nfsd4_probe_callback_sync
+> >> will be called in function nfsd4_destroy_session.
+> >>
+> >> As that, callback client will be update in function nfsd4_process_cb_update,
+> >> so __nfsd4_find_backchannel always failed with returning NULL.
+> > 
+> > On second thoughts, why is that actually a problem?
+> > setup_callback_client() will fail and you'll get an unnecessary printk
+> > from nfsd4_mark_cb_down, I guess. 
 > 
-> Currently this can't be work, because ipv6_addr_scope returns a int with
-> a mask of IPV6_ADDR_SCOPE_MASK (0x00f0U) and IPV6_ADDR_SCOPE_LINKLOCAL
-> is 0x02. So the condition is always false.
+> Yes, that's right. setup_callback_client will failed with －EINVAL.
+> This patch just changes the logic, function returns immediately when finding backchannel failed,
+> instead of enter setup_callback_client.
 > 
-> Signed-off-by: Alexander Aring <alex.aring@gmail.com>
-> ---
-> I think ipv6_addr_src_scope should be correct, can somebody from netdev ml
-> confirm this please?
-> I stumple over that and I did not compile and test it. Maybe this is something
-> for stable?
+> >  Is that the only problem?
 > 
->  fs/nfs/nfs4filelayoutdev.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
-> index c7c295e5..efac602 100644
-> --- a/fs/nfs/nfs4filelayoutdev.c
-> +++ b/fs/nfs/nfs4filelayoutdev.c
-> @@ -95,7 +95,7 @@ same_sockaddr(struct sockaddr *addr1, struct sockaddr *addr2)
->  		b6 = (struct sockaddr_in6 *)addr2;
->  
->  		/* LINKLOCAL addresses must have matching scope_id */
-> -		if (ipv6_addr_scope(&a6->sin6_addr) ==
-> +		if (ipv6_addr_src_scope(&a6->sin6_addr) ==
->  		    IPV6_ADDR_SCOPE_LINKLOCAL &&
->  		    a6->sin6_scope_id != b6->sin6_scope_id)
->  			return false;
+> Yes, this path only focus the logic problem. 
 
-Good catch!
+Apologies, I'm still not sure I understand:
 
-SCOPE_TYPE also can be compared and is no bitfield, so the patch is
-good. Do you mind also proposing a patch for sctp?
+As far as I can tell, the *only* way that your patch changes behavior is
+to change the error passed to nfsd4_mark_cb_path down.
 
-Thanks,
+Is that right, or am I missing some other problem which this fixes?
 
-  Hannes
-
+--b.
