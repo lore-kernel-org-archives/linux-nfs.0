@@ -1,59 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f175.google.com ([209.85.216.175]:51212 "EHLO
-	mail-qc0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932572Ab3LIOiJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Dec 2013 09:38:09 -0500
-Received: by mail-qc0-f175.google.com with SMTP id e9so2797047qcy.34
-        for <linux-nfs@vger.kernel.org>; Mon, 09 Dec 2013 06:38:07 -0800 (PST)
-From: Jeff Layton <jlayton@redhat.com>
-To: trondmy@gmail.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] rpc_pipe: fix cleanup of dummy gssd directory when notification fails
-Date: Mon,  9 Dec 2013 09:38:00 -0500
-Message-Id: <1386599880-20031-1-git-send-email-jlayton@redhat.com>
+Received: from fieldses.org ([174.143.236.118]:58130 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753652Ab3LFVM5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 6 Dec 2013 16:12:57 -0500
+Date: Fri, 6 Dec 2013 16:12:55 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] Add missing recording of back channel attrs in
+ nfsd4_session
+Message-ID: <20131206211255.GA13148@fieldses.org>
+References: <2BCCA4EF-9FCC-4320-85E1-AD500467C95D@gmail.com>
+ <20131202165505.GL1960@fieldses.org>
+ <529D3D3B.7060204@gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <529D3D3B.7060204@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently, it could leak dentry references in some cases. Make sure
-we clean up properly.
+On Tue, Dec 03, 2013 at 10:08:59AM +0800, Kinglong Mee wrote:
+> On 12/03/2013 12:55 AM, J. Bruce Fields wrote:
+> > On Tue, Nov 26, 2013 at 10:25:20PM +0800, Kinglong Mee wrote:
+> >> commit 5b6feee9608dce7afd2646f457c93e612526d1d8 forgot
+> >> recording the back channel attrs in nfsd4_session.
+> >>
+> >> nfsd just check the back channel attars by check_backchannel_attrs,
+> >> but do not  record it in nfsd4_session in the latest kernel.
+> > 
+> > Whoops.  So the current server is returning random uninitialized data in
+> > those fields, or all zeros?
+> > 
+> > It would be easy enough to write a pynfs test for this, I think.
+> 
+> No, server returns right data for nfsd4_encode_create_session encoding
+> back-channel attrs from struct nfsd4_create_session, not from nfsd4_session.
+> 
+> Without this patch, se_bchannel in struct nfsd4_session contains data with all zeros.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- net/sunrpc/rpc_pipe.c | 14 +++++++++++++-
- 1 file changed, 13 insertions(+), 1 deletion(-)
+Oh, I see.
 
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index 5d973b2..b185548 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -1369,6 +1369,18 @@ out:
- 	return pipe_dentry;
- }
- 
-+static void
-+rpc_gssd_dummy_depopulate(struct dentry *pipe_dentry)
-+{
-+	struct dentry *clnt_dir = pipe_dentry->d_parent;
-+	struct dentry *gssd_dir = clnt_dir->d_parent;
-+
-+	__rpc_rmpipe(clnt_dir->d_inode, pipe_dentry);
-+	__rpc_depopulate(clnt_dir, gssd_dummy_info_file, 0, 1);
-+	__rpc_depopulate(gssd_dir, gssd_dummy_clnt_dir, 0, 1);
-+	dput(pipe_dentry);
-+}
-+
- static int
- rpc_fill_super(struct super_block *sb, void *data, int silent)
- {
-@@ -1412,7 +1424,7 @@ rpc_fill_super(struct super_block *sb, void *data, int silent)
- 	return 0;
- 
- err_depopulate:
--	dput(gssd_dentry);
-+	rpc_gssd_dummy_depopulate(gssd_dentry);
- 	blocking_notifier_call_chain(&rpc_pipefs_notifier_list,
- 					   RPC_PIPEFS_UMOUNT,
- 					   sb);
--- 
-1.8.4.2
+But actually we never use se_bchannel for anything.  Maybe the right
+thing is just to remove that field from nfsd4_session.
 
+--b.
+
+> 
+> thanks,
+> Kinglong Mee
+> 
+> >>
+> >> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> >> ---
+> >>  fs/nfsd/nfs4state.c | 2 ++
+> >>  1 file changed, 2 insertions(+)
+> >>
+> >> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> >> index 105d6fa..1aed9be 100644
+> >> --- a/fs/nfsd/nfs4state.c
+> >> +++ b/fs/nfsd/nfs4state.c
+> >> @@ -999,6 +999,8 @@ static void init_session(struct svc_rqst *rqstp, struct nfsd4_session *new, stru
+> >>  	spin_unlock(&nn->client_lock);
+> >>  	memcpy(&new->se_fchannel, &cses->fore_channel,
+> >>  			sizeof(struct nfsd4_channel_attrs));
+> >> +	memcpy(&new->se_bchannel, &cses->back_channel,
+> >> +			sizeof(struct nfsd4_channel_attrs));
+> >>  	if (cses->flags & SESSION4_BACK_CHAN) {
+> >>  		struct sockaddr *sa = svc_addr(rqstp);
+> >>  		/*
+> >> -- 
+> >> 1.8.1.4
+> >>
+> > 
+> 
