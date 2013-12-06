@@ -1,69 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yh0-f44.google.com ([209.85.213.44]:33524 "EHLO
-	mail-yh0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755900Ab3LBU0h (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Dec 2013 15:26:37 -0500
-Received: by mail-yh0-f44.google.com with SMTP id f64so9341532yha.3
-        for <linux-nfs@vger.kernel.org>; Mon, 02 Dec 2013 12:26:37 -0800 (PST)
-From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org
-Cc: hch@infradead.org, gartim@gmail.com, linux-nfs@vger.kernel.org
-Subject: [PATCH] nfsd: when reusing an existing repcache entry, unhash it first
-Date: Mon,  2 Dec 2013 15:26:19 -0500
-Message-Id: <1386015979-27511-1-git-send-email-jlayton@redhat.com>
+Received: from szxga03-in.huawei.com ([119.145.14.66]:12165 "EHLO
+	szxga03-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753513Ab3LFJbg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Dec 2013 04:31:36 -0500
+From: Rui Xiang <rui.xiang@huawei.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+CC: <linux-nfs@vger.kernel.org>, Rui Xiang <rui.xiang@huawei.com>
+Subject: [PATCH 2/2] nfs: fix return err if inode exiting in nfs_instantiate
+Date: Fri, 6 Dec 2013 17:30:17 +0800
+Message-ID: <1386322217-27436-2-git-send-email-rui.xiang@huawei.com>
+In-Reply-To: <1386322217-27436-1-git-send-email-rui.xiang@huawei.com>
+References: <1386322217-27436-1-git-send-email-rui.xiang@huawei.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The DRC code will attempt to reuse an existing, expired cache entry in
-preference to allocating a new one. It'll then search the cache, and if
-it gets a hit it'll then free the cache entry that it was going to
-reuse.
+In common function nfs_instantiate to create, mkdir, and mknod,
+if dentry->d_inode exits, it should return -EEXIST instead of
+-EACCES.
 
-The cache code doesn't unhash the entry that it's going to reuse
-however, so it's possible for it end up designating an entry for reuse
-and then subsequently freeing the same entry after it finds it.  This
-leads it to a later use-after-free situation and usually some list
-corruption warnings or an oops.
-
-Fix this by simply unhashing the entry that we intend to reuse. That
-will mean that it's not findable via a search and should prevent this
-situation from occurring.
-
-Cc: stable@vger.kernel.org # v3.10+
-Reported-by: Christoph Hellwig <hch@infradead.org>
-Reported-by: g. artim <gartim@gmail.com>
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Signed-off-by: Rui Xiang <rui.xiang@huawei.com>
 ---
- fs/nfsd/nfscache.c | 9 ++++++++-
- 1 file changed, 8 insertions(+), 1 deletion(-)
+ fs/nfs/dir.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/nfsd/nfscache.c b/fs/nfsd/nfscache.c
-index 9186c7c..b6af150 100644
---- a/fs/nfsd/nfscache.c
-+++ b/fs/nfsd/nfscache.c
-@@ -132,6 +132,13 @@ nfsd_reply_cache_alloc(void)
- }
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 2518865..e570b37 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -1547,7 +1547,7 @@ int nfs_instantiate(struct dentry *dentry, struct nfs_fh *fhandle,
+ 	struct dentry *parent = dget_parent(dentry);
+ 	struct inode *dir = parent->d_inode;
+ 	struct inode *inode;
+-	int error = -EACCES;
++	int error = -EEXIST;
  
- static void
-+nfsd_reply_cache_unhash(struct svc_cacherep *rp)
-+{
-+	hlist_del_init(&rp->c_hash);
-+	list_del_init(&rp->c_lru);
-+}
-+
-+static void
- nfsd_reply_cache_free_locked(struct svc_cacherep *rp)
- {
- 	if (rp->c_type == RC_REPLBUFF && rp->c_replvec.iov_base) {
-@@ -417,7 +424,7 @@ nfsd_cache_lookup(struct svc_rqst *rqstp)
- 		rp = list_first_entry(&lru_head, struct svc_cacherep, c_lru);
- 		if (nfsd_cache_entry_expired(rp) ||
- 		    num_drc_entries >= max_drc_entries) {
--			lru_put_end(rp);
-+			nfsd_reply_cache_unhash(rp);
- 			prune_cache_entries();
- 			goto search_cache;
- 		}
+ 	d_drop(dentry);
+ 
 -- 
-1.8.4.2
+1.8.2.2
+
 
