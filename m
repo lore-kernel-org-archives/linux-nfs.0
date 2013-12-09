@@ -1,48 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:43323 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751266Ab3LKKp3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Dec 2013 05:45:29 -0500
-Message-Id: <20131211104243.148113893@bombadil.infradead.org>
-Date: Wed, 11 Dec 2013 02:42:43 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: viro@zeniv.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-mtd@lists.infradead.org, Mark Fasheh <mfasheh@suse.com>,
-        Joel Becker <jlbec@evilplan.org>, reiserfs-devel@vger.kernel.org,
-        xfs@oss.sgi.com, jfs-discussion@lists.sourceforge.net,
-        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
-        Andreas Gruenbacher <andreas.gruenbacher@linbit.com>
-Subject: [PATCH 00/18] Consolidate Posix ACL implementation V2
+Received: from mail-pd0-f171.google.com ([209.85.192.171]:46846 "EHLO
+	mail-pd0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754934Ab3LIKLC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Dec 2013 05:11:02 -0500
+Received: by mail-pd0-f171.google.com with SMTP id z10so4958519pdj.30
+        for <linux-nfs@vger.kernel.org>; Mon, 09 Dec 2013 02:11:01 -0800 (PST)
+Message-ID: <52A5972D.7080705@gmail.com>
+Date: Mon, 09 Dec 2013 18:10:53 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: linux-nfs@vger.kernel.org
+Subject: [PATCH] nfsd: get rid of unused macro definition
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This series consolidates the various cut'n'pasted Posix ACL implementations
-into a single common one based on the ->get_acl method Linus added a while
-ago and a new ->set_acl counterpart.
+Since defined in Linux-2.6.12-rc2, READTIME has not been used.
 
-This remove ~1800 lines of code and provides a single place to implement
-various nasty little gems of the semantics.
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+---
+ fs/nfsd/nfs4xdr.c | 5 -----
+ 1 file changed, 5 deletions(-)
 
-Unfortunately the 9p code is still left out - it implements the ACLs
-in two very weird ways, one using the common code but on the client only,
-and one pasing things straight through to the server.  We could easily
-convert it to the new code on the write side if ->set_acl took a dentry,
-but there's no cance to do that on the ->get_acl side.  Ideas how to
-handle it welcome.
-
-After that we'd be ready to never go into the fs for the ACL attributes
-and branch straight to the ACL code below the syscall, repairing the
-old API braindamage of overloading ACLs onto the xattrs.
-
-
-Changes from V1:
- - check for symlinks in the ACL code and remove checks in the lower
-   level functions.
- - remove get_acl instances for symlinks in a few filesystems
- - pass a umode_t mode argument to posix_acl_chmod to accomodate f2fs
- - various cosemtic bits from the reviews.
-
-Note that I still haven't heard from ocfs2 folks, so the patch is left
-unchanged.
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index ee7237f..fd48536 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -103,11 +103,6 @@ xdr_error:					\
+ 	(x) = (u64)ntohl(*p++) << 32;		\
+ 	(x) |= ntohl(*p++);			\
+ } while (0)
+-#define READTIME(x)       do {			\
+-	p++;					\
+-	(x) = ntohl(*p++);			\
+-	p++;					\
+-} while (0)
+ #define READMEM(x,nbytes) do {			\
+ 	x = (char *)p;				\
+ 	p += XDR_QUADLEN(nbytes);		\
+-- 
+1.8.4.2
