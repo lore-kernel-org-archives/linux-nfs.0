@@ -1,48 +1,79 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qe0-f54.google.com ([209.85.128.54]:65162 "EHLO
-	mail-qe0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752475Ab3LELBA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Dec 2013 06:01:00 -0500
-Received: by mail-qe0-f54.google.com with SMTP id cy11so15199914qeb.41
-        for <linux-nfs@vger.kernel.org>; Thu, 05 Dec 2013 03:01:00 -0800 (PST)
-From: Jeff Layton <jlayton@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@fieldses.org>
-Subject: [PATCH RFC 0/3] nfsd: convert nfsd DRC code to use list_lru infrastructure
-Date: Thu,  5 Dec 2013 06:00:50 -0500
-Message-Id: <1386241253-5781-1-git-send-email-jlayton@redhat.com>
+Received: from szxga02-in.huawei.com ([119.145.14.65]:36844 "EHLO
+	szxga02-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933272Ab3LIMdr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Dec 2013 07:33:47 -0500
+Message-ID: <52A5B894.8020209@huawei.com>
+Date: Mon, 9 Dec 2013 20:33:24 +0800
+From: Rui Xiang <rui.xiang@huawei.com>
+MIME-Version: 1.0
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+CC: <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] nfs/nfsd: return err directly while malloc failing
+References: <1386322217-27436-1-git-send-email-rui.xiang@huawei.com>
+In-Reply-To: <1386322217-27436-1-git-send-email-rui.xiang@huawei.com>
+Content-Type: text/plain; charset="ISO-8859-1"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patchset converts the LRU list in the nfsd duplicate reply cache to
-use the new list_lru infrastrucure. Note that this is based on top of
-the patch that I sent to Bruce earlier this week that fixes the
-svc_cacherep direct reclaim bug. I'm sending this as an RFC since I'm
-not 100% convinced it's an improvement.
+On 2013/12/6 17:30, Rui Xiang wrote:
+> while nthreads malloc fails, return err value directory
+> without kfree.
+> 
+> And the same issue arises in nfs_lookup, so return res
+> directly without freeing fh and fattr.
+> 
+> Signed-off-by: Rui Xiang <rui.xiang@huawei.com>
+> ---
+>  fs/nfs/dir.c     | 4 ++--
+>  fs/nfsd/nfsctl.c | 7 ++++---
+>  2 files changed, 6 insertions(+), 5 deletions(-)
+> 
+> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+> index 812154a..2518865 100644
+> --- a/fs/nfs/dir.c
+> +++ b/fs/nfs/dir.c
+> @@ -1278,7 +1278,7 @@ struct dentry *nfs_lookup(struct inode *dir, struct dentry * dentry, unsigned in
+>  
+>  	res = ERR_PTR(-ENAMETOOLONG);
+>  	if (dentry->d_name.len > NFS_SERVER(dir)->namelen)
+> -		goto out;
+> +		return res;
+>  
+>  	/*
+>  	 * If we're doing an exclusive create, optimize away the lookup
+> @@ -1287,7 +1287,7 @@ struct dentry *nfs_lookup(struct inode *dir, struct dentry * dentry, unsigned in
+>  	if (nfs_is_exclusive_create(dir, flags)) {
+>  		d_instantiate(dentry, NULL);
+>  		res = NULL;
+> -		goto out;
+> +		return res;
+>  	}
+>  
+>  	res = ERR_PTR(-ENOMEM);
+Trond,  and what's your opinion on the chunk above?
 
-The majorly unintuitive thing about list_lru that I've found is that
-you can't call call list_lru_del from list_lru_walk. So, you need
-different routines to free an object depending on how it's being freed.
+Thanks
+ Rui
 
-Using list_lru also means extra spinlocking since we'd be moving to a
-per-node LRU, but that's probably not a big deal since all of this is
-done under the cache_lock anyway.
+> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+> index 7f55517..3c5e748 100644
+> --- a/fs/nfsd/nfsctl.c
+> +++ b/fs/nfsd/nfsctl.c
+> @@ -491,9 +491,10 @@ static ssize_t write_pool_threads(struct file *file, char *buf, size_t size)
+>  	}
+>  
+>  	nthreads = kcalloc(npools, sizeof(int), GFP_KERNEL);
+> -	rv = -ENOMEM;
+> -	if (nthreads == NULL)
+> -		goto out_free;
+> +	if (nthreads == NULL) {
+> +		mutex_unlock(&nfsd_mutex);
+> +		return -ENOENT;
+> +	}
+>  
+>  	if (size > 0) {
+>  		for (i = 0; i < npools; i++) {
+> 
 
-In any case, here's what a conversion to list_lru would look like...
-
-Discuss!
-
-Jeff Layton (3):
-  nfsd: don't try to reuse an expired DRC entry off the list
-  list_lru: add a new LRU_SKIP_REST lru_status value and handling
-  nfsd: convert DRC code to use list_lru
-
- fs/nfsd/nfscache.c       | 130 +++++++++++++++++++++++++----------------------
- include/linux/list_lru.h |   2 +
- mm/list_lru.c            |   4 +-
- 3 files changed, 75 insertions(+), 61 deletions(-)
-
--- 
-1.8.4.2
 
