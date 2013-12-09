@@ -1,318 +1,141 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailout4.samsung.com ([203.254.224.34]:21607 "EHLO
-	mailout4.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751584Ab3LFBig convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Dec 2013 20:38:36 -0500
-MIME-version: 1.0
-Content-type: text/plain; charset=UTF-8
-Message-id: <1386293854.2101.8.camel@kjgkr>
-Subject: Re: [PATCH 09/18] f2fs: use generic posix ACL infrastructure
-From: Jaegeuk Kim <jaegeuk.kim@samsung.com>
-Reply-to: jaegeuk.kim@samsung.com
-To: Christoph Hellwig <hch@infradead.org>
-Cc: viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net, linux-mtd@lists.infradead.org,
-        Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>,
-        reiserfs-devel@vger.kernel.org, xfs@oss.sgi.com,
-        jfs-discussion@lists.sourceforge.net, cluster-devel@redhat.com,
-        linux-nfs@vger.kernel.org
-Date: Fri, 06 Dec 2013 10:37:34 +0900
-In-reply-to: <20131201120655.205206019@bombadil.infradead.org>
-References: <20131201115903.910559036@bombadil.infradead.org>
- <20131201120655.205206019@bombadil.infradead.org>
+Received: from userp1040.oracle.com ([156.151.31.81]:51118 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755964Ab3LIUEb convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Dec 2013 15:04:31 -0500
+MIME-Version: 1.0
+Message-ID: <3a1854bb-6a06-4924-810a-aa8ba69f642b@default>
+Date: Mon, 9 Dec 2013 12:04:27 -0800 (PST)
+From: Dan Duval <dan.duval@oracle.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: <linux-nfs@vger.kernel.org>, <linux-fsdevel@vger.kernel.org>
+Subject: NFS file size anomaly?
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-2013-12-01 (일), 03:59 -0800, Christoph Hellwig:
+[NOTE: cross-posted to linux-nfs and linux-fsdevel]
 
-> f2fs has some weird mode bit handling, so still using the old
-> chmod code for now.
+I'm seeing some unexpected behavior with NFS and file sizes.
 
-f2fs caches a new mode bit for a while to make the consistency between
-xattr's acl mode and the inode mode.
-Anyway, it's a very good job.
+The test cases are from the LTP (Linux Test Project), tests
+ftest01, ftest05, and ftest07.  I'll concentrate on ftest01
+to explain what I've found.
+
+ftest01 fires off 5 subprocesses, each of which opens an empty
+file and does the following, repeatedly:
+
+        . lseek to some point in the file
+        . read 2048 bytes
+        . lseek back to the same point
+        . write 2048 bytes
+
+The "point in the file" is determined by a pseudo-random
+sequence.  All such points are on 2048-byte boundaries.
+
+Occasionally, also driven pseudo-randomly, ftest01 will throw
+in a call to ftruncate(), truncate(), sync(), or fstat().
+
+With the fstat() calls, the returned .st_size is compared
+with the test's expected size for the file, and an error is
+declared if they don't match.
+
+What's happening is that, some way into the test, this fstat()
+check is failing.  Specifically, the .st_size reported by
+fstat() is greater than the computed size.
+
+The sequence of operations leading up to this is:
+
+        lseek 1034240 0
+        read 2048
+        lseek 0 1
+        write 2048
+
+        lseek 638976 0
+        (read, lseek, write)
+
+        lseek 708608 0
+        (read, lseek, write)
+
+        lseek 708608 0
+        (read, lseek, write)
+
+        lseek 679584 0
+        (read, lseek, write)
+
+        truncate 266240
+
+        lseek 960512 0
+        (read, lseek, write)
+
+        (a bunch of lseek/read/lseek/write ops that do not
+         extend the file)
+
+        fstat
+
+So the expected size of the file is 960512 + 2048 == 960560.
+But the fstat reports a size of 1036288.
+
+A look at what's happening on the wire, distilled from the
+output of tethereal, is instructive.
+
+        READ Call 638976 4096 (byte offset and size to read)
+        READ Reply 4096 995382 (bytes read and current file size)
+
+        SETATTR Call 266240 (this corresponds to the truncate() call)
+
+        WRITE Call 638976 4096 (byte offset and size to write)
+        WRITE Call 708608 4096
+        WRITE Call 1032192 4096
+
+        SETATTR Reply 266240 (current size of file)
+
+        WRITE Reply 643072 (current size of file after write)
+        WRITE Reply 1036288
+        WRITE Reply 1036288
+
+        GETATTR (initiated internally by NFS code?)
+
+        READ Call 958464 4096 READ Reply 4096 1036288
+
+        ... (a bunch of READ and WRITE ops that do not extend the file)
+
+        GETATTR Call (this corresponds to the fstat() call)
+        GETATTR Reply 1036288
+
+So what appears to have happened here is that three of the
+WRITE operations that the program issued before the truncate()
+call have "bled past" the SETATTR, extending the file further
+than the SETATTR did.  Since none of the operations issued
+after SETATTR extends the file further, by the time we get to
+the GETATTR, the file is larger than the test expects.
+
+There are two strange things going on here.  The first,
+identified above, is that write()s that were initiated before
+the truncate() call are being processed after the resulting
+SETATTR call.  The second is that WRITE operations are being
+initiated while the SETATTR is outstanding.
+
+It seems to me that a size-changing SETATTR operation should
+act essentially as an I/O barrier. It should wait for all outstanding
+read/write requests to complete, then issue the SETATTR,
+wait for the reply, and only then re-enable read/write requests.
+
+In other words, SETATTR should be atomic with respect to other
+I/O operations.
+
+A git bisect indicates that this problem first appeared (or
+was first uncovered) with this commit:
+
+    4f8ad65 writeback: Refactor writeback_single_inode()
+
+It continues to the most recent mainline kernels.
+
+NFS v3 vs. v4 doesn't seem to matter.
+
+Has anyone else seen this?  Any pointers you can provide?
+
 Thanks,
-
-You can add:
-Reviewed-by: Jaegeuk Kim <jaegeuk.kim@samsung.com>
-
-> 
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
-> ---
->  fs/f2fs/acl.c   |  140 +++++++++----------------------------------------------
->  fs/f2fs/acl.h   |    1 +
->  fs/f2fs/file.c  |    1 +
->  fs/f2fs/namei.c |    2 +
->  fs/f2fs/xattr.c |    9 ++--
->  fs/f2fs/xattr.h |    2 -
->  6 files changed, 30 insertions(+), 125 deletions(-)
-> 
-> diff --git a/fs/f2fs/acl.c b/fs/f2fs/acl.c
-> index 45e8430..4f52fe0f 100644
-> --- a/fs/f2fs/acl.c
-> +++ b/fs/f2fs/acl.c
-> @@ -205,7 +205,7 @@ struct posix_acl *f2fs_get_acl(struct inode *inode, int type)
->  	return acl;
->  }
->  
-> -static int f2fs_set_acl(struct inode *inode, int type,
-> +static int __f2fs_set_acl(struct inode *inode, int type,
->  			struct posix_acl *acl, struct page *ipage)
->  {
->  	struct f2fs_sb_info *sbi = F2FS_SB(inode->i_sb);
-> @@ -261,37 +261,32 @@ static int f2fs_set_acl(struct inode *inode, int type,
->  	return error;
->  }
->  
-> +int f2fs_set_acl(struct inode *inode, struct posix_acl *acl, int type)
-> +{
-> +	return __f2fs_set_acl(inode, type, acl, NULL);
-> +}
-> +
->  int f2fs_init_acl(struct inode *inode, struct inode *dir, struct page *ipage)
->  {
-> -	struct f2fs_sb_info *sbi = F2FS_SB(dir->i_sb);
-> -	struct posix_acl *acl = NULL;
-> +	struct posix_acl *default_acl, *acl;
->  	int error = 0;
->  
-> -	if (!S_ISLNK(inode->i_mode)) {
-> -		if (test_opt(sbi, POSIX_ACL)) {
-> -			acl = f2fs_get_acl(dir, ACL_TYPE_DEFAULT);
-> -			if (IS_ERR(acl))
-> -				return PTR_ERR(acl);
-> -		}
-> -		if (!acl)
-> -			inode->i_mode &= ~current_umask();
-> -	}
-> -
-> -	if (!test_opt(sbi, POSIX_ACL) || !acl)
-> -		goto cleanup;
-> +	error = posix_acl_create(dir, &inode->i_mode, &default_acl, &acl);
-> +	if (error)
-> +		return error;
->  
-> -	if (S_ISDIR(inode->i_mode)) {
-> -		error = f2fs_set_acl(inode, ACL_TYPE_DEFAULT, acl, ipage);
-> +	if (default_acl) {
-> +		error = __f2fs_set_acl(inode, ACL_TYPE_DEFAULT, default_acl,
-> +				       ipage);
-> +		posix_acl_release(default_acl);
-> +	}
-> +	if (acl) {
->  		if (error)
-> -			goto cleanup;
-> +			error = __f2fs_set_acl(inode, ACL_TYPE_ACCESS, acl,
-> +					       ipage);
-> +		posix_acl_release(acl);
->  	}
-> -	error = __posix_acl_create(&acl, GFP_KERNEL, &inode->i_mode);
-> -	if (error < 0)
-> -		return error;
-> -	if (error > 0)
-> -		error = f2fs_set_acl(inode, ACL_TYPE_ACCESS, acl, ipage);
-> -cleanup:
-> -	posix_acl_release(acl);
-> +
->  	return error;
->  }
->  
-> @@ -315,100 +310,7 @@ int f2fs_acl_chmod(struct inode *inode)
->  	if (error)
->  		return error;
->  
-> -	error = f2fs_set_acl(inode, ACL_TYPE_ACCESS, acl, NULL);
-> -	posix_acl_release(acl);
-> -	return error;
-> -}
-> -
-> -static size_t f2fs_xattr_list_acl(struct dentry *dentry, char *list,
-> -		size_t list_size, const char *name, size_t name_len, int type)
-> -{
-> -	struct f2fs_sb_info *sbi = F2FS_SB(dentry->d_sb);
-> -	const char *xname = POSIX_ACL_XATTR_DEFAULT;
-> -	size_t size;
-> -
-> -	if (!test_opt(sbi, POSIX_ACL))
-> -		return 0;
-> -
-> -	if (type == ACL_TYPE_ACCESS)
-> -		xname = POSIX_ACL_XATTR_ACCESS;
-> -
-> -	size = strlen(xname) + 1;
-> -	if (list && size <= list_size)
-> -		memcpy(list, xname, size);
-> -	return size;
-> -}
-> -
-> -static int f2fs_xattr_get_acl(struct dentry *dentry, const char *name,
-> -		void *buffer, size_t size, int type)
-> -{
-> -	struct f2fs_sb_info *sbi = F2FS_SB(dentry->d_sb);
-> -	struct posix_acl *acl;
-> -	int error;
-> -
-> -	if (strcmp(name, "") != 0)
-> -		return -EINVAL;
-> -	if (!test_opt(sbi, POSIX_ACL))
-> -		return -EOPNOTSUPP;
-> -
-> -	acl = f2fs_get_acl(dentry->d_inode, type);
-> -	if (IS_ERR(acl))
-> -		return PTR_ERR(acl);
-> -	if (!acl)
-> -		return -ENODATA;
-> -	error = posix_acl_to_xattr(&init_user_ns, acl, buffer, size);
-> -	posix_acl_release(acl);
-> -
-> -	return error;
-> -}
-> -
-> -static int f2fs_xattr_set_acl(struct dentry *dentry, const char *name,
-> -		const void *value, size_t size, int flags, int type)
-> -{
-> -	struct f2fs_sb_info *sbi = F2FS_SB(dentry->d_sb);
-> -	struct inode *inode = dentry->d_inode;
-> -	struct posix_acl *acl = NULL;
-> -	int error;
-> -
-> -	if (strcmp(name, "") != 0)
-> -		return -EINVAL;
-> -	if (!test_opt(sbi, POSIX_ACL))
-> -		return -EOPNOTSUPP;
-> -	if (!inode_owner_or_capable(inode))
-> -		return -EPERM;
-> -
-> -	if (value) {
-> -		acl = posix_acl_from_xattr(&init_user_ns, value, size);
-> -		if (IS_ERR(acl))
-> -			return PTR_ERR(acl);
-> -		if (acl) {
-> -			error = posix_acl_valid(acl);
-> -			if (error)
-> -				goto release_and_out;
-> -		}
-> -	} else {
-> -		acl = NULL;
-> -	}
-> -
-> -	error = f2fs_set_acl(inode, type, acl, NULL);
-> -
-> -release_and_out:
-> +	error = __f2fs_set_acl(inode, ACL_TYPE_ACCESS, acl, NULL);
->  	posix_acl_release(acl);
->  	return error;
->  }
-> -
-> -const struct xattr_handler f2fs_xattr_acl_default_handler = {
-> -	.prefix = POSIX_ACL_XATTR_DEFAULT,
-> -	.flags = ACL_TYPE_DEFAULT,
-> -	.list = f2fs_xattr_list_acl,
-> -	.get = f2fs_xattr_get_acl,
-> -	.set = f2fs_xattr_set_acl,
-> -};
-> -
-> -const struct xattr_handler f2fs_xattr_acl_access_handler = {
-> -	.prefix = POSIX_ACL_XATTR_ACCESS,
-> -	.flags = ACL_TYPE_ACCESS,
-> -	.list = f2fs_xattr_list_acl,
-> -	.get = f2fs_xattr_get_acl,
-> -	.set = f2fs_xattr_set_acl,
-> -};
-> diff --git a/fs/f2fs/acl.h b/fs/f2fs/acl.h
-> index 4963313..2af31fe 100644
-> --- a/fs/f2fs/acl.h
-> +++ b/fs/f2fs/acl.h
-> @@ -37,6 +37,7 @@ struct f2fs_acl_header {
->  #ifdef CONFIG_F2FS_FS_POSIX_ACL
->  
->  extern struct posix_acl *f2fs_get_acl(struct inode *, int);
-> +extern int f2fs_set_acl(struct inode *inode, struct posix_acl *acl, int type);
->  extern int f2fs_acl_chmod(struct inode *);
->  extern int f2fs_init_acl(struct inode *, struct inode *, struct page *);
->  #else
-> diff --git a/fs/f2fs/file.c b/fs/f2fs/file.c
-> index 7d714f4..13eff60 100644
-> --- a/fs/f2fs/file.c
-> +++ b/fs/f2fs/file.c
-> @@ -405,6 +405,7 @@ const struct inode_operations f2fs_file_inode_operations = {
->  	.getattr	= f2fs_getattr,
->  	.setattr	= f2fs_setattr,
->  	.get_acl	= f2fs_get_acl,
-> +	.set_acl	= f2fs_set_acl,
->  #ifdef CONFIG_F2FS_FS_XATTR
->  	.setxattr	= generic_setxattr,
->  	.getxattr	= generic_getxattr,
-> diff --git a/fs/f2fs/namei.c b/fs/f2fs/namei.c
-> index 575adac..5846eeb 100644
-> --- a/fs/f2fs/namei.c
-> +++ b/fs/f2fs/namei.c
-> @@ -496,6 +496,7 @@ const struct inode_operations f2fs_dir_inode_operations = {
->  	.getattr	= f2fs_getattr,
->  	.setattr	= f2fs_setattr,
->  	.get_acl	= f2fs_get_acl,
-> +	.set_acl	= f2fs_set_acl,
->  #ifdef CONFIG_F2FS_FS_XATTR
->  	.setxattr	= generic_setxattr,
->  	.getxattr	= generic_getxattr,
-> @@ -522,6 +523,7 @@ const struct inode_operations f2fs_special_inode_operations = {
->  	.getattr	= f2fs_getattr,
->  	.setattr        = f2fs_setattr,
->  	.get_acl	= f2fs_get_acl,
-> +	.set_acl	= f2fs_set_acl,
->  #ifdef CONFIG_F2FS_FS_XATTR
->  	.setxattr       = generic_setxattr,
->  	.getxattr       = generic_getxattr,
-> diff --git a/fs/f2fs/xattr.c b/fs/f2fs/xattr.c
-> index aa7a3f1..e2b9299 100644
-> --- a/fs/f2fs/xattr.c
-> +++ b/fs/f2fs/xattr.c
-> @@ -21,6 +21,7 @@
->  #include <linux/rwsem.h>
->  #include <linux/f2fs_fs.h>
->  #include <linux/security.h>
-> +#include <linux/posix_acl_xattr.h>
->  #include "f2fs.h"
->  #include "xattr.h"
->  
-> @@ -216,8 +217,8 @@ const struct xattr_handler f2fs_xattr_security_handler = {
->  static const struct xattr_handler *f2fs_xattr_handler_map[] = {
->  	[F2FS_XATTR_INDEX_USER] = &f2fs_xattr_user_handler,
->  #ifdef CONFIG_F2FS_FS_POSIX_ACL
-> -	[F2FS_XATTR_INDEX_POSIX_ACL_ACCESS] = &f2fs_xattr_acl_access_handler,
-> -	[F2FS_XATTR_INDEX_POSIX_ACL_DEFAULT] = &f2fs_xattr_acl_default_handler,
-> +	[F2FS_XATTR_INDEX_POSIX_ACL_ACCESS] = &posix_acl_access_xattr_handler,
-> +	[F2FS_XATTR_INDEX_POSIX_ACL_DEFAULT] = &posix_acl_default_xattr_handler,
->  #endif
->  	[F2FS_XATTR_INDEX_TRUSTED] = &f2fs_xattr_trusted_handler,
->  #ifdef CONFIG_F2FS_FS_SECURITY
-> @@ -229,8 +230,8 @@ static const struct xattr_handler *f2fs_xattr_handler_map[] = {
->  const struct xattr_handler *f2fs_xattr_handlers[] = {
->  	&f2fs_xattr_user_handler,
->  #ifdef CONFIG_F2FS_FS_POSIX_ACL
-> -	&f2fs_xattr_acl_access_handler,
-> -	&f2fs_xattr_acl_default_handler,
-> +	&posix_acl_access_xattr_handler,
-> +	&posix_acl_default_xattr_handler,
->  #endif
->  	&f2fs_xattr_trusted_handler,
->  #ifdef CONFIG_F2FS_FS_SECURITY
-> diff --git a/fs/f2fs/xattr.h b/fs/f2fs/xattr.h
-> index 02a08fb..b21d9eb 100644
-> --- a/fs/f2fs/xattr.h
-> +++ b/fs/f2fs/xattr.h
-> @@ -108,8 +108,6 @@ struct f2fs_xattr_entry {
->  #ifdef CONFIG_F2FS_FS_XATTR
->  extern const struct xattr_handler f2fs_xattr_user_handler;
->  extern const struct xattr_handler f2fs_xattr_trusted_handler;
-> -extern const struct xattr_handler f2fs_xattr_acl_access_handler;
-> -extern const struct xattr_handler f2fs_xattr_acl_default_handler;
->  extern const struct xattr_handler f2fs_xattr_advise_handler;
->  extern const struct xattr_handler f2fs_xattr_security_handler;
->  
-
--- 
-Jaegeuk Kim
-Samsung
+Dan Duval
+Oracle Corp.
 
