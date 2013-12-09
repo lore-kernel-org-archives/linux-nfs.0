@@ -1,41 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:42835 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754544Ab3LDIdh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Dec 2013 03:33:37 -0500
-Date: Wed, 4 Dec 2013 00:33:36 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Christoph Hellwig <hch@infradead.org>, bfields@fieldses.org,
-        gartim@gmail.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: when reusing an existing repcache entry, unhash it
- first
-Message-ID: <20131204083336.GB30216@infradead.org>
-References: <1386015979-27511-1-git-send-email-jlayton@redhat.com>
- <20131203102517.GA12576@infradead.org>
- <20131203132112.1f19c014@tlielax.poochiereds.net>
+Received: from mx1.redhat.com ([209.132.183.28]:17210 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932835Ab3LIU6i (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 9 Dec 2013 15:58:38 -0500
+Message-ID: <52A62F43.5050505@RedHat.com>
+Date: Mon, 09 Dec 2013 15:59:47 -0500
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20131203132112.1f19c014@tlielax.poochiereds.net>
+To: Libtirpc-devel Mailing List <libtirpc-devel@lists.sourceforge.net>
+CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] configure.ac: Remove gssglue configuration knobs
+References: <1386619559-31330-1-git-send-email-steved@redhat.com>
+In-Reply-To: <1386619559-31330-1-git-send-email-steved@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Dec 03, 2013 at 01:21:12PM -0500, Jeff Layton wrote:
-> Most of this code is protected by a single spinlock (cache_lock). The
-> main benefit to switching to list_lru would be that we could move to a
-> per-node lock. But, to make that worthwhile would mean we'd need to
-> redesign the locking and break the cache_lock into multiple locks.
 
-No need to redo locks just yet, the biggest benefit is to use a well
-debug library for lru list handling, with the second biggest one being
-that you get out of the box shrinker support.
 
-> Also, the existing code does take pains to reuse an expired entry off
-> the LRU list in preference to allocating a new one. The list_lru code
-> doesn't have a mechanism to scrape the first entry off the LRU list,
-> though I suppose we could add one or abuse the cb_arg in the walk
-> callback as a return pointer.
+On 09/12/13 15:05, Steve Dickson wrote:
+> Its really not a good idea for libtirpc to link with
+> libgssglue so this patch remove the ability to do that.
+> 
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+> ---
+>  configure.ac | 23 ++++-------------------
+>  1 file changed, 4 insertions(+), 19 deletions(-)
+Committed...
 
-That's just because it is an old-school cache with a fixed upper bound
-of entries and no shrinker support.  With proper shrinker integration
-this nasty code isn't needed.
+steved.
+
+> 
+> diff --git a/configure.ac b/configure.ac
+> index b9906dc..6b0cf27 100644
+> --- a/configure.ac
+> +++ b/configure.ac
+> @@ -10,26 +10,11 @@ AC_ARG_ENABLE(gssapi,
+>        [],[enable_gssapi=yes])
+>  AM_CONDITIONAL(GSS, test x$enable_gssapi = xyes)
+>  
+> -AC_ARG_WITH(gssglue,
+> -		[  --with-gssglue        Use libgssglue],
+> -		 [case "${enableval}" in
+> -		  yes) gssglue=true ;;
+> -		  no)  gssglue=false ;;
+> -		  *) AC_MSG_ERROR(bad value ${enableval} for --with-gssglue) ;;
+> -		  esac],
+> -		[gssglue=false])
+> -AM_CONDITIONAL(USEGSSGLUE, test x$gssglue = xtrue)
+> -
+>  if test x$enable_gssapi = xyes; then
+> -	if test x$gssglue = xtrue; then
+> -		PKG_CHECK_MODULES(GSSAPI, libgssglue, [],
+> -		AC_MSG_ERROR([Unable to locate information required to use libgssglue.]))
+> -	else
+> -		GSSAPI_CFLAGS=`krb5-config --cflags gssapi`
+> -		GSSAPI_LIBS=`krb5-config --libs gssapi`
+> -		AC_SUBST([GSSAPI_CFLAGS])
+> -		AC_SUBST([GSSAPI_LIBS])
+> -	fi
+> +	GSSAPI_CFLAGS=`krb5-config --cflags gssapi`
+> +	GSSAPI_LIBS=`krb5-config --libs gssapi`
+> +	AC_SUBST([GSSAPI_CFLAGS])
+> +	AC_SUBST([GSSAPI_LIBS])
+>  fi
+>  AC_ARG_ENABLE(ipv6,
+>  	[AC_HELP_STRING([--disable-ipv6], [Disable IPv6 support @<:@default=no@:>@])],
+> 
