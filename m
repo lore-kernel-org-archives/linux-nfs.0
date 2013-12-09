@@ -1,78 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from szxga03-in.huawei.com ([119.145.14.66]:63829 "EHLO
-	szxga03-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750887Ab3LJLOl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Dec 2013 06:14:41 -0500
-Message-ID: <52A6F6C9.90704@huawei.com>
-Date: Tue, 10 Dec 2013 19:11:05 +0800
-From: Rui Xiang <rui.xiang@huawei.com>
+Received: from mail-pb0-f53.google.com ([209.85.160.53]:32959 "EHLO
+	mail-pb0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932691Ab3LILba (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 9 Dec 2013 06:31:30 -0500
+Received: by mail-pb0-f53.google.com with SMTP id ma3so5279474pbc.12
+        for <linux-nfs@vger.kernel.org>; Mon, 09 Dec 2013 03:31:30 -0800 (PST)
+Message-ID: <52A5AA09.4030409@gmail.com>
+Date: Mon, 09 Dec 2013 19:31:21 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: [PATCH] NFSv4.1: remove unused cred parameter from nfs41_walk_client_list
-Content-Type: text/plain; charset="ISO-8859-1"
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: linux-nfs@vger.kernel.org
+Subject: [PATCH] nfsd: make calculate  reserved space correctly
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean Up.
+rpcsec_gss_oid is defined as below, So, must using XDR_LEN to calculate reserved space.
+When len is not the multiples of 4, client will get bad data.
 
-Signed-off-by: Rui Xiang <rui.xiang@huawei.com>
+struct rpcsec_gss_oid {
+        unsigned int    len;
+        u8              data[GSS_OID_MAX_LEN];
+};
+
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 ---
- fs/nfs/internal.h   | 3 +--
- fs/nfs/nfs4client.c | 4 +---
- fs/nfs/nfs4state.c  | 2 +-
- 3 files changed, 3 insertions(+), 6 deletions(-)
+ fs/nfsd/nfs4xdr.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 8b5cc04..cdcfc8f 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -482,8 +482,7 @@ extern int nfs40_walk_client_list(struct nfs_client *clp,
- 				struct nfs_client **result,
- 				struct rpc_cred *cred);
- extern int nfs41_walk_client_list(struct nfs_client *clp,
--				struct nfs_client **result,
--				struct rpc_cred *cred);
-+				struct nfs_client **result);
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index b0b886e..a57e67d 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -3233,7 +3233,7 @@ nfsd4_do_encode_secinfo(struct nfsd4_compoundres *resp,
  
- /*
-  * Determine the device name as a string
-diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-index b4a160a..4db9b38 100644
---- a/fs/nfs/nfs4client.c
-+++ b/fs/nfs/nfs4client.c
-@@ -596,7 +596,6 @@ out_major_mismatch:
-  *
-  * @new: nfs_client with client ID to test
-  * @result: OUT: found nfs_client, or new
-- * @cred: credential to use for trunking test
-  *
-  * Returns zero, a negative errno, or a negative NFS4ERR status.
-  * If zero is returned, an nfs_client pointer is planted in "result."
-@@ -605,8 +604,7 @@ out_major_mismatch:
-  *     the last nfs_client on the list.
-  */
- int nfs41_walk_client_list(struct nfs_client *new,
--			   struct nfs_client **result,
--			   struct rpc_cred *cred)
-+			   struct nfs_client **result)
- {
- 	struct nfs_net *nn = net_generic(new->cl_net, nfs_net_id);
- 	struct nfs_client *pos, *prev = NULL;
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 059c01b..268a17a 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -348,7 +348,7 @@ int nfs41_discover_server_trunking(struct nfs_client *clp,
- 		return status;
- 	set_bit(NFS4CLNT_LEASE_CONFIRM, &clp->cl_state);
- 
--	return nfs41_walk_client_list(clp, result, cred);
-+	return nfs41_walk_client_list(clp, result);
- }
- 
- #endif /* CONFIG_NFS_V4_1 */
+ 		if (rpcauth_get_gssinfo(pf, &info) == 0) {
+ 			supported++;
+-			RESERVE_SPACE(4 + 4 + info.oid.len + 4 + 4);
++			RESERVE_SPACE(4 + 4 + XDR_LEN(info.oid.len) + 4 + 4);
+ 			WRITE32(RPC_AUTH_GSS);
+ 			WRITE32(info.oid.len);
+ 			WRITEMEM(info.oid.data, info.oid.len);
 -- 
-1.8.2.2
-
-
+1.8.4.2
