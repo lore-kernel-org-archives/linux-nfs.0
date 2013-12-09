@@ -1,41 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.linuxfoundation.org ([140.211.169.12]:53085 "EHLO
-	mail.linuxfoundation.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752074Ab3LXRer (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Dec 2013 12:34:47 -0500
-Date: Tue, 24 Dec 2013 09:35:09 -0800
-From: Greg KH <gregkh@linuxfoundation.org>
-To: Alexander Aring <alex.aring@gmail.com>
-Cc: hannes@stressinduktion.org, linux-nfs@vger.kernel.org,
-        netdev@vger.kernel.org, stable@vger.kernel.org, werner@almesberger.net
-Subject: Re: [PATCH v2] nfs: fix dead code of ipv6_addr_scope
-Message-ID: <20131224173509.GA24392@kroah.com>
-References: <1387753276-27009-1-git-send-email-alex.aring@gmail.com>
+Received: from szxga01-in.huawei.com ([119.145.14.64]:33348 "EHLO
+	szxga01-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755566Ab3LICav (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 8 Dec 2013 21:30:51 -0500
+Message-ID: <52A52B08.9040305@huawei.com>
+Date: Mon, 9 Dec 2013 10:29:28 +0800
+From: Rui Xiang <rui.xiang@huawei.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1387753276-27009-1-git-send-email-alex.aring@gmail.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: <linux-nfs@vger.kernel.org>
+Subject: [PATCH RESEND] nfsd: return err directly while allocing failing
+Content-Type: text/plain; charset="ISO-8859-1"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Dec 23, 2013 at 12:01:16AM +0100, Alexander Aring wrote:
-> This patch corrects the check on a linklocal address.
-> 
-> Currently this can't be work, because ipv6_addr_scope returns a int with
-> a mask of IPV6_ADDR_SCOPE_MASK (0x00f0U) and IPV6_ADDR_SCOPE_LINKLOCAL
-> is 0x02. So the condition is always false.
-> 
-> Signed-off-by: Alexander Aring <alex.aring@gmail.com>
-> ---
-> - change check on linklocal address from
->   (ipv6_addr_src_scope(&a6->sin6_addr) == IPV6_ADDR_SCOPE_LINKLOCAL) to
->   (ipv6_addr_scope(&a6->sin6_addr) & IPV6_ADDR_LINKLOCAL) which is a
->   little bit faster.
-> - change commit msg.
+while nthreads alloc fails, return err value directly
+without kfree.
 
-<formletter>
+Signed-off-by: Rui Xiang <rui.xiang@huawei.com>
+---
+ fs/nfsd/nfsctl.c | 7 ++++---
+ 1 file changed, 4 insertions(+), 3 deletions(-)
 
-This is not the correct way to submit patches for inclusion in the
-stable kernel tree.  Please read Documentation/stable_kernel_rules.txt
-for how to do this properly.
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index 7f55517..1fa6b00 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -491,9 +491,10 @@ static ssize_t write_pool_threads(struct file *file, char *buf, size_t size)
+ 	}
+ 
+ 	nthreads = kcalloc(npools, sizeof(int), GFP_KERNEL);
+-	rv = -ENOMEM;
+-	if (nthreads == NULL)
+-		goto out_free;
++	if (nthreads == NULL) {
++		mutex_unlock(&nfsd_mutex);
++		return -ENOMEM;
++	}
+ 
+ 	if (size > 0) {
+ 		for (i = 0; i < npools; i++) {
+-- 
+1.8.2.2
 
-</formletter>
+
