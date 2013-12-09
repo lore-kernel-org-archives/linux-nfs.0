@@ -1,45 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f174.google.com ([209.85.223.174]:33393 "EHLO
-	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754286Ab3LDVXD convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 4 Dec 2013 16:23:03 -0500
-Received: by mail-ie0-f174.google.com with SMTP id at1so27728823iec.33
-        for <linux-nfs@vger.kernel.org>; Wed, 04 Dec 2013 13:23:03 -0800 (PST)
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.0 \(1812\))
-Subject: Re: Patch for mapping EILSEQ into NFSERR_INVAL
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-In-Reply-To: <20131204210356.GA19452@fieldses.org>
-Date: Wed, 4 Dec 2013 16:22:48 -0500
-Cc: =?windows-1252?Q?Antti_T=F6nkyr=E4?= <daedalus@pingtimeout.net>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <22997028-AB15-4D61-A263-011867EE7512@primarydata.com>
-References: <529CEBC3.8060505@pingtimeout.net> <FA468B61-5F7E-4A88-A0BD-13BCF115282E@primarydata.com> <529CF322.4080701@pingtimeout.net> <20131203204806.GA2648@fieldses.org> <20131203212210.GC2648@fieldses.org> <529ED1C8.70208@pingtimeout.net> <20131204154104.GB14646@fieldses.org> <529F943D.30004@pingtimeout.net> <20131204210356.GA19452@fieldses.org>
-To: Dr Fields James Bruce <bfields@fieldses.org>
+Received: from mx1.redhat.com ([209.132.183.28]:64486 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932814Ab3LIU6w (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 9 Dec 2013 15:58:52 -0500
+Message-ID: <52A62F52.7070901@RedHat.com>
+Date: Mon, 09 Dec 2013 16:00:02 -0500
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Libtirpc-devel Mailing List <libtirpc-devel@lists.sourceforge.net>
+CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] configure.ac: enable the GSSAPI by default
+References: <1386613948-28789-1-git-send-email-steved@redhat.com>
+In-Reply-To: <1386613948-28789-1-git-send-email-steved@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Dec 4, 2013, at 16:03, Dr Fields James Bruce <bfields@fieldses.org> wrote:
 
-> On Wed, Dec 04, 2013 at 10:44:45PM +0200, Antti Tönkyrä wrote:
+On 09/12/13 13:32, Steve Dickson wrote:
+> This changes GSSAPI support to be enabled by default.
+> To disable the support use --disable-gssapi
 > 
->>>> http://daedalus.pingtimeout.net/dbg/eilseq_ioerr.pcap
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+Committed...
+
+steved.
+
+> ---
+>  configure.ac | 14 +++++++-------
+>  1 file changed, 7 insertions(+), 7 deletions(-)
 > 
-> And I see something I'd overlooked before: the client is sending the
-> later opens with the same open owner and sequence id.  But NFS4ERR_IO is
-> a seqid-mutating error.  So now I think this probably *is* a client
-> bug....
-
-Umm… Yes and no. The client should be able to recover when it discovers that the seqid is out of sync.
-
-That said, I see that we do
-
-       status = decode_op_hdr(xdr, OP_OPEN);
-        if (status != -EIO)
-                nfs_increment_open_seqid(status, res->seqid);
-
-and since NFS4ERR_IO == EIO, that means we skip the seqid update when you send us NFS4ERR_IO.
-
-Cheers,
-  Trond
+> diff --git a/configure.ac b/configure.ac
+> index c95df38..b9906dc 100644
+> --- a/configure.ac
+> +++ b/configure.ac
+> @@ -5,12 +5,11 @@ AM_MAINTAINER_MODE
+>  AC_CONFIG_SRCDIR([src/auth_des.c])
+>  AC_CONFIG_MACRO_DIR([m4])
+>  
+> -AC_ARG_ENABLE(gss,[  --enable-gss            Turn on gss api], [case "${enableval}" in
+> -        yes) gss=true ;;
+> -        no)  gss=false ;;
+> -        *) AC_MSG_ERROR(bad value ${enableval} for --enable-gss) ;;
+> -      esac],[gss=false])
+> -AM_CONDITIONAL(GSS, test x$gss = xtrue)
+> +AC_ARG_ENABLE(gssapi,
+> +	[AC_HELP_STRING([--disable-gssapi], [Disable GSSAPI support @<:@default=no@:>@])],
+> +      [],[enable_gssapi=yes])
+> +AM_CONDITIONAL(GSS, test x$enable_gssapi = xyes)
+> +
+>  AC_ARG_WITH(gssglue,
+>  		[  --with-gssglue        Use libgssglue],
+>  		 [case "${enableval}" in
+> @@ -20,7 +19,8 @@ AC_ARG_WITH(gssglue,
+>  		  esac],
+>  		[gssglue=false])
+>  AM_CONDITIONAL(USEGSSGLUE, test x$gssglue = xtrue)
+> -if test x$gss = xtrue; then
+> +
+> +if test x$enable_gssapi = xyes; then
+>  	if test x$gssglue = xtrue; then
+>  		PKG_CHECK_MODULES(GSSAPI, libgssglue, [],
+>  		AC_MSG_ERROR([Unable to locate information required to use libgssglue.]))
+> 
