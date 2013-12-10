@@ -1,102 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wg0-f53.google.com ([74.125.82.53]:35859 "EHLO
-	mail-wg0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751639Ab3LVMaW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 22 Dec 2013 07:30:22 -0500
-Date: Sun, 22 Dec 2013 13:30:14 +0100
-From: Alexander Aring <alex.aring@gmail.com>
-To: linux-nfs@vger.kernel.org, netdev@vger.kernel.org, werner@almesberger.net
-Subject: Re: [PATCH] nfs: fix dead code of ipv6_addr_scope
-Message-ID: <20131222123011.GA10241@omega>
-References: <1387600744-11366-1-git-send-email-alex.aring@gmail.com>
- <20131221124440.GG14073@order.stressinduktion.org>
- <20131221133253.GA20745@omega>
- <20131222023054.GH14073@order.stressinduktion.org>
+Received: from mx12.netapp.com ([216.240.18.77]:32996 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751036Ab3LJUKj convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Dec 2013 15:10:39 -0500
+From: Weston Andros Adamson <dros@netapp.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+CC: linux-nfs list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v2] NFSv4: fix getacl ERANGE for some ACL buffer sizes
+Date: Tue, 10 Dec 2013 20:10:38 +0000
+Message-ID: <9C456209-7EDE-4494-9651-903E6A4E7055@netapp.com>
+References: <1385068813-5491-1-git-send-email-dros@netapp.com>
+ <1386699230.2879.26.camel@leira.trondhjem.org>
+ <1556485E-F391-4F58-AEE3-07C829DA2DB1@netapp.com>
+ <838C6973-AF5C-4B33-B673-B7DD2B810628@primarydata.com>
+In-Reply-To: <838C6973-AF5C-4B33-B673-B7DD2B810628@primarydata.com>
+Content-Type: text/plain; charset="Windows-1252"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <20131222023054.GH14073@order.stressinduktion.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Hannes,
 
-On Sun, Dec 22, 2013 at 03:30:54AM +0100, Hannes Frederic Sowa wrote:
-> On Sat, Dec 21, 2013 at 02:32:54PM +0100, Alexander Aring wrote:
-> > Hi Hannes,
-> > 
-> > On Sat, Dec 21, 2013 at 01:44:40PM +0100, Hannes Frederic Sowa wrote:
-> > > On Sat, Dec 21, 2013 at 05:39:04AM +0100, Alexander Aring wrote:
-> > > > The correct way to check on IPV6_ADDR_SCOPE_LINKLOCAL is to check with
-> > > > the ipv6_addr_src_scope function.
-> > > > 
-> > > > Currently this can't be work, because ipv6_addr_scope returns a int with
-> > > > a mask of IPV6_ADDR_SCOPE_MASK (0x00f0U) and IPV6_ADDR_SCOPE_LINKLOCAL
-> > > > is 0x02. So the condition is always false.
-> > > > 
-> > > > Signed-off-by: Alexander Aring <alex.aring@gmail.com>
-> > > > ---
-> > > > I think ipv6_addr_src_scope should be correct, can somebody from netdev ml
-> > > > confirm this please?
-> > > > I stumple over that and I did not compile and test it. Maybe this is something
-> > > > for stable?
-> > > > 
-> > > >  fs/nfs/nfs4filelayoutdev.c | 2 +-
-> > > >  1 file changed, 1 insertion(+), 1 deletion(-)
-> > > > 
-> > > > diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
-> > > > index c7c295e5..efac602 100644
-> > > > --- a/fs/nfs/nfs4filelayoutdev.c
-> > > > +++ b/fs/nfs/nfs4filelayoutdev.c
-> > > > @@ -95,7 +95,7 @@ same_sockaddr(struct sockaddr *addr1, struct sockaddr *addr2)
-> > > >  		b6 = (struct sockaddr_in6 *)addr2;
-> > > >  
-> > > >  		/* LINKLOCAL addresses must have matching scope_id */
-> > > > -		if (ipv6_addr_scope(&a6->sin6_addr) ==
-> > > > +		if (ipv6_addr_src_scope(&a6->sin6_addr) ==
-> > > >  		    IPV6_ADDR_SCOPE_LINKLOCAL &&
-> > > >  		    a6->sin6_scope_id != b6->sin6_scope_id)
-> > > >  			return false;
-> > > 
-> > > Good catch!
-> > > 
-> > thanks.
-> > 
-> > I am still unsure if sctp is correct or not, I think it isn't correct.
-> > Because we compare and don't check if any bit is set.
-> > 
-> > We don't use IPV6_ADDR_SCOPE_TYPE here. We use IPV6_ADDR_TYPE. But we can't
-> > compare it.
+On Dec 10, 2013, at 2:19 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+
 > 
-> Actually, this is fine, too. ipv6_addr_scope does mask the addr_type with
-> IPV6_ADDR_SCOPE_MASK (which is 0x00f0U). If you look at addrconf_core.c you
-> see that the 4 bits stand by itself each time.
+> On Dec 10, 2013, at 21:11, Weston Andros Adamson <dros@netapp.com> wrote:
 > 
-> Actually it seems ipv6_addr_src_scope is better suitable for multicast scope
-> handling and ipv6_addr_scope with IFA_{HOST,LINK,SITE} is fine for
-> non-multicast. In this case there is no difference.
+>> 
+>> On Dec 10, 2013, at 1:13 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+>> 
+>>> On Thu, 2013-11-21 at 16:20 -0500, Weston Andros Adamson wrote:
+>> 
+>>> 
+>>>> 	if (res.acl_scratch)
+>>>> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+>>>> index 5be2868..4e2e2da 100644
+>>>> --- a/fs/nfs/nfs4xdr.c
+>>>> +++ b/fs/nfs/nfs4xdr.c
+>>>> @@ -5207,8 +5207,6 @@ static int decode_getacl(struct xdr_stream *xdr, struct rpc_rqst *req,
+>>>> 	if ((status = decode_op_hdr(xdr, OP_GETATTR)) != 0)
+>>>> 		goto out;
+>>>> 
+>>>> -	xdr_enter_page(xdr, xdr->buf->page_len);
+>>> 
+>>> Why is this being removed?
+>> 
+>> Because it BUG()s! ;)
+>> 
+>> I must admit that I don’t get why xdr_enter_page() doesn’t work when the XDR layer does the page allocation, but it does not — and the nfs3xdr ACL code (which uses the XDR layer allocation) also doesn’t call this.  It worked well without this, so I just removed it and didn’t investigate why.
 > 
-ah thanks, now I understand it!
-
-so an alternative would be:
-
-if (ipv6_addr_scope(&a6->sin6_addr) & IPV6_ADDR_LINKLOCAL &&
-	a6->sin6_scope_id != b6->sin6_scope_id)
-	...
-
-maybe this is a little bit faster instead of ipv6_addr_src_scope.
-Should I resend a v2 with the faster solution?
-
-> Maybe an int ipv6_cmp_sockaddr(struct in6_addr *a1, int scope1,
-> 			  struct in6_addr *a2, int scope2)
-> or
-> int ipv6_cmp_sockaddr(struct sockaddr_in6 *s1,
-> 		      struct sockaddr_in6 *s2)
+> I’m guessing that xdr->buf>page_len is being set incorrectly by the code that does the page allocation and/or that it is failing to update xdr->buf->len and/or xdr->buf->buflen.
 > 
+> We really do need the xdr_enter_page() here, or the acl bitmap + data won’t be aligned properly on the page boundary.
 
-I don't understand why we need such a function here. We only check if
-"a6" is linklocal and has a different sin6_scope_id than "b6" sin6_scope_id
-and we don't compare "a6" and "b6" here (then "b6" should be a
-linklocal, too). I think it's too abstract for me what exactly "compare"
-means in this case. :-)
+Ok, I’ll add that back and then fix the oops… and investigate if the v3 ACL code needs it too…
 
-- Alex
+Thanks,
+-dros
+
+
