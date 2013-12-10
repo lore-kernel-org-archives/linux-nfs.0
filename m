@@ -1,72 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from szxga03-in.huawei.com ([119.145.14.66]:11591 "EHLO
-	szxga03-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756772Ab3LFJay (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 6 Dec 2013 04:30:54 -0500
-From: Rui Xiang <rui.xiang@huawei.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-CC: <linux-nfs@vger.kernel.org>, Rui Xiang <rui.xiang@huawei.com>
-Subject: [PATCH 1/2] nfs/nfsd: return err directly while malloc failing
-Date: Fri, 6 Dec 2013 17:30:16 +0800
-Message-ID: <1386322217-27436-1-git-send-email-rui.xiang@huawei.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:40191 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752778Ab3LJOoa (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Dec 2013 09:44:30 -0500
+Message-ID: <52A728A7.8020905@oracle.com>
+Date: Tue, 10 Dec 2013 18:43:51 +0400
+From: Stanislav Kholmanskikh <stanislav.kholmanskikh@oracle.com>
 MIME-Version: 1.0
-Content-Type: text/plain
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Christoph Hellwig <hch@infradead.org>,
+        Vasily Isaenko <vasily.isaenko@oracle.com>, linux-nfs@vger.kernel.org,
+        xfs@oss.sgi.com, "Sachin S. Prabhu" <sprabhu@redhat.com>
+Subject: Re: nfs vs xfstests 193
+References: <20131106115648.GA24804@infradead.org> <52A1CF22.106@oracle.com> <20131206180858.GA2803@infradead.org> <20131206204404.GA12613@fieldses.org> <20131206204747.GB12613@fieldses.org>
+In-Reply-To: <20131206204747.GB12613@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-while nthreads malloc fails, return err value directory
-without kfree.
-
-And the same issue arises in nfs_lookup, so return res
-directly without freeing fh and fattr.
-
-Signed-off-by: Rui Xiang <rui.xiang@huawei.com>
----
- fs/nfs/dir.c     | 4 ++--
- fs/nfsd/nfsctl.c | 7 ++++---
- 2 files changed, 6 insertions(+), 5 deletions(-)
-
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 812154a..2518865 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -1278,7 +1278,7 @@ struct dentry *nfs_lookup(struct inode *dir, struct dentry * dentry, unsigned in
- 
- 	res = ERR_PTR(-ENAMETOOLONG);
- 	if (dentry->d_name.len > NFS_SERVER(dir)->namelen)
--		goto out;
-+		return res;
- 
- 	/*
- 	 * If we're doing an exclusive create, optimize away the lookup
-@@ -1287,7 +1287,7 @@ struct dentry *nfs_lookup(struct inode *dir, struct dentry * dentry, unsigned in
- 	if (nfs_is_exclusive_create(dir, flags)) {
- 		d_instantiate(dentry, NULL);
- 		res = NULL;
--		goto out;
-+		return res;
- 	}
- 
- 	res = ERR_PTR(-ENOMEM);
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index 7f55517..3c5e748 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -491,9 +491,10 @@ static ssize_t write_pool_threads(struct file *file, char *buf, size_t size)
- 	}
- 
- 	nthreads = kcalloc(npools, sizeof(int), GFP_KERNEL);
--	rv = -ENOMEM;
--	if (nthreads == NULL)
--		goto out_free;
-+	if (nthreads == NULL) {
-+		mutex_unlock(&nfsd_mutex);
-+		return -ENOENT;
-+	}
- 
- 	if (size > 0) {
- 		for (i = 0; i < npools; i++) {
--- 
-1.8.2.2
 
 
+On 12/07/2013 12:47 AM, J. Bruce Fields wrote:
+> On Fri, Dec 06, 2013 at 03:44:04PM -0500, bfields wrote:
+>> On Fri, Dec 06, 2013 at 10:08:58AM -0800, Christoph Hellwig wrote:
+>>> On Fri, Dec 06, 2013 at 05:20:34PM +0400, Stanislav Kholmanskikh wrote:
+>>>> Just to make the behaviour more consistent between NFS and other
+>>>> "local" file systems as It was done by
+>>>> commit https://git.kernel.org/cgit/linux/kernel/git/stable/linux-stable.git/commit/?id=0953e620de0538cbd081f1b45126f6098112a598
+>>>
+>>> Seems like we got others in line with XFS behavior.
+>>
+>> But, not having tested the behavior, it looks like fs/open.c has a
+>> simlar !S_ISDIR() check.  Where's that behavior implemented?
+>>
+>>> I'd prefer to have NFS follow this as well.
+>>
+>> Huh.  Sachin, do you remember if there was any other motivation behind
+>> that patch?
+>
+> Never mind, I see, the complaint is about the case where the id's don't
+> change, not about the directory case.  So Sachin's
+> 0953e620de0538cbd081f1b45126f6098112a598 doesn't actually have anything
+> to do with this.
+>
+> I'm fine with removing the id comparisons and changing the nfsd behavior
+> to match local filesystems.
+
+Great.
+
+I will try to produce a patch for this.
+
+>
+> --b.
+>
+> _______________________________________________
+> xfs mailing list
+> xfs@oss.sgi.com
+> http://oss.sgi.com/mailman/listinfo/xfs
+>
