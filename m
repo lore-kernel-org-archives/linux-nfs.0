@@ -1,36 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:59546 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751807Ab3LANUV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 1 Dec 2013 08:20:21 -0500
-Message-Id: <20131201131441.790963326@bombadil.infradead.org>
-Date: Sun, 01 Dec 2013 05:14:41 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: linux-nfs@vger.kernel.org, viro@zeniv.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org
-Subject: [PATCH 00/11] [RFC] repair net namespace damage to rpc_pipefs
+Received: from mail-ee0-f46.google.com ([74.125.83.46]:65016 "EHLO
+	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752850Ab3LJQ0R (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Dec 2013 11:26:17 -0500
+Received: by mail-ee0-f46.google.com with SMTP id d49so2299087eek.5
+        for <linux-nfs@vger.kernel.org>; Tue, 10 Dec 2013 08:26:13 -0800 (PST)
+Message-ID: <1386692771.2879.2.camel@leira.trondhjem.org>
+Subject: Re: [PATCH 2/2] nfs: fix return err if inode exiting in
+ nfs_instantiate
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Rui Xiang <rui.xiang@huawei.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Date: Tue, 10 Dec 2013 18:26:11 +0200
+In-Reply-To: <52A59EAB.20200@huawei.com>
+References: <1386322217-27436-1-git-send-email-rui.xiang@huawei.com>
+	 <1386322217-27436-2-git-send-email-rui.xiang@huawei.com>
+	 <E04FAC94-F109-4F37-8077-A39F3C386899@primarydata.com>
+	 <52A59EAB.20200@huawei.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This series tries to get rid of the damage created by sprinkling the
-network namespace cat poo all over rpc_pipefs and users.
+On Mon, 2013-12-09 at 18:42 +0800, Rui Xiang wrote:
+> On 2013/12/6 21:46, Trond Myklebust wrote:
+> > 
+> > On Dec 6, 2013, at 4:30, Rui Xiang <rui.xiang@huawei.com> wrote:
+> > 
+> >> In common function nfs_instantiate to create, mkdir, and mknod,
+> >> if dentry->d_inode exits, it should return -EEXIST instead of
+> >> -EACCES.
+> >>
+> >> Signed-off-by: Rui Xiang <rui.xiang@huawei.com>
+> >> ---
+> >> fs/nfs/dir.c | 2 +-
+> >> 1 file changed, 1 insertion(+), 1 deletion(-)
+> >>
+> >> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+> >> index 2518865..e570b37 100644
+> >> --- a/fs/nfs/dir.c
+> >> +++ b/fs/nfs/dir.c
+> >> @@ -1547,7 +1547,7 @@ int nfs_instantiate(struct dentry *dentry, struct nfs_fh *fhandle,
+> >> 	struct dentry *parent = dget_parent(dentry);
+> >> 	struct inode *dir = parent->d_inode;
+> >> 	struct inode *inode;
+> >> -	int error = -EACCES;
+> >> +	int error = -EEXIST;
+> >>
+> >> 	d_drop(dentry);
+> >>
+> > 
+> > That looks like it should rather be a WARN_ON(). If the caller has set the dentry's inode before creating the file, then something is really wrong.
+> It can return -EEXIST to say that the file already exits, then will exit. But why does it need a WARN_ON(). Please give me some advise.
+> 
 
-Instead of getting lost in a maze of notifiers and infrastructure build
-around it a cargo cult manner we revert to a slightly nicer version of
-the pre-namespace API.
+If we ever hit that condition then it means that the caller is doing
+something very wrong. That's what the WARN_ON (or WARN_ON_ONCE) would be
+there to check.
 
-To do this we just have to create an in-kernel instance of rpc_pipefs
-that is mounted at network namespace creation so that all functions can
-operated on it.
+Cheers
+  Trond
 
-As-is this has one major downside: because the initial mount already grabs
-a reference to the network namespace we'll create a cyclic reference and
-will never free the network namespace.  To get around this we'd need
-some way to only grab it once user mounts show up / disapear in the VFS.
-
-Given that the namespace kraken has infected various internal filesystem
-and will get more soon I suspect this problem is or will become generic
-and will need a proper solution anyway.  Al, any good ideas how to deal
-with this?  Most straight forward way would be to add a counter of
-user vfsmount to the superblock and methods when it goes to 1 and 0,
-but that seems a bit ugly.
