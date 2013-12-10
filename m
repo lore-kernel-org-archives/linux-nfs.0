@@ -1,128 +1,159 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:40225 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751037Ab3LPUDC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 16 Dec 2013 15:03:02 -0500
-Date: Mon, 16 Dec 2013 15:03:01 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Joakim Tjernlund <joakim.tjernlund@transmode.se>
-Cc: linux-nfs@vger.kernel.org, steved@redhat.com
-Subject: Re: nfs-utils-1.2.9 does not play well with linux 3.10.x
-Message-ID: <20131216200301.GD31816@fieldses.org>
-References: <OFDD407A92.688D29A1-ONC1257C43.00634FC8-C1257C43.00645775@transmode.se>
- <20131216185419.GB31816@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20131216185419.GB31816@fieldses.org>
+Received: from mail-ea0-f179.google.com ([209.85.215.179]:54562 "EHLO
+	mail-ea0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754188Ab3LJSNv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Dec 2013 13:13:51 -0500
+Received: by mail-ea0-f179.google.com with SMTP id r15so2437920ead.38
+        for <linux-nfs@vger.kernel.org>; Tue, 10 Dec 2013 10:13:50 -0800 (PST)
+Message-ID: <1386699230.2879.26.camel@leira.trondhjem.org>
+Subject: Re: [PATCH v2] NFSv4: fix getacl ERANGE for some ACL buffer sizes
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Weston Andros Adamson <dros@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Date: Tue, 10 Dec 2013 20:13:50 +0200
+In-Reply-To: <1385068813-5491-1-git-send-email-dros@netapp.com>
+References: <1385068813-5491-1-git-send-email-dros@netapp.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Dec 16, 2013 at 01:54:19PM -0500, bfields wrote:
-> On Mon, Dec 16, 2013 at 07:16:00PM +0100, Joakim Tjernlund wrote:
-> > rpc.nfsd insists on adding "-4.2" when writing /proc/fs/nfsd/versions :
-> >   rpc.nfsd: Writing version string to kernel: +4.1 -4.2 -2 +3 +4
-> > Which causes Linux to return an EIVAL error as 3.10 has no support for 4.2 
-> > and
-> > does not accept any reference to 4.2
-> > 
-> > It seems reasonable to me that Linux should accpect -4.2 as a noop and 
-> > continue
-> > processing the rest of the options but I am just guessing.
-> > Anyhow, just to test I applied this commit to my 3.10.24 kernel:
-> >    
-> > http://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=4bdc33ed5bd9fbaa243bda6fdccb22674aed6305
-> > and now it accepts the "-4.2" but I have no idea if this messes up 
-> > something else.
+On Thu, 2013-11-21 at 16:20 -0500, Weston Andros Adamson wrote:
+> Fix a bug where getxattr returns ERANGE when the attr buffer
+> length is close enough to the nearest PAGE_SIZE multiple that adding
+> the extra bytes leaves too little room for the ACL buffer.
 > 
-> That should be perfectly safe.
+> Besides storing the ACL buffer, the getacl decoder uses the inline
+> pages for the attr bitmap and buffer length. __nfs4_get_acl_uncached
+> must allocate enough page space for all of the data to be decoded.
 > 
-> I agree that we should teach the kernel to treat "-4.x" at least as a
-> no-op for unknown .x.  But nfs-utils also has to keep working with older
-> kernels which don't do that.
+> This patch uses xdr_partial_copy_from_skb to allocate any needed
+> pages past the first one. This allows the client to always cache the acl
+> on the first getacl call and not just if it fits in one page.
 > 
-> The problem was introduced by 12a590f8d556c00a9502eeebaa763d906222d521
-> "rpc.nfsd: Allow v4.2 server support with the -V option".  That should
-> be using an array of ints not a bit array, so it can make the
-> distinction between "off", "on", and "don't care".
+> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+> ---
+> 
+> Version 2 of this patch changes things up a bit:
+> 
+>  - rely on xdr_partial_copy_from_skb to allocate pages as needed
+>  - always allocate 1 page as there will be some data
+>  - allow xdr_partial_copy_from_skb to allocate up to NFS4ACL_MAXPAGES + 1 pages
+>    to hold the max size ACL and the extra page for the bitmap and acl length
+>  - this allows the first request for an ACL to be cached - not just when it
+>    fits in one page
+> 
+>  fs/nfs/nfs4proc.c | 40 +++++++++++++++-------------------------
+>  fs/nfs/nfs4xdr.c  |  2 --
+>  2 files changed, 15 insertions(+), 27 deletions(-)
+> 
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index ca36d0d..dc8e4f5 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -4430,20 +4430,17 @@ out:
+>  /*
+>   * The getxattr API returns the required buffer length when called with a
+>   * NULL buf. The NFSv4 acl tool then calls getxattr again after allocating
+> - * the required buf.  On a NULL buf, we send a page of data to the server
+> - * guessing that the ACL request can be serviced by a page. If so, we cache
+> - * up to the page of ACL data, and the 2nd call to getxattr is serviced by
+> - * the cache. If not so, we throw away the page, and cache the required
+> - * length. The next getxattr call will then produce another round trip to
+> - * the server, this time with the input buf of the required size.
+> + * the required buf. Cache the result from the first getxattr call to avoid
+> + * sending another RPC.
+>   */
+>  static ssize_t __nfs4_get_acl_uncached(struct inode *inode, void *buf, size_t buflen)
+>  {
+> -	struct page *pages[NFS4ACL_MAXPAGES] = {NULL, };
+> +	/* enough pages to hold ACL data plus the bitmap and acl length */
+> +	struct page *pages[NFS4ACL_MAXPAGES + 1] = {NULL, };
 
-So, something like this (untested).--b.
+Why the change to the array length? From what I can see, you are making
+everything else depend on ARRAY_LENGTH(pages).
 
-diff --git a/support/include/nfs/nfs.h b/support/include/nfs/nfs.h
-index 38db5b5..df4ad76 100644
---- a/support/include/nfs/nfs.h
-+++ b/support/include/nfs/nfs.h
-@@ -17,7 +17,6 @@
- 
- #define NFS4_MINMINOR 1
- #define NFS4_MAXMINOR 2
--#define NFS4_VERDEFAULT  0x1  /* minor verion 1 */
- 
- struct nfs_fh_len {
- 	int		fh_size;
-diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
-index 6db92f0..a9d77ab 100644
---- a/utils/nfsd/nfsd.c
-+++ b/utils/nfsd/nfsd.c
-@@ -99,7 +99,7 @@ main(int argc, char **argv)
- 	char *p, *progname, *port;
- 	char *haddr = NULL;
- 	int	socket_up = 0;
--	int minorvers = NFS4_VERDEFAULT;	/* nfsv4 minor version */
-+	int minorvers[NFS4_MAXMINOR + 1] = {0};
- 	unsigned int versbits = NFSCTL_VERDEFAULT;
- 	unsigned int protobits = NFSCTL_ALLBITS;
- 	unsigned int proto4 = 0;
-@@ -164,7 +164,7 @@ main(int argc, char **argv)
- 						fprintf(stderr, "%s: unsupported minor version\n", optarg);
- 						exit(1);
- 					}
--					NFSCTL_VERUNSET(minorvers, i);
-+					minorvers[i] = -1;
- 					break;
- 				}
- 			case 3:
-@@ -185,7 +185,7 @@ main(int argc, char **argv)
- 						fprintf(stderr, "%s: unsupported minor version\n", optarg);
- 						exit(1);
- 					}
--					NFSCTL_VERSET(minorvers, i);
-+					minorvers[i] = 1;
- 					break;
- 				}
- 			case 3:
-diff --git a/utils/nfsd/nfssvc.c b/utils/nfsd/nfssvc.c
-index 8b85846..1b50aba 100644
---- a/utils/nfsd/nfssvc.c
-+++ b/utils/nfsd/nfssvc.c
-@@ -269,7 +269,7 @@ nfssvc_set_sockets(const int family, const unsigned int protobits,
- }
- 
- void
--nfssvc_setvers(unsigned int ctlbits, int minorvers)
-+nfssvc_setvers(unsigned int ctlbits, int minorvers[])
- {
- 	int fd, n, off;
- 	char *ptr;
-@@ -281,9 +281,9 @@ nfssvc_setvers(unsigned int ctlbits, int minorvers)
- 		return;
- 
- 	for (n = NFS4_MINMINOR; n <= NFS4_MAXMINOR; n++) {
--		if (NFSCTL_VERISSET(minorvers, n)) 
-+		if (minorvers[n] == 1)
- 			off += snprintf(ptr+off, sizeof(buf) - off, "+4.%d ", n);
--		else			
-+		else if (minorvers[n] == -1)
- 			off += snprintf(ptr+off, sizeof(buf) - off, "-4.%d ", n);
- 	}
- 	for (n = NFSD_MINVERS; n <= NFSD_MAXVERS; n++) {
-diff --git a/utils/nfsd/nfssvc.h b/utils/nfsd/nfssvc.h
-index 08de0fe..2bbd3d3 100644
---- a/utils/nfsd/nfssvc.h
-+++ b/utils/nfsd/nfssvc.h
-@@ -24,5 +24,5 @@ void	nfssvc_mount_nfsdfs(char *progname);
- int	nfssvc_inuse(void);
- int	nfssvc_set_sockets(const int family, const unsigned int protobits,
- 			   const char *host, const char *port);
--void	nfssvc_setvers(unsigned int ctlbits, int minorvers4);
-+void	nfssvc_setvers(unsigned int ctlbits, int minorvers4[]);
- int	nfssvc_threads(unsigned short port, int nrservs);
+>  	struct nfs_getaclargs args = {
+>  		.fh = NFS_FH(inode),
+> +		/* The xdr layer may allocate pages here. */
+>  		.acl_pages = pages,
+> -		.acl_len = buflen,
+>  	};
+>  	struct nfs_getaclres res = {
+>  		.acl_len = buflen,
+> @@ -4453,32 +4450,25 @@ static ssize_t __nfs4_get_acl_uncached(struct inode *inode, void *buf, size_t bu
+>  		.rpc_argp = &args,
+>  		.rpc_resp = &res,
+>  	};
+> -	unsigned int npages = DIV_ROUND_UP(buflen, PAGE_SIZE);
+>  	int ret = -ENOMEM, i;
+>  
+> -	/* As long as we're doing a round trip to the server anyway,
+> -	 * let's be prepared for a page of acl data. */
+> -	if (npages == 0)
+> -		npages = 1;
+> -	if (npages > ARRAY_SIZE(pages))
+> -		return -ERANGE;
+> -
+> -	for (i = 0; i < npages; i++) {
+> -		pages[i] = alloc_page(GFP_KERNEL);
+> -		if (!pages[i])
+> -			goto out_free;
+> -	}
+> +	/*
+> +	 * There will be some data returned by the server, how much is not
+> +	 * known yet. Allocate one page and let the XDR layer allocate
+> +	 * more if needed.
+> +	 */
+> +	pages[0] = alloc_page(GFP_KERNEL);
+>  
+>  	/* for decoding across pages */
+>  	res.acl_scratch = alloc_page(GFP_KERNEL);
+>  	if (!res.acl_scratch)
+>  		goto out_free;
+>  
+> -	args.acl_len = npages * PAGE_SIZE;
+> +	args.acl_len = ARRAY_SIZE(pages) << PAGE_SHIFT;
+>  	args.acl_pgbase = 0;
+>  
+> -	dprintk("%s  buf %p buflen %zu npages %d args.acl_len %zu\n",
+> -		__func__, buf, buflen, npages, args.acl_len);
+> +	dprintk("%s  buf %p buflen %zu args.acl_len %zu\n",
+> +		__func__, buf, buflen, args.acl_len);
+>  	ret = nfs4_call_sync(NFS_SERVER(inode)->client, NFS_SERVER(inode),
+>  			     &msg, &args.seq_args, &res.seq_res, 0);
+>  	if (ret)
+> @@ -4503,7 +4493,7 @@ static ssize_t __nfs4_get_acl_uncached(struct inode *inode, void *buf, size_t bu
+>  out_ok:
+>  	ret = res.acl_len;
+>  out_free:
+> -	for (i = 0; i < npages; i++)
+> +	for (i = 0; i < ARRAY_SIZE(pages) && pages[i]; i++)
+>  		if (pages[i])
+>  			__free_page(pages[i]);
+
+What happens now when the server tries to return an ACL that won't fit
+in the above array? Do we still return ERANGE?
+
+Also, are we still safe w.r.t. checking that we don't copy more than
+'buflen' bytes of data?
+
+>  	if (res.acl_scratch)
+> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+> index 5be2868..4e2e2da 100644
+> --- a/fs/nfs/nfs4xdr.c
+> +++ b/fs/nfs/nfs4xdr.c
+> @@ -5207,8 +5207,6 @@ static int decode_getacl(struct xdr_stream *xdr, struct rpc_rqst *req,
+>  	if ((status = decode_op_hdr(xdr, OP_GETATTR)) != 0)
+>  		goto out;
+>  
+> -	xdr_enter_page(xdr, xdr->buf->page_len);
+
+Why is this being removed?
+
+> -
+>  	/* Calculate the offset of the page data */
+>  	pg_offset = xdr->buf->head[0].iov_len;
+>  
+
+
