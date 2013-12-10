@@ -1,352 +1,185 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:60904 "EHLO mx2.suse.de"
+Received: from mx11.netapp.com ([216.240.18.76]:2426 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753267Ab3LBVJj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 2 Dec 2013 16:09:39 -0500
-Date: Mon, 2 Dec 2013 22:09:36 +0100
-From: Jan Kara <jack@suse.cz>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net, linux-mtd@lists.infradead.org,
-        Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>,
-        reiserfs-devel@vger.kernel.org, xfs@oss.sgi.com,
-        jfs-discussion@lists.sourceforge.net, cluster-devel@redhat.com,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 05/18] fs: make posix_acl_chmod more useful
-Message-ID: <20131202210936.GF12253@quack.suse.cz>
-References: <20131201115903.910559036@bombadil.infradead.org>
- <20131201120654.453220050@bombadil.infradead.org>
+	id S1752040Ab3LJTLb convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Dec 2013 14:11:31 -0500
+From: Weston Andros Adamson <dros@netapp.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+CC: linux-nfs list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v2] NFSv4: fix getacl ERANGE for some ACL buffer sizes
+Date: Tue, 10 Dec 2013 19:11:30 +0000
+Message-ID: <1556485E-F391-4F58-AEE3-07C829DA2DB1@netapp.com>
+References: <1385068813-5491-1-git-send-email-dros@netapp.com>
+ <1386699230.2879.26.camel@leira.trondhjem.org>
+In-Reply-To: <1386699230.2879.26.camel@leira.trondhjem.org>
+Content-Type: text/plain; charset="Windows-1252"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20131201120654.453220050@bombadil.infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun 01-12-13 03:59:08, Christoph Hellwig wrote:
-> Rename the current posix_acl_chmod to __posix_acl_chmod and add
-> a fully featured ACL chmod helper that uses the ->set_acl inode
-> operation.
-  Looks good. You can add:
-Reviewed-by: Jan Kara <jack@suse.cz>
 
-							Honza
+On Dec 10, 2013, at 1:13 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+
+> On Thu, 2013-11-21 at 16:20 -0500, Weston Andros Adamson wrote:
+>> Fix a bug where getxattr returns ERANGE when the attr buffer
+>> length is close enough to the nearest PAGE_SIZE multiple that adding
+>> the extra bytes leaves too little room for the ACL buffer.
+>> 
+>> Besides storing the ACL buffer, the getacl decoder uses the inline
+>> pages for the attr bitmap and buffer length. __nfs4_get_acl_uncached
+>> must allocate enough page space for all of the data to be decoded.
+>> 
+>> This patch uses xdr_partial_copy_from_skb to allocate any needed
+>> pages past the first one. This allows the client to always cache the acl
+>> on the first getacl call and not just if it fits in one page.
+>> 
+>> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+>> ---
+>> 
+>> Version 2 of this patch changes things up a bit:
+>> 
+>> - rely on xdr_partial_copy_from_skb to allocate pages as needed
+>> - always allocate 1 page as there will be some data
+>> - allow xdr_partial_copy_from_skb to allocate up to NFS4ACL_MAXPAGES + 1 pages
+>>   to hold the max size ACL and the extra page for the bitmap and acl length
+>> - this allows the first request for an ACL to be cached - not just when it
+>>   fits in one page
+>> 
+>> fs/nfs/nfs4proc.c | 40 +++++++++++++++-------------------------
+>> fs/nfs/nfs4xdr.c  |  2 --
+>> 2 files changed, 15 insertions(+), 27 deletions(-)
+>> 
+>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>> index ca36d0d..dc8e4f5 100644
+>> --- a/fs/nfs/nfs4proc.c
+>> +++ b/fs/nfs/nfs4proc.c
+>> @@ -4430,20 +4430,17 @@ out:
+>> /*
+>>  * The getxattr API returns the required buffer length when called with a
+>>  * NULL buf. The NFSv4 acl tool then calls getxattr again after allocating
+>> - * the required buf.  On a NULL buf, we send a page of data to the server
+>> - * guessing that the ACL request can be serviced by a page. If so, we cache
+>> - * up to the page of ACL data, and the 2nd call to getxattr is serviced by
+>> - * the cache. If not so, we throw away the page, and cache the required
+>> - * length. The next getxattr call will then produce another round trip to
+>> - * the server, this time with the input buf of the required size.
+>> + * the required buf. Cache the result from the first getxattr call to avoid
+>> + * sending another RPC.
+>>  */
+>> static ssize_t __nfs4_get_acl_uncached(struct inode *inode, void *buf, size_t buflen)
+>> {
+>> -	struct page *pages[NFS4ACL_MAXPAGES] = {NULL, };
+>> +	/* enough pages to hold ACL data plus the bitmap and acl length */
+>> +	struct page *pages[NFS4ACL_MAXPAGES + 1] = {NULL, };
 > 
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
-> ---
->  fs/9p/acl.c               |    2 +-
->  fs/btrfs/acl.c            |    2 +-
->  fs/ext2/acl.c             |    2 +-
->  fs/ext3/acl.c             |    2 +-
->  fs/ext4/acl.c             |    2 +-
->  fs/f2fs/acl.c             |    2 +-
->  fs/generic_acl.c          |    2 +-
->  fs/gfs2/acl.c             |    2 +-
->  fs/hfsplus/posix_acl.c    |    2 +-
->  fs/jffs2/acl.c            |    2 +-
->  fs/jfs/acl.c              |    2 +-
->  fs/ocfs2/acl.c            |    2 +-
->  fs/posix_acl.c            |   30 +++++++++++++++++++++++++++---
->  fs/reiserfs/xattr_acl.c   |    2 +-
->  fs/xfs/xfs_acl.c          |    2 +-
->  include/linux/posix_acl.h |   17 +++++++++++++----
->  16 files changed, 54 insertions(+), 21 deletions(-)
+> Why the change to the array length? From what I can see, you are making
+> everything else depend on ARRAY_LENGTH(pages).
+
+So we can fit NFS4ACL_MAXPAGES (which is XATTR_SIZE_MAX / PAGE_SIZE) AND the bitmap (which being variable length must also use the inline pages), otherwise we will always fail for ACL data sized near XATTR_SIZE_MAX, even though we should support it.  I figure that a page is more than enough for the bitmap even when future-proofing nfsv4.X, but we’ll always need that extra page when the actual ACL data is XATTR_SIZE bytes long. 
+
 > 
-> diff --git a/fs/9p/acl.c b/fs/9p/acl.c
-> index 7af425f..f5ce5c5 100644
-> --- a/fs/9p/acl.c
-> +++ b/fs/9p/acl.c
-> @@ -156,7 +156,7 @@ int v9fs_acl_chmod(struct inode *inode, struct p9_fid *fid)
->  		return -EOPNOTSUPP;
->  	acl = v9fs_get_cached_acl(inode, ACL_TYPE_ACCESS);
->  	if (acl) {
-> -		retval = posix_acl_chmod(&acl, GFP_KERNEL, inode->i_mode);
-> +		retval = __posix_acl_chmod(&acl, GFP_KERNEL, inode->i_mode);
->  		if (retval)
->  			return retval;
->  		set_cached_acl(inode, ACL_TYPE_ACCESS, acl);
-> diff --git a/fs/btrfs/acl.c b/fs/btrfs/acl.c
-> index 0890c83..1af04ff 100644
-> --- a/fs/btrfs/acl.c
-> +++ b/fs/btrfs/acl.c
-> @@ -256,7 +256,7 @@ int btrfs_acl_chmod(struct inode *inode)
->  	if (IS_ERR_OR_NULL(acl))
->  		return PTR_ERR(acl);
->  
-> -	ret = posix_acl_chmod(&acl, GFP_KERNEL, inode->i_mode);
-> +	ret = __posix_acl_chmod(&acl, GFP_KERNEL, inode->i_mode);
->  	if (ret)
->  		return ret;
->  	ret = btrfs_set_acl(NULL, inode, acl, ACL_TYPE_ACCESS);
-> diff --git a/fs/ext2/acl.c b/fs/ext2/acl.c
-> index 110b6b3..7006ced 100644
-> --- a/fs/ext2/acl.c
-> +++ b/fs/ext2/acl.c
-> @@ -308,7 +308,7 @@ ext2_acl_chmod(struct inode *inode)
->  	acl = ext2_get_acl(inode, ACL_TYPE_ACCESS);
->  	if (IS_ERR(acl) || !acl)
->  		return PTR_ERR(acl);
-> -	error = posix_acl_chmod(&acl, GFP_KERNEL, inode->i_mode);
-> +	error = __posix_acl_chmod(&acl, GFP_KERNEL, inode->i_mode);
->  	if (error)
->  		return error;
->  	error = ext2_set_acl(inode, ACL_TYPE_ACCESS, acl);
-> diff --git a/fs/ext3/acl.c b/fs/ext3/acl.c
-> index dbb5ad5..6691a6c 100644
-> --- a/fs/ext3/acl.c
-> +++ b/fs/ext3/acl.c
-> @@ -314,7 +314,7 @@ ext3_acl_chmod(struct inode *inode)
->  	acl = ext3_get_acl(inode, ACL_TYPE_ACCESS);
->  	if (IS_ERR(acl) || !acl)
->  		return PTR_ERR(acl);
-> -	error = posix_acl_chmod(&acl, GFP_KERNEL, inode->i_mode);
-> +	error = __posix_acl_chmod(&acl, GFP_KERNEL, inode->i_mode);
->  	if (error)
->  		return error;
->  retry:
-> diff --git a/fs/ext4/acl.c b/fs/ext4/acl.c
-> index 39a54a0..2eebe02 100644
-> --- a/fs/ext4/acl.c
-> +++ b/fs/ext4/acl.c
-> @@ -320,7 +320,7 @@ ext4_acl_chmod(struct inode *inode)
->  	acl = ext4_get_acl(inode, ACL_TYPE_ACCESS);
->  	if (IS_ERR(acl) || !acl)
->  		return PTR_ERR(acl);
-> -	error = posix_acl_chmod(&acl, GFP_KERNEL, inode->i_mode);
-> +	error = __posix_acl_chmod(&acl, GFP_KERNEL, inode->i_mode);
->  	if (error)
->  		return error;
->  retry:
-> diff --git a/fs/f2fs/acl.c b/fs/f2fs/acl.c
-> index d0fc287..14c4df0 100644
-> --- a/fs/f2fs/acl.c
-> +++ b/fs/f2fs/acl.c
-> @@ -311,7 +311,7 @@ int f2fs_acl_chmod(struct inode *inode)
->  	if (IS_ERR(acl) || !acl)
->  		return PTR_ERR(acl);
->  
-> -	error = posix_acl_chmod(&acl, GFP_KERNEL, mode);
-> +	error = __posix_acl_chmod(&acl, GFP_KERNEL, mode);
->  	if (error)
->  		return error;
->  
-> diff --git a/fs/generic_acl.c b/fs/generic_acl.c
-> index b3f3676..46a5076 100644
-> --- a/fs/generic_acl.c
-> +++ b/fs/generic_acl.c
-> @@ -158,7 +158,7 @@ generic_acl_chmod(struct inode *inode)
->  		return -EOPNOTSUPP;
->  	acl = get_cached_acl(inode, ACL_TYPE_ACCESS);
->  	if (acl) {
-> -		error = posix_acl_chmod(&acl, GFP_KERNEL, inode->i_mode);
-> +		error = __posix_acl_chmod(&acl, GFP_KERNEL, inode->i_mode);
->  		if (error)
->  			return error;
->  		set_cached_acl(inode, ACL_TYPE_ACCESS, acl);
-> diff --git a/fs/gfs2/acl.c b/fs/gfs2/acl.c
-> index f69ac0a..3e200c7 100644
-> --- a/fs/gfs2/acl.c
-> +++ b/fs/gfs2/acl.c
-> @@ -162,7 +162,7 @@ int gfs2_acl_chmod(struct gfs2_inode *ip, struct iattr *attr)
->  	if (!acl)
->  		return gfs2_setattr_simple(inode, attr);
->  
-> -	error = posix_acl_chmod(&acl, GFP_NOFS, attr->ia_mode);
-> +	error = __posix_acl_chmod(&acl, GFP_NOFS, attr->ia_mode);
->  	if (error)
->  		return error;
->  
-> diff --git a/fs/hfsplus/posix_acl.c b/fs/hfsplus/posix_acl.c
-> index b609cc1..cab5fd6 100644
-> --- a/fs/hfsplus/posix_acl.c
-> +++ b/fs/hfsplus/posix_acl.c
-> @@ -167,7 +167,7 @@ int hfsplus_posix_acl_chmod(struct inode *inode)
->  	if (IS_ERR(acl) || !acl)
->  		return PTR_ERR(acl);
->  
-> -	err = posix_acl_chmod(&acl, GFP_KERNEL, inode->i_mode);
-> +	err = __posix_acl_chmod(&acl, GFP_KERNEL, inode->i_mode);
->  	if (unlikely(err))
->  		return err;
->  
-> diff --git a/fs/jffs2/acl.c b/fs/jffs2/acl.c
-> index 223283c..5853969 100644
-> --- a/fs/jffs2/acl.c
-> +++ b/fs/jffs2/acl.c
-> @@ -335,7 +335,7 @@ int jffs2_acl_chmod(struct inode *inode)
->  	acl = jffs2_get_acl(inode, ACL_TYPE_ACCESS);
->  	if (IS_ERR(acl) || !acl)
->  		return PTR_ERR(acl);
-> -	rc = posix_acl_chmod(&acl, GFP_KERNEL, inode->i_mode);
-> +	rc = __posix_acl_chmod(&acl, GFP_KERNEL, inode->i_mode);
->  	if (rc)
->  		return rc;
->  	rc = jffs2_set_acl(inode, ACL_TYPE_ACCESS, acl);
-> diff --git a/fs/jfs/acl.c b/fs/jfs/acl.c
-> index d254d6d..9c0fca8 100644
-> --- a/fs/jfs/acl.c
-> +++ b/fs/jfs/acl.c
-> @@ -161,7 +161,7 @@ int jfs_acl_chmod(struct inode *inode)
->  	if (IS_ERR(acl) || !acl)
->  		return PTR_ERR(acl);
->  
-> -	rc = posix_acl_chmod(&acl, GFP_KERNEL, inode->i_mode);
-> +	rc = __posix_acl_chmod(&acl, GFP_KERNEL, inode->i_mode);
->  	if (rc)
->  		return rc;
->  
-> diff --git a/fs/ocfs2/acl.c b/fs/ocfs2/acl.c
-> index b4f788e..73ccf0e 100644
-> --- a/fs/ocfs2/acl.c
-> +++ b/fs/ocfs2/acl.c
-> @@ -350,7 +350,7 @@ int ocfs2_acl_chmod(struct inode *inode)
->  	acl = ocfs2_get_acl(inode, ACL_TYPE_ACCESS);
->  	if (IS_ERR(acl) || !acl)
->  		return PTR_ERR(acl);
-> -	ret = posix_acl_chmod(&acl, GFP_KERNEL, inode->i_mode);
-> +	ret = __posix_acl_chmod(&acl, GFP_KERNEL, inode->i_mode);
->  	if (ret)
->  		return ret;
->  	ret = ocfs2_set_acl(NULL, inode, NULL, ACL_TYPE_ACCESS,
-> diff --git a/fs/posix_acl.c b/fs/posix_acl.c
-> index 9dd03e0..9f76aaa 100644
-> --- a/fs/posix_acl.c
-> +++ b/fs/posix_acl.c
-> @@ -338,7 +338,7 @@ static int posix_acl_create_masq(struct posix_acl *acl, umode_t *mode_p)
->  /*
->   * Modify the ACL for the chmod syscall.
->   */
-> -static int posix_acl_chmod_masq(struct posix_acl *acl, umode_t mode)
-> +static int __posix_acl_chmod_masq(struct posix_acl *acl, umode_t mode)
->  {
->  	struct posix_acl_entry *group_obj = NULL, *mask_obj = NULL;
->  	struct posix_acl_entry *pa, *pe;
-> @@ -402,12 +402,12 @@ posix_acl_create(struct posix_acl **acl, gfp_t gfp, umode_t *mode_p)
->  EXPORT_SYMBOL(posix_acl_create);
->  
->  int
-> -posix_acl_chmod(struct posix_acl **acl, gfp_t gfp, umode_t mode)
-> +__posix_acl_chmod(struct posix_acl **acl, gfp_t gfp, umode_t mode)
->  {
->  	struct posix_acl *clone = posix_acl_clone(*acl, gfp);
->  	int err = -ENOMEM;
->  	if (clone) {
-> -		err = posix_acl_chmod_masq(clone, mode);
-> +		err = __posix_acl_chmod_masq(clone, mode);
->  		if (err) {
->  			posix_acl_release(clone);
->  			clone = NULL;
-> @@ -417,6 +417,30 @@ posix_acl_chmod(struct posix_acl **acl, gfp_t gfp, umode_t mode)
->  	*acl = clone;
->  	return err;
->  }
-> +EXPORT_SYMBOL(__posix_acl_chmod);
-> +
-> +int
-> +posix_acl_chmod(struct inode *inode)
-> +{
-> +	struct posix_acl *acl;
-> +	int ret = 0;
-> +
-> +	if (S_ISLNK(inode->i_mode))
-> +		return -EOPNOTSUPP;
-> +	if (!IS_POSIXACL(inode))
-> +		return 0;
-> +
-> +	acl = get_acl(inode, ACL_TYPE_ACCESS);
-> +	if (IS_ERR_OR_NULL(acl))
-> +		return PTR_ERR(acl);
-> +
-> +	ret = __posix_acl_chmod(&acl, GFP_KERNEL, inode->i_mode);
-> +	if (ret)
-> +		return ret;
-> +	ret = inode->i_op->set_acl(inode, acl, ACL_TYPE_ACCESS);
-> +	posix_acl_release(acl);
-> +	return ret;
-> +}
->  EXPORT_SYMBOL(posix_acl_chmod);
->  
->  struct posix_acl *get_acl(struct inode *inode, int type)
-> diff --git a/fs/reiserfs/xattr_acl.c b/fs/reiserfs/xattr_acl.c
-> index 6f721ea..ea4e443 100644
-> --- a/fs/reiserfs/xattr_acl.c
-> +++ b/fs/reiserfs/xattr_acl.c
-> @@ -463,7 +463,7 @@ int reiserfs_acl_chmod(struct inode *inode)
->  		return 0;
->  	if (IS_ERR(acl))
->  		return PTR_ERR(acl);
-> -	error = posix_acl_chmod(&acl, GFP_NOFS, inode->i_mode);
-> +	error = __posix_acl_chmod(&acl, GFP_NOFS, inode->i_mode);
->  	if (error)
->  		return error;
->  
-> diff --git a/fs/xfs/xfs_acl.c b/fs/xfs/xfs_acl.c
-> index 370eb3e..4eac105 100644
-> --- a/fs/xfs/xfs_acl.c
-> +++ b/fs/xfs/xfs_acl.c
-> @@ -334,7 +334,7 @@ xfs_acl_chmod(struct inode *inode)
->  	if (IS_ERR(acl) || !acl)
->  		return PTR_ERR(acl);
->  
-> -	error = posix_acl_chmod(&acl, GFP_KERNEL, inode->i_mode);
-> +	error = __posix_acl_chmod(&acl, GFP_KERNEL, inode->i_mode);
->  	if (error)
->  		return error;
->  
-> diff --git a/include/linux/posix_acl.h b/include/linux/posix_acl.h
-> index a8d9918..8b64e78 100644
-> --- a/include/linux/posix_acl.h
-> +++ b/include/linux/posix_acl.h
-> @@ -89,12 +89,14 @@ extern int posix_acl_permission(struct inode *, const struct posix_acl *, int);
->  extern struct posix_acl *posix_acl_from_mode(umode_t, gfp_t);
->  extern int posix_acl_equiv_mode(const struct posix_acl *, umode_t *);
->  extern int posix_acl_create(struct posix_acl **, gfp_t, umode_t *);
-> -extern int posix_acl_chmod(struct posix_acl **, gfp_t, umode_t);
-> +extern int __posix_acl_chmod(struct posix_acl **, gfp_t, umode_t);
->  
->  extern struct posix_acl *get_posix_acl(struct inode *, int);
->  extern int set_posix_acl(struct inode *, int, struct posix_acl *);
->  
->  #ifdef CONFIG_FS_POSIX_ACL
-> +extern int posix_acl_chmod(struct inode *);
-> +
->  static inline struct posix_acl **acl_by_type(struct inode *inode, int type)
->  {
->  	switch (type) {
-> @@ -165,15 +167,22 @@ static inline void forget_all_cached_acls(struct inode *inode)
->  	if (old_default != ACL_NOT_CACHED)
->  		posix_acl_release(old_default);
->  }
-> -#endif
->  
->  static inline void cache_no_acl(struct inode *inode)
->  {
-> -#ifdef CONFIG_FS_POSIX_ACL
->  	inode->i_acl = NULL;
->  	inode->i_default_acl = NULL;
-> -#endif
->  }
-> +#else
-> +static inline int posix_acl_chmod(struct inode *inode)
-> +{
-> +	return 0;
-> +}
-> +
-> +static inline void cache_no_acl(struct inode *inode)
-> +{
-> +}
-> +#endif /* CONFIG_FS_POSIX_ACL */
->  
->  struct posix_acl *get_acl(struct inode *inode, int type);
->  
-> -- 
-> 1.7.10.4
+>> 	struct nfs_getaclargs args = {
+>> 		.fh = NFS_FH(inode),
+>> +		/* The xdr layer may allocate pages here. */
+>> 		.acl_pages = pages,
+>> -		.acl_len = buflen,
+>> 	};
+>> 	struct nfs_getaclres res = {
+>> 		.acl_len = buflen,
+>> @@ -4453,32 +4450,25 @@ static ssize_t __nfs4_get_acl_uncached(struct inode *inode, void *buf, size_t bu
+>> 		.rpc_argp = &args,
+>> 		.rpc_resp = &res,
+>> 	};
+>> -	unsigned int npages = DIV_ROUND_UP(buflen, PAGE_SIZE);
+>> 	int ret = -ENOMEM, i;
+>> 
+>> -	/* As long as we're doing a round trip to the server anyway,
+>> -	 * let's be prepared for a page of acl data. */
+>> -	if (npages == 0)
+>> -		npages = 1;
+>> -	if (npages > ARRAY_SIZE(pages))
+>> -		return -ERANGE;
+>> -
+>> -	for (i = 0; i < npages; i++) {
+>> -		pages[i] = alloc_page(GFP_KERNEL);
+>> -		if (!pages[i])
+>> -			goto out_free;
+>> -	}
+>> +	/*
+>> +	 * There will be some data returned by the server, how much is not
+>> +	 * known yet. Allocate one page and let the XDR layer allocate
+>> +	 * more if needed.
+>> +	 */
+>> +	pages[0] = alloc_page(GFP_KERNEL);
+>> 
+>> 	/* for decoding across pages */
+>> 	res.acl_scratch = alloc_page(GFP_KERNEL);
+>> 	if (!res.acl_scratch)
+>> 		goto out_free;
+>> 
+>> -	args.acl_len = npages * PAGE_SIZE;
+>> +	args.acl_len = ARRAY_SIZE(pages) << PAGE_SHIFT;
+>> 	args.acl_pgbase = 0;
+>> 
+>> -	dprintk("%s  buf %p buflen %zu npages %d args.acl_len %zu\n",
+>> -		__func__, buf, buflen, npages, args.acl_len);
+>> +	dprintk("%s  buf %p buflen %zu args.acl_len %zu\n",
+>> +		__func__, buf, buflen, args.acl_len);
+>> 	ret = nfs4_call_sync(NFS_SERVER(inode)->client, NFS_SERVER(inode),
+>> 			     &msg, &args.seq_args, &res.seq_res, 0);
+>> 	if (ret)
+>> @@ -4503,7 +4493,7 @@ static ssize_t __nfs4_get_acl_uncached(struct inode *inode, void *buf, size_t bu
+>> out_ok:
+>> 	ret = res.acl_len;
+>> out_free:
+>> -	for (i = 0; i < npages; i++)
+>> +	for (i = 0; i < ARRAY_SIZE(pages) && pages[i]; i++)
+>> 		if (pages[i])
+>> 			__free_page(pages[i]);
+> 
+> What happens now when the server tries to return an ACL that won't fit
+> in the above array? Do we still return ERANGE?
+
+Yes, the XDR layer will set NFS4_ACL_TRUNC if the ACL data doesn’t fit in args.acl_len, and __nfs4_get_acl_uncached still checks for this flag, returning -ERANGE if set.
+
+> 
+> Also, are we still safe w.r.t. checking that we don't copy more than
+> 'buflen' bytes of data?
+
+Yes, the xdr inline page filler enforces this - and we set the max in nfs4_xdr_enc_getacl:
+
+      xdr_inline_pages(&req->rq_rcv_buf, replen << 2,
+                args->acl_pages, args->acl_pgbase, args->acl_len);
+
+> 
+>> 	if (res.acl_scratch)
+>> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+>> index 5be2868..4e2e2da 100644
+>> --- a/fs/nfs/nfs4xdr.c
+>> +++ b/fs/nfs/nfs4xdr.c
+>> @@ -5207,8 +5207,6 @@ static int decode_getacl(struct xdr_stream *xdr, struct rpc_rqst *req,
+>> 	if ((status = decode_op_hdr(xdr, OP_GETATTR)) != 0)
+>> 		goto out;
+>> 
+>> -	xdr_enter_page(xdr, xdr->buf->page_len);
+> 
+> Why is this being removed?
+
+Because it BUG()s! ;)
+
+I must admit that I don’t get why xdr_enter_page() doesn’t work when the XDR layer does the page allocation, but it does not — and the nfs3xdr ACL code (which uses the XDR layer allocation) also doesn’t call this.  It worked well without this, so I just removed it and didn’t investigate why.
+
+-dros
+
+> 
+>> -
+>> 	/* Calculate the offset of the page data */
+>> 	pg_offset = xdr->buf->head[0].iov_len;
+>> 
 > 
 > 
 > --
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+
