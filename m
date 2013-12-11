@@ -1,72 +1,339 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:54679 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752994Ab3LMRcS convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Dec 2013 12:32:18 -0500
-From: Weston Andros Adamson <dros@netapp.com>
-To: linux-nfs list <linux-nfs@vger.kernel.org>
-Subject: Recently introduced hang on reboot with auth_gss
-Date: Fri, 13 Dec 2013 17:32:17 +0000
-Message-ID: <9852CC37-D035-4645-ACB7-8E0B902AF3F8@netapp.com>
-Content-Type: text/plain; charset="Windows-1252"
-MIME-Version: 1.0
+Received: from bombadil.infradead.org ([198.137.202.9]:43327 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751215Ab3LKKp3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Dec 2013 05:45:29 -0500
+Message-Id: <20131211104528.172529459@bombadil.infradead.org>
+Date: Wed, 11 Dec 2013 02:42:53 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: viro@zeniv.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-mtd@lists.infradead.org, Mark Fasheh <mfasheh@suse.com>,
+        Joel Becker <jlbec@evilplan.org>, reiserfs-devel@vger.kernel.org,
+        xfs@oss.sgi.com, jfs-discussion@lists.sourceforge.net,
+        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
+        Andreas Gruenbacher <andreas.gruenbacher@linbit.com>,
+        Vyacheslav Dubeyko <slava@dubeyko.com>
+Subject: [PATCH 10/18] hfsplus: use generic posix ACL infrastructure
+References: <20131211104243.148113893@bombadil.infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit c297c8b99b07f496ff69a719cfb8e8fe852832ed (SUNRPC: do not fail gss proc NULL calls with EACCES) introduces a hang on reboot if there are any mounts that use AUTH_GSS.
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+Reviewed-by: Vyacheslav Dubeyko <slava@dubeyko.com>
+---
+ fs/hfsplus/acl.h       |    9 +--
+ fs/hfsplus/dir.c       |    1 +
+ fs/hfsplus/inode.c     |    3 +-
+ fs/hfsplus/posix_acl.c |  168 +++++-------------------------------------------
+ fs/hfsplus/xattr.c     |    5 +-
+ fs/hfsplus/xattr.h     |    2 -
+ 6 files changed, 26 insertions(+), 162 deletions(-)
 
-Due to recent changes, this can even happen when mounting sec=sys, because the non-fsid specific operations use KRB5 if possible.
+diff --git a/fs/hfsplus/acl.h b/fs/hfsplus/acl.h
+index 07c0d49..95c8ed9 100644
+--- a/fs/hfsplus/acl.h
++++ b/fs/hfsplus/acl.h
+@@ -12,16 +12,13 @@
+ 
+ /* posix_acl.c */
+ struct posix_acl *hfsplus_get_posix_acl(struct inode *inode, int type);
+-extern int hfsplus_posix_acl_chmod(struct inode *);
++int hfsplus_set_posix_acl(struct inode *inode, struct posix_acl *acl,
++		int type);
+ extern int hfsplus_init_posix_acl(struct inode *, struct inode *);
+ 
+ #else  /* CONFIG_HFSPLUS_FS_POSIX_ACL */
+ #define hfsplus_get_posix_acl NULL
+-
+-static inline int hfsplus_posix_acl_chmod(struct inode *inode)
+-{
+-	return 0;
+-}
++#define hfsplus_set_posix_acl NULL
+ 
+ static inline int hfsplus_init_posix_acl(struct inode *inode, struct inode *dir)
+ {
+diff --git a/fs/hfsplus/dir.c b/fs/hfsplus/dir.c
+index 4a4fea0..9ee6298 100644
+--- a/fs/hfsplus/dir.c
++++ b/fs/hfsplus/dir.c
+@@ -532,6 +532,7 @@ const struct inode_operations hfsplus_dir_inode_operations = {
+ 	.removexattr		= hfsplus_removexattr,
+ #ifdef CONFIG_HFSPLUS_FS_POSIX_ACL
+ 	.get_acl		= hfsplus_get_posix_acl,
++	.set_acl		= hfsplus_set_posix_acl,
+ #endif
+ };
+ 
+diff --git a/fs/hfsplus/inode.c b/fs/hfsplus/inode.c
+index 37213d0..2e10993 100644
+--- a/fs/hfsplus/inode.c
++++ b/fs/hfsplus/inode.c
+@@ -319,7 +319,7 @@ static int hfsplus_setattr(struct dentry *dentry, struct iattr *attr)
+ 	mark_inode_dirty(inode);
+ 
+ 	if (attr->ia_valid & ATTR_MODE) {
+-		error = hfsplus_posix_acl_chmod(inode);
++		error = posix_acl_chmod(inode, inode->i_mode);
+ 		if (unlikely(error))
+ 			return error;
+ 	}
+@@ -393,6 +393,7 @@ static const struct inode_operations hfsplus_file_inode_operations = {
+ 	.removexattr	= hfsplus_removexattr,
+ #ifdef CONFIG_HFSPLUS_FS_POSIX_ACL
+ 	.get_acl	= hfsplus_get_posix_acl,
++	.set_acl	= hfsplus_set_posix_acl,
+ #endif
+ };
+ 
+diff --git a/fs/hfsplus/posix_acl.c b/fs/hfsplus/posix_acl.c
+index 277942f..df0c9af 100644
+--- a/fs/hfsplus/posix_acl.c
++++ b/fs/hfsplus/posix_acl.c
+@@ -17,9 +17,7 @@ struct posix_acl *hfsplus_get_posix_acl(struct inode *inode, int type)
+ 	char *value = NULL;
+ 	ssize_t size;
+ 
+-	acl = get_cached_acl(inode, type);
+-	if (acl != ACL_NOT_CACHED)
+-		return acl;
++	hfs_dbg(ACL_MOD, "[%s]: ino %lu\n", __func__, inode->i_ino);
+ 
+ 	switch (type) {
+ 	case ACL_TYPE_ACCESS:
+@@ -56,17 +54,15 @@ struct posix_acl *hfsplus_get_posix_acl(struct inode *inode, int type)
+ 	return acl;
+ }
+ 
+-static int hfsplus_set_posix_acl(struct inode *inode,
+-					int type,
+-					struct posix_acl *acl)
++int hfsplus_set_posix_acl(struct inode *inode, struct posix_acl *acl,
++		int type)
+ {
+ 	int err;
+ 	char *xattr_name;
+ 	size_t size = 0;
+ 	char *value = NULL;
+ 
+-	if (S_ISLNK(inode->i_mode))
+-		return -EOPNOTSUPP;
++	hfs_dbg(ACL_MOD, "[%s]: ino %lu\n", __func__, inode->i_ino);
+ 
+ 	switch (type) {
+ 	case ACL_TYPE_ACCESS:
+@@ -115,7 +111,7 @@ end_set_acl:
+ int hfsplus_init_posix_acl(struct inode *inode, struct inode *dir)
+ {
+ 	int err = 0;
+-	struct posix_acl *acl = NULL;
++	struct posix_acl *default_acl, *acl;
+ 
+ 	hfs_dbg(ACL_MOD,
+ 		"[%s]: ino %lu, dir->ino %lu\n",
+@@ -124,151 +120,21 @@ int hfsplus_init_posix_acl(struct inode *inode, struct inode *dir)
+ 	if (S_ISLNK(inode->i_mode))
+ 		return 0;
+ 
+-	acl = hfsplus_get_posix_acl(dir, ACL_TYPE_DEFAULT);
+-	if (IS_ERR(acl))
+-		return PTR_ERR(acl);
+-
+-	if (acl) {
+-		if (S_ISDIR(inode->i_mode)) {
+-			err = hfsplus_set_posix_acl(inode,
+-							ACL_TYPE_DEFAULT,
+-							acl);
+-			if (unlikely(err))
+-				goto init_acl_cleanup;
+-		}
+-
+-		err = __posix_acl_create(&acl, GFP_NOFS, &inode->i_mode);
+-		if (unlikely(err < 0))
+-			return err;
+-
+-		if (err > 0)
+-			err = hfsplus_set_posix_acl(inode,
+-							ACL_TYPE_ACCESS,
+-							acl);
+-	} else
+-		inode->i_mode &= ~current_umask();
+-
+-init_acl_cleanup:
+-	posix_acl_release(acl);
+-	return err;
+-}
+-
+-int hfsplus_posix_acl_chmod(struct inode *inode)
+-{
+-	int err;
+-	struct posix_acl *acl;
+-
+-	hfs_dbg(ACL_MOD, "[%s]: ino %lu\n", __func__, inode->i_ino);
+-
+-	if (S_ISLNK(inode->i_mode))
+-		return -EOPNOTSUPP;
+-
+-	acl = hfsplus_get_posix_acl(inode, ACL_TYPE_ACCESS);
+-	if (IS_ERR(acl) || !acl)
+-		return PTR_ERR(acl);
+-
+-	err = __posix_acl_chmod(&acl, GFP_KERNEL, inode->i_mode);
+-	if (unlikely(err))
++	err = posix_acl_create(dir, &inode->i_mode, &default_acl, &acl);
++	if (err)
+ 		return err;
+ 
+-	err = hfsplus_set_posix_acl(inode, ACL_TYPE_ACCESS, acl);
+-	posix_acl_release(acl);
+-	return err;
+-}
+-
+-static int hfsplus_xattr_get_posix_acl(struct dentry *dentry,
+-					const char *name,
+-					void *buffer,
+-					size_t size,
+-					int type)
+-{
+-	int err = 0;
+-	struct posix_acl *acl;
+-
+-	hfs_dbg(ACL_MOD,
+-		"[%s]: ino %lu, buffer %p, size %zu, type %#x\n",
+-		__func__, dentry->d_inode->i_ino, buffer, size, type);
+-
+-	if (strcmp(name, "") != 0)
+-		return -EINVAL;
+-
+-	acl = hfsplus_get_posix_acl(dentry->d_inode, type);
+-	if (IS_ERR(acl))
+-		return PTR_ERR(acl);
+-	if (acl == NULL)
+-		return -ENODATA;
+-
+-	err = posix_acl_to_xattr(&init_user_ns, acl, buffer, size);
+-	posix_acl_release(acl);
+-
+-	return err;
+-}
+-
+-static int hfsplus_xattr_set_posix_acl(struct dentry *dentry,
+-					const char *name,
+-					const void *value,
+-					size_t size,
+-					int flags,
+-					int type)
+-{
+-	int err = 0;
+-	struct inode *inode = dentry->d_inode;
+-	struct posix_acl *acl = NULL;
+-
+-	hfs_dbg(ACL_MOD,
+-		"[%s]: ino %lu, value %p, size %zu, flags %#x, type %#x\n",
+-		__func__, inode->i_ino, value, size, flags, type);
+-
+-	if (strcmp(name, "") != 0)
+-		return -EINVAL;
+-
+-	if (!inode_owner_or_capable(inode))
+-		return -EPERM;
+-
+-	if (value) {
+-		acl = posix_acl_from_xattr(&init_user_ns, value, size);
+-		if (IS_ERR(acl))
+-			return PTR_ERR(acl);
+-		else if (acl) {
+-			err = posix_acl_valid(acl);
+-			if (err)
+-				goto end_xattr_set_acl;
+-		}
++	if (default_acl) {
++		err = hfsplus_set_posix_acl(inode, default_acl,
++					    ACL_TYPE_DEFAULT);
++		posix_acl_release(default_acl);
+ 	}
+ 
+-	err = hfsplus_set_posix_acl(inode, type, acl);
+-
+-end_xattr_set_acl:
+-	posix_acl_release(acl);
++	if (acl) {
++		if (!err)
++			err = hfsplus_set_posix_acl(inode, acl,
++						    ACL_TYPE_ACCESS);
++		posix_acl_release(acl);
++	}
+ 	return err;
+ }
+-
+-static size_t hfsplus_xattr_list_posix_acl(struct dentry *dentry,
+-						char *list,
+-						size_t list_size,
+-						const char *name,
+-						size_t name_len,
+-						int type)
+-{
+-	/*
+-	 * This method is not used.
+-	 * It is used hfsplus_listxattr() instead of generic_listxattr().
+-	 */
+-	return -EOPNOTSUPP;
+-}
+-
+-const struct xattr_handler hfsplus_xattr_acl_access_handler = {
+-	.prefix	= POSIX_ACL_XATTR_ACCESS,
+-	.flags	= ACL_TYPE_ACCESS,
+-	.list	= hfsplus_xattr_list_posix_acl,
+-	.get	= hfsplus_xattr_get_posix_acl,
+-	.set	= hfsplus_xattr_set_posix_acl,
+-};
+-
+-const struct xattr_handler hfsplus_xattr_acl_default_handler = {
+-	.prefix	= POSIX_ACL_XATTR_DEFAULT,
+-	.flags	= ACL_TYPE_DEFAULT,
+-	.list	= hfsplus_xattr_list_posix_acl,
+-	.get	= hfsplus_xattr_get_posix_acl,
+-	.set	= hfsplus_xattr_set_posix_acl,
+-};
+diff --git a/fs/hfsplus/xattr.c b/fs/hfsplus/xattr.c
+index 3c6136f..bf88baa 100644
+--- a/fs/hfsplus/xattr.c
++++ b/fs/hfsplus/xattr.c
+@@ -7,6 +7,7 @@
+  */
+ 
+ #include "hfsplus_fs.h"
++#include <linux/posix_acl_xattr.h>
+ #include "xattr.h"
+ #include "acl.h"
+ 
+@@ -15,8 +16,8 @@ const struct xattr_handler *hfsplus_xattr_handlers[] = {
+ 	&hfsplus_xattr_user_handler,
+ 	&hfsplus_xattr_trusted_handler,
+ #ifdef CONFIG_HFSPLUS_FS_POSIX_ACL
+-	&hfsplus_xattr_acl_access_handler,
+-	&hfsplus_xattr_acl_default_handler,
++	&posix_acl_access_xattr_handler,
++	&posix_acl_default_xattr_handler,
+ #endif
+ 	&hfsplus_xattr_security_handler,
+ 	NULL
+diff --git a/fs/hfsplus/xattr.h b/fs/hfsplus/xattr.h
+index 841b569..9e21449 100644
+--- a/fs/hfsplus/xattr.h
++++ b/fs/hfsplus/xattr.h
+@@ -14,8 +14,6 @@
+ extern const struct xattr_handler hfsplus_xattr_osx_handler;
+ extern const struct xattr_handler hfsplus_xattr_user_handler;
+ extern const struct xattr_handler hfsplus_xattr_trusted_handler;
+-extern const struct xattr_handler hfsplus_xattr_acl_access_handler;
+-extern const struct xattr_handler hfsplus_xattr_acl_default_handler;
+ extern const struct xattr_handler hfsplus_xattr_security_handler;
+ 
+ extern const struct xattr_handler *hfsplus_xattr_handlers[];
+-- 
+1.7.10.4
 
-To reproduce:
 
-1) mount a server with sec=krb5 (or sec=sys if you know krb5 will work for nfs_client ops)
-2) reboot
-3) notice hang (output below)
-
-
-I can see why it’s hanging - the reboot forced unmount is happening after gssd is killed, so the upcall will never succeed…. Any ideas on how this should be fixed?  Should we timeout after a certain number of tries? Should we detect that gssd isn’t running anymore (if this is even possible)?
-
--dros
-
-
-BUG: soft lockup - CPU#0 stuck for 22s! [kworker/0:1:27]
-Modules linked in: rpcsec_gss_krb5 nfsv4 nfs fscache crc32c_intel ppdev i2c_piix4 aesni_intel aes_x86_64 glue_helper lrw gf128mul serio_raw ablk_helper cryptd i2c_core e1000 parport_pc parport shpchp nfsd auth_rpcgss oid_registry exportfs nfs_acl lockd sunrpc autofs4 mptspi scsi_transport_spi mptscsih mptbase ata_generic floppy
-irq event stamp: 279178
-hardirqs last  enabled at (279177): [<ffffffff814a925c>] restore_args+0x0/0x30
-hardirqs last disabled at (279178): [<ffffffff814b0a6a>] apic_timer_interrupt+0x6a/0x80
-softirqs last  enabled at (279176): [<ffffffff8103f583>] __do_softirq+0x1df/0x276
-softirqs last disabled at (279171): [<ffffffff8103f852>] irq_exit+0x53/0x9a
-CPU: 0 PID: 27 Comm: kworker/0:1 Not tainted 3.13.0-rc3-branch-dros_testing+ #1
-Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform, BIOS 6.00 07/31/2013
-Workqueue: rpciod rpc_async_schedule [sunrpc]
-task: ffff88007b87a130 ti: ffff88007ad08000 task.ti: ffff88007ad08000
-RIP: 0010:[<ffffffffa00a562d>]  [<ffffffffa00a562d>] rpcauth_refreshcred+0x17/0x15f [sunrpc]
-RSP: 0018:ffff88007ad09c88  EFLAGS: 00000286
-RAX: ffffffffa02ba650 RBX: ffffffff81073f47 RCX: 0000000000000007
-RDX: 0000000000000007 RSI: ffff88007a885d70 RDI: ffff88007a158b40
-RBP: ffff88007ad09ce8 R08: ffff88007a5ce9f8 R09: ffffffffa00993d7
-R10: ffff88007a5ce7b0 R11: ffff88007a158b40 R12: ffffffffa009943d
-R13: 0000000000000a81 R14: ffff88007a158bb0 R15: ffffffff814a925c
-FS:  0000000000000000(0000) GS:ffff88007f200000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-CR2: 00007f2d03056000 CR3: 0000000001a0b000 CR4: 00000000001407f0
-Stack:
- ffffffffa009943d ffff88007a5ce9f8 0000000000000000 0000000000000007
- 0000000000000007 ffff88007a885d70 ffff88007a158b40 ffffffffffffff10
- ffff88007a158b40 0000000000000000 ffff88007a158bb0 0000000000000a81
-Call Trace:
- [<ffffffffa009943d>] ? call_refresh+0x66/0x66 [sunrpc]
- [<ffffffffa0099438>] call_refresh+0x61/0x66 [sunrpc]
- [<ffffffffa00a403b>] __rpc_execute+0xf1/0x362 [sunrpc]
- [<ffffffff81073f47>] ? trace_hardirqs_on_caller+0x145/0x1a1
- [<ffffffffa00a42d3>] rpc_async_schedule+0x27/0x32 [sunrpc]
- [<ffffffff81052974>] process_one_work+0x211/0x3a5
- [<ffffffff810528d5>] ? process_one_work+0x172/0x3a5
- [<ffffffff81052eeb>] worker_thread+0x134/0x202
- [<ffffffff81052db7>] ? rescuer_thread+0x280/0x280
- [<ffffffff81052db7>] ? rescuer_thread+0x280/0x280
- [<ffffffff810584a0>] kthread+0xc9/0xd1
- [<ffffffff810583d7>] ? __kthread_parkme+0x61/0x61
- [<ffffffff814afd6c>] ret_from_fork+0x7c/0xb0
- [<ffffffff810583d7>] ? __kthread_parkme+0x61/0x61
-Code: 89 c2 41 ff d6 48 83 c4 58 5b 41 5c 41 5d 41 5e 41 5f 5d c3 0f 1f 44 00 00 55 48 89 e5 41 56 41 55 41 54 53 48 89 fb 48 83 ec 40 <4c> 8b 6f 20 4d 8b a5 90 00 00 00 4d 85 e4 0f 85 e4 00 00 00 8b
