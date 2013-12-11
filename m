@@ -1,252 +1,504 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:47123 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751886Ab3LLPqm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 12 Dec 2013 10:46:42 -0500
-Date: Thu, 12 Dec 2013 10:46:42 -0500
-To: Sander Klein <roedie@roedie.nl>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: rpc.mountd high cpu usage
-Message-ID: <20131212154642.GA11521@fieldses.org>
-References: <889b64df295ba04d47f941762ebe0bac@roedie.nl>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <889b64df295ba04d47f941762ebe0bac@roedie.nl>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from bombadil.infradead.org ([198.137.202.9]:43343 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751482Ab3LKKpa (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Dec 2013 05:45:30 -0500
+Message-Id: <20131211104529.305937197@bombadil.infradead.org>
+Date: Wed, 11 Dec 2013 02:43:00 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: viro@zeniv.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-mtd@lists.infradead.org, Mark Fasheh <mfasheh@suse.com>,
+        Joel Becker <jlbec@evilplan.org>, reiserfs-devel@vger.kernel.org,
+        xfs@oss.sgi.com, jfs-discussion@lists.sourceforge.net,
+        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
+        Andreas Gruenbacher <andreas.gruenbacher@linbit.com>
+Subject: [PATCH 17/18] nfs: use generic posix ACL infrastructure for v3 Posix ACLs
+References: <20131211104243.148113893@bombadil.infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Dec 12, 2013 at 11:13:11AM +0100, Sander Klein wrote:
-> Hi,
-> 
-> We have an NFS server with about 186 exports currently. Every time
-> we add an export or mount an export the rpc.mountd starts eating
-> 100% of the CPU for a long time and clients get timeouts during
-> mounts.
-> 
-> At first I thought this was because of a mount storm so I created
-> more rpc.mountd threads (16 currently on a 16 core CPU) to see if
-> that would help. We also made sure that not all of our clients mount
-> the export at the same time. But it didn't help.
-> 
-> After attaching a strace to one of the rpc.mountd processes I found
-> out that a lot of newfstatat's are being done. For every export we
-> create a newfstatat is being done for every way the a harddisk is
-> seen the OS. Our system has 180 harddisks which are all multipathed
-> so a these are a *LOT* of stats. 7206 per export in our case. Just a
-> small part from the strace (sorry for the big paste):
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ fs/nfs/inode.c         |    4 -
+ fs/nfs/nfs3acl.c       |  287 +++++++++---------------------------------------
+ fs/nfs/nfs3proc.c      |   26 +++--
+ fs/nfs/nfs3super.c     |    3 +
+ include/linux/nfs_fs.h |   10 +-
+ 5 files changed, 76 insertions(+), 254 deletions(-)
 
-That sounds like somewhat of an extreme setup, and I suspect the current
-behavior is by design, but I agree that we should fix it.  I'm not
-volunteering for now....
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 00ad1c2..ecd11ba 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -1641,10 +1641,6 @@ struct inode *nfs_alloc_inode(struct super_block *sb)
+ 		return NULL;
+ 	nfsi->flags = 0UL;
+ 	nfsi->cache_validity = 0UL;
+-#ifdef CONFIG_NFS_V3_ACL
+-	nfsi->acl_access = ERR_PTR(-EAGAIN);
+-	nfsi->acl_default = ERR_PTR(-EAGAIN);
+-#endif
+ #if IS_ENABLED(CONFIG_NFS_V4)
+ 	nfsi->nfs4_acl = NULL;
+ #endif /* CONFIG_NFS_V4 */
+diff --git a/fs/nfs/nfs3acl.c b/fs/nfs/nfs3acl.c
+index e859675..80bfb5b 100644
+--- a/fs/nfs/nfs3acl.c
++++ b/fs/nfs/nfs3acl.c
+@@ -10,179 +10,7 @@
+ 
+ #define NFSDBG_FACILITY	NFSDBG_PROC
+ 
+-ssize_t nfs3_listxattr(struct dentry *dentry, char *buffer, size_t size)
+-{
+-	struct inode *inode = dentry->d_inode;
+-	struct posix_acl *acl;
+-	int pos=0, len=0;
+-
+-#	define output(s) do {						\
+-			if (pos + sizeof(s) <= size) {			\
+-				memcpy(buffer + pos, s, sizeof(s));	\
+-				pos += sizeof(s);			\
+-			}						\
+-			len += sizeof(s);				\
+-		} while(0)
+-
+-	acl = nfs3_proc_getacl(inode, ACL_TYPE_ACCESS);
+-	if (IS_ERR(acl))
+-		return PTR_ERR(acl);
+-	if (acl) {
+-		output("system.posix_acl_access");
+-		posix_acl_release(acl);
+-	}
+-
+-	if (S_ISDIR(inode->i_mode)) {
+-		acl = nfs3_proc_getacl(inode, ACL_TYPE_DEFAULT);
+-		if (IS_ERR(acl))
+-			return PTR_ERR(acl);
+-		if (acl) {
+-			output("system.posix_acl_default");
+-			posix_acl_release(acl);
+-		}
+-	}
+-
+-#	undef output
+-
+-	if (!buffer || len <= size)
+-		return len;
+-	return -ERANGE;
+-}
+-
+-ssize_t nfs3_getxattr(struct dentry *dentry, const char *name,
+-		void *buffer, size_t size)
+-{
+-	struct inode *inode = dentry->d_inode;
+-	struct posix_acl *acl;
+-	int type, error = 0;
+-
+-	if (strcmp(name, POSIX_ACL_XATTR_ACCESS) == 0)
+-		type = ACL_TYPE_ACCESS;
+-	else if (strcmp(name, POSIX_ACL_XATTR_DEFAULT) == 0)
+-		type = ACL_TYPE_DEFAULT;
+-	else
+-		return -EOPNOTSUPP;
+-
+-	acl = nfs3_proc_getacl(inode, type);
+-	if (IS_ERR(acl))
+-		return PTR_ERR(acl);
+-	else if (acl) {
+-		if (type == ACL_TYPE_ACCESS && acl->a_count == 0)
+-			error = -ENODATA;
+-		else
+-			error = posix_acl_to_xattr(&init_user_ns, acl, buffer, size);
+-		posix_acl_release(acl);
+-	} else
+-		error = -ENODATA;
+-
+-	return error;
+-}
+-
+-int nfs3_setxattr(struct dentry *dentry, const char *name,
+-	     const void *value, size_t size, int flags)
+-{
+-	struct inode *inode = dentry->d_inode;
+-	struct posix_acl *acl;
+-	int type, error;
+-
+-	if (strcmp(name, POSIX_ACL_XATTR_ACCESS) == 0)
+-		type = ACL_TYPE_ACCESS;
+-	else if (strcmp(name, POSIX_ACL_XATTR_DEFAULT) == 0)
+-		type = ACL_TYPE_DEFAULT;
+-	else
+-		return -EOPNOTSUPP;
+-
+-	acl = posix_acl_from_xattr(&init_user_ns, value, size);
+-	if (IS_ERR(acl))
+-		return PTR_ERR(acl);
+-	error = nfs3_proc_setacl(inode, type, acl);
+-	posix_acl_release(acl);
+-
+-	return error;
+-}
+-
+-int nfs3_removexattr(struct dentry *dentry, const char *name)
+-{
+-	struct inode *inode = dentry->d_inode;
+-	int type;
+-
+-	if (strcmp(name, POSIX_ACL_XATTR_ACCESS) == 0)
+-		type = ACL_TYPE_ACCESS;
+-	else if (strcmp(name, POSIX_ACL_XATTR_DEFAULT) == 0)
+-		type = ACL_TYPE_DEFAULT;
+-	else
+-		return -EOPNOTSUPP;
+-
+-	return nfs3_proc_setacl(inode, type, NULL);
+-}
+-
+-static void __nfs3_forget_cached_acls(struct nfs_inode *nfsi)
+-{
+-	if (!IS_ERR(nfsi->acl_access)) {
+-		posix_acl_release(nfsi->acl_access);
+-		nfsi->acl_access = ERR_PTR(-EAGAIN);
+-	}
+-	if (!IS_ERR(nfsi->acl_default)) {
+-		posix_acl_release(nfsi->acl_default);
+-		nfsi->acl_default = ERR_PTR(-EAGAIN);
+-	}
+-}
+-
+-void nfs3_forget_cached_acls(struct inode *inode)
+-{
+-	dprintk("NFS: nfs3_forget_cached_acls(%s/%ld)\n", inode->i_sb->s_id,
+-		inode->i_ino);
+-	spin_lock(&inode->i_lock);
+-	__nfs3_forget_cached_acls(NFS_I(inode));
+-	spin_unlock(&inode->i_lock);
+-}
+-
+-static struct posix_acl *nfs3_get_cached_acl(struct inode *inode, int type)
+-{
+-	struct nfs_inode *nfsi = NFS_I(inode);
+-	struct posix_acl *acl = ERR_PTR(-EINVAL);
+-
+-	spin_lock(&inode->i_lock);
+-	switch(type) {
+-		case ACL_TYPE_ACCESS:
+-			acl = nfsi->acl_access;
+-			break;
+-
+-		case ACL_TYPE_DEFAULT:
+-			acl = nfsi->acl_default;
+-			break;
+-
+-		default:
+-			goto out;
+-	}
+-	if (IS_ERR(acl))
+-		acl = ERR_PTR(-EAGAIN);
+-	else
+-		acl = posix_acl_dup(acl);
+-out:
+-	spin_unlock(&inode->i_lock);
+-	dprintk("NFS: nfs3_get_cached_acl(%s/%ld, %d) = %p\n", inode->i_sb->s_id,
+-		inode->i_ino, type, acl);
+-	return acl;
+-}
+-
+-static void nfs3_cache_acls(struct inode *inode, struct posix_acl *acl,
+-		    struct posix_acl *dfacl)
+-{
+-	struct nfs_inode *nfsi = NFS_I(inode);
+-
+-	dprintk("nfs3_cache_acls(%s/%ld, %p, %p)\n", inode->i_sb->s_id,
+-		inode->i_ino, acl, dfacl);
+-	spin_lock(&inode->i_lock);
+-	__nfs3_forget_cached_acls(NFS_I(inode));
+-	if (!IS_ERR(acl))
+-		nfsi->acl_access = posix_acl_dup(acl);
+-	if (!IS_ERR(dfacl))
+-		nfsi->acl_default = posix_acl_dup(dfacl);
+-	spin_unlock(&inode->i_lock);
+-}
+-
+-struct posix_acl *nfs3_proc_getacl(struct inode *inode, int type)
++struct posix_acl *nfs3_get_acl(struct inode *inode, int type)
+ {
+ 	struct nfs_server *server = NFS_SERVER(inode);
+ 	struct page *pages[NFSACL_MAXPAGES] = { };
+@@ -198,7 +26,6 @@ struct posix_acl *nfs3_proc_getacl(struct inode *inode, int type)
+ 		.rpc_argp	= &args,
+ 		.rpc_resp	= &res,
+ 	};
+-	struct posix_acl *acl;
+ 	int status, count;
+ 
+ 	if (!nfs_server_capable(inode, NFS_CAP_ACLS))
+@@ -207,10 +34,6 @@ struct posix_acl *nfs3_proc_getacl(struct inode *inode, int type)
+ 	status = nfs_revalidate_inode(server, inode);
+ 	if (status < 0)
+ 		return ERR_PTR(status);
+-	acl = nfs3_get_cached_acl(inode, type);
+-	if (acl != ERR_PTR(-EAGAIN))
+-		return acl;
+-	acl = NULL;
+ 
+ 	/*
+ 	 * Only get the access acl when explicitly requested: We don't
+@@ -257,36 +80,37 @@ struct posix_acl *nfs3_proc_getacl(struct inode *inode, int type)
+ 	}
+ 
+ 	if (res.acl_access != NULL) {
+-		if (posix_acl_equiv_mode(res.acl_access, NULL) == 0) {
++		if (posix_acl_equiv_mode(res.acl_access, NULL) ||
++		    res.acl_access->a_count == 0) {
+ 			posix_acl_release(res.acl_access);
+ 			res.acl_access = NULL;
+ 		}
+ 	}
+-	nfs3_cache_acls(inode,
+-		(res.mask & NFS_ACL)   ? res.acl_access  : ERR_PTR(-EINVAL),
+-		(res.mask & NFS_DFACL) ? res.acl_default : ERR_PTR(-EINVAL));
+ 
+-	switch(type) {
+-		case ACL_TYPE_ACCESS:
+-			acl = res.acl_access;
+-			res.acl_access = NULL;
+-			break;
++	if (res.mask & NFS_ACL)
++		set_cached_acl(inode, ACL_TYPE_ACCESS, res.acl_access);
++	else
++		forget_cached_acl(inode, ACL_TYPE_ACCESS);
+ 
+-		case ACL_TYPE_DEFAULT:
+-			acl = res.acl_default;
+-			res.acl_default = NULL;
++	if (res.mask & NFS_DFACL)
++		set_cached_acl(inode, ACL_TYPE_DEFAULT, res.acl_default);
++	else
++		forget_cached_acl(inode, ACL_TYPE_DEFAULT);
++
++	nfs_free_fattr(res.fattr);
++	if (type == ACL_TYPE_ACCESS) {
++		posix_acl_release(res.acl_default);
++		return res.acl_access;
++	} else {
++		posix_acl_release(res.acl_access);
++		return res.acl_default;
+ 	}
+ 
+ getout:
+ 	posix_acl_release(res.acl_access);
+ 	posix_acl_release(res.acl_default);
+ 	nfs_free_fattr(res.fattr);
+-
+-	if (status != 0) {
+-		posix_acl_release(acl);
+-		acl = ERR_PTR(status);
+-	}
+-	return acl;
++	return ERR_PTR(status);
+ }
+ 
+ static int nfs3_proc_setacls(struct inode *inode, struct posix_acl *acl,
+@@ -353,7 +177,8 @@ static int nfs3_proc_setacls(struct inode *inode, struct posix_acl *acl,
+ 	switch (status) {
+ 		case 0:
+ 			status = nfs_refresh_inode(inode, fattr);
+-			nfs3_cache_acls(inode, acl, dfacl);
++			set_cached_acl(inode, ACL_TYPE_ACCESS, acl);
++			set_cached_acl(inode, ACL_TYPE_DEFAULT, dfacl);
+ 			break;
+ 		case -EPFNOSUPPORT:
+ 		case -EPROTONOSUPPORT:
+@@ -373,33 +198,27 @@ out:
+ 	return status;
+ }
+ 
+-int nfs3_proc_setacl(struct inode *inode, int type, struct posix_acl *acl)
++int nfs3_set_acl(struct inode *inode, struct posix_acl *acl, int type)
+ {
+ 	struct posix_acl *alloc = NULL, *dfacl = NULL;
+ 	int status;
+ 
+ 	if (S_ISDIR(inode->i_mode)) {
+ 		switch(type) {
+-			case ACL_TYPE_ACCESS:
+-				alloc = dfacl = nfs3_proc_getacl(inode,
+-						ACL_TYPE_DEFAULT);
+-				if (IS_ERR(alloc))
+-					goto fail;
+-				break;
+-
+-			case ACL_TYPE_DEFAULT:
+-				dfacl = acl;
+-				alloc = acl = nfs3_proc_getacl(inode,
+-						ACL_TYPE_ACCESS);
+-				if (IS_ERR(alloc))
+-					goto fail;
+-				break;
+-
+-			default:
+-				return -EINVAL;
++		case ACL_TYPE_ACCESS:
++			alloc = dfacl = nfs3_get_acl(inode, ACL_TYPE_DEFAULT);
++			if (IS_ERR(alloc))
++				goto fail;
++			break;
++
++		case ACL_TYPE_DEFAULT:
++			dfacl = acl;
++			alloc = acl = nfs3_get_acl(inode, ACL_TYPE_ACCESS);
++			if (IS_ERR(alloc))
++				goto fail;
++			break;
+ 		}
+-	} else if (type != ACL_TYPE_ACCESS)
+-			return -EINVAL;
++	}
+ 
+ 	if (acl == NULL) {
+ 		alloc = acl = posix_acl_from_mode(inode->i_mode, GFP_KERNEL);
+@@ -417,24 +236,24 @@ fail:
+ int nfs3_proc_set_default_acl(struct inode *dir, struct inode *inode,
+ 		umode_t mode)
+ {
+-	struct posix_acl *dfacl, *acl;
+-	int error = 0;
++	struct posix_acl *default_acl, *acl;
++	int error;
+ 
+-	dfacl = nfs3_proc_getacl(dir, ACL_TYPE_DEFAULT);
+-	if (IS_ERR(dfacl)) {
+-		error = PTR_ERR(dfacl);
++	error = posix_acl_create(dir, &mode, &default_acl, &acl);
++	if (error)
+ 		return (error == -EOPNOTSUPP) ? 0 : error;
+-	}
+-	if (!dfacl)
+-		return 0;
+-	acl = posix_acl_dup(dfacl);
+-	error = __posix_acl_create(&acl, GFP_KERNEL, &mode);
+-	if (error < 0)
+-		goto out_release_dfacl;
+-	error = nfs3_proc_setacls(inode, acl, S_ISDIR(inode->i_mode) ?
+-						      dfacl : NULL);
+-	posix_acl_release(acl);
+-out_release_dfacl:
+-	posix_acl_release(dfacl);
++
++	error = nfs3_proc_setacls(inode, acl, default_acl);
++
++	if (acl)
++		posix_acl_release(acl);
++	if (default_acl)
++		posix_acl_release(default_acl);
+ 	return error;
+ }
++
++const struct xattr_handler *nfs3_xattr_handlers[] = {
++	&posix_acl_access_xattr_handler,
++	&posix_acl_default_xattr_handler,
++	NULL,
++};
+diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
+index 01b6f6a..ab27a7d1 100644
+--- a/fs/nfs/nfs3proc.c
++++ b/fs/nfs/nfs3proc.c
+@@ -904,20 +904,28 @@ static const struct inode_operations nfs3_dir_inode_operations = {
+ 	.permission	= nfs_permission,
+ 	.getattr	= nfs_getattr,
+ 	.setattr	= nfs_setattr,
+-	.listxattr	= nfs3_listxattr,
+-	.getxattr	= nfs3_getxattr,
+-	.setxattr	= nfs3_setxattr,
+-	.removexattr	= nfs3_removexattr,
++	.listxattr	= generic_listxattr,
++	.getxattr	= generic_getxattr,
++	.setxattr	= generic_setxattr,
++	.removexattr	= generic_removexattr,
++#ifdef CONFIG_NFS_V3_ACL
++	.get_acl	= nfs3_get_acl,
++	.set_acl	= nfs3_set_acl,
++#endif
+ };
+ 
+ static const struct inode_operations nfs3_file_inode_operations = {
+ 	.permission	= nfs_permission,
+ 	.getattr	= nfs_getattr,
+ 	.setattr	= nfs_setattr,
+-	.listxattr	= nfs3_listxattr,
+-	.getxattr	= nfs3_getxattr,
+-	.setxattr	= nfs3_setxattr,
+-	.removexattr	= nfs3_removexattr,
++	.listxattr	= generic_listxattr,
++	.getxattr	= generic_getxattr,
++	.setxattr	= generic_setxattr,
++	.removexattr	= generic_removexattr,
++#ifdef CONFIG_NFS_V3_ACL
++	.get_acl	= nfs3_get_acl,
++	.set_acl	= nfs3_set_acl,
++#endif
+ };
+ 
+ const struct nfs_rpc_ops nfs_v3_clientops = {
+@@ -965,7 +973,7 @@ const struct nfs_rpc_ops nfs_v3_clientops = {
+ 	.commit_rpc_prepare = nfs3_proc_commit_rpc_prepare,
+ 	.commit_done	= nfs3_commit_done,
+ 	.lock		= nfs3_proc_lock,
+-	.clear_acl_cache = nfs3_forget_cached_acls,
++	.clear_acl_cache = forget_all_cached_acls,
+ 	.close_context	= nfs_close_context,
+ 	.have_delegation = nfs3_have_delegation,
+ 	.return_delegation = nfs3_return_delegation,
+diff --git a/fs/nfs/nfs3super.c b/fs/nfs/nfs3super.c
+index cc471c7..d6a9894 100644
+--- a/fs/nfs/nfs3super.c
++++ b/fs/nfs/nfs3super.c
+@@ -12,6 +12,9 @@ static struct nfs_subversion nfs_v3 = {
+ 	.rpc_vers = &nfs_version3,
+ 	.rpc_ops  = &nfs_v3_clientops,
+ 	.sops     = &nfs_sops,
++#ifdef CONFIG_NFS_V3_ACL
++	.xattr    = nfs3_xattr_handlers,
++#endif
+ };
+ 
+ static int __init init_nfs_v3(void)
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 4899737..176f1d2 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -154,10 +154,6 @@ struct nfs_inode {
+ 	struct rb_root		access_cache;
+ 	struct list_head	access_cache_entry_lru;
+ 	struct list_head	access_cache_inode_lru;
+-#ifdef CONFIG_NFS_V3_ACL
+-	struct posix_acl	*acl_access;
+-	struct posix_acl	*acl_default;
+-#endif
+ 
+ 	/*
+ 	 * This is the cookie verifier used for NFSv3 readdir
+@@ -564,12 +560,12 @@ extern int  nfs_readpage_async(struct nfs_open_context *, struct inode *,
+  * linux/fs/nfs3proc.c
+  */
+ #ifdef CONFIG_NFS_V3_ACL
+-extern struct posix_acl *nfs3_proc_getacl(struct inode *inode, int type);
+-extern int nfs3_proc_setacl(struct inode *inode, int type,
+-			    struct posix_acl *acl);
++extern struct posix_acl *nfs3_get_acl(struct inode *inode, int type);
++extern int nfs3_set_acl(struct inode *inode, struct posix_acl *acl, int type);
+ extern int nfs3_proc_set_default_acl(struct inode *dir, struct inode *inode,
+ 		umode_t mode);
+ extern void nfs3_forget_cached_acls(struct inode *inode);
++extern const struct xattr_handler *nfs3_xattr_handlers[];
+ #else
+ static inline int nfs3_proc_set_default_acl(struct inode *dir,
+ 					    struct inode *inode,
+-- 
+1.7.10.4
 
-I think what happens is that exportfs flushes the kernel's export cache
-at which point every use of an uncached export triggers an upcall to
-mountd.  That upcall is probably visible in the strace as a read of a
-file descriptor associated with /proc/net/sunrpc/nfsd.fh/content.
 
-That upcall is handled by nfs-utils/utils/mountd/cache.c:nfsd_fh(),
-which is given a filehandle fragment identifying the filesystem in
-question and has to match it to an export.
-
-That's done by match_fsid().  Which does do a stat of the export path,
-but not of all the devices....  That's probably happening in one of the
-libblkid calls in uuid_by_path()?  I wonder if there's something wrong
-with libblkid configuration or with the way we're using it?
-
---b.
-
-> 
-> 
-> statfs("/some/export", {f_type=0x2fc12fc1, f_bsize=131072,
-> f_blocks=50331648, f_bfree=8355553, f_bavail=8355553,
-> f_files=2139121087, f_ffree=2139021753, f_fsid={1912623216,
-> 10933642}, f_namelen=255, f_frsize=131072}) = 0
-> stat("/some/export", {st_mode=S_IFDIR|0775, st_size=15, ...}) = 0
-> lstat("/some/export", {st_mode=S_IFDIR|0775, st_size=15, ...}) = 0
-> lstat("/some/export/..", {st_mode=S_IFDIR|0755, st_size=12288, ...}) = 0
-> stat("/some/export", {st_mode=S_IFDIR|0775, st_size=15, ...}) = 0
-> open("/sys/dev/block/0:187", O_RDONLY)  = -1 ENOENT (No such file or
-> directory)
-> open("/dev", O_RDONLY|O_NONBLOCK|O_DIRECTORY|O_CLOEXEC) = 21
-> getdents(21, /* 1093 entries */, 32768) = 30680
-> newfstatat(21, "dm-185", {st_mode=S_IFBLK|S_ISVTX|0660,
-> st_rdev=makedev(254, 185), ...}, 0) = 0
-> newfstatat(21, "dm-184", {st_mode=S_IFBLK|S_ISVTX|0660,
-> st_rdev=makedev(254, 184), ...}, 0) = 0
-> newfstatat(21, "dm-183", {st_mode=S_IFBLK|S_ISVTX|0660,
-> st_rdev=makedev(254, 183), ...}, 0) = 0
-> newfstatat(21, "dm-182", {st_mode=S_IFBLK|S_ISVTX|0660,
-> st_rdev=makedev(254, 182), ...}, 0) = 0
-> newfstatat(21, "dm-181", {st_mode=S_IFBLK|S_ISVTX|0660,
-> st_rdev=makedev(254, 181), ...}, 0) = 0
-> newfstatat(21, "dm-180", {st_mode=S_IFBLK|S_ISVTX|0660,
-> st_rdev=makedev(254, 180), ...}, 0) = 0
-> [...]
-> newfstatat(21, "dm-3", {st_mode=S_IFBLK|S_ISVTX|0660,
-> st_rdev=makedev(254, 3), ...}, 0) = 0
-> newfstatat(21, "dm-2", {st_mode=S_IFBLK|S_ISVTX|0660,
-> st_rdev=makedev(254, 2), ...}, 0) = 0
-> newfstatat(21, "loop7", {st_mode=S_IFBLK|S_ISVTX|0660,
-> st_rdev=makedev(7, 7), ...}, 0) = 0
-> newfstatat(21, "loop6", {st_mode=S_IFBLK|S_ISVTX|0660,
-> st_rdev=makedev(7, 6), ...}, 0) = 0
-> newfstatat(21, "loop5", {st_mode=S_IFBLK|S_ISVTX|0660,
-> st_rdev=makedev(7, 5), ...}, 0) = 0
-> newfstatat(21, "loop4", {st_mode=S_IFBLK|S_ISVTX|0660,
-> st_rdev=makedev(7, 4), ...}, 0) = 0
-> newfstatat(21, "loop3", {st_mode=S_IFBLK|S_ISVTX|0660,
-> st_rdev=makedev(7, 3), ...}, 0) = 0
-> newfstatat(21, "loop2", {st_mode=S_IFBLK|S_ISVTX|0660,
-> st_rdev=makedev(7, 2), ...}, 0) = 0
-> newfstatat(21, "loop1", {st_mode=S_IFBLK|S_ISVTX|0660,
-> st_rdev=makedev(7, 1), ...}, 0) = 0
-> newfstatat(21, "shm", {st_mode=S_IFDIR|S_ISVTX|0777, st_size=60,
-> ...}, 0) = 0
-> newfstatat(21, "sndstat", {st_mode=S_IFREG|0444, st_size=0, ...}, 0) = 0
-> newfstatat(21, "root", {st_mode=S_IFBLK|S_ISVTX|0660,
-> st_rdev=makedev(254, 0), ...}, 0) = 0
-> newfstatat(21, "MAKEDEV", {st_mode=S_IFREG|0755, st_size=22880,
-> ...}, 0) = 0
-> newfstatat(21, "dvdrw", {st_mode=S_IFBLK|S_ISVTX|0660,
-> st_rdev=makedev(11, 0), ...}, 0) = 0
-> newfstatat(21, "dvd", {st_mode=S_IFBLK|S_ISVTX|0660,
-> st_rdev=makedev(11, 0), ...}, 0) = 0
-> newfstatat(21, "cdrw", {st_mode=S_IFBLK|S_ISVTX|0660,
-> st_rdev=makedev(11, 0), ...}, 0) = 0
-> newfstatat(21, "cdrom", {st_mode=S_IFBLK|S_ISVTX|0660,
-> st_rdev=makedev(11, 0), ...}, 0) = 0
-> newfstatat(21, "hpilo", {st_mode=S_IFDIR|0755, st_size=200, ...}, 0) = 0
-> newfstatat(21, "snd", {st_mode=S_IFDIR|0755, st_size=80, ...}, 0) = 0
-> newfstatat(21, "loop0", {st_mode=S_IFBLK|S_ISVTX|0660,
-> st_rdev=makedev(7, 0), ...}, 0) = 0
-> newfstatat(21, "dm-1", {st_mode=S_IFBLK|S_ISVTX|0660,
-> st_rdev=makedev(254, 1), ...}, 0) = 0
-> newfstatat(21, "os", {st_mode=S_IFDIR|0755, st_size=160, ...}, 0) = 0
-> newfstatat(21, "dm-0", {st_mode=S_IFBLK|S_ISVTX|0660,
-> st_rdev=makedev(254, 0), ...}, 0) = 0
-> newfstatat(21, "sdnc", {st_mode=S_IFBLK|S_ISVTX|0660,
-> st_rdev=makedev(70, 480), ...}, 0) = 0
-> newfstatat(21, "sdnb", {st_mode=S_IFBLK|S_ISVTX|0660,
-> st_rdev=makedev(70, 464), ...}, 0) = 0
-> newfstatat(21, "sdna", {st_mode=S_IFBLK|S_ISVTX|0660,
-> st_rdev=makedev(70, 448), ...}, 0) = 0
-> newfstatat(21, "sdmz", {st_mode=S_IFBLK|S_ISVTX|0660,
-> st_rdev=makedev(70, 432), ...}, 0) = 0
-> newfstatat(21, "sdmy", {st_mode=S_IFBLK|S_ISVTX|0660,
-> st_rdev=makedev(70, 416), ...}, 0) = 0
-> newfstatat(21, "sdmx", {st_mode=S_IFBLK|S_ISVTX|0660,
-> st_rdev=makedev(70, 400), ...}, 0) = 0
-> newfstatat(21, "sdmw", {st_mode=S_IFBLK|S_ISVTX|0660,
-> st_rdev=makedev(70, 384), ...}, 0) = 0
-> [...]
-> newfstatat(21, "sdd", {st_mode=S_IFBLK|S_ISVTX|0660,
-> st_rdev=makedev(8, 48), ...}, 0) = 0
-> newfstatat(21, "sdc", {st_mode=S_IFBLK|S_ISVTX|0660,
-> st_rdev=makedev(8, 32), ...}, 0) = 0
-> newfstatat(21, "sdb", {st_mode=S_IFBLK|S_ISVTX|0660,
-> st_rdev=makedev(8, 16), ...}, 0) = 0
-> newfstatat(21, "bus", {st_mode=S_IFDIR|0755, st_size=60, ...}, 0) = 0
-> newfstatat(21, "bsg", {st_mode=S_IFDIR|0755, st_size=15280, ...}, 0) = 0
-> newfstatat(21, "rtc", {st_mode=S_IFCHR|0600, st_rdev=makedev(254,
-> 0), ...}, 0) = 0
-> newfstatat(21, "char", {st_mode=S_IFDIR|0755, st_size=25320, ...},
-> 0) = 0
-> newfstatat(21, "mapper", {st_mode=S_IFDIR|0755, st_size=3780, ...},
-> 0) = 0
-> newfstatat(21, "net", {st_mode=S_IFDIR|0755, st_size=60, ...}, 0) = 0
-> newfstatat(21, "cpu", {st_mode=S_IFDIR|0755, st_size=60, ...}, 0) = 0
-> newfstatat(21, "stderr", {st_mode=S_IFCHR|0666, st_rdev=makedev(1,
-> 3), ...}, 0) = 0
-> newfstatat(21, "stdout", {st_mode=S_IFCHR|0666, st_rdev=makedev(1,
-> 3), ...}, 0) = 0
-> newfstatat(21, "stdin", {st_mode=S_IFCHR|0666, st_rdev=makedev(1,
-> 3), ...}, 0) = 0
-> newfstatat(21, "fd", {st_mode=S_IFDIR|0500, st_size=0, ...}, 0) = 0
-> newfstatat(21, "core", {st_mode=S_IFREG|0400,
-> st_size=140737486262272, ...}, 0) = 0
-> newfstatat(21, "pts", {st_mode=S_IFDIR|0755, st_size=0, ...}, 0) = 0
-> newfstatat(21, "input", {st_mode=S_IFDIR|0755, st_size=120, ...}, 0) = 0
-> getdents(21, /* 0 entries */, 32768)    = 0
-> close(21)                               = 0
-> open("/devfs", O_RDONLY|O_NONBLOCK|O_DIRECTORY|O_CLOEXEC) = -1
-> ENOENT (No such file or directory)
-> open("/devices", O_RDONLY|O_NONBLOCK|O_DIRECTORY|O_CLOEXEC) = -1
-> ENOENT (No such file or directory)
-> open("/dev/input", O_RDONLY|O_NONBLOCK|O_DIRECTORY|O_CLOEXEC) = 21
-> getdents(21, /* 6 entries */, 32768)    = 168
-> newfstatat(21, "by-path", {st_mode=S_IFDIR|0755, st_size=60, ...},
-> 0) = 0
-> getdents(21, /* 0 entries */, 32768)    = 0
-> close(21)                               = 0
-> open("/dev/pts", O_RDONLY|O_NONBLOCK|O_DIRECTORY|O_CLOEXEC) = 21
-> getdents(21, /* 6 entries */, 32768)    = 144
-> getdents(21, /* 0 entries */, 32768)    = 0
-> close(21)                               = 0
-> open("/dev/cpu", O_RDONLY|O_NONBLOCK|O_DIRECTORY|O_CLOEXEC) = 21
-> getdents(21, /* 3 entries */, 32768)    = 80
-> getdents(21, /* 0 entries */, 32768)    = 0
-> close(21)                               = 0
-> open("/dev/net", O_RDONLY|O_NONBLOCK|O_DIRECTORY|O_CLOEXEC) = 21
-> getdents(21, /* 3 entries */, 32768)    = 72
-> getdents(21, /* 0 entries */, 32768)    = 0
-> close(21)                               = 0
-> open("/dev/mapper", O_RDONLY|O_NONBLOCK|O_DIRECTORY|O_CLOEXEC) = 21
-> getdents(21, /* 189 entries */, 32768)  = 7472
-> newfstatat(21, "os-home", {st_mode=S_IFBLK|S_ISVTX|0660,
-> st_rdev=makedev(254, 185), ...}, 0) = 0
-> newfstatat(21, "os-var", {st_mode=S_IFBLK|S_ISVTX|0660,
-> st_rdev=makedev(254, 184), ...}, 0) = 0
-> newfstatat(21, "os-usr", {st_mode=S_IFBLK|S_ISVTX|0660,
-> st_rdev=makedev(254, 183), ...}, 0) = 0
-> newfstatat(21, "os-boot", {st_mode=S_IFBLK|S_ISVTX|0660,
-> st_rdev=makedev(254, 182), ...}, 0) = 0
-> newfstatat(21, "35000cca01a8db828", {st_mode=S_IFBLK|S_ISVTX|0660,
-> st_rdev=makedev(254, 181), ...}, 0) = 0
-> newfstatat(21, "35000cca01a9a63e8", {st_mode=S_IFBLK|S_ISVTX|0660,
-> st_rdev=makedev(254, 180), ...}, 0) = 0
-> newfstatat(21, "35000cca01a89cae4", {st_mode=S_IFBLK|S_ISVTX|0660,
-> st_rdev=makedev(254, 179), ...}, 0) = 0
-> newfstatat(21, "35000cca01a89dd04", {st_mode=S_IFBLK|S_ISVTX|0660,
-> st_rdev=makedev(254, 178), ...}, 0) = 0
-> [...]
-> newfstatat(21, "35000cca03e40bd84", {st_mode=S_IFBLK|S_ISVTX|0660,
-> st_rdev=makedev(254, 6), ...}, 0) = 0
-> newfstatat(21, "35000cca03e4b0250", {st_mode=S_IFBLK|S_ISVTX|0660,
-> st_rdev=makedev(254, 3), ...}, 0) = 0
-> newfstatat(21, "35000cca03e368408", {st_mode=S_IFBLK|S_ISVTX|0660,
-> st_rdev=makedev(254, 7), ...}, 0) = 0
-> newfstatat(21, "os-swap", {st_mode=S_IFBLK|S_ISVTX|0660,
-> st_rdev=makedev(254, 1), ...}, 0) = 0
-> newfstatat(21, "os-root", {st_mode=S_IFBLK|S_ISVTX|0660,
-> st_rdev=makedev(254, 0), ...}, 0) = 0
-> getdents(21, /* 0 entries */, 32768)    = 0
-> close(21)                               = 0
-> open("/dev/char", O_RDONLY|O_NONBLOCK|O_DIRECTORY|O_CLOEXEC) = 21
-> getdents(21, /* 1027 entries */, 32768) = 32768
-> newfstatat(21, "10:237", {st_mode=S_IFCHR|S_ISVTX|0600,
-> st_rdev=makedev(10, 237), ...}, 0) = 0
-> newfstatat(21, "7:134", {st_mode=S_IFCHR|0600, st_rdev=makedev(7,
-> 134), ...}, 0) = 0
-> newfstatat(21, "7:6", {st_mode=S_IFCHR|0600, st_rdev=makedev(7, 6),
-> ...}, 0) = 0
-> newfstatat(21, "7:133", {st_mode=S_IFCHR|0600, st_rdev=makedev(7,
-> 133), ...}, 0) = 0
-> [...etc etc etc...]
-> 
-> 
-> Is this expected behavour or is this some kind of bug?
-> 
-> I'm using nfs-utils 1.2.8 from Debian testing, but also had this
-> problem with 1.2.6. The kernel is 3.2.51.
-> 
-> If any more info is needed please let me know.
-> 
-> Regards,
-> 
-> Sander Klein
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
