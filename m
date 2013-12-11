@@ -1,103 +1,418 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f180.google.com ([209.85.212.180]:51014 "EHLO
-	mail-wi0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755237Ab3LIBRn convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 8 Dec 2013 20:17:43 -0500
-Received: by mail-wi0-f180.google.com with SMTP id hn9so3022246wib.7
-        for <linux-nfs@vger.kernel.org>; Sun, 08 Dec 2013 17:17:42 -0800 (PST)
-MIME-Version: 1.0
-In-Reply-To: <20131206180044.GB9020@fieldses.org>
-References: <5295C982.1030904@gmail.com>
-	<20131202145917.GF1960@fieldses.org>
-	<529D4617.6080505@gmail.com>
-	<20131204171052.GE14646@fieldses.org>
-	<529FE070.4030306@gmail.com>
-	<20131206180044.GB9020@fieldses.org>
-Date: Mon, 9 Dec 2013 09:17:42 +0800
-Message-ID: <CAB6yy353G+vAP_O+6_N14xH_9SUrJ0iRcLX335HY0Czmav-kZw@mail.gmail.com>
-Subject: Re: [PATCH] Do not enter setup_callback_client when finding
- backchannel failed
-From: Kinglong Mee <kinglongmee@gmail.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=GB2312
+Received: from bombadil.infradead.org ([198.137.202.9]:43340 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751422Ab3LKKpa (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Dec 2013 05:45:30 -0500
+Message-Id: <20131211104528.842960261@bombadil.infradead.org>
+Date: Wed, 11 Dec 2013 02:42:57 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: viro@zeniv.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-mtd@lists.infradead.org, Mark Fasheh <mfasheh@suse.com>,
+        Joel Becker <jlbec@evilplan.org>, reiserfs-devel@vger.kernel.org,
+        xfs@oss.sgi.com, jfs-discussion@lists.sourceforge.net,
+        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
+        Andreas Gruenbacher <andreas.gruenbacher@linbit.com>,
+        Dave Chinner <dchinner@redhat.com>
+Subject: [PATCH 14/18] xfs: use generic posix ACL infrastructure
+References: <20131211104243.148113893@bombadil.infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-2013/12/7 J. Bruce Fields <bfields@fieldses.org>:
-> On Thu, Dec 05, 2013 at 10:09:52AM +0800, Kinglong Mee wrote:
->> On 12/05/2013 01:10 AM, J. Bruce Fields wrote:
->> > On Tue, Dec 03, 2013 at 10:46:47AM +0800, Kinglong Mee wrote:
->> >> On 12/02/2013 10:59 PM, J. Bruce Fields wrote:
->> >>> On Wed, Nov 27, 2013 at 06:29:22PM +0800, Kinglong Mee wrote:
->> >>>> If finding backchannel failed, nfsd should not enter setup_callback_client.
->> >>>>
->> >>>> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
->> >>>> ---
->> >>>>  fs/nfsd/nfs4callback.c | 4 ++--
->> >>>>  1 file changed, 2 insertions(+), 2 deletions(-)
->> >>>>
->> >>>> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
->> >>>> index 7f05cd1..755d6d6 100644
->> >>>> --- a/fs/nfsd/nfs4callback.c
->> >>>> +++ b/fs/nfsd/nfs4callback.c
->> >>>> @@ -664,7 +664,7 @@ static int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *c
->> >>>>                  args.authflavor = clp->cl_cred.cr_flavor;
->> >>>>                  clp->cl_cb_ident = conn->cb_ident;
->> >>>>          } else {
->> >>>> -                if (!conn->cb_xprt)
->> >>>> +                if (!conn->cb_xprt || !ses)
->> >>>
->> >>> It looks to me like ses should be set whenenver conn is.  Do you have
->> >>> reason to believe the contrary?
->> >>
->> >> No. It just a double check as conn->cb_xprt.
->> >> I will drop it in v2 of this path.
->> >>
->> >>>
->> >>>>                          return -EINVAL;
->> >>>>                  clp->cl_cb_conn.cb_xprt = conn->cb_xprt;
->> >>>>                  clp->cl_cb_session = ses;
->> >>>> @@ -982,7 +982,7 @@ static void nfsd4_process_cb_update(struct nfsd4_callback *cb)
->> >>>>          }
->> >>>>          spin_unlock(&clp->cl_lock);
->> >>>>
->> >>>> -        err = setup_callback_client(clp, &conn, ses);
->> >>>> +        err = c ? setup_callback_client(clp, &conn, ses) : -ENOENT;
->> >>>
->> >>> But, whoops, yes, this looks like a good fix.  (Have you hit this
->> >>> failure in practice?)
->> >>
->> >> Yes. When destroying the last session from client, nfsd4_probe_callback_sync
->> >> will be called in function nfsd4_destroy_session.
->> >>
->> >> As that, callback client will be update in function nfsd4_process_cb_update,
->> >> so __nfsd4_find_backchannel always failed with returning NULL.
->> >
->> > On second thoughts, why is that actually a problem?
->> > setup_callback_client() will fail and you'll get an unnecessary printk
->> > from nfsd4_mark_cb_down, I guess.
->>
->> Yes, that's right. setup_callback_client will failed with £­EINVAL.
->> This patch just changes the logic, function returns immediately when finding backchannel failed,
->> instead of enter setup_callback_client.
->>
->> >  Is that the only problem?
->>
->> Yes, this path only focus the logic problem.
->
-> Apologies, I'm still not sure I understand:
->
-> As far as I can tell, the *only* way that your patch changes behavior is
-> to change the error passed to nfsd4_mark_cb_path down.
->
-> Is that right, or am I missing some other problem which this fixes?
+Also don't bother to set up a .get_acl method for symlinks as we do not
+support access control (ACLs or even mode bits) for symlinks in Linux,
+and create inodes with the proper mode instead of fixing it up later.
 
-Sorry for the not clearly explan.
-there are two behavior of this patch.
-the first is as you said, change the error number.
-the second is the logic, return immediately when finding session
-failed, not enter setup_callback_client.
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+Reviewed-by: Dave Chinner <dchinner@redhat.com>
+---
+ fs/xfs/xfs_acl.c   |  151 +++-------------------------------------------------
+ fs/xfs/xfs_acl.h   |    9 +---
+ fs/xfs/xfs_iops.c  |   39 +++++++-------
+ fs/xfs/xfs_iops.h  |    2 +-
+ fs/xfs/xfs_xattr.c |    4 +-
+ 5 files changed, 34 insertions(+), 171 deletions(-)
 
-thanks,
-Kinglong Mee
+diff --git a/fs/xfs/xfs_acl.c b/fs/xfs/xfs_acl.c
+index 057ae2d..0ecec18 100644
+--- a/fs/xfs/xfs_acl.c
++++ b/fs/xfs/xfs_acl.c
+@@ -124,16 +124,12 @@ struct posix_acl *
+ xfs_get_acl(struct inode *inode, int type)
+ {
+ 	struct xfs_inode *ip = XFS_I(inode);
+-	struct posix_acl *acl;
++	struct posix_acl *acl = NULL;
+ 	struct xfs_acl *xfs_acl;
+ 	unsigned char *ea_name;
+ 	int error;
+ 	int len;
+ 
+-	acl = get_cached_acl(inode, type);
+-	if (acl != ACL_NOT_CACHED)
+-		return acl;
+-
+ 	trace_xfs_get_acl(ip);
+ 
+ 	switch (type) {
+@@ -164,10 +160,8 @@ xfs_get_acl(struct inode *inode, int type)
+ 		 * cache entry, for any other error assume it is transient and
+ 		 * leave the cache entry as ACL_NOT_CACHED.
+ 		 */
+-		if (error == -ENOATTR) {
+-			acl = NULL;
++		if (error == -ENOATTR)
+ 			goto out_update_cache;
+-		}
+ 		goto out;
+ 	}
+ 
+@@ -183,15 +177,12 @@ out:
+ }
+ 
+ STATIC int
+-xfs_set_acl(struct inode *inode, int type, struct posix_acl *acl)
++__xfs_set_acl(struct inode *inode, int type, struct posix_acl *acl)
+ {
+ 	struct xfs_inode *ip = XFS_I(inode);
+ 	unsigned char *ea_name;
+ 	int error;
+ 
+-	if (S_ISLNK(inode->i_mode))
+-		return -EOPNOTSUPP;
+-
+ 	switch (type) {
+ 	case ACL_TYPE_ACCESS:
+ 		ea_name = SGI_ACL_FILE;
+@@ -282,131 +273,23 @@ posix_acl_default_exists(struct inode *inode)
+ 	return xfs_acl_exists(inode, SGI_ACL_DEFAULT);
+ }
+ 
+-/*
+- * No need for i_mutex because the inode is not yet exposed to the VFS.
+- */
+ int
+-xfs_inherit_acl(struct inode *inode, struct posix_acl *acl)
++xfs_set_acl(struct inode *inode, struct posix_acl *acl, int type)
+ {
+-	umode_t mode = inode->i_mode;
+-	int error = 0, inherit = 0;
+-
+-	if (S_ISDIR(inode->i_mode)) {
+-		error = xfs_set_acl(inode, ACL_TYPE_DEFAULT, acl);
+-		if (error)
+-			goto out;
+-	}
+-
+-	error = __posix_acl_create(&acl, GFP_KERNEL, &mode);
+-	if (error < 0)
+-		return error;
+-
+-	/*
+-	 * If __posix_acl_create returns a positive value we need to
+-	 * inherit a permission that can't be represented using the Unix
+-	 * mode bits and we actually need to set an ACL.
+-	 */
+-	if (error > 0)
+-		inherit = 1;
+-
+-	error = xfs_set_mode(inode, mode);
+-	if (error)
+-		goto out;
+-
+-	if (inherit)
+-		error = xfs_set_acl(inode, ACL_TYPE_ACCESS, acl);
+-
+-out:
+-	posix_acl_release(acl);
+-	return error;
+-}
+-
+-int
+-xfs_acl_chmod(struct inode *inode)
+-{
+-	struct posix_acl *acl;
+-	int error;
+-
+-	if (S_ISLNK(inode->i_mode))
+-		return -EOPNOTSUPP;
+-
+-	acl = xfs_get_acl(inode, ACL_TYPE_ACCESS);
+-	if (IS_ERR(acl) || !acl)
+-		return PTR_ERR(acl);
+-
+-	error = __posix_acl_chmod(&acl, GFP_KERNEL, inode->i_mode);
+-	if (error)
+-		return error;
+-
+-	error = xfs_set_acl(inode, ACL_TYPE_ACCESS, acl);
+-	posix_acl_release(acl);
+-	return error;
+-}
+-
+-static int
+-xfs_xattr_acl_get(struct dentry *dentry, const char *name,
+-		void *value, size_t size, int type)
+-{
+-	struct posix_acl *acl;
+-	int error;
+-
+-	acl = xfs_get_acl(dentry->d_inode, type);
+-	if (IS_ERR(acl))
+-		return PTR_ERR(acl);
+-	if (acl == NULL)
+-		return -ENODATA;
+-
+-	error = posix_acl_to_xattr(&init_user_ns, acl, value, size);
+-	posix_acl_release(acl);
+-
+-	return error;
+-}
+-
+-static int
+-xfs_xattr_acl_set(struct dentry *dentry, const char *name,
+-		const void *value, size_t size, int flags, int type)
+-{
+-	struct inode *inode = dentry->d_inode;
+-	struct posix_acl *acl = NULL;
+ 	int error = 0;
+ 
+-	if (flags & XATTR_CREATE)
+-		return -EINVAL;
+-	if (type == ACL_TYPE_DEFAULT && !S_ISDIR(inode->i_mode))
+-		return value ? -EACCES : 0;
+-	if (!inode_owner_or_capable(inode))
+-		return -EPERM;
+-
+-	if (!value)
++	if (!acl)
+ 		goto set_acl;
+ 
+-	acl = posix_acl_from_xattr(&init_user_ns, value, size);
+-	if (!acl) {
+-		/*
+-		 * acl_set_file(3) may request that we set default ACLs with
+-		 * zero length -- defend (gracefully) against that here.
+-		 */
+-		goto out;
+-	}
+-	if (IS_ERR(acl)) {
+-		error = PTR_ERR(acl);
+-		goto out;
+-	}
+-
+-	error = posix_acl_valid(acl);
+-	if (error)
+-		goto out_release;
+-
+ 	error = -EINVAL;
+ 	if (acl->a_count > XFS_ACL_MAX_ENTRIES(XFS_M(inode->i_sb)))
+-		goto out_release;
++		return error;
+ 
+ 	if (type == ACL_TYPE_ACCESS) {
+ 		umode_t mode = inode->i_mode;
+ 		error = posix_acl_equiv_mode(acl, &mode);
+ 
+ 		if (error <= 0) {
+-			posix_acl_release(acl);
+ 			acl = NULL;
+ 
+ 			if (error < 0)
+@@ -415,27 +298,9 @@ xfs_xattr_acl_set(struct dentry *dentry, const char *name,
+ 
+ 		error = xfs_set_mode(inode, mode);
+ 		if (error)
+-			goto out_release;
++			return error;
+ 	}
+ 
+  set_acl:
+-	error = xfs_set_acl(inode, type, acl);
+- out_release:
+-	posix_acl_release(acl);
+- out:
+-	return error;
++	return __xfs_set_acl(inode, type, acl);
+ }
+-
+-const struct xattr_handler xfs_xattr_acl_access_handler = {
+-	.prefix	= POSIX_ACL_XATTR_ACCESS,
+-	.flags	= ACL_TYPE_ACCESS,
+-	.get	= xfs_xattr_acl_get,
+-	.set	= xfs_xattr_acl_set,
+-};
+-
+-const struct xattr_handler xfs_xattr_acl_default_handler = {
+-	.prefix	= POSIX_ACL_XATTR_DEFAULT,
+-	.flags	= ACL_TYPE_DEFAULT,
+-	.get	= xfs_xattr_acl_get,
+-	.set	= xfs_xattr_acl_set,
+-};
+diff --git a/fs/xfs/xfs_acl.h b/fs/xfs/xfs_acl.h
+index 4016a56..5dc1637 100644
+--- a/fs/xfs/xfs_acl.h
++++ b/fs/xfs/xfs_acl.h
+@@ -60,20 +60,15 @@ struct xfs_acl {
+ 
+ #ifdef CONFIG_XFS_POSIX_ACL
+ extern struct posix_acl *xfs_get_acl(struct inode *inode, int type);
+-extern int xfs_inherit_acl(struct inode *inode, struct posix_acl *default_acl);
+-extern int xfs_acl_chmod(struct inode *inode);
++extern int xfs_set_acl(struct inode *inode, struct posix_acl *acl, int type);
+ extern int posix_acl_access_exists(struct inode *inode);
+ extern int posix_acl_default_exists(struct inode *inode);
+-
+-extern const struct xattr_handler xfs_xattr_acl_access_handler;
+-extern const struct xattr_handler xfs_xattr_acl_default_handler;
+ #else
+ static inline struct posix_acl *xfs_get_acl(struct inode *inode, int type)
+ {
+ 	return NULL;
+ }
+-# define xfs_inherit_acl(inode, default_acl)		0
+-# define xfs_acl_chmod(inode)				0
++# define xfs_set_acl					NULL
+ # define posix_acl_access_exists(inode)			0
+ # define posix_acl_default_exists(inode)		0
+ #endif /* CONFIG_XFS_POSIX_ACL */
+diff --git a/fs/xfs/xfs_iops.c b/fs/xfs/xfs_iops.c
+index 27e0e54..f1f0d46 100644
+--- a/fs/xfs/xfs_iops.c
++++ b/fs/xfs/xfs_iops.c
+@@ -123,7 +123,7 @@ xfs_vn_mknod(
+ {
+ 	struct inode	*inode;
+ 	struct xfs_inode *ip = NULL;
+-	struct posix_acl *default_acl = NULL;
++	struct posix_acl *default_acl, *acl;
+ 	struct xfs_name	name;
+ 	int		error;
+ 
+@@ -139,14 +139,9 @@ xfs_vn_mknod(
+ 		rdev = 0;
+ 	}
+ 
+-	if (IS_POSIXACL(dir)) {
+-		default_acl = xfs_get_acl(dir, ACL_TYPE_DEFAULT);
+-		if (IS_ERR(default_acl))
+-			return PTR_ERR(default_acl);
+-
+-		if (!default_acl)
+-			mode &= ~current_umask();
+-	}
++	error = posix_acl_create(dir, &mode, &default_acl, &acl);
++	if (error)
++		return error;
+ 
+ 	xfs_dentry_to_name(&name, dentry, mode);
+ 	error = xfs_create(XFS_I(dir), &name, mode, rdev, &ip);
+@@ -160,21 +155,27 @@ xfs_vn_mknod(
+ 		goto out_cleanup_inode;
+ 
+ 	if (default_acl) {
+-		error = -xfs_inherit_acl(inode, default_acl);
+-		default_acl = NULL;
+-		if (unlikely(error))
++		error = xfs_set_acl(inode, default_acl, ACL_TYPE_DEFAULT);
++		if (error)
++			goto out_cleanup_inode;
++	}
++	if (acl) {
++		error = xfs_set_acl(inode, acl, ACL_TYPE_ACCESS);
++		if (error)
+ 			goto out_cleanup_inode;
+ 	}
+-
+ 
+ 	d_instantiate(dentry, inode);
++ out_free_acl:
++	if (default_acl)
++		posix_acl_release(default_acl);
++	if (acl)
++		posix_acl_release(acl);
+ 	return -error;
+ 
+  out_cleanup_inode:
+ 	xfs_cleanup_inode(dir, inode, dentry);
+- out_free_acl:
+-	posix_acl_release(default_acl);
+-	return -error;
++	goto out_free_acl;
+ }
+ 
+ STATIC int
+@@ -683,7 +684,7 @@ xfs_setattr_nonsize(
+ 	 * 	     Posix ACL code seems to care about this issue either.
+ 	 */
+ 	if ((mask & ATTR_MODE) && !(flags & XFS_ATTR_NOACL)) {
+-		error = -xfs_acl_chmod(inode);
++		error = -posix_acl_chmod(inode, inode->i_mode);
+ 		if (error)
+ 			return XFS_ERROR(error);
+ 	}
+@@ -1052,6 +1053,7 @@ xfs_vn_fiemap(
+ 
+ static const struct inode_operations xfs_inode_operations = {
+ 	.get_acl		= xfs_get_acl,
++	.set_acl		= xfs_set_acl,
+ 	.getattr		= xfs_vn_getattr,
+ 	.setattr		= xfs_vn_setattr,
+ 	.setxattr		= generic_setxattr,
+@@ -1079,6 +1081,7 @@ static const struct inode_operations xfs_dir_inode_operations = {
+ 	.mknod			= xfs_vn_mknod,
+ 	.rename			= xfs_vn_rename,
+ 	.get_acl		= xfs_get_acl,
++	.set_acl		= xfs_set_acl,
+ 	.getattr		= xfs_vn_getattr,
+ 	.setattr		= xfs_vn_setattr,
+ 	.setxattr		= generic_setxattr,
+@@ -1105,6 +1108,7 @@ static const struct inode_operations xfs_dir_ci_inode_operations = {
+ 	.mknod			= xfs_vn_mknod,
+ 	.rename			= xfs_vn_rename,
+ 	.get_acl		= xfs_get_acl,
++	.set_acl		= xfs_set_acl,
+ 	.getattr		= xfs_vn_getattr,
+ 	.setattr		= xfs_vn_setattr,
+ 	.setxattr		= generic_setxattr,
+@@ -1118,7 +1122,6 @@ static const struct inode_operations xfs_symlink_inode_operations = {
+ 	.readlink		= generic_readlink,
+ 	.follow_link		= xfs_vn_follow_link,
+ 	.put_link		= xfs_vn_put_link,
+-	.get_acl		= xfs_get_acl,
+ 	.getattr		= xfs_vn_getattr,
+ 	.setattr		= xfs_vn_setattr,
+ 	.setxattr		= generic_setxattr,
+diff --git a/fs/xfs/xfs_iops.h b/fs/xfs/xfs_iops.h
+index d2c5057..1c34e43 100644
+--- a/fs/xfs/xfs_iops.h
++++ b/fs/xfs/xfs_iops.h
+@@ -30,7 +30,7 @@ extern void xfs_setup_inode(struct xfs_inode *);
+ /*
+  * Internal setattr interfaces.
+  */
+-#define XFS_ATTR_NOACL		0x01	/* Don't call xfs_acl_chmod */
++#define XFS_ATTR_NOACL		0x01	/* Don't call posix_acl_chmod */
+ 
+ extern int xfs_setattr_nonsize(struct xfs_inode *ip, struct iattr *vap,
+ 			       int flags);
+diff --git a/fs/xfs/xfs_xattr.c b/fs/xfs/xfs_xattr.c
+index 9d47907..78ed92a 100644
+--- a/fs/xfs/xfs_xattr.c
++++ b/fs/xfs/xfs_xattr.c
+@@ -102,8 +102,8 @@ const struct xattr_handler *xfs_xattr_handlers[] = {
+ 	&xfs_xattr_trusted_handler,
+ 	&xfs_xattr_security_handler,
+ #ifdef CONFIG_XFS_POSIX_ACL
+-	&xfs_xattr_acl_access_handler,
+-	&xfs_xattr_acl_default_handler,
++	&posix_acl_access_xattr_handler,
++	&posix_acl_default_xattr_handler,
+ #endif
+ 	NULL
+ };
+-- 
+1.7.10.4
+
+
