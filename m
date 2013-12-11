@@ -1,44 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:32845 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932075Ab3LENg7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Dec 2013 08:36:59 -0500
-Date: Thu, 5 Dec 2013 08:36:27 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@fieldses.org>,
-        Dave Chinner <dchinner@redhat.com>
-Subject: Re: [PATCH RFC 2/3] list_lru: add a new LRU_SKIP_REST lru_status
- value and handling
-Message-ID: <20131205083627.07a76b6b@tlielax.poochiereds.net>
-In-Reply-To: <20131205133008.GD3381@infradead.org>
-References: <1386241253-5781-1-git-send-email-jlayton@redhat.com>
-	<1386241253-5781-3-git-send-email-jlayton@redhat.com>
-	<20131205133008.GD3381@infradead.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from bombadil.infradead.org ([198.137.202.9]:43323 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751266Ab3LKKp3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Dec 2013 05:45:29 -0500
+Message-Id: <20131211104243.148113893@bombadil.infradead.org>
+Date: Wed, 11 Dec 2013 02:42:43 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: viro@zeniv.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-mtd@lists.infradead.org, Mark Fasheh <mfasheh@suse.com>,
+        Joel Becker <jlbec@evilplan.org>, reiserfs-devel@vger.kernel.org,
+        xfs@oss.sgi.com, jfs-discussion@lists.sourceforge.net,
+        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
+        Andreas Gruenbacher <andreas.gruenbacher@linbit.com>
+Subject: [PATCH 00/18] Consolidate Posix ACL implementation V2
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 5 Dec 2013 05:30:08 -0800
-Christoph Hellwig <hch@infradead.org> wrote:
+This series consolidates the various cut'n'pasted Posix ACL implementations
+into a single common one based on the ->get_acl method Linus added a while
+ago and a new ->set_acl counterpart.
 
-> On Thu, Dec 05, 2013 at 06:00:52AM -0500, Jeff Layton wrote:
-> > The current list_lru_walk_node implementation always walks the entire
-> > list. In some cases, we can be sure that when an entry isn't freeable
-> > that none of the rest of the entries on the list will be either.
-> > 
-> > Create a new LRU_SKIP_REST return value that not only indicates that
-> > the current entry was skipped, but that caller should stop scanning
-> > the current node.
-> > 
-> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> 
-> I'd call it LRU_DONE, but otherwise this looks fine to me.
-> 
+This remove ~1800 lines of code and provides a single place to implement
+various nasty little gems of the semantics.
 
-Ok, if we end up taking this in I'll change the name...
+Unfortunately the 9p code is still left out - it implements the ACLs
+in two very weird ways, one using the common code but on the client only,
+and one pasing things straight through to the server.  We could easily
+convert it to the new code on the write side if ->set_acl took a dentry,
+but there's no cance to do that on the ->get_acl side.  Ideas how to
+handle it welcome.
 
-Thanks,
--- 
-Jeff Layton <jlayton@redhat.com>
+After that we'd be ready to never go into the fs for the ACL attributes
+and branch straight to the ACL code below the syscall, repairing the
+old API braindamage of overloading ACLs onto the xattrs.
+
+
+Changes from V1:
+ - check for symlinks in the ACL code and remove checks in the lower
+   level functions.
+ - remove get_acl instances for symlinks in a few filesystems
+ - pass a umode_t mode argument to posix_acl_chmod to accomodate f2fs
+ - various cosemtic bits from the reviews.
+
+Note that I still haven't heard from ocfs2 folks, so the patch is left
+unchanged.
