@@ -1,48 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:40072 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751488Ab3LLQTc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 12 Dec 2013 11:19:32 -0500
-Date: Thu, 12 Dec 2013 11:19:31 -0500
-To: Benny Halevy <bhalevy@primarydata.com>
-Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd4: fix printk format string in nfsd4_open
-Message-ID: <20131212161931.GF11521@fieldses.org>
-References: <1386608743-23718-1-git-send-email-bhalevy@primarydata.com>
+Received: from aserp1040.oracle.com ([141.146.126.69]:42774 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750882Ab3LKLBA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Dec 2013 06:01:00 -0500
+Message-ID: <52A845C6.2080109@oracle.com>
+Date: Wed, 11 Dec 2013 15:00:22 +0400
+From: Stanislav Kholmanskikh <stanislav.kholmanskikh@oracle.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1386608743-23718-1-git-send-email-bhalevy@primarydata.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+To: linux-nfs@vger.kernel.org
+CC: vasily.isaenko@oracle.com, hch@infradead.org, xfs@oss.sgi.com,
+        sprabhu@redhat.com, bfields@fieldses.org
+Subject: Re: [PATCH] nfsd: revoking of suid/sgid bits after chown() in a consistent
+ way
+References: <20131206204747.GB12613@fieldses.org> <1386756996-28083-1-git-send-email-stanislav.kholmanskikh@oracle.com>
+In-Reply-To: <1386756996-28083-1-git-send-email-stanislav.kholmanskikh@oracle.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Dec 09, 2013 at 07:05:43PM +0200, Benny Halevy wrote:
-> Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
 
-Are you sure?  Reminding myself from the sprintf man page.... %*s
-provides padding, %.*s limits the number of characters taken from the
-string.  We need that limit since there's no guarantee of null
-termination here.
 
---b.
+On 12/11/2013 02:16 PM, Stanislav Kholmanskikh wrote:
+[cut off]
+>
+> This patch makes NFS to behave like local file systems.
+>
+[cut off]
 
-> ---
->  fs/nfsd/nfs4proc.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> index 0a964f1..8624bee 100644
-> --- a/fs/nfsd/nfs4proc.c
-> +++ b/fs/nfsd/nfs4proc.c
-> @@ -361,7 +361,7 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->  	struct net *net = SVC_NET(rqstp);
->  	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
->  
-> -	dprintk("NFSD: nfsd4_open filename %.*s op_openowner %p\n",
-> +	dprintk("NFSD: nfsd4_open filename %*s op_openowner %p\n",
->  		(int)open->op_fname.len, open->op_fname.data,
->  		open->op_openowner);
->  
-> -- 
-> 1.8.3.1
-> 
+This patch allows to run generic/193 without any issues with NFSv3.
+
+With NFSv4 generic/193 fails (but with the other issues, which existed 
+even before the patch).
+
+generic/193 expects that suid/sgid bits are cleared after the file 
+truncation:
+
+touch file
+chown fsgqa:fsgqa file
+chmod u+s file
+echo 'xyz' > file
+ls -l file
+su fsgqa -c 'echo > file'
+ls -l file
+
+With ext4 (for example), we have expectable results:
+-rwSr--r-- 1 fsgqa fsgqa 4 Dec 11 05:21 file
+-rw-r--r-- 1 fsgqa fsgqa 1 Dec 11 05:22 file
+
+With NFSv3 as well:
+-rwSr--r-- 1 fsgqa fsgqa 4 Dec 11 05:24 file
+-rw-r--r-- 1 fsgqa fsgqa 1 Dec 11 05:25 file
+
+But with NFSv4 the bits are not cleared:
+-rwSr--r-- 1 fsgqa fsgqa 1 Dec 11 05:19 file
+-rwSr--r-- 1 fsgqa fsgqa 1 Dec 11 05:21 file
+
+'echo > file' issues:
+
+open("file", O_WRONLY|O_CREAT|O_TRUNC, 0666)
+
+Can it be because of design differences between NFSv3 and NFSv4?
+
+Thank you.
