@@ -1,84 +1,231 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from order.stressinduktion.org ([87.106.68.36]:45267 "EHLO
-	order.stressinduktion.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756611Ab3LVCa5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 21 Dec 2013 21:30:57 -0500
-Date: Sun, 22 Dec 2013 03:30:54 +0100
-From: Hannes Frederic Sowa <hannes@stressinduktion.org>
-To: Alexander Aring <alex.aring@gmail.com>
-Cc: linux-nfs@vger.kernel.org, netdev@vger.kernel.org, werner@almesberger.net
-Subject: Re: [PATCH] nfs: fix dead code of ipv6_addr_scope
-Message-ID: <20131222023054.GH14073@order.stressinduktion.org>
-References: <1387600744-11366-1-git-send-email-alex.aring@gmail.com> <20131221124440.GG14073@order.stressinduktion.org> <20131221133253.GA20745@omega>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <20131221133253.GA20745@omega>
+Received: from userp1040.oracle.com ([156.151.31.81]:38411 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751191Ab3LKSBv convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Dec 2013 13:01:51 -0500
+MIME-Version: 1.0
+Message-ID: <81dd4aa2-2e0b-4a89-b0ac-72104b2e02db@default>
+Date: Wed, 11 Dec 2013 10:01:43 -0800 (PST)
+From: Dan Duval <dan.duval@oracle.com>
+To: <jack@suse.cz>
+Cc: <trond.myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>,
+        <chuck.lever@oracle.com>, <linux-fsdevel@vger.kernel.org>
+Subject: Re: NFS file size anomaly?
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Dec 21, 2013 at 02:32:54PM +0100, Alexander Aring wrote:
-> Hi Hannes,
-> 
-> On Sat, Dec 21, 2013 at 01:44:40PM +0100, Hannes Frederic Sowa wrote:
-> > On Sat, Dec 21, 2013 at 05:39:04AM +0100, Alexander Aring wrote:
-> > > The correct way to check on IPV6_ADDR_SCOPE_LINKLOCAL is to check with
-> > > the ipv6_addr_src_scope function.
-> > > 
-> > > Currently this can't be work, because ipv6_addr_scope returns a int with
-> > > a mask of IPV6_ADDR_SCOPE_MASK (0x00f0U) and IPV6_ADDR_SCOPE_LINKLOCAL
-> > > is 0x02. So the condition is always false.
-> > > 
-> > > Signed-off-by: Alexander Aring <alex.aring@gmail.com>
-> > > ---
-> > > I think ipv6_addr_src_scope should be correct, can somebody from netdev ml
-> > > confirm this please?
-> > > I stumple over that and I did not compile and test it. Maybe this is something
-> > > for stable?
-> > > 
-> > >  fs/nfs/nfs4filelayoutdev.c | 2 +-
-> > >  1 file changed, 1 insertion(+), 1 deletion(-)
-> > > 
-> > > diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
-> > > index c7c295e5..efac602 100644
-> > > --- a/fs/nfs/nfs4filelayoutdev.c
-> > > +++ b/fs/nfs/nfs4filelayoutdev.c
-> > > @@ -95,7 +95,7 @@ same_sockaddr(struct sockaddr *addr1, struct sockaddr *addr2)
-> > >  		b6 = (struct sockaddr_in6 *)addr2;
-> > >  
-> > >  		/* LINKLOCAL addresses must have matching scope_id */
-> > > -		if (ipv6_addr_scope(&a6->sin6_addr) ==
-> > > +		if (ipv6_addr_src_scope(&a6->sin6_addr) ==
-> > >  		    IPV6_ADDR_SCOPE_LINKLOCAL &&
-> > >  		    a6->sin6_scope_id != b6->sin6_scope_id)
-> > >  			return false;
+
+----- jack@suse.cz wrote:
+
+> On Tue 10-12-13 19:01:21, Trond Myklebust wrote:
+> > On Tue, 2013-12-10 at 15:36 +0100, Jan Kara wrote:
+> > > On Mon 09-12-13 19:56:16, Chuck Lever wrote:
+> > > > On Dec 9, 2013, at 4:05 PM, Chuck Lever <chuck.lever@oracle.com>
+> wrote:
+> > > > > Copying Trond's new work address.
+> > > > > 
+> > > > > Begin forwarded message:
+> > > > > 
+> > > > >> From: Dan Duval <dan.duval@oracle.com>
+> > > > >> Subject: NFS file size anomaly?
+> > > > >> Date: December 9, 2013 3:04:27 PM EST
+> > > > >> To: Trond Myklebust <Trond.Myklebust@netapp.com>
+> > > > >> Cc: <linux-nfs@vger.kernel.org>,
+> <linux-fsdevel@vger.kernel.org>
+> > > > >> 
+> > > > >> [NOTE: cross-posted to linux-nfs and linux-fsdevel]
+> > > > >> 
+> > > > >> I'm seeing some unexpected behavior with NFS and file sizes.
+> > > > >> 
+> > > > >> The test cases are from the LTP (Linux Test Project), tests
+> > > > >> ftest01, ftest05, and ftest07.  I'll concentrate on ftest01
+> > > > >> to explain what I've found.
+> > > > >> 
+> > > > >> ftest01 fires off 5 subprocesses, each of which opens an
+> empty
+> > > > >> file and does the following, repeatedly:
+> > > > >> 
+> > > > >>       . lseek to some point in the file
+> > > > >>       . read 2048 bytes
+> > > > >>       . lseek back to the same point
+> > > > >>       . write 2048 bytes
+> > > > >> 
+> > > > >> The "point in the file" is determined by a pseudo-random
+> > > > >> sequence.  All such points are on 2048-byte boundaries.
+> > > > >> 
+> > > > >> Occasionally, also driven pseudo-randomly, ftest01 will
+> throw
+> > > > >> in a call to ftruncate(), truncate(), sync(), or fstat().
+> > > > >> 
+> > > > >> With the fstat() calls, the returned .st_size is compared
+> > > > >> with the test's expected size for the file, and an error is
+> > > > >> declared if they don't match.
+> > > > >> 
+> > > > >> What's happening is that, some way into the test, this
+> fstat()
+> > > > >> check is failing.  Specifically, the .st_size reported by
+> > > > >> fstat() is greater than the computed size.
+> > > > >> 
+> > > > >> The sequence of operations leading up to this is:
+> > > > >> 
+> > > > >>       lseek 1034240 0
+> > > > >>       read 2048
+> > > > >>       lseek 0 1
+> > > > >>       write 2048
+> > > > >> 
+> > > > >>       lseek 638976 0
+> > > > >>       (read, lseek, write)
+> > > > >> 
+> > > > >>       lseek 708608 0
+> > > > >>       (read, lseek, write)
+> > > > >> 
+> > > > >>       lseek 708608 0
+> > > > >>       (read, lseek, write)
+> > > > >> 
+> > > > >>       lseek 679584 0
+> > > > >>       (read, lseek, write)
+> > > > >> 
+> > > > >>       truncate 266240
+> > > > >> 
+> > > > >>       lseek 960512 0
+> > > > >>       (read, lseek, write)
+> > > > >> 
+> > > > >>       (a bunch of lseek/read/lseek/write ops that do not
+> > > > >>        extend the file)
+> > > > >> 
+> > > > >>       fstat
+> > > > >> 
+> > > > >> So the expected size of the file is 960512 + 2048 == 960560.
+> > > > >> But the fstat reports a size of 1036288.
+> > > > >> 
+> > > > >> A look at what's happening on the wire, distilled from the
+> > > > >> output of tethereal, is instructive.
+> > > > >> 
+> > > > >>       READ Call 638976 4096 (byte offset and size to read)
+> > > > >>       READ Reply 4096 995382 (bytes read and current file
+> size)
+> > > > >> 
+> > > > >>       SETATTR Call 266240 (this corresponds to the truncate()
+> call)
+> > > > >> 
+> > > > >>       WRITE Call 638976 4096 (byte offset and size to write)
+> > > > >>       WRITE Call 708608 4096
+> > > > >>       WRITE Call 1032192 4096
+> > > > >> 
+> > > > >>       SETATTR Reply 266240 (current size of file)
+> > > > >> 
+> > > > >>       WRITE Reply 643072 (current size of file after write)
+> > > > >>       WRITE Reply 1036288
+> > > > >>       WRITE Reply 1036288
+> > > > >> 
+> > > > >>       GETATTR (initiated internally by NFS code?)
+> > > > >> 
+> > > > >>       READ Call 958464 4096 READ Reply 4096 1036288
+> > > > >> 
+> > > > >>       ... (a bunch of READ and WRITE ops that do not extend
+> the file)
+> > > > >> 
+> > > > >>       GETATTR Call (this corresponds to the fstat() call)
+> > > > >>       GETATTR Reply 1036288
+> > > > >> 
+> > > > >> So what appears to have happened here is that three of the
+> > > > >> WRITE operations that the program issued before the
+> truncate()
+> > > > >> call have "bled past" the SETATTR, extending the file
+> further
+> > > > >> than the SETATTR did.  Since none of the operations issued
+> > > > >> after SETATTR extends the file further, by the time we get
+> to
+> > > > >> the GETATTR, the file is larger than the test expects.
+> > > > >> 
+> > > > >> There are two strange things going on here.  The first,
+> > > > >> identified above, is that write()s that were initiated
+> before
+> > > > >> the truncate() call are being processed after the resulting
+> > > > >> SETATTR call.  The second is that WRITE operations are being
+> > > > >> initiated while the SETATTR is outstanding.
+> > > > >> 
+> > > > >> It seems to me that a size-changing SETATTR operation should
+> > > > >> act essentially as an I/O barrier. It should wait for all
+> outstanding
+> > > > >> read/write requests to complete, then issue the SETATTR,
+> > > > >> wait for the reply, and only then re-enable read/write
+> requests.
+> > > > >> 
+> > > > >> In other words, SETATTR should be atomic with respect to
+> other
+> > > > >> I/O operations.
+> > > > 
+> > > > nfs_setattr() relies on writeback_single_inode() [ via
+> nfs_setattr() ->
+> > > > nfs_wb_all() -> sync_inode() -> writeback_single_inode() ] to
+> serialize
+> > > > itself with other pending I/O operations.  The NFS client
+> already treats
+> > > > SETATTR as an I/O barrier. 
+> > > > 
+> > > > >> A git bisect indicates that this problem first appeared (or
+> > > > >> was first uncovered) with this commit:
+> > > > >> 
+> > > > >>   4f8ad65 writeback: Refactor writeback_single_inode()
+> > > > >> 
+> > > > >> It continues to the most recent mainline kernels.
+> > > > >> 
+> > > > >> NFS v3 vs. v4 doesn't seem to matter.
+> > > > >> 
+> > > > >> Has anyone else seen this?  Any pointers you can provide?
+> > > > 
+> > > > After commit 4f8ad65, writeback_single_inode() occasionally
+> returns
+> > > > immediately instead of waiting for writeback to finish.  The
+> behavior
+> > > > would be difficult or impossible to spot with a local
+> filesystem, but
+> > > > with NFS, a race is clearly exposed.
+> > >   That looks like a bug. But the only thing that's changed by
+> 4f8ad65 is
+> > > the additional test:
+> > > 	if (!(inode->i_state & I_DIRTY))
+> > > 		goto out;
+> > > So it seems NFS has inodes that have dirty data but don't have
+> (any of) inode
+> > > dirty bits set? But I've been staring at the code and don't see
+> any
+> > > problem. Any idea Chuck? Otherwise I guess I'll have to reproduce
+> this and
+> > > debug what's going on.
 > > 
-> > Good catch!
+> > Hi Jan,
 > > 
-> thanks.
+> > I'm guessing that the problem is the fact that you can clear the
+> > I_DIRTY_PAGES flag inside __writeback_single_inode() on a
+> non-waiting
+> > call (i.e. one which does not have WB_SYNC_ALL set).
+> > When that happens, the NFS client ends up with inode->i_state == 0
+> until
+> > one of the WRITEs returns with the "unstable" flag set (which
+> triggers a
+> > call to __mark_inode_dirty(inode, I_DIRTY_DATASYNC) so that we call
+> > write_inode()).
+> > 
+> > Basically, if you have WB_SYNC_ALL set, I think that you cannot
+> apply
+> > the test for (inode->i_state & I_DIRTY) until you have called 
+> > filemap_fdatawait().
+>   Ah, thanks for explanation. I should have spotted this myself. So
+> something like the attached patch should fix the issue. Dan, can you
+> try
+> whether the attached patch fixes your problem?
 > 
-> I am still unsure if sctp is correct or not, I think it isn't correct.
-> Because we compare and don't check if any bit is set.
-> 
-> We don't use IPV6_ADDR_SCOPE_TYPE here. We use IPV6_ADDR_TYPE. But we can't
-> compare it.
+> 								Honza
+> -- 
+> Jan Kara <jack@suse.cz>
+> SUSE Labs, CR
 
-Actually, this is fine, too. ipv6_addr_scope does mask the addr_type with
-IPV6_ADDR_SCOPE_MASK (which is 0x00f0U). If you look at addrconf_core.c you
-see that the 4 bits stand by itself each time.
+Jan,
 
-Actually it seems ipv6_addr_src_scope is better suitable for multicast scope
-handling and ipv6_addr_scope with IFA_{HOST,LINK,SITE} is fine for
-non-multicast. In this case there is no difference.
+Confirmed - this patch eliminates the errors I was seeing.  The LTP tests
+now pass reliably.
 
-Maybe an int ipv6_cmp_sockaddr(struct in6_addr *a1, int scope1,
-			  struct in6_addr *a2, int scope2)
-or
-int ipv6_cmp_sockaddr(struct sockaddr_in6 *s1,
-		      struct sockaddr_in6 *s2)
-
-would be nice so we don't need to open code it everywhere.
-
-Greetings,
-
-  Hannes
-
+Dan Duval <dan.duval@oracle.com>
