@@ -1,55 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f172.google.com ([209.85.192.172]:34672 "EHLO
-	mail-pd0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753285Ab3LWKLI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Dec 2013 05:11:08 -0500
-Received: by mail-pd0-f172.google.com with SMTP id g10so5004145pdj.3
-        for <linux-nfs@vger.kernel.org>; Mon, 23 Dec 2013 02:11:07 -0800 (PST)
-Message-ID: <52B80C36.8020000@gmail.com>
-Date: Mon, 23 Dec 2013 18:11:02 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
+Received: from mx12.netapp.com ([216.240.18.77]:9223 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751000Ab3LKU36 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Dec 2013 15:29:58 -0500
+From: Weston Andros Adamson <dros@netapp.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+CC: linux-nfs list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v2] NFSv4: fix getacl ERANGE for some ACL buffer sizes
+Date: Wed, 11 Dec 2013 20:29:56 +0000
+Message-ID: <E07B490A-9F2C-41C4-810F-C781D226A92C@netapp.com>
+References: <1385068813-5491-1-git-send-email-dros@netapp.com>
+ <1386699230.2879.26.camel@leira.trondhjem.org>
+ <1556485E-F391-4F58-AEE3-07C829DA2DB1@netapp.com>
+ <838C6973-AF5C-4B33-B673-B7DD2B810628@primarydata.com>
+ <9C456209-7EDE-4494-9651-903E6A4E7055@netapp.com>
+In-Reply-To: <9C456209-7EDE-4494-9651-903E6A4E7055@netapp.com>
+Content-Type: text/plain; charset="Windows-1252"
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: linux-nfs@vger.kernel.org
-Subject: [PATCH] NFSD: fix bad length checking for backchannel
-Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-the length for backchannel checking should be multiplied by sizeof(__be32).
+Indeed, buf->page_len is still set to the maximum number of bytes in the pages array (set by xdr_inline_pages to tell xdr layer the max allocation size), and not the number of bytes that are actually present.
 
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
----
- fs/nfsd/nfs4state.c | 9 +++++++--
- 1 file changed, 7 insertions(+), 2 deletions(-)
+Working on a fix.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 105d6fa..05f4db8 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1851,6 +1851,11 @@ static __be32 check_forechannel_attrs(struct nfsd4_channel_attrs *ca, struct nfs
- 	return nfs_ok;
- }
- 
-+#define NFSD_CB_MAX_REQ_SZ	((NFS4_enc_cb_recall_sz + \
-+				 RPC_MAX_HEADER_WITH_AUTH) * sizeof(__be32))
-+#define NFSD_CB_MAX_RESP_SZ	((NFS4_dec_cb_recall_sz + \
-+				 RPC_MAX_REPHEADER_WITH_AUTH) * sizeof(__be32))
-+
- static __be32 check_backchannel_attrs(struct nfsd4_channel_attrs *ca)
- {
- 	ca->headerpadsz = 0;
-@@ -1861,9 +1866,9 @@ static __be32 check_backchannel_attrs(struct nfsd4_channel_attrs *ca)
- 	 * less than 1k.  Tighten up this estimate in the unlikely event
- 	 * it turns out to be a problem for some client:
- 	 */
--	if (ca->maxreq_sz < NFS4_enc_cb_recall_sz + RPC_MAX_HEADER_WITH_AUTH)
-+	if (ca->maxreq_sz < NFSD_CB_MAX_REQ_SZ)
- 		return nfserr_toosmall;
--	if (ca->maxresp_sz < NFS4_dec_cb_recall_sz + RPC_MAX_REPHEADER_WITH_AUTH)
-+	if (ca->maxresp_sz < NFSD_CB_MAX_RESP_SZ)
- 		return nfserr_toosmall;
- 	ca->maxresp_cached = 0;
- 	if (ca->maxops < 2)
--- 
-1.8.4.2
+-dros
+
+On Dec 10, 2013, at 3:10 PM, Weston Andros Adamson <dros@netapp.com> wrote:
+
+> 
+> On Dec 10, 2013, at 2:19 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+> 
+>> 
+>> On Dec 10, 2013, at 21:11, Weston Andros Adamson <dros@netapp.com> wrote:
+>> 
+>>> 
+>>> On Dec 10, 2013, at 1:13 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+>>> 
+>>>> On Thu, 2013-11-21 at 16:20 -0500, Weston Andros Adamson wrote:
+>>> 
+>>>> 
+>>>>> 	if (res.acl_scratch)
+>>>>> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+>>>>> index 5be2868..4e2e2da 100644
+>>>>> --- a/fs/nfs/nfs4xdr.c
+>>>>> +++ b/fs/nfs/nfs4xdr.c
+>>>>> @@ -5207,8 +5207,6 @@ static int decode_getacl(struct xdr_stream *xdr, struct rpc_rqst *req,
+>>>>> 	if ((status = decode_op_hdr(xdr, OP_GETATTR)) != 0)
+>>>>> 		goto out;
+>>>>> 
+>>>>> -	xdr_enter_page(xdr, xdr->buf->page_len);
+>>>> 
+>>>> Why is this being removed?
+>>> 
+>>> Because it BUG()s! ;)
+>>> 
+>>> I must admit that I don’t get why xdr_enter_page() doesn’t work when the XDR layer does the page allocation, but it does not — and the nfs3xdr ACL code (which uses the XDR layer allocation) also doesn’t call this.  It worked well without this, so I just removed it and didn’t investigate why.
+>> 
+>> I’m guessing that xdr->buf>page_len is being set incorrectly by the code that does the page allocation and/or that it is failing to update xdr->buf->len and/or xdr->buf->buflen.
+>> 
+>> We really do need the xdr_enter_page() here, or the acl bitmap + data won’t be aligned properly on the page boundary.
+> 
+> Ok, I’ll add that back and then fix the oops… and investigate if the v3 ACL code needs it too…
+> 
+> Thanks,
+> -dros
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
