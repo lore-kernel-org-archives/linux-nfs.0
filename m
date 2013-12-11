@@ -1,90 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:33911 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751227Ab3LVT20 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 22 Dec 2013 14:28:26 -0500
-Date: Sun, 22 Dec 2013 11:28:18 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: Vyacheslav Dubeyko <slava@dubeyko.com>
-Cc: Christoph Hellwig <hch@infradead.org>, viro@zeniv.linux.org.uk,
-        linux-fsdevel@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-mtd@lists.infradead.org, Mark Fasheh <mfasheh@suse.com>,
-        Joel Becker <jlbec@evilplan.org>, reiserfs-devel@vger.kernel.org,
-        xfs@oss.sgi.com, jfs-discussion@lists.sourceforge.net,
-        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
-        Andreas Gruenbacher <andreas.gruenbacher@linbit.com>
-Subject: Re: [PATCH 21/21] hfsplus: remove can_set_xattr
-Message-ID: <20131222192818.GA32565@infradead.org>
-References: <20131220131635.650823732@bombadil.infradead.org>
- <20131220132524.900291394@bombadil.infradead.org>
- <636E01BC-12FD-452B-8B1C-320B6EADAEFD@dubeyko.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <636E01BC-12FD-452B-8B1C-320B6EADAEFD@dubeyko.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:35889 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750882Ab3LKKRW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Dec 2013 05:17:22 -0500
+From: Stanislav Kholmanskikh <stanislav.kholmanskikh@oracle.com>
+To: linux-nfs@vger.kernel.org
+Cc: vasily.isaenko@oracle.com, hch@infradead.org, xfs@oss.sgi.com,
+        sprabhu@redhat.com, bfields@fieldses.org
+Subject: [PATCH] nfsd: revoking of suid/sgid bits after chown() in a consistent way
+Date: Wed, 11 Dec 2013 14:16:36 +0400
+Message-Id: <1386756996-28083-1-git-send-email-stanislav.kholmanskikh@oracle.com>
+In-Reply-To: <20131206204747.GB12613@fieldses.org>
+References: <20131206204747.GB12613@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Dec 21, 2013 at 08:07:51PM +0300, Vyacheslav Dubeyko wrote:
-> > -static int can_set_xattr(struct inode *inode, const char *name,
-> > -				const void *value, size_t value_len)
-> 
-> This function works for all handlers. So, I don't think that it makes sense
-> to delete it.
+There is an inconsistency in the handling of SUID/SGID file
+bits after chown() between NFS and other local file systems.
 
-It "works" in a minimal sense that it won't crash or actively cause
-harm.  But it also is useless except for the check that we can abuse
-the osx namespace to set an attribute in another namespace, which we
-still do in the proper way after my patch.
+Local file systems (for example, ext3, ext4, xfs, btrfs) revoke
+SUID/SGID bits after chown() on a regular file even if
+the owner/group of the file has not been changed:
 
-> > -	if (!strncmp(name, XATTR_MAC_OSX_PREFIX, XATTR_MAC_OSX_PREFIX_LEN)) {
-> > -		/*
-> > -		 * This makes sure that we aren't trying to set an
-> > -		 * attribute in a different namespace by prefixing it
-> > -		 * with "osx."
-> > -		 */
-> > -		if (is_known_namespace(name + XATTR_MAC_OSX_PREFIX_LEN))
-> > -			return -EOPNOTSUPP;
-> 
-> I think that this check is important. It forbids such combinations as "osx.system.*" or
-> "osx.trusted.*", for example. Because "osx.*" is virtual namespace for xattrs that
-> it can be under Mac OS X. If you want to set xattr from "system.*" namespace, for example,
-> then you need to use another handler. And such namespace should be without
-> addition of "osx." prefix.
+~# touch file; chmod ug+s file; chmod u+x file
+~# ls -l file
+-rwsr-Sr-- 1 root root 0 Dec  6 04:49 file
+~# chown root file; ls -l file
+-rwxr-Sr-- 1 root root 0 Dec  6 04:49 file
 
-Right, and we keep exactly the check, just in a different place.
+but NFS doesn't do that:
 
-> The __hfsplus_setxattr() is common method for all handlers. So, removing
-> this call means that we don't check validity of namespace. I don't think
-> that such modification is a right way.
+~# touch file; chmod ug+s file; chmod u+x file
+~# ls -l file
+-rwsr-Sr-- 1 root root 0 Dec  6 04:49 file
+~# chown root file; ls -l file
+-rwsr-Sr-- 1 root root 0 Dec  6 04:49 file
 
-The generic code already checks for the validity of the namespace for
-you. xattr_resolve_name in fs/xattr.c makes sure only attributes for a
-namespace that the filesystem registered can be set or modified.
+NFS does that only if the owner/group has been changed:
 
-> > @@ -841,10 +761,6 @@ int hfsplus_removexattr(struct dentry *dentry, const char *name)
-> > 	if (!HFSPLUS_SB(inode->i_sb)->attr_tree)
-> > 		return -EOPNOTSUPP;
-> > 
-> > -	err = can_set_xattr(inode, name, NULL, 0);
-> 
-> Ditto. Moreover, it is used namely hfsplus_removexattr() and not
-> __hfsplus_setxattr() for removing xattrs in hfsplus driver. So, removing
-> this check is not good way.
+~# touch file; chmod ug+s file; chmod u+x file
+~# ls -l file
+-rwsr-Sr-- 1 root root 0 Dec  6 05:02 file
+~# chown bin file; ls -l file
+-rwxr-Sr-- 1 bin root 0 Dec  6 05:02 file
 
-Oh, I just noticed that hfsplus does not use the xattr handlers for
-removing, while it does for getting and setting xattrs.  That's a really
-bad a confusing design, and we'll indeed need to fix that as well.
+See: http://pubs.opengroup.org/onlinepubs/9699919799/functions/chown.html
 
-> > 	if (len > HFSPLUS_ATTR_MAX_STRLEN)
-> > 		return -EOPNOTSUPP;
-> > 
-> > +	if (is_known_namespace(name))
-> > +		return -EOPNOTSUPP;
-> 
-> If common check in __hfsplus_setxattr() will be on the same place then
-> this addition doesn't make sense.
+ "If the specified file is a regular file, one or more of
+ the S_IXUSR, S_IXGRP, or S_IXOTH bits of the file mode are set,
+ and the process has appropriate privileges, it is
+ implementation-defined whether the set-user-ID and set-group-ID
+ bits are altered."
 
-Having both does indeed not make sense, but this is the better place to
-have it.
+So both variants are acceptable by POSIX.
+
+This patch makes NFS to behave like local file systems.
+
+Signed-off-by: Stanislav Kholmanskikh <stanislav.kholmanskikh@oracle.com>
+---
+ fs/nfsd/vfs.c |    3 +--
+ 1 files changed, 1 insertions(+), 2 deletions(-)
+
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 72cb28e..8226991 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -348,8 +348,7 @@ nfsd_sanitize_attrs(struct inode *inode, struct iattr *iap)
+ 
+ 	/* Revoke setuid/setgid on chown */
+ 	if (!S_ISDIR(inode->i_mode) &&
+-	    (((iap->ia_valid & ATTR_UID) && !uid_eq(iap->ia_uid, inode->i_uid)) ||
+-	     ((iap->ia_valid & ATTR_GID) && !gid_eq(iap->ia_gid, inode->i_gid)))) {
++	    ((iap->ia_valid & ATTR_UID) || (iap->ia_valid & ATTR_GID))) {
+ 		iap->ia_valid |= ATTR_KILL_PRIV;
+ 		if (iap->ia_valid & ATTR_MODE) {
+ 			/* we're setting mode too, just clear the s*id bits */
+-- 
+1.7.1
 
