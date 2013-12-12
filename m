@@ -1,101 +1,120 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from oproxy9-pub.mail.unifiedlayer.com ([69.89.24.6]:36679 "HELO
-	oproxy9-pub.mail.unifiedlayer.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1756986Ab3LWGrA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Dec 2013 01:47:00 -0500
-Message-ID: <1387780809.3991.21.camel@slavad-ubuntu>
-Subject: Re: [PATCH 21/21] hfsplus: remove can_set_xattr
-From: Vyacheslav Dubeyko <slava@dubeyko.com>
-Reply-To: slava@dubeyko.com
-To: Christoph Hellwig <hch@infradead.org>
-Cc: viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net, linux-mtd@lists.infradead.org,
-        Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>,
-        reiserfs-devel@vger.kernel.org, xfs@oss.sgi.com,
-        jfs-discussion@lists.sourceforge.net, cluster-devel@redhat.com,
-        linux-nfs@vger.kernel.org,
-        Andreas Gruenbacher <andreas.gruenbacher@linbit.com>
-Date: Mon, 23 Dec 2013 10:40:09 +0400
-In-Reply-To: <20131222192818.GA32565@infradead.org>
-References: <20131220131635.650823732@bombadil.infradead.org>
-	 <20131220132524.900291394@bombadil.infradead.org>
-	 <636E01BC-12FD-452B-8B1C-320B6EADAEFD@dubeyko.com>
-	 <20131222192818.GA32565@infradead.org>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from fieldses.org ([174.143.236.118]:36586 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751467Ab3LLQL7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 12 Dec 2013 11:11:59 -0500
+Date: Thu, 12 Dec 2013 11:11:57 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: dros@netapp.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfsd: calculate the missing length of bitmap in
+ EXCHANG_ID
+Message-ID: <20131212161157.GE11521@fieldses.org>
+References: <52A6C1B4.9030501@gmail.com>
+ <20131212161111.GD11521@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20131212161111.GD11521@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, 2013-12-22 at 11:28 -0800, Christoph Hellwig wrote:
+On Thu, Dec 12, 2013 at 11:11:11AM -0500, J. Bruce Fields wrote:
+> On Tue, Dec 10, 2013 at 03:24:36PM +0800, Kinglong Mee wrote:
+> > commit 58cd57bfd9db3bc213bf9d6a10920f82095f0114
+> > "nfsd: Fix SP4_MACH_CRED negotiation in EXCHANGE_ID"
+> > miss calculating the length of bitmap for spo_must_enforce and spo_must_allow.
+> 
+> Good catch, thanks!  Looks like this was an oversight from
+> 57266a6e916e2522ea61758a3ee5576b60156791 "nfsd4: implement minimal
+> SP4_MACH_CRED" where I changed the xdr but forgot to update this length
+> calculation.
+
+(Um, I just repeated what you said in the changelog, sorry, obviously
+I'm not reading!)
+
+--b.
 
 > 
-> > > -	if (!strncmp(name, XATTR_MAC_OSX_PREFIX, XATTR_MAC_OSX_PREFIX_LEN)) {
-> > > -		/*
-> > > -		 * This makes sure that we aren't trying to set an
-> > > -		 * attribute in a different namespace by prefixing it
-> > > -		 * with "osx."
-> > > -		 */
-> > > -		if (is_known_namespace(name + XATTR_MAC_OSX_PREFIX_LEN))
-> > > -			return -EOPNOTSUPP;
+> But it doesn't look urgent.  I'll queue it up for 3.14.
+> 
+> --b.
+> 
 > > 
-> > I think that this check is important. It forbids such combinations as "osx.system.*" or
-> > "osx.trusted.*", for example. Because "osx.*" is virtual namespace for xattrs that
-> > it can be under Mac OS X. If you want to set xattr from "system.*" namespace, for example,
-> > then you need to use another handler. And such namespace should be without
-> > addition of "osx." prefix.
-> 
-> Right, and we keep exactly the check, just in a different place.
-> 
-
-Maybe I missed something, but I can see that this check is removed only.
-Could you point out the code in your patch that it checks and forbids
-such combination as "osx.security.*", "osx.trusted.*" and so on?
-
-I can see that is_known_namespace() is called for
-hfsplus_xattr_osx_handler only. But this method doesn't contain
-above-mentioned check. Moreover, hfsplus_xattr_user_handler,
-hfsplus_xattr_trusted_handler, hfsplus_xattr_security_handler will be
-without is_know_namespace() check. What about it?
-
-> > The __hfsplus_setxattr() is common method for all handlers. So, removing
-> > this call means that we don't check validity of namespace. I don't think
-> > that such modification is a right way.
-> 
-> The generic code already checks for the validity of the namespace for
-> you. xattr_resolve_name in fs/xattr.c makes sure only attributes for a
-> namespace that the filesystem registered can be set or modified.
-> 
-
-But generic code doesn't check such names combination that it is treated
-as wrong for concrete file systems. For example, "osx.security.*" is
-wrong for the case of HFS+. Because it will works
-hfsplus_xattr_osx_handler instead of hfsplus_xattr_security_handler.
-
-> > > @@ -841,10 +761,6 @@ int hfsplus_removexattr(struct dentry *dentry, const char *name)
-> > > 	if (!HFSPLUS_SB(inode->i_sb)->attr_tree)
-> > > 		return -EOPNOTSUPP;
-> > > 
-> > > -	err = can_set_xattr(inode, name, NULL, 0);
+> > Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> > ---
+> >  fs/nfsd/nfs4proc.c |  3 ++-
+> >  fs/nfsd/nfs4xdr.c  | 24 ++++++++++++++++--------
+> >  2 files changed, 18 insertions(+), 9 deletions(-)
 > > 
-> > Ditto. Moreover, it is used namely hfsplus_removexattr() and not
-> > __hfsplus_setxattr() for removing xattrs in hfsplus driver. So, removing
-> > this check is not good way.
-> 
-> Oh, I just noticed that hfsplus does not use the xattr handlers for
-> removing, while it does for getting and setting xattrs.  That's a really
-> bad a confusing design, and we'll indeed need to fix that as well.
-> 
-
-Why bad design? Do you mean that using .removexattr callback is bad
-idea?
-
-So, if it needs to use xattr handler only for removing then it needs to
-make some refactoring of using __hfsplus_setxattr() and
-hfsplus_removexattr() or merging these two functions into one. And I
-think that merging is better idea.
-
-Thanks,
-Vyacheslav Dubeyko.
-
-
+> > diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> > index 419572f..7bac4bd 100644
+> > --- a/fs/nfsd/nfs4proc.c
+> > +++ b/fs/nfsd/nfs4proc.c
+> > @@ -1524,7 +1524,8 @@ static inline u32 nfsd4_write_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op)
+> >  static inline u32 nfsd4_exchange_id_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op)
+> >  {
+> >  	return (op_encode_hdr_size + 2 + 1 + /* eir_clientid, eir_sequenceid */\
+> > -		1 + 1 + 2 + /* eir_flags, spr_how, spo_must_enforce & _allow */\
+> > +		1 + 1 + /* eir_flags, spr_how */\
+> > +		4 + /* spo_must_enforce & _allow with bitmap */\
+> >  		2 + /*eir_server_owner.so_minor_id */\
+> >  		/* eir_server_owner.so_major_id<> */\
+> >  		XDR_QUADLEN(NFS4_OPAQUE_LIMIT) + 1 +\
+> > diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> > index a57e67d..817c99f 100644
+> > --- a/fs/nfsd/nfs4xdr.c
+> > +++ b/fs/nfsd/nfs4xdr.c
+> > @@ -3368,35 +3368,43 @@ nfsd4_encode_exchange_id(struct nfsd4_compoundres *resp, __be32 nfserr,
+> >  		8 /* eir_clientid */ +
+> >  		4 /* eir_sequenceid */ +
+> >  		4 /* eir_flags */ +
+> > -		4 /* spr_how */ +
+> > -		8 /* spo_must_enforce, spo_must_allow */ +
+> > -		8 /* so_minor_id */ +
+> > -		4 /* so_major_id.len */ +
+> > -		(XDR_QUADLEN(major_id_sz) * 4) +
+> > -		4 /* eir_server_scope.len */ +
+> > -		(XDR_QUADLEN(server_scope_sz) * 4) +
+> > -		4 /* eir_server_impl_id.count (0) */);
+> > +		4 /* spr_how */);
+> >  
+> >  	WRITEMEM(&exid->clientid, 8);
+> >  	WRITE32(exid->seqid);
+> >  	WRITE32(exid->flags);
+> >  
+> >  	WRITE32(exid->spa_how);
+> > +	ADJUST_ARGS();
+> > +
+> >  	switch (exid->spa_how) {
+> >  	case SP4_NONE:
+> >  		break;
+> >  	case SP4_MACH_CRED:
+> > +		/* spo_must_enforce, spo_must_allow */
+> > +		RESERVE_SPACE(16);
+> > +
+> >  		/* spo_must_enforce bitmap: */
+> >  		WRITE32(2);
+> >  		WRITE32(nfs4_minimal_spo_must_enforce[0]);
+> >  		WRITE32(nfs4_minimal_spo_must_enforce[1]);
+> >  		/* empty spo_must_allow bitmap: */
+> >  		WRITE32(0);
+> > +
+> > +		ADJUST_ARGS();
+> >  		break;
+> >  	default:
+> >  		WARN_ON_ONCE(1);
+> >  	}
+> >  
+> > +	RESERVE_SPACE(
+> > +		8 /* so_minor_id */ +
+> > +		4 /* so_major_id.len */ +
+> > +		(XDR_QUADLEN(major_id_sz) * 4) +
+> > +		4 /* eir_server_scope.len */ +
+> > +		(XDR_QUADLEN(server_scope_sz) * 4) +
+> > +		4 /* eir_server_impl_id.count (0) */);
+> > +
+> >  	/* The server_owner struct */
+> >  	WRITE64(minor_id);      /* Minor id */
+> >  	/* major id */
+> > -- 
+> > 1.8.4.2
