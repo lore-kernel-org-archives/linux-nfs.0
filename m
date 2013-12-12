@@ -1,229 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:59552 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751801Ab3LANUV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 1 Dec 2013 08:20:21 -0500
-Message-Id: <20131201132010.926223786@bombadil.infradead.org>
-Date: Sun, 01 Dec 2013 05:14:48 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: linux-nfs@vger.kernel.org, viro@zeniv.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org
-Subject: [PATCH 07/11] sunrpc: make rpc_mkdir_populate net-namespace aware
-References: <20131201131441.790963326@bombadil.infradead.org>
+Received: from fieldses.org ([174.143.236.118]:48686 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751323Ab3LLDjE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 11 Dec 2013 22:39:04 -0500
+Date: Wed, 11 Dec 2013 22:38:59 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Stanislav Kholmanskikh <stanislav.kholmanskikh@oracle.com>
+Cc: linux-nfs@vger.kernel.org, vasily.isaenko@oracle.com, hch@infradead.org,
+        xfs@oss.sgi.com, sprabhu@redhat.com
+Subject: Re: [PATCH] nfsd: revoking of suid/sgid bits after chown() in a
+ consistent way
+Message-ID: <20131212033859.GA5978@fieldses.org>
+References: <20131206204747.GB12613@fieldses.org>
+ <1386756996-28083-1-git-send-email-stanislav.kholmanskikh@oracle.com>
+ <52A845C6.2080109@oracle.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <52A845C6.2080109@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-And clean up the caller to not bother about intricate details of
-rpc_pipefs internals.
+On Wed, Dec 11, 2013 at 03:00:22PM +0400, Stanislav Kholmanskikh wrote:
+> 
+> 
+> On 12/11/2013 02:16 PM, Stanislav Kholmanskikh wrote:
+> [cut off]
+> >
+> >This patch makes NFS to behave like local file systems.
+> >
+> [cut off]
+> 
+> This patch allows to run generic/193 without any issues with NFSv3.
+> 
+> With NFSv4 generic/193 fails (but with the other issues, which
+> existed even before the patch).
+> 
+> generic/193 expects that suid/sgid bits are cleared after the file
+> truncation:
+> 
+> touch file
+> chown fsgqa:fsgqa file
+> chmod u+s file
+> echo 'xyz' > file
+> ls -l file
+> su fsgqa -c 'echo > file'
+> ls -l file
+> 
+> With ext4 (for example), we have expectable results:
+> -rwSr--r-- 1 fsgqa fsgqa 4 Dec 11 05:21 file
+> -rw-r--r-- 1 fsgqa fsgqa 1 Dec 11 05:22 file
+> 
+> With NFSv3 as well:
+> -rwSr--r-- 1 fsgqa fsgqa 4 Dec 11 05:24 file
+> -rw-r--r-- 1 fsgqa fsgqa 1 Dec 11 05:25 file
+> 
+> But with NFSv4 the bits are not cleared:
+> -rwSr--r-- 1 fsgqa fsgqa 1 Dec 11 05:19 file
+> -rwSr--r-- 1 fsgqa fsgqa 1 Dec 11 05:21 file
+> 
+> 'echo > file' issues:
+> 
+> open("file", O_WRONLY|O_CREAT|O_TRUNC, 0666)
+> 
+> Can it be because of design differences between NFSv3 and NFSv4?
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
----
- fs/nfs/cache_lib.c                 |   38 ++++--------------------------------
- include/linux/sunrpc/cache.h       |    4 ++--
- include/linux/sunrpc/rpc_pipe_fs.h |    6 ++----
- net/sunrpc/cache.c                 |    8 ++++----
- net/sunrpc/rpc_pipe.c              |   34 +++++++++++++++-----------------
- 5 files changed, 28 insertions(+), 62 deletions(-)
+In the v3 case I'd expect the open O_TRUNC to result in a SETATTR rpc,
+in the v4 case an OPEN rpc.  Both result in a call to nfsd_setattr,
+though I only see nfsd_setattr turning off the SUID/SGID bits in the
+chown case.  Are you sure it isn't the subsequent write that clears
+those bits?
 
-diff --git a/fs/nfs/cache_lib.c b/fs/nfs/cache_lib.c
-index 4e9226f..bc2bfb1 100644
---- a/fs/nfs/cache_lib.c
-+++ b/fs/nfs/cache_lib.c
-@@ -112,49 +112,19 @@ int nfs_cache_wait_for_upcall(struct nfs_cache_defer_req *dreq)
- 	return 0;
- }
- 
--static int nfs_cache_register_sb(struct super_block *sb,
--		struct cache_detail *cd)
--{
--	int ret;
--	struct dentry *dir;
--
--	dir = rpc_d_lookup_sb(sb, "cache");
--	ret = sunrpc_cache_register_pipefs(dir, cd->name, 0600, cd);
--	dput(dir);
--	return ret;
--}
--
- int nfs_cache_register_net(struct net *net, struct cache_detail *cd)
- {
--	struct super_block *pipefs_sb;
- 	int ret = 0;
- 
- 	sunrpc_init_cache_detail(cd);
--	pipefs_sb = rpc_get_sb_net(net);
--	if (pipefs_sb) {
--		ret = nfs_cache_register_sb(pipefs_sb, cd);
--		rpc_put_sb_net(net);
--		if (ret)
--			sunrpc_destroy_cache_detail(cd);
--	}
-+	ret = sunrpc_cache_register_pipefs(net, cd);
-+	if (ret)
-+		sunrpc_destroy_cache_detail(cd);
- 	return ret;
- }
- 
--static void nfs_cache_unregister_sb(struct super_block *sb,
--		struct cache_detail *cd)
--{
--	if (cd->u.pipefs.dir)
--		sunrpc_cache_unregister_pipefs(cd);
--}
--
- void nfs_cache_unregister_net(struct net *net, struct cache_detail *cd)
- {
--	struct super_block *pipefs_sb;
--
--	pipefs_sb = rpc_get_sb_net(net);
--	if (pipefs_sb) {
--		nfs_cache_unregister_sb(pipefs_sb, cd);
--		rpc_put_sb_net(net);
--	}
-+	sunrpc_cache_unregister_pipefs(cd);
- 	sunrpc_destroy_cache_detail(cd);
- }
-diff --git a/include/linux/sunrpc/cache.h b/include/linux/sunrpc/cache.h
-index 437ddb6..db1ad29 100644
---- a/include/linux/sunrpc/cache.h
-+++ b/include/linux/sunrpc/cache.h
-@@ -220,8 +220,8 @@ extern void cache_destroy_net(struct cache_detail *cd, struct net *net);
- 
- extern void sunrpc_init_cache_detail(struct cache_detail *cd);
- extern void sunrpc_destroy_cache_detail(struct cache_detail *cd);
--extern int sunrpc_cache_register_pipefs(struct dentry *parent, const char *,
--					umode_t, struct cache_detail *);
-+extern int sunrpc_cache_register_pipefs(struct net *net,
-+	struct cache_detail *cd);
- extern void sunrpc_cache_unregister_pipefs(struct cache_detail *);
- 
- extern void qword_add(char **bpp, int *lp, char *str);
-diff --git a/include/linux/sunrpc/rpc_pipe_fs.h b/include/linux/sunrpc/rpc_pipe_fs.h
-index fefbfa3..ae0a109 100644
---- a/include/linux/sunrpc/rpc_pipe_fs.h
-+++ b/include/linux/sunrpc/rpc_pipe_fs.h
-@@ -100,10 +100,8 @@ extern struct rpc_pipe_dir_object *rpc_find_or_alloc_pipe_dir_object(
- 		void *data);
- 
- struct cache_detail;
--extern struct dentry *rpc_create_cache_dir(struct dentry *,
--					   const char *,
--					   umode_t umode,
--					   struct cache_detail *);
-+extern struct dentry *rpc_create_cache_dir(struct net *n, const char *,
-+		const char *, umode_t umode, struct cache_detail *);
- extern void rpc_remove_cache_dir(struct dentry *);
- 
- extern int rpc_rmdir(struct dentry *dentry);
-diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
-index a72de07..c654377 100644
---- a/net/sunrpc/cache.c
-+++ b/net/sunrpc/cache.c
-@@ -1819,11 +1819,11 @@ const struct file_operations cache_flush_operations_pipefs = {
- 	.llseek		= no_llseek,
- };
- 
--int sunrpc_cache_register_pipefs(struct dentry *parent,
--				 const char *name, umode_t umode,
--				 struct cache_detail *cd)
-+int sunrpc_cache_register_pipefs(struct net *net, struct cache_detail *cd)
- {
--	struct dentry *dir = rpc_create_cache_dir(parent, name, umode, cd);
-+	struct dentry *dir;
-+
-+	dir = rpc_create_cache_dir(net,  "cache", cd->name, 0600, cd);
- 	if (IS_ERR(dir))
- 		return PTR_ERR(dir);
- 	cd->u.pipefs.dir = dir;
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index 751aba5..3f4905a 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -732,14 +732,20 @@ out_bad:
- 	return err;
- }
- 
--static struct dentry *rpc_mkdir_populate(struct dentry *parent,
-+static struct dentry *rpc_mkdir_populate(struct net *net, const char *dirname,
- 		const char *name, umode_t mode, void *private,
- 		int (*populate)(struct dentry *, void *), void *args_populate)
- {
--	struct dentry *dentry;
--	struct inode *dir = parent->d_inode;
-+	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
-+	struct dentry *dentry, *parent;
-+	struct inode *dir;
- 	int error;
- 
-+	parent = rpc_d_lookup_sb(sn->pipefs_sb, dirname);
-+	if (parent == NULL)
-+		return ERR_PTR(-ENOENT);
-+	dir = parent->d_inode;
-+
- 	mutex_lock_nested(&dir->i_mutex, I_MUTEX_PARENT);
- 	dentry = __rpc_lookup_create_exclusive(parent, name);
- 	if (IS_ERR(dentry))
-@@ -754,6 +760,7 @@ static struct dentry *rpc_mkdir_populate(struct dentry *parent,
- 	}
- out:
- 	mutex_unlock(&dir->i_mutex);
-+	dput(parent);
- 	return dentry;
- err_rmdir:
- 	__rpc_rmdir(dir, dentry);
-@@ -1103,24 +1110,17 @@ int rpc_create_client_dir(struct rpc_clnt *clnt)
- {
- 	static uint32_t clntid;
- 	struct net *net = rpc_net_ns(clnt);
--	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
- 	const char *dir_name = clnt->cl_program->pipe_dir_name;
--	struct dentry *dir, *dentry;
-+	struct dentry *dentry;
- 	char name[15];
- 	int ret = 0;
- 
--	dir = rpc_d_lookup_sb(sn->pipefs_sb, dir_name);
--	if (dir == NULL) {
--		pr_info("RPC: pipefs directory doesn't exist: %s\n", dir_name);
--		return -ENOENT;
--	}
--
- retry:
- 	snprintf(name, sizeof(name), "clnt%x", (unsigned int)clntid++);
- 	name[sizeof(name) - 1] = '\0';
- 
--	dentry = rpc_mkdir_populate(dir, name, S_IRUGO | S_IXUGO, NULL,
--			rpc_clntdir_populate, clnt);
-+	dentry = rpc_mkdir_populate(net, dir_name, name, S_IRUGO | S_IXUGO,
-+			NULL, rpc_clntdir_populate, clnt);
- 	if (IS_ERR(dentry)) {
- 		if (dentry == ERR_PTR(-EEXIST))
- 			goto retry;
-@@ -1133,9 +1133,7 @@ retry:
- 
- 	clnt->cl_pipedir_objects.pdh_dentry = dentry;
- 	rpc_create_pipe_dir_objects(&clnt->cl_pipedir_objects);
--
- out:
--	dput(dir);
- 	return ret;
- }
- 
-@@ -1184,10 +1182,10 @@ static void rpc_cachedir_depopulate(struct dentry *dentry)
- 	rpc_depopulate(dentry, cache_pipefs_files, 0, 3);
- }
- 
--struct dentry *rpc_create_cache_dir(struct dentry *parent, const char *name,
--				    umode_t umode, struct cache_detail *cd)
-+struct dentry *rpc_create_cache_dir(struct net *net, const char *dirname,
-+		const char *name, umode_t umode, struct cache_detail *cd)
- {
--	return rpc_mkdir_populate(parent, name, umode, NULL,
-+	return rpc_mkdir_populate(net, dirname, name, umode, NULL,
- 			rpc_cachedir_populate, cd);
- }
- 
--- 
-1.7.10.4
+But looks to me like nfsd_vfs_write (used in both v3 & v4 cases) clears
+suid & guid, so I still don't see it.
 
-
+--b.
