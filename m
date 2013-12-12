@@ -1,239 +1,252 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:37136 "EHLO mx2.suse.de"
+Received: from fieldses.org ([174.143.236.118]:47123 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751155Ab3LKULR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 11 Dec 2013 15:11:17 -0500
-Date: Wed, 11 Dec 2013 21:11:15 +0100
-From: Jan Kara <jack@suse.cz>
-To: Dan Duval <dan.duval@oracle.com>
-Cc: jack@suse.cz, trond.myklebust@primarydata.com, linux-nfs@vger.kernel.org,
-        chuck.lever@oracle.com, linux-fsdevel@vger.kernel.org
-Subject: Re: NFS file size anomaly?
-Message-ID: <20131211201115.GA2575@quack.suse.cz>
-References: <81dd4aa2-2e0b-4a89-b0ac-72104b2e02db@default>
+	id S1751886Ab3LLPqm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 12 Dec 2013 10:46:42 -0500
+Date: Thu, 12 Dec 2013 10:46:42 -0500
+To: Sander Klein <roedie@roedie.nl>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: rpc.mountd high cpu usage
+Message-ID: <20131212154642.GA11521@fieldses.org>
+References: <889b64df295ba04d47f941762ebe0bac@roedie.nl>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <81dd4aa2-2e0b-4a89-b0ac-72104b2e02db@default>
+In-Reply-To: <889b64df295ba04d47f941762ebe0bac@roedie.nl>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed 11-12-13 10:01:43, Dan Duval wrote:
+On Thu, Dec 12, 2013 at 11:13:11AM +0100, Sander Klein wrote:
+> Hi,
 > 
-> ----- jack@suse.cz wrote:
+> We have an NFS server with about 186 exports currently. Every time
+> we add an export or mount an export the rpc.mountd starts eating
+> 100% of the CPU for a long time and clients get timeouts during
+> mounts.
 > 
-> > On Tue 10-12-13 19:01:21, Trond Myklebust wrote:
-> > > On Tue, 2013-12-10 at 15:36 +0100, Jan Kara wrote:
-> > > > On Mon 09-12-13 19:56:16, Chuck Lever wrote:
-> > > > > On Dec 9, 2013, at 4:05 PM, Chuck Lever <chuck.lever@oracle.com>
-> > wrote:
-> > > > > > Copying Trond's new work address.
-> > > > > > 
-> > > > > > Begin forwarded message:
-> > > > > > 
-> > > > > >> From: Dan Duval <dan.duval@oracle.com>
-> > > > > >> Subject: NFS file size anomaly?
-> > > > > >> Date: December 9, 2013 3:04:27 PM EST
-> > > > > >> To: Trond Myklebust <Trond.Myklebust@netapp.com>
-> > > > > >> Cc: <linux-nfs@vger.kernel.org>,
-> > <linux-fsdevel@vger.kernel.org>
-> > > > > >> 
-> > > > > >> [NOTE: cross-posted to linux-nfs and linux-fsdevel]
-> > > > > >> 
-> > > > > >> I'm seeing some unexpected behavior with NFS and file sizes.
-> > > > > >> 
-> > > > > >> The test cases are from the LTP (Linux Test Project), tests
-> > > > > >> ftest01, ftest05, and ftest07.  I'll concentrate on ftest01
-> > > > > >> to explain what I've found.
-> > > > > >> 
-> > > > > >> ftest01 fires off 5 subprocesses, each of which opens an
-> > empty
-> > > > > >> file and does the following, repeatedly:
-> > > > > >> 
-> > > > > >>       . lseek to some point in the file
-> > > > > >>       . read 2048 bytes
-> > > > > >>       . lseek back to the same point
-> > > > > >>       . write 2048 bytes
-> > > > > >> 
-> > > > > >> The "point in the file" is determined by a pseudo-random
-> > > > > >> sequence.  All such points are on 2048-byte boundaries.
-> > > > > >> 
-> > > > > >> Occasionally, also driven pseudo-randomly, ftest01 will
-> > throw
-> > > > > >> in a call to ftruncate(), truncate(), sync(), or fstat().
-> > > > > >> 
-> > > > > >> With the fstat() calls, the returned .st_size is compared
-> > > > > >> with the test's expected size for the file, and an error is
-> > > > > >> declared if they don't match.
-> > > > > >> 
-> > > > > >> What's happening is that, some way into the test, this
-> > fstat()
-> > > > > >> check is failing.  Specifically, the .st_size reported by
-> > > > > >> fstat() is greater than the computed size.
-> > > > > >> 
-> > > > > >> The sequence of operations leading up to this is:
-> > > > > >> 
-> > > > > >>       lseek 1034240 0
-> > > > > >>       read 2048
-> > > > > >>       lseek 0 1
-> > > > > >>       write 2048
-> > > > > >> 
-> > > > > >>       lseek 638976 0
-> > > > > >>       (read, lseek, write)
-> > > > > >> 
-> > > > > >>       lseek 708608 0
-> > > > > >>       (read, lseek, write)
-> > > > > >> 
-> > > > > >>       lseek 708608 0
-> > > > > >>       (read, lseek, write)
-> > > > > >> 
-> > > > > >>       lseek 679584 0
-> > > > > >>       (read, lseek, write)
-> > > > > >> 
-> > > > > >>       truncate 266240
-> > > > > >> 
-> > > > > >>       lseek 960512 0
-> > > > > >>       (read, lseek, write)
-> > > > > >> 
-> > > > > >>       (a bunch of lseek/read/lseek/write ops that do not
-> > > > > >>        extend the file)
-> > > > > >> 
-> > > > > >>       fstat
-> > > > > >> 
-> > > > > >> So the expected size of the file is 960512 + 2048 == 960560.
-> > > > > >> But the fstat reports a size of 1036288.
-> > > > > >> 
-> > > > > >> A look at what's happening on the wire, distilled from the
-> > > > > >> output of tethereal, is instructive.
-> > > > > >> 
-> > > > > >>       READ Call 638976 4096 (byte offset and size to read)
-> > > > > >>       READ Reply 4096 995382 (bytes read and current file
-> > size)
-> > > > > >> 
-> > > > > >>       SETATTR Call 266240 (this corresponds to the truncate()
-> > call)
-> > > > > >> 
-> > > > > >>       WRITE Call 638976 4096 (byte offset and size to write)
-> > > > > >>       WRITE Call 708608 4096
-> > > > > >>       WRITE Call 1032192 4096
-> > > > > >> 
-> > > > > >>       SETATTR Reply 266240 (current size of file)
-> > > > > >> 
-> > > > > >>       WRITE Reply 643072 (current size of file after write)
-> > > > > >>       WRITE Reply 1036288
-> > > > > >>       WRITE Reply 1036288
-> > > > > >> 
-> > > > > >>       GETATTR (initiated internally by NFS code?)
-> > > > > >> 
-> > > > > >>       READ Call 958464 4096 READ Reply 4096 1036288
-> > > > > >> 
-> > > > > >>       ... (a bunch of READ and WRITE ops that do not extend
-> > the file)
-> > > > > >> 
-> > > > > >>       GETATTR Call (this corresponds to the fstat() call)
-> > > > > >>       GETATTR Reply 1036288
-> > > > > >> 
-> > > > > >> So what appears to have happened here is that three of the
-> > > > > >> WRITE operations that the program issued before the
-> > truncate()
-> > > > > >> call have "bled past" the SETATTR, extending the file
-> > further
-> > > > > >> than the SETATTR did.  Since none of the operations issued
-> > > > > >> after SETATTR extends the file further, by the time we get
-> > to
-> > > > > >> the GETATTR, the file is larger than the test expects.
-> > > > > >> 
-> > > > > >> There are two strange things going on here.  The first,
-> > > > > >> identified above, is that write()s that were initiated
-> > before
-> > > > > >> the truncate() call are being processed after the resulting
-> > > > > >> SETATTR call.  The second is that WRITE operations are being
-> > > > > >> initiated while the SETATTR is outstanding.
-> > > > > >> 
-> > > > > >> It seems to me that a size-changing SETATTR operation should
-> > > > > >> act essentially as an I/O barrier. It should wait for all
-> > outstanding
-> > > > > >> read/write requests to complete, then issue the SETATTR,
-> > > > > >> wait for the reply, and only then re-enable read/write
-> > requests.
-> > > > > >> 
-> > > > > >> In other words, SETATTR should be atomic with respect to
-> > other
-> > > > > >> I/O operations.
-> > > > > 
-> > > > > nfs_setattr() relies on writeback_single_inode() [ via
-> > nfs_setattr() ->
-> > > > > nfs_wb_all() -> sync_inode() -> writeback_single_inode() ] to
-> > serialize
-> > > > > itself with other pending I/O operations.  The NFS client
-> > already treats
-> > > > > SETATTR as an I/O barrier. 
-> > > > > 
-> > > > > >> A git bisect indicates that this problem first appeared (or
-> > > > > >> was first uncovered) with this commit:
-> > > > > >> 
-> > > > > >>   4f8ad65 writeback: Refactor writeback_single_inode()
-> > > > > >> 
-> > > > > >> It continues to the most recent mainline kernels.
-> > > > > >> 
-> > > > > >> NFS v3 vs. v4 doesn't seem to matter.
-> > > > > >> 
-> > > > > >> Has anyone else seen this?  Any pointers you can provide?
-> > > > > 
-> > > > > After commit 4f8ad65, writeback_single_inode() occasionally
-> > returns
-> > > > > immediately instead of waiting for writeback to finish.  The
-> > behavior
-> > > > > would be difficult or impossible to spot with a local
-> > filesystem, but
-> > > > > with NFS, a race is clearly exposed.
-> > > >   That looks like a bug. But the only thing that's changed by
-> > 4f8ad65 is
-> > > > the additional test:
-> > > > 	if (!(inode->i_state & I_DIRTY))
-> > > > 		goto out;
-> > > > So it seems NFS has inodes that have dirty data but don't have
-> > (any of) inode
-> > > > dirty bits set? But I've been staring at the code and don't see
-> > any
-> > > > problem. Any idea Chuck? Otherwise I guess I'll have to reproduce
-> > this and
-> > > > debug what's going on.
-> > > 
-> > > Hi Jan,
-> > > 
-> > > I'm guessing that the problem is the fact that you can clear the
-> > > I_DIRTY_PAGES flag inside __writeback_single_inode() on a
-> > non-waiting
-> > > call (i.e. one which does not have WB_SYNC_ALL set).
-> > > When that happens, the NFS client ends up with inode->i_state == 0
-> > until
-> > > one of the WRITEs returns with the "unstable" flag set (which
-> > triggers a
-> > > call to __mark_inode_dirty(inode, I_DIRTY_DATASYNC) so that we call
-> > > write_inode()).
-> > > 
-> > > Basically, if you have WB_SYNC_ALL set, I think that you cannot
-> > apply
-> > > the test for (inode->i_state & I_DIRTY) until you have called 
-> > > filemap_fdatawait().
-> >   Ah, thanks for explanation. I should have spotted this myself. So
-> > something like the attached patch should fix the issue. Dan, can you
-> > try
-> > whether the attached patch fixes your problem?
-> > 
-> > 								Honza
-> > -- 
-> > Jan Kara <jack@suse.cz>
-> > SUSE Labs, CR
+> At first I thought this was because of a mount storm so I created
+> more rpc.mountd threads (16 currently on a 16 core CPU) to see if
+> that would help. We also made sure that not all of our clients mount
+> the export at the same time. But it didn't help.
 > 
-> Jan,
-> 
-> Confirmed - this patch eliminates the errors I was seeing.  The LTP tests
-> now pass reliably.
-  Thanks for confirmation. I've submitted the patch for inclusion.
+> After attaching a strace to one of the rpc.mountd processes I found
+> out that a lot of newfstatat's are being done. For every export we
+> create a newfstatat is being done for every way the a harddisk is
+> seen the OS. Our system has 180 harddisks which are all multipathed
+> so a these are a *LOT* of stats. 7206 per export in our case. Just a
+> small part from the strace (sorry for the big paste):
 
-								Honza
+That sounds like somewhat of an extreme setup, and I suspect the current
+behavior is by design, but I agree that we should fix it.  I'm not
+volunteering for now....
 
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+I think what happens is that exportfs flushes the kernel's export cache
+at which point every use of an uncached export triggers an upcall to
+mountd.  That upcall is probably visible in the strace as a read of a
+file descriptor associated with /proc/net/sunrpc/nfsd.fh/content.
+
+That upcall is handled by nfs-utils/utils/mountd/cache.c:nfsd_fh(),
+which is given a filehandle fragment identifying the filesystem in
+question and has to match it to an export.
+
+That's done by match_fsid().  Which does do a stat of the export path,
+but not of all the devices....  That's probably happening in one of the
+libblkid calls in uuid_by_path()?  I wonder if there's something wrong
+with libblkid configuration or with the way we're using it?
+
+--b.
+
+> 
+> 
+> statfs("/some/export", {f_type=0x2fc12fc1, f_bsize=131072,
+> f_blocks=50331648, f_bfree=8355553, f_bavail=8355553,
+> f_files=2139121087, f_ffree=2139021753, f_fsid={1912623216,
+> 10933642}, f_namelen=255, f_frsize=131072}) = 0
+> stat("/some/export", {st_mode=S_IFDIR|0775, st_size=15, ...}) = 0
+> lstat("/some/export", {st_mode=S_IFDIR|0775, st_size=15, ...}) = 0
+> lstat("/some/export/..", {st_mode=S_IFDIR|0755, st_size=12288, ...}) = 0
+> stat("/some/export", {st_mode=S_IFDIR|0775, st_size=15, ...}) = 0
+> open("/sys/dev/block/0:187", O_RDONLY)  = -1 ENOENT (No such file or
+> directory)
+> open("/dev", O_RDONLY|O_NONBLOCK|O_DIRECTORY|O_CLOEXEC) = 21
+> getdents(21, /* 1093 entries */, 32768) = 30680
+> newfstatat(21, "dm-185", {st_mode=S_IFBLK|S_ISVTX|0660,
+> st_rdev=makedev(254, 185), ...}, 0) = 0
+> newfstatat(21, "dm-184", {st_mode=S_IFBLK|S_ISVTX|0660,
+> st_rdev=makedev(254, 184), ...}, 0) = 0
+> newfstatat(21, "dm-183", {st_mode=S_IFBLK|S_ISVTX|0660,
+> st_rdev=makedev(254, 183), ...}, 0) = 0
+> newfstatat(21, "dm-182", {st_mode=S_IFBLK|S_ISVTX|0660,
+> st_rdev=makedev(254, 182), ...}, 0) = 0
+> newfstatat(21, "dm-181", {st_mode=S_IFBLK|S_ISVTX|0660,
+> st_rdev=makedev(254, 181), ...}, 0) = 0
+> newfstatat(21, "dm-180", {st_mode=S_IFBLK|S_ISVTX|0660,
+> st_rdev=makedev(254, 180), ...}, 0) = 0
+> [...]
+> newfstatat(21, "dm-3", {st_mode=S_IFBLK|S_ISVTX|0660,
+> st_rdev=makedev(254, 3), ...}, 0) = 0
+> newfstatat(21, "dm-2", {st_mode=S_IFBLK|S_ISVTX|0660,
+> st_rdev=makedev(254, 2), ...}, 0) = 0
+> newfstatat(21, "loop7", {st_mode=S_IFBLK|S_ISVTX|0660,
+> st_rdev=makedev(7, 7), ...}, 0) = 0
+> newfstatat(21, "loop6", {st_mode=S_IFBLK|S_ISVTX|0660,
+> st_rdev=makedev(7, 6), ...}, 0) = 0
+> newfstatat(21, "loop5", {st_mode=S_IFBLK|S_ISVTX|0660,
+> st_rdev=makedev(7, 5), ...}, 0) = 0
+> newfstatat(21, "loop4", {st_mode=S_IFBLK|S_ISVTX|0660,
+> st_rdev=makedev(7, 4), ...}, 0) = 0
+> newfstatat(21, "loop3", {st_mode=S_IFBLK|S_ISVTX|0660,
+> st_rdev=makedev(7, 3), ...}, 0) = 0
+> newfstatat(21, "loop2", {st_mode=S_IFBLK|S_ISVTX|0660,
+> st_rdev=makedev(7, 2), ...}, 0) = 0
+> newfstatat(21, "loop1", {st_mode=S_IFBLK|S_ISVTX|0660,
+> st_rdev=makedev(7, 1), ...}, 0) = 0
+> newfstatat(21, "shm", {st_mode=S_IFDIR|S_ISVTX|0777, st_size=60,
+> ...}, 0) = 0
+> newfstatat(21, "sndstat", {st_mode=S_IFREG|0444, st_size=0, ...}, 0) = 0
+> newfstatat(21, "root", {st_mode=S_IFBLK|S_ISVTX|0660,
+> st_rdev=makedev(254, 0), ...}, 0) = 0
+> newfstatat(21, "MAKEDEV", {st_mode=S_IFREG|0755, st_size=22880,
+> ...}, 0) = 0
+> newfstatat(21, "dvdrw", {st_mode=S_IFBLK|S_ISVTX|0660,
+> st_rdev=makedev(11, 0), ...}, 0) = 0
+> newfstatat(21, "dvd", {st_mode=S_IFBLK|S_ISVTX|0660,
+> st_rdev=makedev(11, 0), ...}, 0) = 0
+> newfstatat(21, "cdrw", {st_mode=S_IFBLK|S_ISVTX|0660,
+> st_rdev=makedev(11, 0), ...}, 0) = 0
+> newfstatat(21, "cdrom", {st_mode=S_IFBLK|S_ISVTX|0660,
+> st_rdev=makedev(11, 0), ...}, 0) = 0
+> newfstatat(21, "hpilo", {st_mode=S_IFDIR|0755, st_size=200, ...}, 0) = 0
+> newfstatat(21, "snd", {st_mode=S_IFDIR|0755, st_size=80, ...}, 0) = 0
+> newfstatat(21, "loop0", {st_mode=S_IFBLK|S_ISVTX|0660,
+> st_rdev=makedev(7, 0), ...}, 0) = 0
+> newfstatat(21, "dm-1", {st_mode=S_IFBLK|S_ISVTX|0660,
+> st_rdev=makedev(254, 1), ...}, 0) = 0
+> newfstatat(21, "os", {st_mode=S_IFDIR|0755, st_size=160, ...}, 0) = 0
+> newfstatat(21, "dm-0", {st_mode=S_IFBLK|S_ISVTX|0660,
+> st_rdev=makedev(254, 0), ...}, 0) = 0
+> newfstatat(21, "sdnc", {st_mode=S_IFBLK|S_ISVTX|0660,
+> st_rdev=makedev(70, 480), ...}, 0) = 0
+> newfstatat(21, "sdnb", {st_mode=S_IFBLK|S_ISVTX|0660,
+> st_rdev=makedev(70, 464), ...}, 0) = 0
+> newfstatat(21, "sdna", {st_mode=S_IFBLK|S_ISVTX|0660,
+> st_rdev=makedev(70, 448), ...}, 0) = 0
+> newfstatat(21, "sdmz", {st_mode=S_IFBLK|S_ISVTX|0660,
+> st_rdev=makedev(70, 432), ...}, 0) = 0
+> newfstatat(21, "sdmy", {st_mode=S_IFBLK|S_ISVTX|0660,
+> st_rdev=makedev(70, 416), ...}, 0) = 0
+> newfstatat(21, "sdmx", {st_mode=S_IFBLK|S_ISVTX|0660,
+> st_rdev=makedev(70, 400), ...}, 0) = 0
+> newfstatat(21, "sdmw", {st_mode=S_IFBLK|S_ISVTX|0660,
+> st_rdev=makedev(70, 384), ...}, 0) = 0
+> [...]
+> newfstatat(21, "sdd", {st_mode=S_IFBLK|S_ISVTX|0660,
+> st_rdev=makedev(8, 48), ...}, 0) = 0
+> newfstatat(21, "sdc", {st_mode=S_IFBLK|S_ISVTX|0660,
+> st_rdev=makedev(8, 32), ...}, 0) = 0
+> newfstatat(21, "sdb", {st_mode=S_IFBLK|S_ISVTX|0660,
+> st_rdev=makedev(8, 16), ...}, 0) = 0
+> newfstatat(21, "bus", {st_mode=S_IFDIR|0755, st_size=60, ...}, 0) = 0
+> newfstatat(21, "bsg", {st_mode=S_IFDIR|0755, st_size=15280, ...}, 0) = 0
+> newfstatat(21, "rtc", {st_mode=S_IFCHR|0600, st_rdev=makedev(254,
+> 0), ...}, 0) = 0
+> newfstatat(21, "char", {st_mode=S_IFDIR|0755, st_size=25320, ...},
+> 0) = 0
+> newfstatat(21, "mapper", {st_mode=S_IFDIR|0755, st_size=3780, ...},
+> 0) = 0
+> newfstatat(21, "net", {st_mode=S_IFDIR|0755, st_size=60, ...}, 0) = 0
+> newfstatat(21, "cpu", {st_mode=S_IFDIR|0755, st_size=60, ...}, 0) = 0
+> newfstatat(21, "stderr", {st_mode=S_IFCHR|0666, st_rdev=makedev(1,
+> 3), ...}, 0) = 0
+> newfstatat(21, "stdout", {st_mode=S_IFCHR|0666, st_rdev=makedev(1,
+> 3), ...}, 0) = 0
+> newfstatat(21, "stdin", {st_mode=S_IFCHR|0666, st_rdev=makedev(1,
+> 3), ...}, 0) = 0
+> newfstatat(21, "fd", {st_mode=S_IFDIR|0500, st_size=0, ...}, 0) = 0
+> newfstatat(21, "core", {st_mode=S_IFREG|0400,
+> st_size=140737486262272, ...}, 0) = 0
+> newfstatat(21, "pts", {st_mode=S_IFDIR|0755, st_size=0, ...}, 0) = 0
+> newfstatat(21, "input", {st_mode=S_IFDIR|0755, st_size=120, ...}, 0) = 0
+> getdents(21, /* 0 entries */, 32768)    = 0
+> close(21)                               = 0
+> open("/devfs", O_RDONLY|O_NONBLOCK|O_DIRECTORY|O_CLOEXEC) = -1
+> ENOENT (No such file or directory)
+> open("/devices", O_RDONLY|O_NONBLOCK|O_DIRECTORY|O_CLOEXEC) = -1
+> ENOENT (No such file or directory)
+> open("/dev/input", O_RDONLY|O_NONBLOCK|O_DIRECTORY|O_CLOEXEC) = 21
+> getdents(21, /* 6 entries */, 32768)    = 168
+> newfstatat(21, "by-path", {st_mode=S_IFDIR|0755, st_size=60, ...},
+> 0) = 0
+> getdents(21, /* 0 entries */, 32768)    = 0
+> close(21)                               = 0
+> open("/dev/pts", O_RDONLY|O_NONBLOCK|O_DIRECTORY|O_CLOEXEC) = 21
+> getdents(21, /* 6 entries */, 32768)    = 144
+> getdents(21, /* 0 entries */, 32768)    = 0
+> close(21)                               = 0
+> open("/dev/cpu", O_RDONLY|O_NONBLOCK|O_DIRECTORY|O_CLOEXEC) = 21
+> getdents(21, /* 3 entries */, 32768)    = 80
+> getdents(21, /* 0 entries */, 32768)    = 0
+> close(21)                               = 0
+> open("/dev/net", O_RDONLY|O_NONBLOCK|O_DIRECTORY|O_CLOEXEC) = 21
+> getdents(21, /* 3 entries */, 32768)    = 72
+> getdents(21, /* 0 entries */, 32768)    = 0
+> close(21)                               = 0
+> open("/dev/mapper", O_RDONLY|O_NONBLOCK|O_DIRECTORY|O_CLOEXEC) = 21
+> getdents(21, /* 189 entries */, 32768)  = 7472
+> newfstatat(21, "os-home", {st_mode=S_IFBLK|S_ISVTX|0660,
+> st_rdev=makedev(254, 185), ...}, 0) = 0
+> newfstatat(21, "os-var", {st_mode=S_IFBLK|S_ISVTX|0660,
+> st_rdev=makedev(254, 184), ...}, 0) = 0
+> newfstatat(21, "os-usr", {st_mode=S_IFBLK|S_ISVTX|0660,
+> st_rdev=makedev(254, 183), ...}, 0) = 0
+> newfstatat(21, "os-boot", {st_mode=S_IFBLK|S_ISVTX|0660,
+> st_rdev=makedev(254, 182), ...}, 0) = 0
+> newfstatat(21, "35000cca01a8db828", {st_mode=S_IFBLK|S_ISVTX|0660,
+> st_rdev=makedev(254, 181), ...}, 0) = 0
+> newfstatat(21, "35000cca01a9a63e8", {st_mode=S_IFBLK|S_ISVTX|0660,
+> st_rdev=makedev(254, 180), ...}, 0) = 0
+> newfstatat(21, "35000cca01a89cae4", {st_mode=S_IFBLK|S_ISVTX|0660,
+> st_rdev=makedev(254, 179), ...}, 0) = 0
+> newfstatat(21, "35000cca01a89dd04", {st_mode=S_IFBLK|S_ISVTX|0660,
+> st_rdev=makedev(254, 178), ...}, 0) = 0
+> [...]
+> newfstatat(21, "35000cca03e40bd84", {st_mode=S_IFBLK|S_ISVTX|0660,
+> st_rdev=makedev(254, 6), ...}, 0) = 0
+> newfstatat(21, "35000cca03e4b0250", {st_mode=S_IFBLK|S_ISVTX|0660,
+> st_rdev=makedev(254, 3), ...}, 0) = 0
+> newfstatat(21, "35000cca03e368408", {st_mode=S_IFBLK|S_ISVTX|0660,
+> st_rdev=makedev(254, 7), ...}, 0) = 0
+> newfstatat(21, "os-swap", {st_mode=S_IFBLK|S_ISVTX|0660,
+> st_rdev=makedev(254, 1), ...}, 0) = 0
+> newfstatat(21, "os-root", {st_mode=S_IFBLK|S_ISVTX|0660,
+> st_rdev=makedev(254, 0), ...}, 0) = 0
+> getdents(21, /* 0 entries */, 32768)    = 0
+> close(21)                               = 0
+> open("/dev/char", O_RDONLY|O_NONBLOCK|O_DIRECTORY|O_CLOEXEC) = 21
+> getdents(21, /* 1027 entries */, 32768) = 32768
+> newfstatat(21, "10:237", {st_mode=S_IFCHR|S_ISVTX|0600,
+> st_rdev=makedev(10, 237), ...}, 0) = 0
+> newfstatat(21, "7:134", {st_mode=S_IFCHR|0600, st_rdev=makedev(7,
+> 134), ...}, 0) = 0
+> newfstatat(21, "7:6", {st_mode=S_IFCHR|0600, st_rdev=makedev(7, 6),
+> ...}, 0) = 0
+> newfstatat(21, "7:133", {st_mode=S_IFCHR|0600, st_rdev=makedev(7,
+> 133), ...}, 0) = 0
+> [...etc etc etc...]
+> 
+> 
+> Is this expected behavour or is this some kind of bug?
+> 
+> I'm using nfs-utils 1.2.8 from Debian testing, but also had this
+> problem with 1.2.6. The kernel is 3.2.51.
+> 
+> If any more info is needed please let me know.
+> 
+> Regards,
+> 
+> Sander Klein
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
