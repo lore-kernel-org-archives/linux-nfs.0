@@ -1,62 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:5237 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:55733 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751627Ab3LAP6M (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 1 Dec 2013 10:58:12 -0500
-Date: Sun, 1 Dec 2013 10:57:48 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org,
-        viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH 00/11] [RFC] repair net namespace damage to rpc_pipefs
-Message-ID: <20131201105748.5db27670@tlielax.poochiereds.net>
-In-Reply-To: <20131201104422.64a8c7a0@tlielax.poochiereds.net>
-References: <20131201131441.790963326@bombadil.infradead.org>
-	<20131201104422.64a8c7a0@tlielax.poochiereds.net>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1751474Ab3LLQYw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 12 Dec 2013 11:24:52 -0500
+Date: Thu, 12 Dec 2013 11:24:52 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfsd: make calculate  reserved space correctly
+Message-ID: <20131212162452.GG11521@fieldses.org>
+References: <52A5AA09.4030409@gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <52A5AA09.4030409@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, 1 Dec 2013 10:44:22 -0500
-Jeff Layton <jlayton@redhat.com> wrote:
+On Mon, Dec 09, 2013 at 07:31:21PM +0800, Kinglong Mee wrote:
+> rpcsec_gss_oid is defined as below, So, must using XDR_LEN to calculate reserved space.
+> When len is not the multiples of 4, client will get bad data.
 
-> On Sun, 01 Dec 2013 05:14:41 -0800
-> Christoph Hellwig <hch@infradead.org> wrote:
-> 
-> > This series tries to get rid of the damage created by sprinkling the
-> > network namespace cat poo all over rpc_pipefs and users.
-> > 
-> > Instead of getting lost in a maze of notifiers and infrastructure build
-> > around it a cargo cult manner we revert to a slightly nicer version of
-> > the pre-namespace API.
-> > 
-> > To do this we just have to create an in-kernel instance of rpc_pipefs
-> > that is mounted at network namespace creation so that all functions can
-> > operated on it.
-> > 
-> > As-is this has one major downside: because the initial mount already grabs
-> > a reference to the network namespace we'll create a cyclic reference and
-> > will never free the network namespace.  To get around this we'd need
-> > some way to only grab it once user mounts show up / disapear in the VFS.
-> > 
-> > Given that the namespace kraken has infected various internal filesystem
-> > and will get more soon I suspect this problem is or will become generic
-> > and will need a proper solution anyway.  Al, any good ideas how to deal
-> > with this?  Most straight forward way would be to add a counter of
-> > user vfsmount to the superblock and methods when it goes to 1 and 0,
-> > but that seems a bit ugly.
-> 
-> I see what you mean here...hrm...
-> 
-> One possibility (though it may have holes that I don't see right
-> offhand):
-> 
-> Don't call get_ns in rpc_fill_super. Do it in rpc_mount instead, and
-> only take the reference if MS_KERNMOUNT isn't set?
+Looking at the definition of RESERVE_SPACE: first, it doesn't actually
+advance any pointers, all it does is an overflow check, so there
+shouldn't be data corruption unless we're at the end of a page (which
+shouldn't happen here).  Second, RESERVE_SPACE actually rounds up for
+is, so we wouldn't hit that problem anyway.
 
-...except that we have no mechanism to put those references on each
-umount. Nevermind...
+Nevertheless, agreed that it's probably good practice to round up here
+as well.
 
--- 
-Jeff Layton <jlayton@redhat.com>
+--b.
+
+> 
+> struct rpcsec_gss_oid {
+>         unsigned int    len;
+>         u8              data[GSS_OID_MAX_LEN];
+> };
+> 
+> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> ---
+>  fs/nfsd/nfs4xdr.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index b0b886e..a57e67d 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -3233,7 +3233,7 @@ nfsd4_do_encode_secinfo(struct nfsd4_compoundres *resp,
+>  
+>  		if (rpcauth_get_gssinfo(pf, &info) == 0) {
+>  			supported++;
+> -			RESERVE_SPACE(4 + 4 + info.oid.len + 4 + 4);
+> +			RESERVE_SPACE(4 + 4 + XDR_LEN(info.oid.len) + 4 + 4);
+>  			WRITE32(RPC_AUTH_GSS);
+>  			WRITE32(info.oid.len);
+>  			WRITEMEM(info.oid.data, info.oid.len);
+> -- 
+> 1.8.4.2
