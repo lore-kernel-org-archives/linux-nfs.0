@@ -1,85 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:35732 "EHLO mx2.suse.de"
+Received: from fieldses.org ([174.143.236.118]:53062 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752962Ab3LBXAK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 2 Dec 2013 18:00:10 -0500
-Date: Tue, 3 Dec 2013 00:00:07 +0100
-From: Jan Kara <jack@suse.cz>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net, linux-mtd@lists.infradead.org,
-        Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>,
-        reiserfs-devel@vger.kernel.org, xfs@oss.sgi.com,
-        jfs-discussion@lists.sourceforge.net, cluster-devel@redhat.com,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 12/18] ocfs2: use generic posix ACL infrastructure
-Message-ID: <20131202230007.GK12253@quack.suse.cz>
-References: <20131201115903.910559036@bombadil.infradead.org>
- <20131201120655.852590677@bombadil.infradead.org>
+	id S1751094Ab3LLQAM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 12 Dec 2013 11:00:12 -0500
+Date: Thu, 12 Dec 2013 11:00:10 -0500
+To: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+Cc: netdev@vger.kernel.org, "David S. Miller" <davem@davemloft.net>,
+        linux-nfs@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: Re: [PATCH v1] net/sunrpc/cache: simplify code by using
+ hex_pack_byte()
+Message-ID: <20131212160010.GB11521@fieldses.org>
+References: <1386856161-29889-1-git-send-email-andriy.shevchenko@linux.intel.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20131201120655.852590677@bombadil.infradead.org>
+In-Reply-To: <1386856161-29889-1-git-send-email-andriy.shevchenko@linux.intel.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun 01-12-13 03:59:15, Christoph Hellwig wrote:
-> This contains some major refactoring for the create path so that
-> inodes are created with the right mode to start with instead of
-> fixing it up later.
+On Thu, Dec 12, 2013 at 03:49:21PM +0200, Andy Shevchenko wrote:
+> hex_pack_byte() is a fast way to convert a byte in its ASCII representation. We
+> may use it instead of custom approach.
+
+Thanks, I'll take that through the nfsd tree for 3.14.
+
+--b.
+
 > 
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
-...
-> -int ocfs2_acl_chmod(struct inode *inode)
-> -{
-> -	struct ocfs2_super *osb = OCFS2_SB(inode->i_sb);
-> -	struct posix_acl *acl;
-> -	int ret;
-> -
-> -	if (S_ISLNK(inode->i_mode))
-> -		return -EOPNOTSUPP;
-> -
-> -	if (!(osb->s_mount_opt & OCFS2_MOUNT_POSIX_ACL))
-> -		return 0;
-> -
-> -	acl = ocfs2_get_acl(inode, ACL_TYPE_ACCESS);
-> -	if (IS_ERR(acl) || !acl)
-> -		return PTR_ERR(acl);
-> -	ret = __posix_acl_chmod(&acl, GFP_KERNEL, inode->i_mode);
-> -	if (ret)
-> -		return ret;
-> -	ret = ocfs2_set_acl(NULL, inode, NULL, ACL_TYPE_ACCESS,
-> -			    acl, NULL, NULL);
-> -	posix_acl_release(acl);
-> -	return ret;
-> -}
-...
-
-> diff --git a/fs/ocfs2/file.c b/fs/ocfs2/file.c
-> index 6fff128..ac371ad 100644
-> --- a/fs/ocfs2/file.c
-> +++ b/fs/ocfs2/file.c
-> @@ -1236,7 +1236,7 @@ bail:
->  		dqput(transfer_to[qtype]);
->  
->  	if (!status && attr->ia_valid & ATTR_MODE) {
-> -		status = ocfs2_acl_chmod(inode);
-> +		status = posix_acl_chmod(inode);
->  		if (status < 0)
->  			mlog_errno(status);
->  	}
-  Hum, this changes the cluster locking. Previously ocfs2_acl_get() used
-from ocfs2_acl_chmod() grabbed cluster wide inode lock. Now getting of ACL
-isn't protected by the inode lock. That being said the cluster locking
-around setattr looks fishy anyway - if two processes on different
-nodes are changing attributes of the same file, changing ACLs post fact
-after dropping inode lock could cause interesting effects. Also I'm
-wondering how inode_change_ok() can ever be safe without holding inode
-lock... Until we grab that other node is free to change e.g. owner of the
-inode thus leading even to security implications. But maybe I'm missing
-something. Mark, Joel?
-
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+> Signed-off-by: Andy Shevchenko <andriy.shevchenko@linux.intel.com>
+> ---
+>  net/sunrpc/cache.c | 4 +---
+>  1 file changed, 1 insertion(+), 3 deletions(-)
+> 
+> diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+> index a72de07..0877db0 100644
+> --- a/net/sunrpc/cache.c
+> +++ b/net/sunrpc/cache.c
+> @@ -1111,9 +1111,7 @@ void qword_addhex(char **bpp, int *lp, char *buf, int blen)
+>  		*bp++ = 'x';
+>  		len -= 2;
+>  		while (blen && len >= 2) {
+> -			unsigned char c = *buf++;
+> -			*bp++ = '0' + ((c&0xf0)>>4) + (c>=0xa0)*('a'-'9'-1);
+> -			*bp++ = '0' + (c&0x0f) + ((c&0x0f)>=0x0a)*('a'-'9'-1);
+> +			bp = hex_byte_pack(bp, *buf++);
+>  			len -= 2;
+>  			blen--;
+>  		}
+> -- 
+> 1.8.4.4
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
