@@ -1,47 +1,112 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:33930 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751049Ab3LBIMe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Dec 2013 03:12:34 -0500
-Date: Mon, 2 Dec 2013 00:12:33 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: Al Viro <viro@ZenIV.linux.org.uk>
-Cc: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org,
-        Linus Torvalds <torvalds@linux-foundation.org>,
-        Eric Biederman <ebiederm@xmission.com>
-Subject: Re: [PATCH 00/11] [RFC] repair net namespace damage to rpc_pipefs
-Message-ID: <20131202081233.GA6953@infradead.org>
-References: <20131201131441.790963326@bombadil.infradead.org>
- <20131201181329.GC10323@ZenIV.linux.org.uk>
+Received: from fieldses.org ([174.143.236.118]:36583 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751469Ab3LLQLQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 12 Dec 2013 11:11:16 -0500
+Date: Thu, 12 Dec 2013 11:11:11 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: dros@netapp.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfsd: calculate the missing length of bitmap in
+ EXCHANG_ID
+Message-ID: <20131212161111.GD11521@fieldses.org>
+References: <52A6C1B4.9030501@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20131201181329.GC10323@ZenIV.linux.org.uk>
+In-Reply-To: <52A6C1B4.9030501@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Dec 01, 2013 at 06:13:29PM +0000, Al Viro wrote:
-> Making the series no-go in that form, obviously.
+On Tue, Dec 10, 2013 at 03:24:36PM +0800, Kinglong Mee wrote:
+> commit 58cd57bfd9db3bc213bf9d6a10920f82095f0114
+> "nfsd: Fix SP4_MACH_CRED negotiation in EXCHANGE_ID"
+> miss calculating the length of bitmap for spo_must_enforce and spo_must_allow.
 
-Looking at the mess it made I'd almost be tempted to say a little leak
-for a less used features is better than lots of pain for everyone..
+Good catch, thanks!  Looks like this was an oversight from
+57266a6e916e2522ea61758a3ee5576b60156791 "nfsd4: implement minimal
+SP4_MACH_CRED" where I changed the xdr but forgot to update this length
+calculation.
 
-Looking at the mess it made I'm really upset.
+But it doesn't look urgent.  I'll queue it up for 3.14.
 
-> > Given that the namespace kraken has infected various internal filesystem
-> > and will get more soon I suspect this problem is or will become generic
-> > and will need a proper solution anyway.  Al, any good ideas how to deal
-> > with this?  Most straight forward way would be to add a counter of
-> > user vfsmount to the superblock and methods when it goes to 1 and 0,
-> > but that seems a bit ugly.
+--b.
+
 > 
-> Folks, please, _please_, let's formulate the lifecycle rules first; we
-> already had way too much trouble from putting mechanism first only to
-> run into questions like the above ("what happens if somebody tries to
-> allocate a PID in pid_ns that is already scheduled for shutdown?").
-> Remember the (recurring) fun with kobject-related lifetime issues?
-> Or rpc_pipefs notifier ugliness, for that matter...
-
-I'll have to let the net namespace folks chime in for that, as far as
-I'm concerned it's a featured better config'ed off.  If they can't come
-up with anything better the procfs hack above would be it.
+> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> ---
+>  fs/nfsd/nfs4proc.c |  3 ++-
+>  fs/nfsd/nfs4xdr.c  | 24 ++++++++++++++++--------
+>  2 files changed, 18 insertions(+), 9 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index 419572f..7bac4bd 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+> @@ -1524,7 +1524,8 @@ static inline u32 nfsd4_write_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op)
+>  static inline u32 nfsd4_exchange_id_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op)
+>  {
+>  	return (op_encode_hdr_size + 2 + 1 + /* eir_clientid, eir_sequenceid */\
+> -		1 + 1 + 2 + /* eir_flags, spr_how, spo_must_enforce & _allow */\
+> +		1 + 1 + /* eir_flags, spr_how */\
+> +		4 + /* spo_must_enforce & _allow with bitmap */\
+>  		2 + /*eir_server_owner.so_minor_id */\
+>  		/* eir_server_owner.so_major_id<> */\
+>  		XDR_QUADLEN(NFS4_OPAQUE_LIMIT) + 1 +\
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index a57e67d..817c99f 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -3368,35 +3368,43 @@ nfsd4_encode_exchange_id(struct nfsd4_compoundres *resp, __be32 nfserr,
+>  		8 /* eir_clientid */ +
+>  		4 /* eir_sequenceid */ +
+>  		4 /* eir_flags */ +
+> -		4 /* spr_how */ +
+> -		8 /* spo_must_enforce, spo_must_allow */ +
+> -		8 /* so_minor_id */ +
+> -		4 /* so_major_id.len */ +
+> -		(XDR_QUADLEN(major_id_sz) * 4) +
+> -		4 /* eir_server_scope.len */ +
+> -		(XDR_QUADLEN(server_scope_sz) * 4) +
+> -		4 /* eir_server_impl_id.count (0) */);
+> +		4 /* spr_how */);
+>  
+>  	WRITEMEM(&exid->clientid, 8);
+>  	WRITE32(exid->seqid);
+>  	WRITE32(exid->flags);
+>  
+>  	WRITE32(exid->spa_how);
+> +	ADJUST_ARGS();
+> +
+>  	switch (exid->spa_how) {
+>  	case SP4_NONE:
+>  		break;
+>  	case SP4_MACH_CRED:
+> +		/* spo_must_enforce, spo_must_allow */
+> +		RESERVE_SPACE(16);
+> +
+>  		/* spo_must_enforce bitmap: */
+>  		WRITE32(2);
+>  		WRITE32(nfs4_minimal_spo_must_enforce[0]);
+>  		WRITE32(nfs4_minimal_spo_must_enforce[1]);
+>  		/* empty spo_must_allow bitmap: */
+>  		WRITE32(0);
+> +
+> +		ADJUST_ARGS();
+>  		break;
+>  	default:
+>  		WARN_ON_ONCE(1);
+>  	}
+>  
+> +	RESERVE_SPACE(
+> +		8 /* so_minor_id */ +
+> +		4 /* so_major_id.len */ +
+> +		(XDR_QUADLEN(major_id_sz) * 4) +
+> +		4 /* eir_server_scope.len */ +
+> +		(XDR_QUADLEN(server_scope_sz) * 4) +
+> +		4 /* eir_server_impl_id.count (0) */);
+> +
+>  	/* The server_owner struct */
+>  	WRITE64(minor_id);      /* Minor id */
+>  	/* major id */
+> -- 
+> 1.8.4.2
