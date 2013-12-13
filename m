@@ -1,50 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:56120 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755324Ab3LEO4I (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Dec 2013 09:56:08 -0500
-Date: Thu, 5 Dec 2013 09:56:06 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] Define op_iattr for nfsd4_open instead using macro
-Message-ID: <20131205145606.GA30113@fieldses.org>
-References: <529FE7E4.9010000@gmail.com>
+Received: from mail-pb0-f51.google.com ([209.85.160.51]:35475 "EHLO
+	mail-pb0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751767Ab3LMBTI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Dec 2013 20:19:08 -0500
+Received: by mail-pb0-f51.google.com with SMTP id up15so1536252pbc.24
+        for <linux-nfs@vger.kernel.org>; Thu, 12 Dec 2013 17:19:08 -0800 (PST)
+Message-ID: <52AA604F.3090201@gmail.com>
+Date: Fri, 13 Dec 2013 09:18:07 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <529FE7E4.9010000@gmail.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfsd: make calculate  reserved space correctly
+References: <52A5AA09.4030409@gmail.com> <20131212162452.GG11521@fieldses.org>
+In-Reply-To: <20131212162452.GG11521@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks, applying.--b.
+On 12/13/2013 12:24 AM, J. Bruce Fields wrote:
+> On Mon, Dec 09, 2013 at 07:31:21PM +0800, Kinglong Mee wrote:
+>> rpcsec_gss_oid is defined as below, So, must using XDR_LEN to calculate reserved space.
+>> When len is not the multiples of 4, client will get bad data.
+> 
+> Looking at the definition of RESERVE_SPACE: first, it doesn't actually
+> advance any pointers, all it does is an overflow check, so there
+> shouldn't be data corruption unless we're at the end of a page (which
+> shouldn't happen here).  Second, RESERVE_SPACE actually rounds up for
+> is, so we wouldn't hit that problem anyway.
 
-On Thu, Dec 05, 2013 at 10:41:40AM +0800, Kinglong Mee wrote:
+Yes.
+
 > 
-> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-> ---
->  fs/nfsd/xdr4.h | 3 +--
->  1 file changed, 1 insertion(+), 2 deletions(-)
+> Nevertheless, agreed that it's probably good practice to round up here
+> as well.
+
+Thank you.
+
+thanks,
+Kinglong Mee
+
 > 
-> diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-> index b3ed644..e603cdd 100644
-> --- a/fs/nfsd/xdr4.h
-> +++ b/fs/nfsd/xdr4.h
-> @@ -228,7 +228,7 @@ struct nfsd4_open {
->  	u32		op_create;     	    /* request */
->  	u32		op_createmode;      /* request */
->  	u32		op_bmval[3];        /* request */
-> -	struct iattr	iattr;              /* UNCHECKED4, GUARDED4, EXCLUSIVE4_1 */
-> +	struct iattr	op_iattr;           /* UNCHECKED4, GUARDED4, EXCLUSIVE4_1 */
->  	nfs4_verifier	op_verf __attribute__((aligned(32)));
->  					    /* EXCLUSIVE4 */
->  	clientid_t	op_clientid;        /* request */
-> @@ -250,7 +250,6 @@ struct nfsd4_open {
->  	struct nfs4_acl *op_acl;
->  	struct xdr_netobj op_label;
->  };
-> -#define op_iattr	iattr
->  
->  struct nfsd4_open_confirm {
->  	stateid_t	oc_req_stateid		/* request */;
-> -- 
-> 1.8.4.2
+> --b.
+> 
+>>
+>> struct rpcsec_gss_oid {
+>>         unsigned int    len;
+>>         u8              data[GSS_OID_MAX_LEN];
+>> };
+>>
+>> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+>> ---
+>>  fs/nfsd/nfs4xdr.c | 2 +-
+>>  1 file changed, 1 insertion(+), 1 deletion(-)
+>>
+>> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+>> index b0b886e..a57e67d 100644
+>> --- a/fs/nfsd/nfs4xdr.c
+>> +++ b/fs/nfsd/nfs4xdr.c
+>> @@ -3233,7 +3233,7 @@ nfsd4_do_encode_secinfo(struct nfsd4_compoundres *resp,
+>>  
+>>  		if (rpcauth_get_gssinfo(pf, &info) == 0) {
+>>  			supported++;
+>> -			RESERVE_SPACE(4 + 4 + info.oid.len + 4 + 4);
+>> +			RESERVE_SPACE(4 + 4 + XDR_LEN(info.oid.len) + 4 + 4);
+>>  			WRITE32(RPC_AUTH_GSS);
+>>  			WRITE32(info.oid.len);
+>>  			WRITEMEM(info.oid.data, info.oid.len);
+>> -- 
+>> 1.8.4.2
+> 
+
