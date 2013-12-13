@@ -1,57 +1,33 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f50.google.com ([209.85.220.50]:63843 "EHLO
-	mail-pa0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752026Ab3LCDk7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Dec 2013 22:40:59 -0500
-Received: by mail-pa0-f50.google.com with SMTP id kl14so2294984pab.23
-        for <linux-nfs@vger.kernel.org>; Mon, 02 Dec 2013 19:40:59 -0800 (PST)
-Message-ID: <529D52C5.6050404@gmail.com>
-Date: Tue, 03 Dec 2013 11:40:53 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:55245 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753081Ab3LMOMp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Dec 2013 09:12:45 -0500
+Date: Fri, 13 Dec 2013 06:12:43 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: Benny Halevy <bhalevy@primarydata.com>
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/2] nfsd4: ignore nfsv4.1 lockowners in
+ nfsd4_release_lockowner
+Message-ID: <20131213141243.GA20399@infradead.org>
+References: <52AADAF6.40700@primarydata.com>
+ <1386929026-12627-1-git-send-email-bhalevy@primarydata.com>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: linux-nfs@vger.kernel.org
-Subject: [PATCH v2] Do not enter setup_callback_client when finding backchannel
- failed
-References: <5295C982.1030904@gmail.com> <20131202145917.GF1960@fieldses.org>
-In-Reply-To: <20131202145917.GF1960@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1386929026-12627-1-git-send-email-bhalevy@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Finding backchannel failed, nfsd should not enter setup_callback_client.
+>  	list_for_each_entry(sop, &nn->ownerstr_hashtbl[hashval], so_strhash) {
+>  		if (sop->so_is_open_owner)
+>  			continue;
+> +		if (sop->so_client->cl_minorversion)
+> +			continue;
+>  		if (!same_owner_str(sop, owner, clid))
+>  			continue;
+>  		list_for_each_entry(stp, &sop->so_stateids,
 
-v2. drop ses checking in setup_callback_client and make code more clearer.
-
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
----
- fs/nfsd/nfs4callback.c | 12 ++++++++----
- 1 file changed, 8 insertions(+), 4 deletions(-)
-
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 7f05cd1..44d33ce 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -975,11 +975,15 @@ static void nfsd4_process_cb_update(struct nfsd4_callback *cb)
- 	clear_bit(NFSD4_CLIENT_CB_UPDATE, &clp->cl_flags);
- 	memcpy(&conn, &cb->cb_clp->cl_cb_conn, sizeof(struct nfs4_cb_conn));
- 	c = __nfsd4_find_backchannel(clp);
--	if (c) {
--		svc_xprt_get(c->cn_xprt);
--		conn.cb_xprt = c->cn_xprt;
--		ses = c->cn_session;
-+	if (!c) {
-+		spin_unlock(&clp->cl_lock);
-+		nfsd4_mark_cb_down(clp, -ENOTCONN);
-+		return;
- 	}
-+
-+	svc_xprt_get(c->cn_xprt);
-+	conn.cb_xprt = c->cn_xprt;
-+	ses = c->cn_session;
- 	spin_unlock(&clp->cl_lock);
- 
- 	err = setup_callback_client(clp, &conn, ses);
--- 
-1.8.4.2
+This needs at least a good comment as it's not very obvious from
+glancing over the code.  That being said is same_owner_str so much
+overhead that it's really worth it?
 
