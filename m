@@ -1,439 +1,109 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:59189 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751722Ab3LAMG5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 1 Dec 2013 07:06:57 -0500
-Message-Id: <20131201120656.391407780@bombadil.infradead.org>
-Date: Sun, 01 Dec 2013 03:59:18 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: viro@zeniv.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-mtd@lists.infradead.org, Mark Fasheh <mfasheh@suse.com>,
-        Joel Becker <jlbec@evilplan.org>, reiserfs-devel@vger.kernel.org,
-        xfs@oss.sgi.com, jfs-discussion@lists.sourceforge.net,
-        cluster-devel@redhat.com, linux-nfs@vger.kernel.org
-Subject: [PATCH 15/18] jfs: use generic posix ACL infrastructure
-References: <20131201115903.910559036@bombadil.infradead.org>
+Received: from mail-vb0-f54.google.com ([209.85.212.54]:55169 "EHLO
+	mail-vb0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752646Ab3LMT6N convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Dec 2013 14:58:13 -0500
+Received: by mail-vb0-f54.google.com with SMTP id g10so1655083vbg.27
+        for <linux-nfs@vger.kernel.org>; Fri, 13 Dec 2013 11:58:12 -0800 (PST)
+MIME-Version: 1.0
+In-Reply-To: <FFE92BE0-2FFF-40E9-8971-A1A75F529699@netapp.com>
+References: <9852CC37-D035-4645-ACB7-8E0B902AF3F8@netapp.com>
+	<CAHVgHyXbx9psUevMT6mFkZ8Pfv_o4GM+G3D9RVDDv=60Ghh5Jw@mail.gmail.com>
+	<FFE92BE0-2FFF-40E9-8971-A1A75F529699@netapp.com>
+Date: Fri, 13 Dec 2013 14:58:12 -0500
+Message-ID: <CAHVgHyVw=rhWcD=Q++nwb85Kg7wzNjfZ=ih7TtZM3j-8bH23JQ@mail.gmail.com>
+Subject: Re: Recently introduced hang on reboot with auth_gss
+From: Andy Adamson <androsadamson@gmail.com>
+To: Weston Andros Adamson <dros@netapp.com>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs list <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Copy the scheme I introduced to btrfs many years ago to only use the
-xattr handler for ACLs, but pass plain attrs straight through.
+On Fri, Dec 13, 2013 at 2:56 PM, Weston Andros Adamson <dros@netapp.com> wrote:
+> So should we make this fix generic and check gssd_running for every upcall, or should we just handle this regression and return -EACCES in gss_refresh_null when !gssd_running?
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
----
- fs/jfs/acl.c       |  105 ++++++++++++++++++++------------------------------
- fs/jfs/file.c      |    4 +-
- fs/jfs/jfs_acl.h   |    7 +---
- fs/jfs/jfs_xattr.h |    2 +
- fs/jfs/namei.c     |    1 +
- fs/jfs/super.c     |    2 +
- fs/jfs/xattr.c     |  108 ++++++++++++++++++----------------------------------
- 7 files changed, 89 insertions(+), 140 deletions(-)
+I can't see any reason to attempt an upcall if gssd is not running.
 
-diff --git a/fs/jfs/acl.c b/fs/jfs/acl.c
-index 28d529a..e973b85 100644
---- a/fs/jfs/acl.c
-+++ b/fs/jfs/acl.c
-@@ -72,7 +72,7 @@ struct posix_acl *jfs_get_acl(struct inode *inode, int type)
- 	return acl;
- }
- 
--static int jfs_set_acl(tid_t tid, struct inode *inode, int type,
-+static int __jfs_set_acl(tid_t tid, struct inode *inode, int type,
- 		       struct posix_acl *acl)
- {
- 	char *ea_name;
-@@ -80,21 +80,22 @@ static int jfs_set_acl(tid_t tid, struct inode *inode, int type,
- 	int size = 0;
- 	char *value = NULL;
- 
--	if (S_ISLNK(inode->i_mode))
--		return -EOPNOTSUPP;
--
--	switch(type) {
--		case ACL_TYPE_ACCESS:
--			ea_name = POSIX_ACL_XATTR_ACCESS;
--			break;
--		case ACL_TYPE_DEFAULT:
--			ea_name = POSIX_ACL_XATTR_DEFAULT;
--			if (!S_ISDIR(inode->i_mode))
--				return acl ? -EACCES : 0;
--			break;
--		default:
--			return -EINVAL;
-+	switch (type) {
-+	case ACL_TYPE_ACCESS:
-+		ea_name = POSIX_ACL_XATTR_ACCESS;
-+		rc = posix_acl_equiv_mode(acl, &inode->i_mode);
-+		if (rc < 0)
-+			return rc;
-+		if (rc == 0)
-+			acl = NULL;
-+		break;
-+	case ACL_TYPE_DEFAULT:
-+		ea_name = POSIX_ACL_XATTR_DEFAULT;
-+		break;
-+	default:
-+		return -EINVAL;
- 	}
-+
- 	if (acl) {
- 		size = posix_acl_xattr_size(acl->a_count);
- 		value = kmalloc(size, GFP_KERNEL);
-@@ -114,65 +115,43 @@ out:
- 	return rc;
- }
- 
-+int jfs_set_acl(struct inode *inode, struct posix_acl *acl, int type)
-+{
-+	int rc;
-+	tid_t tid;
-+
-+	tid = txBegin(inode->i_sb, 0);
-+	mutex_lock(&JFS_IP(inode)->commit_mutex);
-+	rc = __jfs_set_acl(tid, inode, type, acl);
-+	if (!rc)
-+		rc = txCommit(tid, 1, &inode, 0);
-+	txEnd(tid);
-+	mutex_unlock(&JFS_IP(inode)->commit_mutex);
-+	return rc;
-+}
-+
- int jfs_init_acl(tid_t tid, struct inode *inode, struct inode *dir)
- {
--	struct posix_acl *acl = NULL;
-+	struct posix_acl *default_acl, *acl;
- 	int rc = 0;
- 
--	if (S_ISLNK(inode->i_mode))
--		return 0;
-+	rc = posix_acl_create(dir, &inode->i_mode, &default_acl, &acl);
-+	if (rc)
-+		return rc;
- 
--	acl = jfs_get_acl(dir, ACL_TYPE_DEFAULT);
--	if (IS_ERR(acl))
--		return PTR_ERR(acl);
-+	if (default_acl) {
-+		rc = __jfs_set_acl(tid, inode, ACL_TYPE_DEFAULT, default_acl);
-+		posix_acl_release(default_acl);
-+	}
- 
- 	if (acl) {
--		if (S_ISDIR(inode->i_mode)) {
--			rc = jfs_set_acl(tid, inode, ACL_TYPE_DEFAULT, acl);
--			if (rc)
--				goto cleanup;
--		}
--		rc = __posix_acl_create(&acl, GFP_KERNEL, &inode->i_mode);
--		if (rc < 0)
--			goto cleanup; /* posix_acl_release(NULL) is no-op */
--		if (rc > 0)
--			rc = jfs_set_acl(tid, inode, ACL_TYPE_ACCESS, acl);
--cleanup:
-+		if (!rc)
-+			rc = __jfs_set_acl(tid, inode, ACL_TYPE_ACCESS, acl);
- 		posix_acl_release(acl);
--	} else
--		inode->i_mode &= ~current_umask();
-+	}
- 
- 	JFS_IP(inode)->mode2 = (JFS_IP(inode)->mode2 & 0xffff0000) |
- 			       inode->i_mode;
- 
- 	return rc;
- }
--
--int jfs_acl_chmod(struct inode *inode)
--{
--	struct posix_acl *acl;
--	int rc;
--	tid_t tid;
--
--	if (S_ISLNK(inode->i_mode))
--		return -EOPNOTSUPP;
--
--	acl = jfs_get_acl(inode, ACL_TYPE_ACCESS);
--	if (IS_ERR(acl) || !acl)
--		return PTR_ERR(acl);
--
--	rc = __posix_acl_chmod(&acl, GFP_KERNEL, inode->i_mode);
--	if (rc)
--		return rc;
--
--	tid = txBegin(inode->i_sb, 0);
--	mutex_lock(&JFS_IP(inode)->commit_mutex);
--	rc = jfs_set_acl(tid, inode, ACL_TYPE_ACCESS, acl);
--	if (!rc)
--		rc = txCommit(tid, 1, &inode, 0);
--	txEnd(tid);
--	mutex_unlock(&JFS_IP(inode)->commit_mutex);
--
--	posix_acl_release(acl);
--	return rc;
--}
-diff --git a/fs/jfs/file.c b/fs/jfs/file.c
-index dd7442c..145a17e 100644
---- a/fs/jfs/file.c
-+++ b/fs/jfs/file.c
-@@ -19,6 +19,7 @@
- 
- #include <linux/mm.h>
- #include <linux/fs.h>
-+#include <linux/posix_acl.h>
- #include <linux/quotaops.h>
- #include "jfs_incore.h"
- #include "jfs_inode.h"
-@@ -131,7 +132,7 @@ int jfs_setattr(struct dentry *dentry, struct iattr *iattr)
- 	mark_inode_dirty(inode);
- 
- 	if (iattr->ia_valid & ATTR_MODE)
--		rc = jfs_acl_chmod(inode);
-+		rc = posix_acl_chmod(inode);
- 	return rc;
- }
- 
-@@ -143,6 +144,7 @@ const struct inode_operations jfs_file_inode_operations = {
- 	.setattr	= jfs_setattr,
- #ifdef CONFIG_JFS_POSIX_ACL
- 	.get_acl	= jfs_get_acl,
-+	.set_acl	= jfs_set_acl,
- #endif
- };
- 
-diff --git a/fs/jfs/jfs_acl.h b/fs/jfs/jfs_acl.h
-index ad84fe5..489f993 100644
---- a/fs/jfs/jfs_acl.h
-+++ b/fs/jfs/jfs_acl.h
-@@ -21,8 +21,8 @@
- #ifdef CONFIG_JFS_POSIX_ACL
- 
- struct posix_acl *jfs_get_acl(struct inode *inode, int type);
-+int jfs_set_acl(struct inode *inode, struct posix_acl *acl, int type);
- int jfs_init_acl(tid_t, struct inode *, struct inode *);
--int jfs_acl_chmod(struct inode *inode);
- 
- #else
- 
-@@ -32,10 +32,5 @@ static inline int jfs_init_acl(tid_t tid, struct inode *inode,
- 	return 0;
- }
- 
--static inline int jfs_acl_chmod(struct inode *inode)
--{
--	return 0;
--}
--
- #endif
- #endif		/* _H_JFS_ACL */
-diff --git a/fs/jfs/jfs_xattr.h b/fs/jfs/jfs_xattr.h
-index e9e100f..e8d717d 100644
---- a/fs/jfs/jfs_xattr.h
-+++ b/fs/jfs/jfs_xattr.h
-@@ -61,6 +61,8 @@ extern ssize_t jfs_getxattr(struct dentry *, const char *, void *, size_t);
- extern ssize_t jfs_listxattr(struct dentry *, char *, size_t);
- extern int jfs_removexattr(struct dentry *, const char *);
- 
-+extern const struct xattr_handler *jfs_xattr_handlers[];
-+
- #ifdef CONFIG_JFS_SECURITY
- extern int jfs_init_security(tid_t, struct inode *, struct inode *,
- 			     const struct qstr *);
-diff --git a/fs/jfs/namei.c b/fs/jfs/namei.c
-index aa8a337..d59c7de 100644
---- a/fs/jfs/namei.c
-+++ b/fs/jfs/namei.c
-@@ -1524,6 +1524,7 @@ const struct inode_operations jfs_dir_inode_operations = {
- 	.setattr	= jfs_setattr,
- #ifdef CONFIG_JFS_POSIX_ACL
- 	.get_acl	= jfs_get_acl,
-+	.set_acl	= jfs_set_acl,
- #endif
- };
- 
-diff --git a/fs/jfs/super.c b/fs/jfs/super.c
-index 6669aa2..e2b7483 100644
---- a/fs/jfs/super.c
-+++ b/fs/jfs/super.c
-@@ -44,6 +44,7 @@
- #include "jfs_imap.h"
- #include "jfs_acl.h"
- #include "jfs_debug.h"
-+#include "jfs_xattr.h"
- 
- MODULE_DESCRIPTION("The Journaled Filesystem (JFS)");
- MODULE_AUTHOR("Steve Best/Dave Kleikamp/Barry Arndt, IBM");
-@@ -522,6 +523,7 @@ static int jfs_fill_super(struct super_block *sb, void *data, int silent)
- 	 */
- 	sb->s_op = &jfs_super_operations;
- 	sb->s_export_op = &jfs_export_operations;
-+	sb->s_xattr = jfs_xattr_handlers;
- #ifdef CONFIG_QUOTA
- 	sb->dq_op = &dquot_operations;
- 	sb->s_qcop = &dquot_quotactl_ops;
-diff --git a/fs/jfs/xattr.c b/fs/jfs/xattr.c
-index d3472f4..5324e4e 100644
---- a/fs/jfs/xattr.c
-+++ b/fs/jfs/xattr.c
-@@ -666,81 +666,12 @@ static int ea_put(tid_t tid, struct inode *inode, struct ea_buffer *ea_buf,
- }
- 
- /*
-- * can_set_system_xattr
-- *
-- * This code is specific to the system.* namespace.  It contains policy
-- * which doesn't belong in the main xattr codepath.
-- */
--static int can_set_system_xattr(struct inode *inode, const char *name,
--				const void *value, size_t value_len)
--{
--#ifdef CONFIG_JFS_POSIX_ACL
--	struct posix_acl *acl;
--	int rc;
--
--	if (!inode_owner_or_capable(inode))
--		return -EPERM;
--
--	/*
--	 * POSIX_ACL_XATTR_ACCESS is tied to i_mode
--	 */
--	if (strcmp(name, POSIX_ACL_XATTR_ACCESS) == 0) {
--		acl = posix_acl_from_xattr(&init_user_ns, value, value_len);
--		if (IS_ERR(acl)) {
--			rc = PTR_ERR(acl);
--			printk(KERN_ERR "posix_acl_from_xattr returned %d\n",
--			       rc);
--			return rc;
--		}
--		if (acl) {
--			rc = posix_acl_equiv_mode(acl, &inode->i_mode);
--			posix_acl_release(acl);
--			if (rc < 0) {
--				printk(KERN_ERR
--				       "posix_acl_equiv_mode returned %d\n",
--				       rc);
--				return rc;
--			}
--			mark_inode_dirty(inode);
--		}
--		/*
--		 * We're changing the ACL.  Get rid of the cached one
--		 */
--		forget_cached_acl(inode, ACL_TYPE_ACCESS);
--
--		return 0;
--	} else if (strcmp(name, POSIX_ACL_XATTR_DEFAULT) == 0) {
--		acl = posix_acl_from_xattr(&init_user_ns, value, value_len);
--		if (IS_ERR(acl)) {
--			rc = PTR_ERR(acl);
--			printk(KERN_ERR "posix_acl_from_xattr returned %d\n",
--			       rc);
--			return rc;
--		}
--		posix_acl_release(acl);
--
--		/*
--		 * We're changing the default ACL.  Get rid of the cached one
--		 */
--		forget_cached_acl(inode, ACL_TYPE_DEFAULT);
--
--		return 0;
--	}
--#endif			/* CONFIG_JFS_POSIX_ACL */
--	return -EOPNOTSUPP;
--}
--
--/*
-  * Most of the permission checking is done by xattr_permission in the vfs.
-- * The local file system is responsible for handling the system.* namespace.
-  * We also need to verify that this is a namespace that we recognize.
-  */
- static int can_set_xattr(struct inode *inode, const char *name,
- 			 const void *value, size_t value_len)
- {
--	if (!strncmp(name, XATTR_SYSTEM_PREFIX, XATTR_SYSTEM_PREFIX_LEN))
--		return can_set_system_xattr(inode, name, value, value_len);
--
- 	if (!strncmp(name, XATTR_OS2_PREFIX, XATTR_OS2_PREFIX_LEN)) {
- 		/*
- 		 * This makes sure that we aren't trying to set an
-@@ -748,7 +679,7 @@ static int can_set_xattr(struct inode *inode, const char *name,
- 		 * with "os2."
- 		 */
- 		if (is_known_namespace(name + XATTR_OS2_PREFIX_LEN))
--				return -EOPNOTSUPP;
-+			return -EOPNOTSUPP;
- 		return 0;
- 	}
- 
-@@ -913,6 +844,14 @@ int jfs_setxattr(struct dentry *dentry, const char *name, const void *value,
- 	if ((rc = can_set_xattr(inode, name, value, value_len)))
- 		return rc;
- 
-+	/*
-+	 * If this is a request for a synthetic attribute in the system.*
-+	 * namespace use the generic infrastructure to resolve a handler
-+	 * for it via sb->s_xattr.
-+	 */
-+	if (!strncmp(name, XATTR_SYSTEM_PREFIX, XATTR_SYSTEM_PREFIX_LEN))
-+		return generic_setxattr(dentry, name, value, value_len, flags);
-+
- 	if (value == NULL) {	/* empty EA, do not remove */
- 		value = "";
- 		value_len = 0;
-@@ -986,6 +925,14 @@ ssize_t jfs_getxattr(struct dentry *dentry, const char *name, void *data,
- {
- 	int err;
- 
-+	/*
-+	 * If this is a request for a synthetic attribute in the system.*
-+	 * namespace use the generic infrastructure to resolve a handler
-+	 * for it via sb->s_xattr.
-+	 */
-+	if (!strncmp(name, XATTR_SYSTEM_PREFIX, XATTR_SYSTEM_PREFIX_LEN))
-+		return generic_getxattr(dentry, name, data, buf_size);
-+
- 	if (strncmp(name, XATTR_OS2_PREFIX, XATTR_OS2_PREFIX_LEN) == 0) {
- 		/*
- 		 * skip past "os2." prefix
-@@ -1077,6 +1024,14 @@ int jfs_removexattr(struct dentry *dentry, const char *name)
- 	if ((rc = can_set_xattr(inode, name, NULL, 0)))
- 		return rc;
- 
-+	/*
-+	 * If this is a request for a synthetic attribute in the system.*
-+	 * namespace use the generic infrastructure to resolve a handler
-+	 * for it via sb->s_xattr.
-+	 */
-+	if (!strncmp(name, XATTR_SYSTEM_PREFIX, XATTR_SYSTEM_PREFIX_LEN))
-+		return generic_removexattr(dentry, name);
-+
- 	tid = txBegin(inode->i_sb, 0);
- 	mutex_lock(&ji->commit_mutex);
- 	rc = __jfs_setxattr(tid, dentry->d_inode, name, NULL, 0, XATTR_REPLACE);
-@@ -1088,6 +1043,19 @@ int jfs_removexattr(struct dentry *dentry, const char *name)
- 	return rc;
- }
- 
-+/*
-+ * List of handlers for synthetic system.* attributes.  All real ondisk
-+ * attributes are handled directly.
-+ */
-+const struct xattr_handler *jfs_xattr_handlers[] = {
-+#ifdef JFS_POSIX_ACL
-+	&posix_acl_access_xattr_handler,
-+	&posix_acl_default_xattr_handler,
-+#endif
-+	NULL,
-+};
-+
-+
- #ifdef CONFIG_JFS_SECURITY
- static int jfs_initxattrs(struct inode *inode, const struct xattr *xattr_array,
- 			  void *fs_info)
--- 
-1.7.10.4
+-->Andy
 
-
+>
+> -dros
+>
+>
+> On Dec 13, 2013, at 2:02 PM, Andy Adamson <androsadamson@gmail.com> wrote:
+>
+>> On Fri, Dec 13, 2013 at 12:32 PM, Weston Andros Adamson <dros@netapp.com> wrote:
+>>> Commit c297c8b99b07f496ff69a719cfb8e8fe852832ed (SUNRPC: do not fail gss proc NULL calls with EACCES) introduces a hang on reboot if there are any mounts that use AUTH_GSS.
+>>>
+>>> Due to recent changes, this can even happen when mounting sec=sys, because the non-fsid specific operations use KRB5 if possible.
+>>>
+>>> To reproduce:
+>>>
+>>> 1) mount a server with sec=krb5 (or sec=sys if you know krb5 will work for nfs_client ops)
+>>> 2) reboot
+>>> 3) notice hang (output below)
+>>>
+>>>
+>>> I can see why it’s hanging - the reboot forced unmount is happening after gssd is killed, so the upcall will never succeed…. Any ideas on how this should be fixed?  Should we timeout after a certain number of tries? Should we detect that gssd isn’t running anymore (if this is even possible)?
+>>
+>> This patch : commit e2f0c83a9de331d9352185ca3642616c13127539
+>> Author: Jeff Layton <jlayton@redhat.com>
+>> Date:   Thu Dec 5 07:34:44 2013 -0500
+>>
+>>    sunrpc: add an "info" file for the dummy gssd pipe
+>>
+>> solves the "is gssd running" problem.
+>>
+>> -->Andy
+>>
+>>>
+>>> -dros
+>>>
+>>>
+>>> BUG: soft lockup - CPU#0 stuck for 22s! [kworker/0:1:27]
+>>> Modules linked in: rpcsec_gss_krb5 nfsv4 nfs fscache crc32c_intel ppdev i2c_piix4 aesni_intel aes_x86_64 glue_helper lrw gf128mul serio_raw ablk_helper cryptd i2c_core e1000 parport_pc parport shpchp nfsd auth_rpcgss oid_registry exportfs nfs_acl lockd sunrpc autofs4 mptspi scsi_transport_spi mptscsih mptbase ata_generic floppy
+>>> irq event stamp: 279178
+>>> hardirqs last  enabled at (279177): [<ffffffff814a925c>] restore_args+0x0/0x30
+>>> hardirqs last disabled at (279178): [<ffffffff814b0a6a>] apic_timer_interrupt+0x6a/0x80
+>>> softirqs last  enabled at (279176): [<ffffffff8103f583>] __do_softirq+0x1df/0x276
+>>> softirqs last disabled at (279171): [<ffffffff8103f852>] irq_exit+0x53/0x9a
+>>> CPU: 0 PID: 27 Comm: kworker/0:1 Not tainted 3.13.0-rc3-branch-dros_testing+ #1
+>>> Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform, BIOS 6.00 07/31/2013
+>>> Workqueue: rpciod rpc_async_schedule [sunrpc]
+>>> task: ffff88007b87a130 ti: ffff88007ad08000 task.ti: ffff88007ad08000
+>>> RIP: 0010:[<ffffffffa00a562d>]  [<ffffffffa00a562d>] rpcauth_refreshcred+0x17/0x15f [sunrpc]
+>>> RSP: 0018:ffff88007ad09c88  EFLAGS: 00000286
+>>> RAX: ffffffffa02ba650 RBX: ffffffff81073f47 RCX: 0000000000000007
+>>> RDX: 0000000000000007 RSI: ffff88007a885d70 RDI: ffff88007a158b40
+>>> RBP: ffff88007ad09ce8 R08: ffff88007a5ce9f8 R09: ffffffffa00993d7
+>>> R10: ffff88007a5ce7b0 R11: ffff88007a158b40 R12: ffffffffa009943d
+>>> R13: 0000000000000a81 R14: ffff88007a158bb0 R15: ffffffff814a925c
+>>> FS:  0000000000000000(0000) GS:ffff88007f200000(0000) knlGS:0000000000000000
+>>> CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+>>> CR2: 00007f2d03056000 CR3: 0000000001a0b000 CR4: 00000000001407f0
+>>> Stack:
+>>> ffffffffa009943d ffff88007a5ce9f8 0000000000000000 0000000000000007
+>>> 0000000000000007 ffff88007a885d70 ffff88007a158b40 ffffffffffffff10
+>>> ffff88007a158b40 0000000000000000 ffff88007a158bb0 0000000000000a81
+>>> Call Trace:
+>>> [<ffffffffa009943d>] ? call_refresh+0x66/0x66 [sunrpc]
+>>> [<ffffffffa0099438>] call_refresh+0x61/0x66 [sunrpc]
+>>> [<ffffffffa00a403b>] __rpc_execute+0xf1/0x362 [sunrpc]
+>>> [<ffffffff81073f47>] ? trace_hardirqs_on_caller+0x145/0x1a1
+>>> [<ffffffffa00a42d3>] rpc_async_schedule+0x27/0x32 [sunrpc]
+>>> [<ffffffff81052974>] process_one_work+0x211/0x3a5
+>>> [<ffffffff810528d5>] ? process_one_work+0x172/0x3a5
+>>> [<ffffffff81052eeb>] worker_thread+0x134/0x202
+>>> [<ffffffff81052db7>] ? rescuer_thread+0x280/0x280
+>>> [<ffffffff81052db7>] ? rescuer_thread+0x280/0x280
+>>> [<ffffffff810584a0>] kthread+0xc9/0xd1
+>>> [<ffffffff810583d7>] ? __kthread_parkme+0x61/0x61
+>>> [<ffffffff814afd6c>] ret_from_fork+0x7c/0xb0
+>>> [<ffffffff810583d7>] ? __kthread_parkme+0x61/0x61
+>>> Code: 89 c2 41 ff d6 48 83 c4 58 5b 41 5c 41 5d 41 5e 41 5f 5d c3 0f 1f 44 00 00 55 48 89 e5 41 56 41 55 41 54 53 48 89 fb 48 83 ec 40 <4c> 8b 6f 20 4d 8b a5 90 00 00 00 4d 85 e4 0f 85 e4 00 00 00 8b--
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
