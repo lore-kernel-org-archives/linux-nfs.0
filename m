@@ -1,111 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:43325 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751271Ab3LKKp3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Dec 2013 05:45:29 -0500
-Message-Id: <20131211104526.454638090@bombadil.infradead.org>
-Date: Wed, 11 Dec 2013 02:42:44 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: viro@zeniv.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-mtd@lists.infradead.org, Mark Fasheh <mfasheh@suse.com>,
-        Joel Becker <jlbec@evilplan.org>, reiserfs-devel@vger.kernel.org,
-        xfs@oss.sgi.com, jfs-discussion@lists.sourceforge.net,
-        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
-        Andreas Gruenbacher <andreas.gruenbacher@linbit.com>,
-        Jan Kara <jack@suse.cz>
-Subject: [PATCH 01/18] reiserfs: prefix ACL symbols with reiserfs_
-References: <20131211104243.148113893@bombadil.infradead.org>
+Received: from mail-ee0-f46.google.com ([74.125.83.46]:39597 "EHLO
+	mail-ee0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752269Ab3LMKDq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 13 Dec 2013 05:03:46 -0500
+Received: by mail-ee0-f46.google.com with SMTP id d49so757698eek.19
+        for <linux-nfs@vger.kernel.org>; Fri, 13 Dec 2013 02:03:45 -0800 (PST)
+From: Benny Halevy <bhalevy@primarydata.com>
+To: bfields@redhat.com
+Cc: linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@primarydata.com>
+Subject: [PATCH 1/2] nfsd4: break from inner lookup loop in nfsd4_release_lockowner on first match
+Date: Fri, 13 Dec 2013 12:03:40 +0200
+Message-Id: <1386929020-12578-1-git-send-email-bhalevy@primarydata.com>
+In-Reply-To: <52AADAF6.40700@primarydata.com>
+References: <52AADAF6.40700@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
-Reviewed-by: Jan Kara <jack@suse.cz>
+Otherwise the lockowner may by added to "matches" more than once.
+
+Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
 ---
- fs/reiserfs/xattr_acl.c |   20 ++++++++++----------
- 1 file changed, 10 insertions(+), 10 deletions(-)
+ fs/nfsd/nfs4state.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/fs/reiserfs/xattr_acl.c b/fs/reiserfs/xattr_acl.c
-index 06c04f7..6f721ea 100644
---- a/fs/reiserfs/xattr_acl.c
-+++ b/fs/reiserfs/xattr_acl.c
-@@ -16,7 +16,7 @@ static int reiserfs_set_acl(struct reiserfs_transaction_handle *th,
- 			    struct posix_acl *acl);
- 
- static int
--posix_acl_set(struct dentry *dentry, const char *name, const void *value,
-+reiserfs_posix_acl_set(struct dentry *dentry, const char *name, const void *value,
- 		size_t size, int flags, int type)
- {
- 	struct inode *inode = dentry->d_inode;
-@@ -65,7 +65,7 @@ posix_acl_set(struct dentry *dentry, const char *name, const void *value,
- }
- 
- static int
--posix_acl_get(struct dentry *dentry, const char *name, void *buffer,
-+reiserfs_posix_acl_get(struct dentry *dentry, const char *name, void *buffer,
- 		size_t size, int type)
- {
- 	struct posix_acl *acl;
-@@ -88,7 +88,7 @@ posix_acl_get(struct dentry *dentry, const char *name, void *buffer,
- /*
-  * Convert from filesystem to in-memory representation.
-  */
--static struct posix_acl *posix_acl_from_disk(const void *value, size_t size)
-+static struct posix_acl *reiserfs_posix_acl_from_disk(const void *value, size_t size)
- {
- 	const char *end = (char *)value + size;
- 	int n, count;
-@@ -158,7 +158,7 @@ static struct posix_acl *posix_acl_from_disk(const void *value, size_t size)
- /*
-  * Convert from in-memory to filesystem representation.
-  */
--static void *posix_acl_to_disk(const struct posix_acl *acl, size_t * size)
-+static void *reiserfs_posix_acl_to_disk(const struct posix_acl *acl, size_t * size)
- {
- 	reiserfs_acl_header *ext_acl;
- 	char *e;
-@@ -257,7 +257,7 @@ struct posix_acl *reiserfs_get_acl(struct inode *inode, int type)
- 	} else if (retval < 0) {
- 		acl = ERR_PTR(retval);
- 	} else {
--		acl = posix_acl_from_disk(value, retval);
-+		acl = reiserfs_posix_acl_from_disk(value, retval);
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 0874998..84007b6 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4660,6 +4660,7 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
+ 			if (check_for_locks(stp->st_file, lo))
+ 				goto out;
+ 			list_add(&lo->lo_list, &matches);
++			break;
+ 		}
  	}
- 	if (!IS_ERR(acl))
- 		set_cached_acl(inode, type, acl);
-@@ -307,7 +307,7 @@ reiserfs_set_acl(struct reiserfs_transaction_handle *th, struct inode *inode,
- 	}
- 
- 	if (acl) {
--		value = posix_acl_to_disk(acl, &size);
-+		value = reiserfs_posix_acl_to_disk(acl, &size);
- 		if (IS_ERR(value))
- 			return (int)PTR_ERR(value);
- 	}
-@@ -499,8 +499,8 @@ static size_t posix_acl_access_list(struct dentry *dentry, char *list,
- const struct xattr_handler reiserfs_posix_acl_access_handler = {
- 	.prefix = POSIX_ACL_XATTR_ACCESS,
- 	.flags = ACL_TYPE_ACCESS,
--	.get = posix_acl_get,
--	.set = posix_acl_set,
-+	.get = reiserfs_posix_acl_get,
-+	.set = reiserfs_posix_acl_set,
- 	.list = posix_acl_access_list,
- };
- 
-@@ -519,7 +519,7 @@ static size_t posix_acl_default_list(struct dentry *dentry, char *list,
- const struct xattr_handler reiserfs_posix_acl_default_handler = {
- 	.prefix = POSIX_ACL_XATTR_DEFAULT,
- 	.flags = ACL_TYPE_DEFAULT,
--	.get = posix_acl_get,
--	.set = posix_acl_set,
-+	.get = reiserfs_posix_acl_get,
-+	.set = reiserfs_posix_acl_set,
- 	.list = posix_acl_default_list,
- };
+ 	/* Clients probably won't expect us to return with some (but not all)
 -- 
-1.7.10.4
-
+1.8.3.1
 
