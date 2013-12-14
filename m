@@ -1,316 +1,236 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:59173 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751455Ab3LAMG4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 1 Dec 2013 07:06:56 -0500
-Message-Id: <20131201120655.410590428@bombadil.infradead.org>
-Date: Sun, 01 Dec 2013 03:59:13 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: viro@zeniv.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-mtd@lists.infradead.org, Mark Fasheh <mfasheh@suse.com>,
-        Joel Becker <jlbec@evilplan.org>, reiserfs-devel@vger.kernel.org,
-        xfs@oss.sgi.com, jfs-discussion@lists.sourceforge.net,
-        cluster-devel@redhat.com, linux-nfs@vger.kernel.org
-Subject: [PATCH 10/18] hfsplus: use generic posix ACL infrastructure
-References: <20131201115903.910559036@bombadil.infradead.org>
+Received: from teakhout.nixpanic.net ([83.161.152.167]:51341 "EHLO
+	ndevos-laptop.usersys.redhat.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1753751Ab3LNTan (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 14 Dec 2013 14:30:43 -0500
+From: Niels de Vos <ndevos@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Niels de Vos <ndevos@redhat.com>,
+        Santosh Pradhan <spradhan@redhat.com>
+Subject: [PATCH] NFS: dprintk() should not print negative fileids
+Date: Sat, 14 Dec 2013 20:20:51 +0100
+Message-Id: <1387048851-17824-1-git-send-email-ndevos@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
+A fileid in NFS is a uint64. There are some occurrences where dprintk()
+outputs a signed fileid. This leads to confusion and more difficult to
+read debugging (negative fileids matching positive inode numbers).
+
+Signed-off-by: Niels de Vos <ndevos@redhat.com>
+CC: Santosh Pradhan <spradhan@redhat.com>
 ---
- fs/hfsplus/acl.h       |    9 +--
- fs/hfsplus/dir.c       |    1 +
- fs/hfsplus/inode.c     |    3 +-
- fs/hfsplus/posix_acl.c |  161 +++++-------------------------------------------
- fs/hfsplus/xattr.c     |    5 +-
- fs/hfsplus/xattr.h     |    2 -
- 6 files changed, 24 insertions(+), 157 deletions(-)
+ fs/nfs/direct.c         |    4 ++--
+ fs/nfs/inode.c          |   22 +++++++++++-----------
+ fs/nfs/nfs3acl.c        |    2 +-
+ fs/nfs/nfs4filelayout.c |    8 ++++----
+ fs/nfs/read.c           |   12 ++++++------
+ fs/nfs/write.c          |    8 ++++----
+ 6 files changed, 28 insertions(+), 28 deletions(-)
 
-diff --git a/fs/hfsplus/acl.h b/fs/hfsplus/acl.h
-index 07c0d49..95c8ed9 100644
---- a/fs/hfsplus/acl.h
-+++ b/fs/hfsplus/acl.h
-@@ -12,16 +12,13 @@
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index d71d66c..049b340 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -237,9 +237,9 @@ static void nfs_direct_complete(struct nfs_direct_req *dreq)
  
- /* posix_acl.c */
- struct posix_acl *hfsplus_get_posix_acl(struct inode *inode, int type);
--extern int hfsplus_posix_acl_chmod(struct inode *);
-+int hfsplus_set_posix_acl(struct inode *inode, struct posix_acl *acl,
-+		int type);
- extern int hfsplus_init_posix_acl(struct inode *, struct inode *);
- 
- #else  /* CONFIG_HFSPLUS_FS_POSIX_ACL */
- #define hfsplus_get_posix_acl NULL
--
--static inline int hfsplus_posix_acl_chmod(struct inode *inode)
--{
--	return 0;
--}
-+#define hfsplus_set_posix_acl NULL
- 
- static inline int hfsplus_init_posix_acl(struct inode *inode, struct inode *dir)
+ static void nfs_direct_readpage_release(struct nfs_page *req)
  {
-diff --git a/fs/hfsplus/dir.c b/fs/hfsplus/dir.c
-index 4a4fea0..9ee6298 100644
---- a/fs/hfsplus/dir.c
-+++ b/fs/hfsplus/dir.c
-@@ -532,6 +532,7 @@ const struct inode_operations hfsplus_dir_inode_operations = {
- 	.removexattr		= hfsplus_removexattr,
- #ifdef CONFIG_HFSPLUS_FS_POSIX_ACL
- 	.get_acl		= hfsplus_get_posix_acl,
-+	.set_acl		= hfsplus_set_posix_acl,
- #endif
- };
+-	dprintk("NFS: direct read done (%s/%lld %d@%lld)\n",
++	dprintk("NFS: direct read done (%s/%llu %d@%lld)\n",
+ 		req->wb_context->dentry->d_inode->i_sb->s_id,
+-		(long long)NFS_FILEID(req->wb_context->dentry->d_inode),
++		(unsigned long long)NFS_FILEID(req->wb_context->dentry->d_inode),
+ 		req->wb_bytes,
+ 		(long long)req_offset(req));
+ 	nfs_release_request(req);
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 00ad1c2..de9f796 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -458,9 +458,9 @@ nfs_fhget(struct super_block *sb, struct nfs_fh *fh, struct nfs_fattr *fattr, st
+ 		unlock_new_inode(inode);
+ 	} else
+ 		nfs_refresh_inode(inode, fattr);
+-	dprintk("NFS: nfs_fhget(%s/%Ld fh_crc=0x%08x ct=%d)\n",
++	dprintk("NFS: nfs_fhget(%s/%Lu fh_crc=0x%08x ct=%d)\n",
+ 		inode->i_sb->s_id,
+-		(long long)NFS_FILEID(inode),
++		(unsigned long long)NFS_FILEID(inode),
+ 		nfs_display_fhandle_hash(fh),
+ 		atomic_read(&inode->i_count));
  
-diff --git a/fs/hfsplus/inode.c b/fs/hfsplus/inode.c
-index 37213d0..0034328 100644
---- a/fs/hfsplus/inode.c
-+++ b/fs/hfsplus/inode.c
-@@ -319,7 +319,7 @@ static int hfsplus_setattr(struct dentry *dentry, struct iattr *attr)
- 	mark_inode_dirty(inode);
+@@ -870,8 +870,8 @@ __nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
+ 	struct nfs_fattr *fattr = NULL;
+ 	struct nfs_inode *nfsi = NFS_I(inode);
  
- 	if (attr->ia_valid & ATTR_MODE) {
--		error = hfsplus_posix_acl_chmod(inode);
-+		error = posix_acl_chmod(inode);
- 		if (unlikely(error))
- 			return error;
- 	}
-@@ -393,6 +393,7 @@ static const struct inode_operations hfsplus_file_inode_operations = {
- 	.removexattr	= hfsplus_removexattr,
- #ifdef CONFIG_HFSPLUS_FS_POSIX_ACL
- 	.get_acl	= hfsplus_get_posix_acl,
-+	.set_acl	= hfsplus_set_posix_acl,
- #endif
- };
+-	dfprintk(PAGECACHE, "NFS: revalidating (%s/%Ld)\n",
+-		inode->i_sb->s_id, (long long)NFS_FILEID(inode));
++	dfprintk(PAGECACHE, "NFS: revalidating (%s/%Lu)\n",
++		inode->i_sb->s_id, (unsigned long long)NFS_FILEID(inode));
  
-diff --git a/fs/hfsplus/posix_acl.c b/fs/hfsplus/posix_acl.c
-index 277942f..c629592 100644
---- a/fs/hfsplus/posix_acl.c
-+++ b/fs/hfsplus/posix_acl.c
-@@ -56,9 +56,8 @@ struct posix_acl *hfsplus_get_posix_acl(struct inode *inode, int type)
- 	return acl;
- }
+ 	trace_nfs_revalidate_inode_enter(inode);
  
--static int hfsplus_set_posix_acl(struct inode *inode,
--					int type,
--					struct posix_acl *acl)
-+int hfsplus_set_posix_acl(struct inode *inode, struct posix_acl *acl,
-+		int type)
- {
- 	int err;
- 	char *xattr_name;
-@@ -115,7 +114,7 @@ end_set_acl:
- int hfsplus_init_posix_acl(struct inode *inode, struct inode *dir)
- {
- 	int err = 0;
--	struct posix_acl *acl = NULL;
-+	struct posix_acl *default_acl, *acl;
+@@ -895,9 +895,9 @@ __nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
  
- 	hfs_dbg(ACL_MOD,
- 		"[%s]: ino %lu, dir->ino %lu\n",
-@@ -124,151 +123,21 @@ int hfsplus_init_posix_acl(struct inode *inode, struct inode *dir)
- 	if (S_ISLNK(inode->i_mode))
- 		return 0;
+ 	status = NFS_PROTO(inode)->getattr(server, NFS_FH(inode), fattr, label);
+ 	if (status != 0) {
+-		dfprintk(PAGECACHE, "nfs_revalidate_inode: (%s/%Ld) getattr failed, error=%d\n",
++		dfprintk(PAGECACHE, "nfs_revalidate_inode: (%s/%Lu) getattr failed, error=%d\n",
+ 			 inode->i_sb->s_id,
+-			 (long long)NFS_FILEID(inode), status);
++			 (unsigned long long)NFS_FILEID(inode), status);
+ 		if (status == -ESTALE) {
+ 			nfs_zap_caches(inode);
+ 			if (!S_ISDIR(inode->i_mode))
+@@ -908,9 +908,9 @@ __nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
  
--	acl = hfsplus_get_posix_acl(dir, ACL_TYPE_DEFAULT);
--	if (IS_ERR(acl))
--		return PTR_ERR(acl);
--
--	if (acl) {
--		if (S_ISDIR(inode->i_mode)) {
--			err = hfsplus_set_posix_acl(inode,
--							ACL_TYPE_DEFAULT,
--							acl);
--			if (unlikely(err))
--				goto init_acl_cleanup;
--		}
--
--		err = __posix_acl_create(&acl, GFP_NOFS, &inode->i_mode);
--		if (unlikely(err < 0))
--			return err;
--
--		if (err > 0)
--			err = hfsplus_set_posix_acl(inode,
--							ACL_TYPE_ACCESS,
--							acl);
--	} else
--		inode->i_mode &= ~current_umask();
--
--init_acl_cleanup:
--	posix_acl_release(acl);
--	return err;
--}
--
--int hfsplus_posix_acl_chmod(struct inode *inode)
--{
--	int err;
--	struct posix_acl *acl;
--
--	hfs_dbg(ACL_MOD, "[%s]: ino %lu\n", __func__, inode->i_ino);
--
--	if (S_ISLNK(inode->i_mode))
--		return -EOPNOTSUPP;
--
--	acl = hfsplus_get_posix_acl(inode, ACL_TYPE_ACCESS);
--	if (IS_ERR(acl) || !acl)
--		return PTR_ERR(acl);
--
--	err = __posix_acl_chmod(&acl, GFP_KERNEL, inode->i_mode);
--	if (unlikely(err))
-+	err = posix_acl_create(dir, &inode->i_mode, &default_acl, &acl);
-+	if (err)
- 		return err;
- 
--	err = hfsplus_set_posix_acl(inode, ACL_TYPE_ACCESS, acl);
--	posix_acl_release(acl);
--	return err;
--}
--
--static int hfsplus_xattr_get_posix_acl(struct dentry *dentry,
--					const char *name,
--					void *buffer,
--					size_t size,
--					int type)
--{
--	int err = 0;
--	struct posix_acl *acl;
--
--	hfs_dbg(ACL_MOD,
--		"[%s]: ino %lu, buffer %p, size %zu, type %#x\n",
--		__func__, dentry->d_inode->i_ino, buffer, size, type);
--
--	if (strcmp(name, "") != 0)
--		return -EINVAL;
--
--	acl = hfsplus_get_posix_acl(dentry->d_inode, type);
--	if (IS_ERR(acl))
--		return PTR_ERR(acl);
--	if (acl == NULL)
--		return -ENODATA;
--
--	err = posix_acl_to_xattr(&init_user_ns, acl, buffer, size);
--	posix_acl_release(acl);
--
--	return err;
--}
--
--static int hfsplus_xattr_set_posix_acl(struct dentry *dentry,
--					const char *name,
--					const void *value,
--					size_t size,
--					int flags,
--					int type)
--{
--	int err = 0;
--	struct inode *inode = dentry->d_inode;
--	struct posix_acl *acl = NULL;
--
--	hfs_dbg(ACL_MOD,
--		"[%s]: ino %lu, value %p, size %zu, flags %#x, type %#x\n",
--		__func__, inode->i_ino, value, size, flags, type);
--
--	if (strcmp(name, "") != 0)
--		return -EINVAL;
--
--	if (!inode_owner_or_capable(inode))
--		return -EPERM;
--
--	if (value) {
--		acl = posix_acl_from_xattr(&init_user_ns, value, size);
--		if (IS_ERR(acl))
--			return PTR_ERR(acl);
--		else if (acl) {
--			err = posix_acl_valid(acl);
--			if (err)
--				goto end_xattr_set_acl;
--		}
-+	if (default_acl) {
-+		err = hfsplus_set_posix_acl(inode, default_acl,
-+					    ACL_TYPE_DEFAULT);
-+		posix_acl_release(default_acl);
+ 	status = nfs_refresh_inode(inode, fattr);
+ 	if (status) {
+-		dfprintk(PAGECACHE, "nfs_revalidate_inode: (%s/%Ld) refresh failed, error=%d\n",
++		dfprintk(PAGECACHE, "nfs_revalidate_inode: (%s/%Lu) refresh failed, error=%d\n",
+ 			 inode->i_sb->s_id,
+-			 (long long)NFS_FILEID(inode), status);
++			 (unsigned long long)NFS_FILEID(inode), status);
+ 		goto err_out;
  	}
  
--	err = hfsplus_set_posix_acl(inode, type, acl);
--
--end_xattr_set_acl:
--	posix_acl_release(acl);
-+	if (acl) {
-+		if (!err)
-+			err = hfsplus_set_posix_acl(inode, acl,
-+						    ACL_TYPE_ACCESS);
-+		posix_acl_release(acl);
-+	}
- 	return err;
- }
--
--static size_t hfsplus_xattr_list_posix_acl(struct dentry *dentry,
--						char *list,
--						size_t list_size,
--						const char *name,
--						size_t name_len,
--						int type)
--{
--	/*
--	 * This method is not used.
--	 * It is used hfsplus_listxattr() instead of generic_listxattr().
--	 */
--	return -EOPNOTSUPP;
--}
--
--const struct xattr_handler hfsplus_xattr_acl_access_handler = {
--	.prefix	= POSIX_ACL_XATTR_ACCESS,
--	.flags	= ACL_TYPE_ACCESS,
--	.list	= hfsplus_xattr_list_posix_acl,
--	.get	= hfsplus_xattr_get_posix_acl,
--	.set	= hfsplus_xattr_set_posix_acl,
--};
--
--const struct xattr_handler hfsplus_xattr_acl_default_handler = {
--	.prefix	= POSIX_ACL_XATTR_DEFAULT,
--	.flags	= ACL_TYPE_DEFAULT,
--	.list	= hfsplus_xattr_list_posix_acl,
--	.get	= hfsplus_xattr_get_posix_acl,
--	.set	= hfsplus_xattr_set_posix_acl,
--};
-diff --git a/fs/hfsplus/xattr.c b/fs/hfsplus/xattr.c
-index 3c6136f..bf88baa 100644
---- a/fs/hfsplus/xattr.c
-+++ b/fs/hfsplus/xattr.c
-@@ -7,6 +7,7 @@
-  */
+@@ -919,9 +919,9 @@ __nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
  
- #include "hfsplus_fs.h"
-+#include <linux/posix_acl_xattr.h>
- #include "xattr.h"
- #include "acl.h"
+ 	nfs_setsecurity(inode, fattr, label);
  
-@@ -15,8 +16,8 @@ const struct xattr_handler *hfsplus_xattr_handlers[] = {
- 	&hfsplus_xattr_user_handler,
- 	&hfsplus_xattr_trusted_handler,
- #ifdef CONFIG_HFSPLUS_FS_POSIX_ACL
--	&hfsplus_xattr_acl_access_handler,
--	&hfsplus_xattr_acl_default_handler,
-+	&posix_acl_access_xattr_handler,
-+	&posix_acl_default_xattr_handler,
- #endif
- 	&hfsplus_xattr_security_handler,
- 	NULL
-diff --git a/fs/hfsplus/xattr.h b/fs/hfsplus/xattr.h
-index 841b569..9e21449 100644
---- a/fs/hfsplus/xattr.h
-+++ b/fs/hfsplus/xattr.h
-@@ -14,8 +14,6 @@
- extern const struct xattr_handler hfsplus_xattr_osx_handler;
- extern const struct xattr_handler hfsplus_xattr_user_handler;
- extern const struct xattr_handler hfsplus_xattr_trusted_handler;
--extern const struct xattr_handler hfsplus_xattr_acl_access_handler;
--extern const struct xattr_handler hfsplus_xattr_acl_default_handler;
- extern const struct xattr_handler hfsplus_xattr_security_handler;
+-	dfprintk(PAGECACHE, "NFS: (%s/%Ld) revalidation complete\n",
++	dfprintk(PAGECACHE, "NFS: (%s/%Lu) revalidation complete\n",
+ 		inode->i_sb->s_id,
+-		(long long)NFS_FILEID(inode));
++		(unsigned long long)NFS_FILEID(inode));
  
- extern const struct xattr_handler *hfsplus_xattr_handlers[];
+ err_out:
+ 	nfs4_label_free(label);
+@@ -1434,7 +1434,7 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+ 	unsigned long now = jiffies;
+ 	unsigned long save_cache_validity;
+ 
+-	dfprintk(VFS, "NFS: %s(%s/%ld fh_crc=0x%08x ct=%d info=0x%x)\n",
++	dfprintk(VFS, "NFS: %s(%s/%lu fh_crc=0x%08x ct=%d info=0x%x)\n",
+ 			__func__, inode->i_sb->s_id, inode->i_ino,
+ 			nfs_display_fhandle_hash(NFS_FH(inode)),
+ 			atomic_read(&inode->i_count), fattr->valid);
+diff --git a/fs/nfs/nfs3acl.c b/fs/nfs/nfs3acl.c
+index 4a1aafb..5a17fea 100644
+--- a/fs/nfs/nfs3acl.c
++++ b/fs/nfs/nfs3acl.c
+@@ -130,7 +130,7 @@ static void __nfs3_forget_cached_acls(struct nfs_inode *nfsi)
+ 
+ void nfs3_forget_cached_acls(struct inode *inode)
+ {
+-	dprintk("NFS: nfs3_forget_cached_acls(%s/%ld)\n", inode->i_sb->s_id,
++	dprintk("NFS: nfs3_forget_cached_acls(%s/%lu)\n", inode->i_sb->s_id,
+ 		inode->i_ino);
+ 	spin_lock(&inode->i_lock);
+ 	__nfs3_forget_cached_acls(NFS_I(inode));
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index b86464b..0a93e79 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -91,10 +91,10 @@ static void filelayout_reset_write(struct nfs_write_data *data)
+ 
+ 	if (!test_and_set_bit(NFS_IOHDR_REDO, &hdr->flags)) {
+ 		dprintk("%s Reset task %5u for i/o through MDS "
+-			"(req %s/%lld, %u bytes @ offset %llu)\n", __func__,
++			"(req %s/%llu, %u bytes @ offset %llu)\n", __func__,
+ 			data->task.tk_pid,
+ 			hdr->inode->i_sb->s_id,
+-			(long long)NFS_FILEID(hdr->inode),
++			(unsigned long long)NFS_FILEID(hdr->inode),
+ 			data->args.count,
+ 			(unsigned long long)data->args.offset);
+ 
+@@ -112,10 +112,10 @@ static void filelayout_reset_read(struct nfs_read_data *data)
+ 
+ 	if (!test_and_set_bit(NFS_IOHDR_REDO, &hdr->flags)) {
+ 		dprintk("%s Reset task %5u for i/o through MDS "
+-			"(req %s/%lld, %u bytes @ offset %llu)\n", __func__,
++			"(req %s/%llu, %u bytes @ offset %llu)\n", __func__,
+ 			data->task.tk_pid,
+ 			hdr->inode->i_sb->s_id,
+-			(long long)NFS_FILEID(hdr->inode),
++			(unsigned long long)NFS_FILEID(hdr->inode),
+ 			data->args.count,
+ 			(unsigned long long)data->args.offset);
+ 
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index 31db5c3..411aedd 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -163,9 +163,9 @@ static void nfs_readpage_release(struct nfs_page *req)
+ 
+ 	unlock_page(req->wb_page);
+ 
+-	dprintk("NFS: read done (%s/%Ld %d@%Ld)\n",
++	dprintk("NFS: read done (%s/%Lu %d@%Ld)\n",
+ 			req->wb_context->dentry->d_inode->i_sb->s_id,
+-			(long long)NFS_FILEID(req->wb_context->dentry->d_inode),
++			(unsigned long long)NFS_FILEID(req->wb_context->dentry->d_inode),
+ 			req->wb_bytes,
+ 			(long long)req_offset(req));
+ 	nfs_release_request(req);
+@@ -228,11 +228,11 @@ int nfs_initiate_read(struct rpc_clnt *clnt,
+ 	/* Set up the initial task struct. */
+ 	NFS_PROTO(inode)->read_setup(data, &msg);
+ 
+-	dprintk("NFS: %5u initiated read call (req %s/%lld, %u bytes @ "
++	dprintk("NFS: %5u initiated read call (req %s/%llu, %u bytes @ "
+ 			"offset %llu)\n",
+ 			data->task.tk_pid,
+ 			inode->i_sb->s_id,
+-			(long long)NFS_FILEID(inode),
++			(unsigned long long)NFS_FILEID(inode),
+ 			data->args.count,
+ 			(unsigned long long)data->args.offset);
+ 
+@@ -630,9 +630,9 @@ int nfs_readpages(struct file *filp, struct address_space *mapping,
+ 	unsigned long npages;
+ 	int ret = -ESTALE;
+ 
+-	dprintk("NFS: nfs_readpages (%s/%Ld %d)\n",
++	dprintk("NFS: nfs_readpages (%s/%Lu %d)\n",
+ 			inode->i_sb->s_id,
+-			(long long)NFS_FILEID(inode),
++			(unsigned long long)NFS_FILEID(inode),
+ 			nr_pages);
+ 	nfs_inc_stats(inode, NFSIOS_VFSREADPAGES);
+ 
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index c1d5482..77a00c6 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1013,10 +1013,10 @@ int nfs_initiate_write(struct rpc_clnt *clnt,
+ 	NFS_PROTO(inode)->write_setup(data, &msg);
+ 
+ 	dprintk("NFS: %5u initiated write call "
+-		"(req %s/%lld, %u bytes @ offset %llu)\n",
++		"(req %s/%llu, %u bytes @ offset %llu)\n",
+ 		data->task.tk_pid,
+ 		inode->i_sb->s_id,
+-		(long long)NFS_FILEID(inode),
++		(unsigned long long)NFS_FILEID(inode),
+ 		data->args.count,
+ 		(unsigned long long)data->args.offset);
+ 
+@@ -1606,9 +1606,9 @@ static void nfs_commit_release_pages(struct nfs_commit_data *data)
+ 		nfs_list_remove_request(req);
+ 		nfs_clear_page_commit(req->wb_page);
+ 
+-		dprintk("NFS:       commit (%s/%lld %d@%lld)",
++		dprintk("NFS:       commit (%s/%llu %d@%lld)",
+ 			req->wb_context->dentry->d_sb->s_id,
+-			(long long)NFS_FILEID(req->wb_context->dentry->d_inode),
++			(unsigned long long)NFS_FILEID(req->wb_context->dentry->d_inode),
+ 			req->wb_bytes,
+ 			(long long)req_offset(req));
+ 		if (status < 0) {
 -- 
-1.7.10.4
-
+1.7.1
 
