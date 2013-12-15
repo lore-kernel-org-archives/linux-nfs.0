@@ -1,42 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from zimbra13.linbit.com ([212.69.166.240]:55771 "EHLO
-	zimbra13.linbit.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752053Ab3LLTHz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 12 Dec 2013 14:07:55 -0500
-Date: Thu, 12 Dec 2013 20:07:54 +0100 (CET)
-From: Andreas Gruenbacher <andreas.gruenbacher@linbit.com>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
-        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
-        linux-f2fs-devel@lists.sourceforge.net, linux-mtd@lists.infradead.org,
-        Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>,
-        reiserfs-devel@vger.kernel.org, xfs@oss.sgi.com,
-        jfs-discussion@lists.sourceforge.net, cluster-devel@redhat.com,
-        linux-nfs@vger.kernel.org, Jan Kara <jack@suse.cz>
-Message-ID: <1342716144.69126.1386875274180.JavaMail.zimbra@linbit.com>
-In-Reply-To: <20131211104527.044064384@bombadil.infradead.org>
-References: <20131211104243.148113893@bombadil.infradead.org> <20131211104527.044064384@bombadil.infradead.org>
-Subject: Re: [PATCH 04/18] fs: add generic xattr_acl handlers
+Received: from mailsrv.ikr.uni-stuttgart.de ([129.69.170.2]:37681 "EHLO
+	mailsrv.ikr.uni-stuttgart.de" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751474Ab3LOSte (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 15 Dec 2013 13:49:34 -0500
+Received: from netsrv1.ikr.uni-stuttgart.de (netsrv1-c [10.11.12.12])
+	by mailsrv.ikr.uni-stuttgart.de (Postfix) with ESMTP id 8BA24602EB
+	for <linux-nfs@vger.kernel.org>; Sun, 15 Dec 2013 19:39:46 +0100 (CET)
+Received: from vpn-2-cl173 (vpn-2-cl173 [10.41.21.173])
+	by netsrv1.ikr.uni-stuttgart.de (Postfix) with ESMTP id 74B73600E6
+	for <linux-nfs@vger.kernel.org>; Sun, 15 Dec 2013 19:39:46 +0100 (CET)
+From: Ulrich Gemkow <ulrich.gemkow@ikr.uni-stuttgart.de>
+To: linux-nfs@vger.kernel.org
+Subject: High rate of authrefrsh calls when no NFS activity is required
+Date: Sun, 15 Dec 2013 19:39:38 +0100
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: Text/Plain;
+  charset="iso-8859-1"
+Message-Id: <201312151939.39626.ulrich.gemkow@ikr.uni-stuttgart.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Christoph,
+Hello,
 
-> +static int
-> +posix_acl_xattr_set(struct dentry *dentry, const char *name,
-> +		const void *value, size_t size, int flags, int type)
-> +{
-> +	struct inode *inode = dentry->d_inode;
-> +	struct posix_acl *acl = NULL;
-> +	int ret;
-> +
-> +	if (!IS_POSIXACL(inode))
-> +		return -EOPNOTSUPP;
-> +	if (S_ISLNK(inode->i_mode) || !inode->i_op->set_acl)
-> +		return -EOPNOTSUPP;
+we see a high number of authrefrsh calls (about 1000/s) while
+IMHO no NFS activity is required.
 
-Sama here, I would remove the S_ISLNK() check.
+More details: We have an archive server which is booted from
+a ram disc and mounts his system files (/usr, /lib, ...) per
+NFS v3 (mounted with the option nolock).
 
-Andreas
+When the archive server dumps its local data to tape he
+generates about 1000 authrefrsh calls per second despite the
+fact that it does not need any data from the nfs server. There
+is a correponding high number of getattr calls but no read/write
+over NFS. The archive server has some files open over NFS
+(i.e. the dump utility), but these are readonly.
+
+My questions:
+
+- Is there any way to see for which files the getattr calls
+  are made? This would help to debug the problem. Is there
+  any other means to see what the client wants from the
+  NFS server?
+
+- Can anyone explain where these authrefrsh calls come from?
+  They result in a severe performance degration during the 
+  dump to tape
+
+Thank you and best regards
+
+-Ulrich
+
+-- 
+|-----------------------------------------------------------------------
+| Ulrich Gemkow
+| University of Stuttgart
+| Institute of Communication Networks and Computer Engineering (IKR)
+|-----------------------------------------------------------------------
