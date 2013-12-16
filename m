@@ -1,80 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:35889 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750882Ab3LKKRW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 11 Dec 2013 05:17:22 -0500
-From: Stanislav Kholmanskikh <stanislav.kholmanskikh@oracle.com>
-To: linux-nfs@vger.kernel.org
-Cc: vasily.isaenko@oracle.com, hch@infradead.org, xfs@oss.sgi.com,
-        sprabhu@redhat.com, bfields@fieldses.org
-Subject: [PATCH] nfsd: revoking of suid/sgid bits after chown() in a consistent way
-Date: Wed, 11 Dec 2013 14:16:36 +0400
-Message-Id: <1386756996-28083-1-git-send-email-stanislav.kholmanskikh@oracle.com>
-In-Reply-To: <20131206204747.GB12613@fieldses.org>
-References: <20131206204747.GB12613@fieldses.org>
+Received: from mail-pb0-f49.google.com ([209.85.160.49]:38755 "EHLO
+	mail-pb0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751998Ab3LPCtD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 15 Dec 2013 21:49:03 -0500
+Received: by mail-pb0-f49.google.com with SMTP id jt11so4871500pbb.36
+        for <linux-nfs@vger.kernel.org>; Sun, 15 Dec 2013 18:49:01 -0800 (PST)
+Message-ID: <52AE6A11.3020307@gmail.com>
+Date: Mon, 16 Dec 2013 10:48:49 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: linux-nfs@vger.kernel.org
+Subject: [PATCH] nfsd: get rid of unused function definition
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-There is an inconsistency in the handling of SUID/SGID file
-bits after chown() between NFS and other local file systems.
+commit 557ce2646e775f6bda734dd92b10d4780874b9c7 
+"nfsd41: replace page based DRC with buffer based DRC"
+have remove unused nfsd4_set_statp, but miss the function definition.
 
-Local file systems (for example, ext3, ext4, xfs, btrfs) revoke
-SUID/SGID bits after chown() on a regular file even if
-the owner/group of the file has not been changed:
-
-~# touch file; chmod ug+s file; chmod u+x file
-~# ls -l file
--rwsr-Sr-- 1 root root 0 Dec  6 04:49 file
-~# chown root file; ls -l file
--rwxr-Sr-- 1 root root 0 Dec  6 04:49 file
-
-but NFS doesn't do that:
-
-~# touch file; chmod ug+s file; chmod u+x file
-~# ls -l file
--rwsr-Sr-- 1 root root 0 Dec  6 04:49 file
-~# chown root file; ls -l file
--rwsr-Sr-- 1 root root 0 Dec  6 04:49 file
-
-NFS does that only if the owner/group has been changed:
-
-~# touch file; chmod ug+s file; chmod u+x file
-~# ls -l file
--rwsr-Sr-- 1 root root 0 Dec  6 05:02 file
-~# chown bin file; ls -l file
--rwxr-Sr-- 1 bin root 0 Dec  6 05:02 file
-
-See: http://pubs.opengroup.org/onlinepubs/9699919799/functions/chown.html
-
- "If the specified file is a regular file, one or more of
- the S_IXUSR, S_IXGRP, or S_IXOTH bits of the file mode are set,
- and the process has appropriate privileges, it is
- implementation-defined whether the set-user-ID and set-group-ID
- bits are altered."
-
-So both variants are acceptable by POSIX.
-
-This patch makes NFS to behave like local file systems.
-
-Signed-off-by: Stanislav Kholmanskikh <stanislav.kholmanskikh@oracle.com>
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 ---
- fs/nfsd/vfs.c |    3 +--
- 1 files changed, 1 insertions(+), 2 deletions(-)
+ fs/nfsd/cache.h | 8 --------
+ 1 file changed, 8 deletions(-)
 
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 72cb28e..8226991 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -348,8 +348,7 @@ nfsd_sanitize_attrs(struct inode *inode, struct iattr *iap)
+diff --git a/fs/nfsd/cache.h b/fs/nfsd/cache.h
+index d5c5b3e..b582f9a 100644
+--- a/fs/nfsd/cache.h
++++ b/fs/nfsd/cache.h
+@@ -84,12 +84,4 @@ int	nfsd_cache_lookup(struct svc_rqst *);
+ void	nfsd_cache_update(struct svc_rqst *, int, __be32 *);
+ int	nfsd_reply_cache_stats_open(struct inode *, struct file *);
  
- 	/* Revoke setuid/setgid on chown */
- 	if (!S_ISDIR(inode->i_mode) &&
--	    (((iap->ia_valid & ATTR_UID) && !uid_eq(iap->ia_uid, inode->i_uid)) ||
--	     ((iap->ia_valid & ATTR_GID) && !gid_eq(iap->ia_gid, inode->i_gid)))) {
-+	    ((iap->ia_valid & ATTR_UID) || (iap->ia_valid & ATTR_GID))) {
- 		iap->ia_valid |= ATTR_KILL_PRIV;
- 		if (iap->ia_valid & ATTR_MODE) {
- 			/* we're setting mode too, just clear the s*id bits */
+-#ifdef CONFIG_NFSD_V4
+-void	nfsd4_set_statp(struct svc_rqst *rqstp, __be32 *statp);
+-#else  /* CONFIG_NFSD_V4 */
+-static inline void nfsd4_set_statp(struct svc_rqst *rqstp, __be32 *statp)
+-{
+-}
+-#endif /* CONFIG_NFSD_V4 */
+-
+ #endif /* NFSCACHE_H */
 -- 
-1.7.1
-
+1.8.4.2
