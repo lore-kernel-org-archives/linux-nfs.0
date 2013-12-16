@@ -1,64 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:35928 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:59197 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751273Ab3LRUGa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 18 Dec 2013 15:06:30 -0500
-Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id rBIK6ULs023007
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Wed, 18 Dec 2013 15:06:30 -0500
-Received: from tasleson.csb (vpn-229-185.phx2.redhat.com [10.3.229.185])
-	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id rBIK6TMX032331
-	for <linux-nfs@vger.kernel.org>; Wed, 18 Dec 2013 15:06:29 -0500
-From: Tony Asleson <tasleson@redhat.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 3/3] exportfs.c: Escape path for '-s' option
-Date: Wed, 18 Dec 2013 14:06:29 -0600
-Message-Id: <1387397189-9591-3-git-send-email-tasleson@redhat.com>
-In-Reply-To: <1387397189-9591-1-git-send-email-tasleson@redhat.com>
-References: <1387397189-9591-1-git-send-email-tasleson@redhat.com>
+	id S1754466Ab3LPSgL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 16 Dec 2013 13:36:11 -0500
+Date: Mon, 16 Dec 2013 13:36:10 -0500
+To: Tony Asleson <tasleson@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: exportfs: Messages indicating unsupported operation that works
+Message-ID: <20131216183610.GA31816@fieldses.org>
+References: <52AE712B.3060404@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <52AE712B.3060404@redhat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When outputing the paths and the user has specified the option
--s, escape the path.
+On Sun, Dec 15, 2013 at 09:19:07PM -0600, Tony Asleson wrote:
+> When I try to export a directory that has a space in it I get the following:
+> 
+> # exportfs *:"/mnt/has space"
+> exportfs: /mnt/has space does not support NFS export
+> 
+> exit code is 0.
+> 
+> If I do:
+> 
+> # exportfs -v
+> /mnt/has space	<world>(ro,wdelay,root_squash,no_subtree_check,
+> sec=sys,ro,secure,root_squash,no_all_squash)
+> 
+> It exists and I can mount it from a client and everything appears fine.
+> 
+> I took a peek at the code and we are failing in test_export.  We are
+> getting a -1 returned when we write to: /proc/net/rpc/nfsd.export/channel .
+> 
+> This seems like a confusing message when it appears that everything is
+> working, thoughts?
+> 
+> Notes:
+> - Kernel Linux rawhide 3.13.0-0.rc3.git1.2.fc21.x86_64
+> - nfs-utils: Latest from git, but this happens on older released
+> versions tested too.
 
-Signed-off-by: Tony Asleson <tasleson@redhat.com>
----
- utils/exportfs/exportfs.c | 13 ++++++++++++-
- 1 file changed, 12 insertions(+), 1 deletion(-)
+test_export clearly isn't escaping the pathname.  It probably needs
+something like the following (completely untested).
+
+--b.
 
 diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
-index 019961b..9ea86cb 100644
+index 4331697..d5dfb0b 100644
 --- a/utils/exportfs/exportfs.c
 +++ b/utils/exportfs/exportfs.c
-@@ -666,6 +666,9 @@ dumpopt(char c, char *fmt, ...)
- static void
- dump(int verbose, int export_format)
+@@ -418,11 +418,15 @@ static int can_test(void)
+ static int test_export(char *path, int with_fsid)
  {
-+	char buf[1024];
-+	char *bp;
-+	int len;
- 	nfs_export	*exp;
- 	struct exportent *ep;
- 	int		htype;
-@@ -683,7 +686,15 @@ dump(int verbose, int export_format)
- 			if (strlen(ep->e_path) > 14 && !export_format)
- 				printf("%-14s\n\t\t%s", ep->e_path, hname);
- 			else
--				printf(((export_format)? "%s %s" : "%-14s\t%s"), ep->e_path, hname);
-+				if (export_format) {
-+					bp = buf;
-+					len = sizeof(buf) - 1;
-+					qword_add(&bp, &len, ep->e_path);
-+					*bp = '\0';
-+					printf("%s %s", buf, hname);
-+				} else {
-+					printf("%-14s\t%s", ep->e_path, hname);
-+				}
+ 	char buf[1024];
++	char *bp = buf;
++	int len = sizeof(buf);
+ 	int fd, n;
  
- 			if (!verbose && !export_format) {
- 				printf("\n");
--- 
-1.8.2.1
-
+-	sprintf(buf, "-test-client- %s 3 %d 65534 65534 0\n",
+-		path,
+-		with_fsid ? NFSEXP_FSID : 0);
++	n = sprintf(buf, "-test-client- ");
++	bp += n;
++	len -= n;
++	qword_add(&bp, &len, path);
++	sprintf(bp, " 3 %d 65534 65534 0\n", with_fsid ? NFSEXP_FSID : 0);
+ 	fd = open("/proc/net/rpc/nfsd.export/channel", O_WRONLY);
+ 	if (fd < 0)
+ 		return 0;
