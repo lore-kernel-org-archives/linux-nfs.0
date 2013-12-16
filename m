@@ -1,50 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:45453 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752673Ab3LRMlb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 18 Dec 2013 07:41:31 -0500
-Date: Wed, 18 Dec 2013 04:41:26 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: Zach Brown <zab@redhat.com>
-Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org,
-        Trond Myklebust <Trond.Myklebust@netapp.com>,
-        Bryan Schumaker <bjschuma@netapp.com>,
-        "Martin K. Petersen" <mkp@mkp.net>, Jens Axboe <axboe@kernel.dk>,
-        Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>,
-        Eric Wong <normalperson@yhbt.net>
-Subject: Re: [RFC] extending splice for copy offloading
-Message-ID: <20131218124126.GA15328@infradead.org>
-References: <1378919210-10372-1-git-send-email-zab@redhat.com>
+Received: from fieldses.org ([174.143.236.118]:37022 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750803Ab3LPUXr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 16 Dec 2013 15:23:47 -0500
+Date: Mon, 16 Dec 2013 15:23:45 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Joakim Tjernlund <joakim.tjernlund@transmode.se>
+Cc: linux-nfs@vger.kernel.org, steved@redhat.com
+Subject: Re: nfs-utils-1.2.9 does not play well with linux 3.10.x
+Message-ID: <20131216202345.GF31816@fieldses.org>
+References: <OFDD407A92.688D29A1-ONC1257C43.00634FC8-C1257C43.00645775@transmode.se>
+ <20131216185419.GB31816@fieldses.org>
+ <20131216200301.GD31816@fieldses.org>
+ <OF149AE409.624B2B0A-ONC1257C43.006F77D7-C1257C43.006FCED2@transmode.se>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1378919210-10372-1-git-send-email-zab@redhat.com>
+In-Reply-To: <OF149AE409.624B2B0A-ONC1257C43.006F77D7-C1257C43.006FCED2@transmode.se>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Sep 11, 2013 at 10:06:47AM -0700, Zach Brown wrote:
-> When I first started on this stuff I followed the lead of previous
-> work and added a new syscall for the copy operation:
+On Mon, Dec 16, 2013 at 09:21:15PM +0100, Joakim Tjernlund wrote:
+> "J. Bruce Fields" <bfields@fieldses.org> wrote on 2013/12/16 21:03:01:
 > 
-> https://lkml.org/lkml/2013/5/14/618
+> > From: "J. Bruce Fields" <bfields@fieldses.org>
+> > To: Joakim Tjernlund <joakim.tjernlund@transmode.se>, 
+> > Cc: linux-nfs@vger.kernel.org, steved@redhat.com
+> > Date: 2013/12/16 21:03
+> > Subject: Re: nfs-utils-1.2.9 does not play well with linux 3.10.x
+> > 
+> > On Mon, Dec 16, 2013 at 01:54:19PM -0500, bfields wrote:
+> > > On Mon, Dec 16, 2013 at 07:16:00PM +0100, Joakim Tjernlund wrote:
+> > > > rpc.nfsd insists on adding "-4.2" when writing 
+> /proc/fs/nfsd/versions :
+> > > >   rpc.nfsd: Writing version string to kernel: +4.1 -4.2 -2 +3 +4
+> > > > Which causes Linux to return an EIVAL error as 3.10 has no support 
+> for 4.2 
+> > > > and
+> > > > does not accept any reference to 4.2
+> > > > 
+> > > > It seems reasonable to me that Linux should accpect -4.2 as a noop 
+> and 
+> > > > continue
+> > > > processing the rest of the options but I am just guessing.
+> > > > Anyhow, just to test I applied this commit to my 3.10.24 kernel:
+> > > > 
+> > > > 
+> http://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=4bdc33ed5bd9fbaa243bda6fdccb22674aed6305
 > 
-> Towards the end of that thread Eric Wong asked why we didn't just
-> extend splice.  I immediately replied with some dumb dismissive
-> answer.  Once I sat down and looked at it, though, it does make a
-> lot of sense.  So good job, Eric.  +10 Dummie points for me.
+> > > > and now it accepts the "-4.2" but I have no idea if this messes up 
+> > > > something else.
+> > > 
+> > > That should be perfectly safe.
 > 
-> Extending splice avoids all the noise of adding a new syscall and
-> naturally falls back to buffered copying as that's what the direct
-> splice path does for sendfile() today.
+> Thanks, I will keep this then until nfs-utils is working.
+> 
+> > > 
+> > > I agree that we should teach the kernel to treat "-4.x" at least as a
+> > > no-op for unknown .x.  But nfs-utils also has to keep working with 
+> older
+> > > kernels which don't do that.
+> > > 
+> > > The problem was introduced by 12a590f8d556c00a9502eeebaa763d906222d521
+> > > "rpc.nfsd: Allow v4.2 server support with the -V option".  That should
+> > > be using an array of ints not a bit array, so it can make the
+> > > distinction between "off", "on", and "don't care".
+> > 
+> > So, something like this (untested).--b.
+> 
+> I tested this on my system(which has the above kernel patch) and I noticed
+> a difference:
 
-Given the convolute mess that the splice code already is I'd rather
-prefer not overloading it even further.
+Thanks!
 
-Instead I'd make the sendfile code path that already works different
-in practice separate first, and then generalize it to a copy chunk
-syscall using the same code path.
+>   rpc.nfsd: Writing version string to kernel: -2 +3 +4 
+> which is different than previous
+>  rpc.nfsd: Writing version string to kernel: +4.1 -4.2 -2 +3 +4
+> 
+> The "+4.1" is missing.
 
-We can still fall back to the splice code as a fallback if no option
-is provided as a last resort, but I think making the splice code handle
-even more totally different cases is the wrong direction.
+Yes, that's intentional.  Is it causing you any problem?
 
+--b.
