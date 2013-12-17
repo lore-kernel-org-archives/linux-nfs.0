@@ -1,50 +1,129 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:49220 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:57848 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753813Ab3LFUry (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 6 Dec 2013 15:47:54 -0500
-Date: Fri, 6 Dec 2013 15:47:47 -0500
+	id S1751088Ab3LQDnd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 16 Dec 2013 22:43:33 -0500
+Date: Mon, 16 Dec 2013 22:43:31 -0500
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Stanislav Kholmanskikh <stanislav.kholmanskikh@oracle.com>,
-        xfs@oss.sgi.com, linux-nfs@vger.kernel.org,
-        Vasily Isaenko <vasily.isaenko@oracle.com>,
-        "Sachin S. Prabhu" <sprabhu@redhat.com>
-Subject: Re: nfs vs xfstests 193
-Message-ID: <20131206204747.GB12613@fieldses.org>
-References: <20131106115648.GA24804@infradead.org>
- <52A1CF22.106@oracle.com>
- <20131206180858.GA2803@infradead.org>
- <20131206204404.GA12613@fieldses.org>
+To: steved@redhat.com
+Cc: Joakim Tjernlund <joakim.tjernlund@transmode.se>,
+        linux-nfs@vger.kernel.org
+Subject: [PATCH] nfsd: fix minorversion-choosing interface
+Message-ID: <20131217034331.GB3490@fieldses.org>
+References: <OFDD407A92.688D29A1-ONC1257C43.00634FC8-C1257C43.00645775@transmode.se>
+ <20131216185419.GB31816@fieldses.org>
+ <20131216200301.GD31816@fieldses.org>
+ <OF149AE409.624B2B0A-ONC1257C43.006F77D7-C1257C43.006FCED2@transmode.se>
+ <20131216202345.GF31816@fieldses.org>
+ <OF942071D7.5EC379B1-ONC1257C43.007AB858-C1257C43.007B0CFB@transmode.se>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20131206204404.GA12613@fieldses.org>
+In-Reply-To: <OF942071D7.5EC379B1-ONC1257C43.007AB858-C1257C43.007B0CFB@transmode.se>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Dec 06, 2013 at 03:44:04PM -0500, bfields wrote:
-> On Fri, Dec 06, 2013 at 10:08:58AM -0800, Christoph Hellwig wrote:
-> > On Fri, Dec 06, 2013 at 05:20:34PM +0400, Stanislav Kholmanskikh wrote:
-> > > Just to make the behaviour more consistent between NFS and other
-> > > "local" file systems as It was done by
-> > > commit https://git.kernel.org/cgit/linux/kernel/git/stable/linux-stable.git/commit/?id=0953e620de0538cbd081f1b45126f6098112a598
-> > 
-> > Seems like we got others in line with XFS behavior.
-> 
-> But, not having tested the behavior, it looks like fs/open.c has a
-> simlar !S_ISDIR() check.  Where's that behavior implemented?
-> 
-> > I'd prefer to have NFS follow this as well.
-> 
-> Huh.  Sachin, do you remember if there was any other motivation behind
-> that patch?
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Never mind, I see, the complaint is about the case where the id's don't
-change, not about the directory case.  So Sachin's
-0953e620de0538cbd081f1b45126f6098112a598 doesn't actually have anything
-to do with this.
+By unconditionally adding +/-4.2 to the version string written to the
+kernel we make nfs-utils incompatible with pre-4.2-supporting kernels.
 
-I'm fine with removing the id comparisons and changing the nfsd behavior
-to match local filesystems.
+Ditto for 4.1.  This problem was introduced by
+12a590f8d556c00a9502eeebaa763d906222d521 "rpc.nfsd: Allow v4.2 server
+support with the -V option", which also change nfsd to unconditionally
+pass +/-4.2.
 
---b.
+Instead, just don't mention 4.1 or 4.2 unless the commandline has
+specifically requested that one or the other be turned on or off.
+
+Tested-by: Joakim Tjernlund <joakim.tjernlund@transmode.se>
+Reported-by: Joakim Tjernlund <joakim.tjernlund@transmode.se>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ support/include/nfs/nfs.h | 1 -
+ utils/nfsd/nfsd.c         | 6 +++---
+ utils/nfsd/nfssvc.c       | 6 +++---
+ utils/nfsd/nfssvc.h       | 2 +-
+ 4 files changed, 7 insertions(+), 8 deletions(-)
+
+diff --git a/support/include/nfs/nfs.h b/support/include/nfs/nfs.h
+index 38db5b5..df4ad76 100644
+--- a/support/include/nfs/nfs.h
++++ b/support/include/nfs/nfs.h
+@@ -17,7 +17,6 @@
+ 
+ #define NFS4_MINMINOR 1
+ #define NFS4_MAXMINOR 2
+-#define NFS4_VERDEFAULT  0x1  /* minor verion 1 */
+ 
+ struct nfs_fh_len {
+ 	int		fh_size;
+diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
+index 6db92f0..a9d77ab 100644
+--- a/utils/nfsd/nfsd.c
++++ b/utils/nfsd/nfsd.c
+@@ -99,7 +99,7 @@ main(int argc, char **argv)
+ 	char *p, *progname, *port;
+ 	char *haddr = NULL;
+ 	int	socket_up = 0;
+-	int minorvers = NFS4_VERDEFAULT;	/* nfsv4 minor version */
++	int minorvers[NFS4_MAXMINOR + 1] = {0};
+ 	unsigned int versbits = NFSCTL_VERDEFAULT;
+ 	unsigned int protobits = NFSCTL_ALLBITS;
+ 	unsigned int proto4 = 0;
+@@ -164,7 +164,7 @@ main(int argc, char **argv)
+ 						fprintf(stderr, "%s: unsupported minor version\n", optarg);
+ 						exit(1);
+ 					}
+-					NFSCTL_VERUNSET(minorvers, i);
++					minorvers[i] = -1;
+ 					break;
+ 				}
+ 			case 3:
+@@ -185,7 +185,7 @@ main(int argc, char **argv)
+ 						fprintf(stderr, "%s: unsupported minor version\n", optarg);
+ 						exit(1);
+ 					}
+-					NFSCTL_VERSET(minorvers, i);
++					minorvers[i] = 1;
+ 					break;
+ 				}
+ 			case 3:
+diff --git a/utils/nfsd/nfssvc.c b/utils/nfsd/nfssvc.c
+index 8b85846..1b50aba 100644
+--- a/utils/nfsd/nfssvc.c
++++ b/utils/nfsd/nfssvc.c
+@@ -269,7 +269,7 @@ nfssvc_set_sockets(const int family, const unsigned int protobits,
+ }
+ 
+ void
+-nfssvc_setvers(unsigned int ctlbits, int minorvers)
++nfssvc_setvers(unsigned int ctlbits, int minorvers[])
+ {
+ 	int fd, n, off;
+ 	char *ptr;
+@@ -281,9 +281,9 @@ nfssvc_setvers(unsigned int ctlbits, int minorvers)
+ 		return;
+ 
+ 	for (n = NFS4_MINMINOR; n <= NFS4_MAXMINOR; n++) {
+-		if (NFSCTL_VERISSET(minorvers, n)) 
++		if (minorvers[n] == 1)
+ 			off += snprintf(ptr+off, sizeof(buf) - off, "+4.%d ", n);
+-		else			
++		else if (minorvers[n] == -1)
+ 			off += snprintf(ptr+off, sizeof(buf) - off, "-4.%d ", n);
+ 	}
+ 	for (n = NFSD_MINVERS; n <= NFSD_MAXVERS; n++) {
+diff --git a/utils/nfsd/nfssvc.h b/utils/nfsd/nfssvc.h
+index 08de0fe..2bbd3d3 100644
+--- a/utils/nfsd/nfssvc.h
++++ b/utils/nfsd/nfssvc.h
+@@ -24,5 +24,5 @@ void	nfssvc_mount_nfsdfs(char *progname);
+ int	nfssvc_inuse(void);
+ int	nfssvc_set_sockets(const int family, const unsigned int protobits,
+ 			   const char *host, const char *port);
+-void	nfssvc_setvers(unsigned int ctlbits, int minorvers4);
++void	nfssvc_setvers(unsigned int ctlbits, int minorvers4[]);
+ int	nfssvc_threads(unsigned short port, int nrservs);
+-- 
+1.8.3.1
+
