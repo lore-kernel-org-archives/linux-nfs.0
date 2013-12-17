@@ -1,57 +1,128 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f182.google.com ([209.85.223.182]:58656 "EHLO
-	mail-ie0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751959Ab3LBQHl convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Dec 2013 11:07:41 -0500
-Received: by mail-ie0-f182.google.com with SMTP id as1so21479508iec.13
-        for <linux-nfs@vger.kernel.org>; Mon, 02 Dec 2013 08:07:41 -0800 (PST)
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.0 \(1812\))
-Subject: Re: Linux client access to NFSv4 Alternate Data Streams (O_XATTR)?
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-In-Reply-To: <CAHnbEG+cJGjx7o=+ZASNo7ddc0O9hYG4fE0EAQ2hoh688nBBeQ@mail.gmail.com>
-Date: Mon, 2 Dec 2013 11:07:38 -0500
-Cc: Joshuah Hurst <joshhurst@gmail.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <F7935E11-E648-49C5-B100-B5A624BFFDF3@primarydata.com>
-References: <CAEEMktPamgjSHA_OmHj73ti5G01DcC_ykYb=-_bfOYqy4nW8BA@mail.gmail.com> <5B7CDA5C-C3F1-4CFD-9A72-013523068FBB@primarydata.com> <CAHnbEG+cJGjx7o=+ZASNo7ddc0O9hYG4fE0EAQ2hoh688nBBeQ@mail.gmail.com>
-To: Sebastian Feld <sebastian.n.feld@gmail.com>
+Received: from mx12.netapp.com ([216.240.18.77]:47411 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754222Ab3LQQvw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 17 Dec 2013 11:51:52 -0500
+From: Weston Andros Adamson <dros@netapp.com>
+To: <Trond.Myklebust@netapp.com>
+CC: <linux-nfs@vger.kernel.org>, Weston Andros Adamson <dros@netapp.com>
+Subject: [PATCH] sunrpc: Fix infinite loop in RPC state machine
+Date: Tue, 17 Dec 2013 11:51:43 -0500
+Message-ID: <1387299103-2577-1-git-send-email-dros@netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+When a task enters call_refreshresult with status 0 from call_refresh and
+!rpcauth_uptodatecred(task) it enters call_refresh again with no rate-limiting
+or max number of retries.
 
-On Dec 2, 2013, at 9:27, Sebastian Feld <sebastian.n.feld@gmail.com> wrote:
+Instead of trying forever, make use of the retry path that other errors use.
 
-> On Mon, Dec 2, 2013 at 2:29 PM, Trond Myklebust
-> <trond.myklebust@primarydata.com> wrote:
->> 
->> On Dec 2, 2013, at 7:13, Joshuah Hurst <joshhurst@gmail.com> wrote:
->> 
->>> We need to access NFSv4 Alternate Data Streams (what Solaris,
->>> NexentaOS, Omnios and SmartOS can openat() with the O_XATTR flag) from
->>> a (Suse) Linux client.
->>> 
->>> OS is Suse Linux 12.3, x86-64, 64bit
->>> 
->>> Does anyone know how to archive this?
->> 
->> Why can’t you access Solaris-specific extensions from a Solaris client?
-> 
-> This isn't a Solaris-specific extension, its part of the original Sun
-> NFSv4 spec. Unfortunately the ARC/ARchitecture Cases from
-> Opensolaris.org are no longer available, otherwise the background,
-> e.g. feature parity with CIFS/NTFS, and the overall usefulness of such
-> a feature, would be clearer.
+This only seems to be possible when the crrefresh callback is gss_refresh_null,
+which only happens when destroying the context.
 
-The open(O_XATTR) _is_ a Solaris specific extension. It isn’t something that we have been planning to support on Linux.
+To reproduce:
 
-> There are many many applications coming from either the Windows world
-> or the HPC camp (like nih.org or GE Healthcare) who mandatory rely on
-> the existence of this feature (well, at least enough so that AT&T
-> cloud services and the related toolchain (e.g. AST, including ksh93)
-> now have extensive support for O_XATTR).
+1) mount with sec=krb5 (or sec=sys with krb5 negotiated for non FSID specific
+   operations).
 
-What do they use it for? Last I heard, Microsoft was deprecating the use of streams. I’m assuming that means they plan to get rid of it.
+2) reboot - the client will be stuck and will need to be hard rebooted
 
-Cheers
-  Trond
+BUG: soft lockup - CPU#0 stuck for 22s! [kworker/0:2:46]
+Modules linked in: rpcsec_gss_krb5 nfsv4 nfs fscache ppdev crc32c_intel aesni_intel aes_x86_64 glue_helper lrw gf128mul ablk_helper cryptd serio_raw i2c_piix4 i2c_core e1000 parport_pc parport shpchp nfsd auth_rpcgss oid_registry exportfs nfs_acl lockd sunrpc autofs4 mptspi scsi_transport_spi mptscsih mptbase ata_generic floppy
+irq event stamp: 195724
+hardirqs last  enabled at (195723): [<ffffffff814a925c>] restore_args+0x0/0x30
+hardirqs last disabled at (195724): [<ffffffff814b0a6a>] apic_timer_interrupt+0x6a/0x80
+softirqs last  enabled at (195722): [<ffffffff8103f583>] __do_softirq+0x1df/0x276
+softirqs last disabled at (195717): [<ffffffff8103f852>] irq_exit+0x53/0x9a
+CPU: 0 PID: 46 Comm: kworker/0:2 Not tainted 3.13.0-rc3-branch-dros_testing+ #4
+Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform, BIOS 6.00 07/31/2013
+Workqueue: rpciod rpc_async_schedule [sunrpc]
+task: ffff8800799c4260 ti: ffff880079002000 task.ti: ffff880079002000
+RIP: 0010:[<ffffffffa0064fd4>]  [<ffffffffa0064fd4>] __rpc_execute+0x8a/0x362 [sunrpc]
+RSP: 0018:ffff880079003d18  EFLAGS: 00000246
+RAX: 0000000000000005 RBX: 0000000000000007 RCX: 0000000000000007
+RDX: 0000000000000007 RSI: ffff88007aecbae8 RDI: ffff8800783d8900
+RBP: ffff880079003d78 R08: ffff88006e30e9f8 R09: ffffffffa005a3d7
+R10: ffff88006e30e7b0 R11: ffff8800783d8900 R12: ffffffffa006675e
+R13: ffff880079003ce8 R14: ffff88006e30e7b0 R15: ffff8800783d8900
+FS:  0000000000000000(0000) GS:ffff88007f200000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 00007f3072333000 CR3: 0000000001a0b000 CR4: 00000000001407f0
+Stack:
+ ffff880079003d98 0000000000000246 0000000000000000 ffff88007a9a4830
+ ffff880000000000 ffffffff81073f47 ffff88007f212b00 ffff8800799c4260
+ ffff8800783d8988 ffff88007f212b00 ffffe8ffff604800 0000000000000000
+Call Trace:
+ [<ffffffff81073f47>] ? trace_hardirqs_on_caller+0x145/0x1a1
+ [<ffffffffa00652d3>] rpc_async_schedule+0x27/0x32 [sunrpc]
+ [<ffffffff81052974>] process_one_work+0x211/0x3a5
+ [<ffffffff810528d5>] ? process_one_work+0x172/0x3a5
+ [<ffffffff81052eeb>] worker_thread+0x134/0x202
+ [<ffffffff81052db7>] ? rescuer_thread+0x280/0x280
+ [<ffffffff81052db7>] ? rescuer_thread+0x280/0x280
+ [<ffffffff810584a0>] kthread+0xc9/0xd1
+ [<ffffffff810583d7>] ? __kthread_parkme+0x61/0x61
+ [<ffffffff814afd6c>] ret_from_fork+0x7c/0xb0
+ [<ffffffff810583d7>] ? __kthread_parkme+0x61/0x61
+Code: e8 87 63 fd e0 c6 05 10 dd 01 00 01 48 8b 43 70 4c 8d 6b 70 45 31 e4 a8 02 0f 85 d5 02 00 00 4c 8b 7b 48 48 c7 43 48 00 00 00 00 <4c> 8b 4b 50 4d 85 ff 75 0c 4d 85 c9 4d 89 cf 0f 84 32 01 00 00
+
+And the output of "rpcdebug -m rpc -s all":
+
+RPC:    61 call_refresh (status 0)
+RPC:    61 call_refresh (status 0)
+RPC:    61 refreshing RPCSEC_GSS cred ffff88007a413cf0
+RPC:    61 refreshing RPCSEC_GSS cred ffff88007a413cf0
+RPC:    61 call_refreshresult (status 0)
+RPC:    61 refreshing RPCSEC_GSS cred ffff88007a413cf0
+RPC:    61 call_refreshresult (status 0)
+RPC:    61 refreshing RPCSEC_GSS cred ffff88007a413cf0
+RPC:    61 call_refresh (status 0)
+RPC:    61 call_refreshresult (status 0)
+RPC:    61 call_refresh (status 0)
+RPC:    61 call_refresh (status 0)
+RPC:    61 refreshing RPCSEC_GSS cred ffff88007a413cf0
+RPC:    61 call_refreshresult (status 0)
+RPC:    61 call_refresh (status 0)
+RPC:    61 refreshing RPCSEC_GSS cred ffff88007a413cf0
+RPC:    61 call_refresh (status 0)
+RPC:    61 refreshing RPCSEC_GSS cred ffff88007a413cf0
+RPC:    61 refreshing RPCSEC_GSS cred ffff88007a413cf0
+RPC:    61 call_refreshresult (status 0)
+RPC:    61 call_refresh (status 0)
+RPC:    61 call_refresh (status 0)
+RPC:    61 call_refresh (status 0)
+RPC:    61 call_refresh (status 0)
+RPC:    61 call_refreshresult (status 0)
+RPC:    61 refreshing RPCSEC_GSS cred ffff88007a413cf0
+Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+---
+ net/sunrpc/clnt.c | 9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
+
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index f09b7db..5f585a7 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -1529,9 +1529,14 @@ call_refreshresult(struct rpc_task *task)
+ 	task->tk_action = call_refresh;
+ 	switch (status) {
+ 	case 0:
+-		if (rpcauth_uptodatecred(task))
++		if (rpcauth_uptodatecred(task)) {
+ 			task->tk_action = call_allocate;
+-		return;
++			return;
++		}
++		/*
++		 * Use rate-limiting and a max number of retries if refresh
++		 * had status 0 but failed to update the cred.
++		 */
+ 	case -ETIMEDOUT:
+ 		rpc_delay(task, 3*HZ);
+ 	case -EAGAIN:
+-- 
+1.8.3.1 (Apple Git-46)
+
