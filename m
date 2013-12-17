@@ -1,185 +1,137 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:2426 "EHLO mx11.netapp.com"
+Received: from mx11.netapp.com ([216.240.18.76]:29958 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752040Ab3LJTLb convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 10 Dec 2013 14:11:31 -0500
+	id S1754568Ab3LQQzO convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 17 Dec 2013 11:55:14 -0500
 From: Weston Andros Adamson <dros@netapp.com>
 To: Trond Myklebust <trond.myklebust@primarydata.com>
 CC: linux-nfs list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v2] NFSv4: fix getacl ERANGE for some ACL buffer sizes
-Date: Tue, 10 Dec 2013 19:11:30 +0000
-Message-ID: <1556485E-F391-4F58-AEE3-07C829DA2DB1@netapp.com>
-References: <1385068813-5491-1-git-send-email-dros@netapp.com>
- <1386699230.2879.26.camel@leira.trondhjem.org>
-In-Reply-To: <1386699230.2879.26.camel@leira.trondhjem.org>
+Subject: Re: [PATCH] sunrpc: Fix infinite loop in RPC state machine
+Date: Tue, 17 Dec 2013 16:55:08 +0000
+Message-ID: <2553541F-C143-45E2-93B2-19039E2B69D4@netapp.com>
+References: <1387299103-2577-1-git-send-email-dros@netapp.com>
+In-Reply-To: <1387299103-2577-1-git-send-email-dros@netapp.com>
 Content-Type: text/plain; charset="Windows-1252"
 MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Dec 10, 2013, at 1:13 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
-
-> On Thu, 2013-11-21 at 16:20 -0500, Weston Andros Adamson wrote:
->> Fix a bug where getxattr returns ERANGE when the attr buffer
->> length is close enough to the nearest PAGE_SIZE multiple that adding
->> the extra bytes leaves too little room for the ACL buffer.
->> 
->> Besides storing the ACL buffer, the getacl decoder uses the inline
->> pages for the attr bitmap and buffer length. __nfs4_get_acl_uncached
->> must allocate enough page space for all of the data to be decoded.
->> 
->> This patch uses xdr_partial_copy_from_skb to allocate any needed
->> pages past the first one. This allows the client to always cache the acl
->> on the first getacl call and not just if it fits in one page.
->> 
->> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
->> ---
->> 
->> Version 2 of this patch changes things up a bit:
->> 
->> - rely on xdr_partial_copy_from_skb to allocate pages as needed
->> - always allocate 1 page as there will be some data
->> - allow xdr_partial_copy_from_skb to allocate up to NFS4ACL_MAXPAGES + 1 pages
->>   to hold the max size ACL and the extra page for the bitmap and acl length
->> - this allows the first request for an ACL to be cached - not just when it
->>   fits in one page
->> 
->> fs/nfs/nfs4proc.c | 40 +++++++++++++++-------------------------
->> fs/nfs/nfs4xdr.c  |  2 --
->> 2 files changed, 15 insertions(+), 27 deletions(-)
->> 
->> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->> index ca36d0d..dc8e4f5 100644
->> --- a/fs/nfs/nfs4proc.c
->> +++ b/fs/nfs/nfs4proc.c
->> @@ -4430,20 +4430,17 @@ out:
->> /*
->>  * The getxattr API returns the required buffer length when called with a
->>  * NULL buf. The NFSv4 acl tool then calls getxattr again after allocating
->> - * the required buf.  On a NULL buf, we send a page of data to the server
->> - * guessing that the ACL request can be serviced by a page. If so, we cache
->> - * up to the page of ACL data, and the 2nd call to getxattr is serviced by
->> - * the cache. If not so, we throw away the page, and cache the required
->> - * length. The next getxattr call will then produce another round trip to
->> - * the server, this time with the input buf of the required size.
->> + * the required buf. Cache the result from the first getxattr call to avoid
->> + * sending another RPC.
->>  */
->> static ssize_t __nfs4_get_acl_uncached(struct inode *inode, void *buf, size_t buflen)
->> {
->> -	struct page *pages[NFS4ACL_MAXPAGES] = {NULL, };
->> +	/* enough pages to hold ACL data plus the bitmap and acl length */
->> +	struct page *pages[NFS4ACL_MAXPAGES + 1] = {NULL, };
-> 
-> Why the change to the array length? From what I can see, you are making
-> everything else depend on ARRAY_LENGTH(pages).
-
-So we can fit NFS4ACL_MAXPAGES (which is XATTR_SIZE_MAX / PAGE_SIZE) AND the bitmap (which being variable length must also use the inline pages), otherwise we will always fail for ACL data sized near XATTR_SIZE_MAX, even though we should support it.  I figure that a page is more than enough for the bitmap even when future-proofing nfsv4.X, but we’ll always need that extra page when the actual ACL data is XATTR_SIZE bytes long. 
-
-> 
->> 	struct nfs_getaclargs args = {
->> 		.fh = NFS_FH(inode),
->> +		/* The xdr layer may allocate pages here. */
->> 		.acl_pages = pages,
->> -		.acl_len = buflen,
->> 	};
->> 	struct nfs_getaclres res = {
->> 		.acl_len = buflen,
->> @@ -4453,32 +4450,25 @@ static ssize_t __nfs4_get_acl_uncached(struct inode *inode, void *buf, size_t bu
->> 		.rpc_argp = &args,
->> 		.rpc_resp = &res,
->> 	};
->> -	unsigned int npages = DIV_ROUND_UP(buflen, PAGE_SIZE);
->> 	int ret = -ENOMEM, i;
->> 
->> -	/* As long as we're doing a round trip to the server anyway,
->> -	 * let's be prepared for a page of acl data. */
->> -	if (npages == 0)
->> -		npages = 1;
->> -	if (npages > ARRAY_SIZE(pages))
->> -		return -ERANGE;
->> -
->> -	for (i = 0; i < npages; i++) {
->> -		pages[i] = alloc_page(GFP_KERNEL);
->> -		if (!pages[i])
->> -			goto out_free;
->> -	}
->> +	/*
->> +	 * There will be some data returned by the server, how much is not
->> +	 * known yet. Allocate one page and let the XDR layer allocate
->> +	 * more if needed.
->> +	 */
->> +	pages[0] = alloc_page(GFP_KERNEL);
->> 
->> 	/* for decoding across pages */
->> 	res.acl_scratch = alloc_page(GFP_KERNEL);
->> 	if (!res.acl_scratch)
->> 		goto out_free;
->> 
->> -	args.acl_len = npages * PAGE_SIZE;
->> +	args.acl_len = ARRAY_SIZE(pages) << PAGE_SHIFT;
->> 	args.acl_pgbase = 0;
->> 
->> -	dprintk("%s  buf %p buflen %zu npages %d args.acl_len %zu\n",
->> -		__func__, buf, buflen, npages, args.acl_len);
->> +	dprintk("%s  buf %p buflen %zu args.acl_len %zu\n",
->> +		__func__, buf, buflen, args.acl_len);
->> 	ret = nfs4_call_sync(NFS_SERVER(inode)->client, NFS_SERVER(inode),
->> 			     &msg, &args.seq_args, &res.seq_res, 0);
->> 	if (ret)
->> @@ -4503,7 +4493,7 @@ static ssize_t __nfs4_get_acl_uncached(struct inode *inode, void *buf, size_t bu
->> out_ok:
->> 	ret = res.acl_len;
->> out_free:
->> -	for (i = 0; i < npages; i++)
->> +	for (i = 0; i < ARRAY_SIZE(pages) && pages[i]; i++)
->> 		if (pages[i])
->> 			__free_page(pages[i]);
-> 
-> What happens now when the server tries to return an ACL that won't fit
-> in the above array? Do we still return ERANGE?
-
-Yes, the XDR layer will set NFS4_ACL_TRUNC if the ACL data doesn’t fit in args.acl_len, and __nfs4_get_acl_uncached still checks for this flag, returning -ERANGE if set.
-
-> 
-> Also, are we still safe w.r.t. checking that we don't copy more than
-> 'buflen' bytes of data?
-
-Yes, the xdr inline page filler enforces this - and we set the max in nfs4_xdr_enc_getacl:
-
-      xdr_inline_pages(&req->rq_rcv_buf, replen << 2,
-                args->acl_pages, args->acl_pgbase, args->acl_len);
-
-> 
->> 	if (res.acl_scratch)
->> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
->> index 5be2868..4e2e2da 100644
->> --- a/fs/nfs/nfs4xdr.c
->> +++ b/fs/nfs/nfs4xdr.c
->> @@ -5207,8 +5207,6 @@ static int decode_getacl(struct xdr_stream *xdr, struct rpc_rqst *req,
->> 	if ((status = decode_op_hdr(xdr, OP_GETATTR)) != 0)
->> 		goto out;
->> 
->> -	xdr_enter_page(xdr, xdr->buf->page_len);
-> 
-> Why is this being removed?
-
-Because it BUG()s! ;)
-
-I must admit that I don’t get why xdr_enter_page() doesn’t work when the XDR layer does the page allocation, but it does not — and the nfs3xdr ACL code (which uses the XDR layer allocation) also doesn’t call this.  It worked well without this, so I just removed it and didn’t investigate why.
+Resending to Trond’s correct email address.
 
 -dros
 
+On Dec 17, 2013, at 11:51 AM, Weston Andros Adamson <dros@netapp.com> wrote:
+
+> When a task enters call_refreshresult with status 0 from call_refresh and
+> !rpcauth_uptodatecred(task) it enters call_refresh again with no rate-limiting
+> or max number of retries.
 > 
->> -
->> 	/* Calculate the offset of the page data */
->> 	pg_offset = xdr->buf->head[0].iov_len;
->> 
+> Instead of trying forever, make use of the retry path that other errors use.
 > 
+> This only seems to be possible when the crrefresh callback is gss_refresh_null,
+> which only happens when destroying the context.
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> To reproduce:
+> 
+> 1) mount with sec=krb5 (or sec=sys with krb5 negotiated for non FSID specific
+>   operations).
+> 
+> 2) reboot - the client will be stuck and will need to be hard rebooted
+> 
+> BUG: soft lockup - CPU#0 stuck for 22s! [kworker/0:2:46]
+> Modules linked in: rpcsec_gss_krb5 nfsv4 nfs fscache ppdev crc32c_intel aesni_intel aes_x86_64 glue_helper lrw gf128mul ablk_helper cryptd serio_raw i2c_piix4 i2c_core e1000 parport_pc parport shpchp nfsd auth_rpcgss oid_registry exportfs nfs_acl lockd sunrpc autofs4 mptspi scsi_transport_spi mptscsih mptbase ata_generic floppy
+> irq event stamp: 195724
+> hardirqs last  enabled at (195723): [<ffffffff814a925c>] restore_args+0x0/0x30
+> hardirqs last disabled at (195724): [<ffffffff814b0a6a>] apic_timer_interrupt+0x6a/0x80
+> softirqs last  enabled at (195722): [<ffffffff8103f583>] __do_softirq+0x1df/0x276
+> softirqs last disabled at (195717): [<ffffffff8103f852>] irq_exit+0x53/0x9a
+> CPU: 0 PID: 46 Comm: kworker/0:2 Not tainted 3.13.0-rc3-branch-dros_testing+ #4
+> Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform, BIOS 6.00 07/31/2013
+> Workqueue: rpciod rpc_async_schedule [sunrpc]
+> task: ffff8800799c4260 ti: ffff880079002000 task.ti: ffff880079002000
+> RIP: 0010:[<ffffffffa0064fd4>]  [<ffffffffa0064fd4>] __rpc_execute+0x8a/0x362 [sunrpc]
+> RSP: 0018:ffff880079003d18  EFLAGS: 00000246
+> RAX: 0000000000000005 RBX: 0000000000000007 RCX: 0000000000000007
+> RDX: 0000000000000007 RSI: ffff88007aecbae8 RDI: ffff8800783d8900
+> RBP: ffff880079003d78 R08: ffff88006e30e9f8 R09: ffffffffa005a3d7
+> R10: ffff88006e30e7b0 R11: ffff8800783d8900 R12: ffffffffa006675e
+> R13: ffff880079003ce8 R14: ffff88006e30e7b0 R15: ffff8800783d8900
+> FS:  0000000000000000(0000) GS:ffff88007f200000(0000) knlGS:0000000000000000
+> CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+> CR2: 00007f3072333000 CR3: 0000000001a0b000 CR4: 00000000001407f0
+> Stack:
+> ffff880079003d98 0000000000000246 0000000000000000 ffff88007a9a4830
+> ffff880000000000 ffffffff81073f47 ffff88007f212b00 ffff8800799c4260
+> ffff8800783d8988 ffff88007f212b00 ffffe8ffff604800 0000000000000000
+> Call Trace:
+> [<ffffffff81073f47>] ? trace_hardirqs_on_caller+0x145/0x1a1
+> [<ffffffffa00652d3>] rpc_async_schedule+0x27/0x32 [sunrpc]
+> [<ffffffff81052974>] process_one_work+0x211/0x3a5
+> [<ffffffff810528d5>] ? process_one_work+0x172/0x3a5
+> [<ffffffff81052eeb>] worker_thread+0x134/0x202
+> [<ffffffff81052db7>] ? rescuer_thread+0x280/0x280
+> [<ffffffff81052db7>] ? rescuer_thread+0x280/0x280
+> [<ffffffff810584a0>] kthread+0xc9/0xd1
+> [<ffffffff810583d7>] ? __kthread_parkme+0x61/0x61
+> [<ffffffff814afd6c>] ret_from_fork+0x7c/0xb0
+> [<ffffffff810583d7>] ? __kthread_parkme+0x61/0x61
+> Code: e8 87 63 fd e0 c6 05 10 dd 01 00 01 48 8b 43 70 4c 8d 6b 70 45 31 e4 a8 02 0f 85 d5 02 00 00 4c 8b 7b 48 48 c7 43 48 00 00 00 00 <4c> 8b 4b 50 4d 85 ff 75 0c 4d 85 c9 4d 89 cf 0f 84 32 01 00 00
+> 
+> And the output of "rpcdebug -m rpc -s all":
+> 
+> RPC:    61 call_refresh (status 0)
+> RPC:    61 call_refresh (status 0)
+> RPC:    61 refreshing RPCSEC_GSS cred ffff88007a413cf0
+> RPC:    61 refreshing RPCSEC_GSS cred ffff88007a413cf0
+> RPC:    61 call_refreshresult (status 0)
+> RPC:    61 refreshing RPCSEC_GSS cred ffff88007a413cf0
+> RPC:    61 call_refreshresult (status 0)
+> RPC:    61 refreshing RPCSEC_GSS cred ffff88007a413cf0
+> RPC:    61 call_refresh (status 0)
+> RPC:    61 call_refreshresult (status 0)
+> RPC:    61 call_refresh (status 0)
+> RPC:    61 call_refresh (status 0)
+> RPC:    61 refreshing RPCSEC_GSS cred ffff88007a413cf0
+> RPC:    61 call_refreshresult (status 0)
+> RPC:    61 call_refresh (status 0)
+> RPC:    61 refreshing RPCSEC_GSS cred ffff88007a413cf0
+> RPC:    61 call_refresh (status 0)
+> RPC:    61 refreshing RPCSEC_GSS cred ffff88007a413cf0
+> RPC:    61 refreshing RPCSEC_GSS cred ffff88007a413cf0
+> RPC:    61 call_refreshresult (status 0)
+> RPC:    61 call_refresh (status 0)
+> RPC:    61 call_refresh (status 0)
+> RPC:    61 call_refresh (status 0)
+> RPC:    61 call_refresh (status 0)
+> RPC:    61 call_refreshresult (status 0)
+> RPC:    61 refreshing RPCSEC_GSS cred ffff88007a413cf0
+> Signed-off-by: Weston Andros Adamson <dros@netapp.com>
+> ---
+> net/sunrpc/clnt.c | 9 +++++++--
+> 1 file changed, 7 insertions(+), 2 deletions(-)
+> 
+> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+> index f09b7db..5f585a7 100644
+> --- a/net/sunrpc/clnt.c
+> +++ b/net/sunrpc/clnt.c
+> @@ -1529,9 +1529,14 @@ call_refreshresult(struct rpc_task *task)
+> 	task->tk_action = call_refresh;
+> 	switch (status) {
+> 	case 0:
+> -		if (rpcauth_uptodatecred(task))
+> +		if (rpcauth_uptodatecred(task)) {
+> 			task->tk_action = call_allocate;
+> -		return;
+> +			return;
+> +		}
+> +		/*
+> +		 * Use rate-limiting and a max number of retries if refresh
+> +		 * had status 0 but failed to update the cred.
+> +		 */
+> 	case -ETIMEDOUT:
+> 		rpc_delay(task, 3*HZ);
+> 	case -EAGAIN:
+> -- 
+> 1.8.3.1 (Apple Git-46)
+> 
 
