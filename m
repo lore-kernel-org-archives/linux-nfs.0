@@ -1,117 +1,150 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f50.google.com ([209.85.220.50]:60884 "EHLO
-	mail-pa0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754528Ab3L3L0F (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 30 Dec 2013 06:26:05 -0500
-Received: by mail-pa0-f50.google.com with SMTP id kp14so9618643pab.23
-        for <linux-nfs@vger.kernel.org>; Mon, 30 Dec 2013 03:26:05 -0800 (PST)
-Message-ID: <52C15847.9030208@gmail.com>
-Date: Mon, 30 Dec 2013 19:25:59 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
-MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: "J.,Bruce Fields" <bfields@fieldses.org>,
-        Gareth Williams <gareth@garethwilliams.me.uk>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        trond.myklebust@primarydata.com
-Subject: [PATCH 2/2] NFSD: supports nfsv4 service without rpcbind
-References: <52B47A12.2070202@garethwilliams.me.uk>	<20131223173956.GA9221@fieldses.org>	<52BD53CA.5050205@gmail.com>	<7FD776EA-EAA8-41E0-9567-BF3924D365AC@oracle.com>	<20131227184309.GA9161@fieldses.org>	<01763B6D-C8CB-46B7-87AC-CE189496019A@oracle.com>	<6E281EC9-49CB-4BDA-BDF3-7A6F4B703156@gmail.com>	<CAB6yy34woYZaJ=k=Ga9iT_mmBWBiCUj1SprT=Se2SVrOu6YO_Q@mail.gmail.com>	<5D65FDE6-D1AB-442C-BFD8-141AB87FF321@gmail.com> <CAB6yy379-A8fgLpQo+ppx5V93P9pXcabvmBJNTZ5hXxeJMuxBg@mail.gmail.com> <52C1577B.9080100@gmail.com>
-In-Reply-To: <52C1577B.9080100@gmail.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from mx1.redhat.com ([209.132.183.28]:47634 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750940Ab3LRUGa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 18 Dec 2013 15:06:30 -0500
+Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id rBIK6Uw8018594
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Wed, 18 Dec 2013 15:06:30 -0500
+Received: from tasleson.csb (vpn-229-185.phx2.redhat.com [10.3.229.185])
+	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id rBIK6Tdn014493
+	for <linux-nfs@vger.kernel.org>; Wed, 18 Dec 2013 15:06:29 -0500
+From: Tony Asleson <tasleson@redhat.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 2/3] exportfs.c: Remove trailing whitespace
+Date: Wed, 18 Dec 2013 14:06:28 -0600
+Message-Id: <1387397189-9591-2-git-send-email-tasleson@redhat.com>
+In-Reply-To: <1387397189-9591-1-git-send-email-tasleson@redhat.com>
+References: <1387397189-9591-1-git-send-email-tasleson@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-1. set vs_ignore_err for nfsd_version4
-2. don't start lockd when only supports nfsv4
-
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+Signed-off-by: Tony Asleson <tasleson@redhat.com>
 ---
- fs/nfsd/netns.h    |  1 +
- fs/nfsd/nfs4proc.c |  1 +
- fs/nfsd/nfssvc.c   | 26 +++++++++++++++++++++-----
- 3 files changed, 23 insertions(+), 5 deletions(-)
+ utils/exportfs/exportfs.c | 30 +++++++++++++++---------------
+ 1 file changed, 15 insertions(+), 15 deletions(-)
 
-diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
-index 849a7c3..d32b3aa 100644
---- a/fs/nfsd/netns.h
-+++ b/fs/nfsd/netns.h
-@@ -95,6 +95,7 @@ struct nfsd_net {
- 	time_t nfsd4_grace;
- 
- 	bool nfsd_net_up;
-+	bool lockd_up;
- 
- 	/*
- 	 * Time of server startup
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 419572f..9320986 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1881,6 +1881,7 @@ struct svc_version	nfsd_version4 = {
- 		.vs_proc	= nfsd_procedures4,
- 		.vs_dispatch	= nfsd_dispatch,
- 		.vs_xdrsize	= NFS4_SVC_XDRSIZE,
-+		.vs_ignore_err	= 1,
- };
- 
- /*
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index 760c85a..55b5b57 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -241,6 +241,11 @@ static void nfsd_shutdown_generic(void)
- 	nfsd_racache_shutdown();
- }
- 
-+static bool nfsd_needs_lockd(void)
-+{
-+	return (nfsd_versions[2] != NULL) || (nfsd_versions[3] != NULL);
-+}
-+
- static int nfsd_startup_net(int nrservs, struct net *net)
+diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
+index 3ca45c1..019961b 100644
+--- a/utils/exportfs/exportfs.c
++++ b/utils/exportfs/exportfs.c
+@@ -65,19 +65,19 @@ static int _lockfd = -1;
+  *	writes A+B		writes A+C
+  *
+  * The locking in support/export/xtab.c will prevent mountd from
+- * seeing a partially written version of etab, and will prevent 
++ * seeing a partially written version of etab, and will prevent
+  * the two writers above from writing simultaneously and
+  * corrupting etab, but to prevent problems like the above we
+  * need these additional lockfile() routines.
+  */
+-static void 
++static void
+ grab_lockfile()
  {
- 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
-@@ -255,9 +260,14 @@ static int nfsd_startup_net(int nrservs, struct net *net)
- 	ret = nfsd_init_socks(net);
- 	if (ret)
- 		goto out_socks;
--	ret = lockd_up(net);
--	if (ret)
--		goto out_socks;
-+
-+	if (nfsd_needs_lockd() && !nn->lockd_up) {
-+		ret = lockd_up(net);
-+		if (ret)
-+			goto out_socks;
-+		nn->lockd_up = 1;
-+	}
-+
- 	ret = nfs4_state_start_net(net);
- 	if (ret)
- 		goto out_lockd;
-@@ -266,7 +276,10 @@ static int nfsd_startup_net(int nrservs, struct net *net)
- 	return 0;
- 
- out_lockd:
--	lockd_down(net);
-+	if (nn->lockd_up) {
-+		lockd_down(net);
-+		nn->lockd_up = 0;
-+	}
- out_socks:
- 	nfsd_shutdown_generic();
- 	return ret;
-@@ -277,7 +290,10 @@ static void nfsd_shutdown_net(struct net *net)
- 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
- 
- 	nfs4_state_shutdown_net(net);
--	lockd_down(net);
-+	if (nn->lockd_up) {
-+		lockd_down(net);
-+		nn->lockd_up = 0;
-+	}
- 	nn->nfsd_net_up = false;
- 	nfsd_shutdown_generic();
+ 	_lockfd = open(lockfile, O_CREAT|O_RDWR, 0666);
+-	if (_lockfd != -1) 
++	if (_lockfd != -1)
+ 		lockf(_lockfd, F_LOCK, 0);
  }
+-static void 
++static void
+ release_lockfile()
+ {
+ 	if (_lockfd != -1)
+@@ -271,7 +271,7 @@ exports_update(int verbose)
+ 		exports_update_one(exp, verbose);
+ 	}
+ }
+-			
++
+ /*
+  * export_all finds all entries and
+  *    marks them xtabent and mayexport so that they get exported
+@@ -286,7 +286,7 @@ export_all(int verbose)
+ 		for (exp = exportlist[i].p_head; exp; exp = exp->m_next) {
+ 			if (verbose)
+ 				printf("exporting %s:%s\n",
+-				       exp->m_client->m_hostname, 
++				       exp->m_client->m_hostname,
+ 				       exp->m_export.e_path);
+ 			exp->m_xtabent = 1;
+ 			exp->m_mayexport = 1;
+@@ -333,7 +333,7 @@ exportfs(char *arg, char *options, int verbose)
+ 		goto out;
+ 
+ 	if (verbose)
+-		printf("exporting %s:%s\n", exp->m_client->m_hostname, 
++		printf("exporting %s:%s\n", exp->m_client->m_hostname,
+ 			exp->m_export.e_path);
+ 	exp->m_xtabent = 1;
+ 	exp->m_mayexport = 1;
+@@ -391,7 +391,7 @@ unexportfs(char *arg, int verbose)
+ 			else
+ #endif
+ 				printf("unexporting %s:%s\n",
+-					exp->m_client->m_hostname, 
++					exp->m_client->m_hostname,
+ 					exp->m_export.e_path);
+ 		}
+ #if 0
+@@ -402,7 +402,7 @@ unexportfs(char *arg, int verbose)
+ 		exp->m_mayexport = 0;
+ 		success = 1;
+ 	}
+-	if (!success) 
++	if (!success)
+ 		xlog(L_ERROR, "Could not find '%s:%s' to unexport.", arg, path);
+ 
+ 	freeaddrinfo(ai);
+@@ -421,7 +421,7 @@ static int can_test(void)
+ 	/*
+ 	 * We introduce tolerance of 1 day to ensure that we use a
+ 	 * LONG_MAX for the expiry timestamp before it is actually
+-	 * needed. To use LONG_MAX, the kernel code must have 
++	 * needed. To use LONG_MAX, the kernel code must have
+ 	 * commit 2f74f972  (sunrpc: prepare NFS for 2038).
+ 	 */
+ 	if (time(NULL) > INT_TO_LONG_THRESHOLD_SECS)
+@@ -620,7 +620,7 @@ export_d_read(const char *dname)
+ 		int fname_len;
+ 
+ 
+-		if (d->d_type != DT_UNKNOWN 
++		if (d->d_type != DT_UNKNOWN
+ 		    && d->d_type != DT_REG
+ 		    && d->d_type != DT_LNK)
+ 			continue;
+@@ -629,7 +629,7 @@ export_d_read(const char *dname)
+ 
+ #define _EXT_EXPORT_SIZ   (sizeof(_EXT_EXPORT) - 1)
+ 		namesz = strlen(d->d_name);
+-		if (!namesz 
++		if (!namesz
+ 		    || namesz < _EXT_EXPORT_SIZ + 1
+ 		    || strcmp(d->d_name + (namesz - _EXT_EXPORT_SIZ),
+ 			      _EXT_EXPORT))
+@@ -643,7 +643,7 @@ export_d_read(const char *dname)
+ 
+ 		export_read(fname);
+ 	}
+-		
++
+ 	for (i = 0; i < n; i++)
+ 		free(namelist[i]);
+ 	free(namelist);
+@@ -721,8 +721,8 @@ dump(int verbose, int export_format)
+ 			if (ep->e_uuid)
+ 				c = dumpopt(c, "fsid=%s", ep->e_uuid);
+ 			if (ep->e_mountpoint)
+-				c = dumpopt(c, "mountpoint%s%s", 
+-					    ep->e_mountpoint[0]?"=":"", 
++				c = dumpopt(c, "mountpoint%s%s",
++					    ep->e_mountpoint[0]?"=":"",
+ 					    ep->e_mountpoint);
+ 			if (ep->e_anonuid != 65534)
+ 				c = dumpopt(c, "anonuid=%d", ep->e_anonuid);
 -- 
-1.8.4.2
+1.8.2.1
+
