@@ -1,84 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ee0-f53.google.com ([74.125.83.53]:38835 "EHLO
-	mail-ee0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751790Ab3LOPvz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 15 Dec 2013 10:51:55 -0500
-Received: by mail-ee0-f53.google.com with SMTP id b57so1723771eek.26
-        for <linux-nfs@vger.kernel.org>; Sun, 15 Dec 2013 07:51:54 -0800 (PST)
-From: Benny Halevy <bhalevy@primarydata.com>
-To: bfields@redhat.com
-Cc: linux-nfs@vger.kernel.org, Benny Halevy <bhalevy@primarydata.com>
-Subject: [PATCH v2 1/2] nfsd4: break from inner lookup loop in nfsd4_release_lockowner on first match
-Date: Sun, 15 Dec 2013 17:51:50 +0200
-Message-Id: <1387122710-23603-1-git-send-email-bhalevy@primarydata.com>
-In-Reply-To: <52ADCFC2.7060504@gmail.com>
-References: <52ADCFC2.7060504@gmail.com>
+Received: from fieldses.org ([174.143.236.118]:49153 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753552Ab3LSRJ2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 19 Dec 2013 12:09:28 -0500
+Date: Thu, 19 Dec 2013 12:09:27 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Sander Klein <roedie@roedie.nl>
+Cc: linux-nfs@vger.kernel.org, linux-nfs-owner@vger.kernel.org,
+        util-linux@vger.kernel.org
+Subject: Re: rpc.mountd high cpu usage
+Message-ID: <20131219170927.GA3013@fieldses.org>
+References: <889b64df295ba04d47f941762ebe0bac@roedie.nl>
+ <20131212154642.GA11521@fieldses.org>
+ <3e92cb841fa81d6a16f3d471cdd8bb20@roedie.nl>
+ <20131212212213.GC13467@fieldses.org>
+ <c50ec8735833f8c05a351928ae48b6df@roedie.nl>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <c50ec8735833f8c05a351928ae48b6df@roedie.nl>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Otherwise the lockowner may by added to "matches" more than once.
+On Fri, Dec 13, 2013 at 08:32:56PM +0100, Sander Klein wrote:
+> On , J. Bruce Fields wrote:
+> >>>I think what happens is that exportfs flushes the kernel's export cache
+> >>>at which point every use of an uncached export triggers an upcall to
+> >>>mountd.  That upcall is probably visible in the strace as a read of a
+> >>>file descriptor associated with /proc/net/sunrpc/nfsd.fh/content.
+> >>>
+> >>>That upcall is handled by nfs-utils/utils/mountd/cache.c:nfsd_fh(),
+> >>>which is given a filehandle fragment identifying the filesystem in
+> >>>question and has to match it to an export.
+> >>>
+> >>>That's done by match_fsid().  Which does do a stat of the export path,
+> >>>but not of all the devices....  That's probably happening in one of the
+> >>>libblkid calls in uuid_by_path()?  I wonder if there's something wrong
+> >>>with libblkid configuration or with the way we're using it?
+> >>
+> >>Is there any way I can help getting this fixed? My coding skills are
+> >>limited but I am very willing to help in any way I can.
+> >
+> >I wonder if ltrace could help determine if libblkid is where most of
+> >those stat's are coming from (and if so, which calls)?
+> >
+> >May also be worth reading up on libblkid (man libblkid, etc.) and
+> >checking your configuration to make sure there's nothing obvious broken
+> >there.  (If so, maybe the libblkid commandline tools would exhibit the
+> >same problem?)
+> 
+> I didn't have any config in /etc/blkid.conf and the manpage says it
+> will use EVALUATE=udev,scan which in fact scans through all the
+> /dev/disk/by-* dirs and parses the /proc/partitions. I put
+> 'EVALUATE=scan' in /etc/blkid.conf but that doesn't help. I
+> restarted anything NFS related...
+> 
+> I also attached ltrace to the rpc.mountd process. The output of the
+> trace is at http://pastebin.com/ika1Vetq . I'm not sure what I'm
+> looking for. The ltrace is done on a server with only 10 harddisks
+> but the strace showed the same behavour of newfstatat-ing every disk
+> in a lot of ways.
 
-Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
----
- fs/nfsd/nfs4state.c | 17 +++++++++++------
- 1 file changed, 11 insertions(+), 6 deletions(-)
+Hm.  I *think* that those SYS_262's are the newfstatat's.  And it looks
+like they happen as part of the implementation of blkid_devno_to_devname
+(just because you see that call start above the SYS_262's and return
+only after).
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 0874998..b04f765 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4192,6 +4192,7 @@ alloc_init_lock_stateowner(unsigned int strhashval, struct nfs4_client *clp, str
- 	/* It is the openowner seqid that will be incremented in encode in the
- 	 * case of new lockowners; so increment the lock seqid manually: */
- 	lo->lo_owner.so_seqid = lock->lk_new_lock_seqid + 1;
-+	INIT_LIST_HEAD(&lo->lo_list);
- 	hash_lockowner(lo, strhashval, clp, open_stp);
- 	return lo;
- }
-@@ -4646,7 +4647,6 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
- 	if (status)
- 		goto out;
- 
--	status = nfserr_locks_held;
- 	INIT_LIST_HEAD(&matches);
- 
- 	list_for_each_entry(sop, &nn->ownerstr_hashtbl[hashval], so_strhash) {
-@@ -4654,25 +4654,30 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
- 			continue;
- 		if (!same_owner_str(sop, owner, clid))
- 			continue;
-+		lo = lockowner(sop);
- 		list_for_each_entry(stp, &sop->so_stateids,
- 				st_perstateowner) {
--			lo = lockowner(sop);
--			if (check_for_locks(stp->st_file, lo))
--				goto out;
-+			if (check_for_locks(stp->st_file, lo)) {
-+				status = nfserr_locks_held;
-+				goto locks_held;
-+			}
- 			list_add(&lo->lo_list, &matches);
-+			break;
- 		}
- 	}
- 	/* Clients probably won't expect us to return with some (but not all)
- 	 * of the lockowner state released; so don't release any until all
- 	 * have been checked. */
- 	status = nfs_ok;
-+locks_held:
- 	while (!list_empty(&matches)) {
--		lo = list_entry(matches.next, struct nfs4_lockowner,
-+		lo = list_first_entry(&matches, struct nfs4_lockowner,
- 								lo_list);
- 		/* unhash_stateowner deletes so_perclient only
- 		 * for openowners. */
- 		list_del(&lo->lo_list);
--		release_lockowner(lo);
-+		if (status == nfs_ok)
-+			release_lockowner(lo);
- 	}
- out:
- 	nfs4_unlock_state();
--- 
-1.8.3.1
+That is indeed called from utils/mountd/cache.c:get_uuid_blkdev().
 
+So libblkid is mapping device numbers to paths by stat'ing lots of stuff
+under /dev.
+
+I'm not sure what to do about that.... Cc'ing util-linux in case they
+can help.
+
+--b.
