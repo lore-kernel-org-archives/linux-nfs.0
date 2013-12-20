@@ -1,44 +1,166 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:51611 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755058Ab3LCVWM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 3 Dec 2013 16:22:12 -0500
-Date: Tue, 3 Dec 2013 16:22:11 -0500
-From: Dr Fields James Bruce <bfields@fieldses.org>
-To: Antti =?utf-8?B?VMO2bmt5csOk?= <daedalus@pingtimeout.net>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: Patch for mapping EILSEQ into NFSERR_INVAL
-Message-ID: <20131203212210.GC2648@fieldses.org>
-References: <529CEBC3.8060505@pingtimeout.net>
- <FA468B61-5F7E-4A88-A0BD-13BCF115282E@primarydata.com>
- <529CF322.4080701@pingtimeout.net>
- <20131203204806.GA2648@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20131203204806.GA2648@fieldses.org>
+Received: from bombadil.infradead.org ([198.137.202.9]:54504 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932829Ab3LTNZY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Dec 2013 08:25:24 -0500
+Message-Id: <20131220132521.857886904@bombadil.infradead.org>
+Date: Fri, 20 Dec 2013 05:16:40 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: viro@zeniv.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-mtd@lists.infradead.org, Mark Fasheh <mfasheh@suse.com>,
+        Joel Becker <jlbec@evilplan.org>, reiserfs-devel@vger.kernel.org,
+        xfs@oss.sgi.com, jfs-discussion@lists.sourceforge.net,
+        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
+        Andreas Gruenbacher <andreas.gruenbacher@linbit.com>,
+        Jan Kara <jack@suse.cz>
+Subject: [PATCH 05/21] fs: add generic xattr_acl handlers
+References: <20131220131635.650823732@bombadil.infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Dec 03, 2013 at 03:48:06PM -0500, Dr Fields James Bruce wrote:
-> OK, it makes sense that touching a file with a bad name would get an
-> error, but you're seeing that cause later creates of files on the same
-> filesystem fail.  I can't figure out why that would happen.
-...
+With the ->set_acl inode operation we can implement the Posix ACL
+xattr handlers in generic code instead of duplicating them all
+over the tree.
 
-So maybe there's some other problem here, but...
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+Reviewed-by: Jan Kara <jack@suse.cz>
+---
+ fs/posix_acl.c                  |  102 +++++++++++++++++++++++++++++++++++++++
+ include/linux/posix_acl_xattr.h |    3 ++
+ 2 files changed, 105 insertions(+)
 
-> > >>Given that widely used ntfs-3g FUSE module also returns EILSEQ on the same case (I tested this) I would argue that a fix should be done for upstream especially since RFC5661 clearly defines that invalid UTF-8 sequence should map into NFSERR_INVAL, exact quote: "Where the client sends an invalid UTF-8 string, the server should return NFS4ERR_INVAL (see Table 5)".
-> > >The NFS client will then happily map that straight into EINVAL for you...
+diff --git a/fs/posix_acl.c b/fs/posix_acl.c
+index e329c21..3c0f659 100644
+--- a/fs/posix_acl.c
++++ b/fs/posix_acl.c
+@@ -17,6 +17,7 @@
+ #include <linux/sched.h>
+ #include <linux/posix_acl.h>
+ #include <linux/posix_acl_xattr.h>
++#include <linux/xattr.h>
+ #include <linux/export.h>
+ #include <linux/user_namespace.h>
+ 
+@@ -610,3 +611,104 @@ posix_acl_to_xattr(struct user_namespace *user_ns, const struct posix_acl *acl,
+ 	return real_size;
+ }
+ EXPORT_SYMBOL (posix_acl_to_xattr);
++
++static int
++posix_acl_xattr_get(struct dentry *dentry, const char *name,
++		void *value, size_t size, int type)
++{
++	struct posix_acl *acl;
++	int error;
++
++	if (!IS_POSIXACL(dentry->d_inode))
++		return -EOPNOTSUPP;
++	if (S_ISLNK(dentry->d_inode->i_mode))
++		return -EOPNOTSUPP;
++
++	acl = get_acl(dentry->d_inode, type);
++	if (IS_ERR(acl))
++		return PTR_ERR(acl);
++	if (acl == NULL)
++		return -ENODATA;
++
++	error = posix_acl_to_xattr(&init_user_ns, acl, value, size);
++	posix_acl_release(acl);
++
++	return error;
++}
++
++static int
++posix_acl_xattr_set(struct dentry *dentry, const char *name,
++		const void *value, size_t size, int flags, int type)
++{
++	struct inode *inode = dentry->d_inode;
++	struct posix_acl *acl = NULL;
++	int ret;
++
++	if (!IS_POSIXACL(inode))
++		return -EOPNOTSUPP;
++	if (!inode->i_op->set_acl)
++		return -EOPNOTSUPP;
++
++	if (type == ACL_TYPE_DEFAULT && !S_ISDIR(inode->i_mode))
++		return value ? -EACCES : 0;
++	if (!inode_owner_or_capable(inode))
++		return -EPERM;
++
++	if (value) {
++		acl = posix_acl_from_xattr(&init_user_ns, value, size);
++		if (IS_ERR(acl))
++			return PTR_ERR(acl);
++
++		if (acl) {
++			ret = posix_acl_valid(acl);
++			if (ret)
++				goto out;
++		}
++	}
++
++	ret = inode->i_op->set_acl(inode, acl, type);
++out:
++	posix_acl_release(acl);
++	return ret;
++}
++
++static size_t
++posix_acl_xattr_list(struct dentry *dentry, char *list, size_t list_size,
++		const char *name, size_t name_len, int type)
++{
++	const char *xname;
++	size_t size;
++
++	if (!IS_POSIXACL(dentry->d_inode))
++		return -EOPNOTSUPP;
++	if (S_ISLNK(dentry->d_inode->i_mode))
++		return -EOPNOTSUPP;
++
++	if (type == ACL_TYPE_ACCESS)
++		xname = POSIX_ACL_XATTR_ACCESS;
++	else
++		xname = POSIX_ACL_XATTR_DEFAULT;
++
++	size = strlen(xname) + 1;
++	if (list && size <= list_size)
++		memcpy(list, xname, size);
++	return size;
++}
++
++const struct xattr_handler posix_acl_access_xattr_handler = {
++	.prefix = POSIX_ACL_XATTR_ACCESS,
++	.flags = ACL_TYPE_ACCESS,
++	.list = posix_acl_xattr_list,
++	.get = posix_acl_xattr_get,
++	.set = posix_acl_xattr_set,
++};
++EXPORT_SYMBOL_GPL(posix_acl_access_xattr_handler);
++
++const struct xattr_handler posix_acl_default_xattr_handler = {
++	.prefix = POSIX_ACL_XATTR_DEFAULT,
++	.flags = ACL_TYPE_DEFAULT,
++	.list = posix_acl_xattr_list,
++	.get = posix_acl_xattr_get,
++	.set = posix_acl_xattr_set,
++};
++EXPORT_SYMBOL_GPL(posix_acl_default_xattr_handler);
+diff --git a/include/linux/posix_acl_xattr.h b/include/linux/posix_acl_xattr.h
+index ad93ad0..6f14ee2 100644
+--- a/include/linux/posix_acl_xattr.h
++++ b/include/linux/posix_acl_xattr.h
+@@ -69,4 +69,7 @@ struct posix_acl *posix_acl_from_xattr(struct user_namespace *user_ns,
+ int posix_acl_to_xattr(struct user_namespace *user_ns,
+ 		       const struct posix_acl *acl, void *buffer, size_t size);
+ 
++extern const struct xattr_handler posix_acl_access_xattr_handler;
++extern const struct xattr_handler posix_acl_default_xattr_handler;
++
+ #endif	/* _POSIX_ACL_XATTR_H */
+-- 
+1.7.10.4
 
-This seems like a spec bug?
 
-NFS4ERR_INVAL only makes sense if you could really mandate UTF-8 on the
-wire all the time.  But I don't know what other error would work.
-
-I guess a client could map INVAL to EILSEQ on open or lookup (is there
-any other reason a correct client should ever see INVAL on those ops?).
-Or do that only if fs_charset is supported and has
-FSCHARSET_CAP4_ALLOWS_ONLY_UTF8 set.  Yuch.
-
---b.
