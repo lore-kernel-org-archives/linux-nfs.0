@@ -1,95 +1,115 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay.parallels.com ([195.214.232.42]:55120 "EHLO
-	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751043Ab3LCHY7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 3 Dec 2013 02:24:59 -0500
-Message-ID: <529D8733.4070703@parallels.com>
-Date: Tue, 3 Dec 2013 11:24:35 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-MIME-Version: 1.0
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-CC: Christoph Hellwig <hch@infradead.org>,
-        Viro Alexander <viro@ZenIV.linux.org.uk>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Devel FS Linux <linux-fsdevel@vger.kernel.org>,
-        Torvalds Linus <torvalds@linux-foundation.org>,
-        Eric Biederman <ebiederm@xmission.com>
-Subject: Re: [PATCH 00/11] [RFC] repair net namespace damage to rpc_pipefs
-References: <20131201131441.790963326@bombadil.infradead.org> <20131201181329.GC10323@ZenIV.linux.org.uk> <20131202081233.GA6953@infradead.org> <3C65EB4C-6592-44F8-B08D-E5A9EFD6C8C6@primarydata.com> <529C982B.2030906@parallels.com> <5872AE74-DF03-42E2-A21B-F8E35634CD1D@primarydata.com>
-In-Reply-To: <5872AE74-DF03-42E2-A21B-F8E35634CD1D@primarydata.com>
-Content-Type: text/plain; charset="UTF-8"; format=flowed
+Received: from mail-ie0-f169.google.com ([209.85.223.169]:44959 "EHLO
+	mail-ie0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750866Ab3LTTGP convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Dec 2013 14:06:15 -0500
+Received: by mail-ie0-f169.google.com with SMTP id e14so3618542iej.14
+        for <linux-nfs@vger.kernel.org>; Fri, 20 Dec 2013 11:06:15 -0800 (PST)
+Received: from [192.168.1.136] (c-98-209-19-95.hsd1.mi.comcast.net. [98.209.19.95])
+        by mx.google.com with ESMTPSA id ck2sm13315498igb.0.2013.12.20.11.06.14
+        for <linux-nfs@vger.kernel.org>
+        (version=TLSv1 cipher=ECDHE-RSA-RC4-SHA bits=128/128);
+        Fri, 20 Dec 2013 11:06:14 -0800 (PST)
+Subject: [Lsf-pc] LSF/MM 2014 Call For Proposals
+Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
+Content-Type: text/plain; charset=us-ascii
+From: Mel Gorman <mgorman@suse.de>
+Date: Fri, 20 Dec 2013 09:30:22 +0000
+Cc: lsf-pc@lists.linux-foundation.org, linux-kernel@vger.kernel.org
+Message-Id: <20131220093022.GV11295@suse.de>
+To: linux-scsi@vger.kernel.org, linux-ide@vger.kernel.org, linux-mm@kvack.org,
+        linux-fsdevel@vger.kernel.org
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-02.12.2013 19:58, Trond Myklebust пишет:
->
-> On Dec 2, 2013, at 9:24, Stanislav Kinsbursky <skinsbursky@parallels.com> wrote:
->
->> 02.12.2013 17:44, Trond Myklebust пишет:
->>>
->>> On Dec 2, 2013, at 3:12, Christoph Hellwig <hch@infradead.org> wrote:
->>>
->>>> On Sun, Dec 01, 2013 at 06:13:29PM +0000, Al Viro wrote:
->>>>> Making the series no-go in that form, obviously.
->>>>
->>>> Looking at the mess it made I'd almost be tempted to say a little leak
->>>> for a less used features is better than lots of pain for everyone..
->>>>
->>>> Looking at the mess it made I'm really upset.
->>>>
->>>>>> Given that the namespace kraken has infected various internal filesystem
->>>>>> and will get more soon I suspect this problem is or will become generic
->>>>>> and will need a proper solution anyway.  Al, any good ideas how to deal
->>>>>> with this?  Most straight forward way would be to add a counter of
->>>>>> user vfsmount to the superblock and methods when it goes to 1 and 0,
->>>>>> but that seems a bit ugly.
->>>>>
->>>>> Folks, please, _please_, let's formulate the lifecycle rules first; we
->>>>> already had way too much trouble from putting mechanism first only to
->>>>> run into questions like the above ("what happens if somebody tries to
->>>>> allocate a PID in pid_ns that is already scheduled for shutdown?").
->>>>> Remember the (recurring) fun with kobject-related lifetime issues?
->>>>> Or rpc_pipefs notifier ugliness, for that matter...
->>>>
->>>> I'll have to let the net namespace folks chime in for that, as far as
->>>> I'm concerned it's a featured better config'ed off.  If they can't come
->>>> up with anything better the procfs hack above would be it.
->>>
->>> The lifetime of the kernel mount only needs to match that of the rpc_client, since each rpc_client is associated to a single net namespace, and each net namespace is in a 1-1 relationship with an rpc_pipefs super block.
->>>
->>> IOW: move the kernel mount/umount back to the rpc_client create/destroy methods and all should be well.
->>>
->>
->> I'm sorry, guys, if I'm missing the point.
->> But there was the reason, why all this notifier infrastructure was introduced:
->>
->> "RPC pipefs superblock should holds network namespace while active."
->>
->> And that's why:
->>
->> "RPC pipefs mount can't be performed in kernel context since new super block
->> will holds networks namespace reference and it's impossible to recognize, when
->> and how we have to release this mount point."
->>
->> https://lkml.org/lkml/2011/10/17/123
->>
->> Circumstances has changed and now all this can be fixed much simplier?
->
-> I’m just pointing out that we _do_ know when the rpc_clients no longer needs to access the (per-net namespace) super block. Once we've destroyed the rpc_clients (well, OK, technically once we've destroyed the struct rpc_xprts) that refer to that net namespace, then the kernel no longer needs the super block to be mounted anywhere.
->
-> IOW: if we add back a rpc_get_mount(net)/rpc_put_mount(net), then we can call the former when creating the rpc_xprt, and the latter when destroying it. The rpc_pipefs super block is destroyed when both user space and the kernel have umounted it. i.e. when all NFS super blocks from that net name space have been destroyed and the container has unmounted rpc_pipefs.
->
-> No?
->
+The annual Linux Storage, Filesystem and Memory Management Summit for
+2014 will be held on March 24th and 25th before the Linux Foundation
+Collaboration summit at The Meritage Resort, Napa Valley, CA.
 
-So, you are proposing to create/get per-net mount point either on user space action or rpc client creation?
-This should work, I suppose... The only thing which looks weird, is layer violation, when network namespace is being hold by mount point.
+	http://events.linuxfoundation.org/events/linux-storage-filesystem-and-mm-summit
+	http://events.linuxfoundation.org/events/collaboration-summit
 
-> Cheers,
->    Trond
->
+Note that we are running LSF/MM a little earlier in 2014 than in previous
+years.
 
+On behalf of the committee I would like to issue a call for agenda proposals
+that are suitable for cross-track discussion as well as more technical
+subjects for discussion in the breakout sessions.
+
+1) Suggestions for agenda topics should be sent before January 31st
+2014 to:
+
+	lsf-pc@lists.linux-foundation.org
+
+and cc the Linux list or lists that are most interested in it:
+
+	ATA: linux-ide@vger.kernel.org
+	FS: linux-fsdevel@vger.kernel.org
+	MM: linux-mm@kvack.org
+	SCSI: linux-scsi@vger.kernel.org
+
+People who need more time for visa applications should send proposals before
+January 15th. The committee will complete the first round of selections
+on that date to accommodate applications.
+
+Please remember to tag your subject with [LSF/MM TOPIC] to make it
+easier to track. Agenda topics and attendees will be selected by the
+program committee, but the final agenda will be formed by consensus of
+the attendees on the day.
+
+We will try to cap attendance at around 25-30 per track to facilitate
+discussions although the final numbers will depend on the room sizes at
+the venue.
+
+2) Requests to attend the summit should be sent to:
+
+	lsf-pc@lists.linux-foundation.org
+
+Please summarize what expertise you will bring to the meeting, and what
+you would like to discuss. Please also tag your email with [LSF/MM ATTEND]
+so there is less chance of it getting lost in the large mail pile.
+
+Presentations are allowed to guide discussion, but are strongly
+discouraged. There will be no recording or audio bridge. However, we expect
+that written minutes will be published as we did in previous years
+
+2013:
+	http://lwn.net/Articles/548089/
+
+2012:
+	http://lwn.net/Articles/490114/
+	http://lwn.net/Articles/490501/
+
+2011:
+	http://lwn.net/Articles/436871/
+	http://lwn.net/Articles/437066/
+
+3) If you have feedback on last year's meeting that we can use to
+improve this year's, please also send that to:
+
+	lsf-pc@lists.linux-foundation.org
+
+Thank you on behalf of the program committee:
+
+Storage:
+	James Bottomley
+	Martin K. Petersen
+
+Filesystems:
+	Trond Myklebust
+	Jeff Layton
+	Dave Chinner
+	Jan Kara
+	Ted Ts'o
+
+MM:
+	Rik van Riel
+	Michel Lespinasse
 
 -- 
-Best regards,
-Stanislav Kinsbursky
+Mel Gorman
+SUSE Labs
+_______________________________________________
+Lsf-pc mailing list
+Lsf-pc@lists.linux-foundation.org
+https://lists.linuxfoundation.org/mailman/listinfo/lsf-pc
