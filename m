@@ -1,123 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:11772 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750964Ab3LAO2V (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 1 Dec 2013 09:28:21 -0500
-Date: Sun, 1 Dec 2013 09:26:05 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: linux-nfs@vger.kernel.org, viro@zeniv.linux.org.uk,
-        linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH 01/11] sunrpc: allocate pipefs inodes using kmalloc
-Message-ID: <20131201092605.0a8cd907@tlielax.poochiereds.net>
-In-Reply-To: <20131201132009.815675002@bombadil.infradead.org>
-References: <20131201131441.790963326@bombadil.infradead.org>
-	<20131201132009.815675002@bombadil.infradead.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-wi0-f176.google.com ([209.85.212.176]:32866 "EHLO
+	mail-wi0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753342Ab3LTRKq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Dec 2013 12:10:46 -0500
+Received: by mail-wi0-f176.google.com with SMTP id hq4so8706512wib.15
+        for <linux-nfs@vger.kernel.org>; Fri, 20 Dec 2013 09:10:45 -0800 (PST)
+Received: from pavillion.lo (1.200.208.46.dyn.plus.net. [46.208.200.1])
+        by mx.google.com with ESMTPSA id ko3sm3019494wjb.23.2013.12.20.09.10.42
+        for <linux-nfs@vger.kernel.org>
+        (version=TLSv1 cipher=ECDHE-RSA-RC4-SHA bits=128/128);
+        Fri, 20 Dec 2013 09:10:44 -0800 (PST)
+Message-ID: <52B47A12.2070202@garethwilliams.me.uk>
+Date: Fri, 20 Dec 2013 17:10:42 +0000
+From: Gareth Williams <gareth@garethwilliams.me.uk>
+MIME-Version: 1.0
+To: linux-nfs@vger.kernel.org
+Subject: Question ref Running NFS at V4 Only
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, 01 Dec 2013 05:14:42 -0800
-Christoph Hellwig <hch@infradead.org> wrote:
+Hi,
 
-> There's not a lot of them, and not needing our own slab makes
-> initialization ordering a whole lot simpler.
-> 
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
-> ---
->  net/sunrpc/rpc_pipe.c |   39 +++++++--------------------------------
->  1 file changed, 7 insertions(+), 32 deletions(-)
-> 
-> diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-> index bf04b30..395eb5f 100644
-> --- a/net/sunrpc/rpc_pipe.c
-> +++ b/net/sunrpc/rpc_pipe.c
-> @@ -40,8 +40,6 @@
->  static struct file_system_type rpc_pipe_fs_type;
->  
->  
-> -static struct kmem_cache *rpc_inode_cachep __read_mostly;
-> -
->  #define RPC_UPCALL_TIMEOUT (30*HZ)
->  
->  static BLOCKING_NOTIFIER_HEAD(rpc_pipefs_notifier_list);
-> @@ -193,24 +191,21 @@ rpc_close_pipes(struct inode *inode)
->  static struct inode *
->  rpc_alloc_inode(struct super_block *sb)
->  {
-> -	struct rpc_inode *rpci;
-> -	rpci = (struct rpc_inode *)kmem_cache_alloc(rpc_inode_cachep, GFP_KERNEL);
-> +	struct rpc_inode *rpci = kmalloc(sizeof(struct rpc_inode), GFP_KERNEL);
->  	if (!rpci)
->  		return NULL;
-> -	return &rpci->vfs_inode;
-> -}
->  
-> -static void
-> -rpc_i_callback(struct rcu_head *head)
-> -{
-> -	struct inode *inode = container_of(head, struct inode, i_rcu);
-> -	kmem_cache_free(rpc_inode_cachep, RPC_I(inode));
-> +	inode_init_once(&rpci->vfs_inode);
-> +	rpci->private = NULL;
-> +	rpci->pipe = NULL;
-> +	init_waitqueue_head(&rpci->waitq);
-> +	return &rpci->vfs_inode;
->  }
->  
->  static void
->  rpc_destroy_inode(struct inode *inode)
->  {
-> -	call_rcu(&inode->i_rcu, rpc_i_callback);
-> +	kfree_rcu(inode, i_rcu);
->  }
->  
->  static int
-> @@ -1327,28 +1322,10 @@ static struct file_system_type rpc_pipe_fs_type = {
->  MODULE_ALIAS_FS("rpc_pipefs");
->  MODULE_ALIAS("rpc_pipefs");
->  
-> -static void
-> -init_once(void *foo)
-> -{
-> -	struct rpc_inode *rpci = (struct rpc_inode *) foo;
-> -
-> -	inode_init_once(&rpci->vfs_inode);
-> -	rpci->private = NULL;
-> -	rpci->pipe = NULL;
-> -	init_waitqueue_head(&rpci->waitq);
-> -}
-> -
->  int register_rpc_pipefs(void)
->  {
->  	int err;
->  
-> -	rpc_inode_cachep = kmem_cache_create("rpc_inode_cache",
-> -				sizeof(struct rpc_inode),
-> -				0, (SLAB_HWCACHE_ALIGN|SLAB_RECLAIM_ACCOUNT|
-> -						SLAB_MEM_SPREAD),
-> -				init_once);
-> -	if (!rpc_inode_cachep)
-> -		return -ENOMEM;
->  	err = rpc_clients_notifier_register();
->  	if (err)
->  		goto err_notifier;
-> @@ -1360,13 +1337,11 @@ int register_rpc_pipefs(void)
->  err_register:
->  	rpc_clients_notifier_unregister();
->  err_notifier:
-> -	kmem_cache_destroy(rpc_inode_cachep);
->  	return err;
->  }
->  
->  void unregister_rpc_pipefs(void)
->  {
->  	rpc_clients_notifier_unregister();
-> -	kmem_cache_destroy(rpc_inode_cachep);
->  	unregister_filesystem(&rpc_pipe_fs_type);
->  }
+I'm trying to run NFS with protocol version 4 only (that is, with v2 & 
+v3 disabled) on a CentOS 6.5 install running as a KVM guest.
 
-Makes sense...
+The RedHat documentation (amongst others) states that rpcbind isn't 
+needed with v4, but if I start nfs without rpcbind I get errors.
 
-Acked-by: Jeff Layton <jlayton@redhat.com>
+I've spent a couple of days (on and off) on Google trying to get an 
+answer and have posted on the CentOS forum, but the nearest I can find  
+is an archive on this mailing list from over two years ago (and it's not 
+identical):-
+
+http://www.spinics.net/lists/linux-nfs/msg16907.html
+
+In /etc/sysconfig/nfs I have:-
+
+MOUNTD_NFS_V2="no"
+MOUNTD_NFS_V3="no"
+
+RPCNFSDARGS="-N 2 -N 3"
+
+When I attempt to start NFS either using the init scripts  or manually 
+with:-
+
+rpc.nfsd -N 2 -N 3
+
+I get:-
+
+rpc.nfsd: writing fd to kernel failed: errno 111 (Connection refused)
+rpc.nfsd: unable to set any sockets for nfsd
+
+The mailing list archive's answer was that the kernel was too old, so I 
+installed 3.10.24 from elrepo but the symptom doesn't change.
+
+If I start rpcbind, then everything works, but as far as I can see, I 
+shouldn't have to do that unless I'm supporting v2 & v3.
+
+Finally, please accept my apologies for wasting your time if I've missed 
+something obvious.
+
+Kind regards,
+
+Gareth
