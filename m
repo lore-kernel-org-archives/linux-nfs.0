@@ -1,110 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qe0-f51.google.com ([209.85.128.51]:59693 "EHLO
-	mail-qe0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756056Ab3LEMet (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 5 Dec 2013 07:34:49 -0500
-Received: by mail-qe0-f51.google.com with SMTP id 1so14972554qee.24
-        for <linux-nfs@vger.kernel.org>; Thu, 05 Dec 2013 04:34:49 -0800 (PST)
-From: Jeff Layton <jlayton@redhat.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: steved@redhat.com, linux-nfs@vger.kernel.org
-Subject: [PATCH] sunrpc: add an "info" file for the dummy gssd pipe
-Date: Thu,  5 Dec 2013 07:34:44 -0500
-Message-Id: <1386246884-13364-1-git-send-email-jlayton@redhat.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:54503 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932824Ab3LTNZY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Dec 2013 08:25:24 -0500
+Message-Id: <20131220132521.682711410@bombadil.infradead.org>
+Date: Fri, 20 Dec 2013 05:16:39 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: viro@zeniv.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-mtd@lists.infradead.org, Mark Fasheh <mfasheh@suse.com>,
+        Joel Becker <jlbec@evilplan.org>, reiserfs-devel@vger.kernel.org,
+        xfs@oss.sgi.com, jfs-discussion@lists.sourceforge.net,
+        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
+        Andreas Gruenbacher <andreas.gruenbacher@linbit.com>,
+        Jan Kara <jack@suse.cz>
+Subject: [PATCH 04/21] fs: add a set_acl inode operation
+References: <20131220131635.650823732@bombadil.infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-rpc.gssd expects to see an "info" file in each clntXX dir. Since adding
-the dummy gssd pipe, users that run rpc.gssd see a lot of these messages
-spamming the logs:
+This will allow moving all the Posix ACL handling into the VFS and clean
+up tons of cruft in the filesystems.
 
-    rpc.gssd[508]: ERROR: can't open /var/lib/nfs/rpc_pipefs/gssd/clntXX/info: No such file or directory
-    rpc.gssd[508]: ERROR: failed to read service info
-
-Add a dummy gssd/clntXX/info file to help silence these messages.
-
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+Reviewed-by: Jan Kara <jack@suse.cz>
 ---
- net/sunrpc/rpc_pipe.c | 50 +++++++++++++++++++++++++++++++++++++++++++++++++-
- 1 file changed, 49 insertions(+), 1 deletion(-)
+ include/linux/fs.h |    1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/net/sunrpc/rpc_pipe.c b/net/sunrpc/rpc_pipe.c
-index 0b74c61..5d973b2 100644
---- a/net/sunrpc/rpc_pipe.c
-+++ b/net/sunrpc/rpc_pipe.c
-@@ -17,6 +17,7 @@
- #include <linux/fsnotify.h>
- #include <linux/kernel.h>
- #include <linux/rcupdate.h>
-+#include <linux/utsname.h>
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 121f11f..09f553c 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1580,6 +1580,7 @@ struct inode_operations {
+ 			   struct file *, unsigned open_flag,
+ 			   umode_t create_mode, int *opened);
+ 	int (*tmpfile) (struct inode *, struct dentry *, umode_t);
++	int (*set_acl)(struct inode *, struct posix_acl *, int);
+ } ____cacheline_aligned;
  
- #include <asm/ioctls.h>
- #include <linux/poll.h>
-@@ -1275,6 +1276,44 @@ static const struct rpc_pipe_ops gssd_dummy_pipe_ops = {
- 	.downcall	= dummy_downcall,
- };
- 
-+/*
-+ * Here we present a bogus "info" file to keep rpc.gssd happy. We don't expect
-+ * that it will ever use this info to handle an upcall, but rpc.gssd expects
-+ * that this file will be there and have a certain format.
-+ */
-+static int
-+rpc_show_dummy_info(struct seq_file *m, void *v)
-+{
-+	seq_printf(m, "RPC server: %s\n", utsname()->nodename);
-+	seq_printf(m, "service: foo (1) version 0\n");
-+	seq_printf(m, "address: 127.0.0.1\n");
-+	seq_printf(m, "protocol: tcp\n");
-+	seq_printf(m, "port: 0\n");
-+	return 0;
-+}
-+
-+static int
-+rpc_dummy_info_open(struct inode *inode, struct file *file)
-+{
-+	return single_open(file, rpc_show_dummy_info, NULL);
-+}
-+
-+static const struct file_operations rpc_dummy_info_operations = {
-+	.owner		= THIS_MODULE,
-+	.open		= rpc_dummy_info_open,
-+	.read		= seq_read,
-+	.llseek		= seq_lseek,
-+	.release	= single_release,
-+};
-+
-+static const struct rpc_filelist gssd_dummy_info_file[] = {
-+	[0] = {
-+		.name = "info",
-+		.i_fop = &rpc_dummy_info_operations,
-+		.mode = S_IFREG | S_IRUSR,
-+	},
-+};
-+
- /**
-  * rpc_gssd_dummy_populate - create a dummy gssd pipe
-  * @root:	root of the rpc_pipefs filesystem
-@@ -1312,9 +1351,18 @@ rpc_gssd_dummy_populate(struct dentry *root, struct rpc_pipe *pipe_data)
- 		goto out;
- 	}
- 
-+	ret = rpc_populate(clnt_dentry, gssd_dummy_info_file, 0, 1, NULL);
-+	if (ret) {
-+		__rpc_depopulate(gssd_dentry, gssd_dummy_clnt_dir, 0, 1);
-+		pipe_dentry = ERR_PTR(ret);
-+		goto out;
-+	}
-+
- 	pipe_dentry = rpc_mkpipe_dentry(clnt_dentry, "gssd", NULL, pipe_data);
--	if (IS_ERR(pipe_dentry))
-+	if (IS_ERR(pipe_dentry)) {
-+		__rpc_depopulate(clnt_dentry, gssd_dummy_info_file, 0, 1);
- 		__rpc_depopulate(gssd_dentry, gssd_dummy_clnt_dir, 0, 1);
-+	}
- out:
- 	dput(clnt_dentry);
- 	dput(gssd_dentry);
+ ssize_t rw_copy_check_uvector(int type, const struct iovec __user * uvector,
 -- 
-1.8.4.2
+1.7.10.4
+
 
