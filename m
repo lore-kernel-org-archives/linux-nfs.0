@@ -1,59 +1,120 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:43657 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754866Ab3LCUsJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 3 Dec 2013 15:48:09 -0500
-Date: Tue, 3 Dec 2013 15:48:06 -0500
-From: Dr Fields James Bruce <bfields@fieldses.org>
-To: Antti =?utf-8?B?VMO2bmt5csOk?= <daedalus@pingtimeout.net>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: Patch for mapping EILSEQ into NFSERR_INVAL
-Message-ID: <20131203204806.GA2648@fieldses.org>
-References: <529CEBC3.8060505@pingtimeout.net>
- <FA468B61-5F7E-4A88-A0BD-13BCF115282E@primarydata.com>
- <529CF322.4080701@pingtimeout.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <529CF322.4080701@pingtimeout.net>
+Received: from bombadil.infradead.org ([198.137.202.9]:54505 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932826Ab3LTNZY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Dec 2013 08:25:24 -0500
+Message-Id: <20131220132521.505028482@bombadil.infradead.org>
+Date: Fri, 20 Dec 2013 05:16:38 -0800
+From: Christoph Hellwig <hch@infradead.org>
+To: viro@zeniv.linux.org.uk
+Cc: linux-fsdevel@vger.kernel.org, linux-btrfs@vger.kernel.org,
+        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
+        linux-mtd@lists.infradead.org, Mark Fasheh <mfasheh@suse.com>,
+        Joel Becker <jlbec@evilplan.org>, reiserfs-devel@vger.kernel.org,
+        xfs@oss.sgi.com, jfs-discussion@lists.sourceforge.net,
+        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
+        Andreas Gruenbacher <andreas.gruenbacher@linbit.com>,
+        Jan Kara <jack@suse.cz>
+Subject: [PATCH 03/21] fs: add get_acl helper
+References: <20131220131635.650823732@bombadil.infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Dec 02, 2013 at 10:52:50PM +0200, Antti Tönkyrä wrote:
-> On 2013-12-02 22:45, Trond Myklebust wrote:
-> >On Dec 2, 2013, at 15:21, Antti Tönkyrä <daedalus@pingtimeout.net> wrote:
-> >
-> >>Hello,
-> >>
-> >>NTFS file system and some other filesystems seem to return EILSEQ when user passes badly formatted data. Current NFSv4 implementation does not map EILSEQ into any known NFSv4 error code which causes problems in some use cases. In my case I observed that if filesystem returns EILSEQ, the NFS share will begin I/O erroring until it's able to recover (If there are handles open to the files in the share, I/O errors will continue until they are closed after which the share recovers after small period of time).
+Factor out the code to get an ACL either from the inode or disk from
+check_acl, so that it can be used elsewhere later on.
 
-So how exactly does that happen?  I'd expect an error on open or lookup
-to prevent the client from ever getting a filehandle in the first place.
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+Reviewed-by: Jan Kara <jack@suse.cz>
+---
+ fs/namei.c                |   24 +++---------------------
+ fs/posix_acl.c            |   26 ++++++++++++++++++++++++++
+ include/linux/posix_acl.h |    2 ++
+ 3 files changed, 31 insertions(+), 21 deletions(-)
 
-Looking back at https://bugzilla.kernel.org/attachment.cgi?id=116211 ...
+diff --git a/fs/namei.c b/fs/namei.c
+index 3531dee..bcb838e 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -235,27 +235,9 @@ static int check_acl(struct inode *inode, int mask)
+ 	        return posix_acl_permission(inode, acl, mask & ~MAY_NOT_BLOCK);
+ 	}
+ 
+-	acl = get_cached_acl(inode, ACL_TYPE_ACCESS);
+-
+-	/*
+-	 * A filesystem can force a ACL callback by just never filling the
+-	 * ACL cache. But normally you'd fill the cache either at inode
+-	 * instantiation time, or on the first ->get_acl call.
+-	 *
+-	 * If the filesystem doesn't have a get_acl() function at all, we'll
+-	 * just create the negative cache entry.
+-	 */
+-	if (acl == ACL_NOT_CACHED) {
+-	        if (inode->i_op->get_acl) {
+-			acl = inode->i_op->get_acl(inode, ACL_TYPE_ACCESS);
+-			if (IS_ERR(acl))
+-				return PTR_ERR(acl);
+-		} else {
+-		        set_cached_acl(inode, ACL_TYPE_ACCESS, NULL);
+-		        return -EAGAIN;
+-		}
+-	}
+-
++	acl = get_acl(inode, ACL_TYPE_ACCESS);
++	if (IS_ERR(acl))
++		return PTR_ERR(acl);
+ 	if (acl) {
+ 	        int error = posix_acl_permission(inode, acl, mask);
+ 	        posix_acl_release(acl);
+diff --git a/fs/posix_acl.c b/fs/posix_acl.c
+index 359d70b..e329c21 100644
+--- a/fs/posix_acl.c
++++ b/fs/posix_acl.c
+@@ -26,6 +26,32 @@ EXPORT_SYMBOL(posix_acl_valid);
+ EXPORT_SYMBOL(posix_acl_equiv_mode);
+ EXPORT_SYMBOL(posix_acl_from_mode);
+ 
++struct posix_acl *get_acl(struct inode *inode, int type)
++{
++	struct posix_acl *acl;
++
++	acl = get_cached_acl(inode, type);
++	if (acl != ACL_NOT_CACHED)
++		return acl;
++
++	if (!IS_POSIXACL(inode))
++		return NULL;
++
++	/*
++	 * A filesystem can force a ACL callback by just never filling the
++	 * ACL cache. But normally you'd fill the cache either at inode
++	 * instantiation time, or on the first ->get_acl call.
++	 *
++	 * If the filesystem doesn't have a get_acl() function at all, we'll
++	 * just create the negative cache entry.
++	 */
++	if (!inode->i_op->get_acl) {
++		set_cached_acl(inode, type, NULL);
++		return NULL;
++	}
++	return inode->i_op->get_acl(inode, type);
++}
++
+ /*
+  * Init a fresh posix_acl
+  */
+diff --git a/include/linux/posix_acl.h b/include/linux/posix_acl.h
+index 7931efe..a8d9918 100644
+--- a/include/linux/posix_acl.h
++++ b/include/linux/posix_acl.h
+@@ -175,4 +175,6 @@ static inline void cache_no_acl(struct inode *inode)
+ #endif
+ }
+ 
++struct posix_acl *get_acl(struct inode *inode, int type);
++
+ #endif  /* __LINUX_POSIX_ACL_H */
+-- 
+1.7.10.4
 
-OK, it makes sense that touching a file with a bad name would get an
-error, but you're seeing that cause later creates of files on the same
-filesystem fail.  I can't figure out why that would happen.
 
-Could we see a network trace showing that happen?
-
-Would also be nice to confirm whether this is reproduceable with
-something other than ZFS.
-
---b.
-
-> >>
-> >>Given that widely used ntfs-3g FUSE module also returns EILSEQ on the same case (I tested this) I would argue that a fix should be done for upstream especially since RFC5661 clearly defines that invalid UTF-8 sequence should map into NFSERR_INVAL, exact quote: "Where the client sends an invalid UTF-8 string, the server should return NFS4ERR_INVAL (see Table 5)".
-> >The NFS client will then happily map that straight into EINVAL for you...
-> >
-> >Cheers,
-> >   Trond
-> Hello,
-> 
-> But if we get a (somewhat) sane error back, we'd avoid the whole NFS
-> share dying in I/O errors because someone decided to touch a file
-> with his terminal having wrong charset (if I understood this
-> correctly). The problem here is that we don't simply get one I/O
-> error from the offending file, but rather that the whole share dies
-> after EILSEQ is returned from the backing filesystem.
