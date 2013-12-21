@@ -1,41 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:37048 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751368Ab3LKQbx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 11 Dec 2013 11:31:53 -0500
-Date: Wed, 11 Dec 2013 11:31:48 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH RFC 3/3] nfsd: convert DRC code to use list_lru
-Message-ID: <20131211163148.GD29300@fieldses.org>
-References: <1386241253-5781-1-git-send-email-jlayton@redhat.com>
- <1386241253-5781-4-git-send-email-jlayton@redhat.com>
- <20131205134129.GE3381@infradead.org>
- <20131205084825.2bf1726d@tlielax.poochiereds.net>
- <20131205155823.GD30113@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20131205155823.GD30113@fieldses.org>
+Received: from order.stressinduktion.org ([87.106.68.36]:44329 "EHLO
+	order.stressinduktion.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752571Ab3LUMom (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 21 Dec 2013 07:44:42 -0500
+Date: Sat, 21 Dec 2013 13:44:40 +0100
+From: Hannes Frederic Sowa <hannes@stressinduktion.org>
+To: Alexander Aring <alex.aring@gmail.com>
+Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org, werner@almesberger.net
+Subject: Re: [PATCH] nfs: fix dead code of ipv6_addr_scope
+Message-ID: <20131221124440.GG14073@order.stressinduktion.org>
+References: <1387600744-11366-1-git-send-email-alex.aring@gmail.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <1387600744-11366-1-git-send-email-alex.aring@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Dec 05, 2013 at 10:58:23AM -0500, J. Bruce Fields wrote:
-> On Thu, Dec 05, 2013 at 08:48:25AM -0500, Jeff Layton wrote:
-> > On Thu, 5 Dec 2013 05:41:29 -0800
-> > Christoph Hellwig <hch@infradead.org> wrote:
-> > > All together doesn't seem to helpful as long as the DRC keeps
-> > > it's own timing based purge and similar bits unfortunatel.
-> > 
-> > Agreed. It might make sense to do this in the context of a larger
-> > redesign but otherwise I can't get too excited about this set, TBH...
+On Sat, Dec 21, 2013 at 05:39:04AM +0100, Alexander Aring wrote:
+> The correct way to check on IPV6_ADDR_SCOPE_LINKLOCAL is to check with
+> the ipv6_addr_src_scope function.
 > 
-> Well, patch 1/3 still deletes some code and doesn't have any obvious
-> downsides.
+> Currently this can't be work, because ipv6_addr_scope returns a int with
+> a mask of IPV6_ADDR_SCOPE_MASK (0x00f0U) and IPV6_ADDR_SCOPE_LINKLOCAL
+> is 0x02. So the condition is always false.
+> 
+> Signed-off-by: Alexander Aring <alex.aring@gmail.com>
+> ---
+> I think ipv6_addr_src_scope should be correct, can somebody from netdev ml
+> confirm this please?
+> I stumple over that and I did not compile and test it. Maybe this is something
+> for stable?
+> 
+>  fs/nfs/nfs4filelayoutdev.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
+> index c7c295e5..efac602 100644
+> --- a/fs/nfs/nfs4filelayoutdev.c
+> +++ b/fs/nfs/nfs4filelayoutdev.c
+> @@ -95,7 +95,7 @@ same_sockaddr(struct sockaddr *addr1, struct sockaddr *addr2)
+>  		b6 = (struct sockaddr_in6 *)addr2;
+>  
+>  		/* LINKLOCAL addresses must have matching scope_id */
+> -		if (ipv6_addr_scope(&a6->sin6_addr) ==
+> +		if (ipv6_addr_src_scope(&a6->sin6_addr) ==
+>  		    IPV6_ADDR_SCOPE_LINKLOCAL &&
+>  		    a6->sin6_scope_id != b6->sin6_scope_id)
+>  			return false;
 
-I'm applying that one patch and dropping the rest for now.
+Good catch!
 
-I understand Christoph's request to remove the one-off cache pruning but
-first want to be convinced that's safe.
+SCOPE_TYPE also can be compared and is no bitfield, so the patch is
+good. Do you mind also proposing a patch for sctp?
 
---b.
+Thanks,
+
+  Hannes
+
