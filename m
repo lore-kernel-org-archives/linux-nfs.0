@@ -1,81 +1,110 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:16715 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751595Ab3LEQWx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Dec 2013 11:22:53 -0500
-Date: Thu, 5 Dec 2013 11:22:22 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH RFC 1/3] nfsd: don't try to reuse an expired DRC entry
- off the list
-Message-ID: <20131205112222.152e1ee0@tlielax.poochiereds.net>
-In-Reply-To: <20131205155024.GC30113@fieldses.org>
-References: <1386241253-5781-1-git-send-email-jlayton@redhat.com>
-	<1386241253-5781-2-git-send-email-jlayton@redhat.com>
-	<20131205132919.GC3381@infradead.org>
-	<20131205084156.5a9a2545@tlielax.poochiereds.net>
-	<20131205155024.GC30113@fieldses.org>
+Received: from order.stressinduktion.org ([87.106.68.36]:45664 "EHLO
+	order.stressinduktion.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751989Ab3LVMii (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 22 Dec 2013 07:38:38 -0500
+Date: Sun, 22 Dec 2013 13:38:36 +0100
+From: Hannes Frederic Sowa <hannes@stressinduktion.org>
+To: Alexander Aring <alex.aring@gmail.com>
+Cc: linux-nfs@vger.kernel.org, netdev@vger.kernel.org, werner@almesberger.net
+Subject: Re: [PATCH] nfs: fix dead code of ipv6_addr_scope
+Message-ID: <20131222123836.GK14073@order.stressinduktion.org>
+References: <1387600744-11366-1-git-send-email-alex.aring@gmail.com> <20131221124440.GG14073@order.stressinduktion.org> <20131221133253.GA20745@omega> <20131222023054.GH14073@order.stressinduktion.org> <20131222123011.GA10241@omega>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <20131222123011.GA10241@omega>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 5 Dec 2013 10:50:24 -0500
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
-
-> On Thu, Dec 05, 2013 at 08:41:56AM -0500, Jeff Layton wrote:
-> > On Thu, 5 Dec 2013 05:29:19 -0800
-> > Christoph Hellwig <hch@infradead.org> wrote:
-> > 
-> > > On Thu, Dec 05, 2013 at 06:00:51AM -0500, Jeff Layton wrote:
-> > > > Currently when we are processing a request, we try to scrape an expired
-> > > > or over-limit entry off the list in preference to allocating a new one
-> > > > from the slab.
+On Sun, Dec 22, 2013 at 01:30:14PM +0100, Alexander Aring wrote:
+> On Sun, Dec 22, 2013 at 03:30:54AM +0100, Hannes Frederic Sowa wrote:
+> > On Sat, Dec 21, 2013 at 02:32:54PM +0100, Alexander Aring wrote:
+> > > Hi Hannes,
+> > > 
+> > > On Sat, Dec 21, 2013 at 01:44:40PM +0100, Hannes Frederic Sowa wrote:
+> > > > On Sat, Dec 21, 2013 at 05:39:04AM +0100, Alexander Aring wrote:
+> > > > > The correct way to check on IPV6_ADDR_SCOPE_LINKLOCAL is to check with
+> > > > > the ipv6_addr_src_scope function.
+> > > > > 
+> > > > > Currently this can't be work, because ipv6_addr_scope returns a int with
+> > > > > a mask of IPV6_ADDR_SCOPE_MASK (0x00f0U) and IPV6_ADDR_SCOPE_LINKLOCAL
+> > > > > is 0x02. So the condition is always false.
+> > > > > 
+> > > > > Signed-off-by: Alexander Aring <alex.aring@gmail.com>
+> > > > > ---
+> > > > > I think ipv6_addr_src_scope should be correct, can somebody from netdev ml
+> > > > > confirm this please?
+> > > > > I stumple over that and I did not compile and test it. Maybe this is something
+> > > > > for stable?
+> > > > > 
+> > > > >  fs/nfs/nfs4filelayoutdev.c | 2 +-
+> > > > >  1 file changed, 1 insertion(+), 1 deletion(-)
+> > > > > 
+> > > > > diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/nfs4filelayoutdev.c
+> > > > > index c7c295e5..efac602 100644
+> > > > > --- a/fs/nfs/nfs4filelayoutdev.c
+> > > > > +++ b/fs/nfs/nfs4filelayoutdev.c
+> > > > > @@ -95,7 +95,7 @@ same_sockaddr(struct sockaddr *addr1, struct sockaddr *addr2)
+> > > > >  		b6 = (struct sockaddr_in6 *)addr2;
+> > > > >  
+> > > > >  		/* LINKLOCAL addresses must have matching scope_id */
+> > > > > -		if (ipv6_addr_scope(&a6->sin6_addr) ==
+> > > > > +		if (ipv6_addr_src_scope(&a6->sin6_addr) ==
+> > > > >  		    IPV6_ADDR_SCOPE_LINKLOCAL &&
+> > > > >  		    a6->sin6_scope_id != b6->sin6_scope_id)
+> > > > >  			return false;
 > > > > 
-> > > > This is unnecessarily complicated. Just use the slab layer.
+> > > > Good catch!
+> > > > 
+> > > thanks.
 > > > 
-> > > I really don't think pruning caches from lookup functions is a good
-> > > idea. To many chances for locking inversions, unbounded runtime and
-> > > other issues.  So I'd prefer my earlier version of the patch to
-> > > remove it entirely if we want to change anything beyond your minimal
-> > > fix.
+> > > I am still unsure if sctp is correct or not, I think it isn't correct.
+> > > Because we compare and don't check if any bit is set.
 > > > 
+> > > We don't use IPV6_ADDR_SCOPE_TYPE here. We use IPV6_ADDR_TYPE. But we can't
+> > > compare it.
 > > 
-> > It's not likely to hit a locking inversion here since we don't have a
-> > lot of different locks, but point taken...
+> > Actually, this is fine, too. ipv6_addr_scope does mask the addr_type with
+> > IPV6_ADDR_SCOPE_MASK (which is 0x00f0U). If you look at addrconf_core.c you
+> > see that the 4 bits stand by itself each time.
 > > 
-> > If we take that out, then that does mean that the cache may grow larger
-> > than the max...possibly much larger since the pruner workqueue job
-> > only runs every 120s and you can put a lot more entries into the cache
-> > in that period.
-> 
-> Yeah, this scares me.
-> 
-> I looked through my old mail but couldn't find your previous results:
-> how long did you find the hash buckets needed to be before the
-> difference was noticeable on your setup?
-> 
-> We typically do a failed-lookup-and-insert on every cached operation so
-> I wouldn't be surprised if a workload of small random writes, for
-> example, could produce an unreasonably large cache in that time.
-> 
-
-I don't think I ever measured that. I did some some measurement of how
-long it took to generate checksums, but that's a different phase of
-this stuff. I just sort of went with "too long a chain == bad, so keep
-them as short as possible".
-
-
-> 
+> > Actually it seems ipv6_addr_src_scope is better suitable for multicast scope
+> > handling and ipv6_addr_scope with IFA_{HOST,LINK,SITE} is fine for
+> > non-multicast. In this case there is no difference.
 > > 
-> > That said, I don't feel too strongly about it, so if you think leaving
-> > it to the workqueue job and the shrinker is the right thing to do, then
-> > so be it.
+> ah thanks, now I understand it!
+> 
+> so an alternative would be:
+> 
+> if (ipv6_addr_scope(&a6->sin6_addr) & IPV6_ADDR_LINKLOCAL &&
+> 	a6->sin6_scope_id != b6->sin6_scope_id)
+> 	...
+> 
+> maybe this is a little bit faster instead of ipv6_addr_src_scope.
+> Should I resend a v2 with the faster solution?
+
+Yes, please do so. Thanks!
+
+> > Maybe an int ipv6_cmp_sockaddr(struct in6_addr *a1, int scope1,
+> > 			  struct in6_addr *a2, int scope2)
+> > or
+> > int ipv6_cmp_sockaddr(struct sockaddr_in6 *s1,
+> > 		      struct sockaddr_in6 *s2)
 > > 
-> > -- 
-> > Jeff Layton <jlayton@redhat.com>
+> 
+> I don't understand why we need such a function here. We only check if
+> "a6" is linklocal and has a different sin6_scope_id than "b6" sin6_scope_id
+> and we don't compare "a6" and "b6" here (then "b6" should be a
+> linklocal, too). I think it's too abstract for me what exactly "compare"
+> means in this case. :-)
 
+That were exactly the semantics I had in mind. Something like
+ipv6_equal_sockaddr would be a better name, you are right.
 
--- 
-Jeff Layton <jlayton@redhat.com>
+Trying to sort ipv6 addresses depends on the specific code and I would
+leave that open-coded in the specific case.
+
+Greetings,
+
+  Hannes
+
