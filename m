@@ -1,89 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wg0-f47.google.com ([74.125.82.47]:54351 "EHLO
-	mail-wg0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755875Ab3LTCHM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 19 Dec 2013 21:07:12 -0500
-Received: by mail-wg0-f47.google.com with SMTP id n12so1857921wgh.2
-        for <linux-nfs@vger.kernel.org>; Thu, 19 Dec 2013 18:07:11 -0800 (PST)
+Received: from mail-pa0-f50.google.com ([209.85.220.50]:42433 "EHLO
+	mail-pa0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751504Ab3LWJb0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Dec 2013 04:31:26 -0500
+Received: by mail-pa0-f50.google.com with SMTP id kp14so3242371pab.37
+        for <linux-nfs@vger.kernel.org>; Mon, 23 Dec 2013 01:31:26 -0800 (PST)
+Message-ID: <52B802E9.4070607@gmail.com>
+Date: Mon, 23 Dec 2013 17:31:21 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
-In-Reply-To: <52B0A982.6020001@primarydata.com>
-References: <52ADCFC2.7060504@gmail.com> <1387122710-23603-1-git-send-email-bhalevy@primarydata.com>
- <CA+a=Yy6PeAZ_3Sbb4aHVMHTEOevkGzMmevTbKqxZ8K0dVpqFRg@mail.gmail.com> <52B0A982.6020001@primarydata.com>
-From: Peng Tao <bergwolf@gmail.com>
-Date: Fri, 20 Dec 2013 10:06:50 +0800
-Message-ID: <CA+a=Yy7TtEngoYn8ir6SfACmqCvuaRffzVFnspfwSi0fqAENNA@mail.gmail.com>
-Subject: Re: [PATCH v2 1/2] nfsd4: break from inner lookup loop in
- nfsd4_release_lockowner on first match
-To: Benny Halevy <bhalevy@primarydata.com>
-Cc: bfields@redhat.com, linuxnfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: linux-nfs@vger.kernel.org
+Subject: [PATCH] NFSD: fix a bug which causing nfsd deny CREATE_SESSION
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Dec 18, 2013 at 3:44 AM, Benny Halevy <bhalevy@primarydata.com> wrote:
->
->
-> On 12/16/2013 05:43 PM, Peng Tao wrote:
->> Hi Benny,
->>
->> On Sun, Dec 15, 2013 at 11:51 PM, Benny Halevy <bhalevy@primarydata.com> wrote:
->>> Otherwise the lockowner may by added to "matches" more than once.
->>>
->>> Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
->>> ---
->>>  fs/nfsd/nfs4state.c | 17 +++++++++++------
->>>  1 file changed, 11 insertions(+), 6 deletions(-)
->>>
->>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
->>> index 0874998..b04f765 100644
->>> --- a/fs/nfsd/nfs4state.c
->>> +++ b/fs/nfsd/nfs4state.c
->>> @@ -4192,6 +4192,7 @@ alloc_init_lock_stateowner(unsigned int strhashval, struct nfs4_client *clp, str
->>>         /* It is the openowner seqid that will be incremented in encode in the
->>>          * case of new lockowners; so increment the lock seqid manually: */
->>>         lo->lo_owner.so_seqid = lock->lk_new_lock_seqid + 1;
->>> +       INIT_LIST_HEAD(&lo->lo_list);
->>>         hash_lockowner(lo, strhashval, clp, open_stp);
->>>         return lo;
->>>  }
->>> @@ -4646,7 +4647,6 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
->>>         if (status)
->>>                 goto out;
->>>
->>> -       status = nfserr_locks_held;
->>>         INIT_LIST_HEAD(&matches);
->>>
->>>         list_for_each_entry(sop, &nn->ownerstr_hashtbl[hashval], so_strhash) {
->>> @@ -4654,25 +4654,30 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
->>>                         continue;
->>>                 if (!same_owner_str(sop, owner, clid))
->>>                         continue;
->>> +               lo = lockowner(sop);
->>>                 list_for_each_entry(stp, &sop->so_stateids,
->>>                                 st_perstateowner) {
->>> -                       lo = lockowner(sop);
->>> -                       if (check_for_locks(stp->st_file, lo))
->>> -                               goto out;
->>> +                       if (check_for_locks(stp->st_file, lo)) {
->>> +                               status = nfserr_locks_held;
->>> +                               goto locks_held;
->>> +                       }
->>>                         list_add(&lo->lo_list, &matches);
->>> +                       break;
->> If so_stateids is empty, lockowner is skipped. It was skipped before
->> the patch as well but I guess that need to be fixed, right?
->
-> I'm not sure that's a valid state at all.
-OK. I see the comments in lookup_or_create_lock_state() that says:
+check_forechannel_attrs have get drc memory, 
+nfsd must put it when check_backchannel_attrs failed.
 
-/* XXX: a lockowner always has exactly one stateid: */
+After many requests with bad back channel attrs, 
+nfsd will deny any client's CREATE_SESSION forever.
 
-And lookup_or_create_lock_state() does implement that way. So
-so_stateid always has exactly one member for lockowner. But then the
-original code (before the patch) is working properly, right? The
-list_for_each_entry can be replaced with list_first_entry and the
-added break doesn't seem necessary. Or is the situation somehow
-obsolete?
+A new test case named CSESS29 for pynfs will send in another mail.
 
-Thanks,
-Tao
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+---
+ fs/nfsd/nfs4state.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 105d6fa..4e2c9ba 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1913,7 +1913,7 @@ nfsd4_create_session(struct svc_rqst *rqstp,
+ 		return status;
+ 	status = check_backchannel_attrs(&cr_ses->back_channel);
+ 	if (status)
+-		return status;
++		goto out_release_drc_mem;
+ 	status = nfserr_jukebox;
+ 	new = alloc_session(&cr_ses->fore_channel);
+ 	if (!new)
+-- 
+1.8.4.2
