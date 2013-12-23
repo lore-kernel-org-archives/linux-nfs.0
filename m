@@ -1,49 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mout.gmx.net ([212.227.15.15]:59460 "EHLO mout.gmx.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750840Ab3LLSJB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 12 Dec 2013 13:09:01 -0500
-Received: from n22.fritz.box ([85.177.144.142]) by mail.gmx.com (mrgmx103)
- with ESMTPSA (Nemesis) id 0MUpI8-1W397f2UCi-00YBdC for
- <linux-nfs@vger.kernel.org>; Thu, 12 Dec 2013 19:08:59 +0100
-From: =?UTF-8?q?Toralf=20F=C3=B6rster?= <toralf.foerster@gmx.de>
-To: linux-nfs@vger.kernel.org
-Cc: toralf.foerster@gmx.de
-Subject: [PATCH] point to the right include file in a comment (left over from a9004abc3)
-Date: Thu, 12 Dec 2013 19:09:00 +0100
-Message-Id: <1386871740-7253-1-git-send-email-toralf.foerster@gmx.de>
+Received: from mx0a-00082601.pphosted.com ([67.231.145.42]:14962 "EHLO
+	mx0a-00082601.pphosted.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754146Ab3LWQ7a convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 23 Dec 2013 11:59:30 -0500
+From: Chris Mason <clm@fb.com>
+To: "hch@infradead.org" <hch@infradead.org>
+CC: "jlbec@evilplan.org" <jlbec@evilplan.org>,
+        "linux-mtd@lists.infradead.org" <linux-mtd@lists.infradead.org>,
+        "xfs@oss.sgi.com" <xfs@oss.sgi.com>,
+        "jfs-discussion@lists.sourceforge.net"
+	<jfs-discussion@lists.sourceforge.net>,
+        "mfasheh@suse.com" <mfasheh@suse.com>,
+        "reiserfs-devel@vger.kernel.org" <reiserfs-devel@vger.kernel.org>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "andreas.gruenbacher@linbit.com" <andreas.gruenbacher@linbit.com>,
+        "viro@zeniv.linux.org.uk" <viro@zeniv.linux.org.uk>,
+        "linux-btrfs@vger.kernel.org" <linux-btrfs@vger.kernel.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        "linux-f2fs-devel@lists.sourceforge.net"
+	<linux-f2fs-devel@lists.sourceforge.net>,
+        "linux-ext4@vger.kernel.org" <linux-ext4@vger.kernel.org>,
+        "cluster-devel@redhat.com" <cluster-devel@redhat.com>
+Subject: Re: [PATCH 00/21] Consolidate Posix ACL implementation V3
+Date: Mon, 23 Dec 2013 16:57:58 +0000
+Message-ID: <1387817904.8080.4.camel@ret.masoncoding.com>
+References: <20131220131635.650823732@bombadil.infradead.org>
+In-Reply-To: <20131220131635.650823732@bombadil.infradead.org>
+Content-Type: text/plain; charset="utf-7"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Toralf Förster <toralf.foerster@gmx.de>
----
- fs/nfs/nfs4state.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+On Fri, 2013-12-20 at 05:16 -0800, Christoph Hellwig wrote:
++AD4- This series consolidates the various cut'n'pasted Posix ACL implementations
++AD4- into a single common one based on the -+AD4-get+AF8-acl method Linus added a while
++AD4- ago and a new -+AD4-set+AF8-acl counterpart.
++AD4- 
++AD4- This remove +AH4-1800 lines of code and provides a single place to implement
++AD4- various nasty little gems of the semantics.
 
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index 059c01b..e5be725 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -1071,7 +1071,7 @@ void nfs_free_seqid(struct nfs_seqid *seqid)
- /*
-  * Increment the seqid if the OPEN/OPEN_DOWNGRADE/CLOSE succeeded, or
-  * failed with a seqid incrementing error -
-- * see comments nfs_fs.h:seqid_mutating_error()
-+ * see comments nfs4.h:seqid_mutating_error()
-  */
- static void nfs_increment_seqid(int status, struct nfs_seqid *seqid)
- {
-@@ -1116,7 +1116,7 @@ void nfs_increment_open_seqid(int status, struct nfs_seqid *seqid)
- /*
-  * Increment the seqid if the LOCK/LOCKU succeeded, or
-  * failed with a seqid incrementing error -
-- * see comments nfs_fs.h:seqid_mutating_error()
-+ * see comments nfs4.h:seqid_mutating_error()
-  */
- void nfs_increment_lock_seqid(int status, struct nfs_seqid *seqid)
- {
--- 
-1.8.3.2
+Is this in a git tree somewhere?  I'll pull in and test the btrfs bits.
+
+-chris
 
