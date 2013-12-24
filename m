@@ -1,56 +1,238 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:11204 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750945Ab3LKSF5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 11 Dec 2013 13:05:57 -0500
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id rBBI5tcQ001452
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Wed, 11 Dec 2013 13:05:55 -0500
-Received: from smallhat.boston.devel.redhat.com (smallhat.boston.devel.redhat.com [10.19.60.65])
-	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id rBBI5sHB012622
-	for <linux-nfs@vger.kernel.org>; Wed, 11 Dec 2013 13:05:55 -0500
-Message-ID: <52A8A9D7.1060401@RedHat.com>
-Date: Wed, 11 Dec 2013 13:07:19 -0500
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Linux NFS Town Hall  meeting: Thur 12/12/13
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from alt-proxy11.mail.unifiedlayer.com ([74.220.211.241]:57188 "HELO
+	alt-proxy11.mail.unifiedlayer.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1750816Ab3LXGtp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 24 Dec 2013 01:49:45 -0500
+Message-ID: <1387867304.3974.21.camel@slavad-ubuntu>
+Subject: Re: [PATCH 21/21] hfsplus: remove can_set_xattr
+From: Vyacheslav Dubeyko <slava@dubeyko.com>
+Reply-To: slava@dubeyko.com
+To: Christoph Hellwig <hch@infradead.org>
+Cc: viro@zeniv.linux.org.uk, linux-fsdevel@vger.kernel.org,
+        linux-btrfs@vger.kernel.org, linux-ext4@vger.kernel.org,
+        linux-f2fs-devel@lists.sourceforge.net, linux-mtd@lists.infradead.org,
+        Mark Fasheh <mfasheh@suse.com>, Joel Becker <jlbec@evilplan.org>,
+        reiserfs-devel@vger.kernel.org, xfs@oss.sgi.com,
+        jfs-discussion@lists.sourceforge.net, cluster-devel@redhat.com,
+        linux-nfs@vger.kernel.org,
+        Andreas Gruenbacher <andreas.gruenbacher@linbit.com>
+Date: Tue, 24 Dec 2013 10:41:44 +0400
+In-Reply-To: <20131223143706.GA8235@infradead.org>
+References: <20131220131635.650823732@bombadil.infradead.org>
+	 <20131220132524.900291394@bombadil.infradead.org>
+	 <636E01BC-12FD-452B-8B1C-320B6EADAEFD@dubeyko.com>
+	 <20131222192818.GA32565@infradead.org>
+	 <1387780809.3991.21.camel@slavad-ubuntu>
+	 <20131223143706.GA8235@infradead.org>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+On Mon, 2013-12-23 at 06:37 -0800, Christoph Hellwig wrote:
+> On Mon, Dec 23, 2013 at 10:40:09AM +0400, Vyacheslav Dubeyko wrote:
+> > Maybe I missed something, but I can see that this check is removed only.
+> > Could you point out the code in your patch that it checks and forbids
+> > such combination as "osx.security.*", "osx.trusted.*" and so on?
+> 
+> @@ -941,6 +857,9 @@ static int hfsplus_osx_setxattr(struct dentry
+> *dentry, const char *name,
+>         if (len > HFSPLUS_ATTR_MAX_STRLEN)
+> 		return -EOPNOTSUPP;
+> 
+> +       if (is_known_namespace(name))
+> +               return -EOPNOTSUPP;
+> +
+> 
 
-We have not had ones of these in a while so lets 
-have a Linux NFS town hall for tomorrow (Thur Dec 10)
+Yes, now I've realized your approach. You are right. It's my
+misunderstanding. So, comments are really necessary for describing the
+goal of this check. Thank you for adding it in the last version of
+reworked patch.
 
-Please note there is a *time change*. I was asked
-to bump up the staring time up by 30mins. So the new
-starting time is *10:00am PST (01:00 EST)*.
+> 
+> > So, if it needs to use xattr handler only for removing then it needs to
+> > make some refactoring of using __hfsplus_setxattr() and
+> > hfsplus_removexattr() or merging these two functions into one. And I
+> > think that merging is better idea.
+> 
+> I've not done the full merge, but below is an updated patch to make
+> sure hfsplus uses the handlers for the remove case, and making sure
+> the adding/striping of the prefix for the osv handlers is more
+> transparent:
+> 
 
-The usual agenda will apply. The maintainers will give
-a quick status of what is happening in their worlds.
+As far as I can judge, changing from hfsplus_removexattr() to
+generic_removexattr() is made correctly.
 
-Next we'll get updates from major contributors on what
-they have been doing and are planing on doing.. 
-  
-Finally, we'll open the floor to questions, comments, 
-concerns from the community.  
+> diff --git a/fs/hfsplus/dir.c b/fs/hfsplus/dir.c
+> index 9ee6298..bdec665 100644
+> --- a/fs/hfsplus/dir.c
+> +++ b/fs/hfsplus/dir.c
+> @@ -529,7 +529,7 @@ const struct inode_operations hfsplus_dir_inode_operations = {
+>  	.setxattr		= generic_setxattr,
+>  	.getxattr		= generic_getxattr,
+>  	.listxattr		= hfsplus_listxattr,
+> -	.removexattr		= hfsplus_removexattr,
+> +	.removexattr		= generic_removexattr,
+>  #ifdef CONFIG_HFSPLUS_FS_POSIX_ACL
+>  	.get_acl		= hfsplus_get_posix_acl,
+>  	.set_acl		= hfsplus_set_posix_acl,
+> diff --git a/fs/hfsplus/inode.c b/fs/hfsplus/inode.c
+> index 2e10993..83c9166 100644
+> --- a/fs/hfsplus/inode.c
+> +++ b/fs/hfsplus/inode.c
+> @@ -390,7 +390,7 @@ static const struct inode_operations hfsplus_file_inode_operations = {
+>  	.setxattr	= generic_setxattr,
+>  	.getxattr	= generic_getxattr,
+>  	.listxattr	= hfsplus_listxattr,
+> -	.removexattr	= hfsplus_removexattr,
+> +	.removexattr	= generic_removexattr,
+>  #ifdef CONFIG_HFSPLUS_FS_POSIX_ACL
+>  	.get_acl	= hfsplus_get_posix_acl,
+>  	.set_acl	= hfsplus_set_posix_acl,
+> diff --git a/fs/hfsplus/xattr.c b/fs/hfsplus/xattr.c
+> index bf88baa..c838b84 100644
+> --- a/fs/hfsplus/xattr.c
+> +++ b/fs/hfsplus/xattr.c
+> @@ -11,6 +11,8 @@
+>  #include "xattr.h"
+>  #include "acl.h"
+>  
+> +static int hfsplus_removexattr(struct inode *inode, const char *name);
+> +
+>  const struct xattr_handler *hfsplus_xattr_handlers[] = {
+>  	&hfsplus_xattr_osx_handler,
+>  	&hfsplus_xattr_user_handler,
+> @@ -52,82 +54,6 @@ static inline int is_known_namespace(const char *name)
+>  	return true;
+>  }
+>  
+> -static int can_set_system_xattr(struct inode *inode, const char *name,
+> -				const void *value, size_t size)
+> -{
+> -#ifdef CONFIG_HFSPLUS_FS_POSIX_ACL
+> -	struct posix_acl *acl;
+> -	int err;
+> -
+> -	if (!inode_owner_or_capable(inode))
+> -		return -EPERM;
+> -
+> -	/*
+> -	 * POSIX_ACL_XATTR_ACCESS is tied to i_mode
+> -	 */
+> -	if (strcmp(name, POSIX_ACL_XATTR_ACCESS) == 0) {
+> -		acl = posix_acl_from_xattr(&init_user_ns, value, size);
+> -		if (IS_ERR(acl))
+> -			return PTR_ERR(acl);
+> -		if (acl) {
+> -			err = posix_acl_equiv_mode(acl, &inode->i_mode);
+> -			posix_acl_release(acl);
+> -			if (err < 0)
+> -				return err;
+> -			mark_inode_dirty(inode);
+> -		}
+> -		/*
+> -		 * We're changing the ACL.  Get rid of the cached one
+> -		 */
+> -		forget_cached_acl(inode, ACL_TYPE_ACCESS);
+> -
+> -		return 0;
+> -	} else if (strcmp(name, POSIX_ACL_XATTR_DEFAULT) == 0) {
+> -		acl = posix_acl_from_xattr(&init_user_ns, value, size);
+> -		if (IS_ERR(acl))
+> -			return PTR_ERR(acl);
+> -		posix_acl_release(acl);
+> -
+> -		/*
+> -		 * We're changing the default ACL.  Get rid of the cached one
+> -		 */
+> -		forget_cached_acl(inode, ACL_TYPE_DEFAULT);
+> -
+> -		return 0;
+> -	}
+> -#endif /* CONFIG_HFSPLUS_FS_POSIX_ACL */
+> -	return -EOPNOTSUPP;
+> -}
+> -
+> -static int can_set_xattr(struct inode *inode, const char *name,
+> -				const void *value, size_t value_len)
+> -{
+> -	if (!strncmp(name, XATTR_SYSTEM_PREFIX, XATTR_SYSTEM_PREFIX_LEN))
+> -		return can_set_system_xattr(inode, name, value, value_len);
+> -
+> -	if (!strncmp(name, XATTR_MAC_OSX_PREFIX, XATTR_MAC_OSX_PREFIX_LEN)) {
+> -		/*
+> -		 * This makes sure that we aren't trying to set an
+> -		 * attribute in a different namespace by prefixing it
+> -		 * with "osx."
+> -		 */
+> -		if (is_known_namespace(name + XATTR_MAC_OSX_PREFIX_LEN))
+> -			return -EOPNOTSUPP;
+> -
+> -		return 0;
+> -	}
+> -
+> -	/*
+> -	 * Don't allow setting an attribute in an unknown namespace.
+> -	 */
+> -	if (strncmp(name, XATTR_TRUSTED_PREFIX, XATTR_TRUSTED_PREFIX_LEN) &&
+> -	    strncmp(name, XATTR_SECURITY_PREFIX, XATTR_SECURITY_PREFIX_LEN) &&
+> -	    strncmp(name, XATTR_USER_PREFIX, XATTR_USER_PREFIX_LEN))
+> -		return -EOPNOTSUPP;
+> -
+> -	return 0;
+> -}
+> -
+>  static void hfsplus_init_header_node(struct inode *attr_file,
+>  					u32 clump_size,
+>  					char *buf, u16 node_size)
+> @@ -350,18 +276,8 @@ int __hfsplus_setxattr(struct inode *inode, const char *name,
+>  				HFSPLUS_IS_RSRC(inode))
+>  		return -EOPNOTSUPP;
+>  
+> -	err = can_set_xattr(inode, name, value, size);
+> -	if (err)
+> -		return err;
+> -
+> -	if (strncmp(name, XATTR_MAC_OSX_PREFIX,
+> -				XATTR_MAC_OSX_PREFIX_LEN) == 0)
+> -		name += XATTR_MAC_OSX_PREFIX_LEN;
 
-Generally the meeting last between 30 to 45 mins, with 
-a very hard stop at 60mins. 
+Removing this skipping of virtual "osx." prefix means that you save it
+on volume. But such action means volume corruption really. Because HFS+
+volume hasn't such prefixes for xattrs in AttributesFile. Usually,
+special xattrs has prefix "com.apple.*" but others haven't any prefix
+and can be named as you want. So, I think that it is not correct
+modification.
 
-Please feel to attend and participate!
+> -
+> -	if (value == NULL) {
+> -		value = "";
+> -		size = 0;
+> -	}
+> +	if (value == NULL)
+> +		return hfsplus_removexattr(inode, name);
+>  
+>  	err = hfs_find_init(HFSPLUS_SB(inode->i_sb)->cat_tree, &cat_fd);
+>  	if (err) {
+> @@ -577,18 +493,6 @@ ssize_t __hfsplus_getxattr(struct inode *inode, const char *name,
+>  				HFSPLUS_IS_RSRC(inode))
+>  		return -EOPNOTSUPP;
+>  
+> -	if (strncmp(name, XATTR_MAC_OSX_PREFIX,
+> -				XATTR_MAC_OSX_PREFIX_LEN) == 0) {
+> -		/* skip "osx." prefix */
+> -		name += XATTR_MAC_OSX_PREFIX_LEN;
 
-*Again note the time change*
-Time: 10:00 AM PST (01:00 PM EST)
+Ditto. This skipping is made because virtual prefix was added by user or
+on listxattr phase. But we should use for searching on a volume the name
+without "osx." prefix. Otherwise, how do you get
+"com.apple.system.Security" xattr from volume, for example? You will
+search "osx.com.apple.system.Security" that doesn't exist on HFS+
+volume.
 
-The call in numbers are:
-U.S. and Canada: (800) 451-8679
-International dial-in number: (212) 729-5016
-Israel Toll-Free: 1-809-462-557
-Conference code: 564.272.1552
+Thanks,
+Vyacheslav Dubeyko.
 
-steved.
 
