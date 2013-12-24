@@ -1,50 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f173.google.com ([209.85.223.173]:61610 "EHLO
-	mail-ie0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751432Ab3LBO1U convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 2 Dec 2013 09:27:20 -0500
-Received: by mail-ie0-f173.google.com with SMTP id to1so20782516ieb.18
-        for <linux-nfs@vger.kernel.org>; Mon, 02 Dec 2013 06:27:20 -0800 (PST)
+Received: from mail-pb0-f45.google.com ([209.85.160.45]:53270 "EHLO
+	mail-pb0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932300Ab3LXC65 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 23 Dec 2013 21:58:57 -0500
+Received: by mail-pb0-f45.google.com with SMTP id rp16so5951216pbb.18
+        for <linux-nfs@vger.kernel.org>; Mon, 23 Dec 2013 18:58:56 -0800 (PST)
+Message-ID: <52B8F86A.1040509@gmail.com>
+Date: Tue, 24 Dec 2013 10:58:50 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
-In-Reply-To: <5B7CDA5C-C3F1-4CFD-9A72-013523068FBB@primarydata.com>
-References: <CAEEMktPamgjSHA_OmHj73ti5G01DcC_ykYb=-_bfOYqy4nW8BA@mail.gmail.com>
-	<5B7CDA5C-C3F1-4CFD-9A72-013523068FBB@primarydata.com>
-Date: Mon, 2 Dec 2013 15:27:20 +0100
-Message-ID: <CAHnbEG+cJGjx7o=+ZASNo7ddc0O9hYG4fE0EAQ2hoh688nBBeQ@mail.gmail.com>
-Subject: Re: Linux client access to NFSv4 Alternate Data Streams (O_XATTR)?
-From: Sebastian Feld <sebastian.n.feld@gmail.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Joshuah Hurst <joshhurst@gmail.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=windows-1252
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: linux-nfs@vger.kernel.org
+Subject: [PATCH] nfs4.1: check whether old session is discard for EID5f
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Dec 2, 2013 at 2:29 PM, Trond Myklebust
-<trond.myklebust@primarydata.com> wrote:
->
-> On Dec 2, 2013, at 7:13, Joshuah Hurst <joshhurst@gmail.com> wrote:
->
->> We need to access NFSv4 Alternate Data Streams (what Solaris,
->> NexentaOS, Omnios and SmartOS can openat() with the O_XATTR flag) from
->> a (Suse) Linux client.
->>
->> OS is Suse Linux 12.3, x86-64, 64bit
->>
->> Does anyone know how to archive this?
->
-> Why can’t you access Solaris-specific extensions from a Solaris client?
 
-This isn't a Solaris-specific extension, its part of the original Sun
-NFSv4 spec. Unfortunately the ARC/ARchitecture Cases from
-Opensolaris.org are no longer available, otherwise the background,
-e.g. feature parity with CIFS/NTFS, and the overall usefulness of such
-a feature, would be clearer.
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+---
+ nfs4.1/server41tests/st_exchange_id.py | 7 ++++++-
+ 1 file changed, 6 insertions(+), 1 deletion(-)
 
-There are many many applications coming from either the Windows world
-or the HPC camp (like nih.org or GE Healthcare) who mandatory rely on
-the existence of this feature (well, at least enough so that AT&T
-cloud services and the related toolchain (e.g. AST, including ksh93)
-now have extensive support for O_XATTR).
-
-Sebastian
+diff --git a/nfs4.1/server41tests/st_exchange_id.py b/nfs4.1/server41tests/st_exchange_id.py
+index c31af95..d2c0c97 100644
+--- a/nfs4.1/server41tests/st_exchange_id.py
++++ b/nfs4.1/server41tests/st_exchange_id.py
+@@ -244,7 +244,12 @@ def testNoUpdate101(t, env):
+     # Old session state should not be discarded until confirm:
+     res = sess1.compound([])
+     check(res)
+-    # FIXME - more checks here
++
++    # Old session state should be discarded after confirm:
++    sess2 = c2.create_session()
++    check(res)
++    res = sess1.compound([])
++    check(res, NFS4ERR_BADSESSION)
+ 
+ def testNoUpdate101b(t, env):
+     """
+-- 
+1.8.4.2
