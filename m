@@ -1,418 +1,362 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:54551 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932847Ab3LTNZZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 20 Dec 2013 08:25:25 -0500
-Message-Id: <20131220132523.791656625@bombadil.infradead.org>
-Date: Fri, 20 Dec 2013 05:16:50 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: viro@zeniv.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-mtd@lists.infradead.org, Mark Fasheh <mfasheh@suse.com>,
-        Joel Becker <jlbec@evilplan.org>, reiserfs-devel@vger.kernel.org,
-        xfs@oss.sgi.com, jfs-discussion@lists.sourceforge.net,
-        cluster-devel@redhat.com, linux-nfs@vger.kernel.org,
-        Andreas Gruenbacher <andreas.gruenbacher@linbit.com>,
-        Dave Chinner <dchinner@redhat.com>
-Subject: [PATCH 15/21] xfs: use generic posix ACL infrastructure
-References: <20131220131635.650823732@bombadil.infradead.org>
+Received: from mail-wg0-f50.google.com ([74.125.82.50]:44635 "EHLO
+	mail-wg0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750759Ab3L2GjG convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 29 Dec 2013 01:39:06 -0500
+Received: by mail-wg0-f50.google.com with SMTP id a1so9123702wgh.17
+        for <linux-nfs@vger.kernel.org>; Sat, 28 Dec 2013 22:39:04 -0800 (PST)
+MIME-Version: 1.0
+In-Reply-To: <6E281EC9-49CB-4BDA-BDF3-7A6F4B703156@gmail.com>
+References: <52B47A12.2070202@garethwilliams.me.uk>
+	<20131223173956.GA9221@fieldses.org>
+	<52BD53CA.5050205@gmail.com>
+	<7FD776EA-EAA8-41E0-9567-BF3924D365AC@oracle.com>
+	<20131227184309.GA9161@fieldses.org>
+	<01763B6D-C8CB-46B7-87AC-CE189496019A@oracle.com>
+	<6E281EC9-49CB-4BDA-BDF3-7A6F4B703156@gmail.com>
+Date: Sun, 29 Dec 2013 14:39:04 +0800
+Message-ID: <CAB6yy34woYZaJ=k=Ga9iT_mmBWBiCUj1SprT=Se2SVrOu6YO_Q@mail.gmail.com>
+Subject: Re: Question ref Running NFS at V4 Only
+From: Kinglong Mee <kinglongmee@gmail.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: "J.,Bruce Fields" <bfields@fieldses.org>,
+        Gareth Williams <gareth@garethwilliams.me.uk>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=GB2312
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Also don't bother to set up a .get_acl method for symlinks as we do not
-support access control (ACLs or even mode bits) for symlinks in Linux,
-and create inodes with the proper mode instead of fixing it up later.
+I get the trace when rpc.nfsd hang.
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
-Reviewed-by: Dave Chinner <dchinner@redhat.com>
----
- fs/xfs/xfs_acl.c   |  151 +++-------------------------------------------------
- fs/xfs/xfs_acl.h   |    9 +---
- fs/xfs/xfs_iops.c  |   39 +++++++-------
- fs/xfs/xfs_iops.h  |    2 +-
- fs/xfs/xfs_xattr.c |    4 +-
- 5 files changed, 34 insertions(+), 171 deletions(-)
+1608 Dec 29 14:25:12 localhost kernel: [ 1224.449293] rpc.nfsd
+D c0d94300     0  1199    991 0x00000080
 
-diff --git a/fs/xfs/xfs_acl.c b/fs/xfs/xfs_acl.c
-index 057ae2d..0ecec18 100644
---- a/fs/xfs/xfs_acl.c
-+++ b/fs/xfs/xfs_acl.c
-@@ -124,16 +124,12 @@ struct posix_acl *
- xfs_get_acl(struct inode *inode, int type)
- {
- 	struct xfs_inode *ip = XFS_I(inode);
--	struct posix_acl *acl;
-+	struct posix_acl *acl = NULL;
- 	struct xfs_acl *xfs_acl;
- 	unsigned char *ea_name;
- 	int error;
- 	int len;
- 
--	acl = get_cached_acl(inode, type);
--	if (acl != ACL_NOT_CACHED)
--		return acl;
--
- 	trace_xfs_get_acl(ip);
- 
- 	switch (type) {
-@@ -164,10 +160,8 @@ xfs_get_acl(struct inode *inode, int type)
- 		 * cache entry, for any other error assume it is transient and
- 		 * leave the cache entry as ACL_NOT_CACHED.
- 		 */
--		if (error == -ENOATTR) {
--			acl = NULL;
-+		if (error == -ENOATTR)
- 			goto out_update_cache;
--		}
- 		goto out;
- 	}
- 
-@@ -183,15 +177,12 @@ out:
- }
- 
- STATIC int
--xfs_set_acl(struct inode *inode, int type, struct posix_acl *acl)
-+__xfs_set_acl(struct inode *inode, int type, struct posix_acl *acl)
- {
- 	struct xfs_inode *ip = XFS_I(inode);
- 	unsigned char *ea_name;
- 	int error;
- 
--	if (S_ISLNK(inode->i_mode))
--		return -EOPNOTSUPP;
--
- 	switch (type) {
- 	case ACL_TYPE_ACCESS:
- 		ea_name = SGI_ACL_FILE;
-@@ -282,131 +273,23 @@ posix_acl_default_exists(struct inode *inode)
- 	return xfs_acl_exists(inode, SGI_ACL_DEFAULT);
- }
- 
--/*
-- * No need for i_mutex because the inode is not yet exposed to the VFS.
-- */
- int
--xfs_inherit_acl(struct inode *inode, struct posix_acl *acl)
-+xfs_set_acl(struct inode *inode, struct posix_acl *acl, int type)
- {
--	umode_t mode = inode->i_mode;
--	int error = 0, inherit = 0;
--
--	if (S_ISDIR(inode->i_mode)) {
--		error = xfs_set_acl(inode, ACL_TYPE_DEFAULT, acl);
--		if (error)
--			goto out;
--	}
--
--	error = __posix_acl_create(&acl, GFP_KERNEL, &mode);
--	if (error < 0)
--		return error;
--
--	/*
--	 * If __posix_acl_create returns a positive value we need to
--	 * inherit a permission that can't be represented using the Unix
--	 * mode bits and we actually need to set an ACL.
--	 */
--	if (error > 0)
--		inherit = 1;
--
--	error = xfs_set_mode(inode, mode);
--	if (error)
--		goto out;
--
--	if (inherit)
--		error = xfs_set_acl(inode, ACL_TYPE_ACCESS, acl);
--
--out:
--	posix_acl_release(acl);
--	return error;
--}
--
--int
--xfs_acl_chmod(struct inode *inode)
--{
--	struct posix_acl *acl;
--	int error;
--
--	if (S_ISLNK(inode->i_mode))
--		return -EOPNOTSUPP;
--
--	acl = xfs_get_acl(inode, ACL_TYPE_ACCESS);
--	if (IS_ERR(acl) || !acl)
--		return PTR_ERR(acl);
--
--	error = __posix_acl_chmod(&acl, GFP_KERNEL, inode->i_mode);
--	if (error)
--		return error;
--
--	error = xfs_set_acl(inode, ACL_TYPE_ACCESS, acl);
--	posix_acl_release(acl);
--	return error;
--}
--
--static int
--xfs_xattr_acl_get(struct dentry *dentry, const char *name,
--		void *value, size_t size, int type)
--{
--	struct posix_acl *acl;
--	int error;
--
--	acl = xfs_get_acl(dentry->d_inode, type);
--	if (IS_ERR(acl))
--		return PTR_ERR(acl);
--	if (acl == NULL)
--		return -ENODATA;
--
--	error = posix_acl_to_xattr(&init_user_ns, acl, value, size);
--	posix_acl_release(acl);
--
--	return error;
--}
--
--static int
--xfs_xattr_acl_set(struct dentry *dentry, const char *name,
--		const void *value, size_t size, int flags, int type)
--{
--	struct inode *inode = dentry->d_inode;
--	struct posix_acl *acl = NULL;
- 	int error = 0;
- 
--	if (flags & XATTR_CREATE)
--		return -EINVAL;
--	if (type == ACL_TYPE_DEFAULT && !S_ISDIR(inode->i_mode))
--		return value ? -EACCES : 0;
--	if (!inode_owner_or_capable(inode))
--		return -EPERM;
--
--	if (!value)
-+	if (!acl)
- 		goto set_acl;
- 
--	acl = posix_acl_from_xattr(&init_user_ns, value, size);
--	if (!acl) {
--		/*
--		 * acl_set_file(3) may request that we set default ACLs with
--		 * zero length -- defend (gracefully) against that here.
--		 */
--		goto out;
--	}
--	if (IS_ERR(acl)) {
--		error = PTR_ERR(acl);
--		goto out;
--	}
--
--	error = posix_acl_valid(acl);
--	if (error)
--		goto out_release;
--
- 	error = -EINVAL;
- 	if (acl->a_count > XFS_ACL_MAX_ENTRIES(XFS_M(inode->i_sb)))
--		goto out_release;
-+		return error;
- 
- 	if (type == ACL_TYPE_ACCESS) {
- 		umode_t mode = inode->i_mode;
- 		error = posix_acl_equiv_mode(acl, &mode);
- 
- 		if (error <= 0) {
--			posix_acl_release(acl);
- 			acl = NULL;
- 
- 			if (error < 0)
-@@ -415,27 +298,9 @@ xfs_xattr_acl_set(struct dentry *dentry, const char *name,
- 
- 		error = xfs_set_mode(inode, mode);
- 		if (error)
--			goto out_release;
-+			return error;
- 	}
- 
-  set_acl:
--	error = xfs_set_acl(inode, type, acl);
-- out_release:
--	posix_acl_release(acl);
-- out:
--	return error;
-+	return __xfs_set_acl(inode, type, acl);
- }
--
--const struct xattr_handler xfs_xattr_acl_access_handler = {
--	.prefix	= POSIX_ACL_XATTR_ACCESS,
--	.flags	= ACL_TYPE_ACCESS,
--	.get	= xfs_xattr_acl_get,
--	.set	= xfs_xattr_acl_set,
--};
--
--const struct xattr_handler xfs_xattr_acl_default_handler = {
--	.prefix	= POSIX_ACL_XATTR_DEFAULT,
--	.flags	= ACL_TYPE_DEFAULT,
--	.get	= xfs_xattr_acl_get,
--	.set	= xfs_xattr_acl_set,
--};
-diff --git a/fs/xfs/xfs_acl.h b/fs/xfs/xfs_acl.h
-index 4016a56..5dc1637 100644
---- a/fs/xfs/xfs_acl.h
-+++ b/fs/xfs/xfs_acl.h
-@@ -60,20 +60,15 @@ struct xfs_acl {
- 
- #ifdef CONFIG_XFS_POSIX_ACL
- extern struct posix_acl *xfs_get_acl(struct inode *inode, int type);
--extern int xfs_inherit_acl(struct inode *inode, struct posix_acl *default_acl);
--extern int xfs_acl_chmod(struct inode *inode);
-+extern int xfs_set_acl(struct inode *inode, struct posix_acl *acl, int type);
- extern int posix_acl_access_exists(struct inode *inode);
- extern int posix_acl_default_exists(struct inode *inode);
--
--extern const struct xattr_handler xfs_xattr_acl_access_handler;
--extern const struct xattr_handler xfs_xattr_acl_default_handler;
- #else
- static inline struct posix_acl *xfs_get_acl(struct inode *inode, int type)
- {
- 	return NULL;
- }
--# define xfs_inherit_acl(inode, default_acl)		0
--# define xfs_acl_chmod(inode)				0
-+# define xfs_set_acl					NULL
- # define posix_acl_access_exists(inode)			0
- # define posix_acl_default_exists(inode)		0
- #endif /* CONFIG_XFS_POSIX_ACL */
-diff --git a/fs/xfs/xfs_iops.c b/fs/xfs/xfs_iops.c
-index 27e0e54..f1f0d46 100644
---- a/fs/xfs/xfs_iops.c
-+++ b/fs/xfs/xfs_iops.c
-@@ -123,7 +123,7 @@ xfs_vn_mknod(
- {
- 	struct inode	*inode;
- 	struct xfs_inode *ip = NULL;
--	struct posix_acl *default_acl = NULL;
-+	struct posix_acl *default_acl, *acl;
- 	struct xfs_name	name;
- 	int		error;
- 
-@@ -139,14 +139,9 @@ xfs_vn_mknod(
- 		rdev = 0;
- 	}
- 
--	if (IS_POSIXACL(dir)) {
--		default_acl = xfs_get_acl(dir, ACL_TYPE_DEFAULT);
--		if (IS_ERR(default_acl))
--			return PTR_ERR(default_acl);
--
--		if (!default_acl)
--			mode &= ~current_umask();
--	}
-+	error = posix_acl_create(dir, &mode, &default_acl, &acl);
-+	if (error)
-+		return error;
- 
- 	xfs_dentry_to_name(&name, dentry, mode);
- 	error = xfs_create(XFS_I(dir), &name, mode, rdev, &ip);
-@@ -160,21 +155,27 @@ xfs_vn_mknod(
- 		goto out_cleanup_inode;
- 
- 	if (default_acl) {
--		error = -xfs_inherit_acl(inode, default_acl);
--		default_acl = NULL;
--		if (unlikely(error))
-+		error = xfs_set_acl(inode, default_acl, ACL_TYPE_DEFAULT);
-+		if (error)
-+			goto out_cleanup_inode;
-+	}
-+	if (acl) {
-+		error = xfs_set_acl(inode, acl, ACL_TYPE_ACCESS);
-+		if (error)
- 			goto out_cleanup_inode;
- 	}
--
- 
- 	d_instantiate(dentry, inode);
-+ out_free_acl:
-+	if (default_acl)
-+		posix_acl_release(default_acl);
-+	if (acl)
-+		posix_acl_release(acl);
- 	return -error;
- 
-  out_cleanup_inode:
- 	xfs_cleanup_inode(dir, inode, dentry);
-- out_free_acl:
--	posix_acl_release(default_acl);
--	return -error;
-+	goto out_free_acl;
- }
- 
- STATIC int
-@@ -683,7 +684,7 @@ xfs_setattr_nonsize(
- 	 * 	     Posix ACL code seems to care about this issue either.
- 	 */
- 	if ((mask & ATTR_MODE) && !(flags & XFS_ATTR_NOACL)) {
--		error = -xfs_acl_chmod(inode);
-+		error = -posix_acl_chmod(inode, inode->i_mode);
- 		if (error)
- 			return XFS_ERROR(error);
- 	}
-@@ -1052,6 +1053,7 @@ xfs_vn_fiemap(
- 
- static const struct inode_operations xfs_inode_operations = {
- 	.get_acl		= xfs_get_acl,
-+	.set_acl		= xfs_set_acl,
- 	.getattr		= xfs_vn_getattr,
- 	.setattr		= xfs_vn_setattr,
- 	.setxattr		= generic_setxattr,
-@@ -1079,6 +1081,7 @@ static const struct inode_operations xfs_dir_inode_operations = {
- 	.mknod			= xfs_vn_mknod,
- 	.rename			= xfs_vn_rename,
- 	.get_acl		= xfs_get_acl,
-+	.set_acl		= xfs_set_acl,
- 	.getattr		= xfs_vn_getattr,
- 	.setattr		= xfs_vn_setattr,
- 	.setxattr		= generic_setxattr,
-@@ -1105,6 +1108,7 @@ static const struct inode_operations xfs_dir_ci_inode_operations = {
- 	.mknod			= xfs_vn_mknod,
- 	.rename			= xfs_vn_rename,
- 	.get_acl		= xfs_get_acl,
-+	.set_acl		= xfs_set_acl,
- 	.getattr		= xfs_vn_getattr,
- 	.setattr		= xfs_vn_setattr,
- 	.setxattr		= generic_setxattr,
-@@ -1118,7 +1122,6 @@ static const struct inode_operations xfs_symlink_inode_operations = {
- 	.readlink		= generic_readlink,
- 	.follow_link		= xfs_vn_follow_link,
- 	.put_link		= xfs_vn_put_link,
--	.get_acl		= xfs_get_acl,
- 	.getattr		= xfs_vn_getattr,
- 	.setattr		= xfs_vn_setattr,
- 	.setxattr		= generic_setxattr,
-diff --git a/fs/xfs/xfs_iops.h b/fs/xfs/xfs_iops.h
-index d2c5057..1c34e43 100644
---- a/fs/xfs/xfs_iops.h
-+++ b/fs/xfs/xfs_iops.h
-@@ -30,7 +30,7 @@ extern void xfs_setup_inode(struct xfs_inode *);
- /*
-  * Internal setattr interfaces.
-  */
--#define XFS_ATTR_NOACL		0x01	/* Don't call xfs_acl_chmod */
-+#define XFS_ATTR_NOACL		0x01	/* Don't call posix_acl_chmod */
- 
- extern int xfs_setattr_nonsize(struct xfs_inode *ip, struct iattr *vap,
- 			       int flags);
-diff --git a/fs/xfs/xfs_xattr.c b/fs/xfs/xfs_xattr.c
-index 9d47907..78ed92a 100644
---- a/fs/xfs/xfs_xattr.c
-+++ b/fs/xfs/xfs_xattr.c
-@@ -102,8 +102,8 @@ const struct xattr_handler *xfs_xattr_handlers[] = {
- 	&xfs_xattr_trusted_handler,
- 	&xfs_xattr_security_handler,
- #ifdef CONFIG_XFS_POSIX_ACL
--	&xfs_xattr_acl_access_handler,
--	&xfs_xattr_acl_default_handler,
-+	&posix_acl_access_xattr_handler,
-+	&posix_acl_default_xattr_handler,
- #endif
- 	NULL
- };
--- 
-1.7.10.4
+1609 Dec 29 14:25:12 localhost kernel: [ 1224.451347]  d9a9bc98
+00000086 c046aa48 c0d94300 ddb66540 c0d79300 58625871 0000011c
 
+1610 Dec 29 14:25:12 localhost kernel: [ 1224.453426]  c0d79300
+dfff4300 dcd93a80 c0461738 00000000 c0d94300 00000000 00000020
 
+1611 Dec 29 14:25:12 localhost kernel: [ 1224.455701]  da4d53a0
+00000020 ddb66540 da4d53b0 d9a9bc84 c046add9 dcd93a80 00000292
+
+1612 Dec 29 14:25:12 localhost kernel: [ 1224.457853] Call Trace:
+
+1613 Dec 29 14:25:12 localhost kernel: [ 1224.459919]  [<c046aa48>] ?
+insert_work+0x38/0x80
+
+1614 Dec 29 14:25:12 localhost kernel: [ 1224.462055]  [<c0461738>] ?
+mod_timer+0xe8/0x1c0
+
+1615 Dec 29 14:25:12 localhost kernel: [ 1224.464230]  [<c046add9>] ?
+__queue_delayed_work+0x89/0x140
+
+1616 Dec 29 14:25:12 localhost kernel: [ 1224.466304]  [<e092d970>] ?
+__rpc_wait_for_completion_task+0x30/0x30 [sunrpc]
+
+1617 Dec 29 14:25:12 localhost kernel: [ 1224.468561]  [<c09bd543>]
+schedule+0x23/0x60
+
+1618 Dec 29 14:25:12 localhost kernel: [ 1224.470671]  [<e092d99d>]
+rpc_wait_bit_killable+0x2d/0x80 [sunrpc]
+
+1619 Dec 29 14:25:12 localhost kernel: [ 1224.472785]  [<c09bdae1>]
+__wait_on_bit+0x51/0x70
+
+1620 Dec 29 14:25:12 localhost kernel: [ 1224.474974]  [<e092d970>] ?
+__rpc_wait_for_completion_task+0x30/0x30 [sunrpc]
+
+1621 Dec 29 14:25:12 localhost kernel: [ 1224.477170]  [<e092d970>] ?
+__rpc_wait_for_completion_task+0x30/0x30 [sunrpc]
+
+1622 Dec 29 14:25:12 localhost kernel: [ 1224.479389]  [<c09bdb5b>]
+out_of_line_wait_on_bit+0x5b/0x70
+
+1623 Dec 29 14:25:12 localhost kernel: [ 1224.481739]  [<c048e440>] ?
+autoremove_wake_function+0x40/0x40
+
+1624 Dec 29 14:25:12 localhost kernel: [ 1224.483881]  [<e092e703>]
+__rpc_execute+0x1f3/0x3a0 [sunrpc]
+
+1625 Dec 29 14:25:12 localhost kernel: [ 1224.486030]  [<c0516283>] ?
+mempool_alloc_slab+0x13/0x20
+
+1626 Dec 29 14:25:12 localhost kernel: [ 1224.488194]  [<c051638e>] ?
+mempool_alloc+0x3e/0x100
+
+1627 Dec 29 14:25:12 localhost kernel: [ 1224.490307]  [<e0925d80>] ?
+call_bind_status+0x260/0x260 [sunrpc]
+
+1628 Dec 29 14:25:12 localhost kernel: [ 1224.492559]  [<c048e09c>] ?
+wake_up_bit+0x1c/0x20
+
+1629 Dec 29 14:25:12 localhost kernel: [ 1224.494844]  [<e092f866>]
+rpc_execute+0x56/0x90 [sunrpc]
+
+1630 Dec 29 14:25:12 localhost kernel: [ 1224.496935]  [<e0926cf9>]
+rpc_run_task+0x59/0x70 [sunrpc]
+
+1631 Dec 29 14:25:12 localhost kernel: [ 1224.499122]  [<e0926d4c>]
+rpc_call_sync+0x3c/0x90 [sunrpc]
+
+1632 Dec 29 14:25:12 localhost kernel: [ 1224.501260]  [<e0926de8>]
+rpc_ping+0x48/0x60 [sunrpc]
+
+1633 Dec 29 14:25:12 localhost kernel: [ 1224.503367]  [<e092703b>]
+rpc_bind_new_program+0x4b/0x70 [sunrpc]
+
+1634 Dec 29 14:25:12 localhost kernel: [ 1224.505608]  [<e0938333>]
+rpcb_create_local+0x163/0x1f0 [sunrpc]
+
+1635 Dec 29 14:25:12 localhost kernel: [ 1224.507720]  [<e0932199>] ?
+__svc_create+0x119/0x1f0 [sunrpc]
+
+1636 Dec 29 14:25:12 localhost kernel: [ 1224.509830]  [<e0932016>]
+svc_rpcb_setup+0x16/0x30 [sunrpc]
+
+1637 Dec 29 14:25:12 localhost kernel: [ 1224.511963]  [<e0932052>]
+svc_bind+0x22/0x30 [sunrpc]
+
+1638 Dec 29 14:25:12 localhost kernel: [ 1224.514056]  [<e09b73a4>]
+nfsd_create_serv+0xc4/0x1d0 [nfsd]
+
+1639 Dec 29 14:25:12 localhost kernel: [ 1224.516844]  [<e09b7600>] ?
+nfsd_destroy+0x70/0x70 [nfsd]
+
+1640 Dec 29 14:25:12 localhost kernel: [ 1224.518870]  [<e09b8d1f>]
+write_ports+0x21f/0x2b0 [nfsd]
+
+1641 Dec 29 14:25:12 localhost kernel: [ 1224.521359]  [<c06a182c>] ?
+_copy_from_user+0x2c/0x40
+
+1642 Dec 29 14:25:12 localhost kernel: [ 1224.523358]  [<c05854fe>] ?
+simple_transaction_get+0x8e/0xa0
+
+1643 Dec 29 14:25:12 localhost kernel: [ 1224.525383]  [<e09b8b00>] ?
+write_recoverydir+0xf0/0xf0 [nfsd]
+
+1644 Dec 29 14:25:12 localhost kernel: [ 1224.527386]  [<e09b7f3b>]
+nfsctl_transaction_write+0x3b/0x60 [nfsd]
+
+1645 Dec 29 14:25:12 localhost kernel: [ 1224.529302]  [<e09b7f00>] ?
+export_features_show+0x30/0x30 [nfsd]
+
+1646 Dec 29 14:25:12 localhost kernel: [ 1224.531366]  [<c0564695>]
+vfs_write+0x95/0x1c0
+
+1647 Dec 29 14:25:12 localhost kernel: [ 1224.533401]  [<c0564d49>]
+SyS_write+0x49/0x90
+
+1648 Dec 29 14:25:12 localhost kernel: [ 1224.535380]  [<c09c730d>]
+sysenter_do_call+0x12/0x28
+
+thanks,
+Kinglong Mee
+
+2013/12/28 Kinglong Mee <kinglongmee@gmail.com>:
+>
+> 在 2013年12月28日，上午3:40，Chuck Lever <chuck.lever@oracle.com> 写道：
+>
+>
+> On Dec 27, 2013, at 1:43 PM, J.;Bruce Fields <bfields@fieldses.org> wrote:
+>
+> On Fri, Dec 27, 2013 at 11:05:05AM -0500, Chuck Lever wrote:
+>
+> Hi-
+>
+> On Dec 27, 2013, at 5:17 AM, Kinglong Mee <kinglongmee@gmail.com> wrote:
+>
+> On 12/24/2013 01:39 AM, J. Bruce Fields wrote:
+>
+> On Fri, Dec 20, 2013 at 05:10:42PM +0000, Gareth Williams wrote:
+>
+> Hi,
+>
+> I'm trying to run NFS with protocol version 4 only (that is, with v2
+> & v3 disabled) on a CentOS 6.5 install running as a KVM guest.
+>
+> The RedHat documentation (amongst others) states that rpcbind isn't
+> needed with v4, but if I start nfs without rpcbind I get errors.
+>
+>
+> I suspect the kernel code needs to be fixed to not attempt to register
+> with rpcbind n the v4-only case.  (Or to attempt to register but ignore
+> any error, I'm not sure which is best.)
+>
+> And this may not be the only issue in the v4-only case.  This isn't
+> really a priority for me right now, but I'd happily look at patches.
+>
+>
+> Hi all,
+>
+> I make a patch for this problem, please have a check, thanks.
+>
+> From 64c1f96348213f39b9411ab25699a292edbef4ef Mon Sep 17 00:00:00 2001
+> From: Kinglong Mee <kinglongmee@gmail.com>
+> Date: Fri, 27 Dec 2013 18:06:25 +0800
+> Subject: [PATCH] NFSD: supports nfsv4 service without rpcbind
+>
+> 1. set vs_hidden in nfsd_version4 to avoid register nfsv4 to rpcbind
+>
+>
+> IMO we do want the NFS port registered if rpcbind is running.  NFSv4 is not
+> a hidden service, like the client's callback server which can only be
+> discovered by a forward advertisement (SETCLIENTID).
+>
+> I think I prefer ignoring the rpcb_set error for NFSv4.
+>
+>
+> Agreed.  My only concern would be that there be no unnecessary delays or
+> errors logged in the v4-only case if rpcbind isn't running.
+>
+>
+> I believe the rpcb_set upcall now uses the AF_LOCAL transport, which should
+> be able to detect immediately that rpcbind is not listening.
+>
+> The OP did not report a delay or hang, thankfully.
+>
+>
+> I meet a problem when testing on Fedora 20 with latest kernel,
+> svc_register for  nfsv4 not report immediately, instead of a delay and
+> return EIO.
+>
+> After that, rpc.nfsd also hang there, not return utils rpcbind start.
+> I will have a check for that.
+>
+> thanks.
+> Kinglong Mee
+>
+>
+>
+> --b.
+>
+>
+>
+> 2. don't start lockd when only supports nfsv4.
+>
+> Reported-by: Gareth Williams <gareth@garethwilliams.me.uk>
+> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> ---
+> fs/nfsd/netns.h    |  3 +++
+> fs/nfsd/nfs4proc.c |  1 +
+> fs/nfsd/nfsctl.c   |  3 +++
+> fs/nfsd/nfssvc.c   | 21 ++++++++++++++++-----
+> 4 files changed, 23 insertions(+), 5 deletions(-)
+>
+> diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
+> index 849a7c3..ae2c179 100644
+> --- a/fs/nfsd/netns.h
+> +++ b/fs/nfsd/netns.h
+> @@ -96,6 +96,9 @@ struct nfsd_net {
+>
+> bool nfsd_net_up;
+>
+> + bool lockd_up;
+> + u32 nfsd_needs_lockd;
+> +
+> /*
+>  * Time of server startup
+>  */
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index 419572f..1496376 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+> @@ -1881,6 +1881,7 @@ struct svc_version nfsd_version4 = {
+> .vs_proc = nfsd_procedures4,
+> .vs_dispatch = nfsd_dispatch,
+> .vs_xdrsize = NFS4_SVC_XDRSIZE,
+> + .vs_hidden = 1,
+> };
+>
+> /*
+> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+> index 7f55517..8c7b0f0 100644
+> --- a/fs/nfsd/nfsctl.c
+> +++ b/fs/nfsd/nfsctl.c
+> @@ -575,6 +575,9 @@ static ssize_t __write_versions(struct file *file, char
+> *buf, size_t size)
+> switch(num) {
+> case 2:
+> case 3:
+> + nfsd_vers(num, sign == '-' ? NFSD_CLEAR : NFSD_SET);
+> + nn->nfsd_needs_lockd = nfsd_vers(num, NFSD_TEST);
+> + break;
+> case 4:
+> nfsd_vers(num, sign == '-' ? NFSD_CLEAR : NFSD_SET);
+> break;
+> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+> index 760c85a..2b841d8 100644
+> --- a/fs/nfsd/nfssvc.c
+> +++ b/fs/nfsd/nfssvc.c
+> @@ -255,9 +255,14 @@ static int nfsd_startup_net(int nrservs, struct net
+> *net)
+> ret = nfsd_init_socks(net);
+> if (ret)
+> goto out_socks;
+> - ret = lockd_up(net);
+> - if (ret)
+> - goto out_socks;
+> +
+> + if (nn->nfsd_needs_lockd && !nn->lockd_up) {
+> + ret = lockd_up(net);
+> + if (ret)
+> + goto out_socks;
+> + nn->lockd_up = 1;
+> + }
+> +
+> ret = nfs4_state_start_net(net);
+> if (ret)
+> goto out_lockd;
+> @@ -266,7 +271,10 @@ static int nfsd_startup_net(int nrservs, struct net
+> *net)
+> return 0;
+>
+> out_lockd:
+> - lockd_down(net);
+> + if (nn->lockd_up) {
+> + lockd_down(net);
+> + nn->lockd_up = 0;
+> + }
+> out_socks:
+> nfsd_shutdown_generic();
+> return ret;
+> @@ -277,7 +285,10 @@ static void nfsd_shutdown_net(struct net *net)
+> struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+>
+> nfs4_state_shutdown_net(net);
+> - lockd_down(net);
+> + if (nn->lockd_up) {
+> + lockd_down(net);
+> + nn->lockd_up = 0;
+> + }
+> nn->nfsd_net_up = false;
+> nfsd_shutdown_generic();
+> }
+> --
+> 1.8.4.2
+>
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+>
+> --
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
+>
+>
+>
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>
+>
+> --
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
+>
+>
