@@ -1,58 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:56066 "EHLO fieldses.org"
+Received: from cantor2.suse.de ([195.135.220.15]:55542 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751352Ab3LETpn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 5 Dec 2013 14:45:43 -0500
-Date: Thu, 5 Dec 2013 14:45:37 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Antti =?utf-8?B?VMO2bmt5csOk?= <daedalus@pingtimeout.net>
-Cc: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org
-Subject: Re: Patch for mapping EILSEQ into NFSERR_INVAL
-Message-ID: <20131205194537.GA32681@fieldses.org>
-References: <529CEBC3.8060505@pingtimeout.net>
- <20131204083118.GA30216@infradead.org>
- <529F0EDD.1070403@pingtimeout.net>
- <20131204111933.GA20218@infradead.org>
- <529F1347.5000705@pingtimeout.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <529F1347.5000705@pingtimeout.net>
+	id S1756481Ab3LaW4d (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 31 Dec 2013 17:56:33 -0500
+Date: Wed, 1 Jan 2014 09:56:20 +1100
+From: NeilBrown <neilb@suse.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Jeff Layton <jlayton@redhat.com>, Simo Sorce <simo@redhat.com>,
+        linux-nfs@vger.kernel.org
+Subject: Re: should we change how the kernel detects whether gssproxy is
+ running?
+Message-ID: <20140101095620.0ab48051@notabene.brown>
+In-Reply-To: <20131231180123.GA12875@fieldses.org>
+References: <20131231073300.0e0f220a@tlielax.poochiereds.net>
+	<20131231180123.GA12875@fieldses.org>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/EQjHn8O5KxP55Ab6SeVIVE9"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Dec 04, 2013 at 01:34:31PM +0200, Antti Tönkyrä wrote:
-> On 2013-12-04 13:19, Christoph Hellwig wrote:
-> >On Wed, Dec 04, 2013 at 01:15:41PM +0200, Antti T?nkyr? wrote:
-> >>>On 2013-12-04 10:31, Christoph Hellwig wrote:
-> >>>> >Please just fix ntfs to do the mapping for you, EILSEQ is not an
-> >>>> >error the VFS or applications expect either.
-> >>>> >
-> >>>How would you propose the mapping to be done? Are you sure about
-> >>>EILSEQ not being an error that VFS/applications expect, my userspace
-> >>>tools seem to handle local filesystem returning EILSEQ just fine?
-> >EILSEQ doesn't have a specified meaning for VFS operations.  Of course
-> >your app could handle it in some way, but that's your implementation
-> >specific way that has not base for it.
-> >
-> Okay, I understand your point. However, in this case I was referring
-> to basic GNU/Linux userspace tools which I can hardly call my own
-> apps :)
-> 
-> All in all I guess we could keep the current mapping path which
-> eventually leads into I/O error. Next we should understand why the
-> share fails when I/O error is emitted...
+--Sig_/EQjHn8O5KxP55Ab6SeVIVE9
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-OK, that fixed....
+On Tue, 31 Dec 2013 13:01:23 -0500 "J. Bruce Fields" <bfields@fieldses.org>
+wrote:
 
-I'm still confused about the question of what error to return.
+> On Tue, Dec 31, 2013 at 07:33:00AM -0500, Jeff Layton wrote:
+> > I'm a bit concerned with how /proc/net/rpc/use-gss-proxy works...
+> >=20
+> > For one thing, when the kernel first boots any read against that file
+> > hangs. That's going to be extremely problematic for certain tools that
+> > scrape info out of /proc for troubleshooting purposes (e.g. Red Hat's
+> > sosreport tool).
+>=20
+> Is that the only file under /proc for which that's true?  (E.g. the rpc
+> cache channel files probably do the same, don't they?)  I was assuming
+> tools like sosreport need to work from lists of specific paths.
 
-I don't think man pages or posix allow open to fail because of a bad
-name, but there are filesystems that do, so you're stuck returning
-something.
+The rpc cache channel files do not block on reads, so 'cat' works well on
+them.
+A process (like mountd) that wasn't to see new additions will use select (or
+poll) for an 'exception' condition, and then read.
 
->From a grep of EILSEQ in fs/ it looks like that's what ntfs and befs
-return on lookups of bad utf-8.
+I think that it is best of all files in /proc (or /sys) would support 'cat'.
+If I "tar" up "/proc" on my notebook it doesn't block ... though it does ta=
+ke
+quite a while on /proc/kcore :-)
 
-I guess NFS will return EINVAL (if the server follows 3530).
+NeilBrown
 
---b.
+--Sig_/EQjHn8O5KxP55Ab6SeVIVE9
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.22 (GNU/Linux)
+
+iQIVAwUBUsNLlDnsnt1WYoG5AQJPHg//QAuhrfHNm1XWGHh+zbQEKxqmnH/vS9ho
+xowTQH/0+clGBgCfnPV8gZkVKyRrcMbrJGEjPP4E6qn78mkBHqHkaCTqOVpt4IyS
+QFHWkc/2iXjf13JT1PbiH4rhphcoxAjjqCgFE0TD6PrhfZc6C1RuH7t1jhlCZXE9
+wsrVZkWcpnu1VcK2h4QSD2O95Pq9hxrnve3ppZF+fBa3/pUJWjXUE6ofNXplf7we
+qs9VtiYjvG1mR5y3iDHpe6VcS4adqZE0XOhAXoY/+VF8fHlUCQWnCzOGVLXLiYe6
+Q7NWu7CucD0I4P4IKcr9C78TwTNPQCakgFWb7C7NkQIaBEi9BgVeNyz4sX2V8opx
+tqvsi05JoU0+i4+IdbFnPRMWxJTCimsje4/l+IGLBvloTnqf4m+XS+pdWzccpnAs
+5YozkKjSQw28AvvL0gJ3Cz7jXmvfSjb4gEwlOYvnk8TnybH2RikaVh5OxOHYmvem
+5uRigGZp6BIxl76yqSP+bvCTr+Kg+gFVeYXshWEgAie0steqZP878z0LyxWQJBnV
+/aW5Quy1J9gfVWThV39OgjxtUQQHtTNdj5/w4QvMW9jF/ogLSsXkuWheSjyP5/B/
+5judB1MvPTk1r09NoGIJtfkyaO7iqRuaE0CtLux9rYoOS/rV4kj2RIM58oocmj3V
+5GrCqUc/poU=
+=gt89
+-----END PGP SIGNATURE-----
+
+--Sig_/EQjHn8O5KxP55Ab6SeVIVE9--
