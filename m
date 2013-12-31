@@ -1,44 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:59163 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750896Ab3LAMG4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 1 Dec 2013 07:06:56 -0500
-Message-Id: <20131201120654.027611567@bombadil.infradead.org>
-Date: Sun, 01 Dec 2013 03:59:06 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: viro@zeniv.linux.org.uk
-Cc: linux-fsdevel@vger.kernel.org, linux-btrfs@vger.kernel.org,
-        linux-ext4@vger.kernel.org, linux-f2fs-devel@lists.sourceforge.net,
-        linux-mtd@lists.infradead.org, Mark Fasheh <mfasheh@suse.com>,
-        Joel Becker <jlbec@evilplan.org>, reiserfs-devel@vger.kernel.org,
-        xfs@oss.sgi.com, jfs-discussion@lists.sourceforge.net,
-        cluster-devel@redhat.com, linux-nfs@vger.kernel.org
-Subject: [PATCH 03/18] fs: add a set_acl inode operation
-References: <20131201115903.910559036@bombadil.infradead.org>
+Received: from fieldses.org ([174.143.236.118]:55982 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753937Ab3LaSB3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 31 Dec 2013 13:01:29 -0500
+Date: Tue, 31 Dec 2013 13:01:23 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: Simo Sorce <simo@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: should we change how the kernel detects whether gssproxy is
+ running?
+Message-ID: <20131231180123.GA12875@fieldses.org>
+References: <20131231073300.0e0f220a@tlielax.poochiereds.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20131231073300.0e0f220a@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This will allow moving all the Posix ACL handling into the VFS and clean
-up tons of cruft in the filesystems.
+On Tue, Dec 31, 2013 at 07:33:00AM -0500, Jeff Layton wrote:
+> I'm a bit concerned with how /proc/net/rpc/use-gss-proxy works...
+> 
+> For one thing, when the kernel first boots any read against that file
+> hangs. That's going to be extremely problematic for certain tools that
+> scrape info out of /proc for troubleshooting purposes (e.g. Red Hat's
+> sosreport tool).
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
----
- include/linux/fs.h |    1 +
- 1 file changed, 1 insertion(+)
+Is that the only file under /proc for which that's true?  (E.g. the rpc
+cache channel files probably do the same, don't they?)  I was assuming
+tools like sosreport need to work from lists of specific paths.
 
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 121f11f..09f553c 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1580,6 +1580,7 @@ struct inode_operations {
- 			   struct file *, unsigned open_flag,
- 			   umode_t create_mode, int *opened);
- 	int (*tmpfile) (struct inode *, struct dentry *, umode_t);
-+	int (*set_acl)(struct inode *, struct posix_acl *, int);
- } ____cacheline_aligned;
- 
- ssize_t rw_copy_check_uvector(int type, const struct iovec __user * uvector,
--- 
-1.7.10.4
+> Also, it seems like if gssproxy suddenly dies, then this switch stays
+> stuck in its position. There is no way switch back after enabling
+> gssproxy.
 
+That's true.  I didn't think the ability to change on the fly was
+necessary (but I'll admit it's annoying when debugging at least.)
 
+> All of that seems unnecessarily complicated. Is there some rationale
+> for it that I'm missing?
+> 
+> Would it instead make more sense to instead just have gssproxy
+> hold a file open under /proc? If the file is being held open, then
+> send upcalls to gssproxy. If not then use the legacy code.
+
+The kernel code needs to know which way to handle an incoming packet at
+the time it arrives.  If it falls back on the legacy upcall that means
+failing large init_sec_context calls.  So a delayed gss-proxy start (or
+a crash and restart) would mean clients erroring out (with fatal errors
+I think, not just something that would be retried).
+
+--b.
+
+> That way the upcalls would truly be conditional on whether gssproxy is
+> running...
+> 
+> -- 
+> Jeff Layton <jlayton@redhat.com>
