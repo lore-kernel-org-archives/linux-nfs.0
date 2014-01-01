@@ -1,49 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:58177 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752484AbaAQMR2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Jan 2014 07:17:28 -0500
-Date: Fri, 17 Jan 2014 04:17:23 -0800
-From: Christoph Hellwig <hch@infradead.org>
+Received: from mx1.redhat.com ([209.132.183.28]:53248 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753929AbaAAMVP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 1 Jan 2014 07:21:15 -0500
+Date: Wed, 1 Jan 2014 07:21:10 -0500
+From: Jeff Layton <jlayton@redhat.com>
 To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        Miklos Szeredi <mszeredi@suse.cz>
-Subject: Re: [PATCH] dcache: fix d_splice_alias handling of aliases
-Message-ID: <20140117121723.GA18375@infradead.org>
-References: <20140115151749.GF23999@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140115151749.GF23999@fieldses.org>
+Cc: Simo Sorce <simo@redhat.com>, linux-nfs@vger.kernel.org, neilb@suse.de
+Subject: Re: should we change how the kernel detects whether gssproxy is
+ running?
+Message-ID: <20140101072110.517c73ec@tlielax.poochiereds.net>
+In-Reply-To: <20131231180123.GA12875@fieldses.org>
+References: <20131231073300.0e0f220a@tlielax.poochiereds.net>
+	<20131231180123.GA12875@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jan 15, 2014 at 10:17:49AM -0500, J. Bruce Fields wrote:
-> From: "J. Bruce Fields" <bfields@redhat.com>
+On Tue, 31 Dec 2013 13:01:23 -0500
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
+
+> On Tue, Dec 31, 2013 at 07:33:00AM -0500, Jeff Layton wrote:
+> > I'm a bit concerned with how /proc/net/rpc/use-gss-proxy works...
+> > 
+> > For one thing, when the kernel first boots any read against that file
+> > hangs. That's going to be extremely problematic for certain tools that
+> > scrape info out of /proc for troubleshooting purposes (e.g. Red Hat's
+> > sosreport tool).
 > 
-> d_splice_alias can create duplicate directory aliases (in the !new
-> case), or (in the new case) d_move without holding appropriate locks.
+> Is that the only file under /proc for which that's true?  (E.g. the rpc
+> cache channel files probably do the same, don't they?)  I was assuming
+> tools like sosreport need to work from lists of specific paths.
 > 
-> d_materialise_unique deals with both of these problems.  (The latter
-> seems to be dealt by trylocks (see __d_unalias), which look like they
-> could cause spurious lookup failures--but that's at least better than
-> corrupting the dcache.)
+> > Also, it seems like if gssproxy suddenly dies, then this switch stays
+> > stuck in its position. There is no way switch back after enabling
+> > gssproxy.
+> 
+> That's true.  I didn't think the ability to change on the fly was
+> necessary (but I'll admit it's annoying when debugging at least.)
+> 
+> > All of that seems unnecessarily complicated. Is there some rationale
+> > for it that I'm missing?
+> > 
+> > Would it instead make more sense to instead just have gssproxy
+> > hold a file open under /proc? If the file is being held open, then
+> > send upcalls to gssproxy. If not then use the legacy code.
+> 
+> The kernel code needs to know which way to handle an incoming packet at
+> the time it arrives.  If it falls back on the legacy upcall that means
+> failing large init_sec_context calls.  So a delayed gss-proxy start (or
+> a crash and restart) would mean clients erroring out (with fatal errors
+> I think, not just something that would be retried).
+> 
 
-I'm a bit worried about those spurious failures, maybe we should
-retry in that case?
+Now that I look at the code, I'm not sure this is really doing what you
+intend. The kernel upcall code immediately falls back on the legacy
+code if gssproxy isn't up when the RPCs come in.
 
-Also looking over the changes I wonder if the explicit cecking for
-aliases for every non-directory might have a major performance impact,
-all the dcache growling already was a major issues in NFS workloads
-years ago and I dumb it's become any better.
+The only thing that seems to wait for that is reads from the
+use-gss-proxy file, which doesn't make a lot of sense to me. AFAICT,
+only gssproxy itself opens that file and all it does it write to it.
 
-Also looking at this area I'd like to suggest that if you end up
-merging the two I'd continue using the d_splice_alias name and
-calling conventions.
+RFC patchset forthcoming. Probably best we continue the discussion there...
 
-Also the inode == NULL case really should be split out from
-d_materialise_unique into a separate helper.  It shares almost no
-code, is entirely undocumented to the point that I don't really
-understand what the purpose is, and the only caller that can get
-there (fuse) already branches around that case in the caller anyway.
-
+-- 
+Jeff Layton <jlayton@redhat.com>
