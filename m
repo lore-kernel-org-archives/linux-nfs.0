@@ -1,272 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:36290 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:49693 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756115AbaAHRQV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Jan 2014 12:16:21 -0500
-Date: Wed, 8 Jan 2014 12:16:20 -0500
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 5/4] nfsd4: simplify xdr encoding of nfsv4 names
-Message-ID: <20140108171620.GD15922@fieldses.org>
-References: <1389128674-16951-1-git-send-email-bfields@redhat.com>
+	id S1751870AbaABSwK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 2 Jan 2014 13:52:10 -0500
+Date: Thu, 2 Jan 2014 13:52:09 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Simo Sorce <simo@redhat.com>
+Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: should we change how the kernel detects whether gssproxy is
+ running?
+Message-ID: <20140102185209.GK25684@fieldses.org>
+References: <20131231073300.0e0f220a@tlielax.poochiereds.net>
+ <20131231180123.GA12875@fieldses.org>
+ <1388523120.26102.9.camel@willson.li.ssimo.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1389128674-16951-1-git-send-email-bfields@redhat.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <1388523120.26102.9.camel@willson.li.ssimo.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Tue, Dec 31, 2013 at 03:52:00PM -0500, Simo Sorce wrote:
+> On Tue, 2013-12-31 at 13:01 -0500, J. Bruce Fields wrote:
+> > On Tue, Dec 31, 2013 at 07:33:00AM -0500, Jeff Layton wrote:
+> > > I'm a bit concerned with how /proc/net/rpc/use-gss-proxy works...
+> > > 
+> > > For one thing, when the kernel first boots any read against that file
+> > > hangs. That's going to be extremely problematic for certain tools that
+> > > scrape info out of /proc for troubleshooting purposes (e.g. Red Hat's
+> > > sosreport tool).
+> > 
+> > Is that the only file under /proc for which that's true?  (E.g. the rpc
+> > cache channel files probably do the same, don't they?)  I was assuming
+> > tools like sosreport need to work from lists of specific paths.
+> > 
+> > > Also, it seems like if gssproxy suddenly dies, then this switch stays
+> > > stuck in its position. There is no way switch back after enabling
+> > > gssproxy.
+> > 
+> > That's true.  I didn't think the ability to change on the fly was
+> > necessary (but I'll admit it's annoying when debugging at least.)
+> > 
+> > > All of that seems unnecessarily complicated. Is there some rationale
+> > > for it that I'm missing?
+> > > 
+> > > Would it instead make more sense to instead just have gssproxy
+> > > hold a file open under /proc? If the file is being held open, then
+> > > send upcalls to gssproxy. If not then use the legacy code.
+> > 
+> > The kernel code needs to know which way to handle an incoming packet at
+> > the time it arrives.  If it falls back on the legacy upcall that means
+> > failing large init_sec_context calls.  So a delayed gss-proxy start (or
+> > a crash and restart) would mean clients erroring out (with fatal errors
+> > I think, not just something that would be retried).
+> 
+> Well if gss-proxy is not running it will fail anyway right ?
 
-We can simplify the idmapping code if it does its own encoding and
-returns nfs errors.
+It will use the cache upcall, which I believe will wait at least a
+little while before giving up on rpc.svcgssd.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/acl.h       |    2 +-
- fs/nfsd/idmap.h     |    4 ++--
- fs/nfsd/nfs4acl.c   |   20 +++++++++++++-------
- fs/nfsd/nfs4idmap.c |   50 ++++++++++++++++++++++++++++++++-----------------
- fs/nfsd/nfs4xdr.c   |   52 ++++++---------------------------------------------
- 5 files changed, 55 insertions(+), 73 deletions(-)
+> We have 90s before nfsd starts receiving incoming calls at startup
+> right ?
 
-On Tue, Jan 07, 2014 at 04:04:30PM -0500, J. Bruce Fields wrote:
-> These are just some minor bits of cleanup I'm queueing for 3.14.
+No, nfsd needs to be able to process incoming init_sec_context calls the
+moment it starts.  You're probably thinking of the grace period, which
+affects only opens and locks.
 
-And one more.--b.
+> Isn't that enough to guarantee whatever the admin configured to
+> start is started ? If gss-proxy is dead for whatever reason a failure
+> will happen anyway now, esp because rpc.gssd will most probably not be
+> running anyway if the admin configured gss-proxy instead ...
 
-diff --git a/fs/nfsd/acl.h b/fs/nfsd/acl.h
-index 8b186a4..5b7bf21 100644
---- a/fs/nfsd/acl.h
-+++ b/fs/nfsd/acl.h
-@@ -43,7 +43,7 @@
- 
- struct nfs4_acl *nfs4_acl_new(int);
- int nfs4_acl_get_whotype(char *, u32);
--int nfs4_acl_write_who(int who, char *p);
-+int nfs4_acl_write_who(int who, __be32 **p, int *len);
- 
- #define NFS4_ACL_TYPE_DEFAULT	0x01
- #define NFS4_ACL_DIR		0x02
-diff --git a/fs/nfsd/idmap.h b/fs/nfsd/idmap.h
-index bf95f6b..66e58db 100644
---- a/fs/nfsd/idmap.h
-+++ b/fs/nfsd/idmap.h
-@@ -56,7 +56,7 @@ static inline void nfsd_idmap_shutdown(struct net *net)
- 
- __be32 nfsd_map_name_to_uid(struct svc_rqst *, const char *, size_t, kuid_t *);
- __be32 nfsd_map_name_to_gid(struct svc_rqst *, const char *, size_t, kgid_t *);
--int nfsd_map_uid_to_name(struct svc_rqst *, kuid_t, char *);
--int nfsd_map_gid_to_name(struct svc_rqst *, kgid_t, char *);
-+__be32 nfsd4_encode_user(struct svc_rqst *, kuid_t, __be32 **, int *);
-+__be32 nfsd4_encode_group(struct svc_rqst *, kgid_t, __be32 **, int *);
- 
- #endif /* LINUX_NFSD_IDMAP_H */
-diff --git a/fs/nfsd/nfs4acl.c b/fs/nfsd/nfs4acl.c
-index 8a50b3c..eea24c9 100644
---- a/fs/nfsd/nfs4acl.c
-+++ b/fs/nfsd/nfs4acl.c
-@@ -37,6 +37,7 @@
- #include <linux/slab.h>
- #include <linux/nfs_fs.h>
- #include <linux/export.h>
-+#include "nfsd.h"
- #include "acl.h"
- 
- 
-@@ -848,18 +849,23 @@ nfs4_acl_get_whotype(char *p, u32 len)
- 	return NFS4_ACL_WHO_NAMED;
- }
- 
--int
--nfs4_acl_write_who(int who, char *p)
-+__be32 nfs4_acl_write_who(int who, __be32 **p, int *len)
- {
- 	int i;
-+	int bytes;
- 
- 	for (i = 0; i < ARRAY_SIZE(s2t_map); i++) {
--		if (s2t_map[i].type == who) {
--			memcpy(p, s2t_map[i].string, s2t_map[i].stringlen);
--			return s2t_map[i].stringlen;
--		}
-+		if (s2t_map[i].type != who)
-+			continue;
-+		bytes = 4 + (XDR_QUADLEN(s2t_map[i].stringlen) << 2);
-+		if (bytes > *len)
-+			return nfserr_resource;
-+		*p = xdr_encode_opaque(*p, s2t_map[i].string,
-+					s2t_map[i].stringlen);
-+		*len -= bytes;
-+		return 0;
- 	}
--	BUG();
-+	WARN_ON_ONCE(1);
- 	return -1;
- }
- 
-diff --git a/fs/nfsd/nfs4idmap.c b/fs/nfsd/nfs4idmap.c
-index 4832fd8..c0dfde6 100644
---- a/fs/nfsd/nfs4idmap.c
-+++ b/fs/nfsd/nfs4idmap.c
-@@ -551,27 +551,46 @@ idmap_name_to_id(struct svc_rqst *rqstp, int type, const char *name, u32 namelen
- 	return 0;
- }
- 
--static int
--idmap_id_to_name(struct svc_rqst *rqstp, int type, u32 id, char *name)
-+static __be32 encode_ascii_id(u32 id, __be32 **p, int *buflen)
-+{
-+	char buf[11];
-+	int len;
-+	int bytes;
-+
-+	len = sprintf(buf, "%u", id);
-+	bytes = 4 + (XDR_QUADLEN(len) << 2);
-+	if (bytes > *buflen)
-+		return nfserr_resource;
-+	*p = xdr_encode_opaque(*p, buf, len);
-+	*buflen -= bytes;
-+	return 0;
-+}
-+
-+static __be32 idmap_id_to_name(struct svc_rqst *rqstp, int type, u32 id, __be32 **p, int *buflen)
- {
- 	struct ent *item, key = {
- 		.id = id,
- 		.type = type,
- 	};
- 	int ret;
-+	int bytes;
- 	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
- 
- 	strlcpy(key.authname, rqst_authname(rqstp), sizeof(key.authname));
- 	ret = idmap_lookup(rqstp, idtoname_lookup, &key, nn->idtoname_cache, &item);
- 	if (ret == -ENOENT)
--		return sprintf(name, "%u", id);
-+		return encode_ascii_id(id, p, buflen);
- 	if (ret)
--		return ret;
-+		return nfserrno(ret);
- 	ret = strlen(item->name);
--	BUG_ON(ret > IDMAP_NAMESZ);
--	memcpy(name, item->name, ret);
-+	WARN_ON_ONCE(ret > IDMAP_NAMESZ);
-+	bytes = 4 + (XDR_QUADLEN(ret) << 2);
-+	if (bytes > *buflen)
-+		return nfserr_resource;
-+	*p = xdr_encode_opaque(*p, item->name, ret);
-+	*buflen -= bytes;
- 	cache_put(&item->h, nn->idtoname_cache);
--	return ret;
-+	return 0;
- }
- 
- static bool
-@@ -603,12 +622,11 @@ do_name_to_id(struct svc_rqst *rqstp, int type, const char *name, u32 namelen, u
- 	return idmap_name_to_id(rqstp, type, name, namelen, id);
- }
- 
--static int
--do_id_to_name(struct svc_rqst *rqstp, int type, u32 id, char *name)
-+static __be32 encode_name_from_id(struct svc_rqst *rqstp, int type, u32 id, __be32 **p, int *buflen)
- {
- 	if (nfs4_disable_idmapping && rqstp->rq_cred.cr_flavor < RPC_AUTH_GSS)
--		return sprintf(name, "%u", id);
--	return idmap_id_to_name(rqstp, type, id, name);
-+		return encode_ascii_id(id, p, buflen);
-+	return idmap_id_to_name(rqstp, type, id, p, buflen);
- }
- 
- __be32
-@@ -637,16 +655,14 @@ nfsd_map_name_to_gid(struct svc_rqst *rqstp, const char *name, size_t namelen,
- 	return status;
- }
- 
--int
--nfsd_map_uid_to_name(struct svc_rqst *rqstp, kuid_t uid, char *name)
-+__be32 nfsd4_encode_user(struct svc_rqst *rqstp, kuid_t uid,  __be32 **p, int *buflen)
- {
- 	u32 id = from_kuid(&init_user_ns, uid);
--	return do_id_to_name(rqstp, IDMAP_TYPE_USER, id, name);
-+	return encode_name_from_id(rqstp, IDMAP_TYPE_USER, id, p, buflen);
- }
- 
--int
--nfsd_map_gid_to_name(struct svc_rqst *rqstp, kgid_t gid, char *name)
-+__be32 nfsd4_encode_group(struct svc_rqst *rqstp, kgid_t gid, __be32 **p, int *buflen)
- {
- 	u32 id = from_kgid(&init_user_ns, gid);
--	return do_id_to_name(rqstp, IDMAP_TYPE_GROUP, id, name);
-+	return encode_name_from_id(rqstp, IDMAP_TYPE_GROUP, id, p, buflen);
- }
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 67b4496..8198ecf 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1965,56 +1965,16 @@ static u32 nfs4_file_type(umode_t mode)
- 	};
- }
- 
--static __be32
--nfsd4_encode_name(struct svc_rqst *rqstp, int whotype, kuid_t uid, kgid_t gid,
--			__be32 **p, int *buflen)
--{
--	int status;
--
--	if (*buflen < (XDR_QUADLEN(IDMAP_NAMESZ) << 2) + 4)
--		return nfserr_resource;
--	if (whotype != NFS4_ACL_WHO_NAMED)
--		status = nfs4_acl_write_who(whotype, (u8 *)(*p + 1));
--	else if (gid_valid(gid))
--		status = nfsd_map_gid_to_name(rqstp, gid, (u8 *)(*p + 1));
--	else
--		status = nfsd_map_uid_to_name(rqstp, uid, (u8 *)(*p + 1));
--	if (status < 0)
--		return nfserrno(status);
--	*p = xdr_encode_opaque(*p, NULL, status);
--	*buflen -= (XDR_QUADLEN(status) << 2) + 4;
--	BUG_ON(*buflen < 0);
--	return 0;
--}
--
--static inline __be32
--nfsd4_encode_user(struct svc_rqst *rqstp, kuid_t user, __be32 **p, int *buflen)
--{
--	return nfsd4_encode_name(rqstp, NFS4_ACL_WHO_NAMED, user, INVALID_GID,
--				 p, buflen);
--}
--
--static inline __be32
--nfsd4_encode_group(struct svc_rqst *rqstp, kgid_t group, __be32 **p, int *buflen)
--{
--	return nfsd4_encode_name(rqstp, NFS4_ACL_WHO_NAMED, INVALID_UID, group,
--				 p, buflen);
--}
--
- static inline __be32
- nfsd4_encode_aclname(struct svc_rqst *rqstp, struct nfs4_ace *ace,
- 		__be32 **p, int *buflen)
- {
--	kuid_t uid = INVALID_UID;
--	kgid_t gid = INVALID_GID;
--
--	if (ace->whotype == NFS4_ACL_WHO_NAMED) {
--		if (ace->flag & NFS4_ACE_IDENTIFIER_GROUP)
--			gid = ace->who_gid;
--		else
--			uid = ace->who_uid;
--	}
--	return nfsd4_encode_name(rqstp, ace->whotype, uid, gid, p, buflen);
-+	if (ace->whotype != NFS4_ACL_WHO_NAMED)
-+		return nfs4_acl_write_who(ace->whotype, p, buflen);
-+	else if (ace->flag & NFS4_ACE_IDENTIFIER_GROUP)
-+		return nfsd4_encode_group(rqstp, ace->who_gid, p, buflen);
-+	else
-+		return nfsd4_encode_user(rqstp, ace->who_uid, p, buflen);
- }
- 
- #define WORD0_ABSENT_FS_ATTRS (FATTR4_WORD0_FS_LOCATIONS | FATTR4_WORD0_FSID | \
--- 
-1.7.9.5
+OK, I was probably unreasonably worried about gss-proxy going down while
+nfsd was running.  If we order startup correctly and don't allow
+restarting gss-proxy without restarting nfsd then that shouldn't be a
+worry.
 
+--b.
