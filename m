@@ -1,41 +1,108 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:14340 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:2450 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752124AbaATRsK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 20 Jan 2014 12:48:10 -0500
-Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s0KHm9q1029471
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Mon, 20 Jan 2014 12:48:09 -0500
-Received: from smallhat.boston.devel.redhat.com.org (vpn-58-78.rdu2.redhat.com [10.10.58.78])
-	by int-mx12.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s0KHm8ev017628
-	for <linux-nfs@vger.kernel.org>; Mon, 20 Jan 2014 12:48:09 -0500
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH] mount.nfs: Removed supported flag from usage string
-Date: Mon, 20 Jan 2014 12:49:57 -0500
-Message-Id: <1390240197-24908-1-git-send-email-steved@redhat.com>
+	id S1751172AbaABX1u (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 2 Jan 2014 18:27:50 -0500
+Date: Thu, 2 Jan 2014 18:27:46 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org, simo@redhat.com, neilb@suse.de
+Subject: Re: [RFC PATCH 1/5] sunrpc: don't wait for write before allowing
+ reads from use-gss-proxy file
+Message-ID: <20140102182746.547964c0@tlielax.poochiereds.net>
+In-Reply-To: <20140102224009.GF28219@fieldses.org>
+References: <1388579314-15255-1-git-send-email-jlayton@redhat.com>
+	<1388579314-15255-2-git-send-email-jlayton@redhat.com>
+	<20140102212149.GC28219@fieldses.org>
+	<20140102172651.559eaa48@tlielax.poochiereds.net>
+	<20140102224009.GF28219@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- utils/mount/utils.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+On Thu, 2 Jan 2014 17:40:10 -0500
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-diff --git a/utils/mount/utils.c b/utils/mount/utils.c
-index 2778ed7..ede77a8 100644
---- a/utils/mount/utils.c
-+++ b/utils/mount/utils.c
-@@ -93,7 +93,7 @@ void print_one(char *spec, char *node, char *type, char *opts)
- 
- void mount_usage(void)
- {
--	printf(_("usage: %s remotetarget dir [-rvVwfnsih] [-o nfsoptions]\n"),
-+	printf(_("usage: %s remotetarget dir [-rvVwfnsh] [-o nfsoptions]\n"),
- 		progname);
- 	printf(_("options:\n"));
- 	printf(_("\t-r\t\tMount file system readonly\n"));
+> On Thu, Jan 02, 2014 at 05:26:51PM -0500, Jeff Layton wrote:
+> > On Thu, 2 Jan 2014 16:21:50 -0500
+> > "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > 
+> > > On Wed, Jan 01, 2014 at 07:28:30AM -0500, Jeff Layton wrote:
+> > > > It doesn't make much sense to make reads from this procfile hang. As
+> > > > far as I can tell, only gssproxy itself will open this file and it
+> > > > never reads from it. Change it to just give the present setting of
+> > > > sn->use_gss_proxy without waiting for anything.
+> > > 
+> > > I think my *only* reason for doing this was to give a simple way to wait
+> > > for gss-proxy to start (just wait for a read to return).
+> > > 
+> > 
+> > What wasn't clear to me is what would be doing this read.
+> > 
+> > I'll take it from your comment then that patch #1 is acceptable?
+> 
+> Yes.  Thanks!
+> 
+> > > As long as gss-proxy has some way to say "I'm up and running", and as
+> > > long as that comes after writing to use-gss-proxy, we're fine.
+> > > 
+> > 
+> > I'll let Simo confirm that that's what gssproxy does, but yes that is
+> > the desired behavior. Typically this is done by ensuring that the parent
+> > process when daemon()-izing doesn't exit until everything is ready.
+> > 
+> > If gssproxy does need to be changed for that, we have a library routine
+> > now in nfs-utils that does this that you can likely copy (see
+> > mydaemon()).
+> 
+> From a quick skim: looks like gss-proxy does this in init_server().  So
+> I think it might need something like the below?
+> 
+> (Untested.  I spent a total of maybe five minutes looking at this code
+> so have no idea what I'm doing.)
+> 
+> --b.
+> 
+> diff --git a/proxy/src/gssproxy.c b/proxy/src/gssproxy.c
+> index 1fca922..a7cbd7c 100644
+> --- a/proxy/src/gssproxy.c
+> +++ b/proxy/src/gssproxy.c
+> @@ -97,6 +97,12 @@ int main(int argc, const char *argv[])
+>          exit(EXIT_FAILURE);
+>      }
+>  
+> +    /*
+> +     * special call to tell the Linux kernel gss-proxy is available.
+> +     * Note this must be done before nfsd is started.
+> +     */
+> +    init_proc_nfsd(gpctx->config);
+> +
+>      init_server(gpctx->config->daemonize);
+>  
+>      write_pid();
+> @@ -139,9 +145,6 @@ int main(int argc, const char *argv[])
+>          }
+>      }
+>  
+> -    /* special call to tell the Linux kernel gss-proxy is available */
+> -    init_proc_nfsd(gpctx->config);
+> -
+>      ret = gp_workers_init(gpctx);
+>      if (ret) {
+>          exit(EXIT_FAILURE);
+
+That doesn't look quite right to me. That has it calling init_proc_nfsd
+before any of the unix sockets are set up.
+
+I think gss-proxy will probably need to do something similar to what
+mydaemon does; set up a pipe, and have the parent just block reading
+from it until the child writes to it. At that point the parent can exit
+and the pipe can be closed in the child.
+
+See:
+
+    http://git.linux-nfs.org/?p=steved/nfs-utils.git;a=blob;f=support/nfs/mydaemon.c;h=e885d60f3a808299730a4d62dec49142fdc3ba5f;hb=HEAD
+
 -- 
-1.8.3.1
-
+Jeff Layton <jlayton@redhat.com>
