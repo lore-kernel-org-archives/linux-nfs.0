@@ -1,45 +1,131 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from zeniv.linux.org.uk ([195.92.253.2]:54446 "EHLO
-	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932236AbaAaSnD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 31 Jan 2014 13:43:03 -0500
-Date: Fri, 31 Jan 2014 18:42:58 +0000
-From: Al Viro <viro@ZenIV.linux.org.uk>
+Received: from mx1.redhat.com ([209.132.183.28]:23308 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753806AbaACWGE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 3 Jan 2014 17:06:04 -0500
+Subject: Re: [RFC PATCH 1/5] sunrpc: don't wait for write before allowing
+ reads from use-gss-proxy file
+From: Simo Sorce <simo@redhat.com>
 To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Christoph Hellwig <hch@infradead.org>, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        Miklos Szeredi <mszeredi@suse.cz>
-Subject: Re: [PATCH] dcache: make d_splice_alias use d_materialise_unique
-Message-ID: <20140131184258.GN10323@ZenIV.linux.org.uk>
-References: <20140115151749.GF23999@fieldses.org>
- <20140117121723.GA18375@infradead.org>
- <20140117153917.GA26636@fieldses.org>
- <20140117210343.GD26636@fieldses.org>
- <20140117212655.GE26636@fieldses.org>
- <20140123212700.GA30466@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140123212700.GA30466@fieldses.org>
+Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org, neilb@suse.de
+In-Reply-To: <20140103162319.GK28219@fieldses.org>
+References: <1388579314-15255-1-git-send-email-jlayton@redhat.com>
+	 <1388579314-15255-2-git-send-email-jlayton@redhat.com>
+	 <20140102212149.GC28219@fieldses.org>
+	 <20140102172651.559eaa48@tlielax.poochiereds.net>
+	 <20140102224009.GF28219@fieldses.org>
+	 <20140102182746.547964c0@tlielax.poochiereds.net>
+	 <1388736843.26102.33.camel@willson.li.ssimo.org>
+	 <20140103162319.GK28219@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
+Date: Fri, 03 Jan 2014 17:06:00 -0500
+Message-ID: <1388786760.26102.65.camel@willson.li.ssimo.org>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jan 23, 2014 at 04:27:00PM -0500, J. Bruce Fields wrote:
-> From: "J. Bruce Fields" <bfields@redhat.com>
+On Fri, 2014-01-03 at 11:23 -0500, J. Bruce Fields wrote:
+> On Fri, Jan 03, 2014 at 03:14:03AM -0500, Simo Sorce wrote:
+> > On Thu, 2014-01-02 at 18:27 -0500, Jeff Layton wrote:
+> > > On Thu, 2 Jan 2014 17:40:10 -0500
+> > > "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > > 
+> > > > On Thu, Jan 02, 2014 at 05:26:51PM -0500, Jeff Layton wrote:
+> > > > > On Thu, 2 Jan 2014 16:21:50 -0500
+> > > > > "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > > > > 
+> > > > > > On Wed, Jan 01, 2014 at 07:28:30AM -0500, Jeff Layton wrote:
+> > > > > > > It doesn't make much sense to make reads from this procfile hang. As
+> > > > > > > far as I can tell, only gssproxy itself will open this file and it
+> > > > > > > never reads from it. Change it to just give the present setting of
+> > > > > > > sn->use_gss_proxy without waiting for anything.
+> > > > > > 
+> > > > > > I think my *only* reason for doing this was to give a simple way to wait
+> > > > > > for gss-proxy to start (just wait for a read to return).
+> > > > > > 
+> > > > > 
+> > > > > What wasn't clear to me is what would be doing this read.
+> > > > > 
+> > > > > I'll take it from your comment then that patch #1 is acceptable?
+> > > > 
+> > > > Yes.  Thanks!
+> > > > 
+> > > > > > As long as gss-proxy has some way to say "I'm up and running", and as
+> > > > > > long as that comes after writing to use-gss-proxy, we're fine.
+> > > > > > 
+> > > > > 
+> > > > > I'll let Simo confirm that that's what gssproxy does, but yes that is
+> > > > > the desired behavior. Typically this is done by ensuring that the parent
+> > > > > process when daemon()-izing doesn't exit until everything is ready.
+> > > > > 
+> > > > > If gssproxy does need to be changed for that, we have a library routine
+> > > > > now in nfs-utils that does this that you can likely copy (see
+> > > > > mydaemon()).
+> > > > 
+> > > > From a quick skim: looks like gss-proxy does this in init_server().  So
+> > > > I think it might need something like the below?
+> > > > 
+> > > > (Untested.  I spent a total of maybe five minutes looking at this code
+> > > > so have no idea what I'm doing.)
+> > > > 
+> > > > --b.
+> > > > 
+> > > > diff --git a/proxy/src/gssproxy.c b/proxy/src/gssproxy.c
+> > > > index 1fca922..a7cbd7c 100644
+> > > > --- a/proxy/src/gssproxy.c
+> > > > +++ b/proxy/src/gssproxy.c
+> > > > @@ -97,6 +97,12 @@ int main(int argc, const char *argv[])
+> > > >          exit(EXIT_FAILURE);
+> > > >      }
+> > > >  
+> > > > +    /*
+> > > > +     * special call to tell the Linux kernel gss-proxy is available.
+> > > > +     * Note this must be done before nfsd is started.
+> > > > +     */
+> > > > +    init_proc_nfsd(gpctx->config);
+> > > > +
+> > > >      init_server(gpctx->config->daemonize);
+> > > >  
+> > > >      write_pid();
+> > > > @@ -139,9 +145,6 @@ int main(int argc, const char *argv[])
+> > > >          }
+> > > >      }
+> > > >  
+> > > > -    /* special call to tell the Linux kernel gss-proxy is available */
+> > > > -    init_proc_nfsd(gpctx->config);
+> > > > -
+> > > >      ret = gp_workers_init(gpctx);
+> > > >      if (ret) {
+> > > >          exit(EXIT_FAILURE);
+> > > 
+> > > That doesn't look quite right to me. That has it calling init_proc_nfsd
+> > > before any of the unix sockets are set up.
+> > > 
+> > > I think gss-proxy will probably need to do something similar to what
+> > > mydaemon does; set up a pipe, and have the parent just block reading
+> > > from it until the child writes to it. At that point the parent can exit
+> > > and the pipe can be closed in the child.
+> > > 
+> > > See:
+> > > 
+> > >     http://git.linux-nfs.org/?p=steved/nfs-utils.git;a=blob;f=support/nfs/mydaemon.c;h=e885d60f3a808299730a4d62dec49142fdc3ba5f;hb=HEAD
+> > > 
+> > 
+> > I'll take a look tomorrow, I created upstream ticket #114 to track this.
 > 
-> d_splice_alias can create duplicate directory aliases (in the !new
-> case), or (in the new case) d_move directories without holding
-> appropriate locks.
+> Thanks!
+> 
+> I notice there's also sd_notify(3) which avoids the double-fork and
+> self-pipe, but you might consider that too much of a systemd dependency.
 
-Details, please.  In the new case, we have IS_ROOT() alias found;
-what locks would that need?  Note that d_materialise_unique() won't
-bother with __d_unalias() in such case - it does what d_move() would've
-done, without taking any mutex.
+I'd like to use sd_notify, but preferred a more conservative approach
+for wider distribution portability.
 
-In the !new case, we'd need a preexisting dentry alias, complete with
-parent.  IOW, that's the case when directory already in the tree
-has been found during lookup from another parent.  In which case
-we shouldn't be using d_splice_alias() at all, as it is (and it
-certainly can't happen for any local fs).
+Patch here waiting for review upstream:
+http://fedorapeople.org/cgit/simo/public_git/gss-proxy.git/commit/?h=usermode&id=ddc5eb950bbd2050dc76b4783f3d3383cd89bccf
 
-Now, I agree that merging that with d_materialise_unique() might be
-a good idea, but commit message is wrong as it, AFAICS.
+Simo.
+
+-- 
+Simo Sorce * Red Hat, Inc * New York
+
