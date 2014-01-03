@@ -1,67 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from elasmtp-galgo.atl.sa.earthlink.net ([209.86.89.61]:33832 "EHLO
-	elasmtp-galgo.atl.sa.earthlink.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753781AbaA0Ttw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Jan 2014 14:49:52 -0500
-From: "Frank Filz" <ffilzlnx@mindspring.com>
-To: "'Pavel Shilovsky'" <piastry@etersoft.ru>
-Cc: "'Kernel Mailing List'" <linux-kernel@vger.kernel.org>,
-        "'linux-cifs'" <linux-cifs@vger.kernel.org>,
-        "'linux-fsdevel'" <linux-fsdevel@vger.kernel.org>,
-        "'Linux NFS Mailing list'" <linux-nfs@vger.kernel.org>,
-        <wine-devel@winehq.org>, <nfs-ganesha-devel@lists.sourceforge.net>
-References: <1389953232-9428-1-git-send-email-piastry@etersoft.ru>	<051001cf13b4$080833b0$18189b10$@mindspring.com> <CAKywueTOi-WPpgH7x3VK7EkGJXE8fHUqcLgSUm6o6UA+uaQtjA@mail.gmail.com>
-In-Reply-To: <CAKywueTOi-WPpgH7x3VK7EkGJXE8fHUqcLgSUm6o6UA+uaQtjA@mail.gmail.com>
-Subject: RE: [PATCH v7 0/7] Add O_DENY* support for VFS and CIFS/NFS
-Date: Mon, 27 Jan 2014 11:49:49 -0800
-Message-ID: <02de01cf1b98$f115f240$d341d6c0$@mindspring.com>
+Received: from fieldses.org ([174.143.236.118]:37577 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753105AbaACVe5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 3 Jan 2014 16:34:57 -0500
+Date: Fri, 3 Jan 2014 16:34:55 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] NFSD: fix a bug which causing nfsd deny CREATE_SESSION
+Message-ID: <20140103213455.GB5164@fieldses.org>
+References: <52B802E9.4070607@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <52B802E9.4070607@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> 2014/1/17 Frank Filz <ffilzlnx@mindspring.com>:
-> > This looks wonderful and will be useful to the Ganesha user space NFS
-> > server also.
-> >
-> > I do have a couple questions.
-> >
-> > 1. How will this interact with the idea of private locks from the
-> > patch set Jeff Layton has been pushing?
+On Mon, Dec 23, 2013 at 05:31:21PM +0800, Kinglong Mee wrote:
+> check_forechannel_attrs have get drc memory, 
+> nfsd must put it when check_backchannel_attrs failed.
 > 
-> They don't touch each other.
+> After many requests with bad back channel attrs, 
+> nfsd will deny any client's CREATE_SESSION forever.
+
+Thanks, applying.--b.
+
 > 
-> >
-> > 2. If a process opens multiple file descriptors with deny modes, will
-> > they conflict with each other (which is the behavior we will want for
-> Ganesha).
+> A new test case named CSESS29 for pynfs will send in another mail.
 > 
-> Yes, a deny mode is associated with file descriptor - so, it will conflict
-with any
-> other access/deny modes of file descriptors from any process.
+> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> ---
+>  fs/nfsd/nfs4state.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
 > 
-> >
-> > 3. Is there any functionality to upgrade or downgrade the access and
-> > deny modes (thinking in terms of NFS v4 support of OPEN upgrade and
-> > OPEN_DOWNGRADE operations).
-> 
-> The proposed patchset doesn't allow to change deny modes after an open is
-> done. But we can add a functionality to let flock syscall change deny
-modes
-> as on option.
-
-Yes, that would be good. NFS v4 allows upgrade/downgrade of acces/deny modes
-(hmm, changing access mode would be trickier, but we need to be able to
-upgrade/downgrade those as well as deny modes...). It could still be done
-with an fcntl.  I don't know if any NFS clients make use of
-upgrade/downgrade (I do know there are pynfs tests for it).
-
-Interestingly, upgrade/downgrade would be a solution to Ganesha's problems
-with POSIX locks being dumped on any file descriptor close since we could
-change the access mode as needed rather than needing to close and open the
-file.
-
-Frank
-
-
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 105d6fa..4e2c9ba 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -1913,7 +1913,7 @@ nfsd4_create_session(struct svc_rqst *rqstp,
+>  		return status;
+>  	status = check_backchannel_attrs(&cr_ses->back_channel);
+>  	if (status)
+> -		return status;
+> +		goto out_release_drc_mem;
+>  	status = nfserr_jukebox;
+>  	new = alloc_session(&cr_ses->fore_channel);
+>  	if (!new)
+> -- 
+> 1.8.4.2
