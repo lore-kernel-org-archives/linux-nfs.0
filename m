@@ -1,108 +1,117 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:12950 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:25998 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751389AbaAPPrK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 16 Jan 2014 10:47:10 -0500
-Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s0GFl9oa025755
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Thu, 16 Jan 2014 10:47:10 -0500
-Date: Thu, 16 Jan 2014 10:47:07 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Simo Sorce <simo@redhat.com>
-Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] Fix crdential sourcing with new setuid behavior in
- rpc.gssd
-Message-ID: <20140116104707.6b4c11fe@tlielax.poochiereds.net>
-In-Reply-To: <1389822094.26102.488.camel@willson.li.ssimo.org>
-References: <1389822094.26102.488.camel@willson.li.ssimo.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1750812AbaACIOK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 3 Jan 2014 03:14:10 -0500
+Subject: Re: [RFC PATCH 1/5] sunrpc: don't wait for write before allowing
+ reads from use-gss-proxy file
+From: Simo Sorce <simo@redhat.com>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
+        neilb@suse.de
+In-Reply-To: <20140102182746.547964c0@tlielax.poochiereds.net>
+References: <1388579314-15255-1-git-send-email-jlayton@redhat.com>
+	 <1388579314-15255-2-git-send-email-jlayton@redhat.com>
+	 <20140102212149.GC28219@fieldses.org>
+	 <20140102172651.559eaa48@tlielax.poochiereds.net>
+	 <20140102224009.GF28219@fieldses.org>
+	 <20140102182746.547964c0@tlielax.poochiereds.net>
+Content-Type: text/plain; charset="UTF-8"
+Date: Fri, 03 Jan 2014 03:14:03 -0500
+Message-ID: <1388736843.26102.33.camel@willson.li.ssimo.org>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 15 Jan 2014 16:41:34 -0500
-Simo Sorce <simo@redhat.com> wrote:
-
-> From 421f66b1cd0b031ef843f7680f463027904b93ca Mon Sep 17 00:00:00 2001
-> From: Simo Sorce <simo@redhat.com>
-> Date: Wed, 15 Jan 2014 16:01:49 -0500
-> Subject: [PATCH] Improve first attempt at acquiring GSS credentials
+On Thu, 2014-01-02 at 18:27 -0500, Jeff Layton wrote:
+> On Thu, 2 Jan 2014 17:40:10 -0500
+> "J. Bruce Fields" <bfields@fieldses.org> wrote:
 > 
-> Since now rpc.gssd is swithing uid before attempting to acquire
-> credentials, we do not need to pass in the special uid-as-a-string name
-> to gssapi, because the process is already running under the user's
-> credentials.
+> > On Thu, Jan 02, 2014 at 05:26:51PM -0500, Jeff Layton wrote:
+> > > On Thu, 2 Jan 2014 16:21:50 -0500
+> > > "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > > 
+> > > > On Wed, Jan 01, 2014 at 07:28:30AM -0500, Jeff Layton wrote:
+> > > > > It doesn't make much sense to make reads from this procfile hang. As
+> > > > > far as I can tell, only gssproxy itself will open this file and it
+> > > > > never reads from it. Change it to just give the present setting of
+> > > > > sn->use_gss_proxy without waiting for anything.
+> > > > 
+> > > > I think my *only* reason for doing this was to give a simple way to wait
+> > > > for gss-proxy to start (just wait for a read to return).
+> > > > 
+> > > 
+> > > What wasn't clear to me is what would be doing this read.
+> > > 
+> > > I'll take it from your comment then that patch #1 is acceptable?
+> > 
+> > Yes.  Thanks!
+> > 
+> > > > As long as gss-proxy has some way to say "I'm up and running", and as
+> > > > long as that comes after writing to use-gss-proxy, we're fine.
+> > > > 
+> > > 
+> > > I'll let Simo confirm that that's what gssproxy does, but yes that is
+> > > the desired behavior. Typically this is done by ensuring that the parent
+> > > process when daemon()-izing doesn't exit until everything is ready.
+> > > 
+> > > If gssproxy does need to be changed for that, we have a library routine
+> > > now in nfs-utils that does this that you can likely copy (see
+> > > mydaemon()).
+> > 
+> > From a quick skim: looks like gss-proxy does this in init_server().  So
+> > I think it might need something like the below?
+> > 
+> > (Untested.  I spent a total of maybe five minutes looking at this code
+> > so have no idea what I'm doing.)
+> > 
+> > --b.
+> > 
+> > diff --git a/proxy/src/gssproxy.c b/proxy/src/gssproxy.c
+> > index 1fca922..a7cbd7c 100644
+> > --- a/proxy/src/gssproxy.c
+> > +++ b/proxy/src/gssproxy.c
+> > @@ -97,6 +97,12 @@ int main(int argc, const char *argv[])
+> >          exit(EXIT_FAILURE);
+> >      }
+> >  
+> > +    /*
+> > +     * special call to tell the Linux kernel gss-proxy is available.
+> > +     * Note this must be done before nfsd is started.
+> > +     */
+> > +    init_proc_nfsd(gpctx->config);
+> > +
+> >      init_server(gpctx->config->daemonize);
+> >  
+> >      write_pid();
+> > @@ -139,9 +145,6 @@ int main(int argc, const char *argv[])
+> >          }
+> >      }
+> >  
+> > -    /* special call to tell the Linux kernel gss-proxy is available */
+> > -    init_proc_nfsd(gpctx->config);
+> > -
+> >      ret = gp_workers_init(gpctx);
+> >      if (ret) {
+> >          exit(EXIT_FAILURE);
 > 
-> By making this optional we can fix a class of false negatives where the
-> user name does not match the actual ccache credentials and the ccache
-> type used is not one of the only 2 supported explicitly by rpc.gssd by the
-> fallback trolling done later.
+> That doesn't look quite right to me. That has it calling init_proc_nfsd
+> before any of the unix sockets are set up.
 > 
-> Signed-off-by: Simo Sorce <simo@redhat.com>
-> ---
->  utils/gssd/krb5_util.c | 32 ++++++++++++++++++--------------
->  1 file changed, 18 insertions(+), 14 deletions(-)
+> I think gss-proxy will probably need to do something similar to what
+> mydaemon does; set up a pipe, and have the parent just block reading
+> from it until the child writes to it. At that point the parent can exit
+> and the pipe can be closed in the child.
 > 
-> diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
-> index 697d1d2e79db0cc38160ea4772d3af3a9b7d6c21..7db5baf4e4bea75ed7beebd2103afbc291efb641 100644
-> --- a/utils/gssd/krb5_util.c
-> +++ b/utils/gssd/krb5_util.c
-> @@ -1383,24 +1383,28 @@ gssd_acquire_user_cred(uid_t uid, gss_cred_id_t *gss_cred)
->  {
->  	OM_uint32 maj_stat, min_stat;
->  	gss_buffer_desc name_buf;
-> -	gss_name_t name;
-> +	gss_name_t name = GSS_C_NO_NAME;
->  	char buf[11];
->  	int ret;
->  
-> -	ret = snprintf(buf, 11, "%u", uid);
-> -	if (ret < 1 || ret > 10) {
-> -		return -1;
-> -	}
-> -	name_buf.value = buf;
-> -	name_buf.length = ret + 1;
-> +	/* the follwing is useful only if change_identity() in
-> +	 * process_krb5_upcall() failed to change uids */
-> +	if (getuid() == 0) {
-> +		ret = snprintf(buf, 11, "%u", uid);
-> +		if (ret < 1 || ret > 10) {
-> +			return -1;
-> +		}
-> +		name_buf.value = buf;
-> +		name_buf.length = ret + 1;
->  
+> See:
+> 
+>     http://git.linux-nfs.org/?p=steved/nfs-utils.git;a=blob;f=support/nfs/mydaemon.c;h=e885d60f3a808299730a4d62dec49142fdc3ba5f;hb=HEAD
+> 
 
-If change_identity() fails, then process_krb5_upcall should just give
-up and do an error downcall, so falling back to using
-GSS_C_NT_STRING_UID_NAME in that case seems unnecessary.
+I'll take a look tomorrow, I created upstream ticket #114 to track this.
 
-Also, we can end up in here legitimately with uid == 0 if
-root_uses_machine_creds == 0. So I wonder if we even need the stuff
-inside this "if (getuid() == 0)" block at all...
-
-> -	maj_stat = gss_import_name(&min_stat, &name_buf,
-> -				   GSS_C_NT_STRING_UID_NAME, &name);
-> -	if (maj_stat != GSS_S_COMPLETE) {
-> -		if (get_verbosity() > 0)
-> -			pgsserr("gss_import_name",
-> -				maj_stat, min_stat, &krb5oid);
-> -		return -1;
-> +		maj_stat = gss_import_name(&min_stat, &name_buf,
-> +					   GSS_C_NT_STRING_UID_NAME, &name);
-> +		if (maj_stat != GSS_S_COMPLETE) {
-> +			if (get_verbosity() > 0)
-> +				pgsserr("gss_import_name",
-> +					maj_stat, min_stat, &krb5oid);
-> +			return -1;
-> +		}
->  	}
->  
->  	ret = gssd_acquire_krb5_cred(name, gss_cred);
-
-
-Other than that, I'm fine with ripping that junk out.
+Simo.
 
 -- 
-Jeff Layton <jlayton@redhat.com>
+Simo Sorce * Red Hat, Inc * New York
+
