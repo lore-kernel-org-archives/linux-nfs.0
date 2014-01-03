@@ -1,70 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f182.google.com ([209.85.213.182]:53022 "EHLO
-	mail-ig0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752257AbaAUPEV convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Jan 2014 10:04:21 -0500
-Received: by mail-ig0-f182.google.com with SMTP id uy17so11048258igb.3
-        for <linux-nfs@vger.kernel.org>; Tue, 21 Jan 2014 07:04:21 -0800 (PST)
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
-Subject: Re: [PATCH 1/2] nfs4: fix discover_server_trunking use after free
-From: Weston Andros Adamson <dros@primarydata.com>
-In-Reply-To: <D87D3ADC-94A0-438D-AADD-4139C70AE3B3@primarydata.com>
-Date: Tue, 21 Jan 2014 10:04:20 -0500
-Cc: linux-nfs list <linux-nfs@vger.kernel.org>
-Message-Id: <2E51C118-9C64-4864-88C8-5586E5DB5A88@primarydata.com>
-References: <1390189537-9666-1-git-send-email-dros@primarydata.com> <D87D3ADC-94A0-438D-AADD-4139C70AE3B3@primarydata.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
+Received: from fieldses.org ([174.143.236.118]:39439 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753385AbaACWey (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 3 Jan 2014 17:34:54 -0500
+Date: Fri, 3 Jan 2014 17:34:51 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Simo Sorce <simo@redhat.com>
+Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org, neilb@suse.de
+Subject: Re: [RFC PATCH 1/5] sunrpc: don't wait for write before allowing
+ reads from use-gss-proxy file
+Message-ID: <20140103223451.GE5164@fieldses.org>
+References: <1388579314-15255-1-git-send-email-jlayton@redhat.com>
+ <1388579314-15255-2-git-send-email-jlayton@redhat.com>
+ <20140102212149.GC28219@fieldses.org>
+ <20140102172651.559eaa48@tlielax.poochiereds.net>
+ <20140102224009.GF28219@fieldses.org>
+ <20140102182746.547964c0@tlielax.poochiereds.net>
+ <1388736843.26102.33.camel@willson.li.ssimo.org>
+ <20140103162319.GK28219@fieldses.org>
+ <1388786760.26102.65.camel@willson.li.ssimo.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1388786760.26102.65.camel@willson.li.ssimo.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Jan 20, 2014, at 6:32 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
-
+On Fri, Jan 03, 2014 at 05:06:00PM -0500, Simo Sorce wrote:
+> I'd like to use sd_notify, but preferred a more conservative approach
+> for wider distribution portability.
 > 
-> On Jan 19, 2014, at 20:45, Weston Andros Adamson <dros@primarydata.com> wrote:
-> 
->> If clp is new (cl_count = 1) and it matches another client in
->> nfs4_discover_server_trunking, the nfs_put_client will free clp before
->> ->cl_preserve_clid is set.
->> 
->> Cc: stable@vger.kernel.org # 3.7+
->> Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
->> ---
->> fs/nfs/nfs4client.c | 7 ++++---
->> 1 file changed, 4 insertions(+), 3 deletions(-)
->> 
->> diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
->> index c1b7a80..0f9b772 100644
->> --- a/fs/nfs/nfs4client.c
->> +++ b/fs/nfs/nfs4client.c
->> @@ -414,11 +414,12 @@ struct nfs_client *nfs4_init_client(struct nfs_client *clp,
->> 	error = nfs4_discover_server_trunking(clp, &old);
->> 	if (error < 0)
->> 		goto error;
->> -	nfs_put_client(clp);
->> -	if (clp != old) {
->> +
->> +	if (clp != old)
->> 		clp->cl_preserve_clid = true;
->> +	nfs_put_client(clp);
->> +	if (clp != old)
->> 		clp = old;
->> -	}
->> 
-> 
-> Applied, but I cleaned it up by replacing the last 2 lines with an equivalent ‘return old’…
+> Patch here waiting for review upstream:
+> http://fedorapeople.org/cgit/simo/public_git/gss-proxy.git/commit/?h=usermode&id=ddc5eb950bbd2050dc76b4783f3d3383cd89bccf
 
-Cool, I almost posted that, but thought this change was a “cleaner” diff.
+Thanks.  If it's not too much verbage, it might be helpful to document
+the reason for the ordering; something like:
 
--dros
+	/*
+	 * We need to tell nfsd gss-proxy is available before it starts,
+	 * as nfsd may need to know this the moment it receives the
+	 * first init_sec_context call.
+	 *
+	 * So now it is safe to tell the init system that we're done
+	 * starting up and that it can continue with nfsd startup.
+	 */
 
-> 
-> --
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+?
 
+--b.
