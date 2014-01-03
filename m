@@ -1,104 +1,119 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:35046 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:56440 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753540AbaACWWg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 3 Jan 2014 17:22:36 -0500
-Date: Fri, 3 Jan 2014 17:22:26 -0500
+	id S1751359AbaACQXU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 3 Jan 2014 11:23:20 -0500
+Date: Fri, 3 Jan 2014 11:23:19 -0500
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: wengmeiling.weng@huawei.com, greg@kroah.com, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, devel@openvz.org
-Subject: Re: [PATCH] nfsd: check passed socket's net matches NFSd
- superblock's one
-Message-ID: <20140103222226.GD5164@fieldses.org>
-References: <20131230142339.16166.28243.stgit@localhost.localdomain>
+To: Simo Sorce <simo@redhat.com>
+Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org, neilb@suse.de
+Subject: Re: [RFC PATCH 1/5] sunrpc: don't wait for write before allowing
+ reads from use-gss-proxy file
+Message-ID: <20140103162319.GK28219@fieldses.org>
+References: <1388579314-15255-1-git-send-email-jlayton@redhat.com>
+ <1388579314-15255-2-git-send-email-jlayton@redhat.com>
+ <20140102212149.GC28219@fieldses.org>
+ <20140102172651.559eaa48@tlielax.poochiereds.net>
+ <20140102224009.GF28219@fieldses.org>
+ <20140102182746.547964c0@tlielax.poochiereds.net>
+ <1388736843.26102.33.camel@willson.li.ssimo.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20131230142339.16166.28243.stgit@localhost.localdomain>
+In-Reply-To: <1388736843.26102.33.camel@willson.li.ssimo.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Dec 30, 2013 at 05:23:59PM +0300, Stanislav Kinsbursky wrote:
-> There could be a case, when NFSd file system is mounted in network, different
-> to socket's one, like below:
+On Fri, Jan 03, 2014 at 03:14:03AM -0500, Simo Sorce wrote:
+> On Thu, 2014-01-02 at 18:27 -0500, Jeff Layton wrote:
+> > On Thu, 2 Jan 2014 17:40:10 -0500
+> > "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > 
+> > > On Thu, Jan 02, 2014 at 05:26:51PM -0500, Jeff Layton wrote:
+> > > > On Thu, 2 Jan 2014 16:21:50 -0500
+> > > > "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > > > 
+> > > > > On Wed, Jan 01, 2014 at 07:28:30AM -0500, Jeff Layton wrote:
+> > > > > > It doesn't make much sense to make reads from this procfile hang. As
+> > > > > > far as I can tell, only gssproxy itself will open this file and it
+> > > > > > never reads from it. Change it to just give the present setting of
+> > > > > > sn->use_gss_proxy without waiting for anything.
+> > > > > 
+> > > > > I think my *only* reason for doing this was to give a simple way to wait
+> > > > > for gss-proxy to start (just wait for a read to return).
+> > > > > 
+> > > > 
+> > > > What wasn't clear to me is what would be doing this read.
+> > > > 
+> > > > I'll take it from your comment then that patch #1 is acceptable?
+> > > 
+> > > Yes.  Thanks!
+> > > 
+> > > > > As long as gss-proxy has some way to say "I'm up and running", and as
+> > > > > long as that comes after writing to use-gss-proxy, we're fine.
+> > > > > 
+> > > > 
+> > > > I'll let Simo confirm that that's what gssproxy does, but yes that is
+> > > > the desired behavior. Typically this is done by ensuring that the parent
+> > > > process when daemon()-izing doesn't exit until everything is ready.
+> > > > 
+> > > > If gssproxy does need to be changed for that, we have a library routine
+> > > > now in nfs-utils that does this that you can likely copy (see
+> > > > mydaemon()).
+> > > 
+> > > From a quick skim: looks like gss-proxy does this in init_server().  So
+> > > I think it might need something like the below?
+> > > 
+> > > (Untested.  I spent a total of maybe five minutes looking at this code
+> > > so have no idea what I'm doing.)
+> > > 
+> > > --b.
+> > > 
+> > > diff --git a/proxy/src/gssproxy.c b/proxy/src/gssproxy.c
+> > > index 1fca922..a7cbd7c 100644
+> > > --- a/proxy/src/gssproxy.c
+> > > +++ b/proxy/src/gssproxy.c
+> > > @@ -97,6 +97,12 @@ int main(int argc, const char *argv[])
+> > >          exit(EXIT_FAILURE);
+> > >      }
+> > >  
+> > > +    /*
+> > > +     * special call to tell the Linux kernel gss-proxy is available.
+> > > +     * Note this must be done before nfsd is started.
+> > > +     */
+> > > +    init_proc_nfsd(gpctx->config);
+> > > +
+> > >      init_server(gpctx->config->daemonize);
+> > >  
+> > >      write_pid();
+> > > @@ -139,9 +145,6 @@ int main(int argc, const char *argv[])
+> > >          }
+> > >      }
+> > >  
+> > > -    /* special call to tell the Linux kernel gss-proxy is available */
+> > > -    init_proc_nfsd(gpctx->config);
+> > > -
+> > >      ret = gp_workers_init(gpctx);
+> > >      if (ret) {
+> > >          exit(EXIT_FAILURE);
+> > 
+> > That doesn't look quite right to me. That has it calling init_proc_nfsd
+> > before any of the unix sockets are set up.
+> > 
+> > I think gss-proxy will probably need to do something similar to what
+> > mydaemon does; set up a pipe, and have the parent just block reading
+> > from it until the child writes to it. At that point the parent can exit
+> > and the pipe can be closed in the child.
+> > 
+> > See:
+> > 
+> >     http://git.linux-nfs.org/?p=steved/nfs-utils.git;a=blob;f=support/nfs/mydaemon.c;h=e885d60f3a808299730a4d62dec49142fdc3ba5f;hb=HEAD
+> > 
 > 
-> "ip netns exec" creates new network and mount namespace, which duplicates NFSd
-> mount point, created in init_net context. And thus NFS server stop in nested
-> network context leads to RPCBIND client destruction in init_net.
-> Then, on NFSd start in nested network context, rpc.nfsd process creates socket
-> in nested net and passes it into "write_ports", which leads to RPCBIND sockets
-> creation in init_net context because of the same reason (NFSd monut point was
-> created in init_net context). An attempt to register passed socket in nested
-> net leads to panic, because no RPCBIND client present in nexted network
-> namespace.
+> I'll take a look tomorrow, I created upstream ticket #114 to track this.
 
-So it's the attempt to use a NULL ->rpcb_local_clnt4?
+Thanks!
 
-Interesting, thanks--applying with a minor fix to logged message.
+I notice there's also sd_notify(3) which avoids the double-fork and
+self-pipe, but you might consider that too much of a systemd dependency.
 
 --b.
-
-> 
-> This patch add check that passed socket's net matches NFSd superblock's one.
-> And returns -EINVAL error to user psace otherwise.
-> 
-> Reported-by: Weng Meiling <wengmeiling.weng@huawei.com>
-> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-> Cc: stable@vger.kernel.org
-> ---
->  fs/nfsd/nfsctl.c               |    5 +++++
->  include/linux/sunrpc/svcsock.h |    1 +
->  net/sunrpc/svcsock.c           |   11 +++++++++++
->  3 files changed, 17 insertions(+), 0 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-> index 7f55517..f34d9de 100644
-> --- a/fs/nfsd/nfsctl.c
-> +++ b/fs/nfsd/nfsctl.c
-> @@ -699,6 +699,11 @@ static ssize_t __write_ports_addfd(char *buf, struct net *net)
->  	if (err != 0 || fd < 0)
->  		return -EINVAL;
->  
-> +	if (svc_alien_sock(net, fd)) {
-> +		printk(KERN_ERR "%s: socket net is different to NFSd's one\n", __func__);
-> +		return -EINVAL;
-> +	}
-> +
->  	err = nfsd_create_serv(net);
->  	if (err != 0)
->  		return err;
-> diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
-> index 62fd1b7..947009e 100644
-> --- a/include/linux/sunrpc/svcsock.h
-> +++ b/include/linux/sunrpc/svcsock.h
-> @@ -56,6 +56,7 @@ int		svc_recv(struct svc_rqst *, long);
->  int		svc_send(struct svc_rqst *);
->  void		svc_drop(struct svc_rqst *);
->  void		svc_sock_update_bufs(struct svc_serv *serv);
-> +bool		svc_alien_sock(struct net *net, int fd);
->  int		svc_addsock(struct svc_serv *serv, const int fd,
->  					char *name_return, const size_t len);
->  void		svc_init_xprt_sock(void);
-> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-> index b6e59f0..3ba5b87 100644
-> --- a/net/sunrpc/svcsock.c
-> +++ b/net/sunrpc/svcsock.c
-> @@ -1397,6 +1397,17 @@ static struct svc_sock *svc_setup_socket(struct svc_serv *serv,
->  	return svsk;
->  }
->  
-> +bool svc_alien_sock(struct net *net, int fd)
-> +{
-> +	int err;
-> +	struct socket *sock = sockfd_lookup(fd, &err);
-> +
-> +	if (sock && (sock_net(sock->sk) != net))
-> +		return true;
-> +	return false;
-> +}
-> +EXPORT_SYMBOL_GPL(svc_alien_sock);
-> +
->  /**
->   * svc_addsock - add a listener socket to an RPC service
->   * @serv: pointer to RPC service to which to add a new listener
-> 
