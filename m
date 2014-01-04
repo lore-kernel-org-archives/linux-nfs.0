@@ -1,72 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:55393 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:56258 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752141AbaAPQKT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 16 Jan 2014 11:10:19 -0500
-Date: Thu, 16 Jan 2014 11:10:16 -0500
+	id S1754373AbaADQK2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 4 Jan 2014 11:10:28 -0500
+Date: Sat, 4 Jan 2014 11:10:22 -0500
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, Miklos Szeredi <mszeredi@suse.cz>,
-        Steven Whitehouse <swhiteho@redhat.com>
-Subject: Re: [PATCH] dcache: fix d_splice_alias handling of aliases
-Message-ID: <20140116161015.GC16829@fieldses.org>
-References: <20140115151749.GF23999@fieldses.org>
+To: Simo Sorce <simo@redhat.com>
+Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org, neilb@suse.de
+Subject: Re: [RFC PATCH 1/5] sunrpc: don't wait for write before allowing
+ reads from use-gss-proxy file
+Message-ID: <20140104161022.GG5164@fieldses.org>
+References: <1388579314-15255-2-git-send-email-jlayton@redhat.com>
+ <20140102212149.GC28219@fieldses.org>
+ <20140102172651.559eaa48@tlielax.poochiereds.net>
+ <20140102224009.GF28219@fieldses.org>
+ <20140102182746.547964c0@tlielax.poochiereds.net>
+ <1388736843.26102.33.camel@willson.li.ssimo.org>
+ <20140103162319.GK28219@fieldses.org>
+ <1388786760.26102.65.camel@willson.li.ssimo.org>
+ <20140103223451.GE5164@fieldses.org>
+ <1388849302.26102.66.camel@willson.li.ssimo.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140115151749.GF23999@fieldses.org>
+In-Reply-To: <1388849302.26102.66.camel@willson.li.ssimo.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jan 15, 2014 at 10:17:49AM -0500, bfields wrote:
-> From: "J. Bruce Fields" <bfields@redhat.com>
+On Sat, Jan 04, 2014 at 10:28:22AM -0500, Simo Sorce wrote:
+> On Fri, 2014-01-03 at 17:34 -0500, J. Bruce Fields wrote:
+> > On Fri, Jan 03, 2014 at 05:06:00PM -0500, Simo Sorce wrote:
+> > > I'd like to use sd_notify, but preferred a more conservative approach
+> > > for wider distribution portability.
+> > > 
+> > > Patch here waiting for review upstream:
+> > > http://fedorapeople.org/cgit/simo/public_git/gss-proxy.git/commit/?h=usermode&id=ddc5eb950bbd2050dc76b4783f3d3383cd89bccf
+> > 
+> > Thanks.  If it's not too much verbage, it might be helpful to document
+> > the reason for the ordering; something like:
+> > 
+> > 	/*
+> > 	 * We need to tell nfsd gss-proxy is available before it starts,
+> > 	 * as nfsd may need to know this the moment it receives the
+> > 	 * first init_sec_context call.
+> > 	 *
+> > 	 * So now it is safe to tell the init system that we're done
+> > 	 * starting up and that it can continue with nfsd startup.
+> > 	 */
+> > 
+> > ?
 > 
-> d_splice_alias can create duplicate directory aliases (in the !new
-> case), or (in the new case) d_move without holding appropriate locks.
-> 
-> d_materialise_unique deals with both of these problems.  (The latter
-> seems to be dealt by trylocks (see __d_unalias), which look like they
-> could cause spurious lookup failures--but that's at least better than
-> corrupting the dcache.)
-> 
-> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> ---
->  fs/dcache.c |   25 +------------------------
->  1 file changed, 1 insertion(+), 24 deletions(-)
-> 
-> Only lightly tested....  If this is right, then we can also just ditch
-> d_splice_alias completely, and clean up the various d_find_alias's.
-> 
-> I think the only reason we have both d_splice_alias and
-> d_materialise_unique is that the former was written for exportable
-> filesystems and the latter for distributed filesystems.
-> 
-> But we have at least one exportable filesystem (fuse) using
-> d_materialise_unique.  And I doubt d_splice_alias was ever completely
-> correct even for on-disk filesystems.
-> 
-> Am I missing some subtlety?
+> Good idea, I changed the comments loosely after your example:
+> http://fedorapeople.org/cgit/simo/public_git/gss-proxy.git/commit/?h=usermode&id=393570b45816b690cb16fd1286d0705142ef2d62
 
-Hm, I just noticed:
-
-    commit 0d0d110720d7960b77c03c9f2597faaff4b484ae
-    Author: Miklos Szeredi <mszeredi@suse.cz>
-    Date:   Mon Sep 16 14:52:00 2013 +0200
-
-    GFS2: d_splice_alias() can't return error
-    
-    unless it was given an IS_ERR(inode), which isn't the case here.  So clean
-    up the unnecessary error handling in gfs2_create_inode().
-    
-    This paves the way for real fixes (hence the stable Cc).
-    
-    Signed-off-by: Miklos Szeredi <mszeredi@suse.cz>
-    Signed-off-by: Steven Whitehouse <swhiteho@redhat.com>
-    Cc: stable@vger.kernel.org
-
-While the statement is true for the current implementation of
-d_splice_alias, I don't think it's actually true for any correct
-implementation of d_splice_alias, which must be able to return at least
--ELOOP in the directory case.  Does gfs2 need fixing?
+I like how you've done it.  Thanks!
 
 --b.
