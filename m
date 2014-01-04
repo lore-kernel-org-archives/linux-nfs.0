@@ -1,78 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:49693 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:27814 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751870AbaABSwK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 2 Jan 2014 13:52:10 -0500
-Date: Thu, 2 Jan 2014 13:52:09 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Simo Sorce <simo@redhat.com>
-Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: should we change how the kernel detects whether gssproxy is
- running?
-Message-ID: <20140102185209.GK25684@fieldses.org>
-References: <20131231073300.0e0f220a@tlielax.poochiereds.net>
- <20131231180123.GA12875@fieldses.org>
- <1388523120.26102.9.camel@willson.li.ssimo.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1388523120.26102.9.camel@willson.li.ssimo.org>
+	id S1754361AbaADOLL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 4 Jan 2014 09:11:11 -0500
+Date: Sat, 4 Jan 2014 09:11:05 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org, ssorce@redhat.com,
+        neilb@suse.de
+Subject: Re: [PATCH 2/3] sunrpc: fix potential race between setting
+ use_gss_proxy and the upcall rpc_clnt
+Message-ID: <20140104091105.4dc2a971@tlielax.poochiereds.net>
+In-Reply-To: <1388837885-8312-3-git-send-email-jlayton@redhat.com>
+References: <1388837885-8312-1-git-send-email-jlayton@redhat.com>
+	<1388837885-8312-3-git-send-email-jlayton@redhat.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Dec 31, 2013 at 03:52:00PM -0500, Simo Sorce wrote:
-> On Tue, 2013-12-31 at 13:01 -0500, J. Bruce Fields wrote:
-> > On Tue, Dec 31, 2013 at 07:33:00AM -0500, Jeff Layton wrote:
-> > > I'm a bit concerned with how /proc/net/rpc/use-gss-proxy works...
-> > > 
-> > > For one thing, when the kernel first boots any read against that file
-> > > hangs. That's going to be extremely problematic for certain tools that
-> > > scrape info out of /proc for troubleshooting purposes (e.g. Red Hat's
-> > > sosreport tool).
-> > 
-> > Is that the only file under /proc for which that's true?  (E.g. the rpc
-> > cache channel files probably do the same, don't they?)  I was assuming
-> > tools like sosreport need to work from lists of specific paths.
-> > 
-> > > Also, it seems like if gssproxy suddenly dies, then this switch stays
-> > > stuck in its position. There is no way switch back after enabling
-> > > gssproxy.
-> > 
-> > That's true.  I didn't think the ability to change on the fly was
-> > necessary (but I'll admit it's annoying when debugging at least.)
-> > 
-> > > All of that seems unnecessarily complicated. Is there some rationale
-> > > for it that I'm missing?
-> > > 
-> > > Would it instead make more sense to instead just have gssproxy
-> > > hold a file open under /proc? If the file is being held open, then
-> > > send upcalls to gssproxy. If not then use the legacy code.
-> > 
-> > The kernel code needs to know which way to handle an incoming packet at
-> > the time it arrives.  If it falls back on the legacy upcall that means
-> > failing large init_sec_context calls.  So a delayed gss-proxy start (or
-> > a crash and restart) would mean clients erroring out (with fatal errors
-> > I think, not just something that would be retried).
+On Sat,  4 Jan 2014 07:18:04 -0500
+Jeff Layton <jlayton@redhat.com> wrote:
+
+> Currently, the write_gssp code will change the variable and wake up any
+> waiters waiting on that change. It then goes and tries to set the
+> gssp_clnt. This is racy -- a task waiting on the set_gss_proxy call may
+> end up waking up and then subsequently finding that the gss_clnt isn't
+> there yet and end up not using it even though it'll soon be ready.
 > 
-> Well if gss-proxy is not running it will fail anyway right ?
+> This patch reverses the order of operations. The gssp_clnt is created
+> first, and the variable change is done only if that succeeds.
+> 
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  net/sunrpc/auth_gss/svcauth_gss.c | 4 ++--
+>  1 file changed, 2 insertions(+), 2 deletions(-)
+> 
+> diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+> index 1b94a9c..60dc370 100644
+> --- a/net/sunrpc/auth_gss/svcauth_gss.c
+> +++ b/net/sunrpc/auth_gss/svcauth_gss.c
+> @@ -1317,10 +1317,10 @@ static ssize_t write_gssp(struct file *file, const char __user *buf,
+>  		return res;
+>  	if (i != 1)
+>  		return -EINVAL;
+> -	res = set_gss_proxy(net, 1);
+> +	res = set_gssp_clnt(net);
+>  	if (res)
+>  		return res;
+> -	res = set_gssp_clnt(net);
+> +	res = set_gss_proxy(net, 1);
+>  	if (res)
+>  		return res;
+>  	return count;
 
-It will use the cache upcall, which I believe will wait at least a
-little while before giving up on rpc.svcgssd.
+Sorry, I forgot to update the patch description on this one. There is
+still a race here after patch #1, but it goes something like this:
 
-> We have 90s before nfsd starts receiving incoming calls at startup
-> right ?
+A nfsd thread will call use_gss_proxy and find it set to '1'. It'll
+then go and attempt and upcall, but since gssp_clnt is still NULL,
+gssp_call will just return -EIO.
 
-No, nfsd needs to be able to process incoming init_sec_context calls the
-moment it starts.  You're probably thinking of the grace period, which
-affects only opens and locks.
+The patch is still the same however. Bruce, let me know if you want me
+to resend with a fixed commit msg.
 
-> Isn't that enough to guarantee whatever the admin configured to
-> start is started ? If gss-proxy is dead for whatever reason a failure
-> will happen anyway now, esp because rpc.gssd will most probably not be
-> running anyway if the admin configured gss-proxy instead ...
-
-OK, I was probably unreasonably worried about gss-proxy going down while
-nfsd was running.  If we order startup correctly and don't allow
-restarting gss-proxy without restarting nfsd then that shouldn't be a
-worry.
-
---b.
+Thanks,
+-- 
+Jeff Layton <jlayton@redhat.com>
