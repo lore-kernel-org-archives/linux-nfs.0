@@ -1,129 +1,138 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:57662 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:15192 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753777AbaAGVVq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 7 Jan 2014 16:21:46 -0500
-Message-ID: <52CC6B49.2070801@RedHat.com>
-Date: Tue, 07 Jan 2014 16:02:01 -0500
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Joakim Tjernlund <joakim.tjernlund@transmode.se>,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: fix minorversion-choosing interface
-References: <OFDD407A92.688D29A1-ONC1257C43.00634FC8-C1257C43.00645775@transmode.se> <20131216185419.GB31816@fieldses.org> <20131216200301.GD31816@fieldses.org> <OF149AE409.624B2B0A-ONC1257C43.006F77D7-C1257C43.006FCED2@transmode.se> <20131216202345.GF31816@fieldses.org> <OF942071D7.5EC379B1-ONC1257C43.007AB858-C1257C43.007B0CFB@transmode.se> <20131217034331.GB3490@fieldses.org>
-In-Reply-To: <20131217034331.GB3490@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1753490AbaADOSL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 4 Jan 2014 09:18:11 -0500
+Date: Sat, 4 Jan 2014 09:18:07 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Simo Sorce <simo@redhat.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
+        neilb@suse.de
+Subject: Re: [RFC PATCH 1/5] sunrpc: don't wait for write before allowing
+ reads from use-gss-proxy file
+Message-ID: <20140104091807.17460150@tlielax.poochiereds.net>
+In-Reply-To: <1388786760.26102.65.camel@willson.li.ssimo.org>
+References: <1388579314-15255-1-git-send-email-jlayton@redhat.com>
+	<1388579314-15255-2-git-send-email-jlayton@redhat.com>
+	<20140102212149.GC28219@fieldses.org>
+	<20140102172651.559eaa48@tlielax.poochiereds.net>
+	<20140102224009.GF28219@fieldses.org>
+	<20140102182746.547964c0@tlielax.poochiereds.net>
+	<1388736843.26102.33.camel@willson.li.ssimo.org>
+	<20140103162319.GK28219@fieldses.org>
+	<1388786760.26102.65.camel@willson.li.ssimo.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Fri, 03 Jan 2014 17:06:00 -0500
+Simo Sorce <simo@redhat.com> wrote:
 
+> On Fri, 2014-01-03 at 11:23 -0500, J. Bruce Fields wrote:
+> > On Fri, Jan 03, 2014 at 03:14:03AM -0500, Simo Sorce wrote:
+> > > On Thu, 2014-01-02 at 18:27 -0500, Jeff Layton wrote:
+> > > > On Thu, 2 Jan 2014 17:40:10 -0500
+> > > > "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > > > 
+> > > > > On Thu, Jan 02, 2014 at 05:26:51PM -0500, Jeff Layton wrote:
+> > > > > > On Thu, 2 Jan 2014 16:21:50 -0500
+> > > > > > "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > > > > > 
+> > > > > > > On Wed, Jan 01, 2014 at 07:28:30AM -0500, Jeff Layton wrote:
+> > > > > > > > It doesn't make much sense to make reads from this procfile hang. As
+> > > > > > > > far as I can tell, only gssproxy itself will open this file and it
+> > > > > > > > never reads from it. Change it to just give the present setting of
+> > > > > > > > sn->use_gss_proxy without waiting for anything.
+> > > > > > > 
+> > > > > > > I think my *only* reason for doing this was to give a simple way to wait
+> > > > > > > for gss-proxy to start (just wait for a read to return).
+> > > > > > > 
+> > > > > > 
+> > > > > > What wasn't clear to me is what would be doing this read.
+> > > > > > 
+> > > > > > I'll take it from your comment then that patch #1 is acceptable?
+> > > > > 
+> > > > > Yes.  Thanks!
+> > > > > 
+> > > > > > > As long as gss-proxy has some way to say "I'm up and running", and as
+> > > > > > > long as that comes after writing to use-gss-proxy, we're fine.
+> > > > > > > 
+> > > > > > 
+> > > > > > I'll let Simo confirm that that's what gssproxy does, but yes that is
+> > > > > > the desired behavior. Typically this is done by ensuring that the parent
+> > > > > > process when daemon()-izing doesn't exit until everything is ready.
+> > > > > > 
+> > > > > > If gssproxy does need to be changed for that, we have a library routine
+> > > > > > now in nfs-utils that does this that you can likely copy (see
+> > > > > > mydaemon()).
+> > > > > 
+> > > > > From a quick skim: looks like gss-proxy does this in init_server().  So
+> > > > > I think it might need something like the below?
+> > > > > 
+> > > > > (Untested.  I spent a total of maybe five minutes looking at this code
+> > > > > so have no idea what I'm doing.)
+> > > > > 
+> > > > > --b.
+> > > > > 
+> > > > > diff --git a/proxy/src/gssproxy.c b/proxy/src/gssproxy.c
+> > > > > index 1fca922..a7cbd7c 100644
+> > > > > --- a/proxy/src/gssproxy.c
+> > > > > +++ b/proxy/src/gssproxy.c
+> > > > > @@ -97,6 +97,12 @@ int main(int argc, const char *argv[])
+> > > > >          exit(EXIT_FAILURE);
+> > > > >      }
+> > > > >  
+> > > > > +    /*
+> > > > > +     * special call to tell the Linux kernel gss-proxy is available.
+> > > > > +     * Note this must be done before nfsd is started.
+> > > > > +     */
+> > > > > +    init_proc_nfsd(gpctx->config);
+> > > > > +
+> > > > >      init_server(gpctx->config->daemonize);
+> > > > >  
+> > > > >      write_pid();
+> > > > > @@ -139,9 +145,6 @@ int main(int argc, const char *argv[])
+> > > > >          }
+> > > > >      }
+> > > > >  
+> > > > > -    /* special call to tell the Linux kernel gss-proxy is available */
+> > > > > -    init_proc_nfsd(gpctx->config);
+> > > > > -
+> > > > >      ret = gp_workers_init(gpctx);
+> > > > >      if (ret) {
+> > > > >          exit(EXIT_FAILURE);
+> > > > 
+> > > > That doesn't look quite right to me. That has it calling init_proc_nfsd
+> > > > before any of the unix sockets are set up.
+> > > > 
+> > > > I think gss-proxy will probably need to do something similar to what
+> > > > mydaemon does; set up a pipe, and have the parent just block reading
+> > > > from it until the child writes to it. At that point the parent can exit
+> > > > and the pipe can be closed in the child.
+> > > > 
+> > > > See:
+> > > > 
+> > > >     http://git.linux-nfs.org/?p=steved/nfs-utils.git;a=blob;f=support/nfs/mydaemon.c;h=e885d60f3a808299730a4d62dec49142fdc3ba5f;hb=HEAD
+> > > > 
+> > > 
+> > > I'll take a look tomorrow, I created upstream ticket #114 to track this.
+> > 
+> > Thanks!
+> > 
+> > I notice there's also sd_notify(3) which avoids the double-fork and
+> > self-pipe, but you might consider that too much of a systemd dependency.
+> 
+> I'd like to use sd_notify, but preferred a more conservative approach
+> for wider distribution portability.
+> 
+> Patch here waiting for review upstream:
+> http://fedorapeople.org/cgit/simo/public_git/gss-proxy.git/commit/?h=usermode&id=ddc5eb950bbd2050dc76b4783f3d3383cd89bccf
+> 
+> Simo.
+> 
 
-On 16/12/13 22:43, J. Bruce Fields wrote:
-> From: "J. Bruce Fields" <bfields@redhat.com>
-> 
-> By unconditionally adding +/-4.2 to the version string written to the
-> kernel we make nfs-utils incompatible with pre-4.2-supporting kernels.
-> 
-> Ditto for 4.1.  This problem was introduced by
-> 12a590f8d556c00a9502eeebaa763d906222d521 "rpc.nfsd: Allow v4.2 server
-> support with the -V option", which also change nfsd to unconditionally
-> pass +/-4.2.
-> 
-> Instead, just don't mention 4.1 or 4.2 unless the commandline has
-> specifically requested that one or the other be turned on or off.
-> 
-> Tested-by: Joakim Tjernlund <joakim.tjernlund@transmode.se>
-> Reported-by: Joakim Tjernlund <joakim.tjernlund@transmode.se>
-> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-Committed...
+Looks good to me, but I'll ditto Bruce's request for comments...
 
-steved
-
-> ---
->  support/include/nfs/nfs.h | 1 -
->  utils/nfsd/nfsd.c         | 6 +++---
->  utils/nfsd/nfssvc.c       | 6 +++---
->  utils/nfsd/nfssvc.h       | 2 +-
->  4 files changed, 7 insertions(+), 8 deletions(-)
-> 
-> diff --git a/support/include/nfs/nfs.h b/support/include/nfs/nfs.h
-> index 38db5b5..df4ad76 100644
-> --- a/support/include/nfs/nfs.h
-> +++ b/support/include/nfs/nfs.h
-> @@ -17,7 +17,6 @@
->  
->  #define NFS4_MINMINOR 1
->  #define NFS4_MAXMINOR 2
-> -#define NFS4_VERDEFAULT  0x1  /* minor verion 1 */
->  
->  struct nfs_fh_len {
->  	int		fh_size;
-> diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
-> index 6db92f0..a9d77ab 100644
-> --- a/utils/nfsd/nfsd.c
-> +++ b/utils/nfsd/nfsd.c
-> @@ -99,7 +99,7 @@ main(int argc, char **argv)
->  	char *p, *progname, *port;
->  	char *haddr = NULL;
->  	int	socket_up = 0;
-> -	int minorvers = NFS4_VERDEFAULT;	/* nfsv4 minor version */
-> +	int minorvers[NFS4_MAXMINOR + 1] = {0};
->  	unsigned int versbits = NFSCTL_VERDEFAULT;
->  	unsigned int protobits = NFSCTL_ALLBITS;
->  	unsigned int proto4 = 0;
-> @@ -164,7 +164,7 @@ main(int argc, char **argv)
->  						fprintf(stderr, "%s: unsupported minor version\n", optarg);
->  						exit(1);
->  					}
-> -					NFSCTL_VERUNSET(minorvers, i);
-> +					minorvers[i] = -1;
->  					break;
->  				}
->  			case 3:
-> @@ -185,7 +185,7 @@ main(int argc, char **argv)
->  						fprintf(stderr, "%s: unsupported minor version\n", optarg);
->  						exit(1);
->  					}
-> -					NFSCTL_VERSET(minorvers, i);
-> +					minorvers[i] = 1;
->  					break;
->  				}
->  			case 3:
-> diff --git a/utils/nfsd/nfssvc.c b/utils/nfsd/nfssvc.c
-> index 8b85846..1b50aba 100644
-> --- a/utils/nfsd/nfssvc.c
-> +++ b/utils/nfsd/nfssvc.c
-> @@ -269,7 +269,7 @@ nfssvc_set_sockets(const int family, const unsigned int protobits,
->  }
->  
->  void
-> -nfssvc_setvers(unsigned int ctlbits, int minorvers)
-> +nfssvc_setvers(unsigned int ctlbits, int minorvers[])
->  {
->  	int fd, n, off;
->  	char *ptr;
-> @@ -281,9 +281,9 @@ nfssvc_setvers(unsigned int ctlbits, int minorvers)
->  		return;
->  
->  	for (n = NFS4_MINMINOR; n <= NFS4_MAXMINOR; n++) {
-> -		if (NFSCTL_VERISSET(minorvers, n)) 
-> +		if (minorvers[n] == 1)
->  			off += snprintf(ptr+off, sizeof(buf) - off, "+4.%d ", n);
-> -		else			
-> +		else if (minorvers[n] == -1)
->  			off += snprintf(ptr+off, sizeof(buf) - off, "-4.%d ", n);
->  	}
->  	for (n = NFSD_MINVERS; n <= NFSD_MAXVERS; n++) {
-> diff --git a/utils/nfsd/nfssvc.h b/utils/nfsd/nfssvc.h
-> index 08de0fe..2bbd3d3 100644
-> --- a/utils/nfsd/nfssvc.h
-> +++ b/utils/nfsd/nfssvc.h
-> @@ -24,5 +24,5 @@ void	nfssvc_mount_nfsdfs(char *progname);
->  int	nfssvc_inuse(void);
->  int	nfssvc_set_sockets(const int family, const unsigned int protobits,
->  			   const char *host, const char *port);
-> -void	nfssvc_setvers(unsigned int ctlbits, int minorvers4);
-> +void	nfssvc_setvers(unsigned int ctlbits, int minorvers4[]);
->  int	nfssvc_threads(unsigned short port, int nrservs);
-> 
+-- 
+Jeff Layton <jlayton@redhat.com>
