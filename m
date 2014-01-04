@@ -1,115 +1,127 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:37819 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752776AbaAFLzT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 6 Jan 2014 06:55:19 -0500
-Date: Mon, 6 Jan 2014 06:55:15 -0500
+Received: from mail-qe0-f52.google.com ([209.85.128.52]:54720 "EHLO
+	mail-qe0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751943AbaADMSO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 4 Jan 2014 07:18:14 -0500
+Received: by mail-qe0-f52.google.com with SMTP id ne12so16194455qeb.25
+        for <linux-nfs@vger.kernel.org>; Sat, 04 Jan 2014 04:18:13 -0800 (PST)
 From: Jeff Layton <jlayton@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
+To: bfields@fieldses.org
 Cc: linux-nfs@vger.kernel.org, ssorce@redhat.com, neilb@suse.de
-Subject: Re: [PATCH 2/3] sunrpc: fix potential race between setting
- use_gss_proxy and the upcall rpc_clnt
-Message-ID: <20140106065515.588952e7@tlielax.poochiereds.net>
-In-Reply-To: <20140105202157.GB22918@fieldses.org>
+Subject: [PATCH 1/3] sunrpc: don't wait for write before allowing reads from use-gss-proxy file
+Date: Sat,  4 Jan 2014 07:18:03 -0500
+Message-Id: <1388837885-8312-2-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1388837885-8312-1-git-send-email-jlayton@redhat.com>
 References: <1388837885-8312-1-git-send-email-jlayton@redhat.com>
-	<1388837885-8312-3-git-send-email-jlayton@redhat.com>
-	<20140104091105.4dc2a971@tlielax.poochiereds.net>
-	<20140105202157.GB22918@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, 5 Jan 2014 15:21:57 -0500
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
+It doesn't make much sense to make reads from this procfile hang. As
+far as I can tell, only gssproxy itself will open this file and it
+never reads from it. Change it to just give the present setting of
+sn->use_gss_proxy without waiting for anything.
 
-> On Sat, Jan 04, 2014 at 09:11:05AM -0500, Jeff Layton wrote:
-> > On Sat,  4 Jan 2014 07:18:04 -0500
-> > Jeff Layton <jlayton@redhat.com> wrote:
-> > 
-> > > Currently, the write_gssp code will change the variable and wake up any
-> > > waiters waiting on that change. It then goes and tries to set the
-> > > gssp_clnt. This is racy -- a task waiting on the set_gss_proxy call may
-> > > end up waking up and then subsequently finding that the gss_clnt isn't
-> > > there yet and end up not using it even though it'll soon be ready.
-> > > 
-> > > This patch reverses the order of operations. The gssp_clnt is created
-> > > first, and the variable change is done only if that succeeds.
-> > > 
-> > > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > > ---
-> > >  net/sunrpc/auth_gss/svcauth_gss.c | 4 ++--
-> > >  1 file changed, 2 insertions(+), 2 deletions(-)
-> > > 
-> > > diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
-> > > index 1b94a9c..60dc370 100644
-> > > --- a/net/sunrpc/auth_gss/svcauth_gss.c
-> > > +++ b/net/sunrpc/auth_gss/svcauth_gss.c
-> > > @@ -1317,10 +1317,10 @@ static ssize_t write_gssp(struct file *file, const char __user *buf,
-> > >  		return res;
-> > >  	if (i != 1)
-> > >  		return -EINVAL;
-> > > -	res = set_gss_proxy(net, 1);
-> > > +	res = set_gssp_clnt(net);
-> > >  	if (res)
-> > >  		return res;
-> > > -	res = set_gssp_clnt(net);
-> > > +	res = set_gss_proxy(net, 1);
-> > >  	if (res)
-> > >  		return res;
-> > >  	return count;
-> > 
-> > Sorry, I forgot to update the patch description on this one. There is
-> > still a race here after patch #1, but it goes something like this:
-> > 
-> > A nfsd thread will call use_gss_proxy and find it set to '1'. It'll
-> > then go and attempt and upcall, but since gssp_clnt is still NULL,
-> > gssp_call will just return -EIO.
-> > 
-> > The patch is still the same however. Bruce, let me know if you want me
-> > to resend with a fixed commit msg.
-> 
-> No problem.  Applying as follows.--b.
-> 
-> commit 32d6805adfc998def6b77ab95f35f63ad07cd043
-> Author: Jeff Layton <jlayton@redhat.com>
-> Date:   Sat Jan 4 07:18:04 2014 -0500
-> 
->     sunrpc: fix potential race between setting use_gss_proxy and the upcall rpc_clnt
->     
->     An nfsd thread can call use_gss_proxy and find it set to '1' but find
->     gssp_clnt still NULL, so that when it attempts the upcall the result
->     will be an unnecessary -EIO.
->     
->     So, ensure that gssp_clnt is created first, and set the use_gss_proxy
->     variable only if that succeeds.
->     
->     Signed-off-by: Jeff Layton <jlayton@redhat.com>
->     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> 
-> diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
-> index 084c87e..a80af65 100644
-> --- a/net/sunrpc/auth_gss/svcauth_gss.c
-> +++ b/net/sunrpc/auth_gss/svcauth_gss.c
-> @@ -1317,10 +1317,10 @@ static ssize_t write_gssp(struct file *file, const char __user *buf,
->  		return res;
->  	if (i != 1)
->  		return -EINVAL;
-> -	res = set_gss_proxy(net, 1);
-> +	res = set_gssp_clnt(net);
->  	if (res)
->  		return res;
-> -	res = set_gssp_clnt(net);
-> +	res = set_gss_proxy(net, 1);
->  	if (res)
->  		return res;
->  	return count;
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Note that we do not want to call use_gss_proxy() in this codepath
+since an inopportune read of this file could cause it to be disabled
+prematurely.
 
-Looks good. Thanks for fixing that up...
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ net/sunrpc/auth_gss/gss_rpc_upcall.c |  2 --
+ net/sunrpc/auth_gss/svcauth_gss.c    | 33 ++-------------------------------
+ net/sunrpc/netns.h                   |  1 -
+ 3 files changed, 2 insertions(+), 34 deletions(-)
 
+diff --git a/net/sunrpc/auth_gss/gss_rpc_upcall.c b/net/sunrpc/auth_gss/gss_rpc_upcall.c
+index 458f85e..abbb7dc 100644
+--- a/net/sunrpc/auth_gss/gss_rpc_upcall.c
++++ b/net/sunrpc/auth_gss/gss_rpc_upcall.c
+@@ -137,7 +137,6 @@ void init_gssp_clnt(struct sunrpc_net *sn)
+ {
+ 	mutex_init(&sn->gssp_lock);
+ 	sn->gssp_clnt = NULL;
+-	init_waitqueue_head(&sn->gssp_wq);
+ }
+ 
+ int set_gssp_clnt(struct net *net)
+@@ -154,7 +153,6 @@ int set_gssp_clnt(struct net *net)
+ 		sn->gssp_clnt = clnt;
+ 	}
+ 	mutex_unlock(&sn->gssp_lock);
+-	wake_up(&sn->gssp_wq);
+ 	return ret;
+ }
+ 
+diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+index 008cdad..1b94a9c 100644
+--- a/net/sunrpc/auth_gss/svcauth_gss.c
++++ b/net/sunrpc/auth_gss/svcauth_gss.c
+@@ -1295,34 +1295,9 @@ static int set_gss_proxy(struct net *net, int type)
+ 	else
+ 		ret = -EBUSY;
+ 	spin_unlock(&use_gssp_lock);
+-	wake_up(&sn->gssp_wq);
+ 	return ret;
+ }
+ 
+-static inline bool gssp_ready(struct sunrpc_net *sn)
+-{
+-	switch (sn->use_gss_proxy) {
+-		case -1:
+-			return false;
+-		case 0:
+-			return true;
+-		case 1:
+-			return sn->gssp_clnt;
+-	}
+-	WARN_ON_ONCE(1);
+-	return false;
+-}
+-
+-static int wait_for_gss_proxy(struct net *net, struct file *file)
+-{
+-	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
+-
+-	if (file->f_flags & O_NONBLOCK && !gssp_ready(sn))
+-		return -EAGAIN;
+-	return wait_event_interruptible(sn->gssp_wq, gssp_ready(sn));
+-}
+-
+-
+ static ssize_t write_gssp(struct file *file, const char __user *buf,
+ 			 size_t count, loff_t *ppos)
+ {
+@@ -1355,16 +1330,12 @@ static ssize_t read_gssp(struct file *file, char __user *buf,
+ 			 size_t count, loff_t *ppos)
+ {
+ 	struct net *net = PDE_DATA(file_inode(file));
++	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
+ 	unsigned long p = *ppos;
+ 	char tbuf[10];
+ 	size_t len;
+-	int ret;
+-
+-	ret = wait_for_gss_proxy(net, file);
+-	if (ret)
+-		return ret;
+ 
+-	snprintf(tbuf, sizeof(tbuf), "%d\n", use_gss_proxy(net));
++	snprintf(tbuf, sizeof(tbuf), "%d\n", sn->use_gss_proxy);
+ 	len = strlen(tbuf);
+ 	if (p >= len)
+ 		return 0;
+diff --git a/net/sunrpc/netns.h b/net/sunrpc/netns.h
+index 779742c..3a260e4 100644
+--- a/net/sunrpc/netns.h
++++ b/net/sunrpc/netns.h
+@@ -26,7 +26,6 @@ struct sunrpc_net {
+ 	unsigned int rpcb_is_af_local : 1;
+ 
+ 	struct mutex gssp_lock;
+-	wait_queue_head_t gssp_wq;
+ 	struct rpc_clnt *gssp_clnt;
+ 	int use_gss_proxy;
+ 	int pipe_version;
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.8.4.2
+
