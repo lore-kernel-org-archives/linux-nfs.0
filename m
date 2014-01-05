@@ -1,94 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:61110 "EHLO mx11.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:35891 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752434AbaA2Qen (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 29 Jan 2014 11:34:43 -0500
-From: <andros@netapp.com>
-To: <trond.myklebust@primarydata.com>
-CC: <linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>
-Subject: [PATCH Version 2 1/1] NFSv4.1 free slot before resending I/O to MDS
-Date: Wed, 29 Jan 2014 11:34:38 -0500
-Message-ID: <1391013278-13517-1-git-send-email-andros@netapp.com>
+	id S1751119AbaAETyJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 5 Jan 2014 14:54:09 -0500
+Date: Sun, 5 Jan 2014 14:54:07 -0500
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: linux-nfs@vger.kernel.org, Kinglong Mee <kinglongmee@gmail.com>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        Bruce Fields <bfields@fieldses.com>,
+        Gareth Williams <gareth@garethwilliams.me.uk>
+Subject: Re: [PATCH 4/4] SUNRPC: Add tracepoint for socket errors
+Message-ID: <20140105195407.GA22918@fieldses.org>
+References: <CAB6yy379-A8fgLpQo+ppx5V93P9pXcabvmBJNTZ5hXxeJMuxBg@mail.gmail.com>
+ <1388518781-33571-1-git-send-email-trond.myklebust@primarydata.com>
+ <1388518781-33571-2-git-send-email-trond.myklebust@primarydata.com>
+ <1388518781-33571-3-git-send-email-trond.myklebust@primarydata.com>
+ <1388518781-33571-4-git-send-email-trond.myklebust@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1388518781-33571-4-git-send-email-trond.myklebust@primarydata.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+On Tue, Dec 31, 2013 at 02:39:41PM -0500, Trond Myklebust wrote:
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> ---
+>  include/trace/events/sunrpc.h | 1 +
+>  net/sunrpc/xprtsock.c         | 1 +
+>  2 files changed, 2 insertions(+)
 
-Fix a dynamic session slot leak where a slot is preallocated and I/O is
-resent through the MDS.
+ACK to all these from me.  I'm assuming they'll go in through your tree
+for 3.14.
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
----
- fs/nfs/nfs4_fs.h        |  1 +
- fs/nfs/nfs4filelayout.c | 10 ++++++++--
- fs/nfs/nfs4proc.c       |  3 ++-
- 3 files changed, 11 insertions(+), 3 deletions(-)
+--b.
 
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index 5609edc..a5b27c2 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -270,6 +270,7 @@ static inline struct nfs4_session *nfs4_get_session(const struct nfs_server *ser
- extern int nfs41_setup_sequence(struct nfs4_session *session,
- 		struct nfs4_sequence_args *args, struct nfs4_sequence_res *res,
- 		struct rpc_task *task);
-+extern int nfs41_sequence_done(struct rpc_task *, struct nfs4_sequence_res *);
- extern int nfs4_proc_create_session(struct nfs_client *, struct rpc_cred *);
- extern int nfs4_proc_destroy_session(struct nfs4_session *, struct rpc_cred *);
- extern int nfs4_proc_get_lease_time(struct nfs_client *clp,
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 03fd8be..20a56fa 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -335,8 +335,11 @@ static void filelayout_read_call_done(struct rpc_task *task, void *data)
- 	dprintk("--> %s task->tk_status %d\n", __func__, task->tk_status);
- 
- 	if (test_bit(NFS_IOHDR_REDO, &rdata->header->flags) &&
--	    task->tk_status == 0)
-+	    task->tk_status == 0) {
-+		if (rdata->res.seq_res.sr_slot != NULL)
-+			nfs41_sequence_done(task, &rdata->res.seq_res);
- 		return;
-+	}
- 
- 	/* Note this may cause RPC to be resent */
- 	rdata->header->mds_ops->rpc_call_done(task, data);
-@@ -442,8 +445,11 @@ static void filelayout_write_call_done(struct rpc_task *task, void *data)
- 	struct nfs_write_data *wdata = data;
- 
- 	if (test_bit(NFS_IOHDR_REDO, &wdata->header->flags) &&
--	    task->tk_status == 0)
-+	    task->tk_status == 0) {
-+		if (wdata->res.seq_res.sr_slot != NULL)
-+			nfs41_sequence_done(task, &wdata->res.seq_res);
- 		return;
-+	}
- 
- 	/* Note this may cause RPC to be resent */
- 	wdata->header->mds_ops->rpc_call_done(task, data);
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index ed10d0d..ae00c3e 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -592,7 +592,7 @@ out_unlock:
- 		nfs41_server_notify_highest_slotid_update(session->clp);
- }
- 
--static int nfs41_sequence_done(struct rpc_task *task, struct nfs4_sequence_res *res)
-+int nfs41_sequence_done(struct rpc_task *task, struct nfs4_sequence_res *res)
- {
- 	struct nfs4_session *session;
- 	struct nfs4_slot *slot;
-@@ -692,6 +692,7 @@ out_retry:
- 	rpc_delay(task, NFS4_POLL_RETRY_MAX);
- 	return 0;
- }
-+EXPORT_SYMBOL_GPL(nfs41_sequence_done);
- 
- static int nfs4_sequence_done(struct rpc_task *task,
- 			       struct nfs4_sequence_res *res)
--- 
-1.8.3.1
-
+> 
+> diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
+> index d51d16c7afd8..ddc179b7a105 100644
+> --- a/include/trace/events/sunrpc.h
+> +++ b/include/trace/events/sunrpc.h
+> @@ -301,6 +301,7 @@ DECLARE_EVENT_CLASS(xs_socket_event_done,
+>  
+>  DEFINE_RPC_SOCKET_EVENT(rpc_socket_state_change);
+>  DEFINE_RPC_SOCKET_EVENT_DONE(rpc_socket_connect);
+> +DEFINE_RPC_SOCKET_EVENT_DONE(rpc_socket_error);
+>  DEFINE_RPC_SOCKET_EVENT_DONE(rpc_socket_reset_connection);
+>  DEFINE_RPC_SOCKET_EVENT(rpc_socket_close);
+>  DEFINE_RPC_SOCKET_EVENT(rpc_socket_shutdown);
+> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+> index ab006b7b7ab8..25dbfa971948 100644
+> --- a/net/sunrpc/xprtsock.c
+> +++ b/net/sunrpc/xprtsock.c
+> @@ -837,6 +837,7 @@ static void xs_error_report(struct sock *sk)
+>  		goto out;
+>  	dprintk("RPC:       xs_error_report client %p, error=%d...\n",
+>  			xprt, -err);
+> +	trace_rpc_socket_error(xprt, sk->sk_socket, err);
+>  	xprt_wake_pending_tasks(xprt, err);
+>   out:
+>  	read_unlock_bh(&sk->sk_callback_lock);
+> -- 
+> 1.8.4.2
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
