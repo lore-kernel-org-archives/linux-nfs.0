@@ -1,66 +1,102 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f173.google.com ([209.85.223.173]:54394 "EHLO
-	mail-ie0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751694AbaATTqa (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Jan 2014 14:46:30 -0500
-Received: by mail-ie0-f173.google.com with SMTP id e14so8754956iej.18
-        for <linux-nfs@vger.kernel.org>; Mon, 20 Jan 2014 11:46:29 -0800 (PST)
-From: Weston Andros Adamson <dros@primarydata.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
-Subject: [PATCH pynfs] nfs4.1 server: fix typos related to file layout
-Date: Mon, 20 Jan 2014 14:46:19 -0500
-Message-Id: <1390247179-2617-1-git-send-email-dros@primarydata.com>
+Received: from fieldses.org ([174.143.236.118]:48209 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751669AbaAEUV6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 5 Jan 2014 15:21:58 -0500
+Date: Sun, 5 Jan 2014 15:21:57 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org, ssorce@redhat.com, neilb@suse.de
+Subject: Re: [PATCH 2/3] sunrpc: fix potential race between setting
+ use_gss_proxy and the upcall rpc_clnt
+Message-ID: <20140105202157.GB22918@fieldses.org>
+References: <1388837885-8312-1-git-send-email-jlayton@redhat.com>
+ <1388837885-8312-3-git-send-email-jlayton@redhat.com>
+ <20140104091105.4dc2a971@tlielax.poochiereds.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140104091105.4dc2a971@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Since the new .x it's "FATTR4_FS_LAYOUT_TYPES", not "FATTR4_FS_LAYOUT_TYPE"
+On Sat, Jan 04, 2014 at 09:11:05AM -0500, Jeff Layton wrote:
+> On Sat,  4 Jan 2014 07:18:04 -0500
+> Jeff Layton <jlayton@redhat.com> wrote:
+> 
+> > Currently, the write_gssp code will change the variable and wake up any
+> > waiters waiting on that change. It then goes and tries to set the
+> > gssp_clnt. This is racy -- a task waiting on the set_gss_proxy call may
+> > end up waking up and then subsequently finding that the gss_clnt isn't
+> > there yet and end up not using it even though it'll soon be ready.
+> > 
+> > This patch reverses the order of operations. The gssp_clnt is created
+> > first, and the variable change is done only if that succeeds.
+> > 
+> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > ---
+> >  net/sunrpc/auth_gss/svcauth_gss.c | 4 ++--
+> >  1 file changed, 2 insertions(+), 2 deletions(-)
+> > 
+> > diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+> > index 1b94a9c..60dc370 100644
+> > --- a/net/sunrpc/auth_gss/svcauth_gss.c
+> > +++ b/net/sunrpc/auth_gss/svcauth_gss.c
+> > @@ -1317,10 +1317,10 @@ static ssize_t write_gssp(struct file *file, const char __user *buf,
+> >  		return res;
+> >  	if (i != 1)
+> >  		return -EINVAL;
+> > -	res = set_gss_proxy(net, 1);
+> > +	res = set_gssp_clnt(net);
+> >  	if (res)
+> >  		return res;
+> > -	res = set_gssp_clnt(net);
+> > +	res = set_gss_proxy(net, 1);
+> >  	if (res)
+> >  		return res;
+> >  	return count;
+> 
+> Sorry, I forgot to update the patch description on this one. There is
+> still a race here after patch #1, but it goes something like this:
+> 
+> A nfsd thread will call use_gss_proxy and find it set to '1'. It'll
+> then go and attempt and upcall, but since gssp_clnt is still NULL,
+> gssp_call will just return -EIO.
+> 
+> The patch is still the same however. Bruce, let me know if you want me
+> to resend with a fixed commit msg.
 
-Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
----
- nfs4.1/fs.py | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+No problem.  Applying as follows.--b.
 
-diff --git a/nfs4.1/fs.py b/nfs4.1/fs.py
-index 0eedb3f..16e9e7c 100644
---- a/nfs4.1/fs.py
-+++ b/nfs4.1/fs.py
-@@ -353,7 +353,7 @@ class FSObject(object):
-         NOTE permissions checking on the range has already been done
-         """
-         fs = self.fs
--        if not fs.fattr4_supported_attrs & (1 << FATTR4_FS_LAYOUT_TYPE):
-+        if not fs.fattr4_supported_attrs & (1 << FATTR4_FS_LAYOUT_TYPES):
-             raise NFS4Error(NFS4ERR_LAYOUTUNAVAILABLE)
-         try:
-             types = fs.fattr4_fs_layout_type
-@@ -376,7 +376,7 @@ class FSObject(object):
-         if arg.loca_reclaim:
-             # STUB - this is just not supported
-             raise NFS4Error(NFS4ERR_NO_GRACE)
--        if not fs.fattr4_supported_attrs & (1 << FATTR4_FS_LAYOUT_TYPE):
-+        if not fs.fattr4_supported_attrs & (1 << FATTR4_FS_LAYOUT_TYPES):
-             raise NFS4Error(NFS4ERR_LAYOUTUNAVAILABLE)
-         if not self.current_layout:
-             raise NFS4Error(NFS4ERR_BADLAYOUT, tag="File has no layout")
-@@ -1280,7 +1280,7 @@ class BlockLayoutFS(FileSystem):
-         FileSystem.__init__(self, objclass=LayoutFSObj)
-         self.fsid = (3, fsid)
-         self.fattr4_fs_layout_type = [LAYOUT4_BLOCK_VOLUME]
--        self.fattr4_supported_attrs |= 1 << FATTR4_FS_LAYOUT_TYPE
-+        self.fattr4_supported_attrs |= 1 << FATTR4_FS_LAYOUT_TYPES
-         self.fattr4_layout_blksize = 4096
-         self.fattr4_supported_attrs |= 1 << FATTR4_LAYOUT_BLKSIZE
-         self.fattr4_maxwrite = 4096
-@@ -1428,7 +1428,7 @@ class FileLayoutFS(FileSystem):
-         FileSystem.__init__(self, objclass=FSLayoutFSObj)
-         self.fsid = (2, fsid)
-         self.fattr4_fs_layout_type = [LAYOUT4_NFSV4_1_FILES]
--        self.fattr4_supported_attrs |= 1 << FATTR4_FS_LAYOUT_TYPE
-+        self.fattr4_supported_attrs |= 1 << FATTR4_FS_LAYOUT_TYPES
-         self.fattr4_maxwrite = 8192
-         self.fattr4_maxread = 8192
-         self.fattr4_supported_attrs |= 1 << FATTR4_MAXWRITE
--- 
-1.8.3.4 (Apple Git-47)
+commit 32d6805adfc998def6b77ab95f35f63ad07cd043
+Author: Jeff Layton <jlayton@redhat.com>
+Date:   Sat Jan 4 07:18:04 2014 -0500
 
+    sunrpc: fix potential race between setting use_gss_proxy and the upcall rpc_clnt
+    
+    An nfsd thread can call use_gss_proxy and find it set to '1' but find
+    gssp_clnt still NULL, so that when it attempts the upcall the result
+    will be an unnecessary -EIO.
+    
+    So, ensure that gssp_clnt is created first, and set the use_gss_proxy
+    variable only if that succeeds.
+    
+    Signed-off-by: Jeff Layton <jlayton@redhat.com>
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+
+diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+index 084c87e..a80af65 100644
+--- a/net/sunrpc/auth_gss/svcauth_gss.c
++++ b/net/sunrpc/auth_gss/svcauth_gss.c
+@@ -1317,10 +1317,10 @@ static ssize_t write_gssp(struct file *file, const char __user *buf,
+ 		return res;
+ 	if (i != 1)
+ 		return -EINVAL;
+-	res = set_gss_proxy(net, 1);
++	res = set_gssp_clnt(net);
+ 	if (res)
+ 		return res;
+-	res = set_gssp_clnt(net);
++	res = set_gss_proxy(net, 1);
+ 	if (res)
+ 		return res;
+ 	return count;
