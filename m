@@ -1,82 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([209.166.131.148]:40940 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751430AbaANPx7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Jan 2014 10:53:59 -0500
-Message-ID: <52D54D87.7010100@panasas.com>
-Date: Tue, 14 Jan 2014 16:45:27 +0200
-From: Boaz Harrosh <bharrosh@panasas.com>
-MIME-Version: 1.0
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
-Subject: [PATCH] pnfs-obj: Proper delay for NFS4ERR_RECALLCONFLICT in layout_get_done
-Content-Type: text/plain; charset="UTF-8"
+Received: from mx1.redhat.com ([209.132.183.28]:6203 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751934AbaAFL6T (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 6 Jan 2014 06:58:19 -0500
+Date: Mon, 6 Jan 2014 06:58:15 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org, ssorce@redhat.com, neilb@suse.de
+Subject: Re: [PATCH 0/3] sunrpc: change handling of use-gss-proxy file
+Message-ID: <20140106065815.70ff2c37@tlielax.poochiereds.net>
+In-Reply-To: <20140105203045.GC22918@fieldses.org>
+References: <1388837885-8312-1-git-send-email-jlayton@redhat.com>
+	<20140105203045.GC22918@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Sun, 5 Jan 2014 15:30:45 -0500
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-An NFS4ERR_RECALLCONFLICT is returned by server from a GET_LAYOUT
-only when a Server Sent a RECALL do to that GET_LAYOUT, or
-the RECALL and GET_LAYOUT crossed on the wire.
-In any way this means we want to wait at most until in-flight IO
-is finished and the RECALL can be satisfied.
+> On Sat, Jan 04, 2014 at 07:18:02AM -0500, Jeff Layton wrote:
+> > This patchset fixes a couple of problems with the use-gss-proxy procfile
+> > and does some general cleanup around that code. Bruce, can you consider
+> > this for 3.14? Getting it into linux-next soon would be good too...
+> 
+> Yep, applied locally, should get pushed out tomorrow-ish.
+> 
+> I suppose the first should also go to stable if the "tar up /proc" case
+> merits it.
+> 
+> The races look like they require pretty unusual userspace behavior, so
+> I'm not inclined to backport those.
+> 
+> --b.
+> 
 
-So a proper wait here is more like 1/10 of a second, not 15 seconds
-like we have now. (We use NFS4_POLL_RETRY_MIN here)
+Yeah, I think the first patch is probably reasonable for stable. There
+are a number of tools that tar up /proc files in order to collect info
+for troubleshooting and those are likely to get stuck with this.
 
-Current code totally craps out performance of very large files on
-most pnfs-objects layouts, because of how the map changes when the
-file has grown and spills into the next raid group.
+The other two are theoretical races I noticed by inspection so I don't
+think they would be appropriate for it.
 
-CC: Stable Tree <stable@kernel.org>
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
----
- fs/nfs/nfs4proc.c | 22 +++++++++++++++++++---
- 1 file changed, 19 insertions(+), 3 deletions(-)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index d53d678..3264fca 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -7058,7 +7058,7 @@ static void nfs4_layoutget_done(struct rpc_task *task, void *calldata)
- 	struct nfs4_state *state = NULL;
- 	unsigned long timeo, giveup;
- 
--	dprintk("--> %s\n", __func__);
-+	dprintk("--> %s tk_status => %d\n", __func__, task->tk_status);
- 
- 	if (!nfs41_sequence_done(task, &lgp->res.seq_res))
- 		goto out;
-@@ -7067,11 +7067,27 @@ static void nfs4_layoutget_done(struct rpc_task *task, void *calldata)
- 	case 0:
- 		goto out;
- 	case -NFS4ERR_LAYOUTTRYLATER:
-+	/* NFS4ERR_RECALLCONFLICT is always a minimal delay (conflict with
-+	 * self)
-+	 * TODO: NFS4ERR_LAYOUTTRYLATER is a conflict with another client
-+	 * (or clients). What we should do is randomize a short delay like on a
-+	 * network broadcast burst, and raise the random max every failure.
-+	 * For now leave it stateless and do this polling.
-+	 */
- 	case -NFS4ERR_RECALLCONFLICT:
- 		timeo = rpc_get_timeout(task->tk_client);
- 		giveup = lgp->args.timestamp + timeo;
--		if (time_after(giveup, jiffies))
--			task->tk_status = -NFS4ERR_DELAY;
-+		if (time_after(giveup, jiffies)) {
-+			/* Do a minimum delay, We are actually waiting for our
-+			 * own IO to finish (In most cases)
-+			 */
-+			dprintk("%s: NFS4ERR_RECALLCONFLICT waiting\n",
-+				__func__);
-+			rpc_delay(task, NFS4_POLL_RETRY_MIN);
-+			task->tk_status = 0;
-+			rpc_restart_call_prepare(task);
-+			goto out; /* Do not call nfs4_async_handle_error() */
-+		}
- 		break;
- 	case -NFS4ERR_EXPIRED:
- 	case -NFS4ERR_BAD_STATEID:
+Thanks,
 -- 
-1.7.11.7
-
+Jeff Layton <jlayton@redhat.com>
