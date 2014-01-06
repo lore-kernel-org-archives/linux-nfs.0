@@ -1,67 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f173.google.com ([209.85.223.173]:43771 "EHLO
-	mail-ie0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756769AbaAFWt7 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Jan 2014 17:49:59 -0500
-Received: by mail-ie0-f173.google.com with SMTP id to1so19456872ieb.32
-        for <linux-nfs@vger.kernel.org>; Mon, 06 Jan 2014 14:49:58 -0800 (PST)
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
-Subject: Re: [PATCH 0/3] READ_PLUS rough draft
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-In-Reply-To: <20140106223201.GA3342@fieldses.org>
-Date: Mon, 6 Jan 2014 17:49:56 -0500
-Cc: Anna Schumaker <Anna.Schumaker@netapp.com>,
+Received: from mail-pa0-f50.google.com ([209.85.220.50]:33931 "EHLO
+	mail-pa0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752292AbaAFKYh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Jan 2014 05:24:37 -0500
+Received: by mail-pa0-f50.google.com with SMTP id kp14so16616675pab.9
+        for <linux-nfs@vger.kernel.org>; Mon, 06 Jan 2014 02:24:37 -0800 (PST)
+Message-ID: <52CA8460.6030206@gmail.com>
+Date: Mon, 06 Jan 2014 18:24:32 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <634D69C0-6B86-4FCE-80E4-C66F131F0ED3@primarydata.com>
-References: <1389045433-22990-1-git-send-email-Anna.Schumaker@netapp.com> <20140106223201.GA3342@fieldses.org>
-To: Dr Fields James Bruce <bfields@fieldses.org>
+Subject: [PATCH] SUNRPC: fix memory leak of peer addresses in XPRT
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+If creating xprt failed after xs_format_peer_addresses,
+sunrpc must free those memory of peer addresses in xprt.
 
-On Jan 6, 2014, at 17:32, J. Bruce Fields <bfields@fieldses.org> wrote:
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+---
+ net/sunrpc/xprtsock.c | 11 +++++++++--
+ 1 file changed, 9 insertions(+), 2 deletions(-)
 
-> On Mon, Jan 06, 2014 at 04:57:10PM -0500, Anna Schumaker wrote:
->> These patches are my initial implementation of READ_PLUS.  I still have a
->> few issues to work out before they can be applied, but I wanted to submit
->> them anyway to get feedback before going much further.  These patches were
->> developed on top of my earlier SEEK and WRITE_PLUS patches, and probably
->> won't apply cleanly without them (I am willing to reorder things if necessary!).
->> 
->> On the server side, I handle the cases where a file is 100% hole, 100% data
->> or hole followed by data.  Any holes after a data segment will be expanded
->> to zeros on the wire.
-> 
-> I assume that for "a file" I should read "the requested range of the
-> file"?
-> 
-> hole+data+hole should also be doable, shouldn't it?  I'd think the real
-> problem would be multiple data extents.
-> 
->> This is due to a limitation in the the NFSD
->> encode-to-page function that will adjust pointers to point to the xdr tail
->> after reading a file to the "pages" section.  Bruce, do you have any
->> suggestions here?
-> 
-> The server xdr encoding needs a rewrite.  I'll see if I can ignore you
-> all and put my head down and get a version of that posted this week.
-> 
-> That should make it easier to return all the data, though it will turn
-> off zero-copy in the case of multiple data extents.
-> 
-> If we want READ_PLUS to support zero copy in the case of multiple
-> extents then I think we need a new data structure to represent the
-> resulting rpc reply.  An xdr buf only knows how to insert one array of
-> pages in the middle of the data.  Maybe a list of xdr bufs?
-> 
-> But that's an annoying job and possibly a premature optimization.
-> 
-> It might be useful to first understand the typical distribution of holes
-> in a file and how likely various workloads are to produce reads with
-> multiple holes in the middle.
-
-Right. The main purpose of this patch set is to demonstrate that READ PLUS hole feature is pretty much useless in the cases you list above.
-
-Cheers
-  Trond
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 25dbfa9..11ceba3 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -2725,8 +2725,10 @@ static struct rpc_xprt *xs_setup_local(struct xprt_create *args)
+ 		xprt_set_bound(xprt);
+ 		xs_format_peer_addresses(xprt, "local", RPCBIND_NETID_LOCAL);
+ 		ret = ERR_PTR(xs_local_setup_socket(transport));
+-		if (ret)
++		if (ret) {
++			xs_free_peer_addresses(xprt);
+ 			goto out_err;
++		}
+ 		break;
+ 	default:
+ 		ret = ERR_PTR(-EAFNOSUPPORT);
+@@ -2738,6 +2740,8 @@ static struct rpc_xprt *xs_setup_local(struct xprt_create *args)
+ 
+ 	if (try_module_get(THIS_MODULE))
+ 		return xprt;
++
++	xs_free_peer_addresses(xprt);
+ 	ret = ERR_PTR(-EINVAL);
+ out_err:
+ 	xprt_free(xprt);
+@@ -2816,6 +2820,8 @@ static struct rpc_xprt *xs_setup_udp(struct xprt_create *args)
+ 
+ 	if (try_module_get(THIS_MODULE))
+ 		return xprt;
++
++	xs_free_peer_addresses(xprt);
+ 	ret = ERR_PTR(-EINVAL);
+ out_err:
+ 	xprt_free(xprt);
+@@ -2893,9 +2899,10 @@ static struct rpc_xprt *xs_setup_tcp(struct xprt_create *args)
+ 				xprt->address_strings[RPC_DISPLAY_ADDR],
+ 				xprt->address_strings[RPC_DISPLAY_PROTO]);
+ 
+-
+ 	if (try_module_get(THIS_MODULE))
+ 		return xprt;
++
++	xs_free_peer_addresses(xprt);
+ 	ret = ERR_PTR(-EINVAL);
+ out_err:
+ 	xprt_free(xprt);
+-- 
+1.8.4.2
