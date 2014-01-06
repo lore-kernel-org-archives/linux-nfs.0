@@ -1,30 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:14273 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751142AbaAIQC0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 9 Jan 2014 11:02:26 -0500
-Message-ID: <52CEC879.8000805@RedHat.com>
-Date: Thu, 09 Jan 2014 11:04:09 -0500
-From: Steve Dickson <SteveD@redhat.com>
+Received: from mail-pb0-f53.google.com ([209.85.160.53]:45306 "EHLO
+	mail-pb0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753382AbaAFJd2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Jan 2014 04:33:28 -0500
+Received: by mail-pb0-f53.google.com with SMTP id ma3so18171785pbc.26
+        for <linux-nfs@vger.kernel.org>; Mon, 06 Jan 2014 01:33:28 -0800 (PST)
+Message-ID: <52CA7862.1020203@gmail.com>
+Date: Mon, 06 Jan 2014 17:33:22 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
-To: Jim Rees <rees@umich.edu>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] statd: include stdlib.h in simu.c
-References: <1389225273-24273-1-git-send-email-rees@umich.edu> <20140109003618.GA6055@umich.edu>
-In-Reply-To: <20140109003618.GA6055@umich.edu>
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: [PATCH] SUNRPC: fix a memory leak for tcp NFSv4.1 backchannel
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+xs_setup_bc_tcp may return an existing xprt with non-NULL servername.
+xprt_create_transport should not kstrdup servername for it.
+Otherwise, those memory for servername will be leaked.
 
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+---
+ net/sunrpc/xprt.c | 6 +++++-
+ 1 file changed, 5 insertions(+), 1 deletion(-)
 
-On 08/01/14 19:36, Jim Rees wrote:
-> Jim Rees wrote:
-> 
->   Prevents undefined ref to NULL.
->   
-> You can probably ignore this. I missed an autogen.
-Considered ignored! ;-) 
-
-steved.
-> 
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index ddd198e..6fa966f 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -1339,7 +1339,11 @@ found:
+ 		xprt_destroy(xprt);
+ 		return ERR_PTR(-EINVAL);
+ 	}
+-	xprt->servername = kstrdup(args->servername, GFP_KERNEL);
++
++	/* servername may not be NULL for tcp NFSv4.1 backchannel */
++	if (xprt->servername == NULL)
++		xprt->servername = kstrdup(args->servername, GFP_KERNEL);
++
+ 	if (xprt->servername == NULL) {
+ 		xprt_destroy(xprt);
+ 		return ERR_PTR(-ENOMEM);
+-- 
+1.8.4.2
