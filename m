@@ -1,90 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:42376 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:8080 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752049AbaAGSL0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 7 Jan 2014 13:11:26 -0500
-Date: Tue, 7 Jan 2014 13:11:22 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Anna Schumaker <Anna.Schumaker@netapp.com>
-Cc: Trond.Myklebust@primarydata.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 0/3] READ_PLUS rough draft
-Message-ID: <20140107181122.GA15463@fieldses.org>
-References: <1389045433-22990-1-git-send-email-Anna.Schumaker@netapp.com>
- <20140106223201.GA3342@fieldses.org>
- <52CC123C.7000806@netapp.com>
- <20140107145633.GC3342@fieldses.org>
- <52CC1F86.1040408@netapp.com>
+	id S1754551AbaAFQcF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 6 Jan 2014 11:32:05 -0500
+Date: Mon, 6 Jan 2014 17:31:57 +0100
+From: Karel Zak <kzak@redhat.com>
+To: Sander Klein <roedie@roedie.nl>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
+        linux-nfs-owner@vger.kernel.org
+Subject: Re: rpc.mountd high cpu usage
+Message-ID: <20140106163157.GI31045@x2.net.home>
+References: <889b64df295ba04d47f941762ebe0bac@roedie.nl>
+ <20131212154642.GA11521@fieldses.org>
+ <20140106111805.GF4435@x2.net.home>
+ <e62c2d1848074f60fbfb2fb1136d6ca6@roedie.nl>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <52CC1F86.1040408@netapp.com>
+In-Reply-To: <e62c2d1848074f60fbfb2fb1136d6ca6@roedie.nl>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jan 07, 2014 at 10:38:46AM -0500, Anna Schumaker wrote:
-> On 01/07/2014 09:56 AM, J. Bruce Fields wrote:
-> > On Tue, Jan 07, 2014 at 09:42:04AM -0500, Anna Schumaker wrote:
-> >> On 01/06/2014 05:32 PM, J. Bruce Fields wrote:
-> >>> On Mon, Jan 06, 2014 at 04:57:10PM -0500, Anna Schumaker wrote:
-> >>>> These patches are my initial implementation of READ_PLUS.  I still have a
-> >>>> few issues to work out before they can be applied, but I wanted to submit
-> >>>> them anyway to get feedback before going much further.  These patches were
-> >>>> developed on top of my earlier SEEK and WRITE_PLUS patches, and probably
-> >>>> won't apply cleanly without them (I am willing to reorder things if necessary!).
-> >>>>
-> >>>> On the server side, I handle the cases where a file is 100% hole, 100% data
-> >>>> or hole followed by data.  Any holes after a data segment will be expanded
-> >>>> to zeros on the wire.
-> >>>
-> >>> I assume that for "a file" I should read "the requested range of the
-> >>> file"?
-> >>
-> >> Yes.
-> >>
-> >>>
-> >>> hole+data+hole should also be doable, shouldn't it?  I'd think the real
-> >>> problem would be multiple data extents.
-> >>
-> >> It might be, but I haven't tried it yet.  I can soon!
-> >>
-> >>>
-> >>>> This is due to a limitation in the the NFSD
-> >>>> encode-to-page function that will adjust pointers to point to the xdr tail
-> >>>> after reading a file to the "pages" section.  Bruce, do you have any
-> >>>> suggestions here?
-> >>>
-> >>> The server xdr encoding needs a rewrite.  I'll see if I can ignore you
-> >>> all and put my head down and get a version of that posted this week.
-> >>
-> >> :)
-> >>
-> >>>
-> >>> That should make it easier to return all the data, though it will turn
-> >>> off zero-copy in the case of multiple data extents.
-> >>>
-> >>> If we want READ_PLUS to support zero copy in the case of multiple
-> >>> extents then I think we need a new data structure to represent the
-> >>> resulting rpc reply.  An xdr buf only knows how to insert one array of
-> >>> pages in the middle of the data.  Maybe a list of xdr bufs?
-> >>>
-> >>> But that's an annoying job and possibly a premature optimization.
-> >>>
-> >>> It might be useful to first understand the typical distribution of holes
-> >>> in a file and how likely various workloads are to produce reads with
-> >>> multiple holes in the middle.
-> >>
-> >> I already have a few performance numbers, but nothing that can be trusted due to the number of debugging printk()s I used to make sure the client decoded everything correctly.  My plan is to collect the following information using:  v4.0, v4.1, v4.2 (SEEK), v4.2 (SEEK + WRITE_PLUS), and v4.2 (SEEK + WRITE_PLUS + READ_PLUS).
-> > 
-> > What's the workload and hardware setup?
+On Mon, Jan 06, 2014 at 05:20:12PM +0100, Sander Klein wrote:
+> Hi,
 > 
-> I was going to run filebench tests (fileserver, mongo, varmail) between two VMs.  I only have the one laptop with me today, so I can't test between two real machines without asking for a volunteer from Workantile.  I am planning to kill Firefox and Thunderbird before running anything!
+> On 06.01.2014 12:18, Karel Zak wrote:
+> >>> statfs("/some/export", {f_type=0x2fc12fc1, f_bsize=131072,
+> >>> f_blocks=50331648, f_bfree=8355553, f_bavail=8355553,
+> >>> f_files=2139121087, f_ffree=2139021753, f_fsid={1912623216,
+> >>> 10933642}, f_namelen=255, f_frsize=131072}) = 0
+> >>> stat("/some/export", {st_mode=S_IFDIR|0775, st_size=15, ...}) = 0
+> >>> lstat("/some/export", {st_mode=S_IFDIR|0775, st_size=15, ...}) = 0
+> >>> lstat("/some/export/..", {st_mode=S_IFDIR|0755, st_size=12288, ...}) = 0
+> >>> stat("/some/export", {st_mode=S_IFDIR|0775, st_size=15, ...}) = 0
+> >>> open("/sys/dev/block/0:187", O_RDONLY)  = -1 ENOENT (No such file or
+> >>> directory)
+> >
+> >This is blkid_devno_to_devname(), the first attempt is /sys, but it
+> >failed, then it tries to scan /dev (which is pretty expensive method).
+> >
+> >BTW, what is device 0:187?
+> >
+> >It seems like btrfs... maybe we can  optimize the code to ignore such
+> >devices especially when get_uuid_blkdev() filters out btrfs :-)
+> 
+> This machine is running ZFS On Linux with 180 multipathed disks. I wouldn't
+> be amazed if ZFS and BTRFS suffer from the same problem because they are
+> both volume managers and filesystems in one.
+> 
+> >The another problem is poorly designed relationship between match_fsid()
+> >and uuid_by_path().  The function uuid_by_path() is called in loop and
+> >blkid is *always* requested, but the blkid_val is used when type==0.
+> >It would be better to call get_uuid_blkdev() only when type==0.
+> >
+> >The patch below is just untested suggestion :-)
+> 
+> Should/Would ZFS_SUPER_MAGIC 0x2fc12fc1 be added to make this untested
 
-That doesn't seem like an interesting test.
+yep, try it, test it ;-)
 
-Running some generic filesystem benchmarks sounds like a fine idea.  If
-nothing else to check for regressions.  But if we want to figure out
-whether it helps where it's supposed to then I think we need to think
-about what it's meant to do (reduce bandwidth use transferring sparse
-files, I guess.  Maybe something copying VM images would be
-interesting??)
+    Karel
 
---b.
+-- 
+ Karel Zak  <kzak@redhat.com>
+ http://karelzak.blogspot.com
