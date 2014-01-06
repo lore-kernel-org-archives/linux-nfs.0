@@ -1,23 +1,115 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mout.perfora.net ([74.208.4.195]:53532 "EHLO mout.perfora.net"
+Received: from mx1.redhat.com ([209.132.183.28]:37819 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757351AbaAIAgX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 8 Jan 2014 19:36:23 -0500
-Date: Wed, 8 Jan 2014 19:36:18 -0500
-From: Jim Rees <rees@umich.edu>
-To: Steve Dickson <steved@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] statd: include stdlib.h in simu.c
-Message-ID: <20140109003618.GA6055@umich.edu>
-References: <1389225273-24273-1-git-send-email-rees@umich.edu>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1389225273-24273-1-git-send-email-rees@umich.edu>
+	id S1752776AbaAFLzT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 6 Jan 2014 06:55:19 -0500
+Date: Mon, 6 Jan 2014 06:55:15 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org, ssorce@redhat.com, neilb@suse.de
+Subject: Re: [PATCH 2/3] sunrpc: fix potential race between setting
+ use_gss_proxy and the upcall rpc_clnt
+Message-ID: <20140106065515.588952e7@tlielax.poochiereds.net>
+In-Reply-To: <20140105202157.GB22918@fieldses.org>
+References: <1388837885-8312-1-git-send-email-jlayton@redhat.com>
+	<1388837885-8312-3-git-send-email-jlayton@redhat.com>
+	<20140104091105.4dc2a971@tlielax.poochiereds.net>
+	<20140105202157.GB22918@fieldses.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Jim Rees wrote:
+On Sun, 5 Jan 2014 15:21:57 -0500
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-  Prevents undefined ref to NULL.
-  
-You can probably ignore this. I missed an autogen.
+> On Sat, Jan 04, 2014 at 09:11:05AM -0500, Jeff Layton wrote:
+> > On Sat,  4 Jan 2014 07:18:04 -0500
+> > Jeff Layton <jlayton@redhat.com> wrote:
+> > 
+> > > Currently, the write_gssp code will change the variable and wake up any
+> > > waiters waiting on that change. It then goes and tries to set the
+> > > gssp_clnt. This is racy -- a task waiting on the set_gss_proxy call may
+> > > end up waking up and then subsequently finding that the gss_clnt isn't
+> > > there yet and end up not using it even though it'll soon be ready.
+> > > 
+> > > This patch reverses the order of operations. The gssp_clnt is created
+> > > first, and the variable change is done only if that succeeds.
+> > > 
+> > > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > > ---
+> > >  net/sunrpc/auth_gss/svcauth_gss.c | 4 ++--
+> > >  1 file changed, 2 insertions(+), 2 deletions(-)
+> > > 
+> > > diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+> > > index 1b94a9c..60dc370 100644
+> > > --- a/net/sunrpc/auth_gss/svcauth_gss.c
+> > > +++ b/net/sunrpc/auth_gss/svcauth_gss.c
+> > > @@ -1317,10 +1317,10 @@ static ssize_t write_gssp(struct file *file, const char __user *buf,
+> > >  		return res;
+> > >  	if (i != 1)
+> > >  		return -EINVAL;
+> > > -	res = set_gss_proxy(net, 1);
+> > > +	res = set_gssp_clnt(net);
+> > >  	if (res)
+> > >  		return res;
+> > > -	res = set_gssp_clnt(net);
+> > > +	res = set_gss_proxy(net, 1);
+> > >  	if (res)
+> > >  		return res;
+> > >  	return count;
+> > 
+> > Sorry, I forgot to update the patch description on this one. There is
+> > still a race here after patch #1, but it goes something like this:
+> > 
+> > A nfsd thread will call use_gss_proxy and find it set to '1'. It'll
+> > then go and attempt and upcall, but since gssp_clnt is still NULL,
+> > gssp_call will just return -EIO.
+> > 
+> > The patch is still the same however. Bruce, let me know if you want me
+> > to resend with a fixed commit msg.
+> 
+> No problem.  Applying as follows.--b.
+> 
+> commit 32d6805adfc998def6b77ab95f35f63ad07cd043
+> Author: Jeff Layton <jlayton@redhat.com>
+> Date:   Sat Jan 4 07:18:04 2014 -0500
+> 
+>     sunrpc: fix potential race between setting use_gss_proxy and the upcall rpc_clnt
+>     
+>     An nfsd thread can call use_gss_proxy and find it set to '1' but find
+>     gssp_clnt still NULL, so that when it attempts the upcall the result
+>     will be an unnecessary -EIO.
+>     
+>     So, ensure that gssp_clnt is created first, and set the use_gss_proxy
+>     variable only if that succeeds.
+>     
+>     Signed-off-by: Jeff Layton <jlayton@redhat.com>
+>     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> 
+> diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
+> index 084c87e..a80af65 100644
+> --- a/net/sunrpc/auth_gss/svcauth_gss.c
+> +++ b/net/sunrpc/auth_gss/svcauth_gss.c
+> @@ -1317,10 +1317,10 @@ static ssize_t write_gssp(struct file *file, const char __user *buf,
+>  		return res;
+>  	if (i != 1)
+>  		return -EINVAL;
+> -	res = set_gss_proxy(net, 1);
+> +	res = set_gssp_clnt(net);
+>  	if (res)
+>  		return res;
+> -	res = set_gssp_clnt(net);
+> +	res = set_gss_proxy(net, 1);
+>  	if (res)
+>  		return res;
+>  	return count;
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+Looks good. Thanks for fixing that up...
+
+-- 
+Jeff Layton <jlayton@redhat.com>
