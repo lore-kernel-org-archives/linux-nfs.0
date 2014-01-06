@@ -1,113 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:51001 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752032AbaARP6r (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 18 Jan 2014 10:58:47 -0500
-Message-ID: <52DAA526.9090408@RedHat.com>
-Date: Sat, 18 Jan 2014 11:00:38 -0500
-From: Steve Dickson <SteveD@redhat.com>
+Received: from mail-pb0-f42.google.com ([209.85.160.42]:62219 "EHLO
+	mail-pb0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751460AbaAFD2s (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 5 Jan 2014 22:28:48 -0500
+Received: by mail-pb0-f42.google.com with SMTP id uo5so18099868pbc.1
+        for <linux-nfs@vger.kernel.org>; Sun, 05 Jan 2014 19:28:48 -0800 (PST)
+Message-ID: <52CA22E9.9030802@gmail.com>
+Date: Mon, 06 Jan 2014 11:28:41 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2] nfs(5): Treatment of *atime mount options
-References: <20140116173120.1876.84785.stgit@seurat.1015granger.net>
-In-Reply-To: <20140116173120.1876.84785.stgit@seurat.1015granger.net>
-Content-Type: text/plain; charset=UTF-8
+To: "J.,Bruce Fields" <bfields@fieldses.org>
+CC: Chuck Lever <chuck.lever@oracle.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: NFSD: fix compile warning without CONFIG_NFSD_V3
+References: <01763B6D-C8CB-46B7-87AC-CE189496019A@oracle.com> <6E281EC9-49CB-4BDA-BDF3-7A6F4B703156@gmail.com> <CAB6yy34woYZaJ=k=Ga9iT_mmBWBiCUj1SprT=Se2SVrOu6YO_Q@mail.gmail.com> <5D65FDE6-D1AB-442C-BFD8-141AB87FF321@gmail.com> <CAB6yy379-A8fgLpQo+ppx5V93P9pXcabvmBJNTZ5hXxeJMuxBg@mail.gmail.com> <52C1577B.9080100@gmail.com> <52C15847.9030208@gmail.com> <68E6D30F-B2D6-4919-9748-E7F1162AC3B7@oracle.com> <52C2377E.8040006@gmail.com> <52C2536A.5070906@gmail.com> <20140103231800.GF5164@fieldses.org>
+In-Reply-To: <20140103231800.GF5164@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 16/01/14 12:31, Chuck Lever wrote:
-> I was reminded recently that NFS treats file atime time stamps
-> differently than other filesystems.  It also ignores the generic
-> *atime mount options because it cannot support the atime semantics
-> of local filesystems.
-> 
-> We should document that somewhere.  nfs(5) seems like a logical
-> place for it.
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-I'm a bit confused... What is the different between this patch
-and the one you posted back in Nov 18
-   http://www.spinics.net/lists/linux-nfs/msg40559.html
-which turned to commit
+Without CONFIG_NFSD_V3, compile will get warning as,
 
-  commit f41c591f8f4d492ee84994bb86810fb90bef8d4b
-  Author: Chuck Lever <chuck.lever@oracle.com>
-  Date:   Wed Nov 20 14:10:06 2013 -0500
+fs/nfsd/nfssvc.c: In function 'nfsd_svc':
+>> fs/nfsd/nfssvc.c:246:60: warning: array subscript is above array bounds [-Warray-bounds]
+        return (nfsd_versions[2] != NULL) || (nfsd_versions[3] != NULL);
+                                                               ^
 
-steved.
-> ---
->  utils/mount/nfs.man |   59 +++++++++++++++++++++++++++++++++++++++++++++++++++
->  1 file changed, 59 insertions(+)
-> 
-> diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
-> index 67031b5..2250963 100644
-> --- a/utils/mount/nfs.man
-> +++ b/utils/mount/nfs.man
-> @@ -1227,6 +1227,65 @@ If absolute cache coherence among clients is required,
->  applications should use file locking. Alternatively, applications
->  can also open their files with the O_DIRECT flag
->  to disable data caching entirely.
-> +.SS "File timestamp maintainence"
-> +NFS servers are responsible for managing file and directory timestamps
-> +.RB ( atime ,
-> +.BR ctime ", and"
-> +.BR mtime ).
-> +When a file is accessed or updated on an NFS server,
-> +the file's timestamps are updated just like they would be on a filesystem
-> +local to an application.
-> +.P
-> +NFS clients cache file attributes, including timestamps.
-> +A file's timestamps are updated on NFS clients when its attributes
-> +are retrieved from the NFS server.
-> +Thus there may be some delay before timestamp updates
-> +on an NFS server appear to applications on NFS clients.
-> +.P
-> +To comply with the POSIX filesystem standard, the Linux NFS client
-> +relies on NFS servers to keep a file's
-> +.B mtime
-> +and
-> +.B ctime
-> +timestamps properly up to date.
-> +It does this by flushing local data changes to the server
-> +before reporting
-> +.B mtime
-> +to applications via system calls such as
-> +.BR stat (2).
-> +.P
-> +The Linux client handles
-> +.B atime
-> +updates more loosely, however.
-> +NFS clients maintain good performance by caching data,
-> +but that means that application reads, which normally update
-> +.BR atime ,
-> +are not reflected to the server where a file's
-> +.B atime
-> +is actually maintained.
-> +.P
-> +Because of this caching behavior,
-> +the Linux NFS client does not support generic atime-related mount options.
-> +See
-> +.BR mount (8)
-> +for details on these options.
-> +.P
-> +In particular, the
-> +.BR atime / noatime ,
-> +.BR diratime / nodiratime ,
-> +.BR relatime / norelatime ,
-> +and
-> +.BR strictatime / nostrictatime
-> +mount options have no effect on NFS mounts.
-> +.P
-> +.I /proc/mounts
-> +may report that the
-> +.B relatime
-> +mount option is set on NFS mounts, but in fact the
-> +.B atime
-> +semantics are always as described here, and are not like
-> +.B relatime
-> +semantics.
->  .SS "Directory entry caching"
->  The Linux NFS client caches the result of all NFS LOOKUP requests.
->  If the requested directory entry exists on the server,
-> 
+Reported-by: kbuild test robot <fengguang.wu@intel.com>
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+---
+ fs/nfsd/nfssvc.c | 4 ++++
+ 1 file changed, 4 insertions(+)
+
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index 55b5b57..9a4a5f9 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -243,7 +243,11 @@ static void nfsd_shutdown_generic(void)
+ 
+ static bool nfsd_needs_lockd(void)
+ {
++#if defined(CONFIG_NFSD_V3)
+ 	return (nfsd_versions[2] != NULL) || (nfsd_versions[3] != NULL);
++#else
++	return (nfsd_versions[2] != NULL);
++#endif
+ }
+ 
+ static int nfsd_startup_net(int nrservs, struct net *net)
+-- 
+1.8.4.2
