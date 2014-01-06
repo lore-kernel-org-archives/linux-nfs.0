@@ -1,103 +1,85 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:34139 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751258AbaABVft (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 2 Jan 2014 16:35:49 -0500
-Date: Thu, 2 Jan 2014 16:35:47 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org, simo@redhat.com, neilb@suse.de
-Subject: Re: [RFC PATCH 3/5] sunrpc: wait for gssproxy to start on initial
- upcall attempt before falling back to legacy upcall
-Message-ID: <20140102213547.GD28219@fieldses.org>
-References: <1388579314-15255-1-git-send-email-jlayton@redhat.com>
- <1388579314-15255-4-git-send-email-jlayton@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1388579314-15255-4-git-send-email-jlayton@redhat.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:20792 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754486AbaAFRMY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Jan 2014 12:12:24 -0500
+From: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: multipart/signed; boundary="Apple-Mail=_44E88D8B-7922-48C4-9AF6-DCE8132B035D"; protocol="application/pgp-signature"; micalg=pgp-sha512
+Subject: [LSF/MM ATTEND] and possible topics
+Date: Mon, 6 Jan 2014 12:12:11 -0500
+Message-Id: <51F7F955-FD75-4131-BDA4-D6422110EA42@oracle.com>
+Cc: James Morris <james.l.morris@oracle.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>
+To: lsf-pc@lists.linux-foundation.org
+Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jan 01, 2014 at 07:28:32AM -0500, Jeff Layton wrote:
-> Currently, the only thing that waits for gssproxy to start is reads
-> from the use-gss-proxy procfile. That's a little odd, since nothing
-> but gssproxy itself will likely ever open that file, and all it does
-> it write to it.
-> 
-> It seems like what we really want instead is for svcrpc code to give
-> gssproxy a little time to start up in the event that some RPCs come
-> in before it's ready.
 
-Legacy userspace will never write, so this adds an 5-second delay in
-that case.
+--Apple-Mail=_44E88D8B-7922-48C4-9AF6-DCE8132B035D
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
-I'd rather avoid any arbitrary timeout.
+Hi-
 
-It seems to me all you need is for gss-proxy to ensure that it does the
-write to use-gss-proxy before it indicates to whoever started it that
-it's done starting.
+I would like to attend the 2014 Linux Storage, Filesystem and Memory =
+Management Summit.
 
-Then as long as the init system orders gss-proxy startup before nfsd
-startup, we're good.
+Since 2001 I've worked on various features of the Linux NFS =
+implementation.  Oracle's use of NFS on Infiniband fabrics in its =
+engineered solutions is a leading edge use of Linux NFS.  I'm interested =
+in improving upstream support for NFS/RDMA and learning about next steps =
+for the Linux direct-data-placement ecosystem.
 
---b.
+I'm the key developer of FedFS on Linux and the current editor of the =
+IETF FedFS proposed standards.  FedFS provides a standard way to create =
+a network file namespace that crosses server and share boundaries =
+(similar to autofs).  I'm interested in discussing potential common =
+administrative interfaces, security issues, storage of namespace =
+junction objects in Linux's physical filesystems, and FedFS support for =
+CIFS/SMB.
 
-> 
-> Change it so that the upcall instead waits a little while for gssproxy
-> to start before giving up. If the wait times out, we go ahead and
-> disable gssproxy so that later upcalls don't delay.
-> 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  net/sunrpc/auth_gss/svcauth_gss.c | 28 ++++++++++------------------
->  1 file changed, 10 insertions(+), 18 deletions(-)
-> 
-> diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
-> index 64c025e..921f388 100644
-> --- a/net/sunrpc/auth_gss/svcauth_gss.c
-> +++ b/net/sunrpc/auth_gss/svcauth_gss.c
-> @@ -1265,24 +1265,6 @@ out:
->  
->  DEFINE_SPINLOCK(use_gssp_lock);
->  
-> -static bool use_gss_proxy(struct net *net)
-> -{
-> -	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
-> -
-> -	if (sn->use_gss_proxy != -1)
-> -		return sn->use_gss_proxy;
-> -	spin_lock(&use_gssp_lock);
-> -	/*
-> -	 * If you wanted gss-proxy, you should have said so before
-> -	 * starting to accept requests:
-> -	 */
-> -	sn->use_gss_proxy = 0;
-> -	spin_unlock(&use_gssp_lock);
-> -	return 0;
-> -}
-> -
-> -#ifdef CONFIG_PROC_FS
-> -
->  static int set_gss_proxy(struct net *net, int type)
->  {
->  	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
-> @@ -1332,6 +1314,16 @@ static int wait_for_gss_proxy(struct net *net)
->  	return ret < 0 ? ret : 0;
->  }
->  
-> +static bool use_gss_proxy(struct net *net)
-> +{
-> +	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
-> +
-> +	if (wait_for_gss_proxy(net))
-> +		return false;
-> +	return gssp_ready(sn);
-> +}
-> +
-> +#ifdef CONFIG_PROC_FS
->  
->  static ssize_t write_gssp(struct file *file, const char __user *buf,
->  			 size_t count, loff_t *ppos)
-> -- 
-> 1.8.4.2
-> 
+I'm working with Martin Petersen and the IETF NFSv4 Working Group to =
+integrate support for end-to-end data integrity into the NFS protocol =
+[1], similar to T10's DIF but more oriented towards byte-streams.  I'm =
+interested in hearing about progress with Linux implementations of =
+end-to-end data integrity (DIF/DIX, filesystem metadata checksumming, =
+etc).
+
+--=20
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+[1] =
+https://datatracker.ietf.org/doc/draft-cel-nfsv4-end2end-data-protection/
+
+
+--Apple-Mail=_44E88D8B-7922-48C4-9AF6-DCE8132B035D
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP using GPGMail
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iQIcBAEBCgAGBQJSyuPyAAoJEKtSGoIDWtn6wpwQAKsrhJRLfNAE3g8+7rpJ1UCc
+MEWqfzx9vKzw5LN/wQquhvofrA22dKRcRNSsMNy8Usv3wjqFWcBmvyHBSk1nOkTD
+9jB7CgnGaf8PFQZNhTrUDCv9VBvoxATU6SyKPHhiqrHkoaDT26i0s2msjP/g6iLg
+6UpEMiJu38cpwvM/ZWKBIMU2STwBKMLLTHOnpql8n6gZnJfZBQFpVgHj9SY9w5gN
+STYT3PHVy5S0cQJbqyZSOV92pEkuPp/UdtbW+71+07hk6HsaHTPLVKx2SHkaw+wp
+Xr4qtk0gkSjys9LMFPcPUE44Q81/o+mGEcR/jznAPRjkDIOrThJhw5lfB6dMj5n4
+bd4Mpgqz725XXeutpm8DEz+JHf5ebll7SLzULmFE+HwfNLLbMPMsX/vc9LtP6trg
+K+eFGEy+golqPOIWAKcekG5o+XnNW5CXddXZICkkdADK+Z6ygr2szMS8iFc3cyBQ
+xw7M4dfQ4GxxoVlDveFYFWqe5Cjs11ugYbBlPv+lDJ5une+q6+Sv2NLtBYjbmhEN
+Hd2bUNAgMsD+E4L+nuBwDFwmI0gDmqzawMtDkpsZWMqXcQHWMED2hdsQNE9NHHeT
+9HQWmAEEPAxYNTc+JX0NyJt7rtlIr2Ayemh8Po7FCdkClhhIlTmRVU4lOGE3zI07
+JH2QP9xTq6Ah4Rl8G6W6
+=hI6d
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_44E88D8B-7922-48C4-9AF6-DCE8132B035D--
