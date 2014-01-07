@@ -1,148 +1,126 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f174.google.com ([209.85.192.174]:33830 "EHLO
-	mail-pd0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751904AbaAIKdQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jan 2014 05:33:16 -0500
-Received: by mail-pd0-f174.google.com with SMTP id x10so3029043pdj.33
-        for <linux-nfs@vger.kernel.org>; Thu, 09 Jan 2014 02:33:16 -0800 (PST)
-Message-ID: <52CE7AE6.4010603@gmail.com>
-Date: Thu, 09 Jan 2014 18:33:10 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
+Received: from fieldses.org ([174.143.236.118]:46775 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753165AbaAGUt0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Jan 2014 15:49:26 -0500
+Date: Tue, 7 Jan 2014 15:49:20 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Sander Klein <roedie@roedie.nl>
+Cc: Karel Zak <kzak@redhat.com>, linux-nfs@vger.kernel.org,
+        linux-nfs-owner@vger.kernel.org, steved@redhat.com
+Subject: Re: rpc.mountd high cpu usage
+Message-ID: <20140107204920.GB15922@fieldses.org>
+References: <889b64df295ba04d47f941762ebe0bac@roedie.nl>
+ <20131212154642.GA11521@fieldses.org>
+ <20140106111805.GF4435@x2.net.home>
+ <20140106212514.GG31764@fieldses.org>
+ <0a94c641959a8084a56c688dd2242c04@roedie.nl>
 MIME-Version: 1.0
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Dr Fields James Bruce <bfields@fieldses.org>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: [PATCH 4/5] NFSD/SUNRPC: Check rpc_xprt out of  xs_setup_bc_tcp
-References: <52CA7862.1020203@gmail.com> <20140106184926.GC31764@fieldses.org> <24D159B0-C13D-43A6-B307-2B967E154353@primarydata.com> <20140106225346.GB3342@fieldses.org> <FAC96643-8DBB-4CC8-9D43-73C69E8E6125@primarydata.com> <52CB8B79.6040907@gmail.com> <52CE7A76.3080101@gmail.com>
-In-Reply-To: <52CE7A76.3080101@gmail.com>
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <0a94c641959a8084a56c688dd2242c04@roedie.nl>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Besides checking rpc_xprt out of xs_setup_bc_tcp,
-increase it's reference (it's important).
+On Tue, Jan 07, 2014 at 08:55:12PM +0100, Sander Klein wrote:
+> Hi,
+> 
+> Thank you very much for this patch. I've added the ZFS magic and
+> tested it on my nfs-utils-1.2.8 package and it looks like it fixes
+> my issue.
+> 
+> Is there any chance this patch will be accepted upstream with the
+> ZFS_SUPER_MAGIC as shown below?
 
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
----
- fs/nfsd/nfs4callback.c      | 19 ++++++++++++++++++-
- include/linux/sunrpc/xprt.h | 13 ++++++++++++-
- net/sunrpc/xprt.c           | 12 ------------
- net/sunrpc/xprtsock.c       |  9 ---------
- 4 files changed, 30 insertions(+), 23 deletions(-)
+OK by me; cc'ing steved.
 
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 7f05cd1..39c8ef8 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -32,6 +32,7 @@
-  */
- 
- #include <linux/sunrpc/clnt.h>
-+#include <linux/sunrpc/xprt.h>
- #include <linux/sunrpc/svc_xprt.h>
- #include <linux/slab.h>
- #include "nfsd.h"
-@@ -635,6 +636,22 @@ static struct rpc_cred *get_backchannel_cred(struct nfs4_client *clp, struct rpc
- 	}
- }
- 
-+static struct rpc_clnt *create_backchannel_client(struct rpc_create_args *args)
-+{
-+	struct rpc_xprt *xprt;
-+
-+	if (args->protocol != XPRT_TRANSPORT_BC_TCP)
-+		return rpc_create(args);
-+
-+	xprt = args->bc_xprt->xpt_bc_xprt;
-+	if (xprt) {
-+		xprt_get(xprt);
-+		return rpc_create_xprt(args, xprt);
-+	}
-+
-+	return rpc_create(args);
-+}
-+
- static int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *conn, struct nfsd4_session *ses)
- {
- 	struct rpc_timeout	timeparms = {
-@@ -674,7 +691,7 @@ static int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *c
- 		args.authflavor = ses->se_cb_sec.flavor;
- 	}
- 	/* Create RPC client */
--	client = rpc_create(&args);
-+	client = create_backchannel_client(&args);
- 	if (IS_ERR(client)) {
- 		dprintk("NFSD: couldn't create callback client: %ld\n",
- 			PTR_ERR(client));
-diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-index 8097b9d..3e5efb2 100644
---- a/include/linux/sunrpc/xprt.h
-+++ b/include/linux/sunrpc/xprt.h
-@@ -295,13 +295,24 @@ int			xprt_adjust_timeout(struct rpc_rqst *req);
- void			xprt_release_xprt(struct rpc_xprt *xprt, struct rpc_task *task);
- void			xprt_release_xprt_cong(struct rpc_xprt *xprt, struct rpc_task *task);
- void			xprt_release(struct rpc_task *task);
--struct rpc_xprt *	xprt_get(struct rpc_xprt *xprt);
- void			xprt_put(struct rpc_xprt *xprt);
- struct rpc_xprt *	xprt_alloc(struct net *net, size_t size,
- 				unsigned int num_prealloc,
- 				unsigned int max_req);
- void			xprt_free(struct rpc_xprt *);
- 
-+/**
-+ * xprt_get - return a reference to an RPC transport.
-+ * @xprt: pointer to the transport
-+ *
-+ */
-+static inline struct rpc_xprt *xprt_get(struct rpc_xprt *xprt)
-+{
-+	if (atomic_inc_not_zero(&xprt->count))
-+		return xprt;
-+	return NULL;
-+}
-+
- static inline __be32 *xprt_skip_transport_header(struct rpc_xprt *xprt, __be32 *p)
- {
- 	return p + xprt->tsh_size;
-diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index ddd198e..b0a1bbb 100644
---- a/net/sunrpc/xprt.c
-+++ b/net/sunrpc/xprt.c
-@@ -1383,15 +1383,3 @@ void xprt_put(struct rpc_xprt *xprt)
- 	if (atomic_dec_and_test(&xprt->count))
- 		xprt_destroy(xprt);
- }
--
--/**
-- * xprt_get - return a reference to an RPC transport.
-- * @xprt: pointer to the transport
-- *
-- */
--struct rpc_xprt *xprt_get(struct rpc_xprt *xprt)
--{
--	if (atomic_inc_not_zero(&xprt->count))
--		return xprt;
--	return NULL;
--}
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 7289e3c..37ea15a 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -2923,15 +2923,6 @@ static struct rpc_xprt *xs_setup_bc_tcp(struct xprt_create *args)
- 	struct svc_sock *bc_sock;
- 	struct rpc_xprt *ret;
- 
--	if (args->bc_xprt->xpt_bc_xprt) {
--		/*
--		 * This server connection already has a backchannel
--		 * transport; we can't create a new one, as we wouldn't
--		 * be able to match replies based on xid any more.  So,
--		 * reuse the already-existing one:
--		 */
--		 return args->bc_xprt->xpt_bc_xprt;
--	}
- 	xprt = xs_setup_xprt(args, xprt_tcp_slot_table_entries,
- 			xprt_tcp_slot_table_entries);
- 	if (IS_ERR(xprt))
--- 
-1.8.4.2
+--b.
+
+> 
+> Greets,
+> 
+> Sander
+> 
+> From e4f5b38c87ef8d713c6d0a3169afaf1acc7e22c6 Mon Sep 17 00:00:00 2001
+> From: Karel Zak <kzak@redhat.com>
+> Date: Mon, 6 Jan 2014 12:03:01 +0100
+> Subject: [PATCH] mountd: optimize libblkid usage
+> 
+>  * use get_uuid_blkdev() only first time for the path (it means
+>    that uuid_by_path() is called with type==0)
+> 
+>  * don't use libblkid for btrfs, network or pseudo filesystems
+> 
+> Note that the patch defines the fs type ID rather than include
+> <linux/magic.h> as this file seems incomplete and libc specific).
+> 
+> Signed-off-by: Karel Zak <kzak@redhat.com>
+> ---
+>  utils/mountd/cache.c | 38 +++++++++++++++++++++++++++++++++++---
+>  1 file changed, 35 insertions(+), 3 deletions(-)
+> 
+> Index: nfs-utils-1.2.8/utils/mountd/cache.c
+> ===================================================================
+> --- nfs-utils-1.2.8.orig/utils/mountd/cache.c	2013-05-02
+> 14:21:12.000000000 +0200
+> +++ nfs-utils-1.2.8/utils/mountd/cache.c	2014-01-07
+> 20:46:55.799904557 +0100
+> @@ -266,6 +266,27 @@
+>  	return 1;
+>  }
+> 
+> +
+> +/*
+> + * Don't ask libblkid for these filesystems. Note that BTRF is
+> ignored, because
+> + * we generate the identifier from statfs->f_fsid. The rest are
+> network or
+> + * pseudo filesystems. (See <linux/magic.h> for the basic IDs.)
+> + */
+> +static const long int nonblkid_filesystems[] = {
+> +	0x2fc12fc1,	/* ZFS_SUPER_MAGIC */
+> +	0x9123683E,	/* BTRFS_SUPER_MAGIC */
+> +	0xFF534D42,	/* CIFS_MAGIC_NUMBER */
+> +	0x1373,		/* DEVFS_SUPER_MAGIC */
+> +	0x73757245,	/* CODA_SUPER_MAGIC */
+> +	0x564C,		/* NCP_SUPER_MAGIC */
+> +	0x6969,		/* NFS_SUPER_MAGIC */
+> +	0x9FA0,		/* PROC_SUPER_MAGIC */
+> +	0x62656572,	/* SYSFS_MAGIC */
+> +	0x517B,		/* SMB_SUPER_MAGIC */
+> +	0x01021994,	/* TMPFS_SUPER_MAGIC */
+> +	0		/* last */
+> +};
+> +
+>  static int uuid_by_path(char *path, int type, size_t uuidlen, char
+> *uuid)
+>  {
+>  	/* get a uuid for the filesystem found at 'path'.
+> @@ -297,12 +318,24 @@
+>  	 */
+>  	struct statfs64 st;
+>  	char fsid_val[17];
+> -	const char *blkid_val;
+> +	const char *blkid_val = NULL;
+>  	const char *val;
+> +	int rc;
+> +
+> +	rc = statfs64(path, &st);
+> +
+> +	if (type == 0 && rc == 0) {
+> +		const long int *bad;
+> 
+> -	blkid_val = get_uuid_blkdev(path);
+> +		for (bad = nonblkid_filesystems; *bad; bad++) {
+> +			if (*bad == st.f_type)
+> +				break;
+> +		}
+> +		if (*bad == 0)
+> +			blkid_val = get_uuid_blkdev(path);
+> +	}
+> 
+> -	if (statfs64(path, &st) == 0 &&
+> +	if (rc == 0 &&
+>  	    (st.f_fsid.__val[0] || st.f_fsid.__val[1]))
+>  		snprintf(fsid_val, 17, "%08x%08x",
+>  			 st.f_fsid.__val[0], st.f_fsid.__val[1]);
+> 
