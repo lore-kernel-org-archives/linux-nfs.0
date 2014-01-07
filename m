@@ -1,49 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:41519 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756652AbaAITNC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 9 Jan 2014 14:13:02 -0500
-Date: Thu, 9 Jan 2014 14:12:59 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: "Yin.JianHong" <jiyin@redhat.com>,
+Received: from mail-pd0-f179.google.com ([209.85.192.179]:64484 "EHLO
+	mail-pd0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751929AbaAGH0N (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jan 2014 02:26:13 -0500
+Received: by mail-pd0-f179.google.com with SMTP id r10so12951pdi.24
+        for <linux-nfs@vger.kernel.org>; Mon, 06 Jan 2014 23:26:10 -0800 (PST)
+Message-ID: <52CBAC0C.9000309@gmail.com>
+Date: Tue, 07 Jan 2014 15:26:04 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
+MIME-Version: 1.0
+To: Dr Fields James Bruce <bfields@fieldses.org>
+CC: Trond Myklebust <trond.myklebust@primarydata.com>,
         Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH RFC] nfs: remove nfs_show_devname
-Message-ID: <20140109141259.553c58f0@tlielax.poochiereds.net>
-In-Reply-To: <6FE57B0D-2373-4B40-BA14-E6F2BF3C44E3@primarydata.com>
-References: <1389293995-634-1-git-send-email-jlayton@redhat.com>
-	<6FE57B0D-2373-4B40-BA14-E6F2BF3C44E3@primarydata.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Subject: Re: [PATCH] SUNRPC: Clear xpt_bc_xprt if xs_setup_bc_tcp failed
+References: <52CB8564.6040002@gmail.com> <11FBA3CF-C026-42F8-943E-326B11A55929@primarydata.com>
+In-Reply-To: <11FBA3CF-C026-42F8-943E-326B11A55929@primarydata.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 9 Jan 2014 14:06:54 -0500
-Trond Myklebust <trond.myklebust@primarydata.com> wrote:
-
+On 01/07/2014 01:01 PM, Trond Myklebust wrote:
 > 
-> On Jan 9, 2014, at 13:59, Jeff Layton <jlayton@redhat.com> wrote:
+> On Jan 6, 2014, at 23:41, Kinglong Mee <kinglongmee@gmail.com> wrote:
 > 
-> > The nfs code will currently construct a devname to show in places like
-> > /proc/mounts by turning a dentry into a path. Unfortunately, that's
-> > somewhat problematic if the user ended up mounting through a symlink on
-> > the server. The devname that then shows up in /proc/mounts now doesn't
-> > match the one that was originally passed into the mount request.
+>> If try_module_get failed, xpt_bc_xprt should be set to NULL,
+>> because xprt will be free.
+>>
+>> Don't needed using xprt_put to free xprt, because it is always new.
+>>
+>> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+>> ---
+>> net/sunrpc/xprtsock.c | 4 ++--
+>> 1 file changed, 2 insertions(+), 2 deletions(-)
+>>
+>> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+>> index 4fcdf74..5ed124f 100644
+>> --- a/net/sunrpc/xprtsock.c
+>> +++ b/net/sunrpc/xprtsock.c
+>> @@ -2986,10 +2986,10 @@ static struct rpc_xprt *xs_setup_bc_tcp(struct xprt_create *args)
+>> 	 */
+>> 	xprt_set_connected(xprt);
+>>
+>> -
+>> 	if (try_module_get(THIS_MODULE))
+>> 		return xprt;
+>> -	xprt_put(xprt);
+>> +
+>> +	args->bc_xprt->xpt_bc_xprt = NULL;
+>> 	ret = ERR_PTR(-EINVAL);
+>> out_err:
+>> 	xs_xprt_free(xprt);
 > 
-> This is 100% according to design. Why is it suddenly a problem?
-> 
-> By displaying the original pathname, you also end up bypassing referral resolution, etc. This is exactly why the .show_devname operation was introduced in the first place.
-> 
+> Just move the 'args->bc_xprt->xpt_bc_xprt = xprt’ line into the caller (see earlier discussion about xs_setup_bc_tcp()). Quite frankly, I don’t see why the client code should be modifying this variable in the first place. An svc_xprt is a server construct.
 
-AFAIU, the main issue is that when /etc/mtab is a symlink
-to /proc/mounts, you can't do this in the example in the patch
-description:
+Hi Bruce, 
 
-    # mount server:/export/bar /mnt/bar
-    # umount server:/export/bar
+When reviewing those codes for bc_xprt, I found commit d75faea330dbd1873c9094e9926ae306590c0998
+'rpc: move sk_bc_xprt to svc_xprt'. I'd like recording bc_xprt in svc_sock.
 
-...since umount will try to ID the mountpoint by looking up the devname
-in /etc/mtab. What exactly would this break with referrals?
+thanks,
+Kinglong Mee
 
--- 
-Jeff Layton <jlayton@redhat.com>
