@@ -1,49 +1,89 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f174.google.com ([209.85.223.174]:55558 "EHLO
-	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751699AbaASTQc convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 19 Jan 2014 14:16:32 -0500
-Received: by mail-ie0-f174.google.com with SMTP id tp5so1127410ieb.19
-        for <linux-nfs@vger.kernel.org>; Sun, 19 Jan 2014 11:16:31 -0800 (PST)
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
-Subject: Re: NFSv4 guest opens random ports
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-In-Reply-To: <52DC1926.10600@fuckthenavy.net>
-Date: Sun, 19 Jan 2014 14:16:29 -0500
-Cc: linuxnfs <linux-nfs@vger.kernel.org>
-Message-Id: <94AFC682-E055-4BA5-8022-2674AFCA91C7@primarydata.com>
-References: <52DC1926.10600@fuckthenavy.net>
-To: Justus Ranvier <justusranvier@gmail.com>
+Received: from fieldses.org ([174.143.236.118]:55900 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751500AbaAGVFN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Jan 2014 16:05:13 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 3/4] nfsd4: nfsd4_encode_fattr cleanup
+Date: Tue,  7 Jan 2014 16:04:33 -0500
+Message-Id: <1389128674-16951-4-git-send-email-bfields@redhat.com>
+In-Reply-To: <1389128674-16951-1-git-send-email-bfields@redhat.com>
+References: <1389128674-16951-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-On Jan 19, 2014, at 13:27, Justus Ranvier <justusranvier@gmail.com> wrote:
+Remove some pointless goto's.
 
-> I have systems running Gentoo Linux mounting shares hosted on a Gentoo
-> Linux server. All are running 3.12.8 kernels and using NFS 4.
-> 
-> I've followed all instructions I can find for fixing everything to a
-> static port, but I still see one instance ofrandom port behavior.
-> 
-> A kernel process (does not display a PID in netstat) on the guests is
-> opening listening sockets on random high-numbered ports. The server is
-> attempting to contact those guests via random low-numbered ports, which
-> my firewall is blocking.
-> 
-> Despite these packets being blocked, I haven't noticed any adverse
-> effects - everything appears to work normally except for my system logs
-> on the server being spammed with blocked outgoing connection attempts.
-> 
-> What is this random port the client is trying to accept connections on,
-> and how do I make it listen on a fixed port instead of a random one so
-> that I can write useful firewall rules?
-> 
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4xdr.c |   17 ++++-------------
+ 1 file changed, 4 insertions(+), 13 deletions(-)
 
-That’s probably the NFSv4 callback port. Please see your kernel Documentation/kernel-parameters.txt for how to set the nfs.callback_tcpport kernel/module option.
-
---
-Trond Myklebust
-Linux NFS client maintainer
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 5bef9cb..3bffba6 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -2230,8 +2230,10 @@ nfsd4_encode_fattr(struct svc_fh *fhp, struct svc_export *exp,
+ 		if ((buflen -= 4) < 0)
+ 			goto out_resource;
+ 		dummy = nfs4_file_type(stat.mode);
+-		if (dummy == NF4BAD)
+-			goto out_serverfault;
++		if (dummy == NF4BAD) {
++			status = nfserr_serverfault;
++			goto out;
++		}
+ 		WRITE32(dummy);
+ 	}
+ 	if (bmval0 & FATTR4_WORD0_FH_EXPIRE_TYPE) {
+@@ -2325,8 +2327,6 @@ nfsd4_encode_fattr(struct svc_fh *fhp, struct svc_export *exp,
+ 			WRITE32(ace->flag);
+ 			WRITE32(ace->access_mask & NFS4_ACE_MASK_ALL);
+ 			status = nfsd4_encode_aclname(rqstp, ace, &p, &buflen);
+-			if (status == nfserr_resource)
+-				goto out_resource;
+ 			if (status)
+ 				goto out;
+ 		}
+@@ -2387,8 +2387,6 @@ out_acl:
+ 	}
+ 	if (bmval0 & FATTR4_WORD0_FS_LOCATIONS) {
+ 		status = nfsd4_encode_fs_locations(rqstp, exp, &p, &buflen);
+-		if (status == nfserr_resource)
+-			goto out_resource;
+ 		if (status)
+ 			goto out;
+ 	}
+@@ -2439,15 +2437,11 @@ out_acl:
+ 	}
+ 	if (bmval1 & FATTR4_WORD1_OWNER) {
+ 		status = nfsd4_encode_user(rqstp, stat.uid, &p, &buflen);
+-		if (status == nfserr_resource)
+-			goto out_resource;
+ 		if (status)
+ 			goto out;
+ 	}
+ 	if (bmval1 & FATTR4_WORD1_OWNER_GROUP) {
+ 		status = nfsd4_encode_group(rqstp, stat.gid, &p, &buflen);
+-		if (status == nfserr_resource)
+-			goto out_resource;
+ 		if (status)
+ 			goto out;
+ 	}
+@@ -2550,9 +2544,6 @@ out_nfserr:
+ out_resource:
+ 	status = nfserr_resource;
+ 	goto out;
+-out_serverfault:
+-	status = nfserr_serverfault;
+-	goto out;
+ }
+ 
+ static inline int attributes_need_mount(u32 *bmval)
+-- 
+1.7.9.5
 
