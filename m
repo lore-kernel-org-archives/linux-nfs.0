@@ -1,54 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f177.google.com ([209.85.216.177]:63602 "EHLO
-	mail-qc0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753883AbaAAM2n (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Jan 2014 07:28:43 -0500
-Received: by mail-qc0-f177.google.com with SMTP id m20so12589069qcx.36
-        for <linux-nfs@vger.kernel.org>; Wed, 01 Jan 2014 04:28:43 -0800 (PST)
-From: Jeff Layton <jlayton@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: simo@redhat.com, bfields@fieldses.org, neilb@suse.de
-Subject: [RFC PATCH 1/5] sunrpc: don't wait for write before allowing reads from use-gss-proxy file
-Date: Wed,  1 Jan 2014 07:28:30 -0500
-Message-Id: <1388579314-15255-2-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1388579314-15255-1-git-send-email-jlayton@redhat.com>
-References: <1388579314-15255-1-git-send-email-jlayton@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:34978 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750766AbaAGTXc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Jan 2014 14:23:32 -0500
+Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s07JNWnb028544
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Tue, 7 Jan 2014 14:23:32 -0500
+Received: from smallhat.boston.devel.redhat.com (smallhat.boston.devel.redhat.com [10.19.60.65])
+	by int-mx11.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s07JNVQh032390
+	for <linux-nfs@vger.kernel.org>; Tue, 7 Jan 2014 14:23:32 -0500
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH] mount.nfs: Don't silently ignore invalid protocol versions.
+Date: Tue,  7 Jan 2014 14:25:17 -0500
+Message-Id: <1389122717-14269-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-It doesn't make much sense to make reads from this procfile hang. As
-far as I can tell, only gssproxy itself will open this file and it
-never reads from it. Change it to just give the present setting of
-sn->use_gss_proxy without waiting for anything.
-
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- net/sunrpc/auth_gss/svcauth_gss.c | 8 ++------
- 1 file changed, 2 insertions(+), 6 deletions(-)
+ utils/mount/network.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
-index 008cdad..5e9323e 100644
---- a/net/sunrpc/auth_gss/svcauth_gss.c
-+++ b/net/sunrpc/auth_gss/svcauth_gss.c
-@@ -1355,16 +1355,12 @@ static ssize_t read_gssp(struct file *file, char __user *buf,
- 			 size_t count, loff_t *ppos)
- {
- 	struct net *net = PDE_DATA(file_inode(file));
-+	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
- 	unsigned long p = *ppos;
- 	char tbuf[10];
- 	size_t len;
--	int ret;
--
--	ret = wait_for_gss_proxy(net, file);
--	if (ret)
--		return ret;
- 
--	snprintf(tbuf, sizeof(tbuf), "%d\n", use_gss_proxy(net));
-+	snprintf(tbuf, sizeof(tbuf), "%d\n", sn->use_gss_proxy);
- 	len = strlen(tbuf);
- 	if (p >= len)
- 		return 0;
+diff --git a/utils/mount/network.c b/utils/mount/network.c
+index 2853d00..2fdd2c0 100644
+--- a/utils/mount/network.c
++++ b/utils/mount/network.c
+@@ -1245,6 +1245,8 @@ nfs_nfs_version(struct mount_options *options, unsigned long *version)
+ 				*version = tmp;
+ 				return 1;
+ 			}
++			nfs_error(_("%s: parsing error on 'vers=' option\n"),
++					progname);
+ 			return 0;
+ 		case PO_NOT_FOUND:
+ 			nfs_error(_("%s: parsing error on 'vers=' option\n"),
+@@ -1262,6 +1264,8 @@ nfs_nfs_version(struct mount_options *options, unsigned long *version)
+ 				*version = tmp;
+ 				return 1;
+ 			}
++			nfs_error(_("%s: parsing error on 'nfsvers=' option\n"),
++					progname);
+ 			return 0;
+ 		case PO_NOT_FOUND:
+ 			nfs_error(_("%s: parsing error on 'nfsvers=' option\n"),
 -- 
-1.8.4.2
+1.8.3.1
 
