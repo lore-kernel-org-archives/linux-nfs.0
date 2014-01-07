@@ -1,50 +1,118 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:15298 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752001AbaATWCo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 20 Jan 2014 17:02:44 -0500
-Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s0KM2iru030823
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Mon, 20 Jan 2014 17:02:44 -0500
-Received: from smallhat.boston.devel.redhat.com (vpn-58-78.rdu2.redhat.com [10.10.58.78])
-	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id s0KM2hcf004008
-	for <linux-nfs@vger.kernel.org>; Mon, 20 Jan 2014 17:02:43 -0500
-Message-ID: <52DD9D74.5080805@RedHat.com>
-Date: Mon, 20 Jan 2014 17:04:36 -0500
-From: Steve Dickson <SteveD@redhat.com>
+Received: from mail.pictura-hosting.nl ([195.93.224.144]:57987 "EHLO
+	mail.pictura-dp.nl" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753005AbaAGTzj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jan 2014 14:55:39 -0500
 MIME-Version: 1.0
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] mount.nfs: Removed supported flag from usage string
-References: <1390240197-24908-1-git-send-email-steved@redhat.com>
-In-Reply-To: <1390240197-24908-1-git-send-email-steved@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=UTF-8;
+ format=flowed
+Date: Tue, 07 Jan 2014 20:55:12 +0100
+From: Sander Klein <roedie@roedie.nl>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Karel Zak <kzak@redhat.com>, linux-nfs@vger.kernel.org,
+        linux-nfs-owner@vger.kernel.org
+Subject: Re: rpc.mountd high cpu usage
+In-Reply-To: <20140106212514.GG31764@fieldses.org>
+References: <889b64df295ba04d47f941762ebe0bac@roedie.nl>
+ <20131212154642.GA11521@fieldses.org> <20140106111805.GF4435@x2.net.home>
+ <20140106212514.GG31764@fieldses.org>
+Message-ID: <0a94c641959a8084a56c688dd2242c04@roedie.nl>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi,
 
+Thank you very much for this patch. I've added the ZFS magic and tested 
+it on my nfs-utils-1.2.8 package and it looks like it fixes my issue.
 
-On 20/01/14 12:49, Steve Dickson wrote:
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-Committed... 
+Is there any chance this patch will be accepted upstream with the 
+ZFS_SUPER_MAGIC as shown below?
 
-steved.
+Greets,
 
-> ---
->  utils/mount/utils.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/utils/mount/utils.c b/utils/mount/utils.c
-> index 2778ed7..ede77a8 100644
-> --- a/utils/mount/utils.c
-> +++ b/utils/mount/utils.c
-> @@ -93,7 +93,7 @@ void print_one(char *spec, char *node, char *type, char *opts)
->  
->  void mount_usage(void)
->  {
-> -	printf(_("usage: %s remotetarget dir [-rvVwfnsih] [-o nfsoptions]\n"),
-> +	printf(_("usage: %s remotetarget dir [-rvVwfnsh] [-o nfsoptions]\n"),
->  		progname);
->  	printf(_("options:\n"));
->  	printf(_("\t-r\t\tMount file system readonly\n"));
-> 
+Sander
+
+ From e4f5b38c87ef8d713c6d0a3169afaf1acc7e22c6 Mon Sep 17 00:00:00 2001
+ From: Karel Zak <kzak@redhat.com>
+Date: Mon, 6 Jan 2014 12:03:01 +0100
+Subject: [PATCH] mountd: optimize libblkid usage
+
+  * use get_uuid_blkdev() only first time for the path (it means
+    that uuid_by_path() is called with type==0)
+
+  * don't use libblkid for btrfs, network or pseudo filesystems
+
+Note that the patch defines the fs type ID rather than include
+<linux/magic.h> as this file seems incomplete and libc specific).
+
+Signed-off-by: Karel Zak <kzak@redhat.com>
+---
+  utils/mountd/cache.c | 38 +++++++++++++++++++++++++++++++++++---
+  1 file changed, 35 insertions(+), 3 deletions(-)
+
+Index: nfs-utils-1.2.8/utils/mountd/cache.c
+===================================================================
+--- nfs-utils-1.2.8.orig/utils/mountd/cache.c	2013-05-02 
+14:21:12.000000000 +0200
++++ nfs-utils-1.2.8/utils/mountd/cache.c	2014-01-07 20:46:55.799904557 
++0100
+@@ -266,6 +266,27 @@
+  	return 1;
+  }
+
++
++/*
++ * Don't ask libblkid for these filesystems. Note that BTRF is ignored, 
+because
++ * we generate the identifier from statfs->f_fsid. The rest are network 
+or
++ * pseudo filesystems. (See <linux/magic.h> for the basic IDs.)
++ */
++static const long int nonblkid_filesystems[] = {
++	0x2fc12fc1,	/* ZFS_SUPER_MAGIC */
++	0x9123683E,	/* BTRFS_SUPER_MAGIC */
++	0xFF534D42,	/* CIFS_MAGIC_NUMBER */
++	0x1373,		/* DEVFS_SUPER_MAGIC */
++	0x73757245,	/* CODA_SUPER_MAGIC */
++	0x564C,		/* NCP_SUPER_MAGIC */
++	0x6969,		/* NFS_SUPER_MAGIC */
++	0x9FA0,		/* PROC_SUPER_MAGIC */
++	0x62656572,	/* SYSFS_MAGIC */
++	0x517B,		/* SMB_SUPER_MAGIC */
++	0x01021994,	/* TMPFS_SUPER_MAGIC */
++	0		/* last */
++};
++
+  static int uuid_by_path(char *path, int type, size_t uuidlen, char 
+*uuid)
+  {
+  	/* get a uuid for the filesystem found at 'path'.
+@@ -297,12 +318,24 @@
+  	 */
+  	struct statfs64 st;
+  	char fsid_val[17];
+-	const char *blkid_val;
++	const char *blkid_val = NULL;
+  	const char *val;
++	int rc;
++
++	rc = statfs64(path, &st);
++
++	if (type == 0 && rc == 0) {
++		const long int *bad;
+
+-	blkid_val = get_uuid_blkdev(path);
++		for (bad = nonblkid_filesystems; *bad; bad++) {
++			if (*bad == st.f_type)
++				break;
++		}
++		if (*bad == 0)
++			blkid_val = get_uuid_blkdev(path);
++	}
+
+-	if (statfs64(path, &st) == 0 &&
++	if (rc == 0 &&
+  	    (st.f_fsid.__val[0] || st.f_fsid.__val[1]))
+  		snprintf(fsid_val, 17, "%08x%08x",
+  			 st.f_fsid.__val[0], st.f_fsid.__val[1]);
+
