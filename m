@@ -1,67 +1,119 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:31654 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751058AbaA3RCW convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Jan 2014 12:02:22 -0500
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
-Subject: Re: [PATCH 1/3] NFSv4: Fix a slot leak in nfs40_sequence_done
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <2DA614A7-AE5A-47DA-AAB3-79D480540B5E@primarydata.com>
-Date: Thu, 30 Jan 2014 09:02:17 -0800
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <1F18AF43-7FE7-482A-B022-3895880A435B@oracle.com>
-References: <1391016982-10562-1-git-send-email-trond.myklebust@primarydata.com> <5AE747F1-D056-47AB-8416-C37071A35D5B@oracle.com> <2DA614A7-AE5A-47DA-AAB3-79D480540B5E@primarydata.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:28453 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751577AbaAGU7x (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Jan 2014 15:59:53 -0500
+Message-ID: <52CC6B31.4030803@RedHat.com>
+Date: Tue, 07 Jan 2014 16:01:37 -0500
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Sander Klein <roedie@roedie.nl>, "J. Bruce Fields" <bfields@fieldses.org>
+CC: Karel Zak <kzak@redhat.com>, linux-nfs@vger.kernel.org,
+        linux-nfs-owner@vger.kernel.org
+Subject: Re: rpc.mountd high cpu usage
+References: <889b64df295ba04d47f941762ebe0bac@roedie.nl> <20131212154642.GA11521@fieldses.org> <20140106111805.GF4435@x2.net.home> <20140106212514.GG31764@fieldses.org> <0a94c641959a8084a56c688dd2242c04@roedie.nl>
+In-Reply-To: <0a94c641959a8084a56c688dd2242c04@roedie.nl>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Jan 30, 2014, at 8:55 AM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+
+On 07/01/14 14:55, Sander Klein wrote:
+> Hi,
+> 
+> Thank you very much for this patch. I've added the ZFS magic and tested it on my nfs-utils-1.2.8 package and it looks like it fixes my issue.
+> 
+> Is there any chance this patch will be accepted upstream with the ZFS_SUPER_MAGIC as shown below?
+It looks reasonable to me... I committed... 
+
+steved.
 
 > 
-> On Jan 30, 2014, at 11:49, Chuck Lever <chuck.lever@oracle.com> wrote:
+> Greets,
 > 
->> 
->> On Jan 29, 2014, at 9:36 AM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
->> 
->>> The check for whether or not we sent an RPC call in nfs40_sequence_done
->>> is insufficient to decide whether or not we are holding a session slot,
->>> and thus should not be used to decide when to free that slot.
->>> 
->>> This patch replaces the RPC_WAS_SENT() test with the correct test for
->>> whether or not slot == NULL.
->>> 
->>> Cc: Chuck Lever <chuck.lever@oracle.com>
->>> Cc: stable@vger.kernel.org # 3.12+
->>> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
->>> ---
->>> fs/nfs/nfs4proc.c | 2 +-
->>> 1 file changed, 1 insertion(+), 1 deletion(-)
->>> 
->>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->>> index ae00c3ed733f..493e9cce1f11 100644
->>> --- a/fs/nfs/nfs4proc.c
->>> +++ b/fs/nfs/nfs4proc.c
->>> @@ -539,7 +539,7 @@ static int nfs40_sequence_done(struct rpc_task *task,
->>> 	struct nfs4_slot *slot = res->sr_slot;
->>> 	struct nfs4_slot_table *tbl;
->>> 
->>> -	if (!RPC_WAS_SENT(task))
->>> +	if (slot == NULL)
->>> 		goto out;
->> 
->> When CONFIG_NFS_V4_1 is enabled, nfs4_sequence_done() already does the slot == NULL test, though the other nfs40_sequence_done() call sites do not.  This patch should clean that up?
+> Sander
 > 
-> Unfortunately we can’t touch nfs4_sequence_done: it wants to test for whether or not a NFSv4.1 session exists, which requires it to look at slot->table->session. :-(
-
-Move the slot == NULL check to all nfs40_sequence_done() call sites?  <shrug>
-
-If not, can we get a code comment that explains why that check is done twice in the common path?
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+> From e4f5b38c87ef8d713c6d0a3169afaf1acc7e22c6 Mon Sep 17 00:00:00 2001
+> From: Karel Zak <kzak@redhat.com>
+> Date: Mon, 6 Jan 2014 12:03:01 +0100
+> Subject: [PATCH] mountd: optimize libblkid usage
+> 
+>  * use get_uuid_blkdev() only first time for the path (it means
+>    that uuid_by_path() is called with type==0)
+> 
+>  * don't use libblkid for btrfs, network or pseudo filesystems
+> 
+> Note that the patch defines the fs type ID rather than include
+> <linux/magic.h> as this file seems incomplete and libc specific).
+> 
+> Signed-off-by: Karel Zak <kzak@redhat.com>
+> ---
+>  utils/mountd/cache.c | 38 +++++++++++++++++++++++++++++++++++---
+>  1 file changed, 35 insertions(+), 3 deletions(-)
+> 
+> Index: nfs-utils-1.2.8/utils/mountd/cache.c
+> ===================================================================
+> --- nfs-utils-1.2.8.orig/utils/mountd/cache.c    2013-05-02 14:21:12.000000000 +0200
+> +++ nfs-utils-1.2.8/utils/mountd/cache.c    2014-01-07 20:46:55.799904557 +0100
+> @@ -266,6 +266,27 @@
+>      return 1;
+>  }
+> 
+> +
+> +/*
+> + * Don't ask libblkid for these filesystems. Note that BTRF is ignored, because
+> + * we generate the identifier from statfs->f_fsid. The rest are network or
+> + * pseudo filesystems. (See <linux/magic.h> for the basic IDs.)
+> + */
+> +static const long int nonblkid_filesystems[] = {
+> +    0x2fc12fc1,    /* ZFS_SUPER_MAGIC */
+> +    0x9123683E,    /* BTRFS_SUPER_MAGIC */
+> +    0xFF534D42,    /* CIFS_MAGIC_NUMBER */
+> +    0x1373,        /* DEVFS_SUPER_MAGIC */
+> +    0x73757245,    /* CODA_SUPER_MAGIC */
+> +    0x564C,        /* NCP_SUPER_MAGIC */
+> +    0x6969,        /* NFS_SUPER_MAGIC */
+> +    0x9FA0,        /* PROC_SUPER_MAGIC */
+> +    0x62656572,    /* SYSFS_MAGIC */
+> +    0x517B,        /* SMB_SUPER_MAGIC */
+> +    0x01021994,    /* TMPFS_SUPER_MAGIC */
+> +    0        /* last */
+> +};
+> +
+>  static int uuid_by_path(char *path, int type, size_t uuidlen, char *uuid)
+>  {
+>      /* get a uuid for the filesystem found at 'path'.
+> @@ -297,12 +318,24 @@
+>       */
+>      struct statfs64 st;
+>      char fsid_val[17];
+> -    const char *blkid_val;
+> +    const char *blkid_val = NULL;
+>      const char *val;
+> +    int rc;
+> +
+> +    rc = statfs64(path, &st);
+> +
+> +    if (type == 0 && rc == 0) {
+> +        const long int *bad;
+> 
+> -    blkid_val = get_uuid_blkdev(path);
+> +        for (bad = nonblkid_filesystems; *bad; bad++) {
+> +            if (*bad == st.f_type)
+> +                break;
+> +        }
+> +        if (*bad == 0)
+> +            blkid_val = get_uuid_blkdev(path);
+> +    }
+> 
+> -    if (statfs64(path, &st) == 0 &&
+> +    if (rc == 0 &&
+>          (st.f_fsid.__val[0] || st.f_fsid.__val[1]))
+>          snprintf(fsid_val, 17, "%08x%08x",
+>               st.f_fsid.__val[0], st.f_fsid.__val[1]);
+> 
+> -- 
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
