@@ -1,110 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp-o-1.desy.de ([131.169.56.154]:45981 "EHLO smtp-o-1.desy.de"
+Received: from mx1.redhat.com ([209.132.183.28]:51039 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751069AbaAHLho convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Jan 2014 06:37:44 -0500
-Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
-	by smtp-o-1.desy.de (DESY-O-1) with ESMTP id 2C1372802D5
-	for <linux-nfs@vger.kernel.org>; Wed,  8 Jan 2014 12:32:30 +0100 (CET)
-Received: from ZITSWEEP2.win.desy.de (zitsweep2.win.desy.de [131.169.97.96])
-	by smtp-map-1.desy.de (DESY_MAP_1) with ESMTP id 1004D13E89
-	for <linux-nfs@vger.kernel.org>; Wed,  8 Jan 2014 12:32:30 +0100 (MET)
-Date: Wed, 8 Jan 2014 12:32:29 +0100 (CET)
-From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: "nfsv4@ietf.org nfsv4@ietf.org" <nfsv4@ietf.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-ID: <1963130717.38314.1389180749602.JavaMail.zimbra@desy.de>
-In-Reply-To: <700533E1-3C68-4016-8079-2A83CD3B6C2B@oracle.com>
-References: <52839D69.2000800@oracle.com> <700533E1-3C68-4016-8079-2A83CD3B6C2B@oracle.com>
-Subject: Re: [nfsv4] Announcing Connectathon 2014
+	id S1751500AbaAGVAl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Jan 2014 16:00:41 -0500
+Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s07L0eOi011433
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Tue, 7 Jan 2014 16:00:40 -0500
+Message-ID: <52CC6B63.2000808@RedHat.com>
+Date: Tue, 07 Jan 2014 16:02:27 -0500
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+To: Tony Asleson <tasleson@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/3] exportfs.c: escape path for function test_export
+References: <1387397189-9591-1-git-send-email-tasleson@redhat.com>
+In-Reply-To: <1387397189-9591-1-git-send-email-tasleson@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Chuck, Bill,
 
-Unfortunately, I can't made it this time.
-As we run pNFS in  production in the big
-deployment I can send couple of slides on
-our experience and observed problems.
 
-May be some one (from linux client team) will
-volunteer to show them.
+On 18/12/13 15:06, Tony Asleson wrote:
+> Verbatim patch proposal from J. Bruce Fields except calling
+> snprintf instead of sprintf.
+> 
+> Tested and appears to work with path names that have a space.
+> 
+> Signed-off-by: Tony Asleson <tasleson@redhat.com>
+All three committed...
 
-Regards,
-  Tigran.
+steved.
 
------ Original Message -----
-> From: "Chuck Lever" <chuck.lever@oracle.com>
-> To: "nfsv4@ietf.org nfsv4@ietf.org" <nfsv4@ietf.org>, "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
-> Sent: Monday, January 6, 2014 6:48:48 PM
-> Subject: Re: [nfsv4] Announcing Connectathon 2014
+> ---
+>  utils/exportfs/exportfs.c | 10 +++++++---
+>  1 file changed, 7 insertions(+), 3 deletions(-)
 > 
-> Hi-
-> 
-> On Nov 13, 2013, at 10:40 AM, Bill Baker <bill.baker@oracle.com> wrote:
-> 
-> > Greetings,
-> > 
-> > Oracle will be hosting Connectathon 2014 the last
-> > week in February (2/24 - 2/28) in the Agnews
-> > auditorium on Oracle's Santa Clara Campus.  The
-> > auditorium has been recently remodeled, so hopefully
-> > Steve will not have to wear a hard hat.
-> > 
-> > I'll be nailing up a new website with the information
-> > shortly.   Please contact our event
-> > coordinator, Tina.Hartshorn@oracle.com, if you need
-> > additional information or have special requirements.
-> > 
-> > Feel free to forward this on to other interested
-> > parties.
-> 
-> I’m organizing the Connectathon Talks for Connectathon 2014.
-> 
-> Unlike the testing floor, these talks are open to the public, and will be
-> held in the upstairs conference room in the Mellon Auditorium, as in years
-> past.  The talks are held Tuesday and Wednesday afternoons during
-> Connectathon 2014.  Appropriate topics are technical talks on areas that are
-> of broad interest to the NFS community.
-> 
-> If you are interested in presenting a talk, please send me:
-> 
->   o  A presentation title
->   o  A 2-4 sentence abstract of the presentation
->   o  The name and e-mail addresses of all presenters.  I will not share these
->   with anyone
->   o  How long you need: typically 30 or 60 minutes
-> 
-> A VGA overhead projector is available.
-> 
-> This year, in addition to presentations by individuals, I’d like to host
-> several “birds of a feather” sessions where we can hold group discussion on
-> topics relevant to our community.  These sessions would be held during one
-> or more of the normal talk slots (Tuesday or Wednesday afternoon), and would
-> be open to the public.  I have a few BOF sessions in mind already:
-> 
->   o  NFS Testing (a perennial favorite)
->   o  NFS/Kerberos
->   o  NFS/RDMA
->   o  NFS-Ganesha
->   o  Linux libtirpc
-> 
-> Please send suggestions.
-> 
-> A schedule of talks and BOF sessions will be posted on the connectathon.info
-> web site as we get closer to the event.
-> 
-> --
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
-> 
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
+> index 00667e9..3ca45c1 100644
+> --- a/utils/exportfs/exportfs.c
+> +++ b/utils/exportfs/exportfs.c
+> @@ -444,11 +444,15 @@ static int can_test(void)
+>  static int test_export(char *path, int with_fsid)
+>  {
+>  	char buf[1024];
+> +	char *bp = buf;
+> +	int len = sizeof(buf);
+>  	int fd, n;
+>  
+> -	sprintf(buf, "-test-client- %s 3 %d 65534 65534 0\n",
+> -		path,
+> -		with_fsid ? NFSEXP_FSID : 0);
+> +	n = snprintf(buf, len, "-test-client- ");
+> +	bp += n;
+> +	len -= n;
+> +	qword_add(&bp, &len, path);
+> +	snprintf(bp, len, " 3 %d 65534 65534 0\n", with_fsid ? NFSEXP_FSID : 0);
+>  	fd = open("/proc/net/rpc/nfsd.export/channel", O_WRONLY);
+>  	if (fd < 0)
+>  		return 0;
 > 
