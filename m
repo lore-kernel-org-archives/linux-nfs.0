@@ -1,61 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:52109 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753237AbaA3OfV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Jan 2014 09:35:21 -0500
-Date: Thu, 30 Jan 2014 06:35:18 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: viro@zeniv.linux.org.uk, Chris Mason <clm@fb.com>,
-        linux-nfs@vger.kernel.org
-Subject: [PATCH] nfs: avoid oops when CONFIG_NFS_V3_ACL is not set
-Message-ID: <20140130143518.GA14169@infradead.org>
+Received: from mx1.netapp.com ([216.240.18.38]:58470 "EHLO mx1.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752846AbaAGPiv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 7 Jan 2014 10:38:51 -0500
+Message-ID: <52CC1F86.1040408@netapp.com>
+Date: Tue, 7 Jan 2014 10:38:46 -0500
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 0/3] READ_PLUS rough draft
+References: <1389045433-22990-1-git-send-email-Anna.Schumaker@netapp.com> <20140106223201.GA3342@fieldses.org> <52CC123C.7000806@netapp.com> <20140107145633.GC3342@fieldses.org>
+In-Reply-To: <20140107145633.GC3342@fieldses.org>
+Content-Type: text/plain; charset="ISO-8859-1"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If we don't have s_xattr set we must not call the generic xattr
-inode operations:
+On 01/07/2014 09:56 AM, J. Bruce Fields wrote:
+> On Tue, Jan 07, 2014 at 09:42:04AM -0500, Anna Schumaker wrote:
+>> On 01/06/2014 05:32 PM, J. Bruce Fields wrote:
+>>> On Mon, Jan 06, 2014 at 04:57:10PM -0500, Anna Schumaker wrote:
+>>>> These patches are my initial implementation of READ_PLUS.  I still have a
+>>>> few issues to work out before they can be applied, but I wanted to submit
+>>>> them anyway to get feedback before going much further.  These patches were
+>>>> developed on top of my earlier SEEK and WRITE_PLUS patches, and probably
+>>>> won't apply cleanly without them (I am willing to reorder things if necessary!).
+>>>>
+>>>> On the server side, I handle the cases where a file is 100% hole, 100% data
+>>>> or hole followed by data.  Any holes after a data segment will be expanded
+>>>> to zeros on the wire.
+>>>
+>>> I assume that for "a file" I should read "the requested range of the
+>>> file"?
+>>
+>> Yes.
+>>
+>>>
+>>> hole+data+hole should also be doable, shouldn't it?  I'd think the real
+>>> problem would be multiple data extents.
+>>
+>> It might be, but I haven't tried it yet.  I can soon!
+>>
+>>>
+>>>> This is due to a limitation in the the NFSD
+>>>> encode-to-page function that will adjust pointers to point to the xdr tail
+>>>> after reading a file to the "pages" section.  Bruce, do you have any
+>>>> suggestions here?
+>>>
+>>> The server xdr encoding needs a rewrite.  I'll see if I can ignore you
+>>> all and put my head down and get a version of that posted this week.
+>>
+>> :)
+>>
+>>>
+>>> That should make it easier to return all the data, though it will turn
+>>> off zero-copy in the case of multiple data extents.
+>>>
+>>> If we want READ_PLUS to support zero copy in the case of multiple
+>>> extents then I think we need a new data structure to represent the
+>>> resulting rpc reply.  An xdr buf only knows how to insert one array of
+>>> pages in the middle of the data.  Maybe a list of xdr bufs?
+>>>
+>>> But that's an annoying job and possibly a premature optimization.
+>>>
+>>> It might be useful to first understand the typical distribution of holes
+>>> in a file and how likely various workloads are to produce reads with
+>>> multiple holes in the middle.
+>>
+>> I already have a few performance numbers, but nothing that can be trusted due to the number of debugging printk()s I used to make sure the client decoded everything correctly.  My plan is to collect the following information using:  v4.0, v4.1, v4.2 (SEEK), v4.2 (SEEK + WRITE_PLUS), and v4.2 (SEEK + WRITE_PLUS + READ_PLUS).
+> 
+> What's the workload and hardware setup?
 
-[  198.564281] BUG: unable to handle kernel NULL pointer dereference at
-+(null)
-[  198.581957] IP: [<ffffffff811ab510>] generic_getxattr+0x20/0x90
-[  198.595266] PGD baaf2067 PUD ba4f4067 PMD 0
-[  198.605033] Oops: 0000 [#1] SMP
+I was going to run filebench tests (fileserver, mongo, varmail) between two VMs.  I only have the one laptop with me today, so I can't test between two real machines without asking for a volunteer from Workantile.  I am planning to kill Firefox and Thunderbird before running anything!
 
+Anna
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
-Reported-by: Chris Mason <clm@fb.com>
-Tested-by: Chris Mason <clm@fb.com>
+> 
+> --b.
+> 
 
-diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
-index d2255d7..aa9bc97 100644
---- a/fs/nfs/nfs3proc.c
-+++ b/fs/nfs/nfs3proc.c
-@@ -924,11 +924,11 @@ static const struct inode_operations nfs3_dir_inode_operations = {
- 	.permission	= nfs_permission,
- 	.getattr	= nfs_getattr,
- 	.setattr	= nfs_setattr,
-+#ifdef CONFIG_NFS_V3_ACL
- 	.listxattr	= generic_listxattr,
- 	.getxattr	= generic_getxattr,
- 	.setxattr	= generic_setxattr,
- 	.removexattr	= generic_removexattr,
--#ifdef CONFIG_NFS_V3_ACL
- 	.get_acl	= nfs3_get_acl,
- 	.set_acl	= nfs3_set_acl,
- #endif
-@@ -938,11 +938,11 @@ static const struct inode_operations nfs3_file_inode_operations = {
- 	.permission	= nfs_permission,
- 	.getattr	= nfs_getattr,
- 	.setattr	= nfs_setattr,
-+#ifdef CONFIG_NFS_V3_ACL
- 	.listxattr	= generic_listxattr,
- 	.getxattr	= generic_getxattr,
- 	.setxattr	= generic_setxattr,
- 	.removexattr	= generic_removexattr,
--#ifdef CONFIG_NFS_V3_ACL
- 	.get_acl	= nfs3_get_acl,
- 	.set_acl	= nfs3_set_acl,
- #endif
