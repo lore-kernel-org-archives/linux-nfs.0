@@ -1,56 +1,110 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f173.google.com ([209.85.213.173]:56035 "EHLO
-	mail-ig0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751437AbaAMVzD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jan 2014 16:55:03 -0500
-Received: by mail-ig0-f173.google.com with SMTP id c10so3199493igq.0
-        for <linux-nfs@vger.kernel.org>; Mon, 13 Jan 2014 13:55:02 -0800 (PST)
-From: Weston Andros Adamson <dros@primarydata.com>
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
-Subject: [PATCH] nfs4.1: properly handle ENOTSUP in SECINFO_NO_NAME
-Date: Mon, 13 Jan 2014 16:54:45 -0500
-Message-Id: <1389650085-4128-1-git-send-email-dros@primarydata.com>
+Received: from smtp-o-1.desy.de ([131.169.56.154]:45981 "EHLO smtp-o-1.desy.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751069AbaAHLho convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Jan 2014 06:37:44 -0500
+Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
+	by smtp-o-1.desy.de (DESY-O-1) with ESMTP id 2C1372802D5
+	for <linux-nfs@vger.kernel.org>; Wed,  8 Jan 2014 12:32:30 +0100 (CET)
+Received: from ZITSWEEP2.win.desy.de (zitsweep2.win.desy.de [131.169.97.96])
+	by smtp-map-1.desy.de (DESY_MAP_1) with ESMTP id 1004D13E89
+	for <linux-nfs@vger.kernel.org>; Wed,  8 Jan 2014 12:32:30 +0100 (MET)
+Date: Wed, 8 Jan 2014 12:32:29 +0100 (CET)
+From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: "nfsv4@ietf.org nfsv4@ietf.org" <nfsv4@ietf.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-ID: <1963130717.38314.1389180749602.JavaMail.zimbra@desy.de>
+In-Reply-To: <700533E1-3C68-4016-8079-2A83CD3B6C2B@oracle.com>
+References: <52839D69.2000800@oracle.com> <700533E1-3C68-4016-8079-2A83CD3B6C2B@oracle.com>
+Subject: Re: [nfsv4] Announcing Connectathon 2014
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Don't check for -NFS4ERR_NOTSUPP, it's already been mapped to -ENOTSUPP
-by nfs4_stat_to_errno.
+Hi Chuck, Bill,
 
-This allows the client to mount v4.1 servers that don't support
-SECINFO_NO_NAME by falling back to the "guess and check" method of
-nfs4_find_root_sec.
+Unfortunately, I can't made it this time.
+As we run pNFS in  production in the big
+deployment I can send couple of slides on
+our experience and observed problems.
 
-Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
----
+May be some one (from linux client team) will
+volunteer to show them.
 
-I found this trying to mount a pynfs filelayout server.
+Regards,
+  Tigran.
 
- fs/nfs/nfs4proc.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 15052b8..1d57b6a 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -7920,7 +7920,7 @@ nfs41_proc_secinfo_no_name(struct nfs_server *server, struct nfs_fh *fhandle,
- 		switch (err) {
- 		case 0:
- 		case -NFS4ERR_WRONGSEC:
--		case -NFS4ERR_NOTSUPP:
-+		case -ENOTSUPP:
- 			goto out;
- 		default:
- 			err = nfs4_handle_exception(server, err, &exception);
-@@ -7954,7 +7954,7 @@ nfs41_find_root_sec(struct nfs_server *server, struct nfs_fh *fhandle,
- 	 * Fall back on "guess and check" method if
- 	 * the server doesn't support SECINFO_NO_NAME
- 	 */
--	if (err == -NFS4ERR_WRONGSEC || err == -NFS4ERR_NOTSUPP) {
-+	if (err == -NFS4ERR_WRONGSEC || err == -ENOTSUPP) {
- 		err = nfs4_find_root_sec(server, fhandle, info);
- 		goto out_freepage;
- 	}
--- 
-1.8.3.4 (Apple Git-47)
-
+----- Original Message -----
+> From: "Chuck Lever" <chuck.lever@oracle.com>
+> To: "nfsv4@ietf.org nfsv4@ietf.org" <nfsv4@ietf.org>, "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
+> Sent: Monday, January 6, 2014 6:48:48 PM
+> Subject: Re: [nfsv4] Announcing Connectathon 2014
+> 
+> Hi-
+> 
+> On Nov 13, 2013, at 10:40 AM, Bill Baker <bill.baker@oracle.com> wrote:
+> 
+> > Greetings,
+> > 
+> > Oracle will be hosting Connectathon 2014 the last
+> > week in February (2/24 - 2/28) in the Agnews
+> > auditorium on Oracle's Santa Clara Campus.  The
+> > auditorium has been recently remodeled, so hopefully
+> > Steve will not have to wear a hard hat.
+> > 
+> > I'll be nailing up a new website with the information
+> > shortly.   Please contact our event
+> > coordinator, Tina.Hartshorn@oracle.com, if you need
+> > additional information or have special requirements.
+> > 
+> > Feel free to forward this on to other interested
+> > parties.
+> 
+> I’m organizing the Connectathon Talks for Connectathon 2014.
+> 
+> Unlike the testing floor, these talks are open to the public, and will be
+> held in the upstairs conference room in the Mellon Auditorium, as in years
+> past.  The talks are held Tuesday and Wednesday afternoons during
+> Connectathon 2014.  Appropriate topics are technical talks on areas that are
+> of broad interest to the NFS community.
+> 
+> If you are interested in presenting a talk, please send me:
+> 
+>   o  A presentation title
+>   o  A 2-4 sentence abstract of the presentation
+>   o  The name and e-mail addresses of all presenters.  I will not share these
+>   with anyone
+>   o  How long you need: typically 30 or 60 minutes
+> 
+> A VGA overhead projector is available.
+> 
+> This year, in addition to presentations by individuals, I’d like to host
+> several “birds of a feather” sessions where we can hold group discussion on
+> topics relevant to our community.  These sessions would be held during one
+> or more of the normal talk slots (Tuesday or Wednesday afternoon), and would
+> be open to the public.  I have a few BOF sessions in mind already:
+> 
+>   o  NFS Testing (a perennial favorite)
+>   o  NFS/Kerberos
+>   o  NFS/RDMA
+>   o  NFS-Ganesha
+>   o  Linux libtirpc
+> 
+> Please send suggestions.
+> 
+> A schedule of talks and BOF sessions will be posted on the connectathon.info
+> web site as we get closer to the event.
+> 
+> --
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
+> 
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
