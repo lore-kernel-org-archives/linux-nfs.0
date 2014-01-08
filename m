@@ -1,93 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f172.google.com ([209.85.223.172]:52400 "EHLO
-	mail-ie0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751304AbaA2Rnd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Jan 2014 12:43:33 -0500
-Received: by mail-ie0-f172.google.com with SMTP id e14so2416813iej.17
-        for <linux-nfs@vger.kernel.org>; Wed, 29 Jan 2014 09:43:33 -0800 (PST)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH 2/3] NFSv4.1: Clean up nfs41_sequence_done
-Date: Wed, 29 Jan 2014 12:36:21 -0500
-Message-Id: <1391016982-10562-2-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1391016982-10562-1-git-send-email-trond.myklebust@primarydata.com>
-References: <1391016982-10562-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from mail-we0-f193.google.com ([74.125.82.193]:55175 "EHLO
+	mail-we0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757207AbaAHVSc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Jan 2014 16:18:32 -0500
+Received: by mail-we0-f193.google.com with SMTP id q58so452602wes.0
+        for <linux-nfs@vger.kernel.org>; Wed, 08 Jan 2014 13:18:31 -0800 (PST)
+MIME-Version: 1.0
+Date: Wed, 8 Jan 2014 21:47:31 +0100
+Message-ID: <CALS90i9nMs6jMoH2O5S68sPF=juYOV2sfMAwaBekL8ccz3eSOQ@mail.gmail.com>
+Subject: I have a very lucrative Business
+From: "Dr. Musa Hamed" <drmusahamed01@gmail.com>
+To: undisclosed-recipients:;
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Move the test for res->sr_slot == NULL out of the nfs41_sequence_free_slot
-helper and into the main function for efficiency.
+ATTN: Dear,
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/nfs4proc.c | 19 ++++++++-----------
- 1 file changed, 8 insertions(+), 11 deletions(-)
+I am Dr. Musa Hamed Executive Director of the Bank of Africa
+Plc B.O.A,Cotonou Benin Rep. I have a very lucrative Business proposal
+worth of 21,500,000.00 USD.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 493e9cce1f11..42da6af77587 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -559,15 +559,10 @@ static void nfs41_sequence_free_slot(struct nfs4_sequence_res *res)
- {
- 	struct nfs4_session *session;
- 	struct nfs4_slot_table *tbl;
-+	struct nfs4_slot *slot = res->sr_slot;
- 	bool send_new_highest_used_slotid = false;
- 
--	if (!res->sr_slot) {
--		/* just wake up the next guy waiting since
--		 * we may have not consumed a slot after all */
--		dprintk("%s: No slot\n", __func__);
--		return;
--	}
--	tbl = res->sr_slot->table;
-+	tbl = slot->table;
- 	session = tbl->session;
- 
- 	spin_lock(&tbl->slot_tbl_lock);
-@@ -577,11 +572,11 @@ static void nfs41_sequence_free_slot(struct nfs4_sequence_res *res)
- 	if (tbl->highest_used_slotid > tbl->target_highest_slotid)
- 		send_new_highest_used_slotid = true;
- 
--	if (nfs41_wake_and_assign_slot(tbl, res->sr_slot)) {
-+	if (nfs41_wake_and_assign_slot(tbl, slot)) {
- 		send_new_highest_used_slotid = false;
- 		goto out_unlock;
- 	}
--	nfs4_free_slot(tbl, res->sr_slot);
-+	nfs4_free_slot(tbl, slot);
- 
- 	if (tbl->highest_used_slotid != NFS4_NO_SLOT)
- 		send_new_highest_used_slotid = false;
-@@ -595,16 +590,17 @@ out_unlock:
- int nfs41_sequence_done(struct rpc_task *task, struct nfs4_sequence_res *res)
- {
- 	struct nfs4_session *session;
--	struct nfs4_slot *slot;
-+	struct nfs4_slot *slot = res->sr_slot;
- 	struct nfs_client *clp;
- 	bool interrupted = false;
- 	int ret = 1;
- 
-+	if (slot == NULL)
-+		goto out_noaction;
- 	/* don't increment the sequence number if the task wasn't sent */
- 	if (!RPC_WAS_SENT(task))
- 		goto out;
- 
--	slot = res->sr_slot;
- 	session = slot->table->session;
- 
- 	if (slot->interrupted) {
-@@ -679,6 +675,7 @@ out:
- 	/* The session may be reset by one of the error handlers. */
- 	dprintk("%s: Error %d free the slot \n", __func__, res->sr_status);
- 	nfs41_sequence_free_slot(res);
-+out_noaction:
- 	return ret;
- retry_nowait:
- 	if (rpc_restart_call_prepare(task)) {
--- 
-1.8.5.3
+An Iraqi named Hamadi Hashem a business man made a fixed deposit of
+21,500,000.00 USD . Upon maturity several notices was sent to him,
+even during the war,eleven years ago (2003) up till this date. Again
+after the war another notification was sent and still no response came
+from him. it has been found out that Hamadi Hashem and his family had
+been killed during the war in bomb blast that hit their home at
+Mukaradeeb where his personal oil well was. I am prepared to split the
+funds with you 50%:50%.By placing you as the NEXT OF KIN to his
+deposit.
 
+Should you be interested in doing this deal with me, please send me
+the following information:
+
+(1) Your Name
+(2) Resident Address
+(3) Your Occupation
+(4) Your Phone Number
+(5) Date of Birth
+(6) Resident Country
+
+And I will prefer you to reach me privately and securely on my personal
+email address: dr.musahamed30@yahoo.fr
+Tel: +229-988-400-97
+
+I will provide you with further information as soon as I hear
+positively from you.
+
+Regards,
+Dr. Musa Hamed
