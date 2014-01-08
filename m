@@ -1,81 +1,272 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:55968 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:36290 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757371AbaAIVdg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 9 Jan 2014 16:33:36 -0500
-Date: Thu, 9 Jan 2014 16:33:35 -0500
-To: linux-nfs@vger.kernel.org
-Cc: sandeen@redhat.com, jlayton@redhat.com
-Subject: fix encode_entryplus_baggage stack usage
-Message-ID: <20140109213335.GA21559@fieldses.org>
+	id S1756115AbaAHRQV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 8 Jan 2014 12:16:21 -0500
+Date: Wed, 8 Jan 2014 12:16:20 -0500
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 5/4] nfsd4: simplify xdr encoding of nfsv4 names
+Message-ID: <20140108171620.GD15922@fieldses.org>
+References: <1389128674-16951-1-git-send-email-bfields@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1389128674-16951-1-git-send-email-bfields@redhat.com>
 From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Eric ran across an excessive stack with this (and a bunch of xfs code)
-to blame.  Untested.  I don't know whether it's worth the minor extra
-work here to avoid the alloc/free on each entry.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-nfsd4_encode_fattr will need the same treatment.
+We can simplify the idmapping code if it does its own encoding and
+returns nfs errors.
 
---b.
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/acl.h       |    2 +-
+ fs/nfsd/idmap.h     |    4 ++--
+ fs/nfsd/nfs4acl.c   |   20 +++++++++++++-------
+ fs/nfsd/nfs4idmap.c |   50 ++++++++++++++++++++++++++++++++-----------------
+ fs/nfsd/nfs4xdr.c   |   52 ++++++---------------------------------------------
+ 5 files changed, 55 insertions(+), 73 deletions(-)
 
-commit 5b35a1f99f999555e82420e687e9d079ae796547
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Thu Jan 9 16:24:35 2014 -0500
+On Tue, Jan 07, 2014 at 04:04:30PM -0500, J. Bruce Fields wrote:
+> These are just some minor bits of cleanup I'm queueing for 3.14.
 
-    nfsd: fix encode_entryplus_baggage stack usage
-    
-    We stick an extra svc_fh in nfsd3_readdirres to save the need to
-    kmalloc, though maybe it would be fine to kmalloc instead.
-    
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+And one more.--b.
 
-diff --git a/fs/nfsd/nfs3xdr.c b/fs/nfsd/nfs3xdr.c
-index 1ee6bae..de6e39e 100644
---- a/fs/nfsd/nfs3xdr.c
-+++ b/fs/nfsd/nfs3xdr.c
-@@ -842,21 +842,21 @@ out:
+diff --git a/fs/nfsd/acl.h b/fs/nfsd/acl.h
+index 8b186a4..5b7bf21 100644
+--- a/fs/nfsd/acl.h
++++ b/fs/nfsd/acl.h
+@@ -43,7 +43,7 @@
  
- static __be32 *encode_entryplus_baggage(struct nfsd3_readdirres *cd, __be32 *p, const char *name, int namlen)
- {
--	struct svc_fh	fh;
-+	struct svc_fh	*fh = &cd->scratch;
- 	__be32 err;
+ struct nfs4_acl *nfs4_acl_new(int);
+ int nfs4_acl_get_whotype(char *, u32);
+-int nfs4_acl_write_who(int who, char *p);
++int nfs4_acl_write_who(int who, __be32 **p, int *len);
  
--	fh_init(&fh, NFS3_FHSIZE);
--	err = compose_entry_fh(cd, &fh, name, namlen);
-+	fh_init(fh, NFS3_FHSIZE);
-+	err = compose_entry_fh(cd, fh, name, namlen);
- 	if (err) {
- 		*p++ = 0;
- 		*p++ = 0;
- 		goto out;
- 	}
--	p = encode_post_op_attr(cd->rqstp, p, &fh);
-+	p = encode_post_op_attr(cd->rqstp, p, fh);
- 	*p++ = xdr_one;			/* yes, a file handle follows */
--	p = encode_fh(p, &fh);
-+	p = encode_fh(p, fh);
- out:
--	fh_put(&fh);
-+	fh_put(fh);
- 	return p;
+ #define NFS4_ACL_TYPE_DEFAULT	0x01
+ #define NFS4_ACL_DIR		0x02
+diff --git a/fs/nfsd/idmap.h b/fs/nfsd/idmap.h
+index bf95f6b..66e58db 100644
+--- a/fs/nfsd/idmap.h
++++ b/fs/nfsd/idmap.h
+@@ -56,7 +56,7 @@ static inline void nfsd_idmap_shutdown(struct net *net)
+ 
+ __be32 nfsd_map_name_to_uid(struct svc_rqst *, const char *, size_t, kuid_t *);
+ __be32 nfsd_map_name_to_gid(struct svc_rqst *, const char *, size_t, kgid_t *);
+-int nfsd_map_uid_to_name(struct svc_rqst *, kuid_t, char *);
+-int nfsd_map_gid_to_name(struct svc_rqst *, kgid_t, char *);
++__be32 nfsd4_encode_user(struct svc_rqst *, kuid_t, __be32 **, int *);
++__be32 nfsd4_encode_group(struct svc_rqst *, kgid_t, __be32 **, int *);
+ 
+ #endif /* LINUX_NFSD_IDMAP_H */
+diff --git a/fs/nfsd/nfs4acl.c b/fs/nfsd/nfs4acl.c
+index 8a50b3c..eea24c9 100644
+--- a/fs/nfsd/nfs4acl.c
++++ b/fs/nfsd/nfs4acl.c
+@@ -37,6 +37,7 @@
+ #include <linux/slab.h>
+ #include <linux/nfs_fs.h>
+ #include <linux/export.h>
++#include "nfsd.h"
+ #include "acl.h"
+ 
+ 
+@@ -848,18 +849,23 @@ nfs4_acl_get_whotype(char *p, u32 len)
+ 	return NFS4_ACL_WHO_NAMED;
  }
  
-diff --git a/fs/nfsd/xdr3.h b/fs/nfsd/xdr3.h
-index b6d5542..335e04a 100644
---- a/fs/nfsd/xdr3.h
-+++ b/fs/nfsd/xdr3.h
-@@ -174,6 +174,9 @@ struct nfsd3_linkres {
- struct nfsd3_readdirres {
- 	__be32			status;
- 	struct svc_fh		fh;
-+	/* Just to save kmalloc on every readdirplus entry (svc_fh is a
-+	 * little large for the stack): */
-+	struct svc_fh		scratch;
- 	int			count;
- 	__be32			verf[2];
+-int
+-nfs4_acl_write_who(int who, char *p)
++__be32 nfs4_acl_write_who(int who, __be32 **p, int *len)
+ {
+ 	int i;
++	int bytes;
  
+ 	for (i = 0; i < ARRAY_SIZE(s2t_map); i++) {
+-		if (s2t_map[i].type == who) {
+-			memcpy(p, s2t_map[i].string, s2t_map[i].stringlen);
+-			return s2t_map[i].stringlen;
+-		}
++		if (s2t_map[i].type != who)
++			continue;
++		bytes = 4 + (XDR_QUADLEN(s2t_map[i].stringlen) << 2);
++		if (bytes > *len)
++			return nfserr_resource;
++		*p = xdr_encode_opaque(*p, s2t_map[i].string,
++					s2t_map[i].stringlen);
++		*len -= bytes;
++		return 0;
+ 	}
+-	BUG();
++	WARN_ON_ONCE(1);
+ 	return -1;
+ }
+ 
+diff --git a/fs/nfsd/nfs4idmap.c b/fs/nfsd/nfs4idmap.c
+index 4832fd8..c0dfde6 100644
+--- a/fs/nfsd/nfs4idmap.c
++++ b/fs/nfsd/nfs4idmap.c
+@@ -551,27 +551,46 @@ idmap_name_to_id(struct svc_rqst *rqstp, int type, const char *name, u32 namelen
+ 	return 0;
+ }
+ 
+-static int
+-idmap_id_to_name(struct svc_rqst *rqstp, int type, u32 id, char *name)
++static __be32 encode_ascii_id(u32 id, __be32 **p, int *buflen)
++{
++	char buf[11];
++	int len;
++	int bytes;
++
++	len = sprintf(buf, "%u", id);
++	bytes = 4 + (XDR_QUADLEN(len) << 2);
++	if (bytes > *buflen)
++		return nfserr_resource;
++	*p = xdr_encode_opaque(*p, buf, len);
++	*buflen -= bytes;
++	return 0;
++}
++
++static __be32 idmap_id_to_name(struct svc_rqst *rqstp, int type, u32 id, __be32 **p, int *buflen)
+ {
+ 	struct ent *item, key = {
+ 		.id = id,
+ 		.type = type,
+ 	};
+ 	int ret;
++	int bytes;
+ 	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
+ 
+ 	strlcpy(key.authname, rqst_authname(rqstp), sizeof(key.authname));
+ 	ret = idmap_lookup(rqstp, idtoname_lookup, &key, nn->idtoname_cache, &item);
+ 	if (ret == -ENOENT)
+-		return sprintf(name, "%u", id);
++		return encode_ascii_id(id, p, buflen);
+ 	if (ret)
+-		return ret;
++		return nfserrno(ret);
+ 	ret = strlen(item->name);
+-	BUG_ON(ret > IDMAP_NAMESZ);
+-	memcpy(name, item->name, ret);
++	WARN_ON_ONCE(ret > IDMAP_NAMESZ);
++	bytes = 4 + (XDR_QUADLEN(ret) << 2);
++	if (bytes > *buflen)
++		return nfserr_resource;
++	*p = xdr_encode_opaque(*p, item->name, ret);
++	*buflen -= bytes;
+ 	cache_put(&item->h, nn->idtoname_cache);
+-	return ret;
++	return 0;
+ }
+ 
+ static bool
+@@ -603,12 +622,11 @@ do_name_to_id(struct svc_rqst *rqstp, int type, const char *name, u32 namelen, u
+ 	return idmap_name_to_id(rqstp, type, name, namelen, id);
+ }
+ 
+-static int
+-do_id_to_name(struct svc_rqst *rqstp, int type, u32 id, char *name)
++static __be32 encode_name_from_id(struct svc_rqst *rqstp, int type, u32 id, __be32 **p, int *buflen)
+ {
+ 	if (nfs4_disable_idmapping && rqstp->rq_cred.cr_flavor < RPC_AUTH_GSS)
+-		return sprintf(name, "%u", id);
+-	return idmap_id_to_name(rqstp, type, id, name);
++		return encode_ascii_id(id, p, buflen);
++	return idmap_id_to_name(rqstp, type, id, p, buflen);
+ }
+ 
+ __be32
+@@ -637,16 +655,14 @@ nfsd_map_name_to_gid(struct svc_rqst *rqstp, const char *name, size_t namelen,
+ 	return status;
+ }
+ 
+-int
+-nfsd_map_uid_to_name(struct svc_rqst *rqstp, kuid_t uid, char *name)
++__be32 nfsd4_encode_user(struct svc_rqst *rqstp, kuid_t uid,  __be32 **p, int *buflen)
+ {
+ 	u32 id = from_kuid(&init_user_ns, uid);
+-	return do_id_to_name(rqstp, IDMAP_TYPE_USER, id, name);
++	return encode_name_from_id(rqstp, IDMAP_TYPE_USER, id, p, buflen);
+ }
+ 
+-int
+-nfsd_map_gid_to_name(struct svc_rqst *rqstp, kgid_t gid, char *name)
++__be32 nfsd4_encode_group(struct svc_rqst *rqstp, kgid_t gid, __be32 **p, int *buflen)
+ {
+ 	u32 id = from_kgid(&init_user_ns, gid);
+-	return do_id_to_name(rqstp, IDMAP_TYPE_GROUP, id, name);
++	return encode_name_from_id(rqstp, IDMAP_TYPE_GROUP, id, p, buflen);
+ }
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 67b4496..8198ecf 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -1965,56 +1965,16 @@ static u32 nfs4_file_type(umode_t mode)
+ 	};
+ }
+ 
+-static __be32
+-nfsd4_encode_name(struct svc_rqst *rqstp, int whotype, kuid_t uid, kgid_t gid,
+-			__be32 **p, int *buflen)
+-{
+-	int status;
+-
+-	if (*buflen < (XDR_QUADLEN(IDMAP_NAMESZ) << 2) + 4)
+-		return nfserr_resource;
+-	if (whotype != NFS4_ACL_WHO_NAMED)
+-		status = nfs4_acl_write_who(whotype, (u8 *)(*p + 1));
+-	else if (gid_valid(gid))
+-		status = nfsd_map_gid_to_name(rqstp, gid, (u8 *)(*p + 1));
+-	else
+-		status = nfsd_map_uid_to_name(rqstp, uid, (u8 *)(*p + 1));
+-	if (status < 0)
+-		return nfserrno(status);
+-	*p = xdr_encode_opaque(*p, NULL, status);
+-	*buflen -= (XDR_QUADLEN(status) << 2) + 4;
+-	BUG_ON(*buflen < 0);
+-	return 0;
+-}
+-
+-static inline __be32
+-nfsd4_encode_user(struct svc_rqst *rqstp, kuid_t user, __be32 **p, int *buflen)
+-{
+-	return nfsd4_encode_name(rqstp, NFS4_ACL_WHO_NAMED, user, INVALID_GID,
+-				 p, buflen);
+-}
+-
+-static inline __be32
+-nfsd4_encode_group(struct svc_rqst *rqstp, kgid_t group, __be32 **p, int *buflen)
+-{
+-	return nfsd4_encode_name(rqstp, NFS4_ACL_WHO_NAMED, INVALID_UID, group,
+-				 p, buflen);
+-}
+-
+ static inline __be32
+ nfsd4_encode_aclname(struct svc_rqst *rqstp, struct nfs4_ace *ace,
+ 		__be32 **p, int *buflen)
+ {
+-	kuid_t uid = INVALID_UID;
+-	kgid_t gid = INVALID_GID;
+-
+-	if (ace->whotype == NFS4_ACL_WHO_NAMED) {
+-		if (ace->flag & NFS4_ACE_IDENTIFIER_GROUP)
+-			gid = ace->who_gid;
+-		else
+-			uid = ace->who_uid;
+-	}
+-	return nfsd4_encode_name(rqstp, ace->whotype, uid, gid, p, buflen);
++	if (ace->whotype != NFS4_ACL_WHO_NAMED)
++		return nfs4_acl_write_who(ace->whotype, p, buflen);
++	else if (ace->flag & NFS4_ACE_IDENTIFIER_GROUP)
++		return nfsd4_encode_group(rqstp, ace->who_gid, p, buflen);
++	else
++		return nfsd4_encode_user(rqstp, ace->who_uid, p, buflen);
+ }
+ 
+ #define WORD0_ABSENT_FS_ATTRS (FATTR4_WORD0_FS_LOCATIONS | FATTR4_WORD0_FSID | \
+-- 
+1.7.9.5
+
