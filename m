@@ -1,48 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f49.google.com ([209.85.220.49]:40758 "EHLO
-	mail-pa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751800AbaATKUq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Jan 2014 05:20:46 -0500
+Received: from edge3.cs.stonybrook.edu ([130.245.9.168]:16408 "EHLO
+	edge3.cs.stonybrook.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753729AbaAIVbg convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jan 2014 16:31:36 -0500
+From: Ming Chen <mchen@cs.stonybrook.edu>
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+CC: "bfields@fieldses.org" <bfields@fieldses.org>,
+        "trond.myklebust@primarydata.com" <trond.myklebust@primarydata.com>,
+        "Erez Zadok" <ezk@fsl.cs.sunysb.edu>,
+        "dhildeb@us.ibm.com" <dhildeb@us.ibm.com>,
+        "geoff@cs.hmc.edu" <geoff@cs.hmc.edu>
+Subject: [PATCH] nfsd: consider CLAIM_FH when handing out delegation
+Date: Thu, 9 Jan 2014 21:26:10 +0000
+Message-ID: <F2EEB2C045C93A4889A2C09F59EDB20858153672@mail2.cs.stonybrook.edu>
+Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
-In-Reply-To: <E1W5A0e-000MT9-A1@intern.SerNet.DE>
-References: <1389953232-9428-1-git-send-email-piastry@etersoft.ru>
-	<E1W5A0e-000MT9-A1@intern.SerNet.DE>
-Date: Mon, 20 Jan 2014 14:20:43 +0400
-Message-ID: <CAKywueQwfFASPpevO8Z-_xwZqRjkzfkOceQJDya8D7FDW+UmMg@mail.gmail.com>
-Subject: Re: [PATCH v7 0/7] Add O_DENY* support for VFS and CIFS/NFS
-From: Pavel Shilovsky <piastry@etersoft.ru>
-To: "Volker.Lendecke@SerNet.DE" <Volker.Lendecke@sernet.de>
-Cc: Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        linux-cifs <linux-cifs@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
-        wine-devel@winehq.org
-Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-2014/1/20 Volker Lendecke <Volker.Lendecke@sernet.de>:
-> Hi!
->
-> On Fri, Jan 17, 2014 at 02:07:05PM +0400, Pavel Shilovsky wrote:
->> If O_DENYDELETE flag is specified and the open succeded,
->> any further unlink operation will fail with -ESHAREDENIED
->> untill this open is closed. Now this flag is processed by
->> VFS and CIFS filesystem. NFS returns -EINVAL for opens
->> with this flag.
->
-> This looks really, really good, thanks!
->
-> One question: If Samba wants to open a file for delete
-> access, there's no corresponding flag in the open
-> permissions. There can be the case where Samba wants to open
-> *just* for future unlink, no read or write access required.
-> Is there a way to achieve this atomically correct?
+CLAIM_FH was added by NFSv4.1.  It is the same as CLAIM_NULL except that it
+uses only current FH to identify the file to be opened.
 
-You can try to use O_PATH flag. It doesn't give you a delete access
-but should be ok because further deleting will be done without file
-descriptor -- through unlink syscall.
+The NFS client is using CLAIM_FH if the FH is available when opening a file.
+Currently, we cannot get any delegation if we stat a file before open it
+because the server delegation code does not recognize CLAIM_FH.
 
+We tested this patch and found delegation can be handed out now when claim is
+CLAIM_FH.
+
+See http://marc.info/?l=linux-nfs&m=136369847801388&w=2 and
+http://www.linux-nfs.org/wiki/index.php/Server_4.0_and_4.1_issues#New_open_claim_types
+
+Signed-off-by: Ming Chen <mchen@cs.stonybrook.edu>
+---
+ fs/nfsd/nfs4state.c |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 105d6fa..514d9c2 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -3125,6 +3125,7 @@ nfs4_open_delegation(struct net *net, struct svc_fh *fh,
+ 				goto out_no_deleg;
+ 			break;
+ 		case NFS4_OPEN_CLAIM_NULL:
++		case NFS4_OPEN_CLAIM_FH:
+ 			/*
+ 			 * Let's not give out any delegations till everyone's
+ 			 * had the chance to reclaim theirs....
 -- 
-Best regards,
-Pavel Shilovsky.
+1.7.1
