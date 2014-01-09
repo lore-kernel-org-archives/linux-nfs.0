@@ -1,60 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:30771 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751939AbaAXVus convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Jan 2014 16:50:48 -0500
-Content-Type: text/plain; charset=US-ASCII
-Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
-Subject: Re: [PATCH 0/3] NFS/RDMA bug fixes
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <CABgxfbEcKbeFMS=yobqp9TeHn4aa-Kjvi_tfbLK2xRbmFtmk9A@mail.gmail.com>
-Date: Fri, 24 Jan 2014 16:50:36 -0500
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <668FFA80-01F6-47EA-9594-3EEC9081BA34@oracle.com>
-References: <20140117193555.3452.31437.stgit@manet.1015granger.net> <CABgxfbFbLKV98GavS0x_X_ZXw0hZXPEQCpfoJJi+uNp133qt2w@mail.gmail.com> <18FE9D9E-F9E8-4E73-9B72-5829F356116A@oracle.com> <CABgxfbEcKbeFMS=yobqp9TeHn4aa-Kjvi_tfbLK2xRbmFtmk9A@mail.gmail.com>
-To: Wendy Cheng <s.wendy.cheng@gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:16845 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751137AbaAIQFC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 9 Jan 2014 11:05:02 -0500
+Message-ID: <52CEC911.4080506@RedHat.com>
+Date: Thu, 09 Jan 2014 11:06:41 -0500
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Joakim Tjernlund <joakim.tjernlund@transmode.se>
+CC: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfsd: fix minorversion-choosing interface
+References: <OFDD407A92.688D29A1-ONC1257C43.00634FC8-C1257C43.00645775@transmode.se> <20131216185419.GB31816@fieldses.org> <20131216200301.GD31816@fieldses.org> <OF149AE409.624B2B0A-ONC1257C43.006F77D7-C1257C43.006FCED2@transmode.se> <20131216202345.GF31816@fieldses.org> <OF942071D7.5EC379B1-ONC1257C43.007AB858-C1257C43.007B0CFB@transmode.se> <20131217034331.GB3490@fieldses.org> <52CC6B49.2070801@RedHat.com> <OF3BA89263.49226136-ONC1257C59.007AE7CD-C1257C59.007AFB8A@transmode.se>
+In-Reply-To: <OF3BA89263.49226136-ONC1257C59.007AE7CD-C1257C59.007AFB8A@transmode.se>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Jan 24, 2014, at 4:00 PM, Wendy Cheng <s.wendy.cheng@gmail.com> wrote:
 
-> On Fri, Jan 24, 2014 at 10:34 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+On 07/01/14 17:23, Joakim Tjernlund wrote:
+> Steve Dickson <SteveD@redhat.com> wrote on 2014/01/07 22:02:01:
+>>
+>>
+>> On 16/12/13 22:43, J. Bruce Fields wrote:
+>>> From: "J. Bruce Fields" <bfields@redhat.com>
+>>>
+>>> By unconditionally adding +/-4.2 to the version string written to the
+>>> kernel we make nfs-utils incompatible with pre-4.2-supporting kernels.
+>>>
+>>> Ditto for 4.1.  This problem was introduced by
+>>> 12a590f8d556c00a9502eeebaa763d906222d521 "rpc.nfsd: Allow v4.2 server
+>>> support with the -V option", which also change nfsd to unconditionally
+>>> pass +/-4.2.
+>>>
+>>> Instead, just don't mention 4.1 or 4.2 unless the commandline has
+>>> specifically requested that one or the other be turned on or off.
+>>>
+>>> Tested-by: Joakim Tjernlund <joakim.tjernlund@transmode.se>
+>>> Reported-by: Joakim Tjernlund <joakim.tjernlund@transmode.se>
+>>> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+>> Committed...
+>>
+>> steved
 > 
-> On Jan 24, 2014, at 1:26 PM, Wendy Cheng <s.wendy.cheng@gmail.com> wrote:
-> 
-> > On Fri, Jan 17, 2014 at 11:37 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
-> > This brief series fixes some long-standing regressions in our
-> > NFS/RDMA client implementation.  Comments / review?
-> >
-> > ---
-> >
-> > Chuck Lever (3):
-> >       SUNRPC: remove KERN_INFO from dprintk() call sites
-> >       SUNRPC: Fix large reads on NFS/RDMA
-> >       NFS: Fix READDIR oops with NFSv4 on RDMA
-> >
-> >
-> >  fs/nfs/nfs4xdr.c                |    3 +--
-> >  net/sunrpc/xprtrdma/rpc_rdma.c  |    4 +---
-> >  net/sunrpc/xprtrdma/transport.c |   10 +++++-----
-> >  3 files changed, 7 insertions(+), 10 deletions(-)
-> >
-> >
-> > We have an embedded system that is currently set at NFS V3 with kernel 2.6.38 (as NFS client). Could folks suggest a good kernel version (close to 2.6.38 or RHEL based) to pick up NFS v4 (in order to pick up NFS over RDMA) ?
-> 
-> If NFS/RDMA is working in your kernel, I believe NFSv3 and NFSv4 should both work over RDMA.
-> 
-> 
-> I did have V3 running (with NFS over RDMA). The issue here is how to move it from an experimental project into a release candidate. I think NFS V4 would be a better platform to start with (?) ... So let me re-phrase the question .. 
-> 
-> Regardless RDMA support, will (client side) NFS V4 work well with 2.6.38 kernel? If not, what would be a good version (close to 2.6.38) to go to for a stable NFS V4 client ?
+> Thanks, do plan on making a release soon?
+Sorry for the delayed response... 
 
-Client support for NFSv4 in recent updates of RHEL6 is stable.
+Its in my git tree and in Fedora 20 nfs-utils....
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+Is this what you were looking for? 
 
+steved.
 
-
+> 
+>     Jocke
+> 
