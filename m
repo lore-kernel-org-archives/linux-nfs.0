@@ -1,154 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:48516 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752814AbaAITZm convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jan 2014 14:25:42 -0500
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
-Subject: Re: NFS RDMA client hang (fwd)
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <99CA035A-C6DE-430C-810F-540BCC1E5E36@oracle.com>
-Date: Thu, 9 Jan 2014 14:25:25 -0500
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <0E3377BF-0FBB-4272-B14A-F9294B8E3CDC@oracle.com>
-References: <alpine.DEB.2.00.1401091923380.83455@bridge1.fy.chalmers.se> <99CA035A-C6DE-430C-810F-540BCC1E5E36@oracle.com>
-To: =?windows-1252?Q?H=E5kan_Johansson?= <f96hajo@chalmers.se>
+Received: from mx1.redhat.com ([209.132.183.28]:41519 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756652AbaAITNC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 9 Jan 2014 14:13:02 -0500
+Date: Thu, 9 Jan 2014 14:12:59 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: "Yin.JianHong" <jiyin@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH RFC] nfs: remove nfs_show_devname
+Message-ID: <20140109141259.553c58f0@tlielax.poochiereds.net>
+In-Reply-To: <6FE57B0D-2373-4B40-BA14-E6F2BF3C44E3@primarydata.com>
+References: <1389293995-634-1-git-send-email-jlayton@redhat.com>
+	<6FE57B0D-2373-4B40-BA14-E6F2BF3C44E3@primarydata.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Jan 9, 2014, at 2:07 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
+On Thu, 9 Jan 2014 14:06:54 -0500
+Trond Myklebust <trond.myklebust@primarydata.com> wrote:
 
 > 
-> On Jan 9, 2014, at 1:26 PM, Håkan Johansson <f96hajo@chalmers.se> wrote:
+> On Jan 9, 2014, at 13:59, Jeff Layton <jlayton@redhat.com> wrote:
 > 
->> 
->> Two machines, both running debian squeeze.  (the client with a normal NFS root filesystem).  It works to mount an NFS filesystem via IP over IB giving some 650 MB/s.  When I try to follow the instructions at
->> 
->> https://www.kernel.org/doc/Documentation/filesystems/nfs/nfs-rdma.txt
->> 
->> the client fails at the very last stage with a kernel panic.
+> > The nfs code will currently construct a devname to show in places like
+> > /proc/mounts by turning a dentry into a path. Unfortunately, that's
+> > somewhat problematic if the user ended up mounting through a symlink on
+> > the server. The devname that then shows up in /proc/mounts now doesn't
+> > match the one that was originally passed into the mount request.
 > 
->> 192.168.10.10 is the server, 192.168.10.11 is the client
->> 
->> mount -vvvv -o vers=3,nolock,tcp,proto=rdma,port=20049 192.168.10.10:/scratch.local1 /mnt
->> 
->> gives
->> 
->> mount: fstab path: "/etc/fstab"
->> mount: mtab path:  "/etc/mtab"
->> mount: lock path:  "/etc/mtab~"
->> mount: temp path:  "/etc/mtab.tmp"
->> mount: UID:        0
->> mount: eUID:       0
->> mount: no type was given - I'll assume nfs because of the colon
->> mount: spec:  "192.168.10.10:/scratch.local1"
->> mount: node:  "/mnt"
->> mount: types: "nfs"
->> mount: opts:  "vers=3,nolock,tcp,proto=rdma,port=20049"
->> mount: external mount: argv[0] = "/sbin/mount.nfs"
->> mount: external mount: argv[1] = "192.168.10.10:/scratch.local1"
->> mount: external mount: argv[2] = "/mnt"
->> mount: external mount: argv[3] = "-v"
->> mount: external mount: argv[4] = "-o"
->> mount: external mount: argv[5] = "rw,vers=3,nolock,tcp,proto=rdma,port=20049"
->> mount.nfs: timeout set for Thu Jan  9 18:04:46 2014
->> mount.nfs: trying text-based options 'vers=3,nolock,tcp,proto=rdma,port=20049,addr=192.168.10.10'
->> 
->> and then the client is stuck.  On the console there is a kernel panic
->> 
->> it is a bit long, so abbreviated here.  (The hang seems easily reproducible, so if really might help you, I could probably make a photo or so)
->> 
->> ----
->> 
->> ths appreaded with a 3.12 kernel
->> 
->> rpcdma: connection to 192.168.10.10:20049 closed (-111)
->> rpcdma: connection to 192.168.10.10:20049 closed (-111)
->> rpcdma: connection to 192.168.10.10:20049 on mlx4_0, memreg 5 slots 32 ird 16
->> 
->> very similar below.  the below is with a 3.10 kernel.  in both cases from debian.  also tested with a 3.2 kernel
->> 
->> general protection fault: 0000 [#1] SMP
->> 
->> call trace:
->> <IRQ>
->> tasklet_action+0x73/0xc2
->> __do_softirq
->> irq_exit
->> do_IRQ
->> common_interrupt
->> <EOI>
->> clockevents_program_event
->> arch_local_irq_enable
->> cpuidle_enter_state
->> cpuidle_idle_call
->> arch_cpu_idle
->> cpu_startup_entry
->> start_kernel
->> repair_cpu_string
->> x86_64_start_kernel
->> 
->> RIP    rpcrdma_run_tasklet  [xprtrdma]
->> 
->> ----
->> 
->> client is a sandy bridge E3-1245
->> 
->> I bring the infiniband up like this:
->> 
->> modprobe ib_mthca
->> modprobe ib_ipoib
->> modprobe mlx4_ib
->> modprobe ib_mad
->> modprobe ib_umad
->> modprobe ib_urdma
->> modprobe rdma_cm
->> modprobe rdma_ucm
->> ibstat
->> /etc/init.d/opensm restart
->> /sbin/ifconfig ib0 inet 192.168.10.11 up
->> IPTABLES=/sbin/iptables
->> $IPTABLES -t filter -A OUTPUT -o ib0 -j ACCEPT
->> $IPTABLES -t filter -A INPUT -i ib0 -j ACCEPT
->> /etc/init.d/opensm restart
->> 
->> modprobe xprtrdma
->> 
->> and similar on the server.
->> 
->> Both have
->> 
->> InfiniBand: Mellanox Technologies MT25418 [ConnectX VPI PCIe 2.0 2.5GT/s - IB DDR / 10GigE] (rev a0) adapters.
->> 
->> http://www.ebay.com/itm/HP-452372-001-Infiniband-PCI-E-4X-DDR-Dual-Port-Storage-Host-Channel-Adapter-HCA-/360657396651?pt=UK_Computing_ComputerComponents_InterfaceCards&hash=item53f8db23ab
->> 
->> Any suggestions?
->> 
->> ---
->> 
->> I first sent this mail to nfs-rdma-devel@lists.sourceforge.net (as
->> suggested in)
->> 
->> https://www.kernel.org/doc/Documentation/filesystems/nfs/nfs-rdma.txt
->> 
->> but got:
->> 
->> sog-mx-1.v43.ch3.sourceforge.com gave this error: unknown user
->> 
->> mailing list does not exist any longer?
+> This is 100% according to design. Why is it suddenly a problem?
 > 
-> That documentation is probably out of date.
+> By displaying the original pathname, you also end up bypassing referral resolution, etc. This is exactly why the .show_devname operation was introduced in the first place.
 > 
-> I don’t see anything immediately wrong with your configuration, but NFS/RDMA has suffered from some bit rot over the past few years.  The current upstream kernels are known to have data corruption bugs and panics.
-> 
-> I recommend staying with NFS on IPoIB for the time being.
 
-Fwiw, I filed: https://bugzilla.kernel.org/show_bug.cgi?id=68351
+AFAIU, the main issue is that when /etc/mtab is a symlink
+to /proc/mounts, you can't do this in the example in the patch
+description:
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+    # mount server:/export/bar /mnt/bar
+    # umount server:/export/bar
 
+...since umount will try to ID the mountpoint by looking up the devname
+in /etc/mtab. What exactly would this break with referrals?
 
-
+-- 
+Jeff Layton <jlayton@redhat.com>
