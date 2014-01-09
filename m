@@ -1,58 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:63347 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755212AbaADP21 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 4 Jan 2014 10:28:27 -0500
-Subject: Re: [RFC PATCH 1/5] sunrpc: don't wait for write before allowing
- reads from use-gss-proxy file
-From: Simo Sorce <simo@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org, neilb@suse.de
-In-Reply-To: <20140103223451.GE5164@fieldses.org>
-References: <1388579314-15255-1-git-send-email-jlayton@redhat.com>
-	 <1388579314-15255-2-git-send-email-jlayton@redhat.com>
-	 <20140102212149.GC28219@fieldses.org>
-	 <20140102172651.559eaa48@tlielax.poochiereds.net>
-	 <20140102224009.GF28219@fieldses.org>
-	 <20140102182746.547964c0@tlielax.poochiereds.net>
-	 <1388736843.26102.33.camel@willson.li.ssimo.org>
-	 <20140103162319.GK28219@fieldses.org>
-	 <1388786760.26102.65.camel@willson.li.ssimo.org>
-	 <20140103223451.GE5164@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"
-Date: Sat, 04 Jan 2014 10:28:22 -0500
-Message-ID: <1388849302.26102.66.camel@willson.li.ssimo.org>
-Mime-Version: 1.0
+Received: from mail-pb0-f43.google.com ([209.85.160.43]:39567 "EHLO
+	mail-pb0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750876AbaAIKbZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jan 2014 05:31:25 -0500
+Received: by mail-pb0-f43.google.com with SMTP id rq2so2854275pbb.2
+        for <linux-nfs@vger.kernel.org>; Thu, 09 Jan 2014 02:31:25 -0800 (PST)
+Message-ID: <52CE7A76.3080101@gmail.com>
+Date: Thu, 09 Jan 2014 18:31:18 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
+MIME-Version: 1.0
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Dr Fields James Bruce <bfields@fieldses.org>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: [PATCH 0/5] NFSD/SUNRPC: Fix some bugs which cause memory leak for
+ the backchannel
+References: <52CA7862.1020203@gmail.com> <20140106184926.GC31764@fieldses.org> <24D159B0-C13D-43A6-B307-2B967E154353@primarydata.com> <20140106225346.GB3342@fieldses.org> <FAC96643-8DBB-4CC8-9D43-73C69E8E6125@primarydata.com> <52CB8B79.6040907@gmail.com>
+In-Reply-To: <52CB8B79.6040907@gmail.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2014-01-03 at 17:34 -0500, J. Bruce Fields wrote:
-> On Fri, Jan 03, 2014 at 05:06:00PM -0500, Simo Sorce wrote:
-> > I'd like to use sd_notify, but preferred a more conservative approach
-> > for wider distribution portability.
-> > 
-> > Patch here waiting for review upstream:
-> > http://fedorapeople.org/cgit/simo/public_git/gss-proxy.git/commit/?h=usermode&id=ddc5eb950bbd2050dc76b4783f3d3383cd89bccf
-> 
-> Thanks.  If it's not too much verbage, it might be helpful to document
-> the reason for the ordering; something like:
-> 
-> 	/*
-> 	 * We need to tell nfsd gss-proxy is available before it starts,
-> 	 * as nfsd may need to know this the moment it receives the
-> 	 * first init_sec_context call.
-> 	 *
-> 	 * So now it is safe to tell the init system that we're done
-> 	 * starting up and that it can continue with nfsd startup.
-> 	 */
-> 
-> ?
+When using pynfs test-site, I get some memory leak for the backchannel.
+1,2,4,5 are bugfix, 3 adds a helper function for 4.
 
-Good idea, I changed the comments loosely after your example:
-http://fedorapeople.org/cgit/simo/public_git/gss-proxy.git/commit/?h=usermode&id=393570b45816b690cb16fd1286d0705142ef2d62
+Kinglong Mee (5):
+  NFSD: Using free_conn free connection
+  NFSD: Free backchannel xprt in bc_destroy
+  SUNRPC: New helper for creating client with rpc_xprt
+  NFSD/SUNRPC: Check rpc_xprt out of  xs_setup_bc_tcp
+  SUNRPC: Clear xpt_bc_xprt if xs_setup_bc_tcp failed
 
-Simo.
+ fs/nfsd/nfs4callback.c      | 19 ++++++++++++++-
+ fs/nfsd/nfs4state.c         |  3 ++-
+ include/linux/sunrpc/clnt.h |  2 ++
+ include/linux/sunrpc/xprt.h | 13 +++++++++-
+ net/sunrpc/clnt.c           | 58 ++++++++++++++++++++++++++-------------------
+ net/sunrpc/xprt.c           | 12 ----------
+ net/sunrpc/xprtsock.c       | 16 +++++--------
+ 7 files changed, 73 insertions(+), 50 deletions(-)
 
 -- 
-Simo Sorce * Red Hat, Inc * New York
-
+1.8.4.2
