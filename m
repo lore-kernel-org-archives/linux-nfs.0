@@ -1,65 +1,154 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f170.google.com ([209.85.223.170]:56686 "EHLO
-	mail-ie0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752553AbaATDpu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 19 Jan 2014 22:45:50 -0500
-Received: by mail-ie0-f170.google.com with SMTP id u16so5982072iet.1
-        for <linux-nfs@vger.kernel.org>; Sun, 19 Jan 2014 19:45:50 -0800 (PST)
-From: Weston Andros Adamson <dros@primarydata.com>
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
-Subject: [PATCH 2/2] nfs4: fix comments in discover_server_trunking
-Date: Sun, 19 Jan 2014 22:45:37 -0500
-Message-Id: <1390189537-9666-2-git-send-email-dros@primarydata.com>
-In-Reply-To: <1390189537-9666-1-git-send-email-dros@primarydata.com>
-References: <1390189537-9666-1-git-send-email-dros@primarydata.com>
+Received: from aserp1040.oracle.com ([141.146.126.69]:48516 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752814AbaAITZm convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jan 2014 14:25:42 -0500
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
+Subject: Re: NFS RDMA client hang (fwd)
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <99CA035A-C6DE-430C-810F-540BCC1E5E36@oracle.com>
+Date: Thu, 9 Jan 2014 14:25:25 -0500
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <0E3377BF-0FBB-4272-B14A-F9294B8E3CDC@oracle.com>
+References: <alpine.DEB.2.00.1401091923380.83455@bridge1.fy.chalmers.se> <99CA035A-C6DE-430C-810F-540BCC1E5E36@oracle.com>
+To: =?windows-1252?Q?H=E5kan_Johansson?= <f96hajo@chalmers.se>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-'result' is not updated if a match isn't found in the
-nfs4_discover_server_trunking path.
 
-Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
----
- fs/nfs/nfs4client.c | 4 ++--
- fs/nfs/nfs4state.c  | 2 +-
- 2 files changed, 3 insertions(+), 3 deletions(-)
+On Jan 9, 2014, at 2:07 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
 
-diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-index 0f9b772..147a752 100644
---- a/fs/nfs/nfs4client.c
-+++ b/fs/nfs/nfs4client.c
-@@ -465,7 +465,7 @@ static void nfs4_swap_callback_idents(struct nfs_client *keep,
-  * nfs40_walk_client_list - Find server that recognizes a client ID
-  *
-  * @new: nfs_client with client ID to test
-- * @result: OUT: found nfs_client, or new
-+ * @result: OUT: found nfs_client
-  * @cred: credential to use for trunking test
-  *
-  * Returns zero, a negative errno, or a negative NFS4ERR status.
-@@ -601,7 +601,7 @@ out_major_mismatch:
-  * nfs41_walk_client_list - Find nfs_client that matches a client/server owner
-  *
-  * @new: nfs_client with client ID to test
-- * @result: OUT: found nfs_client, or new
-+ * @result: OUT: found nfs_client
-  * @cred: credential to use for trunking test
-  *
-  * Returns zero, a negative errno, or a negative NFS4ERR status.
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index e5be725..666512e 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -328,7 +328,7 @@ out:
-  * nfs41_discover_server_trunking - Detect server IP address trunking (mv1)
-  *
-  * @clp: nfs_client under test
-- * @result: OUT: found nfs_client, or clp
-+ * @result: OUT: found nfs_client
-  * @cred: credential to use for trunking test
-  *
-  * Returns NFS4_OK, a negative errno, or a negative NFS4ERR status.
--- 
-1.8.3.4 (Apple Git-47)
+> 
+> On Jan 9, 2014, at 1:26 PM, Håkan Johansson <f96hajo@chalmers.se> wrote:
+> 
+>> 
+>> Two machines, both running debian squeeze.  (the client with a normal NFS root filesystem).  It works to mount an NFS filesystem via IP over IB giving some 650 MB/s.  When I try to follow the instructions at
+>> 
+>> https://www.kernel.org/doc/Documentation/filesystems/nfs/nfs-rdma.txt
+>> 
+>> the client fails at the very last stage with a kernel panic.
+> 
+>> 192.168.10.10 is the server, 192.168.10.11 is the client
+>> 
+>> mount -vvvv -o vers=3,nolock,tcp,proto=rdma,port=20049 192.168.10.10:/scratch.local1 /mnt
+>> 
+>> gives
+>> 
+>> mount: fstab path: "/etc/fstab"
+>> mount: mtab path:  "/etc/mtab"
+>> mount: lock path:  "/etc/mtab~"
+>> mount: temp path:  "/etc/mtab.tmp"
+>> mount: UID:        0
+>> mount: eUID:       0
+>> mount: no type was given - I'll assume nfs because of the colon
+>> mount: spec:  "192.168.10.10:/scratch.local1"
+>> mount: node:  "/mnt"
+>> mount: types: "nfs"
+>> mount: opts:  "vers=3,nolock,tcp,proto=rdma,port=20049"
+>> mount: external mount: argv[0] = "/sbin/mount.nfs"
+>> mount: external mount: argv[1] = "192.168.10.10:/scratch.local1"
+>> mount: external mount: argv[2] = "/mnt"
+>> mount: external mount: argv[3] = "-v"
+>> mount: external mount: argv[4] = "-o"
+>> mount: external mount: argv[5] = "rw,vers=3,nolock,tcp,proto=rdma,port=20049"
+>> mount.nfs: timeout set for Thu Jan  9 18:04:46 2014
+>> mount.nfs: trying text-based options 'vers=3,nolock,tcp,proto=rdma,port=20049,addr=192.168.10.10'
+>> 
+>> and then the client is stuck.  On the console there is a kernel panic
+>> 
+>> it is a bit long, so abbreviated here.  (The hang seems easily reproducible, so if really might help you, I could probably make a photo or so)
+>> 
+>> ----
+>> 
+>> ths appreaded with a 3.12 kernel
+>> 
+>> rpcdma: connection to 192.168.10.10:20049 closed (-111)
+>> rpcdma: connection to 192.168.10.10:20049 closed (-111)
+>> rpcdma: connection to 192.168.10.10:20049 on mlx4_0, memreg 5 slots 32 ird 16
+>> 
+>> very similar below.  the below is with a 3.10 kernel.  in both cases from debian.  also tested with a 3.2 kernel
+>> 
+>> general protection fault: 0000 [#1] SMP
+>> 
+>> call trace:
+>> <IRQ>
+>> tasklet_action+0x73/0xc2
+>> __do_softirq
+>> irq_exit
+>> do_IRQ
+>> common_interrupt
+>> <EOI>
+>> clockevents_program_event
+>> arch_local_irq_enable
+>> cpuidle_enter_state
+>> cpuidle_idle_call
+>> arch_cpu_idle
+>> cpu_startup_entry
+>> start_kernel
+>> repair_cpu_string
+>> x86_64_start_kernel
+>> 
+>> RIP    rpcrdma_run_tasklet  [xprtrdma]
+>> 
+>> ----
+>> 
+>> client is a sandy bridge E3-1245
+>> 
+>> I bring the infiniband up like this:
+>> 
+>> modprobe ib_mthca
+>> modprobe ib_ipoib
+>> modprobe mlx4_ib
+>> modprobe ib_mad
+>> modprobe ib_umad
+>> modprobe ib_urdma
+>> modprobe rdma_cm
+>> modprobe rdma_ucm
+>> ibstat
+>> /etc/init.d/opensm restart
+>> /sbin/ifconfig ib0 inet 192.168.10.11 up
+>> IPTABLES=/sbin/iptables
+>> $IPTABLES -t filter -A OUTPUT -o ib0 -j ACCEPT
+>> $IPTABLES -t filter -A INPUT -i ib0 -j ACCEPT
+>> /etc/init.d/opensm restart
+>> 
+>> modprobe xprtrdma
+>> 
+>> and similar on the server.
+>> 
+>> Both have
+>> 
+>> InfiniBand: Mellanox Technologies MT25418 [ConnectX VPI PCIe 2.0 2.5GT/s - IB DDR / 10GigE] (rev a0) adapters.
+>> 
+>> http://www.ebay.com/itm/HP-452372-001-Infiniband-PCI-E-4X-DDR-Dual-Port-Storage-Host-Channel-Adapter-HCA-/360657396651?pt=UK_Computing_ComputerComponents_InterfaceCards&hash=item53f8db23ab
+>> 
+>> Any suggestions?
+>> 
+>> ---
+>> 
+>> I first sent this mail to nfs-rdma-devel@lists.sourceforge.net (as
+>> suggested in)
+>> 
+>> https://www.kernel.org/doc/Documentation/filesystems/nfs/nfs-rdma.txt
+>> 
+>> but got:
+>> 
+>> sog-mx-1.v43.ch3.sourceforge.com gave this error: unknown user
+>> 
+>> mailing list does not exist any longer?
+> 
+> That documentation is probably out of date.
+> 
+> I don’t see anything immediately wrong with your configuration, but NFS/RDMA has suffered from some bit rot over the past few years.  The current upstream kernels are known to have data corruption bugs and panics.
+> 
+> I recommend staying with NFS on IPoIB for the time being.
+
+Fwiw, I filed: https://bugzilla.kernel.org/show_bug.cgi?id=68351
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
 
