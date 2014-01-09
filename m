@@ -1,82 +1,38 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from youngberry.canonical.com ([91.189.89.112]:36871 "EHLO
-	youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752081AbaASVu4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 19 Jan 2014 16:50:56 -0500
-Date: Sun, 19 Jan 2014 21:50:51 +0000
-From: Luis Henriques <luis.henriques@canonical.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "David S. Miller" <davem@davemloft.net>
-Cc: linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: [PATCH] gss_krb5: use lcm from kernel lib
-Message-ID: <20140119215040.GA7978@hercules>
-MIME-Version: 1.0
+Received: from mail-ie0-f176.google.com ([209.85.223.176]:62723 "EHLO
+	mail-ie0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754343AbaAITG5 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jan 2014 14:06:57 -0500
+Received: by mail-ie0-f176.google.com with SMTP id at1so4054137iec.35
+        for <linux-nfs@vger.kernel.org>; Thu, 09 Jan 2014 11:06:57 -0800 (PST)
 Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
+Subject: Re: [PATCH RFC] nfs: remove nfs_show_devname
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+In-Reply-To: <1389293995-634-1-git-send-email-jlayton@redhat.com>
+Date: Thu, 9 Jan 2014 14:06:54 -0500
+Cc: "Yin.JianHong" <jiyin@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <6FE57B0D-2373-4B40-BA14-E6F2BF3C44E3@primarydata.com>
+References: <1389293995-634-1-git-send-email-jlayton@redhat.com>
+To: Layton Jeff <jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Replace hardcoded lowest common multiple algorithm by the lcm()
-function in kernel lib.
 
-Signed-off-by: Luis Henriques <luis.henriques@canonical.com>
----
- net/sunrpc/auth_gss/gss_krb5_keys.c | 17 ++++-------------
- 1 file changed, 4 insertions(+), 13 deletions(-)
+On Jan 9, 2014, at 13:59, Jeff Layton <jlayton@redhat.com> wrote:
 
-diff --git a/net/sunrpc/auth_gss/gss_krb5_keys.c b/net/sunrpc/auth_gss/gss_krb5_keys.c
-index 76e42e6..a16c5b6 100644
---- a/net/sunrpc/auth_gss/gss_krb5_keys.c
-+++ b/net/sunrpc/auth_gss/gss_krb5_keys.c
-@@ -59,6 +59,7 @@
- #include <linux/crypto.h>
- #include <linux/sunrpc/gss_krb5.h>
- #include <linux/sunrpc/xdr.h>
-+#include <linux/lcm.h>
- 
- #ifdef RPC_DEBUG
- # define RPCDBG_FACILITY        RPCDBG_AUTH
-@@ -72,7 +73,7 @@
- static void krb5_nfold(u32 inbits, const u8 *in,
- 		       u32 outbits, u8 *out)
- {
--	int a, b, c, lcm;
-+	unsigned long ulcm;
- 	int byte, i, msbit;
- 
- 	/* the code below is more readable if I make these bytes
-@@ -82,17 +83,7 @@ static void krb5_nfold(u32 inbits, const u8 *in,
- 	outbits >>= 3;
- 
- 	/* first compute lcm(n,k) */
--
--	a = outbits;
--	b = inbits;
--
--	while (b != 0) {
--		c = b;
--		b = a%b;
--		a = c;
--	}
--
--	lcm = outbits*inbits/a;
-+	ulcm = lcm(inbits, outbits);
- 
- 	/* now do the real work */
- 
-@@ -101,7 +92,7 @@ static void krb5_nfold(u32 inbits, const u8 *in,
- 
- 	/* this will end up cycling through k lcm(k,n)/k times, which
- 	   is correct */
--	for (i = lcm-1; i >= 0; i--) {
-+	for (i = ulcm-1; i >= 0; i--) {
- 		/* compute the msbit in k which gets added into this byte */
- 		msbit = (
- 			/* first, start with the msbit in the first,
--- 
-1.8.3.2
+> The nfs code will currently construct a devname to show in places like
+> /proc/mounts by turning a dentry into a path. Unfortunately, that's
+> somewhat problematic if the user ended up mounting through a symlink on
+> the server. The devname that then shows up in /proc/mounts now doesn't
+> match the one that was originally passed into the mount request.
 
-Cheers,
+This is 100% according to design. Why is it suddenly a problem?
+
+By displaying the original pathname, you also end up bypassing referral resolution, etc. This is exactly why the .show_devname operation was introduced in the first place.
+
 --
-Luis
+Trond Myklebust
+Linux NFS client maintainer
+
