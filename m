@@ -1,96 +1,118 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([209.166.131.148]:39726 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751318AbaANPba (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Jan 2014 10:31:30 -0500
-Message-ID: <52D55846.7090205@panasas.com>
-Date: Tue, 14 Jan 2014 17:31:18 +0200
-From: Boaz Harrosh <bharrosh@panasas.com>
-MIME-Version: 1.0
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
-Subject: Re: [osd-dev] [PATCH] pnfs-obj: Proper delay for NFS4ERR_RECALLCONFLICT
- in layout_get_done
-References: <52D54D87.7010100@panasas.com>
-In-Reply-To: <52D54D87.7010100@panasas.com>
-Content-Type: text/plain; charset="UTF-8"
+Received: from mail-qc0-f171.google.com ([209.85.216.171]:40612 "EHLO
+	mail-qc0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754477AbaAITAD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jan 2014 14:00:03 -0500
+Received: by mail-qc0-f171.google.com with SMTP id n7so1481574qcx.16
+        for <linux-nfs@vger.kernel.org>; Thu, 09 Jan 2014 11:00:01 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: trond.myklebust@primarydata.com
+Cc: "Yin.JianHong" <jiyin@redhat.com>, linux-nfs@vger.kernel.org
+Subject: [PATCH RFC] nfs: remove nfs_show_devname
+Date: Thu,  9 Jan 2014 13:59:55 -0500
+Message-Id: <1389293995-634-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Trond hi
+The nfs code will currently construct a devname to show in places like
+/proc/mounts by turning a dentry into a path. Unfortunately, that's
+somewhat problematic if the user ended up mounting through a symlink on
+the server. The devname that then shows up in /proc/mounts now doesn't
+match the one that was originally passed into the mount request.
 
-The subject needs to read "pnfs:" and not "pnfs-obj:"
+For instance, suppose a server is exporting a filesystem "/export". We
+then have this in /export:
 
-On 01/14/2014 04:45 PM, Boaz Harrosh wrote:
-> 
-> An NFS4ERR_RECALLCONFLICT is returned by server from a GET_LAYOUT
-> only when a Server Sent a RECALL do to that GET_LAYOUT, or
-> the RECALL and GET_LAYOUT crossed on the wire.
-> In any way this means we want to wait at most until in-flight IO
-> is finished and the RECALL can be satisfied.
-> 
-> So a proper wait here is more like 1/10 of a second, not 15 seconds
-> like we have now. (We use NFS4_POLL_RETRY_MIN here)
-> 
-> Current code totally craps out performance of very large files on
-> most pnfs-objects layouts, because of how the map changes when the
-> file has grown and spills into the next raid group.
-> 
-> CC: Stable Tree <stable@kernel.org>
+    $ ls -ld foo bar
+    lrwxrwxrwx. 1 root root 3 Jan  9 13:46 bar -> foo
+    drwxr-xr-x. 2 root root 6 Jan  9 13:45 foo
 
-And please fix the email here to <stable@vger.kernel.org>
-(OK I'll send a new one sorry)
+Now, on the client we mount up 'bar':
 
-Thanks
-Boaz
+    # mount server:/export/bar /mnt/server
 
-> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
-> ---
->  fs/nfs/nfs4proc.c | 22 +++++++++++++++++++---
->  1 file changed, 19 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index d53d678..3264fca 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -7058,7 +7058,7 @@ static void nfs4_layoutget_done(struct rpc_task *task, void *calldata)
->  	struct nfs4_state *state = NULL;
->  	unsigned long timeo, giveup;
->  
-> -	dprintk("--> %s\n", __func__);
-> +	dprintk("--> %s tk_status => %d\n", __func__, task->tk_status);
->  
->  	if (!nfs41_sequence_done(task, &lgp->res.seq_res))
->  		goto out;
-> @@ -7067,11 +7067,27 @@ static void nfs4_layoutget_done(struct rpc_task *task, void *calldata)
->  	case 0:
->  		goto out;
->  	case -NFS4ERR_LAYOUTTRYLATER:
-> +	/* NFS4ERR_RECALLCONFLICT is always a minimal delay (conflict with
-> +	 * self)
-> +	 * TODO: NFS4ERR_LAYOUTTRYLATER is a conflict with another client
-> +	 * (or clients). What we should do is randomize a short delay like on a
-> +	 * network broadcast burst, and raise the random max every failure.
-> +	 * For now leave it stateless and do this polling.
-> +	 */
->  	case -NFS4ERR_RECALLCONFLICT:
->  		timeo = rpc_get_timeout(task->tk_client);
->  		giveup = lgp->args.timestamp + timeo;
-> -		if (time_after(giveup, jiffies))
-> -			task->tk_status = -NFS4ERR_DELAY;
-> +		if (time_after(giveup, jiffies)) {
-> +			/* Do a minimum delay, We are actually waiting for our
-> +			 * own IO to finish (In most cases)
-> +			 */
-> +			dprintk("%s: NFS4ERR_RECALLCONFLICT waiting\n",
-> +				__func__);
-> +			rpc_delay(task, NFS4_POLL_RETRY_MIN);
-> +			task->tk_status = 0;
-> +			rpc_restart_call_prepare(task);
-> +			goto out; /* Do not call nfs4_async_handle_error() */
-> +		}
->  		break;
->  	case -NFS4ERR_EXPIRED:
->  	case -NFS4ERR_BAD_STATEID:
-> 
+...and 'df' now shows a different devname altogether.
+
+    server:/export/foo                20G   66M   20G   1% /mnt/server
+
+In the "old days", this didn't really matter since /proc/mounts was just
+informational. On modern distros /etc/mtab is usually a symlink to
+/proc/mounts so this means that unmounting by devname isn't always
+reliable.
+
+This patch just removes all of this code and has nfs just use the
+kernel's standard facility for tracking the devname. With this, the
+actual device name used to do the mount is displayed in
+/proc/self/mounts, /proc/self/mountinfo, and /proc/self/mountstats.
+
+Reported-by: Yin.JianHong <jiyin@redhat.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfs/internal.h  |  1 -
+ fs/nfs/nfs4super.c |  1 -
+ fs/nfs/super.c     | 18 ------------------
+ 3 files changed, 20 deletions(-)
+
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 8b5cc04..4e17d3f 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -403,7 +403,6 @@ void nfs_clone_super(struct super_block *, struct nfs_mount_info *);
+ void nfs_umount_begin(struct super_block *);
+ int  nfs_statfs(struct dentry *, struct kstatfs *);
+ int  nfs_show_options(struct seq_file *, struct dentry *);
+-int  nfs_show_devname(struct seq_file *, struct dentry *);
+ int  nfs_show_path(struct seq_file *, struct dentry *);
+ int  nfs_show_stats(struct seq_file *, struct dentry *);
+ void nfs_put_super(struct super_block *);
+diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
+index 65ab0a0..dc09ad2 100644
+--- a/fs/nfs/nfs4super.c
++++ b/fs/nfs/nfs4super.c
+@@ -58,7 +58,6 @@ static const struct super_operations nfs4_sops = {
+ 	.evict_inode	= nfs4_evict_inode,
+ 	.umount_begin	= nfs_umount_begin,
+ 	.show_options	= nfs_show_options,
+-	.show_devname	= nfs_show_devname,
+ 	.show_path	= nfs_show_path,
+ 	.show_stats	= nfs_show_stats,
+ 	.remount_fs	= nfs_remount,
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 910ed90..9490d8ef 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -316,7 +316,6 @@ const struct super_operations nfs_sops = {
+ 	.evict_inode	= nfs_evict_inode,
+ 	.umount_begin	= nfs_umount_begin,
+ 	.show_options	= nfs_show_options,
+-	.show_devname	= nfs_show_devname,
+ 	.show_path	= nfs_show_path,
+ 	.show_stats	= nfs_show_stats,
+ 	.remount_fs	= nfs_remount,
+@@ -773,23 +772,6 @@ static void show_implementation_id(struct seq_file *m, struct nfs_server *nfss)
+ }
+ #endif
+ 
+-int nfs_show_devname(struct seq_file *m, struct dentry *root)
+-{
+-	char *page = (char *) __get_free_page(GFP_KERNEL);
+-	char *devname, *dummy;
+-	int err = 0;
+-	if (!page)
+-		return -ENOMEM;
+-	devname = nfs_path(&dummy, root, page, PAGE_SIZE, 0);
+-	if (IS_ERR(devname))
+-		err = PTR_ERR(devname);
+-	else
+-		seq_escape(m, devname, " \t\n\\");
+-	free_page((unsigned long)page);
+-	return err;
+-}
+-EXPORT_SYMBOL_GPL(nfs_show_devname);
+-
+ int nfs_show_path(struct seq_file *m, struct dentry *dentry)
+ {
+ 	seq_puts(m, "/");
+-- 
+1.8.4.2
 
