@@ -1,89 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:43246 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:14737 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751259AbaAOPRu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 15 Jan 2014 10:17:50 -0500
-Date: Wed, 15 Jan 2014 10:17:49 -0500
-To: Al Viro <viro@zeniv.linux.org.uk>
-Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, Miklos Szeredi <mszeredi@suse.cz>
-Subject: [PATCH] dcache: fix d_splice_alias handling of aliases
-Message-ID: <20140115151749.GF23999@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1756267AbaAITz3 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jan 2014 14:55:29 -0500
+Date: Thu, 9 Jan 2014 14:55:24 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: "Yin.JianHong" <jiyin@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH RFC] nfs: remove nfs_show_devname
+Message-ID: <20140109145524.7c50ab8c@corrin.poochiereds.net>
+In-Reply-To: <7AA69B49-5971-4548-BE27-B8F90D1C0F10@primarydata.com>
+References: <1389293995-634-1-git-send-email-jlayton@redhat.com>
+	<6FE57B0D-2373-4B40-BA14-E6F2BF3C44E3@primarydata.com>
+	<20140109141259.553c58f0@tlielax.poochiereds.net>
+	<7AA69B49-5971-4548-BE27-B8F90D1C0F10@primarydata.com>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Thu, 9 Jan 2014 14:27:04 -0500
+Trond Myklebust <trond.myklebust@primarydata.com> wrote:
 
-d_splice_alias can create duplicate directory aliases (in the !new
-case), or (in the new case) d_move without holding appropriate locks.
+> 
+> On Jan 9, 2014, at 14:12, Jeff Layton <jlayton@redhat.com> wrote:
+> 
+> > On Thu, 9 Jan 2014 14:06:54 -0500
+> > Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+> > 
+> >> 
+> >> On Jan 9, 2014, at 13:59, Jeff Layton <jlayton@redhat.com> wrote:
+> >> 
+> >>> The nfs code will currently construct a devname to show in places like
+> >>> /proc/mounts by turning a dentry into a path. Unfortunately, that's
+> >>> somewhat problematic if the user ended up mounting through a symlink on
+> >>> the server. The devname that then shows up in /proc/mounts now doesn't
+> >>> match the one that was originally passed into the mount request.
+> >> 
+> >> This is 100% according to design. Why is it suddenly a problem?
+> >> 
+> >> By displaying the original pathname, you also end up bypassing referral resolution, etc. This is exactly why the .show_devname operation was introduced in the first place.
+> >> 
+> > 
+> > AFAIU, the main issue is that when /etc/mtab is a symlink
+> > to /proc/mounts, you can't do this in the example in the patch
+> > description:
+> > 
+> >    # mount server:/export/bar /mnt/bar
+> >    # umount server:/export/bar
+> > 
+> > ...since umount will try to ID the mountpoint by looking up the devname
+> > in /etc/mtab.
+> 
+> The NFS pathname is NOT a devname. It shouldn’t be abused as a substitute for a mount point.
+> 
+> Particularly not so when you consider that the same NFS path can be mounted in several different places with different mount options. The same path can even refer to completely different locations (i.e. different file handles) if, say, the original directory has been renamed on the server.
+> 
+> > What exactly would this break with referrals?
+> > 
+> 
+> It would “break” in the sense that the admin would have no clue that his client is actually talking to a different server than the one specified in the mount.
+> 
 
-d_materialise_unique deals with both of these problems.  (The latter
-seems to be dealt by trylocks (see __d_unalias), which look like they
-could cause spurious lookup failures--but that's at least better than
-corrupting the dcache.)
+Good point. Ok, I don't think the problem really rises above the level
+of annoyance, so let's just drop this patch.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/dcache.c |   25 +------------------------
- 1 file changed, 1 insertion(+), 24 deletions(-)
-
-Only lightly tested....  If this is right, then we can also just ditch
-d_splice_alias completely, and clean up the various d_find_alias's.
-
-I think the only reason we have both d_splice_alias and
-d_materialise_unique is that the former was written for exportable
-filesystems and the latter for distributed filesystems.
-
-But we have at least one exportable filesystem (fuse) using
-d_materialise_unique.  And I doubt d_splice_alias was ever completely
-correct even for on-disk filesystems.
-
-Am I missing some subtlety?
-
---b.
-
-diff --git a/fs/dcache.c b/fs/dcache.c
-index 4bdb300..da82fa9 100644
---- a/fs/dcache.c
-+++ b/fs/dcache.c
-@@ -1926,33 +1926,10 @@ EXPORT_SYMBOL(d_obtain_alias);
-  */
- struct dentry *d_splice_alias(struct inode *inode, struct dentry *dentry)
- {
--	struct dentry *new = NULL;
--
- 	if (IS_ERR(inode))
- 		return ERR_CAST(inode);
- 
--	if (inode && S_ISDIR(inode->i_mode)) {
--		spin_lock(&inode->i_lock);
--		new = __d_find_alias(inode, 1);
--		if (new) {
--			BUG_ON(!(new->d_flags & DCACHE_DISCONNECTED));
--			spin_unlock(&inode->i_lock);
--			security_d_instantiate(new, inode);
--			d_move(new, dentry);
--			iput(inode);
--		} else {
--			/* already taking inode->i_lock, so d_add() by hand */
--			__d_instantiate(dentry, inode);
--			spin_unlock(&inode->i_lock);
--			security_d_instantiate(dentry, inode);
--			d_rehash(dentry);
--		}
--	} else {
--		d_instantiate(dentry, inode);
--		if (d_unhashed(dentry))
--			d_rehash(dentry);
--	}
--	return new;
-+	return d_materialise_unique(dentry, inode);
- }
- EXPORT_SYMBOL(d_splice_alias);
- 
+Thanks,
 -- 
-1.7.9.5
-
+Jeff Layton <jlayton@redhat.com>
