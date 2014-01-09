@@ -1,53 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from edge3.cs.stonybrook.edu ([130.245.9.168]:16408 "EHLO
-	edge3.cs.stonybrook.edu" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753729AbaAIVbg convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jan 2014 16:31:36 -0500
-From: Ming Chen <mchen@cs.stonybrook.edu>
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
-CC: "bfields@fieldses.org" <bfields@fieldses.org>,
-        "trond.myklebust@primarydata.com" <trond.myklebust@primarydata.com>,
-        "Erez Zadok" <ezk@fsl.cs.sunysb.edu>,
-        "dhildeb@us.ibm.com" <dhildeb@us.ibm.com>,
-        "geoff@cs.hmc.edu" <geoff@cs.hmc.edu>
-Subject: [PATCH] nfsd: consider CLAIM_FH when handing out delegation
-Date: Thu, 9 Jan 2014 21:26:10 +0000
-Message-ID: <F2EEB2C045C93A4889A2C09F59EDB20858153672@mail2.cs.stonybrook.edu>
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
+Received: from mail-ig0-f176.google.com ([209.85.213.176]:41416 "EHLO
+	mail-ig0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751137AbaAIT1H convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jan 2014 14:27:07 -0500
+Received: by mail-ig0-f176.google.com with SMTP id k19so16958284igc.3
+        for <linux-nfs@vger.kernel.org>; Thu, 09 Jan 2014 11:27:07 -0800 (PST)
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
+Subject: Re: [PATCH RFC] nfs: remove nfs_show_devname
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+In-Reply-To: <20140109141259.553c58f0@tlielax.poochiereds.net>
+Date: Thu, 9 Jan 2014 14:27:04 -0500
+Cc: "Yin.JianHong" <jiyin@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <7AA69B49-5971-4548-BE27-B8F90D1C0F10@primarydata.com>
+References: <1389293995-634-1-git-send-email-jlayton@redhat.com> <6FE57B0D-2373-4B40-BA14-E6F2BF3C44E3@primarydata.com> <20140109141259.553c58f0@tlielax.poochiereds.net>
+To: Layton Jeff <jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-CLAIM_FH was added by NFSv4.1.  It is the same as CLAIM_NULL except that it
-uses only current FH to identify the file to be opened.
 
-The NFS client is using CLAIM_FH if the FH is available when opening a file.
-Currently, we cannot get any delegation if we stat a file before open it
-because the server delegation code does not recognize CLAIM_FH.
+On Jan 9, 2014, at 14:12, Jeff Layton <jlayton@redhat.com> wrote:
 
-We tested this patch and found delegation can be handed out now when claim is
-CLAIM_FH.
+> On Thu, 9 Jan 2014 14:06:54 -0500
+> Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+> 
+>> 
+>> On Jan 9, 2014, at 13:59, Jeff Layton <jlayton@redhat.com> wrote:
+>> 
+>>> The nfs code will currently construct a devname to show in places like
+>>> /proc/mounts by turning a dentry into a path. Unfortunately, that's
+>>> somewhat problematic if the user ended up mounting through a symlink on
+>>> the server. The devname that then shows up in /proc/mounts now doesn't
+>>> match the one that was originally passed into the mount request.
+>> 
+>> This is 100% according to design. Why is it suddenly a problem?
+>> 
+>> By displaying the original pathname, you also end up bypassing referral resolution, etc. This is exactly why the .show_devname operation was introduced in the first place.
+>> 
+> 
+> AFAIU, the main issue is that when /etc/mtab is a symlink
+> to /proc/mounts, you can't do this in the example in the patch
+> description:
+> 
+>    # mount server:/export/bar /mnt/bar
+>    # umount server:/export/bar
+> 
+> ...since umount will try to ID the mountpoint by looking up the devname
+> in /etc/mtab.
 
-See http://marc.info/?l=linux-nfs&m=136369847801388&w=2 and
-http://www.linux-nfs.org/wiki/index.php/Server_4.0_and_4.1_issues#New_open_claim_types
+The NFS pathname is NOT a devname. It shouldn’t be abused as a substitute for a mount point.
 
-Signed-off-by: Ming Chen <mchen@cs.stonybrook.edu>
----
- fs/nfsd/nfs4state.c |    1 +
- 1 files changed, 1 insertions(+), 0 deletions(-)
+Particularly not so when you consider that the same NFS path can be mounted in several different places with different mount options. The same path can even refer to completely different locations (i.e. different file handles) if, say, the original directory has been renamed on the server.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 105d6fa..514d9c2 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -3125,6 +3125,7 @@ nfs4_open_delegation(struct net *net, struct svc_fh *fh,
- 				goto out_no_deleg;
- 			break;
- 		case NFS4_OPEN_CLAIM_NULL:
-+		case NFS4_OPEN_CLAIM_FH:
- 			/*
- 			 * Let's not give out any delegations till everyone's
- 			 * had the chance to reclaim theirs....
--- 
-1.7.1
+> What exactly would this break with referrals?
+> 
+
+It would “break” in the sense that the admin would have no clue that his client is actually talking to a different server than the one specified in the mount.
+
+--
+Trond Myklebust
+Linux NFS client maintainer
+
