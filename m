@@ -1,71 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f169.google.com ([209.85.223.169]:57173 "EHLO
-	mail-ie0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754771AbaA1O4p (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Jan 2014 09:56:45 -0500
-Received: by mail-ie0-f169.google.com with SMTP id to1so503893ieb.14
-        for <linux-nfs@vger.kernel.org>; Tue, 28 Jan 2014 06:56:45 -0800 (PST)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] NFS: Fix races in nfs_revalidate_mapping
-Date: Tue, 28 Jan 2014 09:49:10 -0500
-Message-Id: <1390920550-5543-1-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <20140128091849.6f3090cc@tlielax.poochiereds.net>
-References: <20140128091849.6f3090cc@tlielax.poochiereds.net>
+Received: from mail-pd0-f178.google.com ([209.85.192.178]:50162 "EHLO
+	mail-pd0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757535AbaAJClc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jan 2014 21:41:32 -0500
+Received: by mail-pd0-f178.google.com with SMTP id y10so3957259pdj.23
+        for <linux-nfs@vger.kernel.org>; Thu, 09 Jan 2014 18:41:31 -0800 (PST)
+Message-ID: <52CF5DD4.3080409@gmail.com>
+Date: Fri, 10 Jan 2014 10:41:24 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
+MIME-Version: 1.0
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Dr Fields James Bruce <bfields@fieldses.org>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 4/5] NFSD/SUNRPC: Check rpc_xprt out of  xs_setup_bc_tcp
+References: <52CA7862.1020203@gmail.com> <20140106184926.GC31764@fieldses.org> <24D159B0-C13D-43A6-B307-2B967E154353@primarydata.com> <20140106225346.GB3342@fieldses.org> <FAC96643-8DBB-4CC8-9D43-73C69E8E6125@primarydata.com> <52CB8B79.6040907@gmail.com> <52CE7A76.3080101@gmail.com> <52CE7AE6.4010603@gmail.com> <20140109162633.GB14308@fieldses.org> <C9F998C3-4A55-4714-926A-29440DF6F914@primarydata.com>
+In-Reply-To: <C9F998C3-4A55-4714-926A-29440DF6F914@primarydata.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit d529ef83c355f97027ff85298a9709fe06216a66 (NFS: fix the handling
-of NFS_INO_INVALID_DATA flag in nfs_revalidate_mapping) introduces
-a potential race, since it doesn't test the value of nfsi->cache_validity
-and set the bitlock in nfsi->flags atomically.
+On 01/10/2014 01:27 AM, Trond Myklebust wrote:
+> 
+> On Jan 9, 2014, at 11:26, Dr Fields James Bruce <bfields@fieldses.org> wrote:
+> 
+>> On Thu, Jan 09, 2014 at 06:33:10PM +0800, Kinglong Mee wrote:
+>>> Besides checking rpc_xprt out of xs_setup_bc_tcp,
+>>> increase it's reference (it's important).
+>>
+>> This sounds wrong to me: the presence of a backchannel can't prevent the
+>> client's connection from going away.  Instead, when the connection dies,
+>> any associated backchannels should be immediately destroyed.
+> 
+> Hi Bruce,
+> 
+> The right way to deal with this is to have knfsd shut down the rpc_client
+> when it detects the TCP disconnection event. 
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Jeff Layton <jlayton@redhat.com>
----
- fs/nfs/inode.c | 22 ++++++++++------------
- 1 file changed, 10 insertions(+), 12 deletions(-)
+Yes, that's right.
+Knfsd has do it as you said.
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 0a972ee9ccc1..8a5bcb6040ac 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -1038,24 +1038,22 @@ int nfs_revalidate_mapping(struct inode *inode, struct address_space *mapping)
- 				  nfs_wait_bit_killable, TASK_KILLABLE);
- 		if (ret)
- 			goto out;
--		if (!(nfsi->cache_validity & NFS_INO_INVALID_DATA))
-+		spin_lock(&inode->i_lock);
-+		if (!(nfsi->cache_validity & NFS_INO_INVALID_DATA)) {
-+			spin_unlock(&inode->i_lock);
- 			goto out;
-+		}
- 		if (!test_and_set_bit_lock(NFS_INO_INVALIDATING, bitlock))
- 			break;
--	}
--
--	spin_lock(&inode->i_lock);
--	if (nfsi->cache_validity & NFS_INO_INVALID_DATA) {
--		nfsi->cache_validity &= ~NFS_INO_INVALID_DATA;
--		spin_unlock(&inode->i_lock);
--		trace_nfs_invalidate_mapping_enter(inode);
--		ret = nfs_invalidate_mapping(inode, mapping);
--		trace_nfs_invalidate_mapping_exit(inode, ret);
--	} else {
--		/* something raced in and cleared the flag */
- 		spin_unlock(&inode->i_lock);
- 	}
- 
-+	nfsi->cache_validity &= ~NFS_INO_INVALID_DATA;
-+	spin_unlock(&inode->i_lock);
-+	trace_nfs_invalidate_mapping_enter(inode);
-+	ret = nfs_invalidate_mapping(inode, mapping);
-+	trace_nfs_invalidate_mapping_exit(inode, ret);
-+
- 	clear_bit_unlock(NFS_INO_INVALIDATING, bitlock);
- 	smp_mb__after_clear_bit();
- 	wake_up_bit(bitlock, NFS_INO_INVALIDATING);
--- 
-1.8.5.3
+When getting xprt's status of XPT_CLOSE in svc_recv/svc_handle_xprt, 
+knfsd will delete the xprt by svc_delete_xprt.
+
+In svc_delete_xprt, knfsd calls call_xpt_users to notify those users of the xprt.
+So, nfsd4_conn_lost will be called to free the connection.
+After freeing connection, nfsd4_probe_callback will update the callback for the client.
+And, the clp->cl_cb_client will be shutdown in nfsd4_process_cb_update.
+
+At last, all using of the xprt will be released.
+I have test it, that's OK. 
+
+> The xprt->count shouldn’t be an issue here: 
+> it has nothing to do with the socket connection state.
+
+The xprt of backchannel, there are two references, 
+1. rpc_clnt
+2. svc_xprt
+
+For rpc_clnt, initialize the xprt->count in xs_setup_bc_tcp,
+or increase it in create_backchannel_client, and, decrease in rpc_free_client.
+
+For svc_xprt, increase it in xs_setup_bc_tcp, and decrease in svc_xprt_free.
+
+thanks,
+Kinglong Mee
 
