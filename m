@@ -1,124 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:42673 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751796AbaA2Syw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 29 Jan 2014 13:54:52 -0500
-Date: Wed, 29 Jan 2014 13:54:49 -0500
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: please pull nfsd changes for 3.14
-Message-ID: <20140129185449.GC30065@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mail-ig0-f173.google.com ([209.85.213.173]:56035 "EHLO
+	mail-ig0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751437AbaAMVzD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jan 2014 16:55:03 -0500
+Received: by mail-ig0-f173.google.com with SMTP id c10so3199493igq.0
+        for <linux-nfs@vger.kernel.org>; Mon, 13 Jan 2014 13:55:02 -0800 (PST)
+From: Weston Andros Adamson <dros@primarydata.com>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
+Subject: [PATCH] nfs4.1: properly handle ENOTSUP in SECINFO_NO_NAME
+Date: Mon, 13 Jan 2014 16:54:45 -0500
+Message-Id: <1389650085-4128-1-git-send-email-dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Please pull nfsd changes for 3.14:
+Don't check for -NFS4ERR_NOTSUPP, it's already been mapped to -ENOTSUPP
+by nfs4_stat_to_errno.
 
-git://linux-nfs.org/~bfields/linux.git for-3.14
+This allows the client to mount v4.1 servers that don't support
+SECINFO_NO_NAME by falling back to the "guess and check" method of
+nfs4_find_root_sec.
 
-	- Handle some loose ends from the vfs read delegation support.
-	  (For example nfsd can stop breaking leases on its own in a
-	  fewer places where it can now depend on the vfs to.)
-	- Make life a little easier for NFSv4-only configurations
-	  (thanks to Kinglong Mee).
-	- Fix some gss-proxy problems (thanks Jeff Layton).
+Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+---
 
-And miscellaneous bug fixes and cleanup.
+I found this trying to mount a pynfs filelayout server.
 
-Stephen Rothwell noted a merge conflict:
+ fs/nfs/nfs4proc.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-http://marc.info/?i=<20140129124238.6e1667abab08be8be2dafe01@canb.auug.org.au>
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 15052b8..1d57b6a 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -7920,7 +7920,7 @@ nfs41_proc_secinfo_no_name(struct nfs_server *server, struct nfs_fh *fhandle,
+ 		switch (err) {
+ 		case 0:
+ 		case -NFS4ERR_WRONGSEC:
+-		case -NFS4ERR_NOTSUPP:
++		case -ENOTSUPP:
+ 			goto out;
+ 		default:
+ 			err = nfs4_handle_exception(server, err, &exception);
+@@ -7954,7 +7954,7 @@ nfs41_find_root_sec(struct nfs_server *server, struct nfs_fh *fhandle,
+ 	 * Fall back on "guess and check" method if
+ 	 * the server doesn't support SECINFO_NO_NAME
+ 	 */
+-	if (err == -NFS4ERR_WRONGSEC || err == -NFS4ERR_NOTSUPP) {
++	if (err == -NFS4ERR_WRONGSEC || err == -ENOTSUPP) {
+ 		err = nfs4_find_root_sec(server, fhandle, info);
+ 		goto out_freepage;
+ 	}
+-- 
+1.8.3.4 (Apple Git-47)
 
-I'm assuming as usual you'll handle it and let me know if you need
-anything from me.
-
---b.
-
-----------------------------------------------------------------
-Albert Fluegel (1):
-      nfsd: don't return high mode bits
-
-Andy Shevchenko (1):
-      net/sunrpc/cache: simplify code by using hex_pack_byte()
-
-Christoph Hellwig (1):
-      nfsd: start documenting some XDR handling functions
-
-J. Bruce Fields (12):
-      nfsd4: update 4.1 nfsd status documentation
-      nfsd4: break only delegations when appropriate
-      nfsd4: better VERIFY comment
-      minor svcauth_gss.c cleanup
-      nfsd4: nfsd4_encode_fattr cleanup
-      nfsd4: encode_rdattr_error cleanup
-      nfsd4: simplify xdr encoding of nfsv4 names
-      nfsd: fix encode_entryplus_baggage stack usage
-      nfsd4: decrease nfsd4_encode_fattr stack usage
-      nfsd4: minor nfs4_setlease cleanup
-      nfsd4: delay setting current_fh in open
-      nfsd4: fix delegation-unlink/rename race
-
-Jeff Layton (4):
-      nfsd: don't try to reuse an expired DRC entry off the list
-      sunrpc: don't wait for write before allowing reads from use-gss-proxy file
-      sunrpc: fix potential race between setting use_gss_proxy and the upcall rpc_clnt
-      sunrpc: get rid of use_gssp_lock
-
-Kinglong Mee (15):
-      nfsd: calculate the missing length of bitmap in EXCHANGE_ID
-      nfsd: get rid of unused function definition
-      nfsd: clean up an xdr reserved space calculation
-      nfsd: using nfsd4_encode_noop for encoding destroy_session/free_stateid
-      nfsd: clean up unnecessary temporary variable in nfsd4_decode_fattr
-      nfsd: get rid of unused macro definition
-      Add missing recording of back channel attrs in nfsd4_session
-      NFSD: fix a leak which can cause CREATE_SESSION failures
-      NFSD: fix bad length checking for backchannel
-      SUNRPC/NFSD: Support a new option for ignoring the result of svc_register
-      NFSD: Don't start lockd when only NFSv4 is running
-      NFSD: fix compile warning without CONFIG_NFSD_V3
-      Define op_iattr for nfsd4_open instead using macro
-      nfsd: get rid of unused function definition
-      NFSD: Fix a memory leak in nfsd4_create_session
-
-Luis Henriques (1):
-      gss_krb5: use lcm from kernel lib
-
-Ming Chen (1):
-      nfsd: consider CLAIM_FH when handing out delegation
-
-Stanislav Kholmanskikh (1):
-      nfsd: revoking of suid/sgid bits after chown() in a consistent way
-
-Weng Meiling (1):
-      sunrpc: fix some typos
-
- Documentation/filesystems/nfs/nfs41-server.txt |   42 ++----
- fs/nfsd/acl.h                                  |    2 +-
- fs/nfsd/cache.h                                |    8 --
- fs/nfsd/idmap.h                                |    4 +-
- fs/nfsd/netns.h                                |    1 +
- fs/nfsd/nfs3xdr.c                              |   14 +-
- fs/nfsd/nfs4acl.c                              |   20 ++-
- fs/nfsd/nfs4idmap.c                            |   50 ++++---
- fs/nfsd/nfs4proc.c                             |   57 +++++---
- fs/nfsd/nfs4state.c                            |   40 ++++--
- fs/nfsd/nfs4xdr.c                              |  178 +++++++++---------------
- fs/nfsd/nfscache.c                             |   36 +----
- fs/nfsd/nfssvc.c                               |   30 +++-
- fs/nfsd/nfsxdr.c                               |    2 +-
- fs/nfsd/vfs.c                                  |   40 +-----
- fs/nfsd/vfs.h                                  |    2 -
- fs/nfsd/xdr3.h                                 |    3 +
- fs/nfsd/xdr4.h                                 |    4 +-
- include/linux/sunrpc/svc.h                     |    6 +-
- net/sunrpc/auth_gss/gss_krb5_keys.c            |   17 +--
- net/sunrpc/auth_gss/gss_rpc_upcall.c           |    2 -
- net/sunrpc/auth_gss/svcauth_gss.c              |   82 +++--------
- net/sunrpc/cache.c                             |    4 +-
- net/sunrpc/netns.h                             |    1 -
- net/sunrpc/svc.c                               |   25 ++--
- net/sunrpc/xprtsock.c                          |    7 +-
- 26 files changed, 284 insertions(+), 393 deletions(-)
