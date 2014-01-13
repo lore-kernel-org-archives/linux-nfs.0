@@ -1,52 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-we0-f193.google.com ([74.125.82.193]:55175 "EHLO
-	mail-we0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757207AbaAHVSc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Jan 2014 16:18:32 -0500
-Received: by mail-we0-f193.google.com with SMTP id q58so452602wes.0
-        for <linux-nfs@vger.kernel.org>; Wed, 08 Jan 2014 13:18:31 -0800 (PST)
-MIME-Version: 1.0
-Date: Wed, 8 Jan 2014 21:47:31 +0100
-Message-ID: <CALS90i9nMs6jMoH2O5S68sPF=juYOV2sfMAwaBekL8ccz3eSOQ@mail.gmail.com>
-Subject: I have a very lucrative Business
-From: "Dr. Musa Hamed" <drmusahamed01@gmail.com>
-To: undisclosed-recipients:;
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from cpsmtpb-ews01.kpnxchange.com ([213.75.39.4]:63617 "EHLO
+	cpsmtpb-ews01.kpnxchange.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752146AbaAMTfx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jan 2014 14:35:53 -0500
+Message-ID: <1389641750.19054.9.camel@x220>
+Subject: Re: [PATCH] xprtrdma: silence frame size warning
+From: Paul Bolle <pebolle@tiscali.nl>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "Miller David S." <davem@davemloft.net>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        netdev@vger.kernel.org, LKML Kernel <linux-kernel@vger.kernel.org>
+Date: Mon, 13 Jan 2014 20:35:50 +0100
+In-Reply-To: <D3560A1A-59B3-4480-8627-9114A4B9895C@oracle.com>
+References: <1389627955.20467.9.camel@x41>
+	 <CDD9CEF2-F91A-4ABA-8DA7-53AF8A749194@primarydata.com>
+	 <D3560A1A-59B3-4480-8627-9114A4B9895C@oracle.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-ATTN: Dear,
+On Mon, 2014-01-13 at 11:17 -0500, Chuck Lever wrote:
+> I’m building a queue of NFS/RDMA work on bugzilla.kernel.org.  Let’s
+> create a defect report there to document this, and it will get
+> prioritized with the rest.  Paul, can you do that to start us off?
+> Product “File system”, Component “NFS”.
 
-I am Dr. Musa Hamed Executive Director of the Bank of Africa
-Plc B.O.A,Cotonou Benin Rep. I have a very lucrative Business proposal
-worth of 21,500,000.00 USD.
+Sure, see https://bugzilla.kernel.org/show_bug.cgi?id=68661 . Please
+feel free to edit the bug's title, etc, as you see fit.
 
-An Iraqi named Hamadi Hashem a business man made a fixed deposit of
-21,500,000.00 USD . Upon maturity several notices was sent to him,
-even during the war,eleven years ago (2003) up till this date. Again
-after the war another notification was sent and still no response came
-from him. it has been found out that Hamadi Hashem and his family had
-been killed during the war in bomb blast that hit their home at
-Mukaradeeb where his personal oil well was. I am prepared to split the
-funds with you 50%:50%.By placing you as the NEXT OF KIN to his
-deposit.
+> I can’t say that a warning on 32-bit x86 is going to be an especially
+> high priority.
 
-Should you be interested in doing this deal with me, please send me
-the following information:
+I see. 32-bit x86 seems to be dropping in relevance quite fast.
 
-(1) Your Name
-(2) Resident Address
-(3) Your Occupation
-(4) Your Phone Number
-(5) Date of Birth
-(6) Resident Country
+On the other hand, this is one of the last warnings I see when currently
+building x86 (32-bit, that is) and it would be rather nice to see this
+warning gone. Since my .config is basically a Fedora 20 .config, that
+would help make Fedora's 32-bit x86 build (almost) warning free too. 
 
-And I will prefer you to reach me privately and securely on my personal
-email address: dr.musahamed30@yahoo.fr
-Tel: +229-988-400-97
+> However, the underlying issue of allocating arrays of data segments on
+> the stack is something that needs extended attention, and is already
+> in plan.
 
-I will provide you with further information as soon as I hear
-positively from you.
+Thanks,
 
-Regards,
-Dr. Musa Hamed
+
+Paul Bolle
+
