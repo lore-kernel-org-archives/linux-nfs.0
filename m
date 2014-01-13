@@ -1,92 +1,136 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f171.google.com ([209.85.223.171]:37297 "EHLO
-	mail-ie0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751367AbaANTGE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Jan 2014 14:06:04 -0500
-Received: by mail-ie0-f171.google.com with SMTP id to1so933306ieb.2
-        for <linux-nfs@vger.kernel.org>; Tue, 14 Jan 2014 11:06:03 -0800 (PST)
-Message-ID: <1389726356.6420.5.camel@leira.trondhjem.org>
-Subject: Re: [PATCH v2] pnfs: Proper delay for NFS4ERR_RECALLCONFLICT in
- layout_get_done
+Received: from mail-ig0-f175.google.com ([209.85.213.175]:39006 "EHLO
+	mail-ig0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751316AbaAMSp4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jan 2014 13:45:56 -0500
+Received: by mail-ig0-f175.google.com with SMTP id uq10so3536560igb.2
+        for <linux-nfs@vger.kernel.org>; Mon, 13 Jan 2014 10:45:54 -0800 (PST)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
-Cc: NFS list <linux-nfs@vger.kernel.org>, Stable Tree <stable@vger.kernel.org>
-Date: Tue, 14 Jan 2014 14:05:56 -0500
-In-Reply-To: <52D5589A.7090507@panasas.com>
-References: <52D5589A.7090507@panasas.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+To: shaobingqing <shaobingqing@bwstor.com.cn>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [PATCH 1/2] NFSv4.1: Don't trust attributes if a pNFS LAYOUTCOMMIT is outstanding
+Date: Mon, 13 Jan 2014 13:45:50 -0500
+Message-Id: <1389638751-16173-1-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <395EC1ED-E67E-4666-B170-5C5F00264496@primarydata.com>
+References: <395EC1ED-E67E-4666-B170-5C5F00264496@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2014-01-14 at 17:32 +0200, Boaz Harrosh wrote:
-> An NFS4ERR_RECALLCONFLICT is returned by server from a GET_LAYOUT
-> only when a Server Sent a RECALL do to that GET_LAYOUT, or
-> the RECALL and GET_LAYOUT crossed on the wire.
-> In any way this means we want to wait at most until in-flight IO
-> is finished and the RECALL can be satisfied.
-> 
-> So a proper wait here is more like 1/10 of a second, not 15 seconds
-> like we have now. (We use NFS4_POLL_RETRY_MIN here)
-> 
-> Current code totally craps out performance of very large files on
-> most pnfs-objects layouts, because of how the map changes when the
-> file has grown beyond a raid group.
-> 
-> CC: Stable Tree <stable@vger.kernel.org>
-> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
-> ---
->  fs/nfs/nfs4proc.c | 22 +++++++++++++++++++---
->  1 file changed, 19 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index d53d678..3264fca 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -7058,7 +7058,7 @@ static void nfs4_layoutget_done(struct rpc_task *task, void *calldata)
->  	struct nfs4_state *state = NULL;
->  	unsigned long timeo, giveup;
->  
-> -	dprintk("--> %s\n", __func__);
-> +	dprintk("--> %s tk_status => %d\n", __func__, task->tk_status);
->  
->  	if (!nfs41_sequence_done(task, &lgp->res.seq_res))
->  		goto out;
-> @@ -7067,11 +7067,27 @@ static void nfs4_layoutget_done(struct rpc_task *task, void *calldata)
->  	case 0:
->  		goto out;
->  	case -NFS4ERR_LAYOUTTRYLATER:
-> +	/* NFS4ERR_RECALLCONFLICT is always a minimal delay (conflict with
-> +	 * self)
-> +	 * TODO: NFS4ERR_LAYOUTTRYLATER is a conflict with another client
-> +	 * (or clients). What we should do is randomize a short delay like on a
-> +	 * network broadcast burst, and raise the random max every failure.
-> +	 * For now leave it stateless and do this polling.
-> +	 */
->  	case -NFS4ERR_RECALLCONFLICT:
->  		timeo = rpc_get_timeout(task->tk_client);
->  		giveup = lgp->args.timestamp + timeo;
-> -		if (time_after(giveup, jiffies))
-> -			task->tk_status = -NFS4ERR_DELAY;
-> +		if (time_after(giveup, jiffies)) {
-> +			/* Do a minimum delay, We are actually waiting for our
-> +			 * own IO to finish (In most cases)
-> +			 */
-> +			dprintk("%s: NFS4ERR_RECALLCONFLICT waiting\n",
-> +				__func__);
-> +			rpc_delay(task, NFS4_POLL_RETRY_MIN);
-> +			task->tk_status = 0;
-> +			rpc_restart_call_prepare(task);
-> +			goto out; /* Do not call nfs4_async_handle_error() */
-> +		}
->  
+If a LAYOUTCOMMIT is outstanding, then chances are that the metadata
+server may still be returning incorrect values for the change attribute,
+ctime, mtime and/or size.
+Just ignore those attributes for now, and wait for the LAYOUTCOMMIT
+rpc call to finish.
 
-For the default mount option of 'timeo=600', and the default #define
-NFS4_POLL_RETRY_MIN==HZ/10, this means we can end up pounding the server
-with 600 LAYOUTGET requests within the space of 1 minute, before giving
-up. Is that reasonable?
+Reported-by: shaobingqing <shaobingqing@bwstor.com.cn>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/inode.c    | 19 +++++++++++++++++--
+ fs/nfs/nfs4proc.c |  5 ++---
+ fs/nfs/pnfs.h     | 16 ++++++++++++++++
+ 3 files changed, 35 insertions(+), 5 deletions(-)
 
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 5feec233895d..c63e15224466 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -1283,12 +1283,28 @@ static int nfs_inode_attrs_need_update(const struct inode *inode, const struct n
+ 		((long)nfsi->attr_gencount - (long)nfs_read_attr_generation_counter() > 0);
+ }
+ 
++/*
++ * Don't trust the change_attribute, mtime, ctime or size if
++ * a pnfs LAYOUTCOMMIT is outstanding
++ */
++static void nfs_inode_attrs_handle_layoutcommit(struct inode *inode,
++		struct nfs_fattr *fattr)
++{
++	if (pnfs_layoutcommit_outstanding(inode))
++		fattr->valid &= ~(NFS_ATTR_FATTR_CHANGE |
++				NFS_ATTR_FATTR_MTIME |
++				NFS_ATTR_FATTR_CTIME |
++				NFS_ATTR_FATTR_SIZE);
++}
++
+ static int nfs_refresh_inode_locked(struct inode *inode, struct nfs_fattr *fattr)
+ {
+ 	int ret;
+ 
+ 	trace_nfs_refresh_inode_enter(inode);
+ 
++	nfs_inode_attrs_handle_layoutcommit(inode, fattr);
++
+ 	if (nfs_inode_attrs_need_update(inode, fattr))
+ 		ret = nfs_update_inode(inode, fattr);
+ 	else
+@@ -1518,8 +1534,7 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+ 		if (new_isize != cur_isize) {
+ 			/* Do we perhaps have any outstanding writes, or has
+ 			 * the file grown beyond our last write? */
+-			if ((nfsi->npages == 0 && !test_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags)) ||
+-			     new_isize > cur_isize) {
++			if ((nfsi->npages == 0) || new_isize > cur_isize) {
+ 				i_size_write(inode, new_isize);
+ 				invalid |= NFS_INO_INVALID_ATTR|NFS_INO_INVALID_DATA;
+ 			}
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 15052b81df42..f4908eb40a21 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -7780,10 +7780,7 @@ nfs4_layoutcommit_done(struct rpc_task *task, void *calldata)
+ 	case -NFS4ERR_BADLAYOUT:     /* no layout */
+ 	case -NFS4ERR_GRACE:	    /* loca_recalim always false */
+ 		task->tk_status = 0;
+-		break;
+ 	case 0:
+-		nfs_post_op_update_inode_force_wcc(data->args.inode,
+-						   data->res.fattr);
+ 		break;
+ 	default:
+ 		if (nfs4_async_handle_error(task, server, NULL) == -EAGAIN) {
+@@ -7798,6 +7795,8 @@ static void nfs4_layoutcommit_release(void *calldata)
+ 	struct nfs4_layoutcommit_data *data = calldata;
+ 
+ 	pnfs_cleanup_layoutcommit(data);
++	nfs_post_op_update_inode_force_wcc(data->args.inode,
++					   data->res.fattr);
+ 	put_rpccred(data->cred);
+ 	kfree(data);
+ }
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index a4f41810a7f4..023793909778 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -359,6 +359,15 @@ pnfs_ld_layoutret_on_setattr(struct inode *inode)
+ 		PNFS_LAYOUTRET_ON_SETATTR;
+ }
+ 
++static inline bool
++pnfs_layoutcommit_outstanding(struct inode *inode)
++{
++	struct nfs_inode *nfsi = NFS_I(inode);
++
++	return test_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags) != 0 ||
++		test_bit(NFS_INO_LAYOUTCOMMITTING, &nfsi->flags) != 0;
++}
++
+ static inline int pnfs_return_layout(struct inode *ino)
+ {
+ 	struct nfs_inode *nfsi = NFS_I(ino);
+@@ -515,6 +524,13 @@ pnfs_use_threshold(struct nfs4_threshold **dst, struct nfs4_threshold *src,
+ 	return false;
+ }
+ 
++static inline bool
++pnfs_layoutcommit_outstanding(struct inode *inode)
++{
++	return false;
++}
++
++
+ static inline struct nfs4_threshold *pnfs_mdsthreshold_alloc(void)
+ {
+ 	return NULL;
 -- 
-Trond Myklebust
-Linux NFS client maintainer
+1.8.4.2
 
