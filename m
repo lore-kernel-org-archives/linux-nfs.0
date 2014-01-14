@@ -1,152 +1,111 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from samara-nlb.chalmers.se ([129.16.10.242]:6541 "EHLO
-	samara.ita.chalmers.se" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org
-	with ESMTP id S1755337AbaAISgm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jan 2014 13:36:42 -0500
-Date: Thu, 9 Jan 2014 19:26:46 +0100
-From: =?ISO-8859-15?Q?H=E5kan_Johansson?= <f96hajo@chalmers.se>
-To: <linux-nfs@vger.kernel.org>
-Subject: NFS RDMA client hang (fwd)
-Message-ID: <alpine.DEB.2.00.1401091923380.83455@bridge1.fy.chalmers.se>
+Received: from natasha.panasas.com ([209.166.131.148]:37768 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751578AbaANO7b (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Jan 2014 09:59:31 -0500
+Message-ID: <52D550AA.6030304@panasas.com>
+Date: Tue, 14 Jan 2014 16:58:50 +0200
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-Content-Type: multipart/mixed;
-	boundary="276930926-2130352459-1389290843=:83455"
+To: Stable Tree <stable@kernel.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        NFS list <linux-nfs@vger.kernel.org>
+Subject: Fwd: [PATCH] pnfs-obj: Proper delay for NFS4ERR_RECALLCONFLICT in
+ layout_get_done
+References: <52D54D87.7010100@panasas.com>
+In-Reply-To: <52D54D87.7010100@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---276930926-2130352459-1389290843=:83455
-Content-Type: text/plain; format=flowed; charset="ISO-8859-15"
-Content-Transfer-Encoding: 8BIT
-Content-ID: <alpine.DEB.2.00.1401091923382.83455@bridge1.fy.chalmers.se>
+Sorry forgot to CC Stable Tree <stable@kernel.org>
+
+Greg hi
+
+In Linux v3.9 there is a conflict around this area exactly do to change:
+	[30005121] NFSv4.1: LAYOUTGET EDELAY loops timeout to the MDS
+
+If there are stables below 3.9 please tell me I will send you a patch
+for these.
+
+Thanks
+Boaz
+
+-------- Original Message --------
+Date: Tue, 14 Jan 2014 16:45:27 +0200
+From: Boaz Harrosh <bharrosh@panasas.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>, NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
+Subject: [PATCH] pnfs-obj: Proper delay for NFS4ERR_RECALLCONFLICT in layout_get_done
 
 
-Two machines, both running debian squeeze.  (the client with a normal NFS root 
-filesystem).  It works to mount an NFS filesystem via IP over IB giving some 
-650 MB/s.  When I try to follow the instructions at
+An NFS4ERR_RECALLCONFLICT is returned by server from a GET_LAYOUT
+only when a Server Sent a RECALL do to that GET_LAYOUT, or
+the RECALL and GET_LAYOUT crossed on the wire.
+In any way this means we want to wait at most until in-flight IO
+is finished and the RECALL can be satisfied.
 
-https://www.kernel.org/doc/Documentation/filesystems/nfs/nfs-rdma.txt
+So a proper wait here is more like 1/10 of a second, not 15 seconds
+like we have now. (We use NFS4_POLL_RETRY_MIN here)
 
-the client fails at the very last stage with a kernel panic.
+Current code totally craps out performance of very large files on
+most pnfs-objects layouts, because of how the map changes when the
+file has grown and spills into the next raid group.
 
-192.168.10.10 is the server, 192.168.10.11 is the client
-
-mount -vvvv -o vers=3,nolock,tcp,proto=rdma,port=20049 
-192.168.10.10:/scratch.local1 /mnt
-
-gives
-
-mount: fstab path: "/etc/fstab"
-mount: mtab path:  "/etc/mtab"
-mount: lock path:  "/etc/mtab~"
-mount: temp path:  "/etc/mtab.tmp"
-mount: UID:        0
-mount: eUID:       0
-mount: no type was given - I'll assume nfs because of the colon
-mount: spec:  "192.168.10.10:/scratch.local1"
-mount: node:  "/mnt"
-mount: types: "nfs"
-mount: opts:  "vers=3,nolock,tcp,proto=rdma,port=20049"
-mount: external mount: argv[0] = "/sbin/mount.nfs"
-mount: external mount: argv[1] = "192.168.10.10:/scratch.local1"
-mount: external mount: argv[2] = "/mnt"
-mount: external mount: argv[3] = "-v"
-mount: external mount: argv[4] = "-o"
-mount: external mount: argv[5] = "rw,vers=3,nolock,tcp,proto=rdma,port=20049"
-mount.nfs: timeout set for Thu Jan  9 18:04:46 2014
-mount.nfs: trying text-based options 
-'vers=3,nolock,tcp,proto=rdma,port=20049,addr=192.168.10.10'
-
-and then the client is stuck.  On the console there is a kernel panic
-
-it is a bit long, so abbreviated here.  (The hang seems easily reproducible, so 
-if really might help you, I could probably make a photo or so)
-
-----
-
-ths appreaded with a 3.12 kernel
-
-rpcdma: connection to 192.168.10.10:20049 closed (-111)
-rpcdma: connection to 192.168.10.10:20049 closed (-111)
-rpcdma: connection to 192.168.10.10:20049 on mlx4_0, memreg 5 slots 32 ird 16
-
-very similar below.  the below is with a 3.10 kernel.  in both cases from 
-debian.  also tested with a 3.2 kernel
-
-general protection fault: 0000 [#1] SMP
-
-call trace:
-<IRQ>
-tasklet_action+0x73/0xc2
-__do_softirq
-irq_exit
-do_IRQ
-common_interrupt
-<EOI>
-clockevents_program_event
-arch_local_irq_enable
-cpuidle_enter_state
-cpuidle_idle_call
-arch_cpu_idle
-cpu_startup_entry
-start_kernel
-repair_cpu_string
-x86_64_start_kernel
-
-RIP    rpcrdma_run_tasklet  [xprtrdma]
-
-----
-
-client is a sandy bridge E3-1245
-
-I bring the infiniband up like this:
-
-modprobe ib_mthca
-modprobe ib_ipoib
-modprobe mlx4_ib
-modprobe ib_mad
-modprobe ib_umad
-modprobe ib_urdma
-modprobe rdma_cm
-modprobe rdma_ucm
-ibstat
-/etc/init.d/opensm restart
-/sbin/ifconfig ib0 inet 192.168.10.11 up
-IPTABLES=/sbin/iptables
-$IPTABLES -t filter -A OUTPUT -o ib0 -j ACCEPT
-$IPTABLES -t filter -A INPUT -i ib0 -j ACCEPT
-/etc/init.d/opensm restart
-
-modprobe xprtrdma
-
-and similar on the server.
-
-Both have
-
-InfiniBand: Mellanox Technologies MT25418 [ConnectX VPI PCIe 2.0 2.5GT/s - IB 
-DDR / 10GigE] (rev a0) adapters.
-
-http://www.ebay.com/itm/HP-452372-001-Infiniband-PCI-E-4X-DDR-Dual-Port-Storage-Host-Channel-Adapter-HCA-/360657396651?pt=UK_Computing_ComputerComponents_InterfaceCards&hash=item53f8db23ab
-
-Any suggestions?
-
+CC: Stable Tree <stable@kernel.org>
+Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
 ---
+ fs/nfs/nfs4proc.c | 22 +++++++++++++++++++---
+ 1 file changed, 19 insertions(+), 3 deletions(-)
 
-I first sent this mail to nfs-rdma-devel@lists.sourceforge.net (as
-suggested in)
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index d53d678..3264fca 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -7058,7 +7058,7 @@ static void nfs4_layoutget_done(struct rpc_task *task, void *calldata)
+ 	struct nfs4_state *state = NULL;
+ 	unsigned long timeo, giveup;
+ 
+-	dprintk("--> %s\n", __func__);
++	dprintk("--> %s tk_status => %d\n", __func__, task->tk_status);
+ 
+ 	if (!nfs41_sequence_done(task, &lgp->res.seq_res))
+ 		goto out;
+@@ -7067,11 +7067,27 @@ static void nfs4_layoutget_done(struct rpc_task *task, void *calldata)
+ 	case 0:
+ 		goto out;
+ 	case -NFS4ERR_LAYOUTTRYLATER:
++	/* NFS4ERR_RECALLCONFLICT is always a minimal delay (conflict with
++	 * self)
++	 * TODO: NFS4ERR_LAYOUTTRYLATER is a conflict with another client
++	 * (or clients). What we should do is randomize a short delay like on a
++	 * network broadcast burst, and raise the random max every failure.
++	 * For now leave it stateless and do this polling.
++	 */
+ 	case -NFS4ERR_RECALLCONFLICT:
+ 		timeo = rpc_get_timeout(task->tk_client);
+ 		giveup = lgp->args.timestamp + timeo;
+-		if (time_after(giveup, jiffies))
+-			task->tk_status = -NFS4ERR_DELAY;
++		if (time_after(giveup, jiffies)) {
++			/* Do a minimum delay, We are actually waiting for our
++			 * own IO to finish (In most cases)
++			 */
++			dprintk("%s: NFS4ERR_RECALLCONFLICT waiting\n",
++				__func__);
++			rpc_delay(task, NFS4_POLL_RETRY_MIN);
++			task->tk_status = 0;
++			rpc_restart_call_prepare(task);
++			goto out; /* Do not call nfs4_async_handle_error() */
++		}
+ 		break;
+ 	case -NFS4ERR_EXPIRED:
+ 	case -NFS4ERR_BAD_STATEID:
+-- 
+1.7.11.7
 
-https://www.kernel.org/doc/Documentation/filesystems/nfs/nfs-rdma.txt
-
-but got:
-
-sog-mx-1.v43.ch3.sourceforge.com gave this error: unknown user
-
-mailing list does not exist any longer?
-
----
-
-Thanks,
-Håkan Johansson
+_______________________________________________
+osd-dev mailing list
+osd-dev@open-osd.org
+http://mailman.open-osd.org/mailman/listinfo/osd-dev
 
 
-
---276930926-2130352459-1389290843=:83455--
