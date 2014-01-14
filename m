@@ -1,97 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:10593 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751153AbaAYAz1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 24 Jan 2014 19:55:27 -0500
-Date: Fri, 24 Jan 2014 19:54:56 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Christoph Hellwig <hch@infradead.org>,
-        linuxnfs <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 7/7] nfs: page cache invalidation for dio
-Message-ID: <20140124195456.5db4f830@tlielax.poochiereds.net>
-In-Reply-To: <7DB95D70-9E9E-49B9-80BE-EB891F5D72DB@primarydata.com>
-References: <20131114165027.355613182@bombadil.infradead.org>
-	<20131114165042.205194841@bombadil.infradead.org>
-	<20131114133551.5d08b5cd@tlielax.poochiereds.net>
-	<20131115142847.GA1107@infradead.org>
-	<20131115095241.2c5e1cfb@tlielax.poochiereds.net>
-	<20131115150204.GA8105@infradead.org>
-	<20131115103324.6a3cf978@tlielax.poochiereds.net>
-	<20140121142159.210ca0b8@tlielax.poochiereds.net>
-	<20140122082414.GA12530@infradead.org>
-	<20140122070409.503db5c2@tlielax.poochiereds.net>
-	<20140124105213.2c40a783@tlielax.poochiereds.net>
-	<1C06779A-6513-4460-9A12-6AAE7E6BD446@primarydata.com>
-	<20140124122924.0eb2e6bd@tlielax.poochiereds.net>
-	<1390585206.2927.9.camel@leira.trondhjem.org>
-	<20140124130013.22f706de@tlielax.poochiereds.net>
-	<1390589201.2927.46.camel@leira.trondhjem.org>
-	<20140124162104.3a588571@tlielax.poochiereds.net>
-	<7DB95D70-9E9E-49B9-80BE-EB891F5D72DB@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
+Received: from mail-ie0-f171.google.com ([209.85.223.171]:37297 "EHLO
+	mail-ie0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751367AbaANTGE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Jan 2014 14:06:04 -0500
+Received: by mail-ie0-f171.google.com with SMTP id to1so933306ieb.2
+        for <linux-nfs@vger.kernel.org>; Tue, 14 Jan 2014 11:06:03 -0800 (PST)
+Message-ID: <1389726356.6420.5.camel@leira.trondhjem.org>
+Subject: Re: [PATCH v2] pnfs: Proper delay for NFS4ERR_RECALLCONFLICT in
+ layout_get_done
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: NFS list <linux-nfs@vger.kernel.org>, Stable Tree <stable@vger.kernel.org>
+Date: Tue, 14 Jan 2014 14:05:56 -0500
+In-Reply-To: <52D5589A.7090507@panasas.com>
+References: <52D5589A.7090507@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 24 Jan 2014 17:39:45 -0700
-Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+On Tue, 2014-01-14 at 17:32 +0200, Boaz Harrosh wrote:
+> An NFS4ERR_RECALLCONFLICT is returned by server from a GET_LAYOUT
+> only when a Server Sent a RECALL do to that GET_LAYOUT, or
+> the RECALL and GET_LAYOUT crossed on the wire.
+> In any way this means we want to wait at most until in-flight IO
+> is finished and the RECALL can be satisfied.
+> 
+> So a proper wait here is more like 1/10 of a second, not 15 seconds
+> like we have now. (We use NFS4_POLL_RETRY_MIN here)
+> 
+> Current code totally craps out performance of very large files on
+> most pnfs-objects layouts, because of how the map changes when the
+> file has grown beyond a raid group.
+> 
+> CC: Stable Tree <stable@vger.kernel.org>
+> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+> ---
+>  fs/nfs/nfs4proc.c | 22 +++++++++++++++++++---
+>  1 file changed, 19 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index d53d678..3264fca 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -7058,7 +7058,7 @@ static void nfs4_layoutget_done(struct rpc_task *task, void *calldata)
+>  	struct nfs4_state *state = NULL;
+>  	unsigned long timeo, giveup;
+>  
+> -	dprintk("--> %s\n", __func__);
+> +	dprintk("--> %s tk_status => %d\n", __func__, task->tk_status);
+>  
+>  	if (!nfs41_sequence_done(task, &lgp->res.seq_res))
+>  		goto out;
+> @@ -7067,11 +7067,27 @@ static void nfs4_layoutget_done(struct rpc_task *task, void *calldata)
+>  	case 0:
+>  		goto out;
+>  	case -NFS4ERR_LAYOUTTRYLATER:
+> +	/* NFS4ERR_RECALLCONFLICT is always a minimal delay (conflict with
+> +	 * self)
+> +	 * TODO: NFS4ERR_LAYOUTTRYLATER is a conflict with another client
+> +	 * (or clients). What we should do is randomize a short delay like on a
+> +	 * network broadcast burst, and raise the random max every failure.
+> +	 * For now leave it stateless and do this polling.
+> +	 */
+>  	case -NFS4ERR_RECALLCONFLICT:
+>  		timeo = rpc_get_timeout(task->tk_client);
+>  		giveup = lgp->args.timestamp + timeo;
+> -		if (time_after(giveup, jiffies))
+> -			task->tk_status = -NFS4ERR_DELAY;
+> +		if (time_after(giveup, jiffies)) {
+> +			/* Do a minimum delay, We are actually waiting for our
+> +			 * own IO to finish (In most cases)
+> +			 */
+> +			dprintk("%s: NFS4ERR_RECALLCONFLICT waiting\n",
+> +				__func__);
+> +			rpc_delay(task, NFS4_POLL_RETRY_MIN);
+> +			task->tk_status = 0;
+> +			rpc_restart_call_prepare(task);
+> +			goto out; /* Do not call nfs4_async_handle_error() */
+> +		}
+>  
 
-> 
-> On Jan 24, 2014, at 14:21, Jeff Layton <jlayton@redhat.com> wrote:
-> 
-> > On Fri, 24 Jan 2014 11:46:41 -0700
-> > Trond Myklebust <trond.myklebust@primarydata.com> wrote:
-> >> 
-> >> Convert your patch to use wait_on_bit(), and then to call
-> >> wait_on_bit_lock() if and only if you see NFS_INO_INVALID_DATA is set.
-> >> 
-> > 
-> > I think that too would be racy...
-> > 
-> > We have to clear NFS_INO_INVALID_DATA while holding the i_lock, but we
-> > can't wait_on_bit_lock() under that. So (pseudocode):
-> > 
-> > wait_on_bit
-> > take i_lock
-> > check and clear NFS_INO_INVALID_DATA
-> > drop i_lock
-> > wait_on_bit_lock
-> > 
-> > ...so between dropping the i_lock and wait_on_bit_lock, we have a place
-> > where another task could check the flag and find it clear.
-> 
-> 
-> 	for(;;) {
-> 		wait_on_bit(NFS_INO_INVALIDATING)
-> 		/* Optimisation: don’t lock NFS_INO_INVALIDATING
-> 		 * if NFS_INO_INVALID_DATA was cleared while we waited.
-> 		 */
-> 		if (!test_bit(NFS_INO_INVALID_DATA))
-> 			return;
-> 		if (!test_and_set_bit_lock(NFS_INO_INVALIDATING))
-> 			break;
-> 	}
-> 	spin_lock(inode->i_lock);
-> 	if (!test_and_clear_bit(NFS_INO_INVALID_DATA)) {
-> 		spin_unlock(inode->i_lock);
-> 		goto out_raced;
-> 	}
-> ….
-> out_raced:
-> 	clear_bit(NFS_INO_INVALIDATING)
-> 	wake_up_bit(NFS_INO_INVALIDATING)
-> 
-> 
-> --
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
+For the default mount option of 'timeo=600', and the default #define
+NFS4_POLL_RETRY_MIN==HZ/10, this means we can end up pounding the server
+with 600 LAYOUTGET requests within the space of 1 minute, before giving
+up. Is that reasonable?
 
-Hmm maybe. OTOH, if we're using atomic bitops do we need to deal with
-the spinlock?  I'll ponder it over the weekend and give it a harder
-look on Monday.
-
-Thanks for the thoughts so far...
 -- 
-Jeff Layton <jlayton@redhat.com>
+Trond Myklebust
+Linux NFS client maintainer
+
