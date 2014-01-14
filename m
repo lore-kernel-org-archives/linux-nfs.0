@@ -1,115 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx.bwstor.com.cn ([211.103.180.228]:36666 "EHLO mx.bwstor.cn"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1750917AbaATKMP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 20 Jan 2014 05:12:15 -0500
-From: shaobingqing <shaobingqing@bwstor.com.cn>
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        shaobingqing <shaobingqing@bwstor.com.cn>
-Subject: [PATCH] NFSv4.1: PNFS_BLOCK_NONE_DATA should be handle properly in bl_add_merge_extent?
-Date: Mon, 20 Jan 2014 18:07:28 +0800
-Message-Id: <1390212448-21354-1-git-send-email-shaobingqing@bwstor.com.cn>
-In-Reply-To: <n>
-References: <n>
+Received: from mail-ie0-f172.google.com ([209.85.223.172]:51761 "EHLO
+	mail-ie0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751722AbaANWrx convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Jan 2014 17:47:53 -0500
+Received: by mail-ie0-f172.google.com with SMTP id e14so1121350iej.31
+        for <linux-nfs@vger.kernel.org>; Tue, 14 Jan 2014 14:47:53 -0800 (PST)
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
+Subject: Re: [PATCH v2] pnfs: Proper delay for NFS4ERR_RECALLCONFLICT in layout_get_done
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+In-Reply-To: <42EE44E9-1051-4D22-A4B6-D7E70A59ED2D@primarydata.com>
+Date: Tue, 14 Jan 2014 17:47:50 -0500
+Cc: Boaz Harrosh <bharrosh@panasas.com>, NFS list <linux-nfs@vger.kernel.org>,
+        Stable Tree <stable@vger.kernel.org>
+Message-Id: <153DAED6-461B-43A4-A5B2-A79C8E893285@primarydata.com>
+References: <52D5589A.7090507@panasas.com> <1389726356.6420.5.camel@leira.trondhjem.org> <52D5B886.6000803@panasas.com> <42EE44E9-1051-4D22-A4B6-D7E70A59ED2D@primarydata.com>
+To: Myklebust Trond <trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In the current code, extents would not delete from the bl_extents list when 
-lseg is removed from layout. Now one extent's lseg is deleted and its type 
-is PNFS_BLOCK_NONE_DATA, while a layoutget request get a extent with the same
-range and its type is PNFS_BLOCK_NONE_DATA. In this situation the function
-bl_add_merge_extent will return -EIO. Furthermore, the READ op which request
-the layout will be execute in band. This perhaps not only degrade performance,
-but also result in data unconsistency. 
 
-Signed-off-by: shaobingqing <shaobingqing@bwstor.com.cn>
----
- fs/nfs/blocklayout/extents.c |   50 ++++++++++++++++++++++++++++++++++++++++++
- 1 files changed, 50 insertions(+), 0 deletions(-)
+On Jan 14, 2014, at 17:43, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
 
-diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
-index 9c3e117..7472b38 100644
---- a/fs/nfs/blocklayout/extents.c
-+++ b/fs/nfs/blocklayout/extents.c
-@@ -518,6 +518,34 @@ bl_add_merge_extent(struct pnfs_block_layout *bl,
- 						__func__);
- 					bl_put_extent(new);
- 					return 0;
-+				} else if (be->be_state ==
-+					PNFS_BLOCK_NONE_DATA) {
-+					splice = bl_alloc_extent();
-+					if (!splice) {
-+						bl_put_extent(new);
-+						return -ENOMEM;
-+					}
-+					memcpy(splice, be,
-+					  sizeof(struct pnfs_block_extent));
-+					splice->be_f_offset = end;
-+					splice->be_length = be->be_f_offset
-+						+ be->be_length - end;
-+					be->be_length = new->be_f_offset
-+						- be->be_f_offset;
-+					splice->be_v_offset = 0;
-+
-+					list_add(&new->be_node, &be->be_node);
-+					if (be->be_length == 0) {
-+						list_del(&be->be_node);
-+						bl_put_extent(be);
-+					}
-+					if (splice->be_length != 0)
-+						list_add(&splice->be_node,
-+							&new->be_node);
-+					else
-+						bl_put_extent(splice);
-+
-+					return 0;
- 				} else {
- 					goto out_err;
- 				}
-@@ -533,6 +561,13 @@ bl_add_merge_extent(struct pnfs_block_layout *bl,
- 					dprintk("%s: removing %p\n", __func__, be);
- 					list_del(&be->be_node);
- 					bl_put_extent(be);
-+			    } else if (be->be_state == PNFS_BLOCK_NONE_DATA) {
-+					be->be_length = new->be_f_offset
-+						- be->be_f_offset;
-+					if (be->be_length == 0) {
-+						list_del(&be->be_node);
-+						bl_put_extent(be);
-+					}
- 				} else {
- 					goto out_err;
- 				}
-@@ -544,6 +579,10 @@ bl_add_merge_extent(struct pnfs_block_layout *bl,
- 				dprintk("%s: removing %p\n", __func__, be);
- 				list_del(&be->be_node);
- 				bl_put_extent(be);
-+
-+			} else if (be->be_state == PNFS_BLOCK_NONE_DATA) {
-+				list_del(&be->be_node);
-+				bl_put_extent(be);
- 			} else {
- 				goto out_err;
- 			}
-@@ -557,6 +596,17 @@ bl_add_merge_extent(struct pnfs_block_layout *bl,
- 				dprintk("%s: removing %p\n", __func__, be);
- 				list_del(&be->be_node);
- 				bl_put_extent(be);
-+
-+			} else if (be->be_state == PNFS_BLOCK_NONE_DATA) {
-+				be->be_length -= end - be->be_f_offset;
-+				be->be_v_offset += end - be->be_f_offset;
-+				be->be_f_offset = end;
-+				list_add(&new->be_node, be->be_node.prev);
-+				if (be->be_length == 0) {
-+					list_del(&be->be_node);
-+					bl_put_extent(be);
-+				}
-+				return 0;
- 			} else {
- 				goto out_err;
- 			}
--- 
-1.7.4.2
+> 
+> On Jan 14, 2014, at 17:21, Boaz Harrosh <bharrosh@panasas.com> wrote:
+> 
+>> On 01/14/2014 09:05 PM, Trond Myklebust wrote:
+>>> On Tue, 2014-01-14 at 17:32 +0200, Boaz Harrosh wrote:
+>>>> 
+>>> 
+>>> For the default mount option of 'timeo=600', and the default #define
+>>> NFS4_POLL_RETRY_MIN==HZ/10, this means we can end up pounding the server
+>>> with 600 LAYOUTGET requests within the space of 1 minute, before giving
+>>> up. Is that reasonable?
+>>> 
+>> 
+>> It will never get there it will always be 1 or two sends. Usually it is
+>> just so the sequence of layout_get_done is out of the way and the
+>> LAYOUT_RECALL sequence+1 can get through and the layout released. Then
+>> the next time it will all be good and the LAYOUT_GET will succeed.
+>> 
+>> Worst case is when the client is very busy with queue full of IO
+>> on the same busy layout that needs to be released by the recall. Personally
+>> I found that this never exceeds 40 IOPs in flight. Note that this is not
+>> the amount of total dirty memory but only the amount of already submitted
+>> IO. I guess that on a very slow connection these can take time but in
+>> regular line speeds I never observed more the 2 retries with this patch.
+>> 
+>> It is all up to the client. NFS4ERR_RECALLCONFLICT means "the layouts you
+>> have need to be released" (I say released because the forgetful model does
+>> not actually returns them). Can you see a critical time when layouts are
+>> held for longer than a second ?
+> 
+> That will probably depend on the workload and possibly on the layout type.
+> 
+> My point was, however, about the potential for mischief due to the mismatch between the number of retries that the resulting code allows, and the fixed period between those retries of 1/10 seconds. Why not rather use something along the lines of "rpc_delay(rpc_task, min(giveup -jiffies , max(jiffies - lgp->args.timestamp, NFS4_POLL_RETRY_MIN)));”? That gives you an initially exponential back off with a minimum period of NFS4_POLL_RETRY_MIN, and with an expiry date of ‘timeo’ jiffies after the first attempt.
+
+Whoops. That should probably be
+
+max(NFS4_POLL_RETRY_MIN, min(giveup - jiffies , jiffies - lgp->args.timestamp))
+
+so that the time interval is not < NFS4_POLL_RETRY_MIN.
+--
+Trond Myklebust
+Linux NFS client maintainer
 
