@@ -1,88 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:36850 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752816AbaAOR50 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 15 Jan 2014 12:57:26 -0500
-Date: Wed, 15 Jan 2014 12:57:23 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Miklos Szeredi <mszeredi@suse.cz>
-Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        miklos@szeredi.hu
-Subject: Re: [PATCH] dcache: fix d_splice_alias handling of aliases
-Message-ID: <20140115175723.GA4596@fieldses.org>
-References: <20140115151749.GF23999@fieldses.org>
- <1389807296.16290.32.camel@tucsk.piliscsaba.szeredi.hu>
+Received: from natasha.panasas.com ([209.166.131.148]:38642 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751550AbaANPLK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Jan 2014 10:11:10 -0500
+Message-ID: <52D55382.6090502@panasas.com>
+Date: Tue, 14 Jan 2014 17:10:58 +0200
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1389807296.16290.32.camel@tucsk.piliscsaba.szeredi.hu>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+CC: Stable Tree <stable@kernel.org>, NFS list <linux-nfs@vger.kernel.org>
+Subject: Re: Fwd: [PATCH] pnfs-obj: Proper delay for NFS4ERR_RECALLCONFLICT
+ in layout_get_done
+References: <52D54D87.7010100@panasas.com> <52D550AA.6030304@panasas.com>
+In-Reply-To: <52D550AA.6030304@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jan 15, 2014 at 06:34:56PM +0100, Miklos Szeredi wrote:
-> On Wed, 2014-01-15 at 10:17 -0500, J. Bruce Fields wrote:
-> > From: "J. Bruce Fields" <bfields@redhat.com>
-> > 
-> > d_splice_alias can create duplicate directory aliases (in the !new
-> > case), or (in the new case) d_move without holding appropriate locks.
+On 01/14/2014 04:58 PM, Boaz Harrosh wrote:
+> Sorry forgot to CC Stable Tree <stable@kernel.org>
 > 
-> It can d_move, because the dentry is known to be disconnected, i.e. it
-> doesn't have a parent for which we could obtain the lock.
-
-DCACHE_DISCONNECTED doesn't mean that.
-
-When you lookup a dentry by filehandle that dentry is initially marked
-DCACHE_DISCONNECTED.  It is cleared only after reconnect_path() has
-verified that the dentry is reachable all the way from the root.
-
-So !DCACHE_DISCONNECTED implies that the dentry is connected all the way
-up to the root, but the converse is not true.
-
-This has been a source of confusion, but it is explained in
-Documentation/filesystems/nfs/Exporting.  Recently I've cleaned up a few
-odd uses of DCACHE_DISCONNECTED and rewritten reconnect_path(), partly
-as an attempt to clarify the situation.
-
-Let me know if any of that doesn't look right to you....
-
-> > d_materialise_unique deals with both of these problems.  (The latter
-> > seems to be dealt by trylocks (see __d_unalias), which look like they
-> > could cause spurious lookup failures--but that's at least better than
-> > corrupting the dcache.)
-> > 
-> > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> > ---
-> >  fs/dcache.c |   25 +------------------------
-> >  1 file changed, 1 insertion(+), 24 deletions(-)
-> > 
-> > Only lightly tested....  If this is right, then we can also just ditch
-> > d_splice_alias completely, and clean up the various d_find_alias's.
-> > 
-> > I think the only reason we have both d_splice_alias and
-> > d_materialise_unique is that the former was written for exportable
-> > filesystems and the latter for distributed filesystems.
-> > 
-> > But we have at least one exportable filesystem (fuse) using
-> > d_materialise_unique.  And I doubt d_splice_alias was ever completely
-> > correct even for on-disk filesystems.
-> > 
-> > Am I missing some subtlety?
+> Greg hi
 > 
-> One subtle difference is that for a non-directory d_splice_alias() will
-> reconnect a DCACHE_DISCONNECTED dentry if one exists, while
-> d_materialise_unique() will not.
+> In Linux v3.9 there is a conflict around this area exactly do to change:
+> 	[30005121] NFSv4.1: LAYOUTGET EDELAY loops timeout to the MDS
+> 
+> If there are stables below 3.9 please tell me I will send you a patch
+> for these.
+> 
+> Thanks
+> Boaz
+> 
+<>
+> Subject: [PATCH] pnfs-obj: Proper delay for NFS4ERR_RECALLCONFLICT in layout_get_done
+> 
+> 
+> An NFS4ERR_RECALLCONFLICT is returned by server from a GET_LAYOUT
+> only when a Server Sent a RECALL do to that GET_LAYOUT, or
+> the RECALL and GET_LAYOUT crossed on the wire.
+> In any way this means we want to wait at most until in-flight IO
+> is finished and the RECALL can be satisfied.
+> 
+> So a proper wait here is more like 1/10 of a second, not 15 seconds
+> like we have now. (We use NFS4_POLL_RETRY_MIN here)
+> 
+> Current code totally craps out performance of very large files on
+> most pnfs-objects layouts, because of how the map changes when the
+> file has grown and spills into the next raid group.
+> 
+> CC: Stable Tree <stable@kernel.org>
+> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
 
-Actually until f80de2cde10350b8d146e375ff8b634e72e6a827 "dcache: don't
-clear DCACHE_DISCONNECTED too early", it was the reverse:
-d_materialise_unique cleared DISCONNECTED and d_splice_alias (correctly)
-did not.
+Trond hi
 
-The only place where it should be cleared is reconnect_path().
+I'm sitting on this bug for over 6 month now. I completely forgot about
+it until QA moved to new Fedora and a vanila Kernel which is missing this
+fix.
 
-> Does this matter in practice?   The small number of extra dentries
-> probably does not matter.
+This is a real bummer for objects, in the case of large clusters for example
+a Panasas cluster with two shelves and up. So on big clusters where performance
+should be better, but with out this fix it is miserably unacceptedly slow.
 
-Directories are assumed to have unique aliases.  When they don't, the
-kernel can deadlock or crash.
+Thanks
+Boaz
 
---b.
