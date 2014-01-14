@@ -1,65 +1,96 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f182.google.com ([209.85.216.182]:50116 "EHLO
-	mail-qc0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753588AbaAAM2o (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Jan 2014 07:28:44 -0500
-Received: by mail-qc0-f182.google.com with SMTP id e16so12805830qcx.27
-        for <linux-nfs@vger.kernel.org>; Wed, 01 Jan 2014 04:28:44 -0800 (PST)
-From: Jeff Layton <jlayton@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: simo@redhat.com, bfields@fieldses.org, neilb@suse.de
-Subject: [RFC PATCH 2/5] sunrpc: don't hang indefinitely in wait_for_gss_proxy
-Date: Wed,  1 Jan 2014 07:28:31 -0500
-Message-Id: <1388579314-15255-3-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1388579314-15255-1-git-send-email-jlayton@redhat.com>
-References: <1388579314-15255-1-git-send-email-jlayton@redhat.com>
+Received: from natasha.panasas.com ([209.166.131.148]:39726 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751318AbaANPba (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Jan 2014 10:31:30 -0500
+Message-ID: <52D55846.7090205@panasas.com>
+Date: Tue, 14 Jan 2014 17:31:18 +0200
+From: Boaz Harrosh <bharrosh@panasas.com>
+MIME-Version: 1.0
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>
+Subject: Re: [osd-dev] [PATCH] pnfs-obj: Proper delay for NFS4ERR_RECALLCONFLICT
+ in layout_get_done
+References: <52D54D87.7010100@panasas.com>
+In-Reply-To: <52D54D87.7010100@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-A later patch will make upcalls delay for a bit if gssproxy isn't
-up yet. Make wait_for_gss_proxy just delay for a little while before
-giving up and disabling it. The 5s here is definitely negotiable.
+Trond hi
 
-Also, since there are no callers now, we can get rid of the file
-pointer here and eliminate the O_NONBLOCK goop.
+The subject needs to read "pnfs:" and not "pnfs-obj:"
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- net/sunrpc/auth_gss/svcauth_gss.c | 18 ++++++++++++++----
- 1 file changed, 14 insertions(+), 4 deletions(-)
+On 01/14/2014 04:45 PM, Boaz Harrosh wrote:
+> 
+> An NFS4ERR_RECALLCONFLICT is returned by server from a GET_LAYOUT
+> only when a Server Sent a RECALL do to that GET_LAYOUT, or
+> the RECALL and GET_LAYOUT crossed on the wire.
+> In any way this means we want to wait at most until in-flight IO
+> is finished and the RECALL can be satisfied.
+> 
+> So a proper wait here is more like 1/10 of a second, not 15 seconds
+> like we have now. (We use NFS4_POLL_RETRY_MIN here)
+> 
+> Current code totally craps out performance of very large files on
+> most pnfs-objects layouts, because of how the map changes when the
+> file has grown and spills into the next raid group.
+> 
+> CC: Stable Tree <stable@kernel.org>
 
-diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
-index 5e9323e..64c025e 100644
---- a/net/sunrpc/auth_gss/svcauth_gss.c
-+++ b/net/sunrpc/auth_gss/svcauth_gss.c
-@@ -1313,13 +1313,23 @@ static inline bool gssp_ready(struct sunrpc_net *sn)
- 	return false;
- }
- 
--static int wait_for_gss_proxy(struct net *net, struct file *file)
-+/*
-+ * The initial upcall to gssproxy will wait 5s for the use_gss_proxy
-+ * var to change to something besides -1.
-+ */
-+#define GSSP_INITIAL_UPCALL_TIMEOUT	(5 * HZ)
-+
-+static int wait_for_gss_proxy(struct net *net)
- {
-+	int ret;
- 	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
- 
--	if (file->f_flags & O_NONBLOCK && !gssp_ready(sn))
--		return -EAGAIN;
--	return wait_event_interruptible(sn->gssp_wq, gssp_ready(sn));
-+	ret = wait_event_interruptible_timeout(sn->gssp_wq, gssp_ready(sn),
-+					       GSSP_INITIAL_UPCALL_TIMEOUT);
-+	/* If we timed out, disable gssp */
-+	if (ret == 0)
-+		set_gss_proxy(net, 0);
-+	return ret < 0 ? ret : 0;
- }
- 
- 
--- 
-1.8.4.2
+And please fix the email here to <stable@vger.kernel.org>
+(OK I'll send a new one sorry)
+
+Thanks
+Boaz
+
+> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+> ---
+>  fs/nfs/nfs4proc.c | 22 +++++++++++++++++++---
+>  1 file changed, 19 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index d53d678..3264fca 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -7058,7 +7058,7 @@ static void nfs4_layoutget_done(struct rpc_task *task, void *calldata)
+>  	struct nfs4_state *state = NULL;
+>  	unsigned long timeo, giveup;
+>  
+> -	dprintk("--> %s\n", __func__);
+> +	dprintk("--> %s tk_status => %d\n", __func__, task->tk_status);
+>  
+>  	if (!nfs41_sequence_done(task, &lgp->res.seq_res))
+>  		goto out;
+> @@ -7067,11 +7067,27 @@ static void nfs4_layoutget_done(struct rpc_task *task, void *calldata)
+>  	case 0:
+>  		goto out;
+>  	case -NFS4ERR_LAYOUTTRYLATER:
+> +	/* NFS4ERR_RECALLCONFLICT is always a minimal delay (conflict with
+> +	 * self)
+> +	 * TODO: NFS4ERR_LAYOUTTRYLATER is a conflict with another client
+> +	 * (or clients). What we should do is randomize a short delay like on a
+> +	 * network broadcast burst, and raise the random max every failure.
+> +	 * For now leave it stateless and do this polling.
+> +	 */
+>  	case -NFS4ERR_RECALLCONFLICT:
+>  		timeo = rpc_get_timeout(task->tk_client);
+>  		giveup = lgp->args.timestamp + timeo;
+> -		if (time_after(giveup, jiffies))
+> -			task->tk_status = -NFS4ERR_DELAY;
+> +		if (time_after(giveup, jiffies)) {
+> +			/* Do a minimum delay, We are actually waiting for our
+> +			 * own IO to finish (In most cases)
+> +			 */
+> +			dprintk("%s: NFS4ERR_RECALLCONFLICT waiting\n",
+> +				__func__);
+> +			rpc_delay(task, NFS4_POLL_RETRY_MIN);
+> +			task->tk_status = 0;
+> +			rpc_restart_call_prepare(task);
+> +			goto out; /* Do not call nfs4_async_handle_error() */
+> +		}
+>  		break;
+>  	case -NFS4ERR_EXPIRED:
+>  	case -NFS4ERR_BAD_STATEID:
+> 
 
