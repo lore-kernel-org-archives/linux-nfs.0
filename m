@@ -1,31 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:21238 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755865AbaAVT0r (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 22 Jan 2014 14:26:47 -0500
-Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s0MJQkJ9008704
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Wed, 22 Jan 2014 14:26:46 -0500
-Received: from smallhat.boston.devel.redhat.com (smallhat.boston.devel.redhat.com [10.19.60.65])
-	by int-mx12.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s0MJQk12031878
-	for <linux-nfs@vger.kernel.org>; Wed, 22 Jan 2014 14:26:46 -0500
-Message-ID: <52E01BEC.3000203@RedHat.com>
-Date: Wed, 22 Jan 2014 14:28:44 -0500
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Linux NFS Town Hall  meeting: Thur 01/22/14 *Canceled*
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail.linux-iscsi.org ([67.23.28.174]:57482 "EHLO
+	linux-iscsi.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752037AbaAOXJA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Jan 2014 18:09:00 -0500
+Message-ID: <1389827455.5567.602.camel@haakon3.risingtidesystems.com>
+Subject: Re: [LSF/MM TOPIC] copy offloading
+From: "Nicholas A. Bellinger" <nab@linux-iscsi.org>
+To: Zach Brown <zab@redhat.com>
+Cc: lsf-pc@lists.linux-foundation.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-scsi@vger.kernel.org
+Date: Wed, 15 Jan 2014 15:10:55 -0800
+In-Reply-To: <20140115202754.GL8102@lenny.home.zabbo.net>
+References: <20140115202754.GL8102@lenny.home.zabbo.net>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+On Wed, 2014-01-15 at 12:27 -0800, Zach Brown wrote:
+> Discussing copy offloading at LSF is appropriate because it can involve
+> so many layers of the stack:
+> 
+>  - high level syscall interface
+>  - in-kernel high level entry point for nfsd 
+>  - fs specific implementations (btrfs and ocfs2 cow, nfs) 
+>  - vfs helper for offloading block copies for ext*,xfs
+>  - bio offload requests for cow block devices like bcache/dm-cache
+>  - encoding offload bios into scsi reqs
+>  - processing virt guest device offload requests with host syscalls
+> 
+> Getting the user and in-kernel interfaces right to support all these
+> moving parts has proven tricky.  The more input, the better.
+> 
+> It's been a while since I sent out a refreshed version of the series.
+> That'll be remedied before LSF rolls around :). 
+> 
 
-Unfortunately I unexpectedly got called out of
-town so tomorrow meeting is canceled. 
++1
 
-Talk to ya in a couple weeks... 
+Now that EXTENDED_COPY LID1 target mode logic is upstream, I'm really
+eager to start utilizing it Linux host side.  ;)
 
-steved.
- 
+--nab
+
