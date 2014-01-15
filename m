@@ -1,83 +1,107 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:24686 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:53876 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750933AbaARRLh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 18 Jan 2014 12:11:37 -0500
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s0IHBbqD026732
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Sat, 18 Jan 2014 12:11:37 -0500
-Received: from smallhat.boston.devel.redhat.com (vpn-60-134.rdu2.redhat.com [10.10.60.134])
-	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s0IHBack016972
-	for <linux-nfs@vger.kernel.org>; Sat, 18 Jan 2014 12:11:36 -0500
-From: Steve Dickson <steved@redhat.com>
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH] rpc.idmapd: Remove no longer supported flags from man page.
-Date: Sat, 18 Jan 2014 12:13:27 -0500
-Message-Id: <1390065207-11888-1-git-send-email-steved@redhat.com>
+	id S1751754AbaAOReH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 15 Jan 2014 12:34:07 -0500
+Message-ID: <1389807296.16290.32.camel@tucsk.piliscsaba.szeredi.hu>
+Subject: Re: [PATCH] dcache: fix d_splice_alias handling of aliases
+From: Miklos Szeredi <mszeredi@suse.cz>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        miklos@szeredi.hu
+Date: Wed, 15 Jan 2014 18:34:56 +0100
+In-Reply-To: <20140115151749.GF23999@fieldses.org>
+References: <20140115151749.GF23999@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- utils/idmapd/idmapd.man | 22 ++--------------------
- 1 file changed, 2 insertions(+), 20 deletions(-)
+On Wed, 2014-01-15 at 10:17 -0500, J. Bruce Fields wrote:
+> From: "J. Bruce Fields" <bfields@redhat.com>
+> 
+> d_splice_alias can create duplicate directory aliases (in the !new
+> case), or (in the new case) d_move without holding appropriate locks.
 
-diff --git a/utils/idmapd/idmapd.man b/utils/idmapd/idmapd.man
-index 58ea9f2..185cd1b 100644
---- a/utils/idmapd/idmapd.man
-+++ b/utils/idmapd/idmapd.man
-@@ -12,10 +12,7 @@
- .Nm rpc.idmapd
- .Op Fl v
- .Op Fl f
--.Op Fl d Ar domain
- .Op Fl p Ar path
--.Op Fl U Ar username
--.Op Fl G Ar groupname
- .Op Fl c Ar path
- .Sh DESCRIPTION
- .Nm
-@@ -31,25 +28,10 @@ Increases the verbosity level (can be specified multiple times).
- Runs
- .Nm
- in the foreground and prints all output to the terminal.
--.It Fl d Ar domain
--Set domain to
--.Ar domain .
--This is used internally by NFSv4 and is typically assigned by the
--system administrator.  By default,
--.Ar domain
--is set to be the FQDN of the host, minus the hostname.
- .It Fl p Ar path
- Specifies the location of the RPC pipefs to be
- .Ar path .
- The default value is \&"/var/lib/nfs/rpc_pipefs\&".
--.It Fl U Ar username
--Specifies the NFSv4 nobody user to be
--.Ar username .
--The default value is \&"nobody\&".
--.It Fl G Ar groupname
--Specifies the NFSv4 nobody group to be
--.Ar groupname .
--The default value is \&"nobody\&".
- .It Fl c Ar path
- Use configuration file
- .Ar path .
-@@ -59,11 +41,11 @@ Client-only: perform no idmapping for any NFS server, even if one is detected.
- Server-only: perform no idmapping for any NFS client, even if one is detected.
- .El
- .Sh EXAMPLES
--.Cm rpc.idmapd -d \&"citi.umich.edu\&" -f -vvv
-+.Cm rpc.idmapd -f -vvv
- .Pp
- Runs
- .Nm
--with the domain \&"citi.umich.edu\&" in the foreground, printing all
-+printing all
- messages to console, and with a verbosity level of 3.
- .\" This next request is for sections 2 and 3 function return values only.
- .\" .Sh RETURN VALUES
--- 
-1.8.3.1
+It can d_move, because the dentry is known to be disconnected, i.e. it
+doesn't have a parent for which we could obtain the lock.
+
+> d_materialise_unique deals with both of these problems.  (The latter
+> seems to be dealt by trylocks (see __d_unalias), which look like they
+> could cause spurious lookup failures--but that's at least better than
+> corrupting the dcache.)
+> 
+> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> ---
+>  fs/dcache.c |   25 +------------------------
+>  1 file changed, 1 insertion(+), 24 deletions(-)
+> 
+> Only lightly tested....  If this is right, then we can also just ditch
+> d_splice_alias completely, and clean up the various d_find_alias's.
+> 
+> I think the only reason we have both d_splice_alias and
+> d_materialise_unique is that the former was written for exportable
+> filesystems and the latter for distributed filesystems.
+> 
+> But we have at least one exportable filesystem (fuse) using
+> d_materialise_unique.  And I doubt d_splice_alias was ever completely
+> correct even for on-disk filesystems.
+> 
+> Am I missing some subtlety?
+
+One subtle difference is that for a non-directory d_splice_alias() will
+reconnect a DCACHE_DISCONNECTED dentry if one exists, while
+d_materialise_unique() will not.
+
+Does this matter in practice?   The small number of extra dentries
+probably does not matter.
+
+Thanks,
+Miklos
+
+
+> 
+> --b.
+> 
+> diff --git a/fs/dcache.c b/fs/dcache.c
+> index 4bdb300..da82fa9 100644
+> --- a/fs/dcache.c
+> +++ b/fs/dcache.c
+> @@ -1926,33 +1926,10 @@ EXPORT_SYMBOL(d_obtain_alias);
+>   */
+>  struct dentry *d_splice_alias(struct inode *inode, struct dentry *dentry)
+>  {
+> -	struct dentry *new = NULL;
+> -
+>  	if (IS_ERR(inode))
+>  		return ERR_CAST(inode);
+>  
+> -	if (inode && S_ISDIR(inode->i_mode)) {
+> -		spin_lock(&inode->i_lock);
+> -		new = __d_find_alias(inode, 1);
+> -		if (new) {
+> -			BUG_ON(!(new->d_flags & DCACHE_DISCONNECTED));
+> -			spin_unlock(&inode->i_lock);
+> -			security_d_instantiate(new, inode);
+> -			d_move(new, dentry);
+> -			iput(inode);
+> -		} else {
+> -			/* already taking inode->i_lock, so d_add() by hand */
+> -			__d_instantiate(dentry, inode);
+> -			spin_unlock(&inode->i_lock);
+> -			security_d_instantiate(dentry, inode);
+> -			d_rehash(dentry);
+> -		}
+> -	} else {
+> -		d_instantiate(dentry, inode);
+> -		if (d_unhashed(dentry))
+> -			d_rehash(dentry);
+> -	}
+> -	return new;
+> +	return d_materialise_unique(dentry, inode);
+>  }
+>  EXPORT_SYMBOL(d_splice_alias);
+>  
+
 
