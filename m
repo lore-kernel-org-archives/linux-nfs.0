@@ -1,65 +1,106 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:40067 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754295AbaAUTWf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 Jan 2014 14:22:35 -0500
-Date: Tue, 21 Jan 2014 14:21:59 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Christoph Hellwig <hch@infradead.org>, Trond.Myklebust@netapp.com,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 7/7] nfs: page cache invalidation for dio
-Message-ID: <20140121142159.210ca0b8@tlielax.poochiereds.net>
-In-Reply-To: <20131115103324.6a3cf978@tlielax.poochiereds.net>
-References: <20131114165027.355613182@bombadil.infradead.org>
-	<20131114165042.205194841@bombadil.infradead.org>
-	<20131114133551.5d08b5cd@tlielax.poochiereds.net>
-	<20131115142847.GA1107@infradead.org>
-	<20131115095241.2c5e1cfb@tlielax.poochiereds.net>
-	<20131115150204.GA8105@infradead.org>
-	<20131115103324.6a3cf978@tlielax.poochiereds.net>
+Received: from mail-qa0-f44.google.com ([209.85.216.44]:62907 "EHLO
+	mail-qa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752127AbaAOSZO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Jan 2014 13:25:14 -0500
+Received: by mail-qa0-f44.google.com with SMTP id w5so1219892qac.3
+        for <linux-nfs@vger.kernel.org>; Wed, 15 Jan 2014 10:25:13 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+In-Reply-To: <20140115175723.GA4596@fieldses.org>
+References: <20140115151749.GF23999@fieldses.org>
+	<1389807296.16290.32.camel@tucsk.piliscsaba.szeredi.hu>
+	<20140115175723.GA4596@fieldses.org>
+Date: Wed, 15 Jan 2014 19:25:11 +0100
+Message-ID: <CAJfpegs0+t4S1y9mhRMJMAERh-a95KjK_JQ7F5SRrfsNZOdoMA@mail.gmail.com>
+Subject: Re: [PATCH] dcache: fix d_splice_alias handling of aliases
+From: Miklos Szeredi <miklos@szeredi.hu>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Miklos Szeredi <mszeredi@suse.cz>, Al Viro <viro@zeniv.linux.org.uk>,
+        Linux-Fsdevel <linux-fsdevel@vger.kernel.org>,
+        Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        Linux NFS list <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 15 Nov 2013 10:33:24 -0500
-Jeff Layton <jlayton@redhat.com> wrote:
+On Wed, Jan 15, 2014 at 6:57 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> On Wed, Jan 15, 2014 at 06:34:56PM +0100, Miklos Szeredi wrote:
+>> On Wed, 2014-01-15 at 10:17 -0500, J. Bruce Fields wrote:
+>> > From: "J. Bruce Fields" <bfields@redhat.com>
+>> >
+>> > d_splice_alias can create duplicate directory aliases (in the !new
+>> > case), or (in the new case) d_move without holding appropriate locks.
+>>
+>> It can d_move, because the dentry is known to be disconnected, i.e. it
+>> doesn't have a parent for which we could obtain the lock.
+>
+> DCACHE_DISCONNECTED doesn't mean that.
 
-> On Fri, 15 Nov 2013 07:02:04 -0800
-> Christoph Hellwig <hch@infradead.org> wrote:
-> 
-> > On Fri, Nov 15, 2013 at 09:52:41AM -0500, Jeff Layton wrote:
-> > > Do you have these patches in a git tree someplace? If so, I wouldn't
-> > > mind running this reproducer against it to see if it helps. It's a bit
-> > > of a longshot, but what the heck...
-> > 
-> > While I do have a local git tree I don't really have anywhere to push
-> > it to.  But applying these patches shouldn't be all that hard.
-> > 
-> 
-> It's not -- I'm just lazy...
-> 
-> FWIW, I tried this set and it didn't make any difference on the bug, so
-> I'll just keep soldiering on to track it down...
-> 
+You're right, but I'm also right, because __d_find_alias() will check
+IS_ROOT() too.  So only "root" disconnected dentries will be moved.
 
-I just tried this set again, and it *did* seem to help that bug.
+>
+> When you lookup a dentry by filehandle that dentry is initially marked
+> DCACHE_DISCONNECTED.  It is cleared only after reconnect_path() has
+> verified that the dentry is reachable all the way from the root.
+>
+> So !DCACHE_DISCONNECTED implies that the dentry is connected all the way
+> up to the root, but the converse is not true.
+>
+> This has been a source of confusion, but it is explained in
+> Documentation/filesystems/nfs/Exporting.  Recently I've cleaned up a few
+> odd uses of DCACHE_DISCONNECTED and rewritten reconnect_path(), partly
+> as an attempt to clarify the situation.
+>
+> Let me know if any of that doesn't look right to you....
+>
+>> > d_materialise_unique deals with both of these problems.  (The latter
+>> > seems to be dealt by trylocks (see __d_unalias), which look like they
+>> > could cause spurious lookup failures--but that's at least better tha
+>> > corrupting the dcache.)
+>> >
+>> > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+>> > ---
+>> >  fs/dcache.c |   25 +------------------------
+>> >  1 file changed, 1 insertion(+), 24 deletions(-)
+>> >
+>> > Only lightly tested....  If this is right, then we can also just ditch
+>> > d_splice_alias completely, and clean up the various d_find_alias's.
+>> >
+>> > I think the only reason we have both d_splice_alias and
+>> > d_materialise_unique is that the former was written for exportable
+>> > filesystems and the latter for distributed filesystems.
+>> >
+>> > But we have at least one exportable filesystem (fuse) using
+>> > d_materialise_unique.  And I doubt d_splice_alias was ever completely
+>> > correct even for on-disk filesystems.
+>> >
+>> > Am I missing some subtlety?
+>>
+>> One subtle difference is that for a non-directory d_splice_alias() will
+>> reconnect a DCACHE_DISCONNECTED dentry if one exists, while
+>> d_materialise_unique() will not.
+>
+> Actually until f80de2cde10350b8d146e375ff8b634e72e6a827 "dcache: don't
+> clear DCACHE_DISCONNECTED too early", it was the reverse:
+> d_materialise_unique cleared DISCONNECTED and d_splice_alias (correctly)
+> did not.
+>
+> The only place where it should be cleared is reconnect_path().
+>
+>> Does this matter in practice?   The small number of extra dentries
+>> probably does not matter.
+>
+> Directories are assumed to have unique aliases.  When they don't, the
+> kernel can deadlock or crash.
 
-I think the reason it didn't before was that I had applied this set on
-top of a tree that held a different patch that introduced a race in the
-nfs_revalidate_mapping() code.
+What I meant is that d_materialise_unique() will currently not reuse
+disconnected *nondirectory* dentries, hence there may be more aliases
+than necessary.  This could easily be fixed, though.
 
-In any case, this helps but it's a little odd. With this patch, you add
-an invalidate_inode_pages2 call prior to doing the DIO. But, you've
-also left in the call to nfs_zap_mapping in the completion codepath.
+Thanks,
+Miklos
 
-So now, we shoot down the mapping prior to doing a DIO write, and then
-mark the mapping for invalidation again when the write completes. Was
-that intentional?
 
-It seems a little excessive and might hurt performance in some cases.
-OTOH, if you mix buffered and DIO you're asking for trouble anyway and
-this approach seems to give better cache coherency.
--- 
-Jeff Layton <jlayton@redhat.com>
+>
+> --b.
