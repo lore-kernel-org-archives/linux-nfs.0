@@ -1,45 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:42638 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751276AbaAQVEK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 17 Jan 2014 16:04:10 -0500
-Date: Fri, 17 Jan 2014 16:03:43 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        Miklos Szeredi <mszeredi@suse.cz>
-Subject: Re: [PATCH] dcache: fix d_splice_alias handling of aliases
-Message-ID: <20140117210343.GD26636@fieldses.org>
-References: <20140115151749.GF23999@fieldses.org>
- <20140117121723.GA18375@infradead.org>
- <20140117153917.GA26636@fieldses.org>
+Received: from mx.nrchpc.ac.cn ([211.103.180.228]:46745 "EHLO mx.bwstor.cn"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1751253AbaAOIfi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 15 Jan 2014 03:35:38 -0500
+Received: from localhost (localhost [127.0.0.1])
+	by mx.bwstor.cn (Postfix) with ESMTP id BC3C2668FE
+	for <linux-nfs@vger.kernel.org>; Wed, 15 Jan 2014 16:35:20 +0800 (CST)
+Received: from mx.bwstor.cn ([127.0.0.1])
+	by localhost (mx1.bwstor.com.cn [127.0.0.1]) (amavisd-new, port 10024)
+	with ESMTP id EIDF80hMJEdE for <linux-nfs@vger.kernel.org>;
+	Wed, 15 Jan 2014 16:35:20 +0800 (CST)
+Received: from linux-odmv (unknown [10.10.37.58])
+	by mx.bwstor.cn (Postfix) with ESMTPA id 9B82A668FA
+	for <linux-nfs@vger.kernel.org>; Wed, 15 Jan 2014 16:35:20 +0800 (CST)
+Date: Wed, 15 Jan 2014 16:34:53 +0800
+From: shaobingqing@bwstor.com.cn
+To: linux-nfs@vger.kernel.org
+Subject: What caused the rpc_rqst unable to be obtained in
+ xs_tcp_read_callback?
+Message-ID: <52d6482d.9uhxuyZrGvlNd2GD%shaobingqing@bwstor.com.cn>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140117153917.GA26636@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jan 17, 2014 at 10:39:17AM -0500, J. Bruce Fields wrote:
-> On Fri, Jan 17, 2014 at 04:17:23AM -0800, Christoph Hellwig wrote:
-> > Also the inode == NULL case really should be split out from
-> > d_materialise_unique into a separate helper.  It shares almost no
-> > code, is entirely undocumented to the point that I don't really
-> > understand what the purpose is, and the only caller that can get
-> > there (fuse) already branches around that case in the caller anyway.
-> 
-> I think I see what you mean, I can fix that.
+In the function xs_tcp_read_callback, when the rpc_rqst are 
+unable to be obtained, the connection will be closed and the
+system will give a KERN_WARNING "Callback slot table overflowed".
+We know that although there is only one rpc_rqst is prealloced,
+metadata server cannot send two or more callback requests to one
+client at the  same time, because there is only one slot on the
+metadate server for the client.
 
-Actually:
+Now, in my test, the KERN_WARNING "Callback slot table overflowed"
+always occurs. So, I want to know that what caused the rpc_rqst
+unable to be obtained. Maybe there are retransmissions in the systems. 
 
-	- two callers (fuse and nfs) take advantage of the NULL case.
-
-	- d_splice_alias handles inode == NULL in the same way, and
-	  almost every caller takes advantage of that.
-
-So at least we wouldn't want to actually make the caller handle this
-case.
-
-But maybe there's still some opportunity for cleanup or documentation.
-
---b.
+Are there anybody can expain the reason for us? 
