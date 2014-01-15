@@ -1,115 +1,146 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:52823 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751970AbaAPQoP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 16 Jan 2014 11:44:15 -0500
-Date: Thu, 16 Jan 2014 11:44:11 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Steven Whitehouse <swhiteho@redhat.com>
-Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        Miklos Szeredi <mszeredi@suse.cz>
-Subject: Re: [PATCH] dcache: fix d_splice_alias handling of aliases
-Message-ID: <20140116164411.GD16829@fieldses.org>
-References: <20140115151749.GF23999@fieldses.org>
- <20140116161015.GC16829@fieldses.org>
- <1389888942.2779.34.camel@menhir>
+Received: from merlin.infradead.org ([205.233.59.134]:44924 "EHLO
+	merlin.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751990AbaAOSAZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Jan 2014 13:00:25 -0500
+Message-ID: <52D6CCD4.5080104@infradead.org>
+Date: Wed, 15 Jan 2014 10:00:52 -0800
+From: Randy Dunlap <rdunlap@infradead.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1389888942.2779.34.camel@menhir>
+To: mark.doffman@codethink.co.uk
+CC: ceph-devel@vger.kernel.org, Rob Taylor <rob.taylor@codethink.co.uk>,
+        sage@inktank.com, netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 2/2] Documentation: Document the cephroot functionality
+References: <cover.1389806186.git.mark.doffman@codethink.co.uk> <29b3bd9700e23df2aee095df8c34a15a62f57d27.1389806186.git.mark.doffman@codethink.co.uk>
+In-Reply-To: <29b3bd9700e23df2aee095df8c34a15a62f57d27.1389806186.git.mark.doffman@codethink.co.uk>
+Content-Type: text/plain; charset=ISO-8859-15; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jan 16, 2014 at 04:15:42PM +0000, Steven Whitehouse wrote:
-> Hi,
-> 
-> On Thu, 2014-01-16 at 11:10 -0500, J. Bruce Fields wrote:
-> > On Wed, Jan 15, 2014 at 10:17:49AM -0500, bfields wrote:
-> > > From: "J. Bruce Fields" <bfields@redhat.com>
-> > > 
-> > > d_splice_alias can create duplicate directory aliases (in the !new
-> > > case), or (in the new case) d_move without holding appropriate locks.
-> > > 
-> > > d_materialise_unique deals with both of these problems.  (The latter
-> > > seems to be dealt by trylocks (see __d_unalias), which look like they
-> > > could cause spurious lookup failures--but that's at least better than
-> > > corrupting the dcache.)
-> > > 
-> > > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> > > ---
-> > >  fs/dcache.c |   25 +------------------------
-> > >  1 file changed, 1 insertion(+), 24 deletions(-)
-> > > 
-> > > Only lightly tested....  If this is right, then we can also just ditch
-> > > d_splice_alias completely, and clean up the various d_find_alias's.
-> > > 
-> > > I think the only reason we have both d_splice_alias and
-> > > d_materialise_unique is that the former was written for exportable
-> > > filesystems and the latter for distributed filesystems.
-> > > 
-> > > But we have at least one exportable filesystem (fuse) using
-> > > d_materialise_unique.  And I doubt d_splice_alias was ever completely
-> > > correct even for on-disk filesystems.
-> > > 
-> > > Am I missing some subtlety?
-> > 
-> > Hm, I just noticed:
-> > 
-> >     commit 0d0d110720d7960b77c03c9f2597faaff4b484ae
-> >     Author: Miklos Szeredi <mszeredi@suse.cz>
-> >     Date:   Mon Sep 16 14:52:00 2013 +0200
-> > 
-> >     GFS2: d_splice_alias() can't return error
-> >     
-> >     unless it was given an IS_ERR(inode), which isn't the case here.  So clean
-> >     up the unnecessary error handling in gfs2_create_inode().
-> >     
-> >     This paves the way for real fixes (hence the stable Cc).
-> >     
-> >     Signed-off-by: Miklos Szeredi <mszeredi@suse.cz>
-> >     Signed-off-by: Steven Whitehouse <swhiteho@redhat.com>
-> >     Cc: stable@vger.kernel.org
-> > 
-> > While the statement is true for the current implementation of
-> > d_splice_alias, I don't think it's actually true for any correct
-> > implementation of d_splice_alias, which must be able to return at least
-> > -ELOOP in the directory case.  Does gfs2 need fixing?
-> > 
-> > --b.
-> 
-> Yes, in that case, probably in two places,
+On 01/15/2014 09:26 AM, mark.doffman@codethink.co.uk wrote:
+> From: Rob Taylor <rob.taylor@codethink.co.uk>
+>
+> Document using the cephfs as a root device, its purpose,
+> functionality and use.
+>
+> Signed-off-by: Mark Doffman <mark.doffman@codethink.co.uk>
+> Signed-off-by: Rob Taylor <rob.taylor@codethink.co.uk>
+> Reviewed-by: Ian Molton <ian.molton@codethink.co.uk>
+> ---
+>   Documentation/filesystems/{ => ceph}/ceph.txt |  0
+>   Documentation/filesystems/ceph/cephroot.txt   | 86 +++++++++++++++++++++++++++
+>   2 files changed, 86 insertions(+)
+>   rename Documentation/filesystems/{ => ceph}/ceph.txt (100%)
+>   create mode 100644 Documentation/filesystems/ceph/cephroot.txt
+>
+> diff --git a/Documentation/filesystems/ceph.txt b/Documentation/filesystems/ceph/ceph.txt
+> similarity index 100%
+> rename from Documentation/filesystems/ceph.txt
+> rename to Documentation/filesystems/ceph/ceph.txt
+> diff --git a/Documentation/filesystems/ceph/cephroot.txt b/Documentation/filesystems/ceph/cephroot.txt
+> new file mode 100644
+> index 0000000..deda4f0
+> --- /dev/null
+> +++ b/Documentation/filesystems/ceph/cephroot.txt
+> @@ -0,0 +1,86 @@
+> +Mounting the root filesystem via Ceph (cephroot)
+> +===============================================
+> +
+> +Written 2013 by Rob Taylor <rob.taylor@codethink.co.uk>
+> +
+> +derived from nfsroot.txt:
+> +
+> +Written 1996 by Gero Kuhlmann <gero@gkminix.han.de>
+> +Updated 1997 by Martin Mares <mj@atrey.karlin.mff.cuni.cz>
+> +Updated 2006 by Nico Schottelius <nico-kernel-nfsroot@schottelius.org>
+> +Updated 2006 by Horms <horms@verge.net.au>
+> +
+> +
+> +
+> +In order to use a diskless system, such as an X-terminal or printer server
+> +for example, it is necessary for the root filesystem to be present on a
+> +non-disk device. This may be an initramfs (see Documentation/filesystems/
+> +ramfs-rootfs-initramfs.txt), a ramdisk (see Documentation/initrd.txt), a
+> +filesystem mounted via NFS or a filesystem mounted via Ceph. The following
+> +text describes on how to use Ceph for the root filesystem.
+> +
+> +For the rest of this text 'client' means the diskless system, and 'server'
+> +means the Ceph server.
+> +
+> +
+> +1.) Enabling cephroot capabilities
+> +    -----------------------------
+> +
+> +In order to use cephroot, CEPH_FS needs to be selected as
+> +built-in during configuration. Once this has been selected, the cephroot
+> +option will become available, which should also be selected.
+> +
+> +In the networking options, kernel level autoconfiguration can be selected,
+> +along with the types of autoconfiguration to support. Selecting all of
+> +DHCP, BOOTP and RARP is safe.
+> +
+> +
+> +2.) Kernel command line
+> +    -------------------
+> +
+> +When the kernel has been loaded by a boot loader (see below) it needs to be
+> +told what root fs device to use. And in the case of cephroot, where to find
 
-Something like this?
+                                use, and
 
-(Except: is the inode cleanup right in the first chunk?  And in the
-second chunk the cleanup could maybe be organized better even if I got
-it right....)
+> +both the server and the name of the directory on the server to mount as root.
+> +This can be established using the following kernel command line parameters:
+> +
+> +root=/dev/ceph
+> +
+> +This is necessary to enable the pseudo-Ceph-device. Note that it's not a
+> +real device but just a synonym to tell the kernel to use Ceph instead of
+> +a real device.
+> +
+> +If cephroot is not specified, it is expected that that a valid mount will be
 
---b.
+drop duplicate:                                 that
 
-diff --git a/fs/gfs2/inode.c b/fs/gfs2/inode.c
-index 7119504..19e0924 100644
---- a/fs/gfs2/inode.c
-+++ b/fs/gfs2/inode.c
-@@ -585,6 +585,9 @@ static int gfs2_create_inode(struct inode *dir, struct dentry *dentry,
- 	error = PTR_ERR(inode);
- 	if (!IS_ERR(inode)) {
- 		d = d_splice_alias(inode, dentry);
-+		error = PTR_ERR(d);
-+		if (IS_ERR(d))
-+			goto fail_gunlock;
- 		error = 0;
- 		if (file) {
- 			if (S_ISREG(inode->i_mode)) {
-@@ -779,6 +782,11 @@ static struct dentry *__gfs2_lookup(struct inode *dir, struct dentry *dentry,
- 	}
- 
- 	d = d_splice_alias(inode, dentry);
-+	if (IS_ERR(d)) {
-+		iput(inode);
-+		gfs2_glock_dq_uninit(&gh);
-+		return ERR_PTR(error);
-+	}
- 	if (file && S_ISREG(inode->i_mode))
- 		error = finish_open(file, dentry, gfs2_open_common, opened);
- 
+> +found via DHCP option 17, Root Path [1]
+> +
+> +cephroot=<monaddrs>:/[<subdir>],<ceph-opts>
+> +
+> +  <monaddrs>    Monitor addresses separated by commas. Each takes the form
+> +		host[:port]. If the port is not specified, the Ceph default
+> +		of 6789 is assumed.
+> +
+> +  <subdir>	A subdirectory subdir may be specified if a subset of the file
+> +		system is to be mounted
+
+		                mounted.
+		
+> +
+> +  <ceph-opts>	Standard Ceph options. All options are separated by commas.
+> +		See Documentation/filesystems/ceph/ceph.txt for options and
+> +		their defaults.
+> +
+> +4.) References
+> +    ----------
+> +
+> +[1] http://tools.ietf.org/html/rfc2132
+> +
+> +5.) Credits
+> +    -------
+> +
+> +  cephroot was derived from nfsroot by Rob Taylor <rob.taylor@codethink.co.uk>
+> +  and Mark Doffman <mark.doffman@codethink.co.uk>
+> +
+> +  The nfsroot code in the kernel and the RARP support have been written
+> +  by Gero Kuhlmann <gero@gkminix.han.de>.
+> +
+> +  The rest of the IP layer autoconfiguration code has been written
+> +  by Martin Mares <mj@atrey.karlin.mff.cuni.cz>.
+> +
+> +  In order to write the initial version of nfsroot I would like to thank
+> +  Jens-Uwe Mager <jum@anubis.han.de> for his help.
+>
+
+
+-- 
+~Randy
