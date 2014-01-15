@@ -1,75 +1,36 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:1823 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:30244 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751085AbaAUURs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 Jan 2014 15:17:48 -0500
-Date: Tue, 21 Jan 2014 15:17:44 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/3] SUNRPC: Fix large reads on NFS/RDMA
-Message-ID: <20140121151744.7ab2c696@tlielax.poochiereds.net>
-In-Reply-To: <20140117193816.3452.45059.stgit@manet.1015granger.net>
-References: <20140117193555.3452.31437.stgit@manet.1015granger.net>
-	<20140117193816.3452.45059.stgit@manet.1015granger.net>
+	id S1751314AbaAOU16 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 15 Jan 2014 15:27:58 -0500
+Date: Wed, 15 Jan 2014 12:27:54 -0800
+From: Zach Brown <zab@redhat.com>
+To: lsf-pc@lists.linux-foundation.org
+Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-scsi@vger.kernel.org
+Subject: [LSF/MM TOPIC] copy offloading
+Message-ID: <20140115202754.GL8102@lenny.home.zabbo.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 17 Jan 2014 14:38:16 -0500
-Chuck Lever <chuck.lever@oracle.com> wrote:
 
-> After commit a11a2bf4, "SUNRPC: Optimise away unnecessary data
-> moves in xdr_align_pages", Thu Aug 2 13:21:43 2012, READs larger
-> than a few hundred bytes via NFS/RDMA stopped working.  This
-> commit exposed a long-standing bug in rpcrdma_inline_fixup().
-> 
-> I reproduce this with an rsize=4096 mount using the cthon04
-> basic tests.  Test 5 fails with an EIO error.
-> 
-> For my reproducer, kernel log shows:
-> 
->   NFS: server cheating in read reply: count 4096 > recvd 0
-> 
-> rpcrdma_inline_fixup() is zeroing the xdr_stream::page_len
-> field, and xdr_align_pages() is now returning that value to
-> the READ XDR decoder function.
-> 
-> That field is set up by xdr_inline_pages() by the READ XDR
-> encoder function.  As far as I can tell, it is supposed to
-> be left alone after that, as it describes the dimensions of
-> the reply xdr_stream, not the contents of that stream.
-> 
-> Bugzilla: https://bugzilla.kernel.org/show_bug.cgi?id=68391
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> Cc: <stable@vger.kernel.org> # 3.7+
-> ---
-> 
->  net/sunrpc/xprtrdma/rpc_rdma.c |    4 +---
->  1 files changed, 1 insertions(+), 3 deletions(-)
-> 
-> diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-> index e03725b..96ead52 100644
-> --- a/net/sunrpc/xprtrdma/rpc_rdma.c
-> +++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-> @@ -649,9 +649,7 @@ rpcrdma_inline_fixup(struct rpc_rqst *rqst, char *srcp, int copy_len, int pad)
->  				break;
->  			page_base = 0;
->  		}
-> -		rqst->rq_rcv_buf.page_len = olen - copy_len;
-> -	} else
-> -		rqst->rq_rcv_buf.page_len = 0;
-> +	}
->  
->  	if (copy_len && rqst->rq_rcv_buf.tail[0].iov_len) {
->  		curlen = copy_len;
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Discussing copy offloading at LSF is appropriate because it can involve
+so many layers of the stack:
 
-Seems to fix the bug for me too...
+ - high level syscall interface
+ - in-kernel high level entry point for nfsd 
+ - fs specific implementations (btrfs and ocfs2 cow, nfs) 
+ - vfs helper for offloading block copies for ext*,xfs
+ - bio offload requests for cow block devices like bcache/dm-cache
+ - encoding offload bios into scsi reqs
+ - processing virt guest device offload requests with host syscalls
 
-Tested-by: Jeff Layton <jlayton@redhat.com>
+Getting the user and in-kernel interfaces right to support all these
+moving parts has proven tricky.  The more input, the better.
+
+It's been a while since I sent out a refreshed version of the series.
+That'll be remedied before LSF rolls around :). 
+
+- z
