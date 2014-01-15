@@ -1,62 +1,172 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f181.google.com ([209.85.223.181]:50221 "EHLO
-	mail-ie0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751314AbaAPRZO convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Jan 2014 12:25:14 -0500
-Received: by mail-ie0-f181.google.com with SMTP id tq11so2089329ieb.26
-        for <linux-nfs@vger.kernel.org>; Thu, 16 Jan 2014 09:25:12 -0800 (PST)
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
-Subject: Re: [PATCH] nfs(5): Clarify DATA AND METADATA COHERENCE section
-From: Trond Myklebust <trondmy@gmail.com>
-In-Reply-To: <D29E5BC8-70DF-4612-93D3-117E7D9B2BC1@oracle.com>
-Date: Thu, 16 Jan 2014 12:25:09 -0500
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <67C0EBB4-AF42-44C7-B3C2-CFE29E046E17@gmail.com>
-References: <20140116170841.1489.82372.stgit@seurat.1015granger.net> <EDDCEDED-2C93-460F-A5B4-91A50C44F2B7@gmail.com> <D29E5BC8-70DF-4612-93D3-117E7D9B2BC1@oracle.com>
-To: Lever Charles Edward <chuck.lever@oracle.com>
+Received: from ducie-dc1.codethink.co.uk ([37.128.190.40]:60804 "EHLO
+	ducie-dc1.codethink.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751965AbaAORW4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Jan 2014 12:22:56 -0500
+Message-ID: <52D6C3EA.50407@codethink.co.uk>
+Date: Wed, 15 Jan 2014 11:22:50 -0600
+From: Mark Doffman <mark.doffman@codethink.co.uk>
+MIME-Version: 1.0
+To: Sage Weil <sage@inktank.com>
+CC: ceph-devel@vger.kernel.org, Rob Taylor <rob.taylor@codethink.co.uk>,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/4] Documentation: Document the cephroot functionality
+References: <1385000024-23463-1-git-send-email-mark.doffman@codethink.co.uk> <1385000024-23463-3-git-send-email-mark.doffman@codethink.co.uk> <alpine.DEB.2.00.1312062154530.1560@cobra.newdream.net>
+In-Reply-To: <alpine.DEB.2.00.1312062154530.1560@cobra.newdream.net>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi Sage,
 
-On Jan 16, 2014, at 12:20, Chuck Lever <chuck.lever@oracle.com> wrote:
+On 12/06/2013 11:57 PM, Sage Weil wrote:
+> On Wed, 20 Nov 2013, mark.doffman@codethink.co.uk wrote:
+>> From: Rob Taylor <rob.taylor@codethink.co.uk>
+>>
+>> Document using the cephfs as a root device, its purpose,
+>> functionality and use.
+>>
+>> Signed-off-by: Mark Doffman <mark.doffman@codethink.co.uk>
+>> Signed-off-by: Rob Taylor <rob.taylor@codethink.co.uk>
+>> Reviewed-by: Ian Molton <ian.molton@codethink.co.uk>
+>> ---
+>>   Documentation/filesystems/{ => ceph}/ceph.txt |  0
+>>   Documentation/filesystems/ceph/cephroot.txt   | 81 +++++++++++++++++++++++++++
+>>   2 files changed, 81 insertions(+)
+>>   rename Documentation/filesystems/{ => ceph}/ceph.txt (100%)
+>>   create mode 100644 Documentation/filesystems/ceph/cephroot.txt
+>>
+>> diff --git a/Documentation/filesystems/ceph.txt b/Documentation/filesystems/ceph/ceph.txt
+>> similarity index 100%
+>> rename from Documentation/filesystems/ceph.txt
+>> rename to Documentation/filesystems/ceph/ceph.txt
+>> diff --git a/Documentation/filesystems/ceph/cephroot.txt b/Documentation/filesystems/ceph/cephroot.txt
+>> new file mode 100644
+>> index 0000000..ae0f5bb
+>> --- /dev/null
+>> +++ b/Documentation/filesystems/ceph/cephroot.txt
+>> @@ -0,0 +1,81 @@
+>> +Mounting the root filesystem via Ceph (cephroot)
+>> +===============================================
+>> +
+>> +Written 2013 by Rob Taylor <rob.taylor@codethink.co.uk>
+>> +
+>> +derived from nfsroot.txt:
+>> +
+>> +Written 1996 by Gero Kuhlmann <gero@gkminix.han.de>
+>> +Updated 1997 by Martin Mares <mj@atrey.karlin.mff.cuni.cz>
+>> +Updated 2006 by Nico Schottelius <nico-kernel-nfsroot@schottelius.org>
+>> +Updated 2006 by Horms <horms@verge.net.au>
+>> +
+>> +
+>> +
+>> +In order to use a diskless system, such as an X-terminal or printer server
+>> +for example, it is necessary for the root filesystem to be present on a
+>> +non-disk device. This may be an initramfs (see Documentation/filesystems/
+>> +ramfs-rootfs-initramfs.txt), a ramdisk (see Documentation/initrd.txt), a
+>> +filesystem mounted via NFS or a filesystem mounted via Ceph. The following
+>> +text describes on how to use Ceph for the root filesystem.
+>> +
+>> +For the rest of this text 'client' means the diskless system, and 'server'
+>> +means the Ceph server.
+>> +
+>> +
+>> +1.) Enabling cephroot capabilities
+>> +    -----------------------------
+>> +
+>> +In order to use cephroot, CEPH_FS needs to be selected as
+>> +built-in during configuration. Once this has been selected, the cephroot
+>> +option will become available, which should also be selected.
+>> +
+>> +In the networking options, kernel level autoconfiguration can be selected,
+>> +along with the types of autoconfiguration to support. Selecting all of
+>> +DHCP, BOOTP and RARP is safe.
+>> +
+>> +
+>> +2.) Kernel command line
+>> +    -------------------
+>> +
+>> +When the kernel has been loaded by a boot loader (see below) it needs to be
+>> +told what root fs device to use. And in the case of cephroot, where to find
+>> +both the server and the name of the directory on the server to mount as root.
+>> +This can be established using the following kernel command line parameters:
+>> +
+>> +root=/dev/ceph
+>> +
+>> +This is necessary to enable the pseudo-Ceph-device. Note that it's not a
+>> +real device but just a synonym to tell the kernel to use Ceph instead of
+>> +a real device.
+>> +
+>> +cephroot=<monaddr>:/[<subdir>],<ceph-opts>
+>> +
+>> +  <monaddr>     Monitor address. Each takes the form host[:port]. If the port
+>> +		is not specified, the Ceph default of 6789 is assumed.
+>> +
+>> +  <subdir>	A subdirectory subdir may be specified if a subset of the file
+>> +		system is to be mounted
+>> +
+>> +  <ceph-opts>	Standard Ceph options. All options are separated by commas.
+>> +		See Documentation/filesystems/ceph/ceph.txt for options and
+>> +		their defaults.
+>
+> Maybe there is an existing convention here, but: it seems like it would be
+> simpler to do something like
+>
+>   cephroot=<ip[:<port>][,...]>:/[<subdir>]
+>
+> i.e., the existing syntax used by mount, that (among other things) can
+> also include a port, or be a list of mon ips, so that the parsing code
+> can be re-used.  Then,
+>
+>   cephopts=<ceph-opts>
+>
+> Hopefully this would avoid the parsing in root.c and make things behave
+> more consistently with respect to how mount(8) is used?
 
-> 
-> On Jan 16, 2014, at 12:14 PM, Trond Myklebust <trondmy@gmail.com> wrote:
-> 
->> 
->> On Jan 16, 2014, at 12:09, Chuck Lever <chuck.lever@oracle.com> wrote:
->> 
->>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->>> ---
->>> How about something like this?
->> 
->> We really want something in the acregmin/max, acdirmin/max descriptions that refers to the cache coherency discussion too.
-> 
-> “noac” now has:
-> 
->                      The DATA  AND  METADATA  COHERENCE  section  contains  a
->                      detailed discussion of these trade-offs.
-> 
-> “lookupcache” has:
-> 
->                      The DATA  AND  METADATA  COHERENCE  section  contains  a
->                      detailed discussion of these trade-offs.
-> 
-> And “cto” has:
-> 
->                      server changes only occasionally.  The DATA AND METADATA
->                      COHERENCE section discusses the behavior of this  option
->                      in more detail.
-> 
-> We can add this to ac{reg,dir}{min,max}:
-> 
->                      See the DATA AND METADATA COHERENCE section for  a  full
->                      discussion of attribute caching.
-> 
-> Is that what you were thinking?
+This would make things more consistent with mount, and easier! The 
+reason to keep it the way it is is for consistency with NFS and DHCP 
+option 17.
 
-Yes, that should be sufficient.
+NFS concatenates the options in DHCP root-path (option 17) with the ones 
+placed on the kernel command line. We could separate out the device and 
+path strings from the options, but they would still be merged together 
+in the DHCP string. Some parsing would still be required to split the 
+DHCP string and merge with command line options. I'd prefer to keep them 
+together on the command line also, just to have things stay similar to NFS.
 
-Thanks!
-  Trond
+Thanks
+
+Mark
+
+>
+> sage
+>
+>> +
+>> +4.) References
+>> +    ----------
+>> +
+>> +
+>> +5.) Credits
+>> +    -------
+>> +
+>> +  cephroot was derived from nfsroot by Rob Taylor <rob.taylor@codethink.co.uk>
+>> +  and Mark Doffman <mark.doffman@codethink.co.uk>
+>> +
+>> +  The nfsroot code in the kernel and the RARP support have been written
+>> +  by Gero Kuhlmann <gero@gkminix.han.de>.
+>> +
+>> +  The rest of the IP layer autoconfiguration code has been written
+>> +  by Martin Mares <mj@atrey.karlin.mff.cuni.cz>.
+>> +
+>> +  In order to write the initial version of nfsroot I would like to thank
+>> +  Jens-Uwe Mager <jum@anubis.han.de> for his help.
+>> --
+>> 1.8.4
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe ceph-devel" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
+>>
