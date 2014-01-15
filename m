@@ -1,64 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:25704 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754532AbaAUPkQ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Jan 2014 10:40:16 -0500
-Subject: Re: Too many programs calls nfsiostat.
-Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
-Content-Type: text/plain; charset=us-ascii
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20140121144517.5f549347@notabene.brown>
-Date: Tue, 21 Jan 2014 10:40:01 -0500
-Cc: varekova@redhat.com, sysstat@orange.fr,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <A5BFEC5C-7AF2-4A7E-856F-D62F35BCEFC0@oracle.com>
-References: <20130410094639.5debfc90@notabene.brown> <20140121144517.5f549347@notabene.brown>
-To: Neil Brown <neilb@suse.de>
+Received: from ducie-dc1.codethink.co.uk ([37.128.190.40]:60898 "EHLO
+	ducie-dc1.codethink.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751928AbaAOR04 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Jan 2014 12:26:56 -0500
+From: mark.doffman@codethink.co.uk
+To: ceph-devel@vger.kernel.org
+Cc: Mark Doffman <mark.doffman@codethink.co.uk>, sage@inktank.com,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, rob.taylor@codethink.co.uk
+Subject: [PATCH v2 0/2] Add ceph root filesystem functionality and documentation.
+Date: Wed, 15 Jan 2014 11:26:27 -0600
+Message-Id: <cover.1389806186.git.mark.doffman@codethink.co.uk>
+In-Reply-To: <1385000024-23463-1-git-send-email-mark.doffman@codethink.co.uk>
+References: <1385000024-23463-1-git-send-email-mark.doffman@codethink.co.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: Mark Doffman <mark.doffman@codethink.co.uk>
 
-On Jan 20, 2014, at 10:45 PM, NeilBrown <neilb@suse.de> wrote:
+Hi All,
 
-> 
-> (This time without the typo in Chuck's address - sorry).
-> 
-> Not quite a year ago I wrote:
-> 
-> On Wed, 10 Apr 2013 09:46:39 +1000 NeilBrown <neilb@suse.de> wrote:
-> 
->> 
->> Hi all,
->> it seems that in 2010, a program called nfsiostat was added to the sysstat
->> package (http://sebastien.godard.pagesperso-orange.fr/)
->> 
->> This is unfortunate because in 2008 a program called nfsiostat was added to
->> the nfs-utils package.
->>    (https://www.kernel.org/pub/linux/utils/nfs-utils/1.2.7/)
->> 
->> The default install locations seem to be different (/usr/bin vs /usr/sbin),
->> so packagers would not immediately notice.
->> 
->> This seems like something that should be "fixed".
->> 
->> Any suggestions what a good "fix" should look like?
->> 
->> NeilBrown
-> 
-> 
-> No suggestions were forthcoming.
-> So I have a suggestion.
-> I propose we rename the "nfsiostat" in the "sysstat" package to
-> "nfsio-sysstat" and the "nfsiostat" in "nfs-utils" to
-> "nfs-utils-iostat".
-> 
-> Does anyone object?  If not I'll send off patches shortly :-)
+The following is a second version of a patch series that adds the ability to use
+a ceph distributed file system as the root device.
 
-What does the sysstat version do?  do we need two programs, or can they be merged?  Or can one be dropped?
+Changes from version 1
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+fs/ceph/root.c:
 
+The parsing code that takes the DHCP option 17 and kernel command line
+parameters has been extensively altered.
 
+The parsing now accepts multiple monitor addresses and ipv6 addresses.
+
+The monitors listed in DHCP option 17 are now concatenated with those
+listed on the kernel command line.
+
+The patch series applies to v3.13-rc8-7-g3539717
+
+Thanks
+
+Mark
+
+Mark Doffman (1):
+  init: Add a new root device option, the Ceph file system
+
+Rob Taylor (1):
+  Documentation: Document the cephroot functionality
+
+ Documentation/filesystems/{ => ceph}/ceph.txt |   0
+ Documentation/filesystems/ceph/cephroot.txt   |  86 +++++++++++++
+ fs/ceph/Kconfig                               |  10 ++
+ fs/ceph/Makefile                              |   1 +
+ fs/ceph/root.c                                | 176 ++++++++++++++++++++++++++
+ include/linux/ceph/ceph_root.h                |  10 ++
+ include/linux/root_dev.h                      |   1 +
+ init/do_mounts.c                              |  32 ++++-
+ net/ipv4/ipconfig.c                           |  10 +-
+ 9 files changed, 323 insertions(+), 3 deletions(-)
+ rename Documentation/filesystems/{ => ceph}/ceph.txt (100%)
+ create mode 100644 Documentation/filesystems/ceph/cephroot.txt
+ create mode 100644 fs/ceph/root.c
+ create mode 100644 include/linux/ceph/ceph_root.h
+
+-- 
+1.8.4
 
