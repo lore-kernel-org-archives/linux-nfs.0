@@ -1,54 +1,89 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f180.google.com ([209.85.223.180]:34025 "EHLO
-	mail-ie0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751947AbaA2Rg2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Jan 2014 12:36:28 -0500
-Received: by mail-ie0-f180.google.com with SMTP id at1so2288524iec.25
-        for <linux-nfs@vger.kernel.org>; Wed, 29 Jan 2014 09:36:27 -0800 (PST)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH 3/3] NFSv4.1: Cleanup
-Date: Wed, 29 Jan 2014 12:36:22 -0500
-Message-Id: <1391016982-10562-3-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1391016982-10562-2-git-send-email-trond.myklebust@primarydata.com>
-References: <1391016982-10562-1-git-send-email-trond.myklebust@primarydata.com>
- <1391016982-10562-2-git-send-email-trond.myklebust@primarydata.com>
+Received: from mail-ig0-f179.google.com ([209.85.213.179]:56756 "EHLO
+	mail-ig0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752754AbaAPROz convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Jan 2014 12:14:55 -0500
+Received: by mail-ig0-f179.google.com with SMTP id c10so8142517igq.0
+        for <linux-nfs@vger.kernel.org>; Thu, 16 Jan 2014 09:14:55 -0800 (PST)
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
+Subject: Re: [PATCH] nfs(5): Clarify DATA AND METADATA COHERENCE section
+From: Trond Myklebust <trondmy@gmail.com>
+In-Reply-To: <20140116170841.1489.82372.stgit@seurat.1015granger.net>
+Date: Thu, 16 Jan 2014 12:14:52 -0500
+Cc: linuxnfs <linux-nfs@vger.kernel.org>
+Message-Id: <EDDCEDED-2C93-460F-A5B4-91A50C44F2B7@gmail.com>
+References: <20140116170841.1489.82372.stgit@seurat.1015granger.net>
+To: Lever Charles Edward <chuck.lever@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-It is now completely safe to call nfs41_sequence_free_slot with a NULL
-slot.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/nfs4filelayout.c | 6 ++----
- 1 file changed, 2 insertions(+), 4 deletions(-)
+On Jan 16, 2014, at 12:09, Chuck Lever <chuck.lever@oracle.com> wrote:
 
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 20a56fa271bd..12c8132ad408 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -336,8 +336,7 @@ static void filelayout_read_call_done(struct rpc_task *task, void *data)
- 
- 	if (test_bit(NFS_IOHDR_REDO, &rdata->header->flags) &&
- 	    task->tk_status == 0) {
--		if (rdata->res.seq_res.sr_slot != NULL)
--			nfs41_sequence_done(task, &rdata->res.seq_res);
-+		nfs41_sequence_done(task, &rdata->res.seq_res);
- 		return;
- 	}
- 
-@@ -446,8 +445,7 @@ static void filelayout_write_call_done(struct rpc_task *task, void *data)
- 
- 	if (test_bit(NFS_IOHDR_REDO, &wdata->header->flags) &&
- 	    task->tk_status == 0) {
--		if (wdata->res.seq_res.sr_slot != NULL)
--			nfs41_sequence_done(task, &wdata->res.seq_res);
-+		nfs41_sequence_done(task, &wdata->res.seq_res);
- 		return;
- 	}
- 
--- 
-1.8.5.3
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> How about something like this?
+
+We really want something in the acregmin/max, acdirmin/max descriptions that refers to the cache coherency discussion too.
+
+Cheers,
+  Trond
+
+> 
+> utils/mount/nfs.man |   28 ++++++++++++++++++----------
+> 1 file changed, 18 insertions(+), 10 deletions(-)
+> 
+> diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
+> index 2250963..99c9fc3 100644
+> --- a/utils/mount/nfs.man
+> +++ b/utils/mount/nfs.man
+> @@ -1161,24 +1161,32 @@ perfect cache coherence among their clients.
+> Perfect cache coherence among disparate NFS clients
+> is expensive to achieve, especially on wide area networks.
+> As such, NFS settles for weaker cache coherence that
+> -satisfies the requirements of most file sharing types. Normally,
+> -file sharing is completely sequential:
+> -first client A opens a file, writes something to it, then closes it;
+> -then client B opens the same file, and reads the changes.
+> -.DT
+> +satisfies the requirements of most file sharing types.
+> .SS "Close-to-open cache consistency"
+> -When an application opens a file stored on an NFS server,
+> -the NFS client checks that it still exists on the server
+> +Typically file sharing is completely sequential.
+> +First client A opens a file, writes something to it, then closes it.
+> +Then client B opens the same file, and reads the changes.
+> +.P
+> +When an application opens a file stored on an NFS version 3 server,
+> +the NFS client checks that the file exists on the server
+> and is permitted to the opener by sending a GETATTR or ACCESS request.
+> +The NFS client sends these requests
+> +independent of the freshness of the file's attribute cache.
+> +.P
+> When the application closes the file,
+> the NFS client writes back any pending changes
+> to the file so that the next opener can view the changes.
+> This also gives the NFS client an opportunity to report
+> -any server write errors to the application
+> -via the return code from
+> +write errors to the application via the return code from
+> .BR close (2).
+> +.P
+> The behavior of checking at open time and flushing at close time
+> -is referred to as close-to-open cache consistency.
+> +is referred to as
+> +.IR "close-to-open cache consistency" ,
+> +or CTO.
+> +It can be disabled for an entire mount point using the
+> +.B nocto
+> +mount option.
+> .SS "Weak cache consistency"
+> There are still opportunities for a client's data cache
+> to contain stale data.
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
