@@ -1,89 +1,102 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f179.google.com ([209.85.213.179]:56756 "EHLO
-	mail-ig0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752754AbaAPROz convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Jan 2014 12:14:55 -0500
-Received: by mail-ig0-f179.google.com with SMTP id c10so8142517igq.0
-        for <linux-nfs@vger.kernel.org>; Thu, 16 Jan 2014 09:14:55 -0800 (PST)
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
-Subject: Re: [PATCH] nfs(5): Clarify DATA AND METADATA COHERENCE section
-From: Trond Myklebust <trondmy@gmail.com>
-In-Reply-To: <20140116170841.1489.82372.stgit@seurat.1015granger.net>
-Date: Thu, 16 Jan 2014 12:14:52 -0500
-Cc: linuxnfs <linux-nfs@vger.kernel.org>
-Message-Id: <EDDCEDED-2C93-460F-A5B4-91A50C44F2B7@gmail.com>
-References: <20140116170841.1489.82372.stgit@seurat.1015granger.net>
-To: Lever Charles Edward <chuck.lever@oracle.com>
+Received: from mail-ie0-f179.google.com ([209.85.223.179]:65293 "EHLO
+	mail-ie0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750749AbaAPRbW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Jan 2014 12:31:22 -0500
+Received: by mail-ie0-f179.google.com with SMTP id tp5so4181528ieb.38
+        for <linux-nfs@vger.kernel.org>; Thu, 16 Jan 2014 09:31:22 -0800 (PST)
+Subject: [PATCH v2] nfs(5): Treatment of *atime mount options
+To: steved@redhat.com
+From: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org
+Date: Thu, 16 Jan 2014 12:31:20 -0500
+Message-ID: <20140116173120.1876.84785.stgit@seurat.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+I was reminded recently that NFS treats file atime time stamps
+differently than other filesystems.  It also ignores the generic
+*atime mount options because it cannot support the atime semantics
+of local filesystems.
 
-On Jan 16, 2014, at 12:09, Chuck Lever <chuck.lever@oracle.com> wrote:
+We should document that somewhere.  nfs(5) seems like a logical
+place for it.
 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
-> How about something like this?
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+ utils/mount/nfs.man |   59 +++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 59 insertions(+)
 
-We really want something in the acregmin/max, acdirmin/max descriptions that refers to the cache coherency discussion too.
-
-Cheers,
-  Trond
-
-> 
-> utils/mount/nfs.man |   28 ++++++++++++++++++----------
-> 1 file changed, 18 insertions(+), 10 deletions(-)
-> 
-> diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
-> index 2250963..99c9fc3 100644
-> --- a/utils/mount/nfs.man
-> +++ b/utils/mount/nfs.man
-> @@ -1161,24 +1161,32 @@ perfect cache coherence among their clients.
-> Perfect cache coherence among disparate NFS clients
-> is expensive to achieve, especially on wide area networks.
-> As such, NFS settles for weaker cache coherence that
-> -satisfies the requirements of most file sharing types. Normally,
-> -file sharing is completely sequential:
-> -first client A opens a file, writes something to it, then closes it;
-> -then client B opens the same file, and reads the changes.
-> -.DT
-> +satisfies the requirements of most file sharing types.
-> .SS "Close-to-open cache consistency"
-> -When an application opens a file stored on an NFS server,
-> -the NFS client checks that it still exists on the server
-> +Typically file sharing is completely sequential.
-> +First client A opens a file, writes something to it, then closes it.
-> +Then client B opens the same file, and reads the changes.
-> +.P
-> +When an application opens a file stored on an NFS version 3 server,
-> +the NFS client checks that the file exists on the server
-> and is permitted to the opener by sending a GETATTR or ACCESS request.
-> +The NFS client sends these requests
-> +independent of the freshness of the file's attribute cache.
-> +.P
-> When the application closes the file,
-> the NFS client writes back any pending changes
-> to the file so that the next opener can view the changes.
-> This also gives the NFS client an opportunity to report
-> -any server write errors to the application
-> -via the return code from
-> +write errors to the application via the return code from
-> .BR close (2).
-> +.P
-> The behavior of checking at open time and flushing at close time
-> -is referred to as close-to-open cache consistency.
-> +is referred to as
-> +.IR "close-to-open cache consistency" ,
-> +or CTO.
-> +It can be disabled for an entire mount point using the
-> +.B nocto
-> +mount option.
-> .SS "Weak cache consistency"
-> There are still opportunities for a client's data cache
-> to contain stale data.
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
+index 67031b5..2250963 100644
+--- a/utils/mount/nfs.man
++++ b/utils/mount/nfs.man
+@@ -1227,6 +1227,65 @@ If absolute cache coherence among clients is required,
+ applications should use file locking. Alternatively, applications
+ can also open their files with the O_DIRECT flag
+ to disable data caching entirely.
++.SS "File timestamp maintainence"
++NFS servers are responsible for managing file and directory timestamps
++.RB ( atime ,
++.BR ctime ", and"
++.BR mtime ).
++When a file is accessed or updated on an NFS server,
++the file's timestamps are updated just like they would be on a filesystem
++local to an application.
++.P
++NFS clients cache file attributes, including timestamps.
++A file's timestamps are updated on NFS clients when its attributes
++are retrieved from the NFS server.
++Thus there may be some delay before timestamp updates
++on an NFS server appear to applications on NFS clients.
++.P
++To comply with the POSIX filesystem standard, the Linux NFS client
++relies on NFS servers to keep a file's
++.B mtime
++and
++.B ctime
++timestamps properly up to date.
++It does this by flushing local data changes to the server
++before reporting
++.B mtime
++to applications via system calls such as
++.BR stat (2).
++.P
++The Linux client handles
++.B atime
++updates more loosely, however.
++NFS clients maintain good performance by caching data,
++but that means that application reads, which normally update
++.BR atime ,
++are not reflected to the server where a file's
++.B atime
++is actually maintained.
++.P
++Because of this caching behavior,
++the Linux NFS client does not support generic atime-related mount options.
++See
++.BR mount (8)
++for details on these options.
++.P
++In particular, the
++.BR atime / noatime ,
++.BR diratime / nodiratime ,
++.BR relatime / norelatime ,
++and
++.BR strictatime / nostrictatime
++mount options have no effect on NFS mounts.
++.P
++.I /proc/mounts
++may report that the
++.B relatime
++mount option is set on NFS mounts, but in fact the
++.B atime
++semantics are always as described here, and are not like
++.B relatime
++semantics.
+ .SS "Directory entry caching"
+ The Linux NFS client caches the result of all NFS LOOKUP requests.
+ If the requested directory entry exists on the server,
 
