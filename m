@@ -1,48 +1,35 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f52.google.com ([209.85.220.52]:65401 "EHLO
-	mail-pa0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755056AbaAGElP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Jan 2014 23:41:15 -0500
-Received: by mail-pa0-f52.google.com with SMTP id ld10so19519791pab.39
-        for <linux-nfs@vger.kernel.org>; Mon, 06 Jan 2014 20:41:15 -0800 (PST)
-Message-ID: <52CB8564.6040002@gmail.com>
-Date: Tue, 07 Jan 2014 12:41:08 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
+Received: from mail-la0-f48.google.com ([209.85.215.48]:51303 "EHLO
+	mail-la0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751271AbaAPNhD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Jan 2014 08:37:03 -0500
+Received: by mail-la0-f48.google.com with SMTP id er20so2512371lab.35
+        for <linux-nfs@vger.kernel.org>; Thu, 16 Jan 2014 05:36:59 -0800 (PST)
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: [PATCH] SUNRPC: Clear xpt_bc_xprt if xs_setup_bc_tcp failed
-Content-Type: text/plain; charset=ISO-8859-1
+In-Reply-To: <20140115133722.GA12243@umich.edu>
+References: <CAACXELkPL0g8SNrYWSGoh+-0Uo4pbHeWGa5rtv_7X6vviAnkMQ@mail.gmail.com>
+	<20140115133722.GA12243@umich.edu>
+Date: Thu, 16 Jan 2014 05:36:59 -0800
+Message-ID: <CAACXEL=J3XeGBtoLAwjSoAQ-sHzDMNtgHrRAeV+wq-+wvEqB5A@mail.gmail.com>
+Subject: Re: unable to send TCP SYNs from ports lower than 1024
+From: Stuart Kendrick <stuart.kendrick.sea@gmail.com>
+To: Jim Rees <rees@umich.edu>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If try_module_get failed, xpt_bc_xprt should be set to NULL,
-because xprt will be free.
+I didn't think of the switch angle ... inserting an in-line tap on
+either side of the switch ... shows that it is dropping these frames.
+Thanx for the suggestion
 
-Don't needed using xprt_put to free xprt, because it is always new.
+--sk
 
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
----
- net/sunrpc/xprtsock.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
-
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 4fcdf74..5ed124f 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -2986,10 +2986,10 @@ static struct rpc_xprt *xs_setup_bc_tcp(struct xprt_create *args)
- 	 */
- 	xprt_set_connected(xprt);
- 
--
- 	if (try_module_get(THIS_MODULE))
- 		return xprt;
--	xprt_put(xprt);
-+
-+	args->bc_xprt->xpt_bc_xprt = NULL;
- 	ret = ERR_PTR(-EINVAL);
- out_err:
- 	xs_xprt_free(xprt);
--- 
-1.8.4.2
+On Wed, Jan 15, 2014 at 5:37 AM, Jim Rees <rees@umich.edu> wrote:
+> Stuart Kendrick wrote:
+>
+>   Is anyone else seeing this?  This issue prevents NFS client mounting,
+>   since the NFS client wants to use source ports below 1024
+>
+> It seems pretty unlikely this is actually broken without anyone noticing.
+> Did you check your iptables and switch acls?
