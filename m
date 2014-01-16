@@ -1,47 +1,38 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx.bwstor.com.cn ([211.103.180.228]:35193 "EHLO mx.bwstor.cn"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1751467AbaATIQp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 20 Jan 2014 03:16:45 -0500
-From: shaobingqing <shaobingqing@bwstor.com.cn>
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        shaobingqing <shaobingqing@bwstor.com.cn>
-Subject: [PATCH] NFSv4.1: new layout stateid can not be overwrite by one out of date
-Date: Mon, 20 Jan 2014 16:15:31 +0800
-Message-Id: <1390205731-21005-1-git-send-email-shaobingqing@bwstor.com.cn>
-In-Reply-To: <n>
-References: <n>
+Received: from mx3-phx2.redhat.com ([209.132.183.24]:53577 "EHLO
+	mx3-phx2.redhat.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752380AbaAPQyK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Jan 2014 11:54:10 -0500
+Date: Thu, 16 Jan 2014 11:54:07 -0500 (EST)
+From: Bob Peterson <rpeterso@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Steven Whitehouse <swhiteho@redhat.com>, Al Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, Miklos Szeredi <mszeredi@suse.cz>
+Message-ID: <1875464309.3327883.1389891247171.JavaMail.root@redhat.com>
+In-Reply-To: <20140116164411.GD16829@fieldses.org>
+References: <20140115151749.GF23999@fieldses.org> <20140116161015.GC16829@fieldses.org> <1389888942.2779.34.camel@menhir> <20140116164411.GD16829@fieldses.org>
+Subject: Re: [PATCH] dcache: fix d_splice_alias handling of aliases
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If initiate_file_draining returned NFS4ERR_DELAY, all the lsegs of
-a file might be released before the retrying cb_layout request arriving
-at the client. In this situation, layoutget request of the file will
-use open stateid to obtain a new layout stateid. And if the retrying
-cb_layout request arrived at the client after the layoutget reply,
-new layout stateid would be overwrite by one out of date.
+----- Original Message -----
+| Something like this?
+(snip)
+| @@ -779,6 +782,11 @@ static struct dentry *__gfs2_lookup(struct inode *dir,
+| struct dentry *dentry,
+|  	}
+|  
+|  	d = d_splice_alias(inode, dentry);
+| +	if (IS_ERR(d)) {
+| +		iput(inode);
+| +		gfs2_glock_dq_uninit(&gh);
+| +		return ERR_PTR(error);
 
-Signed-off-by: shaobingqing <shaobingqing@bwstor.com.cn>
----
- fs/nfs/callback_proc.c |    4 +++-
- 1 files changed, 3 insertions(+), 1 deletions(-)
+---------------------------------^
+Shouldn't that be ERR_PTR(d)?
 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index ae2e87b..98fed13 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -174,7 +174,9 @@ static u32 initiate_file_draining(struct nfs_client *clp,
- 		rv = NFS4ERR_DELAY;
- 	else
- 		rv = NFS4ERR_NOMATCHING_LAYOUT;
--	pnfs_set_layout_stateid(lo, &args->cbl_stateid, true);
-+	if (memcmp(args->cbl_stateid.other, lo->plh_stateid.other,
-+	     NFS4_STATEID_OTHER_SIZE) == 0)
-+		pnfs_set_layout_stateid(lo, &args->cbl_stateid, true);
- 	spin_unlock(&ino->i_lock);
- 	pnfs_free_lseg_list(&free_me_list);
- 	pnfs_put_layout_hdr(lo);
--- 
-1.7.4.2
-
+Bob Peterson
+Red Hat File Systems
