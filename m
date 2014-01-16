@@ -1,81 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:30446 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750875AbaAFGgR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 6 Jan 2014 01:36:17 -0500
-Subject: Re: [RFC PATCH 1/5] sunrpc: don't wait for write before allowing
- reads from use-gss-proxy file
-From: Simo Sorce <simo@redhat.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: NeilBrown <neilb@suse.de>, "J. Bruce Fields" <bfields@fieldses.org>,
-        linux-nfs@vger.kernel.org
-In-Reply-To: <20140105204516.51aa31ad@corrin.poochiereds.net>
-References: <1388579314-15255-1-git-send-email-jlayton@redhat.com>
-	 <1388579314-15255-2-git-send-email-jlayton@redhat.com>
-	 <20140102212149.GC28219@fieldses.org>
-	 <20140106093744.14fc3670@notabene.brown>
-	 <20140105204516.51aa31ad@corrin.poochiereds.net>
-Content-Type: text/plain; charset="UTF-8"
-Date: Mon, 06 Jan 2014 01:36:13 -0500
-Message-ID: <1388990173.26102.69.camel@willson.li.ssimo.org>
-Mime-Version: 1.0
+Received: from mail-ie0-f181.google.com ([209.85.223.181]:50221 "EHLO
+	mail-ie0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751314AbaAPRZO convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Jan 2014 12:25:14 -0500
+Received: by mail-ie0-f181.google.com with SMTP id tq11so2089329ieb.26
+        for <linux-nfs@vger.kernel.org>; Thu, 16 Jan 2014 09:25:12 -0800 (PST)
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
+Subject: Re: [PATCH] nfs(5): Clarify DATA AND METADATA COHERENCE section
+From: Trond Myklebust <trondmy@gmail.com>
+In-Reply-To: <D29E5BC8-70DF-4612-93D3-117E7D9B2BC1@oracle.com>
+Date: Thu, 16 Jan 2014 12:25:09 -0500
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <67C0EBB4-AF42-44C7-B3C2-CFE29E046E17@gmail.com>
+References: <20140116170841.1489.82372.stgit@seurat.1015granger.net> <EDDCEDED-2C93-460F-A5B4-91A50C44F2B7@gmail.com> <D29E5BC8-70DF-4612-93D3-117E7D9B2BC1@oracle.com>
+To: Lever Charles Edward <chuck.lever@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, 2014-01-05 at 20:45 -0500, Jeff Layton wrote:
-> On Mon, 6 Jan 2014 09:37:44 +1100
-> NeilBrown <neilb@suse.de> wrote:
+
+On Jan 16, 2014, at 12:20, Chuck Lever <chuck.lever@oracle.com> wrote:
+
 > 
-> > On Thu, 2 Jan 2014 16:21:50 -0500 "J. Bruce Fields" <bfields@fieldses.org>
-> > wrote:
-> > 
-> > > On Wed, Jan 01, 2014 at 07:28:30AM -0500, Jeff Layton wrote:
-> > > > It doesn't make much sense to make reads from this procfile hang. As
-> > > > far as I can tell, only gssproxy itself will open this file and it
-> > > > never reads from it. Change it to just give the present setting of
-> > > > sn->use_gss_proxy without waiting for anything.
-> > > 
-> > > I think my *only* reason for doing this was to give a simple way to wait
-> > > for gss-proxy to start (just wait for a read to return).
-> > > 
-> > > As long as gss-proxy has some way to say "I'm up and running", and as
-> > > long as that comes after writing to use-gss-proxy, we're fine.
-> > > 
-> > 
-> > 
-> > Only tangentially related to the above email .....
-> > 
-> > I had a look at this new-fangled gssproxy thing and while it mostly seems
-> > like a good idea, I find the hard-coding of "/var/run/gssproxy.sock" in the
-> > kernel source .... disturbing.
-> > You never know when some user-space might want to change that - maybe to
-> > "/run/gssproxy.sock" (unlikely I know - but possible).
-> > 
-> > Probably the easiest would be to hand the path to the kernel.
-> > 
-> > e.g. instead  of writing '1' to "use-gss-proxy", we could 
-> >   echo /my/path/gss-proxy-sock > /proc/net/rpc/use-gss-proxy
-> > 
-> > Then you could even use an 'abstract' socket name if you wanted. i.e. one
-> > starting with a nul and which doesn't exist anywhere in the filesystem.
-> > I would feel a lot more comfortable with that than with the current
-> > hard-coding.
-> > 
+> On Jan 16, 2014, at 12:14 PM, Trond Myklebust <trondmy@gmail.com> wrote:
 > 
-> I like that idea -- particularly if you keep the legacy behavior that
-> writing a '1' to the file makes it default to /var/run/gssproxy.sock so
-> we don't break compatability with older gssproxy releases.
+>> 
+>> On Jan 16, 2014, at 12:09, Chuck Lever <chuck.lever@oracle.com> wrote:
+>> 
+>>> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+>>> ---
+>>> How about something like this?
+>> 
+>> We really want something in the acregmin/max, acdirmin/max descriptions that refers to the cache coherency discussion too.
+> 
+> “noac” now has:
+> 
+>                      The DATA  AND  METADATA  COHERENCE  section  contains  a
+>                      detailed discussion of these trade-offs.
+> 
+> “lookupcache” has:
+> 
+>                      The DATA  AND  METADATA  COHERENCE  section  contains  a
+>                      detailed discussion of these trade-offs.
+> 
+> And “cto” has:
+> 
+>                      server changes only occasionally.  The DATA AND METADATA
+>                      COHERENCE section discusses the behavior of this  option
+>                      in more detail.
+> 
+> We can add this to ac{reg,dir}{min,max}:
+> 
+>                      See the DATA AND METADATA COHERENCE section for  a  full
+>                      discussion of attribute caching.
+> 
+> Is that what you were thinking?
 
-I have no problem adding this to gss-proxy but I wonder if it is really
-that important.
+Yes, that should be sufficient.
 
-In what case gss-proxy will not be able to create a file
-named /var/run/gssproxy.sock ? The only case would be for the distro to
-outlaw creating a path named /var/run, note that /var/run does not need
-to be the same as /run for gssproxy to be able to create a socket.
-
-Simo.
-
--- 
-Simo Sorce * Red Hat, Inc * New York
-
+Thanks!
+  Trond
