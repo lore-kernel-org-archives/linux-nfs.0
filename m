@@ -1,62 +1,89 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from gw1.transmode.se ([195.58.98.146]:50764 "EHLO gw1.transmode.se"
+Received: from fieldses.org ([174.143.236.118]:33312 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754901AbaAIQ0L (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 9 Jan 2014 11:26:11 -0500
-In-Reply-To: <52CEC911.4080506@RedHat.com>
-References: <OFDD407A92.688D29A1-ONC1257C43.00634FC8-C1257C43.00645775@transmode.se> <20131216185419.GB31816@fieldses.org> <20131216200301.GD31816@fieldses.org> <OF149AE409.624B2B0A-ONC1257C43.006F77D7-C1257C43.006FCED2@transmode.se> <20131216202345.GF31816@fieldses.org> <OF942071D7.5EC379B1-ONC1257C43.007AB858-C1257C43.007B0CFB@transmode.se> <20131217034331.GB3490@fieldses.org> <52CC6B49.2070801@RedHat.com> <OF3BA89263.49226136-ONC1257C59.007AE7CD-C1257C59.007AFB8A@transmode.se> <52CEC911.4080506@RedHat.com>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+	id S1751484AbaAPSvM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 16 Jan 2014 13:51:12 -0500
+Date: Thu, 16 Jan 2014 13:51:07 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Bob Peterson <rpeterso@redhat.com>
+Cc: Steven Whitehouse <swhiteho@redhat.com>, Al Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, Miklos Szeredi <mszeredi@suse.cz>
+Subject: Re: [PATCH] dcache: fix d_splice_alias handling of aliases
+Message-ID: <20140116185107.GE16829@fieldses.org>
+References: <20140115151749.GF23999@fieldses.org>
+ <20140116161015.GC16829@fieldses.org>
+ <1389888942.2779.34.camel@menhir>
+ <20140116164411.GD16829@fieldses.org>
+ <1875464309.3327883.1389891247171.JavaMail.root@redhat.com>
 MIME-Version: 1.0
-Subject: Re: [PATCH] nfsd: fix minorversion-choosing interface
-From: Joakim Tjernlund <joakim.tjernlund@transmode.se>
-Message-ID: <OF888A4A56.F15FF112-ONC1257C5B.0059FFA6-C1257C5B.005A4864@transmode.se>
-Date: Thu, 9 Jan 2014 17:26:07 +0100
-Content-Type: text/plain; charset="US-ASCII"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1875464309.3327883.1389891247171.JavaMail.root@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Steve Dickson <SteveD@redhat.com> wrote on 2014/01/09 17:06:41:
+On Thu, Jan 16, 2014 at 11:54:07AM -0500, Bob Peterson wrote:
+> ----- Original Message -----
+> | Something like this?
+> (snip)
+> | @@ -779,6 +782,11 @@ static struct dentry *__gfs2_lookup(struct inode *dir,
+> | struct dentry *dentry,
+> |  	}
+> |  
+> |  	d = d_splice_alias(inode, dentry);
+> | +	if (IS_ERR(d)) {
+> | +		iput(inode);
+> | +		gfs2_glock_dq_uninit(&gh);
+> | +		return ERR_PTR(error);
 > 
-> 
-> On 07/01/14 17:23, Joakim Tjernlund wrote:
-> > Steve Dickson <SteveD@redhat.com> wrote on 2014/01/07 22:02:01:
-> >>
-> >>
-> >> On 16/12/13 22:43, J. Bruce Fields wrote:
-> >>> From: "J. Bruce Fields" <bfields@redhat.com>
-> >>>
-> >>> By unconditionally adding +/-4.2 to the version string written to 
-the
-> >>> kernel we make nfs-utils incompatible with pre-4.2-supporting 
-kernels.
-> >>>
-> >>> Ditto for 4.1.  This problem was introduced by
-> >>> 12a590f8d556c00a9502eeebaa763d906222d521 "rpc.nfsd: Allow v4.2 
-server
-> >>> support with the -V option", which also change nfsd to 
-unconditionally
-> >>> pass +/-4.2.
-> >>>
-> >>> Instead, just don't mention 4.1 or 4.2 unless the commandline has
-> >>> specifically requested that one or the other be turned on or off.
-> >>>
-> >>> Tested-by: Joakim Tjernlund <joakim.tjernlund@transmode.se>
-> >>> Reported-by: Joakim Tjernlund <joakim.tjernlund@transmode.se>
-> >>> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> >> Committed...
-> >>
-> >> steved
-> > 
-> > Thanks, do plan on making a release soon?
-> Sorry for the delayed response... 
-> 
-> Its in my git tree and in Fedora 20 nfs-utils....
-> 
-> Is this what you were looking for? 
+> ---------------------------------^
+> Shouldn't that be ERR_PTR(d)?
 
-No, I am wondering when nfs-utils 1.2.10 will be released, but I see now 
-that
-the tree is tagged with 1-2-10-rc2 so I guess it will be soon.
+Oops, yeah--well, actually just "d" I guess.
 
- Jocke
+This is what I've got for what it's worth.
+
+--b.
+
+commit 6fba5295019b52a03d76c9e9570952466051a7a6
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Thu Jan 16 11:44:53 2014 -0500
+
+    gfs2: revert "GFS2: d_splice_alias() can't return error"
+    
+    0d0d110720d7960b77c03c9f2597faaff4b484ae asserts that "d_splice_alias()
+    can't return error unless it was given an IS_ERR(inode)".
+    
+    That was true of the implementation of d_splice_alias, but this is
+    really a problem with d_splice_alias: at a minimum it should be able to
+    return -ELOOP in the case where inserting the given dentry would cause a
+    directory loop.
+    
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+
+diff --git a/fs/gfs2/inode.c b/fs/gfs2/inode.c
+index 7119504..3f44902 100644
+--- a/fs/gfs2/inode.c
++++ b/fs/gfs2/inode.c
+@@ -585,6 +585,9 @@ static int gfs2_create_inode(struct inode *dir, struct dentry *dentry,
+ 	error = PTR_ERR(inode);
+ 	if (!IS_ERR(inode)) {
+ 		d = d_splice_alias(inode, dentry);
++		error = PTR_ERR(d);
++		if (IS_ERR(d))
++			goto fail_gunlock;
+ 		error = 0;
+ 		if (file) {
+ 			if (S_ISREG(inode->i_mode)) {
+@@ -779,6 +782,11 @@ static struct dentry *__gfs2_lookup(struct inode *dir, struct dentry *dentry,
+ 	}
+ 
+ 	d = d_splice_alias(inode, dentry);
++	if (IS_ERR(d)) {
++		iput(inode);
++		gfs2_glock_dq_uninit(&gh);
++		return d;
++	}
+ 	if (file && S_ISREG(inode->i_mode))
+ 		error = finish_open(file, dentry, gfs2_open_common, opened);
+ 
