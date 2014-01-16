@@ -1,120 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:33194 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753096AbaAPRUp convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Jan 2014 12:20:45 -0500
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
-Subject: Re: [PATCH] nfs(5): Clarify DATA AND METADATA COHERENCE section
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <EDDCEDED-2C93-460F-A5B4-91A50C44F2B7@gmail.com>
-Date: Thu, 16 Jan 2014 12:20:40 -0500
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <D29E5BC8-70DF-4612-93D3-117E7D9B2BC1@oracle.com>
-References: <20140116170841.1489.82372.stgit@seurat.1015granger.net> <EDDCEDED-2C93-460F-A5B4-91A50C44F2B7@gmail.com>
-To: Trond Myklebust <trondmy@gmail.com>
+Received: from mail-qc0-f181.google.com ([209.85.216.181]:61627 "EHLO
+	mail-qc0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752348AbaAPQN3 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Jan 2014 11:13:29 -0500
+Received: by mail-qc0-f181.google.com with SMTP id e9so2447034qcy.26
+        for <linux-nfs@vger.kernel.org>; Thu, 16 Jan 2014 08:13:28 -0800 (PST)
+MIME-Version: 1.0
+In-Reply-To: <20140116154132.GB16829@fieldses.org>
+References: <20140115151749.GF23999@fieldses.org>
+	<1389807296.16290.32.camel@tucsk.piliscsaba.szeredi.hu>
+	<20140115175723.GA4596@fieldses.org>
+	<CAJfpegs0+t4S1y9mhRMJMAERh-a95KjK_JQ7F5SRrfsNZOdoMA@mail.gmail.com>
+	<20140116154132.GB16829@fieldses.org>
+Date: Thu, 16 Jan 2014 17:13:28 +0100
+Message-ID: <CAJfpegumqYe2oQ3at8w8OJFhNx38c6XBtdnyb4H6O=AGihfH-Q@mail.gmail.com>
+Subject: Re: [PATCH] dcache: fix d_splice_alias handling of aliases
+From: Miklos Szeredi <miklos@szeredi.hu>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Miklos Szeredi <mszeredi@suse.cz>, Al Viro <viro@zeniv.linux.org.uk>,
+        Linux-Fsdevel <linux-fsdevel@vger.kernel.org>,
+        Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        Linux NFS list <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Thu, Jan 16, 2014 at 4:41 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> And, sorry, I did miss that you said "non-directory".  But I think you
+> have that backwards: d_splice_alias looks like:
+>
+>         if (inode && S_ISDIR(inode->i_mode)) {
+>                 ...
+>         } else {
+>                 d_instantiate(dentry, inode);
+>                 if (d_unhashed(dentry))
+>                         d_rehash(dentry);
+>         }
+>
+> So it ignores any existing aliases in the non-directory case.
 
-On Jan 16, 2014, at 12:14 PM, Trond Myklebust <trondmy@gmail.com> wrote:
+Okay.
 
-> 
-> On Jan 16, 2014, at 12:09, Chuck Lever <chuck.lever@oracle.com> wrote:
-> 
->> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->> ---
->> How about something like this?
-> 
-> We really want something in the acregmin/max, acdirmin/max descriptions that refers to the cache coherency discussion too.
+>
+> d_materialise_unique by contrast calls __d_instantiate_unique, which
+> looks like it should avoid adding duplicates.
+>
+> So I think switching everyone to d_materialiase_unique would result in
+> fewer dentries.  But I've never seen any complaint about the issue and
+> like you don't see a reason this would matter much either way.
 
-“noac” now has:
+So, yes, d_materialise_unique() looks like it has superior
+functionality compared to d_splice_alias().
 
-                      The DATA  AND  METADATA  COHERENCE  section  contains  a
-                      detailed discussion of these trade-offs.
-
-“lookupcache” has:
-
-                      The DATA  AND  METADATA  COHERENCE  section  contains  a
-                      detailed discussion of these trade-offs.
-
-And “cto” has:
-
-                      server changes only occasionally.  The DATA AND METADATA
-                      COHERENCE section discusses the behavior of this  option
-                      in more detail.
-
-We can add this to ac{reg,dir}{min,max}:
-
-                      See the DATA AND METADATA COHERENCE section for  a  full
-                      discussion of attribute caching.
-
-Is that what you were thinking?
-
-> Cheers,
->  Trond
-> 
->> 
->> utils/mount/nfs.man |   28 ++++++++++++++++++----------
->> 1 file changed, 18 insertions(+), 10 deletions(-)
->> 
->> diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
->> index 2250963..99c9fc3 100644
->> --- a/utils/mount/nfs.man
->> +++ b/utils/mount/nfs.man
->> @@ -1161,24 +1161,32 @@ perfect cache coherence among their clients.
->> Perfect cache coherence among disparate NFS clients
->> is expensive to achieve, especially on wide area networks.
->> As such, NFS settles for weaker cache coherence that
->> -satisfies the requirements of most file sharing types. Normally,
->> -file sharing is completely sequential:
->> -first client A opens a file, writes something to it, then closes it;
->> -then client B opens the same file, and reads the changes.
->> -.DT
->> +satisfies the requirements of most file sharing types.
->> .SS "Close-to-open cache consistency"
->> -When an application opens a file stored on an NFS server,
->> -the NFS client checks that it still exists on the server
->> +Typically file sharing is completely sequential.
->> +First client A opens a file, writes something to it, then closes it.
->> +Then client B opens the same file, and reads the changes.
->> +.P
->> +When an application opens a file stored on an NFS version 3 server,
->> +the NFS client checks that the file exists on the server
->> and is permitted to the opener by sending a GETATTR or ACCESS request.
->> +The NFS client sends these requests
->> +independent of the freshness of the file's attribute cache.
->> +.P
->> When the application closes the file,
->> the NFS client writes back any pending changes
->> to the file so that the next opener can view the changes.
->> This also gives the NFS client an opportunity to report
->> -any server write errors to the application
->> -via the return code from
->> +write errors to the application via the return code from
->> .BR close (2).
->> +.P
->> The behavior of checking at open time and flushing at close time
->> -is referred to as close-to-open cache consistency.
->> +is referred to as
->> +.IR "close-to-open cache consistency" ,
->> +or CTO.
->> +It can be disabled for an entire mount point using the
->> +.B nocto
->> +mount option.
->> .SS "Weak cache consistency"
->> There are still opportunities for a client's data cache
->> to contain stale data.
->> 
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+Thanks,
+Miklos
