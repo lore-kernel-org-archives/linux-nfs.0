@@ -1,49 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:57146 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:31825 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751558AbaAYOjf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 25 Jan 2014 09:39:35 -0500
-Message-ID: <52E3CC9F.5060102@RedHat.com>
-Date: Sat, 25 Jan 2014 09:39:27 -0500
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Sebastien Godard <sysstat@orange.fr>, NeilBrown <neilb@suse.de>
-CC: Chuck Lever <chuck.lever@oracle.com>, varekova@redhat.com,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: Too many programs called nfsiostat.
-References: <20130410094639.5debfc90@notabene.brown>	<20140121144517.5f549347@notabene.brown>	<A5BFEC5C-7AF2-4A7E-856F-D62F35BCEFC0@oracle.com>	<20140122112436.574f0e29@notabene.brown>	<52DFC3C3.7080506@RedHat.com> <20140123085226.72ebaf85@notabene.brown> <52E15495.3050103@RedHat.com> <52E17790.4090903@orange.fr>
-In-Reply-To: <52E17790.4090903@orange.fr>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1751544AbaAPQQb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 16 Jan 2014 11:16:31 -0500
+Subject: Re: [PATCH] dcache: fix d_splice_alias handling of aliases
+From: Steven Whitehouse <swhiteho@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        Miklos Szeredi <mszeredi@suse.cz>
+In-Reply-To: <20140116161015.GC16829@fieldses.org>
+References: <20140115151749.GF23999@fieldses.org>
+	 <20140116161015.GC16829@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
+Date: Thu, 16 Jan 2014 16:15:42 +0000
+Message-ID: <1389888942.2779.34.camel@menhir>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi,
 
-
-On 23/01/14 15:12, Sebastien Godard wrote:
-> On 01/23/2014 06:42 PM, Steve Dickson wrote:
->>
->> On 22/01/14 16:52, NeilBrown wrote:
->>> On Wed, 22 Jan 2014 08:12:35 -0500 Steve Dickson <SteveD@redhat.com> wrote:
->>>
->>>>
->>>> On 21/01/14 19:24, NeilBrown wrote:
->>>> Is this version still actively being maintain? 
->>> Last change was 5 days ago.
->>>
->>> https://github.com/sysstat/sysstat/commits/master/nfsiostat.c
->> I guess the question now is do they want to continue maintaining
->> it or just merge the functionality into the nfs-utils version...
->>
+On Thu, 2014-01-16 at 11:10 -0500, J. Bruce Fields wrote:
+> On Wed, Jan 15, 2014 at 10:17:49AM -0500, bfields wrote:
+> > From: "J. Bruce Fields" <bfields@redhat.com>
+> > 
+> > d_splice_alias can create duplicate directory aliases (in the !new
+> > case), or (in the new case) d_move without holding appropriate locks.
+> > 
+> > d_materialise_unique deals with both of these problems.  (The latter
+> > seems to be dealt by trylocks (see __d_unalias), which look like they
+> > could cause spurious lookup failures--but that's at least better than
+> > corrupting the dcache.)
+> > 
+> > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> > ---
+> >  fs/dcache.c |   25 +------------------------
+> >  1 file changed, 1 insertion(+), 24 deletions(-)
+> > 
+> > Only lightly tested....  If this is right, then we can also just ditch
+> > d_splice_alias completely, and clean up the various d_find_alias's.
+> > 
+> > I think the only reason we have both d_splice_alias and
+> > d_materialise_unique is that the former was written for exportable
+> > filesystems and the latter for distributed filesystems.
+> > 
+> > But we have at least one exportable filesystem (fuse) using
+> > d_materialise_unique.  And I doubt d_splice_alias was ever completely
+> > correct even for on-disk filesystems.
+> > 
+> > Am I missing some subtlety?
 > 
-> This is no longer a question as I already answered it. Please *read* my previous mail.
-I did... but thought Neil's mail was pointing out that some type of 
-maintenance was happening... But if you say it's "no longer actively being maintained"
-I'll believe you... :-) 
-
-So what is the next step to deprecate the nfsiostat in sysstat? 
-
-steved.
-
+> Hm, I just noticed:
 > 
-> Regards,
+>     commit 0d0d110720d7960b77c03c9f2597faaff4b484ae
+>     Author: Miklos Szeredi <mszeredi@suse.cz>
+>     Date:   Mon Sep 16 14:52:00 2013 +0200
 > 
+>     GFS2: d_splice_alias() can't return error
+>     
+>     unless it was given an IS_ERR(inode), which isn't the case here.  So clean
+>     up the unnecessary error handling in gfs2_create_inode().
+>     
+>     This paves the way for real fixes (hence the stable Cc).
+>     
+>     Signed-off-by: Miklos Szeredi <mszeredi@suse.cz>
+>     Signed-off-by: Steven Whitehouse <swhiteho@redhat.com>
+>     Cc: stable@vger.kernel.org
+> 
+> While the statement is true for the current implementation of
+> d_splice_alias, I don't think it's actually true for any correct
+> implementation of d_splice_alias, which must be able to return at least
+> -ELOOP in the directory case.  Does gfs2 need fixing?
+> 
+> --b.
+
+Yes, in that case, probably in two places,
+
+Steve.
+
+
