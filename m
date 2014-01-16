@@ -1,116 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:40347 "EHLO mx1.redhat.com"
+Received: from smtp.infotech.no ([82.134.31.41]:47013 "EHLO smtp.infotech.no"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751656AbaAWRmy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 23 Jan 2014 12:42:54 -0500
-Message-ID: <52E15495.3050103@RedHat.com>
-Date: Thu, 23 Jan 2014 12:42:45 -0500
-From: Steve Dickson <SteveD@redhat.com>
+	id S1751388AbaAPAqj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 15 Jan 2014 19:46:39 -0500
+Message-ID: <52D72BEA.4050200@interlog.com>
+Date: Wed, 15 Jan 2014 19:46:34 -0500
+From: Douglas Gilbert <dgilbert@interlog.com>
+Reply-To: dgilbert@interlog.com
 MIME-Version: 1.0
-To: NeilBrown <neilb@suse.de>
-CC: Chuck Lever <chuck.lever@oracle.com>, varekova@redhat.com,
-        sysstat@orange.fr, Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: Too many programs called nfsiostat.
-References: <20130410094639.5debfc90@notabene.brown>	<20140121144517.5f549347@notabene.brown>	<A5BFEC5C-7AF2-4A7E-856F-D62F35BCEFC0@oracle.com>	<20140122112436.574f0e29@notabene.brown>	<52DFC3C3.7080506@RedHat.com> <20140123085226.72ebaf85@notabene.brown>
-In-Reply-To: <20140123085226.72ebaf85@notabene.brown>
-Content-Type: text/plain; charset=ISO-8859-1
+To: "Nicholas A. Bellinger" <nab@linux-iscsi.org>, Zach Brown <zab@redhat.com>
+CC: lsf-pc@lists.linux-foundation.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-scsi@vger.kernel.org,
+        Hannes Reinecke <hare@suse.de>
+Subject: Re: [LSF/MM TOPIC] copy offloading
+References: <20140115202754.GL8102@lenny.home.zabbo.net> <1389827455.5567.602.camel@haakon3.risingtidesystems.com>
+In-Reply-To: <1389827455.5567.602.camel@haakon3.risingtidesystems.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On 14-01-15 06:10 PM, Nicholas A. Bellinger wrote:
+> On Wed, 2014-01-15 at 12:27 -0800, Zach Brown wrote:
+>> Discussing copy offloading at LSF is appropriate because it can involve
+>> so many layers of the stack:
+>>
+>>   - high level syscall interface
+>>   - in-kernel high level entry point for nfsd
+>>   - fs specific implementations (btrfs and ocfs2 cow, nfs)
+>>   - vfs helper for offloading block copies for ext*,xfs
+>>   - bio offload requests for cow block devices like bcache/dm-cache
+>>   - encoding offload bios into scsi reqs
+>>   - processing virt guest device offload requests with host syscalls
+>>
+>> Getting the user and in-kernel interfaces right to support all these
+>> moving parts has proven tricky.  The more input, the better.
+>>
+>> It's been a while since I sent out a refreshed version of the series.
+>> That'll be remedied before LSF rolls around :).
+>>
+>
+> +1
+>
+> Now that EXTENDED_COPY LID1 target mode logic is upstream, I'm really
+> eager to start utilizing it Linux host side.  ;)
+
+Hannes Reinecke and I are preparing a proposal for a
+talk about ODX (a Microsoft acronym: offloaded data
+transfer) also know as "xcopy version 2, lite" by HP.
+
+ODX is a subset of the SCSI xcopy(LID4) for disk to disk
+copies. It uses the new SBC-3 POPULATE TOKEN and WRITE
+USING TOKEN commands. Most uses of xcopy(LID1) today are
+also disk to disk copies so ODX can be considered as an
+enhancement.
+
+There is nothing wrong with xcopy(LID1); at around 15
+years old it has been a little slow to gain traction.
+While we have the file system guys' attention, why not
+show them some new tricks that ODX can do?
 
 
-On 22/01/14 16:52, NeilBrown wrote:
-> On Wed, 22 Jan 2014 08:12:35 -0500 Steve Dickson <SteveD@redhat.com> wrote:
-> 
->>
->>
->> On 21/01/14 19:24, NeilBrown wrote:
->>> On Tue, 21 Jan 2014 10:40:01 -0500 Chuck Lever <chuck.lever@oracle.com> wrote:
->>>
->>>>
->>>> On Jan 20, 2014, at 10:45 PM, NeilBrown <neilb@suse.de> wrote:
->>>>
->>>>>
->>>>> (This time without the typo in Chuck's address - sorry).
->>>>>
->>>>> Not quite a year ago I wrote:
->>>>>
->>>>> On Wed, 10 Apr 2013 09:46:39 +1000 NeilBrown <neilb@suse.de> wrote:
->>>>>
->>>>>>
->>>>>> Hi all,
->>>>>> it seems that in 2010, a program called nfsiostat was added to the sysstat
->>>>>> package (http://sebastien.godard.pagesperso-orange.fr/)
->>>>>>
->>>>>> This is unfortunate because in 2008 a program called nfsiostat was added to
->>>>>> the nfs-utils package.
->>>>>>    (https://www.kernel.org/pub/linux/utils/nfs-utils/1.2.7/)
->>>>>>
->>>>>> The default install locations seem to be different (/usr/bin vs /usr/sbin),
->>>>>> so packagers would not immediately notice.
->>>>>>
->>>>>> This seems like something that should be "fixed".
->>>>>>
->>>>>> Any suggestions what a good "fix" should look like?
->>>>>>
->>>>>> NeilBrown
->>>>>
->>>>>
->>>>> No suggestions were forthcoming.
->>>>> So I have a suggestion.
->>>>> I propose we rename the "nfsiostat" in the "sysstat" package to
->>>>> "nfsio-sysstat" and the "nfsiostat" in "nfs-utils" to
->>>>> "nfs-utils-iostat".
->>>>>
->>>>> Does anyone object?  If not I'll send off patches shortly :-)
->>>>
->>>> What does the sysstat version do?  do we need two programs, or can they be merged?  Or can one be dropped?
->>>>
->>>
->>> It reads /proc/self/mountstats and reports some numbers, not unlike the
->>> nfs-utils version.
->>>
->>> $ /usr/sbin/nfsiostat 
->>>
->>> eli:/home mounted on /mnt:
->>>
->>>    op/s		rpc bklog
->>>    3.55	   0.00
->>> read:            ops/s		   kB/s		  kB/op		retrans		avg RTT (ms)	avg exe (ms)
->>> 		  0.000	  0.000	  0.000       0 (0.0%)	  0.000	  0.000
->>> write:           ops/s		   kB/s		  kB/op		retrans		avg RTT (ms)	avg exe (ms)
->>> 		  0.000	  0.000	  0.000       0 (0.0%)	  0.000	  0.000
->>> $ /usr/bin/nfsiostat 
->>> Linux 3.11.6-4-desktop (notabene.brown) 	01/22/2014 	_x86_64_	(8 CPU)
->>>
->>> Filesystem:               rkB_nor/s    wkB_nor/s    rkB_dir/s    wkB_dir/s    rkB_svr/s    wkB_svr/s     ops/s    rops/s    wops/s
->>> eli:/home                      0.00         0.00         0.00         0.00         0.00         0.00      0.00      0.00      0.00
->>>
->>>
->>> The man page for the sysstat version is:
->>>
->>> http://www.makelinux.com/man/1/N/nfsiostat
->> Is this version still actively being maintain? 
-> 
-> Last change was 5 days ago.
-> 
-> https://github.com/sysstat/sysstat/commits/master/nfsiostat.c
-I guess the question now is do they want to continue maintaining
-it or just merge the functionality into the nfs-utils version...
+Consider this: (virtual) machines A and B share a storage
+device that supports ODX; machine A wants to send a large
+file to machine B. Machine A can do a POPULATE TOKEN with
+a gather list and gets back a "ROD _token_" which is around
+512 bytes long. It writes that ROD token to a file and
+uses the network to send that file to machine B. Then
+machine B calls WRITE USING TOKEN with that ROD token
+and supplies a scatter list (where it wants to write).
 
-steved.
-> 
-> NeilBrown
-> 
-> 
->>
->> steved.
->>
->>>
->>> while man page for nfs-utils version is:
->>>
->>> http://linux.die.net/man/8/nfsiostat
->>>
->>> NeilBrown
->>>
-> 
+The actual ROD (representation of data) was created
+by the POPULATE TOKEN command and is sitting in
+storage device with "point in time" semantics. This
+trick doesn't depend on a common storage device:
+several storage devices that support xcopy(LID4) and
+that share a SCSI domain can "talk amongst themselves"
+to effect a ROD based copy of data.
+
+We also plan to have a Linux utility showing ODX
+in action.
+
+Doug Gilbert
+
+
+BTW LID1 and LID4 are simply SCSI/T10 jargon often used
+     to distinguish the older generation of xcopy from
+     the recent version. Both will be supported when
+     SPC-4 and SBC-3 become standards, probably later
+     this year. "LID1" actually means a "list identifier
+     length of 1 byte", guess what LID4 stands for.
+
