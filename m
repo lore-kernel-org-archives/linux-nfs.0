@@ -1,83 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:51987 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751190AbaACRDL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 3 Jan 2014 12:03:11 -0500
-Date: Fri, 3 Jan 2014 12:03:03 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org, simo@redhat.com, neilb@suse.de
-Subject: Re: [RFC PATCH 3/5] sunrpc: wait for gssproxy to start on initial
- upcall attempt before falling back to legacy upcall
-Message-ID: <20140103120303.2e641f82@tlielax.poochiereds.net>
-In-Reply-To: <20140103163347.GL28219@fieldses.org>
-References: <1388579314-15255-1-git-send-email-jlayton@redhat.com>
-	<1388579314-15255-4-git-send-email-jlayton@redhat.com>
-	<20140102213547.GD28219@fieldses.org>
-	<20140102181055.324ed278@tlielax.poochiereds.net>
-	<20140103163347.GL28219@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from aserp1040.oracle.com ([141.146.126.69]:46630 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752558AbaAPPzO convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Jan 2014 10:55:14 -0500
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
+Subject: Re: nfs attribute cache question
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <CAPQuqip0WvBLNPN+7ahMrzPA=GdUroQXWH9vo_SrXPJ70mHkEg@mail.gmail.com>
+Date: Thu, 16 Jan 2014 10:55:10 -0500
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <E2A4F98B-D2FD-4908-96FB-11133872C00E@oracle.com>
+References: <CAPQuqip0WvBLNPN+7ahMrzPA=GdUroQXWH9vo_SrXPJ70mHkEg@mail.gmail.com>
+To: ranjith ruban <ranjithruban@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 3 Jan 2014 11:33:47 -0500
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-> On Thu, Jan 02, 2014 at 06:10:55PM -0500, Jeff Layton wrote:
-> > On Thu, 2 Jan 2014 16:35:47 -0500
-> > "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > 
-> > > On Wed, Jan 01, 2014 at 07:28:32AM -0500, Jeff Layton wrote:
-> > > > Currently, the only thing that waits for gssproxy to start is reads
-> > > > from the use-gss-proxy procfile. That's a little odd, since nothing
-> > > > but gssproxy itself will likely ever open that file, and all it does
-> > > > it write to it.
-> > > > 
-> > > > It seems like what we really want instead is for svcrpc code to give
-> > > > gssproxy a little time to start up in the event that some RPCs come
-> > > > in before it's ready.
-> > > 
-> > > Legacy userspace will never write, so this adds an 5-second delay in
-> > > that case.
-> > > 
-> > > I'd rather avoid any arbitrary timeout.
-> > > 
-> > > It seems to me all you need is for gss-proxy to ensure that it does the
-> > > write to use-gss-proxy before it indicates to whoever started it that
-> > > it's done starting.
-> > > 
-> > > Then as long as the init system orders gss-proxy startup before nfsd
-> > > startup, we're good.
-> > > 
-> > > --b.
-> > > 
-> > 
-> > Yep, that 5s delay on the first upcall was the part that was
-> > questionable...
-> > 
-> > Ok, so basically the behavior you want is:
-> > 
-> > "If gssproxy is up and running by the time the first RPC comes in then
-> >  use that. If not, then use the legacy code."
-> > 
-> > I'll respin the set with that behavior in mind. I need to do a bit of
-> > testing with it too, so it may be a week or so before I repost.
-> 
-> Thanks!
-> 
-> On a quick skim, I thought that rendered the later patches mostly
-> unnecessary, but I may not have been paying close enough attention....
-> 
-> --b.
-> 
+On Jan 16, 2014, at 6:31 AM, ranjith ruban <ranjithruban@gmail.com> wrote:
 
-For the most part, yes...
+> Hello
+> 
+> I had set nfs mount actiomeo option for 300 seconds for a share. The
+> client is an openvz server with container filesystems in nfs . Server
+> is netapp.
+> 
+> While going through the tcpdump i see below
+> 
+> 125     2014-01-15 16:06:01.770522      10.X.0.X    10.X.0.X     NFS
+>  190     V3 GETATTR Call (Reply In 126), FH: 0x496fe5c5
+> 126     2014-01-15 16:06:01.770637      10.X.0.X    10.X.0.X    NFS
+> 182     V3 GETATTR Reply (Call In 125)  Regular File mode: 0644 uid:
+> 0 gid: 0
+> 
+> this call returns file id 2691421
+> 
+> find /vz/private/X/ -inum 2691421 -exec ls -l {} \;
+> -rw-r--r-- 1 root root 1128 Jul 14  2011 /vz/private/X/fs/root/etc/passwd
+> 
+> Now after a minute i do see the same call again to same file handle.
+> 
+> 294   2014-01-15 16:07:01.771152      10.X.0.X    10.X.0.X     NFS
+> 190     V3 GETATTR Call (Reply In 295), FH: 0x496fe5c5
+> 295   2014-01-15 16:07:01.771261      10.X.0.X     10.X.0.X   NFS
+> 182     V3 GETATTR Reply (Call In 294)  Regular File mode: 0644 uid: 0
+> gid: 0
+> 
+> mount options
+> # 10.X.0.X:/vol/vz2/private on /vz/private type nfs
+> (rw,noatime,nodiratime,soft,timeo=60,nfsvers=3,retrans=2,rsize=8192,wsize=8192,actimeo=300,addr=10.X.0.X)
+> 
+> why does this happens with actimeo=300 . The second call in 1 minute
+> should be answered from cache is it ?. Can some tuning be done to
+> reduce this?.
 
-There is some code that can be removed however since we don't need that
-wait anymore. Also, the race between setting the variable and setting up the
-client still exists, and I think the use_gssp_lock is really
-unnecessary. We can use cmpxchg() to get the same result without a spinlock.
+With NFSv3, open(2) on the client results in an on-the-wire GETATTR, independent of the freshness of the file’s attribute cache.  See “DATA AND METADATA COHERENCE” in the nfs(5) man page.
 
--- 
-Jeff Layton <jlayton@redhat.com>
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
