@@ -1,106 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:11213 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:55393 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750937AbaAQB22 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 16 Jan 2014 20:28:28 -0500
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s0H1SSc6027725
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Thu, 16 Jan 2014 20:28:28 -0500
-Subject: Re: [PATCH] Fix crdential sourcing with new setuid behavior in
- rpc.gssd
-From: Simo Sorce <simo@redhat.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs <linux-nfs@vger.kernel.org>
-In-Reply-To: <20140116104707.6b4c11fe@tlielax.poochiereds.net>
-References: <1389822094.26102.488.camel@willson.li.ssimo.org>
-	 <20140116104707.6b4c11fe@tlielax.poochiereds.net>
-Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 16 Jan 2014 20:28:27 -0500
-Message-ID: <1389922107.2370.13.camel@willson.li.ssimo.org>
-Mime-Version: 1.0
+	id S1752141AbaAPQKT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 16 Jan 2014 11:10:19 -0500
+Date: Thu, 16 Jan 2014 11:10:16 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, Miklos Szeredi <mszeredi@suse.cz>,
+        Steven Whitehouse <swhiteho@redhat.com>
+Subject: Re: [PATCH] dcache: fix d_splice_alias handling of aliases
+Message-ID: <20140116161015.GC16829@fieldses.org>
+References: <20140115151749.GF23999@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140115151749.GF23999@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2014-01-16 at 10:47 -0500, Jeff Layton wrote:
-> On Wed, 15 Jan 2014 16:41:34 -0500
-> Simo Sorce <simo@redhat.com> wrote:
+On Wed, Jan 15, 2014 at 10:17:49AM -0500, bfields wrote:
+> From: "J. Bruce Fields" <bfields@redhat.com>
 > 
-> > From 421f66b1cd0b031ef843f7680f463027904b93ca Mon Sep 17 00:00:00 2001
-> > From: Simo Sorce <simo@redhat.com>
-> > Date: Wed, 15 Jan 2014 16:01:49 -0500
-> > Subject: [PATCH] Improve first attempt at acquiring GSS credentials
-> > 
-> > Since now rpc.gssd is swithing uid before attempting to acquire
-> > credentials, we do not need to pass in the special uid-as-a-string name
-> > to gssapi, because the process is already running under the user's
-> > credentials.
-> > 
-> > By making this optional we can fix a class of false negatives where the
-> > user name does not match the actual ccache credentials and the ccache
-> > type used is not one of the only 2 supported explicitly by rpc.gssd by the
-> > fallback trolling done later.
-> > 
-> > Signed-off-by: Simo Sorce <simo@redhat.com>
-> > ---
-> >  utils/gssd/krb5_util.c | 32 ++++++++++++++++++--------------
-> >  1 file changed, 18 insertions(+), 14 deletions(-)
-> > 
-> > diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
-> > index 697d1d2e79db0cc38160ea4772d3af3a9b7d6c21..7db5baf4e4bea75ed7beebd2103afbc291efb641 100644
-> > --- a/utils/gssd/krb5_util.c
-> > +++ b/utils/gssd/krb5_util.c
-> > @@ -1383,24 +1383,28 @@ gssd_acquire_user_cred(uid_t uid, gss_cred_id_t *gss_cred)
-> >  {
-> >  	OM_uint32 maj_stat, min_stat;
-> >  	gss_buffer_desc name_buf;
-> > -	gss_name_t name;
-> > +	gss_name_t name = GSS_C_NO_NAME;
-> >  	char buf[11];
-> >  	int ret;
-> >  
-> > -	ret = snprintf(buf, 11, "%u", uid);
-> > -	if (ret < 1 || ret > 10) {
-> > -		return -1;
-> > -	}
-> > -	name_buf.value = buf;
-> > -	name_buf.length = ret + 1;
-> > +	/* the follwing is useful only if change_identity() in
-> > +	 * process_krb5_upcall() failed to change uids */
-> > +	if (getuid() == 0) {
-> > +		ret = snprintf(buf, 11, "%u", uid);
-> > +		if (ret < 1 || ret > 10) {
-> > +			return -1;
-> > +		}
-> > +		name_buf.value = buf;
-> > +		name_buf.length = ret + 1;
-> >  
+> d_splice_alias can create duplicate directory aliases (in the !new
+> case), or (in the new case) d_move without holding appropriate locks.
 > 
-> If change_identity() fails, then process_krb5_upcall should just give
-> up and do an error downcall, so falling back to using
-> GSS_C_NT_STRING_UID_NAME in that case seems unnecessary.
+> d_materialise_unique deals with both of these problems.  (The latter
+> seems to be dealt by trylocks (see __d_unalias), which look like they
+> could cause spurious lookup failures--but that's at least better than
+> corrupting the dcache.)
 > 
-> Also, we can end up in here legitimately with uid == 0 if
-> root_uses_machine_creds == 0. So I wonder if we even need the stuff
-> inside this "if (getuid() == 0)" block at all...
+> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> ---
+>  fs/dcache.c |   25 +------------------------
+>  1 file changed, 1 insertion(+), 24 deletions(-)
+> 
+> Only lightly tested....  If this is right, then we can also just ditch
+> d_splice_alias completely, and clean up the various d_find_alias's.
+> 
+> I think the only reason we have both d_splice_alias and
+> d_materialise_unique is that the former was written for exportable
+> filesystems and the latter for distributed filesystems.
+> 
+> But we have at least one exportable filesystem (fuse) using
+> d_materialise_unique.  And I doubt d_splice_alias was ever completely
+> correct even for on-disk filesystems.
+> 
+> Am I missing some subtlety?
 
-I were under the impression that rpc.gssd could still be used without
-doing the fork()/setuid() dance, and I didn't really check if it really
-is conditional.
+Hm, I just noticed:
 
-If it is not and the only case where uid = 0 is when rpc.gssd is
-actually performing the operation on behalf of root, then yeah we can
-simply remove everything in the if branch.
+    commit 0d0d110720d7960b77c03c9f2597faaff4b484ae
+    Author: Miklos Szeredi <mszeredi@suse.cz>
+    Date:   Mon Sep 16 14:52:00 2013 +0200
 
-Let me know how you want to proceed. 
+    GFS2: d_splice_alias() can't return error
+    
+    unless it was given an IS_ERR(inode), which isn't the case here.  So clean
+    up the unnecessary error handling in gfs2_create_inode().
+    
+    This paves the way for real fixes (hence the stable Cc).
+    
+    Signed-off-by: Miklos Szeredi <mszeredi@suse.cz>
+    Signed-off-by: Steven Whitehouse <swhiteho@redhat.com>
+    Cc: stable@vger.kernel.org
 
-> Other than that, I'm fine with ripping that junk out.
+While the statement is true for the current implementation of
+d_splice_alias, I don't think it's actually true for any correct
+implementation of d_splice_alias, which must be able to return at least
+-ELOOP in the directory case.  Does gfs2 need fixing?
 
-Ok, so should I sent a patch that just removes, instead of making
-conditional, this chunk of code ?
-
-Simo.
-
--- 
-Simo Sorce * Red Hat, Inc * New York
-
+--b.
