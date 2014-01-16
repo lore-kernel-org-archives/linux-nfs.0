@@ -1,85 +1,108 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qe0-f54.google.com ([209.85.128.54]:50545 "EHLO
-	mail-qe0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753883AbaAAM2p (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 1 Jan 2014 07:28:45 -0500
-Received: by mail-qe0-f54.google.com with SMTP id cy11so13332629qeb.41
-        for <linux-nfs@vger.kernel.org>; Wed, 01 Jan 2014 04:28:44 -0800 (PST)
-From: Jeff Layton <jlayton@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: simo@redhat.com, bfields@fieldses.org, neilb@suse.de
-Subject: [RFC PATCH 3/5] sunrpc: wait for gssproxy to start on initial upcall attempt before falling back to legacy upcall
-Date: Wed,  1 Jan 2014 07:28:32 -0500
-Message-Id: <1388579314-15255-4-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1388579314-15255-1-git-send-email-jlayton@redhat.com>
-References: <1388579314-15255-1-git-send-email-jlayton@redhat.com>
+Received: from mail-ie0-f172.google.com ([209.85.223.172]:53153 "EHLO
+	mail-ie0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750764AbaAPRbA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Jan 2014 12:31:00 -0500
+Received: by mail-ie0-f172.google.com with SMTP id e14so4045259iej.17
+        for <linux-nfs@vger.kernel.org>; Thu, 16 Jan 2014 09:31:00 -0800 (PST)
+Subject: [PATCH v2] nfs(5): Clarify DATA AND METADATA COHERENCE section
+To: steved@redhat.com
+From: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org
+Date: Thu, 16 Jan 2014 12:30:58 -0500
+Message-ID: <20140116173058.1852.86450.stgit@seurat.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently, the only thing that waits for gssproxy to start is reads
-from the use-gss-proxy procfile. That's a little odd, since nothing
-but gssproxy itself will likely ever open that file, and all it does
-it write to it.
-
-It seems like what we really want instead is for svcrpc code to give
-gssproxy a little time to start up in the event that some RPCs come
-in before it's ready.
-
-Change it so that the upcall instead waits a little while for gssproxy
-to start before giving up. If the wait times out, we go ahead and
-disable gssproxy so that later upcalls don't delay.
-
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/auth_gss/svcauth_gss.c | 28 ++++++++++------------------
- 1 file changed, 10 insertions(+), 18 deletions(-)
+ utils/mount/nfs.man |   37 +++++++++++++++++++++++++++----------
+ 1 file changed, 27 insertions(+), 10 deletions(-)
 
-diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
-index 64c025e..921f388 100644
---- a/net/sunrpc/auth_gss/svcauth_gss.c
-+++ b/net/sunrpc/auth_gss/svcauth_gss.c
-@@ -1265,24 +1265,6 @@ out:
- 
- DEFINE_SPINLOCK(use_gssp_lock);
- 
--static bool use_gss_proxy(struct net *net)
--{
--	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
--
--	if (sn->use_gss_proxy != -1)
--		return sn->use_gss_proxy;
--	spin_lock(&use_gssp_lock);
--	/*
--	 * If you wanted gss-proxy, you should have said so before
--	 * starting to accept requests:
--	 */
--	sn->use_gss_proxy = 0;
--	spin_unlock(&use_gssp_lock);
--	return 0;
--}
--
--#ifdef CONFIG_PROC_FS
--
- static int set_gss_proxy(struct net *net, int type)
- {
- 	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
-@@ -1332,6 +1314,16 @@ static int wait_for_gss_proxy(struct net *net)
- 	return ret < 0 ? ret : 0;
- }
- 
-+static bool use_gss_proxy(struct net *net)
-+{
-+	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
-+
-+	if (wait_for_gss_proxy(net))
-+		return false;
-+	return gssp_ready(sn);
-+}
-+
-+#ifdef CONFIG_PROC_FS
- 
- static ssize_t write_gssp(struct file *file, const char __user *buf,
- 			 size_t count, loff_t *ppos)
--- 
-1.8.4.2
+diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
+index 2250963..55103ae 100644
+--- a/utils/mount/nfs.man
++++ b/utils/mount/nfs.man
+@@ -288,6 +288,8 @@ attributes of a regular file before it requests
+ fresh attribute information from a server.
+ If this option is not specified, the NFS client uses
+ a 3-second minimum.
++See the DATA AND METADATA COHERENCE section
++for a full discussion of attribute caching.
+ .TP 1.5i
+ .BI acregmax= n
+ The maximum time (in seconds) that the NFS client caches
+@@ -295,6 +297,8 @@ attributes of a regular file before it requests
+ fresh attribute information from a server.
+ If this option is not specified, the NFS client uses
+ a 60-second maximum.
++See the DATA AND METADATA COHERENCE section
++for a full discussion of attribute caching.
+ .TP 1.5i
+ .BI acdirmin= n
+ The minimum time (in seconds) that the NFS client caches
+@@ -302,6 +306,8 @@ attributes of a directory before it requests
+ fresh attribute information from a server.
+ If this option is not specified, the NFS client uses
+ a 30-second minimum.
++See the DATA AND METADATA COHERENCE section
++for a full discussion of attribute caching.
+ .TP 1.5i
+ .BI acdirmax= n
+ The maximum time (in seconds) that the NFS client caches
+@@ -309,6 +315,8 @@ attributes of a directory before it requests
+ fresh attribute information from a server.
+ If this option is not specified, the NFS client uses
+ a 60-second maximum.
++See the DATA AND METADATA COHERENCE section
++for a full discussion of attribute caching.
+ .TP 1.5i
+ .BI actimeo= n
+ Using
+@@ -1161,24 +1169,33 @@ perfect cache coherence among their clients.
+ Perfect cache coherence among disparate NFS clients
+ is expensive to achieve, especially on wide area networks.
+ As such, NFS settles for weaker cache coherence that
+-satisfies the requirements of most file sharing types. Normally,
+-file sharing is completely sequential:
+-first client A opens a file, writes something to it, then closes it;
+-then client B opens the same file, and reads the changes.
+-.DT
++satisfies the requirements of most file sharing types.
+ .SS "Close-to-open cache consistency"
+-When an application opens a file stored on an NFS server,
+-the NFS client checks that it still exists on the server
++Typically file sharing is completely sequential.
++First client A opens a file, writes something to it, then closes it.
++Then client B opens the same file, and reads the changes.
++.P
++When an application opens a file stored on an NFS version 3 server,
++the NFS client checks that the file exists on the server
+ and is permitted to the opener by sending a GETATTR or ACCESS request.
++The NFS client sends these requests
++regardless of the freshness of the file's cached attributes.
++.P
+ When the application closes the file,
+ the NFS client writes back any pending changes
+ to the file so that the next opener can view the changes.
+ This also gives the NFS client an opportunity to report
+-any server write errors to the application
+-via the return code from
++write errors to the application via the return code from
+ .BR close (2).
++.P
+ The behavior of checking at open time and flushing at close time
+-is referred to as close-to-open cache consistency.
++is referred to as
++.IR "close-to-open cache consistency" ,
++or
++.IR CTO .
++It can be disabled for an entire mount point using the
++.B nocto
++mount option.
+ .SS "Weak cache consistency"
+ There are still opportunities for a client's data cache
+ to contain stale data.
 
