@@ -1,177 +1,192 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f43.google.com ([209.85.220.43]:47539 "EHLO
-	mail-pa0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751448AbaAXSqq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Jan 2014 13:46:46 -0500
-Received: by mail-pa0-f43.google.com with SMTP id rd3so3598340pab.16
-        for <linux-nfs@vger.kernel.org>; Fri, 24 Jan 2014 10:46:46 -0800 (PST)
-Message-ID: <1390589201.2927.46.camel@leira.trondhjem.org>
-Subject: Re: [PATCH 7/7] nfs: page cache invalidation for dio
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Christoph Hellwig <hch@infradead.org>,
-        linuxnfs <linux-nfs@vger.kernel.org>
-Date: Fri, 24 Jan 2014 11:46:41 -0700
-In-Reply-To: <20140124130013.22f706de@tlielax.poochiereds.net>
-References: <20131114165027.355613182@bombadil.infradead.org>
-	 <20131114165042.205194841@bombadil.infradead.org>
-	 <20131114133551.5d08b5cd@tlielax.poochiereds.net>
-	 <20131115142847.GA1107@infradead.org>
-	 <20131115095241.2c5e1cfb@tlielax.poochiereds.net>
-	 <20131115150204.GA8105@infradead.org>
-	 <20131115103324.6a3cf978@tlielax.poochiereds.net>
-	 <20140121142159.210ca0b8@tlielax.poochiereds.net>
-	 <20140122082414.GA12530@infradead.org>
-	 <20140122070409.503db5c2@tlielax.poochiereds.net>
-	 <20140124105213.2c40a783@tlielax.poochiereds.net>
-	 <1C06779A-6513-4460-9A12-6AAE7E6BD446@primarydata.com>
-	 <20140124122924.0eb2e6bd@tlielax.poochiereds.net>
-	 <1390585206.2927.9.camel@leira.trondhjem.org>
-	 <20140124130013.22f706de@tlielax.poochiereds.net>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mail-la0-f42.google.com ([209.85.215.42]:52941 "EHLO
+	mail-la0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752298AbaAQKHc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Jan 2014 05:07:32 -0500
+From: Pavel Shilovsky <piastry@etersoft.ru>
+To: linux-kernel@vger.kernel.org
+Cc: linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, wine-devel@winehq.org
+Subject: [PATCH v7 2/7] VFS: Add O_DENYDELETE support for VFS
+Date: Fri, 17 Jan 2014 14:07:07 +0400
+Message-Id: <1389953232-9428-3-git-send-email-piastry@etersoft.ru>
+In-Reply-To: <1389953232-9428-1-git-send-email-piastry@etersoft.ru>
+References: <1389953232-9428-1-git-send-email-piastry@etersoft.ru>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2014-01-24 at 13:00 -0500, Jeff Layton wrote:
-> On Fri, 24 Jan 2014 10:40:06 -0700
-> Trond Myklebust <trond.myklebust@primarydata.com> wrote:
-> 
-> > On Fri, 2014-01-24 at 12:29 -0500, Jeff Layton wrote:
-> > > On Fri, 24 Jan 2014 10:11:11 -0700
-> > > Trond Myklebust <trond.myklebust@primarydata.com> wrote:
-> > > 
-> > > > 
-> > > > On Jan 24, 2014, at 8:52, Jeff Layton <jlayton@redhat.com> wrote:
-> > > > 
-> > > > > On Wed, 22 Jan 2014 07:04:09 -0500
-> > > > > Jeff Layton <jlayton@redhat.com> wrote:
-> > > > > 
-> > > > >> On Wed, 22 Jan 2014 00:24:14 -0800
-> > > > >> Christoph Hellwig <hch@infradead.org> wrote:
-> > > > >> 
-> > > > >>> On Tue, Jan 21, 2014 at 02:21:59PM -0500, Jeff Layton wrote:
-> > > > >>>> In any case, this helps but it's a little odd. With this patch, you add
-> > > > >>>> an invalidate_inode_pages2 call prior to doing the DIO. But, you've
-> > > > >>>> also left in the call to nfs_zap_mapping in the completion codepath.
-> > > > >>>> 
-> > > > >>>> So now, we shoot down the mapping prior to doing a DIO write, and then
-> > > > >>>> mark the mapping for invalidation again when the write completes. Was
-> > > > >>>> that intentional?
-> > > > >>>> 
-> > > > >>>> It seems a little excessive and might hurt performance in some cases.
-> > > > >>>> OTOH, if you mix buffered and DIO you're asking for trouble anyway and
-> > > > >>>> this approach seems to give better cache coherency.
-> > > > >>> 
-> > > > >>> Thile follows the model implemented and documented in
-> > > > >>> generic_file_direct_write().
-> > > > >>> 
-> > > > >> 
-> > > > >> Ok, thanks. That makes sense, and the problem described in those
-> > > > >> comments is almost exactly the one I've seen in practice.
-> > > > >> 
-> > > > >> I'm still not 100% thrilled with the way that the NFS_INO_INVALID_DATA
-> > > > >> flag is handled, but that really has nothing to do with this patchset.
-> > > > >> 
-> > > > >> You can add my Tested-by to the set if you like...
-> > > > >> 
-> > > > > 
-> > > > > (re-sending with Trond's address fixed)
-> > > > > 
-> > > > > I may have spoken too soon...
-> > > > > 
-> > > > > This patchset didn't fix the problem once I cranked up the concurrency
-> > > > > from 100 child tasks to 1000. I think that HCH's patchset makes sense
-> > > > > and helps narrow the race window some, but the way that
-> > > > > nfs_revalidate_mapping/nfs_invalidate_mapping work is just racy.
-> > > > > 
-> > > > > The following patch does seem to fix it however. It's a combination of
-> > > > > a test patch that Trond gave me a while back and another change to
-> > > > > serialize the nfs_invalidate_mapping ops.
-> > > > > 
-> > > > > I think it's a reasonable approach to deal with the problem, but we
-> > > > > likely have some other areas that will need similar treatment since
-> > > > > they also check NFS_INO_INVALID_DATA: 
-> > > > > 
-> > > > >    nfs_write_pageuptodate
-> > > > >    nfs_readdir_search_for_cookie
-> > > > >    nfs_update_inode
-> > > > > 
-> > > > > Trond, thoughts? It's not quite ready for merge, but I'd like to get an
-> > > > > opinion on the basic approach, or whether you have an idea of how
-> > > > > better handle the races here:
-> > > > 
-> > > > I think that it is reasonable for nfs_revalidate_mapping, but I don’t see how it is relevant to nfs_update_inode or nfs_write_pageuptodate.
-> > > > Readdir already has its own locking at the VFS level, so we shouldn’t need to care there.
-> > > > 
-> > > 
-> > > 
-> > > nfs_write_pageuptodate does this:
-> > > 
-> > > ---------------8<-----------------
-> > >         if (NFS_I(inode)->cache_validity & (NFS_INO_INVALID_DATA|NFS_INO_REVAL_PAGECACHE))
-> > >                 return false;
-> > > out:
-> > >         return PageUptodate(page) != 0;
-> > > ---------------8<-----------------
-> > > 
-> > > With the proposed patch, NFS_INO_INVALID_DATA would be cleared first and
-> > > only later would the page be invalidated. So, there's a race window in
-> > > there where the bit could be cleared but the page flag is still set,
-> > > even though it's on its way out the cache. So, I think we'd need to do
-> > > some similar sort of locking in there to make sure that doesn't happen.
-> > 
-> > We _cannot_ lock against nfs_revalidate_mapping() here, because we could
-> > end up deadlocking with invalidate_inode_pages2().
-> > 
-> > If you like, we could add a test for NFS_INO_INVALIDATING, to turn off
-> > the optimisation in that case, but I'd like to understand what the race
-> > would be: don't forget that the page is marked as PageUptodate(), which
-> > means that either invalidate_inode_pages2() has not yet reached this
-> > page, or that a read of the page succeeded after the invalidation was
-> > made.
-> > 
-> 
-> Right. The first situation seems wrong to me. We've marked the file as
-> INVALID and then cleared the bit to start the process of invalidating
-> the actual pages. It seems like nfs_write_pageuptodate ought not return
-> true even if PageUptodate() is still set at that point.
-> 
-> We could check NFS_INO_INVALIDATING, but we might miss that
-> optimization in a lot of cases just because something happens to be
-> in nfs_revalidate_mapping. Maybe that means that this bitlock isn't
-> sufficient and we need some other mechanism. I'm not sure what that
-> should be though.
+Introduce new LOCK_DELETE flock flag that is suggested to be used
+internally only to map O_DENYDELETE open flag:
 
-Convert your patch to use wait_on_bit(), and then to call
-wait_on_bit_lock() if and only if you see NFS_INO_INVALID_DATA is set.
+!O_DENYDELETE -> LOCK_DELETE | LOCK_MAND.
 
-> > > nfs_update_inode just does this:
-> > > 
-> > >         if (invalid & NFS_INO_INVALID_DATA)
-> > >                 nfs_fscache_invalidate(inode);
-> > > 
-> > > ...again, since we clear the bit first with this patch, I think we have
-> > > a potential race window there too. We might not see it set in a
-> > > situation where we would have before. That case is a bit more
-> > > problematic since we can't sleep to wait on the bitlock there.
-> > 
-> > Umm... That test in nfs_update_inode() is there because we might just
-> > have _set_ the NFS_INO_INVALID_DATA bit.
-> > 
-> 
-> Correct. But do we need to force a fscache invalidation at that point,
-> or can it wait until we're going to invalidate the mapping too?
+Signed-off-by: Pavel Shilovsky <piastry@etersoft.ru>
+---
+ fs/locks.c                       |   56 ++++++++++++++++++++++++++++++++------
+ fs/namei.c                       |    3 ++
+ include/linux/fs.h               |    6 ++++
+ include/uapi/asm-generic/fcntl.h |    1 +
+ 4 files changed, 57 insertions(+), 9 deletions(-)
 
-That's a question for David. My assumption is that since invalidation is
-handled asynchronously by the fscache layer itself, that we need to let
-it start that process as soon as possible, but perhaps these races are
-an indication that we should actually do it at the time when we call
-invalidate_inode_pages2() (or at the latest, when we're evicting the
-inode from the icache)...
-
-
+diff --git a/fs/locks.c b/fs/locks.c
+index ffde4d4..7ecc511 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -295,7 +295,7 @@ EXPORT_SYMBOL(locks_copy_lock);
+ 
+ static inline int flock_translate_cmd(int cmd) {
+ 	if (cmd & LOCK_MAND)
+-		return cmd & (LOCK_MAND | LOCK_RW);
++		return cmd & (LOCK_MAND | LOCK_RW | LOCK_DELETE);
+ 	switch (cmd) {
+ 	case LOCK_SH:
+ 		return F_RDLCK;
+@@ -717,6 +717,8 @@ deny_flags_to_cmd(unsigned int flags)
+ 		cmd |= LOCK_READ;
+ 	if (!(flags & O_DENYWRITE))
+ 		cmd |= LOCK_WRITE;
++	if (!(flags & O_DENYDELETE))
++		cmd |= LOCK_DELETE;
+ 
+ 	return cmd;
+ }
+@@ -941,6 +943,34 @@ out:
+ 	return error;
+ }
+ 
++int
++sharelock_may_delete(struct dentry *dentry)
++{
++	struct file_lock **before;
++	struct inode *inode = dentry->d_inode;
++	int rc = 0;
++
++	if (!IS_SHARELOCK(inode))
++		return rc;
++
++	spin_lock(&inode->i_lock);
++	for_each_lock(inode, before) {
++		struct file_lock *fl = *before;
++		if (IS_POSIX(fl))
++			break;
++		if (IS_LEASE(fl))
++			continue;
++		if (!(fl->fl_type & LOCK_MAND))
++			continue;
++		if (fl->fl_type & LOCK_DELETE)
++			continue;
++		rc = 1;
++		break;
++	}
++	spin_unlock(&inode->i_lock);
++	return rc;
++}
++
+ /*
+  * Determine if a file is allowed to be opened with specified access and share
+  * modes. Lock the file and return 0 if checks passed, otherwise return
+@@ -955,10 +985,6 @@ sharelock_lock_file(struct file *filp)
+ 	if (!IS_SHARELOCK(filp->f_path.dentry->d_inode))
+ 		return error;
+ 
+-	/* Disable O_DENYDELETE support for now */
+-	if (filp->f_flags & O_DENYDELETE)
+-		return -EINVAL;
+-
+ 	error = flock_make_lock(filp, &lock, deny_flags_to_cmd(filp->f_flags));
+ 	if (error)
+ 		return error;
+@@ -1872,6 +1898,12 @@ SYSCALL_DEFINE2(flock, unsigned int, fd, unsigned int, cmd)
+ 	if (!f.file)
+ 		goto out;
+ 
++	/* LOCK_DELETE is defined to be translated from O_DENYDELETE only */
++	if (cmd & LOCK_DELETE) {
++		error = -EINVAL;
++		goto out;
++	}
++
+ 	can_sleep = !(cmd & LOCK_NB);
+ 	cmd &= ~LOCK_NB;
+ 	unlock = (cmd == LOCK_UN);
+@@ -2419,10 +2451,16 @@ static void lock_get_status(struct seq_file *f, struct file_lock *fl,
+ 		seq_printf(f, "UNKNOWN UNKNOWN  ");
+ 	}
+ 	if (fl->fl_type & LOCK_MAND) {
+-		seq_printf(f, "%s ",
+-			       (fl->fl_type & LOCK_READ)
+-			       ? (fl->fl_type & LOCK_WRITE) ? "RW   " : "READ "
+-			       : (fl->fl_type & LOCK_WRITE) ? "WRITE" : "NONE ");
++		if (fl->fl_type & LOCK_DELETE)
++			seq_printf(f, "%s ",
++				(fl->fl_type & LOCK_READ) ?
++				(fl->fl_type & LOCK_WRITE) ? "RWDEL" : "RDDEL" :
++				(fl->fl_type & LOCK_WRITE) ? "WRDEL" : "DEL  ");
++		else
++			seq_printf(f, "%s ",
++				(fl->fl_type & LOCK_READ) ?
++				(fl->fl_type & LOCK_WRITE) ? "RW   " : "READ " :
++				(fl->fl_type & LOCK_WRITE) ? "WRITE" : "NONE ");
+ 	} else {
+ 		seq_printf(f, "%s ",
+ 			       (lease_breaking(fl))
+diff --git a/fs/namei.c b/fs/namei.c
+index 2b741a1..1643ab8 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -2383,6 +2383,7 @@ static inline int check_sticky(struct inode *dir, struct inode *inode)
+  *  9. We can't remove a root or mountpoint.
+  * 10. We don't allow removal of NFS sillyrenamed files; it's handled by
+  *     nfs_async_unlink().
++ * 11. We can't do it if victim is locked by O_DENYDELETE sharelock.
+  */
+ static int may_delete(struct inode *dir, struct dentry *victim, bool isdir)
+ {
+@@ -2416,6 +2417,8 @@ static int may_delete(struct inode *dir, struct dentry *victim, bool isdir)
+ 		return -ENOENT;
+ 	if (victim->d_flags & DCACHE_NFSFS_RENAMED)
+ 		return -EBUSY;
++	if (sharelock_may_delete(victim))
++		return -ESHAREDENIED;
+ 	return 0;
+ }
+ 
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index aa061ca..6dc9275 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1030,6 +1030,7 @@ extern int lease_modify(struct file_lock **, int);
+ extern int lock_may_read(struct inode *, loff_t start, unsigned long count);
+ extern int lock_may_write(struct inode *, loff_t start, unsigned long count);
+ extern int sharelock_lock_file(struct file *);
++extern int sharelock_may_delete(struct dentry *);
+ #else /* !CONFIG_FILE_LOCKING */
+ static inline int fcntl_getlk(struct file *file, struct flock __user *user)
+ {
+@@ -1176,6 +1177,11 @@ static inline int sharelock_lock_file(struct file *filp)
+ 	return 0;
+ }
+ 
++static inline int sharelock_may_delete(struct dentry *dentry)
++{
++	return 0;
++}
++
+ #endif /* !CONFIG_FILE_LOCKING */
+ 
+ 
+diff --git a/include/uapi/asm-generic/fcntl.h b/include/uapi/asm-generic/fcntl.h
+index 9881cfe..41ba131 100644
+--- a/include/uapi/asm-generic/fcntl.h
++++ b/include/uapi/asm-generic/fcntl.h
+@@ -175,6 +175,7 @@ struct f_owner_ex {
+ 				   blocking */
+ #define LOCK_UN		8	/* remove lock */
+ 
++#define LOCK_DELETE	16	/* which allows to delete a file */
+ #define LOCK_MAND	32	/* This is a mandatory flock ... */
+ #define LOCK_READ	64	/* which allows concurrent read operations */
+ #define LOCK_WRITE	128	/* which allows concurrent write operations */
 -- 
-Trond Myklebust
-Linux NFS client maintainer
+1.7.10.4
 
