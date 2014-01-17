@@ -1,62 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:51039 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751500AbaAGVAl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 7 Jan 2014 16:00:41 -0500
-Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s07L0eOi011433
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Tue, 7 Jan 2014 16:00:40 -0500
-Message-ID: <52CC6B63.2000808@RedHat.com>
-Date: Tue, 07 Jan 2014 16:02:27 -0500
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Tony Asleson <tasleson@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/3] exportfs.c: escape path for function test_export
-References: <1387397189-9591-1-git-send-email-tasleson@redhat.com>
-In-Reply-To: <1387397189-9591-1-git-send-email-tasleson@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-la0-f42.google.com ([209.85.215.42]:48879 "EHLO
+	mail-la0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752321AbaAQKHe (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Jan 2014 05:07:34 -0500
+From: Pavel Shilovsky <piastry@etersoft.ru>
+To: linux-kernel@vger.kernel.org
+Cc: linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, wine-devel@winehq.org
+Subject: [PATCH v7 3/7] locks: Disable LOCK_MAND support for MS_SHARELOCK mounts
+Date: Fri, 17 Jan 2014 14:07:08 +0400
+Message-Id: <1389953232-9428-4-git-send-email-piastry@etersoft.ru>
+In-Reply-To: <1389953232-9428-1-git-send-email-piastry@etersoft.ru>
+References: <1389953232-9428-1-git-send-email-piastry@etersoft.ru>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Signed-off-by: Pavel Shilovsky <piastry@etersoft.ru>
+---
+ fs/locks.c |    6 ++++++
+ 1 file changed, 6 insertions(+)
 
+diff --git a/fs/locks.c b/fs/locks.c
+index 7ecc511..c7e780a 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -1904,6 +1904,12 @@ SYSCALL_DEFINE2(flock, unsigned int, fd, unsigned int, cmd)
+ 		goto out;
+ 	}
+ 
++	/* Disable LOCK_MAND support for FS mounted with MS_SHARELOCK */
++	if ((cmd & LOCK_MAND) && IS_SHARELOCK(f.file->f_path.dentry->d_inode)) {
++		error = -EPERM;
++		goto out;
++	}
++
+ 	can_sleep = !(cmd & LOCK_NB);
+ 	cmd &= ~LOCK_NB;
+ 	unlock = (cmd == LOCK_UN);
+-- 
+1.7.10.4
 
-On 18/12/13 15:06, Tony Asleson wrote:
-> Verbatim patch proposal from J. Bruce Fields except calling
-> snprintf instead of sprintf.
-> 
-> Tested and appears to work with path names that have a space.
-> 
-> Signed-off-by: Tony Asleson <tasleson@redhat.com>
-All three committed...
-
-steved.
-
-> ---
->  utils/exportfs/exportfs.c | 10 +++++++---
->  1 file changed, 7 insertions(+), 3 deletions(-)
-> 
-> diff --git a/utils/exportfs/exportfs.c b/utils/exportfs/exportfs.c
-> index 00667e9..3ca45c1 100644
-> --- a/utils/exportfs/exportfs.c
-> +++ b/utils/exportfs/exportfs.c
-> @@ -444,11 +444,15 @@ static int can_test(void)
->  static int test_export(char *path, int with_fsid)
->  {
->  	char buf[1024];
-> +	char *bp = buf;
-> +	int len = sizeof(buf);
->  	int fd, n;
->  
-> -	sprintf(buf, "-test-client- %s 3 %d 65534 65534 0\n",
-> -		path,
-> -		with_fsid ? NFSEXP_FSID : 0);
-> +	n = snprintf(buf, len, "-test-client- ");
-> +	bp += n;
-> +	len -= n;
-> +	qword_add(&bp, &len, path);
-> +	snprintf(bp, len, " 3 %d 65534 65534 0\n", with_fsid ? NFSEXP_FSID : 0);
->  	fd = open("/proc/net/rpc/nfsd.export/channel", O_WRONLY);
->  	if (fd < 0)
->  		return 0;
-> 
