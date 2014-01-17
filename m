@@ -1,102 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f179.google.com ([209.85.223.179]:65293 "EHLO
-	mail-ie0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750749AbaAPRbW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Jan 2014 12:31:22 -0500
-Received: by mail-ie0-f179.google.com with SMTP id tp5so4181528ieb.38
-        for <linux-nfs@vger.kernel.org>; Thu, 16 Jan 2014 09:31:22 -0800 (PST)
-Subject: [PATCH v2] nfs(5): Treatment of *atime mount options
-To: steved@redhat.com
-From: Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-nfs@vger.kernel.org
-Date: Thu, 16 Jan 2014 12:31:20 -0500
-Message-ID: <20140116173120.1876.84785.stgit@seurat.1015granger.net>
+Received: from mx1.redhat.com ([209.132.183.28]:39018 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752600AbaAQUMI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 17 Jan 2014 15:12:08 -0500
+From: Scott Mayhew <smayhew@redhat.com>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org, stable@vger.kernel.org
+Subject: [PATCH] nfs: always make sure page is up-to-date before extending a write to cover the entire page
+Date: Fri, 17 Jan 2014 15:12:05 -0500
+Message-Id: <1389989525-33610-1-git-send-email-smayhew@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I was reminded recently that NFS treats file atime time stamps
-differently than other filesystems.  It also ignores the generic
-*atime mount options because it cannot support the atime semantics
-of local filesystems.
+We should always make sure the cached page is up-to-date when we're
+determining whether we can extend a write to cover the full page -- even
+if we've received a write delegation from the server.
 
-We should document that somewhere.  nfs(5) seems like a logical
-place for it.
+Commit c7559663 added logic to skip this check if we have a write
+delegation, which can lead to data corruption such as the following
+scenario if client B receives a write delegation from the NFS server:
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Client A:
+    # echo 123456789 > /mnt/file
+
+Client B:
+    # echo abcdefghi >> /mnt/file
+    # cat /mnt/file
+    0�D0�abcdefghi
+
+Just because we hold a write delegation doesn't mean that we've read in
+the entire page contents.
+
+Cc: <stable@vger.kernel.org> # v3.11+
+Signed-off-by: Scott Mayhew <smayhew@redhat.com>
 ---
- utils/mount/nfs.man |   59 +++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 59 insertions(+)
+ fs/nfs/write.c | 11 ++++++-----
+ 1 file changed, 6 insertions(+), 5 deletions(-)
 
-diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
-index 67031b5..2250963 100644
---- a/utils/mount/nfs.man
-+++ b/utils/mount/nfs.man
-@@ -1227,6 +1227,65 @@ If absolute cache coherence among clients is required,
- applications should use file locking. Alternatively, applications
- can also open their files with the O_DIRECT flag
- to disable data caching entirely.
-+.SS "File timestamp maintainence"
-+NFS servers are responsible for managing file and directory timestamps
-+.RB ( atime ,
-+.BR ctime ", and"
-+.BR mtime ).
-+When a file is accessed or updated on an NFS server,
-+the file's timestamps are updated just like they would be on a filesystem
-+local to an application.
-+.P
-+NFS clients cache file attributes, including timestamps.
-+A file's timestamps are updated on NFS clients when its attributes
-+are retrieved from the NFS server.
-+Thus there may be some delay before timestamp updates
-+on an NFS server appear to applications on NFS clients.
-+.P
-+To comply with the POSIX filesystem standard, the Linux NFS client
-+relies on NFS servers to keep a file's
-+.B mtime
-+and
-+.B ctime
-+timestamps properly up to date.
-+It does this by flushing local data changes to the server
-+before reporting
-+.B mtime
-+to applications via system calls such as
-+.BR stat (2).
-+.P
-+The Linux client handles
-+.B atime
-+updates more loosely, however.
-+NFS clients maintain good performance by caching data,
-+but that means that application reads, which normally update
-+.BR atime ,
-+are not reflected to the server where a file's
-+.B atime
-+is actually maintained.
-+.P
-+Because of this caching behavior,
-+the Linux NFS client does not support generic atime-related mount options.
-+See
-+.BR mount (8)
-+for details on these options.
-+.P
-+In particular, the
-+.BR atime / noatime ,
-+.BR diratime / nodiratime ,
-+.BR relatime / norelatime ,
-+and
-+.BR strictatime / nostrictatime
-+mount options have no effect on NFS mounts.
-+.P
-+.I /proc/mounts
-+may report that the
-+.B relatime
-+mount option is set on NFS mounts, but in fact the
-+.B atime
-+semantics are always as described here, and are not like
-+.B relatime
-+semantics.
- .SS "Directory entry caching"
- The Linux NFS client caches the result of all NFS LOOKUP requests.
- If the requested directory entry exists on the server,
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index c1d5482..6a85038 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -922,19 +922,20 @@ out:
+  * extend the write to cover the entire page in order to avoid fragmentation
+  * inefficiencies.
+  *
+- * If the file is opened for synchronous writes or if we have a write delegation
+- * from the server then we can just skip the rest of the checks.
++ * If the file is opened for synchronous writes then we can just skip the rest
++ * of the checks.
+  */
+ static int nfs_can_extend_write(struct file *file, struct page *page, struct inode *inode)
+ {
+ 	if (file->f_flags & O_DSYNC)
+ 		return 0;
++	if (!nfs_write_pageuptodate(page, inode))
++		return 0;
+ 	if (NFS_PROTO(inode)->have_delegation(inode, FMODE_WRITE))
+ 		return 1;
+-	if (nfs_write_pageuptodate(page, inode) && (inode->i_flock == NULL ||
+-			(inode->i_flock->fl_start == 0 &&
++	if (inode->i_flock == NULL || (inode->i_flock->fl_start == 0 &&
+ 			inode->i_flock->fl_end == OFFSET_MAX &&
+-			inode->i_flock->fl_type != F_RDLCK)))
++			inode->i_flock->fl_type != F_RDLCK))
+ 		return 1;
+ 	return 0;
+ }
+-- 
+1.7.11.7
 
