@@ -1,125 +1,119 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp-o-3.desy.de ([131.169.56.156]:57032 "EHLO smtp-o-3.desy.de"
+Received: from fieldses.org ([174.143.236.118]:59586 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751642AbaA2JVp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 29 Jan 2014 04:21:45 -0500
-Received: from smtp-map-3.desy.de (smtp-map-3.desy.de [131.169.56.68])
-	by smtp-o-3.desy.de (DESY-O-3) with ESMTP id ACD94280961
-	for <linux-nfs@vger.kernel.org>; Wed, 29 Jan 2014 10:21:43 +0100 (CET)
-Received: from ZITSWEEP1.win.desy.de (zitsweep1.win.desy.de [131.169.97.95])
-	by smtp-map-3.desy.de (DESY_MAP_3) with ESMTP id 969BE10F5
-	for <linux-nfs@vger.kernel.org>; Wed, 29 Jan 2014 10:21:43 +0100 (MET)
-Date: Wed, 29 Jan 2014 10:21:43 +0100 (CET)
-From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
-To: NeilBrown <neilb@suse.de>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Jim Rees <rees@umich.edu>, linux-nfs <linux-nfs@vger.kernel.org>
-Message-ID: <1342984553.746756.1390987303295.JavaMail.zimbra@desy.de>
-In-Reply-To: <20140129182532.7479eeda@notabene.brown>
-References: <CAGue13pe_ZH_Eto-jL3mLjTNGFK26izTarnZdjs3eL82A2Z37w@mail.gmail.com> <20130404151507.GA8484@umich.edu> <CAGue13o6X5S3ppTX_fmMCTCX=7Mq_57YQEsb_hkOKwN9iOHwEQ@mail.gmail.com> <1365090480.10726.22.camel@leira.trondhjem.org> <20140129182532.7479eeda@notabene.brown>
-Subject: Re: readdir vs. getattr
+	id S1752502AbaAQSEq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 17 Jan 2014 13:04:46 -0500
+Date: Fri, 17 Jan 2014 13:04:41 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Steven Whitehouse <swhiteho@redhat.com>
+Cc: Bob Peterson <rpeterso@redhat.com>, Al Viro <viro@zeniv.linux.org.uk>,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, Miklos Szeredi <mszeredi@suse.cz>
+Subject: Re: [PATCH] dcache: fix d_splice_alias handling of aliases
+Message-ID: <20140117180441.GB26636@fieldses.org>
+References: <20140115151749.GF23999@fieldses.org>
+ <20140116161015.GC16829@fieldses.org>
+ <1389888942.2779.34.camel@menhir>
+ <20140116164411.GD16829@fieldses.org>
+ <1875464309.3327883.1389891247171.JavaMail.root@redhat.com>
+ <20140116185107.GE16829@fieldses.org>
+ <1389953070.2734.17.camel@menhir>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1389953070.2734.17.camel@menhir>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-(without knowing kernel details)
-
-What about some stat counter and trigger readdirplus instead of next getattr if
-some threshold are reached. Let say directory has more than 8000 entries and 
-getattr was called on 10% of the files. Of course you have to watch this per
-process.
-
-Tigran.
-
------ Original Message -----
-> From: "NeilBrown" <neilb@suse.de>
-> To: "Trond Myklebust" <trond.myklebust@primarydata.com>
-> Cc: "tigran mkrtchyan" <tigran.mkrtchyan@desy.de>, "Jim Rees" <rees@umich.edu>, "linux-nfs"
-> <linux-nfs@vger.kernel.org>
-> Sent: Wednesday, January 29, 2014 8:25:32 AM
-> Subject: Re: readdir vs. getattr
+On Fri, Jan 17, 2014 at 10:04:30AM +0000, Steven Whitehouse wrote:
+> Hi,
 > 
-> 
-> (resent with correct address for Trond)
-> 
-> On Thu, 4 Apr 2013 15:48:01 +0000 "Myklebust, Trond"
-> <Trond.Myklebust@netapp.com> wrote:
-> 
-> > On Thu, 2013-04-04 at 17:38 +0200, Tigran Mkrtchyan wrote:
-> > > On Thu, Apr 4, 2013 at 5:15 PM, Jim Rees <rees@umich.edu> wrote:
-> > > > Tigran Mkrtchyan wrote:
-> > > >
-> > > >   we have a directory with 50K (number of )  files in it.
-> > > >   The user does a 'ls' and I can see READDIR4. To
-> > > >   get the complete listing a client need to send ~380 requests.
-> > > >   Now user does yet another 'ls' in the same directory.
-> > > >   The client sends a GETATTR  on directorie's FH
-> > > >   (actually two of GETATTRS - why?!!) and discovers that a
-> > > >   directory didn't change and re-uses existing listing, BUT!!!
-> > > >   for each file in the directory it sends a GETATTR to discover
-> > > >   is  the file's attributes are changed. For 50K files it's a 50K
-> > > >   requests.
-> > > >
-> > > > So is this a "ls -l"? Because for "ls" it shouldn't stat all the files.
+> On Thu, 2014-01-16 at 13:51 -0500, J. Bruce Fields wrote:
+> > On Thu, Jan 16, 2014 at 11:54:07AM -0500, Bob Peterson wrote:
+> > > ----- Original Message -----
+> > > | Something like this?
+> > > (snip)
+> > > | @@ -779,6 +782,11 @@ static struct dentry *__gfs2_lookup(struct inode *dir,
+> > > | struct dentry *dentry,
+> > > |  	}
+> > > |  
+> > > |  	d = d_splice_alias(inode, dentry);
+> > > | +	if (IS_ERR(d)) {
+> > > | +		iput(inode);
+> > > | +		gfs2_glock_dq_uninit(&gh);
+> > > | +		return ERR_PTR(error);
 > > > 
-> > > I believe it's 'ls -l'.  Well, you probably want to say that it's ls
-> > > calling stat on each file. Nevertheless client still should re-use
-> > > cached information.
+> > > ---------------------------------^
+> > > Shouldn't that be ERR_PTR(d)?
 > > 
-> > What makes you think that it isn't using cached information? I'm
-> > guessing you just need to adjust the values of acregmin and acregmax
-> > upwards.
+> > Oops, yeah--well, actually just "d" I guess.
 > > 
-> > That said, we might be able to be a little more intelligent about how we
-> > use the NFS_INO_ADVISE_RDPLUS hint, and have it blow out the readdir
-> > cache when we find ourselves doing lots of lookup revalidates.
+> > This is what I've got for what it's worth.
+> > 
+> > --b.
 > > 
 > 
-> Pop.
+> I think the patch looks ok to me. Did you give it a spin to test it?
+
+Sure, just
+	mkfs.gfs2 -p lock_nolock /dev/vdb
+	mount /dev/vdb /mnt/
+	cd cthon
+	NFSTESTDIR=/mnt/TMP ./runtests -a -f
+
+Which doesn't test much of anything (we'd need to inject artificial
+errors for now to test the error paths), but at least it doesn't blow up
+in some obvious way....
+
+> If so then I will put it in the GFS2 -nmw tree,
+
+Thanks!
+
+--b.
+
 > 
-> I recently had a customer raise exactly this issue with me, so I've been
-> looking into it.
+> Steve.
 > 
-> I don't think it can really be fixed by adjusting acregmin/acregmax.
+> > commit 6fba5295019b52a03d76c9e9570952466051a7a6
+> > Author: J. Bruce Fields <bfields@redhat.com>
+> > Date:   Thu Jan 16 11:44:53 2014 -0500
+> > 
+> >     gfs2: revert "GFS2: d_splice_alias() can't return error"
+> >     
+> >     0d0d110720d7960b77c03c9f2597faaff4b484ae asserts that "d_splice_alias()
+> >     can't return error unless it was given an IS_ERR(inode)".
+> >     
+> >     That was true of the implementation of d_splice_alias, but this is
+> >     really a problem with d_splice_alias: at a minimum it should be able to
+> >     return -ELOOP in the case where inserting the given dentry would cause a
+> >     directory loop.
+> >     
+> >     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> > 
+> > diff --git a/fs/gfs2/inode.c b/fs/gfs2/inode.c
+> > index 7119504..3f44902 100644
+> > --- a/fs/gfs2/inode.c
+> > +++ b/fs/gfs2/inode.c
+> > @@ -585,6 +585,9 @@ static int gfs2_create_inode(struct inode *dir, struct dentry *dentry,
+> >  	error = PTR_ERR(inode);
+> >  	if (!IS_ERR(inode)) {
+> >  		d = d_splice_alias(inode, dentry);
+> > +		error = PTR_ERR(d);
+> > +		if (IS_ERR(d))
+> > +			goto fail_gunlock;
+> >  		error = 0;
+> >  		if (file) {
+> >  			if (S_ISREG(inode->i_mode)) {
+> > @@ -779,6 +782,11 @@ static struct dentry *__gfs2_lookup(struct inode *dir, struct dentry *dentry,
+> >  	}
+> >  
+> >  	d = d_splice_alias(inode, dentry);
+> > +	if (IS_ERR(d)) {
+> > +		iput(inode);
+> > +		gfs2_glock_dq_uninit(&gh);
+> > +		return d;
+> > +	}
+> >  	if (file && S_ISREG(inode->i_mode))
+> >  		error = finish_open(file, dentry, gfs2_open_common, opened);
+> >  
 > 
-> Once you have done READDIRPLUS, you have the directory contents in the
-> page-cache and will continue to use those contents until they drop out of the
-> cache, or until the directory changes in some way.
-> 
-> Meanwhile the stat information from the READDIRPLUS was used to create/update
-> info in the inode table and that will eventually become stale.  As soon as it
-> becomes stale you get a GETATTR storm on the next "ls -l" instead of a few
-> READDIRPLUS calls.  By increasing acregmin you can delay that storm, but you
-> can put it off forever.
-> 
-> Fixing this is tricky.  We really want to know on the first nfs_readdir()
-> call
-> whether it will be followed by lookups or not.  If it won't, then using the
-> cached data is fine.  If it will, then we really want a READDIRPLUS.
-> 
-> The only way I can see to address this is for nfs_advise_use_readdirplus  (or
-> code near where that is called) to notice that a readdir is currently active
-> on the same directory and is using cached data, and to re-use that 'open' of
-> the directory to do a readdirplus.  This would update the stat info for the
-> current inode and all the other inodes for the directory.
-> 
-> This is fairly horrible.  The 'struct file' used by the readdir would need to
-> be stored somewhere so that nfs_lookup_revalidate can use it (if process
-> permissions allow).  If multiple processes were doing a readdir at the same
-> time .... I would certainly get confused.
-> 
-> However I cannot think of anything else that would even come close to being a
-> real solution.
-> 
-> Any solution that just modified nfs_readdir() could only avoid the GETATTR
-> storm by largely ignoring the cached information and (almost) always calling
-> READDIRPLUS.
-> 
-> Does anyone have any other ideas?  Or do you think it is worth trying to
-> implement the above "horrible" idea.  I did start working on it, but only got
-> far enough to understand the full extend of what is required.
-> 
-> Thanks,
-> NeilBrown
 > 
