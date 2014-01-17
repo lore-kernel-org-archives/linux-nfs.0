@@ -1,60 +1,105 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f46.google.com ([209.85.220.46]:49078 "EHLO
-	mail-pa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750997AbaAXSB4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Jan 2014 13:01:56 -0500
-Received: by mail-pa0-f46.google.com with SMTP id rd3so3531885pab.5
-        for <linux-nfs@vger.kernel.org>; Fri, 24 Jan 2014 10:01:56 -0800 (PST)
-Message-ID: <1390586285.2927.16.camel@leira.trondhjem.org>
-Subject: Re: [PATCH] nfs: handle servers that support only ALLOW ACE type.
-From: Trond Myklebust <trondmy@gmail.com>
-To: Malahal Naineni <malahal@us.ibm.com>
-Cc: linux-nfs@vger.kernel.org
-Date: Fri, 24 Jan 2014 10:58:05 -0700
-In-Reply-To: <1390583975-8914-1-git-send-email-malahal@us.ibm.com>
-References: <EDB5CCCD-0940-46F2-B102-7094AE029170@primarydata.com>
-	 <1390583975-8914-1-git-send-email-malahal@us.ibm.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mx1.redhat.com ([209.132.183.28]:33679 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752629AbaAQQ4q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 17 Jan 2014 11:56:46 -0500
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s0HGuj0B007167
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Fri, 17 Jan 2014 11:56:46 -0500
+From: Simo Sorce <simo@redhat.com>
+To: jlayton@redhat.com
+Cc: steved@redhat.com, linux-nfs@vger.kernel.org
+Subject: [PATCH 2/2] Remove unused arguments
+Date: Fri, 17 Jan 2014 11:56:40 -0500
+Message-Id: <1389977800-10922-3-git-send-email-simo@redhat.com>
+In-Reply-To: <1389977800-10922-2-git-send-email-simo@redhat.com>
+References: <1389931919-4801-1-git-send-email-simo@redhat.com>
+ <1389977800-10922-1-git-send-email-simo@redhat.com>
+ <1389977800-10922-2-git-send-email-simo@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2014-01-24 at 11:19 -0600, Malahal Naineni wrote:
-> Currently we support ACLs if the NFS server file system supports both
-> ALLOW and DENY ACE types. This patch makes the Linux client work with
-> ACLs even if the server supports only 'ALLOW' ACE type.
-> 
-> Signed-off-by: Malahal Naineni <malahal@us.ibm.com>
-> ---
->  fs/nfs/nfs4proc.c | 5 ++---
->  1 file changed, 2 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 15052b8..e3b8fa6 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -4321,9 +4321,8 @@ static int nfs4_proc_renew(struct nfs_client *clp, struct rpc_cred *cred)
->  
->  static inline int nfs4_server_supports_acls(struct nfs_server *server)
->  {
-> -	return (server->caps & NFS_CAP_ACLS)
-> -		&& (server->acl_bitmask & ACL4_SUPPORT_ALLOW_ACL)
-> -		&& (server->acl_bitmask & ACL4_SUPPORT_DENY_ACL);
-> +	return server->caps & NFS_CAP_ACLS &&
-> +		server->acl_bitmask & ACL4_SUPPORT_ALLOW_ACL;
->  }
->  
->  /* Assuming that XATTR_SIZE_MAX is a multiple of PAGE_SIZE, and that
+The name variable is always set to NULL now in all callers, so just
+sto passing it around needlessly.
+The uid_t variable is not used at all, so chuck it out too.
 
-Wait... Having looked at the code a bit more carefully. Is there any
-reason to set NFS_CAP_ACLS at all if we don't see server->acl_bitmask &
-ACL4_SUPPORT_ALLOW_ACL?
+Signed-off-by: Simo Sorce <simo@redhat.com>
+---
+ utils/gssd/gssd_proc.c |    2 +-
+ utils/gssd/krb5_util.c |   10 +++++-----
+ utils/gssd/krb5_util.h |    2 +-
+ 3 files changed, 7 insertions(+), 7 deletions(-)
 
-IOW: Is there any reason why we shouldn't just move the test for
-server->acl_bitmask & ACL4_SUPPORT_ALLOW_ACL into
-_nfs4_server_capabilities()?
-I agree that will change the output of /proc/self/mountstats for broken
-servers that advertise acls, but don't set ACL4_SUPPORT_ALLOW_ACL,
-however since we will never serve up getacl, setacl or listacl requests
-in that case, why would we advertise the server as supporting it?
+diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+index 2a6ea97135848eaf601bbed17e5b62cb77bd66b9..33cfeb2afd2ed6c6810dc39548b1a9da8daa8c37 100644
+--- a/utils/gssd/gssd_proc.c
++++ b/utils/gssd/gssd_proc.c
+@@ -1095,7 +1095,7 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
+ 
+ 		/* Tell krb5 gss which credentials cache to use */
+ 		/* Try first to acquire credentials directly via GSSAPI */
+-		err = gssd_acquire_user_cred(uid, &gss_cred);
++		err = gssd_acquire_user_cred(&gss_cred);
+ 		if (!err)
+ 			create_resp = create_auth_rpc_client(clp, tgtname, &rpc_clnt, &auth, uid,
+ 							     AUTHTYPE_KRB5, gss_cred);
+diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
+index 230b909b14d244f832c0b5dd62e600cf8db4f80b..208c72bc072bceecc81f591887603e274dc35d9b 100644
+--- a/utils/gssd/krb5_util.c
++++ b/utils/gssd/krb5_util.c
+@@ -1359,12 +1359,12 @@ gssd_k5_get_default_realm(char **def_realm)
+ }
+ 
+ static int
+-gssd_acquire_krb5_cred(gss_name_t name, gss_cred_id_t *gss_cred)
++gssd_acquire_krb5_cred(gss_cred_id_t *gss_cred)
+ {
+ 	OM_uint32 maj_stat, min_stat;
+ 	gss_OID_set_desc desired_mechs = { 1, &krb5oid };
+ 
+-	maj_stat = gss_acquire_cred(&min_stat, name, GSS_C_INDEFINITE,
++	maj_stat = gss_acquire_cred(&min_stat, GSS_C_NO_NAME, GSS_C_INDEFINITE,
+ 				    &desired_mechs, GSS_C_INITIATE,
+ 				    gss_cred, NULL, NULL);
+ 
+@@ -1379,12 +1379,12 @@ gssd_acquire_krb5_cred(gss_name_t name, gss_cred_id_t *gss_cred)
+ }
+ 
+ int
+-gssd_acquire_user_cred(uid_t uid, gss_cred_id_t *gss_cred)
++gssd_acquire_user_cred(gss_cred_id_t *gss_cred)
+ {
+ 	OM_uint32 min_stat;
+ 	int ret;
+ 
+-	ret = gssd_acquire_krb5_cred(GSS_C_NO_NAME, gss_cred);
++	ret = gssd_acquire_krb5_cred(gss_cred);
+ 
+ 	/* force validation of cred to check for expiry */
+ 	if (ret == 0) {
+@@ -1423,7 +1423,7 @@ limit_krb5_enctypes(struct rpc_gss_sec *sec)
+ 	int err = -1;
+ 
+ 	if (sec->cred == GSS_C_NO_CREDENTIAL) {
+-		err = gssd_acquire_krb5_cred(GSS_C_NO_NAME, &sec->cred);
++		err = gssd_acquire_krb5_cred(&sec->cred);
+ 		if (err)
+ 			return -1;
+ 	}
+diff --git a/utils/gssd/krb5_util.h b/utils/gssd/krb5_util.h
+index 3f0723e05cb3fd24b8063941e715010b21db0515..a319588a61253420da1ba7f62124df6b74795eea 100644
+--- a/utils/gssd/krb5_util.h
++++ b/utils/gssd/krb5_util.h
+@@ -35,7 +35,7 @@ int  gssd_refresh_krb5_machine_credential(char *hostname,
+ char *gssd_k5_err_msg(krb5_context context, krb5_error_code code);
+ void gssd_k5_get_default_realm(char **def_realm);
+ 
+-int gssd_acquire_user_cred(uid_t uid, gss_cred_id_t *gss_cred);
++int gssd_acquire_user_cred(gss_cred_id_t *gss_cred);
+ 
+ #ifdef HAVE_SET_ALLOWABLE_ENCTYPES
+ extern int limit_to_legacy_enctypes;
+-- 
+1.7.1
 
