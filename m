@@ -1,92 +1,146 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([209.166.131.148]:43854 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752545AbaAVSfm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jan 2014 13:35:42 -0500
-Message-ID: <52E00F4E.40804@panasas.com>
-Date: Wed, 22 Jan 2014 20:34:54 +0200
-From: Boaz Harrosh <bharrosh@panasas.com>
-MIME-Version: 1.0
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        NFS list <linux-nfs@vger.kernel.org>
-CC: Stable Tree <stable@vger.kernel.org>
-Subject: [PATCH v3] pnfs: Proper delay for NFS4ERR_RECALLCONFLICT in layout_get_done
-Content-Type: text/plain; charset="UTF-8"
+Received: from mail-la0-f54.google.com ([209.85.215.54]:43593 "EHLO
+	mail-la0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752374AbaAQKHj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Jan 2014 05:07:39 -0500
+From: Pavel Shilovsky <piastry@etersoft.ru>
+To: linux-kernel@vger.kernel.org
+Cc: linux-cifs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, wine-devel@winehq.org
+Subject: [PATCH v7 5/7] NFSD: Pass share reservations flags to VFS
+Date: Fri, 17 Jan 2014 14:07:10 +0400
+Message-Id: <1389953232-9428-6-git-send-email-piastry@etersoft.ru>
+In-Reply-To: <1389953232-9428-1-git-send-email-piastry@etersoft.ru>
+References: <1389953232-9428-1-git-send-email-piastry@etersoft.ru>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+that maps them into O_DENY* flags and make them visible for
+applications on mounts with sharelock option.
 
-An NFS4ERR_RECALLCONFLICT is returned by server from a GET_LAYOUT
-only when a Server Sent a RECALL do to that GET_LAYOUT, or
-the RECALL and GET_LAYOUT crossed on the wire.
-In any way this means we want to wait at most until in-flight IO
-is finished and the RECALL can be satisfied.
-
-So a proper wait here is more like 1/10 of a second, not 15 seconds
-like we have now. In case of a server bug we delay exponentially
-longer on each retry.
-
-Current code totally craps out performance of very large files on
-most pnfs-objects layouts, because of how the map changes when the
-file has grown into the next raid group.
-
-[Stable: This will patch back to 3.9. If there are earlier still
- maintained trees, please tell me I'll send a patch]
-
-CC: Stable Tree <stable@vger.kernel.org>
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+Signed-off-by: Pavel Shilovsky <piastry@etersoft.ru>
 ---
- fs/nfs/nfs4proc.c | 28 +++++++++++++++++++++++++---
- 1 file changed, 25 insertions(+), 3 deletions(-)
+ fs/locks.c          |    1 +
+ fs/nfsd/nfs4state.c |   46 +++++++++++++++++++++++++++++++++++++++++++++-
+ fs/nfsd/nfsproc.c   |    1 +
+ 3 files changed, 47 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index d53d678..3ba882c 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -7058,7 +7058,7 @@ static void nfs4_layoutget_done(struct rpc_task *task, void *calldata)
- 	struct nfs4_state *state = NULL;
- 	unsigned long timeo, giveup;
+diff --git a/fs/locks.c b/fs/locks.c
+index 6e78c0a..805afd4 100644
+--- a/fs/locks.c
++++ b/fs/locks.c
+@@ -1005,6 +1005,7 @@ sharelock_lock_file(struct file *filp)
+ 	locks_free_lock(lock);
+ 	return error;
+ }
++EXPORT_SYMBOL(sharelock_lock_file);
  
--	dprintk("--> %s\n", __func__);
-+	dprintk("--> %s tk_status => %d\n", __func__, -task->tk_status);
+ static int __posix_lock_file(struct inode *inode, struct file_lock *request, struct file_lock *conflock)
+ {
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 105d6fa..e613bff 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -571,6 +571,19 @@ test_deny(u32 access, struct nfs4_ol_stateid *stp)
+ 	return test_bit(access, &stp->st_deny_bmap);
+ }
  
- 	if (!nfs41_sequence_done(task, &lgp->res.seq_res))
- 		goto out;
-@@ -7068,10 +7068,32 @@ static void nfs4_layoutget_done(struct rpc_task *task, void *calldata)
- 		goto out;
- 	case -NFS4ERR_LAYOUTTRYLATER:
- 	case -NFS4ERR_RECALLCONFLICT:
-+	/* NFS4ERR_RECALLCONFLICT is when conflict with self (must recall
-+	 * existing layout before getting a new one).
-+	 * NFS4ERR_LAYOUTTRYLATER is a conflict with another client
-+	 * (or clients) writing to the same RAID stripe
-+	 */
- 		timeo = rpc_get_timeout(task->tk_client);
- 		giveup = lgp->args.timestamp + timeo;
--		if (time_after(giveup, jiffies))
--			task->tk_status = -NFS4ERR_DELAY;
-+		if (time_after(giveup, jiffies)) {
-+			unsigned long delay;
++static int nfs4_deny_to_odeny(u32 access)
++{
++	switch (access & NFS4_SHARE_DENY_BOTH) {
++	case NFS4_SHARE_DENY_READ:
++		return O_DENYREAD;
++	case NFS4_SHARE_DENY_WRITE:
++		return O_DENYWRITE;
++	case NFS4_SHARE_DENY_BOTH:
++		return O_DENYREAD | O_DENYWRITE;
++	}
++	return 0;
++}
 +
-+			/* Delay for:
-+			 * - Not less then NFS4_POLL_RETRY_MIN.
-+			 * - One last time a jiffie before we give up
-+			 * - exponential backoff (time_now minus start_attempt)
-+			 */
-+			delay = max_t(unsigned long, NFS4_POLL_RETRY_MIN,
-+				    min((giveup - jiffies - 1),
-+					jiffies - lgp->args.timestamp));
+ static int nfs4_access_to_omode(u32 access)
+ {
+ 	switch (access & NFS4_SHARE_ACCESS_BOTH) {
+@@ -2960,6 +2973,21 @@ nfsd4_truncate(struct svc_rqst *rqstp, struct svc_fh *fh,
+ }
+ 
+ static __be32
++nfs4_vfs_set_deny(struct nfs4_file *fp, unsigned long share_access,
++		  unsigned long deny_access)
++{
++	int oflag, rc;
++	__be32 status = nfs_ok;
 +
-+			dprintk("%s: NFS4ERR_RECALLCONFLICT waiting %lu\n",
-+				__func__, delay);
-+			rpc_delay(task, delay);
-+			task->tk_status = 0;
-+			rpc_restart_call_prepare(task);
-+			goto out; /* Do not call nfs4_async_handle_error() */
++	oflag = nfs4_access_to_omode(share_access);
++	fp->fi_fds[oflag]->f_flags |= nfs4_deny_to_odeny(deny_access);
++	rc = sharelock_lock_file(fp->fi_fds[oflag]);
++	if (rc)
++		status = nfserrno(rc);
++	return status;
++}
++
++static __be32
+ nfs4_upgrade_open(struct svc_rqst *rqstp, struct nfs4_file *fp, struct svc_fh *cur_fh, struct nfs4_ol_stateid *stp, struct nfsd4_open *open)
+ {
+ 	u32 op_share_access = open->op_share_access;
+@@ -2980,6 +3008,14 @@ nfs4_upgrade_open(struct svc_rqst *rqstp, struct nfs4_file *fp, struct svc_fh *c
+ 		}
+ 		return status;
+ 	}
++	status = nfs4_vfs_set_deny(fp, op_share_access, open->op_share_deny);
++	if (status) {
++		if (new_access) {
++			int oflag = nfs4_access_to_omode(op_share_access);
++			nfs4_file_put_access(fp, oflag);
 +		}
- 		break;
- 	case -NFS4ERR_EXPIRED:
- 	case -NFS4ERR_BAD_STATEID:
++		return status;
++	}
+ 	/* remember the open */
+ 	set_access(op_share_access, stp);
+ 	set_deny(open->op_share_deny, stp);
+@@ -3234,7 +3270,7 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
+ 
+ 	/*
+ 	 * OPEN the file, or upgrade an existing OPEN.
+-	 * If truncate fails, the OPEN fails.
++	 * If truncate or set_deny fails, the OPEN fails.
+ 	 */
+ 	if (stp) {
+ 		/* Stateid was found, this is an OPEN upgrade */
+@@ -3248,6 +3284,10 @@ nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nf
+ 		status = nfsd4_truncate(rqstp, current_fh, open);
+ 		if (status)
+ 			goto out;
++		status = nfs4_vfs_set_deny(fp, open->op_share_access,
++					   open->op_share_deny);
++		if (status)
++			goto out;
+ 		stp = open->op_stp;
+ 		open->op_stp = NULL;
+ 		init_open_stateid(stp, fp, open);
+@@ -3955,6 +3995,10 @@ nfsd4_open_downgrade(struct svc_rqst *rqstp,
+ 	}
+ 	nfs4_stateid_downgrade(stp, od->od_share_access);
+ 
++	status = nfs4_vfs_set_deny(stp->st_file, od->od_share_access,
++				   od->od_share_deny);
++	if (status)
++		goto out;
+ 	reset_union_bmap_deny(od->od_share_deny, stp);
+ 
+ 	update_stateid(&stp->st_stid.sc_stateid);
+diff --git a/fs/nfsd/nfsproc.c b/fs/nfsd/nfsproc.c
+index 54c6b3d..ff95544 100644
+--- a/fs/nfsd/nfsproc.c
++++ b/fs/nfsd/nfsproc.c
+@@ -743,6 +743,7 @@ nfserrno (int errno)
+ 		{ nfserr_notsupp, -EOPNOTSUPP },
+ 		{ nfserr_toosmall, -ETOOSMALL },
+ 		{ nfserr_serverfault, -ESERVERFAULT },
++		{ nfserr_share_denied, -ESHAREDENIED },
+ 	};
+ 	int	i;
+ 
 -- 
-1.7.11.7
+1.7.10.4
 
