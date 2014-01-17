@@ -1,67 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f178.google.com ([209.85.192.178]:50162 "EHLO
-	mail-pd0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757535AbaAJClc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jan 2014 21:41:32 -0500
-Received: by mail-pd0-f178.google.com with SMTP id y10so3957259pdj.23
-        for <linux-nfs@vger.kernel.org>; Thu, 09 Jan 2014 18:41:31 -0800 (PST)
-Message-ID: <52CF5DD4.3080409@gmail.com>
-Date: Fri, 10 Jan 2014 10:41:24 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:16459 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751326AbaAQLyc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 17 Jan 2014 06:54:32 -0500
+Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s0HBsVEX012133
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Fri, 17 Jan 2014 06:54:31 -0500
+Date: Fri, 17 Jan 2014 06:54:30 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Simo Sorce <simo@redhat.com>
+Cc: steved@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 0/2] Fix credential sourcing with new setuid behavior in
+ rpc.gssd
+Message-ID: <20140117065430.1d034e4a@tlielax.poochiereds.net>
+In-Reply-To: <1389931919-4801-1-git-send-email-simo@redhat.com>
+References: <20140116204949.1bea663a@corrin.poochiereds.net>
+	<1389931919-4801-1-git-send-email-simo@redhat.com>
 MIME-Version: 1.0
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Dr Fields James Bruce <bfields@fieldses.org>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 4/5] NFSD/SUNRPC: Check rpc_xprt out of  xs_setup_bc_tcp
-References: <52CA7862.1020203@gmail.com> <20140106184926.GC31764@fieldses.org> <24D159B0-C13D-43A6-B307-2B967E154353@primarydata.com> <20140106225346.GB3342@fieldses.org> <FAC96643-8DBB-4CC8-9D43-73C69E8E6125@primarydata.com> <52CB8B79.6040907@gmail.com> <52CE7A76.3080101@gmail.com> <52CE7AE6.4010603@gmail.com> <20140109162633.GB14308@fieldses.org> <C9F998C3-4A55-4714-926A-29440DF6F914@primarydata.com>
-In-Reply-To: <C9F998C3-4A55-4714-926A-29440DF6F914@primarydata.com>
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 01/10/2014 01:27 AM, Trond Myklebust wrote:
+On Thu, 16 Jan 2014 23:11:57 -0500
+Simo Sorce <simo@redhat.com> wrote:
+
+> Take 2
 > 
-> On Jan 9, 2014, at 11:26, Dr Fields James Bruce <bfields@fieldses.org> wrote:
+> Patch 1: simply remove the old code that is not necessary anymore
 > 
->> On Thu, Jan 09, 2014 at 06:33:10PM +0800, Kinglong Mee wrote:
->>> Besides checking rpc_xprt out of xs_setup_bc_tcp,
->>> increase it's reference (it's important).
->>
->> This sounds wrong to me: the presence of a backchannel can't prevent the
->> client's connection from going away.  Instead, when the connection dies,
->> any associated backchannels should be immediately destroyed.
+> Bonus patch 2: clean up code, name is not needed anymore as the default
+> credentials for the impersonated uid are always used.
 > 
-> Hi Bruce,
+> Simo Sorce (2):
+>   Improve first attempt at acquiring GSS credentials
+>   Remove unused parameter
 > 
-> The right way to deal with this is to have knfsd shut down the rpc_client
-> when it detects the TCP disconnection event. 
+>  utils/gssd/krb5_util.c |   28 ++++------------------------
+>  1 files changed, 4 insertions(+), 24 deletions(-)
+> 
 
-Yes, that's right.
-Knfsd has do it as you said.
+LGTM
 
-When getting xprt's status of XPT_CLOSE in svc_recv/svc_handle_xprt, 
-knfsd will delete the xprt by svc_delete_xprt.
-
-In svc_delete_xprt, knfsd calls call_xpt_users to notify those users of the xprt.
-So, nfsd4_conn_lost will be called to free the connection.
-After freeing connection, nfsd4_probe_callback will update the callback for the client.
-And, the clp->cl_cb_client will be shutdown in nfsd4_process_cb_update.
-
-At last, all using of the xprt will be released.
-I have test it, that's OK. 
-
-> The xprt->count shouldn’t be an issue here: 
-> it has nothing to do with the socket connection state.
-
-The xprt of backchannel, there are two references, 
-1. rpc_clnt
-2. svc_xprt
-
-For rpc_clnt, initialize the xprt->count in xs_setup_bc_tcp,
-or increase it in create_backchannel_client, and, decrease in rpc_free_client.
-
-For svc_xprt, increase it in xs_setup_bc_tcp, and decrease in svc_xprt_free.
-
-thanks,
-Kinglong Mee
-
+Acked-by: Jeff Layton <jlayton@redhat.com>
