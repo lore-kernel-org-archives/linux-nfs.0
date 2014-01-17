@@ -1,45 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:16459 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:42054 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751326AbaAQLyc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 17 Jan 2014 06:54:32 -0500
-Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s0HBsVEX012133
+	id S1750994AbaAQEMF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 16 Jan 2014 23:12:05 -0500
+Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s0H4C4jI025379
 	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Fri, 17 Jan 2014 06:54:31 -0500
-Date: Fri, 17 Jan 2014 06:54:30 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Simo Sorce <simo@redhat.com>
+	for <linux-nfs@vger.kernel.org>; Thu, 16 Jan 2014 23:12:05 -0500
+From: Simo Sorce <simo@redhat.com>
+To: jlayton@redhat.com
 Cc: steved@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 0/2] Fix credential sourcing with new setuid behavior in
- rpc.gssd
-Message-ID: <20140117065430.1d034e4a@tlielax.poochiereds.net>
+Subject: [PATCH 1/2] Improve first attempt at acquiring GSS credentials
+Date: Thu, 16 Jan 2014 23:11:58 -0500
+Message-Id: <1389931919-4801-2-git-send-email-simo@redhat.com>
 In-Reply-To: <1389931919-4801-1-git-send-email-simo@redhat.com>
 References: <20140116204949.1bea663a@corrin.poochiereds.net>
-	<1389931919-4801-1-git-send-email-simo@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+ <1389931919-4801-1-git-send-email-simo@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 16 Jan 2014 23:11:57 -0500
-Simo Sorce <simo@redhat.com> wrote:
+Since now rpc.gssd is swithing uid before attempting to acquire
+credentials, we do not need to pass in the special uid-as-a-string name
+to gssapi, because the process is already running under the user's
+credentials.
 
-> Take 2
-> 
-> Patch 1: simply remove the old code that is not necessary anymore
-> 
-> Bonus patch 2: clean up code, name is not needed anymore as the default
-> credentials for the impersonated uid are always used.
-> 
-> Simo Sorce (2):
->   Improve first attempt at acquiring GSS credentials
->   Remove unused parameter
-> 
->  utils/gssd/krb5_util.c |   28 ++++------------------------
->  1 files changed, 4 insertions(+), 24 deletions(-)
-> 
+By removing this code we can fix a class of false negatives where the
+user name does not match the actual ccache credentials and the ccache
+type used is not one of the only 2 supported explicitly by rpc.gssd by the
+fallback trolling done later.
 
-LGTM
+Signed-off-by: Simo Sorce <simo@redhat.com>
+---
+ utils/gssd/krb5_util.c |   22 +---------------------
+ 1 files changed, 1 insertions(+), 21 deletions(-)
 
-Acked-by: Jeff Layton <jlayton@redhat.com>
+diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
+index 697d1d2e79db0cc38160ea4772d3af3a9b7d6c21..cb64a52f3c9c6e6fdb90e007172ecd43f8e2f458 100644
+--- a/utils/gssd/krb5_util.c
++++ b/utils/gssd/krb5_util.c
+@@ -1382,28 +1382,9 @@ int
+ gssd_acquire_user_cred(uid_t uid, gss_cred_id_t *gss_cred)
+ {
+ 	OM_uint32 maj_stat, min_stat;
+-	gss_buffer_desc name_buf;
+-	gss_name_t name;
+-	char buf[11];
+ 	int ret;
+ 
+-	ret = snprintf(buf, 11, "%u", uid);
+-	if (ret < 1 || ret > 10) {
+-		return -1;
+-	}
+-	name_buf.value = buf;
+-	name_buf.length = ret + 1;
+-
+-	maj_stat = gss_import_name(&min_stat, &name_buf,
+-				   GSS_C_NT_STRING_UID_NAME, &name);
+-	if (maj_stat != GSS_S_COMPLETE) {
+-		if (get_verbosity() > 0)
+-			pgsserr("gss_import_name",
+-				maj_stat, min_stat, &krb5oid);
+-		return -1;
+-	}
+-
+-	ret = gssd_acquire_krb5_cred(name, gss_cred);
++	ret = gssd_acquire_krb5_cred(GSS_C_NO_NAME, gss_cred);
+ 
+ 	/* force validation of cred to check for expiry */
+ 	if (ret == 0) {
+@@ -1412,7 +1393,6 @@ gssd_acquire_user_cred(uid_t uid, gss_cred_id_t *gss_cred)
+ 			ret = -1;
+ 	}
+ 
+-	maj_stat = gss_release_name(&min_stat, &name);
+ 	return ret;
+ }
+ 
+-- 
+1.7.1
+
