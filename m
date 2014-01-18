@@ -1,57 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:16845 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:36175 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751137AbaAIQFC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 9 Jan 2014 11:05:02 -0500
-Message-ID: <52CEC911.4080506@RedHat.com>
-Date: Thu, 09 Jan 2014 11:06:41 -0500
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Joakim Tjernlund <joakim.tjernlund@transmode.se>
-CC: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: fix minorversion-choosing interface
-References: <OFDD407A92.688D29A1-ONC1257C43.00634FC8-C1257C43.00645775@transmode.se> <20131216185419.GB31816@fieldses.org> <20131216200301.GD31816@fieldses.org> <OF149AE409.624B2B0A-ONC1257C43.006F77D7-C1257C43.006FCED2@transmode.se> <20131216202345.GF31816@fieldses.org> <OF942071D7.5EC379B1-ONC1257C43.007AB858-C1257C43.007B0CFB@transmode.se> <20131217034331.GB3490@fieldses.org> <52CC6B49.2070801@RedHat.com> <OF3BA89263.49226136-ONC1257C59.007AE7CD-C1257C59.007AFB8A@transmode.se>
-In-Reply-To: <OF3BA89263.49226136-ONC1257C59.007AE7CD-C1257C59.007AFB8A@transmode.se>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1750933AbaARQtZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 18 Jan 2014 11:49:25 -0500
+Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s0IGnO9R004042
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Sat, 18 Jan 2014 11:49:24 -0500
+Received: from smallhat.boston.devel.redhat.com (vpn-60-134.rdu2.redhat.com [10.10.60.134])
+	by int-mx12.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s0IGnORY019253
+	for <linux-nfs@vger.kernel.org>; Sat, 18 Jan 2014 11:49:24 -0500
+From: Steve Dickson <steved@redhat.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH] rpc.statd: Allow usage messages to be displayed when statd is running.
+Date: Sat, 18 Jan 2014 11:51:15 -0500
+Message-Id: <1390063875-11456-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ utils/statd/statd.c | 12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
 
+diff --git a/utils/statd/statd.c b/utils/statd/statd.c
+index 8c51bcc..8f31111 100644
+--- a/utils/statd/statd.c
++++ b/utils/statd/statd.c
+@@ -238,12 +238,6 @@ int main (int argc, char **argv)
+ 	/* Set hostname */
+ 	MY_NAME = NULL;
+ 
+-	/* Refuse to start if another statd is running */
+-	if (nfs_probe_statd()) {
+-		fprintf(stderr, "Statd service already running!\n");
+-		exit(1);
+-	}
+-
+ 	/* Process command line switches */
+ 	while ((arg = getopt_long(argc, argv, "h?vVFNH:dn:p:o:P:L", longopts, NULL)) != EOF) {
+ 		switch (arg) {
+@@ -306,6 +300,12 @@ int main (int argc, char **argv)
+ 		}
+ 	}
+ 
++	/* Refuse to start if another statd is running */
++	if (nfs_probe_statd()) {
++		fprintf(stderr, "Statd service already running!\n");
++		exit(1);
++	}
++
+ 	if (port == out_port && port != 0) {
+ 		fprintf(stderr, "Listening and outgoing ports cannot be the same!\n");
+ 		exit(-1);
+-- 
+1.8.3.1
 
-On 07/01/14 17:23, Joakim Tjernlund wrote:
-> Steve Dickson <SteveD@redhat.com> wrote on 2014/01/07 22:02:01:
->>
->>
->> On 16/12/13 22:43, J. Bruce Fields wrote:
->>> From: "J. Bruce Fields" <bfields@redhat.com>
->>>
->>> By unconditionally adding +/-4.2 to the version string written to the
->>> kernel we make nfs-utils incompatible with pre-4.2-supporting kernels.
->>>
->>> Ditto for 4.1.  This problem was introduced by
->>> 12a590f8d556c00a9502eeebaa763d906222d521 "rpc.nfsd: Allow v4.2 server
->>> support with the -V option", which also change nfsd to unconditionally
->>> pass +/-4.2.
->>>
->>> Instead, just don't mention 4.1 or 4.2 unless the commandline has
->>> specifically requested that one or the other be turned on or off.
->>>
->>> Tested-by: Joakim Tjernlund <joakim.tjernlund@transmode.se>
->>> Reported-by: Joakim Tjernlund <joakim.tjernlund@transmode.se>
->>> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
->> Committed...
->>
->> steved
-> 
-> Thanks, do plan on making a release soon?
-Sorry for the delayed response... 
-
-Its in my git tree and in Fedora 20 nfs-utils....
-
-Is this what you were looking for? 
-
-steved.
-
-> 
->     Jocke
-> 
