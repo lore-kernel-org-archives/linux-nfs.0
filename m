@@ -1,65 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wg0-f54.google.com ([74.125.82.54]:41835 "EHLO
-	mail-wg0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751331AbaAQNFo convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 17 Jan 2014 08:05:44 -0500
+Received: from youngberry.canonical.com ([91.189.89.112]:36871 "EHLO
+	youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752081AbaASVu4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 19 Jan 2014 16:50:56 -0500
+Date: Sun, 19 Jan 2014 21:50:51 +0000
+From: Luis Henriques <luis.henriques@canonical.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "David S. Miller" <davem@davemloft.net>
+Cc: linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: [PATCH] gss_krb5: use lcm from kernel lib
+Message-ID: <20140119215040.GA7978@hercules>
 MIME-Version: 1.0
-In-Reply-To: <C6749CD6-1F47-42C5-8E27-A11167BF69E4@primarydata.com>
-References: <395EC1ED-E67E-4666-B170-5C5F00264496@primarydata.com>
- <1389638751-16173-1-git-send-email-trond.myklebust@primarydata.com>
- <1389638751-16173-2-git-send-email-trond.myklebust@primarydata.com>
- <CA+a=Yy6uf73Y=F5-Jp+2VrzMmbTYZXqDaEj-EHX335M3ZCvEZA@mail.gmail.com> <C6749CD6-1F47-42C5-8E27-A11167BF69E4@primarydata.com>
-From: Peng Tao <bergwolf@gmail.com>
-Date: Fri, 17 Jan 2014 21:05:22 +0800
-Message-ID: <CA+a=Yy74dnd8a=uvyHgcLkp=54Qi-42N_7X=iJPQR5=b5oNA7Q@mail.gmail.com>
-Subject: Re: [PATCH 2/2] NFSv4.1: Fix a race in nfs4_write_inode
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: shaobingqing <shaobingqing@bwstor.com.cn>,
-        linuxnfs <linux-nfs@vger.kernel.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jan 17, 2014 at 1:11 AM, Trond Myklebust
-<trond.myklebust@primarydata.com> wrote:
->
-> On Jan 16, 2014, at 10:49, Peng Tao <bergwolf@gmail.com> wrote:
->> On Tue, Jan 14, 2014 at 2:45 AM, Trond Myklebust
->> <trond.myklebust@primarydata.com> wrote:
->>> void pnfs_set_lo_fail(struct pnfs_layout_segment *lseg)
->>> @@ -1881,43 +1887,37 @@ pnfs_layoutcommit_inode(struct inode *inode, bool sync)
->>>        struct nfs4_layoutcommit_data *data;
->>>        struct nfs_inode *nfsi = NFS_I(inode);
->>>        loff_t end_pos;
->>> -       int status = 0;
->>> +       int status;
->>>
->>> -       dprintk("--> %s inode %lu\n", __func__, inode->i_ino);
->>> -
->>> -       if (!test_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags))
->>> +       if (!pnfs_layoutcommit_outstanding(inode))
->> This might be a problem. If nfsi->flags has !NFS_INO_LAYOUTCOMMIT and
->> NFS_INO_LAYOUTCOMMITTING, client cannot issue a new layoutcommit after
->> the inflight one finishes. It might not be an issue for file layout as
->> long as we only use layoutcommit to update time, but it can cause data
->> corruption for block layout.
->
-> I don’t understand.
->
-> With the new patch, if _either_ NFS_INO_LAYOUTCOMMIT or NFS_INO_LAYOUTCOMMITTING are set, then the client will wait until NFS_INO_LAYOUTCOMMITTING can be locked, it will test for NFS_INO_LAYOUTCOMMIT, and then either issue a new layout commit or exit. How can that cause new breakage for blocks?
->
-ah, sorry, I read the old code as your patch... yeah, so you actually
-fixed the issue instead of introducing it.
+Replace hardcoded lowest common multiple algorithm by the lcm()
+function in kernel lib.
 
-> The only issues that I’m aware of with the blocks layout and LAYOUTCOMMIT today are:
-> 1. encode_pnfs_block_layoutupdate() runs out of XDR buffer space after 4-5 iterations in the list_for_each_entry_safe() loop. That is because nobody has yet added support for preallocating a page buffer to store the (potentially very large) array of extents. BTW: that array looks like a perfect candidate for xdr_encode_array2() if we could teach the latter about xdr_stream...
-This can also be fixed by limiting the number of extents allowed to be
-sent in one single layoutcommit.
+Signed-off-by: Luis Henriques <luis.henriques@canonical.com>
+---
+ net/sunrpc/auth_gss/gss_krb5_keys.c | 17 ++++-------------
+ 1 file changed, 4 insertions(+), 13 deletions(-)
 
-> 2. the blocks layout also needs to be able handle the case where the list of extents is so large that a single LAYOUTCOMMIT is not sufficient. There is no reason why it should not be able to send multiple LAYOUTCOMMIT rpc calls when the size exceeds the session forward channel's negotiated max_rqst_sz.
->
-You are absolutely right.
+diff --git a/net/sunrpc/auth_gss/gss_krb5_keys.c b/net/sunrpc/auth_gss/gss_krb5_keys.c
+index 76e42e6..a16c5b6 100644
+--- a/net/sunrpc/auth_gss/gss_krb5_keys.c
++++ b/net/sunrpc/auth_gss/gss_krb5_keys.c
+@@ -59,6 +59,7 @@
+ #include <linux/crypto.h>
+ #include <linux/sunrpc/gss_krb5.h>
+ #include <linux/sunrpc/xdr.h>
++#include <linux/lcm.h>
+ 
+ #ifdef RPC_DEBUG
+ # define RPCDBG_FACILITY        RPCDBG_AUTH
+@@ -72,7 +73,7 @@
+ static void krb5_nfold(u32 inbits, const u8 *in,
+ 		       u32 outbits, u8 *out)
+ {
+-	int a, b, c, lcm;
++	unsigned long ulcm;
+ 	int byte, i, msbit;
+ 
+ 	/* the code below is more readable if I make these bytes
+@@ -82,17 +83,7 @@ static void krb5_nfold(u32 inbits, const u8 *in,
+ 	outbits >>= 3;
+ 
+ 	/* first compute lcm(n,k) */
+-
+-	a = outbits;
+-	b = inbits;
+-
+-	while (b != 0) {
+-		c = b;
+-		b = a%b;
+-		a = c;
+-	}
+-
+-	lcm = outbits*inbits/a;
++	ulcm = lcm(inbits, outbits);
+ 
+ 	/* now do the real work */
+ 
+@@ -101,7 +92,7 @@ static void krb5_nfold(u32 inbits, const u8 *in,
+ 
+ 	/* this will end up cycling through k lcm(k,n)/k times, which
+ 	   is correct */
+-	for (i = lcm-1; i >= 0; i--) {
++	for (i = ulcm-1; i >= 0; i--) {
+ 		/* compute the msbit in k which gets added into this byte */
+ 		msbit = (
+ 			/* first, start with the msbit in the first,
+-- 
+1.8.3.2
 
-Thanks,
-Tao
+Cheers,
+--
+Luis
