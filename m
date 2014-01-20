@@ -1,68 +1,85 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([209.166.131.148]:39221 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751579AbaANPWj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 14 Jan 2014 10:22:39 -0500
-Message-ID: <52D5562F.70701@panasas.com>
-Date: Tue, 14 Jan 2014 17:22:23 +0200
-From: Boaz Harrosh <bharrosh@panasas.com>
-MIME-Version: 1.0
-To: Weston Andros Adamson <dros@primarydata.com>
-CC: <trond.myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>,
-        Ganesha NFS List <nfs-ganesha-devel@lists.sourceforge.net>
-Subject: Re: [PATCH] nfs4.1: properly handle ENOTSUP in SECINFO_NO_NAME
-References: <1389650085-4128-1-git-send-email-dros@primarydata.com>
-In-Reply-To: <1389650085-4128-1-git-send-email-dros@primarydata.com>
+Received: from mail-pa0-f54.google.com ([209.85.220.54]:58699 "EHLO
+	mail-pa0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753497AbaATXR2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Jan 2014 18:17:28 -0500
+Received: by mail-pa0-f54.google.com with SMTP id fa1so7600496pad.13
+        for <linux-nfs@vger.kernel.org>; Mon, 20 Jan 2014 15:17:28 -0800 (PST)
+Message-ID: <1390259843.2501.2.camel@leira.trondhjem.org>
+Subject: Re: [PATCH] SUNRPC: Allow one callback request to be received from
+ two sk_buff
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: shaobingqing <shaobingqing@bwstor.com.cn>
+Cc: bfields@redhat.com, davem@davemloft.net, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org, linux-kernel@vger.kernel.org
+Date: Mon, 20 Jan 2014 16:17:23 -0700
+In-Reply-To: <1390201154-20815-1-git-send-email-shaobingqing@bwstor.com.cn>
+References: <n>
+	 <1390201154-20815-1-git-send-email-shaobingqing@bwstor.com.cn>
 Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 01/13/2014 11:54 PM, Weston Andros Adamson wrote:
-> Don't check for -NFS4ERR_NOTSUPP, it's already been mapped to -ENOTSUPP
-> by nfs4_stat_to_errno.
+On Mon, 2014-01-20 at 14:59 +0800, shaobingqing wrote:
+> In current code, there only one struct rpc_rqst is prealloced. If one 
+> callback request is received from two sk_buff, the xprt_alloc_bc_request
+> would be execute two times with the same transport->xid. The first time
+> xprt_alloc_bc_request will alloc one struct rpc_rqst and the TCP_RCV_COPY_DATA
+> bit of transport->tcp_flags will not be cleared. The second time 
+> xprt_alloc_bc_request could not alloc struct rpc_rqst any more and NULL
+> pointer will be returned, then xprt_force_disconnect occur. I think one 
+> callback request can be allowed to be received from two sk_buff.
 > 
-> This allows the client to mount v4.1 servers that don't support
-> SECINFO_NO_NAME by falling back to the "guess and check" method of
-> nfs4_find_root_sec.
-> 
-> Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+> Signed-off-by: shaobingqing <shaobingqing@bwstor.com.cn>
 > ---
+>  net/sunrpc/xprtsock.c |   11 +++++++++--
+>  1 files changed, 9 insertions(+), 2 deletions(-)
 > 
-> I found this trying to mount a pynfs filelayout server.
-> 
+> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+> index ee03d35..606950d 100644
+> --- a/net/sunrpc/xprtsock.c
+> +++ b/net/sunrpc/xprtsock.c
+> @@ -1271,8 +1271,13 @@ static inline int xs_tcp_read_callback(struct rpc_xprt *xprt,
+>  	struct sock_xprt *transport =
+>  				container_of(xprt, struct sock_xprt, xprt);
+>  	struct rpc_rqst *req;
+> +	static struct rpc_rqst *req_partial;
+> +
+> +	if (req_partial == NULL)
+> +		req = xprt_alloc_bc_request(xprt);
+> +	else if (req_partial->rq_xid == transport->tcp_xid)
+> +		req = req_partial;
 
-Yes at last BAT Frank fixed Ganesha so it can work with new clients.
+What happens here if req_partial->rq_xid != transport->tcp_xid? AFAICS,
+req will be undefined. Either way, you cannot use a static variable for
+storage here: that isn't re-entrant.
 
-Linux client is the standard the rest of the world needs to comply 
-(Resistance is futile ;-) )
+> -	req = xprt_alloc_bc_request(xprt);
+>  	if (req == NULL) {
+>  		printk(KERN_WARNING "Callback slot table overflowed\n");
+>  		xprt_force_disconnect(xprt);
+> @@ -1285,6 +1290,7 @@ static inline int xs_tcp_read_callback(struct rpc_xprt *xprt,
+>  
+>  	if (!(transport->tcp_flags & TCP_RCV_COPY_DATA)) {
+>  		struct svc_serv *bc_serv = xprt->bc_serv;
+> +		req_partial = NULL;
+>  
+>  		/*
+>  		 * Add callback request to callback list.  The callback
+> @@ -1297,7 +1303,8 @@ static inline int xs_tcp_read_callback(struct rpc_xprt *xprt,
+>  		list_add(&req->rq_bc_list, &bc_serv->sv_cb_list);
+>  		spin_unlock(&bc_serv->sv_cb_lock);
+>  		wake_up(&bc_serv->sv_cb_waitq);
+> -	}
+> +	} else
+> +		req_partial = req;
+>  
+>  	req->rq_private_buf.len = transport->tcp_copied;
+>  
 
-Thanks
-Boaz
 
->  fs/nfs/nfs4proc.c | 4 ++--
->  1 file changed, 2 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 15052b8..1d57b6a 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -7920,7 +7920,7 @@ nfs41_proc_secinfo_no_name(struct nfs_server *server, struct nfs_fh *fhandle,
->  		switch (err) {
->  		case 0:
->  		case -NFS4ERR_WRONGSEC:
-> -		case -NFS4ERR_NOTSUPP:
-> +		case -ENOTSUPP:
->  			goto out;
->  		default:
->  			err = nfs4_handle_exception(server, err, &exception);
-> @@ -7954,7 +7954,7 @@ nfs41_find_root_sec(struct nfs_server *server, struct nfs_fh *fhandle,
->  	 * Fall back on "guess and check" method if
->  	 * the server doesn't support SECINFO_NO_NAME
->  	 */
-> -	if (err == -NFS4ERR_WRONGSEC || err == -NFS4ERR_NOTSUPP) {
-> +	if (err == -NFS4ERR_WRONGSEC || err == -ENOTSUPP) {
->  		err = nfs4_find_root_sec(server, fhandle, info);
->  		goto out_freepage;
->  	}
-> 
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
