@@ -1,134 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ducie-dc1.codethink.co.uk ([37.128.190.40]:60931 "EHLO
-	ducie-dc1.codethink.co.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752706AbaAOR1R (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 15 Jan 2014 12:27:17 -0500
-From: mark.doffman@codethink.co.uk
-To: ceph-devel@vger.kernel.org
-Cc: Rob Taylor <rob.taylor@codethink.co.uk>, sage@inktank.com,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, Mark Doffman <mark.doffman@codethink.co.uk>
-Subject: [PATCH v2 2/2] Documentation: Document the cephroot functionality
-Date: Wed, 15 Jan 2014 11:26:29 -0600
-Message-Id: <29b3bd9700e23df2aee095df8c34a15a62f57d27.1389806186.git.mark.doffman@codethink.co.uk>
-In-Reply-To: <cover.1389806186.git.mark.doffman@codethink.co.uk>
-References: <cover.1389806186.git.mark.doffman@codethink.co.uk>
-In-Reply-To: <cover.1389806186.git.mark.doffman@codethink.co.uk>
-References: <1385000024-23463-1-git-send-email-mark.doffman@codethink.co.uk> <cover.1389806186.git.mark.doffman@codethink.co.uk>
+Received: from mail-ie0-f170.google.com ([209.85.223.170]:56686 "EHLO
+	mail-ie0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752553AbaATDpu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 19 Jan 2014 22:45:50 -0500
+Received: by mail-ie0-f170.google.com with SMTP id u16so5982072iet.1
+        for <linux-nfs@vger.kernel.org>; Sun, 19 Jan 2014 19:45:50 -0800 (PST)
+From: Weston Andros Adamson <dros@primarydata.com>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
+Subject: [PATCH 2/2] nfs4: fix comments in discover_server_trunking
+Date: Sun, 19 Jan 2014 22:45:37 -0500
+Message-Id: <1390189537-9666-2-git-send-email-dros@primarydata.com>
+In-Reply-To: <1390189537-9666-1-git-send-email-dros@primarydata.com>
+References: <1390189537-9666-1-git-send-email-dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Rob Taylor <rob.taylor@codethink.co.uk>
+'result' is not updated if a match isn't found in the
+nfs4_discover_server_trunking path.
 
-Document using the cephfs as a root device, its purpose,
-functionality and use.
-
-Signed-off-by: Mark Doffman <mark.doffman@codethink.co.uk>
-Signed-off-by: Rob Taylor <rob.taylor@codethink.co.uk>
-Reviewed-by: Ian Molton <ian.molton@codethink.co.uk>
+Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
 ---
- Documentation/filesystems/{ => ceph}/ceph.txt |  0
- Documentation/filesystems/ceph/cephroot.txt   | 86 +++++++++++++++++++++++++++
- 2 files changed, 86 insertions(+)
- rename Documentation/filesystems/{ => ceph}/ceph.txt (100%)
- create mode 100644 Documentation/filesystems/ceph/cephroot.txt
+ fs/nfs/nfs4client.c | 4 ++--
+ fs/nfs/nfs4state.c  | 2 +-
+ 2 files changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/Documentation/filesystems/ceph.txt b/Documentation/filesystems/ceph/ceph.txt
-similarity index 100%
-rename from Documentation/filesystems/ceph.txt
-rename to Documentation/filesystems/ceph/ceph.txt
-diff --git a/Documentation/filesystems/ceph/cephroot.txt b/Documentation/filesystems/ceph/cephroot.txt
-new file mode 100644
-index 0000000..deda4f0
---- /dev/null
-+++ b/Documentation/filesystems/ceph/cephroot.txt
-@@ -0,0 +1,86 @@
-+Mounting the root filesystem via Ceph (cephroot)
-+===============================================
-+
-+Written 2013 by Rob Taylor <rob.taylor@codethink.co.uk>
-+
-+derived from nfsroot.txt:
-+
-+Written 1996 by Gero Kuhlmann <gero@gkminix.han.de>
-+Updated 1997 by Martin Mares <mj@atrey.karlin.mff.cuni.cz>
-+Updated 2006 by Nico Schottelius <nico-kernel-nfsroot@schottelius.org>
-+Updated 2006 by Horms <horms@verge.net.au>
-+
-+
-+
-+In order to use a diskless system, such as an X-terminal or printer server
-+for example, it is necessary for the root filesystem to be present on a
-+non-disk device. This may be an initramfs (see Documentation/filesystems/
-+ramfs-rootfs-initramfs.txt), a ramdisk (see Documentation/initrd.txt), a
-+filesystem mounted via NFS or a filesystem mounted via Ceph. The following
-+text describes on how to use Ceph for the root filesystem.
-+
-+For the rest of this text 'client' means the diskless system, and 'server'
-+means the Ceph server.
-+
-+
-+1.) Enabling cephroot capabilities
-+    -----------------------------
-+
-+In order to use cephroot, CEPH_FS needs to be selected as
-+built-in during configuration. Once this has been selected, the cephroot
-+option will become available, which should also be selected.
-+
-+In the networking options, kernel level autoconfiguration can be selected,
-+along with the types of autoconfiguration to support. Selecting all of
-+DHCP, BOOTP and RARP is safe.
-+
-+
-+2.) Kernel command line
-+    -------------------
-+
-+When the kernel has been loaded by a boot loader (see below) it needs to be
-+told what root fs device to use. And in the case of cephroot, where to find
-+both the server and the name of the directory on the server to mount as root.
-+This can be established using the following kernel command line parameters:
-+
-+root=/dev/ceph
-+
-+This is necessary to enable the pseudo-Ceph-device. Note that it's not a
-+real device but just a synonym to tell the kernel to use Ceph instead of
-+a real device.
-+
-+If cephroot is not specified, it is expected that that a valid mount will be
-+found via DHCP option 17, Root Path [1]
-+
-+cephroot=<monaddrs>:/[<subdir>],<ceph-opts>
-+
-+  <monaddrs>    Monitor addresses separated by commas. Each takes the form
-+		host[:port]. If the port is not specified, the Ceph default
-+		of 6789 is assumed.
-+
-+  <subdir>	A subdirectory subdir may be specified if a subset of the file
-+		system is to be mounted
-+
-+  <ceph-opts>	Standard Ceph options. All options are separated by commas.
-+		See Documentation/filesystems/ceph/ceph.txt for options and
-+		their defaults.
-+
-+4.) References
-+    ----------
-+
-+[1] http://tools.ietf.org/html/rfc2132
-+
-+5.) Credits
-+    -------
-+
-+  cephroot was derived from nfsroot by Rob Taylor <rob.taylor@codethink.co.uk>
-+  and Mark Doffman <mark.doffman@codethink.co.uk>
-+
-+  The nfsroot code in the kernel and the RARP support have been written
-+  by Gero Kuhlmann <gero@gkminix.han.de>.
-+
-+  The rest of the IP layer autoconfiguration code has been written
-+  by Martin Mares <mj@atrey.karlin.mff.cuni.cz>.
-+
-+  In order to write the initial version of nfsroot I would like to thank
-+  Jens-Uwe Mager <jum@anubis.han.de> for his help.
+diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+index 0f9b772..147a752 100644
+--- a/fs/nfs/nfs4client.c
++++ b/fs/nfs/nfs4client.c
+@@ -465,7 +465,7 @@ static void nfs4_swap_callback_idents(struct nfs_client *keep,
+  * nfs40_walk_client_list - Find server that recognizes a client ID
+  *
+  * @new: nfs_client with client ID to test
+- * @result: OUT: found nfs_client, or new
++ * @result: OUT: found nfs_client
+  * @cred: credential to use for trunking test
+  *
+  * Returns zero, a negative errno, or a negative NFS4ERR status.
+@@ -601,7 +601,7 @@ out_major_mismatch:
+  * nfs41_walk_client_list - Find nfs_client that matches a client/server owner
+  *
+  * @new: nfs_client with client ID to test
+- * @result: OUT: found nfs_client, or new
++ * @result: OUT: found nfs_client
+  * @cred: credential to use for trunking test
+  *
+  * Returns zero, a negative errno, or a negative NFS4ERR status.
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index e5be725..666512e 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -328,7 +328,7 @@ out:
+  * nfs41_discover_server_trunking - Detect server IP address trunking (mv1)
+  *
+  * @clp: nfs_client under test
+- * @result: OUT: found nfs_client, or clp
++ * @result: OUT: found nfs_client
+  * @cred: credential to use for trunking test
+  *
+  * Returns NFS4_OK, a negative errno, or a negative NFS4ERR status.
 -- 
-1.8.4
+1.8.3.4 (Apple Git-47)
 
