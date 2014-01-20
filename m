@@ -1,82 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:31825 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751544AbaAPQQb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 16 Jan 2014 11:16:31 -0500
-Subject: Re: [PATCH] dcache: fix d_splice_alias handling of aliases
-From: Steven Whitehouse <swhiteho@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        Miklos Szeredi <mszeredi@suse.cz>
-In-Reply-To: <20140116161015.GC16829@fieldses.org>
-References: <20140115151749.GF23999@fieldses.org>
-	 <20140116161015.GC16829@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 16 Jan 2014 16:15:42 +0000
-Message-ID: <1389888942.2779.34.camel@menhir>
-Mime-Version: 1.0
+Received: from mx.bwstor.com.cn ([211.103.180.228]:35193 "EHLO mx.bwstor.cn"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1751467AbaATIQp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 20 Jan 2014 03:16:45 -0500
+From: shaobingqing <shaobingqing@bwstor.com.cn>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        shaobingqing <shaobingqing@bwstor.com.cn>
+Subject: [PATCH] NFSv4.1: new layout stateid can not be overwrite by one out of date
+Date: Mon, 20 Jan 2014 16:15:31 +0800
+Message-Id: <1390205731-21005-1-git-send-email-shaobingqing@bwstor.com.cn>
+In-Reply-To: <n>
+References: <n>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+If initiate_file_draining returned NFS4ERR_DELAY, all the lsegs of
+a file might be released before the retrying cb_layout request arriving
+at the client. In this situation, layoutget request of the file will
+use open stateid to obtain a new layout stateid. And if the retrying
+cb_layout request arrived at the client after the layoutget reply,
+new layout stateid would be overwrite by one out of date.
 
-On Thu, 2014-01-16 at 11:10 -0500, J. Bruce Fields wrote:
-> On Wed, Jan 15, 2014 at 10:17:49AM -0500, bfields wrote:
-> > From: "J. Bruce Fields" <bfields@redhat.com>
-> > 
-> > d_splice_alias can create duplicate directory aliases (in the !new
-> > case), or (in the new case) d_move without holding appropriate locks.
-> > 
-> > d_materialise_unique deals with both of these problems.  (The latter
-> > seems to be dealt by trylocks (see __d_unalias), which look like they
-> > could cause spurious lookup failures--but that's at least better than
-> > corrupting the dcache.)
-> > 
-> > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> > ---
-> >  fs/dcache.c |   25 +------------------------
-> >  1 file changed, 1 insertion(+), 24 deletions(-)
-> > 
-> > Only lightly tested....  If this is right, then we can also just ditch
-> > d_splice_alias completely, and clean up the various d_find_alias's.
-> > 
-> > I think the only reason we have both d_splice_alias and
-> > d_materialise_unique is that the former was written for exportable
-> > filesystems and the latter for distributed filesystems.
-> > 
-> > But we have at least one exportable filesystem (fuse) using
-> > d_materialise_unique.  And I doubt d_splice_alias was ever completely
-> > correct even for on-disk filesystems.
-> > 
-> > Am I missing some subtlety?
-> 
-> Hm, I just noticed:
-> 
->     commit 0d0d110720d7960b77c03c9f2597faaff4b484ae
->     Author: Miklos Szeredi <mszeredi@suse.cz>
->     Date:   Mon Sep 16 14:52:00 2013 +0200
-> 
->     GFS2: d_splice_alias() can't return error
->     
->     unless it was given an IS_ERR(inode), which isn't the case here.  So clean
->     up the unnecessary error handling in gfs2_create_inode().
->     
->     This paves the way for real fixes (hence the stable Cc).
->     
->     Signed-off-by: Miklos Szeredi <mszeredi@suse.cz>
->     Signed-off-by: Steven Whitehouse <swhiteho@redhat.com>
->     Cc: stable@vger.kernel.org
-> 
-> While the statement is true for the current implementation of
-> d_splice_alias, I don't think it's actually true for any correct
-> implementation of d_splice_alias, which must be able to return at least
-> -ELOOP in the directory case.  Does gfs2 need fixing?
-> 
-> --b.
+Signed-off-by: shaobingqing <shaobingqing@bwstor.com.cn>
+---
+ fs/nfs/callback_proc.c |    4 +++-
+ 1 files changed, 3 insertions(+), 1 deletions(-)
 
-Yes, in that case, probably in two places,
-
-Steve.
-
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index ae2e87b..98fed13 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -174,7 +174,9 @@ static u32 initiate_file_draining(struct nfs_client *clp,
+ 		rv = NFS4ERR_DELAY;
+ 	else
+ 		rv = NFS4ERR_NOMATCHING_LAYOUT;
+-	pnfs_set_layout_stateid(lo, &args->cbl_stateid, true);
++	if (memcmp(args->cbl_stateid.other, lo->plh_stateid.other,
++	     NFS4_STATEID_OTHER_SIZE) == 0)
++		pnfs_set_layout_stateid(lo, &args->cbl_stateid, true);
+ 	spin_unlock(&ino->i_lock);
+ 	pnfs_free_lseg_list(&free_me_list);
+ 	pnfs_put_layout_hdr(lo);
+-- 
+1.7.4.2
 
