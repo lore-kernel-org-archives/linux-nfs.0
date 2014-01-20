@@ -1,119 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:59586 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752502AbaAQSEq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 17 Jan 2014 13:04:46 -0500
-Date: Fri, 17 Jan 2014 13:04:41 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Steven Whitehouse <swhiteho@redhat.com>
-Cc: Bob Peterson <rpeterso@redhat.com>, Al Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, Miklos Szeredi <mszeredi@suse.cz>
-Subject: Re: [PATCH] dcache: fix d_splice_alias handling of aliases
-Message-ID: <20140117180441.GB26636@fieldses.org>
-References: <20140115151749.GF23999@fieldses.org>
- <20140116161015.GC16829@fieldses.org>
- <1389888942.2779.34.camel@menhir>
- <20140116164411.GD16829@fieldses.org>
- <1875464309.3327883.1389891247171.JavaMail.root@redhat.com>
- <20140116185107.GE16829@fieldses.org>
- <1389953070.2734.17.camel@menhir>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1389953070.2734.17.camel@menhir>
+Received: from mail-pb0-f50.google.com ([209.85.160.50]:60172 "EHLO
+	mail-pb0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752804AbaATXXT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Jan 2014 18:23:19 -0500
+Received: by mail-pb0-f50.google.com with SMTP id rq2so7573400pbb.37
+        for <linux-nfs@vger.kernel.org>; Mon, 20 Jan 2014 15:23:19 -0800 (PST)
+Message-ID: <1390260196.2501.4.camel@leira.trondhjem.org>
+Subject: Re: [PATCH] NFSv4.1: new layout stateid can not be overwrite by one
+ out of date
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: shaobingqing <shaobingqing@bwstor.com.cn>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Date: Mon, 20 Jan 2014 16:23:16 -0700
+In-Reply-To: <1390205731-21005-1-git-send-email-shaobingqing@bwstor.com.cn>
+References: <n>
+	 <1390205731-21005-1-git-send-email-shaobingqing@bwstor.com.cn>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jan 17, 2014 at 10:04:30AM +0000, Steven Whitehouse wrote:
-> Hi,
+On Mon, 2014-01-20 at 16:15 +0800, shaobingqing wrote:
+> If initiate_file_draining returned NFS4ERR_DELAY, all the lsegs of
+> a file might be released before the retrying cb_layout request arriving
+> at the client. In this situation, layoutget request of the file will
+> use open stateid to obtain a new layout stateid. And if the retrying
+> cb_layout request arrived at the client after the layoutget reply,
+> new layout stateid would be overwrite by one out of date.
 > 
-> On Thu, 2014-01-16 at 13:51 -0500, J. Bruce Fields wrote:
-> > On Thu, Jan 16, 2014 at 11:54:07AM -0500, Bob Peterson wrote:
-> > > ----- Original Message -----
-> > > | Something like this?
-> > > (snip)
-> > > | @@ -779,6 +782,11 @@ static struct dentry *__gfs2_lookup(struct inode *dir,
-> > > | struct dentry *dentry,
-> > > |  	}
-> > > |  
-> > > |  	d = d_splice_alias(inode, dentry);
-> > > | +	if (IS_ERR(d)) {
-> > > | +		iput(inode);
-> > > | +		gfs2_glock_dq_uninit(&gh);
-> > > | +		return ERR_PTR(error);
-> > > 
-> > > ---------------------------------^
-> > > Shouldn't that be ERR_PTR(d)?
-> > 
-> > Oops, yeah--well, actually just "d" I guess.
-> > 
-> > This is what I've got for what it's worth.
-> > 
-> > --b.
-> > 
+> Signed-off-by: shaobingqing <shaobingqing@bwstor.com.cn>
+> ---
+>  fs/nfs/callback_proc.c |    4 +++-
+>  1 files changed, 3 insertions(+), 1 deletions(-)
 > 
-> I think the patch looks ok to me. Did you give it a spin to test it?
+> diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+> index ae2e87b..98fed13 100644
+> --- a/fs/nfs/callback_proc.c
+> +++ b/fs/nfs/callback_proc.c
+> @@ -174,7 +174,9 @@ static u32 initiate_file_draining(struct nfs_client *clp,
+>  		rv = NFS4ERR_DELAY;
+>  	else
+>  		rv = NFS4ERR_NOMATCHING_LAYOUT;
+> -	pnfs_set_layout_stateid(lo, &args->cbl_stateid, true);
+> +	if (memcmp(args->cbl_stateid.other, lo->plh_stateid.other,
+> +	     NFS4_STATEID_OTHER_SIZE) == 0)
+> +		pnfs_set_layout_stateid(lo, &args->cbl_stateid, true);
 
-Sure, just
-	mkfs.gfs2 -p lock_nolock /dev/vdb
-	mount /dev/vdb /mnt/
-	cd cthon
-	NFSTESTDIR=/mnt/TMP ./runtests -a -f
+Well...  We shouldn't really be calling
+pnfs_mark_matching_lsegs_invalid() either in this case...
 
-Which doesn't test much of anything (we'd need to inject artificial
-errors for now to test the error paths), but at least it doesn't blow up
-in some obvious way....
+>  	spin_unlock(&ino->i_lock);
+>  	pnfs_free_lseg_list(&free_me_list);
+>  	pnfs_put_layout_hdr(lo);
 
-> If so then I will put it in the GFS2 -nmw tree,
 
-Thanks!
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
---b.
-
-> 
-> Steve.
-> 
-> > commit 6fba5295019b52a03d76c9e9570952466051a7a6
-> > Author: J. Bruce Fields <bfields@redhat.com>
-> > Date:   Thu Jan 16 11:44:53 2014 -0500
-> > 
-> >     gfs2: revert "GFS2: d_splice_alias() can't return error"
-> >     
-> >     0d0d110720d7960b77c03c9f2597faaff4b484ae asserts that "d_splice_alias()
-> >     can't return error unless it was given an IS_ERR(inode)".
-> >     
-> >     That was true of the implementation of d_splice_alias, but this is
-> >     really a problem with d_splice_alias: at a minimum it should be able to
-> >     return -ELOOP in the case where inserting the given dentry would cause a
-> >     directory loop.
-> >     
-> >     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> > 
-> > diff --git a/fs/gfs2/inode.c b/fs/gfs2/inode.c
-> > index 7119504..3f44902 100644
-> > --- a/fs/gfs2/inode.c
-> > +++ b/fs/gfs2/inode.c
-> > @@ -585,6 +585,9 @@ static int gfs2_create_inode(struct inode *dir, struct dentry *dentry,
-> >  	error = PTR_ERR(inode);
-> >  	if (!IS_ERR(inode)) {
-> >  		d = d_splice_alias(inode, dentry);
-> > +		error = PTR_ERR(d);
-> > +		if (IS_ERR(d))
-> > +			goto fail_gunlock;
-> >  		error = 0;
-> >  		if (file) {
-> >  			if (S_ISREG(inode->i_mode)) {
-> > @@ -779,6 +782,11 @@ static struct dentry *__gfs2_lookup(struct inode *dir, struct dentry *dentry,
-> >  	}
-> >  
-> >  	d = d_splice_alias(inode, dentry);
-> > +	if (IS_ERR(d)) {
-> > +		iput(inode);
-> > +		gfs2_glock_dq_uninit(&gh);
-> > +		return d;
-> > +	}
-> >  	if (file && S_ISREG(inode->i_mode))
-> >  		error = finish_open(file, dentry, gfs2_open_common, opened);
-> >  
-> 
-> 
