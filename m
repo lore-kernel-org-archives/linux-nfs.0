@@ -1,74 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:39018 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752600AbaAQUMI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 17 Jan 2014 15:12:08 -0500
-From: Scott Mayhew <smayhew@redhat.com>
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org, stable@vger.kernel.org
-Subject: [PATCH] nfs: always make sure page is up-to-date before extending a write to cover the entire page
-Date: Fri, 17 Jan 2014 15:12:05 -0500
-Message-Id: <1389989525-33610-1-git-send-email-smayhew@redhat.com>
+Received: from mail-pa0-f49.google.com ([209.85.220.49]:40758 "EHLO
+	mail-pa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751800AbaATKUq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Jan 2014 05:20:46 -0500
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+In-Reply-To: <E1W5A0e-000MT9-A1@intern.SerNet.DE>
+References: <1389953232-9428-1-git-send-email-piastry@etersoft.ru>
+	<E1W5A0e-000MT9-A1@intern.SerNet.DE>
+Date: Mon, 20 Jan 2014 14:20:43 +0400
+Message-ID: <CAKywueQwfFASPpevO8Z-_xwZqRjkzfkOceQJDya8D7FDW+UmMg@mail.gmail.com>
+Subject: Re: [PATCH v7 0/7] Add O_DENY* support for VFS and CIFS/NFS
+From: Pavel Shilovsky <piastry@etersoft.ru>
+To: "Volker.Lendecke@SerNet.DE" <Volker.Lendecke@sernet.de>
+Cc: Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        linux-cifs <linux-cifs@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+        wine-devel@winehq.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We should always make sure the cached page is up-to-date when we're
-determining whether we can extend a write to cover the full page -- even
-if we've received a write delegation from the server.
+2014/1/20 Volker Lendecke <Volker.Lendecke@sernet.de>:
+> Hi!
+>
+> On Fri, Jan 17, 2014 at 02:07:05PM +0400, Pavel Shilovsky wrote:
+>> If O_DENYDELETE flag is specified and the open succeded,
+>> any further unlink operation will fail with -ESHAREDENIED
+>> untill this open is closed. Now this flag is processed by
+>> VFS and CIFS filesystem. NFS returns -EINVAL for opens
+>> with this flag.
+>
+> This looks really, really good, thanks!
+>
+> One question: If Samba wants to open a file for delete
+> access, there's no corresponding flag in the open
+> permissions. There can be the case where Samba wants to open
+> *just* for future unlink, no read or write access required.
+> Is there a way to achieve this atomically correct?
 
-Commit c7559663 added logic to skip this check if we have a write
-delegation, which can lead to data corruption such as the following
-scenario if client B receives a write delegation from the NFS server:
+You can try to use O_PATH flag. It doesn't give you a delete access
+but should be ok because further deleting will be done without file
+descriptor -- through unlink syscall.
 
-Client A:
-    # echo 123456789 > /mnt/file
-
-Client B:
-    # echo abcdefghi >> /mnt/file
-    # cat /mnt/file
-    0�D0�abcdefghi
-
-Just because we hold a write delegation doesn't mean that we've read in
-the entire page contents.
-
-Cc: <stable@vger.kernel.org> # v3.11+
-Signed-off-by: Scott Mayhew <smayhew@redhat.com>
----
- fs/nfs/write.c | 11 ++++++-----
- 1 file changed, 6 insertions(+), 5 deletions(-)
-
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index c1d5482..6a85038 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -922,19 +922,20 @@ out:
-  * extend the write to cover the entire page in order to avoid fragmentation
-  * inefficiencies.
-  *
-- * If the file is opened for synchronous writes or if we have a write delegation
-- * from the server then we can just skip the rest of the checks.
-+ * If the file is opened for synchronous writes then we can just skip the rest
-+ * of the checks.
-  */
- static int nfs_can_extend_write(struct file *file, struct page *page, struct inode *inode)
- {
- 	if (file->f_flags & O_DSYNC)
- 		return 0;
-+	if (!nfs_write_pageuptodate(page, inode))
-+		return 0;
- 	if (NFS_PROTO(inode)->have_delegation(inode, FMODE_WRITE))
- 		return 1;
--	if (nfs_write_pageuptodate(page, inode) && (inode->i_flock == NULL ||
--			(inode->i_flock->fl_start == 0 &&
-+	if (inode->i_flock == NULL || (inode->i_flock->fl_start == 0 &&
- 			inode->i_flock->fl_end == OFFSET_MAX &&
--			inode->i_flock->fl_type != F_RDLCK)))
-+			inode->i_flock->fl_type != F_RDLCK))
- 		return 1;
- 	return 0;
- }
 -- 
-1.7.11.7
-
+Best regards,
+Pavel Shilovsky.
