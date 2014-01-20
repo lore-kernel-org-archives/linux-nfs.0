@@ -1,75 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f181.google.com ([209.85.223.181]:56786 "EHLO
-	mail-ie0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754645AbaA1PuU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Jan 2014 10:50:20 -0500
-Received: by mail-ie0-f181.google.com with SMTP id to1so602156ieb.12
-        for <linux-nfs@vger.kernel.org>; Tue, 28 Jan 2014 07:50:19 -0800 (PST)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v3] NFS: Fix races in nfs_revalidate_mapping
-Date: Tue, 28 Jan 2014 10:50:22 -0500
-Message-Id: <1390924222-12869-1-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1390923699-11011-1-git-send-email-trond.myklebust@primarydata.com>
-References: <1390923699-11011-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from mail-pd0-f179.google.com ([209.85.192.179]:40821 "EHLO
+	mail-pd0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751996AbaATJ42 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Jan 2014 04:56:28 -0500
+MIME-Version: 1.0
+In-Reply-To: <051001cf13b4$080833b0$18189b10$@mindspring.com>
+References: <1389953232-9428-1-git-send-email-piastry@etersoft.ru>
+	<051001cf13b4$080833b0$18189b10$@mindspring.com>
+Date: Mon, 20 Jan 2014 13:56:26 +0400
+Message-ID: <CAKywueTOi-WPpgH7x3VK7EkGJXE8fHUqcLgSUm6o6UA+uaQtjA@mail.gmail.com>
+Subject: Re: [PATCH v7 0/7] Add O_DENY* support for VFS and CIFS/NFS
+From: Pavel Shilovsky <piastry@etersoft.ru>
+To: Frank Filz <ffilzlnx@mindspring.com>
+Cc: Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        linux-cifs <linux-cifs@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+        wine-devel@winehq.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit d529ef83c355f97027ff85298a9709fe06216a66 (NFS: fix the handling
-of NFS_INO_INVALID_DATA flag in nfs_revalidate_mapping) introduces
-a potential race, since it doesn't test the value of nfsi->cache_validity
-and set the bitlock in nfsi->flags atomically.
+2014/1/17 Frank Filz <ffilzlnx@mindspring.com>:
+> This looks wonderful and will be useful to the Ganesha user space NFS server
+> also.
+>
+> I do have a couple questions.
+>
+> 1. How will this interact with the idea of private locks from the patch set
+> Jeff Layton has been pushing?
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Jeff Layton <jlayton@redhat.com>
----
- fs/nfs/inode.c | 28 ++++++++++++++--------------
- 1 file changed, 14 insertions(+), 14 deletions(-)
+They don't touch each other.
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index 0a972ee9ccc1..e5070aa5f175 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -1038,24 +1038,24 @@ int nfs_revalidate_mapping(struct inode *inode, struct address_space *mapping)
- 				  nfs_wait_bit_killable, TASK_KILLABLE);
- 		if (ret)
- 			goto out;
--		if (!(nfsi->cache_validity & NFS_INO_INVALID_DATA))
--			goto out;
--		if (!test_and_set_bit_lock(NFS_INO_INVALIDATING, bitlock))
-+		spin_lock(&inode->i_lock);
-+		if (test_bit(NFS_INO_INVALIDATING, bitlock)) {
-+			spin_unlock(&inode->i_lock);
-+			continue;
-+		}
-+		if (nfsi->cache_validity & NFS_INO_INVALID_DATA)
- 			break;
--	}
--
--	spin_lock(&inode->i_lock);
--	if (nfsi->cache_validity & NFS_INO_INVALID_DATA) {
--		nfsi->cache_validity &= ~NFS_INO_INVALID_DATA;
--		spin_unlock(&inode->i_lock);
--		trace_nfs_invalidate_mapping_enter(inode);
--		ret = nfs_invalidate_mapping(inode, mapping);
--		trace_nfs_invalidate_mapping_exit(inode, ret);
--	} else {
--		/* something raced in and cleared the flag */
- 		spin_unlock(&inode->i_lock);
-+		goto out;
- 	}
- 
-+	set_bit(NFS_INO_INVALIDATING, bitlock);
-+	nfsi->cache_validity &= ~NFS_INO_INVALID_DATA;
-+	spin_unlock(&inode->i_lock);
-+	trace_nfs_invalidate_mapping_enter(inode);
-+	ret = nfs_invalidate_mapping(inode, mapping);
-+	trace_nfs_invalidate_mapping_exit(inode, ret);
-+
- 	clear_bit_unlock(NFS_INO_INVALIDATING, bitlock);
- 	smp_mb__after_clear_bit();
- 	wake_up_bit(bitlock, NFS_INO_INVALIDATING);
+>
+> 2. If a process opens multiple file descriptors with deny modes, will they
+> conflict with each other (which is the behavior we will want for Ganesha).
+
+Yes, a deny mode is associated with file descriptor - so, it will
+conflict with any other access/deny modes of file descriptors from any
+process.
+
+>
+> 3. Is there any functionality to upgrade or downgrade the access and deny
+> modes (thinking in terms of NFS v4 support of OPEN upgrade and
+> OPEN_DOWNGRADE operations).
+
+The proposed patchset doesn't allow to change deny modes after an open
+is done. But we can add a functionality to let flock syscall change
+deny modes as on option.
+
 -- 
-1.8.5.3
-
+Best regards,
+Pavel Shilovsky.
