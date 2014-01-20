@@ -1,133 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:55721 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:31114 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750889AbaACQdu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 3 Jan 2014 11:33:50 -0500
-Date: Fri, 3 Jan 2014 11:33:47 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org, simo@redhat.com, neilb@suse.de
-Subject: Re: [RFC PATCH 3/5] sunrpc: wait for gssproxy to start on initial
- upcall attempt before falling back to legacy upcall
-Message-ID: <20140103163347.GL28219@fieldses.org>
-References: <1388579314-15255-1-git-send-email-jlayton@redhat.com>
- <1388579314-15255-4-git-send-email-jlayton@redhat.com>
- <20140102213547.GD28219@fieldses.org>
- <20140102181055.324ed278@tlielax.poochiereds.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140102181055.324ed278@tlielax.poochiereds.net>
+	id S1753292AbaATO0a (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 20 Jan 2014 09:26:30 -0500
+Subject: Re: [PATCH] nfs: always make sure page is up-to-date before
+ extending a write to cover the entire page
+From: David Wysochanski <dwysocha@redhat.com>
+Reply-To: dwysocha@redhat.com
+To: Scott Mayhew <smayhew@redhat.com>
+Cc: trond.myklebust@primarydata.com, linux-nfs@vger.kernel.org,
+        stable@vger.kernel.org
+In-Reply-To: <1389989525-33610-1-git-send-email-smayhew@redhat.com>
+References: <1389989525-33610-1-git-send-email-smayhew@redhat.com>
+Content-Type: text/plain; charset="UTF-8"
+Date: Mon, 20 Jan 2014 09:26:28 -0500
+Message-ID: <1390227988.3979.7.camel@localhost.localdomain>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jan 02, 2014 at 06:10:55PM -0500, Jeff Layton wrote:
-> On Thu, 2 Jan 2014 16:35:47 -0500
-> "J. Bruce Fields" <bfields@fieldses.org> wrote:
+On Fri, 2014-01-17 at 15:12 -0500, Scott Mayhew wrote:
+> We should always make sure the cached page is up-to-date when we're
+> determining whether we can extend a write to cover the full page -- even
+> if we've received a write delegation from the server.
 > 
-> > On Wed, Jan 01, 2014 at 07:28:32AM -0500, Jeff Layton wrote:
-> > > Currently, the only thing that waits for gssproxy to start is reads
-> > > from the use-gss-proxy procfile. That's a little odd, since nothing
-> > > but gssproxy itself will likely ever open that file, and all it does
-> > > it write to it.
-> > > 
-> > > It seems like what we really want instead is for svcrpc code to give
-> > > gssproxy a little time to start up in the event that some RPCs come
-> > > in before it's ready.
-> > 
-> > Legacy userspace will never write, so this adds an 5-second delay in
-> > that case.
-> > 
-> > I'd rather avoid any arbitrary timeout.
-> > 
-> > It seems to me all you need is for gss-proxy to ensure that it does the
-> > write to use-gss-proxy before it indicates to whoever started it that
-> > it's done starting.
-> > 
-> > Then as long as the init system orders gss-proxy startup before nfsd
-> > startup, we're good.
-> > 
-> > --b.
-> > 
+> Commit c7559663 added logic to skip this check if we have a write
+> delegation, which can lead to data corruption such as the following
+> scenario if client B receives a write delegation from the NFS server:
 > 
-> Yep, that 5s delay on the first upcall was the part that was
-> questionable...
+> Client A:
+>     # echo 123456789 > /mnt/file
 > 
-> Ok, so basically the behavior you want is:
+> Client B:
+>     # echo abcdefghi >> /mnt/file
+>     # cat /mnt/file
+>     0�D0�abcdefghi
 > 
-> "If gssproxy is up and running by the time the first RPC comes in then
->  use that. If not, then use the legacy code."
+> Just because we hold a write delegation doesn't mean that we've read in
+> the entire page contents.
 > 
-> I'll respin the set with that behavior in mind. I need to do a bit of
-> testing with it too, so it may be a week or so before I repost.
+> Cc: <stable@vger.kernel.org> # v3.11+
+> Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+> ---
+>  fs/nfs/write.c | 11 ++++++-----
+>  1 file changed, 6 insertions(+), 5 deletions(-)
+> 
+> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+> index c1d5482..6a85038 100644
+> --- a/fs/nfs/write.c
+> +++ b/fs/nfs/write.c
+> @@ -922,19 +922,20 @@ out:
+>   * extend the write to cover the entire page in order to avoid fragmentation
+>   * inefficiencies.
+>   *
+> - * If the file is opened for synchronous writes or if we have a write delegation
+> - * from the server then we can just skip the rest of the checks.
+> + * If the file is opened for synchronous writes then we can just skip the rest
+> + * of the checks.
+>   */
+>  static int nfs_can_extend_write(struct file *file, struct page *page, struct inode *inode)
+>  {
+>  	if (file->f_flags & O_DSYNC)
+>  		return 0;
+> +	if (!nfs_write_pageuptodate(page, inode))
+> +		return 0;
+>  	if (NFS_PROTO(inode)->have_delegation(inode, FMODE_WRITE))
+>  		return 1;
+> -	if (nfs_write_pageuptodate(page, inode) && (inode->i_flock == NULL ||
+> -			(inode->i_flock->fl_start == 0 &&
+> +	if (inode->i_flock == NULL || (inode->i_flock->fl_start == 0 &&
+>  			inode->i_flock->fl_end == OFFSET_MAX &&
+> -			inode->i_flock->fl_type != F_RDLCK)))
+> +			inode->i_flock->fl_type != F_RDLCK))
+>  		return 1;
+>  	return 0;
+>  }
 
-Thanks!
+Acked-by: Dave Wysochanski <dwysocha@redhat.com>
 
-On a quick skim, I thought that rendered the later patches mostly
-unnecessary, but I may not have been paying close enough attention....
 
---b.
-
-> 
-> > > 
-> > > Change it so that the upcall instead waits a little while for gssproxy
-> > > to start before giving up. If the wait times out, we go ahead and
-> > > disable gssproxy so that later upcalls don't delay.
-> > > 
-> > > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > > ---
-> > >  net/sunrpc/auth_gss/svcauth_gss.c | 28 ++++++++++------------------
-> > >  1 file changed, 10 insertions(+), 18 deletions(-)
-> > > 
-> > > diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
-> > > index 64c025e..921f388 100644
-> > > --- a/net/sunrpc/auth_gss/svcauth_gss.c
-> > > +++ b/net/sunrpc/auth_gss/svcauth_gss.c
-> > > @@ -1265,24 +1265,6 @@ out:
-> > >  
-> > >  DEFINE_SPINLOCK(use_gssp_lock);
-> > >  
-> > > -static bool use_gss_proxy(struct net *net)
-> > > -{
-> > > -	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
-> > > -
-> > > -	if (sn->use_gss_proxy != -1)
-> > > -		return sn->use_gss_proxy;
-> > > -	spin_lock(&use_gssp_lock);
-> > > -	/*
-> > > -	 * If you wanted gss-proxy, you should have said so before
-> > > -	 * starting to accept requests:
-> > > -	 */
-> > > -	sn->use_gss_proxy = 0;
-> > > -	spin_unlock(&use_gssp_lock);
-> > > -	return 0;
-> > > -}
-> > > -
-> > > -#ifdef CONFIG_PROC_FS
-> > > -
-> > >  static int set_gss_proxy(struct net *net, int type)
-> > >  {
-> > >  	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
-> > > @@ -1332,6 +1314,16 @@ static int wait_for_gss_proxy(struct net *net)
-> > >  	return ret < 0 ? ret : 0;
-> > >  }
-> > >  
-> > > +static bool use_gss_proxy(struct net *net)
-> > > +{
-> > > +	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
-> > > +
-> > > +	if (wait_for_gss_proxy(net))
-> > > +		return false;
-> > > +	return gssp_ready(sn);
-> > > +}
-> > > +
-> > > +#ifdef CONFIG_PROC_FS
-> > >  
-> > >  static ssize_t write_gssp(struct file *file, const char __user *buf,
-> > >  			 size_t count, loff_t *ppos)
-> > > -- 
-> > > 1.8.4.2
-> > > 
-> 
-> 
-> -- 
-> Jeff Layton <jlayton@redhat.com>
