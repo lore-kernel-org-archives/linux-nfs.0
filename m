@@ -1,52 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:50194 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753015AbaAVS37 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 22 Jan 2014 13:29:59 -0500
-Date: Wed, 22 Jan 2014 13:29:58 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Weston Andros Adamson <dros@primarydata.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfs4.1: add basic SECINFO_NO_NAME support
-Message-ID: <20140122182958.GE13704@fieldses.org>
-References: <1389716850-1260-1-git-send-email-dros@primarydata.com>
-MIME-Version: 1.0
+Received: from mail-ie0-f170.google.com ([209.85.223.170]:62619 "EHLO
+	mail-ie0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752553AbaATE3B convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 19 Jan 2014 23:29:01 -0500
+Received: by mail-ie0-f170.google.com with SMTP id u16so6054552iet.29
+        for <linux-nfs@vger.kernel.org>; Sun, 19 Jan 2014 20:28:59 -0800 (PST)
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1389716850-1260-1-git-send-email-dros@primarydata.com>
+Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
+Subject: Re: [PATCH 2/2] nfs4: fix comments in discover_server_trunking
+From: Weston Andros Adamson <dros@primarydata.com>
+In-Reply-To: <1390189537-9666-2-git-send-email-dros@primarydata.com>
+Date: Sun, 19 Jan 2014 23:20:52 -0500
+Cc: linux-nfs list <linux-nfs@vger.kernel.org>
+Message-Id: <044F0EF6-E033-4277-AB83-ACFEA739C188@primarydata.com>
+References: <1390189537-9666-1-git-send-email-dros@primarydata.com> <1390189537-9666-2-git-send-email-dros@primarydata.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jan 14, 2014 at 11:27:30AM -0500, Weston Andros Adamson wrote:
-> only returns AUTH_SYS for now
+Ignore this patch. I misunderstood the meaning of the original comments...
 
-Thanks, applied.
+-dros
 
---b.
+On Jan 19, 2014, at 10:45 PM, Weston Andros Adamson <dros@primarydata.com> wrote:
 
+> 'result' is not updated if a match isn't found in the
+> nfs4_discover_server_trunking path.
 > 
 > Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
 > ---
->  nfs4.1/nfs4server.py | 7 +++++++
->  1 file changed, 7 insertions(+)
+> fs/nfs/nfs4client.c | 4 ++--
+> fs/nfs/nfs4state.c  | 2 +-
+> 2 files changed, 3 insertions(+), 3 deletions(-)
 > 
-> diff --git a/nfs4.1/nfs4server.py b/nfs4.1/nfs4server.py
-> index b279292..65fb9af 100755
-> --- a/nfs4.1/nfs4server.py
-> +++ b/nfs4.1/nfs4server.py
-> @@ -1161,6 +1161,13 @@ class NFS4Server(rpc.Server):
->          env.set_cfh(self.root)
->          return encode_status(NFS4_OK)
->  
-> +    def op_secinfo_no_name(self, arg, env):
-> +        check_session(env)
-> +        # xxx add gss support
-> +        secinfo4_list = [ secinfo4(rpc.AUTH_SYS) ]
-> +        res = SECINFO_NO_NAME4res(NFS4_OK, secinfo4_list)
-> +        return encode_status(NFS4_OK, res)
-> +
->      # op_putpubfh SHOULD be the same as op_putrootfh
->      # See draft23, section 18.20.3, line 25005
->      op_putpubfh = op_putrootfh
+> diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+> index 0f9b772..147a752 100644
+> --- a/fs/nfs/nfs4client.c
+> +++ b/fs/nfs/nfs4client.c
+> @@ -465,7 +465,7 @@ static void nfs4_swap_callback_idents(struct nfs_client *keep,
+>  * nfs40_walk_client_list - Find server that recognizes a client ID
+>  *
+>  * @new: nfs_client with client ID to test
+> - * @result: OUT: found nfs_client, or new
+> + * @result: OUT: found nfs_client
+>  * @cred: credential to use for trunking test
+>  *
+>  * Returns zero, a negative errno, or a negative NFS4ERR status.
+> @@ -601,7 +601,7 @@ out_major_mismatch:
+>  * nfs41_walk_client_list - Find nfs_client that matches a client/server owner
+>  *
+>  * @new: nfs_client with client ID to test
+> - * @result: OUT: found nfs_client, or new
+> + * @result: OUT: found nfs_client
+>  * @cred: credential to use for trunking test
+>  *
+>  * Returns zero, a negative errno, or a negative NFS4ERR status.
+> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+> index e5be725..666512e 100644
+> --- a/fs/nfs/nfs4state.c
+> +++ b/fs/nfs/nfs4state.c
+> @@ -328,7 +328,7 @@ out:
+>  * nfs41_discover_server_trunking - Detect server IP address trunking (mv1)
+>  *
+>  * @clp: nfs_client under test
+> - * @result: OUT: found nfs_client, or clp
+> + * @result: OUT: found nfs_client
+>  * @cred: credential to use for trunking test
+>  *
+>  * Returns NFS4_OK, a negative errno, or a negative NFS4ERR status.
 > -- 
 > 1.8.3.4 (Apple Git-47)
 > 
+
