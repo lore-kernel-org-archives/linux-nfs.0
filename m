@@ -1,75 +1,115 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f50.google.com ([209.85.220.50]:33931 "EHLO
-	mail-pa0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752292AbaAFKYh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 6 Jan 2014 05:24:37 -0500
-Received: by mail-pa0-f50.google.com with SMTP id kp14so16616675pab.9
-        for <linux-nfs@vger.kernel.org>; Mon, 06 Jan 2014 02:24:37 -0800 (PST)
-Message-ID: <52CA8460.6030206@gmail.com>
-Date: Mon, 06 Jan 2014 18:24:32 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: [PATCH] SUNRPC: fix memory leak of peer addresses in XPRT
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx.bwstor.com.cn ([211.103.180.228]:36666 "EHLO mx.bwstor.cn"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1750917AbaATKMP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 20 Jan 2014 05:12:15 -0500
+From: shaobingqing <shaobingqing@bwstor.com.cn>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        shaobingqing <shaobingqing@bwstor.com.cn>
+Subject: [PATCH] NFSv4.1: PNFS_BLOCK_NONE_DATA should be handle properly in bl_add_merge_extent?
+Date: Mon, 20 Jan 2014 18:07:28 +0800
+Message-Id: <1390212448-21354-1-git-send-email-shaobingqing@bwstor.com.cn>
+In-Reply-To: <n>
+References: <n>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If creating xprt failed after xs_format_peer_addresses,
-sunrpc must free those memory of peer addresses in xprt.
+In the current code, extents would not delete from the bl_extents list when 
+lseg is removed from layout. Now one extent's lseg is deleted and its type 
+is PNFS_BLOCK_NONE_DATA, while a layoutget request get a extent with the same
+range and its type is PNFS_BLOCK_NONE_DATA. In this situation the function
+bl_add_merge_extent will return -EIO. Furthermore, the READ op which request
+the layout will be execute in band. This perhaps not only degrade performance,
+but also result in data unconsistency. 
 
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+Signed-off-by: shaobingqing <shaobingqing@bwstor.com.cn>
 ---
- net/sunrpc/xprtsock.c | 11 +++++++++--
- 1 file changed, 9 insertions(+), 2 deletions(-)
+ fs/nfs/blocklayout/extents.c |   50 ++++++++++++++++++++++++++++++++++++++++++
+ 1 files changed, 50 insertions(+), 0 deletions(-)
 
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 25dbfa9..11ceba3 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -2725,8 +2725,10 @@ static struct rpc_xprt *xs_setup_local(struct xprt_create *args)
- 		xprt_set_bound(xprt);
- 		xs_format_peer_addresses(xprt, "local", RPCBIND_NETID_LOCAL);
- 		ret = ERR_PTR(xs_local_setup_socket(transport));
--		if (ret)
-+		if (ret) {
-+			xs_free_peer_addresses(xprt);
- 			goto out_err;
-+		}
- 		break;
- 	default:
- 		ret = ERR_PTR(-EAFNOSUPPORT);
-@@ -2738,6 +2740,8 @@ static struct rpc_xprt *xs_setup_local(struct xprt_create *args)
- 
- 	if (try_module_get(THIS_MODULE))
- 		return xprt;
+diff --git a/fs/nfs/blocklayout/extents.c b/fs/nfs/blocklayout/extents.c
+index 9c3e117..7472b38 100644
+--- a/fs/nfs/blocklayout/extents.c
++++ b/fs/nfs/blocklayout/extents.c
+@@ -518,6 +518,34 @@ bl_add_merge_extent(struct pnfs_block_layout *bl,
+ 						__func__);
+ 					bl_put_extent(new);
+ 					return 0;
++				} else if (be->be_state ==
++					PNFS_BLOCK_NONE_DATA) {
++					splice = bl_alloc_extent();
++					if (!splice) {
++						bl_put_extent(new);
++						return -ENOMEM;
++					}
++					memcpy(splice, be,
++					  sizeof(struct pnfs_block_extent));
++					splice->be_f_offset = end;
++					splice->be_length = be->be_f_offset
++						+ be->be_length - end;
++					be->be_length = new->be_f_offset
++						- be->be_f_offset;
++					splice->be_v_offset = 0;
 +
-+	xs_free_peer_addresses(xprt);
- 	ret = ERR_PTR(-EINVAL);
- out_err:
- 	xprt_free(xprt);
-@@ -2816,6 +2820,8 @@ static struct rpc_xprt *xs_setup_udp(struct xprt_create *args)
- 
- 	if (try_module_get(THIS_MODULE))
- 		return xprt;
++					list_add(&new->be_node, &be->be_node);
++					if (be->be_length == 0) {
++						list_del(&be->be_node);
++						bl_put_extent(be);
++					}
++					if (splice->be_length != 0)
++						list_add(&splice->be_node,
++							&new->be_node);
++					else
++						bl_put_extent(splice);
 +
-+	xs_free_peer_addresses(xprt);
- 	ret = ERR_PTR(-EINVAL);
- out_err:
- 	xprt_free(xprt);
-@@ -2893,9 +2899,10 @@ static struct rpc_xprt *xs_setup_tcp(struct xprt_create *args)
- 				xprt->address_strings[RPC_DISPLAY_ADDR],
- 				xprt->address_strings[RPC_DISPLAY_PROTO]);
- 
--
- 	if (try_module_get(THIS_MODULE))
- 		return xprt;
++					return 0;
+ 				} else {
+ 					goto out_err;
+ 				}
+@@ -533,6 +561,13 @@ bl_add_merge_extent(struct pnfs_block_layout *bl,
+ 					dprintk("%s: removing %p\n", __func__, be);
+ 					list_del(&be->be_node);
+ 					bl_put_extent(be);
++			    } else if (be->be_state == PNFS_BLOCK_NONE_DATA) {
++					be->be_length = new->be_f_offset
++						- be->be_f_offset;
++					if (be->be_length == 0) {
++						list_del(&be->be_node);
++						bl_put_extent(be);
++					}
+ 				} else {
+ 					goto out_err;
+ 				}
+@@ -544,6 +579,10 @@ bl_add_merge_extent(struct pnfs_block_layout *bl,
+ 				dprintk("%s: removing %p\n", __func__, be);
+ 				list_del(&be->be_node);
+ 				bl_put_extent(be);
 +
-+	xs_free_peer_addresses(xprt);
- 	ret = ERR_PTR(-EINVAL);
- out_err:
- 	xprt_free(xprt);
++			} else if (be->be_state == PNFS_BLOCK_NONE_DATA) {
++				list_del(&be->be_node);
++				bl_put_extent(be);
+ 			} else {
+ 				goto out_err;
+ 			}
+@@ -557,6 +596,17 @@ bl_add_merge_extent(struct pnfs_block_layout *bl,
+ 				dprintk("%s: removing %p\n", __func__, be);
+ 				list_del(&be->be_node);
+ 				bl_put_extent(be);
++
++			} else if (be->be_state == PNFS_BLOCK_NONE_DATA) {
++				be->be_length -= end - be->be_f_offset;
++				be->be_v_offset += end - be->be_f_offset;
++				be->be_f_offset = end;
++				list_add(&new->be_node, be->be_node.prev);
++				if (be->be_length == 0) {
++					list_del(&be->be_node);
++					bl_put_extent(be);
++				}
++				return 0;
+ 			} else {
+ 				goto out_err;
+ 			}
 -- 
-1.8.4.2
+1.7.4.2
+
