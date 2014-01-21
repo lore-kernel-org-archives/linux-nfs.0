@@ -1,43 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp04.smtpout.orange.fr ([80.12.242.126]:39070 "EHLO
-	smtp.smtpout.orange.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751036AbaAWUMI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Jan 2014 15:12:08 -0500
-Message-ID: <52E17790.4090903@orange.fr>
-Date: Thu, 23 Jan 2014 21:12:00 +0100
-From: Sebastien Godard <sysstat@orange.fr>
+Received: from mail-pb0-f47.google.com ([209.85.160.47]:45797 "EHLO
+	mail-pb0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750935AbaAUNbk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Jan 2014 08:31:40 -0500
 MIME-Version: 1.0
-To: Steve Dickson <SteveD@redhat.com>, NeilBrown <neilb@suse.de>
-CC: Chuck Lever <chuck.lever@oracle.com>, varekova@redhat.com,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: Too many programs called nfsiostat.
-References: <20130410094639.5debfc90@notabene.brown>	<20140121144517.5f549347@notabene.brown>	<A5BFEC5C-7AF2-4A7E-856F-D62F35BCEFC0@oracle.com>	<20140122112436.574f0e29@notabene.brown>	<52DFC3C3.7080506@RedHat.com> <20140123085226.72ebaf85@notabene.brown> <52E15495.3050103@RedHat.com>
-In-Reply-To: <52E15495.3050103@RedHat.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+In-Reply-To: <E1W5C8U-000ozD-Ku@intern.SerNet.DE>
+References: <1389953232-9428-1-git-send-email-piastry@etersoft.ru>
+	<E1W5A0e-000MT9-A1@intern.SerNet.DE>
+	<CAKywueQwfFASPpevO8Z-_xwZqRjkzfkOceQJDya8D7FDW+UmMg@mail.gmail.com>
+	<E1W5C8U-000ozD-Ku@intern.SerNet.DE>
+Date: Tue, 21 Jan 2014 17:31:39 +0400
+Message-ID: <CAKywueQng9=u1YYwkYGCunWW8RBhARhJjEhBcoA6CKF6TrKSBg@mail.gmail.com>
+Subject: Re: [PATCH v7 0/7] Add O_DENY* support for VFS and CIFS/NFS
+From: Pavel Shilovsky <piastry@etersoft.ru>
+To: "Volker.Lendecke@SerNet.DE" <Volker.Lendecke@sernet.de>
+Cc: Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        linux-cifs <linux-cifs@vger.kernel.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
+        wine-devel@winehq.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 01/23/2014 06:42 PM, Steve Dickson wrote:
+2014/1/20 Volker Lendecke <Volker.Lendecke@sernet.de>:
+>> You can try to use O_PATH flag. It doesn't give you a delete access
+>> but should be ok because further deleting will be done without file
+>> descriptor -- through unlink syscall.
 >
-> On 22/01/14 16:52, NeilBrown wrote:
->> On Wed, 22 Jan 2014 08:12:35 -0500 Steve Dickson <SteveD@redhat.com> wrote:
->>
->>>
->>> On 21/01/14 19:24, NeilBrown wrote:
->>> Is this version still actively being maintain? 
->> Last change was 5 days ago.
->>
->> https://github.com/sysstat/sysstat/commits/master/nfsiostat.c
-> I guess the question now is do they want to continue maintaining
-> it or just merge the functionality into the nfs-utils version...
+> Ok, I did not know about O_PATH. Thanks for that!
 >
+> So I do an open with O_PATH. How do I then make sure that
+> nobody else has a O_DENYDELETE set without doing the unlink
+> itself?
 
-This is no longer a question as I already answered it. Please *read* my 
-previous mail.
-
-Regards,
+It's not possible with the current API to do it through open syscall.
+Another possibility is to look at /proc/locks. But I think we really
+need O_DELETE flag that will force a file to be removed on close - we
+will be able to do O_DENYDELETE checks atomically.
 
 -- 
-Sebastien GODARD <sysstat [at] orange.fr>
-http://sebastien.godard.pagesperso-orange.fr/
-
+Best regards,
+Pavel Shilovsky.
