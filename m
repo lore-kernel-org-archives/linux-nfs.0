@@ -1,57 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:53987 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:1823 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755153AbaAVMEe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 22 Jan 2014 07:04:34 -0500
-Date: Wed, 22 Jan 2014 07:04:09 -0500
+	id S1751085AbaAUURs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 21 Jan 2014 15:17:48 -0500
+Date: Tue, 21 Jan 2014 15:17:44 -0500
 From: Jeff Layton <jlayton@redhat.com>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Trond.Myklebust@netapp.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 7/7] nfs: page cache invalidation for dio
-Message-ID: <20140122070409.503db5c2@tlielax.poochiereds.net>
-In-Reply-To: <20140122082414.GA12530@infradead.org>
-References: <20131114165027.355613182@bombadil.infradead.org>
-	<20131114165042.205194841@bombadil.infradead.org>
-	<20131114133551.5d08b5cd@tlielax.poochiereds.net>
-	<20131115142847.GA1107@infradead.org>
-	<20131115095241.2c5e1cfb@tlielax.poochiereds.net>
-	<20131115150204.GA8105@infradead.org>
-	<20131115103324.6a3cf978@tlielax.poochiereds.net>
-	<20140121142159.210ca0b8@tlielax.poochiereds.net>
-	<20140122082414.GA12530@infradead.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/3] SUNRPC: Fix large reads on NFS/RDMA
+Message-ID: <20140121151744.7ab2c696@tlielax.poochiereds.net>
+In-Reply-To: <20140117193816.3452.45059.stgit@manet.1015granger.net>
+References: <20140117193555.3452.31437.stgit@manet.1015granger.net>
+	<20140117193816.3452.45059.stgit@manet.1015granger.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 22 Jan 2014 00:24:14 -0800
-Christoph Hellwig <hch@infradead.org> wrote:
+On Fri, 17 Jan 2014 14:38:16 -0500
+Chuck Lever <chuck.lever@oracle.com> wrote:
 
-> On Tue, Jan 21, 2014 at 02:21:59PM -0500, Jeff Layton wrote:
-> > In any case, this helps but it's a little odd. With this patch, you add
-> > an invalidate_inode_pages2 call prior to doing the DIO. But, you've
-> > also left in the call to nfs_zap_mapping in the completion codepath.
-> > 
-> > So now, we shoot down the mapping prior to doing a DIO write, and then
-> > mark the mapping for invalidation again when the write completes. Was
-> > that intentional?
-> > 
-> > It seems a little excessive and might hurt performance in some cases.
-> > OTOH, if you mix buffered and DIO you're asking for trouble anyway and
-> > this approach seems to give better cache coherency.
+> After commit a11a2bf4, "SUNRPC: Optimise away unnecessary data
+> moves in xdr_align_pages", Thu Aug 2 13:21:43 2012, READs larger
+> than a few hundred bytes via NFS/RDMA stopped working.  This
+> commit exposed a long-standing bug in rpcrdma_inline_fixup().
 > 
-> Thile follows the model implemented and documented in
-> generic_file_direct_write().
+> I reproduce this with an rsize=4096 mount using the cthon04
+> basic tests.  Test 5 fails with an EIO error.
 > 
+> For my reproducer, kernel log shows:
+> 
+>   NFS: server cheating in read reply: count 4096 > recvd 0
+> 
+> rpcrdma_inline_fixup() is zeroing the xdr_stream::page_len
+> field, and xdr_align_pages() is now returning that value to
+> the READ XDR decoder function.
+> 
+> That field is set up by xdr_inline_pages() by the READ XDR
+> encoder function.  As far as I can tell, it is supposed to
+> be left alone after that, as it describes the dimensions of
+> the reply xdr_stream, not the contents of that stream.
+> 
+> Bugzilla: https://bugzilla.kernel.org/show_bug.cgi?id=68391
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> Cc: <stable@vger.kernel.org> # 3.7+
+> ---
+> 
+>  net/sunrpc/xprtrdma/rpc_rdma.c |    4 +---
+>  1 files changed, 1 insertions(+), 3 deletions(-)
+> 
+> diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+> index e03725b..96ead52 100644
+> --- a/net/sunrpc/xprtrdma/rpc_rdma.c
+> +++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+> @@ -649,9 +649,7 @@ rpcrdma_inline_fixup(struct rpc_rqst *rqst, char *srcp, int copy_len, int pad)
+>  				break;
+>  			page_base = 0;
+>  		}
+> -		rqst->rq_rcv_buf.page_len = olen - copy_len;
+> -	} else
+> -		rqst->rq_rcv_buf.page_len = 0;
+> +	}
+>  
+>  	if (copy_len && rqst->rq_rcv_buf.tail[0].iov_len) {
+>  		curlen = copy_len;
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-Ok, thanks. That makes sense, and the problem described in those
-comments is almost exactly the one I've seen in practice.
+Seems to fix the bug for me too...
 
-I'm still not 100% thrilled with the way that the NFS_INO_INVALID_DATA
-flag is handled, but that really has nothing to do with this patchset.
-
-You can add my Tested-by to the set if you like...
-
-Cheers,
--- 
-Jeff Layton <jlayton@redhat.com>
+Tested-by: Jeff Layton <jlayton@redhat.com>
