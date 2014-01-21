@@ -1,102 +1,97 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:48209 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751669AbaAEUV6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 5 Jan 2014 15:21:58 -0500
-Date: Sun, 5 Jan 2014 15:21:57 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org, ssorce@redhat.com, neilb@suse.de
-Subject: Re: [PATCH 2/3] sunrpc: fix potential race between setting
- use_gss_proxy and the upcall rpc_clnt
-Message-ID: <20140105202157.GB22918@fieldses.org>
-References: <1388837885-8312-1-git-send-email-jlayton@redhat.com>
- <1388837885-8312-3-git-send-email-jlayton@redhat.com>
- <20140104091105.4dc2a971@tlielax.poochiereds.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140104091105.4dc2a971@tlielax.poochiereds.net>
+Received: from mail-ie0-f175.google.com ([209.85.223.175]:53563 "EHLO
+	mail-ie0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752684AbaAUUVh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Jan 2014 15:21:37 -0500
+Received: by mail-ie0-f175.google.com with SMTP id ar20so5607045iec.6
+        for <linux-nfs@vger.kernel.org>; Tue, 21 Jan 2014 12:21:36 -0800 (PST)
+From: Weston Andros Adamson <dros@primarydata.com>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
+Subject: [PATCH] pnfs: fix BUG in filelayout_recover_commit_reqs
+Date: Tue, 21 Jan 2014 15:21:33 -0500
+Message-Id: <1390335693-12004-1-git-send-email-dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Jan 04, 2014 at 09:11:05AM -0500, Jeff Layton wrote:
-> On Sat,  4 Jan 2014 07:18:04 -0500
-> Jeff Layton <jlayton@redhat.com> wrote:
-> 
-> > Currently, the write_gssp code will change the variable and wake up any
-> > waiters waiting on that change. It then goes and tries to set the
-> > gssp_clnt. This is racy -- a task waiting on the set_gss_proxy call may
-> > end up waking up and then subsequently finding that the gss_clnt isn't
-> > there yet and end up not using it even though it'll soon be ready.
-> > 
-> > This patch reverses the order of operations. The gssp_clnt is created
-> > first, and the variable change is done only if that succeeds.
-> > 
-> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > ---
-> >  net/sunrpc/auth_gss/svcauth_gss.c | 4 ++--
-> >  1 file changed, 2 insertions(+), 2 deletions(-)
-> > 
-> > diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
-> > index 1b94a9c..60dc370 100644
-> > --- a/net/sunrpc/auth_gss/svcauth_gss.c
-> > +++ b/net/sunrpc/auth_gss/svcauth_gss.c
-> > @@ -1317,10 +1317,10 @@ static ssize_t write_gssp(struct file *file, const char __user *buf,
-> >  		return res;
-> >  	if (i != 1)
-> >  		return -EINVAL;
-> > -	res = set_gss_proxy(net, 1);
-> > +	res = set_gssp_clnt(net);
-> >  	if (res)
-> >  		return res;
-> > -	res = set_gssp_clnt(net);
-> > +	res = set_gss_proxy(net, 1);
-> >  	if (res)
-> >  		return res;
-> >  	return count;
-> 
-> Sorry, I forgot to update the patch description on this one. There is
-> still a race here after patch #1, but it goes something like this:
-> 
-> A nfsd thread will call use_gss_proxy and find it set to '1'. It'll
-> then go and attempt and upcall, but since gssp_clnt is still NULL,
-> gssp_call will just return -EIO.
-> 
-> The patch is still the same however. Bruce, let me know if you want me
-> to resend with a fixed commit msg.
+cond_resched_lock(cinfo->lock) is called everywhere else while holding
+the cinfo->lock spinlock.  Not holding this lock while calling
+transfer_commit_list in filelayout_recover_commit_reqs causes the BUG
+below.
 
-No problem.  Applying as follows.--b.
+It's true that we can't hold this lock while calling pnfs_put_lseg,
+because that might try to lock the inode lock - which might be the
+same lock as cinfo->lock.
 
-commit 32d6805adfc998def6b77ab95f35f63ad07cd043
-Author: Jeff Layton <jlayton@redhat.com>
-Date:   Sat Jan 4 07:18:04 2014 -0500
+To reproduce, mount a 2 DS pynfs server and run an O_DIRECT command
+that crosses a stripe boundary and is not page aligned, such as:
 
-    sunrpc: fix potential race between setting use_gss_proxy and the upcall rpc_clnt
-    
-    An nfsd thread can call use_gss_proxy and find it set to '1' but find
-    gssp_clnt still NULL, so that when it attempts the upcall the result
-    will be an unnecessary -EIO.
-    
-    So, ensure that gssp_clnt is created first, and set the use_gss_proxy
-    variable only if that succeeds.
-    
-    Signed-off-by: Jeff Layton <jlayton@redhat.com>
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+ dd if=/dev/zero of=/mnt/f bs=17000 count=1 oflag=direct
 
-diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
-index 084c87e..a80af65 100644
---- a/net/sunrpc/auth_gss/svcauth_gss.c
-+++ b/net/sunrpc/auth_gss/svcauth_gss.c
-@@ -1317,10 +1317,10 @@ static ssize_t write_gssp(struct file *file, const char __user *buf,
- 		return res;
- 	if (i != 1)
- 		return -EINVAL;
--	res = set_gss_proxy(net, 1);
-+	res = set_gssp_clnt(net);
- 	if (res)
- 		return res;
--	res = set_gssp_clnt(net);
-+	res = set_gss_proxy(net, 1);
- 	if (res)
- 		return res;
- 	return count;
+BUG: sleeping function called from invalid context at linux/fs/nfs/nfs4filelayout.c:1161
+in_atomic(): 0, irqs_disabled(): 0, pid: 27, name: kworker/0:1
+2 locks held by kworker/0:1/27:
+ #0:  (events){.+.+.+}, at: [<ffffffff810501d7>] process_one_work+0x175/0x3a5
+ #1:  ((&dreq->work)){+.+...}, at: [<ffffffff810501d7>] process_one_work+0x175/0x3a5
+CPU: 0 PID: 27 Comm: kworker/0:1 Not tainted 3.13.0-rc3-branch-dros_testing+ #21
+Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform, BIOS 6.00 07/31/2013
+Workqueue: events nfs_direct_write_schedule_work [nfs]
+ 0000000000000000 ffff88007a39bbb8 ffffffff81491256 ffff88007b87a130  ffff88007a39bbd8 ffffffff8105f103 ffff880079614000 ffff880079617d40  ffff88007a39bc20 ffffffffa011603e ffff880078988b98 0000000000000000
+Call Trace:
+ [<ffffffff81491256>] dump_stack+0x4d/0x66
+ [<ffffffff8105f103>] __might_sleep+0x100/0x105
+ [<ffffffffa011603e>] transfer_commit_list+0x94/0xf1 [nfs_layout_nfsv41_files]
+ [<ffffffffa01160d6>] filelayout_recover_commit_reqs+0x3b/0x68 [nfs_layout_nfsv41_files]
+ [<ffffffffa00ba53a>] nfs_direct_write_reschedule+0x9f/0x1d6 [nfs]
+ [<ffffffff810705df>] ? mark_lock+0x1df/0x224
+ [<ffffffff8106e617>] ? trace_hardirqs_off_caller+0x37/0xa4
+ [<ffffffff8106e691>] ? trace_hardirqs_off+0xd/0xf
+ [<ffffffffa00ba8f8>] nfs_direct_write_schedule_work+0x9d/0xb7 [nfs]
+ [<ffffffff810501d7>] ? process_one_work+0x175/0x3a5
+ [<ffffffff81050258>] process_one_work+0x1f6/0x3a5
+ [<ffffffff810501d7>] ? process_one_work+0x175/0x3a5
+ [<ffffffff8105187e>] worker_thread+0x149/0x1f5
+ [<ffffffff81051735>] ? rescuer_thread+0x28d/0x28d
+ [<ffffffff81056d74>] kthread+0xd2/0xda
+ [<ffffffff81056ca2>] ? __kthread_parkme+0x61/0x61
+ [<ffffffff8149e66c>] ret_from_fork+0x7c/0xb0
+ [<ffffffff81056ca2>] ? __kthread_parkme+0x61/0x61
+
+Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+---
+
+I'm pretty sure this is the correct approach - it certainly fixes the BUG
+for me.
+
+ fs/nfs/nfs4filelayout.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
+
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 0a93e79..03fd8be 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -1216,17 +1216,17 @@ static void filelayout_recover_commit_reqs(struct list_head *dst,
+ 	struct pnfs_commit_bucket *b;
+ 	int i;
+ 
+-	/* NOTE cinfo->lock is NOT held, relying on fact that this is
+-	 * only called on single thread per dreq.
+-	 * Can't take the lock because need to do pnfs_put_lseg
+-	 */
++	spin_lock(cinfo->lock);
+ 	for (i = 0, b = cinfo->ds->buckets; i < cinfo->ds->nbuckets; i++, b++) {
+ 		if (transfer_commit_list(&b->written, dst, cinfo, 0)) {
++			spin_unlock(cinfo->lock);
+ 			pnfs_put_lseg(b->wlseg);
+ 			b->wlseg = NULL;
++			spin_lock(cinfo->lock);
+ 		}
+ 	}
+ 	cinfo->ds->nwritten = 0;
++	spin_unlock(cinfo->lock);
+ }
+ 
+ static unsigned int
+-- 
+1.8.3.4 (Apple Git-47)
+
