@@ -1,59 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e8.ny.us.ibm.com ([32.97.182.138]:41430 "EHLO e8.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751147AbaAXRTj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 24 Jan 2014 12:19:39 -0500
-Received: from /spool/local
-	by e8.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
-	Fri, 24 Jan 2014 12:19:39 -0500
-Received: from b01cxnp23033.gho.pok.ibm.com (b01cxnp23033.gho.pok.ibm.com [9.57.198.28])
-	by d01dlp01.pok.ibm.com (Postfix) with ESMTP id 2A9E438C8051
-	for <linux-nfs@vger.kernel.org>; Fri, 24 Jan 2014 12:19:37 -0500 (EST)
-Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
-	by b01cxnp23033.gho.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id s0OHJbMZ9961750
-	for <linux-nfs@vger.kernel.org>; Fri, 24 Jan 2014 17:19:37 GMT
-Received: from d01av01.pok.ibm.com (localhost [127.0.0.1])
-	by d01av01.pok.ibm.com (8.14.4/8.14.4/NCO v10.0 AVout) with ESMTP id s0OHJamY020956
-	for <linux-nfs@vger.kernel.org>; Fri, 24 Jan 2014 12:19:36 -0500
-Received: from malahal (malahal.austin.ibm.com [9.41.105.170])
-	by d01av01.pok.ibm.com (8.14.4/8.14.4/NCO v10.0 AVin) with ESMTP id s0OHJaJq020939
-	for <linux-nfs@vger.kernel.org>; Fri, 24 Jan 2014 12:19:36 -0500
-From: Malahal Naineni <malahal@us.ibm.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfs: handle servers that support only ALLOW ACE type.
-Date: Fri, 24 Jan 2014 11:19:35 -0600
-Message-Id: <1390583975-8914-1-git-send-email-malahal@us.ibm.com>
-In-Reply-To: <EDB5CCCD-0940-46F2-B102-7094AE029170@primarydata.com>
-References: <EDB5CCCD-0940-46F2-B102-7094AE029170@primarydata.com>
+Received: from mail-ig0-f182.google.com ([209.85.213.182]:53022 "EHLO
+	mail-ig0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752257AbaAUPEV convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Jan 2014 10:04:21 -0500
+Received: by mail-ig0-f182.google.com with SMTP id uy17so11048258igb.3
+        for <linux-nfs@vger.kernel.org>; Tue, 21 Jan 2014 07:04:21 -0800 (PST)
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
+Subject: Re: [PATCH 1/2] nfs4: fix discover_server_trunking use after free
+From: Weston Andros Adamson <dros@primarydata.com>
+In-Reply-To: <D87D3ADC-94A0-438D-AADD-4139C70AE3B3@primarydata.com>
+Date: Tue, 21 Jan 2014 10:04:20 -0500
+Cc: linux-nfs list <linux-nfs@vger.kernel.org>
+Message-Id: <2E51C118-9C64-4864-88C8-5586E5DB5A88@primarydata.com>
+References: <1390189537-9666-1-git-send-email-dros@primarydata.com> <D87D3ADC-94A0-438D-AADD-4139C70AE3B3@primarydata.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently we support ACLs if the NFS server file system supports both
-ALLOW and DENY ACE types. This patch makes the Linux client work with
-ACLs even if the server supports only 'ALLOW' ACE type.
+On Jan 20, 2014, at 6:32 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
 
-Signed-off-by: Malahal Naineni <malahal@us.ibm.com>
----
- fs/nfs/nfs4proc.c | 5 ++---
- 1 file changed, 2 insertions(+), 3 deletions(-)
+> 
+> On Jan 19, 2014, at 20:45, Weston Andros Adamson <dros@primarydata.com> wrote:
+> 
+>> If clp is new (cl_count = 1) and it matches another client in
+>> nfs4_discover_server_trunking, the nfs_put_client will free clp before
+>> ->cl_preserve_clid is set.
+>> 
+>> Cc: stable@vger.kernel.org # 3.7+
+>> Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+>> ---
+>> fs/nfs/nfs4client.c | 7 ++++---
+>> 1 file changed, 4 insertions(+), 3 deletions(-)
+>> 
+>> diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+>> index c1b7a80..0f9b772 100644
+>> --- a/fs/nfs/nfs4client.c
+>> +++ b/fs/nfs/nfs4client.c
+>> @@ -414,11 +414,12 @@ struct nfs_client *nfs4_init_client(struct nfs_client *clp,
+>> 	error = nfs4_discover_server_trunking(clp, &old);
+>> 	if (error < 0)
+>> 		goto error;
+>> -	nfs_put_client(clp);
+>> -	if (clp != old) {
+>> +
+>> +	if (clp != old)
+>> 		clp->cl_preserve_clid = true;
+>> +	nfs_put_client(clp);
+>> +	if (clp != old)
+>> 		clp = old;
+>> -	}
+>> 
+> 
+> Applied, but I cleaned it up by replacing the last 2 lines with an equivalent ‘return old’…
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 15052b8..e3b8fa6 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -4321,9 +4321,8 @@ static int nfs4_proc_renew(struct nfs_client *clp, struct rpc_cred *cred)
- 
- static inline int nfs4_server_supports_acls(struct nfs_server *server)
- {
--	return (server->caps & NFS_CAP_ACLS)
--		&& (server->acl_bitmask & ACL4_SUPPORT_ALLOW_ACL)
--		&& (server->acl_bitmask & ACL4_SUPPORT_DENY_ACL);
-+	return server->caps & NFS_CAP_ACLS &&
-+		server->acl_bitmask & ACL4_SUPPORT_ALLOW_ACL;
- }
- 
- /* Assuming that XATTR_SIZE_MAX is a multiple of PAGE_SIZE, and that
--- 
-1.8.3.1
+Cool, I almost posted that, but thought this change was a “cleaner” diff.
+
+-dros
+
+> 
+> --
+> Trond Myklebust
+> Linux NFS client maintainer
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
