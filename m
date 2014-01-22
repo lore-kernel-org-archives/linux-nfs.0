@@ -1,86 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:41282 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751354AbaAQPjr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 17 Jan 2014 10:39:47 -0500
-Date: Fri, 17 Jan 2014 10:39:17 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        Miklos Szeredi <mszeredi@suse.cz>
-Subject: Re: [PATCH] dcache: fix d_splice_alias handling of aliases
-Message-ID: <20140117153917.GA26636@fieldses.org>
-References: <20140115151749.GF23999@fieldses.org>
- <20140117121723.GA18375@infradead.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140117121723.GA18375@infradead.org>
+Received: from mail-yh0-f41.google.com ([209.85.213.41]:47172 "EHLO
+	mail-yh0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755722AbaAVPHh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jan 2014 10:07:37 -0500
+Received: by mail-yh0-f41.google.com with SMTP id i7so167864yha.0
+        for <linux-nfs@vger.kernel.org>; Wed, 22 Jan 2014 07:07:36 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org, nmorey@kalray.eu, rh-bugzilla@ensc.de,
+        m.a.young@durham.ac.uk
+Subject: [PATCH] gssd: set $HOME to prevent recursion when home dirs are on kerberized NFS mount
+Date: Wed, 22 Jan 2014 09:59:15 -0500
+Message-Id: <1390402755-10845-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jan 17, 2014 at 04:17:23AM -0800, Christoph Hellwig wrote:
-> On Wed, Jan 15, 2014 at 10:17:49AM -0500, J. Bruce Fields wrote:
-> > From: "J. Bruce Fields" <bfields@redhat.com>
-> > 
-> > d_splice_alias can create duplicate directory aliases (in the !new
-> > case), or (in the new case) d_move without holding appropriate locks.
-> > 
-> > d_materialise_unique deals with both of these problems.  (The latter
-> > seems to be dealt by trylocks (see __d_unalias), which look like they
-> > could cause spurious lookup failures--but that's at least better than
-> > corrupting the dcache.)
-> 
-> I'm a bit worried about those spurious failures, maybe we should
-> retry in that case?
+Some krb5 routines will attempt to access files in the user's home
+directory. This is problematic for gssd when the user's homedir is
+on a kerberized NFS mount as it will end up deadlocked.
 
-Maybe so.  I'm not sure how.  d_materialise_unique is called from lookup
-and we'd need to at least drop the parent i_mutex to give a concurrent
-rename a chance to progress.
+Fix this by setting $HOME unconditionally to "/".
 
-I think NFS or cluster filesystem clients could hit this case with:
+Fixes this Fedora bug:
 
-	host A		host B
-	---------	-------------------------
-	process 1	process 1	process 2
-	---------	---------	---------
+    https://bugzilla.redhat.com/show_bug.cgi?id=1052902
 
-			mkdir foo/X
-	mv foo/X bar/
-			stat bar/X	mv baz qux
+Reported-by: Enrico Scholz <rh-bugzilla@ensc.de>
+Reported-by: nmorey <nmorey@kalray.eu>
+Tested-by: Michael Young <m.a.young@durham.ac.uk>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ utils/gssd/gssd.c | 13 +++++++++++++
+ 1 file changed, 13 insertions(+)
 
+diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
+index fdad153..611ef1a 100644
+--- a/utils/gssd/gssd.c
++++ b/utils/gssd/gssd.c
+@@ -46,6 +46,7 @@
+ 
+ #include <unistd.h>
+ #include <err.h>
++#include <errno.h>
+ #include <stdio.h>
+ #include <stdlib.h>
+ #include <string.h>
+@@ -161,6 +162,18 @@ main(int argc, char *argv[])
+ 		}
+ 	}
+ 
++	/*
++	 * Some krb5 routines try to scrape info out of files in the user's
++	 * home directory. This can easily deadlock when that homedir is on a
++	 * kerberized NFS mount. By setting $HOME unconditionally to "/", we
++	 * prevent this behavior in routines that use $HOME in preference to
++	 * the results of getpw*.
++	 */
++	if (setenv("HOME", "/", 1)) {
++		printerr(1, "Unable to set $HOME: %s\n", strerror(errno));
++		exit(1);
++	}
++
+ 	i = 0;
+ 	ccachesearch[i++] = strtok(ccachedir, ":");
+ 	do {
+-- 
+1.8.4.2
 
-When (B,1) looks up X in bar it finds that X still has an alias in foo,
-tries to rename that alias to bar/X, but can't because the current
-baz->qux rename is holding the rename mutex.  So __d_unalias and the
-lookup return -EBUSY.
-
-None of those operations are particularly fast, so I'm a bit surprised
-we haven't already heard complaints.  I must be missing some reason this
-doesn't happen.  I guess I should set up a test.
-
-> Also looking over the changes I wonder if the explicit cecking for
-> aliases for every non-directory might have a major performance impact,
-> all the dcache growling already was a major issues in NFS workloads
-> years ago and I dumb it's become any better.
-
-This only happens on the first (uncached) lookup.  So we've already
-acquired a bunch of locks and probably done a round trip to a disk or a
-server--is walking a (typically short) list really something to worry
-about?
-
-> Also looking at this area I'd like to suggest that if you end up
-> merging the two I'd continue using the d_splice_alias name and
-> calling conventions.
-
-OK, I guess I don't care which one we keep.
-
-> Also the inode == NULL case really should be split out from
-> d_materialise_unique into a separate helper.  It shares almost no
-> code, is entirely undocumented to the point that I don't really
-> understand what the purpose is, and the only caller that can get
-> there (fuse) already branches around that case in the caller anyway.
-
-I think I see what you mean, I can fix that.
-
---b.
