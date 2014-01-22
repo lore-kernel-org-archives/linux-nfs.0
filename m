@@ -1,108 +1,98 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:2450 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:11554 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751172AbaABX1u (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 2 Jan 2014 18:27:50 -0500
-Date: Thu, 2 Jan 2014 18:27:46 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org, simo@redhat.com, neilb@suse.de
-Subject: Re: [RFC PATCH 1/5] sunrpc: don't wait for write before allowing
- reads from use-gss-proxy file
-Message-ID: <20140102182746.547964c0@tlielax.poochiereds.net>
-In-Reply-To: <20140102224009.GF28219@fieldses.org>
-References: <1388579314-15255-1-git-send-email-jlayton@redhat.com>
-	<1388579314-15255-2-git-send-email-jlayton@redhat.com>
-	<20140102212149.GC28219@fieldses.org>
-	<20140102172651.559eaa48@tlielax.poochiereds.net>
-	<20140102224009.GF28219@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S932120AbaAVNKx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 22 Jan 2014 08:10:53 -0500
+Message-ID: <52DFC3C3.7080506@RedHat.com>
+Date: Wed, 22 Jan 2014 08:12:35 -0500
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: NeilBrown <neilb@suse.de>, Chuck Lever <chuck.lever@oracle.com>
+CC: varekova@redhat.com, sysstat@orange.fr,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: Too many programs called nfsiostat.
+References: <20130410094639.5debfc90@notabene.brown>	<20140121144517.5f549347@notabene.brown>	<A5BFEC5C-7AF2-4A7E-856F-D62F35BCEFC0@oracle.com> <20140122112436.574f0e29@notabene.brown>
+In-Reply-To: <20140122112436.574f0e29@notabene.brown>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2 Jan 2014 17:40:10 -0500
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-> On Thu, Jan 02, 2014 at 05:26:51PM -0500, Jeff Layton wrote:
-> > On Thu, 2 Jan 2014 16:21:50 -0500
-> > "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > 
-> > > On Wed, Jan 01, 2014 at 07:28:30AM -0500, Jeff Layton wrote:
-> > > > It doesn't make much sense to make reads from this procfile hang. As
-> > > > far as I can tell, only gssproxy itself will open this file and it
-> > > > never reads from it. Change it to just give the present setting of
-> > > > sn->use_gss_proxy without waiting for anything.
-> > > 
-> > > I think my *only* reason for doing this was to give a simple way to wait
-> > > for gss-proxy to start (just wait for a read to return).
-> > > 
-> > 
-> > What wasn't clear to me is what would be doing this read.
-> > 
-> > I'll take it from your comment then that patch #1 is acceptable?
-> 
-> Yes.  Thanks!
-> 
-> > > As long as gss-proxy has some way to say "I'm up and running", and as
-> > > long as that comes after writing to use-gss-proxy, we're fine.
-> > > 
-> > 
-> > I'll let Simo confirm that that's what gssproxy does, but yes that is
-> > the desired behavior. Typically this is done by ensuring that the parent
-> > process when daemon()-izing doesn't exit until everything is ready.
-> > 
-> > If gssproxy does need to be changed for that, we have a library routine
-> > now in nfs-utils that does this that you can likely copy (see
-> > mydaemon()).
-> 
-> From a quick skim: looks like gss-proxy does this in init_server().  So
-> I think it might need something like the below?
-> 
-> (Untested.  I spent a total of maybe five minutes looking at this code
-> so have no idea what I'm doing.)
-> 
-> --b.
-> 
-> diff --git a/proxy/src/gssproxy.c b/proxy/src/gssproxy.c
-> index 1fca922..a7cbd7c 100644
-> --- a/proxy/src/gssproxy.c
-> +++ b/proxy/src/gssproxy.c
-> @@ -97,6 +97,12 @@ int main(int argc, const char *argv[])
->          exit(EXIT_FAILURE);
->      }
->  
-> +    /*
-> +     * special call to tell the Linux kernel gss-proxy is available.
-> +     * Note this must be done before nfsd is started.
-> +     */
-> +    init_proc_nfsd(gpctx->config);
-> +
->      init_server(gpctx->config->daemonize);
->  
->      write_pid();
-> @@ -139,9 +145,6 @@ int main(int argc, const char *argv[])
->          }
->      }
->  
-> -    /* special call to tell the Linux kernel gss-proxy is available */
-> -    init_proc_nfsd(gpctx->config);
-> -
->      ret = gp_workers_init(gpctx);
->      if (ret) {
->          exit(EXIT_FAILURE);
 
-That doesn't look quite right to me. That has it calling init_proc_nfsd
-before any of the unix sockets are set up.
+On 21/01/14 19:24, NeilBrown wrote:
+> On Tue, 21 Jan 2014 10:40:01 -0500 Chuck Lever <chuck.lever@oracle.com> wrote:
+> 
+>>
+>> On Jan 20, 2014, at 10:45 PM, NeilBrown <neilb@suse.de> wrote:
+>>
+>>>
+>>> (This time without the typo in Chuck's address - sorry).
+>>>
+>>> Not quite a year ago I wrote:
+>>>
+>>> On Wed, 10 Apr 2013 09:46:39 +1000 NeilBrown <neilb@suse.de> wrote:
+>>>
+>>>>
+>>>> Hi all,
+>>>> it seems that in 2010, a program called nfsiostat was added to the sysstat
+>>>> package (http://sebastien.godard.pagesperso-orange.fr/)
+>>>>
+>>>> This is unfortunate because in 2008 a program called nfsiostat was added to
+>>>> the nfs-utils package.
+>>>>    (https://www.kernel.org/pub/linux/utils/nfs-utils/1.2.7/)
+>>>>
+>>>> The default install locations seem to be different (/usr/bin vs /usr/sbin),
+>>>> so packagers would not immediately notice.
+>>>>
+>>>> This seems like something that should be "fixed".
+>>>>
+>>>> Any suggestions what a good "fix" should look like?
+>>>>
+>>>> NeilBrown
+>>>
+>>>
+>>> No suggestions were forthcoming.
+>>> So I have a suggestion.
+>>> I propose we rename the "nfsiostat" in the "sysstat" package to
+>>> "nfsio-sysstat" and the "nfsiostat" in "nfs-utils" to
+>>> "nfs-utils-iostat".
+>>>
+>>> Does anyone object?  If not I'll send off patches shortly :-)
+>>
+>> What does the sysstat version do?  do we need two programs, or can they be merged?  Or can one be dropped?
+>>
+> 
+> It reads /proc/self/mountstats and reports some numbers, not unlike the
+> nfs-utils version.
+> 
+> $ /usr/sbin/nfsiostat 
+> 
+> eli:/home mounted on /mnt:
+> 
+>    op/s		rpc bklog
+>    3.55	   0.00
+> read:            ops/s		   kB/s		  kB/op		retrans		avg RTT (ms)	avg exe (ms)
+> 		  0.000	  0.000	  0.000       0 (0.0%)	  0.000	  0.000
+> write:           ops/s		   kB/s		  kB/op		retrans		avg RTT (ms)	avg exe (ms)
+> 		  0.000	  0.000	  0.000       0 (0.0%)	  0.000	  0.000
+> $ /usr/bin/nfsiostat 
+> Linux 3.11.6-4-desktop (notabene.brown) 	01/22/2014 	_x86_64_	(8 CPU)
+> 
+> Filesystem:               rkB_nor/s    wkB_nor/s    rkB_dir/s    wkB_dir/s    rkB_svr/s    wkB_svr/s     ops/s    rops/s    wops/s
+> eli:/home                      0.00         0.00         0.00         0.00         0.00         0.00      0.00      0.00      0.00
+> 
+> 
+> The man page for the sysstat version is:
+> 
+> http://www.makelinux.com/man/1/N/nfsiostat
+Is this version still actively being maintain? 
 
-I think gss-proxy will probably need to do something similar to what
-mydaemon does; set up a pipe, and have the parent just block reading
-from it until the child writes to it. At that point the parent can exit
-and the pipe can be closed in the child.
+steved.
 
-See:
-
-    http://git.linux-nfs.org/?p=steved/nfs-utils.git;a=blob;f=support/nfs/mydaemon.c;h=e885d60f3a808299730a4d62dec49142fdc3ba5f;hb=HEAD
-
--- 
-Jeff Layton <jlayton@redhat.com>
+> 
+> while man page for nfs-utils version is:
+> 
+> http://linux.die.net/man/8/nfsiostat
+> 
+> NeilBrown
+> 
