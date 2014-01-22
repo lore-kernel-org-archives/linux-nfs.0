@@ -1,74 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-bk0-f44.google.com ([209.85.214.44]:59177 "EHLO
-	mail-bk0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753728AbaA0Txi (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Jan 2014 14:53:38 -0500
-Received: by mail-bk0-f44.google.com with SMTP id mz12so3090443bkb.17
-        for <linux-nfs@vger.kernel.org>; Mon, 27 Jan 2014 11:53:36 -0800 (PST)
-From: Jeff Layton <jlayton@redhat.com>
-To: trond.myklebust@primarydata.com
-Cc: chuck.lever@oracle.com, linux-nfs@vger.kernel.org
-Subject: [PATCH v2] sunrpc: turn warn_gssd() log message into a dprintk()
-Date: Mon, 27 Jan 2014 14:53:27 -0500
-Message-Id: <1390852407-20641-1-git-send-email-jlayton@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:62893 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755722AbaAVQXy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 22 Jan 2014 11:23:54 -0500
+Message-ID: <52DFF102.40406@RedHat.com>
+Date: Wed, 22 Jan 2014 11:25:38 -0500
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Jeff Layton <jlayton@redhat.com>
+CC: linux-nfs@vger.kernel.org, nmorey@kalray.eu, rh-bugzilla@ensc.de,
+        m.a.young@durham.ac.uk
+Subject: Re: [PATCH] gssd: set $HOME to prevent recursion when home dirs are
+ on kerberized NFS mount
+References: <1390402755-10845-1-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1390402755-10845-1-git-send-email-jlayton@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The original printk() made sense when the GSSAPI codepaths were called
-only when sec=krb5* was explicitly requested. Now however, in many cases
-the nfs client will try to acquire GSSAPI credentials by default, even
-when it's not requested.
 
-Since we don't have a great mechanism to distinguish between the two
-cases, just turn the pr_warn into a dprintk instead. With this change we
-can also get rid of the ratelimiting.
 
-We do need to keep the EXPORT_SYMBOL(gssd_running) in place since
-auth_gss.ko needs it and sunrpc.ko provides it. We can however,
-eliminate the gssd_running call in the nfs code since that's a bit of a
-layering violation.
+On 22/01/14 09:59, Jeff Layton wrote:
+> Some krb5 routines will attempt to access files in the user's home
+> directory. This is problematic for gssd when the user's homedir is
+> on a kerberized NFS mount as it will end up deadlocked.
+> 
+> Fix this by setting $HOME unconditionally to "/".
+> 
+> Fixes this Fedora bug:
+> 
+>     https://bugzilla.redhat.com/show_bug.cgi?id=1052902
+> 
+> Reported-by: Enrico Scholz <rh-bugzilla@ensc.de>
+> Reported-by: nmorey <nmorey@kalray.eu>
+> Tested-by: Michael Young <m.a.young@durham.ac.uk>
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Committed... 
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfs/nfs4client.c            | 5 +----
- net/sunrpc/auth_gss/auth_gss.c | 8 +-------
- 2 files changed, 2 insertions(+), 11 deletions(-)
+steved.
 
-diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-index 73d4ecd..dbb3e1f 100644
---- a/fs/nfs/nfs4client.c
-+++ b/fs/nfs/nfs4client.c
-@@ -372,10 +372,7 @@ struct nfs_client *nfs4_init_client(struct nfs_client *clp,
- 	__set_bit(NFS_CS_DISCRTRY, &clp->cl_flags);
- 	__set_bit(NFS_CS_NO_RETRANS_TIMEOUT, &clp->cl_flags);
- 
--	error = -EINVAL;
--	if (gssd_running(clp->cl_net))
--		error = nfs_create_rpc_client(clp, timeparms,
--					      RPC_AUTH_GSS_KRB5I);
-+	error = nfs_create_rpc_client(clp, timeparms, RPC_AUTH_GSS_KRB5I);
- 	if (error == -EINVAL)
- 		error = nfs_create_rpc_client(clp, timeparms, RPC_AUTH_UNIX);
- 	if (error < 0)
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index 0a2aee0..6c0513a 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -532,13 +532,7 @@ gss_setup_upcall(struct gss_auth *gss_auth, struct rpc_cred *cred)
- 
- static void warn_gssd(void)
- {
--	static unsigned long ratelimit;
--	unsigned long now = jiffies;
--
--	if (time_after(now, ratelimit)) {
--		pr_warn("RPC: AUTH_GSS upcall failed. Please check user daemon is running.\n");
--		ratelimit = now + 15*HZ;
--	}
-+	dprintk("AUTH_GSS upcall failed. Please check user daemon is running.\n");
- }
- 
- static inline int
--- 
-1.8.5.3
-
+> ---
+>  utils/gssd/gssd.c | 13 +++++++++++++
+>  1 file changed, 13 insertions(+)
+> 
+> diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
+> index fdad153..611ef1a 100644
+> --- a/utils/gssd/gssd.c
+> +++ b/utils/gssd/gssd.c
+> @@ -46,6 +46,7 @@
+>  
+>  #include <unistd.h>
+>  #include <err.h>
+> +#include <errno.h>
+>  #include <stdio.h>
+>  #include <stdlib.h>
+>  #include <string.h>
+> @@ -161,6 +162,18 @@ main(int argc, char *argv[])
+>  		}
+>  	}
+>  
+> +	/*
+> +	 * Some krb5 routines try to scrape info out of files in the user's
+> +	 * home directory. This can easily deadlock when that homedir is on a
+> +	 * kerberized NFS mount. By setting $HOME unconditionally to "/", we
+> +	 * prevent this behavior in routines that use $HOME in preference to
+> +	 * the results of getpw*.
+> +	 */
+> +	if (setenv("HOME", "/", 1)) {
+> +		printerr(1, "Unable to set $HOME: %s\n", strerror(errno));
+> +		exit(1);
+> +	}
+> +
+>  	i = 0;
+>  	ccachesearch[i++] = strtok(ccachedir, ":");
+>  	do {
+> 
