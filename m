@@ -1,44 +1,126 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pb0-f47.google.com ([209.85.160.47]:45797 "EHLO
-	mail-pb0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750935AbaAUNbk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Jan 2014 08:31:40 -0500
-MIME-Version: 1.0
-In-Reply-To: <E1W5C8U-000ozD-Ku@intern.SerNet.DE>
-References: <1389953232-9428-1-git-send-email-piastry@etersoft.ru>
-	<E1W5A0e-000MT9-A1@intern.SerNet.DE>
-	<CAKywueQwfFASPpevO8Z-_xwZqRjkzfkOceQJDya8D7FDW+UmMg@mail.gmail.com>
-	<E1W5C8U-000ozD-Ku@intern.SerNet.DE>
-Date: Tue, 21 Jan 2014 17:31:39 +0400
-Message-ID: <CAKywueQng9=u1YYwkYGCunWW8RBhARhJjEhBcoA6CKF6TrKSBg@mail.gmail.com>
-Subject: Re: [PATCH v7 0/7] Add O_DENY* support for VFS and CIFS/NFS
-From: Pavel Shilovsky <piastry@etersoft.ru>
-To: "Volker.Lendecke@SerNet.DE" <Volker.Lendecke@sernet.de>
-Cc: Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        linux-cifs <linux-cifs@vger.kernel.org>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>,
-        Linux NFS Mailing list <linux-nfs@vger.kernel.org>,
-        wine-devel@winehq.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-pa0-f51.google.com ([209.85.220.51]:50552 "EHLO
+	mail-pa0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755254AbaAVP3O convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jan 2014 10:29:14 -0500
+Received: by mail-pa0-f51.google.com with SMTP id ld10so521674pab.38
+        for <linux-nfs@vger.kernel.org>; Wed, 22 Jan 2014 07:29:13 -0800 (PST)
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
+Subject: Re: [PATCH] pnfs: fix BUG in filelayout_recover_commit_reqs
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+In-Reply-To: <429FC150-5092-415D-A411-1F4A35EAAB58@primarydata.com>
+Date: Wed, 22 Jan 2014 08:29:11 -0700
+Cc: linux-nfs list <linux-nfs@vger.kernel.org>
+Message-Id: <48F6DCEE-41D4-485A-9A77-22448028EABF@primarydata.com>
+References: <1390335693-12004-1-git-send-email-dros@primarydata.com> <429FC150-5092-415D-A411-1F4A35EAAB58@primarydata.com>
+To: Adamson Weston Andros <dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-2014/1/20 Volker Lendecke <Volker.Lendecke@sernet.de>:
->> You can try to use O_PATH flag. It doesn't give you a delete access
->> but should be ok because further deleting will be done without file
->> descriptor -- through unlink syscall.
->
-> Ok, I did not know about O_PATH. Thanks for that!
->
-> So I do an open with O_PATH. How do I then make sure that
-> nobody else has a O_DENYDELETE set without doing the unlink
-> itself?
 
-It's not possible with the current API to do it through open syscall.
-Another possibility is to look at /proc/locks. But I think we really
-need O_DELETE flag that will force a file to be removed on close - we
-will be able to do O_DENYDELETE checks atomically.
+On Jan 22, 2014, at 7:19, Weston Andros Adamson <dros@primarydata.com> wrote:
 
--- 
-Best regards,
-Pavel Shilovsky.
+> This might actually need a CC stable, although I’m not sure of the scope. It seems like it’s been this way for a while.
+> 
+
+I’m assuming that if/when people hit it, they will ping us and ask for a push to stable: I’m just not sure how many people are hitting it at this point.
+
+Cheers
+  Trond
+
+> -dros
+> 
+> On Jan 21, 2014, at 3:21 PM, Weston Andros Adamson <dros@primarydata.com> wrote:
+> 
+>> cond_resched_lock(cinfo->lock) is called everywhere else while holding
+>> the cinfo->lock spinlock.  Not holding this lock while calling
+>> transfer_commit_list in filelayout_recover_commit_reqs causes the BUG
+>> below.
+>> 
+>> It's true that we can't hold this lock while calling pnfs_put_lseg,
+>> because that might try to lock the inode lock - which might be the
+>> same lock as cinfo->lock.
+>> 
+>> To reproduce, mount a 2 DS pynfs server and run an O_DIRECT command
+>> that crosses a stripe boundary and is not page aligned, such as:
+>> 
+>> dd if=/dev/zero of=/mnt/f bs=17000 count=1 oflag=direct
+>> 
+>> BUG: sleeping function called from invalid context at linux/fs/nfs/nfs4filelayout.c:1161
+>> in_atomic(): 0, irqs_disabled(): 0, pid: 27, name: kworker/0:1
+>> 2 locks held by kworker/0:1/27:
+>> #0:  (events){.+.+.+}, at: [<ffffffff810501d7>] process_one_work+0x175/0x3a5
+>> #1:  ((&dreq->work)){+.+...}, at: [<ffffffff810501d7>] process_one_work+0x175/0x3a5
+>> CPU: 0 PID: 27 Comm: kworker/0:1 Not tainted 3.13.0-rc3-branch-dros_testing+ #21
+>> Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform, BIOS 6.00 07/31/2013
+>> Workqueue: events nfs_direct_write_schedule_work [nfs]
+>> 0000000000000000 ffff88007a39bbb8 ffffffff81491256 ffff88007b87a130  ffff88007a39bbd8 ffffffff8105f103 ffff880079614000 ffff880079617d40  ffff88007a39bc20 ffffffffa011603e ffff880078988b98 0000000000000000
+>> Call Trace:
+>> [<ffffffff81491256>] dump_stack+0x4d/0x66
+>> [<ffffffff8105f103>] __might_sleep+0x100/0x105
+>> [<ffffffffa011603e>] transfer_commit_list+0x94/0xf1 [nfs_layout_nfsv41_files]
+>> [<ffffffffa01160d6>] filelayout_recover_commit_reqs+0x3b/0x68 [nfs_layout_nfsv41_files]
+>> [<ffffffffa00ba53a>] nfs_direct_write_reschedule+0x9f/0x1d6 [nfs]
+>> [<ffffffff810705df>] ? mark_lock+0x1df/0x224
+>> [<ffffffff8106e617>] ? trace_hardirqs_off_caller+0x37/0xa4
+>> [<ffffffff8106e691>] ? trace_hardirqs_off+0xd/0xf
+>> [<ffffffffa00ba8f8>] nfs_direct_write_schedule_work+0x9d/0xb7 [nfs]
+>> [<ffffffff810501d7>] ? process_one_work+0x175/0x3a5
+>> [<ffffffff81050258>] process_one_work+0x1f6/0x3a5
+>> [<ffffffff810501d7>] ? process_one_work+0x175/0x3a5
+>> [<ffffffff8105187e>] worker_thread+0x149/0x1f5
+>> [<ffffffff81051735>] ? rescuer_thread+0x28d/0x28d
+>> [<ffffffff81056d74>] kthread+0xd2/0xda
+>> [<ffffffff81056ca2>] ? __kthread_parkme+0x61/0x61
+>> [<ffffffff8149e66c>] ret_from_fork+0x7c/0xb0
+>> [<ffffffff81056ca2>] ? __kthread_parkme+0x61/0x61
+>> 
+>> Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+>> ---
+>> 
+>> I'm pretty sure this is the correct approach - it certainly fixes the BUG
+>> for me.
+>> 
+>> fs/nfs/nfs4filelayout.c | 8 ++++----
+>> 1 file changed, 4 insertions(+), 4 deletions(-)
+>> 
+>> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+>> index 0a93e79..03fd8be 100644
+>> --- a/fs/nfs/nfs4filelayout.c
+>> +++ b/fs/nfs/nfs4filelayout.c
+>> @@ -1216,17 +1216,17 @@ static void filelayout_recover_commit_reqs(struct list_head *dst,
+>> 	struct pnfs_commit_bucket *b;
+>> 	int i;
+>> 
+>> -	/* NOTE cinfo->lock is NOT held, relying on fact that this is
+>> -	 * only called on single thread per dreq.
+>> -	 * Can't take the lock because need to do pnfs_put_lseg
+>> -	 */
+>> +	spin_lock(cinfo->lock);
+>> 	for (i = 0, b = cinfo->ds->buckets; i < cinfo->ds->nbuckets; i++, b++) {
+>> 		if (transfer_commit_list(&b->written, dst, cinfo, 0)) {
+>> +			spin_unlock(cinfo->lock);
+>> 			pnfs_put_lseg(b->wlseg);
+>> 			b->wlseg = NULL;
+>> +			spin_lock(cinfo->lock);
+>> 		}
+>> 	}
+>> 	cinfo->ds->nwritten = 0;
+>> +	spin_unlock(cinfo->lock);
+>> }
+>> 
+>> static unsigned int
+>> -- 
+>> 1.8.3.4 (Apple Git-47)
+>> 
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+
+--
+Trond Myklebust
+Linux NFS client maintainer
+
