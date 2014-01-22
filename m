@@ -1,61 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:38264 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:47619 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752461AbaAZU7Y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 26 Jan 2014 15:59:24 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 3/3] nfsd4: fix delegation-unlink/rename race
-Date: Sun, 26 Jan 2014 15:59:21 -0500
-Message-Id: <1390769961-30898-4-git-send-email-bfields@redhat.com>
-In-Reply-To: <1390769961-30898-1-git-send-email-bfields@redhat.com>
-References: <1390769961-30898-1-git-send-email-bfields@redhat.com>
+	id S1752662AbaAVR0F (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 22 Jan 2014 12:26:05 -0500
+Date: Wed, 22 Jan 2014 12:26:04 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Weston Andros Adamson <dros@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH pynfs] nfs4.1 server: fix typos related to file layout
+Message-ID: <20140122172603.GA12719@fieldses.org>
+References: <1390247179-2617-1-git-send-email-dros@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1390247179-2617-1-git-send-email-dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+Applied, thanks.--b.
 
-If a file is unlinked or renamed between the time when we do the local
-open and the time when we get the delegation, then we will return to the
-client indicating that it holds a delegation even though the file no
-longer exists under the name it was open under.
-
-But a client performing an open-by-name, when it is returned a
-delegation, must be able to assume that the file is still linked at the
-name it was opened under.
-
-So, hold the parent i_mutex for longer to prevent concurrent renames or
-unlinks.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4proc.c |   10 +++++++---
- 1 file changed, 7 insertions(+), 3 deletions(-)
-
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 844813a..ef76ba6 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -279,11 +279,15 @@ do_open_lookup(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate, stru
- 		if (open->op_createmode == NFS4_CREATE_EXCLUSIVE && status == 0)
- 			open->op_bmval[1] = (FATTR4_WORD1_TIME_ACCESS |
- 							FATTR4_WORD1_TIME_MODIFY);
--	} else {
-+	} else
-+		/*
-+		 * Note this may exit with the parent still locked.
-+		 * We will hold the lock until nfsd4_open's final
-+		 * lookup, to prevent renames or unlinks until we've had
-+		 * a chance to an acquire a delegation if appropriate.
-+		 */
- 		status = nfsd_lookup(rqstp, current_fh,
- 				     open->op_fname.data, open->op_fname.len, *resfh);
--		fh_unlock(current_fh);
--	}
- 	if (status)
- 		goto out;
- 	status = nfsd_check_obj_isreg(*resfh);
--- 
-1.7.9.5
-
+On Mon, Jan 20, 2014 at 02:46:19PM -0500, Weston Andros Adamson wrote:
+> Since the new .x it's "FATTR4_FS_LAYOUT_TYPES", not "FATTR4_FS_LAYOUT_TYPE"
+> 
+> Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+> ---
+>  nfs4.1/fs.py | 8 ++++----
+>  1 file changed, 4 insertions(+), 4 deletions(-)
+> 
+> diff --git a/nfs4.1/fs.py b/nfs4.1/fs.py
+> index 0eedb3f..16e9e7c 100644
+> --- a/nfs4.1/fs.py
+> +++ b/nfs4.1/fs.py
+> @@ -353,7 +353,7 @@ class FSObject(object):
+>          NOTE permissions checking on the range has already been done
+>          """
+>          fs = self.fs
+> -        if not fs.fattr4_supported_attrs & (1 << FATTR4_FS_LAYOUT_TYPE):
+> +        if not fs.fattr4_supported_attrs & (1 << FATTR4_FS_LAYOUT_TYPES):
+>              raise NFS4Error(NFS4ERR_LAYOUTUNAVAILABLE)
+>          try:
+>              types = fs.fattr4_fs_layout_type
+> @@ -376,7 +376,7 @@ class FSObject(object):
+>          if arg.loca_reclaim:
+>              # STUB - this is just not supported
+>              raise NFS4Error(NFS4ERR_NO_GRACE)
+> -        if not fs.fattr4_supported_attrs & (1 << FATTR4_FS_LAYOUT_TYPE):
+> +        if not fs.fattr4_supported_attrs & (1 << FATTR4_FS_LAYOUT_TYPES):
+>              raise NFS4Error(NFS4ERR_LAYOUTUNAVAILABLE)
+>          if not self.current_layout:
+>              raise NFS4Error(NFS4ERR_BADLAYOUT, tag="File has no layout")
+> @@ -1280,7 +1280,7 @@ class BlockLayoutFS(FileSystem):
+>          FileSystem.__init__(self, objclass=LayoutFSObj)
+>          self.fsid = (3, fsid)
+>          self.fattr4_fs_layout_type = [LAYOUT4_BLOCK_VOLUME]
+> -        self.fattr4_supported_attrs |= 1 << FATTR4_FS_LAYOUT_TYPE
+> +        self.fattr4_supported_attrs |= 1 << FATTR4_FS_LAYOUT_TYPES
+>          self.fattr4_layout_blksize = 4096
+>          self.fattr4_supported_attrs |= 1 << FATTR4_LAYOUT_BLKSIZE
+>          self.fattr4_maxwrite = 4096
+> @@ -1428,7 +1428,7 @@ class FileLayoutFS(FileSystem):
+>          FileSystem.__init__(self, objclass=FSLayoutFSObj)
+>          self.fsid = (2, fsid)
+>          self.fattr4_fs_layout_type = [LAYOUT4_NFSV4_1_FILES]
+> -        self.fattr4_supported_attrs |= 1 << FATTR4_FS_LAYOUT_TYPE
+> +        self.fattr4_supported_attrs |= 1 << FATTR4_FS_LAYOUT_TYPES
+>          self.fattr4_maxwrite = 8192
+>          self.fattr4_maxread = 8192
+>          self.fattr4_supported_attrs |= 1 << FATTR4_MAXWRITE
+> -- 
+> 1.8.3.4 (Apple Git-47)
+> 
