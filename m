@@ -1,91 +1,118 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:37773 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750797AbaAVXwh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 22 Jan 2014 18:52:37 -0500
-Date: Wed, 22 Jan 2014 18:52:33 -0500
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: shaobingqing <shaobingqing@bwstor.com.cn>,
-        Dr Fields James Bruce <bfields@redhat.com>,
-        "Miller David S." <davem@davemloft.net>,
-        linuxnfs <linux-nfs@vger.kernel.org>, netdev@vger.kernel.org,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-Subject: Re: [PATCH] SUNRPC: Allow one callback request to be received from
- two sk_buff
-Message-ID: <20140122235233.GA17155@fieldses.org>
-References: <1390201154-20815-1-git-send-email-shaobingqing@bwstor.com.cn>
- <1390259843.2501.2.camel@leira.trondhjem.org>
- <CALrKORrZ3Kcuqc1RajQKkZcot0yiswh4VR_WuXHqfRTjn9oGQQ@mail.gmail.com>
- <1BFACA51-087E-4945-851A-FBF0F108604C@primarydata.com>
+Received: from natasha.panasas.com ([209.166.131.148]:44882 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752777AbaAVSxa (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jan 2014 13:53:30 -0500
+Message-ID: <52E013A1.50301@panasas.com>
+Date: Wed, 22 Jan 2014 20:53:21 +0200
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1BFACA51-087E-4945-851A-FBF0F108604C@primarydata.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        NFS list <linux-nfs@vger.kernel.org>
+CC: Stable Tree <stable@vger.kernel.org>
+Subject: Re: [PATCH v3] pnfs: Proper delay for NFS4ERR_RECALLCONFLICT in layout_get_done
+References: <52E00F4E.40804@panasas.com>
+In-Reply-To: <52E00F4E.40804@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jan 21, 2014 at 08:35:36AM -0700, Trond Myklebust wrote:
+On 01/22/2014 08:34 PM, Boaz Harrosh wrote:
 > 
-> On Jan 21, 2014, at 3:08, shaobingqing <shaobingqing@bwstor.com.cn> wrote:
+> An NFS4ERR_RECALLCONFLICT is returned by server from a GET_LAYOUT
+> only when a Server Sent a RECALL do to that GET_LAYOUT, or
+> the RECALL and GET_LAYOUT crossed on the wire.
+> In any way this means we want to wait at most until in-flight IO
+> is finished and the RECALL can be satisfied.
 > 
-> > 2014/1/21 Trond Myklebust <trond.myklebust@primarydata.com>:
-> >> On Mon, 2014-01-20 at 14:59 +0800, shaobingqing wrote:
-> >>> In current code, there only one struct rpc_rqst is prealloced. If one
-> >>> callback request is received from two sk_buff, the xprt_alloc_bc_request
-> >>> would be execute two times with the same transport->xid. The first time
-> >>> xprt_alloc_bc_request will alloc one struct rpc_rqst and the TCP_RCV_COPY_DATA
-> >>> bit of transport->tcp_flags will not be cleared. The second time
-> >>> xprt_alloc_bc_request could not alloc struct rpc_rqst any more and NULL
-> >>> pointer will be returned, then xprt_force_disconnect occur. I think one
-> >>> callback request can be allowed to be received from two sk_buff.
-> >>> 
-> >>> Signed-off-by: shaobingqing <shaobingqing@bwstor.com.cn>
-> >>> ---
-> >>> net/sunrpc/xprtsock.c |   11 +++++++++--
-> >>> 1 files changed, 9 insertions(+), 2 deletions(-)
-> >>> 
-> >>> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-> >>> index ee03d35..606950d 100644
-> >>> --- a/net/sunrpc/xprtsock.c
-> >>> +++ b/net/sunrpc/xprtsock.c
-> >>> @@ -1271,8 +1271,13 @@ static inline int xs_tcp_read_callback(struct rpc_xprt *xprt,
-> >>>      struct sock_xprt *transport =
-> >>>                              container_of(xprt, struct sock_xprt, xprt);
-> >>>      struct rpc_rqst *req;
-> >>> +     static struct rpc_rqst *req_partial;
-> >>> +
-> >>> +     if (req_partial == NULL)
-> >>> +             req = xprt_alloc_bc_request(xprt);
-> >>> +     else if (req_partial->rq_xid == transport->tcp_xid)
-> >>> +             req = req_partial;
-> >> 
-> >> What happens here if req_partial->rq_xid != transport->tcp_xid? AFAICS,
-> >> req will be undefined. Either way, you cannot use a static variable for
-> >> storage here: that isn't re-entrant.
-> > 
-> > Because metadata sever only have one slot for backchannel request,
-> > req_partial->rq_xid == transport->tcp_xid always happens, if the callback
-> > request just being splited in two sk_buffs. But req_partial->rq_xid !=
-> > transport->tcp_xid may also happens in some special cases, such as
-> > retransmission occurs?
+> So a proper wait here is more like 1/10 of a second, not 15 seconds
+> like we have now. In case of a server bug we delay exponentially
+> longer on each retry.
 > 
-> If the server retransmits, then it is broken. The NFSv4.1 protocol does not allow it to retransmit unless the connection breaks.
+> Current code totally craps out performance of very large files on
+> most pnfs-objects layouts, because of how the map changes when the
+> file has grown into the next raid group.
+> 
+> [Stable: This will patch back to 3.9. If there are earlier still
+>  maintained trees, please tell me I'll send a patch]
+> 
+> CC: Stable Tree <stable@vger.kernel.org>
+> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+> ---
+>  fs/nfs/nfs4proc.c | 28 +++++++++++++++++++++++++---
+>  1 file changed, 25 insertions(+), 3 deletions(-)
+> 
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index d53d678..3ba882c 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -7058,7 +7058,7 @@ static void nfs4_layoutget_done(struct rpc_task *task, void *calldata)
+>  	struct nfs4_state *state = NULL;
+>  	unsigned long timeo, giveup;
+>  
+> -	dprintk("--> %s\n", __func__);
+> +	dprintk("--> %s tk_status => %d\n", __func__, -task->tk_status);
+>  
+>  	if (!nfs41_sequence_done(task, &lgp->res.seq_res))
+>  		goto out;
+> @@ -7068,10 +7068,32 @@ static void nfs4_layoutget_done(struct rpc_task *task, void *calldata)
+>  		goto out;
+>  	case -NFS4ERR_LAYOUTTRYLATER:
+>  	case -NFS4ERR_RECALLCONFLICT:
+> +	/* NFS4ERR_RECALLCONFLICT is when conflict with self (must recall
+> +	 * existing layout before getting a new one).
+> +	 * NFS4ERR_LAYOUTTRYLATER is a conflict with another client
+> +	 * (or clients) writing to the same RAID stripe
+> +	 */
+>  		timeo = rpc_get_timeout(task->tk_client);
+>  		giveup = lgp->args.timestamp + timeo;
+> -		if (time_after(giveup, jiffies))
+> -			task->tk_status = -NFS4ERR_DELAY;
+> +		if (time_after(giveup, jiffies)) {
+> +			unsigned long delay;
+> +
+> +			/* Delay for:
+> +			 * - Not less then NFS4_POLL_RETRY_MIN.
+> +			 * - One last time a jiffie before we give up
+> +			 * - exponential backoff (time_now minus start_attempt)
+> +			 */
+> +			delay = max_t(unsigned long, NFS4_POLL_RETRY_MIN,
+> +				    min((giveup - jiffies - 1),
+> +					jiffies - lgp->args.timestamp));
+> +
+> +			dprintk("%s: NFS4ERR_RECALLCONFLICT waiting %lu\n",
+> +				__func__, delay);
 
-shaobingqing, are you actually seeing retransmission?  (If so, are we
-setting up the callback client wrong?)
+Hi Trond. Thanks
 
---b.
+I've produced a bug in exofs to ever get stuck in NFS4ERR_RECALLCONFLICT
+after the first one. And I see good exponential delay:
 
+Jan 21 11:56:46 fc18-buml18 kernel: nfs4_layoutget_done: NFS4ERR_RECALLCONFLICT waiting 149
+Jan 21 11:56:49 fc18-buml18 kernel: nfs4_layoutget_done: NFS4ERR_RECALLCONFLICT waiting 425
+Jan 21 11:56:55 fc18-buml18 kernel: nfs4_layoutget_done: NFS4ERR_RECALLCONFLICT waiting 970
+Jan 21 11:57:06 fc18-buml18 kernel: nfs4_layoutget_done: NFS4ERR_RECALLCONFLICT waiting 2069
+Jan 21 11:57:28 fc18-buml18 kernel: nfs4_layoutget_done: NFS4ERR_RECALLCONFLICT waiting 1713
+ 
+Now I wish the first one would start at 15 but I see a general delay in all operations on my
+setup so for now I blame it on Ganesha and would imagine that nfs4_layoutget_done does not
+usually returns after 149 Jiffis.
+
+Is that what you meant?
+
+BTW: Now I have a new problem that when time_after(giveup, jiffies) expires I get an EIO
+at dd instead of write through MDS. Investigating ... wish me luck
+
+Thanks
+Boaz
+
+> +			rpc_delay(task, delay);
+> +			task->tk_status = 0;
+> +			rpc_restart_call_prepare(task);
+> +			goto out; /* Do not call nfs4_async_handle_error() */
+> +		}
+>  		break;
+>  	case -NFS4ERR_EXPIRED:
+>  	case -NFS4ERR_BAD_STATEID:
 > 
-> > If one callback request is splited in two sk_buffs, xs_tcp_read_callback
-> > will be execute two times. The req_partial should be a static variable,
-> > because  the second execution of xs_tcp_read_callback should use
-> > the rpc_rqst allocated for the first execution, which saves information
-> > copies from the first sk_buff.
-> 
-> No! This is a multi-threaded/process environment which can support multiple connection. It is a bug to use a static variable.
-> 
-> --
-> Trond Myklebust
-> Linux NFS client maintainer
-> 
+
