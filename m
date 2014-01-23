@@ -1,107 +1,97 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:53876 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:39407 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751754AbaAOReH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 15 Jan 2014 12:34:07 -0500
-Message-ID: <1389807296.16290.32.camel@tucsk.piliscsaba.szeredi.hu>
-Subject: Re: [PATCH] dcache: fix d_splice_alias handling of aliases
-From: Miklos Szeredi <mszeredi@suse.cz>
+	id S1751616AbaAWXH0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 23 Jan 2014 18:07:26 -0500
+Date: Thu, 23 Jan 2014 18:07:21 -0500
+From: Jeff Layton <jlayton@redhat.com>
 To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        miklos@szeredi.hu
-Date: Wed, 15 Jan 2014 18:34:56 +0100
-In-Reply-To: <20140115151749.GF23999@fieldses.org>
-References: <20140115151749.GF23999@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Cc: linux-nfs@vger.kernel.org, sandeen@redhat.com
+Subject: Re: [PATCH] nfsd4: decrease nfsd4_encode_fattr stack usage
+Message-ID: <20140123180721.402c4ea7@tlielax.poochiereds.net>
+In-Reply-To: <20140123185304.GA28223@fieldses.org>
+References: <20140109213335.GA21559@fieldses.org>
+	<20140109191934.5a66c3d8@tlielax.poochiereds.net>
+	<20140123185304.GA28223@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2014-01-15 at 10:17 -0500, J. Bruce Fields wrote:
+On Thu, 23 Jan 2014 13:53:05 -0500
+"J. Bruce Fields" <bfields@fieldses.org> wrote:
+
 > From: "J. Bruce Fields" <bfields@redhat.com>
 > 
-> d_splice_alias can create duplicate directory aliases (in the !new
-> case), or (in the new case) d_move without holding appropriate locks.
-
-It can d_move, because the dentry is known to be disconnected, i.e. it
-doesn't have a parent for which we could obtain the lock.
-
-> d_materialise_unique deals with both of these problems.  (The latter
-> seems to be dealt by trylocks (see __d_unalias), which look like they
-> could cause spurious lookup failures--but that's at least better than
-> corrupting the dcache.)
+> A struct svc_fh is 320 bytes on x86_64, it'd be better not to have these
+> on the stack.
+> 
+> kmalloc'ing them probably isn't ideal either, but this is the simplest
+> thing to do.  If it turns out to be a problem in the readdir case then
+> we could add a svc_fh to nfsd4_readdir and pass that in.
 > 
 > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 > ---
->  fs/dcache.c |   25 +------------------------
->  1 file changed, 1 insertion(+), 24 deletions(-)
+>  fs/nfsd/nfs4xdr.c |   16 ++++++++++------
+>  1 file changed, 10 insertions(+), 6 deletions(-)
 > 
-> Only lightly tested....  If this is right, then we can also just ditch
-> d_splice_alias completely, and clean up the various d_find_alias's.
+> On Thu, Jan 09, 2014 at 07:19:34PM -0500, Jeff Layton wrote:
+> > On Thu, 9 Jan 2014 16:33:35 -0500
+> > >     nfsd: fix encode_entryplus_baggage stack usage
+> ...
+> > I think this is probably the best solution...
+> > 
+> > Acked-by: Jeff Layton <jlayton@redhat.com>
 > 
-> I think the only reason we have both d_splice_alias and
-> d_materialise_unique is that the former was written for exportable
-> filesystems and the latter for distributed filesystems.
-> 
-> But we have at least one exportable filesystem (fuse) using
-> d_materialise_unique.  And I doubt d_splice_alias was ever completely
-> correct even for on-disk filesystems.
-> 
-> Am I missing some subtlety?
-
-One subtle difference is that for a non-directory d_splice_alias() will
-reconnect a DCACHE_DISCONNECTED dentry if one exists, while
-d_materialise_unique() will not.
-
-Does this matter in practice?   The small number of extra dentries
-probably does not matter.
-
-Thanks,
-Miklos
-
-
+> Thanks.  While we're at it, here's the v4 case.
 > 
 > --b.
 > 
-> diff --git a/fs/dcache.c b/fs/dcache.c
-> index 4bdb300..da82fa9 100644
-> --- a/fs/dcache.c
-> +++ b/fs/dcache.c
-> @@ -1926,33 +1926,10 @@ EXPORT_SYMBOL(d_obtain_alias);
->   */
->  struct dentry *d_splice_alias(struct inode *inode, struct dentry *dentry)
->  {
-> -	struct dentry *new = NULL;
-> -
->  	if (IS_ERR(inode))
->  		return ERR_CAST(inode);
->  
-> -	if (inode && S_ISDIR(inode->i_mode)) {
-> -		spin_lock(&inode->i_lock);
-> -		new = __d_find_alias(inode, 1);
-> -		if (new) {
-> -			BUG_ON(!(new->d_flags & DCACHE_DISCONNECTED));
-> -			spin_unlock(&inode->i_lock);
-> -			security_d_instantiate(new, inode);
-> -			d_move(new, dentry);
-> -			iput(inode);
-> -		} else {
-> -			/* already taking inode->i_lock, so d_add() by hand */
-> -			__d_instantiate(dentry, inode);
-> -			spin_unlock(&inode->i_lock);
-> -			security_d_instantiate(dentry, inode);
-> -			d_rehash(dentry);
-> -		}
-> -	} else {
-> -		d_instantiate(dentry, inode);
-> -		if (d_unhashed(dentry))
-> -			d_rehash(dentry);
-> -	}
-> -	return new;
-> +	return d_materialise_unique(dentry, inode);
->  }
->  EXPORT_SYMBOL(d_splice_alias);
->  
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index 8198ecf..63f2395 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -2058,7 +2058,7 @@ nfsd4_encode_fattr(struct svc_fh *fhp, struct svc_export *exp,
+>  	u32 bmval1 = bmval[1];
+>  	u32 bmval2 = bmval[2];
+>  	struct kstat stat;
+> -	struct svc_fh tempfh;
+> +	struct svc_fh *tempfh = NULL;
+>  	struct kstatfs statfs;
+>  	int buflen = count << 2;
+>  	__be32 *attrlenp;
+> @@ -2105,11 +2105,15 @@ nfsd4_encode_fattr(struct svc_fh *fhp, struct svc_export *exp,
+>  			goto out_nfserr;
+>  	}
+>  	if ((bmval0 & (FATTR4_WORD0_FILEHANDLE | FATTR4_WORD0_FSID)) && !fhp) {
+> -		fh_init(&tempfh, NFS4_FHSIZE);
+> -		status = fh_compose(&tempfh, exp, dentry, NULL);
+> +		tempfh = kmalloc(sizeof(struct svc_fh), GFP_KERNEL);
+> +		status = nfserr_jukebox;
+> +		if (!tempfh)
+> +			goto out;
+> +		fh_init(tempfh, NFS4_FHSIZE);
+> +		status = fh_compose(tempfh, exp, dentry, NULL);
+>  		if (status)
+>  			goto out;
+> -		fhp = &tempfh;
+> +		fhp = tempfh;
+>  	}
+>  	if (bmval0 & (FATTR4_WORD0_ACL | FATTR4_WORD0_ACLSUPPORT
+>  			| FATTR4_WORD0_SUPPORTED_ATTRS)) {
+> @@ -2495,8 +2499,8 @@ out:
+>  		security_release_secctx(context, contextlen);
+>  #endif /* CONFIG_NFSD_V4_SECURITY_LABEL */
+>  	kfree(acl);
+> -	if (fhp == &tempfh)
+> -		fh_put(&tempfh);
+> +	if (tempfh)
+> +		fh_put(tempfh);
+>  	return status;
+>  out_nfserr:
+>  	status = nfserrno(err);
 
+Ok, different approach here. You're kmalloc'ing it separately instead
+of making it part of the nfsd4_readdir struct. Should be fine though...
 
+Acked-by: Jeff Layton <jlayton@redhat.com>
