@@ -1,85 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f54.google.com ([209.85.220.54]:58699 "EHLO
-	mail-pa0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753497AbaATXR2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Jan 2014 18:17:28 -0500
-Received: by mail-pa0-f54.google.com with SMTP id fa1so7600496pad.13
-        for <linux-nfs@vger.kernel.org>; Mon, 20 Jan 2014 15:17:28 -0800 (PST)
-Message-ID: <1390259843.2501.2.camel@leira.trondhjem.org>
-Subject: Re: [PATCH] SUNRPC: Allow one callback request to be received from
- two sk_buff
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: shaobingqing <shaobingqing@bwstor.com.cn>
-Cc: bfields@redhat.com, davem@davemloft.net, linux-nfs@vger.kernel.org,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org
-Date: Mon, 20 Jan 2014 16:17:23 -0700
-In-Reply-To: <1390201154-20815-1-git-send-email-shaobingqing@bwstor.com.cn>
-References: <n>
-	 <1390201154-20815-1-git-send-email-shaobingqing@bwstor.com.cn>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from smtp04.smtpout.orange.fr ([80.12.242.126]:39070 "EHLO
+	smtp.smtpout.orange.fr" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751036AbaAWUMI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 23 Jan 2014 15:12:08 -0500
+Message-ID: <52E17790.4090903@orange.fr>
+Date: Thu, 23 Jan 2014 21:12:00 +0100
+From: Sebastien Godard <sysstat@orange.fr>
+MIME-Version: 1.0
+To: Steve Dickson <SteveD@redhat.com>, NeilBrown <neilb@suse.de>
+CC: Chuck Lever <chuck.lever@oracle.com>, varekova@redhat.com,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: Too many programs called nfsiostat.
+References: <20130410094639.5debfc90@notabene.brown>	<20140121144517.5f549347@notabene.brown>	<A5BFEC5C-7AF2-4A7E-856F-D62F35BCEFC0@oracle.com>	<20140122112436.574f0e29@notabene.brown>	<52DFC3C3.7080506@RedHat.com> <20140123085226.72ebaf85@notabene.brown> <52E15495.3050103@RedHat.com>
+In-Reply-To: <52E15495.3050103@RedHat.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2014-01-20 at 14:59 +0800, shaobingqing wrote:
-> In current code, there only one struct rpc_rqst is prealloced. If one 
-> callback request is received from two sk_buff, the xprt_alloc_bc_request
-> would be execute two times with the same transport->xid. The first time
-> xprt_alloc_bc_request will alloc one struct rpc_rqst and the TCP_RCV_COPY_DATA
-> bit of transport->tcp_flags will not be cleared. The second time 
-> xprt_alloc_bc_request could not alloc struct rpc_rqst any more and NULL
-> pointer will be returned, then xprt_force_disconnect occur. I think one 
-> callback request can be allowed to be received from two sk_buff.
-> 
-> Signed-off-by: shaobingqing <shaobingqing@bwstor.com.cn>
-> ---
->  net/sunrpc/xprtsock.c |   11 +++++++++--
->  1 files changed, 9 insertions(+), 2 deletions(-)
-> 
-> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-> index ee03d35..606950d 100644
-> --- a/net/sunrpc/xprtsock.c
-> +++ b/net/sunrpc/xprtsock.c
-> @@ -1271,8 +1271,13 @@ static inline int xs_tcp_read_callback(struct rpc_xprt *xprt,
->  	struct sock_xprt *transport =
->  				container_of(xprt, struct sock_xprt, xprt);
->  	struct rpc_rqst *req;
-> +	static struct rpc_rqst *req_partial;
-> +
-> +	if (req_partial == NULL)
-> +		req = xprt_alloc_bc_request(xprt);
-> +	else if (req_partial->rq_xid == transport->tcp_xid)
-> +		req = req_partial;
+On 01/23/2014 06:42 PM, Steve Dickson wrote:
+>
+> On 22/01/14 16:52, NeilBrown wrote:
+>> On Wed, 22 Jan 2014 08:12:35 -0500 Steve Dickson <SteveD@redhat.com> wrote:
+>>
+>>>
+>>> On 21/01/14 19:24, NeilBrown wrote:
+>>> Is this version still actively being maintain? 
+>> Last change was 5 days ago.
+>>
+>> https://github.com/sysstat/sysstat/commits/master/nfsiostat.c
+> I guess the question now is do they want to continue maintaining
+> it or just merge the functionality into the nfs-utils version...
+>
 
-What happens here if req_partial->rq_xid != transport->tcp_xid? AFAICS,
-req will be undefined. Either way, you cannot use a static variable for
-storage here: that isn't re-entrant.
+This is no longer a question as I already answered it. Please *read* my 
+previous mail.
 
-> -	req = xprt_alloc_bc_request(xprt);
->  	if (req == NULL) {
->  		printk(KERN_WARNING "Callback slot table overflowed\n");
->  		xprt_force_disconnect(xprt);
-> @@ -1285,6 +1290,7 @@ static inline int xs_tcp_read_callback(struct rpc_xprt *xprt,
->  
->  	if (!(transport->tcp_flags & TCP_RCV_COPY_DATA)) {
->  		struct svc_serv *bc_serv = xprt->bc_serv;
-> +		req_partial = NULL;
->  
->  		/*
->  		 * Add callback request to callback list.  The callback
-> @@ -1297,7 +1303,8 @@ static inline int xs_tcp_read_callback(struct rpc_xprt *xprt,
->  		list_add(&req->rq_bc_list, &bc_serv->sv_cb_list);
->  		spin_unlock(&bc_serv->sv_cb_lock);
->  		wake_up(&bc_serv->sv_cb_waitq);
-> -	}
-> +	} else
-> +		req_partial = req;
->  
->  	req->rq_private_buf.len = transport->tcp_copied;
->  
-
+Regards,
 
 -- 
-Trond Myklebust
-Linux NFS client maintainer
+Sebastien GODARD <sysstat [at] orange.fr>
+http://sebastien.godard.pagesperso-orange.fr/
 
