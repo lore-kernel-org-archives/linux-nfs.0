@@ -1,136 +1,104 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:58382 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751837AbaAEXas (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 5 Jan 2014 18:30:48 -0500
-Date: Mon, 6 Jan 2014 10:30:36 +1100
-From: NeilBrown <neilb@suse.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org,
-        simo@redhat.com, Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: [RFC PATCH 1/5] sunrpc: don't wait for write before allowing
- reads from use-gss-proxy file
-Message-ID: <20140106103036.1f7ebc5f@notabene.brown>
-In-Reply-To: <20140105225421.GA24059@fieldses.org>
-References: <1388579314-15255-1-git-send-email-jlayton@redhat.com>
-	<1388579314-15255-2-git-send-email-jlayton@redhat.com>
-	<20140102212149.GC28219@fieldses.org>
-	<20140106093744.14fc3670@notabene.brown>
-	<20140105225421.GA24059@fieldses.org>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/pu7R8eBWrwv3jg=SfooE4BU"; protocol="application/pgp-signature"
+Received: from mail-pa0-f50.google.com ([209.85.220.50]:32779 "EHLO
+	mail-pa0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752394AbaAWCXl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 22 Jan 2014 21:23:41 -0500
+MIME-Version: 1.0
+In-Reply-To: <1BFACA51-087E-4945-851A-FBF0F108604C@primarydata.com>
+References: <1390201154-20815-1-git-send-email-shaobingqing@bwstor.com.cn>
+	<1390259843.2501.2.camel@leira.trondhjem.org>
+	<CALrKORrZ3Kcuqc1RajQKkZcot0yiswh4VR_WuXHqfRTjn9oGQQ@mail.gmail.com>
+	<1BFACA51-087E-4945-851A-FBF0F108604C@primarydata.com>
+Date: Thu, 23 Jan 2014 10:23:40 +0800
+Message-ID: <CALrKORpNpvhYvt+N+zH9D-VyY2fmQfm+2CUngv3A+FC5tAv=Lw@mail.gmail.com>
+Subject: Re: [PATCH] SUNRPC: Allow one callback request to be received from
+ two sk_buff
+From: shaobingqing <shaobingqing@bwstor.com.cn>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Dr Fields James Bruce <bfields@redhat.com>,
+        "Miller David S." <davem@davemloft.net>,
+        linuxnfs <linux-nfs@vger.kernel.org>, netdev@vger.kernel.org,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/pu7R8eBWrwv3jg=SfooE4BU
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+2014/1/21 Trond Myklebust <trond.myklebust@primarydata.com>:
+>
+> On Jan 21, 2014, at 3:08, shaobingqing <shaobingqing@bwstor.com.cn> wrote:
+>
+>> 2014/1/21 Trond Myklebust <trond.myklebust@primarydata.com>:
+>>> On Mon, 2014-01-20 at 14:59 +0800, shaobingqing wrote:
+>>>> In current code, there only one struct rpc_rqst is prealloced. If one
+>>>> callback request is received from two sk_buff, the xprt_alloc_bc_request
+>>>> would be execute two times with the same transport->xid. The first time
+>>>> xprt_alloc_bc_request will alloc one struct rpc_rqst and the TCP_RCV_COPY_DATA
+>>>> bit of transport->tcp_flags will not be cleared. The second time
+>>>> xprt_alloc_bc_request could not alloc struct rpc_rqst any more and NULL
+>>>> pointer will be returned, then xprt_force_disconnect occur. I think one
+>>>> callback request can be allowed to be received from two sk_buff.
+>>>>
+>>>> Signed-off-by: shaobingqing <shaobingqing@bwstor.com.cn>
+>>>> ---
+>>>> net/sunrpc/xprtsock.c |   11 +++++++++--
+>>>> 1 files changed, 9 insertions(+), 2 deletions(-)
+>>>>
+>>>> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+>>>> index ee03d35..606950d 100644
+>>>> --- a/net/sunrpc/xprtsock.c
+>>>> +++ b/net/sunrpc/xprtsock.c
+>>>> @@ -1271,8 +1271,13 @@ static inline int xs_tcp_read_callback(struct rpc_xprt *xprt,
+>>>>      struct sock_xprt *transport =
+>>>>                              container_of(xprt, struct sock_xprt, xprt);
+>>>>      struct rpc_rqst *req;
+>>>> +     static struct rpc_rqst *req_partial;
+>>>> +
+>>>> +     if (req_partial == NULL)
+>>>> +             req = xprt_alloc_bc_request(xprt);
+>>>> +     else if (req_partial->rq_xid == transport->tcp_xid)
+>>>> +             req = req_partial;
+>>>
+>>> What happens here if req_partial->rq_xid != transport->tcp_xid? AFAICS,
+>>> req will be undefined. Either way, you cannot use a static variable for
+>>> storage here: that isn't re-entrant.
+>>
+>> Because metadata sever only have one slot for backchannel request,
+>> req_partial->rq_xid == transport->tcp_xid always happens, if the callback
+>> request just being splited in two sk_buffs. But req_partial->rq_xid !=
+>> transport->tcp_xid may also happens in some special cases, such as
+>> retransmission occurs?
+>
+> If the server retransmits, then it is broken. The NFSv4.1 protocol does not allow it to retransmit unless the connection breaks.
 
-On Sun, 5 Jan 2014 17:54:21 -0500 "J. Bruce Fields" <bfields@fieldses.org>
-wrote:
+What I am saying above is bogus. As far as I can see, If one callback
+request is splitted into two sk_buffs, the function
+xs_tcp_read_callback will be called two times with the same rpc_xprt
+and the same xid. If between the two calls there is
+another call with the same rpc_xprt, but different xid, we consider it
+is another callback request from the same server, in
+the condition that there is no retransmission in our enviorenment. But
+this might not happen because there is only one
+callback slot in each server.
 
-> On Mon, Jan 06, 2014 at 09:37:44AM +1100, NeilBrown wrote:
-> > On Thu, 2 Jan 2014 16:21:50 -0500 "J. Bruce Fields" <bfields@fieldses.o=
-rg>
-> > wrote:
-> >=20
-> > > On Wed, Jan 01, 2014 at 07:28:30AM -0500, Jeff Layton wrote:
-> > > > It doesn't make much sense to make reads from this procfile hang. As
-> > > > far as I can tell, only gssproxy itself will open this file and it
-> > > > never reads from it. Change it to just give the present setting of
-> > > > sn->use_gss_proxy without waiting for anything.
-> > >=20
-> > > I think my *only* reason for doing this was to give a simple way to w=
-ait
-> > > for gss-proxy to start (just wait for a read to return).
-> > >=20
-> > > As long as gss-proxy has some way to say "I'm up and running", and as
-> > > long as that comes after writing to use-gss-proxy, we're fine.
-> > >=20
-> >=20
-> >=20
-> > Only tangentially related to the above email .....
-> >=20
-> > I had a look at this new-fangled gssproxy thing and while it mostly see=
-ms
-> > like a good idea, I find the hard-coding of "/var/run/gssproxy.sock" in=
- the
-> > kernel source .... disturbing.
-> > You never know when some user-space might want to change that - maybe to
-> > "/run/gssproxy.sock" (unlikely I know - but possible).
-> >=20
-> > Probably the easiest would be to hand the path to the kernel.
-> >=20
-> > e.g. instead  of writing '1' to "use-gss-proxy", we could=20
-> >   echo /my/path/gss-proxy-sock > /proc/net/rpc/use-gss-proxy
-> >=20
-> > Then you could even use an 'abstract' socket name if you wanted. i.e. o=
-ne
-> > starting with a nul and which doesn't exist anywhere in the filesystem.
-> > I would feel a lot more comfortable with that than with the current
-> > hard-coding.
->=20
-> See also RPCBIND_SOCK_PATHNAME.  (I *think* that's completely hardcoded,
-> not just a default.)
+>
+>> If one callback request is splited in two sk_buffs, xs_tcp_read_callback
+>> will be execute two times. The req_partial should be a static variable,
+>> because  the second execution of xs_tcp_read_callback should use
+>> the rpc_rqst allocated for the first execution, which saves information
+>> copies from the first sk_buff.
+>
+> No! This is a multi-threaded/process environment which can support multiple connection. It is a bug to use a static variable.
 
-Arrgghhh!! (Hi Chuck.  Yes, I agree it is "undesirable in the long term").
+I think I have misunderstood the question. Here a static variable can
+not be used. Perhaps, we should define a variable for each
+rpc_client  (or rpc xprt).
 
->=20
-> I get the general principle.  I have a hard time seeing how it would be
-> a problem in practice.
-
-One day some distro will decide that it is time to get rid of the legacy
-symlink (or bind mount) of /var/run -> /run.  And they will test it out and
-everything will work fine.  So they will commit to it.
-And then when they release it, their customers will discover that NFS doesn=
-'t
-work properly with gss (because the distro forgot to test that).
-
->=20
-> If we wanted to do as you suggest, I suppose we could even special-case
-> the string "1" (at least for a while) to make the change
-> backwards-compatible.
-
-I like the idea.
-
->=20
-> I'd like to see the same argument made for the rpcbind case.
-
-I hereby make said argument.  Hardcoding path names in the kernel is
-Just-Wrong(TM).  Even /sbin/init is configurable.
-
-NeilBrown
-
-
->=20
-> --b.
+>
+> --
+> Trond Myklebust
+> Linux NFS client maintainer
+>
 > --
 > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
 > the body of a message to majordomo@vger.kernel.org
 > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
-
---Sig_/pu7R8eBWrwv3jg=SfooE4BU
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.22 (GNU/Linux)
-
-iQIVAwUBUsnrHDnsnt1WYoG5AQI8Zg/7BdmfXCFZIEbluhc6XZWiOc01qry4gYDK
-N/7ONf/McYJcZSFZ6RY6p6KGyhM3+adt9yBTwyJCC4ojTAWs2m/JM2tODXaGoouF
-Gbp1ZcK/VdJQNlSFt9B282pssCeP/eeYz6+jtnrJUmXTNjYtncqwi05M7/KC65Zq
-lY83vvcGzIQL9qdUzEuMHhFC9ad0EeDBqShXMTrF9rK/seGvvKYBEEwgJk0vHx5G
-BhDafZDNXissrI7zeYvd25zJC2LdvAlcu3dXDic9tMnMe7yFzUUnB1OCRt2SU52f
-QA9TU5LfyYWvkHhhYI6pwLuKPfRyqLhaJZtxpD/mOJbdpJt1/RoFGS5yG1SpcrGf
-e/8o3h1N1ylMGvDJcL0nlQzLB2Cn0ADEOlRVJqGh2sMXj9wHvuzwpzdDbXenTUjo
-f7pFJngXJDsMkvMkzFSWBaudzprdn2Kd4GiQxZaYAFQBRSV1y5sDOxHQCnGAcwLi
-zsuBbjrsUT1aFBV+jPvUK9keEFGunP8BZvwQrpb1/PJcGFpl2C5r92acgQc7D/tx
-W/mlNxyOrE0NYAuAI6Kh05seEvngwfuaPztVmx/m3/zao4boEf53YtaoEJOVuDGI
-Oi/RHEz8rpEJhoeHGcq8/PFNJHdJ171FdlDyR4EfPF12pH/mtY//PlA1rpCK27RH
-xLbXbeTaTRc=
-=sgO7
------END PGP SIGNATURE-----
-
---Sig_/pu7R8eBWrwv3jg=SfooE4BU--
