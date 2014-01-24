@@ -1,72 +1,153 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:59682 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751454AbaAEWyV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 5 Jan 2014 17:54:21 -0500
-Date: Sun, 5 Jan 2014 17:54:21 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: NeilBrown <neilb@suse.de>
-Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org,
-        simo@redhat.com
-Subject: Re: [RFC PATCH 1/5] sunrpc: don't wait for write before allowing
- reads from use-gss-proxy file
-Message-ID: <20140105225421.GA24059@fieldses.org>
-References: <1388579314-15255-1-git-send-email-jlayton@redhat.com>
- <1388579314-15255-2-git-send-email-jlayton@redhat.com>
- <20140102212149.GC28219@fieldses.org>
- <20140106093744.14fc3670@notabene.brown>
+Received: from mail-vc0-f180.google.com ([209.85.220.180]:33886 "EHLO
+	mail-vc0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752127AbaAXTXE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Jan 2014 14:23:04 -0500
+Received: by mail-vc0-f180.google.com with SMTP id ks9so2126936vcb.11
+        for <linux-nfs@vger.kernel.org>; Fri, 24 Jan 2014 11:23:03 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140106093744.14fc3670@notabene.brown>
+In-Reply-To: <20140124130928.5c277bde@tlielax.poochiereds.net>
+References: <CAMFqqRrJPZVz6MPyDH45aQUsL4Jt-5HgMG9PfaLT6nCwdJk8fQ@mail.gmail.com>
+	<CAMFqqRoh52UrGX2CCfuw0ij-7O7OfY_=a_DnHwrGaT+9OqBa+g@mail.gmail.com>
+	<20140124114029.362028c3@tlielax.poochiereds.net>
+	<CAMFqqRrV8R-gOpYHXXbP3DWHNcwmoaV-JMCeMMMQjZqis7jVLw@mail.gmail.com>
+	<20140124130928.5c277bde@tlielax.poochiereds.net>
+Date: Fri, 24 Jan 2014 14:23:02 -0500
+Message-ID: <CAMFqqRo-LUmH3DKXLyXLsusVpj+-EmNDqwDeHmU=dz88_v3rHQ@mail.gmail.com>
+Subject: Re: NFS4: new accounts username = nobody, old accounts fine, reboot fine.
+From: Stephen Cousins <steve.cousins@maine.edu>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jan 06, 2014 at 09:37:44AM +1100, NeilBrown wrote:
-> On Thu, 2 Jan 2014 16:21:50 -0500 "J. Bruce Fields" <bfields@fieldses.org>
-> wrote:
-> 
-> > On Wed, Jan 01, 2014 at 07:28:30AM -0500, Jeff Layton wrote:
-> > > It doesn't make much sense to make reads from this procfile hang. As
-> > > far as I can tell, only gssproxy itself will open this file and it
-> > > never reads from it. Change it to just give the present setting of
-> > > sn->use_gss_proxy without waiting for anything.
-> > 
-> > I think my *only* reason for doing this was to give a simple way to wait
-> > for gss-proxy to start (just wait for a read to return).
-> > 
-> > As long as gss-proxy has some way to say "I'm up and running", and as
-> > long as that comes after writing to use-gss-proxy, we're fine.
-> > 
-> 
-> 
-> Only tangentially related to the above email .....
-> 
-> I had a look at this new-fangled gssproxy thing and while it mostly seems
-> like a good idea, I find the hard-coding of "/var/run/gssproxy.sock" in the
-> kernel source .... disturbing.
-> You never know when some user-space might want to change that - maybe to
-> "/run/gssproxy.sock" (unlikely I know - but possible).
-> 
-> Probably the easiest would be to hand the path to the kernel.
-> 
-> e.g. instead  of writing '1' to "use-gss-proxy", we could 
->   echo /my/path/gss-proxy-sock > /proc/net/rpc/use-gss-proxy
-> 
-> Then you could even use an 'abstract' socket name if you wanted. i.e. one
-> starting with a nul and which doesn't exist anywhere in the filesystem.
-> I would feel a lot more comfortable with that than with the current
-> hard-coding.
+One node (the GPU node) hasn't been used much at all. I had forgotten
+it was even turned on and no users have using it recently. It still
+had listed the users as "nobody" even after those accounts had been
+there for weeks. The Viz machine has constant use but I doubt if any
+stat calls were being made for these users since they weren't really
+even able to login productively to this machine due to bad
+permissions. Maybe there is a program that (file manager) that keeps
+querying the home directory though. Perhaps that would do it. We use
+VNC on that node so maybe GNOME has something that is getting in the
+way. That wouldn't be the case for the GPU node though.
 
-See also RPCBIND_SOCK_PATHNAME.  (I *think* that's completely hardcoded,
-not just a default.)
+For now, I have changed my account creation script to run nfsidmap -c
+on each server after it creates the account and that is working.
 
-I get the general principle.  I have a hard time seeing how it would be
-a problem in practice.
+Best Regards,
 
-If we wanted to do as you suggest, I suppose we could even special-case
-the string "1" (at least for a while) to make the change
-backwards-compatible.
+Steve
 
-I'd like to see the same argument made for the rpcbind case.
+On Fri, Jan 24, 2014 at 1:09 PM, Jeff Layton <jlayton@redhat.com> wrote:
+> On Fri, 24 Jan 2014 12:01:22 -0500
+> Stephen Cousins <steve.cousins@maine.edu> wrote:
+>
+>> On Fri, Jan 24, 2014 at 11:40 AM, Jeff Layton <jlayton@redhat.com> wrote:
+>> > On Fri, 24 Jan 2014 11:02:14 -0500
+>> > Stephen Cousins <steve.cousins@maine.edu> wrote:
+>> >
+>> >> I have the following:
+>> >>
+>> >> File Server: CentOS 6.3 kernel 2.6.32-279.19.1.el6.x86_64
+>> >> Head Node:   CentOS 5.7 kernel 2.6.18-275.12.1.el5.573g0000
+>> >> Backup1:     CentOS 6.5 kernel 2.6.32-431.3.1.el6.x86_64
+>> >> GPU:         CentOS 6.4 kernel 2.6.32-358.6.2.el6.x86_64
+>> >>
+>> >>
+>> >> Booting up all machines after the file server is up works fine. All
+>> >> ID's map fine.
+>> >>
+>> >> When I add a new user I first add them to the File Server and then I
+>> >> do it on the other machines. I get a warning that the home directory
+>> >> has already been created but that is fine. The ID's are consistent
+>> >> across machines.
+>> >>
+>> >> After an account is created (kehuang in this case) all is fine on the Head Node:
+>> >>
+>> >> drwxr-x---   4 kehuang    omg           153 Jan 23 18:54 kehuang
+>> >> drwxr-x---  32 zwenzhou   omg          4096 Jan 23 18:56 zwenzhou
+>> >> drwxr-x---  35 mjohnson   forestry     4096 Jan 24 00:26 mjohnson
+>> >> drwxr-x--- 118 cousins    cousins      8192 Jan 24 10:43 cousins
+>> >>
+>> >>
+>> >> But on Backup1 and GPU I get "nobody" for the new user:
+>> >>
+>> >> drwxr-x---   4 nobody     omg           153 Jan 23 15:54 kehuang
+>> >> drwxr-x---  32 zwenzhou   omg          4096 Jan 23 15:56 zwenzhou
+>> >> drwxr-x---  35 mjohnson   forestry     4096 Jan 23 21:26 mjohnson
+>> >> drwxr-x--- 118 cousins    cousins      8192 Jan 24 07:43 cousins
+>> >>
+>> >> The GID maps fine though, probably because it is not a new group.
+>> >>
+>> >> I have tried restarting rpcidmapd on the nodes but it doesn't help.
+>> >> The only thing I have found that works is a reboot.
+>> >>
+>> >> Has anyone run across this before? Anyone know a solution?  It doesn't
+>> >> seem to be a idmapd.conf issue since it works fine until a new user is
+>> >> added.
+>> >>
+>> >> One odd thing though is that the id maps to 99:nobody instead of
+>> >> 65534:nfsnobody.
+>> >>
+>> >> Here is what idmapd.conf looks like on all machines:
+>> >>
+>> >> [General]
+>> >> Verbosity = 0
+>> >> Domain = localdomain
+>> >>
+>> >> [Mapping]
+>> >> Nobody-User = nfsnobody
+>> >> Nobody-Group = nfsnobody
+>> >>
+>> >> [Translation]
+>> >> Method = nsswitch
+>> >>
+>> >>
+>> >> Thanks for your help.
+>> >>
+>> >> Steve
+>> >
+>> > It's likely that your client nodes tried to do a NFSv4 id to uid
+>> > translation prior to being aware of that account, so you likely have an
+>> > negative lookup in the cache.
+>> >
+>> > The default timeout for client ID mapping is 10 mins and is settable by
+>> > module parm. If you wait that long after you see the entry, does it
+>> > eventually time out?
+>> >
+>> > It's also possible to force the cache to be cleared by having root run
+>> > nfsidmap -c (see the manpage for details).
+>>
+>>
+>> Hi Jeff,
+>>
+>> Thanks. That's the kind of thing I was hoping for but it persists
+>> until a reboot.
+>>
+>> I just tried nfsidmap -c on one of the client machines and it didn't
+>> seem to help at first but then after a while it did.
+>>
+>> Great! Thanks very much. It would be best if it would actually timeout
+>> so this wasn't needed but I'm glad to have a way to repair it when
+>> needed.
+>>
+>
+> It should be timing out after 10 mins after the last use of the entry.
+> So if you keep hammering stat calls that involve that user, it'll keep
+> the entry in cache and it'll never time out. Perhaps there's a case to
+> be made for ensuring that we always redo the upcall after a certain
+> period, but it's not designed that way today.
+>
+> --
+> Jeff Layton <jlayton@redhat.com>
 
---b.
+
+
+-- 
+________________________________________________________________
+ Steve Cousins             Supercomputer Engineer/Administrator
+ Advanced Computing Group            University of Maine System
+ 244 Neville Hall (UMS Data Center)              (207) 561-3574
+ Orono ME 04469                      steve.cousins at maine.edu
