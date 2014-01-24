@@ -1,21 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:55895 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751114AbaAGVFM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 7 Jan 2014 16:05:12 -0500
-Received: from bfields by fieldses.org with local (Exim 4.76)
-	(envelope-from <bfields@fieldses.org>)
-	id 1W0dpo-0004Q5-Cz
-	for linux-nfs@vger.kernel.org; Tue, 07 Jan 2014 16:05:12 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Subject: minor cleanup for 3.14
-Date: Tue,  7 Jan 2014 16:04:30 -0500
-Message-Id: <1389128674-16951-1-git-send-email-bfields@redhat.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:30771 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751939AbaAXVus convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Jan 2014 16:50:48 -0500
+Content-Type: text/plain; charset=US-ASCII
+Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
+Subject: Re: [PATCH 0/3] NFS/RDMA bug fixes
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <CABgxfbEcKbeFMS=yobqp9TeHn4aa-Kjvi_tfbLK2xRbmFtmk9A@mail.gmail.com>
+Date: Fri, 24 Jan 2014 16:50:36 -0500
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <668FFA80-01F6-47EA-9594-3EEC9081BA34@oracle.com>
+References: <20140117193555.3452.31437.stgit@manet.1015granger.net> <CABgxfbFbLKV98GavS0x_X_ZXw0hZXPEQCpfoJJi+uNp133qt2w@mail.gmail.com> <18FE9D9E-F9E8-4E73-9B72-5829F356116A@oracle.com> <CABgxfbEcKbeFMS=yobqp9TeHn4aa-Kjvi_tfbLK2xRbmFtmk9A@mail.gmail.com>
+To: Wendy Cheng <s.wendy.cheng@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-These are just some minor bits of cleanup I'm queueing for 3.14.
 
---b.
+On Jan 24, 2014, at 4:00 PM, Wendy Cheng <s.wendy.cheng@gmail.com> wrote:
+
+> On Fri, Jan 24, 2014 at 10:34 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+> 
+> On Jan 24, 2014, at 1:26 PM, Wendy Cheng <s.wendy.cheng@gmail.com> wrote:
+> 
+> > On Fri, Jan 17, 2014 at 11:37 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+> > This brief series fixes some long-standing regressions in our
+> > NFS/RDMA client implementation.  Comments / review?
+> >
+> > ---
+> >
+> > Chuck Lever (3):
+> >       SUNRPC: remove KERN_INFO from dprintk() call sites
+> >       SUNRPC: Fix large reads on NFS/RDMA
+> >       NFS: Fix READDIR oops with NFSv4 on RDMA
+> >
+> >
+> >  fs/nfs/nfs4xdr.c                |    3 +--
+> >  net/sunrpc/xprtrdma/rpc_rdma.c  |    4 +---
+> >  net/sunrpc/xprtrdma/transport.c |   10 +++++-----
+> >  3 files changed, 7 insertions(+), 10 deletions(-)
+> >
+> >
+> > We have an embedded system that is currently set at NFS V3 with kernel 2.6.38 (as NFS client). Could folks suggest a good kernel version (close to 2.6.38 or RHEL based) to pick up NFS v4 (in order to pick up NFS over RDMA) ?
+> 
+> If NFS/RDMA is working in your kernel, I believe NFSv3 and NFSv4 should both work over RDMA.
+> 
+> 
+> I did have V3 running (with NFS over RDMA). The issue here is how to move it from an experimental project into a release candidate. I think NFS V4 would be a better platform to start with (?) ... So let me re-phrase the question .. 
+> 
+> Regardless RDMA support, will (client side) NFS V4 work well with 2.6.38 kernel? If not, what would be a good version (close to 2.6.38) to go to for a stable NFS V4 client ?
+
+Client support for NFSv4 in recent updates of RHEL6 is stable.
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
 
