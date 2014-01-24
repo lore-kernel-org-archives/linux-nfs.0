@@ -1,70 +1,90 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:20390 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751051AbaAQEMF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 16 Jan 2014 23:12:05 -0500
-Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s0H4C57v025384
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Thu, 16 Jan 2014 23:12:05 -0500
-From: Simo Sorce <simo@redhat.com>
-To: jlayton@redhat.com
-Cc: steved@redhat.com, linux-nfs@vger.kernel.org
-Subject: [PATCH 2/2] Remove unused parameter
-Date: Thu, 16 Jan 2014 23:11:59 -0500
-Message-Id: <1389931919-4801-3-git-send-email-simo@redhat.com>
-In-Reply-To: <1389931919-4801-2-git-send-email-simo@redhat.com>
-References: <20140116204949.1bea663a@corrin.poochiereds.net>
- <1389931919-4801-1-git-send-email-simo@redhat.com>
- <1389931919-4801-2-git-send-email-simo@redhat.com>
+Received: from mail-pd0-f171.google.com ([209.85.192.171]:58303 "EHLO
+	mail-pd0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750769AbaAXRLO convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Jan 2014 12:11:14 -0500
+Received: by mail-pd0-f171.google.com with SMTP id g10so3357425pdj.2
+        for <linux-nfs@vger.kernel.org>; Fri, 24 Jan 2014 09:11:14 -0800 (PST)
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
+Subject: Re: [PATCH 7/7] nfs: page cache invalidation for dio
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+In-Reply-To: <20140124105213.2c40a783@tlielax.poochiereds.net>
+Date: Fri, 24 Jan 2014 10:11:11 -0700
+Cc: Christoph Hellwig <hch@infradead.org>,
+        linuxnfs <linux-nfs@vger.kernel.org>
+Message-Id: <1C06779A-6513-4460-9A12-6AAE7E6BD446@primarydata.com>
+References: <20131114165027.355613182@bombadil.infradead.org> <20131114165042.205194841@bombadil.infradead.org> <20131114133551.5d08b5cd@tlielax.poochiereds.net> <20131115142847.GA1107@infradead.org> <20131115095241.2c5e1cfb@tlielax.poochiereds.net> <20131115150204.GA8105@infradead.org> <20131115103324.6a3cf978@tlielax.poochiereds.net> <20140121142159.210ca0b8@tlielax.poochiereds.net> <20140122082414.GA12530@infradead.org> <20140122070409.503db5c2@tlielax.poochiereds.net> <20140124105213.2c40a783@tlielax.poochiereds.net>
+To: Layton Jeff <jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The name variable is always set to NULL now in all callers, so just
-sto passing it around needlessly.
 
-Signed-off-by: Simo Sorce <simo@redhat.com>
----
- utils/gssd/krb5_util.c |    8 ++++----
- 1 files changed, 4 insertions(+), 4 deletions(-)
+On Jan 24, 2014, at 8:52, Jeff Layton <jlayton@redhat.com> wrote:
 
-diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
-index cb64a52f3c9c6e6fdb90e007172ecd43f8e2f458..8d4b0e3593a0bd25e00d41c7d0e29322f5f55d6e 100644
---- a/utils/gssd/krb5_util.c
-+++ b/utils/gssd/krb5_util.c
-@@ -1359,12 +1359,12 @@ gssd_k5_get_default_realm(char **def_realm)
- }
- 
- static int
--gssd_acquire_krb5_cred(gss_name_t name, gss_cred_id_t *gss_cred)
-+gssd_acquire_krb5_cred(gss_cred_id_t *gss_cred)
- {
- 	OM_uint32 maj_stat, min_stat;
- 	gss_OID_set_desc desired_mechs = { 1, &krb5oid };
- 
--	maj_stat = gss_acquire_cred(&min_stat, name, GSS_C_INDEFINITE,
-+	maj_stat = gss_acquire_cred(&min_stat, GSS_C_NO_NAME, GSS_C_INDEFINITE,
- 				    &desired_mechs, GSS_C_INITIATE,
- 				    gss_cred, NULL, NULL);
- 
-@@ -1384,7 +1384,7 @@ gssd_acquire_user_cred(uid_t uid, gss_cred_id_t *gss_cred)
- 	OM_uint32 maj_stat, min_stat;
- 	int ret;
- 
--	ret = gssd_acquire_krb5_cred(GSS_C_NO_NAME, gss_cred);
-+	ret = gssd_acquire_krb5_cred(gss_cred);
- 
- 	/* force validation of cred to check for expiry */
- 	if (ret == 0) {
-@@ -1423,7 +1423,7 @@ limit_krb5_enctypes(struct rpc_gss_sec *sec)
- 	int err = -1;
- 
- 	if (sec->cred == GSS_C_NO_CREDENTIAL) {
--		err = gssd_acquire_krb5_cred(GSS_C_NO_NAME, &sec->cred);
-+		err = gssd_acquire_krb5_cred(&sec->cred);
- 		if (err)
- 			return -1;
- 	}
--- 
-1.7.1
+> On Wed, 22 Jan 2014 07:04:09 -0500
+> Jeff Layton <jlayton@redhat.com> wrote:
+> 
+>> On Wed, 22 Jan 2014 00:24:14 -0800
+>> Christoph Hellwig <hch@infradead.org> wrote:
+>> 
+>>> On Tue, Jan 21, 2014 at 02:21:59PM -0500, Jeff Layton wrote:
+>>>> In any case, this helps but it's a little odd. With this patch, you add
+>>>> an invalidate_inode_pages2 call prior to doing the DIO. But, you've
+>>>> also left in the call to nfs_zap_mapping in the completion codepath.
+>>>> 
+>>>> So now, we shoot down the mapping prior to doing a DIO write, and then
+>>>> mark the mapping for invalidation again when the write completes. Was
+>>>> that intentional?
+>>>> 
+>>>> It seems a little excessive and might hurt performance in some cases.
+>>>> OTOH, if you mix buffered and DIO you're asking for trouble anyway and
+>>>> this approach seems to give better cache coherency.
+>>> 
+>>> Thile follows the model implemented and documented in
+>>> generic_file_direct_write().
+>>> 
+>> 
+>> Ok, thanks. That makes sense, and the problem described in those
+>> comments is almost exactly the one I've seen in practice.
+>> 
+>> I'm still not 100% thrilled with the way that the NFS_INO_INVALID_DATA
+>> flag is handled, but that really has nothing to do with this patchset.
+>> 
+>> You can add my Tested-by to the set if you like...
+>> 
+> 
+> (re-sending with Trond's address fixed)
+> 
+> I may have spoken too soon...
+> 
+> This patchset didn't fix the problem once I cranked up the concurrency
+> from 100 child tasks to 1000. I think that HCH's patchset makes sense
+> and helps narrow the race window some, but the way that
+> nfs_revalidate_mapping/nfs_invalidate_mapping work is just racy.
+> 
+> The following patch does seem to fix it however. It's a combination of
+> a test patch that Trond gave me a while back and another change to
+> serialize the nfs_invalidate_mapping ops.
+> 
+> I think it's a reasonable approach to deal with the problem, but we
+> likely have some other areas that will need similar treatment since
+> they also check NFS_INO_INVALID_DATA: 
+> 
+>    nfs_write_pageuptodate
+>    nfs_readdir_search_for_cookie
+>    nfs_update_inode
+> 
+> Trond, thoughts? It's not quite ready for merge, but I'd like to get an
+> opinion on the basic approach, or whether you have an idea of how
+> better handle the races here:
+
+I think that it is reasonable for nfs_revalidate_mapping, but I don’t see how it is relevant to nfs_update_inode or nfs_write_pageuptodate.
+Readdir already has its own locking at the VFS level, so we shouldn’t need to care there.
+
+Cheers
+  Trond
+--
+Trond Myklebust
+Linux NFS client maintainer
 
