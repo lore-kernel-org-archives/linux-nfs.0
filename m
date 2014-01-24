@@ -1,77 +1,123 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:62893 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:37123 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755722AbaAVQXy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 22 Jan 2014 11:23:54 -0500
-Message-ID: <52DFF102.40406@RedHat.com>
-Date: Wed, 22 Jan 2014 11:25:38 -0500
-From: Steve Dickson <SteveD@redhat.com>
+	id S1752006AbaAXSJj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 24 Jan 2014 13:09:39 -0500
+Date: Fri, 24 Jan 2014 13:09:28 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Stephen Cousins <steve.cousins@maine.edu>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: NFS4: new accounts username = nobody, old accounts fine, reboot
+ fine.
+Message-ID: <20140124130928.5c277bde@tlielax.poochiereds.net>
+In-Reply-To: <CAMFqqRrV8R-gOpYHXXbP3DWHNcwmoaV-JMCeMMMQjZqis7jVLw@mail.gmail.com>
+References: <CAMFqqRrJPZVz6MPyDH45aQUsL4Jt-5HgMG9PfaLT6nCwdJk8fQ@mail.gmail.com>
+	<CAMFqqRoh52UrGX2CCfuw0ij-7O7OfY_=a_DnHwrGaT+9OqBa+g@mail.gmail.com>
+	<20140124114029.362028c3@tlielax.poochiereds.net>
+	<CAMFqqRrV8R-gOpYHXXbP3DWHNcwmoaV-JMCeMMMQjZqis7jVLw@mail.gmail.com>
 MIME-Version: 1.0
-To: Jeff Layton <jlayton@redhat.com>
-CC: linux-nfs@vger.kernel.org, nmorey@kalray.eu, rh-bugzilla@ensc.de,
-        m.a.young@durham.ac.uk
-Subject: Re: [PATCH] gssd: set $HOME to prevent recursion when home dirs are
- on kerberized NFS mount
-References: <1390402755-10845-1-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1390402755-10845-1-git-send-email-jlayton@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Fri, 24 Jan 2014 12:01:22 -0500
+Stephen Cousins <steve.cousins@maine.edu> wrote:
 
+> On Fri, Jan 24, 2014 at 11:40 AM, Jeff Layton <jlayton@redhat.com> wrote:
+> > On Fri, 24 Jan 2014 11:02:14 -0500
+> > Stephen Cousins <steve.cousins@maine.edu> wrote:
+> >
+> >> I have the following:
+> >>
+> >> File Server: CentOS 6.3 kernel 2.6.32-279.19.1.el6.x86_64
+> >> Head Node:   CentOS 5.7 kernel 2.6.18-275.12.1.el5.573g0000
+> >> Backup1:     CentOS 6.5 kernel 2.6.32-431.3.1.el6.x86_64
+> >> GPU:         CentOS 6.4 kernel 2.6.32-358.6.2.el6.x86_64
+> >>
+> >>
+> >> Booting up all machines after the file server is up works fine. All
+> >> ID's map fine.
+> >>
+> >> When I add a new user I first add them to the File Server and then I
+> >> do it on the other machines. I get a warning that the home directory
+> >> has already been created but that is fine. The ID's are consistent
+> >> across machines.
+> >>
+> >> After an account is created (kehuang in this case) all is fine on the Head Node:
+> >>
+> >> drwxr-x---   4 kehuang    omg           153 Jan 23 18:54 kehuang
+> >> drwxr-x---  32 zwenzhou   omg          4096 Jan 23 18:56 zwenzhou
+> >> drwxr-x---  35 mjohnson   forestry     4096 Jan 24 00:26 mjohnson
+> >> drwxr-x--- 118 cousins    cousins      8192 Jan 24 10:43 cousins
+> >>
+> >>
+> >> But on Backup1 and GPU I get "nobody" for the new user:
+> >>
+> >> drwxr-x---   4 nobody     omg           153 Jan 23 15:54 kehuang
+> >> drwxr-x---  32 zwenzhou   omg          4096 Jan 23 15:56 zwenzhou
+> >> drwxr-x---  35 mjohnson   forestry     4096 Jan 23 21:26 mjohnson
+> >> drwxr-x--- 118 cousins    cousins      8192 Jan 24 07:43 cousins
+> >>
+> >> The GID maps fine though, probably because it is not a new group.
+> >>
+> >> I have tried restarting rpcidmapd on the nodes but it doesn't help.
+> >> The only thing I have found that works is a reboot.
+> >>
+> >> Has anyone run across this before? Anyone know a solution?  It doesn't
+> >> seem to be a idmapd.conf issue since it works fine until a new user is
+> >> added.
+> >>
+> >> One odd thing though is that the id maps to 99:nobody instead of
+> >> 65534:nfsnobody.
+> >>
+> >> Here is what idmapd.conf looks like on all machines:
+> >>
+> >> [General]
+> >> Verbosity = 0
+> >> Domain = localdomain
+> >>
+> >> [Mapping]
+> >> Nobody-User = nfsnobody
+> >> Nobody-Group = nfsnobody
+> >>
+> >> [Translation]
+> >> Method = nsswitch
+> >>
+> >>
+> >> Thanks for your help.
+> >>
+> >> Steve
+> >
+> > It's likely that your client nodes tried to do a NFSv4 id to uid
+> > translation prior to being aware of that account, so you likely have an
+> > negative lookup in the cache.
+> >
+> > The default timeout for client ID mapping is 10 mins and is settable by
+> > module parm. If you wait that long after you see the entry, does it
+> > eventually time out?
+> >
+> > It's also possible to force the cache to be cleared by having root run
+> > nfsidmap -c (see the manpage for details).
+> 
+> 
+> Hi Jeff,
+> 
+> Thanks. That's the kind of thing I was hoping for but it persists
+> until a reboot.
+> 
+> I just tried nfsidmap -c on one of the client machines and it didn't
+> seem to help at first but then after a while it did.
+> 
+> Great! Thanks very much. It would be best if it would actually timeout
+> so this wasn't needed but I'm glad to have a way to repair it when
+> needed.
+> 
 
-On 22/01/14 09:59, Jeff Layton wrote:
-> Some krb5 routines will attempt to access files in the user's home
-> directory. This is problematic for gssd when the user's homedir is
-> on a kerberized NFS mount as it will end up deadlocked.
-> 
-> Fix this by setting $HOME unconditionally to "/".
-> 
-> Fixes this Fedora bug:
-> 
->     https://bugzilla.redhat.com/show_bug.cgi?id=1052902
-> 
-> Reported-by: Enrico Scholz <rh-bugzilla@ensc.de>
-> Reported-by: nmorey <nmorey@kalray.eu>
-> Tested-by: Michael Young <m.a.young@durham.ac.uk>
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-Committed... 
+It should be timing out after 10 mins after the last use of the entry.
+So if you keep hammering stat calls that involve that user, it'll keep
+the entry in cache and it'll never time out. Perhaps there's a case to
+be made for ensuring that we always redo the upcall after a certain
+period, but it's not designed that way today.
 
-steved.
-
-> ---
->  utils/gssd/gssd.c | 13 +++++++++++++
->  1 file changed, 13 insertions(+)
-> 
-> diff --git a/utils/gssd/gssd.c b/utils/gssd/gssd.c
-> index fdad153..611ef1a 100644
-> --- a/utils/gssd/gssd.c
-> +++ b/utils/gssd/gssd.c
-> @@ -46,6 +46,7 @@
->  
->  #include <unistd.h>
->  #include <err.h>
-> +#include <errno.h>
->  #include <stdio.h>
->  #include <stdlib.h>
->  #include <string.h>
-> @@ -161,6 +162,18 @@ main(int argc, char *argv[])
->  		}
->  	}
->  
-> +	/*
-> +	 * Some krb5 routines try to scrape info out of files in the user's
-> +	 * home directory. This can easily deadlock when that homedir is on a
-> +	 * kerberized NFS mount. By setting $HOME unconditionally to "/", we
-> +	 * prevent this behavior in routines that use $HOME in preference to
-> +	 * the results of getpw*.
-> +	 */
-> +	if (setenv("HOME", "/", 1)) {
-> +		printerr(1, "Unable to set $HOME: %s\n", strerror(errno));
-> +		exit(1);
-> +	}
-> +
->  	i = 0;
->  	ccachesearch[i++] = strtok(ccachedir, ":");
->  	do {
-> 
+-- 
+Jeff Layton <jlayton@redhat.com>
