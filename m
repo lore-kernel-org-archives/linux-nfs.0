@@ -1,63 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f53.google.com ([209.85.220.53]:48265 "EHLO
-	mail-pa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750997AbaAXRCq convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Jan 2014 12:02:46 -0500
-Received: by mail-pa0-f53.google.com with SMTP id lj1so3481641pab.12
-        for <linux-nfs@vger.kernel.org>; Fri, 24 Jan 2014 09:02:40 -0800 (PST)
+Received: from fieldses.org ([174.143.236.118]:45107 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752135AbaAXT2b (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 24 Jan 2014 14:28:31 -0500
+Date: Fri, 24 Jan 2014 14:28:31 -0500
+To: Robert Schiele <rschiele@gmail.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] use NFS4_MAXMINOR instead of hard coded number
+Message-ID: <20140124192830.GA16164@fieldses.org>
+References: <20140124063202.GA23937@ulegcprs1.emea.nsn-net.net>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
-Subject: Re: [PATCH v2] nfs: don't attempt auth methods that require upcall unless we know that gssd is running
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-In-Reply-To: <1390567564-19241-1-git-send-email-jlayton@redhat.com>
-Date: Fri, 24 Jan 2014 10:02:38 -0700
-Cc: Weston Andros Adamson <dros@netapp.com>,
-        linuxnfs <linux-nfs@vger.kernel.org>
-Message-Id: <3A1E80DF-2F73-4A74-AE2C-E121DC7BEAD2@primarydata.com>
-References: <1390567564-19241-1-git-send-email-jlayton@redhat.com>
-To: Layton Jeff <jlayton@redhat.com>
+In-Reply-To: <20140124063202.GA23937@ulegcprs1.emea.nsn-net.net>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Fri, Jan 24, 2014 at 07:32:02AM +0100, Robert Schiele wrote:
+> In utils/nfsd/nfsd.c we used hard coded number 2 in option parsing
+> when referring to NFS4_MAXMINOR.  We should use the defined constant
+> instead to honor changes to that constant.
 
-On Jan 24, 2014, at 5:46, Jeff Layton <jlayton@redhat.com> wrote:
+While we're at it, is there any harm to letting NFS4_MAXMINOR be much
+higher?  That would save the need to rebuild nfs-utils just because you
+want to test a kernel with new minor version support.
 
-> Currently, if the server lists krb5 as an allowed auth method, but gssd isn't
-> running, you'll get the infamous "AUTH_GSS upcall failed" message, even if
-> you didn't request sec=krb5.
+It's using an int (should that be an unsigned int?), so we could make
+this sizeof(int).
+
+--b.
+
 > 
-> This is because nfs4_find_root_sec() establishes a default list of auth
-> methods to try when the admin didn't supply one, and that list contains
-> AUTH_GSS methods first. Skip those methods if gssd isn't running since
-> they won't succeed anyway.
-> 
-> Cc: Weston Andros Adamson <dros@netapp.com>
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> Signed-off-by: Robert Schiele <rschiele@gmail.com>
 > ---
-> fs/nfs/nfs4proc.c | 8 ++++++++
-> 1 file changed, 8 insertions(+)
 > 
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 15052b8..937a05a 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -2900,6 +2900,14 @@ static int nfs4_find_root_sec(struct nfs_server *server, struct nfs_fh *fhandle,
-> 	} else {
-> 		/* no flavors specified by user, try default list */
-> 		for (i = 0; i < ARRAY_SIZE(flav_array); i++) {
-> +			/*
-> +			 * Don't attempt to upcall with the default list
-> +			 * unless we know that gssd is running.
-> +			 */
-> +			if (flav_array[i] > RPC_AUTH_MAXFLAVOR &&
-> +			    !gssd_running(server->nfs_client->cl_net))
-> +				continue;
-
-Big effing NACK.
-
-This is exactly the kind of layering violation creep whereby the NFS layer ends up tracking more and more of the implementation details in the RPC authentication which made me hesitant about allowing gssd_running to be exported in the first place.
-
---
-Trond Myklebust
-Linux NFS client maintainer
-
+> This is obviously a rather trivial patch but the hard coded number
+> hit me when trying to support various kernels with different support
+> levels.
+> 
+>  utils/nfsd/nfsd.c | 4 ++--
+>  1 file changed, 2 insertions(+), 2 deletions(-)
+> 
+> diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
+> index a9d77ab..c129ee5 100644
+> --- a/utils/nfsd/nfsd.c
+> +++ b/utils/nfsd/nfsd.c
+> @@ -160,7 +160,7 @@ main(int argc, char **argv)
+>  			case 4:
+>  				if (*p == '.') {
+>  					int i = atoi(p+1);
+> -					if (i > 2) {
+> +					if (i > NFS4_MAXMINOR) {
+>  						fprintf(stderr, "%s: unsupported minor version\n", optarg);
+>  						exit(1);
+>  					}
+> @@ -181,7 +181,7 @@ main(int argc, char **argv)
+>  			case 4:
+>  				if (*p == '.') {
+>  					int i = atoi(p+1);
+> -					if (i > 2) {
+> +					if (i > NFS4_MAXMINOR) {
+>  						fprintf(stderr, "%s: unsupported minor version\n", optarg);
+>  						exit(1);
+>  					}
+> -- 
+> 1.8.4
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
