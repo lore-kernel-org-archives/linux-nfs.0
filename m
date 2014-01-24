@@ -1,98 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:11554 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932120AbaAVNKx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 22 Jan 2014 08:10:53 -0500
-Message-ID: <52DFC3C3.7080506@RedHat.com>
-Date: Wed, 22 Jan 2014 08:12:35 -0500
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: NeilBrown <neilb@suse.de>, Chuck Lever <chuck.lever@oracle.com>
-CC: varekova@redhat.com, sysstat@orange.fr,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: Too many programs called nfsiostat.
-References: <20130410094639.5debfc90@notabene.brown>	<20140121144517.5f549347@notabene.brown>	<A5BFEC5C-7AF2-4A7E-856F-D62F35BCEFC0@oracle.com> <20140122112436.574f0e29@notabene.brown>
-In-Reply-To: <20140122112436.574f0e29@notabene.brown>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-pb0-f43.google.com ([209.85.160.43]:33931 "EHLO
+	mail-pb0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751433AbaAXQLs convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Jan 2014 11:11:48 -0500
+Received: by mail-pb0-f43.google.com with SMTP id md12so3399325pbc.16
+        for <linux-nfs@vger.kernel.org>; Fri, 24 Jan 2014 08:11:47 -0800 (PST)
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
+Subject: Re: [PATCH] nfs: handle servers that support either ALLOW or DENY ACE types.
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+In-Reply-To: <20140124142851.GA13421@us.ibm.com>
+Date: Fri, 24 Jan 2014 09:11:43 -0700
+Cc: linuxnfs <linux-nfs@vger.kernel.org>
+Message-Id: <EDB5CCCD-0940-46F2-B102-7094AE029170@primarydata.com>
+References: <1390535453-15585-1-git-send-email-malahal@us.ibm.com> <979899AD-3AD6-4D89-B53F-1E30D4AB078B@primarydata.com> <20140124142851.GA13421@us.ibm.com>
+To: Malahal Naineni <malahal@us.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
+On Jan 24, 2014, at 7:28, Malahal Naineni <malahal@us.ibm.com> wrote:
 
-On 21/01/14 19:24, NeilBrown wrote:
-> On Tue, 21 Jan 2014 10:40:01 -0500 Chuck Lever <chuck.lever@oracle.com> wrote:
+> Trond Myklebust [trond.myklebust@primarydata.com] wrote:
+>> 
+>> On Jan 23, 2014, at 20:50, Malahal Naineni <malahal@us.ibm.com> wrote:
+>> 
+>>> Currently we support ACLs if the NFS server file system supports
+>>> ALLOW and DENY ACE types. This patch makes the Linux client work with
+>>> ACLs if the server supports either ALLOW or DENY ACE types.
+>> 
+>> According to RFC5661, the behaviour if you don’t have ALLOW aces is to deny all access. How does it make sense to accept that?
 > 
->>
->> On Jan 20, 2014, at 10:45 PM, NeilBrown <neilb@suse.de> wrote:
->>
->>>
->>> (This time without the typo in Chuck's address - sorry).
->>>
->>> Not quite a year ago I wrote:
->>>
->>> On Wed, 10 Apr 2013 09:46:39 +1000 NeilBrown <neilb@suse.de> wrote:
->>>
->>>>
->>>> Hi all,
->>>> it seems that in 2010, a program called nfsiostat was added to the sysstat
->>>> package (http://sebastien.godard.pagesperso-orange.fr/)
->>>>
->>>> This is unfortunate because in 2008 a program called nfsiostat was added to
->>>> the nfs-utils package.
->>>>    (https://www.kernel.org/pub/linux/utils/nfs-utils/1.2.7/)
->>>>
->>>> The default install locations seem to be different (/usr/bin vs /usr/sbin),
->>>> so packagers would not immediately notice.
->>>>
->>>> This seems like something that should be "fixed".
->>>>
->>>> Any suggestions what a good "fix" should look like?
->>>>
->>>> NeilBrown
->>>
->>>
->>> No suggestions were forthcoming.
->>> So I have a suggestion.
->>> I propose we rename the "nfsiostat" in the "sysstat" package to
->>> "nfsio-sysstat" and the "nfsiostat" in "nfs-utils" to
->>> "nfs-utils-iostat".
->>>
->>> Does anyone object?  If not I'll send off patches shortly :-)
->>
->> What does the sysstat version do?  do we need two programs, or can they be merged?  Or can one be dropped?
->>
+> I have a server that only returned 'ALLOW' type support probably due to
+> a bug!  There is nothing in the spec that said a server 'MUST' support
+> 'ALLOW' and 'DENY' ACE types (RFC5661 does say 'SHOULD' though!). That
+> was my reasoning to fix the client to be more liberal/lenient.
 > 
-> It reads /proc/self/mountstats and reports some numbers, not unlike the
-> nfs-utils version.
-> 
-> $ /usr/sbin/nfsiostat 
-> 
-> eli:/home mounted on /mnt:
-> 
->    op/s		rpc bklog
->    3.55	   0.00
-> read:            ops/s		   kB/s		  kB/op		retrans		avg RTT (ms)	avg exe (ms)
-> 		  0.000	  0.000	  0.000       0 (0.0%)	  0.000	  0.000
-> write:           ops/s		   kB/s		  kB/op		retrans		avg RTT (ms)	avg exe (ms)
-> 		  0.000	  0.000	  0.000       0 (0.0%)	  0.000	  0.000
-> $ /usr/bin/nfsiostat 
-> Linux 3.11.6-4-desktop (notabene.brown) 	01/22/2014 	_x86_64_	(8 CPU)
-> 
-> Filesystem:               rkB_nor/s    wkB_nor/s    rkB_dir/s    wkB_dir/s    rkB_svr/s    wkB_svr/s     ops/s    rops/s    wops/s
-> eli:/home                      0.00         0.00         0.00         0.00         0.00         0.00      0.00      0.00      0.00
-> 
-> 
-> The man page for the sysstat version is:
-> 
-> http://www.makelinux.com/man/1/N/nfsiostat
-Is this version still actively being maintain? 
+> Can a server implicitly construct 'ALLOW' ACEs based on mode and not
+> support explicitly setting such ACEs by a client? I am not too familiar
+> with ACLs, if you think we should only check for 'ALLOW' support flag, I
+> can re-spin the patch but I think it is better to be more lenient
+> specially if it is not incorrect by being more lenient!
 
-steved.
+The way I read the spec, the default behaviour is to disallow access unless you have sufficient ALLOW aces for the behaviour that you want. The DENY aces are optional, and are there in order to explicitly deny a user or group a particular behaviour that they would otherwise be allowed due to some subsequent combination of ALLOW aces.
 
-> 
-> while man page for nfs-utils version is:
-> 
-> http://linux.die.net/man/8/nfsiostat
-> 
-> NeilBrown
-> 
+So, I accept that a server could function while only supporting ALLOW aces, but I don’t see how it could work at all with only DENY ace support.
+
+Cheers
+  Trond
+--
+Trond Myklebust
+Linux NFS client maintainer
+
