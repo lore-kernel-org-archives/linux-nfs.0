@@ -1,45 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f52.google.com ([209.85.220.52]:47680 "EHLO
-	mail-pa0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750990AbaAIKbx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jan 2014 05:31:53 -0500
-Received: by mail-pa0-f52.google.com with SMTP id ld10so3152661pab.39
-        for <linux-nfs@vger.kernel.org>; Thu, 09 Jan 2014 02:31:53 -0800 (PST)
-Message-ID: <52CE7A94.2060105@gmail.com>
-Date: Thu, 09 Jan 2014 18:31:48 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
-MIME-Version: 1.0
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Dr Fields James Bruce <bfields@fieldses.org>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: [PATCH 1/5] NFSD: Using free_conn free connection
-References: <52CA7862.1020203@gmail.com> <20140106184926.GC31764@fieldses.org> <24D159B0-C13D-43A6-B307-2B967E154353@primarydata.com> <20140106225346.GB3342@fieldses.org> <FAC96643-8DBB-4CC8-9D43-73C69E8E6125@primarydata.com> <52CB8B79.6040907@gmail.com> <52CE7A76.3080101@gmail.com>
-In-Reply-To: <52CE7A76.3080101@gmail.com>
-Content-Type: text/plain; charset=windows-1252
+Received: from mail-bk0-f44.google.com ([209.85.214.44]:48564 "EHLO
+	mail-bk0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752466AbaAXMqO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Jan 2014 07:46:14 -0500
+Received: by mail-bk0-f44.google.com with SMTP id mz12so1119447bkb.17
+        for <linux-nfs@vger.kernel.org>; Fri, 24 Jan 2014 04:46:12 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: trond.myklebust@primarydata.com
+Cc: dros@netapp.com, linux-nfs@vger.kernel.org
+Subject: [PATCH v2] nfs: don't attempt auth methods that require upcall unless we know that gssd is running
+Date: Fri, 24 Jan 2014 07:46:04 -0500
+Message-Id: <1390567564-19241-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Connection from alloc_conn must be freed through free_conn,
-otherwise, the reference of svc_xprt will never be put. 
+Currently, if the server lists krb5 as an allowed auth method, but gssd isn't
+running, you'll get the infamous "AUTH_GSS upcall failed" message, even if
+you didn't request sec=krb5.
 
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+This is because nfs4_find_root_sec() establishes a default list of auth
+methods to try when the admin didn't supply one, and that list contains
+AUTH_GSS methods first. Skip those methods if gssd isn't running since
+they won't succeed anyway.
+
+Cc: Weston Andros Adamson <dros@netapp.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nfsd/nfs4state.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ fs/nfs/nfs4proc.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 7d613a7..f89f1f8 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2282,7 +2282,8 @@ out:
- 	if (!list_empty(&clp->cl_revoked))
- 		seq->status_flags |= SEQ4_STATUS_RECALLABLE_STATE_REVOKED;
- out_no_session:
--	kfree(conn);
-+	if (conn)
-+		free_conn(conn);
- 	spin_unlock(&nn->client_lock);
- 	return status;
- out_put_session:
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 15052b8..937a05a 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2900,6 +2900,14 @@ static int nfs4_find_root_sec(struct nfs_server *server, struct nfs_fh *fhandle,
+ 	} else {
+ 		/* no flavors specified by user, try default list */
+ 		for (i = 0; i < ARRAY_SIZE(flav_array); i++) {
++			/*
++			 * Don't attempt to upcall with the default list
++			 * unless we know that gssd is running.
++			 */
++			if (flav_array[i] > RPC_AUTH_MAXFLAVOR &&
++			    !gssd_running(server->nfs_client->cl_net))
++				continue;
++
+ 			status = nfs4_lookup_root_sec(server, fhandle, info,
+ 						      flav_array[i]);
+ 			if (status == -NFS4ERR_WRONGSEC || status == -EACCES)
 -- 
-1.8.4.2
+1.8.5.3
+
