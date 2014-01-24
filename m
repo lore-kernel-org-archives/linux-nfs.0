@@ -1,83 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:32136 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750721AbaATO3S convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Jan 2014 09:29:18 -0500
-Date: Mon, 20 Jan 2014 09:29:15 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Scott Mayhew <smayhew@redhat.com>
-Cc: trond.myklebust@primarydata.com, linux-nfs@vger.kernel.org,
-        stable@vger.kernel.org
-Subject: Re: [PATCH] nfs: always make sure page is up-to-date before
- extending a write to cover the entire page
-Message-ID: <20140120092915.2dbccf57@tlielax.poochiereds.net>
-In-Reply-To: <1389989525-33610-1-git-send-email-smayhew@redhat.com>
-References: <1389989525-33610-1-git-send-email-smayhew@redhat.com>
+Received: from demumfd002.nsn-inter.net ([93.183.12.31]:10764 "EHLO
+	demumfd002.nsn-inter.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750753AbaAXGdT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Jan 2014 01:33:19 -0500
+Received: from demuprx017.emea.nsn-intra.net ([10.150.129.56])
+	by demumfd002.nsn-inter.net (8.12.11.20060308/8.12.11) with ESMTP id s0O6XG66019063
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=FAIL)
+	for <linux-nfs@vger.kernel.org>; Fri, 24 Jan 2014 07:33:16 +0100
+Received: from ulegcprs1.emea.nsn-net.net ([10.151.15.253])
+	by demuprx017.emea.nsn-intra.net (8.12.11.20060308/8.12.11) with ESMTP id s0O6XF8W008588
+	for <linux-nfs@vger.kernel.org>; Fri, 24 Jan 2014 07:33:15 +0100
+Date: Fri, 24 Jan 2014 07:32:02 +0100
+From: Robert Schiele <rschiele@gmail.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] use NFS4_MAXMINOR instead of hard coded number
+Message-ID: <20140124063202.GA23937@ulegcprs1.emea.nsn-net.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 17 Jan 2014 15:12:05 -0500
-Scott Mayhew <smayhew@redhat.com> wrote:
+In utils/nfsd/nfsd.c we used hard coded number 2 in option parsing
+when referring to NFS4_MAXMINOR.  We should use the defined constant
+instead to honor changes to that constant.
 
-> We should always make sure the cached page is up-to-date when we're
-> determining whether we can extend a write to cover the full page -- even
-> if we've received a write delegation from the server.
-> 
-> Commit c7559663 added logic to skip this check if we have a write
-> delegation, which can lead to data corruption such as the following
-> scenario if client B receives a write delegation from the NFS server:
-> 
-> Client A:
->     # echo 123456789 > /mnt/file
-> 
-> Client B:
->     # echo abcdefghi >> /mnt/file
->     # cat /mnt/file
->     0�D0�abcdefghi
-> 
-> Just because we hold a write delegation doesn't mean that we've read in
-> the entire page contents.
-> 
-> Cc: <stable@vger.kernel.org> # v3.11+
-> Signed-off-by: Scott Mayhew <smayhew@redhat.com>
-> ---
->  fs/nfs/write.c | 11 ++++++-----
->  1 file changed, 6 insertions(+), 5 deletions(-)
-> 
-> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-> index c1d5482..6a85038 100644
-> --- a/fs/nfs/write.c
-> +++ b/fs/nfs/write.c
-> @@ -922,19 +922,20 @@ out:
->   * extend the write to cover the entire page in order to avoid fragmentation
->   * inefficiencies.
->   *
-> - * If the file is opened for synchronous writes or if we have a write delegation
-> - * from the server then we can just skip the rest of the checks.
-> + * If the file is opened for synchronous writes then we can just skip the rest
-> + * of the checks.
->   */
->  static int nfs_can_extend_write(struct file *file, struct page *page, struct inode *inode)
->  {
->  	if (file->f_flags & O_DSYNC)
->  		return 0;
-> +	if (!nfs_write_pageuptodate(page, inode))
-> +		return 0;
->  	if (NFS_PROTO(inode)->have_delegation(inode, FMODE_WRITE))
->  		return 1;
-> -	if (nfs_write_pageuptodate(page, inode) && (inode->i_flock == NULL ||
-> -			(inode->i_flock->fl_start == 0 &&
-> +	if (inode->i_flock == NULL || (inode->i_flock->fl_start == 0 &&
->  			inode->i_flock->fl_end == OFFSET_MAX &&
-> -			inode->i_flock->fl_type != F_RDLCK)))
-> +			inode->i_flock->fl_type != F_RDLCK))
->  		return 1;
->  	return 0;
->  }
+Signed-off-by: Robert Schiele <rschiele@gmail.com>
+---
 
-Makes sense. We can't extend the write unless we know that the page
-is uptodate, or we'll potentially be writing uninitialized data.
+This is obviously a rather trivial patch but the hard coded number
+hit me when trying to support various kernels with different support
+levels.
 
-Reviewed-by: Jeff Layton <jlayton@redhat.com>
+ utils/nfsd/nfsd.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
+index a9d77ab..c129ee5 100644
+--- a/utils/nfsd/nfsd.c
++++ b/utils/nfsd/nfsd.c
+@@ -160,7 +160,7 @@ main(int argc, char **argv)
+ 			case 4:
+ 				if (*p == '.') {
+ 					int i = atoi(p+1);
+-					if (i > 2) {
++					if (i > NFS4_MAXMINOR) {
+ 						fprintf(stderr, "%s: unsupported minor version\n", optarg);
+ 						exit(1);
+ 					}
+@@ -181,7 +181,7 @@ main(int argc, char **argv)
+ 			case 4:
+ 				if (*p == '.') {
+ 					int i = atoi(p+1);
+-					if (i > 2) {
++					if (i > NFS4_MAXMINOR) {
+ 						fprintf(stderr, "%s: unsupported minor version\n", optarg);
+ 						exit(1);
+ 					}
+-- 
+1.8.4
