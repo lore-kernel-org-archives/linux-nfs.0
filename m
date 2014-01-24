@@ -1,71 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cpsmtpb-ews03.kpnxchange.com ([213.75.39.6]:50911 "EHLO
-	cpsmtpb-ews03.kpnxchange.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753243AbaAMQBG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 13 Jan 2014 11:01:06 -0500
-Message-ID: <1389627955.20467.9.camel@x41>
-Subject: [PATCH] xprtrdma: silence frame size warning
-From: Paul Bolle <pebolle@tiscali.nl>
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "David S. Miller" <davem@davemloft.net>
-Cc: linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Date: Mon, 13 Jan 2014 16:45:55 +0100
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from e8.ny.us.ibm.com ([32.97.182.138]:41430 "EHLO e8.ny.us.ibm.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751147AbaAXRTj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 24 Jan 2014 12:19:39 -0500
+Received: from /spool/local
+	by e8.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
+	Fri, 24 Jan 2014 12:19:39 -0500
+Received: from b01cxnp23033.gho.pok.ibm.com (b01cxnp23033.gho.pok.ibm.com [9.57.198.28])
+	by d01dlp01.pok.ibm.com (Postfix) with ESMTP id 2A9E438C8051
+	for <linux-nfs@vger.kernel.org>; Fri, 24 Jan 2014 12:19:37 -0500 (EST)
+Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
+	by b01cxnp23033.gho.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id s0OHJbMZ9961750
+	for <linux-nfs@vger.kernel.org>; Fri, 24 Jan 2014 17:19:37 GMT
+Received: from d01av01.pok.ibm.com (localhost [127.0.0.1])
+	by d01av01.pok.ibm.com (8.14.4/8.14.4/NCO v10.0 AVout) with ESMTP id s0OHJamY020956
+	for <linux-nfs@vger.kernel.org>; Fri, 24 Jan 2014 12:19:36 -0500
+Received: from malahal (malahal.austin.ibm.com [9.41.105.170])
+	by d01av01.pok.ibm.com (8.14.4/8.14.4/NCO v10.0 AVin) with ESMTP id s0OHJaJq020939
+	for <linux-nfs@vger.kernel.org>; Fri, 24 Jan 2014 12:19:36 -0500
+From: Malahal Naineni <malahal@us.ibm.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] nfs: handle servers that support only ALLOW ACE type.
+Date: Fri, 24 Jan 2014 11:19:35 -0600
+Message-Id: <1390583975-8914-1-git-send-email-malahal@us.ibm.com>
+In-Reply-To: <EDB5CCCD-0940-46F2-B102-7094AE029170@primarydata.com>
+References: <EDB5CCCD-0940-46F2-B102-7094AE029170@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Building verbs.o on 32 bits x86, with CONFIG_FRAME_WARN set to 1024, its
-default value, triggers this GCC warning:
-    net/sunrpc/xprtrdma/verbs.c: In function ‘rpcrdma_register_default_external’:
-    net/sunrpc/xprtrdma/verbs.c:1774:1: warning: the frame size of 1040 bytes is larger than 1024 bytes [-Wframe-larger-than=]
+Currently we support ACLs if the NFS server file system supports both
+ALLOW and DENY ACE types. This patch makes the Linux client work with
+ACLs even if the server supports only 'ALLOW' ACE type.
 
-Silence this warning by allocating "ipb" dynamically.
-
-Signed-off-by: Paul Bolle <pebolle@tiscali.nl>
+Signed-off-by: Malahal Naineni <malahal@us.ibm.com>
 ---
-0) Compile tested only (on 32 bits x86). I don't have access to
-Infiniband hardware.
+ fs/nfs/nfs4proc.c | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
 
-1) Please note that this is not a new warning. The oldest build log I
-have still available on this machine is for a v3.8 rc, and it already
-showed this warning. 
-
-2) I do hope my choice for the GFP_KERNEL flag is correct here.
-
- net/sunrpc/xprtrdma/verbs.c | 6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
-
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 93726560..939ccc8 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -1736,11 +1736,14 @@ rpcrdma_register_default_external(struct rpcrdma_mr_seg *seg,
- 	int mem_priv = (writing ? IB_ACCESS_REMOTE_WRITE :
- 				  IB_ACCESS_REMOTE_READ);
- 	struct rpcrdma_mr_seg *seg1 = seg;
--	struct ib_phys_buf ipb[RPCRDMA_MAX_DATA_SEGS];
-+	struct ib_phys_buf *ipb;
- 	int len, i, rc = 0;
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 15052b8..e3b8fa6 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -4321,9 +4321,8 @@ static int nfs4_proc_renew(struct nfs_client *clp, struct rpc_cred *cred)
  
- 	if (*nsegs > RPCRDMA_MAX_DATA_SEGS)
- 		*nsegs = RPCRDMA_MAX_DATA_SEGS;
-+	ipb = kmalloc(sizeof(*ipb) * *nsegs, GFP_KERNEL);
-+	if (ipb == NULL)
-+		return -ENOMEM;
- 	for (len = 0, i = 0; i < *nsegs;) {
- 		rpcrdma_map_one(ia, seg, writing);
- 		ipb[i].addr = seg->mr_dma;
-@@ -1770,6 +1773,7 @@ rpcrdma_register_default_external(struct rpcrdma_mr_seg *seg,
- 		seg1->mr_len = len;
- 	}
- 	*nsegs = i;
-+	kfree(ipb);
- 	return rc;
+ static inline int nfs4_server_supports_acls(struct nfs_server *server)
+ {
+-	return (server->caps & NFS_CAP_ACLS)
+-		&& (server->acl_bitmask & ACL4_SUPPORT_ALLOW_ACL)
+-		&& (server->acl_bitmask & ACL4_SUPPORT_DENY_ACL);
++	return server->caps & NFS_CAP_ACLS &&
++		server->acl_bitmask & ACL4_SUPPORT_ALLOW_ACL;
  }
  
+ /* Assuming that XATTR_SIZE_MAX is a multiple of PAGE_SIZE, and that
 -- 
-1.8.4.2
+1.8.3.1
 
