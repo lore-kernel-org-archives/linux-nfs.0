@@ -1,81 +1,89 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:31114 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753292AbaATO0a (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 20 Jan 2014 09:26:30 -0500
-Subject: Re: [PATCH] nfs: always make sure page is up-to-date before
- extending a write to cover the entire page
-From: David Wysochanski <dwysocha@redhat.com>
-Reply-To: dwysocha@redhat.com
-To: Scott Mayhew <smayhew@redhat.com>
-Cc: trond.myklebust@primarydata.com, linux-nfs@vger.kernel.org,
-        stable@vger.kernel.org
-In-Reply-To: <1389989525-33610-1-git-send-email-smayhew@redhat.com>
-References: <1389989525-33610-1-git-send-email-smayhew@redhat.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Mon, 20 Jan 2014 09:26:28 -0500
-Message-ID: <1390227988.3979.7.camel@localhost.localdomain>
-Mime-Version: 1.0
+Received: from mail-ig0-f182.google.com ([209.85.213.182]:49065 "EHLO
+	mail-ig0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751285AbaAYBFU convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Jan 2014 20:05:20 -0500
+Received: by mail-ig0-f182.google.com with SMTP id uy17so4062861igb.3
+        for <linux-nfs@vger.kernel.org>; Fri, 24 Jan 2014 17:05:20 -0800 (PST)
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
+Subject: Re: [PATCH 7/7] nfs: page cache invalidation for dio
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+In-Reply-To: <20140124195456.5db4f830@tlielax.poochiereds.net>
+Date: Fri, 24 Jan 2014 18:05:18 -0700
+Cc: Christoph Hellwig <hch@infradead.org>,
+        linuxnfs <linux-nfs@vger.kernel.org>
+Message-Id: <2DA2FEA5-6AAB-49BB-824E-893908BCE225@primarydata.com>
+References: <20131114165027.355613182@bombadil.infradead.org> <20131114165042.205194841@bombadil.infradead.org> <20131114133551.5d08b5cd@tlielax.poochiereds.net> <20131115142847.GA1107@infradead.org> <20131115095241.2c5e1cfb@tlielax.poochiereds.net> <20131115150204.GA8105@infradead.org> <20131115103324.6a3cf978@tlielax.poochiereds.net> <20140121142159.210ca0b8@tlielax.poochiereds.net> <20140122082414.GA12530@infradead.org> <20140122070409.503db5c2@tlielax.poochiereds.net> <20140124105213.2c40a783@tlielax.poochiereds.net> <1C06779A-6513-4460-9A12-6AAE7E6BD446@primarydata.com> <20140124122924.0eb2e6bd@tlielax.poochiereds.net> <1390585206.2927.9.camel@leira.trondhjem.org> <20140124130013.22f706de@tlielax.poochiereds.net> <1390589201.2927.46.camel@leira.trondhjem.org> <20140124162104.3a588571@tlielax.poochiereds.net> <7DB95D70-9E9E-49B9-80BE-EB891F5D72DB@primarydata.com> <20140124195456.5db4f830@tlielax.poochiereds.net>
+To: Layton Jeff <jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 2014-01-17 at 15:12 -0500, Scott Mayhew wrote:
-> We should always make sure the cached page is up-to-date when we're
-> determining whether we can extend a write to cover the full page -- even
-> if we've received a write delegation from the server.
-> 
-> Commit c7559663 added logic to skip this check if we have a write
-> delegation, which can lead to data corruption such as the following
-> scenario if client B receives a write delegation from the NFS server:
-> 
-> Client A:
->     # echo 123456789 > /mnt/file
-> 
-> Client B:
->     # echo abcdefghi >> /mnt/file
->     # cat /mnt/file
->     0ï¿½D0ï¿½abcdefghi
-> 
-> Just because we hold a write delegation doesn't mean that we've read in
-> the entire page contents.
-> 
-> Cc: <stable@vger.kernel.org> # v3.11+
-> Signed-off-by: Scott Mayhew <smayhew@redhat.com>
-> ---
->  fs/nfs/write.c | 11 ++++++-----
->  1 file changed, 6 insertions(+), 5 deletions(-)
-> 
-> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-> index c1d5482..6a85038 100644
-> --- a/fs/nfs/write.c
-> +++ b/fs/nfs/write.c
-> @@ -922,19 +922,20 @@ out:
->   * extend the write to cover the entire page in order to avoid fragmentation
->   * inefficiencies.
->   *
-> - * If the file is opened for synchronous writes or if we have a write delegation
-> - * from the server then we can just skip the rest of the checks.
-> + * If the file is opened for synchronous writes then we can just skip the rest
-> + * of the checks.
->   */
->  static int nfs_can_extend_write(struct file *file, struct page *page, struct inode *inode)
->  {
->  	if (file->f_flags & O_DSYNC)
->  		return 0;
-> +	if (!nfs_write_pageuptodate(page, inode))
-> +		return 0;
->  	if (NFS_PROTO(inode)->have_delegation(inode, FMODE_WRITE))
->  		return 1;
-> -	if (nfs_write_pageuptodate(page, inode) && (inode->i_flock == NULL ||
-> -			(inode->i_flock->fl_start == 0 &&
-> +	if (inode->i_flock == NULL || (inode->i_flock->fl_start == 0 &&
->  			inode->i_flock->fl_end == OFFSET_MAX &&
-> -			inode->i_flock->fl_type != F_RDLCK)))
-> +			inode->i_flock->fl_type != F_RDLCK))
->  		return 1;
->  	return 0;
->  }
 
-Acked-by: Dave Wysochanski <dwysocha@redhat.com>
+On Jan 24, 2014, at 17:54, Jeff Layton <jlayton@redhat.com> wrote:
 
+> On Fri, 24 Jan 2014 17:39:45 -0700
+> Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+> 
+>> 
+>> On Jan 24, 2014, at 14:21, Jeff Layton <jlayton@redhat.com> wrote:
+>> 
+>>> On Fri, 24 Jan 2014 11:46:41 -0700
+>>> Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+>>>> 
+>>>> Convert your patch to use wait_on_bit(), and then to call
+>>>> wait_on_bit_lock() if and only if you see NFS_INO_INVALID_DATA is set.
+>>>> 
+>>> 
+>>> I think that too would be racy...
+>>> 
+>>> We have to clear NFS_INO_INVALID_DATA while holding the i_lock, but we
+>>> can't wait_on_bit_lock() under that. So (pseudocode):
+>>> 
+>>> wait_on_bit
+>>> take i_lock
+>>> check and clear NFS_INO_INVALID_DATA
+>>> drop i_lock
+>>> wait_on_bit_lock
+>>> 
+>>> ...so between dropping the i_lock and wait_on_bit_lock, we have a place
+>>> where another task could check the flag and find it clear.
+>> 
+>> 
+>> 	for(;;) {
+>> 		wait_on_bit(NFS_INO_INVALIDATING)
+>> 		/* Optimisation: don’t lock NFS_INO_INVALIDATING
+>> 		 * if NFS_INO_INVALID_DATA was cleared while we waited.
+>> 		 */
+>> 		if (!test_bit(NFS_INO_INVALID_DATA))
+>> 			return;
+>> 		if (!test_and_set_bit_lock(NFS_INO_INVALIDATING))
+>> 			break;
+>> 	}
+>> 	spin_lock(inode->i_lock);
+>> 	if (!test_and_clear_bit(NFS_INO_INVALID_DATA)) {
+>> 		spin_unlock(inode->i_lock);
+>> 		goto out_raced;
+>> 	}
+>> ….
+>> out_raced:
+>> 	clear_bit(NFS_INO_INVALIDATING)
+>> 	wake_up_bit(NFS_INO_INVALIDATING)
+>> 
+>> 
+>> --
+>> Trond Myklebust
+>> Linux NFS client maintainer
+>> 
+> 
+> Hmm maybe. OTOH, if we're using atomic bitops do we need to deal with
+> the spinlock?  I'll ponder it over the weekend and give it a harder
+> look on Monday.
+> 
+
+The NFS_I(inode)->cache_validity doesn’t use bitops, so the correct behaviour is to put NFS_INO_INVALIDATING inside NFS_I(inode)->flags (which is an atomic bit op field), and then continue to use the spin lock for NFS_INO_INVALID_DATA.
+
+--
+Trond Myklebust
+Linux NFS client maintainer
 
