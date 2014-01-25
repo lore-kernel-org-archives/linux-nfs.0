@@ -1,87 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f169.google.com ([209.85.192.169]:34923 "EHLO
-	mail-pd0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750963AbaAGFHK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 7 Jan 2014 00:07:10 -0500
-Received: by mail-pd0-f169.google.com with SMTP id v10so19104670pde.0
-        for <linux-nfs@vger.kernel.org>; Mon, 06 Jan 2014 21:07:10 -0800 (PST)
-Message-ID: <52CB8B79.6040907@gmail.com>
-Date: Tue, 07 Jan 2014 13:07:05 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
-MIME-Version: 1.0
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Dr Fields James Bruce <bfields@fieldses.org>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] SUNRPC: fix a memory leak for tcp NFSv4.1 backchannel
-References: <52CA7862.1020203@gmail.com> <20140106184926.GC31764@fieldses.org> <24D159B0-C13D-43A6-B307-2B967E154353@primarydata.com> <20140106225346.GB3342@fieldses.org> <FAC96643-8DBB-4CC8-9D43-73C69E8E6125@primarydata.com>
-In-Reply-To: <FAC96643-8DBB-4CC8-9D43-73C69E8E6125@primarydata.com>
+Received: from mail-ie0-f181.google.com ([209.85.223.181]:41395 "EHLO
+	mail-ie0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751093AbaAYAjt convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Jan 2014 19:39:49 -0500
+Received: by mail-ie0-f181.google.com with SMTP id tq11so3484310ieb.26
+        for <linux-nfs@vger.kernel.org>; Fri, 24 Jan 2014 16:39:48 -0800 (PST)
 Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
+Subject: Re: [PATCH 7/7] nfs: page cache invalidation for dio
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+In-Reply-To: <20140124162104.3a588571@tlielax.poochiereds.net>
+Date: Fri, 24 Jan 2014 17:39:45 -0700
+Cc: Christoph Hellwig <hch@infradead.org>,
+        linuxnfs <linux-nfs@vger.kernel.org>
+Message-Id: <7DB95D70-9E9E-49B9-80BE-EB891F5D72DB@primarydata.com>
+References: <20131114165027.355613182@bombadil.infradead.org> <20131114165042.205194841@bombadil.infradead.org> <20131114133551.5d08b5cd@tlielax.poochiereds.net> <20131115142847.GA1107@infradead.org> <20131115095241.2c5e1cfb@tlielax.poochiereds.net> <20131115150204.GA8105@infradead.org> <20131115103324.6a3cf978@tlielax.poochiereds.net> <20140121142159.210ca0b8@tlielax.poochiereds.net> <20140122082414.GA12530@infradead.org> <20140122070409.503db5c2@tlielax.poochiereds.net> <20140124105213.2c40a783@tlielax.poochiereds.net> <1C06779A-6513-4460-9A12-6AAE7E6BD446@primarydata.com> <20140124122924.0eb2e6bd@tlielax.poochiereds.net> <1390585206.2927.9.camel@leira.trondhjem.org> <20140124130013.22f706de@tlielax.poochiereds.net> <1390589201.2927.46.camel@leira.trondhjem.org> <20140124162104.3a588571@tlielax.poochiereds.net>
+To: Layton Jeff <jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 01/07/2014 07:28 AM, Trond Myklebust wrote:
+
+On Jan 24, 2014, at 14:21, Jeff Layton <jlayton@redhat.com> wrote:
+
+> On Fri, 24 Jan 2014 11:46:41 -0700
+> Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+>> 
+>> Convert your patch to use wait_on_bit(), and then to call
+>> wait_on_bit_lock() if and only if you see NFS_INO_INVALID_DATA is set.
+>> 
 > 
-> On Jan 6, 2014, at 17:53, Dr Fields James Bruce <bfields@fieldses.org> wrote:
+> I think that too would be racy...
 > 
->> On Mon, Jan 06, 2014 at 05:40:03PM -0500, Trond Myklebust wrote:
->>>
->>> On Jan 6, 2014, at 13:49, J. Bruce Fields <bfields@fieldses.org> wrote:
->>>
->>>> On Mon, Jan 06, 2014 at 05:33:22PM +0800, Kinglong Mee wrote:
->>>>> xs_setup_bc_tcp may return an existing xprt with non-NULL servername.
->>>>> xprt_create_transport should not kstrdup servername for it.
->>>>> Otherwise, those memory for servername will be leaked.
->>>>
->>>> OK.  Applying to my tree if Trond has no objection.
->>>
->>> Actually. Why do we go through all this code at all if xs_setup_bc_tcp() returns args->bc_xprt->xpt_bc_xprt? I’m assuming that is the only case where xprt->servername != NULL, right?
->>>
->>> For instance, won’t calling INIT_WORK() be a source of problems?
-
-I will have a check for INIT_WORK which I have missing here.
-
->>
->> Huh.  Looking at the history....  There used to be a
->>
->> 	if (test_and_set_bit(XPRT_INITIALIZED, &xprt->state))
->> 		/* ->setup returned a pre-initialized xprt: */
->> 		return xprt;
->>
->> here, but it got removed by 21de0a955f3af29fa1100d96f66e6adade89e77a
->> "SUNRPC: Clean up the slot table allocation", which looks otherwise
->> unrelated.  Was that just some kind of rebasing mistake, or was there a
->> reason for that?
+> We have to clear NFS_INO_INVALID_DATA while holding the i_lock, but we
+> can't wait_on_bit_lock() under that. So (pseudocode):
 > 
-> I probably misunderstood that bc_xprt sends a fully initialized struct rpc_xprt.
+> wait_on_bit
+> take i_lock
+> check and clear NFS_INO_INVALID_DATA
+> drop i_lock
+> wait_on_bit_lock
 > 
-> The obvious question if that is the case, is why we are calling xprt_create_transport() at all? If .bc_xprt->xpt_bc_xprt contains a fully initialized struct rpc_xprt, then just have rpc_create() do the honors.
-> Better yet, create a svc_create_backchannel_client() helper that calls rpc_new_client() with the correct parameters. I really don’t like those rpc_create_args hacks that introduce fields that are completely private to nfsd.
+> ...so between dropping the i_lock and wait_on_bit_lock, we have a place
+> where another task could check the flag and find it clear.
 
-Maybe should redesign the xs_setup_bc_tcp, because I have meet a new bug.
-the xprt for backchannel don't be freed at all, and those memory is leaked,
-as,
 
---> free_conn 
- --> svc_xprt_put
-   --> svc_xprt_free
-     --> xprt_put
-       --> xprt_destroy
-         --> xprt->ops->destroy(xprt);
-         --> bc_destory
+	for(;;) {
+		wait_on_bit(NFS_INO_INVALIDATING)
+		/* Optimisation: don’t lock NFS_INO_INVALIDATING
+		 * if NFS_INO_INVALID_DATA was cleared while we waited.
+		 */
+		if (!test_bit(NFS_INO_INVALID_DATA))
+			return;
+		if (!test_and_set_bit_lock(NFS_INO_INVALIDATING))
+			break;
+	}
+	spin_lock(inode->i_lock);
+	if (!test_and_clear_bit(NFS_INO_INVALID_DATA)) {
+		spin_unlock(inode->i_lock);
+		goto out_raced;
+	}
+….
+out_raced:
+	clear_bit(NFS_INO_INVALIDATING)
+	wake_up_bit(NFS_INO_INVALIDATING)
 
-but, bc_destroy is empty as, 
 
-2541 /*
-2542  * The xprt destroy routine. Again, because this connection is client
-2543  * initiated, we do nothing
-2544  */
-2545 
-2546 static void bc_destroy(struct rpc_xprt *xprt)
-2547 {
-2548 }
-
-so, after that, the memory of xprt for back channel is leaked.
-
-thanks,
-Kinglong Mee
+--
+Trond Myklebust
+Linux NFS client maintainer
 
