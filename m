@@ -1,123 +1,146 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:45040 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:38262 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753392AbaACXSD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 3 Jan 2014 18:18:03 -0500
-Date: Fri, 3 Jan 2014 18:18:00 -0500
-From: "J.,Bruce Fields" <bfields@fieldses.org>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-        Gareth Williams <gareth@garethwilliams.me.uk>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        trond.myklebust@primarydata.com
-Subject: Re: [PATCH 2/2 v2] NFSD: Don't start lockd when only NFSv4 is running
-Message-ID: <20140103231800.GF5164@fieldses.org>
-References: <01763B6D-C8CB-46B7-87AC-CE189496019A@oracle.com>
- <6E281EC9-49CB-4BDA-BDF3-7A6F4B703156@gmail.com>
- <CAB6yy34woYZaJ=k=Ga9iT_mmBWBiCUj1SprT=Se2SVrOu6YO_Q@mail.gmail.com>
- <5D65FDE6-D1AB-442C-BFD8-141AB87FF321@gmail.com>
- <CAB6yy379-A8fgLpQo+ppx5V93P9pXcabvmBJNTZ5hXxeJMuxBg@mail.gmail.com>
- <52C1577B.9080100@gmail.com>
- <52C15847.9030208@gmail.com>
- <68E6D30F-B2D6-4919-9748-E7F1162AC3B7@oracle.com>
- <52C2377E.8040006@gmail.com>
- <52C2536A.5070906@gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <52C2536A.5070906@gmail.com>
+	id S1752937AbaAZU7Y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 26 Jan 2014 15:59:24 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 2/3] nfsd4: delay setting current_fh in open
+Date: Sun, 26 Jan 2014 15:59:20 -0500
+Message-Id: <1390769961-30898-3-git-send-email-bfields@redhat.com>
+In-Reply-To: <1390769961-30898-1-git-send-email-bfields@redhat.com>
+References: <1390769961-30898-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Dec 31, 2013 at 01:17:30PM +0800, Kinglong Mee wrote:
-> When starting without nfsv2 and nfsv3, nfsd should not setup lockd,
-> especially when rpcbind is stop.
-> 
-> v2:
-> move setting nfsd_version4's vs_rpcb_optnl option to new patch [1/2]
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Thanks, these look good.  Applying both with minor rewrites of the
-changelogs.
+This is basically a no-op, to simplify a following patch.
 
---b.
+Acked-by: Jeff Layton <jlayton@redhat.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4proc.c |   37 ++++++++++++++++++++-----------------
+ 1 file changed, 20 insertions(+), 17 deletions(-)
 
-> 
-> Reported-by: Gareth Williams <gareth@garethwilliams.me.uk>
-> Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
-> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-> ---
->  fs/nfsd/netns.h  |  1 +
->  fs/nfsd/nfssvc.c | 26 +++++++++++++++++++++-----
->  2 files changed, 22 insertions(+), 5 deletions(-)
-> 
-> diff --git a/fs/nfsd/netns.h b/fs/nfsd/netns.h
-> index 849a7c3..d32b3aa 100644
-> --- a/fs/nfsd/netns.h
-> +++ b/fs/nfsd/netns.h
-> @@ -95,6 +95,7 @@ struct nfsd_net {
->  	time_t nfsd4_grace;
->  
->  	bool nfsd_net_up;
-> +	bool lockd_up;
->  
->  	/*
->  	 * Time of server startup
-> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-> index 760c85a..55b5b57 100644
-> --- a/fs/nfsd/nfssvc.c
-> +++ b/fs/nfsd/nfssvc.c
-> @@ -241,6 +241,11 @@ static void nfsd_shutdown_generic(void)
->  	nfsd_racache_shutdown();
->  }
->  
-> +static bool nfsd_needs_lockd(void)
-> +{
-> +	return (nfsd_versions[2] != NULL) || (nfsd_versions[3] != NULL);
-> +}
-> +
->  static int nfsd_startup_net(int nrservs, struct net *net)
->  {
->  	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
-> @@ -255,9 +260,14 @@ static int nfsd_startup_net(int nrservs, struct net *net)
->  	ret = nfsd_init_socks(net);
->  	if (ret)
->  		goto out_socks;
-> -	ret = lockd_up(net);
-> -	if (ret)
-> -		goto out_socks;
-> +
-> +	if (nfsd_needs_lockd() && !nn->lockd_up) {
-> +		ret = lockd_up(net);
-> +		if (ret)
-> +			goto out_socks;
-> +		nn->lockd_up = 1;
-> +	}
-> +
->  	ret = nfs4_state_start_net(net);
->  	if (ret)
->  		goto out_lockd;
-> @@ -266,7 +276,10 @@ static int nfsd_startup_net(int nrservs, struct net *net)
->  	return 0;
->  
->  out_lockd:
-> -	lockd_down(net);
-> +	if (nn->lockd_up) {
-> +		lockd_down(net);
-> +		nn->lockd_up = 0;
-> +	}
->  out_socks:
->  	nfsd_shutdown_generic();
->  	return ret;
-> @@ -277,7 +290,10 @@ static void nfsd_shutdown_net(struct net *net)
->  	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
->  
->  	nfs4_state_shutdown_net(net);
-> -	lockd_down(net);
-> +	if (nn->lockd_up) {
-> +		lockd_down(net);
-> +		nn->lockd_up = 0;
-> +	}
->  	nn->nfsd_net_up = false;
->  	nfsd_shutdown_generic();
->  }
-> -- 
-> 1.8.4.2
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index dadff09..844813a 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -230,17 +230,16 @@ static void nfsd4_set_open_owner_reply_cache(struct nfsd4_compound_state *cstate
+ }
+ 
+ static __be32
+-do_open_lookup(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate, struct nfsd4_open *open)
++do_open_lookup(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate, struct nfsd4_open *open, struct svc_fh **resfh)
+ {
+ 	struct svc_fh *current_fh = &cstate->current_fh;
+-	struct svc_fh *resfh;
+ 	int accmode;
+ 	__be32 status;
+ 
+-	resfh = kmalloc(sizeof(struct svc_fh), GFP_KERNEL);
+-	if (!resfh)
++	*resfh = kmalloc(sizeof(struct svc_fh), GFP_KERNEL);
++	if (!*resfh)
+ 		return nfserr_jukebox;
+-	fh_init(resfh, NFS4_FHSIZE);
++	fh_init(*resfh, NFS4_FHSIZE);
+ 	open->op_truncate = 0;
+ 
+ 	if (open->op_create) {
+@@ -265,12 +264,12 @@ do_open_lookup(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate, stru
+ 		 */
+ 		status = do_nfsd_create(rqstp, current_fh, open->op_fname.data,
+ 					open->op_fname.len, &open->op_iattr,
+-					resfh, open->op_createmode,
++					*resfh, open->op_createmode,
+ 					(u32 *)open->op_verf.data,
+ 					&open->op_truncate, &open->op_created);
+ 
+ 		if (!status && open->op_label.len)
+-			nfsd4_security_inode_setsecctx(resfh, &open->op_label, open->op_bmval);
++			nfsd4_security_inode_setsecctx(*resfh, &open->op_label, open->op_bmval);
+ 
+ 		/*
+ 		 * Following rfc 3530 14.2.16, use the returned bitmask
+@@ -282,29 +281,26 @@ do_open_lookup(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate, stru
+ 							FATTR4_WORD1_TIME_MODIFY);
+ 	} else {
+ 		status = nfsd_lookup(rqstp, current_fh,
+-				     open->op_fname.data, open->op_fname.len, resfh);
++				     open->op_fname.data, open->op_fname.len, *resfh);
+ 		fh_unlock(current_fh);
+ 	}
+ 	if (status)
+ 		goto out;
+-	status = nfsd_check_obj_isreg(resfh);
++	status = nfsd_check_obj_isreg(*resfh);
+ 	if (status)
+ 		goto out;
+ 
+ 	if (is_create_with_attrs(open) && open->op_acl != NULL)
+-		do_set_nfs4_acl(rqstp, resfh, open->op_acl, open->op_bmval);
++		do_set_nfs4_acl(rqstp, *resfh, open->op_acl, open->op_bmval);
+ 
+-	nfsd4_set_open_owner_reply_cache(cstate, open, resfh);
++	nfsd4_set_open_owner_reply_cache(cstate, open, *resfh);
+ 	accmode = NFSD_MAY_NOP;
+ 	if (open->op_created ||
+ 			open->op_claim_type == NFS4_OPEN_CLAIM_DELEGATE_CUR)
+ 		accmode |= NFSD_MAY_OWNER_OVERRIDE;
+-	status = do_open_permission(rqstp, resfh, open, accmode);
++	status = do_open_permission(rqstp, *resfh, open, accmode);
+ 	set_change_info(&open->op_cinfo, current_fh);
+-	fh_dup2(current_fh, resfh);
+ out:
+-	fh_put(resfh);
+-	kfree(resfh);
+ 	return status;
+ }
+ 
+@@ -357,6 +353,7 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	   struct nfsd4_open *open)
+ {
+ 	__be32 status;
++	struct svc_fh *resfh = NULL;
+ 	struct nfsd4_compoundres *resp;
+ 	struct net *net = SVC_NET(rqstp);
+ 	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+@@ -423,7 +420,7 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	switch (open->op_claim_type) {
+ 		case NFS4_OPEN_CLAIM_DELEGATE_CUR:
+ 		case NFS4_OPEN_CLAIM_NULL:
+-			status = do_open_lookup(rqstp, cstate, open);
++			status = do_open_lookup(rqstp, cstate, open, &resfh);
+ 			if (status)
+ 				goto out;
+ 			break;
+@@ -439,6 +436,7 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 			status = do_open_fhandle(rqstp, cstate, open);
+ 			if (status)
+ 				goto out;
++			resfh = &cstate->current_fh;
+ 			break;
+ 		case NFS4_OPEN_CLAIM_DELEG_PREV_FH:
+              	case NFS4_OPEN_CLAIM_DELEGATE_PREV:
+@@ -458,9 +456,14 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	 * successful, it (1) truncates the file if open->op_truncate was
+ 	 * set, (2) sets open->op_stateid, (3) sets open->op_delegation.
+ 	 */
+-	status = nfsd4_process_open2(rqstp, &cstate->current_fh, open);
++	status = nfsd4_process_open2(rqstp, resfh, open);
+ 	WARN_ON(status && open->op_created);
+ out:
++	if (resfh && resfh != &cstate->current_fh) {
++		fh_dup2(&cstate->current_fh, resfh);
++		fh_put(resfh);
++		kfree(resfh);
++	}
+ 	nfsd4_cleanup_open_state(open, status);
+ 	if (open->op_openowner && !nfsd4_has_session(cstate))
+ 		cstate->replay_owner = &open->op_openowner->oo_owner;
+-- 
+1.7.9.5
+
