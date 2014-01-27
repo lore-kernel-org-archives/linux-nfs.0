@@ -1,50 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:37577 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753105AbaACVe5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 3 Jan 2014 16:34:57 -0500
-Date: Fri, 3 Jan 2014 16:34:55 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] NFSD: fix a bug which causing nfsd deny CREATE_SESSION
-Message-ID: <20140103213455.GB5164@fieldses.org>
-References: <52B802E9.4070607@gmail.com>
+Received: from static-209-166-131-148.expedient.com ([209.166.131.148]:56111
+	"EHLO natasha.panasas.com" rhost-flags-OK-FAIL-OK-OK)
+	by vger.kernel.org with ESMTP id S1753983AbaA0U0x (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Jan 2014 15:26:53 -0500
+Message-ID: <52E6C0F8.3030002@panasas.com>
+Date: Mon, 27 Jan 2014 22:26:32 +0200
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <52B802E9.4070607@gmail.com>
+To: Linus Torvalds <torvalds@linux-foundation.org>,
+        NFS list <linux-nfs@vger.kernel.org>, open-osd <osd-dev@open-osd.org>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>
+Subject: [git pull] Few fixes to ORE and EXOFS
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Dec 23, 2013 at 05:31:21PM +0800, Kinglong Mee wrote:
-> check_forechannel_attrs have get drc memory, 
-> nfsd must put it when check_backchannel_attrs failed.
-> 
-> After many requests with bad back channel attrs, 
-> nfsd will deny any client's CREATE_SESSION forever.
+Dear Linus
 
-Thanks, applying.--b.
+Please pull the following changes since v3.12 commit [5e01dc7b]:
 
-> 
-> A new test case named CSESS29 for pynfs will send in another mail.
-> 
-> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-> ---
->  fs/nfsd/nfs4state.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 105d6fa..4e2c9ba 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -1913,7 +1913,7 @@ nfsd4_create_session(struct svc_rqst *rqstp,
->  		return status;
->  	status = check_backchannel_attrs(&cr_ses->back_channel);
->  	if (status)
-> -		return status;
-> +		goto out_release_drc_mem;
->  	status = nfserr_jukebox;
->  	new = alloc_session(&cr_ses->fore_channel);
->  	if (!new)
-> -- 
-> 1.8.4.2
+They are available in the git repository at:
+
+  git://git.open-osd.org/linux-open-osd.git for-linus
+
+for you to fetch changes up to 19350e7627a6f3b0f662cbd2eb1128c9961a41fe:
+
+  exofs: Print less in r4w (2014-01-23 18:54:14 +0200)
+
+
+The main fix here, the first patch, is also destined for Stable@. The rest
+is small trivia and cosmetics. The ORE patches effect both exofs and pnfs-objects
+very reproducible bugs.
+
+----------------------------------------------------------------
+Boaz Harrosh (5):
+      ore: Fix wrong math in allocation of per device BIO
+      ore: Don't crash on NULL bio in _clear_bio
+      exofs: Allow O_DIRECT open
+      exofs: Allow corrupted directory entry to be empty file
+      exofs: Print less in r4w
+
+ fs/exofs/inode.c       | 31 +++++++++++++++++++------------
+ fs/exofs/ore.c         | 45 +++++++++++++++++++++++++++++++--------------
+ include/scsi/osd_ore.h |  1 +
+ 3 files changed, 51 insertions(+), 26 deletions(-)
+
+Thanks
+Boaz
