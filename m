@@ -1,94 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f169.google.com ([209.85.223.169]:63997 "EHLO
-	mail-ie0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751432AbaAYBL6 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Jan 2014 20:11:58 -0500
-Received: by mail-ie0-f169.google.com with SMTP id tq11so3737885ieb.0
-        for <linux-nfs@vger.kernel.org>; Fri, 24 Jan 2014 17:11:58 -0800 (PST)
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
-Subject: Re: [PATCH 7/7] nfs: page cache invalidation for dio
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-In-Reply-To: <2DA2FEA5-6AAB-49BB-824E-893908BCE225@primarydata.com>
-Date: Fri, 24 Jan 2014 18:11:56 -0700
-Cc: Christoph Hellwig <hch@infradead.org>,
-        linuxnfs <linux-nfs@vger.kernel.org>
-Message-Id: <C3AACBA4-12F9-45D9-B6A1-121032C435DD@primarydata.com>
-References: <20131114165027.355613182@bombadil.infradead.org> <20131114165042.205194841@bombadil.infradead.org> <20131114133551.5d08b5cd@tlielax.poochiereds.net> <20131115142847.GA1107@infradead.org> <20131115095241.2c5e1cfb@tlielax.poochiereds.net> <20131115150204.GA8105@infradead.org> <20131115103324.6a3cf978@tlielax.poochiereds.net> <20140121142159.210ca0b8@tlielax.poochiereds.net> <20140122082414.GA12530@infradead.org> <20140122070409.503db5c2@tlielax.poochiereds.net> <20140124105213.2c40a783@tlielax.poochiereds.net> <1C06779A-6513-4460-9A12-6AAE7E6BD446@primarydata.com> <20140124122924.0eb2e6bd@tlielax.poochiereds.net> <1390585206.2927.9.camel@leira.trondhjem.org> <20140124130013.22f706de@tlielax.poochiereds.net> <1390589201.2927.46.camel@leira.trondhjem.org> <20140124162104.3a588571@tlielax.poochiereds.net> <7DB95D70-9E9E-49B9-80BE-EB891F5D72DB@primarydata.com> <20140124195456.5db4f830@tlielax.poochiereds.net> <2DA2FEA5-6AAB-49BB-824E-893908BCE225@primarydata.com>
-To: Layton Jeff <jlayton@redhat.com>
+Received: from mail-bk0-f44.google.com ([209.85.214.44]:59177 "EHLO
+	mail-bk0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753728AbaA0Txi (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Jan 2014 14:53:38 -0500
+Received: by mail-bk0-f44.google.com with SMTP id mz12so3090443bkb.17
+        for <linux-nfs@vger.kernel.org>; Mon, 27 Jan 2014 11:53:36 -0800 (PST)
+From: Jeff Layton <jlayton@redhat.com>
+To: trond.myklebust@primarydata.com
+Cc: chuck.lever@oracle.com, linux-nfs@vger.kernel.org
+Subject: [PATCH v2] sunrpc: turn warn_gssd() log message into a dprintk()
+Date: Mon, 27 Jan 2014 14:53:27 -0500
+Message-Id: <1390852407-20641-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+The original printk() made sense when the GSSAPI codepaths were called
+only when sec=krb5* was explicitly requested. Now however, in many cases
+the nfs client will try to acquire GSSAPI credentials by default, even
+when it's not requested.
 
-On Jan 24, 2014, at 18:05, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+Since we don't have a great mechanism to distinguish between the two
+cases, just turn the pr_warn into a dprintk instead. With this change we
+can also get rid of the ratelimiting.
 
-> 
-> On Jan 24, 2014, at 17:54, Jeff Layton <jlayton@redhat.com> wrote:
-> 
->> On Fri, 24 Jan 2014 17:39:45 -0700
->> Trond Myklebust <trond.myklebust@primarydata.com> wrote:
->> 
->>> 
->>> On Jan 24, 2014, at 14:21, Jeff Layton <jlayton@redhat.com> wrote:
->>> 
->>>> On Fri, 24 Jan 2014 11:46:41 -0700
->>>> Trond Myklebust <trond.myklebust@primarydata.com> wrote:
->>>>> 
->>>>> Convert your patch to use wait_on_bit(), and then to call
->>>>> wait_on_bit_lock() if and only if you see NFS_INO_INVALID_DATA is set.
->>>>> 
->>>> 
->>>> I think that too would be racy...
->>>> 
->>>> We have to clear NFS_INO_INVALID_DATA while holding the i_lock, but we
->>>> can't wait_on_bit_lock() under that. So (pseudocode):
->>>> 
->>>> wait_on_bit
->>>> take i_lock
->>>> check and clear NFS_INO_INVALID_DATA
->>>> drop i_lock
->>>> wait_on_bit_lock
->>>> 
->>>> ...so between dropping the i_lock and wait_on_bit_lock, we have a place
->>>> where another task could check the flag and find it clear.
->>> 
->>> 
->>> 	for(;;) {
->>> 		wait_on_bit(NFS_INO_INVALIDATING)
->>> 		/* Optimisation: don’t lock NFS_INO_INVALIDATING
->>> 		 * if NFS_INO_INVALID_DATA was cleared while we waited.
->>> 		 */
->>> 		if (!test_bit(NFS_INO_INVALID_DATA))
->>> 			return;
->>> 		if (!test_and_set_bit_lock(NFS_INO_INVALIDATING))
->>> 			break;
->>> 	}
->>> 	spin_lock(inode->i_lock);
->>> 	if (!test_and_clear_bit(NFS_INO_INVALID_DATA)) {
->>> 		spin_unlock(inode->i_lock);
->>> 		goto out_raced;
->>> 	}
->>> ….
->>> out_raced:
->>> 	clear_bit(NFS_INO_INVALIDATING)
->>> 	wake_up_bit(NFS_INO_INVALIDATING)
->>> 
->>> 
->>> --
->>> Trond Myklebust
->>> Linux NFS client maintainer
->>> 
->> 
->> Hmm maybe. OTOH, if we're using atomic bitops do we need to deal with
->> the spinlock?  I'll ponder it over the weekend and give it a harder
->> look on Monday.
->> 
-> 
-> The NFS_I(inode)->cache_validity doesn’t use bitops, so the correct behaviour is to put NFS_INO_INVALIDATING inside NFS_I(inode)->flags (which is an atomic bit op field), and then continue to use the spin lock for NFS_INO_INVALID_DATA.
+We do need to keep the EXPORT_SYMBOL(gssd_running) in place since
+auth_gss.ko needs it and sunrpc.ko provides it. We can however,
+eliminate the gssd_running call in the nfs code since that's a bit of a
+layering violation.
 
-In other words please replace the atomic test_bit(NFS_INO_INVALID_DATA) and test_and_clear_bit(NFS_INO_INVALID_DATA) in the above pseudocode with the appropriate tests and clears of NFS_I(inode)->cache_validity.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfs/nfs4client.c            | 5 +----
+ net/sunrpc/auth_gss/auth_gss.c | 8 +-------
+ 2 files changed, 2 insertions(+), 11 deletions(-)
 
---
-Trond Myklebust
-Linux NFS client maintainer
+diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+index 73d4ecd..dbb3e1f 100644
+--- a/fs/nfs/nfs4client.c
++++ b/fs/nfs/nfs4client.c
+@@ -372,10 +372,7 @@ struct nfs_client *nfs4_init_client(struct nfs_client *clp,
+ 	__set_bit(NFS_CS_DISCRTRY, &clp->cl_flags);
+ 	__set_bit(NFS_CS_NO_RETRANS_TIMEOUT, &clp->cl_flags);
+ 
+-	error = -EINVAL;
+-	if (gssd_running(clp->cl_net))
+-		error = nfs_create_rpc_client(clp, timeparms,
+-					      RPC_AUTH_GSS_KRB5I);
++	error = nfs_create_rpc_client(clp, timeparms, RPC_AUTH_GSS_KRB5I);
+ 	if (error == -EINVAL)
+ 		error = nfs_create_rpc_client(clp, timeparms, RPC_AUTH_UNIX);
+ 	if (error < 0)
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index 0a2aee0..6c0513a 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -532,13 +532,7 @@ gss_setup_upcall(struct gss_auth *gss_auth, struct rpc_cred *cred)
+ 
+ static void warn_gssd(void)
+ {
+-	static unsigned long ratelimit;
+-	unsigned long now = jiffies;
+-
+-	if (time_after(now, ratelimit)) {
+-		pr_warn("RPC: AUTH_GSS upcall failed. Please check user daemon is running.\n");
+-		ratelimit = now + 15*HZ;
+-	}
++	dprintk("AUTH_GSS upcall failed. Please check user daemon is running.\n");
+ }
+ 
+ static inline int
+-- 
+1.8.5.3
 
