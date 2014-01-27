@@ -1,89 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:52012 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750945AbaABWkL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 2 Jan 2014 17:40:11 -0500
-Date: Thu, 2 Jan 2014 17:40:10 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org, simo@redhat.com, neilb@suse.de
-Subject: Re: [RFC PATCH 1/5] sunrpc: don't wait for write before allowing
- reads from use-gss-proxy file
-Message-ID: <20140102224009.GF28219@fieldses.org>
-References: <1388579314-15255-1-git-send-email-jlayton@redhat.com>
- <1388579314-15255-2-git-send-email-jlayton@redhat.com>
- <20140102212149.GC28219@fieldses.org>
- <20140102172651.559eaa48@tlielax.poochiereds.net>
+Received: from elasmtp-galgo.atl.sa.earthlink.net ([209.86.89.61]:33832 "EHLO
+	elasmtp-galgo.atl.sa.earthlink.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1753781AbaA0Ttw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Jan 2014 14:49:52 -0500
+From: "Frank Filz" <ffilzlnx@mindspring.com>
+To: "'Pavel Shilovsky'" <piastry@etersoft.ru>
+Cc: "'Kernel Mailing List'" <linux-kernel@vger.kernel.org>,
+        "'linux-cifs'" <linux-cifs@vger.kernel.org>,
+        "'linux-fsdevel'" <linux-fsdevel@vger.kernel.org>,
+        "'Linux NFS Mailing list'" <linux-nfs@vger.kernel.org>,
+        <wine-devel@winehq.org>, <nfs-ganesha-devel@lists.sourceforge.net>
+References: <1389953232-9428-1-git-send-email-piastry@etersoft.ru>	<051001cf13b4$080833b0$18189b10$@mindspring.com> <CAKywueTOi-WPpgH7x3VK7EkGJXE8fHUqcLgSUm6o6UA+uaQtjA@mail.gmail.com>
+In-Reply-To: <CAKywueTOi-WPpgH7x3VK7EkGJXE8fHUqcLgSUm6o6UA+uaQtjA@mail.gmail.com>
+Subject: RE: [PATCH v7 0/7] Add O_DENY* support for VFS and CIFS/NFS
+Date: Mon, 27 Jan 2014 11:49:49 -0800
+Message-ID: <02de01cf1b98$f115f240$d341d6c0$@mindspring.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140102172651.559eaa48@tlielax.poochiereds.net>
+Content-Type: text/plain;
+	charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jan 02, 2014 at 05:26:51PM -0500, Jeff Layton wrote:
-> On Thu, 2 Jan 2014 16:21:50 -0500
-> "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> 2014/1/17 Frank Filz <ffilzlnx@mindspring.com>:
+> > This looks wonderful and will be useful to the Ganesha user space NFS
+> > server also.
+> >
+> > I do have a couple questions.
+> >
+> > 1. How will this interact with the idea of private locks from the
+> > patch set Jeff Layton has been pushing?
 > 
-> > On Wed, Jan 01, 2014 at 07:28:30AM -0500, Jeff Layton wrote:
-> > > It doesn't make much sense to make reads from this procfile hang. As
-> > > far as I can tell, only gssproxy itself will open this file and it
-> > > never reads from it. Change it to just give the present setting of
-> > > sn->use_gss_proxy without waiting for anything.
-> > 
-> > I think my *only* reason for doing this was to give a simple way to wait
-> > for gss-proxy to start (just wait for a read to return).
-> > 
+> They don't touch each other.
 > 
-> What wasn't clear to me is what would be doing this read.
+> >
+> > 2. If a process opens multiple file descriptors with deny modes, will
+> > they conflict with each other (which is the behavior we will want for
+> Ganesha).
 > 
-> I'll take it from your comment then that patch #1 is acceptable?
-
-Yes.  Thanks!
-
-> > As long as gss-proxy has some way to say "I'm up and running", and as
-> > long as that comes after writing to use-gss-proxy, we're fine.
-> > 
+> Yes, a deny mode is associated with file descriptor - so, it will conflict
+with any
+> other access/deny modes of file descriptors from any process.
 > 
-> I'll let Simo confirm that that's what gssproxy does, but yes that is
-> the desired behavior. Typically this is done by ensuring that the parent
-> process when daemon()-izing doesn't exit until everything is ready.
+> >
+> > 3. Is there any functionality to upgrade or downgrade the access and
+> > deny modes (thinking in terms of NFS v4 support of OPEN upgrade and
+> > OPEN_DOWNGRADE operations).
 > 
-> If gssproxy does need to be changed for that, we have a library routine
-> now in nfs-utils that does this that you can likely copy (see
-> mydaemon()).
+> The proposed patchset doesn't allow to change deny modes after an open is
+> done. But we can add a functionality to let flock syscall change deny
+modes
+> as on option.
 
->From a quick skim: looks like gss-proxy does this in init_server().  So
-I think it might need something like the below?
+Yes, that would be good. NFS v4 allows upgrade/downgrade of acces/deny modes
+(hmm, changing access mode would be trickier, but we need to be able to
+upgrade/downgrade those as well as deny modes...). It could still be done
+with an fcntl.  I don't know if any NFS clients make use of
+upgrade/downgrade (I do know there are pynfs tests for it).
 
-(Untested.  I spent a total of maybe five minutes looking at this code
-so have no idea what I'm doing.)
+Interestingly, upgrade/downgrade would be a solution to Ganesha's problems
+with POSIX locks being dumped on any file descriptor close since we could
+change the access mode as needed rather than needing to close and open the
+file.
 
---b.
+Frank
 
-diff --git a/proxy/src/gssproxy.c b/proxy/src/gssproxy.c
-index 1fca922..a7cbd7c 100644
---- a/proxy/src/gssproxy.c
-+++ b/proxy/src/gssproxy.c
-@@ -97,6 +97,12 @@ int main(int argc, const char *argv[])
-         exit(EXIT_FAILURE);
-     }
- 
-+    /*
-+     * special call to tell the Linux kernel gss-proxy is available.
-+     * Note this must be done before nfsd is started.
-+     */
-+    init_proc_nfsd(gpctx->config);
-+
-     init_server(gpctx->config->daemonize);
- 
-     write_pid();
-@@ -139,9 +145,6 @@ int main(int argc, const char *argv[])
-         }
-     }
- 
--    /* special call to tell the Linux kernel gss-proxy is available */
--    init_proc_nfsd(gpctx->config);
--
-     ret = gp_workers_init(gpctx);
-     if (ret) {
-         exit(EXIT_FAILURE);
+
