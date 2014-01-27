@@ -1,47 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pb0-f41.google.com ([209.85.160.41]:41737 "EHLO
-	mail-pb0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751275AbaAIKdi (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 9 Jan 2014 05:33:38 -0500
-Received: by mail-pb0-f41.google.com with SMTP id jt11so2875823pbb.0
-        for <linux-nfs@vger.kernel.org>; Thu, 09 Jan 2014 02:33:38 -0800 (PST)
-Message-ID: <52CE7AFD.1020209@gmail.com>
-Date: Thu, 09 Jan 2014 18:33:33 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
-MIME-Version: 1.0
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Dr Fields James Bruce <bfields@fieldses.org>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: [PATCH 5/5] SUNRPC: Clear xpt_bc_xprt if xs_setup_bc_tcp failed
-References: <52CA7862.1020203@gmail.com> <20140106184926.GC31764@fieldses.org> <24D159B0-C13D-43A6-B307-2B967E154353@primarydata.com> <20140106225346.GB3342@fieldses.org> <FAC96643-8DBB-4CC8-9D43-73C69E8E6125@primarydata.com> <52CB8B79.6040907@gmail.com> <52CE7A76.3080101@gmail.com>
-In-Reply-To: <52CE7A76.3080101@gmail.com>
-Content-Type: text/plain; charset=windows-1252
+Received: from e39.co.us.ibm.com ([32.97.110.160]:44405 "EHLO
+	e39.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753926AbaA0VbO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Jan 2014 16:31:14 -0500
+Received: from /spool/local
+	by e39.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
+	Mon, 27 Jan 2014 14:31:14 -0700
+Received: from b01cxnp22036.gho.pok.ibm.com (b01cxnp22036.gho.pok.ibm.com [9.57.198.26])
+	by d01dlp02.pok.ibm.com (Postfix) with ESMTP id 7B1EE6E8048
+	for <linux-nfs@vger.kernel.org>; Mon, 27 Jan 2014 16:31:06 -0500 (EST)
+Received: from d01av03.pok.ibm.com (d01av03.pok.ibm.com [9.56.224.217])
+	by b01cxnp22036.gho.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id s0RLVAnI10027474
+	for <linux-nfs@vger.kernel.org>; Mon, 27 Jan 2014 21:31:10 GMT
+Received: from d01av03.pok.ibm.com (localhost [127.0.0.1])
+	by d01av03.pok.ibm.com (8.14.4/8.14.4/NCO v10.0 AVout) with ESMTP id s0RLVA4C004976
+	for <linux-nfs@vger.kernel.org>; Mon, 27 Jan 2014 16:31:10 -0500
+Received: from malahal (malahal.austin.ibm.com [9.41.105.170])
+	by d01av03.pok.ibm.com (8.14.4/8.14.4/NCO v10.0 AVin) with ESMTP id s0RLVAK2004955
+	for <linux-nfs@vger.kernel.org>; Mon, 27 Jan 2014 16:31:10 -0500
+From: Malahal Naineni <malahal@us.ibm.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] nfs: initialize the ACL support bits to zero.
+Date: Mon, 27 Jan 2014 15:31:09 -0600
+Message-Id: <1390858269-12378-1-git-send-email-malahal@us.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Don't move the assign of args->bc_xprt->xpt_bc_xprt out of xs_setup_bc_tcp,
-because rpc_ping (which is in rpc_create) will using it.
+Avoid returning incorrect acl mask attributes when the server doesn't
+support ACLs.
 
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+Signed-off-by: Malahal Naineni <malahal@us.ibm.com>
 ---
- net/sunrpc/xprtsock.c | 3 ++-
- 1 file changed, 2 insertions(+), 1 deletion(-)
+ fs/nfs/nfs4xdr.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 37ea15a..c996ace 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -2981,9 +2981,10 @@ static struct rpc_xprt *xs_setup_bc_tcp(struct xprt_create *args)
- 	 */
- 	xprt_set_connected(xprt);
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 5be2868..a132710 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -3435,7 +3435,7 @@ static int decode_attr_aclsupport(struct xdr_stream *xdr, uint32_t *bitmap, uint
+ {
+ 	__be32 *p;
  
--
- 	if (try_module_get(THIS_MODULE))
- 		return xprt;
-+
-+	args->bc_xprt->xpt_bc_xprt = NULL;
- 	xprt_put(xprt);
- 	ret = ERR_PTR(-EINVAL);
- out_err:
+-	*res = ACL4_SUPPORT_ALLOW_ACL|ACL4_SUPPORT_DENY_ACL;
++	*res = 0;
+ 	if (unlikely(bitmap[0] & (FATTR4_WORD0_ACLSUPPORT - 1U)))
+ 		return -EIO;
+ 	if (likely(bitmap[0] & FATTR4_WORD0_ACLSUPPORT)) {
 -- 
-1.8.4.2
+1.8.3.1
+
