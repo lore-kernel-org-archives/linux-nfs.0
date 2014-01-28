@@ -1,60 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from demumfd002.nsn-inter.net ([93.183.12.31]:10764 "EHLO
-	demumfd002.nsn-inter.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750753AbaAXGdT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Jan 2014 01:33:19 -0500
-Received: from demuprx017.emea.nsn-intra.net ([10.150.129.56])
-	by demumfd002.nsn-inter.net (8.12.11.20060308/8.12.11) with ESMTP id s0O6XG66019063
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=FAIL)
-	for <linux-nfs@vger.kernel.org>; Fri, 24 Jan 2014 07:33:16 +0100
-Received: from ulegcprs1.emea.nsn-net.net ([10.151.15.253])
-	by demuprx017.emea.nsn-intra.net (8.12.11.20060308/8.12.11) with ESMTP id s0O6XF8W008588
-	for <linux-nfs@vger.kernel.org>; Fri, 24 Jan 2014 07:33:15 +0100
-Date: Fri, 24 Jan 2014 07:32:02 +0100
-From: Robert Schiele <rschiele@gmail.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] use NFS4_MAXMINOR instead of hard coded number
-Message-ID: <20140124063202.GA23937@ulegcprs1.emea.nsn-net.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Received: from mail-ie0-f180.google.com ([209.85.223.180]:55678 "EHLO
+	mail-ie0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755114AbaA1Plg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Jan 2014 10:41:36 -0500
+Received: by mail-ie0-f180.google.com with SMTP id at1so560214iec.25
+        for <linux-nfs@vger.kernel.org>; Tue, 28 Jan 2014 07:41:36 -0800 (PST)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2] NFS: Fix races in nfs_revalidate_mapping
+Date: Tue, 28 Jan 2014 10:41:39 -0500
+Message-Id: <1390923699-11011-1-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <20140128101037.35e04fb7@tlielax.poochiereds.net>
+References: <20140128101037.35e04fb7@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In utils/nfsd/nfsd.c we used hard coded number 2 in option parsing
-when referring to NFS4_MAXMINOR.  We should use the defined constant
-instead to honor changes to that constant.
+Commit d529ef83c355f97027ff85298a9709fe06216a66 (NFS: fix the handling
+of NFS_INO_INVALID_DATA flag in nfs_revalidate_mapping) introduces
+a potential race, since it doesn't test the value of nfsi->cache_validity
+and set the bitlock in nfsi->flags atomically.
 
-Signed-off-by: Robert Schiele <rschiele@gmail.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Jeff Layton <jlayton@redhat.com>
 ---
+ fs/nfs/inode.c | 29 +++++++++++++++--------------
+ 1 file changed, 15 insertions(+), 14 deletions(-)
 
-This is obviously a rather trivial patch but the hard coded number
-hit me when trying to support various kernels with different support
-levels.
-
- utils/nfsd/nfsd.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
-
-diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
-index a9d77ab..c129ee5 100644
---- a/utils/nfsd/nfsd.c
-+++ b/utils/nfsd/nfsd.c
-@@ -160,7 +160,7 @@ main(int argc, char **argv)
- 			case 4:
- 				if (*p == '.') {
- 					int i = atoi(p+1);
--					if (i > 2) {
-+					if (i > NFS4_MAXMINOR) {
- 						fprintf(stderr, "%s: unsupported minor version\n", optarg);
- 						exit(1);
- 					}
-@@ -181,7 +181,7 @@ main(int argc, char **argv)
- 			case 4:
- 				if (*p == '.') {
- 					int i = atoi(p+1);
--					if (i > 2) {
-+					if (i > NFS4_MAXMINOR) {
- 						fprintf(stderr, "%s: unsupported minor version\n", optarg);
- 						exit(1);
- 					}
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 0a972ee9ccc1..1ff95ba4fea3 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -1038,23 +1038,24 @@ int nfs_revalidate_mapping(struct inode *inode, struct address_space *mapping)
+ 				  nfs_wait_bit_killable, TASK_KILLABLE);
+ 		if (ret)
+ 			goto out;
+-		if (!(nfsi->cache_validity & NFS_INO_INVALID_DATA))
++		spin_lock(&inode->i_lock);
++		if (test_bit(NFS_INO_INVALIDATING, bitlock)) {
++			spin_unlock(&inode->i_lock);
++			continue;
++		}
++		if (!(nfsi->cache_validity & NFS_INO_INVALID_DATA)) {
++			spin_unlock(&inode->i_lock);
+ 			goto out;
+-		if (!test_and_set_bit_lock(NFS_INO_INVALIDATING, bitlock))
+-			break;
++		}
++		set_bit(NFS_INO_INVALIDATING, bitlock);
++		break;
+ 	}
+ 
+-	spin_lock(&inode->i_lock);
+-	if (nfsi->cache_validity & NFS_INO_INVALID_DATA) {
+-		nfsi->cache_validity &= ~NFS_INO_INVALID_DATA;
+-		spin_unlock(&inode->i_lock);
+-		trace_nfs_invalidate_mapping_enter(inode);
+-		ret = nfs_invalidate_mapping(inode, mapping);
+-		trace_nfs_invalidate_mapping_exit(inode, ret);
+-	} else {
+-		/* something raced in and cleared the flag */
+-		spin_unlock(&inode->i_lock);
+-	}
++	nfsi->cache_validity &= ~NFS_INO_INVALID_DATA;
++	spin_unlock(&inode->i_lock);
++	trace_nfs_invalidate_mapping_enter(inode);
++	ret = nfs_invalidate_mapping(inode, mapping);
++	trace_nfs_invalidate_mapping_exit(inode, ret);
+ 
+ 	clear_bit_unlock(NFS_INO_INVALIDATING, bitlock);
+ 	smp_mb__after_clear_bit();
 -- 
-1.8.4
+1.8.5.3
+
