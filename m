@@ -1,67 +1,104 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:41577 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:40178 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754709AbaAFSot (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 6 Jan 2014 13:44:49 -0500
-Date: Mon, 6 Jan 2014 13:44:48 -0500
-From: "J.,Bruce Fields" <bfields@fieldses.org>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: NFSD: fix compile warning without CONFIG_NFSD_V3
-Message-ID: <20140106184448.GB31764@fieldses.org>
-References: <CAB6yy34woYZaJ=k=Ga9iT_mmBWBiCUj1SprT=Se2SVrOu6YO_Q@mail.gmail.com>
- <5D65FDE6-D1AB-442C-BFD8-141AB87FF321@gmail.com>
- <CAB6yy379-A8fgLpQo+ppx5V93P9pXcabvmBJNTZ5hXxeJMuxBg@mail.gmail.com>
- <52C1577B.9080100@gmail.com>
- <52C15847.9030208@gmail.com>
- <68E6D30F-B2D6-4919-9748-E7F1162AC3B7@oracle.com>
- <52C2377E.8040006@gmail.com>
- <52C2536A.5070906@gmail.com>
- <20140103231800.GF5164@fieldses.org>
- <52CA22E9.9030802@gmail.com>
+	id S1755171AbaA1PKk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 28 Jan 2014 10:10:40 -0500
+Date: Tue, 28 Jan 2014 10:10:37 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] NFS: Fix races in nfs_revalidate_mapping
+Message-ID: <20140128101037.35e04fb7@tlielax.poochiereds.net>
+In-Reply-To: <1390920550-5543-1-git-send-email-trond.myklebust@primarydata.com>
+References: <20140128091849.6f3090cc@tlielax.poochiereds.net>
+	<1390920550-5543-1-git-send-email-trond.myklebust@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <52CA22E9.9030802@gmail.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jan 06, 2014 at 11:28:41AM +0800, Kinglong Mee wrote:
-> Without CONFIG_NFSD_V3, compile will get warning as,
+On Tue, 28 Jan 2014 09:49:10 -0500
+Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+
+> Commit d529ef83c355f97027ff85298a9709fe06216a66 (NFS: fix the handling
+> of NFS_INO_INVALID_DATA flag in nfs_revalidate_mapping) introduces
+> a potential race, since it doesn't test the value of nfsi->cache_validity
+> and set the bitlock in nfsi->flags atomically.
 > 
-> fs/nfsd/nfssvc.c: In function 'nfsd_svc':
-> >> fs/nfsd/nfssvc.c:246:60: warning: array subscript is above array bounds [-Warray-bounds]
->         return (nfsd_versions[2] != NULL) || (nfsd_versions[3] != NULL);
-
-Thanks, applying.
-
-Though it might be simpler to define the array to always be length 4.
-
---b.
-
->                                                                ^
-> 
-> Reported-by: kbuild test robot <fengguang.wu@intel.com>
-> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> Cc: Jeff Layton <jlayton@redhat.com>
 > ---
->  fs/nfsd/nfssvc.c | 4 ++++
->  1 file changed, 4 insertions(+)
+>  fs/nfs/inode.c | 22 ++++++++++------------
+>  1 file changed, 10 insertions(+), 12 deletions(-)
 > 
-> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-> index 55b5b57..9a4a5f9 100644
-> --- a/fs/nfsd/nfssvc.c
-> +++ b/fs/nfsd/nfssvc.c
-> @@ -243,7 +243,11 @@ static void nfsd_shutdown_generic(void)
+> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+> index 0a972ee9ccc1..8a5bcb6040ac 100644
+> --- a/fs/nfs/inode.c
+> +++ b/fs/nfs/inode.c
+> @@ -1038,24 +1038,22 @@ int nfs_revalidate_mapping(struct inode *inode, struct address_space *mapping)
+>  				  nfs_wait_bit_killable, TASK_KILLABLE);
+>  		if (ret)
+>  			goto out;
+> -		if (!(nfsi->cache_validity & NFS_INO_INVALID_DATA))
+> +		spin_lock(&inode->i_lock);
+> +		if (!(nfsi->cache_validity & NFS_INO_INVALID_DATA)) {
+> +			spin_unlock(&inode->i_lock);
+>  			goto out;
+> +		}
+>  		if (!test_and_set_bit_lock(NFS_INO_INVALIDATING, bitlock))
+>  			break;
+> -	}
+> -
+
+I don't think that patch will help.
+
+Consider the case where we have two tasks that enter
+nfs_revalidate_mapping simultaneously. NFS_INO_INVALIDATING is
+initially clear and NFS_INO_INVALID_DATA is set:
+
+Task 1                              Task2
+---------------------------------------------------------------------
+wait_on_bit(NFS_INO_INVALIDATING)   wait_on_bit(NFS_INO_INVALIDATING)
+
+gets i_lock                         spins on i_lock
+
+checks NFS_INO_INVALID_DATA
+
+sets NFS_INO_INVALIDATING
+
+clears NFS_INO_INVALID_DATA
+
+drops i_lock                        gets i_lock, finds that NFS_INO_INVALID_DATA
+                                    is clear, and exits the function
+
+calls nfs_invalidate_mapping
+
+
+...so task2 just returned from nfs_revalidate_mapping before the pages
+got invalidated.
+
+> -	spin_lock(&inode->i_lock);
+> -	if (nfsi->cache_validity & NFS_INO_INVALID_DATA) {
+> -		nfsi->cache_validity &= ~NFS_INO_INVALID_DATA;
+> -		spin_unlock(&inode->i_lock);
+> -		trace_nfs_invalidate_mapping_enter(inode);
+> -		ret = nfs_invalidate_mapping(inode, mapping);
+> -		trace_nfs_invalidate_mapping_exit(inode, ret);
+> -	} else {
+> -		/* something raced in and cleared the flag */
+>  		spin_unlock(&inode->i_lock);
+>  	}
 >  
->  static bool nfsd_needs_lockd(void)
->  {
-> +#if defined(CONFIG_NFSD_V3)
->  	return (nfsd_versions[2] != NULL) || (nfsd_versions[3] != NULL);
-> +#else
-> +	return (nfsd_versions[2] != NULL);
-> +#endif
->  }
->  
->  static int nfsd_startup_net(int nrservs, struct net *net)
-> -- 
-> 1.8.4.2
+> +	nfsi->cache_validity &= ~NFS_INO_INVALID_DATA;
+> +	spin_unlock(&inode->i_lock);
+> +	trace_nfs_invalidate_mapping_enter(inode);
+> +	ret = nfs_invalidate_mapping(inode, mapping);
+> +	trace_nfs_invalidate_mapping_exit(inode, ret);
+> +
+>  	clear_bit_unlock(NFS_INO_INVALIDATING, bitlock);
+>  	smp_mb__after_clear_bit();
+>  	wake_up_bit(bitlock, NFS_INO_INVALIDATING);
+
+
+-- 
+Jeff Layton <jlayton@redhat.com>
