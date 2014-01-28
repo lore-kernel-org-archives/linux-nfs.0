@@ -1,30 +1,30 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:44610 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754018AbaA0VVW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 27 Jan 2014 16:21:22 -0500
-Message-ID: <52E6CDCF.3070508@oracle.com>
-Date: Mon, 27 Jan 2014 15:21:19 -0600
-From: Bill Baker <bill.baker@oracle.com>
+Received: from mx11.netapp.com ([216.240.18.76]:43757 "EHLO mx11.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755422AbaA1XBV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 28 Jan 2014 18:01:21 -0500
+From: <andros@netapp.com>
+To: <trond.myklebust@primarydata.com>
+CC: <linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 0/1] NFSv4.1 free slot before resending I/O to MDS
+Date: Tue, 28 Jan 2014 18:01:13 -0500
+Message-ID: <1390950074-7245-1-git-send-email-andros@netapp.com>
 MIME-Version: 1.0
-To: nfsv4@ietf.org
-CC: linux-nfs@vger.kernel.org
-Subject: Reminder: Connectathon 2014 registration is OPEN
-References: <52839D69.2000800@oracle.com>
-In-Reply-To: <52839D69.2000800@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: Andy Adamson <andros@netapp.com>
 
-The registration form and disclosure agreement
-are available on the website:
+Replaces NFSv4.1 Do not pre-allocate slots in nfs4_end_drain_slot_tbl.
 
-http://www.connectathon.info/
+Andy Adamson (1):
+  NFSv4.1 free slot before resending I/O to MDS
 
-Also, Chuck Lever has posted a preliminary talks
-schedule on the website.  Contact Chuck.Lever@Oracle.com
-directly if you'd like to give a talk or BoF.
+ fs/nfs/nfs4filelayout.c | 6 ++++++
+ fs/nfs/nfs4session.c    | 1 +
+ 2 files changed, 7 insertions(+)
 
 -- 
-Bill Baker, Oracle ZFSSA/NFS development
+1.8.3.1
+
