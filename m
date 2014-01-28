@@ -1,72 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx.nrchpc.ac.cn ([211.103.180.228]:34021 "EHLO mx.bwstor.cn"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1750733AbaATHAL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 20 Jan 2014 02:00:11 -0500
-From: shaobingqing <shaobingqing@bwstor.com.cn>
-To: trond.myklebust@primarydata.com, bfields@redhat.com, davem@davemloft.net
-Cc: linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
-        linux-kernel@vger.kernel.org,
-        shaobingqing <shaobingqing@bwstor.com.cn>
-Subject: [PATCH] SUNRPC: Allow one callback request to be received from two sk_buff
-Date: Mon, 20 Jan 2014 14:59:14 +0800
-Message-Id: <1390201154-20815-1-git-send-email-shaobingqing@bwstor.com.cn>
-In-Reply-To: <n>
-References: <n>
+Received: from mail-ie0-f173.google.com ([209.85.223.173]:44704 "EHLO
+	mail-ie0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755537AbaA1X2I convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Jan 2014 18:28:08 -0500
+Received: by mail-ie0-f173.google.com with SMTP id e14so1336696iej.18
+        for <linux-nfs@vger.kernel.org>; Tue, 28 Jan 2014 15:28:07 -0800 (PST)
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
+Subject: Re: [PATCH 1/1] NFSv4.1 free slot before resending I/O to MDS
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+In-Reply-To: <1390950074-7245-2-git-send-email-andros@netapp.com>
+Date: Tue, 28 Jan 2014 18:28:06 -0500
+Cc: linuxnfs <linux-nfs@vger.kernel.org>
+Message-Id: <3E87C7B9-82D2-493F-B4CE-BC163A3EB4CA@primarydata.com>
+References: <1390950074-7245-1-git-send-email-andros@netapp.com> <1390950074-7245-2-git-send-email-andros@netapp.com>
+To: Adamson William Andros <andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In current code, there only one struct rpc_rqst is prealloced. If one 
-callback request is received from two sk_buff, the xprt_alloc_bc_request
-would be execute two times with the same transport->xid. The first time
-xprt_alloc_bc_request will alloc one struct rpc_rqst and the TCP_RCV_COPY_DATA
-bit of transport->tcp_flags will not be cleared. The second time 
-xprt_alloc_bc_request could not alloc struct rpc_rqst any more and NULL
-pointer will be returned, then xprt_force_disconnect occur. I think one 
-callback request can be allowed to be received from two sk_buff.
+Hi Andy,
 
-Signed-off-by: shaobingqing <shaobingqing@bwstor.com.cn>
----
- net/sunrpc/xprtsock.c |   11 +++++++++--
- 1 files changed, 9 insertions(+), 2 deletions(-)
+On Jan 28, 2014, at 18:01, <andros@netapp.com> <andros@netapp.com> wrote:
 
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index ee03d35..606950d 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -1271,8 +1271,13 @@ static inline int xs_tcp_read_callback(struct rpc_xprt *xprt,
- 	struct sock_xprt *transport =
- 				container_of(xprt, struct sock_xprt, xprt);
- 	struct rpc_rqst *req;
-+	static struct rpc_rqst *req_partial;
-+
-+	if (req_partial == NULL)
-+		req = xprt_alloc_bc_request(xprt);
-+	else if (req_partial->rq_xid == transport->tcp_xid)
-+		req = req_partial;
- 
--	req = xprt_alloc_bc_request(xprt);
- 	if (req == NULL) {
- 		printk(KERN_WARNING "Callback slot table overflowed\n");
- 		xprt_force_disconnect(xprt);
-@@ -1285,6 +1290,7 @@ static inline int xs_tcp_read_callback(struct rpc_xprt *xprt,
- 
- 	if (!(transport->tcp_flags & TCP_RCV_COPY_DATA)) {
- 		struct svc_serv *bc_serv = xprt->bc_serv;
-+		req_partial = NULL;
- 
- 		/*
- 		 * Add callback request to callback list.  The callback
-@@ -1297,7 +1303,8 @@ static inline int xs_tcp_read_callback(struct rpc_xprt *xprt,
- 		list_add(&req->rq_bc_list, &bc_serv->sv_cb_list);
- 		spin_unlock(&bc_serv->sv_cb_lock);
- 		wake_up(&bc_serv->sv_cb_waitq);
--	}
-+	} else
-+		req_partial = req;
- 
- 	req->rq_private_buf.len = transport->tcp_copied;
- 
--- 
-1.7.4.2
+> From: Andy Adamson <andros@netapp.com>
+> 
+> Free an allocated slot from nfs41_wake_and_assign_slot prior to rpc_exit.
+> Prevents a state_manager hang when draining a data server session.
+> 
+> Signed-off-by: Andy Adamson <andros@netapp.com>
+> ---
+> fs/nfs/nfs4filelayout.c | 6 ++++++
+> fs/nfs/nfs4session.c    | 1 +
+> 2 files changed, 7 insertions(+)
+> 
+> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+> index 03fd8be..9611999 100644
+> --- a/fs/nfs/nfs4filelayout.c
+> +++ b/fs/nfs/nfs4filelayout.c
+> @@ -314,6 +314,9 @@ static void filelayout_read_prepare(struct rpc_task *task, void *data)
+> 	if (filelayout_reset_to_mds(rdata->header->lseg)) {
+> 		dprintk("%s task %u reset io to MDS\n", __func__, task->tk_pid);
+> 		filelayout_reset_read(rdata);
+> +		if (rdata->res.seq_res.sr_slot != NULL)
+> +			nfs4_free_slot(&rdata->ds_clp->cl_session->fc_slot_table,
+> +					rdata->res.seq_res.sr_slot);
+> 		rpc_exit(task, 0);
+> 		return;
+> 	}
+> @@ -425,6 +428,9 @@ static void filelayout_write_prepare(struct rpc_task *task, void *data)
+> 	if (filelayout_reset_to_mds(wdata->header->lseg)) {
+> 		dprintk("%s task %u reset io to MDS\n", __func__, task->tk_pid);
+> 		filelayout_reset_write(wdata);
+> +		if (wdata->res.seq_res.sr_slot != NULL)
+> +			nfs4_free_slot(&wdata->ds_clp->cl_session->fc_slot_table,
+> +					wdata->res.seq_res.sr_slot);
+> 		rpc_exit(task, 0);
+> 		return;
+> 	}
+> diff --git a/fs/nfs/nfs4session.c b/fs/nfs/nfs4session.c
+> index cf883c7..5226846 100644
+> --- a/fs/nfs/nfs4session.c
+> +++ b/fs/nfs/nfs4session.c
+> @@ -98,6 +98,7 @@ void nfs4_free_slot(struct nfs4_slot_table *tbl, struct nfs4_slot *slot)
+> 	dprintk("%s: slotid %u highest_used_slotid %u\n", __func__,
+> 		slotid, tbl->highest_used_slotid);
+> }
+> +EXPORT_SYMBOL_GPL(nfs4_free_slot);
+> 
+> static struct nfs4_slot *nfs4_new_slot(struct nfs4_slot_table  *tbl,
+> 		u32 slotid, u32 seq_init, gfp_t gfp_mask)
+
+OK, this fix makes a lot more sense to me.
+
+However, since rpc_exit() will trigger a call to the rpc_call_ops->rpc_call_done(), then perhaps a better alternative would be to have filelayout_read_call_done() and filelayout_write_call_done() call nfs41_sequence_done() if the test for NFS_IOHDR_REDO succeeds? Otherwise, it looks as if we still have the potential for a leak.
+
+--
+Trond Myklebust
+Linux NFS client maintainer
 
