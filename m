@@ -1,60 +1,96 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:56875 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752466AbaAXMpH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 24 Jan 2014 07:45:07 -0500
-Date: Fri, 24 Jan 2014 07:45:03 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: trond.myklebust@primarydata.com
-Cc: dros@netapp.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfs: don't attempt auth methods that require upcall
- unless we know that gssd is running
-Message-ID: <20140124074503.05ab18e0@tlielax.poochiereds.net>
-In-Reply-To: <1390565368-17597-1-git-send-email-jlayton@redhat.com>
-References: <1390565368-17597-1-git-send-email-jlayton@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-ie0-f170.google.com ([209.85.223.170]:35022 "EHLO
+	mail-ie0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755298AbaA1RY2 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Jan 2014 12:24:28 -0500
+Received: by mail-ie0-f170.google.com with SMTP id u16so789843iet.29
+        for <linux-nfs@vger.kernel.org>; Tue, 28 Jan 2014 09:24:27 -0800 (PST)
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
+Subject: Re: [PATCH v3] NFS: Fix races in nfs_revalidate_mapping
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+In-Reply-To: <20140128110531.67516646@tlielax.poochiereds.net>
+Date: Tue, 28 Jan 2014 12:24:34 -0500
+Cc: linuxnfs <linux-nfs@vger.kernel.org>
+Message-Id: <ADCA6406-8E6D-4B94-8420-E4A4C49DB5C1@primarydata.com>
+References: <1390923699-11011-1-git-send-email-trond.myklebust@primarydata.com> <1390924222-12869-1-git-send-email-trond.myklebust@primarydata.com> <20140128110531.67516646@tlielax.poochiereds.net>
+To: Layton Jeff <jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 24 Jan 2014 07:09:28 -0500
-Jeff Layton <jlayton@redhat.com> wrote:
 
-> Currently, if the server lists krb5 as an allowed auth method, but gssd isn't
-> running, you'll get the infamous "AUTH_GSS upcall failed" message, even if
-> you didn't request sec=krb5.
-> 
-> This is because nfs4_find_root_sec() establishes a default list of auth
-> methods to try when the admin didn't supply one, and that list contains
-> AUTH_GSS methods first. Skip those methods if gssd isn't running since
-> they won't succeed anyway.
-> 
-> Cc: Weston Andros Adamson <dros@netapp.com>
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  fs/nfs/nfs4proc.c | 7 +++++++
->  1 file changed, 7 insertions(+)
-> 
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 15052b8..468a581 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -2900,6 +2900,13 @@ static int nfs4_find_root_sec(struct nfs_server *server, struct nfs_fh *fhandle,
->  	} else {
->  		/* no flavors specified by user, try default list */
->  		for (i = 0; i < ARRAY_SIZE(flav_array); i++) {
-> +			/*
-> +			 * Don't attempt to upcall with the default list
-> +			 * unless we know that gssd is running.
-> +			 */
-> +			if (!gssd_running(server->nfs_client->cl_net))
-> +				continue;
-> +
->  			status = nfs4_lookup_root_sec(server, fhandle, info,
->  						      flav_array[i]);
->  			if (status == -NFS4ERR_WRONGSEC || status == -EACCES)
+On Jan 28, 2014, at 11:05, Jeff Layton <jlayton@redhat.com> wrote:
 
-Eep! Wrong patch. I'll resend. Sorry for the noise...
+> On Tue, 28 Jan 2014 10:50:22 -0500
+> Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+> 
+>> Commit d529ef83c355f97027ff85298a9709fe06216a66 (NFS: fix the handling
+>> of NFS_INO_INVALID_DATA flag in nfs_revalidate_mapping) introduces
+>> a potential race, since it doesn't test the value of nfsi->cache_validity
+>> and set the bitlock in nfsi->flags atomically.
+>> 
+>> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+>> Cc: Jeff Layton <jlayton@redhat.com>
+>> ---
+>> fs/nfs/inode.c | 28 ++++++++++++++--------------
+>> 1 file changed, 14 insertions(+), 14 deletions(-)
+>> 
+>> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+>> index 0a972ee9ccc1..e5070aa5f175 100644
+>> --- a/fs/nfs/inode.c
+>> +++ b/fs/nfs/inode.c
+>> @@ -1038,24 +1038,24 @@ int nfs_revalidate_mapping(struct inode *inode, struct address_space *mapping)
+>> 				  nfs_wait_bit_killable, TASK_KILLABLE);
+>> 		if (ret)
+>> 			goto out;
+>> -		if (!(nfsi->cache_validity & NFS_INO_INVALID_DATA))
+>> -			goto out;
+>> -		if (!test_and_set_bit_lock(NFS_INO_INVALIDATING, bitlock))
+>> +		spin_lock(&inode->i_lock);
+>> +		if (test_bit(NFS_INO_INVALIDATING, bitlock)) {
+>> +			spin_unlock(&inode->i_lock);
+>> +			continue;
+>> +		}
+>> +		if (nfsi->cache_validity & NFS_INO_INVALID_DATA)
+>> 			break;
+>> -	}
+>> -
+>> -	spin_lock(&inode->i_lock);
+>> -	if (nfsi->cache_validity & NFS_INO_INVALID_DATA) {
+>> -		nfsi->cache_validity &= ~NFS_INO_INVALID_DATA;
+>> -		spin_unlock(&inode->i_lock);
+>> -		trace_nfs_invalidate_mapping_enter(inode);
+>> -		ret = nfs_invalidate_mapping(inode, mapping);
+>> -		trace_nfs_invalidate_mapping_exit(inode, ret);
+>> -	} else {
+>> -		/* something raced in and cleared the flag */
+>> 		spin_unlock(&inode->i_lock);
+>> +		goto out;
+>> 	}
+>> 
+>> +	set_bit(NFS_INO_INVALIDATING, bitlock);
+> 
+> Do we need a memory barrier here to ensure the ordering or does the
+> set_bit() have one implied? Note that nfs_readdir_search_for_cookie and
+> nfs_write_pageuptodate don't hold the i_lock when checking these values.
 
--- 
-Jeff Layton <jlayton@redhat.com>
+There seems little point in putting a barrier here. If we need stronger semantics, then we can and should use the spin lock. That said, neither nfs_readdir_search_for_cookie nor nfs_write_pageuptodate is required by close-to-open to have such semantics: the strong checks happen at open().
+
+>> +	nfsi->cache_validity &= ~NFS_INO_INVALID_DATA;
+>> +	spin_unlock(&inode->i_lock);
+>> +	trace_nfs_invalidate_mapping_enter(inode);
+>> +	ret = nfs_invalidate_mapping(inode, mapping);
+>> +	trace_nfs_invalidate_mapping_exit(inode, ret);
+>> +
+>> 	clear_bit_unlock(NFS_INO_INVALIDATING, bitlock);
+>> 	smp_mb__after_clear_bit();
+>> 	wake_up_bit(bitlock, NFS_INO_INVALIDATING);
+> 
+> Other than the point about the mb, I think this will cover it. I think
+> the patch I sent earlier is easier to prove correct however...
+> 
+
+--
+Trond Myklebust
+Linux NFS client maintainer
+
