@@ -1,97 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f175.google.com ([209.85.223.175]:53563 "EHLO
-	mail-ie0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752684AbaAUUVh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Jan 2014 15:21:37 -0500
-Received: by mail-ie0-f175.google.com with SMTP id ar20so5607045iec.6
-        for <linux-nfs@vger.kernel.org>; Tue, 21 Jan 2014 12:21:36 -0800 (PST)
-From: Weston Andros Adamson <dros@primarydata.com>
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
-Subject: [PATCH] pnfs: fix BUG in filelayout_recover_commit_reqs
-Date: Tue, 21 Jan 2014 15:21:33 -0500
-Message-Id: <1390335693-12004-1-git-send-email-dros@primarydata.com>
+Received: from mail-ie0-f169.google.com ([209.85.223.169]:57173 "EHLO
+	mail-ie0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754771AbaA1O4p (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 28 Jan 2014 09:56:45 -0500
+Received: by mail-ie0-f169.google.com with SMTP id to1so503893ieb.14
+        for <linux-nfs@vger.kernel.org>; Tue, 28 Jan 2014 06:56:45 -0800 (PST)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] NFS: Fix races in nfs_revalidate_mapping
+Date: Tue, 28 Jan 2014 09:49:10 -0500
+Message-Id: <1390920550-5543-1-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <20140128091849.6f3090cc@tlielax.poochiereds.net>
+References: <20140128091849.6f3090cc@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-cond_resched_lock(cinfo->lock) is called everywhere else while holding
-the cinfo->lock spinlock.  Not holding this lock while calling
-transfer_commit_list in filelayout_recover_commit_reqs causes the BUG
-below.
+Commit d529ef83c355f97027ff85298a9709fe06216a66 (NFS: fix the handling
+of NFS_INO_INVALID_DATA flag in nfs_revalidate_mapping) introduces
+a potential race, since it doesn't test the value of nfsi->cache_validity
+and set the bitlock in nfsi->flags atomically.
 
-It's true that we can't hold this lock while calling pnfs_put_lseg,
-because that might try to lock the inode lock - which might be the
-same lock as cinfo->lock.
-
-To reproduce, mount a 2 DS pynfs server and run an O_DIRECT command
-that crosses a stripe boundary and is not page aligned, such as:
-
- dd if=/dev/zero of=/mnt/f bs=17000 count=1 oflag=direct
-
-BUG: sleeping function called from invalid context at linux/fs/nfs/nfs4filelayout.c:1161
-in_atomic(): 0, irqs_disabled(): 0, pid: 27, name: kworker/0:1
-2 locks held by kworker/0:1/27:
- #0:  (events){.+.+.+}, at: [<ffffffff810501d7>] process_one_work+0x175/0x3a5
- #1:  ((&dreq->work)){+.+...}, at: [<ffffffff810501d7>] process_one_work+0x175/0x3a5
-CPU: 0 PID: 27 Comm: kworker/0:1 Not tainted 3.13.0-rc3-branch-dros_testing+ #21
-Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform, BIOS 6.00 07/31/2013
-Workqueue: events nfs_direct_write_schedule_work [nfs]
- 0000000000000000 ffff88007a39bbb8 ffffffff81491256 ffff88007b87a130  ffff88007a39bbd8 ffffffff8105f103 ffff880079614000 ffff880079617d40  ffff88007a39bc20 ffffffffa011603e ffff880078988b98 0000000000000000
-Call Trace:
- [<ffffffff81491256>] dump_stack+0x4d/0x66
- [<ffffffff8105f103>] __might_sleep+0x100/0x105
- [<ffffffffa011603e>] transfer_commit_list+0x94/0xf1 [nfs_layout_nfsv41_files]
- [<ffffffffa01160d6>] filelayout_recover_commit_reqs+0x3b/0x68 [nfs_layout_nfsv41_files]
- [<ffffffffa00ba53a>] nfs_direct_write_reschedule+0x9f/0x1d6 [nfs]
- [<ffffffff810705df>] ? mark_lock+0x1df/0x224
- [<ffffffff8106e617>] ? trace_hardirqs_off_caller+0x37/0xa4
- [<ffffffff8106e691>] ? trace_hardirqs_off+0xd/0xf
- [<ffffffffa00ba8f8>] nfs_direct_write_schedule_work+0x9d/0xb7 [nfs]
- [<ffffffff810501d7>] ? process_one_work+0x175/0x3a5
- [<ffffffff81050258>] process_one_work+0x1f6/0x3a5
- [<ffffffff810501d7>] ? process_one_work+0x175/0x3a5
- [<ffffffff8105187e>] worker_thread+0x149/0x1f5
- [<ffffffff81051735>] ? rescuer_thread+0x28d/0x28d
- [<ffffffff81056d74>] kthread+0xd2/0xda
- [<ffffffff81056ca2>] ? __kthread_parkme+0x61/0x61
- [<ffffffff8149e66c>] ret_from_fork+0x7c/0xb0
- [<ffffffff81056ca2>] ? __kthread_parkme+0x61/0x61
-
-Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Jeff Layton <jlayton@redhat.com>
 ---
+ fs/nfs/inode.c | 22 ++++++++++------------
+ 1 file changed, 10 insertions(+), 12 deletions(-)
 
-I'm pretty sure this is the correct approach - it certainly fixes the BUG
-for me.
-
- fs/nfs/nfs4filelayout.c | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
-
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 0a93e79..03fd8be 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -1216,17 +1216,17 @@ static void filelayout_recover_commit_reqs(struct list_head *dst,
- 	struct pnfs_commit_bucket *b;
- 	int i;
- 
--	/* NOTE cinfo->lock is NOT held, relying on fact that this is
--	 * only called on single thread per dreq.
--	 * Can't take the lock because need to do pnfs_put_lseg
--	 */
-+	spin_lock(cinfo->lock);
- 	for (i = 0, b = cinfo->ds->buckets; i < cinfo->ds->nbuckets; i++, b++) {
- 		if (transfer_commit_list(&b->written, dst, cinfo, 0)) {
-+			spin_unlock(cinfo->lock);
- 			pnfs_put_lseg(b->wlseg);
- 			b->wlseg = NULL;
-+			spin_lock(cinfo->lock);
- 		}
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 0a972ee9ccc1..8a5bcb6040ac 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -1038,24 +1038,22 @@ int nfs_revalidate_mapping(struct inode *inode, struct address_space *mapping)
+ 				  nfs_wait_bit_killable, TASK_KILLABLE);
+ 		if (ret)
+ 			goto out;
+-		if (!(nfsi->cache_validity & NFS_INO_INVALID_DATA))
++		spin_lock(&inode->i_lock);
++		if (!(nfsi->cache_validity & NFS_INO_INVALID_DATA)) {
++			spin_unlock(&inode->i_lock);
+ 			goto out;
++		}
+ 		if (!test_and_set_bit_lock(NFS_INO_INVALIDATING, bitlock))
+ 			break;
+-	}
+-
+-	spin_lock(&inode->i_lock);
+-	if (nfsi->cache_validity & NFS_INO_INVALID_DATA) {
+-		nfsi->cache_validity &= ~NFS_INO_INVALID_DATA;
+-		spin_unlock(&inode->i_lock);
+-		trace_nfs_invalidate_mapping_enter(inode);
+-		ret = nfs_invalidate_mapping(inode, mapping);
+-		trace_nfs_invalidate_mapping_exit(inode, ret);
+-	} else {
+-		/* something raced in and cleared the flag */
+ 		spin_unlock(&inode->i_lock);
  	}
- 	cinfo->ds->nwritten = 0;
-+	spin_unlock(cinfo->lock);
- }
  
- static unsigned int
++	nfsi->cache_validity &= ~NFS_INO_INVALID_DATA;
++	spin_unlock(&inode->i_lock);
++	trace_nfs_invalidate_mapping_enter(inode);
++	ret = nfs_invalidate_mapping(inode, mapping);
++	trace_nfs_invalidate_mapping_exit(inode, ret);
++
+ 	clear_bit_unlock(NFS_INO_INVALIDATING, bitlock);
+ 	smp_mb__after_clear_bit();
+ 	wake_up_bit(bitlock, NFS_INO_INVALIDATING);
 -- 
-1.8.3.4 (Apple Git-47)
+1.8.5.3
 
