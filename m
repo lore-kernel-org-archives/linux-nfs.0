@@ -1,36 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:40036 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750744AbaATNwg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 20 Jan 2014 08:52:36 -0500
-Date: Mon, 20 Jan 2014 05:52:31 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: shaobingqing <shaobingqing@bwstor.com.cn>
-Cc: trond.myklebust@primarydata.com, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH] NFSv4.1: PNFS_BLOCK_NONE_DATA should be handle properly
- in bl_add_merge_extent?
-Message-ID: <20140120135231.GA17536@infradead.org>
-References: <n>
- <1390212448-21354-1-git-send-email-shaobingqing@bwstor.com.cn>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1390212448-21354-1-git-send-email-shaobingqing@bwstor.com.cn>
+Received: from mail-ie0-f180.google.com ([209.85.223.180]:34025 "EHLO
+	mail-ie0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751947AbaA2Rg2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 29 Jan 2014 12:36:28 -0500
+Received: by mail-ie0-f180.google.com with SMTP id at1so2288524iec.25
+        for <linux-nfs@vger.kernel.org>; Wed, 29 Jan 2014 09:36:27 -0800 (PST)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: [PATCH 3/3] NFSv4.1: Cleanup
+Date: Wed, 29 Jan 2014 12:36:22 -0500
+Message-Id: <1391016982-10562-3-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1391016982-10562-2-git-send-email-trond.myklebust@primarydata.com>
+References: <1391016982-10562-1-git-send-email-trond.myklebust@primarydata.com>
+ <1391016982-10562-2-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Jan 20, 2014 at 06:07:28PM +0800, shaobingqing wrote:
-> In the current code, extents would not delete from the bl_extents list when 
-> lseg is removed from layout. Now one extent's lseg is deleted and its type 
-> is PNFS_BLOCK_NONE_DATA, while a layoutget request get a extent with the same
-> range and its type is PNFS_BLOCK_NONE_DATA. In this situation the function
-> bl_add_merge_extent will return -EIO. Furthermore, the READ op which request
-> the layout will be execute in band. This perhaps not only degrade performance,
-> but also result in data unconsistency. 
+It is now completely safe to call nfs41_sequence_free_slot with a NULL
+slot.
 
-I think the right fix is to remove the extent when the lseg is removed.
-I can't see how the current pnfs block client could work in the case
-where a file is first truncated and then later written into again.
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/nfs4filelayout.c | 6 ++----
+ 1 file changed, 2 insertions(+), 4 deletions(-)
 
-This should be easily reproducable using fsx, btw.
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 20a56fa271bd..12c8132ad408 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -336,8 +336,7 @@ static void filelayout_read_call_done(struct rpc_task *task, void *data)
+ 
+ 	if (test_bit(NFS_IOHDR_REDO, &rdata->header->flags) &&
+ 	    task->tk_status == 0) {
+-		if (rdata->res.seq_res.sr_slot != NULL)
+-			nfs41_sequence_done(task, &rdata->res.seq_res);
++		nfs41_sequence_done(task, &rdata->res.seq_res);
+ 		return;
+ 	}
+ 
+@@ -446,8 +445,7 @@ static void filelayout_write_call_done(struct rpc_task *task, void *data)
+ 
+ 	if (test_bit(NFS_IOHDR_REDO, &wdata->header->flags) &&
+ 	    task->tk_status == 0) {
+-		if (wdata->res.seq_res.sr_slot != NULL)
+-			nfs41_sequence_done(task, &wdata->res.seq_res);
++		nfs41_sequence_done(task, &wdata->res.seq_res);
+ 		return;
+ 	}
+ 
+-- 
+1.8.5.3
 
