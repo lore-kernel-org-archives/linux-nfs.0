@@ -1,54 +1,141 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:40031 "EHLO fieldses.org"
+Received: from cantor2.suse.de ([195.135.220.15]:43267 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752270AbaABSzW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 2 Jan 2014 13:55:22 -0500
-Date: Thu, 2 Jan 2014 13:55:19 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: NeilBrown <neilb@suse.de>
-Cc: Jeff Layton <jlayton@redhat.com>, Simo Sorce <simo@redhat.com>,
-        linux-nfs@vger.kernel.org
-Subject: Re: should we change how the kernel detects whether gssproxy is
- running?
-Message-ID: <20140102185519.GL25684@fieldses.org>
-References: <20131231073300.0e0f220a@tlielax.poochiereds.net>
- <20131231180123.GA12875@fieldses.org>
- <20140101095620.0ab48051@notabene.brown>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140101095620.0ab48051@notabene.brown>
+	id S1750896AbaA2HZo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 29 Jan 2014 02:25:44 -0500
+Date: Wed, 29 Jan 2014 18:25:32 +1100
+From: NeilBrown <neilb@suse.de>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: "tigran.mkrtchyan@desy.de" <tigran.mkrtchyan@desy.de>,
+        Jim Rees <rees@umich.edu>, linux-nfs <linux-nfs@vger.kernel.org>
+Subject: Re: readdir vs. getattr
+Message-ID: <20140129182532.7479eeda@notabene.brown>
+In-Reply-To: <1365090480.10726.22.camel@leira.trondhjem.org>
+References: <CAGue13pe_ZH_Eto-jL3mLjTNGFK26izTarnZdjs3eL82A2Z37w@mail.gmail.com>
+ <20130404151507.GA8484@umich.edu>
+ <CAGue13o6X5S3ppTX_fmMCTCX=7Mq_57YQEsb_hkOKwN9iOHwEQ@mail.gmail.com>
+ <1365090480.10726.22.camel@leira.trondhjem.org>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/e18p1X4/BDy6BlYjXCbarxT"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Jan 01, 2014 at 09:56:20AM +1100, NeilBrown wrote:
-> On Tue, 31 Dec 2013 13:01:23 -0500 "J. Bruce Fields" <bfields@fieldses.org>
-> wrote:
-> 
-> > On Tue, Dec 31, 2013 at 07:33:00AM -0500, Jeff Layton wrote:
-> > > I'm a bit concerned with how /proc/net/rpc/use-gss-proxy works...
-> > > 
-> > > For one thing, when the kernel first boots any read against that file
-> > > hangs. That's going to be extremely problematic for certain tools that
-> > > scrape info out of /proc for troubleshooting purposes (e.g. Red Hat's
-> > > sosreport tool).
-> > 
-> > Is that the only file under /proc for which that's true?  (E.g. the rpc
-> > cache channel files probably do the same, don't they?)  I was assuming
-> > tools like sosreport need to work from lists of specific paths.
-> 
-> The rpc cache channel files do not block on reads, so 'cat' works well on
-> them.
-> A process (like mountd) that wasn't to see new additions will use select (or
-> poll) for an 'exception' condition, and then read.
-> 
-> I think that it is best of all files in /proc (or /sys) would support 'cat'.
-> If I "tar" up "/proc" on my notebook it doesn't block ... though it does take
-> quite a while on /proc/kcore :-)
+--Sig_/e18p1X4/BDy6BlYjXCbarxT
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-Yes, trying that myself, I see the delay reading kcore, a bunch of "file
-removed before we read it"/"file changed as we read it" errors (not too
-surprising), EBUSY on /proc/acpi/event, and a few permission errors.
 
-So yes letting a /proc read hang looks like a bug, my bad.
+(resent with correct address for Trond)
 
---b.
+On Thu, 4 Apr 2013 15:48:01 +0000 "Myklebust, Trond"
+<Trond.Myklebust@netapp.com> wrote:
+
+> On Thu, 2013-04-04 at 17:38 +0200, Tigran Mkrtchyan wrote:
+> > On Thu, Apr 4, 2013 at 5:15 PM, Jim Rees <rees@umich.edu> wrote:
+> > > Tigran Mkrtchyan wrote:
+> > >
+> > >   we have a directory with 50K (number of )  files in it.
+> > >   The user does a 'ls' and I can see READDIR4. To
+> > >   get the complete listing a client need to send ~380 requests.
+> > >   Now user does yet another 'ls' in the same directory.
+> > >   The client sends a GETATTR  on directorie's FH
+> > >   (actually two of GETATTRS - why?!!) and discovers that a
+> > >   directory didn't change and re-uses existing listing, BUT!!!
+> > >   for each file in the directory it sends a GETATTR to discover
+> > >   is  the file's attributes are changed. For 50K files it's a 50K req=
+uests.
+> > >
+> > > So is this a "ls -l"? Because for "ls" it shouldn't stat all the file=
+s.
+> >=20
+> > I believe it's 'ls -l'.  Well, you probably want to say that it's ls
+> > calling stat on each file. Nevertheless client still should re-use
+> > cached information.
+>=20
+> What makes you think that it isn't using cached information? I'm
+> guessing you just need to adjust the values of acregmin and acregmax
+> upwards.
+>=20
+> That said, we might be able to be a little more intelligent about how we
+> use the NFS_INO_ADVISE_RDPLUS hint, and have it blow out the readdir
+> cache when we find ourselves doing lots of lookup revalidates.
+>=20
+
+Pop.
+
+I recently had a customer raise exactly this issue with me, so I've been
+looking into it.
+
+I don't think it can really be fixed by adjusting acregmin/acregmax.
+
+Once you have done READDIRPLUS, you have the directory contents in the
+page-cache and will continue to use those contents until they drop out of t=
+he
+cache, or until the directory changes in some way.
+
+Meanwhile the stat information from the READDIRPLUS was used to create/upda=
+te
+info in the inode table and that will eventually become stale.  As soon as =
+it
+becomes stale you get a GETATTR storm on the next "ls -l" instead of a few
+READDIRPLUS calls.  By increasing acregmin you can delay that storm, but you
+can put it off forever.
+
+Fixing this is tricky.  We really want to know on the first nfs_readdir() c=
+all
+whether it will be followed by lookups or not.  If it won't, then using the
+cached data is fine.  If it will, then we really want a READDIRPLUS.
+
+The only way I can see to address this is for nfs_advise_use_readdirplus  (=
+or
+code near where that is called) to notice that a readdir is currently active
+on the same directory and is using cached data, and to re-use that 'open' of
+the directory to do a readdirplus.  This would update the stat info for the
+current inode and all the other inodes for the directory.
+
+This is fairly horrible.  The 'struct file' used by the readdir would need =
+to
+be stored somewhere so that nfs_lookup_revalidate can use it (if process
+permissions allow).  If multiple processes were doing a readdir at the same
+time .... I would certainly get confused.
+
+However I cannot think of anything else that would even come close to being=
+ a
+real solution.
+
+Any solution that just modified nfs_readdir() could only avoid the GETATTR
+storm by largely ignoring the cached information and (almost) always calling
+READDIRPLUS.
+
+Does anyone have any other ideas?  Or do you think it is worth trying to
+implement the above "horrible" idea.  I did start working on it, but only g=
+ot
+far enough to understand the full extend of what is required.
+
+Thanks,
+NeilBrown
+
+--Sig_/e18p1X4/BDy6BlYjXCbarxT
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.22 (GNU/Linux)
+
+iQIVAwUBUuis7Dnsnt1WYoG5AQLHJRAAihkhlpgJOQ+mH5vn0JA8BEzFh6eaK7PJ
+m+n2sh37ypkEGMLVTa36uM0iLRu2kXzlZeOdy7/ayWmj0EEcw/04gXaCwf0BJc+K
+W71nE2X9vpMh42VbWUGeQJfLJo71ul0I7kFKN5l0nQHGhKfSjhA6Xt9CtZl92kCM
+nCx5FZvgYW4k/fzMfS0V0PEYcrp8eg5du9FshXabjlR5peW7QVjJ1beuGRaEYkfX
+WmAy6EGIvtdORFxOjFs8VEA8O7yuwWQSRh0YO4guzetKRDuQIK6RQ0oLIdQb5Hdi
+eEUrirQRIw3TrbVrEOwvq8ci0Z2OWkoGug1DTou9tnysCi1XKSksAkdDMJbHon/P
+YbgfAyEQ+xwRhjXaHbgHZlqc6dhYPt1zIl5bqaCz9eBifPK9u1QGI7oA075qTwjA
+cRnXv2rHHLg/y7YvQAx27Yye3VQFdc4pfsr1Nd4/odFk4miJeVpH/hfmCvCsh7JM
+Ds/6bRL7eJw7Ki83ZEY27ZhdCi/ZdPfkSNl0kjJdkR3c7z6tEnt9jmYB10MmhjrQ
+nDOIRGhyRlc5+DHEyrHvkrnQf2zyQJt6A9FWpuL+z9L1vf6q9Nl6umbGj6j3lp9P
++xVgCoemwoZm4qcPfg8zmEcI7PYiceFqwftWFkamBu3DCTHSSPU/puvEzGHm6T/r
+7TpYjH5dDJc=
+=UbtI
+-----END PGP SIGNATURE-----
+
+--Sig_/e18p1X4/BDy6BlYjXCbarxT--
