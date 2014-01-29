@@ -1,126 +1,125 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:46775 "EHLO fieldses.org"
+Received: from smtp-o-3.desy.de ([131.169.56.156]:57032 "EHLO smtp-o-3.desy.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753165AbaAGUt0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 7 Jan 2014 15:49:26 -0500
-Date: Tue, 7 Jan 2014 15:49:20 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Sander Klein <roedie@roedie.nl>
-Cc: Karel Zak <kzak@redhat.com>, linux-nfs@vger.kernel.org,
-        linux-nfs-owner@vger.kernel.org, steved@redhat.com
-Subject: Re: rpc.mountd high cpu usage
-Message-ID: <20140107204920.GB15922@fieldses.org>
-References: <889b64df295ba04d47f941762ebe0bac@roedie.nl>
- <20131212154642.GA11521@fieldses.org>
- <20140106111805.GF4435@x2.net.home>
- <20140106212514.GG31764@fieldses.org>
- <0a94c641959a8084a56c688dd2242c04@roedie.nl>
+	id S1751642AbaA2JVp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 29 Jan 2014 04:21:45 -0500
+Received: from smtp-map-3.desy.de (smtp-map-3.desy.de [131.169.56.68])
+	by smtp-o-3.desy.de (DESY-O-3) with ESMTP id ACD94280961
+	for <linux-nfs@vger.kernel.org>; Wed, 29 Jan 2014 10:21:43 +0100 (CET)
+Received: from ZITSWEEP1.win.desy.de (zitsweep1.win.desy.de [131.169.97.95])
+	by smtp-map-3.desy.de (DESY_MAP_3) with ESMTP id 969BE10F5
+	for <linux-nfs@vger.kernel.org>; Wed, 29 Jan 2014 10:21:43 +0100 (MET)
+Date: Wed, 29 Jan 2014 10:21:43 +0100 (CET)
+From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+To: NeilBrown <neilb@suse.de>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Jim Rees <rees@umich.edu>, linux-nfs <linux-nfs@vger.kernel.org>
+Message-ID: <1342984553.746756.1390987303295.JavaMail.zimbra@desy.de>
+In-Reply-To: <20140129182532.7479eeda@notabene.brown>
+References: <CAGue13pe_ZH_Eto-jL3mLjTNGFK26izTarnZdjs3eL82A2Z37w@mail.gmail.com> <20130404151507.GA8484@umich.edu> <CAGue13o6X5S3ppTX_fmMCTCX=7Mq_57YQEsb_hkOKwN9iOHwEQ@mail.gmail.com> <1365090480.10726.22.camel@leira.trondhjem.org> <20140129182532.7479eeda@notabene.brown>
+Subject: Re: readdir vs. getattr
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <0a94c641959a8084a56c688dd2242c04@roedie.nl>
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jan 07, 2014 at 08:55:12PM +0100, Sander Klein wrote:
-> Hi,
-> 
-> Thank you very much for this patch. I've added the ZFS magic and
-> tested it on my nfs-utils-1.2.8 package and it looks like it fixes
-> my issue.
-> 
-> Is there any chance this patch will be accepted upstream with the
-> ZFS_SUPER_MAGIC as shown below?
+(without knowing kernel details)
 
-OK by me; cc'ing steved.
+What about some stat counter and trigger readdirplus instead of next getattr if
+some threshold are reached. Let say directory has more than 8000 entries and 
+getattr was called on 10% of the files. Of course you have to watch this per
+process.
 
---b.
+Tigran.
 
+----- Original Message -----
+> From: "NeilBrown" <neilb@suse.de>
+> To: "Trond Myklebust" <trond.myklebust@primarydata.com>
+> Cc: "tigran mkrtchyan" <tigran.mkrtchyan@desy.de>, "Jim Rees" <rees@umich.edu>, "linux-nfs"
+> <linux-nfs@vger.kernel.org>
+> Sent: Wednesday, January 29, 2014 8:25:32 AM
+> Subject: Re: readdir vs. getattr
 > 
-> Greets,
 > 
-> Sander
+> (resent with correct address for Trond)
 > 
-> From e4f5b38c87ef8d713c6d0a3169afaf1acc7e22c6 Mon Sep 17 00:00:00 2001
-> From: Karel Zak <kzak@redhat.com>
-> Date: Mon, 6 Jan 2014 12:03:01 +0100
-> Subject: [PATCH] mountd: optimize libblkid usage
+> On Thu, 4 Apr 2013 15:48:01 +0000 "Myklebust, Trond"
+> <Trond.Myklebust@netapp.com> wrote:
 > 
->  * use get_uuid_blkdev() only first time for the path (it means
->    that uuid_by_path() is called with type==0)
+> > On Thu, 2013-04-04 at 17:38 +0200, Tigran Mkrtchyan wrote:
+> > > On Thu, Apr 4, 2013 at 5:15 PM, Jim Rees <rees@umich.edu> wrote:
+> > > > Tigran Mkrtchyan wrote:
+> > > >
+> > > >   we have a directory with 50K (number of )  files in it.
+> > > >   The user does a 'ls' and I can see READDIR4. To
+> > > >   get the complete listing a client need to send ~380 requests.
+> > > >   Now user does yet another 'ls' in the same directory.
+> > > >   The client sends a GETATTR  on directorie's FH
+> > > >   (actually two of GETATTRS - why?!!) and discovers that a
+> > > >   directory didn't change and re-uses existing listing, BUT!!!
+> > > >   for each file in the directory it sends a GETATTR to discover
+> > > >   is  the file's attributes are changed. For 50K files it's a 50K
+> > > >   requests.
+> > > >
+> > > > So is this a "ls -l"? Because for "ls" it shouldn't stat all the files.
+> > > 
+> > > I believe it's 'ls -l'.  Well, you probably want to say that it's ls
+> > > calling stat on each file. Nevertheless client still should re-use
+> > > cached information.
+> > 
+> > What makes you think that it isn't using cached information? I'm
+> > guessing you just need to adjust the values of acregmin and acregmax
+> > upwards.
+> > 
+> > That said, we might be able to be a little more intelligent about how we
+> > use the NFS_INO_ADVISE_RDPLUS hint, and have it blow out the readdir
+> > cache when we find ourselves doing lots of lookup revalidates.
+> > 
 > 
->  * don't use libblkid for btrfs, network or pseudo filesystems
+> Pop.
 > 
-> Note that the patch defines the fs type ID rather than include
-> <linux/magic.h> as this file seems incomplete and libc specific).
+> I recently had a customer raise exactly this issue with me, so I've been
+> looking into it.
 > 
-> Signed-off-by: Karel Zak <kzak@redhat.com>
-> ---
->  utils/mountd/cache.c | 38 +++++++++++++++++++++++++++++++++++---
->  1 file changed, 35 insertions(+), 3 deletions(-)
+> I don't think it can really be fixed by adjusting acregmin/acregmax.
 > 
-> Index: nfs-utils-1.2.8/utils/mountd/cache.c
-> ===================================================================
-> --- nfs-utils-1.2.8.orig/utils/mountd/cache.c	2013-05-02
-> 14:21:12.000000000 +0200
-> +++ nfs-utils-1.2.8/utils/mountd/cache.c	2014-01-07
-> 20:46:55.799904557 +0100
-> @@ -266,6 +266,27 @@
->  	return 1;
->  }
+> Once you have done READDIRPLUS, you have the directory contents in the
+> page-cache and will continue to use those contents until they drop out of the
+> cache, or until the directory changes in some way.
 > 
-> +
-> +/*
-> + * Don't ask libblkid for these filesystems. Note that BTRF is
-> ignored, because
-> + * we generate the identifier from statfs->f_fsid. The rest are
-> network or
-> + * pseudo filesystems. (See <linux/magic.h> for the basic IDs.)
-> + */
-> +static const long int nonblkid_filesystems[] = {
-> +	0x2fc12fc1,	/* ZFS_SUPER_MAGIC */
-> +	0x9123683E,	/* BTRFS_SUPER_MAGIC */
-> +	0xFF534D42,	/* CIFS_MAGIC_NUMBER */
-> +	0x1373,		/* DEVFS_SUPER_MAGIC */
-> +	0x73757245,	/* CODA_SUPER_MAGIC */
-> +	0x564C,		/* NCP_SUPER_MAGIC */
-> +	0x6969,		/* NFS_SUPER_MAGIC */
-> +	0x9FA0,		/* PROC_SUPER_MAGIC */
-> +	0x62656572,	/* SYSFS_MAGIC */
-> +	0x517B,		/* SMB_SUPER_MAGIC */
-> +	0x01021994,	/* TMPFS_SUPER_MAGIC */
-> +	0		/* last */
-> +};
-> +
->  static int uuid_by_path(char *path, int type, size_t uuidlen, char
-> *uuid)
->  {
->  	/* get a uuid for the filesystem found at 'path'.
-> @@ -297,12 +318,24 @@
->  	 */
->  	struct statfs64 st;
->  	char fsid_val[17];
-> -	const char *blkid_val;
-> +	const char *blkid_val = NULL;
->  	const char *val;
-> +	int rc;
-> +
-> +	rc = statfs64(path, &st);
-> +
-> +	if (type == 0 && rc == 0) {
-> +		const long int *bad;
+> Meanwhile the stat information from the READDIRPLUS was used to create/update
+> info in the inode table and that will eventually become stale.  As soon as it
+> becomes stale you get a GETATTR storm on the next "ls -l" instead of a few
+> READDIRPLUS calls.  By increasing acregmin you can delay that storm, but you
+> can put it off forever.
 > 
-> -	blkid_val = get_uuid_blkdev(path);
-> +		for (bad = nonblkid_filesystems; *bad; bad++) {
-> +			if (*bad == st.f_type)
-> +				break;
-> +		}
-> +		if (*bad == 0)
-> +			blkid_val = get_uuid_blkdev(path);
-> +	}
+> Fixing this is tricky.  We really want to know on the first nfs_readdir()
+> call
+> whether it will be followed by lookups or not.  If it won't, then using the
+> cached data is fine.  If it will, then we really want a READDIRPLUS.
 > 
-> -	if (statfs64(path, &st) == 0 &&
-> +	if (rc == 0 &&
->  	    (st.f_fsid.__val[0] || st.f_fsid.__val[1]))
->  		snprintf(fsid_val, 17, "%08x%08x",
->  			 st.f_fsid.__val[0], st.f_fsid.__val[1]);
+> The only way I can see to address this is for nfs_advise_use_readdirplus  (or
+> code near where that is called) to notice that a readdir is currently active
+> on the same directory and is using cached data, and to re-use that 'open' of
+> the directory to do a readdirplus.  This would update the stat info for the
+> current inode and all the other inodes for the directory.
+> 
+> This is fairly horrible.  The 'struct file' used by the readdir would need to
+> be stored somewhere so that nfs_lookup_revalidate can use it (if process
+> permissions allow).  If multiple processes were doing a readdir at the same
+> time .... I would certainly get confused.
+> 
+> However I cannot think of anything else that would even come close to being a
+> real solution.
+> 
+> Any solution that just modified nfs_readdir() could only avoid the GETATTR
+> storm by largely ignoring the cached information and (almost) always calling
+> READDIRPLUS.
+> 
+> Does anyone have any other ideas?  Or do you think it is worth trying to
+> implement the above "horrible" idea.  I did start working on it, but only got
+> far enough to understand the full extend of what is required.
+> 
+> Thanks,
+> NeilBrown
 > 
