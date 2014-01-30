@@ -1,69 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:49832 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932795AbaAaTsc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 31 Jan 2014 14:48:32 -0500
-Date: Fri, 31 Jan 2014 14:47:58 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Al Viro <viro@ZenIV.linux.org.uk>
-Cc: Christoph Hellwig <hch@infradead.org>, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        Miklos Szeredi <mszeredi@suse.cz>
-Subject: Re: [PATCH] dcache: make d_splice_alias use d_materialise_unique
-Message-ID: <20140131194758.GA24618@fieldses.org>
-References: <20140115151749.GF23999@fieldses.org>
- <20140117121723.GA18375@infradead.org>
- <20140117153917.GA26636@fieldses.org>
- <20140117210343.GD26636@fieldses.org>
- <20140117212655.GE26636@fieldses.org>
- <20140123212700.GA30466@fieldses.org>
- <20140131184258.GN10323@ZenIV.linux.org.uk>
-MIME-Version: 1.0
+Received: from userp1040.oracle.com ([156.151.31.81]:36908 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751026AbaA3Qta convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Jan 2014 11:49:30 -0500
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140131184258.GN10323@ZenIV.linux.org.uk>
+Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
+Subject: Re: [PATCH 1/3] NFSv4: Fix a slot leak in nfs40_sequence_done
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1391016982-10562-1-git-send-email-trond.myklebust@primarydata.com>
+Date: Thu, 30 Jan 2014 08:49:26 -0800
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <5AE747F1-D056-47AB-8416-C37071A35D5B@oracle.com>
+References: <1391016982-10562-1-git-send-email-trond.myklebust@primarydata.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jan 31, 2014 at 06:42:58PM +0000, Al Viro wrote:
-> On Thu, Jan 23, 2014 at 04:27:00PM -0500, J. Bruce Fields wrote:
-> > From: "J. Bruce Fields" <bfields@redhat.com>
-> > 
-> > d_splice_alias can create duplicate directory aliases (in the !new
-> > case), or (in the new case) d_move directories without holding
-> > appropriate locks.
+
+On Jan 29, 2014, at 9:36 AM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+
+> The check for whether or not we sent an RPC call in nfs40_sequence_done
+> is insufficient to decide whether or not we are holding a session slot,
+> and thus should not be used to decide when to free that slot.
 > 
-> Details, please.  In the new case, we have IS_ROOT() alias found;
-> what locks would that need?  Note that d_materialise_unique() won't
-> bother with __d_unalias() in such case - it does what d_move() would've
-> done, without taking any mutex.
+> This patch replaces the RPC_WAS_SENT() test with the correct test for
+> whether or not slot == NULL.
+> 
+> Cc: Chuck Lever <chuck.lever@oracle.com>
+> Cc: stable@vger.kernel.org # 3.12+
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> ---
+> fs/nfs/nfs4proc.c | 2 +-
+> 1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index ae00c3ed733f..493e9cce1f11 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -539,7 +539,7 @@ static int nfs40_sequence_done(struct rpc_task *task,
+> 	struct nfs4_slot *slot = res->sr_slot;
+> 	struct nfs4_slot_table *tbl;
+> 
+> -	if (!RPC_WAS_SENT(task))
+> +	if (slot == NULL)
+> 		goto out;
 
-Of course you're right, and Miklos had pointed this out already and I
-forgot to update the changelog.  Apologies!
+When CONFIG_NFS_V4_1 is enabled, nfs4_sequence_done() already does the slot == NULL test, though the other nfs40_sequence_done() call sites do not.  This patch should clean that up?
 
-> In the !new case, we'd need a preexisting dentry alias, complete with
-> parent.  IOW, that's the case when directory already in the tree
-> has been found during lookup from another parent.  In which case
-> we shouldn't be using d_splice_alias() at all, as it is (and it
-> certainly can't happen for any local fs).
+> 
+> 	tbl = slot->table;
+> -- 
+> 1.8.5.3
+> 
 
-Yes, except: won't a local filesystem will still hit this case on a
-filesystem that's corrupted to link a directory into multiple parents?
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
-Though in that case arguably the right behavior might be, say, WARN and
-return -EIO.
 
-> Now, I agree that merging that with d_materialise_unique() might be
-> a good idea, but commit message is wrong as it, AFAICS.
 
-Agreed, I'll fix and resend.
-
-Though now I wonder whether it's worth keeping two different interfaces,
-one for the case when finding a parent in a different directory is an
-error and one for the case when it's normal and you'd just like it fixed
-up.
-
-(Then one remaining thing I don't understand is how to make that fixing
-up reliable.  Or is there some reason nobody hits the _EBUSY case of
-__d_unalias?)
-
---b.
