@@ -1,128 +1,135 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:55151 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750824AbaAVAYs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 Jan 2014 19:24:48 -0500
-Date: Wed, 22 Jan 2014 11:24:36 +1100
-From: NeilBrown <neilb@suse.de>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: varekova@redhat.com, sysstat@orange.fr,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: Too many programs called nfsiostat.
-Message-ID: <20140122112436.574f0e29@notabene.brown>
-In-Reply-To: <A5BFEC5C-7AF2-4A7E-856F-D62F35BCEFC0@oracle.com>
-References: <20130410094639.5debfc90@notabene.brown>
-	<20140121144517.5f549347@notabene.brown>
-	<A5BFEC5C-7AF2-4A7E-856F-D62F35BCEFC0@oracle.com>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/z_tT2MUYs.uiWwP1DPgI0/I"; protocol="application/pgp-signature"
+Received: from gw-1.arm.linux.org.uk ([78.32.30.217]:52951 "EHLO
+	pandora.arm.linux.org.uk" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1753042AbaA3ObB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Jan 2014 09:31:01 -0500
+Date: Thu, 30 Jan 2014 14:30:54 +0000
+From: Russell King - ARM Linux <linux@arm.linux.org.uk>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: linuxnfs <linux-nfs@vger.kernel.org>, Christoph Hellwig <hch@lst.de>,
+        Viro Alexander <viro@zeniv.linux.org.uk>,
+        linux-arm-kernel@lists.infradead.org,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+Subject: Re: NFS client broken in Linus' tip
+Message-ID: <20140130143054.GY15937@n2100.arm.linux.org.uk>
+References: <20140130140834.GW15937@n2100.arm.linux.org.uk> <960A8F94-BDD4-4ED0-95EC-0D71D4AC27E7@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <960A8F94-BDD4-4ED0-95EC-0D71D4AC27E7@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/z_tT2MUYs.uiWwP1DPgI0/I
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+On Thu, Jan 30, 2014 at 09:17:00AM -0500, Trond Myklebust wrote:
+> 
+> On Jan 30, 2014, at 9:08, Russell King - ARM Linux <linux@arm.linux.org.uk> wrote:
+> 
+> > I just booted Linus' tip (plus a few other patches to imx-drm and imx
+> > code), and stumbled into this interesting scenario:
+> > 
+> > # touch test
+> > touch: cannot touch `test': Operation not supported
+> > 
+> > I also tried mkdir and mknod, all result in the same error.  Hard and
+> > symlinks links are creatable.
+> > 
+> > However, I can chmod existing files and rename them.  Files can also be
+> > deleted, and the combination of this has left me without a /etc/mtab !
+> > 
+> > The machine is a iMX6 based ARM, running root-nfs, which was mounted via
+> > ubuntu's initramfs (so not using the kernel's built-in root-nfs.)
+> > 
+> > /proc/mounts for the root mount gives:
+> > 192.168.1.123:/var/boot/ci / nfs rw,relatime,vers=3,rsize=65536,wsize=65536,namlen=255,hard,nolock,proto=tcp,port=2049,timeo=7,retrans=10,sec=sys,local_lock=all,addr=192.168.1.123 0 0
+> > 
+> > CONFIG_NFS_FS=y
+> > CONFIG_NFS_V2=y
+> > CONFIG_NFS_V3=y
+> > CONFIG_NFS_V3_ACL=y
+> > CONFIG_NFS_V4=y
+> > # CONFIG_NFS_SWAP is not set
+> > # CONFIG_NFS_V4_1 is not set
+> > CONFIG_ROOT_NFS=y
+> > # CONFIG_NFS_USE_LEGACY_DNS is not set
+> > CONFIG_NFS_USE_KERNEL_DNS=y
+> > # CONFIG_NFSD is not set
+> > CONFIG_LOCKD=y
+> > CONFIG_LOCKD_V4=y
+> > CONFIG_NFS_ACL_SUPPORT=y
+> > CONFIG_NFS_COMMON=y
+> > CONFIG_SUNRPC=y
+> > CONFIG_SUNRPC_GSS=y
+> > 
+> > tcpdumping, I see:
+> > 
+> > 13:59:51.713523 IP 192.168.1.252.1341245608 > 192.168.1.123.2049: 132 lookup fh Unknown/010007011040840000000000CC238FC8FBA0475D9D9F8356B4C44166CDC38700 "test"
+> > 13:59:51.714345 IP 192.168.1.123.2049 > 192.168.1.252.1341245608: reply ok 120 lookup ERROR: No such file or directory
+> > 13:59:51.751303 IP 192.168.1.252.797 > 192.168.1.123.nfs: . ack 3381 win 2625 <nop,nop,timestamp 474136 3431312924>
+> > 
+> > which is the only NFS packet(s) I see which mention "test".
+> > 
+> > and stracing touch:
+> > 
+> > open("test", O_WRONLY|O_CREAT|O_NOCTTY|O_NONBLOCK|O_LARGEFILE, 0666) = -1 EOPNOTSUPP (Operation not supported)
+> > utimensat(AT_FDCWD, "test", NULL, 0)    = -1 ENOENT (No such file or directory)
+> > write(2, "touch: ", 7touch: )                  = 7
+> > write(2, "cannot touch `test'", 19cannot touch `test')     = 19
+> > write(2, ": Operation not supported", 25: Operation not supported) = 25
+> > write(2, "\n", 1
+> > )                       = 1
+> > 
+> > I think it's down to this:
+> > 
+> > commit 013cdf1088d7235da9477a2375654921d9b9ba9f
+> > Author: Christoph Hellwig <hch@infradead.org>
+> > Date:   Fri Dec 20 05:16:53 2013 -0800
+> > 
+> >    nfs: use generic posix ACL infrastructure for v3 Posix ACLs
+> > 
+> >    This causes a small behaviour change in that we don't bother to set
+> >    ACLs on file creation if the mode bit can express the access permissions
+> >    fully, and thus behaving identical to local filesystems.
+> > 
+> >    Signed-off-by: Christoph Hellwig <hch@lst.de>
+> >    Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
+> > 
+> > which adds:
+> > 
+> > +       status = posix_acl_create(dir, &sattr->ia_mode, &default_acl, &acl);
+> > +       if (status)
+> > +               goto out;
+> 
+> Right, this should clearly not cause nfs4_proc_create to fail if it
+> returns EOPNOTSUPP.
 
-On Tue, 21 Jan 2014 10:40:01 -0500 Chuck Lever <chuck.lever@oracle.com> wro=
-te:
+NFS3 :)
 
->=20
-> On Jan 20, 2014, at 10:45 PM, NeilBrown <neilb@suse.de> wrote:
->=20
-> >=20
-> > (This time without the typo in Chuck's address - sorry).
-> >=20
-> > Not quite a year ago I wrote:
-> >=20
-> > On Wed, 10 Apr 2013 09:46:39 +1000 NeilBrown <neilb@suse.de> wrote:
-> >=20
-> >>=20
-> >> Hi all,
-> >> it seems that in 2010, a program called nfsiostat was added to the sys=
-stat
-> >> package (http://sebastien.godard.pagesperso-orange.fr/)
-> >>=20
-> >> This is unfortunate because in 2008 a program called nfsiostat was add=
-ed to
-> >> the nfs-utils package.
-> >>    (https://www.kernel.org/pub/linux/utils/nfs-utils/1.2.7/)
-> >>=20
-> >> The default install locations seem to be different (/usr/bin vs /usr/s=
-bin),
-> >> so packagers would not immediately notice.
-> >>=20
-> >> This seems like something that should be "fixed".
-> >>=20
-> >> Any suggestions what a good "fix" should look like?
-> >>=20
-> >> NeilBrown
-> >=20
-> >=20
-> > No suggestions were forthcoming.
-> > So I have a suggestion.
-> > I propose we rename the "nfsiostat" in the "sysstat" package to
-> > "nfsio-sysstat" and the "nfsiostat" in "nfs-utils" to
-> > "nfs-utils-iostat".
-> >=20
-> > Does anyone object?  If not I'll send off patches shortly :-)
->=20
-> What does the sysstat version do?  do we need two programs, or can they b=
-e merged?  Or can one be dropped?
->=20
+> > into nfs3_proc_create(), but this ends up calling down into nfs3_get_acl(),
+> > which does this:
+> > 
+> >        if (!nfs_server_capable(inode, NFS_CAP_ACLS))
+> >                return ERR_PTR(-EOPNOTSUPP);
+> 
+> Just for completeness sake: is the server you were running against supposed to support POSIX acls?
 
-It reads /proc/self/mountstats and reports some numbers, not unlike the
-nfs-utils version.
+The server is an old 3.1.8 kernel with this NFS config:
 
-$ /usr/sbin/nfsiostat=20
+CONFIG_NFS_FS=m
+CONFIG_NFS_V3=y
+# CONFIG_NFS_V3_ACL is not set
+# CONFIG_NFS_V4 is not set
+# CONFIG_NFS_FSCACHE is not set
+CONFIG_NFSD=m
+CONFIG_NFSD_V3=y
+# CONFIG_NFSD_V3_ACL is not set
+# CONFIG_NFSD_V4 is not set
+CONFIG_LOCKD=m
+CONFIG_LOCKD_V4=y
+CONFIG_NFS_COMMON=y
 
-eli:/home mounted on /mnt:
+which has worked fine with NFS clients for the last 1800 odd days... until
+now.
 
-   op/s		rpc bklog
-   3.55	   0.00
-read:            ops/s		   kB/s		  kB/op		retrans		avg RTT (ms)	avg exe (ms)
-		  0.000	  0.000	  0.000       0 (0.0%)	  0.000	  0.000
-write:           ops/s		   kB/s		  kB/op		retrans		avg RTT (ms)	avg exe (ms)
-		  0.000	  0.000	  0.000       0 (0.0%)	  0.000	  0.000
-$ /usr/bin/nfsiostat=20
-Linux 3.11.6-4-desktop (notabene.brown) 	01/22/2014 	_x86_64_	(8 CPU)
-
-Filesystem:               rkB_nor/s    wkB_nor/s    rkB_dir/s    wkB_dir/s =
-   rkB_svr/s    wkB_svr/s     ops/s    rops/s    wops/s
-eli:/home                      0.00         0.00         0.00         0.00 =
-        0.00         0.00      0.00      0.00      0.00
-
-
-The man page for the sysstat version is:
-
-http://www.makelinux.com/man/1/N/nfsiostat
-
-while man page for nfs-utils version is:
-
-http://linux.die.net/man/8/nfsiostat
-
-NeilBrown
-
---Sig_/z_tT2MUYs.uiWwP1DPgI0/I
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.22 (GNU/Linux)
-
-iQIVAwUBUt8PxDnsnt1WYoG5AQJEKBAAjLA3s2VOh6Ul7O8ntqaPVBWfA52rkD7Z
-ymyVz+fNx1sX7B65tDlp0grjnbjgOeG4WGlbaI8DIEEAEGCkiK6SAoYbzuGKng4w
-X0afBjYcXohyGkj6WWxhMQk6NPBg9TITDxd8Eyr/z3Yukv2jaWyLy32sdXp5Axo6
-QH+pzMYjg62UwMksJqii5B11vT1x/qr2w4J4Eyj63rWoIx03+4+MGdRUE8yO3Ehp
-R/54xQVqbzXQ6o4/BLZH3FFusIi1fYHVrOmYo4mjA6/6q1TB0Ri0zVu6b54WychQ
-nFac1EtuV24Pw05GF1Og4jRRGOymbiHb29kjbhcvLbA1YBDzieNIjov3cy8sn1mm
-CU3n77CuFMkpp1JquWpituWXTlbF2SlQJ1bs3z9HEcjwwRRf9uphvlBaKK+MFjIb
-hrGQVSnoYpE/fl2USQGhjPevN2zJvDeo3dlL6uX7+e0/tcjrGyT/TrXKpjKI55ka
-IG0jLh0X90SZYl1X6zvL0GVun0DdFkGaq48TRBZLIzZIt/dkk4fMxNJMI5w6mliP
-EJjFP3mLYmmyShNQJ3B7zshnYVubT4ZIcYQUTNvIGre3ars0x52dbGIfkFdn7xUt
-d/gDOZVlrQGfeyL3ZJRQdY06tTcl8sWhJ+wvsQxuM0HprKIPC6i+DcrDxhJgZqox
-G/7OZdhyM+I=
-=jgtt
------END PGP SIGNATURE-----
-
---Sig_/z_tT2MUYs.uiWwP1DPgI0/I--
+-- 
+FTTC broadband for 0.8mile line: 5.8Mbps down 500kbps up.  Estimation
+in database were 13.1 to 19Mbit for a good line, about 7.5+ for a bad.
+Estimate before purchase was "up to 13.2Mbit".
