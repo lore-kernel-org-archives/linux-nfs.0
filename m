@@ -1,77 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f178.google.com ([209.85.213.178]:60448 "EHLO
-	mail-ig0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752389AbaAPRJS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Jan 2014 12:09:18 -0500
-Received: by mail-ig0-f178.google.com with SMTP id uq10so8109302igb.5
-        for <linux-nfs@vger.kernel.org>; Thu, 16 Jan 2014 09:09:17 -0800 (PST)
-Received: from seurat.1015granger.net (c-68-40-85-241.hsd1.mi.comcast.net. [68.40.85.241])
-        by mx.google.com with ESMTPSA id f5sm12853811igc.4.2014.01.16.09.09.16
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Thu, 16 Jan 2014 09:09:16 -0800 (PST)
-Subject: [PATCH] nfs(5): Clarify DATA AND METADATA COHERENCE section
-To: linux-nfs@vger.kernel.org
-From: Chuck Lever <chuck.lever@oracle.com>
-Date: Thu, 16 Jan 2014 12:09:15 -0500
-Message-ID: <20140116170841.1489.82372.stgit@seurat.1015granger.net>
+Received: from fieldses.org ([174.143.236.118]:39877 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751154AbaA3SeZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 30 Jan 2014 13:34:25 -0500
+Date: Thu, 30 Jan 2014 13:34:24 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+Subject: Re: please pull nfsd changes for 3.14
+Message-ID: <20140130183424.GE30065@fieldses.org>
+References: <20140129185449.GC30065@fieldses.org>
+ <CA+55aFxCb7ai5T3HGyr1AZTyEvKi1VjtMkF0aZWEXRSW2ZC7zQ@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CA+55aFxCb7ai5T3HGyr1AZTyEvKi1VjtMkF0aZWEXRSW2ZC7zQ@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-How about something like this?
+On Thu, Jan 30, 2014 at 10:23:06AM -0800, Linus Torvalds wrote:
+> On Wed, Jan 29, 2014 at 10:54 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> >
+> > Stephen Rothwell noted a merge conflict:
+> >
+> > http://marc.info/?i=<20140129124238.6e1667abab08be8be2dafe01@canb.auug.org.au>
+> >
+> > I'm assuming as usual you'll handle it and let me know if you need
+> > anything from me.
+> 
+> Heh. The conflict was trivial, and git does 99% of it automatically -
+> leaving just the header file inclusions to be resolved manually
+> because they were right next to each other. The resolution just looks
+> scarier than it is because there were other changes that did resolve
+> cleanly, but that were "close enough" to each other that the context
+> overlapped, so they are shown too..
+> 
+> But yes, had it actually been complicated, I'd probably still have
+> done it, and perhaps asked you to verify it. We did have a couple of
+> more serious conflicts in this merge window.
 
- utils/mount/nfs.man |   28 ++++++++++++++++++----------
- 1 file changed, 18 insertions(+), 10 deletions(-)
+Good, thanks!
 
-diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
-index 2250963..99c9fc3 100644
---- a/utils/mount/nfs.man
-+++ b/utils/mount/nfs.man
-@@ -1161,24 +1161,32 @@ perfect cache coherence among their clients.
- Perfect cache coherence among disparate NFS clients
- is expensive to achieve, especially on wide area networks.
- As such, NFS settles for weaker cache coherence that
--satisfies the requirements of most file sharing types. Normally,
--file sharing is completely sequential:
--first client A opens a file, writes something to it, then closes it;
--then client B opens the same file, and reads the changes.
--.DT
-+satisfies the requirements of most file sharing types.
- .SS "Close-to-open cache consistency"
--When an application opens a file stored on an NFS server,
--the NFS client checks that it still exists on the server
-+Typically file sharing is completely sequential.
-+First client A opens a file, writes something to it, then closes it.
-+Then client B opens the same file, and reads the changes.
-+.P
-+When an application opens a file stored on an NFS version 3 server,
-+the NFS client checks that the file exists on the server
- and is permitted to the opener by sending a GETATTR or ACCESS request.
-+The NFS client sends these requests
-+independent of the freshness of the file's attribute cache.
-+.P
- When the application closes the file,
- the NFS client writes back any pending changes
- to the file so that the next opener can view the changes.
- This also gives the NFS client an opportunity to report
--any server write errors to the application
--via the return code from
-+write errors to the application via the return code from
- .BR close (2).
-+.P
- The behavior of checking at open time and flushing at close time
--is referred to as close-to-open cache consistency.
-+is referred to as
-+.IR "close-to-open cache consistency" ,
-+or CTO.
-+It can be disabled for an entire mount point using the
-+.B nocto
-+mount option.
- .SS "Weak cache consistency"
- There are still opportunities for a client's data cache
- to contain stale data.
-
+--b.
