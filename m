@@ -1,83 +1,38 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:36504 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751917AbaAUDAX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 20 Jan 2014 22:00:23 -0500
-Date: Tue, 21 Jan 2014 14:00:11 +1100
-From: NeilBrown <neilb@suse.de>
-To: chuck.level@oracle.com, varekova@redhat.com
-Cc: sysstat@orange.fr, linux-nfs@vger.kernel.org
-Subject: Re: Too many programs calls nfsiostat.
-Message-ID: <20140121140011.3c976ca3@notabene.brown>
-In-Reply-To: <20130410094639.5debfc90@notabene.brown>
-References: <20130410094639.5debfc90@notabene.brown>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/oHgChX9ssPOgcsUvyCn3ZyS"; protocol="application/pgp-signature"
+Received: from gw-1.arm.linux.org.uk ([78.32.30.217]:53051 "EHLO
+	pandora.arm.linux.org.uk" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1753137AbaA3PiT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Jan 2014 10:38:19 -0500
+Date: Thu, 30 Jan 2014 15:38:12 +0000
+From: Russell King - ARM Linux <linux@arm.linux.org.uk>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: linux-nfs@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-kernel@vger.kernel.org, Al Viro <viro@zeniv.linux.org.uk>,
+        Christoph Hellwig <hch@lst.de>, linux-arm-kernel@lists.infradead.org
+Subject: Re: NFS client broken in Linus' tip
+Message-ID: <20140130153812.GA15937@n2100.arm.linux.org.uk>
+References: <20140130140834.GW15937@n2100.arm.linux.org.uk> <20140130141405.GA23985@infradead.org> <20140130142752.GX15937@n2100.arm.linux.org.uk> <20140130143208.GB9573@infradead.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140130143208.GB9573@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/oHgChX9ssPOgcsUvyCn3ZyS
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+On Thu, Jan 30, 2014 at 06:32:08AM -0800, Christoph Hellwig wrote:
+> On Thu, Jan 30, 2014 at 02:27:52PM +0000, Russell King - ARM Linux wrote:
+> > Yes and no.  I still end up with an empty /etc/mtab, but the file now
+> > exists.  However, I can create and echo data into /etc/mtab, but it seems
+> > that can't happen at boot time.
+> 
+> Odd.  Can you disable CONFIG_NFSD_V3_ACL for now to isolate the issue?
 
+Unfortunately, that results in some problem at boot time, which
+ultimately ends up with the other three CPUs being stopped, and
+hence the original reason scrolls off the screen before it can be
+read... even at 1920p.
 
-Not quite a year ago I wrote:
-
-On Wed, 10 Apr 2013 09:46:39 +1000 NeilBrown <neilb@suse.de> wrote:
-
->=20
-> Hi all,
->  it seems that in 2010, a program called nfsiostat was added to the sysst=
-at
->  package (http://sebastien.godard.pagesperso-orange.fr/)
->=20
->  This is unfortunate because in 2008 a program called nfsiostat was added=
- to
->  the nfs-utils package.
->     (https://www.kernel.org/pub/linux/utils/nfs-utils/1.2.7/)
->=20
->  The default install locations seem to be different (/usr/bin vs /usr/sbi=
-n),
->  so packagers would not immediately notice.
->=20
->  This seems like something that should be "fixed".
->=20
->  Any suggestions what a good "fix" should look like?
->=20
-> NeilBrown
-
-
-No suggestions were forthcoming.
-So I have a suggestion.
-I propose we rename the "nfsiostat" in the "sysstat" package to
-"nfsio-sysstat" and the "nfsiostat" in "nfs-utils" to
-"nfs-utils-iostat".
-
-Does anyone object?  If not I'll send off patches shortly :-)
-
-NeilBrown
-
---Sig_/oHgChX9ssPOgcsUvyCn3ZyS
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.22 (GNU/Linux)
-
-iQIVAwUBUt3iuznsnt1WYoG5AQIN5Q//d6gR20Xkp7/jaOVSrBC0im5aYnxYHiI/
-d3cbSyWtnSypxzcHuWl7LMfi3M+Q/wUHGP1vS+k4q11Zj6AptxqkxGjiykGGo207
-32k3j6L1aAOOsdRafRNCo9/qHBieh+kTcuOcsXtWryrL5rz57YAK9Offieiv78pc
-rXSyaS9nOPcbbVU0h8AMC0Os0mpYUClhYcN2k3svyS9brj7ADZOjpSZyPmGb82My
-Fe1RERUG8chDN0RZZokAmiL/NN5F9Dz5lHQ1EKOjEkV38wlmYqAJlxSYukxcg6XE
-sJDrRCUygM8RNZWM1P36kqFhvhAl6wWxqkdVhKHCWf+rUZj7l5qJrN13ic9wflZZ
-sivxU0OaZX7/yIxBGWadPiZP/j29eU60kjq8XsUPQnXNQufCXSbpS2+/gNOFkLef
-Q+jVfUpQqKLzSLIXuCraE/HP3A7EKhX0wHRNv1bvhX4a+V/w2PPKMTw+aPktorPV
-xifPhzq7lDep2zXmiLA6P9QUf68w26GG2C1gao5c/FpdODYf38a4Lzrmf+7ULInq
-YxCyuGT0M+RuAII5PdbfbzJuSM31bPgTyvOWGXcicLLvtsrsyQngR0QER+fEgD0L
-6iwpC7OHGquoy5Ag9vdmU/6Na4In3N1VTauDn5nLDflUwLJSdxI72InXAl3EHjOH
-WavX60FtqiI=
-=Ugga
------END PGP SIGNATURE-----
-
---Sig_/oHgChX9ssPOgcsUvyCn3ZyS--
+-- 
+FTTC broadband for 0.8mile line: 5.8Mbps down 500kbps up.  Estimation
+in database were 13.1 to 19Mbit for a good line, about 7.5+ for a bad.
+Estimate before purchase was "up to 13.2Mbit".
