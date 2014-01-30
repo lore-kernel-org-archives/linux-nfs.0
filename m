@@ -1,72 +1,103 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:34199 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753976AbaAaQPh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 31 Jan 2014 11:15:37 -0500
-Message-ID: <52EBCC23.3050406@RedHat.com>
-Date: Fri, 31 Jan 2014 11:15:31 -0500
-From: Steve Dickson <SteveD@redhat.com>
+Received: from gw-1.arm.linux.org.uk ([78.32.30.217]:52918 "EHLO
+	pandora.arm.linux.org.uk" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1753443AbaA3OIn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Jan 2014 09:08:43 -0500
+Date: Thu, 30 Jan 2014 14:08:34 +0000
+From: Russell King - ARM Linux <linux@arm.linux.org.uk>
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs@vger.kernel.org, Christoph Hellwig <hch@lst.de>,
+        Al Viro <viro@zeniv.linux.org.uk>
+Cc: linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org
+Subject: NFS client broken in Linus' tip
+Message-ID: <20140130140834.GW15937@n2100.arm.linux.org.uk>
 MIME-Version: 1.0
-To: NeilBrown <neilb@suse.de>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH/RFC: nfs-utils] Common systemd unit files for nfs-utils.
-References: <20140130172451.7a354ce4@notabene.brown>	<52EAB0CA.2090204@RedHat.com> <20140131091455.550e59a8@notabene.brown>
-In-Reply-To: <20140131091455.550e59a8@notabene.brown>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+I just booted Linus' tip (plus a few other patches to imx-drm and imx
+code), and stumbled into this interesting scenario:
 
+# touch test
+touch: cannot touch `test': Operation not supported
 
-On 01/30/2014 05:14 PM, NeilBrown wrote:
-> On Thu, 30 Jan 2014 15:06:34 -0500 Steve Dickson <SteveD@redhat.com> wrote:
->>> diff --git a/systemd/README b/systemd/README
->>> new file mode 100644
->>> index 000000000000..f0fb68825499
->>> --- /dev/null
->>> +++ b/systemd/README
->>> @@ -0,0 +1,50 @@
->>> +
->>> +Notes about systemd unit files for nfs-utils.
->>> +
->>> +The unit files provided here should be sufficient for systemd
->>> +to manage all daemons and related services provides by nfs-utils.
->>> +
->>> +They do *not* include any unit files for separate services such as
->>> +rpc.rquotad (in the 'quota' package) or rpcbind.
->>> +
->>> +There are 4 units that can be 'enabled' or 'disabled' by systemctl, or
->>> +by a suitable 'preset' setting:
->>> +
->>> + nfs-server.target
->>> +    If enabled, nfs service is started together with dependencies
->>> +    such as mountd, statd, rpc.idmapd
->>> +
->>> + nfs-client.target
->>> +    If enabled, daemons needs for an nfs client are enabled.
->>> +    This does *not* include rpc.statd.  the rpc-statd.service unit
->>> +    is started by /usr/sbin/start-statd which mount.nfs will run
->>> +    if statd is needed.
->>> +
->>> + nfs-secure.target
->>> +    If enabled, then rpc.gssd will be run when either -client or
->>> +    -server is started, and rpc.svcgssd will be run when -server
->>> +    is started
->>> +
->>> + nfs-blkmap.target
->>> +    If enabled, then blkmapd will be run when nfs-client.target is
->>> +    started.
-We should also somehow document the targets we come up with. That
-was some of the frustration that was expressed when we move
-to systemd... It was not so much the changes it was the fact there
-was no documentation describing the changes... 
+I also tried mkdir and mknod, all result in the same error.  Hard and
+symlinks links are creatable.
 
-Also note I've separated out each file into a separate commit. 
-I thought it would be easier to review that way... 
-Those commits are on the systemd branch in my git tree:
+However, I can chmod existing files and rename them.  Files can also be
+deleted, and the combination of this has left me without a /etc/mtab !
 
-   git://linux-nfs.org/~steved/nfs-utils systemd
+The machine is a iMX6 based ARM, running root-nfs, which was mounted via
+ubuntu's initramfs (so not using the kernel's built-in root-nfs.)
 
-Finally... Who well are these tested? :-) 
+/proc/mounts for the root mount gives:
+192.168.1.123:/var/boot/ci / nfs rw,relatime,vers=3,rsize=65536,wsize=65536,namlen=255,hard,nolock,proto=tcp,port=2049,timeo=7,retrans=10,sec=sys,local_lock=all,addr=192.168.1.123 0 0
 
-steved.
+CONFIG_NFS_FS=y
+CONFIG_NFS_V2=y
+CONFIG_NFS_V3=y
+CONFIG_NFS_V3_ACL=y
+CONFIG_NFS_V4=y
+# CONFIG_NFS_SWAP is not set
+# CONFIG_NFS_V4_1 is not set
+CONFIG_ROOT_NFS=y
+# CONFIG_NFS_USE_LEGACY_DNS is not set
+CONFIG_NFS_USE_KERNEL_DNS=y
+# CONFIG_NFSD is not set
+CONFIG_LOCKD=y
+CONFIG_LOCKD_V4=y
+CONFIG_NFS_ACL_SUPPORT=y
+CONFIG_NFS_COMMON=y
+CONFIG_SUNRPC=y
+CONFIG_SUNRPC_GSS=y
+
+tcpdumping, I see:
+
+13:59:51.713523 IP 192.168.1.252.1341245608 > 192.168.1.123.2049: 132 lookup fh Unknown/010007011040840000000000CC238FC8FBA0475D9D9F8356B4C44166CDC38700 "test"
+13:59:51.714345 IP 192.168.1.123.2049 > 192.168.1.252.1341245608: reply ok 120 lookup ERROR: No such file or directory
+13:59:51.751303 IP 192.168.1.252.797 > 192.168.1.123.nfs: . ack 3381 win 2625 <nop,nop,timestamp 474136 3431312924>
+
+which is the only NFS packet(s) I see which mention "test".
+
+and stracing touch:
+
+open("test", O_WRONLY|O_CREAT|O_NOCTTY|O_NONBLOCK|O_LARGEFILE, 0666) = -1 EOPNOTSUPP (Operation not supported)
+utimensat(AT_FDCWD, "test", NULL, 0)    = -1 ENOENT (No such file or directory)
+write(2, "touch: ", 7touch: )                  = 7
+write(2, "cannot touch `test'", 19cannot touch `test')     = 19
+write(2, ": Operation not supported", 25: Operation not supported) = 25
+write(2, "\n", 1
+)                       = 1
+
+I think it's down to this:
+
+commit 013cdf1088d7235da9477a2375654921d9b9ba9f
+Author: Christoph Hellwig <hch@infradead.org>
+Date:   Fri Dec 20 05:16:53 2013 -0800
+
+    nfs: use generic posix ACL infrastructure for v3 Posix ACLs
+
+    This causes a small behaviour change in that we don't bother to set
+    ACLs on file creation if the mode bit can express the access permissions
+    fully, and thus behaving identical to local filesystems.
+
+    Signed-off-by: Christoph Hellwig <hch@lst.de>
+    Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
+
+which adds:
+
++       status = posix_acl_create(dir, &sattr->ia_mode, &default_acl, &acl);
++       if (status)
++               goto out;
+
+into nfs3_proc_create(), but this ends up calling down into nfs3_get_acl(),
+which does this:
+
+        if (!nfs_server_capable(inode, NFS_CAP_ACLS))
+                return ERR_PTR(-EOPNOTSUPP);
+
+-- 
+FTTC broadband for 0.8mile line: 5.8Mbps down 500kbps up.  Estimation
+in database were 13.1 to 19Mbit for a good line, about 7.5+ for a bad.
+Estimate before purchase was "up to 13.2Mbit".
