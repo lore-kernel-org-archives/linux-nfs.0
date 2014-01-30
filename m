@@ -1,79 +1,115 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f169.google.com ([209.85.220.169]:34589 "EHLO
-	mail-vc0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750778AbaAXQCP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 24 Jan 2014 11:02:15 -0500
-Received: by mail-vc0-f169.google.com with SMTP id hq11so1979716vcb.14
-        for <linux-nfs@vger.kernel.org>; Fri, 24 Jan 2014 08:02:14 -0800 (PST)
-MIME-Version: 1.0
-In-Reply-To: <CAMFqqRrJPZVz6MPyDH45aQUsL4Jt-5HgMG9PfaLT6nCwdJk8fQ@mail.gmail.com>
-References: <CAMFqqRrJPZVz6MPyDH45aQUsL4Jt-5HgMG9PfaLT6nCwdJk8fQ@mail.gmail.com>
-Date: Fri, 24 Jan 2014 11:02:14 -0500
-Message-ID: <CAMFqqRoh52UrGX2CCfuw0ij-7O7OfY_=a_DnHwrGaT+9OqBa+g@mail.gmail.com>
-Subject: Fwd: NFS4: new accounts username = nobody, old accounts fine, reboot fine.
-From: Stephen Cousins <steve.cousins@maine.edu>
-To: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-ig0-f182.google.com ([209.85.213.182]:38702 "EHLO
+	mail-ig0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753224AbaA3ORD convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Jan 2014 09:17:03 -0500
+Received: by mail-ig0-f182.google.com with SMTP id uy17so7152926igb.3
+        for <linux-nfs@vger.kernel.org>; Thu, 30 Jan 2014 06:17:02 -0800 (PST)
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
+Subject: Re: NFS client broken in Linus' tip
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+In-Reply-To: <20140130140834.GW15937@n2100.arm.linux.org.uk>
+Date: Thu, 30 Jan 2014 09:17:00 -0500
+Cc: linuxnfs <linux-nfs@vger.kernel.org>, Christoph Hellwig <hch@lst.de>,
+        Viro Alexander <viro@zeniv.linux.org.uk>,
+        linux-arm-kernel@lists.infradead.org,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+Message-Id: <960A8F94-BDD4-4ED0-95EC-0D71D4AC27E7@primarydata.com>
+References: <20140130140834.GW15937@n2100.arm.linux.org.uk>
+To: Russell King - ARM Linux <linux@arm.linux.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I have the following:
 
-File Server: CentOS 6.3 kernel 2.6.32-279.19.1.el6.x86_64
-Head Node:   CentOS 5.7 kernel 2.6.18-275.12.1.el5.573g0000
-Backup1:     CentOS 6.5 kernel 2.6.32-431.3.1.el6.x86_64
-GPU:         CentOS 6.4 kernel 2.6.32-358.6.2.el6.x86_64
+On Jan 30, 2014, at 9:08, Russell King - ARM Linux <linux@arm.linux.org.uk> wrote:
 
+> I just booted Linus' tip (plus a few other patches to imx-drm and imx
+> code), and stumbled into this interesting scenario:
+> 
+> # touch test
+> touch: cannot touch `test': Operation not supported
+> 
+> I also tried mkdir and mknod, all result in the same error.  Hard and
+> symlinks links are creatable.
+> 
+> However, I can chmod existing files and rename them.  Files can also be
+> deleted, and the combination of this has left me without a /etc/mtab !
+> 
+> The machine is a iMX6 based ARM, running root-nfs, which was mounted via
+> ubuntu's initramfs (so not using the kernel's built-in root-nfs.)
+> 
+> /proc/mounts for the root mount gives:
+> 192.168.1.123:/var/boot/ci / nfs rw,relatime,vers=3,rsize=65536,wsize=65536,namlen=255,hard,nolock,proto=tcp,port=2049,timeo=7,retrans=10,sec=sys,local_lock=all,addr=192.168.1.123 0 0
+> 
+> CONFIG_NFS_FS=y
+> CONFIG_NFS_V2=y
+> CONFIG_NFS_V3=y
+> CONFIG_NFS_V3_ACL=y
+> CONFIG_NFS_V4=y
+> # CONFIG_NFS_SWAP is not set
+> # CONFIG_NFS_V4_1 is not set
+> CONFIG_ROOT_NFS=y
+> # CONFIG_NFS_USE_LEGACY_DNS is not set
+> CONFIG_NFS_USE_KERNEL_DNS=y
+> # CONFIG_NFSD is not set
+> CONFIG_LOCKD=y
+> CONFIG_LOCKD_V4=y
+> CONFIG_NFS_ACL_SUPPORT=y
+> CONFIG_NFS_COMMON=y
+> CONFIG_SUNRPC=y
+> CONFIG_SUNRPC_GSS=y
+> 
+> tcpdumping, I see:
+> 
+> 13:59:51.713523 IP 192.168.1.252.1341245608 > 192.168.1.123.2049: 132 lookup fh Unknown/010007011040840000000000CC238FC8FBA0475D9D9F8356B4C44166CDC38700 "test"
+> 13:59:51.714345 IP 192.168.1.123.2049 > 192.168.1.252.1341245608: reply ok 120 lookup ERROR: No such file or directory
+> 13:59:51.751303 IP 192.168.1.252.797 > 192.168.1.123.nfs: . ack 3381 win 2625 <nop,nop,timestamp 474136 3431312924>
+> 
+> which is the only NFS packet(s) I see which mention "test".
+> 
+> and stracing touch:
+> 
+> open("test", O_WRONLY|O_CREAT|O_NOCTTY|O_NONBLOCK|O_LARGEFILE, 0666) = -1 EOPNOTSUPP (Operation not supported)
+> utimensat(AT_FDCWD, "test", NULL, 0)    = -1 ENOENT (No such file or directory)
+> write(2, "touch: ", 7touch: )                  = 7
+> write(2, "cannot touch `test'", 19cannot touch `test')     = 19
+> write(2, ": Operation not supported", 25: Operation not supported) = 25
+> write(2, "\n", 1
+> )                       = 1
+> 
+> I think it's down to this:
+> 
+> commit 013cdf1088d7235da9477a2375654921d9b9ba9f
+> Author: Christoph Hellwig <hch@infradead.org>
+> Date:   Fri Dec 20 05:16:53 2013 -0800
+> 
+>    nfs: use generic posix ACL infrastructure for v3 Posix ACLs
+> 
+>    This causes a small behaviour change in that we don't bother to set
+>    ACLs on file creation if the mode bit can express the access permissions
+>    fully, and thus behaving identical to local filesystems.
+> 
+>    Signed-off-by: Christoph Hellwig <hch@lst.de>
+>    Signed-off-by: Al Viro <viro@zeniv.linux.org.uk>
+> 
+> which adds:
+> 
+> +       status = posix_acl_create(dir, &sattr->ia_mode, &default_acl, &acl);
+> +       if (status)
+> +               goto out;
 
-Booting up all machines after the file server is up works fine. All
-ID's map fine.
+Right, this should clearly not cause nfs4_proc_create to fail if it returns EOPNOTSUPP.
 
-When I add a new user I first add them to the File Server and then I
-do it on the other machines. I get a warning that the home directory
-has already been created but that is fine. The ID's are consistent
-across machines.
+> into nfs3_proc_create(), but this ends up calling down into nfs3_get_acl(),
+> which does this:
+> 
+>        if (!nfs_server_capable(inode, NFS_CAP_ACLS))
+>                return ERR_PTR(-EOPNOTSUPP);
 
-After an account is created (kehuang in this case) all is fine on the Head Node:
+Just for completeness sake: is the server you were running against supposed to support POSIX acls?
 
-drwxr-x---   4 kehuang    omg           153 Jan 23 18:54 kehuang
-drwxr-x---  32 zwenzhou   omg          4096 Jan 23 18:56 zwenzhou
-drwxr-x---  35 mjohnson   forestry     4096 Jan 24 00:26 mjohnson
-drwxr-x--- 118 cousins    cousins      8192 Jan 24 10:43 cousins
+--
+Trond Myklebust
+Linux NFS client maintainer
 
-
-But on Backup1 and GPU I get "nobody" for the new user:
-
-drwxr-x---   4 nobody     omg           153 Jan 23 15:54 kehuang
-drwxr-x---  32 zwenzhou   omg          4096 Jan 23 15:56 zwenzhou
-drwxr-x---  35 mjohnson   forestry     4096 Jan 23 21:26 mjohnson
-drwxr-x--- 118 cousins    cousins      8192 Jan 24 07:43 cousins
-
-The GID maps fine though, probably because it is not a new group.
-
-I have tried restarting rpcidmapd on the nodes but it doesn't help.
-The only thing I have found that works is a reboot.
-
-Has anyone run across this before? Anyone know a solution?  It doesn't
-seem to be a idmapd.conf issue since it works fine until a new user is
-added.
-
-One odd thing though is that the id maps to 99:nobody instead of
-65534:nfsnobody.
-
-Here is what idmapd.conf looks like on all machines:
-
-[General]
-Verbosity = 0
-Domain = localdomain
-
-[Mapping]
-Nobody-User = nfsnobody
-Nobody-Group = nfsnobody
-
-[Translation]
-Method = nsswitch
-
-
-Thanks for your help.
-
-Steve
