@@ -1,72 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:56604 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751825AbaAUUSp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 21 Jan 2014 15:18:45 -0500
-Date: Tue, 21 Jan 2014 15:18:42 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 3/3] SUNRPC: remove KERN_INFO from dprintk() call sites
-Message-ID: <20140121151842.69a2db1f@tlielax.poochiereds.net>
-In-Reply-To: <20140117193825.3452.92786.stgit@manet.1015granger.net>
-References: <20140117193555.3452.31437.stgit@manet.1015granger.net>
-	<20140117193825.3452.92786.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-ig0-f182.google.com ([209.85.213.182]:36754 "EHLO
+	mail-ig0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752916AbaA3QzS convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Jan 2014 11:55:18 -0500
+Received: by mail-ig0-f182.google.com with SMTP id uy17so7481375igb.3
+        for <linux-nfs@vger.kernel.org>; Thu, 30 Jan 2014 08:55:17 -0800 (PST)
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
+Subject: Re: [PATCH 1/3] NFSv4: Fix a slot leak in nfs40_sequence_done
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+In-Reply-To: <5AE747F1-D056-47AB-8416-C37071A35D5B@oracle.com>
+Date: Thu, 30 Jan 2014 11:55:13 -0500
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <2DA614A7-AE5A-47DA-AAB3-79D480540B5E@primarydata.com>
+References: <1391016982-10562-1-git-send-email-trond.myklebust@primarydata.com> <5AE747F1-D056-47AB-8416-C37071A35D5B@oracle.com>
+To: Lever Charles Edward <chuck.lever@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 17 Jan 2014 14:38:25 -0500
-Chuck Lever <chuck.lever@oracle.com> wrote:
 
-> The use of KERN_INFO causes garbage characters to appear
-> when debugging is enabled.
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
-> 
->  net/sunrpc/xprtrdma/transport.c |   10 +++++-----
->  1 files changed, 5 insertions(+), 5 deletions(-)
-> 
-> diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-> index 285dc08..1eb9c46 100644
-> --- a/net/sunrpc/xprtrdma/transport.c
-> +++ b/net/sunrpc/xprtrdma/transport.c
-> @@ -733,7 +733,7 @@ static void __exit xprt_rdma_cleanup(void)
->  {
->  	int rc;
->  
-> -	dprintk(KERN_INFO "RPCRDMA Module Removed, deregister RPC RDMA transport\n");
-> +	dprintk("RPCRDMA Module Removed, deregister RPC RDMA transport\n");
->  #ifdef RPC_DEBUG
->  	if (sunrpc_table_header) {
->  		unregister_sysctl_table(sunrpc_table_header);
-> @@ -755,14 +755,14 @@ static int __init xprt_rdma_init(void)
->  	if (rc)
->  		return rc;
->  
-> -	dprintk(KERN_INFO "RPCRDMA Module Init, register RPC RDMA transport\n");
-> +	dprintk("RPCRDMA Module Init, register RPC RDMA transport\n");
->  
-> -	dprintk(KERN_INFO "Defaults:\n");
-> -	dprintk(KERN_INFO "\tSlots %d\n"
-> +	dprintk("Defaults:\n");
-> +	dprintk("\tSlots %d\n"
->  		"\tMaxInlineRead %d\n\tMaxInlineWrite %d\n",
->  		xprt_rdma_slot_table_entries,
->  		xprt_rdma_max_inline_read, xprt_rdma_max_inline_write);
-> -	dprintk(KERN_INFO "\tPadding %d\n\tMemreg %d\n",
-> +	dprintk("\tPadding %d\n\tMemreg %d\n",
->  		xprt_rdma_inline_write_padding, xprt_rdma_memreg_strategy);
->  
->  #ifdef RPC_DEBUG
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+On Jan 30, 2014, at 11:49, Chuck Lever <chuck.lever@oracle.com> wrote:
 
-Nice cleanup
+> 
+> On Jan 29, 2014, at 9:36 AM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+> 
+>> The check for whether or not we sent an RPC call in nfs40_sequence_done
+>> is insufficient to decide whether or not we are holding a session slot,
+>> and thus should not be used to decide when to free that slot.
+>> 
+>> This patch replaces the RPC_WAS_SENT() test with the correct test for
+>> whether or not slot == NULL.
+>> 
+>> Cc: Chuck Lever <chuck.lever@oracle.com>
+>> Cc: stable@vger.kernel.org # 3.12+
+>> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+>> ---
+>> fs/nfs/nfs4proc.c | 2 +-
+>> 1 file changed, 1 insertion(+), 1 deletion(-)
+>> 
+>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>> index ae00c3ed733f..493e9cce1f11 100644
+>> --- a/fs/nfs/nfs4proc.c
+>> +++ b/fs/nfs/nfs4proc.c
+>> @@ -539,7 +539,7 @@ static int nfs40_sequence_done(struct rpc_task *task,
+>> 	struct nfs4_slot *slot = res->sr_slot;
+>> 	struct nfs4_slot_table *tbl;
+>> 
+>> -	if (!RPC_WAS_SENT(task))
+>> +	if (slot == NULL)
+>> 		goto out;
+> 
+> When CONFIG_NFS_V4_1 is enabled, nfs4_sequence_done() already does the slot == NULL test, though the other nfs40_sequence_done() call sites do not.  This patch should clean that up?
 
-Reviewed-by: Jeff Layton <jlayton@redhat.com>
+Unfortunately we can’t touch nfs4_sequence_done: it wants to test for whether or not a NFSv4.1 session exists, which requires it to look at slot->table->session. :-(
+--
+Trond Myklebust
+Linux NFS client maintainer
+
