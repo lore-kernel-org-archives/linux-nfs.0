@@ -1,34 +1,33 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:43760 "EHLO mx1.redhat.com"
+Received: from mout.perfora.net ([74.208.4.194]:54908 "EHLO mout.perfora.net"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750898AbaAQEMF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 16 Jan 2014 23:12:05 -0500
-Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s0H4C47C023427
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Thu, 16 Jan 2014 23:12:05 -0500
-From: Simo Sorce <simo@redhat.com>
-To: jlayton@redhat.com
-Cc: steved@redhat.com, linux-nfs@vger.kernel.org
-Subject: [PATCH 0/2] Fix credential sourcing with new setuid behavior in rpc.gssd
-Date: Thu, 16 Jan 2014 23:11:57 -0500
-Message-Id: <1389931919-4801-1-git-send-email-simo@redhat.com>
-In-Reply-To: <20140116204949.1bea663a@corrin.poochiereds.net>
-References: <20140116204949.1bea663a@corrin.poochiereds.net>
+	id S1752733AbaA3XRc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 30 Jan 2014 18:17:32 -0500
+Date: Thu, 30 Jan 2014 18:17:03 -0500
+From: Jim Rees <rees@umich.edu>
+To: NeilBrown <neilb@suse.de>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Weston Andros Adamson <dros@monkey.org>,
+        linux-nfs list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH/RFC: nfs-utils] Common systemd unit files for nfs-utils.
+Message-ID: <20140130231703.GA19132@umich.edu>
+References: <20140130172451.7a354ce4@notabene.brown>
+ <42E058FF-5672-4E07-8AFC-32C0933A01F8@monkey.org>
+ <4D91FF8C-313D-4F02-858B-476ABEB46987@monkey.org>
+ <20140130185206.GA12456@fieldses.org>
+ <20140131095036.3a11f93b@notabene.brown>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140131095036.3a11f93b@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Take 2
+NeilBrown wrote:
 
-Patch 1: simply remove the old code that is not necessary anymore
+  Though I do wonder if it would every be used.  Would *anyone* build nfs-utils
+  with a non-standard prefix, and also get systemd to manage that version?
 
-Bonus patch 2: clean up code, name is not needed anymore as the default
-credentials for the impersonated uid are always used.
+Some of the other paths, like this one (note the typo too) might need to
+change.
 
-Simo Sorce (2):
-  Improve first attempt at acquiring GSS credentials
-  Remove unused parameter
-
- utils/gssd/krb5_util.c |   28 ++++------------------------
- 1 files changed, 4 insertions(+), 24 deletions(-)
-
+/usr/lib/systemd/scritps/nfs-utils_env.sh
