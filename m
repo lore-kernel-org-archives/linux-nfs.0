@@ -1,123 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:7983 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:49832 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750814AbaABXLE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 2 Jan 2014 18:11:04 -0500
-Date: Thu, 2 Jan 2014 18:10:55 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org, simo@redhat.com, neilb@suse.de
-Subject: Re: [RFC PATCH 3/5] sunrpc: wait for gssproxy to start on initial
- upcall attempt before falling back to legacy upcall
-Message-ID: <20140102181055.324ed278@tlielax.poochiereds.net>
-In-Reply-To: <20140102213547.GD28219@fieldses.org>
-References: <1388579314-15255-1-git-send-email-jlayton@redhat.com>
-	<1388579314-15255-4-git-send-email-jlayton@redhat.com>
-	<20140102213547.GD28219@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S932795AbaAaTsc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 31 Jan 2014 14:48:32 -0500
+Date: Fri, 31 Jan 2014 14:47:58 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Al Viro <viro@ZenIV.linux.org.uk>
+Cc: Christoph Hellwig <hch@infradead.org>, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        Miklos Szeredi <mszeredi@suse.cz>
+Subject: Re: [PATCH] dcache: make d_splice_alias use d_materialise_unique
+Message-ID: <20140131194758.GA24618@fieldses.org>
+References: <20140115151749.GF23999@fieldses.org>
+ <20140117121723.GA18375@infradead.org>
+ <20140117153917.GA26636@fieldses.org>
+ <20140117210343.GD26636@fieldses.org>
+ <20140117212655.GE26636@fieldses.org>
+ <20140123212700.GA30466@fieldses.org>
+ <20140131184258.GN10323@ZenIV.linux.org.uk>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140131184258.GN10323@ZenIV.linux.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2 Jan 2014 16:35:47 -0500
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
-
-> On Wed, Jan 01, 2014 at 07:28:32AM -0500, Jeff Layton wrote:
-> > Currently, the only thing that waits for gssproxy to start is reads
-> > from the use-gss-proxy procfile. That's a little odd, since nothing
-> > but gssproxy itself will likely ever open that file, and all it does
-> > it write to it.
+On Fri, Jan 31, 2014 at 06:42:58PM +0000, Al Viro wrote:
+> On Thu, Jan 23, 2014 at 04:27:00PM -0500, J. Bruce Fields wrote:
+> > From: "J. Bruce Fields" <bfields@redhat.com>
 > > 
-> > It seems like what we really want instead is for svcrpc code to give
-> > gssproxy a little time to start up in the event that some RPCs come
-> > in before it's ready.
+> > d_splice_alias can create duplicate directory aliases (in the !new
+> > case), or (in the new case) d_move directories without holding
+> > appropriate locks.
 > 
-> Legacy userspace will never write, so this adds an 5-second delay in
-> that case.
-> 
-> I'd rather avoid any arbitrary timeout.
-> 
-> It seems to me all you need is for gss-proxy to ensure that it does the
-> write to use-gss-proxy before it indicates to whoever started it that
-> it's done starting.
-> 
-> Then as long as the init system orders gss-proxy startup before nfsd
-> startup, we're good.
-> 
-> --b.
-> 
+> Details, please.  In the new case, we have IS_ROOT() alias found;
+> what locks would that need?  Note that d_materialise_unique() won't
+> bother with __d_unalias() in such case - it does what d_move() would've
+> done, without taking any mutex.
 
-Yep, that 5s delay on the first upcall was the part that was
-questionable...
+Of course you're right, and Miklos had pointed this out already and I
+forgot to update the changelog.  Apologies!
 
-Ok, so basically the behavior you want is:
+> In the !new case, we'd need a preexisting dentry alias, complete with
+> parent.  IOW, that's the case when directory already in the tree
+> has been found during lookup from another parent.  In which case
+> we shouldn't be using d_splice_alias() at all, as it is (and it
+> certainly can't happen for any local fs).
 
-"If gssproxy is up and running by the time the first RPC comes in then
- use that. If not, then use the legacy code."
+Yes, except: won't a local filesystem will still hit this case on a
+filesystem that's corrupted to link a directory into multiple parents?
 
-I'll respin the set with that behavior in mind. I need to do a bit of
-testing with it too, so it may be a week or so before I repost.
+Though in that case arguably the right behavior might be, say, WARN and
+return -EIO.
 
-> > 
-> > Change it so that the upcall instead waits a little while for gssproxy
-> > to start before giving up. If the wait times out, we go ahead and
-> > disable gssproxy so that later upcalls don't delay.
-> > 
-> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > ---
-> >  net/sunrpc/auth_gss/svcauth_gss.c | 28 ++++++++++------------------
-> >  1 file changed, 10 insertions(+), 18 deletions(-)
-> > 
-> > diff --git a/net/sunrpc/auth_gss/svcauth_gss.c b/net/sunrpc/auth_gss/svcauth_gss.c
-> > index 64c025e..921f388 100644
-> > --- a/net/sunrpc/auth_gss/svcauth_gss.c
-> > +++ b/net/sunrpc/auth_gss/svcauth_gss.c
-> > @@ -1265,24 +1265,6 @@ out:
-> >  
-> >  DEFINE_SPINLOCK(use_gssp_lock);
-> >  
-> > -static bool use_gss_proxy(struct net *net)
-> > -{
-> > -	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
-> > -
-> > -	if (sn->use_gss_proxy != -1)
-> > -		return sn->use_gss_proxy;
-> > -	spin_lock(&use_gssp_lock);
-> > -	/*
-> > -	 * If you wanted gss-proxy, you should have said so before
-> > -	 * starting to accept requests:
-> > -	 */
-> > -	sn->use_gss_proxy = 0;
-> > -	spin_unlock(&use_gssp_lock);
-> > -	return 0;
-> > -}
-> > -
-> > -#ifdef CONFIG_PROC_FS
-> > -
-> >  static int set_gss_proxy(struct net *net, int type)
-> >  {
-> >  	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
-> > @@ -1332,6 +1314,16 @@ static int wait_for_gss_proxy(struct net *net)
-> >  	return ret < 0 ? ret : 0;
-> >  }
-> >  
-> > +static bool use_gss_proxy(struct net *net)
-> > +{
-> > +	struct sunrpc_net *sn = net_generic(net, sunrpc_net_id);
-> > +
-> > +	if (wait_for_gss_proxy(net))
-> > +		return false;
-> > +	return gssp_ready(sn);
-> > +}
-> > +
-> > +#ifdef CONFIG_PROC_FS
-> >  
-> >  static ssize_t write_gssp(struct file *file, const char __user *buf,
-> >  			 size_t count, loff_t *ppos)
-> > -- 
-> > 1.8.4.2
-> > 
+> Now, I agree that merging that with d_materialise_unique() might be
+> a good idea, but commit message is wrong as it, AFAICS.
 
+Agreed, I'll fix and resend.
 
--- 
-Jeff Layton <jlayton@redhat.com>
+Though now I wonder whether it's worth keeping two different interfaces,
+one for the case when finding a parent in a different directory is an
+error and one for the case when it's normal and you'd just like it fixed
+up.
+
+(Then one remaining thing I don't understand is how to make that fixing
+up reliable.  Or is there some reason nobody hits the _EBUSY case of
+__d_unalias?)
+
+--b.
