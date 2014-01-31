@@ -1,38 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx3-phx2.redhat.com ([209.132.183.24]:53577 "EHLO
-	mx3-phx2.redhat.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752380AbaAPQyK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Jan 2014 11:54:10 -0500
-Date: Thu, 16 Jan 2014 11:54:07 -0500 (EST)
-From: Bob Peterson <rpeterso@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Steven Whitehouse <swhiteho@redhat.com>, Al Viro <viro@zeniv.linux.org.uk>,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, Miklos Szeredi <mszeredi@suse.cz>
-Message-ID: <1875464309.3327883.1389891247171.JavaMail.root@redhat.com>
-In-Reply-To: <20140116164411.GD16829@fieldses.org>
-References: <20140115151749.GF23999@fieldses.org> <20140116161015.GC16829@fieldses.org> <1389888942.2779.34.camel@menhir> <20140116164411.GD16829@fieldses.org>
-Subject: Re: [PATCH] dcache: fix d_splice_alias handling of aliases
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Received: from mail-qc0-f172.google.com ([209.85.216.172]:38433 "EHLO
+	mail-qc0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753511AbaAaC2v (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 30 Jan 2014 21:28:51 -0500
+From: Noah Massey <noah.massey@gmail.com>
+To: Al Viro <viro@zeniv.linux.org.uk>,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Noah Massey <noah.massey@gmail.com>, Christoph Hellwig <hch@infradead.org>,
+        linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org
+Subject: [PATCH] nfs: fix setting of ACLs on file creation.
+Date: Thu, 30 Jan 2014 21:31:12 -0500
+Message-Id: <1391135472-9639-1-git-send-email-Noah.Massey@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
------ Original Message -----
-| Something like this?
-(snip)
-| @@ -779,6 +782,11 @@ static struct dentry *__gfs2_lookup(struct inode *dir,
-| struct dentry *dentry,
-|  	}
-|  
-|  	d = d_splice_alias(inode, dentry);
-| +	if (IS_ERR(d)) {
-| +		iput(inode);
-| +		gfs2_glock_dq_uninit(&gh);
-| +		return ERR_PTR(error);
+From: Noah Massey <noah.massey@gmail.com>
 
----------------------------------^
-Shouldn't that be ERR_PTR(d)?
+nfs3_get_acl() tries to skip posix equivalent ACLs, but misinterprets
+the return value of posix_acl_equiv_mode(). Fix it.
 
-Bob Peterson
-Red Hat File Systems
+This is a regression introduced by
+"nfs: use generic posix ACL infrastructure for v3 Posix ACLs"
+
+CC: Christoph Hellwig <hch@infradead.org>
+CC: linux-nfs@vger.kernel.org
+CC: linux-fsdevel@vger.kernel.org
+---
+ fs/nfs/nfs3acl.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/fs/nfs/nfs3acl.c b/fs/nfs/nfs3acl.c
+index 9a5ca03..0851f85 100644
+--- a/fs/nfs/nfs3acl.c
++++ b/fs/nfs/nfs3acl.c
+@@ -80,7 +80,7 @@ struct posix_acl *nfs3_get_acl(struct inode *inode, int type)
+ 	}
+ 
+ 	if (res.acl_access != NULL) {
+-		if (posix_acl_equiv_mode(res.acl_access, NULL) ||
++		if ((posix_acl_equiv_mode(res.acl_access, NULL) == 0) ||
+ 		    res.acl_access->a_count == 0) {
+ 			posix_acl_release(res.acl_access);
+ 			res.acl_access = NULL;
+-- 
+1.8.5.3
+
