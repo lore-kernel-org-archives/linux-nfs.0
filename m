@@ -1,89 +1,125 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:27753 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751128AbaATWBV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 20 Jan 2014 17:01:21 -0500
-Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s0KM1L1X002485
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Mon, 20 Jan 2014 17:01:21 -0500
-Message-ID: <52DD9D20.8040105@RedHat.com>
-Date: Mon, 20 Jan 2014 17:03:12 -0500
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Simo Sorce <simo@redhat.com>, jlayton@redhat.com
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/2] Improve first attempt at acquiring GSS credentials
-References: <1389931919-4801-1-git-send-email-simo@redhat.com> <1389977800-10922-1-git-send-email-simo@redhat.com> <1389977800-10922-2-git-send-email-simo@redhat.com>
-In-Reply-To: <1389977800-10922-2-git-send-email-simo@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-ie0-f181.google.com ([209.85.223.181]:57508 "EHLO
+	mail-ie0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754375AbaAaU7c (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 31 Jan 2014 15:59:32 -0500
+Received: by mail-ie0-f181.google.com with SMTP id to1so4849595ieb.12
+        for <linux-nfs@vger.kernel.org>; Fri, 31 Jan 2014 12:59:32 -0800 (PST)
+Message-ID: <1391201970.6978.1.camel@leira.trondhjem.org>
+Subject: Re: NFS client broken in Linus' tip
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Russell King - ARM Linux <linux@arm.linux.org.uk>
+Cc: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, Al Viro <viro@zeniv.linux.org.uk>,
+        Christoph Hellwig <hch@lst.de>, linux-arm-kernel@lists.infradead.org
+Date: Fri, 31 Jan 2014 15:59:30 -0500
+In-Reply-To: <20140130153812.GA15937@n2100.arm.linux.org.uk>
+References: <20140130140834.GW15937@n2100.arm.linux.org.uk>
+	 <20140130141405.GA23985@infradead.org>
+	 <20140130142752.GX15937@n2100.arm.linux.org.uk>
+	 <20140130143208.GB9573@infradead.org>
+	 <20140130153812.GA15937@n2100.arm.linux.org.uk>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Thu, 2014-01-30 at 15:38 +0000, Russell King - ARM Linux wrote:
+> On Thu, Jan 30, 2014 at 06:32:08AM -0800, Christoph Hellwig wrote:
+> > On Thu, Jan 30, 2014 at 02:27:52PM +0000, Russell King - ARM Linux wrote:
+> > > Yes and no.  I still end up with an empty /etc/mtab, but the file now
+> > > exists.  However, I can create and echo data into /etc/mtab, but it seems
+> > > that can't happen at boot time.
+> > 
+> > Odd.  Can you disable CONFIG_NFSD_V3_ACL for now to isolate the issue?
+> 
+> Unfortunately, that results in some problem at boot time, which
+> ultimately ends up with the other three CPUs being stopped, and
+> hence the original reason scrolls off the screen before it can be
+> read... even at 1920p.
+> 
+Hi Russell,
+
+The following patch fixes the issue for me.
+
+Cheers
+  Trond
+
+8<-------------------------------------------------------------
+>From 59bc20fe862bd85fcad61427e8669603e789d163 Mon Sep 17 00:00:00 2001
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+Date: Fri, 31 Jan 2014 14:25:19 -0500
+Subject: [PATCH] fs: get_acl() must be allowed to return EOPNOTSUPP
+
+posix_acl_xattr_get requires get_acl() to return EOPNOTSUPP if the
+filesystem cannot support acls. This is needed for NFS, which can't
+know whether or not the server supports acls until it tries to get/set
+one.
+This patch converts posix_acl_chmod and posix_acl_create to deal with
+EOPNOTSUPP return values from get_acl().
+
+Reported-by: Russell King <linux@arm.linux.org.uk>
+Link: http://lkml.kernel.org/r/20140130140834.GW15937@n2100.arm.linux.org.uk
+Cc: Christoph Hellwig <hch@lst.de>
+Cc: Al Viro viro@zeniv.linux.org.uk>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/posix_acl.c | 18 ++++++++++++------
+ 1 file changed, 12 insertions(+), 6 deletions(-)
+
+diff --git a/fs/posix_acl.c b/fs/posix_acl.c
+index 38bae5a0ea25..11c54fd51e16 100644
+--- a/fs/posix_acl.c
++++ b/fs/posix_acl.c
+@@ -521,8 +521,11 @@ posix_acl_chmod(struct inode *inode, umode_t mode)
+ 		return -EOPNOTSUPP;
+ 
+ 	acl = get_acl(inode, ACL_TYPE_ACCESS);
+-	if (IS_ERR_OR_NULL(acl))
++	if (IS_ERR_OR_NULL(acl)) {
++		if (acl == ERR_PTR(-EOPNOTSUPP))
++			return 0;
+ 		return PTR_ERR(acl);
++	}
+ 
+ 	ret = __posix_acl_chmod(&acl, GFP_KERNEL, mode);
+ 	if (ret)
+@@ -544,14 +547,15 @@ posix_acl_create(struct inode *dir, umode_t *mode,
+ 		goto no_acl;
+ 
+ 	p = get_acl(dir, ACL_TYPE_DEFAULT);
+-	if (IS_ERR(p))
++	if (IS_ERR(p)) {
++		if (p == ERR_PTR(-EOPNOTSUPP))
++			goto apply_umask;
+ 		return PTR_ERR(p);
+-
+-	if (!p) {
+-		*mode &= ~current_umask();
+-		goto no_acl;
+ 	}
+ 
++	if (!p)
++		goto apply_umask;
++
+ 	*acl = posix_acl_clone(p, GFP_NOFS);
+ 	if (!*acl)
+ 		return -ENOMEM;
+@@ -575,6 +579,8 @@ posix_acl_create(struct inode *dir, umode_t *mode,
+ 	}
+ 	return 0;
+ 
++apply_umask:
++	*mode &= ~current_umask();
+ no_acl:
+ 	*default_acl = NULL;
+ 	*acl = NULL;
+-- 
+1.8.5.3
 
 
-On 17/01/14 11:56, Simo Sorce wrote:
-> Since now rpc.gssd is swithing uid before attempting to acquire
-> credentials, we do not need to pass in the special uid-as-a-string name
-> to gssapi, because the process is already running under the user's
-> credentials.
-> 
-> By removing this code we can fix a class of false negatives where the
-> user name does not match the actual ccache credentials and the ccache
-> type used is not one of the only 2 supported explicitly by rpc.gssd by the
-> fallback trolling done later.
-> 
-> Signed-off-by: Simo Sorce <simo@redhat.com>
-Committed...
 
-steved
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
-> ---
->  utils/gssd/krb5_util.c |   24 ++----------------------
->  1 files changed, 2 insertions(+), 22 deletions(-)
-> 
-> diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
-> index 697d1d2e79db0cc38160ea4772d3af3a9b7d6c21..230b909b14d244f832c0b5dd62e600cf8db4f80b 100644
-> --- a/utils/gssd/krb5_util.c
-> +++ b/utils/gssd/krb5_util.c
-> @@ -1381,29 +1381,10 @@ gssd_acquire_krb5_cred(gss_name_t name, gss_cred_id_t *gss_cred)
->  int
->  gssd_acquire_user_cred(uid_t uid, gss_cred_id_t *gss_cred)
->  {
-> -	OM_uint32 maj_stat, min_stat;
-> -	gss_buffer_desc name_buf;
-> -	gss_name_t name;
-> -	char buf[11];
-> +	OM_uint32 min_stat;
->  	int ret;
->  
-> -	ret = snprintf(buf, 11, "%u", uid);
-> -	if (ret < 1 || ret > 10) {
-> -		return -1;
-> -	}
-> -	name_buf.value = buf;
-> -	name_buf.length = ret + 1;
-> -
-> -	maj_stat = gss_import_name(&min_stat, &name_buf,
-> -				   GSS_C_NT_STRING_UID_NAME, &name);
-> -	if (maj_stat != GSS_S_COMPLETE) {
-> -		if (get_verbosity() > 0)
-> -			pgsserr("gss_import_name",
-> -				maj_stat, min_stat, &krb5oid);
-> -		return -1;
-> -	}
-> -
-> -	ret = gssd_acquire_krb5_cred(name, gss_cred);
-> +	ret = gssd_acquire_krb5_cred(GSS_C_NO_NAME, gss_cred);
->  
->  	/* force validation of cred to check for expiry */
->  	if (ret == 0) {
-> @@ -1412,7 +1393,6 @@ gssd_acquire_user_cred(uid_t uid, gss_cred_id_t *gss_cred)
->  			ret = -1;
->  	}
->  
-> -	maj_stat = gss_release_name(&min_stat, &name);
->  	return ret;
->  }
->  
-> 
