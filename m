@@ -1,116 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-we0-f174.google.com ([74.125.82.174]:61333 "EHLO
-	mail-we0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752018AbaAPPtX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 16 Jan 2014 10:49:23 -0500
+Received: from mx1.redhat.com ([209.132.183.28]:34199 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753976AbaAaQPh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 31 Jan 2014 11:15:37 -0500
+Message-ID: <52EBCC23.3050406@RedHat.com>
+Date: Fri, 31 Jan 2014 11:15:31 -0500
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-In-Reply-To: <1389638751-16173-2-git-send-email-trond.myklebust@primarydata.com>
-References: <395EC1ED-E67E-4666-B170-5C5F00264496@primarydata.com>
- <1389638751-16173-1-git-send-email-trond.myklebust@primarydata.com> <1389638751-16173-2-git-send-email-trond.myklebust@primarydata.com>
-From: Peng Tao <bergwolf@gmail.com>
-Date: Thu, 16 Jan 2014 23:49:02 +0800
-Message-ID: <CA+a=Yy6uf73Y=F5-Jp+2VrzMmbTYZXqDaEj-EHX335M3ZCvEZA@mail.gmail.com>
-Subject: Re: [PATCH 2/2] NFSv4.1: Fix a race in nfs4_write_inode
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: shaobingqing <shaobingqing@bwstor.com.cn>,
-        linuxnfs <linux-nfs@vger.kernel.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+To: NeilBrown <neilb@suse.de>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH/RFC: nfs-utils] Common systemd unit files for nfs-utils.
+References: <20140130172451.7a354ce4@notabene.brown>	<52EAB0CA.2090204@RedHat.com> <20140131091455.550e59a8@notabene.brown>
+In-Reply-To: <20140131091455.550e59a8@notabene.brown>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Jan 14, 2014 at 2:45 AM, Trond Myklebust
-<trond.myklebust@primarydata.com> wrote:
-> nfs4_write_inode() must not be allowed to exit until the layoutcommit
-> is done. That means that both NFS_INO_LAYOUTCOMMIT and
-> NFS_INO_LAYOUTCOMMITTING have to be cleared.
->
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> ---
->  fs/nfs/nfs4super.c | 14 +++---------
->  fs/nfs/pnfs.c      | 67 ++++++++++++++++++++++++++++--------------------------
->  2 files changed, 38 insertions(+), 43 deletions(-)
->
-> diff --git a/fs/nfs/nfs4super.c b/fs/nfs/nfs4super.c
-> index 65ab0a0ca1c4..808f29574412 100644
-> --- a/fs/nfs/nfs4super.c
-> +++ b/fs/nfs/nfs4super.c
-> @@ -77,17 +77,9 @@ static int nfs4_write_inode(struct inode *inode, struct writeback_control *wbc)
->  {
->         int ret = nfs_write_inode(inode, wbc);
->
-> -       if (ret >= 0 && test_bit(NFS_INO_LAYOUTCOMMIT, &NFS_I(inode)->flags)) {
-> -               int status;
-> -               bool sync = true;!test_and_clear_bit
-> -
-> -               if (wbc->sync_mode == WB_SYNC_NONE)
-> -                       sync = false;
-> -
-> -               status = pnfs_layoutcommit_inode(inode, sync);
-> -               if (status < 0)
-> -                       return status;
-> -       }
-> +       if (ret == 0)
-> +               ret = pnfs_layoutcommit_inode(inode,
-> +                               wbc->sync_mode == WB_SYNC_ALL);
->         return ret;
->  }
->
-> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-> index d75d938d36cb..4755858e37a0 100644
-> --- a/fs/nfs/pnfs.c
-> +++ b/fs/nfs/pnfs.c
-> @@ -1790,6 +1790,15 @@ pnfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc)
->  }
->  EXPORT_SYMBOL_GPL(pnfs_generic_pg_readpages);
->
-> +static void pnfs_clear_layoutcommitting(struct inode *inode)
-> +{
-> +       unsigned long *bitlock = &NFS_I(inode)->flags;
-> +
-> +       clear_bit_unlock(NFS_INO_LAYOUTCOMMITTING, bitlock);
-> +       smp_mb__after_clear_bit();
-> +       wake_up_bit(bitlock, NFS_INO_LAYOUTCOMMITTING);
-> +}
-> +
->  /*
->   * There can be multiple RW segments.
->   */
-> @@ -1807,7 +1816,6 @@ static void pnfs_list_write_lseg(struct inode *inode, struct list_head *listp)
->  static void pnfs_list_write_lseg_done(struct inode *inode, struct list_head *listp)
->  {
->         struct pnfs_layout_segment *lseg, *tmp;
-> -       unsigned long *bitlock = &NFS_I(inode)->flags;
->
->         /* Matched by references in pnfs_set_layoutcommit */
->         list_for_each_entry_safe(lseg, tmp, listp, pls_lc_list) {
-> @@ -1815,9 +1823,7 @@ static void pnfs_list_write_lseg_done(struct inode *inode, struct list_head *lis
->                 pnfs_put_lseg(lseg);
->         }
->
-> -       clear_bit_unlock(NFS_INO_LAYOUTCOMMITTING, bitlock);
-> -       smp_mb__after_clear_bit();
-> -       wake_up_bit(bitlock, NFS_INO_LAYOUTCOMMITTING);
-> +       pnfs_clear_layoutcommitting(inode);
->  }
->
->  void pnfs_set_lo_fail(struct pnfs_layout_segment *lseg)
-> @@ -1881,43 +1887,37 @@ pnfs_layoutcommit_inode(struct inode *inode, bool sync)
->         struct nfs4_layoutcommit_data *data;
->         struct nfs_inode *nfsi = NFS_I(inode);
->         loff_t end_pos;
-> -       int status = 0;
-> +       int status;
->
-> -       dprintk("--> %s inode %lu\n", __func__, inode->i_ino);
-> -
-> -       if (!test_bit(NFS_INO_LAYOUTCOMMIT, &nfsi->flags))
-> +       if (!pnfs_layoutcommit_outstanding(inode))
-This might be a problem. If nfsi->flags has !NFS_INO_LAYOUTCOMMIT and
-NFS_INO_LAYOUTCOMMITTING, client cannot issue a new layoutcommit after
-the inflight one finishes. It might not be an issue for file layout as
-long as we only use layoutcommit to update time, but it can cause data
-corruption for block layout.
 
-Thanks,
-Tao
+
+On 01/30/2014 05:14 PM, NeilBrown wrote:
+> On Thu, 30 Jan 2014 15:06:34 -0500 Steve Dickson <SteveD@redhat.com> wrote:
+>>> diff --git a/systemd/README b/systemd/README
+>>> new file mode 100644
+>>> index 000000000000..f0fb68825499
+>>> --- /dev/null
+>>> +++ b/systemd/README
+>>> @@ -0,0 +1,50 @@
+>>> +
+>>> +Notes about systemd unit files for nfs-utils.
+>>> +
+>>> +The unit files provided here should be sufficient for systemd
+>>> +to manage all daemons and related services provides by nfs-utils.
+>>> +
+>>> +They do *not* include any unit files for separate services such as
+>>> +rpc.rquotad (in the 'quota' package) or rpcbind.
+>>> +
+>>> +There are 4 units that can be 'enabled' or 'disabled' by systemctl, or
+>>> +by a suitable 'preset' setting:
+>>> +
+>>> + nfs-server.target
+>>> +    If enabled, nfs service is started together with dependencies
+>>> +    such as mountd, statd, rpc.idmapd
+>>> +
+>>> + nfs-client.target
+>>> +    If enabled, daemons needs for an nfs client are enabled.
+>>> +    This does *not* include rpc.statd.  the rpc-statd.service unit
+>>> +    is started by /usr/sbin/start-statd which mount.nfs will run
+>>> +    if statd is needed.
+>>> +
+>>> + nfs-secure.target
+>>> +    If enabled, then rpc.gssd will be run when either -client or
+>>> +    -server is started, and rpc.svcgssd will be run when -server
+>>> +    is started
+>>> +
+>>> + nfs-blkmap.target
+>>> +    If enabled, then blkmapd will be run when nfs-client.target is
+>>> +    started.
+We should also somehow document the targets we come up with. That
+was some of the frustration that was expressed when we move
+to systemd... It was not so much the changes it was the fact there
+was no documentation describing the changes... 
+
+Also note I've separated out each file into a separate commit. 
+I thought it would be easier to review that way... 
+Those commits are on the systemd branch in my git tree:
+
+   git://linux-nfs.org/~steved/nfs-utils systemd
+
+Finally... Who well are these tested? :-) 
+
+steved.
