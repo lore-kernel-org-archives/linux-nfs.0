@@ -1,81 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f170.google.com ([209.85.192.170]:42891 "EHLO
-	mail-pd0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754532AbaAUPfk convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 21 Jan 2014 10:35:40 -0500
-Received: by mail-pd0-f170.google.com with SMTP id p10so4091592pdj.1
-        for <linux-nfs@vger.kernel.org>; Tue, 21 Jan 2014 07:35:39 -0800 (PST)
+Received: from gw-1.arm.linux.org.uk ([78.32.30.217]:54391 "EHLO
+	pandora.arm.linux.org.uk" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S932750AbaBABDk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 31 Jan 2014 20:03:40 -0500
+Date: Sat, 1 Feb 2014 01:03:28 +0000
+From: Russell King - ARM Linux <linux@arm.linux.org.uk>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, Al Viro <viro@zeniv.linux.org.uk>,
+        Christoph Hellwig <hch@lst.de>, linux-arm-kernel@lists.infradead.org
+Subject: Re: NFS client broken in Linus' tip
+Message-ID: <20140201010328.GI15937@n2100.arm.linux.org.uk>
+References: <20140130140834.GW15937@n2100.arm.linux.org.uk> <20140130141405.GA23985@infradead.org> <20140130142752.GX15937@n2100.arm.linux.org.uk> <20140130143208.GB9573@infradead.org> <20140130153812.GA15937@n2100.arm.linux.org.uk> <1391201970.6978.1.camel@leira.trondhjem.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
-Subject: Re: [PATCH] SUNRPC: Allow one callback request to be received from two sk_buff
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-In-Reply-To: <CALrKORrZ3Kcuqc1RajQKkZcot0yiswh4VR_WuXHqfRTjn9oGQQ@mail.gmail.com>
-Date: Tue, 21 Jan 2014 08:35:36 -0700
-Cc: Dr Fields James Bruce <bfields@redhat.com>,
-        "Miller David S." <davem@davemloft.net>,
-        linuxnfs <linux-nfs@vger.kernel.org>, netdev@vger.kernel.org,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-Message-Id: <1BFACA51-087E-4945-851A-FBF0F108604C@primarydata.com>
-References: <1390201154-20815-1-git-send-email-shaobingqing@bwstor.com.cn> <1390259843.2501.2.camel@leira.trondhjem.org> <CALrKORrZ3Kcuqc1RajQKkZcot0yiswh4VR_WuXHqfRTjn9oGQQ@mail.gmail.com>
-To: shaobingqing <shaobingqing@bwstor.com.cn>
+In-Reply-To: <1391201970.6978.1.camel@leira.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Jan 21, 2014, at 3:08, shaobingqing <shaobingqing@bwstor.com.cn> wrote:
-
-> 2014/1/21 Trond Myklebust <trond.myklebust@primarydata.com>:
->> On Mon, 2014-01-20 at 14:59 +0800, shaobingqing wrote:
->>> In current code, there only one struct rpc_rqst is prealloced. If one
->>> callback request is received from two sk_buff, the xprt_alloc_bc_request
->>> would be execute two times with the same transport->xid. The first time
->>> xprt_alloc_bc_request will alloc one struct rpc_rqst and the TCP_RCV_COPY_DATA
->>> bit of transport->tcp_flags will not be cleared. The second time
->>> xprt_alloc_bc_request could not alloc struct rpc_rqst any more and NULL
->>> pointer will be returned, then xprt_force_disconnect occur. I think one
->>> callback request can be allowed to be received from two sk_buff.
->>> 
->>> Signed-off-by: shaobingqing <shaobingqing@bwstor.com.cn>
->>> ---
->>> net/sunrpc/xprtsock.c |   11 +++++++++--
->>> 1 files changed, 9 insertions(+), 2 deletions(-)
->>> 
->>> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
->>> index ee03d35..606950d 100644
->>> --- a/net/sunrpc/xprtsock.c
->>> +++ b/net/sunrpc/xprtsock.c
->>> @@ -1271,8 +1271,13 @@ static inline int xs_tcp_read_callback(struct rpc_xprt *xprt,
->>>      struct sock_xprt *transport =
->>>                              container_of(xprt, struct sock_xprt, xprt);
->>>      struct rpc_rqst *req;
->>> +     static struct rpc_rqst *req_partial;
->>> +
->>> +     if (req_partial == NULL)
->>> +             req = xprt_alloc_bc_request(xprt);
->>> +     else if (req_partial->rq_xid == transport->tcp_xid)
->>> +             req = req_partial;
->> 
->> What happens here if req_partial->rq_xid != transport->tcp_xid? AFAICS,
->> req will be undefined. Either way, you cannot use a static variable for
->> storage here: that isn't re-entrant.
+On Fri, Jan 31, 2014 at 03:59:30PM -0500, Trond Myklebust wrote:
+> On Thu, 2014-01-30 at 15:38 +0000, Russell King - ARM Linux wrote:
+> > On Thu, Jan 30, 2014 at 06:32:08AM -0800, Christoph Hellwig wrote:
+> > > On Thu, Jan 30, 2014 at 02:27:52PM +0000, Russell King - ARM Linux wrote:
+> > > > Yes and no.  I still end up with an empty /etc/mtab, but the file now
+> > > > exists.  However, I can create and echo data into /etc/mtab, but it seems
+> > > > that can't happen at boot time.
+> > > 
+> > > Odd.  Can you disable CONFIG_NFSD_V3_ACL for now to isolate the issue?
+> > 
+> > Unfortunately, that results in some problem at boot time, which
+> > ultimately ends up with the other three CPUs being stopped, and
+> > hence the original reason scrolls off the screen before it can be
+> > read... even at 1920p.
+> > 
+> Hi Russell,
 > 
-> Because metadata sever only have one slot for backchannel request,
-> req_partial->rq_xid == transport->tcp_xid always happens, if the callback
-> request just being splited in two sk_buffs. But req_partial->rq_xid !=
-> transport->tcp_xid may also happens in some special cases, such as
-> retransmission occurs?
+> The following patch fixes the issue for me.
 
-If the server retransmits, then it is broken. The NFSv4.1 protocol does not allow it to retransmit unless the connection breaks.
+It doesn't entirely fix the issue for me, instead we've got even weirder
+behaviour:
 
-> If one callback request is splited in two sk_buffs, xs_tcp_read_callback
-> will be execute two times. The req_partial should be a static variable,
-> because  the second execution of xs_tcp_read_callback should use
-> the rpc_rqst allocated for the first execution, which saves information
-> copies from the first sk_buff.
+root@cubox-i4:~# ls -al test
+ls: cannot access test: No such file or directory
+root@cubox-i4:~# touch test
+root@cubox-i4:~# ls -al test
+-rw-r--r-- 1 root root 0 Feb  1 01:01 test
+root@cubox-i4:~# echo foo > test
+root@cubox-i4:~# ls -al test
+-rw-r--r-- 1 root root 4 Feb  1 01:01 test
+root@cubox-i4:~# cat test
+foo
+root@cubox-i4:~# rm test
+root@cubox-i4:~# echo foo > test
+-bash: test: Operation not supported
+root@cubox-i4:~# ls -al test
+-rw-r--r-- 1 root root 0 Feb  1 01:01 test
 
-No! This is a multi-threaded/process environment which can support multiple connection. It is a bug to use a static variable.
-
---
-Trond Myklebust
-Linux NFS client maintainer
-
+-- 
+FTTC broadband for 0.8mile line: 5.8Mbps down 500kbps up.  Estimation
+in database were 13.1 to 19Mbit for a good line, about 7.5+ for a bad.
+Estimate before purchase was "up to 13.2Mbit".
