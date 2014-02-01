@@ -1,58 +1,121 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:44945 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932070AbaBUPAA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 21 Feb 2014 10:00:00 -0500
-Date: Fri, 21 Feb 2014 09:59:56 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: NeilBrown <neilb@suse.de>
-Cc: Steve Dickson <SteveD@redhat.com>, Chuck Lever <chuck.lever@oracle.com>,
-        NFS <linux-nfs@vger.kernel.org>, Carsten Ziepke <kieltux@gmail.com>
-Subject: Re: [PATCH - nfs-utils] Fix fallback from tcp to udp
-Message-ID: <20140221145956.GE13433@fieldses.org>
-References: <20140218104307.34205fc8@notabene.brown>
- <53064057.70703@RedHat.com>
- <20140220203701.GA13433@fieldses.org>
- <20140221142641.20e72abe@notabene.brown>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140221142641.20e72abe@notabene.brown>
+Received: from mail-ie0-f176.google.com ([209.85.223.176]:36837 "EHLO
+	mail-ie0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932200AbaBAU4v (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 1 Feb 2014 15:56:51 -0500
+Received: by mail-ie0-f176.google.com with SMTP id tp5so5224172ieb.7
+        for <linux-nfs@vger.kernel.org>; Sat, 01 Feb 2014 12:56:51 -0800 (PST)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Cc: Chuck Lever <chuck.lever@oracle.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: [PATCH 2/2] NFSv4.1: nfs4_destroy_session must call rpc_destroy_waitqueue
+Date: Sat,  1 Feb 2014 15:56:48 -0500
+Message-Id: <1391288208-23750-2-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1391288208-23750-1-git-send-email-trond.myklebust@primarydata.com>
+References: <1391288208-23750-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Feb 21, 2014 at 02:26:41PM +1100, NeilBrown wrote:
-> On Thu, 20 Feb 2014 15:37:02 -0500 "J. Bruce Fields" <bfields@fieldses.org>
-> wrote:
-> > Any NFS server has to support either tcp or rpcbind.  But it's OK for a
-> > server to support only of those two.  So the only way to handle both
-> > cases while continuing to retry after ECONNREFUSED is to alternate
-> > between trying nfs4/tcp and rpcbind until you can connect to one or the
-> > other.
-> > 
-> > If it's the rpcbind call that succeeds first then I think we want to do
-> > one more try of nfs4/tcp just to make sure it didn't just come up,
-> > before falling back to v3.
-> > 
-> > The rpcbind call is done in userspace, if I understand right, so I think
-> > this is doable.  Looking at utils/mount/ I don't understand the mount
-> > process well enough to understand exactly how to do it.  Maybe
-> > everything but the final nfs_sys_mount needs to be moved out of
-> > nfs_do_mount_v3v2 into a new nfs_do_probe_v3v2 and nfs_autonegotiate
-> > should alternate between nfs_try_mount_v4 and nfs_do_probe_v3v2 as long
-> > as both return ECONNREFUSED, calling nfs_try_mount_v3v2 only if
-> > nfs_try_mount_v4 has failed after a succesful nfs_do_probe_v3v2?
-> > 
-> > Except the v3v2 mount logic seems to actually modify the mount_options,
-> > so probably that doesn't quite work.
-> 
-> I had come to much the same conclusion after reading Steve's mail:  when TCP
-> fails we need rpcbind to be sure what to do.
-> I suspect it should be fairly straight forward to implement (I'm less
-> pessimistic than you).  I'll have a go on Monday.
+There may still be timers active on the session waitqueues. Make sure
+that we kill them before freeing the memory.
 
-OK, great!
+Cc: stable@vger.kernel.org # 3.12+
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/nfs4client.c  |  2 +-
+ fs/nfs/nfs4session.c | 25 ++++++++++++++++++++-----
+ fs/nfs/nfs4session.h |  2 +-
+ 3 files changed, 22 insertions(+), 7 deletions(-)
 
-Yeah, the mount code looked like a maze for me but I probably spent less
-than an hour trying to trace through it, I'm sure it's not that bad.
+diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+index dbb3e1f30c68..860ad26a5590 100644
+--- a/fs/nfs/nfs4client.c
++++ b/fs/nfs/nfs4client.c
+@@ -170,7 +170,7 @@ void nfs41_shutdown_client(struct nfs_client *clp)
+ void nfs40_shutdown_client(struct nfs_client *clp)
+ {
+ 	if (clp->cl_slot_tbl) {
+-		nfs4_release_slot_table(clp->cl_slot_tbl);
++		nfs4_shutdown_slot_table(clp->cl_slot_tbl);
+ 		kfree(clp->cl_slot_tbl);
+ 	}
+ }
+diff --git a/fs/nfs/nfs4session.c b/fs/nfs/nfs4session.c
+index cf883c7ae053..e799dc3c3b1d 100644
+--- a/fs/nfs/nfs4session.c
++++ b/fs/nfs/nfs4session.c
+@@ -231,14 +231,23 @@ out:
+ 	return ret;
+ }
+ 
++/*
++ * nfs4_release_slot_table - release all slot table entries
++ */
++static void nfs4_release_slot_table(struct nfs4_slot_table *tbl)
++{
++	nfs4_shrink_slot_table(tbl, 0);
++}
++
+ /**
+- * nfs4_release_slot_table - release resources attached to a slot table
++ * nfs4_shutdown_slot_table - release resources attached to a slot table
+  * @tbl: slot table to shut down
+  *
+  */
+-void nfs4_release_slot_table(struct nfs4_slot_table *tbl)
++void nfs4_shutdown_slot_table(struct nfs4_slot_table *tbl)
+ {
+-	nfs4_shrink_slot_table(tbl, 0);
++	nfs4_release_slot_table(tbl);
++	rpc_destroy_wait_queue(&tbl->slot_tbl_waitq);
+ }
+ 
+ /**
+@@ -422,7 +431,7 @@ void nfs41_update_target_slotid(struct nfs4_slot_table *tbl,
+ 	spin_unlock(&tbl->slot_tbl_lock);
+ }
+ 
+-static void nfs4_destroy_session_slot_tables(struct nfs4_session *session)
++static void nfs4_release_session_slot_tables(struct nfs4_session *session)
+ {
+ 	nfs4_release_slot_table(&session->fc_slot_table);
+ 	nfs4_release_slot_table(&session->bc_slot_table);
+@@ -450,7 +459,7 @@ int nfs4_setup_session_slot_tables(struct nfs4_session *ses)
+ 	if (status && tbl->slots == NULL)
+ 		/* Fore and back channel share a connection so get
+ 		 * both slot tables or neither */
+-		nfs4_destroy_session_slot_tables(ses);
++		nfs4_release_session_slot_tables(ses);
+ 	return status;
+ }
+ 
+@@ -470,6 +479,12 @@ struct nfs4_session *nfs4_alloc_session(struct nfs_client *clp)
+ 	return session;
+ }
+ 
++static void nfs4_destroy_session_slot_tables(struct nfs4_session *session)
++{
++	nfs4_shutdown_slot_table(&session->fc_slot_table);
++	nfs4_shutdown_slot_table(&session->bc_slot_table);
++}
++
+ void nfs4_destroy_session(struct nfs4_session *session)
+ {
+ 	struct rpc_xprt *xprt;
+diff --git a/fs/nfs/nfs4session.h b/fs/nfs/nfs4session.h
+index 232306100651..b34ada9bc6a2 100644
+--- a/fs/nfs/nfs4session.h
++++ b/fs/nfs/nfs4session.h
+@@ -74,7 +74,7 @@ enum nfs4_session_state {
+ 
+ extern int nfs4_setup_slot_table(struct nfs4_slot_table *tbl,
+ 		unsigned int max_reqs, const char *queue);
+-extern void nfs4_release_slot_table(struct nfs4_slot_table *tbl);
++extern void nfs4_shutdown_slot_table(struct nfs4_slot_table *tbl);
+ extern struct nfs4_slot *nfs4_alloc_slot(struct nfs4_slot_table *tbl);
+ extern void nfs4_free_slot(struct nfs4_slot_table *tbl, struct nfs4_slot *slot);
+ extern void nfs4_slot_tbl_drain_complete(struct nfs4_slot_table *tbl);
+-- 
+1.8.5.3
 
---b.
