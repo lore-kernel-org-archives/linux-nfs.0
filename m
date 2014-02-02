@@ -1,78 +1,144 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailuogwhop.emc.com ([168.159.213.141]:16285 "EHLO
-	mailuogwhop.emc.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751140AbaBZRnD convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Feb 2014 12:43:03 -0500
-From: "faibish, sorin" <faibish_sorin@emc.com>
-To: Chuck Lever <chuck.lever@oracle.com>,
-        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-CC: Shirley Ma <shirley.ma@oracle.com>
-Date: Wed, 26 Feb 2014 12:42:52 -0500
-Subject: RE: Proposal for simplifying NFS/RDMA client memory registration
-Message-ID: <2512424DBC01FD48843E938C780FA97C02C4701C48@MX23A.corp.emc.com>
-References: <01C4496A-F074-4F72-9DF0-6076C05E8A1F@oracle.com>
-In-Reply-To: <01C4496A-F074-4F72-9DF0-6076C05E8A1F@oracle.com>
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
+Received: from mail-ie0-f172.google.com ([209.85.223.172]:63630 "EHLO
+	mail-ie0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752462AbaBBWEk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 2 Feb 2014 17:04:40 -0500
+Received: by mail-ie0-f172.google.com with SMTP id e14so5907824iej.31
+        for <linux-nfs@vger.kernel.org>; Sun, 02 Feb 2014 14:04:40 -0800 (PST)
+Message-ID: <1391378678.8123.5.camel@leira.trondhjem.org>
+Subject: Re: NFS client broken in Linus' tip
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Russell King - ARM Linux <linux@arm.linux.org.uk>
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Christoph Hellwig <hch@infradead.org>,
+        Al Viro <viro@zeniv.linux.org.uk>, Christoph Hellwig <hch@lst.de>,
+        linux-arm-kernel@lists.infradead.org
+Date: Sun, 02 Feb 2014 17:04:38 -0500
+In-Reply-To: <20140202122757.GC26684@n2100.arm.linux.org.uk>
+References: <20140130140834.GW15937@n2100.arm.linux.org.uk>
+	 <20140130141405.GA23985@infradead.org>
+	 <20140130142752.GX15937@n2100.arm.linux.org.uk>
+	 <20140130143208.GB9573@infradead.org>
+	 <20140130153812.GA15937@n2100.arm.linux.org.uk>
+	 <1391201970.6978.1.camel@leira.trondhjem.org>
+	 <20140201010328.GI15937@n2100.arm.linux.org.uk>
+	 <20140202122757.GC26684@n2100.arm.linux.org.uk>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Sun, 2014-02-02 at 12:27 +0000, Russell King - ARM Linux wrote:
+> On Sat, Feb 01, 2014 at 01:03:28AM +0000, Russell King - ARM Linux wrote:
+> > On Fri, Jan 31, 2014 at 03:59:30PM -0500, Trond Myklebust wrote:
+> > > On Thu, 2014-01-30 at 15:38 +0000, Russell King - ARM Linux wrote:
+> > > > On Thu, Jan 30, 2014 at 06:32:08AM -0800, Christoph Hellwig wrote:
+> > > > > On Thu, Jan 30, 2014 at 02:27:52PM +0000, Russell King - ARM Linux wrote:
+> > > > > > Yes and no.  I still end up with an empty /etc/mtab, but the file now
+> > > > > > exists.  However, I can create and echo data into /etc/mtab, but it seems
+> > > > > > that can't happen at boot time.
+> > > > > 
+> > > > > Odd.  Can you disable CONFIG_NFSD_V3_ACL for now to isolate the issue?
+> > > > 
+> > > > Unfortunately, that results in some problem at boot time, which
+> > > > ultimately ends up with the other three CPUs being stopped, and
+> > > > hence the original reason scrolls off the screen before it can be
+> > > > read... even at 1920p.
+> > > > 
+> > > Hi Russell,
+> > > 
+> > > The following patch fixes the issue for me.
+> > 
+> > It doesn't entirely fix the issue for me, instead we've got even weirder
+> > behaviour:
+> > 
+> > root@cubox-i4:~# ls -al test
+> > ls: cannot access test: No such file or directory
+> > root@cubox-i4:~# touch test
+> > root@cubox-i4:~# ls -al test
+> > -rw-r--r-- 1 root root 0 Feb  1 01:01 test
+> > root@cubox-i4:~# echo foo > test
+> > root@cubox-i4:~# ls -al test
+> > -rw-r--r-- 1 root root 4 Feb  1 01:01 test
+> > root@cubox-i4:~# cat test
+> > foo
+> > root@cubox-i4:~# rm test
+> > root@cubox-i4:~# echo foo > test
+> > -bash: test: Operation not supported
+> > root@cubox-i4:~# ls -al test
+> > -rw-r--r-- 1 root root 0 Feb  1 01:01 test
+> 
+> FYI, I just tested Linus' tip, and NFS is still broken.
+> 
+Hi Russell,
+
+The following patch should fix the above problem. It needs to be applied
+on top of the one I sent you previously. In addition, you will want to
+apply Noah Massey's patch from
+http://lkml.kernel.org/r/1391135472-9639-1-git-send-email-Noah.Massey@gmail.com 
+
+Cheers,
+  Trond
+
+8<------------------------------------------------------------------------------
+>From f9ad7a7b43554bc36eccf03d33617c05b8a2c77d Mon Sep 17 00:00:00 2001
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+Date: Sun, 2 Feb 2014 14:36:42 -0500
+Subject: [PATCH] NFSv3: Fix return value of nfs3_proc_setacls
+
+nfs3_proc_setacls is used internally by the NFSv3 create operations
+to set the acl after the file has been created. If the operation
+fails because the server doesn't support acls, then it must return '0',
+not -EOPNOTSUPP.
+
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/nfs3acl.c | 13 +++++++++++--
+ 1 file changed, 11 insertions(+), 2 deletions(-)
+
+diff --git a/fs/nfs/nfs3acl.c b/fs/nfs/nfs3acl.c
+index 9271a6bb9a41..871d6eda8dba 100644
+--- a/fs/nfs/nfs3acl.c
++++ b/fs/nfs/nfs3acl.c
+@@ -113,7 +113,7 @@ getout:
+ 	return ERR_PTR(status);
+ }
+ 
+-int nfs3_proc_setacls(struct inode *inode, struct posix_acl *acl,
++static int __nfs3_proc_setacls(struct inode *inode, struct posix_acl *acl,
+ 		struct posix_acl *dfacl)
+ {
+ 	struct nfs_server *server = NFS_SERVER(inode);
+@@ -198,6 +198,15 @@ out:
+ 	return status;
+ }
+ 
++int nfs3_proc_setacls(struct inode *inode, struct posix_acl *acl,
++		struct posix_acl *dfacl)
++{
++	int ret;
++	ret = __nfs3_proc_setacls(inode, acl, dfacl);
++	return (ret == -EOPNOTSUPP) ? 0 : ret;
++
++}
++
+ int nfs3_set_acl(struct inode *inode, struct posix_acl *acl, int type)
+ {
+ 	struct posix_acl *alloc = NULL, *dfacl = NULL;
+@@ -225,7 +234,7 @@ int nfs3_set_acl(struct inode *inode, struct posix_acl *acl, int type)
+ 		if (IS_ERR(alloc))
+ 			goto fail;
+ 	}
+-	status = nfs3_proc_setacls(inode, acl, dfacl);
++	status = __nfs3_proc_setacls(inode, acl, dfacl);
+ 	posix_acl_release(alloc);
+ 	return status;
+ 
+-- 
+1.8.5.3
 
 
------Original Message-----
-From: linux-nfs-owner@vger.kernel.org [mailto:linux-nfs-owner@vger.kernel.org] On Behalf Of Chuck Lever
-Sent: Wednesday, February 26, 2014 11:45 AM
-To: linux-rdma@vger.kernel.org; Linux NFS Mailing List
-Cc: Shirley Ma
-Subject: Proposal for simplifying NFS/RDMA client memory registration
-
-Hi-
-
-Shirley Ma and I are reviving work on the NFS/RDMA client code base in the Linux kernel.  So far we've built and run functional tests to determine what is working and what is broken.
-
-One complication is the number of memory registration modes supported by the RPC/RDMA transport: there are seven.  These were added over the years to support particular HCAs or as proof-of-concept.  The transport chooses a registration mode at mount time based on what the link HCA supports.
-
-Not all HCAs support all memory registration modes, so our test matrix is quite large.  I'd like to propose removing support for one or more of these memory registration modes in the name of making it easier to change this code and test it without breaking something that we can't test.
-
-BOUNCEBUFFERS - All HCAs support this mode.  Does not use RDMA READ and WRITE, and the client end copies data into place.  RDMA is offloaded, by data copy is not.  I'm told it was never intended for production use.
-
-REGISTER - Safe but relatively slow.  Uses reg_phys_mr verb which is not supported in mlx4/mlx5, but all other HCAs/providers can use this mode.
-
-MEM_WINDOWS - Uses bind_mr verb.  Safe, but supports only a narrow range of HCAs.
-
-MEM_WINDOWS_ASYNC - Not always safe, and only a narrow range of HCAs is supported.
-
-MTHCA_FMR - Uses alloc_fmr verb.  Safe, reasonably fast, but only a narrow range of older HCAs is supported.
-
-FRMR - Safe, generally fast.  Currently the preferred registration mode, but is not supported with some older HCAs/providers.
-
-ALLPHYSICAL - Usually fast, but not safe as it exposes client memory.  All HCAs support this mode.
-
-
-I propose removing BOUNCEBUFFERS since it is not intended for production use.
-
-I propose removing ALLPHYSICAL and MEM_WINDOWS_ASYNC as they are not generally safe.  RFC 5666 suggests that unsafe memory registration modes be avoided.
-
-I propose removing MEM_WINDOWS as it adds complexity without adding a lot of HCA compatibility.
-
-I propose removing MTHCA_FMR as I'm told it is hard to obtain HCAs we would need for testing this registration mode, and these are all old adapters anyway.
-
-This leaves NFS/RDMA client support for REGISTER and FRMR, which should cover all existing HCAs, and it is easy to test both of these memory registration modes with just one or two well-picked HCAs.
-
-We would contribute these changes to the client code base.  The NFS/RDMA server code could use similar attention, but we are not volunteering to change it at this time.
-[sf] We need volunteers for server too as the optimizations on client only may not be enough considering that SMB express optimized both sides. Maybe we can find a student of Erez to work on this. Thanks
-
-./Sorin 
-
-Thoughts/comments?
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
---
-To unsubscribe from this list: send the line "unsubscribe linux-nfs" in the body of a message to majordomo@vger.kernel.org More majordomo info at  http://vger.kernel.org/majordomo-info.html
+-- 
+Trond Myklebust
+Linux NFS client maintainer
 
