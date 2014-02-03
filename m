@@ -1,53 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f173.google.com ([209.85.213.173]:40846 "EHLO
+Received: from mail-ig0-f173.google.com ([209.85.213.173]:52790 "EHLO
 	mail-ig0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752705AbaBTNLu convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Feb 2014 08:11:50 -0500
-Received: by mail-ig0-f173.google.com with SMTP id c10so11637850igq.0
-        for <linux-nfs@vger.kernel.org>; Thu, 20 Feb 2014 05:11:49 -0800 (PST)
+	with ESMTP id S1752913AbaBCUcm convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Feb 2014 15:32:42 -0500
+Received: by mail-ig0-f173.google.com with SMTP id c10so5016451igq.0
+        for <linux-nfs@vger.kernel.org>; Mon, 03 Feb 2014 12:32:42 -0800 (PST)
 Content-Type: text/plain; charset=windows-1252
 Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
-Subject: Re: [nfs-utils RPC-PATCH 0/4] Add options to nfsd etc to avoid needing to write to /proc
+Subject: Re: NFS client broken in Linus' tip
 From: Trond Myklebust <trond.myklebust@primarydata.com>
-In-Reply-To: <20140220063616.6548.42556.stgit@notabene.brown>
-Date: Thu, 20 Feb 2014 08:11:47 -0500
-Cc: Dickson Steve <SteveD@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <33021BB9-598C-4A65-B386-BE230E91894F@primarydata.com>
-References: <20140220063616.6548.42556.stgit@notabene.brown>
-To: Brown Neil <neilb@suse.de>
+In-Reply-To: <20140203202543.GA7070@infradead.org>
+Date: Mon, 3 Feb 2014 15:32:39 -0500
+Cc: Russell King - ARM Linux <linux@arm.linux.org.uk>,
+        linuxnfs <linux-nfs@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        Viro Alexander <viro@zeniv.linux.org.uk>,
+        Christoph Hellwig <hch@lst.de>, linux-arm-kernel@lists.infradead.org
+Message-Id: <93466B34-9D46-4AF2-8806-8CC5D3371F4D@primarydata.com>
+References: <20140130141405.GA23985@infradead.org> <20140130142752.GX15937@n2100.arm.linux.org.uk> <20140130143208.GB9573@infradead.org> <20140130153812.GA15937@n2100.arm.linux.org.uk> <1391201970.6978.1.camel@leira.trondhjem.org> <20140203080325.GB806@infradead.org> <85AAFCF5-60EE-42E5-B103-37A4613C5947@primarydata.com> <20140203145759.GA30263@infradead.org> <3003D7E5-93F8-4B32-ACDB-07ED3F6CE70D@primarydata.com> <1391458935.17089.1.camel@leira.trondhjem.org> <20140203202543.GA7070@infradead.org>
+To: Christoph Hellwig <hch@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Feb 20, 2014, at 1:36, Neil Brown <neilb@suse.de> wrote:
+On Feb 3, 2014, at 15:25, Christoph Hellwig <hch@infradead.org> wrote:
 
-> There are a number of NFS-related setting that currently must be set
-> by writing to various files under /proc.
-> This is a bit clumsy, particularly for systemd unit files.
+> On Mon, Feb 03, 2014 at 03:22:15PM -0500, Trond Myklebust wrote:
+>> FWIW, here is the alternative patch. I've tested it, and it seems to
+>> work.
 > 
-> So this series adds options to a number of commands where relevant.
+> I much prefer the original one.  One major point of the series was to
+> get individual filesystems out of the business of providing xattr
+> handlers for ACLs.
 > 
-> The first two (rdma, and  nfsv4{grace,lease}time) I am quite comfortable with.
-> The third (nlm grace time) I think is probably right but if someone can argue
-> an alternate approach I'm unlikely to resist.
-> The fourth is .... uhm.  You better look yourself.
-> 
-> Part of me thinks that nlm port numbers should be set in /etc/sysctl.conf (or sysctl.d)
-> and /etc/modprobe.d should have something like
-> 
-> install lockd  sysctl -p /etc/sysctl.d/lockd
-> 
-> but last time I tried that it broke "modprobe --show-depends".
-> Also it is awkward to get setting from /etc/sysconfig/nfs into /etc/sysctl.d/lockd
-> 
-> Thoughts?
 
-Why not just do most of this at module load time with something like "modprobe lockd lockd.nlm_grace_period=<nsecs> lockd.nlm_tcpport=<portnr> …”?
-Better yet, add/edit appropriate entries in /etc/modprobe.conf.d at system setup time.
+Then could you and Al please provide an Acked-by? This is a userspace API, so we shouldn’t be changing return values without good reason.
 
-_________________________________
+--
 Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
+Linux NFS client maintainer
 
