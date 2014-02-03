@@ -1,83 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:59228 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752446AbaBXPpf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 24 Feb 2014 10:45:35 -0500
-Date: Mon, 24 Feb 2014 10:45:32 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jan Kara <jack@suse.cz>
-Cc: Matthew Rahtz <mrahtz@rapitasystems.com>, linux-ext4@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: warning in ext4_journal_start_sb on filesystem freeze
-Message-ID: <20140224154532.GB11992@fieldses.org>
-References: <217983071.143460.1385453196946.JavaMail.zimbra@rapitasystems.com>
- <1697998867.143517.1385454051031.JavaMail.zimbra@rapitasystems.com>
- <20131126125826.GA4503@quack.suse.cz>
- <622177618.727.1393062606061.JavaMail.zimbra@rapitasystems.com>
- <20140224095525.GA20532@quack.suse.cz>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <20140224095525.GA20532@quack.suse.cz>
+Received: from mail-ie0-f174.google.com ([209.85.223.174]:56055 "EHLO
+	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753008AbaBCT43 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Feb 2014 14:56:29 -0500
+Received: by mail-ie0-f174.google.com with SMTP id tp5so6610170ieb.33
+        for <linux-nfs@vger.kernel.org>; Mon, 03 Feb 2014 11:56:29 -0800 (PST)
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
+Subject: Re: [PATCH] nfs: include xattr.h from fs/nfs/nfs3proc.c
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+In-Reply-To: <20140203193107.GH30250@htj.dyndns.org>
+Date: Mon, 3 Feb 2014 14:48:13 -0500
+Cc: Dr Fields James Bruce <bfields@fieldses.org>,
+        linuxnfs <linux-nfs@vger.kernel.org>, Li Zefan <lizefan@huawei.com>,
+        containers@lists.linux-foundation.org, cgroups@vger.kernel.org
+Message-Id: <F2DD11A7-8D32-4E1E-BB4D-7384F0932B2D@primarydata.com>
+References: <20140203193107.GH30250@htj.dyndns.org>
+To: Tejun Heo <tj@kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Feb 24, 2014 at 10:55:25AM +0100, Jan Kara wrote:
-> On Sat 22-02-14 09:50:06, Matthew Rahtz wrote:
-> > Thanks for your help Jan,
-> > 
-> > A few months later, we've noticed the issue is actually still there.
-> > Using 3.11.0-17-generic on Ubuntu 12.04, weâ€™re seeing this in the kernel
-> > logs:
-> > 
-> > [29243.606215] WARNING: CPU: 0 PID: 1785 at
-> > /build/buildd/linux-lts-saucy-3.11.0/fs/ext4/ext4_jbd2.c:48
-> > ext4_journal_check_start+0x83/0x90()
-> > 
-> > Having a look at the Ubuntu source package for that version, it
-> > definitely does include commit 03d95eb2f2578083a3f6286262e1cb5d88a00c02,
-> > and the line generating the warning is still:
-> > 
-> > WARN_ON(sb->s_writers.frozen == SB_FREEZE_COMPLETE);
-> > 
-> > Are there any other obvious possibilities for what may be causing this?
-> > There seem to be some users of Oracle Linux experiencing similar problems
-> > at https://community.oracle.com/thread/2617418, which was apparently
-> > fixed in Oracle's kernel version '3.8.13-26.el6uek'. Any word on when
-> > this might be integrated into the official kernel?
-> > 
-> > Full call trace included below.
->   Looking at the trace below, now the problem seems to be in the NFS server
-> code. NFS should get protection against the filesystem being frozen (or
-> remounted read-only for that matter) via mnt_want_write() before calling
-> into notify_change() (actually before calling fh_lock() because of lock
-> ordering).  Similarly to what we do e.g. in fchownat(). Bruce?
 
-Like this?
+On Feb 3, 2014, at 14:31, Tejun Heo <tj@kernel.org> wrote:
 
-But I wonder why this is just popping up now--as far as I can tell we've
-had the bug since those write counts were introduced.
+> fs/nfs/nfs3proc.c is making use of xattr but was getting linux/xattr.h
+> indirectly through linux/cgroup.h, which will soon drop the inclusion
+> of xattr.h.  Explicitly include linux/xattr.h from nfs3proc.c so that
+> compilation doesn't fail when linux/cgroup.h drops linux/xattr.h.
+> 
+> As the following cgroup changes will depend on these changes, it
+> probably would be easier to route this through cgroup branch.  Would
+> that be okay?
+> 
+> Signed-off-by: Tejun Heo <tj@kernel.org>
+> Cc: "J. Bruce Fields" <bfields@fieldses.org>
 
---b.
+EWRONGMAINTAINER… :-)
 
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 6d7be3f..d573b61 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -445,12 +445,16 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
- 		err = nfserr_notsync;
- 		goto out_put_write_access;
- 	}
-+	host_err = fh_want_write(fhp);
-+	if (host_err)
-+		goto out_nfserr;
- 
- 	fh_lock(fhp);
- 	host_err = notify_change(dentry, iap, NULL);
- 	fh_unlock(fhp);
-+	fh_drop_write(fhp);
-+out_nfserr:
- 	err = nfserrno(host_err);
--
- out_put_write_access:
- 	if (size_change)
- 		put_write_access(inode);
+Acked-by: Trond Myklebust <trond.myklebust@primarydata.com>
+
+> Cc: linux-nfs@vger.kernel.org
+> ---
+> fs/nfs/nfs3proc.c |    1 +
+> 1 file changed, 1 insertion(+)
+> 
+> --- a/fs/nfs/nfs3proc.c
+> +++ b/fs/nfs/nfs3proc.c
+> @@ -18,6 +18,7 @@
+> #include <linux/lockd/bind.h>
+> #include <linux/nfs_mount.h>
+> #include <linux/freezer.h>
+> +#include <linux/xattr.h>
+> 
+> #include "iostat.h"
+> #include "internal.h"
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--
+Trond Myklebust
+Linux NFS client maintainer
+
