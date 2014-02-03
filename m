@@ -1,76 +1,86 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:49264 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756793AbaBFREP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 6 Feb 2014 12:04:15 -0500
-Date: Thu, 6 Feb 2014 12:03:48 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Al Viro <viro@ZenIV.linux.org.uk>
-Cc: Christoph Hellwig <hch@infradead.org>, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        Miklos Szeredi <mszeredi@suse.cz>, Harshula <hjayasur@redhat.com>,
-        hfuchi@redhat.com, Trond Myklebust <trondmy@gmail.com>
-Subject: Re: [PATCH] dcache: make d_splice_alias use d_materialise_unique
-Message-ID: <20140206170348.GD14575@fieldses.org>
-References: <20140115151749.GF23999@fieldses.org>
- <20140117121723.GA18375@infradead.org>
- <20140117153917.GA26636@fieldses.org>
- <20140117210343.GD26636@fieldses.org>
- <20140117212655.GE26636@fieldses.org>
- <20140123212700.GA30466@fieldses.org>
- <20140131184258.GN10323@ZenIV.linux.org.uk>
- <20140131194758.GA24618@fieldses.org>
+Received: from mail-ie0-f176.google.com ([209.85.223.176]:56830 "EHLO
+	mail-ie0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752394AbaBCVCn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Feb 2014 16:02:43 -0500
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 6/8] NFS: advertise only supported callback netids
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Date: Mon, 03 Feb 2014 16:02:40 -0500
+Message-ID: <20140203210240.3533.87689.stgit@manet.1015granger.net>
+In-Reply-To: <20140203205903.3533.39213.stgit@manet.1015granger.net>
+References: <20140203205903.3533.39213.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140131194758.GA24618@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Jan 31, 2014 at 02:47:58PM -0500, J. Bruce Fields wrote:
-> (Then one remaining thing I don't understand is how to make that fixing
-> up reliable.  Or is there some reason nobody hits the _EBUSY case of
-> __d_unalias?)
+NFSv4.0 clients use the SETCLIENTID operation to inform NFS servers
+how to contact a client's callback service.  If a server cannot
+contact a client's callback service, that server will not delegate
+to that client, which results in a performance loss.
 
-In fact, a reproducer found thanks to Hideshi Yamaoka:
+Our client advertises "rdma" as the callback netid when the forward
+channel is "rdma".  But our client always starts only "tcp" and
+"tcp6" callback services.
 
-On server:
+Instead of advertising the forward channel netid, advertise "tcp"
+or "tcp6" as the callback netid, based on the value of the
+clientaddr mount option, since those are what our client currently
+supports.
 
-	while true; do
-		mv /exports/DIR /exports/TO/DIR
-		mv /exports/TO/DIR /exports/DIR
-	done
+(Note: this approach is appropriate for older kernels too, but this
+patch doesn't apply cleanly on kernels earlier than 3.11).
 
-On client:
+Bugzilla: https://bugzilla.kernel.org/show_bug.cgi?id=69171
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Cc: <stable@vger.kernel.org> # 3.11+
+---
 
-	mount -olookupcache=pos /mnt
+ fs/nfs/nfs4proc.c |   24 ++++++++++++++++++------
+ 1 files changed, 18 insertions(+), 6 deletions(-)
 
-	while true; do
-		ls /mnt/TO;
-	done
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 15052b8..09dd967 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -4883,6 +4883,20 @@ nfs4_init_uniform_client_string(const struct nfs_client *clp,
+ 				nodename);
+ }
+ 
++/*
++ * nfs4_callback_up_net() starts only "tcp" and "tcp6" callback
++ * services.  Advertise one based on the address family of the
++ * clientaddr.
++ */
++static unsigned int
++nfs4_init_callback_netid(const struct nfs_client *clp, char *buf, size_t len)
++{
++	if (strchr(clp->cl_ipaddr, ':') != NULL)
++		return scnprintf(buf, len, "tcp6");
++	else
++		return scnprintf(buf, len, "tcp");
++}
++
+ /**
+  * nfs4_proc_setclientid - Negotiate client ID
+  * @clp: state data structure
+@@ -4924,12 +4938,10 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
+ 						setclientid.sc_name,
+ 						sizeof(setclientid.sc_name));
+ 	/* cb_client4 */
+-	rcu_read_lock();
+-	setclientid.sc_netid_len = scnprintf(setclientid.sc_netid,
+-				sizeof(setclientid.sc_netid), "%s",
+-				rpc_peeraddr2str(clp->cl_rpcclient,
+-							RPC_DISPLAY_NETID));
+-	rcu_read_unlock();
++	setclientid.sc_netid_len =
++				nfs4_init_callback_netid(clp,
++						setclientid.sc_netid,
++						sizeof(setclientid.sc_netid));
+ 	setclientid.sc_uaddr_len = scnprintf(setclientid.sc_uaddr,
+ 				sizeof(setclientid.sc_uaddr), "%s.%u.%u",
+ 				clp->cl_ipaddr, port >> 8, port & 255);
 
-Also on client:
-
-	while true; do
-		strace -e open cat /mnt/DIR/test.txt 2>&1 | grep EBUSY
-	done
-
-Once all three of those loops are running I hit
-
-	open("/mnt/DIR/test.txt", O_RDONLY)	= -1 EBUSY
-
-very quickly.
-
-The "lookupcache=pos" isn't really necessary but makes the reproducer
-more reliable.
-
-(Originally this was seen on a single client: the client itself was
-doing the renames but also continually killing the second mv.  I suspect
-that means the client sends the RENAME but then fails to update its
-dcache, the result being again that the client's dcache is out of sync
-with the server's tree and hence lookup is stuck trying to grab a dentry
-from another directory.)
-
-Is there some solution short of making ->lookup callers drop the i_mutex
-and retry???
-
---b.
