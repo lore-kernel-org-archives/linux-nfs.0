@@ -1,159 +1,90 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:36991 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752132AbaBSOvB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 19 Feb 2014 09:51:01 -0500
-Date: Wed, 19 Feb 2014 09:50:43 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: Weng Meiling <wengmeiling.weng@huawei.com>, greg@kroah.com,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        devel@openvz.org
-Subject: Re: [PATCH] nfsd: check passed socket's net matches NFSd
- superblock's one
-Message-ID: <20140219145043.GC8401@fieldses.org>
-References: <20131230142339.16166.28243.stgit@localhost.localdomain>
- <20140103222226.GD5164@fieldses.org>
- <52FEC818.7030604@huawei.com>
- <20140217221900.GA8401@fieldses.org>
- <53037A03.4020603@parallels.com>
- <20140218154406.GD4319@fieldses.org>
- <530486D9.7010502@parallels.com>
+Received: from mail-ie0-f178.google.com ([209.85.223.178]:63855 "EHLO
+	mail-ie0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751566AbaBCVB7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Feb 2014 16:01:59 -0500
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 1/8] NFS: Fix READDIR oops with NFSv4 on RDMA
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Date: Mon, 03 Feb 2014 16:01:58 -0500
+Message-ID: <20140203210157.3533.84148.stgit@manet.1015granger.net>
+In-Reply-To: <20140203205903.3533.39213.stgit@manet.1015granger.net>
+References: <20140203205903.3533.39213.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <530486D9.7010502@parallels.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Feb 19, 2014 at 02:26:33PM +0400, Stanislav Kinsbursky wrote:
-> 18.02.2014 19:44, J. Bruce Fields пишет:
-> >On Tue, Feb 18, 2014 at 07:19:31PM +0400, Stanislav Kinsbursky wrote:
-> >>18.02.2014 02:19, J. Bruce Fields пишет:
-> >>>On Sat, Feb 15, 2014 at 09:51:20AM +0800, Weng Meiling wrote:
-> >>>>Hi Bruce,
-> >>>>
-> >>>>The upstream has merged your git tree for-3.14, but there is no this patch?
-> >>>>Do you forget this patch?
-> >>>
-> >>>Apologies, I'm not sure what happened.
-> >>>
-> >>>Looking back at it....  The patch causes all my pynfs reboot recovery
-> >>>tests to fail.  They're just doing a "systemctl restart
-> >>>nfs-server.service", and "systemctl status nfs-server.service" shows in
-> >>>part
-> >>>
-> >>>	ExecStart=/usr/sbin/rpc.nfsd $RPCNFSDARGS $RPCNFSDCOUNT (code=exited, status=1/FAILURE)
-> >>>
-> >>>So the patch is causing rpc.nfsd to fail?  No network namespaces should
-> >>>be involved.
-> >>>
-> >>>I haven't investigated any further.
-> >>>
-> >>
-> >>Hi Bruce,
-> >>Are you sure, that exactly this patch broke your pynfs tests?
-> >>BTW, systemd manipulates namespaces. Maybe the patch revealed some pynfs internal bugs?
-> >>What do you think?
-> >
-> >It's really just "systemctl restart nfs-server.service" that the patch
-> >breaks, pynfs isn't involved much.
-> >
-> >The patch I'm actually using follows, but I believe the only difference
-> >is in the printk message?
-> >
-> 
-> Yep, looks true.
-> That's strange: "systemctl restart nfs-server.service" works for me on Fedora 18 with kernel, based on your repo.
+When starting the Connectathon basic tests on an NFSv4 RDMA
+mount, I encountered this oops:
 
-OK, I'll take a closer look and let you know what I find.
+  BUG: unable to handle kernel NULL pointer dereference at (null)
+  IP: [<ffffffff8129cc56>] memcpy+0x6/0x110
+  PGD 2106cd067 PUD 20fef9067 PMD 0
+  Oops: 0000 [#1] SMP
 
---b.
+ ...
 
-> 
-> >--b
-> >
-> >commit e1f2922c12cb59baba0f2c7726bee992a0861310
-> >Author: Stanislav Kinsbursky <skinsbursky@parallels.com>
-> >Date:   Mon Dec 30 17:23:59 2013 +0300
-> >
-> >     nfsd: check passed socket's net matches the NFSd superblock's
-> >
-> >     The file descriptor written to the nfsd/portlist file could be for a
-> >     socket in a different network namespace from the network namespace that
-> >     the nfsd filesystem was mounted in, and this can cause a crash.
-> >
-> >     For example: "ip netns exec" creates a new network and mount namespace,
-> >     which duplicates the nfsd mount point which was created in the init_net
-> >     context.  Thus NFS server stop in the nested network context leads to
-> >     RPCBIND client destruction in init_net.  Then, on nfsd start in the
-> >     nested network context, the rpc.nfsd process creates a socket in the
-> >     nested net and passes it into "write_ports", which leads to RPCBIND
-> >     socket creation in init_net context for the same reason (the nfsd mount
-> >     point was created in the init_net context). An attempt to register
-> >     passed socket in nested net leads to panic, because no RPCBIND client is
-> >     present in the nested network namespace.
-> >
-> >     This patch adds a check that the passed the socket's net matches the
-> >     nfsd superblock's net, and returns -EINVAL error to user space if not.
-> >
-> >     Reported-by: Weng Meiling <wengmeiling.weng@huawei.com>
-> >     Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-> >     Cc: stable@vger.kernel.org
-> >     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> >
-> >diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-> >index 7f55517..1331766 100644
-> >--- a/fs/nfsd/nfsctl.c
-> >+++ b/fs/nfsd/nfsctl.c
-> >@@ -699,6 +699,11 @@ static ssize_t __write_ports_addfd(char *buf, struct net *net)
-> >  	if (err != 0 || fd < 0)
-> >  		return -EINVAL;
-> >
-> >+	if (svc_alien_sock(net, fd)) {
-> >+		printk(KERN_ERR "%s: socket net is different from NFSd's\n", __func__);
-> >+		return -EINVAL;
-> >+	}
-> >+
-> >  	err = nfsd_create_serv(net);
-> >  	if (err != 0)
-> >  		return err;
-> >diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
-> >index 62fd1b7..947009e 100644
-> >--- a/include/linux/sunrpc/svcsock.h
-> >+++ b/include/linux/sunrpc/svcsock.h
-> >@@ -56,6 +56,7 @@ int		svc_recv(struct svc_rqst *, long);
-> >  int		svc_send(struct svc_rqst *);
-> >  void		svc_drop(struct svc_rqst *);
-> >  void		svc_sock_update_bufs(struct svc_serv *serv);
-> >+bool		svc_alien_sock(struct net *net, int fd);
-> >  int		svc_addsock(struct svc_serv *serv, const int fd,
-> >  					char *name_return, const size_t len);
-> >  void		svc_init_xprt_sock(void);
-> >diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-> >index b6e59f0..3ba5b87 100644
-> >--- a/net/sunrpc/svcsock.c
-> >+++ b/net/sunrpc/svcsock.c
-> >@@ -1397,6 +1397,17 @@ static struct svc_sock *svc_setup_socket(struct svc_serv *serv,
-> >  	return svsk;
-> >  }
-> >
-> >+bool svc_alien_sock(struct net *net, int fd)
-> >+{
-> >+	int err;
-> >+	struct socket *sock = sockfd_lookup(fd, &err);
-> >+
-> >+	if (sock && (sock_net(sock->sk) != net))
-> >+		return true;
-> >+	return false;
-> >+}
-> >+EXPORT_SYMBOL_GPL(svc_alien_sock);
-> >+
-> >  /**
-> >   * svc_addsock - add a listener socket to an RPC service
-> >   * @serv: pointer to RPC service to which to add a new listener
-> >
-> 
-> 
-> -- 
-> Best regards,
-> Stanislav Kinsbursky
+  [<ffffffffa05dc1b1>] ? xdr_inline_decode+0xb1/0x120 [sunrpc]
+  [<ffffffffa071f19c>] nfs4_decode_dirent+0x4c/0x250 [nfsv4]
+  [<ffffffff81178a02>] ? alloc_pages_current+0xb2/0x170
+  [<ffffffffa06a1225>] nfs_readdir_page_filler+0xe5/0x2c0 [nfs]
+  [<ffffffffa06a1622>] nfs_readdir_xdr_to_array+0x222/0x2e0 [nfs]
+  [<ffffffffa06a1702>] nfs_readdir_filler+0x22/0x90 [nfs]
+  [<ffffffff8112f975>] ? add_to_page_cache_lru+0x35/0x50
+  [<ffffffff8112faee>] __read_cache_page+0x7e/0xe0
+  [<ffffffffa06a16e0>] ? nfs_readdir_xdr_to_array+0x2e0/0x2e0 [nfs]
+  [<ffffffffa06a16e0>] ? nfs_readdir_xdr_to_array+0x2e0/0x2e0 [nfs]
+  [<ffffffff8113079c>] do_read_cache_page+0x3c/0x110
+  [<ffffffff811308b9>] read_cache_page_async+0x19/0x20
+  [<ffffffff811308ce>] read_cache_page+0xe/0x20
+  [<ffffffffa06a1c1e>] nfs_readdir+0x14e/0x3d0 [nfs]
+  [<ffffffffa071f150>] ? decode_pathconf+0x1c0/0x1c0 [nfsv4]
+  [<ffffffff811a811d>] iterate_dir+0xad/0xd0
+  [<ffffffff811a71ca>] ? do_fcntl+0x28a/0x370
+  [<ffffffff811a82d5>] SyS_getdents+0x95/0x100
+  [<ffffffff811a83e0>] ? SyS_old_readdir+0xa0/0xa0
+  [<ffffffff815a7752>] system_call_fastpath+0x16/0x1b
+
+The problem does not occur with NFSv3 over RDMA.
+
+nfs4_decode_dirent() is confused because the xdr_buf's page vector
+starts long after the first directory entry in the server's reply.
+
+Commit aa9c2669, "NFS: Client implementation of Labeled-NFS," is
+reported by git bisect as the first bad commit.
+
+This commit changes the decode_readdir_maxsz macro.  This macro
+controls where the generic XDR routines split incoming readdir reply
+data between the head[0] buffer and the page cache.
+
+Security labels go with each directory entry, thus they are always
+stored in the page cache, not in the head buffer.  The length of the
+reply that goes in head[0] should not change.
+
+I've reverted the change to decode_readdir_maxsz.
+
+Bugzilla: https://bugzilla.kernel.org/show_bug.cgi?id=68371
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Cc: <stable@vger.kernel.org> # 3.11+
+---
+
+ fs/nfs/nfs4xdr.c |    3 +--
+ 1 files changed, 1 insertions(+), 2 deletions(-)
+
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 5be2868..79e1d02 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -203,8 +203,7 @@ static int nfs4_stat_to_errno(int);
+ 				 2 + encode_verifier_maxsz + 5 + \
+ 				nfs4_label_maxsz)
+ #define decode_readdir_maxsz	(op_decode_hdr_maxsz + \
+-				 decode_verifier_maxsz + \
+-				nfs4_label_maxsz + nfs4_fattr_maxsz)
++				 decode_verifier_maxsz)
+ #define encode_readlink_maxsz	(op_encode_hdr_maxsz)
+ #define decode_readlink_maxsz	(op_decode_hdr_maxsz + 1)
+ #define encode_write_maxsz	(op_encode_hdr_maxsz + \
+
