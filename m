@@ -1,78 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-oa0-f43.google.com ([209.85.219.43]:48454 "EHLO
-	mail-oa0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752400AbaBTC2e (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Feb 2014 21:28:34 -0500
-Received: by mail-oa0-f43.google.com with SMTP id h16so1504984oag.2
-        for <linux-nfs@vger.kernel.org>; Wed, 19 Feb 2014 18:28:34 -0800 (PST)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 5/7] NFSv4.1: Ensure that we free existing layout segments if we get a new layout
-Date: Wed, 19 Feb 2014 21:28:23 -0500
-Message-Id: <1392863305-14870-5-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1392863305-14870-4-git-send-email-trond.myklebust@primarydata.com>
-References: <1392863305-14870-1-git-send-email-trond.myklebust@primarydata.com>
- <1392863305-14870-2-git-send-email-trond.myklebust@primarydata.com>
- <1392863305-14870-3-git-send-email-trond.myklebust@primarydata.com>
- <1392863305-14870-4-git-send-email-trond.myklebust@primarydata.com>
+Received: from mail-ig0-f176.google.com ([209.85.213.176]:46495 "EHLO
+	mail-ig0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750784AbaBCVCQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Feb 2014 16:02:16 -0500
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 3/8] SUNRPC: remove KERN_INFO from dprintk() call sites
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Date: Mon, 03 Feb 2014 16:02:15 -0500
+Message-ID: <20140203210215.3533.98794.stgit@manet.1015granger.net>
+In-Reply-To: <20140203205903.3533.39213.stgit@manet.1015granger.net>
+References: <20140203205903.3533.39213.stgit@manet.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If the server returns a completely new layout stateid in response to our
-LAYOUTGET, then make sure to free any existing layout segments.
+The use of KERN_INFO causes garbage characters to appear when
+debugging is enabled.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfs/pnfs.c | 15 +++++++++++++++
- 1 file changed, 15 insertions(+)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 6e67ada6c22c..cb53d450ae32 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -665,6 +665,17 @@ static bool pnfs_seqid_is_newer(u32 s1, u32 s2)
- 	return (s32)(s1 - s2) > 0;
- }
+ net/sunrpc/xprtrdma/transport.c |   10 +++++-----
+ 1 files changed, 5 insertions(+), 5 deletions(-)
+
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index 285dc08..1eb9c46 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -733,7 +733,7 @@ static void __exit xprt_rdma_cleanup(void)
+ {
+ 	int rc;
  
-+static void
-+pnfs_verify_layout_stateid(struct pnfs_layout_hdr *lo,
-+		const nfs4_stateid *new,
-+		struct list_head *free_me_list)
-+{
-+	if (nfs4_stateid_match_other(&lo->plh_stateid, new))
-+		return;
-+	/* Layout is new! Kill existing layout segments */
-+	pnfs_mark_matching_lsegs_invalid(lo, free_me_list, NULL);
-+}
-+
- /* update lo->plh_stateid with new if is more recent */
- void
- pnfs_set_layout_stateid(struct pnfs_layout_hdr *lo, const nfs4_stateid *new,
-@@ -1315,6 +1326,7 @@ pnfs_layout_process(struct nfs4_layoutget *lgp)
- 	struct nfs4_layoutget_res *res = &lgp->res;
- 	struct pnfs_layout_segment *lseg;
- 	struct inode *ino = lo->plh_inode;
-+	LIST_HEAD(free_me);
- 	int status = 0;
+-	dprintk(KERN_INFO "RPCRDMA Module Removed, deregister RPC RDMA transport\n");
++	dprintk("RPCRDMA Module Removed, deregister RPC RDMA transport\n");
+ #ifdef RPC_DEBUG
+ 	if (sunrpc_table_header) {
+ 		unregister_sysctl_table(sunrpc_table_header);
+@@ -755,14 +755,14 @@ static int __init xprt_rdma_init(void)
+ 	if (rc)
+ 		return rc;
  
- 	/* Inject layout blob into I/O device driver */
-@@ -1341,6 +1353,8 @@ pnfs_layout_process(struct nfs4_layoutget *lgp)
- 		goto out_forget_reply;
- 	}
+-	dprintk(KERN_INFO "RPCRDMA Module Init, register RPC RDMA transport\n");
++	dprintk("RPCRDMA Module Init, register RPC RDMA transport\n");
  
-+	/* Check that the new stateid matches the old stateid */
-+	pnfs_verify_layout_stateid(lo, &res->stateid, &free_me);
- 	/* Done processing layoutget. Set the layout stateid */
- 	pnfs_set_layout_stateid(lo, &res->stateid, false);
+-	dprintk(KERN_INFO "Defaults:\n");
+-	dprintk(KERN_INFO "\tSlots %d\n"
++	dprintk("Defaults:\n");
++	dprintk("\tSlots %d\n"
+ 		"\tMaxInlineRead %d\n\tMaxInlineWrite %d\n",
+ 		xprt_rdma_slot_table_entries,
+ 		xprt_rdma_max_inline_read, xprt_rdma_max_inline_write);
+-	dprintk(KERN_INFO "\tPadding %d\n\tMemreg %d\n",
++	dprintk("\tPadding %d\n\tMemreg %d\n",
+ 		xprt_rdma_inline_write_padding, xprt_rdma_memreg_strategy);
  
-@@ -1355,6 +1369,7 @@ pnfs_layout_process(struct nfs4_layoutget *lgp)
- 	}
- 
- 	spin_unlock(&ino->i_lock);
-+	pnfs_free_lseg_list(&free_me);
- 	return lseg;
- out:
- 	return ERR_PTR(status);
--- 
-1.8.5.3
+ #ifdef RPC_DEBUG
 
