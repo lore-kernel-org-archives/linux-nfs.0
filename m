@@ -1,92 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx.bwstor.com.cn ([211.103.180.228]:32825 "EHLO mx.bwstor.cn"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1751004AbaBHCeT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 7 Feb 2014 21:34:19 -0500
-From: shaobingqing <shaobingqing@bwstor.com.cn>
-To: trond.myklebust@primarydata.com, bfields@redhat.com, davem@davemloft.net
-Cc: linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
-        linux-kernel@vger.kernel.org,
-        shaobingqing <shaobingqing@bwstor.com.cn>
-Subject: [PATCH v2] SUNRPC: Allow one callback request to be received from two sk_buff
-Date: Sat,  8 Feb 2014 10:29:03 +0800
-Message-Id: <1391826543-3102-1-git-send-email-shaobingqing@bwstor.com.cn>
-In-Reply-To: <no>
-References: <no>
+Received: from gw-1.arm.linux.org.uk ([78.32.30.217]:55976 "EHLO
+	pandora.arm.linux.org.uk" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1752454AbaBCUZh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Feb 2014 15:25:37 -0500
+Date: Mon, 3 Feb 2014 20:25:21 +0000
+From: Russell King - ARM Linux <linux@arm.linux.org.uk>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Christoph Hellwig <hch@infradead.org>,
+        linuxnfs <linux-nfs@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        Viro Alexander <viro@zeniv.linux.org.uk>,
+        Christoph Hellwig <hch@lst.de>, linux-arm-kernel@lists.infradead.org
+Subject: Re: NFS client broken in Linus' tip
+Message-ID: <20140203202521.GM26684@n2100.arm.linux.org.uk>
+References: <20140130141405.GA23985@infradead.org> <20140130142752.GX15937@n2100.arm.linux.org.uk> <20140130143208.GB9573@infradead.org> <20140130153812.GA15937@n2100.arm.linux.org.uk> <1391201970.6978.1.camel@leira.trondhjem.org> <20140203080325.GB806@infradead.org> <85AAFCF5-60EE-42E5-B103-37A4613C5947@primarydata.com> <20140203145759.GA30263@infradead.org> <3003D7E5-93F8-4B32-ACDB-07ED3F6CE70D@primarydata.com> <1391458935.17089.1.camel@leira.trondhjem.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <1391458935.17089.1.camel@leira.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In current code, there only one struct rpc_rqst is prealloced. If one
-callback request is received from two sk_buff, the xprt_alloc_bc_request
-would be execute two times with the same transport->xid. The first time
-xprt_alloc_bc_request will alloc one struct rpc_rqst and the TCP_RCV_COPY_DATA
-bit of transport->tcp_flags will not be cleared. The second time
-xprt_alloc_bc_request could not alloc struct rpc_rqst any more and NULL
-pointer will be returned, then xprt_force_disconnect occur. I think one
-callback request can be allowed to be received from two sk_buff.
+On Mon, Feb 03, 2014 at 03:22:15PM -0500, Trond Myklebust wrote:
+> On Mon, 2014-02-03 at 10:45 -0500, Trond Myklebust wrote:
+> > On Feb 3, 2014, at 9:57, Christoph Hellwig <hch@infradead.org> wrote:
+> > 
+> > > On Mon, Feb 03, 2014 at 09:17:30AM -0500, Trond Myklebust wrote:
+> > >> As I said above, that causes posix_acl_xattr_get() to return the wrong answer (ENODATA instead of EOPNOTSUPP).
+> > > 
+> > > Is it really the wrong answer?  How does userspace care wether this
+> > > server doesn't support ACLs at all or none is set?  The resulting
+> > > behavior is the same.
+> > 
+> > It will certainly cause acl_get_file() to behave differently than previously. I’ve no idea how that will affect applications, though.
+> > 
+> > > If there's a good reason to care we might have to go with your patch,
+> > > but if we can avoid it I'd prefer to keep things simple.
+> > 
+> > One alternative is to simply wrap posix_acl_xattr_get() in fs/nfs/nfs3acl.c, and have it check the value of nfs_server_capable(inode, NFS_CAP_ACLS) before returning ENODATA. That’s rather ugly too...
+> 
+> FWIW, here is the alternative patch. I've tested it, and it seems to
+> work.
 
-Signed-off-by: shaobingqing <shaobingqing@bwstor.com.cn>
----
- include/linux/sunrpc/xprt.h |    1 +
- net/sunrpc/xprt.c           |    1 +
- net/sunrpc/xprtsock.c       |   13 ++++++++++++-
- 3 files changed, 14 insertions(+), 1 deletions(-)
+Thanks.
 
-diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-index cec7b9b..82bfe01 100644
---- a/include/linux/sunrpc/xprt.h
-+++ b/include/linux/sunrpc/xprt.h
-@@ -211,6 +211,7 @@ struct rpc_xprt {
- 						 * items */
- 	struct list_head	bc_pa_list;	/* List of preallocated
- 						 * backchannel rpc_rqst's */
-+	struct rpc_rqst	*req_first;
- #endif /* CONFIG_SUNRPC_BACKCHANNEL */
- 	struct list_head	recv;
- 
-diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index 095363e..93ad8bc 100644
---- a/net/sunrpc/xprt.c
-+++ b/net/sunrpc/xprt.c
-@@ -1256,6 +1256,7 @@ static void xprt_init(struct rpc_xprt *xprt, struct net *net)
- #if defined(CONFIG_SUNRPC_BACKCHANNEL)
- 	spin_lock_init(&xprt->bc_pa_lock);
- 	INIT_LIST_HEAD(&xprt->bc_pa_list);
-+	xprt->req_first = NULL;
- #endif /* CONFIG_SUNRPC_BACKCHANNEL */
- 
- 	xprt->last_used = jiffies;
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index ee03d35..c43dca4 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -1272,7 +1272,16 @@ static inline int xs_tcp_read_callback(struct rpc_xprt *xprt,
- 				container_of(xprt, struct sock_xprt, xprt);
- 	struct rpc_rqst *req;
- 
--	req = xprt_alloc_bc_request(xprt);
-+	if (xprt->req_first != NULL &&
-+			xprt->req_first->rq_xid == transport->tcp_xid) {
-+		req = xprt->req_first;
-+	} else if (xprt->req_first != NULL &&
-+			xprt->req_first->rq_xid != transport->tcp_xid) {
-+		xprt_free_bc_request(xprt);
-+		req = xprt_alloc_bc_request(xprt);
-+	} else {
-+		req = xprt_alloc_bc_request(xprt);
-+	}
- 	if (req == NULL) {
- 		printk(KERN_WARNING "Callback slot table overflowed\n");
- 		xprt_force_disconnect(xprt);
-@@ -1297,6 +1306,8 @@ static inline int xs_tcp_read_callback(struct rpc_xprt *xprt,
- 		list_add(&req->rq_bc_list, &bc_serv->sv_cb_list);
- 		spin_unlock(&bc_serv->sv_cb_lock);
- 		wake_up(&bc_serv->sv_cb_waitq);
-+	} else {
-+		xprt->req_first = req;
- 	}
- 
- 	req->rq_private_buf.len = transport->tcp_copied;
+As there's now two fixes, which would you like me to test?
+
+One comment on this patch though:
+
+> +static int
+> +nfs_posix_acl_xattr_get(struct dentry *dentry, const char *name,
+> +		void *value, size_t size, int type)
+> +{
+> +	int ret;
+> +
+> +	ret = posix_acl_xattr_get(dentry, name, value, size, type);
+> +	/*
+> +	 * This check is needed to override the ENODATA error that
+> +	 * posix_acl_xattr_get will return if the acl probe fails.
+> +	 */
+> +	if (!nfs_server_capable(dentry->d_inode, NFS_CAP_ACLS))
+> +		ret = -EOPNOTSUPP;
+
+I'm not familiar with this code, but the above looks slightly weird,
+and a little suspicious - especially with the lack of blank line
+before the comment.  Is the above actually intended?
+
 -- 
-1.7.4.2
-
+FTTC broadband for 0.8mile line: 5.8Mbps down 500kbps up.  Estimation
+in database were 13.1 to 19Mbit for a good line, about 7.5+ for a bad.
+Estimate before purchase was "up to 13.2Mbit".
