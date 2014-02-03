@@ -1,61 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:26337 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752700AbaBTOa6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 20 Feb 2014 09:30:58 -0500
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s1KEUpZR002104
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Thu, 20 Feb 2014 09:30:56 -0500
-Subject: [PATCH] Fix windows hostname calculation
-From: Simo Sorce <simo@redhat.com>
-To: Steve Dickson <steved@redhat.com>
-Cc: linux-nfs <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset="UTF-8"
-Date: Thu, 20 Feb 2014 09:30:48 -0500
-Message-ID: <1392906648.22754.213.camel@willson.li.ssimo.org>
-Mime-Version: 1.0
+Received: from aserp1040.oracle.com ([141.146.126.69]:45283 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751912AbaBCRfC convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Feb 2014 12:35:02 -0500
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
+Subject: Announcing the release of fedfs-utils version 0.10.0
+From: Chuck Lever <chuck.lever@oracle.com>
+Date: Mon, 3 Feb 2014 12:34:35 -0500
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        samba-technical@lists.samba.org, autofs@vger.kernel.org
+Message-Id: <99CE2C34-8A84-4BE0-A03D-40DA4D7E9903@oracle.com>
+To: "fedfs-utils;release announcements"
+	<fedfs-utils-announce@oss.oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
->From 026c489ac7019a91951b37240f438329de1d615c Mon Sep 17 00:00:00 2001
-From: Simo Sorce <simo@redhat.com>
-Date: Thu, 20 Feb 2014 09:25:06 -0500
-Subject: [PATCH] Drop full domain when constructing the Ad hostname.
+This package contains an implementation of the Federated Filesystem (FedFS) Proposed Standard for Linux.  For an introduction to FedFS, see RFC 5716.
 
-When trying to use the special MS Windows hostanme we need to stop
-at the first '.' if we got a FQDN from gethostname()
-Tee HOST$@REALM form in fact uses the AD samAccountName attribute to
-represent 'HOST', and that attribute is always the host's shortname.
-Characters like '.' are actually illegal for a shortname in AD.
+This is an ALPHA quality release.  The code in this release is not guaranteed to work.  Programming, administrative, and user interfaces may change significantly before the next release.  This release is for technology preview only.
 
-Signed-off-by: Simo Sorce <simo@redhat.com>
----
- utils/gssd/krb5_util.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
+Non-backwards compatible changes:
+	• *ldaperr removed from libnsdb API
+	• ADMIN client tools no longer use AUTH_NONE security
+	• ADMIN client tools no longer exit with FedFS status code
 
-diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
-index
-208c72bc072bceecc81f591887603e274dc35d9b..4b57141b4e17643ef9b56aa13639354860009db6 100644
---- a/utils/gssd/krb5_util.c
-+++ b/utils/gssd/krb5_util.c
-@@ -819,8 +819,10 @@ find_keytab_entry(krb5_context context, krb5_keytab
-kt, const char *tgtname,
- 
- 	/* Compute the active directory machine name HOST$ */
- 	strcpy(myhostad, myhostname);
--	for (i = 0; myhostad[i] != 0; ++i)
-+	for (i = 0; myhostad[i] != 0; ++i) {
-+		if (myhostad[i] == '.') break;
- 		myhostad[i] = toupper(myhostad[i]);
-+	}
- 	myhostad[i] = '$';
- 	myhostad[i+1] = 0;
- 
--- 
-1.8.5.3
+New features:
+	• Python package PyFedfs added
+	• Tool for configuring FedFS domain root directories
+	• Tool for setting up NSDBs using OpenLDAP
+	• Simpler NCE discovery (compliant with new FedFS NCE I-D)
+	• admin_t API for performing remote ADMIN requests
+	• rpc.fedfsd uses an ACL to control who can perform ADMIN requests
+	• rpc.fedfsd and ADMIN tools support RPCSEC and Kerberos v5
+    
+Minor fixes:
+	• FEDFS_LOOKUP_JUNCTION no longer returns NSDB_LDAP_VAL
+	• fedfs-map-nfs4 handles multiple SRV records
+	• Packaging simplifications
+	• Dozens of code clean-ups and bug fixes; consult Changelog for details
 
 
--- 
-Simo Sorce * Red Hat, Inc * New York
+Going forward, stable patches now go into “master,” rather than a separate branch.  Development for fedfs-utils 0.11 will be moved to a topic branch.
+
+fedfs-utils 0.9 is packaged for EPEL 6 and will continue to see bug fixes.
+
+
+Tarball releases available at:
+  http://git.linux-nfs.org/?p=cel/fedfs-releases.git;a=summary
+
+Git repository available at:
+  http://git.linux-nfs.org/?p=cel/fedfs-utils.git;a=shortlog;h=refs/heads/master
+
+Patchwork available at:
+  http://patchwork.ozlabs.org/project/fedfs-utils/list/
+
+--
+Chuck Lever
 
