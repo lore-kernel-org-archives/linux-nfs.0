@@ -1,90 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f178.google.com ([209.85.223.178]:63855 "EHLO
-	mail-ie0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751566AbaBCVB7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Feb 2014 16:01:59 -0500
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 1/8] NFS: Fix READDIR oops with NFSv4 on RDMA
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Date: Mon, 03 Feb 2014 16:01:58 -0500
-Message-ID: <20140203210157.3533.84148.stgit@manet.1015granger.net>
-In-Reply-To: <20140203205903.3533.39213.stgit@manet.1015granger.net>
-References: <20140203205903.3533.39213.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-ig0-f176.google.com ([209.85.213.176]:42079 "EHLO
+	mail-ig0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752559AbaBCPpv convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Feb 2014 10:45:51 -0500
+Received: by mail-ig0-f176.google.com with SMTP id j1so4354509iga.3
+        for <linux-nfs@vger.kernel.org>; Mon, 03 Feb 2014 07:45:50 -0800 (PST)
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
+Subject: Re: NFS client broken in Linus' tip
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+In-Reply-To: <20140203145759.GA30263@infradead.org>
+Date: Mon, 3 Feb 2014 10:45:48 -0500
+Cc: Russell King - ARM Linux <linux@arm.linux.org.uk>,
+        linuxnfs <linux-nfs@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
+        Viro Alexander <viro@zeniv.linux.org.uk>,
+        Christoph Hellwig <hch@lst.de>, linux-arm-kernel@lists.infradead.org
+Message-Id: <3003D7E5-93F8-4B32-ACDB-07ED3F6CE70D@primarydata.com>
+References: <20140130140834.GW15937@n2100.arm.linux.org.uk> <20140130141405.GA23985@infradead.org> <20140130142752.GX15937@n2100.arm.linux.org.uk> <20140130143208.GB9573@infradead.org> <20140130153812.GA15937@n2100.arm.linux.org.uk> <1391201970.6978.1.camel@leira.trondhjem.org> <20140203080325.GB806@infradead.org> <85AAFCF5-60EE-42E5-B103-37A4613C5947@primarydata.com> <20140203145759.GA30263@infradead.org>
+To: Christoph Hellwig <hch@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When starting the Connectathon basic tests on an NFSv4 RDMA
-mount, I encountered this oops:
 
-  BUG: unable to handle kernel NULL pointer dereference at (null)
-  IP: [<ffffffff8129cc56>] memcpy+0x6/0x110
-  PGD 2106cd067 PUD 20fef9067 PMD 0
-  Oops: 0000 [#1] SMP
+On Feb 3, 2014, at 9:57, Christoph Hellwig <hch@infradead.org> wrote:
 
- ...
+> On Mon, Feb 03, 2014 at 09:17:30AM -0500, Trond Myklebust wrote:
+>> As I said above, that causes posix_acl_xattr_get() to return the wrong answer (ENODATA instead of EOPNOTSUPP).
+> 
+> Is it really the wrong answer?  How does userspace care wether this
+> server doesn't support ACLs at all or none is set?  The resulting
+> behavior is the same.
 
-  [<ffffffffa05dc1b1>] ? xdr_inline_decode+0xb1/0x120 [sunrpc]
-  [<ffffffffa071f19c>] nfs4_decode_dirent+0x4c/0x250 [nfsv4]
-  [<ffffffff81178a02>] ? alloc_pages_current+0xb2/0x170
-  [<ffffffffa06a1225>] nfs_readdir_page_filler+0xe5/0x2c0 [nfs]
-  [<ffffffffa06a1622>] nfs_readdir_xdr_to_array+0x222/0x2e0 [nfs]
-  [<ffffffffa06a1702>] nfs_readdir_filler+0x22/0x90 [nfs]
-  [<ffffffff8112f975>] ? add_to_page_cache_lru+0x35/0x50
-  [<ffffffff8112faee>] __read_cache_page+0x7e/0xe0
-  [<ffffffffa06a16e0>] ? nfs_readdir_xdr_to_array+0x2e0/0x2e0 [nfs]
-  [<ffffffffa06a16e0>] ? nfs_readdir_xdr_to_array+0x2e0/0x2e0 [nfs]
-  [<ffffffff8113079c>] do_read_cache_page+0x3c/0x110
-  [<ffffffff811308b9>] read_cache_page_async+0x19/0x20
-  [<ffffffff811308ce>] read_cache_page+0xe/0x20
-  [<ffffffffa06a1c1e>] nfs_readdir+0x14e/0x3d0 [nfs]
-  [<ffffffffa071f150>] ? decode_pathconf+0x1c0/0x1c0 [nfsv4]
-  [<ffffffff811a811d>] iterate_dir+0xad/0xd0
-  [<ffffffff811a71ca>] ? do_fcntl+0x28a/0x370
-  [<ffffffff811a82d5>] SyS_getdents+0x95/0x100
-  [<ffffffff811a83e0>] ? SyS_old_readdir+0xa0/0xa0
-  [<ffffffff815a7752>] system_call_fastpath+0x16/0x1b
+It will certainly cause acl_get_file() to behave differently than previously. I’ve no idea how that will affect applications, though.
 
-The problem does not occur with NFSv3 over RDMA.
+> If there's a good reason to care we might have to go with your patch,
+> but if we can avoid it I'd prefer to keep things simple.
 
-nfs4_decode_dirent() is confused because the xdr_buf's page vector
-starts long after the first directory entry in the server's reply.
+One alternative is to simply wrap posix_acl_xattr_get() in fs/nfs/nfs3acl.c, and have it check the value of nfs_server_capable(inode, NFS_CAP_ACLS) before returning ENODATA. That’s rather ugly too...
 
-Commit aa9c2669, "NFS: Client implementation of Labeled-NFS," is
-reported by git bisect as the first bad commit.
-
-This commit changes the decode_readdir_maxsz macro.  This macro
-controls where the generic XDR routines split incoming readdir reply
-data between the head[0] buffer and the page cache.
-
-Security labels go with each directory entry, thus they are always
-stored in the page cache, not in the head buffer.  The length of the
-reply that goes in head[0] should not change.
-
-I've reverted the change to decode_readdir_maxsz.
-
-Bugzilla: https://bugzilla.kernel.org/show_bug.cgi?id=68371
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Cc: <stable@vger.kernel.org> # 3.11+
----
-
- fs/nfs/nfs4xdr.c |    3 +--
- 1 files changed, 1 insertions(+), 2 deletions(-)
-
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 5be2868..79e1d02 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -203,8 +203,7 @@ static int nfs4_stat_to_errno(int);
- 				 2 + encode_verifier_maxsz + 5 + \
- 				nfs4_label_maxsz)
- #define decode_readdir_maxsz	(op_decode_hdr_maxsz + \
--				 decode_verifier_maxsz + \
--				nfs4_label_maxsz + nfs4_fattr_maxsz)
-+				 decode_verifier_maxsz)
- #define encode_readlink_maxsz	(op_encode_hdr_maxsz)
- #define decode_readlink_maxsz	(op_decode_hdr_maxsz + 1)
- #define encode_write_maxsz	(op_encode_hdr_maxsz + \
+--
+Trond Myklebust
+Linux NFS client maintainer
 
