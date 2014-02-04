@@ -1,54 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:41141 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:11633 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751831AbaBKOge (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 11 Feb 2014 09:36:34 -0500
-Date: Tue, 11 Feb 2014 09:36:33 -0500
-To: "McAninley, Jason" <jmcaninl@harris.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Question regard NFS 4.0 buffer sizes
-Message-ID: <20140211143633.GB9918@fieldses.org>
-References: <322949BF788C8D468BEA0A321B79799098BDB9F0@MLBMXUS20.cs.myharris.net>
+	id S1753530AbaBDTAm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Feb 2014 14:00:42 -0500
+Message-ID: <52F138C9.7070804@RedHat.com>
+Date: Tue, 04 Feb 2014 14:00:25 -0500
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <322949BF788C8D468BEA0A321B79799098BDB9F0@MLBMXUS20.cs.myharris.net>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>, NeilBrown <neilb@suse.de>
+CC: linux-nfs@vger.kernel.org, simo@redhat.com
+Subject: Re: [PATCH/RFC: nfs-utils] Common systemd unit files for nfs-utils.
+References: <20140130172451.7a354ce4@notabene.brown> <52F003A1.3060908@RedHat.com> <20140204093452.7b6d7c7d@notabene.brown> <20140204162052.GA5295@fieldses.org>
+In-Reply-To: <20140204162052.GA5295@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Feb 11, 2014 at 12:32:33PM +0000, McAninley, Jason wrote:
-> I'm looking for detailed documentation regarding some of the innards of NFS 4.0, without necessarily having to read through the source code (if such documentation exists). 
+On 02/04/2014 11:20 AM, J. Bruce Fields wrote:
+> On Tue, Feb 04, 2014 at 09:34:52AM +1100, NeilBrown wrote:
+>> On Mon, 03 Feb 2014 16:01:21 -0500 Steve Dickson <SteveD@redhat.com> wrote:
+>>> Also how does gss-proxy come to play in all this? Maybe we 
+>>> just use  gss-proxy by default and retire rpc.svcgssd.
+>>
+>> I haven't really be following and so am only dimly aware of gss-proxy.
+>> It's a replacement for rpc.svcgssd - right?
+>> So we should get it to start in the same circumstances as rpc.svcgssd?
+>>
+>> Is there some easy test - eg something existing in the filesystem - that we
+>> could use to see if the kernel supports gss-proxy ?
 > 
-> Specifically related to the relationship between NFS's rsize/wsize options versus some of the lower-level networking buffers. Buffer parameters that I have come across (and my current settings) include:
-> 
->   - sysctl's net.core.{r,w}mem_default: 229376
->   - sysctl's net.core.{r,w}mem_max:     131071
->   - sysctl's net.ipv4.tcp_{r,w}mem      4096 87380 4194304
->   - #define RPCSVC_MAXPAYLOAD          (1*1024*1024u)
-> 
-> When I run Wireshark during an NFS transfer, I see MAX{READ,WRITE} attributes returned from GETATTR with the value of 1MB. I'm guessing this corresponds to the limit set by RPCSVR_MAXPAYLOAD? However, the maximum packet size I'm recording in practice is ~32K.
-
-Are you using UDP or TCP?
-
-And what do you mean by "maximum packet size"?
-
-To see if the maximum rsize/wsize is being used you'd need to look for
-the length of the data in a READ reply or WRITE call.
-
-What actual problem are you trying to solve?  (Is your read or write
-bandwidth lower than you expected?)
-
---b.
+> There's a /proc/net/rpc/use-gss-proxy file.
+hmm... I forget... who set this... gssproxy daemon? 
 
 > 
-> In fact, it seems like regardless of the change to {r,w}size (I've tried 32K, 64K, 128K) I am not seeing changes in the max packet size.
+> (But doesn't gss-proxy have users other than nfsd?)
 > 
-> This is leading me to investigate the buffer sizes on the client/server. My thought is that if a buffer exists that is too small, NFS/Kernel will ship a packet prior to reaching the MAXWRITE size. 
+>> Also, I've been wondering if we could avoid the need to explicitly enable
+>> the gss stuff by gating it on the existence of /etc/krb5.keytab.
+>> Do you think that would be reasonable?
 > 
-> Any input is appreciated.
+> That would be great.  I hate that people have to care about these
+> support daemons, they should just be started automatically when they're
+> needed.
 > 
-> -Jason
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Is /etc/krb5.keytab the best indicator?
+> 
+> Simplest might be to start unconditionally and just not care if it
+> fails.  Or is there a problem cluttering up logs with unimportant
+> failures?
+I think we want to stay away (and move away) from unconditionally
+starting anything... Having "triggers" of when services should 
+or should not be started is a better direction... Like what
+Neil is doing with rpc.statd.
+
+steved.
+
+
+> 
+> --b.
+> 
