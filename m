@@ -1,31 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f178.google.com ([209.85.213.178]:40743 "EHLO
-	mail-ig0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751212AbaBWQl2 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 23 Feb 2014 11:41:28 -0500
-Received: by mail-ig0-f178.google.com with SMTP id h18so2949049igc.5
-        for <linux-nfs@vger.kernel.org>; Sun, 23 Feb 2014 08:41:27 -0800 (PST)
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
-Subject: Re: 
-From: Trond Myklebust <trondmy@gmail.com>
-In-Reply-To: <1393172535-4617-1-git-send-email-tigran.mkrtchyan@desy.de>
-Date: Sun, 23 Feb 2014 11:41:26 -0500
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <94863747-3B23-4534-8990-F04F0C8D54DE@gmail.com>
-References: <1393172535-4617-1-git-send-email-tigran.mkrtchyan@desy.de>
-To: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+Received: from mail-ig0-f171.google.com ([209.85.213.171]:42860 "EHLO
+	mail-ig0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751214AbaBDQwX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Feb 2014 11:52:23 -0500
+Received: by mail-ig0-f171.google.com with SMTP id uy17so8563460igb.4
+        for <linux-nfs@vger.kernel.org>; Tue, 04 Feb 2014 08:52:23 -0800 (PST)
+Message-ID: <1391532741.8900.1.camel@leira.trondhjem.org>
+Subject: [GIT PULL] Please pull NFS client fixes
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Torvalds Linus <torvalds@linux-foundation.org>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Linux Kernel mailing list <linux-kernel@vger.kernel.org>
+Date: Tue, 04 Feb 2014 11:52:21 -0500
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi Linus,
 
-On Feb 23, 2014, at 11:22, tigran.mkrtchyan@desy.de wrote:
+The following changes since commit 8a1f006ad302ea178aefb1f8c67e679c696289e9:
 
-> to me it's unclear, why a SETATTR  always follows an OPEN, even in case of
-> EXCLUSIVE4_1. With this fix, I get desired behavior.
+  Merge tag 'nfs-for-3.14-2' of git://git.linux-nfs.org/projects/trondmy/linux-nfs (2014-01-31 15:39:07 -0800)
 
-Yes, but that fix risks incurring an NFS4ERR_INVAL from which we cannot recover because it does not include the mandatory check for the allowed set of attributes.
-Please see RFC5661 section 18.16.3 about the client side use of ‘suppattr_exclcreat’ .
+are available in the git repository at:
 
-Cheers,
-  Trond
+
+  git://git.linux-nfs.org/projects/trondmy/linux-nfs.git tags/nfs-for-3.14-3
+
+for you to fetch changes up to 88a78a912ee059467ae6db7429a6efe4654620a5:
+
+  Merge branch 'acl_fixes' into linux-next (2014-02-03 17:13:45 -0500)
+
+----------------------------------------------------------------
+
+NFS client bugfixes for Linux 3.14
+
+Highlights:
+
+- Fix NFSv3 acl regressions
+- Fix NFSv4 memory corruption due to slot table abuse in nfs4_proc_open_confirm
+- nfs4_destroy_session must call rpc_destroy_waitqueue
+
+----------------------------------------------------------------
+Noah Massey (1):
+      nfs: fix setting of ACLs on file creation.
+
+Trond Myklebust (6):
+      NFSv4: Fix memory corruption in nfs4_proc_open_confirm
+      NFSv4.1: nfs4_destroy_session must call rpc_destroy_waitqueue
+      NFSv3: Remove unused function nfs3_proc_set_default_acl
+      NFSv3: Fix return value of nfs3_proc_setacls
+      fs: get_acl() must be allowed to return EOPNOTSUPP
+      Merge branch 'acl_fixes' into linux-next
+
+ fs/nfs/nfs3acl.c        | 34 ++++++++++++----------------------
+ fs/nfs/nfs4client.c     |  2 +-
+ fs/nfs/nfs4proc.c       |  8 ++++----
+ fs/nfs/nfs4session.c    | 25 ++++++++++++++++++++-----
+ fs/nfs/nfs4session.h    |  2 +-
+ fs/posix_acl.c          | 18 ++++++++++++------
+ include/linux/nfs_xdr.h |  2 ++
+ 7 files changed, 52 insertions(+), 39 deletions(-)
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer
+
