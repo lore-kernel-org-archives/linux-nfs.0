@@ -1,79 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f174.google.com ([209.85.192.174]:63780 "EHLO
-	mail-pd0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753859AbaBZT3x (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Feb 2014 14:29:53 -0500
-Received: by mail-pd0-f174.google.com with SMTP id y13so1348106pdi.19
-        for <linux-nfs@vger.kernel.org>; Wed, 26 Feb 2014 11:29:52 -0800 (PST)
-Message-ID: <1393442989.5090.4.camel@leira.trondhjem.org>
-Subject: Re: Oops in nfs41_assign_slot in Linux 3.13.4
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Ben Hutchings <ben@decadent.org.uk>
-Cc: 734268@bugs.debian.org, Arthur de Jong <adejong@debian.org>,
-        linux-nfs@vger.kernel.org
-Date: Wed, 26 Feb 2014 11:29:49 -0800
-In-Reply-To: <1393376280.14067.34.camel@deadeye.wl.decadent.org.uk>
-References: <1388922864.10916.7.camel@sorbet.thuis.net>
-	 <1393361101.5000.26.camel@sorbet.thuis.net>
-	 <1393376280.14067.34.camel@deadeye.wl.decadent.org.uk>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mx1.redhat.com ([209.132.183.28]:10338 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751274AbaBDNYa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Feb 2014 08:24:30 -0500
+Date: Tue, 4 Feb 2014 08:24:26 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Anthony Messina <amessina@messinet.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH/RFC: nfs-utils] Common systemd unit files for nfs-utils.
+Message-ID: <20140204082426.449519bd@tlielax.poochiereds.net>
+In-Reply-To: <1757036.O2OPYTypu1@linux-ws1.messinet.com>
+References: <20140130172451.7a354ce4@notabene.brown>
+	<52F003A1.3060908@RedHat.com>
+	<1757036.O2OPYTypu1@linux-ws1.messinet.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Ben,
+On Tue, 04 Feb 2014 06:42:12 -0600
+Anthony Messina <amessina@messinet.com> wrote:
 
-On Wed, 2014-02-26 at 00:58 +0000, Ben Hutchings wrote:
-> Trond, Arthur seems to be hitting a similar bug to
-> <https://bugzilla.redhat.com/show_bug.cgi?id=1050206>, and it's still
-> occurring in 3.13.4 even though that has the two fixes you posted there.
-> The full bug report, with screenshots of the oopses, is at
-> <https://bugs.debian.org/734268>.
+> On Monday, February 03, 2014 04:01:21 PM Steve Dickson wrote:
+> > This changes the current API... Today to enable/start this service 
+> > today one does:
+> > 
+> >   systemctl enable nfs-server
+> >   systemctl start nfs-server
+> > 
+> > which would change to:
+> > 
+> >   systemctl enable nfs-server.target
+> >   systemctl start nfs-server
+> > 
+> > with the same daemons being started.
+> > This changed will cause existing scripts to fail... 
+> > I guess I don't see the point of having a .target file. 
+> > 
+> > How is rpc.svcgssd enabled? Since the .service file does
+> > not have a [Install] section the systemctl enable rpc.svcgssd
+> > fails.
+> > 
+> > Also how does gss-proxy come to play in all this? Maybe we 
+> > just use  gss-proxy by default and retire rpc.svcgssd.
+> 
+> Usually just a quite listener (end-user & small-time sysadmin) on this ML...
+> 
+> +1 for gss-proxy by default (for Fedora anyway).  I've been using it 
+> throughout F19 extensively in the KRB5/NFSv4.1 environment with great success.  
+> I have nfs-secure-server.service "masked" via systemd to prevent it from being 
+> started.
+> 
+> There seems to be only one strange issue I've come across with gss-proxy vs. 
+> rpc.svcgssd: https://fedorahosted.org/gss-proxy/ticket/98.  This is with 
+> regard to how access for the "nfsnobody" user is handled.  The ticket attempts 
+> to show that with rpc.svcgssd, a host with host credentials and a user without 
+> credentials can still access NFS shares with 0755 directories and 0644 files 
+> (via the host credentials and mapped to the nfsnobody user).  With gss-proxy, 
+> I had to create user credentials for kojibuilder@REALM because the access 
+> wasn't allowed via the nfsnobody path.  I'm not sure if this is resolved, or 
+> by design, etc.  But it is the only issue I've seen with gss-proxy vs. 
+> rpc.svcgssd.
+> 
+> Thanks.  -A
 > 
 
-I believe I've found another corruptor of that same list. Do Arthur's
-tests perhaps touch on file locking? If so, then the following patch may
-help...
-
-Cheers
-  Trond
-
-8<----------------------------------------------------------------------
->From 3db0ebd8e7e67d9ee96f623e7d1dcdc35fccea7f Mon Sep 17 00:00:00 2001
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-Date: Wed, 26 Feb 2014 11:19:14 -0800
-Subject: [PATCH] NFSv4: Fix another nfs4_sequence corruptor
-
-nfs4_release_lockowner needs to set the rpc_message reply to point to
-the nfs4_sequence_res in order to avoid another Oopsable situation
-in nfs41_assign_slot.
-
-Fixes: fbd4bfd1d9d21 (NFS: Add nfs4_sequence calls for RELEASE_LOCKOWNER)
-Cc: stable@vger.kernel.org # 3.12+
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/nfs4proc.c | 1 +
- 1 file changed, 1 insertion(+)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 2da6a698b8f7..d3b829f7c509 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5895,6 +5895,7 @@ static int nfs4_release_lockowner(struct nfs_server *server, struct nfs4_lock_st
- 	data->args.lock_owner.s_dev = server->s_dev;
- 
- 	msg.rpc_argp = &data->args;
-+	msg.rpc_resp = &data->res;
- 	rpc_call_async(server->client, &msg, 0, &nfs4_release_lockowner_ops, data);
- 	return 0;
- }
--- 
-1.8.5.3
-
+Please do open a bug at bugzilla.redhat.com for that and cc me on it.
+We really do want to ensure that these sorts of corner-cases get
+addressed.
 
 -- 
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
-
-
+Jeff Layton <jlayton@redhat.com>
