@@ -1,68 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:23626 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750942AbaBZOjl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 26 Feb 2014 09:39:41 -0500
-Subject: Re: What does rpc.mountd dlopen() libnfsjunct.so rather than
- libnfsjunct.so.0
-From: Simo Sorce <simo@redhat.com>
-To: NeilBrown <neilb@suse.de>
-Cc: Chuck Lever <chuck.lever@oracle.com>, Steve Dickson <SteveD@redhat.com>,
-        NFS <linux-nfs@vger.kernel.org>
-In-Reply-To: <20140226161646.1520358b@notabene.brown>
-References: <20140226161646.1520358b@notabene.brown>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 26 Feb 2014 09:39:32 -0500
-Message-ID: <1393425572.18299.157.camel@willson.li.ssimo.org>
-Mime-Version: 1.0
+Received: from userp1040.oracle.com ([156.151.31.81]:36951 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751214AbaBDQa3 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Feb 2014 11:30:29 -0500
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
+Subject: Re: [PATCH/RFC: nfs-utils] Common systemd unit files for nfs-utils.
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20140204162052.GA5295@fieldses.org>
+Date: Tue, 4 Feb 2014 11:30:11 -0500
+Cc: Neil Brown <neilb@suse.de>, Steve Dickson <SteveD@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Simo Sorce <simo@redhat.com>
+Message-Id: <6599648B-7F51-48AE-9CF1-6F4858833438@oracle.com>
+References: <20140130172451.7a354ce4@notabene.brown> <52F003A1.3060908@RedHat.com> <20140204093452.7b6d7c7d@notabene.brown> <20140204162052.GA5295@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2014-02-26 at 16:16 +1100, NeilBrown wrote:
-> See $SUBJ
+
+On Feb 4, 2014, at 11:20 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+
+> On Tue, Feb 04, 2014 at 09:34:52AM +1100, NeilBrown wrote:
+>> On Mon, 03 Feb 2014 16:01:21 -0500 Steve Dickson <SteveD@redhat.com> wrote:
+>>> Also how does gss-proxy come to play in all this? Maybe we 
+>>> just use  gss-proxy by default and retire rpc.svcgssd.
+>> 
+>> I haven't really be following and so am only dimly aware of gss-proxy.
+>> It's a replacement for rpc.svcgssd - right?
+>> So we should get it to start in the same circumstances as rpc.svcgssd?
+>> 
+>> Is there some easy test - eg something existing in the filesystem - that we
+>> could use to see if the kernel supports gss-proxy ?
 > 
-> Shared libraries are usually versioned so you can release a new version with
-> an incompatible API and gradually transition to it.
+> There's a /proc/net/rpc/use-gss-proxy file.
 > 
-> A rpc.mountd dlopens libnfsjunct.so with no version it is effectively
-> prohibited from ever changing the API in an incompatible way.
+> (But doesn't gss-proxy have users other than nfsd?)
 > 
-> Both Fedora and openSUSE get upset about packaging a libFOO.so in a non
-> "-devel" package and so trip over this library which clearly needs to be
-> installed even if you aren't doing 'devel'opment.
-
-Keep in mind this rule is there only for real shared libraries that are
-loaded by the the system loader.
-
-however it is waived for 'modules' that are opened dynamically but are
-private to the application.
-
-> I would like to change mountd as per the patch below to use the ".0" file.
-> I believe this will not break any installation as the ".so" is installed as a
-> symlink to the ".0" (or maybe ".0.0.0").
+>> Also, I've been wondering if we could avoid the need to explicitly enable
+>> the gss stuff by gating it on the existence of /etc/krb5.keytab.
+>> Do you think that would be reasonable?
 > 
-> Would this be acceptable?
+> That would be great.  I hate that people have to care about these
+> support daemons, they should just be started automatically when they're
+> needed.
 
-It looks to me like this is an internal module for mountd that is not
-for use by other apps (which is why it is not versioned and can be
-changed at will as it is deployed at the same time mountd is ?
+I agree 100%.
 
-Or am I wrong here ?
-
-If I am not wrong I would be against this change personally and would
-rather move the .so file in a private library dir (if it is not already
-there) to make it clear it is a private module.
-
-> There is a bit of a discussion about this here:
->   https://bugzilla.redhat.com/show_bug.cgi?id=889174
+> Is /etc/krb5.keytab the best indicator?
 > 
-> but I either don't understand it or don't agree with it.
+> Simplest might be to start unconditionally and just not care if it
+> fails.  Or is there a problem cluttering up logs with unimportant
+> failures?
 
-Which part of it, there are different opinions stated in the bugzilla at
-different times.
+IMO gssd should be started unconditionally, and we should make it quieter if needed.
 
-Simo.
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
--- 
-Simo Sorce * Red Hat, Inc * New York
+
 
