@@ -1,38 +1,33 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from szxga02-in.huawei.com ([119.145.14.65]:3797 "EHLO
-	szxga02-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751802AbaBNIzs convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Feb 2014 03:55:48 -0500
-From: Wuqixuan <wuqixuan@huawei.com>
-To: "trond.myklebust@primarydata.com" <trond.myklebust@primarydata.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>
-CC: Linyongting <linyongting@huawei.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "wuqixuan@gmail.com" <wuqixuan@gmail.com>
-Subject: Help to know the stable ver of nfsv4 for commercial app
-Date: Fri, 14 Feb 2014 08:55:11 +0000
-Message-ID: <BB7C62C2B0732E4DA93834A501E846456C8E98D7@szxema505-mbx.china.huawei.com>
-Content-Type: text/plain; charset="us-ascii"
+Received: from mx1.redhat.com ([209.132.183.28]:2876 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751667AbaBEWJj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Feb 2014 17:09:39 -0500
+Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s15M9cHX009096
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Wed, 5 Feb 2014 17:09:38 -0500
+Received: from smallhat.boston.devel.redhat.com (vpn-50-33.rdu2.redhat.com [10.10.50.33])
+	by int-mx10.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s15M9b1t026767
+	for <linux-nfs@vger.kernel.org>; Wed, 5 Feb 2014 17:09:37 -0500
+Message-ID: <52F2B6A1.1030000@RedHat.com>
+Date: Wed, 05 Feb 2014 17:09:37 -0500
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Linux NFS Town Hall  meeting: Thur 02/06/14 (If needed)??
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Trond, Bfields, All, 
+Hello,
 
-We are useing nfsv3 in 2.6.34.13 kernel for commucial use. For some reasons(such as security), has requirement to upgrade to nfsv4(still on 2.6.34.x kernel). We did two things: 
+It appears there is not much going on at the moment
+in the community... So unless someone has a hot topic 
+they would like to talk about I'm going to cancel 
+this meeting... Let me know... 
 
-1. I passed through the git log of kernel.org of nfs, found after 2010(2.6.34 is released on May 2010, and no update on 2.6.34.x for nfs/nfsd), just for sampling, nfsd/nfs4proc.c has 460 commits while nfs/nfs3proc.c has only 38 commits. 
-2. Just enable nfsv4 on 2.6.34.13, got problem(EIO) on just a simple open. Found it's because of one commit(https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=a2c0b9e291208f65221a0ad8a0c80a377707d480), simply remove this commit, now can simply use nfsv4 on 2.6.34.13. 
+I'll officially cancel it tomorrow... if no one pipes up... 
 
-So we are worried about the stability of nfsv4 on 2.6.34.x. 
-If any one has some idea or information about: 
+steved.
 
-    1. Whether nfsv4 (including nfs/nfs4/sunrpc) of 2.6.34.x is stable enough for commercial use or not. 
-    2. If nfsv4 is not stable enough on 2.6.34.x, which version can we use , 3.10 ? or 3.12 ? 
-    3. Is there any mature commercial application on nfsv4 on 2.6.34.x or before? Can tell some famous company or app name ?
-
-    Any answer is helpful and welcome. 
-    Thanks a lot. 
-
-Best Regards!
-Wuqixuan
