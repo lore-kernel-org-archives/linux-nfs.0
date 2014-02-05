@@ -1,60 +1,343 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from nm9-vm0.bullet.mail.bf1.yahoo.com ([98.139.213.154]:29016 "EHLO
-	nm9-vm0.bullet.mail.bf1.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753361AbaBOPZn convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 15 Feb 2014 10:25:43 -0500
-Message-ID: <1392477564.53889.YahooMailNeo@web140006.mail.bf1.yahoo.com>
-Date: Sat, 15 Feb 2014 07:19:24 -0800 (PST)
-From: John <da_audiophile@yahoo.com>
-Reply-To: John <da_audiophile@yahoo.com>
-Subject: [BUG] unable to handle kernel NULL pointer dereference
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Received: from fieldses.org ([174.143.236.118]:49267 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754870AbaBEVLK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Feb 2014 16:11:10 -0500
+Date: Wed, 5 Feb 2014 16:11:07 -0500
+To: NeilBrown <neilb@suse.de>
+Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH/RFC: nfs-utils] Common systemd unit files for nfs-utils.
+Message-ID: <20140205211107.GA14457@fieldses.org>
+References: <20140130172451.7a354ce4@notabene.brown>
+ <52F003A1.3060908@RedHat.com>
+ <20140204093452.7b6d7c7d@notabene.brown>
+ <52F130E2.6090308@RedHat.com>
+ <20140205164351.7a766eff@notabene.brown>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140205164351.7a766eff@notabene.brown>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When booting into linux v3.13.3, I am unable to mount an nfs share on this particular hardware.  I get the same problem using v3.12.11.  Only the 3.10.x series allows normal operation.  Partial dmesg output shown inline, additional logs available upon request.
+On Wed, Feb 05, 2014 at 04:43:51PM +1100, NeilBrown wrote:
+> On Tue, 04 Feb 2014 13:26:42 -0500 Steve Dickson <SteveD@redhat.com> wrote:
+> 
+> 
+> > > 
+> > >>
+> > >> How would these daemons be restart and shutdown? Since this is a 
+> > >> target, systemctl restart and system stop don't do anything.
+> > > 
+> > > This is something I haven't completely figured out yet.
+> > > 
+> > > Part of the solution might be the "PartOf" directive.
+> > > If each service claims to be "PartOf" the main one, then stopping or
+> > > restarting the main service will propagate to stopping and restarting the
+> > > individual services.
+> > > Unfortunately in nfs we have some shared services.  rpc.statd and rpc.gssd
+> > > are needed by both server and client.  That isn't a big problem for 'restart',
+> > > but if you 'systemctl stop nfs-client' and find that the server isn't
+> > > properly working any more, that would be awkward
+> > > If could possibly work around that by setting "StopWhenUnneeded" for those
+> > > shared services.  Then e.g. rpc.statd would stop when both client and server
+> > > are stopped, but not if either one of them is stopped.
+> > > However I don't know how that interacts with restart.  I suspect that the
+> > > StopWhenUnneeded services are *not* stopped and restarted when the main
+> > > service is stopped.  So it would  be  hard to restart all nfs services on an
+> > > upgrade.
+> > > 
+> > > Further research seems needed here.
+> > Fine... I'll try to digest what you are saying here, but
+> > would it make it easier if everything was in a service file?
+> 
+> So I did a bit more research and thinking, and I present the two patches
+> below for consideration.  If you agree and would prefer them in separate
+> emails I can certainly do that.
+> 
+> The first ensures that we can easily restart all daemons during software
+> update.  It creates a new 'nfs-utils.service' which exists only to allow that
+> restart.
+> 
+> The second ensures startup and shutdown work properly (though I haven't
+> tested much).
+> Do we need to shutdown nfs-server or nfs-client easily at any time other than
+> system shutdown?
 
-PLEASE cc me on my replies as I am not subscribed to lkml.
+I think it's hard to as I don't think there's a way for the NSM protocol
+to treat the nfs client and server as different things that could go up
+and down independently.  But I could be wrong, I rarely think about
+statd!  In a v4-only setup that wouldn't be a problem any more.
 
-Hardware: Athlon XP 3200+ on an NVIDIA nForce2 Ultra 400 motherboard.
-Distro: Arch Linux i686.
+On the server side there are a few parameters (v4 lease time?) that can
+only be changed with a restart but maybe that's not terribly important.
 
-% dmesg
-...
-[ 137.616014] NFS: Registering the id_resolver key type
-[ 137.616036] Key type id_resolver registered
-[ 137.616038] Key type id_legacy registered
-[ 137.686758] BUG: unable to handle kernel NULL pointer dereference at 00000858
-[ 137.689996] IP: [<f8aa2d99>] put_pipe_version+0x19/0x60 [auth_rpcgss]
-[ 137.689996] *pde = 00000000 
-[ 137.689996] Oops: 0000 [#1] PREEMPT SMP 
-[ 137.689996] Modules linked in: rpcsec_gss_krb5 auth_rpcgss oid_registry nfsv4 asb100 hwmon_vid snd_wavefront ir_mce_kbd_decoder ir_lirc_codec ir_rc5_sz_decoder ir_sony_decoder lirc_dev ir_rc5_decoder ir_jvc_decoder ir_sanyo_decoder ir_rc6_decoder ir_nec_decoder rc_streamzap streamzap mousedev snd_cs4236 rc_core snd_intel8x0 snd_wss_lib snd_opl3_lib snd_hwdep snd_ac97_codec evdev snd_mpu401 ac97_bus snd_mpu401_uart snd_pcm snd_rawmidi snd_page_alloc snd_seq_device snd_timer snd pcspkr skge shpchp i2c_nforce2 i2c_core soundcore ns558 gameport processor button nvidia_agp agpgart nfs lockd sunrpc fscache ext4 crc16 mbcache jbd2 hid_generic usbhid hid sr_mod cdrom sd_mod ata_generic pata_acpi sata_sil pata_amd libata ehci_pci ohci_pci ohci_hcd ehci_hcd scsi_mod usbcore usb_common
-[ 137.689996] CPU: 0 PID: 534 Comm: rpc.gssd Not tainted 3.13.3-1-ARCH #1
-[ 137.689996] Hardware name: ASUSTeK Computer INC. A7N8X-E/A7N8X-E, BIOS ASUS A7N8X-E Deluxe ACPI BIOS Rev 1013 11/12/2004
-[ 137.689996] task: f4633210 ti: f568e000 task.ti: f568e000
-[ 137.689996] EIP: 0060:[<f8aa2d99>] EFLAGS: 00010202 CPU: 0
-[ 137.689996] EIP is at put_pipe_version+0x19/0x60 [auth_rpcgss]
-[ 137.689996] EAX: f4633210 EBX: 00000001 ECX: f56efca8 EDX: 00000296
-[ 137.689996] ESI: 00000000 EDI: f56efc00 EBP: f568fee8 ESP: f568fee0
-[ 137.689996] DS: 007b ES: 007b FS: 00d8 GS: 00e0 SS: 0068
-[ 137.689996] CR0: 8005003b CR2: 00000858 CR3: 34523000 CR4: 000007d0
-[ 137.689996] Stack:
-[ 137.689996] f56efc00 f6c64f78 f568fef4 f8aa2e05 00000010 f568ff40 f8aa3b38 00000374
-[ 137.689996] 00000080 b74dde40 f4644a80 f568ff30 00000246 f8ac1080 ffff41c9 f6c64f78
-[ 137.689996] fffffff3 00000010 f4460140 f44d5820 f44d5810 f53df7ec f57595a0 f8aa93e8
-[ 137.689996] Call Trace:
-[ 137.689996] [<f8aa2e05>] gss_release_msg+0x25/0x70 [auth_rpcgss]
-[ 137.689996] [<f8aa3b38>] gss_pipe_downcall+0x208/0x4b0 [auth_rpcgss]
-[ 137.689996] [<f8a2f9ab>] rpc_pipe_write+0x3b/0x60 [sunrpc]
-[ 137.689996] [<f8a2f970>] ? rpc_pipe_poll+0x90/0x90 [sunrpc]
-[ 137.689996] [<c1156bd5>] vfs_write+0x95/0x1c0
-[ 137.689996] [<c11572a1>] SyS_write+0x51/0x90
-[ 137.689996] [<c145cc0d>] sysenter_do_call+0x12/0x28
-[ 137.689996] Code: f8 e8 4f b8 9a c8 31 c0 eb c6 90 8d b4 26 00 00 00 00 55 89 e5 56 53 3e 8d 74 26 00 8b 1d 28 e9 a3 f8 89 c6 e8 59 64 5f c8 85 db <8b> 86 58 08 00 00 74 3a 3b 18 77 36 8b 5c 98 08 e8 32 66 5f c8
-[ 137.689996] EIP: [<f8aa2d99>] put_pipe_version+0x19/0x60 [auth_rpcgss] SS:ESP 0068:f568fee0
-[ 137.689996] CR2: 0000000000000858
-[ 138.578433] ---[ end trace 3dcb8d5c35b64fbd ]---
-[ 142.979263] type=1006 audit(1392415950.632:4): pid=540 uid=0 old auid=4294967295 new auid=1000 old ses=4294967295 new ses=3 res=1
+HA people may restart the server on failover to get a new grace period.
+They probably use their own scripts for that but it would be better to
+get them using standard systemd configuration to the extent possible.
+
+Anyway those are existing problems that it's not necessarily up to you
+to fix.
+
+--b.
+
+> 
+> Thanks,
+> 
+> NeilBrown
+> 
+> From 0d880d8faf4db7189c11fc13854da82074c260ac Mon Sep 17 00:00:00 2001
+> From: Neil Brown <neilb@suse.de>
+> Date: Wed, 5 Feb 2014 16:28:47 +1100
+> Subject: [PATCH] systemd: add nfs-utils.service which can be used to restart
+>  everything.
+> 
+> With this patch,
+>    systemctl restart nfs-utils
+> will restart any nfs-utils daemons that are currently running, whether
+> there were started via nfs-server.service, nfs-client.target, or
+> directly by systemctl.
+> 
+> Signed-off-by: NeilBrown <neilb@suse.de>
+> 
+> diff --git a/systemd/README b/systemd/README
+> index d697cefbe229..8359530098f4 100644
+> --- a/systemd/README
+> +++ b/systemd/README
+> @@ -28,6 +28,17 @@ by a suitable 'preset' setting:
+>      If enabled, then blkmapd will be run when nfs-client.target is
+>      started.
+>  
+> +Another special unit is "nfs-utils.service".  This doesn't really do
+> +anything, but exists so that other units may declare themselves as
+> +"PartOf" nfs-utils.service.
+> +The effect of this is that
+> +     systemctl restart nfs-utils
+> +will restart all nfs-utils daemons as maybe be required during
+> +software update.  It isn't possible to make
+> +     systemctl try-restart nfs-server nfs-client.target
+> +do this as some daemon are included in both, and rpc.statd would
+> +not be restarted if nfs-server were not active (as nfs-client doesn't
+> +Want it - it is started by mount.nfs running start-statd).
+>  
+>  It is possible that we should have an nfs-statd.target which can
+>  selectively enable statd being stared by -server and sm-notify
+> diff --git a/systemd/nfs-blkmap.service b/systemd/nfs-blkmap.service
+> index 7319a88661cc..80033f2fbcf4 100644
+> --- a/systemd/nfs-blkmap.service
+> +++ b/systemd/nfs-blkmap.service
+> @@ -6,6 +6,8 @@ Requires=var-lib-nfs-rpc_pipefs.mount
+>  Requisite=nfs-blkmap.target
+>  After=nfs-blkmap.target
+>  
+> +PartOf=nfs-utils.service
+> +
+>  [Service]
+>  Type=forking
+>  ExecStart=/usr/sbin/blkmapd
+> diff --git a/systemd/nfs-idmapd.service b/systemd/nfs-idmapd.service
+> index 6c2e1537f064..7d0dd84d8a44 100644
+> --- a/systemd/nfs-idmapd.service
+> +++ b/systemd/nfs-idmapd.service
+> @@ -1,6 +1,8 @@
+>  [Unit]
+>  Description=NFSv4 ID-name mapping service
+>  
+> +PartOf=nfs-utils.service
+> +
+>  [Service]
+>  EnvironmentFile=-/run/sysconfig/nfs-utils
+>  ExecStartPre=-/usr/lib/systemd/scritps/nfs-utils_env.sh
+> diff --git a/systemd/nfs-mountd.service b/systemd/nfs-mountd.service
+> index 92e05ca309ee..90746a854b40 100644
+> --- a/systemd/nfs-mountd.service
+> +++ b/systemd/nfs-mountd.service
+> @@ -4,6 +4,7 @@ Requires=proc-fs-nfsd.mount
+>  After=proc-fs-nfsd.mount
+>  After=network.target
+>  PartOf=nfs-server.service
+> +PartOf=nfs-utils.service
+>  
+>  [Service]
+>  EnvironmentFile=-/run/sysconfig/nfs-utils
+> diff --git a/systemd/nfs-utils.service b/systemd/nfs-utils.service
+> new file mode 100644
+> index 000000000000..54b6314d8d52
+> --- /dev/null
+> +++ b/systemd/nfs-utils.service
+> @@ -0,0 +1,17 @@
+> +[Unit]
+> +Description=NFS server and client services
+> +# This service should never be stopped, only restarted.
+> +# When it is re-started, all other services which declare
+> +# themselves to be "PartOf" this service will also be
+> +# restarted. Thus
+> +#   systemctl restart nfs-utils
+> +# will restart all daemons which are part of nfs-utils
+> +# and which are running.  This is useful after a software
+> +# update.
+> +
+> +# This is a "service" rather than "target" so that we
+> +# don't need to say "systemctl restart nfs-utils.target".
+> +[Service]
+> +Type=oneshot
+> +RemainAfterExit=yes
+> +ExecStart=/bin/true
+> diff --git a/systemd/rpc-gssd.service b/systemd/rpc-gssd.service
+> index 8778c3ef651b..3982985762ea 100644
+> --- a/systemd/rpc-gssd.service
+> +++ b/systemd/rpc-gssd.service
+> @@ -5,6 +5,8 @@ After=var-lib-nfs-rpc_pipefs.mount
+>  
+>  ConditionPathExists=/etc/krb5.keytab
+>  
+> +PartOf=nfs-utils.service
+> +
+>  [Service]
+>  EnvironmentFile=-/run/sysconfig/nfs-utils
+>  ExecStartPre=-/usr/lib/systemd/scritps/nfs-utils_env.sh
+> diff --git a/systemd/rpc-statd-notify.service b/systemd/rpc-statd-notify.service
+> index 9d972fc7753a..532354d64fa0 100644
+> --- a/systemd/rpc-statd-notify.service
+> +++ b/systemd/rpc-statd-notify.service
+> @@ -8,6 +8,8 @@ After=network-online.target nss-lookup.target
+>  # tell clients that it has restarted.
+>  After=nfs-server.service
+>  
+> +PartOf=nfs-utils.service
+> +
+>  [Service]
+>  EnvironmentFile=-/run/sysconfig/nfs-utils
+>  ExecStartPre=/usr/lib/systemd/scritps/nfs-utils_env.sh
+> diff --git a/systemd/rpc-statd.service b/systemd/rpc-statd.service
+> index 04962e542fbc..88d2527cae9d 100644
+> --- a/systemd/rpc-statd.service
+> +++ b/systemd/rpc-statd.service
+> @@ -4,6 +4,8 @@ DefaultDependencies=no
+>  Requires=nss-lookup.target rpcbind.target
+>  After=network.target nss-lookup.target rpcbind.target
+>  
+> +PartOf=nfs-utils.service
+> +
+>  [Service]
+>  EnvironmentFile=-/run/sysconfig/nfs-utils
+>  ExecStartPre=-/usr/lib/systemd/scritps/nfs-utils_env.sh
+> diff --git a/systemd/rpc-svcgssd.service b/systemd/rpc-svcgssd.service
+> index 036ec579bfc1..6bd45884d991 100644
+> --- a/systemd/rpc-svcgssd.service
+> +++ b/systemd/rpc-svcgssd.service
+> @@ -3,6 +3,7 @@ Description=RPC security service for NFS server
+>  Requires=var-lib-nfs-rpc_pipefs.mount
+>  After=var-lib-nfs-rpc_pipefs.mount
+>  PartOf=nfs-server.service
+> +PartOf=nfs-utils.service
+>  
+>  After=gssproxy.service
+>  ConditionPathExists=|!@localstatedir@/run/gssproxy.pid
+> 
+> 
+> 
+> 
+> 
+> 
+> 
+> From 30b27a718632e9d24c479921b116d2c3958a3fc2 Mon Sep 17 00:00:00 2001
+> From: Neil Brown <neilb@suse.de>
+> Date: Wed, 5 Feb 2014 16:36:21 +1100
+> Subject: [PATCH] systemd: tidy up DefaultDependencies
+> 
+> DefaultDependencies should be "yes" (the default) for things
+> needed only be the NFS server, as that is a service that doesn't
+> need to start early.
+> 
+> DefaultDependencies should be "no" for things needed to mount an
+> NFS filesystem, and filesystems are mounted before basic.target.
+> To ensure these services are shut down in a timely fashion, they
+> must Conflict with systemd.umount so they are shutdown when everything
+> is unmounted.
+> 
+> Signed-off-by: NeilBrown <neilb@suse.de>
+> 
+> diff --git a/systemd/nfs-blkmap.service b/systemd/nfs-blkmap.service
+> index 80033f2fbcf4..4b74e9f61454 100644
+> --- a/systemd/nfs-blkmap.service
+> +++ b/systemd/nfs-blkmap.service
+> @@ -1,5 +1,7 @@
+>  [Unit]
+>  Description=pNFS block layout mapping daemon
+> +DefaultDependencies=no
+> +Conflicts=umount.target
+>  After=var-lib-nfs-rpc_pipefs.mount
+>  Requires=var-lib-nfs-rpc_pipefs.mount
+>  
+> diff --git a/systemd/nfs-server.service b/systemd/nfs-server.service
+> index 6ba2fc0f346e..5779fd39ed34 100644
+> --- a/systemd/nfs-server.service
+> +++ b/systemd/nfs-server.service
+> @@ -1,6 +1,5 @@
+>  [Unit]
+>  Description=NFS server and services
+> -DefaultDependencies=no
+>  Requires= network.target proc-fs-nfsd.mount rpcbind.target
+>  Requires= nfs-mountd.service
+>  Wants=rpc-statd.service nfs-idmapd.service rpc-gssd.service rpc-svcgssd.service
+> diff --git a/systemd/proc-fs-nfsd.mount b/systemd/proc-fs-nfsd.mount
+> index f44d52f3d67b..931a5ceeb055 100644
+> --- a/systemd/proc-fs-nfsd.mount
+> +++ b/systemd/proc-fs-nfsd.mount
+> @@ -1,6 +1,5 @@
+>  [Unit]
+>  Description=NFSD configuration filesystem
+> -DefaultDependencies=no
+>  
+>  [Mount]
+>  What=nfsd
+> diff --git a/systemd/rpc-gssd.service b/systemd/rpc-gssd.service
+> index 3982985762ea..375792804247 100644
+> --- a/systemd/rpc-gssd.service
+> +++ b/systemd/rpc-gssd.service
+> @@ -1,5 +1,7 @@
+>  [Unit]
+>  Description=RPC security service for NFS client and server
+> +DefaultDependencies=no
+> +Conflicts=umount.target
+>  Requires=var-lib-nfs-rpc_pipefs.mount
+>  After=var-lib-nfs-rpc_pipefs.mount
+>  
+> diff --git a/systemd/rpc-statd-notify.service b/systemd/rpc-statd-notify.service
+> index 532354d64fa0..7742ac8c5d9a 100644
+> --- a/systemd/rpc-statd-notify.service
+> +++ b/systemd/rpc-statd-notify.service
+> @@ -1,6 +1,5 @@
+>  [Unit]
+>  Description=Notify NFS peers of a restart
+> -DefaultDependencies=no
+>  Requires=network-online.target
+>  After=network-online.target nss-lookup.target
+>  
+> diff --git a/systemd/rpc-statd.service b/systemd/rpc-statd.service
+> index 88d2527cae9d..3f6cda16accd 100644
+> --- a/systemd/rpc-statd.service
+> +++ b/systemd/rpc-statd.service
+> @@ -1,6 +1,7 @@
+>  [Unit]
+>  Description=NFS status monitor for NFSv2/3 locking.
+>  DefaultDependencies=no
+> +Conflicts=umount.target
+>  Requires=nss-lookup.target rpcbind.target
+>  After=network.target nss-lookup.target rpcbind.target
+>  
+> diff --git a/systemd/var-lib-nfs-rpc_pipefs.mount b/systemd/var-lib-nfs-rpc_pipefs.mount
+> index cd614cf49f00..33c5db65aa38 100644
+> --- a/systemd/var-lib-nfs-rpc_pipefs.mount
+> +++ b/systemd/var-lib-nfs-rpc_pipefs.mount
+> @@ -1,6 +1,7 @@
+>  [Unit]
+>  Description=RPC Pipe File System
+>  DefaultDependencies=no
+> +Conflicts=umount.target
+>  
+>  [Mount]
+>  What=sunrpc
+
+
