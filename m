@@ -1,80 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e39.co.us.ibm.com ([32.97.110.160]:40220 "EHLO
-	e39.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752625AbaBLWH7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Feb 2014 17:07:59 -0500
-Received: from /spool/local
-	by e39.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <paulmck@linux.vnet.ibm.com>;
-	Wed, 12 Feb 2014 15:07:58 -0700
-Date: Wed, 12 Feb 2014 14:07:53 -0800
-From: "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: linuxnfs <linux-nfs@vger.kernel.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-Subject: Re: Question about nfs4_destroy_session()
-Message-ID: <20140212220753.GG4250@linux.vnet.ibm.com>
-Reply-To: paulmck@linux.vnet.ibm.com
-References: <20140212214209.GA4136@linux.vnet.ibm.com>
- <5BCC49E0-6F92-49EC-BFCD-17D5CA4D30C7@primarydata.com>
+Received: from fieldses.org ([174.143.236.118]:49264 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756793AbaBFREP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 6 Feb 2014 12:04:15 -0500
+Date: Thu, 6 Feb 2014 12:03:48 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Al Viro <viro@ZenIV.linux.org.uk>
+Cc: Christoph Hellwig <hch@infradead.org>, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        Miklos Szeredi <mszeredi@suse.cz>, Harshula <hjayasur@redhat.com>,
+        hfuchi@redhat.com, Trond Myklebust <trondmy@gmail.com>
+Subject: Re: [PATCH] dcache: make d_splice_alias use d_materialise_unique
+Message-ID: <20140206170348.GD14575@fieldses.org>
+References: <20140115151749.GF23999@fieldses.org>
+ <20140117121723.GA18375@infradead.org>
+ <20140117153917.GA26636@fieldses.org>
+ <20140117210343.GD26636@fieldses.org>
+ <20140117212655.GE26636@fieldses.org>
+ <20140123212700.GA30466@fieldses.org>
+ <20140131184258.GN10323@ZenIV.linux.org.uk>
+ <20140131194758.GA24618@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <5BCC49E0-6F92-49EC-BFCD-17D5CA4D30C7@primarydata.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140131194758.GA24618@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Feb 12, 2014 at 04:55:02PM -0500, Trond Myklebust wrote:
-> 
-> On Feb 12, 2014, at 16:42, Paul E. McKenney <paulmck@linux.vnet.ibm.com> wrote:
-> 
-> > Hello, Trond,
-> > 
-> > In nfs4_destroy_session(), there is an rcu_dereference() that looks to
-> > leak the returned pointer out of an RCU read-side critical section.
-> > If the pointed-to object might have just now been created, this is a
-> > bug because xprt_destroy_backchannel() dereferences this pointer.
-> > 
-> > So, does xprt_destroy_backchannel() exclude creation-side code?  (If so,
-> > no bug -- but a comment might be good.)
-> > 
-> > 							Thanx, Paul
-> > 
-> > void nfs4_destroy_session(struct nfs4_session *session)
-> > {
-> > 	struct rpc_xprt *xprt;
-> > 	struct rpc_cred *cred;
-> > 
-> > 	cred = nfs4_get_clid_cred(session->clp);
-> > 	nfs4_proc_destroy_session(session, cred);
-> > 	if (cred)
-> > 		put_rpccred(cred);
-> > 
-> > 	rcu_read_lock();
-> > 	xprt = rcu_dereference(session->clp->cl_rpcclient->cl_xprt);
-> > 	rcu_read_unlock();
-> > 	dprintk("%s Destroy backchannel for xprt %p\n",
-> > 		__func__, xprt);
-> > 	xprt_destroy_backchannel(xprt, NFS41_BC_MIN_CALLBACKS);
-> > 	nfs4_destroy_session_slot_tables(session);
-> > 	kfree(session);
-> > }
-> > 
-> 
-> Hi Paul,
-> 
-> nfs4_destroy_session() is only called when we’re tearing down the struct nfs_client that owns the cl_rppcclient, and the associated cl_xprt, so the code above should be safe, despite being ugly.
-> 
-> Is there a better annotation for use in the above kind of situation?
+On Fri, Jan 31, 2014 at 02:47:58PM -0500, J. Bruce Fields wrote:
+> (Then one remaining thing I don't understand is how to make that fixing
+> up reliable.  Or is there some reason nobody hits the _EBUSY case of
+> __d_unalias?)
 
-One approach would be to add a comment on the rcu_dereference() stating
-that creation-side code is excluded, e.g., via locking or by the data
-structures no longer being accessible.  Another approach would be to
-move the rcu_read_unlock() to follow the xprt_destroy_backchannel(),
-assuming none of the code that would be pulled into the RCU read-side
-critical section can block.
+In fact, a reproducer found thanks to Hideshi Yamaoka:
 
-The second approach would prevent false positives from the RCU pointer
-leak detectors that are being worked on.
+On server:
 
-							Thanx, Paul
+	while true; do
+		mv /exports/DIR /exports/TO/DIR
+		mv /exports/TO/DIR /exports/DIR
+	done
 
+On client:
+
+	mount -olookupcache=pos /mnt
+
+	while true; do
+		ls /mnt/TO;
+	done
+
+Also on client:
+
+	while true; do
+		strace -e open cat /mnt/DIR/test.txt 2>&1 | grep EBUSY
+	done
+
+Once all three of those loops are running I hit
+
+	open("/mnt/DIR/test.txt", O_RDONLY)	= -1 EBUSY
+
+very quickly.
+
+The "lookupcache=pos" isn't really necessary but makes the reproducer
+more reliable.
+
+(Originally this was seen on a single client: the client itself was
+doing the renames but also continually killing the second mv.  I suspect
+that means the client sends the RENAME but then fails to update its
+dcache, the result being again that the client's dcache is out of sync
+with the server's tree and hence lookup is stuck trying to grab a dentry
+from another directory.)
+
+Is there some solution short of making ->lookup callers drop the i_mutex
+and retry???
+
+--b.
