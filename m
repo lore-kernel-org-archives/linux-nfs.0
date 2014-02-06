@@ -1,105 +1,126 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-oa0-f42.google.com ([209.85.219.42]:54310 "EHLO
-	mail-oa0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932541AbaBUNXn convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Feb 2014 08:23:43 -0500
-Received: by mail-oa0-f42.google.com with SMTP id j17so1939689oag.1
-        for <linux-nfs@vger.kernel.org>; Fri, 21 Feb 2014 05:23:42 -0800 (PST)
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
-Subject: Re: Reliable NFS statistics tool to monitoring all incoming network traffic
-From: Weston Andros Adamson <dros@monkey.org>
-In-Reply-To: <CA+NKcRzkHKqJ5sSJHLbZcJdOoDS6c2ef-D3CsGkOsw1uSyTmMg@mail.gmail.com>
-Date: Fri, 21 Feb 2014 08:23:38 -0500
-Cc: Steve Dickson <SteveD@redhat.com>,
-        linux-nfs list <linux-nfs@vger.kernel.org>
-Message-Id: <649BC36E-80B4-4F63-873E-9C8399D92CBB@monkey.org>
-References: <CA+NKcRwjoaeQUZEGSeVC+Tfa3jDzvTLt1RBjSQrkj6KJMcC-zg@mail.gmail.com> <5306418B.9060007@RedHat.com> <CA+NKcRzkHKqJ5sSJHLbZcJdOoDS6c2ef-D3CsGkOsw1uSyTmMg@mail.gmail.com>
-To: Pavel Karneliuk <pavel.karneliuk@gmail.com>
+Received: from mail-ie0-f178.google.com ([209.85.223.178]:34492 "EHLO
+	mail-ie0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752284AbaBFWNC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Feb 2014 17:13:02 -0500
+Received: by mail-ie0-f178.google.com with SMTP id x13so1125541ief.37
+        for <linux-nfs@vger.kernel.org>; Thu, 06 Feb 2014 14:13:01 -0800 (PST)
+Message-ID: <1391724779.6399.2.camel@leira.trondhjem.org>
+Subject: Re: readdir vs. getattr
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: NeilBrown <neilb@suse.de>
+Cc: Jeff Layton <jlayton@poochiereds.net>,
+        "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>,
+        Jim Rees <rees@umich.edu>, linux-nfs <linux-nfs@vger.kernel.org>
+Date: Thu, 06 Feb 2014 17:12:59 -0500
+In-Reply-To: <20140206135101.1cc83442@notabene.brown>
+References: <CAGue13pe_ZH_Eto-jL3mLjTNGFK26izTarnZdjs3eL82A2Z37w@mail.gmail.com>
+	 <20130404151507.GA8484@umich.edu>
+	 <CAGue13o6X5S3ppTX_fmMCTCX=7Mq_57YQEsb_hkOKwN9iOHwEQ@mail.gmail.com>
+	 <1365090480.10726.22.camel@leira.trondhjem.org>
+	 <20140129182532.7479eeda@notabene.brown>
+	 <1342984553.746756.1390987303295.JavaMail.zimbra@desy.de>
+	 <20140129071841.1979a48c@tlielax.poochiereds.net>
+	 <20140206134539.53d09434@notabene.brown>
+	 <20140206135101.1cc83442@notabene.brown>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Feb 21, 2014, at 4:53 AM, Pavel Karneliuk <pavel.karneliuk@gmail.com> wrote:
-
-> Steve,
+On Thu, 2014-02-06 at 13:51 +1100, NeilBrown wrote:
+> On Thu, 6 Feb 2014 13:45:39 +1100 NeilBrown <neilb@suse.de> wrote:
 > 
-> Thank you for your answer. The mountstats(8) and nfsiostat(8) are
-> well, but I am interesting in some network sniffer that listens all
-> network traffic in promiscuous mode.
 > 
-> I think about researching and development new solution.
-> Fast, reliable and extensible tool with deep packet inspection of NFS
-> operations and supporting NFS version 2/3/4 over TCP/UDP protocols.
-> Something based on libpcap, TCP reassembling suchlike dissectors from
-> Wireshark, and full parsing headers of NFS operations on the fly.
-
-You should take a look at NFStest - It has a tcp reassembly and NFS decoding component:
-
-http://linux-nfs.org/wiki/index.php/NFStest
-
-Also, try experimenting with the other types of output (different xml formats) for tshark.  I’ve found it useful in the past to programmatically look for the “needle in the haystack” instead of searching through wiresharks GUI.
-
+> > The change to nfs_update_inode fixes an issue that had me stumped for a
+> > while.  It was still sending lots of GETATTR requests even after it had
+> > switched to READDIRPLUS instead of using cached info.  So that might be a
+> > genuine bug that should be fixed independently of this patch.
 > 
-> Would such tool be useful for community, NFS developers and end-users?
-> What do you think?
-
-So, how will be different from using wireshark / tshark ?
-
--dros
-
+> I managed to post the wrong version of the patch, which didn't have this
+> change.  Sorry.
 > 
-> Regards,
-> Pavel K
+> Here is the real one.
 > 
-> 2014-02-20 20:55 GMT+03:00 Steve Dickson <SteveD@redhat.com>:
->> 
->> 
->> On 02/20/2014 10:39 AM, Pavel Karneliuk wrote:
->>> Hello linux-nfs members,
->>> 
->>> I am looking for some tool for monitoring all incoming traffic on the
->>> wire and collecting NFSv3 operations over TCP transport protocol in
->>> 1G-10G networks.
->>> 
->>> Could you advise me some fast and reliable utility?
->>> 
->>> I have tried NFSwatch tool, but its results are not reliable.
->>> At first, I mount NFSv3 directory with TCP transport protocol and wsize=512k
->>> 
->>> sudo mount -v -t nfs 10.6.136.187:/share /mnt/nfs-fedora/ -o
->>> rw,vers=3.0,tcp,wsize=524288
->>> 
->>> then I write 10Mb file to NFS server:
->>> 
->>> sudo dd if=/dev/zero of=/mnt/nfs-fedora/zero.data bs=1M count=10
->>> 
->>> I expect to see 20 WRITE operations (10Mb / 512Kb == 20).
->>> The nfsstat (nfsstat --nfs -3 -Z) shows exactly 20 WRITE operations,
->>> because it takes statistic from the kernel.
->>> 
->>> When I try to get the same result with NFSwatch by (sudo nfswatch -all
->>> -procs3 -t 20)
->>> I get unreproducible results with 1 or 2 registered WRITE operations.
->>> NFSwatch works well on NFSv3 over UDP, but loses almost all READ/WRITE
->>> operations in case of TCP protocol.
->>> I have checked its source code and found that NFSwatch doesn't
->>> performs reassembling TCP streams between NFS server and NFS client.
->>> It just looks at TCP segment and expects headers of RPC/NFSv3
->>> operations exactly after TCP header.
->>> 
->>> The tcpdump works similarly. Wireshark(and Tshark) is too slow for
->>> live 1G-10G NFSv3/TCP traffic capturing and filtration.
->>> 
->>> 
->>> Would you suggest some alternative utils, solutions or workarounds?
->> You can try mountstats(8) or nfsiostat(8). Both of them
->> manipulate data collected in /proc/self/mountstats
->> 
->> steved.
->> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> NeilBrown
+
+Hi Neil,
+
+Is there any reason why this patch couldn't just be replaced with the
+following?
+(Please note the separate fix for the labeled NFS regression that you
+pointed out.)
+
+Cheers
+  Trond
+
+8<-------------------------------------------------------------------
+>From fda6d0fb7988fd7d541ef6d1023bca92b0e10333 Mon Sep 17 00:00:00 2001
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+Date: Thu, 6 Feb 2014 16:45:21 -0500
+Subject: [PATCH] NFS: Use readdirplus in order to efficiently revalidate whole
+ directories
+
+When we call nfs_force_lookup_revalidate() in order to force a full
+lookup of all child dentries of a directory, it makes sense to use
+readdirplus to perform that revalidation as efficiently as possible.
+
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/dir.c | 20 ++++++++++++++++++++
+ 1 file changed, 20 insertions(+)
+
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index be38b573495a..2abcae330ad0 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -437,6 +437,24 @@ void nfs_advise_use_readdirplus(struct inode *dir)
+ 	set_bit(NFS_INO_ADVISE_RDPLUS, &NFS_I(dir)->flags);
+ }
+ 
++/*
++ * Force use of readdirplus to ensure efficient revalidation of
++ * the directory child dentries when we know that we will need
++ * to revalidate the whole directory.
++ *
++ * Caller must hold dir->i_lock.
++ */
++static
++void nfs_force_use_readdirplus(struct inode *dir)
++{
++	if (nfs_server_capable(dir, NFS_CAP_READDIRPLUS)) {
++		struct nfs_inode *nfsi = NFS_I(dir);
++
++		set_bit(NFS_INO_ADVISE_RDPLUS, &nfsi->flags);
++		nfsi->cache_validity |= NFS_INO_INVALID_DATA;
++	}
++}
++
+ static
+ void nfs_prime_dcache(struct dentry *parent, struct nfs_entry *entry)
+ {
+@@ -942,12 +960,14 @@ static int nfs_fsync_dir(struct file *filp, loff_t start, loff_t end,
+  * This forces the revalidation code in nfs_lookup_revalidate() to do a
+  * full lookup on all child dentries of 'dir' whenever a change occurs
+  * on the server that might have invalidated our dcache.
++ * Call nfs_force_use_readdirplus for efficiency.
+  *
+  * The caller should be holding dir->i_lock
+  */
+ void nfs_force_lookup_revalidate(struct inode *dir)
+ {
+ 	NFS_I(dir)->cache_change_attribute++;
++	nfs_force_use_readdirplus(dir);
+ }
+ EXPORT_SYMBOL_GPL(nfs_force_lookup_revalidate);
+ 
+-- 
+1.8.5.3
+
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer, PrimaryData
+trond.myklebust@primarydata.com
+
 
