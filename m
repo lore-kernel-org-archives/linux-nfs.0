@@ -1,83 +1,150 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx.nrchpc.ac.cn ([211.103.180.228]:43887 "EHLO mx.bwstor.cn"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1750793AbaBQHJt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 17 Feb 2014 02:09:49 -0500
-From: shaobingqing <shaobingqing@bwstor.com.cn>
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        shaobingqing <shaobingqing@bwstor.com.cn>
-Subject: [PATCH v3] NFSv4.1: new layout stateid can not be overwrite by one out of date
-Date: Mon, 17 Feb 2014 15:08:01 +0800
-Message-Id: <1392620881-26561-1-git-send-email-shaobingqing@bwstor.com.cn>
-In-Reply-To: <N>
-References: <N>
+Received: from cantor2.suse.de ([195.135.220.15]:34006 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754217AbaBFA62 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Feb 2014 19:58:28 -0500
+Date: Thu, 6 Feb 2014 11:58:16 +1100
+From: NeilBrown <neilb@suse.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH/RFC: nfs-utils] Common systemd unit files for nfs-utils.
+Message-ID: <20140206115816.544ff6f5@notabene.brown>
+In-Reply-To: <20140205211107.GA14457@fieldses.org>
+References: <20140130172451.7a354ce4@notabene.brown>
+	<52F003A1.3060908@RedHat.com>
+	<20140204093452.7b6d7c7d@notabene.brown>
+	<52F130E2.6090308@RedHat.com>
+	<20140205164351.7a766eff@notabene.brown>
+	<20140205211107.GA14457@fieldses.org>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/1OedsSqmc54aaCuaVEwVSjD"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If initiate_file_draining returned NFS4ERR_DELAY, all the lsegs of
-a file might be released before the retrying cb_layout request arriving
-at the client. In this situation,the list lo->plh_segs is empty, 
-layoutget request of the file will use open stateid to obtain a new 
-layout stateid. And if the retrying cb_layout request arrived at the 
-client after the layoutget reply, new layout stateid would be overwrite 
-by one out of date.
+--Sig_/1OedsSqmc54aaCuaVEwVSjD
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-Signed-off-by: shaobingqing <shaobingqing@bwstor.com.cn>
----
- fs/nfs/callback_proc.c |    9 +++++++--
- fs/nfs/pnfs.c          |    3 ++-
- fs/nfs/pnfs.h          |    1 +
- 3 files changed, 10 insertions(+), 3 deletions(-)
+On Wed, 5 Feb 2014 16:11:07 -0500 "J. Bruce Fields" <bfields@fieldses.org>
+wrote:
 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index ae2e87b..5b20ace 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -170,10 +170,15 @@ static u32 initiate_file_draining(struct nfs_client *clp,
- 	spin_lock(&ino->i_lock);
- 	if (test_bit(NFS_LAYOUT_BULK_RECALL, &lo->plh_flags) ||
- 	    pnfs_mark_matching_lsegs_invalid(lo, &free_me_list,
--					&args->cbl_range))
-+					&args->cbl_range)) {
-+		if (!test_and_set_bit(NFS_LAYOUT_BC_DELAY, &lo->plh_flags))
-+			pnfs_get_layout_hdr(lo);
- 		rv = NFS4ERR_DELAY;
--	else
-+	} else {
-+		if (test_and_clear_bit(NFS_LAYOUT_BC_DELAY, &lo->plh_flags))
-+			pnfs_put_layout_hdr(lo);
- 		rv = NFS4ERR_NOMATCHING_LAYOUT;
-+	}
- 	pnfs_set_layout_stateid(lo, &args->cbl_stateid, true);
- 	spin_unlock(&ino->i_lock);
- 	pnfs_free_lseg_list(&free_me_list);
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index cb34024..998bc82 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -721,7 +721,8 @@ pnfs_choose_layoutget_stateid(nfs4_stateid *dst, struct pnfs_layout_hdr *lo,
- 		status = -EAGAIN;
- 	} else if (!nfs4_valid_open_stateid(open_state)) {
- 		status = -EBADF;
--	} else if (list_empty(&lo->plh_segs)) {
-+	} else if (list_empty(&lo->plh_segs) &&
-+			!test_bit(NFS_LAYOUT_BC_DELAY, &lo->plh_flags)) {
- 		int seq;
- 
- 		do {
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index a4f4181..fb9b37e 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -63,6 +63,7 @@ enum {
- 	NFS_LAYOUT_BULK_RECALL,		/* bulk recall affecting layout */
- 	NFS_LAYOUT_ROC,			/* some lseg had roc bit set */
- 	NFS_LAYOUT_RETURN,		/* Return this layout ASAP */
-+	NFS_LAYOUT_BC_DELAY,	/*cb_layout are delayed*/
- };
- 
- enum layoutdriver_policy_flags {
--- 
-1.7.4.2
+> On Wed, Feb 05, 2014 at 04:43:51PM +1100, NeilBrown wrote:
+> > On Tue, 04 Feb 2014 13:26:42 -0500 Steve Dickson <SteveD@redhat.com> wr=
+ote:
+> >=20
+> >=20
+> > > >=20
+> > > >>
+> > > >> How would these daemons be restart and shutdown? Since this is a=20
+> > > >> target, systemctl restart and system stop don't do anything.
+> > > >=20
+> > > > This is something I haven't completely figured out yet.
+> > > >=20
+> > > > Part of the solution might be the "PartOf" directive.
+> > > > If each service claims to be "PartOf" the main one, then stopping or
+> > > > restarting the main service will propagate to stopping and restarti=
+ng the
+> > > > individual services.
+> > > > Unfortunately in nfs we have some shared services.  rpc.statd and r=
+pc.gssd
+> > > > are needed by both server and client.  That isn't a big problem for=
+ 'restart',
+> > > > but if you 'systemctl stop nfs-client' and find that the server isn=
+'t
+> > > > properly working any more, that would be awkward
+> > > > If could possibly work around that by setting "StopWhenUnneeded" fo=
+r those
+> > > > shared services.  Then e.g. rpc.statd would stop when both client a=
+nd server
+> > > > are stopped, but not if either one of them is stopped.
+> > > > However I don't know how that interacts with restart.  I suspect th=
+at the
+> > > > StopWhenUnneeded services are *not* stopped and restarted when the =
+main
+> > > > service is stopped.  So it would  be  hard to restart all nfs servi=
+ces on an
+> > > > upgrade.
+> > > >=20
+> > > > Further research seems needed here.
+> > > Fine... I'll try to digest what you are saying here, but
+> > > would it make it easier if everything was in a service file?
+> >=20
+> > So I did a bit more research and thinking, and I present the two patches
+> > below for consideration.  If you agree and would prefer them in separate
+> > emails I can certainly do that.
+> >=20
+> > The first ensures that we can easily restart all daemons during software
+> > update.  It creates a new 'nfs-utils.service' which exists only to allo=
+w that
+> > restart.
+> >=20
+> > The second ensures startup and shutdown work properly (though I haven't
+> > tested much).
+> > Do we need to shutdown nfs-server or nfs-client easily at any time othe=
+r than
+> > system shutdown?
+>=20
+> I think it's hard to as I don't think there's a way for the NSM protocol
+> to treat the nfs client and server as different things that could go up
+> and down independently.  But I could be wrong, I rarely think about
+> statd!  In a v4-only setup that wouldn't be a problem any more.
 
+So if we don't make it particular easy to restart statd, then that might be=
+ a
+good thing?  I can live with that :-)
+
+>=20
+> On the server side there are a few parameters (v4 lease time?) that can
+> only be changed with a restart but maybe that's not terribly important.
+
+Maybe this should be treated as 'reload'.  If we provide ExecReload for
+nfs-server.service which:
+ - stops the nfsd threads
+ - updates all these parameters
+ - optionally triggers a new grace period?? (or is that automatic)
+ - start the nfsd threads
+
+we could document that  "systemctl reload nfs-server" does the right thing
+
+>=20
+> HA people may restart the server on failover to get a new grace period.
+> They probably use their own scripts for that but it would be better to
+> get them using standard systemd configuration to the extent possible.
+
+Probably best not to second-guess such configurations if we don't thoroughly
+understand them - but if we hear of a need that our unit files don't meant =
+we
+can use that as a trigger for improvement.
+
+>=20
+> Anyway those are existing problems that it's not necessarily up to you
+> to fix.
+
+True, but good to consider nonetheless.
+Thanks,
+NeilBrown
+
+--Sig_/1OedsSqmc54aaCuaVEwVSjD
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.22 (GNU/Linux)
+
+iQIVAwUBUvLeKDnsnt1WYoG5AQI14Q//aFl+R0WFudbTzGEQ9qTohJjVUpitst1d
+2K8qjr6B9k4wsf0gagCRNNRS51o2ZxltC3nslVTBWf4zGoz/08+YuTozYhZjCiq6
+b2zoz+N9XSrF1u+JBUIv2qaOdSZkZV3vz8bundm9hgANHphj/CtD9Eh8GZW0u7D3
+fNGKhI1+S+I5V/fyEbPDFu0Eh4rnxZYWNN2LvVt8xzTRamqXmRGeVTs0+kkacLLU
+DRkNUap0mmqMTxpXOEdoF1BkhOFoX4201sgCSr9DDyHMgELVQObrsZkDdcYgHv1H
+YIO0fKR3F9Z/hWzXd7opzcbcKQzzPrm+3QPxXXp0YdrXNGjM3xjr3VWRmHW697oq
+Tik1mgRmiSdru916DHNxfDl+JU5G36vHnDUTaeahMtoCgbijQPyaQ3NSs88b9Wmx
+5x0vfI9+pNXT4PKBiddBdbzq8UrPqIuMkIr/mi+3Vm50yD9tI2W8Phg3tz2T0OiC
+/vH/svefQIcN46+RDUGMwUP7jILr/ftexGcJ4e7/fpT77UCX+lfeI5TxZWtvYuX5
+GCQDbwgyfd1oMeisThqwtt76RbYlqMEhn2U9AOcGKn07ofemlUiGwlI3LTN7JiU3
+x4ws4mWDrq+P0ASGDEWr2iUwJKYKgPx3xK2WOV8rhSkZke2ILl/assbBWg8ii+66
+OhXzXVNujMI=
+=apBY
+-----END PGP SIGNATURE-----
+
+--Sig_/1OedsSqmc54aaCuaVEwVSjD--
