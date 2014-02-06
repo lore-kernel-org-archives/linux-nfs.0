@@ -1,140 +1,97 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:40236 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756026AbaBRPoM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 18 Feb 2014 10:44:12 -0500
-Date: Tue, 18 Feb 2014 10:44:06 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: Weng Meiling <wengmeiling.weng@huawei.com>, greg@kroah.com,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        devel@openvz.org
-Subject: Re: [PATCH] nfsd: check passed socket's net matches NFSd
- superblock's one
-Message-ID: <20140218154406.GD4319@fieldses.org>
-References: <20131230142339.16166.28243.stgit@localhost.localdomain>
- <20140103222226.GD5164@fieldses.org>
- <52FEC818.7030604@huawei.com>
- <20140217221900.GA8401@fieldses.org>
- <53037A03.4020603@parallels.com>
+Received: from mail-oa0-f45.google.com ([209.85.219.45]:51845 "EHLO
+	mail-oa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753028AbaBFSwQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Feb 2014 13:52:16 -0500
+Received: by mail-oa0-f45.google.com with SMTP id i11so2871014oag.32
+        for <linux-nfs@vger.kernel.org>; Thu, 06 Feb 2014 10:52:16 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <53037A03.4020603@parallels.com>
+In-Reply-To: <20140206183631.GA30952@fieldses.org>
+References: <CAPCnwUeUEznrKvJ-upUV_VyaKKhZcKpZbLFeC08YMMQycWK-vg@mail.gmail.com>
+	<CAPCnwUeobfXKGB9Q-nyYNDZa1L9iTwoKZm9bBH2ghUkqembCeA@mail.gmail.com>
+	<20140206183631.GA30952@fieldses.org>
+Date: Thu, 6 Feb 2014 13:52:16 -0500
+Message-ID: <CAPCnwUcXaGUMs1r23+oPROzPQpmgLV62zGBZE6dbt0nvF75=DQ@mail.gmail.com>
+Subject: Re: Windows AD, Users with too many groups
+From: Norman Elton <normelton@gmail.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Feb 18, 2014 at 07:19:31PM +0400, Stanislav Kinsbursky wrote:
-> 18.02.2014 02:19, J. Bruce Fields пишет:
-> >On Sat, Feb 15, 2014 at 09:51:20AM +0800, Weng Meiling wrote:
-> >>Hi Bruce,
-> >>
-> >>The upstream has merged your git tree for-3.14, but there is no this patch?
-> >>Do you forget this patch?
-> >
-> >Apologies, I'm not sure what happened.
-> >
-> >Looking back at it....  The patch causes all my pynfs reboot recovery
-> >tests to fail.  They're just doing a "systemctl restart
-> >nfs-server.service", and "systemctl status nfs-server.service" shows in
-> >part
-> >
-> >	ExecStart=/usr/sbin/rpc.nfsd $RPCNFSDARGS $RPCNFSDCOUNT (code=exited, status=1/FAILURE)
-> >
-> >So the patch is causing rpc.nfsd to fail?  No network namespaces should
-> >be involved.
-> >
-> >I haven't investigated any further.
-> >
-> 
-> Hi Bruce,
-> Are you sure, that exactly this patch broke your pynfs tests?
-> BTW, systemd manipulates namespaces. Maybe the patch revealed some pynfs internal bugs?
-> What do you think?
+> And they have that same group membership on the server side?
 
-It's really just "systemctl restart nfs-server.service" that the patch
-breaks, pynfs isn't involved much.
+Yes, both the NFS server and NFS client point to the same active
+directory for ldap / kerberos.
 
-The patch I'm actually using follows, but I believe the only difference
-is in the printk message?
+I have tried running rpc.svcgssd with debugging, as well as with
+strace as you suggested. I get plenty of output when a "good" user
+logs in. No debugging information for user who fails. The error
+(failed to create krb5 context...) appears on the client, maybe before
+it connects to the server?
 
---b
+Thanks,
 
-commit e1f2922c12cb59baba0f2c7726bee992a0861310
-Author: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Date:   Mon Dec 30 17:23:59 2013 +0300
+Norman
 
-    nfsd: check passed socket's net matches the NFSd superblock's
-    
-    The file descriptor written to the nfsd/portlist file could be for a
-    socket in a different network namespace from the network namespace that
-    the nfsd filesystem was mounted in, and this can cause a crash.
-    
-    For example: "ip netns exec" creates a new network and mount namespace,
-    which duplicates the nfsd mount point which was created in the init_net
-    context.  Thus NFS server stop in the nested network context leads to
-    RPCBIND client destruction in init_net.  Then, on nfsd start in the
-    nested network context, the rpc.nfsd process creates a socket in the
-    nested net and passes it into "write_ports", which leads to RPCBIND
-    socket creation in init_net context for the same reason (the nfsd mount
-    point was created in the init_net context). An attempt to register
-    passed socket in nested net leads to panic, because no RPCBIND client is
-    present in the nested network namespace.
-    
-    This patch adds a check that the passed the socket's net matches the
-    nfsd superblock's net, and returns -EINVAL error to user space if not.
-    
-    Reported-by: Weng Meiling <wengmeiling.weng@huawei.com>
-    Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-    Cc: stable@vger.kernel.org
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index 7f55517..1331766 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -699,6 +699,11 @@ static ssize_t __write_ports_addfd(char *buf, struct net *net)
- 	if (err != 0 || fd < 0)
- 		return -EINVAL;
- 
-+	if (svc_alien_sock(net, fd)) {
-+		printk(KERN_ERR "%s: socket net is different from NFSd's\n", __func__);
-+		return -EINVAL;
-+	}
-+
- 	err = nfsd_create_serv(net);
- 	if (err != 0)
- 		return err;
-diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
-index 62fd1b7..947009e 100644
---- a/include/linux/sunrpc/svcsock.h
-+++ b/include/linux/sunrpc/svcsock.h
-@@ -56,6 +56,7 @@ int		svc_recv(struct svc_rqst *, long);
- int		svc_send(struct svc_rqst *);
- void		svc_drop(struct svc_rqst *);
- void		svc_sock_update_bufs(struct svc_serv *serv);
-+bool		svc_alien_sock(struct net *net, int fd);
- int		svc_addsock(struct svc_serv *serv, const int fd,
- 					char *name_return, const size_t len);
- void		svc_init_xprt_sock(void);
-diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-index b6e59f0..3ba5b87 100644
---- a/net/sunrpc/svcsock.c
-+++ b/net/sunrpc/svcsock.c
-@@ -1397,6 +1397,17 @@ static struct svc_sock *svc_setup_socket(struct svc_serv *serv,
- 	return svsk;
- }
- 
-+bool svc_alien_sock(struct net *net, int fd)
-+{
-+	int err;
-+	struct socket *sock = sockfd_lookup(fd, &err);
-+
-+	if (sock && (sock_net(sock->sk) != net))
-+		return true;
-+	return false;
-+}
-+EXPORT_SYMBOL_GPL(svc_alien_sock);
-+
- /**
-  * svc_addsock - add a listener socket to an RPC service
-  * @serv: pointer to RPC service to which to add a new listener
+On Thu, Feb 6, 2014 at 1:36 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> On Thu, Feb 06, 2014 at 01:19:19PM -0500, Norman Elton wrote:
+>> Just a follow-up to my previous post. In debugging rpc.gssd on the
+>> client, here's where things are dying:
+>>
+>> creating tcp client for server filertest.safety.net.wm.edu
+>> creating context with server nfs@filertest.safety.net.wm.edu
+>> WARNING: Failed to create krb5 context for user with uid 30487 for
+>> server filertest.safety.net.wm.edu
+>>
+>> But other users seem fine. I still think it's something to do with
+>> excessive group membership.
+>
+> And they have that same group membership on the server side?
+>
+> In that case there might be some problem with rpc.svcgssd's handling of
+> large group lists--some debugging of rpc.svcgssd on the server might be
+> interesting.
+>
+> In particular, output from:
+>
+>         strace -p $(pidof rpc.svcgssd) -s65536 -e trace=open,close,read,write
+>
+> might be interesting.
+>
+> --b.
+>
+>>
+>> Any suggestions are appreciated, thanks!
+>>
+>> Norman Elton
+>> College of William & Mary
+>>
+>> On Mon, Feb 3, 2014 at 4:13 PM, Norman Elton <normelton@gmail.com> wrote:
+>> > I've read stories about users having too many group memberships. We
+>> > seem to experience similar symptoms, though the usual tricks don't
+>> > seem to work.
+>> >
+>> > In our case, there is a RHEL6 NFS server feeding multiple RHEL6 NFS
+>> > clients. This is all NFSv4 with Kerberos. Most users can login fine,
+>> > but domain admins get a "permission denied" when accessing their
+>> > NFS-mounted home directory. The most notable commonality is their high
+>> > number of group memberships.
+>> >
+>> > I've tried inflating my group count to greater than 16, my account
+>> > continues to work fine.
+>> >
+>> > We've tried adding "--manage-gids" to rpc.mountd, no luck. Although
+>> > it's unclear whether this really does anything in a kerberized
+>> > environment.
+>> >
+>> > Any other suggestions? Other debugging tricks?
+>> >
+>> > Thanks
+>> >
+>> > Norman Elton
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
