@@ -1,110 +1,146 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from messinet.com ([50.196.241.75]:59017 "EHLO chicago.messinet.com"
+Received: from mx1.redhat.com ([209.132.183.28]:32656 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750937AbaBDMss (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Feb 2014 07:48:48 -0500
-Received: from localhost (localhost [127.0.0.1])
-	by chicago.messinet.com (Postfix) with ESMTP id D847B67B41DD
-	for <linux-nfs@vger.kernel.org>; Tue,  4 Feb 2014 06:42:17 -0600 (CST)
-Received: from chicago.messinet.com ([127.0.0.1])
-	by localhost (chicago.messinet.com [127.0.0.1]) (amavisd-new, port 10024)
-	with ESMTP id gKW-jCL5fk4u for <linux-nfs@vger.kernel.org>;
-	Tue,  4 Feb 2014 06:42:17 -0600 (CST)
-Received: from linux-ws1.messinet.com (unknown [IPv6:2001:470:c1dc:7779:d6be:d9ff:fe8d:7c1e])
-	(using TLSv1 with cipher ECDHE-RSA-AES256-SHA (256/256 bits))
-	(Client did not present a certificate)
-	by chicago.messinet.com (Postfix) with ESMTPSA id 2BC8267B3F1C
-	for <linux-nfs@vger.kernel.org>; Tue,  4 Feb 2014 06:42:17 -0600 (CST)
-From: Anthony Messina <amessina@messinet.com>
-To: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH/RFC: nfs-utils] Common systemd unit files for nfs-utils.
-Date: Tue, 04 Feb 2014 06:42:12 -0600
-Message-ID: <1757036.O2OPYTypu1@linux-ws1.messinet.com>
-In-Reply-To: <52F003A1.3060908@RedHat.com>
-References: <20140130172451.7a354ce4@notabene.brown> <52F003A1.3060908@RedHat.com>
+	id S1752618AbaBFSIb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 6 Feb 2014 13:08:31 -0500
+Date: Thu, 6 Feb 2014 13:08:12 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: NeilBrown <neilb@suse.de>
+Cc: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Jim Rees <rees@umich.edu>, linux-nfs <linux-nfs@vger.kernel.org>
+Subject: Re: readdir vs. getattr
+Message-ID: <20140206130812.3ec425e9@tlielax.poochiereds.net>
+In-Reply-To: <20140206135101.1cc83442@notabene.brown>
+References: <CAGue13pe_ZH_Eto-jL3mLjTNGFK26izTarnZdjs3eL82A2Z37w@mail.gmail.com>
+	<20130404151507.GA8484@umich.edu>
+	<CAGue13o6X5S3ppTX_fmMCTCX=7Mq_57YQEsb_hkOKwN9iOHwEQ@mail.gmail.com>
+	<1365090480.10726.22.camel@leira.trondhjem.org>
+	<20140129182532.7479eeda@notabene.brown>
+	<1342984553.746756.1390987303295.JavaMail.zimbra@desy.de>
+	<20140129071841.1979a48c@tlielax.poochiereds.net>
+	<20140206134539.53d09434@notabene.brown>
+	<20140206135101.1cc83442@notabene.brown>
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="nextPart8554557.hMBlofD5jx"; micalg="pgp-sha1"; protocol="application/pgp-signature"
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Thu, 6 Feb 2014 13:51:01 +1100
+NeilBrown <neilb@suse.de> wrote:
 
---nextPart8554557.hMBlofD5jx
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain; charset="us-ascii"
+> 
+> On Thu, 6 Feb 2014 13:45:39 +1100 NeilBrown <neilb@suse.de> wrote:
+> 
 
-On Monday, February 03, 2014 04:01:21 PM Steve Dickson wrote:
-> This changes the current API... Today to enable/start this service=20=
+> The idea is that the first time we find that we look up a file in a directory
+> and will need to do a GETATTR, we flush the cached data in the directory so
+> READDIRPLUS will be used in future.
 
-> today one does:
->=20
->   systemctl enable nfs-server
->   systemctl start nfs-server
->=20
-> which would change to:
->=20
->   systemctl enable nfs-server.target
->   systemctl start nfs-server
->=20
-> with the same daemons being started.
-> This changed will cause existing scripts to fail...=20
-> I guess I don't see the point of having a .target file.=20
->=20
-> How is rpc.svcgssd enabled? Since the .service file does
-> not have a [Install] section the systemctl enable rpc.svcgssd
-> fails.
->=20
-> Also how does gss-proxy come to play in all this? Maybe we=20
-> just use  gss-proxy by default and retire rpc.svcgssd.
+Nice. I like that idea. If we had previously used READDIRPLUS then we'd
+presumably have the inode in cache and would only need to do the
+GETATTR if the attributes had expired. If they had expired on that one
+then the cached directory data is probably stale as well.
 
-Usually just a quite listener (end-user & small-time sysadmin) on this =
-ML...
+OTOH, files and directories have different actimeo values. If the
+acreg* values are smaller than the acdir* values then we may end up
+doing more on the wire READDIR* calls than we would have prior to this
+patch.
 
-+1 for gss-proxy by default (for Fedora anyway).  I've been using it=20=
+That's not necessarily wrong, but it might change the behavior on some
+workloads. I guess I need to ponder that a bit more... ;)
 
-throughout F19 extensively in the KRB5/NFSv4.1 environment with great s=
-uccess. =20
-I have nfs-secure-server.service "masked" via systemd to prevent it fro=
-m being=20
-started.
+> 
+> > The change to nfs_update_inode fixes an issue that had me stumped for a
+> > while.  It was still sending lots of GETATTR requests even after it had
+> > switched to READDIRPLUS instead of using cached info.  So that might be a
+> > genuine bug that should be fixed independently of this patch.
+> 
+> I managed to post the wrong version of the patch, which didn't have this
+> change.  Sorry.
+> 
+> Here is the real one.
+> 
+> NeilBrown
+> 
 
-There seems to be only one strange issue I've come across with gss-prox=
-y vs.=20
-rpc.svcgssd: https://fedorahosted.org/gss-proxy/ticket/98.  This is wit=
-h=20
-regard to how access for the "nfsnobody" user is handled.  The ticket a=
-ttempts=20
-to show that with rpc.svcgssd, a host with host credentials and a user =
-without=20
-credentials can still access NFS shares with 0755 directories and 0644 =
-files=20
-(via the host credentials and mapped to the nfsnobody user).  With gss-=
-proxy,=20
-I had to create user credentials for kojibuilder@REALM because the acce=
-ss=20
-wasn't allowed via the nfsnobody path.  I'm not sure if this is resolve=
-d, or=20
-by design, etc.  But it is the only issue I've seen with gss-proxy vs.=20=
+Looks good overall, comment inline below...
 
-rpc.svcgssd.
+> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+> index be38b573495a..b237fd7f2e0e 100644
+> --- a/fs/nfs/dir.c
+> +++ b/fs/nfs/dir.c
+> @@ -845,9 +845,12 @@ static int nfs_readdir(struct file *file, struct dir_context *ctx)
+>  	desc->dir_cookie = &dir_ctx->dir_cookie;
+>  	desc->decode = NFS_PROTO(inode)->decode_dirent;
+>  	desc->plus = nfs_use_readdirplus(inode, ctx) ? 1 : 0;
+> +	if (desc->plus && ctx->pos == 0)
+> +		clear_bit(NFS_INO_DID_FLUSH, &NFS_I(inode)->flags);
+>  
+>  	nfs_block_sillyrename(dentry);
+> -	if (ctx->pos == 0 || nfs_attribute_cache_expired(inode))
+> +	if (ctx->pos == 0 || nfs_attribute_cache_expired(inode) ||
+> +	    (NFS_I(inode)->cache_validity & NFS_INO_INVALID_DATA))
+>  		res = nfs_revalidate_mapping(inode, file->f_mapping);
+>  	if (res < 0)
+>  		goto out;
+> @@ -1080,6 +1083,16 @@ static int nfs_lookup_revalidate(struct dentry *dentry, unsigned int flags)
+>  
+>  	/* Force a full look up iff the parent directory has changed */
+>  	if (!nfs_is_exclusive_create(dir, flags) && nfs_check_verifier(dir, dentry)) {
+> +		if (nfs_server_capable(dir, NFS_CAP_READDIRPLUS)
+> +		    && ((NFS_I(inode)->cache_validity &
+> +			 (NFS_INO_INVALID_ATTR|NFS_INO_INVALID_LABEL))
+> +			|| nfs_attribute_cache_expired(inode))
+> +		    && !test_and_set_bit(NFS_INO_DID_FLUSH, &NFS_I(dir)->flags)
+> +			) {
+> +			nfs_advise_use_readdirplus(dir);
+> +			goto out_zap_parent;
+> +		}
+> +
+>  		if (nfs_lookup_verify_inode(inode, flags))
+>  			goto out_zap_parent;
+>  		goto out_valid;
+> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+> index 28a0a3cbd3b7..3996e6c7a728 100644
+> --- a/fs/nfs/inode.c
+> +++ b/fs/nfs/inode.c
+> @@ -1526,6 +1526,7 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
+>  
+>  	save_cache_validity = nfsi->cache_validity;
+>  	nfsi->cache_validity &= ~(NFS_INO_INVALID_ATTR
+> +			| NFS_INO_INVALID_LABEL
+>  			| NFS_INO_INVALID_ATIME
+>  			| NFS_INO_REVAL_FORCED
+>  			| NFS_INO_REVAL_PAGECACHE);
 
-Thanks.  -A
+Well spotted. Honestly, I'm not sure that NFS_INO_INVALID_LABEL really
+provides any value at all. I think the idea was to have that indicate
+when the security label is invalid for labeled NFS, but it seems to
+only be set and cleared in conjunction with NFS_INO_INVALID_ATTR.
 
-=2D-=20
-Anthony - http://messinet.com - http://messinet.com/~amessina/gallery
-8F89 5E72 8DF0 BCF0 10BE 9967 92DC 35DC B001 4A4E
+It might be best to just dump that flag altogether and rely on
+NFS_INO_INVALID_ATTR to indicate an invalid label as well. It really is
+just another attribute after all (at least in the current
+implementation).
 
---nextPart8554557.hMBlofD5jx
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: This is a digitally signed message part.
-Content-Transfer-Encoding: 7Bit
+As to your earlier point, yeah I think that fix is probably best done
+in a separate patch since it's not directly related to the original
+issue.
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.22 (GNU/Linux)
+> diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+> index 0ae5807480f4..c282ce3e5349 100644
+> --- a/include/linux/nfs_fs.h
+> +++ b/include/linux/nfs_fs.h
+> @@ -218,6 +218,7 @@ struct nfs_inode {
+>  #define NFS_INO_COMMIT		(7)		/* inode is committing unstable writes */
+>  #define NFS_INO_LAYOUTCOMMIT	(9)		/* layoutcommit required */
+>  #define NFS_INO_LAYOUTCOMMITTING (10)		/* layoutcommit inflight */
+> +#define NFS_INO_DID_FLUSH	(11)
+>  
+>  static inline struct nfs_inode *NFS_I(const struct inode *inode)
+>  {
 
-iEYEABECAAYFAlLw4CgACgkQktw13LABSk7G1gCaA9/F9QR5AkglntbbNmjSqwyX
-SZgAoKdgUoqN+ebBn+ky5Ul6IKhOyQ3i
-=gauy
------END PGP SIGNATURE-----
 
---nextPart8554557.hMBlofD5jx--
-
+-- 
+Jeff Layton <jlayton@redhat.com>
