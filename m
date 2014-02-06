@@ -1,55 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:57540 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:56776 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752213AbaBJU1C (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 10 Feb 2014 15:27:02 -0500
-From: Steve Dickson <steved@redhat.com>
-To: Trond Myklebust <Trond.Myklebust@netapp.com>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH] NFSv4: Infinite loop in lease recovery when rpc.gssd is not running.
-Date: Mon, 10 Feb 2014 15:26:55 -0500
-Message-Id: <1392064015-16178-1-git-send-email-steved@redhat.com>
+	id S1752055AbaBFSge (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 6 Feb 2014 13:36:34 -0500
+Date: Thu, 6 Feb 2014 13:36:31 -0500
+To: Norman Elton <normelton@gmail.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Windows AD, Users with too many groups
+Message-ID: <20140206183631.GA30952@fieldses.org>
+References: <CAPCnwUeUEznrKvJ-upUV_VyaKKhZcKpZbLFeC08YMMQycWK-vg@mail.gmail.com>
+ <CAPCnwUeobfXKGB9Q-nyYNDZa1L9iTwoKZm9bBH2ghUkqembCeA@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAPCnwUeobfXKGB9Q-nyYNDZa1L9iTwoKZm9bBH2ghUkqembCeA@mail.gmail.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit 0ea9de0e introduce a regression in the lease recovery code.
+On Thu, Feb 06, 2014 at 01:19:19PM -0500, Norman Elton wrote:
+> Just a follow-up to my previous post. In debugging rpc.gssd on the
+> client, here's where things are dying:
+> 
+> creating tcp client for server filertest.safety.net.wm.edu
+> creating context with server nfs@filertest.safety.net.wm.edu
+> WARNING: Failed to create krb5 context for user with uid 30487 for
+> server filertest.safety.net.wm.edu
+> 
+> But other users seem fine. I still think it's something to do with
+> excessive group membership.
 
-An infinite loop is caused when nfs4_establish_lease() fails
-with -EACCES. This causes nfs4_handle_reclaim_lease_error()
-to sleep a bit and resets the NFS4CLNT_LEASE_EXPIRED bit.
-This in turn causes nfs4_state_manager() to try and
-reestablished the lease, again, again, again...
+And they have that same group membership on the server side?
 
-The problem is a valid RPCSEC_GSS client is being created when
-rpc.gssd is not running. This is causing the RPC code to fail
-with the -EACCES sending the lease reestablished off the
-deep end.
+In that case there might be some problem with rpc.svcgssd's handling of
+large group lists--some debugging of rpc.svcgssd on the server might be
+interesting.
 
-Moving the gssd_running() check back into nfs4_init_client(),
-stopping the RPCSEC_GSS client from being create, stops
-the looping
+In particular, output from:
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- fs/nfs/nfs4client.c |    5 ++++-
- 1 files changed, 4 insertions(+), 1 deletions(-)
+	strace -p $(pidof rpc.svcgssd) -s65536 -e trace=open,close,read,write
 
-diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-index 860ad26..a60269f 100644
---- a/fs/nfs/nfs4client.c
-+++ b/fs/nfs/nfs4client.c
-@@ -372,7 +372,10 @@ struct nfs_client *nfs4_init_client(struct nfs_client *clp,
- 	__set_bit(NFS_CS_DISCRTRY, &clp->cl_flags);
- 	__set_bit(NFS_CS_NO_RETRANS_TIMEOUT, &clp->cl_flags);
- 
--	error = nfs_create_rpc_client(clp, timeparms, RPC_AUTH_GSS_KRB5I);
-+	error =  -EINVAL;
-+	if (gssd_running(clp->cl_net))
-+		error = nfs_create_rpc_client(clp, timeparms,
-+				RPC_AUTH_GSS_KRB5I);
- 	if (error == -EINVAL)
- 		error = nfs_create_rpc_client(clp, timeparms, RPC_AUTH_UNIX);
- 	if (error < 0)
--- 
-1.7.1
+might be interesting.
 
+--b.
+
+> 
+> Any suggestions are appreciated, thanks!
+> 
+> Norman Elton
+> College of William & Mary
+> 
+> On Mon, Feb 3, 2014 at 4:13 PM, Norman Elton <normelton@gmail.com> wrote:
+> > I've read stories about users having too many group memberships. We
+> > seem to experience similar symptoms, though the usual tricks don't
+> > seem to work.
+> >
+> > In our case, there is a RHEL6 NFS server feeding multiple RHEL6 NFS
+> > clients. This is all NFSv4 with Kerberos. Most users can login fine,
+> > but domain admins get a "permission denied" when accessing their
+> > NFS-mounted home directory. The most notable commonality is their high
+> > number of group memberships.
+> >
+> > I've tried inflating my group count to greater than 16, my account
+> > continues to work fine.
+> >
+> > We've tried adding "--manage-gids" to rpc.mountd, no luck. Although
+> > it's unclear whether this really does anything in a kerberized
+> > environment.
+> >
+> > Any other suggestions? Other debugging tricks?
+> >
+> > Thanks
+> >
+> > Norman Elton
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
