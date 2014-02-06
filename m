@@ -1,121 +1,107 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx.bwstor.com.cn ([211.103.180.228]:41320 "EHLO mx.bwstor.cn"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1751397AbaBLKHw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 12 Feb 2014 05:07:52 -0500
-From: shaobingqing <shaobingqing@bwstor.com.cn>
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
-        shaobingqing <shaobingqing@bwstor.com.cn>
-Subject: [PATCH v2] NFSv4.1: new layout stateid can not be overwrite by one out of date
-Date: Wed, 12 Feb 2014 18:06:20 +0800
-Message-Id: <1392199580-14249-1-git-send-email-shaobingqing@bwstor.com.cn>
-In-Reply-To: <N>
-References: <N>
+Received: from fieldses.org ([174.143.236.118]:55901 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751187AbaBFS6o (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 6 Feb 2014 13:58:44 -0500
+Date: Thu, 6 Feb 2014 13:58:43 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Norman Elton <normelton@gmail.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Windows AD, Users with too many groups
+Message-ID: <20140206185843.GA31325@fieldses.org>
+References: <CAPCnwUeUEznrKvJ-upUV_VyaKKhZcKpZbLFeC08YMMQycWK-vg@mail.gmail.com>
+ <CAPCnwUeobfXKGB9Q-nyYNDZa1L9iTwoKZm9bBH2ghUkqembCeA@mail.gmail.com>
+ <20140206183631.GA30952@fieldses.org>
+ <CAPCnwUcXaGUMs1r23+oPROzPQpmgLV62zGBZE6dbt0nvF75=DQ@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAPCnwUcXaGUMs1r23+oPROzPQpmgLV62zGBZE6dbt0nvF75=DQ@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If initiate_file_draining returned NFS4ERR_DELAY, all the lsegs of
-a file might be released before the retrying cb_layout request arriving
-at the client. In this situation, layoutget request of the file will
-use open stateid to obtain a new layout stateid. And if the retrying
-cb_layout request arrived at the client after the layoutget reply,
-new layout stateid would be overwrite by one out of date.
+On Thu, Feb 06, 2014 at 01:52:16PM -0500, Norman Elton wrote:
+> > And they have that same group membership on the server side?
+> 
+> Yes, both the NFS server and NFS client point to the same active
+> directory for ldap / kerberos.
+> 
+> I have tried running rpc.svcgssd with debugging, as well as with
+> strace as you suggested. I get plenty of output when a "good" user
+> logs in. No debugging information for user who fails. The error
+> (failed to create krb5 context...) appears on the client, maybe before
+> it connects to the server?
 
-Signed-off-by: shaobingqing <shaobingqing@bwstor.com.cn>
----
- fs/nfs/callback.h      |    5 +++++
- fs/nfs/callback_proc.c |   24 ++++++++++++++++++++++++
- fs/nfs/inode.c         |    1 +
- include/linux/nfs_fs.h |    1 +
- 4 files changed, 31 insertions(+), 0 deletions(-)
+OK, must be.  You could also confirm this by looking at network traffic,
+e.g. with wireshark.
 
-diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
-index 84326e9..213ded9 100644
---- a/fs/nfs/callback.h
-+++ b/fs/nfs/callback.h
-@@ -166,6 +166,11 @@ struct cb_layoutrecallargs {
- 	};
- };
- 
-+struct cb_stalestatenode {
-+	nfs4_stateid cbs_stateid;
-+	struct list_head cb_stale_state;
-+};
-+
- extern __be32 nfs4_callback_layoutrecall(
- 	struct cb_layoutrecallargs *args,
- 	void *dummy, struct cb_process_state *cps);
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index ae2e87b..80bafbe 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -159,9 +159,16 @@ static u32 initiate_file_draining(struct nfs_client *clp,
- {
- 	struct inode *ino;
- 	struct pnfs_layout_hdr *lo;
-+	struct cb_stalestatenode  *state_entry, *state_node;
-+	struct cb_stalestatenode *tmp;
-+	bool res;
- 	u32 rv = NFS4ERR_NOMATCHING_LAYOUT;
- 	LIST_HEAD(free_me_list);
- 
-+	state_node = kmalloc(sizeof(cb_stalestatenode), GFP_KERNEL);
-+	if (!state_node)
-+		return NFS4ERR_DELAY;
-+
- 	lo = get_layout_by_fh(clp, &args->cbl_fh);
- 	if (!lo)
- 		return NFS4ERR_NOMATCHING_LAYOUT;
-@@ -174,7 +181,24 @@ static u32 initiate_file_draining(struct nfs_client *clp,
- 		rv = NFS4ERR_DELAY;
- 	else
- 		rv = NFS4ERR_NOMATCHING_LAYOUT;
-+	list_for_each_entry_safe(state_entry, tmp,
-+			&NFS_I(ino)->cb_stale_state_list, cb_stale_state) {
-+		if (memcmp(&args->cbl_stateid, &state_entry->cbs_stateid,
-+				NFS4_STATEID_OTHER_SIZE) != 0)
-+			continue;
-+		if (rv == NFS4ERR_NOMATCHING_LAYOUT)
-+			list_del(&state_entry->cb_stale_state);
-+		goto unlock;
-+	}
-+	if (rv == NFS4ERR_DELAY) {
-+		nfs4_stateid_copy(&state_node->cbs_stateid, &args->cbl_stateid);
-+		list_add(&state_node->cb_stale_state,
-+				&NFS_I(ino)->cb_stale_state_list);
-+	} else {
-+		kfree(state_node);
-+	}
- 	pnfs_set_layout_stateid(lo, &args->cbl_stateid, true);
-+unlock:
- 	spin_unlock(&ino->i_lock);
- 	pnfs_free_lseg_list(&free_me_list);
- 	pnfs_put_layout_hdr(lo);
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index eda8879..e2c881a 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -1643,6 +1643,7 @@ struct inode *nfs_alloc_inode(struct super_block *sb)
- 		return NULL;
- 	nfsi->flags = 0UL;
- 	nfsi->cache_validity = 0UL;
-+	INIT_LIST_HEAD(&nfsi->cb_stale_state_list);
- #ifdef CONFIG_NFS_V3_ACL
- 	nfsi->acl_access = ERR_PTR(-EAGAIN);
- 	nfsi->acl_default = ERR_PTR(-EAGAIN);
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 3ea4cde..ba47870 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -181,6 +181,7 @@ struct nfs_inode {
- 	struct nfs4_cached_acl	*nfs4_acl;
-         /* NFSv4 state */
- 	struct list_head	open_states;
-+	struct list_head	cb_stale_state_list;
- 	struct nfs_delegation __rcu *delegation;
- 	fmode_t			 delegation_state;
- 	struct rw_semaphore	rwsem;
--- 
-1.7.4.2
+Might also be worth looking at the client<->KDC traffic to see if the
+client is getting as far as asking for a ticket and if so what error the
+KDC is returning.
 
+--b.
+
+> 
+> Thanks,
+> 
+> Norman
+> 
+> On Thu, Feb 6, 2014 at 1:36 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> > On Thu, Feb 06, 2014 at 01:19:19PM -0500, Norman Elton wrote:
+> >> Just a follow-up to my previous post. In debugging rpc.gssd on the
+> >> client, here's where things are dying:
+> >>
+> >> creating tcp client for server filertest.safety.net.wm.edu
+> >> creating context with server nfs@filertest.safety.net.wm.edu
+> >> WARNING: Failed to create krb5 context for user with uid 30487 for
+> >> server filertest.safety.net.wm.edu
+> >>
+> >> But other users seem fine. I still think it's something to do with
+> >> excessive group membership.
+> >
+> > And they have that same group membership on the server side?
+> >
+> > In that case there might be some problem with rpc.svcgssd's handling of
+> > large group lists--some debugging of rpc.svcgssd on the server might be
+> > interesting.
+> >
+> > In particular, output from:
+> >
+> >         strace -p $(pidof rpc.svcgssd) -s65536 -e trace=open,close,read,write
+> >
+> > might be interesting.
+> >
+> > --b.
+> >
+> >>
+> >> Any suggestions are appreciated, thanks!
+> >>
+> >> Norman Elton
+> >> College of William & Mary
+> >>
+> >> On Mon, Feb 3, 2014 at 4:13 PM, Norman Elton <normelton@gmail.com> wrote:
+> >> > I've read stories about users having too many group memberships. We
+> >> > seem to experience similar symptoms, though the usual tricks don't
+> >> > seem to work.
+> >> >
+> >> > In our case, there is a RHEL6 NFS server feeding multiple RHEL6 NFS
+> >> > clients. This is all NFSv4 with Kerberos. Most users can login fine,
+> >> > but domain admins get a "permission denied" when accessing their
+> >> > NFS-mounted home directory. The most notable commonality is their high
+> >> > number of group memberships.
+> >> >
+> >> > I've tried inflating my group count to greater than 16, my account
+> >> > continues to work fine.
+> >> >
+> >> > We've tried adding "--manage-gids" to rpc.mountd, no luck. Although
+> >> > it's unclear whether this really does anything in a kerberized
+> >> > environment.
+> >> >
+> >> > Any other suggestions? Other debugging tricks?
+> >> >
+> >> > Thanks
+> >> >
+> >> > Norman Elton
+> >> --
+> >> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> >> the body of a message to majordomo@vger.kernel.org
+> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
