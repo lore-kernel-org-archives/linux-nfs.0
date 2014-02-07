@@ -1,54 +1,143 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from szxga02-in.huawei.com ([119.145.14.65]:35754 "EHLO
-	szxga02-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751108AbaBOBwJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Feb 2014 20:52:09 -0500
-Message-ID: <52FEC818.7030604@huawei.com>
-Date: Sat, 15 Feb 2014 09:51:20 +0800
-From: Weng Meiling <wengmeiling.weng@huawei.com>
+Received: from fieldses.org ([174.143.236.118]:58999 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750744AbaBGWz3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 7 Feb 2014 17:55:29 -0500
+Date: Fri, 7 Feb 2014 17:55:28 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Norman Elton <normelton@gmail.com>
+Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: Re: Windows AD, Users with too many groups
+Message-ID: <20140207225528.GF8801@fieldses.org>
+References: <CAPCnwUeUEznrKvJ-upUV_VyaKKhZcKpZbLFeC08YMMQycWK-vg@mail.gmail.com>
+ <CAPCnwUeobfXKGB9Q-nyYNDZa1L9iTwoKZm9bBH2ghUkqembCeA@mail.gmail.com>
+ <20140206183631.GA30952@fieldses.org>
+ <CAPCnwUcXaGUMs1r23+oPROzPQpmgLV62zGBZE6dbt0nvF75=DQ@mail.gmail.com>
+ <20140206185843.GA31325@fieldses.org>
+ <CAPCnwUcL6-2yciiDvYiVuWrF8_V3h9551hCThCO94yVX9JHSPA@mail.gmail.com>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Stanislav Kinsbursky <skinsbursky@parallels.com>, <greg@kroah.com>,
-        <linux-nfs@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
-        <devel@openvz.org>
-Subject: Re: [PATCH] nfsd: check passed socket's net matches NFSd superblock's
- one
-References: <20131230142339.16166.28243.stgit@localhost.localdomain> <20140103222226.GD5164@fieldses.org>
-In-Reply-To: <20140103222226.GD5164@fieldses.org>
-Content-Type: text/plain; charset="ISO-8859-1"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAPCnwUcL6-2yciiDvYiVuWrF8_V3h9551hCThCO94yVX9JHSPA@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Bruce,
-
-The upstream has merged your git tree for-3.14, but there is no this patch?
-Do you forget this patch?
-
-Thanks!
-Weng Meiling
-
-
-On 2014/1/4 6:22, J. Bruce Fields wrote:
-> On Mon, Dec 30, 2013 at 05:23:59PM +0300, Stanislav Kinsbursky wrote:
->> There could be a case, when NFSd file system is mounted in network, different
->> to socket's one, like below:
->>
->> "ip netns exec" creates new network and mount namespace, which duplicates NFSd
->> mount point, created in init_net context. And thus NFS server stop in nested
->> network context leads to RPCBIND client destruction in init_net.
->> Then, on NFSd start in nested network context, rpc.nfsd process creates socket
->> in nested net and passes it into "write_ports", which leads to RPCBIND sockets
->> creation in init_net context because of the same reason (NFSd monut point was
->> created in init_net context). An attempt to register passed socket in nested
->> net leads to panic, because no RPCBIND client present in nexted network
->> namespace.
+On Thu, Feb 06, 2014 at 02:45:39PM -0500, Norman Elton wrote:
+> >> OK, must be.  You could also confirm this by looking at network traffic,
+> >> e.g. with wireshark.
 > 
-> So it's the attempt to use a NULL ->rpcb_local_clnt4?
+> We do see NFS traffic between the client and the server, but I cannot
+> get any useful debug information when a failing user logs in. I've got
+> rpc.svcgssd, rpc.idmapd, and rpc.mountd all running with the relevant
+> -d's and -v's.
 > 
-> Interesting, thanks--applying with a minor fix to logged message.
+> I do see kerberos traffic, and indeed both good and failing users are
+> getting kerb tickets. I've compared all the list outputs I can
+> generate, and don't see any obvious differences. In look at packet
+> captures between the client and KDC, I've noticed one difference. The
+> client requests a TGT in a AS-REQ packet. The KDC responds with a
+> AS-REP. This AS-REP has a krbtgt/DOMAIN ticket in it, followed by some
+> additional data (my kerb protocol kung-fu is weak here). This last
+> data has "kvno: 4", so perhaps it's some sort of key? In any case, on
+> the failing user, this is listed with enctype rc4-hmac, on the passing
+> user, it's enctype aes256-cts-hmac-sha1-96.
 > 
-> --b.
+> Thanks again for your advice,
+
+No good ideas off the top of my head.  Maybe fooling with the crypto
+settings on those users to see if it's a problem with one particular
+crypto algorithm?
+
+And since this is RHEL6 it'd be worth contacting support, of course.
+
+--b.
+
 > 
-
-
-
+> Norman
+> 
+> On Thu, Feb 6, 2014 at 1:58 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> > On Thu, Feb 06, 2014 at 01:52:16PM -0500, Norman Elton wrote:
+> >> > And they have that same group membership on the server side?
+> >>
+> >> Yes, both the NFS server and NFS client point to the same active
+> >> directory for ldap / kerberos.
+> >>
+> >> I have tried running rpc.svcgssd with debugging, as well as with
+> >> strace as you suggested. I get plenty of output when a "good" user
+> >> logs in. No debugging information for user who fails. The error
+> >> (failed to create krb5 context...) appears on the client, maybe before
+> >> it connects to the server?
+> >
+> > OK, must be.  You could also confirm this by looking at network traffic,
+> > e.g. with wireshark.
+> >
+> > Might also be worth looking at the client<->KDC traffic to see if the
+> > client is getting as far as asking for a ticket and if so what error the
+> > KDC is returning.
+> >
+> > --b.
+> >
+> >>
+> >> Thanks,
+> >>
+> >> Norman
+> >>
+> >> On Thu, Feb 6, 2014 at 1:36 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> >> > On Thu, Feb 06, 2014 at 01:19:19PM -0500, Norman Elton wrote:
+> >> >> Just a follow-up to my previous post. In debugging rpc.gssd on the
+> >> >> client, here's where things are dying:
+> >> >>
+> >> >> creating tcp client for server filertest.safety.net.wm.edu
+> >> >> creating context with server nfs@filertest.safety.net.wm.edu
+> >> >> WARNING: Failed to create krb5 context for user with uid 30487 for
+> >> >> server filertest.safety.net.wm.edu
+> >> >>
+> >> >> But other users seem fine. I still think it's something to do with
+> >> >> excessive group membership.
+> >> >
+> >> > And they have that same group membership on the server side?
+> >> >
+> >> > In that case there might be some problem with rpc.svcgssd's handling of
+> >> > large group lists--some debugging of rpc.svcgssd on the server might be
+> >> > interesting.
+> >> >
+> >> > In particular, output from:
+> >> >
+> >> >         strace -p $(pidof rpc.svcgssd) -s65536 -e trace=open,close,read,write
+> >> >
+> >> > might be interesting.
+> >> >
+> >> > --b.
+> >> >
+> >> >>
+> >> >> Any suggestions are appreciated, thanks!
+> >> >>
+> >> >> Norman Elton
+> >> >> College of William & Mary
+> >> >>
+> >> >> On Mon, Feb 3, 2014 at 4:13 PM, Norman Elton <normelton@gmail.com> wrote:
+> >> >> > I've read stories about users having too many group memberships. We
+> >> >> > seem to experience similar symptoms, though the usual tricks don't
+> >> >> > seem to work.
+> >> >> >
+> >> >> > In our case, there is a RHEL6 NFS server feeding multiple RHEL6 NFS
+> >> >> > clients. This is all NFSv4 with Kerberos. Most users can login fine,
+> >> >> > but domain admins get a "permission denied" when accessing their
+> >> >> > NFS-mounted home directory. The most notable commonality is their high
+> >> >> > number of group memberships.
+> >> >> >
+> >> >> > I've tried inflating my group count to greater than 16, my account
+> >> >> > continues to work fine.
+> >> >> >
+> >> >> > We've tried adding "--manage-gids" to rpc.mountd, no luck. Although
+> >> >> > it's unclear whether this really does anything in a kerberized
+> >> >> > environment.
+> >> >> >
+> >> >> > Any other suggestions? Other debugging tricks?
+> >> >> >
+> >> >> > Thanks
+> >> >> >
+> >> >> > Norman Elton
+> >> >> --
+> >> >> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> >> >> the body of a message to majordomo@vger.kernel.org
+> >> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
