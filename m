@@ -1,133 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from shadbolt.e.decadent.org.uk ([88.96.1.126]:39890 "EHLO
-	shadbolt.e.decadent.org.uk" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750755AbaBZA6J (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Feb 2014 19:58:09 -0500
-Message-ID: <1393376280.14067.34.camel@deadeye.wl.decadent.org.uk>
-Subject: Oops in nfs41_assign_slot in Linux 3.13.4
-From: Ben Hutchings <ben@decadent.org.uk>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: 734268@bugs.debian.org, Arthur de Jong <adejong@debian.org>,
-        linux-nfs@vger.kernel.org
-Date: Wed, 26 Feb 2014 00:58:00 +0000
-In-Reply-To: <1393361101.5000.26.camel@sorbet.thuis.net>
-References: <1388922864.10916.7.camel@sorbet.thuis.net>
-	 <1393361101.5000.26.camel@sorbet.thuis.net>
-Content-Type: multipart/signed; micalg="pgp-sha512";
-	protocol="application/pgp-signature"; boundary="=-YzlWJQb/wA3+SsC56H79"
-Mime-Version: 1.0
+Received: from mx1.redhat.com ([209.132.183.28]:64220 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751961AbaBGPUt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 7 Feb 2014 10:20:49 -0500
+From: Rafael Aquini <aquini@redhat.com>
+To: linux-kernel@vger.kernel.org
+Cc: trond.myklebust@primarydata.com, jstancek@redhat.com, jlayton@redhat.com,
+        mgorman@suse.de, riel@redhat.com, linux-nfs@vger.kernel.org,
+        akpm@linux-foundation.org, linux-mm@kvack.org
+Subject: [PATCH] mm: fix page leak at nfs_symlink()
+Date: Fri,  7 Feb 2014 13:19:54 -0200
+Message-Id: <f4b3dc07dfa55bf7931de36b03aa9ef7e3ff0490.1391785222.git.aquini@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Changes committed by "a0b8cab3 mm: remove lru parameter from
+__pagevec_lru_add and remove parts of pagevec API" have introduced
+a call to add_to_page_cache_lru() which causes a leak in nfs_symlink() 
+as now the page gets an extra refcount that is not dropped.
 
---=-YzlWJQb/wA3+SsC56H79
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+Jan Stancek observed and reported the leak effect while running test8 from
+Connectathon Testsuite. After several iterations over the test case,
+which creates several symlinks on a NFS mountpoint, the test system was
+quickly getting into an out-of-memory scenario.
 
-Trond, Arthur seems to be hitting a similar bug to
-<https://bugzilla.redhat.com/show_bug.cgi?id=3D1050206>, and it's still
-occurring in 3.13.4 even though that has the two fixes you posted there.
-The full bug report, with screenshots of the oopses, is at
-<https://bugs.debian.org/734268>.
+This patch fixes the page leak by dropping that extra refcount 
+add_to_page_cache_lru() is grabbing. 
 
-On Tue, 2014-02-25 at 21:45 +0100, Arthur de Jong wrote:
-> Control: severity -1 critical
-> Control: found -1 linux/3.12.6-2
-> Control: found -1 linux/3.13.4-1
-> Control: fixed -1 linux/3.11.10-1
->=20
-> Raising severity to critical because it kills the whole system quite
-> predictably.
->=20
-> I can still reliably reproduce this with linux-image-3.13-1-amd64
-> 3.13.4-1 (see photo) so I'm currently still stuck with a 3.11 kernel.
->=20
-> If there is any information I can provide to help identify this bug,
-> please let me know.
->=20
-> The only thing that could be relevant is that I have NFS mounts from
-> different NFS servers:
->=20
-> /etc/fstab:
->=20
-> server1:/home  /home  nfs rw,hard,intr,bg,rsize=3D4096,wsize=3D1024,acreg=
-min=3D60,acregmax=3D600,acdirmin=3D60,acdirmax=3D600,noatime,sec=3Dsys,_net=
-dev 0 0
-> server2:/share /share nfs ro,soft,intr,bg,rsize=3D8192,nosuid,nodev,noexe=
-c,acregmin=3D60,acregmax=3D600,acdirmin=3D60,acdirmax=3D600,sec=3Dsys,_netd=
-ev 0 0
->=20
->=20
-> server1 is Debian wheezy (kernel linux-image-3.2.0-4-amd64
-> 3.2.51-1) /etc/exports:
->=20
-> /home -rw,root_squash,nohide,async,no_subtree_check client1 client2(no_ro=
-ot_squash) client3
->=20
-> I'm mostly seeing crashes on client2, my main workstation, but also
-> other machines. /home is an ext3 file system.
->=20
->=20
-> server2 runs testing (kernel linux-image-3.12-1-686-pae
-> 3.12.9-1) /etc/exports:
->=20
-> /share *.local.domain(ro,all_squash,crossmnt,sync,no_subtree_check)
->=20
-> Under /share are /share/disk1 and /share/disk2 ext3 file systems.
->=20
->=20
-> On the client again, from /proc/mounts (running a 3.11 kernel again):
->=20
-> server1:/home /home nfs4 rw,noatime,vers=3D4.0,rsize=3D4096,wsize=3D1024,=
-namlen=3D255,acregmin=3D60,acregmax=3D600,acdirmin=3D60,acdirmax=3D600,hard=
-,proto=3Dtcp,port=3D0,timeo=3D600,retrans=3D2,sec=3Dsys,clientaddr=3D192.16=
-8.12.4,local_lock=3Dnone,addr=3D192.168.12.1 0 0
-> server2:/share /share nfs4 ro,nosuid,nodev,noexec,relatime,vers=3D4.0,rsi=
-ze=3D8192,wsize=3D131072,namlen=3D255,acregmin=3D60,acregmax=3D600,acdirmin=
-=3D60,acdirmax=3D600,soft,proto=3Dtcp,port=3D0,timeo=3D600,retrans=3D2,sec=
-=3Dsys,clientaddr=3D192.168.12.4,local_lock=3Dnone,addr=3D192.168.12.9 0 0
-> server2:/share/disk2 /share/disk2 nfs4 ro,nosuid,nodev,noexec,relatime,ve=
-rs=3D4.0,rsize=3D8192,wsize=3D131072,namlen=3D255,acregmin=3D60,acregmax=3D=
-600,acdirmin=3D60,acdirmax=3D600,soft,proto=3Dtcp,port=3D0,timeo=3D600,retr=
-ans=3D2,sec=3Dsys,clientaddr=3D192.168.12.4,local_lock=3Dnone,addr=3D192.16=
-8.12.9 0 0
-> server2:/share/disk1 /share/disk1 nfs4 ro,nosuid,nodev,noexec,relatime,ve=
-rs=3D4.0,rsize=3D8192,wsize=3D131072,namlen=3D255,acregmin=3D60,acregmax=3D=
-600,acdirmin=3D60,acdirmax=3D600,soft,proto=3Dtcp,port=3D0,timeo=3D600,retr=
-ans=3D2,sec=3Dsys,clientaddr=3D192.168.12.4,local_lock=3Dnone,addr=3D192.16=
-8.12.9 0 0
->=20
-> I have some freedom to change things around to test in this network so
-> let me know which things to try.
->=20
-> Thanks,
->=20
+Signed-off-by: Jan Stancek <jstancek@redhat.com>
+Signed-off-by: Rafael Aquini <aquini@redhat.com>
+---
+ fs/nfs/dir.c | 5 +++++
+ 1 file changed, 5 insertions(+)
 
---=20
-Ben Hutchings
-Always try to do things in chronological order;
-it's less confusing that way.
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index be38b57..4a48fe4 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -1846,6 +1846,11 @@ int nfs_symlink(struct inode *dir, struct dentry *dentry, const char *symname)
+ 							GFP_KERNEL)) {
+ 		SetPageUptodate(page);
+ 		unlock_page(page);
++		/*
++		 * add_to_page_cache_lru() grabs an extra page refcount.
++		 * Drop it here to avoid leaking this page later.
++		 */
++		page_cache_release(page);
+ 	} else
+ 		__free_page(page);
+ 
+-- 
+1.8.5.3
 
---=-YzlWJQb/wA3+SsC56H79
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: This is a digitally signed message part
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v1
-
-iQIVAwUAUw08Gee/yOyVhhEJAQpFKw//aH02EOTHouLg1kz1zwOzGAqEOQcvRRo1
-g8JAMkPb2FsBkHq7wL+h4ncOq2u1JAzB1drau2SymZs+NStoJCh51O4xSPNb2I45
-KyvHZw72pZcY8mLLlyGr8j1zC6gFK+5rCB5ZdeCdjQwb925RF0DFIG22p8fHyllK
-U6iSGa5xsfGS08YYPV+ixNZfGnSK1cHEMXh+c1bugzk+UJp7KykoqUKTJovImV++
-3V7jTGfoleda8f07wF+F+A+e9mMM+tpUWQaaWIOSbITh7oPhYl3n5CjbFgFfKyZM
-1uT9ZLWS7jioRWnT2a87EW0sTGSMTKdVvUkFvfiL2LHg9/0U0NOy5pAXF3VLlEIu
-RL9bquMPEEuWpph53rlsymVAUkkt0BPBZ9L6ycz0y+kA5jb1ZdgzQ8aePXoqA6MZ
-uyEX91ekg2TNsETmztH2xKRL+68j+db4xN4s0hczsFV9eJBU0hqmzhQSbvxYGspZ
-5zx4FFJoylOEv2QSAvgve0973OiZuDX6wHUU6ISjflqLgQB3v4YyAHMxk+Gz23e4
-BRjXHRZBKaBU2JhZW9giT2mzKZ3zBYay8hMA1p8t++Je61mAWiLN2/jvsvN2Ei1A
-QfzoCdTuBRCwuw0Uf2EW7MLZEyQQxoBleRDWKcJ+qNC0xMDyPf6qTPv+qkEJUeCT
-ccm679hXrOU=
-=JI92
------END PGP SIGNATURE-----
-
---=-YzlWJQb/wA3+SsC56H79--
