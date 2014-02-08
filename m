@@ -1,51 +1,31 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.skyhub.de ([78.46.96.112]:57923 "EHLO mail.skyhub.de"
+Received: from fieldses.org ([174.143.236.118]:40098 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751847AbaBQUbA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 17 Feb 2014 15:31:00 -0500
-Date: Mon, 17 Feb 2014 21:30:57 +0100
-From: Borislav Petkov <bp@alien8.de>
-To: John <da_audiophile@yahoo.com>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        lkml <linux-kernel@vger.kernel.org>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "stephen@networkplumber.org" <stephen@networkplumber.org>,
-        "mlindner@marvell.com" <mlindner@marvell.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [BUG] unable to handle kernel NULL pointer dereference
-Message-ID: <20140217203057.GJ4559@pd.tnic>
-References: <1392466251.41282.YahooMailNeo@web140003.mail.bf1.yahoo.com>
- <1392494917.71728.YahooMailNeo@web140002.mail.bf1.yahoo.com>
- <20140215203015.GA4528@pd.tnic>
- <1392498262.98385.YahooMailNeo@web140003.mail.bf1.yahoo.com>
- <20140215232508.GB4508@pd.tnic>
- <1392571653.44773.4.camel@leira.trondhjem.org>
- <1392667974.22806.YahooMailNeo@web140003.mail.bf1.yahoo.com>
+	id S1751452AbaBHUpX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 8 Feb 2014 15:45:23 -0500
+Date: Sat, 8 Feb 2014 15:45:22 -0500
+To: Steven Whitehouse <swhiteho@redhat.com>
+Cc: linux-kernel@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+Subject: memory corruption after "Fix race when checking i_size on direct i/o
+ read"
+Message-ID: <20140208204522.GG8801@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <1392667974.22806.YahooMailNeo@web140003.mail.bf1.yahoo.com>
+Content-Type: text/plain; charset=us-ascii
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Feb 17, 2014 at 12:12:54PM -0800, John wrote:
-> Trond.  Yes, your patch fixes the regression for me; tested on
-> v3.13.3,  I do not know the process by which patches get into
-> the next stable release (minor version).  My hope is that once
-> peer-reviewed, this patch gets into the 3.13.4 and since the 3.12
-> series is not EOL yet, into 3.12.12 as well.  Thank you for the time
-> and effort!
+I'm getting warnings about corruption of the kmalloc-32 slab on an nfs
+server while running some regression tests.
 
-Basically you say
+A bisect lands on 9fe55eea7e4b444bafc42fa0000cc2d1d2847275 "Fix race
+when checking i_size on direct i/o read".  Is there any known problem
+here?
 
-Tested-by: John <da_audiophile@yahoo.com>
+It doesn't reproduce immediately and it's possible I could have made a
+mistake on the bisect.
 
-Trond adds stable to CC, sends it to Linus and it trickles down to
-3.12.x and 3.13.x stable.
+I'll verify and try to narrow down the reproducer.
 
--- 
-Regards/Gruss,
-    Boris.
-
-Sent from a fat crate under my desk. Formatting is fine.
---
+--b.
