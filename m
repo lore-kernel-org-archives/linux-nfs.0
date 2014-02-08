@@ -1,73 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:22023 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750860AbaBZGHJ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Feb 2014 01:07:09 -0500
-References: <20140226161646.1520358b@notabene.brown>
-Mime-Version: 1.0 (1.0)
-In-Reply-To: <20140226161646.1520358b@notabene.brown>
-Content-Type: text/plain;
-	charset=us-ascii
-Message-Id: <728AA1BE-98D9-4E63-B415-8CB922AD121C@oracle.com>
-Cc: Steve Dickson <SteveD@redhat.com>, NFS <linux-nfs@vger.kernel.org>
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: What does rpc.mountd dlopen() libnfsjunct.so rather than libnfsjunct.so.0
-Date: Tue, 25 Feb 2014 22:06:58 -0800
-To: NeilBrown <neilb@suse.de>
+Received: from mx.bwstor.com.cn ([211.103.180.228]:32825 "EHLO mx.bwstor.cn"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1751004AbaBHCeT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 7 Feb 2014 21:34:19 -0500
+From: shaobingqing <shaobingqing@bwstor.com.cn>
+To: trond.myklebust@primarydata.com, bfields@redhat.com, davem@davemloft.net
+Cc: linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
+        linux-kernel@vger.kernel.org,
+        shaobingqing <shaobingqing@bwstor.com.cn>
+Subject: [PATCH v2] SUNRPC: Allow one callback request to be received from two sk_buff
+Date: Sat,  8 Feb 2014 10:29:03 +0800
+Message-Id: <1391826543-3102-1-git-send-email-shaobingqing@bwstor.com.cn>
+In-Reply-To: <no>
+References: <no>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+In current code, there only one struct rpc_rqst is prealloced. If one
+callback request is received from two sk_buff, the xprt_alloc_bc_request
+would be execute two times with the same transport->xid. The first time
+xprt_alloc_bc_request will alloc one struct rpc_rqst and the TCP_RCV_COPY_DATA
+bit of transport->tcp_flags will not be cleared. The second time
+xprt_alloc_bc_request could not alloc struct rpc_rqst any more and NULL
+pointer will be returned, then xprt_force_disconnect occur. I think one
+callback request can be allowed to be received from two sk_buff.
 
+Signed-off-by: shaobingqing <shaobingqing@bwstor.com.cn>
+---
+ include/linux/sunrpc/xprt.h |    1 +
+ net/sunrpc/xprt.c           |    1 +
+ net/sunrpc/xprtsock.c       |   13 ++++++++++++-
+ 3 files changed, 14 insertions(+), 1 deletions(-)
 
-> On Feb 25, 2014, at 9:16 PM, NeilBrown <neilb@suse.de> wrote:
-> 
-> 
-> See $SUBJ
-> 
-> Shared libraries are usually versioned so you can release a new version with
-> an incompatible API and gradually transition to it.
-> 
-> A rpc.mountd dlopens libnfsjunct.so with no version it is effectively
-> prohibited from ever changing the API in an incompatible way.
+diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+index cec7b9b..82bfe01 100644
+--- a/include/linux/sunrpc/xprt.h
++++ b/include/linux/sunrpc/xprt.h
+@@ -211,6 +211,7 @@ struct rpc_xprt {
+ 						 * items */
+ 	struct list_head	bc_pa_list;	/* List of preallocated
+ 						 * backchannel rpc_rqst's */
++	struct rpc_rqst	*req_first;
+ #endif /* CONFIG_SUNRPC_BACKCHANNEL */
+ 	struct list_head	recv;
+ 
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index 095363e..93ad8bc 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -1256,6 +1256,7 @@ static void xprt_init(struct rpc_xprt *xprt, struct net *net)
+ #if defined(CONFIG_SUNRPC_BACKCHANNEL)
+ 	spin_lock_init(&xprt->bc_pa_lock);
+ 	INIT_LIST_HEAD(&xprt->bc_pa_list);
++	xprt->req_first = NULL;
+ #endif /* CONFIG_SUNRPC_BACKCHANNEL */
+ 
+ 	xprt->last_used = jiffies;
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index ee03d35..c43dca4 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -1272,7 +1272,16 @@ static inline int xs_tcp_read_callback(struct rpc_xprt *xprt,
+ 				container_of(xprt, struct sock_xprt, xprt);
+ 	struct rpc_rqst *req;
+ 
+-	req = xprt_alloc_bc_request(xprt);
++	if (xprt->req_first != NULL &&
++			xprt->req_first->rq_xid == transport->tcp_xid) {
++		req = xprt->req_first;
++	} else if (xprt->req_first != NULL &&
++			xprt->req_first->rq_xid != transport->tcp_xid) {
++		xprt_free_bc_request(xprt);
++		req = xprt_alloc_bc_request(xprt);
++	} else {
++		req = xprt_alloc_bc_request(xprt);
++	}
+ 	if (req == NULL) {
+ 		printk(KERN_WARNING "Callback slot table overflowed\n");
+ 		xprt_force_disconnect(xprt);
+@@ -1297,6 +1306,8 @@ static inline int xs_tcp_read_callback(struct rpc_xprt *xprt,
+ 		list_add(&req->rq_bc_list, &bc_serv->sv_cb_list);
+ 		spin_unlock(&bc_serv->sv_cb_lock);
+ 		wake_up(&bc_serv->sv_cb_waitq);
++	} else {
++		xprt->req_first = req;
+ 	}
+ 
+ 	req->rq_private_buf.len = transport->tcp_copied;
+-- 
+1.7.4.2
 
-There is an API version field that mountd can examine before using the plug-in.  .so symlinks to whichever library version is the blessed one.
-
-> 
-> Both Fedora and openSUSE get upset about packaging a libFOO.so in a non
-> "-devel" package and so trip over this library which clearly needs to be
-> installed even if you aren't doing 'devel'opment.
-
-I've seen the rpmlint warning for some time.  Never been sure exactly what to do about it, or whether it matters.
-
-> 
-> I would like to change mountd as per the patch below to use the ".0" file.
-> I believe this will not break any installation as the ".so" is installed as a
-> symlink to the ".0" (or maybe ".0.0.0").
-> 
-> Would this be acceptable?
-
-That dlopen(3) should follow whatever packaging guidelines are set out by distributors.  Do what you guys agree is correct.
-
-> 
-> There is a bit of a discussion about this here:
->  https://bugzilla.redhat.com/show_bug.cgi?id=889174
-> 
-> but I either don't understand it or don't agree with it.
-> 
-> Thanks,
-> NeilBrown
-> 
-> 
-> diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-> index ca35de28847a..f6d78490954f 100644
-> --- a/utils/mountd/cache.c
-> +++ b/utils/mountd/cache.c
-> @@ -1139,7 +1139,7 @@ static struct exportent *lookup_junction(char *dom, const char *pathname,
->    struct link_map *map;
->    void *handle;
-> 
-> -    handle = dlopen("libnfsjunct.so", RTLD_NOW);
-> +    handle = dlopen("libnfsjunct.so.0", RTLD_NOW);
->    if (handle == NULL) {
->        xlog(D_GENERAL, "%s: dlopen: %s", __func__, dlerror());
->        return NULL;
