@@ -1,56 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mlbefw2.harris.com ([192.52.233.80]:55226 "EHLO
-	mlbefw2.harris.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753257AbaBMMap convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Feb 2014 07:30:45 -0500
-From: "McAninley, Jason" <jmcaninl@harris.com>
-To: Malahal Naineni <malahal@us.ibm.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: RE: Question regard NFS 4.0 buffer sizes
-Date: Thu, 13 Feb 2014 12:21:13 +0000
-Message-ID: <322949BF788C8D468BEA0A321B79799098BDCA8E@MLBMXUS20.cs.myharris.net>
-References: <322949BF788C8D468BEA0A321B79799098BDB9F0@MLBMXUS20.cs.myharris.net>
- <20140211143633.GB9918@fieldses.org>
- <322949BF788C8D468BEA0A321B79799098BDBB0A@MLBMXUS20.cs.myharris.net>
- <20140211163215.GA19599@fieldses.org>
- <322949BF788C8D468BEA0A321B79799098BDBE83@MLBMXUS20.cs.myharris.net>
- <20140211215441.GB22695@fieldses.org>
- <322949BF788C8D468BEA0A321B79799098BDC011@MLBMXUS20.cs.myharris.net>
- <20140211231852.GA27855@us.ibm.com>
-In-Reply-To: <20140211231852.GA27855@us.ibm.com>
-Content-Type: text/plain; charset="us-ascii"
+Received: from relay5-d.mail.gandi.net ([217.70.183.197]:59080 "EHLO
+	relay5-d.mail.gandi.net" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751400AbaBHUYD convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 8 Feb 2014 15:24:03 -0500
+Date: Sat, 8 Feb 2014 12:23:55 -0800
+From: Josh Triplett <josh@joshtriplett.org>
+To: Rashika Kheria <rashika.kheria@gmail.com>
+Cc: linux-kernel@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "David S. Miller" <davem@davemloft.net>, linux-nfs@vger.kernel.org,
+        netdev@vger.kernel.org
+Subject: Re: [PATCH 13/13] net: Mark functions as static in
+ net/sunrpc/svc_xprt.c
+Message-ID: <20140208202355.GA21612@leaf>
+References: <6f029c895035908595957fb16ab445c82793c77d.1391888654.git.rashika.kheria@gmail.com>
+ <259f3dc38d7115eccf3aaa2aa7de2414a47f90a2.1391888654.git.rashika.kheria@gmail.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <259f3dc38d7115eccf3aaa2aa7de2414a47f90a2.1391888654.git.rashika.kheria@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Sorry for the delay.
-
-> This ends up caching and the write back should happen with larger
-> sizes.
-> Is this an issue with write size only or read size as well? Did you
-> test
-> read size something like below?
+On Sun, Feb 09, 2014 at 01:40:54AM +0530, Rashika Kheria wrote:
+> Mark functions as static in net/sunrpc/svc_xprt.c because they are not
+> used outside this file.
 > 
-> dd if=[nfs_dir]/foo bs=1M count=500 of=/dev/null
+> This eliminates the following warning in net/sunrpc/svc_xprt.c:
+> net/sunrpc/svc_xprt.c:574:5: warning: no previous prototype for ‘svc_alloc_arg’ [-Wmissing-prototypes]
+> net/sunrpc/svc_xprt.c:615:18: warning: no previous prototype for ‘svc_get_next_xprt’ [-Wmissing-prototypes]
+> net/sunrpc/svc_xprt.c:694:6: warning: no previous prototype for ‘svc_add_new_temp_xprt’ [-Wmissing-prototypes]
 > 
-> You can create sparse "foo" file using truncate command.
+> Signed-off-by: Rashika Kheria <rashika.kheria@gmail.com>
 
-I have not tested read speeds yet since this is a bit trickier due to avoiding the client cache. I would suspect similar results since we have mirrored read/write settings in all locations (we're aware of).
+Reviewed-by: Josh Triplett <josh@joshtriplett.org>
 
- 
-> >
-> > 
-> > > Also, what kernel versions are you on?
-> >
-> > RH6.3, 2.6.32-279.el6.x86_64
+>  net/sunrpc/svc_xprt.c |    6 +++---
+>  1 file changed, 3 insertions(+), 3 deletions(-)
 > 
-> NFS client and NFS server both using the same distro/kernel?
-
-Yes - identical.
-
-
-Would multipath play any role here? I would suspect it would only help, not hinder. I have run Wireshark against the slave and the master ports with the same result - a max of ~32K packet size, regardless of the settings I listed in my original post.
-
--Jason
-
+> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+> index 80a6640..06c6ff0 100644
+> --- a/net/sunrpc/svc_xprt.c
+> +++ b/net/sunrpc/svc_xprt.c
+> @@ -571,7 +571,7 @@ static void svc_check_conn_limits(struct svc_serv *serv)
+>  	}
+>  }
+>  
+> -int svc_alloc_arg(struct svc_rqst *rqstp)
+> +static int svc_alloc_arg(struct svc_rqst *rqstp)
+>  {
+>  	struct svc_serv *serv = rqstp->rq_server;
+>  	struct xdr_buf *arg;
+> @@ -612,7 +612,7 @@ int svc_alloc_arg(struct svc_rqst *rqstp)
+>  	return 0;
+>  }
+>  
+> -struct svc_xprt *svc_get_next_xprt(struct svc_rqst *rqstp, long timeout)
+> +static struct svc_xprt *svc_get_next_xprt(struct svc_rqst *rqstp, long timeout)
+>  {
+>  	struct svc_xprt *xprt;
+>  	struct svc_pool		*pool = rqstp->rq_pool;
+> @@ -691,7 +691,7 @@ struct svc_xprt *svc_get_next_xprt(struct svc_rqst *rqstp, long timeout)
+>  	return xprt;
+>  }
+>  
+> -void svc_add_new_temp_xprt(struct svc_serv *serv, struct svc_xprt *newxpt)
+> +static void svc_add_new_temp_xprt(struct svc_serv *serv, struct svc_xprt *newxpt)
+>  {
+>  	spin_lock_bh(&serv->sv_lock);
+>  	set_bit(XPT_TEMP, &newxpt->xpt_flags);
+> -- 
+> 1.7.9.5
+> 
