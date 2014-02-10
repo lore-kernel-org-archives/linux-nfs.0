@@ -1,54 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:64220 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751961AbaBGPUt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 7 Feb 2014 10:20:49 -0500
-From: Rafael Aquini <aquini@redhat.com>
-To: linux-kernel@vger.kernel.org
-Cc: trond.myklebust@primarydata.com, jstancek@redhat.com, jlayton@redhat.com,
-        mgorman@suse.de, riel@redhat.com, linux-nfs@vger.kernel.org,
-        akpm@linux-foundation.org, linux-mm@kvack.org
-Subject: [PATCH] mm: fix page leak at nfs_symlink()
-Date: Fri,  7 Feb 2014 13:19:54 -0200
-Message-Id: <f4b3dc07dfa55bf7931de36b03aa9ef7e3ff0490.1391785222.git.aquini@redhat.com>
+Received: from mail-ie0-f180.google.com ([209.85.223.180]:32821 "EHLO
+	mail-ie0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752908AbaBJVsK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Feb 2014 16:48:10 -0500
+Received: by mail-ie0-f180.google.com with SMTP id at1so3813000iec.25
+        for <linux-nfs@vger.kernel.org>; Mon, 10 Feb 2014 13:48:10 -0800 (PST)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Steve Dickson <steved@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] SUNRPC: Don't create a gss auth cache unless rpc.gssd is running
+Date: Mon, 10 Feb 2014 16:48:07 -0500
+Message-Id: <1392068887-25091-1-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <D03884DC-C5D3-4496-8F5C-682C3E6372AD@primarydata.com>
+References: <D03884DC-C5D3-4496-8F5C-682C3E6372AD@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Changes committed by "a0b8cab3 mm: remove lru parameter from
-__pagevec_lru_add and remove parts of pagevec API" have introduced
-a call to add_to_page_cache_lru() which causes a leak in nfs_symlink() 
-as now the page gets an extra refcount that is not dropped.
+An infinite loop is caused when nfs4_establish_lease() fails
+with -EACCES. This causes nfs4_handle_reclaim_lease_error()
+to sleep a bit and resets the NFS4CLNT_LEASE_EXPIRED bit.
+This in turn causes nfs4_state_manager() to try and
+reestablished the lease, again, again, again...
 
-Jan Stancek observed and reported the leak effect while running test8 from
-Connectathon Testsuite. After several iterations over the test case,
-which creates several symlinks on a NFS mountpoint, the test system was
-quickly getting into an out-of-memory scenario.
+The problem is a valid RPCSEC_GSS client is being created when
+rpc.gssd is not running.
 
-This patch fixes the page leak by dropping that extra refcount 
-add_to_page_cache_lru() is grabbing. 
-
-Signed-off-by: Jan Stancek <jstancek@redhat.com>
-Signed-off-by: Rafael Aquini <aquini@redhat.com>
+Link: http://lkml.kernel.org/r/1392066375-16502-1-git-send-email-steved@redhat.com
+Fixes: 0ea9de0ea6a4 (sunrpc: turn warn_gssd() log message into a dprintk())
+Reported-by: Steve Dickson <steved@redhat.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/dir.c | 5 +++++
- 1 file changed, 5 insertions(+)
+ net/sunrpc/auth_gss/auth_gss.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index be38b57..4a48fe4 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -1846,6 +1846,11 @@ int nfs_symlink(struct inode *dir, struct dentry *dentry, const char *symname)
- 							GFP_KERNEL)) {
- 		SetPageUptodate(page);
- 		unlock_page(page);
-+		/*
-+		 * add_to_page_cache_lru() grabs an extra page refcount.
-+		 * Drop it here to avoid leaking this page later.
-+		 */
-+		page_cache_release(page);
- 	} else
- 		__free_page(page);
- 
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index 6c0513a7f992..44a61e8fda6f 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -991,6 +991,8 @@ gss_create_new(struct rpc_auth_create_args *args, struct rpc_clnt *clnt)
+ 	gss_auth->service = gss_pseudoflavor_to_service(gss_auth->mech, flavor);
+ 	if (gss_auth->service == 0)
+ 		goto err_put_mech;
++	if (!gssd_running(gss_auth->net))
++		goto err_put_mech;
+ 	auth = &gss_auth->rpc_auth;
+ 	auth->au_cslack = GSS_CRED_SLACK >> 2;
+ 	auth->au_rslack = GSS_VERF_SLACK >> 2;
 -- 
 1.8.5.3
 
