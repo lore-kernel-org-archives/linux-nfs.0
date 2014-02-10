@@ -1,73 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f177.google.com ([209.85.223.177]:41558 "EHLO
-	mail-ie0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752199AbaBKETL convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Feb 2014 23:19:11 -0500
-Received: by mail-ie0-f177.google.com with SMTP id at1so4224803iec.36
-        for <linux-nfs@vger.kernel.org>; Mon, 10 Feb 2014 20:19:11 -0800 (PST)
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
-Subject: Re: "nosharecache" option prevent "mount" from detecting when the mount is a duplicate.
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-In-Reply-To: <20140211133013.1ccf8615@notabene.brown>
-Date: Mon, 10 Feb 2014 23:19:09 -0500
-Cc: NFS <linux-nfs@vger.kernel.org>
-Message-Id: <4A18E8CC-9376-4456-9FD6-E6B36BF8E89D@primarydata.com>
-References: <20140211133013.1ccf8615@notabene.brown>
-To: Brown Neil <neilb@suse.de>
+Received: from mx1.redhat.com ([209.132.183.28]:57540 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752213AbaBJU1C (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 10 Feb 2014 15:27:02 -0500
+From: Steve Dickson <steved@redhat.com>
+To: Trond Myklebust <Trond.Myklebust@netapp.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH] NFSv4: Infinite loop in lease recovery when rpc.gssd is not running.
+Date: Mon, 10 Feb 2014 15:26:55 -0500
+Message-Id: <1392064015-16178-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Commit 0ea9de0e introduce a regression in the lease recovery code.
 
-On Feb 10, 2014, at 21:30, NeilBrown <neilb@suse.de> wrote:
+An infinite loop is caused when nfs4_establish_lease() fails
+with -EACCES. This causes nfs4_handle_reclaim_lease_error()
+to sleep a bit and resets the NFS4CLNT_LEASE_EXPIRED bit.
+This in turn causes nfs4_state_manager() to try and
+reestablished the lease, again, again, again...
 
-> 
-> (I seem to have quite a pile of NFS issues lately.... some if it is tidying up
-> issues from before Christmas, some of it just keeps on coming :-)
-> 
-> If you run "mount -a" it will attempt to mount all filesystems listed
-> in /etc/fstab, but filesystems that are already mounted will not be mounted
-> again.  So it is normally safe to run "mount -a" multiple times.
-> 
-> However if an NFS mount in /etc/fstab has the "nosharecache" option set,
-> mount doesn't notice that it is already mounted as so mounts it again.  So
-> repeated "mount -a" is no longer safe.
-> 
-> This happens because the prevention of multiple mounts happens in do_add_mount
-> in fs/namespace.c:
-> 
-> 	err = -EBUSY;
-> 	if (path->mnt->mnt_sb == newmnt->mnt.mnt_sb &&
-> 	    path->mnt->mnt_root == path->dentry)
-> 		goto unlock;
-> 
-> 
-> i.e. if the exact same superblock is being mounted in the exact same place,
-> return EBUSY.
-> With nosharecache, every mount attempt produces a new superblock so this test
-> never fires.
-> 
-> One way to address this would be to have a different option, e.g.
->          sharecache=27
-> 
-> where the '27' is an arbitrary number meaning that if two mount attempts have
-> different sharecache numbers they will have different superblocks.  If they
-> have the same sharecache number they can have the same superblock.
-> This is not the most elegant interface ever and I would be very happy for
-> suggestions to improve it.  Maybe a string rather than a number ???
-> 
-> This probably isn't a very serious issue, but is a regression in terms of the
-> usability of "mount -a" and I think it would be best to fix it if the cost is
-> not too high.
-> 
-> Below is my patch to implement the "sharecache=%u" syntax.
-> 
-> Any ideas?
+The problem is a valid RPCSEC_GSS client is being created when
+rpc.gssd is not running. This is causing the RPC code to fail
+with the -EACCES sending the lease reestablished off the
+deep end.
 
-What are people using nosharecache for these days, and why is this not another argument for just getting rid of it?
+Moving the gssd_running() check back into nfs4_init_client(),
+stopping the RPCSEC_GSS client from being create, stops
+the looping
 
-_________________________________
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
+Signed-off-by: Steve Dickson <steved@redhat.com>
+---
+ fs/nfs/nfs4client.c |    5 ++++-
+ 1 files changed, 4 insertions(+), 1 deletions(-)
+
+diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+index 860ad26..a60269f 100644
+--- a/fs/nfs/nfs4client.c
++++ b/fs/nfs/nfs4client.c
+@@ -372,7 +372,10 @@ struct nfs_client *nfs4_init_client(struct nfs_client *clp,
+ 	__set_bit(NFS_CS_DISCRTRY, &clp->cl_flags);
+ 	__set_bit(NFS_CS_NO_RETRANS_TIMEOUT, &clp->cl_flags);
+ 
+-	error = nfs_create_rpc_client(clp, timeparms, RPC_AUTH_GSS_KRB5I);
++	error =  -EINVAL;
++	if (gssd_running(clp->cl_net))
++		error = nfs_create_rpc_client(clp, timeparms,
++				RPC_AUTH_GSS_KRB5I);
+ 	if (error == -EINVAL)
+ 		error = nfs_create_rpc_client(clp, timeparms, RPC_AUTH_UNIX);
+ 	if (error < 0)
+-- 
+1.7.1
 
