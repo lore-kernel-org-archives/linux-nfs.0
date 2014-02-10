@@ -1,94 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from qmta04.westchester.pa.mail.comcast.net ([76.96.62.40]:37639
-	"EHLO qmta04.westchester.pa.mail.comcast.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751711AbaB1Vra (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Feb 2014 16:47:30 -0500
-Message-ID: <53110287.9000400@talpey.com>
-Date: Fri, 28 Feb 2014 13:41:27 -0800
-From: Tom Talpey <tom@talpey.com>
+Received: from mx1.redhat.com ([209.132.183.28]:8467 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752231AbaBJXBf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 10 Feb 2014 18:01:35 -0500
+Message-ID: <52F95A4C.7040408@RedHat.com>
+Date: Mon, 10 Feb 2014 18:01:32 -0500
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>, linux-rdma@vger.kernel.org,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-CC: Shirley Ma <shirley.ma@oracle.com>
-Subject: Re: Proposal for simplifying NFS/RDMA client memory registration
-References: <01C4496A-F074-4F72-9DF0-6076C05E8A1F@oracle.com>
-In-Reply-To: <01C4496A-F074-4F72-9DF0-6076C05E8A1F@oracle.com>
-Content-Type: text/plain; charset=windows-1252; format=flowed
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] SUNRPC: Don't create a gss auth cache unless rpc.gssd
+ is running
+References: <D03884DC-C5D3-4496-8F5C-682C3E6372AD@primarydata.com> <1392068887-25091-1-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1392068887-25091-1-git-send-email-trond.myklebust@primarydata.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2/26/2014 8:44 AM, Chuck Lever wrote:
-> Hi-
->
-> Shirley Ma and I are reviving work on the NFS/RDMA client code base in the Linux kernel.  So far we’ve built and run functional tests to determine what is working and what is broken.
->
-> One complication is the number of memory registration modes supported by the RPC/RDMA transport: there are seven.  These were added over the years to support particular HCAs or as proof-of-concept.  The transport chooses a registration mode at mount time based on what the link HCA supports.
->
-> Not all HCAs support all memory registration modes, so our test matrix is quite large.  I’d like to propose removing support for one or more of these memory registration modes in the name of making it easier to change this code and test it without breaking something that we can’t test.
->
-> BOUNCEBUFFERS - All HCAs support this mode.  Does not use RDMA READ and WRITE, and the client end copies data into place.  RDMA is offloaded, by data copy is not.  I’m told it was never intended for production use.
->
-> REGISTER - Safe but relatively slow.  Uses reg_phys_mr verb which is not supported in mlx4/mlx5, but all other HCAs/providers can use this mode.
->
-> MEM_WINDOWS - Uses bind_mr verb.  Safe, but supports only a narrow range of HCAs.
->
-> MEM_WINDOWS_ASYNC - Not always safe, and only a narrow range of HCAs is supported.
->
-> MTHCA_FMR - Uses alloc_fmr verb.  Safe, reasonably fast, but only a narrow range of older HCAs is supported.
-
-The MTHCA FMR is not completely safe - it protects only on page
-boundaries, therefore the neighboring bytes are vulnerable to
-silent corruption (reads) and exposure (write).
-
-It is quite correct that they are supported on only a specific
-set of legacy Mellanox HCA. You should consider removing the
-code that looked for this PCI ID and attempted to alter the
-device's wire MTU, to overcome another of its limitations.
-
->
-> FRMR - Safe, generally fast.  Currently the preferred registration mode, but is not supported with some older HCAs/providers.
-
-This should be, by far, the preferred mode. Also, if I recall
-correctly, the server depends on this mode being available/supported.
-However, it may not be supported by Soft iWARP. Physical addressing
-is used.
-
->
-> ALLPHYSICAL - Usually fast, but not safe as it exposes client memory.  All HCAs support this mode.
-
-Not safe is an understatement. It exposes all of client physical
-memory to the peer, for both read and write. A simple pointer error
-on the server will silently corrupt the client. This mode was
-intended only for testing, and in experimental deployments.
 
 
-Tom.
+On 02/10/2014 04:48 PM, Trond Myklebust wrote:
+> An infinite loop is caused when nfs4_establish_lease() fails
+> with -EACCES. This causes nfs4_handle_reclaim_lease_error()
+> to sleep a bit and resets the NFS4CLNT_LEASE_EXPIRED bit.
+> This in turn causes nfs4_state_manager() to try and
+> reestablished the lease, again, again, again...
+> 
+> The problem is a valid RPCSEC_GSS client is being created when
+> rpc.gssd is not running.
+> 
+> Link: http://lkml.kernel.org/r/1392066375-16502-1-git-send-email-steved@redhat.com
+> Fixes: 0ea9de0ea6a4 (sunrpc: turn warn_gssd() log message into a dprintk())
+> Reported-by: Steve Dickson <steved@redhat.com>
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> ---
+>  net/sunrpc/auth_gss/auth_gss.c | 2 ++
+>  1 file changed, 2 insertions(+)
+> 
+> diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+> index 6c0513a7f992..44a61e8fda6f 100644
+> --- a/net/sunrpc/auth_gss/auth_gss.c
+> +++ b/net/sunrpc/auth_gss/auth_gss.c
+> @@ -991,6 +991,8 @@ gss_create_new(struct rpc_auth_create_args *args, struct rpc_clnt *clnt)
+>  	gss_auth->service = gss_pseudoflavor_to_service(gss_auth->mech, flavor);
+>  	if (gss_auth->service == 0)
+>  		goto err_put_mech;
+> +	if (!gssd_running(gss_auth->net))
+> +		goto err_put_mech;
+>  	auth = &gss_auth->rpc_auth;
+>  	auth->au_cslack = GSS_CRED_SLACK >> 2;
+>  	auth->au_rslack = GSS_VERF_SLACK >> 2;
+> 
+Unfortunately I'm seeing the same loop but this time its with _nfs4_proc_exchange_id
 
->
->
-> I propose removing BOUNCEBUFFERS since it is not intended for production use.
->
-> I propose removing ALLPHYSICAL and MEM_WINDOWS_ASYNC as they are not generally safe.  RFC 5666 suggests that unsafe memory registration modes be avoided.
->
-> I propose removing MEM_WINDOWS as it adds complexity without adding a lot of HCA compatibility.
->
-> I propose removing MTHCA_FMR as I’m told it is hard to obtain HCAs we would need for testing this registration mode, and these are all old adapters anyway.
->
-> This leaves NFS/RDMA client support for REGISTER and FRMR, which should cover all existing HCAs, and it is easy to test both of these memory registration modes with just one or two well-picked HCAs.
->
-> We would contribute these changes to the client code base.  The NFS/RDMA server code could use similar attention, but we are not volunteering to change it at this time.
->
-> Thoughts/comments?
->
-> --
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
->
->
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->
->
+Here is the trace point output:
+  192.168.62.8-ma-20371 [000] .... 955443.604229: nfs4_exchange_id: error=-13 (EACCES) dstaddr=192.168.62.8
+
+and here is the rpcdebug output:
+[ 2782.341981] NFS call  exchange_id auth=RPCSEC_GSS, 'Linux NFSv4.1 <client>'
+[ 2782.360540] NFS reply exchange_id: -13
+
+All three mounts (v4.0, v4.1, v4.2) are hung...
+
+Looking into it...
+
+steved.
+
+
