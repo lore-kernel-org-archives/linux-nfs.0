@@ -1,56 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:49999 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751285AbaBKRIm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 11 Feb 2014 12:08:42 -0500
-Date: Tue, 11 Feb 2014 12:08:42 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Weston Andros Adamson <dros@primarydata.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH pynfs] nfs4.1 server: DSs should have diff server owners
-Message-ID: <20140211170842.GE19599@fieldses.org>
-References: <1392050222-1470-1-git-send-email-dros@primarydata.com>
-MIME-Version: 1.0
+Received: from aserp1040.oracle.com ([141.146.126.69]:44870 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751460AbaBKRXB convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Feb 2014 12:23:01 -0500
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1392050222-1470-1-git-send-email-dros@primarydata.com>
+Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
+Subject: Re: Question regard NFS 4.0 buffer sizes
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <322949BF788C8D468BEA0A321B79799098BDBB0A@MLBMXUS20.cs.myharris.net>
+Date: Tue, 11 Feb 2014 12:22:50 -0500
+Cc: "J.;Bruce Fields" <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <A00CEBAA-F018-4E7B-A17C-80C502D3D98A@oracle.com>
+References: <322949BF788C8D468BEA0A321B79799098BDB9F0@MLBMXUS20.cs.myharris.net> <20140211143633.GB9918@fieldses.org> <322949BF788C8D468BEA0A321B79799098BDBB0A@MLBMXUS20.cs.myharris.net>
+To: "McAninley, Jason" <jmcaninl@harris.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Feb 10, 2014 at 11:37:02AM -0500, Weston Andros Adamson wrote:
-> Use getpid() to generate the minor_id component of the server owner.
-> 
-> Witout this, all DSs are considered to be the same server by NFS clients
-> that detect server trunking, such as the upstream Linux client.
 
-Applied and pushed out, thanks.--b.
+On Feb 11, 2014, at 10:01 AM, McAninley, Jason <jmcaninl@harris.com> wrote:
 
+> Thanks for the reply, Bruce.
 > 
-> Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
-> ---
->  nfs4.1/config.py | 3 ++-
->  1 file changed, 2 insertions(+), 1 deletion(-)
+>> Are you using UDP or TCP?
 > 
-> diff --git a/nfs4.1/config.py b/nfs4.1/config.py
-> index 4f91e84..2238aee 100644
-> --- a/nfs4.1/config.py
-> +++ b/nfs4.1/config.py
-> @@ -3,6 +3,7 @@ from nfs4_const import *
->  import nfs4_const
->  import nfs4lib
->  from copy import deepcopy
-> +import os
->  
->  class ConfigAction(Exception):
->      pass
-> @@ -129,7 +130,7 @@ class ServerConfig(object):
->                ]
->  
->      def __init__(self):
-> -        self.minor_id = 0
-> +        self.minor_id = os.getpid()
->          self.major_id = "PyNFSv4.1"
->          self._owner = server_owner4(self.minor_id, self.major_id)
->          self.scope = "Default_Scope"
-> -- 
-> 1.8.3.4 (Apple Git-47)
+> TCP.
 > 
+>> And what do you mean by "maximum packet size"?
+> 
+> I'm generally referring to the Frame size (e.g. 32,626) and/or the TCP packet size (e.g. 32560) - The former being the size of the latter plus the ethernet/IP headers.
+> 
+>> To see if the maximum rsize/wsize is being used you'd need to look for
+>> the length of the data in a READ reply or WRITE call.
+> 
+> Right. When I check the contents of a WRITE RPC, I see "Data" length of 32768 (32k).
+> 
+> My understanding is that setting {r,w}size doesn't guarantee that will be the agreed-upon value. Apparently one must check the value in /proc. I have verified this by checking the value of /proc/XXXX/mounts, where XXXX is the pid for nfsv4.0-svc on the client. It is set to a value >32K.
+> 
+>> What actual problem are you trying to solve?  (Is your read or write
+>> bandwidth lower than you expected?)
+> 
+> I am trying to maximize throughout within a parallel processing cluster. We have GigE connections within our closed network and I would like to ensure we are fully utilizing our bandwidth. Additionally, I find a lot of information online (that is not outdated) suggests various Kernel/OS/NFS settings without giving details for why the settings should be modified.
+
+A closed network introduces the opportunity to use jumbo Ethernet frames.  But this assumes your server NICs and switches can support it.
+
+> Upon changing the rsize/wsize, I would have expected to see a change in the packet/payload size, but I do not.
+
+The application itself may play a significant role.  If it is writing and flushing, or using O_SYNC, for example, the NFS client may have no choice but to use WRITE operations smaller than wsize.
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
+
