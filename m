@@ -1,143 +1,94 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:58999 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:42377 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750744AbaBGWz3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 7 Feb 2014 17:55:29 -0500
-Date: Fri, 7 Feb 2014 17:55:28 -0500
+	id S1752541AbaBKQhO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 11 Feb 2014 11:37:14 -0500
+Date: Tue, 11 Feb 2014 11:37:12 -0500
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Norman Elton <normelton@gmail.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Windows AD, Users with too many groups
-Message-ID: <20140207225528.GF8801@fieldses.org>
-References: <CAPCnwUeUEznrKvJ-upUV_VyaKKhZcKpZbLFeC08YMMQycWK-vg@mail.gmail.com>
- <CAPCnwUeobfXKGB9Q-nyYNDZa1L9iTwoKZm9bBH2ghUkqembCeA@mail.gmail.com>
- <20140206183631.GA30952@fieldses.org>
- <CAPCnwUcXaGUMs1r23+oPROzPQpmgLV62zGBZE6dbt0nvF75=DQ@mail.gmail.com>
- <20140206185843.GA31325@fieldses.org>
- <CAPCnwUcL6-2yciiDvYiVuWrF8_V3h9551hCThCO94yVX9JHSPA@mail.gmail.com>
+To: NeilBrown <neilb@suse.de>
+Cc: Steve Dickson <SteveD@redhat.com>, Chuck Lever <chuck.lever@oracle.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Simo Sorce <simo@redhat.com>
+Subject: Re: [PATCH/RFC: nfs-utils] Common systemd unit files for nfs-utils.
+Message-ID: <20140211163712.GB19599@fieldses.org>
+References: <52F003A1.3060908@RedHat.com>
+ <20140204093452.7b6d7c7d@notabene.brown>
+ <20140204162052.GA5295@fieldses.org>
+ <20140205140906.0b3ba9fd@notabene.brown>
+ <1B2F95A4-8439-4274-A859-F33986D06824@oracle.com>
+ <20140206122751.41b2fbf9@notabene.brown>
+ <5630CFAD-1F31-4F87-AAA7-AEB06D3EC864@oracle.com>
+ <20140206161917.GB14575@fieldses.org>
+ <52F93BA1.9060505@RedHat.com>
+ <20140211155052.464aac7c@notabene.brown>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAPCnwUcL6-2yciiDvYiVuWrF8_V3h9551hCThCO94yVX9JHSPA@mail.gmail.com>
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <20140211155052.464aac7c@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Feb 06, 2014 at 02:45:39PM -0500, Norman Elton wrote:
-> >> OK, must be.  You could also confirm this by looking at network traffic,
-> >> e.g. with wireshark.
+On Tue, Feb 11, 2014 at 03:50:52PM +1100, NeilBrown wrote:
+> On Mon, 10 Feb 2014 15:50:41 -0500 Steve Dickson <SteveD@redhat.com> wrote:
 > 
-> We do see NFS traffic between the client and the server, but I cannot
-> get any useful debug information when a failing user logs in. I've got
-> rpc.svcgssd, rpc.idmapd, and rpc.mountd all running with the relevant
-> -d's and -v's.
+> > On 02/06/2014 11:19 AM, J. Bruce Fields wrote:
+> > > On Thu, Feb 06, 2014 at 11:09:58AM -0500, Chuck Lever wrote:
+> > >>
+> > >> On Feb 5, 2014, at 8:27 PM, NeilBrown <neilb@suse.de> wrote:
+> > >>> I certainly agree with making things simple.  If we can make a configuration
+> > >>> irrelevant, e.g. by gets nfsd to auto-tune the number of threads so the
+> > >>> setting becomes pointless, then I've very happy to remove that sort of
+> > >>> configuration.  But if a configuration option actually means something I
+> > >>> certainly don't want to remove it.
+> > >>>
+> > >>> So I'm leaning towards having "systemctl {un,}mask rpc-gssd" be the
+> > >>> configuration tool for rpc.gssd.
+> > >>
+> > >> I like that better than the “off-until-requested” behavior we have currently.  IMO folks who want to disable rpc.gssd will be in the increasing minority and the rest of the world will take scant notice of the extra daemon, as long as we ensure it speaks only when necessary.
+> > > 
+> > > I'd also prefer running the gssd's by default: one less (confusing) step
+> > > to set up kerberos, and I'm not seeing a realistic security risk.
+> > I'm not for starting daemon that are not needed or necessary. I
+> > just think that is a bad design. 
+> >  
+> > > 
+> > > If we can easily provide a way to turn it off for people that want a
+> > > really stripped-down system for whatever reason, fine, let's provide
+> > > that.
+> > I'm thinking just the opposite... Have a way to easily (or even
+> > automatically) way to enabled NFS security....  when needed...
+> > 
+> > Would it make it easier if we combined the gssd daemon? That goes
+> > both ways (server and client)... That way we could just enable 
+> > nfs security and the daemon would started regardless on what side
+> > its on... 
+> > 
+> > steved.
 > 
-> I do see kerberos traffic, and indeed both good and failing users are
-> getting kerb tickets. I've compared all the list outputs I can
-> generate, and don't see any obvious differences. In look at packet
-> captures between the client and KDC, I've noticed one difference. The
-> client requests a TGT in a AS-REQ packet. The KDC responds with a
-> AS-REP. This AS-REP has a krbtgt/DOMAIN ticket in it, followed by some
-> additional data (my kerb protocol kung-fu is weak here). This last
-> data has "kvno: 4", so perhaps it's some sort of key? In any case, on
-> the failing user, this is listed with enctype rc4-hmac, on the passing
-> user, it's enctype aes256-cts-hmac-sha1-96.
-> 
-> Thanks again for your advice,
+> By "combine" do you mean "rewrite the code so there is only one process" or
+> "have a systemd unit which starts both"?  The former seems like a lot of
+> pointless work and the later contradicts your stated preference for not
+> starting daemons that are not needed.
 
-No good ideas off the top of my head.  Maybe fooling with the crypto
-settings on those users to see if it's a problem with one particular
-crypto algorithm?
+Note the client needs svcgssd or gss-proxy too, if you want it to be
+able to get delegations over NFSv4.0.  (It doesn't matter for versions
+2, 3, or >=4.1).
 
-And since this is RHEL6 it'd be worth contacting support, of course.
+I still pretty vague on exactly what problems we solve by turning off
+these daemons by default.
 
 --b.
 
 > 
-> Norman
+> What do you think of the suggestion to start rpc.gssd when Wanted
+> if /etc/krb5.conf exists, and document that it can be disabled with
 > 
-> On Thu, Feb 6, 2014 at 1:58 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > On Thu, Feb 06, 2014 at 01:52:16PM -0500, Norman Elton wrote:
-> >> > And they have that same group membership on the server side?
-> >>
-> >> Yes, both the NFS server and NFS client point to the same active
-> >> directory for ldap / kerberos.
-> >>
-> >> I have tried running rpc.svcgssd with debugging, as well as with
-> >> strace as you suggested. I get plenty of output when a "good" user
-> >> logs in. No debugging information for user who fails. The error
-> >> (failed to create krb5 context...) appears on the client, maybe before
-> >> it connects to the server?
-> >
-> > OK, must be.  You could also confirm this by looking at network traffic,
-> > e.g. with wireshark.
-> >
-> > Might also be worth looking at the client<->KDC traffic to see if the
-> > client is getting as far as asking for a ticket and if so what error the
-> > KDC is returning.
-> >
-> > --b.
-> >
-> >>
-> >> Thanks,
-> >>
-> >> Norman
-> >>
-> >> On Thu, Feb 6, 2014 at 1:36 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> >> > On Thu, Feb 06, 2014 at 01:19:19PM -0500, Norman Elton wrote:
-> >> >> Just a follow-up to my previous post. In debugging rpc.gssd on the
-> >> >> client, here's where things are dying:
-> >> >>
-> >> >> creating tcp client for server filertest.safety.net.wm.edu
-> >> >> creating context with server nfs@filertest.safety.net.wm.edu
-> >> >> WARNING: Failed to create krb5 context for user with uid 30487 for
-> >> >> server filertest.safety.net.wm.edu
-> >> >>
-> >> >> But other users seem fine. I still think it's something to do with
-> >> >> excessive group membership.
-> >> >
-> >> > And they have that same group membership on the server side?
-> >> >
-> >> > In that case there might be some problem with rpc.svcgssd's handling of
-> >> > large group lists--some debugging of rpc.svcgssd on the server might be
-> >> > interesting.
-> >> >
-> >> > In particular, output from:
-> >> >
-> >> >         strace -p $(pidof rpc.svcgssd) -s65536 -e trace=open,close,read,write
-> >> >
-> >> > might be interesting.
-> >> >
-> >> > --b.
-> >> >
-> >> >>
-> >> >> Any suggestions are appreciated, thanks!
-> >> >>
-> >> >> Norman Elton
-> >> >> College of William & Mary
-> >> >>
-> >> >> On Mon, Feb 3, 2014 at 4:13 PM, Norman Elton <normelton@gmail.com> wrote:
-> >> >> > I've read stories about users having too many group memberships. We
-> >> >> > seem to experience similar symptoms, though the usual tricks don't
-> >> >> > seem to work.
-> >> >> >
-> >> >> > In our case, there is a RHEL6 NFS server feeding multiple RHEL6 NFS
-> >> >> > clients. This is all NFSv4 with Kerberos. Most users can login fine,
-> >> >> > but domain admins get a "permission denied" when accessing their
-> >> >> > NFS-mounted home directory. The most notable commonality is their high
-> >> >> > number of group memberships.
-> >> >> >
-> >> >> > I've tried inflating my group count to greater than 16, my account
-> >> >> > continues to work fine.
-> >> >> >
-> >> >> > We've tried adding "--manage-gids" to rpc.mountd, no luck. Although
-> >> >> > it's unclear whether this really does anything in a kerberized
-> >> >> > environment.
-> >> >> >
-> >> >> > Any other suggestions? Other debugging tricks?
-> >> >> >
-> >> >> > Thanks
-> >> >> >
-> >> >> > Norman Elton
-> >> >> --
-> >> >> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> >> >> the body of a message to majordomo@vger.kernel.org
-> >> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>   systemctl mask rpc-gssd
+> 
+> (I like your idea of clearly documenting the important systemd units).
+> That way it is running when needed, probably not when not, and if you happen
+> to have kerberos installed but don't want rpc.gssd, it is easy to achieve
+> that.
+> 
+> NeilBrown
+
+
