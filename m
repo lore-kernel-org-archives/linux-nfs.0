@@ -1,98 +1,127 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:35223 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754880AbaBUOkY convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Feb 2014 09:40:24 -0500
-References: <CA+NKcRwjoaeQUZEGSeVC+Tfa3jDzvTLt1RBjSQrkj6KJMcC-zg@mail.gmail.com> <5306418B.9060007@RedHat.com> <CA+NKcRzkHKqJ5sSJHLbZcJdOoDS6c2ef-D3CsGkOsw1uSyTmMg@mail.gmail.com>
-Mime-Version: 1.0 (1.0)
-In-Reply-To: <CA+NKcRzkHKqJ5sSJHLbZcJdOoDS6c2ef-D3CsGkOsw1uSyTmMg@mail.gmail.com>
-Content-Type: text/plain;
-	charset=us-ascii
-Message-Id: <8B805EFD-A076-44AA-9CB9-66A5B7F1D792@oracle.com>
-Cc: Steve Dickson <SteveD@redhat.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: Reliable NFS statistics tool to monitoring all incoming network traffic
-Date: Fri, 21 Feb 2014 06:40:15 -0800
-To: Pavel Karneliuk <pavel.karneliuk@gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:7056 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750812AbaBKM4f (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 11 Feb 2014 07:56:35 -0500
+Message-ID: <52FA1E00.8000801@RedHat.com>
+Date: Tue, 11 Feb 2014 07:56:32 -0500
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: NeilBrown <neilb@suse.de>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH/RFC: nfs-utils] Common systemd unit files for nfs-utils.
+References: <20140130172451.7a354ce4@notabene.brown>	<52F003A1.3060908@RedHat.com>	<20140204093452.7b6d7c7d@notabene.brown>	<52F130E2.6090308@RedHat.com> <20140205145514.2c44b575@notabene.brown>
+In-Reply-To: <20140205145514.2c44b575@notabene.brown>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Fixing wireshark to do what you need would be best for everyone.
 
-You can tune your wire capture using tcpdump and command line options, then read the capture file with wireshark or tshark, to reduce the likelihood of packet loss.  Sometimes it's the kernel, not the tool, that causes loss.
+Sorry for the delayed response... I got suck into another world... ;-(
+ 
+On 02/04/2014 10:55 PM, NeilBrown wrote:
+> On Tue, 04 Feb 2014 13:26:42 -0500 Steve Dickson <SteveD@redhat.com> wrote:
+>>>>
+>>>> How is rpc.svcgssd enabled? Since the .service file does
+>>>> not have a [Install] section the systemctl enable rpc.svcgssd
+>>>> fails.
+>>>
+>>> The "README" touches on this.  If you
+>>>    systemctl enable nfs-secure.target
+>>> then rpc.svcgssd will be run whenever nfs-server.target is started.
+>> I was thinking nfs-server would only start rpc.svcgssd when its
+>> enabled... not every time... 
+> 
+> I don't follow what you are saying ... not that it really matters as we both
+> seem to be agreed to take a different approach with the gss daemons.
+> 
+> In my original plan:
+>  if nfs-secure is enabled, then whenever nfs-server is started, it makes sure
+>  that rpc.svcgssd is running.
+>  if nfs-secure is not enabled, then rpc.svcgssd will refuse to start.
+Understood... and that's good... 
 
-Wireshark even has a mode where you can capture but the packet display is not updated until you stop capturing.
+> 
+> 
+>>
+>>> Also rpc.gssd will be run whenever nfs-server.target or nfs-client.target is
+>>> started.
+>> Why is rpc.gssd started when the nfs server is started? Possibly for secure 
+>> loopback mounts??
+> 
+> Call-backs from NFSv4.0 server, as has been mentioned elsewhere.
+But kerberos has to be configure... but I think we are talking
+about that in a another thread...
 
---
-Chuck Lever
+> 
+>>
+>>>
+>>>>
+>>>> How would these daemons be restart and shutdown? Since this is a 
+>>>> target, systemctl restart and system stop don't do anything.
+>>>
+>>> This is something I haven't completely figured out yet.
+>>>
+>>> Part of the solution might be the "PartOf" directive.
+>>> If each service claims to be "PartOf" the main one, then stopping or
+>>> restarting the main service will propagate to stopping and restarting the
+>>> individual services.
+>>> Unfortunately in nfs we have some shared services.  rpc.statd and rpc.gssd
+>>> are needed by both server and client.  That isn't a big problem for 'restart',
+>>> but if you 'systemctl stop nfs-client' and find that the server isn't
+>>> properly working any more, that would be awkward
+>>> If could possibly work around that by setting "StopWhenUnneeded" for those
+>>> shared services.  Then e.g. rpc.statd would stop when both client and server
+>>> are stopped, but not if either one of them is stopped.
+>>> However I don't know how that interacts with restart.  I suspect that the
+>>> StopWhenUnneeded services are *not* stopped and restarted when the main
+>>> service is stopped.  So it would  be  hard to restart all nfs services on an
+>>> upgrade.
+>>>
+>>> Further research seems needed here.
+>> Fine... I'll try to digest what you are saying here, but
+>> would it make it easier if everything was in a service file?
+> 
+> No, the only way the .target files are more awkward is that you have to type
+> ".target".
+> 
+> In fact a .target can be turned into an .service by adding:
+> 
+> [Service]
+> Type=oneshot
+> RemainAfterExit=yes
+> ExecStart=/bin/true
+> 
+> at the end.  You might even get away with less than that.
+> Given this and that ".target" is extra typing, there seems little reason to
+> use .target unit files.
+So are you saying are not going use .target units? They will all be .service units?
 
-> On Feb 21, 2014, at 1:53 AM, Pavel Karneliuk <pavel.karneliuk@gmail.com> wrote:
 > 
-> Steve,
+>>
+>>>
+>>>
+>>>>
+>>>>> +
+>>>>> + nfs-secure.target
+>>>>> +    If enabled, then rpc.gssd will be run when either -client or
+>>>>> +    -server is started, and rpc.svcgssd will be run when -server
+>>>>> +    is started
+>>>> I like that fact that rpc.gssd is started by nfs-client but 
+>>>> I don't like that API change. systemctl restart nfs-secure breaks 
+>>>
+>>> Why would you want to "restart nfs-secure".  I can understanding wanting to
+>>> restart individual processed, or the whole collection, but why that subset?
+>> Well in Fedora nfs-secure is one process ;-) 
 > 
-> Thank you for your answer. The mountstats(8) and nfsiostat(8) are
-> well, but I am interesting in some network sniffer that listens all
-> network traffic in promiscuous mode.
-> 
-> I think about researching and development new solution.
-> Fast, reliable and extensible tool with deep packet inspection of NFS
-> operations and supporting NFS version 2/3/4 over TCP/UDP protocols.
-> Something based on libpcap, TCP reassembling suchlike dissectors from
-> Wireshark, and full parsing headers of NFS operations on the fly.
-> 
-> Would such tool be useful for community, NFS developers and end-users?
-> What do you think?
-> 
-> Regards,
-> Pavel K
-> 
-> 2014-02-20 20:55 GMT+03:00 Steve Dickson <SteveD@redhat.com>:
->> 
->> 
->>> On 02/20/2014 10:39 AM, Pavel Karneliuk wrote:
->>> Hello linux-nfs members,
->>> 
->>> I am looking for some tool for monitoring all incoming traffic on the
->>> wire and collecting NFSv3 operations over TCP transport protocol in
->>> 1G-10G networks.
->>> 
->>> Could you advise me some fast and reliable utility?
->>> 
->>> I have tried NFSwatch tool, but its results are not reliable.
->>> At first, I mount NFSv3 directory with TCP transport protocol and wsize=512k
->>> 
->>> sudo mount -v -t nfs 10.6.136.187:/share /mnt/nfs-fedora/ -o
->>> rw,vers=3.0,tcp,wsize=524288
->>> 
->>> then I write 10Mb file to NFS server:
->>> 
->>> sudo dd if=/dev/zero of=/mnt/nfs-fedora/zero.data bs=1M count=10
->>> 
->>> I expect to see 20 WRITE operations (10Mb / 512Kb == 20).
->>> The nfsstat (nfsstat --nfs -3 -Z) shows exactly 20 WRITE operations,
->>> because it takes statistic from the kernel.
->>> 
->>> When I try to get the same result with NFSwatch by (sudo nfswatch -all
->>> -procs3 -t 20)
->>> I get unreproducible results with 1 or 2 registered WRITE operations.
->>> NFSwatch works well on NFSv3 over UDP, but loses almost all READ/WRITE
->>> operations in case of TCP protocol.
->>> I have checked its source code and found that NFSwatch doesn't
->>> performs reassembling TCP streams between NFS server and NFS client.
->>> It just looks at TCP segment and expects headers of RPC/NFSv3
->>> operations exactly after TCP header.
->>> 
->>> The tcpdump works similarly. Wireshark(and Tshark) is too slow for
->>> live 1G-10G NFSv3/TCP traffic capturing and filtration.
->>> 
->>> 
->>> Would you suggest some alternative utils, solutions or workarounds?
->> You can try mountstats(8) or nfsiostat(8). Both of them
->> manipulate data collected in /proc/self/mountstats
->> 
->> steved.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Oh yes, "nfs-secure" means "run rpc.gssd".
+> If you wanted to preserve that I think you could create a drop-in file
+> for rpc-gssd.service containing
+>    [Install]
+>    Alias=nfs-secure.service
+> though that would require "systemctl enable rpc-gssd" so maybe it isn't the
+> best approach.
+If I'm understanding this and above...  systemctl enable nfs-secure would
+be controlling the starting up of both rpc.gssd and rpc.svcgssd/gss-proxy? 
+
+steved.
