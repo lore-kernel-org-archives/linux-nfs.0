@@ -1,130 +1,94 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from nm45-vm7.bullet.mail.bf1.yahoo.com ([216.109.115.78]:38213 "EHLO
-	nm45-vm7.bullet.mail.bf1.yahoo.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751178AbaBQUmU convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 17 Feb 2014 15:42:20 -0500
-References: <1392466251.41282.YahooMailNeo@web140003.mail.bf1.yahoo.com>	 <1392494917.71728.YahooMailNeo@web140002.mail.bf1.yahoo.com>	 <20140215203015.GA4528@pd.tnic>	 <1392498262.98385.YahooMailNeo@web140003.mail.bf1.yahoo.com>	 <20140215232508.GB4508@pd.tnic> <1392571653.44773.4.camel@leira.trondhjem.org>
-Message-ID: <1392669351.46253.YahooMailNeo@web140005.mail.bf1.yahoo.com>
-Date: Mon, 17 Feb 2014 12:35:51 -0800 (PST)
-From: John <da_audiophile@yahoo.com>
-Reply-To: John <da_audiophile@yahoo.com>
-Subject: Re: [BUG] unable to handle kernel NULL pointer dereference
-To: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Borislav Petkov <bp@alien8.de>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Cc: lkml <linux-kernel@vger.kernel.org>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        "stephen@networkplumber.org" <stephen@networkplumber.org>,
-        "mlindner@marvell.com" <mlindner@marvell.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>
-In-Reply-To: <1392571653.44773.4.camel@leira.trondhjem.org>
+Received: from mx1.redhat.com ([209.132.183.28]:41810 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750978AbaBKQsF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 11 Feb 2014 11:48:05 -0500
+Message-ID: <52FA543C.1080004@RedHat.com>
+Date: Tue, 11 Feb 2014 11:47:56 -0500
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=iso-8859-1
+To: "J. Bruce Fields" <bfields@fieldses.org>, NeilBrown <neilb@suse.de>
+CC: Chuck Lever <chuck.lever@oracle.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Simo Sorce <simo@redhat.com>
+Subject: Re: [PATCH/RFC: nfs-utils] Common systemd unit files for nfs-utils.
+References: <52F003A1.3060908@RedHat.com> <20140204093452.7b6d7c7d@notabene.brown> <20140204162052.GA5295@fieldses.org> <20140205140906.0b3ba9fd@notabene.brown> <1B2F95A4-8439-4274-A859-F33986D06824@oracle.com> <20140206122751.41b2fbf9@notabene.brown> <5630CFAD-1F31-4F87-AAA7-AEB06D3EC864@oracle.com> <20140206161917.GB14575@fieldses.org> <52F93BA1.9060505@RedHat.com> <20140211155052.464aac7c@notabene.brown> <20140211163712.GB19599@fieldses.org>
+In-Reply-To: <20140211163712.GB19599@fieldses.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
 
+On 02/11/2014 11:37 AM, J. Bruce Fields wrote:
+> On Tue, Feb 11, 2014 at 03:50:52PM +1100, NeilBrown wrote:
+>> On Mon, 10 Feb 2014 15:50:41 -0500 Steve Dickson <SteveD@redhat.com> wrote:
+>>
+>>> On 02/06/2014 11:19 AM, J. Bruce Fields wrote:
+>>>> On Thu, Feb 06, 2014 at 11:09:58AM -0500, Chuck Lever wrote:
+>>>>>
+>>>>> On Feb 5, 2014, at 8:27 PM, NeilBrown <neilb@suse.de> wrote:
+>>>>>> I certainly agree with making things simple.  If we can make a configuration
+>>>>>> irrelevant, e.g. by gets nfsd to auto-tune the number of threads so the
+>>>>>> setting becomes pointless, then I've very happy to remove that sort of
+>>>>>> configuration.  But if a configuration option actually means something I
+>>>>>> certainly don't want to remove it.
+>>>>>>
+>>>>>> So I'm leaning towards having "systemctl {un,}mask rpc-gssd" be the
+>>>>>> configuration tool for rpc.gssd.
+>>>>>
+>>>>> I like that better than the â€œoff-until-requestedâ€ behavior we have currently.  IMO folks who want to disable rpc.gssd will be in the increasing minority and the rest of the world will take scant notice of the extra daemon, as long as we ensure it speaks only when necessary.
+>>>>
+>>>> I'd also prefer running the gssd's by default: one less (confusing) step
+>>>> to set up kerberos, and I'm not seeing a realistic security risk.
+>>> I'm not for starting daemon that are not needed or necessary. I
+>>> just think that is a bad design. 
+>>>  
+>>>>
+>>>> If we can easily provide a way to turn it off for people that want a
+>>>> really stripped-down system for whatever reason, fine, let's provide
+>>>> that.
+>>> I'm thinking just the opposite... Have a way to easily (or even
+>>> automatically) way to enabled NFS security....  when needed...
+>>>
+>>> Would it make it easier if we combined the gssd daemon? That goes
+>>> both ways (server and client)... That way we could just enable 
+>>> nfs security and the daemon would started regardless on what side
+>>> its on... 
+>>>
+>>> steved.
+>>
+>> By "combine" do you mean "rewrite the code so there is only one process" or
+>> "have a systemd unit which starts both"?  The former seems like a lot of
+>> pointless work and the later contradicts your stated preference for not
+>> starting daemons that are not needed.
+> 
+> Note the client needs svcgssd or gss-proxy too, if you want it to be
+> able to get delegations over NFSv4.0.  (It doesn't matter for versions
+> 2, 3, or >=4.1).
+Even when kerberos is not configured? 
 
+> 
+> I still pretty vague on exactly what problems we solve by turning off
+> these daemons by default.
+To keep things simple.... I just see the point of starting a daemon
+if its known its not going to be needed... 
 
------ Original Message -----
-> From: Trond Myklebust <trond.myklebust@primarydata.com>
-> To: Borislav Petkov <bp@alien8.de>; Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-> Cc: John <da_audiophile@yahoo.com>; lkml <linux-kernel@vger.kernel.org>; "netdev@vger.kernel.org" <netdev@vger.kernel.org>; "stephen@networkplumber.org" <stephen@networkplumber.org>; "mlindner@marvell.com" <mlindner@marvell.com>; J. Bruce Fields <bfields@fieldses.org>
-> Sent: Sunday, February 16, 2014 12:27 PM
-> Subject: Re: [BUG] unable to handle kernel NULL pointer dereference
+steved.
 > 
-> Please ensure that you post to the linux-nfs@vger.kernel.org when
-> reporting NFS and RPC related bugs.
+> --b.
 > 
-> Does the following patch help?
+>>
+>> What do you think of the suggestion to start rpc.gssd when Wanted
+>> if /etc/krb5.conf exists, and document that it can be disabled with
+>>
+>>   systemctl mask rpc-gssd
+>>
+>> (I like your idea of clearly documenting the important systemd units).
+>> That way it is running when needed, probably not when not, and if you happen
+>> to have kerberos installed but don't want rpc.gssd, it is easy to achieve
+>> that.
+>>
+>> NeilBrown
 > 
-> 8<-------------------------------------------------------------------
-> From 0e57b109cd7b17d6e6f16c3454427372a583b18a Mon Sep 17 00:00:00 2001
-> From: Trond Myklebust <trond.myklebust@primarydata.com>
-> Date: Sun, 16 Feb 2014 12:14:13 -0500
-> Subject: [PATCH] SUNRPC: Ensure that gss_auth isn't freed before its upcall
-> messages
 > 
-> Fix a race in which the RPC client is shutting down while the
-> gss daemon is processing a downcall. If the RPC client manages to
-> shut down before the gss daemon is done, then the struct gss_auth
-> used in gss_release_msg() may have already been freed.
-> 
-> Link: 
-> http://lkml.kernel.org/r/1392494917.71728.YahooMailNeo@web140002.mail.bf1.yahoo.com
-> Reported-by: John <da_audiophile@yahoo.com>
-> Reported-by: Borislav Petkov <bp@alien8.de>
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> ---
-> net/sunrpc/auth_gss/auth_gss.c | 13 +++++++++++--
-> 1 file changed, 11 insertions(+), 2 deletions(-)
-> 
-> diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-> index 44a61e8fda6f..1ba1fd114912 100644
-> --- a/net/sunrpc/auth_gss/auth_gss.c
-> +++ b/net/sunrpc/auth_gss/auth_gss.c
-> @@ -108,6 +108,7 @@ struct gss_auth {
-> static DEFINE_SPINLOCK(pipe_version_lock);
-> static struct rpc_wait_queue pipe_version_rpc_waitqueue;
-> static DECLARE_WAIT_QUEUE_HEAD(pipe_version_waitqueue);
-> +static void gss_put_auth(struct gss_auth *gss_auth);
-> 
-> static void gss_free_ctx(struct gss_cl_ctx *);
-> static const struct rpc_pipe_ops gss_upcall_ops_v0;
-> @@ -320,6 +321,7 @@ gss_release_msg(struct gss_upcall_msg *gss_msg)
->     if (gss_msg->ctx != NULL)
->         gss_put_ctx(gss_msg->ctx);
->     rpc_destroy_wait_queue(&gss_msg->rpc_waitqueue);
-> +    gss_put_auth(gss_msg->auth);
->     kfree(gss_msg);
-> }
-> 
-> @@ -500,6 +502,7 @@ gss_alloc_msg(struct gss_auth *gss_auth,
->         if (err)
->             goto err_free_msg;
->     };
-> +    kref_get(&gss_auth->kref);
->     return gss_msg;
-> err_free_msg:
->     kfree(gss_msg);
-> @@ -1064,6 +1067,12 @@ gss_free_callback(struct kref *kref)
-> }
-> 
-> static void
-> +gss_put_auth(struct gss_auth *gss_auth)
-> +{
-> +    kref_put(&gss_auth->kref, gss_free_callback);
-> +}
-> +
-> +static void
-> gss_destroy(struct rpc_auth *auth)
-> {
->     struct gss_auth *gss_auth = container_of(auth,
-> @@ -1084,7 +1093,7 @@ gss_destroy(struct rpc_auth *auth)
->     gss_auth->gss_pipe[1] = NULL;
->     rpcauth_destroy_credcache(auth);
-> 
-> -    kref_put(&gss_auth->kref, gss_free_callback);
-> +    gss_put_auth(gss_auth);
-> }
-> 
-> /*
-> @@ -1255,7 +1264,7 @@ gss_destroy_nullcred(struct rpc_cred *cred)
->     call_rcu(&cred->cr_rcu, gss_free_cred_callback);
->     if (ctx)
->         gss_put_ctx(ctx);
-> -    kref_put(&gss_auth->kref, gss_free_callback);
-> +    gss_put_auth(gss_auth);
-> 
-> }
-> 
-> static void
-> -- 
-
-
-Tested-by: John <da_audiophile@yahoo.com>
-
-
-Fixes the problem on 3.13.3 for me (i686). Thank you.
