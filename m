@@ -1,58 +1,33 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ve0-f193.google.com ([209.85.128.193]:55028 "EHLO
-	mail-ve0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754432AbaBTPj2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Feb 2014 10:39:28 -0500
-Received: by mail-ve0-f193.google.com with SMTP id pa12so595733veb.4
-        for <linux-nfs@vger.kernel.org>; Thu, 20 Feb 2014 07:39:27 -0800 (PST)
+Received: from fieldses.org ([174.143.236.118]:41029 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751435AbaBKWeC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 11 Feb 2014 17:34:02 -0500
+Date: Tue, 11 Feb 2014 17:33:51 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Steven Whitehouse <swhiteho@redhat.com>, linux-kernel@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfsd4: fix acl buffer overrun
+Message-ID: <20140211223351.GC22695@fieldses.org>
+References: <20140208204522.GG8801@fieldses.org>
+ <20140209020933.GA23163@fieldses.org>
+ <20140211193801.GA22695@fieldses.org>
+ <20140211202548.GA21844@infradead.org>
 MIME-Version: 1.0
-Date: Thu, 20 Feb 2014 18:39:27 +0300
-Message-ID: <CA+NKcRwjoaeQUZEGSeVC+Tfa3jDzvTLt1RBjSQrkj6KJMcC-zg@mail.gmail.com>
-Subject: Reliable NFS statistics tool to monitoring all incoming network traffic
-From: Pavel Karneliuk <pavel.karneliuk@gmail.com>
-To: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140211202548.GA21844@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello linux-nfs members,
+On Tue, Feb 11, 2014 at 12:25:48PM -0800, Christoph Hellwig wrote:
+> Looks good and sorry for the regression.
 
-I am looking for some tool for monitoring all incoming traffic on the
-wire and collecting NFSv3 operations over TCP transport protocol in
-1G-10G networks.
+Well, my fault for not reviewing the patch, I saw it and didn't give it
+more than a skim.  Not sure I would have caught that, though.
 
-Could you advise me some fast and reliable utility?
+The only thing I can think of that might have made it easier to catch
+was breaking up the patch (v4 could probably have been done separately
+from v2/v3?).  But I still probably would've overlooked it....
 
-I have tried NFSwatch tool, but its results are not reliable.
-At first, I mount NFSv3 directory with TCP transport protocol and wsize=512k
-
-sudo mount -v -t nfs 10.6.136.187:/share /mnt/nfs-fedora/ -o
-rw,vers=3.0,tcp,wsize=524288
-
-then I write 10Mb file to NFS server:
-
-sudo dd if=/dev/zero of=/mnt/nfs-fedora/zero.data bs=1M count=10
-
-I expect to see 20 WRITE operations (10Mb / 512Kb == 20).
-The nfsstat (nfsstat --nfs -3 -Z) shows exactly 20 WRITE operations,
-because it takes statistic from the kernel.
-
-When I try to get the same result with NFSwatch by (sudo nfswatch -all
--procs3 -t 20)
-I get unreproducible results with 1 or 2 registered WRITE operations.
-NFSwatch works well on NFSv3 over UDP, but loses almost all READ/WRITE
-operations in case of TCP protocol.
-I have checked its source code and found that NFSwatch doesn't
-performs reassembling TCP streams between NFS server and NFS client.
-It just looks at TCP segment and expects headers of RPC/NFSv3
-operations exactly after TCP header.
-
-The tcpdump works similarly. Wireshark(and Tshark) is too slow for
-live 1G-10G NFSv3/TCP traffic capturing and filtration.
-
-
-Would you suggest some alternative utils, solutions or workarounds?
-
-
-Thanks,
-Pavel K
+--b.
