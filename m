@@ -1,50 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ob0-f175.google.com ([209.85.214.175]:43587 "EHLO
-	mail-ob0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752400AbaBTC2d (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Feb 2014 21:28:33 -0500
-Received: by mail-ob0-f175.google.com with SMTP id wn1so1438584obc.34
-        for <linux-nfs@vger.kernel.org>; Wed, 19 Feb 2014 18:28:32 -0800 (PST)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 4/7] NFSv4.1: Minor optimisation in get_layout_by_fh_locked()
-Date: Wed, 19 Feb 2014 21:28:22 -0500
-Message-Id: <1392863305-14870-4-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1392863305-14870-3-git-send-email-trond.myklebust@primarydata.com>
-References: <1392863305-14870-1-git-send-email-trond.myklebust@primarydata.com>
- <1392863305-14870-2-git-send-email-trond.myklebust@primarydata.com>
- <1392863305-14870-3-git-send-email-trond.myklebust@primarydata.com>
+Received: from fieldses.org ([174.143.236.118]:49999 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751285AbaBKRIm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 11 Feb 2014 12:08:42 -0500
+Date: Tue, 11 Feb 2014 12:08:42 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Weston Andros Adamson <dros@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH pynfs] nfs4.1 server: DSs should have diff server owners
+Message-ID: <20140211170842.GE19599@fieldses.org>
+References: <1392050222-1470-1-git-send-email-dros@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1392050222-1470-1-git-send-email-dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If the filehandles match, but the igrab() fails, or the layout is
-freed before we can get it, then just return NULL.
+On Mon, Feb 10, 2014 at 11:37:02AM -0500, Weston Andros Adamson wrote:
+> Use getpid() to generate the minor_id component of the server owner.
+> 
+> Witout this, all DSs are considered to be the same server by NFS clients
+> that detect server trunking, such as the upstream Linux client.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/callback_proc.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+Applied and pushed out, thanks.--b.
 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index 570c8a1d2f3d..41db5258e7a7 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -127,13 +127,13 @@ static struct pnfs_layout_hdr * get_layout_by_fh_locked(struct nfs_client *clp,
- 				continue;
- 			ino = igrab(lo->plh_inode);
- 			if (!ino)
--				continue;
-+				break;
- 			spin_lock(&ino->i_lock);
- 			/* Is this layout in the process of being freed? */
- 			if (NFS_I(ino)->layout != lo) {
- 				spin_unlock(&ino->i_lock);
- 				iput(ino);
--				continue;
-+				break;
- 			}
- 			pnfs_get_layout_hdr(lo);
- 			spin_unlock(&ino->i_lock);
--- 
-1.8.5.3
-
+> 
+> Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+> ---
+>  nfs4.1/config.py | 3 ++-
+>  1 file changed, 2 insertions(+), 1 deletion(-)
+> 
+> diff --git a/nfs4.1/config.py b/nfs4.1/config.py
+> index 4f91e84..2238aee 100644
+> --- a/nfs4.1/config.py
+> +++ b/nfs4.1/config.py
+> @@ -3,6 +3,7 @@ from nfs4_const import *
+>  import nfs4_const
+>  import nfs4lib
+>  from copy import deepcopy
+> +import os
+>  
+>  class ConfigAction(Exception):
+>      pass
+> @@ -129,7 +130,7 @@ class ServerConfig(object):
+>                ]
+>  
+>      def __init__(self):
+> -        self.minor_id = 0
+> +        self.minor_id = os.getpid()
+>          self.major_id = "PyNFSv4.1"
+>          self._owner = server_owner4(self.minor_id, self.major_id)
+>          self.scope = "Default_Scope"
+> -- 
+> 1.8.3.4 (Apple Git-47)
+> 
