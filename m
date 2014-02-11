@@ -1,117 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:34745 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750869AbaBKEvE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 10 Feb 2014 23:51:04 -0500
-Date: Tue, 11 Feb 2014 15:50:52 +1100
-From: NeilBrown <neilb@suse.de>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Simo Sorce <simo@redhat.com>
-Subject: Re: [PATCH/RFC: nfs-utils] Common systemd unit files for nfs-utils.
-Message-ID: <20140211155052.464aac7c@notabene.brown>
-In-Reply-To: <52F93BA1.9060505@RedHat.com>
-References: <20140130172451.7a354ce4@notabene.brown>
-	<52F003A1.3060908@RedHat.com>
-	<20140204093452.7b6d7c7d@notabene.brown>
-	<20140204162052.GA5295@fieldses.org>
-	<20140205140906.0b3ba9fd@notabene.brown>
-	<1B2F95A4-8439-4274-A859-F33986D06824@oracle.com>
-	<20140206122751.41b2fbf9@notabene.brown>
-	<5630CFAD-1F31-4F87-AAA7-AEB06D3EC864@oracle.com>
-	<20140206161917.GB14575@fieldses.org>
-	<52F93BA1.9060505@RedHat.com>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/Mmcso.XpIEEWur7lR0wziVi"; protocol="application/pgp-signature"
+Received: from mlbefw1.ngenready.com ([192.52.233.75]:63399 "EHLO
+	mlbefw1.harris.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751347AbaBKWvG convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Feb 2014 17:51:06 -0500
+From: "McAninley, Jason" <jmcaninl@harris.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: RE: Question regard NFS 4.0 buffer sizes
+Date: Tue, 11 Feb 2014 22:50:51 +0000
+Message-ID: <322949BF788C8D468BEA0A321B79799098BDC011@MLBMXUS20.cs.myharris.net>
+References: <322949BF788C8D468BEA0A321B79799098BDB9F0@MLBMXUS20.cs.myharris.net>
+ <20140211143633.GB9918@fieldses.org>
+ <322949BF788C8D468BEA0A321B79799098BDBB0A@MLBMXUS20.cs.myharris.net>
+ <20140211163215.GA19599@fieldses.org>
+ <322949BF788C8D468BEA0A321B79799098BDBE83@MLBMXUS20.cs.myharris.net>
+ <20140211215441.GB22695@fieldses.org>
+In-Reply-To: <20140211215441.GB22695@fieldses.org>
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/Mmcso.XpIEEWur7lR0wziVi
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: quoted-printable
+> > I have seen the GETATTR return MAXREAD and MAXWRITE attribute values
+> set to 1MB during testing with Wireshark. My educated guess is that
+> this corresponds to RPCSVC_MAXPAYLOAD defined in linux/nfsd/const.h.
+> Would anyone agree with this?
+> 
+> That's an upper limit and a server without a lot of memory may default
+> to something smaller.  The GETATTR shows that it isn't, though.
 
-On Mon, 10 Feb 2014 15:50:41 -0500 Steve Dickson <SteveD@redhat.com> wrote:
+Memory shouldn't be a limit. I have the system isolated for testing - the server has ~126GB memory and the client has ~94GB.
 
-> On 02/06/2014 11:19 AM, J. Bruce Fields wrote:
-> > On Thu, Feb 06, 2014 at 11:09:58AM -0500, Chuck Lever wrote:
-> >>
-> >> On Feb 5, 2014, at 8:27 PM, NeilBrown <neilb@suse.de> wrote:
-> >>> I certainly agree with making things simple.  If we can make a config=
-uration
-> >>> irrelevant, e.g. by gets nfsd to auto-tune the number of threads so t=
-he
-> >>> setting becomes pointless, then I've very happy to remove that sort of
-> >>> configuration.  But if a configuration option actually means somethin=
-g I
-> >>> certainly don't want to remove it.
-> >>>
-> >>> So I'm leaning towards having "systemctl {un,}mask rpc-gssd" be the
-> >>> configuration tool for rpc.gssd.
-> >>
-> >> I like that better than the =E2=80=9Coff-until-requested=E2=80=9D beha=
-vior we have currently.  IMO folks who want to disable rpc.gssd will be in =
-the increasing minority and the rest of the world will take scant notice of=
- the extra daemon, as long as we ensure it speaks only when necessary.
-> >=20
-> > I'd also prefer running the gssd's by default: one less (confusing) step
-> > to set up kerberos, and I'm not seeing a realistic security risk.
-> I'm not for starting daemon that are not needed or necessary. I
-> just think that is a bad design.=20
-> =20
-> >=20
-> > If we can easily provide a way to turn it off for people that want a
-> > really stripped-down system for whatever reason, fine, let's provide
-> > that.
-> I'm thinking just the opposite... Have a way to easily (or even
-> automatically) way to enabled NFS security....  when needed...
->=20
-> Would it make it easier if we combined the gssd daemon? That goes
-> both ways (server and client)... That way we could just enable=20
-> nfs security and the daemon would started regardless on what side
-> its on...=20
->=20
-> steved.
 
-By "combine" do you mean "rewrite the code so there is only one process" or
-"have a systemd unit which starts both"?  The former seems like a lot of
-pointless work and the later contradicts your stated preference for not
-starting daemons that are not needed.
+> > > If you haven't already I'd first recommend measuring your NFS read
+> > > and write throughput and comparing it to what you can get from the
+> > > network and the server's disk.  No point tuning something if it
+> > > turns out it's already working.
+> >
+> > I have measured sequential writes using dd with 4k block size.
+> 
+> What's your dd commandline?
 
-What do you think of the suggestion to start rpc.gssd when Wanted
-if /etc/krb5.conf exists, and document that it can be disabled with
+dd if=/dev/zero of=[nfs_dir]/foo bs=4096 count=1310720
 
-  systemctl mask rpc-gssd
+Should result in a 5 GB file.
 
-(I like your idea of clearly documenting the important systemd units).
-That way it is running when needed, probably not when not, and if you happen
-to have kerberos installed but don't want rpc.gssd, it is easy to achieve
-that.
 
-NeilBrown
+> > The NFS
+> > share maps to a large SSD drive on the server. My understanding is
+> > that we have jumbo frames enabled (i.e. MTU 8k). The share is mounted
+> > with rsize/wsize of 32k. We're seeing write speeds of 200 MB/sec
+> > (mega-bytes). We have 10 GigE connections between the server and
+> > client with a single switch + multipathing from the client.
+> 
+> So both network and disk should be able to do more than that, but it
+> would still be worth testing both (with e.g. tcpperf and dd) just to
+> make sure there's nothing wrong with either.
+> 
+> > I will admit I have a weak networking background, but it seems like
+> we could achieve speeds much greater than 200 MB/sec, considering the
+> pipes are very wide and the MTU is large. Again, I'm concerned there is
+> a buffer somewhere in the Kernel that is flushing prematurely (32k,
+> instead of wsize).
+> >
+> > If there is detailed documentation online that I have overlooked, I
+> would much appreciate a pointer in that direction!
+> 
+> Also, what kernel versions are you on?
 
---Sig_/Mmcso.XpIEEWur7lR0wziVi
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
+RH6.3, 2.6.32-279.el6.x86_64
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.22 (GNU/Linux)
+-Jason
 
-iQIVAwUBUvmsLDnsnt1WYoG5AQL7PQ//a78OBqqulPxWOLT3tgu4OmWfRux8Ugb3
-iiKEf8Qj7nqvowMmWl1WjGUq7+6LDb2EcZvBFCFaRKc9PDRpquiMB1NvSFF0B0IV
-qkGlu2j2rGgp8ZIgd+vX4pqI+EEbNF1ckR2LvaKvUmcN9xXZRNnNWt0pFfps736Z
-vO7GIkjEnmA1f9MFddJwumirxhrxeNLmTWK0FpH1es62khjNjnv4F6ypD1Z2Lvy3
-3reWhZdBAPR4T9rgLAuHZsUeAzJdxwgFafZxGEWF6BEPqj4YuBKDMG3vJdQkKjz1
-CxRXkMKOnT+6gQwQh3fMQ6xsA8k7WNxVdRXJb7E7IdBO/KKigC7lUQ39i0Xsh7fP
-PdyYKt+DNttr9x+uh1vOcDxAakbWFUJAYYtYSNldJtetbLAI21HyIkTlVAN8olsq
-EHK9y77RubfaHKsVlBsijEtpIVAc+lBtr21g3vS3cHsoEJELbujbvj+u9e7MDemH
-4I8ciJw7MDs4WSrjItAoKxoWs+egbJD3tbnpfuUpPaJVFIUR42ST5gZXpLb4KKyT
-TkvqnqhfBHiSDVSZP2qs8mqNv9N+iUw9nO7cGr6z8wd2fkRnLRDhFMtogC7q98yW
-1IUnNRd75C1n6pQR0uzMLogkeJq7HUycU8GPMwV7gD3+NRhPhqa6YolB4HESa7vN
-50DuhkFfAR0=
-=GIeJ
------END PGP SIGNATURE-----
-
---Sig_/Mmcso.XpIEEWur7lR0wziVi--
