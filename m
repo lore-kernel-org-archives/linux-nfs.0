@@ -1,73 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:10338 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751274AbaBDNYa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Feb 2014 08:24:30 -0500
-Date: Tue, 4 Feb 2014 08:24:26 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Anthony Messina <amessina@messinet.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH/RFC: nfs-utils] Common systemd unit files for nfs-utils.
-Message-ID: <20140204082426.449519bd@tlielax.poochiereds.net>
-In-Reply-To: <1757036.O2OPYTypu1@linux-ws1.messinet.com>
-References: <20140130172451.7a354ce4@notabene.brown>
-	<52F003A1.3060908@RedHat.com>
-	<1757036.O2OPYTypu1@linux-ws1.messinet.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-ig0-f174.google.com ([209.85.213.174]:53167 "EHLO
+	mail-ig0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932169AbaBKThR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Feb 2014 14:37:17 -0500
+Received: by mail-ig0-f174.google.com with SMTP id hl1so9526080igb.1
+        for <linux-nfs@vger.kernel.org>; Tue, 11 Feb 2014 11:37:17 -0800 (PST)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 4/5] NFSv4.1: Allow parallel OPEN requests
+Date: Tue, 11 Feb 2014 14:37:07 -0500
+Message-Id: <1392147428-23087-5-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1392147428-23087-4-git-send-email-trond.myklebust@primarydata.com>
+References: <1392147428-23087-1-git-send-email-trond.myklebust@primarydata.com>
+ <1392147428-23087-2-git-send-email-trond.myklebust@primarydata.com>
+ <1392147428-23087-3-git-send-email-trond.myklebust@primarydata.com>
+ <1392147428-23087-4-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 04 Feb 2014 06:42:12 -0600
-Anthony Messina <amessina@messinet.com> wrote:
+Enable parallel OPEN requests for the case of NFSv4.1. Please note that
+OPENs are still completely serialised w.r.t. OPEN_DOWNGRADE and CLOSE.
 
-> On Monday, February 03, 2014 04:01:21 PM Steve Dickson wrote:
-> > This changes the current API... Today to enable/start this service 
-> > today one does:
-> > 
-> >   systemctl enable nfs-server
-> >   systemctl start nfs-server
-> > 
-> > which would change to:
-> > 
-> >   systemctl enable nfs-server.target
-> >   systemctl start nfs-server
-> > 
-> > with the same daemons being started.
-> > This changed will cause existing scripts to fail... 
-> > I guess I don't see the point of having a .target file. 
-> > 
-> > How is rpc.svcgssd enabled? Since the .service file does
-> > not have a [Install] section the systemctl enable rpc.svcgssd
-> > fails.
-> > 
-> > Also how does gss-proxy come to play in all this? Maybe we 
-> > just use  gss-proxy by default and retire rpc.svcgssd.
-> 
-> Usually just a quite listener (end-user & small-time sysadmin) on this ML...
-> 
-> +1 for gss-proxy by default (for Fedora anyway).  I've been using it 
-> throughout F19 extensively in the KRB5/NFSv4.1 environment with great success.  
-> I have nfs-secure-server.service "masked" via systemd to prevent it from being 
-> started.
-> 
-> There seems to be only one strange issue I've come across with gss-proxy vs. 
-> rpc.svcgssd: https://fedorahosted.org/gss-proxy/ticket/98.  This is with 
-> regard to how access for the "nfsnobody" user is handled.  The ticket attempts 
-> to show that with rpc.svcgssd, a host with host credentials and a user without 
-> credentials can still access NFS shares with 0755 directories and 0644 files 
-> (via the host credentials and mapped to the nfsnobody user).  With gss-proxy, 
-> I had to create user credentials for kojibuilder@REALM because the access 
-> wasn't allowed via the nfsnobody path.  I'm not sure if this is resolved, or 
-> by design, etc.  But it is the only issue I've seen with gss-proxy vs. 
-> rpc.svcgssd.
-> 
-> Thanks.  -A
-> 
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/nfs4proc.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-Please do open a bug at bugzilla.redhat.com for that and cc me on it.
-We really do want to ensure that these sorts of corner-cases get
-addressed.
-
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 96e0bd42f38c..4eb78f6c3623 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1006,6 +1006,8 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
+ 	p->o_arg.clientid = server->nfs_client->cl_clientid;
+ 	p->o_arg.id.create_time = ktime_to_ns(sp->so_seqid.create_time);
+ 	p->o_arg.id.uniquifier = sp->so_seqid.owner_id;
++	if (server->caps & NFS_CAP_STATEID_NFSV41)
++		p->o_arg.seqid->wait.shared = 1;
+ 	p->o_arg.name = &dentry->d_name;
+ 	p->o_arg.server = server;
+ 	p->o_arg.bitmask = nfs4_bitmask(server, label);
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.8.5.3
+
