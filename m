@@ -1,74 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:50003 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752716AbaBKRMj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 11 Feb 2014 12:12:39 -0500
-Date: Tue, 11 Feb 2014 12:12:37 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Rashika Kheria <rashika.kheria@gmail.com>
-Cc: linux-kernel@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        "David S. Miller" <davem@davemloft.net>, linux-nfs@vger.kernel.org,
-        netdev@vger.kernel.org, josh@joshtriplett.org
-Subject: Re: [PATCH 13/13] net: Mark functions as static in
- net/sunrpc/svc_xprt.c
-Message-ID: <20140211171237.GF19599@fieldses.org>
-References: <6f029c895035908595957fb16ab445c82793c77d.1391888654.git.rashika.kheria@gmail.com>
- <259f3dc38d7115eccf3aaa2aa7de2414a47f90a2.1391888654.git.rashika.kheria@gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <259f3dc38d7115eccf3aaa2aa7de2414a47f90a2.1391888654.git.rashika.kheria@gmail.com>
+Received: from mail-ie0-f177.google.com ([209.85.223.177]:41558 "EHLO
+	mail-ie0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752199AbaBKETL convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Feb 2014 23:19:11 -0500
+Received: by mail-ie0-f177.google.com with SMTP id at1so4224803iec.36
+        for <linux-nfs@vger.kernel.org>; Mon, 10 Feb 2014 20:19:11 -0800 (PST)
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
+Subject: Re: "nosharecache" option prevent "mount" from detecting when the mount is a duplicate.
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+In-Reply-To: <20140211133013.1ccf8615@notabene.brown>
+Date: Mon, 10 Feb 2014 23:19:09 -0500
+Cc: NFS <linux-nfs@vger.kernel.org>
+Message-Id: <4A18E8CC-9376-4456-9FD6-E6B36BF8E89D@primarydata.com>
+References: <20140211133013.1ccf8615@notabene.brown>
+To: Brown Neil <neilb@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Feb 09, 2014 at 01:40:54AM +0530, Rashika Kheria wrote:
-> Mark functions as static in net/sunrpc/svc_xprt.c because they are not
-> used outside this file.
-> 
-> This eliminates the following warning in net/sunrpc/svc_xprt.c:
-> net/sunrpc/svc_xprt.c:574:5: warning: no previous prototype for ‘svc_alloc_arg’ [-Wmissing-prototypes]
-> net/sunrpc/svc_xprt.c:615:18: warning: no previous prototype for ‘svc_get_next_xprt’ [-Wmissing-prototypes]
-> net/sunrpc/svc_xprt.c:694:6: warning: no previous prototype for ‘svc_add_new_temp_xprt’ [-Wmissing-prototypes]
 
-Thanks, applying.--b.
+On Feb 10, 2014, at 21:30, NeilBrown <neilb@suse.de> wrote:
 
 > 
-> Signed-off-by: Rashika Kheria <rashika.kheria@gmail.com>
-> ---
->  net/sunrpc/svc_xprt.c |    6 +++---
->  1 file changed, 3 insertions(+), 3 deletions(-)
+> (I seem to have quite a pile of NFS issues lately.... some if it is tidying up
+> issues from before Christmas, some of it just keeps on coming :-)
 > 
-> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-> index 80a6640..06c6ff0 100644
-> --- a/net/sunrpc/svc_xprt.c
-> +++ b/net/sunrpc/svc_xprt.c
-> @@ -571,7 +571,7 @@ static void svc_check_conn_limits(struct svc_serv *serv)
->  	}
->  }
->  
-> -int svc_alloc_arg(struct svc_rqst *rqstp)
-> +static int svc_alloc_arg(struct svc_rqst *rqstp)
->  {
->  	struct svc_serv *serv = rqstp->rq_server;
->  	struct xdr_buf *arg;
-> @@ -612,7 +612,7 @@ int svc_alloc_arg(struct svc_rqst *rqstp)
->  	return 0;
->  }
->  
-> -struct svc_xprt *svc_get_next_xprt(struct svc_rqst *rqstp, long timeout)
-> +static struct svc_xprt *svc_get_next_xprt(struct svc_rqst *rqstp, long timeout)
->  {
->  	struct svc_xprt *xprt;
->  	struct svc_pool		*pool = rqstp->rq_pool;
-> @@ -691,7 +691,7 @@ struct svc_xprt *svc_get_next_xprt(struct svc_rqst *rqstp, long timeout)
->  	return xprt;
->  }
->  
-> -void svc_add_new_temp_xprt(struct svc_serv *serv, struct svc_xprt *newxpt)
-> +static void svc_add_new_temp_xprt(struct svc_serv *serv, struct svc_xprt *newxpt)
->  {
->  	spin_lock_bh(&serv->sv_lock);
->  	set_bit(XPT_TEMP, &newxpt->xpt_flags);
-> -- 
-> 1.7.9.5
+> If you run "mount -a" it will attempt to mount all filesystems listed
+> in /etc/fstab, but filesystems that are already mounted will not be mounted
+> again.  So it is normally safe to run "mount -a" multiple times.
 > 
+> However if an NFS mount in /etc/fstab has the "nosharecache" option set,
+> mount doesn't notice that it is already mounted as so mounts it again.  So
+> repeated "mount -a" is no longer safe.
+> 
+> This happens because the prevention of multiple mounts happens in do_add_mount
+> in fs/namespace.c:
+> 
+> 	err = -EBUSY;
+> 	if (path->mnt->mnt_sb == newmnt->mnt.mnt_sb &&
+> 	    path->mnt->mnt_root == path->dentry)
+> 		goto unlock;
+> 
+> 
+> i.e. if the exact same superblock is being mounted in the exact same place,
+> return EBUSY.
+> With nosharecache, every mount attempt produces a new superblock so this test
+> never fires.
+> 
+> One way to address this would be to have a different option, e.g.
+>          sharecache=27
+> 
+> where the '27' is an arbitrary number meaning that if two mount attempts have
+> different sharecache numbers they will have different superblocks.  If they
+> have the same sharecache number they can have the same superblock.
+> This is not the most elegant interface ever and I would be very happy for
+> suggestions to improve it.  Maybe a string rather than a number ???
+> 
+> This probably isn't a very serious issue, but is a regression in terms of the
+> usability of "mount -a" and I think it would be best to fix it if the cost is
+> not too high.
+> 
+> Below is my patch to implement the "sharecache=%u" syntax.
+> 
+> Any ideas?
+
+What are people using nosharecache for these days, and why is this not another argument for just getting rid of it?
+
+_________________________________
+Trond Myklebust
+Linux NFS client maintainer, PrimaryData
+trond.myklebust@primarydata.com
+
