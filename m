@@ -1,65 +1,137 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f174.google.com ([209.85.223.174]:56055 "EHLO
-	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753008AbaBCT43 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Feb 2014 14:56:29 -0500
-Received: by mail-ie0-f174.google.com with SMTP id tp5so6610170ieb.33
-        for <linux-nfs@vger.kernel.org>; Mon, 03 Feb 2014 11:56:29 -0800 (PST)
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
-Subject: Re: [PATCH] nfs: include xattr.h from fs/nfs/nfs3proc.c
+Received: from mail-ig0-f178.google.com ([209.85.213.178]:41138 "EHLO
+	mail-ig0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754097AbaBKThT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Feb 2014 14:37:19 -0500
+Received: by mail-ig0-f178.google.com with SMTP id uq10so9465289igb.5
+        for <linux-nfs@vger.kernel.org>; Tue, 11 Feb 2014 11:37:19 -0800 (PST)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
-In-Reply-To: <20140203193107.GH30250@htj.dyndns.org>
-Date: Mon, 3 Feb 2014 14:48:13 -0500
-Cc: Dr Fields James Bruce <bfields@fieldses.org>,
-        linuxnfs <linux-nfs@vger.kernel.org>, Li Zefan <lizefan@huawei.com>,
-        containers@lists.linux-foundation.org, cgroups@vger.kernel.org
-Message-Id: <F2DD11A7-8D32-4E1E-BB4D-7384F0932B2D@primarydata.com>
-References: <20140203193107.GH30250@htj.dyndns.org>
-To: Tejun Heo <tj@kernel.org>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 5/5] NFSv4: Use correct locking when updating nfs4_state in nfs4_close_done
+Date: Tue, 11 Feb 2014 14:37:08 -0500
+Message-Id: <1392147428-23087-6-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1392147428-23087-5-git-send-email-trond.myklebust@primarydata.com>
+References: <1392147428-23087-1-git-send-email-trond.myklebust@primarydata.com>
+ <1392147428-23087-2-git-send-email-trond.myklebust@primarydata.com>
+ <1392147428-23087-3-git-send-email-trond.myklebust@primarydata.com>
+ <1392147428-23087-4-git-send-email-trond.myklebust@primarydata.com>
+ <1392147428-23087-5-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+The stateid and state->flags should be updated atomically under
+protection of the state->seqlock.
 
-On Feb 3, 2014, at 14:31, Tejun Heo <tj@kernel.org> wrote:
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/nfs4proc.c | 65 ++++++++++++++++++++++++++++++-------------------------
+ 1 file changed, 35 insertions(+), 30 deletions(-)
 
-> fs/nfs/nfs3proc.c is making use of xattr but was getting linux/xattr.h
-> indirectly through linux/cgroup.h, which will soon drop the inclusion
-> of xattr.h.  Explicitly include linux/xattr.h from nfs3proc.c so that
-> compilation doesn't fail when linux/cgroup.h drops linux/xattr.h.
-> 
-> As the following cgroup changes will depend on these changes, it
-> probably would be easier to route this through cgroup branch.  Would
-> that be okay?
-> 
-> Signed-off-by: Tejun Heo <tj@kernel.org>
-> Cc: "J. Bruce Fields" <bfields@fieldses.org>
-
-EWRONGMAINTAINER… :-)
-
-Acked-by: Trond Myklebust <trond.myklebust@primarydata.com>
-
-> Cc: linux-nfs@vger.kernel.org
-> ---
-> fs/nfs/nfs3proc.c |    1 +
-> 1 file changed, 1 insertion(+)
-> 
-> --- a/fs/nfs/nfs3proc.c
-> +++ b/fs/nfs/nfs3proc.c
-> @@ -18,6 +18,7 @@
-> #include <linux/lockd/bind.h>
-> #include <linux/nfs_mount.h>
-> #include <linux/freezer.h>
-> +#include <linux/xattr.h>
-> 
-> #include "iostat.h"
-> #include "internal.h"
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---
-Trond Myklebust
-Linux NFS client maintainer
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 4eb78f6c3623..c0015c2d2ac2 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1151,6 +1151,38 @@ static bool nfs_need_update_open_stateid(struct nfs4_state *state,
+ 	return false;
+ }
+ 
++static void nfs_clear_open_stateid_locked(struct nfs4_state *state,
++		nfs4_stateid *stateid, fmode_t fmode)
++{
++	clear_bit(NFS_O_RDWR_STATE, &state->flags);
++	switch (fmode & (FMODE_READ|FMODE_WRITE)) {
++	case FMODE_WRITE:
++		clear_bit(NFS_O_RDONLY_STATE, &state->flags);
++		break;
++	case FMODE_READ:
++		clear_bit(NFS_O_WRONLY_STATE, &state->flags);
++		break;
++	case 0:
++		clear_bit(NFS_O_RDONLY_STATE, &state->flags);
++		clear_bit(NFS_O_WRONLY_STATE, &state->flags);
++		clear_bit(NFS_OPEN_STATE, &state->flags);
++	}
++	if (stateid == NULL)
++		return;
++	if (!nfs_need_update_open_stateid(state, stateid))
++		return;
++	if (test_bit(NFS_DELEGATED_STATE, &state->flags) == 0)
++		nfs4_stateid_copy(&state->stateid, stateid);
++	nfs4_stateid_copy(&state->open_stateid, stateid);
++}
++
++static void nfs_clear_open_stateid(struct nfs4_state *state, nfs4_stateid *stateid, fmode_t fmode)
++{
++	write_seqlock(&state->seqlock);
++	nfs_clear_open_stateid_locked(state, stateid, fmode);
++	write_sequnlock(&state->seqlock);
++}
++
+ static void nfs_set_open_stateid_locked(struct nfs4_state *state, nfs4_stateid *stateid, fmode_t fmode)
+ {
+ 	switch (fmode) {
+@@ -1170,13 +1202,6 @@ static void nfs_set_open_stateid_locked(struct nfs4_state *state, nfs4_stateid *
+ 	nfs4_stateid_copy(&state->open_stateid, stateid);
+ }
+ 
+-static void nfs_set_open_stateid(struct nfs4_state *state, nfs4_stateid *stateid, fmode_t fmode)
+-{
+-	write_seqlock(&state->seqlock);
+-	nfs_set_open_stateid_locked(state, stateid, fmode);
+-	write_sequnlock(&state->seqlock);
+-}
+-
+ static void __update_open_stateid(struct nfs4_state *state, nfs4_stateid *open_stateid, const nfs4_stateid *deleg_stateid, fmode_t fmode)
+ {
+ 	/*
+@@ -2491,26 +2516,6 @@ static void nfs4_free_closedata(void *data)
+ 	kfree(calldata);
+ }
+ 
+-static void nfs4_close_clear_stateid_flags(struct nfs4_state *state,
+-		fmode_t fmode)
+-{
+-	spin_lock(&state->owner->so_lock);
+-	clear_bit(NFS_O_RDWR_STATE, &state->flags);
+-	switch (fmode & (FMODE_READ|FMODE_WRITE)) {
+-	case FMODE_WRITE:
+-		clear_bit(NFS_O_RDONLY_STATE, &state->flags);
+-		break;
+-	case FMODE_READ:
+-		clear_bit(NFS_O_WRONLY_STATE, &state->flags);
+-		break;
+-	case 0:
+-		clear_bit(NFS_O_RDONLY_STATE, &state->flags);
+-		clear_bit(NFS_O_WRONLY_STATE, &state->flags);
+-		clear_bit(NFS_OPEN_STATE, &state->flags);
+-	}
+-	spin_unlock(&state->owner->so_lock);
+-}
+-
+ static void nfs4_close_done(struct rpc_task *task, void *data)
+ {
+ 	struct nfs4_closedata *calldata = data;
+@@ -2529,9 +2534,9 @@ static void nfs4_close_done(struct rpc_task *task, void *data)
+ 			if (calldata->roc)
+ 				pnfs_roc_set_barrier(state->inode,
+ 						     calldata->roc_barrier);
+-			nfs_set_open_stateid(state, &calldata->res.stateid, 0);
++			nfs_clear_open_stateid(state, &calldata->res.stateid, 0);
+ 			renew_lease(server, calldata->timestamp);
+-			break;
++			goto out_release;
+ 		case -NFS4ERR_ADMIN_REVOKED:
+ 		case -NFS4ERR_STALE_STATEID:
+ 		case -NFS4ERR_OLD_STATEID:
+@@ -2545,7 +2550,7 @@ static void nfs4_close_done(struct rpc_task *task, void *data)
+ 				goto out_release;
+ 			}
+ 	}
+-	nfs4_close_clear_stateid_flags(state, calldata->arg.fmode);
++	nfs_clear_open_stateid(state, NULL, calldata->arg.fmode);
+ out_release:
+ 	nfs_release_seqid(calldata->arg.seqid);
+ 	nfs_refresh_inode(calldata->inode, calldata->res.fattr);
+-- 
+1.8.5.3
 
