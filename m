@@ -1,51 +1,97 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f180.google.com ([209.85.223.180]:32821 "EHLO
-	mail-ie0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752908AbaBJVsK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Feb 2014 16:48:10 -0500
-Received: by mail-ie0-f180.google.com with SMTP id at1so3813000iec.25
-        for <linux-nfs@vger.kernel.org>; Mon, 10 Feb 2014 13:48:10 -0800 (PST)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Steve Dickson <steved@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] SUNRPC: Don't create a gss auth cache unless rpc.gssd is running
-Date: Mon, 10 Feb 2014 16:48:07 -0500
-Message-Id: <1392068887-25091-1-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <D03884DC-C5D3-4496-8F5C-682C3E6372AD@primarydata.com>
-References: <D03884DC-C5D3-4496-8F5C-682C3E6372AD@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:23754 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753519AbaBKUMj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 11 Feb 2014 15:12:39 -0500
+Message-ID: <52FA8432.4050509@RedHat.com>
+Date: Tue, 11 Feb 2014 15:12:34 -0500
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: NeilBrown <neilb@suse.de>, Chuck Lever <chuck.lever@oracle.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Simo Sorce <simo@redhat.com>
+Subject: Re: [PATCH/RFC: nfs-utils] Common systemd unit files for nfs-utils.
+References: <20140204162052.GA5295@fieldses.org> <20140205140906.0b3ba9fd@notabene.brown> <1B2F95A4-8439-4274-A859-F33986D06824@oracle.com> <20140206122751.41b2fbf9@notabene.brown> <5630CFAD-1F31-4F87-AAA7-AEB06D3EC864@oracle.com> <20140206161917.GB14575@fieldses.org> <52F93BA1.9060505@RedHat.com> <20140211155052.464aac7c@notabene.brown> <20140211163712.GB19599@fieldses.org> <52FA543C.1080004@RedHat.com> <20140211165658.GC19599@fieldses.org>
+In-Reply-To: <20140211165658.GC19599@fieldses.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-An infinite loop is caused when nfs4_establish_lease() fails
-with -EACCES. This causes nfs4_handle_reclaim_lease_error()
-to sleep a bit and resets the NFS4CLNT_LEASE_EXPIRED bit.
-This in turn causes nfs4_state_manager() to try and
-reestablished the lease, again, again, again...
 
-The problem is a valid RPCSEC_GSS client is being created when
-rpc.gssd is not running.
 
-Link: http://lkml.kernel.org/r/1392066375-16502-1-git-send-email-steved@redhat.com
-Fixes: 0ea9de0ea6a4 (sunrpc: turn warn_gssd() log message into a dprintk())
-Reported-by: Steve Dickson <steved@redhat.com>
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- net/sunrpc/auth_gss/auth_gss.c | 2 ++
- 1 file changed, 2 insertions(+)
+On 02/11/2014 11:56 AM, J. Bruce Fields wrote:
+> On Tue, Feb 11, 2014 at 11:47:56AM -0500, Steve Dickson wrote:
+>>
+>>
+>> On 02/11/2014 11:37 AM, J. Bruce Fields wrote:
+>>> On Tue, Feb 11, 2014 at 03:50:52PM +1100, NeilBrown wrote:
+>>>> On Mon, 10 Feb 2014 15:50:41 -0500 Steve Dickson <SteveD@redhat.com> wrote:
+>>>>
+>>>>> On 02/06/2014 11:19 AM, J. Bruce Fields wrote:
+>>>>>> On Thu, Feb 06, 2014 at 11:09:58AM -0500, Chuck Lever wrote:
+>>>>>>>
+>>>>>>> On Feb 5, 2014, at 8:27 PM, NeilBrown <neilb@suse.de> wrote:
+>>>>>>>> I certainly agree with making things simple.  If we can make a configuration
+>>>>>>>> irrelevant, e.g. by gets nfsd to auto-tune the number of threads so the
+>>>>>>>> setting becomes pointless, then I've very happy to remove that sort of
+>>>>>>>> configuration.  But if a configuration option actually means something I
+>>>>>>>> certainly don't want to remove it.
+>>>>>>>>
+>>>>>>>> So I'm leaning towards having "systemctl {un,}mask rpc-gssd" be the
+>>>>>>>> configuration tool for rpc.gssd.
+>>>>>>>
+>>>>>>> I like that better than the “off-until-requested” behavior we have currently.  IMO folks who want to disable rpc.gssd will be in the increasing minority and the rest of the world will take scant notice of the extra daemon, as long as we ensure it speaks only when necessary.
+>>>>>>
+>>>>>> I'd also prefer running the gssd's by default: one less (confusing) step
+>>>>>> to set up kerberos, and I'm not seeing a realistic security risk.
+>>>>> I'm not for starting daemon that are not needed or necessary. I
+>>>>> just think that is a bad design. 
+>>>>>  
+>>>>>>
+>>>>>> If we can easily provide a way to turn it off for people that want a
+>>>>>> really stripped-down system for whatever reason, fine, let's provide
+>>>>>> that.
+>>>>> I'm thinking just the opposite... Have a way to easily (or even
+>>>>> automatically) way to enabled NFS security....  when needed...
+>>>>>
+>>>>> Would it make it easier if we combined the gssd daemon? That goes
+>>>>> both ways (server and client)... That way we could just enable 
+>>>>> nfs security and the daemon would started regardless on what side
+>>>>> its on... 
+>>>>>
+>>>>> steved.
+>>>>
+>>>> By "combine" do you mean "rewrite the code so there is only one process" or
+>>>> "have a systemd unit which starts both"?  The former seems like a lot of
+>>>> pointless work and the later contradicts your stated preference for not
+>>>> starting daemons that are not needed.
+>>>
+>>> Note the client needs svcgssd or gss-proxy too, if you want it to be
+>>> able to get delegations over NFSv4.0.  (It doesn't matter for versions
+>>> 2, 3, or >=4.1).
+>> Even when kerberos is not configured? 
+> 
+> No.  So an attempt to summarize:
+> 	- not using kerberos?  You don't need any daemons.
+> 	- using kerberos, NFS version 2, 3, or >=4.1?  You need rpc.gssd
+> 	  on the client, and rpc.svcgssd (or gss-proxy) on the server.
+> 	- using kerberos, NFS version 4.0, care about delegations
+> 	  working?  You need both rpc.gssd and rpc.svcgssd (or
+> 	  gss-proxy) on both server and client.
+Thanks for the summary... 
 
-diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
-index 6c0513a7f992..44a61e8fda6f 100644
---- a/net/sunrpc/auth_gss/auth_gss.c
-+++ b/net/sunrpc/auth_gss/auth_gss.c
-@@ -991,6 +991,8 @@ gss_create_new(struct rpc_auth_create_args *args, struct rpc_clnt *clnt)
- 	gss_auth->service = gss_pseudoflavor_to_service(gss_auth->mech, flavor);
- 	if (gss_auth->service == 0)
- 		goto err_put_mech;
-+	if (!gssd_running(gss_auth->net))
-+		goto err_put_mech;
- 	auth = &gss_auth->rpc_auth;
- 	auth->au_cslack = GSS_CRED_SLACK >> 2;
- 	auth->au_rslack = GSS_VERF_SLACK >> 2;
--- 
-1.8.5.3
+> 
+>>> I still pretty vague on exactly what problems we solve by turning off
+>>> these daemons by default.
+>> To keep things simple....
+> 
+> "Always start" is simpler logic than, say, "start if /etc/krb5.conf is
+> available".
+Point... but I still think we can do better than that... 
 
+steved.
+
+> 
+> --b.
+> 
