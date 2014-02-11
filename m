@@ -1,104 +1,90 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailout1.samsung.com ([203.254.224.24]:58322 "EHLO
-	mailout1.samsung.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751458AbaBEG1V (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Feb 2014 01:27:21 -0500
-Received: from epcpsbgr1.samsung.com
- (u141.gpu120.samsung.co.kr [203.254.230.141])
- by mailout1.samsung.com (Oracle Communications Messaging Server 7u4-24.01
- (7.0.4.24.0) 64bit (built Nov 17 2011))
- with ESMTP id <0N0I00953F98RSA0@mailout1.samsung.com> for
- linux-nfs@vger.kernel.org; Wed, 05 Feb 2014 15:27:08 +0900 (KST)
-From: Jingoo Han <jg1.han@samsung.com>
-To: "'Trond Myklebust'" <Trond.Myklebust@netapp.com>
-Cc: "'J. Bruce Fields'" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
-        "'Jingoo Han'" <jg1.han@samsung.com>
-Subject: [PATCH] sunrpc: replace strict_strtoul() with kstrtoul()
-Date: Wed, 05 Feb 2014 15:27:08 +0900
-Message-id: <000501cf223b$4b858490$e2908db0$%han@samsung.com>
-MIME-version: 1.0
-Content-type: text/plain; charset=us-ascii
+Received: from mail-ig0-f177.google.com ([209.85.213.177]:51110 "EHLO
+	mail-ig0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754402AbaBKThN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Feb 2014 14:37:13 -0500
+Received: by mail-ig0-f177.google.com with SMTP id k19so9403707igc.4
+        for <linux-nfs@vger.kernel.org>; Tue, 11 Feb 2014 11:37:13 -0800 (PST)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH 1/5] NFSv4: Don't update the open stateid unless it is newer than the old one
+Date: Tue, 11 Feb 2014 14:37:04 -0500
+Message-Id: <1392147428-23087-2-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1392147428-23087-1-git-send-email-trond.myklebust@primarydata.com>
+References: <1392147428-23087-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The usage of strict_strtoul() is not preferred, because
-strict_strtoul() is obsolete. Thus, kstrtoul() should be
-used.
+This patch is in preparation for the NFSv4.1 parallel open capability.
 
-Signed-off-by: Jingoo Han <jg1.han@samsung.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- net/sunrpc/addr.c     |    8 ++++----
- net/sunrpc/auth.c     |    2 +-
- net/sunrpc/xprtsock.c |    2 +-
- 3 files changed, 6 insertions(+), 6 deletions(-)
+ fs/nfs/nfs4_fs.h  | 10 ++++++++++
+ fs/nfs/nfs4proc.c | 21 +++++++++++++++++----
+ 2 files changed, 27 insertions(+), 4 deletions(-)
 
-diff --git a/net/sunrpc/addr.c b/net/sunrpc/addr.c
-index a622ad6..c0d3243 100644
---- a/net/sunrpc/addr.c
-+++ b/net/sunrpc/addr.c
-@@ -184,7 +184,7 @@ static int rpc_parse_scope_id(struct net *net, const char *buf,
- 			scope_id = dev->ifindex;
- 			dev_put(dev);
- 		} else {
--			if (strict_strtoul(p, 10, &scope_id) == 0) {
-+			if (kstrtoul(p, 10, &scope_id) == 0) {
- 				kfree(p);
- 				return 0;
- 			}
-@@ -304,7 +304,7 @@ char *rpc_sockaddr2uaddr(const struct sockaddr *sap, gfp_t gfp_flags)
-  * @sap: buffer into which to plant socket address
-  * @salen: size of buffer
-  *
-- * @uaddr does not have to be '\0'-terminated, but strict_strtoul() and
-+ * @uaddr does not have to be '\0'-terminated, but kstrtoul() and
-  * rpc_pton() require proper string termination to be successful.
-  *
-  * Returns the size of the socket address if successful; otherwise
-@@ -327,7 +327,7 @@ size_t rpc_uaddr2sockaddr(struct net *net, const char *uaddr,
- 	c = strrchr(buf, '.');
- 	if (unlikely(c == NULL))
- 		return 0;
--	if (unlikely(strict_strtoul(c + 1, 10, &portlo) != 0))
-+	if (unlikely(kstrtoul(c + 1, 10, &portlo) != 0))
- 		return 0;
- 	if (unlikely(portlo > 255))
- 		return 0;
-@@ -336,7 +336,7 @@ size_t rpc_uaddr2sockaddr(struct net *net, const char *uaddr,
- 	c = strrchr(buf, '.');
- 	if (unlikely(c == NULL))
- 		return 0;
--	if (unlikely(strict_strtoul(c + 1, 10, &porthi) != 0))
-+	if (unlikely(kstrtoul(c + 1, 10, &porthi) != 0))
- 		return 0;
- 	if (unlikely(porthi > 255))
- 		return 0;
-diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
-index 5285ead..0a64ffe 100644
---- a/net/sunrpc/auth.c
-+++ b/net/sunrpc/auth.c
-@@ -48,7 +48,7 @@ static int param_set_hashtbl_sz(const char *val, const struct kernel_param *kp)
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index a5b27c2d9689..df81fcc138a7 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -500,6 +500,16 @@ static inline bool nfs4_stateid_match(const nfs4_stateid *dst, const nfs4_statei
+ 	return memcmp(dst, src, sizeof(*dst)) == 0;
+ }
  
- 	if (!val)
- 		goto out_inval;
--	ret = strict_strtoul(val, 0, &num);
-+	ret = kstrtoul(val, 0, &num);
- 	if (ret == -EINVAL)
- 		goto out_inval;
- 	nbits = fls(num);
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 817a1e5..c66b0d4 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -3070,7 +3070,7 @@ static int param_set_uint_minmax(const char *val,
++static inline bool nfs4_stateid_match_other(const nfs4_stateid *dst, const nfs4_stateid *src)
++{
++	return memcmp(dst->other, src->other, NFS4_STATEID_OTHER_SIZE) == 0;
++}
++
++static inline bool nfs4_stateid_is_newer(const nfs4_stateid *s1, const nfs4_stateid *s2)
++{
++	return (s32)(be32_to_cpu(s1->seqid) - be32_to_cpu(s2->seqid)) > 0;
++}
++
+ static inline bool nfs4_valid_open_stateid(const struct nfs4_state *state)
+ {
+ 	return test_bit(NFS_STATE_RECOVERY_FAILED, &state->flags) == 0;
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 2da6a698b8f7..96e0bd42f38c 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1137,12 +1137,20 @@ static void update_open_stateflags(struct nfs4_state *state, fmode_t fmode)
+ 	nfs4_state_set_mode_locked(state, state->state | fmode);
+ }
  
- 	if (!val)
- 		return -EINVAL;
--	ret = strict_strtoul(val, 0, &num);
-+	ret = kstrtoul(val, 0, &num);
- 	if (ret == -EINVAL || num < min || num > max)
- 		return -EINVAL;
- 	*((unsigned int *)kp->arg) = num;
++static bool nfs_need_update_open_stateid(struct nfs4_state *state,
++		nfs4_stateid *stateid)
++{
++	if (test_and_set_bit(NFS_OPEN_STATE, &state->flags) == 0)
++		return true;
++	if (!nfs4_stateid_match_other(stateid, &state->open_stateid))
++		return true;
++	if (nfs4_stateid_is_newer(stateid, &state->open_stateid))
++		return true;
++	return false;
++}
++
+ static void nfs_set_open_stateid_locked(struct nfs4_state *state, nfs4_stateid *stateid, fmode_t fmode)
+ {
+-	if (test_bit(NFS_DELEGATED_STATE, &state->flags) == 0)
+-		nfs4_stateid_copy(&state->stateid, stateid);
+-	nfs4_stateid_copy(&state->open_stateid, stateid);
+-	set_bit(NFS_OPEN_STATE, &state->flags);
+ 	switch (fmode) {
+ 		case FMODE_READ:
+ 			set_bit(NFS_O_RDONLY_STATE, &state->flags);
+@@ -1153,6 +1161,11 @@ static void nfs_set_open_stateid_locked(struct nfs4_state *state, nfs4_stateid *
+ 		case FMODE_READ|FMODE_WRITE:
+ 			set_bit(NFS_O_RDWR_STATE, &state->flags);
+ 	}
++	if (!nfs_need_update_open_stateid(state, stateid))
++		return;
++	if (test_bit(NFS_DELEGATED_STATE, &state->flags) == 0)
++		nfs4_stateid_copy(&state->stateid, stateid);
++	nfs4_stateid_copy(&state->open_stateid, stateid);
+ }
+ 
+ static void nfs_set_open_stateid(struct nfs4_state *state, nfs4_stateid *stateid, fmode_t fmode)
 -- 
-1.7.10.4
-
+1.8.5.3
 
