@@ -1,152 +1,117 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:41918 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:34745 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752576AbaBEDJT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Feb 2014 22:09:19 -0500
-Date: Wed, 5 Feb 2014 14:09:06 +1100
+	id S1750869AbaBKEvE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 10 Feb 2014 23:51:04 -0500
+Date: Tue, 11 Feb 2014 15:50:52 +1100
 From: NeilBrown <neilb@suse.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org,
-        simo@redhat.com
+To: Steve Dickson <SteveD@redhat.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Simo Sorce <simo@redhat.com>
 Subject: Re: [PATCH/RFC: nfs-utils] Common systemd unit files for nfs-utils.
-Message-ID: <20140205140906.0b3ba9fd@notabene.brown>
-In-Reply-To: <20140204162052.GA5295@fieldses.org>
+Message-ID: <20140211155052.464aac7c@notabene.brown>
+In-Reply-To: <52F93BA1.9060505@RedHat.com>
 References: <20140130172451.7a354ce4@notabene.brown>
 	<52F003A1.3060908@RedHat.com>
 	<20140204093452.7b6d7c7d@notabene.brown>
 	<20140204162052.GA5295@fieldses.org>
+	<20140205140906.0b3ba9fd@notabene.brown>
+	<1B2F95A4-8439-4274-A859-F33986D06824@oracle.com>
+	<20140206122751.41b2fbf9@notabene.brown>
+	<5630CFAD-1F31-4F87-AAA7-AEB06D3EC864@oracle.com>
+	<20140206161917.GB14575@fieldses.org>
+	<52F93BA1.9060505@RedHat.com>
 Mime-Version: 1.0
 Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/DFr9hq6WTRAcvXWuECJr5rG"; protocol="application/pgp-signature"
+ boundary="Sig_/Mmcso.XpIEEWur7lR0wziVi"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/DFr9hq6WTRAcvXWuECJr5rG
-Content-Type: text/plain; charset=US-ASCII
+--Sig_/Mmcso.XpIEEWur7lR0wziVi
+Content-Type: text/plain; charset=UTF-8
 Content-Transfer-Encoding: quoted-printable
 
-On Tue, 4 Feb 2014 11:20:52 -0500 "J. Bruce Fields" <bfields@fieldses.org>
-wrote:
+On Mon, 10 Feb 2014 15:50:41 -0500 Steve Dickson <SteveD@redhat.com> wrote:
 
-> On Tue, Feb 04, 2014 at 09:34:52AM +1100, NeilBrown wrote:
-> > On Mon, 03 Feb 2014 16:01:21 -0500 Steve Dickson <SteveD@redhat.com> wr=
-ote:
-> > > Also how does gss-proxy come to play in all this? Maybe we=20
-> > > just use  gss-proxy by default and retire rpc.svcgssd.
+> On 02/06/2014 11:19 AM, J. Bruce Fields wrote:
+> > On Thu, Feb 06, 2014 at 11:09:58AM -0500, Chuck Lever wrote:
+> >>
+> >> On Feb 5, 2014, at 8:27 PM, NeilBrown <neilb@suse.de> wrote:
+> >>> I certainly agree with making things simple.  If we can make a config=
+uration
+> >>> irrelevant, e.g. by gets nfsd to auto-tune the number of threads so t=
+he
+> >>> setting becomes pointless, then I've very happy to remove that sort of
+> >>> configuration.  But if a configuration option actually means somethin=
+g I
+> >>> certainly don't want to remove it.
+> >>>
+> >>> So I'm leaning towards having "systemctl {un,}mask rpc-gssd" be the
+> >>> configuration tool for rpc.gssd.
+> >>
+> >> I like that better than the =E2=80=9Coff-until-requested=E2=80=9D beha=
+vior we have currently.  IMO folks who want to disable rpc.gssd will be in =
+the increasing minority and the rest of the world will take scant notice of=
+ the extra daemon, as long as we ensure it speaks only when necessary.
 > >=20
-> > I haven't really be following and so am only dimly aware of gss-proxy.
-> > It's a replacement for rpc.svcgssd - right?
-> > So we should get it to start in the same circumstances as rpc.svcgssd?
+> > I'd also prefer running the gssd's by default: one less (confusing) step
+> > to set up kerberos, and I'm not seeing a realistic security risk.
+> I'm not for starting daemon that are not needed or necessary. I
+> just think that is a bad design.=20
+> =20
 > >=20
-> > Is there some easy test - eg something existing in the filesystem - tha=
-t we
-> > could use to see if the kernel supports gss-proxy ?
+> > If we can easily provide a way to turn it off for people that want a
+> > really stripped-down system for whatever reason, fine, let's provide
+> > that.
+> I'm thinking just the opposite... Have a way to easily (or even
+> automatically) way to enabled NFS security....  when needed...
 >=20
-> There's a /proc/net/rpc/use-gss-proxy file.
+> Would it make it easier if we combined the gssd daemon? That goes
+> both ways (server and client)... That way we could just enable=20
+> nfs security and the daemon would started regardless on what side
+> its on...=20
 >=20
-> (But doesn't gss-proxy have users other than nfsd?)
+> steved.
 
-So presumably gss-proxy would come with its own unit file (looks ... oh yes,
-it does. awesome), and we only want to start rpc.svcgssd if:
-  - gss-proxy is not active
-  - /etc/krpb5.keytab is present.
+By "combine" do you mean "rewrite the code so there is only one process" or
+"have a systemd unit which starts both"?  The former seems like a lot of
+pointless work and the later contradicts your stated preference for not
+starting daemons that are not needed.
 
-The second is easy to test in a unit file, an 'and' is generally trivial, b=
-ut
-testing if another unit is *not* present is not.
-There is "Requisite" to test if it is, but you cannot do
-    "Requisite=3D!gssproxy.service"
-or
-    "ConditionUnitStarted=3D!gssproxy.service"
-or anything similar that I can find.
+What do you think of the suggestion to start rpc.gssd when Wanted
+if /etc/krb5.conf exists, and document that it can be disabled with
 
-"Conflicts=3Dgss-proxy.service" is closest, but that might cause
-gss-proxy.service to stop.
+  systemctl mask rpc-gssd
 
-Maybe we have to manage testing the .pid file thus:
+(I like your idea of clearly documenting the important systemd units).
+That way it is running when needed, probably not when not, and if you happen
+to have kerberos installed but don't want rpc.gssd, it is easy to achieve
+that.
 
-   After=3Dgssproxy.service
-   ConditionPathExists=3D|!@localstatedir@/run/gssproxy.pid
-   ConditionPathExists=3D|!/proc/net/rpc/use-gss-proxy
-   ConditionPathExists=3D/etc/krb5.keytab
-
-so we wait until the gssproxy.service has started if it will be starting at
-all, then look for the pid file and if it is missing, or if use-gss-proxy is
-missing, we run rpc.svcgssd, providing /etc/krb5.keytab is present.
-
->=20
-> > Also, I've been wondering if we could avoid the need to explicitly enab=
-le
-> > the gss stuff by gating it on the existence of /etc/krb5.keytab.
-> > Do you think that would be reasonable?
->=20
-> That would be great.  I hate that people have to care about these
-> support daemons, they should just be started automatically when they're
-> needed.
->=20
-> Is /etc/krb5.keytab the best indicator?
-
-I was hoping you would tell me. :-)
-
-It occurred to me as a good test when I tried running rpc.svcgssd in a fresh
-VM and it wouldn't start.  I eventually found the error message complaining
-that it couldn't find that file.
-
-It isn't perfect as an empty /etc/krb5.keytab will still result in failure
-and exit.  However if a sysadmin has created a keytab and is using NFS, it
-seems reasonable to be ready to provide gss services.
-
-rpc.gssd doesn't fail in the same way, but it does complain if the file
-doesn't exist, so I suspect it is at least a good indicator.
-
-The only thing that bothers me is that gssd is theoretically more general
-than krb5.  However as the reality seems to be that it is exactly krb5, I
-don't let that bother me too much.
-
->=20
-> Simplest might be to start unconditionally and just not care if it
-> fails.  Or is there a problem cluttering up logs with unimportant
-> failures?
-
-More a problem with starting things that aren't necessary, and possibly
-leaving them running.
-Every process you start adds a little to the boot time.  We only get the be=
-st
-experience if everyone contributes a little bit, no matter how little.
-Also, every running process theoretically adds the to the attack service.
-So some people will definitely not want these processes to be started.  If =
-we
-make it really easy for them, I think that is a good thing.
-i.e. I agree with SteveD:=20
-> I think we want to stay away (and move away) from unconditionally
-> starting anything...=20
-
-Thanks,
 NeilBrown
 
-
-
-
---Sig_/DFr9hq6WTRAcvXWuECJr5rG
+--Sig_/Mmcso.XpIEEWur7lR0wziVi
 Content-Type: application/pgp-signature; name=signature.asc
 Content-Disposition: attachment; filename=signature.asc
 
 -----BEGIN PGP SIGNATURE-----
 Version: GnuPG v2.0.22 (GNU/Linux)
 
-iQIVAwUBUvGrUjnsnt1WYoG5AQL+sA/8DTLnRwsj3awXpIAsaGVSJjoZ78bWtN7+
-RCaClH3yxNk2O87AJOaEsnBn4xDXtA7211vSPJI9i1QsfmADRsSFZpqDTMYTh1dX
-e9K325H3MAFhFAFhXaXtJJ2zGgC85Kx1Gv+Oy2PAW8lxBgr3xAtzXCOi1o0wmgQW
-SOY5JJZ50WrXIdM3Fm/YDDa5hlehvB9Qv+PgXlX/CniFEP2cPIujkwTBwwwX9HnD
-sPalarhfooNAKyHbMiDV+z193+CtKzLQvdm8KFF+w6HyNqO+Bi2bcmjg4iSG/VW4
-h6wWQcLeu6ZpPOgpQmluYLSbZTzws7Br7prrxMANET5zujAMCUkHMfRhhwRlPY4X
-jo9LzOAwV4t4Bzz37Rwt0XY3zKqaLQ9tPSOAZGP3JxYZ+S/oNC7L/fBS3anN2aYG
-0NNDHhfTQkfwUa05eJXn8m0q4L1dpm4EKVcgJsvay2rnCWSCV04XOYhOHwCmlHos
-V+xC55y4SbkuDdbGd2uq+TiWc0HHho3LYZrgEmNZ8Mwt1mOQlJsTTvkocO7cJZPn
-TpEpWqzYymtRvxTPGWlK5OENAYFbFdf9oZKgy69byAITw3PM37kZEIgeGRgvcYjD
-DLDggQ4hmi4x9d9nvxyAJMTiIRtazMDwA8WavC8+ZBNzJ3daXROLJDH+HBcsbNdu
-pqF52+ZnPQw=
-=Q16W
+iQIVAwUBUvmsLDnsnt1WYoG5AQL7PQ//a78OBqqulPxWOLT3tgu4OmWfRux8Ugb3
+iiKEf8Qj7nqvowMmWl1WjGUq7+6LDb2EcZvBFCFaRKc9PDRpquiMB1NvSFF0B0IV
+qkGlu2j2rGgp8ZIgd+vX4pqI+EEbNF1ckR2LvaKvUmcN9xXZRNnNWt0pFfps736Z
+vO7GIkjEnmA1f9MFddJwumirxhrxeNLmTWK0FpH1es62khjNjnv4F6ypD1Z2Lvy3
+3reWhZdBAPR4T9rgLAuHZsUeAzJdxwgFafZxGEWF6BEPqj4YuBKDMG3vJdQkKjz1
+CxRXkMKOnT+6gQwQh3fMQ6xsA8k7WNxVdRXJb7E7IdBO/KKigC7lUQ39i0Xsh7fP
+PdyYKt+DNttr9x+uh1vOcDxAakbWFUJAYYtYSNldJtetbLAI21HyIkTlVAN8olsq
+EHK9y77RubfaHKsVlBsijEtpIVAc+lBtr21g3vS3cHsoEJELbujbvj+u9e7MDemH
+4I8ciJw7MDs4WSrjItAoKxoWs+egbJD3tbnpfuUpPaJVFIUR42ST5gZXpLb4KKyT
+TkvqnqhfBHiSDVSZP2qs8mqNv9N+iUw9nO7cGr6z8wd2fkRnLRDhFMtogC7q98yW
+1IUnNRd75C1n6pQR0uzMLogkeJq7HUycU8GPMwV7gD3+NRhPhqa6YolB4HESa7vN
+50DuhkFfAR0=
+=GIeJ
 -----END PGP SIGNATURE-----
 
---Sig_/DFr9hq6WTRAcvXWuECJr5rG--
+--Sig_/Mmcso.XpIEEWur7lR0wziVi--
