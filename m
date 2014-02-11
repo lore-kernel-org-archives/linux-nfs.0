@@ -1,123 +1,230 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:42181 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752388AbaBDBKI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 3 Feb 2014 20:10:08 -0500
-Date: Tue, 4 Feb 2014 12:09:57 +1100
-From: NeilBrown <neilb@suse.de>
-To: Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org
-Subject: [PATCH nfs-utils] systemd units: merge nfs-server.service and
- nfs-server.target
-Message-ID: <20140204120957.7bb0375a@notabene.brown>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/ShwoQj=G8upaVgjWbO_yDpI"; protocol="application/pgp-signature"
+Received: from mail-ie0-f178.google.com ([209.85.223.178]:52880 "EHLO
+	mail-ie0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932257AbaBKTmX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Feb 2014 14:42:23 -0500
+Received: by mail-ie0-f178.google.com with SMTP id rl12so1630219iec.37
+        for <linux-nfs@vger.kernel.org>; Tue, 11 Feb 2014 11:42:23 -0800 (PST)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Cc: shaobingqing <shaobingqing@bwstor.com.cn>
+Subject: [PATCH v2] SUNRPC: RPC callbacks may be split across several TCP segments
+Date: Tue, 11 Feb 2014 14:42:20 -0500
+Message-Id: <1392147740-23272-1-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1392054402.16327.9.camel@leira.trondhjem.org>
+References: <1392054402.16327.9.camel@leira.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/ShwoQj=G8upaVgjWbO_yDpI
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+Since TCP is a stream protocol, our callback read code needs to take into
+account the fact that RPC callbacks are not always confined to a single
+TCP segment.
+This patch adds support for multiple TCP segments by ensuring that we
+only remove the rpc_rqst structure from the 'free backchannel requests'
+list once the data has been completely received. We rely on the fact
+that TCP data is ordered for the duration of the connection.
 
+Reported-by: shaobingqing <shaobingqing@bwstor.com.cn>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+v2: fix a list corruption issue
 
-With systemd, a 'service' should run a single server while a 'target'
-can be used to group services.
-As nfs service is really a group of services a 'target' makes more sense.
-However that means that we need commands like
-   systemctl start nfs-server.target
-rather than the more simple
-   systemctl start nfs-server
+ include/linux/sunrpc/bc_xprt.h |  3 +-
+ net/sunrpc/backchannel_rqst.c  | 93 +++++++++++++++++++++++++++++-------------
+ net/sunrpc/xprtsock.c          | 28 ++++---------
+ 3 files changed, 74 insertions(+), 50 deletions(-)
 
-As the target/service separate doesn't bring any gain except a minor aesthe=
-tic,
-and does bring a practical inconvenience, this patch merges nfs-server.targ=
-et
-into nfs-server.service.
-
-Reported-by: Steve Dickson <SteveD@redhat.com>
-Signed-off-by: NeilBrown <neilb@suse.de>
-
-diff --git a/systemd/README b/systemd/README
-index f0fb68825499..00d3e415092e 100644
---- a/systemd/README
-+++ b/systemd/README
-@@ -10,9 +10,13 @@ rpc.rquotad (in the 'quota' package) or rpcbind.
- There are 4 units that can be 'enabled' or 'disabled' by systemctl, or
- by a suitable 'preset' setting:
-=20
-- nfs-server.target
-+ nfs-server.service
-     If enabled, nfs service is started together with dependencies
-     such as mountd, statd, rpc.idmapd
-+    This is a "service" file rather than a "target" (which is the
-+    normal grouping construct) so that
-+        systemctl start nfs-server
-+    can work (if no type is given, ".service" is assumed).
-=20
-  nfs-client.target
-     If enabled, daemons needs for an nfs client are enabled.
-diff --git a/systemd/nfs-server.service b/systemd/nfs-server.service
-index 9812866c66aa..6ba2fc0f346e 100644
---- a/systemd/nfs-server.service
-+++ b/systemd/nfs-server.service
-@@ -1,8 +1,10 @@
- [Unit]
--Description=3DNFS server
-+Description=3DNFS server and services
- DefaultDependencies=3Dno
- Requires=3D network.target proc-fs-nfsd.mount rpcbind.target
--PartOf=3Dnfs-server.target
-+Requires=3D nfs-mountd.service
-+Wants=3Drpc-statd.service nfs-idmapd.service rpc-gssd.service rpc-svcgssd.=
-service
-+Wants=3Drpc-statd-notify.service
-=20
- After=3D network.target proc-fs-nfsd.mount rpcbind.target nfs-mountd.servi=
-ce
- After=3D nfs-idmapd.service rpc-statd.service
-@@ -22,3 +24,6 @@ ExecStopPost=3D/usr/sbin/exportfs -au
- ExecStopPost=3D/usr/sbin/exportfs -f
-=20
- ExecReload=3D/usr/sbin/exportfs -r
+diff --git a/include/linux/sunrpc/bc_xprt.h b/include/linux/sunrpc/bc_xprt.h
+index 969c0a671dbf..2ca67b55e0fe 100644
+--- a/include/linux/sunrpc/bc_xprt.h
++++ b/include/linux/sunrpc/bc_xprt.h
+@@ -32,7 +32,8 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ #include <linux/sunrpc/sched.h>
+ 
+ #ifdef CONFIG_SUNRPC_BACKCHANNEL
+-struct rpc_rqst *xprt_alloc_bc_request(struct rpc_xprt *xprt);
++struct rpc_rqst *xprt_lookup_bc_request(struct rpc_xprt *xprt, __be32 xid);
++void xprt_complete_bc_request(struct rpc_rqst *req, uint32_t copied);
+ void xprt_free_bc_request(struct rpc_rqst *req);
+ int xprt_setup_backchannel(struct rpc_xprt *, unsigned int min_reqs);
+ void xprt_destroy_backchannel(struct rpc_xprt *, unsigned int max_reqs);
+diff --git a/net/sunrpc/backchannel_rqst.c b/net/sunrpc/backchannel_rqst.c
+index e860d4f7ed2a..3513d559bc45 100644
+--- a/net/sunrpc/backchannel_rqst.c
++++ b/net/sunrpc/backchannel_rqst.c
+@@ -212,39 +212,23 @@ out:
+ }
+ EXPORT_SYMBOL_GPL(xprt_destroy_backchannel);
+ 
+-/*
+- * One or more rpc_rqst structure have been preallocated during the
+- * backchannel setup.  Buffer space for the send and private XDR buffers
+- * has been preallocated as well.  Use xprt_alloc_bc_request to allocate
+- * to this request.  Use xprt_free_bc_request to return it.
+- *
+- * We know that we're called in soft interrupt context, grab the spin_lock
+- * since there is no need to grab the bottom half spin_lock.
+- *
+- * Return an available rpc_rqst, otherwise NULL if non are available.
+- */
+-struct rpc_rqst *xprt_alloc_bc_request(struct rpc_xprt *xprt)
++static struct rpc_rqst *xprt_alloc_bc_request(struct rpc_xprt *xprt, __be32 xid)
+ {
+-	struct rpc_rqst *req;
++	struct rpc_rqst *req = NULL;
+ 
+ 	dprintk("RPC:       allocate a backchannel request\n");
+-	spin_lock(&xprt->bc_pa_lock);
+-	if (!list_empty(&xprt->bc_pa_list)) {
+-		req = list_first_entry(&xprt->bc_pa_list, struct rpc_rqst,
+-				rq_bc_pa_list);
+-		list_del(&req->rq_bc_pa_list);
+-	} else {
+-		req = NULL;
+-	}
+-	spin_unlock(&xprt->bc_pa_lock);
++	if (list_empty(&xprt->bc_pa_list))
++		goto not_found;
+ 
+-	if (req != NULL) {
+-		set_bit(RPC_BC_PA_IN_USE, &req->rq_bc_pa_state);
+-		req->rq_reply_bytes_recvd = 0;
+-		req->rq_bytes_sent = 0;
+-		memcpy(&req->rq_private_buf, &req->rq_rcv_buf,
++	req = list_first_entry(&xprt->bc_pa_list, struct rpc_rqst,
++				rq_bc_pa_list);
++	req->rq_reply_bytes_recvd = 0;
++	req->rq_bytes_sent = 0;
++	memcpy(&req->rq_private_buf, &req->rq_rcv_buf,
+ 			sizeof(req->rq_private_buf));
+-	}
++	req->rq_xid = xid;
++	req->rq_connect_cookie = xprt->connect_cookie;
++not_found:
+ 	dprintk("RPC:       backchannel req=%p\n", req);
+ 	return req;
+ }
+@@ -259,6 +243,7 @@ void xprt_free_bc_request(struct rpc_rqst *req)
+ 
+ 	dprintk("RPC:       free backchannel req=%p\n", req);
+ 
++	req->rq_connect_cookie = xprt->connect_cookie - 1;
+ 	smp_mb__before_clear_bit();
+ 	WARN_ON_ONCE(!test_bit(RPC_BC_PA_IN_USE, &req->rq_bc_pa_state));
+ 	clear_bit(RPC_BC_PA_IN_USE, &req->rq_bc_pa_state);
+@@ -281,7 +266,57 @@ void xprt_free_bc_request(struct rpc_rqst *req)
+ 	 * may be reused by a new callback request.
+ 	 */
+ 	spin_lock_bh(&xprt->bc_pa_lock);
+-	list_add(&req->rq_bc_pa_list, &xprt->bc_pa_list);
++	list_add_tail(&req->rq_bc_pa_list, &xprt->bc_pa_list);
+ 	spin_unlock_bh(&xprt->bc_pa_lock);
+ }
+ 
++/*
++ * One or more rpc_rqst structure have been preallocated during the
++ * backchannel setup.  Buffer space for the send and private XDR buffers
++ * has been preallocated as well.  Use xprt_alloc_bc_request to allocate
++ * to this request.  Use xprt_free_bc_request to return it.
++ *
++ * We know that we're called in soft interrupt context, grab the spin_lock
++ * since there is no need to grab the bottom half spin_lock.
++ *
++ * Return an available rpc_rqst, otherwise NULL if non are available.
++ */
++struct rpc_rqst *xprt_lookup_bc_request(struct rpc_xprt *xprt, __be32 xid)
++{
++	struct rpc_rqst *req;
 +
-+[Install]
-+WantedBy=3Dmulti-user.target
-diff --git a/systemd/nfs-server.target b/systemd/nfs-server.target
-deleted file mode 100644
-index a3e629f022a9..000000000000
---- a/systemd/nfs-server.target
-+++ /dev/null
-@@ -1,8 +0,0 @@
--[Unit]
--Description=3DNFS server services
--Requires=3Dnfs-server.service nfs-mountd.service
--Wants=3Drpc-statd.service nfs-idmapd.service rpc-gssd.service rpc-svcgssd.=
-service
--Wants=3Drpc-statd-notify.service
++	spin_lock(&xprt->bc_pa_lock);
++	list_for_each_entry(req, &xprt->bc_pa_list, rq_bc_pa_list) {
++		if (req->rq_connect_cookie != xprt->connect_cookie)
++			continue;
++		if (req->rq_xid == xid)
++			goto found;
++	}
++	req = xprt_alloc_bc_request(xprt, xid);
++found:
++	spin_unlock(&xprt->bc_pa_lock);
++	return req;
++}
++
++/*
++ * Add callback request to callback list.  The callback
++ * service sleeps on the sv_cb_waitq waiting for new
++ * requests.  Wake it up after adding enqueing the
++ * request.
++ */
++void xprt_complete_bc_request(struct rpc_rqst *req, uint32_t copied)
++{
++	struct rpc_xprt *xprt = req->rq_xprt;
++	struct svc_serv *bc_serv = xprt->bc_serv;
++
++	req->rq_private_buf.len = copied;
++	set_bit(RPC_BC_PA_IN_USE, &req->rq_bc_pa_state);
++
++	dprintk("RPC:       add callback request to list\n");
++	spin_lock(&bc_serv->sv_cb_lock);
++	list_del(&req->rq_bc_pa_list);
++	list_add(&req->rq_bc_list, &bc_serv->sv_cb_list);
++	wake_up(&bc_serv->sv_cb_waitq);
++	spin_unlock(&bc_serv->sv_cb_lock);
++}
++
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 0addefca8e77..966763d735e9 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -1306,41 +1306,29 @@ static inline int xs_tcp_read_reply(struct rpc_xprt *xprt,
+  * If we're unable to obtain the rpc_rqst we schedule the closing of the
+  * connection and return -1.
+  */
+-static inline int xs_tcp_read_callback(struct rpc_xprt *xprt,
++static int xs_tcp_read_callback(struct rpc_xprt *xprt,
+ 				       struct xdr_skb_reader *desc)
+ {
+ 	struct sock_xprt *transport =
+ 				container_of(xprt, struct sock_xprt, xprt);
+ 	struct rpc_rqst *req;
+ 
+-	req = xprt_alloc_bc_request(xprt);
++	/* Look up and lock the request corresponding to the given XID */
++	spin_lock(&xprt->transport_lock);
++	req = xprt_lookup_bc_request(xprt, transport->tcp_xid);
+ 	if (req == NULL) {
++		spin_unlock(&xprt->transport_lock);
+ 		printk(KERN_WARNING "Callback slot table overflowed\n");
+ 		xprt_force_disconnect(xprt);
+ 		return -1;
+ 	}
+ 
+-	req->rq_xid = transport->tcp_xid;
+ 	dprintk("RPC:       read callback  XID %08x\n", ntohl(req->rq_xid));
+ 	xs_tcp_read_common(xprt, desc, req);
+ 
+-	if (!(transport->tcp_flags & TCP_RCV_COPY_DATA)) {
+-		struct svc_serv *bc_serv = xprt->bc_serv;
 -
--[Install]
--WantedBy=3Dmulti-user.target
+-		/*
+-		 * Add callback request to callback list.  The callback
+-		 * service sleeps on the sv_cb_waitq waiting for new
+-		 * requests.  Wake it up after adding enqueing the
+-		 * request.
+-		 */
+-		dprintk("RPC:       add callback request to list\n");
+-		spin_lock(&bc_serv->sv_cb_lock);
+-		list_add(&req->rq_bc_list, &bc_serv->sv_cb_list);
+-		spin_unlock(&bc_serv->sv_cb_lock);
+-		wake_up(&bc_serv->sv_cb_waitq);
+-	}
+-
+-	req->rq_private_buf.len = transport->tcp_copied;
++	if (!(transport->tcp_flags & TCP_RCV_COPY_DATA))
++		xprt_complete_bc_request(req, transport->tcp_copied);
++	spin_unlock(&xprt->transport_lock);
+ 
+ 	return 0;
+ }
+-- 
+1.8.5.3
 
---Sig_/ShwoQj=G8upaVgjWbO_yDpI
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.22 (GNU/Linux)
-
-iQIVAwUBUvA95Tnsnt1WYoG5AQJGgw//eK3DkAQel4MEWTuTS/Xg5cSF5Mj15rlt
-wx/rk1dlx9Bj3rUr/NtSBQG4qBwYiHApQqQtBkQgWkd9AwSgqTbCdpkpszRg4L6V
-wr5yRsGEBc6iU3/zwYnDhZ5Mp003j+RIyXR5Szd2N85je/o149WnQGtawelvxv2d
-4ej42XiQl+hrUfMJM0oPWACFT0qykvT586lulHO5Kc0I6TuV1LF17IPfghnCtBuS
-NKosj0AxgPGrWpQEKSXIMfGTt95iOdFesu5n/VuNkmnSewcKpxU8F2nHPAWPy4l5
-g1e17tDP0FHfhcOOeP8kn79cxuZ4wkpZEXSKJxFkIxlAAXeHKhSinySLwMJywHjH
-LedabVaOBqOGdwbyF4DVEWbYuzwvwwDKfXK8/Gn7eL+AKdVyMmlezso2qsH1BWQa
-YxbCYPTNO1p7k6I0voj2mvP1/LnInC1u5tKqoa23ud32kWOR0yBskQGpgRHJys5P
-WLKNADkY8vX9Omk3/e/mQ05ta7R6QEvTtzfhaaIgiL0iNtLUAgtFBwbCE+wsUj3v
-LxExCVu2IthdkzARHjbB4ib4l7rmHqsl9xUTKk4D4q5P5SswouVPLgNHunocCVwv
-i0X+UF15PxoaCf55+7e497X/SpXD576uRU+lqTIuImCm7Hh3ti7mSDBlvGvaAm2x
-5EvMkRmhH5s=
-=gdUn
------END PGP SIGNATURE-----
-
---Sig_/ShwoQj=G8upaVgjWbO_yDpI--
