@@ -1,48 +1,121 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:43759 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752118AbaBTG5A (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 20 Feb 2014 01:57:00 -0500
-From: Neil Brown <neilb@suse.de>
-To: Steve Dickson <SteveD@redhat.com>
-Date: Thu, 20 Feb 2014 17:55:30 +1100
-Subject: [PATCH 6/6] systemd: add PIDFile directives where appropriate.
-Cc: linux-nfs@vger.kernel.org
-Message-ID: <20140220065530.7320.50532.stgit@notabene.brown>
-In-Reply-To: <20140220065345.7320.49992.stgit@notabene.brown>
-References: <20140220065345.7320.49992.stgit@notabene.brown>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mx.bwstor.com.cn ([211.103.180.228]:41320 "EHLO mx.bwstor.cn"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1751397AbaBLKHw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 12 Feb 2014 05:07:52 -0500
+From: shaobingqing <shaobingqing@bwstor.com.cn>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        shaobingqing <shaobingqing@bwstor.com.cn>
+Subject: [PATCH v2] NFSv4.1: new layout stateid can not be overwrite by one out of date
+Date: Wed, 12 Feb 2014 18:06:20 +0800
+Message-Id: <1392199580-14249-1-git-send-email-shaobingqing@bwstor.com.cn>
+In-Reply-To: <N>
+References: <N>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Only two of our daemons write out pid files.
+If initiate_file_draining returned NFS4ERR_DELAY, all the lsegs of
+a file might be released before the retrying cb_layout request arriving
+at the client. In this situation, layoutget request of the file will
+use open stateid to obtain a new layout stateid. And if the retrying
+cb_layout request arrived at the client after the layoutget reply,
+new layout stateid would be overwrite by one out of date.
 
-Signed-off-by: NeilBrown <neilb@suse.de>
+Signed-off-by: shaobingqing <shaobingqing@bwstor.com.cn>
 ---
- systemd/nfs-blkmap.service |    1 +
- systemd/rpc-statd.service  |    1 +
- 2 files changed, 2 insertions(+)
+ fs/nfs/callback.h      |    5 +++++
+ fs/nfs/callback_proc.c |   24 ++++++++++++++++++++++++
+ fs/nfs/inode.c         |    1 +
+ include/linux/nfs_fs.h |    1 +
+ 4 files changed, 31 insertions(+), 0 deletions(-)
 
-diff --git a/systemd/nfs-blkmap.service b/systemd/nfs-blkmap.service
-index 4b74e9f61454..68cc9e968e65 100644
---- a/systemd/nfs-blkmap.service
-+++ b/systemd/nfs-blkmap.service
-@@ -12,4 +12,5 @@ PartOf=nfs-utils.service
+diff --git a/fs/nfs/callback.h b/fs/nfs/callback.h
+index 84326e9..213ded9 100644
+--- a/fs/nfs/callback.h
++++ b/fs/nfs/callback.h
+@@ -166,6 +166,11 @@ struct cb_layoutrecallargs {
+ 	};
+ };
  
- [Service]
- Type=forking
-+PIDFile=/var/run/blkmapd.pid
- ExecStart=/usr/sbin/blkmapd
-diff --git a/systemd/rpc-statd.service b/systemd/rpc-statd.service
-index c5795fd68f96..14604d783ddf 100644
---- a/systemd/rpc-statd.service
-+++ b/systemd/rpc-statd.service
-@@ -13,4 +13,5 @@ After=nfs-config.service
- [Service]
- EnvironmentFile=-/run/sysconfig/nfs-utils
- Type=forking
-+PIDFile=/var/run/rpc.statd.pid
- ExecStart=/usr/sbin/rpc.statd --no-notify $STATDARGS
-
++struct cb_stalestatenode {
++	nfs4_stateid cbs_stateid;
++	struct list_head cb_stale_state;
++};
++
+ extern __be32 nfs4_callback_layoutrecall(
+ 	struct cb_layoutrecallargs *args,
+ 	void *dummy, struct cb_process_state *cps);
+diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
+index ae2e87b..80bafbe 100644
+--- a/fs/nfs/callback_proc.c
++++ b/fs/nfs/callback_proc.c
+@@ -159,9 +159,16 @@ static u32 initiate_file_draining(struct nfs_client *clp,
+ {
+ 	struct inode *ino;
+ 	struct pnfs_layout_hdr *lo;
++	struct cb_stalestatenode  *state_entry, *state_node;
++	struct cb_stalestatenode *tmp;
++	bool res;
+ 	u32 rv = NFS4ERR_NOMATCHING_LAYOUT;
+ 	LIST_HEAD(free_me_list);
+ 
++	state_node = kmalloc(sizeof(cb_stalestatenode), GFP_KERNEL);
++	if (!state_node)
++		return NFS4ERR_DELAY;
++
+ 	lo = get_layout_by_fh(clp, &args->cbl_fh);
+ 	if (!lo)
+ 		return NFS4ERR_NOMATCHING_LAYOUT;
+@@ -174,7 +181,24 @@ static u32 initiate_file_draining(struct nfs_client *clp,
+ 		rv = NFS4ERR_DELAY;
+ 	else
+ 		rv = NFS4ERR_NOMATCHING_LAYOUT;
++	list_for_each_entry_safe(state_entry, tmp,
++			&NFS_I(ino)->cb_stale_state_list, cb_stale_state) {
++		if (memcmp(&args->cbl_stateid, &state_entry->cbs_stateid,
++				NFS4_STATEID_OTHER_SIZE) != 0)
++			continue;
++		if (rv == NFS4ERR_NOMATCHING_LAYOUT)
++			list_del(&state_entry->cb_stale_state);
++		goto unlock;
++	}
++	if (rv == NFS4ERR_DELAY) {
++		nfs4_stateid_copy(&state_node->cbs_stateid, &args->cbl_stateid);
++		list_add(&state_node->cb_stale_state,
++				&NFS_I(ino)->cb_stale_state_list);
++	} else {
++		kfree(state_node);
++	}
+ 	pnfs_set_layout_stateid(lo, &args->cbl_stateid, true);
++unlock:
+ 	spin_unlock(&ino->i_lock);
+ 	pnfs_free_lseg_list(&free_me_list);
+ 	pnfs_put_layout_hdr(lo);
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index eda8879..e2c881a 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -1643,6 +1643,7 @@ struct inode *nfs_alloc_inode(struct super_block *sb)
+ 		return NULL;
+ 	nfsi->flags = 0UL;
+ 	nfsi->cache_validity = 0UL;
++	INIT_LIST_HEAD(&nfsi->cb_stale_state_list);
+ #ifdef CONFIG_NFS_V3_ACL
+ 	nfsi->acl_access = ERR_PTR(-EAGAIN);
+ 	nfsi->acl_default = ERR_PTR(-EAGAIN);
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 3ea4cde..ba47870 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -181,6 +181,7 @@ struct nfs_inode {
+ 	struct nfs4_cached_acl	*nfs4_acl;
+         /* NFSv4 state */
+ 	struct list_head	open_states;
++	struct list_head	cb_stale_state_list;
+ 	struct nfs_delegation __rcu *delegation;
+ 	fmode_t			 delegation_state;
+ 	struct rw_semaphore	rwsem;
+-- 
+1.7.4.2
 
