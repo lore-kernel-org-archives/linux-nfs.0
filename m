@@ -1,78 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-la0-f49.google.com ([209.85.215.49]:43262 "EHLO
-	mail-la0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751058AbaBHTOP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 8 Feb 2014 14:14:15 -0500
-Received: by mail-la0-f49.google.com with SMTP id y1so3638348lam.36
-        for <linux-nfs@vger.kernel.org>; Sat, 08 Feb 2014 11:14:14 -0800 (PST)
-Message-ID: <52F6822B.1000804@cogentembedded.com>
-Date: Sat, 08 Feb 2014 23:14:51 +0400
-From: Sergei Shtylyov <sergei.shtylyov@cogentembedded.com>
-MIME-Version: 1.0
-To: shaobingqing <shaobingqing@bwstor.com.cn>, trond.myklebust@primarydata.com,
-        bfields@redhat.com, davem@davemloft.net
-CC: linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH v2] SUNRPC: Allow one callback request to be received
- from two sk_buff
-References: <no> <1391826543-3102-1-git-send-email-shaobingqing@bwstor.com.cn>
-In-Reply-To: <1391826543-3102-1-git-send-email-shaobingqing@bwstor.com.cn>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mail-ie0-f175.google.com ([209.85.223.175]:53267 "EHLO
+	mail-ie0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751284AbaBLMel convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Feb 2014 07:34:41 -0500
+Received: by mail-ie0-f175.google.com with SMTP id ar20so5485728iec.34
+        for <linux-nfs@vger.kernel.org>; Wed, 12 Feb 2014 04:34:41 -0800 (PST)
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
+Subject: Re: [PATCH v2] NFSv4.1: new layout stateid can not be overwrite by one out of date
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+In-Reply-To: <1392199580-14249-1-git-send-email-shaobingqing@bwstor.com.cn>
+Date: Wed, 12 Feb 2014 07:34:38 -0500
+Cc: linuxnfs <linux-nfs@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+Message-Id: <EF4B0DD4-D0EC-498C-B10B-6FE157061C5F@primarydata.com>
+References: <N> <1392199580-14249-1-git-send-email-shaobingqing@bwstor.com.cn>
+To: shaobingqing <shaobingqing@bwstor.com.cn>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello.
 
-On 08-02-2014 6:29, shaobingqing wrote:
+On Feb 12, 2014, at 5:06, shaobingqing <shaobingqing@bwstor.com.cn> wrote:
 
-> In current code, there only one struct rpc_rqst is prealloced. If one
-> callback request is received from two sk_buff, the xprt_alloc_bc_request
-> would be execute two times with the same transport->xid. The first time
-> xprt_alloc_bc_request will alloc one struct rpc_rqst and the TCP_RCV_COPY_DATA
-> bit of transport->tcp_flags will not be cleared. The second time
-> xprt_alloc_bc_request could not alloc struct rpc_rqst any more and NULL
-> pointer will be returned, then xprt_force_disconnect occur. I think one
-> callback request can be allowed to be received from two sk_buff.
-
+> If initiate_file_draining returned NFS4ERR_DELAY, all the lsegs of
+> a file might be released before the retrying cb_layout request arriving
+> at the client. In this situation, layoutget request of the file will
+> use open stateid to obtain a new layout stateid. And if the retrying
+> cb_layout request arrived at the client after the layoutget reply,
+> new layout stateid would be overwrite by one out of date.
+> 
 > Signed-off-by: shaobingqing <shaobingqing@bwstor.com.cn>
-[...]
+> ---
+> fs/nfs/callback.h      |    5 +++++
+> fs/nfs/callback_proc.c |   24 ++++++++++++++++++++++++
+> fs/nfs/inode.c         |    1 +
+> include/linux/nfs_fs.h |    1 +
+> 4 files changed, 31 insertions(+), 0 deletions(-)
+> 
+<snip>
+> diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+> index 3ea4cde..ba47870 100644
+> --- a/include/linux/nfs_fs.h
+> +++ b/include/linux/nfs_fs.h
+> @@ -181,6 +181,7 @@ struct nfs_inode {
+> 	struct nfs4_cached_acl	*nfs4_acl;
+>         /* NFSv4 state */
+> 	struct list_head	open_states;
+> +	struct list_head	cb_stale_state_list;
+> 	struct nfs_delegation __rcu *delegation;
+> 	fmode_t			 delegation_state;
+> 	struct rw_semaphore	rwsem;
 
-> diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-> index cec7b9b..82bfe01 100644
-> --- a/include/linux/sunrpc/xprt.h
-> +++ b/include/linux/sunrpc/xprt.h
-> @@ -211,6 +211,7 @@ struct rpc_xprt {
->   						 * items */
->   	struct list_head	bc_pa_list;	/* List of preallocated
->   						 * backchannel rpc_rqst's */
-> +	struct rpc_rqst	*req_first;
-
-    Please align the variable name with the ones above and below.
-
->   #endif /* CONFIG_SUNRPC_BACKCHANNEL */
->   	struct list_head	recv;
->
-[...]
-> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-> index ee03d35..c43dca4 100644
-> --- a/net/sunrpc/xprtsock.c
-> +++ b/net/sunrpc/xprtsock.c
-> @@ -1272,7 +1272,16 @@ static inline int xs_tcp_read_callback(struct rpc_xprt *xprt,
->   				container_of(xprt, struct sock_xprt, xprt);
->   	struct rpc_rqst *req;
->
-> -	req = xprt_alloc_bc_request(xprt);
-> +	if (xprt->req_first != NULL &&
-> +			xprt->req_first->rq_xid == transport->tcp_xid) {
-
-    The continuation line should be aligned right under 'xprt' on the broken 
-up line, according to the networking coding style.
-
-> +		req = xprt->req_first;
-> +	} else if (xprt->req_first != NULL &&
-> +			xprt->req_first->rq_xid != transport->tcp_xid) {
-
-    Same here.
-
-WBR, Sergei
+No. We are definitely not adding new fields to the inode in order to track old layout stateids.
+_________________________________
+Trond Myklebust
+Linux NFS client maintainer, PrimaryData
+trond.myklebust@primarydata.com
 
