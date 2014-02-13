@@ -1,85 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ve0-f171.google.com ([209.85.128.171]:45892 "EHLO
-	mail-ve0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754663AbaBUJx0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Feb 2014 04:53:26 -0500
-Received: by mail-ve0-f171.google.com with SMTP id pa12so3032614veb.30
-        for <linux-nfs@vger.kernel.org>; Fri, 21 Feb 2014 01:53:25 -0800 (PST)
-MIME-Version: 1.0
-In-Reply-To: <5306418B.9060007@RedHat.com>
-References: <CA+NKcRwjoaeQUZEGSeVC+Tfa3jDzvTLt1RBjSQrkj6KJMcC-zg@mail.gmail.com>
-	<5306418B.9060007@RedHat.com>
-Date: Fri, 21 Feb 2014 12:53:25 +0300
-Message-ID: <CA+NKcRzkHKqJ5sSJHLbZcJdOoDS6c2ef-D3CsGkOsw1uSyTmMg@mail.gmail.com>
-Subject: Re: Reliable NFS statistics tool to monitoring all incoming network traffic
-From: Pavel Karneliuk <pavel.karneliuk@gmail.com>
+Received: from cantor2.suse.de ([195.135.220.15]:45926 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750932AbaBMVxH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 13 Feb 2014 16:53:07 -0500
+Date: Fri, 14 Feb 2014 08:52:55 +1100
+From: NeilBrown <neilb@suse.de>
 To: Steve Dickson <SteveD@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Cc: NFS <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH nfs-utils/systemd] systemd: convert secure services to
+ start without explicit configuration.
+Message-ID: <20140214085255.47f84b8b@notabene.brown>
+In-Reply-To: <52FD2017.4050403@RedHat.com>
+References: <20140205141836.5fc941a9@notabene.brown>
+	<52FD2017.4050403@RedHat.com>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/p85Yy2y_Uo0z4v6VMS0G_8X"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Steve,
+--Sig_/p85Yy2y_Uo0z4v6VMS0G_8X
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-Thank you for your answer. The mountstats(8) and nfsiostat(8) are
-well, but I am interesting in some network sniffer that listens all
-network traffic in promiscuous mode.
+On Thu, 13 Feb 2014 14:42:15 -0500 Steve Dickson <SteveD@redhat.com> wrote:
 
-I think about researching and development new solution.
-Fast, reliable and extensible tool with deep packet inspection of NFS
-operations and supporting NFS version 2/3/4 over TCP/UDP protocols.
-Something based on libpcap, TCP reassembling suchlike dissectors from
-Wireshark, and full parsing headers of NFS operations on the fly.
+>=20
+>=20
+> On 02/04/2014 10:18 PM, NeilBrown wrote:
+> >=20
+> >=20
+> > This patch removes nfs-secure.target.
+> > Instead, rpc.gssd and rpc.svcgssd start started if they appear to be ne=
+eded.
+> >=20
+> > For rpc.gssd, this means if the file /etc/krb5.keytab exists.
+> > As the only security mechanism supported is krb5, that file must exist
+> > for rpc.gssd to be useful.  Conversely, if it does exist, it seems very
+> > likely that krb5 is configured on the system an may be used for NFS.
+> >=20
+> > For rpc.svcgssd, it also means checking if gss-proxy might be performing
+> > the equivalent task instead.  So we check if it is running, and if the =
+kernel
+> > is able to talk to it.
+> >=20
+> > Signed-off-by: NeilBrown <neilb@suse.de>
+> Committed to the systemd branch of my git tree...
+>=20
+> I would like to more testing before I move them on
+> to the master branch...
 
-Would such tool be useful for community, NFS developers and end-users?
-What do you think?
+Thanks Steve.  And I totally agree with more testing, and also more
+development, tidying up, documentation, and integration with "make install".
+This is still a WIP and doesn't belong on master yet.
 
-Regards,
-Pavel K
+I'll be sending more patches over the coming weeks.
 
-2014-02-20 20:55 GMT+03:00 Steve Dickson <SteveD@redhat.com>:
->
->
-> On 02/20/2014 10:39 AM, Pavel Karneliuk wrote:
->> Hello linux-nfs members,
->>
->> I am looking for some tool for monitoring all incoming traffic on the
->> wire and collecting NFSv3 operations over TCP transport protocol in
->> 1G-10G networks.
->>
->> Could you advise me some fast and reliable utility?
->>
->> I have tried NFSwatch tool, but its results are not reliable.
->> At first, I mount NFSv3 directory with TCP transport protocol and wsize=512k
->>
->> sudo mount -v -t nfs 10.6.136.187:/share /mnt/nfs-fedora/ -o
->> rw,vers=3.0,tcp,wsize=524288
->>
->> then I write 10Mb file to NFS server:
->>
->> sudo dd if=/dev/zero of=/mnt/nfs-fedora/zero.data bs=1M count=10
->>
->> I expect to see 20 WRITE operations (10Mb / 512Kb == 20).
->> The nfsstat (nfsstat --nfs -3 -Z) shows exactly 20 WRITE operations,
->> because it takes statistic from the kernel.
->>
->> When I try to get the same result with NFSwatch by (sudo nfswatch -all
->> -procs3 -t 20)
->> I get unreproducible results with 1 or 2 registered WRITE operations.
->> NFSwatch works well on NFSv3 over UDP, but loses almost all READ/WRITE
->> operations in case of TCP protocol.
->> I have checked its source code and found that NFSwatch doesn't
->> performs reassembling TCP streams between NFS server and NFS client.
->> It just looks at TCP segment and expects headers of RPC/NFSv3
->> operations exactly after TCP header.
->>
->> The tcpdump works similarly. Wireshark(and Tshark) is too slow for
->> live 1G-10G NFSv3/TCP traffic capturing and filtration.
->>
->>
->> Would you suggest some alternative utils, solutions or workarounds?
-> You can try mountstats(8) or nfsiostat(8). Both of them
-> manipulate data collected in /proc/self/mountstats
->
-> steved.
->
+Thanks,
+NeilBrown
+
+--Sig_/p85Yy2y_Uo0z4v6VMS0G_8X
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.22 (GNU/Linux)
+
+iQIVAwUBUv0+tznsnt1WYoG5AQKxhg/9GAIaI2kn9Mb9gK4oFShoiAUKPmqCPaTE
+XerQT286JovY7J1k9AaJXs0phuhi/Xs8zZR1qav27aV5H7dhqdb2IdSp8m5NINV6
+4AhgVcuwZqMYr30K1o4WoANPFo4aTOlTQI302ad2bIsdZnLyHoP/qZB4ZTQ7eaxl
+o86MVifTI++UAgbhnVOSW553rYMeq2iRH+hQMMwzzJamdGKaFAKaIkkmvA3ujSFz
+50qoDePEcbj0dMUwgU+WpHPrnXibgCm/9fmUv4mBIHjLSwO5d984LJ4cpwhSBrq8
+8PX5xCsFCdz9LTeGzY/Yz4fibe9ZSt8iHLxblFWbY5sW85KtMxSpv4UpfzeXt01f
+o40L1gUvcMkjXGWONaOneXMmU06toaGs7Qz1h9zlEhK+Yiv+KbalcdyMKdXP/V8F
+bWLm1bB/Lbg0oNMjmllTM8Q5Gs5SNTyGQHkJ6HdaQ0ygra0Fc/+sampALzsaa07o
+83Rpsu8zQr/wbPaNDa+GcE35bvvECQjYjVZSmnRoZrg6IjUIL9a9wbbisJ2K9ijn
+i6Q9QLNGCRoqbd9kxHtmAOkCOQSj9qES6zLxfe62KhJKwhfuxv1AL0tHQcKEynue
+b2hAZsceGX34QQ83PZeIcorwHcgM+oS4vArScr76ASRc0eby9TgQPS8TJpb8sh9C
+sbuv0hBRGqc=
+=M/RZ
+-----END PGP SIGNATURE-----
+
+--Sig_/p85Yy2y_Uo0z4v6VMS0G_8X--
