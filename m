@@ -1,45 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f52.google.com ([209.85.216.52]:63588 "EHLO
-	mail-qa0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750836AbaBCUnY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Feb 2014 15:43:24 -0500
-Date: Mon, 3 Feb 2014 15:43:19 -0500
-From: Tejun Heo <tj@kernel.org>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Dr Fields James Bruce <bfields@fieldses.org>,
-        linuxnfs <linux-nfs@vger.kernel.org>, Li Zefan <lizefan@huawei.com>,
-        containers@lists.linux-foundation.org, cgroups@vger.kernel.org
-Subject: Re: [PATCH] nfs: include xattr.h from fs/nfs/nfs3proc.c
-Message-ID: <20140203204319.GI30250@htj.dyndns.org>
-References: <20140203193107.GH30250@htj.dyndns.org>
- <F2DD11A7-8D32-4E1E-BB4D-7384F0932B2D@primarydata.com>
+Received: from mail-qc0-f179.google.com ([209.85.216.179]:36818 "EHLO
+	mail-qc0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752256AbaBMA0g (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Feb 2014 19:26:36 -0500
+Received: by mail-qc0-f179.google.com with SMTP id e16so16571564qcx.24
+        for <linux-nfs@vger.kernel.org>; Wed, 12 Feb 2014 16:26:36 -0800 (PST)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <F2DD11A7-8D32-4E1E-BB4D-7384F0932B2D@primarydata.com>
+Date: Wed, 12 Feb 2014 16:26:36 -0800
+Message-ID: <CACShw34+btEz3mz6Yt17XLDH7WGkiJXeF84gHiyVgy-aKEy7MQ@mail.gmail.com>
+Subject: Errors on a NFS4/Kerberos setup
+From: Brian Demsky <bdemsky@gmail.com>
+To: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Feb 03, 2014 at 02:48:13PM -0500, Trond Myklebust wrote:
-> 
-> On Feb 3, 2014, at 14:31, Tejun Heo <tj@kernel.org> wrote:
-> 
-> > fs/nfs/nfs3proc.c is making use of xattr but was getting linux/xattr.h
-> > indirectly through linux/cgroup.h, which will soon drop the inclusion
-> > of xattr.h.  Explicitly include linux/xattr.h from nfs3proc.c so that
-> > compilation doesn't fail when linux/cgroup.h drops linux/xattr.h.
-> > 
-> > As the following cgroup changes will depend on these changes, it
-> > probably would be easier to route this through cgroup branch.  Would
-> > that be okay?
-> > 
-> > Signed-off-by: Tejun Heo <tj@kernel.org>
-> > Cc: "J. Bruce Fields" <bfields@fieldses.org>
-> 
-> EWRONGMAINTAINER… :-)
-> 
-> Acked-by: Trond Myklebust <trond.myklebust@primarydata.com>
+I am running a fresh install of Ubuntu 13.10 on both the client and
+server with the
+latest version of all packages.  I have MIT kerberos setup using nfsv4
+with sec=krb5p.
 
-Oopsy, thanks! :)
+The kernel version is Linux 3.11.0-15-generic.
 
--- 
-tejun
+I have rpc.gssd and rpc.svcgssd running on the server, and rpc.gssd
+running on the client.  I've tried also running rpc.svcgssd on the client
+with no changes observed.
+
+Everything seems to mostly work but I get the following errors in the
+system log immediately:
+
+On the client I see:
+Feb 12 16:00:06 dw-14 rpc.gssd[653]: ERROR:
+GSS-API: error in gss_free_lucid_sec_context(): GSS_S_NO_CONTEXT (No
+context has been established) - Unknown error Feb 12 16:00:06 dw-14
+rpc.gssd[653]: WARN: failed to free lucid sec context
+
+
+On the server I see:
+Feb 12 15:58:12 plrg rpc.svcgssd[1100]: ERROR: GSS-API: error in
+gss_free_lucid_sec_context(): GSS_S_NO_CONTEXT (No context has been
+established) - Unknown error
+Feb 12 15:58:12 plrg rpc.svcgssd[1100]: WARN: failed to free lucid sec context
+Feb 12 15:58:12 plrg kernel: [   26.031833] RPC: AUTH_GSS upcall timed out.
+Feb 12 15:58:12 plrg kernel: [   26.031833] Please check user daemon is running.
+Feb 12 15:58:30 plrg kernel: [   44.060998] RPC: AUTH_GSS upcall timed out.
+Feb 12 15:58:30 plrg kernel: [   44.060998] Please check user daemon is running.
+
+After some time, I also see the following on the client repeated at an
+extremely high rate:
+Feb 12 07:49:47 dw-14 kernel: [33634.356995] NFS: state manager: check
+lease failed on NFSv4 serverplrg.eecs.uci.edu with error 13
+Feb 12 07:49:52 dw-14 kernel: [33639.365041] NFS: state manager: check
+lease failed on NFSv4 serverplrg.eecs.uci.edu with error 13
+
+Is there anyway to fix these issues?  What do they mean?
+
+Thanks,
+Brian
