@@ -1,107 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:55901 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751187AbaBFS6o (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 6 Feb 2014 13:58:44 -0500
-Date: Thu, 6 Feb 2014 13:58:43 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Norman Elton <normelton@gmail.com>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Windows AD, Users with too many groups
-Message-ID: <20140206185843.GA31325@fieldses.org>
-References: <CAPCnwUeUEznrKvJ-upUV_VyaKKhZcKpZbLFeC08YMMQycWK-vg@mail.gmail.com>
- <CAPCnwUeobfXKGB9Q-nyYNDZa1L9iTwoKZm9bBH2ghUkqembCeA@mail.gmail.com>
- <20140206183631.GA30952@fieldses.org>
- <CAPCnwUcXaGUMs1r23+oPROzPQpmgLV62zGBZE6dbt0nvF75=DQ@mail.gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CAPCnwUcXaGUMs1r23+oPROzPQpmgLV62zGBZE6dbt0nvF75=DQ@mail.gmail.com>
+Received: from mail-ie0-f177.google.com ([209.85.223.177]:58548 "EHLO
+	mail-ie0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751277AbaBNRMs convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Feb 2014 12:12:48 -0500
+Received: by mail-ie0-f177.google.com with SMTP id rp18so2697144iec.22
+        for <linux-nfs@vger.kernel.org>; Fri, 14 Feb 2014 09:12:48 -0800 (PST)
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
+Subject: Re: Help to know the stable ver of nfsv4 for commercial app
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+In-Reply-To: <20140214155358.GG21982@fieldses.org>
+Date: Fri, 14 Feb 2014 12:12:45 -0500
+Cc: Wuqixuan <wuqixuan@huawei.com>, Linyongting <linyongting@huawei.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "wuqixuan@gmail.com" <wuqixuan@gmail.com>
+Message-Id: <09EF05F4-F14E-42DD-8689-C28E11E43F34@primarydata.com>
+References: <BB7C62C2B0732E4DA93834A501E846456C8E98D7@szxema505-mbx.china.huawei.com> <20140214155358.GG21982@fieldses.org>
+To: Dr Fields James Bruce <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Feb 06, 2014 at 01:52:16PM -0500, Norman Elton wrote:
-> > And they have that same group membership on the server side?
-> 
-> Yes, both the NFS server and NFS client point to the same active
-> directory for ldap / kerberos.
-> 
-> I have tried running rpc.svcgssd with debugging, as well as with
-> strace as you suggested. I get plenty of output when a "good" user
-> logs in. No debugging information for user who fails. The error
-> (failed to create krb5 context...) appears on the client, maybe before
-> it connects to the server?
 
-OK, must be.  You could also confirm this by looking at network traffic,
-e.g. with wireshark.
+On Feb 14, 2014, at 10:53, bfields@fieldses.org wrote:
 
-Might also be worth looking at the client<->KDC traffic to see if the
-client is getting as far as asking for a ticket and if so what error the
-KDC is returning.
+> On Fri, Feb 14, 2014 at 08:55:11AM +0000, Wuqixuan wrote:
+>> Hi Trond, Bfields, All, 
+>> 
+>> We are useing nfsv3 in 2.6.34.13 kernel for commucial use. For some reasons(such as security), has requirement to upgrade to nfsv4(still on 2.6.34.x kernel). We did two things: 
+>> 
+>> 1. I passed through the git log of kernel.org of nfs, found after 2010(2.6.34 is released on May 2010, and no update on 2.6.34.x for nfs/nfsd), just for sampling, nfsd/nfs4proc.c has 460 commits while nfs/nfs3proc.c has only 38 commits. 
+>> 2. Just enable nfsv4 on 2.6.34.13, got problem(EIO) on just a simple open. Found it's because of one commit(https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=a2c0b9e291208f65221a0ad8a0c80a377707d480), simply remove this commit, now can simply use nfsv4 on 2.6.34.13. 
+>> 
+>> So we are worried about the stability of nfsv4 on 2.6.34.x. 
+>> If any one has some idea or information about: 
+>> 
+>>    1. Whether nfsv4 (including nfs/nfs4/sunrpc) of 2.6.34.x is stable enough for commercial use or not.
+>>    2. If nfsv4 is not stable enough on 2.6.34.x, which version can we use , 3.10 ? or 3.12 ? 
+>>    3. Is there any mature commercial application on nfsv4 on 2.6.34.x or before? Can tell some famous company or app name ?
+> 
+> I don't know anything about the specific bug that you found.
+> 
+> Based on https://lwn.net/Articles/585416/ 2.6.34 appears to be EOL'd as
+> of 2.6.34.15, so it would be up to you to support it past that.
+> 
+> http://www.kernel.org/ lists which stable kernel branches are still
+> being updated.  I'm not sure where you find out how long those branches
+> are expected to be maintained.
+> 
+> Someone who needs guaranteed support periods for "commercial use"
+> usually gets a contract with someone like my employer.  (And indeed the
+> enterprise distros do support NFSv4 on kernels that branched off before
+> 2.6.34).
+> 
 
---b.
+I will not support kernels that are not listed as actively part of the ‘stable’ program; I simply don’t have the resources to do so.
 
-> 
-> Thanks,
-> 
-> Norman
-> 
-> On Thu, Feb 6, 2014 at 1:36 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > On Thu, Feb 06, 2014 at 01:19:19PM -0500, Norman Elton wrote:
-> >> Just a follow-up to my previous post. In debugging rpc.gssd on the
-> >> client, here's where things are dying:
-> >>
-> >> creating tcp client for server filertest.safety.net.wm.edu
-> >> creating context with server nfs@filertest.safety.net.wm.edu
-> >> WARNING: Failed to create krb5 context for user with uid 30487 for
-> >> server filertest.safety.net.wm.edu
-> >>
-> >> But other users seem fine. I still think it's something to do with
-> >> excessive group membership.
-> >
-> > And they have that same group membership on the server side?
-> >
-> > In that case there might be some problem with rpc.svcgssd's handling of
-> > large group lists--some debugging of rpc.svcgssd on the server might be
-> > interesting.
-> >
-> > In particular, output from:
-> >
-> >         strace -p $(pidof rpc.svcgssd) -s65536 -e trace=open,close,read,write
-> >
-> > might be interesting.
-> >
-> > --b.
-> >
-> >>
-> >> Any suggestions are appreciated, thanks!
-> >>
-> >> Norman Elton
-> >> College of William & Mary
-> >>
-> >> On Mon, Feb 3, 2014 at 4:13 PM, Norman Elton <normelton@gmail.com> wrote:
-> >> > I've read stories about users having too many group memberships. We
-> >> > seem to experience similar symptoms, though the usual tricks don't
-> >> > seem to work.
-> >> >
-> >> > In our case, there is a RHEL6 NFS server feeding multiple RHEL6 NFS
-> >> > clients. This is all NFSv4 with Kerberos. Most users can login fine,
-> >> > but domain admins get a "permission denied" when accessing their
-> >> > NFS-mounted home directory. The most notable commonality is their high
-> >> > number of group memberships.
-> >> >
-> >> > I've tried inflating my group count to greater than 16, my account
-> >> > continues to work fine.
-> >> >
-> >> > We've tried adding "--manage-gids" to rpc.mountd, no luck. Although
-> >> > it's unclear whether this really does anything in a kerberized
-> >> > environment.
-> >> >
-> >> > Any other suggestions? Other debugging tricks?
-> >> >
-> >> > Thanks
-> >> >
-> >> > Norman Elton
-> >> --
-> >> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> >> the body of a message to majordomo@vger.kernel.org
-> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+If you don’t want to go with an actively supported distribution kernel, I’d recommend going with kernel 3.10 rather than 3.12, simply because it is part of the 'long term release’ kernels (see https://www.kernel.org/category/releases.html ) and so will continue to receive updates until September 2015. That said, the fact that the kernel is in stable support doesn’t mean that we will be testing it actively for new bugs; it just means that we will be able to fix known bugs that have been discovered in newer kernels.
+
+If you need stronger guarantees than that, then I agree with Bruce that you should pick a distribution that offers long term software maintenance (which may require you to pay support fees).
+
+_________________________________
+Trond Myklebust
+Linux NFS client maintainer, PrimaryData
+trond.myklebust@primarydata.com
+
