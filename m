@@ -1,45 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:58759 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752848AbaBXWIu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 24 Feb 2014 17:08:50 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>, stable@vger.kernel.org
-Subject: [PATCH 5/5] nfsd4: make set of large acl return efbig, not resource
-Date: Mon, 24 Feb 2014 17:08:47 -0500
-Message-Id: <1393279727-29437-6-git-send-email-bfields@redhat.com>
-In-Reply-To: <1393279727-29437-1-git-send-email-bfields@redhat.com>
-References: <1393279727-29437-1-git-send-email-bfields@redhat.com>
+Received: from szxga02-in.huawei.com ([119.145.14.65]:35754 "EHLO
+	szxga02-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751108AbaBOBwJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Feb 2014 20:52:09 -0500
+Message-ID: <52FEC818.7030604@huawei.com>
+Date: Sat, 15 Feb 2014 09:51:20 +0800
+From: Weng Meiling <wengmeiling.weng@huawei.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Stanislav Kinsbursky <skinsbursky@parallels.com>, <greg@kroah.com>,
+        <linux-nfs@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
+        <devel@openvz.org>
+Subject: Re: [PATCH] nfsd: check passed socket's net matches NFSd superblock's
+ one
+References: <20131230142339.16166.28243.stgit@localhost.localdomain> <20140103222226.GD5164@fieldses.org>
+In-Reply-To: <20140103222226.GD5164@fieldses.org>
+Content-Type: text/plain; charset="ISO-8859-1"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+Hi Bruce,
 
-If a client attempts to set an excessively large ACL, return
-NFS4ERR_FBIG instead of NFS4ERR_RESOURCE.  I'm not sure FBIG is correct,
-but I'm positive RESOURCE is wrong (it isn't even a well-defined error
-any more for NFS versions since 4.1).
+The upstream has merged your git tree for-3.14, but there is no this patch?
+Do you forget this patch?
 
-Cc: stable@vger.kernel.org
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4xdr.c |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+Thanks!
+Weng Meiling
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index d214359..aa04a6a 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -294,7 +294,7 @@ nfsd4_decode_fattr(struct nfsd4_compoundargs *argp, u32 *bmval,
- 		READ32(nace);
- 
- 		if (nace > NFS4_ACL_MAX)
--			return nfserr_resource;
-+			return nfserr_fbig;
- 
- 		*acl = nfs4_acl_new(nace);
- 		if (*acl == NULL)
--- 
-1.7.9.5
+
+On 2014/1/4 6:22, J. Bruce Fields wrote:
+> On Mon, Dec 30, 2013 at 05:23:59PM +0300, Stanislav Kinsbursky wrote:
+>> There could be a case, when NFSd file system is mounted in network, different
+>> to socket's one, like below:
+>>
+>> "ip netns exec" creates new network and mount namespace, which duplicates NFSd
+>> mount point, created in init_net context. And thus NFS server stop in nested
+>> network context leads to RPCBIND client destruction in init_net.
+>> Then, on NFSd start in nested network context, rpc.nfsd process creates socket
+>> in nested net and passes it into "write_ports", which leads to RPCBIND sockets
+>> creation in init_net context because of the same reason (NFSd monut point was
+>> created in init_net context). An attempt to register passed socket in nested
+>> net leads to panic, because no RPCBIND client present in nexted network
+>> namespace.
+> 
+> So it's the attempt to use a NULL ->rpcb_local_clnt4?
+> 
+> Interesting, thanks--applying with a minor fix to logged message.
+> 
+> --b.
+> 
+
+
 
