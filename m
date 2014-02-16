@@ -1,113 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:28685 "EHLO mx1.redhat.com"
+Received: from mail.skyhub.de ([78.46.96.112]:54165 "EHLO mail.skyhub.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753687AbaBCVB3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 3 Feb 2014 16:01:29 -0500
-Message-ID: <52F003A1.3060908@RedHat.com>
-Date: Mon, 03 Feb 2014 16:01:21 -0500
-From: Steve Dickson <SteveD@redhat.com>
+	id S1752004AbaBPRfu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 16 Feb 2014 12:35:50 -0500
+Date: Sun, 16 Feb 2014 18:35:47 +0100
+From: Borislav Petkov <bp@alien8.de>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        John <da_audiophile@yahoo.com>, lkml <linux-kernel@vger.kernel.org>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "stephen@networkplumber.org" <stephen@networkplumber.org>,
+        "mlindner@marvell.com" <mlindner@marvell.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [BUG] unable to handle kernel NULL pointer dereference
+Message-ID: <20140216173547.GC25047@pd.tnic>
+References: <1392466251.41282.YahooMailNeo@web140003.mail.bf1.yahoo.com>
+ <1392494917.71728.YahooMailNeo@web140002.mail.bf1.yahoo.com>
+ <20140215203015.GA4528@pd.tnic>
+ <1392498262.98385.YahooMailNeo@web140003.mail.bf1.yahoo.com>
+ <20140215232508.GB4508@pd.tnic>
+ <1392571653.44773.4.camel@leira.trondhjem.org>
 MIME-Version: 1.0
-To: NeilBrown <neilb@suse.de>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH/RFC: nfs-utils] Common systemd unit files for nfs-utils.
-References: <20140130172451.7a354ce4@notabene.brown>
-In-Reply-To: <20140130172451.7a354ce4@notabene.brown>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <1392571653.44773.4.camel@leira.trondhjem.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Sun, Feb 16, 2014 at 12:27:33PM -0500, Trond Myklebust wrote:
+> Please ensure that you post to the linux-nfs@vger.kernel.org when
+> reporting NFS and RPC related bugs.
 
+Sorry, get_maintainer.pl gave it too but far down in an already too
+long list and I wasn't sure who to spam so I picked up supporter and
+maintainer:
 
-On 01/30/2014 01:24 AM, NeilBrown wrote:
-> 
->  So:
->   1/ Do you agree that a collection of systemd unit files belongs in
->      nfs-utils?
-I think having a single way to start NFS across all distors would be
-a very good thing... 
+$ ./scripts/get_maintainer.pl -f net/sunrpc/auth_gss/auth_gss.c
+"J. Bruce Fields" <bfields@fieldses.org> (supporter:KERNEL NFSD, SUNR...,commit_signer:3/26=12%)
+Trond Myklebust <trond.myklebust@primarydata.com> (maintainer:NFS, SUNRPC, AND...,commit_signer:24/26=92%,authored:14/26=54%,added_lines:394/475=83%,removed_lines:189/215=88%)
+"David S. Miller" <davem@davemloft.net> (maintainer:NETWORKING [GENERAL])
+Andy Adamson <andros@netapp.com> (commit_signer:3/26=12%,authored:3/26=12%,added_lines:56/475=12%)
+Chuck Lever <chuck.lever@oracle.com> (commit_signer:3/26=12%,authored:3/26=12%)
+Jeff Layton <jlayton@redhat.com> (commit_signer:3/26=12%,authored:3/26=12%,removed_lines:19/215=9%)
+linux-nfs@vger.kernel.org (open list:KERNEL NFSD, SUNR...)
+netdev@vger.kernel.org (open list:NETWORKING [GENERAL])
+linux-kernel@vger.kernel.org (open list)
 
->   2/ Do you think it reasonable to expect most (systemd using) distros to
->      use the one set?  I will certainly try to ensure openSUSE does if
->      upstream accepts them.
-I think I'll already agreed to this as well... 
+-- 
+Regards/Gruss,
+    Boris.
 
->   3/ Do you have any comments/question about those below?
-I took a little closer look at these and actual tried to 
-get them to work in a Fedora environment. Here is what I found..
-
-
-> diff --git a/systemd/README b/systemd/README
-> new file mode 100644
-> index 000000000000..f0fb68825499
-> --- /dev/null
-> +++ b/systemd/README
-> @@ -0,0 +1,50 @@
-> +
-> +Notes about systemd unit files for nfs-utils.
-> +
-> +The unit files provided here should be sufficient for systemd
-> +to manage all daemons and related services provides by nfs-utils.
-> +
-> +They do *not* include any unit files for separate services such as
-> +rpc.rquotad (in the 'quota' package) or rpcbind.
-> +
-> +There are 4 units that can be 'enabled' or 'disabled' by systemctl, or
-> +by a suitable 'preset' setting:
-> +
-> + nfs-server.target
-> +    If enabled, nfs service is started together with dependencies
-> +    such as mountd, statd, rpc.idmapd
-This changes the current API... Today to enable/start this service 
-today one does:
-
-  systemctl enable nfs-server
-  systemctl start nfs-server
-
-which would change to:
-
-  systemctl enable nfs-server.target
-  systemctl start nfs-server
-
-with the same daemons being started.
-This changed will cause existing scripts to fail... 
-I guess I don't see the point of having a .target file. 
-
-How is rpc.svcgssd enabled? Since the .service file does
-not have a [Install] section the systemctl enable rpc.svcgssd
-fails.
-
-Also how does gss-proxy come to play in all this? Maybe we 
-just use  gss-proxy by default and retire rpc.svcgssd.
-
-> +
-> + nfs-client.target
-> +    If enabled, daemons needs for an nfs client are enabled.
-> +    This does *not* include rpc.statd.  the rpc-statd.service unit
-> +    is started by /usr/sbin/start-statd which mount.nfs will run
-> +    if statd is needed.
-I am coming around to liking this one... but I think it should start
-statd and configure lockd. Why not just roll the current nfs-lock 
-service under this umbrella? A simple systemctl restart nfs-client
-would configure and start all of the needed daemons. 
-
-How would these daemons be restart and shutdown? Since this is a 
-target, systemctl restart and system stop don't do anything.
-
-> +
-> + nfs-secure.target
-> +    If enabled, then rpc.gssd will be run when either -client or
-> +    -server is started, and rpc.svcgssd will be run when -server
-> +    is started
-I like that fact that rpc.gssd is started by nfs-client but 
-I don't like that API change. systemctl restart nfs-secure breaks 
- 
-> +
-> + nfs-blkmap.target
-> +    If enabled, then blkmapd will be run when nfs-client.target is
-> +    started.
-Unless someone steps up and says why this is needed or if it will 
-ever be needed... I'm seriously thinking about dropping it from Fedora.
-
-I think overall its workable but I just don't see the advantage 
-of using .targets over .service files... 
-
-steved.
+Sent from a fat crate under my desk. Formatting is fine.
+--
