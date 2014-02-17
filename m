@@ -1,96 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:44122 "EHLO mx1.redhat.com"
+Received: from mail.skyhub.de ([78.46.96.112]:57923 "EHLO mail.skyhub.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751423AbaBZQZG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 26 Feb 2014 11:25:06 -0500
-Subject: Re: What does rpc.mountd dlopen() libnfsjunct.so rather than
- libnfsjunct.so.0
-From: Simo Sorce <simo@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Neil Brown <neilb@suse.de>, Steve Dickson <SteveD@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-In-Reply-To: <3A4B7C90-54B8-4373-B751-B02D940199BC@oracle.com>
-References: <20140226161646.1520358b@notabene.brown>
-	 <1393425572.18299.157.camel@willson.li.ssimo.org>
-	 <3A4B7C90-54B8-4373-B751-B02D940199BC@oracle.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Wed, 26 Feb 2014 11:25:01 -0500
-Message-ID: <1393431901.18299.167.camel@willson.li.ssimo.org>
-Mime-Version: 1.0
+	id S1751847AbaBQUbA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 17 Feb 2014 15:31:00 -0500
+Date: Mon, 17 Feb 2014 21:30:57 +0100
+From: Borislav Petkov <bp@alien8.de>
+To: John <da_audiophile@yahoo.com>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        lkml <linux-kernel@vger.kernel.org>,
+        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
+        "stephen@networkplumber.org" <stephen@networkplumber.org>,
+        "mlindner@marvell.com" <mlindner@marvell.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [BUG] unable to handle kernel NULL pointer dereference
+Message-ID: <20140217203057.GJ4559@pd.tnic>
+References: <1392466251.41282.YahooMailNeo@web140003.mail.bf1.yahoo.com>
+ <1392494917.71728.YahooMailNeo@web140002.mail.bf1.yahoo.com>
+ <20140215203015.GA4528@pd.tnic>
+ <1392498262.98385.YahooMailNeo@web140003.mail.bf1.yahoo.com>
+ <20140215232508.GB4508@pd.tnic>
+ <1392571653.44773.4.camel@leira.trondhjem.org>
+ <1392667974.22806.YahooMailNeo@web140003.mail.bf1.yahoo.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <1392667974.22806.YahooMailNeo@web140003.mail.bf1.yahoo.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2014-02-26 at 08:02 -0800, Chuck Lever wrote:
-> On Feb 26, 2014, at 6:39 AM, Simo Sorce <simo@redhat.com> wrote:
-> 
-> > On Wed, 2014-02-26 at 16:16 +1100, NeilBrown wrote:
-> >> See $SUBJ
-> >> 
-> >> Shared libraries are usually versioned so you can release a new version with
-> >> an incompatible API and gradually transition to it.
-> >> 
-> >> A rpc.mountd dlopens libnfsjunct.so with no version it is effectively
-> >> prohibited from ever changing the API in an incompatible way.
-> >> 
-> >> Both Fedora and openSUSE get upset about packaging a libFOO.so in a non
-> >> "-devel" package and so trip over this library which clearly needs to be
-> >> installed even if you aren't doing 'devel'opment.
-> > 
-> > Keep in mind this rule is there only for real shared libraries that are
-> > loaded by the the system loader.
-> > 
-> > however it is waived for 'modules' that are opened dynamically but are
-> > private to the application.
-> > 
-> >> I would like to change mountd as per the patch below to use the ".0" file.
-> >> I believe this will not break any installation as the ".so" is installed as a
-> >> symlink to the ".0" (or maybe ".0.0.0").
-> >> 
-> >> Would this be acceptable?
-> > 
-> > It looks to me like this is an internal module for mountd that is not
-> > for use by other apps (which is why it is not versioned and can be
-> > changed at will as it is deployed at the same time mountd is ?
-> 
-> The plug-in API is versioned internally, but maybe I got that wrong,
-> and should remove the API version field in favor of having consumers
-> load via a specific .so number.
+On Mon, Feb 17, 2014 at 12:12:54PM -0800, John wrote:
+> Trond.  Yes, your patch fixes the regression for me; tested on
+> v3.13.3,  I do not know the process by which patches get into
+> the next stable release (minor version).  My hope is that once
+> peer-reviewed, this patch gets into the 3.13.4 and since the 3.12
+> series is not EOL yet, into 3.12.12 as well.  Thank you for the time
+> and effort!
 
-Either way works the same, it just changes what component makes the
-determination (app code vs linker)
+Basically you say
 
-> > Or am I wrong here ?
-> > 
-> > If I am not wrong I would be against this change personally and would
-> > rather move the .so file in a private library dir (if it is not already
-> > there) to make it clear it is a private module.
-> 
-> rpc.mountd is the only user currently, but it’s not necessarily
-> private to mountd.  A generic storage manager tool might use it to
-> resolve NFS and FedFS referrals for display, for example.  We could
-> add plug-in API functions for creating and removing referrals to
-> enable generic tools to perform these operations.
+Tested-by: John <da_audiophile@yahoo.com>
 
-If it is a generic library why is it dlopened() instead of being simply
-linked in at build time ?
-
-> A separate directory makes sense if there’s more than one thing to put
-> in it.  Right now we just have the plug-in library, and no plans to
-> add more.
-
-directories are cheap, don't fear them :)
-
-> I took an expedient approach when implementing the plug-in, and could
-> have gotten it wrong.  I’m open to make this mechanism fit packaging
-> guidelines and requirements.
-
-Packaging guidelines vary depending on whether the library is public or
-private and therefore you need to guarantee ABI compatibility or not.
-
-I think you need to make that determination first.
-
-Simo.
+Trond adds stable to CC, sends it to Linus and it trickles down to
+3.12.x and 3.13.x stable.
 
 -- 
-Simo Sorce * Red Hat, Inc * New York
+Regards/Gruss,
+    Boris.
 
+Sent from a fat crate under my desk. Formatting is fine.
+--
