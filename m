@@ -1,94 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:42377 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:48465 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752541AbaBKQhO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 11 Feb 2014 11:37:14 -0500
-Date: Tue, 11 Feb 2014 11:37:12 -0500
+	id S1753112AbaBQWTN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 17 Feb 2014 17:19:13 -0500
+Date: Mon, 17 Feb 2014 17:19:00 -0500
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: NeilBrown <neilb@suse.de>
-Cc: Steve Dickson <SteveD@redhat.com>, Chuck Lever <chuck.lever@oracle.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Simo Sorce <simo@redhat.com>
-Subject: Re: [PATCH/RFC: nfs-utils] Common systemd unit files for nfs-utils.
-Message-ID: <20140211163712.GB19599@fieldses.org>
-References: <52F003A1.3060908@RedHat.com>
- <20140204093452.7b6d7c7d@notabene.brown>
- <20140204162052.GA5295@fieldses.org>
- <20140205140906.0b3ba9fd@notabene.brown>
- <1B2F95A4-8439-4274-A859-F33986D06824@oracle.com>
- <20140206122751.41b2fbf9@notabene.brown>
- <5630CFAD-1F31-4F87-AAA7-AEB06D3EC864@oracle.com>
- <20140206161917.GB14575@fieldses.org>
- <52F93BA1.9060505@RedHat.com>
- <20140211155052.464aac7c@notabene.brown>
+To: Weng Meiling <wengmeiling.weng@huawei.com>
+Cc: Stanislav Kinsbursky <skinsbursky@parallels.com>, greg@kroah.com,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        devel@openvz.org
+Subject: Re: [PATCH] nfsd: check passed socket's net matches NFSd
+ superblock's one
+Message-ID: <20140217221900.GA8401@fieldses.org>
+References: <20131230142339.16166.28243.stgit@localhost.localdomain>
+ <20140103222226.GD5164@fieldses.org>
+ <52FEC818.7030604@huawei.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <20140211155052.464aac7c@notabene.brown>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <52FEC818.7030604@huawei.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Feb 11, 2014 at 03:50:52PM +1100, NeilBrown wrote:
-> On Mon, 10 Feb 2014 15:50:41 -0500 Steve Dickson <SteveD@redhat.com> wrote:
+On Sat, Feb 15, 2014 at 09:51:20AM +0800, Weng Meiling wrote:
+> Hi Bruce,
 > 
-> > On 02/06/2014 11:19 AM, J. Bruce Fields wrote:
-> > > On Thu, Feb 06, 2014 at 11:09:58AM -0500, Chuck Lever wrote:
-> > >>
-> > >> On Feb 5, 2014, at 8:27 PM, NeilBrown <neilb@suse.de> wrote:
-> > >>> I certainly agree with making things simple.  If we can make a configuration
-> > >>> irrelevant, e.g. by gets nfsd to auto-tune the number of threads so the
-> > >>> setting becomes pointless, then I've very happy to remove that sort of
-> > >>> configuration.  But if a configuration option actually means something I
-> > >>> certainly don't want to remove it.
-> > >>>
-> > >>> So I'm leaning towards having "systemctl {un,}mask rpc-gssd" be the
-> > >>> configuration tool for rpc.gssd.
-> > >>
-> > >> I like that better than the “off-until-requested” behavior we have currently.  IMO folks who want to disable rpc.gssd will be in the increasing minority and the rest of the world will take scant notice of the extra daemon, as long as we ensure it speaks only when necessary.
-> > > 
-> > > I'd also prefer running the gssd's by default: one less (confusing) step
-> > > to set up kerberos, and I'm not seeing a realistic security risk.
-> > I'm not for starting daemon that are not needed or necessary. I
-> > just think that is a bad design. 
-> >  
-> > > 
-> > > If we can easily provide a way to turn it off for people that want a
-> > > really stripped-down system for whatever reason, fine, let's provide
-> > > that.
-> > I'm thinking just the opposite... Have a way to easily (or even
-> > automatically) way to enabled NFS security....  when needed...
-> > 
-> > Would it make it easier if we combined the gssd daemon? That goes
-> > both ways (server and client)... That way we could just enable 
-> > nfs security and the daemon would started regardless on what side
-> > its on... 
-> > 
-> > steved.
-> 
-> By "combine" do you mean "rewrite the code so there is only one process" or
-> "have a systemd unit which starts both"?  The former seems like a lot of
-> pointless work and the later contradicts your stated preference for not
-> starting daemons that are not needed.
+> The upstream has merged your git tree for-3.14, but there is no this patch?
+> Do you forget this patch?
 
-Note the client needs svcgssd or gss-proxy too, if you want it to be
-able to get delegations over NFSv4.0.  (It doesn't matter for versions
-2, 3, or >=4.1).
+Apologies, I'm not sure what happened.
 
-I still pretty vague on exactly what problems we solve by turning off
-these daemons by default.
+Looking back at it....  The patch causes all my pynfs reboot recovery
+tests to fail.  They're just doing a "systemctl restart
+nfs-server.service", and "systemctl status nfs-server.service" shows in
+part
+
+	ExecStart=/usr/sbin/rpc.nfsd $RPCNFSDARGS $RPCNFSDCOUNT (code=exited, status=1/FAILURE)
+
+So the patch is causing rpc.nfsd to fail?  No network namespaces should
+be involved.  
+
+I haven't investigated any further.
 
 --b.
 
 > 
-> What do you think of the suggestion to start rpc.gssd when Wanted
-> if /etc/krb5.conf exists, and document that it can be disabled with
+> Thanks!
+> Weng Meiling
 > 
->   systemctl mask rpc-gssd
 > 
-> (I like your idea of clearly documenting the important systemd units).
-> That way it is running when needed, probably not when not, and if you happen
-> to have kerberos installed but don't want rpc.gssd, it is easy to achieve
-> that.
+> On 2014/1/4 6:22, J. Bruce Fields wrote:
+> > On Mon, Dec 30, 2013 at 05:23:59PM +0300, Stanislav Kinsbursky wrote:
+> >> There could be a case, when NFSd file system is mounted in network, different
+> >> to socket's one, like below:
+> >>
+> >> "ip netns exec" creates new network and mount namespace, which duplicates NFSd
+> >> mount point, created in init_net context. And thus NFS server stop in nested
+> >> network context leads to RPCBIND client destruction in init_net.
+> >> Then, on NFSd start in nested network context, rpc.nfsd process creates socket
+> >> in nested net and passes it into "write_ports", which leads to RPCBIND sockets
+> >> creation in init_net context because of the same reason (NFSd monut point was
+> >> created in init_net context). An attempt to register passed socket in nested
+> >> net leads to panic, because no RPCBIND client present in nexted network
+> >> namespace.
+> > 
+> > So it's the attempt to use a NULL ->rpcb_local_clnt4?
+> > 
+> > Interesting, thanks--applying with a minor fix to logged message.
+> > 
+> > --b.
+> > 
 > 
-> NeilBrown
-
-
+> 
+> 
