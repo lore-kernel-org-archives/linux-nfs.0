@@ -1,90 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-oa0-f46.google.com ([209.85.219.46]:39216 "EHLO
-	mail-oa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751752AbaBTC2a (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Feb 2014 21:28:30 -0500
-Received: by mail-oa0-f46.google.com with SMTP id n16so1472785oag.5
-        for <linux-nfs@vger.kernel.org>; Wed, 19 Feb 2014 18:28:29 -0800 (PST)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 2/7] NFSv4: Don't update the open stateid unless it is newer than the old one
-Date: Wed, 19 Feb 2014 21:28:20 -0500
-Message-Id: <1392863305-14870-2-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1392863305-14870-1-git-send-email-trond.myklebust@primarydata.com>
-References: <1392863305-14870-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from mx12.netapp.com ([216.240.18.77]:50020 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754959AbaBRR46 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Feb 2014 12:56:58 -0500
+From: "Adamson, Andy" <William.Adamson@netapp.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+CC: Neil Brown <neilb@suse.de>,
+        linuxnfs Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 01/12] NFS fix error return in nfs4_select_rw_stateid
+Date: Tue, 18 Feb 2014 17:56:57 +0000
+Message-ID: <09F2502D-8D13-4129-BFF2-D5AF84FAB1DF@netapp.com>
+References: <1392737765-41942-1-git-send-email-andros@netapp.com>
+ <1392741222.4923.4.camel@leira.trondhjem.org>
+In-Reply-To: <1392741222.4923.4.camel@leira.trondhjem.org>
+Content-Type: text/plain; charset="Windows-1252"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patch is in preparation for the NFSv4.1 parallel open capability.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/nfs4_fs.h  | 10 ++++++++++
- fs/nfs/nfs4proc.c | 21 +++++++++++++++++----
- 2 files changed, 27 insertions(+), 4 deletions(-)
+On Feb 18, 2014, at 11:33 AM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
 
-diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
-index a5b27c2d9689..df81fcc138a7 100644
---- a/fs/nfs/nfs4_fs.h
-+++ b/fs/nfs/nfs4_fs.h
-@@ -500,6 +500,16 @@ static inline bool nfs4_stateid_match(const nfs4_stateid *dst, const nfs4_statei
- 	return memcmp(dst, src, sizeof(*dst)) == 0;
- }
- 
-+static inline bool nfs4_stateid_match_other(const nfs4_stateid *dst, const nfs4_stateid *src)
-+{
-+	return memcmp(dst->other, src->other, NFS4_STATEID_OTHER_SIZE) == 0;
-+}
-+
-+static inline bool nfs4_stateid_is_newer(const nfs4_stateid *s1, const nfs4_stateid *s2)
-+{
-+	return (s32)(be32_to_cpu(s1->seqid) - be32_to_cpu(s2->seqid)) > 0;
-+}
-+
- static inline bool nfs4_valid_open_stateid(const struct nfs4_state *state)
- {
- 	return test_bit(NFS_STATE_RECOVERY_FAILED, &state->flags) == 0;
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 2da6a698b8f7..96e0bd42f38c 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -1137,12 +1137,20 @@ static void update_open_stateflags(struct nfs4_state *state, fmode_t fmode)
- 	nfs4_state_set_mode_locked(state, state->state | fmode);
- }
- 
-+static bool nfs_need_update_open_stateid(struct nfs4_state *state,
-+		nfs4_stateid *stateid)
-+{
-+	if (test_and_set_bit(NFS_OPEN_STATE, &state->flags) == 0)
-+		return true;
-+	if (!nfs4_stateid_match_other(stateid, &state->open_stateid))
-+		return true;
-+	if (nfs4_stateid_is_newer(stateid, &state->open_stateid))
-+		return true;
-+	return false;
-+}
-+
- static void nfs_set_open_stateid_locked(struct nfs4_state *state, nfs4_stateid *stateid, fmode_t fmode)
- {
--	if (test_bit(NFS_DELEGATED_STATE, &state->flags) == 0)
--		nfs4_stateid_copy(&state->stateid, stateid);
--	nfs4_stateid_copy(&state->open_stateid, stateid);
--	set_bit(NFS_OPEN_STATE, &state->flags);
- 	switch (fmode) {
- 		case FMODE_READ:
- 			set_bit(NFS_O_RDONLY_STATE, &state->flags);
-@@ -1153,6 +1161,11 @@ static void nfs_set_open_stateid_locked(struct nfs4_state *state, nfs4_stateid *
- 		case FMODE_READ|FMODE_WRITE:
- 			set_bit(NFS_O_RDWR_STATE, &state->flags);
- 	}
-+	if (!nfs_need_update_open_stateid(state, stateid))
-+		return;
-+	if (test_bit(NFS_DELEGATED_STATE, &state->flags) == 0)
-+		nfs4_stateid_copy(&state->stateid, stateid);
-+	nfs4_stateid_copy(&state->open_stateid, stateid);
- }
- 
- static void nfs_set_open_stateid(struct nfs4_state *state, nfs4_stateid *stateid, fmode_t fmode)
--- 
-1.8.5.3
+> On Tue, 2014-02-18 at 10:36 -0500, andros@netapp.com wrote:
+>> From: Andy Adamson <andros@netapp.com>
+>> 
+>> Do not return an error when nfs4_copy_delegation_stateid succeeds.
+>> 
+>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>> ---
+>> fs/nfs/nfs4state.c | 5 ++++-
+>> 1 file changed, 4 insertions(+), 1 deletion(-)
+>> 
+>> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+>> index ba18958..1cfde97 100644
+>> --- a/fs/nfs/nfs4state.c
+>> +++ b/fs/nfs/nfs4state.c
+>> @@ -1120,8 +1120,11 @@ int nfs4_select_rw_stateid(nfs4_stateid *dst, struct nfs4_state *state,
+>> 	if (ret == -EIO)
+>> 		/* A lost lock - don't even consider delegations */
+>> 		goto out;
+>> -	if (nfs4_copy_delegation_stateid(dst, state->inode, fmode))
+>> +	/* returns true if delegation stateid found and copied */
+>> +	if (nfs4_copy_delegation_stateid(dst, state->inode, fmode)) {
+>> +		ret = 0;
+>> 		goto out;
+>> +	}
+>> 	if (ret != -ENOENT)
+>> 		/* nfs4_copy_delegation_stateid() didn't over-write
+>> 		 * dst, so it still has the lock stateid which we now
+> 
+> Ouch! That looks like it would trigger looping in both the read and
+> write code when we're holding a delegation. Is that what you end up
+> seeing?
+
+Actually, I saw it trying to run Anna’s intra server to server copy code.  In this case, the server side copy failed and normal READ/WRITE from the client then suceeded.  In that case I did not see any looping...
+
+> 
+> It looks like it was introduced by commit ef1820f9be27b…
+
+Yep. Should I include that commit in the comment?
+
+—>Andy
+> 
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer, PrimaryData
+> trond.myklebust@primarydata.com
 
