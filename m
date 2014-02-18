@@ -1,103 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:5939 "EHLO mx11.netapp.com"
+Received: from smtp.enst.fr ([137.194.2.135]:48048 "EHLO smtp.enst.fr"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751600AbaBXTFl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 24 Feb 2014 14:05:41 -0500
-From: <jonathan.dascenzo@netapp.com>
-To: <steved@redhat.com>
-CC: <linux-nfs@vger.kernel.org>,
-        Jonathan Dascenzo <Jonathan.Dascenzo@netapp.com>
-Subject: [PATCH 1/1] fix tlock.c to use sigaction() over deprecated signal(). Fixes sync issues when client is loaded. (Particularly test12)
-Date: Mon, 24 Feb 2014 14:05:34 -0500
-Message-ID: <1393268734-23325-1-git-send-email-jonathan.dascenzo@netapp.com>
+	id S1753801AbaBRQjV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 18 Feb 2014 11:39:21 -0500
+From: Manuel Sabban <manuel.sabban@telecom-paristech.fr>
+To: linux-nfs@vger.kernel.org
+Subject: multiple NFS4ERR_STALE_STATEID on 3.12 (wheezy)
+Date: Tue, 18 Feb 2014 17:30:44 +0100
+Message-ID: <87bny4758r.fsf@leto.enst.fr>
 MIME-Version: 1.0
 Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Jonathan Dascenzo <Jonathan.Dascenzo@netapp.com>
+Hi,
 
----
- lock/tlock.c |   30 ++++++++++++++++++++++--------
- 1 file changed, 22 insertions(+), 8 deletions(-)
+We have approximatively one hundred desktop computers with 3.12.6 kernel
+and debian wheezy system. NFS is used for homes. Mount options are
+"rw,nosuid,nodev,relatime,vers=4.0,rsize=1048576,wsize=1048576,namlen=255,
+soft,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,local_lock=none".
 
-diff --git a/lock/tlock.c b/lock/tlock.c
-index 8a7d0cc..39a6ad9 100644
---- a/lock/tlock.c
-+++ b/lock/tlock.c
-@@ -272,20 +272,24 @@ testexit(nok)
- 	int nok;
- {
- 
-+	struct sigaction act;
- 	close_testfile(DO_UNLINK);
- 	if (nok) {
- 		testreport(1);
- 	}
- 	if (who == PARENT) {
--		signal(SIGCLD, SIG_DFL);
-+		act.sa_handler = SIG_DFL;
-+		sigaction(SIGCLD, &act, NULL);
- 		if (nok) {
--			signal(SIGINT, SIG_IGN);
-+			act.sa_handler = SIG_IGN;
-+			sigaction(SIGINT, &act, NULL);
- 			kill(childpid, SIGINT);
- 		}
- 		wait((int *)0);
- 	} else {
- 		if (nok) {
--			signal(SIGINT, SIG_IGN);
-+			act.sa_handler = SIG_IGN;
-+			sigaction(SIGINT, &act, NULL);
- 			kill(parentpid, SIGINT);
- 		}
- 	}
-@@ -1450,7 +1454,9 @@ test12()
- 			close_testfile(DO_UNLINK);
- 		} else {
- 			/* subchild */
--			signal(SIGINT, SIG_DFL);
-+			struct sigaction act;
-+			act.sa_handler = SIG_DFL;
-+			sigaction(SIGINT, &act, NULL);
- 			test(12, 0, F_TLOCK, (off_t)0, (off_t)0, PASS, FATAL);
- 			for (;;)
- 				sleep(1);
-@@ -1667,13 +1673,19 @@ main(argc, argv)
- 	/*
- 	 * Fork child...
- 	 */
-+	struct sigaction act; 
-+	act.sa_handler = SIG_DFL;
- 	if ((childpid = fork()) == 0) {
- 		who = CHILD;
--		signal(SIGINT, parentsig);
-+		sigaction(SIGINT, &act, NULL);
-+		act.sa_handler = parentsig;
-+		sigaction(SIGINT, &act, NULL);
- 	} else {
- 		who = PARENT;
--		signal(SIGINT, childsig);
--		signal(SIGCLD, childdied);
-+		act.sa_handler = childsig;
-+		sigaction(SIGINT, &act, NULL);
-+		act.sa_handler = childdied;
-+		sigaction(SIGCLD, &act, NULL);
- 	}
- 
- 	/*
-@@ -1692,7 +1704,9 @@ main(argc, argv)
- 	if (who == CHILD) {
- 		childwait();
- 	} else {
--		signal(SIGCLD, SIG_DFL);
-+		struct sigaction;
-+		act.sa_handler = SIG_DFL;
-+		sigaction(SIGCLD, &act, NULL);
- 		childfree(0);
- 	}
- 	testexit(0);
--- 
-1.7.9.5
+The NFS server we use is the ZFS appliance from Oracle
+(http://www.oracle.com/us/products/servers-storage/storage/nas/zfs7420/overview/index.html). The
+server does some short-to-very-long pauses (from several minutes to
+several hours, because of a known bug acknowledged by oracle in our
+configuration) and we suspect that this behaviour trigger the behaviour
+described below.
 
+What we understand is that when the server is back online, the client
+try to write something on the NFS and the server throw a STALE_STATEID
+error. And, then the client try again, with the same result, and try
+again, and again... This is happening at the rate of 3300 packets per
+second, on the example below.
+
+At this point, the client get hung, and the enabled traces
+showed a full trace file of
+kworker/1:0-11993 [001] .... 1171115.807948: nfs4_read: error=-10023 (STALE_STATEID) fileid=00:1f:283 fhandle=0xb1863420 offset=0 count=12288
+kworker/1:0-11993 [001] .... 1171115.808543: nfs4_read: error=-10023 (STALE_STATEID) fileid=00:1f:283 fhandle=0xb1863420 offset=0 count=12288
+kworker/1:0-11993 [001] .... 1171115.809111: nfs4_read: error=-10023 (STALE_STATEID) fileid=00:1f:283 fhandle=0xb1863420 offset=0 count=12288
+
+The network dump showed similar things with the NFS4ERR_STALE_STATEID
+error. Then, the computer has to be hard rebooted.
+
+How can this behaviour be avoided ?
+
+You will find debugging traces and network dump at
+http://perso.telecom-paristech.fr/~sabban/debugNFS/tsilinuxb96
+
+Thanks for your help
+Regards,
+Manuel Sabban
