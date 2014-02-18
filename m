@@ -1,137 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ob0-f177.google.com ([209.85.214.177]:33489 "EHLO
-	mail-ob0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752400AbaBTC2k (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Feb 2014 21:28:40 -0500
-Received: by mail-ob0-f177.google.com with SMTP id wp18so1436063obc.22
-        for <linux-nfs@vger.kernel.org>; Wed, 19 Feb 2014 18:28:39 -0800 (PST)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 6/7] NFSv4: Use correct locking when updating nfs4_state in nfs4_close_done
-Date: Wed, 19 Feb 2014 21:28:24 -0500
-Message-Id: <1392863305-14870-6-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1392863305-14870-5-git-send-email-trond.myklebust@primarydata.com>
-References: <1392863305-14870-1-git-send-email-trond.myklebust@primarydata.com>
- <1392863305-14870-2-git-send-email-trond.myklebust@primarydata.com>
- <1392863305-14870-3-git-send-email-trond.myklebust@primarydata.com>
- <1392863305-14870-4-git-send-email-trond.myklebust@primarydata.com>
- <1392863305-14870-5-git-send-email-trond.myklebust@primarydata.com>
+Received: from szxga02-in.huawei.com ([119.145.14.65]:26407 "EHLO
+	szxga02-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755374AbaBRNHe (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Feb 2014 08:07:34 -0500
+Message-ID: <53035AE7.5030208@huawei.com>
+Date: Tue, 18 Feb 2014 21:06:47 +0800
+From: Weng Meiling <wengmeiling.weng@huawei.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+        Stanislav Kinsbursky <skinsbursky@parallels.com>
+CC: <greg@kroah.com>, <linux-nfs@vger.kernel.org>,
+        <linux-kernel@vger.kernel.org>, <devel@openvz.org>
+Subject: Re: [PATCH] nfsd: check passed socket's net matches NFSd superblock's
+ one
+References: <20131230142339.16166.28243.stgit@localhost.localdomain> <20140103222226.GD5164@fieldses.org> <52FEC818.7030604@huawei.com> <20140217221900.GA8401@fieldses.org>
+In-Reply-To: <20140217221900.GA8401@fieldses.org>
+Content-Type: text/plain; charset="ISO-8859-1"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The stateid and state->flags should be updated atomically under
-protection of the state->seqlock.
+Hi Bruce , Stanislav
+On 2014/2/18 6:19, J. Bruce Fields wrote:
+> On Sat, Feb 15, 2014 at 09:51:20AM +0800, Weng Meiling wrote:
+>> Hi Bruce,
+>>
+>> The upstream has merged your git tree for-3.14, but there is no this patch?
+>> Do you forget this patch?
+> 
+> Apologies, I'm not sure what happened.
+> 
+> Looking back at it....  The patch causes all my pynfs reboot recovery
+> tests to fail.  They're just doing a "systemctl restart
+> nfs-server.service", and "systemctl status nfs-server.service" shows in
+> part
+> 
+> 	ExecStart=/usr/sbin/rpc.nfsd $RPCNFSDARGS $RPCNFSDCOUNT (code=exited, status=1/FAILURE)
+> 
+> So the patch is causing rpc.nfsd to fail?  No network namespaces should
+> be involved.  
+> 
+> I haven't investigated any further.
+> 
+the problem exists. Sorry for careless testing.
+Stanislav, how do you think about this?
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/nfs4proc.c | 65 ++++++++++++++++++++++++++++++-------------------------
- 1 file changed, 35 insertions(+), 30 deletions(-)
+Thanks!
+Weng Meiling
+> --b.
+> 
+>>
+>> Thanks!
+>> Weng Meiling
+>>
+>>
+>> On 2014/1/4 6:22, J. Bruce Fields wrote:
+>>> On Mon, Dec 30, 2013 at 05:23:59PM +0300, Stanislav Kinsbursky wrote:
+>>>> There could be a case, when NFSd file system is mounted in network, different
+>>>> to socket's one, like below:
+>>>>
+>>>> "ip netns exec" creates new network and mount namespace, which duplicates NFSd
+>>>> mount point, created in init_net context. And thus NFS server stop in nested
+>>>> network context leads to RPCBIND client destruction in init_net.
+>>>> Then, on NFSd start in nested network context, rpc.nfsd process creates socket
+>>>> in nested net and passes it into "write_ports", which leads to RPCBIND sockets
+>>>> creation in init_net context because of the same reason (NFSd monut point was
+>>>> created in init_net context). An attempt to register passed socket in nested
+>>>> net leads to panic, because no RPCBIND client present in nexted network
+>>>> namespace.
+>>>
+>>> So it's the attempt to use a NULL ->rpcb_local_clnt4?
+>>>
+>>> Interesting, thanks--applying with a minor fix to logged message.
+>>>
+>>> --b.
+>>>
+>>
+>>
+>>
+> 
+> .
+> 
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 96e0bd42f38c..1f593a0bd938 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -1149,6 +1149,38 @@ static bool nfs_need_update_open_stateid(struct nfs4_state *state,
- 	return false;
- }
- 
-+static void nfs_clear_open_stateid_locked(struct nfs4_state *state,
-+		nfs4_stateid *stateid, fmode_t fmode)
-+{
-+	clear_bit(NFS_O_RDWR_STATE, &state->flags);
-+	switch (fmode & (FMODE_READ|FMODE_WRITE)) {
-+	case FMODE_WRITE:
-+		clear_bit(NFS_O_RDONLY_STATE, &state->flags);
-+		break;
-+	case FMODE_READ:
-+		clear_bit(NFS_O_WRONLY_STATE, &state->flags);
-+		break;
-+	case 0:
-+		clear_bit(NFS_O_RDONLY_STATE, &state->flags);
-+		clear_bit(NFS_O_WRONLY_STATE, &state->flags);
-+		clear_bit(NFS_OPEN_STATE, &state->flags);
-+	}
-+	if (stateid == NULL)
-+		return;
-+	if (!nfs_need_update_open_stateid(state, stateid))
-+		return;
-+	if (test_bit(NFS_DELEGATED_STATE, &state->flags) == 0)
-+		nfs4_stateid_copy(&state->stateid, stateid);
-+	nfs4_stateid_copy(&state->open_stateid, stateid);
-+}
-+
-+static void nfs_clear_open_stateid(struct nfs4_state *state, nfs4_stateid *stateid, fmode_t fmode)
-+{
-+	write_seqlock(&state->seqlock);
-+	nfs_clear_open_stateid_locked(state, stateid, fmode);
-+	write_sequnlock(&state->seqlock);
-+}
-+
- static void nfs_set_open_stateid_locked(struct nfs4_state *state, nfs4_stateid *stateid, fmode_t fmode)
- {
- 	switch (fmode) {
-@@ -1168,13 +1200,6 @@ static void nfs_set_open_stateid_locked(struct nfs4_state *state, nfs4_stateid *
- 	nfs4_stateid_copy(&state->open_stateid, stateid);
- }
- 
--static void nfs_set_open_stateid(struct nfs4_state *state, nfs4_stateid *stateid, fmode_t fmode)
--{
--	write_seqlock(&state->seqlock);
--	nfs_set_open_stateid_locked(state, stateid, fmode);
--	write_sequnlock(&state->seqlock);
--}
--
- static void __update_open_stateid(struct nfs4_state *state, nfs4_stateid *open_stateid, const nfs4_stateid *deleg_stateid, fmode_t fmode)
- {
- 	/*
-@@ -2489,26 +2514,6 @@ static void nfs4_free_closedata(void *data)
- 	kfree(calldata);
- }
- 
--static void nfs4_close_clear_stateid_flags(struct nfs4_state *state,
--		fmode_t fmode)
--{
--	spin_lock(&state->owner->so_lock);
--	clear_bit(NFS_O_RDWR_STATE, &state->flags);
--	switch (fmode & (FMODE_READ|FMODE_WRITE)) {
--	case FMODE_WRITE:
--		clear_bit(NFS_O_RDONLY_STATE, &state->flags);
--		break;
--	case FMODE_READ:
--		clear_bit(NFS_O_WRONLY_STATE, &state->flags);
--		break;
--	case 0:
--		clear_bit(NFS_O_RDONLY_STATE, &state->flags);
--		clear_bit(NFS_O_WRONLY_STATE, &state->flags);
--		clear_bit(NFS_OPEN_STATE, &state->flags);
--	}
--	spin_unlock(&state->owner->so_lock);
--}
--
- static void nfs4_close_done(struct rpc_task *task, void *data)
- {
- 	struct nfs4_closedata *calldata = data;
-@@ -2527,9 +2532,9 @@ static void nfs4_close_done(struct rpc_task *task, void *data)
- 			if (calldata->roc)
- 				pnfs_roc_set_barrier(state->inode,
- 						     calldata->roc_barrier);
--			nfs_set_open_stateid(state, &calldata->res.stateid, 0);
-+			nfs_clear_open_stateid(state, &calldata->res.stateid, 0);
- 			renew_lease(server, calldata->timestamp);
--			break;
-+			goto out_release;
- 		case -NFS4ERR_ADMIN_REVOKED:
- 		case -NFS4ERR_STALE_STATEID:
- 		case -NFS4ERR_OLD_STATEID:
-@@ -2543,7 +2548,7 @@ static void nfs4_close_done(struct rpc_task *task, void *data)
- 				goto out_release;
- 			}
- 	}
--	nfs4_close_clear_stateid_flags(state, calldata->arg.fmode);
-+	nfs_clear_open_stateid(state, NULL, calldata->arg.fmode);
- out_release:
- 	nfs_release_seqid(calldata->arg.seqid);
- 	nfs_refresh_inode(calldata->inode, calldata->res.fattr);
--- 
-1.8.5.3
 
