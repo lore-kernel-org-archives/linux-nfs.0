@@ -1,65 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:50304 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751652AbaBRTgo convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Feb 2014 14:36:44 -0500
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
-Subject: Re: [PATCH 0/2] nfs-utils: systemd units bug fixes and comments.
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <5303AA1D.3020705@RedHat.com>
-Date: Tue, 18 Feb 2014 14:36:38 -0500
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <C4E26F58-0097-4200-9860-8F8B8172B627@oracle.com>
-References: <1392713329-17979-1-git-send-email-steved@redhat.com> <FB361B21-041C-484F-815E-E4A90C3DAE06@oracle.com> <5303AA1D.3020705@RedHat.com>
-To: Steve Dickson <SteveD@redhat.com>
+Received: from mx11.netapp.com ([216.240.18.76]:46285 "EHLO mx11.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755966AbaBRPgJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 18 Feb 2014 10:36:09 -0500
+From: <andros@netapp.com>
+To: <trond.myklebust@primarydata.com>
+CC: <linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 01/12] NFS fix error return in nfs4_select_rw_stateid
+Date: Tue, 18 Feb 2014 10:36:05 -0500
+Message-ID: <1392737765-41942-1-git-send-email-andros@netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Steve-
+From: Andy Adamson <andros@netapp.com>
 
-On Feb 18, 2014, at 1:44 PM, Steve Dickson <SteveD@redhat.com> wrote:
+Do not return an error when nfs4_copy_delegation_stateid succeeds.
 
-> 
-> 
-> On 02/18/2014 09:29 AM, Chuck Lever wrote:
->> On Feb 18, 2014, at 3:48 AM, Steve Dickson <SteveD@redhat.com> wrote:
->> 
->>>> Bug Fixes:
->>>> 
->>>> The /proc/net/rpc/use-gss-proxy file can not be used
->>>> as a start up trigger for rpc.svcsgssd since it always
->>>> exists, with or without gss-proxy installed.
->>>> 
->>>> Adding the Wants= to the nfs server unit cause a systemd ordering 
->>>> cycle which caused reboots to take forever.
->>>> 
->>>> Comment One:
->>>> 
->>>> Even though nfs-client does conditionally start the rpc.gssd 
->>>> service when /etc/krb5.keytab exists (which good),
->> No, that's bad.  rpc.gssd has to run in cases where there is no /etc/krb5.ktab.  See
->> 
->> http://www.spinics.net/lists/linux-nfs/msg41585.html
-> At this point its a pipe dream for rpc.gssd to run with no keytab.
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/nfs4state.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
-This is not a pipe dream.  I’m talking about the common use case where a user kinit’s as root then uses the “-n” option on gssd so that root’s credential is used as the client’s machine credential, instead of using the keytab to establish a GSS context.
-
-With the exception of kernels 3.9 - 3.12, this has always worked, does require gssd to be running, and does not need to have a keytab on the client to operate correctly.  When 3.9 broke this feature, people (including NeilB!) complained loudly.
-
-> It logs a ton of errors messages on every upcall which means 
-> on every mount these days.
-> We either have to tone down the error messages or check for the 
-> existence of the keytab before processing the upcall.
-> I think the latter would better… 
-
-gssd default verbosity is a legacy of the days when Kerberized NFS was new and we wanted verbose logging to monitor gssd activity.  It seems like a harmless step forward to eliminate them or hide some or all of them behind a gssd command line option.
-
-The bug here is gssd log diarrhea.
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index ba18958..1cfde97 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -1120,8 +1120,11 @@ int nfs4_select_rw_stateid(nfs4_stateid *dst, struct nfs4_state *state,
+ 	if (ret == -EIO)
+ 		/* A lost lock - don't even consider delegations */
+ 		goto out;
+-	if (nfs4_copy_delegation_stateid(dst, state->inode, fmode))
++	/* returns true if delegation stateid found and copied */
++	if (nfs4_copy_delegation_stateid(dst, state->inode, fmode)) {
++		ret = 0;
+ 		goto out;
++	}
+ 	if (ret != -ENOENT)
+ 		/* nfs4_copy_delegation_stateid() didn't over-write
+ 		 * dst, so it still has the lock stateid which we now
+-- 
+1.8.2.1
 
