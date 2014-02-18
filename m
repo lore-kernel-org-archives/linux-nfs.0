@@ -1,84 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:45926 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750932AbaBMVxH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 13 Feb 2014 16:53:07 -0500
-Date: Fri, 14 Feb 2014 08:52:55 +1100
-From: NeilBrown <neilb@suse.de>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH nfs-utils/systemd] systemd: convert secure services to
- start without explicit configuration.
-Message-ID: <20140214085255.47f84b8b@notabene.brown>
-In-Reply-To: <52FD2017.4050403@RedHat.com>
-References: <20140205141836.5fc941a9@notabene.brown>
-	<52FD2017.4050403@RedHat.com>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/p85Yy2y_Uo0z4v6VMS0G_8X"; protocol="application/pgp-signature"
+Received: from mail-ob0-f170.google.com ([209.85.214.170]:42529 "EHLO
+	mail-ob0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751221AbaBRROu convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Feb 2014 12:14:50 -0500
+Received: by mail-ob0-f170.google.com with SMTP id va2so18787314obc.15
+        for <linux-nfs@vger.kernel.org>; Tue, 18 Feb 2014 09:14:49 -0800 (PST)
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
+Subject: Re: multiple NFS4ERR_STALE_STATEID on 3.12 (wheezy)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+In-Reply-To: <87bny4758r.fsf@leto.enst.fr>
+Date: Tue, 18 Feb 2014 12:14:46 -0500
+Cc: linuxnfs <linux-nfs@vger.kernel.org>
+Message-Id: <053973FB-ED19-4193-965C-7ADA850B44F2@primarydata.com>
+References: <87bny4758r.fsf@leto.enst.fr>
+To: Manuel Sabban <manuel.sabban@telecom-paristech.fr>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/p85Yy2y_Uo0z4v6VMS0G_8X
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
 
-On Thu, 13 Feb 2014 14:42:15 -0500 Steve Dickson <SteveD@redhat.com> wrote:
+On Feb 18, 2014, at 11:30, Manuel Sabban <manuel.sabban@telecom-paristech.fr> wrote:
 
->=20
->=20
-> On 02/04/2014 10:18 PM, NeilBrown wrote:
-> >=20
-> >=20
-> > This patch removes nfs-secure.target.
-> > Instead, rpc.gssd and rpc.svcgssd start started if they appear to be ne=
-eded.
-> >=20
-> > For rpc.gssd, this means if the file /etc/krb5.keytab exists.
-> > As the only security mechanism supported is krb5, that file must exist
-> > for rpc.gssd to be useful.  Conversely, if it does exist, it seems very
-> > likely that krb5 is configured on the system an may be used for NFS.
-> >=20
-> > For rpc.svcgssd, it also means checking if gss-proxy might be performing
-> > the equivalent task instead.  So we check if it is running, and if the =
-kernel
-> > is able to talk to it.
-> >=20
-> > Signed-off-by: NeilBrown <neilb@suse.de>
-> Committed to the systemd branch of my git tree...
->=20
-> I would like to more testing before I move them on
-> to the master branch...
+> Hi,
+> 
+> We have approximatively one hundred desktop computers with 3.12.6 kernel
+> and debian wheezy system. NFS is used for homes. Mount options are
+> "rw,nosuid,nodev,relatime,vers=4.0,rsize=1048576,wsize=1048576,namlen=255,
+> soft,proto=tcp,port=0,timeo=600,retrans=2,sec=sys,local_lock=none".
+> 
+> The NFS server we use is the ZFS appliance from Oracle
+> (http://www.oracle.com/us/products/servers-storage/storage/nas/zfs7420/overview/index.html). The
+> server does some short-to-very-long pauses (from several minutes to
+> several hours, because of a known bug acknowledged by oracle in our
+> configuration) and we suspect that this behaviour trigger the behaviour
+> described below.
+> 
+> What we understand is that when the server is back online, the client
+> try to write something on the NFS and the server throw a STALE_STATEID
+> error. And, then the client try again, with the same result, and try
+> again, and again... This is happening at the rate of 3300 packets per
+> second, on the example below.
+> 
+> At this point, the client get hung, and the enabled traces
+> showed a full trace file of
+> kworker/1:0-11993 [001] .... 1171115.807948: nfs4_read: error=-10023 (STALE_STATEID) fileid=00:1f:283 fhandle=0xb1863420 offset=0 count=12288
+> kworker/1:0-11993 [001] .... 1171115.808543: nfs4_read: error=-10023 (STALE_STATEID) fileid=00:1f:283 fhandle=0xb1863420 offset=0 count=12288
+> kworker/1:0-11993 [001] .... 1171115.809111: nfs4_read: error=-10023 (STALE_STATEID) fileid=00:1f:283 fhandle=0xb1863420 offset=0 count=12288
+> 
+> The network dump showed similar things with the NFS4ERR_STALE_STATEID
+> error. Then, the computer has to be hard rebooted.
+> 
+> How can this behaviour be avoided ?
+> 
+> You will find debugging traces and network dump at
+> http://perso.telecom-paristech.fr/~sabban/debugNFS/tsilinuxb96
 
-Thanks Steve.  And I totally agree with more testing, and also more
-development, tidying up, documentation, and integration with "make install".
-This is still a WIP and doesn't belong on master yet.
+So, the exact sequence in the wireshark dump is a successful RENEW followed by a READ with STALE_STATEID. I’m guessing that they still haven’t fixed the RENEW bug that we reported several years ago: if the lease has expired, then it should return NFS4ERR_STALE_CLIENTID, not NFS4_OK…
 
-I'll be sending more patches over the coming weeks.
+Yes, clients do rely on this behaviour...
 
-Thanks,
-NeilBrown
+_________________________________
+Trond Myklebust
+Linux NFS client maintainer, PrimaryData
+trond.myklebust@primarydata.com
 
---Sig_/p85Yy2y_Uo0z4v6VMS0G_8X
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.22 (GNU/Linux)
-
-iQIVAwUBUv0+tznsnt1WYoG5AQKxhg/9GAIaI2kn9Mb9gK4oFShoiAUKPmqCPaTE
-XerQT286JovY7J1k9AaJXs0phuhi/Xs8zZR1qav27aV5H7dhqdb2IdSp8m5NINV6
-4AhgVcuwZqMYr30K1o4WoANPFo4aTOlTQI302ad2bIsdZnLyHoP/qZB4ZTQ7eaxl
-o86MVifTI++UAgbhnVOSW553rYMeq2iRH+hQMMwzzJamdGKaFAKaIkkmvA3ujSFz
-50qoDePEcbj0dMUwgU+WpHPrnXibgCm/9fmUv4mBIHjLSwO5d984LJ4cpwhSBrq8
-8PX5xCsFCdz9LTeGzY/Yz4fibe9ZSt8iHLxblFWbY5sW85KtMxSpv4UpfzeXt01f
-o40L1gUvcMkjXGWONaOneXMmU06toaGs7Qz1h9zlEhK+Yiv+KbalcdyMKdXP/V8F
-bWLm1bB/Lbg0oNMjmllTM8Q5Gs5SNTyGQHkJ6HdaQ0ygra0Fc/+sampALzsaa07o
-83Rpsu8zQr/wbPaNDa+GcE35bvvECQjYjVZSmnRoZrg6IjUIL9a9wbbisJ2K9ijn
-i6Q9QLNGCRoqbd9kxHtmAOkCOQSj9qES6zLxfe62KhJKwhfuxv1AL0tHQcKEynue
-b2hAZsceGX34QQ83PZeIcorwHcgM+oS4vArScr76ASRc0eby9TgQPS8TJpb8sh9C
-sbuv0hBRGqc=
-=M/RZ
------END PGP SIGNATURE-----
-
---Sig_/p85Yy2y_Uo0z4v6VMS0G_8X--
