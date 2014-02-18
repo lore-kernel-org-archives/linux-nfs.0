@@ -1,27 +1,31 @@
-From: Karen Williams <KWilliams-gh4bhOharflmT/4GIvFrDQHE/qrIh7Ot@public.gmane.org>
-Subject: Outlook gebruiker waarschuwing.
-Date: Wed, 26 Feb 2014 06:32:14 +0000
-Message-ID: <34AEC189DE25054ABC8B6B969C68365215080226__25547.7398670793$1393532944$gmane$org@GESDMBX01.gesda.gesd.gsd>
+From: "Dr. Pius Okagba" <renato.ardigo-1Ph4/jfBtgs@public.gmane.org>
+Subject: Dear
+Date: Tue, 18 Feb 2014 12:36:26 +0100 (CET)
+Message-ID: <14444c86178.renato.ardigo__30216.847631573$1392723419$gmane$org@alice.it>
+Reply-To: franklinb1-pveGkIeVMScAvxtiuMwx3w@public.gmane.org
 Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
-To: "acount-security-noreply-Pfb+/kRXlPPSWLo61zEEUdvLeJWuRmrY@public.gmane.org"
-	<acount-security-noreply-Pfb+/kRXlPPSWLo61zEEUdvLeJWuRmrY@public.gmane.org>
+Content-Type: text/plain;charset="UTF-8"
+To: unlisted-recipients:; (no To-header on input)
 Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail.gloversvilleschools.org ([163.153.10.66]:57317 "HELO
-	barracuda.gloversvilleschools.org" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with SMTP id S1751233AbaB0U2r convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 27 Feb 2014 15:28:47 -0500
+Received: from smtp303.alice.it ([82.57.200.119]:15762 "EHLO smtp303.alice.it"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755102AbaBRLge (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 18 Feb 2014 06:36:34 -0500
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Geachte Webmail Gebruiker,
-Uw twee inkomende mails hangende toestand geplaatst als gevolg van de recente upgrade in onze database.
-
-in volgorde te ontvangen uw berichten KLIK HIER<http://goorsoicuesaeorusdoisda.webs.com/>
-
-Login met uw juiste Webmail informatie en wachten op antwoordt van onze data service.
-Onze excuses voor het ongemak en waarderen uw begrip.
-
-Exchange administrator
-The Microsoft Account Team 2014.
+Attention:
+Regarding the transaction made so far, I waited for your message as you told 
+me
+with none received. Remember, I supposed to have traveled last night 
+but the
+weather is too bad. I will be leaving to Paraguay tomorrow for estate project.
+Meanwhile, contact the Bank manager with below address, i have kept the cheque
+worth of USD2.5M. They will either mail it to you or remit it for transfer
+depending on how you want it; Here is Bank contact information:
+ 
+Name Of Manager: Mr. Franklin Barnard
+MAIL: (franklinb1-pveGkIeVMScAvxtiuMwx3w@public.gmane.org,
+okagbapius1-EMRzualFZlQ@public.gmane.org
+Thank you
+UN Office.
