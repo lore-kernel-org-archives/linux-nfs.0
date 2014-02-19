@@ -1,70 +1,139 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f173.google.com ([209.85.213.173]:61179 "EHLO
-	mail-ig0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751842AbaBGTr1 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 7 Feb 2014 14:47:27 -0500
-Received: by mail-ig0-f173.google.com with SMTP id c10so2489436igq.0
-        for <linux-nfs@vger.kernel.org>; Fri, 07 Feb 2014 11:47:26 -0800 (PST)
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
-Subject: Re: readdir vs. getattr
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-In-Reply-To: <20140207153028.7df0d209@notabene.brown>
-Date: Fri, 7 Feb 2014 14:47:23 -0500
-Cc: Jeff Layton <jlayton@poochiereds.net>,
-        "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>,
-        Jim Rees <rees@umich.edu>, linux-nfs <linux-nfs@vger.kernel.org>
-Message-Id: <6F6E3499-4C95-44B4-BBD0-CFFBFC4F48DA@primarydata.com>
-References: <CAGue13pe_ZH_Eto-jL3mLjTNGFK26izTarnZdjs3eL82A2Z37w@mail.gmail.com> <20130404151507.GA8484@umich.edu> <CAGue13o6X5S3ppTX_fmMCTCX=7Mq_57YQEsb_hkOKwN9iOHwEQ@mail.gmail.com> <1365090480.10726.22.camel@leira.trondhjem.org> <20140129182532.7479eeda@notabene.brown> <1342984553.746756.1390987303295.JavaMail.zimbra@desy.de> <20140129071841.1979a48c@tlielax.poochiereds.net> <20140206134539.53d09434@notabene.brown> <20140206135101.1cc83442@notabene.brown> <1391724779.6399.2.camel@leira.trondhjem.org> <20140207153028.7df0d209@notabene.brown>
-To: Brown Neil <neilb@suse.de>
+Received: from cantor2.suse.de ([195.135.220.15]:39161 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751100AbaBSWUM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 19 Feb 2014 17:20:12 -0500
+Date: Thu, 20 Feb 2014 09:19:48 +1100
+From: NeilBrown <neilb@suse.de>
+To: Simo Sorce <simo@redhat.com>
+Cc: Steve Dickson <steved@redhat.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/2] rpc-svcgssd.service: removed a the start up
+ triggers
+Message-ID: <20140220091948.47220660@notabene.brown>
+In-Reply-To: <1392825816.22754.158.camel@willson.li.ssimo.org>
+References: <1392713329-17979-1-git-send-email-steved@redhat.com>
+	<1392713329-17979-2-git-send-email-steved@redhat.com>
+	<20140219141712.54cb31a7@notabene.brown>
+	<1392825816.22754.158.camel@willson.li.ssimo.org>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/fgG=n.EuOko89SkPGOv9LdS"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+--Sig_/fgG=n.EuOko89SkPGOv9LdS
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-On Feb 6, 2014, at 23:30, NeilBrown <neilb@suse.de> wrote:
+On Wed, 19 Feb 2014 11:03:36 -0500 Simo Sorce <simo@redhat.com> wrote:
 
-> On Thu, 06 Feb 2014 17:12:59 -0500 Trond Myklebust
-> <trond.myklebust@primarydata.com> wrote:
-> 
->> On Thu, 2014-02-06 at 13:51 +1100, NeilBrown wrote:
->>> On Thu, 6 Feb 2014 13:45:39 +1100 NeilBrown <neilb@suse.de> wrote:
->>> 
->>> 
->>>> The change to nfs_update_inode fixes an issue that had me stumped for a
->>>> while.  It was still sending lots of GETATTR requests even after it had
->>>> switched to READDIRPLUS instead of using cached info.  So that might be a
->>>> genuine bug that should be fixed independently of this patch.
->>> 
->>> I managed to post the wrong version of the patch, which didn't have this
->>> change.  Sorry.
->>> 
->>> Here is the real one.
->>> 
->>> NeilBrown
->> 
->> Hi Neil,
->> 
->> Is there any reason why this patch couldn't just be replaced with the
->> following?
-> 
-> Well.... the following doesn't make any change in my test case. :-(
-> 
-> In my test case there is a large directory on the server which doesn't change.
-> The client sends lots of requests to see if it has changed, but it hasn't.
-> (Tested with the labeled-NFS-regression fix applied)
-> 
-> Your patch only changes behaviour if nfs_force_lookup_revalidate is called,
-> and that is only called when NFS_ATTR_FATTR_CHANGE is set, or when an NFSv4
-> client modifies the directory.  Neither of those are happening.
+> On Wed, 2014-02-19 at 14:17 +1100, NeilBrown wrote:
+> > On Tue, 18 Feb 2014 03:48:48 -0500 Steve Dickson <steved@redhat.com> wr=
+ote:
+> >=20
+> > > The file /proc/net/rpc/use-gss-proxy exists whether
+> > > gss-proxy is or is not installed. So is existence
+> > > can not be used as start up trigger.
+> > >=20
+> > > Signed-off-by: Steve Dickson <steved@redhat.com>
+> > > ---
+> > >  systemd/rpc-svcgssd.service | 1 -
+> > >  1 file changed, 1 deletion(-)
+> > >=20
+> > > diff --git a/systemd/rpc-svcgssd.service b/systemd/rpc-svcgssd.service
+> > > index 6bd4588..8e10b98 100644
+> > > --- a/systemd/rpc-svcgssd.service
+> > > +++ b/systemd/rpc-svcgssd.service
+> > > @@ -7,7 +7,6 @@ PartOf=3Dnfs-utils.service
+> > > =20
+> > >  After=3Dgssproxy.service
+> > >  ConditionPathExists=3D|!@localstatedir@/run/gssproxy.pid
+> > > -ConditionPathExists=3D|!/proc/net/rpc/use-gss-proxy
+> > >  ConditionPathExists=3D/etc/krb5.keytab
+> > > =20
+> > >  [Service]
+> >=20
+> > This is testing for non-existence, not existence.
+> >=20
+> > We need rpc-svcgssd unless gssproxy can perform that task for us, in wh=
+ich
+> > case we don't want rpc-svcgssd.
+> >=20
+> > gssproxy can only perform the task for us if:
+> >  1/ it is running (hence the test on the pid file)
+>=20
+> could be stale
 
-Right, but I really do not know how to fix that case.
+Agreed.  But it is the best we have.  Systemd doesn't support
+   ConditionUnitActive
+or similar.
 
-I read your patch as saying: "If we're revalidating a dentry and we find that the directory has not changed but that the dentry’s inode needs revalidation, then invalidate that directory's attribute, acl and readdir cached data. Then drop the dentry”. I have a hard time seeing how that can be beneficial.
+>=20
+> >  2/ the kernel knows how to talk to it (hence the test on use-gss-proxy)
+>=20
+> use-gss-proxy is always available whether gss-proxy is being used or not
+> as it is the interface used by gss-proxy to tell the kernel it is in
+> use.
 
-If we were to modify it, to only invalidate the readdir cached data, then that might improve matters, but it is still hard for me to see how a single inode needing revalidation can justify a full re-read of the parent directory in the general case. You may end up rereading thousands of readdir entries from the server just because someone did a path lookup.
+It is not available in linux 3.9 or earlier.
 
-_________________________________
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
+>=20
+> > With you version, if gssproxy were running on a kernel which did not in=
+clude
+> > support for nfsd talking to gssproxy, then rpc-svcgssd would fail to st=
+art,
+> > which isn't what we want.
+>=20
+> True the right way to handle this would probably be to
+> make /proc/net/rpc/use-gss-proxy readable and start rpc.svcgssd if the
+> value is 0 ?
 
+Pity systemd doesn't have
+
+   ConditionPathIsFileContaining
+
+Even udev has that!
+
+
+>=20
+> > This may be an unusual configuration but unless it is an impossible
+> > configuration I would rather the code remained as it was.
+> > (This should work on *all* distros, not just sane distros).
+>=20
+> I agree with the sentiment.
+
+Thanks,
+
+NeilBrown
+
+
+
+>=20
+> Simo.
+>=20
+
+
+--Sig_/fgG=n.EuOko89SkPGOv9LdS
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.22 (GNU/Linux)
+
+iQIUAwUBUwUuEDnsnt1WYoG5AQKBog/3TPqfqyf7R/lyj9eXcafX07fQCWjnwNJt
+iwi3h7SKuLZDy48CNbJX85gdX8pWO4h8DvilDcIzzxI9c3OQ1ocgaUXnodqwTDPL
+hNAxYPVnfNs5R15RShZMmrDLrVTScvVgNOvpnetKk5WqlxRP+mhoV6srcAOkZpS/
+wfM/Vx5dqlmRNDlszaIlktdhaWvhMsFN6qQUlLphJUSwhb1YkXvfhIhW9qjn/Nh1
+f6XVIlMrX/AAUtoJMLTqDL2Xha7EJHL3y0q8mYHkvowzUiTC0ATIU51BfESzWFyT
+uGGeu1zI9EZOAIbM+mWy24Fe8b5o+57cagv+YAL+GBlZfvxhlY8yEn6mCcW35o6Y
+3+sRTdL/NKtLFih8qTz6nJu3L2utZ5Zh1lv7uEL04D8dFDwmEYYlFyDOTJ3XhbDc
+T2SekmiLJcHl9uUAIhQ7zbsgdk50D6qSab7C8EEL6b7XMm7MvLfJ0497nFRPgyk+
+fzCXo1vlTO61i8LphZlC3xSf3LTdKVuQlfKcFQSh5P/9Y++NtS9DXUH3u2Ryi0/J
+X+p7wEKltmf0+K4qX5at+ZjvXPpb+iwpEI7OqnAUvSK5aTrpj8kFuLiF/YGmOCnv
+YBNPqbvtt7yoMV4ItEYCMSNKF9yidylZiIV9hoOD6o2EI9P+On+bO61kU0gPVJS4
+qg1pTFaiDA==
+=VCZH
+-----END PGP SIGNATURE-----
+
+--Sig_/fgG=n.EuOko89SkPGOv9LdS--
