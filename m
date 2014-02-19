@@ -1,154 +1,162 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:22257 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751922AbaBFQKX convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Feb 2014 11:10:23 -0500
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
-Subject: Re: [PATCH/RFC: nfs-utils] Common systemd unit files for nfs-utils.
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20140206122751.41b2fbf9@notabene.brown>
-Date: Thu, 6 Feb 2014 11:09:58 -0500
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Steve Dickson <SteveD@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Simo Sorce <simo@redhat.com>
-Message-Id: <5630CFAD-1F31-4F87-AAA7-AEB06D3EC864@oracle.com>
-References: <20140130172451.7a354ce4@notabene.brown> <52F003A1.3060908@RedHat.com> <20140204093452.7b6d7c7d@notabene.brown> <20140204162052.GA5295@fieldses.org> <20140205140906.0b3ba9fd@notabene.brown> <1B2F95A4-8439-4274-A859-F33986D06824@oracle.com> <20140206122751.41b2fbf9@notabene.brown>
-To: Neil Brown <neilb@suse.de>
+Received: from relay.parallels.com ([195.214.232.42]:58019 "EHLO
+	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753734AbaBSO5t (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Feb 2014 09:57:49 -0500
+Message-ID: <5304C66A.4030603@parallels.com>
+Date: Wed, 19 Feb 2014 18:57:46 +0400
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Weng Meiling <wengmeiling.weng@huawei.com>, <greg@kroah.com>,
+        <linux-nfs@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
+        <devel@openvz.org>
+Subject: Re: [PATCH] nfsd: check passed socket's net matches NFSd superblock's
+ one
+References: <20131230142339.16166.28243.stgit@localhost.localdomain> <20140103222226.GD5164@fieldses.org> <52FEC818.7030604@huawei.com> <20140217221900.GA8401@fieldses.org> <53037A03.4020603@parallels.com> <20140218154406.GD4319@fieldses.org> <530486D9.7010502@parallels.com> <20140219145043.GC8401@fieldses.org>
+In-Reply-To: <20140219145043.GC8401@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+19.02.2014 18:50, J. Bruce Fields Ð¿Ð¸ÑˆÐµÑ‚:
+> On Wed, Feb 19, 2014 at 02:26:33PM +0400, Stanislav Kinsbursky wrote:
+>> 18.02.2014 19:44, J. Bruce Fields Ð¿Ð¸ÑˆÐµÑ‚:
+>>> On Tue, Feb 18, 2014 at 07:19:31PM +0400, Stanislav Kinsbursky wrote:
+>>>> 18.02.2014 02:19, J. Bruce Fields Ð¿Ð¸ÑˆÐµÑ‚:
+>>>>> On Sat, Feb 15, 2014 at 09:51:20AM +0800, Weng Meiling wrote:
+>>>>>> Hi Bruce,
+>>>>>>
+>>>>>> The upstream has merged your git tree for-3.14, but there is no this patch?
+>>>>>> Do you forget this patch?
+>>>>>
+>>>>> Apologies, I'm not sure what happened.
+>>>>>
+>>>>> Looking back at it....  The patch causes all my pynfs reboot recovery
+>>>>> tests to fail.  They're just doing a "systemctl restart
+>>>>> nfs-server.service", and "systemctl status nfs-server.service" shows in
+>>>>> part
+>>>>>
+>>>>> 	ExecStart=/usr/sbin/rpc.nfsd $RPCNFSDARGS $RPCNFSDCOUNT (code=exited, status=1/FAILURE)
+>>>>>
+>>>>> So the patch is causing rpc.nfsd to fail?  No network namespaces should
+>>>>> be involved.
+>>>>>
+>>>>> I haven't investigated any further.
+>>>>>
+>>>>
+>>>> Hi Bruce,
+>>>> Are you sure, that exactly this patch broke your pynfs tests?
+>>>> BTW, systemd manipulates namespaces. Maybe the patch revealed some pynfs internal bugs?
+>>>> What do you think?
+>>>
+>>> It's really just "systemctl restart nfs-server.service" that the patch
+>>> breaks, pynfs isn't involved much.
+>>>
+>>> The patch I'm actually using follows, but I believe the only difference
+>>> is in the printk message?
+>>>
+>>
+>> Yep, looks true.
+>> That's strange: "systemctl restart nfs-server.service" works for me on Fedora 18 with kernel, based on your repo.
+>
+> OK, I'll take a closer look and let you know what I find.
+>
 
-On Feb 5, 2014, at 8:27 PM, NeilBrown <neilb@suse.de> wrote:
+Thank you, Bruce!
 
-> On Wed, 5 Feb 2014 10:56:39 -0500 Chuck Lever <chuck.lever@oracle.com> wrote:
-> 
->> Hi Neil!
->> 
->> 
->> On Feb 4, 2014, at 10:09 PM, NeilBrown <neilb@suse.de> wrote:
->> 
->>> On Tue, 4 Feb 2014 11:20:52 -0500 "J. Bruce Fields" <bfields@fieldses.org>
->>> wrote:
->>> 
->>>> On Tue, Feb 04, 2014 at 09:34:52AM +1100, NeilBrown wrote:
->>>>> Also, I've been wondering if we could avoid the need to explicitly enable
->>>>> the gss stuff by gating it on the existence of /etc/krb5.keytab.
->>>>> Do you think that would be reasonable?
->>>> 
->>>> That would be great.  I hate that people have to care about these
->>>> support daemons, they should just be started automatically when they're
->>>> needed.
->>>> 
->>>> Is /etc/krb5.keytab the best indicator?
->>> 
->>> I was hoping you would tell me. :-)
->> 
->> rpc.gssd has to run in cases where there is no /etc/krb5.keytab.  Remember the discussion we had last year about using root’s user credential as the client’s machine credential?  We want the kernel to be able to find out whether there is a machine credential available, and one can be available even if there is no keytab.
-> 
-> Hi Chuck,
-> thanks for reminding me about that!  Yes we clearly cannot key
-> off /etc/krb5.keytab for rpc.gssd.
-> 
-> Maybe /etc/krb5.conf?  Seems a bit lame.
-> How about  /etc/gssapi_mech.conf ??  rpc.gssd seems to exit if that doesn't
-> exist.  What if systemd is told not to run rpc.gssd if that file is
-> missing?
-> 
-> I guess that otherwise we can make it on-by-default, but document that people
-> can turn it off with
->     systemctl mask rpc-gssd
-> 
-> which is probably easier that requiring "systemctl enable nfs-secure”.
-
-Having rpc.gssd default on when NFS is enabled is much better than the current default.  I think this would be an improvement.  The administrative burden should be on the minority of people who care enough to want it disabled.
-
-> 
->> 
->>> It occurred to me as a good test when I tried running rpc.svcgssd in a fresh
->>> VM and it wouldn't start.  I eventually found the error message complaining
->>> that it couldn't find that file.
->>> 
->>> It isn't perfect as an empty /etc/krb5.keytab will still result in failure
->>> and exit.  However if a sysadmin has created a keytab and is using NFS, it
->>> seems reasonable to be ready to provide gss services.
->>> 
->>> rpc.gssd doesn't fail in the same way, but it does complain if the file
->>> doesn't exist, so I suspect it is at least a good indicator.
->>> 
->>> The only thing that bothers me is that gssd is theoretically more general
->>> than krb5.  However as the reality seems to be that it is exactly krb5, I
->>> don't let that bother me too much.
->>> 
->>>> 
->>>> Simplest might be to start unconditionally and just not care if it
->>>> fails.  Or is there a problem cluttering up logs with unimportant
->>>> failures?
->>> 
->>> More a problem with starting things that aren't necessary, and possibly
->>> leaving them running.
->>> Every process you start adds a little to the boot time.  We only get the best
->>> experience if everyone contributes a little bit, no matter how little.
->>> Also, every running process theoretically adds the to the attack service.
->> 
->> rpc.gssd doesn’t expose a network listener.  What attack vector is exposed by running rpc.gssd?
-> 
-> Not all attacks are external.  Also not all decisions relating to security
-> are completely rational.  And the 'attack surface' argument may apply better
-> to other services but might cause a spill-over to people not wanting to run
-> anything they don't have to.
-
-If there is any local attack vector, folks who do run rpc.gssd would be concerned about that too.  Any exposure should be addressed.
-
-It might stand up for, say, rpcbind or rpc.statd, but I think the “attack surface” argument doesn’t stand up for any security daemon worth its salt.
-
-> 
->> 
->> Why would we insist on using a potentially insecure mechanism to provide strong security?
->> 
->>> So some people will definitely not want these processes to be started.
->> 
->> How many such people are there?  The trend I expect is that more and more people will want to use security features, and fewer will want “sec=sys,” especially if we work hard to make security features as painless as possible (as we should be doing).
-> 
-> I honestly don't know.  I may be seeing spectres that aren't there.  But I've
-> certainly heard a strong preference to not run unnecessary daemons more than
-> once in the past.
-
-Sure, I have too.  But I can’t think of a reason to cater to that impulse in this case.
-
-> When NFS is only used over a tightly coupled local network (infiniband?) you
-> really do want sec=sys.
-
-True, you might not want to use integrity or privacy in such environments due to their performance impact, but Kerberos authentication can provide value to make ACLs strong or to enable secure auditing.
-
-Besides, there is zero performance impact to running rpc.gssd with sec=sys on a big client, even if there is no KDC within miles.
-
-> 
-> 
->> 
->> It seems to me that provisionally starting rpc.gssd optimizes for a fairly uncommon case that will become less and less common going forward.  I believe we should start designing as if security is the default use case.  I would feel more comfortable if we knew more precisely what proportion of our users want to disable gssd and why.
->> 
->>> i.e. I agree with SteveD: 
->>>> I think we want to stay away (and move away) from unconditionally
->>>> starting anything… 
->> 
->> I believe we should make things simple both for us and for our customers.  Thus I agree philosophically with the Gnome strategy of removing less frequently used configuration options to reduce complexity, make things easier to configure, more reliable, and easier to troubleshoot.
-> 
-> I certainly agree with making things simple.  If we can make a configuration
-> irrelevant, e.g. by gets nfsd to auto-tune the number of threads so the
-> setting becomes pointless, then I've very happy to remove that sort of
-> configuration.  But if a configuration option actually means something I
-> certainly don't want to remove it.
-> 
-> So I'm leaning towards having "systemctl {un,}mask rpc-gssd" be the
-> configuration tool for rpc.gssd.
-
-I like that better than the “off-until-requested” behavior we have currently.  IMO folks who want to disable rpc.gssd will be in the increasing minority and the rest of the world will take scant notice of the extra daemon, as long as we ensure it speaks only when necessary.
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+> --b.
+>
+>>
+>>> --b
+>>>
+>>> commit e1f2922c12cb59baba0f2c7726bee992a0861310
+>>> Author: Stanislav Kinsbursky <skinsbursky@parallels.com>
+>>> Date:   Mon Dec 30 17:23:59 2013 +0300
+>>>
+>>>      nfsd: check passed socket's net matches the NFSd superblock's
+>>>
+>>>      The file descriptor written to the nfsd/portlist file could be for a
+>>>      socket in a different network namespace from the network namespace that
+>>>      the nfsd filesystem was mounted in, and this can cause a crash.
+>>>
+>>>      For example: "ip netns exec" creates a new network and mount namespace,
+>>>      which duplicates the nfsd mount point which was created in the init_net
+>>>      context.  Thus NFS server stop in the nested network context leads to
+>>>      RPCBIND client destruction in init_net.  Then, on nfsd start in the
+>>>      nested network context, the rpc.nfsd process creates a socket in the
+>>>      nested net and passes it into "write_ports", which leads to RPCBIND
+>>>      socket creation in init_net context for the same reason (the nfsd mount
+>>>      point was created in the init_net context). An attempt to register
+>>>      passed socket in nested net leads to panic, because no RPCBIND client is
+>>>      present in the nested network namespace.
+>>>
+>>>      This patch adds a check that the passed the socket's net matches the
+>>>      nfsd superblock's net, and returns -EINVAL error to user space if not.
+>>>
+>>>      Reported-by: Weng Meiling <wengmeiling.weng@huawei.com>
+>>>      Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+>>>      Cc: stable@vger.kernel.org
+>>>      Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+>>>
+>>> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+>>> index 7f55517..1331766 100644
+>>> --- a/fs/nfsd/nfsctl.c
+>>> +++ b/fs/nfsd/nfsctl.c
+>>> @@ -699,6 +699,11 @@ static ssize_t __write_ports_addfd(char *buf, struct net *net)
+>>>   	if (err != 0 || fd < 0)
+>>>   		return -EINVAL;
+>>>
+>>> +	if (svc_alien_sock(net, fd)) {
+>>> +		printk(KERN_ERR "%s: socket net is different from NFSd's\n", __func__);
+>>> +		return -EINVAL;
+>>> +	}
+>>> +
+>>>   	err = nfsd_create_serv(net);
+>>>   	if (err != 0)
+>>>   		return err;
+>>> diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
+>>> index 62fd1b7..947009e 100644
+>>> --- a/include/linux/sunrpc/svcsock.h
+>>> +++ b/include/linux/sunrpc/svcsock.h
+>>> @@ -56,6 +56,7 @@ int		svc_recv(struct svc_rqst *, long);
+>>>   int		svc_send(struct svc_rqst *);
+>>>   void		svc_drop(struct svc_rqst *);
+>>>   void		svc_sock_update_bufs(struct svc_serv *serv);
+>>> +bool		svc_alien_sock(struct net *net, int fd);
+>>>   int		svc_addsock(struct svc_serv *serv, const int fd,
+>>>   					char *name_return, const size_t len);
+>>>   void		svc_init_xprt_sock(void);
+>>> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+>>> index b6e59f0..3ba5b87 100644
+>>> --- a/net/sunrpc/svcsock.c
+>>> +++ b/net/sunrpc/svcsock.c
+>>> @@ -1397,6 +1397,17 @@ static struct svc_sock *svc_setup_socket(struct svc_serv *serv,
+>>>   	return svsk;
+>>>   }
+>>>
+>>> +bool svc_alien_sock(struct net *net, int fd)
+>>> +{
+>>> +	int err;
+>>> +	struct socket *sock = sockfd_lookup(fd, &err);
+>>> +
+>>> +	if (sock && (sock_net(sock->sk) != net))
+>>> +		return true;
+>>> +	return false;
+>>> +}
+>>> +EXPORT_SYMBOL_GPL(svc_alien_sock);
+>>> +
+>>>   /**
+>>>    * svc_addsock - add a listener socket to an RPC service
+>>>    * @serv: pointer to RPC service to which to add a new listener
+>>>
+>>
+>>
+>> --
+>> Best regards,
+>> Stanislav Kinsbursky
 
 
-
+-- 
+Best regards,
+Stanislav Kinsbursky
