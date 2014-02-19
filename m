@@ -1,220 +1,98 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:49231 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:47206 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750893AbaBSG54 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 19 Feb 2014 01:57:56 -0500
-Date: Wed, 19 Feb 2014 17:57:46 +1100
+	id S1752066AbaBSDVY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 18 Feb 2014 22:21:24 -0500
+Date: Wed, 19 Feb 2014 14:21:14 +1100
 From: NeilBrown <neilb@suse.de>
 To: Steve Dickson <steved@redhat.com>
 Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 0/2] nfs-utils: systemd units bug fixes and comments.
-Message-ID: <20140219175746.0481f690@notabene.brown>
-In-Reply-To: <1392713329-17979-1-git-send-email-steved@redhat.com>
+Subject: Re: [PATCH 2/2] systemd: Removed the "ordering cycle" from
+ nfs-server.service
+Message-ID: <20140219142114.7a237f73@notabene.brown>
+In-Reply-To: <1392713329-17979-3-git-send-email-steved@redhat.com>
 References: <1392713329-17979-1-git-send-email-steved@redhat.com>
+	<1392713329-17979-3-git-send-email-steved@redhat.com>
 Mime-Version: 1.0
 Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/fbxk.UpzlanAa=x1NGNJY1Q"; protocol="application/pgp-signature"
+ boundary="Sig_/=oNO0dWYi7W69gpg3t7+Qil"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/fbxk.UpzlanAa=x1NGNJY1Q
+--Sig_/=oNO0dWYi7W69gpg3t7+Qil
 Content-Type: text/plain; charset=US-ASCII
 Content-Transfer-Encoding: quoted-printable
 
-On Tue, 18 Feb 2014 03:48:47 -0500 Steve Dickson <steved@redhat.com> wrote:
+On Tue, 18 Feb 2014 03:48:49 -0500 Steve Dickson <steved@redhat.com> wrote:
 
-> Bug Fixes:
+> Commit 88ff0417 introduce 'Wants=3D' statements that
+> conditionally started other services. Those services
+> need to be removed from the 'After=3D' statements
+> otherwise a systemd ordering cycle is created.
 >=20
-> The /proc/net/rpc/use-gss-proxy file can not be used
-> as a start up trigger for rpc.svcsgssd since it always
-> exists, with or without gss-proxy installed.
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+> ---
+>  systemd/nfs-server.service | 2 --
+>  1 file changed, 2 deletions(-)
 >=20
-> Adding the Wants=3D to the nfs server unit cause a systemd ordering=20
-> cycle which caused reboots to take forever.
->=20
-> Comment One:
->=20
-> Even though nfs-client does conditionally start the rpc.gssd=20
-> service when /etc/krb5.keytab exists (which good), but that's=20
-> all it does. Meaning 'systemctl status' does not show that rpc.gssd=20
-> is running and 'systemctl restart' does not restart rpc.gssd=20
-> and 'systemctl stop' does not stop the daemon.
+> diff --git a/systemd/nfs-server.service b/systemd/nfs-server.service
+> index 26df656..43be4aa 100644
+> --- a/systemd/nfs-server.service
+> +++ b/systemd/nfs-server.service
+> @@ -7,8 +7,6 @@ Wants=3Drpc-statd.service nfs-idmapd.service rpc-gssd.ser=
+vice rpc-svcgssd.service
+>  Wants=3Drpc-statd-notify.service
+> =20
+>  After=3D network.target proc-fs-nfsd.mount rpcbind.target nfs-mountd.ser=
+vice
+> -After=3D nfs-idmapd.service rpc-statd.service
+> -After=3D rpc-gssd.service rpc-svcgssd.service
+>  Before=3D rpc-statd-notify.service
+> =20
+>  [Service]
 
-Well it doesn't *only* start rpc.gssd, it also starts e.g. sm-notify.  But
-maybe you meant that.  It only starts things, it doesn't stop them.
-This how systemd works.  Certainly there is no way I can see for=20
-   systemctl status foo
-to report on anything but a single service: foo.  It might be nice if it
-could report on a collection of services, but that doesn't seem to be
-supported.
+"Wants" does not imply ordering.  If A Wants B, then A and B can be started
+at the same time.
+But we really want these various services to be running before nfsd is
+started.  So the "After" are important.  Please leave them.
 
-We could arrange that when you 'stop' nfs-client it would also stop rpc-gssd
-(unless the server was running and wanted it) by setting
-   StopWhenUnneeded=3Dyes
-
-That isn't the default in systemd so I'm cautious of setting it without a
-good reason.  However I don't object if it turns out that it works.
-
-Restart is a bit tricky - again because both the client and the server want
-some services.
-You can enable Restart propagation by using PartOf=3D.  However that also
-enables Stop propagation and we don't want that.  i.e. we don't want=20
-   systemctl stop nfs-client
-to unilaterally stop rpc.gssd - in particular not if nfs-server is running.
+The lack of ordering is explicit in the documentation for Requires:
 
 
-In short: I think that the inter-relationships in nfs-utils are too complex=
- to
-allow the simplicity that you are seeking.  Or systemd isn't sophisticated
-enough to represent them.
+               If a unit foo.service requires a unit bar.service as
+           configured with Requires=3D and no ordering is configured with A=
+fter=3D
+           or Before=3D, then both units will be started simultaneously and
+           without any delay between them if foo.service is activated.
 
+and implicit in the documentation for Wants:
 
->=20
-> It just seems odd to me that we will be using one target unit=20
-> to enable a daemon then another service unit (rpc-gssd) to=20
-> control it.=20
->=20
-> I thinking we should  have one service unit, when enabled, control=20
-> both the rpc.gssd and the rpc.svcgssd daemons. The start up trigger=20
-> for both daemons will be the existence of /etc/krb5.keytab and=20
-> rpc.svcgssd will only be started if the nfs server is=20
-> enabled (if that is possible).
+       Wants=3D
+           A weaker version of Requires=3D.=20
 
-I originally thought that would not practical as the requirements for server
-and client are different.  However I now see (thanks Bruce) that both the
-client and the server need both rpc.gssd and rpc.svcgssd.  So we can have an
-  nfs-secure
-(or similar) which Wants both rpc-gssd and rpc-svcgssd.  Then both server a=
-nd
-client Want it.
-
-However I don't think it should be "enabled".  It should automatically start
-whenever nfs-server or nfs-client is started, providing the relevant files
-exist.
-(It can be 'masked' if someone has installed krb5 but really doesn't want t=
-he
-gss daemons running).
-
-So you would still use a different service to enable it than to restart it.
-
-Also "systemctl status nfs-secure" would not be able to show you the status
-of both daemons.
-
->=20
-> Comment Two:
->=20
-> How about renaming the nfs-utils unit to nfs-services since a=20
-> 'systemctl restart' of the unit start all the server and client=20
-> daemons (even when the server is not enabled, which is probably a bug).
->=20
-
-I don't object to a renaming.  The name "nfs-utils" was simply the first
-thing I thought of.
-
-  systemctl restart nfs-utils
-
-should *not* start any service that is not already started.  I think I test=
-ed
-that.  However if I'm wrong we could argue that "try-restart" should be used
-if you don't want to start services that aren't already running.... though
-I'm not sure that would work.  Must test....
-
- systemctl stop nfs-utils
-
-should stop services.  It uses "PartOf" which is supposed to apply to
-'restart' and 'stop' equally.
-
-
-> Since a 'systemctl restart nfs-utils' starts all the daemons shouldn't
-> 'systemctl stop nfs-utils' bring them all down as well?
-
-Doesn't it?
-
->=20
-> Another oddity, going a 'systemctl restart nfs-utils' causes v3=20
-> mounts to go stale... Meaning going a ls on a v3 mount point=20
-> after the restart errors out with ESTALE... Not sure why...=20
->=20
-
-That is weird and certainly needs looking in to.  I could be due to
-
-   ExecStopPost=3D/usr/sbin/exportfs -au
-
-I wonder if we really need that.
-
-I hope to get some time tomorrow to experiment with all this and I will
-definitely look into this issue (unless you explain it first :-)
-
-
-> Comment Three:
->=20
-> I'm not seeing how the nfs-utils_env.sh file, called by each unit,=20
-> is all that useful. The main reason is you can not tell which=20
-> unit its being called from so how do know what should be done?=20
-> I guess I'm just missing the concept on how and what it should=20
-> be used for.
-
-I've got a patch which changes this so it is only called once in a separate
-service.  However the principle remains unchanged.
-
-The purpose of the script is to read /etc/sysconfig/nfs (or similar) and
-write out /run/sysconfig/nfs-utils containing *all* the environment variabl=
-es
-used in *any* nfs-utils unit file.  It allows a translation from what is
-expected in the sysconfig file to what the daemons expect as their argument=
-s.
-
-I see this as a transitional thing.  Ultimately the various daemons should =
-be
-able to inspect their environment, and expect exactly the things that might
-be in the config file. So systemd just reads /etc/sysconfig/nfs and then ru=
-ns
-the daemons.  But that goal is a little ways off yet.
-
-One thing we have in our sysconfig file is "NFS3_SERVER_SUPPORT".  If that =
-is
-set to "no", then as well as constructing appropriate arguments for rpc.mou=
-ntd
-and rpc.nfs we don't run rpc.statd (unless a v3 filesystem is mounted).
-Handling the first part with nfs-utils_env.sh is trivial.  Handling the
-second bit is something I haven't figured out yet.
-
-Thanks for your comments.
-
+Thanks,
 NeilBrown
 
-
->=20
-> Steve Dickson (2):
->   rpc-svcgssd.service: removed a the start up triggers
->   systemd: Removed the "ordering cycle" from nfs-server.service
->=20
->  systemd/nfs-server.service  | 2 --
->  systemd/rpc-svcgssd.service | 1 -
->  2 files changed, 3 deletions(-)
->=20
-
-
---Sig_/fbxk.UpzlanAa=x1NGNJY1Q
+--Sig_/=oNO0dWYi7W69gpg3t7+Qil
 Content-Type: application/pgp-signature; name=signature.asc
 Content-Disposition: attachment; filename=signature.asc
 
 -----BEGIN PGP SIGNATURE-----
 Version: GnuPG v2.0.22 (GNU/Linux)
 
-iQIVAwUBUwRV6jnsnt1WYoG5AQKJ9w//fOq1NBfowYweOefRbZcJ78cRZpWGyrxJ
-LwsJdCLENSqwB4vbYP43DUGf0KyrH56wkDCZpTD8iNQOtrShUPIqHnLbzSKWpxHH
-493FeqI7zdOJDYyzrmU8ppvG+D0WaP5VhYCXrINGI7VRNrpnEbci1XKYjdF5gc2H
-OWlo3f5zhMcbMLaLXUltg6zihZURRY0/onuIa6Ws1DLFpkga7f8QQ666Kes0y62U
-wrwWwhyM3j78t6gDJDC0oIyrdbd94Y8KMPHs7JDycpKZf5tL9nn502Rcs4LesuRq
-hcAaTrNccsWd6VZ36irA88XkTT2NIW4uNcwN8GQ6VbQa5xsMGPlFsFbmc9g40YwN
-YcxcFVnyXYAtgfd91jslD4nK/f+lq9oBLr/kIYk5SJZzuMp40Lb3n1ilD7B32/fR
-c6KWLaru/H+nxf1caICqVHewhV17+0zE3lOI07my6/kj8prpahkQGARcKvZyYla7
-EiPPqN1meWooan0SApnEw33DThjKV7m8SEubxiBB5dDJ2xdOHW9XovU21lOZDsds
-EOZ69M0S/wUNCK0B//hYXVbZcCCOiT2aUMfqDsKcdeGCl4QIaF8p9167XXKJVPxg
-EhF26RrjhWlX+n8DgxhDF94U3JQ70laPzpNmPGQ12vFafx3dsRQ5gRrL7z4FE15q
-s8QEveaB2S4=
-=LgIH
+iQIVAwUBUwQjKjnsnt1WYoG5AQLt6w//QhMuHdCOjoQMI5v8r5F48/i2zblm69bx
+6iS+11ssoGlCpdXoy4/P9Yaqo+y1hzZM6/lXhmyqQd2mpIcmEOKkYhNZ9136cdT9
+wwpTgrAuJ4vE15vXBrTDqKCRZF8l0uszbY0JtL0FuwL2xC0ZbV0/Bj0xnRwopQGR
+5Mjs5sHyRrT4r4eyXR6Vniu9QZbMrKITtZmw7E8ppbGUedjJbunIGj6AnGrXCc4v
+k3x+uBBUXCEEr48tnwDf0KREvz2sTaH3d+nifoWEsEWVEZqefnlQlDVmxNYUDBei
+ZJK+kXT14cyVqU1+Jo3k7rnuQTnedu7wCZk41dmcua6B3+6ZpWZxGUv2M0A08e84
+Fftto3BAiiaPrvlNFctnyjujB91J91/2jbkVsMd+kFwwyn59/dDnzhL6R3Uw1val
+0z58Bwd1Ug7flkhCcmG/s60DrN+0Wsv0BayHQy6uTi5qgdth/hh3NxYKFNDx/4My
+6iXcoUAsZtfiv6XSRwPEE5fjlhre88rsaGfEKQVqFjCNQLCg9WLCQnQuF1uA1c+E
+VpVCsddQuucq8orBsf9gnZF5q6bmeXAJTOOTtg1L+ABQOLX7bYDE5y7BxLzQf5op
+onmJfC7LKpHhgMN18BIwyotRPHGbckxuEYPOVppcp5tK+bOdofdcCobf9p3wFS8r
+K8L8gDpBVdA=
+=Uotv
 -----END PGP SIGNATURE-----
 
---Sig_/fbxk.UpzlanAa=x1NGNJY1Q--
+--Sig_/=oNO0dWYi7W69gpg3t7+Qil--
