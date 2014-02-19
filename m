@@ -1,73 +1,98 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f182.google.com ([209.85.223.182]:48992 "EHLO
-	mail-ie0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752419AbaBCVCw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Feb 2014 16:02:52 -0500
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 7/8] NFS: Use port 20049 by default for NFS/RDMA mounts
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Date: Mon, 03 Feb 2014 16:02:50 -0500
-Message-ID: <20140203210250.3533.66371.stgit@manet.1015granger.net>
-In-Reply-To: <20140203205903.3533.39213.stgit@manet.1015granger.net>
-References: <20140203205903.3533.39213.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-ie0-f170.google.com ([209.85.223.170]:39226 "EHLO
+	mail-ie0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751621AbaBSOka convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Feb 2014 09:40:30 -0500
+Received: by mail-ie0-f170.google.com with SMTP id rl12so282926iec.1
+        for <linux-nfs@vger.kernel.org>; Wed, 19 Feb 2014 06:40:30 -0800 (PST)
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
+Subject: Re: [GIT PULL] Please pull NFS client fixes
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+In-Reply-To: <1392819180.3670.1.camel@leira.trondhjem.org>
+Date: Wed, 19 Feb 2014 09:40:28 -0500
+Cc: Linux Kernel mailing list <linux-kernel@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <5B5733C1-4A37-4B3F-9B28-2CAA88C5C844@primarydata.com>
+References: <1392819180.3670.1.camel@leira.trondhjem.org>
+To: Torvalds Linus <torvalds@linux-foundation.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When providing NFSv2 and v3 service via RDMA, NFS servers MAY use an
-alternative well-known port number, 20049.  They are not required to
-register the service with their local rpcbind.  At least one server
-implementation I am aware of does not register.
 
-When providing NFSv4 service via RDMA, the server MUST use the
-alternative port number, 20049.  As with NFSv4 on IP-based
-transports, clients SHOULD connect to this port without consulting
-the server's rpcbind, so we can't expect rpcbind to help here
-either.
+On Feb 19, 2014, at 9:13, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
 
-See section 6 of RFC 5667 for details.
+> Hi Linus,
+> 
+> The following changes since commit b28a960c42fcd9cfc987441fa6d1c1a471f0f9ed:
+> 
+>  Linux 3.14-rc2 (2014-02-09 18:15:47 -0800)
+> 
+> are available in the git repository at:
+> 
+>  git://git.linux-nfs.org/projects/trondmy/linux-nfs.git tags/nfs-for-3.14-4
+> 
+> for you to fetch changes up to 2564f0dc58962a08abc960fca820e344f61981ed:
 
-Today, admins are required to specify "port=" when mounting an
-NFS/RDMA server.  To comply with RFC 5667 and for cross-
-compatibility with heterogenous automounter maps, provide the proper
-default port when mounting with "proto=rdma".
+Doh… The very last patch in the series was misapplied. I’ve fixed it up and pushed out a new tag using —force. It being 6:40 am in Oregon, hopefully you still haven’t applied the bad patch…
 
-If the server does not use port 20049, the "port=" mount option is
-still required to mount successfully.
+nfs-for-3.14-4 should now point to commit 146d70caaa1b87f64597743429d7da4b8073d0c9, which has Andy’s patch applied correctly.
 
-Bugzilla: https://bugzilla.kernel.org/show_bug.cgi?id=68401
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+Apologies…
+  Trond
 
- fs/nfs/super.c           |    2 ++
- include/uapi/linux/nfs.h |    1 +
- 2 files changed, 3 insertions(+), 0 deletions(-)
+> 
+>  NFS fix error return in nfs4_select_rw_stateid (2014-02-18 11:33:03 -0500)
+> 
+> ----------------------------------------------------------------
+> NFS client bugfixes for Linux 3.14
+> 
+> Highlights include stable fixes for the following bugs:
+> 
+> - General performance regression due to NFS_INO_INVALID_LABEL being set
+>  when the server doesn't support labeled NFS
+> - Hang in the RPC code due to a socket out-of-buffer race
+> - Infinite loop when trying to establish the NFSv4 lease
+> - Use-after-free bug in the RPCSEC gss code.
+> - nfs4_select_rw_stateid is returning with a non-zero error value on success
+> 
+> Other bug fixes:
+> 
+> - Potential memory scribble in the RPC bi-directional RPC code
+> - Pipe version reference leak
+> - Use the correct net namespace in the new NFSv4 migration code
+> 
+> ----------------------------------------------------------------
+> Andy Adamson (1):
+>      NFS fix error return in nfs4_select_rw_stateid
+> 
+> Trond Myklebust (7):
+>      NFS: Do not set NFS_INO_INVALID_LABEL unless server supports labeled NFS
+>      SUNRPC: Don't create a gss auth cache unless rpc.gssd is running
+>      SUNRPC: Fix races in xs_nospace()
+>      SUNRPC: Fix potential memory scribble in xprt_free_bc_request()
+>      SUNRPC: Ensure that gss_auth isn't freed before its upcall messages
+>      SUNRPC: Fix a pipe_version reference leak
+>      NFSv4: Use the correct net namespace in nfs4_update_server
+> 
+> fs/nfs/inode.c                 | 14 ++++++++++----
+> fs/nfs/internal.h              | 12 +++++++++++-
+> fs/nfs/nfs4client.c            |  7 ++++---
+> fs/nfs/nfs4namespace.c         | 12 ++++++------
+> fs/nfs/nfs4state.c             |  1 +
+> net/sunrpc/auth_gss/auth_gss.c | 19 ++++++++++++++++---
+> net/sunrpc/backchannel_rqst.c  |  6 ++++--
+> net/sunrpc/xprtsock.c          |  6 +++++-
+> 8 files changed, 57 insertions(+), 20 deletions(-)
+> 
+> -- 
+> Trond Myklebust
+> Linux NFS client maintainer, PrimaryData
+> trond.myklebust@primarydata.com
+> 
 
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 910ed90..6432600 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -2157,6 +2157,8 @@ static int nfs_validate_text_mount_data(void *options,
- 	} else
- 		nfs_set_mount_transport_protocol(args);
- 
-+	if (args->nfs_server.protocol == XPRT_TRANSPORT_RDMA)
-+		port = NFS_RDMA_PORT;
- 	nfs_set_port(sap, &args->nfs_server.port, port);
- 
- 	return nfs_parse_devname(dev_name,
-diff --git a/include/uapi/linux/nfs.h b/include/uapi/linux/nfs.h
-index 5199a36..ccc6f8d 100644
---- a/include/uapi/linux/nfs.h
-+++ b/include/uapi/linux/nfs.h
-@@ -9,6 +9,7 @@
- 
- #define NFS_PROGRAM	100003
- #define NFS_PORT	2049
-+#define NFS_RDMA_PORT	20049
- #define NFS_MAXDATA	8192
- #define NFS_MAXPATHLEN	1024
- #define NFS_MAXNAMLEN	255
+_________________________________
+Trond Myklebust
+Linux NFS client maintainer, PrimaryData
+trond.myklebust@primarydata.com
 
