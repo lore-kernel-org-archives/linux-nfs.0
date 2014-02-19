@@ -1,71 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:34676 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751170AbaBZQDK convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Feb 2014 11:03:10 -0500
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
-Subject: Re: What does rpc.mountd dlopen() libnfsjunct.so rather than libnfsjunct.so.0
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1393425572.18299.157.camel@willson.li.ssimo.org>
-Date: Wed, 26 Feb 2014 08:02:42 -0800
-Cc: Neil Brown <neilb@suse.de>, Steve Dickson <SteveD@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <3A4B7C90-54B8-4373-B751-B02D940199BC@oracle.com>
-References: <20140226161646.1520358b@notabene.brown> <1393425572.18299.157.camel@willson.li.ssimo.org>
-To: Simo Sorce <simo@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:64370 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754077AbaBSQDm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 19 Feb 2014 11:03:42 -0500
+Subject: Re: [PATCH 1/2] rpc-svcgssd.service: removed a the start up
+ triggers
+From: Simo Sorce <simo@redhat.com>
+To: NeilBrown <neilb@suse.de>
+Cc: Steve Dickson <steved@redhat.com>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+In-Reply-To: <20140219141712.54cb31a7@notabene.brown>
+References: <1392713329-17979-1-git-send-email-steved@redhat.com>
+	 <1392713329-17979-2-git-send-email-steved@redhat.com>
+	 <20140219141712.54cb31a7@notabene.brown>
+Content-Type: text/plain; charset="UTF-8"
+Date: Wed, 19 Feb 2014 11:03:36 -0500
+Message-ID: <1392825816.22754.158.camel@willson.li.ssimo.org>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Feb 26, 2014, at 6:39 AM, Simo Sorce <simo@redhat.com> wrote:
-
-> On Wed, 2014-02-26 at 16:16 +1100, NeilBrown wrote:
->> See $SUBJ
->> 
->> Shared libraries are usually versioned so you can release a new version with
->> an incompatible API and gradually transition to it.
->> 
->> A rpc.mountd dlopens libnfsjunct.so with no version it is effectively
->> prohibited from ever changing the API in an incompatible way.
->> 
->> Both Fedora and openSUSE get upset about packaging a libFOO.so in a non
->> "-devel" package and so trip over this library which clearly needs to be
->> installed even if you aren't doing 'devel'opment.
+On Wed, 2014-02-19 at 14:17 +1100, NeilBrown wrote:
+> On Tue, 18 Feb 2014 03:48:48 -0500 Steve Dickson <steved@redhat.com> wrote:
 > 
-> Keep in mind this rule is there only for real shared libraries that are
-> loaded by the the system loader.
+> > The file /proc/net/rpc/use-gss-proxy exists whether
+> > gss-proxy is or is not installed. So is existence
+> > can not be used as start up trigger.
+> > 
+> > Signed-off-by: Steve Dickson <steved@redhat.com>
+> > ---
+> >  systemd/rpc-svcgssd.service | 1 -
+> >  1 file changed, 1 deletion(-)
+> > 
+> > diff --git a/systemd/rpc-svcgssd.service b/systemd/rpc-svcgssd.service
+> > index 6bd4588..8e10b98 100644
+> > --- a/systemd/rpc-svcgssd.service
+> > +++ b/systemd/rpc-svcgssd.service
+> > @@ -7,7 +7,6 @@ PartOf=nfs-utils.service
+> >  
+> >  After=gssproxy.service
+> >  ConditionPathExists=|!@localstatedir@/run/gssproxy.pid
+> > -ConditionPathExists=|!/proc/net/rpc/use-gss-proxy
+> >  ConditionPathExists=/etc/krb5.keytab
+> >  
+> >  [Service]
 > 
-> however it is waived for 'modules' that are opened dynamically but are
-> private to the application.
+> This is testing for non-existence, not existence.
 > 
->> I would like to change mountd as per the patch below to use the ".0" file.
->> I believe this will not break any installation as the ".so" is installed as a
->> symlink to the ".0" (or maybe ".0.0.0").
->> 
->> Would this be acceptable?
+> We need rpc-svcgssd unless gssproxy can perform that task for us, in which
+> case we don't want rpc-svcgssd.
 > 
-> It looks to me like this is an internal module for mountd that is not
-> for use by other apps (which is why it is not versioned and can be
-> changed at will as it is deployed at the same time mountd is ?
+> gssproxy can only perform the task for us if:
+>  1/ it is running (hence the test on the pid file)
 
-The plug-in API is versioned internally, but maybe I got that wrong, and should remove the API version field in favor of having consumers load via a specific .so number.
+could be stale
 
-> Or am I wrong here ?
-> 
-> If I am not wrong I would be against this change personally and would
-> rather move the .so file in a private library dir (if it is not already
-> there) to make it clear it is a private module.
+>  2/ the kernel knows how to talk to it (hence the test on use-gss-proxy)
 
-rpc.mountd is the only user currently, but it’s not necessarily private to mountd.  A generic storage manager tool might use it to resolve NFS and FedFS referrals for display, for example.  We could add plug-in API functions for creating and removing referrals to enable generic tools to perform these operations.
+use-gss-proxy is always available whether gss-proxy is being used or not
+as it is the interface used by gss-proxy to tell the kernel it is in
+use.
 
-A separate directory makes sense if there’s more than one thing to put in it.  Right now we just have the plug-in library, and no plans to add more.
+> With you version, if gssproxy were running on a kernel which did not include
+> support for nfsd talking to gssproxy, then rpc-svcgssd would fail to start,
+> which isn't what we want.
 
-I took an expedient approach when implementing the plug-in, and could have gotten it wrong.  I’m open to make this mechanism fit packaging guidelines and requirements.
+True the right way to handle this would probably be to
+make /proc/net/rpc/use-gss-proxy readable and start rpc.svcgssd if the
+value is 0 ?
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+> This may be an unusual configuration but unless it is an impossible
+> configuration I would rather the code remained as it was.
+> (This should work on *all* distros, not just sane distros).
 
+I agree with the sentiment.
 
+Simo.
+
+-- 
+Simo Sorce * Red Hat, Inc * New York
 
