@@ -1,40 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-oa0-f48.google.com ([209.85.219.48]:45830 "EHLO
-	mail-oa0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751752AbaBTC23 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Feb 2014 21:28:29 -0500
-Received: by mail-oa0-f48.google.com with SMTP id l6so1476400oag.35
-        for <linux-nfs@vger.kernel.org>; Wed, 19 Feb 2014 18:28:28 -0800 (PST)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/7] NFSv4.1: Fix wraparound issues in pnfs_seqid_is_newer()
-Date: Wed, 19 Feb 2014 21:28:19 -0500
-Message-Id: <1392863305-14870-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from cantor2.suse.de ([195.135.220.15]:43685 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751845AbaBTG4n (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 20 Feb 2014 01:56:43 -0500
+From: Neil Brown <neilb@suse.de>
+To: Steve Dickson <SteveD@redhat.com>
+Date: Thu, 20 Feb 2014 17:55:30 +1100
+Subject: [PATCH 4/6] systemd: remove @localstatedir@ marking.
+Cc: linux-nfs@vger.kernel.org
+Message-ID: <20140220065530.7320.89196.stgit@notabene.brown>
+In-Reply-To: <20140220065345.7320.49992.stgit@notabene.brown>
+References: <20140220065345.7320.49992.stgit@notabene.brown>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Subtraction of signed integers does not have well defined wraparound
-semantics in the C99 standard. In order to be wraparound-safe, we
-have to use unsigned subtraction, and then cast the result.
+This isn't used so currently is inconvenient.
+Once we decide how to handle this sort of thing we can apply
+the change uniformly.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: NeilBrown <neilb@suse.de>
 ---
- fs/nfs/pnfs.c | 2 +-
+ systemd/rpc-svcgssd.service |    2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 4755858e37a0..6e67ada6c22c 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -662,7 +662,7 @@ pnfs_destroy_all_layouts(struct nfs_client *clp)
-  */
- static bool pnfs_seqid_is_newer(u32 s1, u32 s2)
- {
--	return (s32)s1 - (s32)s2 > 0;
-+	return (s32)(s1 - s2) > 0;
- }
+diff --git a/systemd/rpc-svcgssd.service b/systemd/rpc-svcgssd.service
+index 32b786ec5c7d..f7424b0b1085 100644
+--- a/systemd/rpc-svcgssd.service
++++ b/systemd/rpc-svcgssd.service
+@@ -6,7 +6,7 @@ PartOf=nfs-server.service
+ PartOf=nfs-utils.service
  
- /* update lo->plh_stateid with new if is more recent */
--- 
-1.8.5.3
+ After=gssproxy.service
+-ConditionPathExists=|!@localstatedir@/run/gssproxy.pid
++ConditionPathExists=|!/run/gssproxy.pid
+ ConditionPathExists=|!/proc/net/rpc/use-gss-proxy
+ ConditionPathExists=/etc/krb5.keytab
+ 
+
 
