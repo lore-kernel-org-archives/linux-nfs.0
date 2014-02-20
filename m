@@ -1,43 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f175.google.com ([209.85.223.175]:52527 "EHLO
-	mail-ie0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751294AbaBCORd convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Feb 2014 09:17:33 -0500
-Received: by mail-ie0-f175.google.com with SMTP id ar20so6264126iec.20
-        for <linux-nfs@vger.kernel.org>; Mon, 03 Feb 2014 06:17:32 -0800 (PST)
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
-Subject: Re: NFS client broken in Linus' tip
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-In-Reply-To: <20140203080325.GB806@infradead.org>
-Date: Mon, 3 Feb 2014 09:17:30 -0500
-Cc: Russell King - ARM Linux <linux@arm.linux.org.uk>,
-        linuxnfs <linux-nfs@vger.kernel.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Viro Alexander <viro@zeniv.linux.org.uk>,
-        Christoph Hellwig <hch@lst.de>, linux-arm-kernel@lists.infradead.org
-Message-Id: <85AAFCF5-60EE-42E5-B103-37A4613C5947@primarydata.com>
-References: <20140130140834.GW15937@n2100.arm.linux.org.uk> <20140130141405.GA23985@infradead.org> <20140130142752.GX15937@n2100.arm.linux.org.uk> <20140130143208.GB9573@infradead.org> <20140130153812.GA15937@n2100.arm.linux.org.uk> <1391201970.6978.1.camel@leira.trondhjem.org> <20140203080325.GB806@infradead.org>
-To: Christoph Hellwig <hch@infradead.org>
+Received: from mx1.redhat.com ([209.132.183.28]:26337 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752700AbaBTOa6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 20 Feb 2014 09:30:58 -0500
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s1KEUpZR002104
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 20 Feb 2014 09:30:56 -0500
+Subject: [PATCH] Fix windows hostname calculation
+From: Simo Sorce <simo@redhat.com>
+To: Steve Dickson <steved@redhat.com>
+Cc: linux-nfs <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset="UTF-8"
+Date: Thu, 20 Feb 2014 09:30:48 -0500
+Message-ID: <1392906648.22754.213.camel@willson.li.ssimo.org>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+>From 026c489ac7019a91951b37240f438329de1d615c Mon Sep 17 00:00:00 2001
+From: Simo Sorce <simo@redhat.com>
+Date: Thu, 20 Feb 2014 09:25:06 -0500
+Subject: [PATCH] Drop full domain when constructing the Ad hostname.
 
-On Feb 3, 2014, at 3:03, Christoph Hellwig <hch@infradead.org> wrote:
+When trying to use the special MS Windows hostanme we need to stop
+at the first '.' if we got a FQDN from gethostname()
+Tee HOST$@REALM form in fact uses the AD samAccountName attribute to
+represent 'HOST', and that attribute is always the host's shortname.
+Characters like '.' are actually illegal for a shortname in AD.
 
-> On Fri, Jan 31, 2014 at 03:59:30PM -0500, Trond Myklebust wrote:
->> posix_acl_xattr_get requires get_acl() to return EOPNOTSUPP if the
->> filesystem cannot support acls. This is needed for NFS, which can't
->> know whether or not the server supports acls until it tries to get/set
->> one.
->> This patch converts posix_acl_chmod and posix_acl_create to deal with
->> EOPNOTSUPP return values from get_acl().
-> 
-> Shouldn't NFS just return a NULL ACL here?
+Signed-off-by: Simo Sorce <simo@redhat.com>
+---
+ utils/gssd/krb5_util.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
-As I said above, that causes posix_acl_xattr_get() to return the wrong answer (ENODATA instead of EOPNOTSUPP).
+diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
+index
+208c72bc072bceecc81f591887603e274dc35d9b..4b57141b4e17643ef9b56aa13639354860009db6 100644
+--- a/utils/gssd/krb5_util.c
++++ b/utils/gssd/krb5_util.c
+@@ -819,8 +819,10 @@ find_keytab_entry(krb5_context context, krb5_keytab
+kt, const char *tgtname,
+ 
+ 	/* Compute the active directory machine name HOST$ */
+ 	strcpy(myhostad, myhostname);
+-	for (i = 0; myhostad[i] != 0; ++i)
++	for (i = 0; myhostad[i] != 0; ++i) {
++		if (myhostad[i] == '.') break;
+ 		myhostad[i] = toupper(myhostad[i]);
++	}
+ 	myhostad[i] = '$';
+ 	myhostad[i+1] = 0;
+ 
+-- 
+1.8.5.3
 
---
-Trond Myklebust
-Linux NFS client maintainer
+
+-- 
+Simo Sorce * Red Hat, Inc * New York
 
