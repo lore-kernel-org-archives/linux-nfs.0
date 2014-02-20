@@ -1,66 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:34687 "EHLO fieldses.org"
+Received: from cantor2.suse.de ([195.135.220.15]:43383 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752039AbaBMSVv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 13 Feb 2014 13:21:51 -0500
-Date: Thu, 13 Feb 2014 13:21:48 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "McAninley, Jason" <jmcaninl@harris.com>
-Cc: Malahal Naineni <malahal@us.ibm.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Question regard NFS 4.0 buffer sizes
-Message-ID: <20140213182148.GA20694@fieldses.org>
-References: <322949BF788C8D468BEA0A321B79799098BDB9F0@MLBMXUS20.cs.myharris.net>
- <20140211143633.GB9918@fieldses.org>
- <322949BF788C8D468BEA0A321B79799098BDBB0A@MLBMXUS20.cs.myharris.net>
- <20140211163215.GA19599@fieldses.org>
- <322949BF788C8D468BEA0A321B79799098BDBE83@MLBMXUS20.cs.myharris.net>
- <20140211215441.GB22695@fieldses.org>
- <322949BF788C8D468BEA0A321B79799098BDC011@MLBMXUS20.cs.myharris.net>
- <20140211231852.GA27855@us.ibm.com>
- <322949BF788C8D468BEA0A321B79799098BDCA8E@MLBMXUS20.cs.myharris.net>
+	id S1750703AbaBTG4K (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 20 Feb 2014 01:56:10 -0500
+From: Neil Brown <neilb@suse.de>
+To: Steve Dickson <SteveD@redhat.com>
+Date: Thu, 20 Feb 2014 17:55:30 +1100
+Subject: [nfs-utils/systemd PATCH 0/6] Assorted fixes for systemd units
+Cc: linux-nfs@vger.kernel.org
+Message-ID: <20140220065345.7320.49992.stgit@notabene.brown>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <322949BF788C8D468BEA0A321B79799098BDCA8E@MLBMXUS20.cs.myharris.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Feb 13, 2014 at 12:21:13PM +0000, McAninley, Jason wrote:
-> Sorry for the delay.
-> 
-> > This ends up caching and the write back should happen with larger
-> > sizes.
-> > Is this an issue with write size only or read size as well? Did you
-> > test
-> > read size something like below?
-> > 
-> > dd if=[nfs_dir]/foo bs=1M count=500 of=/dev/null
-> > 
-> > You can create sparse "foo" file using truncate command.
-> 
-> I have not tested read speeds yet since this is a bit trickier due to avoiding the client cache. I would suspect similar results since we have mirrored read/write settings in all locations (we're aware of).
-> 
->  
-> > >
-> > > 
-> > > > Also, what kernel versions are you on?
-> > >
-> > > RH6.3, 2.6.32-279.el6.x86_64
-> > 
-> > NFS client and NFS server both using the same distro/kernel?
-> 
-> Yes - identical.
-> 
-> 
-> Would multipath play any role here? I would suspect it would only help, not hinder. I have run Wireshark against the slave and the master ports with the same result - a max of ~32K packet size, regardless of the settings I listed in my original post.
+These are a number of ad-hoc things I.  The nfs-utils_env.sh for SUSE
+is primarily presented as an example.  I'm happy for it to get
+applied, but I'm happy if it isn't applied too.
 
-I doubt it.  I don't know what's going there.
+Thanks,
+NeilBrown
 
-The write size might actually be too small to keep the necessary amount
-of write data in flight; increasing tcp_slot_table_entries might work
-around that?
 
-Of course, since this is a Red Hat kernel that'd be a place to ask for
-support unless the problem's also reproduceable on upstream kernels.
+---
 
---b.
+Neil Brown (6):
+      systemd units: remove reference to nfs-server.target from nfs-server.service.
+      systemd units: create nfs-config.service as single location to process config.
+      systemd: add nfs-utils_env.sh for SUSE.
+      systemd: remove @localstatedir@ marking.
+      systemd: nfs-client needs rpc-svcgssd too.
+      systemd: add PIDFile directives where appropriate.
+
+
+ systemd/README                   |    3 +-
+ systemd/SUSE-nfs-utils_env.sh    |   62 ++++++++++++++++++++++++++++++++++++++
+ systemd/nfs-blkmap.service       |    1 +
+ systemd/nfs-client.target        |    5 ++-
+ systemd/nfs-config.service       |    7 ++++
+ systemd/nfs-idmapd.service       |    5 ++-
+ systemd/nfs-mountd.service       |    5 ++-
+ systemd/nfs-server.service       |    5 ++-
+ systemd/rpc-gssd.service         |    4 ++
+ systemd/rpc-statd-notify.service |    5 ++-
+ systemd/rpc-statd.service        |    6 ++--
+ systemd/rpc-svcgssd.service      |    7 ++--
+ 12 files changed, 97 insertions(+), 18 deletions(-)
+ create mode 100644 systemd/SUSE-nfs-utils_env.sh
+ create mode 100644 systemd/nfs-config.service
+
+-- 
+Signature
+
