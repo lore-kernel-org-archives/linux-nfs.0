@@ -1,84 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from szxga02-in.huawei.com ([119.145.14.65]:26407 "EHLO
-	szxga02-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755374AbaBRNHe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Feb 2014 08:07:34 -0500
-Message-ID: <53035AE7.5030208@huawei.com>
-Date: Tue, 18 Feb 2014 21:06:47 +0800
-From: Weng Meiling <wengmeiling.weng@huawei.com>
+Received: from fieldses.org ([174.143.236.118]:51808 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751163AbaBTUhG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 20 Feb 2014 15:37:06 -0500
+Date: Thu, 20 Feb 2014 15:37:02 -0500
+To: Steve Dickson <SteveD@redhat.com>
+Cc: NeilBrown <neilb@suse.de>, Chuck Lever <chuck.lever@oracle.com>,
+        NFS <linux-nfs@vger.kernel.org>, Carsten Ziepke <kieltux@gmail.com>
+Subject: Re: [PATCH - nfs-utils] Fix fallback from tcp to udp
+Message-ID: <20140220203701.GA13433@fieldses.org>
+References: <20140218104307.34205fc8@notabene.brown>
+ <53064057.70703@RedHat.com>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-        Stanislav Kinsbursky <skinsbursky@parallels.com>
-CC: <greg@kroah.com>, <linux-nfs@vger.kernel.org>,
-        <linux-kernel@vger.kernel.org>, <devel@openvz.org>
-Subject: Re: [PATCH] nfsd: check passed socket's net matches NFSd superblock's
- one
-References: <20131230142339.16166.28243.stgit@localhost.localdomain> <20140103222226.GD5164@fieldses.org> <52FEC818.7030604@huawei.com> <20140217221900.GA8401@fieldses.org>
-In-Reply-To: <20140217221900.GA8401@fieldses.org>
-Content-Type: text/plain; charset="ISO-8859-1"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <53064057.70703@RedHat.com>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Bruce , Stanislav
-On 2014/2/18 6:19, J. Bruce Fields wrote:
-> On Sat, Feb 15, 2014 at 09:51:20AM +0800, Weng Meiling wrote:
->> Hi Bruce,
->>
->> The upstream has merged your git tree for-3.14, but there is no this patch?
->> Do you forget this patch?
+On Thu, Feb 20, 2014 at 12:50:15PM -0500, Steve Dickson wrote:
 > 
-> Apologies, I'm not sure what happened.
 > 
-> Looking back at it....  The patch causes all my pynfs reboot recovery
-> tests to fail.  They're just doing a "systemctl restart
-> nfs-server.service", and "systemctl status nfs-server.service" shows in
-> part
-> 
-> 	ExecStart=/usr/sbin/rpc.nfsd $RPCNFSDARGS $RPCNFSDCOUNT (code=exited, status=1/FAILURE)
-> 
-> So the patch is causing rpc.nfsd to fail?  No network namespaces should
-> be involved.  
-> 
-> I haven't investigated any further.
-> 
-the problem exists. Sorry for careless testing.
-Stanislav, how do you think about this?
+> On 02/17/2014 06:43 PM, NeilBrown wrote:
+> > 
+> > Protocol negotiation in mount.nfs does not correctly negotiate with a
+> > server which only support NFSv3 and UDP.
+> > 
+> > When mount.nfs attempts an NFSv4 mount and fails with ECONNREFUSED
+> > it does not fall back to NFSv3, as this is not recognised as a
+> > "does not support NFSv4" error.
+> > However ECONNREFUSED is a clear indication that the server doesn't
+> > support TCP, and ipso facto does not support NFSv4.
+> > So ECONNREFUSED should trigger a fallback from v4 to v2/3.
+> I'm also pretty this is the error returned when the server is 
+> down or more pointy when server is rebooting...
 
-Thanks!
-Weng Meiling
-> --b.
-> 
->>
->> Thanks!
->> Weng Meiling
->>
->>
->> On 2014/1/4 6:22, J. Bruce Fields wrote:
->>> On Mon, Dec 30, 2013 at 05:23:59PM +0300, Stanislav Kinsbursky wrote:
->>>> There could be a case, when NFSd file system is mounted in network, different
->>>> to socket's one, like below:
->>>>
->>>> "ip netns exec" creates new network and mount namespace, which duplicates NFSd
->>>> mount point, created in init_net context. And thus NFS server stop in nested
->>>> network context leads to RPCBIND client destruction in init_net.
->>>> Then, on NFSd start in nested network context, rpc.nfsd process creates socket
->>>> in nested net and passes it into "write_ports", which leads to RPCBIND sockets
->>>> creation in init_net context because of the same reason (NFSd monut point was
->>>> created in init_net context). An attempt to register passed socket in nested
->>>> net leads to panic, because no RPCBIND client present in nexted network
->>>> namespace.
->>>
->>> So it's the attempt to use a NULL ->rpcb_local_clnt4?
->>>
->>> Interesting, thanks--applying with a minor fix to logged message.
->>>
->>> --b.
->>>
->>
->>
->>
-> 
-> .
-> 
+Probably worth checking that.
 
+> Do we really want to fallback at this point?
 
+>From a bz comment (#984901, not sure why it's private):
+
+Any NFS server has to support either tcp or rpcbind.  But it's OK for a
+server to support only of those two.  So the only way to handle both
+cases while continuing to retry after ECONNREFUSED is to alternate
+between trying nfs4/tcp and rpcbind until you can connect to one or the
+other.
+
+If it's the rpcbind call that succeeds first then I think we want to do
+one more try of nfs4/tcp just to make sure it didn't just come up,
+before falling back to v3.
+
+The rpcbind call is done in userspace, if I understand right, so I think
+this is doable.  Looking at utils/mount/ I don't understand the mount
+process well enough to understand exactly how to do it.  Maybe
+everything but the final nfs_sys_mount needs to be moved out of
+nfs_do_mount_v3v2 into a new nfs_do_probe_v3v2 and nfs_autonegotiate
+should alternate between nfs_try_mount_v4 and nfs_do_probe_v3v2 as long
+as both return ECONNREFUSED, calling nfs_try_mount_v3v2 only if
+nfs_try_mount_v4 has failed after a succesful nfs_do_probe_v3v2?
+
+Except the v3v2 mount logic seems to actually modify the mount_options,
+so probably that doesn't quite work.
+
+?
+
+--b.
