@@ -1,42 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f173.google.com ([209.85.213.173]:52790 "EHLO
-	mail-ig0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752913AbaBCUcm convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Feb 2014 15:32:42 -0500
-Received: by mail-ig0-f173.google.com with SMTP id c10so5016451igq.0
-        for <linux-nfs@vger.kernel.org>; Mon, 03 Feb 2014 12:32:42 -0800 (PST)
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
-Subject: Re: NFS client broken in Linus' tip
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-In-Reply-To: <20140203202543.GA7070@infradead.org>
-Date: Mon, 3 Feb 2014 15:32:39 -0500
-Cc: Russell King - ARM Linux <linux@arm.linux.org.uk>,
-        linuxnfs <linux-nfs@vger.kernel.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>,
-        Viro Alexander <viro@zeniv.linux.org.uk>,
-        Christoph Hellwig <hch@lst.de>, linux-arm-kernel@lists.infradead.org
-Message-Id: <93466B34-9D46-4AF2-8806-8CC5D3371F4D@primarydata.com>
-References: <20140130141405.GA23985@infradead.org> <20140130142752.GX15937@n2100.arm.linux.org.uk> <20140130143208.GB9573@infradead.org> <20140130153812.GA15937@n2100.arm.linux.org.uk> <1391201970.6978.1.camel@leira.trondhjem.org> <20140203080325.GB806@infradead.org> <85AAFCF5-60EE-42E5-B103-37A4613C5947@primarydata.com> <20140203145759.GA30263@infradead.org> <3003D7E5-93F8-4B32-ACDB-07ED3F6CE70D@primarydata.com> <1391458935.17089.1.camel@leira.trondhjem.org> <20140203202543.GA7070@infradead.org>
-To: Christoph Hellwig <hch@infradead.org>
+Received: from mx1.redhat.com ([209.132.183.28]:49052 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752424AbaBTRuV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 20 Feb 2014 12:50:21 -0500
+Message-ID: <53064057.70703@RedHat.com>
+Date: Thu, 20 Feb 2014 12:50:15 -0500
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: NeilBrown <neilb@suse.de>
+CC: Chuck Lever <chuck.lever@oracle.com>, NFS <linux-nfs@vger.kernel.org>,
+        Carsten Ziepke <kieltux@gmail.com>
+Subject: Re: [PATCH - nfs-utils] Fix fallback from tcp to udp
+References: <20140218104307.34205fc8@notabene.brown>
+In-Reply-To: <20140218104307.34205fc8@notabene.brown>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Feb 3, 2014, at 15:25, Christoph Hellwig <hch@infradead.org> wrote:
 
-> On Mon, Feb 03, 2014 at 03:22:15PM -0500, Trond Myklebust wrote:
->> FWIW, here is the alternative patch. I've tested it, and it seems to
->> work.
+On 02/17/2014 06:43 PM, NeilBrown wrote:
 > 
-> I much prefer the original one.  One major point of the series was to
-> get individual filesystems out of the business of providing xattr
-> handlers for ACLs.
+> Protocol negotiation in mount.nfs does not correctly negotiate with a
+> server which only support NFSv3 and UDP.
 > 
+> When mount.nfs attempts an NFSv4 mount and fails with ECONNREFUSED
+> it does not fall back to NFSv3, as this is not recognised as a
+> "does not support NFSv4" error.
+> However ECONNREFUSED is a clear indication that the server doesn't
+> support TCP, and ipso facto does not support NFSv4.
+> So ECONNREFUSED should trigger a fallback from v4 to v2/3.
+I'm also pretty this is the error returned when the server is 
+down or more pointy when server is rebooting... Do we really
+want to fallback at this point?
 
-Then could you and Al please provide an Acked-by? This is a userspace API, so we shouldn’t be changing return values without good reason.
+Secondly, its worrisome to me that we keep making this fallback
+list longer and longer... we really don't want to fall back
+to v3 but I do understand we want to be compatible with 
+older servers... 
 
---
-Trond Myklebust
-Linux NFS client maintainer
-
+steved. 
+> 
+> Once we allow that error, NFSv3 is attempted and mount.nfs talks to
+> rpcbind and discovers that UDP should be used for v3 and the mount
+> succeeds.
+> 
+> Signed-off-by: NeilBrown <neilb@suse.de>
+> Reported-by: Carsten Ziepke <kieltux@gmail.com>
+> 
+> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+> index a642394d2f5a..6d4fd70b7b9e 100644
+> --- a/utils/mount/stropts.c
+> +++ b/utils/mount/stropts.c
+> @@ -807,6 +807,9 @@ static int nfs_autonegotiate(struct nfsmount_info *mi)
+>  		/* Linux servers prior to 2.6.25 may return
+>  		 * EPERM when NFS version 4 is not supported. */
+>  		goto fall_back;
+> +	case ECONNREFUSED:
+> +		/* UDP-Only servers won't support v4 */
+> +		goto fall_back;
+>  	default:
+>  		return result;
+>  	}
+> 
