@@ -1,162 +1,174 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay.parallels.com ([195.214.232.42]:58019 "EHLO
-	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753734AbaBSO5t (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Feb 2014 09:57:49 -0500
-Message-ID: <5304C66A.4030603@parallels.com>
-Date: Wed, 19 Feb 2014 18:57:46 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Received: from cantor2.suse.de ([195.135.220.15]:42754 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751183AbaBTGip (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 20 Feb 2014 01:38:45 -0500
+From: Neil Brown <neilb@suse.de>
+To: Steve Dickson <SteveD@redhat.com>
+Date: Thu, 20 Feb 2014 17:36:48 +1100
+Subject: [PATCH 1/4] nfsd: add -r and --rdma options to request rdma service.
+Cc: linux-nfs@vger.kernel.org
+Message-ID: <20140220063648.6548.10041.stgit@notabene.brown>
+In-Reply-To: <20140220063616.6548.42556.stgit@notabene.brown>
+References: <20140220063616.6548.42556.stgit@notabene.brown>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Weng Meiling <wengmeiling.weng@huawei.com>, <greg@kroah.com>,
-        <linux-nfs@vger.kernel.org>, <linux-kernel@vger.kernel.org>,
-        <devel@openvz.org>
-Subject: Re: [PATCH] nfsd: check passed socket's net matches NFSd superblock's
- one
-References: <20131230142339.16166.28243.stgit@localhost.localdomain> <20140103222226.GD5164@fieldses.org> <52FEC818.7030604@huawei.com> <20140217221900.GA8401@fieldses.org> <53037A03.4020603@parallels.com> <20140218154406.GD4319@fieldses.org> <530486D9.7010502@parallels.com> <20140219145043.GC8401@fieldses.org>
-In-Reply-To: <20140219145043.GC8401@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"; format=flowed
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-19.02.2014 18:50, J. Bruce Fields пишет:
-> On Wed, Feb 19, 2014 at 02:26:33PM +0400, Stanislav Kinsbursky wrote:
->> 18.02.2014 19:44, J. Bruce Fields пишет:
->>> On Tue, Feb 18, 2014 at 07:19:31PM +0400, Stanislav Kinsbursky wrote:
->>>> 18.02.2014 02:19, J. Bruce Fields пишет:
->>>>> On Sat, Feb 15, 2014 at 09:51:20AM +0800, Weng Meiling wrote:
->>>>>> Hi Bruce,
->>>>>>
->>>>>> The upstream has merged your git tree for-3.14, but there is no this patch?
->>>>>> Do you forget this patch?
->>>>>
->>>>> Apologies, I'm not sure what happened.
->>>>>
->>>>> Looking back at it....  The patch causes all my pynfs reboot recovery
->>>>> tests to fail.  They're just doing a "systemctl restart
->>>>> nfs-server.service", and "systemctl status nfs-server.service" shows in
->>>>> part
->>>>>
->>>>> 	ExecStart=/usr/sbin/rpc.nfsd $RPCNFSDARGS $RPCNFSDCOUNT (code=exited, status=1/FAILURE)
->>>>>
->>>>> So the patch is causing rpc.nfsd to fail?  No network namespaces should
->>>>> be involved.
->>>>>
->>>>> I haven't investigated any further.
->>>>>
->>>>
->>>> Hi Bruce,
->>>> Are you sure, that exactly this patch broke your pynfs tests?
->>>> BTW, systemd manipulates namespaces. Maybe the patch revealed some pynfs internal bugs?
->>>> What do you think?
->>>
->>> It's really just "systemctl restart nfs-server.service" that the patch
->>> breaks, pynfs isn't involved much.
->>>
->>> The patch I'm actually using follows, but I believe the only difference
->>> is in the printk message?
->>>
->>
->> Yep, looks true.
->> That's strange: "systemctl restart nfs-server.service" works for me on Fedora 18 with kernel, based on your repo.
->
-> OK, I'll take a closer look and let you know what I find.
->
+As nfsd establishes UDP and TCP ports, it should establish RDMA too.
 
-Thank you, Bruce!
+Signed-off-by: NeilBrown <neilb@suse.de>
+---
+ utils/nfsd/nfsd.c   |   22 +++++++++++++++++++---
+ utils/nfsd/nfsd.man |    9 +++++++++
+ utils/nfsd/nfssvc.c |   34 ++++++++++++++++++++++++++++++++++
+ utils/nfsd/nfssvc.h |    1 +
+ 4 files changed, 63 insertions(+), 3 deletions(-)
 
-> --b.
->
->>
->>> --b
->>>
->>> commit e1f2922c12cb59baba0f2c7726bee992a0861310
->>> Author: Stanislav Kinsbursky <skinsbursky@parallels.com>
->>> Date:   Mon Dec 30 17:23:59 2013 +0300
->>>
->>>      nfsd: check passed socket's net matches the NFSd superblock's
->>>
->>>      The file descriptor written to the nfsd/portlist file could be for a
->>>      socket in a different network namespace from the network namespace that
->>>      the nfsd filesystem was mounted in, and this can cause a crash.
->>>
->>>      For example: "ip netns exec" creates a new network and mount namespace,
->>>      which duplicates the nfsd mount point which was created in the init_net
->>>      context.  Thus NFS server stop in the nested network context leads to
->>>      RPCBIND client destruction in init_net.  Then, on nfsd start in the
->>>      nested network context, the rpc.nfsd process creates a socket in the
->>>      nested net and passes it into "write_ports", which leads to RPCBIND
->>>      socket creation in init_net context for the same reason (the nfsd mount
->>>      point was created in the init_net context). An attempt to register
->>>      passed socket in nested net leads to panic, because no RPCBIND client is
->>>      present in the nested network namespace.
->>>
->>>      This patch adds a check that the passed the socket's net matches the
->>>      nfsd superblock's net, and returns -EINVAL error to user space if not.
->>>
->>>      Reported-by: Weng Meiling <wengmeiling.weng@huawei.com>
->>>      Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
->>>      Cc: stable@vger.kernel.org
->>>      Signed-off-by: J. Bruce Fields <bfields@redhat.com>
->>>
->>> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
->>> index 7f55517..1331766 100644
->>> --- a/fs/nfsd/nfsctl.c
->>> +++ b/fs/nfsd/nfsctl.c
->>> @@ -699,6 +699,11 @@ static ssize_t __write_ports_addfd(char *buf, struct net *net)
->>>   	if (err != 0 || fd < 0)
->>>   		return -EINVAL;
->>>
->>> +	if (svc_alien_sock(net, fd)) {
->>> +		printk(KERN_ERR "%s: socket net is different from NFSd's\n", __func__);
->>> +		return -EINVAL;
->>> +	}
->>> +
->>>   	err = nfsd_create_serv(net);
->>>   	if (err != 0)
->>>   		return err;
->>> diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
->>> index 62fd1b7..947009e 100644
->>> --- a/include/linux/sunrpc/svcsock.h
->>> +++ b/include/linux/sunrpc/svcsock.h
->>> @@ -56,6 +56,7 @@ int		svc_recv(struct svc_rqst *, long);
->>>   int		svc_send(struct svc_rqst *);
->>>   void		svc_drop(struct svc_rqst *);
->>>   void		svc_sock_update_bufs(struct svc_serv *serv);
->>> +bool		svc_alien_sock(struct net *net, int fd);
->>>   int		svc_addsock(struct svc_serv *serv, const int fd,
->>>   					char *name_return, const size_t len);
->>>   void		svc_init_xprt_sock(void);
->>> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
->>> index b6e59f0..3ba5b87 100644
->>> --- a/net/sunrpc/svcsock.c
->>> +++ b/net/sunrpc/svcsock.c
->>> @@ -1397,6 +1397,17 @@ static struct svc_sock *svc_setup_socket(struct svc_serv *serv,
->>>   	return svsk;
->>>   }
->>>
->>> +bool svc_alien_sock(struct net *net, int fd)
->>> +{
->>> +	int err;
->>> +	struct socket *sock = sockfd_lookup(fd, &err);
->>> +
->>> +	if (sock && (sock_net(sock->sk) != net))
->>> +		return true;
->>> +	return false;
->>> +}
->>> +EXPORT_SYMBOL_GPL(svc_alien_sock);
->>> +
->>>   /**
->>>    * svc_addsock - add a listener socket to an RPC service
->>>    * @serv: pointer to RPC service to which to add a new listener
->>>
->>
->>
->> --
->> Best regards,
->> Stanislav Kinsbursky
+diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
+index a9d77ab5c586..d67d1c3ee050 100644
+--- a/utils/nfsd/nfsd.c
++++ b/utils/nfsd/nfsd.c
+@@ -45,6 +45,7 @@ static struct option longopts[] =
+ 	{ "port", 1, 0, 'p' },
+ 	{ "debug", 0, 0, 'd' },
+ 	{ "syslog", 0, 0, 's' },
++	{ "rdma", 2, 0, 'R' },
+ 	{ NULL, 0, 0, 0 }
+ };
+ 
+@@ -96,7 +97,7 @@ int
+ main(int argc, char **argv)
+ {
+ 	int	count = NFSD_NPROC, c, error = 0, portnum = 0, fd, found_one;
+-	char *p, *progname, *port;
++	char *p, *progname, *port, *rdma_port = NULL;
+ 	char *haddr = NULL;
+ 	int	socket_up = 0;
+ 	int minorvers[NFS4_MAXMINOR + 1] = {0};
+@@ -120,7 +121,7 @@ main(int argc, char **argv)
+ 	xlog_syslog(0);
+ 	xlog_stderr(1);
+ 
+-	while ((c = getopt_long(argc, argv, "dH:hN:V:p:P:sTU", longopts, NULL)) != EOF) {
++	while ((c = getopt_long(argc, argv, "dH:hN:V:p:P:sTUr", longopts, NULL)) != EOF) {
+ 		switch(c) {
+ 		case 'd':
+ 			xlog_config(D_ALL, 1);
+@@ -155,6 +156,16 @@ main(int argc, char **argv)
+ 				exit(1);
+ 			}
+ 			break;
++		case 'r':
++			rdma_port = "nfsrdma";
++			break;
++		case 'R': /* --rdma */
++			if (optarg)
++				rdma_port = optarg;
++			else
++				rdma_port = "nfsrdma";
++			break;
++
+ 		case 'N':
+ 			switch((c = strtol(optarg, &p, 0))) {
+ 			case 4:
+@@ -294,6 +305,11 @@ main(int argc, char **argv)
+ 		socket_up = 1;
+ #endif /* IPV6_SUPPORTED */
+ 
++	if (rdma_port) {
++		error = nfssvc_set_rdmaport(rdma_port);
++		if (!error)
++			socket_up = 1;
++	}
+ set_threads:
+ 	/* don't start any threads if unable to hand off any sockets */
+ 	if (!socket_up) {
+@@ -334,7 +350,7 @@ static void
+ usage(const char *prog)
+ {
+ 	fprintf(stderr, "Usage:\n"
+-		"%s [-d|--debug] [-H hostname] [-p|-P|--port port] [-N|--no-nfs-version version] [-V|--nfs-version version] [-s|--syslog] [-T|--no-tcp] [-U|--no-udp] nrservs\n", 
++		"%s [-d|--debug] [-H hostname] [-p|-P|--port port] [-N|--no-nfs-version version] [-V|--nfs-version version] [-s|--syslog] [-T|--no-tcp] [-U|--no-udp] [-r|--rdma=] nrservs\n", 
+ 		prog);
+ 	exit(2);
+ }
+diff --git a/utils/nfsd/nfsd.man b/utils/nfsd/nfsd.man
+index 7de0867e39e8..aedf1409dc53 100644
+--- a/utils/nfsd/nfsd.man
++++ b/utils/nfsd/nfsd.man
+@@ -42,6 +42,15 @@ specify a different port to listen on for NFS requests. By default,
+ .B rpc.nfsd
+ will listen on port 2049.
+ .TP
++.B \-r " or " \-\-rdma
++specify that NFS requests on the standard RDMA port ("nfsrdma", port
++20049) should be honored.
++.TP
++.BI \-\-rdma= port
++Listen for RDMA requests on an alternate port - may be a number or a
++name listed in
++.BR /etc/services .
++.TP
+ .B \-N " or " \-\-no-nfs-version vers
+ This option can be used to request that 
+ .B rpc.nfsd
+diff --git a/utils/nfsd/nfssvc.c b/utils/nfsd/nfssvc.c
+index 1b50abaf9ca8..7eaeef3fb476 100644
+--- a/utils/nfsd/nfssvc.c
++++ b/utils/nfsd/nfssvc.c
+@@ -268,6 +268,40 @@ nfssvc_set_sockets(const int family, const unsigned int protobits,
+ 	return nfssvc_setfds(&hints, host, port);
+ }
+ 
++int
++nfssvc_set_rdmaport(const char *port)
++{
++	struct servent *sv = getservbyname(port, "tcp");
++	int nport;
++	char buf[20];
++	int ret;
++	int fd;
++
++	if (sv)
++		nport = sv->s_port;
++	else {
++		char *ep;
++		nport = strtol(port, &ep, 10);
++		if (!*port || *ep) {
++			xlog(L_ERROR, "unable to interpret port name %s",
++			     port);
++			return 1;
++		}
++	}
++
++	fd = open(NFSD_PORTS_FILE, O_WRONLY);
++	if (fd < 0)
++		return 1;
++	snprintf(buf, sizeof(buf), "rdma %d", nport);
++	ret = 0;
++	if (write(fd, buf, strlen(buf)) != (ssize_t)strlen(buf)) {
++		ret= errno;
++		xlog(L_ERROR, "Unable to request RDMA services: %m");
++	}
++	close(fd);
++	return ret;
++}
++
+ void
+ nfssvc_setvers(unsigned int ctlbits, int minorvers[])
+ {
+diff --git a/utils/nfsd/nfssvc.h b/utils/nfsd/nfssvc.h
+index 2bbd3d30f92a..bb7fccee7c19 100644
+--- a/utils/nfsd/nfssvc.h
++++ b/utils/nfsd/nfssvc.h
+@@ -24,5 +24,6 @@ void	nfssvc_mount_nfsdfs(char *progname);
+ int	nfssvc_inuse(void);
+ int	nfssvc_set_sockets(const int family, const unsigned int protobits,
+ 			   const char *host, const char *port);
++int	nfssvc_set_rdmaport(const char *port);
+ void	nfssvc_setvers(unsigned int ctlbits, int minorvers4[]);
+ int	nfssvc_threads(unsigned short port, int nrservs);
 
 
--- 
-Best regards,
-Stanislav Kinsbursky
