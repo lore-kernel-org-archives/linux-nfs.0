@@ -1,129 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:34588 "EHLO mx2.suse.de"
+Received: from fieldses.org ([174.143.236.118]:34211 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752608AbaBKE3S (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 10 Feb 2014 23:29:18 -0500
-Date: Tue, 11 Feb 2014 15:29:06 +1100
-From: NeilBrown <neilb@suse.de>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: NFS <linux-nfs@vger.kernel.org>
-Subject: Re: "nosharecache" option prevent "mount" from detecting when the
- mount is a duplicate.
-Message-ID: <20140211152906.4b370ccb@notabene.brown>
-In-Reply-To: <4A18E8CC-9376-4456-9FD6-E6B36BF8E89D@primarydata.com>
-References: <20140211133013.1ccf8615@notabene.brown>
-	<4A18E8CC-9376-4456-9FD6-E6B36BF8E89D@primarydata.com>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/LyK41d69rFlRoRX1zLcEwuu"; protocol="application/pgp-signature"
+	id S1752540AbaBTUmt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 20 Feb 2014 15:42:49 -0500
+Date: Thu, 20 Feb 2014 15:42:47 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: NeilBrown <neilb@suse.de>, Chuck Lever <chuck.lever@oracle.com>,
+        NFS <linux-nfs@vger.kernel.org>, Carsten Ziepke <kieltux@gmail.com>
+Subject: Re: [PATCH - nfs-utils] Fix fallback from tcp to udp
+Message-ID: <20140220204247.GB13433@fieldses.org>
+References: <20140218104307.34205fc8@notabene.brown>
+ <53064057.70703@RedHat.com>
+ <20140220203701.GA13433@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140220203701.GA13433@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/LyK41d69rFlRoRX1zLcEwuu
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+On Thu, Feb 20, 2014 at 03:37:01PM -0500, bfields wrote:
+> On Thu, Feb 20, 2014 at 12:50:15PM -0500, Steve Dickson wrote:
+> > 
+> > 
+> > On 02/17/2014 06:43 PM, NeilBrown wrote:
+> > > 
+> > > Protocol negotiation in mount.nfs does not correctly negotiate with a
+> > > server which only support NFSv3 and UDP.
+> > > 
+> > > When mount.nfs attempts an NFSv4 mount and fails with ECONNREFUSED
+> > > it does not fall back to NFSv3, as this is not recognised as a
+> > > "does not support NFSv4" error.
+> > > However ECONNREFUSED is a clear indication that the server doesn't
+> > > support TCP, and ipso facto does not support NFSv4.
+> > > So ECONNREFUSED should trigger a fallback from v4 to v2/3.
+> > I'm also pretty this is the error returned when the server is 
+> > down or more pointy when server is rebooting...
+> 
+> Probably worth checking that.
+> 
+> > Do we really want to fallback at this point?
+> 
+> From a bz comment (#984901, not sure why it's private):
+> 
+> Any NFS server has to support either tcp or rpcbind.  But it's OK for a
+> server to support only of those two.  So the only way to handle both
+> cases while continuing to retry after ECONNREFUSED
 
-On Mon, 10 Feb 2014 23:19:09 -0500 Trond Myklebust
-<trond.myklebust@primarydata.com> wrote:
+(But I'm not actually convinced that's true.  In particular I don't see
+ECONNREFUSED when rebooting a server.  But I'm not clear when it's
+returned....)
 
->=20
-> On Feb 10, 2014, at 21:30, NeilBrown <neilb@suse.de> wrote:
->=20
-> >=20
-> > (I seem to have quite a pile of NFS issues lately.... some if it is tid=
-ying up
-> > issues from before Christmas, some of it just keeps on coming :-)
-> >=20
-> > If you run "mount -a" it will attempt to mount all filesystems listed
-> > in /etc/fstab, but filesystems that are already mounted will not be mou=
-nted
-> > again.  So it is normally safe to run "mount -a" multiple times.
-> >=20
-> > However if an NFS mount in /etc/fstab has the "nosharecache" option set,
-> > mount doesn't notice that it is already mounted as so mounts it again. =
- So
-> > repeated "mount -a" is no longer safe.
-> >=20
-> > This happens because the prevention of multiple mounts happens in do_ad=
-d_mount
-> > in fs/namespace.c:
-> >=20
-> > 	err =3D -EBUSY;
-> > 	if (path->mnt->mnt_sb =3D=3D newmnt->mnt.mnt_sb &&
-> > 	    path->mnt->mnt_root =3D=3D path->dentry)
-> > 		goto unlock;
-> >=20
-> >=20
-> > i.e. if the exact same superblock is being mounted in the exact same pl=
-ace,
-> > return EBUSY.
-> > With nosharecache, every mount attempt produces a new superblock so thi=
-s test
-> > never fires.
-> >=20
-> > One way to address this would be to have a different option, e.g.
-> >          sharecache=3D27
-> >=20
-> > where the '27' is an arbitrary number meaning that if two mount attempt=
-s have
-> > different sharecache numbers they will have different superblocks.  If =
-they
-> > have the same sharecache number they can have the same superblock.
-> > This is not the most elegant interface ever and I would be very happy f=
-or
-> > suggestions to improve it.  Maybe a string rather than a number ???
-> >=20
-> > This probably isn't a very serious issue, but is a regression in terms =
-of the
-> > usability of "mount -a" and I think it would be best to fix it if the c=
-ost is
-> > not too high.
-> >=20
-> > Below is my patch to implement the "sharecache=3D%u" syntax.
-> >=20
-> > Any ideas?
->=20
-> What are people using nosharecache for these days, and why is this not an=
-other argument for just getting rid of it?
+--b.
 
-Baby or bath water?
-
-In the particular case that brought this up for me they are actually using
-"nosharetransport" which is a similar option I provide in SLES because there
-are cases where sharing the transport reduces performance, and cases where
-sharing the transport interacts poorly with particular details (of particul=
-ar
-versions) of the Netapp filer.
-
-Seeing the root problem is the same for nosharecache and nosharetransport
-it seems reasonable to report it upstream as an issue with nosharecache.
-
-If you don't think this is worth "fixing", I certainly don't feel strongly
-enough about it to argue.
-
-Thanks,
-NeilBrown
-
---Sig_/LyK41d69rFlRoRX1zLcEwuu
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.22 (GNU/Linux)
-
-iQIVAwUBUvmnEjnsnt1WYoG5AQI98RAApyiveQk8jxF1bkSPXiEI4+LHIgvX+/bq
-fWZxf7LQLtzI5laNs9rLXW7yq/oDOShRWBJRId4IiEz/pTr1PeJIE3mVu5/6vgcn
-W0pVhEKkoZL88tpaTSrM1FXqsVZVgUymT8zefCTTSnE+wnk89HxsdVZGlq9Jd9V4
-1mgIzokWWyQCzvcVqr9yW4J0XKSKnz6zJdNdwVxy0z+YNm5PzivYiSLom8fBoIE7
-rOsX3ML4sOmgfcp2nsEwnwgfi+c/OB6u5xb01SfyxEjF+S+kiwRyUUEo8HwIRztG
-DxY5zBeS5zauoUUyc0YoaMJ6STJuVMz2X29LoALGGVbnKvJAIPkQwvehEjRN2C4E
-U9MEzr37ScV3dct3WMdTVaEnMzerOwPLTXU2QM4/X/XXlLqm9sabcmrzRLtTNBBv
-4si1kHxBuvLoaPKoVVUz7LR3gU0FNIglvBDFFvpsfx20iq0SBqYM0ePkISt4aYq0
-OlwV3T4ecnpQbOCODWkRB6nRNUTsciG+fLgHTpbAJn7o0wKSC22642sM9YVUO12a
-2JX+bc/YhEMUq7bFejZ9uciQHg42siZWnJWO5dhNI3h++aD71mee52bZmv2aaGfp
-m1TMoXOebtBhK4nSoKhz520hXv+ucmbgdBPHCVp/FT5rlfW0vRzgRo/YzOUnyQPt
-iwbfRhH/tgA=
-=wcTY
------END PGP SIGNATURE-----
-
---Sig_/LyK41d69rFlRoRX1zLcEwuu--
+> is to alternate
+> between trying nfs4/tcp and rpcbind until you can connect to one or the
+> other.
+> 
+> If it's the rpcbind call that succeeds first then I think we want to do
+> one more try of nfs4/tcp just to make sure it didn't just come up,
+> before falling back to v3.
+> 
+> The rpcbind call is done in userspace, if I understand right, so I think
+> this is doable.  Looking at utils/mount/ I don't understand the mount
+> process well enough to understand exactly how to do it.  Maybe
+> everything but the final nfs_sys_mount needs to be moved out of
+> nfs_do_mount_v3v2 into a new nfs_do_probe_v3v2 and nfs_autonegotiate
+> should alternate between nfs_try_mount_v4 and nfs_do_probe_v3v2 as long
+> as both return ECONNREFUSED, calling nfs_try_mount_v3v2 only if
+> nfs_try_mount_v4 has failed after a succesful nfs_do_probe_v3v2?
+> 
+> Except the v3v2 mount logic seems to actually modify the mount_options,
+> so probably that doesn't quite work.
+> 
+> ?
+> 
+> --b.
