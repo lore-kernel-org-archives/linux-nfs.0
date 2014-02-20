@@ -1,37 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from szxga02-in.huawei.com ([119.145.14.65]:64987 "EHLO
-	szxga02-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751538AbaBNIsp convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Feb 2014 03:48:45 -0500
-From: Wuqixuan <wuqixuan@huawei.com>
-To: "Trond.Myklebust@netapp.com" <Trond.Myklebust@netapp.com>,
-        "bfields@fieldses.org" <bfields@fieldses.org>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Help to know the stable ver of nfsv4 for commercial app
-Date: Fri, 14 Feb 2014 08:47:49 +0000
-Message-ID: <BB7C62C2B0732E4DA93834A501E846456C8E98AE@szxema505-mbx.china.huawei.com>
-Content-Type: text/plain; charset="us-ascii"
+Received: from cantor2.suse.de ([195.135.220.15]:43759 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752118AbaBTG5A (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 20 Feb 2014 01:57:00 -0500
+From: Neil Brown <neilb@suse.de>
+To: Steve Dickson <SteveD@redhat.com>
+Date: Thu, 20 Feb 2014 17:55:30 +1100
+Subject: [PATCH 6/6] systemd: add PIDFile directives where appropriate.
+Cc: linux-nfs@vger.kernel.org
+Message-ID: <20140220065530.7320.50532.stgit@notabene.brown>
+In-Reply-To: <20140220065345.7320.49992.stgit@notabene.brown>
+References: <20140220065345.7320.49992.stgit@notabene.brown>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Myklebust, Bfields, All, 
+Only two of our daemons write out pid files.
 
-We are useing nfsv3 in 2.6.34.13 kernel for commucial use. For some reasons(such as security), has requirement to upgrade to nfsv4(still on 2.6.34.x kernel). We did two things: 
+Signed-off-by: NeilBrown <neilb@suse.de>
+---
+ systemd/nfs-blkmap.service |    1 +
+ systemd/rpc-statd.service  |    1 +
+ 2 files changed, 2 insertions(+)
 
-1. I passed through the git log of kernel.org of nfs, found after 2010(2.6.34 is released on May 2010, and no update on 2.6.34.x for nfs/nfsd), just for sampling, nfsd/nfs4proc.c has 460 commits while nfs/nfs3proc.c has only 38 commits. 
+diff --git a/systemd/nfs-blkmap.service b/systemd/nfs-blkmap.service
+index 4b74e9f61454..68cc9e968e65 100644
+--- a/systemd/nfs-blkmap.service
++++ b/systemd/nfs-blkmap.service
+@@ -12,4 +12,5 @@ PartOf=nfs-utils.service
+ 
+ [Service]
+ Type=forking
++PIDFile=/var/run/blkmapd.pid
+ ExecStart=/usr/sbin/blkmapd
+diff --git a/systemd/rpc-statd.service b/systemd/rpc-statd.service
+index c5795fd68f96..14604d783ddf 100644
+--- a/systemd/rpc-statd.service
++++ b/systemd/rpc-statd.service
+@@ -13,4 +13,5 @@ After=nfs-config.service
+ [Service]
+ EnvironmentFile=-/run/sysconfig/nfs-utils
+ Type=forking
++PIDFile=/var/run/rpc.statd.pid
+ ExecStart=/usr/sbin/rpc.statd --no-notify $STATDARGS
 
-2. Just enable nfsv4 on 2.6.34.13, got problem(EIO) on just a simple open. Found it's because of one commit(https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=a2c0b9e291208f65221a0ad8a0c80a377707d480), simply remove this commit, now can simply use nfsv4 on 2.6.34.13. 
 
-So we are worried about the stability of nfsv4 on 2.6.34.x. 
-If any one has some idea or information about: 
-
-    1. Whether nfsv4 (including nfs/nfs4/sunrpc) of 2.6.34.x is stable enough for commercial use or not. 
-    2. If nfsv4 is not stable enough on 2.6.34.x, which version can we use , 3.10 ? or 3.12 ? 
-    3. Is there any mature commercial application on nfsv4 on 2.6.34.x or before? Can tell some famous company or app name ?
-
-    Any answer is helpful and welcome. 
-    Thanks a lot. 
-
-Best Regards!
-Wuqixuan
