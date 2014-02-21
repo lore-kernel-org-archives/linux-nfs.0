@@ -1,41 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ob0-f170.google.com ([209.85.214.170]:48946 "EHLO
-	mail-ob0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753026AbaBQQq4 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Feb 2014 11:46:56 -0500
-Received: by mail-ob0-f170.google.com with SMTP id va2so17188054obc.15
-        for <linux-nfs@vger.kernel.org>; Mon, 17 Feb 2014 08:46:56 -0800 (PST)
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
-Subject: Re: [PATCH v3] NFSv4.1: new layout stateid can not be overwrite by one out of date
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-In-Reply-To: <1392620881-26561-1-git-send-email-shaobingqing@bwstor.com.cn>
-Date: Mon, 17 Feb 2014 11:46:53 -0500
-Cc: linuxnfs <linux-nfs@vger.kernel.org>,
-        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
-Message-Id: <DEE24522-5DD2-4C42-9DD9-EC18F0FF05D8@primarydata.com>
-References: <N> <1392620881-26561-1-git-send-email-shaobingqing@bwstor.com.cn>
-To: shaobingqing <shaobingqing@bwstor.com.cn>
+Received: from fieldses.org ([174.143.236.118]:60341 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752386AbaBUS75 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 21 Feb 2014 13:59:57 -0500
+Date: Fri, 21 Feb 2014 13:59:54 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] NFSd: NFSv4.1 OPEN must use the session-derived client id
+Message-ID: <20140221185954.GH13433@fieldses.org>
+References: <1393006233-15366-1-git-send-email-trond.myklebust@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1393006233-15366-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Fri, Feb 21, 2014 at 01:10:33PM -0500, Trond Myklebust wrote:
+> RFC5661 states:
+> 
+>  The client can set the clientid field to any value and the server MUST
+>  ignore it.  Instead, the server MUST derive the client ID from the
+>  session ID of the SEQUENCE operation of the COMPOUND request
+> 
+> Make it so...
 
-On Feb 17, 2014, at 2:08, shaobingqing <shaobingqing@bwstor.com.cn> wrote:
+See fs/nfsd/nfs4proc.c:nfsd4_open():
 
-> If initiate_file_draining returned NFS4ERR_DELAY, all the lsegs of
-> a file might be released before the retrying cb_layout request arriving
-> at the client. In this situation,the list lo->plh_segs is empty, 
-> layoutget request of the file will use open stateid to obtain a new 
-> layout stateid. And if the retrying cb_layout request arrived at the 
-> client after the layoutget reply, new layout stateid would be overwrite 
-> by one out of date.
+	if (nfsd4_has_session(cstate))
+		copy_clientid(&open->op_clientid, cstate->session);
 
-I have very serious doubts about adding layout state to represent what the server is _trying_ to do. What if the server decides not to retry the recall? What if it reboots?
+Do you have an actual test case that's failing?
 
-Let’s start with looking at the motivations: Have you ever run into the above problem in practice? If so, what was the effect on overall performance?
+--b.
 
-_________________________________
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
 
+> 
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> ---
+>  fs/nfsd/nfs4state.c | 17 +++++++++++++++++
+>  1 file changed, 17 insertions(+)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 693e1458e2ca..d23f4cdbc891 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -2826,6 +2826,21 @@ static __be32 nfsd4_check_seqid(struct nfsd4_compound_state *cstate, struct nfs4
+>  	return nfserr_bad_seqid;
+>  }
+>  
+> +/*
+> + * RFC5661: OPEN MUST ignore the client-supplied clientid argument and
+> + * substitute the session clientid
+> + */
+> +static void nfsd41_set_open_clientid(struct nfsd4_compound_state *cstate,
+> +		struct nfsd4_open *open)
+> +{
+> +	struct nfs4_client *clp;
+> +
+> +	if (!nfsd4_has_session(cstate))
+> +		return;
+> +	clp = cstate->session->se_client;
+> +	memcpy(&open->op_clientid, &clp->cl_clientid, sizeof(open->op_clientid));
+> +}
+> +
+>  __be32
+>  nfsd4_process_open1(struct nfsd4_compound_state *cstate,
+>  		    struct nfsd4_open *open, struct nfsd_net *nn)
+> @@ -2836,6 +2851,8 @@ nfsd4_process_open1(struct nfsd4_compound_state *cstate,
+>  	struct nfs4_openowner *oo = NULL;
+>  	__be32 status;
+>  
+> +	nfsd41_set_open_clientid(cstate, open);
+> +
+>  	if (STALE_CLIENTID(&open->op_clientid, nn))
+>  		return nfserr_stale_clientid;
+>  	/*
+> -- 
+> 1.8.5.3
+> 
