@@ -1,39 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:52118 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932201AbaBDSyx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Feb 2014 13:54:53 -0500
-Date: Tue, 4 Feb 2014 13:54:50 -0500
-To: Anthony Messina <amessina@messinet.com>
-Cc: Steve Dickson <SteveD@redhat.com>, NeilBrown <neilb@suse.de>,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH/RFC: nfs-utils] Common systemd unit files for nfs-utils.
-Message-ID: <20140204185450.GA12324@fieldses.org>
-References: <20140130172451.7a354ce4@notabene.brown>
- <20140204093452.7b6d7c7d@notabene.brown>
- <52F130E2.6090308@RedHat.com>
- <39783294.8Mk3atqdZo@linux-ws1.messinet.com>
-MIME-Version: 1.0
+Received: from mail-ob0-f181.google.com ([209.85.214.181]:54335 "EHLO
+	mail-ob0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752313AbaBUSXs convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Feb 2014 13:23:48 -0500
+Received: by mail-ob0-f181.google.com with SMTP id wp4so2546773obc.26
+        for <linux-nfs@vger.kernel.org>; Fri, 21 Feb 2014 10:23:48 -0800 (PST)
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <39783294.8Mk3atqdZo@linux-ws1.messinet.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
+Subject: Re: [PATCH] NFSd: NFSv4.1 OPEN must use the session-derived client id
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+In-Reply-To: <1393006233-15366-1-git-send-email-trond.myklebust@primarydata.com>
+Date: Fri, 21 Feb 2014 13:23:25 -0500
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <8E58638D-ABFA-4056-BA94-640CEA42DA48@primarydata.com>
+References: <1393006233-15366-1-git-send-email-trond.myklebust@primarydata.com>
+To: Dr Fields James Bruce <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Feb 04, 2014 at 12:48:47PM -0600, Anthony Messina wrote:
-> On Tuesday, February 04, 2014 01:26:42 PM Steve Dickson wrote:
-> > > Also rpc.gssd will be run whenever nfs-server.target or nfs-client.target
-> > > is started.
-> > 
-> > Why is rpc.gssd started when the nfs server is started? Possibly for secure 
-> > loopback mounts??
+
+On Feb 21, 2014, at 13:10, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+
+> RFC5661 states:
 > 
-> Isn't this needed for KRB5/NFSv4.1 callbacks?  I seem to remember needing this 
-> on the server as well as the client, lest I get the frequent "gss upcall 
-> timeout" issue.  At least on Fedora that's how it's been for me.
+> The client can set the clientid field to any value and the server MUST
+> ignore it.  Instead, the server MUST derive the client ID from the
+> session ID of the SEQUENCE operation of the COMPOUND request
+> 
+> Make it so...
+> 
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> ---
+> fs/nfsd/nfs4state.c | 17 +++++++++++++++++
+> 1 file changed, 17 insertions(+)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 693e1458e2ca..d23f4cdbc891 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -2826,6 +2826,21 @@ static __be32 nfsd4_check_seqid(struct nfsd4_compound_state *cstate, struct nfs4
+> 	return nfserr_bad_seqid;
+> }
+> 
+> +/*
+> + * RFC5661: OPEN MUST ignore the client-supplied clientid argument and
+> + * substitute the session clientid
+> + */
+> +static void nfsd41_set_open_clientid(struct nfsd4_compound_state *cstate,
+> +		struct nfsd4_open *open)
+> +{
+> +	struct nfs4_client *clp;
+> +
+> +	if (!nfsd4_has_session(cstate))
+> +		return;
+> +	clp = cstate->session->se_client;
+> +	memcpy(&open->op_clientid, &clp->cl_clientid, sizeof(open->op_clientid));
+> +}
+> +
+> __be32
+> nfsd4_process_open1(struct nfsd4_compound_state *cstate,
+> 		    struct nfsd4_open *open, struct nfsd_net *nn)
+> @@ -2836,6 +2851,8 @@ nfsd4_process_open1(struct nfsd4_compound_state *cstate,
+> 	struct nfs4_openowner *oo = NULL;
+> 	__be32 status;
+> 
+> +	nfsd41_set_open_clientid(cstate, open);
+> +
+> 	if (STALE_CLIENTID(&open->op_clientid, nn))
+> 		return nfserr_stale_clientid;
 
-It's only for KRB5/NFSv4.0 callbacks, actually.  Since minor version >=1
-callbacks use the client-established credentials (and the
-client-established tcp connection).
+Never mind. There seems to be code to do this in nfsd4_open()...
 
---b.
+_________________________________
+Trond Myklebust
+Linux NFS client maintainer, PrimaryData
+trond.myklebust@primarydata.com
+
