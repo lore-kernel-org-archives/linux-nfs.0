@@ -1,68 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f175.google.com ([209.85.192.175]:38841 "EHLO
-	mail-pd0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752233AbaBHUK7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 8 Feb 2014 15:10:59 -0500
-Date: Sun, 9 Feb 2014 01:40:54 +0530
-From: Rashika Kheria <rashika.kheria@gmail.com>
-To: linux-kernel@vger.kernel.org
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "David S. Miller" <davem@davemloft.net>, linux-nfs@vger.kernel.org,
-        netdev@vger.kernel.org, josh@joshtriplett.org
-Subject: [PATCH 13/13] net: Mark functions as static in net/sunrpc/svc_xprt.c
-Message-ID: <259f3dc38d7115eccf3aaa2aa7de2414a47f90a2.1391888654.git.rashika.kheria@gmail.com>
-References: <6f029c895035908595957fb16ab445c82793c77d.1391888654.git.rashika.kheria@gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <6f029c895035908595957fb16ab445c82793c77d.1391888654.git.rashika.kheria@gmail.com>
+Received: from aserp1040.oracle.com ([141.146.126.69]:24821 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932097AbaBUPWn convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Feb 2014 10:22:43 -0500
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
+Subject: Re: [PATCH - nfs-utils] Fix fallback from tcp to udp
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20140221145956.GE13433@fieldses.org>
+Date: Fri, 21 Feb 2014 07:22:25 -0800
+Cc: Neil Brown <neilb@suse.de>, Steve Dickson <SteveD@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Carsten Ziepke <kieltux@gmail.com>
+Message-Id: <AB67231F-6D53-47C1-A5F6-EA32CACDF643@oracle.com>
+References: <20140218104307.34205fc8@notabene.brown> <53064057.70703@RedHat.com> <20140220203701.GA13433@fieldses.org> <20140221142641.20e72abe@notabene.brown> <20140221145956.GE13433@fieldses.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Mark functions as static in net/sunrpc/svc_xprt.c because they are not
-used outside this file.
 
-This eliminates the following warning in net/sunrpc/svc_xprt.c:
-net/sunrpc/svc_xprt.c:574:5: warning: no previous prototype for ‘svc_alloc_arg’ [-Wmissing-prototypes]
-net/sunrpc/svc_xprt.c:615:18: warning: no previous prototype for ‘svc_get_next_xprt’ [-Wmissing-prototypes]
-net/sunrpc/svc_xprt.c:694:6: warning: no previous prototype for ‘svc_add_new_temp_xprt’ [-Wmissing-prototypes]
+On Feb 21, 2014, at 6:59 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
 
-Signed-off-by: Rashika Kheria <rashika.kheria@gmail.com>
----
- net/sunrpc/svc_xprt.c |    6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+> On Fri, Feb 21, 2014 at 02:26:41PM +1100, NeilBrown wrote:
+>> On Thu, 20 Feb 2014 15:37:02 -0500 "J. Bruce Fields" <bfields@fieldses.org>
+>> wrote:
+>>> Any NFS server has to support either tcp or rpcbind.  But it's OK for a
+>>> server to support only of those two.  So the only way to handle both
+>>> cases while continuing to retry after ECONNREFUSED is to alternate
+>>> between trying nfs4/tcp and rpcbind until you can connect to one or the
+>>> other.
+>>> 
+>>> If it's the rpcbind call that succeeds first then I think we want to do
+>>> one more try of nfs4/tcp just to make sure it didn't just come up,
+>>> before falling back to v3.
+>>> 
+>>> The rpcbind call is done in userspace, if I understand right, so I think
+>>> this is doable.  Looking at utils/mount/ I don't understand the mount
+>>> process well enough to understand exactly how to do it.  Maybe
+>>> everything but the final nfs_sys_mount needs to be moved out of
+>>> nfs_do_mount_v3v2 into a new nfs_do_probe_v3v2 and nfs_autonegotiate
+>>> should alternate between nfs_try_mount_v4 and nfs_do_probe_v3v2 as long
+>>> as both return ECONNREFUSED, calling nfs_try_mount_v3v2 only if
+>>> nfs_try_mount_v4 has failed after a succesful nfs_do_probe_v3v2?
+>>> 
+>>> Except the v3v2 mount logic seems to actually modify the mount_options,
+>>> so probably that doesn't quite work.
+>> 
+>> I had come to much the same conclusion after reading Steve's mail:  when TCP
+>> fails we need rpcbind to be sure what to do.
+>> I suspect it should be fairly straight forward to implement (I'm less
+>> pessimistic than you).  I'll have a go on Monday.
+> 
+> OK, great!
+> 
+> Yeah, the mount code looked like a maze for me but I probably spent less
+> than an hour trying to trace through it, I'm sure it's not that bad.
 
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index 80a6640..06c6ff0 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -571,7 +571,7 @@ static void svc_check_conn_limits(struct svc_serv *serv)
- 	}
- }
- 
--int svc_alloc_arg(struct svc_rqst *rqstp)
-+static int svc_alloc_arg(struct svc_rqst *rqstp)
- {
- 	struct svc_serv *serv = rqstp->rq_server;
- 	struct xdr_buf *arg;
-@@ -612,7 +612,7 @@ int svc_alloc_arg(struct svc_rqst *rqstp)
- 	return 0;
- }
- 
--struct svc_xprt *svc_get_next_xprt(struct svc_rqst *rqstp, long timeout)
-+static struct svc_xprt *svc_get_next_xprt(struct svc_rqst *rqstp, long timeout)
- {
- 	struct svc_xprt *xprt;
- 	struct svc_pool		*pool = rqstp->rq_pool;
-@@ -691,7 +691,7 @@ struct svc_xprt *svc_get_next_xprt(struct svc_rqst *rqstp, long timeout)
- 	return xprt;
- }
- 
--void svc_add_new_temp_xprt(struct svc_serv *serv, struct svc_xprt *newxpt)
-+static void svc_add_new_temp_xprt(struct svc_serv *serv, struct svc_xprt *newxpt)
- {
- 	spin_lock_bh(&serv->sv_lock);
- 	set_bit(XPT_TEMP, &newxpt->xpt_flags);
--- 
-1.7.9.5
+Just a general comment.  Mount negotiation is a maze because
+
+  a) we have so many legacy use cases that still MUST work, and
+
+  b) we have no regression test suite that can confirm that mount.nfs is still operating correctly after code changes
+
+Thus it�s very difficult to clean up over time.  It just accretes more and more logic.  We add little bits here and there because it seems safe, but that adds up.
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
 
