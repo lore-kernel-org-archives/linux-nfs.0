@@ -1,84 +1,105 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from relay.parallels.com ([195.214.232.42]:46913 "EHLO
-	relay.parallels.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755191AbaBRPTe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Feb 2014 10:19:34 -0500
-Message-ID: <53037A03.4020603@parallels.com>
-Date: Tue, 18 Feb 2014 19:19:31 +0400
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-        Weng Meiling <wengmeiling.weng@huawei.com>
-CC: <greg@kroah.com>, <linux-nfs@vger.kernel.org>,
-        <linux-kernel@vger.kernel.org>, <devel@openvz.org>
-Subject: Re: [PATCH] nfsd: check passed socket's net matches NFSd superblock's
- one
-References: <20131230142339.16166.28243.stgit@localhost.localdomain> <20140103222226.GD5164@fieldses.org> <52FEC818.7030604@huawei.com> <20140217221900.GA8401@fieldses.org>
-In-Reply-To: <20140217221900.GA8401@fieldses.org>
-Content-Type: text/plain; charset="UTF-8"; format=flowed
+Received: from mail-oa0-f42.google.com ([209.85.219.42]:54310 "EHLO
+	mail-oa0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932541AbaBUNXn convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Feb 2014 08:23:43 -0500
+Received: by mail-oa0-f42.google.com with SMTP id j17so1939689oag.1
+        for <linux-nfs@vger.kernel.org>; Fri, 21 Feb 2014 05:23:42 -0800 (PST)
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
+Subject: Re: Reliable NFS statistics tool to monitoring all incoming network traffic
+From: Weston Andros Adamson <dros@monkey.org>
+In-Reply-To: <CA+NKcRzkHKqJ5sSJHLbZcJdOoDS6c2ef-D3CsGkOsw1uSyTmMg@mail.gmail.com>
+Date: Fri, 21 Feb 2014 08:23:38 -0500
+Cc: Steve Dickson <SteveD@redhat.com>,
+        linux-nfs list <linux-nfs@vger.kernel.org>
+Message-Id: <649BC36E-80B4-4F63-873E-9C8399D92CBB@monkey.org>
+References: <CA+NKcRwjoaeQUZEGSeVC+Tfa3jDzvTLt1RBjSQrkj6KJMcC-zg@mail.gmail.com> <5306418B.9060007@RedHat.com> <CA+NKcRzkHKqJ5sSJHLbZcJdOoDS6c2ef-D3CsGkOsw1uSyTmMg@mail.gmail.com>
+To: Pavel Karneliuk <pavel.karneliuk@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-18.02.2014 02:19, J. Bruce Fields Ð¿Ð¸ÑˆÐµÑ‚:
-> On Sat, Feb 15, 2014 at 09:51:20AM +0800, Weng Meiling wrote:
->> Hi Bruce,
->>
->> The upstream has merged your git tree for-3.14, but there is no this patch?
->> Do you forget this patch?
->
-> Apologies, I'm not sure what happened.
->
-> Looking back at it....  The patch causes all my pynfs reboot recovery
-> tests to fail.  They're just doing a "systemctl restart
-> nfs-server.service", and "systemctl status nfs-server.service" shows in
-> part
->
-> 	ExecStart=/usr/sbin/rpc.nfsd $RPCNFSDARGS $RPCNFSDCOUNT (code=exited, status=1/FAILURE)
->
-> So the patch is causing rpc.nfsd to fail?  No network namespaces should
-> be involved.
->
-> I haven't investigated any further.
->
 
-Hi Bruce,
-Are you sure, that exactly this patch broke your pynfs tests?
-BTW, systemd manipulates namespaces. Maybe the patch revealed some pynfs internal bugs?
-What do you think?
+On Feb 21, 2014, at 4:53 AM, Pavel Karneliuk <pavel.karneliuk@gmail.com> wrote:
 
-> --b.
->
->>
->> Thanks!
->> Weng Meiling
->>
->>
->> On 2014/1/4 6:22, J. Bruce Fields wrote:
->>> On Mon, Dec 30, 2013 at 05:23:59PM +0300, Stanislav Kinsbursky wrote:
->>>> There could be a case, when NFSd file system is mounted in network, different
->>>> to socket's one, like below:
->>>>
->>>> "ip netns exec" creates new network and mount namespace, which duplicates NFSd
->>>> mount point, created in init_net context. And thus NFS server stop in nested
->>>> network context leads to RPCBIND client destruction in init_net.
->>>> Then, on NFSd start in nested network context, rpc.nfsd process creates socket
->>>> in nested net and passes it into "write_ports", which leads to RPCBIND sockets
->>>> creation in init_net context because of the same reason (NFSd monut point was
->>>> created in init_net context). An attempt to register passed socket in nested
->>>> net leads to panic, because no RPCBIND client present in nexted network
->>>> namespace.
->>>
->>> So it's the attempt to use a NULL ->rpcb_local_clnt4?
->>>
->>> Interesting, thanks--applying with a minor fix to logged message.
->>>
->>> --b.
->>>
->>
->>
->>
+> Steve,
+> 
+> Thank you for your answer. The mountstats(8) and nfsiostat(8) are
+> well, but I am interesting in some network sniffer that listens all
+> network traffic in promiscuous mode.
+> 
+> I think about researching and development new solution.
+> Fast, reliable and extensible tool with deep packet inspection of NFS
+> operations and supporting NFS version 2/3/4 over TCP/UDP protocols.
+> Something based on libpcap, TCP reassembling suchlike dissectors from
+> Wireshark, and full parsing headers of NFS operations on the fly.
 
+You should take a look at NFStest - It has a tcp reassembly and NFS decoding component:
 
--- 
-Best regards,
-Stanislav Kinsbursky
+http://linux-nfs.org/wiki/index.php/NFStest
+
+Also, try experimenting with the other types of output (different xml formats) for tshark.  I’ve found it useful in the past to programmatically look for the “needle in the haystack” instead of searching through wiresharks GUI.
+
+> 
+> Would such tool be useful for community, NFS developers and end-users?
+> What do you think?
+
+So, how will be different from using wireshark / tshark ?
+
+-dros
+
+> 
+> Regards,
+> Pavel K
+> 
+> 2014-02-20 20:55 GMT+03:00 Steve Dickson <SteveD@redhat.com>:
+>> 
+>> 
+>> On 02/20/2014 10:39 AM, Pavel Karneliuk wrote:
+>>> Hello linux-nfs members,
+>>> 
+>>> I am looking for some tool for monitoring all incoming traffic on the
+>>> wire and collecting NFSv3 operations over TCP transport protocol in
+>>> 1G-10G networks.
+>>> 
+>>> Could you advise me some fast and reliable utility?
+>>> 
+>>> I have tried NFSwatch tool, but its results are not reliable.
+>>> At first, I mount NFSv3 directory with TCP transport protocol and wsize=512k
+>>> 
+>>> sudo mount -v -t nfs 10.6.136.187:/share /mnt/nfs-fedora/ -o
+>>> rw,vers=3.0,tcp,wsize=524288
+>>> 
+>>> then I write 10Mb file to NFS server:
+>>> 
+>>> sudo dd if=/dev/zero of=/mnt/nfs-fedora/zero.data bs=1M count=10
+>>> 
+>>> I expect to see 20 WRITE operations (10Mb / 512Kb == 20).
+>>> The nfsstat (nfsstat --nfs -3 -Z) shows exactly 20 WRITE operations,
+>>> because it takes statistic from the kernel.
+>>> 
+>>> When I try to get the same result with NFSwatch by (sudo nfswatch -all
+>>> -procs3 -t 20)
+>>> I get unreproducible results with 1 or 2 registered WRITE operations.
+>>> NFSwatch works well on NFSv3 over UDP, but loses almost all READ/WRITE
+>>> operations in case of TCP protocol.
+>>> I have checked its source code and found that NFSwatch doesn't
+>>> performs reassembling TCP streams between NFS server and NFS client.
+>>> It just looks at TCP segment and expects headers of RPC/NFSv3
+>>> operations exactly after TCP header.
+>>> 
+>>> The tcpdump works similarly. Wireshark(and Tshark) is too slow for
+>>> live 1G-10G NFSv3/TCP traffic capturing and filtration.
+>>> 
+>>> 
+>>> Would you suggest some alternative utils, solutions or workarounds?
+>> You can try mountstats(8) or nfsiostat(8). Both of them
+>> manipulate data collected in /proc/self/mountstats
+>> 
+>> steved.
+>> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
