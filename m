@@ -1,45 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:58757 "EHLO fieldses.org"
+Received: from smtp-o-3.desy.de ([131.169.56.156]:43518 "EHLO smtp-o-3.desy.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752473AbaBXWIu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 24 Feb 2014 17:08:50 -0500
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>, stable@vger.kernel.org,
-        Benny Halevy <bhalevy@primarydata.com>
-Subject: [PATCH 1/5] nfsd4: buffer-length check for SUPPATTR_EXCLCREAT
-Date: Mon, 24 Feb 2014 17:08:43 -0500
-Message-Id: <1393279727-29437-2-git-send-email-bfields@redhat.com>
-In-Reply-To: <1393279727-29437-1-git-send-email-bfields@redhat.com>
-References: <1393279727-29437-1-git-send-email-bfields@redhat.com>
+	id S1751132AbaBWSEP convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 23 Feb 2014 13:04:15 -0500
+Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
+	by smtp-o-3.desy.de (DESY-O-3) with ESMTP id 943752802EC
+	for <linux-nfs@vger.kernel.org>; Sun, 23 Feb 2014 19:04:13 +0100 (CET)
+Received: from ZITSWEEP4.win.desy.de (zitsweep4.win.desy.de [131.169.97.98])
+	by smtp-map-1.desy.de (DESY_MAP_1) with ESMTP id 8909713E9C
+	for <linux-nfs@vger.kernel.org>; Sun, 23 Feb 2014 19:04:12 +0100 (MET)
+Date: Sun, 23 Feb 2014 19:04:09 +0100 (CET)
+From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+To: Trond Myklebust <trondmy@gmail.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-ID: <1981701027.186711.1393178649862.JavaMail.zimbra@desy.de>
+In-Reply-To: <94863747-3B23-4534-8990-F04F0C8D54DE@gmail.com>
+References: <1393172535-4617-1-git-send-email-tigran.mkrtchyan@desy.de> <94863747-3B23-4534-8990-F04F0C8D54DE@gmail.com>
+Subject: Re:
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
 
-This was an omission from 8c18f2052e756e7d5dea712fc6e7ed70c00e8a39
-"nfsd41: SUPPATTR_EXCLCREAT attribute".
 
-Cc: stable@vger.kernel.org
-Cc: Benny Halevy <bhalevy@primarydata.com>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4xdr.c |    2 ++
- 1 file changed, 2 insertions(+)
+----- Original Message -----
+> From: "Trond Myklebust" <trondmy@gmail.com>
+> To: "Tigran Mkrtchyan" <tigran.mkrtchyan@desy.de>
+> Cc: "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
+> Sent: Sunday, February 23, 2014 5:41:26 PM
+> Subject: Re:
+> 
+> 
+> On Feb 23, 2014, at 11:22, tigran.mkrtchyan@desy.de wrote:
+> 
+> > to me it's unclear, why a SETATTR  always follows an OPEN, even in case of
+> > EXCLUSIVE4_1. With this fix, I get desired behavior.
+> 
+> Yes, but that fix risks incurring an NFS4ERR_INVAL from which we cannot
+> recover because it does not include the mandatory check for the allowed set
+> of attributes.
+> Please see RFC5661 section 18.16.3 about the client side use of
+> ‘suppattr_exclcreat’ .
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 63f2395..668bfe1 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -2483,6 +2483,8 @@ out_acl:
- 			goto out;
- 	}
- 	if (bmval2 & FATTR4_WORD2_SUPPATTR_EXCLCREAT) {
-+		if ((buflen -= 16) < 0)
-+			goto out_resource;
- 		WRITE32(3);
- 		WRITE32(NFSD_SUPPATTR_EXCLCREAT_WORD0);
- 		WRITE32(NFSD_SUPPATTR_EXCLCREAT_WORD1);
--- 
-1.7.9.5
+Yes, I noticed, that client never query that attribute. I will check a
+possibility to add a check for suppattr_exclcreat as well.
 
+Tigran.
+
+> 
+> Cheers,
+>   Trond
