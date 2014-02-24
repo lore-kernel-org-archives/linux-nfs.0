@@ -1,53 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp-o-3.desy.de ([131.169.56.156]:43518 "EHLO smtp-o-3.desy.de"
+Received: from fieldses.org ([174.143.236.118]:59228 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751132AbaBWSEP convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 23 Feb 2014 13:04:15 -0500
-Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
-	by smtp-o-3.desy.de (DESY-O-3) with ESMTP id 943752802EC
-	for <linux-nfs@vger.kernel.org>; Sun, 23 Feb 2014 19:04:13 +0100 (CET)
-Received: from ZITSWEEP4.win.desy.de (zitsweep4.win.desy.de [131.169.97.98])
-	by smtp-map-1.desy.de (DESY_MAP_1) with ESMTP id 8909713E9C
-	for <linux-nfs@vger.kernel.org>; Sun, 23 Feb 2014 19:04:12 +0100 (MET)
-Date: Sun, 23 Feb 2014 19:04:09 +0100 (CET)
-From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
-To: Trond Myklebust <trondmy@gmail.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-ID: <1981701027.186711.1393178649862.JavaMail.zimbra@desy.de>
-In-Reply-To: <94863747-3B23-4534-8990-F04F0C8D54DE@gmail.com>
-References: <1393172535-4617-1-git-send-email-tigran.mkrtchyan@desy.de> <94863747-3B23-4534-8990-F04F0C8D54DE@gmail.com>
-Subject: Re:
+	id S1752446AbaBXPpf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 24 Feb 2014 10:45:35 -0500
+Date: Mon, 24 Feb 2014 10:45:32 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jan Kara <jack@suse.cz>
+Cc: Matthew Rahtz <mrahtz@rapitasystems.com>, linux-ext4@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: warning in ext4_journal_start_sb on filesystem freeze
+Message-ID: <20140224154532.GB11992@fieldses.org>
+References: <217983071.143460.1385453196946.JavaMail.zimbra@rapitasystems.com>
+ <1697998867.143517.1385454051031.JavaMail.zimbra@rapitasystems.com>
+ <20131126125826.GA4503@quack.suse.cz>
+ <622177618.727.1393062606061.JavaMail.zimbra@rapitasystems.com>
+ <20140224095525.GA20532@quack.suse.cz>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=utf-8
+In-Reply-To: <20140224095525.GA20532@quack.suse.cz>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Mon, Feb 24, 2014 at 10:55:25AM +0100, Jan Kara wrote:
+> On Sat 22-02-14 09:50:06, Matthew Rahtz wrote:
+> > Thanks for your help Jan,
+> > 
+> > A few months later, we've noticed the issue is actually still there.
+> > Using 3.11.0-17-generic on Ubuntu 12.04, we’re seeing this in the kernel
+> > logs:
+> > 
+> > [29243.606215] WARNING: CPU: 0 PID: 1785 at
+> > /build/buildd/linux-lts-saucy-3.11.0/fs/ext4/ext4_jbd2.c:48
+> > ext4_journal_check_start+0x83/0x90()
+> > 
+> > Having a look at the Ubuntu source package for that version, it
+> > definitely does include commit 03d95eb2f2578083a3f6286262e1cb5d88a00c02,
+> > and the line generating the warning is still:
+> > 
+> > WARN_ON(sb->s_writers.frozen == SB_FREEZE_COMPLETE);
+> > 
+> > Are there any other obvious possibilities for what may be causing this?
+> > There seem to be some users of Oracle Linux experiencing similar problems
+> > at https://community.oracle.com/thread/2617418, which was apparently
+> > fixed in Oracle's kernel version '3.8.13-26.el6uek'. Any word on when
+> > this might be integrated into the official kernel?
+> > 
+> > Full call trace included below.
+>   Looking at the trace below, now the problem seems to be in the NFS server
+> code. NFS should get protection against the filesystem being frozen (or
+> remounted read-only for that matter) via mnt_want_write() before calling
+> into notify_change() (actually before calling fh_lock() because of lock
+> ordering).  Similarly to what we do e.g. in fchownat(). Bruce?
 
+Like this?
 
------ Original Message -----
-> From: "Trond Myklebust" <trondmy@gmail.com>
-> To: "Tigran Mkrtchyan" <tigran.mkrtchyan@desy.de>
-> Cc: "Linux NFS Mailing List" <linux-nfs@vger.kernel.org>
-> Sent: Sunday, February 23, 2014 5:41:26 PM
-> Subject: Re:
-> 
-> 
-> On Feb 23, 2014, at 11:22, tigran.mkrtchyan@desy.de wrote:
-> 
-> > to me it's unclear, why a SETATTR  always follows an OPEN, even in case of
-> > EXCLUSIVE4_1. With this fix, I get desired behavior.
-> 
-> Yes, but that fix risks incurring an NFS4ERR_INVAL from which we cannot
-> recover because it does not include the mandatory check for the allowed set
-> of attributes.
-> Please see RFC5661 section 18.16.3 about the client side use of
-> ‘suppattr_exclcreat’ .
+But I wonder why this is just popping up now--as far as I can tell we've
+had the bug since those write counts were introduced.
 
-Yes, I noticed, that client never query that attribute. I will check a
-possibility to add a check for suppattr_exclcreat as well.
+--b.
 
-Tigran.
-
-> 
-> Cheers,
->   Trond
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index 6d7be3f..d573b61 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -445,12 +445,16 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
+ 		err = nfserr_notsync;
+ 		goto out_put_write_access;
+ 	}
++	host_err = fh_want_write(fhp);
++	if (host_err)
++		goto out_nfserr;
+ 
+ 	fh_lock(fhp);
+ 	host_err = notify_change(dentry, iap, NULL);
+ 	fh_unlock(fhp);
++	fh_drop_write(fhp);
++out_nfserr:
+ 	err = nfserrno(host_err);
+-
+ out_put_write_access:
+ 	if (size_change)
+ 		put_write_access(inode);
