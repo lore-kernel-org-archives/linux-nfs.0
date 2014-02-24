@@ -1,44 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f174.google.com ([209.85.213.174]:53167 "EHLO
-	mail-ig0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932169AbaBKThR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Feb 2014 14:37:17 -0500
-Received: by mail-ig0-f174.google.com with SMTP id hl1so9526080igb.1
-        for <linux-nfs@vger.kernel.org>; Tue, 11 Feb 2014 11:37:17 -0800 (PST)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+Received: from fieldses.org ([174.143.236.118]:58764 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752896AbaBXWIv (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 24 Feb 2014 17:08:51 -0500
+From: "J. Bruce Fields" <bfields@redhat.com>
 To: linux-nfs@vger.kernel.org
-Subject: [PATCH 4/5] NFSv4.1: Allow parallel OPEN requests
-Date: Tue, 11 Feb 2014 14:37:07 -0500
-Message-Id: <1392147428-23087-5-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1392147428-23087-4-git-send-email-trond.myklebust@primarydata.com>
-References: <1392147428-23087-1-git-send-email-trond.myklebust@primarydata.com>
- <1392147428-23087-2-git-send-email-trond.myklebust@primarydata.com>
- <1392147428-23087-3-git-send-email-trond.myklebust@primarydata.com>
- <1392147428-23087-4-git-send-email-trond.myklebust@primarydata.com>
+Cc: "J. Bruce Fields" <bfields@redhat.com>, stable@vger.kernel.org
+Subject: [PATCH 2/5] nfsd4: leave reply buffer space for failed setattr
+Date: Mon, 24 Feb 2014 17:08:44 -0500
+Message-Id: <1393279727-29437-3-git-send-email-bfields@redhat.com>
+In-Reply-To: <1393279727-29437-1-git-send-email-bfields@redhat.com>
+References: <1393279727-29437-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Enable parallel OPEN requests for the case of NFSv4.1. Please note that
-OPENs are still completely serialised w.r.t. OPEN_DOWNGRADE and CLOSE.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+This fixes an ommission from 18032ca062e621e15683cb61c066ef3dc5414a7b
+"NFSD: Server implementation of MAC Labeling", which increased the size
+of the setattr error reply without increasing COMPOUND_ERR_SLACK_SPACE.
+
+Cc: stable@vger.kernel.org
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfs/nfs4proc.c | 2 ++
- 1 file changed, 2 insertions(+)
+ fs/nfsd/nfsd.h |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 96e0bd42f38c..4eb78f6c3623 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -1006,6 +1006,8 @@ static struct nfs4_opendata *nfs4_opendata_alloc(struct dentry *dentry,
- 	p->o_arg.clientid = server->nfs_client->cl_clientid;
- 	p->o_arg.id.create_time = ktime_to_ns(sp->so_seqid.create_time);
- 	p->o_arg.id.uniquifier = sp->so_seqid.owner_id;
-+	if (server->caps & NFS_CAP_STATEID_NFSV41)
-+		p->o_arg.seqid->wait.shared = 1;
- 	p->o_arg.name = &dentry->d_name;
- 	p->o_arg.server = server;
- 	p->o_arg.bitmask = nfs4_bitmask(server, label);
+diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+index 30f34ab..479eb68 100644
+--- a/fs/nfsd/nfsd.h
++++ b/fs/nfsd/nfsd.h
+@@ -282,7 +282,7 @@ void		nfsd_lockd_shutdown(void);
+  * reason.
+  */
+ #define	COMPOUND_SLACK_SPACE		140    /* OP_GETFH */
+-#define COMPOUND_ERR_SLACK_SPACE	12     /* OP_SETATTR */
++#define COMPOUND_ERR_SLACK_SPACE	16     /* OP_SETATTR */
+ 
+ #define NFSD_LAUNDROMAT_MINTIMEOUT      1   /* seconds */
+ 
 -- 
-1.8.5.3
+1.7.9.5
 
