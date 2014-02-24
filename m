@@ -1,193 +1,118 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:34347 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:48480 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751367AbaBFB2D (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 5 Feb 2014 20:28:03 -0500
-Date: Thu, 6 Feb 2014 12:27:51 +1100
-From: NeilBrown <neilb@suse.de>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Steve Dickson <SteveD@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Simo Sorce <simo@redhat.com>
-Subject: Re: [PATCH/RFC: nfs-utils] Common systemd unit files for nfs-utils.
-Message-ID: <20140206122751.41b2fbf9@notabene.brown>
-In-Reply-To: <1B2F95A4-8439-4274-A859-F33986D06824@oracle.com>
-References: <20140130172451.7a354ce4@notabene.brown>
-	<52F003A1.3060908@RedHat.com>
-	<20140204093452.7b6d7c7d@notabene.brown>
-	<20140204162052.GA5295@fieldses.org>
-	<20140205140906.0b3ba9fd@notabene.brown>
-	<1B2F95A4-8439-4274-A859-F33986D06824@oracle.com>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/tPvgtMW/IXjtKHYzOwu0EjB"; protocol="application/pgp-signature"
+	id S1752994AbaBXUv5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 24 Feb 2014 15:51:57 -0500
+Received: from int-mx12.intmail.prod.int.phx2.redhat.com (int-mx12.intmail.prod.int.phx2.redhat.com [10.5.11.25])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s1OKpu7t007140
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Mon, 24 Feb 2014 15:51:56 -0500
+Received: from mguzik.redhat.com (ovpn-116-49.ams2.redhat.com [10.36.116.49])
+	by int-mx12.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s1OKpt5Z022151
+	for <linux-nfs@vger.kernel.org>; Mon, 24 Feb 2014 15:51:56 -0500
+From: Mateusz Guzik <mguzik@redhat.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] nfsidmap: fix error reporting for nfs4_* family of functions
+Date: Mon, 24 Feb 2014 21:51:54 +0100
+Message-Id: <1393275114-28792-1-git-send-email-mguzik@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/tPvgtMW/IXjtKHYzOwu0EjB
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: quoted-printable
+Errors were logged with xlog_err function relying on errno, but these
+functions don't set it.
 
-On Wed, 5 Feb 2014 10:56:39 -0500 Chuck Lever <chuck.lever@oracle.com> wrot=
-e:
+Fix the problem by introducing xlog_err_code which accepts error code.
 
-> Hi Neil!
->=20
->=20
-> On Feb 4, 2014, at 10:09 PM, NeilBrown <neilb@suse.de> wrote:
->=20
-> > On Tue, 4 Feb 2014 11:20:52 -0500 "J. Bruce Fields" <bfields@fieldses.o=
-rg>
-> > wrote:
-> >=20
-> >> On Tue, Feb 04, 2014 at 09:34:52AM +1100, NeilBrown wrote:
-> >>> Also, I've been wondering if we could avoid the need to explicitly en=
-able
-> >>> the gss stuff by gating it on the existence of /etc/krb5.keytab.
-> >>> Do you think that would be reasonable?
-> >>=20
-> >> That would be great.  I hate that people have to care about these
-> >> support daemons, they should just be started automatically when they're
-> >> needed.
-> >>=20
-> >> Is /etc/krb5.keytab the best indicator?
-> >=20
-> > I was hoping you would tell me. :-)
->=20
-> rpc.gssd has to run in cases where there is no /etc/krb5.keytab.  Remembe=
-r the discussion we had last year about using root=E2=80=99s user credentia=
-l as the client=E2=80=99s machine credential?  We want the kernel to be abl=
-e to find out whether there is a machine credential available, and one can =
-be available even if there is no keytab.
+Signed-off-by: Mateusz Guzik <mguzik@redhat.com>
+---
+ support/include/xlog.h    |  1 +
+ support/nfs/xlog.c        | 12 ++++++++++++
+ utils/nfsidmap/nfsidmap.c | 11 ++++++-----
+ 3 files changed, 19 insertions(+), 5 deletions(-)
 
-Hi Chuck,
- thanks for reminding me about that!  Yes we clearly cannot key
- off /etc/krb5.keytab for rpc.gssd.
+diff --git a/support/include/xlog.h b/support/include/xlog.h
+index fd34ec2..ae34eb7 100644
+--- a/support/include/xlog.h
++++ b/support/include/xlog.h
+@@ -45,6 +45,7 @@ int			xlog_enabled(int fac);
+ void			xlog(int fac, const char *fmt, ...);
+ void			xlog_warn(const char *fmt, ...);
+ void			xlog_err(const char *fmt, ...);
++void			xlog_err_code(int error, const char *fmt, ...);
+ void			xlog_backend(int fac, const char *fmt, va_list args);
+ 
+ #endif /* XLOG_H */
+diff --git a/support/nfs/xlog.c b/support/nfs/xlog.c
+index 83d07e1..3759217 100644
+--- a/support/nfs/xlog.c
++++ b/support/nfs/xlog.c
+@@ -27,6 +27,7 @@
+ #include <stdio.h>
+ #include <stdarg.h>
+ #include <syslog.h>
++#include <errno.h>
+ #include "nfslib.h"
+ 
+ #undef	VERBOSE_PRINTF
+@@ -220,3 +221,14 @@ xlog_err(const char* fmt, ...)
+ 	xlog_backend(L_FATAL, fmt, args);
+ 	va_end(args);
+ }
++
++void
++xlog_err_code(int error, const char *fmt, ...)
++{
++	va_list args;
++
++	errno = -error;
++	va_start(args, fmt);
++	xlog_backend(L_FATAL, fmt, args);
++	va_end(args);
++}
+diff --git a/utils/nfsidmap/nfsidmap.c b/utils/nfsidmap/nfsidmap.c
+index e14543c..bf97714 100644
+--- a/utils/nfsidmap/nfsidmap.c
++++ b/utils/nfsidmap/nfsidmap.c
+@@ -54,7 +54,7 @@ int id_lookup(char *name_at_domain, key_serial_t key, int type)
+ 		sprintf(id, "%u", gid);
+ 	}
+ 	if (rc < 0)
+-		xlog_err("id_lookup: %s: failed: %m",
++		xlog_err_code(rc, "id_lookup: %s: failed: %m",
+ 			(type == USER ? "nfs4_owner_to_uid" : "nfs4_group_owner_to_gid"));
+ 
+ 	if (rc == 0) {
+@@ -95,8 +95,9 @@ int name_lookup(char *id, key_serial_t key, int type)
+ 
+ 	rc = nfs4_get_default_domain(NULL, domain, NFS4_MAX_DOMAIN_LEN);
+ 	if (rc != 0) {
++		xlog_err_code(rc,
++			"name_lookup: nfs4_get_default_domain failed: %m");
+ 		rc = -1;
+-		xlog_err("name_lookup: nfs4_get_default_domain failed: %m");
+ 		goto out;
+ 	}
+ 
+@@ -108,7 +109,7 @@ int name_lookup(char *id, key_serial_t key, int type)
+ 		rc = nfs4_gid_to_name(gid, domain, name, IDMAP_NAMESZ);
+ 	}
+ 	if (rc < 0)
+-		xlog_err("name_lookup: %s: failed: %m",
++		xlog_err_code(rc, "name_lookup: %s: failed: %m",
+ 			(type == USER ? "nfs4_uid_to_name" : "nfs4_gid_to_name"));
+ 
+ 	if (rc == 0) {
+@@ -272,8 +273,8 @@ int main(int argc, char **argv)
+ 		}
+ 	}
+ 
+-	if (nfs4_init_name_mapping(PATH_IDMAPDCONF))  {
+-		xlog_err("Unable to create name to user id mappings.");
++	if (rc = nfs4_init_name_mapping(PATH_IDMAPDCONF))  {
++		xlog_err_code(rc, "Unable to create name to user id mappings.");
+ 		return 1;
+ 	}
+ 	if (!verbose)
+-- 
+1.8.3.1
 
- Maybe /etc/krb5.conf?  Seems a bit lame.
- How about  /etc/gssapi_mech.conf ??  rpc.gssd seems to exit if that doesn't
- exist.  What if systemd is told not to run rpc.gssd if that file is
- missing?
-
- I guess that otherwise we can make it on-by-default, but document that peo=
-ple
- can turn it off with
-     systemctl mask rpc-gssd
-
- which is probably easier that requiring "systemctl enable nfs-secure".
-
->=20
-> > It occurred to me as a good test when I tried running rpc.svcgssd in a =
-fresh
-> > VM and it wouldn't start.  I eventually found the error message complai=
-ning
-> > that it couldn't find that file.
-> >=20
-> > It isn't perfect as an empty /etc/krb5.keytab will still result in fail=
-ure
-> > and exit.  However if a sysadmin has created a keytab and is using NFS,=
- it
-> > seems reasonable to be ready to provide gss services.
-> >=20
-> > rpc.gssd doesn't fail in the same way, but it does complain if the file
-> > doesn't exist, so I suspect it is at least a good indicator.
-> >=20
-> > The only thing that bothers me is that gssd is theoretically more gener=
-al
-> > than krb5.  However as the reality seems to be that it is exactly krb5,=
- I
-> > don't let that bother me too much.
-> >=20
-> >>=20
-> >> Simplest might be to start unconditionally and just not care if it
-> >> fails.  Or is there a problem cluttering up logs with unimportant
-> >> failures?
-> >=20
-> > More a problem with starting things that aren't necessary, and possibly
-> > leaving them running.
-> > Every process you start adds a little to the boot time.  We only get th=
-e best
-> > experience if everyone contributes a little bit, no matter how little.
-> > Also, every running process theoretically adds the to the attack servic=
-e.
->=20
-> rpc.gssd doesn=E2=80=99t expose a network listener.  What attack vector i=
-s exposed by running rpc.gssd?
-
-Not all attacks are external.  Also not all decisions relating to security
-are completely rational.  And the 'attack surface' argument may apply better
-to other services but might cause a spill-over to people not wanting to run
-anything they don't have to.
-
->=20
-> Why would we insist on using a potentially insecure mechanism to provide =
-strong security?
->=20
-> > So some people will definitely not want these processes to be started.
->=20
-> How many such people are there?  The trend I expect is that more and more=
- people will want to use security features, and fewer will want =E2=80=9Cse=
-c=3Dsys,=E2=80=9D especially if we work hard to make security features as p=
-ainless as possible (as we should be doing).
-
-I honestly don't know.  I may be seeing spectres that aren't there.  But I'=
-ve
-certainly heard a strong preference to not run unnecessary daemons more than
-once in the past.
-
-When NFS is only used over a tightly coupled local network (infiniband?) you
-really do want sec=3Dsys.
-
-
->=20
-> It seems to me that provisionally starting rpc.gssd optimizes for a fairl=
-y uncommon case that will become less and less common going forward.  I bel=
-ieve we should start designing as if security is the default use case.  I w=
-ould feel more comfortable if we knew more precisely what proportion of our=
- users want to disable gssd and why.
->=20
-> > i.e. I agree with SteveD:=20
-> >> I think we want to stay away (and move away) from unconditionally
-> >> starting anything=E2=80=A6=20
->=20
-> I believe we should make things simple both for us and for our customers.=
-  Thus I agree philosophically with the Gnome strategy of removing less fre=
-quently used configuration options to reduce complexity, make things easier=
- to configure, more reliable, and easier to troubleshoot.
-
-I certainly agree with making things simple.  If we can make a configuration
-irrelevant, e.g. by gets nfsd to auto-tune the number of threads so the
-setting becomes pointless, then I've very happy to remove that sort of
-configuration.  But if a configuration option actually means something I
-certainly don't want to remove it.
-
-So I'm leaning towards having "systemctl {un,}mask rpc-gssd" be the
-configuration tool for rpc.gssd.
-
-Thanks,
-NeilBrown
-
---Sig_/tPvgtMW/IXjtKHYzOwu0EjB
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.22 (GNU/Linux)
-
-iQIVAwUBUvLlFznsnt1WYoG5AQIZug//UX5T/5gy72y8dkBwRRra69vcF1JAU+k1
-4CwheSVafQRnuKvWYAHP2qzgdMTUPY8lWwJLfvqiGPtYeJEjPsAl65jXi86S9Frl
-gf46P4vsTbhja8R0aHRMaCOtna/xuEMoPAp4qr6l68AMPwzyHtRdalZpxL/Ul+Po
-MzvHANMJckzfpFSjb8UzHnmxFjQDqpvewZ51XFcyCMCUDBSansg/cOH+KQpBQ/Zp
-vq5pe7RBANv3OwrRSPHwvE8pCVVgjW3HVUJw4+2ejTDWK7f9zH0508W3Igw+agGf
-wZoPvper5RjUfsXYeiC+ORlUBeZ+yLV2YIwTVMygyPAILpg+aQMtr8kQiIO1UxJS
-bxqvf4JFjuZKPww+JHk9OjpTEpU7eyH7/sdwYCSrtCKZUGFDNznwd3nGZ11+HYeX
-ZkxH+P4cBg3wF/AtuUDewhSGDsGG4pgMLrSTLPKf1T4QGr85VbrUXr4hU8xORR9V
-nb0P0ogPXzipqxZxbMzI7vUaQ62DVNdFpXRQBHgZVSmG8d6uIBRctqitCkZvv+Rx
-iRHN/ZlH1EGsEUQE9Eg9xj0GCMnFBpVtLHUFxUr8diBmJI9ufGjeMQtvKKzj5rny
-nrVWCLmXmPdygmXGRe1S/jbvWGRbCoT98kKFwF3AyefTmx2SteA9C03FQ3VNvXtB
-Et7loJ5W2EY=
-=Vy8g
------END PGP SIGNATURE-----
-
---Sig_/tPvgtMW/IXjtKHYzOwu0EjB--
