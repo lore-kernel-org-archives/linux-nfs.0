@@ -1,92 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:29387 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755593AbaBRO3K convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Feb 2014 09:29:10 -0500
-Content-Type: text/plain; charset=us-ascii
+Received: from mail-pa0-f52.google.com ([209.85.220.52]:48265 "EHLO
+	mail-pa0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753224AbaBYBrj convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Feb 2014 20:47:39 -0500
+Received: by mail-pa0-f52.google.com with SMTP id fb1so162706pad.39
+        for <linux-nfs@vger.kernel.org>; Mon, 24 Feb 2014 17:47:38 -0800 (PST)
+Content-Type: text/plain; charset=windows-1252
 Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
-Subject: Re: [PATCH 0/2] nfs-utils: systemd units bug fixes and comments.
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <1392713329-17979-1-git-send-email-steved@redhat.com>
-Date: Tue, 18 Feb 2014 09:29:04 -0500
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <FB361B21-041C-484F-815E-E4A90C3DAE06@oracle.com>
-References: <1392713329-17979-1-git-send-email-steved@redhat.com>
-To: Steve Dickson <SteveD@redhat.com>
+Subject: Re: [nfs-utils RPC-PATCH 0/4] Add options to nfsd etc to avoid needing to write to /proc
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+In-Reply-To: <6C00269A-B840-4835-B277-CBCA9EE69AA8@primarydata.com>
+Date: Mon, 24 Feb 2014 17:47:35 -0800
+Cc: Dickson Steve <SteveD@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <5A5D3C51-B7DC-4D4E-9C38-A4A294467ADC@primarydata.com>
+References: <20140220063616.6548.42556.stgit@notabene.brown> <33021BB9-598C-4A65-B386-BE230E91894F@primarydata.com> <20140225123701.08c59745@notabene.brown> <6C00269A-B840-4835-B277-CBCA9EE69AA8@primarydata.com>
+To: Brown Neil <neilb@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Feb 18, 2014, at 3:48 AM, Steve Dickson <SteveD@redhat.com> wrote:
+On Feb 24, 2014, at 17:44, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
 
-> Bug Fixes:
 > 
-> The /proc/net/rpc/use-gss-proxy file can not be used
-> as a start up trigger for rpc.svcsgssd since it always
-> exists, with or without gss-proxy installed.
+> On Feb 24, 2014, at 17:37, NeilBrown <neilb@suse.de> wrote:
 > 
-> Adding the Wants= to the nfs server unit cause a systemd ordering 
-> cycle which caused reboots to take forever.
+>> On Thu, 20 Feb 2014 08:11:47 -0500 Trond Myklebust
+>> <trond.myklebust@primarydata.com> wrote:
+>> 
+>>> 
+>>> On Feb 20, 2014, at 1:36, Neil Brown <neilb@suse.de> wrote:
+>>> 
+>>>> There are a number of NFS-related setting that currently must be set
+>>>> by writing to various files under /proc.
+>>>> This is a bit clumsy, particularly for systemd unit files.
+>>>> 
+>>>> So this series adds options to a number of commands where relevant.
+>>>> 
+>>>> The first two (rdma, and  nfsv4{grace,lease}time) I am quite comfortable with.
+>>>> The third (nlm grace time) I think is probably right but if someone can argue
+>>>> an alternate approach I'm unlikely to resist.
+>>>> The fourth is .... uhm.  You better look yourself.
+>>>> 
+>>>> Part of me thinks that nlm port numbers should be set in /etc/sysctl.conf (or sysctl.d)
+>>>> and /etc/modprobe.d should have something like
+>>>> 
+>>>> install lockd  sysctl -p /etc/sysctl.d/lockd
+>>>> 
+>>>> but last time I tried that it broke "modprobe --show-depends".
+>>>> Also it is awkward to get setting from /etc/sysconfig/nfs into /etc/sysctl.d/lockd
+>>>> 
+>>>> Thoughts?
+>>> 
+>>> Why not just do most of this at module load time with something like "modprobe lockd lockd.nlm_grace_period=<nsecs> lockd.nlm_tcpport=<portnr> …”?
+>>> Better yet, add/edit appropriate entries in /etc/modprobe.conf.d at system setup time.
+>>> 
+>> 
+>> Adding entries to /etc/modprobe.conf.d doesn't help if nfs is compiled in to
+>> the base kernel.
+>> Conversely, adding entries to /etc/sysctl.d doesn't help if nfs is a module.
+>> You could conceivable do both (for those few values that are available both
+>> as module parameters and sysctl settings) but that is clumsy and error prone.
+>> 
 > 
-> Comment One:
-> 
-> Even though nfs-client does conditionally start the rpc.gssd 
-> service when /etc/krb5.keytab exists (which good),
+> All the NFS sysctl settings now have module parameter equivalents.
+> Note that systemd can also override using the /sys/module interface, but the problem with both sysctl and /sys/module is that they get set _after_ the module has been loaded, and hence there is plenty of potential for races with mount requests.
 
-No, that's bad.  rpc.gssd has to run in cases where there is no /etc/krb5.ktab.  See
+BTW: if you don’t want to compile your kernel with module support, then those same parameters can be used on the kernel command line. That provides the same guarantees w.r.t. races...
 
- http://www.spinics.net/lists/linux-nfs/msg41585.html
-
-The existence of /etc/krb5.conf is a better choice.
-
-> but that's 
-> all it does. Meaning 'systemctl status' does not show that rpc.gssd 
-> is running and 'systemctl restart' does not restart rpc.gssd 
-> and 'systemctl stop' does not stop the daemon.
-> 
-> It just seems odd to me that we will be using one target unit 
-> to enable a daemon then another service unit (rpc-gssd) to 
-> control it. 
-> 
-> I thinking we should  have one service unit, when enabled, control 
-> both the rpc.gssd and the rpc.svcgssd daemons. The start up trigger 
-> for both daemons will be the existence of /etc/krb5.keytab and 
-> rpc.svcgssd will only be started if the nfs server is 
-> enabled (if that is possible).
-> 
-> Comment Two:
-> 
-> How about renaming the nfs-utils unit to nfs-services since a 
-> 'systemctl restart' of the unit start all the server and client 
-> daemons (even when the server is not enabled, which is probably a bug).
-> 
-> Since a 'systemctl restart nfs-utils' starts all the daemons shouldn't
-> 'systemctl stop nfs-utils' bring them all down as well?
-> 
-> Another oddity, going a 'systemctl restart nfs-utils' causes v3 
-> mounts to go stale... Meaning going a ls on a v3 mount point 
-> after the restart errors out with ESTALE... Not sure why... 
-> 
-> Comment Three:
-> 
-> I'm not seeing how the nfs-utils_env.sh file, called by each unit, 
-> is all that useful. The main reason is you can not tell which 
-> unit its being called from so how do know what should be done? 
-> I guess I'm just missing the concept on how and what it should 
-> be used for.
-> 
-> Steve Dickson (2):
->  rpc-svcgssd.service: removed a the start up triggers
->  systemd: Removed the "ordering cycle" from nfs-server.service
-> 
-> systemd/nfs-server.service  | 2 --
-> systemd/rpc-svcgssd.service | 1 -
-> 2 files changed, 3 deletions(-)
-
--- 
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+_________________________________
+Trond Myklebust
+Linux NFS client maintainer, PrimaryData
+trond.myklebust@primarydata.com
 
