@@ -1,84 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f178.google.com ([209.85.223.178]:65352 "EHLO
-	mail-ie0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932177AbaBAU4u (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 1 Feb 2014 15:56:50 -0500
-Received: by mail-ie0-f178.google.com with SMTP id x13so5182460ief.23
-        for <linux-nfs@vger.kernel.org>; Sat, 01 Feb 2014 12:56:50 -0800 (PST)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH 1/2] NFSv4: Fix memory corruption in nfs4_proc_open_confirm
-Date: Sat,  1 Feb 2014 15:56:47 -0500
-Message-Id: <1391288208-23750-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:26705 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753106AbaBZQo6 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Feb 2014 11:44:58 -0500
+From: Chuck Lever <chuck.lever@oracle.com>
+Content-Type: text/plain; charset=windows-1252
+Subject: Proposal for simplifying NFS/RDMA client memory registration
+Date: Wed, 26 Feb 2014 08:44:49 -0800
+Message-Id: <01C4496A-F074-4F72-9DF0-6076C05E8A1F@oracle.com>
+Cc: Shirley Ma <shirley.ma@oracle.com>
+To: linux-rdma@vger.kernel.org,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-nfs41_wake_and_assign_slot() relies on the task->tk_msg.rpc_argp and
-task->tk_msg.rpc_resp always pointing to the session sequence arguments.
+Hi-
 
-nfs4_proc_open_confirm tries to pull a fast one by reusing the open
-sequence structure, thus causing corruption of the NFSv4 slot table.
+Shirley Ma and I are reviving work on the NFS/RDMA client code base in the Linux kernel.  So far we’ve built and run functional tests to determine what is working and what is broken.
 
-Cc: stable@vger.kernel.org # 3.12+
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/nfs4proc.c       | 8 ++++----
- include/linux/nfs_xdr.h | 2 ++
- 2 files changed, 6 insertions(+), 4 deletions(-)
+One complication is the number of memory registration modes supported by the RPC/RDMA transport: there are seven.  These were added over the years to support particular HCAs or as proof-of-concept.  The transport chooses a registration mode at mount time based on what the link HCA supports.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 42da6af77587..2da6a698b8f7 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -1620,15 +1620,15 @@ static void nfs4_open_confirm_prepare(struct rpc_task *task, void *calldata)
- {
- 	struct nfs4_opendata *data = calldata;
- 
--	nfs40_setup_sequence(data->o_arg.server, &data->o_arg.seq_args,
--				&data->o_res.seq_res, task);
-+	nfs40_setup_sequence(data->o_arg.server, &data->c_arg.seq_args,
-+				&data->c_res.seq_res, task);
- }
- 
- static void nfs4_open_confirm_done(struct rpc_task *task, void *calldata)
- {
- 	struct nfs4_opendata *data = calldata;
- 
--	nfs40_sequence_done(task, &data->o_res.seq_res);
-+	nfs40_sequence_done(task, &data->c_res.seq_res);
- 
- 	data->rpc_status = task->tk_status;
- 	if (data->rpc_status == 0) {
-@@ -1686,7 +1686,7 @@ static int _nfs4_proc_open_confirm(struct nfs4_opendata *data)
- 	};
- 	int status;
- 
--	nfs4_init_sequence(&data->o_arg.seq_args, &data->o_res.seq_res, 1);
-+	nfs4_init_sequence(&data->c_arg.seq_args, &data->c_res.seq_res, 1);
- 	kref_get(&data->kref);
- 	data->rpc_done = 0;
- 	data->rpc_status = 0;
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 3ccfcecf8999..b2fb167b2e6d 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -379,12 +379,14 @@ struct nfs_openres {
-  * Arguments to the open_confirm call.
-  */
- struct nfs_open_confirmargs {
-+	struct nfs4_sequence_args	seq_args;
- 	const struct nfs_fh *	fh;
- 	nfs4_stateid *		stateid;
- 	struct nfs_seqid *	seqid;
- };
- 
- struct nfs_open_confirmres {
-+	struct nfs4_sequence_res	seq_res;
- 	nfs4_stateid            stateid;
- 	struct nfs_seqid *	seqid;
- };
--- 
-1.8.5.3
+Not all HCAs support all memory registration modes, so our test matrix is quite large.  I’d like to propose removing support for one or more of these memory registration modes in the name of making it easier to change this code and test it without breaking something that we can’t test.
+
+BOUNCEBUFFERS - All HCAs support this mode.  Does not use RDMA READ and WRITE, and the client end copies data into place.  RDMA is offloaded, by data copy is not.  I’m told it was never intended for production use.
+
+REGISTER - Safe but relatively slow.  Uses reg_phys_mr verb which is not supported in mlx4/mlx5, but all other HCAs/providers can use this mode.
+
+MEM_WINDOWS - Uses bind_mr verb.  Safe, but supports only a narrow range of HCAs.
+
+MEM_WINDOWS_ASYNC - Not always safe, and only a narrow range of HCAs is supported.
+
+MTHCA_FMR - Uses alloc_fmr verb.  Safe, reasonably fast, but only a narrow range of older HCAs is supported.
+
+FRMR - Safe, generally fast.  Currently the preferred registration mode, but is not supported with some older HCAs/providers.
+
+ALLPHYSICAL - Usually fast, but not safe as it exposes client memory.  All HCAs support this mode.
+
+
+I propose removing BOUNCEBUFFERS since it is not intended for production use.
+
+I propose removing ALLPHYSICAL and MEM_WINDOWS_ASYNC as they are not generally safe.  RFC 5666 suggests that unsafe memory registration modes be avoided.
+
+I propose removing MEM_WINDOWS as it adds complexity without adding a lot of HCA compatibility.
+
+I propose removing MTHCA_FMR as I’m told it is hard to obtain HCAs we would need for testing this registration mode, and these are all old adapters anyway.
+
+This leaves NFS/RDMA client support for REGISTER and FRMR, which should cover all existing HCAs, and it is easy to test both of these memory registration modes with just one or two well-picked HCAs.
+
+We would contribute these changes to the client code base.  The NFS/RDMA server code could use similar attention, but we are not volunteering to change it at this time.
+
+Thoughts/comments?
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
 
