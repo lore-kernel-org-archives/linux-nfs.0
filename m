@@ -1,33 +1,27 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:35132 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750751AbaBCH4V (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Feb 2014 02:56:21 -0500
-Date: Sun, 2 Feb 2014 23:56:13 -0800
-From: Christoph Hellwig <hch@infradead.org>
-To: Noah Massey <noah.massey@gmail.com>
-Cc: Al Viro <viro@zeniv.linux.org.uk>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org
-Subject: Re: [PATCH] nfs: fix setting of ACLs on file creation.
-Message-ID: <20140203075613.GA806@infradead.org>
-References: <1391135472-9639-1-git-send-email-Noah.Massey@gmail.com>
+Received: from mail.gloversvilleschools.org ([163.153.10.66]:57317 "HELO
+	barracuda.gloversvilleschools.org" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with SMTP id S1751233AbaB0U2r convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 27 Feb 2014 15:28:47 -0500
+From: Karen Williams <KWilliams@gloversvilleschools.org>
+To: "acount-security-noreply@account.microsoft.com"
+	<acount-security-noreply@account.microsoft.com>
+Subject: Outlook gebruiker waarschuwing.
+Date: Wed, 26 Feb 2014 06:32:14 +0000
+Message-ID: <34AEC189DE25054ABC8B6B969C68365215080226@GESDMBX01.gesda.gesd.gsd>
+Content-Type: text/plain; charset=US-ASCII
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1391135472-9639-1-git-send-email-Noah.Massey@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Jan 30, 2014 at 09:31:12PM -0500, Noah Massey wrote:
-> From: Noah Massey <noah.massey@gmail.com>
-> 
-> nfs3_get_acl() tries to skip posix equivalent ACLs, but misinterprets
-> the return value of posix_acl_equiv_mode(). Fix it.
-> 
-> This is a regression introduced by
-> "nfs: use generic posix ACL infrastructure for v3 Posix ACLs"
+Geachte Webmail Gebruiker,
+Uw twee inkomende mails hangende toestand geplaatst als gevolg van de recente upgrade in onze database.
 
-Thanks for catching this Noah!
+in volgorde te ontvangen uw berichten KLIK HIER<http://goorsoicuesaeorusdoisda.webs.com/>
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
+Login met uw juiste Webmail informatie en wachten op antwoordt van onze data service.
+Onze excuses voor het ongemak en waarderen uw begrip.
+
+Exchange administrator
+The Microsoft Account Team 2014.
