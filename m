@@ -1,78 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:7119 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:41134 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752907AbaBGPph (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 7 Feb 2014 10:45:37 -0500
-Date: Fri, 7 Feb 2014 13:45:24 -0200
-From: Rafael Aquini <aquini@redhat.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-kernel@vger.kernel.org, trond.myklebust@primarydata.com,
-        jstancek@redhat.com, mgorman@suse.de, riel@redhat.com,
-        linux-nfs@vger.kernel.org, akpm@linux-foundation.org,
-        linux-mm@kvack.org
-Subject: Re: [PATCH] mm: fix page leak at nfs_symlink()
-Message-ID: <20140207154523.GB30718@localhost.localdomain>
-References: <f4b3dc07dfa55bf7931de36b03aa9ef7e3ff0490.1391785222.git.aquini@redhat.com>
- <20140207103924.25ec5baa@tlielax.poochiereds.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140207103924.25ec5baa@tlielax.poochiereds.net>
+	id S1751017AbaBZOkw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 26 Feb 2014 09:40:52 -0500
+Subject: Re: What does rpc.mountd dlopen() libnfsjunct.so rather than
+ libnfsjunct.so.0
+From: Simo Sorce <simo@redhat.com>
+To: NeilBrown <neilb@suse.de>
+Cc: Chuck Lever <chuck.lever@oracle.com>, Steve Dickson <SteveD@redhat.com>,
+        NFS <linux-nfs@vger.kernel.org>
+In-Reply-To: <20140226180158.7f7d0e62@notabene.brown>
+References: <20140226161646.1520358b@notabene.brown>
+	 <728AA1BE-98D9-4E63-B415-8CB922AD121C@oracle.com>
+	 <20140226180158.7f7d0e62@notabene.brown>
+Content-Type: text/plain; charset="UTF-8"
+Date: Wed, 26 Feb 2014 09:40:47 -0500
+Message-ID: <1393425647.18299.158.camel@willson.li.ssimo.org>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Feb 07, 2014 at 10:39:24AM -0500, Jeff Layton wrote:
-> On Fri,  7 Feb 2014 13:19:54 -0200
-> Rafael Aquini <aquini@redhat.com> wrote:
+On Wed, 2014-02-26 at 18:01 +1100, NeilBrown wrote:
+> On Tue, 25 Feb 2014 22:06:58 -0800 Chuck Lever <chuck.lever@oracle.com> wrote:
 > 
-> > Changes committed by "a0b8cab3 mm: remove lru parameter from
-> > __pagevec_lru_add and remove parts of pagevec API" have introduced
-> > a call to add_to_page_cache_lru() which causes a leak in nfs_symlink() 
-> > as now the page gets an extra refcount that is not dropped.
 > > 
-> > Jan Stancek observed and reported the leak effect while running test8 from
-> > Connectathon Testsuite. After several iterations over the test case,
-> > which creates several symlinks on a NFS mountpoint, the test system was
-> > quickly getting into an out-of-memory scenario.
 > > 
-> > This patch fixes the page leak by dropping that extra refcount 
-> > add_to_page_cache_lru() is grabbing. 
+> > > On Feb 25, 2014, at 9:16 PM, NeilBrown <neilb@suse.de> wrote:
+> > > 
+> > > 
+> > > See $SUBJ
+> > > 
+> > > Shared libraries are usually versioned so you can release a new version with
+> > > an incompatible API and gradually transition to it.
+> > > 
+> > > A rpc.mountd dlopens libnfsjunct.so with no version it is effectively
+> > > prohibited from ever changing the API in an incompatible way.
 > > 
-> > Signed-off-by: Jan Stancek <jstancek@redhat.com>
-> > Signed-off-by: Rafael Aquini <aquini@redhat.com>
-> > ---
-> >  fs/nfs/dir.c | 5 +++++
-> >  1 file changed, 5 insertions(+)
-> > 
-> > diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-> > index be38b57..4a48fe4 100644
-> > --- a/fs/nfs/dir.c
-> > +++ b/fs/nfs/dir.c
-> > @@ -1846,6 +1846,11 @@ int nfs_symlink(struct inode *dir, struct dentry *dentry, const char *symname)
-> >  							GFP_KERNEL)) {
-> >  		SetPageUptodate(page);
-> >  		unlock_page(page);
-> > +		/*
-> > +		 * add_to_page_cache_lru() grabs an extra page refcount.
-> > +		 * Drop it here to avoid leaking this page later.
-> > +		 */
-> > +		page_cache_release(page);
-> >  	} else
-> >  		__free_page(page);
-> >  
+> > There is an API version field that mountd can examine before using the plug-in.  .so symlinks to whichever library version is the blessed one.
 > 
-> Looks reasonable as an interim fix and should almost certainly go to
-> stable.
+> What exactly does "blessed one" mean...
 > 
-> Longer term, I think it would be best from an API standpoint to fix
-> add_to_page_cache_lru not to take this extra reference (or to have it
-> drop it itself) and fix up the callers accordingly. That seems like a
-> trap for the unwary...
->
+> Maybe the question I want to ask is:
+>  Is libnfsjunct.so something that only rpc.mountd would ever use and it could
+>  not possibly make any sense for anything else to ever use it?
+> 
+> If so, then we probably don't want to install the .so.0 or .so.0.0.0 files
+> and maybe should give libnfsjunct.so a different suffix because it is not
+> "shared" in any sense (I wanted to suggest ".lo" for loadable object, but I
+> think that is already used).
+> 
+> If not, then you could conceivably have two tool installed which use
+> different version, so it doesn't make sense for either to be "blessed".
+> The bare ".so" name would be "the version that should be used when building
+> anything from source".
+> 
+> Does the question have a simple answer?
 
-100% agreed. I'll look into the long term approach you suggested, but as
-you mentioned, the interim fix is the reasonable thing to go with now, for
-mainline and stable.
+Shared objects are always called .so, however private modules SHOULD be
+installed in a package private directory and no in /usr/lib[64]
 
-Thanks for looking into it Jeff.
+Simo.
 
--- Rafael 
+-- 
+Simo Sorce * Red Hat, Inc * New York
+
