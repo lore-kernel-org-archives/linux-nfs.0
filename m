@@ -1,121 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f176.google.com ([209.85.223.176]:36837 "EHLO
-	mail-ie0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932200AbaBAU4v (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 1 Feb 2014 15:56:51 -0500
-Received: by mail-ie0-f176.google.com with SMTP id tp5so5224172ieb.7
-        for <linux-nfs@vger.kernel.org>; Sat, 01 Feb 2014 12:56:51 -0800 (PST)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Cc: Chuck Lever <chuck.lever@oracle.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: [PATCH 2/2] NFSv4.1: nfs4_destroy_session must call rpc_destroy_waitqueue
-Date: Sat,  1 Feb 2014 15:56:48 -0500
-Message-Id: <1391288208-23750-2-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1391288208-23750-1-git-send-email-trond.myklebust@primarydata.com>
-References: <1391288208-23750-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:34676 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751170AbaBZQDK convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Feb 2014 11:03:10 -0500
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
+Subject: Re: What does rpc.mountd dlopen() libnfsjunct.so rather than libnfsjunct.so.0
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <1393425572.18299.157.camel@willson.li.ssimo.org>
+Date: Wed, 26 Feb 2014 08:02:42 -0800
+Cc: Neil Brown <neilb@suse.de>, Steve Dickson <SteveD@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <3A4B7C90-54B8-4373-B751-B02D940199BC@oracle.com>
+References: <20140226161646.1520358b@notabene.brown> <1393425572.18299.157.camel@willson.li.ssimo.org>
+To: Simo Sorce <simo@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-There may still be timers active on the session waitqueues. Make sure
-that we kill them before freeing the memory.
 
-Cc: stable@vger.kernel.org # 3.12+
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/nfs4client.c  |  2 +-
- fs/nfs/nfs4session.c | 25 ++++++++++++++++++++-----
- fs/nfs/nfs4session.h |  2 +-
- 3 files changed, 22 insertions(+), 7 deletions(-)
+On Feb 26, 2014, at 6:39 AM, Simo Sorce <simo@redhat.com> wrote:
 
-diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
-index dbb3e1f30c68..860ad26a5590 100644
---- a/fs/nfs/nfs4client.c
-+++ b/fs/nfs/nfs4client.c
-@@ -170,7 +170,7 @@ void nfs41_shutdown_client(struct nfs_client *clp)
- void nfs40_shutdown_client(struct nfs_client *clp)
- {
- 	if (clp->cl_slot_tbl) {
--		nfs4_release_slot_table(clp->cl_slot_tbl);
-+		nfs4_shutdown_slot_table(clp->cl_slot_tbl);
- 		kfree(clp->cl_slot_tbl);
- 	}
- }
-diff --git a/fs/nfs/nfs4session.c b/fs/nfs/nfs4session.c
-index cf883c7ae053..e799dc3c3b1d 100644
---- a/fs/nfs/nfs4session.c
-+++ b/fs/nfs/nfs4session.c
-@@ -231,14 +231,23 @@ out:
- 	return ret;
- }
- 
-+/*
-+ * nfs4_release_slot_table - release all slot table entries
-+ */
-+static void nfs4_release_slot_table(struct nfs4_slot_table *tbl)
-+{
-+	nfs4_shrink_slot_table(tbl, 0);
-+}
-+
- /**
-- * nfs4_release_slot_table - release resources attached to a slot table
-+ * nfs4_shutdown_slot_table - release resources attached to a slot table
-  * @tbl: slot table to shut down
-  *
-  */
--void nfs4_release_slot_table(struct nfs4_slot_table *tbl)
-+void nfs4_shutdown_slot_table(struct nfs4_slot_table *tbl)
- {
--	nfs4_shrink_slot_table(tbl, 0);
-+	nfs4_release_slot_table(tbl);
-+	rpc_destroy_wait_queue(&tbl->slot_tbl_waitq);
- }
- 
- /**
-@@ -422,7 +431,7 @@ void nfs41_update_target_slotid(struct nfs4_slot_table *tbl,
- 	spin_unlock(&tbl->slot_tbl_lock);
- }
- 
--static void nfs4_destroy_session_slot_tables(struct nfs4_session *session)
-+static void nfs4_release_session_slot_tables(struct nfs4_session *session)
- {
- 	nfs4_release_slot_table(&session->fc_slot_table);
- 	nfs4_release_slot_table(&session->bc_slot_table);
-@@ -450,7 +459,7 @@ int nfs4_setup_session_slot_tables(struct nfs4_session *ses)
- 	if (status && tbl->slots == NULL)
- 		/* Fore and back channel share a connection so get
- 		 * both slot tables or neither */
--		nfs4_destroy_session_slot_tables(ses);
-+		nfs4_release_session_slot_tables(ses);
- 	return status;
- }
- 
-@@ -470,6 +479,12 @@ struct nfs4_session *nfs4_alloc_session(struct nfs_client *clp)
- 	return session;
- }
- 
-+static void nfs4_destroy_session_slot_tables(struct nfs4_session *session)
-+{
-+	nfs4_shutdown_slot_table(&session->fc_slot_table);
-+	nfs4_shutdown_slot_table(&session->bc_slot_table);
-+}
-+
- void nfs4_destroy_session(struct nfs4_session *session)
- {
- 	struct rpc_xprt *xprt;
-diff --git a/fs/nfs/nfs4session.h b/fs/nfs/nfs4session.h
-index 232306100651..b34ada9bc6a2 100644
---- a/fs/nfs/nfs4session.h
-+++ b/fs/nfs/nfs4session.h
-@@ -74,7 +74,7 @@ enum nfs4_session_state {
- 
- extern int nfs4_setup_slot_table(struct nfs4_slot_table *tbl,
- 		unsigned int max_reqs, const char *queue);
--extern void nfs4_release_slot_table(struct nfs4_slot_table *tbl);
-+extern void nfs4_shutdown_slot_table(struct nfs4_slot_table *tbl);
- extern struct nfs4_slot *nfs4_alloc_slot(struct nfs4_slot_table *tbl);
- extern void nfs4_free_slot(struct nfs4_slot_table *tbl, struct nfs4_slot *slot);
- extern void nfs4_slot_tbl_drain_complete(struct nfs4_slot_table *tbl);
--- 
-1.8.5.3
+> On Wed, 2014-02-26 at 16:16 +1100, NeilBrown wrote:
+>> See $SUBJ
+>> 
+>> Shared libraries are usually versioned so you can release a new version with
+>> an incompatible API and gradually transition to it.
+>> 
+>> A rpc.mountd dlopens libnfsjunct.so with no version it is effectively
+>> prohibited from ever changing the API in an incompatible way.
+>> 
+>> Both Fedora and openSUSE get upset about packaging a libFOO.so in a non
+>> "-devel" package and so trip over this library which clearly needs to be
+>> installed even if you aren't doing 'devel'opment.
+> 
+> Keep in mind this rule is there only for real shared libraries that are
+> loaded by the the system loader.
+> 
+> however it is waived for 'modules' that are opened dynamically but are
+> private to the application.
+> 
+>> I would like to change mountd as per the patch below to use the ".0" file.
+>> I believe this will not break any installation as the ".so" is installed as a
+>> symlink to the ".0" (or maybe ".0.0.0").
+>> 
+>> Would this be acceptable?
+> 
+> It looks to me like this is an internal module for mountd that is not
+> for use by other apps (which is why it is not versioned and can be
+> changed at will as it is deployed at the same time mountd is ?
+
+The plug-in API is versioned internally, but maybe I got that wrong, and should remove the API version field in favor of having consumers load via a specific .so number.
+
+> Or am I wrong here ?
+> 
+> If I am not wrong I would be against this change personally and would
+> rather move the .so file in a private library dir (if it is not already
+> there) to make it clear it is a private module.
+
+rpc.mountd is the only user currently, but it’s not necessarily private to mountd.  A generic storage manager tool might use it to resolve NFS and FedFS referrals for display, for example.  We could add plug-in API functions for creating and removing referrals to enable generic tools to perform these operations.
+
+A separate directory makes sense if there’s more than one thing to put in it.  Right now we just have the plug-in library, and no plans to add more.
+
+I took an expedient approach when implementing the plug-in, and could have gotten it wrong.  I’m open to make this mechanism fit packaging guidelines and requirements.
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
 
