@@ -1,91 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-oa0-f47.google.com ([209.85.219.47]:47840 "EHLO
-	mail-oa0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752400AbaBTC2b (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Feb 2014 21:28:31 -0500
-Received: by mail-oa0-f47.google.com with SMTP id m1so1472058oag.20
-        for <linux-nfs@vger.kernel.org>; Wed, 19 Feb 2014 18:28:30 -0800 (PST)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH 3/7] NFSv4.1: Ensure that the layout recall callback matches layout stateids
-Date: Wed, 19 Feb 2014 21:28:21 -0500
-Message-Id: <1392863305-14870-3-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1392863305-14870-2-git-send-email-trond.myklebust@primarydata.com>
-References: <1392863305-14870-1-git-send-email-trond.myklebust@primarydata.com>
- <1392863305-14870-2-git-send-email-trond.myklebust@primarydata.com>
+Received: from mx11.netapp.com ([216.240.18.76]:41502 "EHLO mx11.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752604AbaB0Wtd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 27 Feb 2014 17:49:33 -0500
+From: <andros@netapp.com>
+To: <trond.myklebust@primarydata.com>
+CC: <steved@redhat.com>, <linux-nfs@vger.kernel.org>,
+        Andy Adamson <andros@netapp.com>
+Subject: [PATCH Version 2 1/1] NFSv4 always compare stateids in nfs4_stateid_is_current
+Date: Thu, 27 Feb 2014 17:49:18 -0500
+Message-ID: <1393541358-17277-1-git-send-email-andros@netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-It is not sufficient to compare filehandles when we receive a layout
-recall from the server; we also need to check that the layout stateids
-match.
+From: Andy Adamson <andros@netapp.com>
 
-Reported-by: shaobingqing <shaobingqing@bwstor.com.cn>
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+When nfs4_stateid_is_current does not compare the from the wire
+stateid to the current stateid, nfs4_read/write_stateid_changed
+can return a false positive resulting in a READ or WRITE looping
+forever retrying a bad stateid and never triggering a stateid
+recovery.
+
+Do not check the non-boolean return from nfs4_set_rw_stateid.
+
+Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfs/callback_proc.c | 15 ++++++++++-----
- 1 file changed, 10 insertions(+), 5 deletions(-)
+ fs/nfs/nfs4proc.c | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/callback_proc.c b/fs/nfs/callback_proc.c
-index ae2e87b95453..570c8a1d2f3d 100644
---- a/fs/nfs/callback_proc.c
-+++ b/fs/nfs/callback_proc.c
-@@ -112,7 +112,8 @@ out:
-  * TODO: keep track of all layouts (and delegations) in a hash table
-  * hashed by filehandle.
-  */
--static struct pnfs_layout_hdr * get_layout_by_fh_locked(struct nfs_client *clp, struct nfs_fh *fh)
-+static struct pnfs_layout_hdr * get_layout_by_fh_locked(struct nfs_client *clp,
-+		struct nfs_fh *fh, nfs4_stateid *stateid)
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 8672323..652e251 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -4053,8 +4053,8 @@ static bool nfs4_stateid_is_current(nfs4_stateid *stateid,
  {
- 	struct nfs_server *server;
- 	struct inode *ino;
-@@ -120,6 +121,8 @@ static struct pnfs_layout_hdr * get_layout_by_fh_locked(struct nfs_client *clp,
+ 	nfs4_stateid current_stateid;
  
- 	list_for_each_entry_rcu(server, &clp->cl_superblocks, client_link) {
- 		list_for_each_entry(lo, &server->layouts, plh_layouts) {
-+			if (!nfs4_stateid_match_other(&lo->plh_stateid, stateid))
-+				continue;
- 			if (nfs_compare_fh(fh, &NFS_I(lo->plh_inode)->fh))
- 				continue;
- 			ino = igrab(lo->plh_inode);
-@@ -141,13 +144,14 @@ static struct pnfs_layout_hdr * get_layout_by_fh_locked(struct nfs_client *clp,
- 	return NULL;
- }
- 
--static struct pnfs_layout_hdr * get_layout_by_fh(struct nfs_client *clp, struct nfs_fh *fh)
-+static struct pnfs_layout_hdr * get_layout_by_fh(struct nfs_client *clp,
-+		struct nfs_fh *fh, nfs4_stateid *stateid)
- {
- 	struct pnfs_layout_hdr *lo;
- 
- 	spin_lock(&clp->cl_lock);
- 	rcu_read_lock();
--	lo = get_layout_by_fh_locked(clp, fh);
-+	lo = get_layout_by_fh_locked(clp, fh, stateid);
- 	rcu_read_unlock();
- 	spin_unlock(&clp->cl_lock);
- 
-@@ -162,9 +166,9 @@ static u32 initiate_file_draining(struct nfs_client *clp,
- 	u32 rv = NFS4ERR_NOMATCHING_LAYOUT;
- 	LIST_HEAD(free_me_list);
- 
--	lo = get_layout_by_fh(clp, &args->cbl_fh);
-+	lo = get_layout_by_fh(clp, &args->cbl_fh, &args->cbl_stateid);
- 	if (!lo)
--		return NFS4ERR_NOMATCHING_LAYOUT;
-+		goto out;
- 
- 	ino = lo->plh_inode;
- 	spin_lock(&ino->i_lock);
-@@ -179,6 +183,7 @@ static u32 initiate_file_draining(struct nfs_client *clp,
- 	pnfs_free_lseg_list(&free_me_list);
- 	pnfs_put_layout_hdr(lo);
- 	iput(ino);
-+out:
- 	return rv;
+-	if (nfs4_set_rw_stateid(&current_stateid, ctx, l_ctx, fmode))
+-		return false;
++	nfs4_stateid_copy(&current_stateid, &zero_stateid);
++	nfs4_set_rw_stateid(&current_stateid, ctx, l_ctx, fmode);
+ 	return nfs4_stateid_match(stateid, &current_stateid);
  }
  
 -- 
-1.8.5.3
+1.8.3.1
 
