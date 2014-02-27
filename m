@@ -1,62 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:42757 "EHLO mx2.suse.de"
+Received: from mx12.netapp.com ([216.240.18.77]:16326 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750703AbaBTGjC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 20 Feb 2014 01:39:02 -0500
-From: Neil Brown <neilb@suse.de>
-To: Steve Dickson <SteveD@redhat.com>
-Date: Thu, 20 Feb 2014 17:36:48 +1100
-Subject: [PATCH 3/4] nfsd: set nlm grace time to make NFSv4 grace time
-Cc: linux-nfs@vger.kernel.org
-Message-ID: <20140220063648.6548.44668.stgit@notabene.brown>
-In-Reply-To: <20140220063616.6548.42556.stgit@notabene.brown>
-References: <20140220063616.6548.42556.stgit@notabene.brown>
+	id S1750742AbaB0TN5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 27 Feb 2014 14:13:57 -0500
+From: <andros@netapp.com>
+To: <trond.myklebust@primarydata.com>
+CC: <steved@redhat.com>, <linux-nfs@vger.kernel.org>,
+        Andy Adamson <andros@netapp.com>
+Subject: [PATCH 1/1] NFSv4 always compare stateids in nfs4_stateid_is_current
+Date: Thu, 27 Feb 2014 14:13:50 -0500
+Message-ID: <1393528430-5237-1-git-send-email-andros@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-These two values are conceptually very similar, so it probably makes
-sense to set them to the same value at the same time.
+From: Andy Adamson <andros@netapp.com>
 
-Signed-off-by: NeilBrown <neilb@suse.de>
+When nfs4_stateid_is_current does not compare the from the wire
+stateid to the current stateid, nfs4_read/write_stateid_changed
+can return a false positive resulting in a READ or WRITE looping
+forever retrying a bad stateid and never triggering a stateid
+recovery.
+
+Do not check the non-boolean return from nfs4_set_rw_stateid.
+
+Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- utils/nfsd/nfsd.man |    3 ++-
- utils/nfsd/nfssvc.c |    8 ++++++++
- 2 files changed, 10 insertions(+), 1 deletion(-)
+ fs/nfs/nfs4proc.c | 5 ++---
+ 1 file changed, 2 insertions(+), 3 deletions(-)
 
-diff --git a/utils/nfsd/nfsd.man b/utils/nfsd/nfsd.man
-index 58b53cbff009..c6d3ffbd3675 100644
---- a/utils/nfsd/nfsd.man
-+++ b/utils/nfsd/nfsd.man
-@@ -89,7 +89,8 @@ clients need to confirm their state with the server. Valid range is
- from 10 to 3600 seconds.
- .TP
- .B \-G " or " \-\-grace-time seconds
--Set the grace-time used for NFSv4.  New file open requests will not be
-+Set the grace-time used for NFSv4 and NLM (for NFSv2 and NFSv3).
-+New file open requests (NFSv4) and new file locks (NLM) will not be
- allowed until after this time has passed to allow clients to recover state.
- .TP
- .I nproc
-diff --git a/utils/nfsd/nfssvc.c b/utils/nfsd/nfssvc.c
-index 337ab169c194..5e14cce58053 100644
---- a/utils/nfsd/nfssvc.c
-+++ b/utils/nfsd/nfssvc.c
-@@ -317,6 +317,14 @@ nfssvc_set_time(const char *type, const int seconds)
- 			xlog(L_ERROR, "Unable to set nfsv4%stime: %m", type);
- 		close(fd);
- 	}
-+	if (strcmp(type, "grace") == 0) {
-+		/* set same value for lockd */
-+		fd = open("/proc/sys/fs/nfs/nlm_grace_period", O_WRONLY);
-+		if (fd >= 0) {
-+			write(fd, nbuf, strlen(nbuf));
-+			close(fd);
-+		}
-+	}
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 8672323..11566a4 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -4051,10 +4051,9 @@ static bool nfs4_stateid_is_current(nfs4_stateid *stateid,
+ 		const struct nfs_lock_context *l_ctx,
+ 		fmode_t fmode)
+ {
+-	nfs4_stateid current_stateid;
++	nfs4_stateid current_stateid = &zero_stateid;
+ 
+-	if (nfs4_set_rw_stateid(&current_stateid, ctx, l_ctx, fmode))
+-		return false;
++	nfs4_set_rw_stateid(&current_stateid, ctx, l_ctx, fmode);
+ 	return nfs4_stateid_match(stateid, &current_stateid);
  }
  
- void
-
+-- 
+1.8.3.1
 
