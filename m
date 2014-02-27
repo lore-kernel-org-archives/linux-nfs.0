@@ -1,52 +1,55 @@
-From: "Dr. Musa Hamed" <drmusahamed01@gmail.com>
-Subject: I have a very lucrative Business
-Date: Wed, 8 Jan 2014 21:47:31 +0100
-Message-ID: <CALS90i9nMs6jMoH2O5S68sPF=juYOV2sfMAwaBekL8ccz3eSOQ__1098.36022970757$1389215923$gmane$org@mail.gmail.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-To: undisclosed-recipients:;
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mail-we0-f193.google.com ([74.125.82.193]:55175 "EHLO
-	mail-we0-f193.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757207AbaAHVSc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 8 Jan 2014 16:18:32 -0500
-Received: by mail-we0-f193.google.com with SMTP id q58so452602wes.0
-        for <linux-nfs@vger.kernel.org>; Wed, 08 Jan 2014 13:18:31 -0800 (PST)
+Return-Path: linux-nfs-owner@vger.kernel.org
+Received: from verein.lst.de ([213.95.11.211]:40771 "EHLO newverein.lst.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751334AbaB0U4Q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 27 Feb 2014 15:56:16 -0500
+Date: Thu, 27 Feb 2014 21:50:29 +0100
+From: Christoph Hellwig <hch@lst.de>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>, xfs@oss.sgi.com
+Subject: Re: xfstests with NFS
+Message-ID: <20140227205029.GA29741@lst.de>
+References: <27AB99CF-CEF3-4AC5-AFBD-6648F3B3BED2@oracle.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <27AB99CF-CEF3-4AC5-AFBD-6648F3B3BED2@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-ATTN: Dear,
+On Thu, Feb 27, 2014 at 10:32:51AM -0800, Chuck Lever wrote:
+> 
+> I’m running xfstests to validate functionality of a particular
+> NFS client/transport/server set up.
+> 
+> There are a couple of tests that may not always be appropriate for
+> FSTYP=nfs.  We weren’t able to identify a bugzilla where we can report
+> these issues.
 
-I am Dr. Musa Hamed Executive Director of the Bank of Africa
-Plc B.O.A,Cotonou Benin Rep. I have a very lucrative Business proposal
-worth of 21,500,000.00 USD.
+Just send the to the xfs list.  (and cap lines after 75 chars like for all
+Linux lists..)
 
-An Iraqi named Hamadi Hashem a business man made a fixed deposit of
-21,500,000.00 USD . Upon maturity several notices was sent to him,
-even during the war,eleven years ago (2003) up till this date. Again
-after the war another notification was sent and still no response came
-from him. it has been found out that Hamadi Hashem and his family had
-been killed during the war in bomb blast that hit their home at
-Mukaradeeb where his personal oil well was. I am prepared to split the
-funds with you 50%:50%.By placing you as the NEXT OF KIN to his
-deposit.
+> generic/192 tests atime changes.  The Linux NFS client (and probably
+> others) typically optimizes away atime changes.  Thus this test fails
+> for NFS mounts on Linux.  I’m wondering if we can treat NFS as always
+> a noatime filesystem.
 
-Should you be interested in doing this deal with me, please send me
-the following information:
+I guess there's two components to this if we want to do it properly:
 
-(1) Your Name
-(2) Resident Address
-(3) Your Occupation
-(4) Your Phone Number
-(5) Date of Birth
-(6) Resident Country
+ - make sure nfs always reports noatime in /proc/self/mounts instead
+   of incorrectly claiming it supports relatime by default
+ - _notrun 192 if it detects the filesystems reports noatime.
 
-And I will prefer you to reach me privately and securely on my personal
-email address: dr.musahamed30-Qt13gs6zZMY@public.gmane.org
-Tel: +229-988-400-97
+> generic/237 tries setfacl.  On NFS mounts, the operation always returns
+> “Operation not supported,” but the test is looking for “Operation not
+> permitted.”  The former is an acceptable pass, IMO.  I considered
+> disabling this test for NFS, but I would bet some NFS client
+> implementations actually do support setfacl().
 
-I will provide you with further information as soon as I hear
-positively from you.
+The NFSv3 client support ACLs perfectly, it's just NFSv4 that's messed up.
 
-Regards,
-Dr. Musa Hamed
+237 does a _require_acls before ding thæ test, which checks for
+ENOSYS or EOPNOTSUPP, which in theory should catch NFSv4 in theory, but
+if this doesn't happen try to debug it by looking at the _require_acls shell
+function, the chacl implementation, the NFSv4 ACL stubs and anything else
+related.
+
