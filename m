@@ -1,42 +1,36 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:43685 "EHLO mx2.suse.de"
+Received: from smtp-o-3.desy.de ([131.169.56.156]:53144 "EHLO smtp-o-3.desy.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751845AbaBTG4n (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 20 Feb 2014 01:56:43 -0500
-From: Neil Brown <neilb@suse.de>
-To: Steve Dickson <SteveD@redhat.com>
-Date: Thu, 20 Feb 2014 17:55:30 +1100
-Subject: [PATCH 4/6] systemd: remove @localstatedir@ marking.
-Cc: linux-nfs@vger.kernel.org
-Message-ID: <20140220065530.7320.89196.stgit@notabene.brown>
-In-Reply-To: <20140220065345.7320.49992.stgit@notabene.brown>
-References: <20140220065345.7320.49992.stgit@notabene.brown>
+	id S1752129AbaB0Szz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 27 Feb 2014 13:55:55 -0500
+Received: from smtp-map-3.desy.de (smtp-map-3.desy.de [131.169.56.68])
+	by smtp-o-3.desy.de (DESY-O-3) with ESMTP id 5C2402809A0
+	for <linux-nfs@vger.kernel.org>; Thu, 27 Feb 2014 19:55:52 +0100 (CET)
+Received: from ZITSWEEP4.win.desy.de (zitsweep4.win.desy.de [131.169.97.98])
+	by smtp-map-3.desy.de (DESY_MAP_3) with ESMTP id 3568C4A06
+	for <linux-nfs@vger.kernel.org>; Thu, 27 Feb 2014 19:55:51 +0100 (MET)
+Received: from smtp-intra-3.desy.de (lb-40-26.desy.de) by ZITSWEEP4.win.desy.de
+ (Clearswift SMTPRS 5.5.0) with ESMTP id <Tb181539c6583a96162fe8@ZITSWEEP4.win.desy.de> for <linux-nfs@vger.kernel.org>;
+ Thu, 27 Feb 2014 19:55:51 +0100
+Received: from zimbratest.desy.de (zimbratest.desy.de [131.169.72.254])
+	by smtp-intra-3.desy.de (DESY-INTRA-3) with ESMTP id 9799F4A06
+	for <linux-nfs@vger.kernel.org>; Thu, 27 Feb 2014 19:55:51 +0100 (MET)
+Date: Thu, 27 Feb 2014 19:55:51 +0100 (CET)
+From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-ID: <1634529985.321049.1393527351393.JavaMail.zimbra@desy.de>
+In-Reply-To: <1332832676.321036.1393527245121.JavaMail.zimbra@desy.de>
+Subject: pnfs: closed connection on timeout?
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This isn't used so currently is inconvenient.
-Once we decide how to handle this sort of thing we can apply
-the change uniformly.
-
-Signed-off-by: NeilBrown <neilb@suse.de>
----
- systemd/rpc-svcgssd.service |    2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
-
-diff --git a/systemd/rpc-svcgssd.service b/systemd/rpc-svcgssd.service
-index 32b786ec5c7d..f7424b0b1085 100644
---- a/systemd/rpc-svcgssd.service
-+++ b/systemd/rpc-svcgssd.service
-@@ -6,7 +6,7 @@ PartOf=nfs-server.service
- PartOf=nfs-utils.service
- 
- After=gssproxy.service
--ConditionPathExists=|!@localstatedir@/run/gssproxy.pid
-+ConditionPathExists=|!/run/gssproxy.pid
- ConditionPathExists=|!/proc/net/rpc/use-gss-proxy
- ConditionPathExists=/etc/krb5.keytab
- 
 
 
+Hi,
+
+we observe, that under high load, time-to-time client decides to
+close connection to DS. Can delayed reply trigger such behavior?
+
+Tigran.
