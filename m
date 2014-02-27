@@ -1,186 +1,132 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:58170 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751629AbaBGEVQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 6 Feb 2014 23:21:16 -0500
-Date: Fri, 7 Feb 2014 15:21:05 +1100
-From: NeilBrown <neilb@suse.de>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] NFS: Do not set NFS_INO_INVALID_LABEL unless server
- supports labeled NFS
-Message-ID: <20140207152105.2f0970e1@notabene.brown>
-In-Reply-To: <1391716418-7353-1-git-send-email-trond.myklebust@primarydata.com>
-References: <20140206135101.1cc83442@notabene.brown>
-	<1391716418-7353-1-git-send-email-trond.myklebust@primarydata.com>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/gGS.QZlT1FfR972AjAqVmZ_"; protocol="application/pgp-signature"
+Received: from userp1040.oracle.com ([156.151.31.81]:22693 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752257AbaB0Q6H convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Feb 2014 11:58:07 -0500
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.1 \(1827\))
+Subject: Re: What does rpc.mountd dlopen() libnfsjunct.so rather than libnfsjunct.so.0
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20140227095859.19ba8a87@notabene.brown>
+Date: Thu, 27 Feb 2014 08:57:56 -0800
+Cc: Simo Sorce <simo@redhat.com>, Steve Dickson <SteveD@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <CD047B67-388C-4848-A020-917E51CF3EB5@oracle.com>
+References: <20140226161646.1520358b@notabene.brown> <1393425572.18299.157.camel@willson.li.ssimo.org> <3A4B7C90-54B8-4373-B751-B02D940199BC@oracle.com> <20140227095859.19ba8a87@notabene.brown>
+To: Neil Brown <neilb@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/gGS.QZlT1FfR972AjAqVmZ_
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
 
-On Thu,  6 Feb 2014 14:53:38 -0500 Trond Myklebust
-<trond.myklebust@primarydata.com> wrote:
+On Feb 26, 2014, at 2:58 PM, NeilBrown <neilb@suse.de> wrote:
 
-> Commit aa9c2669626c (NFS: Client implementation of Labeled-NFS) introduces
-> a performance regression. When nfs_zap_caches_locked is called, it sets
-> the NFS_INO_INVALID_LABEL flag irrespectively of whether or not the
-> NFS server supports security labels. Since that flag is never cleared,
-> it means that all calls to nfs_revalidate_inode() will now trigger
-> an on-the-wire GETATTR call.
->=20
-> This patch ensures that we never set the NFS_INO_INVALID_LABEL unless the
-> server advertises support for labeled NFS.
-> It also causes nfs_setsecurity() to clear NFS_INO_INVALID_LABEL when it
-> has successfully set the security label for the inode.
-> Finally it gets rid of the NFS_INO_INVALID_LABEL cruft from nfs_update_in=
-ode,
-> which has nothing to do with labeled NFS.
->=20
-> Reported-by: Neil Brown <neilb@suse.de>
-> Cc: stable@vger.kernel.org # 3.11+
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> ---
->=20
-> Hi Neil,
-> Does this fix the GETATTR regression that you reported?
+> On Wed, 26 Feb 2014 08:02:42 -0800 Chuck Lever <chuck.lever@oracle.com> wrote:
+> 
+>> 
+>> On Feb 26, 2014, at 6:39 AM, Simo Sorce <simo@redhat.com> wrote:
+>> 
+>>> On Wed, 2014-02-26 at 16:16 +1100, NeilBrown wrote:
+>>>> See $SUBJ
+>>>> 
+>>>> Shared libraries are usually versioned so you can release a new version with
+>>>> an incompatible API and gradually transition to it.
+>>>> 
+>>>> A rpc.mountd dlopens libnfsjunct.so with no version it is effectively
+>>>> prohibited from ever changing the API in an incompatible way.
+>>>> 
+>>>> Both Fedora and openSUSE get upset about packaging a libFOO.so in a non
+>>>> "-devel" package and so trip over this library which clearly needs to be
+>>>> installed even if you aren't doing 'devel'opment.
+>>> 
+>>> Keep in mind this rule is there only for real shared libraries that are
+>>> loaded by the the system loader.
+>>> 
+>>> however it is waived for 'modules' that are opened dynamically but are
+>>> private to the application.
+>>> 
+>>>> I would like to change mountd as per the patch below to use the ".0" file.
+>>>> I believe this will not break any installation as the ".so" is installed as a
+>>>> symlink to the ".0" (or maybe ".0.0.0").
+>>>> 
+>>>> Would this be acceptable?
+>>> 
+>>> It looks to me like this is an internal module for mountd that is not
+>>> for use by other apps (which is why it is not versioned and can be
+>>> changed at will as it is deployed at the same time mountd is ?
+>> 
+>> The plug-in API is versioned internally, but maybe I got that wrong, and should remove the API version field in favor of having consumers load via a specific .so number.
+> 
+> The problem I see with using the internal versioning is that if the version
+> is wrong, mountd fails to provide the required service.
+> So while I don't object to storing the version and performing the test, we
+> should design work-flows so that the test can only fail if there is a serious
+> configuration error, not just during a software upgrade.
+> 
+>> 
+>>> Or am I wrong here ?
+>>> 
+>>> If I am not wrong I would be against this change personally and would
+>>> rather move the .so file in a private library dir (if it is not already
+>>> there) to make it clear it is a private module.
+>> 
+>> rpc.mountd is the only user currently, but it’s not necessarily private to mountd.  A generic storage manager tool might use it to resolve NFS and FedFS referrals for display, for example.  We could add plug-in API functions for creating and removing referrals to enable generic tools to perform these operations.
+> 
+> This is the answer I was looking for to the question I asked earlier - thanks.
+> (So this is not an 'intimate library' to use Simo's term - it is truly a
+> shared library).
+> 
+> If, one day, an incompatible ABI change was needed then we could have an
+> rpc.mountd installed  (or still running) which requires one ABI, and a
+> generic storage manager tool which requires the other.
+> So we really need them to be stored in two different files.
+> e.g. libnfsjunct.so.0 and libnfsjunct.so.1
 
-Yes, thanks.
-With this patch I don't get streams of GETATTR requests after the READDIR
-request which I previously fixed with that oneline change in inode.c
+I was hoping this would never happen.  One plug-in library should be able to serve mountd or any other tool that might need to play with junctions.
 
-Tested-by: NeilBrown <neilb@suse.de>
+Only a crazy developer like me would ever need to have more than one library version at a time, and even then, it’s pretty simple to build what I need and reinstall, rather than having more than one installed at a time.
 
-Thanks,
-NeilBrown
+> To put it another way... libnfsjunct really is a shared library.
+> The *only* reason that rpc.mountd treats it differently to other shared
+> libraries is so that it can fail gracefully if the library isn't available
+> (thus removing hard dependencies) - a difference that I am very comfortable
+> with.
+> In every other way it should be treated like a shared library
+> - it should live in the standard /lib64 or whatever
+> - each application determines at compile-time what version it needs and finds
+>   it by appending the version number to the base file name
+> - the "libfoo.so" file should live in the "-devel" package along with the
+>   include file(s)
+> 
+> 
+> So rather than dlopening "libnfsjunct.so.0" rpc.mountd should probably
+> use a library name provided by the include file
 
+I’m dense, I still don’t see why this makes a difference.  I’ll admit that linker fu is something I’ve left to others, so don’t be afraid to spell it out slowly for me.
 
->=20
-> Cheers
->  Trond
->=20
->  fs/nfs/inode.c    | 14 ++++++++++----
->  fs/nfs/internal.h |  9 +++++++++
->  2 files changed, 19 insertions(+), 4 deletions(-)
->=20
-> diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-> index 29cb93653b3c..4636b828e957 100644
-> --- a/fs/nfs/inode.c
-> +++ b/fs/nfs/inode.c
-> @@ -169,7 +169,6 @@ static void nfs_zap_caches_locked(struct inode *inode)
->  	if (S_ISREG(mode) || S_ISDIR(mode) || S_ISLNK(mode)) {
->  		nfs_fscache_invalidate(inode);
->  		nfsi->cache_validity |=3D NFS_INO_INVALID_ATTR
-> -					| NFS_INO_INVALID_LABEL
->  					| NFS_INO_INVALID_DATA
->  					| NFS_INO_INVALID_ACCESS
->  					| NFS_INO_INVALID_ACL
-> @@ -177,10 +176,10 @@ static void nfs_zap_caches_locked(struct inode *ino=
-de)
->  		nfs_zap_readdir_cookie(nfsi);
->  	} else
->  		nfsi->cache_validity |=3D NFS_INO_INVALID_ATTR
-> -					| NFS_INO_INVALID_LABEL
->  					| NFS_INO_INVALID_ACCESS
->  					| NFS_INO_INVALID_ACL
->  					| NFS_INO_REVAL_PAGECACHE;
-> +	nfs_zap_label_cache_locked(nfsi);
->  }
-> =20
->  void nfs_zap_caches(struct inode *inode)
-> @@ -272,6 +271,13 @@ nfs_init_locked(struct inode *inode, void *opaque)
->  }
-> =20
->  #ifdef CONFIG_NFS_V4_SECURITY_LABEL
-> +static void nfs_clear_label_invalid(struct inode *inode)
-> +{
-> +	spin_lock(&inode->i_lock);
-> +	NFS_I(inode)->cache_validity &=3D ~NFS_INO_INVALID_LABEL;
-> +	spin_unlock(&inode->i_lock);
-> +}
-> +
->  void nfs_setsecurity(struct inode *inode, struct nfs_fattr *fattr,
->  					struct nfs4_label *label)
->  {
-> @@ -289,6 +295,7 @@ void nfs_setsecurity(struct inode *inode, struct nfs_=
-fattr *fattr,
->  					__func__,
->  					(char *)label->label,
->  					label->len, error);
-> +		nfs_clear_label_invalid(inode);
->  	}
->  }
-> =20
-> @@ -1654,7 +1661,7 @@ static int nfs_update_inode(struct inode *inode, st=
-ruct nfs_fattr *fattr)
->  		inode->i_blocks =3D fattr->du.nfs2.blocks;
-> =20
->  	/* Update attrtimeo value if we're out of the unstable period */
-> -	if (invalid & (NFS_INO_INVALID_ATTR|NFS_INO_INVALID_LABEL)) {
-> +	if (invalid & NFS_INO_INVALID_ATTR) {
->  		nfs_inc_stats(inode, NFSIOS_ATTRINVALIDATE);
->  		nfsi->attrtimeo =3D NFS_MINATTRTIMEO(inode);
->  		nfsi->attrtimeo_timestamp =3D now;
-> @@ -1667,7 +1674,6 @@ static int nfs_update_inode(struct inode *inode, st=
-ruct nfs_fattr *fattr)
->  		}
->  	}
->  	invalid &=3D ~NFS_INO_INVALID_ATTR;
-> -	invalid &=3D ~NFS_INO_INVALID_LABEL;
->  	/* Don't invalidate the data if we were to blame */
->  	if (!(S_ISREG(inode->i_mode) || S_ISDIR(inode->i_mode)
->  				|| S_ISLNK(inode->i_mode)))
-> diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-> index 8b5cc04a8611..fafdddac8271 100644
-> --- a/fs/nfs/internal.h
-> +++ b/fs/nfs/internal.h
-> @@ -279,9 +279,18 @@ static inline void nfs4_label_free(struct nfs4_label=
- *label)
->  	}
->  	return;
->  }
-> +
-> +static inline void nfs_zap_label_cache_locked(struct nfs_inode *nfsi)
-> +{
-> +	if (nfs_server_capable(&nfsi->vfs_inode, NFS_CAP_SECURITY_LABEL))
-> +		nfsi->cache_validity |=3D NFS_INO_INVALID_LABEL;
-> +}
->  #else
->  static inline struct nfs4_label *nfs4_label_alloc(struct nfs_server *ser=
-ver, gfp_t flags) { return NULL; }
->  static inline void nfs4_label_free(void *label) {}
-> +static inline void nfs_zap_label_cache_locked(struct nfs_inode *nfsi)
-> +{
-> +}
->  #endif /* CONFIG_NFS_V4_SECURITY_LABEL */
-> =20
->  /* proc.c */
+> Thanks,
+> NeilBrown
+> 
+> diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+> index ca35de28847a..1a8c20492869 100644
+> --- a/utils/mountd/cache.c
+> +++ b/utils/mountd/cache.c
+> @@ -1139,7 +1139,11 @@ static struct exportent *lookup_junction(char *dom, const char *pathname,
+> 	struct link_map *map;
+> 	void *handle;
+> 
+> -	handle = dlopen("libnfsjunct.so", RTLD_NOW);
+> +#ifdef JP_LIB_NAME
+> +	handle = dlopen(JP_LIB_NAME, RTLD_NOW);
+> +#else
+> +	handle = dlopen("libnfsjunct.so.0", RTLD_NOW);
+> +#endif
+> 	if (handle == NULL) {
+> 		xlog(D_GENERAL, "%s: dlopen: %s", __func__, dlerror());
+> 		return NULL;
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
 
---Sig_/gGS.QZlT1FfR972AjAqVmZ_
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.22 (GNU/Linux)
-
-iQIVAwUBUvRfMTnsnt1WYoG5AQLpKA/9FitFHuXVjLHyirbNsqovbgBBLUD12DiC
-0OIvvKFA1ElNRaTUoBUms9mPcCz+9KBWIUEU4qUJQVFRLSnDGdSrZJypc7tVd7cp
-Fts0vA6d9bJPvMaIz3frHGED4xFBLRzBKdPU8AZNEYI+fkFq2PZpE6VDPYas8OBk
-x+zFEWR31NxAr8k7QkzdPH5uayOdTyWypSa3qYYHfJmMDOOcyeuMTOGl9z2PW9+T
-ViO70JzNP7WsBz1WawGQuBx2L6C5+fDlJqEQBpPu6d/3rkWHiItXKMBFLzQq7B+l
-9DsM1+ErVF/6IErd6t0FabTb7GNHmOZtm5O3JcqkBZ1iHxmVi/HxW5m1XT3w7BuN
-tEp6/Ic/wXqO05za+7NWSQ0dabIOM3+nvDoqOgxCIJbfJ5xlJdf+2g7cevUHc+vy
-PugX6OZMv9QT8FuvBrXPMRuojIw6lMbmkFN5B+K08cgP6kLO2FX5JyUn0gJ0EnFp
-INs409Z7d5iBOtB1cU+e7iTRgkril3RMxVuJ/ah8I2zHW1Y1ji/28+Q6RzK9SCew
-A8U5HL1rv1tUVz7JNoGdQ/ZFeVweJSi4y9isd2Fes1iKzEGq6qGjoQMclxFWbE3H
-F6Vb3yk1/fNQPf0SxTl+3TVgINCpO/P/0GTCbn5fOXb3FPL8564sKzj+slpnuRz2
-B2U/2IdL4WY=
-=j3Lj
------END PGP SIGNATURE-----
-
---Sig_/gGS.QZlT1FfR972AjAqVmZ_--
