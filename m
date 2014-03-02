@@ -1,97 +1,90 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:53122 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751249AbaCEF7s (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 5 Mar 2014 00:59:48 -0500
-Date: Wed, 5 Mar 2014 16:59:33 +1100
-From: NeilBrown <neilb@suse.de>
-To: Al Viro <viro@ZenIV.linux.org.uk>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/8] NFS: prepare for RCU-walk support but pushing tests
- later in code.
-Message-ID: <20140305165933.09ca9d84@notabene.brown>
-In-Reply-To: <20140305053441.GX18016@ZenIV.linux.org.uk>
-References: <20140305025813.27421.23871.stgit@notabene.brown>
-	<20140305030028.27421.92032.stgit@notabene.brown>
-	<20140305053441.GX18016@ZenIV.linux.org.uk>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/Dw=F0Q9zvHqQhC.OzIyNF8O"; protocol="application/pgp-signature"
+Received: from userp1040.oracle.com ([156.151.31.81]:20779 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752282AbaCBW3H convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 2 Mar 2014 17:29:07 -0500
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
+Subject: Re: Proposal for simplifying NFS/RDMA client memory registration
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <53125125.9010709@opengridcomputing.com>
+Date: Sun, 2 Mar 2014 17:28:57 -0500
+Cc: Wendy Cheng <s.wendy.cheng@gmail.com>, Tom Talpey <tom@talpey.com>,
+        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Shirley Ma <shirley.ma@oracle.com>
+Message-Id: <58CE3CFB-287B-4A59-82B8-6A0640101379@oracle.com>
+References: <01C4496A-F074-4F72-9DF0-6076C05E8A1F@oracle.com> <53110287.9000400@talpey.com> <CABgxfbHwo13ma=-Xn+S36WwD8LVNLdw6UHztFe8EkCA_=NBenw@mail.gmail.com> <CABgxfbHg0B02c2zpYdCB4pUZZhhA4aKRuyh4Kx=NE1yAisFLLQ@mail.gmail.com> <B83B4DA6-E9CF-4DF3-9227-5EF9B4D25F4D@oracle.com> <53125125.9010709@opengridcomputing.com>
+To: Tom Tucker <tom@opengridcomputing.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/Dw=F0Q9zvHqQhC.OzIyNF8O
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
 
-On Wed, 5 Mar 2014 05:34:41 +0000 Al Viro <viro@ZenIV.linux.org.uk> wrote:
+On Mar 1, 2014, at 4:29 PM, Tom Tucker <tom@opengridcomputing.com> wrote:
 
-> On Wed, Mar 05, 2014 at 02:00:28PM +1100, NeilBrown wrote:
-> > -	parent =3D dget_parent(dentry);
-> > +		parent =3D rcu_dereference(dentry->d_parent);
-> > +	else
-> > +		parent =3D dget_parent(dentry);
-> >  	dir =3D parent->d_inode;
-> >  	nfs_inc_stats(dir, NFSIOS_DENTRYREVALIDATE);
->=20
+> Hi Chuck,
+> 
+> I have a patch for the server side that simplifies the memory registration and fixes a bug where the server ignores the FRMR hardware limits. This bug is actually upstream now.
+> 
+> I have been sitting on it because it's a big patch and will require a lot of testing/review to get it upstream. This is Just an FYI in case there is someone on your team who has the bandwidth to take this work and finish it up.
 
-Hi Al,
- thanks for the review.
-
-> ... and in RCU mode there's nothing to stop parent from
-> 	a) not being dentry->d_parent anymore
-
-Does that matter?  Surely dentry->d_parent exists, is still a dentry, and w=
-as
-recently the parent to dentry (i.e. since the last grace period).  If it has
-changed (which it must if it is no longer our parent), then the cache
-validity checks are bound to fail and we will fall back to refcnt-walk as we
-should.
-
-> 	b) having already become negative.
-
-I didn't think dentries ever became negative.  When a file is deleted the o=
-ld
-positive dentry is unlinked and a new negative dentry is created in it's
-place.
-Or has that changed since last I looked?
-
-If they can become negative, then I could
-   dir =3D ACCESS_ONCE(parent->d_inode);
-   if (!dir)
-        return -ECHILD;
-
-Do you think that would be safe?
-
-Thanks,
-NeilBrown
+Why not post what you have, and then we can see what can be done.
 
 
->=20
-> NAK.
+> 
+> Thanks,
+> Tom
+> 
+> On 2/28/14 8:59 PM, Chuck Lever wrote:
+>> Hi Wendy-
+>> 
+>> On Feb 28, 2014, at 5:26 PM, Wendy Cheng <s.wendy.cheng@gmail.com> wrote:
+>> 
+>>> On Fri, Feb 28, 2014 at 2:20 PM, Wendy Cheng <s.wendy.cheng@gmail.com> wrote:
+>>>> ni i...On Fri, Feb 28, 2014 at 1:41 PM, Tom Talpey <tom@talpey.com> wrote:
+>>>>> On 2/26/2014 8:44 AM, Chuck Lever wrote:
+>>>>>> Hi-
+>>>>>> 
+>>>>>> Shirley Ma and I are reviving work on the NFS/RDMA client code base in
+>>>>>> the Linux kernel.  So far we've built and run functional tests to determine
+>>>>>> what is working and what is broken.
+>>>>>> 
+>>>>>> [snip]
+>>>> 
+>>>>>> ALLPHYSICAL - Usually fast, but not safe as it exposes client memory.
+>>>>>> All HCAs support this mode.
+>>>>> 
+>>>>> Not safe is an understatement. It exposes all of client physical
+>>>>> memory to the peer, for both read and write. A simple pointer error
+>>>>> on the server will silently corrupt the client. This mode was
+>>>>> intended only for testing, and in experimental deployments.
+>>> (sorry, resend .. previous reply bounced back due to gmail html format)
+>>> 
+>>> Please keep "ALLPHYSICAL" for now  - as our embedded system needs it.
+>> This is just the client side.  Confirming that you still need support for the ALLPHYSICAL memory registration mode in the NFS/RDMA client.
+>> 
+>> Do you have plans to move to a mode that is less risky?  If not, can we depend on you to perform regular testing with ALLPHYSICAL as we update the client code?  Do you have any bug fixes you’d like to merge upstream?
+>> 
+>> --
+>> Chuck Lever
+>> chuck[dot]lever[at]oracle[dot]com
+>> 
+>> 
+>> 
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+-- 
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
 
 
---Sig_/Dw=F0Q9zvHqQhC.OzIyNF8O
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.22 (GNU/Linux)
 
-iQIVAwUBUxa9RTnsnt1WYoG5AQJX5Q//b2CL+39Z3jmbL9nb2JEVSpNRpVrqBt+s
-y6GPQBOpis64QMGGwoEqdyYutSMfnNqIEqB7yOqKqHeTjX/PI/9XZxe/mJmGFRBd
-c5yEXkCWlvc5SqU1TyJpJRUvYGFx3M63k31lC2/dp6aPH78KcsfdNwJ3e0jkM4al
-bBWe1rU7WqCjsrEHwkZ94tTsDcTe0XigZYelrDLBw2x3o6cNV9jZz5NXrBxz4cdT
-H+fwqtwKYqJKs+Egap9E+Tk0huZOvzQRqDfbt7PeR6xPUgbHnWxyPm//KSRWXy8J
-uy+L4r8zCPcDJGrrvttAYorJ5G5g4bvSngWJ2vKeSC29aJYTy/S5O/P3LjLOqFwW
-JqDtf5/a37o7L5yu1T97+IJRhMCLHSR4HuwS4l6lJ20sgkYIb/YjhRVq2/kZNxFB
-LLps4GwOFPctZRI64brH8fZrhzZT9xWb7BiyZRTGTH/zATr159A7Gjs8g9KKumSn
-Ikvkh7l7y26WPZ4Ka8lvjy4B89P+AZjtHJohE51rN/P6hu35YNs83vivMosL2VkL
-bNP4LziyqIs7tiIBAqXY+9BPeCZcpLQjdB8E/Lyrkx5XyFA+0/iNd22ARDUtAN6Q
-C61AFKH01iCj2ZG7gQquTcECsYoijwWJ9UbjcSsYdrj/+mCNZt6gX1JHxRSzrXD2
-sTXmJfI2s3E=
-=/tkY
------END PGP SIGNATURE-----
-
---Sig_/Dw=F0Q9zvHqQhC.OzIyNF8O--
