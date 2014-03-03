@@ -1,100 +1,88 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:51212 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755480AbaCDQnJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Mar 2014 11:43:09 -0500
-Date: Tue, 4 Mar 2014 11:43:06 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jan Kara <jack@suse.cz>
-Cc: Matthew Rahtz <mrahtz@rapitasystems.com>, linux-ext4@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: warning in ext4_journal_start_sb on filesystem freeze
-Message-ID: <20140304164306.GC12805@fieldses.org>
-References: <217983071.143460.1385453196946.JavaMail.zimbra@rapitasystems.com>
- <1697998867.143517.1385454051031.JavaMail.zimbra@rapitasystems.com>
- <20131126125826.GA4503@quack.suse.cz>
- <622177618.727.1393062606061.JavaMail.zimbra@rapitasystems.com>
- <20140224095525.GA20532@quack.suse.cz>
- <20140224154532.GB11992@fieldses.org>
- <20140225102126.GB1669@quack.suse.cz>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <20140225102126.GB1669@quack.suse.cz>
+Received: from mail-ie0-f176.google.com ([209.85.223.176]:62493 "EHLO
+	mail-ie0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754549AbaCCOOg convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Mar 2014 09:14:36 -0500
+Received: by mail-ie0-f176.google.com with SMTP id rd18so4071424iec.7
+        for <linux-nfs@vger.kernel.org>; Mon, 03 Mar 2014 06:14:35 -0800 (PST)
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
+Subject: Re: [BUG] NULL pointer dereference in nfs4_match_stateid()
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+In-Reply-To: <531424D1.2020309@intel.com>
+Date: Mon, 3 Mar 2014 09:14:33 -0500
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <D31C0B44-C6F4-475F-838A-AC1723D2D1DA@primarydata.com>
+References: <5313E9F6.2020405@intel.com> <1393816686.6850.0.camel@leira.trondhjem.org> <531424D1.2020309@intel.com>
+To: "Yan, Zheng" <zheng.z.yan@intel.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Feb 25, 2014 at 11:21:26AM +0100, Jan Kara wrote:
-> On Mon 24-02-14 10:45:32, J. Bruce Fields wrote:
-> > On Mon, Feb 24, 2014 at 10:55:25AM +0100, Jan Kara wrote:
-> > > On Sat 22-02-14 09:50:06, Matthew Rahtz wrote:
-> > > > Thanks for your help Jan,
-> > > > 
-> > > > A few months later, we've noticed the issue is actually still there.
-> > > > Using 3.11.0-17-generic on Ubuntu 12.04, we’re seeing this in the kernel
-> > > > logs:
-> > > > 
-> > > > [29243.606215] WARNING: CPU: 0 PID: 1785 at
-> > > > /build/buildd/linux-lts-saucy-3.11.0/fs/ext4/ext4_jbd2.c:48
-> > > > ext4_journal_check_start+0x83/0x90()
-> > > > 
-> > > > Having a look at the Ubuntu source package for that version, it
-> > > > definitely does include commit 03d95eb2f2578083a3f6286262e1cb5d88a00c02,
-> > > > and the line generating the warning is still:
-> > > > 
-> > > > WARN_ON(sb->s_writers.frozen == SB_FREEZE_COMPLETE);
-> > > > 
-> > > > Are there any other obvious possibilities for what may be causing this?
-> > > > There seem to be some users of Oracle Linux experiencing similar problems
-> > > > at https://community.oracle.com/thread/2617418, which was apparently
-> > > > fixed in Oracle's kernel version '3.8.13-26.el6uek'. Any word on when
-> > > > this might be integrated into the official kernel?
-> > > > 
-> > > > Full call trace included below.
-> > >   Looking at the trace below, now the problem seems to be in the NFS server
-> > > code. NFS should get protection against the filesystem being frozen (or
-> > > remounted read-only for that matter) via mnt_want_write() before calling
-> > > into notify_change() (actually before calling fh_lock() because of lock
-> > > ordering).  Similarly to what we do e.g. in fchownat(). Bruce?
-> > 
-> > Like this?
->   Yup, that looks right.
 
-Ugh, actually, I didn't realize we can't do mnt_want_write recursively,
-and there's a confusing mixture of callers that do and don't already
-take it, so I'll have to do something a little more complicated.
+On Mar 3, 2014, at 1:44, Yan, Zheng <zheng.z.yan@intel.com> wrote:
 
-Oh well.--b.
+> On 03/03/2014 11:18 AM, Trond Myklebust wrote:
+>> On Mon, 2014-03-03 at 10:33 +0800, Yan, Zheng wrote:
+>>> Hi,
+>>> 
+>>> I got following Oops when running fsstress
+>>> ---
+>>> [ 2536.142216] BUG: unable to handle kernel NULL pointer dereference at 0000000000000020
+>>> [ 2536.143110] IP: [<ffffffff813391d9>] memcmp+0x9/0x50
+>>> [ 2536.143110] PGD 0
+>>> [ 2536.143110] Oops: 0000 [#1] SMP
+>>> [ 2536.143110] Modules linked in: rpcsec_gss_krb5(F) auth_rpcgss(F) nfsv4(F) dns_resolver(F) nfs(F) fscache(F) ceph(F) libceph(F) libcrc32c(F) netconsole(F) ip6table_filter(F) ip6_tables(F) ebtable_nat(F) ebtables(F) ipt_MASQUERADE(F) iptable_nat(F) nf_nat_ipv4(F) nf_nat(F) nf_conntrack_ipv4(F) nf_defrag_ipv4(F) xt_state(F) nf_conntrack(F) xt_CHECKSUM(F) iptable_mangle(F) bnep(F) bluetooth(F) 6lowpan_iphc(F) bridge(F) lockd(F) sunrpc(F) rfkill(F) be2iscsi(F) iscsi_boot_sysfs(F) stp(F) llc(F) bnx2i(F) cnic(F) uio(F) cxgb4i(F) cxgb4(F) cxgb3i(F) cxgb3(F) mdio(F) libcxgbi(F) ib_iser(F) rdma_cm(F) iw_cm(F) ib_cm(F) ib_sa(F) ib_mad(F) ib_core(F) ib_addr(F) iscsi_tcp(F) libiscsi_tcp(F) libiscsi(F) scsi_transport_iscsi(F) virtio_net(F) virtio_balloon(F) pcspkr(F) microcode(F) uinput(F) cirrus(F) drm_kms_helper(F) ttm(F) drm(F) i2c_core(F)
+>>> [ 2536.143110] CPU: 1 PID: 2925 Comm: nfsv4.0-svc Tainted: GF            3.14.0-rc4+ #50
+>>> [ 2536.143110] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
+>>> [ 2536.143110] task: ffff88003cd55aa0 ti: ffff88003c9a8000 task.ti: ffff88003c9a8000
+>>> [ 2536.143110] RIP: 0010:[<ffffffff813391d9>]  [<ffffffff813391d9>] memcmp+0x9/0x50
+>>> [ 2536.143110] RSP: 0018:ffff88003c9a9ca8  EFLAGS: 00010202
+>>> [ 2536.143110] RAX: ffffffffa04842c0 RBX: 0000000000000000 RCX: 0000000000000036
+>>> [ 2536.143110] RDX: 0000000000000010 RSI: ffff880035ee808a RDI: 0000000000000020
+>>> [ 2536.143110] RBP: ffff88003c9a9ca8 R08: 8020000000000000 R09: 00231b6840100000
+>>> [ 2536.143110] R10: ffbee4a086ca1004 R11: 0000000000000000 R12: ffff88003751e000
+>>> [ 2536.143110] R13: ffff880034afa000 R14: ffff880035ee808a R15: 0000000000000004
+>>> [ 2536.143110] FS:  0000000000000000(0000) GS:ffff88003fc80000(0000) knlGS:0000000000000000
+>>> [ 2536.143110] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+>>> [ 2536.143110] CR2: 0000000000000020 CR3: 0000000034bc0000 CR4: 00000000000006e0
+>>> [ 2536.143110] Stack:
+>>> [ 2536.143110]  ffff88003c9a9cb8 ffffffffa0455883 ffff88003c9a9cf0 ffffffffa0472b98
+>>> [ 2536.143110]  ffff880035ee8000 ffff880035ee8000 ffff8800231b6970 0000000011270000
+>>> [ 2536.143110]  0000000000000000 ffff88003c9a9d28 ffffffffa0475fc9 ffff88003c9a9d28
+>>> [ 2536.143110] Call Trace:
+>>> [ 2536.143110]  [<ffffffffa0455883>] nfs4_match_stateid+0x13/0x20 [nfsv4]
+>>> [ 2536.143110]  [<ffffffffa0472b98>] nfs_async_inode_return_delegation+0x48/0x90 [nfsv4]
+>>> [ 2536.143110]  [<ffffffffa0475fc9>] nfs4_callback_recall+0x59/0x130 [nfsv4]
+>>> [ 2536.143110]  [<ffffffffa0475005>] nfs4_callback_compound+0x465/0x6a0 [nfsv4]
+>>> [ 2536.143110]  [<ffffffffa0220c1a>] ? svcauth_unix_accept+0x14a/0x270 [sunrpc]
+>>> [ 2536.143110]  [<ffffffffa021c707>] svc_process_common+0x5e7/0x6e0 [sunrpc]
+>>> [ 2536.143110]  [<ffffffffa0473e80>] ? nfs_callback_authenticate+0x50/0x50 [nfsv4]
+>>> [ 2536.143110]  [<ffffffffa021c907>] svc_process+0x107/0x170 [sunrpc]
+>>> [ 2536.143110]  [<ffffffffa0473e80>] ? nfs_callback_authenticate+0x50/0x50 [nfsv4]
+>>> [ 2536.143110]  [<ffffffffa0473ec5>] nfs4_callback_svc+0x45/0x60 [nfsv4]
+>>> [ 2536.143110]  [<ffffffff810a4a52>] kthread+0xd2/0xf0
+>>> [ 2536.143110]  [<ffffffff810a4980>] ? insert_kthread_work+0x40/0x40
+>>> [ 2536.143110]  [<ffffffff816b567c>] ret_from_fork+0x7c/0xb0
+>>> [ 2536.143110]  [<ffffffff810a4980>] ? insert_kthread_work+0x40/0x40
+>>> [ 2536.143110] Code: 75 e9 31 c0 c6 06 01 5d c3 66 0f 1f 84 00 00 00 00 00 31 c0 c6 06 00 5d c3 66 0f 1f 84 00 00 00 00 00 55 48 85 d2 48 89 e5 74 3c <0f> b6 07 0f b6 0e 29 c8 75 27 48 83 ea 01 31 c9 eb 1a 0f 1f 44
+>>> [ 2536.143110] RIP  [<ffffffff813391d9>] memcmp+0x9/0x50
+>>> [ 2536.143110]  RSP <ffff88003c9a9ca8>
+>>> [ 2536.143110] CR2: 0000000000000020
+>>> [ 2536.143110] ---[ end trace 145a1eb5268045c7 ]---
+>> 
+>> Does the following patch help?
+>> 
+> 
+> I have run the same test for hours. It seems the patch works.
+> 
+> Regards
+> Yan, Zheng
 
-> 
-> > But I wonder why this is just popping up now--as far as I can tell we've
-> > had the bug since those write counts were introduced.
->   Yeah, I'm wondering as well. NFS server on ext4 should have been
-> complaining for a long time.
-> 
-> 								Honza
-> 
-> > diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-> > index 6d7be3f..d573b61 100644
-> > --- a/fs/nfsd/vfs.c
-> > +++ b/fs/nfsd/vfs.c
-> > @@ -445,12 +445,16 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
-> >  		err = nfserr_notsync;
-> >  		goto out_put_write_access;
-> >  	}
-> > +	host_err = fh_want_write(fhp);
-> > +	if (host_err)
-> > +		goto out_nfserr;
-> >  
-> >  	fh_lock(fhp);
-> >  	host_err = notify_change(dentry, iap, NULL);
-> >  	fh_unlock(fhp);
-> > +	fh_drop_write(fhp);
-> > +out_nfserr:
-> >  	err = nfserrno(host_err);
-> > -
-> >  out_put_write_access:
-> >  	if (size_change)
-> >  		put_write_access(inode);
-> -- 
-> Jan Kara <jack@suse.cz>
-> SUSE Labs, CR
+Great. Thanks for testing!
+
+   Trond
+_________________________________
+Trond Myklebust
+Linux NFS client maintainer, PrimaryData
+trond.myklebust@primarydata.com
+
