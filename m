@@ -1,93 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:31919 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:23848 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754007AbaCJPOd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 10 Mar 2014 11:14:33 -0400
-Message-ID: <531DD6D6.7090703@RedHat.com>
-Date: Mon, 10 Mar 2014 11:14:30 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S1754018AbaCCPnU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 3 Mar 2014 10:43:20 -0500
+Date: Mon, 3 Mar 2014 10:43:15 -0500
+From: Jeff Layton <jlayton@redhat.com>
+To: Dennis Jacobfeuerborn <dennisml@conversis.de>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: Temporary hangs when using locking with apache+nfsv4
+Message-ID: <20140303104315.1f949cb4@tlielax.poochiereds.net>
+In-Reply-To: <53141788.9030209@conversis.de>
+References: <53141788.9030209@conversis.de>
 MIME-Version: 1.0
-To: NeilBrown <neilb@suse.de>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] mount.nfs: background mount now do directly into background
-References: <1394284964-12997-1-git-send-email-steved@redhat.com>	<20140310101816.17e7d98a@notabene.brown> <20140310104327.212f72ce@notabene.brown>
-In-Reply-To: <20140310104327.212f72ce@notabene.brown>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hey Neil,
+On Mon, 03 Mar 2014 06:47:52 +0100
+Dennis Jacobfeuerborn <dennisml@conversis.de> wrote:
 
-On 03/09/2014 07:43 PM, NeilBrown wrote:
-> On Mon, 10 Mar 2014 10:18:16 +1100 NeilBrown <neilb@suse.de> wrote:
+> Hi,
+> I'm experimenting with using NFSv4 as storage for web servers and while 
+> regular file access seems to work fine as soon as I bring flock() into 
+> play things become more problematic.
+> I've create a tiny test php script that basically opens a file, locks it 
+> using flock(), writes that fact into a log file (on a local filesystem), 
+> performs a usleep(1000), writes into the log that it is about to unlock 
+> the file and finally unlocks it.
+> I invoke that script using ab with a concurrency of 20 for a few 
+> thousand requests.
 > 
->> On Sat,  8 Mar 2014 08:22:44 -0500 Steve Dickson <steved@redhat.com> wrote:
->>
->>> Modern day kernel will no longer return all timeout
->>> errors instead the process spins endlessly in the kernel.
->>> This behavior will cause the foreground mount to hang, never
->>> allowing the mount to go into background.
->>>
->>> So this patch eliminates the foreground mount cause
->>> background mounts to go directly into background
->>>
->>> Signed-off-by: Steve Dickson <steved@redhat.com>
->>
->> Did NFS mounts *ever* time out (when 'soft' isn't given)?
->>
->> If so, there is probably a regression which maybe should be fixed.
->>
->> If not, then this has always been a bug since sting-options were introduced
->> and the kernel started doing the mountd filehandle lookup...
->>
->> So I'm probably OK with the patch but I wonder if there is more of a story
->> behind this that we should be sure we understand...
->>
->> Thanks,
->> NeilBrown
+
+Is all the activity from a single client, or are multiple clients
+contending for the lock?
+
+> The result is that while 99% of the request respond quickly a few 
+> request seem to hang for up to 30 seconds. According to the log file 
+> they must eventually succeed since I see all expected entries and the 
+> locking seems to work as well since all entries are in the expected order.
 > 
-> Sorry, I really should read email in chronological order, shouldn't I :-)
+> Is it expected that these long delays happen? When I comment the locking 
+> function out these hangs disappear.
+> Are there some knobs to tune NFS and make it behave better in these 
+> situations?
 > 
-> The foregoing discussion seemed to focus on NFSv4.  Does NFSv3 behave the
-> same way?  A quick test suggests that it doesn't.  
->    mount -o bg,vers=3 server:/path /mnt
-> backgrounds as it should after a few seconds.
-Right... After first RPC timeout the kernel returns ETIMEDOUT and 
-the mount goes into background... This is what I was trying 
-to simulate with my first set of patches....
 
-> 
-> So I suspect this patch should be version dependent?
-It could be, but I'm not sure its necessary.
- 
-> 
-> However falling-back from v4 (which we leave entirely to the kernel) to v3
-> could be a bit awkward.
-Why? Being in foreground or background should not effect any kind of mount behavior.
+NFSv4 locking is inherently unfair. If you're doing a blocking lock,
+then the client is expected to poll for it. So, long delays are
+possible if you just happen to be unlucky and keep missing the lock.
 
-> 
-> I think that an NFSv4 mount really does need to timeout - whether that
-> happens in the kernel or through the use of "alarm()" doesn't really bother
-> me.  But if it doesn't timeout, then it is violating the documentation and
-> ignoring the retry= setting.
-Yes... retry= does talk about different timeouts on fg and bg mounts....
-I guess if the mount goes directly into bg the the first time out
-is not tried... 
+There's no knob to tune, but there probably is room for improvement in
+this code. In principle we could try to be more aggressive about
+getting the lock by trying to wake up one or more blocked tasks whenever
+a lock is released. You might still end up with delays, but it could
+help improve responsiveness.
 
-At the end of the day, too would prefer the kernel return timeouts 
-like it once did... but unfortunately that is not going to happen.
-The new way is to spin kernel and hang the process... forever...
-which is unfortunate... IMHO...   
-
-The only thing I against using alarm() is in the past NFS and signals 
-have not always played nice together... Interrupting the kernel
-in critical parts of the code is always dicey at best... but 
-maybe this is no loner case.
-
-One question I do have, does anybody know why the first foreground mount
-was even tried before going into background? Since bg mount are usually
-used in fstabs, going directly into background would definitely 
-speed up mounts during booting... 
-
-steved.
-
+-- 
+Jeff Layton <jlayton@redhat.com>
