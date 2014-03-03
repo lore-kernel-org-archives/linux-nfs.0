@@ -1,66 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from engine03-30064-2.icritical.com ([93.159.202.47]:54628 "HELO
-	engine03-30064-2.icritical.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1752787AbaCKIto (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Mar 2014 04:49:44 -0400
-Received: from engine03-30064-2.icritical.com ([127.0.0.1])
- by localhost (engine03-30064-2.icritical.com [127.0.0.1]) (amavisd-new, port 10024)
- with SMTP id 14252-06 for <linux-nfs@vger.kernel.org>;
- Tue, 11 Mar 2014 08:49:36 +0000 (GMT)
-Message-ID: <531ECE21.5070601@pml.ac.uk>
-Date: Tue, 11 Mar 2014 08:49:37 +0000
-From: Ben Taylor <benj@pml.ac.uk>
-MIME-Version: 1.0
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-CC: <linux-nfs@vger.kernel.org>
-Subject: Re: NFS4 patch 08/20 (BAD_SEQID recovery)
-References: <53199445.3010808@pml.ac.uk> <69B89FEE-5B58-468F-95CE-B384033B2E65@primarydata.com> <531DF5B4.9050001@pml.ac.uk> <0BE71BDE-FFFB-4124-B037-8ABBD5C20455@primarydata.com>
-In-Reply-To: <0BE71BDE-FFFB-4124-B037-8ABBD5C20455@primarydata.com>
-Content-Type: text/plain; charset="ISO-8859-1"
+Received: from mail-ig0-f179.google.com ([209.85.213.179]:61845 "EHLO
+	mail-ig0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754982AbaCCXCL convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Mar 2014 18:02:11 -0500
+Received: by mail-ig0-f179.google.com with SMTP id t19so915023igi.0
+        for <linux-nfs@vger.kernel.org>; Mon, 03 Mar 2014 15:02:11 -0800 (PST)
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
+Subject: Re: [PATCH/RFC] Add simple backoff logic when reconnecting to a server that recently initiated a connection close
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+In-Reply-To: <20140303221053.GB45663@tonberry.usersys.redhat.com>
+Date: Mon, 3 Mar 2014 18:02:08 -0500
+Cc: Layton Jeff <jlayton@redhat.com>, linux-nfs@vger.kernel.org
+Message-Id: <210894A7-21A1-4F59-99F7-F5D28F8D4E06@primarydata.com>
+References: <20140228222956.GA1544@tonberry.usersys.redhat.com> <20140303111352.736a7268@tlielax.poochiereds.net> <977F590C-0AF9-4B7F-B1FF-C10777987887@primarydata.com> <20140303221053.GB45663@tonberry.usersys.redhat.com>
+To: Scott Mayhew <smayhew@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 10/03/14 23:23, Trond Myklebust wrote:
+
+On Mar 3, 2014, at 17:10, Scott Mayhew <smayhew@redhat.com> wrote:
+
+> On Mon, 03 Mar 2014, Trond Myklebust wrote:
 > 
-> On Mar 10, 2014, at 13:26, Ben Taylor <benj@pml.ac.uk> wrote:
+>> 
+>> On Mar 3, 2014, at 11:13, Jeff Layton <jlayton@redhat.com> wrote:
+>> 
+>>> On Fri, 28 Feb 2014 17:29:56 -0500
+>>> Scott Mayhew <smayhew@redhat.com> wrote:
+>>> 
+>>>> From 2e3902fc0c66bda360a8e40e3e64d82e312a20d4 Mon Sep 17 00:00:00 2001
+>>>> From: Scott Mayhew <smayhew@redhat.com>
+>>>> Date: Fri, 28 Feb 2014 15:23:50 -0500
+>>>> Subject: [PATCH] sunrpc: reintroduce xprt->shutdown with a new purpose (option
+>>>> 2)
+>>>> 
+>>>> If a server is behaving pathologically and accepting our connections
+>>>> only to close the socket on the first RPC operation it receives, then
+>>>> we should probably delay when trying to reconnect.
+>>>> 
+>>>> This patch reintroduces the xprt->shutdown field (this time as two
+>>>> bits).  Previously this field was used to indicate that the transport
+>>>> was in the process of being shutdown, but now it will just be used to
+>>>> indicate that a shutdown was initiated by the server.
+>>>> 
+>>>> If the server closes the connection 3 times without us having received
+>>>> an RPC reply in the interim, then we'll delay before attempting to
+>>>> connect again.
+>>>> ---
+>>>> include/linux/sunrpc/xprt.h |  3 ++-
+>>>> net/sunrpc/clnt.c           |  2 ++
+>>>> net/sunrpc/xprtsock.c       | 13 +++++++++++++
+>>>> 3 files changed, 17 insertions(+), 1 deletion(-)
+>>>> 
+>>> 
+>>> This patch seems a little more reasonable than the other one if only
+>>> because it shouldn't cause artificial delays when there is some
+>>> temporary hiccup that causes the server to shut down the connection.
+>>> 
+>>> That said, this seems to be squarely a server-side bug so I'm not sure
+>>> we ought to go to any great lengths to work around it.
+>> 
+>> So this is about a broken server that accepts connection requests and then immediately closes them?
 > 
->> Hi Trond
->>
->> On 07/03/14 13:05, Trond Myklebust wrote:
->>>> Can anyone tell me what happened to this patch please? Was it lost or
->>>>> superseded?
->>> It was superseded by commit 95b72eb0bdef6 (NFSv4: Ensure we do not reuse open owner names), which is available in linux 3.4 and newer.
->>
->> Many thanks. That's a puzzle then, because we're running 3.9 and up and
->> already have that patch (I've checked).
->>
->> I've attached my Wireshark dump (or at least a subset of it -
->> unfortunately I don't have the original call, the dump I've got is all
->> the same) - don't know if this tells you anything it doesn't tell me?
->> I'm not exactly experienced at reading these things!
->>
+> That's correct.
 > 
-> It looks as if the client is trying to convert a delegation into an open stateid as part of returning that delegation, but the server is disputing the sequence id value.
-> What server is this?
+>> If so, then I agree with Jeff, it really isn?t something we need to fix on the client.
+> 
+> Not even for the sake of 'politeness' (for lack of a better word)?  This
+> was in a grid environment and there were apparently a few thousand clients
+> doing this, not just a single client.
+> 
 
-It's our main user-space file server, running CentOS 6.5, kernel
-version... ah. Kernel version 2.6, I only checked the client version
-previously.
+No. If the problem is a broken server, then we fix the server. No politeness needed… :-)
 
-That's probably the issue then. Sorry, thanks for your help!
-
-Regards
-Ben
-
--- 
-Ben Taylor <benj@pml.ac.uk>, http://rsg.pml.ac.uk/
-Remote Sensing Group, Plymouth Marine Laboratory
-Tel: +44 (0)1752 633432, Fax: +44 (0)1752 633101
-
-
-Please visit our new website at www.pml.ac.uk and follow us on Twitter  @PlymouthMarine
-
-Plymouth Marine Laboratory (PML) is a company limited by guarantee registered in England & Wales, company number 4178503. Registered Charity No. 1091222. Registered Office: Prospect Place, The Hoe, Plymouth  PL1 3DH, UK. 
-
-This message is private and confidential. If you have received this message in error, please notify the sender and remove it from your system. You are reminded that e-mail communications are not secure and may contain viruses; PML accepts no liability for any loss or damage which may be caused by viruses.
+_________________________________
+Trond Myklebust
+Linux NFS client maintainer, PrimaryData
+trond.myklebust@primarydata.com
 
