@@ -1,98 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mout.perfora.net ([74.208.4.194]:57087 "EHLO mout.perfora.net"
+Received: from mga02.intel.com ([134.134.136.20]:32909 "EHLO mga02.intel.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756247AbaCLBSe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 11 Mar 2014 21:18:34 -0400
-From: Jim Rees <rees@umich.edu>
-To: Steve Dickson <steved@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] intr/nointr are ignored now
-Date: Tue, 11 Mar 2014 21:17:45 -0400
-Message-Id: <1394587065-27513-1-git-send-email-rees@umich.edu>
+	id S1751883AbaCCCd1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 2 Mar 2014 21:33:27 -0500
+Message-ID: <5313E9F6.2020405@intel.com>
+Date: Mon, 03 Mar 2014 10:33:26 +0800
+From: "Yan, Zheng" <zheng.z.yan@intel.com>
+MIME-Version: 1.0
+To: linux-nfs@vger.kernel.org
+Subject: [BUG] NULL pointer dereference in nfs4_match_stateid()
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Jim Rees <rees@umich.edu>
+Hi,
+
+I got following Oops when running fsstress
 ---
- utils/mount/nfs.man | 51 ++++-----------------------------------------------
- 1 file changed, 4 insertions(+), 47 deletions(-)
-
-diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
-index ef09a31..fe4f9b1 100644
---- a/utils/mount/nfs.man
-+++ b/utils/mount/nfs.man
-@@ -125,6 +125,10 @@ option may mitigate some of the risks of using the
- .B soft
- option.
- .TP 1.5i
-+.BR intr " / " nointr
-+This option is provided for backward compatibility.
-+It is ignored after kernel 2.6.25.
-+.TP 1.5i
- .BI timeo= n
- The time in deciseconds (tenths of a second) the NFS client waits for a
- response before it retries an NFS request.
-@@ -668,30 +672,6 @@ Using the
- option is also required when mounting exports on NFS servers
- that do not support the NLM protocol.
- .TP 1.5i
--.BR intr " / " nointr
--Selects whether to allow signals to interrupt file operations
--on this mount point. If neither option
--is specified (or if
--.B nointr
--is specified),
--signals do not interrupt NFS file operations. If
--.B intr
--is specified, system calls return EINTR if an in-progress NFS operation is interrupted by
--a signal.
--.IP
--Using the
--.B intr
--option is preferred to using the
--.B soft
--option because it is significantly less likely to result in data corruption.
--.IP
--The
--.BR intr " / " nointr
--mount option is deprecated after kernel 2.6.25.
--Only SIGKILL can interrupt a pending NFS operation on these kernels,
--and if specified, this mount option is ignored to provide backwards
--compatibility with older kernels.
--.TP 1.5i
- .BR cto " / " nocto
- Selects whether to use close-to-open cache coherence semantics.
- If neither option is specified (or if
-@@ -807,29 +787,6 @@ The mount request fails if the server's rpcbind service is not available,
- the server's NFS service is not registered with its rpcbind service,
- or the server's NFS service is not available on the advertised port.
- .TP 1.5i
--.BR intr " / " nointr
--Selects whether to allow signals to interrupt file operations
--on this mount point. If neither option is specified (or if
--.B intr
--is specified), system calls return EINTR if an in-progress NFS operation
--is interrupted by a signal.  If
--.B nointr
--is specified, signals do not
--interrupt NFS operations.
--.IP
--Using the
--.B intr
--option is preferred to using the
--.B soft
--option because it is significantly less likely to result in data corruption.
--.IP
--The
--.BR intr " / " nointr
--mount option is deprecated after kernel 2.6.25.
--Only SIGKILL can interrupt a pending NFS operation on these kernels,
--and if specified, this mount option is ignored to provide backwards
--compatibility with older kernels.
--.TP 1.5i
- .BR cto " / " nocto
- Selects whether to use close-to-open cache coherence semantics
- for NFS directories on this mount point.
--- 
-1.9.0
-
+[ 2536.142216] BUG: unable to handle kernel NULL pointer dereference at 0000000000000020
+[ 2536.143110] IP: [<ffffffff813391d9>] memcmp+0x9/0x50
+[ 2536.143110] PGD 0
+[ 2536.143110] Oops: 0000 [#1] SMP
+[ 2536.143110] Modules linked in: rpcsec_gss_krb5(F) auth_rpcgss(F) nfsv4(F) dns_resolver(F) nfs(F) fscache(F) ceph(F) libceph(F) libcrc32c(F) netconsole(F) ip6table_filter(F) ip6_tables(F) ebtable_nat(F) ebtables(F) ipt_MASQUERADE(F) iptable_nat(F) nf_nat_ipv4(F) nf_nat(F) nf_conntrack_ipv4(F) nf_defrag_ipv4(F) xt_state(F) nf_conntrack(F) xt_CHECKSUM(F) iptable_mangle(F) bnep(F) bluetooth(F) 6lowpan_iphc(F) bridge(F) lockd(F) sunrpc(F) rfkill(F) be2iscsi(F) iscsi_boot_sysfs(F) stp(F) llc(F) bnx2i(F) cnic(F) uio(F) cxgb4i(F) cxgb4(F) cxgb3i(F) cxgb3(F) mdio(F) libcxgbi(F) ib_iser(F) rdma_cm(F) iw_cm(F) ib_cm(F) ib_sa(F) ib_mad(F) ib_core(F) ib_addr(F) iscsi_tcp(F) libiscsi_tcp(F) libiscsi(F) scsi_transport_iscsi(F) virtio_net(F) virtio_balloon(F) pcspkr(F) microcode(F) uinput(F) cirrus(F) drm_kms_helper(F) ttm(F) drm(F) i2c_core(F)
+[ 2536.143110] CPU: 1 PID: 2925 Comm: nfsv4.0-svc Tainted: GF            3.14.0-rc4+ #50
+[ 2536.143110] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
+[ 2536.143110] task: ffff88003cd55aa0 ti: ffff88003c9a8000 task.ti: ffff88003c9a8000
+[ 2536.143110] RIP: 0010:[<ffffffff813391d9>]  [<ffffffff813391d9>] memcmp+0x9/0x50
+[ 2536.143110] RSP: 0018:ffff88003c9a9ca8  EFLAGS: 00010202
+[ 2536.143110] RAX: ffffffffa04842c0 RBX: 0000000000000000 RCX: 0000000000000036
+[ 2536.143110] RDX: 0000000000000010 RSI: ffff880035ee808a RDI: 0000000000000020
+[ 2536.143110] RBP: ffff88003c9a9ca8 R08: 8020000000000000 R09: 00231b6840100000
+[ 2536.143110] R10: ffbee4a086ca1004 R11: 0000000000000000 R12: ffff88003751e000
+[ 2536.143110] R13: ffff880034afa000 R14: ffff880035ee808a R15: 0000000000000004
+[ 2536.143110] FS:  0000000000000000(0000) GS:ffff88003fc80000(0000) knlGS:0000000000000000
+[ 2536.143110] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+[ 2536.143110] CR2: 0000000000000020 CR3: 0000000034bc0000 CR4: 00000000000006e0
+[ 2536.143110] Stack:
+[ 2536.143110]  ffff88003c9a9cb8 ffffffffa0455883 ffff88003c9a9cf0 ffffffffa0472b98
+[ 2536.143110]  ffff880035ee8000 ffff880035ee8000 ffff8800231b6970 0000000011270000
+[ 2536.143110]  0000000000000000 ffff88003c9a9d28 ffffffffa0475fc9 ffff88003c9a9d28
+[ 2536.143110] Call Trace:
+[ 2536.143110]  [<ffffffffa0455883>] nfs4_match_stateid+0x13/0x20 [nfsv4]
+[ 2536.143110]  [<ffffffffa0472b98>] nfs_async_inode_return_delegation+0x48/0x90 [nfsv4]
+[ 2536.143110]  [<ffffffffa0475fc9>] nfs4_callback_recall+0x59/0x130 [nfsv4]
+[ 2536.143110]  [<ffffffffa0475005>] nfs4_callback_compound+0x465/0x6a0 [nfsv4]
+[ 2536.143110]  [<ffffffffa0220c1a>] ? svcauth_unix_accept+0x14a/0x270 [sunrpc]
+[ 2536.143110]  [<ffffffffa021c707>] svc_process_common+0x5e7/0x6e0 [sunrpc]
+[ 2536.143110]  [<ffffffffa0473e80>] ? nfs_callback_authenticate+0x50/0x50 [nfsv4]
+[ 2536.143110]  [<ffffffffa021c907>] svc_process+0x107/0x170 [sunrpc]
+[ 2536.143110]  [<ffffffffa0473e80>] ? nfs_callback_authenticate+0x50/0x50 [nfsv4]
+[ 2536.143110]  [<ffffffffa0473ec5>] nfs4_callback_svc+0x45/0x60 [nfsv4]
+[ 2536.143110]  [<ffffffff810a4a52>] kthread+0xd2/0xf0
+[ 2536.143110]  [<ffffffff810a4980>] ? insert_kthread_work+0x40/0x40
+[ 2536.143110]  [<ffffffff816b567c>] ret_from_fork+0x7c/0xb0
+[ 2536.143110]  [<ffffffff810a4980>] ? insert_kthread_work+0x40/0x40
+[ 2536.143110] Code: 75 e9 31 c0 c6 06 01 5d c3 66 0f 1f 84 00 00 00 00 00 31 c0 c6 06 00 5d c3 66 0f 1f 84 00 00 00 00 00 55 48 85 d2 48 89 e5 74 3c <0f> b6 07 0f b6 0e 29 c8 75 27 48 83 ea 01 31 c9 eb 1a 0f 1f 44
+[ 2536.143110] RIP  [<ffffffff813391d9>] memcmp+0x9/0x50
+[ 2536.143110]  RSP <ffff88003c9a9ca8>
+[ 2536.143110] CR2: 0000000000000020
+[ 2536.143110] ---[ end trace 145a1eb5268045c7 ]---
