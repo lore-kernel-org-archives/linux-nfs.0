@@ -1,49 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f169.google.com ([209.85.223.169]:56812 "EHLO
-	mail-ie0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752064AbaC2Snl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 29 Mar 2014 14:43:41 -0400
-Received: by mail-ie0-f169.google.com with SMTP id to1so6265531ieb.14
-        for <linux-nfs@vger.kernel.org>; Sat, 29 Mar 2014 11:43:41 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: bfields@fieldses.org
-Cc: Idan Kedar <idank@primarydata.com>, linux-nfs@vger.kernel.org
-Subject: [PATCH 1/2] nfsd: Don't return NFS4ERR_STALE_STATEID for NFSv4.1+
-Date: Sat, 29 Mar 2014 14:43:38 -0400
-Message-Id: <1396118619-12771-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from mail3.conversis.de ([213.203.208.210]:43015 "EHLO
+	mail3.conversis.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755474AbaCCXD5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Mar 2014 18:03:57 -0500
+Message-ID: <53150A5B.80501@conversis.de>
+Date: Tue, 04 Mar 2014 00:03:55 +0100
+From: Dennis Jacobfeuerborn <dennisml@conversis.de>
+MIME-Version: 1.0
+To: Jeff Layton <jlayton@redhat.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: Temporary hangs when using locking with apache+nfsv4
+References: <53141788.9030209@conversis.de> <20140303104315.1f949cb4@tlielax.poochiereds.net>
+In-Reply-To: <20140303104315.1f949cb4@tlielax.poochiereds.net>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-RFC5661 obsoletes NFS4ERR_STALE_STATEID in favour of NFS4ERR_BAD_STATEID.
+On 03.03.2014 16:43, Jeff Layton wrote:
+> On Mon, 03 Mar 2014 06:47:52 +0100
+> Dennis Jacobfeuerborn <dennisml@conversis.de> wrote:
+>
+>> Hi,
+>> I'm experimenting with using NFSv4 as storage for web servers and while
+>> regular file access seems to work fine as soon as I bring flock() into
+>> play things become more problematic.
+>> I've create a tiny test php script that basically opens a file, locks it
+>> using flock(), writes that fact into a log file (on a local filesystem),
+>> performs a usleep(1000), writes into the log that it is about to unlock
+>> the file and finally unlocks it.
+>> I invoke that script using ab with a concurrency of 20 for a few
+>> thousand requests.
+>>
+>
+> Is all the activity from a single client, or are multiple clients
+> contending for the lock?
+>
 
-Note that because nfsd encodes the clientid boot time in the stateid, we
-can hit this error case in certain scenarios where the Linux client
-state management thread exits early, before it has finished recovering
-all state.
+"ab" is a benchmarking tool that simulates multiple clients using 
+threads but I invoke only a single instance of it on a single system if 
+that matters.
 
-Reported-by: Idan Kedar <idank@primarydata.com>
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+>> The result is that while 99% of the request respond quickly a few
+>> request seem to hang for up to 30 seconds. According to the log file
+>> they must eventually succeed since I see all expected entries and the
+>> locking seems to work as well since all entries are in the expected order.
+>>
+>> Is it expected that these long delays happen? When I comment the locking
+>> function out these hangs disappear.
+>> Are there some knobs to tune NFS and make it behave better in these
+>> situations?
+>>
+>
+> NFSv4 locking is inherently unfair. If you're doing a blocking lock,
+> then the client is expected to poll for it. So, long delays are
+> possible if you just happen to be unlucky and keep missing the lock.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index d5d070fbeb35..dd32f3746e4d 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -3627,8 +3627,11 @@ static __be32 nfsd4_lookup_stateid(stateid_t *stateid, unsigned char typemask,
- 		return nfserr_bad_stateid;
- 	status = lookup_clientid(&stateid->si_opaque.so_clid, sessions,
- 							nn, &cl);
--	if (status == nfserr_stale_clientid)
-+	if (status == nfserr_stale_clientid) {
-+		if (sessions)
-+			return nfserr_bad_stateid;
- 		return nfserr_stale_stateid;
-+	}
- 	if (status)
- 		return status;
- 	*s = find_stateid_by_type(cl, stateid, typemask);
--- 
-1.9.0
+That's likely what is happening and I'm going to extend the test script 
+with additional logging to verify this.
+
+The script is also deliberately a bit more aggressive to test the 
+behavior of the locking because I wanted to test the improved locking 
+reliability of NFSv4 vs v3. The real-world test case is a CMS (Typo3) 
+that serves pages from a cache but ises lock files when the cached 
+version of that pages expires and has to be regenerated to prevent 
+multiple processes re-generating the page at the same time.
+So in the real-world case there will probably less contention and a few 
+seconds between locking and unlocking. Also I have to check if the lock 
+used by the CMS is blocking which seems unlikely since that would block 
+all parallel request at least for the duration of the rendering of the page.
+
+Regards,
+   Dennis
 
