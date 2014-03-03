@@ -1,122 +1,123 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f178.google.com ([209.85.223.178]:38301 "EHLO
-	mail-ie0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755509AbaCRTuE convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Mar 2014 15:50:04 -0400
-Received: by mail-ie0-f178.google.com with SMTP id lx4so7434885iec.23
-        for <linux-nfs@vger.kernel.org>; Tue, 18 Mar 2014 12:50:03 -0700 (PDT)
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
-Subject: Re: [PATCH 1/2] SUNRPC: Ensure that call_connect times out correctly
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-In-Reply-To: <532897DE.6060204@RedHat.com>
-Date: Tue, 18 Mar 2014 15:50:00 -0400
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <EB317FC8-D521-4D80-98D7-FA48B0B9AF0C@primarydata.com>
-References: <1395081645-11906-1-git-send-email-trond.myklebust@primarydata.com>	 <53286A9D.2020007@RedHat.com>	 <362845B0-35A4-4DDF-96F6-42582D66334B@primarydata.com>	 <53288146.4010601@RedHat.com> <1395168308.11244.3.camel@leira.trondhjem.org> <532897DE.6060204@RedHat.com>
-To: Dickson Steve <SteveD@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:61235 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754147AbaCCRXj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 3 Mar 2014 12:23:39 -0500
+Message-ID: <5314BA91.3080206@RedHat.com>
+Date: Mon, 03 Mar 2014 12:23:29 -0500
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Chuck Lever <chuck.lever@oracle.com>, Simo Sorce <simo@redhat.com>
+CC: Neil Brown <neilb@suse.de>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: What does rpc.mountd dlopen() libnfsjunct.so rather than libnfsjunct.so.0
+References: <20140226161646.1520358b@notabene.brown> <1393425572.18299.157.camel@willson.li.ssimo.org> <3A4B7C90-54B8-4373-B751-B02D940199BC@oracle.com> <1393431901.18299.167.camel@willson.li.ssimo.org> <2C382FB2-559C-4A0C-B361-A5A8E60E0E19@oracle.com>
+In-Reply-To: <2C382FB2-559C-4A0C-B361-A5A8E60E0E19@oracle.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Sorry for getting into this so late... 
 
-On Mar 18, 2014, at 15:00, Steve Dickson <SteveD@redhat.com> wrote:
+On 02/26/2014 11:54 AM, Chuck Lever wrote:
+> 
+> On Feb 26, 2014, at 8:25 AM, Simo Sorce <simo@redhat.com> wrote:
+> 
+>> On Wed, 2014-02-26 at 08:02 -0800, Chuck Lever wrote:
+>>> On Feb 26, 2014, at 6:39 AM, Simo Sorce <simo@redhat.com> wrote:
+>>>
+>>>> On Wed, 2014-02-26 at 16:16 +1100, NeilBrown wrote:
+>>>>> See $SUBJ
+>>>>>
+>>>>> Shared libraries are usually versioned so you can release a new version with
+>>>>> an incompatible API and gradually transition to it.
+>>>>>
+>>>>> A rpc.mountd dlopens libnfsjunct.so with no version it is effectively
+>>>>> prohibited from ever changing the API in an incompatible way.
+>>>>>
+>>>>> Both Fedora and openSUSE get upset about packaging a libFOO.so in a non
+>>>>> "-devel" package and so trip over this library which clearly needs to be
+>>>>> installed even if you aren't doing 'devel'opment.
+>>>>
+>>>> Keep in mind this rule is there only for real shared libraries that are
+>>>> loaded by the the system loader.
+>>>>
+>>>> however it is waived for 'modules' that are opened dynamically but are
+>>>> private to the application.
+>>>>
+>>>>> I would like to change mountd as per the patch below to use the ".0" file.
+>>>>> I believe this will not break any installation as the ".so" is installed as a
+>>>>> symlink to the ".0" (or maybe ".0.0.0").
+>>>>>
+>>>>> Would this be acceptable?
+>>>>
+>>>> It looks to me like this is an internal module for mountd that is not
+>>>> for use by other apps (which is why it is not versioned and can be
+>>>> changed at will as it is deployed at the same time mountd is ?
+>>>
+>>> The plug-in API is versioned internally, but maybe I got that wrong,
+>>> and should remove the API version field in favor of having consumers
+>>> load via a specific .so number.
+>>
+>> Either way works the same, it just changes what component makes the
+>> determination (app code vs linker)
+>>
+>>>> Or am I wrong here ?
+>>>>
+>>>> If I am not wrong I would be against this change personally and would
+>>>> rather move the .so file in a private library dir (if it is not already
+>>>> there) to make it clear it is a private module.
+>>>
+>>> rpc.mountd is the only user currently, but itâ€™s not necessarily
+>>> private to mountd.  A generic storage manager tool might use it to
+>>> resolve NFS and FedFS referrals for display, for example.  We could
+>>> add plug-in API functions for creating and removing referrals to
+>>> enable generic tools to perform these operations.
+>>
+>> If it is a generic library why is it dlopened() instead of being simply
+>> linked in at build time ?
+> 
+> Handling NFS and FedFS junctions requires support for sqlite3, LDAP, 
+> and XML, among others.  The maintainer of nfs-utils preferred to add zero 
+> new build dependencies when we introduced this functionality.  The design 
+> we came up with was to dlopen() a library that would pull in everything 
+> that was needed at run time.
+Right... The dependency list is way too long now and the last thing
+I wanted was make nfs-utils depend on things it will probably
+never use...  
+ 
+> 
+> If the plug-in is not installed, mountd simply skips trying to resolve junctions.  
+> This would be the case for embedded NFS servers, for example.
+I think this works well... 
 
+I guess I don't care about the version-ing or where the library 
+lives... but I don't want rpc.mountd to be depending on libnfsjunct.so
+just use it when it exists. 
+
+steved.
+> 
+>>
+>>> A separate directory makes sense if thereâ€™s more than one thing to put
+>>> in it.  Right now we just have the plug-in library, and no plans to
+>>> add more.
+>>
+>> directories are cheap, don't fear them :)
+>>
+>>> I took an expedient approach when implementing the plug-in, and could
+>>> have gotten it wrong.  Iâ€™m open to make this mechanism fit packaging
+>>> guidelines and requirements.
+>>
+>> Packaging guidelines vary depending on whether the library is public or
+>> private and therefore you need to guarantee ABI compatibility or not.
+>>
+>> I think you need to make that determination first.
+> 
+> I attempted to guarantee API compatibility using the API version field and by publishing the API definition in a header under /usr/include.  By that definition it is a public API that happens to have only one current user.
+> 
+> --
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
 > 
 > 
-> On 03/18/2014 02:45 PM, Trond Myklebust wrote:
->> On Tue, 2014-03-18 at 13:24 -0400, Steve Dickson wrote:
->>> 
->>> On 03/18/2014 11:58 AM, Trond Myklebust wrote:
->>>> 
->>>> On Mar 18, 2014, at 11:47, Steve Dickson <SteveD@redhat.com> wrote:
->>>> 
->>>>> Hey,
->>>>> 
->>>>> On 03/17/2014 02:40 PM, Trond Myklebust wrote:
->>>>>> When the server is unavailable due to a networking error, etc, we want
->>>>>> the RPC client to respect the timeout delays when attempting to reconnect.
->>>>>> 
->>>>>> Fixes: 561ec1603171 (SUNRPC: call_connect_status should recheck bind..)
->>>>>> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
->>>>>> ---
->>>>>> net/sunrpc/clnt.c | 8 +++-----
->>>>>> 1 file changed, 3 insertions(+), 5 deletions(-)
->>>>>> 
->>>>>> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
->>>>>> index 0edada973434..f22d3a115fda 100644
->>>>>> --- a/net/sunrpc/clnt.c
->>>>>> +++ b/net/sunrpc/clnt.c
->>>>>> @@ -1798,10 +1798,6 @@ call_connect_status(struct rpc_task *task)
->>>>>> 	trace_rpc_connect_status(task, status);
->>>>>> 	task->tk_status = 0;
->>>>>> 	switch (status) {
->>>>>> -		/* if soft mounted, test if we've timed out */
->>>>>> -	case -ETIMEDOUT:
->>>>>> -		task->tk_action = call_timeout;
->>>>>> -		return;
->>>>>> 	case -ECONNREFUSED:
->>>>>> 	case -ECONNRESET:
->>>>>> 	case -ECONNABORTED:
->>>>>> @@ -1812,7 +1808,9 @@ call_connect_status(struct rpc_task *task)
->>>>>> 		if (RPC_IS_SOFTCONN(task))
->>>>>> 			break;
->>>>>> 	case -EAGAIN:
->>>>>> -		task->tk_action = call_bind;
->>>>>> +	case -ETIMEDOUT:
->>>>>> +		/* Check if we've timed out before looping back to call_bind */
->>>>>> +		task->tk_action = call_timeout;
->>>>>> 		return;
->>>>>> 	case 0:
->>>>>> 		clnt->cl_stats->netreconn++;
->>>>>> 
->>>>> How is this support to work if the trunking code still ignores timeouts? 
->>>>> 
->>>>> [ 2076.045176] NFS: nfs4_discover_server_trunking after status -110, retrying
->>>> 
->>>> The above patch fixes the regression that Neil tracked down in Linux 3.12, and that 
->>>> affects the generic RPC handling of soft timeouts.
->>>> 
->>>> The trunking code's handling of ETIMEDOUT has been there since Linux 3.7 
->>>> and hasn’t changed, so I really don’t see how it can have worked at one time before 3.12.
->>> Maybe it been broken that long.... :-) 
->>> 
->>> But here is the obvious loop that stop that hangs a mount forever:
->>> 
->>> #8 [ffff88007a22b7e8] rpc_call_sync at ffffffffa0220210 [sunrpc]
->>> #9 [ffff88007a22b840] nfs4_proc_setclientid at ffffffffa0505c49 [nfsv4]
->>> #10 [ffff88007a22b988] nfs40_discover_server_trunking at ffffffffa0514489 [nfsv4]
->>> #11 [ffff88007a22b9d0] nfs4_discover_server_trunking at ffffffffa0516f2d [nfsv4]
->>> #12 [ffff88007a22ba28] nfs4_init_client at ffffffffa051e9a4 [nfsv4]
->>> #13 [ffff88007a22bb20] nfs_get_client at ffffffffa04bd6ba [nfs]
->>> #14 [ffff88007a22bb80] nfs4_set_client at ffffffffa051dfb0 [nfsv4]
->>> #15 [ffff88007a22bc00] nfs4_create_server at ffffffffa051f4ce [nfsv4]
->>> #16 [ffff88007a22bc88] nfs4_remote_mount at ffffffffa051790e [nfsv4]
->>> #17 [ffff88007a22bcb0] mount_fs at ffffffff811b3dd9
->>> 
->>> The SETCLIENT times out 
->>>   NFS call  setclientid auth=UNIX, 'Linux NFSv4.0 10.19.60.77/10.19.60.33 tcp'
->>>   NFS reply setclientid: -110
->>> 
->>> The nfs4_discover_server_trunking() retries 
->>>   NFS: nfs4_discover_server_trunking after status -110, retrying
->>> 
->>> The happens when there server is down and so the connections 
->>> fail with ECONNREFUSED:
->>>   RPC:     2 call_connect_status (status -111)
->>> 
->>> The mount system call never times out in which it did in the past. 
->> 
->> Why should a mount system call time out other than perhaps in the case
->> of a soft mount?
->> 
-> So the mount can go in background. As you know the -o bg is used in
-> the /etc/fstab so the boot does not get hung up with downed servers. 
-> That's how it always worked... 
-
-No. As I’ve told you already, this has never worked correctly for NFSv4, and is not expected to work even if we do change the trunking discovery because path walks etc will still hang. Please do this in userland as previously suggested.
-
-_________________________________
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
-
+> 
