@@ -1,69 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f175.google.com ([209.85.216.175]:51379 "EHLO
-	mail-qc0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753709AbaCNRrU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Mar 2014 13:47:20 -0400
-Received: by mail-qc0-f175.google.com with SMTP id e16so3235712qcx.6
-        for <linux-nfs@vger.kernel.org>; Fri, 14 Mar 2014 10:47:19 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 5/5] nfs: emit a fsnotify_nameremove call in sillyrename codepath
-Date: Fri, 14 Mar 2014 13:47:05 -0400
-Message-Id: <1394819225-13713-6-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1394819225-13713-1-git-send-email-jlayton@redhat.com>
-References: <1394819225-13713-1-git-send-email-jlayton@redhat.com>
+Received: from mail3.conversis.de ([213.203.208.210]:52562 "EHLO
+	mail3.conversis.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750809AbaCCGJN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Mar 2014 01:09:13 -0500
+Received: from [192.168.0.100] (ip-178-201-213-194.unitymediagroup.de [178.201.213.194])
+	by mail3.conversis.de (Postfix) with ESMTP id EBCCF1570021
+	for <linux-nfs@vger.kernel.org>; Mon,  3 Mar 2014 06:47:52 +0100 (CET)
+Message-ID: <53141788.9030209@conversis.de>
+Date: Mon, 03 Mar 2014 06:47:52 +0100
+From: Dennis Jacobfeuerborn <dennisml@conversis.de>
+MIME-Version: 1.0
+To: linux-nfs@vger.kernel.org
+Subject: Temporary hangs when using locking with apache+nfsv4
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If a file is sillyrenamed, then the generic vfs_unlink code will skip
-emitting fsnotify events for it.
+Hi,
+I'm experimenting with using NFSv4 as storage for web servers and while 
+regular file access seems to work fine as soon as I bring flock() into 
+play things become more problematic.
+I've create a tiny test php script that basically opens a file, locks it 
+using flock(), writes that fact into a log file (on a local filesystem), 
+performs a usleep(1000), writes into the log that it is about to unlock 
+the file and finally unlocks it.
+I invoke that script using ab with a concurrency of 20 for a few 
+thousand requests.
 
-This patch has the sillyrename code do that instead.
+The result is that while 99% of the request respond quickly a few 
+request seem to hang for up to 30 seconds. According to the log file 
+they must eventually succeed since I see all expected entries and the 
+locking seems to work as well since all entries are in the expected order.
 
-In truth this is a little bit odd since we aren't actually removing the
-dentry per-se, but renaming it. Still, this is probably the right thing
-to do since it's what userland apps expect to see when an unlink()
-occurs or some file is renamed on top of the dentry.
+Is it expected that these long delays happen? When I comment the locking 
+function out these hangs disappear.
+Are there some knobs to tune NFS and make it behave better in these 
+situations?
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfs/unlink.c | 15 +++++++++++++--
- 1 file changed, 13 insertions(+), 2 deletions(-)
-
-diff --git a/fs/nfs/unlink.c b/fs/nfs/unlink.c
-index 818ded7b7b74..b133a18c9f4e 100644
---- a/fs/nfs/unlink.c
-+++ b/fs/nfs/unlink.c
-@@ -14,6 +14,7 @@
- #include <linux/sched.h>
- #include <linux/wait.h>
- #include <linux/namei.h>
-+#include <linux/fsnotify.h>
- 
- #include "internal.h"
- #include "nfs4_fs.h"
-@@ -465,8 +466,18 @@ nfs_async_rename(struct inode *old_dir, struct inode *new_dir,
- static void
- nfs_complete_sillyrename(struct rpc_task *task, struct nfs_renamedata *data)
- {
--	if (task->tk_status != 0)
--		nfs_cancel_async_unlink(data->old_dentry);
-+	struct dentry *dentry = data->old_dentry;
-+
-+	if (task->tk_status != 0) {
-+		nfs_cancel_async_unlink(dentry);
-+		return;
-+	}
-+
-+	/*
-+	 * vfs_unlink and the like do not issue this when a file is
-+	 * sillyrenamed, so do it here.
-+	 */
-+	fsnotify_nameremove(dentry, S_ISDIR(dentry->d_inode->i_mode));
- }
- 
- #define SILLYNAME_PREFIX ".nfs"
--- 
-1.8.5.3
-
+Regards,
+   Dennis
