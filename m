@@ -1,259 +1,108 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:46853 "EHLO mx2.suse.de"
+Received: from fieldses.org ([174.143.236.118]:35739 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750790AbaCFFrT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 6 Mar 2014 00:47:19 -0500
-Date: Thu, 6 Mar 2014 16:47:11 +1100
-From: NeilBrown <neilb@suse.de>
-To: Al Viro <viro@ZenIV.linux.org.uk>
+	id S1755150AbaCCWfp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 3 Mar 2014 17:35:45 -0500
+Date: Mon, 3 Mar 2014 17:35:37 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
 Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Dennis Jacobfeuerborn <dennisml@conversis.de>,
         linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/8] NFS: prepare for RCU-walk support but pushing tests
- later in code.
-Message-ID: <20140306164711.5bda7693@notabene.brown>
-In-Reply-To: <20140305064946.GY18016@ZenIV.linux.org.uk>
-References: <20140305025813.27421.23871.stgit@notabene.brown>
-	<20140305030028.27421.92032.stgit@notabene.brown>
-	<20140305053441.GX18016@ZenIV.linux.org.uk>
-	<20140305165933.09ca9d84@notabene.brown>
-	<20140305064946.GY18016@ZenIV.linux.org.uk>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/Q9nj2uciUWV_JOytF5A7=qX"; protocol="application/pgp-signature"
+Subject: Re: Temporary hangs when using locking with apache+nfsv4
+Message-ID: <20140303223537.GA12805@fieldses.org>
+References: <53141788.9030209@conversis.de>
+ <20140303104315.1f949cb4@tlielax.poochiereds.net>
+ <2D6DA167-FD44-4D73-8D55-8084A8DF95BE@primarydata.com>
+ <20140303114119.30f0a48f@tlielax.poochiereds.net>
+ <20140303204154.GC10659@fieldses.org>
+ <20140303172921.19aecbab@tlielax.poochiereds.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <20140303172921.19aecbab@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/Q9nj2uciUWV_JOytF5A7=qX
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+On Mon, Mar 03, 2014 at 05:29:21PM -0500, Jeff Layton wrote:
+> On Mon, 3 Mar 2014 15:41:54 -0500
+> "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> 
+> > On Mon, Mar 03, 2014 at 11:41:19AM -0500, Jeff Layton wrote:
+> > > On Mon, 3 Mar 2014 10:46:37 -0500
+> > > Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+> > > 
+> > > > 
+> > > > On Mar 3, 2014, at 10:43, Jeff Layton <jlayton@redhat.com> wrote:
+> > > > 
+> > > > > On Mon, 03 Mar 2014 06:47:52 +0100
+> > > > > Dennis Jacobfeuerborn <dennisml@conversis.de> wrote:
+> > > > > 
+> > > > >> Hi,
+> > > > >> I'm experimenting with using NFSv4 as storage for web servers and while 
+> > > > >> regular file access seems to work fine as soon as I bring flock() into 
+> > > > >> play things become more problematic.
+> > > > >> I've create a tiny test php script that basically opens a file, locks it 
+> > > > >> using flock(), writes that fact into a log file (on a local filesystem), 
+> > > > >> performs a usleep(1000), writes into the log that it is about to unlock 
+> > > > >> the file and finally unlocks it.
+> > > > >> I invoke that script using ab with a concurrency of 20 for a few 
+> > > > >> thousand requests.
+> > > > >> 
+> > > > > 
+> > > > > Is all the activity from a single client, or are multiple clients
+> > > > > contending for the lock?
+> > > > > 
+> > > > >> The result is that while 99% of the request respond quickly a few 
+> > > > >> request seem to hang for up to 30 seconds. According to the log file 
+> > > > >> they must eventually succeed since I see all expected entries and the 
+> > > > >> locking seems to work as well since all entries are in the expected order.
+> > > > >> 
+> > > > >> Is it expected that these long delays happen? When I comment the locking 
+> > > > >> function out these hangs disappear.
+> > > > >> Are there some knobs to tune NFS and make it behave better in these 
+> > > > >> situations?
+> > > > >> 
+> > > > > 
+> > > > > NFSv4 locking is inherently unfair. If you're doing a blocking lock,
+> > > > > then the client is expected to poll for it. So, long delays are
+> > > > > possible if you just happen to be unlucky and keep missing the lock.
+> > > > > 
+> > > > > There's no knob to tune, but there probably is room for improvement in
+> > > > > this code. In principle we could try to be more aggressive about
+> > > > > getting the lock by trying to wake up one or more blocked tasks whenever
+> > > > > a lock is released. You might still end up with delays, but it could
+> > > > > help improve responsiveness.
+> > > > 
+> > > > …or you could implement the NFSv4.1 lock callback functionality. That would scale better than more aggressive polling.
+> > > 
+> > > I had forgotten about those. I wonder what servers actually implement
+> > > them? I don't think Linux' knfsd does yet.
+> > 
+> > No.  How I'd imagined it would work:
+> > 
+> > 	- on a failed blocking lock request, insert a waiter.
+> > 	- when the lock the waiter is blocking on is released or
+> > 	  downgraded, apply the waiting lock as a "provisional" lock:
+> > 	  add it to the i_flock list, but *don't* allow it to downgrade
+> > 	  or merge with any existing locks.  Then send the callback.
+> > 	- when the client resends the lock request, finish applying the
+> > 	  lock.  This is when we downgrade, merge, or split as
+> > 	  necessary.
+> > 	- Alternatively, if some timeout passes without the client
+> > 	  requesting the lock again, give up and remove the
+> > 	  "provisional" lock.
+> > 
+> 
+> Do we really need to do that?
+> 
+> RFC5667 seems to indicate that the server isn't required to hold the
+> lock for the client when it sends the callback.
+> 
+> As a first step, we could just add the callbacks and not try to hold
+> the lock for the client. That wouldn't be too hard to do -- maybe just
+> add a blocking FL_ACCESS request to the i_flock list and then issue
+> a CB_NOTIFY_LOCK when that returns.
 
-On Wed, 5 Mar 2014 06:49:46 +0000 Al Viro <viro@ZenIV.linux.org.uk> wrote:
+Yes, you're right, something like that is probably a better first step.
 
-> On Wed, Mar 05, 2014 at 04:59:33PM +1100, NeilBrown wrote:
-> > > 	b) having already become negative.
-> >=20
-> > I didn't think dentries ever became negative.  When a file is deleted t=
-he old
-> > positive dentry is unlinked and a new negative dentry is created in it's
-> > place.
-> > Or has that changed since last I looked?
->=20
-> It has never been true.  See what d_delete() is doing.  If there was only
-> one reference to dentry, it *does* become negative.
-
-Seems I missed that - thanks.
-
->=20
-> > If they can become negative, then I could
-> >    dir =3D ACCESS_ONCE(parent->d_inode);
-> >    if (!dir)
-> >         return -ECHILD;
-> >=20
-> > Do you think that would be safe?
->=20
-> Depends on what you do with it afterwards...
-
-It deferences i_sb, reads a couple of integer fields (never writes) and=20
-    rcu_dereference(NFS_I(inode)->delegation);
-
-which will currently always be NULL on a directory and if we ever did have
-directory delegation, should clearly be safe to reference under rcu.
-
-Here is my current version of that patch.
-Thanks again,
-NeilBrown
-
-=46rom 8b85de80ccc7be4e9a31a547737e091fba2ae81f Mon Sep 17 00:00:00 2001
-From: NeilBrown <neilb@suse.de>
-Date: Tue, 4 Mar 2014 15:06:58 +1100
-Subject: [PATCH] NFS: prepare for RCU-walk support but pushing tests later =
-in
- code.
-
-nfs_lookup_revalidate, nfs4_lookup_revalidate, and nfs_permission
-all need to understand and handle RCU-walk for NFS to gain the
-benefits of RCU-walk for cached information.
-
-Currently these functions all immediately return -ECHILD
-if the relevant flag (LOOKUP_RCU or MAY_NOT_BLOCK) is set.
-
-This patch pushes those tests later in the code so that we only abort
-immediately before we enter rcu-unsafe code.  As subsequent patches
-make that rcu-unsafe code rcu-safe, several of these new tests will
-disappear.
-
-With this patch there are several paths through the code which will no
-longer return -ECHILD during an RCU-walk.  However these are mostly
-error paths or other uninteresting cases.
-
-A noteworthy change in nfs_lookup_revalidate is that we don't take
-(or put) the reference to ->d_parent when LOOKUP_RCU is set.
-Rather we rcu_dereference ->d_parent, and check that ->d_inode
-is not NULL.  We also check that ->d_parent hasn't changed after
-all the tests.
-
-In nfs4_lookup_revalidate we simple avoid testing LOOKUP_RCU on the
-path that simply calls nfs_lookup_revalidate() as that function
-already performs the required test.
-
-
-
-Signed-off-by: NeilBrown <neilb@suse.de>
-
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index f5509f95f261..7530acdc5c42 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -1055,21 +1055,30 @@ static int nfs_lookup_revalidate(struct dentry *den=
-try, unsigned int flags)
- 	struct nfs4_label *label =3D NULL;
- 	int error;
-=20
--	if (flags & LOOKUP_RCU)
--		return -ECHILD;
--
--	parent =3D dget_parent(dentry);
--	dir =3D parent->d_inode;
-+	if (flags & LOOKUP_RCU) {
-+		parent =3D rcu_dereference(dentry->d_parent);
-+		dir =3D ACCESS_ONCE(parent->d_inode);
-+		if (!dir)
-+			return -ECHILD;
-+	} else {
-+		parent =3D dget_parent(dentry);
-+		dir =3D parent->d_inode;
-+	}
- 	nfs_inc_stats(dir, NFSIOS_DENTRYREVALIDATE);
- 	inode =3D dentry->d_inode;
-=20
- 	if (!inode) {
-+		if (flags & LOOKUP_RCU)
-+			return -ECHILD;
-+
- 		if (nfs_neg_need_reval(dir, dentry, flags))
- 			goto out_bad;
- 		goto out_valid_noent;
- 	}
-=20
- 	if (is_bad_inode(inode)) {
-+		if (flags & LOOKUP_RCU)
-+			return -ECHILD;
- 		dfprintk(LOOKUPCACHE, "%s: %pd2 has dud inode\n",
- 				__func__, dentry);
- 		goto out_bad;
-@@ -1078,6 +1087,9 @@ static int nfs_lookup_revalidate(struct dentry *dentr=
-y, unsigned int flags)
- 	if (NFS_PROTO(dir)->have_delegation(inode, FMODE_READ))
- 		goto out_set_verifier;
-=20
-+	if (flags & LOOKUP_RCU)
-+		return -ECHILD;
-+
- 	/* Force a full look up iff the parent directory has changed */
- 	if (!nfs_is_exclusive_create(dir, flags) && nfs_check_verifier(dir, dentr=
-y)) {
- 		if (nfs_lookup_verify_inode(inode, flags))
-@@ -1120,13 +1132,18 @@ out_set_verifier:
- 	/* Success: notify readdir to use READDIRPLUS */
- 	nfs_advise_use_readdirplus(dir);
-  out_valid_noent:
--	dput(parent);
-+	if (flags & LOOKUP_RCU) {
-+		if (parent !=3D rcu_dereference(dentry->d_parent))
-+			return -ECHILD;
-+	} else
-+		dput(parent);
- 	dfprintk(LOOKUPCACHE, "NFS: %s(%pd2) is valid\n",
- 			__func__, dentry);
- 	return 1;
- out_zap_parent:
- 	nfs_zap_caches(dir);
-  out_bad:
-+	BUG_ON(flags & LOOKUP_RCU);
- 	nfs_free_fattr(fattr);
- 	nfs_free_fhandle(fhandle);
- 	nfs4_label_free(label);
-@@ -1152,6 +1169,7 @@ out_zap_parent:
- 			__func__, dentry);
- 	return 0;
- out_error:
-+	BUG_ON(flags & LOOKUP_RCU);
- 	nfs_free_fattr(fattr);
- 	nfs_free_fhandle(fhandle);
- 	nfs4_label_free(label);
-@@ -1499,9 +1517,6 @@ static int nfs4_lookup_revalidate(struct dentry *dent=
-ry, unsigned int flags)
- 	struct inode *inode;
- 	int ret =3D 0;
-=20
--	if (flags & LOOKUP_RCU)
--		return -ECHILD;
--
- 	if (!(flags & LOOKUP_OPEN) || (flags & LOOKUP_DIRECTORY))
- 		goto no_open;
- 	if (d_mountpoint(dentry))
-@@ -1518,6 +1533,9 @@ static int nfs4_lookup_revalidate(struct dentry *dent=
-ry, unsigned int flags)
- 		struct dentry *parent;
- 		struct inode *dir;
-=20
-+		if (flags & LOOKUP_RCU)
-+			return -ECHILD;
-+
- 		parent =3D dget_parent(dentry);
- 		dir =3D parent->d_inode;
- 		if (!nfs_neg_need_reval(dir, dentry, flags))
-@@ -2273,9 +2291,6 @@ int nfs_permission(struct inode *inode, int mask)
- 	struct rpc_cred *cred;
- 	int res =3D 0;
-=20
--	if (mask & MAY_NOT_BLOCK)
--		return -ECHILD;
--
- 	nfs_inc_stats(inode, NFSIOS_VFSACCESS);
-=20
- 	if ((mask & (MAY_READ | MAY_WRITE | MAY_EXEC)) =3D=3D 0)
-@@ -2302,6 +2317,9 @@ force_lookup:
- 	if (!NFS_PROTO(inode)->access)
- 		goto out_notsup;
-=20
-+	if (mask & MAY_NOT_BLOCK)
-+		return -ECHILD;
-+
- 	cred =3D rpc_lookup_cred();
- 	if (!IS_ERR(cred)) {
- 		res =3D nfs_do_access(inode, cred, mask);
-@@ -2316,6 +2334,9 @@ out:
- 		inode->i_sb->s_id, inode->i_ino, mask, res);
- 	return res;
- out_notsup:
-+	if (mask & MAY_NOT_BLOCK)
-+		return -ECHILD;
-+
- 	res =3D nfs_revalidate_inode(NFS_SERVER(inode), inode);
- 	if (res =3D=3D 0)
- 		res =3D generic_permission(inode, mask);
-
---Sig_/Q9nj2uciUWV_JOytF5A7=qX
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.22 (GNU/Linux)
-
-iQIVAwUBUxgL3znsnt1WYoG5AQJIcQ/6AtE5iqU3nwj2RIBaQHOe4hRcF8gCfaFJ
-qvbC7mkKXQDczhKdbe1121cOThNdxOfy+fGYfWOebyDSbQgNuG7SMs5nea3RqxaX
-tjJYFJsOxwzYtVui8oxOmcqQvn8o09NmkiUWRHsD33mqqKzAAbjvo8ilLqby6g6V
-XJgEH/det0qJ6G8ggatN4n2sSfYnKPJ+5qJkVWRWuyj8xyWgpVwEBtIKhdSQOE4/
-/vLQwYdHmH5e2xLqoZXR//VJx3GSADigYFShE8ijT2UOThhy4QCM3l+eyuNr/8Wp
-CUZCBS4Zy8t0XurLbk/zNtS2VPTRfL/RI8PKvGuJKYKwqVYYk6rW5rWTJxjQ+ULn
-cXW9aTfBzPoPQUPAfazsfqvA/bp/VMpfFmoNiTqzxUAH0dQaMiGqhGLMfbn0+KGX
-7tK4lL0TCnUy9+xMVNaFQVqsANbrNELgs49zYTnzs9Zuhegj/uhGy8NM9HfzuLPs
-+HXmMOdqAS/Td87KJ80kGMh60n9e+RK2NLpP46SQdonG/8UK1UkP1vorn5JZRCbb
-a/PETbjdDA0noGsJUwevqJaxwsH2SGo0wQZzED54r2qTeSKMngD2C1Dvsmxnrndc
-rGrmXPyU+iV8F5PnKlNsdm8ycH3TxuxMMB+APLZEYBDMh9nlpPtQGllbjMbwaE83
-WD9xLgAB/tg=
-=EcAg
------END PGP SIGNATURE-----
-
---Sig_/Q9nj2uciUWV_JOytF5A7=qX--
+--b.
