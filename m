@@ -1,67 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f180.google.com ([209.85.223.180]:45606 "EHLO
-	mail-ie0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754922AbaCMUIE convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Mar 2014 16:08:04 -0400
-Received: by mail-ie0-f180.google.com with SMTP id as1so1578563iec.39
-        for <linux-nfs@vger.kernel.org>; Thu, 13 Mar 2014 13:08:04 -0700 (PDT)
+Received: from mail-ie0-f175.google.com ([209.85.223.175]:48414 "EHLO
+	mail-ie0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751565AbaCCSUG convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Mar 2014 13:20:06 -0500
+Received: by mail-ie0-f175.google.com with SMTP id to1so258664ieb.20
+        for <linux-nfs@vger.kernel.org>; Mon, 03 Mar 2014 10:20:05 -0800 (PST)
 Content-Type: text/plain; charset=windows-1252
 Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
-Subject: Re: [PATCH] nfs: emit a fsnotify_nameremove call in sillyrename codepath
+Subject: Re: [PATCH/RFC] Add simple backoff logic when reconnecting to a server that recently initiated a connection close
 From: Trond Myklebust <trond.myklebust@primarydata.com>
-In-Reply-To: <1394738651-26783-1-git-send-email-jlayton@redhat.com>
-Date: Thu, 13 Mar 2014 16:08:01 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <35EEB018-FD2D-4C52-AA6B-24B66B11D6B6@primarydata.com>
-References: <1394738651-26783-1-git-send-email-jlayton@redhat.com>
+In-Reply-To: <20140303111352.736a7268@tlielax.poochiereds.net>
+Date: Mon, 3 Mar 2014 13:20:02 -0500
+Cc: Scott Mayhew <smayhew@redhat.com>, linux-nfs@vger.kernel.org
+Message-Id: <977F590C-0AF9-4B7F-B1FF-C10777987887@primarydata.com>
+References: <20140228222956.GA1544@tonberry.usersys.redhat.com> <20140303111352.736a7268@tlielax.poochiereds.net>
 To: Layton Jeff <jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Mar 13, 2014, at 15:24, Jeff Layton <jlayton@redhat.com> wrote:
+On Mar 3, 2014, at 11:13, Jeff Layton <jlayton@redhat.com> wrote:
 
-> If a file is sillyrenamed, then the generic vfs_unlink code will skip
-> emitting fsnotify events for it.
+> On Fri, 28 Feb 2014 17:29:56 -0500
+> Scott Mayhew <smayhew@redhat.com> wrote:
 > 
-> This patch has the sillyrename code do that instead.
+>> From 2e3902fc0c66bda360a8e40e3e64d82e312a20d4 Mon Sep 17 00:00:00 2001
+>> From: Scott Mayhew <smayhew@redhat.com>
+>> Date: Fri, 28 Feb 2014 15:23:50 -0500
+>> Subject: [PATCH] sunrpc: reintroduce xprt->shutdown with a new purpose (option
+>> 2)
+>> 
+>> If a server is behaving pathologically and accepting our connections
+>> only to close the socket on the first RPC operation it receives, then
+>> we should probably delay when trying to reconnect.
+>> 
+>> This patch reintroduces the xprt->shutdown field (this time as two
+>> bits).  Previously this field was used to indicate that the transport
+>> was in the process of being shutdown, but now it will just be used to
+>> indicate that a shutdown was initiated by the server.
+>> 
+>> If the server closes the connection 3 times without us having received
+>> an RPC reply in the interim, then we'll delay before attempting to
+>> connect again.
+>> ---
+>> include/linux/sunrpc/xprt.h |  3 ++-
+>> net/sunrpc/clnt.c           |  2 ++
+>> net/sunrpc/xprtsock.c       | 13 +++++++++++++
+>> 3 files changed, 17 insertions(+), 1 deletion(-)
+>> 
 > 
-> In truth this is a little bit odd since we aren't actually removing the
-> dentry per-se, but renaming it. Still, this is probably the right thing
-> to do since it's what userland apps expect to see when an unlink()
-> occurs or some file is renamed on top of the dentry.
+> This patch seems a little more reasonable than the other one if only
+> because it shouldn't cause artificial delays when there is some
+> temporary hiccup that causes the server to shut down the connection.
 > 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
-> fs/nfs/dir.c    | 1 +
-> fs/nfs/unlink.c | 2 ++
-> 2 files changed, 3 insertions(+)
-> 
-> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-> index 4a48fe4b84b6..591aec9b1719 100644
-> --- a/fs/nfs/dir.c
-> +++ b/fs/nfs/dir.c
-> @@ -37,6 +37,7 @@
-> #include <linux/sched.h>
-> #include <linux/kmemleak.h>
-> #include <linux/xattr.h>
-> +#include <linux/fsnotify.h>
-> 
-> #include "delegation.h"
-> #include "iostat.h"
-> diff --git a/fs/nfs/unlink.c b/fs/nfs/unlink.c
-> index 11d78944de79..547ed0cd59db 100644
-> --- a/fs/nfs/unlink.c
-> +++ b/fs/nfs/unlink.c
-> @@ -355,6 +355,8 @@ static void nfs_async_rename_done(struct rpc_task *task, void *calldata)
-> 
-> 	if (task->tk_status != 0)
-> 		nfs_cancel_async_unlink(old_dentry);
-> +	else if (old_dentry->d_flags & DCACHE_NFSFS_RENAMED)
-> +		fsnotify_nameremove(old_dentry, S_ISDIR(old_dentry->d_inode->i_mode));
-> }
+> That said, this seems to be squarely a server-side bug so I'm not sure
+> we ought to go to any great lengths to work around it.
 
-Any reason why we shouldn’t just do this in nfs_sillyrename() itself?
+So this is about a broken server that accepts connection requests and then immediately closes them? If so, then I agree with Jeff, it really isn’t something we need to fix on the client.
+
 _________________________________
 Trond Myklebust
 Linux NFS client maintainer, PrimaryData
