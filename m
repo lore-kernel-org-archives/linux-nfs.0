@@ -1,93 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:60683 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751844AbaC2TrA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 29 Mar 2014 15:47:00 -0400
-Date: Sat, 29 Mar 2014 15:46:59 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Kinglong Mee <kinglongmee@gmail.com>
+Received: from mail-ie0-f173.google.com ([209.85.223.173]:47672 "EHLO
+	mail-ie0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753269AbaCDTFr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Mar 2014 14:05:47 -0500
+Received: by mail-ie0-f173.google.com with SMTP id rl12so4710868iec.18
+        for <linux-nfs@vger.kernel.org>; Tue, 04 Mar 2014 11:05:46 -0800 (PST)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Andy Adamson <andros@netapp.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2] NFSD: Clear wcc data between compound ops
-Message-ID: <20140329194659.GF11085@fieldses.org>
-References: <533299E9.6010806@gmail.com>
- <20140328211920.GD6041@fieldses.org>
- <5335FAB2.8050404@gmail.com>
- <20140329005831.GO6041@fieldses.org>
- <53362EB3.2040809@gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <53362EB3.2040809@gmail.com>
+Subject: [PATCH v2 1/3] NFSv4: Fix the return value of nfs4_select_rw_stateid
+Date: Tue,  4 Mar 2014 14:05:41 -0500
+Message-Id: <1393959943-9919-2-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1393959943-9919-1-git-send-email-trond.myklebust@primarydata.com>
+References: <1393954269-3974-1-git-send-email-andros@netapp.com>
+ <1393959943-9919-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Mar 29, 2014 at 10:23:47AM +0800, Kinglong Mee wrote:
-> Testing NFS4.0 by pynfs, I got some messeages as,
-> "nfsd: inode locked twice during operation."
-> 
-> When one compound RPC contains two or more ops that locks
-> the filehandle,the second op will cause the message.
-> 
-> As two SETATTR ops, after the first SETATTR, nfsd will not call
-> fh_put() to release current filehandle, it means filehandle have
-> unlocked with fh_post_saved = 1.
-> The second SETATTR find fh_post_saved = 1, and printk the message.
-> 
-> v2: introduce helper fh_clear_wcc().
+In commit 5521abfdcf4d6 (NFSv4: Resend the READ/WRITE RPC call
+if a stateid change causes an error), we overloaded the return value of
+nfs4_select_rw_stateid() to cause it to return -EWOULDBLOCK if an RPC
+call is outstanding that would cause the NFSv4 lock or open stateid
+to change.
+That is all redundant when we actually copy the stateid used in the
+read/write RPC call that failed, and check that against the current
+stateid. It is doubly so, when we consider that in the NFSv4.1 case,
+we also set the stateid's seqid to the special value '0', which means
+'match the current valid stateid'.
 
-Thanks, applying.--b.
+Reported-by: Andy Adamson <andros@netapp.com>
+Link: http://lkml.kernel.org/r/1393954269-3974-1-git-send-email-andros@netapp.com
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/nfs4state.c | 6 ------
+ 1 file changed, 6 deletions(-)
 
-> 
-> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-> ---
->  fs/nfsd/nfs4proc.c |  2 ++
->  fs/nfsd/nfsfh.h    | 14 +++++++++++++-
->  2 files changed, 15 insertions(+), 1 deletion(-)
-> 
-> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> index 550faf2..9849c61 100644
-> --- a/fs/nfsd/nfs4proc.c
-> +++ b/fs/nfsd/nfs4proc.c
-> @@ -1358,6 +1358,8 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
->  			goto encode_op;
->  		}
-> 
-> +		fh_clear_wcc(current_fh);
-> +
->  		/* If op is non-idempotent */
->  		if (opdesc->op_flags & OP_MODIFIES_SOMETHING) {
->  			plen = opdesc->op_rsize_bop(rqstp, op);
-> diff --git a/fs/nfsd/nfsfh.h b/fs/nfsd/nfsfh.h
-> index 4775bc4..ad67964 100644
-> --- a/fs/nfsd/nfsfh.h
-> +++ b/fs/nfsd/nfsfh.h
-> @@ -133,6 +133,17 @@ fh_init(struct svc_fh *fhp, int maxsize)
-> 
->  #ifdef CONFIG_NFSD_V3
->  /*
-> + * The wcc data stored in current_fh should be cleared
-> + * between compound ops.
-> + */
-> +static inline void
-> +fh_clear_wcc(struct svc_fh *fhp)
-> +{
-> +	fhp->fh_post_saved = 0;
-> +	fhp->fh_pre_saved = 0;
-> +}
-> +
-> +/*
->   * Fill in the pre_op attr for the wcc data
->   */
->  static inline void
-> @@ -152,7 +163,8 @@ fill_pre_wcc(struct svc_fh *fhp)
-> 
->  extern void fill_post_wcc(struct svc_fh *);
->  #else
-> -#define	fill_pre_wcc(ignored)
-> +#define fh_clear_wcc(ignored)
-> +#define fill_pre_wcc(ignored)
->  #define fill_post_wcc(notused)
->  #endif /* CONFIG_NFSD_V3 */
-> 
-> -- 
-> 1.9.0
-> 
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index e1a47217c05e..cd0cf93ac927 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -974,9 +974,6 @@ static int nfs4_copy_lock_stateid(nfs4_stateid *dst,
+ 	else if (lsp != NULL && test_bit(NFS_LOCK_INITIALIZED, &lsp->ls_flags) != 0) {
+ 		nfs4_stateid_copy(dst, &lsp->ls_stateid);
+ 		ret = 0;
+-		smp_rmb();
+-		if (!list_empty(&lsp->ls_seqid.list))
+-			ret = -EWOULDBLOCK;
+ 	}
+ 	spin_unlock(&state->state_lock);
+ 	nfs4_put_lock_state(lsp);
+@@ -997,9 +994,6 @@ static int nfs4_copy_open_stateid(nfs4_stateid *dst, struct nfs4_state *state)
+ 			src = &state->open_stateid;
+ 		nfs4_stateid_copy(dst, src);
+ 		ret = 0;
+-		smp_rmb();
+-		if (!list_empty(&state->owner->so_seqid.list))
+-			ret = -EWOULDBLOCK;
+ 	} while (read_seqretry(&state->seqlock, seq));
+ 	return ret;
+ }
+-- 
+1.8.5.3
+
