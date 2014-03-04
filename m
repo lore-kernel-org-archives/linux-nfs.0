@@ -1,125 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f54.google.com ([209.85.220.54]:59342 "EHLO
-	mail-pa0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751191AbaCXD7G (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 23 Mar 2014 23:59:06 -0400
-Received: by mail-pa0-f54.google.com with SMTP id lf10so4879776pab.13
-        for <linux-nfs@vger.kernel.org>; Sun, 23 Mar 2014 20:59:05 -0700 (PDT)
-Message-ID: <532FAD83.4040907@gmail.com>
-Date: Mon, 24 Mar 2014 11:58:59 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: [PATCH 3/5][RESEND] SUNRPC: New helper for creating client with rpc_xprt
-References: <532FAC85.20909@gmail.com>
-In-Reply-To: <532FAC85.20909@gmail.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-ie0-f179.google.com ([209.85.223.179]:39183 "EHLO
+	mail-ie0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750990AbaCDSJk convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Mar 2014 13:09:40 -0500
+Received: by mail-ie0-f179.google.com with SMTP id lx4so2696843iec.24
+        for <linux-nfs@vger.kernel.org>; Tue, 04 Mar 2014 10:09:40 -0800 (PST)
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
+Subject: Re: [PATCH 0/4] NFSv4 fix nfs4_stateid_is_current processing
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+In-Reply-To: <1393954269-3974-1-git-send-email-andros@netapp.com>
+Date: Tue, 4 Mar 2014 13:09:37 -0500
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <FE2FF2AA-62E5-4D8C-9025-D6C648385FFA@primarydata.com>
+References: <1393954269-3974-1-git-send-email-andros@netapp.com>
+To: Adamson William Andros <andros@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
----
- include/linux/sunrpc/clnt.h |  2 ++
- net/sunrpc/clnt.c           | 58 ++++++++++++++++++++++++++-------------------
- 2 files changed, 35 insertions(+), 25 deletions(-)
 
-diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-index 8af2804..70736b9 100644
---- a/include/linux/sunrpc/clnt.h
-+++ b/include/linux/sunrpc/clnt.h
-@@ -130,6 +130,8 @@ struct rpc_create_args {
- #define RPC_CLNT_CREATE_NO_RETRANS_TIMEOUT	(1UL << 9)
- 
- struct rpc_clnt *rpc_create(struct rpc_create_args *args);
-+struct rpc_clnt *rpc_create_xprt(struct rpc_create_args *args,
-+					struct rpc_xprt *xprt);
- struct rpc_clnt	*rpc_bind_new_program(struct rpc_clnt *,
- 				const struct rpc_program *, u32);
- void rpc_task_reset_client(struct rpc_task *task, struct rpc_clnt *clnt);
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 0edada9..3c9a0f0 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -438,6 +438,38 @@ out_no_rpciod:
- 	return ERR_PTR(err);
- }
- 
-+struct rpc_clnt *rpc_create_xprt(struct rpc_create_args *args,
-+					struct rpc_xprt *xprt)
-+{
-+	struct rpc_clnt *clnt = NULL;
-+
-+	clnt = rpc_new_client(args, xprt, NULL);
-+	if (IS_ERR(clnt))
-+		return clnt;
-+
-+	if (!(args->flags & RPC_CLNT_CREATE_NOPING)) {
-+		int err = rpc_ping(clnt);
-+		if (err != 0) {
-+			rpc_shutdown_client(clnt);
-+			return ERR_PTR(err);
-+		}
-+	}
-+
-+	clnt->cl_softrtry = 1;
-+	if (args->flags & RPC_CLNT_CREATE_HARDRTRY)
-+		clnt->cl_softrtry = 0;
-+
-+	if (args->flags & RPC_CLNT_CREATE_AUTOBIND)
-+		clnt->cl_autobind = 1;
-+	if (args->flags & RPC_CLNT_CREATE_DISCRTRY)
-+		clnt->cl_discrtry = 1;
-+	if (!(args->flags & RPC_CLNT_CREATE_QUIET))
-+		clnt->cl_chatty = 1;
-+
-+	return clnt;
-+}
-+EXPORT_SYMBOL_GPL(rpc_create_xprt);
-+
- /**
-  * rpc_create - create an RPC client and transport with one call
-  * @args: rpc_clnt create argument structure
-@@ -451,7 +483,6 @@ out_no_rpciod:
- struct rpc_clnt *rpc_create(struct rpc_create_args *args)
- {
- 	struct rpc_xprt *xprt;
--	struct rpc_clnt *clnt;
- 	struct xprt_create xprtargs = {
- 		.net = args->net,
- 		.ident = args->protocol,
-@@ -515,30 +546,7 @@ struct rpc_clnt *rpc_create(struct rpc_create_args *args)
- 	if (args->flags & RPC_CLNT_CREATE_NONPRIVPORT)
- 		xprt->resvport = 0;
- 
--	clnt = rpc_new_client(args, xprt, NULL);
--	if (IS_ERR(clnt))
--		return clnt;
--
--	if (!(args->flags & RPC_CLNT_CREATE_NOPING)) {
--		int err = rpc_ping(clnt);
--		if (err != 0) {
--			rpc_shutdown_client(clnt);
--			return ERR_PTR(err);
--		}
--	}
--
--	clnt->cl_softrtry = 1;
--	if (args->flags & RPC_CLNT_CREATE_HARDRTRY)
--		clnt->cl_softrtry = 0;
--
--	if (args->flags & RPC_CLNT_CREATE_AUTOBIND)
--		clnt->cl_autobind = 1;
--	if (args->flags & RPC_CLNT_CREATE_DISCRTRY)
--		clnt->cl_discrtry = 1;
--	if (!(args->flags & RPC_CLNT_CREATE_QUIET))
--		clnt->cl_chatty = 1;
--
--	return clnt;
-+	return rpc_create_xprt(args, xprt);
- }
- EXPORT_SYMBOL_GPL(rpc_create);
- 
--- 
-1.8.5.3
+On Mar 4, 2014, at 12:31, andros@netapp.com wrote:
+
+> From: Andy Adamson <andros@netapp.com>
+> 
+> This is an expanded version of the "NFSv4 always compare stateids in nfs4_stateid_is_current" patch I sent on Feb 27.
+> 
+> Found at Connectathon 2014 and NetApp internal testing.
+> 
+> nfs4_stateid_is_current is used on the NFSv4 I/O path to determine if a
+> stateid has changed. The idea is that if there is a stateid expire error
+> such as NFS4ERR_BAD_STATEID and the stateid used that induced the error has
+> changed, then we can just resend the RPC from the call prepare state with
+> the changed stateid instead of kicking off recovery as the changed stateid
+> indicates it already had been recovered.
+> 
+> This patch set fixes a false positive that resulted in an NFS4ERR_BAD_STATEID
+> infinite loop. Trond pointed out that the nfs4_select_rw_stateid -EIO error
+> is special in that it indicates a lost lock.
+> 
+> As I examined the use of nfs4_select_rw_stateid, I addressed some other errors
+> in the use of nfs4_set_rw_stateid and friends in setattr and filelayout
+> prepare functions.
+> 
+> Just tested with connectathon tests. Will test more once I'm back in town...
+
+One question:
+
+Do we need the EWOULDBLOCK case at all in nfs4_copy_lock_stateid/nfs4_copy_open_stateid? Looking at the code, it seems particularly redundant for the case of NFSv4.1, where we set the seqid to ‘0’. Given that we do the nfs4_stateid_is_current() test, it seems unnecessary in the case of NFSv4.0 too...
+
+So, how about just throwing out the EWOULDBLOCK returns, then keeping nfs4_stateid_is_current() as it is, fixing up _nfs4_do_setattr to only deal with the -EIO case, and then fixing up the file layout uses of nfs4_select_rw_stateid() to check the return values?
+
+_________________________________
+Trond Myklebust
+Linux NFS client maintainer, PrimaryData
+trond.myklebust@primarydata.com
+
