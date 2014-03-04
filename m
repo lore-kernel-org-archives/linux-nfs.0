@@ -1,70 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:45123 "EHLO fieldses.org"
+Received: from mx11.netapp.com ([216.240.18.76]:39593 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756061AbaC0OaZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 27 Mar 2014 10:30:25 -0400
-Date: Thu, 27 Mar 2014 10:30:24 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: NeilBrown <neilb@suse.de>
-Cc: NFS <linux-nfs@vger.kernel.org>, jlayton@redhat.com
-Subject: Re: nfsd needs "md5", but fips=1 disables it -> hang
-Message-ID: <20140327143024.GA27633@fieldses.org>
-References: <20140327205239.2ea29060@notabene.brown>
+	id S1752007AbaCDRbU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Mar 2014 12:31:20 -0500
+From: <andros@netapp.com>
+To: <trond.myklebust@primarydata.com>
+CC: <linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 3/4] NFSv4 _nfs4_do_setattr use zero stateid on lost lock
+Date: Tue, 4 Mar 2014 12:31:08 -0500
+Message-ID: <1393954269-3974-4-git-send-email-andros@netapp.com>
+In-Reply-To: <1393954269-3974-1-git-send-email-andros@netapp.com>
+References: <1393954269-3974-1-git-send-email-andros@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140327205239.2ea29060@notabene.brown>
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Mar 27, 2014 at 08:52:39PM +1100, NeilBrown wrote:
-> 
-> [I sent this 2 days ago but haven't seen it come back on the nfs
->  list and don't see it in the archives.  Maybe someone we cannot name
->  filtered it because it contains the word 'crypto' ??]
+From: Andy Adamson <andros@netapp.com>
 
-Huh.
+Use the zero stateid if nfs4_select_rw_stateid indicates a lost lock (-EIO)
 
-> Apparently there is a thing called "FIPS" which lists some approved crypto
-> algorithms.  And some sites need to only use those.  So they boot their
-> kernel with
->     fips=1
-> and anything non-fips-approved stops working.
-> 
-> "md5" is not fips-approved.
-> 
-> So
-> 
-> 	desc.tfm = crypto_alloc_hash("md5", 0, CRYPTO_ALG_ASYNC);
-> 
-> in
-> 
-> nfs4_make_rec_clidname(char *dname, const struct xdr_netobj *clname)
-> 
-> 
-> always fails when fips=1.  This interferes with efficient NFS service (every
-> 'open' hangs).
-> 
-> s/md5/sha1/
-> 
-> makes this problem go away, because sha1 is fips-approved.
-> 
-> My question is: is this safe, or is the hash value used in some external way
-> (in /var/lib/nfs/v4recovery ??).
+Signed-off-by: Andy Adamson <andros@netapp.com>
+---
+ fs/nfs/nfs4proc.c | 18 +++++++++++-------
+ 1 file changed, 11 insertions(+), 7 deletions(-)
 
-Right, it's used in v4recovery, so you'd lose client state when you
-rebooted the server to the new (SHA1-using) server.
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index de8e7f5..efe940c 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2458,18 +2458,22 @@ static int _nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
+ 	truncate = (sattr->ia_valid & ATTR_SIZE) ? true : false;
+ 	fmode = truncate ? FMODE_WRITE : FMODE_READ;
+ 
+-	if (nfs4_copy_delegation_stateid(&arg.stateid, inode, fmode)) {
+-		/* Use that stateid */
+-	} else if (truncate && state != NULL && nfs4_valid_open_stateid(state)) {
++	if (nfs4_copy_delegation_stateid(&arg.stateid, inode, fmode))
++		/* Use delegation stateid */
++		goto do_call;
++	if (truncate && state != NULL && nfs4_valid_open_stateid(state)) {
+ 		struct nfs_lockowner lockowner = {
+ 			.l_owner = current->files,
+ 			.l_pid = current->tgid,
+ 		};
+-		nfs4_select_rw_stateid(&arg.stateid, state, FMODE_WRITE,
+-				&lockowner);
+-	} else
+-		nfs4_stateid_copy(&arg.stateid, &zero_stateid);
++		/* Use zero stateid if lock is lost (-EIO fall through) */
++		if (nfs4_select_rw_stateid(&arg.stateid, state, FMODE_WRITE,
++						&lockowner) != -EIO)
++			goto do_call;
++	}
++	nfs4_stateid_copy(&arg.stateid, &zero_stateid);
+ 
++do_call:
+ 	status = nfs4_call_sync(server->client, server, &msg, &arg.seq_args, &res.seq_res, 1);
+ 	if (status == 0 && state != NULL)
+ 		renew_lease(server, timestamp);
+-- 
+1.8.3.1
 
-Our intention was to migrate people that care about FIPS to the umh
-upcall.  But rhel6 has a hack (a private md5 implementation).
-
-Cc'ing jlayton (currently traveling) who did that work.
-
---b.
-
-> 
-> If changing the hash to sha1 is safe, we should do that and probably add
->   select CRYPTO_SHA1
-> to Kconfig just to be safe.
-> 
-> If we really need to keep it stable, I guess we need to find a way to perform
-> md5 computations that bypasses the fips checks.
