@@ -1,104 +1,118 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f48.google.com ([209.85.192.48]:47287 "EHLO
-	mail-qg0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752717AbaCLJVQ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Mar 2014 05:21:16 -0400
-Received: by mail-qg0-f48.google.com with SMTP id j107so28302569qga.7
-        for <linux-nfs@vger.kernel.org>; Wed, 12 Mar 2014 02:21:16 -0700 (PDT)
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
-Subject: Re: [PATCH] nfs: Don't assume we have a security structure
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-In-Reply-To: <20140311210611.0e82e3cf@ipyr.poochiereds.net>
-Date: Wed, 12 Mar 2014 05:21:13 -0400
-Cc: Eric Paris <eparis@redhat.com>, Schumaker Anna <Anna.Schumaker@netapp.com>,
-        David Quigley <dpquigl@davequigley.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        James Morris <james.l.morris@oracle.com>
-Message-Id: <BA64BE59-8F58-456B-8E98-3F44A4CEC909@primarydata.com>
-References: <1394572274-16474-1-git-send-email-Anna.Schumaker@netapp.com> <29D9CA49-A493-471B-932B-959AFF96C729@primarydata.com> <EEEA2B4E-BE0F-40C0-91C3-98E2E7E8BB35@primarydata.com> <1394584698.10287.0.camel@localhost> <20140311210611.0e82e3cf@ipyr.poochiereds.net>
-To: Layton Jeff <jlayton@redhat.com>
+Received: from mail-ee0-f41.google.com ([74.125.83.41]:39770 "EHLO
+	mail-ee0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756409AbaCDHiM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Mar 2014 02:38:12 -0500
+Received: by mail-ee0-f41.google.com with SMTP id t10so2105593eei.14
+        for <linux-nfs@vger.kernel.org>; Mon, 03 Mar 2014 23:38:11 -0800 (PST)
+From: Noam Meltzer <noam@primarydata.com>
+To: noam@primarydata.com, linux-nfs@vger.kernel.org,
+        sssd-devel@lists.fedorahosted.org
+Subject: [PATCH v2 2/5] NFSv4 client: (private) headers from libnfsidmap
+Date: Tue,  4 Mar 2014 09:37:53 +0200
+Message-Id: <1393918676-20865-3-git-send-email-noam@primarydata.com>
+In-Reply-To: <1393918676-20865-1-git-send-email-noam@primarydata.com>
+References: <1393918676-20865-1-git-send-email-noam@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+The private headers are needed in order to:
+nfsidmap_internal.h:
+* definition of struct trans_func
+* prototype for logger function
+cfg.h + queue.h:
+* prototype(s) for accessing rpc.idmpad configuration file
+---
+ src/sss_client/nfs/nfsidmap_internal.h | 78 ++++++++++++++++++++++++++++++++++
+ 1 file changed, 78 insertions(+)
+ create mode 100644 src/sss_client/nfs/nfsidmap_internal.h
 
-On Mar 11, 2014, at 21:06, Jeffrey Layton <jlayton@redhat.com> wrote:
-
-> On Tue, 11 Mar 2014 20:38:18 -0400
-> Eric Paris <eparis@redhat.com> wrote:
-> 
->> On Tue, 2014-03-11 at 18:00 -0400, Trond Myklebust wrote:
->>> On Mar 11, 2014, at 17:27, Trond Myklebust
->>> <trond.myklebust@primarydata.com> wrote:
->>> 
->>>> 
->>>> On Mar 11, 2014, at 17:11, Anna Schumaker
->>>> <Anna.Schumaker@netapp.com> wrote:
->>>> 
->>>>> If the i_security field isn't set then
->>>>> security_dentry_init_security() won't initialize some of the
->>>>> values used by the security label.  This causes my client to hit
->>>>> a BUG_ON() while encoding a label of size -2128927414.
->>>>> 
->>>>> I hit this bug while testing on a client without SELinux
->>>>> installed.
->>>>> 
->>>>> Signed-off-by: Anna Schumaker <anna.schumaker@netapp.com>
->>>>> ---
->>>>> fs/nfs/nfs4proc.c | 3 +++
->>>>> 1 file changed, 3 insertions(+)
->>>>> 
->>>>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->>>>> index b8cd560..994ccc2 100644
->>>>> --- a/fs/nfs/nfs4proc.c
->>>>> +++ b/fs/nfs/nfs4proc.c
->>>>> @@ -105,6 +105,9 @@ nfs4_label_init_security(struct inode *dir,
->>>>> struct dentry *dentry, if (nfs_server_capable(dir,
->>>>> NFS_CAP_SECURITY_LABEL) == 0) return NULL;
->>>>> 
->>>>> +	if (!dir->i_security)
->>>>> +		return NULL;
->>>>> +
->>>>> 	err = security_dentry_init_security(dentry,
->>>>> sattr->ia_mode, &dentry->d_name, (void **)&label->label,
->>>>> &label->len); if (err == 0)
->>>> 
->>>> Hi Anna,
->>>> 
->>>> This looks like a check that needs to be done by
->>>> selinux_dentry_init_security() itself. The dir->i_security field
->>>> is not something that NFS knows about. David, what needs to
->>>> happen there when dentry->d_parent->i_security (a.k.a. dsec) is
->>>> NULL?
->>>> 
->>> 
->>> Oh, wait. I missed the bit about ‘without SELinux installed’. So
->>> the problem here is that you have a NFS client that does not have
->>> SELinux set up, but running against a server that is advertising
->>> NFSv4.2 with labeled NFS. Is that correct?
->>> 
->>> It looks to me as if cap_dentry_init_security() will indeed trigger
->>> this behaviour since it returns ‘0’ without doing anything to the
->>> label. As far as I can see, the right thing to do there is to
->>> return -EOPNOTSUPP, no?
->> 
->> I feel like Jeff Layton was looking at the same thing, and came to the
->> same conclusion...
->> 
->> Jeff?
->> 
-> 
-> I posted a patch for this last week and James has merged it:
-> 
->    [PATCH] security: have cap_dentry_init_security return error
-> 
-> I didn't note it in the patch description but it fixes 4.2 when SELinux
-> is compiled in but disabled.
-
-Thanks! Then I expect no further action is needed on our part, and that the fix will come through the security tree?
-
-_________________________________
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
+diff --git a/src/sss_client/nfs/nfsidmap_internal.h b/src/sss_client/nfs/nfsidmap_internal.h
+new file mode 100644
+index 0000000..a598c10
+--- /dev/null
++++ b/src/sss_client/nfs/nfsidmap_internal.h
+@@ -0,0 +1,78 @@
++/*
++ *  nfsidmap_internal.h
++ *
++ *  nfs idmapping library, primarily for nfs4 client/server kernel idmapping
++ *  and for userland nfs4 idmapping by acl libraries.
++ *
++ *  Copyright (c) 2004 The Regents of the University of Michigan.
++ *  All rights reserved.
++ *
++ *  Andy Adamson <andros@umich.edu>
++ *
++ *  Redistribution and use in source and binary forms, with or without
++ *  modification, are permitted provided that the following conditions
++ *  are met:
++ *
++ *  1. Redistributions of source code must retain the above copyright
++ *     notice, this list of conditions and the following disclaimer.
++ *  2. Redistributions in binary form must reproduce the above copyright
++ *     notice, this list of conditions and the following disclaimer in the
++ *     documentation and/or other materials provided with the distribution.
++ *  3. Neither the name of the University nor the names of its
++ *     contributors may be used to endorse or promote products derived
++ *     from this software without specific prior written permission.
++ *
++ *  THIS SOFTWARE IS PROVIDED ``AS IS'' AND ANY EXPRESS OR IMPLIED
++ *  WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF
++ *  MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
++ *  DISCLAIMED. IN NO EVENT SHALL THE REGENTS OR CONTRIBUTORS BE LIABLE
++ *  FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
++ *  CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
++ *  SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR
++ *  BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
++ *  LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
++ *  NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
++ *  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
++ */
++
++char *get_default_domain(void);
++struct conf_list *get_local_realms(void);
++
++typedef struct trans_func * (*libnfsidmap_plugin_init_t)(void);
++
++struct trans_func {
++	char *name;
++	int (*init)(void);
++	int (*princ_to_ids)(char *secname, char *princ, uid_t *uid, gid_t *gid, 
++		extra_mapping_params **ex);
++	int (*name_to_uid)(char *name, uid_t *uid);
++	int (*name_to_gid)(char *name, gid_t *gid);
++	int (*uid_to_name)(uid_t uid, char *domain, char *name, size_t len);
++	int (*gid_to_name)(gid_t gid, char *domain, char *name, size_t len);
++	int (*gss_princ_to_grouplist)(char *secname, char *princ, gid_t *groups,
++		int *ngroups, extra_mapping_params **ex);
++};
++
++struct mapping_plugin {
++	void *dl_handle;
++	struct trans_func *trans;
++};
++
++typedef enum {
++	IDTYPE_USER = 1,
++	IDTYPE_GROUP = 2
++} idtypes;
++
++extern int idmap_verbosity;
++extern nfs4_idmap_log_function_t idmap_log_func;
++/* Level zero always prints, others print depending on verbosity level */
++#define IDMAP_LOG(LVL, MSG) \
++	do { if (LVL <= idmap_verbosity) (*idmap_log_func)MSG; } while (0)
++
++
++/*
++ * from libnfsidmap's cfg.h (same license as above)
++ * Copyright (c) 1998, 1999, 2001 Niklas Hallqvist.  All rights reserved.
++ * Copyright (c) 2000, 2003 Hï¿½kan Olsson.  All rights reserved.
++ */
++extern char    *conf_get_str(char *, char *);
+-- 
+1.8.5.3
 
