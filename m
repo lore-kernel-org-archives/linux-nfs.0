@@ -1,106 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:14552 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754580AbaCMPPZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 13 Mar 2014 11:15:25 -0400
-Message-ID: <5321CB88.6060704@RedHat.com>
-Date: Thu, 13 Mar 2014 11:15:20 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Jim Rees <rees@umich.edu>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] intr/nointr are ignored now
-References: <1394587065-27513-1-git-send-email-rees@umich.edu>
-In-Reply-To: <1394587065-27513-1-git-send-email-rees@umich.edu>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-ig0-f176.google.com ([209.85.213.176]:51566 "EHLO
+	mail-ig0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754329AbaCDSmS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Mar 2014 13:42:18 -0500
+Received: by mail-ig0-f176.google.com with SMTP id uy17so11163697igb.3
+        for <linux-nfs@vger.kernel.org>; Tue, 04 Mar 2014 10:42:18 -0800 (PST)
+Message-ID: <1393958535.7035.1.camel@leira.trondhjem.org>
+Subject: Re: [PATCH 3/4] NFSv4 _nfs4_do_setattr use zero stateid on lost lock
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: andros@netapp.com
+Cc: linux-nfs@vger.kernel.org
+Date: Tue, 04 Mar 2014 13:42:15 -0500
+In-Reply-To: <1393954269-3974-4-git-send-email-andros@netapp.com>
+References: <1393954269-3974-1-git-send-email-andros@netapp.com>
+	 <1393954269-3974-4-git-send-email-andros@netapp.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 03/11/2014 09:17 PM, Jim Rees wrote:
-> Signed-off-by: Jim Rees <rees@umich.edu>
+On Tue, 2014-03-04 at 12:31 -0500, andros@netapp.com wrote:
+> From: Andy Adamson <andros@netapp.com>
+> 
+> Use the zero stateid if nfs4_select_rw_stateid indicates a lost lock (-EIO)
+> 
+> Signed-off-by: Andy Adamson <andros@netapp.com>
 > ---
->  utils/mount/nfs.man | 51 ++++-----------------------------------------------
->  1 file changed, 4 insertions(+), 47 deletions(-)
-Committed... 
+>  fs/nfs/nfs4proc.c | 18 +++++++++++-------
+>  1 file changed, 11 insertions(+), 7 deletions(-)
+> 
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index de8e7f5..efe940c 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -2458,18 +2458,22 @@ static int _nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
+>  	truncate = (sattr->ia_valid & ATTR_SIZE) ? true : false;
+>  	fmode = truncate ? FMODE_WRITE : FMODE_READ;
+>  
+> -	if (nfs4_copy_delegation_stateid(&arg.stateid, inode, fmode)) {
+> -		/* Use that stateid */
+> -	} else if (truncate && state != NULL && nfs4_valid_open_stateid(state)) {
+> +	if (nfs4_copy_delegation_stateid(&arg.stateid, inode, fmode))
+> +		/* Use delegation stateid */
+> +		goto do_call;
+> +	if (truncate && state != NULL && nfs4_valid_open_stateid(state)) {
+>  		struct nfs_lockowner lockowner = {
+>  			.l_owner = current->files,
+>  			.l_pid = current->tgid,
+>  		};
+> -		nfs4_select_rw_stateid(&arg.stateid, state, FMODE_WRITE,
+> -				&lockowner);
+> -	} else
+> -		nfs4_stateid_copy(&arg.stateid, &zero_stateid);
+> +		/* Use zero stateid if lock is lost (-EIO fall through) */
+> +		if (nfs4_select_rw_stateid(&arg.stateid, state, FMODE_WRITE,
+> +						&lockowner) != -EIO)
 
-steved.
-> 
-> diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
-> index ef09a31..fe4f9b1 100644
-> --- a/utils/mount/nfs.man
-> +++ b/utils/mount/nfs.man
-> @@ -125,6 +125,10 @@ option may mitigate some of the risks of using the
->  .B soft
->  option.
->  .TP 1.5i
-> +.BR intr " / " nointr
-> +This option is provided for backward compatibility.
-> +It is ignored after kernel 2.6.25.
-> +.TP 1.5i
->  .BI timeo= n
->  The time in deciseconds (tenths of a second) the NFS client waits for a
->  response before it retries an NFS request.
-> @@ -668,30 +672,6 @@ Using the
->  option is also required when mounting exports on NFS servers
->  that do not support the NLM protocol.
->  .TP 1.5i
-> -.BR intr " / " nointr
-> -Selects whether to allow signals to interrupt file operations
-> -on this mount point. If neither option
-> -is specified (or if
-> -.B nointr
-> -is specified),
-> -signals do not interrupt NFS file operations. If
-> -.B intr
-> -is specified, system calls return EINTR if an in-progress NFS operation is interrupted by
-> -a signal.
-> -.IP
-> -Using the
-> -.B intr
-> -option is preferred to using the
-> -.B soft
-> -option because it is significantly less likely to result in data corruption.
-> -.IP
-> -The
-> -.BR intr " / " nointr
-> -mount option is deprecated after kernel 2.6.25.
-> -Only SIGKILL can interrupt a pending NFS operation on these kernels,
-> -and if specified, this mount option is ignored to provide backwards
-> -compatibility with older kernels.
-> -.TP 1.5i
->  .BR cto " / " nocto
->  Selects whether to use close-to-open cache coherence semantics.
->  If neither option is specified (or if
-> @@ -807,29 +787,6 @@ The mount request fails if the server's rpcbind service is not available,
->  the server's NFS service is not registered with its rpcbind service,
->  or the server's NFS service is not available on the advertised port.
->  .TP 1.5i
-> -.BR intr " / " nointr
-> -Selects whether to allow signals to interrupt file operations
-> -on this mount point. If neither option is specified (or if
-> -.B intr
-> -is specified), system calls return EINTR if an in-progress NFS operation
-> -is interrupted by a signal.  If
-> -.B nointr
-> -is specified, signals do not
-> -interrupt NFS operations.
-> -.IP
-> -Using the
-> -.B intr
-> -option is preferred to using the
-> -.B soft
-> -option because it is significantly less likely to result in data corruption.
-> -.IP
-> -The
-> -.BR intr " / " nointr
-> -mount option is deprecated after kernel 2.6.25.
-> -Only SIGKILL can interrupt a pending NFS operation on these kernels,
-> -and if specified, this mount option is ignored to provide backwards
-> -compatibility with older kernels.
-> -.TP 1.5i
->  .BR cto " / " nocto
->  Selects whether to use close-to-open cache coherence semantics
->  for NFS directories on this mount point.
-> 
+Shouldn't we fail with EBADF instead?
+
+> +			goto do_call;
+> +	}
+> +	nfs4_stateid_copy(&arg.stateid, &zero_stateid);
+>  
+> +do_call:
+>  	status = nfs4_call_sync(server->client, server, &msg, &arg.seq_args, &res.seq_res, 1);
+>  	if (status == 0 && state != NULL)
+>  		renew_lease(server, timestamp);
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer, PrimaryData
+trond.myklebust@primarydata.com
+
+
