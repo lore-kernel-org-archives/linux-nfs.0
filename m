@@ -1,77 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f179.google.com ([209.85.223.179]:54887 "EHLO
-	mail-ie0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752241AbaCLQwJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Mar 2014 12:52:09 -0400
-Received: by mail-ie0-f179.google.com with SMTP id lx4so10545052iec.24
-        for <linux-nfs@vger.kernel.org>; Wed, 12 Mar 2014 09:52:08 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 5/6] NFS: Use port 20049 by default for NFS/RDMA mounts
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org
-Date: Wed, 12 Mar 2014 12:52:07 -0400
-Message-ID: <20140312165207.15349.79532.stgit@manet.1015granger.net>
-In-Reply-To: <20140312164620.15349.22643.stgit@manet.1015granger.net>
-References: <20140312164620.15349.22643.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-ig0-f181.google.com ([209.85.213.181]:55300 "EHLO
+	mail-ig0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754046AbaCEN3Z convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Mar 2014 08:29:25 -0500
+Received: by mail-ig0-f181.google.com with SMTP id h18so4308588igc.2
+        for <linux-nfs@vger.kernel.org>; Wed, 05 Mar 2014 05:29:25 -0800 (PST)
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
+Subject: Re: [PATCH v2 3/3] NFSv4: Fail the truncate() if the lock/open stateid is invalid
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+In-Reply-To: <CAHVgHyUN9nS_2MLMgdY+RtS9MBg-1BKA9_LHC66n8CyfRhpjnQ@mail.gmail.com>
+Date: Wed, 5 Mar 2014 08:29:23 -0500
+Cc: NFS list <linux-nfs@vger.kernel.org>
+Message-Id: <7B53A059-80FF-473D-932E-4CD52DCA2345@primarydata.com>
+References: <1393954269-3974-1-git-send-email-andros@netapp.com> <1393959943-9919-1-git-send-email-trond.myklebust@primarydata.com> <1393959943-9919-2-git-send-email-trond.myklebust@primarydata.com> <1393959943-9919-3-git-send-email-trond.myklebust@primarydata.com> <1393959943-9919-4-git-send-email-trond.myklebust@primarydata.com> <CAHVgHyUN9nS_2MLMgdY+RtS9MBg-1BKA9_LHC66n8CyfRhpjnQ@mail.gmail.com>
+To: Adamson William Andros <androsadamson@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When providing NFSv2 and v3 service via RDMA, NFS servers MAY use an
-alternative well-known port number, 20049.  They are not required to
-register the service with their local rpcbind.  At least one server
-implementation I am aware of does not register it's NFS/RDMA service
-with rpcbind.
 
-When providing NFSv4 service via RDMA, the server MUST use the
-alternative port number, 20049.  As with NFSv4 on IP-based
-transports, clients SHOULD connect to this port without consulting
-the server's rpcbind, so we can't expect rpcbind to help here
-either.
+On Mar 5, 2014, at 6:40, Andy Adamson <androsadamson@gmail.com> wrote:
 
-See section 6 of RFC 5667 for details.
+> On Tue, Mar 4, 2014 at 2:05 PM, Trond Myklebust
+> <trond.myklebust@primarydata.com> wrote:
+>> If the open stateid could not be recovered, or the file locks were lost,
+>> then we should fail the truncate() operation altogether.
+>> 
+>> Reported-by: Andy Adamson <andros@netapp.com>
+>> Link: http://lkml.kernel.org/r/1393954269-3974-1-git-send-email-andros@netapp.com
+>> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+>> ---
+>> fs/nfs/nfs4proc.c | 9 ++++++---
+>> 1 file changed, 6 insertions(+), 3 deletions(-)
+>> 
+>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>> index 44e088dc357c..daf41182ecfb 100644
+>> --- a/fs/nfs/nfs4proc.c
+>> +++ b/fs/nfs/nfs4proc.c
+>> @@ -2398,13 +2398,16 @@ static int _nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
+>> 
+>>        if (nfs4_copy_delegation_stateid(&arg.stateid, inode, fmode)) {
+>>                /* Use that stateid */
+>> -       } else if (truncate && state != NULL && nfs4_valid_open_stateid(state)) {
+>> +       } else if (truncate && state != NULL) {
+>>                struct nfs_lockowner lockowner = {
+>>                        .l_owner = current->files,
+>>                        .l_pid = current->tgid,
+>>                };
+>> -               nfs4_select_rw_stateid(&arg.stateid, state, FMODE_WRITE,
+>> -                               &lockowner);
+>> +               if (!nfs4_valid_open_stateid(state))
+>> +                       return -EBADF;
+>> +               if (nfs4_select_rw_stateid(&arg.stateid, state, FMODE_WRITE,
+>> +                               &lockowner) < 0)
+> 
+> AFICS this means -EIO = lost lock. Why fail the setattr? the file
+> handle is not bad.  Why not send a ZERO_STATEID?  At any rate, -EBADF
+> looks wrong to me.
 
-Today, admins are required to specify "port=" when mounting an
-NFS/RDMA server.  To comply with RFC 5667 and for cross-
-compatibility with heterogenous automounter maps, provide the proper
-default port when mounting with "proto=rdma".
+What should we use instead of EBADF? EIO doesn’t really help you figure out what is wrong or how to fix it.
 
-If the server does not use port 20049, the "port=" mount option is
-still required to mount successfully. But clients today are forced
-to specify this option anyway.
-
-Bugzilla: https://bugzilla.kernel.org/show_bug.cgi?id=68401
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-
- fs/nfs/super.c           |    2 ++
- include/uapi/linux/nfs.h |    1 +
- 2 files changed, 3 insertions(+), 0 deletions(-)
-
-diff --git a/fs/nfs/super.c b/fs/nfs/super.c
-index 910ed90..6432600 100644
---- a/fs/nfs/super.c
-+++ b/fs/nfs/super.c
-@@ -2157,6 +2157,8 @@ static int nfs_validate_text_mount_data(void *options,
- 	} else
- 		nfs_set_mount_transport_protocol(args);
- 
-+	if (args->nfs_server.protocol == XPRT_TRANSPORT_RDMA)
-+		port = NFS_RDMA_PORT;
- 	nfs_set_port(sap, &args->nfs_server.port, port);
- 
- 	return nfs_parse_devname(dev_name,
-diff --git a/include/uapi/linux/nfs.h b/include/uapi/linux/nfs.h
-index 5199a36..ccc6f8d 100644
---- a/include/uapi/linux/nfs.h
-+++ b/include/uapi/linux/nfs.h
-@@ -9,6 +9,7 @@
- 
- #define NFS_PROGRAM	100003
- #define NFS_PORT	2049
-+#define NFS_RDMA_PORT	20049
- #define NFS_MAXDATA	8192
- #define NFS_MAXPATHLEN	1024
- #define NFS_MAXNAMLEN	255
+_________________________________
+Trond Myklebust
+Linux NFS client maintainer, PrimaryData
+trond.myklebust@primarydata.com
 
