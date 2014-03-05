@@ -1,124 +1,34 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:47880 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752160AbaCWBM2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 22 Mar 2014 21:12:28 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 21/50] rpc: xdr_truncate_encode
-Date: Sat, 22 Mar 2014 21:11:52 -0400
-Message-Id: <1395537141-10389-22-git-send-email-bfields@redhat.com>
-In-Reply-To: <1395537141-10389-1-git-send-email-bfields@redhat.com>
-References: <1395537141-10389-1-git-send-email-bfields@redhat.com>
+Received: from zeniv.linux.org.uk ([195.92.253.2]:49327 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751630AbaCEFeo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Mar 2014 00:34:44 -0500
+Date: Wed, 5 Mar 2014 05:34:41 +0000
+From: Al Viro <viro@ZenIV.linux.org.uk>
+To: NeilBrown <neilb@suse.de>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/8] NFS: prepare for RCU-walk support but pushing tests
+ later in code.
+Message-ID: <20140305053441.GX18016@ZenIV.linux.org.uk>
+References: <20140305025813.27421.23871.stgit@notabene.brown>
+ <20140305030028.27421.92032.stgit@notabene.brown>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140305030028.27421.92032.stgit@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Wed, Mar 05, 2014 at 02:00:28PM +1100, NeilBrown wrote:
+> -	parent = dget_parent(dentry);
+> +		parent = rcu_dereference(dentry->d_parent);
+> +	else
+> +		parent = dget_parent(dentry);
+>  	dir = parent->d_inode;
+>  	nfs_inc_stats(dir, NFSIOS_DENTRYREVALIDATE);
 
-This will be used in the server side in a few cases:
-	- when certain operations (read, readdir, readlink) fail after
-	  encoding a partial response.
-	- when we run out of space after encoding a partial response.
-	- in readlink, where we initially reserve PAGE_SIZE bytes for
-	  data, then truncate to the actual size.
+... and in RCU mode there's nothing to stop parent from
+	a) not being dentry->d_parent anymore
+	b) having already become negative.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- include/linux/sunrpc/xdr.h |  1 +
- net/sunrpc/xdr.c           | 67 ++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 68 insertions(+)
-
-diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
-index 15f9204..e7bb2e3 100644
---- a/include/linux/sunrpc/xdr.h
-+++ b/include/linux/sunrpc/xdr.h
-@@ -215,6 +215,7 @@ typedef int	(*kxdrdproc_t)(void *rqstp, struct xdr_stream *xdr, void *obj);
- 
- extern void xdr_init_encode(struct xdr_stream *xdr, struct xdr_buf *buf, __be32 *p);
- extern __be32 *xdr_reserve_space(struct xdr_stream *xdr, size_t nbytes);
-+extern void xdr_truncate_encode(struct xdr_stream *xdr, size_t len);
- extern void xdr_write_pages(struct xdr_stream *xdr, struct page **pages,
- 		unsigned int base, unsigned int len);
- extern unsigned int xdr_stream_pos(const struct xdr_stream *xdr);
-diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
-index dd97ba3..8ae8ee7 100644
---- a/net/sunrpc/xdr.c
-+++ b/net/sunrpc/xdr.c
-@@ -509,6 +509,73 @@ __be32 * xdr_reserve_space(struct xdr_stream *xdr, size_t nbytes)
- EXPORT_SYMBOL_GPL(xdr_reserve_space);
- 
- /**
-+ * xdr_truncate_encode - truncate an encode buffer
-+ * @xdr: pointer to xdr_stream
-+ * @len: new length of buffer
-+ *
-+ * Truncates the xdr stream, so that xdr->buf->len == len,
-+ * and xdr->p points at offset len from the start of the buffer, and
-+ * head, tail, and page lengths are adjusted to correspond.
-+ *
-+ * If this means moving xdr->p to a different buffer, we assume that
-+ * that the end pointer should be set to the end of the current page,
-+ * except in the case of the head buffer when we assume the head
-+ * buffer's current length represents the end of the available buffer.
-+ *
-+ * This is *not* safe to use on a buffer that already has inlined page
-+ * cache pages (as in a zero-copy server read reply), except for the
-+ * simple case of truncating from one position in the tail to another.
-+ *
-+ */
-+void xdr_truncate_encode(struct xdr_stream *xdr, size_t len)
-+{
-+	struct xdr_buf *buf = xdr->buf;
-+	struct kvec *head = buf->head;
-+	struct kvec *tail = buf->tail;
-+	int fraglen;
-+	int new, old;
-+
-+	if (len > buf->len) {
-+		WARN_ON_ONCE(1);
-+		return;
-+	}
-+
-+	fraglen = min_t(int, buf->len - len, tail->iov_len);
-+	tail->iov_len -= fraglen;
-+	buf->len -= fraglen;
-+	if (tail->iov_len && buf->len == len) {
-+		xdr->p = tail->iov_base + tail->iov_len;
-+		/* xdr->end, xdr->iov should be set already */
-+		return;
-+	}
-+	WARN_ON_ONCE(fraglen);
-+	fraglen = min_t(int, buf->len - len, buf->page_len);
-+	buf->page_len -= fraglen;
-+	buf->len -= fraglen;
-+
-+	new = buf->page_base + buf->page_len;
-+	old = new + fraglen;
-+	xdr->page_ptr -= (old >> PAGE_SHIFT) - (new >> PAGE_SHIFT);
-+
-+	if (buf->page_len && buf->len == len) {
-+		xdr->p = page_address(*xdr->page_ptr);
-+		xdr->end = (void *)xdr->p + PAGE_SIZE;
-+		xdr->p = (void *)xdr->p + (new % PAGE_SIZE);
-+		/* xdr->iov should already be NULL */
-+		return;
-+	}
-+	if (fraglen)
-+		xdr->end = head->iov_base + head->iov_len;
-+	/* (otherwise assume xdr->end is already set) */
-+	head->iov_len = len;
-+	buf->len = len;
-+	xdr->p = head->iov_base + head->iov_len;
-+	xdr->iov = buf->head;
-+	xdr->page_ptr -= 1;
-+}
-+EXPORT_SYMBOL(xdr_truncate_encode);
-+
-+/**
-  * xdr_write_pages - Insert a list of pages into an XDR buffer for sending
-  * @xdr: pointer to xdr_stream
-  * @pages: list of pages
--- 
-1.8.5.3
-
+NAK.
