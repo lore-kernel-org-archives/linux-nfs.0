@@ -1,73 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:46218 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752927AbaCAQAd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 1 Mar 2014 11:00:33 -0500
-Date: Sat, 1 Mar 2014 11:00:22 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Wendy Cheng <s.wendy.cheng@gmail.com>, Tom Talpey <tom@talpey.com>,
-        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Shirley Ma <shirley.ma@oracle.com>
-Subject: Re: Proposal for simplifying NFS/RDMA client memory registration
-Message-ID: <20140301110022.417eb088@tlielax.poochiereds.net>
-In-Reply-To: <B83B4DA6-E9CF-4DF3-9227-5EF9B4D25F4D@oracle.com>
-References: <01C4496A-F074-4F72-9DF0-6076C05E8A1F@oracle.com>
-	<53110287.9000400@talpey.com>
-	<CABgxfbHwo13ma=-Xn+S36WwD8LVNLdw6UHztFe8EkCA_=NBenw@mail.gmail.com>
-	<CABgxfbHg0B02c2zpYdCB4pUZZhhA4aKRuyh4Kx=NE1yAisFLLQ@mail.gmail.com>
-	<B83B4DA6-E9CF-4DF3-9227-5EF9B4D25F4D@oracle.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
+Received: from mail-ie0-f177.google.com ([209.85.223.177]:58382 "EHLO
+	mail-ie0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752970AbaCESaQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Mar 2014 13:30:16 -0500
+Received: by mail-ie0-f177.google.com with SMTP id rl12so1490975iec.36
+        for <linux-nfs@vger.kernel.org>; Wed, 05 Mar 2014 10:30:16 -0800 (PST)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Andy Adamson <andros@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v4 1/4] NFSv4: nfs4_stateid_is_current should return 'true' for an invalid stateid
+Date: Wed,  5 Mar 2014 13:30:08 -0500
+Message-Id: <1394044211-22302-2-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1394044211-22302-1-git-send-email-trond.myklebust@primarydata.com>
+References: <1394028452-15956-1-git-send-email-trond.myklebust@primarydata.com>
+ <1394044211-22302-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 28 Feb 2014 21:59:00 -0500
-Chuck Lever <chuck.lever@oracle.com> wrote:
+When nfs4_set_rw_stateid() can fails by returning EIO to indicate that
+the stateid is completely invalid, then it makes no sense to have it
+trigger a retry of the READ or WRITE operation. Instead, we should just
+have it fall through and attempt a recovery.
 
-> Hi Wendy-
-> 
-> On Feb 28, 2014, at 5:26 PM, Wendy Cheng <s.wendy.cheng@gmail.com> wrote:
-> 
-> > On Fri, Feb 28, 2014 at 2:20 PM, Wendy Cheng <s.wendy.cheng@gmail.com> wrote:
-> >> ni i...On Fri, Feb 28, 2014 at 1:41 PM, Tom Talpey <tom@talpey.com> wrote:
-> >>> 
-> >>> On 2/26/2014 8:44 AM, Chuck Lever wrote:
-> >>>> 
-> >>>> Hi-
-> >>>> 
-> >>>> Shirley Ma and I are reviving work on the NFS/RDMA client code base in
-> >>>> the Linux kernel.  So far we've built and run functional tests to determine
-> >>>> what is working and what is broken.
-> >>>> 
-> >>>> [snip]
-> >> 
-> >> 
-> >>>> 
-> >>>> ALLPHYSICAL - Usually fast, but not safe as it exposes client memory.
-> >>>> All HCAs support this mode.
-> >>> 
-> >>> 
-> >>> Not safe is an understatement. It exposes all of client physical
-> >>> memory to the peer, for both read and write. A simple pointer error
-> >>> on the server will silently corrupt the client. This mode was
-> >>> intended only for testing, and in experimental deployments.
-> > 
-> > (sorry, resend .. previous reply bounced back due to gmail html format)
-> > 
-> > Please keep "ALLPHYSICAL" for now  - as our embedded system needs it.
-> 
-> This is just the client side.  Confirming that you still need support for the ALLPHYSICAL memory registration mode in the NFS/RDMA client.
-> 
-> Do you have plans to move to a mode that is less risky?  If not, can we depend on you to perform regular testing with ALLPHYSICAL as we update the client code?  Do you have any bug fixes you’d like to merge upstream?
-> 
+This fixes an infinite loop in which the client keeps replaying the same
+bad stateid back to the server.
 
-Also, given that ALLPHYSICAL isn't considered safe, we should at the
-very least require some sort of explicit opt-in before allowing it to be
-used. Perhaps either a Kconfig option, or maybe a runtime switch like a
-module parm?
+Reported-by: Andy Adamson <andros@netapp.com>
+Link: http://lkml.kernel.org/r/1393954269-3974-1-git-send-email-andros@netapp.com
+Cc: stable@vger.kernel.org # 3.10+
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/nfs4proc.c | 5 +++--
+ 1 file changed, 3 insertions(+), 2 deletions(-)
 
-Wendy, would that be acceptable?
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 44e088dc357c..4ae8141452c9 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -4011,8 +4011,9 @@ static bool nfs4_stateid_is_current(nfs4_stateid *stateid,
+ {
+ 	nfs4_stateid current_stateid;
+ 
+-	if (nfs4_set_rw_stateid(&current_stateid, ctx, l_ctx, fmode))
+-		return false;
++	/* If the current stateid represents a lost lock, then exit */
++	if (nfs4_set_rw_stateid(&current_stateid, ctx, l_ctx, fmode) == -EIO)
++		return true;
+ 	return nfs4_stateid_match(stateid, &current_stateid);
+ }
+ 
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.8.5.3
+
