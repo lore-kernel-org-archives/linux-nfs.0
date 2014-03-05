@@ -1,144 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:45909 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753750AbaCKTMh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 11 Mar 2014 15:12:37 -0400
-Message-ID: <531F5148.7050407@RedHat.com>
-Date: Tue, 11 Mar 2014 14:09:12 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Michael Scherer <misc@zarb.org>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: permit to use multiple time the -H option
-References: <1393753112-14879-1-git-send-email-misc@zarb.org>
-In-Reply-To: <1393753112-14879-1-git-send-email-misc@zarb.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-ig0-f170.google.com ([209.85.213.170]:44906 "EHLO
+	mail-ig0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752221AbaCEOHj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Mar 2014 09:07:39 -0500
+Received: by mail-ig0-f170.google.com with SMTP id uq10so7723152igb.1
+        for <linux-nfs@vger.kernel.org>; Wed, 05 Mar 2014 06:07:39 -0800 (PST)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Andy Adamson <andros@netapp.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v3 2/4] NFSv4: Fix the return value of nfs4_select_rw_stateid
+Date: Wed,  5 Mar 2014 09:07:30 -0500
+Message-Id: <1394028452-15956-3-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1394028452-15956-2-git-send-email-trond.myklebust@primarydata.com>
+References: <1393959943-9919-1-git-send-email-trond.myklebust@primarydata.com>
+ <1394028452-15956-1-git-send-email-trond.myklebust@primarydata.com>
+ <1394028452-15956-2-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+In commit 5521abfdcf4d6 (NFSv4: Resend the READ/WRITE RPC call
+if a stateid change causes an error), we overloaded the return value of
+nfs4_select_rw_stateid() to cause it to return -EWOULDBLOCK if an RPC
+call is outstanding that would cause the NFSv4 lock or open stateid
+to change.
+That is all redundant when we actually copy the stateid used in the
+read/write RPC call that failed, and check that against the current
+stateid. It is doubly so, when we consider that in the NFSv4.1 case,
+we also set the stateid's seqid to the special value '0', which means
+'match the current valid stateid'.
 
+Reported-by: Andy Adamson <andros@netapp.com>
+Link: http://lkml.kernel.org/r/1393954269-3974-1-git-send-email-andros@netapp.com
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/nfs4state.c | 6 ------
+ 1 file changed, 6 deletions(-)
 
-On 03/02/2014 04:38 AM, Michael Scherer wrote:
-> This permit to have 1 nfsd listening on more than 1
-> interface for multihomed systems, without having to
-> listen on all interfaces and filtering later.
-> ---
->  utils/nfsd/nfsd.c   | 51 +++++++++++++++++++++++++++++++++++----------------
->  utils/nfsd/nfsd.man |  3 ++-
->  2 files changed, 37 insertions(+), 17 deletions(-)
-Committed... 
+diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+index e1a47217c05e..cd0cf93ac927 100644
+--- a/fs/nfs/nfs4state.c
++++ b/fs/nfs/nfs4state.c
+@@ -974,9 +974,6 @@ static int nfs4_copy_lock_stateid(nfs4_stateid *dst,
+ 	else if (lsp != NULL && test_bit(NFS_LOCK_INITIALIZED, &lsp->ls_flags) != 0) {
+ 		nfs4_stateid_copy(dst, &lsp->ls_stateid);
+ 		ret = 0;
+-		smp_rmb();
+-		if (!list_empty(&lsp->ls_seqid.list))
+-			ret = -EWOULDBLOCK;
+ 	}
+ 	spin_unlock(&state->state_lock);
+ 	nfs4_put_lock_state(lsp);
+@@ -997,9 +994,6 @@ static int nfs4_copy_open_stateid(nfs4_stateid *dst, struct nfs4_state *state)
+ 			src = &state->open_stateid;
+ 		nfs4_stateid_copy(dst, src);
+ 		ret = 0;
+-		smp_rmb();
+-		if (!list_empty(&state->owner->so_seqid.list))
+-			ret = -EWOULDBLOCK;
+ 	} while (read_seqretry(&state->seqlock, seq));
+ 	return ret;
+ }
+-- 
+1.8.5.3
 
-steved.
-> 
-> diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
-> index edeb621..7ab6fcf 100644
-> --- a/utils/nfsd/nfsd.c
-> +++ b/utils/nfsd/nfsd.c
-> @@ -95,9 +95,10 @@ nfsd_enable_protos(unsigned int *proto4, unsigned int *proto6)
->  int
->  main(int argc, char **argv)
->  {
-> -	int	count = NFSD_NPROC, c, error = 0, portnum = 0, fd, found_one;
-> +	int	count = NFSD_NPROC, c, i, error = 0, portnum = 0, fd, found_one;
->  	char *p, *progname, *port;
-> -	char *haddr = NULL;
-> +	char **haddr = NULL;
-> +	unsigned int hcounter = 0;
->  	int	socket_up = 0;
->  	unsigned int minorvers = 0;
->  	unsigned int minorversset = 0;
-> @@ -118,6 +119,13 @@ main(int argc, char **argv)
->  		exit(1);
->  	}
->  
-> +	haddr = malloc(sizeof(char*));
-> +	if (!haddr) {
-> +		fprintf(stderr, "%s: unable to allocate memory.\n", progname);
-> +		exit(1);
-> +	}
-> +	haddr[0] = NULL;
-> +
->  	xlog_syslog(0);
->  	xlog_stderr(1);
->  
-> @@ -127,17 +135,24 @@ main(int argc, char **argv)
->  			xlog_config(D_ALL, 1);
->  			break;
->  		case 'H':
-> -			/*
-> -			 * for now, this only handles one -H option. Use the
-> -			 * last one specified.
-> -			 */
-> -			free(haddr);
-> -			haddr = strdup(optarg);
-> -			if (!haddr) {
-> +			if (hcounter) {
-> +				haddr = realloc(haddr, sizeof(char*) * hcounter+1);
-> +
-> +				if(!haddr) {
-> +					fprintf(stderr, "%s: unable to allocate "
-> +							"memory.\n", progname);
-> +					exit(1);
-> +				}
-> +			}
-> +
-> +			haddr[hcounter] = strdup(optarg);
-> +			if (!haddr[hcounter]) {
->  				fprintf(stderr, "%s: unable to allocate "
->  					"memory.\n", progname);
->  				exit(1);
->  			}
-> +
-> +			hcounter++;
->  			break;
->  		case 'P':	/* XXX for nfs-server compatibility */
->  		case 'p':
-> @@ -286,16 +301,18 @@ main(int argc, char **argv)
->  	 * interfaces, these are a no-op.
->  	 */
->  	nfssvc_setvers(versbits, minorvers, minorversset);
-> - 
-> -	error = nfssvc_set_sockets(AF_INET, proto4, haddr, port);
-> -	if (!error)
-> -		socket_up = 1;
-> +
-> +	for(i=0; i <= hcounter; i++) {
-> +		error = nfssvc_set_sockets(AF_INET, proto4, haddr[i], port);
-> +		if (!error)
-> +			socket_up = 1;
->  
->  #ifdef IPV6_SUPPORTED
-> -	error = nfssvc_set_sockets(AF_INET6, proto6, haddr, port);
-> -	if (!error)
-> -		socket_up = 1;
-> +		error = nfssvc_set_sockets(AF_INET6, proto6, haddr[i], port);
-> +		if (!error)
-> +			socket_up = 1;
->  #endif /* IPV6_SUPPORTED */
-> +	}
->  
->  set_threads:
->  	/* don't start any threads if unable to hand off any sockets */
-> @@ -328,6 +345,8 @@ set_threads:
->  		xlog(L_ERROR, "error starting threads: errno %d (%m)", errno);
->  out:
->  	free(port);
-> +	for(i=0; i <= hcounter; i++)
-> +		free(haddr[i]);
->  	free(haddr);
->  	free(progname);
->  	return (error != 0);
-> diff --git a/utils/nfsd/nfsd.man b/utils/nfsd/nfsd.man
-> index 7de0867..cdc14ba 100644
-> --- a/utils/nfsd/nfsd.man
-> +++ b/utils/nfsd/nfsd.man
-> @@ -35,7 +35,8 @@ Note that
->  .B lockd
->  (which performs file locking services for NFS) may still accept
->  request on all known network addresses.  This may change in future
-> -releases of the Linux Kernel.
-> +releases of the Linux Kernel. This option can be used multiple time 
-> +to listen to more than one interface.
->  .TP
->  .B \-p " or " \-\-port  port
->  specify a different port to listen on for NFS requests. By default,
-> 
