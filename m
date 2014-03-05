@@ -1,77 +1,175 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f180.google.com ([209.85.213.180]:42308 "EHLO
-	mail-ig0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751190AbaCFS4h (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Mar 2014 13:56:37 -0500
-Message-ID: <1206762659-1394132192-cardhu_decombobulator_blackberry.rim.net-1473901122-@b5.c4.bise6.blackberry>
-Reply-To: bhawley@luminex.com
-References: <1696396609.119284.1394040541217.JavaMail.zimbra@xes-inc.com>
-  <260588931.122771.1394041524167.JavaMail.zimbra@xes-inc.com>
-  <20140306145042.6db53f60@notabene.brown>
-  <1853694865.210849.1394082223818.JavaMail.zimbra@xes-inc.com>
-  <20140306163721.0edfb498@notabene.brown>
-  <1709792528-1394084840-cardhu_decombobulator_blackberry.rim.net-1367662481-@b5.c4.bise6.blackberry>
-  <764210708.28409.1394119821635.JavaMail.zimbra@xes-inc.com>
-In-Reply-To: <764210708.28409.1394119821635.JavaMail.zimbra@xes-inc.com>
-Subject: Re: Optimal NFS mount options to safely allow interrupts and timeouts on newer kernels
-To: "Andrew Martin" <amartin@xes-inc.com>,
-        "Brian Hawley" <bhawley@luminex.com>
-Cc: "NeilBrown" <neilb@suse.de>, linux-nfs-owner@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-From: "Brian Hawley" <bhawley@luminex.com>
-Date: Thu, 6 Mar 2014 18:56:33 +0000
-Content-Type: text/plain
+Received: from mail-vc0-f170.google.com ([209.85.220.170]:44279 "EHLO
+	mail-vc0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752597AbaCEIwE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Mar 2014 03:52:04 -0500
+Received: by mail-vc0-f170.google.com with SMTP id hu8so711799vcb.15
+        for <linux-nfs@vger.kernel.org>; Wed, 05 Mar 2014 00:52:03 -0800 (PST)
 MIME-Version: 1.0
+In-Reply-To: <53161688.6030204@gmail.com>
+References: <1393954269-3974-1-git-send-email-andros@netapp.com>
+	<1393954269-3974-3-git-send-email-andros@netapp.com>
+	<53161688.6030204@gmail.com>
+Date: Wed, 5 Mar 2014 03:52:03 -0500
+Message-ID: <CAHVgHyUrxv+uhF9PTfGWyFo3vy5yGj_uC4ki5Por7Rj79bGnBQ@mail.gmail.com>
+Subject: Re: [PATCH 2/4] NFSv4 Check errors on stateid changed functions in
+ I/O path
+From: Andy Adamson <androsadamson@gmail.com>
+To: Anna Schumaker <schumaker.anna@gmail.com>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        NFS list <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQpVc2luZyB1bW91bnQgLWYgcmVwZWF0ZWRseSBkaWQgZXZlbnR1YWxseSBnZXQgaS9vIGVycm9y
-cyBiYWNrIHRvIGFsbCB0aGUgcmVhZC93cml0ZXMuDQoNCkkgdW5kZXJzdGFuZCBSaWMncyBjb21t
-ZW50IGFib3V0IHVzaW5nIGZzeW5jLCBhbmQgd2UgZG8gaW4gZmFjdCB1c2UgZnN5bmMgYXQgZGF0
-YSBzeW5jaHJvbml6YXRpb24gcG9pbnRzIChsaWtlIGNsb3NlLCBzZWVrcywgY2hhbmdlcyBmcm9t
-IHdyaXRlIHRvIHJlYWQsIGV0YyAtLSBvdXJzIGlzIGEgc2VxdWVudGlhbCBpL28gYXBwbGljYXRp
-b24pLiAgIEJ1dCBpdCBpcyB0aGVzZSB3cml0ZXMgYW5kIHJlYWRzIHRoYXQgZW5kIHVwIGh1bmcg
-bW9zdCBvZiB0aGUgdGltZTsgbm90IGFuIGZzeW5jIGNhbGwuICAgSSBzdXNwZWN0IGJlY2F1c2Ug
-aXQgaXMgdGhlIHdyaXRlcyB0aGF0IGV2ZW50dWFsbHkgZ2V0IHRoZSBjYWNoZS9idWZmZXJzIHRv
-IHRoZSBwb2ludCB3aGVyZSB0aGF0IHdyaXRlIGhhcyB0byBibG9jayB1bnRpbCB0aGUgY2FjaGUg
-Z2V0cyBzb21lIGJsb2NrIGZsdXNoZWQgdG8gbWFrZSByb29tLg0KDQotLS0tLU9yaWdpbmFsIE1l
-c3NhZ2UtLS0tLQ0KRnJvbTogQW5kcmV3IE1hcnRpbiA8YW1hcnRpbkB4ZXMtaW5jLmNvbT4NCkRh
-dGU6IFRodSwgNiBNYXIgMjAxNCAwOTozMDoyMSANClRvOiA8Ymhhd2xleUBsdW1pbmV4LmNvbT4N
-CkNjOiBOZWlsQnJvd248bmVpbGJAc3VzZS5kZT47IDxsaW51eC1uZnMtb3duZXJAdmdlci5rZXJu
-ZWwub3JnPjsgPGxpbnV4LW5mc0B2Z2VyLmtlcm5lbC5vcmc+DQpTdWJqZWN0OiBSZTogT3B0aW1h
-bCBORlMgbW91bnQgb3B0aW9ucyB0byBzYWZlbHkgYWxsb3cgaW50ZXJydXB0cyBhbmQNCiB0aW1l
-b3V0cyBvbiBuZXdlciBrZXJuZWxzDQoNCj4gRnJvbTogIkJyaWFuIEhhd2xleSIgPGJoYXdsZXlA
-bHVtaW5leC5jb20+DQo+IA0KPiBJIGVuZGVkIHVwIHdyaXRpbmcgYSAibWFuYWdlX21vdW50cyIg
-c2NyaXB0IHJ1biBieSBjcm9uIHRoYXQgY29tcGFyZXMNCj4gL3Byb2MvbW91bnRzIGFuZCB0aGUg
-ZnN0YWIsIHVzZWQgcGluZywgYW5kICJ0aW1lb3V0IiBtZXNzYWdlcyBpbg0KPiAvdmFyL2xvZy9t
-ZXNzYWdlcyB0byBpZGVudGlmeSBmaWxlc3lzdGVtcyB0aGF0IGFyZW4ndCByZXNwb25kaW5nLCBy
-ZXBlYXRlZGx5DQo+IGRvIHVtb3VudCAtZiB0byBmb3JjZSBpL28gZXJyb3JzIGJhY2sgdG8gdGhl
-IGNhbGxpbmcgYXBwbGljYXRpb25zOyBhbmQgd2hlbg0KPiBtaXNzaW5nIG1vdW50cyAoaW4gZnN0
-YWIgYnV0IG5vdCAvcHJvYy9tb3VudHMpIGJ1dCB3ZXJlIG5vdyBwaW5nYWJsZSwNCj4gYXR0ZW1w
-dCB0byByZW1vdW50IHRoZW0uDQo+IA0KPiANCj4gRm9yIG1lLCB0aW1lbyBhbmQgcmV0cmFucyBh
-cmUgbmVjZXNzYXJ5LCBidXQgbm90IHN1ZmZpY2llbnQuICBUaGUgY2h1bmtpbmcgdG8NCj4gcnNp
-emUvd3NpemUgYW5kIGNhY2hpbmcgcGxheXMgYSByb2xlIGluIGhvdyB3ZWxsIGkvbyBlcnJvcnMg
-Z2V0IHJlbGF5ZWQgYmFjaw0KPiB0byB0aGUgYXBwbGljYXRpb25zIGRvaW5nIHRoZSBpL28uDQo+
-IA0KPiBZb3Ugd2lsbCBjZXJ0YWlubHkgbG9zZSBkYXRhIGluIHRoZXNlIHNjZW5hcmlvJ3MuDQo+
-IA0KPiBJdCB3b3VsZCBiZSBmYW50YXN0aWMgaWYgc29tZWhvdyB0aGUgdGltZW8gYW5kIHJldHJh
-bnMgd2VyZSBzdWZmaWNpZW50IChpZQ0KPiB3aGVuIHRoZXkgZmFpbCwgaS9vIGVycm9ycyBnZXQg
-YmFjayB0byB0aGUgYXBwbGljYXRpb25zIHRoYXQgcXVldWVkIHRoYXQgaS9vDQo+IChvciBldmVu
-IHRoZSBpL28gdGhhdCBjYXVzZSB0aGUgYXBwbGljYXRpb24gdG8gcGVuZCBiZWNhdXNlIHRoZSBy
-c2l6ZS93c2l6ZQ0KPiBvciBjYWNoZSB3YXMgZnVsbCkuDQo+IA0KPiBZb3UgY2FuIGVsaW1pbmF0
-ZSBzb21lIG9mIHRoYXQgYmVoYXZpb3Igd2l0aCBzeW5jL2RpcmVjdGlvLCBidXQgcGVyZm9ybWFu
-Y2UNCj4gYmVjb21lcyBhYnlzbWFsLg0KPiANCj4gSSB0cmllZCAibGF6eSIgaXQgZGlkbid0IHBy
-b3ZpZGUgdGhlIGRlc2lyZWQgZWZmZWN0ICh0aGV5IHVubW91bnRlZCB3aGljaA0KPiBwcmV2ZW50
-ZWQgbmV3IGkvbydzOyBidXQgZXhpc3RpbmcgSS9vJ3MgbmV2ZXIgZ290IGVycm9ycykuDQpUaGlz
-IGlzIHRoZSBwcm9ibGVtIEkgYW0gaGF2aW5nIC0gSSBjYW4gdW5tb3VudCB0aGUgZmlsZXN5c3Rl
-bSB3aXRoIC1sLCBidXQNCm9uY2UgaXQgaXMgdW5tb3VudGVkIHRoZSBleGlzdGluZyBhcGFjaGUg
-cHJvY2Vzc2VzIGFyZSBzdGlsbCBzdHVjayBmb3JldmVyLg0KRG9lcyByZXBlYXRlZGx5IHJ1bm5p
-bmcgInVtb3VudCAtZiIgaW5zdGVhZCBvZiAidW1vdW50IC1sIiBhcyB5b3UgZGVzY3JpYmUNCnJl
-dHVybiBJL08gZXJyb3JzIGJhY2sgdG8gZXhpc3RpbmcgcHJvY2Vzc2VzIGFuZCBhbGxvdyB0aGVt
-IHRvIHN0b3A/DQoNCg0KPiBGcm9tOiAiSmltIFJlZXMiIDxyZWVzQHVtaWNoLmVkdT4NCj4gR2l2
-ZW4gdGhpcyBpcyBhcGFjaGUsIEkgdGhpbmsgaWYgSSB3ZXJlIGRvaW5nIHRoaXMgSSdkIHVzZSBy
-byxzb2Z0LGludHIsdGNwDQo+IGFuZCBub3QgdHJ5IHRvIHdyaXRlIGFueXRoaW5nIHRvIG5mcy4N
-Ckkgd2FzIHVzaW5nIHRjcCxiZyxzb2Z0LGludHIgd2hlbiB0aGlzIHByb2JsZW0gb2NjdXJyZWQu
-IEkgZG8gbm90IGtub3cgaWYNCmFwYWNoZSB3YXMgYXR0ZW1wdGluZyB0byBkbyBhIHdyaXRlIG9y
-IGEgcmVhZCwgYnV0IGl0IHNlZW1zIHRoYXQgdGNwLHNvZnQsaW50cg0Kd2FzIG5vdCBzdWZmaWNp
-ZW50IHRvIHByZXZlbnQgdGhlIHByb2JsZW0uIA0KDQo=
+On Tue, Mar 4, 2014 at 1:08 PM, Anna Schumaker <schumaker.anna@gmail.com> wrote:
+> On 03/04/2014 12:31 PM, andros@netapp.com wrote:
+>> From: Andy Adamson <andros@netapp.com>
+>>
+>> Retry I/O from the call prepare state (with the new stateid) if the stateid
+>> has changed on an stateid expired error
+>>
+>> Fail the I/O if the statied represents a lost lock.
+>>
+>> Otherwise, let the error handler decide what to do.
+>>
+>> Without this change, I/O with a stateid expired error such as
+>> NFS4ERR_BAD_STATEID can be retried without recovery and loop forever.
+>>
+>> Signed-off-by: Andy Adamson <andros@netapp.com>
+>> ---
+>>  fs/nfs/nfs4proc.c | 77 +++++++++++++++++++++++++++++++++++++++++++------------
+>>  1 file changed, 60 insertions(+), 17 deletions(-)
+>>
+>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>> index 2f1997d..de8e7f5 100644
+>> --- a/fs/nfs/nfs4proc.c
+>> +++ b/fs/nfs/nfs4proc.c
+>> @@ -4107,29 +4107,49 @@ static int nfs4_read_done_cb(struct rpc_task *task, struct nfs_read_data *data)
+>>       return 0;
+>>  }
+>>
+>> -static bool nfs4_read_stateid_changed(struct rpc_task *task,
+>> +static int nfs4_read_stateid_changed(struct rpc_task *task,
+>>               struct nfs_readargs *args)
+>>  {
+>> +     int ret;
+>>
+>> -     if (!nfs4_error_stateid_expired(task->tk_status) ||
+>> -             nfs4_stateid_is_current(&args->stateid,
+>> +     ret = nfs4_stateid_is_current(&args->stateid,
+>>                               args->context,
+>>                               args->lock_context,
+>> -                             FMODE_READ))
+>> -             return false;
+>> -     rpc_restart_call_prepare(task);
+>> -     return true;
+>> +                             FMODE_READ);
+>> +     switch (ret) {
+>> +     case 0: /* stateid changed */
+>> +             if (nfs4_error_stateid_expired(task->tk_status)) {
+>> +                     /* stateid expired error, retry with changed stateid */
+>> +                     rpc_restart_call_prepare(task);
+>> +                     return -EAGAIN;
+>> +             }
+>> +             return 0; /* let error handler proceed */
+>> +
+>> +     case -EIO:  /* -EIO means lock stateid was lost: fail the I/O */
+>> +             task->tk_status = -EIO;
+>> +             return -EIO;
+>> +
+>> +     case -EWOULDBLOCK: /* stateid change in progress */
+>> +     default:/* stateid has not changed, let error handler proceed.*/
+>> +             return 0;
+>> +
+>> +     }
+>>  }
+>
+> This bit of code exists down below, too.  Is there any reason it can't be an error handling function?
 
+OK
+
+>
+> Anna
+>
+>
+>>
+>>  static int nfs4_read_done(struct rpc_task *task, struct nfs_read_data *data)
+>>  {
+>> +     int ret;
+>>
+>>       dprintk("--> %s\n", __func__);
+>>
+>>       if (!nfs4_sequence_done(task, &data->res.seq_res))
+>>               return -EAGAIN;
+>> -     if (nfs4_read_stateid_changed(task, &data->args))
+>> -             return -EAGAIN;
+>> +     ret = nfs4_read_stateid_changed(task, &data->args);
+>> +     switch (ret) {
+>> +     case -EAGAIN:
+>> +     case -EIO:
+>> +             return ret;
+>> +     }
+>>       return data->read_done_cb ? data->read_done_cb(task, data) :
+>>                                   nfs4_read_done_cb(task, data);
+>>  }
+>> @@ -4176,23 +4196,46 @@ static int nfs4_write_done_cb(struct rpc_task *task, struct nfs_write_data *data
+>>  static bool nfs4_write_stateid_changed(struct rpc_task *task,
+>>               struct nfs_writeargs *args)
+>>  {
+>> +     int ret;
+>>
+>> -     if (!nfs4_error_stateid_expired(task->tk_status) ||
+>> -             nfs4_stateid_is_current(&args->stateid,
+>> +     ret = nfs4_stateid_is_current(&args->stateid,
+>>                               args->context,
+>>                               args->lock_context,
+>> -                             FMODE_WRITE))
+>> -             return false;
+>> -     rpc_restart_call_prepare(task);
+>> -     return true;
+>> +                             FMODE_WRITE);
+>> +
+>> +     switch (ret) {
+>> +     case 0: /* stateid changed */
+>> +             if (nfs4_error_stateid_expired(task->tk_status)) {
+>> +                     /* stateid expired error, retry with changed stateid */
+>> +                     rpc_restart_call_prepare(task);
+>> +                     return -EAGAIN;
+>> +             }
+>> +             return 0; /* let error handler proceed */
+>> +
+>> +     case -EIO:  /* -EIO means lock stateid was lost: fail the I/O */
+>> +             task->tk_status = -EIO;
+>> +             return -EIO;
+>> +
+>> +     case -EWOULDBLOCK: /* stateid change in progress */
+>> +     default:/* stateid has not changed, let error handler proceed.*/
+>> +             return 0;
+>> +
+>> +     }
+>>  }
+>>
+>>  static int nfs4_write_done(struct rpc_task *task, struct nfs_write_data *data)
+>>  {
+>> +     int ret;
+>> +
+>>       if (!nfs4_sequence_done(task, &data->res.seq_res))
+>>               return -EAGAIN;
+>> -     if (nfs4_write_stateid_changed(task, &data->args))
+>> -             return -EAGAIN;
+>> +
+>> +     ret = nfs4_write_stateid_changed(task, &data->args);
+>> +     switch (ret) {
+>> +     case -EAGAIN:
+>> +     case -EIO:
+>> +             return ret;
+>> +     }
+>>       return data->write_done_cb ? data->write_done_cb(task, data) :
+>>               nfs4_write_done_cb(task, data);
+>>  }
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
