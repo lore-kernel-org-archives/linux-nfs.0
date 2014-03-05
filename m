@@ -1,140 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f170.google.com ([209.85.223.170]:39828 "EHLO
-	mail-ie0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751124AbaCFTiT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Mar 2014 14:38:19 -0500
-Message-ID: <745339487-1394134695-cardhu_decombobulator_blackberry.rim.net-1127415581-@b5.c4.bise6.blackberry>
-Reply-To: bhawley@luminex.com
-References: <1696396609.119284.1394040541217.JavaMail.zimbra@xes-inc.com>
-   <260588931.122771.1394041524167.JavaMail.zimbra@xes-inc.com>
-   <20140306145042.6db53f60@notabene.brown>
-   <1853694865.210849.1394082223818.JavaMail.zimbra@xes-inc.com>
-   <20140306163721.0edfb498@notabene.brown>
-   <1709792528-1394084840-cardhu_decombobulator_blackberry.rim.net-1367662481-@b5.c4.bise6.blackberry>
-   <764210708.28409.1394119821635.JavaMail.zimbra@xes-inc.com>
-   <20140306162208.GA18207@umich.edu>
-   <1094203678.52139.1394124222574.JavaMail.zimbra@xes-inc.com>
-   <1028951407-1394132418-cardhu_decombobulator_blackberry.rim.net-599891631-@b5.c4.bise6.blackberry>
-   <E22EB8B3-DE5E-4D39-8FFD-BA3F02276EFE@primarydata.com>
-  <745494581-1394133289-cardhu_decombobulator_blackberry.rim.net-1805734207-@b5.c4.bise6.blackberry>
-  <5318CC8C.1050505@redhat.com>
-In-Reply-To: <5318CC8C.1050505@redhat.com>
-Subject: Re: Optimal NFS mount options to safely allow interrupts and timeouts on newer kernels
-To: "Ric Wheeler" <rwheeler@redhat.com>, "Brian Hawley" <bhawley@luminex.com>,
-        "Trond Myklebust" <trond.myklebust@primarydata.com>
-Cc: "Andrew Martin" <amartin@xes-inc.com>, "Jim Rees" <rees@umich.edu>,
-        "Brown Neil" <neilb@suse.de>, linux-nfs-owner@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-From: "Brian Hawley" <bhawley@luminex.com>
-Date: Thu, 6 Mar 2014 19:38:15 +0000
-Content-Type: text/plain; charset="Windows-1252"
-MIME-Version: 1.0
+Received: from mail-ie0-f175.google.com ([209.85.223.175]:52832 "EHLO
+	mail-ie0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757661AbaCEPLF convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Mar 2014 10:11:05 -0500
+Received: by mail-ie0-f175.google.com with SMTP id to1so1119874ieb.6
+        for <linux-nfs@vger.kernel.org>; Wed, 05 Mar 2014 07:11:05 -0800 (PST)
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
+Subject: Re: [PATCH 8/8] NFS: allow lockless access to access_cache
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+In-Reply-To: <20140305030028.27421.87633.stgit@notabene.brown>
+Date: Wed, 5 Mar 2014 10:11:02 -0500
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <305B5E2C-33BE-4268-87A9-22FD19EF8E1A@primarydata.com>
+References: <20140305025813.27421.23871.stgit@notabene.brown> <20140305030028.27421.87633.stgit@notabene.brown>
+To: Brown Neil <neilb@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQpJIGFncmVlIGNvbXBsZXRlbHkgdGhhdCB0aGUgd3JpdGUoKSByZXR1cm5pbmcgb25seSBtZWFu
-cyBpdCdzIGluIHRoZSBwYWdlIGNhY2hlLg0KDQpJIGFncmVlIGNvbXBsZXRlbHkgdGhhdCBmc3lu
-YygpIHJlc3VsdCBpcyB0aGUgb25seSB3YXkgdG8ga25vdyB5b3VyIGRhdGEgaXMgc2FmZS4NCg0K
-TmVpdGhlciBvZiB0aG9zZSBpcyB3aGF0IEksIG9yIHRoZSBvcmlnaW5hbCBwb3N0ZXIgKGFuZCB3
-aGF0IG90aGVyIHBvc3RlcnMgaW4gdGhlIHBhc3QpIG9uIHRoaXMgc3ViamVjdCBhcmUgZGlzcHV0
-aW5nIG9yIGNvbmNlcm5lZCBhYm91dC4NCg0KVGhlIGlzc3VlIGlzLCB0aGUgd3JpdGUoKSBjYWxs
-IChpbiBteSBjYXNlIC0gcmVhZCgpIGluIHRoZSBvcmlnaW5hbCBwb3N0ZXJzIGNhc2UpIGRvZXMg
-Tk9UIHJldHVybi4gICANCg0KV2UgYm90aCBleHBlY3QgdGhhdCBhIHNvZnQgbW91bnRlZCBORlMg
-ZmlsZXN5c3RlbSBzaG91bGQgcHJvcGFnYXRlIGkvbyBlcnJvcnMgYmFjayB0byB0aGUgYXBwbGlj
-YXRpb24gd2hlbiB0aGUgcmV0cmFucy90aW1lbyBmYWlscyAod2l0aG91dCB0aGUgZmlsZXN5c3Rl
-bSBiZWluZyBtb3VudGVkIHN5bmMpLiAgIEJ1dCB0aGF0IGRvZXNuJ3QgaGFwcGVuLiAgICBBbmQg
-dGh1cyB0aGUgYXBwbGljYXRpb24gYmxvY2tzIGluZGVmaW5pdGVseSAob3IgY2VydGFpbmx5IGxv
-bmdlciB0aGFuIHVzZWZ1bCkuICAgDQoNCldoeSByZXBlYXRlZCB1bW91bnQgLWYncyBldmVudHVh
-bGx5IGdldCB0aGUgaS9vIGVycm9yIGJhY2sgdG8gdGhlIGNhbGxlciBhbmQgdGh1cyAidW5ibG9j
-ayIgdGhlIGFwcGxpY2F0aW9uLCBJJ20gbm90IHN1cmUuICAgQnV0IEknZCBndWVzcyBpdCBoYXMg
-c29tZXRoaW5nIHRvIGRvIHdpdGggaGF2aW5nIHRvIGdldCBlbnRyaWVzIHBlbmRpbmcgdG8gYmUg
-d3JpdHRlbiBvZmYgdGhlIHF1ZXVlIHVudGlsIGl0IGV2ZW50dWFsbHkgd29ya3MgaXRzIHdheSBi
-YWNrIHRvIHRoZSBsYXN0IHdyaXRlKCkgdGhhdCBibG9ja2VkIGIvYyB0aGUgY2FjaGUgd2FzIGZ1
-bGwgKG9yIHNvbWV0aGluZyBsaWtlIHRoYXQpLg0KDQoNCi0tLS0tT3JpZ2luYWwgTWVzc2FnZS0t
-LS0tDQpGcm9tOiBSaWMgV2hlZWxlciA8cndoZWVsZXJAcmVkaGF0LmNvbT4NCkRhdGU6IFRodSwg
-MDYgTWFyIDIwMTQgMjE6Mjk6MTYgDQpUbzogPGJoYXdsZXlAbHVtaW5leC5jb20+OyBUcm9uZCBN
-eWtsZWJ1c3Q8dHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbT4NCkNjOiBBbmRyZXcgTWFy
-dGluPGFtYXJ0aW5AeGVzLWluYy5jb20+OyBKaW0gUmVlczxyZWVzQHVtaWNoLmVkdT47IEJyb3du
-IE5laWw8bmVpbGJAc3VzZS5kZT47IDxsaW51eC1uZnMtb3duZXJAdmdlci5rZXJuZWwub3JnPjsg
-PGxpbnV4LW5mc0B2Z2VyLmtlcm5lbC5vcmc+DQpTdWJqZWN0OiBSZTogT3B0aW1hbCBORlMgbW91
-bnQgb3B0aW9ucyB0byBzYWZlbHkgYWxsb3cgaW50ZXJydXB0cyBhbmQgdGltZW91dHMNCiBvbiBu
-ZXdlciBrZXJuZWxzDQoNCk9uIDAzLzA2LzIwMTQgMDk6MTQgUE0sIEJyaWFuIEhhd2xleSB3cm90
-ZToNCj4gVHJvbmQsDQo+DQo+IEluIHRoaXMgY2FzZSwgaXQgaXNuJ3QgZnN5bmMgb3IgY2xvc2Ug
-dGhhdCBhcmUgbm90IGdldHRpbmcgdGhlIGkvbyBlcnJvci4gIEl0IGlzIHRoZSB3cml0ZSgpLg0K
-Pg0KPiBBbmQgd2UgY2hlY2sgdGhlIHJldHVybiB2YWx1ZSBvZiBldmVyeSBpL28gcmVsYXRlZCBj
-b21tYW5kLg0KDQpDaGVja2luZyB3cml0ZSgpIHJldHVybiBzdGF0dXMgbWVhbnMgd2Ugd3JvdGUg
-dG8gdGhlIHBhZ2UgY2FjaGUgLSB5b3UgbXVzdCBhbHNvIA0KZnN5bmMoKSB0aGF0IGZpbGUgdG8g
-cHVzaCBpdCBvdXQgdG8gdGhlIHRhcmdldC4gIERvIHRoYXQgd2hlbiBpdCBjb3VudHMsIGxlYXZp
-bmcgDQpkYXRhIGluIHRoZSBwYWdlIGNhY2hlIHVudGlsIHlvdSBhY3R1YWxseSBuZWVkIHBlcnNp
-c3RlbmNlIGFuZCB5b3VyIHBlcmZvcm1hbmNlIA0Kc2hvdWxkIGJlIHJlYXNvbmFibGUuDQoNCkRv
-aW5nIGl0IHRoZSBzYWZlIHdheSBpcyBub3QgZnJlZSwgeW91IHdpbGwgc2VlIGEgcGVyZm9ybWFu
-Y2UgaGl0IChsZXNzIHNvIGlmIA0KeW91IGNhbiBkbyBiYXRjaGluZywgZXRjKS4NCg0KcmljDQoN
-Cj4NCj4gV2UgYXJlbid0IHVzaW5nIHN5bmNocm9ub3VzIGJlY2F1c2UgdGhlIHBlcmZvcm1hbmNl
-IGJlY29tZXMgYWJ5c21hbC4NCj4NCj4gUmVwZWF0ZWQgdW1vdW50IC1mIGRvZXMgZXZlbnR1YWxs
-eSByZXN1bHQgaW4gdGhlIGkvbyBlcnJvciBnZXR0aW5nIHByb3BhZ2F0ZWQgYmFjayB0byB0aGUg
-d3JpdGUoKSBjYWxsLiAgIEkgc3VzcGVjdCB0aGUgcmVwZWF0ZWQgdW1vdW50IC1mJ3MgYXJlIHdv
-cmtpbmcgdGhlaXIgd2F5IHRocm91Z2ggYmxvY2tzIGluIHRoZSBjYWNoZS9xdWV1ZSBhbmQgZXZl
-bnR1YWxseSB3ZSBnZXQgYmFjayB0byB0aGUgYmxvY2tlZCB3cml0ZS4NCj4NCj4gQXMgSSBtZW50
-aW9uZWQgcHJldmlvdXNseSwgaWYgd2UgbW91bnQgd2l0aCBzeW5jIG9yIGRpcmVjdCBpL28gdHlw
-ZSBvcHRpb25zLCB3ZSB3aWxsIGdldCB0aGUgaS9vIGVycm9yLCBidXQgZm9yIHBlcmZvcm1hbmNl
-IHJlYXNvbnMsIHRoaXMgaXNuJ3QgYW4gb3B0aW9uLg0KPg0KPiAtLS0tLU9yaWdpbmFsIE1lc3Nh
-Z2UtLS0tLQ0KPiBGcm9tOiBUcm9uZCBNeWtsZWJ1c3QgPHRyb25kLm15a2xlYnVzdEBwcmltYXJ5
-ZGF0YS5jb20+DQo+IERhdGU6IFRodSwgNiBNYXIgMjAxNCAxNDowNjoyNA0KPiBUbzogPGJoYXds
-ZXlAbHVtaW5leC5jb20+DQo+IENjOiBBbmRyZXcgTWFydGluPGFtYXJ0aW5AeGVzLWluYy5jb20+
-OyBKaW0gUmVlczxyZWVzQHVtaWNoLmVkdT47IEJyb3duIE5laWw8bmVpbGJAc3VzZS5kZT47IDxs
-aW51eC1uZnMtb3duZXJAdmdlci5rZXJuZWwub3JnPjsgPGxpbnV4LW5mc0B2Z2VyLmtlcm5lbC5v
-cmc+DQo+IFN1YmplY3Q6IFJlOiBPcHRpbWFsIE5GUyBtb3VudCBvcHRpb25zIHRvIHNhZmVseSBh
-bGxvdyBpbnRlcnJ1cHRzIGFuZCB0aW1lb3V0cyBvbiBuZXdlciBrZXJuZWxzDQo+DQo+DQo+IE9u
-IE1hciA2LCAyMDE0LCBhdCAxNDowMCwgQnJpYW4gSGF3bGV5IDxiaGF3bGV5QGx1bWluZXguY29t
-PiB3cm90ZToNCj4NCj4+IEV2ZW4gd2l0aCBzbWFsbCB0aW1lbyBhbmQgcmV0cmFucywgeW91IHdv
-bid0IGdldCBpL28gZXJyb3JzIGJhY2sgdG8gdGhlIHJlYWRzL3dyaXRlcy4gICBUaGF0J3MgYmVl
-biBvdXIgZXhwZXJpZW5jZSBhbnl3YXkuDQo+IFJlYWQgY2FjaGluZywgYW5kIGJ1ZmZlcmVkIHdy
-aXRlcyBtZWFuIHRoYXQgdGhlIEkvTyBlcnJvcnMgb2Z0ZW4gZG8gbm90IG9jY3VyIGR1cmluZyB0
-aGUgcmVhZCgpL3dyaXRlKCkgc3lzdGVtIGNhbGwgaXRzZWxmLg0KPg0KPiBXZSBkbyB0cnkgdG8g
-cHJvcGFnYXRlIEkvTyBlcnJvcnMgYmFjayB0byB0aGUgYXBwbGljYXRpb24gYXMgc29vbiBhcyB0
-aGUgZG8gb2NjdXIsIGJ1dCBpZiB0aGF0IGFwcGxpY2F0aW9uIGlzbpJ0IHVzaW5nIHN5bmNocm9u
-b3VzIEkvTywgYW5kIGl0IGlzbpJ0IGNoZWNraW5nIHRoZSByZXR1cm4gdmFsdWVzIG9mIGZzeW5j
-KCkgb3IgY2xvc2UoKSwgdGhlbiB0aGVyZSBpcyBsaXR0bGUgdGhlIGtlcm5lbCBjYW4gZG8uLi4N
-Cj4NCj4+IFdpdGggc29mdCwgeW91IG1heSBlbmQgdXAgd2l0aCBsb3N0IGRhdGEgKGRhdGEgdGhh
-dCBoYWQgYWxyZWFkeSBiZWVuIHdyaXR0ZW4gdG8gdGhlIGNhY2hlIGJ1dCBub3QgeWV0IHRvIHRo
-ZSBzdG9yYWdlKS4gICBZb3UnZCBoYXZlIHRoYXQgc2FtZSBpc3N1ZSB3aXRoICdoYXJkJyB0b28g
-aWYgaXQgd2FzIHlvdXIgYXBwbGlhbmNlIHRoYXQgZmFpbGVkLiAgSWYgdGhlIGFwcGxpYW5jZSBu
-ZXZlciBjb21lcyBiYWNrLCB0aG9zZSBibG9ja3MgY2FuIG5ldmVyIGJlIHdyaXR0ZW4uDQo+Pg0K
-Pj4gSW4geW91ciBjYXNlIHRob3VnaCwgeW91J3JlIG5vdCB3cml0aW5nLg0KPj4NCj4+DQo+PiAt
-LS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPj4gRnJvbTogQW5kcmV3IE1hcnRpbiA8YW1hcnRp
-bkB4ZXMtaW5jLmNvbT4NCj4+IERhdGU6IFRodSwgNiBNYXIgMjAxNCAxMDo0Mzo0Mg0KPj4gVG86
-IEppbSBSZWVzPHJlZXNAdW1pY2guZWR1Pg0KPj4gQ2M6IDxiaGF3bGV5QGx1bWluZXguY29tPjsg
-TmVpbEJyb3duPG5laWxiQHN1c2UuZGU+OyA8bGludXgtbmZzLW93bmVyQHZnZXIua2VybmVsLm9y
-Zz47IDxsaW51eC1uZnNAdmdlci5rZXJuZWwub3JnPg0KPj4gU3ViamVjdDogUmU6IE9wdGltYWwg
-TkZTIG1vdW50IG9wdGlvbnMgdG8gc2FmZWx5IGFsbG93IGludGVycnVwdHMgYW5kDQo+PiB0aW1l
-b3V0cyBvbiBuZXdlciBrZXJuZWxzDQo+Pg0KPj4+IEZyb206ICJKaW0gUmVlcyIgPHJlZXNAdW1p
-Y2guZWR1Pg0KPj4+IEFuZHJldyBNYXJ0aW4gd3JvdGU6DQo+Pj4NCj4+Pj4gRnJvbTogIkppbSBS
-ZWVzIiA8cmVlc0B1bWljaC5lZHU+DQo+Pj4+IEdpdmVuIHRoaXMgaXMgYXBhY2hlLCBJIHRoaW5r
-IGlmIEkgd2VyZSBkb2luZyB0aGlzIEknZCB1c2UNCj4+Pj4gcm8sc29mdCxpbnRyLHRjcA0KPj4+
-PiBhbmQgbm90IHRyeSB0byB3cml0ZSBhbnl0aGluZyB0byBuZnMuDQo+Pj4gICBJIHdhcyB1c2lu
-ZyB0Y3AsYmcsc29mdCxpbnRyIHdoZW4gdGhpcyBwcm9ibGVtIG9jY3VycmVkLiBJIGRvIG5vdCBr
-bm93IGlmDQo+Pj4gICBhcGFjaGUgd2FzIGF0dGVtcHRpbmcgdG8gZG8gYSB3cml0ZSBvciBhIHJl
-YWQsIGJ1dCBpdCBzZWVtcyB0aGF0DQo+Pj4gICB0Y3Asc29mdCxpbnRyDQo+Pj4gICB3YXMgbm90
-IHN1ZmZpY2llbnQgdG8gcHJldmVudCB0aGUgcHJvYmxlbS4NCj4+Pg0KPj4+IEkgaGFkIHRoZSBp
-bXByZXNzaW9uIGZyb20geW91ciBvcmlnaW5hbCBtZXNzYWdlIHRoYXQgeW91IHdlcmUgbm90IHVz
-aW5nDQo+Pj4gInNvZnQiIGFuZCB3ZXJlIGFza2luZyBpZiBpdCdzIHNhZmUgdG8gdXNlIGl0LiBB
-cmUgeW91IHNheWluZyB0aGF0IGV2ZW4gd2l0aA0KPj4+IHRoZSAic29mdCIgb3B0aW9uIHRoZSBh
-cGFjaGUgZ2V0cyBzdHVjayBmb3JldmVyPw0KPj4gWWVzLCBldmVuIHdpdGggc29mdCwgaXQgZ2V0
-cyBzdHVjayBmb3JldmVyLiBJIGhhZCBiZWVuIHVzaW5nIHRjcCxiZyxzb2Z0LGludHINCj4+IHdo
-ZW4gdGhlIHByb2JsZW0gb2NjdXJyZWQgKG9uIHNldmVyYWwgb2Nhc3Npb25zKSwgc28gbXkgb3Jp
-Z2luYWwgcXVlc3Rpb24gd2FzDQo+PiBpZiBpdCB3b3VsZCBiZSBzYWZlIHRvIHVzZSBhIHNtYWxs
-IHRpbWVvIGFuZCByZXRyYW5zIHZhbHVlcyB0byBob3BlZnVsbHkNCj4+IHJldHVybiBJL08gZXJy
-b3JzIHF1aWNrbHkgdG8gdGhlIGFwcGxpY2F0aW9uLCByYXRoZXIgdGhhbiBibG9ja2luZyBmb3Jl
-dmVyDQo+PiAod2hpY2ggY2F1c2VzIHRoZSBoaWdoIGxvYWQgYW5kIGluZXZpdGFibGUgcmVib290
-KS4gSXQgc291bmRzIGxpa2UgdGhhdCBpc24ndA0KPj4gc2FmZSwgYnV0IHBlcmhhcHMgdGhlcmUg
-aXMgYW5vdGhlciB3YXkgdG8gcmVzb2x2ZSB0aGlzIHByb2JsZW0/DQo+PiAtLQ0KPj4gVG8gdW5z
-dWJzY3JpYmUgZnJvbSB0aGlzIGxpc3Q6IHNlbmQgdGhlIGxpbmUgInVuc3Vic2NyaWJlIGxpbnV4
-LW5mcyIgaW4NCj4+IHRoZSBib2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRvbW9Admdlci5rZXJu
-ZWwub3JnDQo+PiBNb3JlIG1ham9yZG9tbyBpbmZvIGF0ICBodHRwOi8vdmdlci5rZXJuZWwub3Jn
-L21ham9yZG9tby1pbmZvLmh0bWwNCj4+DQo+IF9fX19fX19fX19fX19fX19fX19fX19fX19fX19f
-X19fXw0KPiBUcm9uZCBNeWtsZWJ1c3QNCj4gTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQ
-cmltYXJ5RGF0YQ0KPiB0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tDQo+DQo+IE6Lp7Lm
-7HK4m3n66JrYYrJYrLbHp3bYXpYp3rp7Lm7HK4m3pYp7sZ37Ip7YXm6HcqH2pnrLGoHraJmo6K3a
-JqL4Hq5Hq53paK4DKK3pmo6K3aJqIp36GrYbbaf/74Hq5Hq53paK4P5mo6K3aJqIp36IbW1sPT0N
-Cg0K
+
+On Mar 4, 2014, at 22:00, NeilBrown <neilb@suse.de> wrote:
+
+> The access cache is used during RCU-walk path lookups, so it is best
+> to avoid locking if possible as taking a lock kills concurrency.
+> 
+> The rbtree is not rcu-safe and cannot easily be made so.
+> Instead we simply check the last (i.e. most recent) entry on the LRU
+> list.  If this doesn't match, then we return -ECHILD and retry in
+> lock/refcount mode.
+> 
+> This requires freeing the nfs_access_entry struct with rcu, and
+> requires using rcu access primates when adding entries to the lru, and
+> when examining the last entry.
+> 
+> Calling put_rpccred before kfree_rcu looks a bit odd, but as
+> put_rpccred already provide rcu protection, we know that the cred will
+> not actually be freed until the next grace period, so any concurrent
+> access will be safe.
+> 
+> This patch provides about 5% performance improvement on a stat-heavy
+> synthetic work load with 4 threads on a 2-core CPU.
+> 
+
+Have you looked at converting the rb-tree into something a little more RCU-friendly? Since our lookup key is just a pointer value, couldn’t we use a radix-tree?
+
+_________________________________
+Trond Myklebust
+Linux NFS client maintainer, PrimaryData
+trond.myklebust@primarydata.com
 
