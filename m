@@ -1,37 +1,143 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:60610 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S965428AbaCSPkt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Mar 2014 11:40:49 -0400
-Date: Wed, 19 Mar 2014 08:40:48 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Anna Schumaker <schumaker.anna@gmail.com>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/2] nfs: remove ->write_pageio_init from rpc ops
-Message-ID: <20140319154048.GB3729@infradead.org>
-References: <20140318112825.GA22359@infradead.org>
- <532840E8.5090804@gmail.com>
- <20140318140942.GB11672@infradead.org>
- <53288AAC.2010406@gmail.com>
- <20140319074130.GA14944@infradead.org>
- <53299787.5030401@gmail.com>
+Received: from cantor2.suse.de ([195.135.220.15]:52097 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755165AbaCEDBo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Mar 2014 22:01:44 -0500
+From: NeilBrown <neilb@suse.de>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Date: Wed, 05 Mar 2014 14:00:28 +1100
+Subject: [PATCH 4/8] sunrpc/auth: add 'rcu_walk' arg to rpc_lookup_cred.
+Cc: linux-nfs@vger.kernel.org
+Message-ID: <20140305030028.27421.14840.stgit@notabene.brown>
+In-Reply-To: <20140305025813.27421.23871.stgit@notabene.brown>
+References: <20140305025813.27421.23871.stgit@notabene.brown>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <53299787.5030401@gmail.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Mar 19, 2014 at 09:11:35AM -0400, Anna Schumaker wrote:
-> On 03/19/2014 03:41 AM, Christoph Hellwig wrote:
-> > On Tue, Mar 18, 2014 at 02:04:28PM -0400, Anna Schumaker wrote:
-> >>> The other option would be to simply always have the pnfs_curr_ld field
-> >>> in the server structure and remove the ifdef entirely.
-> >> Okay.  If we keep the ifdef, then it should probably check for CONFIG_NFS_V4_1 and not CONFIG_NFS_V4
-> > The field in the header is under CONFIG_NFS_V4, so I tried to make it
-> > consistent.
-> >
-> struct pnfs_layoutdriver_type comes from fs/nfs/pnfs.h under a CONFIG_NFS_V4_1 check, so you can't access pg_write_ops or pg_read_ops without v4.1 enabled.
+This arg causes rpc_lookup_cred to set RPCAUTH_LOOKUP_RCU when
+performing the credential lookup.  Most callers pass '0',
+except nfs_permission() which passes (mask & MAY_NOT_BLOCK).
 
-You're right - the field exists for plain v4, but we can't dereference
-it unless 4.1 support is enable.  I'll send an update.
+This doesn't speed up nfs_permission yet as it is not yet
+safe to call nfs_do_access with the returned cred.
+
+Signed-off-by: NeilBrown <neilb@suse.de>
+---
+ fs/nfs/dir.c                |    8 ++++----
+ fs/nfs/inode.c              |    2 +-
+ fs/nfs/nfs4proc.c           |    2 +-
+ fs/nfs/unlink.c             |    4 ++--
+ include/linux/sunrpc/auth.h |    2 +-
+ net/sunrpc/auth_generic.c   |    5 +++--
+ 6 files changed, 12 insertions(+), 11 deletions(-)
+
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index dcec2c56fe13..36e12f545fd7 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -102,7 +102,7 @@ nfs_opendir(struct inode *inode, struct file *filp)
+ 
+ 	nfs_inc_stats(inode, NFSIOS_VFSOPEN);
+ 
+-	cred = rpc_lookup_cred();
++	cred = rpc_lookup_cred(0);
+ 	if (IS_ERR(cred))
+ 		return PTR_ERR(cred);
+ 	ctx = alloc_nfs_open_dir_context(inode, cred);
+@@ -2308,11 +2308,11 @@ force_lookup:
+ 	if (!NFS_PROTO(inode)->access)
+ 		goto out_notsup;
+ 
+-	if (mask & MAY_NOT_BLOCK)
+-		return -ECHILD;
+ 
+-	cred = rpc_lookup_cred();
++	cred = rpc_lookup_cred(mask & MAY_NOT_BLOCK);
+ 	if (!IS_ERR(cred)) {
++		if (mask & MAY_NOT_BLOCK)
++			return -ECHILD;
+ 		res = nfs_do_access(inode, cred, mask);
+ 		put_rpccred(cred);
+ 	} else
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 28a0a3cbd3b7..59e57cceeab5 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -717,7 +717,7 @@ EXPORT_SYMBOL_GPL(nfs_close_context);
+ struct nfs_open_context *alloc_nfs_open_context(struct dentry *dentry, fmode_t f_mode)
+ {
+ 	struct nfs_open_context *ctx;
+-	struct rpc_cred *cred = rpc_lookup_cred();
++	struct rpc_cred *cred = rpc_lookup_cred(0);
+ 	if (IS_ERR(cred))
+ 		return ERR_CAST(cred);
+ 
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 42da6af77587..922b924f0a7c 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -4733,7 +4733,7 @@ nfs4_set_security_label(struct dentry *dentry, const void *buf, size_t buflen)
+ 	ilabel.label = (char *)buf;
+ 	ilabel.len = buflen;
+ 
+-	cred = rpc_lookup_cred();
++	cred = rpc_lookup_cred(0);
+ 	if (IS_ERR(cred))
+ 		return PTR_ERR(cred);
+ 
+diff --git a/fs/nfs/unlink.c b/fs/nfs/unlink.c
+index 11d78944de79..34c0b878f2a8 100644
+--- a/fs/nfs/unlink.c
++++ b/fs/nfs/unlink.c
+@@ -258,7 +258,7 @@ nfs_async_unlink(struct inode *dir, struct dentry *dentry)
+ 	if (data == NULL)
+ 		goto out;
+ 
+-	data->cred = rpc_lookup_cred();
++	data->cred = rpc_lookup_cred(0);
+ 	if (IS_ERR(data->cred)) {
+ 		status = PTR_ERR(data->cred);
+ 		goto out_free;
+@@ -418,7 +418,7 @@ nfs_async_rename(struct inode *old_dir, struct inode *new_dir,
+ 		return ERR_PTR(-ENOMEM);
+ 	task_setup_data.callback_data = data;
+ 
+-	data->cred = rpc_lookup_cred();
++	data->cred = rpc_lookup_cred(0);
+ 	if (IS_ERR(data->cred)) {
+ 		struct rpc_task *task = ERR_CAST(data->cred);
+ 		kfree(data);
+diff --git a/include/linux/sunrpc/auth.h b/include/linux/sunrpc/auth.h
+index 3f158ae1d6fd..ef354ccb709d 100644
+--- a/include/linux/sunrpc/auth.h
++++ b/include/linux/sunrpc/auth.h
+@@ -153,7 +153,7 @@ void			rpcauth_remove_module(void);
+ void			rpc_destroy_generic_auth(void);
+ void 			rpc_destroy_authunix(void);
+ 
+-struct rpc_cred *	rpc_lookup_cred(void);
++struct rpc_cred *	rpc_lookup_cred(int rcu_walk);
+ struct rpc_cred *	rpc_lookup_machine_cred(const char *service_name);
+ int			rpcauth_register(const struct rpc_authops *);
+ int			rpcauth_unregister(const struct rpc_authops *);
+diff --git a/net/sunrpc/auth_generic.c b/net/sunrpc/auth_generic.c
+index ed04869b2d4f..ffbd66b94781 100644
+--- a/net/sunrpc/auth_generic.c
++++ b/net/sunrpc/auth_generic.c
+@@ -32,9 +32,10 @@ static const struct rpc_credops generic_credops;
+ /*
+  * Public call interface
+  */
+-struct rpc_cred *rpc_lookup_cred(void)
++struct rpc_cred *rpc_lookup_cred(int rcu_walk)
+ {
+-	return rpcauth_lookupcred(&generic_auth, 0);
++	return rpcauth_lookupcred(&generic_auth,
++				  rcu_walk ? RPCAUTH_LOOKUP_RCU : 0);
+ }
+ EXPORT_SYMBOL_GPL(rpc_lookup_cred);
+ 
+
+
