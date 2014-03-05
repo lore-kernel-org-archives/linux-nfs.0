@@ -1,62 +1,131 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f172.google.com ([209.85.223.172]:64649 "EHLO
-	mail-ie0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752110AbaCLQvl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Mar 2014 12:51:41 -0400
-Received: by mail-ie0-f172.google.com with SMTP id as1so10903256iec.3
-        for <linux-nfs@vger.kernel.org>; Wed, 12 Mar 2014 09:51:40 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 3/6] SUNRPC: remove KERN_INFO from dprintk() call sites
-To: trond.myklebust@primarydata.com
+Received: from cantor2.suse.de ([195.135.220.15]:52107 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756032AbaCEDCU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Mar 2014 22:02:20 -0500
+From: NeilBrown <neilb@suse.de>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Date: Wed, 05 Mar 2014 14:00:28 +1100
+Subject: [PATCH 8/8] NFS: allow lockless access to access_cache
 Cc: linux-nfs@vger.kernel.org
-Date: Wed, 12 Mar 2014 12:51:39 -0400
-Message-ID: <20140312165139.15349.82103.stgit@manet.1015granger.net>
-In-Reply-To: <20140312164620.15349.22643.stgit@manet.1015granger.net>
-References: <20140312164620.15349.22643.stgit@manet.1015granger.net>
+Message-ID: <20140305030028.27421.87633.stgit@notabene.brown>
+In-Reply-To: <20140305025813.27421.23871.stgit@notabene.brown>
+References: <20140305025813.27421.23871.stgit@notabene.brown>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The use of KERN_INFO causes garbage characters to appear when
-debugging is enabled.
+The access cache is used during RCU-walk path lookups, so it is best
+to avoid locking if possible as taking a lock kills concurrency.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+The rbtree is not rcu-safe and cannot easily be made so.
+Instead we simply check the last (i.e. most recent) entry on the LRU
+list.  If this doesn't match, then we return -ECHILD and retry in
+lock/refcount mode.
+
+This requires freeing the nfs_access_entry struct with rcu, and
+requires using rcu access primates when adding entries to the lru, and
+when examining the last entry.
+
+Calling put_rpccred before kfree_rcu looks a bit odd, but as
+put_rpccred already provide rcu protection, we know that the cred will
+not actually be freed until the next grace period, so any concurrent
+access will be safe.
+
+This patch provides about 5% performance improvement on a stat-heavy
+synthetic work load with 4 threads on a 2-core CPU.
+
+Signed-off-by: NeilBrown <neilb@suse.de>
 ---
+ fs/nfs/dir.c           |   41 +++++++++++++++++++++++++++++++++++++++--
+ include/linux/nfs_fs.h |    1 +
+ 2 files changed, 40 insertions(+), 2 deletions(-)
 
- net/sunrpc/xprtrdma/transport.c |   10 +++++-----
- 1 files changed, 5 insertions(+), 5 deletions(-)
-
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 285dc08..1eb9c46 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -733,7 +733,7 @@ static void __exit xprt_rdma_cleanup(void)
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index e808db561201..edf0458acd4a 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -2011,7 +2011,7 @@ static atomic_long_t nfs_access_nr_entries;
+ static void nfs_access_free_entry(struct nfs_access_entry *entry)
  {
- 	int rc;
+ 	put_rpccred(entry->cred);
+-	kfree(entry);
++	kfree_rcu(entry, rcu_head);
+ 	smp_mb__before_atomic_dec();
+ 	atomic_long_dec(&nfs_access_nr_entries);
+ 	smp_mb__after_atomic_dec();
+@@ -2166,6 +2166,36 @@ out_zap:
+ 	return -ENOENT;
+ }
  
--	dprintk(KERN_INFO "RPCRDMA Module Removed, deregister RPC RDMA transport\n");
-+	dprintk("RPCRDMA Module Removed, deregister RPC RDMA transport\n");
- #ifdef RPC_DEBUG
- 	if (sunrpc_table_header) {
- 		unregister_sysctl_table(sunrpc_table_header);
-@@ -755,14 +755,14 @@ static int __init xprt_rdma_init(void)
- 	if (rc)
- 		return rc;
++static int nfs_access_get_cached_rcu(struct inode *inode, struct rpc_cred *cred, struct nfs_access_entry *res)
++{
++	/* Only check the most recently returned cache entry,
++	 * but do it without locking.
++	 */
++	struct nfs_inode *nfsi = NFS_I(inode);
++	struct nfs_access_entry *cache;
++	int err = -ECHILD;
++	struct list_head *lh;
++
++	if (nfsi->cache_validity & NFS_INO_INVALID_ACCESS)
++		goto out;
++	lh = rcu_dereference(nfsi->access_cache_entry_lru.prev);
++	cache = list_entry(lh, struct nfs_access_entry, lru);
++	if (lh == &nfsi->access_cache_entry_lru ||
++	    cred != cache->cred)
++		cache = NULL;
++	if (cache == NULL)
++		goto out;
++	if (!nfs_have_delegated_attributes(inode) &&
++	    !time_in_range_open(jiffies, cache->jiffies, cache->jiffies + nfsi->attrtimeo))
++		goto out;
++	res->jiffies = cache->jiffies;
++	res->cred = cache->cred;
++	res->mask = cache->mask;
++	err = 0;
++out:
++	return err;
++}
++
+ static void nfs_access_add_rbtree(struct inode *inode, struct nfs_access_entry *set)
+ {
+ 	struct nfs_inode *nfsi = NFS_I(inode);
+@@ -2209,6 +2239,11 @@ void nfs_access_add_cache(struct inode *inode, struct nfs_access_entry *set)
+ 	cache->cred = get_rpccred(set->cred);
+ 	cache->mask = set->mask;
  
--	dprintk(KERN_INFO "RPCRDMA Module Init, register RPC RDMA transport\n");
-+	dprintk("RPCRDMA Module Init, register RPC RDMA transport\n");
++	/* The above fields assignments must be visible
++	 * before this item appears on the lru.  We cannot easily
++	 * use rcu_assign_pointer, so just force the memory barrier.
++	 */
++	smp_wmb();
+ 	nfs_access_add_rbtree(inode, cache);
  
--	dprintk(KERN_INFO "Defaults:\n");
--	dprintk(KERN_INFO "\tSlots %d\n"
-+	dprintk("Defaults:\n");
-+	dprintk("\tSlots %d\n"
- 		"\tMaxInlineRead %d\n\tMaxInlineWrite %d\n",
- 		xprt_rdma_slot_table_entries,
- 		xprt_rdma_max_inline_read, xprt_rdma_max_inline_write);
--	dprintk(KERN_INFO "\tPadding %d\n\tMemreg %d\n",
-+	dprintk("\tPadding %d\n\tMemreg %d\n",
- 		xprt_rdma_inline_write_padding, xprt_rdma_memreg_strategy);
+ 	/* Update accounting */
+@@ -2247,7 +2282,9 @@ static int nfs_do_access(struct inode *inode, struct rpc_cred *cred, int mask)
  
- #ifdef RPC_DEBUG
+ 	trace_nfs_access_enter(inode);
+ 
+-	status = nfs_access_get_cached(inode, cred, &cache);
++	if (!(mask & MAY_NOT_BLOCK) ||
++	    (status = nfs_access_get_cached_rcu(inode, cred, &cache)) != 0)
++		status = nfs_access_get_cached(inode, cred, &cache);
+ 	if (status == 0)
+ 		goto out_cached;
+ 
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 9e91f2cfcd01..0eaf6c48c826 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -52,6 +52,7 @@ struct nfs_access_entry {
+ 	unsigned long		jiffies;
+ 	struct rpc_cred *	cred;
+ 	int			mask;
++	struct rcu_head		rcu_head;
+ };
+ 
+ struct nfs_lockowner {
+
 
