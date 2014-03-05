@@ -1,69 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.opengridcomputing.com ([72.48.136.20]:36529 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751321AbaCLUnK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Mar 2014 16:43:10 -0400
-Message-ID: <5320C6DE.4090807@opengridcomputing.com>
-Date: Wed, 12 Mar 2014 15:43:10 -0500
-From: Tom Tucker <tom@opengridcomputing.com>
+Received: from mail-ie0-f173.google.com ([209.85.223.173]:62112 "EHLO
+	mail-ie0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754865AbaCEUPz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Mar 2014 15:15:55 -0500
+Message-ID: <338027154-1394050544-cardhu_decombobulator_blackberry.rim.net-1945813324-@b5.c4.bise6.blackberry>
+Reply-To: bhawley@luminex.com
+References: <1696396609.119284.1394040541217.JavaMail.zimbra@xes-inc.com>
+  <260588931.122771.1394041524167.JavaMail.zimbra@xes-inc.com>
+In-Reply-To: <260588931.122771.1394041524167.JavaMail.zimbra@xes-inc.com>
+Subject: Re: Optimal NFS mount options to safely allow interrupts and timeouts on newer kernels
+To: "Andrew Martin" <amartin@xes-inc.com>, linux-nfs-owner@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+From: "Brian Hawley" <bhawley@luminex.com>
+Date: Wed, 5 Mar 2014 20:15:39 +0000
+Content-Type: text/plain
 MIME-Version: 1.0
-To: Jeff Layton <jlayton@redhat.com>, bfields@fieldses.org
-CC: linux-nfs@vger.kernel.org, swise@opengridcomputing.com,
-        Tom Talpey <tmtalpey@gmail.com>
-Subject: Re: [PATCH] svcrdma: fix offset calculation for non-page aligned
- sge entries
-References: <1394635867-19089-1-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1394635867-19089-1-git-send-email-jlayton@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Jeff,
-
-
-On 3/12/14 9:51 AM, Jeff Layton wrote:
-> The xdr_off value in dma_map_xdr gets passed to ib_dma_map_page as the
-> offset into the page to be mapped. For the case of the pages array, the
-> existing calculation always seems to end up at 0, which causes data
-> corruption when a non-page-aligned READ request comes in. The server ends
-> up doing the RDMA_WRITE from the wrong part of the page.
->
-> Override the xdr_off value with the page_base in that situation to fix
-> the issue. Obviously, this method can't contend with a page_base that is
-> larger than PAGE_SIZE.
-I think we saw page base > PAGE_SIZE when inter-operating with Sun, but 
-maybe someone else on the list has a clearer recollection.
-
-I am curious, however, why xdr_off was always zero if in fact, page_base 
-was not page aligned.
-
-Thanks,
-Tom
-> I'm not sure if that's ever the case, but add a
-> WARN_ON in the event that that ever happens.
->
-> Cc: Tom Tucker <tom@opengridcomputing.com>
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->   net/sunrpc/xprtrdma/svc_rdma_sendto.c | 7 +++++--
->   1 file changed, 5 insertions(+), 2 deletions(-)
->
-> diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-> index c1d124dc772b..76e524b428d0 100644
-> --- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-> +++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-> @@ -265,8 +265,11 @@ static dma_addr_t dma_map_xdr(struct svcxprt_rdma *xprt,
->   		xdr_off -= xdr->head[0].iov_len;
->   		if (xdr_off < xdr->page_len) {
->   			/* This offset is in the page list */
-> -			page = xdr->pages[xdr_off >> PAGE_SHIFT];
-> -			xdr_off &= ~PAGE_MASK;
-> +			int pgnum = xdr_off >> PAGE_SHIFT;
-> +
-> +			page = xdr->pages[pgnum];
-> +			WARN_ON(xdr->page_base > PAGE_SIZE);
-> +			xdr_off = pgnum ? 0 : xdr->page_base;
->   		} else {
->   			/* This offset is in the tail */
->   			xdr_off -= xdr->page_len;
+DQpJbiBteSBleHBlcmllbmNlLCB5b3Ugd29uJ3QgZ2V0IHRoZSBpL28gZXJyb3JzIHJlcG9ydGVk
+IGJhY2sgdG8gdGhlIHJlYWQvd3JpdGUvY2xvc2Ugb3BlcmF0aW9ucy4gICBJIGRvbid0IGtub3cg
+Zm9yIGNlcnRhaW4sIGJ1dCBJIHN1c3BlY3QgdGhpcyBtYXkgYmUgZHVlIHRvIGNhY2hpbmcgYW5k
+IGNodW5raW5nIHRvIHR1cm4gSS9vIG1hdGNoaW5nIHRoZSByc2l6ZS93c2l6ZSBzZXR0aW5nczsg
+YW5kIHBvc3NpYmx5IHRoZSBmYWN0IHRoYXQgdGhlIHBlZXIgZGlzY29ubmVjdGlvbiBpc24ndCBu
+b3RpY2VkIHVubGVzcyB0aGUgbmZzIHNlcnZlciByZXNldHMgKGllIGNhYmxlIGRpc2Nvbm5lY3Rp
+b24gaXNuJ3Qgc3VmZmljaWVudCkuDQoNClRoZSBpbmFiaWxpdHkgdG8gZ2V0IHRoZSBpL28gZXJy
+b3JzIGJhY2sgdG8gdGhlIGFwcGxpY2F0aW9uIGhhcyBiZWVuIGEgbWFqb3IgcGFpbiBmb3IgdXMu
+DQoNCk9uIGEgbGFyayB3ZSBkaWQgZmluZCB0aGF0IHJlcGVhdGVkIHVubW9udCAtZidzIGRvZXMg
+Z2V0IGkvbyBlcnJvcnMgYmFjayB0byB0aGUgYXBwbGljYXRpb24sIGJ1dCBpc24ndCBvdXIgcHJl
+ZmVycmVkIHdheS4NCg0KDQotLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KRnJvbTogQW5kcmV3
+IE1hcnRpbiA8YW1hcnRpbkB4ZXMtaW5jLmNvbT4NClNlbmRlcjogbGludXgtbmZzLW93bmVyQHZn
+ZXIua2VybmVsLm9yZw0KRGF0ZTogCVdlZCwgNSBNYXIgMjAxNCAxMTo0NToyNCANClRvOiA8bGlu
+dXgtbmZzQHZnZXIua2VybmVsLm9yZz4NClN1YmplY3Q6IE9wdGltYWwgTkZTIG1vdW50IG9wdGlv
+bnMgdG8gc2FmZWx5IGFsbG93IGludGVycnVwdHMgYW5kIHRpbWVvdXRzDQogb24gbmV3ZXIga2Vy
+bmVscw0KDQpIZWxsbywNCg0KSXMgaXQgc2FmZSB0byB1c2UgdGhlICJzb2Z0IiBtb3VudCBvcHRp
+b24gd2l0aCBwcm90bz10Y3Agb24gbmV3ZXIga2VybmVscyAoZS5nDQozLjIgYW5kIG5ld2VyKT8g
+Q3VycmVudGx5IHVzaW5nIHRoZSAiZGVmYXVsdHMiIG5mcyBtb3VudCBvcHRpb25zIG9uIFVidW50
+dQ0KMTIuMDQgcmVzdWx0cyBpbiBwcm9jZXNzZXMgYmxvY2tpbmcgZm9yZXZlciBpbiB1bmludGVy
+cnVwdGFibGUgc2xlZXAgaWYgdGhleQ0KYXR0ZW1wdCB0byBhY2Nlc3MgYSBtb3VudHBvaW50IHdo
+aWxlIHRoZSBORlMgc2VydmVyIGlzIG9mZmxpbmUuIEkgd291bGQgcHJlZmVyDQp0aGF0IE5GUyBz
+aW1wbHkgcmV0dXJuIGFuIGVycm9yIHRvIHRoZSBjbGllbnRzIGFmdGVyIHJldHJ5aW5nIGEgZmV3
+IHRpbWVzLCANCmhvd2V2ZXIgSSBhbHNvIGNhbm5vdCBoYXZlIGRhdGEgbG9zcy4gRnJvbSB0aGUg
+bWFuIHBhZ2UsIEkgdGhpbmsgdGhlc2Ugb3B0aW9ucw0Kd2lsbCBnaXZlIHRoYXQgZWZmZWN0Pw0K
+c29mdCxwcm90bz10Y3AsdGltZW89MTAscmV0cmFucz0zDQoNCj5Gcm9tIG15IHVuZGVyc3RhbmRp
+bmcsIHRoaXMgd2lsbCBjYXVzZSBORlMgdG8gcmV0cnkgdGhlIGNvbm5lY3Rpb24gMyB0aW1lcyAo
+b25jZQ0KcGVyIHNlY29uZCksIGFuZCB0aGVuIGlmIGFsbCAzIGFyZSB1bnN1Y2Nlc3NmdWwgcmV0
+dXJuIGFuIGVycm9yIHRvIHRoZQ0KYXBwbGljYXRpb24uIElzIHRoaXMgY29ycmVjdD8gSXMgdGhl
+cmUgYSByaXNrIG9mIGRhdGEgbG9zcyBvciBjb3JydXB0aW9uIGJ5DQp1c2luZyAic29mdCIgaW4g
+dGhpcyB3YXk/IE9yIGlzIHRoZXJlIGEgYmV0dGVyIHdheSB0byBhcHByb2FjaCB0aGlzPw0KDQpU
+aGFua3MsDQoNCkFuZHJldyBNYXJ0aW4NCi0tDQpUbyB1bnN1YnNjcmliZSBmcm9tIHRoaXMgbGlz
+dDogc2VuZCB0aGUgbGluZSAidW5zdWJzY3JpYmUgbGludXgtbmZzIiBpbg0KdGhlIGJvZHkgb2Yg
+YSBtZXNzYWdlIHRvIG1ham9yZG9tb0B2Z2VyLmtlcm5lbC5vcmcNCk1vcmUgbWFqb3Jkb21vIGlu
+Zm8gYXQgIGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jkb21vLWluZm8uaHRtbA0KDQo=
 
