@@ -1,24 +1,35 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mout.perfora.net ([74.208.4.194]:56877 "EHLO mout.perfora.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750760AbaCFMfu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 6 Mar 2014 07:35:50 -0500
-Date: Thu, 6 Mar 2014 07:34:38 -0500
-From: Jim Rees <rees@umich.edu>
-To: Andrew Martin <amartin@xes-inc.com>
-Cc: NeilBrown <neilb@suse.de>, linux-nfs@vger.kernel.org
-Subject: Re: Optimal NFS mount options to safely allow interrupts and
- timeouts on newer kernels
-Message-ID: <20140306123438.GA21799@umich.edu>
-References: <1696396609.119284.1394040541217.JavaMail.zimbra@xes-inc.com>
- <260588931.122771.1394041524167.JavaMail.zimbra@xes-inc.com>
- <20140306145042.6db53f60@notabene.brown>
- <1853694865.210849.1394082223818.JavaMail.zimbra@xes-inc.com>
-MIME-Version: 1.0
+Received: from mail-ig0-f170.google.com ([209.85.213.170]:33945 "EHLO
+	mail-ig0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752606AbaCEOnG convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Mar 2014 09:43:06 -0500
+Received: by mail-ig0-f170.google.com with SMTP id uq10so7807704igb.1
+        for <linux-nfs@vger.kernel.org>; Wed, 05 Mar 2014 06:43:06 -0800 (PST)
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1853694865.210849.1394082223818.JavaMail.zimbra@xes-inc.com>
+Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
+Subject: Re: [PATCH 4/8] sunrpc/auth: add 'rcu_walk' arg to rpc_lookup_cred.
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+In-Reply-To: <20140305030028.27421.14840.stgit@notabene.brown>
+Date: Wed, 5 Mar 2014 09:43:03 -0500
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <B5AA3471-423B-436C-B3A1-4579917913F6@primarydata.com>
+References: <20140305025813.27421.23871.stgit@notabene.brown> <20140305030028.27421.14840.stgit@notabene.brown>
+To: Brown Neil <neilb@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Given this is apache, I think if I were doing this I'd use ro,soft,intr,tcp
-and not try to write anything to nfs.
+
+On Mar 4, 2014, at 22:00, NeilBrown <neilb@suse.de> wrote:
+
+> This arg causes rpc_lookup_cred to set RPCAUTH_LOOKUP_RCU when
+> performing the credential lookup.  Most callers pass '0',
+> except nfs_permission() which passes (mask & MAY_NOT_BLOCK).
+> 
+
+Why not just add a function rpc_lookup_cred_rcu() or rpc_lookup_cred_noblock() to cater for that one exception?
+
+_________________________________
+Trond Myklebust
+Linux NFS client maintainer, PrimaryData
+trond.myklebust@primarydata.com
+
