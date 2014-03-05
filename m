@@ -1,45 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:56507 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752292AbaCWPHZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 23 Mar 2014 11:07:25 -0400
-Date: Sun, 23 Mar 2014 11:07:22 -0400
-To: Christoph Hellwig <hch@infradead.org>
-Cc: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 22/50] nfsd4: use xdr_truncate_encode
-Message-ID: <20140323150722.GC30644@fieldses.org>
-References: <1395537141-10389-1-git-send-email-bfields@redhat.com>
- <1395537141-10389-23-git-send-email-bfields@redhat.com>
- <20140323065005.GC24465@infradead.org>
+Received: from zeniv.linux.org.uk ([195.92.253.2]:49497 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751871AbaCEGtt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Mar 2014 01:49:49 -0500
+Date: Wed, 5 Mar 2014 06:49:46 +0000
+From: Al Viro <viro@ZenIV.linux.org.uk>
+To: NeilBrown <neilb@suse.de>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/8] NFS: prepare for RCU-walk support but pushing tests
+ later in code.
+Message-ID: <20140305064946.GY18016@ZenIV.linux.org.uk>
+References: <20140305025813.27421.23871.stgit@notabene.brown>
+ <20140305030028.27421.92032.stgit@notabene.brown>
+ <20140305053441.GX18016@ZenIV.linux.org.uk>
+ <20140305165933.09ca9d84@notabene.brown>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140323065005.GC24465@infradead.org>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <20140305165933.09ca9d84@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Mar 22, 2014 at 11:50:05PM -0700, Christoph Hellwig wrote:
-> Ah, here we got the helper for most of the error handling I asked for
-> earlier.  Might be worth mentioning in that patch that this gets further
-> improvements soons.
-
-OK, will do.
-
-> >  	if (nfserr) {
-> > -		xdr->p -= 2;
-> > -		xdr->iov->iov_len -= 8;
-> > +		xdr->buf->page_len = 0;
-> > +		xdr_truncate_encode(xdr, starting_len);
+On Wed, Mar 05, 2014 at 04:59:33PM +1100, NeilBrown wrote:
+> > 	b) having already become negative.
 > 
-> Why do we still need to manually set the page_len?
+> I didn't think dentries ever became negative.  When a file is deleted the old
+> positive dentry is unlinked and a new negative dentry is created in it's
+> place.
+> Or has that changed since last I looked?
 
-In the splice case read increments page_len as it goes.  This leaves the
-xdr_buf in somewhat of an inconsistent state and may confuse a later
-xdr_truncate_encode.
+It has never been true.  See what d_delete() is doing.  If there was only
+one reference to dentry, it *does* become negative.
 
-It's a little ugly, I'm not sure what to do about it.  Currently I'm
-thinking of just telling nfsd's splice callback to leave page_len alone.
-That'd mean taking another look at the splice callback and at the v2/v3
-read code.
+> If they can become negative, then I could
+>    dir = ACCESS_ONCE(parent->d_inode);
+>    if (!dir)
+>         return -ECHILD;
+> 
+> Do you think that would be safe?
 
---b.
+Depends on what you do with it afterwards...
