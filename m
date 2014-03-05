@@ -1,98 +1,175 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:30810 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:52103 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755989AbaCLBGT convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Mar 2014 21:06:19 -0400
-Date: Tue, 11 Mar 2014 21:06:11 -0400
-From: Jeffrey Layton <jlayton@redhat.com>
-To: Eric Paris <eparis@redhat.com>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Schumaker Anna <Anna.Schumaker@netapp.com>,
-        David Quigley <dpquigl@davequigley.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        James Morris <james.l.morris@oracle.com>
-Subject: Re: [PATCH] nfs: Don't assume we have a security structure
-Message-ID: <20140311210611.0e82e3cf@ipyr.poochiereds.net>
-In-Reply-To: <1394584698.10287.0.camel@localhost>
-References: <1394572274-16474-1-git-send-email-Anna.Schumaker@netapp.com>
-	<29D9CA49-A493-471B-932B-959AFF96C729@primarydata.com>
-	<EEEA2B4E-BE0F-40C0-91C3-98E2E7E8BB35@primarydata.com>
-	<1394584698.10287.0.camel@localhost>
+	id S1755165AbaCEDCC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Mar 2014 22:02:02 -0500
+From: NeilBrown <neilb@suse.de>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Date: Wed, 05 Mar 2014 14:00:28 +1100
+Subject: [PATCH 6/8] NFS: teach nfs_neg_need_reval to understand LOOKUP_RCU
+Cc: linux-nfs@vger.kernel.org
+Message-ID: <20140305030028.27421.49580.stgit@notabene.brown>
+In-Reply-To: <20140305025813.27421.23871.stgit@notabene.brown>
+References: <20140305025813.27421.23871.stgit@notabene.brown>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 11 Mar 2014 20:38:18 -0400
-Eric Paris <eparis@redhat.com> wrote:
+This requires nfs_check_verifier to take an rcu_walk flag, and requires
+an rcu version of nfs_revalidate_inode which returns -ECHILD rather
+than making an RPC call.
 
-> On Tue, 2014-03-11 at 18:00 -0400, Trond Myklebust wrote:
-> > On Mar 11, 2014, at 17:27, Trond Myklebust
-> > <trond.myklebust@primarydata.com> wrote:
-> > 
-> > > 
-> > > On Mar 11, 2014, at 17:11, Anna Schumaker
-> > > <Anna.Schumaker@netapp.com> wrote:
-> > > 
-> > >> If the i_security field isn't set then
-> > >> security_dentry_init_security() won't initialize some of the
-> > >> values used by the security label.  This causes my client to hit
-> > >> a BUG_ON() while encoding a label of size -2128927414.
-> > >> 
-> > >> I hit this bug while testing on a client without SELinux
-> > >> installed.
-> > >> 
-> > >> Signed-off-by: Anna Schumaker <anna.schumaker@netapp.com>
-> > >> ---
-> > >> fs/nfs/nfs4proc.c | 3 +++
-> > >> 1 file changed, 3 insertions(+)
-> > >> 
-> > >> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> > >> index b8cd560..994ccc2 100644
-> > >> --- a/fs/nfs/nfs4proc.c
-> > >> +++ b/fs/nfs/nfs4proc.c
-> > >> @@ -105,6 +105,9 @@ nfs4_label_init_security(struct inode *dir,
-> > >> struct dentry *dentry, if (nfs_server_capable(dir,
-> > >> NFS_CAP_SECURITY_LABEL) == 0) return NULL;
-> > >> 
-> > >> +	if (!dir->i_security)
-> > >> +		return NULL;
-> > >> +
-> > >> 	err = security_dentry_init_security(dentry,
-> > >> sattr->ia_mode, &dentry->d_name, (void **)&label->label,
-> > >> &label->len); if (err == 0)
-> > > 
-> > > Hi Anna,
-> > > 
-> > > This looks like a check that needs to be done by
-> > > selinux_dentry_init_security() itself. The dir->i_security field
-> > > is not something that NFS knows about. David, what needs to
-> > > happen there when dentry->d_parent->i_security (a.k.a. dsec) is
-> > > NULL?
-> > > 
-> > 
-> > Oh, wait. I missed the bit about ‘without SELinux installed’. So
-> > the problem here is that you have a NFS client that does not have
-> > SELinux set up, but running against a server that is advertising
-> > NFSv4.2 with labeled NFS. Is that correct?
-> > 
-> > It looks to me as if cap_dentry_init_security() will indeed trigger
-> > this behaviour since it returns ‘0’ without doing anything to the
-> > label. As far as I can see, the right thing to do there is to
-> > return -EOPNOTSUPP, no?
-> 
-> I feel like Jeff Layton was looking at the same thing, and came to the
-> same conclusion...
-> 
-> Jeff?
-> 
+With this, nfs_lookup_revalidate can call nfs_neg_need_reval in
+RCU-walk mode.
 
-I posted a patch for this last week and James has merged it:
+We can also move the LOOKUP_RCU check past the nfs_check_verifier()
+call in nfs_lookup_revalidate.
 
-    [PATCH] security: have cap_dentry_init_security return error
+Signed-off-by: NeilBrown <neilb@suse.de>
+---
+ fs/nfs/dir.c           |   47 ++++++++++++++++++++++++++++++++---------------
+ fs/nfs/inode.c         |    9 +++++++++
+ include/linux/nfs_fs.h |    1 +
+ 3 files changed, 42 insertions(+), 15 deletions(-)
 
-I didn't note it in the patch description but it fixes 4.2 when SELinux
-is compiled in but disabled.
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index f3895325ac6a..76b5f40c8587 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -956,8 +956,11 @@ EXPORT_SYMBOL_GPL(nfs_force_lookup_revalidate);
+  * In the case it has, we assume that the dentries are untrustworthy
+  * and may need to be looked up again.
+  */
+-static int nfs_check_verifier(struct inode *dir, struct dentry *dentry)
++static int nfs_check_verifier(struct inode *dir, struct dentry *dentry,
++			      int rcu_walk)
+ {
++	int ret;
++
+ 	if (IS_ROOT(dentry))
+ 		return 1;
+ 	if (NFS_SERVER(dir)->flags & NFS_MOUNT_LOOKUP_CACHE_NONE)
+@@ -965,7 +968,13 @@ static int nfs_check_verifier(struct inode *dir, struct dentry *dentry)
+ 	if (!nfs_verify_change_attribute(dir, dentry->d_time))
+ 		return 0;
+ 	/* Revalidate nfsi->cache_change_attribute before we declare a match */
+-	if (nfs_revalidate_inode(NFS_SERVER(dir), dir) < 0)
++	if (rcu_walk)
++		ret = nfs_revalidate_inode_rcu(NFS_SERVER(dir), dir);
++	else
++		ret = nfs_revalidate_inode(NFS_SERVER(dir), dir);
++	if (ret == -ECHILD)
++		return -ECHILD;
++	if (ret < 0)
+ 		return 0;
+ 	if (!nfs_verify_change_attribute(dir, dentry->d_time))
+ 		return 0;
+@@ -1031,7 +1040,7 @@ int nfs_neg_need_reval(struct inode *dir, struct dentry *dentry,
+ 		return 0;
+ 	if (NFS_SERVER(dir)->flags & NFS_MOUNT_LOOKUP_CACHE_NONEG)
+ 		return 1;
+-	return !nfs_check_verifier(dir, dentry);
++	return !nfs_check_verifier(dir, dentry, flags & LOOKUP_RCU);
+ }
+ 
+ /*
+@@ -1064,11 +1073,11 @@ static int nfs_lookup_revalidate(struct dentry *dentry, unsigned int flags)
+ 	inode = dentry->d_inode;
+ 
+ 	if (!inode) {
+-		if (flags & LOOKUP_RCU)
+-			return -ECHILD;
+-
+-		if (nfs_neg_need_reval(dir, dentry, flags))
++		if (nfs_neg_need_reval(dir, dentry, flags)) {
++			if (flags & LOOKUP_RCU)
++				return -ECHILD;
+ 			goto out_bad;
++		}
+ 		goto out_valid_noent;
+ 	}
+ 
+@@ -1081,11 +1090,13 @@ static int nfs_lookup_revalidate(struct dentry *dentry, unsigned int flags)
+ 	if (NFS_PROTO(dir)->have_delegation(inode, FMODE_READ))
+ 		goto out_set_verifier;
+ 
+-	if (flags & LOOKUP_RCU)
+-		return -ECHILD;
+-
+ 	/* Force a full look up iff the parent directory has changed */
+-	if (!nfs_is_exclusive_create(dir, flags) && nfs_check_verifier(dir, dentry)) {
++	if (!nfs_is_exclusive_create(dir, flags) &&
++	    nfs_check_verifier(dir, dentry, flags & LOOKUP_RCU)) {
++
++		if (flags & LOOKUP_RCU)
++			return -ECHILD;
++
+ 		if (nfs_lookup_verify_inode(inode, flags))
+ 			goto out_zap_parent;
+ 		goto out_valid;
+@@ -1094,6 +1105,9 @@ static int nfs_lookup_revalidate(struct dentry *dentry, unsigned int flags)
+ 	if (NFS_STALE(inode))
+ 		goto out_bad;
+ 
++	if (flags & LOOKUP_RCU)
++		return -ECHILD;
++
+ 	error = -ENOMEM;
+ 	fhandle = nfs_alloc_fhandle();
+ 	fattr = nfs_alloc_fattr();
+@@ -1525,13 +1539,16 @@ static int nfs4_lookup_revalidate(struct dentry *dentry, unsigned int flags)
+ 		struct inode *dir;
+ 
+ 		if (flags & LOOKUP_RCU)
+-			return -ECHILD;
+-
+-		parent = dget_parent(dentry);
++			parent = rcu_dereference(dentry);
++		else
++			parent = dget_parent(dentry);
+ 		dir = parent->d_inode;
+ 		if (!nfs_neg_need_reval(dir, dentry, flags))
+ 			ret = 1;
+-		dput(parent);
++		else if (flags & LOOKUP_RCU)
++			ret = -ECHILD;
++		if (!(flags & LOOKUP_RCU))
++			dput(parent);
+ 		goto out;
+ 	}
+ 
+diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
+index 59e57cceeab5..6f39cadfad8c 100644
+--- a/fs/nfs/inode.c
++++ b/fs/nfs/inode.c
+@@ -962,6 +962,15 @@ int nfs_revalidate_inode(struct nfs_server *server, struct inode *inode)
+ }
+ EXPORT_SYMBOL_GPL(nfs_revalidate_inode);
+ 
++int nfs_revalidate_inode_rcu(struct nfs_server *server, struct inode *inode)
++{
++	if (!(NFS_I(inode)->cache_validity &
++			(NFS_INO_INVALID_ATTR|NFS_INO_INVALID_LABEL))
++			&& !nfs_attribute_cache_expired(inode))
++		return NFS_STALE(inode) ? -ESTALE : 0;
++	return -ECHILD;
++}
++
+ static int nfs_invalidate_mapping(struct inode *inode, struct address_space *mapping)
+ {
+ 	struct nfs_inode *nfsi = NFS_I(inode);
+diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
+index 0ae5807480f4..9e91f2cfcd01 100644
+--- a/include/linux/nfs_fs.h
++++ b/include/linux/nfs_fs.h
+@@ -351,6 +351,7 @@ extern int nfs_release(struct inode *, struct file *);
+ extern int nfs_attribute_timeout(struct inode *inode);
+ extern int nfs_attribute_cache_expired(struct inode *inode);
+ extern int nfs_revalidate_inode(struct nfs_server *server, struct inode *inode);
++extern int nfs_revalidate_inode_rcu(struct nfs_server *server, struct inode *inode);
+ extern int __nfs_revalidate_inode(struct nfs_server *, struct inode *);
+ extern int nfs_revalidate_mapping(struct inode *inode, struct address_space *mapping);
+ extern int nfs_setattr(struct dentry *, struct iattr *);
 
--- 
-Jeff Layton <jlayton@redhat.com>
+
