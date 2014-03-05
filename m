@@ -1,305 +1,273 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from plane.gmane.org ([80.91.229.3]:38469 "EHLO plane.gmane.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751208AbaC1JpE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 28 Mar 2014 05:45:04 -0400
-Received: from list by plane.gmane.org with local (Exim 4.69)
-	(envelope-from <glN-linux-nfs@m.gmane.org>)
-	id 1WTTLT-0003ii-02
-	for linux-nfs@vger.kernel.org; Fri, 28 Mar 2014 10:45:03 +0100
-Received: from vpn.ims.co.at ([81.223.138.18])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Fri, 28 Mar 2014 10:45:02 +0100
-Received: from klemens.senn by vpn.ims.co.at with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Fri, 28 Mar 2014 10:45:02 +0100
-To: linux-nfs@vger.kernel.org
-From: Senn Klemens <klemens.senn@ims.co.at>
-Subject: Re: Kernel oops/panic with NFS over RDMA mount after disrupted Infiniband
- connection
-Date: Fri, 28 Mar 2014 10:42:34 +0100
-Message-ID: <5335440A.9030207@ims.co.at>
-References: <5332D425.3030803@ims.co.at> <4E6350BB-5E9C-40D9-8624-6CAA78E5B902@oracle.com> <lh0le0$u5$1@ger.gmane.org> <B7D4A29C-5E1F-4B6C-A8FC-C46D8DF6A87D@oracle.com>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
-In-Reply-To: <B7D4A29C-5E1F-4B6C-A8FC-C46D8DF6A87D@oracle.com>
-Cc: linux-rdma@vger.kernel.org
+Received: from e34.co.us.ibm.com ([32.97.110.152]:46245 "EHLO
+	e34.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756064AbaCEBnP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Mar 2014 20:43:15 -0500
+Received: from /spool/local
+	by e34.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <paulmck@linux.vnet.ibm.com>;
+	Tue, 4 Mar 2014 18:43:14 -0700
+Date: Tue, 4 Mar 2014 17:43:10 -0800
+From: "Paul E. McKenney" <paulmck@linux.vnet.ibm.com>
+To: Florian Fainelli <f.fainelli@gmail.com>
+Cc: Eric Dumazet <eric.dumazet@gmail.com>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        linux-mm <linux-mm@kvack.org>, linux-nfs <linux-nfs@vger.kernel.org>,
+        "trond.myklebust" <trond.myklebust@primarydata.com>,
+        netdev <netdev@vger.kernel.org>
+Subject: Re: RCU stalls when running out of memory on 3.14-rc4 w/ NFS and
+ kernel threads priorities changed
+Message-ID: <20140305014310.GC3334@linux.vnet.ibm.com>
+Reply-To: paulmck@linux.vnet.ibm.com
+References: <CAGVrzcbsSV7h3qA3KuCTwKNFEeww_kSNcfUkfw3PPjeXQXBo6g@mail.gmail.com>
+ <1393980534.26794.147.camel@edumazet-glaptop2.roam.corp.google.com>
+ <CAGVrzcaekM51hme_tquaT6e22fV1_cocpn1kDUsYfFce=F+o4g@mail.gmail.com>
+ <CAGVrzcbRycBy0w64R9pV=JG6M3aJeARbOnh-xRrumYzzVDgWGQ@mail.gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAGVrzcbRycBy0w64R9pV=JG6M3aJeARbOnh-xRrumYzzVDgWGQ@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Chuck,
+On Tue, Mar 04, 2014 at 05:16:27PM -0800, Florian Fainelli wrote:
+> 2014-03-04 17:03 GMT-08:00 Florian Fainelli <f.fainelli@gmail.com>:
+> > 2014-03-04 16:48 GMT-08:00 Eric Dumazet <eric.dumazet@gmail.com>:
+> >> On Tue, 2014-03-04 at 15:55 -0800, Florian Fainelli wrote:
+> >>> Hi all,
+> >>>
+> >>> I am seeing the following RCU stalls messages appearing on an ARMv7
+> >>> 4xCPUs system running 3.14-rc4:
+> >>>
+> >>> [   42.974327] INFO: rcu_sched detected stalls on CPUs/tasks:
+> >>> [   42.979839]  (detected by 0, t=2102 jiffies, g=4294967082,
+> >>> c=4294967081, q=516)
+> >>> [   42.987169] INFO: Stall ended before state dump start
+> >>>
+> >>> this is happening under the following conditions:
+> >>>
+> >>> - the attached bumper.c binary alters various kernel thread priorities
+> >>> based on the contents of bumpup.cfg and
+> >>> - malloc_crazy is running from a NFS share
+> >>> - malloc_crazy.c is running in a loop allocating chunks of memory but
+> >>> never freeing it
+> >>>
+> >>> when the priorities are altered, instead of getting the OOM killer to
+> >>> be invoked, the RCU stalls are happening. Taking NFS out of the
+> >>> equation does not allow me to reproduce the problem even with the
+> >>> priorities altered.
+> >>>
+> >>> This "problem" seems to have been there for quite a while now since I
+> >>> was able to get 3.8.13 to trigger that bug as well, with a slightly
+> >>> more detailed RCU debugging trace which points the finger at kswapd0.
+> >>>
+> >>> You should be able to get that reproduced under QEMU with the
+> >>> Versatile Express platform emulating a Cortex A15 CPU and the attached
+> >>> files.
+> >>>
+> >>> Any help or suggestions would be greatly appreciated. Thanks!
+> >>
+> >> Do you have a more complete trace, including stack traces ?
+> >
+> > Attatched is what I get out of SysRq-t, which is the only thing I have
+> > (note that the kernel is built with CONFIG_RCU_CPU_STALL_INFO=y):
+> 
+> QEMU for Versatile Express w/ 2 CPUs yields something slightly
+> different than the real HW platform this is happening with, but it
+> does produce the RCU stall anyway:
+> 
+> [  125.762946] BUG: soft lockup - CPU#1 stuck for 53s! [malloc_crazy:91]
 
-On 03/27/2014 04:59 PM, Chuck Lever wrote:
-> Hi-
-> 
-> 
-> On Mar 27, 2014, at 12:53 AM, Reiter Rafael <rafael.reiter@ims.co.at> wrote:
-> 
->> On 03/26/2014 07:15 PM, Chuck Lever wrote:
->>>
->>> Hi Rafael-
->>>
->>> I’ll take a look. Can you report your HCA and how you reproduce this issue?
->>
->> The HCA is Mellanox Technologies MT26428.
->>
->> Reproduction:
->> 1) Mount a directory via NFS/RDMA
->> mount -t nfs -o port=20049,rdma,vers=4.0,timeo=900 172.16.100.2:/ /mnt/
+This soft-lockup condition can result in RCU CPU stall warnings.  Fix
+the problem causing the soft lockup, and I bet that your RCU CPU stall
+warnings go away.
 
-An additional "ls /mnt" is needed here (between step 1 and 2)
+							Thanx, Paul
 
->> 2) Pull the Infiniband cable or use ibportstate to disrupt the Infiniband connection
->> 3) ls /mnt
->> 4) wait 5-30 seconds
+> [  125.766841] Modules linked in:
+> [  125.768389]
+> [  125.769199] CPU: 1 PID: 91 Comm: malloc_crazy Not tainted 3.14.0-rc4 #39
+> [  125.769883] task: edbded00 ti: c089c000 task.ti: c089c000
+> [  125.771743] PC is at load_balance+0x4b0/0x760
+> [  125.772069] LR is at cpumask_next_and+0x44/0x5c
+> [  125.772387] pc : [<c004ff58>]    lr : [<c01db940>]    psr: 60000113
+> [  125.772387] sp : c089db48  ip : 80000113  fp : edfd8cf4
+> [  125.773128] r10: c0de871c  r9 : ed893840  r8 : 00000000
+> [  125.773452] r7 : c0de8458  r6 : edfd8840  r5 : edfd8840  r4 : ed89389c
+> [  125.773825] r3 : 000012d8  r2 : 80000113  r1 : 00000023  r0 : 00000000
+> [  125.774332] Flags: nZCv  IRQs on  FIQs on  Mode SVC_32  ISA ARM  Segment user
+> [  125.774753] Control: 30c7387d  Table: 80835d40  DAC: 00000000
+> [  125.775266] CPU: 1 PID: 91 Comm: malloc_test_bcm Not tainted 3.14.0-rc4 #39
+> [  125.776392] [<c0015624>] (unwind_backtrace) from [<c00111a4>]
+> (show_stack+0x10/0x14)
+> [  125.777026] [<c00111a4>] (show_stack) from [<c04c1bd4>]
+> (dump_stack+0x84/0x94)
+> [  125.777429] [<c04c1bd4>] (dump_stack) from [<c007e7f0>]
+> (watchdog_timer_fn+0x144/0x17c)
+> [  125.777865] [<c007e7f0>] (watchdog_timer_fn) from [<c003f58c>]
+> (__run_hrtimer.isra.32+0x54/0xe4)
+> [  125.778333] [<c003f58c>] (__run_hrtimer.isra.32) from [<c003fea4>]
+> (hrtimer_interrupt+0x11c/0x2d0)
+> [  125.778814] [<c003fea4>] (hrtimer_interrupt) from [<c03c4f80>]
+> (arch_timer_handler_virt+0x28/0x30)
+> [  125.779297] [<c03c4f80>] (arch_timer_handler_virt) from
+> [<c006280c>] (handle_percpu_devid_irq+0x6c/0x84)
+> [  125.779734] [<c006280c>] (handle_percpu_devid_irq) from
+> [<c005edec>] (generic_handle_irq+0x2c/0x3c)
+> [  125.780145] [<c005edec>] (generic_handle_irq) from [<c000eb7c>]
+> (handle_IRQ+0x40/0x90)
+> [  125.780513] [<c000eb7c>] (handle_IRQ) from [<c0008568>]
+> (gic_handle_irq+0x2c/0x5c)
+> [  125.780867] [<c0008568>] (gic_handle_irq) from [<c0011d00>]
+> (__irq_svc+0x40/0x50)
+> [  125.781312] Exception stack(0xc089db00 to 0xc089db48)
+> [  125.781787] db00: 00000000 00000023 80000113 000012d8 ed89389c
+> edfd8840 edfd8840 c0de8458
+> [  125.782234] db20: 00000000 ed893840 c0de871c edfd8cf4 80000113
+> c089db48 c01db940 c004ff58
+> [  125.782594] db40: 60000113 ffffffff
+> [  125.782864] [<c0011d00>] (__irq_svc) from [<c004ff58>]
+> (load_balance+0x4b0/0x760)
+> [  125.783215] [<c004ff58>] (load_balance) from [<c005035c>]
+> (rebalance_domains+0x154/0x284)
+> [  125.783595] [<c005035c>] (rebalance_domains) from [<c00504c0>]
+> (run_rebalance_domains+0x34/0x164)
+> [  125.784000] [<c00504c0>] (run_rebalance_domains) from [<c0025aac>]
+> (__do_softirq+0x110/0x24c)
+> [  125.784388] [<c0025aac>] (__do_softirq) from [<c0025e6c>]
+> (irq_exit+0xac/0xf4)
+> [  125.784726] [<c0025e6c>] (irq_exit) from [<c000eb80>] (handle_IRQ+0x44/0x90)
+> [  125.785059] [<c000eb80>] (handle_IRQ) from [<c0008568>]
+> (gic_handle_irq+0x2c/0x5c)
+> [  125.785412] [<c0008568>] (gic_handle_irq) from [<c0011d00>]
+> (__irq_svc+0x40/0x50)
+> [  125.785742] Exception stack(0xc089dcf8 to 0xc089dd40)
+> [  125.785983] dce0:
+>     ee4e38c0 00000000
+> [  125.786360] dd00: 000200da 00000001 ee4e38a0 c0de2340 2d201000
+> edfe3358 c05c0c18 00000001
+> [  125.786737] dd20: c05c0c2c c0e1e180 00000000 c089dd40 c0086050
+> c0086140 40000113 ffffffff
+> [  125.787120] [<c0011d00>] (__irq_svc) from [<c0086140>]
+> (get_page_from_freelist+0x2bc/0x638)
+> [  125.787507] [<c0086140>] (get_page_from_freelist) from [<c0087018>]
+> (__alloc_pages_nodemask+0x114/0x8f4)
+> [  125.787949] [<c0087018>] (__alloc_pages_nodemask) from [<c00a20c8>]
+> (handle_mm_fault+0x9f8/0xcdc)
+> [  125.788357] [<c00a20c8>] (handle_mm_fault) from [<c001793c>]
+> (do_page_fault+0x194/0x27c)
+> [  125.788726] [<c001793c>] (do_page_fault) from [<c000844c>]
+> (do_DataAbort+0x30/0x90)
+> [  125.789080] [<c000844c>] (do_DataAbort) from [<c0011e34>]
+> (__dabt_usr+0x34/0x40)
+> [  125.789403] Exception stack(0xc089dfb0 to 0xc089dff8)
+> [  125.789652] dfa0:                                     ae55e008
+> 11111111 000dc000 ae582000
+> [  125.790029] dfc0: be967d18 00000000 00008390 00000000 00000000
+> 00000000 b6f29000 be967d04
+> [  125.790404] dfe0: 11111111 be967ce8 00008550 b6e5ce48 20000010 ffffffff
+> [  125.791282] BUG: soft lockup - CPU#0 stuck for 53s! [kworker/0:1:41]
+> [  125.791710] Modules linked in:
+> [  125.792046]
+> [  125.792836] CPU: 0 PID: 41 Comm: kworker/0:1 Not tainted 3.14.0-rc4 #39
+> [  125.793832] task: ed893840 ti: c0826000 task.ti: c0826000
+> [  125.795257] PC is at finish_task_switch+0x40/0xec
+> [  125.795562] LR is at __schedule+0x1fc/0x51c
+> [  125.795856] pc : [<c0044724>]    lr : [<c04c3274>]    psr: 600f0013
+> [  125.795856] sp : c0827ec8  ip : 00000000  fp : c0827edc
+> [  125.796416] r10: eda56e00  r9 : c0deac28  r8 : 00000000
+> [  125.796698] r7 : c0de871c  r6 : c0826020  r5 : ed893840  r4 : 00000001
+> [  125.797028] r3 : eda56e00  r2 : 000012d7  r1 : ed854780  r0 : edfd8840
+> [  125.797488] Flags: nZCv  IRQs on  FIQs on  Mode SVC_32  ISA ARM
+> Segment kernel
+> [  125.797866] Control: 30c7387d  Table: 808353c0  DAC: fffffffd
+> [  125.798321] CPU: 0 PID: 41 Comm: kworker/0:1 Not tainted 3.14.0-rc4 #39
+> [  125.800604] [<c0015624>] (unwind_backtrace) from [<c00111a4>]
+> (show_stack+0x10/0x14)
+> [  125.801205] [<c00111a4>] (show_stack) from [<c04c1bd4>]
+> (dump_stack+0x84/0x94)
+> [  125.801786] [<c04c1bd4>] (dump_stack) from [<c007e7f0>]
+> (watchdog_timer_fn+0x144/0x17c)
+> [  125.802238] [<c007e7f0>] (watchdog_timer_fn) from [<c003f58c>]
+> (__run_hrtimer.isra.32+0x54/0xe4)
+> [  125.802679] [<c003f58c>] (__run_hrtimer.isra.32) from [<c003fea4>]
+> (hrtimer_interrupt+0x11c/0x2d0)
+> [  125.803108] [<c003fea4>] (hrtimer_interrupt) from [<c03c4f80>]
+> (arch_timer_handler_virt+0x28/0x30)
+> [  125.803530] [<c03c4f80>] (arch_timer_handler_virt) from
+> [<c006280c>] (handle_percpu_devid_irq+0x6c/0x84)
+> [  125.803965] [<c006280c>] (handle_percpu_devid_irq) from
+> [<c005edec>] (generic_handle_irq+0x2c/0x3c)
+> [  125.804380] [<c005edec>] (generic_handle_irq) from [<c000eb7c>]
+> (handle_IRQ+0x40/0x90)
+> [  125.804774] [<c000eb7c>] (handle_IRQ) from [<c0008568>]
+> (gic_handle_irq+0x2c/0x5c)
+> [  125.805181] [<c0008568>] (gic_handle_irq) from [<c0011d00>]
+> (__irq_svc+0x40/0x50)
+> [  125.805706] Exception stack(0xc0827e80 to 0xc0827ec8)
+> [  125.806185] 7e80: edfd8840 ed854780 000012d7 eda56e00 00000001
+> ed893840 c0826020 c0de871c
+> [  125.806623] 7ea0: 00000000 c0deac28 eda56e00 c0827edc 00000000
+> c0827ec8 c04c3274 c0044724
+> [  125.807032] 7ec0: 600f0013 ffffffff
+> [  125.807328] [<c0011d00>] (__irq_svc) from [<c0044724>]
+> (finish_task_switch+0x40/0xec)
+> [  125.807752] [<c0044724>] (finish_task_switch) from [<c04c3274>]
+> (__schedule+0x1fc/0x51c)
+> [  125.808175] [<c04c3274>] (__schedule) from [<c0037590>]
+> (worker_thread+0x210/0x404)
+> [  125.808570] [<c0037590>] (worker_thread) from [<c003cba0>]
+> (kthread+0xd4/0xec)
+> [  125.808952] [<c003cba0>] (kthread) from [<c000e338>]
+> (ret_from_fork+0x14/0x3c)
+> [  246.080014] INFO: rcu_sched detected stalls on CPUs/tasks:
+> [  246.080611]  (detected by 0, t=6972 jiffies, g=4294967160,
+> c=4294967159, q=127)
+> [  246.081576] INFO: Stall ended before state dump start
+> [  246.082510] BUG: soft lockup - CPU#1 stuck for 69s! [grep:93]
+> [  246.082849] Modules linked in:
+> [  246.083046]
+> [  246.083179] CPU: 1 PID: 93 Comm: grep Not tainted 3.14.0-rc4 #39
+> [  246.083548] task: edbdf480 ti: c09e6000 task.ti: c09e6000
+> [  246.083897] PC is at rebalance_domains+0x0/0x284
+> [  246.084154] LR is at run_rebalance_domains+0x34/0x164
+> [  246.084430] pc : [<c0050208>]    lr : [<c00504c0>]    psr: 20000113
+> [  246.084430] sp : c09e7ef8  ip : c0dde340  fp : 40000005
+> [  246.084992] r10: 00000007  r9 : c0ddf840  r8 : c0ddf840
+> [  246.085267] r7 : edfe0840  r6 : 00000100  r5 : c0de209c  r4 : 00000001
+> [  246.085606] r3 : c005048c  r2 : 2d201000  r1 : 00000001  r0 : edfe0840
+> [  246.085944] Flags: nzCv  IRQs on  FIQs on  Mode SVC_32  ISA ARM  Segment user
+> [  246.086315] Control: 30c7387d  Table: 808351c0  DAC: 00000000
+> [  246.086626] CPU: 1 PID: 93 Comm: grep Not tainted 3.14.0-rc4 #39
+> [  246.086992] [<c0015624>] (unwind_backtrace) from [<c00111a4>]
+> (show_stack+0x10/0x14)
+> [  246.087420] [<c00111a4>] (show_stack) from [<c04c1bd4>]
+> (dump_stack+0x84/0x94)
+> [  246.087825] [<c04c1bd4>] (dump_stack) from [<c007e7f0>]
+> (watchdog_timer_fn+0x144/0x17c)
+> [  246.088260] [<c007e7f0>] (watchdog_timer_fn) from [<c003f58c>]
+> (__run_hrtimer.isra.32+0x54/0xe4)
+> [  246.088726] [<c003f58c>] (__run_hrtimer.isra.32) from [<c003fea4>]
+> (hrtimer_interrupt+0x11c/0x2d0)
+> [  246.089190] [<c003fea4>] (hrtimer_interrupt) from [<c03c4f80>]
+> (arch_timer_handler_virt+0x28/0x30)
+> [  246.089670] [<c03c4f80>] (arch_timer_handler_virt) from
+> [<c006280c>] (handle_percpu_devid_irq+0x6c/0x84)
+> [  246.090155] [<c006280c>] (handle_percpu_devid_irq) from
+> [<c005edec>] (generic_handle_irq+0x2c/0x3c)
+> [  246.090822] [<c005edec>] (generic_handle_irq) from [<c000eb7c>]
+> (handle_IRQ+0x40/0x90)
+> [  246.091233] [<c000eb7c>] (handle_IRQ) from [<c0008568>]
+> (gic_handle_irq+0x2c/0x5c)
+> [  246.091631] [<c0008568>] (gic_handle_irq) from [<c0011d00>]
+> (__irq_svc+0x40/0x50)
+> [  246.092007] Exception stack(0xc09e7eb0 to 0xc09e7ef8)
+> [  246.092291] 7ea0:                                     edfe0840
+> 00000001 2d201000 c005048c
+> [  246.092719] 7ec0: 00000001 c0de209c 00000100 edfe0840 c0ddf840
+> c0ddf840 00000007 40000005
+> [  246.093142] 7ee0: c0dde340 c09e7ef8 c00504c0 c0050208 20000113 ffffffff
+> [  246.093647] [<c0011d00>] (__irq_svc) from [<c0050208>]
+> (rebalance_domains+0x0/0x284)
+> [  246.094422] [<c0050208>] (rebalance_domains) from [<c09e6028>] (0xc09e6028)
 > 
-> Thanks for the information.
-> 
-> I have that HCA, but I won’t have access to my test systems for a week (traveling). So can you try this:
-> 
->  # rpcdebug -m rpc -s trans
-> 
-> then reproduce (starting with step 1 above). Some debugging output will appear at the tail of /var/log/messages. Copy it to this thread.
-> 
-
-The output of /var/log/messages is:
-
-[  143.233701] RPC:  1688 xprt_rdma_allocate: size 1112 too large for
-buffer[1024]: prog 100003 vers 4 proc 1
-[  143.233708] RPC:  1688 xprt_rdma_allocate: size 1112, request
-0xffff88105894c000
-[  143.233715] RPC:  1688 rpcrdma_inline_pullup: pad 0 destp
-0xffff88105894d7dc len 124 hdrlen 124
-[  143.233718] RPC:       rpcrdma_register_frmr_external: Using frmr
-ffff88084e589260 to map 1 segments
-[  143.233722] RPC:  1688 rpcrdma_create_chunks: reply chunk elem
-652@0x105894d92c:0xced01 (last)
-[  143.233725] RPC:  1688 rpcrdma_marshal_req: reply chunk: hdrlen 48
-rpclen 124 padlen 0 headerp 0xffff88105894d100 base 0xffff88105894d760
-lkey 0x8000
-[  143.233785] RPC:       rpcrdma_event_process: event rep
-ffff88084e589260 status 0 opcode 8 length 0
-[  177.272397] RPC:       rpcrdma_event_process: event rep
-(null) status C opcode FFFF8808 length 4294967295
-[  177.272649] RPC:       rpcrdma_event_process: event rep
-ffff880848ed0000 status 5 opcode FFFF8808 length 4294936584
-[  177.272651] RPC:       rpcrdma_event_process: WC opcode -30712 status
-5, connection lost
-[  177.984996] RPC:  1689 xprt_rdma_allocate: size 436, request
-0xffff880848f00000
-[  182.290655] RPC:       xprt_rdma_connect_worker: reconnect
-[  182.290992] RPC:       rpcrdma_ep_disconnect: after wait, disconnected
-[  187.300726] RPC:       xprt_rdma_connect_worker: exit
-[  197.320527] RPC:       xprt_rdma_connect_worker: reconnect
-[  197.320795] RPC:       rpcrdma_ep_disconnect: after wait, disconnected
-[  202.330477] RPC:       xprt_rdma_connect_worker: exit
-[  222.354286] RPC:       xprt_rdma_connect_worker: reconnect
-[  222.354624] RPC:       rpcrdma_ep_disconnect: after wait, disconnected
-
-
-The output on the serial terminal is:
-
-[  227.364376] kernel tried to execute NX-protected page - exploit
-attempt? (uid: 0)
-[  227.364517] RPC:  1689 rpcrdma_inline_pullup: pad 0 destp
-0xffff880848f017c4 len 100 hdrlen 100
-[  227.364519] RPC:       rpcrdma_register_frmr_external: Using frmr
-ffff88084e588810 to map 1 segments
-[  227.364522] RPC:  1689 rpcrdma_create_chunks: reply chunk elem
-152@0x848f0187c:0xcab01 (last)
-[  227.364523] RPC:  1689 rpcrdma_marshal_req: reply chunk: hdrlen 48
-rpclen 100 padlen 0 headerp 0xffff880848f01100 base 0xffff880848f01760
-lkey 0x8000
-[  227.411547] BUG: unable to handle kernel paging request at
-ffff880848ed1758
-[  227.418535] IP: [<ffff880848ed1758>] 0xffff880848ed1757
-[  227.423781] PGD 1d7c067 PUD 85d52f063 PMD 848f12063 PTE 8000000848ed1163
-[  227.430544] Oops: 0011 [#1] SMP
-[  227.433802] Modules linked in: auth_rpcgss oid_registry nfsv4
-xprtrdma cpuid af_packet 8021q garp stp llc rdma_ucm ib_ucm rdma_cm
-iw_cm ib_addr ib_ipoib ib_cm ib_uverbs ib_umad mlx4_en mlx4_ib ib_sa
-ib_mad ib_core joydev usbhid mlx4_core iTCO_wdt iTCO_vendor_support
-acpi_cpufreq coretemp kvm_intel kvm crc32c_intel ghash_clmulni_intel
-aesni_intel ablk_helper cryptd lrw gf128mul glue_helper aes_x86_64
-microcode pcspkr sb_edac edac_core i2c_i801 isci sg libsas ehci_pci
-ehci_hcd scsi_transport_sas usbcore lpc_ich ioatdma mfd_core usb_common
-shpchp pci_hotplug wmi mperf processor thermal_sys button edd autofs4
-xfs libcrc32c nfsv3 nfs fscache lockd nfs_acl sunrpc igb dca
-i2c_algo_bit ptp pps_core
-[  227.496536] CPU: 0 PID: 0 Comm: swapper/0 Not tainted
-3.10.17-allpatches+ #1
-[  227.503583] Hardware name: Supermicro B9DRG-E/B9DRG-E, BIOS 3.0
-09/04/2013
-[  227.510451] task: ffffffff81a11440 ti: ffffffff81a00000 task.ti:
-ffffffff81a00000
-[  227.517924] RIP: 0010:[<ffff880848ed1758>]  [<ffff880848ed1758>]
-0xffff880848ed1757
-[  227.525597] RSP: 0018:ffff88087fc03e88  EFLAGS: 00010282
-[  227.530903] RAX: 0000000000000286 RBX: ffff880848ed1758 RCX:
-ffffffffa0354360
-[  227.538032] RDX: ffff88084e589280 RSI: 0000000000000286 RDI:
-ffff88084e589260
-[  227.545157] RBP: ffff88087fc03ea0 R08: ffffffffa0354360 R09:
-00000000000005f0
-[  227.552286] R10: 0000000000000003 R11: dead000000100100 R12:
-ffff88084e589260
-[  227.559412] R13: 0000000000000006 R14: 0000000000000006 R15:
-ffffffff81a5db90
-[  227.566540] FS:  0000000000000000(0000) GS:ffff88087fc00000(0000)
-knlGS:0000000000000000
-[  227.574620] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-[  227.580360] CR2: ffff880848ed1758 CR3: 0000000001a0c000 CR4:
-00000000000407f0
-[  227.587487] DR0: 0000000000000000 DR1: 0000000000000000 DR2:
-0000000000000000
-[  227.594614] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7:
-0000000000000400
-[  227.601742] Stack:
-[  227.603754]  ffffffffa034edde ffffffffa0354388 0000000000000000
-ffff88087fc03ec0
-[  227.611210]  ffffffff81049c82 0000000000000001 ffffffff81a050b0
-ffff88087fc03f30
-[  227.618666]  ffffffff81049870 ffffffff81a01fd8 00000000ffffb895
-0000000000202000
-[  227.626123] Call Trace:
-[  227.628569]  <IRQ>
-[  227.630493]  [<ffffffffa034edde>] ? rpcrdma_run_tasklet+0x7e/0xc0
-[xprtrdma]
-[  227.637764]  [<ffffffff81049c82>] tasklet_action+0x52/0xc0
-[  227.643249]  [<ffffffff81049870>] __do_softirq+0xe0/0x220
-[  227.648643]  [<ffffffff8155cbac>] call_softirq+0x1c/0x30
-[  227.653957]  [<ffffffff8100452d>] do_softirq+0x4d/0x80
-[  227.659097]  [<ffffffff81049b05>] irq_exit+0x95/0xa0
-[  227.664056]  [<ffffffff8100411e>] do_IRQ+0x5e/0xd0
-[  227.668847]  [<ffffffff81553eaa>] common_interrupt+0x6a/0x6a
-[  227.674503]  <EOI>
-[  227.676429]  [<ffffffff8141de86>] ? cpuidle_enter_state+0x56/0xd0
-[  227.682733]  [<ffffffff8141de82>] ? cpuidle_enter_state+0x52/0xd0
-[  227.688819]  [<ffffffff8141dfb6>] cpuidle_idle_call+0xb6/0x200
-[  227.694649]  [<ffffffff8100aa39>] arch_cpu_idle+0x9/0x20
-[  227.699963]  [<ffffffff81087cc0>] cpu_startup_entry+0x80/0x200
-[  227.705799]  [<ffffffff815358a2>] rest_init+0x72/0x80
-[  227.710854]  [<ffffffff81ac4e28>] start_kernel+0x3b2/0x3bf
-[  227.716341]  [<ffffffff81ac4875>] ? repair_env_string+0x5e/0x5e
-[  227.722261]  [<ffffffff81ac45a5>] x86_64_start_reservations+0x2a/0x2c
-[  227.728696]  [<ffffffff81ac4675>] x86_64_start_kernel+0xce/0xd2
-[  227.734607] Code: 88 ff ff 07 a4 34 a0 ff ff ff ff 00 10 91 7b 10 88
-ff ff 26 00 26 00 10 00 00 00 00 01 00 00 00 00 00 00 20 00 00 00 00 00
-00 00 <00> 88 58 4e 08 88 ff ff 78 92 58 4e 08 88 ff ff 01 00 00 00 00
-[  227.754568] RIP  [<ffff880848ed1758>] 0xffff880848ed1757
-[  227.759898]  RSP <ffff88087fc03e88>
-[  227.763386] CR2: ffff880848ed1758
-[  227.766699] ---[ end trace 264f2f21a7499134 ]---
-[  227.772473] Kernel panic - not syncing: Fatal exception in interrupt
-[  227.779954] ------------[ cut here ]------------
-[  227.784570] WARNING: at arch/x86/kernel/smp.c:123
-native_smp_send_reschedule+0x56/0x60()
-[  227.792657] Modules linked in: auth_rpcgss oid_registry nfsv4
-xprtrdma cpuid af_packet 8021q garp stp llc rdma_ucm ib_ucm rdma_cm
-iw_cm ib_addr ib_ipoib ib_cm ib_uverbs ib_umad mlx4_en mlx4_ib ib_sa
-ib_mad ib_core joydev usbhid mlx4_core iTCO_wdt iTCO_vendor_support
-acpi_cpufreq coretemp kvm_intel kvm crc32c_intel ghash_clmulni_intel
-aesni_intel ablk_helper cryptd lrw gf128mul glue_helper aes_x86_64
-microcode pcspkr sb_edac edac_core i2c_i801 isci sg libsas ehci_pci
-ehci_hcd scsi_transport_sas usbcore lpc_ich ioatdma mfd_core usb_common
-shpchp pci_hotplug wmi mperf processor thermal_sys button edd autofs4
-xfs libcrc32c nfsv3 nfs fscache lockd nfs_acl sunrpc igb dca
-i2c_algo_bit ptp pps_core
-[  227.855155] CPU: 0 PID: 0 Comm: swapper/0 Tainted: G      D
-3.10.17-allpatches+ #1
-[  227.863147] Hardware name: Supermicro B9DRG-E/B9DRG-E, BIOS 3.0
-09/04/2013
-[  227.870014]  0000000000000009 ffff88087fc03850 ffffffff8154de8a
-ffff88087fc03890
-[  227.877471]  ffffffff81041d3b ffff88105d9bff30 0000000000000001
-0000000000000001
-[  227.884927]  00000000ffffb8fb ffff88087fc33380 0000000000000000
-ffff88087fc038a0
-[  227.892385] Call Trace:
-[  227.894830]  <IRQ>  [<ffffffff8154de8a>] dump_stack+0x19/0x1b
-[  227.900597]  [<ffffffff81041d3b>] warn_slowpath_common+0x6b/0xa0
-[  227.906596]  [<ffffffff81041d85>] warn_slowpath_null+0x15/0x20
-[  227.912422]  [<ffffffff81024046>] native_smp_send_reschedule+0x56/0x60
-[  227.918944]  [<ffffffff8107f084>] trigger_load_balance+0x174/0x210
-[  227.925127]  [<ffffffff81073715>] scheduler_tick+0x105/0x140
-[  227.930789]  [<ffffffff81051e62>] update_process_times+0x62/0x80
-[  227.936796]  [<ffffffff81091219>] tick_sched_handle.isra.10+0x29/0x70
-[  227.943238]  [<ffffffff810913a7>] tick_sched_timer+0x47/0x70
-[  227.948891]  [<ffffffff81068bea>] __run_hrtimer+0x6a/0x1b0
-[  227.954371]  [<ffffffff81091360>] ? tick_sched_do_timer+0x30/0x30
-[  227.960467]  [<ffffffff810694df>] hrtimer_interrupt+0xff/0x230
-[  227.966303]  [<ffffffff810250a4>] smp_apic_timer_interrupt+0x64/0xa0
-[  227.972658]  [<ffffffff8155c53a>] apic_timer_interrupt+0x6a/0x70
-[  227.978665]  [<ffffffff8154980f>] ? panic+0x181/0x1bf
-[  227.983712]  [<ffffffff81549779>] ? panic+0xeb/0x1bf
-[  227.988681]  [<ffffffff81554bca>] oops_end+0xda/0xe0
-[  227.993647]  [<ffffffff815490f9>] no_context+0x24e/0x279
-[  227.998955]  [<ffffffff815492d9>] __bad_area_nosemaphore+0x1b5/0x1d4
-[  228.005310]  [<ffffffff8104394f>] ? wake_up_klogd+0x2f/0x40
-[  228.010876]  [<ffffffff81549306>] bad_area_nosemaphore+0xe/0x10
-[  228.016791]  [<ffffffff81557406>] __do_page_fault+0x396/0x4e0
-[  228.022548]  [<ffffffffa02939d1>] ? mlx4_ib_poll_cq+0x91/0xe0 [mlx4_ib]
-[  228.029164]  [<ffffffff81557559>] do_page_fault+0x9/0x10
-[  228.034477]  [<ffffffff815540b2>] page_fault+0x22/0x30
-[  228.039611]  [<ffffffffa034edde>] ? rpcrdma_run_tasklet+0x7e/0xc0
-[xprtrdma]
-[  228.046659]  [<ffffffff81049c82>] tasklet_action+0x52/0xc0
-[  228.052140]  [<ffffffff81049870>] __do_softirq+0xe0/0x220
-[  228.057542]  [<ffffffff8155cbac>] call_softirq+0x1c/0x30
-[  228.062856]  [<ffffffff8100452d>] do_softirq+0x4d/0x80
-[  228.067989]  [<ffffffff81049b05>] irq_exit+0x95/0xa0
-[  228.072958]  [<ffffffff8100411e>] do_IRQ+0x5e/0xd0
-[  228.077752]  [<ffffffff81553eaa>] common_interrupt+0x6a/0x6a
-[  228.083411]  <EOI>  [<ffffffff8141de86>] ? cpuidle_enter_state+0x56/0xd0
-[  228.090133]  [<ffffffff8141de82>] ? cpuidle_enter_state+0x52/0xd0
-[  228.096220]  [<ffffffff8141dfb6>] cpuidle_idle_call+0xb6/0x200
-[  228.102055]  [<ffffffff8100aa39>] arch_cpu_idle+0x9/0x20
-[  228.107362]  [<ffffffff81087cc0>] cpu_startup_entry+0x80/0x200
-[  228.113197]  [<ffffffff815358a2>] rest_init+0x72/0x80
-[  228.118250]  [<ffffffff81ac4e28>] start_kernel+0x3b2/0x3bf
-[  228.123731]  [<ffffffff81ac4875>] ? repair_env_string+0x5e/0x5e
-[  228.129644]  [<ffffffff81ac45a5>] x86_64_start_reservations+0x2a/0x2c
-[  228.136078]  [<ffffffff81ac4675>] x86_64_start_kernel+0xce/0xd2
-[  228.141998] ---[ end trace 264f2f21a7499135 ]---
-[  228.146625] RPC:       rpcrdma_event_process: event rep
-ffff88084e588810 status 5 opcode 0 length 4294936584
-[  228.156443] RPC:       rpcrdma_event_process: WC opcode 0 status 5,
-connection lost
-[  228.164091] RPC:       rpcrdma_event_process: event rep
-(null) status 5 opcode 0 length 4294936584
-[  228.173906] RPC:       rpcrdma_event_process: event rep
-ffff880848ed0000 status 5 opcode 0 length 4294936584
-[  228.183721] RPC:       rpcrdma_event_process: WC opcode 0 status 5,
-connection lost
-
->>
->>>
->>> Do you (or does anyone) know whether OpenSuSE uses the stock upstream providers, or has any of OFED been applied to this kernel?
->>
->> My first post was misleading -- I use the vanilla 3.10.17 kernel, and the error occurs with and without Mellanox OFED. The above report
->> references the vanilla kernel.
->>
->> Rafael
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> --
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
-> 
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-
-Regards,
-Klemens
-
 
