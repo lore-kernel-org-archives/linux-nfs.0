@@ -1,104 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mga02.intel.com ([134.134.136.20]:13966 "EHLO mga02.intel.com"
+Received: from cantor2.suse.de ([195.135.220.15]:52105 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752262AbaCJJK1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 10 Mar 2014 05:10:27 -0400
-Message-ID: <531D816A.9060609@intel.com>
-Date: Mon, 10 Mar 2014 17:10:02 +0800
-From: "Yan, Zheng" <zheng.z.yan@intel.com>
+	id S1756032AbaCEDCM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Mar 2014 22:02:12 -0500
+From: NeilBrown <neilb@suse.de>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Date: Wed, 05 Mar 2014 14:00:28 +1100
+Subject: [PATCH 7/8] NFS: teach nfs_lookup_verify_inode to handle LOOKUP_RCU
+Cc: linux-nfs@vger.kernel.org
+Message-ID: <20140305030028.27421.22568.stgit@notabene.brown>
+In-Reply-To: <20140305025813.27421.23871.stgit@notabene.brown>
+References: <20140305025813.27421.23871.stgit@notabene.brown>
 MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org
-CC: bfields@fieldses.org, hch@infradead.org
-Subject: Re: [PATCH v2] nfsd4: fix memory leak in nfsd4_encode_fattr()
-References: <1394442383-19551-1-git-send-email-zheng.z.yan@intel.com>
-In-Reply-To: <1394442383-19551-1-git-send-email-zheng.z.yan@intel.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This one is buggy please ignore it.
+It fails with -ECHILD rather than make an RPC call.
 
-On 03/10/2014 05:06 PM, Yan, Zheng wrote:
-> The temporary file handle should be freed when nfsd4_encode_fattr()
-> finishes its job. Christoph Hellwig suggests to move the code that
-> generates the temporary file handle into nfsd4_encode_dirent_fattr()
-> 
-> Signed-off-by: Yan, Zheng <zheng.z.yan@intel.com>
-> ---
->  fs/nfsd/nfs4xdr.c | 30 ++++++++++++++++--------------
->  1 file changed, 16 insertions(+), 14 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> index 63f2395..c4bd284 100644
-> --- a/fs/nfsd/nfs4xdr.c
-> +++ b/fs/nfsd/nfs4xdr.c
-> @@ -2058,7 +2058,6 @@ nfsd4_encode_fattr(struct svc_fh *fhp, struct svc_export *exp,
->  	u32 bmval1 = bmval[1];
->  	u32 bmval2 = bmval[2];
->  	struct kstat stat;
-> -	struct svc_fh *tempfh = NULL;
->  	struct kstatfs statfs;
->  	int buflen = count << 2;
->  	__be32 *attrlenp;
-> @@ -2104,17 +2103,6 @@ nfsd4_encode_fattr(struct svc_fh *fhp, struct svc_export *exp,
->  		if (err)
->  			goto out_nfserr;
->  	}
-> -	if ((bmval0 & (FATTR4_WORD0_FILEHANDLE | FATTR4_WORD0_FSID)) && !fhp) {
-> -		tempfh = kmalloc(sizeof(struct svc_fh), GFP_KERNEL);
-> -		status = nfserr_jukebox;
-> -		if (!tempfh)
-> -			goto out;
-> -		fh_init(tempfh, NFS4_FHSIZE);
-> -		status = fh_compose(tempfh, exp, dentry, NULL);
-> -		if (status)
-> -			goto out;
-> -		fhp = tempfh;
-> -	}
->  	if (bmval0 & (FATTR4_WORD0_ACL | FATTR4_WORD0_ACLSUPPORT
->  			| FATTR4_WORD0_SUPPORTED_ATTRS)) {
->  		err = nfsd4_get_nfs4_acl(rqstp, dentry, &acl);
-> @@ -2499,8 +2487,6 @@ out:
->  		security_release_secctx(context, contextlen);
->  #endif /* CONFIG_NFSD_V4_SECURITY_LABEL */
->  	kfree(acl);
-> -	if (tempfh)
-> -		fh_put(tempfh);
->  	return status;
->  out_nfserr:
->  	status = nfserrno(err);
-> @@ -2524,6 +2510,7 @@ nfsd4_encode_dirent_fattr(struct nfsd4_readdir *cd,
->  		const char *name, int namlen, __be32 **p, int buflen)
->  {
->  	struct svc_export *exp = cd->rd_fhp->fh_export;
-> +	struct svc_fh *tempfh = NULL;
->  	struct dentry *dentry;
->  	__be32 nfserr;
->  	int ignore_crossmnt = 0;
-> @@ -2573,9 +2560,24 @@ nfsd4_encode_dirent_fattr(struct nfsd4_readdir *cd,
->  
->  	}
->  out_encode:
-> +	if ((cd->rd_bmval[0] & (FATTR4_WORD0_FILEHANDLE | FATTR4_WORD0_FSID))) {
-> +		tempfh = kmalloc(sizeof(struct svc_fh), GFP_KERNEL);
-> +		if (!tempfh) {
-> +			nfserr = nfserr_jukebox;
-> +			goto out_put;
-> +		}
-> +		fh_init(tempfh, NFS4_FHSIZE);
-> +		nfserr = fh_compose(tempfh, exp, dentry, NULL);
-> +		if (nfserr)
-> +			goto out_put;
-> +	}
->  	nfserr = nfsd4_encode_fattr(NULL, exp, dentry, p, buflen, cd->rd_bmval,
->  					cd->rd_rqstp, ignore_crossmnt);
->  out_put:
-> +	if (tempfh) {
-> +		fh_put(tempfh);
-> +		kfree(tempfh);
-> +	}
->  	dput(dentry);
->  	exp_put(exp);
->  	return nfserr;
-> 
+This allows nfs_lookup_revalidate to call it in RCU-walk mode.
+
+Signed-off-by: NeilBrown <neilb@suse.de>
+---
+ fs/nfs/dir.c |   10 ++++++----
+ 1 file changed, 6 insertions(+), 4 deletions(-)
+
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 76b5f40c8587..e808db561201 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -1018,6 +1018,8 @@ int nfs_lookup_verify_inode(struct inode *inode, unsigned int flags)
+ out:
+ 	return (inode->i_nlink == 0) ? -ENOENT : 0;
+ out_force:
++	if (flags & LOOKUP_RCU)
++		return -ECHILD;
+ 	ret = __nfs_revalidate_inode(server, inode);
+ 	if (ret != 0)
+ 		return ret;
+@@ -1094,11 +1096,11 @@ static int nfs_lookup_revalidate(struct dentry *dentry, unsigned int flags)
+ 	if (!nfs_is_exclusive_create(dir, flags) &&
+ 	    nfs_check_verifier(dir, dentry, flags & LOOKUP_RCU)) {
+ 
+-		if (flags & LOOKUP_RCU)
+-			return -ECHILD;
+-
+-		if (nfs_lookup_verify_inode(inode, flags))
++		if (nfs_lookup_verify_inode(inode, flags)) {
++			if (flags & LOOKUP_RCU)
++				return -ECHILD;
+ 			goto out_zap_parent;
++		}
+ 		goto out_valid;
+ 	}
+ 
+
 
