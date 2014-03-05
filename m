@@ -1,106 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:63062 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751726AbaCFT33 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 6 Mar 2014 14:29:29 -0500
-Message-ID: <5318CC8C.1050505@redhat.com>
-Date: Thu, 06 Mar 2014 21:29:16 +0200
-From: Ric Wheeler <rwheeler@redhat.com>
-MIME-Version: 1.0
-To: bhawley@luminex.com, Trond Myklebust <trond.myklebust@primarydata.com>
-CC: Andrew Martin <amartin@xes-inc.com>, Jim Rees <rees@umich.edu>,
-        Brown Neil <neilb@suse.de>, linux-nfs-owner@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: Optimal NFS mount options to safely allow interrupts and timeouts
- on newer kernels
-References: <1696396609.119284.1394040541217.JavaMail.zimbra@xes-inc.com>  <260588931.122771.1394041524167.JavaMail.zimbra@xes-inc.com>  <20140306145042.6db53f60@notabene.brown>  <1853694865.210849.1394082223818.JavaMail.zimbra@xes-inc.com>  <20140306163721.0edfb498@notabene.brown>  <1709792528-1394084840-cardhu_decombobulator_blackberry.rim.net-1367662481-@b5.c4.bise6.blackberry>  <764210708.28409.1394119821635.JavaMail.zimbra@xes-inc.com>  <20140306162208.GA18207@umich.edu>  <1094203678.52139.1394124222574.JavaMail.zimbra@xes-inc.com>  <1028951407-1394132418-cardhu_decombobulator_blackberry.rim.net-599891631-@b5.c4.bise6.blackberry>  <E22EB8B3-DE5E-4D39-8FFD-BA3F02276EFE@primarydata.com> <745494581-1394133289-cardhu_decombobulator_blackberry.rim.net-1805734207-@b5.c4.bise6.blackberry>
-In-Reply-To: <745494581-1394133289-cardhu_decombobulator_blackberry.rim.net-1805734207-@b5.c4.bise6.blackberry>
-Content-Type: text/plain; charset=windows-1252; format=flowed
+Received: from mail-pd0-f175.google.com ([209.85.192.175]:59822 "EHLO
+	mail-pd0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753907AbaCEAtD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Mar 2014 19:49:03 -0500
+Message-ID: <1393980534.26794.147.camel@edumazet-glaptop2.roam.corp.google.com>
+Subject: Re: RCU stalls when running out of memory on 3.14-rc4 w/ NFS and
+ kernel threads priorities changed
+From: Eric Dumazet <eric.dumazet@gmail.com>
+To: Florian Fainelli <f.fainelli@gmail.com>
+Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        linux-mm <linux-mm@kvack.org>, paulmck@linux.vnet.ibm.com,
+        linux-nfs@vger.kernel.org, trond.myklebust@primarydata.com,
+        netdev <netdev@vger.kernel.org>
+Date: Tue, 04 Mar 2014 16:48:54 -0800
+In-Reply-To: <CAGVrzcbsSV7h3qA3KuCTwKNFEeww_kSNcfUkfw3PPjeXQXBo6g@mail.gmail.com>
+References: <CAGVrzcbsSV7h3qA3KuCTwKNFEeww_kSNcfUkfw3PPjeXQXBo6g@mail.gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 03/06/2014 09:14 PM, Brian Hawley wrote:
-> Trond,
->
-> In this case, it isn't fsync or close that are not getting the i/o error.  It is the write().
->
-> And we check the return value of every i/o related command.
+On Tue, 2014-03-04 at 15:55 -0800, Florian Fainelli wrote:
+> Hi all,
+> 
+> I am seeing the following RCU stalls messages appearing on an ARMv7
+> 4xCPUs system running 3.14-rc4:
+> 
+> [   42.974327] INFO: rcu_sched detected stalls on CPUs/tasks:
+> [   42.979839]  (detected by 0, t=2102 jiffies, g=4294967082,
+> c=4294967081, q=516)
+> [   42.987169] INFO: Stall ended before state dump start
+> 
+> this is happening under the following conditions:
+> 
+> - the attached bumper.c binary alters various kernel thread priorities
+> based on the contents of bumpup.cfg and
+> - malloc_crazy is running from a NFS share
+> - malloc_crazy.c is running in a loop allocating chunks of memory but
+> never freeing it
+> 
+> when the priorities are altered, instead of getting the OOM killer to
+> be invoked, the RCU stalls are happening. Taking NFS out of the
+> equation does not allow me to reproduce the problem even with the
+> priorities altered.
+> 
+> This "problem" seems to have been there for quite a while now since I
+> was able to get 3.8.13 to trigger that bug as well, with a slightly
+> more detailed RCU debugging trace which points the finger at kswapd0.
+> 
+> You should be able to get that reproduced under QEMU with the
+> Versatile Express platform emulating a Cortex A15 CPU and the attached
+> files.
+> 
+> Any help or suggestions would be greatly appreciated. Thanks!
 
-Checking write() return status means we wrote to the page cache - you must also 
-fsync() that file to push it out to the target.  Do that when it counts, leaving 
-data in the page cache until you actually need persistence and your performance 
-should be reasonable.
+Do you have a more complete trace, including stack traces ?
 
-Doing it the safe way is not free, you will see a performance hit (less so if 
-you can do batching, etc).
 
-ric
 
->
-> We aren't using synchronous because the performance becomes abysmal.
->
-> Repeated umount -f does eventually result in the i/o error getting propagated back to the write() call.   I suspect the repeated umount -f's are working their way through blocks in the cache/queue and eventually we get back to the blocked write.
->
-> As I mentioned previously, if we mount with sync or direct i/o type options, we will get the i/o error, but for performance reasons, this isn't an option.
->
-> -----Original Message-----
-> From: Trond Myklebust <trond.myklebust@primarydata.com>
-> Date: Thu, 6 Mar 2014 14:06:24
-> To: <bhawley@luminex.com>
-> Cc: Andrew Martin<amartin@xes-inc.com>; Jim Rees<rees@umich.edu>; Brown Neil<neilb@suse.de>; <linux-nfs-owner@vger.kernel.org>; <linux-nfs@vger.kernel.org>
-> Subject: Re: Optimal NFS mount options to safely allow interrupts and timeouts on newer kernels
->
->
-> On Mar 6, 2014, at 14:00, Brian Hawley <bhawley@luminex.com> wrote:
->
->> Even with small timeo and retrans, you won't get i/o errors back to the reads/writes.   That's been our experience anyway.
-> Read caching, and buffered writes mean that the I/O errors often do not occur during the read()/write() system call itself.
->
-> We do try to propagate I/O errors back to the application as soon as the do occur, but if that application isn’t using synchronous I/O, and it isn’t checking the return values of fsync() or close(), then there is little the kernel can do...
->
->> With soft, you may end up with lost data (data that had already been written to the cache but not yet to the storage).   You'd have that same issue with 'hard' too if it was your appliance that failed.  If the appliance never comes back, those blocks can never be written.
->>
->> In your case though, you're not writing.
->>
->>
->> -----Original Message-----
->> From: Andrew Martin <amartin@xes-inc.com>
->> Date: Thu, 6 Mar 2014 10:43:42
->> To: Jim Rees<rees@umich.edu>
->> Cc: <bhawley@luminex.com>; NeilBrown<neilb@suse.de>; <linux-nfs-owner@vger.kernel.org>; <linux-nfs@vger.kernel.org>
->> Subject: Re: Optimal NFS mount options to safely allow interrupts and
->> timeouts on newer kernels
->>
->>> From: "Jim Rees" <rees@umich.edu>
->>> Andrew Martin wrote:
->>>
->>>> From: "Jim Rees" <rees@umich.edu>
->>>> Given this is apache, I think if I were doing this I'd use
->>>> ro,soft,intr,tcp
->>>> and not try to write anything to nfs.
->>>   I was using tcp,bg,soft,intr when this problem occurred. I do not know if
->>>   apache was attempting to do a write or a read, but it seems that
->>>   tcp,soft,intr
->>>   was not sufficient to prevent the problem.
->>>
->>> I had the impression from your original message that you were not using
->>> "soft" and were asking if it's safe to use it. Are you saying that even with
->>> the "soft" option the apache gets stuck forever?
->> Yes, even with soft, it gets stuck forever. I had been using tcp,bg,soft,intr
->> when the problem occurred (on several ocassions), so my original question was
->> if it would be safe to use a small timeo and retrans values to hopefully
->> return I/O errors quickly to the application, rather than blocking forever
->> (which causes the high load and inevitable reboot). It sounds like that isn't
->> safe, but perhaps there is another way to resolve this problem?
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
-> _________________________________
-> Trond Myklebust
-> Linux NFS client maintainer, PrimaryData
-> trond.myklebust@primarydata.com
->
-> N‹§²æìr¸›yúèšØb²X¬¶Ç§vØ^–)Şº{.nÇ+‰·¥Š{±û"Ø^n‡r¡ö¦zËëh™¨è­Ú&¢ø®G«éh®(­éšŠİ¢j"ú¶m§ÿïêäz¹Ş–Šàşf£¢·hšˆ§~ˆmml==
 
