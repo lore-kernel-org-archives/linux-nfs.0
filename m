@@ -1,91 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from messinet.com ([50.196.241.75]:39234 "EHLO chicago.messinet.com"
+Received: from cantor2.suse.de ([195.135.220.15]:52089 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752478AbaCKSlz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 11 Mar 2014 14:41:55 -0400
-Received: from localhost (localhost [127.0.0.1])
-	by chicago.messinet.com (Postfix) with ESMTP id CC37567B4929
-	for <linux-nfs@vger.kernel.org>; Tue, 11 Mar 2014 13:41:54 -0500 (CDT)
-Received: from chicago.messinet.com ([127.0.0.1])
-	by localhost (chicago.messinet.com [127.0.0.1]) (amavisd-new, port 10024)
-	with ESMTP id XUa5b8Bp3n8G for <linux-nfs@vger.kernel.org>;
-	Tue, 11 Mar 2014 13:41:53 -0500 (CDT)
-Received: from linux-ws1.messinet.com (unknown [IPv6:2001:470:c1dc:7779:d6be:d9ff:fe8d:7c1e])
-	(using TLSv1 with cipher ECDHE-RSA-AES256-SHA (256/256 bits))
-	(Client did not present a certificate)
-	by chicago.messinet.com (Postfix) with ESMTPSA id 585F267B4088
-	for <linux-nfs@vger.kernel.org>; Tue, 11 Mar 2014 13:41:53 -0500 (CDT)
-From: Anthony Messina <amessina@messinet.com>
-To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Issue with SELinux Labeled NFS
-Date: Tue, 11 Mar 2014 13:41:49 -0500
-Message-ID: <2308691.6kaIE5X6fN@linux-ws1.messinet.com>
+	id S1755165AbaCEDBF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 4 Mar 2014 22:01:05 -0500
+From: NeilBrown <neilb@suse.de>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Date: Wed, 05 Mar 2014 14:00:28 +1100
+Subject: [PATCH/RFC 0/8] Extend RCU-walk support to NFS.
+Cc: linux-nfs@vger.kernel.org
+Message-ID: <20140305025813.27421.23871.stgit@notabene.brown>
 MIME-Version: 1.0
-Content-Type: multipart/signed; boundary="nextPart2085065.C1mx0Pn6Ub"; micalg="pgp-sha1"; protocol="application/pgp-signature"
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Linux 2.6.38 introduced RCU-walk (https://lwn.net/Articles/419811/)
+to improve path-name lookup by avoiding locking in many cases,
+particularly when everything is in cache.
 
---nextPart2085065.C1mx0Pn6Ub
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain; charset="us-ascii"
+NFS doesn't benefit from this, returning -ECHILD whenever RCU-walk is
+detected.
 
-I've begun testing out the labeled NFSv4.2 features with good success w=
-ith=20
-only one exception so far.  I have several workstations that use NFSv4.=
-2=20
-mounted /home directories.  I've been able to remove the SELinux boolea=
-n=20
-requirement for 'use_nfs_home_dirs', however, on *one* of these worksta=
-tions,=20
-the /home directory is labeled 'unlabeled_t' after boot when it should =
-be=20
-labeled with 'home_root_t'.  This problem causes failures, as you can i=
-magine.
+For workloads that can be served entirely from the cache and are
+metadata-heavy (e.g. 'make') this can be a performance problem
+particularly if multiple threads are using multiple cores.
 
-I mount the filesystem on all of the workstations in the same manner:
-# /etc/fstab
-...
-server.com:/home /home nfs rw,minorversion=3D2,sec=3Dkrb5p,x-systemd.au=
-tomount 0 0
+The following series extends RCU-walk into NFS allowing a synthetic
+stat-heavy workload to avoid locking and refcounting most of the
+time. It provides about 20% performance improvement with 4 threads on
+2 core, and will probably have a much more significant effect with 4
+or 8 cores (though I haven't tested yet).
 
-Yet the issue occurs on only *one* workstation.  If I manually issue
+The key to providing RCU-walk support is to avoid sleeping and, where
+possible, avoid locking or refcounting.
+So in nfs_permission and nfs{,4}_lookup_revalidate we should return
+-ECHILD only if a memory allocation or RPC request are required.  In
+other cases we can simply complete as normal.
 
-chcon -t home_root_t /home
+There are two data-structures which need to be searched for
+nfs_permission: the credential cache (in sunrpc) and the nfs
+access_cache.
+The credential cache is already rcu-aware so it is easy to return a
+credential without locking if LOOKUP_RCU is set.
 
-then I am able to login and use the system without issue.
+The access_cache uses an rbtree which is not rcu-aware and cannot
+easily be made so.  There are two approaches we can take here.
+1/ take the required locks and perform the access check with locks
+   held (as nfs_access_get_cached already does).  This is easy but
+   requires taking locks which doesn't scale as well as not taking
+   them.
+2/ Use rcu to free cache entries and use a simpler rcu-safe search
+   mechanism when performing an RCU-walk.  This search doesn't have
+   to be perfect.  If it finds the right value most of the time that
+   will still help.  When it doesn't find the required value we fall
+   back on taking the lock.
 
-All of the servers and workstations are using
+The early patches assume the first approach.  The final patch attempts
+the second.  The rcu-safe search method used is simple to examine
+the final (most recent) entry on the lru.
 
-kernel-3.13.6-200.fc20.x86_64
-nfs-utils-1.2.9-3.0.fc20.x86_64
+This final patch provides about 2% performance increase over not
+having the patch in my 4-thread tests on 2-core CPU.
+It is the most "RFC" part of the series.  The earlier patches I am
+comfortable with (though review is always appreciated of course).
 
-I realize this is not the SELinux mailing list, but I was wondering if =
-anyone=20
-had any pointers on how to investigate this issue.  The workstations ar=
-e all=20
-nearly identical in configuration with the exception of a few user-base=
-d=20
-differences such as GnuCash on one, but not the other, etc.
+---
 
-Thanks for your guidance.  -A
+NeilBrown (8):
+      NFS: nfs4_lookup_revalidate: only evaluate parent if it will be used.
+      NFS: prepare for RCU-walk support but pushing tests later in code.
+      sunrpc/auth: allow lockless (rcu) lookup of credential cache.
+      sunrpc/auth: add 'rcu_walk' arg to rpc_lookup_cred.
+      NFS: teach nfs_do_access to understand MAY_NOT_BLOCK
+      NFS: teach nfs_neg_need_reval to understand LOOKUP_RCU
+      NFS: teach nfs_lookup_verify_inode to handle LOOKUP_RCU
+      NFS: allow lockless access to access_cache
 
-=2D-=20
-Anthony - http://messinet.com - http://messinet.com/~amessina/gallery
-8F89 5E72 8DF0 BCF0 10BE 9967 92DC 35DC B001 4A4E
 
---nextPart2085065.C1mx0Pn6Ub
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: This is a digitally signed message part.
-Content-Transfer-Encoding: 7Bit
+ fs/nfs/dir.c                |  134 +++++++++++++++++++++++++++++++++----------
+ fs/nfs/inode.c              |   11 +++-
+ fs/nfs/nfs4proc.c           |    2 -
+ fs/nfs/unlink.c             |    4 +
+ include/linux/nfs_fs.h      |    2 +
+ include/linux/sunrpc/auth.h |    3 +
+ net/sunrpc/auth.c           |   17 +++++
+ net/sunrpc/auth_generic.c   |    5 +-
+ net/sunrpc/auth_null.c      |    2 +
+ 9 files changed, 139 insertions(+), 41 deletions(-)
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.22 (GNU/Linux)
-
-iEYEABECAAYFAlMfWPAACgkQktw13LABSk5MvQCfZ5AFXITLljf1gwLzGOr+mq32
-oLMAn07sGEWMU1C26V9EMrTBDR8c5fOb
-=Ujik
------END PGP SIGNATURE-----
-
---nextPart2085065.C1mx0Pn6Ub--
+-- 
+Signature
 
