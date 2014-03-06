@@ -1,82 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:41779 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751065AbaCGTBp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 7 Mar 2014 14:01:45 -0500
-Date: Fri, 7 Mar 2014 14:01:36 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: "Yan, Zheng" <zheng.z.yan@intel.com>, David Howells <dhowells@redhat.com>,
-        linux-fsdevel@vger.kernel.org,
-        Viro Alexander <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
-        ceph-devel@vger.kernel.org, sage@inktank.com
-Subject: Re: [PATCH][RESEND] vfs: Make __d_materialise_dentry() set the
- materialised dentry name correctly
-Message-ID: <20140307190136.GB30256@fieldses.org>
-References: <1394115376-17109-1-git-send-email-zheng.z.yan@intel.com>
- <6487FCC2-FB5C-4A32-94EF-5D3352A39781@primarydata.com>
- <20140307185552.GA30256@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <20140307185552.GA30256@fieldses.org>
+Received: from mail-ie0-f172.google.com ([209.85.223.172]:35280 "EHLO
+	mail-ie0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751624AbaCFSux convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Mar 2014 13:50:53 -0500
+Received: by mail-ie0-f172.google.com with SMTP id as1so3216058iec.17
+        for <linux-nfs@vger.kernel.org>; Thu, 06 Mar 2014 10:50:52 -0800 (PST)
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
+Subject: Re: Optimal NFS mount options to safely allow interrupts and timeouts on newer kernels
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+In-Reply-To: <1397912955.101159.1394130906695.JavaMail.zimbra@xes-inc.com>
+Date: Thu, 6 Mar 2014 13:50:50 -0500
+Cc: Jim Rees <rees@umich.edu>, bhawley@luminex.com, Brown Neil <neilb@suse.de>,
+        linux-nfs-owner@vger.kernel.org, linux-nfs@vger.kernel.org
+Message-Id: <B454F556-9381-4DB7-B864-EC066DBEAC63@primarydata.com>
+References: <1696396609.119284.1394040541217.JavaMail.zimbra@xes-inc.com> <1853694865.210849.1394082223818.JavaMail.zimbra@xes-inc.com> <20140306163721.0edfb498@notabene.brown> <1709792528-1394084840-cardhu_decombobulator_blackberry.rim.net-1367662481-@b5.c4.bise6.blackberry> <764210708.28409.1394119821635.JavaMail.zimbra@xes-inc.com> <20140306162208.GA18207@umich.edu> <1094203678.52139.1394124222574.JavaMail.zimbra@xes-inc.com> <20140306173632.GA18545@umich.edu> <1397912955.101159.1394130906695.JavaMail.zimbra@xes-inc.com>
+To: Andrew Martin <amartin@xes-inc.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Mar 07, 2014 at 01:55:52PM -0500, J. Bruce Fields wrote:
-> On Thu, Mar 06, 2014 at 09:35:01AM -0500, Trond Myklebust wrote:
-> > 
-> > On Mar 6, 2014, at 9:16, Yan, Zheng <zheng.z.yan@intel.com> wrote:
-> > 
-> > > From: David Howells <dhowells@redhat.com>
-> > > 
-> > > Make __d_materialise_dentry() set the materialised dentry name correctly by
-> > > flipping the arguments to switch_names().
-> > > 
-> > > switch_names() is lazy: if both names are internal to their dentries, it'll
-> > > overwrite that of the first dentry with that of the second, and won't update
-> > > that of the second.
-> > > 
-> > > In the case of __d_materialise_dentry(), the second is an already extant
-> > > anonymous dentry that we want to insert into the tree in place of the dentry we
-> > > just looked up[*].  However, the dentry we just looked up carries the name we
-> > > actually want to use.
-> > > 
-> > > [*] This is used by NFS to join a mount of a subtree into a mount of a tree
-> > > nearer the root when the two meet, where both mounts share a superblock and
-> > > thus a set of dentries.
-> > > 
-> > > Signed-off-by: David Howells <dhowells@redhat.com>
-> > > ---
-> > > fs/dcache.c | 2 +-
-> > > 1 file changed, 1 insertion(+), 1 deletion(-)
-> > > 
-> > > diff --git a/fs/dcache.c b/fs/dcache.c
-> > > index 265e0ce..ff779d4 100644
-> > > --- a/fs/dcache.c
-> > > +++ b/fs/dcache.c
-> > > @@ -2698,7 +2698,7 @@ static void __d_materialise_dentry(struct dentry *dentry, struct dentry *anon)
-> > > 
-> > > 	dparent = dentry->d_parent;
-> > > 
-> > > -	switch_names(dentry, anon);
-> > > +	switch_names(anon, dentry);
-> > > 	swap(dentry->d_name.hash, anon->d_name.hash);
-> > > 
-> > > 	dentry->d_parent = dentry;
-> > 
-> > Well spotted...
-> > 
-> > We ought to better document the fact that â€™switch_namesâ€™ is asymmetrical. Perhaps change it to â€˜update_target_nameâ€™, and then switch the argument names so that the â€™targetâ€™ really is the thing that gets updated?
-> 
-> Probably not worth it if Miklos's RENAME_EXCHANGE operation is making it
-> symmetrical soon anyway?:
-> 
-> 	http://mid.gmane.org/<1380643239-16060-4-git-send-email-miklos@szeredi.hu>
 
-To clarify: I mean, the suggested cleanup may not be worth it.  The
-__d_materialise_dentry bugfix of course is.
+On Mar 6, 2014, at 13:35, Andrew Martin <amartin@xes-inc.com> wrote:
 
-(What I wonder about is the duplication between this and __d_move.  Is
-there any way to make d_materialise_unique a special case of d_move?)
+>> From: "Jim Rees" <rees@umich.edu>
+>> Why would a bunch of blocked apaches cause high load and reboot?
+> What I believe happens is the apache child processes go to serve
+> these requests and then block in uninterruptable sleep. Thus, there
+> are fewer and fewer child processes to handle new incoming requests.
+> Eventually, apache would normally kill said children (e.g after a 
+> child handles a certain number of requests), but it cannot kill them
+> because they are in uninterruptable sleep. As more and more incoming
+> requests are queued (and fewer and fewer child processes are available
+> to serve the requests), the load climbs.
 
---b.
+Does ‘top’ support this theory? Presumably you should see a handful of non-sleeping apache threads dominating the load when it happens.
+
+Why is the server becoming ‘unavailable’ in the first place? Are you taking it down?
+
+_________________________________
+Trond Myklebust
+Linux NFS client maintainer, PrimaryData
+trond.myklebust@primarydata.com
+
