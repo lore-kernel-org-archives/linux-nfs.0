@@ -1,110 +1,106 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f54.google.com ([209.85.216.54]:45666 "EHLO
-	mail-qa0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752395AbaCLNTJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Mar 2014 09:19:09 -0400
-Received: by mail-qa0-f54.google.com with SMTP id w8so9979678qac.13
-        for <linux-nfs@vger.kernel.org>; Wed, 12 Mar 2014 06:19:08 -0700 (PDT)
-Message-ID: <53205ECA.3080006@gmail.com>
-Date: Wed, 12 Mar 2014 09:19:06 -0400
-From: Anna Schumaker <schumaker.anna@gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:63062 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751726AbaCFT33 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 6 Mar 2014 14:29:29 -0500
+Message-ID: <5318CC8C.1050505@redhat.com>
+Date: Thu, 06 Mar 2014 21:29:16 +0200
+From: Ric Wheeler <rwheeler@redhat.com>
 MIME-Version: 1.0
-To: Jeff Layton <jlayton@redhat.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-CC: Eric Paris <eparis@redhat.com>, Schumaker Anna <Anna.Schumaker@netapp.com>,
-        David Quigley <dpquigl@davequigley.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        James Morris <james.l.morris@oracle.com>
-Subject: Re: [PATCH] nfs: Don't assume we have a security structure
-References: <1394572274-16474-1-git-send-email-Anna.Schumaker@netapp.com>	<29D9CA49-A493-471B-932B-959AFF96C729@primarydata.com>	<EEEA2B4E-BE0F-40C0-91C3-98E2E7E8BB35@primarydata.com>	<1394584698.10287.0.camel@localhost>	<20140311210611.0e82e3cf@ipyr.poochiereds.net>	<BA64BE59-8F58-456B-8E98-3F44A4CEC909@primarydata.com> <20140312062207.6b2ee85e@tlielax.poochiereds.net>
-In-Reply-To: <20140312062207.6b2ee85e@tlielax.poochiereds.net>
-Content-Type: text/plain; charset=windows-1252
+To: bhawley@luminex.com, Trond Myklebust <trond.myklebust@primarydata.com>
+CC: Andrew Martin <amartin@xes-inc.com>, Jim Rees <rees@umich.edu>,
+        Brown Neil <neilb@suse.de>, linux-nfs-owner@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: Optimal NFS mount options to safely allow interrupts and timeouts
+ on newer kernels
+References: <1696396609.119284.1394040541217.JavaMail.zimbra@xes-inc.com>  <260588931.122771.1394041524167.JavaMail.zimbra@xes-inc.com>  <20140306145042.6db53f60@notabene.brown>  <1853694865.210849.1394082223818.JavaMail.zimbra@xes-inc.com>  <20140306163721.0edfb498@notabene.brown>  <1709792528-1394084840-cardhu_decombobulator_blackberry.rim.net-1367662481-@b5.c4.bise6.blackberry>  <764210708.28409.1394119821635.JavaMail.zimbra@xes-inc.com>  <20140306162208.GA18207@umich.edu>  <1094203678.52139.1394124222574.JavaMail.zimbra@xes-inc.com>  <1028951407-1394132418-cardhu_decombobulator_blackberry.rim.net-599891631-@b5.c4.bise6.blackberry>  <E22EB8B3-DE5E-4D39-8FFD-BA3F02276EFE@primarydata.com> <745494581-1394133289-cardhu_decombobulator_blackberry.rim.net-1805734207-@b5.c4.bise6.blackberry>
+In-Reply-To: <745494581-1394133289-cardhu_decombobulator_blackberry.rim.net-1805734207-@b5.c4.bise6.blackberry>
+Content-Type: text/plain; charset=windows-1252; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I just tried Jeff's patch and it does fix my problem.  I wish I had remembered it earlier in the day yesterday!
+On 03/06/2014 09:14 PM, Brian Hawley wrote:
+> Trond,
+>
+> In this case, it isn't fsync or close that are not getting the i/o error.  It is the write().
+>
+> And we check the return value of every i/o related command.
 
-On 03/12/2014 06:22 AM, Jeff Layton wrote:
-> On Wed, 12 Mar 2014 05:21:13 -0400
-> Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+Checking write() return status means we wrote to the page cache - you must also 
+fsync() that file to push it out to the target.  Do that when it counts, leaving 
+data in the page cache until you actually need persistence and your performance 
+should be reasonable.
+
+Doing it the safe way is not free, you will see a performance hit (less so if 
+you can do batching, etc).
+
+ric
+
 >
->> On Mar 11, 2014, at 21:06, Jeffrey Layton <jlayton@redhat.com> wrote:
+> We aren't using synchronous because the performance becomes abysmal.
+>
+> Repeated umount -f does eventually result in the i/o error getting propagated back to the write() call.   I suspect the repeated umount -f's are working their way through blocks in the cache/queue and eventually we get back to the blocked write.
+>
+> As I mentioned previously, if we mount with sync or direct i/o type options, we will get the i/o error, but for performance reasons, this isn't an option.
+>
+> -----Original Message-----
+> From: Trond Myklebust <trond.myklebust@primarydata.com>
+> Date: Thu, 6 Mar 2014 14:06:24
+> To: <bhawley@luminex.com>
+> Cc: Andrew Martin<amartin@xes-inc.com>; Jim Rees<rees@umich.edu>; Brown Neil<neilb@suse.de>; <linux-nfs-owner@vger.kernel.org>; <linux-nfs@vger.kernel.org>
+> Subject: Re: Optimal NFS mount options to safely allow interrupts and timeouts on newer kernels
+>
+>
+> On Mar 6, 2014, at 14:00, Brian Hawley <bhawley@luminex.com> wrote:
+>
+>> Even with small timeo and retrans, you won't get i/o errors back to the reads/writes.   That's been our experience anyway.
+> Read caching, and buffered writes mean that the I/O errors often do not occur during the read()/write() system call itself.
+>
+> We do try to propagate I/O errors back to the application as soon as the do occur, but if that application isn’t using synchronous I/O, and it isn’t checking the return values of fsync() or close(), then there is little the kernel can do...
+>
+>> With soft, you may end up with lost data (data that had already been written to the cache but not yet to the storage).   You'd have that same issue with 'hard' too if it was your appliance that failed.  If the appliance never comes back, those blocks can never be written.
 >>
->>> On Tue, 11 Mar 2014 20:38:18 -0400
->>> Eric Paris <eparis@redhat.com> wrote:
->>>
->>>> On Tue, 2014-03-11 at 18:00 -0400, Trond Myklebust wrote:
->>>>> On Mar 11, 2014, at 17:27, Trond Myklebust
->>>>> <trond.myklebust@primarydata.com> wrote:
->>>>>
->>>>>> On Mar 11, 2014, at 17:11, Anna Schumaker
->>>>>> <Anna.Schumaker@netapp.com> wrote:
->>>>>>
->>>>>>> If the i_security field isn't set then
->>>>>>> security_dentry_init_security() won't initialize some of the
->>>>>>> values used by the security label.  This causes my client to hit
->>>>>>> a BUG_ON() while encoding a label of size -2128927414.
->>>>>>>
->>>>>>> I hit this bug while testing on a client without SELinux
->>>>>>> installed.
->>>>>>>
->>>>>>> Signed-off-by: Anna Schumaker <anna.schumaker@netapp.com>
->>>>>>> ---
->>>>>>> fs/nfs/nfs4proc.c | 3 +++
->>>>>>> 1 file changed, 3 insertions(+)
->>>>>>>
->>>>>>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->>>>>>> index b8cd560..994ccc2 100644
->>>>>>> --- a/fs/nfs/nfs4proc.c
->>>>>>> +++ b/fs/nfs/nfs4proc.c
->>>>>>> @@ -105,6 +105,9 @@ nfs4_label_init_security(struct inode *dir,
->>>>>>> struct dentry *dentry, if (nfs_server_capable(dir,
->>>>>>> NFS_CAP_SECURITY_LABEL) == 0) return NULL;
->>>>>>>
->>>>>>> +	if (!dir->i_security)
->>>>>>> +		return NULL;
->>>>>>> +
->>>>>>> 	err = security_dentry_init_security(dentry,
->>>>>>> sattr->ia_mode, &dentry->d_name, (void **)&label->label,
->>>>>>> &label->len); if (err == 0)
->>>>>> Hi Anna,
->>>>>>
->>>>>> This looks like a check that needs to be done by
->>>>>> selinux_dentry_init_security() itself. The dir->i_security field
->>>>>> is not something that NFS knows about. David, what needs to
->>>>>> happen there when dentry->d_parent->i_security (a.k.a. dsec) is
->>>>>> NULL?
->>>>>>
->>>>> Oh, wait. I missed the bit about ‘without SELinux installed’. So
->>>>> the problem here is that you have a NFS client that does not have
->>>>> SELinux set up, but running against a server that is advertising
->>>>> NFSv4.2 with labeled NFS. Is that correct?
->>>>>
->>>>> It looks to me as if cap_dentry_init_security() will indeed trigger
->>>>> this behaviour since it returns ‘0’ without doing anything to the
->>>>> label. As far as I can see, the right thing to do there is to
->>>>> return -EOPNOTSUPP, no?
->>>> I feel like Jeff Layton was looking at the same thing, and came to the
->>>> same conclusion...
->>>>
->>>> Jeff?
->>>>
->>> I posted a patch for this last week and James has merged it:
->>>
->>>    [PATCH] security: have cap_dentry_init_security return error
->>>
->>> I didn't note it in the patch description but it fixes 4.2 when SELinux
->>> is compiled in but disabled.
->> Thanks! Then I expect no further action is needed on our part, and that the fix will come through the security tree?
+>> In your case though, you're not writing.
 >>
-> FWIW, this is the bug that was causing the NFS server to spew messages
-> like this to the ring buffer when Anna was testing against my server at
-> Connectathon:
+>>
+>> -----Original Message-----
+>> From: Andrew Martin <amartin@xes-inc.com>
+>> Date: Thu, 6 Mar 2014 10:43:42
+>> To: Jim Rees<rees@umich.edu>
+>> Cc: <bhawley@luminex.com>; NeilBrown<neilb@suse.de>; <linux-nfs-owner@vger.kernel.org>; <linux-nfs@vger.kernel.org>
+>> Subject: Re: Optimal NFS mount options to safely allow interrupts and
+>> timeouts on newer kernels
+>>
+>>> From: "Jim Rees" <rees@umich.edu>
+>>> Andrew Martin wrote:
+>>>
+>>>> From: "Jim Rees" <rees@umich.edu>
+>>>> Given this is apache, I think if I were doing this I'd use
+>>>> ro,soft,intr,tcp
+>>>> and not try to write anything to nfs.
+>>>   I was using tcp,bg,soft,intr when this problem occurred. I do not know if
+>>>   apache was attempting to do a write or a read, but it seems that
+>>>   tcp,soft,intr
+>>>   was not sufficient to prevent the problem.
+>>>
+>>> I had the impression from your original message that you were not using
+>>> "soft" and were asking if it's safe to use it. Are you saying that even with
+>>> the "soft" option the apache gets stuck forever?
+>> Yes, even with soft, it gets stuck forever. I had been using tcp,bg,soft,intr
+>> when the problem occurred (on several ocassions), so my original question was
+>> if it would be safe to use a small timeo and retrans values to hopefully
+>> return I/O errors quickly to the application, rather than blocking forever
+>> (which causes the high load and inevitable reboot). It sounds like that isn't
+>> safe, but perhaps there is another way to resolve this problem?
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
+> _________________________________
+> Trond Myklebust
+> Linux NFS client maintainer, PrimaryData
+> trond.myklebust@primarydata.com
 >
->     [  243.479524] SELinux:  Context \xffffffdf is not valid (left unmapped).
->
-> We may want to do a follow-on patch to clean up the struct nfs4_label
-> initializers since they're not really needed. But that should probably
-> wait until James merges this up to Linus.
->
+> N‹§²æìr¸›yúèšØb²X¬¶Ç§vØ^–)Şº{.nÇ+‰·¥Š{±û"Ø^n‡r¡ö¦zËëh™¨è­Ú&¢ø®G«éh®(­éšŠİ¢j"ú¶m§ÿïêäz¹Ş–Šàşf£¢·hšˆ§~ˆmml==
 
