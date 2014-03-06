@@ -1,41 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:57794 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750976AbaCaVLO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 31 Mar 2014 17:11:14 -0400
-Date: Mon, 31 Mar 2014 17:11:01 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: "Yan, Zheng" <zheng.z.yan@intel.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v3] nfsd4: fix memory leak in nfsd4_encode_fattr()
-Message-ID: <20140331211100.GC20024@fieldses.org>
-References: <1394444501-20826-1-git-send-email-zheng.z.yan@intel.com>
- <20140310102101.GA25752@infradead.org>
+Received: from mail-we0-f176.google.com ([74.125.82.176]:32965 "EHLO
+	mail-we0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751130AbaCFJh7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Mar 2014 04:37:59 -0500
+Message-ID: <531841F3.10401@gmail.com>
+Date: Thu, 06 Mar 2014 11:37:55 +0200
+From: Ric Wheeler <ricwheeler@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140310102101.GA25752@infradead.org>
+To: bhawley@luminex.com, Andrew Martin <amartin@xes-inc.com>,
+        linux-nfs-owner@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: Optimal NFS mount options to safely allow interrupts and timeouts
+ on newer kernels
+References: <1696396609.119284.1394040541217.JavaMail.zimbra@xes-inc.com>  <260588931.122771.1394041524167.JavaMail.zimbra@xes-inc.com> <338027154-1394050544-cardhu_decombobulator_blackberry.rim.net-1945813324-@b5.c4.bise6.blackberry>
+In-Reply-To: <338027154-1394050544-cardhu_decombobulator_blackberry.rim.net-1945813324-@b5.c4.bise6.blackberry>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Mar 10, 2014 at 03:21:01AM -0700, Christoph Hellwig wrote:
-> On Mon, Mar 10, 2014 at 05:41:41PM +0800, Yan, Zheng wrote:
-> > The temporary file handle should be freed when nfsd4_encode_fattr()
-> > finishes its job. Christoph Hellwig suggests to move the code that
-> > generates the temporary file handle into nfsd4_encode_dirent_fattr()
-> > 
-> > Signed-off-by: Yan, Zheng <zheng.z.yan@intel.com>
-> 
-> I'd also add a BUG_ON to assert we have the file handle if needed in
-> nfsd4_encode_fattr.
-> 
-> But maybe I was a bit too fast in my initial reply and we should put in
-> your simple fix first for the current -rc and -stable and have the
-> cleanup on top of it.  There's a lot more refactoring that should be
-> done to nfsd4_encode_fattr anyway.
+On 03/05/2014 10:15 PM, Brian Hawley wrote:
+> In my experience, you won't get the i/o errors reported back to the read/write/close operations.   I don't know for certain, but I suspect this may be due to caching and chunking to turn I/o matching the rsize/wsize settings; and possibly the fact that the peer disconnection isn't noticed unless the nfs server resets (ie cable disconnection isn't sufficient).
+>
+> The inability to get the i/o errors back to the application has been a major pain for us.
+>
+> On a lark we did find that repeated unmont -f's does get i/o errors back to the application, but isn't our preferred way.
 
-Makes sense; applying the bare fix for 3.15 with a stable cc, assuming
-somebody will follow up with any cleanup.  (Moving this case to
-nfsd4_encode_dirent_fattr() as in this patch certianly looks fine to
-me.)
+The key to get IO errors promptly is to make sure you use fsync/fdatasync (and 
+so on) when you hit those points in your application that are where you want to 
+recover from if things crash, get disconnected, etc.
 
---b.
+Those will push out the data from the page cache while your application is still 
+around which is critical for any potential need to do recovery.
+
+Note that this is not just an issue with NFS, any file system (including local 
+file systems) normally completes the write request when the IO hits the page 
+cache.  When that page eventually gets sent down to the permanent storage device 
+(NFS server, local disk, etc), your process is potentially no longer around and 
+certainly not waiting for IO errors in the original write call :)
+
+To make this even trickier is that the calls like fsync() that persist data have 
+a substantial performance impact, so you don't want to over-use them.  (Try 
+writing a 1GB file with an fsync() before close and comparing that to writing a 
+1GB file opened in O_DIRECT|O_SYNC mode for the worst case for example :))
+
+Ric
+
