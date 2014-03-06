@@ -1,83 +1,100 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f176.google.com ([209.85.213.176]:61737 "EHLO
-	mail-ig0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753174AbaCFRrk convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Mar 2014 12:47:40 -0500
-Received: by mail-ig0-f176.google.com with SMTP id uy17so16843169igb.3
-        for <linux-nfs@vger.kernel.org>; Thu, 06 Mar 2014 09:47:40 -0800 (PST)
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
+Received: from mail-ig0-f182.google.com ([209.85.213.182]:45732 "EHLO
+	mail-ig0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752211AbaCFTOw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Mar 2014 14:14:52 -0500
+Message-ID: <745494581-1394133289-cardhu_decombobulator_blackberry.rim.net-1805734207-@b5.c4.bise6.blackberry>
+Reply-To: bhawley@luminex.com
+References: <1696396609.119284.1394040541217.JavaMail.zimbra@xes-inc.com>
+  <260588931.122771.1394041524167.JavaMail.zimbra@xes-inc.com>
+  <20140306145042.6db53f60@notabene.brown>
+  <1853694865.210849.1394082223818.JavaMail.zimbra@xes-inc.com>
+  <20140306163721.0edfb498@notabene.brown>
+  <1709792528-1394084840-cardhu_decombobulator_blackberry.rim.net-1367662481-@b5.c4.bise6.blackberry>
+  <764210708.28409.1394119821635.JavaMail.zimbra@xes-inc.com>
+  <20140306162208.GA18207@umich.edu>
+  <1094203678.52139.1394124222574.JavaMail.zimbra@xes-inc.com>
+  <1028951407-1394132418-cardhu_decombobulator_blackberry.rim.net-599891631-@b5.c4.bise6.blackberry>
+  <E22EB8B3-DE5E-4D39-8FFD-BA3F02276EFE@primarydata.com>
+In-Reply-To: <E22EB8B3-DE5E-4D39-8FFD-BA3F02276EFE@primarydata.com>
 Subject: Re: Optimal NFS mount options to safely allow interrupts and timeouts on newer kernels
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-In-Reply-To: <228A4E31-65A8-4357-937E-24554B5B3835@oracle.com>
-Date: Thu, 6 Mar 2014 12:47:38 -0500
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <00D4C447-07C9-4FBA-ABD6-285C97727316@primarydata.com>
-References: <1696396609.119284.1394040541217.JavaMail.zimbra@xes-inc.com> <260588931.122771.1394041524167.JavaMail.zimbra@xes-inc.com> <20140306145042.6db53f60@notabene.brown> <1853694865.210849.1394082223818.JavaMail.zimbra@xes-inc.com> <20140306123438.GA21799@umich.edu> <04BE61B0-08B5-4E0C-88B6-6D93127BB64E@oracle.com> <5B1102FE-8521-4BEF-8A2B-CE17EC32777F@primarydata.com> <17607EE5-614A-4B13-B5E7-0D1344A30C7F@oracle.com> <2A4F9722-1ED1-462E-B66B-669217957814@primarydata.com> <473B4660-0C59-49D4-8BBD-24ABD929AFB9@oracle.com> <BB585E65-78D2-45D9-9513-BB988686F1A9@primarydata.com> <228A4E31-65A8-4357-937E-24554B5B3835@oracle.com>
-To: Lever Charles Edward <chuck.lever@oracle.com>
+To: "Trond Myklebust" <trond.myklebust@primarydata.com>,
+        "Brian Hawley" <bhawley@luminex.com>
+Cc: "Andrew Martin" <amartin@xes-inc.com>, "Jim Rees" <rees@umich.edu>,
+        "Brown Neil" <neilb@suse.de>, linux-nfs-owner@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+From: "Brian Hawley" <bhawley@luminex.com>
+Date: Thu, 6 Mar 2014 19:14:49 +0000
+Content-Type: text/plain; charset="Windows-1252"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Mar 6, 2014, at 11:45, Chuck Lever <chuck.lever@oracle.com> wrote:
-
-> 
-> On Mar 6, 2014, at 11:16 AM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
-> 
->> 
->> On Mar 6, 2014, at 11:13, Chuck Lever <chuck.lever@oracle.com> wrote:
->> 
->>> 
->>> On Mar 6, 2014, at 11:02 AM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
->>> 
->>>> 
->>>> On Mar 6, 2014, at 10:59, Chuck Lever <chuck.lever@oracle.com> wrote:
->>>> 
->>>>> 
->>>>> On Mar 6, 2014, at 10:33 AM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
->>>>> 
->>>>>> 
->>>>>> On Mar 6, 2014, at 10:26, Chuck Lever <chuck.lever@oracle.com> wrote:
->>>>>> 
->>>>>>> 
->>>>>>> On Mar 6, 2014, at 7:34 AM, Jim Rees <rees@umich.edu> wrote:
->>>>>>> 
->>>>>>>> Given this is apache, I think if I were doing this I'd use ro,soft,intr,tcp
->>>>>>>> and not try to write anything to nfs.
->>>>>>> 
->>>>>>> I agree. A static web page workload should be read-mostly or read-only. The (small) corruption risk with “ro,soft" is that an interrupted read would cause the client to cache incomplete data.
->>>>>> 
->>>>>> What? How? If that were the case, we would have a blatant read bug. As I read the current code, _any_ error will cause the page to not be marked as up to date.
->>>>> 
->>>>> Agree, the design is sound. But we don’t test this use case very much, so I don’t have 100% confidence that there are no bugs.
->>>> 
->>>> Is that the royal ‘we’, or are you talking on behalf of all the QA departments and testers here? I call bullshit…
->>> 
->>> If you want to differ with my opinion, fine. But your tone is not professional or appropriate for a public forum. You need to start treating all of your colleagues with respect, including me.
->>> 
->>> If anyone else had claimed a testing gap, you would have said “If that were the case, we would have a blatant read bug” and left it at that. But you had to go one needless and provocative step further.
->>> 
->>> Stop bullying me, Trond. I’ve had enough of it.
->> 
->> The stop spreading FUD. That is far from professional too.
-> 
-> FUD is a marketing term, and implies I had intent to deceive. Really?
-> 
-> I expressed a technical opinion, with a degree of uncertainty, just like everyone else does. People who ask questions here are free to take our advice or not, based on their own experience. They are adults, they read “IMO” where it is implied.
-> 
-> It is absolutely your right to say that I’m incorrect, or to clarify something I said. If you have test data that shows "ro,soft,tcp" cannot possibly cause any version of the Linux NFS client to cache corrupt data, show it, without invective. That is an appropriate response to my remark.
-> 
-> Face it, you over-reacted. Again. Knock it off.
-> 
-
-You clearly don’t know what other people are testing with, and you clearly didn’t ask anyone before you started telling users that 'soft' is untested. I happen to know a server vendor for which _all_ internal QA tests are done using the ‘soft’ mount option on the clients. This is done for practical reasons in order to prevent client hangs if the server should panic. I strongly suspect that other QA departments are testing the ’soft' case too.
-
-Acting as if you are an authoritative source on the subject of testing, when you are not and you know that you are not, does constitute intentional deception, yes. …and no, I don’t see anything above to indicate that this was an ‘opinion’ on the subject of what is being tested which is precisely why I called it.
-
-There are good reasons to distrust the ‘soft’ mount option, but lack of testing is not it. The general lack of application support for handling the resulting EIO errors is, however...
-
-_________________________________
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
+DQpUcm9uZCwNCg0KSW4gdGhpcyBjYXNlLCBpdCBpc24ndCBmc3luYyBvciBjbG9zZSB0aGF0IGFy
+ZSBub3QgZ2V0dGluZyB0aGUgaS9vIGVycm9yLiAgSXQgaXMgdGhlIHdyaXRlKCkuICANCg0KQW5k
+IHdlIGNoZWNrIHRoZSByZXR1cm4gdmFsdWUgb2YgZXZlcnkgaS9vIHJlbGF0ZWQgY29tbWFuZC4N
+Cg0KV2UgYXJlbid0IHVzaW5nIHN5bmNocm9ub3VzIGJlY2F1c2UgdGhlIHBlcmZvcm1hbmNlIGJl
+Y29tZXMgYWJ5c21hbC4NCg0KUmVwZWF0ZWQgdW1vdW50IC1mIGRvZXMgZXZlbnR1YWxseSByZXN1
+bHQgaW4gdGhlIGkvbyBlcnJvciBnZXR0aW5nIHByb3BhZ2F0ZWQgYmFjayB0byB0aGUgd3JpdGUo
+KSBjYWxsLiAgIEkgc3VzcGVjdCB0aGUgcmVwZWF0ZWQgdW1vdW50IC1mJ3MgYXJlIHdvcmtpbmcg
+dGhlaXIgd2F5IHRocm91Z2ggYmxvY2tzIGluIHRoZSBjYWNoZS9xdWV1ZSBhbmQgZXZlbnR1YWxs
+eSB3ZSBnZXQgYmFjayB0byB0aGUgYmxvY2tlZCB3cml0ZS4gICAgDQoNCkFzIEkgbWVudGlvbmVk
+IHByZXZpb3VzbHksIGlmIHdlIG1vdW50IHdpdGggc3luYyBvciBkaXJlY3QgaS9vIHR5cGUgb3B0
+aW9ucywgd2Ugd2lsbCBnZXQgdGhlIGkvbyBlcnJvciwgYnV0IGZvciBwZXJmb3JtYW5jZSByZWFz
+b25zLCB0aGlzIGlzbid0IGFuIG9wdGlvbi4NCg0KLS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0N
+CkZyb206IFRyb25kIE15a2xlYnVzdCA8dHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbT4N
+CkRhdGU6IFRodSwgNiBNYXIgMjAxNCAxNDowNjoyNCANClRvOiA8Ymhhd2xleUBsdW1pbmV4LmNv
+bT4NCkNjOiBBbmRyZXcgTWFydGluPGFtYXJ0aW5AeGVzLWluYy5jb20+OyBKaW0gUmVlczxyZWVz
+QHVtaWNoLmVkdT47IEJyb3duIE5laWw8bmVpbGJAc3VzZS5kZT47IDxsaW51eC1uZnMtb3duZXJA
+dmdlci5rZXJuZWwub3JnPjsgPGxpbnV4LW5mc0B2Z2VyLmtlcm5lbC5vcmc+DQpTdWJqZWN0OiBS
+ZTogT3B0aW1hbCBORlMgbW91bnQgb3B0aW9ucyB0byBzYWZlbHkgYWxsb3cgaW50ZXJydXB0cyBh
+bmQgdGltZW91dHMgb24gbmV3ZXIga2VybmVscw0KDQoNCk9uIE1hciA2LCAyMDE0LCBhdCAxNDow
+MCwgQnJpYW4gSGF3bGV5IDxiaGF3bGV5QGx1bWluZXguY29tPiB3cm90ZToNCg0KPiANCj4gRXZl
+biB3aXRoIHNtYWxsIHRpbWVvIGFuZCByZXRyYW5zLCB5b3Ugd29uJ3QgZ2V0IGkvbyBlcnJvcnMg
+YmFjayB0byB0aGUgcmVhZHMvd3JpdGVzLiAgIFRoYXQncyBiZWVuIG91ciBleHBlcmllbmNlIGFu
+eXdheS4NCg0KUmVhZCBjYWNoaW5nLCBhbmQgYnVmZmVyZWQgd3JpdGVzIG1lYW4gdGhhdCB0aGUg
+SS9PIGVycm9ycyBvZnRlbiBkbyBub3Qgb2NjdXIgZHVyaW5nIHRoZSByZWFkKCkvd3JpdGUoKSBz
+eXN0ZW0gY2FsbCBpdHNlbGYuDQoNCldlIGRvIHRyeSB0byBwcm9wYWdhdGUgSS9PIGVycm9ycyBi
+YWNrIHRvIHRoZSBhcHBsaWNhdGlvbiBhcyBzb29uIGFzIHRoZSBkbyBvY2N1ciwgYnV0IGlmIHRo
+YXQgYXBwbGljYXRpb24gaXNuknQgdXNpbmcgc3luY2hyb25vdXMgSS9PLCBhbmQgaXQgaXNuknQg
+Y2hlY2tpbmcgdGhlIHJldHVybiB2YWx1ZXMgb2YgZnN5bmMoKSBvciBjbG9zZSgpLCB0aGVuIHRo
+ZXJlIGlzIGxpdHRsZSB0aGUga2VybmVsIGNhbiBkby4uLg0KDQo+IA0KPiBXaXRoIHNvZnQsIHlv
+dSBtYXkgZW5kIHVwIHdpdGggbG9zdCBkYXRhIChkYXRhIHRoYXQgaGFkIGFscmVhZHkgYmVlbiB3
+cml0dGVuIHRvIHRoZSBjYWNoZSBidXQgbm90IHlldCB0byB0aGUgc3RvcmFnZSkuICAgWW91J2Qg
+aGF2ZSB0aGF0IHNhbWUgaXNzdWUgd2l0aCAnaGFyZCcgdG9vIGlmIGl0IHdhcyB5b3VyIGFwcGxp
+YW5jZSB0aGF0IGZhaWxlZC4gIElmIHRoZSBhcHBsaWFuY2UgbmV2ZXIgY29tZXMgYmFjaywgdGhv
+c2UgYmxvY2tzIGNhbiBuZXZlciBiZSB3cml0dGVuLg0KPiANCj4gSW4geW91ciBjYXNlIHRob3Vn
+aCwgeW91J3JlIG5vdCB3cml0aW5nLiAgDQo+IA0KPiANCj4gLS0tLS1PcmlnaW5hbCBNZXNzYWdl
+LS0tLS0NCj4gRnJvbTogQW5kcmV3IE1hcnRpbiA8YW1hcnRpbkB4ZXMtaW5jLmNvbT4NCj4gRGF0
+ZTogVGh1LCA2IE1hciAyMDE0IDEwOjQzOjQyIA0KPiBUbzogSmltIFJlZXM8cmVlc0B1bWljaC5l
+ZHU+DQo+IENjOiA8Ymhhd2xleUBsdW1pbmV4LmNvbT47IE5laWxCcm93bjxuZWlsYkBzdXNlLmRl
+PjsgPGxpbnV4LW5mcy1vd25lckB2Z2VyLmtlcm5lbC5vcmc+OyA8bGludXgtbmZzQHZnZXIua2Vy
+bmVsLm9yZz4NCj4gU3ViamVjdDogUmU6IE9wdGltYWwgTkZTIG1vdW50IG9wdGlvbnMgdG8gc2Fm
+ZWx5IGFsbG93IGludGVycnVwdHMgYW5kDQo+IHRpbWVvdXRzIG9uIG5ld2VyIGtlcm5lbHMNCj4g
+DQo+PiBGcm9tOiAiSmltIFJlZXMiIDxyZWVzQHVtaWNoLmVkdT4NCj4+IEFuZHJldyBNYXJ0aW4g
+d3JvdGU6DQo+PiANCj4+PiBGcm9tOiAiSmltIFJlZXMiIDxyZWVzQHVtaWNoLmVkdT4NCj4+PiBH
+aXZlbiB0aGlzIGlzIGFwYWNoZSwgSSB0aGluayBpZiBJIHdlcmUgZG9pbmcgdGhpcyBJJ2QgdXNl
+DQo+Pj4gcm8sc29mdCxpbnRyLHRjcA0KPj4+IGFuZCBub3QgdHJ5IHRvIHdyaXRlIGFueXRoaW5n
+IHRvIG5mcy4NCj4+ICBJIHdhcyB1c2luZyB0Y3AsYmcsc29mdCxpbnRyIHdoZW4gdGhpcyBwcm9i
+bGVtIG9jY3VycmVkLiBJIGRvIG5vdCBrbm93IGlmDQo+PiAgYXBhY2hlIHdhcyBhdHRlbXB0aW5n
+IHRvIGRvIGEgd3JpdGUgb3IgYSByZWFkLCBidXQgaXQgc2VlbXMgdGhhdA0KPj4gIHRjcCxzb2Z0
+LGludHINCj4+ICB3YXMgbm90IHN1ZmZpY2llbnQgdG8gcHJldmVudCB0aGUgcHJvYmxlbS4NCj4+
+IA0KPj4gSSBoYWQgdGhlIGltcHJlc3Npb24gZnJvbSB5b3VyIG9yaWdpbmFsIG1lc3NhZ2UgdGhh
+dCB5b3Ugd2VyZSBub3QgdXNpbmcNCj4+ICJzb2Z0IiBhbmQgd2VyZSBhc2tpbmcgaWYgaXQncyBz
+YWZlIHRvIHVzZSBpdC4gQXJlIHlvdSBzYXlpbmcgdGhhdCBldmVuIHdpdGgNCj4+IHRoZSAic29m
+dCIgb3B0aW9uIHRoZSBhcGFjaGUgZ2V0cyBzdHVjayBmb3JldmVyPw0KPiBZZXMsIGV2ZW4gd2l0
+aCBzb2Z0LCBpdCBnZXRzIHN0dWNrIGZvcmV2ZXIuIEkgaGFkIGJlZW4gdXNpbmcgdGNwLGJnLHNv
+ZnQsaW50cg0KPiB3aGVuIHRoZSBwcm9ibGVtIG9jY3VycmVkIChvbiBzZXZlcmFsIG9jYXNzaW9u
+cyksIHNvIG15IG9yaWdpbmFsIHF1ZXN0aW9uIHdhcw0KPiBpZiBpdCB3b3VsZCBiZSBzYWZlIHRv
+IHVzZSBhIHNtYWxsIHRpbWVvIGFuZCByZXRyYW5zIHZhbHVlcyB0byBob3BlZnVsbHkgDQo+IHJl
+dHVybiBJL08gZXJyb3JzIHF1aWNrbHkgdG8gdGhlIGFwcGxpY2F0aW9uLCByYXRoZXIgdGhhbiBi
+bG9ja2luZyBmb3JldmVyIA0KPiAod2hpY2ggY2F1c2VzIHRoZSBoaWdoIGxvYWQgYW5kIGluZXZp
+dGFibGUgcmVib290KS4gSXQgc291bmRzIGxpa2UgdGhhdCBpc24ndA0KPiBzYWZlLCBidXQgcGVy
+aGFwcyB0aGVyZSBpcyBhbm90aGVyIHdheSB0byByZXNvbHZlIHRoaXMgcHJvYmxlbT8NCj4gLS0N
+Cj4gVG8gdW5zdWJzY3JpYmUgZnJvbSB0aGlzIGxpc3Q6IHNlbmQgdGhlIGxpbmUgInVuc3Vic2Ny
+aWJlIGxpbnV4LW5mcyIgaW4NCj4gdGhlIGJvZHkgb2YgYSBtZXNzYWdlIHRvIG1ham9yZG9tb0B2
+Z2VyLmtlcm5lbC5vcmcNCj4gTW9yZSBtYWpvcmRvbW8gaW5mbyBhdCAgaHR0cDovL3ZnZXIua2Vy
+bmVsLm9yZy9tYWpvcmRvbW8taW5mby5odG1sDQo+IA0KDQpfX19fX19fX19fX19fX19fX19fX19f
+X19fX19fX19fX18NClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVy
+LCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0KDQo=
 
