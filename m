@@ -1,131 +1,183 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:51310 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751846AbaCJAPr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 9 Mar 2014 20:15:47 -0400
-Date: Mon, 10 Mar 2014 11:15:39 +1100
-From: NeilBrown <neilb@suse.de>
-To: David Heidelberger <david.heidelberger@ixit.cz>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: DNOTIFY to INOTIFY migration
-Message-ID: <20140310111539.7ae29497@notabene.brown>
-In-Reply-To: <c90a00fb90b35b2ac904056383a3d532@ixit.cz>
-References: <b59b1e4ede0b1d0a476c85465d480c8a@ixit.cz>
-	<20140310102102.3c886726@notabene.brown>
-	<c90a00fb90b35b2ac904056383a3d532@ixit.cz>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/wA2HrN2IJpr7VVOwKhqmtk5"; protocol="application/pgp-signature"
+Received: from mail-ie0-f177.google.com ([209.85.223.177]:38838 "EHLO
+	mail-ie0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751645AbaCFUbg convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Mar 2014 15:31:36 -0500
+Received: by mail-ie0-f177.google.com with SMTP id rl12so3335680iec.36
+        for <linux-nfs@vger.kernel.org>; Thu, 06 Mar 2014 12:31:36 -0800 (PST)
+Subject: Re: Optimal NFS mount options to safely allow interrupts and timeouts on newer kernels
+Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
+Content-Type: text/plain; charset=windows-1252
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+In-Reply-To: <401365131-1394135790-cardhu_decombobulator_blackberry.rim.net-946296583-@b5.c4.bise6.blackberry>
+Date: Thu, 6 Mar 2014 15:31:33 -0500
+Cc: linux-nfs-owner@vger.kernel.org, Andrew Martin <amartin@xes-inc.com>,
+        Jim Rees <rees@umich.edu>, Brown Neil <neilb@suse.de>,
+        linux-nfs@vger.kernel.org
+Message-Id: <85B2F64E-D153-414D-942F-0193E56A4554@primarydata.com>
+References: <1696396609.119284.1394040541217.JavaMail.zimbra@xes-inc.com> <260588931.122771.1394041524167.JavaMail.zimbra@xes-inc.com> <20140306145042.6db53f60@notabene.brown> <1853694865.210849.1394082223818.JavaMail.zimbra@xes-inc.com> <20140306163721.0edfb498@notabene.brown> <1709792528-1394084840-cardhu_decombobulator_blackberry.rim.net-1367662481-@b5.c4.bise6.blackberry> <764210708.28409.1394119821635.JavaMail.zimbra@xes-inc.com> <20140306162208.GA18207@umich.edu> <1094203678.52139.1394124222574.JavaMail.zimbra@xes-inc.com> <1028951407-1394132418-cardhu_decombobulator_blackberry.rim.net-599891631-@b5.c4.bise6.blackberry> <E22EB8B3-DE5E-4D39-8FFD-BA3F02276EFE@primarydata.com> <745494581-1394133289-cardhu_decombobulator_blackberry.rim.net-1805734207-@b5.c4.bise6.blackberry> <84CFBA83-C2FE-4AA1-92D7-C37EDFC75117@primarydata.com> <1494458922-1394134385-cardhu_decombobulator_blackberry.rim.net-1425882517-@b5.c4.bise6.blackberry> <5B3606E3-01F9-45C5-8733-B424AF5CB8CB@primaryd!
+ ata.com> <401365131-1394135790-cardhu_decombobulator_blackberry.rim.net-946296583-@b5.c4.bise6.blackberry>
+To: bhawley@luminex.com
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/wA2HrN2IJpr7VVOwKhqmtk5
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
 
-On Mon, 10 Mar 2014 01:55:15 +0100 David Heidelberger
-<david.heidelberger@ixit.cz> wrote:
+On Mar 6, 2014, at 14:56, Brian Hawley <bhawley@luminex.com> wrote:
 
-> Dne 2014-03-10 00:21, NeilBrown napsal:
-> > On Fri, 07 Mar 2014 21:30:34 +0100 David Heidelberger
-> > <david.heidelberger@ixit.cz> wrote:
-> >=20
-> >> Hello,
-> >>=20
-> >> in linux kernel is DNOTIFY actually marked as deprecated, with=20
-> >> superior
-> >> replacement INOTIFY.
-> >=20
-> > Where is it marked as deprecated?  I would be very surprised if dnotify
-> > wasn't supported indefinitely.
->=20
->=20
-> Dnotify is a directory-based per-fd file change notification system
-> 	  that uses signals to communicate events to user-space.  There exist
-> 	  superior alternatives, but some applications may still rely on
-> 	  dnotify.
->=20
-> (fs/notify/dnotify/Kconfig)
+> 
+> Given that the systems typically have 16GB's, the memory available for cache is usually around 13GB.
+> 
+> Dirty writeback centisecs is set to 100, as is dirty expire centisecs (we are primarily a sequential access application).
+> 
+> Dirty ratio is 50 and dirty background ratio is 10. 
 
-The fact that the new alternatives are (supposedly) superior doesn't mean t=
-he
-old are deprecated.
+That means you can have up to 8GB to push out in one go. You can hardly blame NFS for being slow in that situation.
+Why do you need to cache these writes so aggressively? Is the data being edited and rewritten multiple times in the page cache before you want to push it to disk?
+
+> We set these to try to keep the data from cache always being pushed out.
+> 
+> No oopses.   Typically it would be due to an appliance or network connection to it going down.  At which point, we want to fail over to an alternative appliance which is serving the same data.    
+> 
+> It's unfortunate that when the i/o error is detected that the other packets can't just timeout right away with the i/o error.   After all, it's unlikely to come back, and if it does, you've lost that data that was cached.  I'd almost rather have all the i/o's that were cached up to the blocked one fail so I know there was a failure of some of the writes preceeding the one that blocked and got the i/o error.    This is the price we pay for using "soft" and it is an expected price.   Otherwise, we'd use "hard”.
+
+Right, but the RPC layer does not know that these are all writes to the same file, and it can’t be expected to know why the server isn’t replying. For instance, I’ve known a single ‘unlink' RPC call to take 17 minutes to complete on a server that had a lot of cleanup to do on that file; during that time, the server was happy to take RPC requests for other files...
 
 
->=20
-> In this moment, for modern systems I'm no aware of software actually=20
-> using DNOTIFY.
+> -----Original Message-----
+> From: Trond Myklebust <trond.myklebust@primarydata.com>
+> Sender: linux-nfs-owner@vger.kernel.org
+> Date:	Thu, 6 Mar 2014 14:47:48 
+> To: <bhawley@luminex.com>
+> Cc: Andrew Martin<amartin@xes-inc.com>; Jim Rees<rees@umich.edu>; Brown Neil<neilb@suse.de>; <linux-nfs-owner@vger.kernel.org>; <linux-nfs@vger.kernel.org>
+> Subject: Re: Optimal NFS mount options to safely allow interrupts and timeouts on newer kernels
+> 
+> 
+> On Mar 6, 2014, at 14:33, Brian Hawley <bhawley@luminex.com> wrote:
+> 
+>> 
+>> We do call fsync at synchronization points.
+>> 
+>> The problem is the write() blocks forever (or for an exceptionally long time on the order of hours and days), even with timeo set to say 20 and retrans set to 2.  We see timeout messages in /var/log/messages, but the write continues to pend.   Until we start doing repeated umount -f's.  Then it returns and has an i/o error.
+> 
+> How much data are you trying to sync? ‘soft’ won’t time out the entire batch at once. It feeds each write RPC call through, and lets it time out. So if you have cached a huge amount of writes, then that can take a while. The solution is to play with the ‘dirty_background_bytes’ (and/or ‘dirty_bytes’) sysctl so that it starts writeback at an earlier time.
+> 
+> Also, what is the cause of these stalls in the first place? Is the TCP connection to the server still up? Are any Oopses present in either the client or the server syslogs?
+> 
+>> -----Original Message-----
+>> From: Trond Myklebust <trond.myklebust@primarydata.com>
+>> Date: Thu, 6 Mar 2014 14:26:24 
+>> To: <bhawley@luminex.com>
+>> Cc: Andrew Martin<amartin@xes-inc.com>; Jim Rees<rees@umich.edu>; Brown Neil<neilb@suse.de>; <linux-nfs-owner@vger.kernel.org>; <linux-nfs@vger.kernel.org>
+>> Subject: Re: Optimal NFS mount options to safely allow interrupts and timeouts on newer kernels
+>> 
+>> 
+>> On Mar 6, 2014, at 14:14, Brian Hawley <bhawley@luminex.com> wrote:
+>> 
+>>> 
+>>> Trond,
+>>> 
+>>> In this case, it isn't fsync or close that are not getting the i/o error.  It is the write().  
+>> 
+>> My point is that write() isn’t even required to return an error in the case where your NFS server is unavailable. Unless you use O_SYNC or O_DIRECT writes, then the kernel is entitled and indeed expected to cache the data in its page cache until you explicitly call fsync(). The return value of that fsync() call is what tells you whether or not your data has safely been stored to disk.
+>> 
+>>> And we check the return value of every i/o related command.
+>> 
+>>> We aren't using synchronous because the performance becomes abysmal.
+>>> 
+>>> Repeated umount -f does eventually result in the i/o error getting propagated back to the write() call.   I suspect the repeated umount -f's are working their way through blocks in the cache/queue and eventually we get back to the blocked write.    
+>>> 
+>>> As I mentioned previously, if we mount with sync or direct i/o type options, we will get the i/o error, but for performance reasons, this isn't an option.
+>> 
+>> Sure, but in that case you do need to call fsync() before the application exits. Nothing else can guarantee data stability, and that’s true for all storage.
+>> 
+>>> -----Original Message-----
+>>> From: Trond Myklebust <trond.myklebust@primarydata.com>
+>>> Date: Thu, 6 Mar 2014 14:06:24 
+>>> To: <bhawley@luminex.com>
+>>> Cc: Andrew Martin<amartin@xes-inc.com>; Jim Rees<rees@umich.edu>; Brown Neil<neilb@suse.de>; <linux-nfs-owner@vger.kernel.org>; <linux-nfs@vger.kernel.org>
+>>> Subject: Re: Optimal NFS mount options to safely allow interrupts and timeouts on newer kernels
+>>> 
+>>> 
+>>> On Mar 6, 2014, at 14:00, Brian Hawley <bhawley@luminex.com> wrote:
+>>> 
+>>>> 
+>>>> Even with small timeo and retrans, you won't get i/o errors back to the reads/writes.   That's been our experience anyway.
+>>> 
+>>> Read caching, and buffered writes mean that the I/O errors often do not occur during the read()/write() system call itself.
+>>> 
+>>> We do try to propagate I/O errors back to the application as soon as the do occur, but if that application isn’t using synchronous I/O, and it isn’t checking the return values of fsync() or close(), then there is little the kernel can do...
+>>> 
+>>>> 
+>>>> With soft, you may end up with lost data (data that had already been written to the cache but not yet to the storage).   You'd have that same issue with 'hard' too if it was your appliance that failed.  If the appliance never comes back, those blocks can never be written.
+>>>> 
+>>>> In your case though, you're not writing.  
+>>>> 
+>>>> 
+>>>> -----Original Message-----
+>>>> From: Andrew Martin <amartin@xes-inc.com>
+>>>> Date: Thu, 6 Mar 2014 10:43:42 
+>>>> To: Jim Rees<rees@umich.edu>
+>>>> Cc: <bhawley@luminex.com>; NeilBrown<neilb@suse.de>; <linux-nfs-owner@vger.kernel.org>; <linux-nfs@vger.kernel.org>
+>>>> Subject: Re: Optimal NFS mount options to safely allow interrupts and
+>>>> timeouts on newer kernels
+>>>> 
+>>>>> From: "Jim Rees" <rees@umich.edu>
+>>>>> Andrew Martin wrote:
+>>>>> 
+>>>>>> From: "Jim Rees" <rees@umich.edu>
+>>>>>> Given this is apache, I think if I were doing this I'd use
+>>>>>> ro,soft,intr,tcp
+>>>>>> and not try to write anything to nfs.
+>>>>> I was using tcp,bg,soft,intr when this problem occurred. I do not know if
+>>>>> apache was attempting to do a write or a read, but it seems that
+>>>>> tcp,soft,intr
+>>>>> was not sufficient to prevent the problem.
+>>>>> 
+>>>>> I had the impression from your original message that you were not using
+>>>>> "soft" and were asking if it's safe to use it. Are you saying that even with
+>>>>> the "soft" option the apache gets stuck forever?
+>>>> Yes, even with soft, it gets stuck forever. I had been using tcp,bg,soft,intr
+>>>> when the problem occurred (on several ocassions), so my original question was
+>>>> if it would be safe to use a small timeo and retrans values to hopefully 
+>>>> return I/O errors quickly to the application, rather than blocking forever 
+>>>> (which causes the high load and inevitable reboot). It sounds like that isn't
+>>>> safe, but perhaps there is another way to resolve this problem?
+>>>> --
+>>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>>> the body of a message to majordomo@vger.kernel.org
+>>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>>> 
+>>> 
+>>> _________________________________
+>>> Trond Myklebust
+>>> Linux NFS client maintainer, PrimaryData
+>>> trond.myklebust@primarydata.com
+>>> 
+>> 
+>> _________________________________
+>> Trond Myklebust
+>> Linux NFS client maintainer, PrimaryData
+>> trond.myklebust@primarydata.com
+>> 
+> 
+> _________________________________
+> Trond Myklebust
+> Linux NFS client maintainer, PrimaryData
+> trond.myklebust@primarydata.com
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
 
-I tend to use DNOTIFY because, much as I hate signals, it actually works wi=
-th
-python while python doesn't know about the new inotify systemcall (though I
-know there is now some plug-in thing).
-I suspect there is a lot of software that uses DNOTIFY that you don't know
-about.
+_________________________________
+Trond Myklebust
+Linux NFS client maintainer, PrimaryData
+trond.myklebust@primarydata.com
 
-
->=20
-> Actually there is choice between INOTIFY and FSNOTIFY.
-> >=20
-> > (I have no opinion on whether rpc.idmapd should be changed to use=20
-> > inotify,
-> > except based on the "if it ain't broke, don't fix it" principle).
->=20
-> Well, I'd like to propose build option which notify system include. It=20
-> seems like *notify support reside only in rpc.idmapd, so it shouldn't be=
-=20
-> hard.
-
-Feel free to post a patch.  You should make it clear how the change actually
-benefits nfs-utils.  Make sure you don't use the word "deprecated" because
-dnotify is *not* deprecated.
-
-Thanks,
-NeilBrown
-
-
->=20
-> David
-> >=20
-> > NeilBrown
-> >=20
-> >>=20
-> >> Is any plan to migrate rpc.idmapd to INOTIFY? As I looked, it's just=20
-> >> one
-> >> file.
-> >>=20
-> >> If there is some on-going porting, I'd like to test/report bugs/send
-> >> patches, otherwise I'd like to try port it.
-> >>=20
-> >> Thank you for answer
-> >> David Heidelberger (okias)
-> >> --
-> >> To unsubscribe from this list: send the line "unsubscribe linux-nfs"=20
-> >> in
-> >> the body of a message to majordomo@vger.kernel.org
-> >> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
-
---Sig_/wA2HrN2IJpr7VVOwKhqmtk5
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.22 (GNU/Linux)
-
-iQIVAwUBUx0EKznsnt1WYoG5AQJv6BAAuPv4P4ESHT1Tle1wqM8DRPFmtMqL65La
-vjubRsk+DoSRSkk+aqTitSudq/BKdGm7HrDWfjCF7eLTz0RVUBxZ2S8/7RIu60u6
-WzUlmQpGayr06b0ZzydkX86of3q6T16Tlq6oznT56wGn7RW4tVxUSe8VXiJrNCzd
-ny10btvl5gccVFjtGdSAEhGYSFa9dDew9j0WI6vrfdrwrlHORvBWQSe8TfmAbcy6
-LF6IPYc2RUC7jJl2eZ9vTW5kA3Rzd/xGplyYl3PejMvOjluLgl85I6cWkaaDr/86
-heC9cUZC9OQGcjmTkaRbETbxJtw7oWRhT2ZB1eMncsO7FqCLmn8Kc7SAOdK51f16
-ZgaCSpIA7Y6Xo0Sz2TdtlzvlfoRBjrcmOE5JxkDd/M0kuNEa/XwHETv3GlUHFIeJ
-kPYl6RaOCCSgV9tldDfKZWR3YaH/YmbsrOH2r9IgEsnEmnttw7XJ95AQNgBnzpQM
-3kZXpAeVzmQtu7xVO5lu5+fCJlLKxHXJbS9kN9KEgRE4DItz8S+ksE/5nEro42mZ
-7DsDSzKBrWASU1kR0JY4ZIV4o3i1gOtT5RMLsusBs2IfAth5vGZV2fVfER2qtfYo
-OO1yfvK36lsKJsC76mKAKP5Yq066x1Wasn0XmHbloKV0pjg8PEA85oNvt04dy/o3
-rHxsqfYri44=
-=jQ+k
------END PGP SIGNATURE-----
-
---Sig_/wA2HrN2IJpr7VVOwKhqmtk5--
