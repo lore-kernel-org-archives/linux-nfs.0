@@ -1,127 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:47444 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755068AbaCCW32 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Mar 2014 17:29:28 -0500
-Date: Mon, 3 Mar 2014 17:29:21 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Dennis Jacobfeuerborn <dennisml@conversis.de>,
-        linux-nfs@vger.kernel.org
-Subject: Re: Temporary hangs when using locking with apache+nfsv4
-Message-ID: <20140303172921.19aecbab@tlielax.poochiereds.net>
-In-Reply-To: <20140303204154.GC10659@fieldses.org>
-References: <53141788.9030209@conversis.de>
-	<20140303104315.1f949cb4@tlielax.poochiereds.net>
-	<2D6DA167-FD44-4D73-8D55-8084A8DF95BE@primarydata.com>
-	<20140303114119.30f0a48f@tlielax.poochiereds.net>
-	<20140303204154.GC10659@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Received: from mail-ig0-f173.google.com ([209.85.213.173]:59496 "EHLO
+	mail-ig0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753277AbaCFQCt convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Mar 2014 11:02:49 -0500
+Received: by mail-ig0-f173.google.com with SMTP id t19so8661682igi.0
+        for <linux-nfs@vger.kernel.org>; Thu, 06 Mar 2014 08:02:48 -0800 (PST)
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
+Subject: Re: Optimal NFS mount options to safely allow interrupts and timeouts on newer kernels
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+In-Reply-To: <17607EE5-614A-4B13-B5E7-0D1344A30C7F@oracle.com>
+Date: Thu, 6 Mar 2014 11:02:45 -0500
+Cc: Andrew Martin <amartin@xes-inc.com>, Jim Rees <rees@umich.edu>,
+        Brown Neil <neilb@suse.de>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <2A4F9722-1ED1-462E-B66B-669217957814@primarydata.com>
+References: <1696396609.119284.1394040541217.JavaMail.zimbra@xes-inc.com> <260588931.122771.1394041524167.JavaMail.zimbra@xes-inc.com> <20140306145042.6db53f60@notabene.brown> <1853694865.210849.1394082223818.JavaMail.zimbra@xes-inc.com> <20140306123438.GA21799@umich.edu> <04BE61B0-08B5-4E0C-88B6-6D93127BB64E@oracle.com> <5B1102FE-8521-4BEF-8A2B-CE17EC32777F@primarydata.com> <17607EE5-614A-4B13-B5E7-0D1344A30C7F@oracle.com>
+To: Lever Charles Edward <chuck.lever@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 3 Mar 2014 15:41:54 -0500
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-> On Mon, Mar 03, 2014 at 11:41:19AM -0500, Jeff Layton wrote:
-> > On Mon, 3 Mar 2014 10:46:37 -0500
-> > Trond Myklebust <trond.myklebust@primarydata.com> wrote:
-> > 
-> > > 
-> > > On Mar 3, 2014, at 10:43, Jeff Layton <jlayton@redhat.com> wrote:
-> > > 
-> > > > On Mon, 03 Mar 2014 06:47:52 +0100
-> > > > Dennis Jacobfeuerborn <dennisml@conversis.de> wrote:
-> > > > 
-> > > >> Hi,
-> > > >> I'm experimenting with using NFSv4 as storage for web servers and while 
-> > > >> regular file access seems to work fine as soon as I bring flock() into 
-> > > >> play things become more problematic.
-> > > >> I've create a tiny test php script that basically opens a file, locks it 
-> > > >> using flock(), writes that fact into a log file (on a local filesystem), 
-> > > >> performs a usleep(1000), writes into the log that it is about to unlock 
-> > > >> the file and finally unlocks it.
-> > > >> I invoke that script using ab with a concurrency of 20 for a few 
-> > > >> thousand requests.
-> > > >> 
-> > > > 
-> > > > Is all the activity from a single client, or are multiple clients
-> > > > contending for the lock?
-> > > > 
-> > > >> The result is that while 99% of the request respond quickly a few 
-> > > >> request seem to hang for up to 30 seconds. According to the log file 
-> > > >> they must eventually succeed since I see all expected entries and the 
-> > > >> locking seems to work as well since all entries are in the expected order.
-> > > >> 
-> > > >> Is it expected that these long delays happen? When I comment the locking 
-> > > >> function out these hangs disappear.
-> > > >> Are there some knobs to tune NFS and make it behave better in these 
-> > > >> situations?
-> > > >> 
-> > > > 
-> > > > NFSv4 locking is inherently unfair. If you're doing a blocking lock,
-> > > > then the client is expected to poll for it. So, long delays are
-> > > > possible if you just happen to be unlucky and keep missing the lock.
-> > > > 
-> > > > There's no knob to tune, but there probably is room for improvement in
-> > > > this code. In principle we could try to be more aggressive about
-> > > > getting the lock by trying to wake up one or more blocked tasks whenever
-> > > > a lock is released. You might still end up with delays, but it could
-> > > > help improve responsiveness.
-> > > 
-> > > â€¦or you could implement the NFSv4.1 lock callback functionality. That would scale better than more aggressive polling.
-> > 
-> > I had forgotten about those. I wonder what servers actually implement
-> > them? I don't think Linux' knfsd does yet.
+On Mar 6, 2014, at 10:59, Chuck Lever <chuck.lever@oracle.com> wrote:
+
 > 
-> No.  How I'd imagined it would work:
+> On Mar 6, 2014, at 10:33 AM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
 > 
-> 	- on a failed blocking lock request, insert a waiter.
-> 	- when the lock the waiter is blocking on is released or
-> 	  downgraded, apply the waiting lock as a "provisional" lock:
-> 	  add it to the i_flock list, but *don't* allow it to downgrade
-> 	  or merge with any existing locks.  Then send the callback.
-> 	- when the client resends the lock request, finish applying the
-> 	  lock.  This is when we downgrade, merge, or split as
-> 	  necessary.
-> 	- Alternatively, if some timeout passes without the client
-> 	  requesting the lock again, give up and remove the
-> 	  "provisional" lock.
+>> 
+>> On Mar 6, 2014, at 10:26, Chuck Lever <chuck.lever@oracle.com> wrote:
+>> 
+>>> 
+>>> On Mar 6, 2014, at 7:34 AM, Jim Rees <rees@umich.edu> wrote:
+>>> 
+>>>> Given this is apache, I think if I were doing this I'd use ro,soft,intr,tcp
+>>>> and not try to write anything to nfs.
+>>> 
+>>> I agree. A static web page workload should be read-mostly or read-only. The (small) corruption risk with “ro,soft" is that an interrupted read would cause the client to cache incomplete data.
+>> 
+>> What? How? If that were the case, we would have a blatant read bug. As I read the current code, _any_ error will cause the page to not be marked as up to date.
 > 
+> Agree, the design is sound. But we don’t test this use case very much, so I don’t have 100% confidence that there are no bugs.
 
-Do we really need to do that?
+Is that the royal ‘we’, or are you talking on behalf of all the QA departments and testers here? I call bullshit...
 
-RFC5667 seems to indicate that the server isn't required to hold the
-lock for the client when it sends the callback.
+_________________________________
+Trond Myklebust
+Linux NFS client maintainer, PrimaryData
+trond.myklebust@primarydata.com
 
-As a first step, we could just add the callbacks and not try to hold
-the lock for the client. That wouldn't be too hard to do -- maybe just
-add a blocking FL_ACCESS request to the i_flock list and then issue
-a CB_NOTIFY_LOCK when that returns.
-
-> Then we need to implement the client side too.  And there are some more
-> (optional) suggestions in 9.6.
-> 
-> --b.
-> 
-> > I wasn't really suggesting more aggressive polling. The timer semantics
-> > seem fine as they are, but we could short circuit it when we know that
-> > a lock on the inode has just become free.
-> > 
-> > Maybe we could share the sillyrename waitqueue, and have clients sleep
-> > on that. When we go to send the LOCKU request, we'd wake up the queue.
-> > 
-> > It's not any more fair, but could improve latency in some cases.
-> > 
-> > -- 
-> > Jeff Layton <jlayton@redhat.com>
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
-
--- 
-Jeff Layton <jlayton@redhat.com>
