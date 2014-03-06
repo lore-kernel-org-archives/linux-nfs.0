@@ -1,48 +1,98 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:34533 "EHLO fieldses.org"
+Received: from cantor2.suse.de ([195.135.220.15]:46945 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750989AbaCaUwu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 31 Mar 2014 16:52:50 -0400
-Date: Mon, 31 Mar 2014 16:52:44 -0400
-From: Dr Fields James Bruce <bfields@fieldses.org>
+	id S1751190AbaCFGDh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 6 Mar 2014 01:03:37 -0500
+Date: Thu, 6 Mar 2014 17:03:29 +1100
+From: NeilBrown <neilb@suse.de>
 To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Idan Kedar <idank@primarydata.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 2/2] nfsd: Don't return NFS4ERR_RESTOREFH for NFSv4.1+
-Message-ID: <20140331205244.GA20024@fieldses.org>
-References: <1396118619-12771-1-git-send-email-trond.myklebust@primarydata.com>
- <1396118619-12771-2-git-send-email-trond.myklebust@primarydata.com>
- <20140329193456.GE11085@fieldses.org>
- <CDBA9E4B-1C09-4952-B285-83B1580397D7@primarydata.com>
- <54B21F4C-18EC-45B9-B89C-DD05A0922DDE@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <54B21F4C-18EC-45B9-B89C-DD05A0922DDE@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 8/8] NFS: allow lockless access to access_cache
+Message-ID: <20140306170329.39e0c8c9@notabene.brown>
+In-Reply-To: <305B5E2C-33BE-4268-87A9-22FD19EF8E1A@primarydata.com>
+References: <20140305025813.27421.23871.stgit@notabene.brown>
+	<20140305030028.27421.87633.stgit@notabene.brown>
+	<305B5E2C-33BE-4268-87A9-22FD19EF8E1A@primarydata.com>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/ucNAPrk=9mTl/X1wJyg_roC"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Mar 29, 2014 at 04:01:15PM -0400, Trond Myklebust wrote:
-> 
-> On Mar 29, 2014, at 15:49, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
-> 
-> > 
-> > On Mar 29, 2014, at 15:34, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > 
-> >> On Sat, Mar 29, 2014 at 02:43:39PM -0400, Trond Myklebust wrote:
-> >>> RFC5661 obsoletes NFS4ERR_RESTOREFH in favour of NFS4ERR_NOFILEHANDLE.
-> >> 
-> >> Looks right.  Any objection to just making this nfserr_restorefh in the
-> >> 4.0 case as well?  Hard to imagine how that could cause a 4.0 client any
-> >> problem.
-> > 
-> > You mean make both cases return nfserr_nofilehandle (as per RFC5661), right? So, I agree that most clients should handle that, but the problem is that RFC3530bis does not allow it.
-> 
-> Either way, this is not a performance critical issue. Any time we get into this situation, it is because the client is utterly screwed up in the first place.
+--Sig_/ucNAPrk=9mTl/X1wJyg_roC
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: quoted-printable
 
-Yeah.  I don't really care much, applied.
+On Wed, 5 Mar 2014 10:11:02 -0500 Trond Myklebust
+<trond.myklebust@primarydata.com> wrote:
 
-> The NFS4ERR_STALE_STATEID is the critical one that really needs to be applied...
+>=20
+> On Mar 4, 2014, at 22:00, NeilBrown <neilb@suse.de> wrote:
+>=20
+> > The access cache is used during RCU-walk path lookups, so it is best
+> > to avoid locking if possible as taking a lock kills concurrency.
+> >=20
+> > The rbtree is not rcu-safe and cannot easily be made so.
+> > Instead we simply check the last (i.e. most recent) entry on the LRU
+> > list.  If this doesn't match, then we return -ECHILD and retry in
+> > lock/refcount mode.
+> >=20
+> > This requires freeing the nfs_access_entry struct with rcu, and
+> > requires using rcu access primates when adding entries to the lru, and
+> > when examining the last entry.
+> >=20
+> > Calling put_rpccred before kfree_rcu looks a bit odd, but as
+> > put_rpccred already provide rcu protection, we know that the cred will
+> > not actually be freed until the next grace period, so any concurrent
+> > access will be safe.
+> >=20
+> > This patch provides about 5% performance improvement on a stat-heavy
+> > synthetic work load with 4 threads on a 2-core CPU.
+> >=20
+>=20
+> Have you looked at converting the rb-tree into something a little more RC=
+U-friendly? Since our lookup key is just a pointer value, couldn=E2=80=99t =
+we use a radix-tree?
+>=20
 
-Already applied, thanks.
+Interesting idea.  The radix tree would be fairly sparse unless we divided
+the address by the size of the structure ... would that hit alignment issue=
+s?
+But we don't know real size of the structure (it can depend on auth scheme)
+so I doubt that would work.  So I think a radix tree would waste a lot of
+space.
 
---b.
+Skip lists might work https://lwn.net/Articles/551896/ but they don't appear
+to be in the kernel yet.
+
+I think my current approach is no worse the existing code and while there is
+room for further improvement, that should probably wait until a suitable da=
+ta
+structure is available.
+
+Thanks,
+NeilBrown
+
+--Sig_/ucNAPrk=9mTl/X1wJyg_roC
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.22 (GNU/Linux)
+
+iQIVAwUBUxgPsTnsnt1WYoG5AQIhmg//Yd5g9hz1o/SgikVArpkkVw4oure0WMTR
+yVvRHEpn3AflgMoqTIU5QAeQCpElcmkCVMnckpS6RqB/0OmcOjEEn2y2Od/YrDQ0
+d/kGRAZAEhEsTEXT0WEMVu04uDp+zKROgDywc2oBIGqdYn7c8jHU5AfrEC8Fzw64
+k87OVIiYwf8dXj1O7MxEUNeGMcZMozyErD707p48ACn91mHiTp5I/MKSsobztU/X
+xmPmcGCOmy5sFKpUs0Ed2ltsc2s4FjxsTD1CnxhTlYCbM+zRDH/JeFomYiiVMDUl
+I33WkOMBDG4n0O1krLJe65TxPVPfYaK9/5X0Qvu8Iw2r6eyFc312LcD3Uq9ztiHO
+PB0+Kt9U5y3lxA283OS9+8F1XMha5YlUOVBmY+KYr9HuhHXrzuAkHZxWeLddWheE
+u2Ab/O84P6+owTDLSI85dQvTz7dPkaiJgLNfbIWiYPgsG7HbRST5PN/+00siKTps
+ug6wLtVw+E42zcKwajKUy1Lj5TBGhY0j7LiVjoaSyRx+fggfeHO54utR9lvYC3qB
+XCztbFvP5uadxDPUkFrPiCxEnR+aNuVf8ePDFzGXrhRBvVE/LXjjlosWa/NkVbKr
+0RyboFpyC9SM0KNBVDkq1gkQnWErNSyc5VJQMa1NcFN/vxywN27hj1EuEsw/ySLs
+tSymhnEqPYQ=
+=TkYm
+-----END PGP SIGNATURE-----
+
+--Sig_/ucNAPrk=9mTl/X1wJyg_roC--
