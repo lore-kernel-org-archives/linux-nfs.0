@@ -1,216 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:47934 "EHLO fieldses.org"
+Received: from xes-mad.com ([216.165.139.218]:14253 "EHLO xes-mad.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752272AbaCWBMd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 22 Mar 2014 21:12:33 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 48/50] nfsd4: kill WRITE64
-Date: Sat, 22 Mar 2014 21:12:19 -0400
-Message-Id: <1395537141-10389-49-git-send-email-bfields@redhat.com>
-In-Reply-To: <1395537141-10389-1-git-send-email-bfields@redhat.com>
-References: <1395537141-10389-1-git-send-email-bfields@redhat.com>
+	id S1752392AbaCFQn4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 6 Mar 2014 11:43:56 -0500
+Date: Thu, 6 Mar 2014 10:43:42 -0600 (CST)
+From: Andrew Martin <amartin@xes-inc.com>
+To: Jim Rees <rees@umich.edu>
+Cc: bhawley@luminex.com, NeilBrown <neilb@suse.de>,
+        linux-nfs-owner@vger.kernel.org, linux-nfs@vger.kernel.org
+Message-ID: <1094203678.52139.1394124222574.JavaMail.zimbra@xes-inc.com>
+In-Reply-To: <20140306162208.GA18207@umich.edu>
+References: <1696396609.119284.1394040541217.JavaMail.zimbra@xes-inc.com> <260588931.122771.1394041524167.JavaMail.zimbra@xes-inc.com> <20140306145042.6db53f60@notabene.brown> <1853694865.210849.1394082223818.JavaMail.zimbra@xes-inc.com> <20140306163721.0edfb498@notabene.brown> <1709792528-1394084840-cardhu_decombobulator_blackberry.rim.net-1367662481-@b5.c4.bise6.blackberry> <764210708.28409.1394119821635.JavaMail.zimbra@xes-inc.com> <20140306162208.GA18207@umich.edu>
+Subject: Re: Optimal NFS mount options to safely allow interrupts and
+ timeouts on newer kernels
+MIME-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4xdr.c | 52 ++++++++++++++++++++++++----------------------------
- 1 file changed, 24 insertions(+), 28 deletions(-)
-
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 7a827c1..6afa0a1 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1700,10 +1700,6 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
- 	DECODE_TAIL;
- }
- 
--#define WRITE64(n)               do {				\
--	*p++ = htonl((u32)((n) >> 32));				\
--	*p++ = htonl((u32)(n));					\
--} while (0)
- #define WRITEMEM(ptr,nbytes)     do { if (nbytes > 0) {		\
- 	*(p + XDR_QUADLEN(nbytes) -1) = 0;                      \
- 	memcpy(p, ptr, nbytes);					\
-@@ -2208,7 +2204,7 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp, struct svc_export
- 		p = xdr_reserve_space(xdr, 8);
- 		if (!p)
- 			goto out_resource;
--		WRITE64(stat.size);
-+		p = xdr_encode_hyper(p, stat.size);
- 	}
- 	if (bmval0 & FATTR4_WORD0_LINK_SUPPORT) {
- 		p = xdr_reserve_space(xdr, 4);
-@@ -2233,12 +2229,12 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp, struct svc_export
- 		if (!p)
- 			goto out_resource;
- 		if (exp->ex_fslocs.migrated) {
--			WRITE64(NFS4_REFERRAL_FSID_MAJOR);
--			WRITE64(NFS4_REFERRAL_FSID_MINOR);
-+			p = xdr_encode_hyper(p, NFS4_REFERRAL_FSID_MAJOR);
-+			p = xdr_encode_hyper(p, NFS4_REFERRAL_FSID_MINOR);
- 		} else switch(fsid_source(fhp)) {
- 		case FSIDSOURCE_FSID:
--			WRITE64((u64)exp->ex_fsid);
--			WRITE64((u64)0);
-+			p = xdr_encode_hyper(p, (u64)exp->ex_fsid);
-+			p = xdr_encode_hyper(p, (u64)0);
- 			break;
- 		case FSIDSOURCE_DEV:
- 			*p++ = cpu_to_be32(0);
-@@ -2340,25 +2336,25 @@ out_acl:
- 		p = xdr_reserve_space(xdr, 8);
- 		if (!p)
- 			goto out_resource;
--		WRITE64(stat.ino);
-+		p = xdr_encode_hyper(p, stat.ino);
- 	}
- 	if (bmval0 & FATTR4_WORD0_FILES_AVAIL) {
- 		p = xdr_reserve_space(xdr, 8);
- 		if (!p)
- 			goto out_resource;
--		WRITE64((u64) statfs.f_ffree);
-+		p = xdr_encode_hyper(p, (u64) statfs.f_ffree);
- 	}
- 	if (bmval0 & FATTR4_WORD0_FILES_FREE) {
- 		p = xdr_reserve_space(xdr, 8);
- 		if (!p)
- 			goto out_resource;
--		WRITE64((u64) statfs.f_ffree);
-+		p = xdr_encode_hyper(p, (u64) statfs.f_ffree);
- 	}
- 	if (bmval0 & FATTR4_WORD0_FILES_TOTAL) {
- 		p = xdr_reserve_space(xdr, 8);
- 		if (!p)
- 			goto out_resource;
--		WRITE64((u64) statfs.f_files);
-+		p = xdr_encode_hyper(p, (u64) statfs.f_files);
- 	}
- 	if (bmval0 & FATTR4_WORD0_FS_LOCATIONS) {
- 		status = nfsd4_encode_fs_locations(xdr, rqstp, exp);
-@@ -2375,7 +2371,7 @@ out_acl:
- 		p = xdr_reserve_space(xdr, 8);
- 		if (!p)
- 			goto out_resource;
--		WRITE64(exp->ex_path.mnt->mnt_sb->s_maxbytes);
-+		p = xdr_encode_hyper(p, exp->ex_path.mnt->mnt_sb->s_maxbytes);
- 	}
- 	if (bmval0 & FATTR4_WORD0_MAXLINK) {
- 		p = xdr_reserve_space(xdr, 4);
-@@ -2393,13 +2389,13 @@ out_acl:
- 		p = xdr_reserve_space(xdr, 8);
- 		if (!p)
- 			goto out_resource;
--		WRITE64((u64) svc_max_payload(rqstp));
-+		p = xdr_encode_hyper(p, (u64) svc_max_payload(rqstp));
- 	}
- 	if (bmval0 & FATTR4_WORD0_MAXWRITE) {
- 		p = xdr_reserve_space(xdr, 8);
- 		if (!p)
- 			goto out_resource;
--		WRITE64((u64) svc_max_payload(rqstp));
-+		p = xdr_encode_hyper(p, (u64) svc_max_payload(rqstp));
- 	}
- 	if (bmval1 & FATTR4_WORD1_MODE) {
- 		p = xdr_reserve_space(xdr, 4);
-@@ -2441,34 +2437,34 @@ out_acl:
- 		if (!p)
- 			goto out_resource;
- 		dummy64 = (u64)statfs.f_bavail * (u64)statfs.f_bsize;
--		WRITE64(dummy64);
-+		p = xdr_encode_hyper(p, dummy64);
- 	}
- 	if (bmval1 & FATTR4_WORD1_SPACE_FREE) {
- 		p = xdr_reserve_space(xdr, 8);
- 		if (!p)
- 			goto out_resource;
- 		dummy64 = (u64)statfs.f_bfree * (u64)statfs.f_bsize;
--		WRITE64(dummy64);
-+		p = xdr_encode_hyper(p, dummy64);
- 	}
- 	if (bmval1 & FATTR4_WORD1_SPACE_TOTAL) {
- 		p = xdr_reserve_space(xdr, 8);
- 		if (!p)
- 			goto out_resource;
- 		dummy64 = (u64)statfs.f_blocks * (u64)statfs.f_bsize;
--		WRITE64(dummy64);
-+		p = xdr_encode_hyper(p, dummy64);
- 	}
- 	if (bmval1 & FATTR4_WORD1_SPACE_USED) {
- 		p = xdr_reserve_space(xdr, 8);
- 		if (!p)
- 			goto out_resource;
- 		dummy64 = (u64)stat.blocks << 9;
--		WRITE64(dummy64);
-+		p = xdr_encode_hyper(p, dummy64);
- 	}
- 	if (bmval1 & FATTR4_WORD1_TIME_ACCESS) {
- 		p = xdr_reserve_space(xdr, 12);
- 		if (!p)
- 			goto out_resource;
--		WRITE64((s64)stat.atime.tv_sec);
-+		p = xdr_encode_hyper(p, (s64)stat.atime.tv_sec);
- 		*p++ = cpu_to_be32(stat.atime.tv_nsec);
- 	}
- 	if (bmval1 & FATTR4_WORD1_TIME_DELTA) {
-@@ -2483,14 +2479,14 @@ out_acl:
- 		p = xdr_reserve_space(xdr, 12);
- 		if (!p)
- 			goto out_resource;
--		WRITE64((s64)stat.ctime.tv_sec);
-+		p = xdr_encode_hyper(p, (s64)stat.ctime.tv_sec);
- 		*p++ = cpu_to_be32(stat.ctime.tv_nsec);
- 	}
- 	if (bmval1 & FATTR4_WORD1_TIME_MODIFY) {
- 		p = xdr_reserve_space(xdr, 12);
- 		if (!p)
- 			goto out_resource;
--		WRITE64((s64)stat.mtime.tv_sec);
-+		p = xdr_encode_hyper(p, (s64)stat.mtime.tv_sec);
- 		*p++ = cpu_to_be32(stat.mtime.tv_nsec);
- 	}
- 	if (bmval1 & FATTR4_WORD1_MOUNTED_ON_FILEID) {
-@@ -2504,7 +2500,7 @@ out_acl:
- 		if (ignore_crossmnt == 0 &&
- 		    dentry == exp->ex_path.mnt->mnt_root)
- 			get_parent_attributes(exp, &stat);
--		WRITE64(stat.ino);
-+		p = xdr_encode_hyper(p, stat.ino);
- 	}
- 	if (bmval2 & FATTR4_WORD2_SECURITY_LABEL) {
- 		status = nfsd4_encode_security_label(xdr, rqstp, context, contextlen);
-@@ -2889,15 +2885,15 @@ again:
- 		}
- 		return nfserr_resource;
- 	}
--	WRITE64(ld->ld_start);
--	WRITE64(ld->ld_length);
-+	p = xdr_encode_hyper(p, ld->ld_start);
-+	p = xdr_encode_hyper(p, ld->ld_length);
- 	*p++ = cpu_to_be32(ld->ld_type);
- 	if (conf->len) {
- 		WRITEMEM(&ld->ld_clientid, 8);
- 		*p++ = cpu_to_be32(conf->len);
- 		WRITEMEM(conf->data, conf->len);
- 	}  else {  /* non - nfsv4 lock in conflict, no clientid nor owner */
--		WRITE64((u64)0); /* clientid */
-+		p = xdr_encode_hyper(p, (u64)0); /* clientid */
- 		*p++ = cpu_to_be32(0); /* length of owner name */
- 	}
- 	return nfserr_denied;
-@@ -3640,7 +3636,7 @@ nfsd4_encode_exchange_id(struct nfsd4_compoundres *resp, __be32 nfserr,
- 		return nfserr_resource;
- 
- 	/* The server_owner struct */
--	WRITE64(minor_id);      /* Minor id */
-+	p = xdr_encode_hyper(p, minor_id);      /* Minor id */
- 	/* major id */
- 	*p++ = cpu_to_be32(major_id_sz);
- 	WRITEMEM(major_id, major_id_sz);
--- 
-1.8.5.3
-
+> From: "Jim Rees" <rees@umich.edu>
+> Andrew Martin wrote:
+> 
+>   > From: "Jim Rees" <rees@umich.edu>
+>   > Given this is apache, I think if I were doing this I'd use
+>   > ro,soft,intr,tcp
+>   > and not try to write anything to nfs.
+>   I was using tcp,bg,soft,intr when this problem occurred. I do not know if
+>   apache was attempting to do a write or a read, but it seems that
+>   tcp,soft,intr
+>   was not sufficient to prevent the problem.
+> 
+> I had the impression from your original message that you were not using
+> "soft" and were asking if it's safe to use it. Are you saying that even with
+> the "soft" option the apache gets stuck forever?
+Yes, even with soft, it gets stuck forever. I had been using tcp,bg,soft,intr
+when the problem occurred (on several ocassions), so my original question was
+if it would be safe to use a small timeo and retrans values to hopefully 
+return I/O errors quickly to the application, rather than blocking forever 
+(which causes the high load and inevitable reboot). It sounds like that isn't
+safe, but perhaps there is another way to resolve this problem?
