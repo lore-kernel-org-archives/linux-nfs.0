@@ -1,66 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:38013 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757725AbaCRSrY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 18 Mar 2014 14:47:24 -0400
-Message-ID: <532894B9.6090606@RedHat.com>
-Date: Tue, 18 Mar 2014 14:47:21 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/2] SUNRPC: Ensure that call_connect times out correctly
-References: <1395081645-11906-1-git-send-email-trond.myklebust@primarydata.com> <53286A9D.2020007@RedHat.com> <362845B0-35A4-4DDF-96F6-42582D66334B@primarydata.com> <53288146.4010601@RedHat.com>
-In-Reply-To: <53288146.4010601@RedHat.com>
+Received: from mail-ie0-f175.google.com ([209.85.223.175]:40258 "EHLO
+	mail-ie0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752337AbaCFPdK convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Mar 2014 10:33:10 -0500
+Received: by mail-ie0-f175.google.com with SMTP id to1so2849187ieb.34
+        for <linux-nfs@vger.kernel.org>; Thu, 06 Mar 2014 07:33:09 -0800 (PST)
 Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
+Subject: Re: Optimal NFS mount options to safely allow interrupts and timeouts on newer kernels
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+In-Reply-To: <04BE61B0-08B5-4E0C-88B6-6D93127BB64E@oracle.com>
+Date: Thu, 6 Mar 2014 10:33:06 -0500
+Cc: Andrew Martin <amartin@xes-inc.com>, Jim Rees <rees@umich.edu>,
+        Brown Neil <neilb@suse.de>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <5B1102FE-8521-4BEF-8A2B-CE17EC32777F@primarydata.com>
+References: <1696396609.119284.1394040541217.JavaMail.zimbra@xes-inc.com> <260588931.122771.1394041524167.JavaMail.zimbra@xes-inc.com> <20140306145042.6db53f60@notabene.brown> <1853694865.210849.1394082223818.JavaMail.zimbra@xes-inc.com> <20140306123438.GA21799@umich.edu> <04BE61B0-08B5-4E0C-88B6-6D93127BB64E@oracle.com>
+To: Lever Charles Edward <chuck.lever@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 03/18/2014 01:24 PM, Steve Dickson wrote:
->> The trunking code's handling of ETIMEDOUT has been there since Linux 3.7 
->> > and hasn’t changed, so I really don’t see how it can have worked at one time before 3.12.
-> Maybe it been broken that long.... :-) 
-> 
-> But here is the obvious loop that stop that hangs a mount forever:
-> 
->  #8 [ffff88007a22b7e8] rpc_call_sync at ffffffffa0220210 [sunrpc]
->  #9 [ffff88007a22b840] nfs4_proc_setclientid at ffffffffa0505c49 [nfsv4]
-> #10 [ffff88007a22b988] nfs40_discover_server_trunking at ffffffffa0514489 [nfsv4]
-> #11 [ffff88007a22b9d0] nfs4_discover_server_trunking at ffffffffa0516f2d [nfsv4]
-> #12 [ffff88007a22ba28] nfs4_init_client at ffffffffa051e9a4 [nfsv4]
-> #13 [ffff88007a22bb20] nfs_get_client at ffffffffa04bd6ba [nfs]
-> #14 [ffff88007a22bb80] nfs4_set_client at ffffffffa051dfb0 [nfsv4]
-> #15 [ffff88007a22bc00] nfs4_create_server at ffffffffa051f4ce [nfsv4]
-> #16 [ffff88007a22bc88] nfs4_remote_mount at ffffffffa051790e [nfsv4]
-> #17 [ffff88007a22bcb0] mount_fs at ffffffff811b3dd9
-> 
-> The SETCLIENT times out 
->    NFS call  setclientid auth=UNIX, 'Linux NFSv4.0 10.19.60.77/10.19.60.33 tcp'
->    NFS reply setclientid: -110
-> 
-> The nfs4_discover_server_trunking() retries 
->    NFS: nfs4_discover_server_trunking after status -110, retrying
-> 
-> The happens when there server is down and so the connections 
-> fail with ECONNREFUSED:
->    RPC:     2 call_connect_status (status -111)
-> 
-> The mount system call never times out in which it did in the past. 
-> 
-> So who do I get the system call to time out again?
-I'm thinking the problem here is the ECONNREFUSED is never
-being passed up to the trunking code. The major timeout 
-in call_timeout() turns the ECONNREFUSED into a ETIMEDOUT
-So the trunking code never know the server is refusing
-the connection... 
 
-Why are ECONNREFUSED masked into ETIMEDOUTs? Should the 
-ECONNREFUSED passed up?
-
-steved.
-
-
-
+On Mar 6, 2014, at 10:26, Chuck Lever <chuck.lever@oracle.com> wrote:
 
 > 
-> steved.
+> On Mar 6, 2014, at 7:34 AM, Jim Rees <rees@umich.edu> wrote:
+> 
+>> Given this is apache, I think if I were doing this I'd use ro,soft,intr,tcp
+>> and not try to write anything to nfs.
+> 
+> I agree. A static web page workload should be read-mostly or read-only. The (small) corruption risk with “ro,soft" is that an interrupted read would cause the client to cache incomplete data.
+
+What? How? If that were the case, we would have a blatant read bug. As I read the current code, _any_ error will cause the page to not be marked as up to date.
+
+_________________________________
+Trond Myklebust
+Linux NFS client maintainer, PrimaryData
+trond.myklebust@primarydata.com
+
