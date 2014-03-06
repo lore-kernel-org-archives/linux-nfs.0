@@ -1,183 +1,131 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:47863 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752119AbaCWBM1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 22 Mar 2014 21:12:27 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 13/50] nfsd4: move nfsd4_operation to xdr4.h
-Date: Sat, 22 Mar 2014 21:11:44 -0400
-Message-Id: <1395537141-10389-14-git-send-email-bfields@redhat.com>
-In-Reply-To: <1395537141-10389-1-git-send-email-bfields@redhat.com>
-References: <1395537141-10389-1-git-send-email-bfields@redhat.com>
+Received: from mail-ie0-f177.google.com ([209.85.223.177]:47161 "EHLO
+	mail-ie0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751571AbaCFTdK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Mar 2014 14:33:10 -0500
+Message-ID: <1494458922-1394134385-cardhu_decombobulator_blackberry.rim.net-1425882517-@b5.c4.bise6.blackberry>
+Reply-To: bhawley@luminex.com
+References: <1696396609.119284.1394040541217.JavaMail.zimbra@xes-inc.com>
+  <260588931.122771.1394041524167.JavaMail.zimbra@xes-inc.com>
+  <20140306145042.6db53f60@notabene.brown>
+  <1853694865.210849.1394082223818.JavaMail.zimbra@xes-inc.com>
+  <20140306163721.0edfb498@notabene.brown>
+  <1709792528-1394084840-cardhu_decombobulator_blackberry.rim.net-1367662481-@b5.c4.bise6.blackberry>
+  <764210708.28409.1394119821635.JavaMail.zimbra@xes-inc.com>
+  <20140306162208.GA18207@umich.edu>
+  <1094203678.52139.1394124222574.JavaMail.zimbra@xes-inc.com>
+  <1028951407-1394132418-cardhu_decombobulator_blackberry.rim.net-599891631-@b5.c4.bise6.blackberry>
+  <E22EB8B3-DE5E-4D39-8FFD-BA3F02276EFE@primarydata.com>
+  <745494581-1394133289-cardhu_decombobulator_blackberry.rim.net-1805734207-@b5.c4.bise6.blackberry>
+  <84CFBA83-C2FE-4AA1-92D7-C37EDFC75117@primarydata.com>
+In-Reply-To: <84CFBA83-C2FE-4AA1-92D7-C37EDFC75117@primarydata.com>
+Subject: Re: Optimal NFS mount options to safely allow interrupts and timeouts on newer kernels
+To: "Trond Myklebust" <trond.myklebust@primarydata.com>,
+        "Brian Hawley" <bhawley@luminex.com>
+Cc: "Andrew Martin" <amartin@xes-inc.com>, "Jim Rees" <rees@umich.edu>,
+        "Brown Neil" <neilb@suse.de>, linux-nfs-owner@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+From: "Brian Hawley" <bhawley@luminex.com>
+Date: Thu, 6 Mar 2014 19:33:05 +0000
+Content-Type: text/plain; charset="Windows-1252"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
-
-We want to share some of these definitions.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4proc.c | 58 ++++--------------------------------------------------
- fs/nfsd/xdr4.h     | 53 +++++++++++++++++++++++++++++++++++++++++++++++++
- 2 files changed, 57 insertions(+), 54 deletions(-)
-
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 849b0eb..afa7ff7 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1134,58 +1134,8 @@ static inline void nfsd4_increment_op_stats(u32 opnum)
- 		nfsdstats.nfs4_opcount[opnum]++;
- }
- 
--typedef __be32(*nfsd4op_func)(struct svc_rqst *, struct nfsd4_compound_state *,
--			      void *);
--typedef u32(*nfsd4op_rsize)(struct svc_rqst *, struct nfsd4_op *op);
--typedef void(*stateid_setter)(struct nfsd4_compound_state *, void *);
--typedef void(*stateid_getter)(struct nfsd4_compound_state *, void *);
--
--enum nfsd4_op_flags {
--	ALLOWED_WITHOUT_FH = 1 << 0,	/* No current filehandle required */
--	ALLOWED_ON_ABSENT_FS = 1 << 1,	/* ops processed on absent fs */
--	ALLOWED_AS_FIRST_OP = 1 << 2,	/* ops reqired first in compound */
--	/* For rfc 5661 section 2.6.3.1.1: */
--	OP_HANDLES_WRONGSEC = 1 << 3,
--	OP_IS_PUTFH_LIKE = 1 << 4,
--	/*
--	 * These are the ops whose result size we estimate before
--	 * encoding, to avoid performing an op then not being able to
--	 * respond or cache a response.  This includes writes and setattrs
--	 * as well as the operations usually called "nonidempotent":
--	 */
--	OP_MODIFIES_SOMETHING = 1 << 5,
--	/*
--	 * Cache compounds containing these ops in the xid-based drc:
--	 * We use the DRC for compounds containing non-idempotent
--	 * operations, *except* those that are 4.1-specific (since
--	 * sessions provide their own EOS), and except for stateful
--	 * operations other than setclientid and setclientid_confirm
--	 * (since sequence numbers provide EOS for open, lock, etc in
--	 * the v4.0 case).
--	 */
--	OP_CACHEME = 1 << 6,
--	/*
--	 * These are ops which clear current state id.
--	 */
--	OP_CLEAR_STATEID = 1 << 7,
--};
--
--struct nfsd4_operation {
--	nfsd4op_func op_func;
--	u32 op_flags;
--	char *op_name;
--	/* Try to get response size before operation */
--	nfsd4op_rsize op_rsize_bop;
--	stateid_getter op_get_currentstateid;
--	stateid_setter op_set_currentstateid;
--};
--
- static struct nfsd4_operation nfsd4_ops[];
- 
--#ifdef NFSD_DEBUG
--static const char *nfsd4_op_name(unsigned opnum);
--#endif
--
- /*
-  * Enforce NFSv4.1 COMPOUND ordering rules:
-  *
-@@ -1219,7 +1169,7 @@ static __be32 nfs41_check_op_ordering(struct nfsd4_compoundargs *args)
- 	return nfs_ok;
- }
- 
--static inline struct nfsd4_operation *OPDESC(struct nfsd4_op *op)
-+struct nfsd4_operation *OPDESC(struct nfsd4_op *op)
- {
- 	return &nfsd4_ops[op->opnum];
- }
-@@ -1868,14 +1818,14 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 	},
- };
- 
--#ifdef NFSD_DEBUG
--static const char *nfsd4_op_name(unsigned opnum)
-+const char *nfsd4_op_name(unsigned opnum)
- {
-+#ifdef NFSD_DEBUG
- 	if (opnum < ARRAY_SIZE(nfsd4_ops))
- 		return nfsd4_ops[opnum].op_name;
-+#endif
- 	return "unknown_operation";
- }
--#endif
- 
- #define nfsd4_voidres			nfsd4_voidargs
- struct nfsd4_voidargs { int dummy; };
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index f62a055..fa3a589 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -536,6 +536,59 @@ static inline bool nfsd4_last_compound_op(struct svc_rqst *rqstp)
- 	return argp->opcnt == resp->opcnt;
- }
- 
-+
-+
-+typedef __be32(*nfsd4op_func)(struct svc_rqst *, struct nfsd4_compound_state *,
-+			      void *);
-+typedef u32(*nfsd4op_rsize)(struct svc_rqst *, struct nfsd4_op *op);
-+typedef void(*stateid_setter)(struct nfsd4_compound_state *, void *);
-+typedef void(*stateid_getter)(struct nfsd4_compound_state *, void *);
-+
-+enum nfsd4_op_flags {
-+	ALLOWED_WITHOUT_FH = 1 << 0,	/* No current filehandle required */
-+	ALLOWED_ON_ABSENT_FS = 1 << 1,	/* ops processed on absent fs */
-+	ALLOWED_AS_FIRST_OP = 1 << 2,	/* ops reqired first in compound */
-+	/* For rfc 5661 section 2.6.3.1.1: */
-+	OP_HANDLES_WRONGSEC = 1 << 3,
-+	OP_IS_PUTFH_LIKE = 1 << 4,
-+	/*
-+	 * These are the ops whose result size we estimate before
-+	 * encoding, to avoid performing an op then not being able to
-+	 * respond or cache a response.  This includes writes and setattrs
-+	 * as well as the operations usually called "nonidempotent":
-+	 */
-+	OP_MODIFIES_SOMETHING = 1 << 5,
-+	/*
-+	 * Cache compounds containing these ops in the xid-based drc:
-+	 * We use the DRC for compounds containing non-idempotent
-+	 * operations, *except* those that are 4.1-specific (since
-+	 * sessions provide their own EOS), and except for stateful
-+	 * operations other than setclientid and setclientid_confirm
-+	 * (since sequence numbers provide EOS for open, lock, etc in
-+	 * the v4.0 case).
-+	 */
-+	OP_CACHEME = 1 << 6,
-+	/*
-+	 * These are ops which clear current state id.
-+	 */
-+	OP_CLEAR_STATEID = 1 << 7,
-+};
-+
-+struct nfsd4_operation {
-+	nfsd4op_func op_func;
-+	u32 op_flags;
-+	char *op_name;
-+	/* Try to get response size before
-+	 * operation */
-+	nfsd4op_rsize op_rsize_bop;
-+	stateid_getter op_get_currentstateid;
-+	stateid_setter op_set_currentstateid;
-+};
-+
-+struct nfsd4_operation *OPDESC(struct nfsd4_op *op);
-+
-+const char *nfsd4_op_name(unsigned opnum);
-+
- #define NFS4_SVC_XDRSIZE		sizeof(struct nfsd4_compoundargs)
- 
- static inline void
--- 
-1.8.5.3
+DQpXZSBkbyBjYWxsIGZzeW5jIGF0IHN5bmNocm9uaXphdGlvbiBwb2ludHMuDQoNClRoZSBwcm9i
+bGVtIGlzIHRoZSB3cml0ZSgpIGJsb2NrcyBmb3JldmVyIChvciBmb3IgYW4gZXhjZXB0aW9uYWxs
+eSBsb25nIHRpbWUgb24gdGhlIG9yZGVyIG9mIGhvdXJzIGFuZCBkYXlzKSwgZXZlbiB3aXRoIHRp
+bWVvIHNldCB0byBzYXkgMjAgYW5kIHJldHJhbnMgc2V0IHRvIDIuICBXZSBzZWUgdGltZW91dCBt
+ZXNzYWdlcyBpbiAvdmFyL2xvZy9tZXNzYWdlcywgYnV0IHRoZSB3cml0ZSBjb250aW51ZXMgdG8g
+cGVuZC4gICBVbnRpbCB3ZSBzdGFydCBkb2luZyByZXBlYXRlZCB1bW91bnQgLWYncy4gIFRoZW4g
+aXQgcmV0dXJucyBhbmQgaGFzIGFuIGkvbyBlcnJvci4NCg0KDQotLS0tLU9yaWdpbmFsIE1lc3Nh
+Z2UtLS0tLQ0KRnJvbTogVHJvbmQgTXlrbGVidXN0IDx0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRh
+dGEuY29tPg0KRGF0ZTogVGh1LCA2IE1hciAyMDE0IDE0OjI2OjI0IA0KVG86IDxiaGF3bGV5QGx1
+bWluZXguY29tPg0KQ2M6IEFuZHJldyBNYXJ0aW48YW1hcnRpbkB4ZXMtaW5jLmNvbT47IEppbSBS
+ZWVzPHJlZXNAdW1pY2guZWR1PjsgQnJvd24gTmVpbDxuZWlsYkBzdXNlLmRlPjsgPGxpbnV4LW5m
+cy1vd25lckB2Z2VyLmtlcm5lbC5vcmc+OyA8bGludXgtbmZzQHZnZXIua2VybmVsLm9yZz4NClN1
+YmplY3Q6IFJlOiBPcHRpbWFsIE5GUyBtb3VudCBvcHRpb25zIHRvIHNhZmVseSBhbGxvdyBpbnRl
+cnJ1cHRzIGFuZCB0aW1lb3V0cyBvbiBuZXdlciBrZXJuZWxzDQoNCg0KT24gTWFyIDYsIDIwMTQs
+IGF0IDE0OjE0LCBCcmlhbiBIYXdsZXkgPGJoYXdsZXlAbHVtaW5leC5jb20+IHdyb3RlOg0KDQo+
+IA0KPiBUcm9uZCwNCj4gDQo+IEluIHRoaXMgY2FzZSwgaXQgaXNuJ3QgZnN5bmMgb3IgY2xvc2Ug
+dGhhdCBhcmUgbm90IGdldHRpbmcgdGhlIGkvbyBlcnJvci4gIEl0IGlzIHRoZSB3cml0ZSgpLiAg
+DQoNCk15IHBvaW50IGlzIHRoYXQgd3JpdGUoKSBpc26SdCBldmVuIHJlcXVpcmVkIHRvIHJldHVy
+biBhbiBlcnJvciBpbiB0aGUgY2FzZSB3aGVyZSB5b3VyIE5GUyBzZXJ2ZXIgaXMgdW5hdmFpbGFi
+bGUuIFVubGVzcyB5b3UgdXNlIE9fU1lOQyBvciBPX0RJUkVDVCB3cml0ZXMsIHRoZW4gdGhlIGtl
+cm5lbCBpcyBlbnRpdGxlZCBhbmQgaW5kZWVkIGV4cGVjdGVkIHRvIGNhY2hlIHRoZSBkYXRhIGlu
+IGl0cyBwYWdlIGNhY2hlIHVudGlsIHlvdSBleHBsaWNpdGx5IGNhbGwgZnN5bmMoKS4gVGhlIHJl
+dHVybiB2YWx1ZSBvZiB0aGF0IGZzeW5jKCkgY2FsbCBpcyB3aGF0IHRlbGxzIHlvdSB3aGV0aGVy
+IG9yIG5vdCB5b3VyIGRhdGEgaGFzIHNhZmVseSBiZWVuIHN0b3JlZCB0byBkaXNrLg0KDQo+IEFu
+ZCB3ZSBjaGVjayB0aGUgcmV0dXJuIHZhbHVlIG9mIGV2ZXJ5IGkvbyByZWxhdGVkIGNvbW1hbmQu
+DQoNCj4gV2UgYXJlbid0IHVzaW5nIHN5bmNocm9ub3VzIGJlY2F1c2UgdGhlIHBlcmZvcm1hbmNl
+IGJlY29tZXMgYWJ5c21hbC4NCj4gDQo+IFJlcGVhdGVkIHVtb3VudCAtZiBkb2VzIGV2ZW50dWFs
+bHkgcmVzdWx0IGluIHRoZSBpL28gZXJyb3IgZ2V0dGluZyBwcm9wYWdhdGVkIGJhY2sgdG8gdGhl
+IHdyaXRlKCkgY2FsbC4gICBJIHN1c3BlY3QgdGhlIHJlcGVhdGVkIHVtb3VudCAtZidzIGFyZSB3
+b3JraW5nIHRoZWlyIHdheSB0aHJvdWdoIGJsb2NrcyBpbiB0aGUgY2FjaGUvcXVldWUgYW5kIGV2
+ZW50dWFsbHkgd2UgZ2V0IGJhY2sgdG8gdGhlIGJsb2NrZWQgd3JpdGUuICAgIA0KPiANCj4gQXMg
+SSBtZW50aW9uZWQgcHJldmlvdXNseSwgaWYgd2UgbW91bnQgd2l0aCBzeW5jIG9yIGRpcmVjdCBp
+L28gdHlwZSBvcHRpb25zLCB3ZSB3aWxsIGdldCB0aGUgaS9vIGVycm9yLCBidXQgZm9yIHBlcmZv
+cm1hbmNlIHJlYXNvbnMsIHRoaXMgaXNuJ3QgYW4gb3B0aW9uLg0KDQpTdXJlLCBidXQgaW4gdGhh
+dCBjYXNlIHlvdSBkbyBuZWVkIHRvIGNhbGwgZnN5bmMoKSBiZWZvcmUgdGhlIGFwcGxpY2F0aW9u
+IGV4aXRzLiBOb3RoaW5nIGVsc2UgY2FuIGd1YXJhbnRlZSBkYXRhIHN0YWJpbGl0eSwgYW5kIHRo
+YXSScyB0cnVlIGZvciBhbGwgc3RvcmFnZS4NCg0KPiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0t
+LQ0KPiBGcm9tOiBUcm9uZCBNeWtsZWJ1c3QgPHRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5j
+b20+DQo+IERhdGU6IFRodSwgNiBNYXIgMjAxNCAxNDowNjoyNCANCj4gVG86IDxiaGF3bGV5QGx1
+bWluZXguY29tPg0KPiBDYzogQW5kcmV3IE1hcnRpbjxhbWFydGluQHhlcy1pbmMuY29tPjsgSmlt
+IFJlZXM8cmVlc0B1bWljaC5lZHU+OyBCcm93biBOZWlsPG5laWxiQHN1c2UuZGU+OyA8bGludXgt
+bmZzLW93bmVyQHZnZXIua2VybmVsLm9yZz47IDxsaW51eC1uZnNAdmdlci5rZXJuZWwub3JnPg0K
+PiBTdWJqZWN0OiBSZTogT3B0aW1hbCBORlMgbW91bnQgb3B0aW9ucyB0byBzYWZlbHkgYWxsb3cg
+aW50ZXJydXB0cyBhbmQgdGltZW91dHMgb24gbmV3ZXIga2VybmVscw0KPiANCj4gDQo+IE9uIE1h
+ciA2LCAyMDE0LCBhdCAxNDowMCwgQnJpYW4gSGF3bGV5IDxiaGF3bGV5QGx1bWluZXguY29tPiB3
+cm90ZToNCj4gDQo+PiANCj4+IEV2ZW4gd2l0aCBzbWFsbCB0aW1lbyBhbmQgcmV0cmFucywgeW91
+IHdvbid0IGdldCBpL28gZXJyb3JzIGJhY2sgdG8gdGhlIHJlYWRzL3dyaXRlcy4gICBUaGF0J3Mg
+YmVlbiBvdXIgZXhwZXJpZW5jZSBhbnl3YXkuDQo+IA0KPiBSZWFkIGNhY2hpbmcsIGFuZCBidWZm
+ZXJlZCB3cml0ZXMgbWVhbiB0aGF0IHRoZSBJL08gZXJyb3JzIG9mdGVuIGRvIG5vdCBvY2N1ciBk
+dXJpbmcgdGhlIHJlYWQoKS93cml0ZSgpIHN5c3RlbSBjYWxsIGl0c2VsZi4NCj4gDQo+IFdlIGRv
+IHRyeSB0byBwcm9wYWdhdGUgSS9PIGVycm9ycyBiYWNrIHRvIHRoZSBhcHBsaWNhdGlvbiBhcyBz
+b29uIGFzIHRoZSBkbyBvY2N1ciwgYnV0IGlmIHRoYXQgYXBwbGljYXRpb24gaXNuknQgdXNpbmcg
+c3luY2hyb25vdXMgSS9PLCBhbmQgaXQgaXNuknQgY2hlY2tpbmcgdGhlIHJldHVybiB2YWx1ZXMg
+b2YgZnN5bmMoKSBvciBjbG9zZSgpLCB0aGVuIHRoZXJlIGlzIGxpdHRsZSB0aGUga2VybmVsIGNh
+biBkby4uLg0KPiANCj4+IA0KPj4gV2l0aCBzb2Z0LCB5b3UgbWF5IGVuZCB1cCB3aXRoIGxvc3Qg
+ZGF0YSAoZGF0YSB0aGF0IGhhZCBhbHJlYWR5IGJlZW4gd3JpdHRlbiB0byB0aGUgY2FjaGUgYnV0
+IG5vdCB5ZXQgdG8gdGhlIHN0b3JhZ2UpLiAgIFlvdSdkIGhhdmUgdGhhdCBzYW1lIGlzc3VlIHdp
+dGggJ2hhcmQnIHRvbyBpZiBpdCB3YXMgeW91ciBhcHBsaWFuY2UgdGhhdCBmYWlsZWQuICBJZiB0
+aGUgYXBwbGlhbmNlIG5ldmVyIGNvbWVzIGJhY2ssIHRob3NlIGJsb2NrcyBjYW4gbmV2ZXIgYmUg
+d3JpdHRlbi4NCj4+IA0KPj4gSW4geW91ciBjYXNlIHRob3VnaCwgeW91J3JlIG5vdCB3cml0aW5n
+LiAgDQo+PiANCj4+IA0KPj4gLS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0NCj4+IEZyb206IEFu
+ZHJldyBNYXJ0aW4gPGFtYXJ0aW5AeGVzLWluYy5jb20+DQo+PiBEYXRlOiBUaHUsIDYgTWFyIDIw
+MTQgMTA6NDM6NDIgDQo+PiBUbzogSmltIFJlZXM8cmVlc0B1bWljaC5lZHU+DQo+PiBDYzogPGJo
+YXdsZXlAbHVtaW5leC5jb20+OyBOZWlsQnJvd248bmVpbGJAc3VzZS5kZT47IDxsaW51eC1uZnMt
+b3duZXJAdmdlci5rZXJuZWwub3JnPjsgPGxpbnV4LW5mc0B2Z2VyLmtlcm5lbC5vcmc+DQo+PiBT
+dWJqZWN0OiBSZTogT3B0aW1hbCBORlMgbW91bnQgb3B0aW9ucyB0byBzYWZlbHkgYWxsb3cgaW50
+ZXJydXB0cyBhbmQNCj4+IHRpbWVvdXRzIG9uIG5ld2VyIGtlcm5lbHMNCj4+IA0KPj4+IEZyb206
+ICJKaW0gUmVlcyIgPHJlZXNAdW1pY2guZWR1Pg0KPj4+IEFuZHJldyBNYXJ0aW4gd3JvdGU6DQo+
+Pj4gDQo+Pj4+IEZyb206ICJKaW0gUmVlcyIgPHJlZXNAdW1pY2guZWR1Pg0KPj4+PiBHaXZlbiB0
+aGlzIGlzIGFwYWNoZSwgSSB0aGluayBpZiBJIHdlcmUgZG9pbmcgdGhpcyBJJ2QgdXNlDQo+Pj4+
+IHJvLHNvZnQsaW50cix0Y3ANCj4+Pj4gYW5kIG5vdCB0cnkgdG8gd3JpdGUgYW55dGhpbmcgdG8g
+bmZzLg0KPj4+IEkgd2FzIHVzaW5nIHRjcCxiZyxzb2Z0LGludHIgd2hlbiB0aGlzIHByb2JsZW0g
+b2NjdXJyZWQuIEkgZG8gbm90IGtub3cgaWYNCj4+PiBhcGFjaGUgd2FzIGF0dGVtcHRpbmcgdG8g
+ZG8gYSB3cml0ZSBvciBhIHJlYWQsIGJ1dCBpdCBzZWVtcyB0aGF0DQo+Pj4gdGNwLHNvZnQsaW50
+cg0KPj4+IHdhcyBub3Qgc3VmZmljaWVudCB0byBwcmV2ZW50IHRoZSBwcm9ibGVtLg0KPj4+IA0K
+Pj4+IEkgaGFkIHRoZSBpbXByZXNzaW9uIGZyb20geW91ciBvcmlnaW5hbCBtZXNzYWdlIHRoYXQg
+eW91IHdlcmUgbm90IHVzaW5nDQo+Pj4gInNvZnQiIGFuZCB3ZXJlIGFza2luZyBpZiBpdCdzIHNh
+ZmUgdG8gdXNlIGl0LiBBcmUgeW91IHNheWluZyB0aGF0IGV2ZW4gd2l0aA0KPj4+IHRoZSAic29m
+dCIgb3B0aW9uIHRoZSBhcGFjaGUgZ2V0cyBzdHVjayBmb3JldmVyPw0KPj4gWWVzLCBldmVuIHdp
+dGggc29mdCwgaXQgZ2V0cyBzdHVjayBmb3JldmVyLiBJIGhhZCBiZWVuIHVzaW5nIHRjcCxiZyxz
+b2Z0LGludHINCj4+IHdoZW4gdGhlIHByb2JsZW0gb2NjdXJyZWQgKG9uIHNldmVyYWwgb2Nhc3Np
+b25zKSwgc28gbXkgb3JpZ2luYWwgcXVlc3Rpb24gd2FzDQo+PiBpZiBpdCB3b3VsZCBiZSBzYWZl
+IHRvIHVzZSBhIHNtYWxsIHRpbWVvIGFuZCByZXRyYW5zIHZhbHVlcyB0byBob3BlZnVsbHkgDQo+
+PiByZXR1cm4gSS9PIGVycm9ycyBxdWlja2x5IHRvIHRoZSBhcHBsaWNhdGlvbiwgcmF0aGVyIHRo
+YW4gYmxvY2tpbmcgZm9yZXZlciANCj4+ICh3aGljaCBjYXVzZXMgdGhlIGhpZ2ggbG9hZCBhbmQg
+aW5ldml0YWJsZSByZWJvb3QpLiBJdCBzb3VuZHMgbGlrZSB0aGF0IGlzbid0DQo+PiBzYWZlLCBi
+dXQgcGVyaGFwcyB0aGVyZSBpcyBhbm90aGVyIHdheSB0byByZXNvbHZlIHRoaXMgcHJvYmxlbT8N
+Cj4+IC0tDQo+PiBUbyB1bnN1YnNjcmliZSBmcm9tIHRoaXMgbGlzdDogc2VuZCB0aGUgbGluZSAi
+dW5zdWJzY3JpYmUgbGludXgtbmZzIiBpbg0KPj4gdGhlIGJvZHkgb2YgYSBtZXNzYWdlIHRvIG1h
+am9yZG9tb0B2Z2VyLmtlcm5lbC5vcmcNCj4+IE1vcmUgbWFqb3Jkb21vIGluZm8gYXQgIGh0dHA6
+Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jkb21vLWluZm8uaHRtbA0KPj4gDQo+IA0KPiBfX19fX19f
+X19fX19fX19fX19fX19fX19fX19fX19fX18NCj4gVHJvbmQgTXlrbGVidXN0DQo+IExpbnV4IE5G
+UyBjbGllbnQgbWFpbnRhaW5lciwgUHJpbWFyeURhdGENCj4gdHJvbmQubXlrbGVidXN0QHByaW1h
+cnlkYXRhLmNvbQ0KPiANCg0KX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fDQpUcm9u
+ZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lciwgUHJpbWFyeURhdGENCnRy
+b25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20NCg0K
 
