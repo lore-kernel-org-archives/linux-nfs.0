@@ -1,329 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:47886 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752168AbaCWBM3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 22 Mar 2014 21:12:29 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 24/50] nfsd4: remove ADJUST_ARGS
-Date: Sat, 22 Mar 2014 21:11:55 -0400
-Message-Id: <1395537141-10389-25-git-send-email-bfields@redhat.com>
-In-Reply-To: <1395537141-10389-1-git-send-email-bfields@redhat.com>
-References: <1395537141-10389-1-git-send-email-bfields@redhat.com>
+Received: from mail-ig0-f180.google.com ([209.85.213.180]:42308 "EHLO
+	mail-ig0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751190AbaCFS4h (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Mar 2014 13:56:37 -0500
+Message-ID: <1206762659-1394132192-cardhu_decombobulator_blackberry.rim.net-1473901122-@b5.c4.bise6.blackberry>
+Reply-To: bhawley@luminex.com
+References: <1696396609.119284.1394040541217.JavaMail.zimbra@xes-inc.com>
+  <260588931.122771.1394041524167.JavaMail.zimbra@xes-inc.com>
+  <20140306145042.6db53f60@notabene.brown>
+  <1853694865.210849.1394082223818.JavaMail.zimbra@xes-inc.com>
+  <20140306163721.0edfb498@notabene.brown>
+  <1709792528-1394084840-cardhu_decombobulator_blackberry.rim.net-1367662481-@b5.c4.bise6.blackberry>
+  <764210708.28409.1394119821635.JavaMail.zimbra@xes-inc.com>
+In-Reply-To: <764210708.28409.1394119821635.JavaMail.zimbra@xes-inc.com>
+Subject: Re: Optimal NFS mount options to safely allow interrupts and timeouts on newer kernels
+To: "Andrew Martin" <amartin@xes-inc.com>,
+        "Brian Hawley" <bhawley@luminex.com>
+Cc: "NeilBrown" <neilb@suse.de>, linux-nfs-owner@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+From: "Brian Hawley" <bhawley@luminex.com>
+Date: Thu, 6 Mar 2014 18:56:33 +0000
+Content-Type: text/plain
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
-
-It's just uninteresting debugging code at this point.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4xdr.c | 39 ---------------------------------------
- 1 file changed, 39 deletions(-)
-
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 43c2a99..a2dbc19 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1751,7 +1751,6 @@ static void write_cinfo(__be32 **p, struct nfsd4_change_info *c)
- 	p = xdr_reserve_space(&resp->xdr, nbytes);		\
- 	BUG_ON(!p);						\
- } while (0)
--#define ADJUST_ARGS()		WARN_ON_ONCE(p != resp->xdr.p)	\
- 
- /* Encode as an array of strings the string given with components
-  * separated @sep, escaped with esc_enter and esc_exit.
-@@ -2730,7 +2729,6 @@ nfsd4_encode_stateid(struct nfsd4_compoundres *resp, stateid_t *sid)
- 	RESERVE_SPACE(sizeof(stateid_t));
- 	WRITE32(sid->si_generation);
- 	WRITEMEM(&sid->si_opaque, sizeof(stateid_opaque_t));
--	ADJUST_ARGS();
- }
- 
- static __be32
-@@ -2742,7 +2740,6 @@ nfsd4_encode_access(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_
- 		RESERVE_SPACE(8);
- 		WRITE32(access->ac_supported);
- 		WRITE32(access->ac_resp_access);
--		ADJUST_ARGS();
- 	}
- 	return nfserr;
- }
-@@ -2757,7 +2754,6 @@ static __be32 nfsd4_encode_bind_conn_to_session(struct nfsd4_compoundres *resp,
- 		WRITE32(bcts->dir);
- 		/* Sorry, we do not yet support RDMA over 4.1: */
- 		WRITE32(0);
--		ADJUST_ARGS();
- 	}
- 	return nfserr;
- }
-@@ -2780,7 +2776,6 @@ nfsd4_encode_commit(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_
- 	if (!nfserr) {
- 		RESERVE_SPACE(NFS4_VERIFIER_SIZE);
- 		WRITEMEM(commit->co_verf.data, NFS4_VERIFIER_SIZE);
--		ADJUST_ARGS();
- 	}
- 	return nfserr;
- }
-@@ -2796,7 +2791,6 @@ nfsd4_encode_create(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_
- 		WRITE32(2);
- 		WRITE32(create->cr_bmval[0]);
- 		WRITE32(create->cr_bmval[1]);
--		ADJUST_ARGS();
- 	}
- 	return nfserr;
- }
-@@ -2828,7 +2822,6 @@ nfsd4_encode_getfh(struct nfsd4_compoundres *resp, __be32 nfserr, struct svc_fh
- 		RESERVE_SPACE(len + 4);
- 		WRITE32(len);
- 		WRITEMEM(&fhp->fh_handle.fh_base, len);
--		ADJUST_ARGS();
- 	}
- 	return nfserr;
- }
-@@ -2856,7 +2849,6 @@ nfsd4_encode_lock_denied(struct nfsd4_compoundres *resp, struct nfsd4_lock_denie
- 		WRITE64((u64)0); /* clientid */
- 		WRITE32(0); /* length of owner name */
- 	}
--	ADJUST_ARGS();
- }
- 
- static __be32
-@@ -2896,7 +2888,6 @@ nfsd4_encode_link(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_li
- 	if (!nfserr) {
- 		RESERVE_SPACE(20);
- 		write_cinfo(&p, &link->li_cinfo);
--		ADJUST_ARGS();
- 	}
- 	return nfserr;
- }
-@@ -2918,7 +2909,6 @@ nfsd4_encode_open(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_op
- 	WRITE32(open->op_bmval[0]);
- 	WRITE32(open->op_bmval[1]);
- 	WRITE32(open->op_delegate_type);
--	ADJUST_ARGS();
- 
- 	switch (open->op_delegate_type) {
- 	case NFS4_OPEN_DELEGATE_NONE:
-@@ -2935,7 +2925,6 @@ nfsd4_encode_open(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_op
- 		WRITE32(0);
- 		WRITE32(0);
- 		WRITE32(0);   /* XXX: is NULL principal ok? */
--		ADJUST_ARGS();
- 		break;
- 	case NFS4_OPEN_DELEGATE_WRITE:
- 		nfsd4_encode_stateid(resp, &open->op_delegate_stateid);
-@@ -2956,7 +2945,6 @@ nfsd4_encode_open(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_op
- 		WRITE32(0);
- 		WRITE32(0);
- 		WRITE32(0);   /* XXX: is NULL principal ok? */
--		ADJUST_ARGS();
- 		break;
- 	case NFS4_OPEN_DELEGATE_NONE_EXT: /* 4.1 */
- 		switch (open->op_why_no_deleg) {
-@@ -2970,7 +2958,6 @@ nfsd4_encode_open(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_op
- 			RESERVE_SPACE(4);
- 			WRITE32(open->op_why_no_deleg);
- 		}
--		ADJUST_ARGS();
- 		break;
- 	default:
- 		BUG();
-@@ -3053,7 +3040,6 @@ nfsd4_encode_read(struct nfsd4_compoundres *resp, __be32 nfserr,
- 
- 	WRITE32(eof);
- 	WRITE32(maxcount);
--	ADJUST_ARGS();
- 	WARN_ON_ONCE(resp->xdr.buf->head[0].iov_len != (char*)p
- 				- (char*)resp->xdr.buf->head[0].iov_base);
- 	resp->xdr.buf->page_len = maxcount;
-@@ -3069,7 +3055,6 @@ nfsd4_encode_read(struct nfsd4_compoundres *resp, __be32 nfserr,
- 		resp->xdr.buf->tail[0].iov_base += maxcount&3;
- 		resp->xdr.buf->tail[0].iov_len = 4 - (maxcount&3);
- 		xdr->buf->len -= (maxcount&3);
--		ADJUST_ARGS();
- 	}
- 	return 0;
- }
-@@ -3110,7 +3095,6 @@ nfsd4_encode_readlink(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd
- 	}
- 
- 	WRITE32(maxcount);
--	ADJUST_ARGS();
- 	resp->xdr.buf->head[0].iov_len = (char*)p
- 				- (char*)resp->xdr.buf->head[0].iov_base;
- 	resp->xdr.buf->page_len = maxcount;
-@@ -3125,7 +3109,6 @@ nfsd4_encode_readlink(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd
- 		WRITE32(0);
- 		resp->xdr.buf->tail[0].iov_base += maxcount&3;
- 		resp->xdr.buf->tail[0].iov_len = 4 - (maxcount&3);
--		ADJUST_ARGS();
- 	}
- 	return 0;
- }
-@@ -3152,7 +3135,6 @@ nfsd4_encode_readdir(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4
- 	/* XXX: Following NFSv3, we ignore the READDIR verifier for now. */
- 	WRITE32(0);
- 	WRITE32(0);
--	ADJUST_ARGS();
- 	resp->xdr.buf->head[0].iov_len = ((char*)resp->xdr.p)
- 				- (char*)resp->xdr.buf->head[0].iov_base;
- 	tailbase = p;
-@@ -3221,7 +3203,6 @@ nfsd4_encode_remove(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_
- 	if (!nfserr) {
- 		RESERVE_SPACE(20);
- 		write_cinfo(&p, &remove->rm_cinfo);
--		ADJUST_ARGS();
- 	}
- 	return nfserr;
- }
-@@ -3235,7 +3216,6 @@ nfsd4_encode_rename(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_
- 		RESERVE_SPACE(40);
- 		write_cinfo(&p, &rename->rn_sinfo);
- 		write_cinfo(&p, &rename->rn_tinfo);
--		ADJUST_ARGS();
- 	}
- 	return nfserr;
- }
-@@ -3275,7 +3255,6 @@ nfsd4_do_encode_secinfo(struct nfsd4_compoundres *resp,
- 	supported = 0;
- 	RESERVE_SPACE(4);
- 	flavorsp = p++;		/* to be backfilled later */
--	ADJUST_ARGS();
- 
- 	for (i = 0; i < nflavs; i++) {
- 		rpc_authflavor_t pf = flavs[i].pseudoflavor;
-@@ -3289,12 +3268,10 @@ nfsd4_do_encode_secinfo(struct nfsd4_compoundres *resp,
- 			WRITEMEM(info.oid.data, info.oid.len);
- 			WRITE32(info.qop);
- 			WRITE32(info.service);
--			ADJUST_ARGS();
- 		} else if (pf < RPC_AUTH_MAXFLAVOR) {
- 			supported++;
- 			RESERVE_SPACE(4);
- 			WRITE32(pf);
--			ADJUST_ARGS();
- 		} else {
- 			if (report)
- 				pr_warn("NFS: SECINFO: security flavor %u "
-@@ -3348,7 +3325,6 @@ nfsd4_encode_setattr(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4
- 		WRITE32(setattr->sa_bmval[1]);
- 		WRITE32(setattr->sa_bmval[2]);
- 	}
--	ADJUST_ARGS();
- 	return nfserr;
- }
- 
-@@ -3361,13 +3337,11 @@ nfsd4_encode_setclientid(struct nfsd4_compoundres *resp, __be32 nfserr, struct n
- 		RESERVE_SPACE(8 + NFS4_VERIFIER_SIZE);
- 		WRITEMEM(&scd->se_clientid, 8);
- 		WRITEMEM(&scd->se_confirm, NFS4_VERIFIER_SIZE);
--		ADJUST_ARGS();
- 	}
- 	else if (nfserr == nfserr_clid_inuse) {
- 		RESERVE_SPACE(8);
- 		WRITE32(0);
- 		WRITE32(0);
--		ADJUST_ARGS();
- 	}
- 	return nfserr;
- }
-@@ -3382,7 +3356,6 @@ nfsd4_encode_write(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_w
- 		WRITE32(write->wr_bytes_written);
- 		WRITE32(write->wr_how_written);
- 		WRITEMEM(write->wr_verifier.data, NFS4_VERIFIER_SIZE);
--		ADJUST_ARGS();
- 	}
- 	return nfserr;
- }
-@@ -3425,7 +3398,6 @@ nfsd4_encode_exchange_id(struct nfsd4_compoundres *resp, __be32 nfserr,
- 	WRITE32(exid->flags);
- 
- 	WRITE32(exid->spa_how);
--	ADJUST_ARGS();
- 
- 	switch (exid->spa_how) {
- 	case SP4_NONE:
-@@ -3441,7 +3413,6 @@ nfsd4_encode_exchange_id(struct nfsd4_compoundres *resp, __be32 nfserr,
- 		/* empty spo_must_allow bitmap: */
- 		WRITE32(0);
- 
--		ADJUST_ARGS();
- 		break;
- 	default:
- 		WARN_ON_ONCE(1);
-@@ -3467,7 +3438,6 @@ nfsd4_encode_exchange_id(struct nfsd4_compoundres *resp, __be32 nfserr,
- 
- 	/* Implementation id */
- 	WRITE32(0);	/* zero length nfs_impl_id4 array */
--	ADJUST_ARGS();
- 	return 0;
- }
- 
-@@ -3484,7 +3454,6 @@ nfsd4_encode_create_session(struct nfsd4_compoundres *resp, __be32 nfserr,
- 	WRITEMEM(sess->sessionid.data, NFS4_MAX_SESSIONID_LEN);
- 	WRITE32(sess->seqid);
- 	WRITE32(sess->flags);
--	ADJUST_ARGS();
- 
- 	RESERVE_SPACE(28);
- 	WRITE32(0); /* headerpadsz */
-@@ -3494,12 +3463,10 @@ nfsd4_encode_create_session(struct nfsd4_compoundres *resp, __be32 nfserr,
- 	WRITE32(sess->fore_channel.maxops);
- 	WRITE32(sess->fore_channel.maxreqs);
- 	WRITE32(sess->fore_channel.nr_rdma_attrs);
--	ADJUST_ARGS();
- 
- 	if (sess->fore_channel.nr_rdma_attrs) {
- 		RESERVE_SPACE(4);
- 		WRITE32(sess->fore_channel.rdma_attrs);
--		ADJUST_ARGS();
- 	}
- 
- 	RESERVE_SPACE(28);
-@@ -3510,12 +3477,10 @@ nfsd4_encode_create_session(struct nfsd4_compoundres *resp, __be32 nfserr,
- 	WRITE32(sess->back_channel.maxops);
- 	WRITE32(sess->back_channel.maxreqs);
- 	WRITE32(sess->back_channel.nr_rdma_attrs);
--	ADJUST_ARGS();
- 
- 	if (sess->back_channel.nr_rdma_attrs) {
- 		RESERVE_SPACE(4);
- 		WRITE32(sess->back_channel.rdma_attrs);
--		ADJUST_ARGS();
- 	}
- 	return 0;
- }
-@@ -3538,7 +3503,6 @@ nfsd4_encode_sequence(struct nfsd4_compoundres *resp, __be32 nfserr,
- 	WRITE32(seq->maxslots - 1); /* sr_target_highest_slotid */
- 	WRITE32(seq->status_flags);
- 
--	ADJUST_ARGS();
- 	resp->cstate.datap = p; /* DRC cache data pointer */
- 	return 0;
- }
-@@ -3560,7 +3524,6 @@ nfsd4_encode_test_stateid(struct nfsd4_compoundres *resp, __be32 nfserr,
- 		*p++ = stateid->ts_id_status;
- 	}
- 
--	ADJUST_ARGS();
- 	return nfserr;
- }
- 
-@@ -3768,11 +3731,9 @@ nfsd4_encode_replay(struct nfsd4_compoundres *resp, struct nfsd4_op *op)
- 	RESERVE_SPACE(8);
- 	WRITE32(op->opnum);
- 	*p++ = rp->rp_status;  /* already xdr'ed */
--	ADJUST_ARGS();
- 
- 	RESERVE_SPACE(rp->rp_buflen);
- 	WRITEMEM(rp->rp_buf, rp->rp_buflen);
--	ADJUST_ARGS();
- }
- 
- int
--- 
-1.8.5.3
+DQpVc2luZyB1bW91bnQgLWYgcmVwZWF0ZWRseSBkaWQgZXZlbnR1YWxseSBnZXQgaS9vIGVycm9y
+cyBiYWNrIHRvIGFsbCB0aGUgcmVhZC93cml0ZXMuDQoNCkkgdW5kZXJzdGFuZCBSaWMncyBjb21t
+ZW50IGFib3V0IHVzaW5nIGZzeW5jLCBhbmQgd2UgZG8gaW4gZmFjdCB1c2UgZnN5bmMgYXQgZGF0
+YSBzeW5jaHJvbml6YXRpb24gcG9pbnRzIChsaWtlIGNsb3NlLCBzZWVrcywgY2hhbmdlcyBmcm9t
+IHdyaXRlIHRvIHJlYWQsIGV0YyAtLSBvdXJzIGlzIGEgc2VxdWVudGlhbCBpL28gYXBwbGljYXRp
+b24pLiAgIEJ1dCBpdCBpcyB0aGVzZSB3cml0ZXMgYW5kIHJlYWRzIHRoYXQgZW5kIHVwIGh1bmcg
+bW9zdCBvZiB0aGUgdGltZTsgbm90IGFuIGZzeW5jIGNhbGwuICAgSSBzdXNwZWN0IGJlY2F1c2Ug
+aXQgaXMgdGhlIHdyaXRlcyB0aGF0IGV2ZW50dWFsbHkgZ2V0IHRoZSBjYWNoZS9idWZmZXJzIHRv
+IHRoZSBwb2ludCB3aGVyZSB0aGF0IHdyaXRlIGhhcyB0byBibG9jayB1bnRpbCB0aGUgY2FjaGUg
+Z2V0cyBzb21lIGJsb2NrIGZsdXNoZWQgdG8gbWFrZSByb29tLg0KDQotLS0tLU9yaWdpbmFsIE1l
+c3NhZ2UtLS0tLQ0KRnJvbTogQW5kcmV3IE1hcnRpbiA8YW1hcnRpbkB4ZXMtaW5jLmNvbT4NCkRh
+dGU6IFRodSwgNiBNYXIgMjAxNCAwOTozMDoyMSANClRvOiA8Ymhhd2xleUBsdW1pbmV4LmNvbT4N
+CkNjOiBOZWlsQnJvd248bmVpbGJAc3VzZS5kZT47IDxsaW51eC1uZnMtb3duZXJAdmdlci5rZXJu
+ZWwub3JnPjsgPGxpbnV4LW5mc0B2Z2VyLmtlcm5lbC5vcmc+DQpTdWJqZWN0OiBSZTogT3B0aW1h
+bCBORlMgbW91bnQgb3B0aW9ucyB0byBzYWZlbHkgYWxsb3cgaW50ZXJydXB0cyBhbmQNCiB0aW1l
+b3V0cyBvbiBuZXdlciBrZXJuZWxzDQoNCj4gRnJvbTogIkJyaWFuIEhhd2xleSIgPGJoYXdsZXlA
+bHVtaW5leC5jb20+DQo+IA0KPiBJIGVuZGVkIHVwIHdyaXRpbmcgYSAibWFuYWdlX21vdW50cyIg
+c2NyaXB0IHJ1biBieSBjcm9uIHRoYXQgY29tcGFyZXMNCj4gL3Byb2MvbW91bnRzIGFuZCB0aGUg
+ZnN0YWIsIHVzZWQgcGluZywgYW5kICJ0aW1lb3V0IiBtZXNzYWdlcyBpbg0KPiAvdmFyL2xvZy9t
+ZXNzYWdlcyB0byBpZGVudGlmeSBmaWxlc3lzdGVtcyB0aGF0IGFyZW4ndCByZXNwb25kaW5nLCBy
+ZXBlYXRlZGx5DQo+IGRvIHVtb3VudCAtZiB0byBmb3JjZSBpL28gZXJyb3JzIGJhY2sgdG8gdGhl
+IGNhbGxpbmcgYXBwbGljYXRpb25zOyBhbmQgd2hlbg0KPiBtaXNzaW5nIG1vdW50cyAoaW4gZnN0
+YWIgYnV0IG5vdCAvcHJvYy9tb3VudHMpIGJ1dCB3ZXJlIG5vdyBwaW5nYWJsZSwNCj4gYXR0ZW1w
+dCB0byByZW1vdW50IHRoZW0uDQo+IA0KPiANCj4gRm9yIG1lLCB0aW1lbyBhbmQgcmV0cmFucyBh
+cmUgbmVjZXNzYXJ5LCBidXQgbm90IHN1ZmZpY2llbnQuICBUaGUgY2h1bmtpbmcgdG8NCj4gcnNp
+emUvd3NpemUgYW5kIGNhY2hpbmcgcGxheXMgYSByb2xlIGluIGhvdyB3ZWxsIGkvbyBlcnJvcnMg
+Z2V0IHJlbGF5ZWQgYmFjaw0KPiB0byB0aGUgYXBwbGljYXRpb25zIGRvaW5nIHRoZSBpL28uDQo+
+IA0KPiBZb3Ugd2lsbCBjZXJ0YWlubHkgbG9zZSBkYXRhIGluIHRoZXNlIHNjZW5hcmlvJ3MuDQo+
+IA0KPiBJdCB3b3VsZCBiZSBmYW50YXN0aWMgaWYgc29tZWhvdyB0aGUgdGltZW8gYW5kIHJldHJh
+bnMgd2VyZSBzdWZmaWNpZW50IChpZQ0KPiB3aGVuIHRoZXkgZmFpbCwgaS9vIGVycm9ycyBnZXQg
+YmFjayB0byB0aGUgYXBwbGljYXRpb25zIHRoYXQgcXVldWVkIHRoYXQgaS9vDQo+IChvciBldmVu
+IHRoZSBpL28gdGhhdCBjYXVzZSB0aGUgYXBwbGljYXRpb24gdG8gcGVuZCBiZWNhdXNlIHRoZSBy
+c2l6ZS93c2l6ZQ0KPiBvciBjYWNoZSB3YXMgZnVsbCkuDQo+IA0KPiBZb3UgY2FuIGVsaW1pbmF0
+ZSBzb21lIG9mIHRoYXQgYmVoYXZpb3Igd2l0aCBzeW5jL2RpcmVjdGlvLCBidXQgcGVyZm9ybWFu
+Y2UNCj4gYmVjb21lcyBhYnlzbWFsLg0KPiANCj4gSSB0cmllZCAibGF6eSIgaXQgZGlkbid0IHBy
+b3ZpZGUgdGhlIGRlc2lyZWQgZWZmZWN0ICh0aGV5IHVubW91bnRlZCB3aGljaA0KPiBwcmV2ZW50
+ZWQgbmV3IGkvbydzOyBidXQgZXhpc3RpbmcgSS9vJ3MgbmV2ZXIgZ290IGVycm9ycykuDQpUaGlz
+IGlzIHRoZSBwcm9ibGVtIEkgYW0gaGF2aW5nIC0gSSBjYW4gdW5tb3VudCB0aGUgZmlsZXN5c3Rl
+bSB3aXRoIC1sLCBidXQNCm9uY2UgaXQgaXMgdW5tb3VudGVkIHRoZSBleGlzdGluZyBhcGFjaGUg
+cHJvY2Vzc2VzIGFyZSBzdGlsbCBzdHVjayBmb3JldmVyLg0KRG9lcyByZXBlYXRlZGx5IHJ1bm5p
+bmcgInVtb3VudCAtZiIgaW5zdGVhZCBvZiAidW1vdW50IC1sIiBhcyB5b3UgZGVzY3JpYmUNCnJl
+dHVybiBJL08gZXJyb3JzIGJhY2sgdG8gZXhpc3RpbmcgcHJvY2Vzc2VzIGFuZCBhbGxvdyB0aGVt
+IHRvIHN0b3A/DQoNCg0KPiBGcm9tOiAiSmltIFJlZXMiIDxyZWVzQHVtaWNoLmVkdT4NCj4gR2l2
+ZW4gdGhpcyBpcyBhcGFjaGUsIEkgdGhpbmsgaWYgSSB3ZXJlIGRvaW5nIHRoaXMgSSdkIHVzZSBy
+byxzb2Z0LGludHIsdGNwDQo+IGFuZCBub3QgdHJ5IHRvIHdyaXRlIGFueXRoaW5nIHRvIG5mcy4N
+Ckkgd2FzIHVzaW5nIHRjcCxiZyxzb2Z0LGludHIgd2hlbiB0aGlzIHByb2JsZW0gb2NjdXJyZWQu
+IEkgZG8gbm90IGtub3cgaWYNCmFwYWNoZSB3YXMgYXR0ZW1wdGluZyB0byBkbyBhIHdyaXRlIG9y
+IGEgcmVhZCwgYnV0IGl0IHNlZW1zIHRoYXQgdGNwLHNvZnQsaW50cg0Kd2FzIG5vdCBzdWZmaWNp
+ZW50IHRvIHByZXZlbnQgdGhlIHByb2JsZW0uIA0KDQo=
 
