@@ -1,104 +1,108 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:9008 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756951AbaCRRY1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 18 Mar 2014 13:24:27 -0400
-Message-ID: <53288146.4010601@RedHat.com>
-Date: Tue, 18 Mar 2014 13:24:22 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/2] SUNRPC: Ensure that call_connect times out correctly
-References: <1395081645-11906-1-git-send-email-trond.myklebust@primarydata.com> <53286A9D.2020007@RedHat.com> <362845B0-35A4-4DDF-96F6-42582D66334B@primarydata.com>
-In-Reply-To: <362845B0-35A4-4DDF-96F6-42582D66334B@primarydata.com>
+Received: from aserp1040.oracle.com ([141.146.126.69]:16486 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753403AbaCFUiP convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Mar 2014 15:38:15 -0500
 Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
+Subject: Re: Optimal NFS mount options to safely allow interrupts and timeouts on newer kernels
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <00D4C447-07C9-4FBA-ABD6-285C97727316@primarydata.com>
+Date: Thu, 6 Mar 2014 15:38:10 -0500
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <0C5C1EB7-C494-4D82-B8C9-A6141CD592E9@oracle.com>
+References: <1696396609.119284.1394040541217.JavaMail.zimbra@xes-inc.com> <260588931.122771.1394041524167.JavaMail.zimbra@xes-inc.com> <20140306145042.6db53f60@notabene.brown> <1853694865.210849.1394082223818.JavaMail.zimbra@xes-inc.com> <20140306123438.GA21799@umich.edu> <04BE61B0-08B5-4E0C-88B6-6D93127BB64E@oracle.com> <5B1102FE-8521-4BEF-8A2B-CE17EC32777F@primarydata.com> <17607EE5-614A-4B13-B5E7-0D1344A30C7F@oracle.com> <2A4F9722-1ED1-462E-B66B-669217957814@primarydata.com> <473B4660-0C59-49D4-8BBD-24ABD929AFB9@oracle.com> <BB585E65-78D2-45D9-9513-BB988686F1A9@primarydata.com> <228A4E31-65A8-4357-937E-24554B5B3835@oracle.com> <00D4C447-07C9-4FBA-ABD6-285C97727316@primarydata.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
+On Mar 6, 2014, at 12:47 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
 
-On 03/18/2014 11:58 AM, Trond Myklebust wrote:
 > 
-> On Mar 18, 2014, at 11:47, Steve Dickson <SteveD@redhat.com> wrote:
+> On Mar 6, 2014, at 11:45, Chuck Lever <chuck.lever@oracle.com> wrote:
 > 
->> Hey,
->>
->> On 03/17/2014 02:40 PM, Trond Myklebust wrote:
->>> When the server is unavailable due to a networking error, etc, we want
->>> the RPC client to respect the timeout delays when attempting to reconnect.
->>>
->>> Fixes: 561ec1603171 (SUNRPC: call_connect_status should recheck bind..)
->>> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
->>> ---
->>> net/sunrpc/clnt.c | 8 +++-----
->>> 1 file changed, 3 insertions(+), 5 deletions(-)
->>>
->>> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
->>> index 0edada973434..f22d3a115fda 100644
->>> --- a/net/sunrpc/clnt.c
->>> +++ b/net/sunrpc/clnt.c
->>> @@ -1798,10 +1798,6 @@ call_connect_status(struct rpc_task *task)
->>> 	trace_rpc_connect_status(task, status);
->>> 	task->tk_status = 0;
->>> 	switch (status) {
->>> -		/* if soft mounted, test if we've timed out */
->>> -	case -ETIMEDOUT:
->>> -		task->tk_action = call_timeout;
->>> -		return;
->>> 	case -ECONNREFUSED:
->>> 	case -ECONNRESET:
->>> 	case -ECONNABORTED:
->>> @@ -1812,7 +1808,9 @@ call_connect_status(struct rpc_task *task)
->>> 		if (RPC_IS_SOFTCONN(task))
->>> 			break;
->>> 	case -EAGAIN:
->>> -		task->tk_action = call_bind;
->>> +	case -ETIMEDOUT:
->>> +		/* Check if we've timed out before looping back to call_bind */
->>> +		task->tk_action = call_timeout;
->>> 		return;
->>> 	case 0:
->>> 		clnt->cl_stats->netreconn++;
->>>
->> How is this support to work if the trunking code still ignores timeouts? 
->>
->> [ 2076.045176] NFS: nfs4_discover_server_trunking after status -110, retrying
+>> 
+>> On Mar 6, 2014, at 11:16 AM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+>> 
+>>> 
+>>> On Mar 6, 2014, at 11:13, Chuck Lever <chuck.lever@oracle.com> wrote:
+>>> 
+>>>> 
+>>>> On Mar 6, 2014, at 11:02 AM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+>>>> 
+>>>>> 
+>>>>> On Mar 6, 2014, at 10:59, Chuck Lever <chuck.lever@oracle.com> wrote:
+>>>>> 
+>>>>>> 
+>>>>>> On Mar 6, 2014, at 10:33 AM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+>>>>>> 
+>>>>>>> 
+>>>>>>> On Mar 6, 2014, at 10:26, Chuck Lever <chuck.lever@oracle.com> wrote:
+>>>>>>> 
+>>>>>>>> 
+>>>>>>>> On Mar 6, 2014, at 7:34 AM, Jim Rees <rees@umich.edu> wrote:
+>>>>>>>> 
+>>>>>>>>> Given this is apache, I think if I were doing this I'd use ro,soft,intr,tcp
+>>>>>>>>> and not try to write anything to nfs.
+>>>>>>>> 
+>>>>>>>> I agree. A static web page workload should be read-mostly or read-only. The (small) corruption risk with “ro,soft" is that an interrupted read would cause the client to cache incomplete data.
+>>>>>>> 
+>>>>>>> What? How? If that were the case, we would have a blatant read bug. As I read the current code, _any_ error will cause the page to not be marked as up to date.
+>>>>>> 
+>>>>>> Agree, the design is sound. But we don’t test this use case very much, so I don’t have 100% confidence that there are no bugs.
+>>>>> 
+>>>>> Is that the royal ‘we’, or are you talking on behalf of all the QA departments and testers here? I call bullshit…
+>>>> 
+>>>> If you want to differ with my opinion, fine. But your tone is not professional or appropriate for a public forum. You need to start treating all of your colleagues with respect, including me.
+>>>> 
+>>>> If anyone else had claimed a testing gap, you would have said “If that were the case, we would have a blatant read bug” and left it at that. But you had to go one needless and provocative step further.
+>>>> 
+>>>> Stop bullying me, Trond. I’ve had enough of it.
+>>> 
+>>> The stop spreading FUD. That is far from professional too.
+>> 
+>> FUD is a marketing term, and implies I had intent to deceive. Really?
+>> 
+>> I expressed a technical opinion, with a degree of uncertainty, just like everyone else does. People who ask questions here are free to take our advice or not, based on their own experience. They are adults, they read “IMO” where it is implied.
+>> 
+>> It is absolutely your right to say that I’m incorrect, or to clarify something I said. If you have test data that shows "ro,soft,tcp" cannot possibly cause any version of the Linux NFS client to cache corrupt data, show it, without invective. That is an appropriate response to my remark.
+>> 
+>> Face it, you over-reacted. Again. Knock it off.
+>> 
 > 
-> The above patch fixes the regression that Neil tracked down in Linux 3.12, and that 
-> affects the generic RPC handling of soft timeouts.
-> 
-> The trunking code's handling of ETIMEDOUT has been there since Linux 3.7 
-> and hasn’t changed, so I really don’t see how it can have worked at one time before 3.12.
-Maybe it been broken that long.... :-) 
+> You clearly don’t know what other people are testing with, and you clearly didn’t ask anyone before you started telling users that 'soft' is untested.
 
-But here is the obvious loop that stop that hangs a mount forever:
+I suggested in a reply TO YOU that perhaps this use case was untested...
 
- #8 [ffff88007a22b7e8] rpc_call_sync at ffffffffa0220210 [sunrpc]
- #9 [ffff88007a22b840] nfs4_proc_setclientid at ffffffffa0505c49 [nfsv4]
-#10 [ffff88007a22b988] nfs40_discover_server_trunking at ffffffffa0514489 [nfsv4]
-#11 [ffff88007a22b9d0] nfs4_discover_server_trunking at ffffffffa0516f2d [nfsv4]
-#12 [ffff88007a22ba28] nfs4_init_client at ffffffffa051e9a4 [nfsv4]
-#13 [ffff88007a22bb20] nfs_get_client at ffffffffa04bd6ba [nfs]
-#14 [ffff88007a22bb80] nfs4_set_client at ffffffffa051dfb0 [nfsv4]
-#15 [ffff88007a22bc00] nfs4_create_server at ffffffffa051f4ce [nfsv4]
-#16 [ffff88007a22bc88] nfs4_remote_mount at ffffffffa051790e [nfsv4]
-#17 [ffff88007a22bcb0] mount_fs at ffffffff811b3dd9
+> I happen to know a server vendor for which _all_ internal QA tests are done using the ‘soft’ mount option on the clients. This is done for practical reasons in order to prevent client hangs if the server should panic.
 
-The SETCLIENT times out 
-   NFS call  setclientid auth=UNIX, 'Linux NFSv4.0 10.19.60.77/10.19.60.33 tcp'
-   NFS reply setclientid: -110
+… and that’s all you needed to say in response. But you have chosen to turn it into a shouting match because you read more into my words than was there.
 
-The nfs4_discover_server_trunking() retries 
-   NFS: nfs4_discover_server_trunking after status -110, retrying
+> I strongly suspect that other QA departments are testing the ’soft' case too.
 
-The happens when there server is down and so the connections 
-fail with ECONNREFUSED:
-   RPC:     2 call_connect_status (status -111)
+“I strongly suspect” means you don’t know for sure either.
 
-The mount system call never times out in which it did in the past. 
+Clearly Andrew and Brian are reporting a problem here, whether or not it’s related to data corruption, and vendor testing has not found it yet, apparently. I’m not surprised. Testing is difficult, and too often it finds only exactly what you’re looking for.
 
-So who do I get the system call to time out again?
+(On the technical issue, just using “soft” does not constitute a robust test. Repeatedly exercising the soft timeout is not the same as having “soft” in play “just in case” the server panics.)
 
-steved.
+> Acting as if you are an authoritative source on the subject of testing, when you are not and you know that you are not, does constitute intentional deception, yes.
+
+No-one is "acting like an authority on testing," except maybe you.
+
+What possible reason could I have for deceiving anyone about my authority or anything else? Do you understand that calling someone a liar in public is deeply offensive? Do you understand how unnecessarily humiliating your words are?
+
+Assuming that you do understand, the level of inappropriate heat here is a sign that you have a long-standing personal issue with me. You seem to always read my words as a challenge to your authority, and that is never what I intend. There is nothing I can do about your mistaken impression of me.
+
+> …and no, I don’t see anything above to indicate that this was an ‘opinion’ on the subject of what is being tested which is precisely why I called it.
+
+LOL. You “called it” because my claim that testing wasn’t sufficient touched a nerve.
+
+Are you really suggesting we all need to add “IMO” and a giant .sig disclaimer to everything we post to this list, or else Trond will swat us with a rolled up newspaper if he doesn’t happen to agree?
+
+--
+Chuck Lever
+
+
 
