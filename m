@@ -1,90 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:20779 "EHLO
+Received: from userp1040.oracle.com ([156.151.31.81]:45583 "EHLO
 	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752282AbaCBW3H convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 2 Mar 2014 17:29:07 -0500
+	with ESMTP id S1750969AbaCFP7r convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Mar 2014 10:59:47 -0500
 Content-Type: text/plain; charset=windows-1252
 Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
-Subject: Re: Proposal for simplifying NFS/RDMA client memory registration
+Subject: Re: Optimal NFS mount options to safely allow interrupts and timeouts on newer kernels
 From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <53125125.9010709@opengridcomputing.com>
-Date: Sun, 2 Mar 2014 17:28:57 -0500
-Cc: Wendy Cheng <s.wendy.cheng@gmail.com>, Tom Talpey <tom@talpey.com>,
-        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Shirley Ma <shirley.ma@oracle.com>
-Message-Id: <58CE3CFB-287B-4A59-82B8-6A0640101379@oracle.com>
-References: <01C4496A-F074-4F72-9DF0-6076C05E8A1F@oracle.com> <53110287.9000400@talpey.com> <CABgxfbHwo13ma=-Xn+S36WwD8LVNLdw6UHztFe8EkCA_=NBenw@mail.gmail.com> <CABgxfbHg0B02c2zpYdCB4pUZZhhA4aKRuyh4Kx=NE1yAisFLLQ@mail.gmail.com> <B83B4DA6-E9CF-4DF3-9227-5EF9B4D25F4D@oracle.com> <53125125.9010709@opengridcomputing.com>
-To: Tom Tucker <tom@opengridcomputing.com>
+In-Reply-To: <5B1102FE-8521-4BEF-8A2B-CE17EC32777F@primarydata.com>
+Date: Thu, 6 Mar 2014 10:59:35 -0500
+Cc: Andrew Martin <amartin@xes-inc.com>, Jim Rees <rees@umich.edu>,
+        Neil Brown <neilb@suse.de>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <17607EE5-614A-4B13-B5E7-0D1344A30C7F@oracle.com>
+References: <1696396609.119284.1394040541217.JavaMail.zimbra@xes-inc.com> <260588931.122771.1394041524167.JavaMail.zimbra@xes-inc.com> <20140306145042.6db53f60@notabene.brown> <1853694865.210849.1394082223818.JavaMail.zimbra@xes-inc.com> <20140306123438.GA21799@umich.edu> <04BE61B0-08B5-4E0C-88B6-6D93127BB64E@oracle.com> <5B1102FE-8521-4BEF-8A2B-CE17EC32777F@primarydata.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Mar 1, 2014, at 4:29 PM, Tom Tucker <tom@opengridcomputing.com> wrote:
-
-> Hi Chuck,
-> 
-> I have a patch for the server side that simplifies the memory registration and fixes a bug where the server ignores the FRMR hardware limits. This bug is actually upstream now.
-> 
-> I have been sitting on it because it's a big patch and will require a lot of testing/review to get it upstream. This is Just an FYI in case there is someone on your team who has the bandwidth to take this work and finish it up.
-
-Why not post what you have, and then we can see what can be done.
-
+On Mar 6, 2014, at 10:33 AM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
 
 > 
-> Thanks,
-> Tom
+> On Mar 6, 2014, at 10:26, Chuck Lever <chuck.lever@oracle.com> wrote:
 > 
-> On 2/28/14 8:59 PM, Chuck Lever wrote:
->> Hi Wendy-
 >> 
->> On Feb 28, 2014, at 5:26 PM, Wendy Cheng <s.wendy.cheng@gmail.com> wrote:
+>> On Mar 6, 2014, at 7:34 AM, Jim Rees <rees@umich.edu> wrote:
 >> 
->>> On Fri, Feb 28, 2014 at 2:20 PM, Wendy Cheng <s.wendy.cheng@gmail.com> wrote:
->>>> ni i...On Fri, Feb 28, 2014 at 1:41 PM, Tom Talpey <tom@talpey.com> wrote:
->>>>> On 2/26/2014 8:44 AM, Chuck Lever wrote:
->>>>>> Hi-
->>>>>> 
->>>>>> Shirley Ma and I are reviving work on the NFS/RDMA client code base in
->>>>>> the Linux kernel.  So far we've built and run functional tests to determine
->>>>>> what is working and what is broken.
->>>>>> 
->>>>>> [snip]
->>>> 
->>>>>> ALLPHYSICAL - Usually fast, but not safe as it exposes client memory.
->>>>>> All HCAs support this mode.
->>>>> 
->>>>> Not safe is an understatement. It exposes all of client physical
->>>>> memory to the peer, for both read and write. A simple pointer error
->>>>> on the server will silently corrupt the client. This mode was
->>>>> intended only for testing, and in experimental deployments.
->>> (sorry, resend .. previous reply bounced back due to gmail html format)
->>> 
->>> Please keep "ALLPHYSICAL" for now  - as our embedded system needs it.
->> This is just the client side.  Confirming that you still need support for the ALLPHYSICAL memory registration mode in the NFS/RDMA client.
+>>> Given this is apache, I think if I were doing this I'd use ro,soft,intr,tcp
+>>> and not try to write anything to nfs.
 >> 
->> Do you have plans to move to a mode that is less risky?  If not, can we depend on you to perform regular testing with ALLPHYSICAL as we update the client code?  Do you have any bug fixes you’d like to merge upstream?
->> 
->> --
->> Chuck Lever
->> chuck[dot]lever[at]oracle[dot]com
->> 
->> 
->> 
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>> I agree. A static web page workload should be read-mostly or read-only. The (small) corruption risk with “ro,soft" is that an interrupted read would cause the client to cache incomplete data.
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> What? How? If that were the case, we would have a blatant read bug. As I read the current code, _any_ error will cause the page to not be marked as up to date.
 
--- 
+Agree, the design is sound. But we don’t test this use case very much, so I don’t have 100% confidence that there are no bugs.
+
+--
 Chuck Lever
 chuck[dot]lever[at]oracle[dot]com
-
 
 
 
