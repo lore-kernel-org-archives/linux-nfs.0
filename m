@@ -1,412 +1,140 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:55983 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755009AbaCCWm0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 3 Mar 2014 17:42:26 -0500
-Date: Tue, 4 Mar 2014 09:42:16 +1100
-From: NeilBrown <neilb@suse.de>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: Simo Sorce <simo@redhat.com>, Steve Dickson <SteveD@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: What does rpc.mountd dlopen() libnfsjunct.so rather than
- libnfsjunct.so.0
-Message-ID: <20140304094216.0c587480@notabene.brown>
-In-Reply-To: <CB870329-4F13-49BC-9D10-A02BD4DDB680@oracle.com>
-References: <20140226161646.1520358b@notabene.brown>
-	<1393425572.18299.157.camel@willson.li.ssimo.org>
-	<3A4B7C90-54B8-4373-B751-B02D940199BC@oracle.com>
-	<20140227095859.19ba8a87@notabene.brown>
-	<CD047B67-388C-4848-A020-917E51CF3EB5@oracle.com>
-	<20140303142113.180679fb@notabene.brown>
-	<CB870329-4F13-49BC-9D10-A02BD4DDB680@oracle.com>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/0jh5lWTsZO/Ix+f4DOPMKOf"; protocol="application/pgp-signature"
+Received: from mail-ie0-f170.google.com ([209.85.223.170]:39828 "EHLO
+	mail-ie0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751124AbaCFTiT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Mar 2014 14:38:19 -0500
+Message-ID: <745339487-1394134695-cardhu_decombobulator_blackberry.rim.net-1127415581-@b5.c4.bise6.blackberry>
+Reply-To: bhawley@luminex.com
+References: <1696396609.119284.1394040541217.JavaMail.zimbra@xes-inc.com>
+   <260588931.122771.1394041524167.JavaMail.zimbra@xes-inc.com>
+   <20140306145042.6db53f60@notabene.brown>
+   <1853694865.210849.1394082223818.JavaMail.zimbra@xes-inc.com>
+   <20140306163721.0edfb498@notabene.brown>
+   <1709792528-1394084840-cardhu_decombobulator_blackberry.rim.net-1367662481-@b5.c4.bise6.blackberry>
+   <764210708.28409.1394119821635.JavaMail.zimbra@xes-inc.com>
+   <20140306162208.GA18207@umich.edu>
+   <1094203678.52139.1394124222574.JavaMail.zimbra@xes-inc.com>
+   <1028951407-1394132418-cardhu_decombobulator_blackberry.rim.net-599891631-@b5.c4.bise6.blackberry>
+   <E22EB8B3-DE5E-4D39-8FFD-BA3F02276EFE@primarydata.com>
+  <745494581-1394133289-cardhu_decombobulator_blackberry.rim.net-1805734207-@b5.c4.bise6.blackberry>
+  <5318CC8C.1050505@redhat.com>
+In-Reply-To: <5318CC8C.1050505@redhat.com>
+Subject: Re: Optimal NFS mount options to safely allow interrupts and timeouts on newer kernels
+To: "Ric Wheeler" <rwheeler@redhat.com>, "Brian Hawley" <bhawley@luminex.com>,
+        "Trond Myklebust" <trond.myklebust@primarydata.com>
+Cc: "Andrew Martin" <amartin@xes-inc.com>, "Jim Rees" <rees@umich.edu>,
+        "Brown Neil" <neilb@suse.de>, linux-nfs-owner@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+From: "Brian Hawley" <bhawley@luminex.com>
+Date: Thu, 6 Mar 2014 19:38:15 +0000
+Content-Type: text/plain; charset="Windows-1252"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/0jh5lWTsZO/Ix+f4DOPMKOf
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: quoted-printable
+DQpJIGFncmVlIGNvbXBsZXRlbHkgdGhhdCB0aGUgd3JpdGUoKSByZXR1cm5pbmcgb25seSBtZWFu
+cyBpdCdzIGluIHRoZSBwYWdlIGNhY2hlLg0KDQpJIGFncmVlIGNvbXBsZXRlbHkgdGhhdCBmc3lu
+YygpIHJlc3VsdCBpcyB0aGUgb25seSB3YXkgdG8ga25vdyB5b3VyIGRhdGEgaXMgc2FmZS4NCg0K
+TmVpdGhlciBvZiB0aG9zZSBpcyB3aGF0IEksIG9yIHRoZSBvcmlnaW5hbCBwb3N0ZXIgKGFuZCB3
+aGF0IG90aGVyIHBvc3RlcnMgaW4gdGhlIHBhc3QpIG9uIHRoaXMgc3ViamVjdCBhcmUgZGlzcHV0
+aW5nIG9yIGNvbmNlcm5lZCBhYm91dC4NCg0KVGhlIGlzc3VlIGlzLCB0aGUgd3JpdGUoKSBjYWxs
+IChpbiBteSBjYXNlIC0gcmVhZCgpIGluIHRoZSBvcmlnaW5hbCBwb3N0ZXJzIGNhc2UpIGRvZXMg
+Tk9UIHJldHVybi4gICANCg0KV2UgYm90aCBleHBlY3QgdGhhdCBhIHNvZnQgbW91bnRlZCBORlMg
+ZmlsZXN5c3RlbSBzaG91bGQgcHJvcGFnYXRlIGkvbyBlcnJvcnMgYmFjayB0byB0aGUgYXBwbGlj
+YXRpb24gd2hlbiB0aGUgcmV0cmFucy90aW1lbyBmYWlscyAod2l0aG91dCB0aGUgZmlsZXN5c3Rl
+bSBiZWluZyBtb3VudGVkIHN5bmMpLiAgIEJ1dCB0aGF0IGRvZXNuJ3QgaGFwcGVuLiAgICBBbmQg
+dGh1cyB0aGUgYXBwbGljYXRpb24gYmxvY2tzIGluZGVmaW5pdGVseSAob3IgY2VydGFpbmx5IGxv
+bmdlciB0aGFuIHVzZWZ1bCkuICAgDQoNCldoeSByZXBlYXRlZCB1bW91bnQgLWYncyBldmVudHVh
+bGx5IGdldCB0aGUgaS9vIGVycm9yIGJhY2sgdG8gdGhlIGNhbGxlciBhbmQgdGh1cyAidW5ibG9j
+ayIgdGhlIGFwcGxpY2F0aW9uLCBJJ20gbm90IHN1cmUuICAgQnV0IEknZCBndWVzcyBpdCBoYXMg
+c29tZXRoaW5nIHRvIGRvIHdpdGggaGF2aW5nIHRvIGdldCBlbnRyaWVzIHBlbmRpbmcgdG8gYmUg
+d3JpdHRlbiBvZmYgdGhlIHF1ZXVlIHVudGlsIGl0IGV2ZW50dWFsbHkgd29ya3MgaXRzIHdheSBi
+YWNrIHRvIHRoZSBsYXN0IHdyaXRlKCkgdGhhdCBibG9ja2VkIGIvYyB0aGUgY2FjaGUgd2FzIGZ1
+bGwgKG9yIHNvbWV0aGluZyBsaWtlIHRoYXQpLg0KDQoNCi0tLS0tT3JpZ2luYWwgTWVzc2FnZS0t
+LS0tDQpGcm9tOiBSaWMgV2hlZWxlciA8cndoZWVsZXJAcmVkaGF0LmNvbT4NCkRhdGU6IFRodSwg
+MDYgTWFyIDIwMTQgMjE6Mjk6MTYgDQpUbzogPGJoYXdsZXlAbHVtaW5leC5jb20+OyBUcm9uZCBN
+eWtsZWJ1c3Q8dHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbT4NCkNjOiBBbmRyZXcgTWFy
+dGluPGFtYXJ0aW5AeGVzLWluYy5jb20+OyBKaW0gUmVlczxyZWVzQHVtaWNoLmVkdT47IEJyb3du
+IE5laWw8bmVpbGJAc3VzZS5kZT47IDxsaW51eC1uZnMtb3duZXJAdmdlci5rZXJuZWwub3JnPjsg
+PGxpbnV4LW5mc0B2Z2VyLmtlcm5lbC5vcmc+DQpTdWJqZWN0OiBSZTogT3B0aW1hbCBORlMgbW91
+bnQgb3B0aW9ucyB0byBzYWZlbHkgYWxsb3cgaW50ZXJydXB0cyBhbmQgdGltZW91dHMNCiBvbiBu
+ZXdlciBrZXJuZWxzDQoNCk9uIDAzLzA2LzIwMTQgMDk6MTQgUE0sIEJyaWFuIEhhd2xleSB3cm90
+ZToNCj4gVHJvbmQsDQo+DQo+IEluIHRoaXMgY2FzZSwgaXQgaXNuJ3QgZnN5bmMgb3IgY2xvc2Ug
+dGhhdCBhcmUgbm90IGdldHRpbmcgdGhlIGkvbyBlcnJvci4gIEl0IGlzIHRoZSB3cml0ZSgpLg0K
+Pg0KPiBBbmQgd2UgY2hlY2sgdGhlIHJldHVybiB2YWx1ZSBvZiBldmVyeSBpL28gcmVsYXRlZCBj
+b21tYW5kLg0KDQpDaGVja2luZyB3cml0ZSgpIHJldHVybiBzdGF0dXMgbWVhbnMgd2Ugd3JvdGUg
+dG8gdGhlIHBhZ2UgY2FjaGUgLSB5b3UgbXVzdCBhbHNvIA0KZnN5bmMoKSB0aGF0IGZpbGUgdG8g
+cHVzaCBpdCBvdXQgdG8gdGhlIHRhcmdldC4gIERvIHRoYXQgd2hlbiBpdCBjb3VudHMsIGxlYXZp
+bmcgDQpkYXRhIGluIHRoZSBwYWdlIGNhY2hlIHVudGlsIHlvdSBhY3R1YWxseSBuZWVkIHBlcnNp
+c3RlbmNlIGFuZCB5b3VyIHBlcmZvcm1hbmNlIA0Kc2hvdWxkIGJlIHJlYXNvbmFibGUuDQoNCkRv
+aW5nIGl0IHRoZSBzYWZlIHdheSBpcyBub3QgZnJlZSwgeW91IHdpbGwgc2VlIGEgcGVyZm9ybWFu
+Y2UgaGl0IChsZXNzIHNvIGlmIA0KeW91IGNhbiBkbyBiYXRjaGluZywgZXRjKS4NCg0KcmljDQoN
+Cj4NCj4gV2UgYXJlbid0IHVzaW5nIHN5bmNocm9ub3VzIGJlY2F1c2UgdGhlIHBlcmZvcm1hbmNl
+IGJlY29tZXMgYWJ5c21hbC4NCj4NCj4gUmVwZWF0ZWQgdW1vdW50IC1mIGRvZXMgZXZlbnR1YWxs
+eSByZXN1bHQgaW4gdGhlIGkvbyBlcnJvciBnZXR0aW5nIHByb3BhZ2F0ZWQgYmFjayB0byB0aGUg
+d3JpdGUoKSBjYWxsLiAgIEkgc3VzcGVjdCB0aGUgcmVwZWF0ZWQgdW1vdW50IC1mJ3MgYXJlIHdv
+cmtpbmcgdGhlaXIgd2F5IHRocm91Z2ggYmxvY2tzIGluIHRoZSBjYWNoZS9xdWV1ZSBhbmQgZXZl
+bnR1YWxseSB3ZSBnZXQgYmFjayB0byB0aGUgYmxvY2tlZCB3cml0ZS4NCj4NCj4gQXMgSSBtZW50
+aW9uZWQgcHJldmlvdXNseSwgaWYgd2UgbW91bnQgd2l0aCBzeW5jIG9yIGRpcmVjdCBpL28gdHlw
+ZSBvcHRpb25zLCB3ZSB3aWxsIGdldCB0aGUgaS9vIGVycm9yLCBidXQgZm9yIHBlcmZvcm1hbmNl
+IHJlYXNvbnMsIHRoaXMgaXNuJ3QgYW4gb3B0aW9uLg0KPg0KPiAtLS0tLU9yaWdpbmFsIE1lc3Nh
+Z2UtLS0tLQ0KPiBGcm9tOiBUcm9uZCBNeWtsZWJ1c3QgPHRyb25kLm15a2xlYnVzdEBwcmltYXJ5
+ZGF0YS5jb20+DQo+IERhdGU6IFRodSwgNiBNYXIgMjAxNCAxNDowNjoyNA0KPiBUbzogPGJoYXds
+ZXlAbHVtaW5leC5jb20+DQo+IENjOiBBbmRyZXcgTWFydGluPGFtYXJ0aW5AeGVzLWluYy5jb20+
+OyBKaW0gUmVlczxyZWVzQHVtaWNoLmVkdT47IEJyb3duIE5laWw8bmVpbGJAc3VzZS5kZT47IDxs
+aW51eC1uZnMtb3duZXJAdmdlci5rZXJuZWwub3JnPjsgPGxpbnV4LW5mc0B2Z2VyLmtlcm5lbC5v
+cmc+DQo+IFN1YmplY3Q6IFJlOiBPcHRpbWFsIE5GUyBtb3VudCBvcHRpb25zIHRvIHNhZmVseSBh
+bGxvdyBpbnRlcnJ1cHRzIGFuZCB0aW1lb3V0cyBvbiBuZXdlciBrZXJuZWxzDQo+DQo+DQo+IE9u
+IE1hciA2LCAyMDE0LCBhdCAxNDowMCwgQnJpYW4gSGF3bGV5IDxiaGF3bGV5QGx1bWluZXguY29t
+PiB3cm90ZToNCj4NCj4+IEV2ZW4gd2l0aCBzbWFsbCB0aW1lbyBhbmQgcmV0cmFucywgeW91IHdv
+bid0IGdldCBpL28gZXJyb3JzIGJhY2sgdG8gdGhlIHJlYWRzL3dyaXRlcy4gICBUaGF0J3MgYmVl
+biBvdXIgZXhwZXJpZW5jZSBhbnl3YXkuDQo+IFJlYWQgY2FjaGluZywgYW5kIGJ1ZmZlcmVkIHdy
+aXRlcyBtZWFuIHRoYXQgdGhlIEkvTyBlcnJvcnMgb2Z0ZW4gZG8gbm90IG9jY3VyIGR1cmluZyB0
+aGUgcmVhZCgpL3dyaXRlKCkgc3lzdGVtIGNhbGwgaXRzZWxmLg0KPg0KPiBXZSBkbyB0cnkgdG8g
+cHJvcGFnYXRlIEkvTyBlcnJvcnMgYmFjayB0byB0aGUgYXBwbGljYXRpb24gYXMgc29vbiBhcyB0
+aGUgZG8gb2NjdXIsIGJ1dCBpZiB0aGF0IGFwcGxpY2F0aW9uIGlzbpJ0IHVzaW5nIHN5bmNocm9u
+b3VzIEkvTywgYW5kIGl0IGlzbpJ0IGNoZWNraW5nIHRoZSByZXR1cm4gdmFsdWVzIG9mIGZzeW5j
+KCkgb3IgY2xvc2UoKSwgdGhlbiB0aGVyZSBpcyBsaXR0bGUgdGhlIGtlcm5lbCBjYW4gZG8uLi4N
+Cj4NCj4+IFdpdGggc29mdCwgeW91IG1heSBlbmQgdXAgd2l0aCBsb3N0IGRhdGEgKGRhdGEgdGhh
+dCBoYWQgYWxyZWFkeSBiZWVuIHdyaXR0ZW4gdG8gdGhlIGNhY2hlIGJ1dCBub3QgeWV0IHRvIHRo
+ZSBzdG9yYWdlKS4gICBZb3UnZCBoYXZlIHRoYXQgc2FtZSBpc3N1ZSB3aXRoICdoYXJkJyB0b28g
+aWYgaXQgd2FzIHlvdXIgYXBwbGlhbmNlIHRoYXQgZmFpbGVkLiAgSWYgdGhlIGFwcGxpYW5jZSBu
+ZXZlciBjb21lcyBiYWNrLCB0aG9zZSBibG9ja3MgY2FuIG5ldmVyIGJlIHdyaXR0ZW4uDQo+Pg0K
+Pj4gSW4geW91ciBjYXNlIHRob3VnaCwgeW91J3JlIG5vdCB3cml0aW5nLg0KPj4NCj4+DQo+PiAt
+LS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KPj4gRnJvbTogQW5kcmV3IE1hcnRpbiA8YW1hcnRp
+bkB4ZXMtaW5jLmNvbT4NCj4+IERhdGU6IFRodSwgNiBNYXIgMjAxNCAxMDo0Mzo0Mg0KPj4gVG86
+IEppbSBSZWVzPHJlZXNAdW1pY2guZWR1Pg0KPj4gQ2M6IDxiaGF3bGV5QGx1bWluZXguY29tPjsg
+TmVpbEJyb3duPG5laWxiQHN1c2UuZGU+OyA8bGludXgtbmZzLW93bmVyQHZnZXIua2VybmVsLm9y
+Zz47IDxsaW51eC1uZnNAdmdlci5rZXJuZWwub3JnPg0KPj4gU3ViamVjdDogUmU6IE9wdGltYWwg
+TkZTIG1vdW50IG9wdGlvbnMgdG8gc2FmZWx5IGFsbG93IGludGVycnVwdHMgYW5kDQo+PiB0aW1l
+b3V0cyBvbiBuZXdlciBrZXJuZWxzDQo+Pg0KPj4+IEZyb206ICJKaW0gUmVlcyIgPHJlZXNAdW1p
+Y2guZWR1Pg0KPj4+IEFuZHJldyBNYXJ0aW4gd3JvdGU6DQo+Pj4NCj4+Pj4gRnJvbTogIkppbSBS
+ZWVzIiA8cmVlc0B1bWljaC5lZHU+DQo+Pj4+IEdpdmVuIHRoaXMgaXMgYXBhY2hlLCBJIHRoaW5r
+IGlmIEkgd2VyZSBkb2luZyB0aGlzIEknZCB1c2UNCj4+Pj4gcm8sc29mdCxpbnRyLHRjcA0KPj4+
+PiBhbmQgbm90IHRyeSB0byB3cml0ZSBhbnl0aGluZyB0byBuZnMuDQo+Pj4gICBJIHdhcyB1c2lu
+ZyB0Y3AsYmcsc29mdCxpbnRyIHdoZW4gdGhpcyBwcm9ibGVtIG9jY3VycmVkLiBJIGRvIG5vdCBr
+bm93IGlmDQo+Pj4gICBhcGFjaGUgd2FzIGF0dGVtcHRpbmcgdG8gZG8gYSB3cml0ZSBvciBhIHJl
+YWQsIGJ1dCBpdCBzZWVtcyB0aGF0DQo+Pj4gICB0Y3Asc29mdCxpbnRyDQo+Pj4gICB3YXMgbm90
+IHN1ZmZpY2llbnQgdG8gcHJldmVudCB0aGUgcHJvYmxlbS4NCj4+Pg0KPj4+IEkgaGFkIHRoZSBp
+bXByZXNzaW9uIGZyb20geW91ciBvcmlnaW5hbCBtZXNzYWdlIHRoYXQgeW91IHdlcmUgbm90IHVz
+aW5nDQo+Pj4gInNvZnQiIGFuZCB3ZXJlIGFza2luZyBpZiBpdCdzIHNhZmUgdG8gdXNlIGl0LiBB
+cmUgeW91IHNheWluZyB0aGF0IGV2ZW4gd2l0aA0KPj4+IHRoZSAic29mdCIgb3B0aW9uIHRoZSBh
+cGFjaGUgZ2V0cyBzdHVjayBmb3JldmVyPw0KPj4gWWVzLCBldmVuIHdpdGggc29mdCwgaXQgZ2V0
+cyBzdHVjayBmb3JldmVyLiBJIGhhZCBiZWVuIHVzaW5nIHRjcCxiZyxzb2Z0LGludHINCj4+IHdo
+ZW4gdGhlIHByb2JsZW0gb2NjdXJyZWQgKG9uIHNldmVyYWwgb2Nhc3Npb25zKSwgc28gbXkgb3Jp
+Z2luYWwgcXVlc3Rpb24gd2FzDQo+PiBpZiBpdCB3b3VsZCBiZSBzYWZlIHRvIHVzZSBhIHNtYWxs
+IHRpbWVvIGFuZCByZXRyYW5zIHZhbHVlcyB0byBob3BlZnVsbHkNCj4+IHJldHVybiBJL08gZXJy
+b3JzIHF1aWNrbHkgdG8gdGhlIGFwcGxpY2F0aW9uLCByYXRoZXIgdGhhbiBibG9ja2luZyBmb3Jl
+dmVyDQo+PiAod2hpY2ggY2F1c2VzIHRoZSBoaWdoIGxvYWQgYW5kIGluZXZpdGFibGUgcmVib290
+KS4gSXQgc291bmRzIGxpa2UgdGhhdCBpc24ndA0KPj4gc2FmZSwgYnV0IHBlcmhhcHMgdGhlcmUg
+aXMgYW5vdGhlciB3YXkgdG8gcmVzb2x2ZSB0aGlzIHByb2JsZW0/DQo+PiAtLQ0KPj4gVG8gdW5z
+dWJzY3JpYmUgZnJvbSB0aGlzIGxpc3Q6IHNlbmQgdGhlIGxpbmUgInVuc3Vic2NyaWJlIGxpbnV4
+LW5mcyIgaW4NCj4+IHRoZSBib2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRvbW9Admdlci5rZXJu
+ZWwub3JnDQo+PiBNb3JlIG1ham9yZG9tbyBpbmZvIGF0ICBodHRwOi8vdmdlci5rZXJuZWwub3Jn
+L21ham9yZG9tby1pbmZvLmh0bWwNCj4+DQo+IF9fX19fX19fX19fX19fX19fX19fX19fX19fX19f
+X19fXw0KPiBUcm9uZCBNeWtsZWJ1c3QNCj4gTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQ
+cmltYXJ5RGF0YQ0KPiB0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRhdGEuY29tDQo+DQo+IE6Lp7Lm
+7HK4m3n66JrYYrJYrLbHp3bYXpYp3rp7Lm7HK4m3pYp7sZ37Ip7YXm6HcqH2pnrLGoHraJmo6K3a
+JqL4Hq5Hq53paK4DKK3pmo6K3aJqIp36GrYbbaf/74Hq5Hq53paK4P5mo6K3aJqIp36IbW1sPT0N
+Cg0K
 
-On Mon, 3 Mar 2014 12:45:55 -0500 Chuck Lever <chuck.lever@oracle.com> wrot=
-e:
-
->=20
-> On Mar 2, 2014, at 10:21 PM, NeilBrown <neilb@suse.de> wrote:
->=20
-> > On Thu, 27 Feb 2014 08:57:56 -0800 Chuck Lever <chuck.lever@oracle.com>=
- wrote:
-> >=20
-> >>=20
-> >> On Feb 26, 2014, at 2:58 PM, NeilBrown <neilb@suse.de> wrote:
-> >>=20
-> >>> On Wed, 26 Feb 2014 08:02:42 -0800 Chuck Lever <chuck.lever@oracle.co=
-m> wrote:
-> >>>=20
-> >>>>=20
-> >>>> On Feb 26, 2014, at 6:39 AM, Simo Sorce <simo@redhat.com> wrote:
-> >>>>=20
-> >>>>> On Wed, 2014-02-26 at 16:16 +1100, NeilBrown wrote:
-> >>>>>> See $SUBJ
-> >>>>>>=20
-> >>>>>> Shared libraries are usually versioned so you can release a new ve=
-rsion with
-> >>>>>> an incompatible API and gradually transition to it.
-> >>>>>>=20
-> >>>>>> A rpc.mountd dlopens libnfsjunct.so with no version it is effectiv=
-ely
-> >>>>>> prohibited from ever changing the API in an incompatible way.
-> >>>>>>=20
-> >>>>>> Both Fedora and openSUSE get upset about packaging a libFOO.so in =
-a non
-> >>>>>> "-devel" package and so trip over this library which clearly needs=
- to be
-> >>>>>> installed even if you aren't doing 'devel'opment.
-> >>>>>=20
-> >>>>> Keep in mind this rule is there only for real shared libraries that=
- are
-> >>>>> loaded by the the system loader.
-> >>>>>=20
-> >>>>> however it is waived for 'modules' that are opened dynamically but =
-are
-> >>>>> private to the application.
-> >>>>>=20
-> >>>>>> I would like to change mountd as per the patch below to use the ".=
-0" file.
-> >>>>>> I believe this will not break any installation as the ".so" is ins=
-talled as a
-> >>>>>> symlink to the ".0" (or maybe ".0.0.0").
-> >>>>>>=20
-> >>>>>> Would this be acceptable?
-> >>>>>=20
-> >>>>> It looks to me like this is an internal module for mountd that is n=
-ot
-> >>>>> for use by other apps (which is why it is not versioned and can be
-> >>>>> changed at will as it is deployed at the same time mountd is ?
-> >>>>=20
-> >>>> The plug-in API is versioned internally, but maybe I got that wrong,=
- and should remove the API version field in favor of having consumers load =
-via a specific .so number.
-> >>>=20
-> >>> The problem I see with using the internal versioning is that if the v=
-ersion
-> >>> is wrong, mountd fails to provide the required service.
-> >>> So while I don't object to storing the version and performing the tes=
-t, we
-> >>> should design work-flows so that the test can only fail if there is a=
- serious
-> >>> configuration error, not just during a software upgrade.
-> >>>=20
-> >>>>=20
-> >>>>> Or am I wrong here ?
-> >>>>>=20
-> >>>>> If I am not wrong I would be against this change personally and wou=
-ld
-> >>>>> rather move the .so file in a private library dir (if it is not alr=
-eady
-> >>>>> there) to make it clear it is a private module.
-> >>>>=20
-> >>>> rpc.mountd is the only user currently, but it=E2=80=99s not necessar=
-ily private to mountd.  A generic storage manager tool might use it to reso=
-lve NFS and FedFS referrals for display, for example.  We could add plug-in=
- API functions for creating and removing referrals to enable generic tools =
-to perform these operations.
-> >>>=20
-> >>> This is the answer I was looking for to the question I asked earlier =
-- thanks.
-> >>> (So this is not an 'intimate library' to use Simo's term - it is trul=
-y a
-> >>> shared library).
-> >>>=20
-> >>> If, one day, an incompatible ABI change was needed then we could have=
- an
-> >>> rpc.mountd installed  (or still running) which requires one ABI, and a
-> >>> generic storage manager tool which requires the other.
-> >>> So we really need them to be stored in two different files.
-> >>> e.g. libnfsjunct.so.0 and libnfsjunct.so.1
-> >>=20
-> >> I was hoping this would never happen.  One plug-in library should be a=
-ble to serve mountd or any other tool that might need to play with junction=
-s.
-> >=20
-> > Certainly that is the hope.  I think everyone who writes a shared libra=
-ry
-> > hopes they will get it right first time, and that if a change is ever n=
-eeded
-> > then all users can be upgraded simultaneously.
-> >=20
-> > $ ls -l /lib64/lib*.so.1 | grep -c '^-'
-> > 4
-> > $ ls -l /lib64/lib*.so.1.* | grep -c '^-'
-> > 17
-> > $ ls -l /lib64/lib*.so.[2-9]* | grep -c '^-'
-> > 20
-> >=20
-> > That seems to happen often, but not always.  That is why we have shared
-> > library versioning.
-> >=20
-> >>=20
-> >> Only a crazy developer like me would ever need to have more than one l=
-ibrary version at a time, and even then, it=E2=80=99s pretty simple to buil=
-d what I need and reinstall, rather than having more than one installed at =
-a time.
-> >>=20
-> >>> To put it another way... libnfsjunct really is a shared library.
-> >>> The *only* reason that rpc.mountd treats it differently to other shar=
-ed
-> >>> libraries is so that it can fail gracefully if the library isn't avai=
-lable
-> >>> (thus removing hard dependencies) - a difference that I am very comfo=
-rtable
-> >>> with.
-> >>> In every other way it should be treated like a shared library
-> >>> - it should live in the standard /lib64 or whatever
-> >>> - each application determines at compile-time what version it needs a=
-nd finds
-> >>>  it by appending the version number to the base file name
-> >>> - the "libfoo.so" file should live in the "-devel" package along with=
- the
-> >>>  include file(s)
-> >>>=20
-> >>>=20
-> >>> So rather than dlopening "libnfsjunct.so.0" rpc.mountd should probably
-> >>> use a library name provided by the include file
-> >>=20
-> >> I=E2=80=99m dense, I still don=E2=80=99t see why this makes a differen=
-ce.  I=E2=80=99ll admit that linker fu is something I=E2=80=99ve left to ot=
-hers, so don=E2=80=99t be afraid to spell it out slowly for me.
-> >=20
-> > I'll try (might make sure I understand it too).
-> > The following is based in part on section 3.1.1 of
-> > http://tldp.org/HOWTO/Program-Library-HOWTO/shared-libraries.html
-> >=20
-> > A shared library (like a cat) has three different names.
-> >=20
-> > 1/ The file name.  This is normally /$LIBDIR/libFOO.so.maj.min.release
-> >  (e.g. /usr/lib/libnfsjunct.so.0.0.0), though it can be almost whatever=
- you
-> >  like.   It is used by installers to install the library, and by ldconf=
-ig.
-> >  ldconfig only wants it to start "lib" or "ld-" and to have ".so" somew=
-here
-> >  in the name.
-> >=20
-> > 2/ The "soname".  This is /$LIBDIR/libFOO.so.maj (i.e. only major numbe=
-r).
-> >   ldconfig will create a symlink from this name to the "most recent" li=
-brary
-> >   found with that SONAME (a field in the shared library:
-> >         objdump -x $LIBRARY | grep SONAME
-> >   ).
-> >   An application which needs to be linked will contain the "soname" of =
-each
-> >   library that it wants to use. "ldd" lists these and the matching file=
-name
-> >   for each.  ld.so effective calls "dlopen" on each "soname".
-> >=20
-> > 3/ The "linker name".  This is the name that is used when you compile c=
-ode.
-> >   You typically specify "-lFOO" and the linker interprets that at
-> >   "$LIBPATH/libFOO.so" and finds a shared library.  It extracts the SON=
-AME
-> >   from this library and stores that in that generated binary.
-> >   Naturally the library version found at the "linker name" must match t=
-he
-> >   include files describing data structures etc in the library.
-> >=20
-> > To follow this pattern as closely as possible, and yet allow rpc.mountd=
- to
-> > use dlopen() to load the library:
-> > - the "soname" should be passed to dlopen(). (That is what ld.so does)
-> > - that name should be determined from the compile-time environment. (th=
-at is
-> >   what 'ld' does).
-> >=20
-> > i.e. we should pass "libnfsjunct.so.0" to dlopen() (if the current
-> > fedfs-utils provides the compile-time environment).  We could determine=
- that
-> > string with a little script which runs
-> >=20
-> >   objdump -x /lib64/libnfsjunct.so | sed -n -e 's/^ *SONAME *//p'
-> >=20
-> > or we could simply keep it in the include file (which must be in-sync w=
-ith
-> > the .so).
-> >=20
-> > Doing this
-> > 1/ ensures that we have the full flexibility of shared libraries should=
- we
-> >    ever need that.
-> > 2/ makes the nfsjunct library look just like any other shared library a=
-nd so
-> >    avoids confusion for package checkers.
-> >=20
-> > Does that clarify at all?
->=20
-> Thank you Neil, it=E2=80=99s coming into focus for me.
->=20
-> We had some conversation about this at Connectathon last week. It seems l=
-ike a better design would look like:
->=20
->   o  A separate directory under /usr/lib{64} where fedfs-utils would inst=
-all its plug-ins
-
-While I don't object to this I wonder if it is worth the effort.
-Using a subdirectory would require rpc.mountd to know exactly what the full
-path was, and so would need to know if "64" was needed etc.
- dlopen("fedfs-plugin/libfoo.so.1")
-will not follow the standard search path (no search happens at all if a '/'
-is present), and
- dlopen("libfoo.so.1")
-does not search subdirectories.
-
-When I look in /lib64 on my machine I find, for example
-
-libnss_compat-2.18.so  libnss_files.so.2          libnss_mdns6_minimal.so.2
-libnss_compat.so.2     libnss_hesiod-2.18.so      libnss_mdns_minimal.so.2
-libnss_db-2.18.so      libnss_hesiod.so.2         libnss_nis-2.18.so
-libnss_db.so.2         libnss_mdns.so.2           libnss_nis.so.2
-libnss_dns-2.18.so     libnss_mdns4.so.2          libnss_nisplus-2.18.so
-libnss_dns.so.2        libnss_mdns4_minimal.so.2  libnss_nisplus.so.2
-libnss_files-2.18.so   libnss_mdns6.so.2
-
-which are all 'nss' plugins which a dlopen()ed by nsswitch.  There is also
- libdevmapper-event-*.so*
-which are plugins loaded as needed by dmeventd.  So there is clear precedent
-for pluggins living directly in /lib64 (or similar).
-
-There are a few directories in /lib64:
-
-32/.  ast/.  device-mapper/.  engines/.  ksh/.  multipath/.  security/.
-
-
-Of these only 32, ast, and ksh (which is a symlink to ast) contain files wi=
-th
-"soname" names.
-
-/usr/lib contains a few more directories with soname files:
- sane sasl2 qtcreator
-being the largest.
-
-So there is also some precedent for putting plugins in sub-directories.
-
-I had a look at the code for sane, and it duplicates the searching of
-LD_LIBRARY_PATH (if set) from ld.so, and requires 'configure' to work out
-the correct libdir, to which it appends "/sane".
-It looks like a lot of complexity that I would rather avoid myself....
-
-
-
->=20
->   o  Plug-in consumers would dlopen() via the plug-in library's soname to=
- guarantee ABI compatibility
->=20
->   o  The API version field would be deprecated
->=20
->   o  We didn=E2=80=99t discuss how consumers discover the plug-in soname,=
- but if the API is defined in the header and the soname has to match, maybe=
- that=E2=80=99s the way to go
->=20
-> I don=E2=80=99t think any of these changes would alter the =E2=80=9Cloose=
--ness=E2=80=9D of current coupling between rpc.mountd and the plug-in libra=
-ry (to address Steve=E2=80=99s concern), but they would make a better guara=
-ntee that mountd was loading the correct plug-in library version.
-
-All the rest I completely agree with.
-
->=20
-> I=E2=80=99m not sure exactly how to get from point A to point B. Probably=
- fedfs-utils would have to package the plug-in library in the old and new p=
-laces until all distributed versions of mountd was changed to find the plug=
--ins in the right place. That would have to be the case to allow nfs-utils =
-downgrades for a particular distribution.
->=20
-
-One option would before the next fedfs release to update the major version =
-of
-libnfsjunct to '1' and to discard the API version field and include the
-soname in the include file.
-
-Then nfs-utils can determine at build time whether .0 or .1 is present
-(probably via some #define in the include file) and load the appropriate on=
-e.
-Then distros can install the .0 shared library where it is expected, and
-the .1 shared library where that is expected.
-There would be no need to install the same version at two different locatio=
-ns.
-(Distros are already, presumably, quite capable of install multiple versions
-of shared libraries).
-
-It would require having two source packages for fedfs, so maybe it would end
-up a bit awkward ... not sure.
-
-
-Thanks,
-NeilBrown
-
->=20
->=20
->=20
-> >=20
-> > Thanks,
-> > NeilBrown
-> >=20
-> >=20
-> >>>=20
-> >>> diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-> >>> index ca35de28847a..1a8c20492869 100644
-> >>> --- a/utils/mountd/cache.c
-> >>> +++ b/utils/mountd/cache.c
-> >>> @@ -1139,7 +1139,11 @@ static struct exportent *lookup_junction(char =
-*dom, const char *pathname,
-> >>> 	struct link_map *map;
-> >>> 	void *handle;
-> >>>=20
-> >>> -	handle =3D dlopen("libnfsjunct.so", RTLD_NOW);
-> >>> +#ifdef JP_LIB_NAME
-> >>> +	handle =3D dlopen(JP_LIB_NAME, RTLD_NOW);
-> >>> +#else
-> >>> +	handle =3D dlopen("libnfsjunct.so.0", RTLD_NOW);
-> >>> +#endif
-> >>> 	if (handle =3D=3D NULL) {
-> >>> 		xlog(D_GENERAL, "%s: dlopen: %s", __func__, dlerror());
-> >>> 		return NULL;
-> >>=20
-> >> --
-> >> Chuck Lever
-> >> chuck[dot]lever[at]oracle[dot]com
-> >>=20
-> >>=20
-> >=20
->=20
-> --
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
->=20
->=20
-
-
---Sig_/0jh5lWTsZO/Ix+f4DOPMKOf
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.22 (GNU/Linux)
-
-iQIVAwUBUxUFSDnsnt1WYoG5AQJ6wxAAgx6JFS69UKFkBWBiuCt6xsscBrBcEVQ+
-i/8/Syj9nEx+KHm7ozHelm/EpiI3/njXMrUmGgYphSM0NjKtexhQTRYJ68pX4Owc
-g6PFyu9y4OwA5MHWGyRQUhQ6S8/IBcU3llUZgi+jfNabuFr6uCZ7a3NK4rqJIvYz
-JLhtS1C6EDs62FVem6lCCgM/T183v4lFWGq2zUOxO2GCoQQaL1gSn/hdWCK2NQws
-K7PkCQix7oT7VswHmlHJpnKLiNjJBI5bq0mWQUIjckhVRnvLXw7BQp+mvZ90QhIN
-qHSgCxq1k3PrK19zOlin+qPpBxhdYs3bWPtpNzZNpRxOYsSRbOOAEocev8+sJg/w
-/2J4TmofHZ2sj/xw1siIFQp+CE4FhWPRAKzGxQPUDHbYVdAHj0hA6PT4cLDUHNCK
-ig1RhE2i+RTfkT1SvO5LB6EjNJX9PtutnA7ZnEvwfSgVL3PLML4V+vUZ8XCmzXug
-aECLL7RYgQHXU27nEEt44lwMWMv5oPFAmQr8Dkam8spVpImwQTaKnVbzQz1+woUU
-/elAi3jb/Alsvr9Ol3vIherjniGbBZqwuCelg8eyxjZ7ERLjR3uOgMMUqFZKonux
-kxmfycBjOc+5ig/i+grOfgtRuUean1+mcztuSKk1X+zmCswaW9Yj++pipRzIXlno
-l20sWan1IbQ=
-=r3lv
------END PGP SIGNATURE-----
-
---Sig_/0jh5lWTsZO/Ix+f4DOPMKOf--
