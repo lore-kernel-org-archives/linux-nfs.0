@@ -1,220 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:47936 "EHLO fieldses.org"
+Received: from cantor2.suse.de ([195.135.220.15]:45899 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752273AbaCWBMd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 22 Mar 2014 21:12:33 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 49/50] nfsd4: kill WRITEMEM
-Date: Sat, 22 Mar 2014 21:12:20 -0400
-Message-Id: <1395537141-10389-50-git-send-email-bfields@redhat.com>
-In-Reply-To: <1395537141-10389-1-git-send-email-bfields@redhat.com>
-References: <1395537141-10389-1-git-send-email-bfields@redhat.com>
+	id S1752241AbaCFDfE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 5 Mar 2014 22:35:04 -0500
+Date: Thu, 6 Mar 2014 14:34:54 +1100
+From: NeilBrown <neilb@suse.de>
+To: Jim Rees <rees@umich.edu>
+Cc: Andrew Martin <amartin@xes-inc.com>, linux-nfs@vger.kernel.org
+Subject: Re: Optimal NFS mount options to safely allow interrupts and
+ timeouts on newer kernels
+Message-ID: <20140306143454.75eb2726@notabene.brown>
+In-Reply-To: <20140305211124.GA16979@umich.edu>
+References: <1696396609.119284.1394040541217.JavaMail.zimbra@xes-inc.com>
+	<260588931.122771.1394041524167.JavaMail.zimbra@xes-inc.com>
+	<20140305201149.GA16212@umich.edu>
+	<1106484945.149062.1394052088011.JavaMail.zimbra@xes-inc.com>
+	<20140305211124.GA16979@umich.edu>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/t7sWon8/_f.pDGKUX6arBjK"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+--Sig_/t7sWon8/_f.pDGKUX6arBjK
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4xdr.c | 62 +++++++++++++++++++++++++------------------------------
- 1 file changed, 28 insertions(+), 34 deletions(-)
+On Wed, 5 Mar 2014 16:11:24 -0500 Jim Rees <rees@umich.edu> wrote:
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 6afa0a1..24e9fde 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1700,12 +1700,6 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
- 	DECODE_TAIL;
- }
- 
--#define WRITEMEM(ptr,nbytes)     do { if (nbytes > 0) {		\
--	*(p + XDR_QUADLEN(nbytes) -1) = 0;                      \
--	memcpy(p, ptr, nbytes);					\
--	p += XDR_QUADLEN(nbytes);				\
--}} while (0)
--
- static void write32(__be32 **p, u32 n)
- {
- 	*(*p)++ = htonl(n);
-@@ -1784,8 +1778,7 @@ static __be32 nfsd4_encode_components_esc(struct xdr_stream *xdr, char sep, char
- 			p = xdr_reserve_space(xdr, strlen + 4);
- 			if (!p)
- 				return nfserr_resource;
--			*p++ = cpu_to_be32(strlen);
--			WRITEMEM(str, strlen);
-+			p = xdr_encode_opaque(p, str, strlen);
- 			count++;
- 		}
- 		else
-@@ -1876,8 +1869,7 @@ static __be32 nfsd4_encode_path(struct xdr_stream *xdr, const struct path *root,
- 			spin_unlock(&dentry->d_lock);
- 			goto out_free;
- 		}
--		*p++ = cpu_to_be32(len);
--		WRITEMEM(dentry->d_name.name, len);
-+		p = xdr_encode_opaque(p, dentry->d_name.name, len);
- 		dprintk("/%s", dentry->d_name.name);
- 		spin_unlock(&dentry->d_lock);
- 		dput(dentry);
-@@ -2243,7 +2235,7 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp, struct svc_export
- 			*p++ = cpu_to_be32(MINOR(stat.dev));
- 			break;
- 		case FSIDSOURCE_UUID:
--			WRITEMEM(exp->ex_uuid, 16);
-+			p = xdr_encode_opaque_fixed(p, exp->ex_uuid, 16);
- 			break;
- 		}
- 	}
-@@ -2329,8 +2321,8 @@ out_acl:
- 		p = xdr_reserve_space(xdr, fhp->fh_handle.fh_size + 4);
- 		if (!p)
- 			goto out_resource;
--		*p++ = cpu_to_be32(fhp->fh_handle.fh_size);
--		WRITEMEM(&fhp->fh_handle.fh_base, fhp->fh_handle.fh_size);
-+		p = xdr_encode_opaque(p, &fhp->fh_handle.fh_base,
-+					fhp->fh_handle.fh_size);
- 	}
- 	if (bmval0 & FATTR4_WORD0_FILEID) {
- 		p = xdr_reserve_space(xdr, 8);
-@@ -2745,7 +2737,8 @@ nfsd4_encode_stateid(struct xdr_stream *xdr, stateid_t *sid)
- 	if (!p)
- 		return nfserr_resource;
- 	*p++ = cpu_to_be32(sid->si_generation);
--	WRITEMEM(&sid->si_opaque, sizeof(stateid_opaque_t));
-+	p = xdr_encode_opaque_fixed(p, &sid->si_opaque,
-+					sizeof(stateid_opaque_t));
- 	return 0;
- }
- 
-@@ -2774,7 +2767,8 @@ static __be32 nfsd4_encode_bind_conn_to_session(struct nfsd4_compoundres *resp,
- 		p = xdr_reserve_space(xdr, NFS4_MAX_SESSIONID_LEN + 8);
- 		if (!p)
- 			return nfserr_resource;
--		WRITEMEM(bcts->sessionid.data, NFS4_MAX_SESSIONID_LEN);
-+		p = xdr_encode_opaque_fixed(p, bcts->sessionid.data,
-+						NFS4_MAX_SESSIONID_LEN);
- 		*p++ = cpu_to_be32(bcts->dir);
- 		/* Sorry, we do not yet support RDMA over 4.1: */
- 		*p++ = cpu_to_be32(0);
-@@ -2804,7 +2798,8 @@ nfsd4_encode_commit(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_
- 		p = xdr_reserve_space(xdr, NFS4_VERIFIER_SIZE);
- 		if (!p)
- 			return nfserr_resource;
--		WRITEMEM(commit->co_verf.data, NFS4_VERIFIER_SIZE);
-+		p = xdr_encode_opaque_fixed(p, commit->co_verf.data,
-+						NFS4_VERIFIER_SIZE);
- 	}
- 	return nfserr;
- }
-@@ -2855,8 +2850,7 @@ nfsd4_encode_getfh(struct nfsd4_compoundres *resp, __be32 nfserr, struct svc_fh
- 		p = xdr_reserve_space(xdr, len + 4);
- 		if (!p)
- 			return nfserr_resource;
--		*p++ = cpu_to_be32(len);
--		WRITEMEM(&fhp->fh_handle.fh_base, len);
-+		p = xdr_encode_opaque(p, &fhp->fh_handle.fh_base, len);
- 	}
- 	return nfserr;
- }
-@@ -2889,9 +2883,8 @@ again:
- 	p = xdr_encode_hyper(p, ld->ld_length);
- 	*p++ = cpu_to_be32(ld->ld_type);
- 	if (conf->len) {
--		WRITEMEM(&ld->ld_clientid, 8);
--		*p++ = cpu_to_be32(conf->len);
--		WRITEMEM(conf->data, conf->len);
-+		p = xdr_encode_opaque_fixed(p, &ld->ld_clientid, 8);
-+		p = xdr_encode_opaque(p, conf->data, conf->len);
- 	}  else {  /* non - nfsv4 lock in conflict, no clientid nor owner */
- 		p = xdr_encode_hyper(p, (u64)0); /* clientid */
- 		*p++ = cpu_to_be32(0); /* length of owner name */
-@@ -3449,8 +3442,7 @@ nfsd4_do_encode_secinfo(struct xdr_stream *xdr,
- 			if (!p)
- 				goto out;
- 			*p++ = cpu_to_be32(RPC_AUTH_GSS);
--			*p++ = cpu_to_be32(info.oid.len);
--			WRITEMEM(info.oid.data, info.oid.len);
-+			p = xdr_encode_opaque(p,  info.oid.data, info.oid.len);
- 			*p++ = cpu_to_be32(info.qop);
- 			*p++ = cpu_to_be32(info.service);
- 		} else if (pf < RPC_AUTH_MAXFLAVOR) {
-@@ -3532,8 +3524,9 @@ nfsd4_encode_setclientid(struct nfsd4_compoundres *resp, __be32 nfserr, struct n
- 		p = xdr_reserve_space(xdr, 8 + NFS4_VERIFIER_SIZE);
- 		if (!p)
- 			return nfserr_resource;
--		WRITEMEM(&scd->se_clientid, 8);
--		WRITEMEM(&scd->se_confirm, NFS4_VERIFIER_SIZE);
-+		p = xdr_encode_opaque_fixed(p, &scd->se_clientid, 8);
-+		p = xdr_encode_opaque_fixed(p, &scd->se_confirm,
-+						NFS4_VERIFIER_SIZE);
- 	}
- 	else if (nfserr == nfserr_clid_inuse) {
- 		p = xdr_reserve_space(xdr, 8);
-@@ -3557,7 +3550,8 @@ nfsd4_encode_write(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_w
- 			return nfserr_resource;
- 		*p++ = cpu_to_be32(write->wr_bytes_written);
- 		*p++ = cpu_to_be32(write->wr_how_written);
--		WRITEMEM(write->wr_verifier.data, NFS4_VERIFIER_SIZE);
-+		p = xdr_encode_opaque_fixed(p, write->wr_verifier.data,
-+							NFS4_VERIFIER_SIZE);
- 	}
- 	return nfserr;
- }
-@@ -3598,7 +3592,7 @@ nfsd4_encode_exchange_id(struct nfsd4_compoundres *resp, __be32 nfserr,
- 	if (!p)
- 		return nfserr_resource;
- 
--	WRITEMEM(&exid->clientid, 8);
-+	p = xdr_encode_opaque_fixed(p, &exid->clientid, 8);
- 	*p++ = cpu_to_be32(exid->seqid);
- 	*p++ = cpu_to_be32(exid->flags);
- 
-@@ -3638,12 +3632,10 @@ nfsd4_encode_exchange_id(struct nfsd4_compoundres *resp, __be32 nfserr,
- 	/* The server_owner struct */
- 	p = xdr_encode_hyper(p, minor_id);      /* Minor id */
- 	/* major id */
--	*p++ = cpu_to_be32(major_id_sz);
--	WRITEMEM(major_id, major_id_sz);
-+	p = xdr_encode_opaque(p, major_id, major_id_sz);
- 
- 	/* Server scope */
--	*p++ = cpu_to_be32(server_scope_sz);
--	WRITEMEM(server_scope, server_scope_sz);
-+	p = xdr_encode_opaque(p, server_scope, server_scope_sz);
- 
- 	/* Implementation id */
- 	*p++ = cpu_to_be32(0);	/* zero length nfs_impl_id4 array */
-@@ -3663,7 +3655,8 @@ nfsd4_encode_create_session(struct nfsd4_compoundres *resp, __be32 nfserr,
- 	p = xdr_reserve_space(xdr, 24);
- 	if (!p)
- 		return nfserr_resource;
--	WRITEMEM(sess->sessionid.data, NFS4_MAX_SESSIONID_LEN);
-+	p = xdr_encode_opaque_fixed(p, sess->sessionid.data,
-+					NFS4_MAX_SESSIONID_LEN);
- 	*p++ = cpu_to_be32(sess->seqid);
- 	*p++ = cpu_to_be32(sess->flags);
- 
-@@ -3718,7 +3711,8 @@ nfsd4_encode_sequence(struct nfsd4_compoundres *resp, __be32 nfserr,
- 	p = xdr_reserve_space(xdr, NFS4_MAX_SESSIONID_LEN + 20);
- 	if (!p)
- 		return nfserr_resource;
--	WRITEMEM(seq->sessionid.data, NFS4_MAX_SESSIONID_LEN);
-+	p = xdr_encode_opaque_fixed(p, seq->sessionid.data,
-+					NFS4_MAX_SESSIONID_LEN);
- 	*p++ = cpu_to_be32(seq->seqid);
- 	*p++ = cpu_to_be32(seq->slotid);
- 	/* Note slotid's are numbered from zero: */
-@@ -3952,7 +3946,7 @@ nfsd4_encode_replay(struct xdr_stream *xdr, struct nfsd4_op *op)
- 	*p++ = cpu_to_be32(op->opnum);
- 	*p++ = rp->rp_status;  /* already xdr'ed */
- 
--	WRITEMEM(rp->rp_buf, rp->rp_buflen);
-+	p = xdr_encode_opaque_fixed(p, rp->rp_buf, rp->rp_buflen);
- }
- 
- int
--- 
-1.8.5.3
+> Andrew Martin wrote:
+>=20
+>   Isn't intr/nointr deprecated (since kernel 2.6.25)?
+>=20
+> It isn't so much that it's deprecated as that it's now the default (except
+> that only SIGKILL will work).
 
+Not quite correct.  Any signal will work providing its behaviour is to kill
+the process.  So SIGKILL will always work, and SIGTERM SIGINT SIGQUIT etc
+will work providing that aren't caught or ignored by the process.
+
+NeilBrown
+
+
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
+--Sig_/t7sWon8/_f.pDGKUX6arBjK
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.22 (GNU/Linux)
+
+iQIVAwUBUxfs3jnsnt1WYoG5AQIhfA//Z+s+s0swkWg7jpv4bI9Y6vqiXXLsD6J6
+uKCUDGBmuI4pBz5n0S6QccxCn8iahzEhyHn6qzZJU/OdulmBkEPdR3ljMFIt7LkB
+T/q39Z6vnxjuyM7sAMlp1BtZMFm8KIgaMDy/eYNg1NZrQCZooeS5+UeP3bs/SJU+
+oF/6J7OBbAKMx5gwOiJxkxmiTB1mqpFN0b/wuiF/pccwC65iNIgYD1Y7A66WheVA
+bw8iASzC8hO8tDbx+lQrRf9jroRvZhgh0CJ8ZLusEjrtGzWmbwJ4gR4N79hqterR
+40Ev1veNJ3LUCcPPW6E4a4GVMoPZhe06Ld2gM/aCNxwlLjyh82oliIkNiMIlf84+
+J0OOsiU6YdSMKl+Y7jEKqum16W9ojSwS6sOHD4tLXpsuAEMIvpjwrSah/cRP7fjQ
+QUix6OzVCjHCgC7jrjNRdOmJFSHx4m2mzmtRRKKm22G2Ok+YGAig6PPrEXA9/qmM
+zVg66UgR/p/3PefkJ7/P/b2n67m3eUX8nHM6Qk+HBgv5W0p9B8SWM5FEJXgZT4VT
+Xm7aBublGNlQGGfNwrtIqnqqz54JZbE8hYB/sFHyw0iWdq7IB0pX7ReVLCK77ZbB
+1du3zU/vExcOLbxCCeVbyvycWJaYRFjpVfFXjrB/ZNGItEf24MKGfdFgE8mBhkVC
+A+807hpdslY=
+=MizO
+-----END PGP SIGNATURE-----
+
+--Sig_/t7sWon8/_f.pDGKUX6arBjK--
