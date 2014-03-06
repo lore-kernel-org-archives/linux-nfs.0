@@ -1,54 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:40811 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757116AbaCTNtM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 20 Mar 2014 09:49:12 -0400
-Message-ID: <532AF1D1.7070400@RedHat.com>
-Date: Thu, 20 Mar 2014 09:49:05 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Noam Meltzer <noam@primarydata.com>, Simo Sorce <simo@redhat.com>
-CC: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
-        sssd-devel <sssd-devel@lists.fedorahosted.org>
-Subject: Re: [PATCH v2 0/5] NFSv4 rpc.idmapd plugin
-References: <1393918676-20865-1-git-send-email-noam@primarydata.com>	<5321CDB6.7010803@RedHat.com>	<1394729939.32465.231.camel@willson.li.ssimo.org>	<20140313172531.GA7124@fieldses.org>	<1394732462.32465.235.camel@willson.li.ssimo.org> <CAOoFWK_uNLEim7MH=K=Ojge_KjcJk6V7p1-LFcYNPC9=fZ90fQ@mail.gmail.com>
-In-Reply-To: <CAOoFWK_uNLEim7MH=K=Ojge_KjcJk6V7p1-LFcYNPC9=fZ90fQ@mail.gmail.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from aserp1040.oracle.com ([141.146.126.69]:46872 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751210AbaCFQNj convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Mar 2014 11:13:39 -0500
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
+Subject: Re: Optimal NFS mount options to safely allow interrupts and timeouts on newer kernels
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <2A4F9722-1ED1-462E-B66B-669217957814@primarydata.com>
+Date: Thu, 6 Mar 2014 11:13:34 -0500
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <473B4660-0C59-49D4-8BBD-24ABD929AFB9@oracle.com>
+References: <1696396609.119284.1394040541217.JavaMail.zimbra@xes-inc.com> <260588931.122771.1394041524167.JavaMail.zimbra@xes-inc.com> <20140306145042.6db53f60@notabene.brown> <1853694865.210849.1394082223818.JavaMail.zimbra@xes-inc.com> <20140306123438.GA21799@umich.edu> <04BE61B0-08B5-4E0C-88B6-6D93127BB64E@oracle.com> <5B1102FE-8521-4BEF-8A2B-CE17EC32777F@primarydata.com> <17607EE5-614A-4B13-B5E7-0D1344A30C7F@oracle.com> <2A4F9722-1ED1-462E-B66B-669217957814@primarydata.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
+On Mar 6, 2014, at 11:02 AM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
 
-On 03/20/2014 03:33 AM, Noam Meltzer wrote:
 > 
+> On Mar 6, 2014, at 10:59, Chuck Lever <chuck.lever@oracle.com> wrote:
 > 
+>> 
+>> On Mar 6, 2014, at 10:33 AM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+>> 
+>>> 
+>>> On Mar 6, 2014, at 10:26, Chuck Lever <chuck.lever@oracle.com> wrote:
+>>> 
+>>>> 
+>>>> On Mar 6, 2014, at 7:34 AM, Jim Rees <rees@umich.edu> wrote:
+>>>> 
+>>>>> Given this is apache, I think if I were doing this I'd use ro,soft,intr,tcp
+>>>>> and not try to write anything to nfs.
+>>>> 
+>>>> I agree. A static web page workload should be read-mostly or read-only. The (small) corruption risk with “ro,soft" is that an interrupted read would cause the client to cache incomplete data.
+>>> 
+>>> What? How? If that were the case, we would have a blatant read bug. As I read the current code, _any_ error will cause the page to not be marked as up to date.
+>> 
+>> Agree, the design is sound. But we don’t test this use case very much, so I don’t have 100% confidence that there are no bugs.
 > 
-> On Thu, Mar 13, 2014 at 7:41 PM, Simo Sorce <simo@redhat.com <mailto:simo@redhat.com>> wrote:
-> 
->     On Thu, 2014-03-13 at 13:25 -0400, J. Bruce Fields wrote:
->     > On Thu, Mar 13, 2014 at 12:58:59PM -0400, Simo Sorce wrote:
->     > > On Thu, 2014-03-13 at 11:24 -0400, Steve Dickson wrote:
->     > >
->     > > > V4 servers now have an option of returning a uid string (aka "3606")
->     > > > where the NFS client just converts that into the uid.
->     > >
->     > > Can the client tell the server *not to do that* ?
->     >
->     > The client can use kerberos, in which case the server won't do that.
-> 
->     This is sufficient, thanks.
-> 
->     > Other than that, no, the behavior can only be controlled by server-side
->     > configuration.
-> 
->     A little sub-optimal if the server can do either but the client can have
->     a choice, but ok.
-> 
-> 
-> Sorry for the late response. A misplaced email filtering rule had moved it away from my inbox.
-> How can we push this forward?
-> 
-Not sure since I don't maintain any of the code these patches change... 
+> Is that the royal ‘we’, or are you talking on behalf of all the QA departments and testers here? I call bullshit…
 
-steved.
- 
+If you want to differ with my opinion, fine. But your tone is not professional or appropriate for a public forum. You need to start treating all of your colleagues with respect, including me.
+
+If anyone else had claimed a testing gap, you would have said “If that were the case, we would have a blatant read bug” and left it at that. But you had to go one needless and provocative step further.
+
+Stop bullying me, Trond. I’ve had enough of it.
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
