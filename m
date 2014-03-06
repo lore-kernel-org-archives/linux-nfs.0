@@ -1,75 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:5090 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755032AbaCMUWW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 13 Mar 2014 16:22:22 -0400
-Date: Thu, 13 Mar 2014 16:22:18 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] nfs: emit a fsnotify_nameremove call in sillyrename
- codepath
-Message-ID: <20140313162218.570e0819@tlielax.poochiereds.net>
-In-Reply-To: <35EEB018-FD2D-4C52-AA6B-24B66B11D6B6@primarydata.com>
-References: <1394738651-26783-1-git-send-email-jlayton@redhat.com>
-	<35EEB018-FD2D-4C52-AA6B-24B66B11D6B6@primarydata.com>
+Received: from youngberry.canonical.com ([91.189.89.112]:48725 "EHLO
+	youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750828AbaCFPau (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Mar 2014 10:30:50 -0500
+Date: Thu, 6 Mar 2014 09:30:42 -0600
+From: Serge Hallyn <serge.hallyn@ubuntu.com>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: James Morris <james.l.morris@oracle.com>,
+        Serge Hallyn <serge.hallyn@canonical.com>,
+        linux-security-module@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] security: have cap_dentry_init_security return error
+Message-ID: <20140306153042.GA14791@sergelap>
+References: <1394041657-7114-1-git-send-email-jlayton@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1394041657-7114-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 13 Mar 2014 16:08:01 -0400
-Trond Myklebust <trond.myklebust@primarydata.com> wrote:
-
+Quoting Jeff Layton (jlayton@redhat.com):
+> Currently, cap_dentry_init_security returns 0 without actually
+> initializing the security label. This confuses its only caller
+> (nfs4_label_init_security) which expects an error in that situation, and
+> causes it to end up sending out junk onto the wire instead of simply
+> suppressing the label in the attributes sent.
 > 
-> On Mar 13, 2014, at 15:24, Jeff Layton <jlayton@redhat.com> wrote:
+> When CONFIG_SECURITY is disabled, security_dentry_init_security returns
+> -EOPNOTSUPP. Have cap_dentry_init_security do the same.
 > 
-> > If a file is sillyrenamed, then the generic vfs_unlink code will skip
-> > emitting fsnotify events for it.
-> > 
-> > This patch has the sillyrename code do that instead.
-> > 
-> > In truth this is a little bit odd since we aren't actually removing the
-> > dentry per-se, but renaming it. Still, this is probably the right thing
-> > to do since it's what userland apps expect to see when an unlink()
-> > occurs or some file is renamed on top of the dentry.
-> > 
-> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > ---
-> > fs/nfs/dir.c    | 1 +
-> > fs/nfs/unlink.c | 2 ++
-> > 2 files changed, 3 insertions(+)
-> > 
-> > diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-> > index 4a48fe4b84b6..591aec9b1719 100644
-> > --- a/fs/nfs/dir.c
-> > +++ b/fs/nfs/dir.c
-> > @@ -37,6 +37,7 @@
-> > #include <linux/sched.h>
-> > #include <linux/kmemleak.h>
-> > #include <linux/xattr.h>
-> > +#include <linux/fsnotify.h>
-> > 
-> > #include "delegation.h"
-> > #include "iostat.h"
-> > diff --git a/fs/nfs/unlink.c b/fs/nfs/unlink.c
-> > index 11d78944de79..547ed0cd59db 100644
-> > --- a/fs/nfs/unlink.c
-> > +++ b/fs/nfs/unlink.c
-> > @@ -355,6 +355,8 @@ static void nfs_async_rename_done(struct rpc_task *task, void *calldata)
-> > 
-> > 	if (task->tk_status != 0)
-> > 		nfs_cancel_async_unlink(old_dentry);
-> > +	else if (old_dentry->d_flags & DCACHE_NFSFS_RENAMED)
-> > +		fsnotify_nameremove(old_dentry, S_ISDIR(old_dentry->d_inode->i_mode));
-> > }
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+
+Acked-by: Serge E. Hallyn <serge.hallyn@ubuntu.com>
+
+> ---
+>  security/capability.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
 > 
-> Any reason why we shouldn’t just do this in nfs_sillyrename() itself?
->
-
-We certainly could, but then you'd probably never get the event if the
-process waiting on the async sillyrename got killed while waiting on
-the reply.
-
--- 
-Jeff Layton <jlayton@redhat.com>
+> diff --git a/security/capability.c b/security/capability.c
+> index 8b4f24ae4338..9323bbeba296 100644
+> --- a/security/capability.c
+> +++ b/security/capability.c
+> @@ -116,7 +116,7 @@ static int cap_dentry_init_security(struct dentry *dentry, int mode,
+>  					struct qstr *name, void **ctx,
+>  					u32 *ctxlen)
+>  {
+> -	return 0;
+> +	return -EOPNOTSUPP;
+>  }
+>  
+>  static int cap_inode_alloc_security(struct inode *inode)
+> -- 
+> 1.8.5.3
+> 
