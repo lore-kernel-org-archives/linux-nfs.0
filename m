@@ -1,158 +1,123 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:47884 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752165AbaCWBM3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 22 Mar 2014 21:12:29 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 23/50] nfsd4: "backfill" using write_bytes_to_xdr_buf
-Date: Sat, 22 Mar 2014 21:11:54 -0400
-Message-Id: <1395537141-10389-24-git-send-email-bfields@redhat.com>
-In-Reply-To: <1395537141-10389-1-git-send-email-bfields@redhat.com>
-References: <1395537141-10389-1-git-send-email-bfields@redhat.com>
+Received: from mail-pb0-f48.google.com ([209.85.160.48]:37645 "EHLO
+	mail-pb0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754326AbaCFAnh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Mar 2014 19:43:37 -0500
+MIME-Version: 1.0
+In-Reply-To: <20140305053440.GD3334@linux.vnet.ibm.com>
+References: <CAGVrzcbsSV7h3qA3KuCTwKNFEeww_kSNcfUkfw3PPjeXQXBo6g@mail.gmail.com>
+ <1393980534.26794.147.camel@edumazet-glaptop2.roam.corp.google.com>
+ <CAGVrzcaekM51hme_tquaT6e22fV1_cocpn1kDUsYfFce=F+o4g@mail.gmail.com>
+ <CAGVrzcbRycBy0w64R9pV=JG6M3aJeARbOnh-xRrumYzzVDgWGQ@mail.gmail.com>
+ <20140305014310.GC3334@linux.vnet.ibm.com> <CAGVrzcae0XPXpue_+n-O+EBzK92JqXHNftTPGt+5SRzroTSF3Q@mail.gmail.com>
+ <20140305053440.GD3334@linux.vnet.ibm.com>
+From: Florian Fainelli <f.fainelli@gmail.com>
+Date: Wed, 5 Mar 2014 16:42:55 -0800
+Message-ID: <CAGVrzcYBtR14-XkPjDiC+JnQ422d8T8j+3Qg6b5OUQLC7eRgXg@mail.gmail.com>
+Subject: Re: RCU stalls when running out of memory on 3.14-rc4 w/ NFS and
+ kernel threads priorities changed
+To: Paul McKenney <paulmck@linux.vnet.ibm.com>
+Cc: Eric Dumazet <eric.dumazet@gmail.com>,
+        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
+        linux-mm <linux-mm@kvack.org>, linux-nfs <linux-nfs@vger.kernel.org>,
+        "trond.myklebust" <trond.myklebust@primarydata.com>,
+        netdev <netdev@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+2014-03-04 21:34 GMT-08:00 Paul E. McKenney <paulmck@linux.vnet.ibm.com>:
+> On Tue, Mar 04, 2014 at 07:55:03PM -0800, Florian Fainelli wrote:
+>> 2014-03-04 17:43 GMT-08:00 Paul E. McKenney <paulmck@linux.vnet.ibm.com>:
+>> > On Tue, Mar 04, 2014 at 05:16:27PM -0800, Florian Fainelli wrote:
+>> >> 2014-03-04 17:03 GMT-08:00 Florian Fainelli <f.fainelli@gmail.com>:
+>> >> > 2014-03-04 16:48 GMT-08:00 Eric Dumazet <eric.dumazet@gmail.com>:
+>> >> >> On Tue, 2014-03-04 at 15:55 -0800, Florian Fainelli wrote:
+>> >> >>> Hi all,
+>> >> >>>
+>> >> >>> I am seeing the following RCU stalls messages appearing on an ARMv7
+>> >> >>> 4xCPUs system running 3.14-rc4:
+>> >> >>>
+>> >> >>> [   42.974327] INFO: rcu_sched detected stalls on CPUs/tasks:
+>> >> >>> [   42.979839]  (detected by 0, t=2102 jiffies, g=4294967082,
+>> >> >>> c=4294967081, q=516)
+>> >> >>> [   42.987169] INFO: Stall ended before state dump start
+>> >> >>>
+>> >> >>> this is happening under the following conditions:
+>> >> >>>
+>> >> >>> - the attached bumper.c binary alters various kernel thread priorities
+>> >> >>> based on the contents of bumpup.cfg and
+>> >> >>> - malloc_crazy is running from a NFS share
+>> >> >>> - malloc_crazy.c is running in a loop allocating chunks of memory but
+>> >> >>> never freeing it
+>> >> >>>
+>> >> >>> when the priorities are altered, instead of getting the OOM killer to
+>> >> >>> be invoked, the RCU stalls are happening. Taking NFS out of the
+>> >> >>> equation does not allow me to reproduce the problem even with the
+>> >> >>> priorities altered.
+>> >> >>>
+>> >> >>> This "problem" seems to have been there for quite a while now since I
+>> >> >>> was able to get 3.8.13 to trigger that bug as well, with a slightly
+>> >> >>> more detailed RCU debugging trace which points the finger at kswapd0.
+>> >> >>>
+>> >> >>> You should be able to get that reproduced under QEMU with the
+>> >> >>> Versatile Express platform emulating a Cortex A15 CPU and the attached
+>> >> >>> files.
+>> >> >>>
+>> >> >>> Any help or suggestions would be greatly appreciated. Thanks!
+>> >> >>
+>> >> >> Do you have a more complete trace, including stack traces ?
+>> >> >
+>> >> > Attatched is what I get out of SysRq-t, which is the only thing I have
+>> >> > (note that the kernel is built with CONFIG_RCU_CPU_STALL_INFO=y):
+>> >>
+>> >> QEMU for Versatile Express w/ 2 CPUs yields something slightly
+>> >> different than the real HW platform this is happening with, but it
+>> >> does produce the RCU stall anyway:
+>> >>
+>> >> [  125.762946] BUG: soft lockup - CPU#1 stuck for 53s! [malloc_crazy:91]
+>> >
+>> > This soft-lockup condition can result in RCU CPU stall warnings.  Fix
+>> > the problem causing the soft lockup, and I bet that your RCU CPU stall
+>> > warnings go away.
+>>
+>> I definitively agree, which is why I was asking for help, as I think
+>> the kernel thread priority change is what is causing the soft lockup
+>> to appear, but nothing obvious jumps to mind when looking at the
+>> trace.
+>
+> Is your hardware able to make the malloc_crazy CPU periodically dump
+> its stack, perhaps in response to an NMI?  If not, another approach is
+> to use ftrace -- though this will require a very high-priority task to
+> turn tracing on and off reasonably quickly, unless you happen to have
+> a very large amount of storage to hold the trace.
+>
+> What happens if you malloc() less intensively?  Does that avoid this
+> problem?
 
-Normally xdr encoding proceeds in a single pass from start of a buffer
-to end, but sometimes we have to write a few bytes to an earlier
-position.
+It does yes, putting some arbitrary delays between the malloc() calls
+does definitively help.
 
-Use write_bytes_to_xdr_buf for these cases rather than saving a pointer
-to write to.  We plan to rewrite xdr_reserve_space to handle encoding
-across page boundaries using a scratch buffer, and don't want to risk
-writing to a pointer that was contained in a scratch buffer.
+>The reason I ask is that you mentioned that avoiding NFS helped,
+> and it is possible that NFS is increasing storage-access latencies and
+> thus triggering another problem.  It is quite possible that slowing
+> down the malloc()s would also help, and might allow you to observe what
+> is happening more easily than when the system is driven fully to the
+> lockup condition.
+>
+> Finally, what are you trying to achieve with this workload?  Does your
+> production workload behave in this way?  Or is this an experimental
+> investigation of some sort?
 
-Also it will no longer be safe to calculate lengths by subtracting two
-pointers, so use xdr_buf offsets instead.
+This is an experimental investigation, part of the problem being that
+there were some expectations that altering priority of essential
+kernel threads would "just work".
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4xdr.c | 45 ++++++++++++++++++++++++++-------------------
- 1 file changed, 26 insertions(+), 19 deletions(-)
-
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index e5cc354..43c2a99 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1759,16 +1759,19 @@ static void write_cinfo(__be32 **p, struct nfsd4_change_info *c)
- static __be32 nfsd4_encode_components_esc(struct xdr_stream *xdr, char sep, char *components, char esc_enter, char esc_exit)
- {
- 	__be32 *p;
--	__be32 *countp;
-+	__be32 pathlen;
-+	int pathlen_offset;
- 	int strlen, count=0;
- 	char *str, *end, *next;
- 
- 	dprintk("nfsd4_encode_components(%s)\n", components);
-+
-+	pathlen_offset = xdr->buf->len;
- 	p = xdr_reserve_space(xdr, 4);
- 	if (!p)
- 		return nfserr_resource;
--	countp = p;
--	WRITE32(0); /* We will fill this in with @count later */
-+	p++; /* We will fill this in with @count later */
-+
- 	end = str = components;
- 	while (*end) {
- 		bool found_esc = false;
-@@ -1801,8 +1804,8 @@ static __be32 nfsd4_encode_components_esc(struct xdr_stream *xdr, char sep, char
- 			end++;
- 		str = end;
- 	}
--	p = countp;
--	WRITE32(count);
-+	pathlen = htonl(xdr->buf->len - pathlen_offset);
-+	write_bytes_to_xdr_buf(xdr->buf, pathlen_offset, &pathlen, 4);
- 	return 0;
- }
- 
-@@ -2044,7 +2047,8 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp, struct svc_export
- 	struct kstatfs statfs;
- 	__be32 *p;
- 	int starting_len = xdr->buf->len;
--	__be32 *attrlenp;
-+	int attrlen_offset;
-+	__be32 attrlen;
- 	u32 dummy;
- 	u64 dummy64;
- 	u32 rdattr_err = 0;
-@@ -2149,10 +2153,12 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp, struct svc_export
- 		WRITE32(1);
- 		WRITE32(bmval0);
- 	}
-+
-+	attrlen_offset = xdr->buf->len;
- 	p = xdr_reserve_space(xdr, 4);
- 	if (!p)
- 		goto out_resource;
--	attrlenp = p++;                /* to be backfilled later */
-+	p++;                /* to be backfilled later */
- 
- 	if (bmval0 & FATTR4_WORD0_SUPPORTED_ATTRS) {
- 		u32 word0 = nfsd_suppattrs0(minorversion);
-@@ -2523,7 +2529,8 @@ out_acl:
- 		WRITE32(NFSD_SUPPATTR_EXCLCREAT_WORD2);
- 	}
- 
--	*attrlenp = htonl((char *)xdr->p - (char *)attrlenp - 4);
-+	attrlen = htonl(xdr->buf->len - attrlen_offset - 4);
-+	write_bytes_to_xdr_buf(xdr->buf, attrlen_offset, &attrlen, 4);
- 	status = nfs_ok;
- 
- out:
-@@ -3679,16 +3686,16 @@ __be32 nfsd4_check_resp_size(struct nfsd4_compoundres *resp, u32 pad)
- void
- nfsd4_encode_operation(struct nfsd4_compoundres *resp, struct nfsd4_op *op)
- {
-+	struct xdr_stream *xdr = &resp->xdr;
- 	struct nfs4_stateowner *so = resp->cstate.replay_owner;
- 	struct svc_rqst *rqstp = resp->rqstp;
--	__be32 *statp;
-+	int post_err_offset;
- 	nfsd4_enc encoder;
- 	__be32 *p;
- 
- 	RESERVE_SPACE(8);
- 	WRITE32(op->opnum);
--	statp = p++;	/* to be backfilled at the end */
--	ADJUST_ARGS();
-+	post_err_offset = xdr->buf->len;
- 
- 	if (op->opnum == OP_ILLEGAL)
- 		goto status;
-@@ -3727,19 +3734,19 @@ nfsd4_encode_operation(struct nfsd4_compoundres *resp, struct nfsd4_op *op)
- 			       nfsd4_op_name(op->opnum));
- 			WARN_ON_ONCE(1);
- 		}
--		resp->xdr.p = statp + 1;
-+		xdr_truncate_encode(xdr, post_err_offset);
- 	}
- 	if (so) {
-+		int len = xdr->buf->len - post_err_offset;
-+
- 		so->so_replay.rp_status = op->status;
--		so->so_replay.rp_buflen = (char *)resp->xdr.p - (char *)(statp+1);
--		memcpy(so->so_replay.rp_buf, statp+1, so->so_replay.rp_buflen);
-+		so->so_replay.rp_buflen = len;
-+		read_bytes_from_xdr_buf(xdr->buf, post_err_offset,
-+						so->so_replay.rp_buf, len);
- 	}
- status:
--	/*
--	 * Note: We write the status directly, instead of using WRITE32(),
--	 * since it is already in network byte order.
--	 */
--	*statp = op->status;
-+	/* Note that op->status is already in network byte order: */
-+	write_bytes_to_xdr_buf(xdr->buf, post_err_offset - 4, &op->status, 4);
- }
- 
- /* 
+It seemed to me like even if we moved kthreadd to SCHED_RR, with
+priority 2 (as shown by /proc/*/sched), we should still be at a more
+favorable scheduling class than 'rcu_bh' and 'rcu_sched' which are on
+SCHED_NORMAL. Interestingly, the issue only appears with 1 or 2 CPUs
+online, as soon as the 4 are online I am no longer able to reproduce
+it...
 -- 
-1.8.5.3
-
+Florian
