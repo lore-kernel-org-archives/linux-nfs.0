@@ -1,123 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pb0-f48.google.com ([209.85.160.48]:37645 "EHLO
-	mail-pb0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754326AbaCFAnh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Mar 2014 19:43:37 -0500
+Received: from xes-mad.com ([216.165.139.218]:60163 "EHLO xes-mad.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752275AbaCFUqO convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Mar 2014 15:46:14 -0500
+Date: Thu, 6 Mar 2014 14:45:58 -0600 (CST)
+From: Andrew Martin <amartin@xes-inc.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Jim Rees <rees@umich.edu>, bhawley@luminex.com, Brown Neil <neilb@suse.de>,
+        linux-nfs-owner@vger.kernel.org, linux-nfs@vger.kernel.org
+Message-ID: <521763040.159828.1394138758307.JavaMail.zimbra@xes-inc.com>
+In-Reply-To: <76B038DA-3E86-4C46-BFB6-928BFB8202D8@primarydata.com>
+References: <1696396609.119284.1394040541217.JavaMail.zimbra@xes-inc.com> <20140306162208.GA18207@umich.edu> <1094203678.52139.1394124222574.JavaMail.zimbra@xes-inc.com> <20140306173632.GA18545@umich.edu> <1397912955.101159.1394130906695.JavaMail.zimbra@xes-inc.com> <B454F556-9381-4DB7-B864-EC066DBEAC63@primarydata.com> <2043391310.134091.1394135196565.JavaMail.zimbra@xes-inc.com> <76B038DA-3E86-4C46-BFB6-928BFB8202D8@primarydata.com>
+Subject: Re: Optimal NFS mount options to safely allow interrupts and
+ timeouts on newer kernels
 MIME-Version: 1.0
-In-Reply-To: <20140305053440.GD3334@linux.vnet.ibm.com>
-References: <CAGVrzcbsSV7h3qA3KuCTwKNFEeww_kSNcfUkfw3PPjeXQXBo6g@mail.gmail.com>
- <1393980534.26794.147.camel@edumazet-glaptop2.roam.corp.google.com>
- <CAGVrzcaekM51hme_tquaT6e22fV1_cocpn1kDUsYfFce=F+o4g@mail.gmail.com>
- <CAGVrzcbRycBy0w64R9pV=JG6M3aJeARbOnh-xRrumYzzVDgWGQ@mail.gmail.com>
- <20140305014310.GC3334@linux.vnet.ibm.com> <CAGVrzcae0XPXpue_+n-O+EBzK92JqXHNftTPGt+5SRzroTSF3Q@mail.gmail.com>
- <20140305053440.GD3334@linux.vnet.ibm.com>
-From: Florian Fainelli <f.fainelli@gmail.com>
-Date: Wed, 5 Mar 2014 16:42:55 -0800
-Message-ID: <CAGVrzcYBtR14-XkPjDiC+JnQ422d8T8j+3Qg6b5OUQLC7eRgXg@mail.gmail.com>
-Subject: Re: RCU stalls when running out of memory on 3.14-rc4 w/ NFS and
- kernel threads priorities changed
-To: Paul McKenney <paulmck@linux.vnet.ibm.com>
-Cc: Eric Dumazet <eric.dumazet@gmail.com>,
-        "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        linux-mm <linux-mm@kvack.org>, linux-nfs <linux-nfs@vger.kernel.org>,
-        "trond.myklebust" <trond.myklebust@primarydata.com>,
-        netdev <netdev@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-2014-03-04 21:34 GMT-08:00 Paul E. McKenney <paulmck@linux.vnet.ibm.com>:
-> On Tue, Mar 04, 2014 at 07:55:03PM -0800, Florian Fainelli wrote:
->> 2014-03-04 17:43 GMT-08:00 Paul E. McKenney <paulmck@linux.vnet.ibm.com>:
->> > On Tue, Mar 04, 2014 at 05:16:27PM -0800, Florian Fainelli wrote:
->> >> 2014-03-04 17:03 GMT-08:00 Florian Fainelli <f.fainelli@gmail.com>:
->> >> > 2014-03-04 16:48 GMT-08:00 Eric Dumazet <eric.dumazet@gmail.com>:
->> >> >> On Tue, 2014-03-04 at 15:55 -0800, Florian Fainelli wrote:
->> >> >>> Hi all,
->> >> >>>
->> >> >>> I am seeing the following RCU stalls messages appearing on an ARMv7
->> >> >>> 4xCPUs system running 3.14-rc4:
->> >> >>>
->> >> >>> [   42.974327] INFO: rcu_sched detected stalls on CPUs/tasks:
->> >> >>> [   42.979839]  (detected by 0, t=2102 jiffies, g=4294967082,
->> >> >>> c=4294967081, q=516)
->> >> >>> [   42.987169] INFO: Stall ended before state dump start
->> >> >>>
->> >> >>> this is happening under the following conditions:
->> >> >>>
->> >> >>> - the attached bumper.c binary alters various kernel thread priorities
->> >> >>> based on the contents of bumpup.cfg and
->> >> >>> - malloc_crazy is running from a NFS share
->> >> >>> - malloc_crazy.c is running in a loop allocating chunks of memory but
->> >> >>> never freeing it
->> >> >>>
->> >> >>> when the priorities are altered, instead of getting the OOM killer to
->> >> >>> be invoked, the RCU stalls are happening. Taking NFS out of the
->> >> >>> equation does not allow me to reproduce the problem even with the
->> >> >>> priorities altered.
->> >> >>>
->> >> >>> This "problem" seems to have been there for quite a while now since I
->> >> >>> was able to get 3.8.13 to trigger that bug as well, with a slightly
->> >> >>> more detailed RCU debugging trace which points the finger at kswapd0.
->> >> >>>
->> >> >>> You should be able to get that reproduced under QEMU with the
->> >> >>> Versatile Express platform emulating a Cortex A15 CPU and the attached
->> >> >>> files.
->> >> >>>
->> >> >>> Any help or suggestions would be greatly appreciated. Thanks!
->> >> >>
->> >> >> Do you have a more complete trace, including stack traces ?
->> >> >
->> >> > Attatched is what I get out of SysRq-t, which is the only thing I have
->> >> > (note that the kernel is built with CONFIG_RCU_CPU_STALL_INFO=y):
->> >>
->> >> QEMU for Versatile Express w/ 2 CPUs yields something slightly
->> >> different than the real HW platform this is happening with, but it
->> >> does produce the RCU stall anyway:
->> >>
->> >> [  125.762946] BUG: soft lockup - CPU#1 stuck for 53s! [malloc_crazy:91]
->> >
->> > This soft-lockup condition can result in RCU CPU stall warnings.  Fix
->> > the problem causing the soft lockup, and I bet that your RCU CPU stall
->> > warnings go away.
->>
->> I definitively agree, which is why I was asking for help, as I think
->> the kernel thread priority change is what is causing the soft lockup
->> to appear, but nothing obvious jumps to mind when looking at the
->> trace.
->
-> Is your hardware able to make the malloc_crazy CPU periodically dump
-> its stack, perhaps in response to an NMI?  If not, another approach is
-> to use ftrace -- though this will require a very high-priority task to
-> turn tracing on and off reasonably quickly, unless you happen to have
-> a very large amount of storage to hold the trace.
->
-> What happens if you malloc() less intensively?  Does that avoid this
-> problem?
-
-It does yes, putting some arbitrary delays between the malloc() calls
-does definitively help.
-
->The reason I ask is that you mentioned that avoiding NFS helped,
-> and it is possible that NFS is increasing storage-access latencies and
-> thus triggering another problem.  It is quite possible that slowing
-> down the malloc()s would also help, and might allow you to observe what
-> is happening more easily than when the system is driven fully to the
-> lockup condition.
->
-> Finally, what are you trying to achieve with this workload?  Does your
-> production workload behave in this way?  Or is this an experimental
-> investigation of some sort?
-
-This is an experimental investigation, part of the problem being that
-there were some expectations that altering priority of essential
-kernel threads would "just work".
-
-It seemed to me like even if we moved kthreadd to SCHED_RR, with
-priority 2 (as shown by /proc/*/sched), we should still be at a more
-favorable scheduling class than 'rcu_bh' and 'rcu_sched' which are on
-SCHED_NORMAL. Interestingly, the issue only appears with 1 or 2 CPUs
-online, as soon as the 4 are online I am no longer able to reproduce
-it...
--- 
-Florian
+----- Original Message -----
+> From: "Trond Myklebust" <trond.myklebust@primarydata.com>
+> > I attempted to get a backtrace from one of the uninterruptable apache
+> > processes:
+> > echo w > /proc/sysrq-trigger
+> > 
+> > Here's one example:
+> > [1227348.003904] apache2       D 0000000000000000     0 10175   1773
+> > 0x00000004
+> > [1227348.003906]  ffff8802813178c8 0000000000000082 0000000000015e00
+> > 0000000000015e00
+> > [1227348.003908]  ffff8801d88f03d0 ffff880281317fd8 0000000000015e00
+> > ffff8801d88f0000
+> > [1227348.003910]  0000000000015e00 ffff880281317fd8 0000000000015e00
+> > ffff8801d88f03d0
+> > [1227348.003912] Call Trace:
+> > [1227348.003918]  [<ffffffffa00a5ca0>] ? rpc_wait_bit_killable+0x0/0x40
+> > [sunrpc]
+> > [1227348.003923]  [<ffffffffa00a5cc4>] rpc_wait_bit_killable+0x24/0x40
+> > [sunrpc]
+> > [1227348.003925]  [<ffffffff8156a41f>] __wait_on_bit+0x5f/0x90
+> > [1227348.003930]  [<ffffffffa00a5ca0>] ? rpc_wait_bit_killable+0x0/0x40
+> > [sunrpc]
+> > [1227348.003932]  [<ffffffff8156a4c8>] out_of_line_wait_on_bit+0x78/0x90
+> > [1227348.003934]  [<ffffffff81086790>] ? wake_bit_function+0x0/0x40
+> > [1227348.003939]  [<ffffffffa00a6611>] __rpc_execute+0x191/0x2a0 [sunrpc]
+> > [1227348.003945]  [<ffffffffa00a6746>] rpc_execute+0x26/0x30 [sunrpc]
+> 
+> That basically means that the process is hanging in the RPC layer, somewhere
+> in the state machine. ‘echo 0 >/proc/sys/sunrpc/rpc_debug’ as the ‘root’
+> user should give us a dump of which state these RPC calls are in. Can you
+> please try that?
+Yes I will definitely run that the next time it happens, but since it occurs
+sporadically (and I have not yet found a way to reproduce it on demand), it 
+could be days before it occurs again. I'll also run "netstat -tn" to check the
+TCP connections the next time this happens.
