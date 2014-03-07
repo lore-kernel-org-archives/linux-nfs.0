@@ -1,80 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mga01.intel.com ([192.55.52.88]:25162 "EHLO mga01.intel.com"
+Received: from mx1.redhat.com ([209.132.183.28]:15197 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753221AbaCaJB4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 31 Mar 2014 05:01:56 -0400
-Message-ID: <53392EDA.7000904@intel.com>
-Date: Mon, 31 Mar 2014 17:01:14 +0800
-From: "Yan, Zheng" <zheng.z.yan@intel.com>
-MIME-Version: 1.0
-To: Viro Alexander <viro@zeniv.linux.org.uk>
-CC: Trond Myklebust <trond.myklebust@primarydata.com>,
-        David Howells <dhowells@redhat.com>, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, ceph-devel@vger.kernel.org,
-        sage@inktank.com
-Subject: Re: [PATCH][RESEND] vfs: Make __d_materialise_dentry() set the materialised
- dentry name correctly
-References: <1394115376-17109-1-git-send-email-zheng.z.yan@intel.com> <6487FCC2-FB5C-4A32-94EF-5D3352A39781@primarydata.com>
-In-Reply-To: <6487FCC2-FB5C-4A32-94EF-5D3352A39781@primarydata.com>
-Content-Type: text/plain; charset=windows-1252
+	id S1753009AbaCGPCu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 7 Mar 2014 10:02:50 -0500
+From: Steve Dickson <steved@redhat.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH] Stop Background mounts hang from hanging
+Date: Fri,  7 Mar 2014 10:02:42 -0500
+Message-Id: <1394204563-1166-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Al,
+Background mounts hang forever due to the kernel not returning 
+the time out error. The proposed fix is twofold, one in the kernel 
+and one in the mounting code.
 
-Could you include this in 3.15
+The kernel patch stop the server trunking code from endlessly 
+looping in the kernel on -ETIMEDOUT errors. Instead, the code 
+will now return the error, allowing the mount to go into 
+the background.
 
-Regards
-Yan, Zheng
+Unfortunately, it takes over 5 mins for this timeout to 
+happen, due the default retry strategy, which is unacceptable 
+for background mounts. 
 
-On 03/06/2014 10:35 PM, Trond Myklebust wrote:
-> 
-> On Mar 6, 2014, at 9:16, Yan, Zheng <zheng.z.yan@intel.com> wrote:
-> 
->> From: David Howells <dhowells@redhat.com>
->>
->> Make __d_materialise_dentry() set the materialised dentry name correctly by
->> flipping the arguments to switch_names().
->>
->> switch_names() is lazy: if both names are internal to their dentries, it'll
->> overwrite that of the first dentry with that of the second, and won't update
->> that of the second.
->>
->> In the case of __d_materialise_dentry(), the second is an already extant
->> anonymous dentry that we want to insert into the tree in place of the dentry we
->> just looked up[*].  However, the dentry we just looked up carries the name we
->> actually want to use.
->>
->> [*] This is used by NFS to join a mount of a subtree into a mount of a tree
->> nearer the root when the two meet, where both mounts share a superblock and
->> thus a set of dentries.
->>
->> Signed-off-by: David Howells <dhowells@redhat.com>
->> ---
->> fs/dcache.c | 2 +-
->> 1 file changed, 1 insertion(+), 1 deletion(-)
->>
->> diff --git a/fs/dcache.c b/fs/dcache.c
->> index 265e0ce..ff779d4 100644
->> --- a/fs/dcache.c
->> +++ b/fs/dcache.c
->> @@ -2698,7 +2698,7 @@ static void __d_materialise_dentry(struct dentry *dentry, struct dentry *anon)
->>
->> 	dparent = dentry->d_parent;
->>
->> -	switch_names(dentry, anon);
->> +	switch_names(anon, dentry);
->> 	swap(dentry->d_name.hash, anon->d_name.hash);
->>
->> 	dentry->d_parent = dentry;
-> 
-> Well spotted...
-> 
-> We ought to better document the fact that ’switch_names’ is asymmetrical. Perhaps change it to ‘update_target_name’, and then switch the argument names so that the ’target’ really is the thing that gets updated?
-> 
-> _________________________________
-> Trond Myklebust
-> Linux NFS client maintainer, PrimaryData
-> trond.myklebust@primarydata.com
-> 
+So the patch I will be proposing for the mount code will be 
+to append the "retrans=1,timeo=100" mount options to the parent
+mount of the background mount (when they don't exist). This
+causes the parent mount to timeout in ~25sec. 
+
+When parent mount times out, those options will be remove (when 
+if they were added) before the child mount is done, in background.
+
+Steve Dickson (1):
+  NFSv4: Don't retry server trunking discovery on timeouts
+
+ fs/nfs/nfs4state.c |    1 +
+ 1 files changed, 1 insertions(+), 0 deletions(-)
 
