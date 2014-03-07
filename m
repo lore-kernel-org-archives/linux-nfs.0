@@ -1,109 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:47922 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:41779 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752245AbaCWBMc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 22 Mar 2014 21:12:32 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 42/50] nfsd4: don't treat readlink like a zero-copy operation
-Date: Sat, 22 Mar 2014 21:12:13 -0400
-Message-Id: <1395537141-10389-43-git-send-email-bfields@redhat.com>
-In-Reply-To: <1395537141-10389-1-git-send-email-bfields@redhat.com>
-References: <1395537141-10389-1-git-send-email-bfields@redhat.com>
+	id S1751065AbaCGTBp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 7 Mar 2014 14:01:45 -0500
+Date: Fri, 7 Mar 2014 14:01:36 -0500
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: "Yan, Zheng" <zheng.z.yan@intel.com>, David Howells <dhowells@redhat.com>,
+        linux-fsdevel@vger.kernel.org,
+        Viro Alexander <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org,
+        ceph-devel@vger.kernel.org, sage@inktank.com
+Subject: Re: [PATCH][RESEND] vfs: Make __d_materialise_dentry() set the
+ materialised dentry name correctly
+Message-ID: <20140307190136.GB30256@fieldses.org>
+References: <1394115376-17109-1-git-send-email-zheng.z.yan@intel.com>
+ <6487FCC2-FB5C-4A32-94EF-5D3352A39781@primarydata.com>
+ <20140307185552.GA30256@fieldses.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <20140307185552.GA30256@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Fri, Mar 07, 2014 at 01:55:52PM -0500, J. Bruce Fields wrote:
+> On Thu, Mar 06, 2014 at 09:35:01AM -0500, Trond Myklebust wrote:
+> > 
+> > On Mar 6, 2014, at 9:16, Yan, Zheng <zheng.z.yan@intel.com> wrote:
+> > 
+> > > From: David Howells <dhowells@redhat.com>
+> > > 
+> > > Make __d_materialise_dentry() set the materialised dentry name correctly by
+> > > flipping the arguments to switch_names().
+> > > 
+> > > switch_names() is lazy: if both names are internal to their dentries, it'll
+> > > overwrite that of the first dentry with that of the second, and won't update
+> > > that of the second.
+> > > 
+> > > In the case of __d_materialise_dentry(), the second is an already extant
+> > > anonymous dentry that we want to insert into the tree in place of the dentry we
+> > > just looked up[*].  However, the dentry we just looked up carries the name we
+> > > actually want to use.
+> > > 
+> > > [*] This is used by NFS to join a mount of a subtree into a mount of a tree
+> > > nearer the root when the two meet, where both mounts share a superblock and
+> > > thus a set of dentries.
+> > > 
+> > > Signed-off-by: David Howells <dhowells@redhat.com>
+> > > ---
+> > > fs/dcache.c | 2 +-
+> > > 1 file changed, 1 insertion(+), 1 deletion(-)
+> > > 
+> > > diff --git a/fs/dcache.c b/fs/dcache.c
+> > > index 265e0ce..ff779d4 100644
+> > > --- a/fs/dcache.c
+> > > +++ b/fs/dcache.c
+> > > @@ -2698,7 +2698,7 @@ static void __d_materialise_dentry(struct dentry *dentry, struct dentry *anon)
+> > > 
+> > > 	dparent = dentry->d_parent;
+> > > 
+> > > -	switch_names(dentry, anon);
+> > > +	switch_names(anon, dentry);
+> > > 	swap(dentry->d_name.hash, anon->d_name.hash);
+> > > 
+> > > 	dentry->d_parent = dentry;
+> > 
+> > Well spotted...
+> > 
+> > We ought to better document the fact that ’switch_names’ is asymmetrical. Perhaps change it to ‘update_target_name’, and then switch the argument names so that the ’target’ really is the thing that gets updated?
+> 
+> Probably not worth it if Miklos's RENAME_EXCHANGE operation is making it
+> symmetrical soon anyway?:
+> 
+> 	http://mid.gmane.org/<1380643239-16060-4-git-send-email-miklos@szeredi.hu>
 
-There's no advantage to this zero-copy-style readlink encoding, and it
-unnecessarily limits the kinds of compounds we can handle.  (In practice
-I can't see why a client would want e.g. multiple readlink calls in a
-comound, but it's probably a spec violation for us not to handle it.)
+To clarify: I mean, the suggested cleanup may not be worth it.  The
+__d_materialise_dentry bugfix of course is.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4xdr.c | 44 +++++++++++++-------------------------------
- 1 file changed, 13 insertions(+), 31 deletions(-)
+(What I wonder about is the duplication between this and __d_move.  Is
+there any way to make d_materialise_unique a special case of d_move?)
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index b35b7b1..c96a05e 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -3148,8 +3148,9 @@ static __be32
- nfsd4_encode_readlink(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_readlink *readlink)
- {
- 	int maxcount;
-+	__be32 wire_count;
-+	int zero = 0;
- 	struct xdr_stream *xdr = &resp->xdr;
--	char *page;
- 	int length_offset = xdr->buf->len;
- 	__be32 *p;
- 
-@@ -3159,51 +3160,32 @@ nfsd4_encode_readlink(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd
- 	p = xdr_reserve_space(xdr, 4);
- 	if (!p)
- 		return nfserr_resource;
--
--	if (resp->xdr.buf->page_len)
--		return nfserr_resource;
--	if (!*resp->rqstp->rq_next_page)
--		return nfserr_resource;
--
--	page = page_address(*(resp->rqstp->rq_next_page++));
--
- 	maxcount = PAGE_SIZE;
- 
--	if (xdr->end - xdr->p < 1)
-+	p = xdr_reserve_space(xdr, maxcount);
-+	if (!p)
- 		return nfserr_resource;
--
- 	/*
- 	 * XXX: By default, the ->readlink() VFS op will truncate symlinks
- 	 * if they would overflow the buffer.  Is this kosher in NFSv4?  If
- 	 * not, one easy fix is: if ->readlink() precisely fills the buffer,
- 	 * assume that truncation occurred, and return NFS4ERR_RESOURCE.
- 	 */
--	nfserr = nfsd_readlink(readlink->rl_rqstp, readlink->rl_fhp, page, &maxcount);
-+	nfserr = nfsd_readlink(readlink->rl_rqstp, readlink->rl_fhp, (void *)p, &maxcount);
-+
- 	if (nfserr == nfserr_isdir)
--		nfserr = nfserr_inval;
-+		nfserr= nfserr_inval;
- 	if (nfserr) {
- 		xdr_truncate_encode(xdr, length_offset);
- 		return nfserr;
- 	}
- 
--	WRITE32(maxcount);
--	resp->xdr.buf->head[0].iov_len = (char*)p
--				- (char*)resp->xdr.buf->head[0].iov_base;
--	resp->xdr.buf->page_len = maxcount;
--	xdr->buf->len += maxcount;
--	xdr->page_ptr += 1;
--	xdr->buf->buflen -= PAGE_SIZE;
--	xdr->iov = xdr->buf->tail;
--
--	/* Use rest of head for padding and remaining ops: */
--	resp->xdr.buf->tail[0].iov_base = p;
--	resp->xdr.buf->tail[0].iov_len = 0;
--	if (maxcount&3) {
--		p = xdr_reserve_space(xdr, 4);
--		WRITE32(0);
--		resp->xdr.buf->tail[0].iov_base += maxcount&3;
--		resp->xdr.buf->tail[0].iov_len = 4 - (maxcount&3);
--	}
-+	wire_count = htonl(maxcount);
-+	write_bytes_to_xdr_buf(xdr->buf, length_offset, &wire_count, 4);
-+	xdr_truncate_encode(xdr, length_offset + 4 + maxcount);
-+	if (maxcount & 3)
-+		write_bytes_to_xdr_buf(xdr->buf, length_offset + 4 + maxcount,
-+						&zero, 4 - (maxcount&3));
- 	return 0;
- }
- 
--- 
-1.8.5.3
-
+--b.
