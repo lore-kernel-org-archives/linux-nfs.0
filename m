@@ -1,65 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:47859 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752101AbaCWBM0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 22 Mar 2014 21:12:26 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 11/50] nfsd4: move proc_compound xdr encode init to helper
-Date: Sat, 22 Mar 2014 21:11:42 -0400
-Message-Id: <1395537141-10389-12-git-send-email-bfields@redhat.com>
-In-Reply-To: <1395537141-10389-1-git-send-email-bfields@redhat.com>
-References: <1395537141-10389-1-git-send-email-bfields@redhat.com>
+Received: from mail-pa0-f49.google.com ([209.85.220.49]:47420 "EHLO
+	mail-pa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751087AbaCGPgk convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 7 Mar 2014 10:36:40 -0500
+Received: by mail-pa0-f49.google.com with SMTP id lj1so4281737pab.22
+        for <linux-nfs@vger.kernel.org>; Fri, 07 Mar 2014 07:36:40 -0800 (PST)
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
+Subject: Re: [PATCH] Stop Background mounts hang from hanging
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+In-Reply-To: <1394204563-1166-1-git-send-email-steved@redhat.com>
+Date: Fri, 7 Mar 2014 10:36:37 -0500
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Message-Id: <D803A861-E660-4D20-BDE1-00D8C45A1228@primarydata.com>
+References: <1394204563-1166-1-git-send-email-steved@redhat.com>
+To: Dickson Steve <steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
 
-Mechanical transformation with no change of behavior.
+On Mar 7, 2014, at 10:02, Steve Dickson <steved@redhat.com> wrote:
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4proc.c | 16 ++++++++++++----
- 1 file changed, 12 insertions(+), 4 deletions(-)
+> Background mounts hang forever due to the kernel not returning 
+> the time out error. The proposed fix is twofold, one in the kernel 
+> and one in the mounting code.
+> 
+> The kernel patch stop the server trunking code from endlessly 
+> looping in the kernel on -ETIMEDOUT errors. Instead, the code 
+> will now return the error, allowing the mount to go into 
+> the background.
+> 
+> Unfortunately, it takes over 5 mins for this timeout to 
+> happen, due the default retry strategy, which is unacceptable 
+> for background mounts. 
+> 
+> So the patch I will be proposing for the mount code will be 
+> to append the "retrans=1,timeo=100" mount options to the parent
+> mount of the background mount (when they don't exist). This
+> causes the parent mount to timeout in ~25sec. 
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 7248a78..80e5921 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1262,6 +1262,17 @@ static bool need_wrongsec_check(struct svc_rqst *rqstp)
- 	return !(nextd->op_flags & OP_HANDLES_WRONGSEC);
- }
- 
-+static void svcxdr_init_encode(struct svc_rqst *rqstp, struct nfsd4_compoundres *resp)
-+{
-+	struct xdr_stream *xdr = &resp->xdr;
-+	struct xdr_buf *buf = &rqstp->rq_res;
-+	struct kvec *head = buf->head;
-+
-+	xdr->buf = buf;
-+	xdr->p   = head->iov_base + head->iov_len;
-+	xdr->end = head->iov_base + PAGE_SIZE;
-+}
-+
- /*
-  * COMPOUND call.
-  */
-@@ -1277,13 +1288,10 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
- 	u32		plen = 0;
- 	__be32		status;
- 
--	resp->xdr.buf = &rqstp->rq_res;
--	resp->xdr.p = rqstp->rq_res.head[0].iov_base +
--						rqstp->rq_res.head[0].iov_len;
-+	svcxdr_init_encode(rqstp, resp);
- 	resp->tagp = resp->xdr.p;
- 	/* reserve space for: taglen, tag, and opcnt */
- 	resp->xdr.p += 2 + XDR_QUADLEN(args->taglen);
--	resp->xdr.end = rqstp->rq_res.head[0].iov_base + PAGE_SIZE;
- 	resp->taglen = args->taglen;
- 	resp->tag = args->tag;
- 	resp->opcnt = 0;
--- 
-1.8.5.3
+We already have a ‘retry=‘ option for mount.nfs. According to the manpage, that should be used to specify the timeout value. Why not reuse that?
+
+Also, it really would be better if that timeout were under control of the mount utility itself. How about if we allow the use of alarm() to interrupt that particular RPC call?
+
+_________________________________
+Trond Myklebust
+Linux NFS client maintainer, PrimaryData
+trond.myklebust@primarydata.com
 
