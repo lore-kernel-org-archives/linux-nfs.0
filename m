@@ -1,202 +1,155 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:55332 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751876AbaCRL2Z (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Mar 2014 07:28:25 -0400
-Date: Tue, 18 Mar 2014 04:28:25 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/2] nfs: remove ->write_pageio_init from rpc ops
-Message-ID: <20140318112825.GA22359@infradead.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Received: from cantor2.suse.de ([195.135.220.15]:42318 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751011AbaCGH7p (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 7 Mar 2014 02:59:45 -0500
+Date: Fri, 7 Mar 2014 18:59:37 +1100
+From: NeilBrown <neilb@suse.de>
+To: Jim Rees <rees@umich.edu>
+Cc: Steve Dickson <steved@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] fix intr/nointr to match kernel behavior (ignored)
+Message-ID: <20140307185937.5852666b@notabene.brown>
+In-Reply-To: <1394143352-26095-1-git-send-email-rees@umich.edu>
+References: <1394143352-26095-1-git-send-email-rees@umich.edu>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/MFIHH3jtgzawt00O3OitVl_"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We only use one static ops vector or grab it from the layout driver,
-so clean up the whole code path to make that more obvious.
+--Sig_/MFIHH3jtgzawt00O3OitVl_
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
----
- fs/nfs/direct.c         |    4 ++--
- fs/nfs/nfs3proc.c       |    1 -
- fs/nfs/nfs4proc.c       |    1 -
- fs/nfs/pnfs.c           |   14 --------------
- fs/nfs/pnfs.h           |    8 --------
- fs/nfs/proc.c           |    1 -
- fs/nfs/write.c          |   20 ++++++++++++--------
- include/linux/nfs_xdr.h |    2 --
- 8 files changed, 14 insertions(+), 37 deletions(-)
+On Thu,  6 Mar 2014 17:02:32 -0500 Jim Rees <rees@umich.edu> wrote:
 
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index b8797ae..bd9d524 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -564,7 +564,7 @@ static void nfs_direct_write_reschedule(struct nfs_direct_req *dreq)
- 	dreq->count = 0;
- 	get_dreq(dreq);
- 
--	NFS_PROTO(dreq->inode)->write_pageio_init(&desc, dreq->inode, FLUSH_STABLE,
-+	nfs_pageio_init_write(&desc, dreq->inode, FLUSH_STABLE,
- 			      &nfs_direct_write_completion_ops);
- 	desc.pg_dreq = dreq;
- 
-@@ -874,7 +874,7 @@ static ssize_t nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
- 	size_t requested_bytes = 0;
- 	unsigned long seg;
- 
--	NFS_PROTO(inode)->write_pageio_init(&desc, inode, FLUSH_COND_STABLE,
-+	nfs_pageio_init_write(&desc, inode, FLUSH_COND_STABLE,
- 			      &nfs_direct_write_completion_ops);
- 	desc.pg_dreq = dreq;
- 	get_dreq(dreq);
-diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
-index aa9bc97..5ae9abf 100644
---- a/fs/nfs/nfs3proc.c
-+++ b/fs/nfs/nfs3proc.c
-@@ -986,7 +986,6 @@ const struct nfs_rpc_ops nfs_v3_clientops = {
- 	.read_rpc_prepare = nfs3_proc_read_rpc_prepare,
- 	.read_done	= nfs3_read_done,
- 	.write_setup	= nfs3_proc_write_setup,
--	.write_pageio_init = nfs_pageio_init_write,
- 	.write_rpc_prepare = nfs3_proc_write_rpc_prepare,
- 	.write_done	= nfs3_write_done,
- 	.commit_setup	= nfs3_proc_commit_setup,
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 8672323..7759b5aa 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -8466,7 +8466,6 @@ const struct nfs_rpc_ops nfs_v4_clientops = {
- 	.read_rpc_prepare = nfs4_proc_read_rpc_prepare,
- 	.read_done	= nfs4_read_done,
- 	.write_setup	= nfs4_proc_write_setup,
--	.write_pageio_init = pnfs_pageio_init_write,
- 	.write_rpc_prepare = nfs4_proc_write_rpc_prepare,
- 	.write_done	= nfs4_write_done,
- 	.commit_setup	= nfs4_proc_commit_setup,
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index cb53d45..d8be82d 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1447,20 +1447,6 @@ pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio, struct inode *inode,
- 		nfs_pageio_init(pgio, inode, ld->pg_read_ops, compl_ops, server->rsize, 0);
- }
- 
--void
--pnfs_pageio_init_write(struct nfs_pageio_descriptor *pgio, struct inode *inode,
--		       int ioflags,
--		       const struct nfs_pgio_completion_ops *compl_ops)
--{
--	struct nfs_server *server = NFS_SERVER(inode);
--	struct pnfs_layoutdriver_type *ld = server->pnfs_curr_ld;
--
--	if (ld == NULL)
--		nfs_pageio_init_write(pgio, inode, ioflags, compl_ops);
--	else
--		nfs_pageio_init(pgio, inode, ld->pg_write_ops, compl_ops, server->wsize, ioflags);
--}
--
- bool
- pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
- 		     struct nfs_page *req)
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 0237939..e9ac8fb 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -182,8 +182,6 @@ void pnfs_put_lseg(struct pnfs_layout_segment *lseg);
- 
- void pnfs_pageio_init_read(struct nfs_pageio_descriptor *, struct inode *,
- 			   const struct nfs_pgio_completion_ops *);
--void pnfs_pageio_init_write(struct nfs_pageio_descriptor *, struct inode *,
--			    int, const struct nfs_pgio_completion_ops *);
- 
- void set_pnfs_layoutdriver(struct nfs_server *, const struct nfs_fh *, u32);
- void unset_pnfs_layoutdriver(struct nfs_server *);
-@@ -467,12 +465,6 @@ static inline void pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio, str
- 	nfs_pageio_init_read(pgio, inode, compl_ops);
- }
- 
--static inline void pnfs_pageio_init_write(struct nfs_pageio_descriptor *pgio, struct inode *inode, int ioflags,
--					  const struct nfs_pgio_completion_ops *compl_ops)
--{
--	nfs_pageio_init_write(pgio, inode, ioflags, compl_ops);
--}
--
- static inline int
- pnfs_commit_list(struct inode *inode, struct list_head *mds_pages, int how,
- 		 struct nfs_commit_info *cinfo)
-diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
-index fddbba2..6ea2bed 100644
---- a/fs/nfs/proc.c
-+++ b/fs/nfs/proc.c
-@@ -764,7 +764,6 @@ const struct nfs_rpc_ops nfs_v2_clientops = {
- 	.read_rpc_prepare = nfs_proc_read_rpc_prepare,
- 	.read_done	= nfs_read_done,
- 	.write_setup	= nfs_proc_write_setup,
--	.write_pageio_init = nfs_pageio_init_write,
- 	.write_rpc_prepare = nfs_proc_write_rpc_prepare,
- 	.write_done	= nfs_write_done,
- 	.commit_setup	= nfs_proc_commit_setup,
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 9a3b6a4..8afed78 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -354,10 +354,8 @@ static int nfs_writepage_locked(struct page *page, struct writeback_control *wbc
- 	struct nfs_pageio_descriptor pgio;
- 	int err;
- 
--	NFS_PROTO(page_file_mapping(page)->host)->write_pageio_init(&pgio,
--							  page->mapping->host,
--							  wb_priority(wbc),
--							  &nfs_async_write_completion_ops);
-+	nfs_pageio_init_write(&pgio, page->mapping->host, wb_priority(wbc),
-+				&nfs_async_write_completion_ops);
- 	err = nfs_do_writepage(page, wbc, &pgio);
- 	nfs_pageio_complete(&pgio);
- 	if (err < 0)
-@@ -400,7 +398,8 @@ int nfs_writepages(struct address_space *mapping, struct writeback_control *wbc)
- 
- 	nfs_inc_stats(inode, NFSIOS_VFSWRITEPAGES);
- 
--	NFS_PROTO(inode)->write_pageio_init(&pgio, inode, wb_priority(wbc), &nfs_async_write_completion_ops);
-+	nfs_pageio_init_write(&pgio, inode, wb_priority(wbc),
-+				&nfs_async_write_completion_ops);
- 	err = write_cache_pages(mapping, wbc, nfs_writepages_callback, &pgio);
- 	nfs_pageio_complete(&pgio);
- 
-@@ -1285,10 +1284,15 @@ void nfs_pageio_init_write(struct nfs_pageio_descriptor *pgio,
- 			       struct inode *inode, int ioflags,
- 			       const struct nfs_pgio_completion_ops *compl_ops)
- {
--	nfs_pageio_init(pgio, inode, &nfs_pageio_write_ops, compl_ops,
--				NFS_SERVER(inode)->wsize, ioflags);
-+	struct nfs_server *server = NFS_SERVER(inode);
-+	const struct nfs_pageio_ops *pg_ops = &nfs_pageio_write_ops;
-+
-+#if IS_ENABLED(CONFIG_NFS_V4)
-+	if (server->pnfs_curr_ld)
-+		pg_ops = server->pnfs_curr_ld->pg_write_ops;
-+#endif
-+	nfs_pageio_init(pgio, inode, pg_ops, compl_ops, server->wsize, ioflags);
- }
--EXPORT_SYMBOL_GPL(nfs_pageio_init_write);
- 
- void nfs_pageio_reset_write_mds(struct nfs_pageio_descriptor *pgio)
- {
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index b2fb167..ed12f03 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1467,8 +1467,6 @@ struct nfs_rpc_ops {
- 	int	(*read_rpc_prepare)(struct rpc_task *, struct nfs_read_data *);
- 	int	(*read_done)  (struct rpc_task *, struct nfs_read_data *);
- 	void	(*write_setup)  (struct nfs_write_data *, struct rpc_message *);
--	void	(*write_pageio_init)(struct nfs_pageio_descriptor *, struct inode *, int,
--				     const struct nfs_pgio_completion_ops *);
- 	int	(*write_rpc_prepare)(struct rpc_task *, struct nfs_write_data *);
- 	int	(*write_done)  (struct rpc_task *, struct nfs_write_data *);
- 	void	(*commit_setup) (struct nfs_commit_data *, struct rpc_message *);
--- 
-1.7.10.4
+> Signed-off-by: Jim Rees <rees@umich.edu>
+> ---
+>  utils/mount/nfs.man | 53 ++++++-----------------------------------------=
+------
+>  1 file changed, 6 insertions(+), 47 deletions(-)
+>=20
+> diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
+> index ef09a31..2ab369c 100644
+> --- a/utils/mount/nfs.man
+> +++ b/utils/mount/nfs.man
+> @@ -125,6 +125,12 @@ option may mitigate some of the risks of using the
+>  .B soft
+>  option.
+>  .TP 1.5i
+> +.BR intr " / " nointr
+> +This option is provided for backward compatibility.
+> +It is ignored after kernel 2.6.25.
+> +System calls return EINTR if an in-progress NFS operation is interrupted=
+ by
+> +a signal.
 
+That isn't correct.
+"A process that is waiting for a reply for an NFS server can be killed
+ by any signal which would normally kill the process.  If a signal would not
+ normally kill the process (i.e. it is caught or ignored) then that signal
+ will not abort and NFS request".
+
+This is really a fairly horrible semantic.  It makes perfect sense from an
+internal implementation perspective and provides good backwards compatibili=
+ty
+and cross-compatibility with other filesystems (where 'read' and 'write'
+never ever return EINTR), but it is very hard to document clearly.
+
+NeilBrown
+
+
+> +.TP 1.5i
+>  .BI timeo=3D n
+>  The time in deciseconds (tenths of a second) the NFS client waits for a
+>  response before it retries an NFS request.
+> @@ -668,30 +674,6 @@ Using the
+>  option is also required when mounting exports on NFS servers
+>  that do not support the NLM protocol.
+>  .TP 1.5i
+> -.BR intr " / " nointr
+> -Selects whether to allow signals to interrupt file operations
+> -on this mount point. If neither option
+> -is specified (or if
+> -.B nointr
+> -is specified),
+> -signals do not interrupt NFS file operations. If
+> -.B intr
+> -is specified, system calls return EINTR if an in-progress NFS operation =
+is interrupted by
+> -a signal.
+> -.IP
+> -Using the
+> -.B intr
+> -option is preferred to using the
+> -.B soft
+> -option because it is significantly less likely to result in data corrupt=
+ion.
+> -.IP
+> -The
+> -.BR intr " / " nointr
+> -mount option is deprecated after kernel 2.6.25.
+> -Only SIGKILL can interrupt a pending NFS operation on these kernels,
+> -and if specified, this mount option is ignored to provide backwards
+> -compatibility with older kernels.
+> -.TP 1.5i
+>  .BR cto " / " nocto
+>  Selects whether to use close-to-open cache coherence semantics.
+>  If neither option is specified (or if
+> @@ -807,29 +789,6 @@ The mount request fails if the server's rpcbind serv=
+ice is not available,
+>  the server's NFS service is not registered with its rpcbind service,
+>  or the server's NFS service is not available on the advertised port.
+>  .TP 1.5i
+> -.BR intr " / " nointr
+> -Selects whether to allow signals to interrupt file operations
+> -on this mount point. If neither option is specified (or if
+> -.B intr
+> -is specified), system calls return EINTR if an in-progress NFS operation
+> -is interrupted by a signal.  If
+> -.B nointr
+> -is specified, signals do not
+> -interrupt NFS operations.
+> -.IP
+> -Using the
+> -.B intr
+> -option is preferred to using the
+> -.B soft
+> -option because it is significantly less likely to result in data corrupt=
+ion.
+> -.IP
+> -The
+> -.BR intr " / " nointr
+> -mount option is deprecated after kernel 2.6.25.
+> -Only SIGKILL can interrupt a pending NFS operation on these kernels,
+> -and if specified, this mount option is ignored to provide backwards
+> -compatibility with older kernels.
+> -.TP 1.5i
+>  .BR cto " / " nocto
+>  Selects whether to use close-to-open cache coherence semantics
+>  for NFS directories on this mount point.
+
+
+--Sig_/MFIHH3jtgzawt00O3OitVl_
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.22 (GNU/Linux)
+
+iQIVAwUBUxl8aTnsnt1WYoG5AQLIBg//apH+wIiprc2HzXHgmcl2tmiXHsADulJ1
+Sp6toIaZB7t09vQ+1vgo6bmwYR+fTHCPsFNA+4nbIoWicr5QRHkeHmOMm6PkdxFl
+eMiCb9HoBOSRnhOblXm2Txvyhem9HvLL4VpQ0SKMc4RDHnJV40jx3zbilIf2sWEX
+HHi1TFnZHC9ee95QtxJ6zsuQI/71y1lDY5jWLsb8deylmzWOgxIGBfwhi7HEmXd7
+GhrJ3qkZLLdSKBJ0+DrJEaxDVyYIRoFzP0VISGOz7OdJV04j1WpBDgzO4IFkLzzP
+WNypjxNXdG/mW1RJlJlhaM8iVCyFt9/Ie4QD4ww/sfmQAJaelRVE4tQ41NBtzzob
+vyQ3ifzI2SIc2jPSoK3U49HyDpErft82+iPdaeG4YCgucriPhgw3L50W4uEFeHWD
+k+uN0ahWjLyykIU74Krp6PX2ovb+9wqdTe4WpsKi9xNyfDi/5b0/SZDRWK03FkHR
+ZfuhBZ68rTGvi2ljycn+/SQzRqJtinrfDWr/U70zhl2GulgOdQI40zkvRahHO1HI
+x/qaHKHcSKadd9mwH7X87Ic8ohnIjZAzf9zuzRSjAt9m5Jlf/JRwpFjeOZYOILw4
+bVCvslh+qlr+tVBqiCPpPO3thjnXdkU9yQ43YgcflPixEOIub5o4QOC1mEWdvErc
+OAcKKr6w+IY=
+=U9P0
+-----END PGP SIGNATURE-----
+
+--Sig_/MFIHH3jtgzawt00O3OitVl_--
