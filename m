@@ -1,82 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:47904 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752217AbaCWBMb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 22 Mar 2014 21:12:31 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 33/50] nfsd4: more precise nfsd4_max_reply
-Date: Sat, 22 Mar 2014 21:12:04 -0400
-Message-Id: <1395537141-10389-34-git-send-email-bfields@redhat.com>
-In-Reply-To: <1395537141-10389-1-git-send-email-bfields@redhat.com>
-References: <1395537141-10389-1-git-send-email-bfields@redhat.com>
+Received: from mail-ie0-f176.google.com ([209.85.223.176]:61091 "EHLO
+	mail-ie0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752144AbaCGX5I convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 7 Mar 2014 18:57:08 -0500
+Received: by mail-ie0-f176.google.com with SMTP id rd18so5136542iec.21
+        for <linux-nfs@vger.kernel.org>; Fri, 07 Mar 2014 15:57:08 -0800 (PST)
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
+Subject: Re: [PATCH] fix intr/nointr to match kernel behavior (ignored)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+In-Reply-To: <20140308104228.4bfcd3d5@notabene.brown>
+Date: Fri, 7 Mar 2014 18:57:03 -0500
+Cc: Jim Rees <rees@umich.edu>, Dickson Steve <steved@redhat.com>,
+        linux-nfs@vger.kernel.org
+Message-Id: <12C999A4-52B8-461F-BFB9-F67AB4F6EFCE@primarydata.com>
+References: <1394143352-26095-1-git-send-email-rees@umich.edu> <20140307185937.5852666b@notabene.brown> <D65A0AA5-ADF9-43AA-871F-69533C8F2DD7@primarydata.com> <20140308104228.4bfcd3d5@notabene.brown>
+To: Brown Neil <neilb@suse.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
 
----
- fs/nfsd/nfs4xdr.c | 27 ++++++++-------------------
- 1 file changed, 8 insertions(+), 19 deletions(-)
+On Mar 7, 2014, at 18:42, NeilBrown <neilb@suse.de> wrote:
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 3620ac5d..1ac730d 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1615,22 +1615,12 @@ nfsd4_opnum_in_range(struct nfsd4_compoundargs *argp, struct nfsd4_op *op)
-  * use pages beyond the first one, so the maximum possible length is the
-  * maximum over these values, not the sum.
-  */
--static int nfsd4_max_reply(u32 opnum)
-+static int nfsd4_max_reply(struct svc_rqst *rqstp, struct nfsd4_op *op)
- {
--	switch (opnum) {
--	case OP_READLINK:
--	case OP_READDIR:
--		/*
--		 * Both of these ops take a single page for data and put
--		 * the head and tail in another page:
--		 */
--		return 2 * PAGE_SIZE;
--	case OP_GETATTR:
--	case OP_READ:
--		return INT_MAX;
--	default:
--		return PAGE_SIZE;
--	}
-+	struct nfsd4_operation *opdesc = OPDESC(op);
-+	nfsd4op_rsize estimator = opdesc->op_rsize_bop;
-+
-+	return estimator ? estimator(rqstp, op) : PAGE_SIZE;
- }
- 
- static __be32
-@@ -1639,7 +1629,7 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
- 	DECODE_HEAD;
- 	struct nfsd4_op *op;
- 	bool cachethis = false;
--	int max_reply = PAGE_SIZE;
-+	int max_reply = 2 * RPC_MAX_AUTH_SIZE; /* uh, kind of a guess */
- 	int i;
- 
- 	READ_BUF(4);
-@@ -1690,13 +1680,12 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
- 		 */
- 		cachethis |= nfsd4_cache_this_op(op);
- 
--		max_reply = max(max_reply, nfsd4_max_reply(op->opnum));
-+		max_reply += nfsd4_max_reply(argp->rqstp, op);
- 	}
- 	/* Sessions make the DRC unnecessary: */
- 	if (argp->minorversion)
- 		cachethis = false;
--	if (max_reply != INT_MAX)
--		svc_reserve(argp->rqstp, max_reply);
-+	svc_reserve(argp->rqstp, max_reply);
- 	argp->rqstp->rq_cachetype = cachethis ? RC_REPLBUFF : RC_NOCACHE;
- 
- 	DECODE_TAIL;
--- 
-1.8.5.3
+> On Fri, 7 Mar 2014 08:13:00 -0500 Trond Myklebust
+> <trond.myklebust@primarydata.com> wrote:
+> 
+>> 
+>> On Mar 7, 2014, at 2:59, NeilBrown <neilb@suse.de> wrote:
+>> 
+>>> On Thu,  6 Mar 2014 17:02:32 -0500 Jim Rees <rees@umich.edu> wrote:
+>>> 
+>>>> Signed-off-by: Jim Rees <rees@umich.edu>
+>>>> ---
+>>>> utils/mount/nfs.man | 53 ++++++-----------------------------------------------
+>>>> 1 file changed, 6 insertions(+), 47 deletions(-)
+>>>> 
+>>>> diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
+>>>> index ef09a31..2ab369c 100644
+>>>> --- a/utils/mount/nfs.man
+>>>> +++ b/utils/mount/nfs.man
+>>>> @@ -125,6 +125,12 @@ option may mitigate some of the risks of using the
+>>>> .B soft
+>>>> option.
+>>>> .TP 1.5i
+>>>> +.BR intr " / " nointr
+>>>> +This option is provided for backward compatibility.
+>>>> +It is ignored after kernel 2.6.25.
+>>>> +System calls return EINTR if an in-progress NFS operation is interrupted by
+>>>> +a signal.
+>>> 
+>>> That isn't correct.
+>>> "A process that is waiting for a reply for an NFS server can be killed
+>>> by any signal which would normally kill the process.  If a signal would not
+>>> normally kill the process (i.e. it is caught or ignored) then that signal
+>>> will not abort and NFS request".
+>>> 
+>>> This is really a fairly horrible semantic.  It makes perfect sense from an
+>>> internal implementation perspective and provides good backwards compatibility
+>>> and cross-compatibility with other filesystems (where 'read' and 'write'
+>>> never ever return EINTR), but it is very hard to document clearly.
+>>> 
+>> Isn’t the documentation in the signal(7) manpage sufficient? We could simply refer to that…
+>> 
+> 
+> I would certainly be good if we could delegation the documentation.  But I
+> couldn't find anything in signal(7) that seemed particularly relevant. Which
+> bit were you thinking of?
+> 
+
+The table which lists the posix signals, and which indicates whether they are fatal not (i.e. what ‘action’ they cause).
+The same page also explains signal blocking and signal handling, which could also be helpful..
+
+_________________________________
+Trond Myklebust
+Linux NFS client maintainer, PrimaryData
+trond.myklebust@primarydata.com
 
