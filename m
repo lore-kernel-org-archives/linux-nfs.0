@@ -1,51 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:26705 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750814AbaCVONx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 22 Mar 2014 10:13:53 -0400
-Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s2MEDrfR028147
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Sat, 22 Mar 2014 10:13:53 -0400
-Message-ID: <532D9A9F.5050703@RedHat.com>
-Date: Sat, 22 Mar 2014 10:13:51 -0400
-From: Steve Dickson <SteveD@redhat.com>
+Received: from engine03-30064-2.icritical.com ([93.159.202.47]:40365 "HELO
+	engine03-30064-2.icritical.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1752487AbaCGJsK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 7 Mar 2014 04:48:10 -0500
+Received: from engine03-30064-2.icritical.com ([127.0.0.1])
+ by localhost (engine03-30064-2.icritical.com [127.0.0.1]) (amavisd-new, port 10024)
+ with SMTP id 21677-06 for <linux-nfs@vger.kernel.org>;
+ Fri,  7 Mar 2014 09:41:35 +0000 (GMT)
+Received: from lismore.npm.ac.uk (localhost.localdomain [127.0.0.1])
+	by localhost (Email Security Appliance) with SMTP id 80B878D6AE1_3199446B
+	for <linux-nfs@vger.kernel.org>; Fri,  7 Mar 2014 09:41:26 +0000 (GMT)
+Received: from Harris.npm.ac.uk (harris.npm.ac.uk [192.171.162.107])
+	by lismore.npm.ac.uk (Sophos Email Appliance) with ESMTP id EA28C8D6895_3199445F
+	for <linux-nfs@vger.kernel.org>; Fri,  7 Mar 2014 09:41:25 +0000 (GMT)
+Message-ID: <53199445.3010808@pml.ac.uk>
+Date: Fri, 7 Mar 2014 09:41:25 +0000
+From: Ben Taylor <benj@pml.ac.uk>
 MIME-Version: 1.0
-To: Scott Mayhew <smayhew@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [nfs-utils PATCH] mount: chk_mountpoint should only check for
- execute perms for unpriveleged users
-References: <1395346354-64069-1-git-send-email-smayhew@redhat.com>
-In-Reply-To: <1395346354-64069-1-git-send-email-smayhew@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+To: <linux-nfs@vger.kernel.org>
+Subject: NFS4 patch 08/20 (BAD_SEQID recovery)
+Content-Type: text/plain; charset="ISO-8859-1"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi
+
+We've been getting weird occasional failures on our NFS systems where
+our processing gridnodes will gradually grind to a halt (we lose a
+couple of machines a day requiring a reboot - hard reboot if left long
+enough). Hunting through Wireshark dumps, the problem is that the NFS
+client is making repeated requests to open the same file on our
+fileserver and every one has the same owner ID and a sequence ID of 0
+(which the server throws out again as a bad sequence ID). I've got a
+dump I can give you if you want it.
+
+I am convinced that the problem is that described in patch 08/20 from
+Chuck Lever (see http://www.spinics.net/lists/linux-nfs/msg29413.html),
+where in this case the client gets the same open owner ID from the
+server and retries with that, which makes the server think it's the same
+request and throw it out again. In that patch Chuck added a uniqifier to
+the owner ID to avoid this problem.
+
+The problem is that we can't find any kernel versions that include that
+patch - easy way to
+check is look for the " therefore safely retry using a new one. We
+should still warn the user though..." part - if the "warn the user" part
+is there, it's not been patched (we did check other bits of the patch
+too). We're running both Fedora 17 and Fedora 19 at the moment (yes, I
+know 17 is EOL), neither of which includes the patch. We also can't see
+it in the NFS client or server trees at
+
+http://git.linux-nfs.org/?p=trondmy/nfs-2.6.git;a=blob;f=fs/nfs/nfs4proc.c;h=2da6a698b8f7719c14eefec65e6148a48d030bb3;hb=HEAD#l2327
+
+http://git.linux-nfs.org/?p=trondmy/nfs-2.6.git;a=blob;f=fs/nfs/nfs4proc.c;h=2da6a698b8f7719c14eefec65e6148a48d030bb3;hb=HEAD#l2327
+
+...and nor does Chuck appear to have it in his merging tree:
+http://git.linux-nfs.org/?p=cel/cel-2.6.git;a=blob;f=fs/nfs/nfs4proc.c;h=15052b81df4245e4f797adb0d0b2e523338b23cc;hb=HEAD#l2327
+
+Can anyone tell me what happened to this patch please? Was it lost or
+superseded?
+
+TIA
+Ben
+
+-- 
+Ben Taylor <benj@pml.ac.uk>, http://rsg.pml.ac.uk/
+Remote Sensing Group, Plymouth Marine Laboratory
+Tel: +44 (0)1752 633432, Fax: +44 (0)1752 633101
 
 
-On 03/20/2014 04:12 PM, Scott Mayhew wrote:
-> Otherwise 'mount -o remount' fails on mounts that have root squashing
-> enabled and world execute perms disabled.
-> 
-> Signed-off-by: Scott Mayhew <smayhew@redhat.com>
-Committed...
+Please visit our new website at www.pml.ac.uk and follow us on Twitter  @PlymouthMarine
 
-steved.
-> ---
->  utils/mount/utils.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/utils/mount/utils.c b/utils/mount/utils.c
-> index ede77a8..92662ed 100644
-> --- a/utils/mount/utils.c
-> +++ b/utils/mount/utils.c
-> @@ -130,7 +130,7 @@ int chk_mountpoint(const char *mount_point)
->  		mount_error(NULL, mount_point, ENOTDIR);
->  		return 1;
->  	}
-> -	if (access(mount_point, X_OK) < 0) {
-> +	if (getuid() != 0 && geteuid() != 0 && access(mount_point, X_OK) < 0) {
->  		mount_error(NULL, mount_point, errno);
->  		return 1;
->  	}
-> -- 1.7.11.7 -- To unsubscribe from this list: send the line "unsubscribe linux-nfs" in the body of a message to majordomo@vger.kernel.org More majordomo info at http://vger.kernel.org/majordomo-info.html
-> 
+Plymouth Marine Laboratory (PML) is a company limited by guarantee registered in England & Wales, company number 4178503. Registered Charity No. 1091222. Registered Office: Prospect Place, The Hoe, Plymouth  PL1 3DH, UK. 
+
+This message is private and confidential. If you have received this message in error, please notify the sender and remove it from your system. You are reminded that e-mail communications are not secure and may contain viruses; PML accepts no liability for any loss or damage which may be caused by viruses.
+
