@@ -1,143 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:47938 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752282AbaCWBMd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 22 Mar 2014 21:12:33 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
+Received: from 124-84-246-161.wendulka.net ([84.246.161.124]:46317 "EHLO
+	ixit.cz" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1752480AbaCGTgr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 7 Mar 2014 14:36:47 -0500
+Received: from localhost (localhost [127.0.0.1])
+	by ixit.cz (Postfix) with ESMTP id DEC1A126DCB
+	for <linux-nfs@vger.kernel.org>; Fri,  7 Mar 2014 21:30:35 +0100 (CET)
+Received: from ixit.cz ([127.0.0.1])
+	by localhost (ixit.cz [127.0.0.1]) (amavisd-new, port 10024)
+	with ESMTP id rcoQzH_VtvaP for <linux-nfs@vger.kernel.org>;
+	Fri,  7 Mar 2014 21:30:35 +0100 (CET)
+Received: from iXit?Group (localhost [127.0.0.1])
+	(using TLSv1 with cipher DHE-RSA-AES256-SHA (256/256 bits))
+	(No client certificate requested)
+	by ixit.cz (Postfix) with ESMTPSA id 0873E126DC6
+	for <linux-nfs@vger.kernel.org>; Fri,  7 Mar 2014 21:30:35 +0100 (CET)
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8;
+ format=flowed
+Date: Fri, 07 Mar 2014 21:30:34 +0100
+From: David Heidelberger <david.heidelberger@ixit.cz>
 To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 50/50] nfsd4: kill write32, write64
-Date: Sat, 22 Mar 2014 21:12:21 -0400
-Message-Id: <1395537141-10389-51-git-send-email-bfields@redhat.com>
-In-Reply-To: <1395537141-10389-1-git-send-email-bfields@redhat.com>
-References: <1395537141-10389-1-git-send-email-bfields@redhat.com>
+Subject: DNOTIFY to INOTIFY migration
+Message-ID: <b59b1e4ede0b1d0a476c85465d480c8a@ixit.cz>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+Hello,
 
-And switch a couple other functions from the encode(&p,...) convention
-to the p = encode(p,...) convention mostly used elsewhere.
+in linux kernel is DNOTIFY actually marked as deprecated, with superior 
+replacement INOTIFY.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4xdr.c | 51 +++++++++++++++++++++------------------------------
- 1 file changed, 21 insertions(+), 30 deletions(-)
+Is any plan to migrate rpc.idmapd to INOTIFY? As I looked, it's just one 
+file.
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 24e9fde..1595e84 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1700,39 +1700,30 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
- 	DECODE_TAIL;
- }
- 
--static void write32(__be32 **p, u32 n)
--{
--	*(*p)++ = htonl(n);
--}
--
--static void write64(__be32 **p, u64 n)
--{
--	write32(p, (n >> 32));
--	write32(p, (u32)n);
--}
--
--static void write_change(__be32 **p, struct kstat *stat, struct inode *inode)
-+static __be32 *write_change(__be32 *p, struct kstat *stat, struct inode *inode)
- {
- 	if (IS_I_VERSION(inode)) {
--		write64(p, inode->i_version);
-+		p = xdr_encode_hyper(p, inode->i_version);
- 	} else {
--		write32(p, stat->ctime.tv_sec);
--		write32(p, stat->ctime.tv_nsec);
-+		*p++ = cpu_to_be32(stat->ctime.tv_sec);
-+		*p++ = cpu_to_be32(stat->ctime.tv_nsec);
- 	}
-+	return p;
- }
- 
--static void write_cinfo(__be32 **p, struct nfsd4_change_info *c)
-+static __be32 *write_cinfo(__be32 *p, struct nfsd4_change_info *c)
- {
--	write32(p, c->atomic);
-+	*p++ = cpu_to_be32(c->atomic);
- 	if (c->change_supported) {
--		write64(p, c->before_change);
--		write64(p, c->after_change);
-+		p = xdr_encode_hyper(p, c->before_change);
-+		p = xdr_encode_hyper(p, c->after_change);
- 	} else {
--		write32(p, c->before_ctime_sec);
--		write32(p, c->before_ctime_nsec);
--		write32(p, c->after_ctime_sec);
--		write32(p, c->after_ctime_nsec);
-+		*p++ = cpu_to_be32(c->before_ctime_sec);
-+		*p++ = cpu_to_be32(c->before_ctime_nsec);
-+		*p++ = cpu_to_be32(c->after_ctime_sec);
-+		*p++ = cpu_to_be32(c->after_ctime_nsec);
- 	}
-+	return p;
- }
- 
- /* Encode as an array of strings the string given with components
-@@ -2190,7 +2181,7 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp, struct svc_export
- 		p = xdr_reserve_space(xdr, 8);
- 		if (!p)
- 			goto out_resource;
--		write_change(&p, &stat, dentry->d_inode);
-+		p = write_change(p, &stat, dentry->d_inode);
- 	}
- 	if (bmval0 & FATTR4_WORD0_SIZE) {
- 		p = xdr_reserve_space(xdr, 8);
-@@ -2814,7 +2805,7 @@ nfsd4_encode_create(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_
- 		p = xdr_reserve_space(xdr, 32);
- 		if (!p)
- 			return nfserr_resource;
--		write_cinfo(&p, &create->cr_cinfo);
-+		p = write_cinfo(p, &create->cr_cinfo);
- 		*p++ = cpu_to_be32(2);
- 		*p++ = cpu_to_be32(create->cr_bmval[0]);
- 		*p++ = cpu_to_be32(create->cr_bmval[1]);
-@@ -2937,7 +2928,7 @@ nfsd4_encode_link(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_li
- 		p = xdr_reserve_space(xdr, 20);
- 		if (!p)
- 			return nfserr_resource;
--		write_cinfo(&p, &link->li_cinfo);
-+		p = write_cinfo(p, &link->li_cinfo);
- 	}
- 	return nfserr;
- }
-@@ -2958,7 +2949,7 @@ nfsd4_encode_open(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_op
- 	p = xdr_reserve_space(xdr, 40);
- 	if (!p)
- 		return nfserr_resource;
--	write_cinfo(&p, &open->op_cinfo);
-+	p = write_cinfo(p, &open->op_cinfo);
- 	*p++ = cpu_to_be32(open->op_rflags);
- 	*p++ = cpu_to_be32(2);
- 	*p++ = cpu_to_be32(open->op_bmval[0]);
-@@ -3372,7 +3363,7 @@ nfsd4_encode_remove(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_
- 		p = xdr_reserve_space(xdr, 20);
- 		if (!p)
- 			return nfserr_resource;
--		write_cinfo(&p, &remove->rm_cinfo);
-+		p = write_cinfo(p, &remove->rm_cinfo);
- 	}
- 	return nfserr;
- }
-@@ -3387,8 +3378,8 @@ nfsd4_encode_rename(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_
- 		p = xdr_reserve_space(xdr, 40);
- 		if (!p)
- 			return nfserr_resource;
--		write_cinfo(&p, &rename->rn_sinfo);
--		write_cinfo(&p, &rename->rn_tinfo);
-+		p = write_cinfo(p, &rename->rn_sinfo);
-+		p = write_cinfo(p, &rename->rn_tinfo);
- 	}
- 	return nfserr;
- }
--- 
-1.8.5.3
+If there is some on-going porting, I'd like to test/report bugs/send 
+patches, otherwise I'd like to try port it.
 
+Thank you for answer
+David Heidelberger (okias)
