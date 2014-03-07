@@ -1,65 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f178.google.com ([209.85.223.178]:45960 "EHLO
-	mail-ie0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755665AbaCLRrP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Mar 2014 13:47:15 -0400
-Received: by mail-ie0-f178.google.com with SMTP id lx4so10881804iec.37
-        for <linux-nfs@vger.kernel.org>; Wed, 12 Mar 2014 10:47:14 -0700 (PDT)
-Received: from seurat.1015granger.net ([2604:8800:100:81fc:20c:29ff:fe44:ec31])
-        by mx.google.com with ESMTPSA id kb5sm60077881igb.1.2014.03.12.10.47.13
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1.2 cipher=ECDHE-RSA-AES128-GCM-SHA256 bits=128/128);
-        Wed, 12 Mar 2014 10:47:14 -0700 (PDT)
-Subject: [PATCH 0/2] command line IPv6 support for exportfs
-To: linux-nfs@vger.kernel.org
-From: Chuck Lever <chuck.lever@oracle.com>
-Date: Wed, 12 Mar 2014 13:47:11 -0400
-Message-ID: <20140312172811.42433.13869.stgit@seurat.1015granger.net>
+Received: from tundra.namei.org ([65.99.196.166]:58961 "EHLO tundra.namei.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752262AbaCGAlZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 6 Mar 2014 19:41:25 -0500
+Date: Fri, 7 Mar 2014 11:42:18 +1100 (EST)
+From: James Morris <jmorris@namei.org>
+To: Jeff Layton <jlayton@redhat.com>
+cc: James Morris <james.l.morris@oracle.com>,
+        Serge Hallyn <serge.hallyn@canonical.com>,
+        linux-security-module@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] security: have cap_dentry_init_security return error
+In-Reply-To: <1394041657-7114-1-git-send-email-jlayton@redhat.com>
+Message-ID: <alpine.LRH.2.02.1403071142060.19326@tundra.namei.org>
+References: <1394041657-7114-1-git-send-email-jlayton@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Though /etc/exports can contain IPv6 literals as client names, the
-exportfs command doesn't allow an IPv6 literal when adding or
-removing a temporary export.
+On Wed, 5 Mar 2014, Jeff Layton wrote:
 
-  exportfs [-u] client:/path
+> Currently, cap_dentry_init_security returns 0 without actually
+> initializing the security label. This confuses its only caller
+> (nfs4_label_init_security) which expects an error in that situation, and
+> causes it to end up sending out junk onto the wire instead of simply
+> suppressing the label in the attributes sent.
+> 
+> When CONFIG_SECURITY is disabled, security_dentry_init_security returns
+> -EOPNOTSUPP. Have cap_dentry_init_security do the same.
+> 
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
 
-If "client" is an IPv6 presentation address, it contains colons.
-The problem is that exportfs already uses a colon to separate the
-client identifier from the export pathname.
+Applied to
+git://git.kernel.org/pub/scm/linux/kernel/git/jmorris/linux-security.git next
 
-To escape colons in the client name, adopt the same mechanism that
-is used for mount.nfs.  Users wrap IPv6 literals in square brackets.
-
-exportfs has to be a little more complicated than mount.nfs,
-however.  It must still be able to distinguish hostname wildcards
-that use brackets, and be able to deal with network address
-prefixes.
-
-With this patch series,
-
-  [abc]-machine.example.org:/export
-
-  192.168.76.16:/share
-
-  [2604:8800:100:81fc:82ee:73ff:fe43:d64f]:/export/home
-
-  [fe80::]/64:/var/tmp
-
-are now all accepted by exportfs.
-
----
-
-Chuck Lever (2):
-      exportfs: Refactor exportfs() and unexportfs()
-      exportfs: Support raw IPv6 addresses with "client:/path"
-
-
- utils/exportfs/exportfs.c   |  134 ++++++++++++++++++++++++++++++++++++-------
- utils/exportfs/exportfs.man |   16 +++++
- 2 files changed, 127 insertions(+), 23 deletions(-)
 
 -- 
-Chuck Lever
+James Morris
+<jmorris@namei.org>
