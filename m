@@ -1,121 +1,95 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f175.google.com ([209.85.223.175]:47345 "EHLO
-	mail-ie0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750790AbaCFFrY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Mar 2014 00:47:24 -0500
-Message-ID: <1709792528-1394084840-cardhu_decombobulator_blackberry.rim.net-1367662481-@b5.c4.bise6.blackberry>
-Reply-To: bhawley@luminex.com
-References: <1696396609.119284.1394040541217.JavaMail.zimbra@xes-inc.com>
- 	<260588931.122771.1394041524167.JavaMail.zimbra@xes-inc.com>
- 	<20140306145042.6db53f60@notabene.brown>
- 	<1853694865.210849.1394082223818.JavaMail.zimbra@xes-inc.com>
-  <20140306163721.0edfb498@notabene.brown>
-In-Reply-To: <20140306163721.0edfb498@notabene.brown>
-Subject: Re: Optimal NFS mount options to safely allow interrupts and timeouts on newer kernels
-To: "NeilBrown" <neilb@suse.de>, linux-nfs-owner@vger.kernel.org,
-        "Andrew Martin" <amartin@xes-inc.com>
-Cc: linux-nfs@vger.kernel.org
-From: "Brian Hawley" <bhawley@luminex.com>
-Date: Thu, 6 Mar 2014 05:47:19 +0000
-Content-Type: text/plain
+Received: from cn.fujitsu.com ([222.73.24.84]:60349 "EHLO song.cn.fujitsu.com"
+	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
+	id S1750926AbaCGFp0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 7 Mar 2014 00:45:26 -0500
+Received: from fnstmail02.fnst.cn.fujitsu.com (tang.cn.fujitsu.com [127.0.0.1])
+	by tang.cn.fujitsu.com (8.14.3/8.13.1) with ESMTP id s275jK0v000857
+	for <linux-nfs@vger.kernel.org>; Fri, 7 Mar 2014 13:45:21 +0800
+Message-ID: <531958DD.2080105@cn.fujitsu.com>
+Date: Fri, 07 Mar 2014 13:27:57 +0800
+From: Ditang Chen <chendt.fnst@cn.fujitsu.com>
 MIME-Version: 1.0
+To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
+Subject: [PATCH] SUNRPC: Fix oops when trace sunrpc_task events in nfs client
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQpJIGVuZGVkIHVwIHdyaXRpbmcgYSAibWFuYWdlX21vdW50cyIgc2NyaXB0IHJ1biBieSBjcm9u
-IHRoYXQgY29tcGFyZXMgL3Byb2MvbW91bnRzIGFuZCB0aGUgZnN0YWIsIHVzZWQgcGluZywgYW5k
-ICJ0aW1lb3V0IiBtZXNzYWdlcyBpbiAvdmFyL2xvZy9tZXNzYWdlcyB0byBpZGVudGlmeSBmaWxl
-c3lzdGVtcyB0aGF0IGFyZW4ndCByZXNwb25kaW5nLCByZXBlYXRlZGx5IGRvIHVtb3VudCAtZiB0
-byBmb3JjZSBpL28gZXJyb3JzIGJhY2sgdG8gdGhlIGNhbGxpbmcgYXBwbGljYXRpb25zOyBhbmQg
-d2hlbiBtaXNzaW5nIG1vdW50cyAoaW4gZnN0YWIgYnV0IG5vdCAvcHJvYy9tb3VudHMpIGJ1dCB3
-ZXJlIG5vdyBwaW5nYWJsZSwgYXR0ZW1wdCB0byByZW1vdW50IHRoZW0uDQoNCg0KRm9yIG1lLCB0
-aW1lbyBhbmQgcmV0cmFucyBhcmUgbmVjZXNzYXJ5LCBidXQgbm90IHN1ZmZpY2llbnQuICBUaGUg
-Y2h1bmtpbmcgdG8gcnNpemUvd3NpemUgYW5kIGNhY2hpbmcgcGxheXMgYSByb2xlIGluIGhvdyB3
-ZWxsIGkvbyBlcnJvcnMgZ2V0IHJlbGF5ZWQgYmFjayB0byB0aGUgYXBwbGljYXRpb25zIGRvaW5n
-IHRoZSBpL28uDQoNCllvdSB3aWxsIGNlcnRhaW5seSBsb3NlIGRhdGEgaW4gdGhlc2Ugc2NlbmFy
-aW8ncy4NCg0KSXQgd291bGQgYmUgZmFudGFzdGljIGlmIHNvbWVob3cgdGhlIHRpbWVvIGFuZCBy
-ZXRyYW5zIHdlcmUgc3VmZmljaWVudCAoaWUgd2hlbiB0aGV5IGZhaWwsIGkvbyBlcnJvcnMgZ2V0
-IGJhY2sgdG8gdGhlIGFwcGxpY2F0aW9ucyB0aGF0IHF1ZXVlZCB0aGF0IGkvbyAob3IgZXZlbiB0
-aGUgaS9vIHRoYXQgY2F1c2UgdGhlIGFwcGxpY2F0aW9uIHRvIHBlbmQgYmVjYXVzZSB0aGUgcnNp
-emUvd3NpemUgb3IgY2FjaGUgd2FzIGZ1bGwpLiAgIA0KDQpZb3UgY2FuIGVsaW1pbmF0ZSBzb21l
-IG9mIHRoYXQgYmVoYXZpb3Igd2l0aCBzeW5jL2RpcmVjdGlvLCBidXQgcGVyZm9ybWFuY2UgYmVj
-b21lcyBhYnlzbWFsLg0KDQpJIHRyaWVkICJsYXp5IiBpdCBkaWRuJ3QgcHJvdmlkZSB0aGUgZGVz
-aXJlZCBlZmZlY3QgKHRoZXkgdW5tb3VudGVkIHdoaWNoIHByZXZlbnRlZCBuZXcgaS9vJ3M7IGJ1
-dCBleGlzdGluZyBJL28ncyBuZXZlciBnb3QgZXJyb3JzKS4NCg0KDQotLS0tLU9yaWdpbmFsIE1l
-c3NhZ2UtLS0tLQ0KRnJvbTogTmVpbEJyb3duIDxuZWlsYkBzdXNlLmRlPg0KU2VuZGVyOiBsaW51
-eC1uZnMtb3duZXJAdmdlci5rZXJuZWwub3JnDQpEYXRlOiAJVGh1LCA2IE1hciAyMDE0IDE2OjM3
-OjIxIA0KVG86IEFuZHJldyBNYXJ0aW48YW1hcnRpbkB4ZXMtaW5jLmNvbT4NCkNjOiA8bGludXgt
-bmZzQHZnZXIua2VybmVsLm9yZz4NClN1YmplY3Q6IFJlOiBPcHRpbWFsIE5GUyBtb3VudCBvcHRp
-b25zIHRvIHNhZmVseSBhbGxvdyBpbnRlcnJ1cHRzIGFuZA0KIHRpbWVvdXRzIG9uIG5ld2VyIGtl
-cm5lbHMNCg0KT24gV2VkLCA1IE1hciAyMDE0IDIzOjAzOjQzIC0wNjAwIChDU1QpIEFuZHJldyBN
-YXJ0aW4gPGFtYXJ0aW5AeGVzLWluYy5jb20+DQp3cm90ZToNCg0KPiAtLS0tLSBPcmlnaW5hbCBN
-ZXNzYWdlIC0tLS0tDQo+ID4gRnJvbTogIk5laWxCcm93biIgPG5laWxiQHN1c2UuZGU+DQo+ID4g
-VG86ICJBbmRyZXcgTWFydGluIiA8YW1hcnRpbkB4ZXMtaW5jLmNvbT4NCj4gPiBDYzogbGludXgt
-bmZzQHZnZXIua2VybmVsLm9yZw0KPiA+IFNlbnQ6IFdlZG5lc2RheSwgTWFyY2ggNSwgMjAxNCA5
-OjUwOjQyIFBNDQo+ID4gU3ViamVjdDogUmU6IE9wdGltYWwgTkZTIG1vdW50IG9wdGlvbnMgdG8g
-c2FmZWx5IGFsbG93IGludGVycnVwdHMgYW5kIHRpbWVvdXRzIG9uIG5ld2VyIGtlcm5lbHMNCj4g
-PiANCj4gPiBPbiBXZWQsIDUgTWFyIDIwMTQgMTE6NDU6MjQgLTA2MDAgKENTVCkgQW5kcmV3IE1h
-cnRpbiA8YW1hcnRpbkB4ZXMtaW5jLmNvbT4NCj4gPiB3cm90ZToNCj4gPiANCj4gPiA+IEhlbGxv
-LA0KPiA+ID4gDQo+ID4gPiBJcyBpdCBzYWZlIHRvIHVzZSB0aGUgInNvZnQiIG1vdW50IG9wdGlv
-biB3aXRoIHByb3RvPXRjcCBvbiBuZXdlciBrZXJuZWxzDQo+ID4gPiAoZS5nDQo+ID4gPiAzLjIg
-YW5kIG5ld2VyKT8gQ3VycmVudGx5IHVzaW5nIHRoZSAiZGVmYXVsdHMiIG5mcyBtb3VudCBvcHRp
-b25zIG9uIFVidW50dQ0KPiA+ID4gMTIuMDQgcmVzdWx0cyBpbiBwcm9jZXNzZXMgYmxvY2tpbmcg
-Zm9yZXZlciBpbiB1bmludGVycnVwdGFibGUgc2xlZXAgaWYNCj4gPiA+IHRoZXkNCj4gPiA+IGF0
-dGVtcHQgdG8gYWNjZXNzIGEgbW91bnRwb2ludCB3aGlsZSB0aGUgTkZTIHNlcnZlciBpcyBvZmZs
-aW5lLiBJIHdvdWxkDQo+ID4gPiBwcmVmZXINCj4gPiA+IHRoYXQgTkZTIHNpbXBseSByZXR1cm4g
-YW4gZXJyb3IgdG8gdGhlIGNsaWVudHMgYWZ0ZXIgcmV0cnlpbmcgYSBmZXcgdGltZXMsDQo+ID4g
-PiBob3dldmVyIEkgYWxzbyBjYW5ub3QgaGF2ZSBkYXRhIGxvc3MuIEZyb20gdGhlIG1hbiBwYWdl
-LCBJIHRoaW5rIHRoZXNlDQo+ID4gPiBvcHRpb25zDQo+ID4gPiB3aWxsIGdpdmUgdGhhdCBlZmZl
-Y3Q/DQo+ID4gPiBzb2Z0LHByb3RvPXRjcCx0aW1lbz0xMCxyZXRyYW5zPTMNCj4gPiA+IA0KPiA+
-ID4gPkZyb20gbXkgdW5kZXJzdGFuZGluZywgdGhpcyB3aWxsIGNhdXNlIE5GUyB0byByZXRyeSB0
-aGUgY29ubmVjdGlvbiAzIHRpbWVzDQo+ID4gPiA+KG9uY2UNCj4gPiA+IHBlciBzZWNvbmQpLCBh
-bmQgdGhlbiBpZiBhbGwgMyBhcmUgdW5zdWNjZXNzZnVsIHJldHVybiBhbiBlcnJvciB0byB0aGUN
-Cj4gPiA+IGFwcGxpY2F0aW9uLiBJcyB0aGlzIGNvcnJlY3Q/IElzIHRoZXJlIGEgcmlzayBvZiBk
-YXRhIGxvc3Mgb3IgY29ycnVwdGlvbiBieQ0KPiA+ID4gdXNpbmcgInNvZnQiIGluIHRoaXMgd2F5
-PyBPciBpcyB0aGVyZSBhIGJldHRlciB3YXkgdG8gYXBwcm9hY2ggdGhpcz8NCj4gPiANCj4gPiBJ
-IHRoaW5rIHlvdXIgYmVzdCBiZXQgaXMgdG8gdXNlIGFuIGF1dG8tbW91bnRlciBzbyB0aGF0IHRo
-ZSBmaWxlc3lzdGVtIGdldHMNCj4gPiB1bm1vdW50ZWQgaWYgdGhlIHNlcnZlciBpc24ndCBhdmFp
-bGFibGUuDQo+IFdvdWxkIHRoaXMgc3RpbGwgc3VjY2VlZCBpbiB1bm1vdW50aW5nIHRoZSBmaWxl
-c3lzdGVtIGlmIHRoZXJlIGFyZSBhbHJlYWR5DQo+IHByb2Nlc3NlcyByZXF1ZXN0aW5nIGZpbGVz
-IGZyb20gaXQgKGFuZCBibG9ja2luZyBpbiB1bmludGVycnVwdGFibGUgc2xlZXApPw0KDQpUaGUg
-a2VybmVsIHdvdWxkIGFsbG93IGEgJ2xhenknIHVubW91bnQgaW4gdGhpcyBjYXNlLiAgSSBkb24n
-dCBrbm93IGlmIGFueQ0KYXV0b21vdW50ZXIgd291bGQgdHJ5IGEgbGF6eSB1bm1vdW50IHRob3Vn
-aCAtIEkgc3VzcGVjdCBub3QuDQoNCkEgbG9uZyB0aW1lIGFnbyBJIHVzZWQgImFtZCIgd2hpY2gg
-d291bGQgY3JlYXRlIHN5c2xpbmtzIHRvIGEgc2VwYXJhdGUgdHJlZQ0Kd2hlcmUgdGhlIGZpbGVz
-eXN0ZW1zIHdlcmUgbW91bnRlZC4gIEknbSBwcmV0dHkgc3VyZSB0aGF0IHdoZW4gYSBzZXJ2ZXIg
-d2VudA0KYXdheSB0aGUgc3ltbGluayB3b3VsZCBkaXNhcHBlYXIgZXZlbiBpZiB0aGUgdW5tb3Vu
-dCBmYWlsZWQuDQpTbyB3aGlsZSBhbnkgcHJvY2Vzc2VzIGFjY2Vzc2luZyB0aGUgZmlsZXN5c3Rl
-bSB3b3VsZCBibG9jaywgbmV3IHByb2Nlc3Nlcw0Kd291bGQgbm90IGJlIGFibGUgdG8gZmluZCB0
-aGUgZmlsZXN5c3RlbSBhbmQgc28gd291bGQgbm90IGJsb2NrLg0KDQoNCj4gDQo+ID4gInNvZnQi
-IGFsd2F5cyBpbXBsaWVzIHRoZSByaXNrIG9mIGRhdGEgbG9zcy4gICJOdWxscyBGcmVxdWVudGx5
-IFN1YnN0aXR1dGVkIg0KPiA+IGFzIGl0IHdhcyBkZXNjcmliZWQgdG8gdmVyeSBtYW55IHllYXJz
-IGFnby4NCj4gPiANCj4gPiBQb3NzaWJseSBpdCB3b3VsZCBiZSBnb29kIHRvIGhhdmUgc29tZXRo
-aW5nIGJldHdlZW4gJ2hhcmQnIGFuZCAnc29mdCcgZm9yDQo+ID4gY2FzZXMgbGlrZSB5b3VycyAo
-eW91IGFyZW4ndCB0aGUgZmlyc3QgdG8gYXNrKS4NCj4gPiANCj4gPiAgRnJvbSBodHRwOi8vZG9j
-c3RvcmUubWlrLnVhL29yZWxseS9uZXR3b3JraW5nL3B1aXMvY2gyMF8wMS5odG0NCj4gPiANCj4g
-PiAgICBCU0RJIGFuZCBPU0YgLzEgYWxzbyBoYXZlIGEgc3Bvbmd5IG9wdGlvbiB0aGF0IGlzIHNp
-bWlsYXIgdG8gaGFyZCAsIGV4Y2VwdA0KPiA+ICAgIHRoYXQgdGhlIHN0YXQsIGxvb2t1cCwgZnNz
-dGF0LCByZWFkbGluaywgYW5kIHJlYWRkaXIgb3BlcmF0aW9ucyBiZWhhdmUNCj4gPiAgICBsaWtl
-IGEgc29mdCBNT1VOVCAuDQo+ID4gDQo+ID4gTGludXggZG9lc24ndCBoYXZlICdzcG9uZ3knLiAg
-TWF5YmUgaXQgY291bGQuICBPciBtYXliZSBpdCB3YXMgYSBmYWlsZWQNCj4gPiBleHBlcmltZW50
-IGFuZCB0aGVyZSBhcmUgZ29vZCByZWFzb25zIG5vdCB0byB3YW50IGl0Lg0KPiANCj4gVGhlIHBy
-b2JsZW0gdGhhdCBzcGFya2VkIHRoaXMgcXVlc3Rpb24gaXMgYSB3ZWJzZXJ2ZXIgd2hlcmUgYXBh
-Y2hlIGNhbiBzZXJ2ZQ0KPiBmaWxlcyBmcm9tIGFuIE5GUyBtb3VudC4gSWYgdGhlIE5GUyBzZXJ2
-ZXIgYmVjb21lcyB1bmF2YWlsYWJsZSwgdGhlbiB0aGUgYXBhY2hlDQo+IHByb2Nlc3NlcyBibG9j
-ayBpbiB1bmludGVycnVwdGFibGUgc2xlZXAgYW5kIGRyaXZlIHRoZSBsb2FkIHZlcnkgaGlnaCwg
-Zm9yY2luZw0KPiBhIHNlcnZlciByZXN0YXJ0LiBJdCB3b3VsZCBiZSBiZXR0ZXIgZm9yIHRoaXMg
-Y2FzZSBpZiB0aGUgbW91bnQgd291bGQgc2ltcGx5IA0KPiByZXR1cm4gYW4gZXJyb3IgdG8gYXBh
-Y2hlLCBzbyB0aGF0IGl0IHdvdWxkIGdpdmUgdXAgcmF0aGVyIHRoYW4gYmxvY2tpbmcgDQo+IGZv
-cmV2ZXIgYW5kIHRha2luZyBkb3duIHRoZSBzeXN0ZW0uIENhbiBzdWNoIGJlaGF2aW9yIGJlIGFj
-aGlldmVkIHNhZmVseT8NCg0KSWYgeW91IGhhdmUgYSBtb25pdG9yaW5nIHByb2dyYW0gdGhhdCBu
-b3RpY2VzIHRoaXMgaGlnaCBsb2FkIHlvdSBjYW4gdHJ5DQogIHVtb3VudCAtZiAvbW91bnQvcG9p
-bnQNCg0KVGhlICItZiIgc2hvdWxkIGNhdXNlIG91dHN0YW5kaW5nIHJlcXVlc3RzIHRvIGZhaWwu
-ICBUaGF0IGRvZXNuJ3Qgc3RvcCBtb3JlDQpyZXF1ZXN0cyBiZWluZyBtYWRlIHRob3VnaCBzbyBp
-dCBtaWdodCBub3QgYmUgY29tcGxldGVseSBzdWNjZXNzZnVsLg0KUG9zc2libHkgcnVubmluZyBp
-dCBzZXZlcmFsIHRpbWVzIHdvdWxkIGhlbHAuDQoNCiAgbW91bnQgLS1tb3ZlIC9tb3VudC9wb2lu
-dCAvc29tZXdoZXJlL3NhZmUNCiAgZm9yIGkgaW4gezEuLjE1fTsgZG8gdW1vdW50IC1mIC9zb21l
-d2hlcmUvc2FmZTsgZG9uZQ0KDQptaWdodCBiZSBldmVuIGJldHRlciwgaWYgeW91IGNhbiBnZXQg
-Im1vdW50IC0tbW92ZSIgdG8gd29yay4gIEl0IGRvZXNuJ3Qgd29yaw0KZm9yIG1lLCBwcm9iYWJs
-eSB0aGUgZmF1bHQgb2Ygc3lzdGVtZCAoaXNuJ3QgZXZlcnl0aGluZyA6LSkpLg0KDQpOZWlsQnJv
-d24NCg0KDQoNCg==
+When tracking sunrpc_task events in nfs client, the clnt pointer may be NULL.
 
+[  139.269266] BUG: unable to handle kernel NULL pointer dereference at 0000000000000004
+[  139.269915] IP: [<ffffffffa026f216>] ftrace_raw_event_rpc_task_running+0x86/0xf0 [sunrpc]
+[  139.269915] PGD 1d293067 PUD 1d294067 PMD 0 
+[  139.269915] Oops: 0000 [#1] SMP 
+[  139.269915] Modules linked in: nfsv4 dns_resolver nfs lockd sunrpc fscache sg ppdev e1000 
+serio_raw pcspkr parport_pc parport i2c_piix4 i2c_core microcode xfs libcrc32c sd_mod sr_mod
+cdrom ata_generic crc_t10dif crct10dif_common pata_acpi ahci libahci ata_piix libata dm_mirror
+dm_region_hash dm_log dm_mod
+[  139.269915] CPU: 0 PID: 59 Comm: kworker/0:2 Not tainted 3.10.0-84.el7.x86_64 #1
+[  139.269915] Hardware name: innotek GmbH VirtualBox/VirtualBox, BIOS VirtualBox 12/01/2006
+[  139.269915] Workqueue: rpciod rpc_async_schedule [sunrpc]
+[  139.269915] task: ffff88001b598000 ti: ffff88001b632000 task.ti: ffff88001b632000
+[  139.269915] RIP: 0010:[<ffffffffa026f216>]  [<ffffffffa026f216>] ftrace_raw_event_rpc_task_running+0x86/0xf0 [sunrpc]
+[  139.269915] RSP: 0018:ffff88001b633d70  EFLAGS: 00010206
+[  139.269915] RAX: ffff88001dfc5338 RBX: ffff88001cc37a00 RCX: ffff88001dfc5334
+[  139.269915] RDX: ffff88001dfc5338 RSI: 0000000000000000 RDI: ffff88001dfc533c
+[  139.269915] RBP: ffff88001b633db0 R08: 000000000000002c R09: 000000000000000a
+[  139.269915] R10: 0000000000062180 R11: 00000020759fb9dc R12: ffffffffa0292c20
+[  139.269915] R13: ffff88001dfc5334 R14: 0000000000000000 R15: 0000000000000000
+[  139.269915] FS:  0000000000000000(0000) GS:ffff88001fc00000(0000) knlGS:0000000000000000
+[  139.269915] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+[  139.269915] CR2: 0000000000000004 CR3: 000000001d290000 CR4: 00000000000006f0
+[  139.269915] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+[  139.269915] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+[  139.269915] Stack:
+[  139.269915]  000000001b633d98 0000000000000246 ffff88001df1dc00 ffff88001cc37a00
+[  139.269915]  ffff88001bc35e60 0000000000000000 ffff88001ffa0a48 ffff88001bc35ee0
+[  139.269915]  ffff88001b633e08 ffffffffa02704b5 0000000000010000 ffff88001cc37a70
+[  139.269915] Call Trace:
+[  139.269915]  [<ffffffffa02704b5>] __rpc_execute+0x1d5/0x400 [sunrpc]
+[  139.269915]  [<ffffffffa0270706>] rpc_async_schedule+0x26/0x30 [sunrpc]
+[  139.269915]  [<ffffffff8107867b>] process_one_work+0x17b/0x460
+[  139.269915]  [<ffffffff8107942b>] worker_thread+0x11b/0x400
+[  139.269915]  [<ffffffff81079310>] ? rescuer_thread+0x3e0/0x3e0
+[  139.269915]  [<ffffffff8107fc80>] kthread+0xc0/0xd0
+[  139.269915]  [<ffffffff8107fbc0>] ? kthread_create_on_node+0x110/0x110
+[  139.269915]  [<ffffffff815d122c>] ret_from_fork+0x7c/0xb0
+[  139.269915]  [<ffffffff8107fbc0>] ? kthread_create_on_node+0x110/0x110
+[  139.269915] Code: 4c 8b 45 c8 48 8d 7d d0 89 4d c4 41 89 c9 b9 28 00 00 00 e8 9d b4 e9
+e0 48 85 c0 49 89 c5 74 a2 48 89 c7 e8 9d 3f e9 e0 48 89 c2 <41> 8b 46 04 48 8b 7d d0 4c
+89 e9 4c 89 e6 89 42 0c 0f b7 83 d4 
+[  139.269915] RIP  [<ffffffffa026f216>] ftrace_raw_event_rpc_task_running+0x86/0xf0 [sunrpc]
+[  139.269915]  RSP <ffff88001b633d70>
+[  139.269915] CR2: 0000000000000004
+[  140.946406] ---[ end trace ba486328b98d7622 ]---
+
+Signed-off-by: Ditang Chen <chendt.fnst@cn.fujitsu.com>
+---
+ include/trace/events/sunrpc.h | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
+index ddc179b..1fef3e6 100644
+--- a/include/trace/events/sunrpc.h
++++ b/include/trace/events/sunrpc.h
+@@ -83,7 +83,7 @@ DECLARE_EVENT_CLASS(rpc_task_running,
+ 		),
+ 
+ 	TP_fast_assign(
+-		__entry->client_id = clnt->cl_clid;
++		__entry->client_id = clnt ? clnt->cl_clid : -1;
+ 		__entry->task_id = task->tk_pid;
+ 		__entry->action = action;
+ 		__entry->runstate = task->tk_runstate;
+@@ -91,7 +91,7 @@ DECLARE_EVENT_CLASS(rpc_task_running,
+ 		__entry->flags = task->tk_flags;
+ 		),
+ 
+-	TP_printk("task:%u@%u flags=%4.4x state=%4.4lx status=%d action=%pf",
++	TP_printk("task:%u@%d flags=%4.4x state=%4.4lx status=%d action=%pf",
+ 		__entry->task_id, __entry->client_id,
+ 		__entry->flags,
+ 		__entry->runstate,
+-- 
+1.8.2.1
