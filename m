@@ -1,71 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f172.google.com ([209.85.216.172]:44578 "EHLO
-	mail-qc0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753588AbaCKWAl convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Mar 2014 18:00:41 -0400
-Received: by mail-qc0-f172.google.com with SMTP id i8so10329991qcq.17
-        for <linux-nfs@vger.kernel.org>; Tue, 11 Mar 2014 15:00:41 -0700 (PDT)
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
-Subject: Re: [PATCH] nfs: Don't assume we have a security structure
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-In-Reply-To: <29D9CA49-A493-471B-932B-959AFF96C729@primarydata.com>
-Date: Tue, 11 Mar 2014 18:00:38 -0400
-Cc: David Quigley <dpquigl@davequigley.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        James Morris <james.l.morris@oracle.com>,
-        Eric Paris <eparis@redhat.com>
-Message-Id: <EEEA2B4E-BE0F-40C0-91C3-98E2E7E8BB35@primarydata.com>
-References: <1394572274-16474-1-git-send-email-Anna.Schumaker@netapp.com> <29D9CA49-A493-471B-932B-959AFF96C729@primarydata.com>
-To: Schumaker Anna <Anna.Schumaker@netapp.com>
+Received: from mx1.redhat.com ([209.132.183.28]:25384 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750901AbaCHPUU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 8 Mar 2014 10:20:20 -0500
+Message-ID: <531B3530.4060704@RedHat.com>
+Date: Sat, 08 Mar 2014 10:20:16 -0500
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Neil Brown <neilb@suse.de>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/4] nfsd: add -r and --rdma options to request rdma service.
+References: <20140220063616.6548.42556.stgit@notabene.brown> <20140220063648.6548.10041.stgit@notabene.brown>
+In-Reply-To: <20140220063648.6548.10041.stgit@notabene.brown>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hey Neil,
 
-On Mar 11, 2014, at 17:27, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+This part did not apply cleanly 
 
-> 
-> On Mar 11, 2014, at 17:11, Anna Schumaker <Anna.Schumaker@netapp.com> wrote:
-> 
->> If the i_security field isn't set then security_dentry_init_security()
->> won't initialize some of the values used by the security label.  This
->> causes my client to hit a BUG_ON() while encoding a label of size
->> -2128927414.
->> 
->> I hit this bug while testing on a client without SELinux installed.
->> 
->> Signed-off-by: Anna Schumaker <anna.schumaker@netapp.com>
->> ---
->> fs/nfs/nfs4proc.c | 3 +++
->> 1 file changed, 3 insertions(+)
->> 
->> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->> index b8cd560..994ccc2 100644
->> --- a/fs/nfs/nfs4proc.c
->> +++ b/fs/nfs/nfs4proc.c
->> @@ -105,6 +105,9 @@ nfs4_label_init_security(struct inode *dir, struct dentry *dentry,
->> 	if (nfs_server_capable(dir, NFS_CAP_SECURITY_LABEL) == 0)
->> 		return NULL;
->> 
->> +	if (!dir->i_security)
->> +		return NULL;
->> +
->> 	err = security_dentry_init_security(dentry, sattr->ia_mode,
->> 				&dentry->d_name, (void **)&label->label, &label->len);
->> 	if (err == 0)
-> 
-> Hi Anna,
-> 
-> This looks like a check that needs to be done by selinux_dentry_init_security() itself. The dir->i_security field is not something that NFS knows about.
-> David, what needs to happen there when dentry->d_parent->i_security (a.k.a. dsec) is NULL?
-> 
+On 02/20/2014 01:36 AM, Neil Brown wrote:
+> void
+>  nfssvc_setvers(unsigned int ctlbits, int minorvers[])
+>  {
+> diff --git a/utils/nfsd/nfssvc.h b/utils/nfsd/nfssvc.h
+> index 2bbd3d30f92a..bb7fccee7c19 100644
+> --- a/utils/nfsd/nfssvc.h
+> +++ b/utils/nfsd/nfssvc.h
+> @@ -24,5 +24,6 @@ void	nfssvc_mount_nfsdfs(char *progname);
+>  int	nfssvc_inuse(void);
+>  int	nfssvc_set_sockets(const int family, const unsigned int protobits,
+>  			   const char *host, const char *port);
+> +int	nfssvc_set_rdmaport(const char *port);
+>  void	nfssvc_setvers(unsigned int ctlbits, int minorvers4[]);
+^^^ this interface is different that the one I have in my tree
 
-Oh, wait. I missed the bit about ‘without SELinux installed’. So the problem here is that you have a NFS client that does not have SELinux set up, but running against a server that is advertising NFSv4.2 with labeled NFS. Is that correct?
+The one I have is 
+void    nfssvc_setvers(unsigned int ctlbits, unsigned int minorvers4, unsigned int minorvers4set);
 
-It looks to me as if cap_dentry_init_security() will indeed trigger this behaviour since it returns ‘0’ without doing anything to the label. As far as I can see, the right thing to do there is to return -EOPNOTSUPP, no?
+No biggie but I'm just wandering if I'm missing a patch... 
 
-_________________________________
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
-
+steved.
+>  int	nfssvc_threads(unsigned short port, int nrservs);
