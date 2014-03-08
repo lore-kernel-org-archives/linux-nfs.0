@@ -1,55 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f173.google.com ([209.85.223.173]:62112 "EHLO
-	mail-ie0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754865AbaCEUPz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Mar 2014 15:15:55 -0500
-Message-ID: <338027154-1394050544-cardhu_decombobulator_blackberry.rim.net-1945813324-@b5.c4.bise6.blackberry>
-Reply-To: bhawley@luminex.com
-References: <1696396609.119284.1394040541217.JavaMail.zimbra@xes-inc.com>
-  <260588931.122771.1394041524167.JavaMail.zimbra@xes-inc.com>
-In-Reply-To: <260588931.122771.1394041524167.JavaMail.zimbra@xes-inc.com>
-Subject: Re: Optimal NFS mount options to safely allow interrupts and timeouts on newer kernels
-To: "Andrew Martin" <amartin@xes-inc.com>, linux-nfs-owner@vger.kernel.org,
+Received: from mout.perfora.net ([74.208.4.195]:50777 "EHLO mout.perfora.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754857AbaCHBjS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 7 Mar 2014 20:39:18 -0500
+Date: Fri, 7 Mar 2014 20:38:32 -0500
+From: Jim Rees <rees@umich.edu>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Brown Neil <neilb@suse.de>, Dickson Steve <steved@redhat.com>,
         linux-nfs@vger.kernel.org
-From: "Brian Hawley" <bhawley@luminex.com>
-Date: Wed, 5 Mar 2014 20:15:39 +0000
-Content-Type: text/plain
+Subject: Re: [PATCH] fix intr/nointr to match kernel behavior (ignored)
+Message-ID: <20140308013832.GA10728@umich.edu>
+References: <1394143352-26095-1-git-send-email-rees@umich.edu>
+ <20140307185937.5852666b@notabene.brown>
+ <D65A0AA5-ADF9-43AA-871F-69533C8F2DD7@primarydata.com>
+ <20140308104228.4bfcd3d5@notabene.brown>
+ <12C999A4-52B8-461F-BFB9-F67AB4F6EFCE@primarydata.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <12C999A4-52B8-461F-BFB9-F67AB4F6EFCE@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQpJbiBteSBleHBlcmllbmNlLCB5b3Ugd29uJ3QgZ2V0IHRoZSBpL28gZXJyb3JzIHJlcG9ydGVk
-IGJhY2sgdG8gdGhlIHJlYWQvd3JpdGUvY2xvc2Ugb3BlcmF0aW9ucy4gICBJIGRvbid0IGtub3cg
-Zm9yIGNlcnRhaW4sIGJ1dCBJIHN1c3BlY3QgdGhpcyBtYXkgYmUgZHVlIHRvIGNhY2hpbmcgYW5k
-IGNodW5raW5nIHRvIHR1cm4gSS9vIG1hdGNoaW5nIHRoZSByc2l6ZS93c2l6ZSBzZXR0aW5nczsg
-YW5kIHBvc3NpYmx5IHRoZSBmYWN0IHRoYXQgdGhlIHBlZXIgZGlzY29ubmVjdGlvbiBpc24ndCBu
-b3RpY2VkIHVubGVzcyB0aGUgbmZzIHNlcnZlciByZXNldHMgKGllIGNhYmxlIGRpc2Nvbm5lY3Rp
-b24gaXNuJ3Qgc3VmZmljaWVudCkuDQoNClRoZSBpbmFiaWxpdHkgdG8gZ2V0IHRoZSBpL28gZXJy
-b3JzIGJhY2sgdG8gdGhlIGFwcGxpY2F0aW9uIGhhcyBiZWVuIGEgbWFqb3IgcGFpbiBmb3IgdXMu
-DQoNCk9uIGEgbGFyayB3ZSBkaWQgZmluZCB0aGF0IHJlcGVhdGVkIHVubW9udCAtZidzIGRvZXMg
-Z2V0IGkvbyBlcnJvcnMgYmFjayB0byB0aGUgYXBwbGljYXRpb24sIGJ1dCBpc24ndCBvdXIgcHJl
-ZmVycmVkIHdheS4NCg0KDQotLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KRnJvbTogQW5kcmV3
-IE1hcnRpbiA8YW1hcnRpbkB4ZXMtaW5jLmNvbT4NClNlbmRlcjogbGludXgtbmZzLW93bmVyQHZn
-ZXIua2VybmVsLm9yZw0KRGF0ZTogCVdlZCwgNSBNYXIgMjAxNCAxMTo0NToyNCANClRvOiA8bGlu
-dXgtbmZzQHZnZXIua2VybmVsLm9yZz4NClN1YmplY3Q6IE9wdGltYWwgTkZTIG1vdW50IG9wdGlv
-bnMgdG8gc2FmZWx5IGFsbG93IGludGVycnVwdHMgYW5kIHRpbWVvdXRzDQogb24gbmV3ZXIga2Vy
-bmVscw0KDQpIZWxsbywNCg0KSXMgaXQgc2FmZSB0byB1c2UgdGhlICJzb2Z0IiBtb3VudCBvcHRp
-b24gd2l0aCBwcm90bz10Y3Agb24gbmV3ZXIga2VybmVscyAoZS5nDQozLjIgYW5kIG5ld2VyKT8g
-Q3VycmVudGx5IHVzaW5nIHRoZSAiZGVmYXVsdHMiIG5mcyBtb3VudCBvcHRpb25zIG9uIFVidW50
-dQ0KMTIuMDQgcmVzdWx0cyBpbiBwcm9jZXNzZXMgYmxvY2tpbmcgZm9yZXZlciBpbiB1bmludGVy
-cnVwdGFibGUgc2xlZXAgaWYgdGhleQ0KYXR0ZW1wdCB0byBhY2Nlc3MgYSBtb3VudHBvaW50IHdo
-aWxlIHRoZSBORlMgc2VydmVyIGlzIG9mZmxpbmUuIEkgd291bGQgcHJlZmVyDQp0aGF0IE5GUyBz
-aW1wbHkgcmV0dXJuIGFuIGVycm9yIHRvIHRoZSBjbGllbnRzIGFmdGVyIHJldHJ5aW5nIGEgZmV3
-IHRpbWVzLCANCmhvd2V2ZXIgSSBhbHNvIGNhbm5vdCBoYXZlIGRhdGEgbG9zcy4gRnJvbSB0aGUg
-bWFuIHBhZ2UsIEkgdGhpbmsgdGhlc2Ugb3B0aW9ucw0Kd2lsbCBnaXZlIHRoYXQgZWZmZWN0Pw0K
-c29mdCxwcm90bz10Y3AsdGltZW89MTAscmV0cmFucz0zDQoNCj5Gcm9tIG15IHVuZGVyc3RhbmRp
-bmcsIHRoaXMgd2lsbCBjYXVzZSBORlMgdG8gcmV0cnkgdGhlIGNvbm5lY3Rpb24gMyB0aW1lcyAo
-b25jZQ0KcGVyIHNlY29uZCksIGFuZCB0aGVuIGlmIGFsbCAzIGFyZSB1bnN1Y2Nlc3NmdWwgcmV0
-dXJuIGFuIGVycm9yIHRvIHRoZQ0KYXBwbGljYXRpb24uIElzIHRoaXMgY29ycmVjdD8gSXMgdGhl
-cmUgYSByaXNrIG9mIGRhdGEgbG9zcyBvciBjb3JydXB0aW9uIGJ5DQp1c2luZyAic29mdCIgaW4g
-dGhpcyB3YXk/IE9yIGlzIHRoZXJlIGEgYmV0dGVyIHdheSB0byBhcHByb2FjaCB0aGlzPw0KDQpU
-aGFua3MsDQoNCkFuZHJldyBNYXJ0aW4NCi0tDQpUbyB1bnN1YnNjcmliZSBmcm9tIHRoaXMgbGlz
-dDogc2VuZCB0aGUgbGluZSAidW5zdWJzY3JpYmUgbGludXgtbmZzIiBpbg0KdGhlIGJvZHkgb2Yg
-YSBtZXNzYWdlIHRvIG1ham9yZG9tb0B2Z2VyLmtlcm5lbC5vcmcNCk1vcmUgbWFqb3Jkb21vIGlu
-Zm8gYXQgIGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jkb21vLWluZm8uaHRtbA0KDQo=
+Trond Myklebust wrote:
 
+  > I would certainly be good if we could delegation the documentation.  But I
+  > couldn't find anything in signal(7) that seemed particularly relevant. Which
+  > bit were you thinking of?
+  > 
+  
+  The table which lists the posix signals, and which indicates whether they
+  are fatal not (i.e. what ‘action’ they cause).  The same page also
+  explains signal blocking and signal handling, which could also be
+  helpful..
+
+This seems the relevant part to me, assuming nfs system calls are considered
+"slow":
+
+           * read(2), readv(2), write(2),  writev(2),  and  ioctl(2)  calls  on
+             "slow"  devices.   A  "slow"  device is one where the I/O call may
+             block for an indefinite time, for example, a  terminal,  pipe,  or
+             socket.   (A  disk  is not a slow device according to this defini‐
+             tion.)  If an I/O call on a slow device  has  already  transferred
+             some  data by the time it is interrupted by a signal handler, then
+             the call will return a success status  (normally,  the  number  of
+             bytes transferred).
+
+Here's Neil's description:
+
+>>> "A process that is waiting for a reply for an NFS server can be killed
+>>> by any signal which would normally kill the process.  If a signal would not
+>>> normally kill the process (i.e. it is caught or ignored) then that signal
+>>> will not abort and NFS request".
+
+So assuming nfs system calls honor the SA_RESTART flag, I think these
+behaviors are the same?
