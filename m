@@ -1,54 +1,97 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f177.google.com ([209.85.223.177]:58382 "EHLO
-	mail-ie0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752970AbaCESaQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Mar 2014 13:30:16 -0500
-Received: by mail-ie0-f177.google.com with SMTP id rl12so1490975iec.36
-        for <linux-nfs@vger.kernel.org>; Wed, 05 Mar 2014 10:30:16 -0800 (PST)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Andy Adamson <andros@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v4 1/4] NFSv4: nfs4_stateid_is_current should return 'true' for an invalid stateid
-Date: Wed,  5 Mar 2014 13:30:08 -0500
-Message-Id: <1394044211-22302-2-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1394044211-22302-1-git-send-email-trond.myklebust@primarydata.com>
-References: <1394028452-15956-1-git-send-email-trond.myklebust@primarydata.com>
- <1394044211-22302-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:44727 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750901AbaCHQ40 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 8 Mar 2014 11:56:26 -0500
+Message-ID: <531B4BB7.9010303@RedHat.com>
+Date: Sat, 08 Mar 2014 11:56:23 -0500
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Neil Brown <neilb@suse.de>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [nfs-utils RPC-PATCH 0/4] Add options to nfsd etc to avoid needing
+ to write to /proc
+References: <20140220063616.6548.42556.stgit@notabene.brown>
+In-Reply-To: <20140220063616.6548.42556.stgit@notabene.brown>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When nfs4_set_rw_stateid() can fails by returning EIO to indicate that
-the stateid is completely invalid, then it makes no sense to have it
-trigger a retry of the READ or WRITE operation. Instead, we should just
-have it fall through and attempt a recovery.
 
-This fixes an infinite loop in which the client keeps replaying the same
-bad stateid back to the server.
 
-Reported-by: Andy Adamson <andros@netapp.com>
-Link: http://lkml.kernel.org/r/1393954269-3974-1-git-send-email-andros@netapp.com
-Cc: stable@vger.kernel.org # 3.10+
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/nfs4proc.c | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
+On 02/20/2014 01:36 AM, Neil Brown wrote:
+> There are a number of NFS-related setting that currently must be set
+> by writing to various files under /proc.
+> This is a bit clumsy, particularly for systemd unit files.
+> 
+> So this series adds options to a number of commands where relevant.
+> 
+> The first two (rdma, and  nfsv4{grace,lease}time) I am quite comfortable with.
+> The third (nlm grace time) I think is probably right but if someone can argue
+>  an alternate approach I'm unlikely to resist.
+> The fourth is .... uhm.  You better look yourself.
+> 
+> Part of me thinks that nlm port numbers should be set in /etc/sysctl.conf (or sysctl.d)
+> and /etc/modprobe.d should have something like
+> 
+>  install lockd  sysctl -p /etc/sysctl.d/lockd
+> 
+> but last time I tried that it broke "modprobe --show-depends".
+> Also it is awkward to get setting from /etc/sysconfig/nfs into /etc/sysctl.d/lockd
+> 
+> Thoughts?
+I finally got the cycles to take a look at these... My apologies for
+taking so long... 
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 44e088dc357c..4ae8141452c9 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -4011,8 +4011,9 @@ static bool nfs4_stateid_is_current(nfs4_stateid *stateid,
- {
- 	nfs4_stateid current_stateid;
- 
--	if (nfs4_set_rw_stateid(&current_stateid, ctx, l_ctx, fmode))
--		return false;
-+	/* If the current stateid represents a lost lock, then exit */
-+	if (nfs4_set_rw_stateid(&current_stateid, ctx, l_ctx, fmode) == -EIO)
-+		return true;
- 	return nfs4_stateid_match(stateid, &current_stateid);
- }
- 
--- 
-1.8.5.3
+So I went ahead took a look... Clean them up a bit. There were a couple
+typos and they did not apply cleanly to my tree...  While I was
+doing this I got this gnawing feeling that we probably should have
+some type of global configuration file where all these command
+line variables can be set. 
 
+It would have to be distro friendly meaning the same place in all 
+distros... Maybe something like /etc/nfsclient.conf patterned off 
+the /etc/nfsmount.conf config file?? 
+
+So I'm thinking it does make sense to have a way to set
+all these but I'm just not keen on how they are being set.
+IDK... Maybe I'm over thinking it.. :-)
+
+Finally, during my testing the only flags that seem to work
+was the statd ones:
+
+# rpc.nfsd --rdma 8
+rpc.nfsd: Unable to request RDMA services: Protocol not supported
+
+# rpc.nfsd --grace-time 66
+rpc.nfsd: Unable to set /proc/fs/nfsd/nfsv4gracetime: Device or resource busy
+
+# rpc.nfsd --lease-time 66
+rpc.nfsd: Unable to set /proc/fs/nfsd/nfsv4leasetime: Device or resource busy
+
+Is this expected?
+
+steved.
+
+> 
+> Thanks,
+> NeilBrown
+> 
+> 
+> ---
+> 
+> Neil Brown (4):
+>       nfsd: add -r and --rdma options to request rdma service.
+>       nfsd: alloc nfsv4leasetime and nfsv4gracetime to be set.
+>       nfsd: set nlm grace time to make NFSv4 grace time
+>       statd: add options to set port number of lockd.
+> 
+> 
+>  utils/nfsd/nfsd.c     |   52 +++++++++++++++++++++++++++++++++++++++----
+>  utils/nfsd/nfsd.man   |   21 +++++++++++++++++
+>  utils/nfsd/nfssvc.c   |   59 +++++++++++++++++++++++++++++++++++++++++++++++++
+>  utils/nfsd/nfssvc.h   |    2 ++
+>  utils/statd/statd.c   |   57 +++++++++++++++++++++++++++++++++++++++++++++--
+>  utils/statd/statd.man |   24 ++++++++++++++++++--
+>  6 files changed, 204 insertions(+), 11 deletions(-)
+> 
