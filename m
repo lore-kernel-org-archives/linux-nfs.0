@@ -1,95 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cn.fujitsu.com ([222.73.24.84]:60349 "EHLO song.cn.fujitsu.com"
-	rhost-flags-OK-FAIL-OK-OK) by vger.kernel.org with ESMTP
-	id S1750926AbaCGFp0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 7 Mar 2014 00:45:26 -0500
-Received: from fnstmail02.fnst.cn.fujitsu.com (tang.cn.fujitsu.com [127.0.0.1])
-	by tang.cn.fujitsu.com (8.14.3/8.13.1) with ESMTP id s275jK0v000857
-	for <linux-nfs@vger.kernel.org>; Fri, 7 Mar 2014 13:45:21 +0800
-Message-ID: <531958DD.2080105@cn.fujitsu.com>
-Date: Fri, 07 Mar 2014 13:27:57 +0800
-From: Ditang Chen <chendt.fnst@cn.fujitsu.com>
+Received: from linode.aoot.com ([69.164.194.13]:37193 "EHLO linode.aoot.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751052AbaCHUNp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 8 Mar 2014 15:13:45 -0500
+Message-ID: <531B79F8.2020008@opengridcomputing.com>
+Date: Sat, 08 Mar 2014 14:13:44 -0600
+From: Steve Wise <swise@opengridcomputing.com>
 MIME-Version: 1.0
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: [PATCH] SUNRPC: Fix oops when trace sunrpc_task events in nfs client
-Content-Type: text/plain; charset=UTF-8
+To: "'J. Bruce Fields'" <bfields@fieldses.org>,
+        Tom Tucker <tom@opengridcomputing.com>
+CC: "'Yan Burman'" <yanb@mellanox.com>, linux-nfs@vger.kernel.org,
+        linux-rdma@vger.kernel.org, "'Or Gerlitz'" <ogerlitz@mellanox.com>
+Subject: Re: NFS over RDMA crashing
+References: <51127B3F.2090200@mellanox.com> <20130206222435.GL16417@fieldses.org> <20130207164134.GK3222@fieldses.org> <003601cf3a26$94523ee0$bcf6bca0$@opengridcomputing.com> <005d01cf3a45$94ced0d0$be6c7270$@opengridcomputing.com> <531B47B3.1070503@opengridcomputing.com> <531B6D90.2090208@opengridcomputing.com>
+In-Reply-To: <531B6D90.2090208@opengridcomputing.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When tracking sunrpc_task events in nfs client, the clnt pointer may be NULL.
+On 3/8/2014 1:20 PM, Steve Wise wrote:
+>
+>> I removed your change and started debugging original crash that 
+>> happens on top-o-tree.   Seems like rq_next_pages is screwed up.  It 
+>> should always be >= rq_respages, yes?  I added a BUG_ON() to assert 
+>> this in rdma_read_xdr() we hit the BUG_ON(). Look
+>>
+>> crash> svc_rqst.rq_next_page 0xffff8800b84e6000
+>>   rq_next_page = 0xffff8800b84e6228
+>> crash> svc_rqst.rq_respages 0xffff8800b84e6000
+>>   rq_respages = 0xffff8800b84e62a8
+>>
+>> Any ideas Bruce/Tom?
+>>
+>
+> Guys, the patch below seems to fix the problem.  Dunno if it is 
+> correct though.  What do you think?
+>
+> diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c 
+> b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+> index 0ce7552..6d62411 100644
+> --- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+> +++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+> @@ -90,6 +90,7 @@ static void rdma_build_arg_xdr(struct svc_rqst *rqstp,
+>                 sge_no++;
+>         }
+>         rqstp->rq_respages = &rqstp->rq_pages[sge_no];
+> +       rqstp->rq_next_page = rqstp->rq_respages;
+>
+>         /* We should never run out of SGE because the limit is defined to
+>          * support the max allowed RPC data length
+> @@ -276,6 +277,7 @@ static int fast_reg_read_chunks(struct 
+> svcxprt_rdma *xprt,
+>
+>         /* rq_respages points one past arg pages */
+>         rqstp->rq_respages = &rqstp->rq_arg.pages[page_no];
+> +       rqstp->rq_next_page = rqstp->rq_respages;
+>
+>         /* Create the reply and chunk maps */
+>         offset = 0;
+>
+>
 
-[  139.269266] BUG: unable to handle kernel NULL pointer dereference at 0000000000000004
-[  139.269915] IP: [<ffffffffa026f216>] ftrace_raw_event_rpc_task_running+0x86/0xf0 [sunrpc]
-[  139.269915] PGD 1d293067 PUD 1d294067 PMD 0 
-[  139.269915] Oops: 0000 [#1] SMP 
-[  139.269915] Modules linked in: nfsv4 dns_resolver nfs lockd sunrpc fscache sg ppdev e1000 
-serio_raw pcspkr parport_pc parport i2c_piix4 i2c_core microcode xfs libcrc32c sd_mod sr_mod
-cdrom ata_generic crc_t10dif crct10dif_common pata_acpi ahci libahci ata_piix libata dm_mirror
-dm_region_hash dm_log dm_mod
-[  139.269915] CPU: 0 PID: 59 Comm: kworker/0:2 Not tainted 3.10.0-84.el7.x86_64 #1
-[  139.269915] Hardware name: innotek GmbH VirtualBox/VirtualBox, BIOS VirtualBox 12/01/2006
-[  139.269915] Workqueue: rpciod rpc_async_schedule [sunrpc]
-[  139.269915] task: ffff88001b598000 ti: ffff88001b632000 task.ti: ffff88001b632000
-[  139.269915] RIP: 0010:[<ffffffffa026f216>]  [<ffffffffa026f216>] ftrace_raw_event_rpc_task_running+0x86/0xf0 [sunrpc]
-[  139.269915] RSP: 0018:ffff88001b633d70  EFLAGS: 00010206
-[  139.269915] RAX: ffff88001dfc5338 RBX: ffff88001cc37a00 RCX: ffff88001dfc5334
-[  139.269915] RDX: ffff88001dfc5338 RSI: 0000000000000000 RDI: ffff88001dfc533c
-[  139.269915] RBP: ffff88001b633db0 R08: 000000000000002c R09: 000000000000000a
-[  139.269915] R10: 0000000000062180 R11: 00000020759fb9dc R12: ffffffffa0292c20
-[  139.269915] R13: ffff88001dfc5334 R14: 0000000000000000 R15: 0000000000000000
-[  139.269915] FS:  0000000000000000(0000) GS:ffff88001fc00000(0000) knlGS:0000000000000000
-[  139.269915] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-[  139.269915] CR2: 0000000000000004 CR3: 000000001d290000 CR4: 00000000000006f0
-[  139.269915] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-[  139.269915] DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-[  139.269915] Stack:
-[  139.269915]  000000001b633d98 0000000000000246 ffff88001df1dc00 ffff88001cc37a00
-[  139.269915]  ffff88001bc35e60 0000000000000000 ffff88001ffa0a48 ffff88001bc35ee0
-[  139.269915]  ffff88001b633e08 ffffffffa02704b5 0000000000010000 ffff88001cc37a70
-[  139.269915] Call Trace:
-[  139.269915]  [<ffffffffa02704b5>] __rpc_execute+0x1d5/0x400 [sunrpc]
-[  139.269915]  [<ffffffffa0270706>] rpc_async_schedule+0x26/0x30 [sunrpc]
-[  139.269915]  [<ffffffff8107867b>] process_one_work+0x17b/0x460
-[  139.269915]  [<ffffffff8107942b>] worker_thread+0x11b/0x400
-[  139.269915]  [<ffffffff81079310>] ? rescuer_thread+0x3e0/0x3e0
-[  139.269915]  [<ffffffff8107fc80>] kthread+0xc0/0xd0
-[  139.269915]  [<ffffffff8107fbc0>] ? kthread_create_on_node+0x110/0x110
-[  139.269915]  [<ffffffff815d122c>] ret_from_fork+0x7c/0xb0
-[  139.269915]  [<ffffffff8107fbc0>] ? kthread_create_on_node+0x110/0x110
-[  139.269915] Code: 4c 8b 45 c8 48 8d 7d d0 89 4d c4 41 89 c9 b9 28 00 00 00 e8 9d b4 e9
-e0 48 85 c0 49 89 c5 74 a2 48 89 c7 e8 9d 3f e9 e0 48 89 c2 <41> 8b 46 04 48 8b 7d d0 4c
-89 e9 4c 89 e6 89 42 0c 0f b7 83 d4 
-[  139.269915] RIP  [<ffffffffa026f216>] ftrace_raw_event_rpc_task_running+0x86/0xf0 [sunrpc]
-[  139.269915]  RSP <ffff88001b633d70>
-[  139.269915] CR2: 0000000000000004
-[  140.946406] ---[ end trace ba486328b98d7622 ]---
+While this patch avoids the crashing, it apparently isn't correct...I'm 
+getting IO errors reading files over the mount. :)
 
-Signed-off-by: Ditang Chen <chendt.fnst@cn.fujitsu.com>
----
- include/trace/events/sunrpc.h | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
-
-diff --git a/include/trace/events/sunrpc.h b/include/trace/events/sunrpc.h
-index ddc179b..1fef3e6 100644
---- a/include/trace/events/sunrpc.h
-+++ b/include/trace/events/sunrpc.h
-@@ -83,7 +83,7 @@ DECLARE_EVENT_CLASS(rpc_task_running,
- 		),
- 
- 	TP_fast_assign(
--		__entry->client_id = clnt->cl_clid;
-+		__entry->client_id = clnt ? clnt->cl_clid : -1;
- 		__entry->task_id = task->tk_pid;
- 		__entry->action = action;
- 		__entry->runstate = task->tk_runstate;
-@@ -91,7 +91,7 @@ DECLARE_EVENT_CLASS(rpc_task_running,
- 		__entry->flags = task->tk_flags;
- 		),
- 
--	TP_printk("task:%u@%u flags=%4.4x state=%4.4lx status=%d action=%pf",
-+	TP_printk("task:%u@%d flags=%4.4x state=%4.4lx status=%d action=%pf",
- 		__entry->task_id, __entry->client_id,
- 		__entry->flags,
- 		__entry->runstate,
--- 
-1.8.2.1
