@@ -1,61 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f175.google.com ([209.85.192.175]:59822 "EHLO
-	mail-pd0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753907AbaCEAtD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Mar 2014 19:49:03 -0500
-Message-ID: <1393980534.26794.147.camel@edumazet-glaptop2.roam.corp.google.com>
-Subject: Re: RCU stalls when running out of memory on 3.14-rc4 w/ NFS and
- kernel threads priorities changed
-From: Eric Dumazet <eric.dumazet@gmail.com>
-To: Florian Fainelli <f.fainelli@gmail.com>
-Cc: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        linux-mm <linux-mm@kvack.org>, paulmck@linux.vnet.ibm.com,
-        linux-nfs@vger.kernel.org, trond.myklebust@primarydata.com,
-        netdev <netdev@vger.kernel.org>
-Date: Tue, 04 Mar 2014 16:48:54 -0800
-In-Reply-To: <CAGVrzcbsSV7h3qA3KuCTwKNFEeww_kSNcfUkfw3PPjeXQXBo6g@mail.gmail.com>
-References: <CAGVrzcbsSV7h3qA3KuCTwKNFEeww_kSNcfUkfw3PPjeXQXBo6g@mail.gmail.com>
-Content-Type: text/plain; charset="UTF-8"
+Received: from cantor2.suse.de ([195.135.220.15]:51098 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751455AbaCIXVJ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 9 Mar 2014 19:21:09 -0400
+Date: Mon, 10 Mar 2014 10:21:02 +1100
+From: NeilBrown <neilb@suse.de>
+To: David Heidelberger <david.heidelberger@ixit.cz>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: DNOTIFY to INOTIFY migration
+Message-ID: <20140310102102.3c886726@notabene.brown>
+In-Reply-To: <b59b1e4ede0b1d0a476c85465d480c8a@ixit.cz>
+References: <b59b1e4ede0b1d0a476c85465d480c8a@ixit.cz>
 Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/C+tHlCF3gz=YUHIGLms6eZ2"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2014-03-04 at 15:55 -0800, Florian Fainelli wrote:
-> Hi all,
-> 
-> I am seeing the following RCU stalls messages appearing on an ARMv7
-> 4xCPUs system running 3.14-rc4:
-> 
-> [   42.974327] INFO: rcu_sched detected stalls on CPUs/tasks:
-> [   42.979839]  (detected by 0, t=2102 jiffies, g=4294967082,
-> c=4294967081, q=516)
-> [   42.987169] INFO: Stall ended before state dump start
-> 
-> this is happening under the following conditions:
-> 
-> - the attached bumper.c binary alters various kernel thread priorities
-> based on the contents of bumpup.cfg and
-> - malloc_crazy is running from a NFS share
-> - malloc_crazy.c is running in a loop allocating chunks of memory but
-> never freeing it
-> 
-> when the priorities are altered, instead of getting the OOM killer to
-> be invoked, the RCU stalls are happening. Taking NFS out of the
-> equation does not allow me to reproduce the problem even with the
-> priorities altered.
-> 
-> This "problem" seems to have been there for quite a while now since I
-> was able to get 3.8.13 to trigger that bug as well, with a slightly
-> more detailed RCU debugging trace which points the finger at kswapd0.
-> 
-> You should be able to get that reproduced under QEMU with the
-> Versatile Express platform emulating a Cortex A15 CPU and the attached
-> files.
-> 
-> Any help or suggestions would be greatly appreciated. Thanks!
+--Sig_/C+tHlCF3gz=YUHIGLms6eZ2
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-Do you have a more complete trace, including stack traces ?
+On Fri, 07 Mar 2014 21:30:34 +0100 David Heidelberger
+<david.heidelberger@ixit.cz> wrote:
 
+> Hello,
+>=20
+> in linux kernel is DNOTIFY actually marked as deprecated, with superior=20
+> replacement INOTIFY.
+
+Where is it marked as deprecated?  I would be very surprised if dnotify
+wasn't supported indefinitely.
+
+(I have no opinion on whether rpc.idmapd should be changed to use inotify,
+except based on the "if it ain't broke, don't fix it" principle).
+
+NeilBrown
+
+>=20
+> Is any plan to migrate rpc.idmapd to INOTIFY? As I looked, it's just one=
+=20
+> file.
+>=20
+> If there is some on-going porting, I'd like to test/report bugs/send=20
+> patches, otherwise I'd like to try port it.
+>=20
+> Thank you for answer
+> David Heidelberger (okias)
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
 
+--Sig_/C+tHlCF3gz=YUHIGLms6eZ2
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
 
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.22 (GNU/Linux)
+
+iQIVAwUBUxz3Xjnsnt1WYoG5AQI/tBAAnihWm4AoepVGchN1drq3iFmef9AUyEaH
+wNavNx+MGOnr8CZuXIbXtBNVRyp1UXlxGDj5Wt4abSyErhugQ/t923zieibWnX5O
+Unyu7ULGO9EKs7H7hMl80TuBPcVocw5GiUNn2YrJSG2PQjm/QWwWK5A3uPEQiftf
+qnx0z9PhwqgCifCiYz+yvQa6nV+I1e4Wi+ev4NijwDwt60GyOgz+BTl1643j0iMz
+F350k9rmVjk8R6UbK/gH3m8LyDDpUh4v/8JUoFsiD/9ujGYlbSuePGCS6WB7gH40
+jmmEyxFpfR4omFcYvG73FHcsQ8V2m9JgcUqHzM6d4UpPanKctaZDB6Z8ciNMUvI6
+apSnw5WQaA3sjOHODuEDigOxoB6juOx6J7kV3QdAbk1GYOh1TOsEj8sSevF/zsO9
+8I3DkHbT8CIP3oQbdXMjapQaz4ep0GaNxL2nKCV5A8+FsYVAtTZGrSJ4qoSSi/gv
+rYv+t4zu42vnDENXALgIXYzKJXMrom4xwKYo/W+nB/0sQ0RdnJiFOTU2/w8FMZfx
+Z6K4bh4JmqNXjasoo0i6UeMGtp17SdgiowQSZP0oVrrp1PENYjUuvrL0CrAVfFfS
+jVyBAe42QISVJKZ/Ja0d8GgJLN5t9TmyptoWNRwmMG+5pqbSr1Y+rhxtU4gq5zqz
+3gQpqq7NxvI=
+=irV3
+-----END PGP SIGNATURE-----
+
+--Sig_/C+tHlCF3gz=YUHIGLms6eZ2--
