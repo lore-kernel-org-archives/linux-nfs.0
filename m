@@ -1,40 +1,315 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp2.uvm.edu ([132.198.101.169]:38961 "EHLO smtp2.uvm.edu"
+Received: from mx1.redhat.com ([209.132.183.28]:55071 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753898AbaCXVDc convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Mar 2014 17:03:32 -0400
-Content-Type: text/plain; charset=US-ASCII
-Mime-Version: 1.0 (Mac OS X Mail 6.6 \(1510\))
-Subject: Re: [PATCH] nfsidmap: use multiple child keyrings
-From: Benjamin Coddington <bcodding@uvm.edu>
-In-Reply-To: <53308CD4.9020307@RedHat.com>
-Date: Mon, 24 Mar 2014 17:03:26 -0400
-Cc: linux-nfs@vger.kernel.org, David Howells <dhowells@redhat.com>
-Message-Id: <B126AD05-73BE-4395-BFED-F05B67856EAA@uvm.edu>
-References: <201403241150.s2OBonLC010685@hobo-dev.uvm.edu> <533064A1.2080502@RedHat.com> <189016FB-E865-42B7-BF5A-D1D12F45B81E@uvm.edu> <53308CD4.9020307@RedHat.com>
-To: Steve Dickson <SteveD@redhat.com>
+	id S1752703AbaCJV1g (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 10 Mar 2014 17:27:36 -0400
+Message-ID: <531E2E3F.2020805@RedHat.com>
+Date: Mon, 10 Mar 2014 17:27:27 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: NeilBrown <neilb@suse.de>
+CC: NFS <linux-nfs@vger.kernel.org>, "J. Bruce Fields" <bfields@fieldses.org>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        Carsten Ziepke <kieltux@gmail.com>
+Subject: Re: [PATCH - v2] mount.nfs: Fix fallback from tcp to udp
+References: <20140224142349.784345f9@notabene.brown>
+In-Reply-To: <20140224142349.784345f9@notabene.brown>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hey Neil,
 
-On Mar 24, 2014, at 3:51 PM, Steve Dickson <SteveD@redhat.com> wrote:
+On 02/23/2014 10:23 PM, NeilBrown wrote:
+> 
+> Protocol negotiation in mount.nfs does not correctly negotiate with a
+> server which only supports NFSv3 and UDP.
+> 
+> When mount.nfs attempts an NFSv4 mount and fails with ECONNREFUSED
+> it does not fall back to NFSv3, as this is not recognised as a
+> "does not support NFSv4" error.
+> However ECONNREFUSED is a clear indication that the server doesn't
+> support TCP, and ipso facto does not support NFSv4.
+> So ECONNREFUSED should trigger a fallback from v4 to v2/3.
+What server are you running this against?
 
->>> Finally, what -n value do plan on using? Maybe a blurb in the man page
->>> on what a good number is and why....
->> 
->> I've got this running now with -n160, since 
->> we have ~60K distinct uid/gid s.  Ideally, I'd like to re-submit 
->> this to self-scale which wouldn't require any sysadmin tuning, 
->> but I haven't had the time.  Really, this is just a quick fix 
->> for the brokenness that's in current RHEL and less-new Fedora.
-> The brokenness in RHEL will be healing very soon... See 
-> https://bugzilla.redhat.com/show_bug.cgi?id=1033708. RHEL is 
-> basically going back to using rpc.idmapd on the client and
-> nfsidmap is going away... It as just a bad dream... It never
-> happen! ;-)
+I've started an number of different servers with the "-T -N 4"
+rpc.nfsd flags here is what I've found:
 
-This BZ says the fix is coming in nfs-utils by removing the nfsidmap command.  But IIRC, unless the kernel side of the idmapper is changed, it will exec request-key for every lookup before falling back to the upcall, and there's no cache in front of that.  Isn't that going to have some performance problems?  I'm much more interested in getting the keyrings to work, since they seem to offer significant performance gains.
+When I doing the mount without "-o v3" mount option, the mount
+hangs (forever) in the server discovering trunking code. 
 
-If RH is going to change the kernel side of the idmapper to only upcall, then I'd be satisfied to use that.
+Mount older server like RHEL5 or RHEL6 the mount (w/out the patch)
+success because RPC: Program not registered is return which causes
+the fallback to happen
 
-Ben
+So I'm assuming you are using a recent Linux server because 
+I do see the ECONNREFUSED with that server, but because I
+have to use the -o v3 this patch does not seem to help. 
+Basically I spin in this loop:
+
+mount.nfs: prog 100003, trying vers=3, prot=6
+mount.nfs: trying 127.0.0.1 prog 100003 vers 3 prot TCP port 2049
+mount.nfs: portmap query failed: RPC: Remote system error - Connection refused
+
+I have not debug as to what is going on, but it does not look like
+the patch is doing what is expect... 
+
+steved.
+
+> 
+> However ECONNREFUSED may simply indicate that NFSv4 isn't supported
+> *yet*.  i.e. the server is still booting and isn't responding to NFS
+> requests yet.  So if we subsequently find that NFSv3 is supported, we
+> need to check with rpcbind to confirm that NFSv4 really isn't
+> supported.
+> If rpcbind reports that v4 is not supported after reporting that v3
+> is, we can safely use v4.  If it reports that v4 is supported, we need
+> to retry v4.
+> 
+> One line in this patch requires explanation.  It is
+> +		save_pmap.pm_vers = 4;
+> 
+> This is needed as nfs_probe_nfsport is entered with pm_vers already
+> set, by the line
+> 		nfs_pmap->pm_vers = mntvers_to_nfs(*probe_vers);
+> in nfs_probe_bothports().  This makes the passing of probe_nfs3_only
+> and probe_nfs2_only to nfs_probe_port() in nfs_probe_nfsport()
+> pointless, and the passing of probe_nfs4_only in the new code
+> ineffectual, without resetting pm_vers.
+> 
+> The setting of pm_vers to mntvers_to_nfs() should probably be removed,
+> but as we don't have any regression tests, doing this would be unwise.
+> 
+> Signed-off-by: NeilBrown <neilb@suse.de>
+> Reported-by: Carsten Ziepke <kieltux@gmail.com>
+> 
+> diff --git a/utils/mount/network.c b/utils/mount/network.c
+> index 2fdd2c051be7..0521d5f6709f 100644
+> --- a/utils/mount/network.c
+> +++ b/utils/mount/network.c
+> @@ -149,6 +149,11 @@ static const unsigned int probe_tcp_first[] = {
+>  	0,
+>  };
+>  
+> +static const unsigned int probe_tcp_only[] = {
+> +	IPPROTO_TCP,
+> +	0,
+> +};
+> +
+>  static const unsigned long probe_nfs2_only[] = {
+>  	2,
+>  	0,
+> @@ -159,6 +164,11 @@ static const unsigned long probe_nfs3_only[] = {
+>  	0,
+>  };
+>  
+> +static const unsigned long probe_nfs4_only[] = {
+> +	4,
+> +	0,
+> +};
+> +
+>  static const unsigned long probe_mnt1_first[] = {
+>  	1,
+>  	2,
+> @@ -611,18 +621,34 @@ out_ok:
+>   * returned; rpccreateerr.cf_stat is set to reflect the nature of the error.
+>   */
+>  static int nfs_probe_nfsport(const struct sockaddr *sap, const socklen_t salen,
+> -				struct pmap *pmap)
+> +			     struct pmap *pmap, int checkv4)
+>  {
+>  	if (pmap->pm_vers && pmap->pm_prot && pmap->pm_port)
+>  		return 1;
+>  
+>  	if (nfs_mount_data_version >= 4) {
+>  		const unsigned int *probe_proto;
+> +		int ret;
+> +		struct pmap save_pmap;
+> +		struct sockaddr_storage save_sa;
+>  
+>  		probe_proto = nfs_default_proto();
+> -
+> -		return nfs_probe_port(sap, salen, pmap,
+> -					probe_nfs3_only, probe_proto);
+> +		memcpy(&save_pmap, pmap, sizeof(save_pmap));
+> +		memcpy(&save_sa, sap, salen);
+> +
+> +		ret = nfs_probe_port(sap, salen, pmap,
+> +				     probe_nfs3_only, probe_proto);
+> +		if (!ret || !checkv4 || probe_proto != probe_tcp_first)
+> +			return ret;
+> +		save_pmap.pm_vers = 4;
+> +		ret = nfs_probe_port((struct sockaddr*)&save_sa, salen, &save_pmap,
+> +				     probe_nfs4_only, probe_tcp_only);
+> +		if (ret) {
+> +			rpc_createerr.cf_stat = RPC_FAILED;
+> +			rpc_createerr.cf_error.re_errno = EAGAIN;
+> +			return 0;
+> +		}
+> +		return 1;
+>  	} else
+>  		return nfs_probe_port(sap, salen, pmap,
+>  					probe_nfs2_only, probe_udp_only);
+> @@ -671,7 +697,7 @@ static int nfs_probe_version_fixed(const struct sockaddr *mnt_saddr,
+>  			const socklen_t nfs_salen,
+>  			struct pmap *nfs_pmap)
+>  {
+> -	if (!nfs_probe_nfsport(nfs_saddr, nfs_salen, nfs_pmap))
+> +	if (!nfs_probe_nfsport(nfs_saddr, nfs_salen, nfs_pmap, 0))
+>  		return 0;
+>  	return nfs_probe_mntport(mnt_saddr, mnt_salen, mnt_pmap);
+>  }
+> @@ -686,6 +712,8 @@ static int nfs_probe_version_fixed(const struct sockaddr *mnt_saddr,
+>   * @nfs_salen:	length of NFS server's address
+>   * @nfs_pmap:	IN: partially filled-in NFS RPC service tuple;
+>   *		OUT: fully filled-in NFS RPC service tuple
+> + * @checkv4:	Flag indicating that if v3 is available we must also
+> + *		check v4, and if that is available, set re_errno to EAGAIN.
+>   *
+>   * Returns 1 and fills in both @pmap structs if the requested service
+>   * ports are unambiguous and pingable.  Otherwise zero is returned;
+> @@ -696,7 +724,8 @@ int nfs_probe_bothports(const struct sockaddr *mnt_saddr,
+>  			struct pmap *mnt_pmap,
+>  			const struct sockaddr *nfs_saddr,
+>  			const socklen_t nfs_salen,
+> -			struct pmap *nfs_pmap)
+> +			struct pmap *nfs_pmap,
+> +			int checkv4)
+>  {
+>  	struct pmap save_nfs, save_mnt;
+>  	const unsigned long *probe_vers;
+> @@ -717,7 +746,7 @@ int nfs_probe_bothports(const struct sockaddr *mnt_saddr,
+>  
+>  	for (; *probe_vers; probe_vers++) {
+>  		nfs_pmap->pm_vers = mntvers_to_nfs(*probe_vers);
+> -		if (nfs_probe_nfsport(nfs_saddr, nfs_salen, nfs_pmap) != 0) {
+> +		if (nfs_probe_nfsport(nfs_saddr, nfs_salen, nfs_pmap, checkv4) != 0) {
+>  			mnt_pmap->pm_vers = *probe_vers;
+>  			if (nfs_probe_mntport(mnt_saddr, mnt_salen, mnt_pmap) != 0)
+>  				return 1;
+> @@ -757,7 +786,7 @@ int probe_bothports(clnt_addr_t *mnt_server, clnt_addr_t *nfs_server)
+>  	return nfs_probe_bothports(mnt_addr, sizeof(mnt_server->saddr),
+>  					&mnt_server->pmap,
+>  					nfs_addr, sizeof(nfs_server->saddr),
+> -					&nfs_server->pmap);
+> +					&nfs_server->pmap, 0);
+>  }
+>  
+>  /**
+> diff --git a/utils/mount/network.h b/utils/mount/network.h
+> index 9c75856c9ca8..d7636d7c54a6 100644
+> --- a/utils/mount/network.h
+> +++ b/utils/mount/network.h
+> @@ -42,7 +42,7 @@ static const struct timeval RETRY_TIMEOUT = { 3, 0 };
+>  int probe_bothports(clnt_addr_t *, clnt_addr_t *);
+>  int nfs_probe_bothports(const struct sockaddr *, const socklen_t,
+>  			struct pmap *, const struct sockaddr *,
+> -			const socklen_t, struct pmap *);
+> +			const socklen_t, struct pmap *, int);
+>  int nfs_gethostbyname(const char *, struct sockaddr_in *);
+>  int nfs_lookup(const char *hostname, const sa_family_t family,
+>  		struct sockaddr *sap, socklen_t *salen);
+> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+> index a642394d2f5a..1f4782563572 100644
+> --- a/utils/mount/stropts.c
+> +++ b/utils/mount/stropts.c
+> @@ -484,7 +484,7 @@ static int nfs_construct_new_options(struct mount_options *options,
+>   * FALSE is returned if some failure occurred.
+>   */
+>  static int
+> -nfs_rewrite_pmap_mount_options(struct mount_options *options)
+> +nfs_rewrite_pmap_mount_options(struct mount_options *options, int checkv4)
+>  {
+>  	union nfs_sockaddr nfs_address;
+>  	struct sockaddr *nfs_saddr = &nfs_address.sa;
+> @@ -534,7 +534,7 @@ nfs_rewrite_pmap_mount_options(struct mount_options *options)
+>  	 * negotiate.  Bail now if we can't contact it.
+>  	 */
+>  	if (!nfs_probe_bothports(mnt_saddr, mnt_salen, &mnt_pmap,
+> -				 nfs_saddr, nfs_salen, &nfs_pmap)) {
+> +				 nfs_saddr, nfs_salen, &nfs_pmap, checkv4)) {
+>  		errno = ESPIPE;
+>  		if (rpc_createerr.cf_stat == RPC_PROGNOTREGISTERED)
+>  			errno = EOPNOTSUPP;
+> @@ -595,7 +595,8 @@ static int nfs_sys_mount(struct nfsmount_info *mi, struct mount_options *opts)
+>  }
+>  
+>  static int nfs_do_mount_v3v2(struct nfsmount_info *mi,
+> -		struct sockaddr *sap, socklen_t salen)
+> +			     struct sockaddr *sap, socklen_t salen,
+> +			     int checkv4)
+>  {
+>  	struct mount_options *options = po_dup(mi->options);
+>  	int result = 0;
+> @@ -637,7 +638,7 @@ static int nfs_do_mount_v3v2(struct nfsmount_info *mi,
+>  		printf(_("%s: trying text-based options '%s'\n"),
+>  			progname, *mi->extra_opts);
+>  
+> -	if (!nfs_rewrite_pmap_mount_options(options))
+> +	if (!nfs_rewrite_pmap_mount_options(options, checkv4))
+>  		goto out_fail;
+>  
+>  	result = nfs_sys_mount(mi, options);
+> @@ -653,13 +654,13 @@ out_fail:
+>   * Returns TRUE if successful, otherwise FALSE.
+>   * "errno" is set to reflect the individual error.
+>   */
+> -static int nfs_try_mount_v3v2(struct nfsmount_info *mi)
+> +static int nfs_try_mount_v3v2(struct nfsmount_info *mi, int checkv4)
+>  {
+>  	struct addrinfo *ai;
+>  	int ret = 0;
+>  
+>  	for (ai = mi->address; ai != NULL; ai = ai->ai_next) {
+> -		ret = nfs_do_mount_v3v2(mi, ai->ai_addr, ai->ai_addrlen);
+> +		ret = nfs_do_mount_v3v2(mi, ai->ai_addr, ai->ai_addrlen, checkv4);
+>  		if (ret != 0)
+>  			return ret;
+>  
+> @@ -793,7 +794,8 @@ static int nfs_autonegotiate(struct nfsmount_info *mi)
+>  	result = nfs_try_mount_v4(mi);
+>  	if (result)
+>  		return result;
+> -		
+> +
+> +check_errno:
+>  	switch (errno) {
+>  	case EPROTONOSUPPORT:
+>  		/* A clear indication that the server or our
+> @@ -807,12 +809,24 @@ static int nfs_autonegotiate(struct nfsmount_info *mi)
+>  		/* Linux servers prior to 2.6.25 may return
+>  		 * EPERM when NFS version 4 is not supported. */
+>  		goto fall_back;
+> +	case ECONNREFUSED:
+> +		/* UDP-Only servers won't support v4, but maybe it
+> +		 * just isn't ready yet.  So try v3, but double-check
+> +		 * with rpcbind for v4. */
+> +		result = nfs_try_mount_v3v2(mi, 1);
+> +		if (result == 0 && errno == EAGAIN) {
+> +			/* v4 server seems to be registered now. */
+> +			result = nfs_try_mount_v4(mi);
+> +			if (result == 0 && errno != ECONNREFUSED)
+> +				goto check_errno;
+> +		}
+> +		return result;
+>  	default:
+>  		return result;
+>  	}
+>  
+>  fall_back:
+> -	return nfs_try_mount_v3v2(mi);
+> +	return nfs_try_mount_v3v2(mi, 0);
+>  }
+>  
+>  /*
+> @@ -831,7 +845,7 @@ static int nfs_try_mount(struct nfsmount_info *mi)
+>  		break;
+>  	case 2:
+>  	case 3:
+> -		result = nfs_try_mount_v3v2(mi);
+> +		result = nfs_try_mount_v3v2(mi, 0);
+>  		break;
+>  	case 4:
+>  		result = nfs_try_mount_v4(mi);
+> 
