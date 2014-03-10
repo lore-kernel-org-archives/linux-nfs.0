@@ -1,175 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:17244 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754332AbaCCWIo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 3 Mar 2014 17:08:44 -0500
-Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s23M8h7F015690
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Mon, 3 Mar 2014 17:08:43 -0500
-Date: Mon, 3 Mar 2014 17:08:42 -0500
-From: Scott Mayhew <smayhew@redhat.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH/RFC] Add simple backoff logic when reconnecting to a
- server that recently initiated a connection close
-Message-ID: <20140303220842.GA45663@tonberry.usersys.redhat.com>
-References: <20140228222956.GA1544@tonberry.usersys.redhat.com>
- <20140303111352.736a7268@tlielax.poochiereds.net>
+Received: from engine01-30064-1.icritical.com ([151.236.209.28]:53977 "HELO
+	engine01-30064-1.icritical.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with SMTP id S1753851AbaCJRc6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Mar 2014 13:32:58 -0400
+Received: from engine01-30064-1.icritical.com ([127.0.0.1])
+ by localhost (engine01-30064-1.icritical.com [127.0.0.1]) (amavisd-new, port 10024)
+ with SMTP id 09602-04 for <linux-nfs@vger.kernel.org>;
+ Mon, 10 Mar 2014 17:26:13 +0000 (GMT)
+Message-ID: <531DF5B4.9050001@pml.ac.uk>
+Date: Mon, 10 Mar 2014 17:26:12 +0000
+From: Ben Taylor <benj@pml.ac.uk>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140303111352.736a7268@tlielax.poochiereds.net>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+CC: <linux-nfs@vger.kernel.org>
+Subject: Re: NFS4 patch 08/20 (BAD_SEQID recovery)
+References: <53199445.3010808@pml.ac.uk> <69B89FEE-5B58-468F-95CE-B384033B2E65@primarydata.com>
+In-Reply-To: <69B89FEE-5B58-468F-95CE-B384033B2E65@primarydata.com>
+Content-Type: multipart/mixed;
+	boundary="------------000501060508090201040405"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 03 Mar 2014, Jeff Layton wrote:
 
-> On Fri, 28 Feb 2014 17:29:56 -0500
-> Scott Mayhew <smayhew@redhat.com> wrote:
-> 
-> > From 2e3902fc0c66bda360a8e40e3e64d82e312a20d4 Mon Sep 17 00:00:00 2001
-> > From: Scott Mayhew <smayhew@redhat.com>
-> > Date: Fri, 28 Feb 2014 15:23:50 -0500
-> > Subject: [PATCH] sunrpc: reintroduce xprt->shutdown with a new purpose (option
-> >  2)
-> > 
-> > If a server is behaving pathologically and accepting our connections
-> > only to close the socket on the first RPC operation it receives, then
-> > we should probably delay when trying to reconnect.
-> > 
-> > This patch reintroduces the xprt->shutdown field (this time as two
-> > bits).  Previously this field was used to indicate that the transport
-> > was in the process of being shutdown, but now it will just be used to
-> > indicate that a shutdown was initiated by the server.
-> > 
-> > If the server closes the connection 3 times without us having received
-> > an RPC reply in the interim, then we'll delay before attempting to
-> > connect again.
-> > ---
-> >  include/linux/sunrpc/xprt.h |  3 ++-
-> >  net/sunrpc/clnt.c           |  2 ++
-> >  net/sunrpc/xprtsock.c       | 13 +++++++++++++
-> >  3 files changed, 17 insertions(+), 1 deletion(-)
-> > 
-> 
-> This patch seems a little more reasonable than the other one if only
-> because it shouldn't cause artificial delays when there is some
-> temporary hiccup that causes the server to shut down the connection.
-> 
-> That said, this seems to be squarely a server-side bug so I'm not sure
-> we ought to go to any great lengths to work around it.
-> 
-> > diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-> > index 8097b9d..621d583 100644
-> > --- a/include/linux/sunrpc/xprt.h
-> > +++ b/include/linux/sunrpc/xprt.h
-> > @@ -173,7 +173,8 @@ struct rpc_xprt {
-> >  	unsigned int		min_reqs;	/* min number of slots */
-> >  	atomic_t		num_reqs;	/* total slots */
-> >  	unsigned long		state;		/* transport state */
-> > -	unsigned char		resvport   : 1; /* use a reserved port */
-> > +	unsigned char		shutdown   : 2, /* server initiated a shutdown */
-> > +				resvport   : 1; /* use a reserved port */
-> 
-> Hrm 2 bits...so you can go from 0..3. What happens when that wraps? I'd
-> be a little concerned that it might spill over into other bitfields
-> when that occurs.
+--------------000501060508090201040405
+Content-Type: text/plain; charset="ISO-8859-1"
+Content-Transfer-Encoding: 7bit
 
-I had tested it to make sure it wrapped around without spilling into the
-other fields and it looked okay...
+Hi Trond
 
-> The K&R book seems to indicate that bitfield
-> semantics aren't well-defined so I'm not sure if that would happen or
-> not...
+On 07/03/14 13:05, Trond Myklebust wrote:
+>> Can anyone tell me what happened to this patch please? Was it lost or
+>> > superseded?
+> It was superseded by commit 95b72eb0bdef6 (NFSv4: Ensure we do not reuse open owner names), which is available in linux 3.4 and newer.
 
-...yeah, the statement "nearly everything about bit fields is
-implementation dependent" does make it seem like this isn't the best
-approach.
-> 
-> Even if it is safe, since this is only two bits, you'll only hit the
-> delay on non-zero multiples of '3', right? I don't think that's what
-> you're aiming for here.
+Many thanks. That's a puzzle then, because we're running 3.9 and up and
+already have that patch (I've checked).
 
-I was mainly concerned with introducing a delay for the 'broken' server
-case without introducing delay for the 'temporary hiccup' case.  I
-thought 3 quick retries followed by 1 delayed retry would be a nice
-predictable behavior.  Also I'm resetting the counter whenever we've
-received an RPC reply, while in the other patch I did it every time the
-state of the socket changed to TCP_ESTABLISHED (which to me seems less
-predictable).
+I've attached my Wireshark dump (or at least a subset of it -
+unfortunately I don't have the original call, the dump I've got is all
+the same) - don't know if this tells you anything it doesn't tell me?
+I'm not exactly experienced at reading these things!
 
-> 
-> So, it might be best not to use a bit-field there and use something
-> like a full char or something.
+Thanks
+Ben
 
-I'd be fine with that.
+-- 
+Ben Taylor <benj@pml.ac.uk>, http://rsg.pml.ac.uk/
+Remote Sensing Group, Plymouth Marine Laboratory
+Tel: +44 (0)1752 633432, Fax: +44 (0)1752 633101
 
-> 
-> Also (nit) since "shutdown" used to have a completely different
-> meaning, I'd suggest not reusing that name. It'll be confusing for
-> people looking at old and new code. Maybe something like
-> "server_shutdowns" for the counter or something?
 
-I actually did originally call it srv_shutdown but changed it at the
-last minute.
+Please visit our new website at www.pml.ac.uk and follow us on Twitter  @PlymouthMarine
 
--Scott
-> 
-> >  	unsigned int		swapper;	/* we're swapping over this
-> >  						   transport */
-> >  	unsigned int		bind_index;	/* bind function index */
-> > diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-> > index 0edada9..c32de98 100644
-> > --- a/net/sunrpc/clnt.c
-> > +++ b/net/sunrpc/clnt.c
-> > @@ -515,6 +515,8 @@ struct rpc_clnt *rpc_create(struct rpc_create_args *args)
-> >  	if (args->flags & RPC_CLNT_CREATE_NONPRIVPORT)
-> >  		xprt->resvport = 0;
-> >  
-> > +	xprt->shutdown = 0;
-> > +
-> >  	clnt = rpc_new_client(args, xprt, NULL);
-> >  	if (IS_ERR(clnt))
-> >  		return clnt;
-> > diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-> > index 0addefc..35cdb63 100644
-> > --- a/net/sunrpc/xprtsock.c
-> > +++ b/net/sunrpc/xprtsock.c
-> > @@ -1295,6 +1295,7 @@ static inline int xs_tcp_read_reply(struct rpc_xprt *xprt,
-> >  		xprt_complete_rqst(req->rq_task, transport->tcp_copied);
-> >  
-> >  	spin_unlock(&xprt->transport_lock);
-> > +	xprt->shutdown = 0;
-> >  	return 0;
-> >  }
-> >  
-> > @@ -1572,6 +1573,7 @@ static void xs_tcp_state_change(struct sock *sk)
-> >  	case TCP_CLOSE_WAIT:
-> >  		/* The server initiated a shutdown of the socket */
-> >  		xprt->connect_cookie++;
-> > +		xprt->shutdown++;
-> >  		clear_bit(XPRT_CONNECTED, &xprt->state);
-> >  		xs_tcp_force_close(xprt);
-> >  	case TCP_CLOSING:
-> > @@ -2332,6 +2334,17 @@ static void xs_connect(struct rpc_xprt *xprt, struct rpc_task *task)
-> >  			xprt->reestablish_timeout = XS_TCP_INIT_REEST_TO;
-> >  		if (xprt->reestablish_timeout > XS_TCP_MAX_REEST_TO)
-> >  			xprt->reestablish_timeout = XS_TCP_MAX_REEST_TO;
-> > +	} else if (xprt->shutdown > 2) {
-> > +		dprintk("RPC:       server previously initiated shutdown of the "
-> > +				"transport socket %d times\n", xprt->shutdown);
-> > +		if (xprt->reestablish_timeout < XS_TCP_INIT_REEST_TO)
-> > +			xprt->reestablish_timeout = XS_TCP_INIT_REEST_TO;
-> > +		dprintk("RPC:       xs_connect delayed xprt %p for %lu "
-> > +				"seconds\n",
-> > +				xprt, xprt->reestablish_timeout / HZ);
-> > +		queue_delayed_work(rpciod_workqueue,
-> > +				   &transport->connect_worker,
-> > +				   xprt->reestablish_timeout);
-> >  	} else {
-> >  		dprintk("RPC:       xs_connect scheduled xprt %p\n", xprt);
-> >  		queue_delayed_work(rpciod_workqueue,
-> 
-> 
-> -- 
-> Jeff Layton <jlayton@redhat.com>
+Plymouth Marine Laboratory (PML) is a company limited by guarantee registered in England & Wales, company number 4178503. Registered Charity No. 1091222. Registered Office: Prospect Place, The Hoe, Plymouth  PL1 3DH, UK. 
+
+This message is private and confidential. If you have received this message in error, please notify the sender and remove it from your system. You are reminded that e-mail communications are not secure and may contain viruses; PML accepts no liability for any loss or damage which may be caused by viruses.
+
+
+--------------000501060508090201040405
+Content-Type: application/vnd.tcpdump.pcap; name="nfs_bad_seqid_trimmed.dmp"
+Content-Transfer-Encoding: base64
+Content-Disposition: attachment; filename="nfs_bad_seqid_trimmed.dmp"
+
+1MOyoQIABAAAAAAAAAAAAP//AAABAAAA6kQYU8XzCwBCAQAAQgEAAFiNCRhmwdBn5e50wAgA
+RQABNCKMQABABp2DCgoKPcCrpMIDkggBCfy4m81Uj/qAGACTetsAAAEBCAprRFcwJ8EsboAA
+APwgh+6pAAAAAAAAAAIAAYajAAAABAAAAAEAAAABAAAALABc/xAAAAAKZ3JpZG5vZGU1MQAA
+AABCogAAOtEAAAADAAA60QAAYbMAAGl6AAAAAAAAAAAAAAAAAAAAAAAAAAUAAAAWAAAAHAEA
+BgEk2SHln1lHJaY7i7yvYh0hZ0CjEaWQT/cAAAASAADteAAAAAEAAAAAkhYOU6kAAAAAAAAY
+b3BlbiBpZDoAAAAsAAAABAAGOjFKJCJJAAAAAAAAAAIAAAAAkhYOU1fInQEAAAAAAAAACmlk
+bF9wbmcuc28AAAAAAAoAAAADAAAALQAAAAkAAAACABABGgAwojrqRBhTHfQLAHoAAAB6AAAA
+0Gfl7nTAWI0JGGbBCABFAABsiXVAAD8GOGLAq6TCCgoKPQgBA5LNVI/6Cfy5m4AYDCjPnQAA
+AQEICifBLG5rRFcwgAAANCCH7qkAAAABAAAAAAAAAAAAAAAAAAAAAAAAJyoAAAAAAAAAAgAA
+ABYAAAAAAAAAEgAAJyrqRBhTSfQLAEIBAABCAQAAWI0JGGbB0Gfl7nTACABFAAE0Io1AAEAG
+nYIKCgo9wKukwgOSCAEJ/LmbzVSQMoAYAJN62wAAAQEICmtEVzAnwSxugAAA/CGH7qkAAAAA
+AAAAAgABhqMAAAAEAAAAAQAAAAEAAAAsAFz/EAAAAApncmlkbm9kZTUxAAAAAEKiAAA60QAA
+AAMAADrRAABhswAAaXoAAAAAAAAAAAAAAAAAAAAAAAAABQAAABYAAAAcAQAGASTZIeWfWUcl
+pjuLvK9iHSFnQKMRpZBP9wAAABIAAO14AAAAAQAAAACSFg5TqQAAAAAAABhvcGVuIGlkOgAA
+ACwAAAAEAAY6MUokIkkAAAAAAAAAAgAAAACSFg5TV8idAQAAAAAAAAAKaWRsX3BuZy5zbwAA
+AAAACgAAAAMAAAAtAAAACQAAAAIAEAEaADCiOupEGFO99AsAegAAAHoAAADQZ+XudMBYjQkY
+ZsEIAEUAAGyJdkAAPwY4YcCrpMIKCgo9CAEDks1UkDIJ/LqbgBgMKM1lAAABAQgKJ8EsbmtE
+VzCAAAA0IYfuqQAAAAEAAAAAAAAAAAAAAAAAAAAAAAAnKgAAAAAAAAACAAAAFgAAAAAAAAAS
+AAAnKupEGFPu9AsAQgEAAEIBAABYjQkYZsHQZ+XudMAIAEUAATQijkAAQAadgQoKCj3Aq6TC
+A5IIAQn8upvNVJBqgBgAk3rbAAABAQgKa0RXMSfBLG6AAAD8IofuqQAAAAAAAAACAAGGowAA
+AAQAAAABAAAAAQAAACwAXP8QAAAACmdyaWRub2RlNTEAAAAAQqIAADrRAAAAAwAAOtEAAGGz
+AABpegAAAAAAAAAAAAAAAAAAAAAAAAAFAAAAFgAAABwBAAYBJNkh5Z9ZRyWmO4u8r2IdIWdA
+oxGlkE/3AAAAEgAA7XgAAAABAAAAAJIWDlOpAAAAAAAAGG9wZW4gaWQ6AAAALAAAAAQABjox
+SiQiSQAAAAAAAAACAAAAAJIWDlNXyJ0BAAAAAAAAAAppZGxfcG5nLnNvAAAAAAAKAAAAAwAA
+AC0AAAAJAAAAAgAQARoAMKI66kQYU0r1CwB6AAAAegAAANBn5e50wFiNCRhmwQgARQAAbIl3
+QAA/BjhgwKukwgoKCj0IAQOSzVSQagn8u5uAGAwoyywAAAEBCAonwSxua0RXMYAAADQih+6p
+AAAAAQAAAAAAAAAAAAAAAAAAAAAAACcqAAAAAAAAAAIAAAAWAAAAAAAAABIAACcq
+--------------000501060508090201040405--
