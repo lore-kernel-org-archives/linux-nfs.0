@@ -1,43 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f48.google.com ([209.85.216.48]:53487 "EHLO
-	mail-qa0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751097AbaCQRKP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Mar 2014 13:10:15 -0400
-Received: by mail-qa0-f48.google.com with SMTP id m5so5563817qaj.21
-        for <linux-nfs@vger.kernel.org>; Mon, 17 Mar 2014 10:10:14 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org
-Cc: tom@opengridcomputing.com, linux-nfs@vger.kernel.org
-Subject: [PATCH v2] svcrdma: fix offset calculation for non-page aligned sge entries
-Date: Mon, 17 Mar 2014 13:10:05 -0400
-Message-Id: <1395076205-26658-1-git-send-email-jlayton@redhat.com>
+Received: from mga02.intel.com ([134.134.136.20]:18762 "EHLO mga02.intel.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751675AbaCJI3O (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 10 Mar 2014 04:29:14 -0400
+Message-ID: <531D77D9.40900@intel.com>
+Date: Mon, 10 Mar 2014 16:29:13 +0800
+From: "Yan, Zheng" <zheng.z.yan@intel.com>
+MIME-Version: 1.0
+To: Christoph Hellwig <hch@infradead.org>
+CC: linux-nfs@vger.kernel.org, bfields@fieldses.org
+Subject: Re: [PATCH] nfsd4: fix memory leak in nfsd4_encode_fattr()
+References: <1394427127-9985-1-git-send-email-zheng.z.yan@intel.com> <20140310080437.GA24753@infradead.org>
+In-Reply-To: <20140310080437.GA24753@infradead.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The xdr_off value in dma_map_xdr gets passed to ib_dma_map_page as the
-offset into the page to be mapped. This calculation does not correctly
-take into account the case where the data starts at some offset into
-the page. Increment the xdr_off by the page_base to ensure that it is
-respected.
+On 03/10/2014 04:04 PM, Christoph Hellwig wrote:
+> On Mon, Mar 10, 2014 at 12:52:07PM +0800, Yan, Zheng wrote:
+>> fh_put() does not free the temporary file handle.
+> 
+> Btw, it seems like the code to generate the file handle if it's missing
+> should be moved out of nfsd4_encode_fattr and into
+> nfsd4_encode_dirent_fattr or a small helper just called from there so that:
+> 
+>  a) the code flow is more obvious
+>  b) the calling conventions for nfsd4_encode_fattr are sensible
+>  c) nfsd4_encode_fattr shrinks at least a tiny bit
+>  d) the required cleanup becomes more obvious by being paired with the
+>     allocation and initialization of the FH.
+> 
+> Just curious: which client asks for the FH or FSID in READDIRPLUS?
+> 
 
-Cc: Tom Tucker <tom@opengridcomputing.com>
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- net/sunrpc/xprtrdma/svc_rdma_sendto.c | 1 +
- 1 file changed, 1 insertion(+)
+Both nfs server and client are complied from 3.14-rc5 kernel. The exported
+FS is Ceph.
 
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-index c1d124dc772b..5f14609b6336 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-@@ -265,6 +265,7 @@ static dma_addr_t dma_map_xdr(struct svcxprt_rdma *xprt,
- 		xdr_off -= xdr->head[0].iov_len;
- 		if (xdr_off < xdr->page_len) {
- 			/* This offset is in the page list */
-+			xdr_off += xdr->page_base;
- 			page = xdr->pages[xdr_off >> PAGE_SHIFT];
- 			xdr_off &= ~PAGE_MASK;
- 		} else {
--- 
-1.8.5.3
-
+Regards
+Yan, Zheng
+ 
