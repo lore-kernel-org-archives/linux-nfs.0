@@ -1,73 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f177.google.com ([209.85.216.177]:50991 "EHLO
-	mail-qc0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754194AbaCNRrQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Mar 2014 13:47:16 -0400
-Received: by mail-qc0-f177.google.com with SMTP id w7so3219383qcr.8
-        for <linux-nfs@vger.kernel.org>; Fri, 14 Mar 2014 10:47:16 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 2/5] nfs: make nfs_async_rename non-static
-Date: Fri, 14 Mar 2014 13:47:02 -0400
-Message-Id: <1394819225-13713-3-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1394819225-13713-1-git-send-email-jlayton@redhat.com>
-References: <1394819225-13713-1-git-send-email-jlayton@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:13141 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753255AbaCJU0X (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 10 Mar 2014 16:26:23 -0400
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s2AKQNXG026686
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Mon, 10 Mar 2014 16:26:23 -0400
+Message-ID: <531E1FED.3030301@RedHat.com>
+Date: Mon, 10 Mar 2014 16:26:21 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Simo Sorce <simo@redhat.com>
+CC: linux-nfs <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] Fix windows hostname calculation
+References: <1392906648.22754.213.camel@willson.li.ssimo.org>
+In-Reply-To: <1392906648.22754.213.camel@willson.li.ssimo.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-...and move the declaration for nfs_sillyrename to internal.h.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/nfs/internal.h      | 7 +++++++
- fs/nfs/unlink.c        | 2 +-
- include/linux/nfs_fs.h | 1 -
- 3 files changed, 8 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index b46cf5a67329..ae765a56b84f 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -474,6 +474,13 @@ extern int nfs_migrate_page(struct address_space *,
- #define nfs_migrate_page NULL
- #endif
- 
-+/* unlink.c */
-+extern struct rpc_task *
-+nfs_async_rename(struct inode *old_dir, struct inode *new_dir,
-+		 struct dentry *old_dentry, struct dentry *new_dentry,
-+		 void (*complete)(struct rpc_task *, struct nfs_renamedata *));
-+extern int nfs_sillyrename(struct inode *dir, struct dentry *dentry);
-+
- /* direct.c */
- void nfs_init_cinfo_from_dreq(struct nfs_commit_info *cinfo,
- 			      struct nfs_direct_req *dreq);
-diff --git a/fs/nfs/unlink.c b/fs/nfs/unlink.c
-index 3e6798c9ba1f..818ded7b7b74 100644
---- a/fs/nfs/unlink.c
-+++ b/fs/nfs/unlink.c
-@@ -399,7 +399,7 @@ static const struct rpc_call_ops nfs_rename_ops = {
-  *
-  * It's expected that valid references to the dentries and inodes are held
-  */
--static struct rpc_task *
-+struct rpc_task *
- nfs_async_rename(struct inode *old_dir, struct inode *new_dir,
- 		 struct dentry *old_dentry, struct dentry *new_dentry,
- 		 void (*complete)(struct rpc_task *, struct nfs_renamedata *))
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 0ae5807480f4..85d31ccc00f8 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -510,7 +510,6 @@ extern void nfs_complete_unlink(struct dentry *dentry, struct inode *);
- extern void nfs_wait_on_sillyrename(struct dentry *dentry);
- extern void nfs_block_sillyrename(struct dentry *dentry);
- extern void nfs_unblock_sillyrename(struct dentry *dentry);
--extern int  nfs_sillyrename(struct inode *dir, struct dentry *dentry);
- 
- /*
-  * linux/fs/nfs/write.c
--- 
-1.8.5.3
+On 02/20/2014 09:30 AM, Simo Sorce wrote:
+> From 026c489ac7019a91951b37240f438329de1d615c Mon Sep 17 00:00:00 2001
+> From: Simo Sorce <simo@redhat.com>
+> Date: Thu, 20 Feb 2014 09:25:06 -0500
+> Subject: [PATCH] Drop full domain when constructing the Ad hostname.
+> 
+> When trying to use the special MS Windows hostanme we need to stop
+> at the first '.' if we got a FQDN from gethostname()
+> Tee HOST$@REALM form in fact uses the AD samAccountName attribute to
+> represent 'HOST', and that attribute is always the host's shortname.
+> Characters like '.' are actually illegal for a shortname in AD.
+> 
+> Signed-off-by: Simo Sorce <simo@redhat.com>
+Committed... 
 
+steved.
+
+> ---
+>  utils/gssd/krb5_util.c | 4 +++-
+>  1 file changed, 3 insertions(+), 1 deletion(-)
+> 
+> diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
+> index
+> 208c72bc072bceecc81f591887603e274dc35d9b..4b57141b4e17643ef9b56aa13639354860009db6 100644
+> --- a/utils/gssd/krb5_util.c
+> +++ b/utils/gssd/krb5_util.c
+> @@ -819,8 +819,10 @@ find_keytab_entry(krb5_context context, krb5_keytab
+> kt, const char *tgtname,
+>  
+>  	/* Compute the active directory machine name HOST$ */
+>  	strcpy(myhostad, myhostname);
+> -	for (i = 0; myhostad[i] != 0; ++i)
+> +	for (i = 0; myhostad[i] != 0; ++i) {
+> +		if (myhostad[i] == '.') break;
+>  		myhostad[i] = toupper(myhostad[i]);
+> +	}
+>  	myhostad[i] = '$';
+>  	myhostad[i+1] = 0;
+>  
+> 
