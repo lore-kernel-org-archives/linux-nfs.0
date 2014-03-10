@@ -1,48 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f178.google.com ([209.85.223.178]:63026 "EHLO
-	mail-ie0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750924AbaCFTCR convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Mar 2014 14:02:17 -0500
-Received: by mail-ie0-f178.google.com with SMTP id lx4so3118373iec.23
-        for <linux-nfs@vger.kernel.org>; Thu, 06 Mar 2014 11:02:16 -0800 (PST)
-Content-Type: text/plain; charset=windows-1252
+Received: from mail-qc0-f178.google.com ([209.85.216.178]:54690 "EHLO
+	mail-qc0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752262AbaCJXXq convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Mar 2014 19:23:46 -0400
+Received: by mail-qc0-f178.google.com with SMTP id i8so8608631qcq.23
+        for <linux-nfs@vger.kernel.org>; Mon, 10 Mar 2014 16:23:46 -0700 (PDT)
+Content-Type: text/plain; charset=US-ASCII
 Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
-Subject: Re: Optimal NFS mount options to safely allow interrupts and timeouts on newer kernels
+Subject: Re: NFS4 patch 08/20 (BAD_SEQID recovery)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
-In-Reply-To: <20140306184847.GA18850@umich.edu>
-Date: Thu, 6 Mar 2014 14:02:13 -0500
-Cc: Andrew Martin <amartin@xes-inc.com>, bhawley@luminex.com,
-        Brown Neil <neilb@suse.de>, linux-nfs-owner@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Message-Id: <63E10595-DB6A-4C7E-9C08-BEFF0592F757@primarydata.com>
-References: <1696396609.119284.1394040541217.JavaMail.zimbra@xes-inc.com> <1853694865.210849.1394082223818.JavaMail.zimbra@xes-inc.com> <20140306163721.0edfb498@notabene.brown> <1709792528-1394084840-cardhu_decombobulator_blackberry.rim.net-1367662481-@b5.c4.bise6.blackberry> <764210708.28409.1394119821635.JavaMail.zimbra@xes-inc.com> <20140306162208.GA18207@umich.edu> <1094203678.52139.1394124222574.JavaMail.zimbra@xes-inc.com> <20140306173632.GA18545@umich.edu> <1397912955.101159.1394130906695.JavaMail.zimbra@xes-inc.com> <20140306184847.GA18850@umich.edu>
-To: Jim Rees <rees@umich.edu>
+In-Reply-To: <531DF5B4.9050001@pml.ac.uk>
+Date: Mon, 10 Mar 2014 19:23:44 -0400
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <0BE71BDE-FFFB-4124-B037-8ABBD5C20455@primarydata.com>
+References: <53199445.3010808@pml.ac.uk> <69B89FEE-5B58-468F-95CE-B384033B2E65@primarydata.com> <531DF5B4.9050001@pml.ac.uk>
+To: Ben Taylor <benj@pml.ac.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Mar 6, 2014, at 13:48, Jim Rees <rees@umich.edu> wrote:
+On Mar 10, 2014, at 13:26, Ben Taylor <benj@pml.ac.uk> wrote:
 
-> Andrew Martin wrote:
+> Hi Trond
 > 
->> From: "Jim Rees" <rees@umich.edu>
->> Why would a bunch of blocked apaches cause high load and reboot?
->  What I believe happens is the apache child processes go to serve
->  these requests and then block in uninterruptable sleep. Thus, there
->  are fewer and fewer child processes to handle new incoming requests.
->  Eventually, apache would normally kill said children (e.g after a 
->  child handles a certain number of requests), but it cannot kill them
->  because they are in uninterruptable sleep. As more and more incoming
->  requests are queued (and fewer and fewer child processes are available
->  to serve the requests), the load climbs.
+> On 07/03/14 13:05, Trond Myklebust wrote:
+>>> Can anyone tell me what happened to this patch please? Was it lost or
+>>>> superseded?
+>> It was superseded by commit 95b72eb0bdef6 (NFSv4: Ensure we do not reuse open owner names), which is available in linux 3.4 and newer.
 > 
-> But Neil says the sleeps should be interruptible, despite what the man page
-> says.
+> Many thanks. That's a puzzle then, because we're running 3.9 and up and
+> already have that patch (I've checked).
 > 
-> Trond, as far as you know, should a soft mount be interruptible by SIGINT,
-> or should it require a SIGKILL?
+> I've attached my Wireshark dump (or at least a subset of it -
+> unfortunately I don't have the original call, the dump I've got is all
+> the same) - don't know if this tells you anything it doesn't tell me?
+> I'm not exactly experienced at reading these things!
+> 
 
-The ‘TASK_KILLABLE’ state is interruptible by any _fatal_ signal. So if the application uses sigaction() to install a handler for SIGINT, then the RPC call will no longer be interruptible by SIGINT.
+It looks as if the client is trying to convert a delegation into an open stateid as part of returning that delegation, but the server is disputing the sequence id value.
+What server is this?
 
 _________________________________
 Trond Myklebust
