@@ -1,47 +1,104 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:2843 "EHLO mx1.redhat.com"
+Received: from mga02.intel.com ([134.134.136.20]:13966 "EHLO mga02.intel.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933610AbaCSMnk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 19 Mar 2014 08:43:40 -0400
-Message-ID: <53298930.3090806@RedHat.com>
-Date: Wed, 19 Mar 2014 08:10:24 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S1752262AbaCJJK1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 10 Mar 2014 05:10:27 -0400
+Message-ID: <531D816A.9060609@intel.com>
+Date: Mon, 10 Mar 2014 17:10:02 +0800
+From: "Yan, Zheng" <zheng.z.yan@intel.com>
 MIME-Version: 1.0
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/2] NFSv4: Ensure we respect soft mount timeouts during
- trunking discovery
-References: <1395173006-14871-1-git-send-email-trond.myklebust@primarydata.com> <1395173006-14871-2-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1395173006-14871-2-git-send-email-trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+CC: bfields@fieldses.org, hch@infradead.org
+Subject: Re: [PATCH v2] nfsd4: fix memory leak in nfsd4_encode_fattr()
+References: <1394442383-19551-1-git-send-email-zheng.z.yan@intel.com>
+In-Reply-To: <1394442383-19551-1-git-send-email-zheng.z.yan@intel.com>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+This one is buggy please ignore it.
 
-
-On 03/18/2014 04:03 PM, Trond Myklebust wrote:
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-Tested-by: Steve Dickson <steved@redhat.com>
-
-steved.
+On 03/10/2014 05:06 PM, Yan, Zheng wrote:
+> The temporary file handle should be freed when nfsd4_encode_fattr()
+> finishes its job. Christoph Hellwig suggests to move the code that
+> generates the temporary file handle into nfsd4_encode_dirent_fattr()
+> 
+> Signed-off-by: Yan, Zheng <zheng.z.yan@intel.com>
 > ---
->  fs/nfs/nfs4state.c | 4 +++-
->  1 file changed, 3 insertions(+), 1 deletion(-)
+>  fs/nfsd/nfs4xdr.c | 30 ++++++++++++++++--------------
+>  1 file changed, 16 insertions(+), 14 deletions(-)
 > 
-> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-> index f544a1560c83..2349518eef2c 100644
-> --- a/fs/nfs/nfs4state.c
-> +++ b/fs/nfs/nfs4state.c
-> @@ -2075,8 +2075,10 @@ again:
->  	switch (status) {
->  	case 0:
->  		break;
-> -	case -NFS4ERR_DELAY:
->  	case -ETIMEDOUT:
-> +		if (clnt->cl_softrtry)
-> +			break;
-> +	case -NFS4ERR_DELAY:
->  	case -EAGAIN:
->  		ssleep(1);
->  	case -NFS4ERR_STALE_CLIENTID:
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index 63f2395..c4bd284 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -2058,7 +2058,6 @@ nfsd4_encode_fattr(struct svc_fh *fhp, struct svc_export *exp,
+>  	u32 bmval1 = bmval[1];
+>  	u32 bmval2 = bmval[2];
+>  	struct kstat stat;
+> -	struct svc_fh *tempfh = NULL;
+>  	struct kstatfs statfs;
+>  	int buflen = count << 2;
+>  	__be32 *attrlenp;
+> @@ -2104,17 +2103,6 @@ nfsd4_encode_fattr(struct svc_fh *fhp, struct svc_export *exp,
+>  		if (err)
+>  			goto out_nfserr;
+>  	}
+> -	if ((bmval0 & (FATTR4_WORD0_FILEHANDLE | FATTR4_WORD0_FSID)) && !fhp) {
+> -		tempfh = kmalloc(sizeof(struct svc_fh), GFP_KERNEL);
+> -		status = nfserr_jukebox;
+> -		if (!tempfh)
+> -			goto out;
+> -		fh_init(tempfh, NFS4_FHSIZE);
+> -		status = fh_compose(tempfh, exp, dentry, NULL);
+> -		if (status)
+> -			goto out;
+> -		fhp = tempfh;
+> -	}
+>  	if (bmval0 & (FATTR4_WORD0_ACL | FATTR4_WORD0_ACLSUPPORT
+>  			| FATTR4_WORD0_SUPPORTED_ATTRS)) {
+>  		err = nfsd4_get_nfs4_acl(rqstp, dentry, &acl);
+> @@ -2499,8 +2487,6 @@ out:
+>  		security_release_secctx(context, contextlen);
+>  #endif /* CONFIG_NFSD_V4_SECURITY_LABEL */
+>  	kfree(acl);
+> -	if (tempfh)
+> -		fh_put(tempfh);
+>  	return status;
+>  out_nfserr:
+>  	status = nfserrno(err);
+> @@ -2524,6 +2510,7 @@ nfsd4_encode_dirent_fattr(struct nfsd4_readdir *cd,
+>  		const char *name, int namlen, __be32 **p, int buflen)
+>  {
+>  	struct svc_export *exp = cd->rd_fhp->fh_export;
+> +	struct svc_fh *tempfh = NULL;
+>  	struct dentry *dentry;
+>  	__be32 nfserr;
+>  	int ignore_crossmnt = 0;
+> @@ -2573,9 +2560,24 @@ nfsd4_encode_dirent_fattr(struct nfsd4_readdir *cd,
+>  
+>  	}
+>  out_encode:
+> +	if ((cd->rd_bmval[0] & (FATTR4_WORD0_FILEHANDLE | FATTR4_WORD0_FSID))) {
+> +		tempfh = kmalloc(sizeof(struct svc_fh), GFP_KERNEL);
+> +		if (!tempfh) {
+> +			nfserr = nfserr_jukebox;
+> +			goto out_put;
+> +		}
+> +		fh_init(tempfh, NFS4_FHSIZE);
+> +		nfserr = fh_compose(tempfh, exp, dentry, NULL);
+> +		if (nfserr)
+> +			goto out_put;
+> +	}
+>  	nfserr = nfsd4_encode_fattr(NULL, exp, dentry, p, buflen, cd->rd_bmval,
+>  					cd->rd_rqstp, ignore_crossmnt);
+>  out_put:
+> +	if (tempfh) {
+> +		fh_put(tempfh);
+> +		kfree(tempfh);
+> +	}
+>  	dput(dentry);
+>  	exp_put(exp);
+>  	return nfserr;
 > 
+
