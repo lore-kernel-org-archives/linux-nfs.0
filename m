@@ -1,85 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f181.google.com ([209.85.223.181]:52977 "EHLO
-	mail-ie0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752100AbaCENNT convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Mar 2014 08:13:19 -0500
-Received: by mail-ie0-f181.google.com with SMTP id tp5so935959ieb.26
-        for <linux-nfs@vger.kernel.org>; Wed, 05 Mar 2014 05:13:19 -0800 (PST)
-Content-Type: text/plain; charset=US-ASCII
-Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
-Subject: Re: [PATCH 0/4] NFSv4 fix nfs4_stateid_is_current processing
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-In-Reply-To: <CAHVgHyUn9RkcNm=8-Y+JmE9QoQA2nLCWvQgrP81h62r0CFObpA@mail.gmail.com>
-Date: Wed, 5 Mar 2014 08:13:17 -0500
-Cc: NFS list <linux-nfs@vger.kernel.org>
-Message-Id: <660B2C08-3B2E-43AD-844F-294BBA9E0B58@primarydata.com>
-References: <1393954269-3974-1-git-send-email-andros@netapp.com> <FE2FF2AA-62E5-4D8C-9025-D6C648385FFA@primarydata.com> <CAHVgHyUn9RkcNm=8-Y+JmE9QoQA2nLCWvQgrP81h62r0CFObpA@mail.gmail.com>
-To: Adamson William Andros <androsadamson@gmail.com>
+Received: from 124-84-246-161.wendulka.net ([84.246.161.124]:48298 "EHLO
+	ixit.cz" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1752116AbaCIXzD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 9 Mar 2014 19:55:03 -0400
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8;
+ format=flowed
+Date: Mon, 10 Mar 2014 01:55:15 +0100
+From: David Heidelberger <david.heidelberger@ixit.cz>
+To: NeilBrown <neilb@suse.de>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: DNOTIFY to INOTIFY migration
+In-Reply-To: <20140310102102.3c886726@notabene.brown>
+References: <b59b1e4ede0b1d0a476c85465d480c8a@ixit.cz>
+ <20140310102102.3c886726@notabene.brown>
+Message-ID: <c90a00fb90b35b2ac904056383a3d532@ixit.cz>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Mar 5, 2014, at 5:58, Andy Adamson <androsadamson@gmail.com> wrote:
-
-> On Tue, Mar 4, 2014 at 1:09 PM, Trond Myklebust
-> <trond.myklebust@primarydata.com> wrote:
+Dne 2014-03-10 00:21, NeilBrown napsal:
+> On Fri, 07 Mar 2014 21:30:34 +0100 David Heidelberger
+> <david.heidelberger@ixit.cz> wrote:
+> 
+>> Hello,
 >> 
->> On Mar 4, 2014, at 12:31, andros@netapp.com wrote:
+>> in linux kernel is DNOTIFY actually marked as deprecated, with 
+>> superior
+>> replacement INOTIFY.
+> 
+> Where is it marked as deprecated?  I would be very surprised if dnotify
+> wasn't supported indefinitely.
+
+
+Dnotify is a directory-based per-fd file change notification system
+	  that uses signals to communicate events to user-space.  There exist
+	  superior alternatives, but some applications may still rely on
+	  dnotify.
+
+(fs/notify/dnotify/Kconfig)
+
+In this moment, for modern systems I'm no aware of software actually 
+using DNOTIFY.
+
+Actually there is choice between INOTIFY and FSNOTIFY.
+> 
+> (I have no opinion on whether rpc.idmapd should be changed to use 
+> inotify,
+> except based on the "if it ain't broke, don't fix it" principle).
+
+Well, I'd like to propose build option which notify system include. It 
+seems like *notify support reside only in rpc.idmapd, so it shouldn't be 
+hard.
+
+David
+> 
+> NeilBrown
+> 
 >> 
->>> From: Andy Adamson <andros@netapp.com>
->>> 
->>> This is an expanded version of the "NFSv4 always compare stateids in nfs4_stateid_is_current" patch I sent on Feb 27.
->>> 
->>> Found at Connectathon 2014 and NetApp internal testing.
->>> 
->>> nfs4_stateid_is_current is used on the NFSv4 I/O path to determine if a
->>> stateid has changed. The idea is that if there is a stateid expire error
->>> such as NFS4ERR_BAD_STATEID and the stateid used that induced the error has
->>> changed, then we can just resend the RPC from the call prepare state with
->>> the changed stateid instead of kicking off recovery as the changed stateid
->>> indicates it already had been recovered.
->>> 
->>> This patch set fixes a false positive that resulted in an NFS4ERR_BAD_STATEID
->>> infinite loop. Trond pointed out that the nfs4_select_rw_stateid -EIO error
->>> is special in that it indicates a lost lock.
->>> 
->>> As I examined the use of nfs4_select_rw_stateid, I addressed some other errors
->>> in the use of nfs4_set_rw_stateid and friends in setattr and filelayout
->>> prepare functions.
->>> 
->>> Just tested with connectathon tests. Will test more once I'm back in town...
+>> Is any plan to migrate rpc.idmapd to INOTIFY? As I looked, it's just 
+>> one
+>> file.
 >> 
->> One question:
+>> If there is some on-going porting, I'd like to test/report bugs/send
+>> patches, otherwise I'd like to try port it.
 >> 
->> Do we need the EWOULDBLOCK case at all in nfs4_copy_lock_stateid/nfs4_copy_open_stateid? Looking at the code, it seems particularly redundant for the case of NFSv4.1, where we set the seqid to '0'. Given that we do the nfs4_stateid_is_current() test, it seems unnecessary in the case of NFSv4.0 too...
-> 
-> Yes - Even though you mentioned it's importance at Connectathon, I
-> could not find a use of the EWOULDBLOCK return.
-> 
->> 
->> So, how about just throwing out the EWOULDBLOCK returns, then keeping nfs4_stateid_is_current() as it is,
-> 
-> So, you mean keeping nfs4_stateid_is_current as a boolean, and then
-> assume that a false  return == -EIO?
-> 
-> I don't like that because that is how this bug was created - mixing
-> bool and int functions.
-
-Why is that such a problem? The rpc_call_prepare functions copy the stateid and should test the stateid validity flags again.
-
->> fixing up _nfs4_do_setattr to only deal with the -EIO case,
-> 
-> Yes.
-> 
-> and then fixing  up the file layout uses of nfs4_select_rw_stateid()
-> to check the return values?
-> 
-> As I did in the last patch...
-
-Yes, but that patch failed to respect the locking requirements.
-
-_________________________________
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
-
+>> Thank you for answer
+>> David Heidelberger (okias)
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" 
+>> in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
