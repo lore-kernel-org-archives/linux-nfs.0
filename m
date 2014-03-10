@@ -1,167 +1,198 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:47857 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:10277 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751503AbaCWBM0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 22 Mar 2014 21:12:26 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 10/50] nfsd4: tweak nfsd4_encode_getattr to take xdr_stream
-Date: Sat, 22 Mar 2014 21:11:41 -0400
-Message-Id: <1395537141-10389-11-git-send-email-bfields@redhat.com>
-In-Reply-To: <1395537141-10389-1-git-send-email-bfields@redhat.com>
-References: <1395537141-10389-1-git-send-email-bfields@redhat.com>
+	id S1751833AbaCJQ6k (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 10 Mar 2014 12:58:40 -0400
+Message-ID: <531DEF3A.1040401@RedHat.com>
+Date: Mon, 10 Mar 2014 12:58:34 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: NeilBrown <neilb@suse.de>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [nfs-utils RPC-PATCH 0/4] Add options to nfsd etc to avoid needing
+ to write to /proc
+References: <20140220063616.6548.42556.stgit@notabene.brown>	<531B4BB7.9010303@RedHat.com> <20140310114717.7df5c24b@notabene.brown>
+In-Reply-To: <20140310114717.7df5c24b@notabene.brown>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
 
-Just change the nfsd4_encode_getattr api.  Not changing any code or
-adding any new functionality yet.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4proc.c |  6 +++---
- fs/nfsd/nfs4xdr.c  | 44 ++++++++++++++++++++++++++++++++------------
- fs/nfsd/xdr4.h     |  7 ++++---
- 3 files changed, 39 insertions(+), 18 deletions(-)
+On 03/09/2014 08:47 PM, NeilBrown wrote:
+> On Sat, 08 Mar 2014 11:56:23 -0500 Steve Dickson <SteveD@redhat.com> wrote:
+> 
+>>
+>>
+>> On 02/20/2014 01:36 AM, Neil Brown wrote:
+>>> There are a number of NFS-related setting that currently must be set
+>>> by writing to various files under /proc.
+>>> This is a bit clumsy, particularly for systemd unit files.
+>>>
+>>> So this series adds options to a number of commands where relevant.
+>>>
+>>> The first two (rdma, and  nfsv4{grace,lease}time) I am quite comfortable with.
+>>> The third (nlm grace time) I think is probably right but if someone can argue
+>>>  an alternate approach I'm unlikely to resist.
+>>> The fourth is .... uhm.  You better look yourself.
+>>>
+>>> Part of me thinks that nlm port numbers should be set in /etc/sysctl.conf (or sysctl.d)
+>>> and /etc/modprobe.d should have something like
+>>>
+>>>  install lockd  sysctl -p /etc/sysctl.d/lockd
+>>>
+>>> but last time I tried that it broke "modprobe --show-depends".
+>>> Also it is awkward to get setting from /etc/sysconfig/nfs into /etc/sysctl.d/lockd
+>>>
+>>> Thoughts?
+>> I finally got the cycles to take a look at these... My apologies for
+>> taking so long... 
+> 
+> Thanks for getting to it!
+> 
+>>
+>> So I went ahead took a look... Clean them up a bit. There were a couple
+>> typos and they did not apply cleanly to my tree...  While I was
+>> doing this I got this gnawing feeling that we probably should have
+>> some type of global configuration file where all these command
+>> line variables can be set. 
+>>
+>> It would have to be distro friendly meaning the same place in all 
+>> distros... Maybe something like /etc/nfsclient.conf patterned off 
+>> the /etc/nfsmount.conf config file?? 
+>>
+>> So I'm thinking it does make sense to have a way to set
+>> all these but I'm just not keen on how they are being set.
+>> IDK... Maybe I'm over thinking it.. :-)
+> 
+> I have a couple of (complimentary) thoughts on this.
+> 
+> My early experience with md/raid raid taught me to be very wary of requiring
+> a config file.  The old "raidtools" requires you to make a config file just
+> to create an array - or even to stop an array I think.  The new mdadm allows
+> you do do everything with command line switches and that makes certain things
+> so much easier.
+Fair enough... This sounds like wisdom to me... ;-) which is good enough for me!
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 27b8268..7248a78 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1072,10 +1072,10 @@ _nfsd4_verify(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		return nfserr_jukebox;
- 
- 	p = buf;
--	status = nfsd4_encode_fattr(&cstate->current_fh,
-+	status = nfsd4_encode_fattr_to_buf(&p, count, &cstate->current_fh,
- 				    cstate->current_fh.fh_export,
--				    cstate->current_fh.fh_dentry, &p,
--				    count, verify->ve_bmval,
-+				    cstate->current_fh.fh_dentry,
-+				    verify->ve_bmval,
- 				    rqstp, 0);
- 	/*
- 	 * If nfsd4_encode_fattr() ran out of space, assume that's because
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 484a8aa..2ad423d 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -2046,12 +2046,10 @@ static int get_parent_attributes(struct svc_export *exp, struct kstat *stat)
- /*
-  * Note: @fhp can be NULL; in this case, we might have to compose the filehandle
-  * ourselves.
-- *
-- * countp is the buffer size in _words_
-  */
- __be32
--nfsd4_encode_fattr(struct svc_fh *fhp, struct svc_export *exp,
--		struct dentry *dentry, __be32 **buffer, int count, u32 *bmval,
-+nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp, struct svc_export *exp,
-+		struct dentry *dentry, u32 *bmval,
- 		struct svc_rqst *rqstp, int ignore_crossmnt)
- {
- 	u32 bmval0 = bmval[0];
-@@ -2060,12 +2058,12 @@ nfsd4_encode_fattr(struct svc_fh *fhp, struct svc_export *exp,
- 	struct kstat stat;
- 	struct svc_fh *tempfh = NULL;
- 	struct kstatfs statfs;
--	int buflen = count << 2;
-+	__be32 *p = xdr->p;
-+	int buflen = xdr->buf->buflen;
- 	__be32 *attrlenp;
- 	u32 dummy;
- 	u64 dummy64;
- 	u32 rdattr_err = 0;
--	__be32 *p = *buffer;
- 	__be32 status;
- 	int err;
- 	int aclsupport = 0;
-@@ -2492,7 +2490,7 @@ out_acl:
- 	}
- 
- 	*attrlenp = htonl((char *)p - (char *)attrlenp - 4);
--	*buffer = p;
-+	xdr->p = p;
- 	status = nfs_ok;
- 
- out:
-@@ -2512,6 +2510,26 @@ out_resource:
- 	goto out;
- }
- 
-+__be32 nfsd4_encode_fattr_to_buf(__be32 **p, int words,
-+			struct svc_fh *fhp, struct svc_export *exp,
-+			struct dentry *dentry, u32 *bmval,
-+	                struct svc_rqst *rqstp, int ignore_crossmnt)
-+{
-+	struct xdr_buf dummy = {
-+			.head[0] = {
-+				.iov_base = *p,
-+			},
-+			.buflen = words << 2,
-+		};
-+	struct xdr_stream xdr;
-+	__be32 ret;
-+
-+	xdr_init_encode(&xdr, &dummy, NULL);
-+	ret = nfsd4_encode_fattr(&xdr, fhp, exp, dentry, bmval, rqstp, ignore_crossmnt);
-+	*p = xdr.p;
-+	return ret;
-+}
-+
- static inline int attributes_need_mount(u32 *bmval)
- {
- 	if (bmval[0] & ~(FATTR4_WORD0_RDATTR_ERROR | FATTR4_WORD0_LEASE_TIME))
-@@ -2575,7 +2593,7 @@ nfsd4_encode_dirent_fattr(struct nfsd4_readdir *cd,
- 
- 	}
- out_encode:
--	nfserr = nfsd4_encode_fattr(NULL, exp, dentry, p, buflen, cd->rd_bmval,
-+	nfserr = nfsd4_encode_fattr_to_buf(p, buflen, NULL, exp, dentry, cd->rd_bmval,
- 					cd->rd_rqstp, ignore_crossmnt);
- out_put:
- 	dput(dentry);
-@@ -2745,14 +2763,16 @@ static __be32
- nfsd4_encode_getattr(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_getattr *getattr)
- {
- 	struct svc_fh *fhp = getattr->ga_fhp;
--	int buflen;
-+	struct xdr_stream *xdr = &resp->xdr;
-+	struct xdr_buf *buf = resp->xdr.buf;
- 
- 	if (nfserr)
- 		return nfserr;
- 
--	buflen = resp->xdr.end - resp->xdr.p - (COMPOUND_ERR_SLACK_SPACE >> 2);
--	nfserr = nfsd4_encode_fattr(fhp, fhp->fh_export, fhp->fh_dentry,
--				    &resp->xdr.p, buflen, getattr->ga_bmval,
-+	buf->buflen = (void *)resp->xdr.end - (void *)resp->xdr.p
-+			- COMPOUND_ERR_SLACK_SPACE;
-+	nfserr = nfsd4_encode_fattr(xdr, fhp, fhp->fh_export, fhp->fh_dentry,
-+				    getattr->ga_bmval,
- 				    resp->rqstp, 0);
- 	return nfserr;
- }
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index 6884d70..f62a055 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -562,9 +562,10 @@ int nfs4svc_encode_compoundres(struct svc_rqst *, __be32 *,
- __be32 nfsd4_check_resp_size(struct nfsd4_compoundres *, u32);
- void nfsd4_encode_operation(struct nfsd4_compoundres *, struct nfsd4_op *);
- void nfsd4_encode_replay(struct nfsd4_compoundres *resp, struct nfsd4_op *op);
--__be32 nfsd4_encode_fattr(struct svc_fh *fhp, struct svc_export *exp,
--		       struct dentry *dentry, __be32 **buffer, int countp,
--		       u32 *bmval, struct svc_rqst *, int ignore_crossmnt);
-+__be32 nfsd4_encode_fattr_to_buf(__be32 **p, int words,
-+		struct svc_fh *fhp, struct svc_export *exp,
-+		struct dentry *dentry,
-+		u32 *bmval, struct svc_rqst *, int ignore_crossmnt);
- extern __be32 nfsd4_setclientid(struct svc_rqst *rqstp,
- 		struct nfsd4_compound_state *,
- 		struct nfsd4_setclientid *setclid);
--- 
-1.8.5.3
+> 
+> When I was experimenting with fallback from v4 to v3 when TCP is not
+> supported it was really nice to be able to, e.g.
+>   rpc.nfsd 0
+>   rpc.nfsd -T 8
+> to change nfsd to stop accepting TCP connections.  Had I needed to edit a
+> config file every time I did that it would have been a pain.
+> 
+> This doesn't mean that config file are bad - not at all.  Just that I really
+> like that ability to over-ride config files on the command line.
+Point taken... 
 
+> 
+> Secondly, we already have a config file for NFS.  It is
+> call /etc/sysconfig/nfs, though Debian spells it "/etc/default/nfs".
+Which is unfortunate, IMHO... To bad we can't meld those together...
+
+> 
+> I believe that the best was forward is to make this more standard.
+> I think the best way to do this is to teach various nfs utilities to use e.g.
+>   getenv("NFS_LISTEN_TCP")
+> to get defaults for various settings before parsing command line options.
+> Then whatever is used to run these utilities can
+>    source /etc/sysconfig/nfs
+> or
+>    EnvironmentFile=/etc/sysconfig/nfs
+> first.
+> Thus we have a ready-made configfile name, a ready-made configfile syntax,
+> and just need to agree on values can be set.
+I think this is a good idea... Which would override which? The command 
+line override the environments? What should happen if neither are set?
+
+> 
+> A particular value of this approach is  that /etc/sysconfig file are easy for
+> admin tools to manipulate.  SUSE's 'yast' allows markup in the file so that
+> informative prompts and basic syntax checks can be applied. e.g.:
+> 
+> ## Path:                Network/File systems/NFS server
+> ## Description:         number of threads for kernel nfs server
+> ## Type:                integer
+> ## Default:             4
+> ## ServiceRestart:      nfsserver
+> #
+> # the kernel nfs-server supports multiple server threads
+> #
+> USE_KERNEL_NFSD_NUMBER="8"
+> 
+> We would need to transition from the current setting names to the new agreed
+> setting names over a couple of released, but that isn't rocket science and is
+> our problem.
+I guess this would be that melding I was talking about.. ;-)
+
+> 
+> 
+> 
+>>
+>> Finally, during my testing the only flags that seem to work
+>> was the statd ones:
+>>
+>> # rpc.nfsd --rdma 8
+>> rpc.nfsd: Unable to request RDMA services: Protocol not supported
+> 
+> If you don't have configured RDMA hardware on your test machine I would
+> expect this.  My testing largely involved running the tool under 'strace'
+> and making sure the correct string was written.
+> 
+>>
+>> # rpc.nfsd --grace-time 66
+>> rpc.nfsd: Unable to set /proc/fs/nfsd/nfsv4gracetime: Device or resource busy
+>>
+>> # rpc.nfsd --lease-time 66
+>> rpc.nfsd: Unable to set /proc/fs/nfsd/nfsv4leasetime: Device or resource busy
+>>
+>> Is this expected?
+> 
+> No..  that was a bit careless.
+> The grace-time and leave-time need to be set before the ports are opened.
+> 
+> i.e. the following incremental patch.  Do you want to merge it with what you
+> have, or will I resend that patch (or the whole series)?
+Just resend the patch... that will be good enough...
+
+steved.
+> 
+> Thanks,
+> NeilBrown
+> 
+> diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
+> index dbd0d98a8e68..32d22d8ab63b 100644
+> --- a/utils/nfsd/nfsd.c
+> +++ b/utils/nfsd/nfsd.c
+> @@ -307,11 +307,17 @@ main(int argc, char **argv)
+>  	}
+>  
+>  	/*
+> -	 * must set versions before the fd's so that the right versions get
+> +	 * Must set versions before the fd's so that the right versions get
+>  	 * registered with rpcbind. Note that on older kernels w/o the right
+>  	 * interfaces, these are a no-op.
+> +	 * Timeouts must also be set before ports are created else we get
+> +	 * EBUSY.
+>  	 */
+>  	nfssvc_setvers(versbits, minorvers);
+> +	if (grace > 0)
+> +		nfssvc_set_time("grace", grace);
+> +	if (lease  > 0)
+> +		nfssvc_set_time("lease", lease);
+>  
+>  	error = nfssvc_set_sockets(AF_INET, proto4, haddr, port);
+>  	if (!error)
+> @@ -328,10 +334,6 @@ main(int argc, char **argv)
+>  		if (!error)
+>  			socket_up = 1;
+>  	}
+> -	if (grace > 0)
+> -		nfssvc_set_time("grace", grace);
+> -	if (lease  > 0)
+> -		nfssvc_set_time("lease", lease);
+>  
+>  set_threads:
+>  	/* don't start any threads if unable to hand off any sockets */
+> 
