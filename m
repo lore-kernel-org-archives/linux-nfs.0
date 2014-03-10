@@ -1,59 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f180.google.com ([209.85.223.180]:45947 "EHLO
-	mail-ie0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752221AbaCEOHm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Mar 2014 09:07:42 -0500
-Received: by mail-ie0-f180.google.com with SMTP id as1so1008039iec.25
-        for <linux-nfs@vger.kernel.org>; Wed, 05 Mar 2014 06:07:42 -0800 (PST)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Andy Adamson <andros@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 4/4] NFSv4: Fail the truncate() if the lock/open stateid is invalid
-Date: Wed,  5 Mar 2014 09:07:32 -0500
-Message-Id: <1394028452-15956-5-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1394028452-15956-4-git-send-email-trond.myklebust@primarydata.com>
-References: <1393959943-9919-1-git-send-email-trond.myklebust@primarydata.com>
- <1394028452-15956-1-git-send-email-trond.myklebust@primarydata.com>
- <1394028452-15956-2-git-send-email-trond.myklebust@primarydata.com>
- <1394028452-15956-3-git-send-email-trond.myklebust@primarydata.com>
- <1394028452-15956-4-git-send-email-trond.myklebust@primarydata.com>
+Received: from zeniv.linux.org.uk ([195.92.253.2]:33779 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752023AbaCJAUS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 9 Mar 2014 20:20:18 -0400
+Date: Mon, 10 Mar 2014 00:20:15 +0000
+From: Al Viro <viro@ZenIV.linux.org.uk>
+To: NeilBrown <neilb@suse.de>
+Cc: David Heidelberger <david.heidelberger@ixit.cz>, linux-nfs@vger.kernel.org
+Subject: Re: DNOTIFY to INOTIFY migration
+Message-ID: <20140310002015.GH18016@ZenIV.linux.org.uk>
+References: <b59b1e4ede0b1d0a476c85465d480c8a@ixit.cz>
+ <20140310102102.3c886726@notabene.brown>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140310102102.3c886726@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If the open stateid could not be recovered, or the file locks were lost,
-then we should fail the truncate() operation altogether.
+On Mon, Mar 10, 2014 at 10:21:02AM +1100, NeilBrown wrote:
+> On Fri, 07 Mar 2014 21:30:34 +0100 David Heidelberger
+> <david.heidelberger@ixit.cz> wrote:
+> 
+> > Hello,
+> > 
+> > in linux kernel is DNOTIFY actually marked as deprecated, with superior 
+> > replacement INOTIFY.
+> 
+> Where is it marked as deprecated?  I would be very surprised if dnotify
+> wasn't supported indefinitely.
 
-Reported-by: Andy Adamson <andros@netapp.com>
-Link: http://lkml.kernel.org/r/1393954269-3974-1-git-send-email-andros@netapp.com
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/nfs4proc.c | 9 ++++++---
- 1 file changed, 6 insertions(+), 3 deletions(-)
+Unfortunately, it will be - once it's in, it's in.
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 4778c55d0336..bc60a0f81019 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2398,13 +2398,16 @@ static int _nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
- 
- 	if (nfs4_copy_delegation_stateid(&arg.stateid, inode, fmode)) {
- 		/* Use that stateid */
--	} else if (truncate && state != NULL && nfs4_valid_open_stateid(state)) {
-+	} else if (truncate && state != NULL) {
- 		struct nfs_lockowner lockowner = {
- 			.l_owner = current->files,
- 			.l_pid = current->tgid,
- 		};
--		nfs4_select_rw_stateid(&arg.stateid, state, FMODE_WRITE,
--				&lockowner);
-+		if (!nfs4_valid_open_stateid(state))
-+			return -EBADF;
-+		if (nfs4_select_rw_stateid(&arg.stateid, state, FMODE_WRITE,
-+				&lockowner) < 0)
-+			return -EBADF;
- 	} else
- 		nfs4_stateid_copy(&arg.stateid, &zero_stateid);
- 
--- 
-1.8.5.3
+> (I have no opinion on whether rpc.idmapd should be changed to use inotify,
+> except based on the "if it ain't broke, don't fix it" principle).
 
+I still don't understand WTF does rpc.imapd *want* either of those, TBH.
+
+Said that, the original posting does read a bit like "herpes is so last century,
+shouldn't we upgrade to clap by now?"...*0O(and I don't want to think what
+that makes fanotify, thank you very much)
