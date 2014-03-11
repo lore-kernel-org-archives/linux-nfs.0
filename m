@@ -1,69 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from plane.gmane.org ([80.91.229.3]:44194 "EHLO plane.gmane.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752350AbaCNBFG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 13 Mar 2014 21:05:06 -0400
-Received: from list by plane.gmane.org with local (Exim 4.69)
-	(envelope-from <glN-linux-nfs@m.gmane.org>)
-	id 1WOGYZ-0004kw-PQ
-	for linux-nfs@vger.kernel.org; Fri, 14 Mar 2014 02:05:04 +0100
-Received: from 173-228-91-47.dsl.static.sonic.net ([173.228.91.47])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Fri, 14 Mar 2014 02:05:03 +0100
-Received: from deepak.jagtap by 173-228-91-47.dsl.static.sonic.net with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Fri, 14 Mar 2014 02:05:03 +0100
-To: linux-nfs@vger.kernel.org
-From: Deepak Jagtap <deepak.jagtap@maxta.com>
-Subject: Nfs server per mount point IOPS limit
-Date: Fri, 14 Mar 2014 00:59:10 +0000 (UTC)
-Message-ID: <loom.20140314T015822-835@post.gmane.org>
-Mime-Version: 1.0
+Received: from mail-qc0-f170.google.com ([209.85.216.170]:43137 "EHLO
+	mail-qc0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755875AbaCKVdY convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Mar 2014 17:33:24 -0400
+Received: by mail-qc0-f170.google.com with SMTP id e9so10315413qcy.15
+        for <linux-nfs@vger.kernel.org>; Tue, 11 Mar 2014 14:33:24 -0700 (PDT)
 Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
+Subject: Re: [PATCH] nfs: Don't assume we have a security structure
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+In-Reply-To: <1394572274-16474-1-git-send-email-Anna.Schumaker@netapp.com>
+Date: Tue, 11 Mar 2014 17:27:44 -0400
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        James Morris <james.l.morris@oracle.com>,
+        Eric Paris <eparis@redhat.com>
+Message-Id: <29D9CA49-A493-471B-932B-959AFF96C729@primarydata.com>
+References: <1394572274-16474-1-git-send-email-Anna.Schumaker@netapp.com>
+To: Schumaker Anna <Anna.Schumaker@netapp.com>,
+        David Quigley <dpquigl@davequigley.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
 
-I order to get performance stats with Linux nfs server and client, I ran 
-following experiments:
+On Mar 11, 2014, at 17:11, Anna Schumaker <Anna.Schumaker@netapp.com> wrote:
 
-Linux Nfs Server version 3: exporting ext3 filesystem directory.
-Linux Nfs Client :  64 IO threads doing IO on nfs mount point .
+> If the i_security field isn't set then security_dentry_init_security()
+> won't initialize some of the values used by the security label.  This
+> causes my client to hit a BUG_ON() while encoding a label of size
+> -2128927414.
+> 
+> I hit this bug while testing on a client without SELinux installed.
+> 
+> Signed-off-by: Anna Schumaker <anna.schumaker@netapp.com>
+> ---
+> fs/nfs/nfs4proc.c | 3 +++
+> 1 file changed, 3 insertions(+)
+> 
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index b8cd560..994ccc2 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -105,6 +105,9 @@ nfs4_label_init_security(struct inode *dir, struct dentry *dentry,
+> 	if (nfs_server_capable(dir, NFS_CAP_SECURITY_LABEL) == 0)
+> 		return NULL;
+> 
+> +	if (!dir->i_security)
+> +		return NULL;
+> +
+> 	err = security_dentry_init_security(dentry, sattr->ia_mode,
+> 				&dentry->d_name, (void **)&label->label, &label->len);
+> 	if (err == 0)
 
-I am doing random reads on 30GB sparse file (emty), to figure out how much 
-max IOPS this IO stack supports.
+Hi Anna,
 
-I observed 30K random read IOPS using single client IO process. Nfs server 
-is configured to spawn 64 threads, but not all nfs threads are busy in this 
-case.
+This looks like a check that needs to be done by selinux_dentry_init_security() itself. The dir->i_security field is not something that NFS knows about.
+David, what needs to happen there when dentry->d_parent->i_security (a.k.a. dsec) is NULL?
 
-In order to maxout nfs server thread usage I spawn another IO process on the 
-client doing IO though same mount point, but cumulative read IOPS stays same 
-(15K IOPS per IO process)
-
-But when I mount same export on another mount point on the same client, IOPS 
-scale.
-ie.
-
-Nfs server exports /share/export directory.
-
-NfsClient mounts:
-MountPoint1: mount server:/share/export at  /mnt/exportMount1 
-MountPoint2: mount server:/share/export at  /mnt/exportMount2
-
-IOProcess1 does IO on MountPoint1 while IOProcess2 does IO on MountPoint2, 
-reads in this case
-scale and nfs server CPU usage doubles.
-
-But if 2 IOProcesses use same mount point for IO then IOPS for each process 
-drops to half.
-
-Please advise if  I am hitting some per mount point limit in this case.
-Also how can I figure out if bottleneck is on nfs client side or nfs server 
-side.
-
-Thanks & Regards,
-Deepak
+_________________________________
+Trond Myklebust
+Linux NFS client maintainer, PrimaryData
+trond.myklebust@primarydata.com
 
