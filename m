@@ -1,10 +1,10 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:44727 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:64136 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750901AbaCHQ40 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 8 Mar 2014 11:56:26 -0500
-Message-ID: <531B4BB7.9010303@RedHat.com>
-Date: Sat, 08 Mar 2014 11:56:23 -0500
+	id S1752478AbaCKQGE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 11 Mar 2014 12:06:04 -0400
+Message-ID: <531F3463.80404@RedHat.com>
+Date: Tue, 11 Mar 2014 12:05:55 -0400
 From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
 To: Neil Brown <neilb@suse.de>
@@ -40,36 +40,7 @@ On 02/20/2014 01:36 AM, Neil Brown wrote:
 > Also it is awkward to get setting from /etc/sysconfig/nfs into /etc/sysctl.d/lockd
 > 
 > Thoughts?
-I finally got the cycles to take a look at these... My apologies for
-taking so long... 
-
-So I went ahead took a look... Clean them up a bit. There were a couple
-typos and they did not apply cleanly to my tree...  While I was
-doing this I got this gnawing feeling that we probably should have
-some type of global configuration file where all these command
-line variables can be set. 
-
-It would have to be distro friendly meaning the same place in all 
-distros... Maybe something like /etc/nfsclient.conf patterned off 
-the /etc/nfsmount.conf config file?? 
-
-So I'm thinking it does make sense to have a way to set
-all these but I'm just not keen on how they are being set.
-IDK... Maybe I'm over thinking it.. :-)
-
-Finally, during my testing the only flags that seem to work
-was the statd ones:
-
-# rpc.nfsd --rdma 8
-rpc.nfsd: Unable to request RDMA services: Protocol not supported
-
-# rpc.nfsd --grace-time 66
-rpc.nfsd: Unable to set /proc/fs/nfsd/nfsv4gracetime: Device or resource busy
-
-# rpc.nfsd --lease-time 66
-rpc.nfsd: Unable to set /proc/fs/nfsd/nfsv4leasetime: Device or resource busy
-
-Is this expected?
+All 4 patches tested and committed... 
 
 steved.
 
