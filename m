@@ -1,55 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from youngberry.canonical.com ([91.189.89.112]:48725 "EHLO
-	youngberry.canonical.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750828AbaCFPau (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Mar 2014 10:30:50 -0500
-Date: Thu, 6 Mar 2014 09:30:42 -0600
-From: Serge Hallyn <serge.hallyn@ubuntu.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: James Morris <james.l.morris@oracle.com>,
-        Serge Hallyn <serge.hallyn@canonical.com>,
-        linux-security-module@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] security: have cap_dentry_init_security return error
-Message-ID: <20140306153042.GA14791@sergelap>
-References: <1394041657-7114-1-git-send-email-jlayton@redhat.com>
-MIME-Version: 1.0
+Received: from mail-ie0-f181.google.com ([209.85.223.181]:35203 "EHLO
+	mail-ie0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755822AbaCKVbp convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Mar 2014 17:31:45 -0400
+Received: by mail-ie0-f181.google.com with SMTP id tp5so9094938ieb.26
+        for <linux-nfs@vger.kernel.org>; Tue, 11 Mar 2014 14:31:45 -0700 (PDT)
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1394041657-7114-1-git-send-email-jlayton@redhat.com>
+Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
+Subject: Re: [PATCH] nfs: Don't assume we have a security structure
+From: Weston Andros Adamson <dros@primarydata.com>
+In-Reply-To: <1394572274-16474-1-git-send-email-Anna.Schumaker@netapp.com>
+Date: Tue, 11 Mar 2014 17:31:43 -0400
+Cc: Trond Myklebust <Trond.Myklebust@primarydata.com>,
+        linux-nfs list <linux-nfs@vger.kernel.org>
+Message-Id: <8722C868-F019-428F-8223-0A9759B9202B@primarydata.com>
+References: <1394572274-16474-1-git-send-email-Anna.Schumaker@netapp.com>
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Quoting Jeff Layton (jlayton@redhat.com):
-> Currently, cap_dentry_init_security returns 0 without actually
-> initializing the security label. This confuses its only caller
-> (nfs4_label_init_security) which expects an error in that situation, and
-> causes it to end up sending out junk onto the wire instead of simply
-> suppressing the label in the attributes sent.
-> 
-> When CONFIG_SECURITY is disabled, security_dentry_init_security returns
-> -EOPNOTSUPP. Have cap_dentry_init_security do the same.
-> 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Could it be bad to do this when selinux is enabled?  Could you do something based on selinux_is_enabled()?
 
-Acked-by: Serge E. Hallyn <serge.hallyn@ubuntu.com>
+-dros
 
+On Mar 11, 2014, at 5:11 PM, Anna Schumaker <Anna.Schumaker@netapp.com> wrote:
+
+> If the i_security field isn't set then security_dentry_init_security()
+> won't initialize some of the values used by the security label.  This
+> causes my client to hit a BUG_ON() while encoding a label of size
+> -2128927414.
+> 
+> I hit this bug while testing on a client without SELinux installed.
+> 
+> Signed-off-by: Anna Schumaker <anna.schumaker@netapp.com>
 > ---
->  security/capability.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
+> fs/nfs/nfs4proc.c | 3 +++
+> 1 file changed, 3 insertions(+)
 > 
-> diff --git a/security/capability.c b/security/capability.c
-> index 8b4f24ae4338..9323bbeba296 100644
-> --- a/security/capability.c
-> +++ b/security/capability.c
-> @@ -116,7 +116,7 @@ static int cap_dentry_init_security(struct dentry *dentry, int mode,
->  					struct qstr *name, void **ctx,
->  					u32 *ctxlen)
->  {
-> -	return 0;
-> +	return -EOPNOTSUPP;
->  }
->  
->  static int cap_inode_alloc_security(struct inode *inode)
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index b8cd560..994ccc2 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -105,6 +105,9 @@ nfs4_label_init_security(struct inode *dir, struct dentry *dentry,
+> 	if (nfs_server_capable(dir, NFS_CAP_SECURITY_LABEL) == 0)
+> 		return NULL;
+> 
+> +	if (!dir->i_security)
+> +		return NULL;
+> +
+> 	err = security_dentry_init_security(dentry, sattr->ia_mode,
+> 				&dentry->d_name, (void **)&label->label, &label->len);
+> 	if (err == 0)
 > -- 
-> 1.8.5.3
+> 1.9.0
 > 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
