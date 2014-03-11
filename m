@@ -1,62 +1,250 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f171.google.com ([209.85.216.171]:39230 "EHLO
-	mail-qc0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932506AbaCQLHK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Mar 2014 07:07:10 -0400
-Received: by mail-qc0-f171.google.com with SMTP id x13so5637460qcv.2
-        for <linux-nfs@vger.kernel.org>; Mon, 17 Mar 2014 04:07:10 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 3/5] nfs: convert nfs_rename to use async_rename infrastructure
-Date: Mon, 17 Mar 2014 07:06:56 -0400
-Message-Id: <1395054418-14504-4-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1395054418-14504-1-git-send-email-jlayton@redhat.com>
-References: <1395054418-14504-1-git-send-email-jlayton@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:28830 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751831AbaCKPRf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 11 Mar 2014 11:17:35 -0400
+From: Steve Dickson <steved@redhat.com>
+To: NeilBrown <neilb@suse.de>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH - v3] mount.nfs: Fix fallback from tcp to udp
+Date: Tue, 11 Mar 2014 11:17:30 -0400
+Message-Id: <1394551050-14571-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-There isn't much sense in maintaining two separate versions of rename
-code. Convert nfs_rename to use the asynchronous rename infrastructure
-that nfs_sillyrename uses, and emulate synchronous behavior by having
-the task just wait on the reply.
+From: NeilBrown <neilb@suse.de>
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Protocol negotiation in mount.nfs does not correctly negotiate with a
+server which only supports NFSv3 and UDP.
+
+When mount.nfs attempts an NFSv4 mount and fails with ECONNREFUSED
+it does not fall back to NFSv3, as this is not recognised as a
+"does not support NFSv4" error.
+However ECONNREFUSED is a clear indication that the server doesn't
+support TCP, and ipso facto does not support NFSv4.
+So ECONNREFUSED should trigger a fallback from v4 to v2/3.
+
+However ECONNREFUSED may simply indicate that NFSv4 isn't supported
+*yet*.  i.e. the server is still booting and isn't responding to NFS
+requests yet.  So if we subsequently find that NFSv3 is supported, we
+need to check with the server to confirm that NFSv4 really isn't
+supported.
+
+If server reports that v4 is not supported after reporting that v3
+is, we can safely use v4.  If it reports that v4 is supported, we need
+to retry v4.
+
+Signed-off-by: Steve Dickson <steved@redhat.com>
+Reported-by: Carsten Ziepke <kieltux@gmail.com>
 ---
- fs/nfs/dir.c | 13 +++++++++++--
- 1 file changed, 11 insertions(+), 2 deletions(-)
+ utils/mount/network.c | 34 ++++++++++++++++++++++++++--------
+ utils/mount/network.h |  2 +-
+ utils/mount/stropts.c | 32 +++++++++++++++++++++++---------
+ 3 files changed, 50 insertions(+), 18 deletions(-)
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index 4a48fe4b84b6..e6f8e2c97653 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -1911,6 +1911,7 @@ int nfs_rename(struct inode *old_dir, struct dentry *old_dentry,
- 	struct inode *old_inode = old_dentry->d_inode;
- 	struct inode *new_inode = new_dentry->d_inode;
- 	struct dentry *dentry = NULL, *rehash = NULL;
-+	struct rpc_task *task;
- 	int error = -EBUSY;
+diff --git a/utils/mount/network.c b/utils/mount/network.c
+index 2fdd2c0..4f8c15c 100644
+--- a/utils/mount/network.c
++++ b/utils/mount/network.c
+@@ -611,18 +611,33 @@ out_ok:
+  * returned; rpccreateerr.cf_stat is set to reflect the nature of the error.
+  */
+ static int nfs_probe_nfsport(const struct sockaddr *sap, const socklen_t salen,
+-				struct pmap *pmap)
++			     struct pmap *pmap, int checkv4)
+ {
+ 	if (pmap->pm_vers && pmap->pm_prot && pmap->pm_port)
+ 		return 1;
  
- 	dfprintk(VFS, "NFS: rename(%pd2 -> %pd2, ct=%d)\n",
-@@ -1958,8 +1959,16 @@ int nfs_rename(struct inode *old_dir, struct dentry *old_dentry,
- 	if (new_inode != NULL)
- 		NFS_PROTO(new_inode)->return_delegation(new_inode);
+ 	if (nfs_mount_data_version >= 4) {
+ 		const unsigned int *probe_proto;
++		int ret;
++		struct sockaddr_storage save_sa;
  
--	error = NFS_PROTO(old_dir)->rename(old_dir, &old_dentry->d_name,
--					   new_dir, &new_dentry->d_name);
-+	task = nfs_async_rename(old_dir, new_dir, old_dentry, new_dentry, NULL);
-+	if (IS_ERR(task)) {
-+		error = PTR_ERR(task);
-+		goto out;
-+	}
+ 		probe_proto = nfs_default_proto();
+-
+-		return nfs_probe_port(sap, salen, pmap,
+-					probe_nfs3_only, probe_proto);
++		memcpy(&save_sa, sap, salen);
 +
-+	error = rpc_wait_for_completion_task(task);
-+	if (error == 0)
-+		error = task->tk_status;
-+	rpc_put_task(task);
- 	nfs_mark_for_revalidate(old_inode);
- out:
- 	if (rehash)
++		ret = nfs_probe_port(sap, salen, pmap,
++				     probe_nfs3_only, probe_proto);
++		if (!ret || !checkv4 || probe_proto != probe_tcp_first)
++			return ret;
++
++		nfs_set_port((struct sockaddr *)&save_sa, NFS_PORT);
++		ret =  nfs_rpc_ping((struct sockaddr *)&save_sa, salen, 
++			NFS_PROGRAM, 4, IPPROTO_TCP, NULL);
++		if (ret) {
++			rpc_createerr.cf_stat = RPC_FAILED;
++			rpc_createerr.cf_error.re_errno = EAGAIN;
++			return 0;
++		}
++		return 1;
+ 	} else
+ 		return nfs_probe_port(sap, salen, pmap,
+ 					probe_nfs2_only, probe_udp_only);
+@@ -671,7 +686,7 @@ static int nfs_probe_version_fixed(const struct sockaddr *mnt_saddr,
+ 			const socklen_t nfs_salen,
+ 			struct pmap *nfs_pmap)
+ {
+-	if (!nfs_probe_nfsport(nfs_saddr, nfs_salen, nfs_pmap))
++	if (!nfs_probe_nfsport(nfs_saddr, nfs_salen, nfs_pmap, 0))
+ 		return 0;
+ 	return nfs_probe_mntport(mnt_saddr, mnt_salen, mnt_pmap);
+ }
+@@ -686,6 +701,8 @@ static int nfs_probe_version_fixed(const struct sockaddr *mnt_saddr,
+  * @nfs_salen:	length of NFS server's address
+  * @nfs_pmap:	IN: partially filled-in NFS RPC service tuple;
+  *		OUT: fully filled-in NFS RPC service tuple
++ * @checkv4:	Flag indicating that if v3 is available we must also
++ *		check v4, and if that is available, set re_errno to EAGAIN.
+  *
+  * Returns 1 and fills in both @pmap structs if the requested service
+  * ports are unambiguous and pingable.  Otherwise zero is returned;
+@@ -696,7 +713,8 @@ int nfs_probe_bothports(const struct sockaddr *mnt_saddr,
+ 			struct pmap *mnt_pmap,
+ 			const struct sockaddr *nfs_saddr,
+ 			const socklen_t nfs_salen,
+-			struct pmap *nfs_pmap)
++			struct pmap *nfs_pmap,
++			int checkv4)
+ {
+ 	struct pmap save_nfs, save_mnt;
+ 	const unsigned long *probe_vers;
+@@ -717,7 +735,7 @@ int nfs_probe_bothports(const struct sockaddr *mnt_saddr,
+ 
+ 	for (; *probe_vers; probe_vers++) {
+ 		nfs_pmap->pm_vers = mntvers_to_nfs(*probe_vers);
+-		if (nfs_probe_nfsport(nfs_saddr, nfs_salen, nfs_pmap) != 0) {
++		if (nfs_probe_nfsport(nfs_saddr, nfs_salen, nfs_pmap, checkv4) != 0) {
+ 			mnt_pmap->pm_vers = *probe_vers;
+ 			if (nfs_probe_mntport(mnt_saddr, mnt_salen, mnt_pmap) != 0)
+ 				return 1;
+@@ -757,7 +775,7 @@ int probe_bothports(clnt_addr_t *mnt_server, clnt_addr_t *nfs_server)
+ 	return nfs_probe_bothports(mnt_addr, sizeof(mnt_server->saddr),
+ 					&mnt_server->pmap,
+ 					nfs_addr, sizeof(nfs_server->saddr),
+-					&nfs_server->pmap);
++					&nfs_server->pmap, 0);
+ }
+ 
+ /**
+diff --git a/utils/mount/network.h b/utils/mount/network.h
+index 9c75856..d7636d7 100644
+--- a/utils/mount/network.h
++++ b/utils/mount/network.h
+@@ -42,7 +42,7 @@ static const struct timeval RETRY_TIMEOUT = { 3, 0 };
+ int probe_bothports(clnt_addr_t *, clnt_addr_t *);
+ int nfs_probe_bothports(const struct sockaddr *, const socklen_t,
+ 			struct pmap *, const struct sockaddr *,
+-			const socklen_t, struct pmap *);
++			const socklen_t, struct pmap *, int);
+ int nfs_gethostbyname(const char *, struct sockaddr_in *);
+ int nfs_lookup(const char *hostname, const sa_family_t family,
+ 		struct sockaddr *sap, socklen_t *salen);
+diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+index a642394..2d72d5b 100644
+--- a/utils/mount/stropts.c
++++ b/utils/mount/stropts.c
+@@ -484,7 +484,7 @@ static int nfs_construct_new_options(struct mount_options *options,
+  * FALSE is returned if some failure occurred.
+  */
+ static int
+-nfs_rewrite_pmap_mount_options(struct mount_options *options)
++nfs_rewrite_pmap_mount_options(struct mount_options *options, int checkv4)
+ {
+ 	union nfs_sockaddr nfs_address;
+ 	struct sockaddr *nfs_saddr = &nfs_address.sa;
+@@ -534,7 +534,7 @@ nfs_rewrite_pmap_mount_options(struct mount_options *options)
+ 	 * negotiate.  Bail now if we can't contact it.
+ 	 */
+ 	if (!nfs_probe_bothports(mnt_saddr, mnt_salen, &mnt_pmap,
+-				 nfs_saddr, nfs_salen, &nfs_pmap)) {
++				 nfs_saddr, nfs_salen, &nfs_pmap, checkv4)) {
+ 		errno = ESPIPE;
+ 		if (rpc_createerr.cf_stat == RPC_PROGNOTREGISTERED)
+ 			errno = EOPNOTSUPP;
+@@ -595,7 +595,8 @@ static int nfs_sys_mount(struct nfsmount_info *mi, struct mount_options *opts)
+ }
+ 
+ static int nfs_do_mount_v3v2(struct nfsmount_info *mi,
+-		struct sockaddr *sap, socklen_t salen)
++			     struct sockaddr *sap, socklen_t salen,
++			     int checkv4)
+ {
+ 	struct mount_options *options = po_dup(mi->options);
+ 	int result = 0;
+@@ -637,7 +638,7 @@ static int nfs_do_mount_v3v2(struct nfsmount_info *mi,
+ 		printf(_("%s: trying text-based options '%s'\n"),
+ 			progname, *mi->extra_opts);
+ 
+-	if (!nfs_rewrite_pmap_mount_options(options))
++	if (!nfs_rewrite_pmap_mount_options(options, checkv4))
+ 		goto out_fail;
+ 
+ 	result = nfs_sys_mount(mi, options);
+@@ -653,13 +654,13 @@ out_fail:
+  * Returns TRUE if successful, otherwise FALSE.
+  * "errno" is set to reflect the individual error.
+  */
+-static int nfs_try_mount_v3v2(struct nfsmount_info *mi)
++static int nfs_try_mount_v3v2(struct nfsmount_info *mi, int checkv4)
+ {
+ 	struct addrinfo *ai;
+ 	int ret = 0;
+ 
+ 	for (ai = mi->address; ai != NULL; ai = ai->ai_next) {
+-		ret = nfs_do_mount_v3v2(mi, ai->ai_addr, ai->ai_addrlen);
++		ret = nfs_do_mount_v3v2(mi, ai->ai_addr, ai->ai_addrlen, checkv4);
+ 		if (ret != 0)
+ 			return ret;
+ 
+@@ -793,7 +794,8 @@ static int nfs_autonegotiate(struct nfsmount_info *mi)
+ 	result = nfs_try_mount_v4(mi);
+ 	if (result)
+ 		return result;
+-		
++
++check_errno:
+ 	switch (errno) {
+ 	case EPROTONOSUPPORT:
+ 		/* A clear indication that the server or our
+@@ -807,12 +809,24 @@ static int nfs_autonegotiate(struct nfsmount_info *mi)
+ 		/* Linux servers prior to 2.6.25 may return
+ 		 * EPERM when NFS version 4 is not supported. */
+ 		goto fall_back;
++	case ECONNREFUSED:
++		/* UDP-Only servers won't support v4, but maybe it
++		 * just isn't ready yet.  So try v3, but double-check
++		 * with rpcbind for v4. */
++		result = nfs_try_mount_v3v2(mi, TRUE);
++		if (result == 0 && errno == EAGAIN) {
++			/* v4 server seems to be registered now. */
++			result = nfs_try_mount_v4(mi);
++			if (result == 0 && errno != ECONNREFUSED)
++				goto check_errno;
++		}
++		return result;
+ 	default:
+ 		return result;
+ 	}
+ 
+ fall_back:
+-	return nfs_try_mount_v3v2(mi);
++	return nfs_try_mount_v3v2(mi, FALSE);
+ }
+ 
+ /*
+@@ -831,7 +845,7 @@ static int nfs_try_mount(struct nfsmount_info *mi)
+ 		break;
+ 	case 2:
+ 	case 3:
+-		result = nfs_try_mount_v3v2(mi);
++		result = nfs_try_mount_v3v2(mi, FALSE);
+ 		break;
+ 	case 4:
+ 		result = nfs_try_mount_v4(mi);
 -- 
 1.8.5.3
 
