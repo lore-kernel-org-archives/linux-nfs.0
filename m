@@ -1,118 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:49122 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:29271 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755261AbaCDTEp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Mar 2014 14:04:45 -0500
-Date: Tue, 4 Mar 2014 14:04:42 -0500
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jan Kara <jack@suse.cz>
-Cc: Matthew Rahtz <mrahtz@rapitasystems.com>, linux-ext4@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: warning in ext4_journal_start_sb on filesystem freeze
-Message-ID: <20140304190442.GE12805@fieldses.org>
-References: <217983071.143460.1385453196946.JavaMail.zimbra@rapitasystems.com>
- <1697998867.143517.1385454051031.JavaMail.zimbra@rapitasystems.com>
- <20131126125826.GA4503@quack.suse.cz>
- <622177618.727.1393062606061.JavaMail.zimbra@rapitasystems.com>
- <20140224095525.GA20532@quack.suse.cz>
- <20140224154532.GB11992@fieldses.org>
- <20140225102126.GB1669@quack.suse.cz>
- <20140304164306.GC12805@fieldses.org>
+	id S1752059AbaCKO4J (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 11 Mar 2014 10:56:09 -0400
+Message-ID: <531F2334.2030203@RedHat.com>
+Date: Tue, 11 Mar 2014 10:52:36 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <20140304164306.GC12805@fieldses.org>
+To: NeilBrown <neilb@suse.de>
+CC: NFS <linux-nfs@vger.kernel.org>, "J. Bruce Fields" <bfields@fieldses.org>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        Carsten Ziepke <kieltux@gmail.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: Re: [PATCH - v2] mount.nfs: Fix fallback from tcp to udp
+References: <20140224142349.784345f9@notabene.brown>	<531E2E3F.2020805@RedHat.com> <20140311090124.05409b1b@notabene.brown>
+In-Reply-To: <20140311090124.05409b1b@notabene.brown>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 04, 2014 at 11:43:06AM -0500, J. Bruce Fields wrote:
-> On Tue, Feb 25, 2014 at 11:21:26AM +0100, Jan Kara wrote:
-> > On Mon 24-02-14 10:45:32, J. Bruce Fields wrote:
-> > > On Mon, Feb 24, 2014 at 10:55:25AM +0100, Jan Kara wrote:
-> > > > On Sat 22-02-14 09:50:06, Matthew Rahtz wrote:
-> > > > > Thanks for your help Jan,
-> > > > > 
-> > > > > A few months later, we've noticed the issue is actually still there.
-> > > > > Using 3.11.0-17-generic on Ubuntu 12.04, we’re seeing this in the kernel
-> > > > > logs:
-> > > > > 
-> > > > > [29243.606215] WARNING: CPU: 0 PID: 1785 at
-> > > > > /build/buildd/linux-lts-saucy-3.11.0/fs/ext4/ext4_jbd2.c:48
-> > > > > ext4_journal_check_start+0x83/0x90()
-> > > > > 
-> > > > > Having a look at the Ubuntu source package for that version, it
-> > > > > definitely does include commit 03d95eb2f2578083a3f6286262e1cb5d88a00c02,
-> > > > > and the line generating the warning is still:
-> > > > > 
-> > > > > WARN_ON(sb->s_writers.frozen == SB_FREEZE_COMPLETE);
-> > > > > 
-> > > > > Are there any other obvious possibilities for what may be causing this?
-> > > > > There seem to be some users of Oracle Linux experiencing similar problems
-> > > > > at https://community.oracle.com/thread/2617418, which was apparently
-> > > > > fixed in Oracle's kernel version '3.8.13-26.el6uek'. Any word on when
-> > > > > this might be integrated into the official kernel?
-> > > > > 
-> > > > > Full call trace included below.
-> > > >   Looking at the trace below, now the problem seems to be in the NFS server
-> > > > code. NFS should get protection against the filesystem being frozen (or
-> > > > remounted read-only for that matter) via mnt_want_write() before calling
-> > > > into notify_change() (actually before calling fh_lock() because of lock
-> > > > ordering).  Similarly to what we do e.g. in fchownat(). Bruce?
-> > > 
-> > > Like this?
-> >   Yup, that looks right.
+On 03/10/2014 06:01 PM, NeilBrown wrote:
 > 
-> Ugh, actually, I didn't realize we can't do mnt_want_write recursively,
-> and there's a confusing mixture of callers that do and don't already
-> take it, so I'll have to do something a little more complicated.
+> With  a 3.11.10 client talking to a 3.2.0 server I run
+>   rpc.nfsd 0
+>   rpc.nfsd -T -N4
+> on the server, then
+>   rpcinfo -p SERVER | grep nfs
+> shows
+>     100003    2   udp   2049  nfs
+>     100003    3   udp   2049  nfs
+>     100227    2   udp   2049  nfs_acl
+>     100227    3   udp   2049  nfs_acl
+> 
+> On client I run
+>     mount -v SERVER:/PATH /mnt
+> and I get
+> mount.nfs: trying text-based options 'vers=4,addr=192.168.1.3,clientaddr=192.168.1.2'
+> mount.nfs: mount(2): Connection refused
+> 
+> repeating ever 10 seconds or so.  It eventually times out after 2 minutes.
+> 
+> Same client to a 3.10 server I get the same behaviour.
+> 3.2.0 client and 3.10 server, same behaviour again.
+> 
+> I have noticed that sometimes when I stop the NFS server the registration
+> with rpcbind doesn't go away.  Not often, but sometimes.  I wonder if that
+> could be confusing something?  Can you check that nfsv4 has been
+> de-registered from rpcbind?
+> 
+> I note you are getting the error:
+> 
+>> mount.nfs: portmap query failed: RPC: Remote system error - Connection refused
+> 
+> This seems to suggest that rpcbind isn't running.  Yet when I kill rpcbind
+> and try a v3 mount I get
+> 
+>   mount.nfs: portmap query failed: RPC: Unable to receive - Connection refused
+> 
+> which is slightly different, so presumably there is a different cause in your
+> case.
+> 
+> Maybe you could turn on some rpcdebug tracing to see what is happening?
+Ok... I had to dial back my client to an older kernel (3.12)
+to start seeing what you were seeing... 
 
-Actually it looks like there's an easy enough way to distinguish when we
-need mnt_want_write and when we don't; hopefully the following does the
-job.
+I would make one change and one comment... The change I would
+like to make (I'll re-post it) is to ping the server to see
+if v4 came up instead of asking rpcbind if its registered. 
+Code wise I think it cleaner and quicker plus I'm not sure
+its a good idea to tie v4 and rpcbind together... 
 
---b.
+My comment is this... This code become obsolete with the 3.13
+kernel because the kernel never returns the timeout or the
+ECONNREFUSED... The mount just spins in the kernel until
+interrupted. 
 
-commit b0f5cd115e811a146a6e1a4dd1e7cb85808cca23
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Mon Feb 24 14:59:47 2014 -0500
-
-    nfsd: notify_change needs elevated write count
-    
-    Looks like this bug has been here since these write counts were
-    introduced, not sure why it was just noticed now.
-    
-    Thanks also to Jan Kara for pointing out the problem.
-    
-    Reported-by: Matthew Rahtz <mrahtz@rapitasystems.com>
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 6d7be3f..eea5ad1 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -404,6 +404,7 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
- 	umode_t		ftype = 0;
- 	__be32		err;
- 	int		host_err;
-+	bool		get_write_count;
- 	int		size_change = 0;
- 
- 	if (iap->ia_valid & (ATTR_ATIME | ATTR_MTIME | ATTR_SIZE))
-@@ -411,10 +412,18 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
- 	if (iap->ia_valid & ATTR_SIZE)
- 		ftype = S_IFREG;
- 
-+	/* Callers that do fh_verify should do the fh_want_write: */
-+	get_write_count = !fhp->fh_dentry;
-+
- 	/* Get inode */
- 	err = fh_verify(rqstp, fhp, ftype, accmode);
- 	if (err)
- 		goto out;
-+	if (get_write_count) {
-+		host_err = fh_want_write(fhp);
-+		if (host_err)
-+			return nfserrno(host_err);
-+	}
- 
- 	dentry = fhp->fh_dentry;
- 	inode = dentry->d_inode;
+steved.
