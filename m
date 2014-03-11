@@ -1,110 +1,102 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:44774 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:53498 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753109AbaCNTTw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 14 Mar 2014 15:19:52 -0400
-Date: Fri, 14 Mar 2014 15:19:48 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org, Al Viro <viro@ZenIV.linux.org.uk>
-Subject: Re: [PATCH 3/5] nfs: convert nfs_rename to use async_rename
- infrastructure
-Message-ID: <20140314151948.0f6a3b28@tlielax.poochiereds.net>
-In-Reply-To: <1394819225-13713-4-git-send-email-jlayton@redhat.com>
-References: <1394819225-13713-1-git-send-email-jlayton@redhat.com>
-	<1394819225-13713-4-git-send-email-jlayton@redhat.com>
+	id S1755577AbaCKW4J (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 11 Mar 2014 18:56:09 -0400
+Message-ID: <531F9486.6050504@RedHat.com>
+Date: Tue, 11 Mar 2014 18:56:06 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] mount.nfs: background mount now do directly into background
+References: <1394284964-12997-1-git-send-email-steved@redhat.com> <E50361D2-FB5A-4A1D-BBE2-8DA25C09D865@primarydata.com>
+In-Reply-To: <E50361D2-FB5A-4A1D-BBE2-8DA25C09D865@primarydata.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 14 Mar 2014 13:47:03 -0400
-Jeff Layton <jlayton@redhat.com> wrote:
 
-> There isn't much sense in maintaining two separate versions of rename
-> code. Convert nfs_rename to use the asynchronous rename infrastructure
-> that nfs_sillyrename uses, and emulate synchronous behavior by having
-> the task just wait on the reply.
+
+On 03/11/2014 05:13 PM, Trond Myklebust wrote:
 > 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  fs/nfs/dir.c | 26 +++++++++++++++++++++-----
->  1 file changed, 21 insertions(+), 5 deletions(-)
+> On Mar 8, 2014, at 8:22, Steve Dickson <SteveD@redhat.com> wrote:
 > 
-> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-> index 4a48fe4b84b6..70099b402b0d 100644
-> --- a/fs/nfs/dir.c
-> +++ b/fs/nfs/dir.c
-> @@ -1911,6 +1911,7 @@ int nfs_rename(struct inode *old_dir, struct dentry *old_dentry,
->  	struct inode *old_inode = old_dentry->d_inode;
->  	struct inode *new_inode = new_dentry->d_inode;
->  	struct dentry *dentry = NULL, *rehash = NULL;
-> +	struct rpc_task *task;
->  	int error = -EBUSY;
->  
->  	dfprintk(VFS, "NFS: rename(%pd2 -> %pd2, ct=%d)\n",
-> @@ -1958,23 +1959,38 @@ int nfs_rename(struct inode *old_dir, struct dentry *old_dentry,
->  	if (new_inode != NULL)
->  		NFS_PROTO(new_inode)->return_delegation(new_inode);
->  
-> -	error = NFS_PROTO(old_dir)->rename(old_dir, &old_dentry->d_name,
-> -					   new_dir, &new_dentry->d_name);
-> +	task = nfs_async_rename(old_dir, new_dir, old_dentry, new_dentry, NULL);
-> +	if (IS_ERR(task)) {
-> +		error = PTR_ERR(task);
-> +		goto out_dput;
-> +	}
-> +
-> +	error = rpc_wait_for_completion_task(task);
-> +	if (error == 0)
-> +		error = task->tk_status;
-> +	rpc_put_task(task);
->  	nfs_mark_for_revalidate(old_inode);
->  out:
->  	if (rehash)
->  		d_rehash(rehash);
->  	trace_nfs_rename_exit(old_dir, old_dentry,
->  			new_dir, new_dentry, error);
-> -	if (!error) {
-> +	switch (error) {
-> +	case 0:
->  		if (new_inode != NULL)
->  			nfs_drop_nlink(new_inode);
->  		d_move(old_dentry, new_dentry);
->  		nfs_set_verifier(new_dentry,
->  					nfs_save_change_attribute(new_dir));
-> -	} else if (error == -ENOENT)
-> +		break;
-> +	case -ENOENT:
->  		nfs_dentry_handle_enoent(old_dentry);
-> -
-> +		break;
-> +	case -ERESTARTSYS:
-> +		d_drop(old_dentry);
-> +		d_drop(new_dentry);
+>> Modern day kernel will no longer return all timeout
+>> errors instead the process spins endlessly in the kernel.
+>> This behavior will cause the foreground mount to hang, never
+>> allowing the mount to go into background.
+>>
+>> So this patch eliminates the foreground mount cause
+>> background mounts to go directly into background
+>>
+>> Signed-off-by: Steve Dickson <steved@redhat.com>
+>> ---
+>> utils/mount/stropts.c |   31 ++++++++-----------------------
+>> 1 files changed, 8 insertions(+), 23 deletions(-)
+>>
+>> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+>> index a642394..92a7245 100644
+>> --- a/utils/mount/stropts.c
+>> +++ b/utils/mount/stropts.c
+>> @@ -913,28 +913,6 @@ static int nfsmount_fg(struct nfsmount_info *mi)
+>> }
+>>
+>> /*
+>> - * Handle "background" NFS mount [first try]
+>> - *
+>> - * Returns a valid mount command exit code.
+>> - *
+>> - * EX_BG should cause the caller to fork and invoke nfsmount_child.
+>> - */
+>> -static int nfsmount_parent(struct nfsmount_info *mi)
+>> -{
+>> -	if (nfs_try_mount(mi))
+>> -		return EX_SUCCESS;
+>> -
+>> -	/* retry background mounts when the server is not up */
+>> -	if (nfs_is_permanent_error(errno) && errno != EOPNOTSUPP) {
+>> -		mount_error(mi->spec, mi->node, errno);
+>> -		return EX_FAIL;
+>> -	}
+>> -
+>> -	sys_mount_errors(mi->hostname, errno, 1, 1);
+>> -	return EX_BG;
+>> -}
+>> -
+>> -/*
+>>  * Handle "background" NFS mount [retry daemon]
+>>  *
+>>  * Returns a valid mount command exit code: EX_SUCCESS if successful,
+>> @@ -982,7 +960,14 @@ static int nfsmount_child(struct nfsmount_info *mi)
+>> static int nfsmount_bg(struct nfsmount_info *mi)
+>> {
+>> 	if (!mi->child)
+>> -		return nfsmount_parent(mi);
+>> +		/* 
+>> +		 * Modern day kernels no longer return all 
+>> +		 * timeouts errors in all cases, instead 
+>> +		 * the process spins in the kernel, which 
+>> +		 * will hang a foreground mount. So background
+>> +		 * mounts have to go directly into background
+>> +		 */
+>> +		return EX_BG;
+>> 	else
+>> 		return nfsmount_child(mi);
+>> }
+> 
+> Hi Steve,
+> 
+> Doesn’t this mean that ‘mount.nfs’ will no longer attempt to wait 
+> for the mount to complete?
+Yes. The foreground will no longer be tried....
 
-Al pointed out to me on IRC that the -ERESTARTSYS handling is probably
-not correct for directories. If the old/new_dentries have children then
-it's not safe to just d_drop them. Since the sillyrename code never
-operates on directories, it's safe to do it there, but nfs_rename is
-different.
+> That’s why I suggested having the parent set a timer, and then 
+> waiting for whichever comes first out of SIGCHLD or SIGALRM (indicating 
+> either that the child mount process is done mounting 
+> or that the timeout occurred).
+Why wait? Kernels today no longer return on timeouts or ECONNREFUSED
+so instead of have the foreground mounts hang forever why not
+just let the background mounts hang, forever?
 
-I think what we probably ought to do there is replace those with:
-
-        nfs_force_lookup_revalidate(old_dir);
-        nfs_force_lookup_revalidate(new_dir);
-
-...or possibly just do that in the event that old_dentry->d_inode
-refers to a directory and d_drop the dentries otherwise.
-
-Thoughts?
-
-> +	}
-> +out_dput:
->  	/* new dentry created? */
->  	if (dentry)
->  		dput(dentry);
-
-
--- 
-Jeff Layton <jlayton@redhat.com>
+steved.
