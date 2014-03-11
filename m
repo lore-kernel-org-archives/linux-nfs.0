@@ -1,106 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:39250 "EHLO fieldses.org"
+Received: from mx11.netapp.com ([216.240.18.76]:31396 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751153AbaCaU7H (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 31 Mar 2014 16:59:07 -0400
-Date: Mon, 31 Mar 2014 16:58:59 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Cc: wengmeiling.weng@huawei.com, greg@kroah.com, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, devel@openvz.org
-Subject: Re: [PATCH] nfsd: check passed socket's net matches NFSd
- superblock's one
-Message-ID: <20140331205859.GB20024@fieldses.org>
-References: <20140226135000.11521.30339.stgit@localhost.localdomain>
+	id S1753644AbaCKVLR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 11 Mar 2014 17:11:17 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
+Subject: [PATCH] nfs: Don't assume we have a security structure
+Date: Tue, 11 Mar 2014 17:11:14 -0400
+Message-ID: <1394572274-16474-1-git-send-email-Anna.Schumaker@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140226135000.11521.30339.stgit@localhost.localdomain>
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Applying, sorry for the delay.--b.
+If the i_security field isn't set then security_dentry_init_security()
+won't initialize some of the values used by the security label.  This
+causes my client to hit a BUG_ON() while encoding a label of size
+-2128927414.
 
-On Wed, Feb 26, 2014 at 04:50:01PM +0300, Stanislav Kinsbursky wrote:
-> There could be a case, when NFSd file system is mounted in network, different
-> to socket's one, like below:
-> 
-> "ip netns exec" creates new network and mount namespace, which duplicates NFSd
-> mount point, created in init_net context. And thus NFS server stop in nested
-> network context leads to RPCBIND client destruction in init_net.
-> Then, on NFSd start in nested network context, rpc.nfsd process creates socket
-> in nested net and passes it into "write_ports", which leads to RPCBIND sockets
-> creation in init_net context because of the same reason (NFSd monut point was
-> created in init_net context). An attempt to register passed socket in nested
-> net leads to panic, because no RPCBIND client present in nexted network
-> namespace.
-> 
-> This patch add check that passed socket's net matches NFSd superblock's one.
-> And returns -EINVAL error to user psace otherwise.
-> 
-> v2: Put socket on exit.
-> 
-> Reported-by: Weng Meiling <wengmeiling.weng@huawei.com>
-> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-> Cc: stable@vger.kernel.org
-> ---
->  fs/nfsd/nfsctl.c               |    5 +++++
->  include/linux/sunrpc/svcsock.h |    1 +
->  net/sunrpc/svcsock.c           |   16 ++++++++++++++++
->  3 files changed, 22 insertions(+), 0 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-> index 7f55517..f34d9de 100644
-> --- a/fs/nfsd/nfsctl.c
-> +++ b/fs/nfsd/nfsctl.c
-> @@ -699,6 +699,11 @@ static ssize_t __write_ports_addfd(char *buf, struct net *net)
->  	if (err != 0 || fd < 0)
->  		return -EINVAL;
->  
-> +	if (svc_alien_sock(net, fd)) {
-> +		printk(KERN_ERR "%s: socket net is different to NFSd's one\n", __func__);
-> +		return -EINVAL;
-> +	}
-> +
->  	err = nfsd_create_serv(net);
->  	if (err != 0)
->  		return err;
-> diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
-> index 62fd1b7..947009e 100644
-> --- a/include/linux/sunrpc/svcsock.h
-> +++ b/include/linux/sunrpc/svcsock.h
-> @@ -56,6 +56,7 @@ int		svc_recv(struct svc_rqst *, long);
->  int		svc_send(struct svc_rqst *);
->  void		svc_drop(struct svc_rqst *);
->  void		svc_sock_update_bufs(struct svc_serv *serv);
-> +bool		svc_alien_sock(struct net *net, int fd);
->  int		svc_addsock(struct svc_serv *serv, const int fd,
->  					char *name_return, const size_t len);
->  void		svc_init_xprt_sock(void);
-> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-> index b6e59f0..d06cb87 100644
-> --- a/net/sunrpc/svcsock.c
-> +++ b/net/sunrpc/svcsock.c
-> @@ -1397,6 +1397,22 @@ static struct svc_sock *svc_setup_socket(struct svc_serv *serv,
->  	return svsk;
->  }
->  
-> +bool svc_alien_sock(struct net *net, int fd)
-> +{
-> +	int err;
-> +	struct socket *sock = sockfd_lookup(fd, &err);
-> +	bool ret = false;
-> +
-> +	if (!sock)
-> +		goto out;
-> +	if (sock_net(sock->sk) != net)
-> +		ret = true;
-> +	sockfd_put(sock);
-> +out:
-> +	return ret;
-> +}
-> +EXPORT_SYMBOL_GPL(svc_alien_sock);
-> +
->  /**
->   * svc_addsock - add a listener socket to an RPC service
->   * @serv: pointer to RPC service to which to add a new listener
-> 
+I hit this bug while testing on a client without SELinux installed.
+
+Signed-off-by: Anna Schumaker <anna.schumaker@netapp.com>
+---
+ fs/nfs/nfs4proc.c | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index b8cd560..994ccc2 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -105,6 +105,9 @@ nfs4_label_init_security(struct inode *dir, struct dentry *dentry,
+ 	if (nfs_server_capable(dir, NFS_CAP_SECURITY_LABEL) == 0)
+ 		return NULL;
+ 
++	if (!dir->i_security)
++		return NULL;
++
+ 	err = security_dentry_init_security(dentry, sattr->ia_mode,
+ 				&dentry->d_name, (void **)&label->label, &label->len);
+ 	if (err == 0)
+-- 
+1.9.0
+
