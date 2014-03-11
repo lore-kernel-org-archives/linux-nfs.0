@@ -1,46 +1,97 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mout.perfora.net ([74.208.4.195]:52816 "EHLO mout.perfora.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751817AbaCFStL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 6 Mar 2014 13:49:11 -0500
-Date: Thu, 6 Mar 2014 13:48:47 -0500
-From: Jim Rees <rees@umich.edu>
-To: Andrew Martin <amartin@xes-inc.com>
-Cc: bhawley@luminex.com, NeilBrown <neilb@suse.de>,
-        linux-nfs-owner@vger.kernel.org, linux-nfs@vger.kernel.org
-Subject: Re: Optimal NFS mount options to safely allow interrupts and
- timeouts on newer kernels
-Message-ID: <20140306184847.GA18850@umich.edu>
-References: <1696396609.119284.1394040541217.JavaMail.zimbra@xes-inc.com>
- <1853694865.210849.1394082223818.JavaMail.zimbra@xes-inc.com>
- <20140306163721.0edfb498@notabene.brown>
- <1709792528-1394084840-cardhu_decombobulator_blackberry.rim.net-1367662481-@b5.c4.bise6.blackberry>
- <764210708.28409.1394119821635.JavaMail.zimbra@xes-inc.com>
- <20140306162208.GA18207@umich.edu>
- <1094203678.52139.1394124222574.JavaMail.zimbra@xes-inc.com>
- <20140306173632.GA18545@umich.edu>
- <1397912955.101159.1394130906695.JavaMail.zimbra@xes-inc.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1397912955.101159.1394130906695.JavaMail.zimbra@xes-inc.com>
+Received: from mail-qa0-f42.google.com ([209.85.216.42]:34426 "EHLO
+	mail-qa0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753644AbaCKVN6 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Mar 2014 17:13:58 -0400
+Received: by mail-qa0-f42.google.com with SMTP id k15so9275048qaq.1
+        for <linux-nfs@vger.kernel.org>; Tue, 11 Mar 2014 14:13:57 -0700 (PDT)
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
+Subject: Re: [PATCH] mount.nfs: background mount now do directly into background
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+In-Reply-To: <1394284964-12997-1-git-send-email-steved@redhat.com>
+Date: Tue, 11 Mar 2014 17:13:55 -0400
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Message-Id: <E50361D2-FB5A-4A1D-BBE2-8DA25C09D865@primarydata.com>
+References: <1394284964-12997-1-git-send-email-steved@redhat.com>
+To: Dickson Steve <SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Andrew Martin wrote:
 
-  > From: "Jim Rees" <rees@umich.edu>
-  > Why would a bunch of blocked apaches cause high load and reboot?
-  What I believe happens is the apache child processes go to serve
-  these requests and then block in uninterruptable sleep. Thus, there
-  are fewer and fewer child processes to handle new incoming requests.
-  Eventually, apache would normally kill said children (e.g after a 
-  child handles a certain number of requests), but it cannot kill them
-  because they are in uninterruptable sleep. As more and more incoming
-  requests are queued (and fewer and fewer child processes are available
-  to serve the requests), the load climbs.
-  
-But Neil says the sleeps should be interruptible, despite what the man page
-says.
+On Mar 8, 2014, at 8:22, Steve Dickson <SteveD@redhat.com> wrote:
 
-Trond, as far as you know, should a soft mount be interruptible by SIGINT,
-or should it require a SIGKILL?
+> Modern day kernel will no longer return all timeout
+> errors instead the process spins endlessly in the kernel.
+> This behavior will cause the foreground mount to hang, never
+> allowing the mount to go into background.
+> 
+> So this patch eliminates the foreground mount cause
+> background mounts to go directly into background
+> 
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+> ---
+> utils/mount/stropts.c |   31 ++++++++-----------------------
+> 1 files changed, 8 insertions(+), 23 deletions(-)
+> 
+> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
+> index a642394..92a7245 100644
+> --- a/utils/mount/stropts.c
+> +++ b/utils/mount/stropts.c
+> @@ -913,28 +913,6 @@ static int nfsmount_fg(struct nfsmount_info *mi)
+> }
+> 
+> /*
+> - * Handle "background" NFS mount [first try]
+> - *
+> - * Returns a valid mount command exit code.
+> - *
+> - * EX_BG should cause the caller to fork and invoke nfsmount_child.
+> - */
+> -static int nfsmount_parent(struct nfsmount_info *mi)
+> -{
+> -	if (nfs_try_mount(mi))
+> -		return EX_SUCCESS;
+> -
+> -	/* retry background mounts when the server is not up */
+> -	if (nfs_is_permanent_error(errno) && errno != EOPNOTSUPP) {
+> -		mount_error(mi->spec, mi->node, errno);
+> -		return EX_FAIL;
+> -	}
+> -
+> -	sys_mount_errors(mi->hostname, errno, 1, 1);
+> -	return EX_BG;
+> -}
+> -
+> -/*
+>  * Handle "background" NFS mount [retry daemon]
+>  *
+>  * Returns a valid mount command exit code: EX_SUCCESS if successful,
+> @@ -982,7 +960,14 @@ static int nfsmount_child(struct nfsmount_info *mi)
+> static int nfsmount_bg(struct nfsmount_info *mi)
+> {
+> 	if (!mi->child)
+> -		return nfsmount_parent(mi);
+> +		/* 
+> +		 * Modern day kernels no longer return all 
+> +		 * timeouts errors in all cases, instead 
+> +		 * the process spins in the kernel, which 
+> +		 * will hang a foreground mount. So background
+> +		 * mounts have to go directly into background
+> +		 */
+> +		return EX_BG;
+> 	else
+> 		return nfsmount_child(mi);
+> }
+
+Hi Steve,
+
+Doesn’t this mean that ‘mount.nfs’ will no longer attempt to wait for the mount to complete? That’s why I suggested having the parent set a timer, and then waiting for whichever comes first out of SIGCHLD or SIGALRM (indicating either that the child mount process is done mounting or that the timeout occurred).
+
+Cheers
+  Trond
+_________________________________
+Trond Myklebust
+Linux NFS client maintainer, PrimaryData
+trond.myklebust@primarydata.com
+
