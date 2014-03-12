@@ -1,96 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pb0-f53.google.com ([209.85.160.53]:36613 "EHLO
-	mail-pb0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752864AbaCNATg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Mar 2014 20:19:36 -0400
-Received: by mail-pb0-f53.google.com with SMTP id rp16so1832771pbb.12
-        for <linux-nfs@vger.kernel.org>; Thu, 13 Mar 2014 17:19:35 -0700 (PDT)
-Message-ID: <53224B13.4040203@primarydata.com>
-Date: Fri, 14 Mar 2014 02:19:31 +0200
-From: Benny Halevy <bhalevy@primarydata.com>
+Received: from mail-ie0-f178.google.com ([209.85.223.178]:58921 "EHLO
+	mail-ie0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752110AbaCLQvY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Mar 2014 12:51:24 -0400
+Received: by mail-ie0-f178.google.com with SMTP id lx4so11001098iec.9
+        for <linux-nfs@vger.kernel.org>; Wed, 12 Mar 2014 09:51:23 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 1/6] NFS: Clean up: revert increase in READDIR RPC buffer max
+	size
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org
+Date: Wed, 12 Mar 2014 12:51:17 -0400
+Message-ID: <20140312165117.15349.8938.stgit@manet.1015granger.net>
+In-Reply-To: <20140312164620.15349.22643.stgit@manet.1015granger.net>
+References: <20140312164620.15349.22643.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-To: linux-nfs <linux-nfs@vger.kernel.org>
-CC: Michael Maymann <michael@maymann.org>
-Subject: Fwd: Re: [nfsv4] PNFS questions
-References: <047d7bf0e158e2cae904f485b5fc@google.com>
-In-Reply-To: <047d7bf0e158e2cae904f485b5fc@google.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Resending as the original message bounced back (html).
+Security labels go with each directory entry, thus they are always
+stored in the page cache, not in the head buffer.  The length of the
+reply that goes in head[0] should not have changed to support
+NFSv4.2 labels.
 
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
--------- Original Message --------
-From: Benny Halevy <bhalevy@primarydata.com>
-Date: Fri, 14 Mar 2014 01:56:44 +0200
-Subject: Re: [nfsv4] PNFS questions
-To: Michael Maymann <michael@maymann.org>, NFS list <linux-nfs@vger.kernel.org>
-Cc: "nfsv4@ietf.org" <nfsv4@ietf.org>
+ fs/nfs/nfs4xdr.c |    3 +--
+ 1 files changed, 1 insertions(+), 2 deletions(-)
 
-Michael, the IETF mailing list is really not the right place to ask about
-commercial solutions in general or linux solutions in particular.
-Cc'ing the linux-nfs mailing list. Comments in line below.
-
-
-On Thu, Mar 13, 2014 at 9:02 PM, Michael Maymann <michael@maymann.org>wrote:
-
-> Hi list,
->
-> I'm setting up a new BIO-HPC facility and are looking for a fault
-> tolerant, scalable, fast and priceeffective storage solution.
->
-> I have been looking at Coraid, Panasas and Lustre, but would like to
-> investigate my options also of building my own PNFS solution. Clients are
-> all Debian based.
->
-> Can anyone recommend:
-> 1. If PNFS is ready for production or if I should stick with a commercial
-> vendor or build a Lustre solution ?
->
-
-There is no pNFS server implementation in upstream linux yet.
-We maintain a development out-of-kernel tree in git://
-linux-nfs.org/~bhalevy/linux-pnfs.git
-but it is not production ready.
-
-
-> 2. PNFS Metadata server SW prefferably for Debian ?
->
-
-ditto #1
-
-
->  3. PNFS Diskshelfs to be used ?
->
-
-In pNFS terminology, these are Data Servers.
-
-
->  4. If AOE (ATA Over Ethernet) would make any sense together with PNFS ?
->
-
-Maybe using the Block layout and AoE as the block storage transport
-protocol.
-
-
->  5. PNFS GUI SW prefferably for Debian ?
->
-
-ditto #1
-
-
-
-> Thanks in advance :-) !
->
-> BR.
-> ~Maymann
->
-> _______________________________________________
-> nfsv4 mailing list
-> nfsv4@ietf.org
-> https://www.ietf.org/mailman/listinfo/nfsv4
->
->
-
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 5be2868..79e1d02 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -203,8 +203,7 @@ static int nfs4_stat_to_errno(int);
+ 				 2 + encode_verifier_maxsz + 5 + \
+ 				nfs4_label_maxsz)
+ #define decode_readdir_maxsz	(op_decode_hdr_maxsz + \
+-				 decode_verifier_maxsz + \
+-				nfs4_label_maxsz + nfs4_fattr_maxsz)
++				 decode_verifier_maxsz)
+ #define encode_readlink_maxsz	(op_encode_hdr_maxsz)
+ #define decode_readlink_maxsz	(op_decode_hdr_maxsz + 1)
+ #define encode_write_maxsz	(op_encode_hdr_maxsz + \
 
