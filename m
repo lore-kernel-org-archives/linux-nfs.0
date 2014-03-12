@@ -1,97 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f42.google.com ([209.85.216.42]:34426 "EHLO
-	mail-qa0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753644AbaCKVN6 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Mar 2014 17:13:58 -0400
-Received: by mail-qa0-f42.google.com with SMTP id k15so9275048qaq.1
-        for <linux-nfs@vger.kernel.org>; Tue, 11 Mar 2014 14:13:57 -0700 (PDT)
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
-Subject: Re: [PATCH] mount.nfs: background mount now do directly into background
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-In-Reply-To: <1394284964-12997-1-git-send-email-steved@redhat.com>
-Date: Tue, 11 Mar 2014 17:13:55 -0400
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Message-Id: <E50361D2-FB5A-4A1D-BBE2-8DA25C09D865@primarydata.com>
-References: <1394284964-12997-1-git-send-email-steved@redhat.com>
-To: Dickson Steve <SteveD@redhat.com>
+Received: from smtp.opengridcomputing.com ([72.48.136.20]:36529 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751321AbaCLUnK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Mar 2014 16:43:10 -0400
+Message-ID: <5320C6DE.4090807@opengridcomputing.com>
+Date: Wed, 12 Mar 2014 15:43:10 -0500
+From: Tom Tucker <tom@opengridcomputing.com>
+MIME-Version: 1.0
+To: Jeff Layton <jlayton@redhat.com>, bfields@fieldses.org
+CC: linux-nfs@vger.kernel.org, swise@opengridcomputing.com,
+        Tom Talpey <tmtalpey@gmail.com>
+Subject: Re: [PATCH] svcrdma: fix offset calculation for non-page aligned
+ sge entries
+References: <1394635867-19089-1-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1394635867-19089-1-git-send-email-jlayton@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi Jeff,
 
-On Mar 8, 2014, at 8:22, Steve Dickson <SteveD@redhat.com> wrote:
 
-> Modern day kernel will no longer return all timeout
-> errors instead the process spins endlessly in the kernel.
-> This behavior will cause the foreground mount to hang, never
-> allowing the mount to go into background.
-> 
-> So this patch eliminates the foreground mount cause
-> background mounts to go directly into background
-> 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
+On 3/12/14 9:51 AM, Jeff Layton wrote:
+> The xdr_off value in dma_map_xdr gets passed to ib_dma_map_page as the
+> offset into the page to be mapped. For the case of the pages array, the
+> existing calculation always seems to end up at 0, which causes data
+> corruption when a non-page-aligned READ request comes in. The server ends
+> up doing the RDMA_WRITE from the wrong part of the page.
+>
+> Override the xdr_off value with the page_base in that situation to fix
+> the issue. Obviously, this method can't contend with a page_base that is
+> larger than PAGE_SIZE.
+I think we saw page base > PAGE_SIZE when inter-operating with Sun, but 
+maybe someone else on the list has a clearer recollection.
+
+I am curious, however, why xdr_off was always zero if in fact, page_base 
+was not page aligned.
+
+Thanks,
+Tom
+> I'm not sure if that's ever the case, but add a
+> WARN_ON in the event that that ever happens.
+>
+> Cc: Tom Tucker <tom@opengridcomputing.com>
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
 > ---
-> utils/mount/stropts.c |   31 ++++++++-----------------------
-> 1 files changed, 8 insertions(+), 23 deletions(-)
-> 
-> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-> index a642394..92a7245 100644
-> --- a/utils/mount/stropts.c
-> +++ b/utils/mount/stropts.c
-> @@ -913,28 +913,6 @@ static int nfsmount_fg(struct nfsmount_info *mi)
-> }
-> 
-> /*
-> - * Handle "background" NFS mount [first try]
-> - *
-> - * Returns a valid mount command exit code.
-> - *
-> - * EX_BG should cause the caller to fork and invoke nfsmount_child.
-> - */
-> -static int nfsmount_parent(struct nfsmount_info *mi)
-> -{
-> -	if (nfs_try_mount(mi))
-> -		return EX_SUCCESS;
-> -
-> -	/* retry background mounts when the server is not up */
-> -	if (nfs_is_permanent_error(errno) && errno != EOPNOTSUPP) {
-> -		mount_error(mi->spec, mi->node, errno);
-> -		return EX_FAIL;
-> -	}
-> -
-> -	sys_mount_errors(mi->hostname, errno, 1, 1);
-> -	return EX_BG;
-> -}
-> -
-> -/*
->  * Handle "background" NFS mount [retry daemon]
->  *
->  * Returns a valid mount command exit code: EX_SUCCESS if successful,
-> @@ -982,7 +960,14 @@ static int nfsmount_child(struct nfsmount_info *mi)
-> static int nfsmount_bg(struct nfsmount_info *mi)
-> {
-> 	if (!mi->child)
-> -		return nfsmount_parent(mi);
-> +		/* 
-> +		 * Modern day kernels no longer return all 
-> +		 * timeouts errors in all cases, instead 
-> +		 * the process spins in the kernel, which 
-> +		 * will hang a foreground mount. So background
-> +		 * mounts have to go directly into background
-> +		 */
-> +		return EX_BG;
-> 	else
-> 		return nfsmount_child(mi);
-> }
-
-Hi Steve,
-
-Doesn’t this mean that ‘mount.nfs’ will no longer attempt to wait for the mount to complete? That’s why I suggested having the parent set a timer, and then waiting for whichever comes first out of SIGCHLD or SIGALRM (indicating either that the child mount process is done mounting or that the timeout occurred).
-
-Cheers
-  Trond
-_________________________________
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
+>   net/sunrpc/xprtrdma/svc_rdma_sendto.c | 7 +++++--
+>   1 file changed, 5 insertions(+), 2 deletions(-)
+>
+> diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+> index c1d124dc772b..76e524b428d0 100644
+> --- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+> +++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+> @@ -265,8 +265,11 @@ static dma_addr_t dma_map_xdr(struct svcxprt_rdma *xprt,
+>   		xdr_off -= xdr->head[0].iov_len;
+>   		if (xdr_off < xdr->page_len) {
+>   			/* This offset is in the page list */
+> -			page = xdr->pages[xdr_off >> PAGE_SHIFT];
+> -			xdr_off &= ~PAGE_MASK;
+> +			int pgnum = xdr_off >> PAGE_SHIFT;
+> +
+> +			page = xdr->pages[pgnum];
+> +			WARN_ON(xdr->page_base > PAGE_SIZE);
+> +			xdr_off = pgnum ? 0 : xdr->page_base;
+>   		} else {
+>   			/* This offset is in the tail */
+>   			xdr_off -= xdr->page_len;
 
