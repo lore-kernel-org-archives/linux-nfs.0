@@ -1,70 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f170.google.com ([209.85.223.170]:58567 "EHLO
-	mail-ie0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751469AbaCFVBG convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Mar 2014 16:01:06 -0500
-Received: by mail-ie0-f170.google.com with SMTP id rd18so3376790iec.1
-        for <linux-nfs@vger.kernel.org>; Thu, 06 Mar 2014 13:01:05 -0800 (PST)
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
-Subject: Re: Optimal NFS mount options to safely allow interrupts and timeouts on newer kernels
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-In-Reply-To: <521763040.159828.1394138758307.JavaMail.zimbra@xes-inc.com>
-Date: Thu, 6 Mar 2014 16:01:03 -0500
-Cc: Jim Rees <rees@umich.edu>, bhawley@luminex.com, Brown Neil <neilb@suse.de>,
-        linux-nfs-owner@vger.kernel.org, linux-nfs@vger.kernel.org
-Message-Id: <40C20DD8-9E8D-4625-B98C-A1E61D00AC17@primarydata.com>
-References: <1696396609.119284.1394040541217.JavaMail.zimbra@xes-inc.com> <20140306162208.GA18207@umich.edu> <1094203678.52139.1394124222574.JavaMail.zimbra@xes-inc.com> <20140306173632.GA18545@umich.edu> <1397912955.101159.1394130906695.JavaMail.zimbra@xes-inc.com> <B454F556-9381-4DB7-B864-EC066DBEAC63@primarydata.com> <2043391310.134091.1394135196565.JavaMail.zimbra@xes-inc.com> <76B038DA-3E86-4C46-BFB6-928BFB8202D8@primarydata.com> <521763040.159828.1394138758307.JavaMail.zimbra@xes-inc.com>
-To: Andrew Martin <amartin@xes-inc.com>
+Received: from mail-ie0-f174.google.com ([209.85.223.174]:49991 "EHLO
+	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752216AbaCLQwB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Mar 2014 12:52:01 -0400
+Received: by mail-ie0-f174.google.com with SMTP id rp18so10849393iec.33
+        for <linux-nfs@vger.kernel.org>; Wed, 12 Mar 2014 09:52:00 -0700 (PDT)
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 4/6] NFS: advertise only supported callback netids
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org
+Date: Wed, 12 Mar 2014 12:51:47 -0400
+Message-ID: <20140312165147.15349.49995.stgit@manet.1015granger.net>
+In-Reply-To: <20140312164620.15349.22643.stgit@manet.1015granger.net>
+References: <20140312164620.15349.22643.stgit@manet.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+NFSv4.0 clients use the SETCLIENTID operation to inform NFS servers
+how to contact a client's callback service.  If a server cannot
+contact a client's callback service, that server will not delegate
+to that client, which results in a performance loss.
 
-On Mar 6, 2014, at 15:45, Andrew Martin <amartin@xes-inc.com> wrote:
+Our client advertises "rdma" as the callback netid when the forward
+channel is "rdma".  But our client always starts only "tcp" and
+"tcp6" callback services.
 
-> ----- Original Message -----
->> From: "Trond Myklebust" <trond.myklebust@primarydata.com>
->>> I attempted to get a backtrace from one of the uninterruptable apache
->>> processes:
->>> echo w > /proc/sysrq-trigger
->>> 
->>> Here's one example:
->>> [1227348.003904] apache2       D 0000000000000000     0 10175   1773
->>> 0x00000004
->>> [1227348.003906]  ffff8802813178c8 0000000000000082 0000000000015e00
->>> 0000000000015e00
->>> [1227348.003908]  ffff8801d88f03d0 ffff880281317fd8 0000000000015e00
->>> ffff8801d88f0000
->>> [1227348.003910]  0000000000015e00 ffff880281317fd8 0000000000015e00
->>> ffff8801d88f03d0
->>> [1227348.003912] Call Trace:
->>> [1227348.003918]  [<ffffffffa00a5ca0>] ? rpc_wait_bit_killable+0x0/0x40
->>> [sunrpc]
->>> [1227348.003923]  [<ffffffffa00a5cc4>] rpc_wait_bit_killable+0x24/0x40
->>> [sunrpc]
->>> [1227348.003925]  [<ffffffff8156a41f>] __wait_on_bit+0x5f/0x90
->>> [1227348.003930]  [<ffffffffa00a5ca0>] ? rpc_wait_bit_killable+0x0/0x40
->>> [sunrpc]
->>> [1227348.003932]  [<ffffffff8156a4c8>] out_of_line_wait_on_bit+0x78/0x90
->>> [1227348.003934]  [<ffffffff81086790>] ? wake_bit_function+0x0/0x40
->>> [1227348.003939]  [<ffffffffa00a6611>] __rpc_execute+0x191/0x2a0 [sunrpc]
->>> [1227348.003945]  [<ffffffffa00a6746>] rpc_execute+0x26/0x30 [sunrpc]
->> 
->> That basically means that the process is hanging in the RPC layer, somewhere
->> in the state machine. ‘echo 0 >/proc/sys/sunrpc/rpc_debug’ as the ‘root’
->> user should give us a dump of which state these RPC calls are in. Can you
->> please try that?
-> Yes I will definitely run that the next time it happens, but since it occurs
-> sporadically (and I have not yet found a way to reproduce it on demand), it 
-> could be days before it occurs again. I'll also run "netstat -tn" to check the
-> TCP connections the next time this happens.
+Instead of advertising the forward channel netid, advertise "tcp"
+or "tcp6" as the callback netid, based on the value of the
+clientaddr mount option, since those are what our client currently
+supports.
 
-If you are comfortable applying patches and compiling your own kernels, then you might want to try applying the fix for a certain out-of-socket-buffer race that Neil reported, and that I suspect you may be hitting. The patch has been sent to the ‘stable kernel’ series, and so should appear soon in Debian’s own kernels, but if this is bothering you now, then go for it…
+Bugzilla: https://bugzilla.kernel.org/show_bug.cgi?id=69171
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=06ea0bfe6e6043cb56a78935a19f6f8ebc636226
+ fs/nfs/nfs4proc.c |   24 ++++++++++++++++++------
+ 1 files changed, 18 insertions(+), 6 deletions(-)
 
-_________________________________
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 15052b8..09dd967 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -4883,6 +4883,20 @@ nfs4_init_uniform_client_string(const struct nfs_client *clp,
+ 				nodename);
+ }
+ 
++/*
++ * nfs4_callback_up_net() starts only "tcp" and "tcp6" callback
++ * services.  Advertise one based on the address family of the
++ * clientaddr.
++ */
++static unsigned int
++nfs4_init_callback_netid(const struct nfs_client *clp, char *buf, size_t len)
++{
++	if (strchr(clp->cl_ipaddr, ':') != NULL)
++		return scnprintf(buf, len, "tcp6");
++	else
++		return scnprintf(buf, len, "tcp");
++}
++
+ /**
+  * nfs4_proc_setclientid - Negotiate client ID
+  * @clp: state data structure
+@@ -4924,12 +4938,10 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
+ 						setclientid.sc_name,
+ 						sizeof(setclientid.sc_name));
+ 	/* cb_client4 */
+-	rcu_read_lock();
+-	setclientid.sc_netid_len = scnprintf(setclientid.sc_netid,
+-				sizeof(setclientid.sc_netid), "%s",
+-				rpc_peeraddr2str(clp->cl_rpcclient,
+-							RPC_DISPLAY_NETID));
+-	rcu_read_unlock();
++	setclientid.sc_netid_len =
++				nfs4_init_callback_netid(clp,
++						setclientid.sc_netid,
++						sizeof(setclientid.sc_netid));
+ 	setclientid.sc_uaddr_len = scnprintf(setclientid.sc_uaddr,
+ 				sizeof(setclientid.sc_uaddr), "%s.%u.%u",
+ 				clp->cl_ipaddr, port >> 8, port & 255);
 
