@@ -1,150 +1,161 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:7826 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:33849 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751692AbaCGUUZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 7 Mar 2014 15:20:25 -0500
-Message-ID: <531A2A05.4040006@RedHat.com>
-Date: Fri, 07 Mar 2014 15:20:21 -0500
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
+	id S1754606AbaCLP3Y convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Mar 2014 11:29:24 -0400
+Date: Wed, 12 Mar 2014 11:29:09 -0400
+From: Jeffrey Layton <jlayton@redhat.com>
 To: Trond Myklebust <trond.myklebust@primarydata.com>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] Stop Background mounts hang from hanging
-References: <1394204563-1166-1-git-send-email-steved@redhat.com> <D803A861-E660-4D20-BDE1-00D8C45A1228@primarydata.com> <5319EA25.5060304@RedHat.com> <7DA3E2CF-F07F-448E-A907-C4BFE2B36CB4@primarydata.com> <531A1D0A.9000403@RedHat.com> <C34A5744-BD7F-4A93-9269-724B4B1A29A7@primarydata.com>
-In-Reply-To: <C34A5744-BD7F-4A93-9269-724B4B1A29A7@primarydata.com>
-Content-Type: text/plain; charset=windows-1252
+Cc: Steve Wise <swise@opengridcomputing.com>,
+        Dr Fields James Bruce <bfields@fieldses.org>,
+        Tucker Tom <tom@opengridcomputing.com>, Yan Burman <yanb@mellanox.com>,
+        linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org,
+        Or Gerlitz <ogerlitz@mellanox.com>,
+        Lever Charles Edward <chuck.lever@oracle.com>
+Subject: Re: NFS over RDMA crashing
+Message-ID: <20140312112909.58788783@ipyr.poochiereds.net>
+In-Reply-To: <56B1FEC7-8514-4B2B-851B-7BC965A26AA8@primarydata.com>
+References: <51127B3F.2090200@mellanox.com>
+	<20130206222435.GL16417@fieldses.org>
+	<20130207164134.GK3222@fieldses.org>
+	<003601cf3a26$94523ee0$bcf6bca0$@opengridcomputing.com>
+	<005d01cf3a45$94ced0d0$be6c7270$@opengridcomputing.com>
+	<531B47B3.1070503@opengridcomputing.com>
+	<531B6D90.2090208@opengridcomputing.com>
+	<531B79F8.2020008@opengridcomputing.com>
+	<20140312093300.7a434cbb@tlielax.poochiereds.net>
+	<731A7629-7DBB-4FC3-8F21-70380705ED4E@primarydata.com>
+	<20140312102806.435847a7@ipyr.poochiereds.net>
+	<56B1FEC7-8514-4B2B-851B-7BC965A26AA8@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 03/07/2014 02:45 PM, Trond Myklebust wrote:
-> 
-> On Mar 7, 2014, at 14:24, Steve Dickson <SteveD@redhat.com> wrote:
-> 
->> Sorry... a long "lunch"... It is Friday! ;-) 
->>
->>
->> On 03/07/2014 11:10 AM, Trond Myklebust wrote:
->>>
->>> On Mar 7, 2014, at 10:47, Steve Dickson <SteveD@redhat.com> wrote:
->>>
->>>>
->>>>
->>>> On 03/07/2014 10:36 AM, Trond Myklebust wrote:
->>>>>
->>>>> On Mar 7, 2014, at 10:02, Steve Dickson <steved@redhat.com> wrote:
->>>>>
->>>>>> Background mounts hang forever due to the kernel not returning 
->>>>>> the time out error. The proposed fix is twofold, one in the kernel 
->>>>>> and one in the mounting code.
->>>>>>
->>>>>> The kernel patch stop the server trunking code from endlessly 
->>>>>> looping in the kernel on -ETIMEDOUT errors. Instead, the code 
->>>>>> will now return the error, allowing the mount to go into 
->>>>>> the background.
->>>>>>
->>>>>> Unfortunately, it takes over 5 mins for this timeout to 
->>>>>> happen, due the default retry strategy, which is unacceptable 
->>>>>> for background mounts. 
->>>>>>
->>>>>> So the patch I will be proposing for the mount code will be 
->>>>>> to append the "retrans=1,timeo=100" mount options to the parent
->>>>>> mount of the background mount (when they don't exist). This
->>>>>> causes the parent mount to timeout in ~25sec. 
->>>>>
->>>>> We already have a ‘retry=‘ option for mount.nfs. According to the manpage, that should be used to specify the timeout value. Why not reuse that?
->>>> Because it didn't work... retrans and timeo had most effect on the initial times set
->>>> in  nfs_init_timeout_values()
->>>>
->>>>>
->>>>> Also, it really would be better if that timeout were under control of the mount utility itself. 
->>>> Using those options, it is under the control of mount, unless I'm misunderstanding you...
->>>>
->>>>> How about if we allow the use of alarm() to interrupt that particular RPC call?
->>>> Why just use the mechanisms that already exist? Why invent a new one? Was my reasoning...
->>>
->>> alarm() is hardly a ‘new’ mechanism. It is the standard way of doing 
->>> this thing in user space, and should, in fact, already work with existing kernels, 
->>> since they allow fatal signals to interrupt all killable NFS and RPC sleeps.
->> I meant a new mechanism to the mount command... not that alarm() is a new mechanism.
->>
->>>
->>> The point is that relying on ‘retrans’ and ‘timeo’ in this context is likely to be frustrating. 
->>> ‘retrans’ and ‘timeo’ act on a per RPC call, and there are many RPC calls involved in a single 
->>> NFSv4/v4.1 mount call. 
->> Right and that's what I was thinking we needed... 
->>
->> Reading the nfs(5) man page it says "a timeout or failure causes the 
->> mount(8) command to fork a child..." The key word being "a". So we what 
->> the mount to go into background on the first timeout, which what happens 
->> when you set ‘retrans’ and ‘timeo’.
->>
->> Plus it appears v3 works that way... On the first timeout the mount command forks…
-> 
-> Why do we document the internals of how ‘mount’ operates? There is no reason why the user should care.
-I guess I never looked at it that way... Documenting the cause and effect 
-of a mount option was a good thing.. 
+On Wed, 12 Mar 2014 11:03:52 -0400
+Trond Myklebust <trond.myklebust@primarydata.com> wrote:
 
 > 
-> In fact, a much better way to achieve the exact same result entirely in user space would be simply 
-> to fork immediately, set a timer, and then wait for either SIGCHLD to tell us that the 
-> child is done mounting, or SIGALRM to tell us that we've timed out.
-As soon as I got push back from the kernel not returning valid error... ;-) 
-I thought about forking immediately and just letting the mount endlessly 
-spin in the kernel... 8-)
-
-I just don't think introducing interrupts/signals to in-flight RPCs is 
-a good idea... 
- 
+> On Mar 12, 2014, at 10:28, Jeffrey Layton <jlayton@redhat.com> wrote:
 > 
->>> Furthermore, the server may reply with something like DELAY or equivalent, 
->>> which doesn’t trigger a timeout, but keeps the kernel retrying the same RPC 
->>> call over and over again.
->>> Then there is the possibility that the hang may occur somewhere other than in the 
->>> one place you chose (for instance in the path walk). What then?
->> I was say that's a kernel bug... a timeout is a very legitimate error to return. 
+> > On Wed, 12 Mar 2014 10:05:24 -0400
+> > Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+> > 
+> >> 
+> >> On Mar 12, 2014, at 9:33, Jeff Layton <jlayton@redhat.com> wrote:
+> >> 
+> >>> On Sat, 08 Mar 2014 14:13:44 -0600
+> >>> Steve Wise <swise@opengridcomputing.com> wrote:
+> >>> 
+> >>>> On 3/8/2014 1:20 PM, Steve Wise wrote:
+> >>>>> 
+> >>>>>> I removed your change and started debugging original crash
+> >>>>>> that happens on top-o-tree.   Seems like rq_next_pages is
+> >>>>>> screwed up.  It should always be >= rq_respages, yes?  I added
+> >>>>>> a BUG_ON() to assert this in rdma_read_xdr() we hit the
+> >>>>>> BUG_ON(). Look
+> >>>>>> 
+> >>>>>> crash> svc_rqst.rq_next_page 0xffff8800b84e6000
+> >>>>>> rq_next_page = 0xffff8800b84e6228
+> >>>>>> crash> svc_rqst.rq_respages 0xffff8800b84e6000
+> >>>>>> rq_respages = 0xffff8800b84e62a8
+> >>>>>> 
+> >>>>>> Any ideas Bruce/Tom?
+> >>>>>> 
+> >>>>> 
+> >>>>> Guys, the patch below seems to fix the problem.  Dunno if it is 
+> >>>>> correct though.  What do you think?
+> >>>>> 
+> >>>>> diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c 
+> >>>>> b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+> >>>>> index 0ce7552..6d62411 100644
+> >>>>> --- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+> >>>>> +++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+> >>>>> @@ -90,6 +90,7 @@ static void rdma_build_arg_xdr(struct svc_rqst
+> >>>>> *rqstp, sge_no++;
+> >>>>>      }
+> >>>>>      rqstp->rq_respages = &rqstp->rq_pages[sge_no];
+> >>>>> +       rqstp->rq_next_page = rqstp->rq_respages;
+> >>>>> 
+> >>>>>      /* We should never run out of SGE because the limit is
+> >>>>> defined to
+> >>>>>       * support the max allowed RPC data length
+> >>>>> @@ -276,6 +277,7 @@ static int fast_reg_read_chunks(struct 
+> >>>>> svcxprt_rdma *xprt,
+> >>>>> 
+> >>>>>      /* rq_respages points one past arg pages */
+> >>>>>      rqstp->rq_respages = &rqstp->rq_arg.pages[page_no];
+> >>>>> +       rqstp->rq_next_page = rqstp->rq_respages;
+> >>>>> 
+> >>>>>      /* Create the reply and chunk maps */
+> >>>>>      offset = 0;
+> >>>>> 
+> >>>>> 
+> >>>> 
+> >>>> While this patch avoids the crashing, it apparently isn't
+> >>>> correct...I'm getting IO errors reading files over the mount. :)
+> >>>> 
+> >>> 
+> >>> I hit the same oops and tested your patch and it seems to have
+> >>> fixed that particular panic, but I still see a bunch of other mem
+> >>> corruption oopses even with it. I'll look more closely at that
+> >>> when I get some time.
+> >>> 
+> >>> FWIW, I can easily reproduce that by simply doing something like:
+> >>> 
+> >>>  $ dd if=/dev/urandom of=/file/on/nfsordma/mount bs=4k count=1
+> >>> 
+> >>> I'm not sure why you're not seeing any panics with your patch in
+> >>> place. Perhaps it's due to hw differences between our test rigs.
+> >>> 
+> >>> The EIO problem that you're seeing is likely the same client bug
+> >>> that Chuck recently fixed in this patch:
+> >>> 
+> >>>  [PATCH 2/8] SUNRPC: Fix large reads on NFS/RDMA
+> >>> 
+> >>> AIUI, Trond is merging that set for 3.15, so I'd make sure your
+> >>> client has those patches when testing.
+> >>> 
+> >> 
+> >> Nothing is in my queue yet.
+> >> 
+> > 
+> > Doh! Any reason not to merge that set from Chuck? They do fix a
+> > couple of nasty client bugsâ€¦
+> > 
 > 
-> We’d have to somehow let the VFS and the NFS layers know that this is a special 
-> path walk that can time out. Why should we do that?
-Educate me... Why in the world the VFS layer care about a network time out?
-
+> Most of them are one-line debugging dprintks which I do not intend to
+> apply.
 > 
->>> We can’t and we won’t add a load of stuff to the kernel to catch all the possible 
->>> sources of delay for a mount operation.
->> A "delay" is different than an timeout. A timeout is an error and a delay is not... 
->> Looping in the kernel *forever* due to a timeout error that is easily 
->> manged by the userspace, is a kernel bug... IMHO... 
->>
->> The client should not make the assumption the userspace does not
->> want to know about timeout errors. On the contrary, it *needs* to
->> know about these errors so they can do something about it...
->>
->>> That’s why if we can do it in userspace, then we should.
->> This is exactly what I want to do... Have the userspace manage 
->> timeouts... But it has to get them, to manage them.
->>
->> Using the alarm() system call bases the decision of when 
->> to fork on a arbitrary number of seconds. Using ‘retrans’ 
->> and ‘timeo’ bases that decision on an *actual* timeout
->>
->> Why interrupt a perfectly good RPC just because due
->> to an arbitrary number of seconds? Let the RPC 
->> timeout and simply report that fact….
+
+Fair enough. Those are certainly not necessary, but some of them clean
+up existing printks and probably do need to go in. That said, debugging
+this stuff is *really* difficult so having extra debug printks in place
+seems like a good thing (unless you're arguing for moving wholesale to
+tracepoints instead).
+
+> One of them confuses a readdir optimisation with a bugfix; at the
+> very least the patch comments need changing.
+
+I'll leave that to Chuck to comment on. I had the impression that it
+was a bugfix, but maybe there's some better way to handle that bug.
+
+>  That leaves 2 that can
+> go in, however as they are clearly insufficient to make RDMA safe for
+> general use, they certainly do not warrant a stable@ label. The
+> workaround for the Oopses is simple: use TCP.
 > 
-> The only difference I can see between the two is that in 
-> one case, the timer is set by userland, while in the other, 
-> it is set by the kernel. Again, why should a user care?
-They don't and shouldn't... My point is the alarm timeout
-is arbitrary... the kernel time out is because of a change 
-of "state" (aka an error). I would much rather base decisions
-on facts verses arbitrary guesses.. 
 
-At the end of the day... I'll go ahead and fork immediately on 
-background mounts and let the mount spin in the kernel,
-but not returning timeout error, which are very manageable errors, 
-is not a good thing... IMHO... 
+Yeah, it's definitely rickety, but it's in and we do need to get fixes
+merged to this code. I'm ok with dropping the stable labels on those
+patches, but if we're going to declare this stuff "not stable enough
+for general use" then I think that we should take an aggressive approach
+on merging fixes to it.
 
-steved.
+FWIW, I also notice that Kconfig doesn't show the option to actually
+enable/disable RDMA transports. I'll post a patch to fix that soon.
+Since this stuff is not very safe to use, then we should make it
+reasonably simple to disable it.
 
-
+-- 
+Jeff Layton <jlayton@redhat.com>
