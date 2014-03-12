@@ -1,59 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f169.google.com ([209.85.223.169]:63674 "EHLO
-	mail-ie0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756509AbaCESaV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Mar 2014 13:30:21 -0500
-Received: by mail-ie0-f169.google.com with SMTP id to1so1509635ieb.28
-        for <linux-nfs@vger.kernel.org>; Wed, 05 Mar 2014 10:30:21 -0800 (PST)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Andy Adamson <andros@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v4 4/4] NFSv4: Fail the truncate() if the lock/open stateid is invalid
-Date: Wed,  5 Mar 2014 13:30:11 -0500
-Message-Id: <1394044211-22302-5-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1394044211-22302-4-git-send-email-trond.myklebust@primarydata.com>
-References: <1394028452-15956-1-git-send-email-trond.myklebust@primarydata.com>
- <1394044211-22302-1-git-send-email-trond.myklebust@primarydata.com>
- <1394044211-22302-2-git-send-email-trond.myklebust@primarydata.com>
- <1394044211-22302-3-git-send-email-trond.myklebust@primarydata.com>
- <1394044211-22302-4-git-send-email-trond.myklebust@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:55873 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751833AbaCLVSl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 12 Mar 2014 17:18:41 -0400
+Date: Wed, 12 Mar 2014 17:18:32 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Tom Tucker <tom@opengridcomputing.com>
+Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org,
+        swise@opengridcomputing.com, Tom Talpey <tmtalpey@gmail.com>
+Subject: Re: [PATCH] svcrdma: fix offset calculation for non-page aligned
+ sge entries
+Message-ID: <20140312171832.33f04ee8@tlielax.poochiereds.net>
+In-Reply-To: <5320C6DE.4090807@opengridcomputing.com>
+References: <1394635867-19089-1-git-send-email-jlayton@redhat.com>
+	<5320C6DE.4090807@opengridcomputing.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If the open stateid could not be recovered, or the file locks were lost,
-then we should fail the truncate() operation altogether.
+On Wed, 12 Mar 2014 15:43:10 -0500
+Tom Tucker <tom@opengridcomputing.com> wrote:
 
-Reported-by: Andy Adamson <andros@netapp.com>
-Link: http://lkml.kernel.org/r/1393954269-3974-1-git-send-email-andros@netapp.com
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/nfs4proc.c | 9 ++++++---
- 1 file changed, 6 insertions(+), 3 deletions(-)
+> Hi Jeff,
+> 
+> 
+> On 3/12/14 9:51 AM, Jeff Layton wrote:
+> > The xdr_off value in dma_map_xdr gets passed to ib_dma_map_page as the
+> > offset into the page to be mapped. For the case of the pages array, the
+> > existing calculation always seems to end up at 0, which causes data
+> > corruption when a non-page-aligned READ request comes in. The server ends
+> > up doing the RDMA_WRITE from the wrong part of the page.
+> >
+> > Override the xdr_off value with the page_base in that situation to fix
+> > the issue. Obviously, this method can't contend with a page_base that is
+> > larger than PAGE_SIZE.
+> I think we saw page base > PAGE_SIZE when inter-operating with Sun, but 
+> maybe someone else on the list has a clearer recollection.
+> 
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 4ae8141452c9..450bfedbe2f4 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -2398,13 +2398,16 @@ static int _nfs4_do_setattr(struct inode *inode, struct rpc_cred *cred,
- 
- 	if (nfs4_copy_delegation_stateid(&arg.stateid, inode, fmode)) {
- 		/* Use that stateid */
--	} else if (truncate && state != NULL && nfs4_valid_open_stateid(state)) {
-+	} else if (truncate && state != NULL) {
- 		struct nfs_lockowner lockowner = {
- 			.l_owner = current->files,
- 			.l_pid = current->tgid,
- 		};
--		nfs4_select_rw_stateid(&arg.stateid, state, FMODE_WRITE,
--				&lockowner);
-+		if (!nfs4_valid_open_stateid(state))
-+			return -EBADF;
-+		if (nfs4_select_rw_stateid(&arg.stateid, state, FMODE_WRITE,
-+				&lockowner) == -EIO)
-+			return -EBADF;
- 	} else
- 		nfs4_stateid_copy(&arg.stateid, &zero_stateid);
- 
+Ok, I may need to rejigger that logic to account for that case. I'll do
+that and send a v2 once I test it out...
+
+> I am curious, however, why xdr_off was always zero if in fact, page_base 
+> was not page aligned.
+> 
+
+Mostly I was testing with sub-page sized READ requests (which are of
+course done via RDMA_WRITE). Assume we have a READ request for 512
+bytes.
+
+On the first pass into send_write, we call dma_map_xdr to map the
+head. On that call xdr_off is 0.
+
+On the next pass, we go to send the page data. At that point,
+xdr_off == head[0].iov_len:
+
+-------------------8<----------------------
+        } else {
+                xdr_off -= xdr->head[0].iov_len;
+                if (xdr_off < xdr->page_len) {
+                        /* This offset is in the page list */
+                        page = xdr->pages[xdr_off >> PAGE_SHIFT];
+                        xdr_off &= ~PAGE_MASK;
+                } else {
+-------------------8<----------------------
+
+...so we subtract xdr->head[0].iov_len, and xdr_off is now 0.
+
+The problem is that you can't determine where in the pages array the
+data to send actually starts just from the xdr_off. That just tells you
+how far into the xdr buffer you are. If the data you actually want
+isn't aligned to the start of the page (xdr->page_base !=0) then you
+can't tell from that.
+
+That info is tracked inside the xdr->page_base, so we need use that to
+determine what the mapping offset should be.
+
 -- 
-1.8.5.3
-
+Jeff Layton <jlayton@redhat.com>
