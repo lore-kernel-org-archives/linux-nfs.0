@@ -1,73 +1,96 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:29109 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:56218 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755834AbaCLAiZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 11 Mar 2014 20:38:25 -0400
-Message-ID: <1394584698.10287.0.camel@localhost>
-Subject: Re: [PATCH] nfs: Don't assume we have a security structure
-From: Eric Paris <eparis@redhat.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>, jlayton@redhat.com
-Cc: Schumaker Anna <Anna.Schumaker@netapp.com>,
-        David Quigley <dpquigl@davequigley.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        James Morris <james.l.morris@oracle.com>
-Date: Tue, 11 Mar 2014 20:38:18 -0400
-In-Reply-To: <EEEA2B4E-BE0F-40C0-91C3-98E2E7E8BB35@primarydata.com>
-References: <1394572274-16474-1-git-send-email-Anna.Schumaker@netapp.com>
-	 <29D9CA49-A493-471B-932B-959AFF96C729@primarydata.com>
-	 <EEEA2B4E-BE0F-40C0-91C3-98E2E7E8BB35@primarydata.com>
-Content-Type: text/plain; charset="UTF-8"
+	id S1752262AbaCLXMP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 12 Mar 2014 19:12:15 -0400
+Date: Thu, 13 Mar 2014 10:11:58 +1100
+From: NeilBrown <neilb@suse.de>
+To: David Heidelberger <david.heidelberger@ixit.cz>
+Cc: Al Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org
+Subject: Re: DNOTIFY to INOTIFY migration
+Message-ID: <20140313101158.5d857a2a@notabene.brown>
+In-Reply-To: <8ecb362fb052a6dd1d1d1899fd38783f@ixit.cz>
+References: <b59b1e4ede0b1d0a476c85465d480c8a@ixit.cz>
+	<20140310102102.3c886726@notabene.brown>
+	<20140310002015.GH18016@ZenIV.linux.org.uk>
+	<20140310115659.098a7c06@notabene.brown>
+	<20140310014551.GI18016@ZenIV.linux.org.uk>
+	<8ecb362fb052a6dd1d1d1899fd38783f@ixit.cz>
 Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/0FKwtt1.XJCQ_0bojNxMz8m"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2014-03-11 at 18:00 -0400, Trond Myklebust wrote:
-> On Mar 11, 2014, at 17:27, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
-> 
-> > 
-> > On Mar 11, 2014, at 17:11, Anna Schumaker <Anna.Schumaker@netapp.com> wrote:
-> > 
-> >> If the i_security field isn't set then security_dentry_init_security()
-> >> won't initialize some of the values used by the security label.  This
-> >> causes my client to hit a BUG_ON() while encoding a label of size
-> >> -2128927414.
-> >> 
-> >> I hit this bug while testing on a client without SELinux installed.
-> >> 
-> >> Signed-off-by: Anna Schumaker <anna.schumaker@netapp.com>
-> >> ---
-> >> fs/nfs/nfs4proc.c | 3 +++
-> >> 1 file changed, 3 insertions(+)
-> >> 
-> >> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> >> index b8cd560..994ccc2 100644
-> >> --- a/fs/nfs/nfs4proc.c
-> >> +++ b/fs/nfs/nfs4proc.c
-> >> @@ -105,6 +105,9 @@ nfs4_label_init_security(struct inode *dir, struct dentry *dentry,
-> >> 	if (nfs_server_capable(dir, NFS_CAP_SECURITY_LABEL) == 0)
-> >> 		return NULL;
-> >> 
-> >> +	if (!dir->i_security)
-> >> +		return NULL;
-> >> +
-> >> 	err = security_dentry_init_security(dentry, sattr->ia_mode,
-> >> 				&dentry->d_name, (void **)&label->label, &label->len);
-> >> 	if (err == 0)
-> > 
-> > Hi Anna,
-> > 
-> > This looks like a check that needs to be done by selinux_dentry_init_security() itself. The dir->i_security field is not something that NFS knows about.
-> > David, what needs to happen there when dentry->d_parent->i_security (a.k.a. dsec) is NULL?
-> > 
-> 
-> Oh, wait. I missed the bit about ‘without SELinux installed’. So the problem here is that you have a NFS client that does not have SELinux set up, but running against a server that is advertising NFSv4.2 with labeled NFS. Is that correct?
-> 
-> It looks to me as if cap_dentry_init_security() will indeed trigger this behaviour since it returns ‘0’ without doing anything to the label. As far as I can see, the right thing to do there is to return -EOPNOTSUPP, no?
+--Sig_/0FKwtt1.XJCQ_0bojNxMz8m
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-I feel like Jeff Layton was looking at the same thing, and came to the
-same conclusion...
+On Wed, 12 Mar 2014 23:52:31 +0100 David Heidelberger
+<david.heidelberger@ixit.cz> wrote:
 
-Jeff?
+> Neil, what you think? Should I try someway simplify this as Al proposed?
 
--Eric
+No, Al is just letting off steam.
 
+He hates the *notify interfaces (not without reason) and wishes people would
+avoid them where-ever possible.
+
+However rpc_pipefs does implement these interfaces, and doesn't implement
+'poll' on directories, so changing nfs-utils to use poll wouldn't help.
+
+I really don't think there is any need to do anything.  It works and there =
+is
+not expectation that it will every stop working, and no evidence that there
+is any problem with how it works.  So best to leave it alone.
+
+NeilBrown
+
+
+>=20
+> Dne 2014-03-10 02:45, Al Viro napsal:
+> > On Mon, Mar 10, 2014 at 11:56:59AM +1100, NeilBrown wrote:
+> >=20
+> >> > I still don't understand WTF does rpc.imapd *want* either of those, =
+TBH.
+> >>=20
+> >> The rpc_pipefs filesysem which is mounted on /var/lib/nfs/rpc_pipefs=20
+> >> creates
+> >> new channels for talking to userspace by making new pipes appear in=20
+> >> some
+> >> directory.  Any client needs to arrange some notification for these=20
+> >> new pipes
+> >> appearing so that it can open them and hold a conversation over them.
+> >> This calls for dnotify (in gssd and idmapd) or inotify (in blkmapd).
+> >=20
+> > ... or just adding ->poll() to the directory in question and using the
+> > normal syscalls instead of all that weird crap.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+
+--Sig_/0FKwtt1.XJCQ_0bojNxMz8m
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.22 (GNU/Linux)
+
+iQIVAwUBUyDpxDnsnt1WYoG5AQKMOg//dWVPybGuHgO1KnMm2jxS0OSTIzavpN0j
+qW2TDfFQBVH6YNDuxbLRqk/rjmE6q8mJM59J3HbhPnxadM6mNB0sS8KveAFdFe06
+ZiqJVM309YL3MQE0Ug+89VlIpJFUgN1r6W8GRgrUITMfwPMnuiu38KsqVZKrWiPl
+08ZFWxj2C+QjfboWcFZvFvGdOuPcTTbGKB32c0728mI992VplfHDZlThjb38SDF0
+jUdXkIB63TmtaKin0x6pA319adJM0J3NhmgVGyenmJRjRku/MeLM2eDbbBLRJyAe
+oOqh8xW4vJ4QMoiIKImFS2Flih25eygd3tRBz8v3s4HzBAWmtYE0UHEmlAQ8gt+R
+T8kC3uzFZYIedLXoNMf3uPhKzv+8brjPlQ7+gfXArextuSPMDFhsKkFw292zJ/wP
+0GhY2qmMgJdriNFzu+6uIh49Sms1++QT5Sd8YNpQqMjX6Z6B45ABP4m4UM62ZfUK
+ZbzSl2Qq4F6CnVSOeWylGyO0VN8dIq6dSqsAdGOO88jh971Oa/8Y7wWL2fiSivPS
+Sl2/KmR7rv2GSPLazeI+Ej6YI+n1ESRMronmhTE0hRBQ8Jm/VC0h4qRd1DkoJ5bS
+HxTXqOgqcwmhPmRIt8ZlnerNSd6GUZaNaDNH36LWKhrWOEHhwBpyicfxRONc7Lre
+K8zFA+WDlkk=
+=vbAx
+-----END PGP SIGNATURE-----
+
+--Sig_/0FKwtt1.XJCQ_0bojNxMz8m--
