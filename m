@@ -1,118 +1,110 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.opengridcomputing.com ([72.48.136.20]:51465 "EHLO
+Received: from smtp.opengridcomputing.com ([72.48.136.20]:35711 "EHLO
 	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752597AbaCYOup (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Mar 2014 10:50:45 -0400
-From: Steve Wise <swise@opengridcomputing.com>
-Subject: [PATCH] Fix regression errors in NFSRDMA
-To: trond.myklebust@primarydata.com, bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, tom@opengridcomputing.com
-Date: Tue, 25 Mar 2014 09:50:45 -0500
-Message-ID: <20140325145044.3559.95141.stgit@build.ogc.int>
+	by vger.kernel.org with ESMTP id S1752841AbaCLOWF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Mar 2014 10:22:05 -0400
+Message-ID: <53206D8B.9060406@opengridcomputing.com>
+Date: Wed, 12 Mar 2014 09:22:03 -0500
+From: Tom Tucker <tom@opengridcomputing.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Layton Jeff <jlayton@redhat.com>
+CC: Steve Wise <swise@opengridcomputing.com>,
+        Dr Fields James Bruce <bfields@fieldses.org>,
+        Yan Burman <yanb@mellanox.com>, linux-nfs@vger.kernel.org,
+        linux-rdma@vger.kernel.org, Or Gerlitz <ogerlitz@mellanox.com>
+Subject: Re: NFS over RDMA crashing
+References: <51127B3F.2090200@mellanox.com> <20130206222435.GL16417@fieldses.org> <20130207164134.GK3222@fieldses.org> <003601cf3a26$94523ee0$bcf6bca0$@opengridcomputing.com> <005d01cf3a45$94ced0d0$be6c7270$@opengridcomputing.com> <531B47B3.1070503@opengridcomputing.com> <531B6D90.2090208@opengridcomputing.com> <531B79F8.2020008@opengridcomputing.com> <20140312093300.7a434cbb@tlielax.poochiereds.net> <731A7629-7DBB-4FC3-8F21-70380705ED4E@primarydata.com>
+In-Reply-To: <731A7629-7DBB-4FC3-8F21-70380705ED4E@primarydata.com>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Tom Tucker <tom@ogc.us>
+Hi Trond,
 
-A few changes regressed the client and server transports for NFSRDMA.
+I think this patch is still 'off-by-one'. We'll take a look at this today.
 
-The server regression was caused by the addition of rq_next_page
-(afc59400d6c65bad66d4ad0b2daf879cbff8e23e). There were a few places that
-were missed with the update of the rq_respages array.
+Thanks,
+Tom
 
-The client regression was due to additional XDR sanity checking
-(64bd577ea0021f5903505de061b3b7d8a785ee94) that exposed a latent bug in
-the NFSRDMA client. The bug is that if there were inline data, then the
-rpcrdma_fixup_inline function would would incorrectly set the XDR page_len
-to zero. Since the decode_read3resok logic previously computed this
-value from the reported len - header len, the bug was not symptomatic.
-
-Signed-off-by: Tom Tucker <tom@ogc.us>
-Tested-by: Steve Wise <swise@ogc.us>
----
-
- net/sunrpc/xprtrdma/rpc_rdma.c          |    3 +--
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |   12 ++++--------
- net/sunrpc/xprtrdma/svc_rdma_sendto.c   |    1 +
- 3 files changed, 6 insertions(+), 10 deletions(-)
-
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index e03725b..e811c40 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -650,8 +650,7 @@ rpcrdma_inline_fixup(struct rpc_rqst *rqst, char *srcp, int copy_len, int pad)
- 			page_base = 0;
- 		}
- 		rqst->rq_rcv_buf.page_len = olen - copy_len;
--	} else
--		rqst->rq_rcv_buf.page_len = 0;
-+	}
- 
- 	if (copy_len && rqst->rq_rcv_buf.tail[0].iov_len) {
- 		curlen = copy_len;
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-index 0ce7552..8d904e4 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-@@ -90,6 +90,7 @@ static void rdma_build_arg_xdr(struct svc_rqst *rqstp,
- 		sge_no++;
- 	}
- 	rqstp->rq_respages = &rqstp->rq_pages[sge_no];
-+	rqstp->rq_next_page = rqstp->rq_respages + 1;
- 
- 	/* We should never run out of SGE because the limit is defined to
- 	 * support the max allowed RPC data length
-@@ -169,6 +170,7 @@ static int map_read_chunks(struct svcxprt_rdma *xprt,
- 		 */
- 		head->arg.pages[page_no] = rqstp->rq_arg.pages[page_no];
- 		rqstp->rq_respages = &rqstp->rq_arg.pages[page_no+1];
-+		rqstp->rq_next_page = rqstp->rq_respages + 1;
- 
- 		byte_count -= sge_bytes;
- 		ch_bytes -= sge_bytes;
-@@ -276,6 +278,7 @@ static int fast_reg_read_chunks(struct svcxprt_rdma *xprt,
- 
- 	/* rq_respages points one past arg pages */
- 	rqstp->rq_respages = &rqstp->rq_arg.pages[page_no];
-+	rqstp->rq_next_page = rqstp->rq_respages + 1;
- 
- 	/* Create the reply and chunk maps */
- 	offset = 0;
-@@ -520,13 +523,6 @@ next_sge:
- 	for (ch_no = 0; &rqstp->rq_pages[ch_no] < rqstp->rq_respages; ch_no++)
- 		rqstp->rq_pages[ch_no] = NULL;
- 
--	/*
--	 * Detach res pages. If svc_release sees any it will attempt to
--	 * put them.
--	 */
--	while (rqstp->rq_next_page != rqstp->rq_respages)
--		*(--rqstp->rq_next_page) = NULL;
--
- 	return err;
- }
- 
-@@ -550,7 +546,7 @@ static int rdma_read_complete(struct svc_rqst *rqstp,
- 
- 	/* rq_respages starts after the last arg page */
- 	rqstp->rq_respages = &rqstp->rq_arg.pages[page_no];
--	rqstp->rq_next_page = &rqstp->rq_arg.pages[page_no];
-+	rqstp->rq_next_page = rqstp->rq_respages + 1;
- 
- 	/* Rebuild rq_arg head and tail. */
- 	rqstp->rq_arg.head[0] = head->arg.head[0];
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-index c1d124d..11e90f8 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-@@ -625,6 +625,7 @@ static int send_reply(struct svcxprt_rdma *rdma,
- 		if (page_no+1 >= sge_no)
- 			ctxt->sge[page_no+1].length = 0;
- 	}
-+	rqstp->rq_next_page = rqstp->rq_respages + 1;
- 	BUG_ON(sge_no > rdma->sc_max_sge);
- 	memset(&send_wr, 0, sizeof send_wr);
- 	ctxt->wr_op = IB_WR_SEND;
+On 3/12/14 9:05 AM, Trond Myklebust wrote:
+> On Mar 12, 2014, at 9:33, Jeff Layton <jlayton@redhat.com> wrote:
+>
+>> On Sat, 08 Mar 2014 14:13:44 -0600
+>> Steve Wise <swise@opengridcomputing.com> wrote:
+>>
+>>> On 3/8/2014 1:20 PM, Steve Wise wrote:
+>>>>> I removed your change and started debugging original crash that
+>>>>> happens on top-o-tree.   Seems like rq_next_pages is screwed up.  It
+>>>>> should always be >= rq_respages, yes?  I added a BUG_ON() to assert
+>>>>> this in rdma_read_xdr() we hit the BUG_ON(). Look
+>>>>>
+>>>>> crash> svc_rqst.rq_next_page 0xffff8800b84e6000
+>>>>> rq_next_page = 0xffff8800b84e6228
+>>>>> crash> svc_rqst.rq_respages 0xffff8800b84e6000
+>>>>> rq_respages = 0xffff8800b84e62a8
+>>>>>
+>>>>> Any ideas Bruce/Tom?
+>>>>>
+>>>> Guys, the patch below seems to fix the problem.  Dunno if it is
+>>>> correct though.  What do you think?
+>>>>
+>>>> diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+>>>> b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+>>>> index 0ce7552..6d62411 100644
+>>>> --- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+>>>> +++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+>>>> @@ -90,6 +90,7 @@ static void rdma_build_arg_xdr(struct svc_rqst *rqstp,
+>>>>                sge_no++;
+>>>>        }
+>>>>        rqstp->rq_respages = &rqstp->rq_pages[sge_no];
+>>>> +       rqstp->rq_next_page = rqstp->rq_respages;
+>>>>
+>>>>        /* We should never run out of SGE because the limit is defined to
+>>>>         * support the max allowed RPC data length
+>>>> @@ -276,6 +277,7 @@ static int fast_reg_read_chunks(struct
+>>>> svcxprt_rdma *xprt,
+>>>>
+>>>>        /* rq_respages points one past arg pages */
+>>>>        rqstp->rq_respages = &rqstp->rq_arg.pages[page_no];
+>>>> +       rqstp->rq_next_page = rqstp->rq_respages;
+>>>>
+>>>>        /* Create the reply and chunk maps */
+>>>>        offset = 0;
+>>>>
+>>>>
+>>> While this patch avoids the crashing, it apparently isn't correct...I'm
+>>> getting IO errors reading files over the mount. :)
+>>>
+>> I hit the same oops and tested your patch and it seems to have fixed
+>> that particular panic, but I still see a bunch of other mem corruption
+>> oopses even with it. I'll look more closely at that when I get some
+>> time.
+>>
+>> FWIW, I can easily reproduce that by simply doing something like:
+>>
+>>    $ dd if=/dev/urandom of=/file/on/nfsordma/mount bs=4k count=1
+>>
+>> I'm not sure why you're not seeing any panics with your patch in place.
+>> Perhaps it's due to hw differences between our test rigs.
+>>
+>> The EIO problem that you're seeing is likely the same client bug that
+>> Chuck recently fixed in this patch:
+>>
+>>    [PATCH 2/8] SUNRPC: Fix large reads on NFS/RDMA
+>>
+>> AIUI, Trond is merging that set for 3.15, so I'd make sure your client
+>> has those patches when testing.
+>>
+> Nothing is in my queue yet.
+>
+> _________________________________
+> Trond Myklebust
+> Linux NFS client maintainer, PrimaryData
+> trond.myklebust@primarydata.com
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
