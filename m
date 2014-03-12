@@ -1,54 +1,101 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f179.google.com ([209.85.223.179]:39183 "EHLO
-	mail-ie0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750990AbaCDSJk convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Mar 2014 13:09:40 -0500
-Received: by mail-ie0-f179.google.com with SMTP id lx4so2696843iec.24
-        for <linux-nfs@vger.kernel.org>; Tue, 04 Mar 2014 10:09:40 -0800 (PST)
+Received: from mail-qg0-f48.google.com ([209.85.192.48]:47287 "EHLO
+	mail-qg0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752717AbaCLJVQ convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Mar 2014 05:21:16 -0400
+Received: by mail-qg0-f48.google.com with SMTP id j107so28302569qga.7
+        for <linux-nfs@vger.kernel.org>; Wed, 12 Mar 2014 02:21:16 -0700 (PDT)
 Content-Type: text/plain; charset=windows-1252
 Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
-Subject: Re: [PATCH 0/4] NFSv4 fix nfs4_stateid_is_current processing
+Subject: Re: [PATCH] nfs: Don't assume we have a security structure
 From: Trond Myklebust <trond.myklebust@primarydata.com>
-In-Reply-To: <1393954269-3974-1-git-send-email-andros@netapp.com>
-Date: Tue, 4 Mar 2014 13:09:37 -0500
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <FE2FF2AA-62E5-4D8C-9025-D6C648385FFA@primarydata.com>
-References: <1393954269-3974-1-git-send-email-andros@netapp.com>
-To: Adamson William Andros <andros@netapp.com>
+In-Reply-To: <20140311210611.0e82e3cf@ipyr.poochiereds.net>
+Date: Wed, 12 Mar 2014 05:21:13 -0400
+Cc: Eric Paris <eparis@redhat.com>, Schumaker Anna <Anna.Schumaker@netapp.com>,
+        David Quigley <dpquigl@davequigley.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        James Morris <james.l.morris@oracle.com>
+Message-Id: <BA64BE59-8F58-456B-8E98-3F44A4CEC909@primarydata.com>
+References: <1394572274-16474-1-git-send-email-Anna.Schumaker@netapp.com> <29D9CA49-A493-471B-932B-959AFF96C729@primarydata.com> <EEEA2B4E-BE0F-40C0-91C3-98E2E7E8BB35@primarydata.com> <1394584698.10287.0.camel@localhost> <20140311210611.0e82e3cf@ipyr.poochiereds.net>
+To: Layton Jeff <jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Mar 4, 2014, at 12:31, andros@netapp.com wrote:
+On Mar 11, 2014, at 21:06, Jeffrey Layton <jlayton@redhat.com> wrote:
 
-> From: Andy Adamson <andros@netapp.com>
+> On Tue, 11 Mar 2014 20:38:18 -0400
+> Eric Paris <eparis@redhat.com> wrote:
 > 
-> This is an expanded version of the "NFSv4 always compare stateids in nfs4_stateid_is_current" patch I sent on Feb 27.
+>> On Tue, 2014-03-11 at 18:00 -0400, Trond Myklebust wrote:
+>>> On Mar 11, 2014, at 17:27, Trond Myklebust
+>>> <trond.myklebust@primarydata.com> wrote:
+>>> 
+>>>> 
+>>>> On Mar 11, 2014, at 17:11, Anna Schumaker
+>>>> <Anna.Schumaker@netapp.com> wrote:
+>>>> 
+>>>>> If the i_security field isn't set then
+>>>>> security_dentry_init_security() won't initialize some of the
+>>>>> values used by the security label.  This causes my client to hit
+>>>>> a BUG_ON() while encoding a label of size -2128927414.
+>>>>> 
+>>>>> I hit this bug while testing on a client without SELinux
+>>>>> installed.
+>>>>> 
+>>>>> Signed-off-by: Anna Schumaker <anna.schumaker@netapp.com>
+>>>>> ---
+>>>>> fs/nfs/nfs4proc.c | 3 +++
+>>>>> 1 file changed, 3 insertions(+)
+>>>>> 
+>>>>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>>>>> index b8cd560..994ccc2 100644
+>>>>> --- a/fs/nfs/nfs4proc.c
+>>>>> +++ b/fs/nfs/nfs4proc.c
+>>>>> @@ -105,6 +105,9 @@ nfs4_label_init_security(struct inode *dir,
+>>>>> struct dentry *dentry, if (nfs_server_capable(dir,
+>>>>> NFS_CAP_SECURITY_LABEL) == 0) return NULL;
+>>>>> 
+>>>>> +	if (!dir->i_security)
+>>>>> +		return NULL;
+>>>>> +
+>>>>> 	err = security_dentry_init_security(dentry,
+>>>>> sattr->ia_mode, &dentry->d_name, (void **)&label->label,
+>>>>> &label->len); if (err == 0)
+>>>> 
+>>>> Hi Anna,
+>>>> 
+>>>> This looks like a check that needs to be done by
+>>>> selinux_dentry_init_security() itself. The dir->i_security field
+>>>> is not something that NFS knows about. David, what needs to
+>>>> happen there when dentry->d_parent->i_security (a.k.a. dsec) is
+>>>> NULL?
+>>>> 
+>>> 
+>>> Oh, wait. I missed the bit about ‘without SELinux installed’. So
+>>> the problem here is that you have a NFS client that does not have
+>>> SELinux set up, but running against a server that is advertising
+>>> NFSv4.2 with labeled NFS. Is that correct?
+>>> 
+>>> It looks to me as if cap_dentry_init_security() will indeed trigger
+>>> this behaviour since it returns ‘0’ without doing anything to the
+>>> label. As far as I can see, the right thing to do there is to
+>>> return -EOPNOTSUPP, no?
+>> 
+>> I feel like Jeff Layton was looking at the same thing, and came to the
+>> same conclusion...
+>> 
+>> Jeff?
+>> 
 > 
-> Found at Connectathon 2014 and NetApp internal testing.
+> I posted a patch for this last week and James has merged it:
 > 
-> nfs4_stateid_is_current is used on the NFSv4 I/O path to determine if a
-> stateid has changed. The idea is that if there is a stateid expire error
-> such as NFS4ERR_BAD_STATEID and the stateid used that induced the error has
-> changed, then we can just resend the RPC from the call prepare state with
-> the changed stateid instead of kicking off recovery as the changed stateid
-> indicates it already had been recovered.
+>    [PATCH] security: have cap_dentry_init_security return error
 > 
-> This patch set fixes a false positive that resulted in an NFS4ERR_BAD_STATEID
-> infinite loop. Trond pointed out that the nfs4_select_rw_stateid -EIO error
-> is special in that it indicates a lost lock.
-> 
-> As I examined the use of nfs4_select_rw_stateid, I addressed some other errors
-> in the use of nfs4_set_rw_stateid and friends in setattr and filelayout
-> prepare functions.
-> 
-> Just tested with connectathon tests. Will test more once I'm back in town...
+> I didn't note it in the patch description but it fixes 4.2 when SELinux
+> is compiled in but disabled.
 
-One question:
-
-Do we need the EWOULDBLOCK case at all in nfs4_copy_lock_stateid/nfs4_copy_open_stateid? Looking at the code, it seems particularly redundant for the case of NFSv4.1, where we set the seqid to ‘0’. Given that we do the nfs4_stateid_is_current() test, it seems unnecessary in the case of NFSv4.0 too...
-
-So, how about just throwing out the EWOULDBLOCK returns, then keeping nfs4_stateid_is_current() as it is, fixing up _nfs4_do_setattr to only deal with the -EIO case, and then fixing up the file layout uses of nfs4_select_rw_stateid() to check the return values?
+Thanks! Then I expect no further action is needed on our part, and that the fix will come through the security tree?
 
 _________________________________
 Trond Myklebust
