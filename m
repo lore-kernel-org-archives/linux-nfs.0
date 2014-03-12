@@ -1,304 +1,110 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:7896 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753929AbaCXTvx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 24 Mar 2014 15:51:53 -0400
-Message-ID: <53308CD4.9020307@RedHat.com>
-Date: Mon, 24 Mar 2014 15:51:48 -0400
-From: Steve Dickson <SteveD@redhat.com>
+Received: from mail-qa0-f54.google.com ([209.85.216.54]:45666 "EHLO
+	mail-qa0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752395AbaCLNTJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Mar 2014 09:19:09 -0400
+Received: by mail-qa0-f54.google.com with SMTP id w8so9979678qac.13
+        for <linux-nfs@vger.kernel.org>; Wed, 12 Mar 2014 06:19:08 -0700 (PDT)
+Message-ID: <53205ECA.3080006@gmail.com>
+Date: Wed, 12 Mar 2014 09:19:06 -0400
+From: Anna Schumaker <schumaker.anna@gmail.com>
 MIME-Version: 1.0
-To: Benjamin Coddington <bcodding@uvm.edu>
-CC: linux-nfs@vger.kernel.org, David Howells <dhowells@redhat.com>
-Subject: Re: [PATCH] nfsidmap: use multiple child keyrings
-References: <201403241150.s2OBonLC010685@hobo-dev.uvm.edu> <533064A1.2080502@RedHat.com> <189016FB-E865-42B7-BF5A-D1D12F45B81E@uvm.edu>
-In-Reply-To: <189016FB-E865-42B7-BF5A-D1D12F45B81E@uvm.edu>
-Content-Type: text/plain; charset=ISO-8859-1
+To: Jeff Layton <jlayton@redhat.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+CC: Eric Paris <eparis@redhat.com>, Schumaker Anna <Anna.Schumaker@netapp.com>,
+        David Quigley <dpquigl@davequigley.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        James Morris <james.l.morris@oracle.com>
+Subject: Re: [PATCH] nfs: Don't assume we have a security structure
+References: <1394572274-16474-1-git-send-email-Anna.Schumaker@netapp.com>	<29D9CA49-A493-471B-932B-959AFF96C729@primarydata.com>	<EEEA2B4E-BE0F-40C0-91C3-98E2E7E8BB35@primarydata.com>	<1394584698.10287.0.camel@localhost>	<20140311210611.0e82e3cf@ipyr.poochiereds.net>	<BA64BE59-8F58-456B-8E98-3F44A4CEC909@primarydata.com> <20140312062207.6b2ee85e@tlielax.poochiereds.net>
+In-Reply-To: <20140312062207.6b2ee85e@tlielax.poochiereds.net>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+I just tried Jeff's patch and it does fix my problem.  I wish I had remembered it earlier in the day yesterday!
 
-
-On 03/24/2014 02:00 PM, Benjamin Coddington wrote:
-> 
-> On Mar 24, 2014, at 1:00 PM, Steve Dickson <SteveD@redhat.com> wrote:
-> 
->> On 03/21/2014 05:08 PM, Benjamin Coddington wrote:
->>> The kernel keyring has a max of ~508 entries on 64-bit systems.
->>> For installations with more distict users than this limit, create
->>> a specified number of child keyrings and fill them evenly.
->> A couple things... 
+On 03/12/2014 06:22 AM, Jeff Layton wrote:
+> On Wed, 12 Mar 2014 05:21:13 -0400
+> Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+>
+>> On Mar 11, 2014, at 21:06, Jeffrey Layton <jlayton@redhat.com> wrote:
 >>
->> 1) no Signed-off-by: line
+>>> On Tue, 11 Mar 2014 20:38:18 -0400
+>>> Eric Paris <eparis@redhat.com> wrote:
+>>>
+>>>> On Tue, 2014-03-11 at 18:00 -0400, Trond Myklebust wrote:
+>>>>> On Mar 11, 2014, at 17:27, Trond Myklebust
+>>>>> <trond.myklebust@primarydata.com> wrote:
+>>>>>
+>>>>>> On Mar 11, 2014, at 17:11, Anna Schumaker
+>>>>>> <Anna.Schumaker@netapp.com> wrote:
+>>>>>>
+>>>>>>> If the i_security field isn't set then
+>>>>>>> security_dentry_init_security() won't initialize some of the
+>>>>>>> values used by the security label.  This causes my client to hit
+>>>>>>> a BUG_ON() while encoding a label of size -2128927414.
+>>>>>>>
+>>>>>>> I hit this bug while testing on a client without SELinux
+>>>>>>> installed.
+>>>>>>>
+>>>>>>> Signed-off-by: Anna Schumaker <anna.schumaker@netapp.com>
+>>>>>>> ---
+>>>>>>> fs/nfs/nfs4proc.c | 3 +++
+>>>>>>> 1 file changed, 3 insertions(+)
+>>>>>>>
+>>>>>>> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+>>>>>>> index b8cd560..994ccc2 100644
+>>>>>>> --- a/fs/nfs/nfs4proc.c
+>>>>>>> +++ b/fs/nfs/nfs4proc.c
+>>>>>>> @@ -105,6 +105,9 @@ nfs4_label_init_security(struct inode *dir,
+>>>>>>> struct dentry *dentry, if (nfs_server_capable(dir,
+>>>>>>> NFS_CAP_SECURITY_LABEL) == 0) return NULL;
+>>>>>>>
+>>>>>>> +	if (!dir->i_security)
+>>>>>>> +		return NULL;
+>>>>>>> +
+>>>>>>> 	err = security_dentry_init_security(dentry,
+>>>>>>> sattr->ia_mode, &dentry->d_name, (void **)&label->label,
+>>>>>>> &label->len); if (err == 0)
+>>>>>> Hi Anna,
+>>>>>>
+>>>>>> This looks like a check that needs to be done by
+>>>>>> selinux_dentry_init_security() itself. The dir->i_security field
+>>>>>> is not something that NFS knows about. David, what needs to
+>>>>>> happen there when dentry->d_parent->i_security (a.k.a. dsec) is
+>>>>>> NULL?
+>>>>>>
+>>>>> Oh, wait. I missed the bit about ‘without SELinux installed’. So
+>>>>> the problem here is that you have a NFS client that does not have
+>>>>> SELinux set up, but running against a server that is advertising
+>>>>> NFSv4.2 with labeled NFS. Is that correct?
+>>>>>
+>>>>> It looks to me as if cap_dentry_init_security() will indeed trigger
+>>>>> this behaviour since it returns ‘0’ without doing anything to the
+>>>>> label. As far as I can see, the right thing to do there is to
+>>>>> return -EOPNOTSUPP, no?
+>>>> I feel like Jeff Layton was looking at the same thing, and came to the
+>>>> same conclusion...
+>>>>
+>>>> Jeff?
+>>>>
+>>> I posted a patch for this last week and James has merged it:
+>>>
+>>>    [PATCH] security: have cap_dentry_init_security return error
+>>>
+>>> I didn't note it in the patch description but it fixes 4.2 when SELinux
+>>> is compiled in but disabled.
+>> Thanks! Then I expect no further action is needed on our part, and that the fix will come through the security tree?
 >>
->> 2) Its seems you can create key rings but can't delete them.
->>   Here is what I'm doing:
->>   in /etc/request-key.d/id_resolver.conf I have
->>    create    id_resolver * *    /usr/sbin/nfsidmap -n 10 %k %d
->> but when I tried to delete the keys
->>    # nfsidmap -vc
->>    nfsidmap: clearing '08aa156c I--Q---     1perm 3f010000     0     0 keyring   .id_resolver_child_10: empty'
->>    nfsidmap: keyctl_clear(0x8aa156c) failed: Permission denied
-> 
-> This mess works on my fleet of RHEL6 boxes which is where I was trying to fix this.  They create the child keyrings with
-> 
-> perm 3b3f0000
-> 
-> Instead of yours which appears to be
-> 
-> perm 3f010000
-> 
-> Are you testing on a later kernel?  Likely this behavior has changed.
-Yes... Much later... 
+> FWIW, this is the bug that was causing the NFS server to spew messages
+> like this to the ring buffer when Anna was testing against my server at
+> Connectathon:
+>
+>     [  243.479524] SELinux:  Context \xffffffdf is not valid (left unmapped).
+>
+> We may want to do a follow-on patch to clean up the struct nfs4_label
+> initializers since they're not really needed. But that should probably
+> wait until James merges this up to Linus.
+>
 
-> 
->>> #define PROCKEYS "/proc/keys"
->>> #ifndef DEFAULT_KEYRING
->>> -#define DEFAULT_KEYRING "id_resolver"
->>> +#define DEFAULT_KEYRING ".id_resolver"
->> 3) Why is changing the default needed?
-> 
-> The default is wrong.  I think that's the first thing I changed when 
-> trying to fix this problem, since it looked like id_lookup() should 
-> gracefully recover in the case that the keyring was full 
-> (but it still doesn't). 
-I'm think the "id_resolver" default can from the face 
-the entry /etc/request-key.d/id_resolver.conf 
-which tells nfsidmap put the keys on the id_resolver
-key ring... so I'm not really sure where the
-.id_resolver is coming from... CC-ing David Howells
-maybe he knows... 
- 
-> This actually doesn't have to change, since 
-> the strcmp()s that use it will work either way -- but it might catch 
-> someone by surprise later.  I'll split this out.
-Please do...
-
-> 
->> Finally, what -n value do plan on using? Maybe a blurb in the man page
->> on what a good number is and why....
-> 
-> I've got this running now with -n160, since 
-> we have ~60K distinct uid/gid s.  Ideally, I'd like to re-submit 
-> this to self-scale which wouldn't require any sysadmin tuning, 
-> but I haven't had the time.  Really, this is just a quick fix 
-> for the brokenness that's in current RHEL and less-new Fedora.
-The brokenness in RHEL will be healing very soon... See 
-https://bugzilla.redhat.com/show_bug.cgi?id=1033708. RHEL is 
-basically going back to using rpc.idmapd on the client and
-nfsidmap is going away... It as just a bad dream... It never
-happen! ;-)
-
-> If you want it done right it will take me a week or two to find the time.
-In newer I don't think this is needed since they are already larger...
-Again, David can address this... 
-
-steved.
-
-> 
-> Ben
-> 
->> steved.
->>
->>> #endif
->>>
->>> #ifndef PATH_IDMAPDCONF
->>> @@ -39,7 +39,7 @@ static int keyring_clear(char *keyring);
->>> /*
->>>  * Find either a user or group id based on the name@domain string
->>>  */
->>> -int id_lookup(char *name_at_domain, key_serial_t key, int type)
->>> +int id_lookup(char *name_at_domain, key_serial_t key, int type, key_serial_t dest_keyring)
->>> {
->>> 	char id[MAX_ID_LEN];
->>> 	uid_t uid = 0;
->>> @@ -58,7 +58,7 @@ int id_lookup(char *name_at_domain, key_serial_t key, int type)
->>> 			(type == USER ? "nfs4_owner_to_uid" : "nfs4_group_owner_to_gid"));
->>>
->>> 	if (rc == 0) {
->>> -		rc = keyctl_instantiate(key, id, strlen(id) + 1, 0);
->>> +		rc = keyctl_instantiate(key, id, strlen(id) + 1, dest_keyring);
->>> 		if (rc < 0) {
->>> 			switch(rc) {
->>> 			case -EDQUOT:
->>> @@ -67,9 +67,9 @@ int id_lookup(char *name_at_domain, key_serial_t key, int type)
->>> 				/*
->>> 			 	 * The keyring is full. Clear the keyring and try again
->>> 			 	 */
->>> -				rc = keyring_clear(DEFAULT_KEYRING);
->>> +				rc = keyctl_clear(dest_keyring);
->>> 				if (rc == 0)
->>> -					rc = keyctl_instantiate(key, id, strlen(id) + 1, 0);
->>> +					rc = keyctl_instantiate(key, id, strlen(id) + 1, dest_keyring);
->>> 				break;
->>> 			default:
->>> 				break;
->>> @@ -85,7 +85,7 @@ int id_lookup(char *name_at_domain, key_serial_t key, int type)
->>> /*
->>>  * Find the name@domain string from either a user or group id
->>>  */
->>> -int name_lookup(char *id, key_serial_t key, int type)
->>> +int name_lookup(char *id, key_serial_t key, int type, key_serial_t dest_keyring)
->>> {
->>> 	char name[IDMAP_NAMESZ];
->>> 	char domain[NFS4_MAX_DOMAIN_LEN];
->>> @@ -113,7 +113,7 @@ int name_lookup(char *id, key_serial_t key, int type)
->>> 			(type == USER ? "nfs4_uid_to_name" : "nfs4_gid_to_name"));
->>>
->>> 	if (rc == 0) {
->>> -		rc = keyctl_instantiate(key, &name, strlen(name), 0);
->>> +		rc = keyctl_instantiate(key, &name, strlen(name), dest_keyring);
->>> 		if (rc < 0)
->>> 			xlog_err("name_lookup: keyctl_instantiate failed: %m");
->>> 	}
->>> @@ -127,7 +127,7 @@ static int keyring_clear(char *keyring)
->>> {
->>> 	FILE *fp;
->>> 	char buf[BUFSIZ];
->>> -	key_serial_t key;
->>> +	key_serial_t key, child_key;
->>>
->>> 	if (keyring == NULL)
->>> 		keyring = DEFAULT_KEYRING;
->>> @@ -151,6 +151,7 @@ static int keyring_clear(char *keyring)
->>> 		 */
->>> 		*(strchr(buf, ' ')) = '\0';
->>> 		sscanf(buf, "%x", &key);
->>> +
->>> 		if (keyctl_clear(key) < 0) {
->>> 			xlog_err("keyctl_clear(0x%x) failed: %m", key);
->>> 			fclose(fp);
->>> @@ -159,7 +160,8 @@ static int keyring_clear(char *keyring)
->>> 		fclose(fp);
->>> 		return 0;
->>> 	}
->>> -	xlog_err("'%s' keyring was not found.", keyring);
->>> +	if (strstr(keyring, DEFAULT_KEYRING":"))
->>> +		xlog_err("'%s' keyring was not found.", keyring);
->>> 	fclose(fp);
->>> 	return 1;
->>> }
->>> @@ -232,8 +234,10 @@ int main(int argc, char **argv)
->>> 	char *type;
->>> 	int rc = 1, opt;
->>> 	int timeout = 600;
->>> -	key_serial_t key;
->>> +	int childrings = 0;
->>> +	key_serial_t key, parent_keyring, dest_keyring;
->>> 	char *progname, *keystr = NULL;
->>> +	char child_name[BUFSIZ];
->>> 	int clearing = 0, keymask = 0;
->>>
->>> 	/* Set the basename */
->>> @@ -244,7 +248,7 @@ int main(int argc, char **argv)
->>>
->>> 	xlog_open(progname);
->>>
->>> -	while ((opt = getopt(argc, argv, "u:g:r:ct:v")) != -1) {
->>> +	while ((opt = getopt(argc, argv, "u:g:r:ct:vn:d:")) != -1) {
->>> 		switch (opt) {
->>> 		case 'u':
->>> 			keymask = UIDKEYS;
->>> @@ -267,6 +271,9 @@ int main(int argc, char **argv)
->>> 		case 't':
->>> 			timeout = atoi(optarg);
->>> 			break;
->>> +		case 'n':
->>> +			childrings = atoi(optarg);
->>> +			break;
->>> 		default:
->>> 			xlog_warn(usage, progname);
->>> 			break;
->>> @@ -284,9 +291,16 @@ int main(int argc, char **argv)
->>> 		rc = key_revoke(keystr, keymask);
->>> 		return rc;		
->>> 	}
->>> +
->>> 	if (clearing) {
->>> 		xlog_syslog(0);
->>> -		rc = keyring_clear(DEFAULT_KEYRING);
->>> +		int i = 1;
->>> +		for(rc = 0; rc == 0; i++) {
->>> +			snprintf(child_name, sizeof(child_name), DEFAULT_KEYRING "_child_%d", i);
->>> +			rc = keyring_clear(child_name);
->>> +		}
->>> +
->>> +		rc = keyring_clear(DEFAULT_KEYRING ":");
->>> 		return rc;		
->>> 	}
->>>
->>> @@ -315,14 +329,42 @@ int main(int argc, char **argv)
->>> 			key, type, value, timeout);
->>> 	}
->>>
->>> +	if (childrings) {
->>> +		int i;
->>> +		long child_size, smallest_size = 2032;
->>> +		parent_keyring = request_key("keyring", DEFAULT_KEYRING, NULL, KEY_SPEC_THREAD_KEYRING);
->>> +
->>> +		for (i = 1; i <= childrings; i++) {
->>> +			key_serial_t child_keyring;
->>> +
->>> +			snprintf(child_name, sizeof(child_name), DEFAULT_KEYRING "_child_%d", i);
->>> +
->>> +			child_keyring = keyctl_search(parent_keyring, "keyring", child_name, 0);
->>> +			if (child_keyring < 0) {
->>> +				child_keyring = add_key("keyring", child_name, NULL, 0, parent_keyring);
->>> +				xlog_warn("added new child %s: %m", child_name);
->>> +			}
->>> +
->>> +			child_size = keyctl_read(child_keyring, NULL, 0);
->>> +			if (child_size < smallest_size) {
->>> +				dest_keyring = child_keyring;
->>> +				smallest_size = child_size;
->>> +			}
->>> +		}
->>> +	}
->>> +
->>> 	if (strcmp(type, "uid") == 0)
->>> -		rc = id_lookup(value, key, USER);
->>> +		rc = id_lookup(value, key, USER, dest_keyring);
->>> 	else if (strcmp(type, "gid") == 0)
->>> -		rc = id_lookup(value, key, GROUP);
->>> +		rc = id_lookup(value, key, GROUP, dest_keyring);
->>> 	else if (strcmp(type, "user") == 0)
->>> -		rc = name_lookup(value, key, USER);
->>> +		rc = name_lookup(value, key, USER, dest_keyring);
->>> 	else if (strcmp(type, "group") == 0)
->>> -		rc = name_lookup(value, key, GROUP);
->>> +		rc = name_lookup(value, key, GROUP, dest_keyring);
->>> +
->>> +	/* if we hung this off a child, unlink from the parent */
->>> +	if (dest_keyring)
->>> +		keyctl_unlink(key, parent_keyring);
->>>
->>> 	/* Set timeout to 10 (600 seconds) minutes */
->>> 	if (rc == 0)
->>> diff --git a/utils/nfsidmap/nfsidmap.man b/utils/nfsidmap/nfsidmap.man
->>> index 3a3a523..04f0014 100644
->>> --- a/utils/nfsidmap/nfsidmap.man
->>> +++ b/utils/nfsidmap/nfsidmap.man
->>> @@ -6,7 +6,7 @@
->>> .SH NAME
->>> nfsidmap \- The NFS idmapper upcall program
->>> .SH SYNOPSIS
->>> -.B "nfsidmap [-v] [-t timeout] key desc"
->>> +.B "nfsidmap [-v] [-t timeout] [-n count] key desc"
->>> .br
->>> .B "nfsidmap [-v] [-c]"
->>> .br
->>> @@ -42,6 +42,9 @@ Revoke both the uid and gid key of the given user.
->>> Set the expiration timer, in seconds, on the key.
->>> The default is 600 seconds (10 mins).
->>> .TP
->>> +.B -n count
->>> +Set the the number of child keyrings to create.
->>> +.TP
->>> .B -u user
->>> Revoke the uid key of the given user.
->>> .TP
->>>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
