@@ -1,258 +1,124 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:63704 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753941AbaCMOgA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 13 Mar 2014 10:36:00 -0400
-Message-ID: <5321C24D.8030101@RedHat.com>
-Date: Thu, 13 Mar 2014 10:35:57 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: NeilBrown <neilb@suse.de>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH - v3] mount.nfs: Fix fallback from tcp to udp
-References: <1394551050-14571-1-git-send-email-steved@redhat.com>
-In-Reply-To: <1394551050-14571-1-git-send-email-steved@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-ig0-f173.google.com ([209.85.213.173]:43392 "EHLO
+	mail-ig0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753432AbaCLPEV convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 12 Mar 2014 11:04:21 -0400
+Received: by mail-ig0-f173.google.com with SMTP id t19so14497246igi.0
+        for <linux-nfs@vger.kernel.org>; Wed, 12 Mar 2014 08:04:21 -0700 (PDT)
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
+Subject: Re: NFS over RDMA crashing
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+In-Reply-To: <20140312102806.435847a7@ipyr.poochiereds.net>
+Date: Wed, 12 Mar 2014 11:03:52 -0400
+Cc: Steve Wise <swise@opengridcomputing.com>,
+        Dr Fields James Bruce <bfields@fieldses.org>,
+        Tucker Tom <tom@opengridcomputing.com>, Yan Burman <yanb@mellanox.com>,
+        linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org,
+        Or Gerlitz <ogerlitz@mellanox.com>,
+        Lever Charles Edward <chuck.lever@oracle.com>
+Message-Id: <56B1FEC7-8514-4B2B-851B-7BC965A26AA8@primarydata.com>
+References: <51127B3F.2090200@mellanox.com> <20130206222435.GL16417@fieldses.org> <20130207164134.GK3222@fieldses.org> <003601cf3a26$94523ee0$bcf6bca0$@opengridcomputing.com> <005d01cf3a45$94ced0d0$be6c7270$@opengridcomputing.com> <531B47B3.1070503@opengridcomputing.com> <531B6D90.2090208@opengridcomputing.com> <531B79F8.2020008@opengridcomputing.com> <20140312093300.7a434cbb@tlielax.poochiereds.net> <731A7629-7DBB-4FC3-8F21-70380705ED4E@primarydata.com> <20140312102806.435847a7@ipyr.poochiereds.net>
+To: Layton Jeff <jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
+On Mar 12, 2014, at 10:28, Jeffrey Layton <jlayton@redhat.com> wrote:
 
-On 03/11/2014 11:17 AM, Steve Dickson wrote:
-> From: NeilBrown <neilb@suse.de>
+> On Wed, 12 Mar 2014 10:05:24 -0400
+> Trond Myklebust <trond.myklebust@primarydata.com> wrote:
 > 
-> Protocol negotiation in mount.nfs does not correctly negotiate with a
-> server which only supports NFSv3 and UDP.
+>> 
+>> On Mar 12, 2014, at 9:33, Jeff Layton <jlayton@redhat.com> wrote:
+>> 
+>>> On Sat, 08 Mar 2014 14:13:44 -0600
+>>> Steve Wise <swise@opengridcomputing.com> wrote:
+>>> 
+>>>> On 3/8/2014 1:20 PM, Steve Wise wrote:
+>>>>> 
+>>>>>> I removed your change and started debugging original crash that 
+>>>>>> happens on top-o-tree.   Seems like rq_next_pages is screwed
+>>>>>> up.  It should always be >= rq_respages, yes?  I added a
+>>>>>> BUG_ON() to assert this in rdma_read_xdr() we hit the BUG_ON().
+>>>>>> Look
+>>>>>> 
+>>>>>> crash> svc_rqst.rq_next_page 0xffff8800b84e6000
+>>>>>> rq_next_page = 0xffff8800b84e6228
+>>>>>> crash> svc_rqst.rq_respages 0xffff8800b84e6000
+>>>>>> rq_respages = 0xffff8800b84e62a8
+>>>>>> 
+>>>>>> Any ideas Bruce/Tom?
+>>>>>> 
+>>>>> 
+>>>>> Guys, the patch below seems to fix the problem.  Dunno if it is 
+>>>>> correct though.  What do you think?
+>>>>> 
+>>>>> diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c 
+>>>>> b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+>>>>> index 0ce7552..6d62411 100644
+>>>>> --- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+>>>>> +++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+>>>>> @@ -90,6 +90,7 @@ static void rdma_build_arg_xdr(struct svc_rqst
+>>>>> *rqstp, sge_no++;
+>>>>>      }
+>>>>>      rqstp->rq_respages = &rqstp->rq_pages[sge_no];
+>>>>> +       rqstp->rq_next_page = rqstp->rq_respages;
+>>>>> 
+>>>>>      /* We should never run out of SGE because the limit is
+>>>>> defined to
+>>>>>       * support the max allowed RPC data length
+>>>>> @@ -276,6 +277,7 @@ static int fast_reg_read_chunks(struct 
+>>>>> svcxprt_rdma *xprt,
+>>>>> 
+>>>>>      /* rq_respages points one past arg pages */
+>>>>>      rqstp->rq_respages = &rqstp->rq_arg.pages[page_no];
+>>>>> +       rqstp->rq_next_page = rqstp->rq_respages;
+>>>>> 
+>>>>>      /* Create the reply and chunk maps */
+>>>>>      offset = 0;
+>>>>> 
+>>>>> 
+>>>> 
+>>>> While this patch avoids the crashing, it apparently isn't
+>>>> correct...I'm getting IO errors reading files over the mount. :)
+>>>> 
+>>> 
+>>> I hit the same oops and tested your patch and it seems to have fixed
+>>> that particular panic, but I still see a bunch of other mem
+>>> corruption oopses even with it. I'll look more closely at that when
+>>> I get some time.
+>>> 
+>>> FWIW, I can easily reproduce that by simply doing something like:
+>>> 
+>>>  $ dd if=/dev/urandom of=/file/on/nfsordma/mount bs=4k count=1
+>>> 
+>>> I'm not sure why you're not seeing any panics with your patch in
+>>> place. Perhaps it's due to hw differences between our test rigs.
+>>> 
+>>> The EIO problem that you're seeing is likely the same client bug
+>>> that Chuck recently fixed in this patch:
+>>> 
+>>>  [PATCH 2/8] SUNRPC: Fix large reads on NFS/RDMA
+>>> 
+>>> AIUI, Trond is merging that set for 3.15, so I'd make sure your
+>>> client has those patches when testing.
+>>> 
+>> 
+>> Nothing is in my queue yet.
+>> 
 > 
-> When mount.nfs attempts an NFSv4 mount and fails with ECONNREFUSED
-> it does not fall back to NFSv3, as this is not recognised as a
-> "does not support NFSv4" error.
-> However ECONNREFUSED is a clear indication that the server doesn't
-> support TCP, and ipso facto does not support NFSv4.
-> So ECONNREFUSED should trigger a fallback from v4 to v2/3.
+> Doh! Any reason not to merge that set from Chuck? They do fix a couple
+> of nasty client bugs…
 > 
-> However ECONNREFUSED may simply indicate that NFSv4 isn't supported
-> *yet*.  i.e. the server is still booting and isn't responding to NFS
-> requests yet.  So if we subsequently find that NFSv3 is supported, we
-> need to check with the server to confirm that NFSv4 really isn't
-> supported.
-> 
-> If server reports that v4 is not supported after reporting that v3
-> is, we can safely use v4.  If it reports that v4 is supported, we need
-> to retry v4.
-> 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-> Reported-by: Carsten Ziepke <kieltux@gmail.com>
-Committed...
 
-steved.
-> ---
->  utils/mount/network.c | 34 ++++++++++++++++++++++++++--------
->  utils/mount/network.h |  2 +-
->  utils/mount/stropts.c | 32 +++++++++++++++++++++++---------
->  3 files changed, 50 insertions(+), 18 deletions(-)
-> 
-> diff --git a/utils/mount/network.c b/utils/mount/network.c
-> index 2fdd2c0..4f8c15c 100644
-> --- a/utils/mount/network.c
-> +++ b/utils/mount/network.c
-> @@ -611,18 +611,33 @@ out_ok:
->   * returned; rpccreateerr.cf_stat is set to reflect the nature of the error.
->   */
->  static int nfs_probe_nfsport(const struct sockaddr *sap, const socklen_t salen,
-> -				struct pmap *pmap)
-> +			     struct pmap *pmap, int checkv4)
->  {
->  	if (pmap->pm_vers && pmap->pm_prot && pmap->pm_port)
->  		return 1;
->  
->  	if (nfs_mount_data_version >= 4) {
->  		const unsigned int *probe_proto;
-> +		int ret;
-> +		struct sockaddr_storage save_sa;
->  
->  		probe_proto = nfs_default_proto();
-> -
-> -		return nfs_probe_port(sap, salen, pmap,
-> -					probe_nfs3_only, probe_proto);
-> +		memcpy(&save_sa, sap, salen);
-> +
-> +		ret = nfs_probe_port(sap, salen, pmap,
-> +				     probe_nfs3_only, probe_proto);
-> +		if (!ret || !checkv4 || probe_proto != probe_tcp_first)
-> +			return ret;
-> +
-> +		nfs_set_port((struct sockaddr *)&save_sa, NFS_PORT);
-> +		ret =  nfs_rpc_ping((struct sockaddr *)&save_sa, salen, 
-> +			NFS_PROGRAM, 4, IPPROTO_TCP, NULL);
-> +		if (ret) {
-> +			rpc_createerr.cf_stat = RPC_FAILED;
-> +			rpc_createerr.cf_error.re_errno = EAGAIN;
-> +			return 0;
-> +		}
-> +		return 1;
->  	} else
->  		return nfs_probe_port(sap, salen, pmap,
->  					probe_nfs2_only, probe_udp_only);
-> @@ -671,7 +686,7 @@ static int nfs_probe_version_fixed(const struct sockaddr *mnt_saddr,
->  			const socklen_t nfs_salen,
->  			struct pmap *nfs_pmap)
->  {
-> -	if (!nfs_probe_nfsport(nfs_saddr, nfs_salen, nfs_pmap))
-> +	if (!nfs_probe_nfsport(nfs_saddr, nfs_salen, nfs_pmap, 0))
->  		return 0;
->  	return nfs_probe_mntport(mnt_saddr, mnt_salen, mnt_pmap);
->  }
-> @@ -686,6 +701,8 @@ static int nfs_probe_version_fixed(const struct sockaddr *mnt_saddr,
->   * @nfs_salen:	length of NFS server's address
->   * @nfs_pmap:	IN: partially filled-in NFS RPC service tuple;
->   *		OUT: fully filled-in NFS RPC service tuple
-> + * @checkv4:	Flag indicating that if v3 is available we must also
-> + *		check v4, and if that is available, set re_errno to EAGAIN.
->   *
->   * Returns 1 and fills in both @pmap structs if the requested service
->   * ports are unambiguous and pingable.  Otherwise zero is returned;
-> @@ -696,7 +713,8 @@ int nfs_probe_bothports(const struct sockaddr *mnt_saddr,
->  			struct pmap *mnt_pmap,
->  			const struct sockaddr *nfs_saddr,
->  			const socklen_t nfs_salen,
-> -			struct pmap *nfs_pmap)
-> +			struct pmap *nfs_pmap,
-> +			int checkv4)
->  {
->  	struct pmap save_nfs, save_mnt;
->  	const unsigned long *probe_vers;
-> @@ -717,7 +735,7 @@ int nfs_probe_bothports(const struct sockaddr *mnt_saddr,
->  
->  	for (; *probe_vers; probe_vers++) {
->  		nfs_pmap->pm_vers = mntvers_to_nfs(*probe_vers);
-> -		if (nfs_probe_nfsport(nfs_saddr, nfs_salen, nfs_pmap) != 0) {
-> +		if (nfs_probe_nfsport(nfs_saddr, nfs_salen, nfs_pmap, checkv4) != 0) {
->  			mnt_pmap->pm_vers = *probe_vers;
->  			if (nfs_probe_mntport(mnt_saddr, mnt_salen, mnt_pmap) != 0)
->  				return 1;
-> @@ -757,7 +775,7 @@ int probe_bothports(clnt_addr_t *mnt_server, clnt_addr_t *nfs_server)
->  	return nfs_probe_bothports(mnt_addr, sizeof(mnt_server->saddr),
->  					&mnt_server->pmap,
->  					nfs_addr, sizeof(nfs_server->saddr),
-> -					&nfs_server->pmap);
-> +					&nfs_server->pmap, 0);
->  }
->  
->  /**
-> diff --git a/utils/mount/network.h b/utils/mount/network.h
-> index 9c75856..d7636d7 100644
-> --- a/utils/mount/network.h
-> +++ b/utils/mount/network.h
-> @@ -42,7 +42,7 @@ static const struct timeval RETRY_TIMEOUT = { 3, 0 };
->  int probe_bothports(clnt_addr_t *, clnt_addr_t *);
->  int nfs_probe_bothports(const struct sockaddr *, const socklen_t,
->  			struct pmap *, const struct sockaddr *,
-> -			const socklen_t, struct pmap *);
-> +			const socklen_t, struct pmap *, int);
->  int nfs_gethostbyname(const char *, struct sockaddr_in *);
->  int nfs_lookup(const char *hostname, const sa_family_t family,
->  		struct sockaddr *sap, socklen_t *salen);
-> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-> index a642394..2d72d5b 100644
-> --- a/utils/mount/stropts.c
-> +++ b/utils/mount/stropts.c
-> @@ -484,7 +484,7 @@ static int nfs_construct_new_options(struct mount_options *options,
->   * FALSE is returned if some failure occurred.
->   */
->  static int
-> -nfs_rewrite_pmap_mount_options(struct mount_options *options)
-> +nfs_rewrite_pmap_mount_options(struct mount_options *options, int checkv4)
->  {
->  	union nfs_sockaddr nfs_address;
->  	struct sockaddr *nfs_saddr = &nfs_address.sa;
-> @@ -534,7 +534,7 @@ nfs_rewrite_pmap_mount_options(struct mount_options *options)
->  	 * negotiate.  Bail now if we can't contact it.
->  	 */
->  	if (!nfs_probe_bothports(mnt_saddr, mnt_salen, &mnt_pmap,
-> -				 nfs_saddr, nfs_salen, &nfs_pmap)) {
-> +				 nfs_saddr, nfs_salen, &nfs_pmap, checkv4)) {
->  		errno = ESPIPE;
->  		if (rpc_createerr.cf_stat == RPC_PROGNOTREGISTERED)
->  			errno = EOPNOTSUPP;
-> @@ -595,7 +595,8 @@ static int nfs_sys_mount(struct nfsmount_info *mi, struct mount_options *opts)
->  }
->  
->  static int nfs_do_mount_v3v2(struct nfsmount_info *mi,
-> -		struct sockaddr *sap, socklen_t salen)
-> +			     struct sockaddr *sap, socklen_t salen,
-> +			     int checkv4)
->  {
->  	struct mount_options *options = po_dup(mi->options);
->  	int result = 0;
-> @@ -637,7 +638,7 @@ static int nfs_do_mount_v3v2(struct nfsmount_info *mi,
->  		printf(_("%s: trying text-based options '%s'\n"),
->  			progname, *mi->extra_opts);
->  
-> -	if (!nfs_rewrite_pmap_mount_options(options))
-> +	if (!nfs_rewrite_pmap_mount_options(options, checkv4))
->  		goto out_fail;
->  
->  	result = nfs_sys_mount(mi, options);
-> @@ -653,13 +654,13 @@ out_fail:
->   * Returns TRUE if successful, otherwise FALSE.
->   * "errno" is set to reflect the individual error.
->   */
-> -static int nfs_try_mount_v3v2(struct nfsmount_info *mi)
-> +static int nfs_try_mount_v3v2(struct nfsmount_info *mi, int checkv4)
->  {
->  	struct addrinfo *ai;
->  	int ret = 0;
->  
->  	for (ai = mi->address; ai != NULL; ai = ai->ai_next) {
-> -		ret = nfs_do_mount_v3v2(mi, ai->ai_addr, ai->ai_addrlen);
-> +		ret = nfs_do_mount_v3v2(mi, ai->ai_addr, ai->ai_addrlen, checkv4);
->  		if (ret != 0)
->  			return ret;
->  
-> @@ -793,7 +794,8 @@ static int nfs_autonegotiate(struct nfsmount_info *mi)
->  	result = nfs_try_mount_v4(mi);
->  	if (result)
->  		return result;
-> -		
-> +
-> +check_errno:
->  	switch (errno) {
->  	case EPROTONOSUPPORT:
->  		/* A clear indication that the server or our
-> @@ -807,12 +809,24 @@ static int nfs_autonegotiate(struct nfsmount_info *mi)
->  		/* Linux servers prior to 2.6.25 may return
->  		 * EPERM when NFS version 4 is not supported. */
->  		goto fall_back;
-> +	case ECONNREFUSED:
-> +		/* UDP-Only servers won't support v4, but maybe it
-> +		 * just isn't ready yet.  So try v3, but double-check
-> +		 * with rpcbind for v4. */
-> +		result = nfs_try_mount_v3v2(mi, TRUE);
-> +		if (result == 0 && errno == EAGAIN) {
-> +			/* v4 server seems to be registered now. */
-> +			result = nfs_try_mount_v4(mi);
-> +			if (result == 0 && errno != ECONNREFUSED)
-> +				goto check_errno;
-> +		}
-> +		return result;
->  	default:
->  		return result;
->  	}
->  
->  fall_back:
-> -	return nfs_try_mount_v3v2(mi);
-> +	return nfs_try_mount_v3v2(mi, FALSE);
->  }
->  
->  /*
-> @@ -831,7 +845,7 @@ static int nfs_try_mount(struct nfsmount_info *mi)
->  		break;
->  	case 2:
->  	case 3:
-> -		result = nfs_try_mount_v3v2(mi);
-> +		result = nfs_try_mount_v3v2(mi, FALSE);
->  		break;
->  	case 4:
->  		result = nfs_try_mount_v4(mi);
-> 
+Most of them are one-line debugging dprintks which I do not intend to apply.
+
+One of them confuses a readdir optimisation with a bugfix; at the very least the patch comments need changing.
+That leaves 2 that can go in, however as they are clearly insufficient to make RDMA safe for general use, they certainly do not warrant a stable@ label. The workaround for the Oopses is simple: use TCP.
+
+_________________________________
+Trond Myklebust
+Linux NFS client maintainer, PrimaryData
+trond.myklebust@primarydata.com
+
