@@ -1,169 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:60626 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:28139 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753410AbaCKR7W (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 11 Mar 2014 13:59:22 -0400
-Message-ID: <531F4EF1.7010604@RedHat.com>
-Date: Tue, 11 Mar 2014 13:59:13 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>, Michael Scherer <misc@zarb.org>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: permit to use multiple time the -H option
-References: <1393753112-14879-1-git-send-email-misc@zarb.org> <20140303201941.GB10659@fieldses.org>
-In-Reply-To: <20140303201941.GB10659@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1754634AbaCMRlP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 13 Mar 2014 13:41:15 -0400
+Subject: Re: [PATCH v2 0/5] NFSv4 rpc.idmapd plugin
+From: Simo Sorce <simo@redhat.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Steve Dickson <SteveD@redhat.com>, Noam Meltzer <noam@primarydata.com>,
+        linux-nfs@vger.kernel.org, sssd-devel@lists.fedorahosted.org
+In-Reply-To: <20140313172531.GA7124@fieldses.org>
+References: <1393918676-20865-1-git-send-email-noam@primarydata.com>
+	 <5321CDB6.7010803@RedHat.com>
+	 <1394729939.32465.231.camel@willson.li.ssimo.org>
+	 <20140313172531.GA7124@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
+Date: Thu, 13 Mar 2014 13:41:02 -0400
+Message-ID: <1394732462.32465.235.camel@willson.li.ssimo.org>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Thu, 2014-03-13 at 13:25 -0400, J. Bruce Fields wrote:
+> On Thu, Mar 13, 2014 at 12:58:59PM -0400, Simo Sorce wrote:
+> > On Thu, 2014-03-13 at 11:24 -0400, Steve Dickson wrote:
+> > 
+> > > V4 servers now have an option of returning a uid string (aka "3606")
+> > > where the NFS client just converts that into the uid.
+> > 
+> > Can the client tell the server *not to do that* ?
+> 
+> The client can use kerberos, in which case the server won't do that.
 
+This is sufficient, thanks.
 
-On 03/03/2014 03:19 PM, J. Bruce Fields wrote:
-> On Sun, Mar 02, 2014 at 10:38:32AM +0100, Michael Scherer wrote:
->> This permit to have 1 nfsd listening on more than 1
->> interface for multihomed systems, without having to
->> listen on all interfaces and filtering later.
->> ---
->>  utils/nfsd/nfsd.c   | 51 +++++++++++++++++++++++++++++++++++----------------
->>  utils/nfsd/nfsd.man |  3 ++-
->>  2 files changed, 37 insertions(+), 17 deletions(-)
->>
->> diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
->> index edeb621..7ab6fcf 100644
->> --- a/utils/nfsd/nfsd.c
->> +++ b/utils/nfsd/nfsd.c
->> @@ -95,9 +95,10 @@ nfsd_enable_protos(unsigned int *proto4, unsigned int *proto6)
->>  int
->>  main(int argc, char **argv)
->>  {
->> -	int	count = NFSD_NPROC, c, error = 0, portnum = 0, fd, found_one;
->> +	int	count = NFSD_NPROC, c, i, error = 0, portnum = 0, fd, found_one;
->>  	char *p, *progname, *port;
->> -	char *haddr = NULL;
->> +	char **haddr = NULL;
->> +	unsigned int hcounter = 0;
->>  	int	socket_up = 0;
->>  	unsigned int minorvers = 0;
->>  	unsigned int minorversset = 0;
->> @@ -118,6 +119,13 @@ main(int argc, char **argv)
->>  		exit(1);
->>  	}
->>  
->> +	haddr = malloc(sizeof(char*));
->> +	if (!haddr) {
->> +		fprintf(stderr, "%s: unable to allocate memory.\n", progname);
->> +		exit(1);
->> +	}
->> +	haddr[0] = NULL;
->> +
-> 
-> Checking "man malloc..."  realloc(NULL) is the same as malloc(), so you
-> can just skip this initial allocation (and the "if hcounter" below) and
-> count on the realloc below doing the right thing when it needs to.
-> 
-> Otherwise, allowing multiple -H options seems like a reasonable thing to
-> do.
-It turns out you do need allocate a NULL entry for when there are
-no -H specified... 
+> Other than that, no, the behavior can only be controlled by server-side
+> configuration.
 
-steved.
+A little sub-optimal if the server can do either but the client can have
+a choice, but ok.
 
-> 
-> --b.
-> 
->>  	xlog_syslog(0);
->>  	xlog_stderr(1);
->>  
->> @@ -127,17 +135,24 @@ main(int argc, char **argv)
->>  			xlog_config(D_ALL, 1);
->>  			break;
->>  		case 'H':
->> -			/*
->> -			 * for now, this only handles one -H option. Use the
->> -			 * last one specified.
->> -			 */
->> -			free(haddr);
->> -			haddr = strdup(optarg);
->> -			if (!haddr) {
->> +			if (hcounter) {
->> +				haddr = realloc(haddr, sizeof(char*) * hcounter+1);
->> +
->> +				if(!haddr) {
->> +					fprintf(stderr, "%s: unable to allocate "
->> +							"memory.\n", progname);
->> +					exit(1);
->> +				}
->> +			}
->> +
->> +			haddr[hcounter] = strdup(optarg);
->> +			if (!haddr[hcounter]) {
->>  				fprintf(stderr, "%s: unable to allocate "
->>  					"memory.\n", progname);
->>  				exit(1);
->>  			}
->> +
->> +			hcounter++;
->>  			break;
->>  		case 'P':	/* XXX for nfs-server compatibility */
->>  		case 'p':
->> @@ -286,16 +301,18 @@ main(int argc, char **argv)
->>  	 * interfaces, these are a no-op.
->>  	 */
->>  	nfssvc_setvers(versbits, minorvers, minorversset);
->> - 
->> -	error = nfssvc_set_sockets(AF_INET, proto4, haddr, port);
->> -	if (!error)
->> -		socket_up = 1;
->> +
->> +	for(i=0; i <= hcounter; i++) {
->> +		error = nfssvc_set_sockets(AF_INET, proto4, haddr[i], port);
->> +		if (!error)
->> +			socket_up = 1;
->>  
->>  #ifdef IPV6_SUPPORTED
->> -	error = nfssvc_set_sockets(AF_INET6, proto6, haddr, port);
->> -	if (!error)
->> -		socket_up = 1;
->> +		error = nfssvc_set_sockets(AF_INET6, proto6, haddr[i], port);
->> +		if (!error)
->> +			socket_up = 1;
->>  #endif /* IPV6_SUPPORTED */
->> +	}
->>  
->>  set_threads:
->>  	/* don't start any threads if unable to hand off any sockets */
->> @@ -328,6 +345,8 @@ set_threads:
->>  		xlog(L_ERROR, "error starting threads: errno %d (%m)", errno);
->>  out:
->>  	free(port);
->> +	for(i=0; i <= hcounter; i++)
->> +		free(haddr[i]);
->>  	free(haddr);
->>  	free(progname);
->>  	return (error != 0);
->> diff --git a/utils/nfsd/nfsd.man b/utils/nfsd/nfsd.man
->> index 7de0867..cdc14ba 100644
->> --- a/utils/nfsd/nfsd.man
->> +++ b/utils/nfsd/nfsd.man
->> @@ -35,7 +35,8 @@ Note that
->>  .B lockd
->>  (which performs file locking services for NFS) may still accept
->>  request on all known network addresses.  This may change in future
->> -releases of the Linux Kernel.
->> +releases of the Linux Kernel. This option can be used multiple time 
->> +to listen to more than one interface.
->>  .TP
->>  .B \-p " or " \-\-port  port
->>  specify a different port to listen on for NFS requests. By default,
->> -- 
->> 1.8.5.3
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+Simo.
+
+-- 
+Simo Sorce * Red Hat, Inc * New York
+
