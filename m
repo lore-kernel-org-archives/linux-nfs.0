@@ -1,53 +1,183 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from plane.gmane.org ([80.91.229.3]:47624 "EHLO plane.gmane.org"
+Received: from cantor2.suse.de ([195.135.220.15]:57214 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752166AbaC0HzG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 27 Mar 2014 03:55:06 -0400
-Received: from list by plane.gmane.org with local (Exim 4.69)
-	(envelope-from <glN-linux-nfs@m.gmane.org>)
-	id 1WT59T-0004Ip-46
-	for linux-nfs@vger.kernel.org; Thu, 27 Mar 2014 08:55:03 +0100
-Received: from vpn.ims.co.at ([81.223.138.18])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Thu, 27 Mar 2014 08:55:03 +0100
-Received: from rafael.reiter by vpn.ims.co.at with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Thu, 27 Mar 2014 08:55:03 +0100
-To: linux-nfs@vger.kernel.org
-From: Reiter Rafael <rafael.reiter@ims.co.at>
-Subject: Re: Kernel oops/panic with NFS over RDMA mount after disrupted Infiniband
- connection
-Date: Thu, 27 Mar 2014 08:53:50 +0100
-Message-ID: <lh0le0$u5$1@ger.gmane.org>
-References: <5332D425.3030803@ims.co.at> <4E6350BB-5E9C-40D9-8624-6CAA78E5B902@oracle.com>
+	id S1751573AbaCMBXV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 12 Mar 2014 21:23:21 -0400
+Date: Thu, 13 Mar 2014 12:23:11 +1100
+From: NeilBrown <neilb@suse.de>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Dickson Steve <SteveD@redhat.com>, NFS <linux-nfs@vger.kernel.org>,
+        Dr Fields James Bruce <bfields@fieldses.org>,
+        Lever Charles Edward <chuck.lever@oracle.com>,
+        Carsten Ziepke <kieltux@gmail.com>
+Subject: Re: [PATCH - v2] mount.nfs: Fix fallback from tcp to udp
+Message-ID: <20140313122311.1d6cb500@notabene.brown>
+In-Reply-To: <0AC6E29F-B377-4EE0-9599-26A72A8F85DA@primarydata.com>
+References: <20140224142349.784345f9@notabene.brown>
+	<531E2E3F.2020805@RedHat.com>
+	<20140311090124.05409b1b@notabene.brown>
+	<531F2334.2030203@RedHat.com>
+	<20140312163803.0e911784@notabene.brown>
+	<BAE0F586-4E03-43EB-AC7F-81123D757BDE@primarydata.com>
+	<53203D97.6090005@RedHat.com>
+	<0AC6E29F-B377-4EE0-9599-26A72A8F85DA@primarydata.com>
 Mime-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
-In-Reply-To: <4E6350BB-5E9C-40D9-8624-6CAA78E5B902@oracle.com>
-Cc: linux-rdma@vger.kernel.org
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/Fz_dlXD3bwokpOvlq70lGUA"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 03/26/2014 07:15 PM, Chuck Lever wrote:
-> 
-> Hi Rafael-
-> 
-> I’ll take a look. Can you report your HCA and how you reproduce this issue?
+--Sig_/Fz_dlXD3bwokpOvlq70lGUA
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-The HCA is Mellanox Technologies MT26428.
 
-Reproduction:
-1) Mount a directory via NFS/RDMA
-mount -t nfs -o port=20049,rdma,vers=4.0,timeo=900 172.16.100.2:/ /mnt/
-2) Pull the Infiniband cable or use ibportstate to disrupt the Infiniband connection
-3) ls /mnt
-4) wait 5-30 seconds
+> >> I would expect the timeouts to have changed due to the NFSv4 trunking =
+detection (which is=20
+> >> exactly why it is wrong to rely on the kernel timeouts here anyway), b=
+ut I would not expect=20
+> >> the kernel to never time out at all.
+> > It appears it started with 3.13 kernels... The above stack is from a 3.=
+14-ish client.=20
+> >=20
+>=20
+> Which patch caused the behaviour to change?
 
-> 
-> Do you (or does anyone) know whether OpenSuSE uses the stock upstream providers, or has any of OFED been applied to this kernel?
+561ec1603171cd9b38dcf6cac53e8710f437a48d is the first bad commit
+commit 561ec1603171cd9b38dcf6cac53e8710f437a48d
+Author: Trond Myklebust <Trond.Myklebust@netapp.com>
+Date:   Thu Sep 26 15:22:45 2013 -0400
 
-My first post was misleading -- I use the vanilla 3.10.17 kernel, and the error occurs with and without Mellanox OFED. The above report
-references the vanilla kernel.
+    SUNRPC: call_connect_status should recheck bind and connect status on e=
+rror
+   =20
+    Currently, we go directly to call_transmit which sends us to call_status
+    on error. If we know that the connect attempt failed, we should rather
+    just jump straight back to call_bind and call_connect.
+   =20
+    Ditto for EAGAIN, except do not delay.
+   =20
+    Signed-off-by: Trond Myklebust <Trond.Myklebust@netapp.com>
 
-Rafael
 
+If I revert that commit from mainline (which may be a completely bogus thing
+to do) then mainline works (at least for this specific simple test).
+(The revert required some wiggling - I'll include it below).
+
+To be precise, the test is to try to mount
+  mount server:/path /mnt
+from a server which has run
+   rpc.nfsd -T -N4
+
+"success" is getting periodic messages:
+
+mount.nfs: trying text-based options 'retry=3D1,vers=3D4,addr=3D10.0.10.2,c=
+lientaddr=3D10.0.10.1'
+mount.nfs: mount(2): Connection refused
+
+
+"failure" is not getting those messages.
+
+
+There is another change though.
+For the commit above I don't not get "Connection refused", but after 2
+minutes I get=20
+
+mount.nfs: mount(2): Connection timed out
+
+With mainline, it waits forever.
+I did a second git bisect for this change and found
+
+2118071d3b0d57a03fad77885f4fdc364798aa87 is the first bad commit
+commit 2118071d3b0d57a03fad77885f4fdc364798aa87
+Author: Trond Myklebust <trond.myklebust@primarydata.com>
+Date:   Tue Dec 31 13:22:59 2013 -0500
+
+    SUNRPC: Report connection error values to rpc_tasks on the pending queue
+   =20
+    Currently we only report EAGAIN, which is not descriptive enough for
+    softconn tasks.
+   =20
+    Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+
+
+=46rom this commit, a mount attempt which is getting connections denied will
+block indefinitely.
+
+Hope that is helpful.
+
+NeilBrown
+
+
+
+This is the revert that I mentioned - just for completeness.
+
+
+=46rom 9c1462ff54fcc2adc79c825b867c32c19e30a9a7 Mon Sep 17 00:00:00 2001
+From: NeilBrown <neilb@suse.de>
+Date: Thu, 13 Mar 2014 11:38:54 +1100
+Subject: [PATCH] Revert "SUNRPC: call_connect_status should recheck bind and
+ connect status on error"
+
+This reverts commit 561ec1603171cd9b38dcf6cac53e8710f437a48d.
+
+Conflicts:
+	net/sunrpc/clnt.c
+
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 0edada973434..ba0cd114f0e1 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -1796,7 +1796,6 @@ call_connect_status(struct rpc_task *task)
+ 	dprint_status(task);
+=20
+ 	trace_rpc_connect_status(task, status);
+-	task->tk_status =3D 0;
+ 	switch (status) {
+ 		/* if soft mounted, test if we've timed out */
+ 	case -ETIMEDOUT:
+@@ -1805,16 +1804,14 @@ call_connect_status(struct rpc_task *task)
+ 	case -ECONNREFUSED:
+ 	case -ECONNRESET:
+ 	case -ECONNABORTED:
+-	case -ENETUNREACH:
+ 	case -EHOSTUNREACH:
+-		/* retry with existing socket, after a delay */
+-		rpc_delay(task, 3*HZ);
++	case -ENETUNREACH:
+ 		if (RPC_IS_SOFTCONN(task))
+ 			break;
+-	case -EAGAIN:
+-		task->tk_action =3D call_bind;
+-		return;
++		/* retry with existing socket, after a delay */
+ 	case 0:
++	case -EAGAIN:
++		task->tk_status =3D 0;
+ 		clnt->cl_stats->netreconn++;
+ 		task->tk_action =3D call_transmit;
+ 		return;
+
+--Sig_/Fz_dlXD3bwokpOvlq70lGUA
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.22 (GNU/Linux)
+
+iQIVAwUBUyEIfznsnt1WYoG5AQJfPg/+P+Ko1GkedKRniX9EC24M9hPYibuS0NMr
+FrZPHemE4qkZYmn/F+g6bgMWVsO/rOuU6fs7VSD4K4hkqdMDU9WN4IL43BtNfInC
+wtLCTERE8Hct7iicNn1UGu29cWyw0ISdgiQXKjWOzn0Y+KQkn6QcAJZcRo+oj6OZ
++yKpKrnQfzlAmqzZzuy1ElW5E1uGE4Kc/nU8mGAcJHNUFcxtNlUxcOlWPOr76du5
+fKB9R73FLmFWjFFx496p9TIgBGQcTYQ8SF38ycMXVv/NWY7bttBK02YV2x5+iUw8
+yZNK88fKzO+kp9hxQNapNujcovGgfF7aD7dngadcK6TlCqcsn2stDx0absFcc82F
+i7jKDX5PoFcKogfH1fKztQPOJByq7kbRwepMSEYxyfmEYzhENuiD9CJhOACGBlnT
+B731WWg1B9XKP7RMUrXFNFcd3KF3HzKBnmWOmo8h+6u/AVUhJVzZAkF3QfIYhO8W
+BUwcPipHQiTS+RVZJP0jNCxnT6nrgnkUHQKJRwBnvp1qdapswIbB1VN3lFkyjVo0
+EzxxnwYFHgOrsZ+fa7G+MRHgZuSwDohliQNWI2WNW0oDQHSseuIDa02SNtJtQqJ0
+6z4YFMVGzHsyAfmhRZGkMpy6Lfk8j/RUnVsIdZaLgQIHPQXVGQdkLuMU91u2513x
+od/YJcXRBes=
+=P6C0
+-----END PGP SIGNATURE-----
+
+--Sig_/Fz_dlXD3bwokpOvlq70lGUA--
