@@ -1,78 +1,89 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f176.google.com ([209.85.223.176]:61091 "EHLO
-	mail-ie0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752144AbaCGX5I convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 7 Mar 2014 18:57:08 -0500
-Received: by mail-ie0-f176.google.com with SMTP id rd18so5136542iec.21
-        for <linux-nfs@vger.kernel.org>; Fri, 07 Mar 2014 15:57:08 -0800 (PST)
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
-Subject: Re: [PATCH] fix intr/nointr to match kernel behavior (ignored)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-In-Reply-To: <20140308104228.4bfcd3d5@notabene.brown>
-Date: Fri, 7 Mar 2014 18:57:03 -0500
-Cc: Jim Rees <rees@umich.edu>, Dickson Steve <steved@redhat.com>,
-        linux-nfs@vger.kernel.org
-Message-Id: <12C999A4-52B8-461F-BFB9-F67AB4F6EFCE@primarydata.com>
-References: <1394143352-26095-1-git-send-email-rees@umich.edu> <20140307185937.5852666b@notabene.brown> <D65A0AA5-ADF9-43AA-871F-69533C8F2DD7@primarydata.com> <20140308104228.4bfcd3d5@notabene.brown>
-To: Brown Neil <neilb@suse.de>
+Received: from mx1.redhat.com ([209.132.183.28]:50418 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753337AbaCMPYm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 13 Mar 2014 11:24:42 -0400
+Message-ID: <5321CDB6.7010803@RedHat.com>
+Date: Thu, 13 Mar 2014 11:24:38 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Noam Meltzer <noam@primarydata.com>, linux-nfs@vger.kernel.org,
+        sssd-devel@lists.fedorahosted.org
+Subject: Re: [PATCH v2 0/5] NFSv4 rpc.idmapd plugin
+References: <1393918676-20865-1-git-send-email-noam@primarydata.com>
+In-Reply-To: <1393918676-20865-1-git-send-email-noam@primarydata.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hello,
 
-On Mar 7, 2014, at 18:42, NeilBrown <neilb@suse.de> wrote:
-
-> On Fri, 7 Mar 2014 08:13:00 -0500 Trond Myklebust
-> <trond.myklebust@primarydata.com> wrote:
+On 03/04/2014 02:37 AM, Noam Meltzer wrote:
+> Hello sssd-devel & linux-nfs,
 > 
->> 
->> On Mar 7, 2014, at 2:59, NeilBrown <neilb@suse.de> wrote:
->> 
->>> On Thu,  6 Mar 2014 17:02:32 -0500 Jim Rees <rees@umich.edu> wrote:
->>> 
->>>> Signed-off-by: Jim Rees <rees@umich.edu>
->>>> ---
->>>> utils/mount/nfs.man | 53 ++++++-----------------------------------------------
->>>> 1 file changed, 6 insertions(+), 47 deletions(-)
->>>> 
->>>> diff --git a/utils/mount/nfs.man b/utils/mount/nfs.man
->>>> index ef09a31..2ab369c 100644
->>>> --- a/utils/mount/nfs.man
->>>> +++ b/utils/mount/nfs.man
->>>> @@ -125,6 +125,12 @@ option may mitigate some of the risks of using the
->>>> .B soft
->>>> option.
->>>> .TP 1.5i
->>>> +.BR intr " / " nointr
->>>> +This option is provided for backward compatibility.
->>>> +It is ignored after kernel 2.6.25.
->>>> +System calls return EINTR if an in-progress NFS operation is interrupted by
->>>> +a signal.
->>> 
->>> That isn't correct.
->>> "A process that is waiting for a reply for an NFS server can be killed
->>> by any signal which would normally kill the process.  If a signal would not
->>> normally kill the process (i.e. it is caught or ignored) then that signal
->>> will not abort and NFS request".
->>> 
->>> This is really a fairly horrible semantic.  It makes perfect sense from an
->>> internal implementation perspective and provides good backwards compatibility
->>> and cross-compatibility with other filesystems (where 'read' and 'write'
->>> never ever return EINTR), but it is very hard to document clearly.
->>> 
->> Isn’t the documentation in the signal(7) manpage sufficient? We could simply refer to that…
->> 
+> This is v2 of the patch set. It is now sent to linux-nfs as weel, following
+> Steve Dickson request.
 > 
-> I would certainly be good if we could delegation the documentation.  But I
-> couldn't find anything in signal(7) that seemed particularly relevant. Which
-> bit were you thinking of?
+> The code in the next 5 patches implements the design document:
+> https://fedorahosted.org/sssd/wiki/DesignDocs/rpc.idmapd%20plugin
 > 
+> The changes in the code (compared to v1) are following the review done in
+> sssd-devel.
+> I believe that there are still two items in dispute (no final verdict was given
+> in the sssd mailing list) but this new patch set will give a chance to have a
+> cleaner look on things.
+What exactly are you looking for from us to move this forward? 
 
-The table which lists the posix signals, and which indicates whether they are fatal not (i.e. what ‘action’ they cause).
-The same page also explains signal blocking and signal handling, which could also be helpful..
+I would like to point out that the NFS client no longer uses the
+rpc.idmapd daemon to do its id mapping. Instead the kernel now 
+does an upcall to the nfsidmap(5) command and the resulting 
+uid/gid is stored in the kernel key chain, if a mapping 
+is done at all... 
 
-_________________________________
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
+V4 servers now have an option of returning a uid string (aka "3606")
+where the NFS client just converts that into the uid.
 
+steved.
+
+> 
+> --
+> 
+> Noam Meltzer
+> Linux Software Engineer
+> PRIMARY DATA
+> 
+> P.O. Box 12650, Herzliya Pituach 4673300
+> 9 Hamenofim St. Akerstein Towers, Tower A, 5th fl. Herzliya
+> 
+> Office: +972-77-8981888 | Fax: +972-3-7617140 | Mobile: +972-54-5873843
+> 
+> Email: noam@primarydata.com
+> 
+> 
+> --
+> 
+> Noam Meltzer (5):
+>   NEW CLIENT: plugin for NFSv4 rpc.idmapd
+>   NFSv4 client: (private) headers from libnfsidmap
+>   NFSv4 client: add to build system
+>   NFSv4 client: man page
+>   NFSv4 client: add to RPM spec
+> 
+>  Makefile.am                            |  19 ++
+>  configure.ac                           |  10 +
+>  contrib/sssd.spec.in                   |   8 +
+>  src/conf_macros.m4                     |  30 ++
+>  src/external/libnfsidmap.m4            |  17 +
+>  src/man/Makefile.am                    |   4 +-
+>  src/man/include/seealso.xml            |   4 +
+>  src/man/sss_rpcidmapd.5.xml            |  97 ++++++
+>  src/sss_client/common.c                |   5 +
+>  src/sss_client/nfs/nfsidmap_internal.h |  78 +++++
+>  src/sss_client/nfs/sss_nfs_client.c    | 569 +++++++++++++++++++++++++++++++++
+>  src/sss_client/sss_cli.h               |   2 +
+>  12 files changed, 842 insertions(+), 1 deletion(-)
+>  create mode 100644 src/external/libnfsidmap.m4
+>  create mode 100644 src/man/sss_rpcidmapd.5.xml
+>  create mode 100644 src/sss_client/nfs/nfsidmap_internal.h
+>  create mode 100644 src/sss_client/nfs/sss_nfs_client.c
+> 
