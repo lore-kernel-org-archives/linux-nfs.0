@@ -1,142 +1,667 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yh0-f41.google.com ([209.85.213.41]:56086 "EHLO
-	mail-yh0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753179AbaCAT5A (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 1 Mar 2014 14:57:00 -0500
-Received: by mail-yh0-f41.google.com with SMTP id f73so2237377yha.0
-        for <linux-nfs@vger.kernel.org>; Sat, 01 Mar 2014 11:57:00 -0800 (PST)
-Message-ID: <1393703818.7434.4.camel@leira.trondhjem.org>
-Subject: Re: Oops in nfs41_assign_slot in Linux 3.13.4
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Ben Hutchings <ben@decadent.org.uk>
-Cc: 734268@bugs.debian.org, Arthur de Jong <adejong@debian.org>,
-        linux-nfs@vger.kernel.org,
-        Charles Edward Lever <Chuck.Lever@oracle.com>
-Date: Sat, 01 Mar 2014 13:56:58 -0600
-In-Reply-To: <1393703218.7434.2.camel@leira.trondhjem.org>
-References: <1388922864.10916.7.camel@sorbet.thuis.net>
-	 <1393361101.5000.26.camel@sorbet.thuis.net>
-	 <1393376280.14067.34.camel@deadeye.wl.decadent.org.uk>
-	 <1393442989.5090.4.camel@leira.trondhjem.org>
-	 <1393703218.7434.2.camel@leira.trondhjem.org>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from imap.thunk.org ([74.207.234.97]:40985 "EHLO imap.thunk.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752164AbaCMOWM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 13 Mar 2014 10:22:12 -0400
+From: "Theodore Ts'o" <tytso@mit.edu>
+To: linux-fsdevel@thunk.org
+Cc: Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        "Theodore Ts'o" <tytso@mit.edu>, linux-fsdevel@vger.kernel.org,
+        Christoph Hellwig <hch@infradead.org>,
+        Artem Bityutskiy <dedekind1@gmail.com>,
+        Adrian Hunter <adrian.hunter@intel.com>,
+        Evgeniy Dushistov <dushistov@mail.ru>, Jan Kara <jack@suse.cz>,
+        OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
+        Anders Larsen <al@alarsen.net>,
+        Phillip Lougher <phillip@squashfs.org.uk>,
+        Kees Cook <keescook@chromium.org>,
+        Mikulas Patocka <mikulas@artax.karlin.mff.cuni.cz>,
+        Petr Vandrovec <petr@vandrovec.name>, xfs@oss.sgi.com,
+        linux-btrfs@vger.kernel.org, linux-cifs@vger.kernel.org,
+        samba-technical@lists.samba.org, codalist@TELEMANN.coda.cs.cmu.edu,
+        linux-f2fs-devel@lists.sourceforge.net,
+        fuse-devel@lists.sourceforge.net, cluster-devel@redhat.com,
+        linux-mtd@lists.infradead.org, jfs-discussion@lists.sourceforge.net,
+        linux-nfs@vger.kernel.org, linux-nilfs@vger.kernel.org,
+        linux-ntfs-dev@lists.sourceforge.net, ocfs2-devel@oss.oracle.com,
+        reiserfs-devel@vger.kernel.org
+Subject: [PATCH] fs: push sync_filesystem() down to the file system's remount_fs()
+Date: Thu, 13 Mar 2014 10:20:56 -0400
+Message-Id: <1394720456-16629-1-git-send-email-tytso@mit.edu>
+In-Reply-To: <20140313073936.GA14663@infradead.org>
+References: <20140313073936.GA14663@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, 2014-03-01 at 13:46 -0600, Trond Myklebust wrote:
-> On Wed, 2014-02-26 at 11:29 -0800, Trond Myklebust wrote:
-> > Hi Ben,
-> > 
-> > On Wed, 2014-02-26 at 00:58 +0000, Ben Hutchings wrote:
-> > > Trond, Arthur seems to be hitting a similar bug to
-> > > <https://bugzilla.redhat.com/show_bug.cgi?id=1050206>, and it's still
-> > > occurring in 3.13.4 even though that has the two fixes you posted there.
-> > > The full bug report, with screenshots of the oopses, is at
-> > > <https://bugs.debian.org/734268>.
-> > > 
-> > 
-> > I believe I've found another corruptor of that same list. Do Arthur's
-> > tests perhaps touch on file locking? If so, then the following patch may
-> > help...
-> 
-> Now that Connecthon is over, here is a patch that actually compiles.
-> 
+Previously, the no-op "mount -o mount /dev/xxx" operation when the
+file system is already mounted read-write causes an implied,
+unconditional syncfs().  This seems pretty stupid, and it's certainly
+documented or guaraunteed to do this, nor is it particularly useful,
+except in the case where the file system was mounted rw and is getting
+remounted read-only.
 
-Sigh... Third time lucky...
-8<---------------------------------------------------------------------
->From b7e63a1079b266866a732cf699d8c4d61391bbda Mon Sep 17 00:00:00 2001
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-Date: Wed, 26 Feb 2014 11:19:14 -0800
-Subject: [PATCH v3] NFSv4: Fix another nfs4_sequence corruptor
+However, it's possible that there might be some file systems that are
+actually depending on this behavior.  In most file systems, it's
+probably fine to only call sync_filesystem() when transitioning from
+read-write to read-only, and there are some file systems where this is
+not needed at all (for example, for a pseudo-filesystem or something
+like romfs).
 
-nfs4_release_lockowner needs to set the rpc_message reply to point to
-the nfs4_sequence_res in order to avoid another Oopsable situation
-in nfs41_assign_slot.
-
-Fixes: fbd4bfd1d9d21 (NFS: Add nfs4_sequence calls for RELEASE_LOCKOWNER)
-Cc: stable@vger.kernel.org # 3.12+
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: "Theodore Ts'o" <tytso@mit.edu>
+Cc: linux-fsdevel@vger.kernel.org
+Cc: Christoph Hellwig <hch@infradead.org>
+Cc: Artem Bityutskiy <dedekind1@gmail.com>
+Cc: Adrian Hunter <adrian.hunter@intel.com>
+Cc: Evgeniy Dushistov <dushistov@mail.ru>
+Cc: Jan Kara <jack@suse.cz>
+Cc: OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>
+Cc: Anders Larsen <al@alarsen.net>
+Cc: Phillip Lougher <phillip@squashfs.org.uk>
+Cc: Kees Cook <keescook@chromium.org>
+Cc: Mikulas Patocka <mikulas@artax.karlin.mff.cuni.cz>
+Cc: Petr Vandrovec <petr@vandrovec.name>
+Cc: xfs@oss.sgi.com
+Cc: linux-btrfs@vger.kernel.org
+Cc: linux-cifs@vger.kernel.org
+Cc: samba-technical@lists.samba.org
+Cc: codalist@coda.cs.cmu.edu
+Cc: linux-ext4@vger.kernel.org
+Cc: linux-f2fs-devel@lists.sourceforge.net
+Cc: fuse-devel@lists.sourceforge.net
+Cc: cluster-devel@redhat.com
+Cc: linux-mtd@lists.infradead.org
+Cc: jfs-discussion@lists.sourceforge.net
+Cc: linux-nfs@vger.kernel.org
+Cc: linux-nilfs@vger.kernel.org
+Cc: linux-ntfs-dev@lists.sourceforge.net
+Cc: ocfs2-devel@oss.oracle.com
+Cc: reiserfs-devel@vger.kernel.org
 ---
- fs/nfs/nfs4proc.c       | 10 +++++-----
- include/linux/nfs_xdr.h |  5 +++++
- 2 files changed, 10 insertions(+), 5 deletions(-)
+ fs/adfs/super.c          | 1 +
+ fs/affs/super.c          | 1 +
+ fs/befs/linuxvfs.c       | 1 +
+ fs/btrfs/super.c         | 1 +
+ fs/cifs/cifsfs.c         | 1 +
+ fs/coda/inode.c          | 1 +
+ fs/cramfs/inode.c        | 1 +
+ fs/debugfs/inode.c       | 1 +
+ fs/devpts/inode.c        | 1 +
+ fs/efs/super.c           | 1 +
+ fs/ext2/super.c          | 1 +
+ fs/ext3/super.c          | 2 ++
+ fs/ext4/super.c          | 2 ++
+ fs/f2fs/super.c          | 2 ++
+ fs/fat/inode.c           | 2 ++
+ fs/freevxfs/vxfs_super.c | 1 +
+ fs/fuse/inode.c          | 1 +
+ fs/gfs2/super.c          | 2 ++
+ fs/hfs/super.c           | 1 +
+ fs/hfsplus/super.c       | 1 +
+ fs/hpfs/super.c          | 2 ++
+ fs/isofs/inode.c         | 1 +
+ fs/jffs2/super.c         | 1 +
+ fs/jfs/super.c           | 1 +
+ fs/minix/inode.c         | 1 +
+ fs/ncpfs/inode.c         | 1 +
+ fs/nfs/super.c           | 2 ++
+ fs/nilfs2/super.c        | 1 +
+ fs/ntfs/super.c          | 2 ++
+ fs/ocfs2/super.c         | 2 ++
+ fs/openpromfs/inode.c    | 1 +
+ fs/proc/root.c           | 2 ++
+ fs/pstore/inode.c        | 1 +
+ fs/qnx4/inode.c          | 1 +
+ fs/qnx6/inode.c          | 1 +
+ fs/reiserfs/super.c      | 1 +
+ fs/romfs/super.c         | 1 +
+ fs/squashfs/super.c      | 1 +
+ fs/super.c               | 2 --
+ fs/sysv/inode.c          | 1 +
+ fs/ubifs/super.c         | 1 +
+ fs/udf/super.c           | 1 +
+ fs/ufs/super.c           | 1 +
+ fs/xfs/xfs_super.c       | 1 +
+ 44 files changed, 53 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 2da6a698b8f7..44e088dc357c 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5828,8 +5828,7 @@ struct nfs_release_lockowner_data {
- 	struct nfs4_lock_state *lsp;
- 	struct nfs_server *server;
- 	struct nfs_release_lockowner_args args;
--	struct nfs4_sequence_args seq_args;
--	struct nfs4_sequence_res seq_res;
-+	struct nfs_release_lockowner_res res;
- 	unsigned long timestamp;
- };
+diff --git a/fs/adfs/super.c b/fs/adfs/super.c
+index 7b3003c..952aeb0 100644
+--- a/fs/adfs/super.c
++++ b/fs/adfs/super.c
+@@ -212,6 +212,7 @@ static int parse_options(struct super_block *sb, char *options)
  
-@@ -5837,7 +5836,7 @@ static void nfs4_release_lockowner_prepare(struct rpc_task *task, void *calldata
+ static int adfs_remount(struct super_block *sb, int *flags, char *data)
  {
- 	struct nfs_release_lockowner_data *data = calldata;
- 	nfs40_setup_sequence(data->server,
--				&data->seq_args, &data->seq_res, task);
-+				&data->args.seq_args, &data->res.seq_res, task);
- 	data->timestamp = jiffies;
++	sync_filesystem(sb);
+ 	*flags |= MS_NODIRATIME;
+ 	return parse_options(sb, data);
  }
+diff --git a/fs/affs/super.c b/fs/affs/super.c
+index d098731..3074530 100644
+--- a/fs/affs/super.c
++++ b/fs/affs/super.c
+@@ -530,6 +530,7 @@ affs_remount(struct super_block *sb, int *flags, char *data)
  
-@@ -5846,7 +5845,7 @@ static void nfs4_release_lockowner_done(struct rpc_task *task, void *calldata)
- 	struct nfs_release_lockowner_data *data = calldata;
- 	struct nfs_server *server = data->server;
+ 	pr_debug("AFFS: remount(flags=0x%x,opts=\"%s\")\n",*flags,data);
  
--	nfs40_sequence_done(task, &data->seq_res);
-+	nfs40_sequence_done(task, &data->res.seq_res);
++	sync_filesystem(sb);
+ 	*flags |= MS_NODIRATIME;
  
- 	switch (task->tk_status) {
- 	case 0:
-@@ -5887,7 +5886,6 @@ static int nfs4_release_lockowner(struct nfs_server *server, struct nfs4_lock_st
- 	data = kmalloc(sizeof(*data), GFP_NOFS);
- 	if (!data)
- 		return -ENOMEM;
--	nfs4_init_sequence(&data->seq_args, &data->seq_res, 0);
- 	data->lsp = lsp;
- 	data->server = server;
- 	data->args.lock_owner.clientid = server->nfs_client->cl_clientid;
-@@ -5895,6 +5893,8 @@ static int nfs4_release_lockowner(struct nfs_server *server, struct nfs4_lock_st
- 	data->args.lock_owner.s_dev = server->s_dev;
+ 	memcpy(volume, sbi->s_volume, 32);
+diff --git a/fs/befs/linuxvfs.c b/fs/befs/linuxvfs.c
+index 845d2d6..56d70c8 100644
+--- a/fs/befs/linuxvfs.c
++++ b/fs/befs/linuxvfs.c
+@@ -913,6 +913,7 @@ befs_fill_super(struct super_block *sb, void *data, int silent)
+ static int
+ befs_remount(struct super_block *sb, int *flags, char *data)
+ {
++	sync_filesystem(sb);
+ 	if (!(*flags & MS_RDONLY))
+ 		return -EINVAL;
+ 	return 0;
+diff --git a/fs/btrfs/super.c b/fs/btrfs/super.c
+index 97cc241..00cd0c5 100644
+--- a/fs/btrfs/super.c
++++ b/fs/btrfs/super.c
+@@ -1381,6 +1381,7 @@ static int btrfs_remount(struct super_block *sb, int *flags, char *data)
+ 	unsigned int old_metadata_ratio = fs_info->metadata_ratio;
+ 	int ret;
  
- 	msg.rpc_argp = &data->args;
-+	msg.rpc_resp = &data->res;
-+	nfs4_init_sequence(&data->args.seq_args, &data->res.seq_res, 0);
- 	rpc_call_async(server->client, &msg, 0, &nfs4_release_lockowner_ops, data);
++	sync_filesystem(sb);
+ 	btrfs_remount_prepare(fs_info);
+ 
+ 	ret = btrfs_parse_options(root, data);
+diff --git a/fs/cifs/cifsfs.c b/fs/cifs/cifsfs.c
+index 849f613..4942c94 100644
+--- a/fs/cifs/cifsfs.c
++++ b/fs/cifs/cifsfs.c
+@@ -541,6 +541,7 @@ static int cifs_show_stats(struct seq_file *s, struct dentry *root)
+ 
+ static int cifs_remount(struct super_block *sb, int *flags, char *data)
+ {
++	sync_filesystem(sb);
+ 	*flags |= MS_NODIRATIME;
  	return 0;
  }
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index b2fb167b2e6d..5624e4e2763c 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -467,9 +467,14 @@ struct nfs_lockt_res {
- };
+diff --git a/fs/coda/inode.c b/fs/coda/inode.c
+index 506de34..3f48000 100644
+--- a/fs/coda/inode.c
++++ b/fs/coda/inode.c
+@@ -96,6 +96,7 @@ void coda_destroy_inodecache(void)
  
- struct nfs_release_lockowner_args {
-+	struct nfs4_sequence_args	seq_args;
- 	struct nfs_lowner	lock_owner;
- };
+ static int coda_remount(struct super_block *sb, int *flags, char *data)
+ {
++	sync_filesystem(sb);
+ 	*flags |= MS_NOATIME;
+ 	return 0;
+ }
+diff --git a/fs/cramfs/inode.c b/fs/cramfs/inode.c
+index 06610cf..a275911 100644
+--- a/fs/cramfs/inode.c
++++ b/fs/cramfs/inode.c
+@@ -244,6 +244,7 @@ static void cramfs_kill_sb(struct super_block *sb)
  
-+struct nfs_release_lockowner_res {
-+	struct nfs4_sequence_res	seq_res;
-+};
+ static int cramfs_remount(struct super_block *sb, int *flags, char *data)
+ {
++	sync_filesystem(sb);
+ 	*flags |= MS_RDONLY;
+ 	return 0;
+ }
+diff --git a/fs/debugfs/inode.c b/fs/debugfs/inode.c
+index 9c0444c..02928a9 100644
+--- a/fs/debugfs/inode.c
++++ b/fs/debugfs/inode.c
+@@ -218,6 +218,7 @@ static int debugfs_remount(struct super_block *sb, int *flags, char *data)
+ 	int err;
+ 	struct debugfs_fs_info *fsi = sb->s_fs_info;
+ 
++	sync_filesystem(sb);
+ 	err = debugfs_parse_options(data, &fsi->mount_opts);
+ 	if (err)
+ 		goto fail;
+diff --git a/fs/devpts/inode.c b/fs/devpts/inode.c
+index a726b9f..c710380 100644
+--- a/fs/devpts/inode.c
++++ b/fs/devpts/inode.c
+@@ -313,6 +313,7 @@ static int devpts_remount(struct super_block *sb, int *flags, char *data)
+ 	struct pts_fs_info *fsi = DEVPTS_SB(sb);
+ 	struct pts_mount_opts *opts = &fsi->mount_opts;
+ 
++	sync_filesystem(sb);
+ 	err = parse_mount_options(data, PARSE_REMOUNT, opts);
+ 
+ 	/*
+diff --git a/fs/efs/super.c b/fs/efs/super.c
+index 50215bb..103bbd8 100644
+--- a/fs/efs/super.c
++++ b/fs/efs/super.c
+@@ -114,6 +114,7 @@ static void destroy_inodecache(void)
+ 
+ static int efs_remount(struct super_block *sb, int *flags, char *data)
+ {
++	sync_filesystem(sb);
+ 	*flags |= MS_RDONLY;
+ 	return 0;
+ }
+diff --git a/fs/ext2/super.c b/fs/ext2/super.c
+index 20d6697..d260115 100644
+--- a/fs/ext2/super.c
++++ b/fs/ext2/super.c
+@@ -1254,6 +1254,7 @@ static int ext2_remount (struct super_block * sb, int * flags, char * data)
+ 	unsigned long old_sb_flags;
+ 	int err;
+ 
++	sync_filesystem(sb);
+ 	spin_lock(&sbi->s_lock);
+ 
+ 	/* Store the old options */
+diff --git a/fs/ext3/super.c b/fs/ext3/super.c
+index 37fd31e..95c6c5a 100644
+--- a/fs/ext3/super.c
++++ b/fs/ext3/super.c
+@@ -2649,6 +2649,8 @@ static int ext3_remount (struct super_block * sb, int * flags, char * data)
+ 	int i;
+ #endif
+ 
++	sync_filesystem(sb);
 +
- struct nfs4_delegreturnargs {
- 	struct nfs4_sequence_args	seq_args;
- 	const struct nfs_fh *fhandle;
+ 	/* Store the original options */
+ 	old_sb_flags = sb->s_flags;
+ 	old_opts.s_mount_opt = sbi->s_mount_opt;
+diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+index f5c13b8..aa3842f 100644
+--- a/fs/ext4/super.c
++++ b/fs/ext4/super.c
+@@ -4767,6 +4767,8 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
+ #endif
+ 	char *orig_data = kstrdup(data, GFP_KERNEL);
+ 
++	sync_filesystem(sb);
++
+ 	/* Store the original options */
+ 	old_sb_flags = sb->s_flags;
+ 	old_opts.s_mount_opt = sbi->s_mount_opt;
+diff --git a/fs/f2fs/super.c b/fs/f2fs/super.c
+index 1a85f83..856bdf9 100644
+--- a/fs/f2fs/super.c
++++ b/fs/f2fs/super.c
+@@ -568,6 +568,8 @@ static int f2fs_remount(struct super_block *sb, int *flags, char *data)
+ 	struct f2fs_mount_info org_mount_opt;
+ 	int err, active_logs;
+ 
++	sync_filesystem(sb);
++
+ 	/*
+ 	 * Save the old mount options in case we
+ 	 * need to restore them.
+diff --git a/fs/fat/inode.c b/fs/fat/inode.c
+index 854b578..343e477 100644
+--- a/fs/fat/inode.c
++++ b/fs/fat/inode.c
+@@ -635,6 +635,8 @@ static int fat_remount(struct super_block *sb, int *flags, char *data)
+ 	struct msdos_sb_info *sbi = MSDOS_SB(sb);
+ 	*flags |= MS_NODIRATIME | (sbi->options.isvfat ? 0 : MS_NOATIME);
+ 
++	sync_filesystem(sb);
++
+ 	/* make sure we update state on remount. */
+ 	new_rdonly = *flags & MS_RDONLY;
+ 	if (new_rdonly != (sb->s_flags & MS_RDONLY)) {
+diff --git a/fs/freevxfs/vxfs_super.c b/fs/freevxfs/vxfs_super.c
+index e37eb27..7ca8c75 100644
+--- a/fs/freevxfs/vxfs_super.c
++++ b/fs/freevxfs/vxfs_super.c
+@@ -124,6 +124,7 @@ vxfs_statfs(struct dentry *dentry, struct kstatfs *bufp)
+ 
+ static int vxfs_remount(struct super_block *sb, int *flags, char *data)
+ {
++	sync_filesystem(sb);
+ 	*flags |= MS_RDONLY;
+ 	return 0;
+ }
+diff --git a/fs/fuse/inode.c b/fs/fuse/inode.c
+index d468643..ecdb255d 100644
+--- a/fs/fuse/inode.c
++++ b/fs/fuse/inode.c
+@@ -135,6 +135,7 @@ static void fuse_evict_inode(struct inode *inode)
+ 
+ static int fuse_remount_fs(struct super_block *sb, int *flags, char *data)
+ {
++	sync_filesystem(sb);
+ 	if (*flags & MS_MANDLOCK)
+ 		return -EINVAL;
+ 
+diff --git a/fs/gfs2/super.c b/fs/gfs2/super.c
+index 60f60f6..4c6dd50 100644
+--- a/fs/gfs2/super.c
++++ b/fs/gfs2/super.c
+@@ -1175,6 +1175,8 @@ static int gfs2_remount_fs(struct super_block *sb, int *flags, char *data)
+ 	struct gfs2_tune *gt = &sdp->sd_tune;
+ 	int error;
+ 
++	sync_filesystem(sb);
++
+ 	spin_lock(&gt->gt_spin);
+ 	args.ar_commit = gt->gt_logd_secs;
+ 	args.ar_quota_quantum = gt->gt_quota_quantum;
+diff --git a/fs/hfs/super.c b/fs/hfs/super.c
+index 2d2039e..eee7206 100644
+--- a/fs/hfs/super.c
++++ b/fs/hfs/super.c
+@@ -112,6 +112,7 @@ static int hfs_statfs(struct dentry *dentry, struct kstatfs *buf)
+ 
+ static int hfs_remount(struct super_block *sb, int *flags, char *data)
+ {
++	sync_filesystem(sb);
+ 	*flags |= MS_NODIRATIME;
+ 	if ((*flags & MS_RDONLY) == (sb->s_flags & MS_RDONLY))
+ 		return 0;
+diff --git a/fs/hfsplus/super.c b/fs/hfsplus/super.c
+index 80875aa..8eb787b 100644
+--- a/fs/hfsplus/super.c
++++ b/fs/hfsplus/super.c
+@@ -323,6 +323,7 @@ static int hfsplus_statfs(struct dentry *dentry, struct kstatfs *buf)
+ 
+ static int hfsplus_remount(struct super_block *sb, int *flags, char *data)
+ {
++	sync_filesystem(sb);
+ 	if ((*flags & MS_RDONLY) == (sb->s_flags & MS_RDONLY))
+ 		return 0;
+ 	if (!(*flags & MS_RDONLY)) {
+diff --git a/fs/hpfs/super.c b/fs/hpfs/super.c
+index 4534ff6..fe3463a 100644
+--- a/fs/hpfs/super.c
++++ b/fs/hpfs/super.c
+@@ -421,6 +421,8 @@ static int hpfs_remount_fs(struct super_block *s, int *flags, char *data)
+ 	struct hpfs_sb_info *sbi = hpfs_sb(s);
+ 	char *new_opts = kstrdup(data, GFP_KERNEL);
+ 	
++	sync_filesystem(s);
++
+ 	*flags |= MS_NOATIME;
+ 	
+ 	hpfs_lock(s);
+diff --git a/fs/isofs/inode.c b/fs/isofs/inode.c
+index 4a9e10e..6af66ee 100644
+--- a/fs/isofs/inode.c
++++ b/fs/isofs/inode.c
+@@ -117,6 +117,7 @@ static void destroy_inodecache(void)
+ 
+ static int isofs_remount(struct super_block *sb, int *flags, char *data)
+ {
++	sync_filesystem(sb);
+ 	if (!(*flags & MS_RDONLY))
+ 		return -EROFS;
+ 	return 0;
+diff --git a/fs/jffs2/super.c b/fs/jffs2/super.c
+index 0defb1c..0918f0e 100644
+--- a/fs/jffs2/super.c
++++ b/fs/jffs2/super.c
+@@ -243,6 +243,7 @@ static int jffs2_remount_fs(struct super_block *sb, int *flags, char *data)
+ 	struct jffs2_sb_info *c = JFFS2_SB_INFO(sb);
+ 	int err;
+ 
++	sync_filesystem(sb);
+ 	err = jffs2_parse_options(c, data);
+ 	if (err)
+ 		return -EINVAL;
+diff --git a/fs/jfs/super.c b/fs/jfs/super.c
+index e2b7483..97f7fda 100644
+--- a/fs/jfs/super.c
++++ b/fs/jfs/super.c
+@@ -418,6 +418,7 @@ static int jfs_remount(struct super_block *sb, int *flags, char *data)
+ 	int flag = JFS_SBI(sb)->flag;
+ 	int ret;
+ 
++	sync_filesystem(sb);
+ 	if (!parse_options(data, sb, &newLVSize, &flag)) {
+ 		return -EINVAL;
+ 	}
+diff --git a/fs/minix/inode.c b/fs/minix/inode.c
+index 0332109..dcdc298 100644
+--- a/fs/minix/inode.c
++++ b/fs/minix/inode.c
+@@ -123,6 +123,7 @@ static int minix_remount (struct super_block * sb, int * flags, char * data)
+ 	struct minix_sb_info * sbi = minix_sb(sb);
+ 	struct minix_super_block * ms;
+ 
++	sync_filesystem(sb);
+ 	ms = sbi->s_ms;
+ 	if ((*flags & MS_RDONLY) == (sb->s_flags & MS_RDONLY))
+ 		return 0;
+diff --git a/fs/ncpfs/inode.c b/fs/ncpfs/inode.c
+index 2cf2ebe..5f86e80 100644
+--- a/fs/ncpfs/inode.c
++++ b/fs/ncpfs/inode.c
+@@ -99,6 +99,7 @@ static void destroy_inodecache(void)
+ 
+ static int ncp_remount(struct super_block *sb, int *flags, char* data)
+ {
++	sync_filesystem(sb);
+ 	*flags |= MS_NODIRATIME;
+ 	return 0;
+ }
+diff --git a/fs/nfs/super.c b/fs/nfs/super.c
+index 910ed90..2cb5694 100644
+--- a/fs/nfs/super.c
++++ b/fs/nfs/super.c
+@@ -2215,6 +2215,8 @@ nfs_remount(struct super_block *sb, int *flags, char *raw_data)
+ 	struct nfs4_mount_data *options4 = (struct nfs4_mount_data *)raw_data;
+ 	u32 nfsvers = nfss->nfs_client->rpc_ops->version;
+ 
++	sync_filesystem(sb);
++
+ 	/*
+ 	 * Userspace mount programs that send binary options generally send
+ 	 * them populated with default values. We have no way to know which
+diff --git a/fs/nilfs2/super.c b/fs/nilfs2/super.c
+index 7ac2a12..8c532b2 100644
+--- a/fs/nilfs2/super.c
++++ b/fs/nilfs2/super.c
+@@ -1129,6 +1129,7 @@ static int nilfs_remount(struct super_block *sb, int *flags, char *data)
+ 	unsigned long old_mount_opt;
+ 	int err;
+ 
++	sync_filesystem(sb);
+ 	old_sb_flags = sb->s_flags;
+ 	old_mount_opt = nilfs->ns_mount_opt;
+ 
+diff --git a/fs/ntfs/super.c b/fs/ntfs/super.c
+index 82650d5..bd5610d 100644
+--- a/fs/ntfs/super.c
++++ b/fs/ntfs/super.c
+@@ -468,6 +468,8 @@ static int ntfs_remount(struct super_block *sb, int *flags, char *opt)
+ 
+ 	ntfs_debug("Entering with remount options string: %s", opt);
+ 
++	sync_filesystem(sb);
++
+ #ifndef NTFS_RW
+ 	/* For read-only compiled driver, enforce read-only flag. */
+ 	*flags |= MS_RDONLY;
+diff --git a/fs/ocfs2/super.c b/fs/ocfs2/super.c
+index 49d84f8..5f9bf8f 100644
+--- a/fs/ocfs2/super.c
++++ b/fs/ocfs2/super.c
+@@ -631,6 +631,8 @@ static int ocfs2_remount(struct super_block *sb, int *flags, char *data)
+ 	struct ocfs2_super *osb = OCFS2_SB(sb);
+ 	u32 tmp;
+ 
++	sync_filesystem(sb);
++
+ 	if (!ocfs2_parse_options(sb, data, &parsed_options, 1) ||
+ 	    !ocfs2_check_set_options(sb, &parsed_options)) {
+ 		ret = -EINVAL;
+diff --git a/fs/openpromfs/inode.c b/fs/openpromfs/inode.c
+index 8c0ceb8..15e4500 100644
+--- a/fs/openpromfs/inode.c
++++ b/fs/openpromfs/inode.c
+@@ -368,6 +368,7 @@ static struct inode *openprom_iget(struct super_block *sb, ino_t ino)
+ 
+ static int openprom_remount(struct super_block *sb, int *flags, char *data)
+ {
++	sync_filesystem(sb);
+ 	*flags |= MS_NOATIME;
+ 	return 0;
+ }
+diff --git a/fs/proc/root.c b/fs/proc/root.c
+index 87dbcbe..ac823a8 100644
+--- a/fs/proc/root.c
++++ b/fs/proc/root.c
+@@ -92,6 +92,8 @@ static int proc_parse_options(char *options, struct pid_namespace *pid)
+ int proc_remount(struct super_block *sb, int *flags, char *data)
+ {
+ 	struct pid_namespace *pid = sb->s_fs_info;
++
++	sync_filesystem(sb);
+ 	return !proc_parse_options(data, pid);
+ }
+ 
+diff --git a/fs/pstore/inode.c b/fs/pstore/inode.c
+index 1282384..192297b 100644
+--- a/fs/pstore/inode.c
++++ b/fs/pstore/inode.c
+@@ -249,6 +249,7 @@ static void parse_options(char *options)
+ 
+ static int pstore_remount(struct super_block *sb, int *flags, char *data)
+ {
++	sync_filesystem(sb);
+ 	parse_options(data);
+ 
+ 	return 0;
+diff --git a/fs/qnx4/inode.c b/fs/qnx4/inode.c
+index 8955881..c4bcb77 100644
+--- a/fs/qnx4/inode.c
++++ b/fs/qnx4/inode.c
+@@ -44,6 +44,7 @@ static int qnx4_remount(struct super_block *sb, int *flags, char *data)
+ {
+ 	struct qnx4_sb_info *qs;
+ 
++	sync_filesystem(sb);
+ 	qs = qnx4_sb(sb);
+ 	qs->Version = QNX4_VERSION;
+ 	*flags |= MS_RDONLY;
+diff --git a/fs/qnx6/inode.c b/fs/qnx6/inode.c
+index 8d941ed..65cdaab 100644
+--- a/fs/qnx6/inode.c
++++ b/fs/qnx6/inode.c
+@@ -55,6 +55,7 @@ static int qnx6_show_options(struct seq_file *seq, struct dentry *root)
+ 
+ static int qnx6_remount(struct super_block *sb, int *flags, char *data)
+ {
++	sync_filesystem(sb);
+ 	*flags |= MS_RDONLY;
+ 	return 0;
+ }
+diff --git a/fs/reiserfs/super.c b/fs/reiserfs/super.c
+index 2c80335..abf2b76 100644
+--- a/fs/reiserfs/super.c
++++ b/fs/reiserfs/super.c
+@@ -1319,6 +1319,7 @@ static int reiserfs_remount(struct super_block *s, int *mount_flags, char *arg)
+ 	int i;
+ #endif
+ 
++	sync_filesystem(s);
+ 	reiserfs_write_lock(s);
+ 
+ #ifdef CONFIG_QUOTA
+diff --git a/fs/romfs/super.c b/fs/romfs/super.c
+index d841878..ef90e8b 100644
+--- a/fs/romfs/super.c
++++ b/fs/romfs/super.c
+@@ -432,6 +432,7 @@ static int romfs_statfs(struct dentry *dentry, struct kstatfs *buf)
+  */
+ static int romfs_remount(struct super_block *sb, int *flags, char *data)
+ {
++	sync_filesystem(sb);
+ 	*flags |= MS_RDONLY;
+ 	return 0;
+ }
+diff --git a/fs/squashfs/super.c b/fs/squashfs/super.c
+index 202df63..031c8d67 100644
+--- a/fs/squashfs/super.c
++++ b/fs/squashfs/super.c
+@@ -371,6 +371,7 @@ static int squashfs_statfs(struct dentry *dentry, struct kstatfs *buf)
+ 
+ static int squashfs_remount(struct super_block *sb, int *flags, char *data)
+ {
++	sync_filesystem(sb);
+ 	*flags |= MS_RDONLY;
+ 	return 0;
+ }
+diff --git a/fs/super.c b/fs/super.c
+index 80d5cf2..e9dc3c3 100644
+--- a/fs/super.c
++++ b/fs/super.c
+@@ -719,8 +719,6 @@ int do_remount_sb(struct super_block *sb, int flags, void *data, int force)
+ 		}
+ 	}
+ 
+-	sync_filesystem(sb);
+-
+ 	if (sb->s_op->remount_fs) {
+ 		retval = sb->s_op->remount_fs(sb, &flags, data);
+ 		if (retval) {
+diff --git a/fs/sysv/inode.c b/fs/sysv/inode.c
+index c327d4e..4742e58 100644
+--- a/fs/sysv/inode.c
++++ b/fs/sysv/inode.c
+@@ -60,6 +60,7 @@ static int sysv_remount(struct super_block *sb, int *flags, char *data)
+ {
+ 	struct sysv_sb_info *sbi = SYSV_SB(sb);
+ 
++	sync_filesystem(sb);
+ 	if (sbi->s_forced_ro)
+ 		*flags |= MS_RDONLY;
+ 	return 0;
+diff --git a/fs/ubifs/super.c b/fs/ubifs/super.c
+index 5ded849..e1598ab 100644
+--- a/fs/ubifs/super.c
++++ b/fs/ubifs/super.c
+@@ -1827,6 +1827,7 @@ static int ubifs_remount_fs(struct super_block *sb, int *flags, char *data)
+ 	int err;
+ 	struct ubifs_info *c = sb->s_fs_info;
+ 
++	sync_filesystem(sb);
+ 	dbg_gen("old flags %#lx, new flags %#x", sb->s_flags, *flags);
+ 
+ 	err = ubifs_parse_options(c, data, 1);
+diff --git a/fs/udf/super.c b/fs/udf/super.c
+index 3306b9f..64f2b73 100644
+--- a/fs/udf/super.c
++++ b/fs/udf/super.c
+@@ -646,6 +646,7 @@ static int udf_remount_fs(struct super_block *sb, int *flags, char *options)
+ 	int error = 0;
+ 	struct logicalVolIntegrityDescImpUse *lvidiu = udf_sb_lvidiu(sb);
+ 
++	sync_filesystem(sb);
+ 	if (lvidiu) {
+ 		int write_rev = le16_to_cpu(lvidiu->minUDFWriteRev);
+ 		if (write_rev > UDF_MAX_WRITE_VERSION && !(*flags & MS_RDONLY))
+diff --git a/fs/ufs/super.c b/fs/ufs/super.c
+index 329f2f5..b8c6791 100644
+--- a/fs/ufs/super.c
++++ b/fs/ufs/super.c
+@@ -1280,6 +1280,7 @@ static int ufs_remount (struct super_block *sb, int *mount_flags, char *data)
+ 	unsigned new_mount_opt, ufstype;
+ 	unsigned flags;
+ 
++	sync_filesystem(sb);
+ 	lock_ufs(sb);
+ 	mutex_lock(&UFS_SB(sb)->s_lock);
+ 	uspi = UFS_SB(sb)->s_uspi;
+diff --git a/fs/xfs/xfs_super.c b/fs/xfs/xfs_super.c
+index f317488..aaa3eca 100644
+--- a/fs/xfs/xfs_super.c
++++ b/fs/xfs/xfs_super.c
+@@ -1197,6 +1197,7 @@ xfs_fs_remount(
+ 	char			*p;
+ 	int			error;
+ 
++	sync_filesystem(sb);
+ 	while ((p = strsep(&options, ",")) != NULL) {
+ 		int token;
+ 
 -- 
-1.8.5.3
-
-
--- 
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
-
+1.9.0
 
