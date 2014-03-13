@@ -1,44 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:45583 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750969AbaCFP7r convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Mar 2014 10:59:47 -0500
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
-Subject: Re: Optimal NFS mount options to safely allow interrupts and timeouts on newer kernels
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <5B1102FE-8521-4BEF-8A2B-CE17EC32777F@primarydata.com>
-Date: Thu, 6 Mar 2014 10:59:35 -0500
-Cc: Andrew Martin <amartin@xes-inc.com>, Jim Rees <rees@umich.edu>,
-        Neil Brown <neilb@suse.de>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <17607EE5-614A-4B13-B5E7-0D1344A30C7F@oracle.com>
-References: <1696396609.119284.1394040541217.JavaMail.zimbra@xes-inc.com> <260588931.122771.1394041524167.JavaMail.zimbra@xes-inc.com> <20140306145042.6db53f60@notabene.brown> <1853694865.210849.1394082223818.JavaMail.zimbra@xes-inc.com> <20140306123438.GA21799@umich.edu> <04BE61B0-08B5-4E0C-88B6-6D93127BB64E@oracle.com> <5B1102FE-8521-4BEF-8A2B-CE17EC32777F@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:5090 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755032AbaCMUWW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 13 Mar 2014 16:22:22 -0400
+Date: Thu, 13 Mar 2014 16:22:18 -0400
+From: Jeff Layton <jlayton@redhat.com>
 To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] nfs: emit a fsnotify_nameremove call in sillyrename
+ codepath
+Message-ID: <20140313162218.570e0819@tlielax.poochiereds.net>
+In-Reply-To: <35EEB018-FD2D-4C52-AA6B-24B66B11D6B6@primarydata.com>
+References: <1394738651-26783-1-git-send-email-jlayton@redhat.com>
+	<35EEB018-FD2D-4C52-AA6B-24B66B11D6B6@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Mar 6, 2014, at 10:33 AM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+On Thu, 13 Mar 2014 16:08:01 -0400
+Trond Myklebust <trond.myklebust@primarydata.com> wrote:
 
 > 
-> On Mar 6, 2014, at 10:26, Chuck Lever <chuck.lever@oracle.com> wrote:
+> On Mar 13, 2014, at 15:24, Jeff Layton <jlayton@redhat.com> wrote:
 > 
->> 
->> On Mar 6, 2014, at 7:34 AM, Jim Rees <rees@umich.edu> wrote:
->> 
->>> Given this is apache, I think if I were doing this I'd use ro,soft,intr,tcp
->>> and not try to write anything to nfs.
->> 
->> I agree. A static web page workload should be read-mostly or read-only. The (small) corruption risk with “ro,soft" is that an interrupted read would cause the client to cache incomplete data.
+> > If a file is sillyrenamed, then the generic vfs_unlink code will skip
+> > emitting fsnotify events for it.
+> > 
+> > This patch has the sillyrename code do that instead.
+> > 
+> > In truth this is a little bit odd since we aren't actually removing the
+> > dentry per-se, but renaming it. Still, this is probably the right thing
+> > to do since it's what userland apps expect to see when an unlink()
+> > occurs or some file is renamed on top of the dentry.
+> > 
+> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > ---
+> > fs/nfs/dir.c    | 1 +
+> > fs/nfs/unlink.c | 2 ++
+> > 2 files changed, 3 insertions(+)
+> > 
+> > diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+> > index 4a48fe4b84b6..591aec9b1719 100644
+> > --- a/fs/nfs/dir.c
+> > +++ b/fs/nfs/dir.c
+> > @@ -37,6 +37,7 @@
+> > #include <linux/sched.h>
+> > #include <linux/kmemleak.h>
+> > #include <linux/xattr.h>
+> > +#include <linux/fsnotify.h>
+> > 
+> > #include "delegation.h"
+> > #include "iostat.h"
+> > diff --git a/fs/nfs/unlink.c b/fs/nfs/unlink.c
+> > index 11d78944de79..547ed0cd59db 100644
+> > --- a/fs/nfs/unlink.c
+> > +++ b/fs/nfs/unlink.c
+> > @@ -355,6 +355,8 @@ static void nfs_async_rename_done(struct rpc_task *task, void *calldata)
+> > 
+> > 	if (task->tk_status != 0)
+> > 		nfs_cancel_async_unlink(old_dentry);
+> > +	else if (old_dentry->d_flags & DCACHE_NFSFS_RENAMED)
+> > +		fsnotify_nameremove(old_dentry, S_ISDIR(old_dentry->d_inode->i_mode));
+> > }
 > 
-> What? How? If that were the case, we would have a blatant read bug. As I read the current code, _any_ error will cause the page to not be marked as up to date.
+> Any reason why we shouldn’t just do this in nfs_sillyrename() itself?
+>
 
-Agree, the design is sound. But we don’t test this use case very much, so I don’t have 100% confidence that there are no bugs.
+We certainly could, but then you'd probably never get the event if the
+process waiting on the async sillyrename got killed while waiting on
+the reply.
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+-- 
+Jeff Layton <jlayton@redhat.com>
