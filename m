@@ -1,137 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from elspeth.ephaone.org ([88.191.186.164]:42196 "EHLO
-	elspeth.ephaone.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751446AbaCBJql (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 2 Mar 2014 04:46:41 -0500
-From: Michael Scherer <misc@zarb.org>
-To: linux-nfs@vger.kernel.org
-Cc: Michael Scherer <misc@zarb.org>
-Subject: [PATCH] nfsd: permit to use multiple time the -H option
-Date: Sun,  2 Mar 2014 10:38:32 +0100
-Message-Id: <1393753112-14879-1-git-send-email-misc@zarb.org>
+Received: from mx1.redhat.com ([209.132.183.28]:48961 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753787AbaCMRKn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 13 Mar 2014 13:10:43 -0400
+Subject: Re: [Cluster-devel] [PATCH] fs: push sync_filesystem() down to the
+ file system's remount_fs()
+From: Steven Whitehouse <swhiteho@redhat.com>
+To: Jan Kara <jack@suse.cz>
+Cc: "Theodore Ts'o" <tytso@mit.edu>, jfs-discussion@lists.sourceforge.net,
+        Anders Larsen <al@alarsen.net>, cluster-devel@redhat.com,
+        linux-mtd@lists.infradead.org,
+        Mikulas Patocka <mikulas@artax.karlin.mff.cuni.cz>,
+        Petr Vandrovec <petr@vandrovec.name>,
+        codalist@TELEMANN.coda.cs.cmu.edu, linux-cifs@vger.kernel.org,
+        linux-fsdevel@thunk.org,
+        Ext4 Developers List <linux-ext4@vger.kernel.org>,
+        Evgeniy Dushistov <dushistov@mail.ru>,
+        Kees Cook <keescook@chromium.org>, fuse-devel@lists.sourceforge.net,
+        reiserfs-devel@vger.kernel.org, xfs@oss.sgi.com,
+        linux-nilfs@vger.kernel.org,
+        OGAWA Hirofumi <hirofumi@mail.parknet.co.jp>,
+        linux-nfs@vger.kernel.org, Artem Bityutskiy <dedekind1@gmail.com>,
+        linux-ntfs-dev@lists.sourceforge.net, samba-technical@lists.samba.org,
+        Adrian Hunter <adrian.hunter@intel.com>,
+        linux-f2fs-devel@lists.sourceforge.net, ocfs2-devel@oss.oracle.com,
+        linux-fsdevel@vger.kernel.org,
+        Phillip Lougher <phillip@squashfs.org.uk>, linux-btrfs@vger.kernel.org
+In-Reply-To: <20140313162319.GA504@quack.suse.cz>
+References: <20140313073936.GA14663@infradead.org>
+	 <1394720456-16629-1-git-send-email-tytso@mit.edu>
+	 <20140313162319.GA504@quack.suse.cz>
+Content-Type: text/plain; charset="UTF-8"
+Date: Thu, 13 Mar 2014 16:28:23 +0000
+Message-ID: <1394728103.2767.32.camel@menhir>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This permit to have 1 nfsd listening on more than 1
-interface for multihomed systems, without having to
-listen on all interfaces and filtering later.
----
- utils/nfsd/nfsd.c   | 51 +++++++++++++++++++++++++++++++++++----------------
- utils/nfsd/nfsd.man |  3 ++-
- 2 files changed, 37 insertions(+), 17 deletions(-)
+Hi,
 
-diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
-index edeb621..7ab6fcf 100644
---- a/utils/nfsd/nfsd.c
-+++ b/utils/nfsd/nfsd.c
-@@ -95,9 +95,10 @@ nfsd_enable_protos(unsigned int *proto4, unsigned int *proto6)
- int
- main(int argc, char **argv)
- {
--	int	count = NFSD_NPROC, c, error = 0, portnum = 0, fd, found_one;
-+	int	count = NFSD_NPROC, c, i, error = 0, portnum = 0, fd, found_one;
- 	char *p, *progname, *port;
--	char *haddr = NULL;
-+	char **haddr = NULL;
-+	unsigned int hcounter = 0;
- 	int	socket_up = 0;
- 	unsigned int minorvers = 0;
- 	unsigned int minorversset = 0;
-@@ -118,6 +119,13 @@ main(int argc, char **argv)
- 		exit(1);
- 	}
- 
-+	haddr = malloc(sizeof(char*));
-+	if (!haddr) {
-+		fprintf(stderr, "%s: unable to allocate memory.\n", progname);
-+		exit(1);
-+	}
-+	haddr[0] = NULL;
-+
- 	xlog_syslog(0);
- 	xlog_stderr(1);
- 
-@@ -127,17 +135,24 @@ main(int argc, char **argv)
- 			xlog_config(D_ALL, 1);
- 			break;
- 		case 'H':
--			/*
--			 * for now, this only handles one -H option. Use the
--			 * last one specified.
--			 */
--			free(haddr);
--			haddr = strdup(optarg);
--			if (!haddr) {
-+			if (hcounter) {
-+				haddr = realloc(haddr, sizeof(char*) * hcounter+1);
-+
-+				if(!haddr) {
-+					fprintf(stderr, "%s: unable to allocate "
-+							"memory.\n", progname);
-+					exit(1);
-+				}
-+			}
-+
-+			haddr[hcounter] = strdup(optarg);
-+			if (!haddr[hcounter]) {
- 				fprintf(stderr, "%s: unable to allocate "
- 					"memory.\n", progname);
- 				exit(1);
- 			}
-+
-+			hcounter++;
- 			break;
- 		case 'P':	/* XXX for nfs-server compatibility */
- 		case 'p':
-@@ -286,16 +301,18 @@ main(int argc, char **argv)
- 	 * interfaces, these are a no-op.
- 	 */
- 	nfssvc_setvers(versbits, minorvers, minorversset);
-- 
--	error = nfssvc_set_sockets(AF_INET, proto4, haddr, port);
--	if (!error)
--		socket_up = 1;
-+
-+	for(i=0; i <= hcounter; i++) {
-+		error = nfssvc_set_sockets(AF_INET, proto4, haddr[i], port);
-+		if (!error)
-+			socket_up = 1;
- 
- #ifdef IPV6_SUPPORTED
--	error = nfssvc_set_sockets(AF_INET6, proto6, haddr, port);
--	if (!error)
--		socket_up = 1;
-+		error = nfssvc_set_sockets(AF_INET6, proto6, haddr[i], port);
-+		if (!error)
-+			socket_up = 1;
- #endif /* IPV6_SUPPORTED */
-+	}
- 
- set_threads:
- 	/* don't start any threads if unable to hand off any sockets */
-@@ -328,6 +345,8 @@ set_threads:
- 		xlog(L_ERROR, "error starting threads: errno %d (%m)", errno);
- out:
- 	free(port);
-+	for(i=0; i <= hcounter; i++)
-+		free(haddr[i]);
- 	free(haddr);
- 	free(progname);
- 	return (error != 0);
-diff --git a/utils/nfsd/nfsd.man b/utils/nfsd/nfsd.man
-index 7de0867..cdc14ba 100644
---- a/utils/nfsd/nfsd.man
-+++ b/utils/nfsd/nfsd.man
-@@ -35,7 +35,8 @@ Note that
- .B lockd
- (which performs file locking services for NFS) may still accept
- request on all known network addresses.  This may change in future
--releases of the Linux Kernel.
-+releases of the Linux Kernel. This option can be used multiple time 
-+to listen to more than one interface.
- .TP
- .B \-p " or " \-\-port  port
- specify a different port to listen on for NFS requests. By default,
--- 
-1.8.5.3
+On Thu, 2014-03-13 at 17:23 +0100, Jan Kara wrote:
+> On Thu 13-03-14 10:20:56, Ted Tso wrote:
+> > Previously, the no-op "mount -o mount /dev/xxx" operation when the
+>                                   ^^remount
+> 
+> > file system is already mounted read-write causes an implied,
+> > unconditional syncfs().  This seems pretty stupid, and it's certainly
+> > documented or guaraunteed to do this, nor is it particularly useful,
+> > except in the case where the file system was mounted rw and is getting
+> > remounted read-only.
+> > 
+> > However, it's possible that there might be some file systems that are
+> > actually depending on this behavior.  In most file systems, it's
+> > probably fine to only call sync_filesystem() when transitioning from
+> > read-write to read-only, and there are some file systems where this is
+> > not needed at all (for example, for a pseudo-filesystem or something
+> > like romfs).
+>   Hum, I'd avoid this excercise at least for filesystem where
+> sync_filesystem() is obviously useless - proc, debugfs, pstore, devpts,
+> also always read-only filesystems such as isofs, qnx4, qnx6, befs, cramfs,
+> efs, freevxfs, romfs, squashfs. I think you can find a couple more which
+> clearly don't care about sync_filesystem() if you look a bit closer.
+> 
+>
+> 								Honza
+
+I guess the same is true for other file systems which are mounted ro
+too. So maybe a check for MS_RDONLY before doing the sync in those
+cases?
+
+Steve.
+
 
