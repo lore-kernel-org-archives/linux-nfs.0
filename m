@@ -1,100 +1,110 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f182.google.com ([209.85.213.182]:45732 "EHLO
-	mail-ig0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752211AbaCFTOw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Mar 2014 14:14:52 -0500
-Message-ID: <745494581-1394133289-cardhu_decombobulator_blackberry.rim.net-1805734207-@b5.c4.bise6.blackberry>
-Reply-To: bhawley@luminex.com
-References: <1696396609.119284.1394040541217.JavaMail.zimbra@xes-inc.com>
-  <260588931.122771.1394041524167.JavaMail.zimbra@xes-inc.com>
-  <20140306145042.6db53f60@notabene.brown>
-  <1853694865.210849.1394082223818.JavaMail.zimbra@xes-inc.com>
-  <20140306163721.0edfb498@notabene.brown>
-  <1709792528-1394084840-cardhu_decombobulator_blackberry.rim.net-1367662481-@b5.c4.bise6.blackberry>
-  <764210708.28409.1394119821635.JavaMail.zimbra@xes-inc.com>
-  <20140306162208.GA18207@umich.edu>
-  <1094203678.52139.1394124222574.JavaMail.zimbra@xes-inc.com>
-  <1028951407-1394132418-cardhu_decombobulator_blackberry.rim.net-599891631-@b5.c4.bise6.blackberry>
-  <E22EB8B3-DE5E-4D39-8FFD-BA3F02276EFE@primarydata.com>
-In-Reply-To: <E22EB8B3-DE5E-4D39-8FFD-BA3F02276EFE@primarydata.com>
-Subject: Re: Optimal NFS mount options to safely allow interrupts and timeouts on newer kernels
-To: "Trond Myklebust" <trond.myklebust@primarydata.com>,
-        "Brian Hawley" <bhawley@luminex.com>
-Cc: "Andrew Martin" <amartin@xes-inc.com>, "Jim Rees" <rees@umich.edu>,
-        "Brown Neil" <neilb@suse.de>, linux-nfs-owner@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-From: "Brian Hawley" <bhawley@luminex.com>
-Date: Thu, 6 Mar 2014 19:14:49 +0000
-Content-Type: text/plain; charset="Windows-1252"
+Received: from mx1.redhat.com ([209.132.183.28]:44774 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753109AbaCNTTw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 14 Mar 2014 15:19:52 -0400
+Date: Fri, 14 Mar 2014 15:19:48 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org, Al Viro <viro@ZenIV.linux.org.uk>
+Subject: Re: [PATCH 3/5] nfs: convert nfs_rename to use async_rename
+ infrastructure
+Message-ID: <20140314151948.0f6a3b28@tlielax.poochiereds.net>
+In-Reply-To: <1394819225-13713-4-git-send-email-jlayton@redhat.com>
+References: <1394819225-13713-1-git-send-email-jlayton@redhat.com>
+	<1394819225-13713-4-git-send-email-jlayton@redhat.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQpUcm9uZCwNCg0KSW4gdGhpcyBjYXNlLCBpdCBpc24ndCBmc3luYyBvciBjbG9zZSB0aGF0IGFy
-ZSBub3QgZ2V0dGluZyB0aGUgaS9vIGVycm9yLiAgSXQgaXMgdGhlIHdyaXRlKCkuICANCg0KQW5k
-IHdlIGNoZWNrIHRoZSByZXR1cm4gdmFsdWUgb2YgZXZlcnkgaS9vIHJlbGF0ZWQgY29tbWFuZC4N
-Cg0KV2UgYXJlbid0IHVzaW5nIHN5bmNocm9ub3VzIGJlY2F1c2UgdGhlIHBlcmZvcm1hbmNlIGJl
-Y29tZXMgYWJ5c21hbC4NCg0KUmVwZWF0ZWQgdW1vdW50IC1mIGRvZXMgZXZlbnR1YWxseSByZXN1
-bHQgaW4gdGhlIGkvbyBlcnJvciBnZXR0aW5nIHByb3BhZ2F0ZWQgYmFjayB0byB0aGUgd3JpdGUo
-KSBjYWxsLiAgIEkgc3VzcGVjdCB0aGUgcmVwZWF0ZWQgdW1vdW50IC1mJ3MgYXJlIHdvcmtpbmcg
-dGhlaXIgd2F5IHRocm91Z2ggYmxvY2tzIGluIHRoZSBjYWNoZS9xdWV1ZSBhbmQgZXZlbnR1YWxs
-eSB3ZSBnZXQgYmFjayB0byB0aGUgYmxvY2tlZCB3cml0ZS4gICAgDQoNCkFzIEkgbWVudGlvbmVk
-IHByZXZpb3VzbHksIGlmIHdlIG1vdW50IHdpdGggc3luYyBvciBkaXJlY3QgaS9vIHR5cGUgb3B0
-aW9ucywgd2Ugd2lsbCBnZXQgdGhlIGkvbyBlcnJvciwgYnV0IGZvciBwZXJmb3JtYW5jZSByZWFz
-b25zLCB0aGlzIGlzbid0IGFuIG9wdGlvbi4NCg0KLS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0N
-CkZyb206IFRyb25kIE15a2xlYnVzdCA8dHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbT4N
-CkRhdGU6IFRodSwgNiBNYXIgMjAxNCAxNDowNjoyNCANClRvOiA8Ymhhd2xleUBsdW1pbmV4LmNv
-bT4NCkNjOiBBbmRyZXcgTWFydGluPGFtYXJ0aW5AeGVzLWluYy5jb20+OyBKaW0gUmVlczxyZWVz
-QHVtaWNoLmVkdT47IEJyb3duIE5laWw8bmVpbGJAc3VzZS5kZT47IDxsaW51eC1uZnMtb3duZXJA
-dmdlci5rZXJuZWwub3JnPjsgPGxpbnV4LW5mc0B2Z2VyLmtlcm5lbC5vcmc+DQpTdWJqZWN0OiBS
-ZTogT3B0aW1hbCBORlMgbW91bnQgb3B0aW9ucyB0byBzYWZlbHkgYWxsb3cgaW50ZXJydXB0cyBh
-bmQgdGltZW91dHMgb24gbmV3ZXIga2VybmVscw0KDQoNCk9uIE1hciA2LCAyMDE0LCBhdCAxNDow
-MCwgQnJpYW4gSGF3bGV5IDxiaGF3bGV5QGx1bWluZXguY29tPiB3cm90ZToNCg0KPiANCj4gRXZl
-biB3aXRoIHNtYWxsIHRpbWVvIGFuZCByZXRyYW5zLCB5b3Ugd29uJ3QgZ2V0IGkvbyBlcnJvcnMg
-YmFjayB0byB0aGUgcmVhZHMvd3JpdGVzLiAgIFRoYXQncyBiZWVuIG91ciBleHBlcmllbmNlIGFu
-eXdheS4NCg0KUmVhZCBjYWNoaW5nLCBhbmQgYnVmZmVyZWQgd3JpdGVzIG1lYW4gdGhhdCB0aGUg
-SS9PIGVycm9ycyBvZnRlbiBkbyBub3Qgb2NjdXIgZHVyaW5nIHRoZSByZWFkKCkvd3JpdGUoKSBz
-eXN0ZW0gY2FsbCBpdHNlbGYuDQoNCldlIGRvIHRyeSB0byBwcm9wYWdhdGUgSS9PIGVycm9ycyBi
-YWNrIHRvIHRoZSBhcHBsaWNhdGlvbiBhcyBzb29uIGFzIHRoZSBkbyBvY2N1ciwgYnV0IGlmIHRo
-YXQgYXBwbGljYXRpb24gaXNuknQgdXNpbmcgc3luY2hyb25vdXMgSS9PLCBhbmQgaXQgaXNuknQg
-Y2hlY2tpbmcgdGhlIHJldHVybiB2YWx1ZXMgb2YgZnN5bmMoKSBvciBjbG9zZSgpLCB0aGVuIHRo
-ZXJlIGlzIGxpdHRsZSB0aGUga2VybmVsIGNhbiBkby4uLg0KDQo+IA0KPiBXaXRoIHNvZnQsIHlv
-dSBtYXkgZW5kIHVwIHdpdGggbG9zdCBkYXRhIChkYXRhIHRoYXQgaGFkIGFscmVhZHkgYmVlbiB3
-cml0dGVuIHRvIHRoZSBjYWNoZSBidXQgbm90IHlldCB0byB0aGUgc3RvcmFnZSkuICAgWW91J2Qg
-aGF2ZSB0aGF0IHNhbWUgaXNzdWUgd2l0aCAnaGFyZCcgdG9vIGlmIGl0IHdhcyB5b3VyIGFwcGxp
-YW5jZSB0aGF0IGZhaWxlZC4gIElmIHRoZSBhcHBsaWFuY2UgbmV2ZXIgY29tZXMgYmFjaywgdGhv
-c2UgYmxvY2tzIGNhbiBuZXZlciBiZSB3cml0dGVuLg0KPiANCj4gSW4geW91ciBjYXNlIHRob3Vn
-aCwgeW91J3JlIG5vdCB3cml0aW5nLiAgDQo+IA0KPiANCj4gLS0tLS1PcmlnaW5hbCBNZXNzYWdl
-LS0tLS0NCj4gRnJvbTogQW5kcmV3IE1hcnRpbiA8YW1hcnRpbkB4ZXMtaW5jLmNvbT4NCj4gRGF0
-ZTogVGh1LCA2IE1hciAyMDE0IDEwOjQzOjQyIA0KPiBUbzogSmltIFJlZXM8cmVlc0B1bWljaC5l
-ZHU+DQo+IENjOiA8Ymhhd2xleUBsdW1pbmV4LmNvbT47IE5laWxCcm93bjxuZWlsYkBzdXNlLmRl
-PjsgPGxpbnV4LW5mcy1vd25lckB2Z2VyLmtlcm5lbC5vcmc+OyA8bGludXgtbmZzQHZnZXIua2Vy
-bmVsLm9yZz4NCj4gU3ViamVjdDogUmU6IE9wdGltYWwgTkZTIG1vdW50IG9wdGlvbnMgdG8gc2Fm
-ZWx5IGFsbG93IGludGVycnVwdHMgYW5kDQo+IHRpbWVvdXRzIG9uIG5ld2VyIGtlcm5lbHMNCj4g
-DQo+PiBGcm9tOiAiSmltIFJlZXMiIDxyZWVzQHVtaWNoLmVkdT4NCj4+IEFuZHJldyBNYXJ0aW4g
-d3JvdGU6DQo+PiANCj4+PiBGcm9tOiAiSmltIFJlZXMiIDxyZWVzQHVtaWNoLmVkdT4NCj4+PiBH
-aXZlbiB0aGlzIGlzIGFwYWNoZSwgSSB0aGluayBpZiBJIHdlcmUgZG9pbmcgdGhpcyBJJ2QgdXNl
-DQo+Pj4gcm8sc29mdCxpbnRyLHRjcA0KPj4+IGFuZCBub3QgdHJ5IHRvIHdyaXRlIGFueXRoaW5n
-IHRvIG5mcy4NCj4+ICBJIHdhcyB1c2luZyB0Y3AsYmcsc29mdCxpbnRyIHdoZW4gdGhpcyBwcm9i
-bGVtIG9jY3VycmVkLiBJIGRvIG5vdCBrbm93IGlmDQo+PiAgYXBhY2hlIHdhcyBhdHRlbXB0aW5n
-IHRvIGRvIGEgd3JpdGUgb3IgYSByZWFkLCBidXQgaXQgc2VlbXMgdGhhdA0KPj4gIHRjcCxzb2Z0
-LGludHINCj4+ICB3YXMgbm90IHN1ZmZpY2llbnQgdG8gcHJldmVudCB0aGUgcHJvYmxlbS4NCj4+
-IA0KPj4gSSBoYWQgdGhlIGltcHJlc3Npb24gZnJvbSB5b3VyIG9yaWdpbmFsIG1lc3NhZ2UgdGhh
-dCB5b3Ugd2VyZSBub3QgdXNpbmcNCj4+ICJzb2Z0IiBhbmQgd2VyZSBhc2tpbmcgaWYgaXQncyBz
-YWZlIHRvIHVzZSBpdC4gQXJlIHlvdSBzYXlpbmcgdGhhdCBldmVuIHdpdGgNCj4+IHRoZSAic29m
-dCIgb3B0aW9uIHRoZSBhcGFjaGUgZ2V0cyBzdHVjayBmb3JldmVyPw0KPiBZZXMsIGV2ZW4gd2l0
-aCBzb2Z0LCBpdCBnZXRzIHN0dWNrIGZvcmV2ZXIuIEkgaGFkIGJlZW4gdXNpbmcgdGNwLGJnLHNv
-ZnQsaW50cg0KPiB3aGVuIHRoZSBwcm9ibGVtIG9jY3VycmVkIChvbiBzZXZlcmFsIG9jYXNzaW9u
-cyksIHNvIG15IG9yaWdpbmFsIHF1ZXN0aW9uIHdhcw0KPiBpZiBpdCB3b3VsZCBiZSBzYWZlIHRv
-IHVzZSBhIHNtYWxsIHRpbWVvIGFuZCByZXRyYW5zIHZhbHVlcyB0byBob3BlZnVsbHkgDQo+IHJl
-dHVybiBJL08gZXJyb3JzIHF1aWNrbHkgdG8gdGhlIGFwcGxpY2F0aW9uLCByYXRoZXIgdGhhbiBi
-bG9ja2luZyBmb3JldmVyIA0KPiAod2hpY2ggY2F1c2VzIHRoZSBoaWdoIGxvYWQgYW5kIGluZXZp
-dGFibGUgcmVib290KS4gSXQgc291bmRzIGxpa2UgdGhhdCBpc24ndA0KPiBzYWZlLCBidXQgcGVy
-aGFwcyB0aGVyZSBpcyBhbm90aGVyIHdheSB0byByZXNvbHZlIHRoaXMgcHJvYmxlbT8NCj4gLS0N
-Cj4gVG8gdW5zdWJzY3JpYmUgZnJvbSB0aGlzIGxpc3Q6IHNlbmQgdGhlIGxpbmUgInVuc3Vic2Ny
-aWJlIGxpbnV4LW5mcyIgaW4NCj4gdGhlIGJvZHkgb2YgYSBtZXNzYWdlIHRvIG1ham9yZG9tb0B2
-Z2VyLmtlcm5lbC5vcmcNCj4gTW9yZSBtYWpvcmRvbW8gaW5mbyBhdCAgaHR0cDovL3ZnZXIua2Vy
-bmVsLm9yZy9tYWpvcmRvbW8taW5mby5odG1sDQo+IA0KDQpfX19fX19fX19fX19fX19fX19fX19f
-X19fX19fX19fX18NClRyb25kIE15a2xlYnVzdA0KTGludXggTkZTIGNsaWVudCBtYWludGFpbmVy
-LCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRhLmNvbQ0KDQo=
+On Fri, 14 Mar 2014 13:47:03 -0400
+Jeff Layton <jlayton@redhat.com> wrote:
 
+> There isn't much sense in maintaining two separate versions of rename
+> code. Convert nfs_rename to use the asynchronous rename infrastructure
+> that nfs_sillyrename uses, and emulate synchronous behavior by having
+> the task just wait on the reply.
+> 
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  fs/nfs/dir.c | 26 +++++++++++++++++++++-----
+>  1 file changed, 21 insertions(+), 5 deletions(-)
+> 
+> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+> index 4a48fe4b84b6..70099b402b0d 100644
+> --- a/fs/nfs/dir.c
+> +++ b/fs/nfs/dir.c
+> @@ -1911,6 +1911,7 @@ int nfs_rename(struct inode *old_dir, struct dentry *old_dentry,
+>  	struct inode *old_inode = old_dentry->d_inode;
+>  	struct inode *new_inode = new_dentry->d_inode;
+>  	struct dentry *dentry = NULL, *rehash = NULL;
+> +	struct rpc_task *task;
+>  	int error = -EBUSY;
+>  
+>  	dfprintk(VFS, "NFS: rename(%pd2 -> %pd2, ct=%d)\n",
+> @@ -1958,23 +1959,38 @@ int nfs_rename(struct inode *old_dir, struct dentry *old_dentry,
+>  	if (new_inode != NULL)
+>  		NFS_PROTO(new_inode)->return_delegation(new_inode);
+>  
+> -	error = NFS_PROTO(old_dir)->rename(old_dir, &old_dentry->d_name,
+> -					   new_dir, &new_dentry->d_name);
+> +	task = nfs_async_rename(old_dir, new_dir, old_dentry, new_dentry, NULL);
+> +	if (IS_ERR(task)) {
+> +		error = PTR_ERR(task);
+> +		goto out_dput;
+> +	}
+> +
+> +	error = rpc_wait_for_completion_task(task);
+> +	if (error == 0)
+> +		error = task->tk_status;
+> +	rpc_put_task(task);
+>  	nfs_mark_for_revalidate(old_inode);
+>  out:
+>  	if (rehash)
+>  		d_rehash(rehash);
+>  	trace_nfs_rename_exit(old_dir, old_dentry,
+>  			new_dir, new_dentry, error);
+> -	if (!error) {
+> +	switch (error) {
+> +	case 0:
+>  		if (new_inode != NULL)
+>  			nfs_drop_nlink(new_inode);
+>  		d_move(old_dentry, new_dentry);
+>  		nfs_set_verifier(new_dentry,
+>  					nfs_save_change_attribute(new_dir));
+> -	} else if (error == -ENOENT)
+> +		break;
+> +	case -ENOENT:
+>  		nfs_dentry_handle_enoent(old_dentry);
+> -
+> +		break;
+> +	case -ERESTARTSYS:
+> +		d_drop(old_dentry);
+> +		d_drop(new_dentry);
+
+Al pointed out to me on IRC that the -ERESTARTSYS handling is probably
+not correct for directories. If the old/new_dentries have children then
+it's not safe to just d_drop them. Since the sillyrename code never
+operates on directories, it's safe to do it there, but nfs_rename is
+different.
+
+I think what we probably ought to do there is replace those with:
+
+        nfs_force_lookup_revalidate(old_dir);
+        nfs_force_lookup_revalidate(new_dir);
+
+...or possibly just do that in the event that old_dentry->d_inode
+refers to a directory and d_drop the dentries otherwise.
+
+Thoughts?
+
+> +	}
+> +out_dput:
+>  	/* new dentry created? */
+>  	if (dentry)
+>  		dput(dentry);
+
+
+-- 
+Jeff Layton <jlayton@redhat.com>
