@@ -1,57 +1,105 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:51325 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751844AbaC2Tdb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 29 Mar 2014 15:33:31 -0400
-Date: Sat, 29 Mar 2014 15:33:31 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Idan Kedar <idank@primarydata.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/2] nfsd: Don't return NFS4ERR_STALE_STATEID for NFSv4.1+
-Message-ID: <20140329193331.GD11085@fieldses.org>
-References: <1396118619-12771-1-git-send-email-trond.myklebust@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1396118619-12771-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from mail-qg0-f44.google.com ([209.85.192.44]:59453 "EHLO
+	mail-qg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753709AbaCNRrP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Mar 2014 13:47:15 -0400
+Received: by mail-qg0-f44.google.com with SMTP id a108so8315235qge.3
+        for <linux-nfs@vger.kernel.org>; Fri, 14 Mar 2014 10:47:15 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 1/5] nfs: abstract out code needed to complete a sillyrename
+Date: Fri, 14 Mar 2014 13:47:01 -0400
+Message-Id: <1394819225-13713-2-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1394819225-13713-1-git-send-email-jlayton@redhat.com>
+References: <1394819225-13713-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Mar 29, 2014 at 02:43:38PM -0400, Trond Myklebust wrote:
-> RFC5661 obsoletes NFS4ERR_STALE_STATEID in favour of NFS4ERR_BAD_STATEID.
-> 
-> Note that because nfsd encodes the clientid boot time in the stateid, we
-> can hit this error case in certain scenarios where the Linux client
-> state management thread exits early, before it has finished recovering
-> all state.
+The async rename code is currently "polluted" with some parts that are
+really just for sillyrenames. Add a new "complete" operation vector to
+the nfs_renamedata to separate out the stuff that just needs to be done
+for a sillyrename.
 
-Thanks, applying.
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfs/unlink.c         | 22 ++++++++++++++++++----
+ include/linux/nfs_xdr.h |  1 +
+ 2 files changed, 19 insertions(+), 4 deletions(-)
 
---b.
+diff --git a/fs/nfs/unlink.c b/fs/nfs/unlink.c
+index 11d78944de79..3e6798c9ba1f 100644
+--- a/fs/nfs/unlink.c
++++ b/fs/nfs/unlink.c
+@@ -353,8 +353,8 @@ static void nfs_async_rename_done(struct rpc_task *task, void *calldata)
+ 		return;
+ 	}
+ 
+-	if (task->tk_status != 0)
+-		nfs_cancel_async_unlink(old_dentry);
++	if (data->complete)
++		data->complete(task, data);
+ }
+ 
+ /**
+@@ -401,7 +401,8 @@ static const struct rpc_call_ops nfs_rename_ops = {
+  */
+ static struct rpc_task *
+ nfs_async_rename(struct inode *old_dir, struct inode *new_dir,
+-		 struct dentry *old_dentry, struct dentry *new_dentry)
++		 struct dentry *old_dentry, struct dentry *new_dentry,
++		 void (*complete)(struct rpc_task *, struct nfs_renamedata *))
+ {
+ 	struct nfs_renamedata *data;
+ 	struct rpc_message msg = { };
+@@ -438,6 +439,7 @@ nfs_async_rename(struct inode *old_dir, struct inode *new_dir,
+ 	data->new_dentry = dget(new_dentry);
+ 	nfs_fattr_init(&data->old_fattr);
+ 	nfs_fattr_init(&data->new_fattr);
++	data->complete = complete;
+ 
+ 	/* set up nfs_renameargs */
+ 	data->args.old_dir = NFS_FH(old_dir);
+@@ -456,6 +458,17 @@ nfs_async_rename(struct inode *old_dir, struct inode *new_dir,
+ 	return rpc_run_task(&task_setup_data);
+ }
+ 
++/*
++ * Perform tasks needed when a sillyrename is done such as cancelling the
++ * queued async unlink if it failed.
++ */
++static void
++nfs_complete_sillyrename(struct rpc_task *task, struct nfs_renamedata *data)
++{
++	if (task->tk_status != 0)
++		nfs_cancel_async_unlink(data->old_dentry);
++}
++
+ #define SILLYNAME_PREFIX ".nfs"
+ #define SILLYNAME_PREFIX_LEN ((unsigned)sizeof(SILLYNAME_PREFIX) - 1)
+ #define SILLYNAME_FILEID_LEN ((unsigned)sizeof(u64) << 1)
+@@ -548,7 +561,8 @@ nfs_sillyrename(struct inode *dir, struct dentry *dentry)
+ 	}
+ 
+ 	/* run the rename task, undo unlink if it fails */
+-	task = nfs_async_rename(dir, dir, dentry, sdentry);
++	task = nfs_async_rename(dir, dir, dentry, sdentry,
++					nfs_complete_sillyrename);
+ 	if (IS_ERR(task)) {
+ 		error = -EBUSY;
+ 		nfs_cancel_async_unlink(dentry);
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 5624e4e2763c..440d7b42525a 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1402,6 +1402,7 @@ struct nfs_renamedata {
+ 	struct inode		*new_dir;
+ 	struct dentry		*new_dentry;
+ 	struct nfs_fattr	new_fattr;
++	void (*complete)(struct rpc_task *, struct nfs_renamedata *);
+ };
+ 
+ struct nfs_access_entry;
+-- 
+1.8.5.3
 
-> 
-> Reported-by: Idan Kedar <idank@primarydata.com>
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> ---
->  fs/nfsd/nfs4state.c | 5 ++++-
->  1 file changed, 4 insertions(+), 1 deletion(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index d5d070fbeb35..dd32f3746e4d 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -3627,8 +3627,11 @@ static __be32 nfsd4_lookup_stateid(stateid_t *stateid, unsigned char typemask,
->  		return nfserr_bad_stateid;
->  	status = lookup_clientid(&stateid->si_opaque.so_clid, sessions,
->  							nn, &cl);
-> -	if (status == nfserr_stale_clientid)
-> +	if (status == nfserr_stale_clientid) {
-> +		if (sessions)
-> +			return nfserr_bad_stateid;
->  		return nfserr_stale_stateid;
-> +	}
->  	if (status)
->  		return status;
->  	*s = find_stateid_by_type(cl, stateid, typemask);
-> -- 
-> 1.9.0
-> 
