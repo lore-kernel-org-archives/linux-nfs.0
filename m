@@ -1,80 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:47869 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752131AbaCWBM1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 22 Mar 2014 21:12:27 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 16/50] nfsd4: READ, READDIR, etc., are idempotent
-Date: Sat, 22 Mar 2014 21:11:47 -0400
-Message-Id: <1395537141-10389-17-git-send-email-bfields@redhat.com>
-In-Reply-To: <1395537141-10389-1-git-send-email-bfields@redhat.com>
-References: <1395537141-10389-1-git-send-email-bfields@redhat.com>
+Received: from mail-qc0-f175.google.com ([209.85.216.175]:51379 "EHLO
+	mail-qc0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753709AbaCNRrU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Mar 2014 13:47:20 -0400
+Received: by mail-qc0-f175.google.com with SMTP id e16so3235712qcx.6
+        for <linux-nfs@vger.kernel.org>; Fri, 14 Mar 2014 10:47:19 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 5/5] nfs: emit a fsnotify_nameremove call in sillyrename codepath
+Date: Fri, 14 Mar 2014 13:47:05 -0400
+Message-Id: <1394819225-13713-6-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1394819225-13713-1-git-send-email-jlayton@redhat.com>
+References: <1394819225-13713-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+If a file is sillyrenamed, then the generic vfs_unlink code will skip
+emitting fsnotify events for it.
 
-OP_MODIFIES_SOMETHING flags operations that we should be careful not to
-initiate without being sure we have the buffer space to encode a reply.
+This patch has the sillyrename code do that instead.
 
-None of these ops fall into that category.
+In truth this is a little bit odd since we aren't actually removing the
+dentry per-se, but renaming it. Still, this is probably the right thing
+to do since it's what userland apps expect to see when an unlink()
+occurs or some file is renamed on top of the dentry.
 
-We could probably remove a few more, but this isn't a very important
-problem at least for ops whose reply size is easy to estimate.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nfsd/nfs4proc.c | 13 +++----------
- 1 file changed, 3 insertions(+), 10 deletions(-)
+ fs/nfs/unlink.c | 15 +++++++++++++--
+ 1 file changed, 13 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index afa7ff7..a61f492 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1630,38 +1630,31 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 	[OP_PUTFH] = {
- 		.op_func = (nfsd4op_func)nfsd4_putfh,
- 		.op_flags = ALLOWED_WITHOUT_FH | ALLOWED_ON_ABSENT_FS
--				| OP_IS_PUTFH_LIKE | OP_MODIFIES_SOMETHING
--				| OP_CLEAR_STATEID,
-+				| OP_IS_PUTFH_LIKE | OP_CLEAR_STATEID,
- 		.op_name = "OP_PUTFH",
- 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_only_status_rsize,
- 	},
- 	[OP_PUTPUBFH] = {
- 		.op_func = (nfsd4op_func)nfsd4_putrootfh,
- 		.op_flags = ALLOWED_WITHOUT_FH | ALLOWED_ON_ABSENT_FS
--				| OP_IS_PUTFH_LIKE | OP_MODIFIES_SOMETHING
--				| OP_CLEAR_STATEID,
-+				| OP_IS_PUTFH_LIKE | OP_CLEAR_STATEID,
- 		.op_name = "OP_PUTPUBFH",
- 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_only_status_rsize,
- 	},
- 	[OP_PUTROOTFH] = {
- 		.op_func = (nfsd4op_func)nfsd4_putrootfh,
- 		.op_flags = ALLOWED_WITHOUT_FH | ALLOWED_ON_ABSENT_FS
--				| OP_IS_PUTFH_LIKE | OP_MODIFIES_SOMETHING
--				| OP_CLEAR_STATEID,
-+				| OP_IS_PUTFH_LIKE | OP_CLEAR_STATEID,
- 		.op_name = "OP_PUTROOTFH",
- 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_only_status_rsize,
- 	},
- 	[OP_READ] = {
- 		.op_func = (nfsd4op_func)nfsd4_read,
--		.op_flags = OP_MODIFIES_SOMETHING,
--		.op_name = "OP_READ",
- 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_read_rsize,
- 		.op_get_currentstateid = (stateid_getter)nfsd4_get_readstateid,
- 	},
- 	[OP_READDIR] = {
- 		.op_func = (nfsd4op_func)nfsd4_readdir,
--		.op_flags = OP_MODIFIES_SOMETHING,
--		.op_name = "OP_READDIR",
- 		.op_rsize_bop = (nfsd4op_rsize)nfsd4_readdir_rsize,
- 	},
- 	[OP_READLINK] = {
+diff --git a/fs/nfs/unlink.c b/fs/nfs/unlink.c
+index 818ded7b7b74..b133a18c9f4e 100644
+--- a/fs/nfs/unlink.c
++++ b/fs/nfs/unlink.c
+@@ -14,6 +14,7 @@
+ #include <linux/sched.h>
+ #include <linux/wait.h>
+ #include <linux/namei.h>
++#include <linux/fsnotify.h>
+ 
+ #include "internal.h"
+ #include "nfs4_fs.h"
+@@ -465,8 +466,18 @@ nfs_async_rename(struct inode *old_dir, struct inode *new_dir,
+ static void
+ nfs_complete_sillyrename(struct rpc_task *task, struct nfs_renamedata *data)
+ {
+-	if (task->tk_status != 0)
+-		nfs_cancel_async_unlink(data->old_dentry);
++	struct dentry *dentry = data->old_dentry;
++
++	if (task->tk_status != 0) {
++		nfs_cancel_async_unlink(dentry);
++		return;
++	}
++
++	/*
++	 * vfs_unlink and the like do not issue this when a file is
++	 * sillyrenamed, so do it here.
++	 */
++	fsnotify_nameremove(dentry, S_ISDIR(dentry->d_inode->i_mode));
+ }
+ 
+ #define SILLYNAME_PREFIX ".nfs"
 -- 
 1.8.5.3
 
