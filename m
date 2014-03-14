@@ -1,118 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:33095 "EHLO mx1.redhat.com"
+Received: from plane.gmane.org ([80.91.229.3]:44194 "EHLO plane.gmane.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753095AbaCLO2X (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 12 Mar 2014 10:28:23 -0400
-Date: Wed, 12 Mar 2014 10:28:06 -0400
-From: Jeffrey Layton <jlayton@redhat.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Steve Wise <swise@opengridcomputing.com>,
-        Dr Fields James Bruce <bfields@fieldses.org>,
-        Tucker Tom <tom@opengridcomputing.com>, Yan Burman <yanb@mellanox.com>,
-        linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org,
-        Or Gerlitz <ogerlitz@mellanox.com>, chuck.lever@oracle.com
-Subject: Re: NFS over RDMA crashing
-Message-ID: <20140312102806.435847a7@ipyr.poochiereds.net>
-In-Reply-To: <731A7629-7DBB-4FC3-8F21-70380705ED4E@primarydata.com>
-References: <51127B3F.2090200@mellanox.com>
-	<20130206222435.GL16417@fieldses.org>
-	<20130207164134.GK3222@fieldses.org>
-	<003601cf3a26$94523ee0$bcf6bca0$@opengridcomputing.com>
-	<005d01cf3a45$94ced0d0$be6c7270$@opengridcomputing.com>
-	<531B47B3.1070503@opengridcomputing.com>
-	<531B6D90.2090208@opengridcomputing.com>
-	<531B79F8.2020008@opengridcomputing.com>
-	<20140312093300.7a434cbb@tlielax.poochiereds.net>
-	<731A7629-7DBB-4FC3-8F21-70380705ED4E@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+	id S1752350AbaCNBFG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 13 Mar 2014 21:05:06 -0400
+Received: from list by plane.gmane.org with local (Exim 4.69)
+	(envelope-from <glN-linux-nfs@m.gmane.org>)
+	id 1WOGYZ-0004kw-PQ
+	for linux-nfs@vger.kernel.org; Fri, 14 Mar 2014 02:05:04 +0100
+Received: from 173-228-91-47.dsl.static.sonic.net ([173.228.91.47])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Fri, 14 Mar 2014 02:05:03 +0100
+Received: from deepak.jagtap by 173-228-91-47.dsl.static.sonic.net with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Fri, 14 Mar 2014 02:05:03 +0100
+To: linux-nfs@vger.kernel.org
+From: Deepak Jagtap <deepak.jagtap@maxta.com>
+Subject: Nfs server per mount point IOPS limit
+Date: Fri, 14 Mar 2014 00:59:10 +0000 (UTC)
+Message-ID: <loom.20140314T015822-835@post.gmane.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 12 Mar 2014 10:05:24 -0400
-Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+Hi,
 
-> 
-> On Mar 12, 2014, at 9:33, Jeff Layton <jlayton@redhat.com> wrote:
-> 
-> > On Sat, 08 Mar 2014 14:13:44 -0600
-> > Steve Wise <swise@opengridcomputing.com> wrote:
-> > 
-> >> On 3/8/2014 1:20 PM, Steve Wise wrote:
-> >>> 
-> >>>> I removed your change and started debugging original crash that 
-> >>>> happens on top-o-tree.   Seems like rq_next_pages is screwed
-> >>>> up.  It should always be >= rq_respages, yes?  I added a
-> >>>> BUG_ON() to assert this in rdma_read_xdr() we hit the BUG_ON().
-> >>>> Look
-> >>>> 
-> >>>> crash> svc_rqst.rq_next_page 0xffff8800b84e6000
-> >>>> rq_next_page = 0xffff8800b84e6228
-> >>>> crash> svc_rqst.rq_respages 0xffff8800b84e6000
-> >>>> rq_respages = 0xffff8800b84e62a8
-> >>>> 
-> >>>> Any ideas Bruce/Tom?
-> >>>> 
-> >>> 
-> >>> Guys, the patch below seems to fix the problem.  Dunno if it is 
-> >>> correct though.  What do you think?
-> >>> 
-> >>> diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c 
-> >>> b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-> >>> index 0ce7552..6d62411 100644
-> >>> --- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-> >>> +++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-> >>> @@ -90,6 +90,7 @@ static void rdma_build_arg_xdr(struct svc_rqst
-> >>> *rqstp, sge_no++;
-> >>>       }
-> >>>       rqstp->rq_respages = &rqstp->rq_pages[sge_no];
-> >>> +       rqstp->rq_next_page = rqstp->rq_respages;
-> >>> 
-> >>>       /* We should never run out of SGE because the limit is
-> >>> defined to
-> >>>        * support the max allowed RPC data length
-> >>> @@ -276,6 +277,7 @@ static int fast_reg_read_chunks(struct 
-> >>> svcxprt_rdma *xprt,
-> >>> 
-> >>>       /* rq_respages points one past arg pages */
-> >>>       rqstp->rq_respages = &rqstp->rq_arg.pages[page_no];
-> >>> +       rqstp->rq_next_page = rqstp->rq_respages;
-> >>> 
-> >>>       /* Create the reply and chunk maps */
-> >>>       offset = 0;
-> >>> 
-> >>> 
-> >> 
-> >> While this patch avoids the crashing, it apparently isn't
-> >> correct...I'm getting IO errors reading files over the mount. :)
-> >> 
-> > 
-> > I hit the same oops and tested your patch and it seems to have fixed
-> > that particular panic, but I still see a bunch of other mem
-> > corruption oopses even with it. I'll look more closely at that when
-> > I get some time.
-> > 
-> > FWIW, I can easily reproduce that by simply doing something like:
-> > 
-> >   $ dd if=/dev/urandom of=/file/on/nfsordma/mount bs=4k count=1
-> > 
-> > I'm not sure why you're not seeing any panics with your patch in
-> > place. Perhaps it's due to hw differences between our test rigs.
-> > 
-> > The EIO problem that you're seeing is likely the same client bug
-> > that Chuck recently fixed in this patch:
-> > 
-> >   [PATCH 2/8] SUNRPC: Fix large reads on NFS/RDMA
-> > 
-> > AIUI, Trond is merging that set for 3.15, so I'd make sure your
-> > client has those patches when testing.
-> > 
-> 
-> Nothing is in my queue yet.
-> 
+I order to get performance stats with Linux nfs server and client, I ran 
+following experiments:
 
-Doh! Any reason not to merge that set from Chuck? They do fix a couple
-of nasty client bugs...
+Linux Nfs Server version 3: exporting ext3 filesystem directory.
+Linux Nfs Client :  64 IO threads doing IO on nfs mount point .
 
--- 
-Jeff Layton <jlayton@redhat.com>
+I am doing random reads on 30GB sparse file (emty), to figure out how much 
+max IOPS this IO stack supports.
+
+I observed 30K random read IOPS using single client IO process. Nfs server 
+is configured to spawn 64 threads, but not all nfs threads are busy in this 
+case.
+
+In order to maxout nfs server thread usage I spawn another IO process on the 
+client doing IO though same mount point, but cumulative read IOPS stays same 
+(15K IOPS per IO process)
+
+But when I mount same export on another mount point on the same client, IOPS 
+scale.
+ie.
+
+Nfs server exports /share/export directory.
+
+NfsClient mounts:
+MountPoint1: mount server:/share/export at  /mnt/exportMount1 
+MountPoint2: mount server:/share/export at  /mnt/exportMount2
+
+IOProcess1 does IO on MountPoint1 while IOProcess2 does IO on MountPoint2, 
+reads in this case
+scale and nfs server CPU usage doubles.
+
+But if 2 IOProcesses use same mount point for IO then IOPS for each process 
+drops to half.
+
+Please advise if  I am hitting some per mount point limit in this case.
+Also how can I figure out if bottleneck is on nfs client side or nfs server 
+side.
+
+Thanks & Regards,
+Deepak
+
