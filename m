@@ -1,61 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mga02.intel.com ([134.134.136.20]:32909 "EHLO mga02.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751883AbaCCCd1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 2 Mar 2014 21:33:27 -0500
-Message-ID: <5313E9F6.2020405@intel.com>
-Date: Mon, 03 Mar 2014 10:33:26 +0800
-From: "Yan, Zheng" <zheng.z.yan@intel.com>
-MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org
-Subject: [BUG] NULL pointer dereference in nfs4_match_stateid()
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-qc0-f171.google.com ([209.85.216.171]:39230 "EHLO
+	mail-qc0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932506AbaCQLHK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Mar 2014 07:07:10 -0400
+Received: by mail-qc0-f171.google.com with SMTP id x13so5637460qcv.2
+        for <linux-nfs@vger.kernel.org>; Mon, 17 Mar 2014 04:07:10 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 3/5] nfs: convert nfs_rename to use async_rename infrastructure
+Date: Mon, 17 Mar 2014 07:06:56 -0400
+Message-Id: <1395054418-14504-4-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1395054418-14504-1-git-send-email-jlayton@redhat.com>
+References: <1395054418-14504-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+There isn't much sense in maintaining two separate versions of rename
+code. Convert nfs_rename to use the asynchronous rename infrastructure
+that nfs_sillyrename uses, and emulate synchronous behavior by having
+the task just wait on the reply.
 
-I got following Oops when running fsstress
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
-[ 2536.142216] BUG: unable to handle kernel NULL pointer dereference at 0000000000000020
-[ 2536.143110] IP: [<ffffffff813391d9>] memcmp+0x9/0x50
-[ 2536.143110] PGD 0
-[ 2536.143110] Oops: 0000 [#1] SMP
-[ 2536.143110] Modules linked in: rpcsec_gss_krb5(F) auth_rpcgss(F) nfsv4(F) dns_resolver(F) nfs(F) fscache(F) ceph(F) libceph(F) libcrc32c(F) netconsole(F) ip6table_filter(F) ip6_tables(F) ebtable_nat(F) ebtables(F) ipt_MASQUERADE(F) iptable_nat(F) nf_nat_ipv4(F) nf_nat(F) nf_conntrack_ipv4(F) nf_defrag_ipv4(F) xt_state(F) nf_conntrack(F) xt_CHECKSUM(F) iptable_mangle(F) bnep(F) bluetooth(F) 6lowpan_iphc(F) bridge(F) lockd(F) sunrpc(F) rfkill(F) be2iscsi(F) iscsi_boot_sysfs(F) stp(F) llc(F) bnx2i(F) cnic(F) uio(F) cxgb4i(F) cxgb4(F) cxgb3i(F) cxgb3(F) mdio(F) libcxgbi(F) ib_iser(F) rdma_cm(F) iw_cm(F) ib_cm(F) ib_sa(F) ib_mad(F) ib_core(F) ib_addr(F) iscsi_tcp(F) libiscsi_tcp(F) libiscsi(F) scsi_transport_iscsi(F) virtio_net(F) virtio_balloon(F) pcspkr(F) microcode(F) uinput(F) cirrus(F) drm_kms_helper(F) ttm(F) drm(F) i2c_core(F)
-[ 2536.143110] CPU: 1 PID: 2925 Comm: nfsv4.0-svc Tainted: GF            3.14.0-rc4+ #50
-[ 2536.143110] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
-[ 2536.143110] task: ffff88003cd55aa0 ti: ffff88003c9a8000 task.ti: ffff88003c9a8000
-[ 2536.143110] RIP: 0010:[<ffffffff813391d9>]  [<ffffffff813391d9>] memcmp+0x9/0x50
-[ 2536.143110] RSP: 0018:ffff88003c9a9ca8  EFLAGS: 00010202
-[ 2536.143110] RAX: ffffffffa04842c0 RBX: 0000000000000000 RCX: 0000000000000036
-[ 2536.143110] RDX: 0000000000000010 RSI: ffff880035ee808a RDI: 0000000000000020
-[ 2536.143110] RBP: ffff88003c9a9ca8 R08: 8020000000000000 R09: 00231b6840100000
-[ 2536.143110] R10: ffbee4a086ca1004 R11: 0000000000000000 R12: ffff88003751e000
-[ 2536.143110] R13: ffff880034afa000 R14: ffff880035ee808a R15: 0000000000000004
-[ 2536.143110] FS:  0000000000000000(0000) GS:ffff88003fc80000(0000) knlGS:0000000000000000
-[ 2536.143110] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-[ 2536.143110] CR2: 0000000000000020 CR3: 0000000034bc0000 CR4: 00000000000006e0
-[ 2536.143110] Stack:
-[ 2536.143110]  ffff88003c9a9cb8 ffffffffa0455883 ffff88003c9a9cf0 ffffffffa0472b98
-[ 2536.143110]  ffff880035ee8000 ffff880035ee8000 ffff8800231b6970 0000000011270000
-[ 2536.143110]  0000000000000000 ffff88003c9a9d28 ffffffffa0475fc9 ffff88003c9a9d28
-[ 2536.143110] Call Trace:
-[ 2536.143110]  [<ffffffffa0455883>] nfs4_match_stateid+0x13/0x20 [nfsv4]
-[ 2536.143110]  [<ffffffffa0472b98>] nfs_async_inode_return_delegation+0x48/0x90 [nfsv4]
-[ 2536.143110]  [<ffffffffa0475fc9>] nfs4_callback_recall+0x59/0x130 [nfsv4]
-[ 2536.143110]  [<ffffffffa0475005>] nfs4_callback_compound+0x465/0x6a0 [nfsv4]
-[ 2536.143110]  [<ffffffffa0220c1a>] ? svcauth_unix_accept+0x14a/0x270 [sunrpc]
-[ 2536.143110]  [<ffffffffa021c707>] svc_process_common+0x5e7/0x6e0 [sunrpc]
-[ 2536.143110]  [<ffffffffa0473e80>] ? nfs_callback_authenticate+0x50/0x50 [nfsv4]
-[ 2536.143110]  [<ffffffffa021c907>] svc_process+0x107/0x170 [sunrpc]
-[ 2536.143110]  [<ffffffffa0473e80>] ? nfs_callback_authenticate+0x50/0x50 [nfsv4]
-[ 2536.143110]  [<ffffffffa0473ec5>] nfs4_callback_svc+0x45/0x60 [nfsv4]
-[ 2536.143110]  [<ffffffff810a4a52>] kthread+0xd2/0xf0
-[ 2536.143110]  [<ffffffff810a4980>] ? insert_kthread_work+0x40/0x40
-[ 2536.143110]  [<ffffffff816b567c>] ret_from_fork+0x7c/0xb0
-[ 2536.143110]  [<ffffffff810a4980>] ? insert_kthread_work+0x40/0x40
-[ 2536.143110] Code: 75 e9 31 c0 c6 06 01 5d c3 66 0f 1f 84 00 00 00 00 00 31 c0 c6 06 00 5d c3 66 0f 1f 84 00 00 00 00 00 55 48 85 d2 48 89 e5 74 3c <0f> b6 07 0f b6 0e 29 c8 75 27 48 83 ea 01 31 c9 eb 1a 0f 1f 44
-[ 2536.143110] RIP  [<ffffffff813391d9>] memcmp+0x9/0x50
-[ 2536.143110]  RSP <ffff88003c9a9ca8>
-[ 2536.143110] CR2: 0000000000000020
-[ 2536.143110] ---[ end trace 145a1eb5268045c7 ]---
+ fs/nfs/dir.c | 13 +++++++++++--
+ 1 file changed, 11 insertions(+), 2 deletions(-)
+
+diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+index 4a48fe4b84b6..e6f8e2c97653 100644
+--- a/fs/nfs/dir.c
++++ b/fs/nfs/dir.c
+@@ -1911,6 +1911,7 @@ int nfs_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 	struct inode *old_inode = old_dentry->d_inode;
+ 	struct inode *new_inode = new_dentry->d_inode;
+ 	struct dentry *dentry = NULL, *rehash = NULL;
++	struct rpc_task *task;
+ 	int error = -EBUSY;
+ 
+ 	dfprintk(VFS, "NFS: rename(%pd2 -> %pd2, ct=%d)\n",
+@@ -1958,8 +1959,16 @@ int nfs_rename(struct inode *old_dir, struct dentry *old_dentry,
+ 	if (new_inode != NULL)
+ 		NFS_PROTO(new_inode)->return_delegation(new_inode);
+ 
+-	error = NFS_PROTO(old_dir)->rename(old_dir, &old_dentry->d_name,
+-					   new_dir, &new_dentry->d_name);
++	task = nfs_async_rename(old_dir, new_dir, old_dentry, new_dentry, NULL);
++	if (IS_ERR(task)) {
++		error = PTR_ERR(task);
++		goto out;
++	}
++
++	error = rpc_wait_for_completion_task(task);
++	if (error == 0)
++		error = task->tk_status;
++	rpc_put_task(task);
+ 	nfs_mark_for_revalidate(old_inode);
+ out:
+ 	if (rehash)
+-- 
+1.8.5.3
+
