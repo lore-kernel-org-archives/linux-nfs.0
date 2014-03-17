@@ -1,18 +1,17 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-db3un0253.outbound.protection.outlook.com ([157.55.234.253]:61854
-	"EHLO emea01-db3-obe.outbound.protection.outlook.com"
-	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1751687AbaCPLoo convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 16 Mar 2014 07:44:44 -0400
-Content-Type: text/plain; charset=US-ASCII
-Subject: Loan Assistance / Credit Offer
-To: Recipients <finance03@awardfin.onmicrosoft.com>
-From: Santander Group <finance03@awardfin.onmicrosoft.com>
-Date: Sun, 16 Mar 2014 12:29:31 +0100
-Reply-To: <asloan01.loan@aol.com>
-Message-ID: <d880e894-eb71-4d02-8ce6-e5825d751167@DB3PR06MB201.eurprd06.prod.outlook.com>
+Received: from 210.210.179.66.cbn.net.id ([210.210.179.66]:59159 "EHLO
+	mailing5.tokobagus.com" rhost-flags-OK-FAIL-OK-FAIL)
+	by vger.kernel.org with ESMTP id S932526AbaCQL1m (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Mar 2014 07:27:42 -0400
+Content-Type: text/plain;
+	charset="windows-1251"
+From: <TsetseroTsetse@gmail.com>
+To: <linux-nfs@vger.kernel.org>
+Subject: =?utf-8?B?S9C70Lhl0L3RgmNr0LhlINCxYdC30Ysg0YJl0Ls6ICs3LTlJ0JfQlzkxLdCXONCXNw==?=
+Message-ID: <0.0.C.4A1.1CF41D3DC9842DA.0@mailing5.tokobagus.com>
+Date: Mon, 17 Mar 2014 18:27:21 +0700
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-We offer all purpose loan at 3% interest rate. Contact Us for more details by Email:santanderfinancegroup@gmail.com
+Këèeíòckèe áaçû òeë: +7-9IÇÇ91-Ç8Ç7
