@@ -1,132 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:50423 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751270AbaC2AFl convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Mar 2014 20:05:41 -0400
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
-Subject: Re: Kernel oops/panic with NFS over RDMA mount after disrupted Infiniband connection
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <53360087.9060902@mellanox.com>
-Date: Fri, 28 Mar 2014 17:05:31 -0700
-Cc: Senn Klemens <klemens.senn@ims.co.at>, linux-rdma@vger.kernel.org,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <7C171419-2808-42C4-AD00-FF7E392E6E3F@oracle.com>
-References: <5332D425.3030803@ims.co.at> <4E6350BB-5E9C-40D9-8624-6CAA78E5B902@oracle.com> <lh0le0$u5$1@ger.gmane.org> <B7D4A29C-5E1F-4B6C-A8FC-C46D8DF6A87D@oracle.com> <5335440A.9030207@ims.co.at> <3FF5D87A-8199-4CE1-BF97-82DC61E4F480@oracle.com> <53360087.9060902@mellanox.com>
-To: sagi grimberg <sagig@mellanox.com>
+Received: from mail-qg0-f44.google.com ([209.85.192.44]:58750 "EHLO
+	mail-qg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932608AbaCQLHM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Mar 2014 07:07:12 -0400
+Received: by mail-qg0-f44.google.com with SMTP id a108so16159011qge.3
+        for <linux-nfs@vger.kernel.org>; Mon, 17 Mar 2014 04:07:12 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 5/5] nfs: emit a fsnotify_nameremove call in sillyrename codepath
+Date: Mon, 17 Mar 2014 07:06:58 -0400
+Message-Id: <1395054418-14504-6-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1395054418-14504-1-git-send-email-jlayton@redhat.com>
+References: <1395054418-14504-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+If a file is sillyrenamed, then the generic vfs_unlink code will skip
+emitting fsnotify events for it.
 
-On Mar 28, 2014, at 4:06 PM, sagi grimberg <sagig@mellanox.com> wrote:
+This patch has the sillyrename code do that instead.
 
-> On 3/29/2014 1:30 AM, Chuck Lever wrote:
->> On Mar 28, 2014, at 2:42 AM, Senn Klemens <klemens.senn@ims.co.at> wrote:
->> 
->>> Hi Chuck,
->>> 
->>> On 03/27/2014 04:59 PM, Chuck Lever wrote:
->>>> Hi-
->>>> 
->>>> 
->>>> On Mar 27, 2014, at 12:53 AM, Reiter Rafael <rafael.reiter@ims.co.at> wrote:
->>>> 
->>>>> On 03/26/2014 07:15 PM, Chuck Lever wrote:
->>>>>> Hi Rafael-
->>>>>> 
->>>>>> I’ll take a look. Can you report your HCA and how you reproduce this issue?
->>>>> The HCA is Mellanox Technologies MT26428.
->>>>> 
->>>>> Reproduction:
->>>>> 1) Mount a directory via NFS/RDMA
->>>>> mount -t nfs -o port=20049,rdma,vers=4.0,timeo=900 172.16.100.2:/ /mnt/
->>> An additional "ls /mnt" is needed here (between step 1 and 2)
->>> 
->>>>> 2) Pull the Infiniband cable or use ibportstate to disrupt the Infiniband connection
->>>>> 3) ls /mnt
->>>>> 4) wait 5-30 seconds
->>>> Thanks for the information.
->>>> 
->>>> I have that HCA, but I won’t have access to my test systems for a week (traveling). So can you try this:
->>>> 
->>>> # rpcdebug -m rpc -s trans
->>>> 
->>>> then reproduce (starting with step 1 above). Some debugging output will appear at the tail of /var/log/messages. Copy it to this thread.
->>>> 
->>> The output of /var/log/messages is:
->>> 
->>> [  143.233701] RPC:  1688 xprt_rdma_allocate: size 1112 too large for
->>> buffer[1024]: prog 100003 vers 4 proc 1
->>> [  143.233708] RPC:  1688 xprt_rdma_allocate: size 1112, request
->>> 0xffff88105894c000
->>> [  143.233715] RPC:  1688 rpcrdma_inline_pullup: pad 0 destp
->>> 0xffff88105894d7dc len 124 hdrlen 124
->>> [  143.233718] RPC:       rpcrdma_register_frmr_external: Using frmr
->>> ffff88084e589260 to map 1 segments
->>> [  143.233722] RPC:  1688 rpcrdma_create_chunks: reply chunk elem
->>> 652@0x105894d92c:0xced01 (last)
->>> [  143.233725] RPC:  1688 rpcrdma_marshal_req: reply chunk: hdrlen 48
->>> rpclen 124 padlen 0 headerp 0xffff88105894d100 base 0xffff88105894d760
->>> lkey 0x8000
->>> [  143.233785] RPC:       rpcrdma_event_process: event rep
->>> ffff88084e589260 status 0 opcode 8 length 0
->>> [  177.272397] RPC:       rpcrdma_event_process: event rep
->>> (null) status C opcode FFFF8808 length 4294967295
->>> [  177.272649] RPC:       rpcrdma_event_process: event rep
->>> ffff880848ed0000 status 5 opcode FFFF8808 length 4294936584
->> The mlx4 provider is returning a WC completion status of
->> IB_WC_WR_FLUSH_ERR.
->> 
->>> [  177.272651] RPC:       rpcrdma_event_process: WC opcode -30712 status
->>> 5, connection lost
->> -30712 is a bogus WC opcode. So the mlx4 provider is not filling in the
->> WC opcode. rpcrdma_event_process() thus can’t depend on the contents of
->> the ib_wc.opcode field when the WC completion status != IB_WC_SUCCESS.
-> 
-> Hey Chuck,
-> 
-> That is correct, the opcode field in the wc is not reliable in FLUSH errors.
-> 
->> 
->> A copy of the opcode reachable from the incoming rpcrdma_rep could be
->> added, initialized in the forward paths. rpcrdma_event_process() could
->> use the copy in the error case.
-> 
-> How about suppressing completions alltogether for fast_reg and local_inv work requests?
-> if these shall fail you will get an error completion and the QP will transition to error state
-> generating FLUSH_ERR completions for all pending WRs. In this case, you can just ignore
-> flush fast_reg + local_inv errors.
-> 
-> see http://marc.info/?l=linux-rdma&m=139047309831997&w=2
+In truth this is a little bit odd since we aren't actually removing the
+dentry per-se, but renaming it. Still, this is probably the right thing
+to do since it's what userland apps expect to see when an unlink()
+occurs or some file is renamed on top of the dentry.
 
-While considering your suggestion, I see that my proposed fix doesn’t work. In the FAST_REG_MR and LOCAL_INV cases, wr_id points to a struct rpcrdma_mw, not a struct rpcrdma_rep. Putting a copy of the opcode in rpcrdma_rep would have no effect. Worse:
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfs/unlink.c | 15 +++++++++++++--
+ 1 file changed, 13 insertions(+), 2 deletions(-)
 
->  158         if (IB_WC_SUCCESS != wc->status) {
->  159                 dprintk("RPC:       %s: WC opcode %d status %X, connection lost\n",
->  160                         __func__, wc->opcode, wc->status);
->  161                 rep->rr_len = ~0U;
-
-Suppose this is an IB_WC_FAST_REG_MR completion, so “rep” here is actually a struct rpcrdma_mw, not a struct rpcrdma_rep. Line 161 pokes 32 one-bits at the top of that struct rpcrdma_mw. If wc->opcode was always usable, we’d at least have to fix that.
-
->  162                 if (wc->opcode != IB_WC_FAST_REG_MR && wc->opcode != IB_WC_LOCAL_INV)
->  163                         rpcrdma_schedule_tasklet(rep);
->  164                 return;
->  165         }
->  166 
->  167         switch (wc->opcode) {
->  168         case IB_WC_FAST_REG_MR:
->  169                 frmr = (struct rpcrdma_mw *)(unsigned long)wc->wr_id;
->  170                 frmr->r.frmr.state = FRMR_IS_VALID;
->  171                 break;
-
-
-To make my initial solution work, you’d have to add a field to both struct rpcrdma_mw and struct rpcrdma_rep, and ensure they are at the same offset in both structures. Ewe.
-
-Eliminating completions for FAST_REG_MR and LOCAL_INV might be a preferable way to address this.
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
+diff --git a/fs/nfs/unlink.c b/fs/nfs/unlink.c
+index 818ded7b7b74..de54129336c6 100644
+--- a/fs/nfs/unlink.c
++++ b/fs/nfs/unlink.c
+@@ -14,6 +14,7 @@
+ #include <linux/sched.h>
+ #include <linux/wait.h>
+ #include <linux/namei.h>
++#include <linux/fsnotify.h>
+ 
+ #include "internal.h"
+ #include "nfs4_fs.h"
+@@ -465,8 +466,18 @@ nfs_async_rename(struct inode *old_dir, struct inode *new_dir,
+ static void
+ nfs_complete_sillyrename(struct rpc_task *task, struct nfs_renamedata *data)
+ {
+-	if (task->tk_status != 0)
+-		nfs_cancel_async_unlink(data->old_dentry);
++	struct dentry *dentry = data->old_dentry;
++
++	if (task->tk_status != 0) {
++		nfs_cancel_async_unlink(dentry);
++		return;
++	}
++
++	/*
++	 * vfs_unlink and the like do not issue this when a file is
++	 * sillyrenamed, so do it here.
++	 */
++	fsnotify_nameremove(dentry, 0);
+ }
+ 
+ #define SILLYNAME_PREFIX ".nfs"
+-- 
+1.8.5.3
 
