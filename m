@@ -1,81 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:47912 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752226AbaCWBMb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 22 Mar 2014 21:12:31 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 37/50] rpc: define xdr_restrict_buflen
-Date: Sat, 22 Mar 2014 21:12:08 -0400
-Message-Id: <1395537141-10389-38-git-send-email-bfields@redhat.com>
-In-Reply-To: <1395537141-10389-1-git-send-email-bfields@redhat.com>
-References: <1395537141-10389-1-git-send-email-bfields@redhat.com>
+Received: from mail-qc0-f175.google.com ([209.85.216.175]:54366 "EHLO
+	mail-qc0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750764AbaCRSEc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Mar 2014 14:04:32 -0400
+Received: by mail-qc0-f175.google.com with SMTP id e16so8312077qcx.34
+        for <linux-nfs@vger.kernel.org>; Tue, 18 Mar 2014 11:04:31 -0700 (PDT)
+Message-ID: <53288AAC.2010406@gmail.com>
+Date: Tue, 18 Mar 2014 14:04:28 -0400
+From: Anna Schumaker <schumaker.anna@gmail.com>
+MIME-Version: 1.0
+To: Christoph Hellwig <hch@infradead.org>
+CC: Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/2] nfs: remove ->write_pageio_init from rpc ops
+References: <20140318112825.GA22359@infradead.org> <532840E8.5090804@gmail.com> <20140318140942.GB11672@infradead.org>
+In-Reply-To: <20140318140942.GB11672@infradead.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On 03/18/2014 10:09 AM, Christoph Hellwig wrote:
+>>> +	struct nfs_server *server = NFS_SERVER(inode);
+>>> +	const struct nfs_pageio_ops *pg_ops = &nfs_pageio_write_ops;
+>>> +
+>>> +#if IS_ENABLED(CONFIG_NFS_V4)
+>>> +	if (server->pnfs_curr_ld)
+>>> +		pg_ops = server->pnfs_curr_ld->pg_write_ops;
+>>> +#endif
+>>> +	nfs_pageio_init(pgio, inode, pg_ops, compl_ops, server->wsize, ioflags);
+>>>  }
+>> I thought it was bad style to put a #ifdef in the middle of a function, which is why we have so many noop functions in the rest of the code.  Should this be done with a select_compl_ops() function instead?
+> I don't think it's much of a problem for a small and readable function
+> with a single ifdef.  And we'd need one helper for read and write each,
+> which would make the code much harder to read.  Still better than what's
+> there currently, though.
+>
+> The other option would be to simply always have the pnfs_curr_ld field
+> in the server structure and remove the ifdef entirely.
 
-With this xdr_reserve_space can help us enforce various limits.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- include/linux/sunrpc/xdr.h |  1 +
- net/sunrpc/xdr.c           | 29 +++++++++++++++++++++++++++++
- 2 files changed, 30 insertions(+)
-
-diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
-index b23d69f..70c6b92 100644
---- a/include/linux/sunrpc/xdr.h
-+++ b/include/linux/sunrpc/xdr.h
-@@ -217,6 +217,7 @@ extern void xdr_init_encode(struct xdr_stream *xdr, struct xdr_buf *buf, __be32
- extern __be32 *xdr_reserve_space(struct xdr_stream *xdr, size_t nbytes);
- extern void xdr_commit_encode(struct xdr_stream *xdr);
- extern void xdr_truncate_encode(struct xdr_stream *xdr, size_t len);
-+extern int xdr_restrict_buflen(struct xdr_stream *xdr, int newbuflen);
- extern void xdr_write_pages(struct xdr_stream *xdr, struct page **pages,
- 		unsigned int base, unsigned int len);
- extern unsigned int xdr_stream_pos(const struct xdr_stream *xdr);
-diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
-index e65d6b6..f97e3df 100644
---- a/net/sunrpc/xdr.c
-+++ b/net/sunrpc/xdr.c
-@@ -650,6 +650,35 @@ void xdr_truncate_encode(struct xdr_stream *xdr, size_t len)
- EXPORT_SYMBOL(xdr_truncate_encode);
- 
- /**
-+ * xdr_restrict_buflen - decrease available buffer space
-+ * @xdr: pointer to xdr_stream
-+ * @newbuflen: new maximum number of bytes available
-+ *
-+ * Adjust our idea of how much space is available in the buffer.
-+ * If we've already used too much space in the buffer, returns -1.
-+ * If the available space is already smaller than newbuflen, returns 0
-+ * and does nothing.  Otherwise, adjusts xdr->buf->buflen to newbuflen
-+ * and ensures xdr->end is set at most offset newbuflen from the start
-+ * of the buffer.
-+ */
-+int xdr_restrict_buflen(struct xdr_stream *xdr, int newbuflen)
-+{
-+	struct xdr_buf *buf = xdr->buf;
-+	int left_in_this_buf = (void *)xdr->end - (void *)xdr->p;
-+	int end_offset = buf->len + left_in_this_buf;
-+
-+	if (newbuflen < 0 || newbuflen < buf->len)
-+		return -1;
-+	if (newbuflen > buf->buflen)
-+		return 0;
-+	if (newbuflen < end_offset)
-+		xdr->end = (void *)xdr->end + newbuflen - end_offset;
-+	buf->buflen = newbuflen;
-+	return 0;
-+}
-+EXPORT_SYMBOL(xdr_restrict_buflen);
-+
-+/**
-  * xdr_write_pages - Insert a list of pages into an XDR buffer for sending
-  * @xdr: pointer to xdr_stream
-  * @pages: list of pages
--- 
-1.8.5.3
-
+Okay.  If we keep the ifdef, then it should probably check for CONFIG_NFS_V4_1 and not CONFIG_NFS_V4
