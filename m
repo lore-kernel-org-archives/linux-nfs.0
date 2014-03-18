@@ -1,67 +1,104 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f181.google.com ([209.85.213.181]:34794 "EHLO
-	mail-ig0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751844AbaC2TtI convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 29 Mar 2014 15:49:08 -0400
-Received: by mail-ig0-f181.google.com with SMTP id h18so2123648igc.8
-        for <linux-nfs@vger.kernel.org>; Sat, 29 Mar 2014 12:49:08 -0700 (PDT)
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
-Subject: Re: [PATCH 2/2] nfsd: Don't return NFS4ERR_RESTOREFH for NFSv4.1+
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-In-Reply-To: <20140329193456.GE11085@fieldses.org>
-Date: Sat, 29 Mar 2014 15:49:05 -0400
-Cc: Idan Kedar <idank@primarydata.com>, linux-nfs@vger.kernel.org
-Message-Id: <CDBA9E4B-1C09-4952-B285-83B1580397D7@primarydata.com>
-References: <1396118619-12771-1-git-send-email-trond.myklebust@primarydata.com> <1396118619-12771-2-git-send-email-trond.myklebust@primarydata.com> <20140329193456.GE11085@fieldses.org>
-To: Dr Fields James Bruce <bfields@fieldses.org>
+Received: from mx1.redhat.com ([209.132.183.28]:9008 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756951AbaCRRY1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 18 Mar 2014 13:24:27 -0400
+Message-ID: <53288146.4010601@RedHat.com>
+Date: Tue, 18 Mar 2014 13:24:22 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/2] SUNRPC: Ensure that call_connect times out correctly
+References: <1395081645-11906-1-git-send-email-trond.myklebust@primarydata.com> <53286A9D.2020007@RedHat.com> <362845B0-35A4-4DDF-96F6-42582D66334B@primarydata.com>
+In-Reply-To: <362845B0-35A4-4DDF-96F6-42582D66334B@primarydata.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Mar 29, 2014, at 15:34, J. Bruce Fields <bfields@fieldses.org> wrote:
 
-> On Sat, Mar 29, 2014 at 02:43:39PM -0400, Trond Myklebust wrote:
->> RFC5661 obsoletes NFS4ERR_RESTOREFH in favour of NFS4ERR_NOFILEHANDLE.
+On 03/18/2014 11:58 AM, Trond Myklebust wrote:
 > 
-> Looks right.  Any objection to just making this nfserr_restorefh in the
-> 4.0 case as well?  Hard to imagine how that could cause a 4.0 client any
-> problem.
-
-You mean make both cases return nfserr_nofilehandle (as per RFC5661), right? So, I agree that most clients should handle that, but the problem is that RFC3530bis does not allow it.
-
+> On Mar 18, 2014, at 11:47, Steve Dickson <SteveD@redhat.com> wrote:
 > 
-> --b.
+>> Hey,
+>>
+>> On 03/17/2014 02:40 PM, Trond Myklebust wrote:
+>>> When the server is unavailable due to a networking error, etc, we want
+>>> the RPC client to respect the timeout delays when attempting to reconnect.
+>>>
+>>> Fixes: 561ec1603171 (SUNRPC: call_connect_status should recheck bind..)
+>>> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+>>> ---
+>>> net/sunrpc/clnt.c | 8 +++-----
+>>> 1 file changed, 3 insertions(+), 5 deletions(-)
+>>>
+>>> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+>>> index 0edada973434..f22d3a115fda 100644
+>>> --- a/net/sunrpc/clnt.c
+>>> +++ b/net/sunrpc/clnt.c
+>>> @@ -1798,10 +1798,6 @@ call_connect_status(struct rpc_task *task)
+>>> 	trace_rpc_connect_status(task, status);
+>>> 	task->tk_status = 0;
+>>> 	switch (status) {
+>>> -		/* if soft mounted, test if we've timed out */
+>>> -	case -ETIMEDOUT:
+>>> -		task->tk_action = call_timeout;
+>>> -		return;
+>>> 	case -ECONNREFUSED:
+>>> 	case -ECONNRESET:
+>>> 	case -ECONNABORTED:
+>>> @@ -1812,7 +1808,9 @@ call_connect_status(struct rpc_task *task)
+>>> 		if (RPC_IS_SOFTCONN(task))
+>>> 			break;
+>>> 	case -EAGAIN:
+>>> -		task->tk_action = call_bind;
+>>> +	case -ETIMEDOUT:
+>>> +		/* Check if we've timed out before looping back to call_bind */
+>>> +		task->tk_action = call_timeout;
+>>> 		return;
+>>> 	case 0:
+>>> 		clnt->cl_stats->netreconn++;
+>>>
+>> How is this support to work if the trunking code still ignores timeouts? 
+>>
+>> [ 2076.045176] NFS: nfs4_discover_server_trunking after status -110, retrying
 > 
->> 
->> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
->> ---
->> fs/nfsd/nfs4proc.c | 5 ++++-
->> 1 file changed, 4 insertions(+), 1 deletion(-)
->> 
->> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
->> index 82189b208af3..eeee4418d44a 100644
->> --- a/fs/nfsd/nfs4proc.c
->> +++ b/fs/nfsd/nfs4proc.c
->> @@ -536,8 +536,11 @@ static __be32
->> nfsd4_restorefh(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
->> 		void *arg)
->> {
->> -	if (!cstate->save_fh.fh_dentry)
->> +	if (!cstate->save_fh.fh_dentry) {
->> +		if (nfsd4_has_session(cstate))
->> +			return nfserr_nofilehandle;
->> 		return nfserr_restorefh;
->> +	}
->> 
->> 	fh_dup2(&cstate->current_fh, &cstate->save_fh);
->> 	if (HAS_STATE_ID(cstate, SAVED_STATE_ID_FLAG)) {
->> -- 
->> 1.9.0
->> 
+> The above patch fixes the regression that Neil tracked down in Linux 3.12, and that 
+> affects the generic RPC handling of soft timeouts.
+> 
+> The trunking code's handling of ETIMEDOUT has been there since Linux 3.7 
+> and hasn’t changed, so I really don’t see how it can have worked at one time before 3.12.
+Maybe it been broken that long.... :-) 
 
-_________________________________
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
+But here is the obvious loop that stop that hangs a mount forever:
+
+ #8 [ffff88007a22b7e8] rpc_call_sync at ffffffffa0220210 [sunrpc]
+ #9 [ffff88007a22b840] nfs4_proc_setclientid at ffffffffa0505c49 [nfsv4]
+#10 [ffff88007a22b988] nfs40_discover_server_trunking at ffffffffa0514489 [nfsv4]
+#11 [ffff88007a22b9d0] nfs4_discover_server_trunking at ffffffffa0516f2d [nfsv4]
+#12 [ffff88007a22ba28] nfs4_init_client at ffffffffa051e9a4 [nfsv4]
+#13 [ffff88007a22bb20] nfs_get_client at ffffffffa04bd6ba [nfs]
+#14 [ffff88007a22bb80] nfs4_set_client at ffffffffa051dfb0 [nfsv4]
+#15 [ffff88007a22bc00] nfs4_create_server at ffffffffa051f4ce [nfsv4]
+#16 [ffff88007a22bc88] nfs4_remote_mount at ffffffffa051790e [nfsv4]
+#17 [ffff88007a22bcb0] mount_fs at ffffffff811b3dd9
+
+The SETCLIENT times out 
+   NFS call  setclientid auth=UNIX, 'Linux NFSv4.0 10.19.60.77/10.19.60.33 tcp'
+   NFS reply setclientid: -110
+
+The nfs4_discover_server_trunking() retries 
+   NFS: nfs4_discover_server_trunking after status -110, retrying
+
+The happens when there server is down and so the connections 
+fail with ECONNREFUSED:
+   RPC:     2 call_connect_status (status -111)
+
+The mount system call never times out in which it did in the past. 
+
+So who do I get the system call to time out again?
+
+steved.
 
