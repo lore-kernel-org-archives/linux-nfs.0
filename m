@@ -1,64 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:13141 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:47880 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753255AbaCJU0X (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 10 Mar 2014 16:26:23 -0400
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s2AKQNXG026686
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Mon, 10 Mar 2014 16:26:23 -0400
-Message-ID: <531E1FED.3030301@RedHat.com>
-Date: Mon, 10 Mar 2014 16:26:21 -0400
+	id S1755517AbaCRPro (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 18 Mar 2014 11:47:44 -0400
+Message-ID: <53286A9D.2020007@RedHat.com>
+Date: Tue, 18 Mar 2014 11:47:41 -0400
 From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-To: Simo Sorce <simo@redhat.com>
-CC: linux-nfs <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] Fix windows hostname calculation
-References: <1392906648.22754.213.camel@willson.li.ssimo.org>
-In-Reply-To: <1392906648.22754.213.camel@willson.li.ssimo.org>
-Content-Type: text/plain; charset=UTF-8
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/2] SUNRPC: Ensure that call_connect times out correctly
+References: <1395081645-11906-1-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1395081645-11906-1-git-send-email-trond.myklebust@primarydata.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hey,
 
+On 03/17/2014 02:40 PM, Trond Myklebust wrote:
+> When the server is unavailable due to a networking error, etc, we want
+> the RPC client to respect the timeout delays when attempting to reconnect.
+> 
+> Fixes: 561ec1603171 (SUNRPC: call_connect_status should recheck bind..)
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> ---
+>  net/sunrpc/clnt.c | 8 +++-----
+>  1 file changed, 3 insertions(+), 5 deletions(-)
+> 
+> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+> index 0edada973434..f22d3a115fda 100644
+> --- a/net/sunrpc/clnt.c
+> +++ b/net/sunrpc/clnt.c
+> @@ -1798,10 +1798,6 @@ call_connect_status(struct rpc_task *task)
+>  	trace_rpc_connect_status(task, status);
+>  	task->tk_status = 0;
+>  	switch (status) {
+> -		/* if soft mounted, test if we've timed out */
+> -	case -ETIMEDOUT:
+> -		task->tk_action = call_timeout;
+> -		return;
+>  	case -ECONNREFUSED:
+>  	case -ECONNRESET:
+>  	case -ECONNABORTED:
+> @@ -1812,7 +1808,9 @@ call_connect_status(struct rpc_task *task)
+>  		if (RPC_IS_SOFTCONN(task))
+>  			break;
+>  	case -EAGAIN:
+> -		task->tk_action = call_bind;
+> +	case -ETIMEDOUT:
+> +		/* Check if we've timed out before looping back to call_bind */
+> +		task->tk_action = call_timeout;
+>  		return;
+>  	case 0:
+>  		clnt->cl_stats->netreconn++;
+> 
+How is this support to work if the trunking code still ignores timeouts? 
 
-On 02/20/2014 09:30 AM, Simo Sorce wrote:
-> From 026c489ac7019a91951b37240f438329de1d615c Mon Sep 17 00:00:00 2001
-> From: Simo Sorce <simo@redhat.com>
-> Date: Thu, 20 Feb 2014 09:25:06 -0500
-> Subject: [PATCH] Drop full domain when constructing the Ad hostname.
-> 
-> When trying to use the special MS Windows hostanme we need to stop
-> at the first '.' if we got a FQDN from gethostname()
-> Tee HOST$@REALM form in fact uses the AD samAccountName attribute to
-> represent 'HOST', and that attribute is always the host's shortname.
-> Characters like '.' are actually illegal for a shortname in AD.
-> 
-> Signed-off-by: Simo Sorce <simo@redhat.com>
-Committed... 
+[ 2076.045176] NFS: nfs4_discover_server_trunking after status -110, retrying
 
 steved.
-
-> ---
->  utils/gssd/krb5_util.c | 4 +++-
->  1 file changed, 3 insertions(+), 1 deletion(-)
-> 
-> diff --git a/utils/gssd/krb5_util.c b/utils/gssd/krb5_util.c
-> index
-> 208c72bc072bceecc81f591887603e274dc35d9b..4b57141b4e17643ef9b56aa13639354860009db6 100644
-> --- a/utils/gssd/krb5_util.c
-> +++ b/utils/gssd/krb5_util.c
-> @@ -819,8 +819,10 @@ find_keytab_entry(krb5_context context, krb5_keytab
-> kt, const char *tgtname,
->  
->  	/* Compute the active directory machine name HOST$ */
->  	strcpy(myhostad, myhostname);
-> -	for (i = 0; myhostad[i] != 0; ++i)
-> +	for (i = 0; myhostad[i] != 0; ++i) {
-> +		if (myhostad[i] == '.') break;
->  		myhostad[i] = toupper(myhostad[i]);
-> +	}
->  	myhostad[i] = '$';
->  	myhostad[i+1] = 0;
->  
-> 
