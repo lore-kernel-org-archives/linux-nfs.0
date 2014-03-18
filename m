@@ -1,126 +1,199 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mga09.intel.com ([134.134.136.24]:34109 "EHLO mga09.intel.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753942AbaCCGof (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 3 Mar 2014 01:44:35 -0500
-Message-ID: <531424D1.2020309@intel.com>
-Date: Mon, 03 Mar 2014 14:44:33 +0800
-From: "Yan, Zheng" <zheng.z.yan@intel.com>
-MIME-Version: 1.0
+Received: from bombadil.infradead.org ([198.137.202.9]:55334 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753984AbaCRL2p (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Mar 2014 07:28:45 -0400
+Date: Tue, 18 Mar 2014 04:28:45 -0700
+From: Christoph Hellwig <hch@infradead.org>
 To: Trond Myklebust <trond.myklebust@primarydata.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [BUG] NULL pointer dereference in nfs4_match_stateid()
-References: <5313E9F6.2020405@intel.com> <1393816686.6850.0.camel@leira.trondhjem.org>
-In-Reply-To: <1393816686.6850.0.camel@leira.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATHC 2/2] nfs: remove ->read_pageio_init from rpc ops
+Message-ID: <20140318112845.GB22359@infradead.org>
+References: <20140318112825.GA22359@infradead.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140318112825.GA22359@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 03/03/2014 11:18 AM, Trond Myklebust wrote:
-> On Mon, 2014-03-03 at 10:33 +0800, Yan, Zheng wrote:
->> Hi,
->>
->> I got following Oops when running fsstress
->> ---
->> [ 2536.142216] BUG: unable to handle kernel NULL pointer dereference at 0000000000000020
->> [ 2536.143110] IP: [<ffffffff813391d9>] memcmp+0x9/0x50
->> [ 2536.143110] PGD 0
->> [ 2536.143110] Oops: 0000 [#1] SMP
->> [ 2536.143110] Modules linked in: rpcsec_gss_krb5(F) auth_rpcgss(F) nfsv4(F) dns_resolver(F) nfs(F) fscache(F) ceph(F) libceph(F) libcrc32c(F) netconsole(F) ip6table_filter(F) ip6_tables(F) ebtable_nat(F) ebtables(F) ipt_MASQUERADE(F) iptable_nat(F) nf_nat_ipv4(F) nf_nat(F) nf_conntrack_ipv4(F) nf_defrag_ipv4(F) xt_state(F) nf_conntrack(F) xt_CHECKSUM(F) iptable_mangle(F) bnep(F) bluetooth(F) 6lowpan_iphc(F) bridge(F) lockd(F) sunrpc(F) rfkill(F) be2iscsi(F) iscsi_boot_sysfs(F) stp(F) llc(F) bnx2i(F) cnic(F) uio(F) cxgb4i(F) cxgb4(F) cxgb3i(F) cxgb3(F) mdio(F) libcxgbi(F) ib_iser(F) rdma_cm(F) iw_cm(F) ib_cm(F) ib_sa(F) ib_mad(F) ib_core(F) ib_addr(F) iscsi_tcp(F) libiscsi_tcp(F) libiscsi(F) scsi_transport_iscsi(F) virtio_net(F) virtio_balloon(F) pcspkr(F) microcode(F) uinput(F) cirrus(F) drm_kms_helper(F) ttm(F) drm(F) i2c_core(F)
->> [ 2536.143110] CPU: 1 PID: 2925 Comm: nfsv4.0-svc Tainted: GF            3.14.0-rc4+ #50
->> [ 2536.143110] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
->> [ 2536.143110] task: ffff88003cd55aa0 ti: ffff88003c9a8000 task.ti: ffff88003c9a8000
->> [ 2536.143110] RIP: 0010:[<ffffffff813391d9>]  [<ffffffff813391d9>] memcmp+0x9/0x50
->> [ 2536.143110] RSP: 0018:ffff88003c9a9ca8  EFLAGS: 00010202
->> [ 2536.143110] RAX: ffffffffa04842c0 RBX: 0000000000000000 RCX: 0000000000000036
->> [ 2536.143110] RDX: 0000000000000010 RSI: ffff880035ee808a RDI: 0000000000000020
->> [ 2536.143110] RBP: ffff88003c9a9ca8 R08: 8020000000000000 R09: 00231b6840100000
->> [ 2536.143110] R10: ffbee4a086ca1004 R11: 0000000000000000 R12: ffff88003751e000
->> [ 2536.143110] R13: ffff880034afa000 R14: ffff880035ee808a R15: 0000000000000004
->> [ 2536.143110] FS:  0000000000000000(0000) GS:ffff88003fc80000(0000) knlGS:0000000000000000
->> [ 2536.143110] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
->> [ 2536.143110] CR2: 0000000000000020 CR3: 0000000034bc0000 CR4: 00000000000006e0
->> [ 2536.143110] Stack:
->> [ 2536.143110]  ffff88003c9a9cb8 ffffffffa0455883 ffff88003c9a9cf0 ffffffffa0472b98
->> [ 2536.143110]  ffff880035ee8000 ffff880035ee8000 ffff8800231b6970 0000000011270000
->> [ 2536.143110]  0000000000000000 ffff88003c9a9d28 ffffffffa0475fc9 ffff88003c9a9d28
->> [ 2536.143110] Call Trace:
->> [ 2536.143110]  [<ffffffffa0455883>] nfs4_match_stateid+0x13/0x20 [nfsv4]
->> [ 2536.143110]  [<ffffffffa0472b98>] nfs_async_inode_return_delegation+0x48/0x90 [nfsv4]
->> [ 2536.143110]  [<ffffffffa0475fc9>] nfs4_callback_recall+0x59/0x130 [nfsv4]
->> [ 2536.143110]  [<ffffffffa0475005>] nfs4_callback_compound+0x465/0x6a0 [nfsv4]
->> [ 2536.143110]  [<ffffffffa0220c1a>] ? svcauth_unix_accept+0x14a/0x270 [sunrpc]
->> [ 2536.143110]  [<ffffffffa021c707>] svc_process_common+0x5e7/0x6e0 [sunrpc]
->> [ 2536.143110]  [<ffffffffa0473e80>] ? nfs_callback_authenticate+0x50/0x50 [nfsv4]
->> [ 2536.143110]  [<ffffffffa021c907>] svc_process+0x107/0x170 [sunrpc]
->> [ 2536.143110]  [<ffffffffa0473e80>] ? nfs_callback_authenticate+0x50/0x50 [nfsv4]
->> [ 2536.143110]  [<ffffffffa0473ec5>] nfs4_callback_svc+0x45/0x60 [nfsv4]
->> [ 2536.143110]  [<ffffffff810a4a52>] kthread+0xd2/0xf0
->> [ 2536.143110]  [<ffffffff810a4980>] ? insert_kthread_work+0x40/0x40
->> [ 2536.143110]  [<ffffffff816b567c>] ret_from_fork+0x7c/0xb0
->> [ 2536.143110]  [<ffffffff810a4980>] ? insert_kthread_work+0x40/0x40
->> [ 2536.143110] Code: 75 e9 31 c0 c6 06 01 5d c3 66 0f 1f 84 00 00 00 00 00 31 c0 c6 06 00 5d c3 66 0f 1f 84 00 00 00 00 00 55 48 85 d2 48 89 e5 74 3c <0f> b6 07 0f b6 0e 29 c8 75 27 48 83 ea 01 31 c9 eb 1a 0f 1f 44
->> [ 2536.143110] RIP  [<ffffffff813391d9>] memcmp+0x9/0x50
->> [ 2536.143110]  RSP <ffff88003c9a9ca8>
->> [ 2536.143110] CR2: 0000000000000020
->> [ 2536.143110] ---[ end trace 145a1eb5268045c7 ]---
-> 
-> Does the following patch help?
-> 
+We only use one static ops vector or grab it from the layout driver,
+so clean up the whole code path to make that more obvious.
 
-I have run the same test for hours. It seems the patch works.
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ fs/nfs/direct.c         |    3 +--
+ fs/nfs/nfs3proc.c       |    1 -
+ fs/nfs/nfs4proc.c       |    1 -
+ fs/nfs/pnfs.c           |   13 -------------
+ fs/nfs/pnfs.h           |    9 ---------
+ fs/nfs/proc.c           |    1 -
+ fs/nfs/read.c           |   16 +++++++++++-----
+ include/linux/nfs_xdr.h |    2 --
+ 8 files changed, 12 insertions(+), 34 deletions(-)
 
-Regards
-Yan, Zheng
-
-> Cheers
->   Trond
-> 8<---------------------------------------------------------------
-> From 755a48a7a4eb05b9c8424e3017d947b2961a60e0 Mon Sep 17 00:00:00 2001
-> From: Trond Myklebust <trond.myklebust@primarydata.com>
-> Date: Sun, 2 Mar 2014 22:03:12 -0500
-> Subject: [PATCH] NFS: Fix a delegation callback race
-> 
-> The clean-up in commit 36281caa839f ended up removing a NULL pointer check
-> that is needed in order to prevent an Oops in
-> nfs_async_inode_return_delegation().
-> 
-> Reported-by: "Yan, Zheng" <zheng.z.yan@intel.com>
-> Link: http://lkml.kernel.org/r/5313E9F6.2020405@intel.com
-> Fixes: 36281caa839f (NFSv4: Further clean-ups of delegation stateid validation)
-> Cc: stable@vger.kernel.org # 3.4+
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> ---
->  fs/nfs/delegation.c | 11 +++++++----
->  1 file changed, 7 insertions(+), 4 deletions(-)
-> 
-> diff --git a/fs/nfs/delegation.c b/fs/nfs/delegation.c
-> index ef792f29f831..5d8ccecf5f5c 100644
-> --- a/fs/nfs/delegation.c
-> +++ b/fs/nfs/delegation.c
-> @@ -659,16 +659,19 @@ int nfs_async_inode_return_delegation(struct inode *inode,
->  
->  	rcu_read_lock();
->  	delegation = rcu_dereference(NFS_I(inode)->delegation);
-> +	if (delegation == NULL)
-> +		goto out_enoent;
->  
-> -	if (!clp->cl_mvops->match_stateid(&delegation->stateid, stateid)) {
-> -		rcu_read_unlock();
-> -		return -ENOENT;
-> -	}
-> +	if (!clp->cl_mvops->match_stateid(&delegation->stateid, stateid))
-> +		goto out_enoent;
->  	nfs_mark_return_delegation(server, delegation);
->  	rcu_read_unlock();
->  
->  	nfs_delegation_run_state_manager(clp);
->  	return 0;
-> +out_enoent:
-> +	rcu_read_unlock();
-> +	return -ENOENT;
->  }
->  
->  static struct inode *
-> 
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index bd9d524..bb6fcb8 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -424,8 +424,7 @@ static ssize_t nfs_direct_read_schedule_iovec(struct nfs_direct_req *dreq,
+ 	size_t requested_bytes = 0;
+ 	unsigned long seg;
+ 
+-	NFS_PROTO(dreq->inode)->read_pageio_init(&desc, dreq->inode,
+-			     &nfs_direct_read_completion_ops);
++	nfs_pageio_init_read(&desc, dreq->inode, &nfs_direct_read_completion_ops);
+ 	get_dreq(dreq);
+ 	desc.pg_dreq = dreq;
+ 	atomic_inc(&inode->i_dio_count);
+diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
+index 5ae9abf..feb2049 100644
+--- a/fs/nfs/nfs3proc.c
++++ b/fs/nfs/nfs3proc.c
+@@ -982,7 +982,6 @@ const struct nfs_rpc_ops nfs_v3_clientops = {
+ 	.pathconf	= nfs3_proc_pathconf,
+ 	.decode_dirent	= nfs3_decode_dirent,
+ 	.read_setup	= nfs3_proc_read_setup,
+-	.read_pageio_init = nfs_pageio_init_read,
+ 	.read_rpc_prepare = nfs3_proc_read_rpc_prepare,
+ 	.read_done	= nfs3_read_done,
+ 	.write_setup	= nfs3_proc_write_setup,
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 7759b5aa..9a8eb6a 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -8462,7 +8462,6 @@ const struct nfs_rpc_ops nfs_v4_clientops = {
+ 	.set_capabilities = nfs4_server_capabilities,
+ 	.decode_dirent	= nfs4_decode_dirent,
+ 	.read_setup	= nfs4_proc_read_setup,
+-	.read_pageio_init = pnfs_pageio_init_read,
+ 	.read_rpc_prepare = nfs4_proc_read_rpc_prepare,
+ 	.read_done	= nfs4_read_done,
+ 	.write_setup	= nfs4_proc_write_setup,
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index d8be82d..c965f7d 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1434,19 +1434,6 @@ pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio,
+ }
+ EXPORT_SYMBOL_GPL(pnfs_generic_pg_init_write);
+ 
+-void
+-pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio, struct inode *inode,
+-		      const struct nfs_pgio_completion_ops *compl_ops)
+-{
+-	struct nfs_server *server = NFS_SERVER(inode);
+-	struct pnfs_layoutdriver_type *ld = server->pnfs_curr_ld;
+-
+-	if (ld == NULL)
+-		nfs_pageio_init_read(pgio, inode, compl_ops);
+-	else
+-		nfs_pageio_init(pgio, inode, ld->pg_read_ops, compl_ops, server->rsize, 0);
+-}
+-
+ bool
+ pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+ 		     struct nfs_page *req)
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index e9ac8fb..94a9a18 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -180,9 +180,6 @@ extern int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp);
+ void pnfs_get_layout_hdr(struct pnfs_layout_hdr *lo);
+ void pnfs_put_lseg(struct pnfs_layout_segment *lseg);
+ 
+-void pnfs_pageio_init_read(struct nfs_pageio_descriptor *, struct inode *,
+-			   const struct nfs_pgio_completion_ops *);
+-
+ void set_pnfs_layoutdriver(struct nfs_server *, const struct nfs_fh *, u32);
+ void unset_pnfs_layoutdriver(struct nfs_server *);
+ void pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *, struct nfs_page *);
+@@ -459,12 +456,6 @@ static inline void unset_pnfs_layoutdriver(struct nfs_server *s)
+ {
+ }
+ 
+-static inline void pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio, struct inode *inode,
+-					 const struct nfs_pgio_completion_ops *compl_ops)
+-{
+-	nfs_pageio_init_read(pgio, inode, compl_ops);
+-}
+-
+ static inline int
+ pnfs_commit_list(struct inode *inode, struct list_head *mds_pages, int how,
+ 		 struct nfs_commit_info *cinfo)
+diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
+index 6ea2bed..7676973 100644
+--- a/fs/nfs/proc.c
++++ b/fs/nfs/proc.c
+@@ -760,7 +760,6 @@ const struct nfs_rpc_ops nfs_v2_clientops = {
+ 	.pathconf	= nfs_proc_pathconf,
+ 	.decode_dirent	= nfs2_decode_dirent,
+ 	.read_setup	= nfs_proc_read_setup,
+-	.read_pageio_init = nfs_pageio_init_read,
+ 	.read_rpc_prepare = nfs_proc_read_rpc_prepare,
+ 	.read_done	= nfs_read_done,
+ 	.write_setup	= nfs_proc_write_setup,
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index 411aedd..190fb63 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -24,6 +24,7 @@
+ #include "internal.h"
+ #include "iostat.h"
+ #include "fscache.h"
++#include "pnfs.h"
+ 
+ #define NFSDBG_FACILITY		NFSDBG_PAGECACHE
+ 
+@@ -117,10 +118,15 @@ void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
+ 			      struct inode *inode,
+ 			      const struct nfs_pgio_completion_ops *compl_ops)
+ {
+-	nfs_pageio_init(pgio, inode, &nfs_pageio_read_ops, compl_ops,
+-			NFS_SERVER(inode)->rsize, 0);
++	struct nfs_server *server = NFS_SERVER(inode);
++	const struct nfs_pageio_ops *pg_ops = &nfs_pageio_read_ops;
++
++#if IS_ENABLED(CONFIG_NFS_V4)
++	if (server->pnfs_curr_ld)
++		pg_ops = server->pnfs_curr_ld->pg_read_ops;
++#endif
++	nfs_pageio_init(pgio, inode, pg_ops, compl_ops, server->rsize, 0);
+ }
+-EXPORT_SYMBOL_GPL(nfs_pageio_init_read);
+ 
+ void nfs_pageio_reset_read_mds(struct nfs_pageio_descriptor *pgio)
+ {
+@@ -147,7 +153,7 @@ int nfs_readpage_async(struct nfs_open_context *ctx, struct inode *inode,
+ 	if (len < PAGE_CACHE_SIZE)
+ 		zero_user_segment(page, len, PAGE_CACHE_SIZE);
+ 
+-	NFS_PROTO(inode)->read_pageio_init(&pgio, inode, &nfs_async_read_completion_ops);
++	nfs_pageio_init_read(&pgio, inode, &nfs_async_read_completion_ops);
+ 	nfs_pageio_add_request(&pgio, new);
+ 	nfs_pageio_complete(&pgio);
+ 	NFS_I(inode)->read_io += pgio.pg_bytes_written;
+@@ -654,7 +660,7 @@ int nfs_readpages(struct file *filp, struct address_space *mapping,
+ 	if (ret == 0)
+ 		goto read_complete; /* all pages were read */
+ 
+-	NFS_PROTO(inode)->read_pageio_init(&pgio, inode, &nfs_async_read_completion_ops);
++	nfs_pageio_init_read(&pgio, inode, &nfs_async_read_completion_ops);
+ 
+ 	ret = read_cache_pages(mapping, pages, readpage_async_filler, &desc);
+ 
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index ed12f03..0146485 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1462,8 +1462,6 @@ struct nfs_rpc_ops {
+ 	int	(*set_capabilities)(struct nfs_server *, struct nfs_fh *);
+ 	int	(*decode_dirent)(struct xdr_stream *, struct nfs_entry *, int);
+ 	void	(*read_setup)   (struct nfs_read_data *, struct rpc_message *);
+-	void	(*read_pageio_init)(struct nfs_pageio_descriptor *, struct inode *,
+-				    const struct nfs_pgio_completion_ops *);
+ 	int	(*read_rpc_prepare)(struct rpc_task *, struct nfs_read_data *);
+ 	int	(*read_done)  (struct rpc_task *, struct nfs_read_data *);
+ 	void	(*write_setup)  (struct nfs_write_data *, struct rpc_message *);
+-- 
+1.7.10.4
 
