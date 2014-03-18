@@ -1,209 +1,119 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f172.google.com ([209.85.223.172]:49655 "EHLO
-	mail-ie0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757054AbaC1BFN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Mar 2014 21:05:13 -0400
-Received: by mail-ie0-f172.google.com with SMTP id as1so4299806iec.17
-        for <linux-nfs@vger.kernel.org>; Thu, 27 Mar 2014 18:05:12 -0700 (PDT)
+Received: from xes-mad.com ([216.165.139.218]:51573 "EHLO xes-mad.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754780AbaCRVuo convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Mar 2014 17:50:44 -0400
+Date: Tue, 18 Mar 2014 16:50:29 -0500 (CDT)
+From: Andrew Martin <amartin@xes-inc.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Jim Rees <rees@umich.edu>, bhawley@luminex.com, Brown Neil <neilb@suse.de>,
+        linux-nfs-owner@vger.kernel.org, linux-nfs@vger.kernel.org
+Message-ID: <693414378.60415.1395179429651.JavaMail.zimbra@xes-inc.com>
+In-Reply-To: <40C20DD8-9E8D-4625-B98C-A1E61D00AC17@primarydata.com>
+References: <1696396609.119284.1394040541217.JavaMail.zimbra@xes-inc.com> <20140306173632.GA18545@umich.edu> <1397912955.101159.1394130906695.JavaMail.zimbra@xes-inc.com> <B454F556-9381-4DB7-B864-EC066DBEAC63@primarydata.com> <2043391310.134091.1394135196565.JavaMail.zimbra@xes-inc.com> <76B038DA-3E86-4C46-BFB6-928BFB8202D8@primarydata.com> <521763040.159828.1394138758307.JavaMail.zimbra@xes-inc.com> <40C20DD8-9E8D-4625-B98C-A1E61D00AC17@primarydata.com>
+Subject: Re: Optimal NFS mount options to safely allow interrupts and
+ timeouts on newer kernels
 MIME-Version: 1.0
-In-Reply-To: <20140328010139.GC27633@fieldses.org>
-References: <5332DF9A.6040008@gmail.com>
-	<20140328010139.GC27633@fieldses.org>
-Date: Fri, 28 Mar 2014 09:05:12 +0800
-Message-ID: <CAB6yy35KPgH0doNecm_CrjW6X34dF7NU0jVSDwZY31+JC-yxPA@mail.gmail.com>
-Subject: Re: [PATCH] NFSD: Traverse unconfirmed client through hash-table
-From: Kinglong Mee <kinglongmee@gmail.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>, jlayton@redhat.com
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thank you very much.
+----- Original Message -----
+> From: "Trond Myklebust" <trond.myklebust@primarydata.com>
+> To: "Andrew Martin" <amartin@xes-inc.com>
+> Cc: "Jim Rees" <rees@umich.edu>, bhawley@luminex.com, "Brown Neil" <neilb@suse.de>, linux-nfs-owner@vger.kernel.org,
+> linux-nfs@vger.kernel.org
+> Sent: Thursday, March 6, 2014 3:01:03 PM
+> Subject: Re: Optimal NFS mount options to safely allow interrupts and timeouts on newer kernels
+> 
+> 
+> On Mar 6, 2014, at 15:45, Andrew Martin <amartin@xes-inc.com> wrote:
+> 
+> > ----- Original Message -----
+> >> From: "Trond Myklebust" <trond.myklebust@primarydata.com>
+> >>> I attempted to get a backtrace from one of the uninterruptable apache
+> >>> processes:
+> >>> echo w > /proc/sysrq-trigger
+> >>> 
+> >>> Here's one example:
+> >>> [1227348.003904] apache2       D 0000000000000000     0 10175   1773
+> >>> 0x00000004
+> >>> [1227348.003906]  ffff8802813178c8 0000000000000082 0000000000015e00
+> >>> 0000000000015e00
+> >>> [1227348.003908]  ffff8801d88f03d0 ffff880281317fd8 0000000000015e00
+> >>> ffff8801d88f0000
+> >>> [1227348.003910]  0000000000015e00 ffff880281317fd8 0000000000015e00
+> >>> ffff8801d88f03d0
+> >>> [1227348.003912] Call Trace:
+> >>> [1227348.003918]  [<ffffffffa00a5ca0>] ? rpc_wait_bit_killable+0x0/0x40
+> >>> [sunrpc]
+> >>> [1227348.003923]  [<ffffffffa00a5cc4>] rpc_wait_bit_killable+0x24/0x40
+> >>> [sunrpc]
+> >>> [1227348.003925]  [<ffffffff8156a41f>] __wait_on_bit+0x5f/0x90
+> >>> [1227348.003930]  [<ffffffffa00a5ca0>] ? rpc_wait_bit_killable+0x0/0x40
+> >>> [sunrpc]
+> >>> [1227348.003932]  [<ffffffff8156a4c8>] out_of_line_wait_on_bit+0x78/0x90
+> >>> [1227348.003934]  [<ffffffff81086790>] ? wake_bit_function+0x0/0x40
+> >>> [1227348.003939]  [<ffffffffa00a6611>] __rpc_execute+0x191/0x2a0 [sunrpc]
+> >>> [1227348.003945]  [<ffffffffa00a6746>] rpc_execute+0x26/0x30 [sunrpc]
+> >> 
+> >> That basically means that the process is hanging in the RPC layer,
+> >> somewhere
+> >> in the state machine. ‘echo 0 >/proc/sys/sunrpc/rpc_debug’ as the ‘root’
+> >> user should give us a dump of which state these RPC calls are in. Can you
+> >> please try that?
+> > Yes I will definitely run that the next time it happens, but since it
+> > occurs
+> > sporadically (and I have not yet found a way to reproduce it on demand), it
+> > could be days before it occurs again. I'll also run "netstat -tn" to check
+> > the
+> > TCP connections the next time this happens.
+> 
+> If you are comfortable applying patches and compiling your own kernels, then
+> you might want to try applying the fix for a certain out-of-socket-buffer
+> race that Neil reported, and that I suspect you may be hitting. The patch
+> has been sent to the ‘stable kernel’ series, and so should appear soon in
+> Debian’s own kernels, but if this is bothering you now, then go for it…
+> 
+> https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=06ea0bfe6e6043cb56a78935a19f6f8ebc636226
+> 
 
-thanks,
-Kinglong Mee
+Trond,
 
-On Fri, Mar 28, 2014 at 9:01 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> Thanks, applying for 3.15 and stable.
->
-> --b.
->
-> On Wed, Mar 26, 2014 at 10:09:30PM +0800, Kinglong Mee wrote:
->> When stopping nfsd, I got BUG messages, and soft lockup messages,
->> The problem is cuased by double rb_erase() in nfs4_state_destroy_net()
->> and destroy_client().
->>
->> This patch just let nfsd traversing unconfirmed client through
->> hash-table instead of rbtree.
->>
->> [ 2325.021995] BUG: unable to handle kernel NULL pointer dereference at
->>           (null)
->> [ 2325.022809] IP: [<ffffffff8133c18c>] rb_erase+0x14c/0x390
->> [ 2325.022982] PGD 7a91b067 PUD 7a33d067 PMD 0
->> [ 2325.022982] Oops: 0000 [#1] SMP DEBUG_PAGEALLOC
->> [ 2325.022982] Modules linked in: nfsd(OF) cfg80211 rfkill bridge stp
->> llc snd_intel8x0 snd_ac97_codec ac97_bus auth_rpcgss nfs_acl serio_raw
->> e1000 i2c_piix4 ppdev snd_pcm snd_timer lockd pcspkr joydev parport_pc
->> snd parport i2c_core soundcore microcode sunrpc ata_generic pata_acpi
->> [last unloaded: nfsd]
->> [ 2325.022982] CPU: 1 PID: 2123 Comm: nfsd Tainted: GF          O
->> 3.14.0-rc8+ #2
->> [ 2325.022982] Hardware name: innotek GmbH VirtualBox/VirtualBox, BIOS
->> VirtualBox 12/01/2006
->> [ 2325.022982] task: ffff88007b384800 ti: ffff8800797f6000 task.ti:
->> ffff8800797f6000
->> [ 2325.022982] RIP: 0010:[<ffffffff8133c18c>]  [<ffffffff8133c18c>]
->> rb_erase+0x14c/0x390
->> [ 2325.022982] RSP: 0018:ffff8800797f7d98  EFLAGS: 00010246
->> [ 2325.022982] RAX: ffff880079c1f010 RBX: ffff880079f4c828 RCX:
->> 0000000000000000
->> [ 2325.022982] RDX: 0000000000000000 RSI: ffff880079bcb070 RDI:
->> ffff880079f4c810
->> [ 2325.022982] RBP: ffff8800797f7d98 R08: 0000000000000000 R09:
->> ffff88007964fc70
->> [ 2325.022982] R10: 0000000000000000 R11: 0000000000000400 R12:
->> ffff880079f4c800
->> [ 2325.022982] R13: ffff880079bcb000 R14: ffff8800797f7da8 R15:
->> ffff880079f4c860
->> [ 2325.022982] FS:  0000000000000000(0000) GS:ffff88007f900000(0000)
->> knlGS:0000000000000000
->> [ 2325.022982] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
->> [ 2325.022982] CR2: 0000000000000000 CR3: 000000007a3ef000 CR4:
->> 00000000000006e0
->> [ 2325.022982] DR0: 0000000000000000 DR1: 0000000000000000 DR2:
->> 0000000000000000
->> [ 2325.022982] DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7:
->> 0000000000000400
->> [ 2325.022982] Stack:
->> [ 2325.022982]  ffff8800797f7de0 ffffffffa0191c6e ffff8800797f7da8
->> ffff8800797f7da8
->> [ 2325.022982]  ffff880079f4c810 ffff880079bcb000 ffffffff81cc26c0
->> ffff880079c1f010
->> [ 2325.022982]  ffff880079bcb070 ffff8800797f7e28 ffffffffa01977f2
->> ffff8800797f7df0
->> [ 2325.022982] Call Trace:
->> [ 2325.022982]  [<ffffffffa0191c6e>] destroy_client+0x32e/0x3b0 [nfsd]
->> [ 2325.022982]  [<ffffffffa01977f2>] nfs4_state_shutdown_net+0x1a2/0x220
->> [nfsd]
->> [ 2325.022982]  [<ffffffffa01700b8>] nfsd_shutdown_net+0x38/0x70 [nfsd]
->> [ 2325.022982]  [<ffffffffa017013e>] nfsd_last_thread+0x4e/0x80 [nfsd]
->> [ 2325.022982]  [<ffffffffa001f1eb>] svc_shutdown_net+0x2b/0x30 [sunrpc]
->> [ 2325.022982]  [<ffffffffa017064b>] nfsd_destroy+0x5b/0x80 [nfsd]
->> [ 2325.022982]  [<ffffffffa0170773>] nfsd+0x103/0x130 [nfsd]
->> [ 2325.022982]  [<ffffffffa0170670>] ? nfsd_destroy+0x80/0x80 [nfsd]
->> [ 2325.022982]  [<ffffffff810a8232>] kthread+0xd2/0xf0
->> [ 2325.022982]  [<ffffffff810a8160>] ? insert_kthread_work+0x40/0x40
->> [ 2325.022982]  [<ffffffff816c493c>] ret_from_fork+0x7c/0xb0
->> [ 2325.022982]  [<ffffffff810a8160>] ? insert_kthread_work+0x40/0x40
->> [ 2325.022982] Code: 48 83 e1 fc 48 89 10 0f 84 02 01 00 00 48 3b 41 10
->> 0f 84 08 01 00 00 48 89 51 08 48 89 fa e9 74 ff ff ff 0f 1f 40 00 48 8b
->> 50 10 <f6> 02 01 0f 84 93 00 00 00 48 8b 7a 10 48 85 ff 74 05 f6 07 01
->> [ 2325.022982] RIP  [<ffffffff8133c18c>] rb_erase+0x14c/0x390
->> [ 2325.022982]  RSP <ffff8800797f7d98>
->> [ 2325.022982] CR2: 0000000000000000
->> [ 2325.022982] ---[ end trace 28c27ed011655e57 ]---
->>
->> [  228.064071] BUG: soft lockup - CPU#0 stuck for 22s! [nfsd:558]
->> [  228.064428] Modules linked in: ip6t_rpfilter ip6t_REJECT cfg80211
->> xt_conntrack rfkill ebtable_nat ebtable_broute bridge stp llc
->> ebtable_filter ebtables ip6table_nat nf_conntrack_ipv6 nf_defrag_ipv6
->> nf_nat_ipv6 ip6table_mangle ip6table_security ip6table_raw
->> ip6table_filter ip6_tables iptable_nat nf_conntrack_ipv4 nf_defrag_ipv4
->> nf_nat_ipv4 nf_nat nf_conntrack iptable_mangle iptable_security
->> iptable_raw nfsd(OF) auth_rpcgss nfs_acl lockd snd_intel8x0
->> snd_ac97_codec ac97_bus joydev snd_pcm snd_timer e1000 sunrpc snd ppdev
->> parport_pc serio_raw pcspkr i2c_piix4 microcode parport soundcore
->> i2c_core ata_generic pata_acpi
->> [  228.064539] CPU: 0 PID: 558 Comm: nfsd Tainted: GF          O
->> 3.14.0-rc8+ #2
->> [  228.064539] Hardware name: innotek GmbH VirtualBox/VirtualBox, BIOS
->> VirtualBox 12/01/2006
->> [  228.064539] task: ffff880076adec00 ti: ffff880074616000 task.ti:
->> ffff880074616000
->> [  228.064539] RIP: 0010:[<ffffffff8133ba17>]  [<ffffffff8133ba17>]
->> rb_next+0x27/0x50
->> [  228.064539] RSP: 0018:ffff880074617de0  EFLAGS: 00000282
->> [  228.064539] RAX: ffff880074478010 RBX: ffff88007446f860 RCX:
->> 0000000000000014
->> [  228.064539] RDX: ffff880074478010 RSI: 0000000000000000 RDI:
->> ffff880074478010
->> [  228.064539] RBP: ffff880074617de0 R08: 0000000000000000 R09:
->> 0000000000000012
->> [  228.064539] R10: 0000000000000001 R11: ffffffffffffffec R12:
->> ffffea0001d11a00
->> [  228.064539] R13: ffff88007f401400 R14: ffff88007446f800 R15:
->> ffff880074617d50
->> [  228.064539] FS:  0000000000000000(0000) GS:ffff88007f800000(0000)
->> knlGS:0000000000000000
->> [  228.064539] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
->> [  228.064539] CR2: 00007fe9ac6ec000 CR3: 000000007a5d6000 CR4:
->> 00000000000006f0
->> [  228.064539] DR0: 0000000000000000 DR1: 0000000000000000 DR2:
->> 0000000000000000
->> [  228.064539] DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7:
->> 0000000000000400
->> [  228.064539] Stack:
->> [  228.064539]  ffff880074617e28 ffffffffa01ab7db ffff880074617df0
->> ffff880074617df0
->> [  228.064539]  ffff880079273000 ffffffff81cc26c0 ffffffff81cc26c0
->> 0000000000000000
->> [  228.064539]  0000000000000000 ffff880074617e48 ffffffffa01840b8
->> ffffffff81cc26c0
->> [  228.064539] Call Trace:
->> [  228.064539]  [<ffffffffa01ab7db>] nfs4_state_shutdown_net+0x18b/0x220
->> [nfsd]
->> [  228.064539]  [<ffffffffa01840b8>] nfsd_shutdown_net+0x38/0x70 [nfsd]
->> [  228.064539]  [<ffffffffa018413e>] nfsd_last_thread+0x4e/0x80 [nfsd]
->> [  228.064539]  [<ffffffffa00aa1eb>] svc_shutdown_net+0x2b/0x30 [sunrpc]
->> [  228.064539]  [<ffffffffa018464b>] nfsd_destroy+0x5b/0x80 [nfsd]
->> [  228.064539]  [<ffffffffa0184773>] nfsd+0x103/0x130 [nfsd]
->> [  228.064539]  [<ffffffffa0184670>] ? nfsd_destroy+0x80/0x80 [nfsd]
->> [  228.064539]  [<ffffffff810a8232>] kthread+0xd2/0xf0
->> [  228.064539]  [<ffffffff810a8160>] ? insert_kthread_work+0x40/0x40
->> [  228.064539]  [<ffffffff816c493c>] ret_from_fork+0x7c/0xb0
->> [  228.064539]  [<ffffffff810a8160>] ? insert_kthread_work+0x40/0x40
->> [  228.064539] Code: 1f 44 00 00 55 48 8b 17 48 89 e5 48 39 d7 74 3b 48
->> 8b 47 08 48 85 c0 75 0e eb 25 66 0f 1f 84 00 00 00 00 00 48 89 d0 48 8b
->> 50 10 <48> 85 d2 75 f4 5d c3 66 90 48 3b 78 08 75 f6 48 8b 10 48 89 c7
->>
->> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
->> ---
->>  fs/nfsd/nfs4state.c | 13 +++++--------
->>  1 file changed, 5 insertions(+), 8 deletions(-)
->>
->> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
->> index d7efc4b..5a9588e 100644
->> --- a/fs/nfsd/nfs4state.c
->> +++ b/fs/nfsd/nfs4state.c
->> @@ -5063,7 +5063,6 @@ nfs4_state_destroy_net(struct net *net)
->>       int i;
->>       struct nfs4_client *clp = NULL;
->>       struct nfsd_net *nn = net_generic(net, nfsd_net_id);
->> -     struct rb_node *node, *tmp;
->>
->>       for (i = 0; i < CLIENT_HASH_SIZE; i++) {
->>               while (!list_empty(&nn->conf_id_hashtbl[i])) {
->> @@ -5072,13 +5071,11 @@ nfs4_state_destroy_net(struct net *net)
->>               }
->>       }
->>
->> -     node = rb_first(&nn->unconf_name_tree);
->> -     while (node != NULL) {
->> -             tmp = node;
->> -             node = rb_next(tmp);
->> -             clp = rb_entry(tmp, struct nfs4_client, cl_namenode);
->> -             rb_erase(tmp, &nn->unconf_name_tree);
->> -             destroy_client(clp);
->> +     for (i = 0; i < CLIENT_HASH_SIZE; i++) {
->> +             while (!list_empty(&nn->unconf_id_hashtbl[i])) {
->> +                     clp = list_entry(nn->unconf_id_hashtbl[i].next, struct nfs4_client,
->> cl_idhash);
->> +                     destroy_client(clp);
->> +             }
->>       }
->>
->>       kfree(nn->sessionid_hashtbl);
->> --
->> 1.8.5.3
->>
+This problem has reoccurred, and I have captured the debug output that you requested:
+
+echo 0 >/proc/sys/sunrpc/rpc_debug:
+http://pastebin.com/9juDs2TW
+
+echo w > /proc/sysrq-trigger ; dmesg:
+http://pastebin.com/1vDx9bNf
+
+netstat -tn:
+http://pastebin.com/mjxqjmuL
+
+One suggestion for debug was to attempt to run "umount -f /path/to/mountpoint"
+repeatedly to attempt to send SIGKILL back up to the application. This always
+returned "Device or resource busy" and I was unable to unmount the filesystem
+until I used "mount -l". 
+
+I was able to kill -9 all but two of the processes that were blocking in
+uninterruptable sleep. Note that I was able to get lsof output on these
+processes this time, and they all appeared to be blocking on access to a
+single file on the nfs share. If I tried to cat said file from this client,
+my terminal would block:
+open("/path/to/file", O_RDONLY)        = 3
+fstat(3, {st_mode=S_IFREG|0644, st_size=42385, ...}) = 0
+mmap(NULL, 1056768, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0x7fb00f0dc000
+read(3,
+
+However, I could cat the file just fine from another nfs client. Does this 
+additional information shed any light on the source of this problem?
+
+Thanks,
+
+Andrew
+
+
+
+
+
