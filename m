@@ -1,47 +1,119 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f49.google.com ([209.85.220.49]:47420 "EHLO
-	mail-pa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751087AbaCGPgk convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 7 Mar 2014 10:36:40 -0500
-Received: by mail-pa0-f49.google.com with SMTP id lj1so4281737pab.22
-        for <linux-nfs@vger.kernel.org>; Fri, 07 Mar 2014 07:36:40 -0800 (PST)
+Received: from mail-ie0-f178.google.com ([209.85.223.178]:38301 "EHLO
+	mail-ie0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755509AbaCRTuE convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Mar 2014 15:50:04 -0400
+Received: by mail-ie0-f178.google.com with SMTP id lx4so7434885iec.23
+        for <linux-nfs@vger.kernel.org>; Tue, 18 Mar 2014 12:50:03 -0700 (PDT)
 Content-Type: text/plain; charset=windows-1252
 Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
-Subject: Re: [PATCH] Stop Background mounts hang from hanging
+Subject: Re: [PATCH 1/2] SUNRPC: Ensure that call_connect times out correctly
 From: Trond Myklebust <trond.myklebust@primarydata.com>
-In-Reply-To: <1394204563-1166-1-git-send-email-steved@redhat.com>
-Date: Fri, 7 Mar 2014 10:36:37 -0500
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Message-Id: <D803A861-E660-4D20-BDE1-00D8C45A1228@primarydata.com>
-References: <1394204563-1166-1-git-send-email-steved@redhat.com>
-To: Dickson Steve <steved@redhat.com>
+In-Reply-To: <532897DE.6060204@RedHat.com>
+Date: Tue, 18 Mar 2014 15:50:00 -0400
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <EB317FC8-D521-4D80-98D7-FA48B0B9AF0C@primarydata.com>
+References: <1395081645-11906-1-git-send-email-trond.myklebust@primarydata.com>	 <53286A9D.2020007@RedHat.com>	 <362845B0-35A4-4DDF-96F6-42582D66334B@primarydata.com>	 <53288146.4010601@RedHat.com> <1395168308.11244.3.camel@leira.trondhjem.org> <532897DE.6060204@RedHat.com>
+To: Dickson Steve <SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Mar 7, 2014, at 10:02, Steve Dickson <steved@redhat.com> wrote:
+On Mar 18, 2014, at 15:00, Steve Dickson <SteveD@redhat.com> wrote:
 
-> Background mounts hang forever due to the kernel not returning 
-> the time out error. The proposed fix is twofold, one in the kernel 
-> and one in the mounting code.
 > 
-> The kernel patch stop the server trunking code from endlessly 
-> looping in the kernel on -ETIMEDOUT errors. Instead, the code 
-> will now return the error, allowing the mount to go into 
-> the background.
 > 
-> Unfortunately, it takes over 5 mins for this timeout to 
-> happen, due the default retry strategy, which is unacceptable 
-> for background mounts. 
-> 
-> So the patch I will be proposing for the mount code will be 
-> to append the "retrans=1,timeo=100" mount options to the parent
-> mount of the background mount (when they don't exist). This
-> causes the parent mount to timeout in ~25sec. 
+> On 03/18/2014 02:45 PM, Trond Myklebust wrote:
+>> On Tue, 2014-03-18 at 13:24 -0400, Steve Dickson wrote:
+>>> 
+>>> On 03/18/2014 11:58 AM, Trond Myklebust wrote:
+>>>> 
+>>>> On Mar 18, 2014, at 11:47, Steve Dickson <SteveD@redhat.com> wrote:
+>>>> 
+>>>>> Hey,
+>>>>> 
+>>>>> On 03/17/2014 02:40 PM, Trond Myklebust wrote:
+>>>>>> When the server is unavailable due to a networking error, etc, we want
+>>>>>> the RPC client to respect the timeout delays when attempting to reconnect.
+>>>>>> 
+>>>>>> Fixes: 561ec1603171 (SUNRPC: call_connect_status should recheck bind..)
+>>>>>> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+>>>>>> ---
+>>>>>> net/sunrpc/clnt.c | 8 +++-----
+>>>>>> 1 file changed, 3 insertions(+), 5 deletions(-)
+>>>>>> 
+>>>>>> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+>>>>>> index 0edada973434..f22d3a115fda 100644
+>>>>>> --- a/net/sunrpc/clnt.c
+>>>>>> +++ b/net/sunrpc/clnt.c
+>>>>>> @@ -1798,10 +1798,6 @@ call_connect_status(struct rpc_task *task)
+>>>>>> 	trace_rpc_connect_status(task, status);
+>>>>>> 	task->tk_status = 0;
+>>>>>> 	switch (status) {
+>>>>>> -		/* if soft mounted, test if we've timed out */
+>>>>>> -	case -ETIMEDOUT:
+>>>>>> -		task->tk_action = call_timeout;
+>>>>>> -		return;
+>>>>>> 	case -ECONNREFUSED:
+>>>>>> 	case -ECONNRESET:
+>>>>>> 	case -ECONNABORTED:
+>>>>>> @@ -1812,7 +1808,9 @@ call_connect_status(struct rpc_task *task)
+>>>>>> 		if (RPC_IS_SOFTCONN(task))
+>>>>>> 			break;
+>>>>>> 	case -EAGAIN:
+>>>>>> -		task->tk_action = call_bind;
+>>>>>> +	case -ETIMEDOUT:
+>>>>>> +		/* Check if we've timed out before looping back to call_bind */
+>>>>>> +		task->tk_action = call_timeout;
+>>>>>> 		return;
+>>>>>> 	case 0:
+>>>>>> 		clnt->cl_stats->netreconn++;
+>>>>>> 
+>>>>> How is this support to work if the trunking code still ignores timeouts? 
+>>>>> 
+>>>>> [ 2076.045176] NFS: nfs4_discover_server_trunking after status -110, retrying
+>>>> 
+>>>> The above patch fixes the regression that Neil tracked down in Linux 3.12, and that 
+>>>> affects the generic RPC handling of soft timeouts.
+>>>> 
+>>>> The trunking code's handling of ETIMEDOUT has been there since Linux 3.7 
+>>>> and hasn’t changed, so I really don’t see how it can have worked at one time before 3.12.
+>>> Maybe it been broken that long.... :-) 
+>>> 
+>>> But here is the obvious loop that stop that hangs a mount forever:
+>>> 
+>>> #8 [ffff88007a22b7e8] rpc_call_sync at ffffffffa0220210 [sunrpc]
+>>> #9 [ffff88007a22b840] nfs4_proc_setclientid at ffffffffa0505c49 [nfsv4]
+>>> #10 [ffff88007a22b988] nfs40_discover_server_trunking at ffffffffa0514489 [nfsv4]
+>>> #11 [ffff88007a22b9d0] nfs4_discover_server_trunking at ffffffffa0516f2d [nfsv4]
+>>> #12 [ffff88007a22ba28] nfs4_init_client at ffffffffa051e9a4 [nfsv4]
+>>> #13 [ffff88007a22bb20] nfs_get_client at ffffffffa04bd6ba [nfs]
+>>> #14 [ffff88007a22bb80] nfs4_set_client at ffffffffa051dfb0 [nfsv4]
+>>> #15 [ffff88007a22bc00] nfs4_create_server at ffffffffa051f4ce [nfsv4]
+>>> #16 [ffff88007a22bc88] nfs4_remote_mount at ffffffffa051790e [nfsv4]
+>>> #17 [ffff88007a22bcb0] mount_fs at ffffffff811b3dd9
+>>> 
+>>> The SETCLIENT times out 
+>>>   NFS call  setclientid auth=UNIX, 'Linux NFSv4.0 10.19.60.77/10.19.60.33 tcp'
+>>>   NFS reply setclientid: -110
+>>> 
+>>> The nfs4_discover_server_trunking() retries 
+>>>   NFS: nfs4_discover_server_trunking after status -110, retrying
+>>> 
+>>> The happens when there server is down and so the connections 
+>>> fail with ECONNREFUSED:
+>>>   RPC:     2 call_connect_status (status -111)
+>>> 
+>>> The mount system call never times out in which it did in the past. 
+>> 
+>> Why should a mount system call time out other than perhaps in the case
+>> of a soft mount?
+>> 
+> So the mount can go in background. As you know the -o bg is used in
+> the /etc/fstab so the boot does not get hung up with downed servers. 
+> That's how it always worked... 
 
-We already have a ‘retry=‘ option for mount.nfs. According to the manpage, that should be used to specify the timeout value. Why not reuse that?
-
-Also, it really would be better if that timeout were under control of the mount utility itself. How about if we allow the use of alarm() to interrupt that particular RPC call?
+No. As I’ve told you already, this has never worked correctly for NFSv4, and is not expected to work even if we do change the trunking discovery because path walks etc will still hang. Please do this in userland as previously suggested.
 
 _________________________________
 Trond Myklebust
