@@ -1,98 +1,111 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:39643 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:27656 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757010AbaC1CMh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 27 Mar 2014 22:12:37 -0400
-Date: Thu, 27 Mar 2014 22:12:34 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: trond.myklebust@primarydata.com, linux-nfs@vger.kernel.org,
-        raphoszap@laposte.net
-Subject: Re: [PATCH] lockd: ensure we tear down any live sockets when socket
- creation fails during lockd_up
-Message-ID: <20140328021234.GE27633@fieldses.org>
-References: <1395773726-16510-1-git-send-email-jlayton@redhat.com>
+	id S1756549AbaCRTBp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 18 Mar 2014 15:01:45 -0400
+Message-ID: <532897DE.6060204@RedHat.com>
+Date: Tue, 18 Mar 2014 15:00:46 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1395773726-16510-1-git-send-email-jlayton@redhat.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/2] SUNRPC: Ensure that call_connect times out correctly
+References: <1395081645-11906-1-git-send-email-trond.myklebust@primarydata.com>	 <53286A9D.2020007@RedHat.com>	 <362845B0-35A4-4DDF-96F6-42582D66334B@primarydata.com>	 <53288146.4010601@RedHat.com> <1395168308.11244.3.camel@leira.trondhjem.org>
+In-Reply-To: <1395168308.11244.3.camel@leira.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks, applying.
 
-(Can you tell if this has always been there, or if it was introduced
-recently?  I guess it should go to stable, anyway....)
 
---b.
+On 03/18/2014 02:45 PM, Trond Myklebust wrote:
+> On Tue, 2014-03-18 at 13:24 -0400, Steve Dickson wrote:
+>>
+>> On 03/18/2014 11:58 AM, Trond Myklebust wrote:
+>>>
+>>> On Mar 18, 2014, at 11:47, Steve Dickson <SteveD@redhat.com> wrote:
+>>>
+>>>> Hey,
+>>>>
+>>>> On 03/17/2014 02:40 PM, Trond Myklebust wrote:
+>>>>> When the server is unavailable due to a networking error, etc, we want
+>>>>> the RPC client to respect the timeout delays when attempting to reconnect.
+>>>>>
+>>>>> Fixes: 561ec1603171 (SUNRPC: call_connect_status should recheck bind..)
+>>>>> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+>>>>> ---
+>>>>> net/sunrpc/clnt.c | 8 +++-----
+>>>>> 1 file changed, 3 insertions(+), 5 deletions(-)
+>>>>>
+>>>>> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+>>>>> index 0edada973434..f22d3a115fda 100644
+>>>>> --- a/net/sunrpc/clnt.c
+>>>>> +++ b/net/sunrpc/clnt.c
+>>>>> @@ -1798,10 +1798,6 @@ call_connect_status(struct rpc_task *task)
+>>>>> 	trace_rpc_connect_status(task, status);
+>>>>> 	task->tk_status = 0;
+>>>>> 	switch (status) {
+>>>>> -		/* if soft mounted, test if we've timed out */
+>>>>> -	case -ETIMEDOUT:
+>>>>> -		task->tk_action = call_timeout;
+>>>>> -		return;
+>>>>> 	case -ECONNREFUSED:
+>>>>> 	case -ECONNRESET:
+>>>>> 	case -ECONNABORTED:
+>>>>> @@ -1812,7 +1808,9 @@ call_connect_status(struct rpc_task *task)
+>>>>> 		if (RPC_IS_SOFTCONN(task))
+>>>>> 			break;
+>>>>> 	case -EAGAIN:
+>>>>> -		task->tk_action = call_bind;
+>>>>> +	case -ETIMEDOUT:
+>>>>> +		/* Check if we've timed out before looping back to call_bind */
+>>>>> +		task->tk_action = call_timeout;
+>>>>> 		return;
+>>>>> 	case 0:
+>>>>> 		clnt->cl_stats->netreconn++;
+>>>>>
+>>>> How is this support to work if the trunking code still ignores timeouts? 
+>>>>
+>>>> [ 2076.045176] NFS: nfs4_discover_server_trunking after status -110, retrying
+>>>
+>>> The above patch fixes the regression that Neil tracked down in Linux 3.12, and that 
+>>> affects the generic RPC handling of soft timeouts.
+>>>
+>>> The trunking code's handling of ETIMEDOUT has been there since Linux 3.7 
+>>> and hasn’t changed, so I really don’t see how it can have worked at one time before 3.12.
+>> Maybe it been broken that long.... :-) 
+>>
+>> But here is the obvious loop that stop that hangs a mount forever:
+>>
+>>  #8 [ffff88007a22b7e8] rpc_call_sync at ffffffffa0220210 [sunrpc]
+>>  #9 [ffff88007a22b840] nfs4_proc_setclientid at ffffffffa0505c49 [nfsv4]
+>> #10 [ffff88007a22b988] nfs40_discover_server_trunking at ffffffffa0514489 [nfsv4]
+>> #11 [ffff88007a22b9d0] nfs4_discover_server_trunking at ffffffffa0516f2d [nfsv4]
+>> #12 [ffff88007a22ba28] nfs4_init_client at ffffffffa051e9a4 [nfsv4]
+>> #13 [ffff88007a22bb20] nfs_get_client at ffffffffa04bd6ba [nfs]
+>> #14 [ffff88007a22bb80] nfs4_set_client at ffffffffa051dfb0 [nfsv4]
+>> #15 [ffff88007a22bc00] nfs4_create_server at ffffffffa051f4ce [nfsv4]
+>> #16 [ffff88007a22bc88] nfs4_remote_mount at ffffffffa051790e [nfsv4]
+>> #17 [ffff88007a22bcb0] mount_fs at ffffffff811b3dd9
+>>
+>> The SETCLIENT times out 
+>>    NFS call  setclientid auth=UNIX, 'Linux NFSv4.0 10.19.60.77/10.19.60.33 tcp'
+>>    NFS reply setclientid: -110
+>>
+>> The nfs4_discover_server_trunking() retries 
+>>    NFS: nfs4_discover_server_trunking after status -110, retrying
+>>
+>> The happens when there server is down and so the connections 
+>> fail with ECONNREFUSED:
+>>    RPC:     2 call_connect_status (status -111)
+>>
+>> The mount system call never times out in which it did in the past. 
+> 
+> Why should a mount system call time out other than perhaps in the case
+> of a soft mount?
+> 
+So the mount can go in background. As you know the -o bg is used in
+the /etc/fstab so the boot does not get hung up with downed servers. 
+That's how it always worked... 
 
-On Tue, Mar 25, 2014 at 11:55:26AM -0700, Jeff Layton wrote:
-> We had a Fedora ABRT report with a stack trace like this:
-> 
-> kernel BUG at net/sunrpc/svc.c:550!
-> invalid opcode: 0000 [#1] SMP
-> [...]
-> CPU: 2 PID: 913 Comm: rpc.nfsd Not tainted 3.13.6-200.fc20.x86_64 #1
-> Hardware name: Hewlett-Packard HP ProBook 4740s/1846, BIOS 68IRR Ver. F.40 01/29/2013
-> task: ffff880146b00000 ti: ffff88003f9b8000 task.ti: ffff88003f9b8000
-> RIP: 0010:[<ffffffffa0305fa8>]  [<ffffffffa0305fa8>] svc_destroy+0x128/0x130 [sunrpc]
-> RSP: 0018:ffff88003f9b9de0  EFLAGS: 00010206
-> RAX: ffff88003f829628 RBX: ffff88003f829600 RCX: 00000000000041ee
-> RDX: 0000000000000000 RSI: 0000000000000286 RDI: 0000000000000286
-> RBP: ffff88003f9b9de8 R08: 0000000000017360 R09: ffff88014fa97360
-> R10: ffffffff8114ce57 R11: ffffea00051c9c00 R12: ffff88003f829600
-> R13: 00000000ffffff9e R14: ffffffff81cc7cc0 R15: 0000000000000000
-> FS:  00007f4fde284840(0000) GS:ffff88014fa80000(0000) knlGS:0000000000000000
-> CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-> CR2: 00007f4fdf5192f8 CR3: 00000000a569a000 CR4: 00000000001407e0
-> Stack:
->  ffff88003f792300 ffff88003f9b9e18 ffffffffa02de02a 0000000000000000
->  ffffffff81cc7cc0 ffff88003f9cb000 0000000000000008 ffff88003f9b9e60
->  ffffffffa033bb35 ffffffff8131c86c ffff88003f9cb000 ffff8800a5715008
-> Call Trace:
->  [<ffffffffa02de02a>] lockd_up+0xaa/0x330 [lockd]
->  [<ffffffffa033bb35>] nfsd_svc+0x1b5/0x2f0 [nfsd]
->  [<ffffffff8131c86c>] ? simple_strtoull+0x2c/0x50
->  [<ffffffffa033c630>] ? write_pool_threads+0x280/0x280 [nfsd]
->  [<ffffffffa033c6bb>] write_threads+0x8b/0xf0 [nfsd]
->  [<ffffffff8114efa4>] ? __get_free_pages+0x14/0x50
->  [<ffffffff8114eff6>] ? get_zeroed_page+0x16/0x20
->  [<ffffffff811dec51>] ? simple_transaction_get+0xb1/0xd0
->  [<ffffffffa033c098>] nfsctl_transaction_write+0x48/0x80 [nfsd]
->  [<ffffffff811b8b34>] vfs_write+0xb4/0x1f0
->  [<ffffffff811c3f99>] ? putname+0x29/0x40
->  [<ffffffff811b9569>] SyS_write+0x49/0xa0
->  [<ffffffff810fc2a6>] ? __audit_syscall_exit+0x1f6/0x2a0
->  [<ffffffff816962e9>] system_call_fastpath+0x16/0x1b
-> Code: 31 c0 e8 82 db 37 e1 e9 2a ff ff ff 48 8b 07 8b 57 14 48 c7 c7 d5 c6 31 a0 48 8b 70 20 31 c0 e8 65 db 37 e1 e9 f4 fe ff ff 0f 0b <0f> 0b 66 0f 1f 44 00 00 0f 1f 44 00 00 55 48 89 e5 41 56 41 55
-> RIP  [<ffffffffa0305fa8>] svc_destroy+0x128/0x130 [sunrpc]
->  RSP <ffff88003f9b9de0>
-> 
-> Evidently, we created some lockd sockets and then failed to create
-> others. make_socks then returned an error and we tried to tear down the
-> svc, but svc->sv_permsocks was not empty so we ended up tripping over
-> the BUG() in svc_destroy().
-> 
-> Fix this by ensuring that we tear down any live sockets we created when
-> socket creation is going to return an error.
-> 
-> Reported-by: Raphos <raphoszap@laposte.net>
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  fs/lockd/svc.c | 1 +
->  1 file changed, 1 insertion(+)
-> 
-> diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-> index 10d6c41aecad..6bf06a07f3e0 100644
-> --- a/fs/lockd/svc.c
-> +++ b/fs/lockd/svc.c
-> @@ -235,6 +235,7 @@ out_err:
->  	if (warned++ == 0)
->  		printk(KERN_WARNING
->  			"lockd_up: makesock failed, error=%d\n", err);
-> +	svc_shutdown_net(serv, net);
->  	return err;
->  }
->  
-> -- 
-> 1.8.5.3
-> 
+steved.
