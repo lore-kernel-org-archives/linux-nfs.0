@@ -1,39 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:55897 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752264AbaCROJn (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Mar 2014 10:09:43 -0400
-Date: Tue, 18 Mar 2014 07:09:42 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Anna Schumaker <schumaker.anna@gmail.com>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/2] nfs: remove ->write_pageio_init from rpc ops
-Message-ID: <20140318140942.GB11672@infradead.org>
-References: <20140318112825.GA22359@infradead.org>
- <532840E8.5090804@gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:10062 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1759275AbaCSLHN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 19 Mar 2014 07:07:13 -0400
+Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s2JB7CUC028928
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Wed, 19 Mar 2014 07:07:13 -0400
+Received: from smallhat.boston.devel.redhat.com (vpn-57-192.rdu2.redhat.com [10.10.57.192])
+	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s2JB7BZw031899
+	for <linux-nfs@vger.kernel.org>; Wed, 19 Mar 2014 07:07:11 -0400
+Message-ID: <53297A5F.4090205@RedHat.com>
+Date: Wed, 19 Mar 2014 07:07:11 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <532840E8.5090804@gmail.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Linux NFS Town Hall  meeting: Thur 03/20/14
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> > +	struct nfs_server *server = NFS_SERVER(inode);
-> > +	const struct nfs_pageio_ops *pg_ops = &nfs_pageio_write_ops;
-> > +
-> > +#if IS_ENABLED(CONFIG_NFS_V4)
-> > +	if (server->pnfs_curr_ld)
-> > +		pg_ops = server->pnfs_curr_ld->pg_write_ops;
-> > +#endif
-> > +	nfs_pageio_init(pgio, inode, pg_ops, compl_ops, server->wsize, ioflags);
-> >  }
-> 
-> I thought it was bad style to put a #ifdef in the middle of a function, which is why we have so many noop functions in the rest of the code.  Should this be done with a select_compl_ops() function instead?
+Hello,
 
-I don't think it's much of a problem for a small and readable function
-with a single ifdef.  And we'd need one helper for read and write each,
-which would make the code much harder to read.  Still better than what's
-there currently, though.
+The Linux NFS town hall meeting is tomorrow
+*Thur Mar 20 at 01:00 pm EST (10:00am PST)*
 
-The other option would be to simply always have the pnfs_curr_ld field
-in the server structure and remove the ifdef entirely.
+The usual agenda will apply. The maintainers will give
+a quick status of what is happening in their worlds.
+
+Next we'll get updates from major contributors on what
+they have been doing and are planing on doing.
+  
+Finally, we'll open the floor to questions, comments, 
+concerns from the community.  
+
+Generally the meeting lasts between 30 to 45 mins, with 
+a very hard stop at 60mins. 
+
+Please feel to attend and participate!
+
+Time: 10:00 am PST (01:00 pm EST)
+
+The call in numbers are:
+U.S. and Canada: (800) 451-8679
+International dial-in number: (212) 729-5016
+Israel Toll-Free: 1-809-462-557
+Conference code: 564.272.1552
+
+steved.
+
