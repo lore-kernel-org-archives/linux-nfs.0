@@ -1,45 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f182.google.com ([209.85.213.182]:41908 "EHLO
-	mail-ig0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752203AbaC2UBT convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 29 Mar 2014 16:01:19 -0400
-Received: by mail-ig0-f182.google.com with SMTP id uy17so2133696igb.3
-        for <linux-nfs@vger.kernel.org>; Sat, 29 Mar 2014 13:01:18 -0700 (PDT)
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
-Subject: Re: [PATCH 2/2] nfsd: Don't return NFS4ERR_RESTOREFH for NFSv4.1+
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-In-Reply-To: <CDBA9E4B-1C09-4952-B285-83B1580397D7@primarydata.com>
-Date: Sat, 29 Mar 2014 16:01:15 -0400
-Cc: Idan Kedar <idank@primarydata.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <54B21F4C-18EC-45B9-B89C-DD05A0922DDE@primarydata.com>
-References: <1396118619-12771-1-git-send-email-trond.myklebust@primarydata.com> <1396118619-12771-2-git-send-email-trond.myklebust@primarydata.com> <20140329193456.GE11085@fieldses.org> <CDBA9E4B-1C09-4952-B285-83B1580397D7@primarydata.com>
-To: Dr Fields James Bruce <bfields@fieldses.org>
+Received: from mx1.redhat.com ([209.132.183.28]:4947 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S964847AbaCSMKA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 19 Mar 2014 08:10:00 -0400
+Message-ID: <53298914.2090003@RedHat.com>
+Date: Wed, 19 Mar 2014 08:09:56 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/2] NFSv4: Schedule recovery if nfs40_walk_client_list()
+ is interrupted
+References: <1395173006-14871-1-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1395173006-14871-1-git-send-email-trond.myklebust@primarydata.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Mar 29, 2014, at 15:49, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
 
+On 03/18/2014 04:03 PM, Trond Myklebust wrote:
+> If a timeout or a signal interrupts the NFSv4 trunking discovery
+> SETCLIENTID_CONFIRM call, then we don't know whether or not the
+> server has changed the callback identifier on us.
+> Assume that it did, and schedule a 'path down' recovery...
 > 
-> On Mar 29, 2014, at 15:34, J. Bruce Fields <bfields@fieldses.org> wrote:
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Tested-by: Steve Dickson <steved@redhat.com>
+
+steved.
+> ---
+>  fs/nfs/nfs4client.c | 7 +++++++
+>  1 file changed, 7 insertions(+)
 > 
->> On Sat, Mar 29, 2014 at 02:43:39PM -0400, Trond Myklebust wrote:
->>> RFC5661 obsoletes NFS4ERR_RESTOREFH in favour of NFS4ERR_NOFILEHANDLE.
->> 
->> Looks right.  Any objection to just making this nfserr_restorefh in the
->> 4.0 case as well?  Hard to imagine how that could cause a 4.0 client any
->> problem.
+> diff --git a/fs/nfs/nfs4client.c b/fs/nfs/nfs4client.c
+> index 0e46d3d1b6cc..aa9ef4876046 100644
+> --- a/fs/nfs/nfs4client.c
+> +++ b/fs/nfs/nfs4client.c
+> @@ -531,6 +531,13 @@ int nfs40_walk_client_list(struct nfs_client *new,
+>  			*result = pos;
+>  			dprintk("NFS: <-- %s using nfs_client = %p ({%d})\n",
+>  				__func__, pos, atomic_read(&pos->cl_count));
+> +			goto out;
+> +		case -ERESTARTSYS:
+> +		case -ETIMEDOUT:
+> +			/* The callback path may have been inadvertently
+> +			 * changed. Schedule recovery!
+> +			 */
+> +			nfs4_schedule_path_down_recovery(pos);
+>  		default:
+>  			goto out;
+>  		}
 > 
-> You mean make both cases return nfserr_nofilehandle (as per RFC5661), right? So, I agree that most clients should handle that, but the problem is that RFC3530bis does not allow it.
-
-Either way, this is not a performance critical issue. Any time we get into this situation, it is because the client is utterly screwed up in the first place.
-
-The NFS4ERR_STALE_STATEID is the critical one that really needs to be applied...
-
-_________________________________
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
-
