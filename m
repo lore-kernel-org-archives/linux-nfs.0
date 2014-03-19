@@ -1,200 +1,164 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:46346 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:5314 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756885AbaC1BBk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 27 Mar 2014 21:01:40 -0400
-Date: Thu, 27 Mar 2014 21:01:39 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: linux-nfs@vger.kernel.org, jlayton@redhat.com
-Subject: Re: [PATCH] NFSD: Traverse unconfirmed client through hash-table
-Message-ID: <20140328010139.GC27633@fieldses.org>
-References: <5332DF9A.6040008@gmail.com>
+	id S964992AbaCSOHu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 19 Mar 2014 10:07:50 -0400
+Message-ID: <5329A4B3.20601@RedHat.com>
+Date: Wed, 19 Mar 2014 10:07:47 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <5332DF9A.6040008@gmail.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/2] SUNRPC: Ensure that call_connect times out correctly
+References: <1395081645-11906-1-git-send-email-trond.myklebust@primarydata.com>	 <53286A9D.2020007@RedHat.com>	 <362845B0-35A4-4DDF-96F6-42582D66334B@primarydata.com>	 <53288146.4010601@RedHat.com> <1395168308.11244.3.camel@leira.trondhjem.org> <532897DE.6060204@RedHat.com> <EB317FC8-D521-4D80-98D7-FA48B0B9AF0C@primarydata.com> <5329900C.3040200@RedHat.com> <DAF0940D-107D-4251-B00A-DE829A31B36E@primarydata.com>
+In-Reply-To: <DAF0940D-107D-4251-B00A-DE829A31B36E@primarydata.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks, applying for 3.15 and stable.
 
---b.
 
-On Wed, Mar 26, 2014 at 10:09:30PM +0800, Kinglong Mee wrote:
-> When stopping nfsd, I got BUG messages, and soft lockup messages,
-> The problem is cuased by double rb_erase() in nfs4_state_destroy_net()
-> and destroy_client().
+On 03/19/2014 08:52 AM, Trond Myklebust wrote:
 > 
-> This patch just let nfsd traversing unconfirmed client through
-> hash-table instead of rbtree.
+> On Mar 19, 2014, at 8:39, Steve Dickson <SteveD@redhat.com> wrote:
 > 
-> [ 2325.021995] BUG: unable to handle kernel NULL pointer dereference at
->           (null)
-> [ 2325.022809] IP: [<ffffffff8133c18c>] rb_erase+0x14c/0x390
-> [ 2325.022982] PGD 7a91b067 PUD 7a33d067 PMD 0
-> [ 2325.022982] Oops: 0000 [#1] SMP DEBUG_PAGEALLOC
-> [ 2325.022982] Modules linked in: nfsd(OF) cfg80211 rfkill bridge stp
-> llc snd_intel8x0 snd_ac97_codec ac97_bus auth_rpcgss nfs_acl serio_raw
-> e1000 i2c_piix4 ppdev snd_pcm snd_timer lockd pcspkr joydev parport_pc
-> snd parport i2c_core soundcore microcode sunrpc ata_generic pata_acpi
-> [last unloaded: nfsd]
-> [ 2325.022982] CPU: 1 PID: 2123 Comm: nfsd Tainted: GF          O
-> 3.14.0-rc8+ #2
-> [ 2325.022982] Hardware name: innotek GmbH VirtualBox/VirtualBox, BIOS
-> VirtualBox 12/01/2006
-> [ 2325.022982] task: ffff88007b384800 ti: ffff8800797f6000 task.ti:
-> ffff8800797f6000
-> [ 2325.022982] RIP: 0010:[<ffffffff8133c18c>]  [<ffffffff8133c18c>]
-> rb_erase+0x14c/0x390
-> [ 2325.022982] RSP: 0018:ffff8800797f7d98  EFLAGS: 00010246
-> [ 2325.022982] RAX: ffff880079c1f010 RBX: ffff880079f4c828 RCX:
-> 0000000000000000
-> [ 2325.022982] RDX: 0000000000000000 RSI: ffff880079bcb070 RDI:
-> ffff880079f4c810
-> [ 2325.022982] RBP: ffff8800797f7d98 R08: 0000000000000000 R09:
-> ffff88007964fc70
-> [ 2325.022982] R10: 0000000000000000 R11: 0000000000000400 R12:
-> ffff880079f4c800
-> [ 2325.022982] R13: ffff880079bcb000 R14: ffff8800797f7da8 R15:
-> ffff880079f4c860
-> [ 2325.022982] FS:  0000000000000000(0000) GS:ffff88007f900000(0000)
-> knlGS:0000000000000000
-> [ 2325.022982] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-> [ 2325.022982] CR2: 0000000000000000 CR3: 000000007a3ef000 CR4:
-> 00000000000006e0
-> [ 2325.022982] DR0: 0000000000000000 DR1: 0000000000000000 DR2:
-> 0000000000000000
-> [ 2325.022982] DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7:
-> 0000000000000400
-> [ 2325.022982] Stack:
-> [ 2325.022982]  ffff8800797f7de0 ffffffffa0191c6e ffff8800797f7da8
-> ffff8800797f7da8
-> [ 2325.022982]  ffff880079f4c810 ffff880079bcb000 ffffffff81cc26c0
-> ffff880079c1f010
-> [ 2325.022982]  ffff880079bcb070 ffff8800797f7e28 ffffffffa01977f2
-> ffff8800797f7df0
-> [ 2325.022982] Call Trace:
-> [ 2325.022982]  [<ffffffffa0191c6e>] destroy_client+0x32e/0x3b0 [nfsd]
-> [ 2325.022982]  [<ffffffffa01977f2>] nfs4_state_shutdown_net+0x1a2/0x220
-> [nfsd]
-> [ 2325.022982]  [<ffffffffa01700b8>] nfsd_shutdown_net+0x38/0x70 [nfsd]
-> [ 2325.022982]  [<ffffffffa017013e>] nfsd_last_thread+0x4e/0x80 [nfsd]
-> [ 2325.022982]  [<ffffffffa001f1eb>] svc_shutdown_net+0x2b/0x30 [sunrpc]
-> [ 2325.022982]  [<ffffffffa017064b>] nfsd_destroy+0x5b/0x80 [nfsd]
-> [ 2325.022982]  [<ffffffffa0170773>] nfsd+0x103/0x130 [nfsd]
-> [ 2325.022982]  [<ffffffffa0170670>] ? nfsd_destroy+0x80/0x80 [nfsd]
-> [ 2325.022982]  [<ffffffff810a8232>] kthread+0xd2/0xf0
-> [ 2325.022982]  [<ffffffff810a8160>] ? insert_kthread_work+0x40/0x40
-> [ 2325.022982]  [<ffffffff816c493c>] ret_from_fork+0x7c/0xb0
-> [ 2325.022982]  [<ffffffff810a8160>] ? insert_kthread_work+0x40/0x40
-> [ 2325.022982] Code: 48 83 e1 fc 48 89 10 0f 84 02 01 00 00 48 3b 41 10
-> 0f 84 08 01 00 00 48 89 51 08 48 89 fa e9 74 ff ff ff 0f 1f 40 00 48 8b
-> 50 10 <f6> 02 01 0f 84 93 00 00 00 48 8b 7a 10 48 85 ff 74 05 f6 07 01
-> [ 2325.022982] RIP  [<ffffffff8133c18c>] rb_erase+0x14c/0x390
-> [ 2325.022982]  RSP <ffff8800797f7d98>
-> [ 2325.022982] CR2: 0000000000000000
-> [ 2325.022982] ---[ end trace 28c27ed011655e57 ]---
+>>
+>>
+>> On 03/18/2014 03:50 PM, Trond Myklebust wrote:
+>>>
+>>> On Mar 18, 2014, at 15:00, Steve Dickson <SteveD@redhat.com> wrote:
+>>>
+>>>>
+>>>>
+>>>> On 03/18/2014 02:45 PM, Trond Myklebust wrote:
+>>>>> On Tue, 2014-03-18 at 13:24 -0400, Steve Dickson wrote:
+>>>>>>
+>>>>>> On 03/18/2014 11:58 AM, Trond Myklebust wrote:
+>>>>>>>
+>>>>>>> On Mar 18, 2014, at 11:47, Steve Dickson <SteveD@redhat.com> wrote:
+>>>>>>>
+>>>>>>>> Hey,
+>>>>>>>>
+>>>>>>>> On 03/17/2014 02:40 PM, Trond Myklebust wrote:
+>>>>>>>>> When the server is unavailable due to a networking error, etc, we want
+>>>>>>>>> the RPC client to respect the timeout delays when attempting to reconnect.
+>>>>>>>>>
+>>>>>>>>> Fixes: 561ec1603171 (SUNRPC: call_connect_status should recheck bind..)
+>>>>>>>>> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+>>>>>>>>> ---
+>>>>>>>>> net/sunrpc/clnt.c | 8 +++-----
+>>>>>>>>> 1 file changed, 3 insertions(+), 5 deletions(-)
+>>>>>>>>>
+>>>>>>>>> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+>>>>>>>>> index 0edada973434..f22d3a115fda 100644
+>>>>>>>>> --- a/net/sunrpc/clnt.c
+>>>>>>>>> +++ b/net/sunrpc/clnt.c
+>>>>>>>>> @@ -1798,10 +1798,6 @@ call_connect_status(struct rpc_task *task)
+>>>>>>>>> 	trace_rpc_connect_status(task, status);
+>>>>>>>>> 	task->tk_status = 0;
+>>>>>>>>> 	switch (status) {
+>>>>>>>>> -		/* if soft mounted, test if we've timed out */
+>>>>>>>>> -	case -ETIMEDOUT:
+>>>>>>>>> -		task->tk_action = call_timeout;
+>>>>>>>>> -		return;
+>>>>>>>>> 	case -ECONNREFUSED:
+>>>>>>>>> 	case -ECONNRESET:
+>>>>>>>>> 	case -ECONNABORTED:
+>>>>>>>>> @@ -1812,7 +1808,9 @@ call_connect_status(struct rpc_task *task)
+>>>>>>>>> 		if (RPC_IS_SOFTCONN(task))
+>>>>>>>>> 			break;
+>>>>>>>>> 	case -EAGAIN:
+>>>>>>>>> -		task->tk_action = call_bind;
+>>>>>>>>> +	case -ETIMEDOUT:
+>>>>>>>>> +		/* Check if we've timed out before looping back to call_bind */
+>>>>>>>>> +		task->tk_action = call_timeout;
+>>>>>>>>> 		return;
+>>>>>>>>> 	case 0:
+>>>>>>>>> 		clnt->cl_stats->netreconn++;
+>>>>>>>>>
+>>>>>>>> How is this support to work if the trunking code still ignores timeouts? 
+>>>>>>>>
+>>>>>>>> [ 2076.045176] NFS: nfs4_discover_server_trunking after status -110, retrying
+>>>>>>>
+>>>>>>> The above patch fixes the regression that Neil tracked down in Linux 3.12, and that 
+>>>>>>> affects the generic RPC handling of soft timeouts.
+>>>>>>>
+>>>>>>> The trunking code's handling of ETIMEDOUT has been there since Linux 3.7 
+>>>>>>> and hasn’t changed, so I really don’t see how it can have worked at one time before 3.12.
+>>>>>> Maybe it been broken that long.... :-) 
+>>>>>>
+>>>>>> But here is the obvious loop that stop that hangs a mount forever:
+>>>>>>
+>>>>>> #8 [ffff88007a22b7e8] rpc_call_sync at ffffffffa0220210 [sunrpc]
+>>>>>> #9 [ffff88007a22b840] nfs4_proc_setclientid at ffffffffa0505c49 [nfsv4]
+>>>>>> #10 [ffff88007a22b988] nfs40_discover_server_trunking at ffffffffa0514489 [nfsv4]
+>>>>>> #11 [ffff88007a22b9d0] nfs4_discover_server_trunking at ffffffffa0516f2d [nfsv4]
+>>>>>> #12 [ffff88007a22ba28] nfs4_init_client at ffffffffa051e9a4 [nfsv4]
+>>>>>> #13 [ffff88007a22bb20] nfs_get_client at ffffffffa04bd6ba [nfs]
+>>>>>> #14 [ffff88007a22bb80] nfs4_set_client at ffffffffa051dfb0 [nfsv4]
+>>>>>> #15 [ffff88007a22bc00] nfs4_create_server at ffffffffa051f4ce [nfsv4]
+>>>>>> #16 [ffff88007a22bc88] nfs4_remote_mount at ffffffffa051790e [nfsv4]
+>>>>>> #17 [ffff88007a22bcb0] mount_fs at ffffffff811b3dd9
+>>>>>>
+>>>>>> The SETCLIENT times out 
+>>>>>>  NFS call  setclientid auth=UNIX, 'Linux NFSv4.0 10.19.60.77/10.19.60.33 tcp'
+>>>>>>  NFS reply setclientid: -110
+>>>>>>
+>>>>>> The nfs4_discover_server_trunking() retries 
+>>>>>>  NFS: nfs4_discover_server_trunking after status -110, retrying
+>>>>>>
+>>>>>> The happens when there server is down and so the connections 
+>>>>>> fail with ECONNREFUSED:
+>>>>>>  RPC:     2 call_connect_status (status -111)
+>>>>>>
+>>>>>> The mount system call never times out in which it did in the past. 
+>>>>>
+>>>>> Why should a mount system call time out other than perhaps in the case
+>>>>> of a soft mount?
+>>>>>
+>>>> So the mount can go in background. As you know the -o bg is used in
+>>>> the /etc/fstab so the boot does not get hung up with downed servers. 
+>>>> That's how it always worked... 
+>>>
+>>> No. As I’ve told you already, this has never worked correctly for 
+>>> NFSv4, and is not expected to work even if we do change the 
+>>> trunking discovery because path walks etc will still hang. 
+>> Just to be clear... Are you saying that v4 mounts can/will hang 
+>> in the kernel forever regardless of what the timeout and 
+>> retry mount options are?
 > 
-> [  228.064071] BUG: soft lockup - CPU#0 stuck for 22s! [nfsd:558]
-> [  228.064428] Modules linked in: ip6t_rpfilter ip6t_REJECT cfg80211
-> xt_conntrack rfkill ebtable_nat ebtable_broute bridge stp llc
-> ebtable_filter ebtables ip6table_nat nf_conntrack_ipv6 nf_defrag_ipv6
-> nf_nat_ipv6 ip6table_mangle ip6table_security ip6table_raw
-> ip6table_filter ip6_tables iptable_nat nf_conntrack_ipv4 nf_defrag_ipv4
-> nf_nat_ipv4 nf_nat nf_conntrack iptable_mangle iptable_security
-> iptable_raw nfsd(OF) auth_rpcgss nfs_acl lockd snd_intel8x0
-> snd_ac97_codec ac97_bus joydev snd_pcm snd_timer e1000 sunrpc snd ppdev
-> parport_pc serio_raw pcspkr i2c_piix4 microcode parport soundcore
-> i2c_core ata_generic pata_acpi
-> [  228.064539] CPU: 0 PID: 558 Comm: nfsd Tainted: GF          O
-> 3.14.0-rc8+ #2
-> [  228.064539] Hardware name: innotek GmbH VirtualBox/VirtualBox, BIOS
-> VirtualBox 12/01/2006
-> [  228.064539] task: ffff880076adec00 ti: ffff880074616000 task.ti:
-> ffff880074616000
-> [  228.064539] RIP: 0010:[<ffffffff8133ba17>]  [<ffffffff8133ba17>]
-> rb_next+0x27/0x50
-> [  228.064539] RSP: 0018:ffff880074617de0  EFLAGS: 00000282
-> [  228.064539] RAX: ffff880074478010 RBX: ffff88007446f860 RCX:
-> 0000000000000014
-> [  228.064539] RDX: ffff880074478010 RSI: 0000000000000000 RDI:
-> ffff880074478010
-> [  228.064539] RBP: ffff880074617de0 R08: 0000000000000000 R09:
-> 0000000000000012
-> [  228.064539] R10: 0000000000000001 R11: ffffffffffffffec R12:
-> ffffea0001d11a00
-> [  228.064539] R13: ffff88007f401400 R14: ffff88007446f800 R15:
-> ffff880074617d50
-> [  228.064539] FS:  0000000000000000(0000) GS:ffff88007f800000(0000)
-> knlGS:0000000000000000
-> [  228.064539] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-> [  228.064539] CR2: 00007fe9ac6ec000 CR3: 000000007a5d6000 CR4:
-> 00000000000006f0
-> [  228.064539] DR0: 0000000000000000 DR1: 0000000000000000 DR2:
-> 0000000000000000
-> [  228.064539] DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7:
-> 0000000000000400
-> [  228.064539] Stack:
-> [  228.064539]  ffff880074617e28 ffffffffa01ab7db ffff880074617df0
-> ffff880074617df0
-> [  228.064539]  ffff880079273000 ffffffff81cc26c0 ffffffff81cc26c0
-> 0000000000000000
-> [  228.064539]  0000000000000000 ffff880074617e48 ffffffffa01840b8
-> ffffffff81cc26c0
-> [  228.064539] Call Trace:
-> [  228.064539]  [<ffffffffa01ab7db>] nfs4_state_shutdown_net+0x18b/0x220
-> [nfsd]
-> [  228.064539]  [<ffffffffa01840b8>] nfsd_shutdown_net+0x38/0x70 [nfsd]
-> [  228.064539]  [<ffffffffa018413e>] nfsd_last_thread+0x4e/0x80 [nfsd]
-> [  228.064539]  [<ffffffffa00aa1eb>] svc_shutdown_net+0x2b/0x30 [sunrpc]
-> [  228.064539]  [<ffffffffa018464b>] nfsd_destroy+0x5b/0x80 [nfsd]
-> [  228.064539]  [<ffffffffa0184773>] nfsd+0x103/0x130 [nfsd]
-> [  228.064539]  [<ffffffffa0184670>] ? nfsd_destroy+0x80/0x80 [nfsd]
-> [  228.064539]  [<ffffffff810a8232>] kthread+0xd2/0xf0
-> [  228.064539]  [<ffffffff810a8160>] ? insert_kthread_work+0x40/0x40
-> [  228.064539]  [<ffffffff816c493c>] ret_from_fork+0x7c/0xb0
-> [  228.064539]  [<ffffffff810a8160>] ? insert_kthread_work+0x40/0x40
-> [  228.064539] Code: 1f 44 00 00 55 48 8b 17 48 89 e5 48 39 d7 74 3b 48
-> 8b 47 08 48 85 c0 75 0e eb 25 66 0f 1f 84 00 00 00 00 00 48 89 d0 48 8b
-> 50 10 <48> 85 d2 75 f4 5d c3 66 90 48 3b 78 08 75 f6 48 8b 10 48 89 c7
+> I’m saying that we should respect the ‘soft’ mount option, but we shouldn’t need to add any new special features for the mount call.
 > 
-> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-> ---
->  fs/nfsd/nfs4state.c | 13 +++++--------
->  1 file changed, 5 insertions(+), 8 deletions(-)
+>>> Please do this in userland as previously suggested.
+>> If the above is indeed the case, then I'll have to use signals 
+>> to interrupt the foreground mount...
+>>
+>> But, if setting mount options like
+>>   http://www.spinics.net/lists/linux-nfs/msg41993.html
+>>
+>> will guarantee will indeed timeout in a timely manner,
+>> than I would rather using the mount options instead
+>> of introducing signals into the mix… 
 > 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index d7efc4b..5a9588e 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -5063,7 +5063,6 @@ nfs4_state_destroy_net(struct net *net)
->  	int i;
->  	struct nfs4_client *clp = NULL;
->  	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
-> -	struct rb_node *node, *tmp;
+> For the case of NFSv4:
 > 
->  	for (i = 0; i < CLIENT_HASH_SIZE; i++) {
->  		while (!list_empty(&nn->conf_id_hashtbl[i])) {
-> @@ -5072,13 +5071,11 @@ nfs4_state_destroy_net(struct net *net)
->  		}
->  	}
-> 
-> -	node = rb_first(&nn->unconf_name_tree);
-> -	while (node != NULL) {
-> -		tmp = node;
-> -		node = rb_next(tmp);
-> -		clp = rb_entry(tmp, struct nfs4_client, cl_namenode);
-> -		rb_erase(tmp, &nn->unconf_name_tree);
-> -		destroy_client(clp);
-> +	for (i = 0; i < CLIENT_HASH_SIZE; i++) {
-> +		while (!list_empty(&nn->unconf_id_hashtbl[i])) {
-> +			clp = list_entry(nn->unconf_id_hashtbl[i].next, struct nfs4_client,
-> cl_idhash);
-> +			destroy_client(clp);
-> +		}
->  	}
-> 
->  	kfree(nn->sessionid_hashtbl);
-> -- 
-> 1.8.5.3
-> 
+> 1) ‘retry' is pretty much obsolete, since the protocol tells us 
+>     we must not resend unless the connection breaks. All it does 
+>     today is to act as a multiplier for ‘timeo’.
+I saw that.... I was thinking '1' was a better multiplier that
+the default... but it appears it does not matter... 
+
+> 2) ‘timeo’ itself only has a user-visible effect when you request 
+>     a soft mount or a soft RPC call. Otherwise, its main effect is 
+>     to tell the socket when to ping the server with a TCP ‘keepalive’.
+Setting 'timeo=100' really cuts down the foreground timeout. Without 
+it takes over three minutes for the fg to timeout. Setting it
+to 100, brings the timeout to 30 seconds, consistently 
+
+Question. You mention some about "path walks etc will still hang".
+I'm assuming we would get to those hangs because we were able
+to connect the server. My question is would make sense to 
+interrupt out of those "path walks"? Maybe its just a slow
+server??
+
+steved.
