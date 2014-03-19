@@ -1,119 +1,183 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from xes-mad.com ([216.165.139.218]:51573 "EHLO xes-mad.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754780AbaCRVuo convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Mar 2014 17:50:44 -0400
-Date: Tue, 18 Mar 2014 16:50:29 -0500 (CDT)
-From: Andrew Martin <amartin@xes-inc.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Jim Rees <rees@umich.edu>, bhawley@luminex.com, Brown Neil <neilb@suse.de>,
-        linux-nfs-owner@vger.kernel.org, linux-nfs@vger.kernel.org
-Message-ID: <693414378.60415.1395179429651.JavaMail.zimbra@xes-inc.com>
-In-Reply-To: <40C20DD8-9E8D-4625-B98C-A1E61D00AC17@primarydata.com>
-References: <1696396609.119284.1394040541217.JavaMail.zimbra@xes-inc.com> <20140306173632.GA18545@umich.edu> <1397912955.101159.1394130906695.JavaMail.zimbra@xes-inc.com> <B454F556-9381-4DB7-B864-EC066DBEAC63@primarydata.com> <2043391310.134091.1394135196565.JavaMail.zimbra@xes-inc.com> <76B038DA-3E86-4C46-BFB6-928BFB8202D8@primarydata.com> <521763040.159828.1394138758307.JavaMail.zimbra@xes-inc.com> <40C20DD8-9E8D-4625-B98C-A1E61D00AC17@primarydata.com>
-Subject: Re: Optimal NFS mount options to safely allow interrupts and
- timeouts on newer kernels
-MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Received: from mail-ie0-f176.google.com ([209.85.223.176]:60222 "EHLO
+	mail-ie0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S964911AbaCSPEy convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Mar 2014 11:04:54 -0400
+Received: by mail-ie0-f176.google.com with SMTP id rd18so8988735iec.35
+        for <linux-nfs@vger.kernel.org>; Wed, 19 Mar 2014 08:04:54 -0700 (PDT)
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
+Subject: Re: [PATCH 1/2] SUNRPC: Ensure that call_connect times out correctly
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+In-Reply-To: <5329A4B3.20601@RedHat.com>
+Date: Wed, 19 Mar 2014 11:04:50 -0400
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <0C0E5EE2-E7BD-4BE3-961F-3B632B45F026@primarydata.com>
+References: <1395081645-11906-1-git-send-email-trond.myklebust@primarydata.com>	 <53286A9D.2020007@RedHat.com>	 <362845B0-35A4-4DDF-96F6-42582D66334B@primarydata.com>	 <53288146.4010601@RedHat.com> <1395168308.11244.3.camel@leira.trondhjem.org> <532897DE.6060204@RedHat.com> <EB317FC8-D521-4D80-98D7-FA48B0B9AF0C@primarydata.com> <5329900C.3040200@RedHat.com> <DAF0940D-107D-4251-B00A-DE829A31B36E@primarydata.com> <5329A4B3.20601@RedHat.com>
+To: Dickson Steve <SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
------ Original Message -----
-> From: "Trond Myklebust" <trond.myklebust@primarydata.com>
-> To: "Andrew Martin" <amartin@xes-inc.com>
-> Cc: "Jim Rees" <rees@umich.edu>, bhawley@luminex.com, "Brown Neil" <neilb@suse.de>, linux-nfs-owner@vger.kernel.org,
-> linux-nfs@vger.kernel.org
-> Sent: Thursday, March 6, 2014 3:01:03 PM
-> Subject: Re: Optimal NFS mount options to safely allow interrupts and timeouts on newer kernels
+
+On Mar 19, 2014, at 10:07, Steve Dickson <SteveD@redhat.com> wrote:
+
 > 
 > 
-> On Mar 6, 2014, at 15:45, Andrew Martin <amartin@xes-inc.com> wrote:
+> On 03/19/2014 08:52 AM, Trond Myklebust wrote:
+>> 
+>> On Mar 19, 2014, at 8:39, Steve Dickson <SteveD@redhat.com> wrote:
+>> 
+>>> 
+>>> 
+>>> On 03/18/2014 03:50 PM, Trond Myklebust wrote:
+>>>> 
+>>>> On Mar 18, 2014, at 15:00, Steve Dickson <SteveD@redhat.com> wrote:
+>>>> 
+>>>>> 
+>>>>> 
+>>>>> On 03/18/2014 02:45 PM, Trond Myklebust wrote:
+>>>>>> On Tue, 2014-03-18 at 13:24 -0400, Steve Dickson wrote:
+>>>>>>> 
+>>>>>>> On 03/18/2014 11:58 AM, Trond Myklebust wrote:
+>>>>>>>> 
+>>>>>>>> On Mar 18, 2014, at 11:47, Steve Dickson <SteveD@redhat.com> wrote:
+>>>>>>>> 
+>>>>>>>>> Hey,
+>>>>>>>>> 
+>>>>>>>>> On 03/17/2014 02:40 PM, Trond Myklebust wrote:
+>>>>>>>>>> When the server is unavailable due to a networking error, etc, we want
+>>>>>>>>>> the RPC client to respect the timeout delays when attempting to reconnect.
+>>>>>>>>>> 
+>>>>>>>>>> Fixes: 561ec1603171 (SUNRPC: call_connect_status should recheck bind..)
+>>>>>>>>>> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+>>>>>>>>>> ---
+>>>>>>>>>> net/sunrpc/clnt.c | 8 +++-----
+>>>>>>>>>> 1 file changed, 3 insertions(+), 5 deletions(-)
+>>>>>>>>>> 
+>>>>>>>>>> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+>>>>>>>>>> index 0edada973434..f22d3a115fda 100644
+>>>>>>>>>> --- a/net/sunrpc/clnt.c
+>>>>>>>>>> +++ b/net/sunrpc/clnt.c
+>>>>>>>>>> @@ -1798,10 +1798,6 @@ call_connect_status(struct rpc_task *task)
+>>>>>>>>>> 	trace_rpc_connect_status(task, status);
+>>>>>>>>>> 	task->tk_status = 0;
+>>>>>>>>>> 	switch (status) {
+>>>>>>>>>> -		/* if soft mounted, test if we've timed out */
+>>>>>>>>>> -	case -ETIMEDOUT:
+>>>>>>>>>> -		task->tk_action = call_timeout;
+>>>>>>>>>> -		return;
+>>>>>>>>>> 	case -ECONNREFUSED:
+>>>>>>>>>> 	case -ECONNRESET:
+>>>>>>>>>> 	case -ECONNABORTED:
+>>>>>>>>>> @@ -1812,7 +1808,9 @@ call_connect_status(struct rpc_task *task)
+>>>>>>>>>> 		if (RPC_IS_SOFTCONN(task))
+>>>>>>>>>> 			break;
+>>>>>>>>>> 	case -EAGAIN:
+>>>>>>>>>> -		task->tk_action = call_bind;
+>>>>>>>>>> +	case -ETIMEDOUT:
+>>>>>>>>>> +		/* Check if we've timed out before looping back to call_bind */
+>>>>>>>>>> +		task->tk_action = call_timeout;
+>>>>>>>>>> 		return;
+>>>>>>>>>> 	case 0:
+>>>>>>>>>> 		clnt->cl_stats->netreconn++;
+>>>>>>>>>> 
+>>>>>>>>> How is this support to work if the trunking code still ignores timeouts? 
+>>>>>>>>> 
+>>>>>>>>> [ 2076.045176] NFS: nfs4_discover_server_trunking after status -110, retrying
+>>>>>>>> 
+>>>>>>>> The above patch fixes the regression that Neil tracked down in Linux 3.12, and that 
+>>>>>>>> affects the generic RPC handling of soft timeouts.
+>>>>>>>> 
+>>>>>>>> The trunking code's handling of ETIMEDOUT has been there since Linux 3.7 
+>>>>>>>> and hasn’t changed, so I really don’t see how it can have worked at one time before 3.12.
+>>>>>>> Maybe it been broken that long.... :-) 
+>>>>>>> 
+>>>>>>> But here is the obvious loop that stop that hangs a mount forever:
+>>>>>>> 
+>>>>>>> #8 [ffff88007a22b7e8] rpc_call_sync at ffffffffa0220210 [sunrpc]
+>>>>>>> #9 [ffff88007a22b840] nfs4_proc_setclientid at ffffffffa0505c49 [nfsv4]
+>>>>>>> #10 [ffff88007a22b988] nfs40_discover_server_trunking at ffffffffa0514489 [nfsv4]
+>>>>>>> #11 [ffff88007a22b9d0] nfs4_discover_server_trunking at ffffffffa0516f2d [nfsv4]
+>>>>>>> #12 [ffff88007a22ba28] nfs4_init_client at ffffffffa051e9a4 [nfsv4]
+>>>>>>> #13 [ffff88007a22bb20] nfs_get_client at ffffffffa04bd6ba [nfs]
+>>>>>>> #14 [ffff88007a22bb80] nfs4_set_client at ffffffffa051dfb0 [nfsv4]
+>>>>>>> #15 [ffff88007a22bc00] nfs4_create_server at ffffffffa051f4ce [nfsv4]
+>>>>>>> #16 [ffff88007a22bc88] nfs4_remote_mount at ffffffffa051790e [nfsv4]
+>>>>>>> #17 [ffff88007a22bcb0] mount_fs at ffffffff811b3dd9
+>>>>>>> 
+>>>>>>> The SETCLIENT times out 
+>>>>>>> NFS call  setclientid auth=UNIX, 'Linux NFSv4.0 10.19.60.77/10.19.60.33 tcp'
+>>>>>>> NFS reply setclientid: -110
+>>>>>>> 
+>>>>>>> The nfs4_discover_server_trunking() retries 
+>>>>>>> NFS: nfs4_discover_server_trunking after status -110, retrying
+>>>>>>> 
+>>>>>>> The happens when there server is down and so the connections 
+>>>>>>> fail with ECONNREFUSED:
+>>>>>>> RPC:     2 call_connect_status (status -111)
+>>>>>>> 
+>>>>>>> The mount system call never times out in which it did in the past. 
+>>>>>> 
+>>>>>> Why should a mount system call time out other than perhaps in the case
+>>>>>> of a soft mount?
+>>>>>> 
+>>>>> So the mount can go in background. As you know the -o bg is used in
+>>>>> the /etc/fstab so the boot does not get hung up with downed servers. 
+>>>>> That's how it always worked... 
+>>>> 
+>>>> No. As I’ve told you already, this has never worked correctly for 
+>>>> NFSv4, and is not expected to work even if we do change the 
+>>>> trunking discovery because path walks etc will still hang. 
+>>> Just to be clear... Are you saying that v4 mounts can/will hang 
+>>> in the kernel forever regardless of what the timeout and 
+>>> retry mount options are?
+>> 
+>> I’m saying that we should respect the ‘soft’ mount option, but we shouldn’t need to add any new special features for the mount call.
+>> 
+>>>> Please do this in userland as previously suggested.
+>>> If the above is indeed the case, then I'll have to use signals 
+>>> to interrupt the foreground mount...
+>>> 
+>>> But, if setting mount options like
+>>>  http://www.spinics.net/lists/linux-nfs/msg41993.html
+>>> 
+>>> will guarantee will indeed timeout in a timely manner,
+>>> than I would rather using the mount options instead
+>>> of introducing signals into the mix… 
+>> 
+>> For the case of NFSv4:
+>> 
+>> 1) ‘retry' is pretty much obsolete, since the protocol tells us 
+>>    we must not resend unless the connection breaks. All it does 
+>>    today is to act as a multiplier for ‘timeo’.
+> I saw that.... I was thinking '1' was a better multiplier that
+> the default... but it appears it does not matter... 
 > 
-> > ----- Original Message -----
-> >> From: "Trond Myklebust" <trond.myklebust@primarydata.com>
-> >>> I attempted to get a backtrace from one of the uninterruptable apache
-> >>> processes:
-> >>> echo w > /proc/sysrq-trigger
-> >>> 
-> >>> Here's one example:
-> >>> [1227348.003904] apache2       D 0000000000000000     0 10175   1773
-> >>> 0x00000004
-> >>> [1227348.003906]  ffff8802813178c8 0000000000000082 0000000000015e00
-> >>> 0000000000015e00
-> >>> [1227348.003908]  ffff8801d88f03d0 ffff880281317fd8 0000000000015e00
-> >>> ffff8801d88f0000
-> >>> [1227348.003910]  0000000000015e00 ffff880281317fd8 0000000000015e00
-> >>> ffff8801d88f03d0
-> >>> [1227348.003912] Call Trace:
-> >>> [1227348.003918]  [<ffffffffa00a5ca0>] ? rpc_wait_bit_killable+0x0/0x40
-> >>> [sunrpc]
-> >>> [1227348.003923]  [<ffffffffa00a5cc4>] rpc_wait_bit_killable+0x24/0x40
-> >>> [sunrpc]
-> >>> [1227348.003925]  [<ffffffff8156a41f>] __wait_on_bit+0x5f/0x90
-> >>> [1227348.003930]  [<ffffffffa00a5ca0>] ? rpc_wait_bit_killable+0x0/0x40
-> >>> [sunrpc]
-> >>> [1227348.003932]  [<ffffffff8156a4c8>] out_of_line_wait_on_bit+0x78/0x90
-> >>> [1227348.003934]  [<ffffffff81086790>] ? wake_bit_function+0x0/0x40
-> >>> [1227348.003939]  [<ffffffffa00a6611>] __rpc_execute+0x191/0x2a0 [sunrpc]
-> >>> [1227348.003945]  [<ffffffffa00a6746>] rpc_execute+0x26/0x30 [sunrpc]
-> >> 
-> >> That basically means that the process is hanging in the RPC layer,
-> >> somewhere
-> >> in the state machine. â€˜echo 0 >/proc/sys/sunrpc/rpc_debugâ€™ as the â€˜rootâ€™
-> >> user should give us a dump of which state these RPC calls are in. Can you
-> >> please try that?
-> > Yes I will definitely run that the next time it happens, but since it
-> > occurs
-> > sporadically (and I have not yet found a way to reproduce it on demand), it
-> > could be days before it occurs again. I'll also run "netstat -tn" to check
-> > the
-> > TCP connections the next time this happens.
-> 
-> If you are comfortable applying patches and compiling your own kernels, then
-> you might want to try applying the fix for a certain out-of-socket-buffer
-> race that Neil reported, and that I suspect you may be hitting. The patch
-> has been sent to the â€˜stable kernelâ€™ series, and so should appear soon in
-> Debianâ€™s own kernels, but if this is bothering you now, then go for itâ€¦
-> 
-> https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=06ea0bfe6e6043cb56a78935a19f6f8ebc636226
-> 
+>> 2) ‘timeo’ itself only has a user-visible effect when you request 
+>>    a soft mount or a soft RPC call. Otherwise, its main effect is 
+>>    to tell the socket when to ping the server with a TCP ‘keepalive’.
+> Setting 'timeo=100' really cuts down the foreground timeout. Without 
+> it takes over three minutes for the fg to timeout. Setting it
+> to 100, brings the timeout to 30 seconds, consistently 
 
-Trond,
+Yes, but a 10 second soft timeout can screw you over badly if your server crashes or reboots at some point.
 
-This problem has reoccurred, and I have captured the debug output that you requested:
+Tuning the mount ‘timeo’ and ‘retrans’ values purely to make the mount system call fast, would be like choosing sport shoes based solely on their ability to slip onto your feet faster: you may end up playing your game of football in a pair of clogs...
 
-echo 0 >/proc/sys/sunrpc/rpc_debug:
-http://pastebin.com/9juDs2TW
+> Question. You mention some about "path walks etc will still hang".
+> I'm assuming we would get to those hangs because we were able
+> to connect the server. My question is would make sense to 
+> interrupt out of those "path walks"? Maybe its just a slow
+> server??
 
-echo w > /proc/sysrq-trigger ; dmesg:
-http://pastebin.com/1vDx9bNf
+The kernel will continue to honour ‘soft’ in those path walks, so yes, if the server is slow, and it causes a timeout then that timeout is passed back to the user. That is fully in accordance with the documentation for ‘soft’.
+If, however, the server crashes while we’re looking up the path as part of the mount call, and that mount call does not specify ‘soft’, then the client will hang until that server becomes available again. It will not return any errors. This behaviour has not changed since we first introduced NFSv4 in Linux 2.6.0 AFAIK, and there are no plans to change it.
+Another consideration is that if the target directory on top of which you are mounting the new filesystem is itself NFS mounted, then the mount system call may hang if/when that server goes down. Again, the timeout behaviour will vary depending on the mount options that apply to that target directory.
 
-netstat -tn:
-http://pastebin.com/mjxqjmuL
+IOW: there is no way to make mount.nfs honour the ‘retry’ and/or ‘bg' mount options in any consistent fashion by solely relying on kernel timeouts.
 
-One suggestion for debug was to attempt to run "umount -f /path/to/mountpoint"
-repeatedly to attempt to send SIGKILL back up to the application. This always
-returned "Device or resource busy" and I was unable to unmount the filesystem
-until I used "mount -l". 
-
-I was able to kill -9 all but two of the processes that were blocking in
-uninterruptable sleep. Note that I was able to get lsof output on these
-processes this time, and they all appeared to be blocking on access to a
-single file on the nfs share. If I tried to cat said file from this client,
-my terminal would block:
-open("/path/to/file", O_RDONLY)        = 3
-fstat(3, {st_mode=S_IFREG|0644, st_size=42385, ...}) = 0
-mmap(NULL, 1056768, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0) = 0x7fb00f0dc000
-read(3,
-
-However, I could cat the file just fine from another nfs client. Does this 
-additional information shed any light on the source of this problem?
-
-Thanks,
-
-Andrew
-
-
-
-
+_________________________________
+Trond Myklebust
+Linux NFS client maintainer, PrimaryData
+trond.myklebust@primarydata.com
 
