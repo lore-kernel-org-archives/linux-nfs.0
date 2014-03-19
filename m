@@ -1,40 +1,85 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mga11.intel.com ([192.55.52.93]:46057 "EHLO mga11.intel.com"
+Received: from mx1.redhat.com ([209.132.183.28]:52596 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751183AbaCJEwK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 10 Mar 2014 00:52:10 -0400
-From: "Yan, Zheng" <zheng.z.yan@intel.com>
-To: linux-nfs@vger.kernel.org
-Cc: bfields@fieldses.org, "Yan, Zheng" <zheng.z.yan@intel.com>
-Subject: [PATCH] nfsd4: fix memory leak in nfsd4_encode_fattr()
-Date: Mon, 10 Mar 2014 12:52:07 +0800
-Message-Id: <1394427127-9985-1-git-send-email-zheng.z.yan@intel.com>
+	id S1750758AbaCSSW2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 19 Mar 2014 14:22:28 -0400
+Message-ID: <5329E062.9030103@RedHat.com>
+Date: Wed, 19 Mar 2014 14:22:26 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/2] SUNRPC: Ensure that call_connect times out correctly
+References: <1395081645-11906-1-git-send-email-trond.myklebust@primarydata.com>		 <53286A9D.2020007@RedHat.com>		 <362845B0-35A4-4DDF-96F6-42582D66334B@primarydata.com>		 <53288146.4010601@RedHat.com>	 <1395168308.11244.3.camel@leira.trondhjem.org>	 <532897DE.6060204@RedHat.com>	 <EB317FC8-D521-4D80-98D7-FA48B0B9AF0C@primarydata.com>	 <5329900C.3040200@RedHat.com>	 <DAF0940D-107D-4251-B00A-DE829A31B36E@primarydata.com>	 <5329A4B3.20601@RedHat.com>	 <0C0E5EE2-E7BD-4BE3-961F-3B632B45F026@primarydata.com>	 <5329CF7C.7090308@RedHat.com> <1395250160.7168.1.camel@leira.trondhjem.org>
+In-Reply-To: <1395250160.7168.1.camel@leira.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-fh_put() does not free the temporary file handle.
 
-Signed-off-by: Yan, Zheng <zheng.z.yan@intel.com>
----
- fs/nfsd/nfs4xdr.c | 4 +++-
- 1 file changed, 3 insertions(+), 1 deletion(-)
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 63f2395..8de4c9d 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -2499,8 +2499,10 @@ out:
- 		security_release_secctx(context, contextlen);
- #endif /* CONFIG_NFSD_V4_SECURITY_LABEL */
- 	kfree(acl);
--	if (tempfh)
-+	if (tempfh) {
- 		fh_put(tempfh);
-+		kfree(tempfh);
-+	}
- 	return status;
- out_nfserr:
- 	status = nfserrno(err);
--- 
-1.8.5.3
+On 03/19/2014 01:29 PM, Trond Myklebust wrote:
+> On Wed, 2014-03-19 at 13:10 -0400, Steve Dickson wrote:
+>>
+>> On 03/19/2014 11:04 AM, Trond Myklebust wrote:
+>>> IOW: there is no way to make mount.nfs honour the ‘retry’ and/or ‘bg' 
+>>> mount options in any consistent fashion by solely relying on kernel timeouts.
+>> I went back and took a look at how bg mounts worked in a number of
+>> older kernels f19(3.12) all the way back to RHEL6 kernel (2.6). 
+>>
+>> I turns out you are right. The bg mounts were not depending on
+>> timeouts they were depended on the mount to fail with ECONNREFUSED
+>> The very first one, which is the reason the bg mount happen
+>> so fast... 
+>>
+>> Its seems these days ECONNREFUSED are no longer return 
+>> as an error codes. They basically are turned into a 
+>> timeout... Just curious as to why ECONNREFUSED are 
+>> no longer returned?
+>>
+>> Again, thanks for the cycles!
+> 
+> If the server is down during the initial rpc client creation, then I’d
+> still expect that to fail with ECONNREFUSED due to the rpc_ping() call.
+> 
+> Does the following patch help?
+> 
+> 
+> 8<------------------------------------------------------------
+> From dad628cc357a06cff8ce04300ba5c19bd92e73eb Mon Sep 17 00:00:00 2001
+> From: Trond Myklebust <trond.myklebust@primarydata.com>
+> Date: Wed, 19 Mar 2014 13:25:43 -0400
+> Subject: [PATCH] SUNRPC: Ensure call_status() deals correctly with SOFTCONN
+>  tasks
+> 
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> ---
+>  net/sunrpc/clnt.c | 4 ++++
+>  1 file changed, 4 insertions(+)
+> 
+> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+> index cea1308a6fda..ef96568902c5 100644
+> --- a/net/sunrpc/clnt.c
+> +++ b/net/sunrpc/clnt.c
+> @@ -2004,6 +2004,10 @@ call_status(struct rpc_task *task)
+>  	case -EHOSTDOWN:
+>  	case -EHOSTUNREACH:
+>  	case -ENETUNREACH:
+> +		if (RPC_IS_SOFTCONN(task)) {
+> +			rpc_exit(task, status);
+> +			break;
+> +		}
+>  		/*
+>  		 * Delay any retries for 3 seconds, then handle as if it
+>  		 * were a timeout.
+> 
+No... but I do thing that patch make sense... 
 
+What's going on is-ECONNREFUSED is being seen in call_connect_status() 
+and the task is not a soft connection. So call_timeout() is call which 
+eventual times out the mount... 
+
+So just for fun I make the SETCLIENTID rpc soft, but for some
+reason that didn't work either... I thought for sure it would... 
+
+steved.
