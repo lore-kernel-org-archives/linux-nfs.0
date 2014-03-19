@@ -1,83 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f179.google.com ([209.85.223.179]:47419 "EHLO
-	mail-ie0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754145AbaCMUsJ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 13 Mar 2014 16:48:09 -0400
-Received: by mail-ie0-f179.google.com with SMTP id lx4so1643473iec.38
-        for <linux-nfs@vger.kernel.org>; Thu, 13 Mar 2014 13:48:08 -0700 (PDT)
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
-Subject: Re: [PATCH] nfs: emit a fsnotify_nameremove call in sillyrename codepath
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-In-Reply-To: <20140313162218.570e0819@tlielax.poochiereds.net>
-Date: Thu, 13 Mar 2014 16:47:49 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <96492A5A-C738-4E20-88B9-D01995217981@primarydata.com>
-References: <1394738651-26783-1-git-send-email-jlayton@redhat.com> <35EEB018-FD2D-4C52-AA6B-24B66B11D6B6@primarydata.com> <20140313162218.570e0819@tlielax.poochiereds.net>
-To: Layton Jeff <jlayton@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:2843 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933610AbaCSMnk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 19 Mar 2014 08:43:40 -0400
+Message-ID: <53298930.3090806@RedHat.com>
+Date: Wed, 19 Mar 2014 08:10:24 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/2] NFSv4: Ensure we respect soft mount timeouts during
+ trunking discovery
+References: <1395173006-14871-1-git-send-email-trond.myklebust@primarydata.com> <1395173006-14871-2-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1395173006-14871-2-git-send-email-trond.myklebust@primarydata.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Mar 13, 2014, at 16:22, Jeff Layton <jlayton@redhat.com> wrote:
 
-> On Thu, 13 Mar 2014 16:08:01 -0400
-> Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+On 03/18/2014 04:03 PM, Trond Myklebust wrote:
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Tested-by: Steve Dickson <steved@redhat.com>
+
+steved.
+> ---
+>  fs/nfs/nfs4state.c | 4 +++-
+>  1 file changed, 3 insertions(+), 1 deletion(-)
 > 
->> 
->> On Mar 13, 2014, at 15:24, Jeff Layton <jlayton@redhat.com> wrote:
->> 
->>> If a file is sillyrenamed, then the generic vfs_unlink code will skip
->>> emitting fsnotify events for it.
->>> 
->>> This patch has the sillyrename code do that instead.
->>> 
->>> In truth this is a little bit odd since we aren't actually removing the
->>> dentry per-se, but renaming it. Still, this is probably the right thing
->>> to do since it's what userland apps expect to see when an unlink()
->>> occurs or some file is renamed on top of the dentry.
->>> 
->>> Signed-off-by: Jeff Layton <jlayton@redhat.com>
->>> ---
->>> fs/nfs/dir.c    | 1 +
->>> fs/nfs/unlink.c | 2 ++
->>> 2 files changed, 3 insertions(+)
->>> 
->>> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
->>> index 4a48fe4b84b6..591aec9b1719 100644
->>> --- a/fs/nfs/dir.c
->>> +++ b/fs/nfs/dir.c
->>> @@ -37,6 +37,7 @@
->>> #include <linux/sched.h>
->>> #include <linux/kmemleak.h>
->>> #include <linux/xattr.h>
->>> +#include <linux/fsnotify.h>
->>> 
->>> #include "delegation.h"
->>> #include "iostat.h"
->>> diff --git a/fs/nfs/unlink.c b/fs/nfs/unlink.c
->>> index 11d78944de79..547ed0cd59db 100644
->>> --- a/fs/nfs/unlink.c
->>> +++ b/fs/nfs/unlink.c
->>> @@ -355,6 +355,8 @@ static void nfs_async_rename_done(struct rpc_task *task, void *calldata)
->>> 
->>> 	if (task->tk_status != 0)
->>> 		nfs_cancel_async_unlink(old_dentry);
->>> +	else if (old_dentry->d_flags & DCACHE_NFSFS_RENAMED)
->>> +		fsnotify_nameremove(old_dentry, S_ISDIR(old_dentry->d_inode->i_mode));
->>> }
->> 
->> Any reason why we shouldn’t just do this in nfs_sillyrename() itself?
->> 
+> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
+> index f544a1560c83..2349518eef2c 100644
+> --- a/fs/nfs/nfs4state.c
+> +++ b/fs/nfs/nfs4state.c
+> @@ -2075,8 +2075,10 @@ again:
+>  	switch (status) {
+>  	case 0:
+>  		break;
+> -	case -NFS4ERR_DELAY:
+>  	case -ETIMEDOUT:
+> +		if (clnt->cl_softrtry)
+> +			break;
+> +	case -NFS4ERR_DELAY:
+>  	case -EAGAIN:
+>  		ssleep(1);
+>  	case -NFS4ERR_STALE_CLIENTID:
 > 
-> We certainly could, but then you'd probably never get the event if the
-> process waiting on the async sillyrename got killed while waiting on
-> the reply.
-
-Just send it anyway. The dentry will have been scheduled to be unlinked no matter whether or not the process is killed.
-
-_________________________________
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
-
