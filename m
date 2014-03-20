@@ -1,156 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:60000 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:1359 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754066AbaCCUTm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 3 Mar 2014 15:19:42 -0500
-Date: Mon, 3 Mar 2014 15:19:41 -0500
-To: Michael Scherer <misc@zarb.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: permit to use multiple time the -H option
-Message-ID: <20140303201941.GB10659@fieldses.org>
-References: <1393753112-14879-1-git-send-email-misc@zarb.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1393753112-14879-1-git-send-email-misc@zarb.org>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+	id S1751671AbaCTUMg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 20 Mar 2014 16:12:36 -0400
+Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s2KKCZmU029963
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 20 Mar 2014 16:12:36 -0400
+Received: from tonberry.usersys.redhat.com (dhcp145-38.rdu.redhat.com [10.13.145.38])
+	by int-mx02.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id s2KKCZRB030479
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=NO)
+	for <linux-nfs@vger.kernel.org>; Thu, 20 Mar 2014 16:12:35 -0400
+Received: from tonberry.usersys.redhat.com (localhost [127.0.0.1])
+	by tonberry.usersys.redhat.com (8.14.5/8.14.5) with ESMTP id s2KKCZVr064104
+	for <linux-nfs@vger.kernel.org>; Thu, 20 Mar 2014 16:12:35 -0400
+Received: (from smayhew@localhost)
+	by tonberry.usersys.redhat.com (8.14.5/8.14.5/Submit) id s2KKCYZM064102
+	for linux-nfs@vger.kernel.org; Thu, 20 Mar 2014 16:12:34 -0400
+From: Scott Mayhew <smayhew@redhat.com>
+To: linux-nfs@vger.kernel.org
+Subject: [nfs-utils PATCH] mount: chk_mountpoint should only check for execute perms for unpriveleged users
+Date: Thu, 20 Mar 2014 16:12:34 -0400
+Message-Id: <1395346354-64069-1-git-send-email-smayhew@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Mar 02, 2014 at 10:38:32AM +0100, Michael Scherer wrote:
-> This permit to have 1 nfsd listening on more than 1
-> interface for multihomed systems, without having to
-> listen on all interfaces and filtering later.
-> ---
->  utils/nfsd/nfsd.c   | 51 +++++++++++++++++++++++++++++++++++----------------
->  utils/nfsd/nfsd.man |  3 ++-
->  2 files changed, 37 insertions(+), 17 deletions(-)
-> 
-> diff --git a/utils/nfsd/nfsd.c b/utils/nfsd/nfsd.c
-> index edeb621..7ab6fcf 100644
-> --- a/utils/nfsd/nfsd.c
-> +++ b/utils/nfsd/nfsd.c
-> @@ -95,9 +95,10 @@ nfsd_enable_protos(unsigned int *proto4, unsigned int *proto6)
->  int
->  main(int argc, char **argv)
->  {
-> -	int	count = NFSD_NPROC, c, error = 0, portnum = 0, fd, found_one;
-> +	int	count = NFSD_NPROC, c, i, error = 0, portnum = 0, fd, found_one;
->  	char *p, *progname, *port;
-> -	char *haddr = NULL;
-> +	char **haddr = NULL;
-> +	unsigned int hcounter = 0;
->  	int	socket_up = 0;
->  	unsigned int minorvers = 0;
->  	unsigned int minorversset = 0;
-> @@ -118,6 +119,13 @@ main(int argc, char **argv)
->  		exit(1);
->  	}
->  
-> +	haddr = malloc(sizeof(char*));
-> +	if (!haddr) {
-> +		fprintf(stderr, "%s: unable to allocate memory.\n", progname);
-> +		exit(1);
-> +	}
-> +	haddr[0] = NULL;
-> +
+Otherwise 'mount -o remount' fails on mounts that have root squashing
+enabled and world execute perms disabled.
 
-Checking "man malloc..."  realloc(NULL) is the same as malloc(), so you
-can just skip this initial allocation (and the "if hcounter" below) and
-count on the realloc below doing the right thing when it needs to.
+Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+---
+ utils/mount/utils.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-Otherwise, allowing multiple -H options seems like a reasonable thing to
-do.
+diff --git a/utils/mount/utils.c b/utils/mount/utils.c
+index ede77a8..92662ed 100644
+--- a/utils/mount/utils.c
++++ b/utils/mount/utils.c
+@@ -130,7 +130,7 @@ int chk_mountpoint(const char *mount_point)
+ 		mount_error(NULL, mount_point, ENOTDIR);
+ 		return 1;
+ 	}
+-	if (access(mount_point, X_OK) < 0) {
++	if (getuid() != 0 && geteuid() != 0 && access(mount_point, X_OK) < 0) {
+ 		mount_error(NULL, mount_point, errno);
+ 		return 1;
+ 	}
+-- 
+1.7.11.7
 
---b.
-
->  	xlog_syslog(0);
->  	xlog_stderr(1);
->  
-> @@ -127,17 +135,24 @@ main(int argc, char **argv)
->  			xlog_config(D_ALL, 1);
->  			break;
->  		case 'H':
-> -			/*
-> -			 * for now, this only handles one -H option. Use the
-> -			 * last one specified.
-> -			 */
-> -			free(haddr);
-> -			haddr = strdup(optarg);
-> -			if (!haddr) {
-> +			if (hcounter) {
-> +				haddr = realloc(haddr, sizeof(char*) * hcounter+1);
-> +
-> +				if(!haddr) {
-> +					fprintf(stderr, "%s: unable to allocate "
-> +							"memory.\n", progname);
-> +					exit(1);
-> +				}
-> +			}
-> +
-> +			haddr[hcounter] = strdup(optarg);
-> +			if (!haddr[hcounter]) {
->  				fprintf(stderr, "%s: unable to allocate "
->  					"memory.\n", progname);
->  				exit(1);
->  			}
-> +
-> +			hcounter++;
->  			break;
->  		case 'P':	/* XXX for nfs-server compatibility */
->  		case 'p':
-> @@ -286,16 +301,18 @@ main(int argc, char **argv)
->  	 * interfaces, these are a no-op.
->  	 */
->  	nfssvc_setvers(versbits, minorvers, minorversset);
-> - 
-> -	error = nfssvc_set_sockets(AF_INET, proto4, haddr, port);
-> -	if (!error)
-> -		socket_up = 1;
-> +
-> +	for(i=0; i <= hcounter; i++) {
-> +		error = nfssvc_set_sockets(AF_INET, proto4, haddr[i], port);
-> +		if (!error)
-> +			socket_up = 1;
->  
->  #ifdef IPV6_SUPPORTED
-> -	error = nfssvc_set_sockets(AF_INET6, proto6, haddr, port);
-> -	if (!error)
-> -		socket_up = 1;
-> +		error = nfssvc_set_sockets(AF_INET6, proto6, haddr[i], port);
-> +		if (!error)
-> +			socket_up = 1;
->  #endif /* IPV6_SUPPORTED */
-> +	}
->  
->  set_threads:
->  	/* don't start any threads if unable to hand off any sockets */
-> @@ -328,6 +345,8 @@ set_threads:
->  		xlog(L_ERROR, "error starting threads: errno %d (%m)", errno);
->  out:
->  	free(port);
-> +	for(i=0; i <= hcounter; i++)
-> +		free(haddr[i]);
->  	free(haddr);
->  	free(progname);
->  	return (error != 0);
-> diff --git a/utils/nfsd/nfsd.man b/utils/nfsd/nfsd.man
-> index 7de0867..cdc14ba 100644
-> --- a/utils/nfsd/nfsd.man
-> +++ b/utils/nfsd/nfsd.man
-> @@ -35,7 +35,8 @@ Note that
->  .B lockd
->  (which performs file locking services for NFS) may still accept
->  request on all known network addresses.  This may change in future
-> -releases of the Linux Kernel.
-> +releases of the Linux Kernel. This option can be used multiple time 
-> +to listen to more than one interface.
->  .TP
->  .B \-p " or " \-\-port  port
->  specify a different port to listen on for NFS requests. By default,
-> -- 
-> 1.8.5.3
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
