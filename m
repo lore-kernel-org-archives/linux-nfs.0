@@ -1,128 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.opengridcomputing.com ([72.48.136.20]:55428 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751173AbaC1PV2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Mar 2014 11:21:28 -0400
-Message-ID: <53359377.8060502@opengridcomputing.com>
-Date: Fri, 28 Mar 2014 10:21:27 -0500
-From: Tom Tucker <tom@opengridcomputing.com>
+Received: from mx1.redhat.com ([209.132.183.28]:40811 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757116AbaCTNtM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 20 Mar 2014 09:49:12 -0400
+Message-ID: <532AF1D1.7070400@RedHat.com>
+Date: Thu, 20 Mar 2014 09:49:05 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>,
-        Steve Wise <swise@opengridcomputing.com>
-CC: trond.myklebust@primarydata.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] Fix regression in NFSRDMA server
-References: <20140325201457.6861.21819.stgit@build.ogc.int> <20140328020834.GD27633@fieldses.org>
-In-Reply-To: <20140328020834.GD27633@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+To: Noam Meltzer <noam@primarydata.com>, Simo Sorce <simo@redhat.com>
+CC: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
+        sssd-devel <sssd-devel@lists.fedorahosted.org>
+Subject: Re: [PATCH v2 0/5] NFSv4 rpc.idmapd plugin
+References: <1393918676-20865-1-git-send-email-noam@primarydata.com>	<5321CDB6.7010803@RedHat.com>	<1394729939.32465.231.camel@willson.li.ssimo.org>	<20140313172531.GA7124@fieldses.org>	<1394732462.32465.235.camel@willson.li.ssimo.org> <CAOoFWK_uNLEim7MH=K=Ojge_KjcJk6V7p1-LFcYNPC9=fZ90fQ@mail.gmail.com>
+In-Reply-To: <CAOoFWK_uNLEim7MH=K=Ojge_KjcJk6V7p1-LFcYNPC9=fZ90fQ@mail.gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Bruce,
 
-On 3/27/14 9:08 PM, J. Bruce Fields wrote:
-> On Tue, Mar 25, 2014 at 03:14:57PM -0500, Steve Wise wrote:
->> From: Tom Tucker <tom@ogc.us>
->>
->> The server regression was caused by the addition of rq_next_page
->> (afc59400d6c65bad66d4ad0b2daf879cbff8e23e). There were a few places that
->> were missed with the update of the rq_respages array.
-> Apologies.  (But, it could happen again--could we set up some regular
-> testing?  It doesn't have to be anything fancy, just cthon over
-> rdma--really, just read and write over rdma--would probably catch a
-> lot.)
 
-I think Chelsio is going to be adding some NFSRDMA regression testing to 
-their system test.
+On 03/20/2014 03:33 AM, Noam Meltzer wrote:
+> 
+> 
+> 
+> On Thu, Mar 13, 2014 at 7:41 PM, Simo Sorce <simo@redhat.com <mailto:simo@redhat.com>> wrote:
+> 
+>     On Thu, 2014-03-13 at 13:25 -0400, J. Bruce Fields wrote:
+>     > On Thu, Mar 13, 2014 at 12:58:59PM -0400, Simo Sorce wrote:
+>     > > On Thu, 2014-03-13 at 11:24 -0400, Steve Dickson wrote:
+>     > >
+>     > > > V4 servers now have an option of returning a uid string (aka "3606")
+>     > > > where the NFS client just converts that into the uid.
+>     > >
+>     > > Can the client tell the server *not to do that* ?
+>     >
+>     > The client can use kerberos, in which case the server won't do that.
+> 
+>     This is sufficient, thanks.
+> 
+>     > Other than that, no, the behavior can only be controlled by server-side
+>     > configuration.
+> 
+>     A little sub-optimal if the server can do either but the client can have
+>     a choice, but ok.
+> 
+> 
+> Sorry for the late response. A misplaced email filtering rule had moved it away from my inbox.
+> How can we push this forward?
+> 
+Not sure since I don't maintain any of the code these patches change... 
 
-> Also: I don't get why all these rq_next_page initializations are
-> required.  Why isn't the initialization at the top of svc_process()
-> enough?  Is rdma using it before we get to that point?  The only use of
-> it I see off hand is in the while loop that you're deleting.
-
-I didn't apply tremendous deductive powers here, I just added updates to 
-rq_next_page wherever the transport messed with rq_respages. That said, 
-NFS WRITE is likely the culprit since the write is completed as a deferral 
-and therefore the request doesn't go through svc_process, so if 
-rq_next_page is bogus, the cleanup will free/re-use pages that are 
-actually in use by the transport.
-
-Tom
-> --b.
->
->> Signed-off-by: Tom Tucker <tom@ogc.us>
->> Tested-by: Steve Wise <swise@ogc.us>
->> ---
->>
->>   net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |   12 ++++--------
->>   net/sunrpc/xprtrdma/svc_rdma_sendto.c   |    1 +
->>   2 files changed, 5 insertions(+), 8 deletions(-)
->>
->> diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
->> index 0ce7552..8d904e4 100644
->> --- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
->> +++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
->> @@ -90,6 +90,7 @@ static void rdma_build_arg_xdr(struct svc_rqst *rqstp,
->>   		sge_no++;
->>   	}
->>   	rqstp->rq_respages = &rqstp->rq_pages[sge_no];
->> +	rqstp->rq_next_page = rqstp->rq_respages + 1;
->>   
->>   	/* We should never run out of SGE because the limit is defined to
->>   	 * support the max allowed RPC data length
->> @@ -169,6 +170,7 @@ static int map_read_chunks(struct svcxprt_rdma *xprt,
->>   		 */
->>   		head->arg.pages[page_no] = rqstp->rq_arg.pages[page_no];
->>   		rqstp->rq_respages = &rqstp->rq_arg.pages[page_no+1];
->> +		rqstp->rq_next_page = rqstp->rq_respages + 1;
->>   
->>   		byte_count -= sge_bytes;
->>   		ch_bytes -= sge_bytes;
->> @@ -276,6 +278,7 @@ static int fast_reg_read_chunks(struct svcxprt_rdma *xprt,
->>   
->>   	/* rq_respages points one past arg pages */
->>   	rqstp->rq_respages = &rqstp->rq_arg.pages[page_no];
->> +	rqstp->rq_next_page = rqstp->rq_respages + 1;
->>   
->>   	/* Create the reply and chunk maps */
->>   	offset = 0;
->> @@ -520,13 +523,6 @@ next_sge:
->>   	for (ch_no = 0; &rqstp->rq_pages[ch_no] < rqstp->rq_respages; ch_no++)
->>   		rqstp->rq_pages[ch_no] = NULL;
->>   
->> -	/*
->> -	 * Detach res pages. If svc_release sees any it will attempt to
->> -	 * put them.
->> -	 */
->> -	while (rqstp->rq_next_page != rqstp->rq_respages)
->> -		*(--rqstp->rq_next_page) = NULL;
->> -
->>   	return err;
->>   }
->>   
->> @@ -550,7 +546,7 @@ static int rdma_read_complete(struct svc_rqst *rqstp,
->>   
->>   	/* rq_respages starts after the last arg page */
->>   	rqstp->rq_respages = &rqstp->rq_arg.pages[page_no];
->> -	rqstp->rq_next_page = &rqstp->rq_arg.pages[page_no];
->> +	rqstp->rq_next_page = rqstp->rq_respages + 1;
->>   
->>   	/* Rebuild rq_arg head and tail. */
->>   	rqstp->rq_arg.head[0] = head->arg.head[0];
->> diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
->> index c1d124d..11e90f8 100644
->> --- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
->> +++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
->> @@ -625,6 +625,7 @@ static int send_reply(struct svcxprt_rdma *rdma,
->>   		if (page_no+1 >= sge_no)
->>   			ctxt->sge[page_no+1].length = 0;
->>   	}
->> +	rqstp->rq_next_page = rqstp->rq_respages + 1;
->>   	BUG_ON(sge_no > rdma->sc_max_sge);
->>   	memset(&send_wr, 0, sizeof send_wr);
->>   	ctxt->wr_op = IB_WR_SEND;
->>
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
+steved.
+ 
