@@ -1,67 +1,101 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:36134 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754422AbaC0P7R convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Mar 2014 11:59:17 -0400
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
-Subject: Re: Kernel oops/panic with NFS over RDMA mount after disrupted Infiniband connection
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <lh0le0$u5$1@ger.gmane.org>
-Date: Thu, 27 Mar 2014 08:59:06 -0700
-Cc: linux-rdma@vger.kernel.org,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <B7D4A29C-5E1F-4B6C-A8FC-C46D8DF6A87D@oracle.com>
-References: <5332D425.3030803@ims.co.at> <4E6350BB-5E9C-40D9-8624-6CAA78E5B902@oracle.com> <lh0le0$u5$1@ger.gmane.org>
-To: Reiter Rafael <rafael.reiter@ims.co.at>
+Received: from mail-la0-f41.google.com ([209.85.215.41]:37543 "EHLO
+	mail-la0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750917AbaCTDSM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 19 Mar 2014 23:18:12 -0400
+Received: by mail-la0-f41.google.com with SMTP id gl10so166220lab.0
+        for <linux-nfs@vger.kernel.org>; Wed, 19 Mar 2014 20:18:11 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <20140319132423.GA18831@us.ibm.com>
+References: <CAHEKYV7JKuYaQv7c+CEtUZN+AXgR0XamphEtD+on1kw7FSiakg@mail.gmail.com>
+	<20140319132423.GA18831@us.ibm.com>
+Date: Wed, 19 Mar 2014 23:18:10 -0400
+Message-ID: <CAHEKYV5xrv5ryh9oMyBT1y3kPDHHmif2f0rTA6DxPUbkSHf8eg@mail.gmail.com>
+Subject: Re: Exporting partition mounted inside another
+From: Mauricio Tavares <raubvogel@gmail.com>
+To: Mauricio Tavares <raubvogel@gmail.com>, linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi-
+On Wed, Mar 19, 2014 at 9:24 AM, Malahal Naineni <malahal@us.ibm.com> wrote:
+> Mauricio Tavares [raubvogel@gmail.com] wrote:
+>>     I have in my NFSv4 server a directory called /exports where I
+>> place everything I want to export:
+>>
+>> /dev/vg1/logs            19.7G    651.0M     19.0G   3% /export/logs
+>> /dev/vg1/home           196.9G    163.8G     32.9G  83% /export/home
+>> /dev/vg1/pickles        504.0G     62.7G    441.2G  12% /export/home/pickles
+>> /dev/vg1/stuff           98.4G     21.9G     76.5G  22% /export/public
+>>
+>> Note that user pickles does have a lot of crap, so he gets to have his
+>> own partition. My own home dir is in /export/home/raub. Now, I export
+>> them as:
+>>
+>> spindizzy> cat /etc/exports
+>> /export 10.0.0.0/24(ro,fsid=0,no_subtree_check,sync)
+>> /export/logs 10.0.0.21/24(rw,insecure,root_squash,no_subtree_check,sync)
+>> /export/home 10.0.0.0/24(rw,insecure,root_squash,no_subtree_check,sync)
+>> /export/public 10.0.0.0/24(ro,insecure,root_squash,no_subtree_check,sync)
+>> spindizzy>
+>
+> You didn't export /export/home/pickles file system. Export that by
+> listing it in /etc/exports. Also, look at (crossmnt or no_hide options)
+>
+       Thanks for your reply. I added
 
+/export/home/pickles 10.0.0.0/24(rw,insecure,root_squash,no_subtree_check,sync)
 
-On Mar 27, 2014, at 12:53 AM, Reiter Rafael <rafael.reiter@ims.co.at> wrote:
+to /etc/exports and then did exportfs -r. Running exports told me it
+was being exported:
 
-> On 03/26/2014 07:15 PM, Chuck Lever wrote:
->> 
->> Hi Rafael-
->> 
->> I’ll take a look. Can you report your HCA and how you reproduce this issue?
-> 
-> The HCA is Mellanox Technologies MT26428.
-> 
-> Reproduction:
-> 1) Mount a directory via NFS/RDMA
-> mount -t nfs -o port=20049,rdma,vers=4.0,timeo=900 172.16.100.2:/ /mnt/
-> 2) Pull the Infiniband cable or use ibportstate to disrupt the Infiniband connection
-> 3) ls /mnt
-> 4) wait 5-30 seconds
+spindizzy> exportfs
+/export         10.0.0.0/24
+/export/logs    10.0.0.21/24
+/export/home    10.0.0.0/24
+/export/home/pickles
+                10.0.0.0/24
+/export/public  10.0.0.0/24
+spindizzy>
 
-Thanks for the information.
+If I go back to the desktop, it claims fileserver is exporting pickles:
 
-I have that HCA, but I won’t have access to my test systems for a week (traveling). So can you try this:
+raub@desktop:~$ showmount -e fileserver
+Export list for fileserver:
+/export/public       10.0.0.0/24
+/export/home/pickles 10.0.0.0/24
+/export/home         10.0.0.0/24
+/export/logs         10.0.0.21/24
+/export              10.0.0.0/24
+raub@desktop:~$
 
- # rpcdebug -m rpc -s trans
+But, as before, when I tried to mount pickles, it doesn't:
 
-then reproduce (starting with step 1 above). Some debugging output will appear at the tail of /var/log/messages. Copy it to this thread.
+fileserver:/home/raub     197G  164G   33G  84% /home/raub
+fileserver:/home/pickles  197G  164G   33G  84% /home/pickles
 
-> 
->> 
->> Do you (or does anyone) know whether OpenSuSE uses the stock upstream providers, or has any of OFED been applied to this kernel?
-> 
-> My first post was misleading -- I use the vanilla 3.10.17 kernel, and the error occurs with and without Mellanox OFED. The above report
-> references the vanilla kernel.
-> 
-> Rafael
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Same outcome with crossmnt or nohide
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+>>
+>> and mount /export/user using automount,
+>>
+>> cat /etc/auto.home
+>> #
+>> # File: /etc/auto.home
+>> #
+>> *   -fstype=nfs4,hard,intr,rsize=8192,wsize=8192 fileserver:/home/&
+>>
+>> When I try to automount (say by logging in as saif user) pickles'
+>> homedir, it does not mount /dev/vg1/pickles. Instead, it just mounts
+>> it as if only existed in /dev/vg1/home/pickles in the fileserver:
+>>
+>> fileserver:/home/raub     197G  164G   33G  84% /home/raub
+>> fileserver:/home/pickles  197G  164G   33G  84% /home/pickles
+>>
+>> Sounds like I misconfigured my /etc/exports, but how?
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
+>
