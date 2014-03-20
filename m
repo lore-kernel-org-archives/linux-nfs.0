@@ -1,87 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f176.google.com ([209.85.192.176]:37134 "EHLO
-	mail-pd0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751435AbaC2CX5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Mar 2014 22:23:57 -0400
-Received: by mail-pd0-f176.google.com with SMTP id r10so5573066pdi.21
-        for <linux-nfs@vger.kernel.org>; Fri, 28 Mar 2014 19:23:57 -0700 (PDT)
-Message-ID: <53362EB3.2040809@gmail.com>
-Date: Sat, 29 Mar 2014 10:23:47 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
+Received: from mail-oa0-f53.google.com ([209.85.219.53]:34485 "EHLO
+	mail-oa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750870AbaCTHgt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Mar 2014 03:36:49 -0400
+Received: by mail-oa0-f53.google.com with SMTP id j17so482427oag.40
+        for <linux-nfs@vger.kernel.org>; Thu, 20 Mar 2014 00:36:49 -0700 (PDT)
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: linux-nfs@vger.kernel.org
-Subject: [PATCH v2] NFSD: Clear wcc data between compound ops
-References: <533299E9.6010806@gmail.com> <20140328211920.GD6041@fieldses.org> <5335FAB2.8050404@gmail.com> <20140329005831.GO6041@fieldses.org>
-In-Reply-To: <20140329005831.GO6041@fieldses.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+In-Reply-To: <1394732462.32465.235.camel@willson.li.ssimo.org>
+References: <1393918676-20865-1-git-send-email-noam@primarydata.com>
+	<5321CDB6.7010803@RedHat.com>
+	<1394729939.32465.231.camel@willson.li.ssimo.org>
+	<20140313172531.GA7124@fieldses.org>
+	<1394732462.32465.235.camel@willson.li.ssimo.org>
+Date: Thu, 20 Mar 2014 09:36:49 +0200
+Message-ID: <CAOoFWK8xG5fRbNifoAp48u8UhXtB+AuPKy4ssSGi1_d+K2QFiw@mail.gmail.com>
+Subject: Re: [PATCH v2 0/5] NFSv4 rpc.idmapd plugin
+From: Noam Meltzer <noam@primarydata.com>
+To: Simo Sorce <simo@redhat.com>
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Steve Dickson <SteveD@redhat.com>, linux-nfs@vger.kernel.org,
+        sssd-devel <sssd-devel@lists.fedorahosted.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Testing NFS4.0 by pynfs, I got some messeages as,
-"nfsd: inode locked twice during operation."
+On Thu, Mar 13, 2014 at 7:41 PM, Simo Sorce <simo@redhat.com> wrote:
+>
+> On Thu, 2014-03-13 at 13:25 -0400, J. Bruce Fields wrote:
+> > On Thu, Mar 13, 2014 at 12:58:59PM -0400, Simo Sorce wrote:
+> > > On Thu, 2014-03-13 at 11:24 -0400, Steve Dickson wrote:
+> > >
+> > > > V4 servers now have an option of returning a uid string (aka "3606")
+> > > > where the NFS client just converts that into the uid.
+> > >
+> > > Can the client tell the server *not to do that* ?
+> >
+> > The client can use kerberos, in which case the server won't do that.
+>
+> This is sufficient, thanks.
+>
+> > Other than that, no, the behavior can only be controlled by server-side
+> > configuration.
+>
+> A little sub-optimal if the server can do either but the client can have
+> a choice, but ok.
+>
 
-When one compound RPC contains two or more ops that locks
-the filehandle,the second op will cause the message.
+Sorry for the late response. A misplaced email filtering rule had
+moved it away from my inbox.
+How can we push this forward?
 
-As two SETATTR ops, after the first SETATTR, nfsd will not call
-fh_put() to release current filehandle, it means filehandle have
-unlocked with fh_post_saved = 1.
-The second SETATTR find fh_post_saved = 1, and printk the message.
-
-v2: introduce helper fh_clear_wcc().
-
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
----
-  fs/nfsd/nfs4proc.c |  2 ++
-  fs/nfsd/nfsfh.h    | 14 +++++++++++++-
-  2 files changed, 15 insertions(+), 1 deletion(-)
-
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 550faf2..9849c61 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1358,6 +1358,8 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
-  			goto encode_op;
-  		}
-
-+		fh_clear_wcc(current_fh);
-+
-  		/* If op is non-idempotent */
-  		if (opdesc->op_flags & OP_MODIFIES_SOMETHING) {
-  			plen = opdesc->op_rsize_bop(rqstp, op);
-diff --git a/fs/nfsd/nfsfh.h b/fs/nfsd/nfsfh.h
-index 4775bc4..ad67964 100644
---- a/fs/nfsd/nfsfh.h
-+++ b/fs/nfsd/nfsfh.h
-@@ -133,6 +133,17 @@ fh_init(struct svc_fh *fhp, int maxsize)
-
-  #ifdef CONFIG_NFSD_V3
-  /*
-+ * The wcc data stored in current_fh should be cleared
-+ * between compound ops.
-+ */
-+static inline void
-+fh_clear_wcc(struct svc_fh *fhp)
-+{
-+	fhp->fh_post_saved = 0;
-+	fhp->fh_pre_saved = 0;
-+}
-+
-+/*
-   * Fill in the pre_op attr for the wcc data
-   */
-  static inline void
-@@ -152,7 +163,8 @@ fill_pre_wcc(struct svc_fh *fhp)
-
-  extern void fill_post_wcc(struct svc_fh *);
-  #else
--#define	fill_pre_wcc(ignored)
-+#define fh_clear_wcc(ignored)
-+#define fill_pre_wcc(ignored)
-  #define fill_post_wcc(notused)
-  #endif /* CONFIG_NFSD_V3 */
 
 -- 
-1.9.0
+Noam Meltzer
+Linux Software Engineer
+PRIMARY DATA
 
+P.O. Box 12650, Herzliya Pituach 4673300
+9 Hamenofim St. Akerstein Towers, Tower A, 5th fl. Herzliya
+
+Office: +972-77-8981888 | Fax: +972-3-7617140 | Mobile: +972-54-5873843
+
+Email: noam@primarydata.com
