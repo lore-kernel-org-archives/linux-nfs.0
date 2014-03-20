@@ -1,21 +1,18 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from www.quattroholding.com ([190.33.200.122]:54886 "HELO
-	healthalliance.com.pa" rhost-flags-OK-FAIL-OK-FAIL) by vger.kernel.org
-	with SMTP id S1752612AbaC3K2P (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 30 Mar 2014 06:28:15 -0400
-Message-ID: <DF63953B.4BF63A54@healthalliance.com.pa>
-Date: Sun, 30 Mar 2014 09:25:09 +0200
-From: "Linux fsdevel" <yrivera@healthalliance.com.pa>
-To: <linux-fsdevel@vger.kernel.org>
-Subject: All that glitters on your wrist
-Content-Type: text/plain;
-	charset="us-ascii"
+Received: from mail-db3un0251.outbound.protection.outlook.com ([157.55.234.251]:31920
+	"EHLO emea01-db3-obe.outbound.protection.outlook.com"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1758708AbaCTOco convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Mar 2014 10:32:44 -0400
+Content-Type: text/plain; charset=US-ASCII
+Subject: LOAN LENDERS / FINANCIAL ASSISTANT
+To: Recipients <finance011@finance694.onmicrosoft.com>
+From: <finance011@finance694.onmicrosoft.com>
+Date: Thu, 20 Mar 2014 15:32:31 +0100
+Reply-To: <santafinance@aol.com>
+Message-ID: <06859335-34b0-4581-b065-47e5ab4e4632@AMSPR01MB084.eurprd01.prod.exchangelabs.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 MIME-Version: 1.0
 
-Designer branded watches available at clearance prices
-http://bhp-trade.home.pl/bwjobii.php
-
-
-
+We offer all purpose loan at 3% interest rate. Contact Us for more details by Email:santanderfinancegroup@gmail.com
