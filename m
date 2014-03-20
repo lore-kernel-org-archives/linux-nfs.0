@@ -1,59 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:23848 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:50525 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754018AbaCCPnU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 3 Mar 2014 10:43:20 -0500
-Date: Mon, 3 Mar 2014 10:43:15 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Dennis Jacobfeuerborn <dennisml@conversis.de>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: Temporary hangs when using locking with apache+nfsv4
-Message-ID: <20140303104315.1f949cb4@tlielax.poochiereds.net>
-In-Reply-To: <53141788.9030209@conversis.de>
-References: <53141788.9030209@conversis.de>
+	id S933009AbaCTOMi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 20 Mar 2014 10:12:38 -0400
+Message-ID: <532AF753.8060607@RedHat.com>
+Date: Thu, 20 Mar 2014 10:12:35 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/2] SUNRPC: Ensure that call_connect times out correctly
+References: <1395081645-11906-1-git-send-email-trond.myklebust@primarydata.com>		 <53286A9D.2020007@RedHat.com>		 <362845B0-35A4-4DDF-96F6-42582D66334B@primarydata.com>		 <53288146.4010601@RedHat.com>	 <1395168308.11244.3.camel@leira.trondhjem.org>	 <532897DE.6060204@RedHat.com>	 <EB317FC8-D521-4D80-98D7-FA48B0B9AF0C@primarydata.com>	 <5329900C.3040200@RedHat.com>	 <DAF0940D-107D-4251-B00A-DE829A31B36E@primarydata.com>	 <5329A4B3.20601@RedHat.com>	 <0C0E5EE2-E7BD-4BE3-961F-3B632B45F026@primarydata.com>	 <5329CF7C.7090308@RedHat.com> <1395250160.7168.1.camel@leira.trondhjem.org> <5329E062.9030103@RedHat.com> <34E0F031-281D-4409-8969-B0297EDA0EC4@primarydata.com>
+In-Reply-To: <34E0F031-281D-4409-8969-B0297EDA0EC4@primarydata.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 03 Mar 2014 06:47:52 +0100
-Dennis Jacobfeuerborn <dennisml@conversis.de> wrote:
 
-> Hi,
-> I'm experimenting with using NFSv4 as storage for web servers and while 
-> regular file access seems to work fine as soon as I bring flock() into 
-> play things become more problematic.
-> I've create a tiny test php script that basically opens a file, locks it 
-> using flock(), writes that fact into a log file (on a local filesystem), 
-> performs a usleep(1000), writes into the log that it is about to unlock 
-> the file and finally unlocks it.
-> I invoke that script using ab with a concurrency of 20 for a few 
-> thousand requests.
+
+On 03/19/2014 03:41 PM, Trond Myklebust wrote:
 > 
-
-Is all the activity from a single client, or are multiple clients
-contending for the lock?
-
-> The result is that while 99% of the request respond quickly a few 
-> request seem to hang for up to 30 seconds. According to the log file 
-> they must eventually succeed since I see all expected entries and the 
-> locking seems to work as well since all entries are in the expected order.
+> On Mar 19, 2014, at 14:22, Steve Dickson <SteveD@redhat.com> wrote:
+>>
+>> What's going on is-ECONNREFUSED is being seen in call_connect_status() 
+>> and the task is not a soft connection. So call_timeout() is call which 
+>> eventual times out the mount… 
 > 
-> Is it expected that these long delays happen? When I comment the locking 
-> function out these hangs disappear.
-> Are there some knobs to tune NFS and make it behave better in these 
-> situations?
+> This is what is confusing me. I’d expect that the rpc_ping() would be the 
+> first thing to be sent on the wire by rpc_create(), and that ping 
+> should normally have the RPC_SOFTCONN flag set.
 > 
+>> So just for fun I make the SETCLIENTID rpc soft, but for some
+>> reason that didn't work either... I thought for sure it would... 
+I see you point... Using quick systemtap scripts it turns out
+rpc_ping is not failing (returns 0x0) and it should because
+the server is definitely down!  
 
-NFSv4 locking is inherently unfair. If you're doing a blocking lock,
-then the client is expected to poll for it. So, long delays are
-possible if you just happen to be unlucky and keep missing the lock.
+steved.
 
-There's no knob to tune, but there probably is room for improvement in
-this code. In principle we could try to be more aggressive about
-getting the lock by trying to wake up one or more blocked tasks whenever
-a lock is released. You might still end up with delays, but it could
-help improve responsiveness.
 
--- 
-Jeff Layton <jlayton@redhat.com>
