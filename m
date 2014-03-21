@@ -1,74 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ea0-f170.google.com ([209.85.215.170]:57480 "EHLO
-	mail-ea0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756329AbaCDHiI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Mar 2014 02:38:08 -0500
-Received: by mail-ea0-f170.google.com with SMTP id g15so138119eak.15
-        for <linux-nfs@vger.kernel.org>; Mon, 03 Mar 2014 23:38:07 -0800 (PST)
-From: Noam Meltzer <noam@primarydata.com>
-To: noam@primarydata.com, linux-nfs@vger.kernel.org,
-        sssd-devel@lists.fedorahosted.org
-Subject: [PATCH v2 0/5] NFSv4 rpc.idmapd plugin
-Date: Tue,  4 Mar 2014 09:37:51 +0200
-Message-Id: <1393918676-20865-1-git-send-email-noam@primarydata.com>
+Received: from mail.windriver.com ([147.11.1.11]:60006 "EHLO
+	mail.windriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751707AbaCUW6T (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Mar 2014 18:58:19 -0400
+Message-ID: <532CC3FF.700@windriver.com>
+Date: Fri, 21 Mar 2014 16:58:07 -0600
+From: Chris Friesen <chris.friesen@windriver.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: <neilb@suse.de>, <linux-nfs@vger.kernel.org>
+Subject: Re: race-free exportfs and unmount?
+References: <532C9E49.2030007@windriver.com> <20140321202040.GC26831@fieldses.org>
+In-Reply-To: <20140321202040.GC26831@fieldses.org>
+Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello sssd-devel & linux-nfs,
-
-This is v2 of the patch set. It is now sent to linux-nfs as weel, following
-Steve Dickson request.
-
-The code in the next 5 patches implements the design document:
-https://fedorahosted.org/sssd/wiki/DesignDocs/rpc.idmapd%20plugin
-
-The changes in the code (compared to v1) are following the review done in
-sssd-devel.
-I believe that there are still two items in dispute (no final verdict was given
-in the sssd mailing list) but this new patch set will give a chance to have a
-cleaner look on things.
-
---
-
-Noam Meltzer
-Linux Software Engineer
-PRIMARY DATA
-
-P.O. Box 12650, Herzliya Pituach 4673300
-9 Hamenofim St. Akerstein Towers, Tower A, 5th fl. Herzliya
-
-Office: +972-77-8981888 | Fax: +972-3-7617140 | Mobile: +972-54-5873843
-
-Email: noam@primarydata.com
+On 03/21/2014 02:20 PM, J. Bruce Fields wrote:
+> On Fri, Mar 21, 2014 at 02:17:13PM -0600, Chris Friesen wrote:
+>>
+>> Hi,
+>>
+>> There was a linux-nfs thread in July 2012 with the subject "Linux
+>> NFS and cached properties".  It discussed the fact that you can't
+>> reliably do
+>>
+>> exportfs -u 192.168.1.11:/mnt
+>> umount /mnt
+>>
+>> since there could be rpc users still running when exportfs returns,
+>> so the umount fails thinking the filesystem is busy.
+>
+> There could also be clients holding opens, locks, or delegations on the
+> export.
+>
+>> I'm running into this on a production system.
+>>
+>> Was anything ever done to resolve this issue?
+>> If not are there any workarounds?
+>
+> You can shut down the server completely, unmount, and restart.
 
 
---
+What is different with shutting down the server completely vs unexporting?
 
-Noam Meltzer (5):
-  NEW CLIENT: plugin for NFSv4 rpc.idmapd
-  NFSv4 client: (private) headers from libnfsidmap
-  NFSv4 client: add to build system
-  NFSv4 client: man page
-  NFSv4 client: add to RPM spec
+Does shutting down the server somehow wait for in-flight operations to 
+complete whereas the unexport doesn't?  I'm assuming that it can't just 
+cancel in-progress disk I/O and as long as that's happening then we 
+won't be able to unmount the filesystem.
 
- Makefile.am                            |  19 ++
- configure.ac                           |  10 +
- contrib/sssd.spec.in                   |   8 +
- src/conf_macros.m4                     |  30 ++
- src/external/libnfsidmap.m4            |  17 +
- src/man/Makefile.am                    |   4 +-
- src/man/include/seealso.xml            |   4 +
- src/man/sss_rpcidmapd.5.xml            |  97 ++++++
- src/sss_client/common.c                |   5 +
- src/sss_client/nfs/nfsidmap_internal.h |  78 +++++
- src/sss_client/nfs/sss_nfs_client.c    | 569 +++++++++++++++++++++++++++++++++
- src/sss_client/sss_cli.h               |   2 +
- 12 files changed, 842 insertions(+), 1 deletion(-)
- create mode 100644 src/external/libnfsidmap.m4
- create mode 100644 src/man/sss_rpcidmapd.5.xml
- create mode 100644 src/sss_client/nfs/nfsidmap_internal.h
- create mode 100644 src/sss_client/nfs/sss_nfs_client.c
-
--- 
-1.8.5.3
+Thanks,
+Chris
 
