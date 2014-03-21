@@ -1,73 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:45899 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752241AbaCFDfE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 5 Mar 2014 22:35:04 -0500
-Date: Thu, 6 Mar 2014 14:34:54 +1100
-From: NeilBrown <neilb@suse.de>
-To: Jim Rees <rees@umich.edu>
-Cc: Andrew Martin <amartin@xes-inc.com>, linux-nfs@vger.kernel.org
-Subject: Re: Optimal NFS mount options to safely allow interrupts and
- timeouts on newer kernels
-Message-ID: <20140306143454.75eb2726@notabene.brown>
-In-Reply-To: <20140305211124.GA16979@umich.edu>
-References: <1696396609.119284.1394040541217.JavaMail.zimbra@xes-inc.com>
-	<260588931.122771.1394041524167.JavaMail.zimbra@xes-inc.com>
-	<20140305201149.GA16212@umich.edu>
-	<1106484945.149062.1394052088011.JavaMail.zimbra@xes-inc.com>
-	<20140305211124.GA16979@umich.edu>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/t7sWon8/_f.pDGKUX6arBjK"; protocol="application/pgp-signature"
+Received: from mail.windriver.com ([147.11.1.11]:41183 "EHLO
+	mail.windriver.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750706AbaCUU4X (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 21 Mar 2014 16:56:23 -0400
+Message-ID: <532CA76B.8050300@windriver.com>
+Date: Fri, 21 Mar 2014 14:56:11 -0600
+From: Chris Friesen <chris.friesen@windriver.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: <neilb@suse.de>, <linux-nfs@vger.kernel.org>
+Subject: Re: race-free exportfs and unmount?
+References: <532C9E49.2030007@windriver.com> <20140321202040.GC26831@fieldses.org>
+In-Reply-To: <20140321202040.GC26831@fieldses.org>
+Content-Type: text/plain; charset="ISO-8859-1"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/t7sWon8/_f.pDGKUX6arBjK
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+On 03/21/2014 02:20 PM, J. Bruce Fields wrote:
+> On Fri, Mar 21, 2014 at 02:17:13PM -0600, Chris Friesen wrote:
+>>
+>> Hi,
+>>
+>> There was a linux-nfs thread in July 2012 with the subject "Linux
+>> NFS and cached properties".  It discussed the fact that you can't
+>> reliably do
+>>
+>> exportfs -u 192.168.1.11:/mnt
+>> umount /mnt
+>>
+>> since there could be rpc users still running when exportfs returns,
+>> so the umount fails thinking the filesystem is busy.
+>
+> There could also be clients holding opens, locks, or delegations on the
+> export.
+>
+>> I'm running into this on a production system.
+>>
+>> Was anything ever done to resolve this issue?
+>> If not are there any workarounds?
+>
+> You can shut down the server completely, unmount, and restart.
 
-On Wed, 5 Mar 2014 16:11:24 -0500 Jim Rees <rees@umich.edu> wrote:
+Just to clarify, you mean shut down the NFS server processes?  As in, 
+"/etc/init.d/nfsserver stop"?
 
-> Andrew Martin wrote:
->=20
->   Isn't intr/nointr deprecated (since kernel 2.6.25)?
->=20
-> It isn't so much that it's deprecated as that it's now the default (except
-> that only SIGKILL will work).
+Currently there is another filesystem that stays exported and doing the 
+above would take it down too....but I might be able to make that work if 
+it's the only way.
 
-Not quite correct.  Any signal will work providing its behaviour is to kill
-the process.  So SIGKILL will always work, and SIGTERM SIGINT SIGQUIT etc
-will work providing that aren't caught or ignored by the process.
+> What is it you need to do exactly?
 
-NeilBrown
+We have two servers that act as primary/secondary for a drbd-replicated 
+filesystem.  The primary mounts the drbd filesystem and exports it via nfs.
 
+This is used for OpenStack, so there should be very little 
+contention--each compute node generally only touches the files 
+corresponding to the VMs that it is hosting.  I don't think they would 
+be doing NFS locks, but I could be wrong.
 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+On a controlled failover, we need to take down the NFS server IP 
+address, unexport the filesystem, unmount the drbd device, and set drbd 
+to secondary.
 
+What we're seeing is that the unexport passes, but the unmount fails.  A 
+few minutes later one of our guys manually ran "exportfs -f" and that 
+seemed to unblock things.
 
---Sig_/t7sWon8/_f.pDGKUX6arBjK
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.22 (GNU/Linux)
-
-iQIVAwUBUxfs3jnsnt1WYoG5AQIhfA//Z+s+s0swkWg7jpv4bI9Y6vqiXXLsD6J6
-uKCUDGBmuI4pBz5n0S6QccxCn8iahzEhyHn6qzZJU/OdulmBkEPdR3ljMFIt7LkB
-T/q39Z6vnxjuyM7sAMlp1BtZMFm8KIgaMDy/eYNg1NZrQCZooeS5+UeP3bs/SJU+
-oF/6J7OBbAKMx5gwOiJxkxmiTB1mqpFN0b/wuiF/pccwC65iNIgYD1Y7A66WheVA
-bw8iASzC8hO8tDbx+lQrRf9jroRvZhgh0CJ8ZLusEjrtGzWmbwJ4gR4N79hqterR
-40Ev1veNJ3LUCcPPW6E4a4GVMoPZhe06Ld2gM/aCNxwlLjyh82oliIkNiMIlf84+
-J0OOsiU6YdSMKl+Y7jEKqum16W9ojSwS6sOHD4tLXpsuAEMIvpjwrSah/cRP7fjQ
-QUix6OzVCjHCgC7jrjNRdOmJFSHx4m2mzmtRRKKm22G2Ok+YGAig6PPrEXA9/qmM
-zVg66UgR/p/3PefkJ7/P/b2n67m3eUX8nHM6Qk+HBgv5W0p9B8SWM5FEJXgZT4VT
-Xm7aBublGNlQGGfNwrtIqnqqz54JZbE8hYB/sFHyw0iWdq7IB0pX7ReVLCK77ZbB
-1du3zU/vExcOLbxCCeVbyvycWJaYRFjpVfFXjrB/ZNGItEf24MKGfdFgE8mBhkVC
-A+807hpdslY=
-=MizO
------END PGP SIGNATURE-----
-
---Sig_/t7sWon8/_f.pDGKUX6arBjK--
+Chris
