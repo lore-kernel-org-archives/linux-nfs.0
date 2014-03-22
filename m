@@ -1,111 +1,158 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:39638 "EHLO fieldses.org"
+Received: from messinet.com ([50.196.241.75]:54038 "EHLO chicago.messinet.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757242AbaC1CIk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 27 Mar 2014 22:08:40 -0400
-Date: Thu, 27 Mar 2014 22:08:34 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Steve Wise <swise@opengridcomputing.com>
-Cc: trond.myklebust@primarydata.com, linux-nfs@vger.kernel.org,
-        tom@opengridcomputing.com
-Subject: Re: [PATCH] Fix regression in NFSRDMA server
-Message-ID: <20140328020834.GD27633@fieldses.org>
-References: <20140325201457.6861.21819.stgit@build.ogc.int>
+	id S1750853AbaCVGnz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 22 Mar 2014 02:43:55 -0400
+Received: from localhost (localhost [127.0.0.1])
+	by chicago.messinet.com (Postfix) with ESMTP id D2A1F67B3F96
+	for <linux-nfs@vger.kernel.org>; Sat, 22 Mar 2014 01:43:54 -0500 (CDT)
+Received: from chicago.messinet.com ([127.0.0.1])
+	by localhost (chicago.messinet.com [127.0.0.1]) (amavisd-new, port 10024)
+	with ESMTP id oJ7jeogF3Kcj for <linux-nfs@vger.kernel.org>;
+	Sat, 22 Mar 2014 01:43:52 -0500 (CDT)
+Received: from linux-ws1.messinet.com (unknown [IPv6:2001:470:c1dc:7779:d6be:d9ff:fe8d:7c1e])
+	(using TLSv1 with cipher ECDHE-RSA-AES256-SHA (256/256 bits))
+	(Client did not present a certificate)
+	by chicago.messinet.com (Postfix) with ESMTPSA id 1970667B3F8C
+	for <linux-nfs@vger.kernel.org>; Sat, 22 Mar 2014 01:43:52 -0500 (CDT)
+From: Anthony Messina <amessina@messinet.com>
+To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: Issue with SELinux Labeled NFS
+Date: Sat, 22 Mar 2014 01:43:47 -0500
+Message-ID: <6129740.NJmSgFusgb@linux-ws1.messinet.com>
+In-Reply-To: <2308691.6kaIE5X6fN@linux-ws1.messinet.com>
+References: <2308691.6kaIE5X6fN@linux-ws1.messinet.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140325201457.6861.21819.stgit@build.ogc.int>
+Content-Type: multipart/signed; boundary="nextPart5503233.gcSt5FPPEI"; micalg="pgp-sha1"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Mar 25, 2014 at 03:14:57PM -0500, Steve Wise wrote:
-> From: Tom Tucker <tom@ogc.us>
-> 
-> The server regression was caused by the addition of rq_next_page
-> (afc59400d6c65bad66d4ad0b2daf879cbff8e23e). There were a few places that
-> were missed with the update of the rq_respages array.
 
-Apologies.  (But, it could happen again--could we set up some regular
-testing?  It doesn't have to be anything fancy, just cthon over
-rdma--really, just read and write over rdma--would probably catch a
-lot.)
+--nextPart5503233.gcSt5FPPEI
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain; charset="us-ascii"
 
-Also: I don't get why all these rq_next_page initializations are
-required.  Why isn't the initialization at the top of svc_process()
-enough?  Is rdma using it before we get to that point?  The only use of
-it I see off hand is in the while loop that you're deleting.
+On Tuesday, March 11, 2014 01:41:49 PM you wrote:
+> I've begun testing out the labeled NFSv4.2 features with good success=
+ with=20
+> only one exception so far.  I have several workstations that use NFSv=
+4.2=20
+> mounted /home directories.  I've been able to remove the SELinux bool=
+ean=20
+> requirement for 'use_nfs_home_dirs', however, on *one* of these
+> workstations,  the /home directory is labeled 'unlabeled_t' after boo=
+t when
+> it should be labeled with 'home_root_t'.  This problem causes failure=
+s, as
+> you can imagine.
+>=20
+> I mount the filesystem on all of the workstations in the same manner:=
 
---b.
+> # /etc/fstab
+> ...
+> server.com:/home /home nfs rw,minorversion=3D2,sec=3Dkrb5p,x-systemd.=
+automount 0
+> 0
+>=20
+> Yet the issue occurs on only *one* workstation.  If I manually issue
+>=20
+> chcon -t home_root_t /home
+>=20
+> then I am able to login and use the system without issue.
+>=20
+> All of the servers and workstations are using
+>=20
+> kernel-3.13.6-200.fc20.x86_64
+> nfs-utils-1.2.9-3.0.fc20.x86_64
+>=20
+> I realize this is not the SELinux mailing list, but I was wondering i=
+f
+> anyone  had any pointers on how to investigate this issue.  The
+> workstations are all nearly identical in configuration with the excep=
+tion
+> of a few user-based differences such as GnuCash on one, but not the o=
+ther,
+> etc.
 
-> 
-> Signed-off-by: Tom Tucker <tom@ogc.us>
-> Tested-by: Steve Wise <swise@ogc.us>
-> ---
-> 
->  net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |   12 ++++--------
->  net/sunrpc/xprtrdma/svc_rdma_sendto.c   |    1 +
->  2 files changed, 5 insertions(+), 8 deletions(-)
-> 
-> diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-> index 0ce7552..8d904e4 100644
-> --- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-> +++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-> @@ -90,6 +90,7 @@ static void rdma_build_arg_xdr(struct svc_rqst *rqstp,
->  		sge_no++;
->  	}
->  	rqstp->rq_respages = &rqstp->rq_pages[sge_no];
-> +	rqstp->rq_next_page = rqstp->rq_respages + 1;
->  
->  	/* We should never run out of SGE because the limit is defined to
->  	 * support the max allowed RPC data length
-> @@ -169,6 +170,7 @@ static int map_read_chunks(struct svcxprt_rdma *xprt,
->  		 */
->  		head->arg.pages[page_no] = rqstp->rq_arg.pages[page_no];
->  		rqstp->rq_respages = &rqstp->rq_arg.pages[page_no+1];
-> +		rqstp->rq_next_page = rqstp->rq_respages + 1;
->  
->  		byte_count -= sge_bytes;
->  		ch_bytes -= sge_bytes;
-> @@ -276,6 +278,7 @@ static int fast_reg_read_chunks(struct svcxprt_rdma *xprt,
->  
->  	/* rq_respages points one past arg pages */
->  	rqstp->rq_respages = &rqstp->rq_arg.pages[page_no];
-> +	rqstp->rq_next_page = rqstp->rq_respages + 1;
->  
->  	/* Create the reply and chunk maps */
->  	offset = 0;
-> @@ -520,13 +523,6 @@ next_sge:
->  	for (ch_no = 0; &rqstp->rq_pages[ch_no] < rqstp->rq_respages; ch_no++)
->  		rqstp->rq_pages[ch_no] = NULL;
->  
-> -	/*
-> -	 * Detach res pages. If svc_release sees any it will attempt to
-> -	 * put them.
-> -	 */
-> -	while (rqstp->rq_next_page != rqstp->rq_respages)
-> -		*(--rqstp->rq_next_page) = NULL;
-> -
->  	return err;
->  }
->  
-> @@ -550,7 +546,7 @@ static int rdma_read_complete(struct svc_rqst *rqstp,
->  
->  	/* rq_respages starts after the last arg page */
->  	rqstp->rq_respages = &rqstp->rq_arg.pages[page_no];
-> -	rqstp->rq_next_page = &rqstp->rq_arg.pages[page_no];
-> +	rqstp->rq_next_page = rqstp->rq_respages + 1;
->  
->  	/* Rebuild rq_arg head and tail. */
->  	rqstp->rq_arg.head[0] = head->arg.head[0];
-> diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-> index c1d124d..11e90f8 100644
-> --- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-> +++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-> @@ -625,6 +625,7 @@ static int send_reply(struct svcxprt_rdma *rdma,
->  		if (page_no+1 >= sge_no)
->  			ctxt->sge[page_no+1].length = 0;
->  	}
-> +	rqstp->rq_next_page = rqstp->rq_respages + 1;
->  	BUG_ON(sge_no > rdma->sc_max_sge);
->  	memset(&send_wr, 0, sizeof send_wr);
->  	ctxt->wr_op = IB_WR_SEND;
-> 
+While I haven't yet found a solution to this problem, I am able to conf=
+irm=20
+that I now see this other workstations and it appears that it may be so=
+me sort=20
+of race condition between the two mounts in the clients' fstab since it=
+=20
+doesn't always occur on every workstation.  Perhaps someone can help me=
+ spot a=20
+problem in the following server or client configuration.
+
+My single NFS server has the following in /etc/exports:
+
+/export =092001:123:456:789::/64(fsid=3D0,crossmnt,sec=3Dkrb5p:krb5i) \=
+
+=09=0910.1.1.0/24(fsid=3D0,crossmnt,sec=3Dkrb5p:krb5i)
+/export/home=092001:123:456:789::/64(rw,sec=3Dkrb5p) \
+=09=0910.1.1.0/24(rw,sec=3Dkrb5p)
+/export/media=092001:123:456:789::/64(rw,sec=3Dkrb5p:krb5i) \
+=09=0910.1.1.0/24(rw,sec=3Dkrb5p:krb5i)
+/export/software=092001:123:456:789::/64(rw,sec=3Dkrb5p:krb5i) \
+=09=09=0910.1.1.0/24(rw,sec=3Dkrb5p:krb5i)
+
+And the following bind mounts in /etc/fstab:
+
+/home           /export/home            none    bind    0 0
+/srv/media      /export/media           none    bind    0 0
+/srv/software   /export/software        none    bind    0 0
+
+
+And the following labels for the exported filesystems:
+
+~]# ls -lZ /
+drwxr-xr-x. root  root    system_u:object_r:home_root_t:s0 home
+
+~]# ls -lZ /srv
+drwxr-x---. auser agroup  system_u:object_r:public_content_rw_t:s0 medi=
+a
+drwxr-x---. auser family  system_u:object_r:public_content_rw_t:s0 soft=
+ware
+
+~]# ls -lZ /export
+drwxr-xr-x. root  root    system_u:object_r:home_root_t:s0 home
+drwxr-x---. auser agroup  system_u:object_r:public_content_rw_t:s0 medi=
+a
+drwxr-x---. auser family  system_u:object_r:public_content_rw_t:s0 soft=
+ware
+
+
+The clients mount the exports via the following in /etc/fstab
+
+server.com:/home /home nfs rw,minorversion=3D2,sec=3Dkrb5p,x-systemd.au=
+tomount 0 0
+server.com:/ /mnt/srv  nfs rw,minorversion=3D2,sec=3Dkrb5i,x-systemd.au=
+tomount 0 0
+
+Again, the issue is that the /home mount on the clients tends to be mou=
+nted as=20
+"unlabeled_t" which causes failures with SELinux enabled.
+
+Is there an issue in the way I'm exporting things that may cause this?
+
+Thanks in advance for any pointers.  -A
+
+=2D-=20
+Anthony - http://messinet.com - http://messinet.com/~amessina/gallery
+8F89 5E72 8DF0 BCF0 10BE 9967 92DC 35DC B001 4A4E
+
+--nextPart5503233.gcSt5FPPEI
+Content-Type: application/pgp-signature; name="signature.asc"
+Content-Description: This is a digitally signed message part.
+Content-Transfer-Encoding: 7Bit
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.22 (GNU/Linux)
+
+iEYEABECAAYFAlMtMScACgkQktw13LABSk667gCfdOU8x9thGTrF//y8GoX9vv29
+uEYAn0w81BM8HFDWw4urpbhrFxQ59bAH
+=FHY2
+-----END PGP SIGNATURE-----
+
+--nextPart5503233.gcSt5FPPEI--
+
