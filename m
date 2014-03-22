@@ -1,123 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yk0-f178.google.com ([209.85.160.178]:48703 "EHLO
-	mail-yk0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753041AbaCATq7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 1 Mar 2014 14:46:59 -0500
-Received: by mail-yk0-f178.google.com with SMTP id 79so6074046ykr.9
-        for <linux-nfs@vger.kernel.org>; Sat, 01 Mar 2014 11:46:58 -0800 (PST)
-Message-ID: <1393703218.7434.2.camel@leira.trondhjem.org>
-Subject: Re: Oops in nfs41_assign_slot in Linux 3.13.4
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Ben Hutchings <ben@decadent.org.uk>
-Cc: 734268@bugs.debian.org, Arthur de Jong <adejong@debian.org>,
-        linux-nfs@vger.kernel.org,
-        Charles Edward Lever <Chuck.Lever@oracle.com>
-Date: Sat, 01 Mar 2014 13:46:58 -0600
-In-Reply-To: <1393442989.5090.4.camel@leira.trondhjem.org>
-References: <1388922864.10916.7.camel@sorbet.thuis.net>
-	 <1393361101.5000.26.camel@sorbet.thuis.net>
-	 <1393376280.14067.34.camel@deadeye.wl.decadent.org.uk>
-	 <1393442989.5090.4.camel@leira.trondhjem.org>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mx1.redhat.com ([209.132.183.28]:26705 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750814AbaCVONx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 22 Mar 2014 10:13:53 -0400
+Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s2MEDrfR028147
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Sat, 22 Mar 2014 10:13:53 -0400
+Message-ID: <532D9A9F.5050703@RedHat.com>
+Date: Sat, 22 Mar 2014 10:13:51 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Scott Mayhew <smayhew@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: [nfs-utils PATCH] mount: chk_mountpoint should only check for
+ execute perms for unpriveleged users
+References: <1395346354-64069-1-git-send-email-smayhew@redhat.com>
+In-Reply-To: <1395346354-64069-1-git-send-email-smayhew@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 2014-02-26 at 11:29 -0800, Trond Myklebust wrote:
-> Hi Ben,
+
+
+On 03/20/2014 04:12 PM, Scott Mayhew wrote:
+> Otherwise 'mount -o remount' fails on mounts that have root squashing
+> enabled and world execute perms disabled.
 > 
-> On Wed, 2014-02-26 at 00:58 +0000, Ben Hutchings wrote:
-> > Trond, Arthur seems to be hitting a similar bug to
-> > <https://bugzilla.redhat.com/show_bug.cgi?id=1050206>, and it's still
-> > occurring in 3.13.4 even though that has the two fixes you posted there.
-> > The full bug report, with screenshots of the oopses, is at
-> > <https://bugs.debian.org/734268>.
-> > 
+> Signed-off-by: Scott Mayhew <smayhew@redhat.com>
+Committed...
+
+steved.
+> ---
+>  utils/mount/utils.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
 > 
-> I believe I've found another corruptor of that same list. Do Arthur's
-> tests perhaps touch on file locking? If so, then the following patch may
-> help...
-
-Now that Connecthon is over, here is a patch that actually compiles.
-
-Apologies....
-  Trond
-
-8<---------------------------------------------------------------------
->From 97c7b4c6dc6caefa8df19301575aecc826d4ac6e Mon Sep 17 00:00:00 2001
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-Date: Wed, 26 Feb 2014 11:19:14 -0800
-Subject: [PATCH v2] NFSv4: Fix another nfs4_sequence corruptor
-
-nfs4_release_lockowner needs to set the rpc_message reply to point to
-the nfs4_sequence_res in order to avoid another Oopsable situation
-in nfs41_assign_slot.
-
-Fixes: fbd4bfd1d9d21 (NFS: Add nfs4_sequence calls for RELEASE_LOCKOWNER)
-Cc: stable@vger.kernel.org # 3.12+
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/nfs4proc.c       | 6 +++---
- include/linux/nfs_xdr.h | 5 +++++
- 2 files changed, 8 insertions(+), 3 deletions(-)
-
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 2da6a698b8f7..ceb2836fd6ba 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -5828,8 +5828,7 @@ struct nfs_release_lockowner_data {
- 	struct nfs4_lock_state *lsp;
- 	struct nfs_server *server;
- 	struct nfs_release_lockowner_args args;
--	struct nfs4_sequence_args seq_args;
--	struct nfs4_sequence_res seq_res;
-+	struct nfs_release_lockowner_res res;
- 	unsigned long timestamp;
- };
- 
-@@ -5887,7 +5886,6 @@ static int nfs4_release_lockowner(struct nfs_server *server, struct nfs4_lock_st
- 	data = kmalloc(sizeof(*data), GFP_NOFS);
- 	if (!data)
- 		return -ENOMEM;
--	nfs4_init_sequence(&data->seq_args, &data->seq_res, 0);
- 	data->lsp = lsp;
- 	data->server = server;
- 	data->args.lock_owner.clientid = server->nfs_client->cl_clientid;
-@@ -5895,6 +5893,8 @@ static int nfs4_release_lockowner(struct nfs_server *server, struct nfs4_lock_st
- 	data->args.lock_owner.s_dev = server->s_dev;
- 
- 	msg.rpc_argp = &data->args;
-+	msg.rpc_resp = &data->res;
-+	nfs4_init_sequence(&data->args.seq_args, &data->res.seq_res, 0);
- 	rpc_call_async(server->client, &msg, 0, &nfs4_release_lockowner_ops, data);
- 	return 0;
- }
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index b2fb167b2e6d..5624e4e2763c 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -467,9 +467,14 @@ struct nfs_lockt_res {
- };
- 
- struct nfs_release_lockowner_args {
-+	struct nfs4_sequence_args	seq_args;
- 	struct nfs_lowner	lock_owner;
- };
- 
-+struct nfs_release_lockowner_res {
-+	struct nfs4_sequence_res	seq_res;
-+};
-+
- struct nfs4_delegreturnargs {
- 	struct nfs4_sequence_args	seq_args;
- 	const struct nfs_fh *fhandle;
--- 
-1.8.5.3
-
-
--- 
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
-
-
+> diff --git a/utils/mount/utils.c b/utils/mount/utils.c
+> index ede77a8..92662ed 100644
+> --- a/utils/mount/utils.c
+> +++ b/utils/mount/utils.c
+> @@ -130,7 +130,7 @@ int chk_mountpoint(const char *mount_point)
+>  		mount_error(NULL, mount_point, ENOTDIR);
+>  		return 1;
+>  	}
+> -	if (access(mount_point, X_OK) < 0) {
+> +	if (getuid() != 0 && geteuid() != 0 && access(mount_point, X_OK) < 0) {
+>  		mount_error(NULL, mount_point, errno);
+>  		return 1;
+>  	}
+> -- 1.7.11.7 -- To unsubscribe from this list: send the line "unsubscribe linux-nfs" in the body of a message to majordomo@vger.kernel.org More majordomo info at http://vger.kernel.org/majordomo-info.html
+> 
