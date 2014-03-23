@@ -1,66 +1,158 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from linode.aoot.com ([69.164.194.13]:37193 "EHLO linode.aoot.com"
+Received: from fieldses.org ([174.143.236.118]:47884 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751052AbaCHUNp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 8 Mar 2014 15:13:45 -0500
-Message-ID: <531B79F8.2020008@opengridcomputing.com>
-Date: Sat, 08 Mar 2014 14:13:44 -0600
-From: Steve Wise <swise@opengridcomputing.com>
-MIME-Version: 1.0
-To: "'J. Bruce Fields'" <bfields@fieldses.org>,
-        Tom Tucker <tom@opengridcomputing.com>
-CC: "'Yan Burman'" <yanb@mellanox.com>, linux-nfs@vger.kernel.org,
-        linux-rdma@vger.kernel.org, "'Or Gerlitz'" <ogerlitz@mellanox.com>
-Subject: Re: NFS over RDMA crashing
-References: <51127B3F.2090200@mellanox.com> <20130206222435.GL16417@fieldses.org> <20130207164134.GK3222@fieldses.org> <003601cf3a26$94523ee0$bcf6bca0$@opengridcomputing.com> <005d01cf3a45$94ced0d0$be6c7270$@opengridcomputing.com> <531B47B3.1070503@opengridcomputing.com> <531B6D90.2090208@opengridcomputing.com>
-In-Reply-To: <531B6D90.2090208@opengridcomputing.com>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+	id S1752165AbaCWBM3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 22 Mar 2014 21:12:29 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 23/50] nfsd4: "backfill" using write_bytes_to_xdr_buf
+Date: Sat, 22 Mar 2014 21:11:54 -0400
+Message-Id: <1395537141-10389-24-git-send-email-bfields@redhat.com>
+In-Reply-To: <1395537141-10389-1-git-send-email-bfields@redhat.com>
+References: <1395537141-10389-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 3/8/2014 1:20 PM, Steve Wise wrote:
->
->> I removed your change and started debugging original crash that 
->> happens on top-o-tree.   Seems like rq_next_pages is screwed up.  It 
->> should always be >= rq_respages, yes?  I added a BUG_ON() to assert 
->> this in rdma_read_xdr() we hit the BUG_ON(). Look
->>
->> crash> svc_rqst.rq_next_page 0xffff8800b84e6000
->>   rq_next_page = 0xffff8800b84e6228
->> crash> svc_rqst.rq_respages 0xffff8800b84e6000
->>   rq_respages = 0xffff8800b84e62a8
->>
->> Any ideas Bruce/Tom?
->>
->
-> Guys, the patch below seems to fix the problem.  Dunno if it is 
-> correct though.  What do you think?
->
-> diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c 
-> b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-> index 0ce7552..6d62411 100644
-> --- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-> +++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-> @@ -90,6 +90,7 @@ static void rdma_build_arg_xdr(struct svc_rqst *rqstp,
->                 sge_no++;
->         }
->         rqstp->rq_respages = &rqstp->rq_pages[sge_no];
-> +       rqstp->rq_next_page = rqstp->rq_respages;
->
->         /* We should never run out of SGE because the limit is defined to
->          * support the max allowed RPC data length
-> @@ -276,6 +277,7 @@ static int fast_reg_read_chunks(struct 
-> svcxprt_rdma *xprt,
->
->         /* rq_respages points one past arg pages */
->         rqstp->rq_respages = &rqstp->rq_arg.pages[page_no];
-> +       rqstp->rq_next_page = rqstp->rq_respages;
->
->         /* Create the reply and chunk maps */
->         offset = 0;
->
->
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-While this patch avoids the crashing, it apparently isn't correct...I'm 
-getting IO errors reading files over the mount. :)
+Normally xdr encoding proceeds in a single pass from start of a buffer
+to end, but sometimes we have to write a few bytes to an earlier
+position.
+
+Use write_bytes_to_xdr_buf for these cases rather than saving a pointer
+to write to.  We plan to rewrite xdr_reserve_space to handle encoding
+across page boundaries using a scratch buffer, and don't want to risk
+writing to a pointer that was contained in a scratch buffer.
+
+Also it will no longer be safe to calculate lengths by subtracting two
+pointers, so use xdr_buf offsets instead.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4xdr.c | 45 ++++++++++++++++++++++++++-------------------
+ 1 file changed, 26 insertions(+), 19 deletions(-)
+
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index e5cc354..43c2a99 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -1759,16 +1759,19 @@ static void write_cinfo(__be32 **p, struct nfsd4_change_info *c)
+ static __be32 nfsd4_encode_components_esc(struct xdr_stream *xdr, char sep, char *components, char esc_enter, char esc_exit)
+ {
+ 	__be32 *p;
+-	__be32 *countp;
++	__be32 pathlen;
++	int pathlen_offset;
+ 	int strlen, count=0;
+ 	char *str, *end, *next;
+ 
+ 	dprintk("nfsd4_encode_components(%s)\n", components);
++
++	pathlen_offset = xdr->buf->len;
+ 	p = xdr_reserve_space(xdr, 4);
+ 	if (!p)
+ 		return nfserr_resource;
+-	countp = p;
+-	WRITE32(0); /* We will fill this in with @count later */
++	p++; /* We will fill this in with @count later */
++
+ 	end = str = components;
+ 	while (*end) {
+ 		bool found_esc = false;
+@@ -1801,8 +1804,8 @@ static __be32 nfsd4_encode_components_esc(struct xdr_stream *xdr, char sep, char
+ 			end++;
+ 		str = end;
+ 	}
+-	p = countp;
+-	WRITE32(count);
++	pathlen = htonl(xdr->buf->len - pathlen_offset);
++	write_bytes_to_xdr_buf(xdr->buf, pathlen_offset, &pathlen, 4);
+ 	return 0;
+ }
+ 
+@@ -2044,7 +2047,8 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp, struct svc_export
+ 	struct kstatfs statfs;
+ 	__be32 *p;
+ 	int starting_len = xdr->buf->len;
+-	__be32 *attrlenp;
++	int attrlen_offset;
++	__be32 attrlen;
+ 	u32 dummy;
+ 	u64 dummy64;
+ 	u32 rdattr_err = 0;
+@@ -2149,10 +2153,12 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp, struct svc_export
+ 		WRITE32(1);
+ 		WRITE32(bmval0);
+ 	}
++
++	attrlen_offset = xdr->buf->len;
+ 	p = xdr_reserve_space(xdr, 4);
+ 	if (!p)
+ 		goto out_resource;
+-	attrlenp = p++;                /* to be backfilled later */
++	p++;                /* to be backfilled later */
+ 
+ 	if (bmval0 & FATTR4_WORD0_SUPPORTED_ATTRS) {
+ 		u32 word0 = nfsd_suppattrs0(minorversion);
+@@ -2523,7 +2529,8 @@ out_acl:
+ 		WRITE32(NFSD_SUPPATTR_EXCLCREAT_WORD2);
+ 	}
+ 
+-	*attrlenp = htonl((char *)xdr->p - (char *)attrlenp - 4);
++	attrlen = htonl(xdr->buf->len - attrlen_offset - 4);
++	write_bytes_to_xdr_buf(xdr->buf, attrlen_offset, &attrlen, 4);
+ 	status = nfs_ok;
+ 
+ out:
+@@ -3679,16 +3686,16 @@ __be32 nfsd4_check_resp_size(struct nfsd4_compoundres *resp, u32 pad)
+ void
+ nfsd4_encode_operation(struct nfsd4_compoundres *resp, struct nfsd4_op *op)
+ {
++	struct xdr_stream *xdr = &resp->xdr;
+ 	struct nfs4_stateowner *so = resp->cstate.replay_owner;
+ 	struct svc_rqst *rqstp = resp->rqstp;
+-	__be32 *statp;
++	int post_err_offset;
+ 	nfsd4_enc encoder;
+ 	__be32 *p;
+ 
+ 	RESERVE_SPACE(8);
+ 	WRITE32(op->opnum);
+-	statp = p++;	/* to be backfilled at the end */
+-	ADJUST_ARGS();
++	post_err_offset = xdr->buf->len;
+ 
+ 	if (op->opnum == OP_ILLEGAL)
+ 		goto status;
+@@ -3727,19 +3734,19 @@ nfsd4_encode_operation(struct nfsd4_compoundres *resp, struct nfsd4_op *op)
+ 			       nfsd4_op_name(op->opnum));
+ 			WARN_ON_ONCE(1);
+ 		}
+-		resp->xdr.p = statp + 1;
++		xdr_truncate_encode(xdr, post_err_offset);
+ 	}
+ 	if (so) {
++		int len = xdr->buf->len - post_err_offset;
++
+ 		so->so_replay.rp_status = op->status;
+-		so->so_replay.rp_buflen = (char *)resp->xdr.p - (char *)(statp+1);
+-		memcpy(so->so_replay.rp_buf, statp+1, so->so_replay.rp_buflen);
++		so->so_replay.rp_buflen = len;
++		read_bytes_from_xdr_buf(xdr->buf, post_err_offset,
++						so->so_replay.rp_buf, len);
+ 	}
+ status:
+-	/*
+-	 * Note: We write the status directly, instead of using WRITE32(),
+-	 * since it is already in network byte order.
+-	 */
+-	*statp = op->status;
++	/* Note that op->status is already in network byte order: */
++	write_bytes_to_xdr_buf(xdr->buf, post_err_offset - 4, &op->status, 4);
+ }
+ 
+ /* 
+-- 
+1.8.5.3
 
