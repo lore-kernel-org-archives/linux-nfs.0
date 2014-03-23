@@ -1,63 +1,167 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f176.google.com ([209.85.213.176]:44031 "EHLO
-	mail-ig0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750805AbaCFTAW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Mar 2014 14:00:22 -0500
-Message-ID: <1028951407-1394132418-cardhu_decombobulator_blackberry.rim.net-599891631-@b5.c4.bise6.blackberry>
-Reply-To: bhawley@luminex.com
-References: <1696396609.119284.1394040541217.JavaMail.zimbra@xes-inc.com>
-  <260588931.122771.1394041524167.JavaMail.zimbra@xes-inc.com>
-  <20140306145042.6db53f60@notabene.brown>
-  <1853694865.210849.1394082223818.JavaMail.zimbra@xes-inc.com>
-  <20140306163721.0edfb498@notabene.brown>
-  <1709792528-1394084840-cardhu_decombobulator_blackberry.rim.net-1367662481-@b5.c4.bise6.blackberry>
-  <764210708.28409.1394119821635.JavaMail.zimbra@xes-inc.com>
-  <20140306162208.GA18207@umich.edu>
-  <1094203678.52139.1394124222574.JavaMail.zimbra@xes-inc.com>
-In-Reply-To: <1094203678.52139.1394124222574.JavaMail.zimbra@xes-inc.com>
-Subject: Re: Optimal NFS mount options to safely allow interrupts and timeouts on newer kernels
-To: "Andrew Martin" <amartin@xes-inc.com>, "Jim Rees" <rees@umich.edu>
-Cc: "Brian Hawley" <bhawley@luminex.com>, "NeilBrown" <neilb@suse.de>,
-        linux-nfs-owner@vger.kernel.org, linux-nfs@vger.kernel.org
-From: "Brian Hawley" <bhawley@luminex.com>
-Date: Thu, 6 Mar 2014 19:00:17 +0000
-Content-Type: text/plain
-MIME-Version: 1.0
+Received: from fieldses.org ([174.143.236.118]:47857 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751503AbaCWBM0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 22 Mar 2014 21:12:26 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 10/50] nfsd4: tweak nfsd4_encode_getattr to take xdr_stream
+Date: Sat, 22 Mar 2014 21:11:41 -0400
+Message-Id: <1395537141-10389-11-git-send-email-bfields@redhat.com>
+In-Reply-To: <1395537141-10389-1-git-send-email-bfields@redhat.com>
+References: <1395537141-10389-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQpFdmVuIHdpdGggc21hbGwgdGltZW8gYW5kIHJldHJhbnMsIHlvdSB3b24ndCBnZXQgaS9vIGVy
-cm9ycyBiYWNrIHRvIHRoZSByZWFkcy93cml0ZXMuICAgVGhhdCdzIGJlZW4gb3VyIGV4cGVyaWVu
-Y2UgYW55d2F5Lg0KDQpXaXRoIHNvZnQsIHlvdSBtYXkgZW5kIHVwIHdpdGggbG9zdCBkYXRhIChk
-YXRhIHRoYXQgaGFkIGFscmVhZHkgYmVlbiB3cml0dGVuIHRvIHRoZSBjYWNoZSBidXQgbm90IHll
-dCB0byB0aGUgc3RvcmFnZSkuICAgWW91J2QgaGF2ZSB0aGF0IHNhbWUgaXNzdWUgd2l0aCAnaGFy
-ZCcgdG9vIGlmIGl0IHdhcyB5b3VyIGFwcGxpYW5jZSB0aGF0IGZhaWxlZC4gIElmIHRoZSBhcHBs
-aWFuY2UgbmV2ZXIgY29tZXMgYmFjaywgdGhvc2UgYmxvY2tzIGNhbiBuZXZlciBiZSB3cml0dGVu
-Lg0KDQpJbiB5b3VyIGNhc2UgdGhvdWdoLCB5b3UncmUgbm90IHdyaXRpbmcuICANCg0KDQotLS0t
-LU9yaWdpbmFsIE1lc3NhZ2UtLS0tLQ0KRnJvbTogQW5kcmV3IE1hcnRpbiA8YW1hcnRpbkB4ZXMt
-aW5jLmNvbT4NCkRhdGU6IFRodSwgNiBNYXIgMjAxNCAxMDo0Mzo0MiANClRvOiBKaW0gUmVlczxy
-ZWVzQHVtaWNoLmVkdT4NCkNjOiA8Ymhhd2xleUBsdW1pbmV4LmNvbT47IE5laWxCcm93bjxuZWls
-YkBzdXNlLmRlPjsgPGxpbnV4LW5mcy1vd25lckB2Z2VyLmtlcm5lbC5vcmc+OyA8bGludXgtbmZz
-QHZnZXIua2VybmVsLm9yZz4NClN1YmplY3Q6IFJlOiBPcHRpbWFsIE5GUyBtb3VudCBvcHRpb25z
-IHRvIHNhZmVseSBhbGxvdyBpbnRlcnJ1cHRzIGFuZA0KIHRpbWVvdXRzIG9uIG5ld2VyIGtlcm5l
-bHMNCg0KPiBGcm9tOiAiSmltIFJlZXMiIDxyZWVzQHVtaWNoLmVkdT4NCj4gQW5kcmV3IE1hcnRp
-biB3cm90ZToNCj4gDQo+ICAgPiBGcm9tOiAiSmltIFJlZXMiIDxyZWVzQHVtaWNoLmVkdT4NCj4g
-ICA+IEdpdmVuIHRoaXMgaXMgYXBhY2hlLCBJIHRoaW5rIGlmIEkgd2VyZSBkb2luZyB0aGlzIEkn
-ZCB1c2UNCj4gICA+IHJvLHNvZnQsaW50cix0Y3ANCj4gICA+IGFuZCBub3QgdHJ5IHRvIHdyaXRl
-IGFueXRoaW5nIHRvIG5mcy4NCj4gICBJIHdhcyB1c2luZyB0Y3AsYmcsc29mdCxpbnRyIHdoZW4g
-dGhpcyBwcm9ibGVtIG9jY3VycmVkLiBJIGRvIG5vdCBrbm93IGlmDQo+ICAgYXBhY2hlIHdhcyBh
-dHRlbXB0aW5nIHRvIGRvIGEgd3JpdGUgb3IgYSByZWFkLCBidXQgaXQgc2VlbXMgdGhhdA0KPiAg
-IHRjcCxzb2Z0LGludHINCj4gICB3YXMgbm90IHN1ZmZpY2llbnQgdG8gcHJldmVudCB0aGUgcHJv
-YmxlbS4NCj4gDQo+IEkgaGFkIHRoZSBpbXByZXNzaW9uIGZyb20geW91ciBvcmlnaW5hbCBtZXNz
-YWdlIHRoYXQgeW91IHdlcmUgbm90IHVzaW5nDQo+ICJzb2Z0IiBhbmQgd2VyZSBhc2tpbmcgaWYg
-aXQncyBzYWZlIHRvIHVzZSBpdC4gQXJlIHlvdSBzYXlpbmcgdGhhdCBldmVuIHdpdGgNCj4gdGhl
-ICJzb2Z0IiBvcHRpb24gdGhlIGFwYWNoZSBnZXRzIHN0dWNrIGZvcmV2ZXI/DQpZZXMsIGV2ZW4g
-d2l0aCBzb2Z0LCBpdCBnZXRzIHN0dWNrIGZvcmV2ZXIuIEkgaGFkIGJlZW4gdXNpbmcgdGNwLGJn
-LHNvZnQsaW50cg0Kd2hlbiB0aGUgcHJvYmxlbSBvY2N1cnJlZCAob24gc2V2ZXJhbCBvY2Fzc2lv
-bnMpLCBzbyBteSBvcmlnaW5hbCBxdWVzdGlvbiB3YXMNCmlmIGl0IHdvdWxkIGJlIHNhZmUgdG8g
-dXNlIGEgc21hbGwgdGltZW8gYW5kIHJldHJhbnMgdmFsdWVzIHRvIGhvcGVmdWxseSANCnJldHVy
-biBJL08gZXJyb3JzIHF1aWNrbHkgdG8gdGhlIGFwcGxpY2F0aW9uLCByYXRoZXIgdGhhbiBibG9j
-a2luZyBmb3JldmVyIA0KKHdoaWNoIGNhdXNlcyB0aGUgaGlnaCBsb2FkIGFuZCBpbmV2aXRhYmxl
-IHJlYm9vdCkuIEl0IHNvdW5kcyBsaWtlIHRoYXQgaXNuJ3QNCnNhZmUsIGJ1dCBwZXJoYXBzIHRo
-ZXJlIGlzIGFub3RoZXIgd2F5IHRvIHJlc29sdmUgdGhpcyBwcm9ibGVtPw0KDQo=
+From: "J. Bruce Fields" <bfields@redhat.com>
+
+Just change the nfsd4_encode_getattr api.  Not changing any code or
+adding any new functionality yet.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4proc.c |  6 +++---
+ fs/nfsd/nfs4xdr.c  | 44 ++++++++++++++++++++++++++++++++------------
+ fs/nfsd/xdr4.h     |  7 ++++---
+ 3 files changed, 39 insertions(+), 18 deletions(-)
+
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 27b8268..7248a78 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1072,10 +1072,10 @@ _nfsd4_verify(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		return nfserr_jukebox;
+ 
+ 	p = buf;
+-	status = nfsd4_encode_fattr(&cstate->current_fh,
++	status = nfsd4_encode_fattr_to_buf(&p, count, &cstate->current_fh,
+ 				    cstate->current_fh.fh_export,
+-				    cstate->current_fh.fh_dentry, &p,
+-				    count, verify->ve_bmval,
++				    cstate->current_fh.fh_dentry,
++				    verify->ve_bmval,
+ 				    rqstp, 0);
+ 	/*
+ 	 * If nfsd4_encode_fattr() ran out of space, assume that's because
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 484a8aa..2ad423d 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -2046,12 +2046,10 @@ static int get_parent_attributes(struct svc_export *exp, struct kstat *stat)
+ /*
+  * Note: @fhp can be NULL; in this case, we might have to compose the filehandle
+  * ourselves.
+- *
+- * countp is the buffer size in _words_
+  */
+ __be32
+-nfsd4_encode_fattr(struct svc_fh *fhp, struct svc_export *exp,
+-		struct dentry *dentry, __be32 **buffer, int count, u32 *bmval,
++nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp, struct svc_export *exp,
++		struct dentry *dentry, u32 *bmval,
+ 		struct svc_rqst *rqstp, int ignore_crossmnt)
+ {
+ 	u32 bmval0 = bmval[0];
+@@ -2060,12 +2058,12 @@ nfsd4_encode_fattr(struct svc_fh *fhp, struct svc_export *exp,
+ 	struct kstat stat;
+ 	struct svc_fh *tempfh = NULL;
+ 	struct kstatfs statfs;
+-	int buflen = count << 2;
++	__be32 *p = xdr->p;
++	int buflen = xdr->buf->buflen;
+ 	__be32 *attrlenp;
+ 	u32 dummy;
+ 	u64 dummy64;
+ 	u32 rdattr_err = 0;
+-	__be32 *p = *buffer;
+ 	__be32 status;
+ 	int err;
+ 	int aclsupport = 0;
+@@ -2492,7 +2490,7 @@ out_acl:
+ 	}
+ 
+ 	*attrlenp = htonl((char *)p - (char *)attrlenp - 4);
+-	*buffer = p;
++	xdr->p = p;
+ 	status = nfs_ok;
+ 
+ out:
+@@ -2512,6 +2510,26 @@ out_resource:
+ 	goto out;
+ }
+ 
++__be32 nfsd4_encode_fattr_to_buf(__be32 **p, int words,
++			struct svc_fh *fhp, struct svc_export *exp,
++			struct dentry *dentry, u32 *bmval,
++	                struct svc_rqst *rqstp, int ignore_crossmnt)
++{
++	struct xdr_buf dummy = {
++			.head[0] = {
++				.iov_base = *p,
++			},
++			.buflen = words << 2,
++		};
++	struct xdr_stream xdr;
++	__be32 ret;
++
++	xdr_init_encode(&xdr, &dummy, NULL);
++	ret = nfsd4_encode_fattr(&xdr, fhp, exp, dentry, bmval, rqstp, ignore_crossmnt);
++	*p = xdr.p;
++	return ret;
++}
++
+ static inline int attributes_need_mount(u32 *bmval)
+ {
+ 	if (bmval[0] & ~(FATTR4_WORD0_RDATTR_ERROR | FATTR4_WORD0_LEASE_TIME))
+@@ -2575,7 +2593,7 @@ nfsd4_encode_dirent_fattr(struct nfsd4_readdir *cd,
+ 
+ 	}
+ out_encode:
+-	nfserr = nfsd4_encode_fattr(NULL, exp, dentry, p, buflen, cd->rd_bmval,
++	nfserr = nfsd4_encode_fattr_to_buf(p, buflen, NULL, exp, dentry, cd->rd_bmval,
+ 					cd->rd_rqstp, ignore_crossmnt);
+ out_put:
+ 	dput(dentry);
+@@ -2745,14 +2763,16 @@ static __be32
+ nfsd4_encode_getattr(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_getattr *getattr)
+ {
+ 	struct svc_fh *fhp = getattr->ga_fhp;
+-	int buflen;
++	struct xdr_stream *xdr = &resp->xdr;
++	struct xdr_buf *buf = resp->xdr.buf;
+ 
+ 	if (nfserr)
+ 		return nfserr;
+ 
+-	buflen = resp->xdr.end - resp->xdr.p - (COMPOUND_ERR_SLACK_SPACE >> 2);
+-	nfserr = nfsd4_encode_fattr(fhp, fhp->fh_export, fhp->fh_dentry,
+-				    &resp->xdr.p, buflen, getattr->ga_bmval,
++	buf->buflen = (void *)resp->xdr.end - (void *)resp->xdr.p
++			- COMPOUND_ERR_SLACK_SPACE;
++	nfserr = nfsd4_encode_fattr(xdr, fhp, fhp->fh_export, fhp->fh_dentry,
++				    getattr->ga_bmval,
+ 				    resp->rqstp, 0);
+ 	return nfserr;
+ }
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index 6884d70..f62a055 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -562,9 +562,10 @@ int nfs4svc_encode_compoundres(struct svc_rqst *, __be32 *,
+ __be32 nfsd4_check_resp_size(struct nfsd4_compoundres *, u32);
+ void nfsd4_encode_operation(struct nfsd4_compoundres *, struct nfsd4_op *);
+ void nfsd4_encode_replay(struct nfsd4_compoundres *resp, struct nfsd4_op *op);
+-__be32 nfsd4_encode_fattr(struct svc_fh *fhp, struct svc_export *exp,
+-		       struct dentry *dentry, __be32 **buffer, int countp,
+-		       u32 *bmval, struct svc_rqst *, int ignore_crossmnt);
++__be32 nfsd4_encode_fattr_to_buf(__be32 **p, int words,
++		struct svc_fh *fhp, struct svc_export *exp,
++		struct dentry *dentry,
++		u32 *bmval, struct svc_rqst *, int ignore_crossmnt);
+ extern __be32 nfsd4_setclientid(struct svc_rqst *rqstp,
+ 		struct nfsd4_compound_state *,
+ 		struct nfsd4_setclientid *setclid);
+-- 
+1.8.5.3
 
