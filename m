@@ -1,60 +1,183 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f42.google.com ([209.85.216.42]:39767 "EHLO
-	mail-qa0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754459AbaCQQAz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Mar 2014 12:00:55 -0400
-Received: by mail-qa0-f42.google.com with SMTP id k15so5593321qaq.29
-        for <linux-nfs@vger.kernel.org>; Mon, 17 Mar 2014 09:00:54 -0700 (PDT)
-Message-ID: <53271C33.7070400@gmail.com>
-Date: Mon, 17 Mar 2014 12:00:51 -0400
-From: Anna Schumaker <schumaker.anna@gmail.com>
-MIME-Version: 1.0
-To: Jeff Layton <jlayton@redhat.com>, trond.myklebust@primarydata.com
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 0/5] nfs: consolidate rename code into one set of functions
-References: <1395054418-14504-1-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1395054418-14504-1-git-send-email-jlayton@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from fieldses.org ([174.143.236.118]:47863 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752119AbaCWBM1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 22 Mar 2014 21:12:27 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 13/50] nfsd4: move nfsd4_operation to xdr4.h
+Date: Sat, 22 Mar 2014 21:11:44 -0400
+Message-Id: <1395537141-10389-14-git-send-email-bfields@redhat.com>
+In-Reply-To: <1395537141-10389-1-git-send-email-bfields@redhat.com>
+References: <1395537141-10389-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Just to let you know, I tested these a bit this morning and I haven't had any problems.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Anna
+We want to share some of these definitions.
 
-On 03/17/2014 07:06 AM, Jeff Layton wrote:
-> Summary of changes:
->
-> v2: remove -ERESTARTSYS error handling in nfs_rename
->     hardcode isdir value in fsnotify_nameremove call for sillyrenames
->      
-> As Trond pointed out recently, it makes little sense to maintain two
-> separate sets of functions for handling RENAMEs.
->
-> This patchset converts nfs_rename to use the asynchronous RENAME
-> infrastructure that is already in place for sillyrenames. It also
-> does some cleanup to remove some minor layering violations, and
-> adds a patch to make the sillyrename code emit a fsnotify_nameremove
-> when a sillyrename succeeds.
->
-> I've lightly tested this set and it seems to do the right thing,
-> but it obviously could stand some time in linux-next.
->
-> Jeff Layton (5):
->   nfs: abstract out code needed to complete a sillyrename
->   nfs: make nfs_async_rename non-static
->   nfs: convert nfs_rename to use async_rename infrastructure
->   nfs: remove synchronous rename code
->   nfs: emit a fsnotify_nameremove call in sillyrename codepath
->
->  fs/nfs/dir.c            | 13 +++++++++++--
->  fs/nfs/internal.h       |  7 +++++++
->  fs/nfs/nfs3proc.c       | 36 ------------------------------------
->  fs/nfs/nfs4proc.c       | 44 --------------------------------------------
->  fs/nfs/proc.c           | 25 -------------------------
->  fs/nfs/unlink.c         | 35 ++++++++++++++++++++++++++++++-----
->  include/linux/nfs_fs.h  |  1 -
->  include/linux/nfs_xdr.h |  3 +--
->  8 files changed, 49 insertions(+), 115 deletions(-)
->
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4proc.c | 58 ++++--------------------------------------------------
+ fs/nfsd/xdr4.h     | 53 +++++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 57 insertions(+), 54 deletions(-)
+
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 849b0eb..afa7ff7 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1134,58 +1134,8 @@ static inline void nfsd4_increment_op_stats(u32 opnum)
+ 		nfsdstats.nfs4_opcount[opnum]++;
+ }
+ 
+-typedef __be32(*nfsd4op_func)(struct svc_rqst *, struct nfsd4_compound_state *,
+-			      void *);
+-typedef u32(*nfsd4op_rsize)(struct svc_rqst *, struct nfsd4_op *op);
+-typedef void(*stateid_setter)(struct nfsd4_compound_state *, void *);
+-typedef void(*stateid_getter)(struct nfsd4_compound_state *, void *);
+-
+-enum nfsd4_op_flags {
+-	ALLOWED_WITHOUT_FH = 1 << 0,	/* No current filehandle required */
+-	ALLOWED_ON_ABSENT_FS = 1 << 1,	/* ops processed on absent fs */
+-	ALLOWED_AS_FIRST_OP = 1 << 2,	/* ops reqired first in compound */
+-	/* For rfc 5661 section 2.6.3.1.1: */
+-	OP_HANDLES_WRONGSEC = 1 << 3,
+-	OP_IS_PUTFH_LIKE = 1 << 4,
+-	/*
+-	 * These are the ops whose result size we estimate before
+-	 * encoding, to avoid performing an op then not being able to
+-	 * respond or cache a response.  This includes writes and setattrs
+-	 * as well as the operations usually called "nonidempotent":
+-	 */
+-	OP_MODIFIES_SOMETHING = 1 << 5,
+-	/*
+-	 * Cache compounds containing these ops in the xid-based drc:
+-	 * We use the DRC for compounds containing non-idempotent
+-	 * operations, *except* those that are 4.1-specific (since
+-	 * sessions provide their own EOS), and except for stateful
+-	 * operations other than setclientid and setclientid_confirm
+-	 * (since sequence numbers provide EOS for open, lock, etc in
+-	 * the v4.0 case).
+-	 */
+-	OP_CACHEME = 1 << 6,
+-	/*
+-	 * These are ops which clear current state id.
+-	 */
+-	OP_CLEAR_STATEID = 1 << 7,
+-};
+-
+-struct nfsd4_operation {
+-	nfsd4op_func op_func;
+-	u32 op_flags;
+-	char *op_name;
+-	/* Try to get response size before operation */
+-	nfsd4op_rsize op_rsize_bop;
+-	stateid_getter op_get_currentstateid;
+-	stateid_setter op_set_currentstateid;
+-};
+-
+ static struct nfsd4_operation nfsd4_ops[];
+ 
+-#ifdef NFSD_DEBUG
+-static const char *nfsd4_op_name(unsigned opnum);
+-#endif
+-
+ /*
+  * Enforce NFSv4.1 COMPOUND ordering rules:
+  *
+@@ -1219,7 +1169,7 @@ static __be32 nfs41_check_op_ordering(struct nfsd4_compoundargs *args)
+ 	return nfs_ok;
+ }
+ 
+-static inline struct nfsd4_operation *OPDESC(struct nfsd4_op *op)
++struct nfsd4_operation *OPDESC(struct nfsd4_op *op)
+ {
+ 	return &nfsd4_ops[op->opnum];
+ }
+@@ -1868,14 +1818,14 @@ static struct nfsd4_operation nfsd4_ops[] = {
+ 	},
+ };
+ 
+-#ifdef NFSD_DEBUG
+-static const char *nfsd4_op_name(unsigned opnum)
++const char *nfsd4_op_name(unsigned opnum)
+ {
++#ifdef NFSD_DEBUG
+ 	if (opnum < ARRAY_SIZE(nfsd4_ops))
+ 		return nfsd4_ops[opnum].op_name;
++#endif
+ 	return "unknown_operation";
+ }
+-#endif
+ 
+ #define nfsd4_voidres			nfsd4_voidargs
+ struct nfsd4_voidargs { int dummy; };
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index f62a055..fa3a589 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -536,6 +536,59 @@ static inline bool nfsd4_last_compound_op(struct svc_rqst *rqstp)
+ 	return argp->opcnt == resp->opcnt;
+ }
+ 
++
++
++typedef __be32(*nfsd4op_func)(struct svc_rqst *, struct nfsd4_compound_state *,
++			      void *);
++typedef u32(*nfsd4op_rsize)(struct svc_rqst *, struct nfsd4_op *op);
++typedef void(*stateid_setter)(struct nfsd4_compound_state *, void *);
++typedef void(*stateid_getter)(struct nfsd4_compound_state *, void *);
++
++enum nfsd4_op_flags {
++	ALLOWED_WITHOUT_FH = 1 << 0,	/* No current filehandle required */
++	ALLOWED_ON_ABSENT_FS = 1 << 1,	/* ops processed on absent fs */
++	ALLOWED_AS_FIRST_OP = 1 << 2,	/* ops reqired first in compound */
++	/* For rfc 5661 section 2.6.3.1.1: */
++	OP_HANDLES_WRONGSEC = 1 << 3,
++	OP_IS_PUTFH_LIKE = 1 << 4,
++	/*
++	 * These are the ops whose result size we estimate before
++	 * encoding, to avoid performing an op then not being able to
++	 * respond or cache a response.  This includes writes and setattrs
++	 * as well as the operations usually called "nonidempotent":
++	 */
++	OP_MODIFIES_SOMETHING = 1 << 5,
++	/*
++	 * Cache compounds containing these ops in the xid-based drc:
++	 * We use the DRC for compounds containing non-idempotent
++	 * operations, *except* those that are 4.1-specific (since
++	 * sessions provide their own EOS), and except for stateful
++	 * operations other than setclientid and setclientid_confirm
++	 * (since sequence numbers provide EOS for open, lock, etc in
++	 * the v4.0 case).
++	 */
++	OP_CACHEME = 1 << 6,
++	/*
++	 * These are ops which clear current state id.
++	 */
++	OP_CLEAR_STATEID = 1 << 7,
++};
++
++struct nfsd4_operation {
++	nfsd4op_func op_func;
++	u32 op_flags;
++	char *op_name;
++	/* Try to get response size before
++	 * operation */
++	nfsd4op_rsize op_rsize_bop;
++	stateid_getter op_get_currentstateid;
++	stateid_setter op_set_currentstateid;
++};
++
++struct nfsd4_operation *OPDESC(struct nfsd4_op *op);
++
++const char *nfsd4_op_name(unsigned opnum);
++
+ #define NFS4_SVC_XDRSIZE		sizeof(struct nfsd4_compoundargs)
+ 
+ static inline void
+-- 
+1.8.5.3
 
