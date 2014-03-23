@@ -1,114 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f176.google.com ([209.85.223.176]:50516 "EHLO
-	mail-ie0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755779AbaCRSpN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Mar 2014 14:45:13 -0400
-Received: by mail-ie0-f176.google.com with SMTP id rd18so7390898iec.7
-        for <linux-nfs@vger.kernel.org>; Tue, 18 Mar 2014 11:45:13 -0700 (PDT)
-Message-ID: <1395168308.11244.3.camel@leira.trondhjem.org>
-Subject: Re: [PATCH 1/2] SUNRPC: Ensure that call_connect times out correctly
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Date: Tue, 18 Mar 2014 14:45:08 -0400
-In-Reply-To: <53288146.4010601@RedHat.com>
-References: <1395081645-11906-1-git-send-email-trond.myklebust@primarydata.com>
-	 <53286A9D.2020007@RedHat.com>
-	 <362845B0-35A4-4DDF-96F6-42582D66334B@primarydata.com>
-	 <53288146.4010601@RedHat.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from fieldses.org ([174.143.236.118]:47902 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752216AbaCWBMa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 22 Mar 2014 21:12:30 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 32/50] nfsd4: don't try to encode conflicting owner if low on space
+Date: Sat, 22 Mar 2014 21:12:03 -0400
+Message-Id: <1395537141-10389-33-git-send-email-bfields@redhat.com>
+In-Reply-To: <1395537141-10389-1-git-send-email-bfields@redhat.com>
+References: <1395537141-10389-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2014-03-18 at 13:24 -0400, Steve Dickson wrote:
-> 
-> On 03/18/2014 11:58 AM, Trond Myklebust wrote:
-> > 
-> > On Mar 18, 2014, at 11:47, Steve Dickson <SteveD@redhat.com> wrote:
-> > 
-> >> Hey,
-> >>
-> >> On 03/17/2014 02:40 PM, Trond Myklebust wrote:
-> >>> When the server is unavailable due to a networking error, etc, we want
-> >>> the RPC client to respect the timeout delays when attempting to reconnect.
-> >>>
-> >>> Fixes: 561ec1603171 (SUNRPC: call_connect_status should recheck bind..)
-> >>> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> >>> ---
-> >>> net/sunrpc/clnt.c | 8 +++-----
-> >>> 1 file changed, 3 insertions(+), 5 deletions(-)
-> >>>
-> >>> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-> >>> index 0edada973434..f22d3a115fda 100644
-> >>> --- a/net/sunrpc/clnt.c
-> >>> +++ b/net/sunrpc/clnt.c
-> >>> @@ -1798,10 +1798,6 @@ call_connect_status(struct rpc_task *task)
-> >>> 	trace_rpc_connect_status(task, status);
-> >>> 	task->tk_status = 0;
-> >>> 	switch (status) {
-> >>> -		/* if soft mounted, test if we've timed out */
-> >>> -	case -ETIMEDOUT:
-> >>> -		task->tk_action = call_timeout;
-> >>> -		return;
-> >>> 	case -ECONNREFUSED:
-> >>> 	case -ECONNRESET:
-> >>> 	case -ECONNABORTED:
-> >>> @@ -1812,7 +1808,9 @@ call_connect_status(struct rpc_task *task)
-> >>> 		if (RPC_IS_SOFTCONN(task))
-> >>> 			break;
-> >>> 	case -EAGAIN:
-> >>> -		task->tk_action = call_bind;
-> >>> +	case -ETIMEDOUT:
-> >>> +		/* Check if we've timed out before looping back to call_bind */
-> >>> +		task->tk_action = call_timeout;
-> >>> 		return;
-> >>> 	case 0:
-> >>> 		clnt->cl_stats->netreconn++;
-> >>>
-> >> How is this support to work if the trunking code still ignores timeouts? 
-> >>
-> >> [ 2076.045176] NFS: nfs4_discover_server_trunking after status -110, retrying
-> > 
-> > The above patch fixes the regression that Neil tracked down in Linux 3.12, and that 
-> > affects the generic RPC handling of soft timeouts.
-> > 
-> > The trunking code's handling of ETIMEDOUT has been there since Linux 3.7 
-> > and hasn’t changed, so I really don’t see how it can have worked at one time before 3.12.
-> Maybe it been broken that long.... :-) 
-> 
-> But here is the obvious loop that stop that hangs a mount forever:
-> 
->  #8 [ffff88007a22b7e8] rpc_call_sync at ffffffffa0220210 [sunrpc]
->  #9 [ffff88007a22b840] nfs4_proc_setclientid at ffffffffa0505c49 [nfsv4]
-> #10 [ffff88007a22b988] nfs40_discover_server_trunking at ffffffffa0514489 [nfsv4]
-> #11 [ffff88007a22b9d0] nfs4_discover_server_trunking at ffffffffa0516f2d [nfsv4]
-> #12 [ffff88007a22ba28] nfs4_init_client at ffffffffa051e9a4 [nfsv4]
-> #13 [ffff88007a22bb20] nfs_get_client at ffffffffa04bd6ba [nfs]
-> #14 [ffff88007a22bb80] nfs4_set_client at ffffffffa051dfb0 [nfsv4]
-> #15 [ffff88007a22bc00] nfs4_create_server at ffffffffa051f4ce [nfsv4]
-> #16 [ffff88007a22bc88] nfs4_remote_mount at ffffffffa051790e [nfsv4]
-> #17 [ffff88007a22bcb0] mount_fs at ffffffff811b3dd9
-> 
-> The SETCLIENT times out 
->    NFS call  setclientid auth=UNIX, 'Linux NFSv4.0 10.19.60.77/10.19.60.33 tcp'
->    NFS reply setclientid: -110
-> 
-> The nfs4_discover_server_trunking() retries 
->    NFS: nfs4_discover_server_trunking after status -110, retrying
-> 
-> The happens when there server is down and so the connections 
-> fail with ECONNREFUSED:
->    RPC:     2 call_connect_status (status -111)
-> 
-> The mount system call never times out in which it did in the past. 
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Why should a mount system call time out other than perhaps in the case
-of a soft mount?
+I ran into this corner case in testing: in theory clients can provide
+state owners up to 1024 bytes long.  In the sessions case there might be
+a risk of this pushing us over the DRC slot size.
 
+The conflicting owner isn't really that important, so let's humor a
+client that provides a small maxresponsize_cached by allowing ourselves
+to return without the conflicting owner instead of outright failing the
+operation.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4proc.c |  3 ++-
+ fs/nfsd/nfs4xdr.c  | 16 +++++++++++++---
+ 2 files changed, 15 insertions(+), 4 deletions(-)
+
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index bc221e4..9876de2 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1387,7 +1387,8 @@ out:
+ #define op_encode_change_info_maxsz	(5)
+ #define nfs4_fattr_bitmap_maxsz		(4)
+ 
+-#define op_encode_lockowner_maxsz	(1 + XDR_QUADLEN(IDMAP_NAMESZ))
++/* We'll fall back on returning no lockowner if run out of space: */
++#define op_encode_lockowner_maxsz	(0)
+ #define op_encode_lock_denied_maxsz	(8 + op_encode_lockowner_maxsz)
+ 
+ #define nfs4_owner_maxsz		(1 + XDR_QUADLEN(IDMAP_NAMESZ))
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 8703cca..3620ac5d 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -2861,9 +2861,20 @@ nfsd4_encode_lock_denied(struct xdr_stream *xdr, struct nfsd4_lock_denied *ld)
+ 	struct xdr_netobj *conf = &ld->ld_owner;
+ 	__be32 *p;
+ 
++again:
+ 	p = xdr_reserve_space(xdr, 32 + XDR_LEN(conf->len));
+-	if (!p)
++	if (!p) {
++		/*
++		 * Don't fail to return the result just because we can't
++		 * return the conflicting open:
++		 */
++		if (conf->len) {
++			conf->len = 0;
++			conf->data = NULL;
++			goto again;
++		}
+ 		return nfserr_resource;
++	}
+ 	WRITE64(ld->ld_start);
+ 	WRITE64(ld->ld_length);
+ 	WRITE32(ld->ld_type);
+@@ -2871,7 +2882,6 @@ nfsd4_encode_lock_denied(struct xdr_stream *xdr, struct nfsd4_lock_denied *ld)
+ 		WRITEMEM(&ld->ld_clientid, 8);
+ 		WRITE32(conf->len);
+ 		WRITEMEM(conf->data, conf->len);
+-		kfree(conf->data);
+ 	}  else {  /* non - nfsv4 lock in conflict, no clientid nor owner */
+ 		WRITE64((u64)0); /* clientid */
+ 		WRITE32(0); /* length of owner name */
+@@ -2888,7 +2898,7 @@ nfsd4_encode_lock(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_lo
+ 		nfserr = nfsd4_encode_stateid(xdr, &lock->lk_resp_stateid);
+ 	else if (nfserr == nfserr_denied)
+ 		nfserr = nfsd4_encode_lock_denied(xdr, &lock->lk_denied);
+-
++	kfree(lock->lk_denied.ld_owner.data);
+ 	return nfserr;
+ }
+ 
 -- 
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
-
+1.8.5.3
 
