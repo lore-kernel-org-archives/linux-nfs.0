@@ -1,59 +1,124 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f173.google.com ([209.85.213.173]:36768 "EHLO
-	mail-ig0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759234AbaCTPh7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 20 Mar 2014 11:37:59 -0400
-Received: by mail-ig0-f173.google.com with SMTP id t19so15242830igi.0
-        for <linux-nfs@vger.kernel.org>; Thu, 20 Mar 2014 08:37:59 -0700 (PDT)
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
-Subject: Re: [PATCH] SUNRPC: Ensure call_connect_status() deals correctly with SOFTCONN tasks
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-In-Reply-To: <1395328983-20477-1-git-send-email-steved@redhat.com>
-Date: Thu, 20 Mar 2014 11:36:35 -0400
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Message-Id: <C382CE3B-4462-4B9F-9B73-2131993C4C47@primarydata.com>
-References: <1395328983-20477-1-git-send-email-steved@redhat.com>
-To: Dickson Steve <steved@redhat.com>
+Received: from fieldses.org ([174.143.236.118]:47880 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752160AbaCWBM2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 22 Mar 2014 21:12:28 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 21/50] rpc: xdr_truncate_encode
+Date: Sat, 22 Mar 2014 21:11:52 -0400
+Message-Id: <1395537141-10389-22-git-send-email-bfields@redhat.com>
+In-Reply-To: <1395537141-10389-1-git-send-email-bfields@redhat.com>
+References: <1395537141-10389-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-On Mar 20, 2014, at 11:23, Steve Dickson <steved@redhat.com> wrote:
+This will be used in the server side in a few cases:
+	- when certain operations (read, readdir, readlink) fail after
+	  encoding a partial response.
+	- when we run out of space after encoding a partial response.
+	- in readlink, where we initially reserve PAGE_SIZE bytes for
+	  data, then truncate to the actual size.
 
-> Don't schedule an rpc_delay before checking to see if the task
-> is a SOFTCON because the tk_callback from the delay (__rpc_atrun)
-> clears the task status before the rpc_exit_task can be run.
-> 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-> ---
-> net/sunrpc/clnt.c |    4 ++--
-> 1 files changed, 2 insertions(+), 2 deletions(-)
-> 
-> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-> index cea1308..cb76099 100644
-> --- a/net/sunrpc/clnt.c
-> +++ b/net/sunrpc/clnt.c
-> @@ -1802,10 +1802,10 @@ call_connect_status(struct rpc_task *task)
-> 	case -ECONNABORTED:
-> 	case -ENETUNREACH:
-> 	case -EHOSTUNREACH:
-> -		/* retry with existing socket, after a delay */
-> -		rpc_delay(task, 3*HZ);
-> 		if (RPC_IS_SOFTCONN(task))
-> 			break;
-> +		/* retry with existing socket, after a delay */
-> +		rpc_delay(task, 3*HZ);
-> 	case -EAGAIN:
-> 		/* Check for timeouts before looping back to call_bind */
-> 	case -ETIMEDOUT:
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ include/linux/sunrpc/xdr.h |  1 +
+ net/sunrpc/xdr.c           | 67 ++++++++++++++++++++++++++++++++++++++++++++++
+ 2 files changed, 68 insertions(+)
 
-Doh! Good catch!
-
-Applied...
-
-_________________________________
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
+diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
+index 15f9204..e7bb2e3 100644
+--- a/include/linux/sunrpc/xdr.h
++++ b/include/linux/sunrpc/xdr.h
+@@ -215,6 +215,7 @@ typedef int	(*kxdrdproc_t)(void *rqstp, struct xdr_stream *xdr, void *obj);
+ 
+ extern void xdr_init_encode(struct xdr_stream *xdr, struct xdr_buf *buf, __be32 *p);
+ extern __be32 *xdr_reserve_space(struct xdr_stream *xdr, size_t nbytes);
++extern void xdr_truncate_encode(struct xdr_stream *xdr, size_t len);
+ extern void xdr_write_pages(struct xdr_stream *xdr, struct page **pages,
+ 		unsigned int base, unsigned int len);
+ extern unsigned int xdr_stream_pos(const struct xdr_stream *xdr);
+diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
+index dd97ba3..8ae8ee7 100644
+--- a/net/sunrpc/xdr.c
++++ b/net/sunrpc/xdr.c
+@@ -509,6 +509,73 @@ __be32 * xdr_reserve_space(struct xdr_stream *xdr, size_t nbytes)
+ EXPORT_SYMBOL_GPL(xdr_reserve_space);
+ 
+ /**
++ * xdr_truncate_encode - truncate an encode buffer
++ * @xdr: pointer to xdr_stream
++ * @len: new length of buffer
++ *
++ * Truncates the xdr stream, so that xdr->buf->len == len,
++ * and xdr->p points at offset len from the start of the buffer, and
++ * head, tail, and page lengths are adjusted to correspond.
++ *
++ * If this means moving xdr->p to a different buffer, we assume that
++ * that the end pointer should be set to the end of the current page,
++ * except in the case of the head buffer when we assume the head
++ * buffer's current length represents the end of the available buffer.
++ *
++ * This is *not* safe to use on a buffer that already has inlined page
++ * cache pages (as in a zero-copy server read reply), except for the
++ * simple case of truncating from one position in the tail to another.
++ *
++ */
++void xdr_truncate_encode(struct xdr_stream *xdr, size_t len)
++{
++	struct xdr_buf *buf = xdr->buf;
++	struct kvec *head = buf->head;
++	struct kvec *tail = buf->tail;
++	int fraglen;
++	int new, old;
++
++	if (len > buf->len) {
++		WARN_ON_ONCE(1);
++		return;
++	}
++
++	fraglen = min_t(int, buf->len - len, tail->iov_len);
++	tail->iov_len -= fraglen;
++	buf->len -= fraglen;
++	if (tail->iov_len && buf->len == len) {
++		xdr->p = tail->iov_base + tail->iov_len;
++		/* xdr->end, xdr->iov should be set already */
++		return;
++	}
++	WARN_ON_ONCE(fraglen);
++	fraglen = min_t(int, buf->len - len, buf->page_len);
++	buf->page_len -= fraglen;
++	buf->len -= fraglen;
++
++	new = buf->page_base + buf->page_len;
++	old = new + fraglen;
++	xdr->page_ptr -= (old >> PAGE_SHIFT) - (new >> PAGE_SHIFT);
++
++	if (buf->page_len && buf->len == len) {
++		xdr->p = page_address(*xdr->page_ptr);
++		xdr->end = (void *)xdr->p + PAGE_SIZE;
++		xdr->p = (void *)xdr->p + (new % PAGE_SIZE);
++		/* xdr->iov should already be NULL */
++		return;
++	}
++	if (fraglen)
++		xdr->end = head->iov_base + head->iov_len;
++	/* (otherwise assume xdr->end is already set) */
++	head->iov_len = len;
++	buf->len = len;
++	xdr->p = head->iov_base + head->iov_len;
++	xdr->iov = buf->head;
++	xdr->page_ptr -= 1;
++}
++EXPORT_SYMBOL(xdr_truncate_encode);
++
++/**
+  * xdr_write_pages - Insert a list of pages into an XDR buffer for sending
+  * @xdr: pointer to xdr_stream
+  * @pages: list of pages
+-- 
+1.8.5.3
 
