@@ -1,78 +1,102 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:26935 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:47894 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754982AbaCCWK5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 3 Mar 2014 17:10:57 -0500
-Date: Mon, 3 Mar 2014 17:10:53 -0500
-From: Scott Mayhew <smayhew@redhat.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Layton Jeff <jlayton@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH/RFC] Add simple backoff logic when reconnecting to a
- server that recently initiated a connection close
-Message-ID: <20140303221053.GB45663@tonberry.usersys.redhat.com>
-References: <20140228222956.GA1544@tonberry.usersys.redhat.com>
- <20140303111352.736a7268@tlielax.poochiereds.net>
- <977F590C-0AF9-4B7F-B1FF-C10777987887@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <977F590C-0AF9-4B7F-B1FF-C10777987887@primarydata.com>
+	id S1752182AbaCWBMa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 22 Mar 2014 21:12:30 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 28/50] nfsd4: remove redundant encode buffer size checking
+Date: Sat, 22 Mar 2014 21:11:59 -0400
+Message-Id: <1395537141-10389-29-git-send-email-bfields@redhat.com>
+In-Reply-To: <1395537141-10389-1-git-send-email-bfields@redhat.com>
+References: <1395537141-10389-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 03 Mar 2014, Trond Myklebust wrote:
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-> 
-> On Mar 3, 2014, at 11:13, Jeff Layton <jlayton@redhat.com> wrote:
-> 
-> > On Fri, 28 Feb 2014 17:29:56 -0500
-> > Scott Mayhew <smayhew@redhat.com> wrote:
-> > 
-> >> From 2e3902fc0c66bda360a8e40e3e64d82e312a20d4 Mon Sep 17 00:00:00 2001
-> >> From: Scott Mayhew <smayhew@redhat.com>
-> >> Date: Fri, 28 Feb 2014 15:23:50 -0500
-> >> Subject: [PATCH] sunrpc: reintroduce xprt->shutdown with a new purpose (option
-> >> 2)
-> >> 
-> >> If a server is behaving pathologically and accepting our connections
-> >> only to close the socket on the first RPC operation it receives, then
-> >> we should probably delay when trying to reconnect.
-> >> 
-> >> This patch reintroduces the xprt->shutdown field (this time as two
-> >> bits).  Previously this field was used to indicate that the transport
-> >> was in the process of being shutdown, but now it will just be used to
-> >> indicate that a shutdown was initiated by the server.
-> >> 
-> >> If the server closes the connection 3 times without us having received
-> >> an RPC reply in the interim, then we'll delay before attempting to
-> >> connect again.
-> >> ---
-> >> include/linux/sunrpc/xprt.h |  3 ++-
-> >> net/sunrpc/clnt.c           |  2 ++
-> >> net/sunrpc/xprtsock.c       | 13 +++++++++++++
-> >> 3 files changed, 17 insertions(+), 1 deletion(-)
-> >> 
-> > 
-> > This patch seems a little more reasonable than the other one if only
-> > because it shouldn't cause artificial delays when there is some
-> > temporary hiccup that causes the server to shut down the connection.
-> > 
-> > That said, this seems to be squarely a server-side bug so I'm not sure
-> > we ought to go to any great lengths to work around it.
-> 
-> So this is about a broken server that accepts connection requests and then immediately closes them?
+Now that all op encoders can handle running out of space, we no longer
+need to check the remaining size for every operation; only nonidempotent
+operations need that check, and that can be done by
+nfsd4_check_resp_size.
 
-That's correct.
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4proc.c | 14 --------------
+ fs/nfsd/nfs4xdr.c  | 22 +++++++++++++---------
+ 2 files changed, 13 insertions(+), 23 deletions(-)
 
-> If so, then I agree with Jeff, it really isn?t something we need to fix on the client.
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index d55546c..570c7e5 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1237,7 +1237,6 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
+ 	struct nfsd4_op	*op;
+ 	struct nfsd4_operation *opdesc;
+ 	struct nfsd4_compound_state *cstate = &resp->cstate;
+-	int		slack_bytes;
+ 	u32		plen = 0;
+ 	__be32		status;
+ 
+@@ -1291,19 +1290,6 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
+ 			goto encode_op;
+ 		}
+ 
+-		/* We must be able to encode a successful response to
+-		 * this operation, with enough room left over to encode a
+-		 * failed response to the next operation.  If we don't
+-		 * have enough room, fail with ERR_RESOURCE.
+-		 */
+-		slack_bytes = (char *)resp->xdr.end - (char *)resp->xdr.p;
+-		if (slack_bytes < COMPOUND_SLACK_SPACE
+-				+ COMPOUND_ERR_SLACK_SPACE) {
+-			BUG_ON(slack_bytes < COMPOUND_ERR_SLACK_SPACE);
+-			op->status = nfserr_resource;
+-			goto encode_op;
+-		}
+-
+ 		opdesc = OPDESC(op);
+ 
+ 		if (!cstate->current_fh.fh_dentry) {
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 0d8bbe4..74ddf12 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -3730,20 +3730,24 @@ static nfsd4_enc nfsd4_enc_ops[] = {
+ __be32 nfsd4_check_resp_size(struct nfsd4_compoundres *resp, u32 pad)
+ {
+ 	struct xdr_buf *buf = &resp->rqstp->rq_res;
+-	struct nfsd4_session *session = NULL;
++	struct nfsd4_session *session = resp->cstate.session;
+ 	struct nfsd4_slot *slot = resp->cstate.slot;
++	int slack_bytes = (char *)resp->xdr.end - (char *)resp->xdr.p;
+ 
+-	if (!nfsd4_has_session(&resp->cstate))
+-		return 0;
++	if (nfsd4_has_session(&resp->cstate)) {
+ 
+-	session = resp->cstate.session;
++		if (buf->len + pad > session->se_fchannel.maxresp_sz)
++			return nfserr_rep_too_big;
+ 
+-	if (buf->len + pad > session->se_fchannel.maxresp_sz)
+-		return nfserr_rep_too_big;
++		if ((slot->sl_flags & NFSD4_SLOT_CACHETHIS) &&
++		    buf->len + pad > session->se_fchannel.maxresp_cached)
++			return nfserr_rep_too_big_to_cache;
++	}
+ 
+-	if ((slot->sl_flags & NFSD4_SLOT_CACHETHIS) &&
+-	    buf->len + pad > session->se_fchannel.maxresp_cached)
+-		return nfserr_rep_too_big_to_cache;
++	if (pad > slack_bytes) {
++		WARN_ON_ONCE(nfsd4_has_session(&resp->cstate));
++		return nfserr_resource;
++	}
+ 
+ 	return 0;
+ }
+-- 
+1.8.5.3
 
-Not even for the sake of 'politeness' (for lack of a better word)?  This
-was in a grid environment and there were apparently a few thousand clients
-doing this, not just a single client.
-
--Scott
-> 
-> _________________________________
-> Trond Myklebust
-> Linux NFS client maintainer, PrimaryData
-> trond.myklebust@primarydata.com
-> 
