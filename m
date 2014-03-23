@@ -1,92 +1,76 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from engine01-30064-1.icritical.com ([151.236.209.28]:53977 "HELO
-	engine01-30064-1.icritical.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with SMTP id S1753851AbaCJRc6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Mar 2014 13:32:58 -0400
-Received: from engine01-30064-1.icritical.com ([127.0.0.1])
- by localhost (engine01-30064-1.icritical.com [127.0.0.1]) (amavisd-new, port 10024)
- with SMTP id 09602-04 for <linux-nfs@vger.kernel.org>;
- Mon, 10 Mar 2014 17:26:13 +0000 (GMT)
-Message-ID: <531DF5B4.9050001@pml.ac.uk>
-Date: Mon, 10 Mar 2014 17:26:12 +0000
-From: Ben Taylor <benj@pml.ac.uk>
-MIME-Version: 1.0
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-CC: <linux-nfs@vger.kernel.org>
-Subject: Re: NFS4 patch 08/20 (BAD_SEQID recovery)
-References: <53199445.3010808@pml.ac.uk> <69B89FEE-5B58-468F-95CE-B384033B2E65@primarydata.com>
-In-Reply-To: <69B89FEE-5B58-468F-95CE-B384033B2E65@primarydata.com>
-Content-Type: multipart/mixed;
-	boundary="------------000501060508090201040405"
+Received: from fieldses.org ([174.143.236.118]:47875 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752152AbaCWBM2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 22 Mar 2014 21:12:28 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 19/50] nfsd4: no need for encode_compoundres to adjust lengths
+Date: Sat, 22 Mar 2014 21:11:50 -0400
+Message-Id: <1395537141-10389-20-git-send-email-bfields@redhat.com>
+In-Reply-To: <1395537141-10389-1-git-send-email-bfields@redhat.com>
+References: <1395537141-10389-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: "J. Bruce Fields" <bfields@redhat.com>
 
---------------000501060508090201040405
-Content-Type: text/plain; charset="ISO-8859-1"
-Content-Transfer-Encoding: 7bit
+xdr_reserve_space should now be calculating the length correctly as we
+go, so there's no longer any need to fix it up here.
 
-Hi Trond
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4state.c | 3 +++
+ fs/nfsd/nfs4xdr.c   | 8 +-------
+ 2 files changed, 4 insertions(+), 7 deletions(-)
 
-On 07/03/14 13:05, Trond Myklebust wrote:
->> Can anyone tell me what happened to this patch please? Was it lost or
->> > superseded?
-> It was superseded by commit 95b72eb0bdef6 (NFSv4: Ensure we do not reuse open owner names), which is available in linux 3.4 and newer.
-
-Many thanks. That's a puzzle then, because we're running 3.9 and up and
-already have that patch (I've checked).
-
-I've attached my Wireshark dump (or at least a subset of it -
-unfortunately I don't have the original call, the dump I've got is all
-the same) - don't know if this tells you anything it doesn't tell me?
-I'm not exactly experienced at reading these things!
-
-Thanks
-Ben
-
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index d98e282..2910abc 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1605,6 +1605,7 @@ nfsd4_replay_cache_entry(struct nfsd4_compoundres *resp,
+ 			 struct nfsd4_sequence *seq)
+ {
+ 	struct nfsd4_slot *slot = resp->cstate.slot;
++	struct kvec *head = resp->xdr.iov;
+ 	__be32 status;
+ 
+ 	dprintk("--> %s slot %p\n", __func__, slot);
+@@ -1618,6 +1619,8 @@ nfsd4_replay_cache_entry(struct nfsd4_compoundres *resp,
+ 
+ 	resp->opcnt = slot->sl_opcnt;
+ 	resp->xdr.p = resp->cstate.datap + XDR_QUADLEN(slot->sl_datalen);
++	head->iov_len = (void *)resp->xdr.p - head->iov_base;
++	resp->xdr.buf->len = head->iov_len;
+ 	status = slot->sl_status;
+ 
+ 	return status;
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index d665c60..fae7d02 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -3818,19 +3818,13 @@ nfs4svc_encode_compoundres(struct svc_rqst *rqstp, __be32 *p, struct nfsd4_compo
+ 	 * All that remains is to write the tag and operation count...
+ 	 */
+ 	struct nfsd4_compound_state *cs = &resp->cstate;
+-	struct kvec *iov;
++
+ 	p = resp->tagp;
+ 	*p++ = htonl(resp->taglen);
+ 	memcpy(p, resp->tag, resp->taglen);
+ 	p += XDR_QUADLEN(resp->taglen);
+ 	*p++ = htonl(resp->opcnt);
+ 
+-	if (rqstp->rq_res.page_len) 
+-		iov = &rqstp->rq_res.tail[0];
+-	else
+-		iov = &rqstp->rq_res.head[0];
+-	iov->iov_len = ((char*)resp->xdr.p) - (char*)iov->iov_base;
+-	BUG_ON(iov->iov_len > PAGE_SIZE);
+ 	if (nfsd4_has_session(cs)) {
+ 		struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
+ 		struct nfs4_client *clp = cs->session->se_client;
 -- 
-Ben Taylor <benj@pml.ac.uk>, http://rsg.pml.ac.uk/
-Remote Sensing Group, Plymouth Marine Laboratory
-Tel: +44 (0)1752 633432, Fax: +44 (0)1752 633101
+1.8.5.3
 
-
-Please visit our new website at www.pml.ac.uk and follow us on Twitter  @PlymouthMarine
-
-Plymouth Marine Laboratory (PML) is a company limited by guarantee registered in England & Wales, company number 4178503. Registered Charity No. 1091222. Registered Office: Prospect Place, The Hoe, Plymouth  PL1 3DH, UK. 
-
-This message is private and confidential. If you have received this message in error, please notify the sender and remove it from your system. You are reminded that e-mail communications are not secure and may contain viruses; PML accepts no liability for any loss or damage which may be caused by viruses.
-
-
---------------000501060508090201040405
-Content-Type: application/vnd.tcpdump.pcap; name="nfs_bad_seqid_trimmed.dmp"
-Content-Transfer-Encoding: base64
-Content-Disposition: attachment; filename="nfs_bad_seqid_trimmed.dmp"
-
-1MOyoQIABAAAAAAAAAAAAP//AAABAAAA6kQYU8XzCwBCAQAAQgEAAFiNCRhmwdBn5e50wAgA
-RQABNCKMQABABp2DCgoKPcCrpMIDkggBCfy4m81Uj/qAGACTetsAAAEBCAprRFcwJ8EsboAA
-APwgh+6pAAAAAAAAAAIAAYajAAAABAAAAAEAAAABAAAALABc/xAAAAAKZ3JpZG5vZGU1MQAA
-AABCogAAOtEAAAADAAA60QAAYbMAAGl6AAAAAAAAAAAAAAAAAAAAAAAAAAUAAAAWAAAAHAEA
-BgEk2SHln1lHJaY7i7yvYh0hZ0CjEaWQT/cAAAASAADteAAAAAEAAAAAkhYOU6kAAAAAAAAY
-b3BlbiBpZDoAAAAsAAAABAAGOjFKJCJJAAAAAAAAAAIAAAAAkhYOU1fInQEAAAAAAAAACmlk
-bF9wbmcuc28AAAAAAAoAAAADAAAALQAAAAkAAAACABABGgAwojrqRBhTHfQLAHoAAAB6AAAA
-0Gfl7nTAWI0JGGbBCABFAABsiXVAAD8GOGLAq6TCCgoKPQgBA5LNVI/6Cfy5m4AYDCjPnQAA
-AQEICifBLG5rRFcwgAAANCCH7qkAAAABAAAAAAAAAAAAAAAAAAAAAAAAJyoAAAAAAAAAAgAA
-ABYAAAAAAAAAEgAAJyrqRBhTSfQLAEIBAABCAQAAWI0JGGbB0Gfl7nTACABFAAE0Io1AAEAG
-nYIKCgo9wKukwgOSCAEJ/LmbzVSQMoAYAJN62wAAAQEICmtEVzAnwSxugAAA/CGH7qkAAAAA
-AAAAAgABhqMAAAAEAAAAAQAAAAEAAAAsAFz/EAAAAApncmlkbm9kZTUxAAAAAEKiAAA60QAA
-AAMAADrRAABhswAAaXoAAAAAAAAAAAAAAAAAAAAAAAAABQAAABYAAAAcAQAGASTZIeWfWUcl
-pjuLvK9iHSFnQKMRpZBP9wAAABIAAO14AAAAAQAAAACSFg5TqQAAAAAAABhvcGVuIGlkOgAA
-ACwAAAAEAAY6MUokIkkAAAAAAAAAAgAAAACSFg5TV8idAQAAAAAAAAAKaWRsX3BuZy5zbwAA
-AAAACgAAAAMAAAAtAAAACQAAAAIAEAEaADCiOupEGFO99AsAegAAAHoAAADQZ+XudMBYjQkY
-ZsEIAEUAAGyJdkAAPwY4YcCrpMIKCgo9CAEDks1UkDIJ/LqbgBgMKM1lAAABAQgKJ8EsbmtE
-VzCAAAA0IYfuqQAAAAEAAAAAAAAAAAAAAAAAAAAAAAAnKgAAAAAAAAACAAAAFgAAAAAAAAAS
-AAAnKupEGFPu9AsAQgEAAEIBAABYjQkYZsHQZ+XudMAIAEUAATQijkAAQAadgQoKCj3Aq6TC
-A5IIAQn8upvNVJBqgBgAk3rbAAABAQgKa0RXMSfBLG6AAAD8IofuqQAAAAAAAAACAAGGowAA
-AAQAAAABAAAAAQAAACwAXP8QAAAACmdyaWRub2RlNTEAAAAAQqIAADrRAAAAAwAAOtEAAGGz
-AABpegAAAAAAAAAAAAAAAAAAAAAAAAAFAAAAFgAAABwBAAYBJNkh5Z9ZRyWmO4u8r2IdIWdA
-oxGlkE/3AAAAEgAA7XgAAAABAAAAAJIWDlOpAAAAAAAAGG9wZW4gaWQ6AAAALAAAAAQABjox
-SiQiSQAAAAAAAAACAAAAAJIWDlNXyJ0BAAAAAAAAAAppZGxfcG5nLnNvAAAAAAAKAAAAAwAA
-AC0AAAAJAAAAAgAQARoAMKI66kQYU0r1CwB6AAAAegAAANBn5e50wFiNCRhmwQgARQAAbIl3
-QAA/BjhgwKukwgoKCj0IAQOSzVSQagn8u5uAGAwoyywAAAEBCAonwSxua0RXMYAAADQih+6p
-AAAAAQAAAAAAAAAAAAAAAAAAAAAAACcqAAAAAAAAAAIAAAAWAAAAAAAAABIAACcq
---------------000501060508090201040405--
