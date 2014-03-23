@@ -1,49 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f173.google.com ([209.85.223.173]:51346 "EHLO
-	mail-ie0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751630AbaCEOHi (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Mar 2014 09:07:38 -0500
-Received: by mail-ie0-f173.google.com with SMTP id rl12so1049477iec.32
-        for <linux-nfs@vger.kernel.org>; Wed, 05 Mar 2014 06:07:37 -0800 (PST)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Andy Adamson <andros@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 1/4] NFSv4: nfs4_stateid_is_current should return 'true' for an invalid stateid
-Date: Wed,  5 Mar 2014 09:07:29 -0500
-Message-Id: <1394028452-15956-2-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1394028452-15956-1-git-send-email-trond.myklebust@primarydata.com>
-References: <1393959943-9919-1-git-send-email-trond.myklebust@primarydata.com>
- <1394028452-15956-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from fieldses.org ([174.143.236.118]:47916 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752233AbaCWBMb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 22 Mar 2014 21:12:31 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 39/50] nfsd4: use session limits to release send buffer reservation
+Date: Sat, 22 Mar 2014 21:12:10 -0400
+Message-Id: <1395537141-10389-40-git-send-email-bfields@redhat.com>
+In-Reply-To: <1395537141-10389-1-git-send-email-bfields@redhat.com>
+References: <1395537141-10389-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When nfs4_set_rw_stateid() can fails by returning EIO to indicate that
-the stateid is completely invalid, then it makes no sense to have it
-trigger a retry of the READ or WRITE operation. Instead, we should just
-have it fall through and attempt a recovery.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Link: http://lkml.kernel.org/r/1393954269-3974-1-git-send-email-andros@netapp.com
-Cc: stable@vger.kernel.org # 3.10+
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Once we know the limits the session places on the size of the rpc, we
+can also use that information to release any unnecessary reserved reply
+buffer space.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfs/nfs4proc.c | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ fs/nfsd/nfs4state.c | 1 +
+ 1 file changed, 1 insertion(+)
 
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 44e088dc357c..4778c55d0336 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -4011,8 +4011,8 @@ static bool nfs4_stateid_is_current(nfs4_stateid *stateid,
- {
- 	nfs4_stateid current_stateid;
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 79f3b71..343324e 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -2277,6 +2277,7 @@ nfsd4_sequence(struct svc_rqst *rqstp,
+ 				    nfserr_rep_too_big;
+ 	if (xdr_restrict_buflen(xdr, buflen - 2 * RPC_MAX_AUTH_SIZE))
+ 		goto out_put_session;
++	svc_reserve(rqstp, buflen);
  
--	if (nfs4_set_rw_stateid(&current_stateid, ctx, l_ctx, fmode))
--		return false;
-+	if (nfs4_set_rw_stateid(&current_stateid, ctx, l_ctx, fmode) == -EIO)
-+		return true;
- 	return nfs4_stateid_match(stateid, &current_stateid);
- }
- 
+ 	status = nfs_ok;
+ 	/* Success! bump slot seqid */
 -- 
 1.8.5.3
 
