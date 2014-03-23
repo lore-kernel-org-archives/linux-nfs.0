@@ -1,14 +1,14 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:47892 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:47859 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752181AbaCWBM3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 22 Mar 2014 21:12:29 -0400
+	id S1752101AbaCWBM0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 22 Mar 2014 21:12:26 -0400
 From: "J. Bruce Fields" <bfields@redhat.com>
 To: linux-nfs@vger.kernel.org
 Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 27/50] nfsd4: nfsd4_check_resp_size needn't recalculate length
-Date: Sat, 22 Mar 2014 21:11:58 -0400
-Message-Id: <1395537141-10389-28-git-send-email-bfields@redhat.com>
+Subject: [PATCH 11/50] nfsd4: move proc_compound xdr encode init to helper
+Date: Sat, 22 Mar 2014 21:11:42 -0400
+Message-Id: <1395537141-10389-12-git-send-email-bfields@redhat.com>
 In-Reply-To: <1395537141-10389-1-git-send-email-bfields@redhat.com>
 References: <1395537141-10389-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -16,54 +16,50 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: "J. Bruce Fields" <bfields@redhat.com>
 
-We're keeping the length updated as we go now, so there's no need for
-the extra calculation here.
+Mechanical transformation with no change of behavior.
 
 Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfsd/nfs4xdr.c | 18 +++---------------
- 1 file changed, 3 insertions(+), 15 deletions(-)
+ fs/nfsd/nfs4proc.c | 16 ++++++++++++----
+ 1 file changed, 12 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 704167d..0d8bbe4 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -3729,32 +3729,20 @@ static nfsd4_enc nfsd4_enc_ops[] = {
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 7248a78..80e5921 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1262,6 +1262,17 @@ static bool need_wrongsec_check(struct svc_rqst *rqstp)
+ 	return !(nextd->op_flags & OP_HANDLES_WRONGSEC);
+ }
+ 
++static void svcxdr_init_encode(struct svc_rqst *rqstp, struct nfsd4_compoundres *resp)
++{
++	struct xdr_stream *xdr = &resp->xdr;
++	struct xdr_buf *buf = &rqstp->rq_res;
++	struct kvec *head = buf->head;
++
++	xdr->buf = buf;
++	xdr->p   = head->iov_base + head->iov_len;
++	xdr->end = head->iov_base + PAGE_SIZE;
++}
++
+ /*
+  * COMPOUND call.
   */
- __be32 nfsd4_check_resp_size(struct nfsd4_compoundres *resp, u32 pad)
- {
--	struct xdr_buf *xb = &resp->rqstp->rq_res;
-+	struct xdr_buf *buf = &resp->rqstp->rq_res;
- 	struct nfsd4_session *session = NULL;
- 	struct nfsd4_slot *slot = resp->cstate.slot;
--	u32 length, tlen = 0;
+@@ -1277,13 +1288,10 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
+ 	u32		plen = 0;
+ 	__be32		status;
  
- 	if (!nfsd4_has_session(&resp->cstate))
- 		return 0;
- 
- 	session = resp->cstate.session;
- 
--	if (xb->page_len == 0) {
--		length = (char *)resp->xdr.p - (char *)xb->head[0].iov_base + pad;
--	} else {
--		if (xb->tail[0].iov_base && xb->tail[0].iov_len > 0)
--			tlen = (char *)resp->xdr.p - (char *)xb->tail[0].iov_base;
--
--		length = xb->head[0].iov_len + xb->page_len + tlen + pad;
--	}
--	dprintk("%s length %u, xb->page_len %u tlen %u pad %u\n", __func__,
--		length, xb->page_len, tlen, pad);
--
--	if (length > session->se_fchannel.maxresp_sz)
-+	if (buf->len + pad > session->se_fchannel.maxresp_sz)
- 		return nfserr_rep_too_big;
- 
- 	if ((slot->sl_flags & NFSD4_SLOT_CACHETHIS) &&
--	    length > session->se_fchannel.maxresp_cached)
-+	    buf->len + pad > session->se_fchannel.maxresp_cached)
- 		return nfserr_rep_too_big_to_cache;
- 
- 	return 0;
+-	resp->xdr.buf = &rqstp->rq_res;
+-	resp->xdr.p = rqstp->rq_res.head[0].iov_base +
+-						rqstp->rq_res.head[0].iov_len;
++	svcxdr_init_encode(rqstp, resp);
+ 	resp->tagp = resp->xdr.p;
+ 	/* reserve space for: taglen, tag, and opcnt */
+ 	resp->xdr.p += 2 + XDR_QUADLEN(args->taglen);
+-	resp->xdr.end = rqstp->rq_res.head[0].iov_base + PAGE_SIZE;
+ 	resp->taglen = args->taglen;
+ 	resp->tag = args->tag;
+ 	resp->opcnt = 0;
 -- 
 1.8.5.3
 
