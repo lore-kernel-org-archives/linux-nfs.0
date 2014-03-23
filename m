@@ -1,75 +1,301 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f171.google.com ([209.85.223.171]:56914 "EHLO
-	mail-ie0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754708AbaCRP6w convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Mar 2014 11:58:52 -0400
-Received: by mail-ie0-f171.google.com with SMTP id ar20so7396872iec.2
-        for <linux-nfs@vger.kernel.org>; Tue, 18 Mar 2014 08:58:52 -0700 (PDT)
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
-Subject: Re: [PATCH 1/2] SUNRPC: Ensure that call_connect times out correctly
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-In-Reply-To: <53286A9D.2020007@RedHat.com>
-Date: Tue, 18 Mar 2014 11:58:18 -0400
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <362845B0-35A4-4DDF-96F6-42582D66334B@primarydata.com>
-References: <1395081645-11906-1-git-send-email-trond.myklebust@primarydata.com> <53286A9D.2020007@RedHat.com>
-To: Dickson Steve <SteveD@redhat.com>
+Received: from fieldses.org ([174.143.236.118]:47918 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752234AbaCWBMb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 22 Mar 2014 21:12:31 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 40/50] nfsd4: allow large readdirs
+Date: Sat, 22 Mar 2014 21:12:11 -0400
+Message-Id: <1395537141-10389-41-git-send-email-bfields@redhat.com>
+In-Reply-To: <1395537141-10389-1-git-send-email-bfields@redhat.com>
+References: <1395537141-10389-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-On Mar 18, 2014, at 11:47, Steve Dickson <SteveD@redhat.com> wrote:
+Currently we limit readdir results to a single page.  This can result in
+a performance regression compared to NFSv3 when reading large
+directories.
 
-> Hey,
-> 
-> On 03/17/2014 02:40 PM, Trond Myklebust wrote:
->> When the server is unavailable due to a networking error, etc, we want
->> the RPC client to respect the timeout delays when attempting to reconnect.
->> 
->> Fixes: 561ec1603171 (SUNRPC: call_connect_status should recheck bind..)
->> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
->> ---
->> net/sunrpc/clnt.c | 8 +++-----
->> 1 file changed, 3 insertions(+), 5 deletions(-)
->> 
->> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
->> index 0edada973434..f22d3a115fda 100644
->> --- a/net/sunrpc/clnt.c
->> +++ b/net/sunrpc/clnt.c
->> @@ -1798,10 +1798,6 @@ call_connect_status(struct rpc_task *task)
->> 	trace_rpc_connect_status(task, status);
->> 	task->tk_status = 0;
->> 	switch (status) {
->> -		/* if soft mounted, test if we've timed out */
->> -	case -ETIMEDOUT:
->> -		task->tk_action = call_timeout;
->> -		return;
->> 	case -ECONNREFUSED:
->> 	case -ECONNRESET:
->> 	case -ECONNABORTED:
->> @@ -1812,7 +1808,9 @@ call_connect_status(struct rpc_task *task)
->> 		if (RPC_IS_SOFTCONN(task))
->> 			break;
->> 	case -EAGAIN:
->> -		task->tk_action = call_bind;
->> +	case -ETIMEDOUT:
->> +		/* Check if we've timed out before looping back to call_bind */
->> +		task->tk_action = call_timeout;
->> 		return;
->> 	case 0:
->> 		clnt->cl_stats->netreconn++;
->> 
-> How is this support to work if the trunking code still ignores timeouts? 
-> 
-> [ 2076.045176] NFS: nfs4_discover_server_trunking after status -110, retrying
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4proc.c |   3 --
+ fs/nfsd/nfs4xdr.c  | 134 +++++++++++++++++++++++++++++------------------------
+ fs/nfsd/xdr4.h     |   5 +-
+ 3 files changed, 76 insertions(+), 66 deletions(-)
 
-The above patch fixes the regression that Neil tracked down in Linux 3.12, and that affects the generic RPC handling of soft timeouts.
-
-The trunking code's handling of ETIMEDOUT has been there since Linux 3.7 and hasn’t changed, so I really don’t see how it can have worked at one time before 3.12.
-
-_________________________________
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 9876de2..d1b4513 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1457,9 +1457,6 @@ static inline u32 nfsd4_readdir_rsize(struct svc_rqst *rqstp, struct nfsd4_op *o
+ {
+ 	u32 rlen = op->u.readdir.rd_maxcount;
+ 
+-	if (rlen > PAGE_SIZE)
+-		rlen = PAGE_SIZE;
+-
+ 	return (op_encode_hdr_size + op_encode_verifier_maxsz)
+ 		 * sizeof(__be32) + rlen;
+ }
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index e0e486d..fa3ae50 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -2575,8 +2575,8 @@ static inline int attributes_need_mount(u32 *bmval)
+ }
+ 
+ static __be32
+-nfsd4_encode_dirent_fattr(struct nfsd4_readdir *cd,
+-		const char *name, int namlen, __be32 **p, int buflen)
++nfsd4_encode_dirent_fattr(struct xdr_stream *xdr, struct nfsd4_readdir *cd,
++			const char *name, int namlen)
+ {
+ 	struct svc_export *exp = cd->rd_fhp->fh_export;
+ 	struct dentry *dentry;
+@@ -2628,7 +2628,7 @@ nfsd4_encode_dirent_fattr(struct nfsd4_readdir *cd,
+ 
+ 	}
+ out_encode:
+-	nfserr = nfsd4_encode_fattr_to_buf(p, buflen, NULL, exp, dentry, cd->rd_bmval,
++	nfserr = nfsd4_encode_fattr(xdr, NULL, exp, dentry, cd->rd_bmval,
+ 					cd->rd_rqstp, ignore_crossmnt);
+ out_put:
+ 	dput(dentry);
+@@ -2637,9 +2637,12 @@ out_put:
+ }
+ 
+ static __be32 *
+-nfsd4_encode_rdattr_error(__be32 *p, int buflen, __be32 nfserr)
++nfsd4_encode_rdattr_error(struct xdr_stream *xdr, __be32 nfserr)
+ {
+-	if (buflen < 6)
++	__be32 *p;
++
++	p = xdr_reserve_space(xdr, 6);
++	if (!p)
+ 		return NULL;
+ 	*p++ = htonl(2);
+ 	*p++ = htonl(FATTR4_WORD0_RDATTR_ERROR); /* bmval0 */
+@@ -2656,10 +2659,13 @@ nfsd4_encode_dirent(void *ccdv, const char *name, int namlen,
+ {
+ 	struct readdir_cd *ccd = ccdv;
+ 	struct nfsd4_readdir *cd = container_of(ccd, struct nfsd4_readdir, common);
+-	int buflen;
+-	__be32 *p = cd->buffer;
+-	__be32 *cookiep;
++	struct xdr_stream *xdr = cd->xdr;
++	int start_offset = xdr->buf->len;
++	int cookie_offset;
++	int entry_bytes;
+ 	__be32 nfserr = nfserr_toosmall;
++	__be64 wire_offset;
++	__be32 *p;
+ 
+ 	/* In nfsv4, "." and ".." never make it onto the wire.. */
+ 	if (name && isdotent(name, namlen)) {
+@@ -2667,19 +2673,23 @@ nfsd4_encode_dirent(void *ccdv, const char *name, int namlen,
+ 		return 0;
+ 	}
+ 
+-	if (cd->offset)
+-		xdr_encode_hyper(cd->offset, (u64) offset);
++	if (cd->cookie_offset) {
++		wire_offset = cpu_to_be64(offset);
++		write_bytes_to_xdr_buf(xdr->buf, cd->cookie_offset, &wire_offset, 8);
++	}
+ 
+-	buflen = cd->buflen - 4 - XDR_QUADLEN(namlen);
+-	if (buflen < 0)
++	p = xdr_reserve_space(xdr, 4);
++	if (!p)
+ 		goto fail;
+-
+ 	*p++ = xdr_one;                             /* mark entry present */
+-	cookiep = p;
++	cookie_offset = xdr->buf->len;
++	p = xdr_reserve_space(xdr, 3*4 + namlen);
++	if (!p)
++		goto fail;
+ 	p = xdr_encode_hyper(p, NFS_OFFSET_MAX);    /* offset of next entry */
+ 	p = xdr_encode_array(p, name, namlen);      /* name length & name */
+ 
+-	nfserr = nfsd4_encode_dirent_fattr(cd, name, namlen, &p, buflen);
++	nfserr = nfsd4_encode_dirent_fattr(xdr, cd, name, namlen);
+ 	switch (nfserr) {
+ 	case nfs_ok:
+ 		break;
+@@ -2698,19 +2708,23 @@ nfsd4_encode_dirent(void *ccdv, const char *name, int namlen,
+ 		 */
+ 		if (!(cd->rd_bmval[0] & FATTR4_WORD0_RDATTR_ERROR))
+ 			goto fail;
+-		p = nfsd4_encode_rdattr_error(p, buflen, nfserr);
++		p = nfsd4_encode_rdattr_error(xdr, nfserr);
+ 		if (p == NULL) {
+ 			nfserr = nfserr_toosmall;
+ 			goto fail;
+ 		}
+ 	}
+-	cd->buflen -= (p - cd->buffer);
+-	cd->buffer = p;
+-	cd->offset = cookiep;
++	nfserr = nfserr_toosmall;
++	entry_bytes = xdr->buf->len - start_offset;
++	if (entry_bytes > cd->rd_maxcount)
++		goto fail;
++	cd->rd_maxcount -= entry_bytes;
++	cd->cookie_offset = cookie_offset;
+ skip_entry:
+ 	cd->common.err = nfs_ok;
+ 	return 0;
+ fail:
++	xdr_truncate_encode(xdr, start_offset);
+ 	cd->common.err = nfserr;
+ 	return -EINVAL;
+ }
+@@ -3194,10 +3208,11 @@ static __be32
+ nfsd4_encode_readdir(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_readdir *readdir)
+ {
+ 	int maxcount;
++	int bytes_left;
+ 	loff_t offset;
++	__be64 wire_offset;
+ 	struct xdr_stream *xdr = &resp->xdr;
+ 	int starting_len = xdr->buf->len;
+-	__be32 *page, *tailbase;
+ 	__be32 *p;
+ 
+ 	if (nfserr)
+@@ -3207,38 +3222,38 @@ nfsd4_encode_readdir(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4
+ 	if (!p)
+ 		return nfserr_resource;
+ 
+-	if (resp->xdr.buf->page_len)
+-		return nfserr_resource;
+-	if (!*resp->rqstp->rq_next_page)
+-		return nfserr_resource;
+-
+ 	/* XXX: Following NFSv3, we ignore the READDIR verifier for now. */
+ 	WRITE32(0);
+ 	WRITE32(0);
+ 	resp->xdr.buf->head[0].iov_len = ((char*)resp->xdr.p)
+ 				- (char*)resp->xdr.buf->head[0].iov_base;
+-	tailbase = p;
+-
+-	maxcount = PAGE_SIZE;
+-	if (maxcount > readdir->rd_maxcount)
+-		maxcount = readdir->rd_maxcount;
+ 
+ 	/*
+-	 * Convert from bytes to words, account for the two words already
+-	 * written, make sure to leave two words at the end for the next
+-	 * pointer and eof field.
++	 * Number of bytes left for directory entries allowing for the
++	 * final 8 bytes of the readdir and a following failed op:
++	 */
++	bytes_left = xdr->buf->buflen - xdr->buf->len
++			- COMPOUND_ERR_SLACK_SPACE - 8;
++	if (bytes_left < 0) {
++		nfserr = nfserr_resource;
++		goto err_no_verf;
++	}
++	maxcount = min_t(u32, readdir->rd_maxcount, INT_MAX);
++	/*
++	 * Note the rfc defines rd_maxcount as the size of the
++	 * READDIR4resok structure, which includes the verifier above
++	 * and the 8 bytes encoded at the end of this function:
+ 	 */
+-	maxcount = (maxcount >> 2) - 4;
+-	if (maxcount < 0) {
+-		nfserr =  nfserr_toosmall;
++	if (maxcount < 16) {
++		nfserr = nfserr_toosmall;
+ 		goto err_no_verf;
+ 	}
++	maxcount = min_t(int, maxcount-16, bytes_left);
+ 
+-	page = page_address(*(resp->rqstp->rq_next_page++));
++	readdir->xdr = xdr;
++	readdir->rd_maxcount = maxcount;
+ 	readdir->common.err = 0;
+-	readdir->buflen = maxcount;
+-	readdir->buffer = page;
+-	readdir->offset = NULL;
++	readdir->cookie_offset = 0;
+ 
+ 	offset = readdir->rd_cookie;
+ 	nfserr = nfsd_readdir(readdir->rd_rqstp, readdir->rd_fhp,
+@@ -3246,32 +3261,31 @@ nfsd4_encode_readdir(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4
+ 			      &readdir->common, nfsd4_encode_dirent);
+ 	if (nfserr == nfs_ok &&
+ 	    readdir->common.err == nfserr_toosmall &&
+-	    readdir->buffer == page) 
+-		nfserr = nfserr_toosmall;
++	    xdr->buf->len == starting_len + 8) {
++		/* nothing encoded; which limit did we hit?: */
++		if (maxcount - 16 < bytes_left)
++			/* It was the fault of rd_maxcount: */
++			nfserr = nfserr_toosmall;
++		else
++			/* We ran out of buffer space: */
++			nfserr = nfserr_resource;
++	}
+ 	if (nfserr)
+ 		goto err_no_verf;
+ 
+-	if (readdir->offset)
+-		xdr_encode_hyper(readdir->offset, offset);
++	if (readdir->cookie_offset) {
++		wire_offset = cpu_to_be64(offset);
++		write_bytes_to_xdr_buf(xdr->buf, readdir->cookie_offset,
++							&wire_offset, 8);
++	}
+ 
+-	p = readdir->buffer;
++	p = xdr_reserve_space(xdr, 8);
++	if (!p) {
++		WARN_ON_ONCE(1);
++		goto err_no_verf;
++	}
+ 	*p++ = 0;	/* no more entries */
+ 	*p++ = htonl(readdir->common.err == nfserr_eof);
+-	resp->xdr.buf->page_len = ((char*)p) -
+-		(char*)page_address(*(resp->rqstp->rq_next_page-1));
+-	xdr->buf->len += xdr->buf->page_len;
+-
+-	xdr->iov = xdr->buf->tail;
+-
+-	xdr->page_ptr++;
+-	xdr->buf->buflen -= PAGE_SIZE;
+-	xdr->iov = xdr->buf->tail;
+-
+-	/* Use rest of head for padding and remaining ops: */
+-	resp->xdr.buf->tail[0].iov_base = tailbase;
+-	resp->xdr.buf->tail[0].iov_len = 0;
+-	resp->xdr.p = resp->xdr.buf->tail[0].iov_base;
+-	resp->xdr.end = resp->xdr.p + (PAGE_SIZE - resp->xdr.buf->head[0].iov_len)/4;
+ 
+ 	return 0;
+ err_no_verf:
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index d1c6e21..04b8a80 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -287,9 +287,8 @@ struct nfsd4_readdir {
+ 	struct svc_fh * rd_fhp;             /* response */
+ 
+ 	struct readdir_cd	common;
+-	__be32 *		buffer;
+-	int			buflen;
+-	__be32 *		offset;
++	struct xdr_stream	*xdr;
++	int			cookie_offset;
+ };
+ 
+ struct nfsd4_release_lockowner {
+-- 
+1.8.5.3
 
