@@ -1,51 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f175.google.com ([209.85.223.175]:52832 "EHLO
-	mail-ie0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757661AbaCEPLF convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Mar 2014 10:11:05 -0500
-Received: by mail-ie0-f175.google.com with SMTP id to1so1119874ieb.6
-        for <linux-nfs@vger.kernel.org>; Wed, 05 Mar 2014 07:11:05 -0800 (PST)
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
-Subject: Re: [PATCH 8/8] NFS: allow lockless access to access_cache
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-In-Reply-To: <20140305030028.27421.87633.stgit@notabene.brown>
-Date: Wed, 5 Mar 2014 10:11:02 -0500
-Cc: linux-nfs@vger.kernel.org
-Message-Id: <305B5E2C-33BE-4268-87A9-22FD19EF8E1A@primarydata.com>
-References: <20140305025813.27421.23871.stgit@notabene.brown> <20140305030028.27421.87633.stgit@notabene.brown>
-To: Brown Neil <neilb@suse.de>
+Received: from fieldses.org ([174.143.236.118]:47846 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751823AbaCWBMZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 22 Mar 2014 21:12:25 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 06/50] nfsd4: remove redundant check from nfsd4_check_resp_size
+Date: Sat, 22 Mar 2014 21:11:37 -0400
+Message-Id: <1395537141-10389-7-git-send-email-bfields@redhat.com>
+In-Reply-To: <1395537141-10389-1-git-send-email-bfields@redhat.com>
+References: <1395537141-10389-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-On Mar 4, 2014, at 22:00, NeilBrown <neilb@suse.de> wrote:
+cstate->slot and ->session are each set together in nfsd4_sequence.  If
+one is non-NULL, so is the other.
 
-> The access cache is used during RCU-walk path lookups, so it is best
-> to avoid locking if possible as taking a lock kills concurrency.
-> 
-> The rbtree is not rcu-safe and cannot easily be made so.
-> Instead we simply check the last (i.e. most recent) entry on the LRU
-> list.  If this doesn't match, then we return -ECHILD and retry in
-> lock/refcount mode.
-> 
-> This requires freeing the nfs_access_entry struct with rcu, and
-> requires using rcu access primates when adding entries to the lru, and
-> when examining the last entry.
-> 
-> Calling put_rpccred before kfree_rcu looks a bit odd, but as
-> put_rpccred already provide rcu protection, we know that the cred will
-> not actually be freed until the next grace period, so any concurrent
-> access will be safe.
-> 
-> This patch provides about 5% performance improvement on a stat-heavy
-> synthetic work load with 4 threads on a 2-core CPU.
-> 
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4xdr.c | 2 --
+ 1 file changed, 2 deletions(-)
 
-Have you looked at converting the rb-tree into something a little more RCU-friendly? Since our lookup key is just a pointer value, couldn’t we use a radix-tree?
-
-_________________________________
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index ebefc42..143780d 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -3584,8 +3584,6 @@ __be32 nfsd4_check_resp_size(struct nfsd4_compoundres *resp, u32 pad)
+ 		return 0;
+ 
+ 	session = resp->cstate.session;
+-	if (session == NULL)
+-		return 0;
+ 
+ 	if (xb->page_len == 0) {
+ 		length = (char *)resp->p - (char *)xb->head[0].iov_base + pad;
+-- 
+1.8.5.3
 
