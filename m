@@ -1,61 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f169.google.com ([209.85.223.169]:59324 "EHLO
-	mail-ie0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752970AbaCESaU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Mar 2014 13:30:20 -0500
-Received: by mail-ie0-f169.google.com with SMTP id to1so1518765ieb.14
-        for <linux-nfs@vger.kernel.org>; Wed, 05 Mar 2014 10:30:19 -0800 (PST)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Andy Adamson <andros@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v4 3/4] NFSv4.1 Fail data server I/O if stateid represents a lost lock
-Date: Wed,  5 Mar 2014 13:30:10 -0500
-Message-Id: <1394044211-22302-4-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1394044211-22302-3-git-send-email-trond.myklebust@primarydata.com>
-References: <1394028452-15956-1-git-send-email-trond.myklebust@primarydata.com>
- <1394044211-22302-1-git-send-email-trond.myklebust@primarydata.com>
- <1394044211-22302-2-git-send-email-trond.myklebust@primarydata.com>
- <1394044211-22302-3-git-send-email-trond.myklebust@primarydata.com>
+Received: from fieldses.org ([174.143.236.118]:47853 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752044AbaCWBMZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 22 Mar 2014 21:12:25 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 08/50] nfsd4: fix nfs4err_resource in 4.1 case
+Date: Sat, 22 Mar 2014 21:11:39 -0400
+Message-Id: <1395537141-10389-9-git-send-email-bfields@redhat.com>
+In-Reply-To: <1395537141-10389-1-git-send-email-bfields@redhat.com>
+References: <1395537141-10389-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
-Link: http://lkml.kernel.org/r/1393954269-3974-1-git-send-email-andros@netapp.com
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+encode_getattr, for example, can return nfserr_resource to indicate it
+ran out of buffer space.  That's not a legal error in the 4.1 case.  And
+in the 4.1 case, if we ran out of buffer space, we should have exceeded
+a session limit too.
 ---
- fs/nfs/nfs4filelayout.c | 10 ++++++----
- 1 file changed, 6 insertions(+), 4 deletions(-)
+ fs/nfsd/nfs4xdr.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
 
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 12c8132ad408..b9a35c05b60f 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -324,8 +324,9 @@ static void filelayout_read_prepare(struct rpc_task *task, void *data)
- 			&rdata->res.seq_res,
- 			task))
- 		return;
--	nfs4_set_rw_stateid(&rdata->args.stateid, rdata->args.context,
--			rdata->args.lock_context, FMODE_READ);
-+	if (nfs4_set_rw_stateid(&rdata->args.stateid, rdata->args.context,
-+			rdata->args.lock_context, FMODE_READ) == -EIO)
-+		rpc_exit(task, -EIO); /* lost lock, terminate I/O */
- }
- 
- static void filelayout_read_call_done(struct rpc_task *task, void *data)
-@@ -435,8 +436,9 @@ static void filelayout_write_prepare(struct rpc_task *task, void *data)
- 			&wdata->res.seq_res,
- 			task))
- 		return;
--	nfs4_set_rw_stateid(&wdata->args.stateid, wdata->args.context,
--			wdata->args.lock_context, FMODE_WRITE);
-+	if (nfs4_set_rw_stateid(&wdata->args.stateid, wdata->args.context,
-+			wdata->args.lock_context, FMODE_WRITE) == -EIO)
-+		rpc_exit(task, -EIO); /* lost lock, terminate I/O */
- }
- 
- static void filelayout_write_call_done(struct rpc_task *task, void *data)
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 143780d..ea32674 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -3626,6 +3626,14 @@ nfsd4_encode_operation(struct nfsd4_compoundres *resp, struct nfsd4_op *op)
+ 	/* nfsd4_check_resp_size guarantees enough room for error status */
+ 	if (!op->status)
+ 		op->status = nfsd4_check_resp_size(resp, 0);
++	if (op->status == nfserr_resource && nfsd4_has_session(&resp->cstate)) {
++		struct nfsd4_slot *slot = resp->cstate.slot;
++
++		if (slot->sl_flags & NFSD4_SLOT_CACHETHIS)
++			op->status = nfserr_rep_too_big_to_cache;
++		else
++			op->status = nfserr_rep_too_big;
++	}
+ 	if (so) {
+ 		so->so_replay.rp_status = op->status;
+ 		so->so_replay.rp_buflen = (char *)resp->p - (char *)(statp+1);
 -- 
 1.8.5.3
 
