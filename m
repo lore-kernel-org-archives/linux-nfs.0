@@ -1,63 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f170.google.com ([209.85.216.170]:43137 "EHLO
-	mail-qc0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755875AbaCKVdY convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 11 Mar 2014 17:33:24 -0400
-Received: by mail-qc0-f170.google.com with SMTP id e9so10315413qcy.15
-        for <linux-nfs@vger.kernel.org>; Tue, 11 Mar 2014 14:33:24 -0700 (PDT)
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
-Subject: Re: [PATCH] nfs: Don't assume we have a security structure
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-In-Reply-To: <1394572274-16474-1-git-send-email-Anna.Schumaker@netapp.com>
-Date: Tue, 11 Mar 2014 17:27:44 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        James Morris <james.l.morris@oracle.com>,
-        Eric Paris <eparis@redhat.com>
-Message-Id: <29D9CA49-A493-471B-932B-959AFF96C729@primarydata.com>
-References: <1394572274-16474-1-git-send-email-Anna.Schumaker@netapp.com>
-To: Schumaker Anna <Anna.Schumaker@netapp.com>,
-        David Quigley <dpquigl@davequigley.com>
+Received: from fieldses.org ([174.143.236.118]:47851 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751949AbaCWBMZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 22 Mar 2014 21:12:25 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 07/50] nfsd4: fix setclientid encode size
+Date: Sat, 22 Mar 2014 21:11:38 -0400
+Message-Id: <1395537141-10389-8-git-send-email-bfields@redhat.com>
+In-Reply-To: <1395537141-10389-1-git-send-email-bfields@redhat.com>
+References: <1395537141-10389-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-On Mar 11, 2014, at 17:11, Anna Schumaker <Anna.Schumaker@netapp.com> wrote:
+---
+ fs/nfsd/nfs4proc.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
-> If the i_security field isn't set then security_dentry_init_security()
-> won't initialize some of the values used by the security label.  This
-> causes my client to hit a BUG_ON() while encoding a label of size
-> -2128927414.
-> 
-> I hit this bug while testing on a client without SELinux installed.
-> 
-> Signed-off-by: Anna Schumaker <anna.schumaker@netapp.com>
-> ---
-> fs/nfs/nfs4proc.c | 3 +++
-> 1 file changed, 3 insertions(+)
-> 
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index b8cd560..994ccc2 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -105,6 +105,9 @@ nfs4_label_init_security(struct inode *dir, struct dentry *dentry,
-> 	if (nfs_server_capable(dir, NFS_CAP_SECURITY_LABEL) == 0)
-> 		return NULL;
-> 
-> +	if (!dir->i_security)
-> +		return NULL;
-> +
-> 	err = security_dentry_init_security(dentry, sattr->ia_mode,
-> 				&dentry->d_name, (void **)&label->label, &label->len);
-> 	if (err == 0)
-
-Hi Anna,
-
-This looks like a check that needs to be done by selinux_dentry_init_security() itself. The dir->i_security field is not something that NFS knows about.
-David, what needs to happen there when dentry->d_parent->i_security (a.k.a. dsec) is NULL?
-
-_________________________________
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index b9048e5..9a914e8 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1529,7 +1529,8 @@ static inline u32 nfsd4_setattr_rsize(struct svc_rqst *rqstp, struct nfsd4_op *o
+ 
+ static inline u32 nfsd4_setclientid_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op)
+ {
+-	return (op_encode_hdr_size + 2 + 1024) * sizeof(__be32);
++	return (op_encode_hdr_size + 2 + XDR_QUADLEN(NFS4_VERIFIER_SIZE)) *
++								sizeof(__be32);
+ }
+ 
+ static inline u32 nfsd4_write_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op)
+-- 
+1.8.5.3
 
