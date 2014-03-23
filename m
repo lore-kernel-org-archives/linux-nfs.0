@@ -1,44 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f172.google.com ([209.85.223.172]:35280 "EHLO
-	mail-ie0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751624AbaCFSux convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Mar 2014 13:50:53 -0500
-Received: by mail-ie0-f172.google.com with SMTP id as1so3216058iec.17
-        for <linux-nfs@vger.kernel.org>; Thu, 06 Mar 2014 10:50:52 -0800 (PST)
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
-Subject: Re: Optimal NFS mount options to safely allow interrupts and timeouts on newer kernels
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-In-Reply-To: <1397912955.101159.1394130906695.JavaMail.zimbra@xes-inc.com>
-Date: Thu, 6 Mar 2014 13:50:50 -0500
-Cc: Jim Rees <rees@umich.edu>, bhawley@luminex.com, Brown Neil <neilb@suse.de>,
-        linux-nfs-owner@vger.kernel.org, linux-nfs@vger.kernel.org
-Message-Id: <B454F556-9381-4DB7-B864-EC066DBEAC63@primarydata.com>
-References: <1696396609.119284.1394040541217.JavaMail.zimbra@xes-inc.com> <1853694865.210849.1394082223818.JavaMail.zimbra@xes-inc.com> <20140306163721.0edfb498@notabene.brown> <1709792528-1394084840-cardhu_decombobulator_blackberry.rim.net-1367662481-@b5.c4.bise6.blackberry> <764210708.28409.1394119821635.JavaMail.zimbra@xes-inc.com> <20140306162208.GA18207@umich.edu> <1094203678.52139.1394124222574.JavaMail.zimbra@xes-inc.com> <20140306173632.GA18545@umich.edu> <1397912955.101159.1394130906695.JavaMail.zimbra@xes-inc.com>
-To: Andrew Martin <amartin@xes-inc.com>
+Received: from fieldses.org ([174.143.236.118]:47926 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752266AbaCWBMd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 22 Mar 2014 21:12:33 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 44/50] nfsd4: nfsd_vfs_read  doesn't use file handle parameter
+Date: Sat, 22 Mar 2014 21:12:15 -0400
+Message-Id: <1395537141-10389-45-git-send-email-bfields@redhat.com>
+In-Reply-To: <1395537141-10389-1-git-send-email-bfields@redhat.com>
+References: <1395537141-10389-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-On Mar 6, 2014, at 13:35, Andrew Martin <amartin@xes-inc.com> wrote:
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/vfs.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
->> From: "Jim Rees" <rees@umich.edu>
->> Why would a bunch of blocked apaches cause high load and reboot?
-> What I believe happens is the apache child processes go to serve
-> these requests and then block in uninterruptable sleep. Thus, there
-> are fewer and fewer child processes to handle new incoming requests.
-> Eventually, apache would normally kill said children (e.g after a 
-> child handles a certain number of requests), but it cannot kill them
-> because they are in uninterruptable sleep. As more and more incoming
-> requests are queued (and fewer and fewer child processes are available
-> to serve the requests), the load climbs.
-
-Does ‘top’ support this theory? Presumably you should see a handful of non-sleeping apache threads dominating the load when it happens.
-
-Why is the server becoming ‘unavailable’ in the first place? Are you taking it down?
-
-_________________________________
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index eea5ad1..cbf7690 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -821,7 +821,7 @@ static int nfsd_direct_splice_actor(struct pipe_inode_info *pipe,
+ }
+ 
+ static __be32
+-nfsd_vfs_read(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file *file,
++nfsd_vfs_read(struct svc_rqst *rqstp, struct file *file,
+               loff_t offset, struct kvec *vec, int vlen, unsigned long *count)
+ {
+ 	mm_segment_t	oldfs;
+@@ -987,7 +987,7 @@ __be32 nfsd_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 	if (ra && ra->p_set)
+ 		file->f_ra = ra->p_ra;
+ 
+-	err = nfsd_vfs_read(rqstp, fhp, file, offset, vec, vlen, count);
++	err = nfsd_vfs_read(rqstp, file, offset, vec, vlen, count);
+ 
+ 	/* Write back readahead params */
+ 	if (ra) {
+@@ -1016,7 +1016,7 @@ nfsd_read_file(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file *file,
+ 				NFSD_MAY_READ|NFSD_MAY_OWNER_OVERRIDE);
+ 		if (err)
+ 			goto out;
+-		err = nfsd_vfs_read(rqstp, fhp, file, offset, vec, vlen, count);
++		err = nfsd_vfs_read(rqstp, file, offset, vec, vlen, count);
+ 	} else /* Note file may still be NULL in NFSv4 special stateid case: */
+ 		err = nfsd_read(rqstp, fhp, offset, vec, vlen, count);
+ out:
+-- 
+1.8.5.3
 
