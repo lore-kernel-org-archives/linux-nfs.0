@@ -1,39 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:61598 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:56507 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755729AbaCSRKc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 19 Mar 2014 13:10:32 -0400
-Message-ID: <5329CF7C.7090308@RedHat.com>
-Date: Wed, 19 Mar 2014 13:10:20 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S1752292AbaCWPHZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 23 Mar 2014 11:07:25 -0400
+Date: Sun, 23 Mar 2014 11:07:22 -0400
+To: Christoph Hellwig <hch@infradead.org>
+Cc: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 22/50] nfsd4: use xdr_truncate_encode
+Message-ID: <20140323150722.GC30644@fieldses.org>
+References: <1395537141-10389-1-git-send-email-bfields@redhat.com>
+ <1395537141-10389-23-git-send-email-bfields@redhat.com>
+ <20140323065005.GC24465@infradead.org>
 MIME-Version: 1.0
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/2] SUNRPC: Ensure that call_connect times out correctly
-References: <1395081645-11906-1-git-send-email-trond.myklebust@primarydata.com>	 <53286A9D.2020007@RedHat.com>	 <362845B0-35A4-4DDF-96F6-42582D66334B@primarydata.com>	 <53288146.4010601@RedHat.com> <1395168308.11244.3.camel@leira.trondhjem.org> <532897DE.6060204@RedHat.com> <EB317FC8-D521-4D80-98D7-FA48B0B9AF0C@primarydata.com> <5329900C.3040200@RedHat.com> <DAF0940D-107D-4251-B00A-DE829A31B36E@primarydata.com> <5329A4B3.20601@RedHat.com> <0C0E5EE2-E7BD-4BE3-961F-3B632B45F026@primarydata.com>
-In-Reply-To: <0C0E5EE2-E7BD-4BE3-961F-3B632B45F026@primarydata.com>
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140323065005.GC24465@infradead.org>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Sat, Mar 22, 2014 at 11:50:05PM -0700, Christoph Hellwig wrote:
+> Ah, here we got the helper for most of the error handling I asked for
+> earlier.  Might be worth mentioning in that patch that this gets further
+> improvements soons.
 
+OK, will do.
 
-On 03/19/2014 11:04 AM, Trond Myklebust wrote:
-> IOW: there is no way to make mount.nfs honour the ‘retry’ and/or ‘bg' 
-> mount options in any consistent fashion by solely relying on kernel timeouts.
-I went back and took a look at how bg mounts worked in a number of
-older kernels f19(3.12) all the way back to RHEL6 kernel (2.6). 
+> >  	if (nfserr) {
+> > -		xdr->p -= 2;
+> > -		xdr->iov->iov_len -= 8;
+> > +		xdr->buf->page_len = 0;
+> > +		xdr_truncate_encode(xdr, starting_len);
+> 
+> Why do we still need to manually set the page_len?
 
-I turns out you are right. The bg mounts were not depending on
-timeouts they were depended on the mount to fail with ECONNREFUSED
-The very first one, which is the reason the bg mount happen
-so fast... 
+In the splice case read increments page_len as it goes.  This leaves the
+xdr_buf in somewhat of an inconsistent state and may confuse a later
+xdr_truncate_encode.
 
-Its seems these days ECONNREFUSED are no longer return 
-as an error codes. They basically are turned into a 
-timeout... Just curious as to why ECONNREFUSED are 
-no longer returned?
+It's a little ugly, I'm not sure what to do about it.  Currently I'm
+thinking of just telling nfsd's splice callback to leave page_len alone.
+That'd mean taking another look at the splice callback and at the v2/v3
+read code.
 
-Again, thanks for the cycles!
-
-steved.
+--b.
