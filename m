@@ -1,48 +1,107 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f171.google.com ([209.85.216.171]:62832 "EHLO
-	mail-qc0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753709AbaCNRrO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Mar 2014 13:47:14 -0400
-Received: by mail-qc0-f171.google.com with SMTP id x13so3275281qcv.2
-        for <linux-nfs@vger.kernel.org>; Fri, 14 Mar 2014 10:47:14 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 0/5] nfs: consolidate rename code into one set of functions
-Date: Fri, 14 Mar 2014 13:47:00 -0400
-Message-Id: <1394819225-13713-1-git-send-email-jlayton@redhat.com>
+Received: from fieldses.org ([174.143.236.118]:47914 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752231AbaCWBMb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 22 Mar 2014 21:12:31 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 38/50] nfsd4: adjust buflen to session channel limit
+Date: Sat, 22 Mar 2014 21:12:09 -0400
+Message-Id: <1395537141-10389-39-git-send-email-bfields@redhat.com>
+In-Reply-To: <1395537141-10389-1-git-send-email-bfields@redhat.com>
+References: <1395537141-10389-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-As Trond pointed out yesterday, it makes little sense to maintain two
-separate sets of functions for handling RENAMEs.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-This patchset converts nfs_rename to use the asynchronous RENAME
-infrastructure that is already in place for sillyrenames. It also
-does some cleanup to remove some minor layering violations, and
-adds a patch to make the sillyrename code emit a fsnotify_nameremove
-when a sillyrename succeeds.
+We can simplify session limit enforcement by restricting the xdr buflen
+to the session size.
 
-I've lightly tested this set and it seems to do the right thing,
-but it obviously could stand some time in linux-next.
+Also fix a preexisting bug: we should really have been taking into
+account the auth-required space when comparing against session limits,
+which are limits on the size of the entire rpc reply, including any krb5
+overhead.
 
-Jeff Layton (5):
-  nfs: abstract out code needed to complete a sillyrename
-  nfs: make nfs_async_rename non-static
-  nfs: convert nfs_rename to use async_rename infrastructure
-  nfs: remove synchronous rename code
-  nfs: emit a fsnotify_nameremove call in sillyrename codepath
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4state.c | 11 +++++++++++
+ fs/nfsd/nfs4xdr.c   | 24 ++++++++----------------
+ 2 files changed, 19 insertions(+), 16 deletions(-)
 
- fs/nfs/dir.c            | 26 +++++++++++++++++++++-----
- fs/nfs/internal.h       |  7 +++++++
- fs/nfs/nfs3proc.c       | 36 ------------------------------------
- fs/nfs/nfs4proc.c       | 44 --------------------------------------------
- fs/nfs/proc.c           | 25 -------------------------
- fs/nfs/unlink.c         | 35 ++++++++++++++++++++++++++++++-----
- include/linux/nfs_fs.h  |  1 -
- include/linux/nfs_xdr.h |  3 +--
- 8 files changed, 59 insertions(+), 118 deletions(-)
-
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 1146cf2..79f3b71 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -2195,11 +2195,13 @@ nfsd4_sequence(struct svc_rqst *rqstp,
+ 	       struct nfsd4_sequence *seq)
+ {
+ 	struct nfsd4_compoundres *resp = rqstp->rq_resp;
++	struct xdr_stream *xdr = &resp->xdr;
+ 	struct nfsd4_session *session;
+ 	struct nfs4_client *clp;
+ 	struct nfsd4_slot *slot;
+ 	struct nfsd4_conn *conn;
+ 	__be32 status;
++	int buflen;
+ 	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
+ 
+ 	if (resp->opcnt != 1)
+@@ -2268,6 +2270,15 @@ nfsd4_sequence(struct svc_rqst *rqstp,
+ 	if (status)
+ 		goto out_put_session;
+ 
++	buflen = (seq->cachethis) ?
++			session->se_fchannel.maxresp_cached :
++			session->se_fchannel.maxresp_sz;
++	status = (seq->cachethis) ? nfserr_rep_too_big_to_cache :
++				    nfserr_rep_too_big;
++	if (xdr_restrict_buflen(xdr, buflen - 2 * RPC_MAX_AUTH_SIZE))
++		goto out_put_session;
++
++	status = nfs_ok;
+ 	/* Success! bump slot seqid */
+ 	slot->sl_seqid = seq->seqid;
+ 	slot->sl_flags |= NFSD4_SLOT_INUSE;
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 6d9f0a53..e0e486d 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -3753,25 +3753,17 @@ static nfsd4_enc nfsd4_enc_ops[] = {
+ __be32 nfsd4_check_resp_size(struct nfsd4_compoundres *resp, u32 respsize)
+ {
+ 	struct xdr_buf *buf = &resp->rqstp->rq_res;
+-	struct nfsd4_session *session = resp->cstate.session;
++	struct nfsd4_slot *slot = resp->cstate.slot;
+ 
+-	if (nfsd4_has_session(&resp->cstate)) {
+-		struct nfsd4_slot *slot = resp->cstate.slot;
+-
+-		if (buf->len + respsize > session->se_fchannel.maxresp_sz)
+-			return nfserr_rep_too_big;
+-
+-		if ((slot->sl_flags & NFSD4_SLOT_CACHETHIS) &&
+-		    buf->len + respsize > session->se_fchannel.maxresp_cached)
+-			return nfserr_rep_too_big_to_cache;
+-	}
+-
+-	if (buf->len + respsize > buf->buflen) {
+-		WARN_ON_ONCE(nfsd4_has_session(&resp->cstate));
++	if (buf->len + respsize <= buf->buflen)
++		return nfs_ok;
++	if (!nfsd4_has_session(&resp->cstate))
+ 		return nfserr_resource;
++	if (slot->sl_flags & NFSD4_SLOT_CACHETHIS) {
++		WARN_ON_ONCE(1);
++		return nfserr_rep_too_big_to_cache;
+ 	}
+-
+-	return 0;
++	return nfserr_rep_too_big;
+ }
+ 
+ void
 -- 
 1.8.5.3
 
