@@ -1,44 +1,216 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:46726 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:47934 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750987AbaCaVht (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 31 Mar 2014 17:37:49 -0400
-Date: Mon, 31 Mar 2014 17:37:48 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 0/5][RESEND]NFSD/SUNRPC: Fix memory leak for the
- backchannel
-Message-ID: <20140331213748.GE20024@fieldses.org>
-References: <532FAC85.20909@gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <532FAC85.20909@gmail.com>
+	id S1752272AbaCWBMd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 22 Mar 2014 21:12:33 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 48/50] nfsd4: kill WRITE64
+Date: Sat, 22 Mar 2014 21:12:19 -0400
+Message-Id: <1395537141-10389-49-git-send-email-bfields@redhat.com>
+In-Reply-To: <1395537141-10389-1-git-send-email-bfields@redhat.com>
+References: <1395537141-10389-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Mar 24, 2014 at 11:54:45AM +0800, Kinglong Mee wrote:
-> When using pynfs test-site, I found some memory leak for the backchannel.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-All applied, thanks.--b.
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4xdr.c | 52 ++++++++++++++++++++++++----------------------------
+ 1 file changed, 24 insertions(+), 28 deletions(-)
 
-> 
-> Kinglong Mee (5):
->   NFSD: Using free_conn free connection
->   NFSD: Free backchannel xprt in bc_destroy
->   SUNRPC: New helper for creating client with rpc_xprt
->   NFSD/SUNRPC: Check rpc_xprt out of xs_setup_bc_tcp
->   SUNRPC: Clear xpt_bc_xprt if xs_setup_bc_tcp failed
-> 
->  fs/nfsd/nfs4callback.c      | 19 ++++++++++++++-
->  fs/nfsd/nfs4state.c         |  3 ++-
->  include/linux/sunrpc/clnt.h |  2 ++
->  include/linux/sunrpc/xprt.h | 13 +++++++++-
->  net/sunrpc/clnt.c           | 58 ++++++++++++++++++++++++++-------------------
->  net/sunrpc/xprt.c           | 12 ----------
->  net/sunrpc/xprtsock.c       | 15 +++++-------
->  7 files changed, 73 insertions(+), 49 deletions(-)
-> 
-> -- 
-> 1.8.5.3
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 7a827c1..6afa0a1 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -1700,10 +1700,6 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
+ 	DECODE_TAIL;
+ }
+ 
+-#define WRITE64(n)               do {				\
+-	*p++ = htonl((u32)((n) >> 32));				\
+-	*p++ = htonl((u32)(n));					\
+-} while (0)
+ #define WRITEMEM(ptr,nbytes)     do { if (nbytes > 0) {		\
+ 	*(p + XDR_QUADLEN(nbytes) -1) = 0;                      \
+ 	memcpy(p, ptr, nbytes);					\
+@@ -2208,7 +2204,7 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp, struct svc_export
+ 		p = xdr_reserve_space(xdr, 8);
+ 		if (!p)
+ 			goto out_resource;
+-		WRITE64(stat.size);
++		p = xdr_encode_hyper(p, stat.size);
+ 	}
+ 	if (bmval0 & FATTR4_WORD0_LINK_SUPPORT) {
+ 		p = xdr_reserve_space(xdr, 4);
+@@ -2233,12 +2229,12 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp, struct svc_export
+ 		if (!p)
+ 			goto out_resource;
+ 		if (exp->ex_fslocs.migrated) {
+-			WRITE64(NFS4_REFERRAL_FSID_MAJOR);
+-			WRITE64(NFS4_REFERRAL_FSID_MINOR);
++			p = xdr_encode_hyper(p, NFS4_REFERRAL_FSID_MAJOR);
++			p = xdr_encode_hyper(p, NFS4_REFERRAL_FSID_MINOR);
+ 		} else switch(fsid_source(fhp)) {
+ 		case FSIDSOURCE_FSID:
+-			WRITE64((u64)exp->ex_fsid);
+-			WRITE64((u64)0);
++			p = xdr_encode_hyper(p, (u64)exp->ex_fsid);
++			p = xdr_encode_hyper(p, (u64)0);
+ 			break;
+ 		case FSIDSOURCE_DEV:
+ 			*p++ = cpu_to_be32(0);
+@@ -2340,25 +2336,25 @@ out_acl:
+ 		p = xdr_reserve_space(xdr, 8);
+ 		if (!p)
+ 			goto out_resource;
+-		WRITE64(stat.ino);
++		p = xdr_encode_hyper(p, stat.ino);
+ 	}
+ 	if (bmval0 & FATTR4_WORD0_FILES_AVAIL) {
+ 		p = xdr_reserve_space(xdr, 8);
+ 		if (!p)
+ 			goto out_resource;
+-		WRITE64((u64) statfs.f_ffree);
++		p = xdr_encode_hyper(p, (u64) statfs.f_ffree);
+ 	}
+ 	if (bmval0 & FATTR4_WORD0_FILES_FREE) {
+ 		p = xdr_reserve_space(xdr, 8);
+ 		if (!p)
+ 			goto out_resource;
+-		WRITE64((u64) statfs.f_ffree);
++		p = xdr_encode_hyper(p, (u64) statfs.f_ffree);
+ 	}
+ 	if (bmval0 & FATTR4_WORD0_FILES_TOTAL) {
+ 		p = xdr_reserve_space(xdr, 8);
+ 		if (!p)
+ 			goto out_resource;
+-		WRITE64((u64) statfs.f_files);
++		p = xdr_encode_hyper(p, (u64) statfs.f_files);
+ 	}
+ 	if (bmval0 & FATTR4_WORD0_FS_LOCATIONS) {
+ 		status = nfsd4_encode_fs_locations(xdr, rqstp, exp);
+@@ -2375,7 +2371,7 @@ out_acl:
+ 		p = xdr_reserve_space(xdr, 8);
+ 		if (!p)
+ 			goto out_resource;
+-		WRITE64(exp->ex_path.mnt->mnt_sb->s_maxbytes);
++		p = xdr_encode_hyper(p, exp->ex_path.mnt->mnt_sb->s_maxbytes);
+ 	}
+ 	if (bmval0 & FATTR4_WORD0_MAXLINK) {
+ 		p = xdr_reserve_space(xdr, 4);
+@@ -2393,13 +2389,13 @@ out_acl:
+ 		p = xdr_reserve_space(xdr, 8);
+ 		if (!p)
+ 			goto out_resource;
+-		WRITE64((u64) svc_max_payload(rqstp));
++		p = xdr_encode_hyper(p, (u64) svc_max_payload(rqstp));
+ 	}
+ 	if (bmval0 & FATTR4_WORD0_MAXWRITE) {
+ 		p = xdr_reserve_space(xdr, 8);
+ 		if (!p)
+ 			goto out_resource;
+-		WRITE64((u64) svc_max_payload(rqstp));
++		p = xdr_encode_hyper(p, (u64) svc_max_payload(rqstp));
+ 	}
+ 	if (bmval1 & FATTR4_WORD1_MODE) {
+ 		p = xdr_reserve_space(xdr, 4);
+@@ -2441,34 +2437,34 @@ out_acl:
+ 		if (!p)
+ 			goto out_resource;
+ 		dummy64 = (u64)statfs.f_bavail * (u64)statfs.f_bsize;
+-		WRITE64(dummy64);
++		p = xdr_encode_hyper(p, dummy64);
+ 	}
+ 	if (bmval1 & FATTR4_WORD1_SPACE_FREE) {
+ 		p = xdr_reserve_space(xdr, 8);
+ 		if (!p)
+ 			goto out_resource;
+ 		dummy64 = (u64)statfs.f_bfree * (u64)statfs.f_bsize;
+-		WRITE64(dummy64);
++		p = xdr_encode_hyper(p, dummy64);
+ 	}
+ 	if (bmval1 & FATTR4_WORD1_SPACE_TOTAL) {
+ 		p = xdr_reserve_space(xdr, 8);
+ 		if (!p)
+ 			goto out_resource;
+ 		dummy64 = (u64)statfs.f_blocks * (u64)statfs.f_bsize;
+-		WRITE64(dummy64);
++		p = xdr_encode_hyper(p, dummy64);
+ 	}
+ 	if (bmval1 & FATTR4_WORD1_SPACE_USED) {
+ 		p = xdr_reserve_space(xdr, 8);
+ 		if (!p)
+ 			goto out_resource;
+ 		dummy64 = (u64)stat.blocks << 9;
+-		WRITE64(dummy64);
++		p = xdr_encode_hyper(p, dummy64);
+ 	}
+ 	if (bmval1 & FATTR4_WORD1_TIME_ACCESS) {
+ 		p = xdr_reserve_space(xdr, 12);
+ 		if (!p)
+ 			goto out_resource;
+-		WRITE64((s64)stat.atime.tv_sec);
++		p = xdr_encode_hyper(p, (s64)stat.atime.tv_sec);
+ 		*p++ = cpu_to_be32(stat.atime.tv_nsec);
+ 	}
+ 	if (bmval1 & FATTR4_WORD1_TIME_DELTA) {
+@@ -2483,14 +2479,14 @@ out_acl:
+ 		p = xdr_reserve_space(xdr, 12);
+ 		if (!p)
+ 			goto out_resource;
+-		WRITE64((s64)stat.ctime.tv_sec);
++		p = xdr_encode_hyper(p, (s64)stat.ctime.tv_sec);
+ 		*p++ = cpu_to_be32(stat.ctime.tv_nsec);
+ 	}
+ 	if (bmval1 & FATTR4_WORD1_TIME_MODIFY) {
+ 		p = xdr_reserve_space(xdr, 12);
+ 		if (!p)
+ 			goto out_resource;
+-		WRITE64((s64)stat.mtime.tv_sec);
++		p = xdr_encode_hyper(p, (s64)stat.mtime.tv_sec);
+ 		*p++ = cpu_to_be32(stat.mtime.tv_nsec);
+ 	}
+ 	if (bmval1 & FATTR4_WORD1_MOUNTED_ON_FILEID) {
+@@ -2504,7 +2500,7 @@ out_acl:
+ 		if (ignore_crossmnt == 0 &&
+ 		    dentry == exp->ex_path.mnt->mnt_root)
+ 			get_parent_attributes(exp, &stat);
+-		WRITE64(stat.ino);
++		p = xdr_encode_hyper(p, stat.ino);
+ 	}
+ 	if (bmval2 & FATTR4_WORD2_SECURITY_LABEL) {
+ 		status = nfsd4_encode_security_label(xdr, rqstp, context, contextlen);
+@@ -2889,15 +2885,15 @@ again:
+ 		}
+ 		return nfserr_resource;
+ 	}
+-	WRITE64(ld->ld_start);
+-	WRITE64(ld->ld_length);
++	p = xdr_encode_hyper(p, ld->ld_start);
++	p = xdr_encode_hyper(p, ld->ld_length);
+ 	*p++ = cpu_to_be32(ld->ld_type);
+ 	if (conf->len) {
+ 		WRITEMEM(&ld->ld_clientid, 8);
+ 		*p++ = cpu_to_be32(conf->len);
+ 		WRITEMEM(conf->data, conf->len);
+ 	}  else {  /* non - nfsv4 lock in conflict, no clientid nor owner */
+-		WRITE64((u64)0); /* clientid */
++		p = xdr_encode_hyper(p, (u64)0); /* clientid */
+ 		*p++ = cpu_to_be32(0); /* length of owner name */
+ 	}
+ 	return nfserr_denied;
+@@ -3640,7 +3636,7 @@ nfsd4_encode_exchange_id(struct nfsd4_compoundres *resp, __be32 nfserr,
+ 		return nfserr_resource;
+ 
+ 	/* The server_owner struct */
+-	WRITE64(minor_id);      /* Minor id */
++	p = xdr_encode_hyper(p, minor_id);      /* Minor id */
+ 	/* major id */
+ 	*p++ = cpu_to_be32(major_id_sz);
+ 	WRITEMEM(major_id, major_id_sz);
+-- 
+1.8.5.3
+
