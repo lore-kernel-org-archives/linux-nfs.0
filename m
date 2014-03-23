@@ -1,95 +1,417 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:46346 "EHLO mx2.suse.de"
+Received: from fieldses.org ([174.143.236.118]:47928 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752692AbaCFEiF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 5 Mar 2014 23:38:05 -0500
-Date: Thu, 6 Mar 2014 15:37:57 +1100
-From: NeilBrown <neilb@suse.de>
-To: Jim Rees <rees@umich.edu>
-Cc: Andrew Martin <amartin@xes-inc.com>, linux-nfs@vger.kernel.org
-Subject: Re: Optimal NFS mount options to safely allow interrupts and
- timeouts on newer kernels
-Message-ID: <20140306153757.5ab046e0@notabene.brown>
-In-Reply-To: <20140306034727.GA18942@umich.edu>
-References: <1696396609.119284.1394040541217.JavaMail.zimbra@xes-inc.com>
-	<260588931.122771.1394041524167.JavaMail.zimbra@xes-inc.com>
-	<20140305201149.GA16212@umich.edu>
-	<1106484945.149062.1394052088011.JavaMail.zimbra@xes-inc.com>
-	<20140305211124.GA16979@umich.edu>
-	<20140306143454.75eb2726@notabene.brown>
-	<20140306034727.GA18942@umich.edu>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/Vq+82X_c2AIGfa+zkMbloiQ"; protocol="application/pgp-signature"
+	id S1752267AbaCWBMd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 22 Mar 2014 21:12:33 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 45/50] nfsd4: separate splice and readv cases
+Date: Sat, 22 Mar 2014 21:12:16 -0400
+Message-Id: <1395537141-10389-46-git-send-email-bfields@redhat.com>
+In-Reply-To: <1395537141-10389-1-git-send-email-bfields@redhat.com>
+References: <1395537141-10389-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/Vq+82X_c2AIGfa+zkMbloiQ
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-On Wed, 5 Mar 2014 22:47:27 -0500 Jim Rees <rees@umich.edu> wrote:
+The splice and readv cases are actually quite different--for example the
+former case ignores the array of vectors we build up for the latter.
 
-> NeilBrown wrote:
->=20
->   On Wed, 5 Mar 2014 16:11:24 -0500 Jim Rees <rees@umich.edu> wrote:
->  =20
->   > Andrew Martin wrote:
->   >=20
->   >   Isn't intr/nointr deprecated (since kernel 2.6.25)?
->   >=20
->   > It isn't so much that it's deprecated as that it's now the default (e=
-xcept
->   > that only SIGKILL will work).
->  =20
->   Not quite correct.  Any signal will work providing its behaviour is to =
-kill
->   the process.  So SIGKILL will always work, and SIGTERM SIGINT SIGQUIT e=
-tc
->   will work providing that aren't caught or ignored by the process.
->=20
-> If that's true, then the man page is wrong and someone should fix it. I'll
-> work up a patch if someone can confirm the behavior.
+It is probably clearer to separate the two cases entirely.
 
-I just mounted a filesystem, turned off my network connection, ran "ls -l" =
-and
-then tried to kill the "ls"....
-To my surprise, only SIGKILL worked.
-I looked more closely and discovered that "ls" catches SIGHUP SIGINT SIGQUIT
-SIGTERM, so those signals won't kill it....
+There's some code duplication between the split out encoders, but this
+is only temporary and will be fixed by a later patch.
 
-So I tried to "cat" a file on the NFS filesystem.  'cat' doesn't catch any
-signals.  SIGHUP SIGTERM SIGINT all worked on 'cat'.
-'df' also responds to 'SIGINT'.
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4xdr.c | 153 ++++++++++++++++++++++++++++++++++++++++++------------
+ fs/nfsd/vfs.c     | 121 ++++++++++++++++++++++++++----------------
+ fs/nfsd/vfs.h     |   8 +++
+ 3 files changed, 202 insertions(+), 80 deletions(-)
 
-It would be nice if 'ls' only caught signals while printing (so it can
-restore the default colour) and didn't during 'stat' and 'readdir'.  But
-maybe no-one cares enough.
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 8cdc346..e052351 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -3068,36 +3068,72 @@ nfsd4_encode_open_downgrade(struct nfsd4_compoundres *resp, __be32 nfserr, struc
+ 	return nfserr;
+ }
+ 
+-static __be32
+-nfsd4_encode_read(struct nfsd4_compoundres *resp, __be32 nfserr,
+-		  struct nfsd4_read *read)
++static __be32 nfsd4_encode_splice_read(
++				struct nfsd4_compoundres *resp,
++				struct nfsd4_read *read,
++				struct file *file, unsigned long maxcount)
+ {
+-	u32 eof;
+-	int v;
+-	struct page *page;
+-	unsigned long maxcount; 
+ 	struct xdr_stream *xdr = &resp->xdr;
+-	int starting_len = xdr->buf->len;
+-	long len;
++	u32 eof;
++	int starting_len = xdr->buf->len - 8;
++	__be32 nfserr;
++	__be32 tmp;
+ 	__be32 *p;
+ 
+-	if (nfserr)
++	/*
++	 * Don't inline pages unless we know there's room for eof,
++	 * count, and possible padding:
++	 */
++	if (xdr->end - xdr->p < 3)
++		return nfserr_resource;
++
++	nfserr = nfsd_splice_read(read->rd_rqstp, file,
++				  read->rd_offset, &maxcount);
++	if (nfserr) {
++		xdr->buf->page_len = 0;
+ 		return nfserr;
++	}
+ 
+-	p = xdr_reserve_space(xdr, 8); /* eof flag and byte count */
+-	if (!p)
+-		return nfserr_resource;
++	eof = (read->rd_offset + maxcount >=
++	       read->rd_fhp->fh_dentry->d_inode->i_size);
+ 
+-	/* Make sure there will be room for padding if needed: */
+-	if (xdr->end - xdr->p < 1)
+-		return nfserr_resource;
++	tmp = htonl(eof);
++	write_bytes_to_xdr_buf(xdr->buf, starting_len    , &tmp, 4);
++	tmp = htonl(maxcount);
++	write_bytes_to_xdr_buf(xdr->buf, starting_len + 4, &tmp, 4);
+ 
+-	if (resp->xdr.buf->page_len)
+-		return nfserr_resource;
++	resp->xdr.buf->page_len = maxcount;
++	xdr->buf->len += maxcount;
++	xdr->page_ptr += (maxcount + PAGE_SIZE - 1) / PAGE_SIZE;
++	xdr->buf->buflen = maxcount + PAGE_SIZE - 2 * RPC_MAX_AUTH_SIZE;
++	xdr->iov = xdr->buf->tail;
+ 
+-	maxcount = svc_max_payload(resp->rqstp);
+-	if (maxcount > read->rd_length)
+-		maxcount = read->rd_length;
++	/* Use rest of head for padding and remaining ops: */
++	resp->xdr.buf->tail[0].iov_base = xdr->p;
++	resp->xdr.buf->tail[0].iov_len = 0;
++	if (maxcount&3) {
++		p = xdr_reserve_space(xdr, 4);
++		WRITE32(0);
++		resp->xdr.buf->tail[0].iov_base += maxcount&3;
++		resp->xdr.buf->tail[0].iov_len = 4 - (maxcount&3);
++		xdr->buf->len -= (maxcount&3);
++	}
++	return 0;
++}
++
++static __be32 nfsd4_encode_readv(struct nfsd4_compoundres *resp,
++				 struct nfsd4_read *read,
++				 struct file *file, unsigned long maxcount)
++{
++	struct xdr_stream *xdr = &resp->xdr;
++	u32 eof;
++	int v;
++	struct page *page;
++	int starting_len = xdr->buf->len - 8;
++	long len;
++	__be32 nfserr;
++	__be32 tmp;
++	__be32 *p;
+ 
+ 	len = maxcount;
+ 	v = 0;
+@@ -3118,22 +3154,19 @@ nfsd4_encode_read(struct nfsd4_compoundres *resp, __be32 nfserr,
+ 	}
+ 	read->rd_vlen = v;
+ 
+-	nfserr = nfsd_read_file(read->rd_rqstp, read->rd_fhp, read->rd_filp,
+-			read->rd_offset, resp->rqstp->rq_vec, read->rd_vlen,
+-			&maxcount);
+-
+-	if (nfserr) {
+-		xdr->buf->page_len = 0;
+-		xdr_truncate_encode(xdr, starting_len);
++	nfserr = nfsd_readv(file, read->rd_offset, resp->rqstp->rq_vec,
++			read->rd_vlen, &maxcount);
++	if (nfserr)
+ 		return nfserr;
+-	}
++
+ 	eof = (read->rd_offset + maxcount >=
+ 	       read->rd_fhp->fh_dentry->d_inode->i_size);
+ 
+-	WRITE32(eof);
+-	WRITE32(maxcount);
+-	WARN_ON_ONCE(resp->xdr.buf->head[0].iov_len != (char*)p
+-				- (char*)resp->xdr.buf->head[0].iov_base);
++	tmp = htonl(eof);
++	write_bytes_to_xdr_buf(xdr->buf, starting_len    , &tmp, 4);
++	tmp = htonl(maxcount);
++	write_bytes_to_xdr_buf(xdr->buf, starting_len + 4, &tmp, 4);
++
+ 	resp->xdr.buf->page_len = maxcount;
+ 	xdr->buf->len += maxcount;
+ 	xdr->page_ptr += v;
+@@ -3141,7 +3174,7 @@ nfsd4_encode_read(struct nfsd4_compoundres *resp, __be32 nfserr,
+ 	xdr->iov = xdr->buf->tail;
+ 
+ 	/* Use rest of head for padding and remaining ops: */
+-	resp->xdr.buf->tail[0].iov_base = p;
++	resp->xdr.buf->tail[0].iov_base = xdr->p;
+ 	resp->xdr.buf->tail[0].iov_len = 0;
+ 	if (maxcount&3) {
+ 		p = xdr_reserve_space(xdr, 4);
+@@ -3151,6 +3184,58 @@ nfsd4_encode_read(struct nfsd4_compoundres *resp, __be32 nfserr,
+ 		xdr->buf->len -= (maxcount&3);
+ 	}
+ 	return 0;
++
++}
++
++static __be32
++nfsd4_encode_read(struct nfsd4_compoundres *resp, __be32 nfserr,
++		  struct nfsd4_read *read)
++{
++	unsigned long maxcount;
++	struct xdr_stream *xdr = &resp->xdr;
++	struct file *file = read->rd_filp;
++	int starting_len = xdr->buf->len;
++	struct raparms *ra;
++	__be32 *p;
++	__be32 err;
++
++	if (nfserr)
++		return nfserr;
++
++	p = xdr_reserve_space(xdr, 8); /* eof flag and byte count */
++	if (!p) {
++		WARN_ON_ONCE(1);
++		return nfserr_resource;
++	}
++
++	if (resp->xdr.buf->page_len)
++		return nfserr_resource;
++
++	xdr_commit_encode(xdr);
++
++	maxcount = svc_max_payload(resp->rqstp);
++	if (maxcount > read->rd_length)
++		maxcount = read->rd_length;
++
++	if (!read->rd_filp) {
++		err = nfsd_get_tmp_read_open(resp->rqstp, read->rd_fhp,
++						&file, &ra);
++		if (err)
++			goto err_truncate;
++	}
++
++	if (file->f_op->splice_read && resp->rqstp->rq_splice_ok)
++		err = nfsd4_encode_splice_read(resp, read, file, maxcount);
++	else
++		err = nfsd4_encode_readv(resp, read, file, maxcount);
++
++	if (!read->rd_filp)
++		nfsd_put_tmp_read_open(file, ra);
++
++err_truncate:
++	if (err)
++		xdr_truncate_encode(xdr, starting_len);
++	return err;
+ }
+ 
+ static __be32
+diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+index cbf7690..022a2ae 100644
+--- a/fs/nfsd/vfs.c
++++ b/fs/nfsd/vfs.c
+@@ -820,41 +820,54 @@ static int nfsd_direct_splice_actor(struct pipe_inode_info *pipe,
+ 	return __splice_from_pipe(pipe, sd, nfsd_splice_actor);
+ }
+ 
+-static __be32
+-nfsd_vfs_read(struct svc_rqst *rqstp, struct file *file,
+-              loff_t offset, struct kvec *vec, int vlen, unsigned long *count)
++__be32 nfsd_finish_read(struct file *file, unsigned long *count, int host_err)
+ {
+-	mm_segment_t	oldfs;
+-	__be32		err;
+-	int		host_err;
+-
+-	err = nfserr_perm;
+-
+-	if (file->f_op->splice_read && rqstp->rq_splice_ok) {
+-		struct splice_desc sd = {
+-			.len		= 0,
+-			.total_len	= *count,
+-			.pos		= offset,
+-			.u.data		= rqstp,
+-		};
+-
+-		rqstp->rq_next_page = rqstp->rq_respages + 1;
+-		host_err = splice_direct_to_actor(file, &sd, nfsd_direct_splice_actor);
+-	} else {
+-		oldfs = get_fs();
+-		set_fs(KERNEL_DS);
+-		host_err = vfs_readv(file, (struct iovec __user *)vec, vlen, &offset);
+-		set_fs(oldfs);
+-	}
+-
+ 	if (host_err >= 0) {
+ 		nfsdstats.io_read += host_err;
+ 		*count = host_err;
+-		err = 0;
+ 		fsnotify_access(file);
++		return 0;
+ 	} else 
+-		err = nfserrno(host_err);
+-	return err;
++		return nfserrno(host_err);
++}
++
++int nfsd_splice_read(struct svc_rqst *rqstp,
++		     struct file *file, loff_t offset, unsigned long *count)
++{
++	struct splice_desc sd = {
++		.len		= 0,
++		.total_len	= *count,
++		.pos		= offset,
++		.u.data		= rqstp,
++	};
++	int host_err;
++
++	rqstp->rq_next_page = rqstp->rq_respages + 1;
++	host_err = splice_direct_to_actor(file, &sd, nfsd_direct_splice_actor);
++	return nfsd_finish_read(file, count, host_err);
++}
++
++int nfsd_readv(struct file *file, loff_t offset, struct kvec *vec, int vlen,
++		unsigned long *count)
++{
++	mm_segment_t oldfs;
++	int host_err;
++
++	oldfs = get_fs();
++	set_fs(KERNEL_DS);
++	host_err = vfs_readv(file, (struct iovec __user *)vec, vlen, &offset);
++	set_fs(oldfs);
++	return nfsd_finish_read(file, count, host_err);
++}
++
++static __be32
++nfsd_vfs_read(struct svc_rqst *rqstp, struct file *file,
++              loff_t offset, struct kvec *vec, int vlen, unsigned long *count)
++{
++	if (file->f_op->splice_read && rqstp->rq_splice_ok)
++		return nfsd_splice_read(rqstp, file, offset, count);
++	else
++		return nfsd_readv(file, offset, vec, vlen, count);
+ }
+ 
+ static void kill_suid(struct dentry *dentry)
+@@ -962,33 +975,28 @@ out_nfserr:
+ 	return err;
+ }
+ 
+-/*
+- * Read data from a file. count must contain the requested read count
+- * on entry. On return, *count contains the number of bytes actually read.
+- * N.B. After this call fhp needs an fh_put
+- */
+-__be32 nfsd_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
+-	loff_t offset, struct kvec *vec, int vlen, unsigned long *count)
++__be32 nfsd_get_tmp_read_open(struct svc_rqst *rqstp, struct svc_fh *fhp,
++		struct file **file, struct raparms **ra)
+ {
+-	struct file *file;
+ 	struct inode *inode;
+-	struct raparms	*ra;
+ 	__be32 err;
+ 
+-	err = nfsd_open(rqstp, fhp, S_IFREG, NFSD_MAY_READ, &file);
++	err = nfsd_open(rqstp, fhp, S_IFREG, NFSD_MAY_READ, file);
+ 	if (err)
+ 		return err;
+ 
+-	inode = file_inode(file);
++	inode = file_inode(*file);
+ 
+ 	/* Get readahead parameters */
+-	ra = nfsd_get_raparms(inode->i_sb->s_dev, inode->i_ino);
+-
+-	if (ra && ra->p_set)
+-		file->f_ra = ra->p_ra;
++	*ra = nfsd_get_raparms(inode->i_sb->s_dev, inode->i_ino);
+ 
+-	err = nfsd_vfs_read(rqstp, file, offset, vec, vlen, count);
++	if (*ra && (*ra)->p_set)
++		(*file)->f_ra = (*ra)->p_ra;
++	return nfs_ok;
++}
+ 
++void nfsd_put_tmp_read_open(struct file *file, struct raparms *ra)
++{
+ 	/* Write back readahead params */
+ 	if (ra) {
+ 		struct raparm_hbucket *rab = &raparm_hash[ra->p_hindex];
+@@ -998,8 +1006,29 @@ __be32 nfsd_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
+ 		ra->p_count--;
+ 		spin_unlock(&rab->pb_lock);
+ 	}
+-
+ 	nfsd_close(file);
++}
++
++/*
++ * Read data from a file. count must contain the requested read count
++ * on entry. On return, *count contains the number of bytes actually read.
++ * N.B. After this call fhp needs an fh_put
++ */
++__be32 nfsd_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
++	loff_t offset, struct kvec *vec, int vlen, unsigned long *count)
++{
++	struct file *file;
++	struct raparms	*ra;
++	__be32 err;
++
++	err = nfsd_get_tmp_read_open(rqstp, fhp, &file, &ra);
++	if (err)
++		return err;
++
++	err = nfsd_vfs_read(rqstp, file, offset, vec, vlen, count);
++
++	nfsd_put_tmp_read_open(file, ra);
++
+ 	return err;
+ }
+ 
+diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
+index fbe90bd..7441e96 100644
+--- a/fs/nfsd/vfs.h
++++ b/fs/nfsd/vfs.h
+@@ -70,6 +70,14 @@ __be32		nfsd_commit(struct svc_rqst *, struct svc_fh *,
+ __be32		nfsd_open(struct svc_rqst *, struct svc_fh *, umode_t,
+ 				int, struct file **);
+ void		nfsd_close(struct file *);
++struct raparms;
++__be32		nfsd_get_tmp_read_open(struct svc_rqst *, struct svc_fh *,
++				struct file **, struct raparms **);
++void		nfsd_put_tmp_read_open(struct file *, struct raparms *);
++int		nfsd_splice_read(struct svc_rqst *,
++				struct file *, loff_t, unsigned long *);
++int		nfsd_readv(struct file *, loff_t, struct kvec *, int,
++				unsigned long *);
+ __be32 		nfsd_read(struct svc_rqst *, struct svc_fh *,
+ 				loff_t, struct kvec *, int, unsigned long *);
+ __be32 		nfsd_read_file(struct svc_rqst *, struct svc_fh *, struct file *,
+-- 
+1.8.5.3
 
-So the man page is not quite accurate.
-
-NeilBrown
-
---Sig_/Vq+82X_c2AIGfa+zkMbloiQ
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.22 (GNU/Linux)
-
-iQIVAwUBUxf7pTnsnt1WYoG5AQLzJg//fQNRdIFjBmtHleS+OwUpgLvRt23+vohT
-KnAdwHYWIN4w21wggAGX1kaTL4WXNcrEgcpWeCAsUUBQhVgHPP7lgJxA4EySzaBq
-kO7FHCBnLOX9IsWF5Fs8ARh/4rsRHwS3lAxgMdWd/NPbFIi7WfrcDNXPcIuPTxgk
-85avui0Y7z3f+LQyvUjx3lFQbL3+A8nnlOYmT3lISTnKx3ewhkAAOUZfrNAITbOw
-Te6Zdm0g0Zo85vOf2C1IbLTwukiPAPmEeRsmZtAUm01myLqt+ZSFX/1+ywNdR6UB
-YiPQv8jME9eJOz1lr4oH1tusR416Omoroi1P7Z6Wd2jVIRoI6jtBijrXyfYtFbKj
-Z+RKomwJIiV4I/J6QEexB8mRi0JIPRk48i+dczoV7hblb2pG4Lu4A8uD1nROSQ7U
-pV4sUuG03Kf7LHXibJsd7htg2dTpFLGOgAup2wPwvT5hTlzDZ7PhYPzCECwfPojt
-HRDup4oGG4+hmr3Dj7iJhVfmuS2mCDKwSwrh08v7jajtoc5P5GkaU45uMusi05ba
-wOlgruBfYtNS9IDlZiavhCKwdvtjYacgZJwKuiGz47/X6imO26qyldVCWA5VerZ9
-DsucUAUNTTYmhc1uocPvvmvwhuvQ/2Ej4PiwoPmbRkMswBLIu9Iuo/XUCKLc7zjo
-HCWcWjl261k=
-=697j
------END PGP SIGNATURE-----
-
---Sig_/Vq+82X_c2AIGfa+zkMbloiQ--
