@@ -1,140 +1,89 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.opengridcomputing.com ([72.48.136.20]:56120 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751620AbaC2AGC (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Mar 2014 20:06:02 -0400
-Message-ID: <53360FCC.4000602@opengridcomputing.com>
-Date: Fri, 28 Mar 2014 19:11:56 -0500
-From: Tom Tucker <tom@opengridcomputing.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Steve Wise <swise@opengridcomputing.com>, trond.myklebust@primarydata.com,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] Fix regression in NFSRDMA server
-References: <20140325201457.6861.21819.stgit@build.ogc.int> <20140328020834.GD27633@fieldses.org> <53359377.8060502@opengridcomputing.com> <20140328212633.GF6041@fieldses.org>
-In-Reply-To: <20140328212633.GF6041@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from fieldses.org ([174.143.236.118]:47840 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751114AbaCWBMY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 22 Mar 2014 21:12:24 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 01/50] rpc: Allow xdr_buf_subsegment to operate in-place
+Date: Sat, 22 Mar 2014 21:11:32 -0400
+Message-Id: <1395537141-10389-2-git-send-email-bfields@redhat.com>
+In-Reply-To: <1395537141-10389-1-git-send-email-bfields@redhat.com>
+References: <1395537141-10389-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Bruce,
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-On 3/28/14 4:26 PM, J. Bruce Fields wrote:
-> On Fri, Mar 28, 2014 at 10:21:27AM -0500, Tom Tucker wrote:
->> Hi Bruce,
->>
->> On 3/27/14 9:08 PM, J. Bruce Fields wrote:
->>> On Tue, Mar 25, 2014 at 03:14:57PM -0500, Steve Wise wrote:
->>>> From: Tom Tucker <tom@ogc.us>
->>>>
->>>> The server regression was caused by the addition of rq_next_page
->>>> (afc59400d6c65bad66d4ad0b2daf879cbff8e23e). There were a few places that
->>>> were missed with the update of the rq_respages array.
->>> Apologies.  (But, it could happen again--could we set up some regular
->>> testing?  It doesn't have to be anything fancy, just cthon over
->>> rdma--really, just read and write over rdma--would probably catch a
->>> lot.)
->> I think Chelsio is going to be adding some NFSRDMA regression
->> testing to their system test.
-> OK.  Do you know who there is setting that up?  I'd be curious exactly
-> what kernels they intend to test and how they plan to report results.
->
+Allow
 
-I don't know, Steve can weigh in on this...
+	xdr_buf_subsegment(&buf, &buf, base, len)
 
->>> Also: I don't get why all these rq_next_page initializations are
->>> required.  Why isn't the initialization at the top of svc_process()
->>> enough?  Is rdma using it before we get to that point?  The only use of
->>> it I see off hand is in the while loop that you're deleting.
->> I didn't apply tremendous deductive powers here, I just added
->> updates to rq_next_page wherever the transport messed with
->> rq_respages. That said, NFS WRITE is likely the culprit since the
->> write is completed as a deferral and therefore the request doesn't
->> go through svc_process, so if rq_next_page is bogus, the cleanup
->> will free/re-use pages that are actually in use by the transport.
-> Ugh, OK, without tracing through the code I guess I can see how that
-> would happen.  Remind me why it's using deferrals?
+to modify an xdr_buf in-place.
 
-The server fetches the write data from the client using RDMA READ. So 
-the request says ... "here's where the data is in my memory", and then 
-the server issues an RDMA READ to fetch it. When the read completes, the 
-deferred request is completed.
+Also, none of the callers need the iov_base of head or tail to be zeroed
+out.
 
-Tom
+Also add documentation.
 
-> Applying the patch.
->
-> --b.
->
->> Tom
->>> --b.
->>>
->>>> Signed-off-by: Tom Tucker <tom@ogc.us>
->>>> Tested-by: Steve Wise <swise@ogc.us>
->>>> ---
->>>>
->>>>   net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |   12 ++++--------
->>>>   net/sunrpc/xprtrdma/svc_rdma_sendto.c   |    1 +
->>>>   2 files changed, 5 insertions(+), 8 deletions(-)
->>>>
->>>> diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
->>>> index 0ce7552..8d904e4 100644
->>>> --- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
->>>> +++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
->>>> @@ -90,6 +90,7 @@ static void rdma_build_arg_xdr(struct svc_rqst *rqstp,
->>>>   		sge_no++;
->>>>   	}
->>>>   	rqstp->rq_respages = &rqstp->rq_pages[sge_no];
->>>> +	rqstp->rq_next_page = rqstp->rq_respages + 1;
->>>>   	/* We should never run out of SGE because the limit is defined to
->>>>   	 * support the max allowed RPC data length
->>>> @@ -169,6 +170,7 @@ static int map_read_chunks(struct svcxprt_rdma *xprt,
->>>>   		 */
->>>>   		head->arg.pages[page_no] = rqstp->rq_arg.pages[page_no];
->>>>   		rqstp->rq_respages = &rqstp->rq_arg.pages[page_no+1];
->>>> +		rqstp->rq_next_page = rqstp->rq_respages + 1;
->>>>   		byte_count -= sge_bytes;
->>>>   		ch_bytes -= sge_bytes;
->>>> @@ -276,6 +278,7 @@ static int fast_reg_read_chunks(struct svcxprt_rdma *xprt,
->>>>   	/* rq_respages points one past arg pages */
->>>>   	rqstp->rq_respages = &rqstp->rq_arg.pages[page_no];
->>>> +	rqstp->rq_next_page = rqstp->rq_respages + 1;
->>>>   	/* Create the reply and chunk maps */
->>>>   	offset = 0;
->>>> @@ -520,13 +523,6 @@ next_sge:
->>>>   	for (ch_no = 0; &rqstp->rq_pages[ch_no] < rqstp->rq_respages; ch_no++)
->>>>   		rqstp->rq_pages[ch_no] = NULL;
->>>> -	/*
->>>> -	 * Detach res pages. If svc_release sees any it will attempt to
->>>> -	 * put them.
->>>> -	 */
->>>> -	while (rqstp->rq_next_page != rqstp->rq_respages)
->>>> -		*(--rqstp->rq_next_page) = NULL;
->>>> -
->>>>   	return err;
->>>>   }
->>>> @@ -550,7 +546,7 @@ static int rdma_read_complete(struct svc_rqst *rqstp,
->>>>   	/* rq_respages starts after the last arg page */
->>>>   	rqstp->rq_respages = &rqstp->rq_arg.pages[page_no];
->>>> -	rqstp->rq_next_page = &rqstp->rq_arg.pages[page_no];
->>>> +	rqstp->rq_next_page = rqstp->rq_respages + 1;
->>>>   	/* Rebuild rq_arg head and tail. */
->>>>   	rqstp->rq_arg.head[0] = head->arg.head[0];
->>>> diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
->>>> index c1d124d..11e90f8 100644
->>>> --- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
->>>> +++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
->>>> @@ -625,6 +625,7 @@ static int send_reply(struct svcxprt_rdma *rdma,
->>>>   		if (page_no+1 >= sge_no)
->>>>   			ctxt->sge[page_no+1].length = 0;
->>>>   	}
->>>> +	rqstp->rq_next_page = rqstp->rq_respages + 1;
->>>>   	BUG_ON(sge_no > rdma->sc_max_sge);
->>>>   	memset(&send_wr, 0, sizeof send_wr);
->>>>   	ctxt->wr_op = IB_WR_SEND;
->>>>
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+(As it turns out, I"m not really using this, but it seems a simple way
+to make this function a bit more robust.)
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ net/sunrpc/xdr.c | 22 ++++++++++++++++------
+ 1 file changed, 16 insertions(+), 6 deletions(-)
+
+diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
+index 1504bb1..dd97ba3 100644
+--- a/net/sunrpc/xdr.c
++++ b/net/sunrpc/xdr.c
+@@ -833,8 +833,20 @@ xdr_buf_from_iov(struct kvec *iov, struct xdr_buf *buf)
+ }
+ EXPORT_SYMBOL_GPL(xdr_buf_from_iov);
+ 
+-/* Sets subbuf to the portion of buf of length len beginning base bytes
+- * from the start of buf. Returns -1 if base of length are out of bounds. */
++/**
++ * xdr_buf_subsegment - set subbuf to a portion of buf
++ * @buf: an xdr buffer
++ * @subbuf: the result buffer
++ * @base: beginning of range in bytes
++ * @len: length of range in bytes
++ *
++ * sets @subbuf to an xdr buffer representing the portion of @buf of
++ * length @len starting at offset @base.
++ *
++ * @buf and @subbuf may be pointers to the same struct xdr_buf.
++ *
++ * Returns -1 if base of length are out of bounds.
++ */
+ int
+ xdr_buf_subsegment(struct xdr_buf *buf, struct xdr_buf *subbuf,
+ 			unsigned int base, unsigned int len)
+@@ -847,9 +859,8 @@ xdr_buf_subsegment(struct xdr_buf *buf, struct xdr_buf *subbuf,
+ 		len -= subbuf->head[0].iov_len;
+ 		base = 0;
+ 	} else {
+-		subbuf->head[0].iov_base = NULL;
+-		subbuf->head[0].iov_len = 0;
+ 		base -= buf->head[0].iov_len;
++		subbuf->head[0].iov_len = 0;
+ 	}
+ 
+ 	if (base < buf->page_len) {
+@@ -871,9 +882,8 @@ xdr_buf_subsegment(struct xdr_buf *buf, struct xdr_buf *subbuf,
+ 		len -= subbuf->tail[0].iov_len;
+ 		base = 0;
+ 	} else {
+-		subbuf->tail[0].iov_base = NULL;
+-		subbuf->tail[0].iov_len = 0;
+ 		base -= buf->tail[0].iov_len;
++		subbuf->tail[0].iov_len = 0;
+ 	}
+ 
+ 	if (base || len)
+-- 
+1.8.5.3
 
