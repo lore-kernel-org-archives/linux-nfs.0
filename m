@@ -1,128 +1,304 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:51069 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:7896 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751312AbaCIXS0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 9 Mar 2014 19:18:26 -0400
-Date: Mon, 10 Mar 2014 10:18:16 +1100
-From: NeilBrown <neilb@suse.de>
-To: Steve Dickson <steved@redhat.com>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] mount.nfs: background mount now do directly into
- background
-Message-ID: <20140310101816.17e7d98a@notabene.brown>
-In-Reply-To: <1394284964-12997-1-git-send-email-steved@redhat.com>
-References: <1394284964-12997-1-git-send-email-steved@redhat.com>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/VwBC.yRNMarJUgKQ=uC0M.G"; protocol="application/pgp-signature"
+	id S1753929AbaCXTvx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 24 Mar 2014 15:51:53 -0400
+Message-ID: <53308CD4.9020307@RedHat.com>
+Date: Mon, 24 Mar 2014 15:51:48 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Benjamin Coddington <bcodding@uvm.edu>
+CC: linux-nfs@vger.kernel.org, David Howells <dhowells@redhat.com>
+Subject: Re: [PATCH] nfsidmap: use multiple child keyrings
+References: <201403241150.s2OBonLC010685@hobo-dev.uvm.edu> <533064A1.2080502@RedHat.com> <189016FB-E865-42B7-BF5A-D1D12F45B81E@uvm.edu>
+In-Reply-To: <189016FB-E865-42B7-BF5A-D1D12F45B81E@uvm.edu>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/VwBC.yRNMarJUgKQ=uC0M.G
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
-
-On Sat,  8 Mar 2014 08:22:44 -0500 Steve Dickson <steved@redhat.com> wrote:
-
-> Modern day kernel will no longer return all timeout
-> errors instead the process spins endlessly in the kernel.
-> This behavior will cause the foreground mount to hang, never
-> allowing the mount to go into background.
->=20
-> So this patch eliminates the foreground mount cause
-> background mounts to go directly into background
->=20
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-
-Did NFS mounts *ever* time out (when 'soft' isn't given)?
-
-If so, there is probably a regression which maybe should be fixed.
-
-If not, then this has always been a bug since sting-options were introduced
-and the kernel started doing the mountd filehandle lookup...
-
-So I'm probably OK with the patch but I wonder if there is more of a story
-behind this that we should be sure we understand...
-
-Thanks,
-NeilBrown
 
 
-> ---
->  utils/mount/stropts.c |   31 ++++++++-----------------------
->  1 files changed, 8 insertions(+), 23 deletions(-)
->=20
-> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
-> index a642394..92a7245 100644
-> --- a/utils/mount/stropts.c
-> +++ b/utils/mount/stropts.c
-> @@ -913,28 +913,6 @@ static int nfsmount_fg(struct nfsmount_info *mi)
->  }
-> =20
->  /*
-> - * Handle "background" NFS mount [first try]
-> - *
-> - * Returns a valid mount command exit code.
-> - *
-> - * EX_BG should cause the caller to fork and invoke nfsmount_child.
-> - */
-> -static int nfsmount_parent(struct nfsmount_info *mi)
-> -{
-> -	if (nfs_try_mount(mi))
-> -		return EX_SUCCESS;
-> -
-> -	/* retry background mounts when the server is not up */
-> -	if (nfs_is_permanent_error(errno) && errno !=3D EOPNOTSUPP) {
-> -		mount_error(mi->spec, mi->node, errno);
-> -		return EX_FAIL;
-> -	}
-> -
-> -	sys_mount_errors(mi->hostname, errno, 1, 1);
-> -	return EX_BG;
-> -}
-> -
-> -/*
->   * Handle "background" NFS mount [retry daemon]
->   *
->   * Returns a valid mount command exit code: EX_SUCCESS if successful,
-> @@ -982,7 +960,14 @@ static int nfsmount_child(struct nfsmount_info *mi)
->  static int nfsmount_bg(struct nfsmount_info *mi)
->  {
->  	if (!mi->child)
-> -		return nfsmount_parent(mi);
-> +		/*=20
-> +		 * Modern day kernels no longer return all=20
-> +		 * timeouts errors in all cases, instead=20
-> +		 * the process spins in the kernel, which=20
-> +		 * will hang a foreground mount. So background
-> +		 * mounts have to go directly into background
-> +		 */
-> +		return EX_BG;
->  	else
->  		return nfsmount_child(mi);
->  }
+On 03/24/2014 02:00 PM, Benjamin Coddington wrote:
+> 
+> On Mar 24, 2014, at 1:00 PM, Steve Dickson <SteveD@redhat.com> wrote:
+> 
+>> On 03/21/2014 05:08 PM, Benjamin Coddington wrote:
+>>> The kernel keyring has a max of ~508 entries on 64-bit systems.
+>>> For installations with more distict users than this limit, create
+>>> a specified number of child keyrings and fill them evenly.
+>> A couple things... 
+>>
+>> 1) no Signed-off-by: line
+>>
+>> 2) Its seems you can create key rings but can't delete them.
+>>   Here is what I'm doing:
+>>   in /etc/request-key.d/id_resolver.conf I have
+>>    create    id_resolver * *    /usr/sbin/nfsidmap -n 10 %k %d
+>> but when I tried to delete the keys
+>>    # nfsidmap -vc
+>>    nfsidmap: clearing '08aa156c I--Q---     1perm 3f010000     0     0 keyring   .id_resolver_child_10: empty'
+>>    nfsidmap: keyctl_clear(0x8aa156c) failed: Permission denied
+> 
+> This mess works on my fleet of RHEL6 boxes which is where I was trying to fix this.  They create the child keyrings with
+> 
+> perm 3b3f0000
+> 
+> Instead of yours which appears to be
+> 
+> perm 3f010000
+> 
+> Are you testing on a later kernel?  Likely this behavior has changed.
+Yes... Much later... 
 
+> 
+>>> #define PROCKEYS "/proc/keys"
+>>> #ifndef DEFAULT_KEYRING
+>>> -#define DEFAULT_KEYRING "id_resolver"
+>>> +#define DEFAULT_KEYRING ".id_resolver"
+>> 3) Why is changing the default needed?
+> 
+> The default is wrong.  I think that's the first thing I changed when 
+> trying to fix this problem, since it looked like id_lookup() should 
+> gracefully recover in the case that the keyring was full 
+> (but it still doesn't). 
+I'm think the "id_resolver" default can from the face 
+the entry /etc/request-key.d/id_resolver.conf 
+which tells nfsidmap put the keys on the id_resolver
+key ring... so I'm not really sure where the
+.id_resolver is coming from... CC-ing David Howells
+maybe he knows... 
+ 
+> This actually doesn't have to change, since 
+> the strcmp()s that use it will work either way -- but it might catch 
+> someone by surprise later.  I'll split this out.
+Please do...
 
---Sig_/VwBC.yRNMarJUgKQ=uC0M.G
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
+> 
+>> Finally, what -n value do plan on using? Maybe a blurb in the man page
+>> on what a good number is and why....
+> 
+> I've got this running now with -n160, since 
+> we have ~60K distinct uid/gid s.  Ideally, I'd like to re-submit 
+> this to self-scale which wouldn't require any sysadmin tuning, 
+> but I haven't had the time.  Really, this is just a quick fix 
+> for the brokenness that's in current RHEL and less-new Fedora.
+The brokenness in RHEL will be healing very soon... See 
+https://bugzilla.redhat.com/show_bug.cgi?id=1033708. RHEL is 
+basically going back to using rpc.idmapd on the client and
+nfsidmap is going away... It as just a bad dream... It never
+happen! ;-)
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.22 (GNU/Linux)
+> If you want it done right it will take me a week or two to find the time.
+In newer I don't think this is needed since they are already larger...
+Again, David can address this... 
 
-iQIVAwUBUxz2uTnsnt1WYoG5AQLXdw/+MJumUDjzbzDx/SO3ITrNCr0aSjuXMVr7
-4oUlJ7RFIJWeGvyccNZm3/DI8sG/7GwAvM7sGsckacavwB32aiUt9PCRz62exBRX
-THykKOu4csZ93cVHeccss9ekvnhtOaIAsn+4eQr3W51EM/zBtDJJRABJYfDcSGgP
-u5kNm5/N9BlSbao+E2Y+2GAeydz7ydMogXxrkS0nGGOJekel7RpmSKFv4wu3qWhO
-PWz97Ybc+bSj0/3IV8TsiwuVTsyCJ2zZb9dZyB/qJiDYKoJ64jZ8GzG5MD/38MU8
-v18LSXTa0AIUFvOovAkHeAW+FwwX8Vd3BkrMds9OLOOBGtxcoIthg9YdtNMZN3Uc
-nlnuupPMD5UOKbGMwEOUZi28Ybi1C/e+8ukeQsOC10YuYADf2Hn5kqth3QP60ZgE
-EpyJ5/6iR/cdEecOge2Kx19AQn2q5YfyTahhsHma7zbYRntubFkmQYYT7MmdjdnA
-9J0kpRgGsVrEXMl2FGQZxfWM5MDWM3fxnJaOPYYmgwxSMpF/1Pj6WY0f5wDPFHWt
-NqtxgZMyeLgwAK0ikb1y41skaLLbArvqzbM7NOSF0L1qIf5jy3RQ+1eNvn4rvaTz
-EEajelg8A18B28m686KmPmY9YhfU78i3G8Ms9hZxCdqPQ294on+C8P1RRkCuhibq
-UKQJRXaj02Y=
-=BjUk
------END PGP SIGNATURE-----
+steved.
 
---Sig_/VwBC.yRNMarJUgKQ=uC0M.G--
+> 
+> Ben
+> 
+>> steved.
+>>
+>>> #endif
+>>>
+>>> #ifndef PATH_IDMAPDCONF
+>>> @@ -39,7 +39,7 @@ static int keyring_clear(char *keyring);
+>>> /*
+>>>  * Find either a user or group id based on the name@domain string
+>>>  */
+>>> -int id_lookup(char *name_at_domain, key_serial_t key, int type)
+>>> +int id_lookup(char *name_at_domain, key_serial_t key, int type, key_serial_t dest_keyring)
+>>> {
+>>> 	char id[MAX_ID_LEN];
+>>> 	uid_t uid = 0;
+>>> @@ -58,7 +58,7 @@ int id_lookup(char *name_at_domain, key_serial_t key, int type)
+>>> 			(type == USER ? "nfs4_owner_to_uid" : "nfs4_group_owner_to_gid"));
+>>>
+>>> 	if (rc == 0) {
+>>> -		rc = keyctl_instantiate(key, id, strlen(id) + 1, 0);
+>>> +		rc = keyctl_instantiate(key, id, strlen(id) + 1, dest_keyring);
+>>> 		if (rc < 0) {
+>>> 			switch(rc) {
+>>> 			case -EDQUOT:
+>>> @@ -67,9 +67,9 @@ int id_lookup(char *name_at_domain, key_serial_t key, int type)
+>>> 				/*
+>>> 			 	 * The keyring is full. Clear the keyring and try again
+>>> 			 	 */
+>>> -				rc = keyring_clear(DEFAULT_KEYRING);
+>>> +				rc = keyctl_clear(dest_keyring);
+>>> 				if (rc == 0)
+>>> -					rc = keyctl_instantiate(key, id, strlen(id) + 1, 0);
+>>> +					rc = keyctl_instantiate(key, id, strlen(id) + 1, dest_keyring);
+>>> 				break;
+>>> 			default:
+>>> 				break;
+>>> @@ -85,7 +85,7 @@ int id_lookup(char *name_at_domain, key_serial_t key, int type)
+>>> /*
+>>>  * Find the name@domain string from either a user or group id
+>>>  */
+>>> -int name_lookup(char *id, key_serial_t key, int type)
+>>> +int name_lookup(char *id, key_serial_t key, int type, key_serial_t dest_keyring)
+>>> {
+>>> 	char name[IDMAP_NAMESZ];
+>>> 	char domain[NFS4_MAX_DOMAIN_LEN];
+>>> @@ -113,7 +113,7 @@ int name_lookup(char *id, key_serial_t key, int type)
+>>> 			(type == USER ? "nfs4_uid_to_name" : "nfs4_gid_to_name"));
+>>>
+>>> 	if (rc == 0) {
+>>> -		rc = keyctl_instantiate(key, &name, strlen(name), 0);
+>>> +		rc = keyctl_instantiate(key, &name, strlen(name), dest_keyring);
+>>> 		if (rc < 0)
+>>> 			xlog_err("name_lookup: keyctl_instantiate failed: %m");
+>>> 	}
+>>> @@ -127,7 +127,7 @@ static int keyring_clear(char *keyring)
+>>> {
+>>> 	FILE *fp;
+>>> 	char buf[BUFSIZ];
+>>> -	key_serial_t key;
+>>> +	key_serial_t key, child_key;
+>>>
+>>> 	if (keyring == NULL)
+>>> 		keyring = DEFAULT_KEYRING;
+>>> @@ -151,6 +151,7 @@ static int keyring_clear(char *keyring)
+>>> 		 */
+>>> 		*(strchr(buf, ' ')) = '\0';
+>>> 		sscanf(buf, "%x", &key);
+>>> +
+>>> 		if (keyctl_clear(key) < 0) {
+>>> 			xlog_err("keyctl_clear(0x%x) failed: %m", key);
+>>> 			fclose(fp);
+>>> @@ -159,7 +160,8 @@ static int keyring_clear(char *keyring)
+>>> 		fclose(fp);
+>>> 		return 0;
+>>> 	}
+>>> -	xlog_err("'%s' keyring was not found.", keyring);
+>>> +	if (strstr(keyring, DEFAULT_KEYRING":"))
+>>> +		xlog_err("'%s' keyring was not found.", keyring);
+>>> 	fclose(fp);
+>>> 	return 1;
+>>> }
+>>> @@ -232,8 +234,10 @@ int main(int argc, char **argv)
+>>> 	char *type;
+>>> 	int rc = 1, opt;
+>>> 	int timeout = 600;
+>>> -	key_serial_t key;
+>>> +	int childrings = 0;
+>>> +	key_serial_t key, parent_keyring, dest_keyring;
+>>> 	char *progname, *keystr = NULL;
+>>> +	char child_name[BUFSIZ];
+>>> 	int clearing = 0, keymask = 0;
+>>>
+>>> 	/* Set the basename */
+>>> @@ -244,7 +248,7 @@ int main(int argc, char **argv)
+>>>
+>>> 	xlog_open(progname);
+>>>
+>>> -	while ((opt = getopt(argc, argv, "u:g:r:ct:v")) != -1) {
+>>> +	while ((opt = getopt(argc, argv, "u:g:r:ct:vn:d:")) != -1) {
+>>> 		switch (opt) {
+>>> 		case 'u':
+>>> 			keymask = UIDKEYS;
+>>> @@ -267,6 +271,9 @@ int main(int argc, char **argv)
+>>> 		case 't':
+>>> 			timeout = atoi(optarg);
+>>> 			break;
+>>> +		case 'n':
+>>> +			childrings = atoi(optarg);
+>>> +			break;
+>>> 		default:
+>>> 			xlog_warn(usage, progname);
+>>> 			break;
+>>> @@ -284,9 +291,16 @@ int main(int argc, char **argv)
+>>> 		rc = key_revoke(keystr, keymask);
+>>> 		return rc;		
+>>> 	}
+>>> +
+>>> 	if (clearing) {
+>>> 		xlog_syslog(0);
+>>> -		rc = keyring_clear(DEFAULT_KEYRING);
+>>> +		int i = 1;
+>>> +		for(rc = 0; rc == 0; i++) {
+>>> +			snprintf(child_name, sizeof(child_name), DEFAULT_KEYRING "_child_%d", i);
+>>> +			rc = keyring_clear(child_name);
+>>> +		}
+>>> +
+>>> +		rc = keyring_clear(DEFAULT_KEYRING ":");
+>>> 		return rc;		
+>>> 	}
+>>>
+>>> @@ -315,14 +329,42 @@ int main(int argc, char **argv)
+>>> 			key, type, value, timeout);
+>>> 	}
+>>>
+>>> +	if (childrings) {
+>>> +		int i;
+>>> +		long child_size, smallest_size = 2032;
+>>> +		parent_keyring = request_key("keyring", DEFAULT_KEYRING, NULL, KEY_SPEC_THREAD_KEYRING);
+>>> +
+>>> +		for (i = 1; i <= childrings; i++) {
+>>> +			key_serial_t child_keyring;
+>>> +
+>>> +			snprintf(child_name, sizeof(child_name), DEFAULT_KEYRING "_child_%d", i);
+>>> +
+>>> +			child_keyring = keyctl_search(parent_keyring, "keyring", child_name, 0);
+>>> +			if (child_keyring < 0) {
+>>> +				child_keyring = add_key("keyring", child_name, NULL, 0, parent_keyring);
+>>> +				xlog_warn("added new child %s: %m", child_name);
+>>> +			}
+>>> +
+>>> +			child_size = keyctl_read(child_keyring, NULL, 0);
+>>> +			if (child_size < smallest_size) {
+>>> +				dest_keyring = child_keyring;
+>>> +				smallest_size = child_size;
+>>> +			}
+>>> +		}
+>>> +	}
+>>> +
+>>> 	if (strcmp(type, "uid") == 0)
+>>> -		rc = id_lookup(value, key, USER);
+>>> +		rc = id_lookup(value, key, USER, dest_keyring);
+>>> 	else if (strcmp(type, "gid") == 0)
+>>> -		rc = id_lookup(value, key, GROUP);
+>>> +		rc = id_lookup(value, key, GROUP, dest_keyring);
+>>> 	else if (strcmp(type, "user") == 0)
+>>> -		rc = name_lookup(value, key, USER);
+>>> +		rc = name_lookup(value, key, USER, dest_keyring);
+>>> 	else if (strcmp(type, "group") == 0)
+>>> -		rc = name_lookup(value, key, GROUP);
+>>> +		rc = name_lookup(value, key, GROUP, dest_keyring);
+>>> +
+>>> +	/* if we hung this off a child, unlink from the parent */
+>>> +	if (dest_keyring)
+>>> +		keyctl_unlink(key, parent_keyring);
+>>>
+>>> 	/* Set timeout to 10 (600 seconds) minutes */
+>>> 	if (rc == 0)
+>>> diff --git a/utils/nfsidmap/nfsidmap.man b/utils/nfsidmap/nfsidmap.man
+>>> index 3a3a523..04f0014 100644
+>>> --- a/utils/nfsidmap/nfsidmap.man
+>>> +++ b/utils/nfsidmap/nfsidmap.man
+>>> @@ -6,7 +6,7 @@
+>>> .SH NAME
+>>> nfsidmap \- The NFS idmapper upcall program
+>>> .SH SYNOPSIS
+>>> -.B "nfsidmap [-v] [-t timeout] key desc"
+>>> +.B "nfsidmap [-v] [-t timeout] [-n count] key desc"
+>>> .br
+>>> .B "nfsidmap [-v] [-c]"
+>>> .br
+>>> @@ -42,6 +42,9 @@ Revoke both the uid and gid key of the given user.
+>>> Set the expiration timer, in seconds, on the key.
+>>> The default is 600 seconds (10 mins).
+>>> .TP
+>>> +.B -n count
+>>> +Set the the number of child keyrings to create.
+>>> +.TP
+>>> .B -u user
+>>> Revoke the uid key of the given user.
+>>> .TP
+>>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
