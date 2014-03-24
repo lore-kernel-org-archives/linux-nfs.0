@@ -1,69 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f172.google.com ([209.85.223.172]:35523 "EHLO
-	mail-ie0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753980AbaCCPqk convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Mar 2014 10:46:40 -0500
-Received: by mail-ie0-f172.google.com with SMTP id as1so5798273iec.3
-        for <linux-nfs@vger.kernel.org>; Mon, 03 Mar 2014 07:46:39 -0800 (PST)
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
-Subject: Re: Temporary hangs when using locking with apache+nfsv4
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-In-Reply-To: <20140303104315.1f949cb4@tlielax.poochiereds.net>
-Date: Mon, 3 Mar 2014 10:46:37 -0500
-Cc: Dennis Jacobfeuerborn <dennisml@conversis.de>, linux-nfs@vger.kernel.org
-Message-Id: <2D6DA167-FD44-4D73-8D55-8084A8DF95BE@primarydata.com>
-References: <53141788.9030209@conversis.de> <20140303104315.1f949cb4@tlielax.poochiereds.net>
-To: Layton Jeff <jlayton@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:32965 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753158AbaCXNiA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 24 Mar 2014 09:38:00 -0400
+Message-ID: <53303534.7080601@RedHat.com>
+Date: Mon, 24 Mar 2014 09:37:56 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Neil Brown <neilb@suse.de>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [nfs-utils/systemd PATCH 0/6] Assorted fixes for systemd units
+References: <20140220065345.7320.49992.stgit@notabene.brown>
+In-Reply-To: <20140220065345.7320.49992.stgit@notabene.brown>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Mar 3, 2014, at 10:43, Jeff Layton <jlayton@redhat.com> wrote:
 
-> On Mon, 03 Mar 2014 06:47:52 +0100
-> Dennis Jacobfeuerborn <dennisml@conversis.de> wrote:
+On 02/20/2014 01:55 AM, Neil Brown wrote:
+> These are a number of ad-hoc things I.  The nfs-utils_env.sh for SUSE
+> is primarily presented as an example.  I'm happy for it to get
+> applied, but I'm happy if it isn't applied too.
 > 
->> Hi,
->> I'm experimenting with using NFSv4 as storage for web servers and while 
->> regular file access seems to work fine as soon as I bring flock() into 
->> play things become more problematic.
->> I've create a tiny test php script that basically opens a file, locks it 
->> using flock(), writes that fact into a log file (on a local filesystem), 
->> performs a usleep(1000), writes into the log that it is about to unlock 
->> the file and finally unlocks it.
->> I invoke that script using ab with a concurrency of 20 for a few 
->> thousand requests.
->> 
+> Thanks,
+> NeilBrown
 > 
-> Is all the activity from a single client, or are multiple clients
-> contending for the lock?
 > 
->> The result is that while 99% of the request respond quickly a few 
->> request seem to hang for up to 30 seconds. According to the log file 
->> they must eventually succeed since I see all expected entries and the 
->> locking seems to work as well since all entries are in the expected order.
->> 
->> Is it expected that these long delays happen? When I comment the locking 
->> function out these hangs disappear.
->> Are there some knobs to tune NFS and make it behave better in these 
->> situations?
->> 
+> ---
 > 
-> NFSv4 locking is inherently unfair. If you're doing a blocking lock,
-> then the client is expected to poll for it. So, long delays are
-> possible if you just happen to be unlucky and keep missing the lock.
-> 
-> There's no knob to tune, but there probably is room for improvement in
-> this code. In principle we could try to be more aggressive about
-> getting the lock by trying to wake up one or more blocked tasks whenever
-> a lock is released. You might still end up with delays, but it could
-> help improve responsiveness.
+> Neil Brown (6):
+>       systemd units: remove reference to nfs-server.target from nfs-server.service.
+>       systemd units: create nfs-config.service as single location to process config.
+Committed to both of test to the systemd branch, with typo fixed.
+>       systemd: add nfs-utils_env.sh for SUSE.
+Did not commit this one. 
 
-…or you could implement the NFSv4.1 lock callback functionality. That would scale better than more aggressive polling.
+>       systemd: remove @localstatedir@ marking.
+>       systemd: nfs-client needs rpc-svcgssd too.
+>       systemd: add PIDFile directives where appropriate.
+Committed these three to the systemd branch.
 
-_________________________________
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
+I'm planning on move these on the main branch very soon
+they will be in the upcoming release.
 
+steved.
+
+> 
+> 
+>  systemd/README                   |    3 +-
+>  systemd/SUSE-nfs-utils_env.sh    |   62 ++++++++++++++++++++++++++++++++++++++
+>  systemd/nfs-blkmap.service       |    1 +
+>  systemd/nfs-client.target        |    5 ++-
+>  systemd/nfs-config.service       |    7 ++++
+>  systemd/nfs-idmapd.service       |    5 ++-
+>  systemd/nfs-mountd.service       |    5 ++-
+>  systemd/nfs-server.service       |    5 ++-
+>  systemd/rpc-gssd.service         |    4 ++
+>  systemd/rpc-statd-notify.service |    5 ++-
+>  systemd/rpc-statd.service        |    6 ++--
+>  systemd/rpc-svcgssd.service      |    7 ++--
+>  12 files changed, 97 insertions(+), 18 deletions(-)
+>  create mode 100644 systemd/SUSE-nfs-utils_env.sh
+>  create mode 100644 systemd/nfs-config.service
+> 
