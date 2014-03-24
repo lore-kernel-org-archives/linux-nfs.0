@@ -1,234 +1,125 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pb0-f51.google.com ([209.85.160.51]:44449 "EHLO
-	mail-pb0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751565AbaCDX4H (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 4 Mar 2014 18:56:07 -0500
+Received: from mail-pa0-f54.google.com ([209.85.220.54]:59342 "EHLO
+	mail-pa0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751191AbaCXD7G (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 23 Mar 2014 23:59:06 -0400
+Received: by mail-pa0-f54.google.com with SMTP id lf10so4879776pab.13
+        for <linux-nfs@vger.kernel.org>; Sun, 23 Mar 2014 20:59:05 -0700 (PDT)
+Message-ID: <532FAD83.4040907@gmail.com>
+Date: Mon, 24 Mar 2014 11:58:59 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
-From: Florian Fainelli <f.fainelli@gmail.com>
-Date: Tue, 4 Mar 2014 15:55:24 -0800
-Message-ID: <CAGVrzcbsSV7h3qA3KuCTwKNFEeww_kSNcfUkfw3PPjeXQXBo6g@mail.gmail.com>
-Subject: RCU stalls when running out of memory on 3.14-rc4 w/ NFS and kernel
- threads priorities changed
-To: "linux-kernel@vger.kernel.org" <linux-kernel@vger.kernel.org>,
-        linux-mm <linux-mm@kvack.org>, paulmck@linux.vnet.ibm.com,
-        linux-nfs@vger.kernel.org, trond.myklebust@primarydata.com
-Content-Type: multipart/mixed; boundary=047d7b33d592b900ae04f3d0a56c
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: [PATCH 3/5][RESEND] SUNRPC: New helper for creating client with rpc_xprt
+References: <532FAC85.20909@gmail.com>
+In-Reply-To: <532FAC85.20909@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---047d7b33d592b900ae04f3d0a56c
-Content-Type: text/plain; charset=UTF-8
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+---
+ include/linux/sunrpc/clnt.h |  2 ++
+ net/sunrpc/clnt.c           | 58 ++++++++++++++++++++++++++-------------------
+ 2 files changed, 35 insertions(+), 25 deletions(-)
 
-Hi all,
-
-I am seeing the following RCU stalls messages appearing on an ARMv7
-4xCPUs system running 3.14-rc4:
-
-[   42.974327] INFO: rcu_sched detected stalls on CPUs/tasks:
-[   42.979839]  (detected by 0, t=2102 jiffies, g=4294967082,
-c=4294967081, q=516)
-[   42.987169] INFO: Stall ended before state dump start
-
-this is happening under the following conditions:
-
-- the attached bumper.c binary alters various kernel thread priorities
-based on the contents of bumpup.cfg and
-- malloc_crazy is running from a NFS share
-- malloc_crazy.c is running in a loop allocating chunks of memory but
-never freeing it
-
-when the priorities are altered, instead of getting the OOM killer to
-be invoked, the RCU stalls are happening. Taking NFS out of the
-equation does not allow me to reproduce the problem even with the
-priorities altered.
-
-This "problem" seems to have been there for quite a while now since I
-was able to get 3.8.13 to trigger that bug as well, with a slightly
-more detailed RCU debugging trace which points the finger at kswapd0.
-
-You should be able to get that reproduced under QEMU with the
-Versatile Express platform emulating a Cortex A15 CPU and the attached
-files.
-
-Any help or suggestions would be greatly appreciated. Thanks!
+diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+index 8af2804..70736b9 100644
+--- a/include/linux/sunrpc/clnt.h
++++ b/include/linux/sunrpc/clnt.h
+@@ -130,6 +130,8 @@ struct rpc_create_args {
+ #define RPC_CLNT_CREATE_NO_RETRANS_TIMEOUT	(1UL << 9)
+ 
+ struct rpc_clnt *rpc_create(struct rpc_create_args *args);
++struct rpc_clnt *rpc_create_xprt(struct rpc_create_args *args,
++					struct rpc_xprt *xprt);
+ struct rpc_clnt	*rpc_bind_new_program(struct rpc_clnt *,
+ 				const struct rpc_program *, u32);
+ void rpc_task_reset_client(struct rpc_task *task, struct rpc_clnt *clnt);
+diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+index 0edada9..3c9a0f0 100644
+--- a/net/sunrpc/clnt.c
++++ b/net/sunrpc/clnt.c
+@@ -438,6 +438,38 @@ out_no_rpciod:
+ 	return ERR_PTR(err);
+ }
+ 
++struct rpc_clnt *rpc_create_xprt(struct rpc_create_args *args,
++					struct rpc_xprt *xprt)
++{
++	struct rpc_clnt *clnt = NULL;
++
++	clnt = rpc_new_client(args, xprt, NULL);
++	if (IS_ERR(clnt))
++		return clnt;
++
++	if (!(args->flags & RPC_CLNT_CREATE_NOPING)) {
++		int err = rpc_ping(clnt);
++		if (err != 0) {
++			rpc_shutdown_client(clnt);
++			return ERR_PTR(err);
++		}
++	}
++
++	clnt->cl_softrtry = 1;
++	if (args->flags & RPC_CLNT_CREATE_HARDRTRY)
++		clnt->cl_softrtry = 0;
++
++	if (args->flags & RPC_CLNT_CREATE_AUTOBIND)
++		clnt->cl_autobind = 1;
++	if (args->flags & RPC_CLNT_CREATE_DISCRTRY)
++		clnt->cl_discrtry = 1;
++	if (!(args->flags & RPC_CLNT_CREATE_QUIET))
++		clnt->cl_chatty = 1;
++
++	return clnt;
++}
++EXPORT_SYMBOL_GPL(rpc_create_xprt);
++
+ /**
+  * rpc_create - create an RPC client and transport with one call
+  * @args: rpc_clnt create argument structure
+@@ -451,7 +483,6 @@ out_no_rpciod:
+ struct rpc_clnt *rpc_create(struct rpc_create_args *args)
+ {
+ 	struct rpc_xprt *xprt;
+-	struct rpc_clnt *clnt;
+ 	struct xprt_create xprtargs = {
+ 		.net = args->net,
+ 		.ident = args->protocol,
+@@ -515,30 +546,7 @@ struct rpc_clnt *rpc_create(struct rpc_create_args *args)
+ 	if (args->flags & RPC_CLNT_CREATE_NONPRIVPORT)
+ 		xprt->resvport = 0;
+ 
+-	clnt = rpc_new_client(args, xprt, NULL);
+-	if (IS_ERR(clnt))
+-		return clnt;
+-
+-	if (!(args->flags & RPC_CLNT_CREATE_NOPING)) {
+-		int err = rpc_ping(clnt);
+-		if (err != 0) {
+-			rpc_shutdown_client(clnt);
+-			return ERR_PTR(err);
+-		}
+-	}
+-
+-	clnt->cl_softrtry = 1;
+-	if (args->flags & RPC_CLNT_CREATE_HARDRTRY)
+-		clnt->cl_softrtry = 0;
+-
+-	if (args->flags & RPC_CLNT_CREATE_AUTOBIND)
+-		clnt->cl_autobind = 1;
+-	if (args->flags & RPC_CLNT_CREATE_DISCRTRY)
+-		clnt->cl_discrtry = 1;
+-	if (!(args->flags & RPC_CLNT_CREATE_QUIET))
+-		clnt->cl_chatty = 1;
+-
+-	return clnt;
++	return rpc_create_xprt(args, xprt);
+ }
+ EXPORT_SYMBOL_GPL(rpc_create);
+ 
 -- 
-Florian
-
---047d7b33d592b900ae04f3d0a56c
-Content-Type: text/x-csrc; charset=US-ASCII; name="malloc_crazy.c"
-Content-Disposition: attachment; filename="malloc_crazy.c"
-Content-Transfer-Encoding: base64
-X-Attachment-Id: f_hs3wclis1
-
-I2luY2x1ZGUgPHN0ZGxpYi5oPgojaW5jbHVkZSA8c3RkaW8uaD4KI2luY2x1ZGUgPHN0cmluZy5o
-PgoKaW50IG1haW4oaW50IGFyZ2MsIGNoYXIgKiphcmd2KQp7CglpbnQgaTsKCWludCAqYnVmOwoJ
-aW50IG1heCA9IDMwNDg7CgoJaWYgKGFyZ2MgPT0gMikKCQltYXggPSBhdG9pKGFyZ3ZbMV0pOwoK
-CWZvcihpID0gMDsgaSA8IG1heDsgaSsrKSB7CgkJYnVmID0gKHZvaWQgKiltYWxsb2MoMTA0ODU3
-Nik7CgkJaWYoISBidWYpIHsKCQkJcHJpbnRmKCJtYWxsb2MgcmV0dXJuZWQgTlVMTFxuIik7CgkJ
-CXJldHVybigwKTsKCQl9CgkJbWVtc2V0KGJ1ZiwgMHgxMSwgMTA0ODU3Nik7CgkJKmJ1ZiA9IGk7
-CgkJcHJpbnRmKCIlZFxuIiwgaSk7Cgl9CglwcmludGYoImZpbmlzaGVkXG4iKTsKCglyZXR1cm4o
-MSk7Cn0K
---047d7b33d592b900ae04f3d0a56c
-Content-Type: application/x-sh; name="rcu_test.sh"
-Content-Disposition: attachment; filename="rcu_test.sh"
-Content-Transfer-Encoding: base64
-X-Attachment-Id: f_hsdt92rv1
-
-IyEvYmluL3NoClBSSU89YnVtcGVyCkNGRz1idW1wdXAuY2ZnClJVTj1tYWxsb2NfY3JhenkKCiRQ
-UklPICRDRkcKCnJ1bj0wCndoaWxlIHRydWUKZG8KCSRSVU4gMj4mMSA+IC9kZXYvbnVsbAoJcnVu
-PSQoKHJ1biArIDEpKQoJZWNobyAicnVuOiAkcnVuIgoJZG1lc2cgfCBncmVwIC12IHJjdV9mYW5v
-dXQgfCBncmVwIC1pIHJjdV8gLXEKCXJldD0kPwoJWyAkcmV0IC1lcSAwIF0gJiYgewoJCWVjaG8g
-IkZvdW5kIFJDVSBzdGFsbCBhZnRlciBydW4gJHJ1biI7CgkJZXhpdCAxOwoJfQpkb25lCg==
---047d7b33d592b900ae04f3d0a56c
-Content-Type: application/octet-stream; name="bumpup.cfg"
-Content-Disposition: attachment; filename="bumpup.cfg"
-Content-Transfer-Encoding: base64
-X-Attachment-Id: f_hsdt9sem2
-
-a3NvZnRpcnFkLzAsUlIsOTcKZXZlbnRzLzAsUlIsOTcKa2hlbHBlcixSUiw5NwprdGhyZWFkLFJS
-LDk3CmtibG9ja2QvMCxSUiw5NwpwZGZsdXNoLFJSLDk3Cmtzd2FwZDAsUlIsOTcKCmFpby8wLFJS
-LDk3CmF0YS8wLFJSLDk3CmF0YV9hdXgsUlIsOTcKc2NzaV9laF8wLFJSLDk3CnNjc2lfZWhfMSxS
-Uiw5NwptdGRibG9ja2QsUlIsOTcKCmluZXRkLFJSLDk3CnRlbG5ldGQsUlIsMzQKcG9ydG1hcCxS
-Uiw5NwpzaCxSUiw5NwoKa2h1YmQsUlIsOTYK
---047d7b33d592b900ae04f3d0a56c
-Content-Type: text/x-csrc; charset=US-ASCII; name="bumper.c"
-Content-Disposition: attachment; filename="bumper.c"
-Content-Transfer-Encoding: base64
-X-Attachment-Id: f_hsdt9yca3
-
-Ci8qKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioq
-KioqKioqKioqKioqKioqKioqKioKICogICBDb3B5cmlnaHQgKEMpIDIwMTAgYnkgQlNreUIKICog
-ICBSaWNoYXJkIFBhcnNvbnMKICogICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
-ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgKgogKiAgIFRoaXMgcHJvZ3JhbSBp
-cyBmcmVlIHNvZnR3YXJlOyB5b3UgY2FuIHJlZGlzdHJpYnV0ZSBpdCBhbmQvb3IgbW9kaWZ5ICAq
-CiAqICAgaXQgdW5kZXIgdGhlIHRlcm1zIG9mIHRoZSBHTlUgR2VuZXJhbCBQdWJsaWMgTGljZW5z
-ZSBhcyBwdWJsaXNoZWQgYnkgICoKICogICB0aGUgRnJlZSBTb2Z0d2FyZSBGb3VuZGF0aW9uOyBl
-aXRoZXIgdmVyc2lvbiAyIG9mIHRoZSBMaWNlbnNlLCBvciAgICAgKgogKiAgIChhdCB5b3VyIG9w
-dGlvbikgYW55IGxhdGVyIHZlcnNpb24uICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
-ICAqCiAqICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
-ICAgICAgICAgICAgICAgICAgICAgICoKICogICBUaGlzIHByb2dyYW0gaXMgZGlzdHJpYnV0ZWQg
-aW4gdGhlIGhvcGUgdGhhdCBpdCB3aWxsIGJlIHVzZWZ1bCwgICAgICAgKgogKiAgIGJ1dCBXSVRI
-T1VUIEFOWSBXQVJSQU5UWTsgd2l0aG91dCBldmVuIHRoZSBpbXBsaWVkIHdhcnJhbnR5IG9mICAg
-ICAgICAqCiAqICAgTUVSQ0hBTlRBQklMSVRZIG9yIEZJVE5FU1MgRk9SIEEgUEFSVElDVUxBUiBQ
-VVJQT1NFLiAgU2VlIHRoZSAgICAgICAgICoKICogICBHTlUgR2VuZXJhbCBQdWJsaWMgTGljZW5z
-ZSBmb3IgbW9yZSBkZXRhaWxzLiAgICAgICAgICAgICAgICAgICAgICAgICAgKgogKiAgICAgICAg
-ICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAg
-ICAgICAgICAqCiAqICAgWW91IHNob3VsZCBoYXZlIHJlY2VpdmVkIGEgY29weSBvZiB0aGUgR05V
-IEdlbmVyYWwgUHVibGljIExpY2Vuc2UgICAgICoKICogICBhbG9uZyB3aXRoIHRoaXMgcHJvZ3Jh
-bTsgaWYgbm90LCB3cml0ZSB0byB0aGUgICAgICAgICAgICAgICAgICAgICAgICAgKgogKiAgIEZy
-ZWUgU29mdHdhcmUgRm91bmRhdGlvbiwgSW5jLiwgICAgICAgICAgICAgICAgICAgICAgICAgICAg
-ICAgICAgICAgICAqCiAqICAgNTkgVGVtcGxlIFBsYWNlIC0gU3VpdGUgMzMwLCBCb3N0b24sIE1B
-ICAwMjExMS0xMzA3LCBVU0EuICAgICAgICAgICAgICoKICoqKioqKioqKioqKioqKioqKioqKioq
-KioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKioqKi8KCi8q
-IE4uQi4gKi8KLyogdGhpcyBwcm9ncmFtIGlzIHN1cHBsaWVkIFdJVEhPVVQgYW55IHdhcnJhbnR5
-IHdoYXRzb2V2ZXIJCSAgKi8KCi8qPT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09
-PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT0KClRoaXMgcHJvZ3JhbSBpcyB1
-c2VkIGZvciB0aGUgbWFzcyBjaGFuZ2luZyBvZiBwcm9jZXNzIHByaW9yaXRpZXMgYnkgbmFtZQpU
-aGUgc3ludGF4IGlzIGFzIGZvbGxvd3MKCS4vYnVtYmVyIFtjZmdmaWxlXQoKVGhlIGNvbmZpZyBm
-aWxlIHVzZXMgdGhlIGZvbGxvd2luZyBzeW50YXgKI3RoaXMgaXMgYSBjb21tZW50CnByb2Nlc3Nf
-bmFtZSxQT0xJQ1kscHJpb3JpdHkKCkRlZmF1bHQgaXMgUlIgLCBidXQgdmFsaWQgcG9saWNpZXMg
-YXJlCiAgUlIsIEZJRk8gYW5kIE9USEVSCgpwcmlvcml0eSBpcyBhIHZhbHVlIGZyb20gMC4uOTkK
-CmUuZy4KCiNUZWxuZXQgcHJpb3JpdHkKdGVsbmV0ZCxSUiwzNwoKPT09PT09PT09PT09PT09PT09
-PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09PT09
-PT0qLwoKCiNpZmRlZiBIQVZFX0NPTkZJR19ICiNpbmNsdWRlIDxjb25maWcuaD4KI2VuZGlmCgoj
-aW5jbHVkZSA8c3RkaW8uaD4KI2luY2x1ZGUgPHN0ZGxpYi5oPgojaW5jbHVkZSA8ZGlyZW50Lmg+
-CiNpbmNsdWRlIDxzdHJpbmcuaD4KI2luY2x1ZGUgPHNjaGVkLmg+CiNpbmNsdWRlICJidW1wZXIu
-aCIKCmludCBtYWluICggaW50IGFyZ2MsIGNoYXIgKmFyZ3ZbXSApCnsKCglpZiAoIGFyZ2MgIT0g
-MiApCgl7CgkJcHJpbnRmICggIkVycm9yOiBVc2FnZSBpcyAlcyBbY29uZmlnIGZpbGVdXG4iLGFy
-Z3ZbMF0gKTsKCQlyZXR1cm4gRVhJVF9GQUlMVVJFOwoJfSAKCXByb2Nlc3NMaXN0ID0gaW5pdF9h
-cHBsaWNhdGlvbigpOwoJaWYgKCByZWFkSW5wdXRGaWxlICggYXJndlsxXSApIDwgMCApCgl7CgkJ
-cHJpbnRmICggIkVycm9yOiBDb3VsZCBub3Qgb3BlbiAlc1xuIixhcmd2WzFdICk7CgkJcmV0dXJu
-IEVYSVRfRkFJTFVSRTsKCX0KCWdldFByb2Nlc3NJRCAoIHByb2Nlc3NMaXN0ICk7CglkZXN0b3J5
-X2FwcGxpY2F0aW9uKHByb2Nlc3NMaXN0KTsKCXJldHVybiBFWElUX1NVQ0NFU1M7Cn0KCnZvaWQg
-KmluaXRfYXBwbGljYXRpb24gKCB2b2lkICkKewogIHJldHVybiBOVUxMOwp9Cgp2b2lkIGRlc3Rv
-cnlfYXBwbGljYXRpb24oc3RydWN0IHBhcmFtcyAqaGVhZCkKewogICAgc3RydWN0IHBhcmFtcyAq
-bmV4dDsKCiAgICBpZiAoaGVhZCA9PSBOVUxMKQogICAgICByZXR1cm47CgogICBuZXh0ID0gaGVh
-ZDsgCgogICB3aGlsZSAobmV4dCAhPSBOVUxMKQogICAgIHsKICAgICAgICB2b2lkICpucHRyID0g
-bmV4dC0+bmV4dDsgCglmcmVlKG5leHQtPnByb2Nlc3MpOwogICAgICAgIGZyZWUobmV4dCk7CiAg
-ICAgICAgbmV4dCA9IG5wdHI7CiAgICAgfSAKfQoKaW50IHJlYWRJbnB1dEZpbGUgKCBjaGFyICpp
-bkZpbGUgKQp7CglGSUxFICpmcDsKCWludCByYyA9IC0xOwoJY2hhciBpbkxpbmVbMTAxXTsKCglp
-ZiAoICggZnAgPSBmb3BlbiAoIGluRmlsZSwgInIiICkgKSA9PSBOVUxMICkKCQlyZXR1cm4gcmM7
-CgoJd2hpbGUgKCBmZ2V0cyAoIGluTGluZSwgMTAwLCBmcCApICE9TlVMTCApCgl7CgkJaWYgKCBp
-bkxpbmVbMF0gPT0gJyMnICkKCQkJY29udGludWU7CgoJCXByb2Nlc3NMaXN0ID0gYWRkRW50cnkg
-KCBpbkxpbmUscHJvY2Vzc0xpc3QgKTsKCX0KCWZjbG9zZSAoIGZwICk7CglyZXR1cm4gMTsKfQoK
-CnZvaWQgKmFkZEVudHJ5ICggY2hhciAqc3pQYXJhbWV0ZXJzLHN0cnVjdCBwYXJhbXMgKmhlYWQg
-KQp7CglzdHJ1Y3QgcGFyYW1zICplbnRyeTsKCXN0cnVjdCBwYXJhbXMgKmxhc3RQdHI9aGVhZDsK
-CXZvaWQgKnJldFB0cj1oZWFkOwoJY2hhciBwcm9jZXNzWzUxMl07CgljaGFyIHBvbGljeVs1MTJd
-OwoJY2hhciBwcmlvWzUxMl07CglpZiAoIHN0cmxlbiAoIHN6UGFyYW1ldGVycyApID4gNTExICkg
-IC8vIHNtYWxsIHNhbml5IGNoZWNrLi4KCQlyZXR1cm4gaGVhZDsKCWlmICggc3RybGVuICggc3pQ
-YXJhbWV0ZXJzICkgPCA1ICkgIC8vIHNtYWxsIHNhbml5IGNoZWNrLi4KCQlyZXR1cm4gaGVhZDsK
-CglpbnQgcmMgPSBzc2NhbmYgKCBzelBhcmFtZXRlcnMsIiVbXicsJ10sJVteJywnXSwlW14nLCdd
-Iixwcm9jZXNzLHBvbGljeSxwcmlvICk7CglpZiAoIHJjID09IDMgKQoJewoJCWludCBwVmFsID0g
-YXRvaShwcmlvKTsKCQlpZiAoICggcFZhbCA8IDAgKSB8fCAoIHBWYWwgPiAxMDAgKSApCgkJewoJ
-CQlwcmludGYgKCAiRXJyb3IgOiBQcm9jZXNzICVzIFByaW9yaXR5ICVpIE9VVCBPRiBCT1VORFMg
-b2YgMC4uOTlcbiIscHJvY2VzcyxwVmFsICk7CgkJCXJldHVybiBoZWFkOwoJCX0KCQllbnRyeSA9
-IG1hbGxvYyAoIHNpemVvZiAoIHN0cnVjdCBwYXJhbXMgKSApOwoJCWVudHJ5LT5uZXh0PWhlYWQ7
-CgkJZW50cnktPnByb2Nlc3MgPSBtYWxsb2MgKCBzdHJsZW4gKCBwcm9jZXNzICkgKzEgKTsKCQlz
-dHJjcHkgKCBlbnRyeS0+cHJvY2Vzcyxwcm9jZXNzICk7CgkJZW50cnktPnByaW8gPSBwVmFsOwoJ
-CWVudHJ5LT5wb2xpY3kgPSBTQ0hFRF9SUjsKCQllbnRyeS0+cHJvY2Vzc0NvdW50PTA7CgoJCWlm
-ICggIXN0cmNhc2VjbXAgKCBwb2xpY3ksIlJSIiApICkKCQl7CgkJCWVudHJ5LT5wb2xpY3kgPSBT
-Q0hFRF9SUjsKCQl9CgkJZWxzZSBpZiAoICFzdHJjYXNlY21wICggcG9saWN5LCJPVEhFUiIgKSAp
-CgkJewoJCQllbnRyeS0+cG9saWN5ID0gU0NIRURfT1RIRVI7CgkJfQoJCWVsc2UgaWYgKCAhc3Ry
-Y2FzZWNtcCAoIHBvbGljeSwiRklGTyIgKSApCgkJewoJCQllbnRyeS0+cG9saWN5ID0gU0NIRURf
-RklGTzsKCQl9CgkJcHJpbnRmICggIlByb2Nlc3MgJXMgW1ByaW9yaXR5ICVpXSBbUG9saWN5ICVz
-ICglaSldXG4iLGVudHJ5LT5wcm9jZXNzLGVudHJ5LT5wcmlvLHBvbGljeSxlbnRyeS0+cG9saWN5
-ICk7Cgl9CgllbHNlCgl7CgkJcmV0dXJuIGhlYWQ7Cgl9CglyZXR1cm4gZW50cnk7Cn0KCgppbnQg
-Y2hlY2tQcm9jZXNzTmFtZSAoIHN0cnVjdCBwYXJhbXMgKmhlYWQsIGNoYXIgKnByb2Nlc3MsIGlu
-dCAqcHJpbywgaW50ICpwb2xpY3kgKQp7CglpbnQgcmMgPSAtMTsKCXN0cnVjdCBwYXJhbXMgKml0
-ciA9IGhlYWQ7CgoJZm9yICggaXRyPWhlYWQ7aXRyICE9IE5VTEw7aXRyPWl0ci0+bmV4dCApCgl7
-CgkJaWYgKCBzdHJzdHIgKCBwcm9jZXNzLGl0ci0+cHJvY2VzcyApICE9IE5VTEwgKQoJCXsKCQkJ
-KnByaW8gPSBpdHItPnByaW87CgkJCSpwb2xpY3kgPSBpdHItPnBvbGljeTsKCQkJaXRyLT5wcm9j
-ZXNzQ291bnQrKzsKCQkJcmMgPSAxOwoJCQlicmVhazsKCQl9Cgl9CglyZXR1cm4gcmM7Cn0KCgpp
-bnQgZmluZENoYXIgKCBjaGFyICppblN0cmluZyxjaGFyIGNoYXJhY3RlciApCnsKCWludCBhOwoK
-CWZvciAoIGE9MDthPHN0cmxlbiAoIGluU3RyaW5nICk7YSsrICkKCXsKCQlpZiAoIGluU3RyaW5n
-W2FdID09IGNoYXJhY3RlciApCgkJCXJldHVybiBhOwoJfQoJcmV0dXJuIC0xOwp9CgoKaW50IHJl
-YWRTdGF0ICggY2hhciAqZXhlLCBjaGFyICp0YXJnZXRfbmFtZSApCnsKCUZJTEUgKmZwOwoJaW50
-IHJjID0gLTE7CgljaGFyIGluTGluZVs1MTJdOwoKCgoJaWYgKCAoIGZwID0gZm9wZW4gKCBleGUs
-ICJyIiApICkgPT0gTlVMTCApCgl7CgkJcHJpbnRmICggIkZhaWxlZCB0byBvcGVuICVzXG4iLGV4
-ZSApOwoJCXJldHVybiByYzsKCX0KCgljaGFyICpyZXRDaGFyID0gZmdldHMgKCBpbkxpbmUsIDEw
-MCwgZnAgKTsKCWlmICggcmV0Q2hhciA9PSBOVUxMICkKCXsKCQljbG9zZSAoIGZwICk7CgkJcmV0
-dXJuIHJjOwoJfQoKCWludCBzdGFydCA9IGZpbmRDaGFyICggaW5MaW5lLCcoJyApOwoJaW50IGVu
-ZCA9IGZpbmRDaGFyICggaW5MaW5lLCcpJyApOwoKCWlmICggKCBzdGFydCA+IDAgKSAmJiAoIGVu
-ZCA+MCApICkKCXsKCQltZW1zZXQgKCB0YXJnZXRfbmFtZSwwLCAoIGVuZC1zdGFydCApICsxICk7
-CgkJbWVtY3B5ICggdGFyZ2V0X25hbWUsaW5MaW5lK3N0YXJ0KzEsICggZW5kLXN0YXJ0ICktMSAp
-OwoJCXJjID0gMTsKCX0KCglmY2xvc2UgKCBmcCApOwoJcmV0dXJuIHJjOwp9CgoKdW5zaWduZWQg
-aW50IGdldFByb2Nlc3NJRCAoIHN0cnVjdCBwYXJhbXMgKmhlYWQgKQp7CglESVIgKmRpcl9wOwoJ
-c3RydWN0IGRpcmVudCAqZGlyX2VudHJ5X3A7CgljaGFyIGRpcl9uYW1lWzUxMl07IC8vIEhvcnJp
-YmxlLi4gYnV0IHdpbGwgZG8KCWNoYXIgdGFyZ2V0X25hbWVbNTEyXTsgIC8vIEhvcnJpYmxlLi4g
-YnV0IHdpbGwgZG8KCWludCB0YXJnZXRfcmVzdWx0OwoJY2hhciBleGVfbGlua1s1MTJdOyAgLy8g
-eXVrCglpbnQgZXJyb3Jjb3VudDsKCWludCByZXN1bHQ7CglpbnQgcHJpbzsKCWludCBwb2xpY3k7
-CgoJZXJyb3Jjb3VudD0wOwoJcmVzdWx0PTA7CglkaXJfcCA9IG9wZW5kaXIgKCAiL3Byb2MvIiAp
-OwoJd2hpbGUgKCBOVUxMICE9ICggZGlyX2VudHJ5X3AgPSByZWFkZGlyICggZGlyX3AgKSApICkK
-CXsKCQlpZiAoIHN0cnNwbiAoIGRpcl9lbnRyeV9wLT5kX25hbWUsICIwMTIzNDU2Nzg5IiApID09
-IHN0cmxlbiAoIGRpcl9lbnRyeV9wLT5kX25hbWUgKSApCgkJewoJCQlzdHJjcHkgKCBkaXJfbmFt
-ZSwgIi9wcm9jLyIgKTsKCQkJc3RyY2F0ICggZGlyX25hbWUsIGRpcl9lbnRyeV9wLT5kX25hbWUg
-KTsKCQkJc3RyY2F0ICggZGlyX25hbWUsICIvIiApOwoJCQlleGVfbGlua1swXSA9IDA7CgkJCXN0
-cmNhdCAoIGV4ZV9saW5rLCBkaXJfbmFtZSApOwoJCQlzdHJjYXQgKCBleGVfbGluaywgInN0YXQi
-ICk7CgkJCXRhcmdldF9yZXN1bHQgPSByZWFkU3RhdCAoIGV4ZV9saW5rLCB0YXJnZXRfbmFtZSAp
-OwoJCQlpZiAoIHRhcmdldF9yZXN1bHQgPiAwICkKCQkJewoJCQkJLy9wcmludGYgKCAiQ2hlY2tp
-bmcgZm9yICVzXG4iLHRhcmdldF9uYW1lICk7CgoJCQkJaWYgKCBjaGVja1Byb2Nlc3NOYW1lICgg
-aGVhZCx0YXJnZXRfbmFtZSwmcHJpbywmcG9saWN5ICkgPiAwICkKCQkJCXsKCQkJCQlyZXN1bHQg
-PSBhdG9pICggZGlyX2VudHJ5X3AtPmRfbmFtZSApOwoJCQkJCXN0cnVjdCBzY2hlZF9wYXJhbSBz
-cDsKCQkJCQlzcC5zY2hlZF9wcmlvcml0eSA9IHByaW87CgkJCQkJaWYgKCBzY2hlZF9zZXRzY2hl
-ZHVsZXIgKCByZXN1bHQsIHBvbGljeSwgJnNwICkgPCAwICkKCQkJCQl7CgkJCQkJCXByaW50ZiAo
-ICJGYWlsZWQgdG8gc2V0ICVzICglaSkgW1BvbGljeSAlaV0gW1ByaW9yaXR5ICVpXVxuIiwgdGFy
-Z2V0X25hbWUsIHJlc3VsdCxwb2xpY3kscHJpbyApOwoJCQkJCX0KCQkJCQllbHNlCgkJCQkJCXBy
-aW50ZiAoICJQcmlvcml0eSBzZXQgJXMgKCVpKVxuIiwgdGFyZ2V0X25hbWUsIHJlc3VsdCApOwoJ
-CQkJfQoJCQl9CgkJfQoJfQoJY2xvc2VkaXIgKCBkaXJfcCApOwoJcmV0dXJuIHJlc3VsdDsKfQo=
---047d7b33d592b900ae04f3d0a56c
-Content-Type: text/x-chdr; charset=US-ASCII; name="bumper.h"
-Content-Disposition: attachment; filename="bumper.h"
-Content-Transfer-Encoding: base64
-X-Attachment-Id: f_hsdt9ycm4
-
-I2lmbmRlZiBfQlVNUEVSX0gKI2RlZmluZSBfQlVNUEVSX0gKCgpzdHJ1Y3QgcGFyYW1zIHsKICBj
-aGFyICpwcm9jZXNzOwogIGludCAgcHJpbzsKICBpbnQgIHBvbGljeTsKICBpbnQgIHByb2Nlc3ND
-b3VudDsKc3RydWN0IHBhcmFtcyAqbmV4dDsgLy8gc2luZ2xlIGVudHJ5IGxpbmtlZCBsaXN0Cn07
-Cgp1bnNpZ25lZCBpbnQgZ2V0UHJvY2Vzc0lEICggc3RydWN0IHBhcmFtcyAqaGVhZCApOwp2b2lk
-ICphZGRFbnRyeSAoIGNoYXIgKnN6UGFyYW1ldGVycyxzdHJ1Y3QgcGFyYW1zICpoZWFkICk7Cmlu
-dCBjaGVja1Byb2Nlc3NOYW1lICggc3RydWN0IHBhcmFtcyAqaGVhZCwgY2hhciAqcHJvY2Vzcywg
-aW50ICpwcmlvLCBpbnQgKnBvbGljeSApOwppbnQgcmVhZElucHV0RmlsZSAoIGNoYXIgKmluRmls
-ZSApOwp2b2lkICppbml0X2FwcGxpY2F0aW9uICggdm9pZCApOwp2b2lkIGRlc3RvcnlfYXBwbGlj
-YXRpb24oc3RydWN0IHBhcmFtcyAqaGVhZCk7CgovLyBHbG9iYWxzIApzdHJ1Y3QgcGFyYW1zICpw
-cm9jZXNzTGlzdDsKCgojZW5kaWYK
---047d7b33d592b900ae04f3d0a56c--
+1.8.5.3
