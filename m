@@ -1,88 +1,268 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f176.google.com ([209.85.223.176]:62493 "EHLO
-	mail-ie0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754549AbaCCOOg convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Mar 2014 09:14:36 -0500
-Received: by mail-ie0-f176.google.com with SMTP id rd18so4071424iec.7
-        for <linux-nfs@vger.kernel.org>; Mon, 03 Mar 2014 06:14:35 -0800 (PST)
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
-Subject: Re: [BUG] NULL pointer dereference in nfs4_match_stateid()
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-In-Reply-To: <531424D1.2020309@intel.com>
-Date: Mon, 3 Mar 2014 09:14:33 -0500
+Received: from smtp1.uvm.edu ([132.198.101.168]:55064 "EHLO smtp1.uvm.edu"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753712AbaCXSWf convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Mar 2014 14:22:35 -0400
+Content-Type: text/plain; charset=US-ASCII
+Mime-Version: 1.0 (Mac OS X Mail 6.6 \(1510\))
+Subject: Re: [PATCH] nfsidmap: use multiple child keyrings
+From: Benjamin Coddington <bcodding@uvm.edu>
+In-Reply-To: <533064A1.2080502@RedHat.com>
+Date: Mon, 24 Mar 2014 14:00:05 -0400
 Cc: linux-nfs@vger.kernel.org
-Message-Id: <D31C0B44-C6F4-475F-838A-AC1723D2D1DA@primarydata.com>
-References: <5313E9F6.2020405@intel.com> <1393816686.6850.0.camel@leira.trondhjem.org> <531424D1.2020309@intel.com>
-To: "Yan, Zheng" <zheng.z.yan@intel.com>
+Message-Id: <189016FB-E865-42B7-BF5A-D1D12F45B81E@uvm.edu>
+References: <201403241150.s2OBonLC010685@hobo-dev.uvm.edu> <533064A1.2080502@RedHat.com>
+To: Steve Dickson <SteveD@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Mar 3, 2014, at 1:44, Yan, Zheng <zheng.z.yan@intel.com> wrote:
+On Mar 24, 2014, at 1:00 PM, Steve Dickson <SteveD@redhat.com> wrote:
 
-> On 03/03/2014 11:18 AM, Trond Myklebust wrote:
->> On Mon, 2014-03-03 at 10:33 +0800, Yan, Zheng wrote:
->>> Hi,
->>> 
->>> I got following Oops when running fsstress
->>> ---
->>> [ 2536.142216] BUG: unable to handle kernel NULL pointer dereference at 0000000000000020
->>> [ 2536.143110] IP: [<ffffffff813391d9>] memcmp+0x9/0x50
->>> [ 2536.143110] PGD 0
->>> [ 2536.143110] Oops: 0000 [#1] SMP
->>> [ 2536.143110] Modules linked in: rpcsec_gss_krb5(F) auth_rpcgss(F) nfsv4(F) dns_resolver(F) nfs(F) fscache(F) ceph(F) libceph(F) libcrc32c(F) netconsole(F) ip6table_filter(F) ip6_tables(F) ebtable_nat(F) ebtables(F) ipt_MASQUERADE(F) iptable_nat(F) nf_nat_ipv4(F) nf_nat(F) nf_conntrack_ipv4(F) nf_defrag_ipv4(F) xt_state(F) nf_conntrack(F) xt_CHECKSUM(F) iptable_mangle(F) bnep(F) bluetooth(F) 6lowpan_iphc(F) bridge(F) lockd(F) sunrpc(F) rfkill(F) be2iscsi(F) iscsi_boot_sysfs(F) stp(F) llc(F) bnx2i(F) cnic(F) uio(F) cxgb4i(F) cxgb4(F) cxgb3i(F) cxgb3(F) mdio(F) libcxgbi(F) ib_iser(F) rdma_cm(F) iw_cm(F) ib_cm(F) ib_sa(F) ib_mad(F) ib_core(F) ib_addr(F) iscsi_tcp(F) libiscsi_tcp(F) libiscsi(F) scsi_transport_iscsi(F) virtio_net(F) virtio_balloon(F) pcspkr(F) microcode(F) uinput(F) cirrus(F) drm_kms_helper(F) ttm(F) drm(F) i2c_core(F)
->>> [ 2536.143110] CPU: 1 PID: 2925 Comm: nfsv4.0-svc Tainted: GF            3.14.0-rc4+ #50
->>> [ 2536.143110] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2011
->>> [ 2536.143110] task: ffff88003cd55aa0 ti: ffff88003c9a8000 task.ti: ffff88003c9a8000
->>> [ 2536.143110] RIP: 0010:[<ffffffff813391d9>]  [<ffffffff813391d9>] memcmp+0x9/0x50
->>> [ 2536.143110] RSP: 0018:ffff88003c9a9ca8  EFLAGS: 00010202
->>> [ 2536.143110] RAX: ffffffffa04842c0 RBX: 0000000000000000 RCX: 0000000000000036
->>> [ 2536.143110] RDX: 0000000000000010 RSI: ffff880035ee808a RDI: 0000000000000020
->>> [ 2536.143110] RBP: ffff88003c9a9ca8 R08: 8020000000000000 R09: 00231b6840100000
->>> [ 2536.143110] R10: ffbee4a086ca1004 R11: 0000000000000000 R12: ffff88003751e000
->>> [ 2536.143110] R13: ffff880034afa000 R14: ffff880035ee808a R15: 0000000000000004
->>> [ 2536.143110] FS:  0000000000000000(0000) GS:ffff88003fc80000(0000) knlGS:0000000000000000
->>> [ 2536.143110] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
->>> [ 2536.143110] CR2: 0000000000000020 CR3: 0000000034bc0000 CR4: 00000000000006e0
->>> [ 2536.143110] Stack:
->>> [ 2536.143110]  ffff88003c9a9cb8 ffffffffa0455883 ffff88003c9a9cf0 ffffffffa0472b98
->>> [ 2536.143110]  ffff880035ee8000 ffff880035ee8000 ffff8800231b6970 0000000011270000
->>> [ 2536.143110]  0000000000000000 ffff88003c9a9d28 ffffffffa0475fc9 ffff88003c9a9d28
->>> [ 2536.143110] Call Trace:
->>> [ 2536.143110]  [<ffffffffa0455883>] nfs4_match_stateid+0x13/0x20 [nfsv4]
->>> [ 2536.143110]  [<ffffffffa0472b98>] nfs_async_inode_return_delegation+0x48/0x90 [nfsv4]
->>> [ 2536.143110]  [<ffffffffa0475fc9>] nfs4_callback_recall+0x59/0x130 [nfsv4]
->>> [ 2536.143110]  [<ffffffffa0475005>] nfs4_callback_compound+0x465/0x6a0 [nfsv4]
->>> [ 2536.143110]  [<ffffffffa0220c1a>] ? svcauth_unix_accept+0x14a/0x270 [sunrpc]
->>> [ 2536.143110]  [<ffffffffa021c707>] svc_process_common+0x5e7/0x6e0 [sunrpc]
->>> [ 2536.143110]  [<ffffffffa0473e80>] ? nfs_callback_authenticate+0x50/0x50 [nfsv4]
->>> [ 2536.143110]  [<ffffffffa021c907>] svc_process+0x107/0x170 [sunrpc]
->>> [ 2536.143110]  [<ffffffffa0473e80>] ? nfs_callback_authenticate+0x50/0x50 [nfsv4]
->>> [ 2536.143110]  [<ffffffffa0473ec5>] nfs4_callback_svc+0x45/0x60 [nfsv4]
->>> [ 2536.143110]  [<ffffffff810a4a52>] kthread+0xd2/0xf0
->>> [ 2536.143110]  [<ffffffff810a4980>] ? insert_kthread_work+0x40/0x40
->>> [ 2536.143110]  [<ffffffff816b567c>] ret_from_fork+0x7c/0xb0
->>> [ 2536.143110]  [<ffffffff810a4980>] ? insert_kthread_work+0x40/0x40
->>> [ 2536.143110] Code: 75 e9 31 c0 c6 06 01 5d c3 66 0f 1f 84 00 00 00 00 00 31 c0 c6 06 00 5d c3 66 0f 1f 84 00 00 00 00 00 55 48 85 d2 48 89 e5 74 3c <0f> b6 07 0f b6 0e 29 c8 75 27 48 83 ea 01 31 c9 eb 1a 0f 1f 44
->>> [ 2536.143110] RIP  [<ffffffff813391d9>] memcmp+0x9/0x50
->>> [ 2536.143110]  RSP <ffff88003c9a9ca8>
->>> [ 2536.143110] CR2: 0000000000000020
->>> [ 2536.143110] ---[ end trace 145a1eb5268045c7 ]---
->> 
->> Does the following patch help?
->> 
+> On 03/21/2014 05:08 PM, Benjamin Coddington wrote:
+>> The kernel keyring has a max of ~508 entries on 64-bit systems.
+>> For installations with more distict users than this limit, create
+>> a specified number of child keyrings and fill them evenly.
+> A couple things... 
 > 
-> I have run the same test for hours. It seems the patch works.
+> 1) no Signed-off-by: line
 > 
-> Regards
-> Yan, Zheng
+> 2) Its seems you can create key rings but can't delete them.
+>   Here is what I'm doing:
+>   in /etc/request-key.d/id_resolver.conf I have
+>    create    id_resolver * *    /usr/sbin/nfsidmap -n 10 %k %d
+> but when I tried to delete the keys
+>    # nfsidmap -vc
+>    nfsidmap: clearing '08aa156c I--Q---     1perm 3f010000     0     0 keyring   .id_resolver_child_10: empty'
+>    nfsidmap: keyctl_clear(0x8aa156c) failed: Permission denied
 
-Great. Thanks for testing!
+This mess works on my fleet of RHEL6 boxes which is where I was trying to fix this.  They create the child keyrings with
 
-   Trond
-_________________________________
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
+perm 3b3f0000
+
+Instead of yours which appears to be
+
+perm 3f010000
+
+Are you testing on a later kernel?  Likely this behavior has changed.
+
+>> #define PROCKEYS "/proc/keys"
+>> #ifndef DEFAULT_KEYRING
+>> -#define DEFAULT_KEYRING "id_resolver"
+>> +#define DEFAULT_KEYRING ".id_resolver"
+> 3) Why is changing the default needed?
+
+The default is wrong.  I think that's the first thing I changed when trying to fix this problem, since it looked like id_lookup() should gracefully recover in the case that the keyring was full (but it still doesn't).  This actually doesn't have to change, since the strcmp()s that use it will work either way -- but it might catch someone by surprise later.  I'll split this out.
+
+> Finally, what -n value do plan on using? Maybe a blurb in the man page
+> on what a good number is and why....
+
+I've got this running now with -n160, since we have ~60K distinct uid/gid s.  Ideally, I'd like to re-submit this to self-scale which wouldn't require any sysadmin tuning, but I haven't had the time.  Really, this is just a quick fix for the brokenness that's in current RHEL and less-new Fedora.  If you want it done right it will take me a week or two to find the time.
+
+Ben
+
+> steved.
+> 
+>> #endif
+>> 
+>> #ifndef PATH_IDMAPDCONF
+>> @@ -39,7 +39,7 @@ static int keyring_clear(char *keyring);
+>> /*
+>>  * Find either a user or group id based on the name@domain string
+>>  */
+>> -int id_lookup(char *name_at_domain, key_serial_t key, int type)
+>> +int id_lookup(char *name_at_domain, key_serial_t key, int type, key_serial_t dest_keyring)
+>> {
+>> 	char id[MAX_ID_LEN];
+>> 	uid_t uid = 0;
+>> @@ -58,7 +58,7 @@ int id_lookup(char *name_at_domain, key_serial_t key, int type)
+>> 			(type == USER ? "nfs4_owner_to_uid" : "nfs4_group_owner_to_gid"));
+>> 
+>> 	if (rc == 0) {
+>> -		rc = keyctl_instantiate(key, id, strlen(id) + 1, 0);
+>> +		rc = keyctl_instantiate(key, id, strlen(id) + 1, dest_keyring);
+>> 		if (rc < 0) {
+>> 			switch(rc) {
+>> 			case -EDQUOT:
+>> @@ -67,9 +67,9 @@ int id_lookup(char *name_at_domain, key_serial_t key, int type)
+>> 				/*
+>> 			 	 * The keyring is full. Clear the keyring and try again
+>> 			 	 */
+>> -				rc = keyring_clear(DEFAULT_KEYRING);
+>> +				rc = keyctl_clear(dest_keyring);
+>> 				if (rc == 0)
+>> -					rc = keyctl_instantiate(key, id, strlen(id) + 1, 0);
+>> +					rc = keyctl_instantiate(key, id, strlen(id) + 1, dest_keyring);
+>> 				break;
+>> 			default:
+>> 				break;
+>> @@ -85,7 +85,7 @@ int id_lookup(char *name_at_domain, key_serial_t key, int type)
+>> /*
+>>  * Find the name@domain string from either a user or group id
+>>  */
+>> -int name_lookup(char *id, key_serial_t key, int type)
+>> +int name_lookup(char *id, key_serial_t key, int type, key_serial_t dest_keyring)
+>> {
+>> 	char name[IDMAP_NAMESZ];
+>> 	char domain[NFS4_MAX_DOMAIN_LEN];
+>> @@ -113,7 +113,7 @@ int name_lookup(char *id, key_serial_t key, int type)
+>> 			(type == USER ? "nfs4_uid_to_name" : "nfs4_gid_to_name"));
+>> 
+>> 	if (rc == 0) {
+>> -		rc = keyctl_instantiate(key, &name, strlen(name), 0);
+>> +		rc = keyctl_instantiate(key, &name, strlen(name), dest_keyring);
+>> 		if (rc < 0)
+>> 			xlog_err("name_lookup: keyctl_instantiate failed: %m");
+>> 	}
+>> @@ -127,7 +127,7 @@ static int keyring_clear(char *keyring)
+>> {
+>> 	FILE *fp;
+>> 	char buf[BUFSIZ];
+>> -	key_serial_t key;
+>> +	key_serial_t key, child_key;
+>> 
+>> 	if (keyring == NULL)
+>> 		keyring = DEFAULT_KEYRING;
+>> @@ -151,6 +151,7 @@ static int keyring_clear(char *keyring)
+>> 		 */
+>> 		*(strchr(buf, ' ')) = '\0';
+>> 		sscanf(buf, "%x", &key);
+>> +
+>> 		if (keyctl_clear(key) < 0) {
+>> 			xlog_err("keyctl_clear(0x%x) failed: %m", key);
+>> 			fclose(fp);
+>> @@ -159,7 +160,8 @@ static int keyring_clear(char *keyring)
+>> 		fclose(fp);
+>> 		return 0;
+>> 	}
+>> -	xlog_err("'%s' keyring was not found.", keyring);
+>> +	if (strstr(keyring, DEFAULT_KEYRING":"))
+>> +		xlog_err("'%s' keyring was not found.", keyring);
+>> 	fclose(fp);
+>> 	return 1;
+>> }
+>> @@ -232,8 +234,10 @@ int main(int argc, char **argv)
+>> 	char *type;
+>> 	int rc = 1, opt;
+>> 	int timeout = 600;
+>> -	key_serial_t key;
+>> +	int childrings = 0;
+>> +	key_serial_t key, parent_keyring, dest_keyring;
+>> 	char *progname, *keystr = NULL;
+>> +	char child_name[BUFSIZ];
+>> 	int clearing = 0, keymask = 0;
+>> 
+>> 	/* Set the basename */
+>> @@ -244,7 +248,7 @@ int main(int argc, char **argv)
+>> 
+>> 	xlog_open(progname);
+>> 
+>> -	while ((opt = getopt(argc, argv, "u:g:r:ct:v")) != -1) {
+>> +	while ((opt = getopt(argc, argv, "u:g:r:ct:vn:d:")) != -1) {
+>> 		switch (opt) {
+>> 		case 'u':
+>> 			keymask = UIDKEYS;
+>> @@ -267,6 +271,9 @@ int main(int argc, char **argv)
+>> 		case 't':
+>> 			timeout = atoi(optarg);
+>> 			break;
+>> +		case 'n':
+>> +			childrings = atoi(optarg);
+>> +			break;
+>> 		default:
+>> 			xlog_warn(usage, progname);
+>> 			break;
+>> @@ -284,9 +291,16 @@ int main(int argc, char **argv)
+>> 		rc = key_revoke(keystr, keymask);
+>> 		return rc;		
+>> 	}
+>> +
+>> 	if (clearing) {
+>> 		xlog_syslog(0);
+>> -		rc = keyring_clear(DEFAULT_KEYRING);
+>> +		int i = 1;
+>> +		for(rc = 0; rc == 0; i++) {
+>> +			snprintf(child_name, sizeof(child_name), DEFAULT_KEYRING "_child_%d", i);
+>> +			rc = keyring_clear(child_name);
+>> +		}
+>> +
+>> +		rc = keyring_clear(DEFAULT_KEYRING ":");
+>> 		return rc;		
+>> 	}
+>> 
+>> @@ -315,14 +329,42 @@ int main(int argc, char **argv)
+>> 			key, type, value, timeout);
+>> 	}
+>> 
+>> +	if (childrings) {
+>> +		int i;
+>> +		long child_size, smallest_size = 2032;
+>> +		parent_keyring = request_key("keyring", DEFAULT_KEYRING, NULL, KEY_SPEC_THREAD_KEYRING);
+>> +
+>> +		for (i = 1; i <= childrings; i++) {
+>> +			key_serial_t child_keyring;
+>> +
+>> +			snprintf(child_name, sizeof(child_name), DEFAULT_KEYRING "_child_%d", i);
+>> +
+>> +			child_keyring = keyctl_search(parent_keyring, "keyring", child_name, 0);
+>> +			if (child_keyring < 0) {
+>> +				child_keyring = add_key("keyring", child_name, NULL, 0, parent_keyring);
+>> +				xlog_warn("added new child %s: %m", child_name);
+>> +			}
+>> +
+>> +			child_size = keyctl_read(child_keyring, NULL, 0);
+>> +			if (child_size < smallest_size) {
+>> +				dest_keyring = child_keyring;
+>> +				smallest_size = child_size;
+>> +			}
+>> +		}
+>> +	}
+>> +
+>> 	if (strcmp(type, "uid") == 0)
+>> -		rc = id_lookup(value, key, USER);
+>> +		rc = id_lookup(value, key, USER, dest_keyring);
+>> 	else if (strcmp(type, "gid") == 0)
+>> -		rc = id_lookup(value, key, GROUP);
+>> +		rc = id_lookup(value, key, GROUP, dest_keyring);
+>> 	else if (strcmp(type, "user") == 0)
+>> -		rc = name_lookup(value, key, USER);
+>> +		rc = name_lookup(value, key, USER, dest_keyring);
+>> 	else if (strcmp(type, "group") == 0)
+>> -		rc = name_lookup(value, key, GROUP);
+>> +		rc = name_lookup(value, key, GROUP, dest_keyring);
+>> +
+>> +	/* if we hung this off a child, unlink from the parent */
+>> +	if (dest_keyring)
+>> +		keyctl_unlink(key, parent_keyring);
+>> 
+>> 	/* Set timeout to 10 (600 seconds) minutes */
+>> 	if (rc == 0)
+>> diff --git a/utils/nfsidmap/nfsidmap.man b/utils/nfsidmap/nfsidmap.man
+>> index 3a3a523..04f0014 100644
+>> --- a/utils/nfsidmap/nfsidmap.man
+>> +++ b/utils/nfsidmap/nfsidmap.man
+>> @@ -6,7 +6,7 @@
+>> .SH NAME
+>> nfsidmap \- The NFS idmapper upcall program
+>> .SH SYNOPSIS
+>> -.B "nfsidmap [-v] [-t timeout] key desc"
+>> +.B "nfsidmap [-v] [-t timeout] [-n count] key desc"
+>> .br
+>> .B "nfsidmap [-v] [-c]"
+>> .br
+>> @@ -42,6 +42,9 @@ Revoke both the uid and gid key of the given user.
+>> Set the expiration timer, in seconds, on the key.
+>> The default is 600 seconds (10 mins).
+>> .TP
+>> +.B -n count
+>> +Set the the number of child keyrings to create.
+>> +.TP
+>> .B -u user
+>> Revoke the uid key of the given user.
+>> .TP
+>> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
