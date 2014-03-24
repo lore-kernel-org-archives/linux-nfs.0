@@ -1,73 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f45.google.com ([209.85.216.45]:33076 "EHLO
-	mail-qa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932549AbaCQLHJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 17 Mar 2014 07:07:09 -0400
-Received: by mail-qa0-f45.google.com with SMTP id hw13so5020836qab.4
-        for <linux-nfs@vger.kernel.org>; Mon, 17 Mar 2014 04:07:09 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v2 2/5] nfs: make nfs_async_rename non-static
-Date: Mon, 17 Mar 2014 07:06:55 -0400
-Message-Id: <1395054418-14504-3-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1395054418-14504-1-git-send-email-jlayton@redhat.com>
-References: <1395054418-14504-1-git-send-email-jlayton@redhat.com>
+Received: from mail-pd0-f173.google.com ([209.85.192.173]:54296 "EHLO
+	mail-pd0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751191AbaCXD61 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 23 Mar 2014 23:58:27 -0400
+Received: by mail-pd0-f173.google.com with SMTP id z10so4763857pdj.18
+        for <linux-nfs@vger.kernel.org>; Sun, 23 Mar 2014 20:58:27 -0700 (PDT)
+Message-ID: <532FAD58.5080802@gmail.com>
+Date: Mon, 24 Mar 2014 11:58:16 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: [PATCH 2/5][RESEND] NFSD: Free backchannel xprt in bc_destroy
+References: <532FAC85.20909@gmail.com>
+In-Reply-To: <532FAC85.20909@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-...and move the prototype for nfs_sillyrename to internal.h.
+Backchannel xprt isn't freed right now.
+Free it in bc_destroy, and put the reference of THIS_MODULE.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 ---
- fs/nfs/internal.h      | 7 +++++++
- fs/nfs/unlink.c        | 2 +-
- include/linux/nfs_fs.h | 1 -
- 3 files changed, 8 insertions(+), 2 deletions(-)
+ net/sunrpc/xprtsock.c | 4 ++++
+ 1 file changed, 4 insertions(+)
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index b46cf5a67329..ae765a56b84f 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -474,6 +474,13 @@ extern int nfs_migrate_page(struct address_space *,
- #define nfs_migrate_page NULL
- #endif
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index 2cbafa7..da882af 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -2549,6 +2549,10 @@ static void bc_close(struct rpc_xprt *xprt)
  
-+/* unlink.c */
-+extern struct rpc_task *
-+nfs_async_rename(struct inode *old_dir, struct inode *new_dir,
-+		 struct dentry *old_dentry, struct dentry *new_dentry,
-+		 void (*complete)(struct rpc_task *, struct nfs_renamedata *));
-+extern int nfs_sillyrename(struct inode *dir, struct dentry *dentry);
+ static void bc_destroy(struct rpc_xprt *xprt)
+ {
++	dprintk("RPC:       bc_destroy xprt %p\n", xprt);
 +
- /* direct.c */
- void nfs_init_cinfo_from_dreq(struct nfs_commit_info *cinfo,
- 			      struct nfs_direct_req *dreq);
-diff --git a/fs/nfs/unlink.c b/fs/nfs/unlink.c
-index 3e6798c9ba1f..818ded7b7b74 100644
---- a/fs/nfs/unlink.c
-+++ b/fs/nfs/unlink.c
-@@ -399,7 +399,7 @@ static const struct rpc_call_ops nfs_rename_ops = {
-  *
-  * It's expected that valid references to the dentries and inodes are held
-  */
--static struct rpc_task *
-+struct rpc_task *
- nfs_async_rename(struct inode *old_dir, struct inode *new_dir,
- 		 struct dentry *old_dentry, struct dentry *new_dentry,
- 		 void (*complete)(struct rpc_task *, struct nfs_renamedata *))
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 0ae5807480f4..85d31ccc00f8 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -510,7 +510,6 @@ extern void nfs_complete_unlink(struct dentry *dentry, struct inode *);
- extern void nfs_wait_on_sillyrename(struct dentry *dentry);
- extern void nfs_block_sillyrename(struct dentry *dentry);
- extern void nfs_unblock_sillyrename(struct dentry *dentry);
--extern int  nfs_sillyrename(struct inode *dir, struct dentry *dentry);
++	xs_xprt_free(xprt);
++	module_put(THIS_MODULE);
+ }
  
- /*
-  * linux/fs/nfs/write.c
+ static struct rpc_xprt_ops xs_local_ops = {
 -- 
 1.8.5.3
-
