@@ -1,134 +1,148 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:34849 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752051AbaC1V0e (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 28 Mar 2014 17:26:34 -0400
-Date: Fri, 28 Mar 2014 17:26:33 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Tom Tucker <tom@opengridcomputing.com>
-Cc: Steve Wise <swise@opengridcomputing.com>, trond.myklebust@primarydata.com,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] Fix regression in NFSRDMA server
-Message-ID: <20140328212633.GF6041@fieldses.org>
-References: <20140325201457.6861.21819.stgit@build.ogc.int>
- <20140328020834.GD27633@fieldses.org>
- <53359377.8060502@opengridcomputing.com>
+Received: from mail-pd0-f170.google.com ([209.85.192.170]:40494 "EHLO
+	mail-pd0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750714AbaCXEAM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Mar 2014 00:00:12 -0400
+Received: by mail-pd0-f170.google.com with SMTP id v10so4767646pde.15
+        for <linux-nfs@vger.kernel.org>; Sun, 23 Mar 2014 21:00:12 -0700 (PDT)
+Message-ID: <532FADB2.2070006@gmail.com>
+Date: Mon, 24 Mar 2014 11:59:46 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <53359377.8060502@opengridcomputing.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: [PATCH 4/5][RESEND] NFSD/SUNRPC: Check rpc_xprt out of xs_setup_bc_tcp
+References: <532FAC85.20909@gmail.com>
+In-Reply-To: <532FAC85.20909@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Mar 28, 2014 at 10:21:27AM -0500, Tom Tucker wrote:
-> Hi Bruce,
-> 
-> On 3/27/14 9:08 PM, J. Bruce Fields wrote:
-> >On Tue, Mar 25, 2014 at 03:14:57PM -0500, Steve Wise wrote:
-> >>From: Tom Tucker <tom@ogc.us>
-> >>
-> >>The server regression was caused by the addition of rq_next_page
-> >>(afc59400d6c65bad66d4ad0b2daf879cbff8e23e). There were a few places that
-> >>were missed with the update of the rq_respages array.
-> >Apologies.  (But, it could happen again--could we set up some regular
-> >testing?  It doesn't have to be anything fancy, just cthon over
-> >rdma--really, just read and write over rdma--would probably catch a
-> >lot.)
-> 
-> I think Chelsio is going to be adding some NFSRDMA regression
-> testing to their system test.
+Besides checking rpc_xprt out of xs_setup_bc_tcp,
+increase it's reference (it's important).
 
-OK.  Do you know who there is setting that up?  I'd be curious exactly
-what kernels they intend to test and how they plan to report results.
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+---
+ fs/nfsd/nfs4callback.c      | 19 ++++++++++++++++++-
+ include/linux/sunrpc/xprt.h | 13 ++++++++++++-
+ net/sunrpc/xprt.c           | 12 ------------
+ net/sunrpc/xprtsock.c       |  9 ---------
+ 4 files changed, 30 insertions(+), 23 deletions(-)
 
-> >Also: I don't get why all these rq_next_page initializations are
-> >required.  Why isn't the initialization at the top of svc_process()
-> >enough?  Is rdma using it before we get to that point?  The only use of
-> >it I see off hand is in the while loop that you're deleting.
-> 
-> I didn't apply tremendous deductive powers here, I just added
-> updates to rq_next_page wherever the transport messed with
-> rq_respages. That said, NFS WRITE is likely the culprit since the
-> write is completed as a deferral and therefore the request doesn't
-> go through svc_process, so if rq_next_page is bogus, the cleanup
-> will free/re-use pages that are actually in use by the transport.
-
-Ugh, OK, without tracing through the code I guess I can see how that
-would happen.  Remind me why it's using deferrals?
-
-Applying the patch.
-
---b.
-
-> 
-> Tom
-> >--b.
-> >
-> >>Signed-off-by: Tom Tucker <tom@ogc.us>
-> >>Tested-by: Steve Wise <swise@ogc.us>
-> >>---
-> >>
-> >>  net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |   12 ++++--------
-> >>  net/sunrpc/xprtrdma/svc_rdma_sendto.c   |    1 +
-> >>  2 files changed, 5 insertions(+), 8 deletions(-)
-> >>
-> >>diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-> >>index 0ce7552..8d904e4 100644
-> >>--- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-> >>+++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-> >>@@ -90,6 +90,7 @@ static void rdma_build_arg_xdr(struct svc_rqst *rqstp,
-> >>  		sge_no++;
-> >>  	}
-> >>  	rqstp->rq_respages = &rqstp->rq_pages[sge_no];
-> >>+	rqstp->rq_next_page = rqstp->rq_respages + 1;
-> >>  	/* We should never run out of SGE because the limit is defined to
-> >>  	 * support the max allowed RPC data length
-> >>@@ -169,6 +170,7 @@ static int map_read_chunks(struct svcxprt_rdma *xprt,
-> >>  		 */
-> >>  		head->arg.pages[page_no] = rqstp->rq_arg.pages[page_no];
-> >>  		rqstp->rq_respages = &rqstp->rq_arg.pages[page_no+1];
-> >>+		rqstp->rq_next_page = rqstp->rq_respages + 1;
-> >>  		byte_count -= sge_bytes;
-> >>  		ch_bytes -= sge_bytes;
-> >>@@ -276,6 +278,7 @@ static int fast_reg_read_chunks(struct svcxprt_rdma *xprt,
-> >>  	/* rq_respages points one past arg pages */
-> >>  	rqstp->rq_respages = &rqstp->rq_arg.pages[page_no];
-> >>+	rqstp->rq_next_page = rqstp->rq_respages + 1;
-> >>  	/* Create the reply and chunk maps */
-> >>  	offset = 0;
-> >>@@ -520,13 +523,6 @@ next_sge:
-> >>  	for (ch_no = 0; &rqstp->rq_pages[ch_no] < rqstp->rq_respages; ch_no++)
-> >>  		rqstp->rq_pages[ch_no] = NULL;
-> >>-	/*
-> >>-	 * Detach res pages. If svc_release sees any it will attempt to
-> >>-	 * put them.
-> >>-	 */
-> >>-	while (rqstp->rq_next_page != rqstp->rq_respages)
-> >>-		*(--rqstp->rq_next_page) = NULL;
-> >>-
-> >>  	return err;
-> >>  }
-> >>@@ -550,7 +546,7 @@ static int rdma_read_complete(struct svc_rqst *rqstp,
-> >>  	/* rq_respages starts after the last arg page */
-> >>  	rqstp->rq_respages = &rqstp->rq_arg.pages[page_no];
-> >>-	rqstp->rq_next_page = &rqstp->rq_arg.pages[page_no];
-> >>+	rqstp->rq_next_page = rqstp->rq_respages + 1;
-> >>  	/* Rebuild rq_arg head and tail. */
-> >>  	rqstp->rq_arg.head[0] = head->arg.head[0];
-> >>diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-> >>index c1d124d..11e90f8 100644
-> >>--- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-> >>+++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-> >>@@ -625,6 +625,7 @@ static int send_reply(struct svcxprt_rdma *rdma,
-> >>  		if (page_no+1 >= sge_no)
-> >>  			ctxt->sge[page_no+1].length = 0;
-> >>  	}
-> >>+	rqstp->rq_next_page = rqstp->rq_respages + 1;
-> >>  	BUG_ON(sge_no > rdma->sc_max_sge);
-> >>  	memset(&send_wr, 0, sizeof send_wr);
-> >>  	ctxt->wr_op = IB_WR_SEND;
-> >>
-> >--
-> >To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> >the body of a message to majordomo@vger.kernel.org
-> >More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index 7f05cd1..39c8ef8 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -32,6 +32,7 @@
+  */
+ 
+ #include <linux/sunrpc/clnt.h>
++#include <linux/sunrpc/xprt.h>
+ #include <linux/sunrpc/svc_xprt.h>
+ #include <linux/slab.h>
+ #include "nfsd.h"
+@@ -635,6 +636,22 @@ static struct rpc_cred *get_backchannel_cred(struct nfs4_client *clp, struct rpc
+ 	}
+ }
+ 
++static struct rpc_clnt *create_backchannel_client(struct rpc_create_args *args)
++{
++	struct rpc_xprt *xprt;
++
++	if (args->protocol != XPRT_TRANSPORT_BC_TCP)
++		return rpc_create(args);
++
++	xprt = args->bc_xprt->xpt_bc_xprt;
++	if (xprt) {
++		xprt_get(xprt);
++		return rpc_create_xprt(args, xprt);
++	}
++
++	return rpc_create(args);
++}
++
+ static int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *conn, struct nfsd4_session *ses)
+ {
+ 	struct rpc_timeout	timeparms = {
+@@ -674,7 +691,7 @@ static int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *c
+ 		args.authflavor = ses->se_cb_sec.flavor;
+ 	}
+ 	/* Create RPC client */
+-	client = rpc_create(&args);
++	client = create_backchannel_client(&args);
+ 	if (IS_ERR(client)) {
+ 		dprintk("NFSD: couldn't create callback client: %ld\n",
+ 			PTR_ERR(client));
+diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+index 8097b9d..3e5efb2 100644
+--- a/include/linux/sunrpc/xprt.h
++++ b/include/linux/sunrpc/xprt.h
+@@ -295,13 +295,24 @@ int			xprt_adjust_timeout(struct rpc_rqst *req);
+ void			xprt_release_xprt(struct rpc_xprt *xprt, struct rpc_task *task);
+ void			xprt_release_xprt_cong(struct rpc_xprt *xprt, struct rpc_task *task);
+ void			xprt_release(struct rpc_task *task);
+-struct rpc_xprt *	xprt_get(struct rpc_xprt *xprt);
+ void			xprt_put(struct rpc_xprt *xprt);
+ struct rpc_xprt *	xprt_alloc(struct net *net, size_t size,
+ 				unsigned int num_prealloc,
+ 				unsigned int max_req);
+ void			xprt_free(struct rpc_xprt *);
+ 
++/**
++ * xprt_get - return a reference to an RPC transport.
++ * @xprt: pointer to the transport
++ *
++ */
++static inline struct rpc_xprt *xprt_get(struct rpc_xprt *xprt)
++{
++	if (atomic_inc_not_zero(&xprt->count))
++		return xprt;
++	return NULL;
++}
++
+ static inline __be32 *xprt_skip_transport_header(struct rpc_xprt *xprt, __be32 *p)
+ {
+ 	return p + xprt->tsh_size;
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index 7d4df99..d173f79 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -1383,15 +1383,3 @@ void xprt_put(struct rpc_xprt *xprt)
+ 	if (atomic_dec_and_test(&xprt->count))
+ 		xprt_destroy(xprt);
+ }
+-
+-/**
+- * xprt_get - return a reference to an RPC transport.
+- * @xprt: pointer to the transport
+- *
+- */
+-struct rpc_xprt *xprt_get(struct rpc_xprt *xprt)
+-{
+-	if (atomic_inc_not_zero(&xprt->count))
+-		return xprt;
+-	return NULL;
+-}
+diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+index da882af..252a56e 100644
+--- a/net/sunrpc/xprtsock.c
++++ b/net/sunrpc/xprtsock.c
+@@ -2927,15 +2927,6 @@ static struct rpc_xprt *xs_setup_bc_tcp(struct xprt_create *args)
+ 	struct svc_sock *bc_sock;
+ 	struct rpc_xprt *ret;
+ 
+-	if (args->bc_xprt->xpt_bc_xprt) {
+-		/*
+-		 * This server connection already has a backchannel
+-		 * transport; we can't create a new one, as we wouldn't
+-		 * be able to match replies based on xid any more.  So,
+-		 * reuse the already-existing one:
+-		 */
+-		 return args->bc_xprt->xpt_bc_xprt;
+-	}
+ 	xprt = xs_setup_xprt(args, xprt_tcp_slot_table_entries,
+ 			xprt_tcp_slot_table_entries);
+ 	if (IS_ERR(xprt))
+-- 
+1.8.5.3
