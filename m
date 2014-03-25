@@ -1,214 +1,205 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f177.google.com ([209.85.223.177]:51775 "EHLO
-	mail-ie0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751820AbaCFUea (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Mar 2014 15:34:30 -0500
-Message-ID: <798758312-1394138065-cardhu_decombobulator_blackberry.rim.net-309804983-@b5.c4.bise6.blackberry>
-Reply-To: bhawley@luminex.com
-References: <1696396609.119284.1394040541217.JavaMail.zimbra@xes-inc.com>
-  <260588931.122771.1394041524167.JavaMail.zimbra@xes-inc.com>
-  <20140306145042.6db53f60@notabene.brown>
-  <1853694865.210849.1394082223818.JavaMail.zimbra@xes-inc.com>
-  <20140306163721.0edfb498@notabene.brown>
-  <1709792528-1394084840-cardhu_decombobulator_blackberry.rim.net-1367662481-@b5.c4.bise6.blackberry>
-  <764210708.28409.1394119821635.JavaMail.zimbra@xes-inc.com>
-  <20140306162208.GA18207@umich.edu>
-  <1094203678.52139.1394124222574.JavaMail.zimbra@xes-inc.com>
-  <1028951407-1394132418-cardhu_decombobulator_blackberry.rim.net-599891631-@b5.c4.bise6.blackberry>
-  <E22EB8B3-DE5E-4D39-8FFD-BA3F02276EFE@primarydata.com>
-  <745494581-1394133289-cardhu_decombobulator_blackberry.rim.net-1805734207-@b5.c4.bise6.blackberry>
-  <84CFBA83-C2FE-4AA1-92D7-C37EDFC75117@primarydata.com>
-  <1494458922-1394134385-cardhu_decombobulator_blackberry.rim.net-1425882517-@b5.c4.bise6.blackberry>
-  <5B3606E3-01F9-45C5-8733-B424AF5CB8CB@primaryd! ata.com>
-  <401365131-1394135790-cardhu_decombobulator_blackberry.rim.net-946296583-@b5.c4.bise6.blackberry>
-  <85B2F64E-D153-414D-942F-0193E56A4554@primarydata.com>
-In-Reply-To: <85B2F64E-D153-414D-942F-0193E56A4554@primarydata.com>
-Subject: Re: Optimal NFS mount options to safely allow interrupts and timeouts on newer kernels
-To: "Trond Myklebust" <trond.myklebust@primarydata.com>,
-        linux-nfs-owner@vger.kernel.org, "Brian Hawley" <bhawley@luminex.com>
-Cc: "Andrew Martin" <amartin@xes-inc.com>, "Jim Rees" <rees@umich.edu>,
-        "Brown Neil" <neilb@suse.de>, linux-nfs@vger.kernel.org
-From: "Brian Hawley" <bhawley@luminex.com>
-Date: Thu, 6 Mar 2014 20:34:26 +0000
-Content-Type: text/plain; charset="Windows-1252"
+Received: from fieldses.org ([174.143.236.118]:45440 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750866AbaCYAF4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 24 Mar 2014 20:05:56 -0400
+Date: Mon, 24 Mar 2014 20:05:54 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] SUNRPC: fix memory leak of peer addresses in XPRT
+Message-ID: <20140325000554.GE12979@fieldses.org>
+References: <52CA8460.6030206@gmail.com>
+ <20140106202024.GD31764@fieldses.org>
+ <52CB793A.1040501@gmail.com>
+ <CAB6yy36XqHUw-xddMtDx6MBazBQTbfG0v5ujf5pC0mjmgm=HBQ@mail.gmail.com>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CAB6yy36XqHUw-xddMtDx6MBazBQTbfG0v5ujf5pC0mjmgm=HBQ@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQpXZSdyZSBub3QgaW50ZW5kaW5nIHRvIGFnZ3Jlc3NpdmVseSBjYWNoZS4gIFRoZXJlIGp1c3Qg
-aGFwcGVucyB0byBiZSBhIGxvdCBvZiBmcmVlIG1lbW9yeS4gICAgDQoNCg0KLS0tLS1PcmlnaW5h
-bCBNZXNzYWdlLS0tLS0NCkZyb206IFRyb25kIE15a2xlYnVzdCA8dHJvbmQubXlrbGVidXN0QHBy
-aW1hcnlkYXRhLmNvbT4NClNlbmRlcjogbGludXgtbmZzLW93bmVyQHZnZXIua2VybmVsLm9yZw0K
-RGF0ZTogCVRodSwgNiBNYXIgMjAxNCAxNTozMTozMyANClRvOiA8Ymhhd2xleUBsdW1pbmV4LmNv
-bT4NCkNjOiA8bGludXgtbmZzLW93bmVyQHZnZXIua2VybmVsLm9yZz47IEFuZHJldyBNYXJ0aW48
-YW1hcnRpbkB4ZXMtaW5jLmNvbT47IEppbSBSZWVzPHJlZXNAdW1pY2guZWR1PjsgQnJvd24gTmVp
-bDxuZWlsYkBzdXNlLmRlPjsgPGxpbnV4LW5mc0B2Z2VyLmtlcm5lbC5vcmc+DQpTdWJqZWN0OiBS
-ZTogT3B0aW1hbCBORlMgbW91bnQgb3B0aW9ucyB0byBzYWZlbHkgYWxsb3cgaW50ZXJydXB0cyBh
-bmQgdGltZW91dHMgb24gbmV3ZXIga2VybmVscw0KDQoNCk9uIE1hciA2LCAyMDE0LCBhdCAxNDo1
-NiwgQnJpYW4gSGF3bGV5IDxiaGF3bGV5QGx1bWluZXguY29tPiB3cm90ZToNCg0KPiANCj4gR2l2
-ZW4gdGhhdCB0aGUgc3lzdGVtcyB0eXBpY2FsbHkgaGF2ZSAxNkdCJ3MsIHRoZSBtZW1vcnkgYXZh
-aWxhYmxlIGZvciBjYWNoZSBpcyB1c3VhbGx5IGFyb3VuZCAxM0dCLg0KPiANCj4gRGlydHkgd3Jp
-dGViYWNrIGNlbnRpc2VjcyBpcyBzZXQgdG8gMTAwLCBhcyBpcyBkaXJ0eSBleHBpcmUgY2VudGlz
-ZWNzICh3ZSBhcmUgcHJpbWFyaWx5IGEgc2VxdWVudGlhbCBhY2Nlc3MgYXBwbGljYXRpb24pLg0K
-PiANCj4gRGlydHkgcmF0aW8gaXMgNTAgYW5kIGRpcnR5IGJhY2tncm91bmQgcmF0aW8gaXMgMTAu
-IA0KDQpUaGF0IG1lYW5zIHlvdSBjYW4gaGF2ZSB1cCB0byA4R0IgdG8gcHVzaCBvdXQgaW4gb25l
-IGdvLiBZb3UgY2FuIGhhcmRseSBibGFtZSBORlMgZm9yIGJlaW5nIHNsb3cgaW4gdGhhdCBzaXR1
-YXRpb24uDQpXaHkgZG8geW91IG5lZWQgdG8gY2FjaGUgdGhlc2Ugd3JpdGVzIHNvIGFnZ3Jlc3Np
-dmVseT8gSXMgdGhlIGRhdGEgYmVpbmcgZWRpdGVkIGFuZCByZXdyaXR0ZW4gbXVsdGlwbGUgdGlt
-ZXMgaW4gdGhlIHBhZ2UgY2FjaGUgYmVmb3JlIHlvdSB3YW50IHRvIHB1c2ggaXQgdG8gZGlzaz8N
-Cg0KPiBXZSBzZXQgdGhlc2UgdG8gdHJ5IHRvIGtlZXAgdGhlIGRhdGEgZnJvbSBjYWNoZSBhbHdh
-eXMgYmVpbmcgcHVzaGVkIG91dC4NCj4gDQo+IE5vIG9vcHNlcy4gICBUeXBpY2FsbHkgaXQgd291
-bGQgYmUgZHVlIHRvIGFuIGFwcGxpYW5jZSBvciBuZXR3b3JrIGNvbm5lY3Rpb24gdG8gaXQgZ29p
-bmcgZG93bi4gIEF0IHdoaWNoIHBvaW50LCB3ZSB3YW50IHRvIGZhaWwgb3ZlciB0byBhbiBhbHRl
-cm5hdGl2ZSBhcHBsaWFuY2Ugd2hpY2ggaXMgc2VydmluZyB0aGUgc2FtZSBkYXRhLiAgICANCj4g
-DQo+IEl0J3MgdW5mb3J0dW5hdGUgdGhhdCB3aGVuIHRoZSBpL28gZXJyb3IgaXMgZGV0ZWN0ZWQg
-dGhhdCB0aGUgb3RoZXIgcGFja2V0cyBjYW4ndCBqdXN0IHRpbWVvdXQgcmlnaHQgYXdheSB3aXRo
-IHRoZSBpL28gZXJyb3IuICAgQWZ0ZXIgYWxsLCBpdCdzIHVubGlrZWx5IHRvIGNvbWUgYmFjaywg
-YW5kIGlmIGl0IGRvZXMsIHlvdSd2ZSBsb3N0IHRoYXQgZGF0YSB0aGF0IHdhcyBjYWNoZWQuICBJ
-J2QgYWxtb3N0IHJhdGhlciBoYXZlIGFsbCB0aGUgaS9vJ3MgdGhhdCB3ZXJlIGNhY2hlZCB1cCB0
-byB0aGUgYmxvY2tlZCBvbmUgZmFpbCBzbyBJIGtub3cgdGhlcmUgd2FzIGEgZmFpbHVyZSBvZiBz
-b21lIG9mIHRoZSB3cml0ZXMgcHJlY2VlZGluZyB0aGUgb25lIHRoYXQgYmxvY2tlZCBhbmQgZ290
-IHRoZSBpL28gZXJyb3IuICAgIFRoaXMgaXMgdGhlIHByaWNlIHdlIHBheSBmb3IgdXNpbmcgInNv
-ZnQiIGFuZCBpdCBpcyBhbiBleHBlY3RlZCBwcmljZS4gICBPdGhlcndpc2UsIHdlJ2QgdXNlICJo
-YXJklC4NCg0KUmlnaHQsIGJ1dCB0aGUgUlBDIGxheWVyIGRvZXMgbm90IGtub3cgdGhhdCB0aGVz
-ZSBhcmUgYWxsIHdyaXRlcyB0byB0aGUgc2FtZSBmaWxlLCBhbmQgaXQgY2FuknQgYmUgZXhwZWN0
-ZWQgdG8ga25vdyB3aHkgdGhlIHNlcnZlciBpc26SdCByZXBseWluZy4gRm9yIGluc3RhbmNlLCBJ
-knZlIGtub3duIGEgc2luZ2xlIJF1bmxpbmsnIFJQQyBjYWxsIHRvIHRha2UgMTcgbWludXRlcyB0
-byBjb21wbGV0ZSBvbiBhIHNlcnZlciB0aGF0IGhhZCBhIGxvdCBvZiBjbGVhbnVwIHRvIGRvIG9u
-IHRoYXQgZmlsZTsgZHVyaW5nIHRoYXQgdGltZSwgdGhlIHNlcnZlciB3YXMgaGFwcHkgdG8gdGFr
-ZSBSUEMgcmVxdWVzdHMgZm9yIG90aGVyIGZpbGVzLi4uDQoNCg0KPiAtLS0tLU9yaWdpbmFsIE1l
-c3NhZ2UtLS0tLQ0KPiBGcm9tOiBUcm9uZCBNeWtsZWJ1c3QgPHRyb25kLm15a2xlYnVzdEBwcmlt
-YXJ5ZGF0YS5jb20+DQo+IFNlbmRlcjogbGludXgtbmZzLW93bmVyQHZnZXIua2VybmVsLm9yZw0K
-PiBEYXRlOglUaHUsIDYgTWFyIDIwMTQgMTQ6NDc6NDggDQo+IFRvOiA8Ymhhd2xleUBsdW1pbmV4
-LmNvbT4NCj4gQ2M6IEFuZHJldyBNYXJ0aW48YW1hcnRpbkB4ZXMtaW5jLmNvbT47IEppbSBSZWVz
-PHJlZXNAdW1pY2guZWR1PjsgQnJvd24gTmVpbDxuZWlsYkBzdXNlLmRlPjsgPGxpbnV4LW5mcy1v
-d25lckB2Z2VyLmtlcm5lbC5vcmc+OyA8bGludXgtbmZzQHZnZXIua2VybmVsLm9yZz4NCj4gU3Vi
-amVjdDogUmU6IE9wdGltYWwgTkZTIG1vdW50IG9wdGlvbnMgdG8gc2FmZWx5IGFsbG93IGludGVy
-cnVwdHMgYW5kIHRpbWVvdXRzIG9uIG5ld2VyIGtlcm5lbHMNCj4gDQo+IA0KPiBPbiBNYXIgNiwg
-MjAxNCwgYXQgMTQ6MzMsIEJyaWFuIEhhd2xleSA8Ymhhd2xleUBsdW1pbmV4LmNvbT4gd3JvdGU6
-DQo+IA0KPj4gDQo+PiBXZSBkbyBjYWxsIGZzeW5jIGF0IHN5bmNocm9uaXphdGlvbiBwb2ludHMu
-DQo+PiANCj4+IFRoZSBwcm9ibGVtIGlzIHRoZSB3cml0ZSgpIGJsb2NrcyBmb3JldmVyIChvciBm
-b3IgYW4gZXhjZXB0aW9uYWxseSBsb25nIHRpbWUgb24gdGhlIG9yZGVyIG9mIGhvdXJzIGFuZCBk
-YXlzKSwgZXZlbiB3aXRoIHRpbWVvIHNldCB0byBzYXkgMjAgYW5kIHJldHJhbnMgc2V0IHRvIDIu
-ICBXZSBzZWUgdGltZW91dCBtZXNzYWdlcyBpbiAvdmFyL2xvZy9tZXNzYWdlcywgYnV0IHRoZSB3
-cml0ZSBjb250aW51ZXMgdG8gcGVuZC4gICBVbnRpbCB3ZSBzdGFydCBkb2luZyByZXBlYXRlZCB1
-bW91bnQgLWYncy4gIFRoZW4gaXQgcmV0dXJucyBhbmQgaGFzIGFuIGkvbyBlcnJvci4NCj4gDQo+
-IEhvdyBtdWNoIGRhdGEgYXJlIHlvdSB0cnlpbmcgdG8gc3luYz8gkXNvZnSSIHdvbpJ0IHRpbWUg
-b3V0IHRoZSBlbnRpcmUgYmF0Y2ggYXQgb25jZS4gSXQgZmVlZHMgZWFjaCB3cml0ZSBSUEMgY2Fs
-bCB0aHJvdWdoLCBhbmQgbGV0cyBpdCB0aW1lIG91dC4gU28gaWYgeW91IGhhdmUgY2FjaGVkIGEg
-aHVnZSBhbW91bnQgb2Ygd3JpdGVzLCB0aGVuIHRoYXQgY2FuIHRha2UgYSB3aGlsZS4gVGhlIHNv
-bHV0aW9uIGlzIHRvIHBsYXkgd2l0aCB0aGUgkWRpcnR5X2JhY2tncm91bmRfYnl0ZXOSIChhbmQv
-b3IgkWRpcnR5X2J5dGVzkikgc3lzY3RsIHNvIHRoYXQgaXQgc3RhcnRzIHdyaXRlYmFjayBhdCBh
-biBlYXJsaWVyIHRpbWUuDQo+IA0KPiBBbHNvLCB3aGF0IGlzIHRoZSBjYXVzZSBvZiB0aGVzZSBz
-dGFsbHMgaW4gdGhlIGZpcnN0IHBsYWNlPyBJcyB0aGUgVENQIGNvbm5lY3Rpb24gdG8gdGhlIHNl
-cnZlciBzdGlsbCB1cD8gQXJlIGFueSBPb3BzZXMgcHJlc2VudCBpbiBlaXRoZXIgdGhlIGNsaWVu
-dCBvciB0aGUgc2VydmVyIHN5c2xvZ3M/DQo+IA0KPj4gLS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0t
-LS0NCj4+IEZyb206IFRyb25kIE15a2xlYnVzdCA8dHJvbmQubXlrbGVidXN0QHByaW1hcnlkYXRh
-LmNvbT4NCj4+IERhdGU6IFRodSwgNiBNYXIgMjAxNCAxNDoyNjoyNCANCj4+IFRvOiA8Ymhhd2xl
-eUBsdW1pbmV4LmNvbT4NCj4+IENjOiBBbmRyZXcgTWFydGluPGFtYXJ0aW5AeGVzLWluYy5jb20+
-OyBKaW0gUmVlczxyZWVzQHVtaWNoLmVkdT47IEJyb3duIE5laWw8bmVpbGJAc3VzZS5kZT47IDxs
-aW51eC1uZnMtb3duZXJAdmdlci5rZXJuZWwub3JnPjsgPGxpbnV4LW5mc0B2Z2VyLmtlcm5lbC5v
-cmc+DQo+PiBTdWJqZWN0OiBSZTogT3B0aW1hbCBORlMgbW91bnQgb3B0aW9ucyB0byBzYWZlbHkg
-YWxsb3cgaW50ZXJydXB0cyBhbmQgdGltZW91dHMgb24gbmV3ZXIga2VybmVscw0KPj4gDQo+PiAN
-Cj4+IE9uIE1hciA2LCAyMDE0LCBhdCAxNDoxNCwgQnJpYW4gSGF3bGV5IDxiaGF3bGV5QGx1bWlu
-ZXguY29tPiB3cm90ZToNCj4+IA0KPj4+IA0KPj4+IFRyb25kLA0KPj4+IA0KPj4+IEluIHRoaXMg
-Y2FzZSwgaXQgaXNuJ3QgZnN5bmMgb3IgY2xvc2UgdGhhdCBhcmUgbm90IGdldHRpbmcgdGhlIGkv
-byBlcnJvci4gIEl0IGlzIHRoZSB3cml0ZSgpLiAgDQo+PiANCj4+IE15IHBvaW50IGlzIHRoYXQg
-d3JpdGUoKSBpc26SdCBldmVuIHJlcXVpcmVkIHRvIHJldHVybiBhbiBlcnJvciBpbiB0aGUgY2Fz
-ZSB3aGVyZSB5b3VyIE5GUyBzZXJ2ZXIgaXMgdW5hdmFpbGFibGUuIFVubGVzcyB5b3UgdXNlIE9f
-U1lOQyBvciBPX0RJUkVDVCB3cml0ZXMsIHRoZW4gdGhlIGtlcm5lbCBpcyBlbnRpdGxlZCBhbmQg
-aW5kZWVkIGV4cGVjdGVkIHRvIGNhY2hlIHRoZSBkYXRhIGluIGl0cyBwYWdlIGNhY2hlIHVudGls
-IHlvdSBleHBsaWNpdGx5IGNhbGwgZnN5bmMoKS4gVGhlIHJldHVybiB2YWx1ZSBvZiB0aGF0IGZz
-eW5jKCkgY2FsbCBpcyB3aGF0IHRlbGxzIHlvdSB3aGV0aGVyIG9yIG5vdCB5b3VyIGRhdGEgaGFz
-IHNhZmVseSBiZWVuIHN0b3JlZCB0byBkaXNrLg0KPj4gDQo+Pj4gQW5kIHdlIGNoZWNrIHRoZSBy
-ZXR1cm4gdmFsdWUgb2YgZXZlcnkgaS9vIHJlbGF0ZWQgY29tbWFuZC4NCj4+IA0KPj4+IFdlIGFy
-ZW4ndCB1c2luZyBzeW5jaHJvbm91cyBiZWNhdXNlIHRoZSBwZXJmb3JtYW5jZSBiZWNvbWVzIGFi
-eXNtYWwuDQo+Pj4gDQo+Pj4gUmVwZWF0ZWQgdW1vdW50IC1mIGRvZXMgZXZlbnR1YWxseSByZXN1
-bHQgaW4gdGhlIGkvbyBlcnJvciBnZXR0aW5nIHByb3BhZ2F0ZWQgYmFjayB0byB0aGUgd3JpdGUo
-KSBjYWxsLiAgIEkgc3VzcGVjdCB0aGUgcmVwZWF0ZWQgdW1vdW50IC1mJ3MgYXJlIHdvcmtpbmcg
-dGhlaXIgd2F5IHRocm91Z2ggYmxvY2tzIGluIHRoZSBjYWNoZS9xdWV1ZSBhbmQgZXZlbnR1YWxs
-eSB3ZSBnZXQgYmFjayB0byB0aGUgYmxvY2tlZCB3cml0ZS4gICAgDQo+Pj4gDQo+Pj4gQXMgSSBt
-ZW50aW9uZWQgcHJldmlvdXNseSwgaWYgd2UgbW91bnQgd2l0aCBzeW5jIG9yIGRpcmVjdCBpL28g
-dHlwZSBvcHRpb25zLCB3ZSB3aWxsIGdldCB0aGUgaS9vIGVycm9yLCBidXQgZm9yIHBlcmZvcm1h
-bmNlIHJlYXNvbnMsIHRoaXMgaXNuJ3QgYW4gb3B0aW9uLg0KPj4gDQo+PiBTdXJlLCBidXQgaW4g
-dGhhdCBjYXNlIHlvdSBkbyBuZWVkIHRvIGNhbGwgZnN5bmMoKSBiZWZvcmUgdGhlIGFwcGxpY2F0
-aW9uIGV4aXRzLiBOb3RoaW5nIGVsc2UgY2FuIGd1YXJhbnRlZSBkYXRhIHN0YWJpbGl0eSwgYW5k
-IHRoYXSScyB0cnVlIGZvciBhbGwgc3RvcmFnZS4NCj4+IA0KPj4+IC0tLS0tT3JpZ2luYWwgTWVz
-c2FnZS0tLS0tDQo+Pj4gRnJvbTogVHJvbmQgTXlrbGVidXN0IDx0cm9uZC5teWtsZWJ1c3RAcHJp
-bWFyeWRhdGEuY29tPg0KPj4+IERhdGU6IFRodSwgNiBNYXIgMjAxNCAxNDowNjoyNCANCj4+PiBU
-bzogPGJoYXdsZXlAbHVtaW5leC5jb20+DQo+Pj4gQ2M6IEFuZHJldyBNYXJ0aW48YW1hcnRpbkB4
-ZXMtaW5jLmNvbT47IEppbSBSZWVzPHJlZXNAdW1pY2guZWR1PjsgQnJvd24gTmVpbDxuZWlsYkBz
-dXNlLmRlPjsgPGxpbnV4LW5mcy1vd25lckB2Z2VyLmtlcm5lbC5vcmc+OyA8bGludXgtbmZzQHZn
-ZXIua2VybmVsLm9yZz4NCj4+PiBTdWJqZWN0OiBSZTogT3B0aW1hbCBORlMgbW91bnQgb3B0aW9u
-cyB0byBzYWZlbHkgYWxsb3cgaW50ZXJydXB0cyBhbmQgdGltZW91dHMgb24gbmV3ZXIga2VybmVs
-cw0KPj4+IA0KPj4+IA0KPj4+IE9uIE1hciA2LCAyMDE0LCBhdCAxNDowMCwgQnJpYW4gSGF3bGV5
-IDxiaGF3bGV5QGx1bWluZXguY29tPiB3cm90ZToNCj4+PiANCj4+Pj4gDQo+Pj4+IEV2ZW4gd2l0
-aCBzbWFsbCB0aW1lbyBhbmQgcmV0cmFucywgeW91IHdvbid0IGdldCBpL28gZXJyb3JzIGJhY2sg
-dG8gdGhlIHJlYWRzL3dyaXRlcy4gICBUaGF0J3MgYmVlbiBvdXIgZXhwZXJpZW5jZSBhbnl3YXku
-DQo+Pj4gDQo+Pj4gUmVhZCBjYWNoaW5nLCBhbmQgYnVmZmVyZWQgd3JpdGVzIG1lYW4gdGhhdCB0
-aGUgSS9PIGVycm9ycyBvZnRlbiBkbyBub3Qgb2NjdXIgZHVyaW5nIHRoZSByZWFkKCkvd3JpdGUo
-KSBzeXN0ZW0gY2FsbCBpdHNlbGYuDQo+Pj4gDQo+Pj4gV2UgZG8gdHJ5IHRvIHByb3BhZ2F0ZSBJ
-L08gZXJyb3JzIGJhY2sgdG8gdGhlIGFwcGxpY2F0aW9uIGFzIHNvb24gYXMgdGhlIGRvIG9jY3Vy
-LCBidXQgaWYgdGhhdCBhcHBsaWNhdGlvbiBpc26SdCB1c2luZyBzeW5jaHJvbm91cyBJL08sIGFu
-ZCBpdCBpc26SdCBjaGVja2luZyB0aGUgcmV0dXJuIHZhbHVlcyBvZiBmc3luYygpIG9yIGNsb3Nl
-KCksIHRoZW4gdGhlcmUgaXMgbGl0dGxlIHRoZSBrZXJuZWwgY2FuIGRvLi4uDQo+Pj4gDQo+Pj4+
-IA0KPj4+PiBXaXRoIHNvZnQsIHlvdSBtYXkgZW5kIHVwIHdpdGggbG9zdCBkYXRhIChkYXRhIHRo
-YXQgaGFkIGFscmVhZHkgYmVlbiB3cml0dGVuIHRvIHRoZSBjYWNoZSBidXQgbm90IHlldCB0byB0
-aGUgc3RvcmFnZSkuICAgWW91J2QgaGF2ZSB0aGF0IHNhbWUgaXNzdWUgd2l0aCAnaGFyZCcgdG9v
-IGlmIGl0IHdhcyB5b3VyIGFwcGxpYW5jZSB0aGF0IGZhaWxlZC4gIElmIHRoZSBhcHBsaWFuY2Ug
-bmV2ZXIgY29tZXMgYmFjaywgdGhvc2UgYmxvY2tzIGNhbiBuZXZlciBiZSB3cml0dGVuLg0KPj4+
-PiANCj4+Pj4gSW4geW91ciBjYXNlIHRob3VnaCwgeW91J3JlIG5vdCB3cml0aW5nLiAgDQo+Pj4+
-IA0KPj4+PiANCj4+Pj4gLS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0NCj4+Pj4gRnJvbTogQW5k
-cmV3IE1hcnRpbiA8YW1hcnRpbkB4ZXMtaW5jLmNvbT4NCj4+Pj4gRGF0ZTogVGh1LCA2IE1hciAy
-MDE0IDEwOjQzOjQyIA0KPj4+PiBUbzogSmltIFJlZXM8cmVlc0B1bWljaC5lZHU+DQo+Pj4+IENj
-OiA8Ymhhd2xleUBsdW1pbmV4LmNvbT47IE5laWxCcm93bjxuZWlsYkBzdXNlLmRlPjsgPGxpbnV4
-LW5mcy1vd25lckB2Z2VyLmtlcm5lbC5vcmc+OyA8bGludXgtbmZzQHZnZXIua2VybmVsLm9yZz4N
-Cj4+Pj4gU3ViamVjdDogUmU6IE9wdGltYWwgTkZTIG1vdW50IG9wdGlvbnMgdG8gc2FmZWx5IGFs
-bG93IGludGVycnVwdHMgYW5kDQo+Pj4+IHRpbWVvdXRzIG9uIG5ld2VyIGtlcm5lbHMNCj4+Pj4g
-DQo+Pj4+PiBGcm9tOiAiSmltIFJlZXMiIDxyZWVzQHVtaWNoLmVkdT4NCj4+Pj4+IEFuZHJldyBN
-YXJ0aW4gd3JvdGU6DQo+Pj4+PiANCj4+Pj4+PiBGcm9tOiAiSmltIFJlZXMiIDxyZWVzQHVtaWNo
-LmVkdT4NCj4+Pj4+PiBHaXZlbiB0aGlzIGlzIGFwYWNoZSwgSSB0aGluayBpZiBJIHdlcmUgZG9p
-bmcgdGhpcyBJJ2QgdXNlDQo+Pj4+Pj4gcm8sc29mdCxpbnRyLHRjcA0KPj4+Pj4+IGFuZCBub3Qg
-dHJ5IHRvIHdyaXRlIGFueXRoaW5nIHRvIG5mcy4NCj4+Pj4+IEkgd2FzIHVzaW5nIHRjcCxiZyxz
-b2Z0LGludHIgd2hlbiB0aGlzIHByb2JsZW0gb2NjdXJyZWQuIEkgZG8gbm90IGtub3cgaWYNCj4+
-Pj4+IGFwYWNoZSB3YXMgYXR0ZW1wdGluZyB0byBkbyBhIHdyaXRlIG9yIGEgcmVhZCwgYnV0IGl0
-IHNlZW1zIHRoYXQNCj4+Pj4+IHRjcCxzb2Z0LGludHINCj4+Pj4+IHdhcyBub3Qgc3VmZmljaWVu
-dCB0byBwcmV2ZW50IHRoZSBwcm9ibGVtLg0KPj4+Pj4gDQo+Pj4+PiBJIGhhZCB0aGUgaW1wcmVz
-c2lvbiBmcm9tIHlvdXIgb3JpZ2luYWwgbWVzc2FnZSB0aGF0IHlvdSB3ZXJlIG5vdCB1c2luZw0K
-Pj4+Pj4gInNvZnQiIGFuZCB3ZXJlIGFza2luZyBpZiBpdCdzIHNhZmUgdG8gdXNlIGl0LiBBcmUg
-eW91IHNheWluZyB0aGF0IGV2ZW4gd2l0aA0KPj4+Pj4gdGhlICJzb2Z0IiBvcHRpb24gdGhlIGFw
-YWNoZSBnZXRzIHN0dWNrIGZvcmV2ZXI/DQo+Pj4+IFllcywgZXZlbiB3aXRoIHNvZnQsIGl0IGdl
-dHMgc3R1Y2sgZm9yZXZlci4gSSBoYWQgYmVlbiB1c2luZyB0Y3AsYmcsc29mdCxpbnRyDQo+Pj4+
-IHdoZW4gdGhlIHByb2JsZW0gb2NjdXJyZWQgKG9uIHNldmVyYWwgb2Nhc3Npb25zKSwgc28gbXkg
-b3JpZ2luYWwgcXVlc3Rpb24gd2FzDQo+Pj4+IGlmIGl0IHdvdWxkIGJlIHNhZmUgdG8gdXNlIGEg
-c21hbGwgdGltZW8gYW5kIHJldHJhbnMgdmFsdWVzIHRvIGhvcGVmdWxseSANCj4+Pj4gcmV0dXJu
-IEkvTyBlcnJvcnMgcXVpY2tseSB0byB0aGUgYXBwbGljYXRpb24sIHJhdGhlciB0aGFuIGJsb2Nr
-aW5nIGZvcmV2ZXIgDQo+Pj4+ICh3aGljaCBjYXVzZXMgdGhlIGhpZ2ggbG9hZCBhbmQgaW5ldml0
-YWJsZSByZWJvb3QpLiBJdCBzb3VuZHMgbGlrZSB0aGF0IGlzbid0DQo+Pj4+IHNhZmUsIGJ1dCBw
-ZXJoYXBzIHRoZXJlIGlzIGFub3RoZXIgd2F5IHRvIHJlc29sdmUgdGhpcyBwcm9ibGVtPw0KPj4+
-PiAtLQ0KPj4+PiBUbyB1bnN1YnNjcmliZSBmcm9tIHRoaXMgbGlzdDogc2VuZCB0aGUgbGluZSAi
-dW5zdWJzY3JpYmUgbGludXgtbmZzIiBpbg0KPj4+PiB0aGUgYm9keSBvZiBhIG1lc3NhZ2UgdG8g
-bWFqb3Jkb21vQHZnZXIua2VybmVsLm9yZw0KPj4+PiBNb3JlIG1ham9yZG9tbyBpbmZvIGF0ICBo
-dHRwOi8vdmdlci5rZXJuZWwub3JnL21ham9yZG9tby1pbmZvLmh0bWwNCj4+Pj4gDQo+Pj4gDQo+
-Pj4gX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fDQo+Pj4gVHJvbmQgTXlrbGVidXN0
-DQo+Pj4gTGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQcmltYXJ5RGF0YQ0KPj4+IHRyb25k
-Lm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20NCj4+PiANCj4+IA0KPj4gX19fX19fX19fX19fX19f
-X19fX19fX19fX19fX19fX19fDQo+PiBUcm9uZCBNeWtsZWJ1c3QNCj4+IExpbnV4IE5GUyBjbGll
-bnQgbWFpbnRhaW5lciwgUHJpbWFyeURhdGENCj4+IHRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0
-YS5jb20NCj4+IA0KPiANCj4gX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fDQo+IFRy
-b25kIE15a2xlYnVzdA0KPiBMaW51eCBORlMgY2xpZW50IG1haW50YWluZXIsIFByaW1hcnlEYXRh
-DQo+IHRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20NCj4gDQo+IC0tDQo+IFRvIHVuc3Vi
-c2NyaWJlIGZyb20gdGhpcyBsaXN0OiBzZW5kIHRoZSBsaW5lICJ1bnN1YnNjcmliZSBsaW51eC1u
-ZnMiIGluDQo+IHRoZSBib2R5IG9mIGEgbWVzc2FnZSB0byBtYWpvcmRvbW9Admdlci5rZXJuZWwu
-b3JnDQo+IE1vcmUgbWFqb3Jkb21vIGluZm8gYXQgIGh0dHA6Ly92Z2VyLmtlcm5lbC5vcmcvbWFq
-b3Jkb21vLWluZm8uaHRtbA0KPiANCj4gLS0NCj4gVG8gdW5zdWJzY3JpYmUgZnJvbSB0aGlzIGxp
-c3Q6IHNlbmQgdGhlIGxpbmUgInVuc3Vic2NyaWJlIGxpbnV4LW5mcyIgaW4NCj4gdGhlIGJvZHkg
-b2YgYSBtZXNzYWdlIHRvIG1ham9yZG9tb0B2Z2VyLmtlcm5lbC5vcmcNCj4gTW9yZSBtYWpvcmRv
-bW8gaW5mbyBhdCAgaHR0cDovL3ZnZXIua2VybmVsLm9yZy9tYWpvcmRvbW8taW5mby5odG1sDQo+
-IA0KDQpfX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX18NClRyb25kIE15a2xlYnVzdA0K
-TGludXggTkZTIGNsaWVudCBtYWludGFpbmVyLCBQcmltYXJ5RGF0YQ0KdHJvbmQubXlrbGVidXN0
-QHByaW1hcnlkYXRhLmNvbQ0KDQotLQ0KVG8gdW5zdWJzY3JpYmUgZnJvbSB0aGlzIGxpc3Q6IHNl
-bmQgdGhlIGxpbmUgInVuc3Vic2NyaWJlIGxpbnV4LW5mcyIgaW4NCnRoZSBib2R5IG9mIGEgbWVz
-c2FnZSB0byBtYWpvcmRvbW9Admdlci5rZXJuZWwub3JnDQpNb3JlIG1ham9yZG9tbyBpbmZvIGF0
-ICBodHRwOi8vdmdlci5rZXJuZWwub3JnL21ham9yZG9tby1pbmZvLmh0bWwNCg0K
+On Sun, Mar 23, 2014 at 09:24:31PM +0800, Kinglong Mee wrote:
+> what's the status of this patch?
 
+I haven't looked at it yet.  I'll try to get this and your other patches
+reviewed and queued up later this week after getting home from LSF/MM.
+Apologies for the confusion, I put off too long getting together my tree
+for this merge window....
+
+--b.
+
+
+> 
+> thanks,
+> Kinglong Mee
+> 
+> 
+> On Tue, Jan 7, 2014 at 11:49 AM, Kinglong Mee <kinglongmee@gmail.com> wrote:
+> > On 01/07/2014 04:20 AM, J. Bruce Fields wrote:
+> >> On Mon, Jan 06, 2014 at 06:24:32PM +0800, Kinglong Mee wrote:
+> >>> If creating xprt failed after xs_format_peer_addresses,
+> >>> sunrpc must free those memory of peer addresses in xprt.
+> >>>
+> >>> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> >>> ---
+> >>>  net/sunrpc/xprtsock.c | 11 +++++++++--
+> >>>  1 file changed, 9 insertions(+), 2 deletions(-)
+> >>>
+> >>> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+> >>> index 25dbfa9..11ceba3 100644
+> >>> --- a/net/sunrpc/xprtsock.c
+> >>> +++ b/net/sunrpc/xprtsock.c
+> >>> @@ -2725,8 +2725,10 @@ static struct rpc_xprt *xs_setup_local(struct xprt_create *args)
+> >>>              xprt_set_bound(xprt);
+> >>>              xs_format_peer_addresses(xprt, "local", RPCBIND_NETID_LOCAL);
+> >>>              ret = ERR_PTR(xs_local_setup_socket(transport));
+> >>> -            if (ret)
+> >>> +            if (ret) {
+> >>> +                    xs_free_peer_addresses(xprt);
+> >>>                      goto out_err;
+> >>> +            }
+> >>>              break;
+> >>>      default:
+> >>>              ret = ERR_PTR(-EAFNOSUPPORT);
+> >>> @@ -2738,6 +2740,8 @@ static struct rpc_xprt *xs_setup_local(struct xprt_create *args)
+> >>>
+> >>>      if (try_module_get(THIS_MODULE))
+> >>>              return xprt;
+> >>> +
+> >>> +    xs_free_peer_addresses(xprt);
+> >>>      ret = ERR_PTR(-EINVAL);
+> >>>  out_err:
+> >>>      xprt_free(xprt);
+> >>
+> >> This is getting a little hairy.... Looks like xprts are alloc'd with
+> >> kzalloc() and xs_free_peer_addresses is a no-op if
+> >> xprt->address_strings[i] is NULL, so it looks safe to call
+> >> unconditionally after out_err?
+> >>
+> >>> @@ -2816,6 +2820,8 @@ static struct rpc_xprt *xs_setup_udp(struct xprt_create *args)
+> >>>
+> >>>      if (try_module_get(THIS_MODULE))
+> >>>              return xprt;
+> >>> +
+> >>> +    xs_free_peer_addresses(xprt);
+> >>>      ret = ERR_PTR(-EINVAL);
+> >>>  out_err:
+> >>>      xprt_free(xprt);
+> >>> @@ -2893,9 +2899,10 @@ static struct rpc_xprt *xs_setup_tcp(struct xprt_create *args)
+> >>>                              xprt->address_strings[RPC_DISPLAY_ADDR],
+> >>>                              xprt->address_strings[RPC_DISPLAY_PROTO]);
+> >>>
+> >>> -
+> >>>      if (try_module_get(THIS_MODULE))
+> >>>              return xprt;
+> >>> +
+> >>> +    xs_free_peer_addresses(xprt);
+> >>>      ret = ERR_PTR(-EINVAL);
+> >>>  out_err:
+> >>>      xprt_free(xprt);
+> >>> --
+> >>> 1.8.4.2
+> >>
+> >> And after this we'll end up with
+> >>
+> >>       xs_free_peer_addresses(xprt);
+> >>       xprt_free(xprt);
+> >>
+> >> in 4 different places (the above plus xs_destroy), so I might define an
+> >> xs_xprt_free() to do that.
+> >
+> > I have make a new patch as your suggestion.
+> >
+> > thanks,
+> > Kinglong Mee
+> >
+> > From 9a53cfcf2c6c9dafeace28ea0c3ac9b3e786412e Mon Sep 17 00:00:00 2001
+> > From: Kinglong Mee <kinglongmee@gmail.com>
+> > Date: Tue, 7 Jan 2014 11:43:59 +0800
+> > Subject: [PATCH] SUNRPC: fix memory leak of peer addresses in XPRT
+> >
+> > If creating xprt failed after xs_format_peer_addresses,
+> > sunrpc must free those memory of peer addresses in xprt.
+> >
+> > Add a helper function for freeing xprt named xs_xprt_free.
+> >
+> > Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> > ---
+> >  net/sunrpc/xprtsock.c | 18 +++++++++++-------
+> >  1 file changed, 11 insertions(+), 7 deletions(-)
+> >
+> > diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+> > index 25dbfa9..4fcdf74 100644
+> > --- a/net/sunrpc/xprtsock.c
+> > +++ b/net/sunrpc/xprtsock.c
+> > @@ -905,6 +905,12 @@ static void xs_tcp_close(struct rpc_xprt *xprt)
+> >                 xs_tcp_shutdown(xprt);
+> >  }
+> >
+> > +static void xs_xprt_free(struct rpc_xprt *xprt)
+> > +{
+> > +       xs_free_peer_addresses(xprt);
+> > +       xprt_free(xprt);
+> > +}
+> > +
+> >  /**
+> >   * xs_destroy - prepare to shutdown a transport
+> >   * @xprt: doomed transport
+> > @@ -915,8 +921,7 @@ static void xs_destroy(struct rpc_xprt *xprt)
+> >         dprintk("RPC:       xs_destroy xprt %p\n", xprt);
+> >
+> >         xs_close(xprt);
+> > -       xs_free_peer_addresses(xprt);
+> > -       xprt_free(xprt);
+> > +       xs_xprt_free(xprt);
+> >         module_put(THIS_MODULE);
+> >  }
+> >
+> > @@ -2740,7 +2745,7 @@ static struct rpc_xprt *xs_setup_local(struct xprt_create *args)
+> >                 return xprt;
+> >         ret = ERR_PTR(-EINVAL);
+> >  out_err:
+> > -       xprt_free(xprt);
+> > +       xs_xprt_free(xprt);
+> >         return ret;
+> >  }
+> >
+> > @@ -2818,7 +2823,7 @@ static struct rpc_xprt *xs_setup_udp(struct xprt_create *args)
+> >                 return xprt;
+> >         ret = ERR_PTR(-EINVAL);
+> >  out_err:
+> > -       xprt_free(xprt);
+> > +       xs_xprt_free(xprt);
+> >         return ret;
+> >  }
+> >
+> > @@ -2893,12 +2898,11 @@ static struct rpc_xprt *xs_setup_tcp(struct xprt_create *args)
+> >                                 xprt->address_strings[RPC_DISPLAY_ADDR],
+> >                                 xprt->address_strings[RPC_DISPLAY_PROTO]);
+> >
+> > -
+> >         if (try_module_get(THIS_MODULE))
+> >                 return xprt;
+> >         ret = ERR_PTR(-EINVAL);
+> >  out_err:
+> > -       xprt_free(xprt);
+> > +       xs_xprt_free(xprt);
+> >         return ret;
+> >  }
+> >
+> > @@ -2988,7 +2992,7 @@ static struct rpc_xprt *xs_setup_bc_tcp(struct xprt_create *args)
+> >         xprt_put(xprt);
+> >         ret = ERR_PTR(-EINVAL);
+> >  out_err:
+> > -       xprt_free(xprt);
+> > +       xs_xprt_free(xprt);
+> >         return ret;
+> >  }
+> >
+> > --
+> > 1.8.4.2
+> >
+> >
+> >
