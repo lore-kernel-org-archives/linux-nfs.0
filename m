@@ -1,208 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:9645 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757242AbaC1Dqz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 27 Mar 2014 23:46:55 -0400
-Date: Thu, 27 Mar 2014 20:46:44 -0700
-From: Jeff Layton <jlayton@redhat.com>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: bfields@fieldses.org, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] NFSD: Traverse unconfirmed client through hash-table
-Message-ID: <20140327204644.63e08e42@ipyr.poochiereds.net>
-In-Reply-To: <5332DF9A.6040008@gmail.com>
-References: <5332DF9A.6040008@gmail.com>
+Received: from smtp.opengridcomputing.com ([72.48.136.20]:51665 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754483AbaCYR1H convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 25 Mar 2014 13:27:07 -0400
+From: "Steve Wise" <swise@opengridcomputing.com>
+To: <trond.myklebust@primarydata.com>, <bfields@fieldses.org>
+Cc: <linux-nfs@vger.kernel.org>, <tom@opengridcomputing.com>,
+        "Chuck Lever" <chuck.lever@oracle.com>
+References: <20140325145044.3559.95141.stgit@build.ogc.int>
+In-Reply-To: <20140325145044.3559.95141.stgit@build.ogc.int>
+Subject: RE: [PATCH] Fix regression errors in NFSRDMA
+Date: Tue, 25 Mar 2014 12:27:10 -0500
+Message-ID: <004e01cf484f$73f1b3b0$5bd51b10$@opengridcomputing.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain;
+	charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 26 Mar 2014 22:09:30 +0800
-Kinglong Mee <kinglongmee@gmail.com> wrote:
+> The client regression was due to additional XDR sanity checking
+> (64bd577ea0021f5903505de061b3b7d8a785ee94) that exposed a latent bug in
+> the NFSRDMA client. The bug is that if there were inline data, then the
+> rpcrdma_fixup_inline function would would incorrectly set the XDR page_len
+> to zero. Since the decode_read3resok logic previously computed this
+> value from the reported len - header len, the bug was not symptomatic.
 
-> When stopping nfsd, I got BUG messages, and soft lockup messages,
-> The problem is cuased by double rb_erase() in nfs4_state_destroy_net()
-> and destroy_client().
-> 
-> This patch just let nfsd traversing unconfirmed client through
-> hash-table instead of rbtree.
-> 
-> [ 2325.021995] BUG: unable to handle kernel NULL pointer dereference
-> at (null)
-> [ 2325.022809] IP: [<ffffffff8133c18c>] rb_erase+0x14c/0x390
-> [ 2325.022982] PGD 7a91b067 PUD 7a33d067 PMD 0
-> [ 2325.022982] Oops: 0000 [#1] SMP DEBUG_PAGEALLOC
-> [ 2325.022982] Modules linked in: nfsd(OF) cfg80211 rfkill bridge stp
-> llc snd_intel8x0 snd_ac97_codec ac97_bus auth_rpcgss nfs_acl serio_raw
-> e1000 i2c_piix4 ppdev snd_pcm snd_timer lockd pcspkr joydev parport_pc
-> snd parport i2c_core soundcore microcode sunrpc ata_generic pata_acpi
-> [last unloaded: nfsd]
-> [ 2325.022982] CPU: 1 PID: 2123 Comm: nfsd Tainted: GF          O
-> 3.14.0-rc8+ #2
-> [ 2325.022982] Hardware name: innotek GmbH VirtualBox/VirtualBox, BIOS
-> VirtualBox 12/01/2006
-> [ 2325.022982] task: ffff88007b384800 ti: ffff8800797f6000 task.ti:
-> ffff8800797f6000
-> [ 2325.022982] RIP: 0010:[<ffffffff8133c18c>]  [<ffffffff8133c18c>]
-> rb_erase+0x14c/0x390
-> [ 2325.022982] RSP: 0018:ffff8800797f7d98  EFLAGS: 00010246
-> [ 2325.022982] RAX: ffff880079c1f010 RBX: ffff880079f4c828 RCX:
-> 0000000000000000
-> [ 2325.022982] RDX: 0000000000000000 RSI: ffff880079bcb070 RDI:
-> ffff880079f4c810
-> [ 2325.022982] RBP: ffff8800797f7d98 R08: 0000000000000000 R09:
-> ffff88007964fc70
-> [ 2325.022982] R10: 0000000000000000 R11: 0000000000000400 R12:
-> ffff880079f4c800
-> [ 2325.022982] R13: ffff880079bcb000 R14: ffff8800797f7da8 R15:
-> ffff880079f4c860
-> [ 2325.022982] FS:  0000000000000000(0000) GS:ffff88007f900000(0000)
-> knlGS:0000000000000000
-> [ 2325.022982] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-> [ 2325.022982] CR2: 0000000000000000 CR3: 000000007a3ef000 CR4:
-> 00000000000006e0
-> [ 2325.022982] DR0: 0000000000000000 DR1: 0000000000000000 DR2:
-> 0000000000000000
-> [ 2325.022982] DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7:
-> 0000000000000400
-> [ 2325.022982] Stack:
-> [ 2325.022982]  ffff8800797f7de0 ffffffffa0191c6e ffff8800797f7da8
-> ffff8800797f7da8
-> [ 2325.022982]  ffff880079f4c810 ffff880079bcb000 ffffffff81cc26c0
-> ffff880079c1f010
-> [ 2325.022982]  ffff880079bcb070 ffff8800797f7e28 ffffffffa01977f2
-> ffff8800797f7df0
-> [ 2325.022982] Call Trace:
-> [ 2325.022982]  [<ffffffffa0191c6e>] destroy_client+0x32e/0x3b0 [nfsd]
-> [ 2325.022982]  [<ffffffffa01977f2>]
-> nfs4_state_shutdown_net+0x1a2/0x220 [nfsd]
-> [ 2325.022982]  [<ffffffffa01700b8>] nfsd_shutdown_net+0x38/0x70
-> [nfsd] [ 2325.022982]  [<ffffffffa017013e>]
-> nfsd_last_thread+0x4e/0x80 [nfsd] [ 2325.022982]
-> [<ffffffffa001f1eb>] svc_shutdown_net+0x2b/0x30 [sunrpc]
-> [ 2325.022982]  [<ffffffffa017064b>] nfsd_destroy+0x5b/0x80 [nfsd]
-> [ 2325.022982]  [<ffffffffa0170773>] nfsd+0x103/0x130 [nfsd]
-> [ 2325.022982]  [<ffffffffa0170670>] ? nfsd_destroy+0x80/0x80 [nfsd]
-> [ 2325.022982]  [<ffffffff810a8232>] kthread+0xd2/0xf0
-> [ 2325.022982]  [<ffffffff810a8160>] ? insert_kthread_work+0x40/0x40
-> [ 2325.022982]  [<ffffffff816c493c>] ret_from_fork+0x7c/0xb0
-> [ 2325.022982]  [<ffffffff810a8160>] ? insert_kthread_work+0x40/0x40
-> [ 2325.022982] Code: 48 83 e1 fc 48 89 10 0f 84 02 01 00 00 48 3b 41
-> 10 0f 84 08 01 00 00 48 89 51 08 48 89 fa e9 74 ff ff ff 0f 1f 40 00
-> 48 8b 50 10 <f6> 02 01 0f 84 93 00 00 00 48 8b 7a 10 48 85 ff 74 05
-> f6 07 01 [ 2325.022982] RIP  [<ffffffff8133c18c>]
-> rb_erase+0x14c/0x390 [ 2325.022982]  RSP <ffff8800797f7d98>
-> [ 2325.022982] CR2: 0000000000000000 [ 2325.022982] ---[ end trace
-> 28c27ed011655e57 ]---
-> 
-> [  228.064071] BUG: soft lockup - CPU#0 stuck for 22s! [nfsd:558]
-> [  228.064428] Modules linked in: ip6t_rpfilter ip6t_REJECT cfg80211
-> xt_conntrack rfkill ebtable_nat ebtable_broute bridge stp llc
-> ebtable_filter ebtables ip6table_nat nf_conntrack_ipv6 nf_defrag_ipv6
-> nf_nat_ipv6 ip6table_mangle ip6table_security ip6table_raw
-> ip6table_filter ip6_tables iptable_nat nf_conntrack_ipv4
-> nf_defrag_ipv4 nf_nat_ipv4 nf_nat nf_conntrack iptable_mangle
-> iptable_security iptable_raw nfsd(OF) auth_rpcgss nfs_acl lockd
-> snd_intel8x0 snd_ac97_codec ac97_bus joydev snd_pcm snd_timer e1000
-> sunrpc snd ppdev parport_pc serio_raw pcspkr i2c_piix4 microcode
-> parport soundcore i2c_core ata_generic pata_acpi
-> [  228.064539] CPU: 0 PID: 558 Comm: nfsd Tainted: GF          O
-> 3.14.0-rc8+ #2
-> [  228.064539] Hardware name: innotek GmbH VirtualBox/VirtualBox, BIOS
-> VirtualBox 12/01/2006
-> [  228.064539] task: ffff880076adec00 ti: ffff880074616000 task.ti:
-> ffff880074616000
-> [  228.064539] RIP: 0010:[<ffffffff8133ba17>]  [<ffffffff8133ba17>]
-> rb_next+0x27/0x50
-> [  228.064539] RSP: 0018:ffff880074617de0  EFLAGS: 00000282
-> [  228.064539] RAX: ffff880074478010 RBX: ffff88007446f860 RCX:
-> 0000000000000014
-> [  228.064539] RDX: ffff880074478010 RSI: 0000000000000000 RDI:
-> ffff880074478010
-> [  228.064539] RBP: ffff880074617de0 R08: 0000000000000000 R09:
-> 0000000000000012
-> [  228.064539] R10: 0000000000000001 R11: ffffffffffffffec R12:
-> ffffea0001d11a00
-> [  228.064539] R13: ffff88007f401400 R14: ffff88007446f800 R15:
-> ffff880074617d50
-> [  228.064539] FS:  0000000000000000(0000) GS:ffff88007f800000(0000)
-> knlGS:0000000000000000
-> [  228.064539] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-> [  228.064539] CR2: 00007fe9ac6ec000 CR3: 000000007a5d6000 CR4:
-> 00000000000006f0
-> [  228.064539] DR0: 0000000000000000 DR1: 0000000000000000 DR2:
-> 0000000000000000
-> [  228.064539] DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7:
-> 0000000000000400
-> [  228.064539] Stack:
-> [  228.064539]  ffff880074617e28 ffffffffa01ab7db ffff880074617df0
-> ffff880074617df0
-> [  228.064539]  ffff880079273000 ffffffff81cc26c0 ffffffff81cc26c0
-> 0000000000000000
-> [  228.064539]  0000000000000000 ffff880074617e48 ffffffffa01840b8
-> ffffffff81cc26c0
-> [  228.064539] Call Trace:
-> [  228.064539]  [<ffffffffa01ab7db>]
-> nfs4_state_shutdown_net+0x18b/0x220 [nfsd]
-> [  228.064539]  [<ffffffffa01840b8>] nfsd_shutdown_net+0x38/0x70
-> [nfsd] [  228.064539]  [<ffffffffa018413e>]
-> nfsd_last_thread+0x4e/0x80 [nfsd] [  228.064539]
-> [<ffffffffa00aa1eb>] svc_shutdown_net+0x2b/0x30 [sunrpc]
-> [  228.064539]  [<ffffffffa018464b>] nfsd_destroy+0x5b/0x80 [nfsd]
-> [  228.064539]  [<ffffffffa0184773>] nfsd+0x103/0x130 [nfsd]
-> [  228.064539]  [<ffffffffa0184670>] ? nfsd_destroy+0x80/0x80 [nfsd]
-> [  228.064539]  [<ffffffff810a8232>] kthread+0xd2/0xf0
-> [  228.064539]  [<ffffffff810a8160>] ? insert_kthread_work+0x40/0x40
-> [  228.064539]  [<ffffffff816c493c>] ret_from_fork+0x7c/0xb0
-> [  228.064539]  [<ffffffff810a8160>] ? insert_kthread_work+0x40/0x40
-> [  228.064539] Code: 1f 44 00 00 55 48 8b 17 48 89 e5 48 39 d7 74 3b
-> 48 8b 47 08 48 85 c0 75 0e eb 25 66 0f 1f 84 00 00 00 00 00 48 89 d0
-> 48 8b 50 10 <48> 85 d2 75 f4 5d c3 66 90 48 3b 78 08 75 f6 48 8b 10
-> 48 89 c7
-> 
-> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-> ---
->  fs/nfsd/nfs4state.c | 13 +++++--------
->  1 file changed, 5 insertions(+), 8 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index d7efc4b..5a9588e 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -5063,7 +5063,6 @@ nfs4_state_destroy_net(struct net *net)
->  	int i;
->  	struct nfs4_client *clp = NULL;
->  	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
-> -	struct rb_node *node, *tmp;
-> 
->  	for (i = 0; i < CLIENT_HASH_SIZE; i++) {
->  		while (!list_empty(&nn->conf_id_hashtbl[i])) {
-> @@ -5072,13 +5071,11 @@ nfs4_state_destroy_net(struct net *net)
->  		}
->  	}
-> 
-> -	node = rb_first(&nn->unconf_name_tree);
-> -	while (node != NULL) {
-> -		tmp = node;
-> -		node = rb_next(tmp);
-> -		clp = rb_entry(tmp, struct nfs4_client, cl_namenode);
-> -		rb_erase(tmp, &nn->unconf_name_tree);
-> -		destroy_client(clp);
-> +	for (i = 0; i < CLIENT_HASH_SIZE; i++) {
-> +		while (!list_empty(&nn->unconf_id_hashtbl[i])) {
-> +			clp =
-> list_entry(nn->unconf_id_hashtbl[i].next, struct nfs4_client,
-> cl_idhash);
-> +			destroy_client(clp);
-> +		}
->  	}
-> 
->  	kfree(nn->sessionid_hashtbl);
+Oops: The client bug has already been fixed by Chuck's patch which is already 
+in Trond's nfs-for-next branch:
 
-Nice catch!
+----
+commit 2b7bbc963da8d076f263574af4138b5df2e1581f
+Author: Chuck Lever <chuck.lever@oracle.com>
+Date:   Wed Mar 12 12:51:30 2014 -0400
 
-In hindsight, I probably should have just switched that code to walk
-the hashtbl instead of the rbtree anyway.
+    SUNRPC: Fix large reads on NFS/RDMA
+----
 
-In any case...
+So I'll repost Tom's server-side fix, after applying it on nfs-for-next and verifying things 
+still work.
 
-Reviewed-by: Jeff Layton <jlayton@redhat.com>
+
+Steve.
+
