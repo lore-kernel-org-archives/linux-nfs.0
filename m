@@ -1,148 +1,194 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f170.google.com ([209.85.192.170]:40494 "EHLO
-	mail-pd0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750714AbaCXEAM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 24 Mar 2014 00:00:12 -0400
-Received: by mail-pd0-f170.google.com with SMTP id v10so4767646pde.15
-        for <linux-nfs@vger.kernel.org>; Sun, 23 Mar 2014 21:00:12 -0700 (PDT)
-Message-ID: <532FADB2.2070006@gmail.com>
-Date: Mon, 24 Mar 2014 11:59:46 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: [PATCH 4/5][RESEND] NFSD/SUNRPC: Check rpc_xprt out of xs_setup_bc_tcp
-References: <532FAC85.20909@gmail.com>
-In-Reply-To: <532FAC85.20909@gmail.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from hobo-dev.uvm.edu ([132.198.101.84]:58582 "EHLO hobo-dev.uvm.edu"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751229AbaCYBZe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 24 Mar 2014 21:25:34 -0400
+Received: from hobo-dev.uvm.edu (localhost [127.0.0.1])
+	by hobo-dev.uvm.edu (8.14.4/8.14.4) with ESMTP id s2P1PX1Z051487
+	for <linux-nfs@vger.kernel.org>; Mon, 24 Mar 2014 21:25:33 -0400
+Message-Id: <0460776cb199d3af99a86cf2f4e37900cb984698.1395710586.git.root@hobo-dev.uvm.edu>
+In-Reply-To: <cover.1395710586.git.root@hobo-dev.uvm.edu>
+References: <cover.1395710586.git.root@hobo-dev.uvm.edu>
+From: Benjamin Coddington <bcodding@uvm.edu>
+To: linux-nfs@vger.kernel.org
+Date: Mon, 24 Mar 2014 21:06:12 -0400
+Subject: [PATCH 2/2] nfsidmap: Create id_resolver child keyrings
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Besides checking rpc_xprt out of xs_setup_bc_tcp,
-increase it's reference (it's important).
+Create and fill child keyrings of MAX_KEYS number of keys with
+id_resolver keys to expand the idmapper's key capacity.
 
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+Signed-off-by: Benjamin Coddington <bcodding@uvm.edu>
 ---
- fs/nfsd/nfs4callback.c      | 19 ++++++++++++++++++-
- include/linux/sunrpc/xprt.h | 13 ++++++++++++-
- net/sunrpc/xprt.c           | 12 ------------
- net/sunrpc/xprtsock.c       |  9 ---------
- 4 files changed, 30 insertions(+), 23 deletions(-)
+ utils/nfsidmap/nfsidmap.c |   74 ++++++++++++++++++++++++++++++++++++--------
+ 1 files changed, 60 insertions(+), 14 deletions(-)
 
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 7f05cd1..39c8ef8 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -32,6 +32,7 @@
+diff --git a/utils/nfsidmap/nfsidmap.c b/utils/nfsidmap/nfsidmap.c
+index ae84633..c66c19f 100644
+--- a/utils/nfsidmap/nfsidmap.c
++++ b/utils/nfsidmap/nfsidmap.c
+@@ -27,6 +27,10 @@ char *usage="Usage: %s [-v] [-c || [-u|-g|-r key] || [-t timeout] key desc]";
+ #define DEFAULT_KEYRING ".id_resolver"
+ #endif
+ 
++#ifndef MAX_KEYS
++#define MAX_KEYS 500
++#endif
++
+ #ifndef PATH_IDMAPDCONF
+ #define PATH_IDMAPDCONF "/etc/idmapd.conf"
+ #endif
+@@ -39,7 +43,7 @@ static int keyring_clear(char *keyring);
+ /*
+  * Find either a user or group id based on the name@domain string
   */
+-int id_lookup(char *name_at_domain, key_serial_t key, int type)
++int id_lookup(char *name_at_domain, key_serial_t key, int type, key_serial_t dest_keyring)
+ {
+ 	char id[MAX_ID_LEN];
+ 	uid_t uid = 0;
+@@ -58,7 +62,7 @@ int id_lookup(char *name_at_domain, key_serial_t key, int type)
+ 			(type == USER ? "nfs4_owner_to_uid" : "nfs4_group_owner_to_gid"));
  
- #include <linux/sunrpc/clnt.h>
-+#include <linux/sunrpc/xprt.h>
- #include <linux/sunrpc/svc_xprt.h>
- #include <linux/slab.h>
- #include "nfsd.h"
-@@ -635,6 +636,22 @@ static struct rpc_cred *get_backchannel_cred(struct nfs4_client *clp, struct rpc
+ 	if (rc == 0) {
+-		rc = keyctl_instantiate(key, id, strlen(id) + 1, 0);
++		rc = keyctl_instantiate(key, id, strlen(id) + 1, dest_keyring);
+ 		if (rc < 0) {
+ 			switch(rc) {
+ 			case -EDQUOT:
+@@ -67,9 +71,9 @@ int id_lookup(char *name_at_domain, key_serial_t key, int type)
+ 				/*
+ 			 	 * The keyring is full. Clear the keyring and try again
+ 			 	 */
+-				rc = keyring_clear(DEFAULT_KEYRING);
++				rc = keyctl_clear(dest_keyring);
+ 				if (rc == 0)
+-					rc = keyctl_instantiate(key, id, strlen(id) + 1, 0);
++					rc = keyctl_instantiate(key, id, strlen(id) + 1, dest_keyring);
+ 				break;
+ 			default:
+ 				break;
+@@ -85,7 +89,7 @@ int id_lookup(char *name_at_domain, key_serial_t key, int type)
+ /*
+  * Find the name@domain string from either a user or group id
+  */
+-int name_lookup(char *id, key_serial_t key, int type)
++int name_lookup(char *id, key_serial_t key, int type, key_serial_t dest_keyring)
+ {
+ 	char name[IDMAP_NAMESZ];
+ 	char domain[NFS4_MAX_DOMAIN_LEN];
+@@ -113,7 +117,7 @@ int name_lookup(char *id, key_serial_t key, int type)
+ 			(type == USER ? "nfs4_uid_to_name" : "nfs4_gid_to_name"));
+ 
+ 	if (rc == 0) {
+-		rc = keyctl_instantiate(key, &name, strlen(name), 0);
++		rc = keyctl_instantiate(key, &name, strlen(name), dest_keyring);
+ 		if (rc < 0)
+ 			xlog_err("name_lookup: keyctl_instantiate failed: %m");
  	}
+@@ -142,6 +146,8 @@ static int keyring_clear(char *keyring)
+ 			continue;
+ 		if (strstr(buf, keyring) == NULL)
+ 			continue;
++		if (strstr(buf, "perm") == NULL)
++			continue;
+ 		if (verbose) {
+ 			*(strchr(buf, '\n')) = '\0';
+ 			xlog_warn("clearing '%s'", buf);
+@@ -157,9 +163,13 @@ static int keyring_clear(char *keyring)
+ 			return 1;
+ 		}
+ 		fclose(fp);
++		// if this is a child, revoke it so it gets cleaned up
++		if (!strstr(keyring, DEFAULT_KEYRING":"))
++			keyctl_revoke(key);
+ 		return 0;
+ 	}
+-	xlog_err("'%s' keyring was not found.", keyring);
++	if (strstr(keyring, DEFAULT_KEYRING":"))
++		xlog_err("'%s' keyring was not found.", keyring);
+ 	fclose(fp);
+ 	return 1;
  }
+@@ -232,9 +242,12 @@ int main(int argc, char **argv)
+ 	char *type;
+ 	int rc = 1, opt;
+ 	int timeout = 600;
+-	key_serial_t key;
++	int childrings = 0;
++	key_serial_t key, parent_keyring, child_keyring;
+ 	char *progname, *keystr = NULL;
+-	int clearing = 0, keymask = 0;
++	char child_name[BUFSIZ];
++	int clearing = 0, keymask = 0, i;
++	long child_size;
  
-+static struct rpc_clnt *create_backchannel_client(struct rpc_create_args *args)
-+{
-+	struct rpc_xprt *xprt;
+ 	/* Set the basename */
+ 	if ((progname = strrchr(argv[0], '/')) != NULL)
+@@ -284,9 +297,16 @@ int main(int argc, char **argv)
+ 		rc = key_revoke(keystr, keymask);
+ 		return rc;		
+ 	}
 +
-+	if (args->protocol != XPRT_TRANSPORT_BC_TCP)
-+		return rpc_create(args);
+ 	if (clearing) {
+ 		xlog_syslog(0);
+-		rc = keyring_clear(DEFAULT_KEYRING);
++		i = 1;
++		for(i = 1; i < MAX_KEYS; i++) {
++			snprintf(child_name, sizeof(child_name), DEFAULT_KEYRING "_child_%d", i);
++			keyring_clear(child_name);
++		}
 +
-+	xprt = args->bc_xprt->xpt_bc_xprt;
-+	if (xprt) {
-+		xprt_get(xprt);
-+		return rpc_create_xprt(args, xprt);
++		rc = keyring_clear(DEFAULT_KEYRING ":");
+ 		return rc;		
+ 	}
+ 
+@@ -315,14 +335,40 @@ int main(int argc, char **argv)
+ 			key, type, value, timeout);
+ 	}
+ 
++	parent_keyring = request_key("keyring", DEFAULT_KEYRING, NULL, KEY_SPEC_THREAD_KEYRING);
++
++	for (i = 1; i < MAX_KEYS; i++) {
++		snprintf(child_name, sizeof(child_name), DEFAULT_KEYRING "_child_%d", i);
++
++		child_keyring = keyctl_search(parent_keyring, "keyring", child_name, 0);
++		if (child_keyring < 0) {
++			child_keyring = add_key("keyring", child_name, NULL, 0, parent_keyring);
++			xlog_warn("adding new child %s: %m", child_name);
++
++			if (child_keyring < 0)
++				xlog_err("Failed to add child keyring: %m");
++
++			keyctl_setperm(child_keyring, KEY_POS_ALL|KEY_USR_ALL);
++			break;
++		}
++
++		child_size = keyctl_read(child_keyring, NULL, 0);
++		if (child_size <= MAX_KEYS * 4)
++			break;
 +	}
 +
-+	return rpc_create(args);
-+}
+ 	if (strcmp(type, "uid") == 0)
+-		rc = id_lookup(value, key, USER);
++		rc = id_lookup(value, key, USER, child_keyring);
+ 	else if (strcmp(type, "gid") == 0)
+-		rc = id_lookup(value, key, GROUP);
++		rc = id_lookup(value, key, GROUP, child_keyring);
+ 	else if (strcmp(type, "user") == 0)
+-		rc = name_lookup(value, key, USER);
++		rc = name_lookup(value, key, USER, child_keyring);
+ 	else if (strcmp(type, "group") == 0)
+-		rc = name_lookup(value, key, GROUP);
++		rc = name_lookup(value, key, GROUP, child_keyring);
 +
- static int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *conn, struct nfsd4_session *ses)
- {
- 	struct rpc_timeout	timeparms = {
-@@ -674,7 +691,7 @@ static int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *c
- 		args.authflavor = ses->se_cb_sec.flavor;
- 	}
- 	/* Create RPC client */
--	client = rpc_create(&args);
-+	client = create_backchannel_client(&args);
- 	if (IS_ERR(client)) {
- 		dprintk("NFSD: couldn't create callback client: %ld\n",
- 			PTR_ERR(client));
-diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-index 8097b9d..3e5efb2 100644
---- a/include/linux/sunrpc/xprt.h
-+++ b/include/linux/sunrpc/xprt.h
-@@ -295,13 +295,24 @@ int			xprt_adjust_timeout(struct rpc_rqst *req);
- void			xprt_release_xprt(struct rpc_xprt *xprt, struct rpc_task *task);
- void			xprt_release_xprt_cong(struct rpc_xprt *xprt, struct rpc_task *task);
- void			xprt_release(struct rpc_task *task);
--struct rpc_xprt *	xprt_get(struct rpc_xprt *xprt);
- void			xprt_put(struct rpc_xprt *xprt);
- struct rpc_xprt *	xprt_alloc(struct net *net, size_t size,
- 				unsigned int num_prealloc,
- 				unsigned int max_req);
- void			xprt_free(struct rpc_xprt *);
++	/* if we hung this off a child, unlink from the parent */
++	if (child_keyring)
++		keyctl_unlink(key, parent_keyring);
  
-+/**
-+ * xprt_get - return a reference to an RPC transport.
-+ * @xprt: pointer to the transport
-+ *
-+ */
-+static inline struct rpc_xprt *xprt_get(struct rpc_xprt *xprt)
-+{
-+	if (atomic_inc_not_zero(&xprt->count))
-+		return xprt;
-+	return NULL;
-+}
-+
- static inline __be32 *xprt_skip_transport_header(struct rpc_xprt *xprt, __be32 *p)
- {
- 	return p + xprt->tsh_size;
-diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
-index 7d4df99..d173f79 100644
---- a/net/sunrpc/xprt.c
-+++ b/net/sunrpc/xprt.c
-@@ -1383,15 +1383,3 @@ void xprt_put(struct rpc_xprt *xprt)
- 	if (atomic_dec_and_test(&xprt->count))
- 		xprt_destroy(xprt);
- }
--
--/**
-- * xprt_get - return a reference to an RPC transport.
-- * @xprt: pointer to the transport
-- *
-- */
--struct rpc_xprt *xprt_get(struct rpc_xprt *xprt)
--{
--	if (atomic_inc_not_zero(&xprt->count))
--		return xprt;
--	return NULL;
--}
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index da882af..252a56e 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -2927,15 +2927,6 @@ static struct rpc_xprt *xs_setup_bc_tcp(struct xprt_create *args)
- 	struct svc_sock *bc_sock;
- 	struct rpc_xprt *ret;
- 
--	if (args->bc_xprt->xpt_bc_xprt) {
--		/*
--		 * This server connection already has a backchannel
--		 * transport; we can't create a new one, as we wouldn't
--		 * be able to match replies based on xid any more.  So,
--		 * reuse the already-existing one:
--		 */
--		 return args->bc_xprt->xpt_bc_xprt;
--	}
- 	xprt = xs_setup_xprt(args, xprt_tcp_slot_table_entries,
- 			xprt_tcp_slot_table_entries);
- 	if (IS_ERR(xprt))
+ 	/* Set timeout to 10 (600 seconds) minutes */
+ 	if (rc == 0)
 -- 
-1.8.5.3
+1.7.1
+
