@@ -1,58 +1,32 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:20893 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:46023 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752478AbaCKTHc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 11 Mar 2014 15:07:32 -0400
-Message-ID: <531F511D.1000009@RedHat.com>
-Date: Tue, 11 Mar 2014 14:08:29 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S1754107AbaCYUjh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 25 Mar 2014 16:39:37 -0400
+Date: Tue, 25 Mar 2014 16:39:36 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: "J. R. Okajima" <hooanon05g@gmail.com>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: nfsd fix for 3.14
+Message-ID: <20140325203936.GA30430@fieldses.org>
 MIME-Version: 1.0
-To: Aaro Koskinen <aaro.koskinen@iki.fi>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH nfs-utils] tools: use install -m instead of --mode
-References: <1393621584-15467-1-git-send-email-aaro.koskinen@iki.fi>
-In-Reply-To: <1393621584-15467-1-git-send-email-aaro.koskinen@iki.fi>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Please pull an nfsd fix from
 
+  git://linux-nfs.org/~bfields/linux.git nfsd-next
 
-On 02/28/2014 04:06 PM, Aaro Koskinen wrote:
-> Use install -m instead of--mode for better compatibility.
-> E.g. busybox's install doesn't support the long option.
-> 
-> Signed-off-by: Aaro Koskinen <aaro.koskinen@iki.fi>
-Committed...
+J. R. Okajima sent this early and I was just slow to pass it along,
+apologies.  Fortunately it's a simple fix.
 
-steved.
+--b.
 
-> ---
->  tools/mountstats/Makefile.am | 2 +-
->  tools/nfs-iostat/Makefile.am | 2 +-
->  2 files changed, 2 insertions(+), 2 deletions(-)
-> 
-> diff --git a/tools/mountstats/Makefile.am b/tools/mountstats/Makefile.am
-> index ca617a2..c2e9f99 100644
-> --- a/tools/mountstats/Makefile.am
-> +++ b/tools/mountstats/Makefile.am
-> @@ -8,6 +8,6 @@ EXTRA_DIST	= $(man8_MANS) $(PYTHON_FILES)
->  all-local: $(PYTHON_FILES)
->  
->  install-data-hook:
-> -	$(INSTALL) --mode 755 mountstats.py $(DESTDIR)$(sbindir)/mountstats
-> +	$(INSTALL) -m 755 mountstats.py $(DESTDIR)$(sbindir)/mountstats
->  
->  MAINTAINERCLEANFILES=Makefile.in
-> diff --git a/tools/nfs-iostat/Makefile.am b/tools/nfs-iostat/Makefile.am
-> index 30f4054..3ae0f29 100644
-> --- a/tools/nfs-iostat/Makefile.am
-> +++ b/tools/nfs-iostat/Makefile.am
-> @@ -8,6 +8,6 @@ EXTRA_DIST	= $(man8_MANS) $(PYTHON_FILES)
->  all-local: $(PYTHON_FILES)
->  
->  install-data-hook:
-> -	$(INSTALL) --mode 755 nfs-iostat.py $(DESTDIR)$(sbindir)/nfsiostat
-> +	$(INSTALL) -m 755 nfs-iostat.py $(DESTDIR)$(sbindir)/nfsiostat
->  
->  MAINTAINERCLEANFILES=Makefile.in
-> 
+----------------------------------------------------------------
+J. R. Okajima (1):
+      nfsd: fix lost nfserrno() call in nfsd_setattr()
+
+ fs/nfsd/vfs.c | 1 +
+ 1 file changed, 1 insertion(+)
