@@ -1,51 +1,40 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:10062 "EHLO mx1.redhat.com"
+Received: from mx1.redhat.com ([209.132.183.28]:39064 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1759275AbaCSLHN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 19 Mar 2014 07:07:13 -0400
-Received: from int-mx09.intmail.prod.int.phx2.redhat.com (int-mx09.intmail.prod.int.phx2.redhat.com [10.5.11.22])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s2JB7CUC028928
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Wed, 19 Mar 2014 07:07:13 -0400
-Received: from smallhat.boston.devel.redhat.com (vpn-57-192.rdu2.redhat.com [10.10.57.192])
-	by int-mx09.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s2JB7BZw031899
-	for <linux-nfs@vger.kernel.org>; Wed, 19 Mar 2014 07:07:11 -0400
-Message-ID: <53297A5F.4090205@RedHat.com>
-Date: Wed, 19 Mar 2014 07:07:11 -0400
+	id S1755228AbaCYXCY (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 25 Mar 2014 19:02:24 -0400
+Message-ID: <5331AA71.6090702@RedHat.com>
+Date: Tue, 25 Mar 2014 12:10:25 -0400
 From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
 To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Linux NFS Town Hall  meeting: Thur 03/20/14
+CC: "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>
+Subject: ANNOUNCE: nfs-utils-1.3.0 released.
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hello,
+The majority in this release is bug fixes can clean up, 
+but the features were added:
 
-The Linux NFS town hall meeting is tomorrow
-*Thur Mar 20 at 01:00 pm EST (10:00am PST)*
+* systemd units 
+* New arguments were add to number daemon for 
+  easy of configuration
+* IPv6 supported with raw address to exportfs
 
-The usual agenda will apply. The maintainers will give
-a quick status of what is happening in their worlds.
+The tarballs can be found at
+  http://kernel.org/pub/linux/utils/nfs-utils/1.3.0/
+or
+  http://sourceforge.net/projects/nfs
 
-Next we'll get updates from major contributors on what
-they have been doing and are planing on doing.
-  
-Finally, we'll open the floor to questions, comments, 
-concerns from the community.  
+The change log is at 
+   http://kernel.org/pub/linux/utils/nfs-utils/1.3.0/1.3.0-ChangeLog
+or
+   http://sourceforge.net/projects/nfs/files/nfs-utils/1.3.0/3.0-Changelog
 
-Generally the meeting lasts between 30 to 45 mins, with 
-a very hard stop at 60mins. 
+The git tree is at:
+   git://linux-nfs.org/nfs-utils
 
-Please feel to attend and participate!
-
-Time: 10:00 am PST (01:00 pm EST)
-
-The call in numbers are:
-U.S. and Canada: (800) 451-8679
-International dial-in number: (212) 729-5016
-Israel Toll-Free: 1-809-462-557
-Conference code: 564.272.1552
+Please send comments/bugs to linux-nfs@vger.kernel.org
 
 steved.
-
