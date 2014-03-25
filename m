@@ -1,46 +1,32 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f173.google.com ([209.85.192.173]:54296 "EHLO
-	mail-pd0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751191AbaCXD61 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 23 Mar 2014 23:58:27 -0400
-Received: by mail-pd0-f173.google.com with SMTP id z10so4763857pdj.18
-        for <linux-nfs@vger.kernel.org>; Sun, 23 Mar 2014 20:58:27 -0700 (PDT)
-Message-ID: <532FAD58.5080802@gmail.com>
-Date: Mon, 24 Mar 2014 11:58:16 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: [PATCH 2/5][RESEND] NFSD: Free backchannel xprt in bc_destroy
-References: <532FAC85.20909@gmail.com>
-In-Reply-To: <532FAC85.20909@gmail.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from hobo-dev.uvm.edu ([132.198.101.84]:58578 "EHLO hobo-dev.uvm.edu"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751158AbaCYBZW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 24 Mar 2014 21:25:22 -0400
+Received: from hobo-dev.uvm.edu (localhost [127.0.0.1])
+	by hobo-dev.uvm.edu (8.14.4/8.14.4) with ESMTP id s2P1PLJw051479
+	for <linux-nfs@vger.kernel.org>; Mon, 24 Mar 2014 21:25:21 -0400
+Message-Id: <cover.1395710586.git.root@hobo-dev.uvm.edu>
+From: Benjamin Coddington <bcodding@uvm.edu>
+To: linux-nfs@vger.kernel.org
+Date: Mon, 24 Mar 2014 21:23:06 -0400
+Subject: [PATCH 0/2] nfsidmap: a keyringer - 2nd try
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Backchannel xprt isn't freed right now.
-Free it in bc_destroy, and put the reference of THIS_MODULE.
+I took a second stab at this since it looks like fixing the keyrings is
+probably the way to go.  This time through, the nfsidmap creates the
+keyrings ad-hoc as they fill up instead of taking new command-line
+parameters.  It also explicitly sets the permissions on the new keyrings, so
+they should be able to be cleaned up in later kernels - though I haven't
+tested that myself.
 
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
----
- net/sunrpc/xprtsock.c | 4 ++++
- 1 file changed, 4 insertions(+)
+Ben
 
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 2cbafa7..da882af 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -2549,6 +2549,10 @@ static void bc_close(struct rpc_xprt *xprt)
- 
- static void bc_destroy(struct rpc_xprt *xprt)
- {
-+	dprintk("RPC:       bc_destroy xprt %p\n", xprt);
-+
-+	xs_xprt_free(xprt);
-+	module_put(THIS_MODULE);
- }
- 
- static struct rpc_xprt_ops xs_local_ops = {
--- 
-1.8.5.3
+Benjamin Coddington (2):
+  nfsidmap: Match names with kernel default keyring
+  nfsidmap: Create id_resolver child keyrings
+
+ utils/nfsidmap/nfsidmap.c |   76 ++++++++++++++++++++++++++++++++++++---------
+ 1 files changed, 61 insertions(+), 15 deletions(-)
+
