@@ -1,53 +1,21 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:59131 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:17266 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752663AbaCJSax (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 10 Mar 2014 14:30:53 -0400
-Date: Mon, 10 Mar 2014 14:30:52 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] svcrdma: fix printk when memory allocation fails
-Message-ID: <20140310183052.GC28006@fieldses.org>
-References: <1394465628-457-1-git-send-email-jlayton@redhat.com>
- <20140310183024.GB28006@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140310183024.GB28006@fieldses.org>
+	id S1751067AbaCYJfH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 25 Mar 2014 05:35:07 -0400
+From: David Howells <dhowells@redhat.com>
+In-Reply-To: <ECEE9807-64C6-4B8A-92C5-9F2031800992@uvm.edu>
+References: <ECEE9807-64C6-4B8A-92C5-9F2031800992@uvm.edu> <201403241150.s2OBonLC010685@hobo-dev.uvm.edu> <533064A1.2080502@RedHat.com> <189016FB-E865-42B7-BF5A-D1D12F45B81E@uvm.edu> <53308CD4.9020307@RedHat.com> <5330C65B.6010904@RedHat.com>
+To: Benjamin Coddington <bcodding@uvm.edu>
+Cc: dhowells@redhat.com, Steve Dickson <SteveD@redhat.com>,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfsidmap: use multiple child keyrings
+Date: Tue, 25 Mar 2014 09:35:02 +0000
+Message-ID: <21552.1395740102@warthog.procyon.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Mar 10, 2014 at 02:30:24PM -0400, J. Bruce Fields wrote:
-> On Mon, Mar 10, 2014 at 11:33:48AM -0400, Jeff Layton wrote:
-> > It retries in 1s, not 1000 jiffies.
-> 
-> Queueing for 3.14, thanks.--b.
 
-(Um, 3.15.  I lose track.)
+What kernel are you dealing with?
 
---b.
-
-> 
-> > 
-> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > ---
-> >  net/sunrpc/xprtrdma/svc_rdma_transport.c | 3 +--
-> >  1 file changed, 1 insertion(+), 2 deletions(-)
-> > 
-> > diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-> > index 62e4f9bcc387..25688fa2207f 100644
-> > --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-> > +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-> > @@ -477,8 +477,7 @@ struct page *svc_rdma_get_page(void)
-> >  
-> >  	while ((page = alloc_page(GFP_KERNEL)) == NULL) {
-> >  		/* If we can't get memory, wait a bit and try again */
-> > -		printk(KERN_INFO "svcrdma: out of memory...retrying in 1000 "
-> > -		       "jiffies.\n");
-> > +		printk(KERN_INFO "svcrdma: out of memory...retrying in 1s\n");
-> >  		schedule_timeout_uninterruptible(msecs_to_jiffies(1000));
-> >  	}
-> >  	return page;
-> > -- 
-> > 1.8.5.3
-> > 
+David
