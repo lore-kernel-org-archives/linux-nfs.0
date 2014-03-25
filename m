@@ -1,35 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:39522 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754330AbaCMRZd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 13 Mar 2014 13:25:33 -0400
-Date: Thu, 13 Mar 2014 13:25:31 -0400
-To: Simo Sorce <simo@redhat.com>
-Cc: Steve Dickson <SteveD@redhat.com>, Noam Meltzer <noam@primarydata.com>,
-        linux-nfs@vger.kernel.org, sssd-devel@lists.fedorahosted.org
-Subject: Re: [PATCH v2 0/5] NFSv4 rpc.idmapd plugin
-Message-ID: <20140313172531.GA7124@fieldses.org>
-References: <1393918676-20865-1-git-send-email-noam@primarydata.com>
- <5321CDB6.7010803@RedHat.com>
- <1394729939.32465.231.camel@willson.li.ssimo.org>
+Received: from bombadil.infradead.org ([198.137.202.9]:55281 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753797AbaCYPiX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Mar 2014 11:38:23 -0400
+Date: Tue, 25 Mar 2014 08:38:21 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 18/50] nfsd4: use xdr_stream throughout compound encoding
+Message-ID: <20140325153821.GB5613@infradead.org>
+References: <1395537141-10389-1-git-send-email-bfields@redhat.com>
+ <1395537141-10389-19-git-send-email-bfields@redhat.com>
+ <20140323064336.GA24465@infradead.org>
+ <20140323151142.GD30644@fieldses.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1394729939.32465.231.camel@willson.li.ssimo.org>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <20140323151142.GD30644@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Mar 13, 2014 at 12:58:59PM -0400, Simo Sorce wrote:
-> On Thu, 2014-03-13 at 11:24 -0400, Steve Dickson wrote:
+On Sun, Mar 23, 2014 at 11:11:42AM -0400, J. Bruce Fields wrote:
+> > >  } while (0)
+> > > -#define ADJUST_ARGS()		resp->xdr.p = p
+> > > +#define ADJUST_ARGS()		WARN_ON_ONCE(p != resp->xdr.p)	\
+> > 
+> > I think the code would become more clear if you'd start expanding these
+> > macros.  IF the RESERVE_SPACE BUG_ON is important enough it should move
+> > into xdr_reserve_space or a variant thereof, or otherweise just removed.
 > 
-> > V4 servers now have an option of returning a uid string (aka "3606")
-> > where the NFS client just converts that into the uid.
+> Yeah, those will go later.
 > 
-> Can the client tell the server *not to do that* ?
+> Ideas for how to sequence these changes better welcomed.
 
-The client can use kerberos, in which case the server won't do that.
+In this case I'd suggest just killing ADJUST_ARGS in this patch.
 
-Other than that, no, the behavior can only be controlled by server-side
-configuration.
+In general if there's something looking ugly that gets killed or cleaned
+up later I simply mention it in the patch description.
 
---b.
+> > > +	xdr->p = savep;
+> > > +	xdr->iov->iov_len = ((char *)resp->xdr.p)
+> > > +				- (char *)resp->xdr.buf->head[0].iov_base;
+> > 
+> > Where is this coming from?  Looks like deep magic to be and would
+> > benefit from comments, symbolic names and/or a helper.
+> 
+> OK, may be worth a comment even if it's only a temporary thing.
+
+I didn't know it was going away when I read the patch.  Keeping the code
+as-is is fine with me, but maybe a little comment in the changelog might
+help reviwers the look at the next iteration.
+
