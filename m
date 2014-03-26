@@ -1,54 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:47906 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752219AbaCWBMb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 22 Mar 2014 21:12:31 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 34/50] nfsd4: minor encode_read cleanup
-Date: Sat, 22 Mar 2014 21:12:05 -0400
-Message-Id: <1395537141-10389-35-git-send-email-bfields@redhat.com>
-In-Reply-To: <1395537141-10389-1-git-send-email-bfields@redhat.com>
-References: <1395537141-10389-1-git-send-email-bfields@redhat.com>
+Received: from mail-pa0-f42.google.com ([209.85.220.42]:43443 "EHLO
+	mail-pa0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753759AbaCZR0B convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 26 Mar 2014 13:26:01 -0400
+Received: by mail-pa0-f42.google.com with SMTP id fb1so2228686pad.29
+        for <linux-nfs@vger.kernel.org>; Wed, 26 Mar 2014 10:26:01 -0700 (PDT)
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
+Subject: Re: [PATCH] NFSv4: Memory not being freed on memory allocation failure
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+In-Reply-To: <1395849036-6907-1-git-send-email-steved@redhat.com>
+Date: Wed, 26 Mar 2014 10:25:57 -0700
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Message-Id: <22F1169D-33AA-4B8F-ADE0-E8BEEE97E361@primarydata.com>
+References: <1395849036-6907-1-git-send-email-steved@redhat.com>
+To: Dickson Steve <steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
 
----
- fs/nfsd/nfs4xdr.c | 10 ++++++----
- 1 file changed, 6 insertions(+), 4 deletions(-)
+On Mar 26, 2014, at 8:50, Steve Dickson <steved@redhat.com> wrote:
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 1ac730d..9f28e59 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -3075,18 +3075,20 @@ nfsd4_encode_read(struct nfsd4_compoundres *resp, __be32 nfserr,
- 
- 	len = maxcount;
- 	v = 0;
--	while (len > 0) {
-+	while (len) {
-+		int thislen;
-+
- 		page = *(resp->rqstp->rq_next_page);
- 		if (!page) { /* ran out of pages */
- 			maxcount -= len;
- 			break;
- 		}
-+		thislen = min_t(long, len, PAGE_SIZE);
- 		resp->rqstp->rq_vec[v].iov_base = page_address(page);
--		resp->rqstp->rq_vec[v].iov_len =
--			len < PAGE_SIZE ? len : PAGE_SIZE;
-+		resp->rqstp->rq_vec[v].iov_len = thislen;
- 		resp->rqstp->rq_next_page++;
- 		v++;
--		len -= PAGE_SIZE;
-+		len -= thislen;
- 	}
- 	read->rd_vlen = v;
- 
--- 
-1.8.5.3
+> nfs4_run_open_task() puts a ref count on the nfs4_opendata
+> data pointer, then tries to allocate the task pointer.
+> If that task allocation fails nfs4_run_open_task() returns
+> leaving the ref count on the data pointer.
+> 
+
+Hi Steve,
+
+That should not be the case. rpc_run_task() will always call nfs4_open_release() even if it returns an error.
+
+Cheers
+  Trond
+
+_________________________________
+Trond Myklebust
+Linux NFS client maintainer, PrimaryData
+trond.myklebust@primarydata.com
 
