@@ -1,105 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f44.google.com ([209.85.192.44]:59453 "EHLO
-	mail-qg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753709AbaCNRrP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 14 Mar 2014 13:47:15 -0400
-Received: by mail-qg0-f44.google.com with SMTP id a108so8315235qge.3
-        for <linux-nfs@vger.kernel.org>; Fri, 14 Mar 2014 10:47:15 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/5] nfs: abstract out code needed to complete a sillyrename
-Date: Fri, 14 Mar 2014 13:47:01 -0400
-Message-Id: <1394819225-13713-2-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1394819225-13713-1-git-send-email-jlayton@redhat.com>
-References: <1394819225-13713-1-git-send-email-jlayton@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:61542 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755491AbaCZPul (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 26 Mar 2014 11:50:41 -0400
+From: Steve Dickson <steved@redhat.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: [PATCH] NFSv4: Memory not being freed on memory allocation failure
+Date: Wed, 26 Mar 2014 11:50:36 -0400
+Message-Id: <1395849036-6907-1-git-send-email-steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The async rename code is currently "polluted" with some parts that are
-really just for sillyrenames. Add a new "complete" operation vector to
-the nfs_renamedata to separate out the stuff that just needs to be done
-for a sillyrename.
+nfs4_run_open_task() puts a ref count on the nfs4_opendata
+data pointer, then tries to allocate the task pointer.
+If that task allocation fails nfs4_run_open_task() returns
+leaving the ref count on the data pointer.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
+That extra ref count stops the data pointer from being
+freed in _nfs4_do_open() as expected.
+
+This patch reverse the order of the task allocation and
+ref count. The task is allocated before the ref count
+is done, allowing the allocation to fail (and return)
+without the ref count.
+
+Signed-off-by: Steve Dickson <steved@redhat.com>
 ---
- fs/nfs/unlink.c         | 22 ++++++++++++++++++----
- include/linux/nfs_xdr.h |  1 +
- 2 files changed, 19 insertions(+), 4 deletions(-)
+ fs/nfs/nfs4proc.c | 24 ++++++++++++++----------
+ 1 file changed, 14 insertions(+), 10 deletions(-)
 
-diff --git a/fs/nfs/unlink.c b/fs/nfs/unlink.c
-index 11d78944de79..3e6798c9ba1f 100644
---- a/fs/nfs/unlink.c
-+++ b/fs/nfs/unlink.c
-@@ -353,8 +353,8 @@ static void nfs_async_rename_done(struct rpc_task *task, void *calldata)
- 		return;
- 	}
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 2da6a69..a5a61ec 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1846,6 +1846,13 @@ static int nfs4_run_open_task(struct nfs4_opendata *data, int isrecover)
+ 	};
+ 	int status;
  
--	if (task->tk_status != 0)
--		nfs_cancel_async_unlink(old_dentry);
-+	if (data->complete)
-+		data->complete(task, data);
- }
- 
- /**
-@@ -401,7 +401,8 @@ static const struct rpc_call_ops nfs_rename_ops = {
-  */
- static struct rpc_task *
- nfs_async_rename(struct inode *old_dir, struct inode *new_dir,
--		 struct dentry *old_dentry, struct dentry *new_dentry)
-+		 struct dentry *old_dentry, struct dentry *new_dentry,
-+		 void (*complete)(struct rpc_task *, struct nfs_renamedata *))
- {
- 	struct nfs_renamedata *data;
- 	struct rpc_message msg = { };
-@@ -438,6 +439,7 @@ nfs_async_rename(struct inode *old_dir, struct inode *new_dir,
- 	data->new_dentry = dget(new_dentry);
- 	nfs_fattr_init(&data->old_fattr);
- 	nfs_fattr_init(&data->new_fattr);
-+	data->complete = complete;
- 
- 	/* set up nfs_renameargs */
- 	data->args.old_dir = NFS_FH(old_dir);
-@@ -456,6 +458,17 @@ nfs_async_rename(struct inode *old_dir, struct inode *new_dir,
- 	return rpc_run_task(&task_setup_data);
- }
- 
-+/*
-+ * Perform tasks needed when a sillyrename is done such as cancelling the
-+ * queued async unlink if it failed.
-+ */
-+static void
-+nfs_complete_sillyrename(struct rpc_task *task, struct nfs_renamedata *data)
-+{
-+	if (task->tk_status != 0)
-+		nfs_cancel_async_unlink(data->old_dentry);
-+}
++	/*
++	 * Allocate the task before kref-ing the data
++	 */
++	task = rpc_run_task(&task_setup_data);
++	if (IS_ERR(task))
++		return PTR_ERR(task);
 +
- #define SILLYNAME_PREFIX ".nfs"
- #define SILLYNAME_PREFIX_LEN ((unsigned)sizeof(SILLYNAME_PREFIX) - 1)
- #define SILLYNAME_FILEID_LEN ((unsigned)sizeof(u64) << 1)
-@@ -548,7 +561,8 @@ nfs_sillyrename(struct inode *dir, struct dentry *dentry)
+ 	nfs4_init_sequence(&o_arg->seq_args, &o_res->seq_res, 1);
+ 	kref_get(&data->kref);
+ 	data->rpc_done = 0;
+@@ -1856,16 +1863,13 @@ static int nfs4_run_open_task(struct nfs4_opendata *data, int isrecover)
+ 		nfs4_set_sequence_privileged(&o_arg->seq_args);
+ 		data->is_recover = 1;
  	}
+-	task = rpc_run_task(&task_setup_data);
+-        if (IS_ERR(task))
+-                return PTR_ERR(task);
+-        status = nfs4_wait_for_completion_rpc_task(task);
+-        if (status != 0) {
+-                data->cancelled = 1;
+-                smp_wmb();
+-        } else
+-                status = data->rpc_status;
+-        rpc_put_task(task);
++	status = nfs4_wait_for_completion_rpc_task(task);
++	if (status != 0) {
++		data->cancelled = 1;
++		smp_wmb();
++	} else
++		status = data->rpc_status;
++	rpc_put_task(task);
  
- 	/* run the rename task, undo unlink if it fails */
--	task = nfs_async_rename(dir, dir, dentry, sdentry);
-+	task = nfs_async_rename(dir, dir, dentry, sdentry,
-+					nfs_complete_sillyrename);
- 	if (IS_ERR(task)) {
- 		error = -EBUSY;
- 		nfs_cancel_async_unlink(dentry);
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 5624e4e2763c..440d7b42525a 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1402,6 +1402,7 @@ struct nfs_renamedata {
- 	struct inode		*new_dir;
- 	struct dentry		*new_dentry;
- 	struct nfs_fattr	new_fattr;
-+	void (*complete)(struct rpc_task *, struct nfs_renamedata *);
- };
- 
- struct nfs_access_entry;
+ 	return status;
+ }
 -- 
-1.8.5.3
+1.8.3.1
 
