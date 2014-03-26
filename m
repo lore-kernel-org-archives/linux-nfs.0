@@ -1,40 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f48.google.com ([209.85.216.48]:60799 "EHLO
-	mail-qa0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753045AbaCJPdz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 10 Mar 2014 11:33:55 -0400
-Received: by mail-qa0-f48.google.com with SMTP id m5so7059225qaj.35
-        for <linux-nfs@vger.kernel.org>; Mon, 10 Mar 2014 08:33:55 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH] svcrdma: fix printk when memory allocation fails
-Date: Mon, 10 Mar 2014 11:33:48 -0400
-Message-Id: <1394465628-457-1-git-send-email-jlayton@redhat.com>
+Received: from mx1.redhat.com ([209.132.183.28]:11274 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754664AbaCZRs6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 26 Mar 2014 13:48:58 -0400
+Message-ID: <53331308.2000403@RedHat.com>
+Date: Wed, 26 Mar 2014 13:48:56 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFSv4: Memory not being freed on memory allocation failure
+References: <1395849036-6907-1-git-send-email-steved@redhat.com> <22F1169D-33AA-4B8F-ADE0-E8BEEE97E361@primarydata.com>
+In-Reply-To: <22F1169D-33AA-4B8F-ADE0-E8BEEE97E361@primarydata.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-It retries in 1s, not 1000 jiffies.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- net/sunrpc/xprtrdma/svc_rdma_transport.c | 3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-index 62e4f9bcc387..25688fa2207f 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-@@ -477,8 +477,7 @@ struct page *svc_rdma_get_page(void)
- 
- 	while ((page = alloc_page(GFP_KERNEL)) == NULL) {
- 		/* If we can't get memory, wait a bit and try again */
--		printk(KERN_INFO "svcrdma: out of memory...retrying in 1000 "
--		       "jiffies.\n");
-+		printk(KERN_INFO "svcrdma: out of memory...retrying in 1s\n");
- 		schedule_timeout_uninterruptible(msecs_to_jiffies(1000));
- 	}
- 	return page;
--- 
-1.8.5.3
+On 03/26/2014 01:25 PM, Trond Myklebust wrote:
+> 
+> On Mar 26, 2014, at 8:50, Steve Dickson <steved@redhat.com> wrote:
+> 
+>> nfs4_run_open_task() puts a ref count on the nfs4_opendata
+>> data pointer, then tries to allocate the task pointer.
+>> If that task allocation fails nfs4_run_open_task() returns
+>> leaving the ref count on the data pointer.
+>>
+> 
+> Hi Steve,
+> 
+> That should not be the case. rpc_run_task() will always call nfs4_open_release() even if it returns an error.
+How can rpc_run_task() run without a task pointer? and I think 
+you need a task allocated pointer to even call nfs4_open_release()
 
+Here is what I'm seeing:
+
+If rpc_alloc_task() fails, rpc_new_task() returns ERR_PTR(-ENOMEM)
+
+In rpc_run_task() we do
+
+task = rpc_new_task(task_setup_data);
+if (IS_ERR(task))
+   goto out;
+:
+:
+:
+out:    
+    return task;
+
+In nfs4_run_open_task() we do
+
+kref_get(&data->kref);
+:
+:
+:
+task = rpc_run_task(&task_setup_data)
+If (IS_ERR(task))
+    return PTR_ERR(task);
+
+What am I missing?
+
+steved.
