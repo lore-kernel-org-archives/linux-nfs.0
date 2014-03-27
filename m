@@ -1,65 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f170.google.com ([209.85.213.170]:44906 "EHLO
-	mail-ig0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752221AbaCEOHj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Mar 2014 09:07:39 -0500
-Received: by mail-ig0-f170.google.com with SMTP id uq10so7723152igb.1
-        for <linux-nfs@vger.kernel.org>; Wed, 05 Mar 2014 06:07:39 -0800 (PST)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Andy Adamson <andros@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 2/4] NFSv4: Fix the return value of nfs4_select_rw_stateid
-Date: Wed,  5 Mar 2014 09:07:30 -0500
-Message-Id: <1394028452-15956-3-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1394028452-15956-2-git-send-email-trond.myklebust@primarydata.com>
-References: <1393959943-9919-1-git-send-email-trond.myklebust@primarydata.com>
- <1394028452-15956-1-git-send-email-trond.myklebust@primarydata.com>
- <1394028452-15956-2-git-send-email-trond.myklebust@primarydata.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:36134 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754422AbaC0P7R convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 27 Mar 2014 11:59:17 -0400
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
+Subject: Re: Kernel oops/panic with NFS over RDMA mount after disrupted Infiniband connection
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <lh0le0$u5$1@ger.gmane.org>
+Date: Thu, 27 Mar 2014 08:59:06 -0700
+Cc: linux-rdma@vger.kernel.org,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <B7D4A29C-5E1F-4B6C-A8FC-C46D8DF6A87D@oracle.com>
+References: <5332D425.3030803@ims.co.at> <4E6350BB-5E9C-40D9-8624-6CAA78E5B902@oracle.com> <lh0le0$u5$1@ger.gmane.org>
+To: Reiter Rafael <rafael.reiter@ims.co.at>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In commit 5521abfdcf4d6 (NFSv4: Resend the READ/WRITE RPC call
-if a stateid change causes an error), we overloaded the return value of
-nfs4_select_rw_stateid() to cause it to return -EWOULDBLOCK if an RPC
-call is outstanding that would cause the NFSv4 lock or open stateid
-to change.
-That is all redundant when we actually copy the stateid used in the
-read/write RPC call that failed, and check that against the current
-stateid. It is doubly so, when we consider that in the NFSv4.1 case,
-we also set the stateid's seqid to the special value '0', which means
-'match the current valid stateid'.
+Hi-
 
-Reported-by: Andy Adamson <andros@netapp.com>
-Link: http://lkml.kernel.org/r/1393954269-3974-1-git-send-email-andros@netapp.com
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/nfs4state.c | 6 ------
- 1 file changed, 6 deletions(-)
 
-diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-index e1a47217c05e..cd0cf93ac927 100644
---- a/fs/nfs/nfs4state.c
-+++ b/fs/nfs/nfs4state.c
-@@ -974,9 +974,6 @@ static int nfs4_copy_lock_stateid(nfs4_stateid *dst,
- 	else if (lsp != NULL && test_bit(NFS_LOCK_INITIALIZED, &lsp->ls_flags) != 0) {
- 		nfs4_stateid_copy(dst, &lsp->ls_stateid);
- 		ret = 0;
--		smp_rmb();
--		if (!list_empty(&lsp->ls_seqid.list))
--			ret = -EWOULDBLOCK;
- 	}
- 	spin_unlock(&state->state_lock);
- 	nfs4_put_lock_state(lsp);
-@@ -997,9 +994,6 @@ static int nfs4_copy_open_stateid(nfs4_stateid *dst, struct nfs4_state *state)
- 			src = &state->open_stateid;
- 		nfs4_stateid_copy(dst, src);
- 		ret = 0;
--		smp_rmb();
--		if (!list_empty(&state->owner->so_seqid.list))
--			ret = -EWOULDBLOCK;
- 	} while (read_seqretry(&state->seqlock, seq));
- 	return ret;
- }
--- 
-1.8.5.3
+On Mar 27, 2014, at 12:53 AM, Reiter Rafael <rafael.reiter@ims.co.at> wrote:
+
+> On 03/26/2014 07:15 PM, Chuck Lever wrote:
+>> 
+>> Hi Rafael-
+>> 
+>> I’ll take a look. Can you report your HCA and how you reproduce this issue?
+> 
+> The HCA is Mellanox Technologies MT26428.
+> 
+> Reproduction:
+> 1) Mount a directory via NFS/RDMA
+> mount -t nfs -o port=20049,rdma,vers=4.0,timeo=900 172.16.100.2:/ /mnt/
+> 2) Pull the Infiniband cable or use ibportstate to disrupt the Infiniband connection
+> 3) ls /mnt
+> 4) wait 5-30 seconds
+
+Thanks for the information.
+
+I have that HCA, but I won’t have access to my test systems for a week (traveling). So can you try this:
+
+ # rpcdebug -m rpc -s trans
+
+then reproduce (starting with step 1 above). Some debugging output will appear at the tail of /var/log/messages. Copy it to this thread.
+
+> 
+>> 
+>> Do you (or does anyone) know whether OpenSuSE uses the stock upstream providers, or has any of OFED been applied to this kernel?
+> 
+> My first post was misleading -- I use the vanilla 3.10.17 kernel, and the error occurs with and without Mellanox OFED. The above report
+> references the vanilla kernel.
+> 
+> Rafael
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
 
