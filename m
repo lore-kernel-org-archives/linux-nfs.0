@@ -1,108 +1,128 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:16486 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753403AbaCFUiP convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Mar 2014 15:38:15 -0500
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
-Subject: Re: Optimal NFS mount options to safely allow interrupts and timeouts on newer kernels
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <00D4C447-07C9-4FBA-ABD6-285C97727316@primarydata.com>
-Date: Thu, 6 Mar 2014 15:38:10 -0500
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <0C5C1EB7-C494-4D82-B8C9-A6141CD592E9@oracle.com>
-References: <1696396609.119284.1394040541217.JavaMail.zimbra@xes-inc.com> <260588931.122771.1394041524167.JavaMail.zimbra@xes-inc.com> <20140306145042.6db53f60@notabene.brown> <1853694865.210849.1394082223818.JavaMail.zimbra@xes-inc.com> <20140306123438.GA21799@umich.edu> <04BE61B0-08B5-4E0C-88B6-6D93127BB64E@oracle.com> <5B1102FE-8521-4BEF-8A2B-CE17EC32777F@primarydata.com> <17607EE5-614A-4B13-B5E7-0D1344A30C7F@oracle.com> <2A4F9722-1ED1-462E-B66B-669217957814@primarydata.com> <473B4660-0C59-49D4-8BBD-24ABD929AFB9@oracle.com> <BB585E65-78D2-45D9-9513-BB988686F1A9@primarydata.com> <228A4E31-65A8-4357-937E-24554B5B3835@oracle.com> <00D4C447-07C9-4FBA-ABD6-285C97727316@primarydata.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
+Received: from smtp.opengridcomputing.com ([72.48.136.20]:55428 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751173AbaC1PV2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Mar 2014 11:21:28 -0400
+Message-ID: <53359377.8060502@opengridcomputing.com>
+Date: Fri, 28 Mar 2014 10:21:27 -0500
+From: Tom Tucker <tom@opengridcomputing.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>,
+        Steve Wise <swise@opengridcomputing.com>
+CC: trond.myklebust@primarydata.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] Fix regression in NFSRDMA server
+References: <20140325201457.6861.21819.stgit@build.ogc.int> <20140328020834.GD27633@fieldses.org>
+In-Reply-To: <20140328020834.GD27633@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi Bruce,
 
-On Mar 6, 2014, at 12:47 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+On 3/27/14 9:08 PM, J. Bruce Fields wrote:
+> On Tue, Mar 25, 2014 at 03:14:57PM -0500, Steve Wise wrote:
+>> From: Tom Tucker <tom@ogc.us>
+>>
+>> The server regression was caused by the addition of rq_next_page
+>> (afc59400d6c65bad66d4ad0b2daf879cbff8e23e). There were a few places that
+>> were missed with the update of the rq_respages array.
+> Apologies.  (But, it could happen again--could we set up some regular
+> testing?  It doesn't have to be anything fancy, just cthon over
+> rdma--really, just read and write over rdma--would probably catch a
+> lot.)
 
-> 
-> On Mar 6, 2014, at 11:45, Chuck Lever <chuck.lever@oracle.com> wrote:
-> 
->> 
->> On Mar 6, 2014, at 11:16 AM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
->> 
->>> 
->>> On Mar 6, 2014, at 11:13, Chuck Lever <chuck.lever@oracle.com> wrote:
->>> 
->>>> 
->>>> On Mar 6, 2014, at 11:02 AM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
->>>> 
->>>>> 
->>>>> On Mar 6, 2014, at 10:59, Chuck Lever <chuck.lever@oracle.com> wrote:
->>>>> 
->>>>>> 
->>>>>> On Mar 6, 2014, at 10:33 AM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
->>>>>> 
->>>>>>> 
->>>>>>> On Mar 6, 2014, at 10:26, Chuck Lever <chuck.lever@oracle.com> wrote:
->>>>>>> 
->>>>>>>> 
->>>>>>>> On Mar 6, 2014, at 7:34 AM, Jim Rees <rees@umich.edu> wrote:
->>>>>>>> 
->>>>>>>>> Given this is apache, I think if I were doing this I'd use ro,soft,intr,tcp
->>>>>>>>> and not try to write anything to nfs.
->>>>>>>> 
->>>>>>>> I agree. A static web page workload should be read-mostly or read-only. The (small) corruption risk with “ro,soft" is that an interrupted read would cause the client to cache incomplete data.
->>>>>>> 
->>>>>>> What? How? If that were the case, we would have a blatant read bug. As I read the current code, _any_ error will cause the page to not be marked as up to date.
->>>>>> 
->>>>>> Agree, the design is sound. But we don’t test this use case very much, so I don’t have 100% confidence that there are no bugs.
->>>>> 
->>>>> Is that the royal ‘we’, or are you talking on behalf of all the QA departments and testers here? I call bullshit…
->>>> 
->>>> If you want to differ with my opinion, fine. But your tone is not professional or appropriate for a public forum. You need to start treating all of your colleagues with respect, including me.
->>>> 
->>>> If anyone else had claimed a testing gap, you would have said “If that were the case, we would have a blatant read bug” and left it at that. But you had to go one needless and provocative step further.
->>>> 
->>>> Stop bullying me, Trond. I’ve had enough of it.
->>> 
->>> The stop spreading FUD. That is far from professional too.
->> 
->> FUD is a marketing term, and implies I had intent to deceive. Really?
->> 
->> I expressed a technical opinion, with a degree of uncertainty, just like everyone else does. People who ask questions here are free to take our advice or not, based on their own experience. They are adults, they read “IMO” where it is implied.
->> 
->> It is absolutely your right to say that I’m incorrect, or to clarify something I said. If you have test data that shows "ro,soft,tcp" cannot possibly cause any version of the Linux NFS client to cache corrupt data, show it, without invective. That is an appropriate response to my remark.
->> 
->> Face it, you over-reacted. Again. Knock it off.
->> 
-> 
-> You clearly don’t know what other people are testing with, and you clearly didn’t ask anyone before you started telling users that 'soft' is untested.
+I think Chelsio is going to be adding some NFSRDMA regression testing to 
+their system test.
 
-I suggested in a reply TO YOU that perhaps this use case was untested...
+> Also: I don't get why all these rq_next_page initializations are
+> required.  Why isn't the initialization at the top of svc_process()
+> enough?  Is rdma using it before we get to that point?  The only use of
+> it I see off hand is in the while loop that you're deleting.
 
-> I happen to know a server vendor for which _all_ internal QA tests are done using the ‘soft’ mount option on the clients. This is done for practical reasons in order to prevent client hangs if the server should panic.
+I didn't apply tremendous deductive powers here, I just added updates to 
+rq_next_page wherever the transport messed with rq_respages. That said, 
+NFS WRITE is likely the culprit since the write is completed as a deferral 
+and therefore the request doesn't go through svc_process, so if 
+rq_next_page is bogus, the cleanup will free/re-use pages that are 
+actually in use by the transport.
 
-… and that’s all you needed to say in response. But you have chosen to turn it into a shouting match because you read more into my words than was there.
-
-> I strongly suspect that other QA departments are testing the ’soft' case too.
-
-“I strongly suspect” means you don’t know for sure either.
-
-Clearly Andrew and Brian are reporting a problem here, whether or not it’s related to data corruption, and vendor testing has not found it yet, apparently. I’m not surprised. Testing is difficult, and too often it finds only exactly what you’re looking for.
-
-(On the technical issue, just using “soft” does not constitute a robust test. Repeatedly exercising the soft timeout is not the same as having “soft” in play “just in case” the server panics.)
-
-> Acting as if you are an authoritative source on the subject of testing, when you are not and you know that you are not, does constitute intentional deception, yes.
-
-No-one is "acting like an authority on testing," except maybe you.
-
-What possible reason could I have for deceiving anyone about my authority or anything else? Do you understand that calling someone a liar in public is deeply offensive? Do you understand how unnecessarily humiliating your words are?
-
-Assuming that you do understand, the level of inappropriate heat here is a sign that you have a long-standing personal issue with me. You seem to always read my words as a challenge to your authority, and that is never what I intend. There is nothing I can do about your mistaken impression of me.
-
-> …and no, I don’t see anything above to indicate that this was an ‘opinion’ on the subject of what is being tested which is precisely why I called it.
-
-LOL. You “called it” because my claim that testing wasn’t sufficient touched a nerve.
-
-Are you really suggesting we all need to add “IMO” and a giant .sig disclaimer to everything we post to this list, or else Trond will swat us with a rolled up newspaper if he doesn’t happen to agree?
-
---
-Chuck Lever
-
-
+Tom
+> --b.
+>
+>> Signed-off-by: Tom Tucker <tom@ogc.us>
+>> Tested-by: Steve Wise <swise@ogc.us>
+>> ---
+>>
+>>   net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |   12 ++++--------
+>>   net/sunrpc/xprtrdma/svc_rdma_sendto.c   |    1 +
+>>   2 files changed, 5 insertions(+), 8 deletions(-)
+>>
+>> diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+>> index 0ce7552..8d904e4 100644
+>> --- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+>> +++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+>> @@ -90,6 +90,7 @@ static void rdma_build_arg_xdr(struct svc_rqst *rqstp,
+>>   		sge_no++;
+>>   	}
+>>   	rqstp->rq_respages = &rqstp->rq_pages[sge_no];
+>> +	rqstp->rq_next_page = rqstp->rq_respages + 1;
+>>   
+>>   	/* We should never run out of SGE because the limit is defined to
+>>   	 * support the max allowed RPC data length
+>> @@ -169,6 +170,7 @@ static int map_read_chunks(struct svcxprt_rdma *xprt,
+>>   		 */
+>>   		head->arg.pages[page_no] = rqstp->rq_arg.pages[page_no];
+>>   		rqstp->rq_respages = &rqstp->rq_arg.pages[page_no+1];
+>> +		rqstp->rq_next_page = rqstp->rq_respages + 1;
+>>   
+>>   		byte_count -= sge_bytes;
+>>   		ch_bytes -= sge_bytes;
+>> @@ -276,6 +278,7 @@ static int fast_reg_read_chunks(struct svcxprt_rdma *xprt,
+>>   
+>>   	/* rq_respages points one past arg pages */
+>>   	rqstp->rq_respages = &rqstp->rq_arg.pages[page_no];
+>> +	rqstp->rq_next_page = rqstp->rq_respages + 1;
+>>   
+>>   	/* Create the reply and chunk maps */
+>>   	offset = 0;
+>> @@ -520,13 +523,6 @@ next_sge:
+>>   	for (ch_no = 0; &rqstp->rq_pages[ch_no] < rqstp->rq_respages; ch_no++)
+>>   		rqstp->rq_pages[ch_no] = NULL;
+>>   
+>> -	/*
+>> -	 * Detach res pages. If svc_release sees any it will attempt to
+>> -	 * put them.
+>> -	 */
+>> -	while (rqstp->rq_next_page != rqstp->rq_respages)
+>> -		*(--rqstp->rq_next_page) = NULL;
+>> -
+>>   	return err;
+>>   }
+>>   
+>> @@ -550,7 +546,7 @@ static int rdma_read_complete(struct svc_rqst *rqstp,
+>>   
+>>   	/* rq_respages starts after the last arg page */
+>>   	rqstp->rq_respages = &rqstp->rq_arg.pages[page_no];
+>> -	rqstp->rq_next_page = &rqstp->rq_arg.pages[page_no];
+>> +	rqstp->rq_next_page = rqstp->rq_respages + 1;
+>>   
+>>   	/* Rebuild rq_arg head and tail. */
+>>   	rqstp->rq_arg.head[0] = head->arg.head[0];
+>> diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+>> index c1d124d..11e90f8 100644
+>> --- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+>> +++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+>> @@ -625,6 +625,7 @@ static int send_reply(struct svcxprt_rdma *rdma,
+>>   		if (page_no+1 >= sge_no)
+>>   			ctxt->sge[page_no+1].length = 0;
+>>   	}
+>> +	rqstp->rq_next_page = rqstp->rq_respages + 1;
+>>   	BUG_ON(sge_no > rdma->sc_max_sge);
+>>   	memset(&send_wr, 0, sizeof send_wr);
+>>   	ctxt->wr_op = IB_WR_SEND;
+>>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
