@@ -1,61 +1,149 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f180.google.com ([209.85.213.180]:39274 "EHLO
-	mail-ig0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752221AbaCEOHl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 5 Mar 2014 09:07:41 -0500
-Received: by mail-ig0-f180.google.com with SMTP id hl1so4370066igb.1
-        for <linux-nfs@vger.kernel.org>; Wed, 05 Mar 2014 06:07:40 -0800 (PST)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Andy Adamson <andros@netapp.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH v3 3/4] NFSv4.1 Fail data server I/O if stateid represents a lost lock
-Date: Wed,  5 Mar 2014 09:07:31 -0500
-Message-Id: <1394028452-15956-4-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1394028452-15956-3-git-send-email-trond.myklebust@primarydata.com>
-References: <1393959943-9919-1-git-send-email-trond.myklebust@primarydata.com>
- <1394028452-15956-1-git-send-email-trond.myklebust@primarydata.com>
- <1394028452-15956-2-git-send-email-trond.myklebust@primarydata.com>
- <1394028452-15956-3-git-send-email-trond.myklebust@primarydata.com>
+Received: from smtp.opengridcomputing.com ([72.48.136.20]:55991 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751697AbaC1VbS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Mar 2014 17:31:18 -0400
+From: "Steve Wise" <swise@opengridcomputing.com>
+To: "'J. Bruce Fields'" <bfields@fieldses.org>,
+        "'Tom Tucker'" <tom@opengridcomputing.com>
+Cc: <trond.myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>,
+        "'Indranil Choudhury'" <indranil@chelsio.com>
+References: <20140325201457.6861.21819.stgit@build.ogc.int> <20140328020834.GD27633@fieldses.org> <53359377.8060502@opengridcomputing.com> <20140328212633.GF6041@fieldses.org>
+In-Reply-To: <20140328212633.GF6041@fieldses.org>
+Subject: RE: [PATCH] Fix regression in NFSRDMA server
+Date: Fri, 28 Mar 2014 16:31:25 -0500
+Message-ID: <009b01cf4acd$12832750$378975f0$@opengridcomputing.com>
+MIME-Version: 1.0
+Content-Type: text/plain;
+	charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andy Adamson <andros@netapp.com>
++Indranil
 
-Signed-off-by: Andy Adamson <andros@netapp.com>
-Link: http://lkml.kernel.org/r/1393954269-3974-1-git-send-email-andros@netapp.com
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/nfs4filelayout.c | 10 ++++++----
- 1 file changed, 6 insertions(+), 4 deletions(-)
+Indranil Choudhury is the QA contact.  
 
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 12c8132ad408..b9a35c05b60f 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -324,8 +324,9 @@ static void filelayout_read_prepare(struct rpc_task *task, void *data)
- 			&rdata->res.seq_res,
- 			task))
- 		return;
--	nfs4_set_rw_stateid(&rdata->args.stateid, rdata->args.context,
--			rdata->args.lock_context, FMODE_READ);
-+	if (nfs4_set_rw_stateid(&rdata->args.stateid, rdata->args.context,
-+			rdata->args.lock_context, FMODE_READ) == -EIO)
-+		rpc_exit(task, -EIO); /* lost lock, terminate I/O */
- }
- 
- static void filelayout_read_call_done(struct rpc_task *task, void *data)
-@@ -435,8 +436,9 @@ static void filelayout_write_prepare(struct rpc_task *task, void *data)
- 			&wdata->res.seq_res,
- 			task))
- 		return;
--	nfs4_set_rw_stateid(&wdata->args.stateid, wdata->args.context,
--			wdata->args.lock_context, FMODE_WRITE);
-+	if (nfs4_set_rw_stateid(&wdata->args.stateid, wdata->args.context,
-+			wdata->args.lock_context, FMODE_WRITE) == -EIO)
-+		rpc_exit(task, -EIO); /* lost lock, terminate I/O */
- }
- 
- static void filelayout_write_call_done(struct rpc_task *task, void *data)
--- 
-1.8.5.3
+Steve
+> -----Original Message-----
+> From: J. Bruce Fields [mailto:bfields@fieldses.org]
+> Sent: Friday, March 28, 2014 4:27 PM
+> To: Tom Tucker
+> Cc: Steve Wise; trond.myklebust@primarydata.com; linux-nfs@vger.kernel.org
+> Subject: Re: [PATCH] Fix regression in NFSRDMA server
+> 
+> On Fri, Mar 28, 2014 at 10:21:27AM -0500, Tom Tucker wrote:
+> > Hi Bruce,
+> >
+> > On 3/27/14 9:08 PM, J. Bruce Fields wrote:
+> > >On Tue, Mar 25, 2014 at 03:14:57PM -0500, Steve Wise wrote:
+> > >>From: Tom Tucker <tom@ogc.us>
+> > >>
+> > >>The server regression was caused by the addition of rq_next_page
+> > >>(afc59400d6c65bad66d4ad0b2daf879cbff8e23e). There were a few places that
+> > >>were missed with the update of the rq_respages array.
+> > >Apologies.  (But, it could happen again--could we set up some regular
+> > >testing?  It doesn't have to be anything fancy, just cthon over
+> > >rdma--really, just read and write over rdma--would probably catch a
+> > >lot.)
+> >
+> > I think Chelsio is going to be adding some NFSRDMA regression
+> > testing to their system test.
+> 
+> OK.  Do you know who there is setting that up?  I'd be curious exactly
+> what kernels they intend to test and how they plan to report results.
+> 
+> > >Also: I don't get why all these rq_next_page initializations are
+> > >required.  Why isn't the initialization at the top of svc_process()
+> > >enough?  Is rdma using it before we get to that point?  The only use of
+> > >it I see off hand is in the while loop that you're deleting.
+> >
+> > I didn't apply tremendous deductive powers here, I just added
+> > updates to rq_next_page wherever the transport messed with
+> > rq_respages. That said, NFS WRITE is likely the culprit since the
+> > write is completed as a deferral and therefore the request doesn't
+> > go through svc_process, so if rq_next_page is bogus, the cleanup
+> > will free/re-use pages that are actually in use by the transport.
+> 
+> Ugh, OK, without tracing through the code I guess I can see how that
+> would happen.  Remind me why it's using deferrals?
+> 
+> Applying the patch.
+> 
+> --b.
+> 
+> >
+> > Tom
+> > >--b.
+> > >
+> > >>Signed-off-by: Tom Tucker <tom@ogc.us>
+> > >>Tested-by: Steve Wise <swise@ogc.us>
+> > >>---
+> > >>
+> > >>  net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |   12 ++++--------
+> > >>  net/sunrpc/xprtrdma/svc_rdma_sendto.c   |    1 +
+> > >>  2 files changed, 5 insertions(+), 8 deletions(-)
+> > >>
+> > >>diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+> b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+> > >>index 0ce7552..8d904e4 100644
+> > >>--- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+> > >>+++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+> > >>@@ -90,6 +90,7 @@ static void rdma_build_arg_xdr(struct svc_rqst *rqstp,
+> > >>  		sge_no++;
+> > >>  	}
+> > >>  	rqstp->rq_respages = &rqstp->rq_pages[sge_no];
+> > >>+	rqstp->rq_next_page = rqstp->rq_respages + 1;
+> > >>  	/* We should never run out of SGE because the limit is defined to
+> > >>  	 * support the max allowed RPC data length
+> > >>@@ -169,6 +170,7 @@ static int map_read_chunks(struct svcxprt_rdma *xprt,
+> > >>  		 */
+> > >>  		head->arg.pages[page_no] = rqstp->rq_arg.pages[page_no];
+> > >>  		rqstp->rq_respages = &rqstp->rq_arg.pages[page_no+1];
+> > >>+		rqstp->rq_next_page = rqstp->rq_respages + 1;
+> > >>  		byte_count -= sge_bytes;
+> > >>  		ch_bytes -= sge_bytes;
+> > >>@@ -276,6 +278,7 @@ static int fast_reg_read_chunks(struct svcxprt_rdma *xprt,
+> > >>  	/* rq_respages points one past arg pages */
+> > >>  	rqstp->rq_respages = &rqstp->rq_arg.pages[page_no];
+> > >>+	rqstp->rq_next_page = rqstp->rq_respages + 1;
+> > >>  	/* Create the reply and chunk maps */
+> > >>  	offset = 0;
+> > >>@@ -520,13 +523,6 @@ next_sge:
+> > >>  	for (ch_no = 0; &rqstp->rq_pages[ch_no] < rqstp->rq_respages; ch_no++)
+> > >>  		rqstp->rq_pages[ch_no] = NULL;
+> > >>-	/*
+> > >>-	 * Detach res pages. If svc_release sees any it will attempt to
+> > >>-	 * put them.
+> > >>-	 */
+> > >>-	while (rqstp->rq_next_page != rqstp->rq_respages)
+> > >>-		*(--rqstp->rq_next_page) = NULL;
+> > >>-
+> > >>  	return err;
+> > >>  }
+> > >>@@ -550,7 +546,7 @@ static int rdma_read_complete(struct svc_rqst *rqstp,
+> > >>  	/* rq_respages starts after the last arg page */
+> > >>  	rqstp->rq_respages = &rqstp->rq_arg.pages[page_no];
+> > >>-	rqstp->rq_next_page = &rqstp->rq_arg.pages[page_no];
+> > >>+	rqstp->rq_next_page = rqstp->rq_respages + 1;
+> > >>  	/* Rebuild rq_arg head and tail. */
+> > >>  	rqstp->rq_arg.head[0] = head->arg.head[0];
+> > >>diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+> b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+> > >>index c1d124d..11e90f8 100644
+> > >>--- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+> > >>+++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+> > >>@@ -625,6 +625,7 @@ static int send_reply(struct svcxprt_rdma *rdma,
+> > >>  		if (page_no+1 >= sge_no)
+> > >>  			ctxt->sge[page_no+1].length = 0;
+> > >>  	}
+> > >>+	rqstp->rq_next_page = rqstp->rq_respages + 1;
+> > >>  	BUG_ON(sge_no > rdma->sc_max_sge);
+> > >>  	memset(&send_wr, 0, sizeof send_wr);
+> > >>  	ctxt->wr_op = IB_WR_SEND;
+> > >>
+> > >--
+> > >To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > >the body of a message to majordomo@vger.kernel.org
+> > >More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> >
 
