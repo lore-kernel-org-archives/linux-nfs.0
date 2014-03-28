@@ -1,102 +1,200 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:53498 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:46346 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755577AbaCKW4J (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 11 Mar 2014 18:56:09 -0400
-Message-ID: <531F9486.6050504@RedHat.com>
-Date: Tue, 11 Mar 2014 18:56:06 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S1756885AbaC1BBk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 27 Mar 2014 21:01:40 -0400
+Date: Thu, 27 Mar 2014 21:01:39 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: linux-nfs@vger.kernel.org, jlayton@redhat.com
+Subject: Re: [PATCH] NFSD: Traverse unconfirmed client through hash-table
+Message-ID: <20140328010139.GC27633@fieldses.org>
+References: <5332DF9A.6040008@gmail.com>
 MIME-Version: 1.0
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] mount.nfs: background mount now do directly into background
-References: <1394284964-12997-1-git-send-email-steved@redhat.com> <E50361D2-FB5A-4A1D-BBE2-8DA25C09D865@primarydata.com>
-In-Reply-To: <E50361D2-FB5A-4A1D-BBE2-8DA25C09D865@primarydata.com>
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <5332DF9A.6040008@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Thanks, applying for 3.15 and stable.
 
+--b.
 
-On 03/11/2014 05:13 PM, Trond Myklebust wrote:
+On Wed, Mar 26, 2014 at 10:09:30PM +0800, Kinglong Mee wrote:
+> When stopping nfsd, I got BUG messages, and soft lockup messages,
+> The problem is cuased by double rb_erase() in nfs4_state_destroy_net()
+> and destroy_client().
 > 
-> On Mar 8, 2014, at 8:22, Steve Dickson <SteveD@redhat.com> wrote:
+> This patch just let nfsd traversing unconfirmed client through
+> hash-table instead of rbtree.
 > 
->> Modern day kernel will no longer return all timeout
->> errors instead the process spins endlessly in the kernel.
->> This behavior will cause the foreground mount to hang, never
->> allowing the mount to go into background.
->>
->> So this patch eliminates the foreground mount cause
->> background mounts to go directly into background
->>
->> Signed-off-by: Steve Dickson <steved@redhat.com>
->> ---
->> utils/mount/stropts.c |   31 ++++++++-----------------------
->> 1 files changed, 8 insertions(+), 23 deletions(-)
->>
->> diff --git a/utils/mount/stropts.c b/utils/mount/stropts.c
->> index a642394..92a7245 100644
->> --- a/utils/mount/stropts.c
->> +++ b/utils/mount/stropts.c
->> @@ -913,28 +913,6 @@ static int nfsmount_fg(struct nfsmount_info *mi)
->> }
->>
->> /*
->> - * Handle "background" NFS mount [first try]
->> - *
->> - * Returns a valid mount command exit code.
->> - *
->> - * EX_BG should cause the caller to fork and invoke nfsmount_child.
->> - */
->> -static int nfsmount_parent(struct nfsmount_info *mi)
->> -{
->> -	if (nfs_try_mount(mi))
->> -		return EX_SUCCESS;
->> -
->> -	/* retry background mounts when the server is not up */
->> -	if (nfs_is_permanent_error(errno) && errno != EOPNOTSUPP) {
->> -		mount_error(mi->spec, mi->node, errno);
->> -		return EX_FAIL;
->> -	}
->> -
->> -	sys_mount_errors(mi->hostname, errno, 1, 1);
->> -	return EX_BG;
->> -}
->> -
->> -/*
->>  * Handle "background" NFS mount [retry daemon]
->>  *
->>  * Returns a valid mount command exit code: EX_SUCCESS if successful,
->> @@ -982,7 +960,14 @@ static int nfsmount_child(struct nfsmount_info *mi)
->> static int nfsmount_bg(struct nfsmount_info *mi)
->> {
->> 	if (!mi->child)
->> -		return nfsmount_parent(mi);
->> +		/* 
->> +		 * Modern day kernels no longer return all 
->> +		 * timeouts errors in all cases, instead 
->> +		 * the process spins in the kernel, which 
->> +		 * will hang a foreground mount. So background
->> +		 * mounts have to go directly into background
->> +		 */
->> +		return EX_BG;
->> 	else
->> 		return nfsmount_child(mi);
->> }
+> [ 2325.021995] BUG: unable to handle kernel NULL pointer dereference at
+>           (null)
+> [ 2325.022809] IP: [<ffffffff8133c18c>] rb_erase+0x14c/0x390
+> [ 2325.022982] PGD 7a91b067 PUD 7a33d067 PMD 0
+> [ 2325.022982] Oops: 0000 [#1] SMP DEBUG_PAGEALLOC
+> [ 2325.022982] Modules linked in: nfsd(OF) cfg80211 rfkill bridge stp
+> llc snd_intel8x0 snd_ac97_codec ac97_bus auth_rpcgss nfs_acl serio_raw
+> e1000 i2c_piix4 ppdev snd_pcm snd_timer lockd pcspkr joydev parport_pc
+> snd parport i2c_core soundcore microcode sunrpc ata_generic pata_acpi
+> [last unloaded: nfsd]
+> [ 2325.022982] CPU: 1 PID: 2123 Comm: nfsd Tainted: GF          O
+> 3.14.0-rc8+ #2
+> [ 2325.022982] Hardware name: innotek GmbH VirtualBox/VirtualBox, BIOS
+> VirtualBox 12/01/2006
+> [ 2325.022982] task: ffff88007b384800 ti: ffff8800797f6000 task.ti:
+> ffff8800797f6000
+> [ 2325.022982] RIP: 0010:[<ffffffff8133c18c>]  [<ffffffff8133c18c>]
+> rb_erase+0x14c/0x390
+> [ 2325.022982] RSP: 0018:ffff8800797f7d98  EFLAGS: 00010246
+> [ 2325.022982] RAX: ffff880079c1f010 RBX: ffff880079f4c828 RCX:
+> 0000000000000000
+> [ 2325.022982] RDX: 0000000000000000 RSI: ffff880079bcb070 RDI:
+> ffff880079f4c810
+> [ 2325.022982] RBP: ffff8800797f7d98 R08: 0000000000000000 R09:
+> ffff88007964fc70
+> [ 2325.022982] R10: 0000000000000000 R11: 0000000000000400 R12:
+> ffff880079f4c800
+> [ 2325.022982] R13: ffff880079bcb000 R14: ffff8800797f7da8 R15:
+> ffff880079f4c860
+> [ 2325.022982] FS:  0000000000000000(0000) GS:ffff88007f900000(0000)
+> knlGS:0000000000000000
+> [ 2325.022982] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+> [ 2325.022982] CR2: 0000000000000000 CR3: 000000007a3ef000 CR4:
+> 00000000000006e0
+> [ 2325.022982] DR0: 0000000000000000 DR1: 0000000000000000 DR2:
+> 0000000000000000
+> [ 2325.022982] DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7:
+> 0000000000000400
+> [ 2325.022982] Stack:
+> [ 2325.022982]  ffff8800797f7de0 ffffffffa0191c6e ffff8800797f7da8
+> ffff8800797f7da8
+> [ 2325.022982]  ffff880079f4c810 ffff880079bcb000 ffffffff81cc26c0
+> ffff880079c1f010
+> [ 2325.022982]  ffff880079bcb070 ffff8800797f7e28 ffffffffa01977f2
+> ffff8800797f7df0
+> [ 2325.022982] Call Trace:
+> [ 2325.022982]  [<ffffffffa0191c6e>] destroy_client+0x32e/0x3b0 [nfsd]
+> [ 2325.022982]  [<ffffffffa01977f2>] nfs4_state_shutdown_net+0x1a2/0x220
+> [nfsd]
+> [ 2325.022982]  [<ffffffffa01700b8>] nfsd_shutdown_net+0x38/0x70 [nfsd]
+> [ 2325.022982]  [<ffffffffa017013e>] nfsd_last_thread+0x4e/0x80 [nfsd]
+> [ 2325.022982]  [<ffffffffa001f1eb>] svc_shutdown_net+0x2b/0x30 [sunrpc]
+> [ 2325.022982]  [<ffffffffa017064b>] nfsd_destroy+0x5b/0x80 [nfsd]
+> [ 2325.022982]  [<ffffffffa0170773>] nfsd+0x103/0x130 [nfsd]
+> [ 2325.022982]  [<ffffffffa0170670>] ? nfsd_destroy+0x80/0x80 [nfsd]
+> [ 2325.022982]  [<ffffffff810a8232>] kthread+0xd2/0xf0
+> [ 2325.022982]  [<ffffffff810a8160>] ? insert_kthread_work+0x40/0x40
+> [ 2325.022982]  [<ffffffff816c493c>] ret_from_fork+0x7c/0xb0
+> [ 2325.022982]  [<ffffffff810a8160>] ? insert_kthread_work+0x40/0x40
+> [ 2325.022982] Code: 48 83 e1 fc 48 89 10 0f 84 02 01 00 00 48 3b 41 10
+> 0f 84 08 01 00 00 48 89 51 08 48 89 fa e9 74 ff ff ff 0f 1f 40 00 48 8b
+> 50 10 <f6> 02 01 0f 84 93 00 00 00 48 8b 7a 10 48 85 ff 74 05 f6 07 01
+> [ 2325.022982] RIP  [<ffffffff8133c18c>] rb_erase+0x14c/0x390
+> [ 2325.022982]  RSP <ffff8800797f7d98>
+> [ 2325.022982] CR2: 0000000000000000
+> [ 2325.022982] ---[ end trace 28c27ed011655e57 ]---
 > 
-> Hi Steve,
+> [  228.064071] BUG: soft lockup - CPU#0 stuck for 22s! [nfsd:558]
+> [  228.064428] Modules linked in: ip6t_rpfilter ip6t_REJECT cfg80211
+> xt_conntrack rfkill ebtable_nat ebtable_broute bridge stp llc
+> ebtable_filter ebtables ip6table_nat nf_conntrack_ipv6 nf_defrag_ipv6
+> nf_nat_ipv6 ip6table_mangle ip6table_security ip6table_raw
+> ip6table_filter ip6_tables iptable_nat nf_conntrack_ipv4 nf_defrag_ipv4
+> nf_nat_ipv4 nf_nat nf_conntrack iptable_mangle iptable_security
+> iptable_raw nfsd(OF) auth_rpcgss nfs_acl lockd snd_intel8x0
+> snd_ac97_codec ac97_bus joydev snd_pcm snd_timer e1000 sunrpc snd ppdev
+> parport_pc serio_raw pcspkr i2c_piix4 microcode parport soundcore
+> i2c_core ata_generic pata_acpi
+> [  228.064539] CPU: 0 PID: 558 Comm: nfsd Tainted: GF          O
+> 3.14.0-rc8+ #2
+> [  228.064539] Hardware name: innotek GmbH VirtualBox/VirtualBox, BIOS
+> VirtualBox 12/01/2006
+> [  228.064539] task: ffff880076adec00 ti: ffff880074616000 task.ti:
+> ffff880074616000
+> [  228.064539] RIP: 0010:[<ffffffff8133ba17>]  [<ffffffff8133ba17>]
+> rb_next+0x27/0x50
+> [  228.064539] RSP: 0018:ffff880074617de0  EFLAGS: 00000282
+> [  228.064539] RAX: ffff880074478010 RBX: ffff88007446f860 RCX:
+> 0000000000000014
+> [  228.064539] RDX: ffff880074478010 RSI: 0000000000000000 RDI:
+> ffff880074478010
+> [  228.064539] RBP: ffff880074617de0 R08: 0000000000000000 R09:
+> 0000000000000012
+> [  228.064539] R10: 0000000000000001 R11: ffffffffffffffec R12:
+> ffffea0001d11a00
+> [  228.064539] R13: ffff88007f401400 R14: ffff88007446f800 R15:
+> ffff880074617d50
+> [  228.064539] FS:  0000000000000000(0000) GS:ffff88007f800000(0000)
+> knlGS:0000000000000000
+> [  228.064539] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+> [  228.064539] CR2: 00007fe9ac6ec000 CR3: 000000007a5d6000 CR4:
+> 00000000000006f0
+> [  228.064539] DR0: 0000000000000000 DR1: 0000000000000000 DR2:
+> 0000000000000000
+> [  228.064539] DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7:
+> 0000000000000400
+> [  228.064539] Stack:
+> [  228.064539]  ffff880074617e28 ffffffffa01ab7db ffff880074617df0
+> ffff880074617df0
+> [  228.064539]  ffff880079273000 ffffffff81cc26c0 ffffffff81cc26c0
+> 0000000000000000
+> [  228.064539]  0000000000000000 ffff880074617e48 ffffffffa01840b8
+> ffffffff81cc26c0
+> [  228.064539] Call Trace:
+> [  228.064539]  [<ffffffffa01ab7db>] nfs4_state_shutdown_net+0x18b/0x220
+> [nfsd]
+> [  228.064539]  [<ffffffffa01840b8>] nfsd_shutdown_net+0x38/0x70 [nfsd]
+> [  228.064539]  [<ffffffffa018413e>] nfsd_last_thread+0x4e/0x80 [nfsd]
+> [  228.064539]  [<ffffffffa00aa1eb>] svc_shutdown_net+0x2b/0x30 [sunrpc]
+> [  228.064539]  [<ffffffffa018464b>] nfsd_destroy+0x5b/0x80 [nfsd]
+> [  228.064539]  [<ffffffffa0184773>] nfsd+0x103/0x130 [nfsd]
+> [  228.064539]  [<ffffffffa0184670>] ? nfsd_destroy+0x80/0x80 [nfsd]
+> [  228.064539]  [<ffffffff810a8232>] kthread+0xd2/0xf0
+> [  228.064539]  [<ffffffff810a8160>] ? insert_kthread_work+0x40/0x40
+> [  228.064539]  [<ffffffff816c493c>] ret_from_fork+0x7c/0xb0
+> [  228.064539]  [<ffffffff810a8160>] ? insert_kthread_work+0x40/0x40
+> [  228.064539] Code: 1f 44 00 00 55 48 8b 17 48 89 e5 48 39 d7 74 3b 48
+> 8b 47 08 48 85 c0 75 0e eb 25 66 0f 1f 84 00 00 00 00 00 48 89 d0 48 8b
+> 50 10 <48> 85 d2 75 f4 5d c3 66 90 48 3b 78 08 75 f6 48 8b 10 48 89 c7
 > 
-> Doesn’t this mean that ‘mount.nfs’ will no longer attempt to wait 
-> for the mount to complete?
-Yes. The foreground will no longer be tried....
-
-> That’s why I suggested having the parent set a timer, and then 
-> waiting for whichever comes first out of SIGCHLD or SIGALRM (indicating 
-> either that the child mount process is done mounting 
-> or that the timeout occurred).
-Why wait? Kernels today no longer return on timeouts or ECONNREFUSED
-so instead of have the foreground mounts hang forever why not
-just let the background mounts hang, forever?
-
-steved.
+> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> ---
+>  fs/nfsd/nfs4state.c | 13 +++++--------
+>  1 file changed, 5 insertions(+), 8 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index d7efc4b..5a9588e 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -5063,7 +5063,6 @@ nfs4_state_destroy_net(struct net *net)
+>  	int i;
+>  	struct nfs4_client *clp = NULL;
+>  	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
+> -	struct rb_node *node, *tmp;
+> 
+>  	for (i = 0; i < CLIENT_HASH_SIZE; i++) {
+>  		while (!list_empty(&nn->conf_id_hashtbl[i])) {
+> @@ -5072,13 +5071,11 @@ nfs4_state_destroy_net(struct net *net)
+>  		}
+>  	}
+> 
+> -	node = rb_first(&nn->unconf_name_tree);
+> -	while (node != NULL) {
+> -		tmp = node;
+> -		node = rb_next(tmp);
+> -		clp = rb_entry(tmp, struct nfs4_client, cl_namenode);
+> -		rb_erase(tmp, &nn->unconf_name_tree);
+> -		destroy_client(clp);
+> +	for (i = 0; i < CLIENT_HASH_SIZE; i++) {
+> +		while (!list_empty(&nn->unconf_id_hashtbl[i])) {
+> +			clp = list_entry(nn->unconf_id_hashtbl[i].next, struct nfs4_client,
+> cl_idhash);
+> +			destroy_client(clp);
+> +		}
+>  	}
+> 
+>  	kfree(nn->sessionid_hashtbl);
+> -- 
+> 1.8.5.3
+> 
