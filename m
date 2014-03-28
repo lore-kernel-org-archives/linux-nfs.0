@@ -1,199 +1,98 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:55334 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753984AbaCRL2p (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 18 Mar 2014 07:28:45 -0400
-Date: Tue, 18 Mar 2014 04:28:45 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATHC 2/2] nfs: remove ->read_pageio_init from rpc ops
-Message-ID: <20140318112845.GB22359@infradead.org>
-References: <20140318112825.GA22359@infradead.org>
+Received: from fieldses.org ([174.143.236.118]:39643 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757010AbaC1CMh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 27 Mar 2014 22:12:37 -0400
+Date: Thu, 27 Mar 2014 22:12:34 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: trond.myklebust@primarydata.com, linux-nfs@vger.kernel.org,
+        raphoszap@laposte.net
+Subject: Re: [PATCH] lockd: ensure we tear down any live sockets when socket
+ creation fails during lockd_up
+Message-ID: <20140328021234.GE27633@fieldses.org>
+References: <1395773726-16510-1-git-send-email-jlayton@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140318112825.GA22359@infradead.org>
+In-Reply-To: <1395773726-16510-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We only use one static ops vector or grab it from the layout driver,
-so clean up the whole code path to make that more obvious.
+Thanks, applying.
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
----
- fs/nfs/direct.c         |    3 +--
- fs/nfs/nfs3proc.c       |    1 -
- fs/nfs/nfs4proc.c       |    1 -
- fs/nfs/pnfs.c           |   13 -------------
- fs/nfs/pnfs.h           |    9 ---------
- fs/nfs/proc.c           |    1 -
- fs/nfs/read.c           |   16 +++++++++++-----
- include/linux/nfs_xdr.h |    2 --
- 8 files changed, 12 insertions(+), 34 deletions(-)
+(Can you tell if this has always been there, or if it was introduced
+recently?  I guess it should go to stable, anyway....)
 
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index bd9d524..bb6fcb8 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -424,8 +424,7 @@ static ssize_t nfs_direct_read_schedule_iovec(struct nfs_direct_req *dreq,
- 	size_t requested_bytes = 0;
- 	unsigned long seg;
- 
--	NFS_PROTO(dreq->inode)->read_pageio_init(&desc, dreq->inode,
--			     &nfs_direct_read_completion_ops);
-+	nfs_pageio_init_read(&desc, dreq->inode, &nfs_direct_read_completion_ops);
- 	get_dreq(dreq);
- 	desc.pg_dreq = dreq;
- 	atomic_inc(&inode->i_dio_count);
-diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
-index 5ae9abf..feb2049 100644
---- a/fs/nfs/nfs3proc.c
-+++ b/fs/nfs/nfs3proc.c
-@@ -982,7 +982,6 @@ const struct nfs_rpc_ops nfs_v3_clientops = {
- 	.pathconf	= nfs3_proc_pathconf,
- 	.decode_dirent	= nfs3_decode_dirent,
- 	.read_setup	= nfs3_proc_read_setup,
--	.read_pageio_init = nfs_pageio_init_read,
- 	.read_rpc_prepare = nfs3_proc_read_rpc_prepare,
- 	.read_done	= nfs3_read_done,
- 	.write_setup	= nfs3_proc_write_setup,
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 7759b5aa..9a8eb6a 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -8462,7 +8462,6 @@ const struct nfs_rpc_ops nfs_v4_clientops = {
- 	.set_capabilities = nfs4_server_capabilities,
- 	.decode_dirent	= nfs4_decode_dirent,
- 	.read_setup	= nfs4_proc_read_setup,
--	.read_pageio_init = pnfs_pageio_init_read,
- 	.read_rpc_prepare = nfs4_proc_read_rpc_prepare,
- 	.read_done	= nfs4_read_done,
- 	.write_setup	= nfs4_proc_write_setup,
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index d8be82d..c965f7d 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1434,19 +1434,6 @@ pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio,
- }
- EXPORT_SYMBOL_GPL(pnfs_generic_pg_init_write);
- 
--void
--pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio, struct inode *inode,
--		      const struct nfs_pgio_completion_ops *compl_ops)
--{
--	struct nfs_server *server = NFS_SERVER(inode);
--	struct pnfs_layoutdriver_type *ld = server->pnfs_curr_ld;
--
--	if (ld == NULL)
--		nfs_pageio_init_read(pgio, inode, compl_ops);
--	else
--		nfs_pageio_init(pgio, inode, ld->pg_read_ops, compl_ops, server->rsize, 0);
--}
--
- bool
- pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
- 		     struct nfs_page *req)
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index e9ac8fb..94a9a18 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -180,9 +180,6 @@ extern int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp);
- void pnfs_get_layout_hdr(struct pnfs_layout_hdr *lo);
- void pnfs_put_lseg(struct pnfs_layout_segment *lseg);
- 
--void pnfs_pageio_init_read(struct nfs_pageio_descriptor *, struct inode *,
--			   const struct nfs_pgio_completion_ops *);
--
- void set_pnfs_layoutdriver(struct nfs_server *, const struct nfs_fh *, u32);
- void unset_pnfs_layoutdriver(struct nfs_server *);
- void pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *, struct nfs_page *);
-@@ -459,12 +456,6 @@ static inline void unset_pnfs_layoutdriver(struct nfs_server *s)
- {
- }
- 
--static inline void pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio, struct inode *inode,
--					 const struct nfs_pgio_completion_ops *compl_ops)
--{
--	nfs_pageio_init_read(pgio, inode, compl_ops);
--}
--
- static inline int
- pnfs_commit_list(struct inode *inode, struct list_head *mds_pages, int how,
- 		 struct nfs_commit_info *cinfo)
-diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
-index 6ea2bed..7676973 100644
---- a/fs/nfs/proc.c
-+++ b/fs/nfs/proc.c
-@@ -760,7 +760,6 @@ const struct nfs_rpc_ops nfs_v2_clientops = {
- 	.pathconf	= nfs_proc_pathconf,
- 	.decode_dirent	= nfs2_decode_dirent,
- 	.read_setup	= nfs_proc_read_setup,
--	.read_pageio_init = nfs_pageio_init_read,
- 	.read_rpc_prepare = nfs_proc_read_rpc_prepare,
- 	.read_done	= nfs_read_done,
- 	.write_setup	= nfs_proc_write_setup,
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index 411aedd..190fb63 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -24,6 +24,7 @@
- #include "internal.h"
- #include "iostat.h"
- #include "fscache.h"
-+#include "pnfs.h"
- 
- #define NFSDBG_FACILITY		NFSDBG_PAGECACHE
- 
-@@ -117,10 +118,15 @@ void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
- 			      struct inode *inode,
- 			      const struct nfs_pgio_completion_ops *compl_ops)
- {
--	nfs_pageio_init(pgio, inode, &nfs_pageio_read_ops, compl_ops,
--			NFS_SERVER(inode)->rsize, 0);
-+	struct nfs_server *server = NFS_SERVER(inode);
-+	const struct nfs_pageio_ops *pg_ops = &nfs_pageio_read_ops;
-+
-+#if IS_ENABLED(CONFIG_NFS_V4)
-+	if (server->pnfs_curr_ld)
-+		pg_ops = server->pnfs_curr_ld->pg_read_ops;
-+#endif
-+	nfs_pageio_init(pgio, inode, pg_ops, compl_ops, server->rsize, 0);
- }
--EXPORT_SYMBOL_GPL(nfs_pageio_init_read);
- 
- void nfs_pageio_reset_read_mds(struct nfs_pageio_descriptor *pgio)
- {
-@@ -147,7 +153,7 @@ int nfs_readpage_async(struct nfs_open_context *ctx, struct inode *inode,
- 	if (len < PAGE_CACHE_SIZE)
- 		zero_user_segment(page, len, PAGE_CACHE_SIZE);
- 
--	NFS_PROTO(inode)->read_pageio_init(&pgio, inode, &nfs_async_read_completion_ops);
-+	nfs_pageio_init_read(&pgio, inode, &nfs_async_read_completion_ops);
- 	nfs_pageio_add_request(&pgio, new);
- 	nfs_pageio_complete(&pgio);
- 	NFS_I(inode)->read_io += pgio.pg_bytes_written;
-@@ -654,7 +660,7 @@ int nfs_readpages(struct file *filp, struct address_space *mapping,
- 	if (ret == 0)
- 		goto read_complete; /* all pages were read */
- 
--	NFS_PROTO(inode)->read_pageio_init(&pgio, inode, &nfs_async_read_completion_ops);
-+	nfs_pageio_init_read(&pgio, inode, &nfs_async_read_completion_ops);
- 
- 	ret = read_cache_pages(mapping, pages, readpage_async_filler, &desc);
- 
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index ed12f03..0146485 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1462,8 +1462,6 @@ struct nfs_rpc_ops {
- 	int	(*set_capabilities)(struct nfs_server *, struct nfs_fh *);
- 	int	(*decode_dirent)(struct xdr_stream *, struct nfs_entry *, int);
- 	void	(*read_setup)   (struct nfs_read_data *, struct rpc_message *);
--	void	(*read_pageio_init)(struct nfs_pageio_descriptor *, struct inode *,
--				    const struct nfs_pgio_completion_ops *);
- 	int	(*read_rpc_prepare)(struct rpc_task *, struct nfs_read_data *);
- 	int	(*read_done)  (struct rpc_task *, struct nfs_read_data *);
- 	void	(*write_setup)  (struct nfs_write_data *, struct rpc_message *);
--- 
-1.7.10.4
+--b.
 
+On Tue, Mar 25, 2014 at 11:55:26AM -0700, Jeff Layton wrote:
+> We had a Fedora ABRT report with a stack trace like this:
+> 
+> kernel BUG at net/sunrpc/svc.c:550!
+> invalid opcode: 0000 [#1] SMP
+> [...]
+> CPU: 2 PID: 913 Comm: rpc.nfsd Not tainted 3.13.6-200.fc20.x86_64 #1
+> Hardware name: Hewlett-Packard HP ProBook 4740s/1846, BIOS 68IRR Ver. F.40 01/29/2013
+> task: ffff880146b00000 ti: ffff88003f9b8000 task.ti: ffff88003f9b8000
+> RIP: 0010:[<ffffffffa0305fa8>]  [<ffffffffa0305fa8>] svc_destroy+0x128/0x130 [sunrpc]
+> RSP: 0018:ffff88003f9b9de0  EFLAGS: 00010206
+> RAX: ffff88003f829628 RBX: ffff88003f829600 RCX: 00000000000041ee
+> RDX: 0000000000000000 RSI: 0000000000000286 RDI: 0000000000000286
+> RBP: ffff88003f9b9de8 R08: 0000000000017360 R09: ffff88014fa97360
+> R10: ffffffff8114ce57 R11: ffffea00051c9c00 R12: ffff88003f829600
+> R13: 00000000ffffff9e R14: ffffffff81cc7cc0 R15: 0000000000000000
+> FS:  00007f4fde284840(0000) GS:ffff88014fa80000(0000) knlGS:0000000000000000
+> CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+> CR2: 00007f4fdf5192f8 CR3: 00000000a569a000 CR4: 00000000001407e0
+> Stack:
+>  ffff88003f792300 ffff88003f9b9e18 ffffffffa02de02a 0000000000000000
+>  ffffffff81cc7cc0 ffff88003f9cb000 0000000000000008 ffff88003f9b9e60
+>  ffffffffa033bb35 ffffffff8131c86c ffff88003f9cb000 ffff8800a5715008
+> Call Trace:
+>  [<ffffffffa02de02a>] lockd_up+0xaa/0x330 [lockd]
+>  [<ffffffffa033bb35>] nfsd_svc+0x1b5/0x2f0 [nfsd]
+>  [<ffffffff8131c86c>] ? simple_strtoull+0x2c/0x50
+>  [<ffffffffa033c630>] ? write_pool_threads+0x280/0x280 [nfsd]
+>  [<ffffffffa033c6bb>] write_threads+0x8b/0xf0 [nfsd]
+>  [<ffffffff8114efa4>] ? __get_free_pages+0x14/0x50
+>  [<ffffffff8114eff6>] ? get_zeroed_page+0x16/0x20
+>  [<ffffffff811dec51>] ? simple_transaction_get+0xb1/0xd0
+>  [<ffffffffa033c098>] nfsctl_transaction_write+0x48/0x80 [nfsd]
+>  [<ffffffff811b8b34>] vfs_write+0xb4/0x1f0
+>  [<ffffffff811c3f99>] ? putname+0x29/0x40
+>  [<ffffffff811b9569>] SyS_write+0x49/0xa0
+>  [<ffffffff810fc2a6>] ? __audit_syscall_exit+0x1f6/0x2a0
+>  [<ffffffff816962e9>] system_call_fastpath+0x16/0x1b
+> Code: 31 c0 e8 82 db 37 e1 e9 2a ff ff ff 48 8b 07 8b 57 14 48 c7 c7 d5 c6 31 a0 48 8b 70 20 31 c0 e8 65 db 37 e1 e9 f4 fe ff ff 0f 0b <0f> 0b 66 0f 1f 44 00 00 0f 1f 44 00 00 55 48 89 e5 41 56 41 55
+> RIP  [<ffffffffa0305fa8>] svc_destroy+0x128/0x130 [sunrpc]
+>  RSP <ffff88003f9b9de0>
+> 
+> Evidently, we created some lockd sockets and then failed to create
+> others. make_socks then returned an error and we tried to tear down the
+> svc, but svc->sv_permsocks was not empty so we ended up tripping over
+> the BUG() in svc_destroy().
+> 
+> Fix this by ensuring that we tear down any live sockets we created when
+> socket creation is going to return an error.
+> 
+> Reported-by: Raphos <raphoszap@laposte.net>
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  fs/lockd/svc.c | 1 +
+>  1 file changed, 1 insertion(+)
+> 
+> diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+> index 10d6c41aecad..6bf06a07f3e0 100644
+> --- a/fs/lockd/svc.c
+> +++ b/fs/lockd/svc.c
+> @@ -235,6 +235,7 @@ out_err:
+>  	if (warned++ == 0)
+>  		printk(KERN_WARNING
+>  			"lockd_up: makesock failed, error=%d\n", err);
+> +	svc_shutdown_net(serv, net);
+>  	return err;
+>  }
+>  
+> -- 
+> 1.8.5.3
+> 
