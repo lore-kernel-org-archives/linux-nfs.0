@@ -1,34 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:55274 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752070AbaCYPgf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 25 Mar 2014 11:36:35 -0400
-Date: Tue, 25 Mar 2014 08:36:32 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 22/50] nfsd4: use xdr_truncate_encode
-Message-ID: <20140325153632.GA5613@infradead.org>
-References: <1395537141-10389-1-git-send-email-bfields@redhat.com>
- <1395537141-10389-23-git-send-email-bfields@redhat.com>
- <20140323065005.GC24465@infradead.org>
- <20140323150722.GC30644@fieldses.org>
+Received: from fieldses.org ([174.143.236.118]:34819 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751086AbaC1Vwf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 28 Mar 2014 17:52:35 -0400
+Date: Fri, 28 Mar 2014 17:52:34 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: tom@opengridcomputing.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2] svcrdma: fix offset calculation for non-page aligned
+ sge entries
+Message-ID: <20140328215234.GJ6041@fieldses.org>
+References: <1395076205-26658-1-git-send-email-jlayton@redhat.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140323150722.GC30644@fieldses.org>
+In-Reply-To: <1395076205-26658-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Mar 23, 2014 at 11:07:22AM -0400, J. Bruce Fields wrote:
-> In the splice case read increments page_len as it goes.  This leaves the
-> xdr_buf in somewhat of an inconsistent state and may confuse a later
-> xdr_truncate_encode.
+On Mon, Mar 17, 2014 at 01:10:05PM -0400, Jeff Layton wrote:
+> The xdr_off value in dma_map_xdr gets passed to ib_dma_map_page as the
+> offset into the page to be mapped. This calculation does not correctly
+> take into account the case where the data starts at some offset into
+> the page. Increment the xdr_off by the page_base to ensure that it is
+> respected.
+
+Thanks, applying.--b.
+
 > 
-> It's a little ugly, I'm not sure what to do about it.  Currently I'm
-> thinking of just telling nfsd's splice callback to leave page_len alone.
-> That'd mean taking another look at the splice callback and at the v2/v3
-> read code.
-
-How a about just adding a comment explaing this for now?
-
+> Cc: Tom Tucker <tom@opengridcomputing.com>
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  net/sunrpc/xprtrdma/svc_rdma_sendto.c | 1 +
+>  1 file changed, 1 insertion(+)
+> 
+> diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+> index c1d124dc772b..5f14609b6336 100644
+> --- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+> +++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+> @@ -265,6 +265,7 @@ static dma_addr_t dma_map_xdr(struct svcxprt_rdma *xprt,
+>  		xdr_off -= xdr->head[0].iov_len;
+>  		if (xdr_off < xdr->page_len) {
+>  			/* This offset is in the page list */
+> +			xdr_off += xdr->page_base;
+>  			page = xdr->pages[xdr_off >> PAGE_SHIFT];
+>  			xdr_off &= ~PAGE_MASK;
+>  		} else {
+> -- 
+> 1.8.5.3
+> 
