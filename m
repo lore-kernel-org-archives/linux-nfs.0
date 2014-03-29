@@ -1,83 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:47945 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753107AbaCAROe convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 1 Mar 2014 12:14:34 -0500
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
-Subject: Re: Proposal for simplifying NFS/RDMA client memory registration
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20140301110022.417eb088@tlielax.poochiereds.net>
-Date: Sat, 1 Mar 2014 12:14:24 -0500
-Cc: Wendy Cheng <s.wendy.cheng@gmail.com>, Tom Talpey <tom@talpey.com>,
-        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Shirley Ma <shirley.ma@oracle.com>
-Message-Id: <C30CED5A-0242-4ADE-83F3-386C157DD197@oracle.com>
-References: <01C4496A-F074-4F72-9DF0-6076C05E8A1F@oracle.com> <53110287.9000400@talpey.com> <CABgxfbHwo13ma=-Xn+S36WwD8LVNLdw6UHztFe8EkCA_=NBenw@mail.gmail.com> <CABgxfbHg0B02c2zpYdCB4pUZZhhA4aKRuyh4Kx=NE1yAisFLLQ@mail.gmail.com> <B83B4DA6-E9CF-4DF3-9227-5EF9B4D25F4D@oracle.com> <20140301110022.417eb088@tlielax.poochiereds.net>
-To: Jeff Layton <jlayton@redhat.com>
+Received: from mail-ie0-f169.google.com ([209.85.223.169]:56812 "EHLO
+	mail-ie0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752064AbaC2Snl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 29 Mar 2014 14:43:41 -0400
+Received: by mail-ie0-f169.google.com with SMTP id to1so6265531ieb.14
+        for <linux-nfs@vger.kernel.org>; Sat, 29 Mar 2014 11:43:41 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: bfields@fieldses.org
+Cc: Idan Kedar <idank@primarydata.com>, linux-nfs@vger.kernel.org
+Subject: [PATCH 1/2] nfsd: Don't return NFS4ERR_STALE_STATEID for NFSv4.1+
+Date: Sat, 29 Mar 2014 14:43:38 -0400
+Message-Id: <1396118619-12771-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+RFC5661 obsoletes NFS4ERR_STALE_STATEID in favour of NFS4ERR_BAD_STATEID.
 
-On Mar 1, 2014, at 11:00 AM, Jeff Layton <jlayton@redhat.com> wrote:
+Note that because nfsd encodes the clientid boot time in the stateid, we
+can hit this error case in certain scenarios where the Linux client
+state management thread exits early, before it has finished recovering
+all state.
 
-> On Fri, 28 Feb 2014 21:59:00 -0500
-> Chuck Lever <chuck.lever@oracle.com> wrote:
-> 
->> Hi Wendy-
->> 
->> On Feb 28, 2014, at 5:26 PM, Wendy Cheng <s.wendy.cheng@gmail.com> wrote:
->> 
->>> On Fri, Feb 28, 2014 at 2:20 PM, Wendy Cheng <s.wendy.cheng@gmail.com> wrote:
->>>> ni i...On Fri, Feb 28, 2014 at 1:41 PM, Tom Talpey <tom@talpey.com> wrote:
->>>>> 
->>>>> On 2/26/2014 8:44 AM, Chuck Lever wrote:
->>>>>> 
->>>>>> Hi-
->>>>>> 
->>>>>> Shirley Ma and I are reviving work on the NFS/RDMA client code base in
->>>>>> the Linux kernel.  So far we've built and run functional tests to determine
->>>>>> what is working and what is broken.
->>>>>> 
->>>>>> [snip]
->>>> 
->>>> 
->>>>>> 
->>>>>> ALLPHYSICAL - Usually fast, but not safe as it exposes client memory.
->>>>>> All HCAs support this mode.
->>>>> 
->>>>> 
->>>>> Not safe is an understatement. It exposes all of client physical
->>>>> memory to the peer, for both read and write. A simple pointer error
->>>>> on the server will silently corrupt the client. This mode was
->>>>> intended only for testing, and in experimental deployments.
->>> 
->>> (sorry, resend .. previous reply bounced back due to gmail html format)
->>> 
->>> Please keep "ALLPHYSICAL" for now  - as our embedded system needs it.
->> 
->> This is just the client side.  Confirming that you still need support for the ALLPHYSICAL memory registration mode in the NFS/RDMA client.
->> 
->> Do you have plans to move to a mode that is less risky?  If not, can we depend on you to perform regular testing with ALLPHYSICAL as we update the client code?  Do you have any bug fixes you’d like to merge upstream?
->> 
-> 
-> Also, given that ALLPHYSICAL isn't considered safe, we should at the
-> very least require some sort of explicit opt-in before allowing it to be
-> used. Perhaps either a Kconfig option, or maybe a runtime switch like a
-> module parm?
+Reported-by: Idan Kedar <idank@primarydata.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 5 ++++-
+ 1 file changed, 4 insertions(+), 1 deletion(-)
 
-Well, there is already an opt-in: /proc/sys/sunrpc/rdma_memreg_strategy
-selects the default registration mode. Currently FRMR is always used
-unless the HCA doesn’t support it.
-
-If we need to keep ALLPHYSICAL, the least thing I would want to do is
-remove the logic in rpcrdma_ia_open() that switches to ALLPHYSICAL if
-the mode selected by rdma_memreg_strategy isn’t supported by the HCA.
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index d5d070fbeb35..dd32f3746e4d 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -3627,8 +3627,11 @@ static __be32 nfsd4_lookup_stateid(stateid_t *stateid, unsigned char typemask,
+ 		return nfserr_bad_stateid;
+ 	status = lookup_clientid(&stateid->si_opaque.so_clid, sessions,
+ 							nn, &cl);
+-	if (status == nfserr_stale_clientid)
++	if (status == nfserr_stale_clientid) {
++		if (sessions)
++			return nfserr_bad_stateid;
+ 		return nfserr_stale_stateid;
++	}
+ 	if (status)
+ 		return status;
+ 	*s = find_stateid_by_type(cl, stateid, typemask);
+-- 
+1.9.0
 
