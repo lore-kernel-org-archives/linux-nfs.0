@@ -1,146 +1,132 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:63557 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753980AbaCCQN4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 3 Mar 2014 11:13:56 -0500
-Received: from int-mx10.intmail.prod.int.phx2.redhat.com (int-mx10.intmail.prod.int.phx2.redhat.com [10.5.11.23])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s23GDsBu011945
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Mon, 3 Mar 2014 11:13:56 -0500
-Date: Mon, 3 Mar 2014 11:13:52 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Scott Mayhew <smayhew@redhat.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH/RFC] Add simple backoff logic when reconnecting to a
- server that recently initiated a connection close
-Message-ID: <20140303111352.736a7268@tlielax.poochiereds.net>
-In-Reply-To: <20140228222956.GA1544@tonberry.usersys.redhat.com>
-References: <20140228222956.GA1544@tonberry.usersys.redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from aserp1040.oracle.com ([141.146.126.69]:50423 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751270AbaC2AFl convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Mar 2014 20:05:41 -0400
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
+Subject: Re: Kernel oops/panic with NFS over RDMA mount after disrupted Infiniband connection
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <53360087.9060902@mellanox.com>
+Date: Fri, 28 Mar 2014 17:05:31 -0700
+Cc: Senn Klemens <klemens.senn@ims.co.at>, linux-rdma@vger.kernel.org,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-Id: <7C171419-2808-42C4-AD00-FF7E392E6E3F@oracle.com>
+References: <5332D425.3030803@ims.co.at> <4E6350BB-5E9C-40D9-8624-6CAA78E5B902@oracle.com> <lh0le0$u5$1@ger.gmane.org> <B7D4A29C-5E1F-4B6C-A8FC-C46D8DF6A87D@oracle.com> <5335440A.9030207@ims.co.at> <3FF5D87A-8199-4CE1-BF97-82DC61E4F480@oracle.com> <53360087.9060902@mellanox.com>
+To: sagi grimberg <sagig@mellanox.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 28 Feb 2014 17:29:56 -0500
-Scott Mayhew <smayhew@redhat.com> wrote:
 
-> From 2e3902fc0c66bda360a8e40e3e64d82e312a20d4 Mon Sep 17 00:00:00 2001
-> From: Scott Mayhew <smayhew@redhat.com>
-> Date: Fri, 28 Feb 2014 15:23:50 -0500
-> Subject: [PATCH] sunrpc: reintroduce xprt->shutdown with a new purpose (option
->  2)
+On Mar 28, 2014, at 4:06 PM, sagi grimberg <sagig@mellanox.com> wrote:
+
+> On 3/29/2014 1:30 AM, Chuck Lever wrote:
+>> On Mar 28, 2014, at 2:42 AM, Senn Klemens <klemens.senn@ims.co.at> wrote:
+>> 
+>>> Hi Chuck,
+>>> 
+>>> On 03/27/2014 04:59 PM, Chuck Lever wrote:
+>>>> Hi-
+>>>> 
+>>>> 
+>>>> On Mar 27, 2014, at 12:53 AM, Reiter Rafael <rafael.reiter@ims.co.at> wrote:
+>>>> 
+>>>>> On 03/26/2014 07:15 PM, Chuck Lever wrote:
+>>>>>> Hi Rafael-
+>>>>>> 
+>>>>>> I’ll take a look. Can you report your HCA and how you reproduce this issue?
+>>>>> The HCA is Mellanox Technologies MT26428.
+>>>>> 
+>>>>> Reproduction:
+>>>>> 1) Mount a directory via NFS/RDMA
+>>>>> mount -t nfs -o port=20049,rdma,vers=4.0,timeo=900 172.16.100.2:/ /mnt/
+>>> An additional "ls /mnt" is needed here (between step 1 and 2)
+>>> 
+>>>>> 2) Pull the Infiniband cable or use ibportstate to disrupt the Infiniband connection
+>>>>> 3) ls /mnt
+>>>>> 4) wait 5-30 seconds
+>>>> Thanks for the information.
+>>>> 
+>>>> I have that HCA, but I won’t have access to my test systems for a week (traveling). So can you try this:
+>>>> 
+>>>> # rpcdebug -m rpc -s trans
+>>>> 
+>>>> then reproduce (starting with step 1 above). Some debugging output will appear at the tail of /var/log/messages. Copy it to this thread.
+>>>> 
+>>> The output of /var/log/messages is:
+>>> 
+>>> [  143.233701] RPC:  1688 xprt_rdma_allocate: size 1112 too large for
+>>> buffer[1024]: prog 100003 vers 4 proc 1
+>>> [  143.233708] RPC:  1688 xprt_rdma_allocate: size 1112, request
+>>> 0xffff88105894c000
+>>> [  143.233715] RPC:  1688 rpcrdma_inline_pullup: pad 0 destp
+>>> 0xffff88105894d7dc len 124 hdrlen 124
+>>> [  143.233718] RPC:       rpcrdma_register_frmr_external: Using frmr
+>>> ffff88084e589260 to map 1 segments
+>>> [  143.233722] RPC:  1688 rpcrdma_create_chunks: reply chunk elem
+>>> 652@0x105894d92c:0xced01 (last)
+>>> [  143.233725] RPC:  1688 rpcrdma_marshal_req: reply chunk: hdrlen 48
+>>> rpclen 124 padlen 0 headerp 0xffff88105894d100 base 0xffff88105894d760
+>>> lkey 0x8000
+>>> [  143.233785] RPC:       rpcrdma_event_process: event rep
+>>> ffff88084e589260 status 0 opcode 8 length 0
+>>> [  177.272397] RPC:       rpcrdma_event_process: event rep
+>>> (null) status C opcode FFFF8808 length 4294967295
+>>> [  177.272649] RPC:       rpcrdma_event_process: event rep
+>>> ffff880848ed0000 status 5 opcode FFFF8808 length 4294936584
+>> The mlx4 provider is returning a WC completion status of
+>> IB_WC_WR_FLUSH_ERR.
+>> 
+>>> [  177.272651] RPC:       rpcrdma_event_process: WC opcode -30712 status
+>>> 5, connection lost
+>> -30712 is a bogus WC opcode. So the mlx4 provider is not filling in the
+>> WC opcode. rpcrdma_event_process() thus can’t depend on the contents of
+>> the ib_wc.opcode field when the WC completion status != IB_WC_SUCCESS.
 > 
-> If a server is behaving pathologically and accepting our connections
-> only to close the socket on the first RPC operation it receives, then
-> we should probably delay when trying to reconnect.
+> Hey Chuck,
 > 
-> This patch reintroduces the xprt->shutdown field (this time as two
-> bits).  Previously this field was used to indicate that the transport
-> was in the process of being shutdown, but now it will just be used to
-> indicate that a shutdown was initiated by the server.
+> That is correct, the opcode field in the wc is not reliable in FLUSH errors.
 > 
-> If the server closes the connection 3 times without us having received
-> an RPC reply in the interim, then we'll delay before attempting to
-> connect again.
-> ---
->  include/linux/sunrpc/xprt.h |  3 ++-
->  net/sunrpc/clnt.c           |  2 ++
->  net/sunrpc/xprtsock.c       | 13 +++++++++++++
->  3 files changed, 17 insertions(+), 1 deletion(-)
+>> 
+>> A copy of the opcode reachable from the incoming rpcrdma_rep could be
+>> added, initialized in the forward paths. rpcrdma_event_process() could
+>> use the copy in the error case.
 > 
+> How about suppressing completions alltogether for fast_reg and local_inv work requests?
+> if these shall fail you will get an error completion and the QP will transition to error state
+> generating FLUSH_ERR completions for all pending WRs. In this case, you can just ignore
+> flush fast_reg + local_inv errors.
+> 
+> see http://marc.info/?l=linux-rdma&m=139047309831997&w=2
 
-This patch seems a little more reasonable than the other one if only
-because it shouldn't cause artificial delays when there is some
-temporary hiccup that causes the server to shut down the connection.
+While considering your suggestion, I see that my proposed fix doesn’t work. In the FAST_REG_MR and LOCAL_INV cases, wr_id points to a struct rpcrdma_mw, not a struct rpcrdma_rep. Putting a copy of the opcode in rpcrdma_rep would have no effect. Worse:
 
-That said, this seems to be squarely a server-side bug so I'm not sure
-we ought to go to any great lengths to work around it.
+>  158         if (IB_WC_SUCCESS != wc->status) {
+>  159                 dprintk("RPC:       %s: WC opcode %d status %X, connection lost\n",
+>  160                         __func__, wc->opcode, wc->status);
+>  161                 rep->rr_len = ~0U;
 
-> diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-> index 8097b9d..621d583 100644
-> --- a/include/linux/sunrpc/xprt.h
-> +++ b/include/linux/sunrpc/xprt.h
-> @@ -173,7 +173,8 @@ struct rpc_xprt {
->  	unsigned int		min_reqs;	/* min number of slots */
->  	atomic_t		num_reqs;	/* total slots */
->  	unsigned long		state;		/* transport state */
-> -	unsigned char		resvport   : 1; /* use a reserved port */
-> +	unsigned char		shutdown   : 2, /* server initiated a shutdown */
-> +				resvport   : 1; /* use a reserved port */
+Suppose this is an IB_WC_FAST_REG_MR completion, so “rep” here is actually a struct rpcrdma_mw, not a struct rpcrdma_rep. Line 161 pokes 32 one-bits at the top of that struct rpcrdma_mw. If wc->opcode was always usable, we’d at least have to fix that.
 
-Hrm 2 bits...so you can go from 0..3. What happens when that wraps? I'd
-be a little concerned that it might spill over into other bitfields
-when that occurs. The K&R book seems to indicate that bitfield
-semantics aren't well-defined so I'm not sure if that would happen or
-not...
-
-Even if it is safe, since this is only two bits, you'll only hit the
-delay on non-zero multiples of '3', right? I don't think that's what
-you're aiming for here.
-
-So, it might be best not to use a bit-field there and use something
-like a full char or something.
-
-Also (nit) since "shutdown" used to have a completely different
-meaning, I'd suggest not reusing that name. It'll be confusing for
-people looking at old and new code. Maybe something like
-"server_shutdowns" for the counter or something?
-
->  	unsigned int		swapper;	/* we're swapping over this
->  						   transport */
->  	unsigned int		bind_index;	/* bind function index */
-> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-> index 0edada9..c32de98 100644
-> --- a/net/sunrpc/clnt.c
-> +++ b/net/sunrpc/clnt.c
-> @@ -515,6 +515,8 @@ struct rpc_clnt *rpc_create(struct rpc_create_args *args)
->  	if (args->flags & RPC_CLNT_CREATE_NONPRIVPORT)
->  		xprt->resvport = 0;
->  
-> +	xprt->shutdown = 0;
-> +
->  	clnt = rpc_new_client(args, xprt, NULL);
->  	if (IS_ERR(clnt))
->  		return clnt;
-> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-> index 0addefc..35cdb63 100644
-> --- a/net/sunrpc/xprtsock.c
-> +++ b/net/sunrpc/xprtsock.c
-> @@ -1295,6 +1295,7 @@ static inline int xs_tcp_read_reply(struct rpc_xprt *xprt,
->  		xprt_complete_rqst(req->rq_task, transport->tcp_copied);
->  
->  	spin_unlock(&xprt->transport_lock);
-> +	xprt->shutdown = 0;
->  	return 0;
->  }
->  
-> @@ -1572,6 +1573,7 @@ static void xs_tcp_state_change(struct sock *sk)
->  	case TCP_CLOSE_WAIT:
->  		/* The server initiated a shutdown of the socket */
->  		xprt->connect_cookie++;
-> +		xprt->shutdown++;
->  		clear_bit(XPRT_CONNECTED, &xprt->state);
->  		xs_tcp_force_close(xprt);
->  	case TCP_CLOSING:
-> @@ -2332,6 +2334,17 @@ static void xs_connect(struct rpc_xprt *xprt, struct rpc_task *task)
->  			xprt->reestablish_timeout = XS_TCP_INIT_REEST_TO;
->  		if (xprt->reestablish_timeout > XS_TCP_MAX_REEST_TO)
->  			xprt->reestablish_timeout = XS_TCP_MAX_REEST_TO;
-> +	} else if (xprt->shutdown > 2) {
-> +		dprintk("RPC:       server previously initiated shutdown of the "
-> +				"transport socket %d times\n", xprt->shutdown);
-> +		if (xprt->reestablish_timeout < XS_TCP_INIT_REEST_TO)
-> +			xprt->reestablish_timeout = XS_TCP_INIT_REEST_TO;
-> +		dprintk("RPC:       xs_connect delayed xprt %p for %lu "
-> +				"seconds\n",
-> +				xprt, xprt->reestablish_timeout / HZ);
-> +		queue_delayed_work(rpciod_workqueue,
-> +				   &transport->connect_worker,
-> +				   xprt->reestablish_timeout);
->  	} else {
->  		dprintk("RPC:       xs_connect scheduled xprt %p\n", xprt);
->  		queue_delayed_work(rpciod_workqueue,
+>  162                 if (wc->opcode != IB_WC_FAST_REG_MR && wc->opcode != IB_WC_LOCAL_INV)
+>  163                         rpcrdma_schedule_tasklet(rep);
+>  164                 return;
+>  165         }
+>  166 
+>  167         switch (wc->opcode) {
+>  168         case IB_WC_FAST_REG_MR:
+>  169                 frmr = (struct rpcrdma_mw *)(unsigned long)wc->wr_id;
+>  170                 frmr->r.frmr.state = FRMR_IS_VALID;
+>  171                 break;
 
 
--- 
-Jeff Layton <jlayton@redhat.com>
+To make my initial solution work, you’d have to add a field to both struct rpcrdma_mw and struct rpcrdma_rep, and ensure they are at the same offset in both structures. Ewe.
+
+Eliminating completions for FAST_REG_MR and LOCAL_INV might be a preferable way to address this.
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
