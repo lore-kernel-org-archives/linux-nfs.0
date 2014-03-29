@@ -1,92 +1,129 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:52090 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755165AbaCEDBP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 4 Mar 2014 22:01:15 -0500
-From: NeilBrown <neilb@suse.de>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Date: Wed, 05 Mar 2014 14:00:28 +1100
-Subject: [PATCH 1/8] NFS: nfs4_lookup_revalidate: only evaluate parent if it
- will be used.
-Cc: linux-nfs@vger.kernel.org
-Message-ID: <20140305030028.27421.54675.stgit@notabene.brown>
-In-Reply-To: <20140305025813.27421.23871.stgit@notabene.brown>
-References: <20140305025813.27421.23871.stgit@notabene.brown>
+Received: from eu1sys200aog114.obsmtp.com ([207.126.144.137]:35303 "EHLO
+	eu1sys200aog114.obsmtp.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751331AbaC2AyB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Mar 2014 20:54:01 -0400
+Message-ID: <53361954.4090304@mellanox.com>
+Date: Sat, 29 Mar 2014 03:52:36 +0300
+From: sagi grimberg <sagig@mellanox.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: Chuck Lever <chuck.lever@oracle.com>, sagi grimberg <sagig@mellanox.com>
+CC: Senn Klemens <klemens.senn@ims.co.at>, <linux-rdma@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: Kernel oops/panic with NFS over RDMA mount after disrupted Infiniband
+ connection
+References: <5332D425.3030803@ims.co.at> <4E6350BB-5E9C-40D9-8624-6CAA78E5B902@oracle.com> <lh0le0$u5$1@ger.gmane.org> <B7D4A29C-5E1F-4B6C-A8FC-C46D8DF6A87D@oracle.com> <5335440A.9030207@ims.co.at> <3FF5D87A-8199-4CE1-BF97-82DC61E4F480@oracle.com> <53360087.9060902@mellanox.com> <7C171419-2808-42C4-AD00-FF7E392E6E3F@oracle.com>
+In-Reply-To: <7C171419-2808-42C4-AD00-FF7E392E6E3F@oracle.com>
+Content-Type: text/plain; charset="windows-1252"; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-nfs4_lookup_revalidate only uses 'parent' to get 'dir', and only
-uses 'dir' if 'inode == NULL'.
+On 3/29/2014 3:05 AM, Chuck Lever wrote:
+> On Mar 28, 2014, at 4:06 PM, sagi grimberg <sagig@mellanox.com> wrote:
+>
+>> On 3/29/2014 1:30 AM, Chuck Lever wrote:
+>>> On Mar 28, 2014, at 2:42 AM, Senn Klemens <klemens.senn@ims.co.at> wrote:
+>>>
+>>>> Hi Chuck,
+>>>>
+>>>> On 03/27/2014 04:59 PM, Chuck Lever wrote:
+>>>>> Hi-
+>>>>>
+>>>>>
+>>>>> On Mar 27, 2014, at 12:53 AM, Reiter Rafael <rafael.reiter@ims.co.at> wrote:
+>>>>>
+>>>>>> On 03/26/2014 07:15 PM, Chuck Lever wrote:
+>>>>>>> Hi Rafael-
+>>>>>>>
+>>>>>>> I’ll take a look. Can you report your HCA and how you reproduce this issue?
+>>>>>> The HCA is Mellanox Technologies MT26428.
+>>>>>>
+>>>>>> Reproduction:
+>>>>>> 1) Mount a directory via NFS/RDMA
+>>>>>> mount -t nfs -o port=20049,rdma,vers=4.0,timeo=900 172.16.100.2:/ /mnt/
+>>>> An additional "ls /mnt" is needed here (between step 1 and 2)
+>>>>
+>>>>>> 2) Pull the Infiniband cable or use ibportstate to disrupt the Infiniband connection
+>>>>>> 3) ls /mnt
+>>>>>> 4) wait 5-30 seconds
+>>>>> Thanks for the information.
+>>>>>
+>>>>> I have that HCA, but I won’t have access to my test systems for a week (traveling). So can you try this:
+>>>>>
+>>>>> # rpcdebug -m rpc -s trans
+>>>>>
+>>>>> then reproduce (starting with step 1 above). Some debugging output will appear at the tail of /var/log/messages. Copy it to this thread.
+>>>>>
+>>>> The output of /var/log/messages is:
+>>>>
+>>>> [  143.233701] RPC:  1688 xprt_rdma_allocate: size 1112 too large for
+>>>> buffer[1024]: prog 100003 vers 4 proc 1
+>>>> [  143.233708] RPC:  1688 xprt_rdma_allocate: size 1112, request
+>>>> 0xffff88105894c000
+>>>> [  143.233715] RPC:  1688 rpcrdma_inline_pullup: pad 0 destp
+>>>> 0xffff88105894d7dc len 124 hdrlen 124
+>>>> [  143.233718] RPC:       rpcrdma_register_frmr_external: Using frmr
+>>>> ffff88084e589260 to map 1 segments
+>>>> [  143.233722] RPC:  1688 rpcrdma_create_chunks: reply chunk elem
+>>>> 652@0x105894d92c:0xced01 (last)
+>>>> [  143.233725] RPC:  1688 rpcrdma_marshal_req: reply chunk: hdrlen 48
+>>>> rpclen 124 padlen 0 headerp 0xffff88105894d100 base 0xffff88105894d760
+>>>> lkey 0x8000
+>>>> [  143.233785] RPC:       rpcrdma_event_process: event rep
+>>>> ffff88084e589260 status 0 opcode 8 length 0
+>>>> [  177.272397] RPC:       rpcrdma_event_process: event rep
+>>>> (null) status C opcode FFFF8808 length 4294967295
+>>>> [  177.272649] RPC:       rpcrdma_event_process: event rep
+>>>> ffff880848ed0000 status 5 opcode FFFF8808 length 4294936584
+>>> The mlx4 provider is returning a WC completion status of
+>>> IB_WC_WR_FLUSH_ERR.
+>>>
+>>>> [  177.272651] RPC:       rpcrdma_event_process: WC opcode -30712 status
+>>>> 5, connection lost
+>>> -30712 is a bogus WC opcode. So the mlx4 provider is not filling in the
+>>> WC opcode. rpcrdma_event_process() thus can’t depend on the contents of
+>>> the ib_wc.opcode field when the WC completion status != IB_WC_SUCCESS.
+>> Hey Chuck,
+>>
+>> That is correct, the opcode field in the wc is not reliable in FLUSH errors.
+>>
+>>> A copy of the opcode reachable from the incoming rpcrdma_rep could be
+>>> added, initialized in the forward paths. rpcrdma_event_process() could
+>>> use the copy in the error case.
+>> How about suppressing completions alltogether for fast_reg and local_inv work requests?
+>> if these shall fail you will get an error completion and the QP will transition to error state
+>> generating FLUSH_ERR completions for all pending WRs. In this case, you can just ignore
+>> flush fast_reg + local_inv errors.
+>>
+>> see http://marc.info/?l=linux-rdma&m=139047309831997&w=2
+> While considering your suggestion, I see that my proposed fix doesn’t work. In the FAST_REG_MR and LOCAL_INV cases, wr_id points to a struct rpcrdma_mw, not a struct rpcrdma_rep. Putting a copy of the opcode in rpcrdma_rep would have no effect. Worse:
+>
+>>   158         if (IB_WC_SUCCESS != wc->status) {
+>>   159                 dprintk("RPC:       %s: WC opcode %d status %X, connection lost\n",
+>>   160                         __func__, wc->opcode, wc->status);
+>>   161                 rep->rr_len = ~0U;
+> Suppose this is an IB_WC_FAST_REG_MR completion, so “rep” here is actually a struct rpcrdma_mw, not a struct rpcrdma_rep. Line 161 pokes 32 one-bits at the top of that struct rpcrdma_mw. If wc->opcode was always usable, we’d at least have to fix that.
 
-So we don't need to find out what 'parent' or 'dir' is until we
-know that 'inode' is NULL.
+<nod>
+So for error completions one needs to be careful dereferencing wr_id as 
+the opcode might not reliable. it will be better to first identify that 
+wr_id is indeed a pointer to rep.
 
-By moving 'dget_parent' inside the 'if', we can reduce the number of
-call sites for 'dput(parent)'.
+>>   162                 if (wc->opcode != IB_WC_FAST_REG_MR && wc->opcode != IB_WC_LOCAL_INV)
+>>   163                         rpcrdma_schedule_tasklet(rep);
+>>   164                 return;
+>>   165         }
+>>   166
+>>   167         switch (wc->opcode) {
+>>   168         case IB_WC_FAST_REG_MR:
+>>   169                 frmr = (struct rpcrdma_mw *)(unsigned long)wc->wr_id;
+>>   170                 frmr->r.frmr.state = FRMR_IS_VALID;
+>>   171                 break;
+>
+> To make my initial solution work, you’d have to add a field to both struct rpcrdma_mw and struct rpcrdma_rep, and ensure they are at the same offset in both structures. Ewe.
+>
+> Eliminating completions for FAST_REG_MR and LOCAL_INV might be a preferable way to address this.
 
-Signed-off-by: NeilBrown <neilb@suse.de>
----
- fs/nfs/dir.c |   17 ++++++++---------
- 1 file changed, 8 insertions(+), 9 deletions(-)
+Agree, Same applies for MW.
 
-diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-index be38b573495a..f5509f95f261 100644
---- a/fs/nfs/dir.c
-+++ b/fs/nfs/dir.c
-@@ -1496,9 +1496,7 @@ EXPORT_SYMBOL_GPL(nfs_atomic_open);
- 
- static int nfs4_lookup_revalidate(struct dentry *dentry, unsigned int flags)
- {
--	struct dentry *parent = NULL;
- 	struct inode *inode;
--	struct inode *dir;
- 	int ret = 0;
- 
- 	if (flags & LOOKUP_RCU)
-@@ -1512,34 +1510,35 @@ static int nfs4_lookup_revalidate(struct dentry *dentry, unsigned int flags)
- 		goto no_open;
- 
- 	inode = dentry->d_inode;
--	parent = dget_parent(dentry);
--	dir = parent->d_inode;
- 
- 	/* We can't create new files in nfs_open_revalidate(), so we
- 	 * optimize away revalidation of negative dentries.
- 	 */
- 	if (inode == NULL) {
-+		struct dentry *parent;
-+		struct inode *dir;
-+
-+		parent = dget_parent(dentry);
-+		dir = parent->d_inode;
- 		if (!nfs_neg_need_reval(dir, dentry, flags))
- 			ret = 1;
-+		dput(parent);
- 		goto out;
- 	}
- 
- 	/* NFS only supports OPEN on regular files */
- 	if (!S_ISREG(inode->i_mode))
--		goto no_open_dput;
-+		goto no_open;
- 	/* We cannot do exclusive creation on a positive dentry */
- 	if (flags & LOOKUP_EXCL)
--		goto no_open_dput;
-+		goto no_open;
- 
- 	/* Let f_op->open() actually open (and revalidate) the file */
- 	ret = 1;
- 
- out:
--	dput(parent);
- 	return ret;
- 
--no_open_dput:
--	dput(parent);
- no_open:
- 	return nfs_lookup_revalidate(dentry, flags);
- }
-
-
+Sagi.
