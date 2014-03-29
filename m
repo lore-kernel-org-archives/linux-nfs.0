@@ -1,124 +1,140 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:36902 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753410AbaCKSGW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 11 Mar 2014 14:06:22 -0400
-Received: from int-mx11.intmail.prod.int.phx2.redhat.com (int-mx11.intmail.prod.int.phx2.redhat.com [10.5.11.24])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s2BI6KNs004416
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Tue, 11 Mar 2014 14:06:21 -0400
-Message-ID: <531F5099.70108@RedHat.com>
-Date: Tue, 11 Mar 2014 14:06:17 -0400
-From: Steve Dickson <SteveD@redhat.com>
+Received: from smtp.opengridcomputing.com ([72.48.136.20]:56120 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751620AbaC2AGC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Mar 2014 20:06:02 -0400
+Message-ID: <53360FCC.4000602@opengridcomputing.com>
+Date: Fri, 28 Mar 2014 19:11:56 -0500
+From: Tom Tucker <tom@opengridcomputing.com>
 MIME-Version: 1.0
-To: Mateusz Guzik <mguzik@redhat.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsidmap: fix error reporting for nfs4_* family of functions
-References: <1393275114-28792-1-git-send-email-mguzik@redhat.com>
-In-Reply-To: <1393275114-28792-1-git-send-email-mguzik@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Steve Wise <swise@opengridcomputing.com>, trond.myklebust@primarydata.com,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] Fix regression in NFSRDMA server
+References: <20140325201457.6861.21819.stgit@build.ogc.int> <20140328020834.GD27633@fieldses.org> <53359377.8060502@opengridcomputing.com> <20140328212633.GF6041@fieldses.org>
+In-Reply-To: <20140328212633.GF6041@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Hi Bruce,
 
+On 3/28/14 4:26 PM, J. Bruce Fields wrote:
+> On Fri, Mar 28, 2014 at 10:21:27AM -0500, Tom Tucker wrote:
+>> Hi Bruce,
+>>
+>> On 3/27/14 9:08 PM, J. Bruce Fields wrote:
+>>> On Tue, Mar 25, 2014 at 03:14:57PM -0500, Steve Wise wrote:
+>>>> From: Tom Tucker <tom@ogc.us>
+>>>>
+>>>> The server regression was caused by the addition of rq_next_page
+>>>> (afc59400d6c65bad66d4ad0b2daf879cbff8e23e). There were a few places that
+>>>> were missed with the update of the rq_respages array.
+>>> Apologies.  (But, it could happen again--could we set up some regular
+>>> testing?  It doesn't have to be anything fancy, just cthon over
+>>> rdma--really, just read and write over rdma--would probably catch a
+>>> lot.)
+>> I think Chelsio is going to be adding some NFSRDMA regression
+>> testing to their system test.
+> OK.  Do you know who there is setting that up?  I'd be curious exactly
+> what kernels they intend to test and how they plan to report results.
+>
 
-On 02/24/2014 03:51 PM, Mateusz Guzik wrote:
-> Errors were logged with xlog_err function relying on errno, but these
-> functions don't set it.
-> 
-> Fix the problem by introducing xlog_err_code which accepts error code.
-> 
-> Signed-off-by: Mateusz Guzik <mguzik@redhat.com>
-Committed...
+I don't know, Steve can weigh in on this...
 
-steved.
+>>> Also: I don't get why all these rq_next_page initializations are
+>>> required.  Why isn't the initialization at the top of svc_process()
+>>> enough?  Is rdma using it before we get to that point?  The only use of
+>>> it I see off hand is in the while loop that you're deleting.
+>> I didn't apply tremendous deductive powers here, I just added
+>> updates to rq_next_page wherever the transport messed with
+>> rq_respages. That said, NFS WRITE is likely the culprit since the
+>> write is completed as a deferral and therefore the request doesn't
+>> go through svc_process, so if rq_next_page is bogus, the cleanup
+>> will free/re-use pages that are actually in use by the transport.
+> Ugh, OK, without tracing through the code I guess I can see how that
+> would happen.  Remind me why it's using deferrals?
 
-> ---
->  support/include/xlog.h    |  1 +
->  support/nfs/xlog.c        | 12 ++++++++++++
->  utils/nfsidmap/nfsidmap.c | 11 ++++++-----
->  3 files changed, 19 insertions(+), 5 deletions(-)
-> 
-> diff --git a/support/include/xlog.h b/support/include/xlog.h
-> index fd34ec2..ae34eb7 100644
-> --- a/support/include/xlog.h
-> +++ b/support/include/xlog.h
-> @@ -45,6 +45,7 @@ int			xlog_enabled(int fac);
->  void			xlog(int fac, const char *fmt, ...);
->  void			xlog_warn(const char *fmt, ...);
->  void			xlog_err(const char *fmt, ...);
-> +void			xlog_err_code(int error, const char *fmt, ...);
->  void			xlog_backend(int fac, const char *fmt, va_list args);
->  
->  #endif /* XLOG_H */
-> diff --git a/support/nfs/xlog.c b/support/nfs/xlog.c
-> index 83d07e1..3759217 100644
-> --- a/support/nfs/xlog.c
-> +++ b/support/nfs/xlog.c
-> @@ -27,6 +27,7 @@
->  #include <stdio.h>
->  #include <stdarg.h>
->  #include <syslog.h>
-> +#include <errno.h>
->  #include "nfslib.h"
->  
->  #undef	VERBOSE_PRINTF
-> @@ -220,3 +221,14 @@ xlog_err(const char* fmt, ...)
->  	xlog_backend(L_FATAL, fmt, args);
->  	va_end(args);
->  }
-> +
-> +void
-> +xlog_err_code(int error, const char *fmt, ...)
-> +{
-> +	va_list args;
-> +
-> +	errno = -error;
-> +	va_start(args, fmt);
-> +	xlog_backend(L_FATAL, fmt, args);
-> +	va_end(args);
-> +}
-> diff --git a/utils/nfsidmap/nfsidmap.c b/utils/nfsidmap/nfsidmap.c
-> index e14543c..bf97714 100644
-> --- a/utils/nfsidmap/nfsidmap.c
-> +++ b/utils/nfsidmap/nfsidmap.c
-> @@ -54,7 +54,7 @@ int id_lookup(char *name_at_domain, key_serial_t key, int type)
->  		sprintf(id, "%u", gid);
->  	}
->  	if (rc < 0)
-> -		xlog_err("id_lookup: %s: failed: %m",
-> +		xlog_err_code(rc, "id_lookup: %s: failed: %m",
->  			(type == USER ? "nfs4_owner_to_uid" : "nfs4_group_owner_to_gid"));
->  
->  	if (rc == 0) {
-> @@ -95,8 +95,9 @@ int name_lookup(char *id, key_serial_t key, int type)
->  
->  	rc = nfs4_get_default_domain(NULL, domain, NFS4_MAX_DOMAIN_LEN);
->  	if (rc != 0) {
-> +		xlog_err_code(rc,
-> +			"name_lookup: nfs4_get_default_domain failed: %m");
->  		rc = -1;
-> -		xlog_err("name_lookup: nfs4_get_default_domain failed: %m");
->  		goto out;
->  	}
->  
-> @@ -108,7 +109,7 @@ int name_lookup(char *id, key_serial_t key, int type)
->  		rc = nfs4_gid_to_name(gid, domain, name, IDMAP_NAMESZ);
->  	}
->  	if (rc < 0)
-> -		xlog_err("name_lookup: %s: failed: %m",
-> +		xlog_err_code(rc, "name_lookup: %s: failed: %m",
->  			(type == USER ? "nfs4_uid_to_name" : "nfs4_gid_to_name"));
->  
->  	if (rc == 0) {
-> @@ -272,8 +273,8 @@ int main(int argc, char **argv)
->  		}
->  	}
->  
-> -	if (nfs4_init_name_mapping(PATH_IDMAPDCONF))  {
-> -		xlog_err("Unable to create name to user id mappings.");
-> +	if (rc = nfs4_init_name_mapping(PATH_IDMAPDCONF))  {
-> +		xlog_err_code(rc, "Unable to create name to user id mappings.");
->  		return 1;
->  	}
->  	if (!verbose)
-> 
+The server fetches the write data from the client using RDMA READ. So 
+the request says ... "here's where the data is in my memory", and then 
+the server issues an RDMA READ to fetch it. When the read completes, the 
+deferred request is completed.
+
+Tom
+
+> Applying the patch.
+>
+> --b.
+>
+>> Tom
+>>> --b.
+>>>
+>>>> Signed-off-by: Tom Tucker <tom@ogc.us>
+>>>> Tested-by: Steve Wise <swise@ogc.us>
+>>>> ---
+>>>>
+>>>>   net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |   12 ++++--------
+>>>>   net/sunrpc/xprtrdma/svc_rdma_sendto.c   |    1 +
+>>>>   2 files changed, 5 insertions(+), 8 deletions(-)
+>>>>
+>>>> diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+>>>> index 0ce7552..8d904e4 100644
+>>>> --- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+>>>> +++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+>>>> @@ -90,6 +90,7 @@ static void rdma_build_arg_xdr(struct svc_rqst *rqstp,
+>>>>   		sge_no++;
+>>>>   	}
+>>>>   	rqstp->rq_respages = &rqstp->rq_pages[sge_no];
+>>>> +	rqstp->rq_next_page = rqstp->rq_respages + 1;
+>>>>   	/* We should never run out of SGE because the limit is defined to
+>>>>   	 * support the max allowed RPC data length
+>>>> @@ -169,6 +170,7 @@ static int map_read_chunks(struct svcxprt_rdma *xprt,
+>>>>   		 */
+>>>>   		head->arg.pages[page_no] = rqstp->rq_arg.pages[page_no];
+>>>>   		rqstp->rq_respages = &rqstp->rq_arg.pages[page_no+1];
+>>>> +		rqstp->rq_next_page = rqstp->rq_respages + 1;
+>>>>   		byte_count -= sge_bytes;
+>>>>   		ch_bytes -= sge_bytes;
+>>>> @@ -276,6 +278,7 @@ static int fast_reg_read_chunks(struct svcxprt_rdma *xprt,
+>>>>   	/* rq_respages points one past arg pages */
+>>>>   	rqstp->rq_respages = &rqstp->rq_arg.pages[page_no];
+>>>> +	rqstp->rq_next_page = rqstp->rq_respages + 1;
+>>>>   	/* Create the reply and chunk maps */
+>>>>   	offset = 0;
+>>>> @@ -520,13 +523,6 @@ next_sge:
+>>>>   	for (ch_no = 0; &rqstp->rq_pages[ch_no] < rqstp->rq_respages; ch_no++)
+>>>>   		rqstp->rq_pages[ch_no] = NULL;
+>>>> -	/*
+>>>> -	 * Detach res pages. If svc_release sees any it will attempt to
+>>>> -	 * put them.
+>>>> -	 */
+>>>> -	while (rqstp->rq_next_page != rqstp->rq_respages)
+>>>> -		*(--rqstp->rq_next_page) = NULL;
+>>>> -
+>>>>   	return err;
+>>>>   }
+>>>> @@ -550,7 +546,7 @@ static int rdma_read_complete(struct svc_rqst *rqstp,
+>>>>   	/* rq_respages starts after the last arg page */
+>>>>   	rqstp->rq_respages = &rqstp->rq_arg.pages[page_no];
+>>>> -	rqstp->rq_next_page = &rqstp->rq_arg.pages[page_no];
+>>>> +	rqstp->rq_next_page = rqstp->rq_respages + 1;
+>>>>   	/* Rebuild rq_arg head and tail. */
+>>>>   	rqstp->rq_arg.head[0] = head->arg.head[0];
+>>>> diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+>>>> index c1d124d..11e90f8 100644
+>>>> --- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+>>>> +++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+>>>> @@ -625,6 +625,7 @@ static int send_reply(struct svcxprt_rdma *rdma,
+>>>>   		if (page_no+1 >= sge_no)
+>>>>   			ctxt->sge[page_no+1].length = 0;
+>>>>   	}
+>>>> +	rqstp->rq_next_page = rqstp->rq_respages + 1;
+>>>>   	BUG_ON(sge_no > rdma->sc_max_sge);
+>>>>   	memset(&send_wr, 0, sizeof send_wr);
+>>>>   	ctxt->wr_op = IB_WR_SEND;
+>>>>
+>>> --
+>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>>> the body of a message to majordomo@vger.kernel.org
+>>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
