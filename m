@@ -1,51 +1,85 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f172.google.com ([209.85.223.172]:61865 "EHLO
-	mail-ie0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752487AbaCCUdk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 3 Mar 2014 15:33:40 -0500
-MIME-Version: 1.0
-In-Reply-To: <79E85B7D-5ECC-4A63-BB07-C45A570DA53D@emc.com>
-References: <01C4496A-F074-4F72-9DF0-6076C05E8A1F@oracle.com>
-	<E755E683-C064-4ED3-8448-C61F4E5AF16E@oracle.com>
-	<20140303190733.GA4556@infradead.org>
-	<79E85B7D-5ECC-4A63-BB07-C45A570DA53D@emc.com>
-Date: Mon, 3 Mar 2014 12:33:39 -0800
-Message-ID: <CABgxfbFrgKvRkELvna6DQgE+zqy1GPrM_x1GVv7tW+UbcDuYUA@mail.gmail.com>
-Subject: Re: Proposal for simplifying NFS/RDMA client memory registration
-From: Wendy Cheng <s.wendy.cheng@gmail.com>
-To: "faibish, sorin" <faibish_sorin@emc.com>
-Cc: Christoph Hellwig <hch@infradead.org>,
-        Chuck Lever <chuck.lever@oracle.com>,
-        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Shirley Ma <shirley.ma@oracle.com>, wendy.cheng@intel.com
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-ie0-f180.google.com ([209.85.223.180]:44722 "EHLO
+	mail-ie0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751293AbaC2A3w (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 28 Mar 2014 20:29:52 -0400
+Received: by mail-ie0-f180.google.com with SMTP id as1so5677278iec.11
+        for <linux-nfs@vger.kernel.org>; Fri, 28 Mar 2014 17:29:51 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Subject: [PATCH] NFSv4: Fix a use-after-free problem in open()
+Date: Fri, 28 Mar 2014 20:29:49 -0400
+Message-Id: <1396052989-3485-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Mar 3, 2014 at 11:54 AM, faibish, sorin <faibish_sorin@emc.com> wrote:
->
-> > On Mar 3, 2014, at 7:09 PM, "Christoph Hellwig" <hch@infradead.org> wrote:
-> >
-> >> On Mon, Mar 03, 2014 at 12:02:33PM -0500, Chuck Lever wrote:
-> >> All HCAs in 3.13 (and rxe) can support either MTHCA_FMR or FRMR or both. Wendy?s HCA supports only ALLPHYSICAL.
-> >
-> > Is Wendy planning to submit her HCA driver ASAP?  If not there's not
-> > reason to keep ALLPHYSICAL either.
-> I second Christoph. Legacy is good as long as there are users of Linux with the legacy server. I would say that the only reason to keep it is if Linux server will support it. Same we apply to Lustre client in kernel.
->
-> ./Sorin
->
-> >
-> >> Does it make sense to deprecate then remove the registration modes in the first list?
-> >
-> > Yes.
-> >
->
+If we interrupt the nfs4_wait_for_completion_rpc_task() call in
+nfs4_run_open_task(), then we don't prevent the RPC call from
+completing. So freeing up the opendata->f_attr.mdsthreshold
+in the error path in _nfs4_do_open() leads to a use-after-free
+when the XDR decoder tries to decode the mdsthreshold information
+from the server.
 
-After discussing this with my manager, we'll let it go for now ...
-will re-submit the full patch set in the future when we finalize the
-plan.
+Fixes: 82be417aa37c0 (NFSv4.1 cache mdsthreshold values on OPEN)
+Tested-by: Steve Dickson <SteveD@redhat.com>
+Cc: stable@vger.kernel.org # 3.5+
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfs/nfs4proc.c | 19 ++++++++++---------
+ 1 file changed, 10 insertions(+), 9 deletions(-)
 
-Thanks,
-Wendy
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index c866e325577f..397be39c6dc8 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -1068,6 +1068,7 @@ static void nfs4_opendata_free(struct kref *kref)
+ 	dput(p->dentry);
+ 	nfs_sb_deactive(sb);
+ 	nfs_fattr_free_names(&p->f_attr);
++	kfree(p->f_attr.mdsthreshold);
+ 	kfree(p);
+ }
+ 
+@@ -2304,10 +2305,12 @@ static int _nfs4_do_open(struct inode *dir,
+ 		}
+ 	}
+ 
+-	if (ctx_th && server->attr_bitmask[2] & FATTR4_WORD2_MDSTHRESHOLD) {
+-		opendata->f_attr.mdsthreshold = pnfs_mdsthreshold_alloc();
+-		if (!opendata->f_attr.mdsthreshold)
+-			goto err_free_label;
++	if (server->attr_bitmask[2] & FATTR4_WORD2_MDSTHRESHOLD) {
++		if (!opendata->f_attr.mdsthreshold) {
++			opendata->f_attr.mdsthreshold = pnfs_mdsthreshold_alloc();
++			if (!opendata->f_attr.mdsthreshold)
++				goto err_free_label;
++		}
+ 		opendata->o_arg.open_bitmap = &nfs4_pnfs_open_bitmap[0];
+ 	}
+ 	if (dentry->d_inode != NULL)
+@@ -2335,11 +2338,10 @@ static int _nfs4_do_open(struct inode *dir,
+ 	if (opendata->file_created)
+ 		*opened |= FILE_CREATED;
+ 
+-	if (pnfs_use_threshold(ctx_th, opendata->f_attr.mdsthreshold, server))
++	if (pnfs_use_threshold(ctx_th, opendata->f_attr.mdsthreshold, server)) {
+ 		*ctx_th = opendata->f_attr.mdsthreshold;
+-	else
+-		kfree(opendata->f_attr.mdsthreshold);
+-	opendata->f_attr.mdsthreshold = NULL;
++		opendata->f_attr.mdsthreshold = NULL;
++	}
+ 
+ 	nfs4_label_free(olabel);
+ 
+@@ -2349,7 +2351,6 @@ static int _nfs4_do_open(struct inode *dir,
+ err_free_label:
+ 	nfs4_label_free(olabel);
+ err_opendata_put:
+-	kfree(opendata->f_attr.mdsthreshold);
+ 	nfs4_opendata_put(opendata);
+ err_put_state_owner:
+ 	nfs4_put_state_owner(sp);
+-- 
+1.9.0
+
