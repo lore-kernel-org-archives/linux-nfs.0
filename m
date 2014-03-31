@@ -1,55 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f42.google.com ([209.85.220.42]:58577 "EHLO
-	mail-pa0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751087AbaCGP0I convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 7 Mar 2014 10:26:08 -0500
-Received: by mail-pa0-f42.google.com with SMTP id fb1so4320867pad.29
-        for <linux-nfs@vger.kernel.org>; Fri, 07 Mar 2014 07:26:07 -0800 (PST)
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
-Subject: Re: [PATCH] NFSv4: Don't retry server trunking discovery on timeouts
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-In-Reply-To: <1394204563-1166-2-git-send-email-steved@redhat.com>
-Date: Fri, 7 Mar 2014 10:26:04 -0500
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Message-Id: <D80E339C-9F29-4FE5-AF98-D4A469ADEE13@primarydata.com>
-References: <1394204563-1166-1-git-send-email-steved@redhat.com> <1394204563-1166-2-git-send-email-steved@redhat.com>
-To: Dickson Steve <steved@redhat.com>
+Received: from fieldses.org ([174.143.236.118]:57796 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751035AbaCaVLe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 31 Mar 2014 17:11:34 -0400
+Date: Mon, 31 Mar 2014 17:11:34 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "Yan, Zheng" <zheng.z.yan@intel.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfsd4: fix memory leak in nfsd4_encode_fattr()
+Message-ID: <20140331211134.GD20024@fieldses.org>
+References: <1394427127-9985-1-git-send-email-zheng.z.yan@intel.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1394427127-9985-1-git-send-email-zheng.z.yan@intel.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Mon, Mar 10, 2014 at 12:52:07PM +0800, Yan, Zheng wrote:
+> fh_put() does not free the temporary file handle.
 
-On Mar 7, 2014, at 10:02, Steve Dickson <steved@redhat.com> wrote:
+Applying, sorry for the delay.--b.
 
-> To allow background mounts to process into background,
-> server trunking discovery needs to return the -ETIMEDOUT
-> error to the mount command instead of endless retrying in
-> the kernel.
 > 
-> Signed-off-by: Steve Dickson <steved@redhat.com>
+> Signed-off-by: Yan, Zheng <zheng.z.yan@intel.com>
 > ---
-> fs/nfs/nfs4state.c |    1 +
-> 1 files changed, 1 insertions(+), 0 deletions(-)
+>  fs/nfsd/nfs4xdr.c | 4 +++-
+>  1 file changed, 3 insertions(+), 1 deletion(-)
 > 
-> diff --git a/fs/nfs/nfs4state.c b/fs/nfs/nfs4state.c
-> index e1a4721..be4b33f 100644
-> --- a/fs/nfs/nfs4state.c
-> +++ b/fs/nfs/nfs4state.c
-> @@ -2085,6 +2085,7 @@ again:
-> 		break;
-> 	case -NFS4ERR_DELAY:
-> 	case -ETIMEDOUT:
-> +		break;
-> 	case -EAGAIN:
-> 		ssleep(1);
-> 	case -NFS4ERR_STALE_CLIENTID:
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index 63f2395..8de4c9d 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -2499,8 +2499,10 @@ out:
+>  		security_release_secctx(context, contextlen);
+>  #endif /* CONFIG_NFSD_V4_SECURITY_LABEL */
+>  	kfree(acl);
+> -	if (tempfh)
+> +	if (tempfh) {
+>  		fh_put(tempfh);
+> +		kfree(tempfh);
+> +	}
+>  	return status;
+>  out_nfserr:
+>  	status = nfserrno(err);
 > -- 
-> 1.7.1
+> 1.8.5.3
 > 
-
-This will cause NFS4ERR_DELAY to interrupt the mount as well. We don’t want that...
-_________________________________
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
-
