@@ -1,133 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:45655 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:57794 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755009AbaCCWlw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 3 Mar 2014 17:41:52 -0500
-Date: Mon, 3 Mar 2014 17:41:47 -0500
-From: Jeff Layton <jlayton@redhat.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Dennis Jacobfeuerborn <dennisml@conversis.de>, linux-nfs@vger.kernel.org
-Subject: Re: Temporary hangs when using locking with apache+nfsv4
-Message-ID: <20140303174147.00e72e5d@tlielax.poochiereds.net>
-In-Reply-To: <FE962668-F94D-499C-82AA-6ABA8A9AF301@primarydata.com>
-References: <53141788.9030209@conversis.de>
-	<20140303104315.1f949cb4@tlielax.poochiereds.net>
-	<2D6DA167-FD44-4D73-8D55-8084A8DF95BE@primarydata.com>
-	<20140303114119.30f0a48f@tlielax.poochiereds.net>
-	<0FBB168C-B923-4E83-A98B-250D9C9BE3E7@primarydata.com>
-	<20140303133422.05f911f9@tlielax.poochiereds.net>
-	<FE962668-F94D-499C-82AA-6ABA8A9AF301@primarydata.com>
+	id S1750976AbaCaVLO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 31 Mar 2014 17:11:14 -0400
+Date: Mon, 31 Mar 2014 17:11:01 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: "Yan, Zheng" <zheng.z.yan@intel.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v3] nfsd4: fix memory leak in nfsd4_encode_fattr()
+Message-ID: <20140331211100.GC20024@fieldses.org>
+References: <1394444501-20826-1-git-send-email-zheng.z.yan@intel.com>
+ <20140310102101.GA25752@infradead.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140310102101.GA25752@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 3 Mar 2014 14:02:29 -0500
-Trond Myklebust <trond.myklebust@primarydata.com> wrote:
-
+On Mon, Mar 10, 2014 at 03:21:01AM -0700, Christoph Hellwig wrote:
+> On Mon, Mar 10, 2014 at 05:41:41PM +0800, Yan, Zheng wrote:
+> > The temporary file handle should be freed when nfsd4_encode_fattr()
+> > finishes its job. Christoph Hellwig suggests to move the code that
+> > generates the temporary file handle into nfsd4_encode_dirent_fattr()
+> > 
+> > Signed-off-by: Yan, Zheng <zheng.z.yan@intel.com>
 > 
-> On Mar 3, 2014, at 13:34, Jeff Layton <jlayton@redhat.com> wrote:
+> I'd also add a BUG_ON to assert we have the file handle if needed in
+> nfsd4_encode_fattr.
 > 
-> > On Mon, 3 Mar 2014 13:22:29 -0500
-> > Trond Myklebust <trond.myklebust@primarydata.com> wrote:
-> > 
-> >> 
-> >> On Mar 3, 2014, at 11:41, Jeff Layton <jlayton@redhat.com> wrote:
-> >> 
-> >>> On Mon, 3 Mar 2014 10:46:37 -0500
-> >>> Trond Myklebust <trond.myklebust@primarydata.com> wrote:
-> >>> 
-> >>>> 
-> >>>> On Mar 3, 2014, at 10:43, Jeff Layton <jlayton@redhat.com> wrote:
-> >>>> 
-> >>>>> On Mon, 03 Mar 2014 06:47:52 +0100
-> >>>>> Dennis Jacobfeuerborn <dennisml@conversis.de> wrote:
-> >>>>> 
-> >>>>>> Hi,
-> >>>>>> I'm experimenting with using NFSv4 as storage for web servers and while 
-> >>>>>> regular file access seems to work fine as soon as I bring flock() into 
-> >>>>>> play things become more problematic.
-> >>>>>> I've create a tiny test php script that basically opens a file, locks it 
-> >>>>>> using flock(), writes that fact into a log file (on a local filesystem), 
-> >>>>>> performs a usleep(1000), writes into the log that it is about to unlock 
-> >>>>>> the file and finally unlocks it.
-> >>>>>> I invoke that script using ab with a concurrency of 20 for a few 
-> >>>>>> thousand requests.
-> >>>>>> 
-> >>>>> 
-> >>>>> Is all the activity from a single client, or are multiple clients
-> >>>>> contending for the lock?
-> >>>>> 
-> >>>>>> The result is that while 99% of the request respond quickly a few 
-> >>>>>> request seem to hang for up to 30 seconds. According to the log file 
-> >>>>>> they must eventually succeed since I see all expected entries and the 
-> >>>>>> locking seems to work as well since all entries are in the expected order.
-> >>>>>> 
-> >>>>>> Is it expected that these long delays happen? When I comment the locking 
-> >>>>>> function out these hangs disappear.
-> >>>>>> Are there some knobs to tune NFS and make it behave better in these 
-> >>>>>> situations?
-> >>>>>> 
-> >>>>> 
-> >>>>> NFSv4 locking is inherently unfair. If you're doing a blocking lock,
-> >>>>> then the client is expected to poll for it. So, long delays are
-> >>>>> possible if you just happen to be unlucky and keep missing the lock.
-> >>>>> 
-> >>>>> There's no knob to tune, but there probably is room for improvement in
-> >>>>> this code. In principle we could try to be more aggressive about
-> >>>>> getting the lock by trying to wake up one or more blocked tasks whenever
-> >>>>> a lock is released. You might still end up with delays, but it could
-> >>>>> help improve responsiveness.
-> >>>> 
-> >>>> …or you could implement the NFSv4.1 lock callback functionality. That would scale better than more aggressive polling.
-> >>> 
-> >>> I had forgotten about those. I wonder what servers actually implement
-> >>> them? I don't think Linux' knfsd does yet.
-> >>> 
-> >>> I wasn't really suggesting more aggressive polling. The timer semantics
-> >>> seem fine as they are, but we could short circuit it when we know that
-> >>> a lock on the inode has just become free.
-> >> 
-> >> How do we “know” that the lock is free? We already track all the locks that our client holds, and wait for those to be released. I can’t see what else there is to do.
-> >> 
-> > 
-> > Right, we do that, but tasks that are polling for the lock don't get
-> > woken up when a task releases a lock. They currently just wait until
-> > the timeout occurs and then attempt to acquire the lock. The pessimal
-> > case is that:
-> > 
-> > - try to acquire the lock and be denied
-> > - task goes to sleep for 30s
-> > - just after that, another task releases the lock
-> > 
-> > The first task will wait for 30s before retrying when it could have
-> > gotten the lock soon afterward.
-> > 
-> > The idea would be to go ahead and wake up all the blocked waiters on an
-> > inode when a task releases a lock. They'd then just re-attempt
-> > acquiring the lock immediately instead of waiting on the timeout.
-> > 
-> > On a highly contended lock, most of the waiters would just go back to
-> > sleep after being denied again, but one might end up getting the lock
-> > and keeping things moving.
-> > 
-> > We could also try to be clever and only wake up tasks that are blocked
-> > on the range being released, but in Dennis' case, he's using flock()
-> > so that wouldn't really buy him anything.
-> 
-> How about just resetting the backoff timer when the call to do_vfs_lock() sleeps due to a client-internal lock contention?
-> 
+> But maybe I was a bit too fast in my initial reply and we should put in
+> your simple fix first for the current -rc and -stable and have the
+> cleanup on top of it.  There's a lot more refactoring that should be
+> done to nfsd4_encode_fattr anyway.
 
-Hmm, maybe. Looking at how this works in _nfs4_proc_setlk...
+Makes sense; applying the bare fix for 3.15 with a stable cc, assuming
+somebody will follow up with any cleanup.  (Moving this case to
+nfsd4_encode_dirent_fattr() as in this patch certianly looks fine to
+me.)
 
-Assuming this is a blocking lock request, we first do an FL_ACCESS
-request that blocks. Once that comes free, we then issue the LOCK
-request to server and then set the vfs-layer lock if we get it.
-
-We don't currently have a way to tell whether the initial FL_ACCESS
-request blocked before returning or not. I suppose we could try to
-plumb that into the vfs-layer locking code. That might not be too
-hard...
-
--- 
-Jeff Layton <jlayton@redhat.com>
+--b.
