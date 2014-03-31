@@ -1,131 +1,106 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f177.google.com ([209.85.223.177]:47161 "EHLO
-	mail-ie0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751571AbaCFTdK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 6 Mar 2014 14:33:10 -0500
-Message-ID: <1494458922-1394134385-cardhu_decombobulator_blackberry.rim.net-1425882517-@b5.c4.bise6.blackberry>
-Reply-To: bhawley@luminex.com
-References: <1696396609.119284.1394040541217.JavaMail.zimbra@xes-inc.com>
-  <260588931.122771.1394041524167.JavaMail.zimbra@xes-inc.com>
-  <20140306145042.6db53f60@notabene.brown>
-  <1853694865.210849.1394082223818.JavaMail.zimbra@xes-inc.com>
-  <20140306163721.0edfb498@notabene.brown>
-  <1709792528-1394084840-cardhu_decombobulator_blackberry.rim.net-1367662481-@b5.c4.bise6.blackberry>
-  <764210708.28409.1394119821635.JavaMail.zimbra@xes-inc.com>
-  <20140306162208.GA18207@umich.edu>
-  <1094203678.52139.1394124222574.JavaMail.zimbra@xes-inc.com>
-  <1028951407-1394132418-cardhu_decombobulator_blackberry.rim.net-599891631-@b5.c4.bise6.blackberry>
-  <E22EB8B3-DE5E-4D39-8FFD-BA3F02276EFE@primarydata.com>
-  <745494581-1394133289-cardhu_decombobulator_blackberry.rim.net-1805734207-@b5.c4.bise6.blackberry>
-  <84CFBA83-C2FE-4AA1-92D7-C37EDFC75117@primarydata.com>
-In-Reply-To: <84CFBA83-C2FE-4AA1-92D7-C37EDFC75117@primarydata.com>
-Subject: Re: Optimal NFS mount options to safely allow interrupts and timeouts on newer kernels
-To: "Trond Myklebust" <trond.myklebust@primarydata.com>,
-        "Brian Hawley" <bhawley@luminex.com>
-Cc: "Andrew Martin" <amartin@xes-inc.com>, "Jim Rees" <rees@umich.edu>,
-        "Brown Neil" <neilb@suse.de>, linux-nfs-owner@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-From: "Brian Hawley" <bhawley@luminex.com>
-Date: Thu, 6 Mar 2014 19:33:05 +0000
-Content-Type: text/plain; charset="Windows-1252"
+Received: from fieldses.org ([174.143.236.118]:39250 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751153AbaCaU7H (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 31 Mar 2014 16:59:07 -0400
+Date: Mon, 31 Mar 2014 16:58:59 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: wengmeiling.weng@huawei.com, greg@kroah.com, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, devel@openvz.org
+Subject: Re: [PATCH] nfsd: check passed socket's net matches NFSd
+ superblock's one
+Message-ID: <20140331205859.GB20024@fieldses.org>
+References: <20140226135000.11521.30339.stgit@localhost.localdomain>
 MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140226135000.11521.30339.stgit@localhost.localdomain>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-DQpXZSBkbyBjYWxsIGZzeW5jIGF0IHN5bmNocm9uaXphdGlvbiBwb2ludHMuDQoNClRoZSBwcm9i
-bGVtIGlzIHRoZSB3cml0ZSgpIGJsb2NrcyBmb3JldmVyIChvciBmb3IgYW4gZXhjZXB0aW9uYWxs
-eSBsb25nIHRpbWUgb24gdGhlIG9yZGVyIG9mIGhvdXJzIGFuZCBkYXlzKSwgZXZlbiB3aXRoIHRp
-bWVvIHNldCB0byBzYXkgMjAgYW5kIHJldHJhbnMgc2V0IHRvIDIuICBXZSBzZWUgdGltZW91dCBt
-ZXNzYWdlcyBpbiAvdmFyL2xvZy9tZXNzYWdlcywgYnV0IHRoZSB3cml0ZSBjb250aW51ZXMgdG8g
-cGVuZC4gICBVbnRpbCB3ZSBzdGFydCBkb2luZyByZXBlYXRlZCB1bW91bnQgLWYncy4gIFRoZW4g
-aXQgcmV0dXJucyBhbmQgaGFzIGFuIGkvbyBlcnJvci4NCg0KDQotLS0tLU9yaWdpbmFsIE1lc3Nh
-Z2UtLS0tLQ0KRnJvbTogVHJvbmQgTXlrbGVidXN0IDx0cm9uZC5teWtsZWJ1c3RAcHJpbWFyeWRh
-dGEuY29tPg0KRGF0ZTogVGh1LCA2IE1hciAyMDE0IDE0OjI2OjI0IA0KVG86IDxiaGF3bGV5QGx1
-bWluZXguY29tPg0KQ2M6IEFuZHJldyBNYXJ0aW48YW1hcnRpbkB4ZXMtaW5jLmNvbT47IEppbSBS
-ZWVzPHJlZXNAdW1pY2guZWR1PjsgQnJvd24gTmVpbDxuZWlsYkBzdXNlLmRlPjsgPGxpbnV4LW5m
-cy1vd25lckB2Z2VyLmtlcm5lbC5vcmc+OyA8bGludXgtbmZzQHZnZXIua2VybmVsLm9yZz4NClN1
-YmplY3Q6IFJlOiBPcHRpbWFsIE5GUyBtb3VudCBvcHRpb25zIHRvIHNhZmVseSBhbGxvdyBpbnRl
-cnJ1cHRzIGFuZCB0aW1lb3V0cyBvbiBuZXdlciBrZXJuZWxzDQoNCg0KT24gTWFyIDYsIDIwMTQs
-IGF0IDE0OjE0LCBCcmlhbiBIYXdsZXkgPGJoYXdsZXlAbHVtaW5leC5jb20+IHdyb3RlOg0KDQo+
-IA0KPiBUcm9uZCwNCj4gDQo+IEluIHRoaXMgY2FzZSwgaXQgaXNuJ3QgZnN5bmMgb3IgY2xvc2Ug
-dGhhdCBhcmUgbm90IGdldHRpbmcgdGhlIGkvbyBlcnJvci4gIEl0IGlzIHRoZSB3cml0ZSgpLiAg
-DQoNCk15IHBvaW50IGlzIHRoYXQgd3JpdGUoKSBpc26SdCBldmVuIHJlcXVpcmVkIHRvIHJldHVy
-biBhbiBlcnJvciBpbiB0aGUgY2FzZSB3aGVyZSB5b3VyIE5GUyBzZXJ2ZXIgaXMgdW5hdmFpbGFi
-bGUuIFVubGVzcyB5b3UgdXNlIE9fU1lOQyBvciBPX0RJUkVDVCB3cml0ZXMsIHRoZW4gdGhlIGtl
-cm5lbCBpcyBlbnRpdGxlZCBhbmQgaW5kZWVkIGV4cGVjdGVkIHRvIGNhY2hlIHRoZSBkYXRhIGlu
-IGl0cyBwYWdlIGNhY2hlIHVudGlsIHlvdSBleHBsaWNpdGx5IGNhbGwgZnN5bmMoKS4gVGhlIHJl
-dHVybiB2YWx1ZSBvZiB0aGF0IGZzeW5jKCkgY2FsbCBpcyB3aGF0IHRlbGxzIHlvdSB3aGV0aGVy
-IG9yIG5vdCB5b3VyIGRhdGEgaGFzIHNhZmVseSBiZWVuIHN0b3JlZCB0byBkaXNrLg0KDQo+IEFu
-ZCB3ZSBjaGVjayB0aGUgcmV0dXJuIHZhbHVlIG9mIGV2ZXJ5IGkvbyByZWxhdGVkIGNvbW1hbmQu
-DQoNCj4gV2UgYXJlbid0IHVzaW5nIHN5bmNocm9ub3VzIGJlY2F1c2UgdGhlIHBlcmZvcm1hbmNl
-IGJlY29tZXMgYWJ5c21hbC4NCj4gDQo+IFJlcGVhdGVkIHVtb3VudCAtZiBkb2VzIGV2ZW50dWFs
-bHkgcmVzdWx0IGluIHRoZSBpL28gZXJyb3IgZ2V0dGluZyBwcm9wYWdhdGVkIGJhY2sgdG8gdGhl
-IHdyaXRlKCkgY2FsbC4gICBJIHN1c3BlY3QgdGhlIHJlcGVhdGVkIHVtb3VudCAtZidzIGFyZSB3
-b3JraW5nIHRoZWlyIHdheSB0aHJvdWdoIGJsb2NrcyBpbiB0aGUgY2FjaGUvcXVldWUgYW5kIGV2
-ZW50dWFsbHkgd2UgZ2V0IGJhY2sgdG8gdGhlIGJsb2NrZWQgd3JpdGUuICAgIA0KPiANCj4gQXMg
-SSBtZW50aW9uZWQgcHJldmlvdXNseSwgaWYgd2UgbW91bnQgd2l0aCBzeW5jIG9yIGRpcmVjdCBp
-L28gdHlwZSBvcHRpb25zLCB3ZSB3aWxsIGdldCB0aGUgaS9vIGVycm9yLCBidXQgZm9yIHBlcmZv
-cm1hbmNlIHJlYXNvbnMsIHRoaXMgaXNuJ3QgYW4gb3B0aW9uLg0KDQpTdXJlLCBidXQgaW4gdGhh
-dCBjYXNlIHlvdSBkbyBuZWVkIHRvIGNhbGwgZnN5bmMoKSBiZWZvcmUgdGhlIGFwcGxpY2F0aW9u
-IGV4aXRzLiBOb3RoaW5nIGVsc2UgY2FuIGd1YXJhbnRlZSBkYXRhIHN0YWJpbGl0eSwgYW5kIHRo
-YXSScyB0cnVlIGZvciBhbGwgc3RvcmFnZS4NCg0KPiAtLS0tLU9yaWdpbmFsIE1lc3NhZ2UtLS0t
-LQ0KPiBGcm9tOiBUcm9uZCBNeWtsZWJ1c3QgPHRyb25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5j
-b20+DQo+IERhdGU6IFRodSwgNiBNYXIgMjAxNCAxNDowNjoyNCANCj4gVG86IDxiaGF3bGV5QGx1
-bWluZXguY29tPg0KPiBDYzogQW5kcmV3IE1hcnRpbjxhbWFydGluQHhlcy1pbmMuY29tPjsgSmlt
-IFJlZXM8cmVlc0B1bWljaC5lZHU+OyBCcm93biBOZWlsPG5laWxiQHN1c2UuZGU+OyA8bGludXgt
-bmZzLW93bmVyQHZnZXIua2VybmVsLm9yZz47IDxsaW51eC1uZnNAdmdlci5rZXJuZWwub3JnPg0K
-PiBTdWJqZWN0OiBSZTogT3B0aW1hbCBORlMgbW91bnQgb3B0aW9ucyB0byBzYWZlbHkgYWxsb3cg
-aW50ZXJydXB0cyBhbmQgdGltZW91dHMgb24gbmV3ZXIga2VybmVscw0KPiANCj4gDQo+IE9uIE1h
-ciA2LCAyMDE0LCBhdCAxNDowMCwgQnJpYW4gSGF3bGV5IDxiaGF3bGV5QGx1bWluZXguY29tPiB3
-cm90ZToNCj4gDQo+PiANCj4+IEV2ZW4gd2l0aCBzbWFsbCB0aW1lbyBhbmQgcmV0cmFucywgeW91
-IHdvbid0IGdldCBpL28gZXJyb3JzIGJhY2sgdG8gdGhlIHJlYWRzL3dyaXRlcy4gICBUaGF0J3Mg
-YmVlbiBvdXIgZXhwZXJpZW5jZSBhbnl3YXkuDQo+IA0KPiBSZWFkIGNhY2hpbmcsIGFuZCBidWZm
-ZXJlZCB3cml0ZXMgbWVhbiB0aGF0IHRoZSBJL08gZXJyb3JzIG9mdGVuIGRvIG5vdCBvY2N1ciBk
-dXJpbmcgdGhlIHJlYWQoKS93cml0ZSgpIHN5c3RlbSBjYWxsIGl0c2VsZi4NCj4gDQo+IFdlIGRv
-IHRyeSB0byBwcm9wYWdhdGUgSS9PIGVycm9ycyBiYWNrIHRvIHRoZSBhcHBsaWNhdGlvbiBhcyBz
-b29uIGFzIHRoZSBkbyBvY2N1ciwgYnV0IGlmIHRoYXQgYXBwbGljYXRpb24gaXNuknQgdXNpbmcg
-c3luY2hyb25vdXMgSS9PLCBhbmQgaXQgaXNuknQgY2hlY2tpbmcgdGhlIHJldHVybiB2YWx1ZXMg
-b2YgZnN5bmMoKSBvciBjbG9zZSgpLCB0aGVuIHRoZXJlIGlzIGxpdHRsZSB0aGUga2VybmVsIGNh
-biBkby4uLg0KPiANCj4+IA0KPj4gV2l0aCBzb2Z0LCB5b3UgbWF5IGVuZCB1cCB3aXRoIGxvc3Qg
-ZGF0YSAoZGF0YSB0aGF0IGhhZCBhbHJlYWR5IGJlZW4gd3JpdHRlbiB0byB0aGUgY2FjaGUgYnV0
-IG5vdCB5ZXQgdG8gdGhlIHN0b3JhZ2UpLiAgIFlvdSdkIGhhdmUgdGhhdCBzYW1lIGlzc3VlIHdp
-dGggJ2hhcmQnIHRvbyBpZiBpdCB3YXMgeW91ciBhcHBsaWFuY2UgdGhhdCBmYWlsZWQuICBJZiB0
-aGUgYXBwbGlhbmNlIG5ldmVyIGNvbWVzIGJhY2ssIHRob3NlIGJsb2NrcyBjYW4gbmV2ZXIgYmUg
-d3JpdHRlbi4NCj4+IA0KPj4gSW4geW91ciBjYXNlIHRob3VnaCwgeW91J3JlIG5vdCB3cml0aW5n
-LiAgDQo+PiANCj4+IA0KPj4gLS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0NCj4+IEZyb206IEFu
-ZHJldyBNYXJ0aW4gPGFtYXJ0aW5AeGVzLWluYy5jb20+DQo+PiBEYXRlOiBUaHUsIDYgTWFyIDIw
-MTQgMTA6NDM6NDIgDQo+PiBUbzogSmltIFJlZXM8cmVlc0B1bWljaC5lZHU+DQo+PiBDYzogPGJo
-YXdsZXlAbHVtaW5leC5jb20+OyBOZWlsQnJvd248bmVpbGJAc3VzZS5kZT47IDxsaW51eC1uZnMt
-b3duZXJAdmdlci5rZXJuZWwub3JnPjsgPGxpbnV4LW5mc0B2Z2VyLmtlcm5lbC5vcmc+DQo+PiBT
-dWJqZWN0OiBSZTogT3B0aW1hbCBORlMgbW91bnQgb3B0aW9ucyB0byBzYWZlbHkgYWxsb3cgaW50
-ZXJydXB0cyBhbmQNCj4+IHRpbWVvdXRzIG9uIG5ld2VyIGtlcm5lbHMNCj4+IA0KPj4+IEZyb206
-ICJKaW0gUmVlcyIgPHJlZXNAdW1pY2guZWR1Pg0KPj4+IEFuZHJldyBNYXJ0aW4gd3JvdGU6DQo+
-Pj4gDQo+Pj4+IEZyb206ICJKaW0gUmVlcyIgPHJlZXNAdW1pY2guZWR1Pg0KPj4+PiBHaXZlbiB0
-aGlzIGlzIGFwYWNoZSwgSSB0aGluayBpZiBJIHdlcmUgZG9pbmcgdGhpcyBJJ2QgdXNlDQo+Pj4+
-IHJvLHNvZnQsaW50cix0Y3ANCj4+Pj4gYW5kIG5vdCB0cnkgdG8gd3JpdGUgYW55dGhpbmcgdG8g
-bmZzLg0KPj4+IEkgd2FzIHVzaW5nIHRjcCxiZyxzb2Z0LGludHIgd2hlbiB0aGlzIHByb2JsZW0g
-b2NjdXJyZWQuIEkgZG8gbm90IGtub3cgaWYNCj4+PiBhcGFjaGUgd2FzIGF0dGVtcHRpbmcgdG8g
-ZG8gYSB3cml0ZSBvciBhIHJlYWQsIGJ1dCBpdCBzZWVtcyB0aGF0DQo+Pj4gdGNwLHNvZnQsaW50
-cg0KPj4+IHdhcyBub3Qgc3VmZmljaWVudCB0byBwcmV2ZW50IHRoZSBwcm9ibGVtLg0KPj4+IA0K
-Pj4+IEkgaGFkIHRoZSBpbXByZXNzaW9uIGZyb20geW91ciBvcmlnaW5hbCBtZXNzYWdlIHRoYXQg
-eW91IHdlcmUgbm90IHVzaW5nDQo+Pj4gInNvZnQiIGFuZCB3ZXJlIGFza2luZyBpZiBpdCdzIHNh
-ZmUgdG8gdXNlIGl0LiBBcmUgeW91IHNheWluZyB0aGF0IGV2ZW4gd2l0aA0KPj4+IHRoZSAic29m
-dCIgb3B0aW9uIHRoZSBhcGFjaGUgZ2V0cyBzdHVjayBmb3JldmVyPw0KPj4gWWVzLCBldmVuIHdp
-dGggc29mdCwgaXQgZ2V0cyBzdHVjayBmb3JldmVyLiBJIGhhZCBiZWVuIHVzaW5nIHRjcCxiZyxz
-b2Z0LGludHINCj4+IHdoZW4gdGhlIHByb2JsZW0gb2NjdXJyZWQgKG9uIHNldmVyYWwgb2Nhc3Np
-b25zKSwgc28gbXkgb3JpZ2luYWwgcXVlc3Rpb24gd2FzDQo+PiBpZiBpdCB3b3VsZCBiZSBzYWZl
-IHRvIHVzZSBhIHNtYWxsIHRpbWVvIGFuZCByZXRyYW5zIHZhbHVlcyB0byBob3BlZnVsbHkgDQo+
-PiByZXR1cm4gSS9PIGVycm9ycyBxdWlja2x5IHRvIHRoZSBhcHBsaWNhdGlvbiwgcmF0aGVyIHRo
-YW4gYmxvY2tpbmcgZm9yZXZlciANCj4+ICh3aGljaCBjYXVzZXMgdGhlIGhpZ2ggbG9hZCBhbmQg
-aW5ldml0YWJsZSByZWJvb3QpLiBJdCBzb3VuZHMgbGlrZSB0aGF0IGlzbid0DQo+PiBzYWZlLCBi
-dXQgcGVyaGFwcyB0aGVyZSBpcyBhbm90aGVyIHdheSB0byByZXNvbHZlIHRoaXMgcHJvYmxlbT8N
-Cj4+IC0tDQo+PiBUbyB1bnN1YnNjcmliZSBmcm9tIHRoaXMgbGlzdDogc2VuZCB0aGUgbGluZSAi
-dW5zdWJzY3JpYmUgbGludXgtbmZzIiBpbg0KPj4gdGhlIGJvZHkgb2YgYSBtZXNzYWdlIHRvIG1h
-am9yZG9tb0B2Z2VyLmtlcm5lbC5vcmcNCj4+IE1vcmUgbWFqb3Jkb21vIGluZm8gYXQgIGh0dHA6
-Ly92Z2VyLmtlcm5lbC5vcmcvbWFqb3Jkb21vLWluZm8uaHRtbA0KPj4gDQo+IA0KPiBfX19fX19f
-X19fX19fX19fX19fX19fX19fX19fX19fX18NCj4gVHJvbmQgTXlrbGVidXN0DQo+IExpbnV4IE5G
-UyBjbGllbnQgbWFpbnRhaW5lciwgUHJpbWFyeURhdGENCj4gdHJvbmQubXlrbGVidXN0QHByaW1h
-cnlkYXRhLmNvbQ0KPiANCg0KX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fX19fDQpUcm9u
-ZCBNeWtsZWJ1c3QNCkxpbnV4IE5GUyBjbGllbnQgbWFpbnRhaW5lciwgUHJpbWFyeURhdGENCnRy
-b25kLm15a2xlYnVzdEBwcmltYXJ5ZGF0YS5jb20NCg0K
+Applying, sorry for the delay.--b.
 
+On Wed, Feb 26, 2014 at 04:50:01PM +0300, Stanislav Kinsbursky wrote:
+> There could be a case, when NFSd file system is mounted in network, different
+> to socket's one, like below:
+> 
+> "ip netns exec" creates new network and mount namespace, which duplicates NFSd
+> mount point, created in init_net context. And thus NFS server stop in nested
+> network context leads to RPCBIND client destruction in init_net.
+> Then, on NFSd start in nested network context, rpc.nfsd process creates socket
+> in nested net and passes it into "write_ports", which leads to RPCBIND sockets
+> creation in init_net context because of the same reason (NFSd monut point was
+> created in init_net context). An attempt to register passed socket in nested
+> net leads to panic, because no RPCBIND client present in nexted network
+> namespace.
+> 
+> This patch add check that passed socket's net matches NFSd superblock's one.
+> And returns -EINVAL error to user psace otherwise.
+> 
+> v2: Put socket on exit.
+> 
+> Reported-by: Weng Meiling <wengmeiling.weng@huawei.com>
+> Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+> Cc: stable@vger.kernel.org
+> ---
+>  fs/nfsd/nfsctl.c               |    5 +++++
+>  include/linux/sunrpc/svcsock.h |    1 +
+>  net/sunrpc/svcsock.c           |   16 ++++++++++++++++
+>  3 files changed, 22 insertions(+), 0 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+> index 7f55517..f34d9de 100644
+> --- a/fs/nfsd/nfsctl.c
+> +++ b/fs/nfsd/nfsctl.c
+> @@ -699,6 +699,11 @@ static ssize_t __write_ports_addfd(char *buf, struct net *net)
+>  	if (err != 0 || fd < 0)
+>  		return -EINVAL;
+>  
+> +	if (svc_alien_sock(net, fd)) {
+> +		printk(KERN_ERR "%s: socket net is different to NFSd's one\n", __func__);
+> +		return -EINVAL;
+> +	}
+> +
+>  	err = nfsd_create_serv(net);
+>  	if (err != 0)
+>  		return err;
+> diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
+> index 62fd1b7..947009e 100644
+> --- a/include/linux/sunrpc/svcsock.h
+> +++ b/include/linux/sunrpc/svcsock.h
+> @@ -56,6 +56,7 @@ int		svc_recv(struct svc_rqst *, long);
+>  int		svc_send(struct svc_rqst *);
+>  void		svc_drop(struct svc_rqst *);
+>  void		svc_sock_update_bufs(struct svc_serv *serv);
+> +bool		svc_alien_sock(struct net *net, int fd);
+>  int		svc_addsock(struct svc_serv *serv, const int fd,
+>  					char *name_return, const size_t len);
+>  void		svc_init_xprt_sock(void);
+> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+> index b6e59f0..d06cb87 100644
+> --- a/net/sunrpc/svcsock.c
+> +++ b/net/sunrpc/svcsock.c
+> @@ -1397,6 +1397,22 @@ static struct svc_sock *svc_setup_socket(struct svc_serv *serv,
+>  	return svsk;
+>  }
+>  
+> +bool svc_alien_sock(struct net *net, int fd)
+> +{
+> +	int err;
+> +	struct socket *sock = sockfd_lookup(fd, &err);
+> +	bool ret = false;
+> +
+> +	if (!sock)
+> +		goto out;
+> +	if (sock_net(sock->sk) != net)
+> +		ret = true;
+> +	sockfd_put(sock);
+> +out:
+> +	return ret;
+> +}
+> +EXPORT_SYMBOL_GPL(svc_alien_sock);
+> +
+>  /**
+>   * svc_addsock - add a listener socket to an RPC service
+>   * @serv: pointer to RPC service to which to add a new listener
+> 
