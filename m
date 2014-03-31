@@ -1,140 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:34713 "EHLO fieldses.org"
+Received: from mga01.intel.com ([192.55.52.88]:25162 "EHLO mga01.intel.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752193AbaCJN0c (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 10 Mar 2014 09:26:32 -0400
-Date: Mon, 10 Mar 2014 09:26:29 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Matthew Rahtz <mrahtz@rapitasystems.com>
-Cc: Jan Kara <jack@suse.cz>, linux-ext4@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Subject: Re: warning in ext4_journal_start_sb on filesystem freeze
-Message-ID: <20140310132629.GA28006@fieldses.org>
-References: <217983071.143460.1385453196946.JavaMail.zimbra@rapitasystems.com>
- <20131126125826.GA4503@quack.suse.cz>
- <622177618.727.1393062606061.JavaMail.zimbra@rapitasystems.com>
- <20140224095525.GA20532@quack.suse.cz>
- <20140224154532.GB11992@fieldses.org>
- <20140225102126.GB1669@quack.suse.cz>
- <20140304164306.GC12805@fieldses.org>
- <20140304190442.GE12805@fieldses.org>
- <1209611984.37735.1394269346788.JavaMail.zimbra@rapitasystems.com>
+	id S1753221AbaCaJB4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 31 Mar 2014 05:01:56 -0400
+Message-ID: <53392EDA.7000904@intel.com>
+Date: Mon, 31 Mar 2014 17:01:14 +0800
+From: "Yan, Zheng" <zheng.z.yan@intel.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
-In-Reply-To: <1209611984.37735.1394269346788.JavaMail.zimbra@rapitasystems.com>
+To: Viro Alexander <viro@zeniv.linux.org.uk>
+CC: Trond Myklebust <trond.myklebust@primarydata.com>,
+        David Howells <dhowells@redhat.com>, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, ceph-devel@vger.kernel.org,
+        sage@inktank.com
+Subject: Re: [PATCH][RESEND] vfs: Make __d_materialise_dentry() set the materialised
+ dentry name correctly
+References: <1394115376-17109-1-git-send-email-zheng.z.yan@intel.com> <6487FCC2-FB5C-4A32-94EF-5D3352A39781@primarydata.com>
+In-Reply-To: <6487FCC2-FB5C-4A32-94EF-5D3352A39781@primarydata.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, Mar 08, 2014 at 09:02:26AM +0000, Matthew Rahtz wrote:
-> Brilliant :) Thank you for your work!
+Hi Al,
 
-Just to make sure, have you been able to confirm yet that this
-eliminates the warning you were seeing?
+Could you include this in 3.15
 
---b.
+Regards
+Yan, Zheng
 
+On 03/06/2014 10:35 PM, Trond Myklebust wrote:
 > 
-> ----- Original Message -----
-> From: "J. Bruce Fields" <bfields@fieldses.org>
-> To: "Jan Kara" <jack@suse.cz>
-> Cc: "Matthew Rahtz" <mrahtz@rapitasystems.com>, linux-ext4@vger.kernel.org, linux-nfs@vger.kernel.org
-> Sent: Tuesday, 4 March, 2014 7:04:42 PM
-> Subject: Re: warning in ext4_journal_start_sb on filesystem freeze
+> On Mar 6, 2014, at 9:16, Yan, Zheng <zheng.z.yan@intel.com> wrote:
 > 
-> On Tue, Mar 04, 2014 at 11:43:06AM -0500, J. Bruce Fields wrote:
-> > On Tue, Feb 25, 2014 at 11:21:26AM +0100, Jan Kara wrote:
-> > > On Mon 24-02-14 10:45:32, J. Bruce Fields wrote:
-> > > > On Mon, Feb 24, 2014 at 10:55:25AM +0100, Jan Kara wrote:
-> > > > > On Sat 22-02-14 09:50:06, Matthew Rahtz wrote:
-> > > > > > Thanks for your help Jan,
-> > > > > > 
-> > > > > > A few months later, we've noticed the issue is actually still there.
-> > > > > > Using 3.11.0-17-generic on Ubuntu 12.04, weâ€™re seeing this in the kernel
-> > > > > > logs:
-> > > > > > 
-> > > > > > [29243.606215] WARNING: CPU: 0 PID: 1785 at
-> > > > > > /build/buildd/linux-lts-saucy-3.11.0/fs/ext4/ext4_jbd2.c:48
-> > > > > > ext4_journal_check_start+0x83/0x90()
-> > > > > > 
-> > > > > > Having a look at the Ubuntu source package for that version, it
-> > > > > > definitely does include commit 03d95eb2f2578083a3f6286262e1cb5d88a00c02,
-> > > > > > and the line generating the warning is still:
-> > > > > > 
-> > > > > > WARN_ON(sb->s_writers.frozen == SB_FREEZE_COMPLETE);
-> > > > > > 
-> > > > > > Are there any other obvious possibilities for what may be causing this?
-> > > > > > There seem to be some users of Oracle Linux experiencing similar problems
-> > > > > > at https://community.oracle.com/thread/2617418, which was apparently
-> > > > > > fixed in Oracle's kernel version '3.8.13-26.el6uek'. Any word on when
-> > > > > > this might be integrated into the official kernel?
-> > > > > > 
-> > > > > > Full call trace included below.
-> > > > >   Looking at the trace below, now the problem seems to be in the NFS server
-> > > > > code. NFS should get protection against the filesystem being frozen (or
-> > > > > remounted read-only for that matter) via mnt_want_write() before calling
-> > > > > into notify_change() (actually before calling fh_lock() because of lock
-> > > > > ordering).  Similarly to what we do e.g. in fchownat(). Bruce?
-> > > > 
-> > > > Like this?
-> > >   Yup, that looks right.
-> > 
-> > Ugh, actually, I didn't realize we can't do mnt_want_write recursively,
-> > and there's a confusing mixture of callers that do and don't already
-> > take it, so I'll have to do something a little more complicated.
+>> From: David Howells <dhowells@redhat.com>
+>>
+>> Make __d_materialise_dentry() set the materialised dentry name correctly by
+>> flipping the arguments to switch_names().
+>>
+>> switch_names() is lazy: if both names are internal to their dentries, it'll
+>> overwrite that of the first dentry with that of the second, and won't update
+>> that of the second.
+>>
+>> In the case of __d_materialise_dentry(), the second is an already extant
+>> anonymous dentry that we want to insert into the tree in place of the dentry we
+>> just looked up[*].  However, the dentry we just looked up carries the name we
+>> actually want to use.
+>>
+>> [*] This is used by NFS to join a mount of a subtree into a mount of a tree
+>> nearer the root when the two meet, where both mounts share a superblock and
+>> thus a set of dentries.
+>>
+>> Signed-off-by: David Howells <dhowells@redhat.com>
+>> ---
+>> fs/dcache.c | 2 +-
+>> 1 file changed, 1 insertion(+), 1 deletion(-)
+>>
+>> diff --git a/fs/dcache.c b/fs/dcache.c
+>> index 265e0ce..ff779d4 100644
+>> --- a/fs/dcache.c
+>> +++ b/fs/dcache.c
+>> @@ -2698,7 +2698,7 @@ static void __d_materialise_dentry(struct dentry *dentry, struct dentry *anon)
+>>
+>> 	dparent = dentry->d_parent;
+>>
+>> -	switch_names(dentry, anon);
+>> +	switch_names(anon, dentry);
+>> 	swap(dentry->d_name.hash, anon->d_name.hash);
+>>
+>> 	dentry->d_parent = dentry;
 > 
-> Actually it looks like there's an easy enough way to distinguish when we
-> need mnt_want_write and when we don't; hopefully the following does the
-> job.
+> Well spotted...
 > 
-> --b.
+> We ought to better document the fact that ’switch_names’ is asymmetrical. Perhaps change it to ‘update_target_name’, and then switch the argument names so that the ’target’ really is the thing that gets updated?
 > 
-> commit b0f5cd115e811a146a6e1a4dd1e7cb85808cca23
-> Author: J. Bruce Fields <bfields@redhat.com>
-> Date:   Mon Feb 24 14:59:47 2014 -0500
+> _________________________________
+> Trond Myklebust
+> Linux NFS client maintainer, PrimaryData
+> trond.myklebust@primarydata.com
 > 
->     nfsd: notify_change needs elevated write count
->     
->     Looks like this bug has been here since these write counts were
->     introduced, not sure why it was just noticed now.
->     
->     Thanks also to Jan Kara for pointing out the problem.
->     
->     Reported-by: Matthew Rahtz <mrahtz@rapitasystems.com>
->     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> 
-> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-> index 6d7be3f..eea5ad1 100644
-> --- a/fs/nfsd/vfs.c
-> +++ b/fs/nfsd/vfs.c
-> @@ -404,6 +404,7 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
->  	umode_t		ftype = 0;
->  	__be32		err;
->  	int		host_err;
-> +	bool		get_write_count;
->  	int		size_change = 0;
->  
->  	if (iap->ia_valid & (ATTR_ATIME | ATTR_MTIME | ATTR_SIZE))
-> @@ -411,10 +412,18 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
->  	if (iap->ia_valid & ATTR_SIZE)
->  		ftype = S_IFREG;
->  
-> +	/* Callers that do fh_verify should do the fh_want_write: */
-> +	get_write_count = !fhp->fh_dentry;
-> +
->  	/* Get inode */
->  	err = fh_verify(rqstp, fhp, ftype, accmode);
->  	if (err)
->  		goto out;
-> +	if (get_write_count) {
-> +		host_err = fh_want_write(fhp);
-> +		if (host_err)
-> +			return nfserrno(host_err);
-> +	}
->  
->  	dentry = fhp->fh_dentry;
->  	inode = dentry->d_inode;
-> Please Note: Rapita Systems has a new address and telephone number.
-> Telephone: +44 1904 413945
-> Address: Rapita Systems Ltd, Atlas House,
->           Osbaldwick Link Road, YORK, YO10 3JB
->           United Kingdom
+
