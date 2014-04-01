@@ -1,97 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yh0-f43.google.com ([209.85.213.43]:41882 "EHLO
-	mail-yh0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754027AbaDUWCZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Apr 2014 18:02:25 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH V2 11/17] xprtrdma: Simplify rpcrdma_deregister_external()
-	synopsis
-To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Date: Mon, 21 Apr 2014 18:02:22 -0400
-Message-ID: <20140421220222.12569.19405.stgit@manet.1015granger.net>
-In-Reply-To: <20140421214442.12569.8950.stgit@manet.1015granger.net>
-References: <20140421214442.12569.8950.stgit@manet.1015granger.net>
+Received: from fieldses.org ([174.143.236.118]:37888 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751254AbaDASkL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 1 Apr 2014 14:40:11 -0400
+Date: Tue, 1 Apr 2014 14:40:03 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Jan Kara <jack@suse.cz>, Matthew Rahtz <mrahtz@rapitasystems.com>,
+        linux-ext4@vger.kernel.org, linux-nfs@vger.kernel.org
+Subject: Re: warning in ext4_journal_start_sb on filesystem freeze
+Message-ID: <20140401184003.GA20903@fieldses.org>
+References: <1697998867.143517.1385454051031.JavaMail.zimbra@rapitasystems.com>
+ <20131126125826.GA4503@quack.suse.cz>
+ <622177618.727.1393062606061.JavaMail.zimbra@rapitasystems.com>
+ <20140224095525.GA20532@quack.suse.cz>
+ <20140224154532.GB11992@fieldses.org>
+ <20140225102126.GB1669@quack.suse.cz>
+ <20140304164306.GC12805@fieldses.org>
+ <20140304190442.GE12805@fieldses.org>
+ <20140310133451.GA17807@infradead.org>
+ <20140310195709.GH28006@fieldses.org>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140310195709.GH28006@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: All remaining callers of rpcrdma_deregister_external()
-pass NULL as the last argument, so remove that argument.
+On Mon, Mar 10, 2014 at 03:57:09PM -0400, J. Bruce Fields wrote:
+> On Mon, Mar 10, 2014 at 06:34:51AM -0700, Christoph Hellwig wrote:
+> > On Tue, Mar 04, 2014 at 02:04:42PM -0500, J. Bruce Fields wrote:
+> > > diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> > > index 6d7be3f..eea5ad1 100644
+> > > --- a/fs/nfsd/vfs.c
+> > > +++ b/fs/nfsd/vfs.c
+> > > @@ -404,6 +404,7 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
+> > >  	umode_t		ftype = 0;
+> > >  	__be32		err;
+> > >  	int		host_err;
+> > > +	bool		get_write_count;
+> > >  	int		size_change = 0;
+> > >  
+> > >  	if (iap->ia_valid & (ATTR_ATIME | ATTR_MTIME | ATTR_SIZE))
+> > > @@ -411,10 +412,18 @@ nfsd_setattr(struct svc_rqst *rqstp, struct svc_fh *fhp, struct iattr *iap,
+> > >  	if (iap->ia_valid & ATTR_SIZE)
+> > >  		ftype = S_IFREG;
+> > >  
+> > > +	/* Callers that do fh_verify should do the fh_want_write: */
+> > > +	get_write_count = !fhp->fh_dentry;
+> > 
+> > Eww, this is nasty.  Given that there are only 6 callers of nfsd_setattr
+> > in total, and only half of these might cause size changes I'd rather
+> > deal with this properly, e.g. by taking both the fh_verify into the
+> > callers.
+> 
+> Maybe so.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: Steve Wise <swise@opengridcomputing.com>
----
+Gah, I found clearing out my invoice that a) I'd forgotten this, b) I'd
+already committed and pushed out the patch.
 
- net/sunrpc/xprtrdma/rpc_rdma.c  |    2 +-
- net/sunrpc/xprtrdma/transport.c |    2 +-
- net/sunrpc/xprtrdma/verbs.c     |    8 +-------
- net/sunrpc/xprtrdma/xprt_rdma.h |    2 +-
- 4 files changed, 4 insertions(+), 10 deletions(-)
+And I'd rather leave the fix as is and the cleanup to be done later.
 
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index a38efda..315417d 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -273,7 +273,7 @@ rpcrdma_create_chunks(struct rpc_rqst *rqst, struct xdr_buf *target,
- out:
- 	for (pos = 0; nchunks--;)
- 		pos += rpcrdma_deregister_external(
--				&req->rl_segments[pos], r_xprt, NULL);
-+				&req->rl_segments[pos], r_xprt);
- 	return 0;
- }
- 
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 4607b62..6a47193 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -575,7 +575,7 @@ xprt_rdma_free(void *buffer)
- 	for (i = 0; req->rl_nchunks;) {
- 		--req->rl_nchunks;
- 		i += rpcrdma_deregister_external(
--			&req->rl_segments[i], r_xprt, NULL);
-+			&req->rl_segments[i], r_xprt);
- 	}
- 
- 	if (req->rl_iov.length == 0) {	/* see allocate above */
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 9b71896..7a8a1bf 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -1632,7 +1632,7 @@ rpcrdma_register_external(struct rpcrdma_mr_seg *seg,
- 
- int
- rpcrdma_deregister_external(struct rpcrdma_mr_seg *seg,
--		struct rpcrdma_xprt *r_xprt, void *r)
-+		struct rpcrdma_xprt *r_xprt)
- {
- 	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
- 	int nsegs = seg->mr_nsegs, rc;
-@@ -1658,12 +1658,6 @@ rpcrdma_deregister_external(struct rpcrdma_mr_seg *seg,
- 	default:
- 		break;
- 	}
--	if (r) {
--		struct rpcrdma_rep *rep = r;
--		void (*func)(struct rpcrdma_rep *) = rep->rr_func;
--		rep->rr_func = NULL;
--		func(rep);	/* dereg done, callback now */
--	}
- 	return nsegs;
- }
- 
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index bf08ee0..3f44d6a 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -331,7 +331,7 @@ int rpcrdma_deregister_internal(struct rpcrdma_ia *,
- int rpcrdma_register_external(struct rpcrdma_mr_seg *,
- 				int, int, struct rpcrdma_xprt *);
- int rpcrdma_deregister_external(struct rpcrdma_mr_seg *,
--				struct rpcrdma_xprt *, void *);
-+				struct rpcrdma_xprt *);
- 
- /*
-  * RPC/RDMA connection management calls - xprtrdma/rpc_rdma.c
+But it's not OK to just drop review like that and if you think it
+warrants reverting or rebasing I can do that.
 
+--b.
