@@ -1,128 +1,133 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f175.google.com ([209.85.192.175]:39903 "EHLO
-	mail-pd0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753786AbaDNNAE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Apr 2014 09:00:04 -0400
-Received: by mail-pd0-f175.google.com with SMTP id x10so8038584pdj.20
-        for <linux-nfs@vger.kernel.org>; Mon, 14 Apr 2014 06:00:03 -0700 (PDT)
-Message-ID: <534BDBB6.5030306@gmail.com>
-Date: Mon, 14 Apr 2014 20:59:34 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:20302 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932541AbaDBRqj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 2 Apr 2014 13:46:39 -0400
+Date: Wed, 2 Apr 2014 13:46:33 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Steve Wise <swise@opengridcomputing.com>
+Cc: trond.myklebust@primarydata.com, bfields@fieldses.org,
+        linux-nfs@vger.kernel.org, tom@opengridcomputing.com
+Subject: Re: [PATCH] Fix regression errors in NFSRDMA
+Message-ID: <20140402134633.06ec5540@tlielax.poochiereds.net>
+In-Reply-To: <20140325145044.3559.95141.stgit@build.ogc.int>
+References: <20140325145044.3559.95141.stgit@build.ogc.int>
 MIME-Version: 1.0
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-CC: linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] NFS: add FATTR4_WORD1_MODE flags for cache_consistency_bitmask
-References: <534A8CEF.6000609@gmail.com>	 <505345D4-4F7C-4970-9EBF-7CFC367575B2@primarydata.com>	 <534AA4FD.3060202@gmail.com> <1397402659.6306.5.camel@leira.trondhjem.org>
-In-Reply-To: <1397402659.6306.5.camel@leira.trondhjem.org>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Tue, 25 Mar 2014 09:50:45 -0500
+Steve Wise <swise@opengridcomputing.com> wrote:
 
-
-于 2014/4/13 23:24, Trond Myklebust 写道:
-> On Sun, 2014-04-13 at 22:53 +0800, Kinglong Mee wrote:
->>
->> 于 2014/4/13 22:28, Trond Myklebust 写道:
->>>
->>> On Apr 13, 2014, at 9:11, Kinglong Mee <kinglongmee@gmail.com> wrote:
->>>
->>>> After writing data at NFS client, file's access mode is inconsistent
->>>> with server.
->>>> Because WRITE proceduce changes the S_ISUID and S_ISGID bits,
->>>> but client don't get it.
->>>>
->>>> #touch hello; chmod 06777 hello; stat hello;
->>>>    File: ‘hello’
->>>>    Size: 0               Blocks: 0          IO Block: 262144 regular
->>>> empty file
->>>> Device: 24h/36d Inode: 786434      Links: 1
->>>> Access: (6777/-rwsrwsrwx)  Uid: (    0/    root)   Gid: (    0/    root)
->>>> Context: system_u:object_r:nfs_t:s0
->>>> Access: 2014-04-13 21:00:44.996908708 +0800
->>>> Modify: 2014-04-13 21:00:44.996908708 +0800
->>>> Change: 2014-04-13 21:00:45.033908705 +0800
->>>> Birth: -
->>>>
->>>> #echo 12324 > hello; stat hello; stat /nfstest/hello
->>>>    File: ‘hello’
->>>>    Size: 6               Blocks: 0          IO Block: 262144 regular file
->>>> Device: 24h/36d Inode: 786434      Links: 1
->>>> Access: (6777/-rwsrwsrwx)  Uid: (    0/    root)   Gid: (    0/    root)
->>>>           ^^^^^ it should be 0777
->>>> Context: system_u:object_r:nfs_t:s0
->>>> Access: 2014-04-13 21:00:44.996908708 +0800
->>>> Modify: 2014-04-13 21:00:45.061908703 +0800
->>>> Change: 2014-04-13 21:00:45.061908703 +0800
->>>> Birth: -
->>>>    File: ‘/nfstest/hello’
->>>>    Size: 6               Blocks: 8          IO Block: 4096   regular file
->>>> Device: 803h/2051d      Inode: 786434      Links: 1
->>>> Access: (0777/-rwxrwxrwx)  Uid: (    0/    root)   Gid: (    0/    root)
->>>>           ^^^^^ bits on the server
->>>> Context: system_u:object_r:default_t:s0
->>>> Access: 2014-04-13 21:00:44.996908708 +0800
->>>> Modify: 2014-04-13 21:00:45.061908703 +0800
->>>> Change: 2014-04-13 21:00:45.061908703 +0800
->>>> Birth: -
->>>>
-> <snip>
->>>
->>> Instead of requesting a new attribute on each and every operation just in order to deal with an extremely rare corner case, is there any reason why we can’t just do this by checking should_remove_suid(), clearing the mode bits ourselves, and then marking the attributes for revalidation?
->>
-> <snip>
->> IMO, client shoulds get all metadatas from server, so, adds the flag.
->> I think should_remove_suid() should be called by nfsd, not NFS client
->
-> I agree with 50% of that statement. Please see below.
->
-> 8<---------------------------------------------------------------------
->>From a7b05fc5fcb433e8cfca577c9275f2012b523ee8 Mon Sep 17 00:00:00 2001
-> From: Trond Myklebust <trond.myklebust@primarydata.com>
-> Date: Sun, 13 Apr 2014 11:11:31 -0400
-> Subject: [PATCH] NFS: Don't ignore suid/sgid bit changes after a successful
->   write
->
-> If we suspect that the server may have cleared the suid/sgid bit,
-> then mark the inode for revalidation.
-
-When testing with this patch, should_remove_suid() always return false
-at client, but return true at NFS server.
-
-So that, NFS server clears the suid/sgid bit, but client also remains.
-
-thanks,
-Kinglong Mee
-
->
-> Reported-by: Kinglong Mee <kinglongmee@gmail.com>
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> From: Tom Tucker <tom@ogc.us>
+> 
+> A few changes regressed the client and server transports for NFSRDMA.
+> 
+> The server regression was caused by the addition of rq_next_page
+> (afc59400d6c65bad66d4ad0b2daf879cbff8e23e). There were a few places that
+> were missed with the update of the rq_respages array.
+> 
+> The client regression was due to additional XDR sanity checking
+> (64bd577ea0021f5903505de061b3b7d8a785ee94) that exposed a latent bug in
+> the NFSRDMA client. The bug is that if there were inline data, then the
+> rpcrdma_fixup_inline function would would incorrectly set the XDR page_len
+> to zero. Since the decode_read3resok logic previously computed this
+> value from the reported len - header len, the bug was not symptomatic.
+> 
+> Signed-off-by: Tom Tucker <tom@ogc.us>
+> Tested-by: Steve Wise <swise@ogc.us>
 > ---
->   fs/nfs/write.c | 11 +++++++++--
->   1 file changed, 9 insertions(+), 2 deletions(-)
->
-> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-> index 9a3b6a4cd6b9..80b03e064a09 100644
-> --- a/fs/nfs/write.c
-> +++ b/fs/nfs/write.c
-> @@ -1401,9 +1401,16 @@ void nfs_writeback_done(struct rpc_task *task, struct nfs_write_data *data)
->   		}
->   	}
->   #endif
-> -	if (task->tk_status < 0)
-> +	if (task->tk_status < 0) {
->   		nfs_set_pgio_error(data->header, task->tk_status, argp->offset);
-> -	else if (resp->count < argp->count) {
-> +		return;
+> 
+>  net/sunrpc/xprtrdma/rpc_rdma.c          |    3 +--
+>  net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |   12 ++++--------
+>  net/sunrpc/xprtrdma/svc_rdma_sendto.c   |    1 +
+>  3 files changed, 6 insertions(+), 10 deletions(-)
+> 
+> diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+> index e03725b..e811c40 100644
+> --- a/net/sunrpc/xprtrdma/rpc_rdma.c
+> +++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+> @@ -650,8 +650,7 @@ rpcrdma_inline_fixup(struct rpc_rqst *rqst, char *srcp, int copy_len, int pad)
+>  			page_base = 0;
+>  		}
+>  		rqst->rq_rcv_buf.page_len = olen - copy_len;
+> -	} else
+> -		rqst->rq_rcv_buf.page_len = 0;
 > +	}
-> +
-> +	/* Deal with the suid/sgid bit corner case */
-> +	if (should_remove_suid(argp->context->dentry))
-> +		nfs_mark_for_revalidate(inode);
-> +
+>  
+>  	if (copy_len && rqst->rq_rcv_buf.tail[0].iov_len) {
+>  		curlen = copy_len;
+> diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+> index 0ce7552..8d904e4 100644
+> --- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+> +++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
+> @@ -90,6 +90,7 @@ static void rdma_build_arg_xdr(struct svc_rqst *rqstp,
+>  		sge_no++;
+>  	}
+>  	rqstp->rq_respages = &rqstp->rq_pages[sge_no];
+> +	rqstp->rq_next_page = rqstp->rq_respages + 1;
+>  
+>  	/* We should never run out of SGE because the limit is defined to
+>  	 * support the max allowed RPC data length
+> @@ -169,6 +170,7 @@ static int map_read_chunks(struct svcxprt_rdma *xprt,
+>  		 */
+>  		head->arg.pages[page_no] = rqstp->rq_arg.pages[page_no];
+>  		rqstp->rq_respages = &rqstp->rq_arg.pages[page_no+1];
+> +		rqstp->rq_next_page = rqstp->rq_respages + 1;
+>  
+>  		byte_count -= sge_bytes;
+>  		ch_bytes -= sge_bytes;
+> @@ -276,6 +278,7 @@ static int fast_reg_read_chunks(struct svcxprt_rdma *xprt,
+>  
+>  	/* rq_respages points one past arg pages */
+>  	rqstp->rq_respages = &rqstp->rq_arg.pages[page_no];
+> +	rqstp->rq_next_page = rqstp->rq_respages + 1;
+>  
+>  	/* Create the reply and chunk maps */
+>  	offset = 0;
+> @@ -520,13 +523,6 @@ next_sge:
+>  	for (ch_no = 0; &rqstp->rq_pages[ch_no] < rqstp->rq_respages; ch_no++)
+>  		rqstp->rq_pages[ch_no] = NULL;
+>  
+> -	/*
+> -	 * Detach res pages. If svc_release sees any it will attempt to
+> -	 * put them.
+> -	 */
+> -	while (rqstp->rq_next_page != rqstp->rq_respages)
+> -		*(--rqstp->rq_next_page) = NULL;
+> -
+>  	return err;
+>  }
+>  
+> @@ -550,7 +546,7 @@ static int rdma_read_complete(struct svc_rqst *rqstp,
+>  
+>  	/* rq_respages starts after the last arg page */
+>  	rqstp->rq_respages = &rqstp->rq_arg.pages[page_no];
+> -	rqstp->rq_next_page = &rqstp->rq_arg.pages[page_no];
+> +	rqstp->rq_next_page = rqstp->rq_respages + 1;
+>  
+>  	/* Rebuild rq_arg head and tail. */
+>  	rqstp->rq_arg.head[0] = head->arg.head[0];
+> diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+> index c1d124d..11e90f8 100644
+> --- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+> +++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+> @@ -625,6 +625,7 @@ static int send_reply(struct svcxprt_rdma *rdma,
+>  		if (page_no+1 >= sge_no)
+>  			ctxt->sge[page_no+1].length = 0;
+>  	}
+> +	rqstp->rq_next_page = rqstp->rq_respages + 1;
+>  	BUG_ON(sge_no > rdma->sc_max_sge);
+>  	memset(&send_wr, 0, sizeof send_wr);
+>  	ctxt->wr_op = IB_WR_SEND;
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-> +	if (resp->count < argp->count) {
->   		static unsigned long    complain;
->
->   		/* This a short write! */
->
+This seems to fix the oopses I was seeing when issuing NFS WRITEs to
+the server:
+
+Tested-by: Jeff Layton <jlayton@redhat.com>
