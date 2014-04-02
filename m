@@ -1,135 +1,150 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cmexedge1.ext.emulex.com ([138.239.224.99]:2590 "EHLO
-	CMEXEDGE1.ext.emulex.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752918AbaDJRyv convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Apr 2014 13:54:51 -0400
-From: Devesh Sharma <Devesh.Sharma@Emulex.Com>
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: RE: [PATCH V1] NFS-RDMA: fix qp pointer validation checks
-Date: Thu, 10 Apr 2014 17:54:50 +0000
-Message-ID: <EE7902D3F51F404C82415C4803930ACD3FDEB3DF@CMEXMB1.ad.emulex.com>
-References: <014738b6-698e-4ea1-82f9-287378bfec19@CMEXHTCAS2.ad.emulex.com>
- <D7AB2150-5F25-4BA2-80D9-94890AD11F8F@primarydata.com>
- <F1C70AD6-BDD4-4534-8DC4-61D2767581D9@oracle.com>
- <EE7902D3F51F404C82415C4803930ACD3FDEAA43@CMEXMB1.ad.emulex.com>
- <E66D006A-0D04-4602-8BF5-6834CACD2E24@oracle.com>
- <EE7902D3F51F404C82415C4803930ACD3FDEB3B4@CMEXMB1.ad.emulex.com>
- <BD7B05C0-4733-4DD1-83F3-B30B6B0EE48C@oracle.com>
-In-Reply-To: <BD7B05C0-4733-4DD1-83F3-B30B6B0EE48C@oracle.com>
-Content-Type: text/plain; charset="us-ascii"
-MIME-Version: 1.0
+Received: from plane.gmane.org ([80.91.229.3]:43096 "EHLO plane.gmane.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752021AbaDCNP0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 3 Apr 2014 09:15:26 -0400
+Received: from list by plane.gmane.org with local (Exim 4.69)
+	(envelope-from <glN-linux-nfs@m.gmane.org>)
+	id 1WVgUN-00010t-L9
+	for linux-nfs@vger.kernel.org; Thu, 03 Apr 2014 14:11:23 +0200
+Received: from vpn.ims.co.at ([81.223.138.18])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Thu, 03 Apr 2014 14:11:23 +0200
+Received: from klemens.senn by vpn.ims.co.at with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Thu, 03 Apr 2014 14:11:23 +0200
+To: linux-nfs@vger.kernel.org
+From: Senn Klemens <klemens.senn@ims.co.at>
+Subject: kernel soft lockup after stopping nfsd
+Date: Wed, 02 Apr 2014 15:59:04 +0200
+Message-ID: <lhh538$rqm$1@ger.gmane.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-rdma@vger.kernel.org
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Alright here it is:
+Hi,
 
-<3>ocrdma_mbx_create_qp(0) rq_err
-<3>ocrdma_mbx_create_qp(0) sq_err
-<3>ocrdma_create_qp(0) error=-1
-<1>BUG: unable to handle kernel NULL pointer dereference at (null)
-<1>IP: [<ffffffffa078e8ac>] rpcrdma_deregister_frmr_external+0x9c/0xe0 [xprtrdma]
-<4>PGD 455942067 PUD 458356067 PMD 0
-<4>Oops: 0000 [#1] SMP
-<4>last sysfs file: /sys/devices/pci0000:80/0000:80:03.0/0000:8b:00.1/class
-<4>CPU 1
-<4>Modules linked in: nfs fscache xprtrdma(U) ocrdma(U) fuse ip6table_filter ip6_tables ebtable_nat ebtables ipt_MASQUERADE iptable_nat nf_nat nf_conntrack_ipv4 nf_defrag_ipv4 xt_state nf_conntrack ipt_REJECT xt_CHECKSUM iptable_mangle iptable_filter ip_tables bridge nfsd lockd nfs_acl auth_rpcgss exportfs autofs4 sunrpc target_core_iblock target_core_file target_core_pscsi target_core_mod configfs bnx2fc cnic uio fcoe libfcoe 8021q garp libfc stp llc rdma_ucm(U) rdma_cm(U) iw_cm(U) ib_addr(U) ib_ipoib(U) ib_cm(U) ib_sa(U) ipv6 ib_uverbs(U) ib_umad(U) iw_nes(U) libcrc32c iw_cxgb4(U) cxgb4(U) iw_cxgb3(U) cxgb3(U) mdio ib_qib(U) mlx4_en(U) mlx4_ib(U) mlx4_core(U) ib_mthca(U) ib_mad(U) ib_core(U) compat(U) vfat fat vhost_net macvtap macvlan tun kvm_intel kvm uinput sg cdc_ether usbnet mii microcode i2c_i801 i2c_core iTCO_wdt iTCO_vendor_support shpchp igb ptp pps_core ioatdma dca be2net(U) ext4 mbcache jbd2 sr_mod cdrom sd_mod crc_t10dif lpfc scsi_transport_fc scsi_tgt ahci wmi!
-  megaraid_sas dm_mirror dm_region_hash dm_log dm_mod [last unloaded: speedstep_lib]
-<4>
-<4>Pid: 9204, comm: ls Not tainted 2.6.32-358.el6.x86_64 #1 IBM System x3650 M4 -[7915AC1]-/00J6528
-<4>RIP: 0010:[<ffffffffa078e8ac>]  [<ffffffffa078e8ac>] rpcrdma_deregister_frmr_external+0x9c/0xe0 [xprtrdma]
-<4>RSP: 0018:ffff8804551877f8  EFLAGS: 00010217
-<4>RAX: ffff880462243800 RBX: ffff88045646a028 RCX: 0000000000000000
-<4>RDX: ffff880455187860 RSI: ffff8804551877f8 RDI: 0000000000000000
-<4>RBP: ffff880455187888 R08: 0000000000000000 R09: 0000000000000000
-<4>R10: 0000000000000000 R11: 0000000000000000 R12: ffff88047601c598
-<4>R13: ffff88047601c000 R14: ffff88045646a068 R15: 0000000000000000
-<4>FS:  00007fd669be07a0(0000) GS:ffff880028220000(0000) knlGS:0000000000000000
-<4>CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-<4>CR2: 0000000000000000 CR3: 00000004557de000 CR4: 00000000000407e0
-<4>DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-<4>DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-<4>Process ls (pid: 9204, threadinfo ffff880455186000, task ffff880456735540)
-<4>Stack:
-<4> 0000000000000000 ffff88045584a700 0000000000000000 0000000a00000000
-<4><d> 080424b400000002 0000000000000000 0000000000000000 0000000000000000
-<4><d> 0000000000000000 0000000000000000 0000000000000000 0000000000000000
-<4>Call Trace:
-<4> [<ffffffffa078ea03>] rpcrdma_deregister_external+0x113/0x2d0 [xprtrdma]
-<4> [<ffffffffa078c4fc>] xprt_rdma_free+0x8c/0x210 [xprtrdma]
-<4> [<ffffffff81082014>] ? mod_timer+0x144/0x220
-<4> [<ffffffffa07bba60>] xprt_release+0xc0/0x220 [sunrpc]
-<4> [<ffffffffa07c2f5d>] rpc_release_resources_task+0x1d/0x50 [sunrpc]
-<4> [<ffffffffa07c3a84>] __rpc_execute+0x174/0x350 [sunrpc]
-<4> [<ffffffff81096b47>] ? bit_waitqueue+0x17/0xd0
-<4> [<ffffffffa07c3cc1>] rpc_execute+0x61/0xa0 [sunrpc]
-<4> [<ffffffffa07ba3a5>] rpc_run_task+0x75/0x90 [sunrpc]
-<4> [<ffffffffa07ba4c2>] rpc_call_sync+0x42/0x70 [sunrpc]
-<4> [<ffffffffa08b6f6d>] nfs3_rpc_wrapper.clone.0+0x3d/0xd0 [nfs]
-<4> [<ffffffffa08b734c>] nfs3_proc_access+0xbc/0x180 [nfs]
-<4> [<ffffffffa089f1e9>] nfs_do_access+0x199/0x3c0 [nfs]
-<4> [<ffffffffa07c6305>] ? generic_lookup_cred+0x15/0x20 [sunrpc]
-<4> [<ffffffffa07c52e0>] ? rpcauth_lookupcred+0x70/0xc0 [sunrpc]
-<4> [<ffffffffa089f4b8>] nfs_permission+0xa8/0x1e0 [nfs]
-<4> [<ffffffff8119053d>] __link_path_walk+0xad/0x1030
-<4> [<ffffffff81143a17>] ? handle_pte_fault+0x487/0xb50
-<4> [<ffffffff8132b1fa>] ? copy_termios+0x6a/0x80
-<4> [<ffffffff8119174a>] path_walk+0x6a/0xe0
-<4> [<ffffffff8119191b>] do_path_lookup+0x5b/0xa0
-<4> [<ffffffff811925a7>] user_path_at+0x57/0xa0
-<4> [<ffffffff81194ed2>] ? vfs_ioctl+0x22/0xa0
-<4> [<ffffffff811869bc>] vfs_fstatat+0x3c/0x80
-<4> [<ffffffff81085151>] ? do_sigaction+0x91/0x1d0
-<4> [<ffffffff81186b2b>] vfs_stat+0x1b/0x20
-<4> [<ffffffff81186b54>] sys_newstat+0x24/0x50
-<4> [<ffffffff8151311e>] ? do_page_fault+0x3e/0xa0
-<4> [<ffffffff815104d5>] ? page_fault+0x25/0x30
-<4> [<ffffffff8100b072>] system_call_fastpath+0x16/0x1b
-<4>Code: 48 89 85 78 ff ff ff 48 8b 40 08 8b 40 1c 89 45 94 b8 ff ff ff ff f0 41 0f c1 85 e0 05 00 00 49 8b 04 24 48 8d 55 d8 48 8b 78 10 <48> 8b 07 ff 90 b0 01 00 00 85 c0 89 c3 74 09 80 3d 56 8d 05 00
-<1>RIP  [<ffffffffa078e8ac>] rpcrdma_deregister_frmr_external+0x9c/0xe0 [xprtrdma]
-<4> RSP <ffff8804551877f8>
-<4>CR2: 0000000000000000
+I am getting a kernel soft lockup if the client reads data from a rdma
+mount after stopping the nfs server.
 
-> -----Original Message-----
-> From: linux-rdma-owner@vger.kernel.org [mailto:linux-rdma-
-> owner@vger.kernel.org] On Behalf Of Chuck Lever
-> Sent: Thursday, April 10, 2014 11:21 PM
-> To: Devesh Sharma
-> Cc: Linux NFS Mailing List; linux-rdma@vger.kernel.org; Trond Myklebust
-> Subject: Re: [PATCH V1] NFS-RDMA: fix qp pointer validation checks
-> 
-> 
-> On Apr 10, 2014, at 1:42 PM, Devesh Sharma
-> <Devesh.Sharma@Emulex.Com> wrote:
-> 
-> >> However it seems to me the new (!ia->ri_id->qp) checks outside the
-> >> connect logic are unnecessary.
-> >>
-> >> Clearly, as you noticed, the ib_post_{send,recv} verbs do not check
-> >> that their "qp" argument is NULL before dereferencing it.
-> >>
-> >> But I don't understand how xprtrdma can post any operation if the
-> >> transport isn't connected. In other words, how would it be possible
-> >> to call
-> >> rpcrdma_ep_post_recv() if the connect had failed and there was no QP?
-> >>
-> >> If disconnect wipes ia->ri_id->qp while there are still operations in
-> >> progress, that would be the real bug.
-> > Yes!, But I have seen one more kernel oops where QP is destroyed and
-> > xprtrdma still try to post in LOCAL_INV WR on a NULL QP pointer and hence
-> system crashes. So, I think what you missioned is really happening.
-> 
-> I'd like to see the crash data (back trace, etc), if you've got it.
-> 
-> --
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
-> 
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in the
-> body of a message to majordomo@vger.kernel.org More majordomo info at
-> http://vger.kernel.org/majordomo-info.html
+The export on the server side is done with
+/data	*(fsid=0,crossmnt,rw,mp,no_root_squash,sync,no_subtree_check,insecure)
+
+Following command is used for mounting the NFSv4 share:
+mount -t nfs -o port=20049,rdma,vers=4.0,timeo=900 172.16.100.19:/ /mnt/
+
+For my tests I used the vanilla kernel 3.10.34 with the nfsd patches
+from Kinglong Mee and the nfsd-next kernel.
+
+The traceback of the nfs-next kernel is
+
+[  545.442326] BUG: soft lockup - CPU#0 stuck for 22s! [kworker/0:2:3124]
+[  545.448861] Modules linked in: md5 nfsd auth_rpcgss oid_registry
+svcrdma cpuid af_packet 8021q garp stp llc rdma_ucm ib_ucm rdma_cm iw_cm
+ib_ipoib ib_cm ib_uverbs ib_umad mlx4_en mlx4_ib ib_sa ib_mad ib_core
+ib_addr joydev usbhid mlx4_core x86_pkg_temp_thermal coretemp kvm_intel
+kvm crc32c_intel ghash_clmulni_intel aesni_intel isci ehci_pci ehci_hcd
+ablk_helper cryptd usbcore libsas lrw gf128mul glue_helper iTCO_wdt
+aes_x86_64 iTCO_vendor_support sb_edac ioatdma edac_core lpc_ich
+scsi_transport_sas i2c_i801 acpi_cpufreq sg pcspkr mfd_core tpm_tis
+microcode usb_common tpm ipmi_si wmi ipmi_msghandler processor
+thermal_sys button edd autofs4 xfs libcrc32c nfsv3 nfs fscache lockd
+nfs_acl sunrpc igb dca i2c_algo_bit ptp pps_core
+[  545.448920] CPU: 0 PID: 3124 Comm: kworker/0:2 Not tainted
+3.14.0-rc8-net-next-master-20140323+ #1
+[  545.448921] Hardware name: Supermicro B9DRG-E/B9DRG-E, BIOS 3.0
+09/04/2013
+[  545.448925] Workqueue: ib_cm cm_work_handler [ib_cm]
+[  545.448926] task: ffff88085de02690 ti: ffff88087c056000 task.ti:
+ffff88087c056000
+[  545.448927] RIP: 0010:[<ffffffff815a5e37>]  [<ffffffff815a5e37>]
+_raw_spin_lock_bh+0x27/0x40
+[  545.448932] RSP: 0018:ffff88087c057c38  EFLAGS: 00000297
+[  545.448933] RAX: 0000000000008810 RBX: ffffffff00000048 RCX:
+0000000000000000
+[  545.448934] RDX: 000000000000ffff RSI: 0000000000000000 RDI:
+ffff8810590b0204
+[  545.448935] RBP: ffff88087c057c38 R08: 000000000000000a R09:
+0000000000000890
+[  545.448936] R10: 0000000000000000 R11: 000000000000088f R12:
+0000000000000246
+[  545.448937] R13: ffff88087c057c18 R14: 0000000000000006 R15:
+0000000000000048
+[  545.448938] FS:  0000000000000000(0000) GS:ffff88087fc00000(0000)
+knlGS:0000000000000000
+[  545.448939] CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+[  545.448940] CR2: 0000000000eb90f8 CR3: 0000000001a0c000 CR4:
+00000000000407f0
+[  545.448941] Stack:
+[  545.448942]  ffff88087c057c78 ffffffffa007be50 ffff88087c057c88
+ffff880858679400
+[  545.448944]  ffff88085879ec00 ffff88087c057cb0 0000000000000000
+0000000000000000
+[  545.448947]  ffff88087c057c98 ffffffffa04dbd5b ffff88085879ec00
+ffff88085ddd1ce8
+[  545.448949] Call Trace:
+[  545.448963]  [<ffffffffa007be50>] svc_xprt_enqueue+0x50/0x220 [sunrpc]
+[  545.448967]  [<ffffffffa04dbd5b>] rdma_cma_handler+0xdb/0x180 [svcrdma]
+[  545.448970]  [<ffffffffa04bbd61>] cma_ib_handler+0xe1/0x210 [rdma_cm]
+[  545.448972]  [<ffffffffa03825e0>] cm_process_work+0x20/0x110 [ib_cm]
+[  545.448975]  [<ffffffffa0384a7b>] cm_work_handler+0x98b/0x10a8 [ib_cm]
+[  545.448979]  [<ffffffff8106b5b7>] process_one_work+0x177/0x410
+[  545.448981]  [<ffffffff8106bcda>] worker_thread+0x11a/0x370
+[  545.448983]  [<ffffffff8106bbc0>] ? rescuer_thread+0x330/0x330
+[  545.448985]  [<ffffffff810727d4>] kthread+0xc4/0xe0
+[  545.448987]  [<ffffffff81072710>] ? flush_kthread_worker+0x70/0x70
+[  545.448990]  [<ffffffff815addfc>] ret_from_fork+0x7c/0xb0
+[  545.448991]  [<ffffffff81072710>] ? flush_kthread_worker+0x70/0x70
+[  545.448992] Code: 75 f6 5d c3 55 65 81 04 25 e0 b8 00 00 00 02 00 00
+48 89 e5 b8 00 00 01 00 f0 0f c1 07 89 c2 c1 ea 10 66 39 c2 75 04 5d c3
+f3 90 <0f> b7 07 66 39 d0 75 f6 5d c3 66 66 66 66 66 66 2e 0f 1f 84 00
+
+The last log messages are
+[  507.831530] svc: __svc_unregister(nfsaclv3), error -107
+[  507.831531] RPC:       shutting down rpcbind client for localhost
+[  507.831532] RPC:       rpc_release_client(ffff88105d7b6600)
+[  507.831533] RPC:       destroying rpcbind client for localhost
+[  507.831537] RPC:       shutting down rpcbind client for localhost
+[  507.831538] RPC:       rpc_release_client(ffff88105d939e00)
+[  507.831539] RPC:       destroying rpcbind client for localhost
+[  507.831540] RPC:       destroying transport ffff88105d81d800
+[  507.831542] RPC:       xs_destroy xprt ffff88105d81d800
+[  507.831543] RPC:       xs_close xprt ffff88105d81d800
+[  507.831544] RPC:       disconnected transport ffff88105d81d800
+[  507.831547] nfsd: last server has exited, flushing export cache
+[  507.831563] svc: svc_destroy(nfsd, 1)
+[  518.809147] svcrdma: Disconnect on DTO xprt=ffff880858679400,
+cm_id=ffff88085879ec00
+
+
+Following patch fixed the problem on both kernels:
+
+---
+ net/sunrpc/svc_xprt.c | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index 06c6ff0..0b68f32 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -328,6 +328,8 @@ static void svc_thread_dequeue(struct svc_pool
+*pool, struct svc_rqst *rqstp)
+
+ static bool svc_xprt_has_something_to_do(struct svc_xprt *xprt)
+ {
++	if (xprt->xpt_flags & (1<<XPT_DEAD))
++		return false;
+ 	if (xprt->xpt_flags & ((1<<XPT_CONN)|(1<<XPT_CLOSE)))
+ 		return true;
+ 	if (xprt->xpt_flags & ((1<<XPT_DATA)|(1<<XPT_DEFERRED)))
+-- 
+1.8.1.4
+
+Is this the correct place to fix the soft lockup?
+
+Kind regards,
+Klemens
+
