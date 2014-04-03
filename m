@@ -1,201 +1,170 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yk0-f175.google.com ([209.85.160.175]:50199 "EHLO
-	mail-yk0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752896AbaDUWJB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Apr 2014 18:09:01 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH V2 07/17] xprtrdma: Remove REGISTER memory registration mode
-To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Date: Mon, 21 Apr 2014 18:01:47 -0400
-Message-ID: <20140421220147.12569.95135.stgit@manet.1015granger.net>
-In-Reply-To: <20140421214442.12569.8950.stgit@manet.1015granger.net>
-References: <20140421214442.12569.8950.stgit@manet.1015granger.net>
+Received: from mx1.redhat.com ([209.132.183.28]:6183 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753388AbaDCUMB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 3 Apr 2014 16:12:01 -0400
+Date: Thu, 3 Apr 2014 16:11:53 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Mark Lord <mlord@pobox.com>
+Cc: Albert Fluegel <af@muc.de>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: linux-3.14 nfsd regression
+Message-ID: <20140403201153.GD28790@pad.redhat.com>
+References: <533D8D73.1090603@pobox.com>
+ <20140403171643.GB28790@pad.redhat.com>
+ <533D9F8A.6030001@pobox.com>
+ <20140403193024.GC28790@pad.redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140403193024.GC28790@pad.redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-All kernel RDMA providers except amso1100 support either MTHCAFMR
-or FRMR, both of which are faster than REGISTER.  amso1100 can
-continue to use ALLPHYSICAL.
+On Thu, Apr 03, 2014 at 03:30:24PM -0400, J. Bruce Fields wrote:
+> On Thu, Apr 03, 2014 at 01:51:06PM -0400, Mark Lord wrote:
+> > On 14-04-03 01:16 PM, J. Bruce Fields wrote:
+> > > On Thu, Apr 03, 2014 at 12:33:55PM -0400, Mark Lord wrote:
+> > >> This commit from linux-3.14 breaks our NFS-root clients here:
+> > >>
+> > >> https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=6e14b46b91fee8a049b0940333ce13a820beaaa5
+> > >>
+> > >>
+> > >> - *p++ = htonl((u32) stat->mode);
+> > >> + *p++ = htonl((u32) (stat->mode & S_IALLUGO));
+> > >>
+> > >>
+> > >> Reverting the one-liner above (on the server) fixes it for us,
+> > >> as does reverting back to linux-3.13.8 on the server.
+> > >>
+> > >> The NFS-root clients are on PowerPC (big-endian) architecture,
+> > >> running linux-3.12.16. The NFS server is on an Intel PC running linux-3.14.
+> > >>
+> > >> ACL is completely disabled on server and client,
+> > >> and we're using NFSv2/v3.  No support for v4.
+> > >>
+> > >> I instrumented the function to see what other bits were being cleared
+> > >> by the (stat->mode & S_IALLUGO) masking.  The results are attached.
+> > > 
+> > > Hm, it sounds like a bug in the client if it's depending on those high
+> > > bits.
+> > 
+> > But only for mounting / starting up from the nfsroot, it seems.
+> > I wonder if there's an unusual code path for that in there?
+> > The regular stuff looks mostly fine:
+> > 
+> >         p = xdr_decode_ftype3(p, &fmode);
+> >         fattr->mode = (be32_to_cpup(p++) & ~S_IFMT) | fmode;
+> 
+> Hm, but that's in nfs3xdr.c; in nfs2xdr.c we have just
+> 
+> 	fattr->mode = be32_to_cpup(p+);
+> 
+> and NFSv2 is the default for nfsroot.  Do you have some reason to
+> believe you're not using NFSv2?
 
-The only other ULP consumer in the kernel that uses the reg_phys_mr
-verb is Lustre.
+Oh, bah, after actually writing a patch for this I thought to check the
+rfc's and in fact rfc 1094 2.3.5 says that v2 *does* encode the file
+type both in the type and mode fields of the attributes, though it
+describes this as "a bug in the protocol".
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+So I think the nfsd patch was just flat-out wrong in the v2 case, and
+that it probably just isn't worth "fixing" the client.
 
- net/sunrpc/xprtrdma/rpc_rdma.c |    3 -
- net/sunrpc/xprtrdma/verbs.c    |   90 ++--------------------------------------
- 2 files changed, 5 insertions(+), 88 deletions(-)
+But patch included below anyway for amusement value.
 
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index e4af26a..a38efda 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -479,8 +479,7 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
- 			 * on receive. Therefore, we request a reply chunk
- 			 * for non-writes wherever feasible and efficient.
- 			 */
--			if (wtype == rpcrdma_noch &&
--			    r_xprt->rx_ia.ri_memreg_strategy > RPCRDMA_REGISTER)
-+			if (wtype == rpcrdma_noch)
- 				wtype = rpcrdma_replych;
- 		}
- 	}
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 304c7ad..6bb9a07 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -494,19 +494,11 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
- 	switch (memreg) {
- 	case RPCRDMA_MTHCAFMR:
- 		if (!ia->ri_id->device->alloc_fmr) {
--#if RPCRDMA_PERSISTENT_REGISTRATION
- 			dprintk("RPC:       %s: MTHCAFMR registration "
- 				"specified but not supported by adapter, "
- 				"using riskier RPCRDMA_ALLPHYSICAL\n",
- 				__func__);
- 			memreg = RPCRDMA_ALLPHYSICAL;
--#else
--			dprintk("RPC:       %s: MTHCAFMR registration "
--				"specified but not supported by adapter, "
--				"using slower RPCRDMA_REGISTER\n",
--				__func__);
--			memreg = RPCRDMA_REGISTER;
--#endif
- 		}
- 		break;
- 	case RPCRDMA_FRMR:
-@@ -514,19 +506,11 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
- 		if ((devattr.device_cap_flags &
- 		     (IB_DEVICE_MEM_MGT_EXTENSIONS|IB_DEVICE_LOCAL_DMA_LKEY)) !=
- 		    (IB_DEVICE_MEM_MGT_EXTENSIONS|IB_DEVICE_LOCAL_DMA_LKEY)) {
--#if RPCRDMA_PERSISTENT_REGISTRATION
- 			dprintk("RPC:       %s: FRMR registration "
- 				"specified but not supported by adapter, "
- 				"using riskier RPCRDMA_ALLPHYSICAL\n",
- 				__func__);
- 			memreg = RPCRDMA_ALLPHYSICAL;
--#else
--			dprintk("RPC:       %s: FRMR registration "
--				"specified but not supported by adapter, "
--				"using slower RPCRDMA_REGISTER\n",
--				__func__);
--			memreg = RPCRDMA_REGISTER;
--#endif
- 		} else {
- 			/* Mind the ia limit on FRMR page list depth */
- 			ia->ri_max_frmr_depth = min_t(unsigned int,
-@@ -545,7 +529,6 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
- 	 * adapter.
- 	 */
- 	switch (memreg) {
--	case RPCRDMA_REGISTER:
- 	case RPCRDMA_FRMR:
- 		break;
- #if RPCRDMA_PERSISTENT_REGISTRATION
-@@ -565,11 +548,10 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
- 		ia->ri_bind_mem = ib_get_dma_mr(ia->ri_pd, mem_priv);
- 		if (IS_ERR(ia->ri_bind_mem)) {
- 			printk(KERN_ALERT "%s: ib_get_dma_mr for "
--				"phys register failed with %lX\n\t"
--				"Will continue with degraded performance\n",
-+				"phys register failed with %lX\n",
- 				__func__, PTR_ERR(ia->ri_bind_mem));
--			memreg = RPCRDMA_REGISTER;
--			ia->ri_bind_mem = NULL;
-+			rc = -ENOMEM;
-+			goto out2;
- 		}
- 		break;
- 	default:
-@@ -1611,67 +1593,6 @@ rpcrdma_deregister_fmr_external(struct rpcrdma_mr_seg *seg,
- 	return rc;
+--b.
+
+commit 86706287828aa5b4deed6b6b1478e89d2e2c9707
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Thu Apr 3 16:04:59 2014 -0400
+
+    nfs: nfsv2 client shouldn't get ftype from mode
+    
+    The NFSv2 client is using the high bits of the mode to determine the
+    file type; use the "type" field instead.
+    
+    XXX: rfc 1094 actually says this behavior is correct for NFSv2, though
+    this is described as "a bug in the protocol".  So probably this isn't
+    worth changing.
+    
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+
+diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
+index 62db136..40fb021 100644
+--- a/fs/nfs/nfs2xdr.c
++++ b/fs/nfs/nfs2xdr.c
+@@ -166,23 +166,28 @@ out_overflow:
  }
  
--static int
--rpcrdma_register_default_external(struct rpcrdma_mr_seg *seg,
--			int *nsegs, int writing, struct rpcrdma_ia *ia)
--{
--	int mem_priv = (writing ? IB_ACCESS_REMOTE_WRITE :
--				  IB_ACCESS_REMOTE_READ);
--	struct rpcrdma_mr_seg *seg1 = seg;
--	struct ib_phys_buf ipb[RPCRDMA_MAX_DATA_SEGS];
--	int len, i, rc = 0;
--
--	if (*nsegs > RPCRDMA_MAX_DATA_SEGS)
--		*nsegs = RPCRDMA_MAX_DATA_SEGS;
--	for (len = 0, i = 0; i < *nsegs;) {
--		rpcrdma_map_one(ia, seg, writing);
--		ipb[i].addr = seg->mr_dma;
--		ipb[i].size = seg->mr_len;
--		len += seg->mr_len;
--		++seg;
--		++i;
--		/* Check for holes */
--		if ((i < *nsegs && offset_in_page(seg->mr_offset)) ||
--		    offset_in_page((seg-1)->mr_offset+(seg-1)->mr_len))
--			break;
--	}
--	seg1->mr_base = seg1->mr_dma;
--	seg1->mr_chunk.rl_mr = ib_reg_phys_mr(ia->ri_pd,
--				ipb, i, mem_priv, &seg1->mr_base);
--	if (IS_ERR(seg1->mr_chunk.rl_mr)) {
--		rc = PTR_ERR(seg1->mr_chunk.rl_mr);
--		dprintk("RPC:       %s: failed ib_reg_phys_mr "
--			"%u@0x%llx (%d)... status %i\n",
--			__func__, len,
--			(unsigned long long)seg1->mr_dma, i, rc);
--		while (i--)
--			rpcrdma_unmap_one(ia, --seg);
--	} else {
--		seg1->mr_rkey = seg1->mr_chunk.rl_mr->rkey;
--		seg1->mr_nsegs = i;
--		seg1->mr_len = len;
--	}
--	*nsegs = i;
--	return rc;
--}
--
--static int
--rpcrdma_deregister_default_external(struct rpcrdma_mr_seg *seg,
--			struct rpcrdma_ia *ia)
--{
--	struct rpcrdma_mr_seg *seg1 = seg;
--	int rc;
--
--	rc = ib_dereg_mr(seg1->mr_chunk.rl_mr);
--	seg1->mr_chunk.rl_mr = NULL;
--	while (seg1->mr_nsegs--)
--		rpcrdma_unmap_one(ia, seg++);
--	if (rc)
--		dprintk("RPC:       %s: failed ib_dereg_mr,"
--			" status %i\n", __func__, rc);
--	return rc;
--}
--
- int
- rpcrdma_register_external(struct rpcrdma_mr_seg *seg,
- 			int nsegs, int writing, struct rpcrdma_xprt *r_xprt)
-@@ -1701,10 +1622,8 @@ rpcrdma_register_external(struct rpcrdma_mr_seg *seg,
- 		rc = rpcrdma_register_fmr_external(seg, &nsegs, writing, ia);
- 		break;
+ /*
+- * 2.3.2.  ftype
+- *
+- *	enum ftype {
+- *		NFNON = 0,
+- *		NFREG = 1,
+- *		NFDIR = 2,
+- *		NFBLK = 3,
+- *		NFCHR = 4,
+- *		NFLNK = 5
+- *	};
+- *
++ * Map file type to S_IFMT bits
+  */
+-static __be32 *xdr_decode_ftype(__be32 *p, u32 *type)
++static const umode_t nfs2_type2fmt[] = {
++	[NFNON] = 0,
++	[NFREG] = S_IFREG,
++	[NFDIR] = S_IFDIR,
++	[NFBLK] = S_IFBLK,
++	[NFCHR] = S_IFCHR,
++	[NFLNK] = S_IFLNK,
++	[NFSOCK] = S_IFSOCK,
++	[NFBAD] = 0,
++	[NFFIFO] = S_IFIFO,
++};
++
++static __be32 *xdr_decode_ftype(__be32 *p, umode_t *mode)
+ {
+-	*type = be32_to_cpup(p++);
+-	if (unlikely(*type > NF2FIFO))
+-		*type = NFBAD;
++	u32 type;
++
++	type = be32_to_cpup(p++);
++	if (unlikely(type > NF2FIFO))
++		type = NFBAD;
++	*mode = nfs2_type2fmt[type];
+ 	return p;
+ }
  
--	/* Default registration each time */
- 	default:
--		rc = rpcrdma_register_default_external(seg, &nsegs, writing, ia);
--		break;
-+		return -1;
- 	}
- 	if (rc)
- 		return -1;
-@@ -1738,7 +1657,6 @@ rpcrdma_deregister_external(struct rpcrdma_mr_seg *seg,
- 		break;
+@@ -277,7 +282,8 @@ static __be32 *xdr_decode_time(__be32 *p, struct timespec *timep)
+  */
+ static int decode_fattr(struct xdr_stream *xdr, struct nfs_fattr *fattr)
+ {
+-	u32 rdev, type;
++	umode_t fmode;
++	u32 rdev;
+ 	__be32 *p;
  
- 	default:
--		rc = rpcrdma_deregister_default_external(seg, ia);
- 		break;
+ 	p = xdr_inline_decode(xdr, NFS_fattr_sz << 2);
+@@ -286,9 +292,9 @@ static int decode_fattr(struct xdr_stream *xdr, struct nfs_fattr *fattr)
+ 
+ 	fattr->valid |= NFS_ATTR_FATTR_V2;
+ 
+-	p = xdr_decode_ftype(p, &type);
++	p = xdr_decode_ftype(p, &fmode);
+ 
+-	fattr->mode = be32_to_cpup(p++);
++	fattr->mode = (be32_to_cpup(p++) & ~S_IFMT) | fmode;
+ 	fattr->nlink = be32_to_cpup(p++);
+ 	fattr->uid = make_kuid(&init_user_ns, be32_to_cpup(p++));
+ 	if (!uid_valid(fattr->uid))
+@@ -302,7 +308,7 @@ static int decode_fattr(struct xdr_stream *xdr, struct nfs_fattr *fattr)
+ 
+ 	rdev = be32_to_cpup(p++);
+ 	fattr->rdev = new_decode_dev(rdev);
+-	if (type == (u32)NFCHR && rdev == (u32)NFS2_FIFO_DEV) {
++	if (fmode == S_IFCHR && rdev == (u32)NFS2_FIFO_DEV) {
+ 		fattr->mode = (fattr->mode & ~S_IFMT) | S_IFIFO;
+ 		fattr->rdev = 0;
  	}
- 	if (r) {
-
