@@ -1,102 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f175.google.com ([209.85.223.175]:39681 "EHLO
-	mail-ie0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752956AbaDRSqY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Apr 2014 14:46:24 -0400
-Received: by mail-ie0-f175.google.com with SMTP id to1so1883238ieb.34
-        for <linux-nfs@vger.kernel.org>; Fri, 18 Apr 2014 11:46:24 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Bruce Fields <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 51/70] NFSd: Convert nfsd4_process_open1() to work with lookup_clientid()
-Date: Fri, 18 Apr 2014 14:44:45 -0400
-Message-Id: <1397846704-14567-52-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1397846704-14567-51-git-send-email-trond.myklebust@primarydata.com>
-References: <1397846704-14567-1-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-2-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-3-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-4-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-5-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-6-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-7-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-8-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-9-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-10-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-11-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-12-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-13-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-14-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-15-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-16-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-17-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-18-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-19-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-20-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-21-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-22-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-23-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-24-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-25-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-26-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-27-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-28-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-29-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-30-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-31-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-32-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-33-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-34-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-35-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-36-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-37-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-38-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-39-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-40-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-41-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-42-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-43-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-44-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-45-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-46-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-47-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-48-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-49-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-50-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-51-git-send-email-trond.myklebust@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:3256 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753275AbaDCSzP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 3 Apr 2014 14:55:15 -0400
+Date: Thu, 3 Apr 2014 14:55:04 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Mark Lord <mlord@pobox.com>
+Cc: "J. Bruce Fields" <bfields@redhat.com>, Albert Fluegel <af@muc.de>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: linux-3.14 nfsd regression
+Message-ID: <20140403145504.3b04170e@tlielax.poochiereds.net>
+In-Reply-To: <533D9F8A.6030001@pobox.com>
+References: <533D8D73.1090603@pobox.com>
+	<20140403171643.GB28790@pad.redhat.com>
+	<533D9F8A.6030001@pobox.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+On Thu, 03 Apr 2014 13:51:06 -0400
+Mark Lord <mlord@pobox.com> wrote:
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 6e2d348d3367..d316fe10b9aa 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -70,6 +70,7 @@ static u64 current_sessionid = 1;
- 
- /* forward declarations */
- static int check_for_locks(struct nfs4_file *filp, struct nfs4_lockowner *lowner);
-+static __be32 lookup_clientid(clientid_t *clid, struct nfsd4_session *session, struct nfsd_net *nn, struct nfs4_client **clp);
- 
- /* Locking: */
- 
-@@ -3022,10 +3023,9 @@ nfsd4_process_open1(struct nfsd4_compound_state *cstate,
- 	oo = find_openstateowner_str(strhashval, open, cstate->minorversion, nn);
- 	open->op_openowner = oo;
- 	if (!oo) {
--		clp = find_confirmed_client(clientid, cstate->minorversion,
--					    nn);
--		if (clp == NULL)
--			return nfserr_expired;
-+		status = lookup_clientid(clientid, cstate->session, nn, &clp);
-+		if (status)
-+			return status;
- 		goto new_owner;
- 	}
- 	if (!(oo->oo_flags & NFS4_OO_CONFIRMED)) {
+> On 14-04-03 01:16 PM, J. Bruce Fields wrote:
+> > On Thu, Apr 03, 2014 at 12:33:55PM -0400, Mark Lord wrote:
+> >> This commit from linux-3.14 breaks our NFS-root clients here:
+> >>
+> >> https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=6e14b46b91fee8a049b0940333ce13a820beaaa5
+> >>
+> >>
+> >> - *p++ = htonl((u32) stat->mode);
+> >> + *p++ = htonl((u32) (stat->mode & S_IALLUGO));
+> >>
+> >>
+> >> Reverting the one-liner above (on the server) fixes it for us,
+> >> as does reverting back to linux-3.13.8 on the server.
+> >>
+> >> The NFS-root clients are on PowerPC (big-endian) architecture,
+> >> running linux-3.12.16. The NFS server is on an Intel PC running linux-3.14.
+> >>
+> >> ACL is completely disabled on server and client,
+> >> and we're using NFSv2/v3.  No support for v4.
+> >>
+> >> I instrumented the function to see what other bits were being cleared
+> >> by the (stat->mode & S_IALLUGO) masking.  The results are attached.
+> > 
+> > Hm, it sounds like a bug in the client if it's depending on those high
+> > bits.
+> 
+> But only for mounting / starting up from the nfsroot, it seems.
+> I wonder if there's an unusual code path for that in there?
+> The regular stuff looks mostly fine:
+> 
+>         p = xdr_decode_ftype3(p, &fmode);
+>         fattr->mode = (be32_to_cpup(p++) & ~S_IFMT) | fmode;
+> 
+> Except perhaps that second line ought to use the same mask
+> as the server side is using, just in case there are some other
+> stray high (higher than S_IFMT) bits in there now/someday.
+> 
+> > The original behavior was in practice harmless and changing it broke
+> > something, so I think we should definitely just revert this patch.
+> 
+> Yup.  Who?
+> 
+> > But the client may need fixing too.
+> 
+> Probably a good thing in the longer term, for better compatibility
+> with non-Linux servers.  But we'll still have to keep the revert
+> on the server (nfsd) code for backward compatibility, I think.
+> 
+> Cheers
+> 
+
+It would be good to understand where this is broken in the client.
+
+It's incorrect for the client to interpret those bits, as I think that
+there's no guarantee that other OS's implement the type bits in the
+same way that Linux does. So if you end up mounting a different OS,
+it's possible that the client will get that wrong...
+
 -- 
-1.9.0
-
+Jeff Layton <jlayton@redhat.com>
