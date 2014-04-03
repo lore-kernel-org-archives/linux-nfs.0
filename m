@@ -1,60 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smarthost02.easyserver.at ([81.16.38.11]:46069 "EHLO
-	smarthost02.easyserver.at" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751635AbaDYKsf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Apr 2014 06:48:35 -0400
-Received: from email03.easyserver.at (loadbalance01.backbone.easyserver.at [192.168.210.121])
-	by smarthost02.easyserver.at (8.14.4/8.14.4) with ESMTP id s3PABhHW014730
-	for <linux-nfs@vger.kernel.org>; Fri, 25 Apr 2014 12:11:44 +0200
-Received: from [192.168.80.175] (electra.aic.at [193.53.80.80])
-	(Authenticated sender: test@hangartest.aic.at)
-	by email03.easyserver.at (Postfix) with ESMTPSA id D6B8D23D02
-	for <linux-nfs@vger.kernel.org>; Fri, 25 Apr 2014 12:11:43 +0200 (CEST)
-Message-ID: <535A34DF.5010302@aic.at>
-Date: Fri, 25 Apr 2014 12:11:43 +0200
-From: Matthias Leopold <matthias@aic.at>
+Received: from mx1.redhat.com ([209.132.183.28]:6860 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752801AbaDCRQs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 3 Apr 2014 13:16:48 -0400
+Date: Thu, 3 Apr 2014 13:16:44 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Mark Lord <mlord@pobox.com>
+Cc: Albert Fluegel <af@muc.de>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: linux-3.14 nfsd regression
+Message-ID: <20140403171643.GB28790@pad.redhat.com>
+References: <533D8D73.1090603@pobox.com>
 MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org
-Subject: multiple mounts of same share on one host?
-Content-Type: text/plain; charset=ISO-8859-15; format=flowed
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <533D8D73.1090603@pobox.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-hi,
+On Thu, Apr 03, 2014 at 12:33:55PM -0400, Mark Lord wrote:
+> This commit from linux-3.14 breaks our NFS-root clients here:
+> 
+> https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=6e14b46b91fee8a049b0940333ce13a820beaaa5
+> 
+> 
+> - *p++ = htonl((u32) stat->mode);
+> + *p++ = htonl((u32) (stat->mode & S_IALLUGO));
+> 
+> 
+> Reverting the one-liner above (on the server) fixes it for us,
+> as does reverting back to linux-3.13.8 on the server.
+> 
+> The NFS-root clients are on PowerPC (big-endian) architecture,
+> running linux-3.12.16. The NFS server is on an Intel PC running linux-3.14.
+> 
+> ACL is completely disabled on server and client,
+> and we're using NFSv2/v3.  No support for v4.
+> 
+> I instrumented the function to see what other bits were being cleared
+> by the (stat->mode & S_IALLUGO) masking.  The results are attached.
 
-i've got a (probably rather basic) nfs usage question. i hope this is 
-the right place to ask, please tell me otherwise.
+Hm, it sounds like a bug in the client if it's depending on those high
+bits.
 
-i'm moving webspace content to nfs shares. because of suexec 
-restrictions i have different paths to different subsets of the content 
-on the client, but i wonder if i can still have all of the content in 
-one path on one exported nfs share.
+The original behavior was in practice harmless and changing it broke
+something, so I think we should definitely just revert this patch.
 
-example:
+But the client may need fixing too.
 
-i need
-
-/home/content/foo
-
-and
-
-/var/www/content/bar
-
-exported share "/export" could have
-
-/export/foo
-/export/bar
-
-AFAICS there are three options:
-
-.) mounting /export twice on different paths on the nfs client
-.) mounting /export once and doing a bind mount
-.) put foo and bar in different directories and exporting/mounting them 
-separately
-
-which of these options would you recommend?
-
-thx very much for help
-matthias
-
-
+--b.
