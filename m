@@ -1,43 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mout.gmx.net ([212.227.15.19]:62710 "EHLO mout.gmx.net"
+Received: from mail1.start.ca ([64.140.120.57]:44347 "EHLO mail1.start.ca"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752697AbaDENXL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 5 Apr 2014 09:23:11 -0400
-Message-ID: <534003B9.5020003@gmx.de>
-Date: Sat, 05 Apr 2014 15:23:05 +0200
-From: =?UTF-8?B?VG9yYWxmIEbDtnJzdGVy?= <toralf.foerster@gmx.de>
+	id S1752679AbaDCQoh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 3 Apr 2014 12:44:37 -0400
+Message-ID: <533D8FE9.80309@pobox.com>
+Date: Thu, 03 Apr 2014 12:44:25 -0400
+From: Mark Lord <mlord@pobox.com>
 MIME-Version: 1.0
-To: Jeff Layton <jlayton@redhat.com>
-CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
-        Linux Kernel <linux-kernel@vger.kernel.org>
-Subject: Re: NFSv2 directory cannot longer be exported in 3.14, 3.13 works
- fine
-References: <533F2ABF.2030107@gmx.de>	<533FF457.5080907@gmx.de> <20140405085143.59e578ff@tlielax.poochiereds.net>
-In-Reply-To: <20140405085143.59e578ff@tlielax.poochiereds.net>
+To: Albert Fluegel <af@muc.de>, "J. Bruce Fields" <bfields@redhat.com>
+CC: linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: linux-3.14 nfsd regression
+References: <533D8D73.1090603@pobox.com>
+In-Reply-To: <533D8D73.1090603@pobox.com>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
------BEGIN PGP SIGNED MESSAGE-----
-Hash: SHA256
-
-On 04/05/2014 02:51 PM, Jeff Layton wrote:
-> This was already tracked down earlier this week. Bruce has a patch 
-> queued to fix it in his nfsd-next branch. See this thread from
-> earlier this week:
+On 14-04-03 12:33 PM, Mark Lord wrote:
+> This commit from linux-3.14 breaks our NFS-root clients here:
 > 
-> Subject: Re: linux-3.14 nfsd regression
-yep - fixed the issue here
+> https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=6e14b46b91fee8a049b0940333ce13a820beaaa5
+> 
+> 
+> - *p++ = htonl((u32) stat->mode);
+> + *p++ = htonl((u32) (stat->mode & S_IALLUGO));
+> 
+> 
+> Reverting the one-liner above (on the server) fixes it for us,
+> as does reverting back to linux-3.13.8 on the server.
+> 
+> The NFS-root clients are on PowerPC (big-endian) architecture,
+> running linux-3.12.16. The NFS server is on an Intel PC running linux-3.14.
+> 
+> ACL is completely disabled on server and client,
+> and we're using NFSv2/v3.  No support for v4.
+> 
+> I instrumented the function to see what other bits were being cleared
+> by the (stat->mode & S_IALLUGO) masking.  The results are attached.
+..
 
-- -- 
-MfG/Sincerely
-Toralf Förster
-pgp finger print:1A37 6F99 4A9D 026F 13E2 4DCF C4EA CDDE 0076 E94E
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.22 (GNU/Linux)
-Comment: Using GnuPG with Thunderbird - http://www.enigmail.net/
 
-iF4EAREIAAYFAlNAA7kACgkQxOrN3gB26U5UiwD/X/ONRaFIMGyxHLZd7cwrN4zh
-QADbpEhyT+N6KwH6m2wA/j++6yigdEtV7k9pjEWMwlCZUyT8reUbNzZOhxMl10+i
-=WGBv
------END PGP SIGNATURE-----
+Looking into the (previously attached) trace, the bits that seem to be
+getting chopped most often are S_IFREG (0x8000) and S_IFDIR (0x4000).
+It appears that one/both of those are needed for mounting nfsroot.
+
+
+[ 2733.823753] encode_fattr: mode=0x000041ed mask=0x00000fff
+[ 2733.824217] encode_fattr: mode=0x000041ed mask=0x00000fff
+[ 2733.838769] encode_fattr: mode=0x000041ed mask=0x00000fff
+[ 2733.839175] encode_fattr: mode=0x0000a1ff mask=0x00000fff
+[ 2733.839895] encode_fattr: mode=0x000081ed mask=0x00000fff
+[ 2733.840388] encode_fattr: mode=0x000081ed mask=0x00000fff
+[ 2733.840431] encode_fattr: mode=0x000081ed mask=0x00000fff
+[ 2733.841256] encode_fattr: mode=0x000041ed mask=0x00000fff
+[ 2733.841659] encode_fattr: mode=0x0000a1ff mask=0x00000fff
+[ 2733.842379] encode_fattr: mode=0x000081ed mask=0x00000fff
+[ 2733.842825] encode_fattr: mode=0x000081ed mask=0x00000fff
+[ 2733.842879] encode_fattr: mode=0x000081ed mask=0x00000fff
+[ 2733.843876] encode_fattr: mode=0x000081ed mask=0x00000fff
+[ 2733.843924] encode_fattr: mode=0x000081ed mask=0x00000fff
+...
