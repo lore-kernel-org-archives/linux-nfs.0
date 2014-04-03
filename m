@@ -1,66 +1,123 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:26489 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:33732 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1758836AbaD3RbR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 30 Apr 2014 13:31:17 -0400
-Message-ID: <53613362.8050109@RedHat.com>
-Date: Wed, 30 Apr 2014 13:31:14 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S1751890AbaDCNJK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 3 Apr 2014 09:09:10 -0400
+Date: Thu, 3 Apr 2014 09:09:09 -0400
+To: NeilBrown <neilb@suse.de>
+Cc: NFS <linux-nfs@vger.kernel.org>
+Subject: Re: Should exportfs/mountd cope with case-insensitive directory
+ names.
+Message-ID: <20140403130909.GA24700@fieldses.org>
+References: <20140403164652.5d7770ad@notabene.brown>
 MIME-Version: 1.0
-To: Jeff Layton <jlayton@poochiereds.net>
-CC: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] libnfsidmap: id_as_chars() fails zero value ids.
-References: <1398871108-18213-1-git-send-email-steved@redhat.com> <20140430123013.4c4cc8ec@tlielax.poochiereds.net>
-In-Reply-To: <20140430123013.4c4cc8ec@tlielax.poochiereds.net>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140403164652.5d7770ad@notabene.brown>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 04/30/2014 12:30 PM, Jeff Layton wrote:
-> On Wed, 30 Apr 2014 11:18:28 -0400
-> Steve Dickson <steved@redhat.com> wrote:
+On Thu, Apr 03, 2014 at 04:46:52PM +1100, NeilBrown wrote:
 > 
->> Root has a zero value id which is valid and
->> should not be mapped to nfsnobody
->>
->> Signed-off-by: Steve Dickson <steved@redhat.com>
->> ---
->>  libnfsidmap.c | 8 ++++++--
->>  1 file changed, 6 insertions(+), 2 deletions(-)
->>
->> diff --git a/libnfsidmap.c b/libnfsidmap.c
->> index 641d766..92bc493 100644
->> --- a/libnfsidmap.c
->> +++ b/libnfsidmap.c
->> @@ -99,8 +99,12 @@ static char * toupper_str(char *s)
->>  static int id_as_chars(char *name, int *id)
->>  {
->>  	long int value = strtol(name, NULL, 10);
->> -	if (value == 0)
->> -		return 0;
->> +
->> +	if (value == 0) {
->> +		/* zero value ids are valid */
->> +		if (strcmp(name, "0") != 0)
->> +			return 0;
->> +	}
->>  	*id = (int)value;
->>  	return 1;
->>  }
+> Hi,
+>  I came across an interesting issue recently.
 > 
-> Well spotted. I think though that instead of doing the strcmp, you
-> should instead just use the endptr value in the strtol call to determine
-> whether the string was completely converted. If it isn't, we can just
-> return 0 here. If it is completely converted then you know that you got
-> a legit "0" string.
+> Suppose you have a filesystem which supports case-insensitive file names
+> (like VFAT, but in this particular case 'NSS' - Novell Storage Services).
 > 
-Yeah that wold have been a good idea but I've already
-committed and pushed this version... ;-)
+> And support you export some subdirectory (or sub-volume) using a
+> non-canonical name.
+> i.e. you "mkdir /path/export", the put "/path/EXPORT" in /etc/exports and
+> mount  server:/path/EXPORT from some client.
+> 
+> This all works until the export cache times out and the kernel asks mountd
+> if "/path/export" is exported.  mountd says "no" and suddenly all accesses
+> fail.
+> 
+> I don't think much of case-insensitive file names, but I suspect we should
+> either make this work, it issue a warning as to why it is failing.
+> A simple work around is to export the canonical name and use it when
+> mounting.  But if the sysadmin doesn't know they need to, they are unlikely
+> to guess.
+> 
+> I don't think there is any API to test if a name is canonical, or to get the
+> canonical name, so I cannot see any way in advance to see if this problem
+> situation has arisen.  So the only option I can think of is to fix it.
+> 
+> The following patch (or something much like it for an older nfs-utils) seems
+> to do the trick.
+> 
+> What do people think?  Is this a reasonable thing to do?  Is it likely to
+> have negative consequences that I haven't thought of?
 
-I'm thinking it's six of one and a half a dozen of another
-both version will do the same thing... but if it bothersome, 
-send me a patch....
+Neat-o.
 
-steved.
+Are we adding a stat of every export in the export table where there
+wasn't one before?  But those should typically be cached, so maybe
+there's no problem.
+
+I'm not super-fond of the combining the comparison of two paths and
+truncating of one into the same function, though I see why it's
+convenient.
+
+--b.
+
+> 
+> Thanks,
+> NeilBrown
+> 
+> 
+> 
+> diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
+> index 9a1bb2767ac2..2d91db76b867 100644
+> --- a/utils/mountd/cache.c
+> +++ b/utils/mountd/cache.c
+> @@ -377,6 +377,28 @@ static char *next_mnt(void **v, char *p)
+>  	return me->mnt_dir;
+>  }
+>  
+> +static int same_path(char *child, char *parent, int len)
+> +{
+> +	static char p[PATH_MAX];
+> +	struct stat sc, sp;
+> +	if (len <= 0)
+> +		len = strlen(child);
+> +	strncpy(p, child, len);
+> +	p[len] = 0;
+> +	if (strcmp(p, parent) == 0)
+> +		return 1;
+> +
+> +	if (lstat(p, &sc) != 0)
+> +		return 0;
+> +	if (lstat(parent, &sp) != 0)
+> +		return 0;
+> +	if (sc.st_dev != sp.st_dev)
+> +		return 0;
+> +	if (sc.st_ino != sp.st_ino)
+> +		return 0;
+> +	return 1;
+> +}
+> +
+>  static int is_subdirectory(char *child, char *parent)
+>  {
+>  	/* Check is child is strictly a subdirectory of
+> @@ -387,7 +409,7 @@ static int is_subdirectory(char *child, char *parent)
+>  	if (strcmp(parent, "/") == 0 && child[1] != 0)
+>  		return 1;
+>  
+> -	return (strncmp(child, parent, l) == 0 && child[l] == '/');
+> +	return (same_path(child, parent, l) && child[l] == '/');
+>  }
+>  
+>  static int path_matches(nfs_export *exp, char *path)
+> @@ -396,7 +418,7 @@ static int path_matches(nfs_export *exp, char *path)
+>  	 * exact match, or does the export have CROSSMOUNT, and path
+>  	 * is a descendant?
+>  	 */
+> -	return strcmp(path, exp->m_export.e_path) == 0
+> +	return same_path(path, exp->m_export.e_path, 0)
+>  		|| ((exp->m_export.e_flags & NFSEXP_CROSSMOUNT)
+>  		    && is_subdirectory(path, exp->m_export.e_path));
+>  }
+
+
