@@ -1,39 +1,34 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:44568 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750981AbaDQOgh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Apr 2014 10:36:37 -0400
-Date: Thu, 17 Apr 2014 07:36:34 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
-        Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH] NFSD: Clear cached acl after setting a zero-length
- default posix acl:
-Message-ID: <20140417143634.GA20857@infradead.org>
-References: <534FCD13.303@gmail.com>
+Received: from mail-vc0-f171.google.com ([209.85.220.171]:46979 "EHLO
+	mail-vc0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752986AbaDDSSN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Apr 2014 14:18:13 -0400
+Received: by mail-vc0-f171.google.com with SMTP id lg15so3446147vcb.16
+        for <linux-nfs@vger.kernel.org>; Fri, 04 Apr 2014 11:18:12 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <534FCD13.303@gmail.com>
+Date: Fri, 4 Apr 2014 14:18:12 -0400
+Message-ID: <CAHVgHyU4w6yQxxAqZBB4NBoigCBLQ5+WX4T1vUkoZFyy29d6sA@mail.gmail.com>
+Subject: June 2014 NFSv4 Bakeathon
+From: Andy Adamson <androsadamson@gmail.com>
+To: NFSv4 <nfsv4@ietf.org>
+Cc: NFS list <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 17, 2014 at 08:46:11PM +0800, Kinglong Mee wrote:
-> After setting ACL for directory, I got two problems that caused
-> by the cached zero-length default posix acl.
-> 
-> This patch just clears the cached zero-length default posix acl
-> after setting.
-> 
-> First problem:
-> # nfs4_setfacl -s A::OWNER@:RWX /mnt/123/; touch /mnt/123/test
-> ............ hang ...........
+Greetings,
 
-Nfsd must not call forget_cached_acl, that's the filesystems job.
-I think the right fix is to make sure nfsd4_set_nfs4_acl calls ->set_acl
-with a NULL ACL structure if there are no entries.
+NetApp and Primary Data will be hosting the June 2014 Bakeathon the second
+week in June (6/9 - 6/13)  at the Workantile on main street in Ann
+Arbor Michigan.
 
-Btw, it would be really good if we kept tests like this as a regression
-test suite.  Is there one for NFS already?  If not we could add
-nfs-specific tests to xfstests as well.
+http://workantile.com
 
+Every one enjoyed the space at the Workantile last June.
+
+I'll be bringing up a website with the Bakeathon information shortly.
+
+Feel free to forward this on to other interested
+parties.
+
+-->Andy
