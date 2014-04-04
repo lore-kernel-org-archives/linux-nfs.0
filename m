@@ -1,85 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f169.google.com ([209.85.223.169]:45631 "EHLO
-	mail-ie0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932186AbaD3Tab (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Apr 2014 15:30:31 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH V3 07/17] xprtrdma: Fall back to MTHCAFMR when FRMR is not
-	supported
-To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Cc: Anna.Schumaker@netapp.com
-Date: Wed, 30 Apr 2014 15:30:29 -0400
-Message-ID: <20140430193029.5663.31368.stgit@manet.1015granger.net>
-In-Reply-To: <20140430191433.5663.16217.stgit@manet.1015granger.net>
-References: <20140430191433.5663.16217.stgit@manet.1015granger.net>
+Received: from mx1.redhat.com ([209.132.183.28]:59789 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752814AbaDDOB1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 4 Apr 2014 10:01:27 -0400
+Date: Fri, 4 Apr 2014 10:01:24 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: linux-nfs@vger.kernel.org, lmcilroy@redhat.com
+Subject: Re: [PATCH] nfs: don't pass non-NULL-terminated string to
+ pr_notice()
+Message-ID: <20140404100124.2db49cb8@tlielax.poochiereds.net>
+In-Reply-To: <5EC0B3CC-6647-4A6E-A44C-82A72CBEC490@primarydata.com>
+References: <1396605654-10108-1-git-send-email-jlayton@redhat.com>
+	<5EC0B3CC-6647-4A6E-A44C-82A72CBEC490@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-An audit of in-kernel RDMA providers that do not support the FRMR
-memory registration shows that several of them support MTHCAFMR.
-Prefer MTHCAFMR when FRMR is not supported.
+On Fri, 4 Apr 2014 09:51:11 -0400
+Trond Myklebust <trond.myklebust@primarydata.com> wrote:
 
-If MTHCAFMR is not supported, only then choose ALLPHYSICAL.
+> 
+> On Apr 4, 2014, at 6:00, Jeff Layton <jlayton@redhat.com> wrote:
+> 
+> > There is no guarantee that the strings in the nfs_cache_array will be
+> > NULL-terminated. In the event that we end up hitting a readdir loop, we
+> > need to ensure that we pass the warning message a properly-terminated
+> > string.
+> > 
+> > Reported-by: Lachlan McIlroy <lmcilroy@redhat.com>
+> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > ---
+> > fs/nfs/dir.c | 7 ++++---
+> > 1 file changed, 4 insertions(+), 3 deletions(-)
+> > 
+> > diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
+> > index 5c0b6ecc3a88..4689b125f9fe 100644
+> > --- a/fs/nfs/dir.c
+> > +++ b/fs/nfs/dir.c
+> > @@ -304,12 +304,13 @@ int nfs_readdir_search_for_cookie(struct nfs_cache_array *array, nfs_readdir_des
+> > 				if (ctx->duped > 0
+> > 				    && ctx->dup_cookie == *desc->dir_cookie) {
+> > 					if (printk_ratelimit()) {
+> > +						char *name = kstrndup(array->array[i].string.name, array->array[i].string.len, GFP_KERNEL);
+> > +
+> > 						pr_notice("NFS: directory %pD2 contains a readdir loop."
+> > 								"Please contact your server vendor.  "
+> > 								"The file: %s has duplicate cookie %llu\n",
+> > -								desc->file,
+> > -								array->array[i].string.name,
+> > -								*desc->dir_cookie);
+> > +								desc->file, name, *desc->dir_cookie);
+> > +						kfree(name);
+> > 					}
+> 
+> Umm… Any reason why we couldn’t just use ‘%.*s’ ?
+> 
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+No reason at all. I had never run across that...
 
- net/sunrpc/xprtrdma/verbs.c |   31 +++++++++++++++----------------
- 1 files changed, 15 insertions(+), 16 deletions(-)
-
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 6bb9a07..a352798 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -491,33 +491,32 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
- 		ia->ri_dma_lkey = ia->ri_id->device->local_dma_lkey;
- 	}
- 
--	switch (memreg) {
--	case RPCRDMA_MTHCAFMR:
--		if (!ia->ri_id->device->alloc_fmr) {
--			dprintk("RPC:       %s: MTHCAFMR registration "
--				"specified but not supported by adapter, "
--				"using riskier RPCRDMA_ALLPHYSICAL\n",
--				__func__);
--			memreg = RPCRDMA_ALLPHYSICAL;
--		}
--		break;
--	case RPCRDMA_FRMR:
-+	if (memreg == RPCRDMA_FRMR) {
- 		/* Requires both frmr reg and local dma lkey */
- 		if ((devattr.device_cap_flags &
- 		     (IB_DEVICE_MEM_MGT_EXTENSIONS|IB_DEVICE_LOCAL_DMA_LKEY)) !=
- 		    (IB_DEVICE_MEM_MGT_EXTENSIONS|IB_DEVICE_LOCAL_DMA_LKEY)) {
- 			dprintk("RPC:       %s: FRMR registration "
--				"specified but not supported by adapter, "
--				"using riskier RPCRDMA_ALLPHYSICAL\n",
--				__func__);
--			memreg = RPCRDMA_ALLPHYSICAL;
-+				"not supported by HCA\n", __func__);
-+			memreg = RPCRDMA_MTHCAFMR;
- 		} else {
- 			/* Mind the ia limit on FRMR page list depth */
- 			ia->ri_max_frmr_depth = min_t(unsigned int,
- 				RPCRDMA_MAX_DATA_SEGS,
- 				devattr.max_fast_reg_page_list_len);
- 		}
--		break;
-+	}
-+	if (memreg == RPCRDMA_MTHCAFMR) {
-+		if (!ia->ri_id->device->alloc_fmr) {
-+			dprintk("RPC:       %s: MTHCAFMR registration "
-+				"not supported by HCA\n", __func__);
-+#if RPCRDMA_PERSISTENT_REGISTRATION
-+			memreg = RPCRDMA_ALLPHYSICAL;
-+#else
-+			rc = -EINVAL;
-+			goto out2;
-+#endif
-+		}
- 	}
- 
- 	/*
-
+I'll respin and repost -- thanks!
+-- 
+Jeff Layton <jlayton@redhat.com>
