@@ -1,82 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:1175 "EHLO mx1.redhat.com"
+Received: from mout.gmx.net ([212.227.17.21]:64983 "EHLO mout.gmx.net"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933742AbaD3Qaz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 30 Apr 2014 12:30:55 -0400
-Message-ID: <5361253A.4010708@RedHat.com>
-Date: Wed, 30 Apr 2014 12:30:50 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S1753115AbaDDV5W (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 4 Apr 2014 17:57:22 -0400
+Received: from [192.168.178.21] ([78.54.130.84]) by mail.gmx.com (mrgmx002)
+ with ESMTPSA (Nemesis) id 0LvENG-1XDoJu2QhW-010Nie for
+ <linux-nfs@vger.kernel.org>; Fri, 04 Apr 2014 23:57:20 +0200
+Message-ID: <533F2ABF.2030107@gmx.de>
+Date: Fri, 04 Apr 2014 23:57:19 +0200
+From: =?UTF-8?B?VG9yYWxmIEbDtnJzdGVy?= <toralf.foerster@gmx.de>
 MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/2] nfs-iostat: Fix columnarization of RPC statistics
-References: <20140425165211.30699.73059.stgit@manet.1015granger.net>
-In-Reply-To: <20140425165211.30699.73059.stgit@manet.1015granger.net>
+To: Linux NFS mailing list <linux-nfs@vger.kernel.org>
+Subject: NFSv2 directory cannot longer be exported in 3.14, 3.13 works fine
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA256
+
+At a user mode linux image (32 bit Gentoo Linux) the recent kernel gives this error while trying to mount a NFSv2 directory:
+mount.nfs: mount point /mnt/nfsv2 is not a directory      
 
 
-On 04/25/2014 12:52 PM, Chuck Lever wrote:
-> Note: format() is new with Python 2.6
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Committed...
+The hostname is n22stab4, contents of the files follows.
 
-steved.
-> ---
-> 
->  tools/nfs-iostat/nfs-iostat.py |   31 +++++++++++++++++++------------
->  1 files changed, 19 insertions(+), 12 deletions(-)
-> 
-> diff --git a/tools/nfs-iostat/nfs-iostat.py b/tools/nfs-iostat/nfs-iostat.py
-> index 341cdbf..6831c12 100644
-> --- a/tools/nfs-iostat/nfs-iostat.py
-> +++ b/tools/nfs-iostat/nfs-iostat.py
-> @@ -353,15 +353,21 @@ class DeviceData:
->              exe_per_op = 0.0
->  
->          op += ':'
-> -        print('%s' % op.lower().ljust(15), end='')
-> -        print('  ops/s\t\t   kB/s\t\t  kB/op\t\tretrans\t\tavg RTT (ms)\tavg exe (ms)')
-> -
-> -        print('\t\t%7.3f' % (ops / sample_time), end='')
-> -        print('\t%7.3f' % (kilobytes / sample_time), end='')
-> -        print('\t%7.3f' % kb_per_op, end='')
-> -        print(' %7d (%3.1f%%)' % (retrans, retrans_percent), end='')
-> -        print('\t%7.3f' % rtt_per_op, end='')
-> -        print('\t%7.3f' % exe_per_op)
-> +        print(format(op.lower(), '<16s'), end='')
-> +        print(format('ops/s', '>8s'), end='')
-> +        print(format('kB/s', '>16s'), end='')
-> +        print(format('kB/op', '>16s'), end='')
-> +        print(format('retrans', '>16s'), end='')
-> +        print(format('avg RTT (ms)', '>16s'), end='')
-> +        print(format('avg exe (ms)', '>16s'))
-> +
-> +        print(format((ops / sample_time), '>24.3f'), end='')
-> +        print(format((kilobytes / sample_time), '>16.3f'), end='')
-> +        print(format(kb_per_op, '>16.3f'), end='')
-> +        retransmits = '{0:>10.0f} ({1:>3.1f}%)'.format(retrans, retrans_percent).strip()
-> +        print(format(retransmits, '>16'), end='')
-> +        print(format(rtt_per_op, '>16.3f'), end='')
-> +        print(format(exe_per_op, '>16.3f'))
->  
->      def ops(self, sample_time):
->          sends = float(self.__rpc_data['rpcsends'])
-> @@ -391,9 +397,10 @@ class DeviceData:
->              (self.__nfs_data['export'], self.__nfs_data['mountpoint']))
->          print()
->  
-> -        print('   op/s\t\trpc bklog')
-> -        print('%7.2f' % (sends / sample_time), end='')
-> -        print('\t%7.2f' % backlog)
-> +        print(format('ops/s', '>16') + format('rpc bklog', '>16'))
-> +        print(format((sends / sample_time), '>16.3f'), end='')
-> +        print(format(backlog, '>16.3f'))
-> +        print()
->  
->          if which == 0:
->              self.__print_rpc_op_stats('READ', sample_time)
-> 
+
+/etc/fstab:
+tmpfs                   /mnt/ramdisk    tmpfs   auto,size=300M
+n22stab4:/mnt/ramdisk   /mnt/nfsv2      nfs     auto,bg,intr,soft,nfsvers=2
+
+
+/etc/exports:
+/mnt/ramdisk    192.168.0.0/16(rw,fsid=0,insecure,no_subtree_check,async,no_root_squash)
+
+
+/var/log/messages:
+Apr  4 23:55:45 n22stab4 kernel: init_special_inode: bogus i_mode (1777) for inode 0:24:818
+
+- -- 
+MfG/Sincerely
+Toralf Förster
+pgp finger print:1A37 6F99 4A9D 026F 13E2 4DCF C4EA CDDE 0076 E94E
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.22 (GNU/Linux)
+Comment: Using GnuPG with Thunderbird - http://www.enigmail.net/
+
+iF4EAREIAAYFAlM/Kr8ACgkQxOrN3gB26U4PSgD9EhS86BoFwdVOpBU3dkw9CDwL
+HeIby5M2zFkzVHCuv6MA/iYKV/PkjrS6lxvIDLDpIuAEWRyx097ueE0ugaQ0J/ls
+=vQ3c
+-----END PGP SIGNATURE-----
