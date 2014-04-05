@@ -1,99 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:21149 "EHLO mx1.redhat.com"
+Received: from mout.gmx.net ([212.227.15.19]:62710 "EHLO mout.gmx.net"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932861AbaDHSIX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 Apr 2014 14:08:23 -0400
-Subject: Re: v4.0 CB_COMPOUND authentication failures
-From: Simo Sorce <simo@redhat.com>
+	id S1752697AbaDENXL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 5 Apr 2014 09:23:11 -0400
+Message-ID: <534003B9.5020003@gmx.de>
+Date: Sat, 05 Apr 2014 15:23:05 +0200
+From: =?UTF-8?B?VG9yYWxmIEbDtnJzdGVy?= <toralf.foerster@gmx.de>
+MIME-Version: 1.0
 To: Jeff Layton <jlayton@redhat.com>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Dr Fields James Bruce <bfields@fieldses.org>,
-        NFS <linux-nfs@vger.kernel.org>,
-        Adamson William Andros <androsadamson@gmail.com>,
-        Lever Charles Edward <chuck.lever@oracle.com>
-In-Reply-To: <20140408140447.51695274@tlielax.poochiereds.net>
-References: <20140408082140.340c1328@tlielax.poochiereds.net>
-	 <20140408123501.GA3532@fieldses.org>
-	 <20140408094903.33e42de2@tlielax.poochiereds.net>
-	 <20140408140333.GD3882@fieldses.org>
-	 <6CC79B2A-8AE2-4A36-BB57-380C2F9813C0@primarydata.com>
-	 <20140408144652.GE3882@fieldses.org>
-	 <ECD8245B-CDEE-442E-A41A-BECE08BEEDA1@primarydata.com>
-	 <20140408124428.5152ae8b@tlielax.poochiereds.net>
-	 <1396978021.14203.163.camel@willson.li.ssimo.org>
-	 <20140408133040.3c149238@tlielax.poochiereds.net>
-	 <1396980075.14203.164.camel@willson.li.ssimo.org>
-	 <20140408140447.51695274@tlielax.poochiereds.net>
-Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 08 Apr 2014 14:08:14 -0400
-Message-ID: <1396980494.14203.169.camel@willson.li.ssimo.org>
-Mime-Version: 1.0
+CC: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
+        Linux Kernel <linux-kernel@vger.kernel.org>
+Subject: Re: NFSv2 directory cannot longer be exported in 3.14, 3.13 works
+ fine
+References: <533F2ABF.2030107@gmx.de>	<533FF457.5080907@gmx.de> <20140405085143.59e578ff@tlielax.poochiereds.net>
+In-Reply-To: <20140405085143.59e578ff@tlielax.poochiereds.net>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2014-04-08 at 14:04 -0400, Jeff Layton wrote:
-> On Tue, 08 Apr 2014 14:01:15 -0400
-> Simo Sorce <simo@redhat.com> wrote:
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA256
+
+On 04/05/2014 02:51 PM, Jeff Layton wrote:
+> This was already tracked down earlier this week. Bruce has a patch 
+> queued to fix it in his nfsd-next branch. See this thread from
+> earlier this week:
 > 
-> > On Tue, 2014-04-08 at 13:30 -0400, Jeff Layton wrote:
-> > > On Tue, 08 Apr 2014 13:27:01 -0400
-> > > Simo Sorce <simo@redhat.com> wrote:
-> > > 
-> > > > On Tue, 2014-04-08 at 12:44 -0400, Jeff Layton wrote:
-> > > > > 
-> > > > > I think that's what happens. We only fall back to using AUTH_SYS if
-> > > > > nfs_create_rpc_client returns -EINVAL. In the event that the security
-> > > > > negotiation fails, we should get back -EACCES and that should bubble
-> > > > > back up to userland.
-> > > > > 
-> > > > > The real problem is that gssd (and also the krb5 libs themselves) will
-> > > > > try to canonicalize the name. The resulting host portion of the SPN
-> > > > > may bear no resemblance to the hostname in the device string. In fact,
-> > > > > if you mount using an IP address then you're pretty much SOL.
-> > > > 
-> > > > If you mount by IP do you really care about krb5 ? Probably not, maybe
-> > > > that's a clue we should not even try ...
-> > > > 
-> > > 
-> > > It's certainly possible that someone passes in an IP address but then
-> > > says "-o sec=krb5". It has worked in the past, so it's hard to know
-> > > whether and how many people actually depend on it.
-> > > 
-> > > > > I haven't tried it yet, but it looks reasonably trivial to fix gssd
-> > > > > not to bother with DNS at all and just rely on the hostname. That
-> > > > > won't stop the krb5 libs from doing their canonicalization though. I'm
-> > > > > not sure if there's some way to ask the krb5 libs to avoid doing that.
-> > > > 
-> > > > [libdefaults]
-> > > > rdns = false
-> > > > 
-> > > > And I think we change the default to false in Fedora/RHEL lately ...
-> > > > 
-> > > > Simo.
-> > > > 
-> > > 
-> > > That's a step in the right direction, but I think that the rdns just
-> > > makes it skip the reverse lookup. AFAIK, the MIT libs will still do
-> > > getaddrinfo and scrape out the ai_canonname and use that in preference
-> > > to the hostname you pass in.
-> > 
-> > That should happen only if you are using a CNAME, not for an A name.
-> > 
-> > We can open bugs if this is not the case though.
-> > 
-> 
-> That's still a problem for us then. The current code tries to compare
-> the host portion of the device string to the SPN that we get in the
-> callback request. If they don't match, it fails.
-> 
-> I think what we need to do is fix this the right way -- make rpc.gssd
-> pass down the acceptor name with the downcall.
+> Subject: Re: linux-3.14 nfsd regression
+yep - fixed the issue here
 
-Why do you need the comparison at all, pardon my ignorance, I do not
-know very well what its purpose is.
+- -- 
+MfG/Sincerely
+Toralf Förster
+pgp finger print:1A37 6F99 4A9D 026F 13E2 4DCF C4EA CDDE 0076 E94E
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.22 (GNU/Linux)
+Comment: Using GnuPG with Thunderbird - http://www.enigmail.net/
 
-Simo.
-
--- 
-Simo Sorce * Red Hat, Inc * New York
-
+iF4EAREIAAYFAlNAA7kACgkQxOrN3gB26U5UiwD/X/ONRaFIMGyxHLZd7cwrN4zh
+QADbpEhyT+N6KwH6m2wA/j++6yigdEtV7k9pjEWMwlCZUyT8reUbNzZOhxMl10+i
+=WGBv
+-----END PGP SIGNATURE-----
