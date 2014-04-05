@@ -1,112 +1,96 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from merlin.infradead.org ([205.233.59.134]:56564 "EHLO
-	merlin.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754738AbaDPHWL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Apr 2014 03:22:11 -0400
-Date: Wed, 16 Apr 2014 09:22:02 +0200
-From: Peter Zijlstra <peterz@infradead.org>
-To: NeilBrown <neilb@suse.de>
-Cc: linux-mm@kvack.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, Ingo Molnar <mingo@redhat.com>,
-        xfs@oss.sgi.com
-Subject: Re: [PATCH 03/19] lockdep: improve scenario messages for RECLAIM_FS
- errors.
-Message-ID: <20140416072202.GM26782@laptop.programming.kicks-ass.net>
-References: <20140416033623.10604.69237.stgit@notabene.brown>
- <20140416040336.10604.19304.stgit@notabene.brown>
+Received: from mx1.redhat.com ([209.132.183.28]:48065 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752543AbaDEMvu convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 5 Apr 2014 08:51:50 -0400
+Date: Sat, 5 Apr 2014 08:51:43 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Toralf =?ISO-8859-1?B?RvZyc3Rlcg==?= <toralf.foerster@gmx.de>
+Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
+        Linux Kernel <linux-kernel@vger.kernel.org>
+Subject: Re: NFSv2 directory cannot longer be exported in 3.14, 3.13 works
+ fine
+Message-ID: <20140405085143.59e578ff@tlielax.poochiereds.net>
+In-Reply-To: <533FF457.5080907@gmx.de>
+References: <533F2ABF.2030107@gmx.de>
+	<533FF457.5080907@gmx.de>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140416040336.10604.19304.stgit@notabene.brown>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Apr 16, 2014 at 02:03:36PM +1000, NeilBrown wrote:
-> lockdep can check for locking problems involving reclaim using
-> the same infrastructure as used for interrupts.
+On Sat, 05 Apr 2014 14:17:27 +0200
+Toralf Förster <toralf.foerster@gmx.de> wrote:
+
+> -----BEGIN PGP SIGNED MESSAGE-----
+> Hash: SHA256
 > 
-> However a number of the messages still refer to interrupts even
-> if it was actually a reclaim-related problem.
+> On 04/04/2014 11:57 PM, Toralf Förster wrote:
+> > At a user mode linux image (32 bit Gentoo Linux) the recent kernel gives this error while trying to mount a NFSv2 directory:
+> > mount.nfs: mount point /mnt/nfsv2 is not a directory
+> > 
 > 
-> So determine where the problem was caused by reclaim or irq and adjust
-> messages accordingly.
+> A bisect points to :
 > 
-> Signed-off-by: NeilBrown <neilb@suse.de>
-> ---
->  kernel/locking/lockdep.c |   43 ++++++++++++++++++++++++++++++++-----------
->  1 file changed, 32 insertions(+), 11 deletions(-)
+> 6e14b46b91fee8a049b0940333ce13a820beaaa5 is the first bad commit
+> commit 6e14b46b91fee8a049b0940333ce13a820beaaa5
+> Author: Albert Fluegel <af@muc.de>
+> Date:   Mon Nov 18 12:18:01 2013 -0500
 > 
-> diff --git a/kernel/locking/lockdep.c b/kernel/locking/lockdep.c
-> index e05b82e92373..33d2ac7519dc 100644
-> --- a/kernel/locking/lockdep.c
-> +++ b/kernel/locking/lockdep.c
-> @@ -1423,7 +1423,8 @@ static void
->  print_irq_lock_scenario(struct lock_list *safe_entry,
->  			struct lock_list *unsafe_entry,
->  			struct lock_class *prev_class,
-> -			struct lock_class *next_class)
-> +			struct lock_class *next_class,
-> +			int reclaim)
+>     nfsd: don't return high mode bits
+> 
+>     The Linux NFS server replies among other things to a "Check access permission"
+>     the following:
+> 
+>     NFS:    File type = 2 (Directory)
+>     NFS:    Mode = 040755
+> 
+>     A netapp server replies here:
+>     NFS:    File type = 2 (Directory)
+>     NFS:    Mode = 0755
+> 
+>     The RFC 1813 i read:
+>        fattr3
+> 
+>           struct fattr3 {
+>              ftype3     type;
+>              mode3      mode;
+>              uint32     nlink;
+>     ...
+>     For the mode bits only the lowest 9 are defined in the RFC
+> 
+>     As far as I can tell, knfsd has always done this, so apparently it's harmless.
+>     Nevertheless, it appears to be wrong.
+> 
+>     Note this is already correct in the NFSv4 case, only v2 and v3 need
+>     fixing.
+> 
+>     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> 
+> :040000 040000 a60e55f5a9749db3977e12e8baa08d45fadba225 b982c02ec1069c5d969ccb71197e5569fe93b075 M fs
+> 
+> - -- 
+> MfG/Sincerely
+> Toralf Förster
+> pgp finger print:1A37 6F99 4A9D 026F 13E2 4DCF C4EA CDDE 0076 E94E
+> -----BEGIN PGP SIGNATURE-----
+> Version: GnuPG v2.0.22 (GNU/Linux)
+> Comment: Using GnuPG with Thunderbird - http://www.enigmail.net/
+> 
+> iF4EAREIAAYFAlM/9FcACgkQxOrN3gB26U5F1AD+JAP4cDM+rT9nk9Q8q681RywT
+> Ejxq7d0tnVUfWyDFDTgA/1sIUtpv9GSK8SeAJFu7oAhMt4e6eeIdbpMT2qUEQv6q
+> =Sles
+> -----END PGP SIGNATURE-----
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-I would rather we just pass enum lock_usage_bit along from the
-callsites.
+This was already tracked down earlier this week. Bruce has a patch
+queued to fix it in his nfsd-next branch. See this thread from earlier
+this week:
 
->  {
->  	struct lock_class *safe_class = safe_entry->class;
->  	struct lock_class *unsafe_class = unsafe_entry->class;
+    Subject: Re: linux-3.14 nfsd regression
 
-> @@ -1487,6 +1495,8 @@ print_bad_irq_dependency(struct task_struct *curr,
->  			 enum lock_usage_bit bit2,
->  			 const char *irqclass)
->  {
-> +	int reclaim = strncmp(irqclass, "RECLAIM", 7) == 0;
-> +
-
-irqclass := state_name(bit2), so instead of relying on the unreliable,
-why not use the lock_usage_bit ?
-
->  	if (!debug_locks_off_graph_unlock() || debug_locks_silent)
->  		return 0;
->  
-> @@ -1528,7 +1538,7 @@ print_bad_irq_dependency(struct task_struct *curr,
->  
->  	printk("\nother info that might help us debug this:\n\n");
->  	print_irq_lock_scenario(backwards_entry, forwards_entry,
-> -				hlock_class(prev), hlock_class(next));
-> +				hlock_class(prev), hlock_class(next), reclaim);
-
-So that would become bit2.
-
->  
->  	lockdep_print_held_locks(curr);
->  
-> @@ -2200,7 +2210,7 @@ static void check_chain_key(struct task_struct *curr)
->  }
->  
->  static void
-> -print_usage_bug_scenario(struct held_lock *lock)
-> +print_usage_bug_scenario(struct held_lock *lock, enum lock_usage_bit new_bit)
-
-Like you did here.
-
->  {
->  	struct lock_class *class = hlock_class(lock);
->  
-> @@ -2210,7 +2220,11 @@ print_usage_bug_scenario(struct held_lock *lock)
->  	printk("  lock(");
->  	__print_lock_name(class);
->  	printk(");\n");
-> -	printk("  <Interrupt>\n");
-> +	if (new_bit == LOCK_USED_IN_RECLAIM_FS ||
-> +	    new_bit == LOCK_USED_IN_RECLAIM_FS_READ)
-
-And if we're going to do this all over, we might want a helper for this
-condition.
-
-> +		printk("  <Memory allocation/reclaim>\n");
-> +	else
-> +		printk("  <Interrupt>\n");
->  	printk("    lock(");
->  	__print_lock_name(class);
->  	printk(");\n");
-
-Same for the rest I think..
+-- 
+Jeff Layton <jlayton@redhat.com>
