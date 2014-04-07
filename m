@@ -1,58 +1,107 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f46.google.com ([209.85.192.46]:36062 "EHLO
-	mail-qg0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751951AbaDOMoU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Apr 2014 08:44:20 -0400
-Received: by mail-qg0-f46.google.com with SMTP id 63so9281597qgz.5
-        for <linux-nfs@vger.kernel.org>; Tue, 15 Apr 2014 05:44:19 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: linux-fsdevel@vger.kernel.org
-Cc: linux-nfs@vger.kernel.org, bfields@fieldses.org, terry1@beam.ltd.uk
-Subject: [PATCH] locks: allow __break_lease to sleep even when break_time is 0
-Date: Tue, 15 Apr 2014 08:44:12 -0400
-Message-Id: <1397565852-16212-1-git-send-email-jlayton@redhat.com>
+Received: from smtp-o-3.desy.de ([131.169.56.156]:39031 "EHLO smtp-o-3.desy.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753190AbaDGSm2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 7 Apr 2014 14:42:28 -0400
+Received: from smtp-map-3.desy.de (smtp-map-3.desy.de [131.169.56.68])
+	by smtp-o-3.desy.de (DESY-O-3) with ESMTP id 70AE828089A
+	for <linux-nfs@vger.kernel.org>; Mon,  7 Apr 2014 20:35:26 +0200 (CEST)
+Received: from ZITSWEEP2.win.desy.de (zitsweep2.win.desy.de [131.169.97.96])
+	by smtp-map-3.desy.de (DESY_MAP_3) with ESMTP id 63ED82B7D
+	for <linux-nfs@vger.kernel.org>; Mon,  7 Apr 2014 20:35:25 +0200 (MEST)
+Date: Mon, 7 Apr 2014 20:35:25 +0200 (CEST)
+From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Message-ID: <1907491201.2131087.1396895725338.JavaMail.zimbra@desy.de>
+In-Reply-To: <20140407165820.GE21195@fieldses.org>
+References: <20140407165820.GE21195@fieldses.org>
+Subject: Re: nfsd 3.14 status
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-A fl->fl_break_time of 0 has a special meaning to the lease break code
-that basically means "never break the lease". knfsd uses this to ensure
-that leases don't disappear out from under it.
 
-Unfortunately, the code in __break_lease can end up passing this value
-to wait_event_interruptible as a timeout, which prevents it from going
-to sleep at all. This causes __break_lease to spin in a tight loop and
-causes soft lockups.
+3.15, I believe.
 
-Fix this by ensuring that we pass a minimum value of 1 as a timeout
-instead.
+Tigran.
 
-Cc: <stable@vger.kernel.org>
-Cc: J. Bruce Fields <bfields@fieldses.org>
-Reported-by: Terry Barnaby <terry1@beam.ltd.uk>
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- fs/locks.c | 7 +++----
- 1 file changed, 3 insertions(+), 4 deletions(-)
-
-diff --git a/fs/locks.c b/fs/locks.c
-index 13fc7a6d380a..b380f5543614 100644
---- a/fs/locks.c
-+++ b/fs/locks.c
-@@ -1391,11 +1391,10 @@ int __break_lease(struct inode *inode, unsigned int mode, unsigned int type)
- 
- restart:
- 	break_time = flock->fl_break_time;
--	if (break_time != 0) {
-+	if (break_time != 0)
- 		break_time -= jiffies;
--		if (break_time == 0)
--			break_time++;
--	}
-+	if (break_time == 0)
-+		break_time++;
- 	locks_insert_block(flock, new_fl);
- 	spin_unlock(&inode->i_lock);
- 	error = wait_event_interruptible_timeout(new_fl->fl_wait,
--- 
-1.9.0
-
+----- Original Message -----
+> From: "J. Bruce Fields" <bfields@fieldses.org>
+> To: linux-nfs@vger.kernel.org
+> Sent: Monday, April 7, 2014 6:58:20 PM
+> Subject: nfsd 3.14 status
+> 
+> The below is what I'm intending to merge for 3.14.  I think I've caught
+> up with my mailbox; please let me know if I've missed anything from you.
+> 
+> Also, I'll be mostly offline for three weeks starting Friday--if you
+> want anything from me before early May, ask now.
+> 
+> I decided to let the rest of the xdr patches sit a little longer.  I'll
+> plan to get that queued up quickly for 3.16 once I'm back.
+> 
+> --b.
+> 
+> J. Bruce Fields (18):
+>       nfsd4: buffer-length check for SUPPATTR_EXCLCREAT
+>       nfsd4: session needs room for following op to error out
+>       nfsd4: make set of large acl return efbig, not resource
+>       nfsd4: leave reply buffer space for failed setattr
+>       nfsd4: fix test_stateid error reply encoding
+>       nfsd: notify_change needs elevated write count
+>       nfsd: typo in nfsd_rename comment
+>       rpc: Allow xdr_buf_subsegment to operate in-place
+>       nfsd4: update comments with obsolete function name
+>       nfsd4: nfsd4_replay_cache_entry should be static
+>       nfsd4: minor nfsd4_replay_cache_entry cleanup
+>       nfsd4: use more generous NFS4_ACL_MAX
+>       nfsd4: remove redundant check from nfsd4_check_resp_size
+>       nfsd4: fix setclientid encode size
+>       nfsd4: fix nfs4err_resource in 4.1 case
+>       nfsd: revert v2 half of "nfsd: don't return high mode bits"
+>       nfsd4: don't create unnecessary mask acl
+>       nfsd4: fix delegation cleanup on error
+> 
+> Jeff Layton (5):
+>       svcrdma: fix printk when memory allocation fails
+>       svcrpc: explicitly reject compounds that are not padded out to 4-byte
+>       multiple
+>       lockd: ensure we tear down any live sockets when socket creation fails
+>       during lockd_up
+>       xprtrdma: add separate Kconfig options for NFSoRDMA client and server
+>       support
+>       svcrdma: fix offset calculation for non-page aligned sge entries
+> 
+> Kinglong Mee (9):
+>       NFSD: Traverse unconfirmed client through hash-table
+>       NFSD: simplify saved/current fh uses in nfsd4_proc_compound
+>       SUNRPC: fix memory leak of peer addresses in XPRT
+>       NFSD: Using free_conn free connection
+>       NFSD: Clear wcc data between compound ops
+>       NFSD: Free backchannel xprt in bc_destroy
+>       SUNRPC: New helper for creating client with rpc_xprt
+>       NFSD/SUNRPC: Check rpc_xprt out of xs_setup_bc_tcp
+>       SUNRPC: Clear xpt_bc_xprt if xs_setup_bc_tcp failed
+> 
+> Rashika Kheria (1):
+>       net: Mark functions as static in net/sunrpc/svc_xprt.c
+> 
+> Stanislav Kinsbursky (1):
+>       nfsd: check passed socket's net matches NFSd superblock's one
+> 
+> Tom Tucker (1):
+>       Fix regression in NFSRDMA server
+> 
+> Trond Myklebust (1):
+>       nfsd: Don't return NFS4ERR_STALE_STATEID for NFSv4.1+
+> 
+> Yan, Zheng (1):
+>       nfsd4: fix memory leak in nfsd4_encode_fattr()
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
