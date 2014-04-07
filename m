@@ -1,406 +1,116 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f176.google.com ([209.85.223.176]:38273 "EHLO
-	mail-ie0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933757AbaD3TbG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Apr 2014 15:31:06 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH V3 11/17] xprtrdma: Split the completion queue
-To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Cc: Anna.Schumaker@netapp.com
-Date: Wed, 30 Apr 2014 15:31:05 -0400
-Message-ID: <20140430193104.5663.4513.stgit@manet.1015granger.net>
-In-Reply-To: <20140430191433.5663.16217.stgit@manet.1015granger.net>
-References: <20140430191433.5663.16217.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-ig0-f175.google.com ([209.85.213.175]:63047 "EHLO
+	mail-ig0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754044AbaDGXHj convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Apr 2014 19:07:39 -0400
+Received: by mail-ig0-f175.google.com with SMTP id ur14so4348574igb.14
+        for <linux-nfs@vger.kernel.org>; Mon, 07 Apr 2014 16:07:38 -0700 (PDT)
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
+Subject: Re: NFS deadlock between 'sync' and commit after unmount....
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+In-Reply-To: <20140407223541.GB1125@quack.suse.cz>
+Date: Mon, 7 Apr 2014 19:07:35 -0400
+Cc: Brown Neil <neilb@suse.de>, Viro Alexander <viro@zeniv.linux.org.uk>,
+        NFS <linux-nfs@vger.kernel.org>
+Message-Id: <6664F8BA-1598-467A-824B-C59729B29E00@primarydata.com>
+References: <20140407135001.56ef9f36@notabene.brown> <F59673DE-8047-4FE0-AFF9-6A3DC37348A5@primarydata.com> <20140407202750.GE23670@quack.suse.cz> <1396908136.5563.9.camel@leira.trondhjem.org> <20140407223541.GB1125@quack.suse.cz>
+To: Jan Kara <jack@suse.cz>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The current CQ handler uses the ib_wc.opcode field to distinguish
-between event types. However, the contents of that field are not
-reliable if the completion status is not IB_WC_SUCCESS.
 
-When an error completion occurs on a send event, the CQ handler
-schedules a tasklet with something that is not a struct rpcrdma_rep.
-This is never correct behavior, and sometimes it results in a panic.
+On Apr 7, 2014, at 18:35, Jan Kara <jack@suse.cz> wrote:
 
-To resolve this issue, split the completion queue into a send CQ and
-a receive CQ. The send CQ handler now handles only struct rpcrdma_mw
-wr_id's, and the receive CQ handler now handles only struct
-rpcrdma_rep wr_id's.
+> On Mon 07-04-14 18:02:16, Trond Myklebust wrote:
+>> On Mon, 2014-04-07 at 22:27 +0200, Jan Kara wrote:
+>>> On Mon 07-04-14 10:10:27, Trond Myklebust wrote:
+>>>> On Apr 6, 2014, at 23:50, NeilBrown <neilb@suse.de> wrote:
+>>>>> I've just hit a deadlock in NFS that seems very strange.
+>>>>> The kernel is 3.14-rc8 which some local changes which shouldn't affect the
+>>>>> deadlocking code.
+>>>>> 
+>>>>> Shortly after umounting the NFS filesystem with "umount -f" (though I don't
+>>>>> think the -f is important), I ran "sync".
+>>>>> 
+>>>>> The sync is now stuck in
+>>>>> 
+>>>>> [<ffffffff81197fc1>] sync_inodes_sb+0xa1/0x1c0
+>>>>> [<ffffffff8119cd99>] sync_inodes_one_sb+0x19/0x20
+>>>>> [<ffffffff81173372>] iterate_supers+0xb2/0x110
+>>>>> [<ffffffff8119cfd0>] sys_sync+0x30/0x90
+>>>>> [<ffffffff81aa4622>] system_call_fastpath+0x16/0x1b
+>>>>> [<ffffffffffffffff>] 0xffffffffffffffff
+>>>>> 
+>>>>> while kworker/u16:1 is stuck:
+>>>>> 
+>>>>> [<ffffffff815420b3>] call_rwsem_down_write_failed+0x13/0x20
+>>>>> [<ffffffff81172889>] deactivate_super+0x39/0x60
+>>>>> [<ffffffff812d56f1>] nfs_sb_deactive+0x21/0x30
+>>>>> [<ffffffff812d2ef9>] __put_nfs_open_context+0xc9/0x100
+>>>>> [<ffffffff812d2f3b>] put_nfs_open_context+0xb/0x10
+>>>>> [<ffffffff812ddd14>] nfs_commitdata_release+0x14/0x30
+>>>>> [<ffffffff812ddd4a>] nfs_commit_release+0x1a/0x20
+>>>>> [<ffffffff81a45a05>] rpc_free_task+0x25/0x70
+>>>>> [<ffffffff81a45fd8>] rpc_do_put_task+0x78/0x80
+>>>>> [<ffffffff81a45feb>] rpc_put_task+0xb/0x10
+>>>>> [<ffffffff812de3fe>] nfs_initiate_commit+0xce/0x110
+>>>>> [<ffffffff812df112>] nfs_commit_list+0x62/0x90
+>>>>> [<ffffffff812dfd26>] nfs_commit_inode+0xa6/0x170
+>>>>> [<ffffffff812dfe4d>] nfs_write_inode+0x5d/0xa0
+>>>>> [<ffffffff81300d69>] nfs4_write_inode+0x9/0x10
+>>>>> [<ffffffff811978ec>] __writeback_single_inode+0x10c/0x2c0
+>>>>> [<ffffffff811987ea>] writeback_sb_inodes+0x2ca/0x450
+>>>>> [<ffffffff81198b2c>] wb_writeback+0xec/0x320
+>>>>> [<ffffffff81199365>] bdi_writeback_workfn+0x115/0x4c0
+>>>>> [<ffffffff810a595b>] process_one_work+0x16b/0x430
+>>>>> [<ffffffff810a6619>] worker_thread+0x119/0x3a0
+>>>>> [<ffffffff810ac2bd>] kthread+0xcd/0xf0
+>>>>> [<ffffffff81aa457c>] ret_from_fork+0x7c/0xb0
+>>>>> [<ffffffffffffffff>] 0xffffffffffffffff
+>>>>> 
+>>>>> 
+>>>>> So sync is holding sb->s_umount, queued some bdi work on the filesystem
+>>>>> and is waiting for it to complete.  Mean while, that work has (I think)
+>>>>> submitted a 'commit' (via ->write_inode) and that commit wants to
+>>>>> deactivate_super and so needs to get ->s_umount.
+>>>>> 
+>>>>> I suspect this could happen even more easily with a lazy unmount.
+>>>>> 
+>>>>> It seems that this commit request is that last thing that is keeping
+>>>>> ->s_active elevated and it deadlocks trying to drop the last s_active.
+>>>>> 
+>>>>> I have no idea how to fix it....  help?
+>>>>> 
+>>>> 
+>>>> The problem seems to be the use of iterate_supers(), which grabs a
+>>>> passive reference, and conflicts with our use of an active reference in
+>>>> the open context.
+>>>  Yeah, we cannot really do otherwise in iterate_supers() - we have to grab
+>>> some superblock reference and we don't really want to get an active one
+>>> since that would result in spurious EBUSY returns from umount.
+>>> 
+>>> Cannot we just punt the deactivate_super() call to a workqueue to avoid
+>>> this deadlock? It's a bit ugly but it should do the trick. Or is
+>>> nfs_sb_deactive() called too often and we'd see some adverse effects for
+>>> that? We could also offload it to workqueue only in the special case where
+>>> sb->s_active == 1. That should be really rare then but it's a bit ugly
+>>> poking in VFS internals.
+>> 
+>> The activate/deactivate super is basically there to save our bacon when
+>> NFS file state extends beyond the usual VFS path walk, open() and
+>> close(). Examples include sillyrename and NFSv4 delegations. Even
+>> ordinary read and write state can extend beyond close() if the user
+>> decides to 'kill -9' in the wrong places.
+>> In most of these situations, we need to keep a dentry around until we're
+>> finished, which means that we want to keep the super block alive too.
+>  Yeah, that makes sense. But offloading dropping of sb reference to a
+> workqueue would work then, wouldn't it?
 
-Fix suggested by Shirley Ma <shirley.ma@oracle.com>
+Could we perhaps have a helper in the VFS that can optimise away the case where s->s_active > 1?
 
-Reported-by: Rafael Reiter <rafael.reiter@ims.co.at>
-Fixes: 5c635e09cec0feeeb310968e51dad01040244851
-BugLink: https://bugzilla.kernel.org/show_bug.cgi?id=73211
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: Klemens Senn <klemens.senn@ims.co.at>
-Tested-by: Steve Wise <swise@opengridcomputing.com>
----
-
- net/sunrpc/xprtrdma/verbs.c     |  228 +++++++++++++++++++++++----------------
- net/sunrpc/xprtrdma/xprt_rdma.h |    1 
- 2 files changed, 137 insertions(+), 92 deletions(-)
-
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index edc951e..af2d097 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -142,96 +142,115 @@ rpcrdma_cq_async_error_upcall(struct ib_event *event, void *context)
- 	}
- }
- 
--static inline
--void rpcrdma_event_process(struct ib_wc *wc)
-+static void
-+rpcrdma_sendcq_process_wc(struct ib_wc *wc)
- {
--	struct rpcrdma_mw *frmr;
--	struct rpcrdma_rep *rep =
--			(struct rpcrdma_rep *)(unsigned long) wc->wr_id;
-+	struct rpcrdma_mw *frmr = (struct rpcrdma_mw *)(unsigned long)wc->wr_id;
- 
--	dprintk("RPC:       %s: event rep %p status %X opcode %X length %u\n",
--		__func__, rep, wc->status, wc->opcode, wc->byte_len);
-+	dprintk("RPC:       %s: frmr %p status %X opcode %d\n",
-+		__func__, frmr, wc->status, wc->opcode);
- 
--	if (!rep) /* send completion that we don't care about */
-+	if (wc->wr_id == 0ULL)
- 		return;
--
--	if (IB_WC_SUCCESS != wc->status) {
--		dprintk("RPC:       %s: WC opcode %d status %X, connection lost\n",
--			__func__, wc->opcode, wc->status);
--		rep->rr_len = ~0U;
--		if (wc->opcode != IB_WC_FAST_REG_MR && wc->opcode != IB_WC_LOCAL_INV)
--			rpcrdma_schedule_tasklet(rep);
-+	if (wc->status != IB_WC_SUCCESS)
- 		return;
--	}
- 
--	switch (wc->opcode) {
--	case IB_WC_FAST_REG_MR:
--		frmr = (struct rpcrdma_mw *)(unsigned long)wc->wr_id;
-+	if (wc->opcode == IB_WC_FAST_REG_MR)
- 		frmr->r.frmr.state = FRMR_IS_VALID;
--		break;
--	case IB_WC_LOCAL_INV:
--		frmr = (struct rpcrdma_mw *)(unsigned long)wc->wr_id;
-+	else if (wc->opcode == IB_WC_LOCAL_INV)
- 		frmr->r.frmr.state = FRMR_IS_INVALID;
--		break;
--	case IB_WC_RECV:
--		rep->rr_len = wc->byte_len;
--		ib_dma_sync_single_for_cpu(
--			rdmab_to_ia(rep->rr_buffer)->ri_id->device,
--			rep->rr_iov.addr, rep->rr_len, DMA_FROM_DEVICE);
--		/* Keep (only) the most recent credits, after check validity */
--		if (rep->rr_len >= 16) {
--			struct rpcrdma_msg *p =
--					(struct rpcrdma_msg *) rep->rr_base;
--			unsigned int credits = ntohl(p->rm_credit);
--			if (credits == 0) {
--				dprintk("RPC:       %s: server"
--					" dropped credits to 0!\n", __func__);
--				/* don't deadlock */
--				credits = 1;
--			} else if (credits > rep->rr_buffer->rb_max_requests) {
--				dprintk("RPC:       %s: server"
--					" over-crediting: %d (%d)\n",
--					__func__, credits,
--					rep->rr_buffer->rb_max_requests);
--				credits = rep->rr_buffer->rb_max_requests;
--			}
--			atomic_set(&rep->rr_buffer->rb_credits, credits);
--		}
--		rpcrdma_schedule_tasklet(rep);
--		break;
--	default:
--		dprintk("RPC:       %s: unexpected WC event %X\n",
--			__func__, wc->opcode);
--		break;
--	}
- }
- 
--static inline int
--rpcrdma_cq_poll(struct ib_cq *cq)
-+static int
-+rpcrdma_sendcq_poll(struct ib_cq *cq)
- {
- 	struct ib_wc wc;
- 	int rc;
- 
--	for (;;) {
--		rc = ib_poll_cq(cq, 1, &wc);
--		if (rc < 0) {
--			dprintk("RPC:       %s: ib_poll_cq failed %i\n",
--				__func__, rc);
--			return rc;
--		}
--		if (rc == 0)
--			break;
-+	while ((rc = ib_poll_cq(cq, 1, &wc)) == 1)
-+		rpcrdma_sendcq_process_wc(&wc);
-+	return rc;
-+}
- 
--		rpcrdma_event_process(&wc);
-+/*
-+ * Handle send, fast_reg_mr, and local_inv completions.
-+ *
-+ * Send events are typically suppressed and thus do not result
-+ * in an upcall. Occasionally one is signaled, however. This
-+ * prevents the provider's completion queue from wrapping and
-+ * losing a completion.
-+ */
-+static void
-+rpcrdma_sendcq_upcall(struct ib_cq *cq, void *cq_context)
-+{
-+	int rc;
-+
-+	rc = rpcrdma_sendcq_poll(cq);
-+	if (rc) {
-+		dprintk("RPC:       %s: ib_poll_cq failed: %i\n",
-+			__func__, rc);
-+		return;
- 	}
- 
--	return 0;
-+	rc = ib_req_notify_cq(cq, IB_CQ_NEXT_COMP);
-+	if (rc) {
-+		dprintk("RPC:       %s: ib_req_notify_cq failed: %i\n",
-+			__func__, rc);
-+		return;
-+	}
-+
-+	rpcrdma_sendcq_poll(cq);
-+}
-+
-+static void
-+rpcrdma_recvcq_process_wc(struct ib_wc *wc)
-+{
-+	struct rpcrdma_rep *rep =
-+			(struct rpcrdma_rep *)(unsigned long)wc->wr_id;
-+
-+	dprintk("RPC:       %s: rep %p status %X opcode %X length %u\n",
-+		__func__, rep, wc->status, wc->opcode, wc->byte_len);
-+
-+	if (wc->status != IB_WC_SUCCESS) {
-+		rep->rr_len = ~0U;
-+		goto out_schedule;
-+	}
-+	if (wc->opcode != IB_WC_RECV)
-+		return;
-+
-+	rep->rr_len = wc->byte_len;
-+	ib_dma_sync_single_for_cpu(rdmab_to_ia(rep->rr_buffer)->ri_id->device,
-+			rep->rr_iov.addr, rep->rr_len, DMA_FROM_DEVICE);
-+
-+	if (rep->rr_len >= 16) {
-+		struct rpcrdma_msg *p = (struct rpcrdma_msg *)rep->rr_base;
-+		unsigned int credits = ntohl(p->rm_credit);
-+
-+		if (credits == 0)
-+			credits = 1;	/* don't deadlock */
-+		else if (credits > rep->rr_buffer->rb_max_requests)
-+			credits = rep->rr_buffer->rb_max_requests;
-+		atomic_set(&rep->rr_buffer->rb_credits, credits);
-+	}
-+
-+out_schedule:
-+	rpcrdma_schedule_tasklet(rep);
-+}
-+
-+static int
-+rpcrdma_recvcq_poll(struct ib_cq *cq)
-+{
-+	struct ib_wc wc;
-+	int rc;
-+
-+	while ((rc = ib_poll_cq(cq, 1, &wc)) == 1)
-+		rpcrdma_recvcq_process_wc(&wc);
-+	return rc;
- }
- 
- /*
-- * rpcrdma_cq_event_upcall
-+ * Handle receive completions.
-  *
-- * This upcall handles recv and send events.
-  * It is reentrant but processes single events in order to maintain
-  * ordering of receives to keep server credits.
-  *
-@@ -240,26 +259,27 @@ rpcrdma_cq_poll(struct ib_cq *cq)
-  * connection shutdown. That is, the structures required for
-  * the completion of the reply handler must remain intact until
-  * all memory has been reclaimed.
-- *
-- * Note that send events are suppressed and do not result in an upcall.
-  */
- static void
--rpcrdma_cq_event_upcall(struct ib_cq *cq, void *context)
-+rpcrdma_recvcq_upcall(struct ib_cq *cq, void *cq_context)
- {
- 	int rc;
- 
--	rc = rpcrdma_cq_poll(cq);
--	if (rc)
-+	rc = rpcrdma_recvcq_poll(cq);
-+	if (rc) {
-+		dprintk("RPC:       %s: ib_poll_cq failed: %i\n",
-+			__func__, rc);
- 		return;
-+	}
- 
- 	rc = ib_req_notify_cq(cq, IB_CQ_NEXT_COMP);
- 	if (rc) {
--		dprintk("RPC:       %s: ib_req_notify_cq failed %i\n",
-+		dprintk("RPC:       %s: ib_req_notify_cq failed: %i\n",
- 			__func__, rc);
- 		return;
- 	}
- 
--	rpcrdma_cq_poll(cq);
-+	rpcrdma_recvcq_poll(cq);
- }
- 
- #ifdef RPC_DEBUG
-@@ -610,6 +630,7 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
- 				struct rpcrdma_create_data_internal *cdata)
- {
- 	struct ib_device_attr devattr;
-+	struct ib_cq *sendcq, *recvcq;
- 	int rc, err;
- 
- 	rc = ib_query_device(ia->ri_id->device, &devattr);
-@@ -685,7 +706,7 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
- 		ep->rep_attr.cap.max_recv_sge);
- 
- 	/* set trigger for requesting send completion */
--	ep->rep_cqinit = ep->rep_attr.cap.max_send_wr/2 /*  - 1*/;
-+	ep->rep_cqinit = ep->rep_attr.cap.max_send_wr/2 - 1;
- 	if (ep->rep_cqinit <= 2)
- 		ep->rep_cqinit = 0;
- 	INIT_CQCOUNT(ep);
-@@ -693,26 +714,43 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
- 	init_waitqueue_head(&ep->rep_connect_wait);
- 	INIT_DELAYED_WORK(&ep->rep_connect_worker, rpcrdma_connect_worker);
- 
--	ep->rep_cq = ib_create_cq(ia->ri_id->device, rpcrdma_cq_event_upcall,
-+	sendcq = ib_create_cq(ia->ri_id->device, rpcrdma_sendcq_upcall,
- 				  rpcrdma_cq_async_error_upcall, NULL,
--				  ep->rep_attr.cap.max_recv_wr +
- 				  ep->rep_attr.cap.max_send_wr + 1, 0);
--	if (IS_ERR(ep->rep_cq)) {
--		rc = PTR_ERR(ep->rep_cq);
--		dprintk("RPC:       %s: ib_create_cq failed: %i\n",
-+	if (IS_ERR(sendcq)) {
-+		rc = PTR_ERR(sendcq);
-+		dprintk("RPC:       %s: failed to create send CQ: %i\n",
- 			__func__, rc);
- 		goto out1;
- 	}
- 
--	rc = ib_req_notify_cq(ep->rep_cq, IB_CQ_NEXT_COMP);
-+	rc = ib_req_notify_cq(sendcq, IB_CQ_NEXT_COMP);
- 	if (rc) {
- 		dprintk("RPC:       %s: ib_req_notify_cq failed: %i\n",
- 			__func__, rc);
- 		goto out2;
- 	}
- 
--	ep->rep_attr.send_cq = ep->rep_cq;
--	ep->rep_attr.recv_cq = ep->rep_cq;
-+	recvcq = ib_create_cq(ia->ri_id->device, rpcrdma_recvcq_upcall,
-+				  rpcrdma_cq_async_error_upcall, NULL,
-+				  ep->rep_attr.cap.max_recv_wr + 1, 0);
-+	if (IS_ERR(recvcq)) {
-+		rc = PTR_ERR(recvcq);
-+		dprintk("RPC:       %s: failed to create recv CQ: %i\n",
-+			__func__, rc);
-+		goto out2;
-+	}
-+
-+	rc = ib_req_notify_cq(recvcq, IB_CQ_NEXT_COMP);
-+	if (rc) {
-+		dprintk("RPC:       %s: ib_req_notify_cq failed: %i\n",
-+			__func__, rc);
-+		ib_destroy_cq(recvcq);
-+		goto out2;
-+	}
-+
-+	ep->rep_attr.send_cq = sendcq;
-+	ep->rep_attr.recv_cq = recvcq;
- 
- 	/* Initialize cma parameters */
- 
-@@ -734,7 +772,7 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
- 	return 0;
- 
- out2:
--	err = ib_destroy_cq(ep->rep_cq);
-+	err = ib_destroy_cq(sendcq);
- 	if (err)
- 		dprintk("RPC:       %s: ib_destroy_cq returned %i\n",
- 			__func__, err);
-@@ -774,8 +812,14 @@ rpcrdma_ep_destroy(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
- 		ep->rep_pad_mr = NULL;
- 	}
- 
--	rpcrdma_clean_cq(ep->rep_cq);
--	rc = ib_destroy_cq(ep->rep_cq);
-+	rpcrdma_clean_cq(ep->rep_attr.recv_cq);
-+	rc = ib_destroy_cq(ep->rep_attr.recv_cq);
-+	if (rc)
-+		dprintk("RPC:       %s: ib_destroy_cq returned %i\n",
-+			__func__, rc);
-+
-+	rpcrdma_clean_cq(ep->rep_attr.send_cq);
-+	rc = ib_destroy_cq(ep->rep_attr.send_cq);
- 	if (rc)
- 		dprintk("RPC:       %s: ib_destroy_cq returned %i\n",
- 			__func__, rc);
-@@ -798,7 +842,9 @@ retry:
- 		if (rc && rc != -ENOTCONN)
- 			dprintk("RPC:       %s: rpcrdma_ep_disconnect"
- 				" status %i\n", __func__, rc);
--		rpcrdma_clean_cq(ep->rep_cq);
-+
-+		rpcrdma_clean_cq(ep->rep_attr.recv_cq);
-+		rpcrdma_clean_cq(ep->rep_attr.send_cq);
- 
- 		xprt = container_of(ia, struct rpcrdma_xprt, rx_ia);
- 		id = rpcrdma_create_id(xprt, ia,
-@@ -907,7 +953,8 @@ rpcrdma_ep_disconnect(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
- {
- 	int rc;
- 
--	rpcrdma_clean_cq(ep->rep_cq);
-+	rpcrdma_clean_cq(ep->rep_attr.recv_cq);
-+	rpcrdma_clean_cq(ep->rep_attr.send_cq);
- 	rc = rdma_disconnect(ia->ri_id);
- 	if (!rc) {
- 		/* returns without wait if not connected */
-@@ -1727,7 +1774,6 @@ rpcrdma_ep_post_recv(struct rpcrdma_ia *ia,
- 	ib_dma_sync_single_for_cpu(ia->ri_id->device,
- 		rep->rr_iov.addr, rep->rr_iov.length, DMA_BIDIRECTIONAL);
- 
--	DECR_CQCOUNT(ep);
- 	rc = ib_post_recv(ia->ri_id->qp, &recv_wr, &recv_wr_fail);
- 
- 	if (rc)
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 362a19d..334ab6e 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -79,7 +79,6 @@ struct rpcrdma_ep {
- 	int			rep_cqinit;
- 	int			rep_connected;
- 	struct rpcrdma_ia	*rep_ia;
--	struct ib_cq		*rep_cq;
- 	struct ib_qp_init_attr	rep_attr;
- 	wait_queue_head_t 	rep_connect_wait;
- 	struct ib_sge		rep_pad;	/* holds zeroed pad */
+_________________________________
+Trond Myklebust
+Linux NFS client maintainer, PrimaryData
+trond.myklebust@primarydata.com
 
