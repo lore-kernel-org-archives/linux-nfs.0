@@ -1,106 +1,133 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-lb0-f170.google.com ([209.85.217.170]:63749 "EHLO
-	mail-lb0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752477AbaDDXU0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Apr 2014 19:20:26 -0400
-Received: by mail-lb0-f170.google.com with SMTP id s7so2972426lbd.15
-        for <linux-nfs@vger.kernel.org>; Fri, 04 Apr 2014 16:20:24 -0700 (PDT)
+Received: from cmexedge2.ext.emulex.com ([138.239.224.100]:22131 "EHLO
+	CMEXEDGE2.ext.emulex.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754988AbaDGXBm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Apr 2014 19:01:42 -0400
+From: <devesh.sharma@emulex.com>
+To: <linux-nfs@vger.kernel.org>
+CC: <linux-rdma@vger.kernel.org>, Devesh Sharma <devesh.sharma@emulex.com>
+Subject: [PATCH] NFS-RDMA: fix qp pointer validation checks
+Date: Tue, 8 Apr 2014 04:00:05 +0530
 MIME-Version: 1.0
-In-Reply-To: <CAHEKYV5xrv5ryh9oMyBT1y3kPDHHmif2f0rTA6DxPUbkSHf8eg@mail.gmail.com>
-References: <CAHEKYV7JKuYaQv7c+CEtUZN+AXgR0XamphEtD+on1kw7FSiakg@mail.gmail.com>
-	<20140319132423.GA18831@us.ibm.com>
-	<CAHEKYV5xrv5ryh9oMyBT1y3kPDHHmif2f0rTA6DxPUbkSHf8eg@mail.gmail.com>
-Date: Fri, 4 Apr 2014 19:20:24 -0400
-Message-ID: <CAHEKYV6u8MHJkzx1S3-=nvYed+PMtLWWLCw0QskGaHeDSN93Nw@mail.gmail.com>
-Subject: Re: Exporting partition mounted inside another
-From: Mauricio Tavares <raubvogel@gmail.com>
-To: Mauricio Tavares <raubvogel@gmail.com>, linux-nfs@vger.kernel.org
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain
+Message-ID: <d4afd436-8e14-4729-9bc1-71ab9079a246@CMEXHTCAS1.ad.emulex.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Mar 19, 2014 at 11:18 PM, Mauricio Tavares <raubvogel@gmail.com> wrote:
-> On Wed, Mar 19, 2014 at 9:24 AM, Malahal Naineni <malahal@us.ibm.com> wrote:
->> Mauricio Tavares [raubvogel@gmail.com] wrote:
->>>     I have in my NFSv4 server a directory called /exports where I
->>> place everything I want to export:
->>>
->>> /dev/vg1/logs            19.7G    651.0M     19.0G   3% /export/logs
->>> /dev/vg1/home           196.9G    163.8G     32.9G  83% /export/home
->>> /dev/vg1/pickles        504.0G     62.7G    441.2G  12% /export/home/pickles
->>> /dev/vg1/stuff           98.4G     21.9G     76.5G  22% /export/public
->>>
->>> Note that user pickles does have a lot of crap, so he gets to have his
->>> own partition. My own home dir is in /export/home/raub. Now, I export
->>> them as:
->>>
->>> spindizzy> cat /etc/exports
->>> /export 10.0.0.0/24(ro,fsid=0,no_subtree_check,sync)
->>> /export/logs 10.0.0.21/24(rw,insecure,root_squash,no_subtree_check,sync)
->>> /export/home 10.0.0.0/24(rw,insecure,root_squash,no_subtree_check,sync)
->>> /export/public 10.0.0.0/24(ro,insecure,root_squash,no_subtree_check,sync)
->>> spindizzy>
->>
->> You didn't export /export/home/pickles file system. Export that by
->> listing it in /etc/exports. Also, look at (crossmnt or no_hide options)
->>
->        Thanks for your reply. I added
->
-> /export/home/pickles 10.0.0.0/24(rw,insecure,root_squash,no_subtree_check,sync)
->
-> to /etc/exports and then did exportfs -r. Running exports told me it
-> was being exported:
->
-> spindizzy> exportfs
-> /export         10.0.0.0/24
-> /export/logs    10.0.0.21/24
-> /export/home    10.0.0.0/24
-> /export/home/pickles
->                 10.0.0.0/24
-> /export/public  10.0.0.0/24
-> spindizzy>
->
-> If I go back to the desktop, it claims fileserver is exporting pickles:
->
-> raub@desktop:~$ showmount -e fileserver
-> Export list for fileserver:
-> /export/public       10.0.0.0/24
-> /export/home/pickles 10.0.0.0/24
-> /export/home         10.0.0.0/24
-> /export/logs         10.0.0.21/24
-> /export              10.0.0.0/24
-> raub@desktop:~$
->
-> But, as before, when I tried to mount pickles, it doesn't:
->
-> fileserver:/home/raub     197G  164G   33G  84% /home/raub
-> fileserver:/home/pickles  197G  164G   33G  84% /home/pickles
->
-> Same outcome with crossmnt or nohide
->
-      Sorry for resurrecting the thread, but I am still clueless about
-what is going on.
+From: Devesh Sharma <devesh.sharma@emulex.com>
 
->>>
->>> and mount /export/user using automount,
->>>
->>> cat /etc/auto.home
->>> #
->>> # File: /etc/auto.home
->>> #
->>> *   -fstype=nfs4,hard,intr,rsize=8192,wsize=8192 fileserver:/home/&
->>>
->>> When I try to automount (say by logging in as saif user) pickles'
->>> homedir, it does not mount /dev/vg1/pickles. Instead, it just mounts
->>> it as if only existed in /dev/vg1/home/pickles in the fileserver:
->>>
->>> fileserver:/home/raub     197G  164G   33G  84% /home/raub
->>> fileserver:/home/pickles  197G  164G   33G  84% /home/pickles
->>>
->>> Sounds like I misconfigured my /etc/exports, but how?
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>>
->>
+If the rdma_create_qp fails to create qp due to device firmware being in invalid state
+xprtrdma still tries to destroy the non-existant qp and ends up in a NULL pointer reference
+crash.
+Adding proper checks for vaidating QP pointer avoids this to happen.
+
+Signed-off-by: Devesh Sharma <devesh.sharma@emulex.com>
+---
+ net/sunrpc/xprtrdma/verbs.c |   34 ++++++++++++++++++++++++++++------
+ 1 files changed, 28 insertions(+), 6 deletions(-)
+
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 9372656..c01d91e 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -620,7 +620,7 @@ rpcrdma_ia_close(struct rpcrdma_ia *ia)
+ 			__func__, rc);
+ 	}
+ 	if (ia->ri_id != NULL && !IS_ERR(ia->ri_id)) {
+-		if (ia->ri_id->qp)
++		if (!IS_ERR(ia->ri_id->qp))
+ 			rdma_destroy_qp(ia->ri_id);
+ 		rdma_destroy_id(ia->ri_id);
+ 		ia->ri_id = NULL;
+@@ -794,7 +794,7 @@ rpcrdma_ep_destroy(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
+ 	dprintk("RPC:       %s: entering, connected is %d\n",
+ 		__func__, ep->rep_connected);
+ 
+-	if (ia->ri_id->qp) {
++	if (!IS_ERR(ia->ri_id->qp)) {
+ 		rc = rpcrdma_ep_disconnect(ep, ia);
+ 		if (rc)
+ 			dprintk("RPC:       %s: rpcrdma_ep_disconnect"
+@@ -831,10 +831,12 @@ rpcrdma_ep_connect(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
+ 	if (ep->rep_connected != 0) {
+ 		struct rpcrdma_xprt *xprt;
+ retry:
+-		rc = rpcrdma_ep_disconnect(ep, ia);
+-		if (rc && rc != -ENOTCONN)
+-			dprintk("RPC:       %s: rpcrdma_ep_disconnect"
++		if (!IS_ERR(ia->ri_id->qp)) {
++			rc = rpcrdma_ep_disconnect(ep, ia);
++			if (rc && rc != -ENOTCONN)
++				dprintk("RPC:       %s: rpcrdma_ep_disconnect"
+ 				" status %i\n", __func__, rc);
++		}
+ 		rpcrdma_clean_cq(ep->rep_cq);
+ 
+ 		xprt = container_of(ia, struct rpcrdma_xprt, rx_ia);
+@@ -859,7 +861,9 @@ retry:
+ 			goto out;
+ 		}
+ 		/* END TEMP */
+-		rdma_destroy_qp(ia->ri_id);
++		if (!IS_ERR(ia->ri_id->qp)) {
++			rdma_destroy_qp(ia->ri_id);
++		}
+ 		rdma_destroy_id(ia->ri_id);
+ 		ia->ri_id = id;
+ 	}
+@@ -1557,6 +1561,13 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
+ 	frmr_wr.wr.fast_reg.rkey = seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey;
+ 	DECR_CQCOUNT(&r_xprt->rx_ep);
+ 
++	if (IS_ERR(ia->ri_is->qp)) {
++		rc = PTR_ERR(ia->ri_is->qp);
++		while (i--)
++			rpcrdma_unmap_one(ia, --seg);
++		goto out;
++	}
++
+ 	rc = ib_post_send(ia->ri_id->qp, post_wr, &bad_wr);
+ 
+ 	if (rc) {
+@@ -1571,6 +1582,7 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
+ 		seg1->mr_len = len;
+ 	}
+ 	*nsegs = i;
++out:
+ 	return rc;
+ }
+ 
+@@ -1592,6 +1604,10 @@ rpcrdma_deregister_frmr_external(struct rpcrdma_mr_seg *seg,
+ 	invalidate_wr.ex.invalidate_rkey = seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey;
+ 	DECR_CQCOUNT(&r_xprt->rx_ep);
+ 
++	if (IS_ERR(ia->ri_id->qp)) {
++		return PTR_ERR(ia->ri_id->qp);
++	}
++
+ 	rc = ib_post_send(ia->ri_id->qp, &invalidate_wr, &bad_wr);
+ 	if (rc)
+ 		dprintk("RPC:       %s: failed ib_post_send for invalidate,"
+@@ -1923,6 +1939,9 @@ rpcrdma_ep_post(struct rpcrdma_ia *ia,
+ 		send_wr.send_flags = IB_SEND_SIGNALED;
+ 	}
+ 
++	if (IS_ERR(ia->ri_id->qp))
++		return PTR_ERR(ia->ri_id->qp);
++
+ 	rc = ib_post_send(ia->ri_id->qp, &send_wr, &send_wr_fail);
+ 	if (rc)
+ 		dprintk("RPC:       %s: ib_post_send returned %i\n", __func__,
+@@ -1951,6 +1970,9 @@ rpcrdma_ep_post_recv(struct rpcrdma_ia *ia,
+ 		rep->rr_iov.addr, rep->rr_iov.length, DMA_BIDIRECTIONAL);
+ 
+ 	DECR_CQCOUNT(ep);
++
++	if (IS_ERR(ia->ri_id->qp))
++		return PTR_ERR(ia->ri_id->qp);
+ 	rc = ib_post_recv(ia->ri_id->qp, &recv_wr, &recv_wr_fail);
+ 
+ 	if (rc)
+-- 
+1.7.1
+
