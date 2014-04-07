@@ -1,103 +1,114 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f170.google.com ([209.85.213.170]:44669 "EHLO
-	mail-ig0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932084AbaDXSPw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Apr 2014 14:15:52 -0400
-Received: by mail-ig0-f170.google.com with SMTP id uq10so1356687igb.3
-        for <linux-nfs@vger.kernel.org>; Thu, 24 Apr 2014 11:15:51 -0700 (PDT)
-From: Weston Andros Adamson <dros@primarydata.com>
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
-Subject: [PATCH 10/18 v2] pnfs: clean up filelayout_alloc_commit_info
-Date: Thu, 24 Apr 2014 14:15:20 -0400
-Message-Id: <1398363328-7100-11-git-send-email-dros@primarydata.com>
-In-Reply-To: <1398363328-7100-1-git-send-email-dros@primarydata.com>
-References: <1398363328-7100-1-git-send-email-dros@primarydata.com>
+Received: from fieldses.org ([174.143.236.118]:57285 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755187AbaDGUvc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 7 Apr 2014 16:51:32 -0400
+Date: Mon, 7 Apr 2014 16:51:21 -0400
+To: Sage Weil <sage@inktank.com>
+Cc: Viro Alexander <viro@zeniv.linux.org.uk>,
+        "Yan, Zheng" <zheng.z.yan@intel.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        David Howells <dhowells@redhat.com>, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, ceph-devel@vger.kernel.org
+Subject: Re: [PATCH][RESEND] vfs: Make __d_materialise_dentry() set the
+ materialised dentry name correctly
+Message-ID: <20140407205121.GA4426@fieldses.org>
+References: <1394115376-17109-1-git-send-email-zheng.z.yan@intel.com>
+ <6487FCC2-FB5C-4A32-94EF-5D3352A39781@primarydata.com>
+ <53392EDA.7000904@intel.com>
+ <alpine.DEB.2.00.1404070655530.28550@cobra.newdream.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <alpine.DEB.2.00.1404070655530.28550@cobra.newdream.net>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Remove unneeded else statement and clean up how commit info
-dataserver buckets are replaced.
+On Mon, Apr 07, 2014 at 06:56:28AM -0700, Sage Weil wrote:
+> Hi Al,
+> 
+> Can this go to Linus via your tree?
 
-Suggested-by: Trond Myklebust <trond.myklebust@primarydata.com>
-Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
----
- fs/nfs/nfs4filelayout.c | 46 ++++++++++++++++++++++++++--------------------
- 1 file changed, 26 insertions(+), 20 deletions(-)
+I believe this has been fixed by
+da1ce0670c14d8380e423a3239e562a1dc15fa9e "vfs: add cross-rename".
 
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 9319427..9cea935 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -850,11 +850,15 @@ filelayout_alloc_commit_info(struct pnfs_layout_segment *lseg,
- {
- 	struct nfs4_filelayout_segment *fl = FILELAYOUT_LSEG(lseg);
- 	struct pnfs_commit_bucket *buckets;
--	int size;
-+	int size, i;
- 
- 	if (fl->commit_through_mds)
- 		return 0;
--	if (cinfo->ds->nbuckets != 0) {
-+
-+	size = (fl->stripe_type == STRIPE_SPARSE) ?
-+		fl->dsaddr->ds_num : fl->dsaddr->stripe_count;
-+
-+	if (cinfo->ds->nbuckets >= size) {
- 		/* This assumes there is only one IOMODE_RW lseg.  What
- 		 * we really want to do is have a layout_hdr level
- 		 * dictionary of <multipath_list4, fh> keys, each
-@@ -864,30 +868,32 @@ filelayout_alloc_commit_info(struct pnfs_layout_segment *lseg,
- 		return 0;
- 	}
- 
--	size = (fl->stripe_type == STRIPE_SPARSE) ?
--		fl->dsaddr->ds_num : fl->dsaddr->stripe_count;
--
- 	buckets = kcalloc(size, sizeof(struct pnfs_commit_bucket),
- 			  gfp_flags);
- 	if (!buckets)
- 		return -ENOMEM;
--	else {
--		int i;
-+	for (i = 0; i < size; i++) {
-+		INIT_LIST_HEAD(&buckets[i].written);
-+		INIT_LIST_HEAD(&buckets[i].committing);
-+	}
- 
--		spin_lock(cinfo->lock);
--		if (cinfo->ds->nbuckets != 0)
--			kfree(buckets);
--		else {
--			cinfo->ds->buckets = buckets;
--			cinfo->ds->nbuckets = size;
--			for (i = 0; i < size; i++) {
--				INIT_LIST_HEAD(&buckets[i].written);
--				INIT_LIST_HEAD(&buckets[i].committing);
--			}
--		}
--		spin_unlock(cinfo->lock);
--		return 0;
-+	spin_lock(cinfo->lock);
-+	if (cinfo->ds->nbuckets >= size)
-+		goto out;
-+	for (i = 0; i < cinfo->ds->nbuckets; i++) {
-+		list_splice(&cinfo->ds->buckets[i].written,
-+			    &buckets[i].written);
-+		list_splice(&cinfo->ds->buckets[i].committing,
-+			    &buckets[i].committing);
-+		buckets[i].wlseg = cinfo->ds->buckets[i].wlseg;
-+		buckets[i].clseg = cinfo->ds->buckets[i].clseg;
- 	}
-+	swap(cinfo->ds->buckets, buckets);
-+	cinfo->ds->nbuckets = size;
-+out:
-+	spin_unlock(cinfo->lock);
-+	kfree(buckets);
-+	return 0;
- }
- 
- static struct pnfs_layout_segment *
--- 
-1.8.5.2 (Apple Git-48)
+Though probably the patch should still go in, possibly with a changelog
+update.  We want it for stable kernels if nothing else.
 
+--b.
+
+> 
+> Thanks!
+> sage
+> 
+> 
+> On Mon, 31 Mar 2014, Yan, Zheng wrote:
+> 
+> > Hi Al,
+> > 
+> > Could you include this in 3.15
+> > 
+> > Regards
+> > Yan, Zheng
+> > 
+> > On 03/06/2014 10:35 PM, Trond Myklebust wrote:
+> > > 
+> > > On Mar 6, 2014, at 9:16, Yan, Zheng <zheng.z.yan@intel.com> wrote:
+> > > 
+> > >> From: David Howells <dhowells@redhat.com>
+> > >>
+> > >> Make __d_materialise_dentry() set the materialised dentry name correctly by
+> > >> flipping the arguments to switch_names().
+> > >>
+> > >> switch_names() is lazy: if both names are internal to their dentries, it'll
+> > >> overwrite that of the first dentry with that of the second, and won't update
+> > >> that of the second.
+> > >>
+> > >> In the case of __d_materialise_dentry(), the second is an already extant
+> > >> anonymous dentry that we want to insert into the tree in place of the dentry we
+> > >> just looked up[*].  However, the dentry we just looked up carries the name we
+> > >> actually want to use.
+> > >>
+> > >> [*] This is used by NFS to join a mount of a subtree into a mount of a tree
+> > >> nearer the root when the two meet, where both mounts share a superblock and
+> > >> thus a set of dentries.
+> > >>
+> > >> Signed-off-by: David Howells <dhowells@redhat.com>
+> > >> ---
+> > >> fs/dcache.c | 2 +-
+> > >> 1 file changed, 1 insertion(+), 1 deletion(-)
+> > >>
+> > >> diff --git a/fs/dcache.c b/fs/dcache.c
+> > >> index 265e0ce..ff779d4 100644
+> > >> --- a/fs/dcache.c
+> > >> +++ b/fs/dcache.c
+> > >> @@ -2698,7 +2698,7 @@ static void __d_materialise_dentry(struct dentry *dentry, struct dentry *anon)
+> > >>
+> > >> 	dparent = dentry->d_parent;
+> > >>
+> > >> -	switch_names(dentry, anon);
+> > >> +	switch_names(anon, dentry);
+> > >> 	swap(dentry->d_name.hash, anon->d_name.hash);
+> > >>
+> > >> 	dentry->d_parent = dentry;
+> > > 
+> > > Well spotted...
+> > > 
+> > > We ought to better document the fact that ?switch_names? is asymmetrical. Perhaps change it to ?update_target_name?, and then switch the argument names so that the ?target? really is the thing that gets updated?
+> > > 
+> > > _________________________________
+> > > Trond Myklebust
+> > > Linux NFS client maintainer, PrimaryData
+> > > trond.myklebust@primarydata.com
+> > > 
+> > 
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe ceph-devel" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> > 
+> > 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
