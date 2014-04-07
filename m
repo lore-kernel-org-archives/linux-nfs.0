@@ -1,94 +1,121 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ipmail04.adl6.internode.on.net ([150.101.137.141]:55474 "EHLO
-	ipmail04.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750981AbaDQEXU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Apr 2014 00:23:20 -0400
-Date: Thu, 17 Apr 2014 14:23:13 +1000
-From: Dave Chinner <david@fromorbit.com>
-To: NeilBrown <neilb@suse.de>
-Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org,
-        Peter Zijlstra <peterz@infradead.org>, netdev@vger.kernel.org,
-        Ming Lei <ming.lei@canonical.com>, linux-kernel@vger.kernel.org,
-        xfs@oss.sgi.com, linux-mm@kvack.org, Ingo Molnar <mingo@redhat.com>
-Subject: Re: [PATCH/RFC 00/19] Support loop-back NFS mounts
-Message-ID: <20140417042313.GV15995@dastard>
-References: <20140416033623.10604.69237.stgit@notabene.brown>
- <20140416104207.75b044e8@tlielax.poochiereds.net>
- <20140417102048.2fc8275c@notabene.brown>
- <20140417012739.GU15995@dastard>
- <20140417115018.460345d0@notabene.brown>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140417115018.460345d0@notabene.brown>
+Received: from mail-wg0-f43.google.com ([74.125.82.43]:54068 "EHLO
+	mail-wg0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755051AbaDGWCT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Apr 2014 18:02:19 -0400
+Received: by mail-wg0-f43.google.com with SMTP id x13so69121wgg.14
+        for <linux-nfs@vger.kernel.org>; Mon, 07 Apr 2014 15:02:18 -0700 (PDT)
+Message-ID: <1396908136.5563.9.camel@leira.trondhjem.org>
+Subject: Re: NFS deadlock between 'sync' and commit after unmount....
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Jan Kara <jack@suse.cz>
+Cc: Brown Neil <neilb@suse.de>, Viro Alexander <viro@zeniv.linux.org.uk>,
+        NFS <linux-nfs@vger.kernel.org>
+Date: Mon, 07 Apr 2014 18:02:16 -0400
+In-Reply-To: <20140407202750.GE23670@quack.suse.cz>
+References: <20140407135001.56ef9f36@notabene.brown>
+	 <F59673DE-8047-4FE0-AFF9-6A3DC37348A5@primarydata.com>
+	 <20140407202750.GE23670@quack.suse.cz>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 17, 2014 at 11:50:18AM +1000, NeilBrown wrote:
-> On Thu, 17 Apr 2014 11:27:39 +1000 Dave Chinner <david@fromorbit.com> wrote:
+On Mon, 2014-04-07 at 22:27 +0200, Jan Kara wrote:
+>   Hello,
 > 
-> > On Thu, Apr 17, 2014 at 10:20:48AM +1000, NeilBrown wrote:
-> > > A good example is the deadlock with the flush-* threads.
-> > > flush-* will lock a page, and  then call ->writepage.  If ->writepage
-> > > allocates memory it can enter reclaim, call ->releasepage on NFS, and block
-> > > waiting for a COMMIT to complete.
-> > > The COMMIT might already be running, performing fsync on that same file that
-> > > flush-* is flushing.  It locks each page in turn.  When it  gets to the page
-> > > that flush-* has locked, it will deadlock.
-> > 
-> > It's nfs_release_page() again....
-> > 
-> > > In general, if nfsd is allowed to block on local filesystem, and local
-> > > filesystem is allowed to block on NFS, then a deadlock can happen.
-> > > We would need a clear hierarchy
+> On Mon 07-04-14 10:10:27, Trond Myklebust wrote:
+> > On Apr 6, 2014, at 23:50, NeilBrown <neilb@suse.de> wrote:
+> > > I've just hit a deadlock in NFS that seems very strange.
+> > > The kernel is 3.14-rc8 which some local changes which shouldn't affect the
+> > > deadlocking code.
 > > > 
-> > >    __GFP_NETFS > __GFP_FS > __GFP_IO
+> > > Shortly after umounting the NFS filesystem with "umount -f" (though I don't
+> > > think the -f is important), I ran "sync".
 > > > 
-> > > for it to work.  I'm not sure the extra level really helps a lot and it would
-> > > be a lot of churn.
+> > > The sync is now stuck in
+> > > 
+> > > [<ffffffff81197fc1>] sync_inodes_sb+0xa1/0x1c0
+> > > [<ffffffff8119cd99>] sync_inodes_one_sb+0x19/0x20
+> > > [<ffffffff81173372>] iterate_supers+0xb2/0x110
+> > > [<ffffffff8119cfd0>] sys_sync+0x30/0x90
+> > > [<ffffffff81aa4622>] system_call_fastpath+0x16/0x1b
+> > > [<ffffffffffffffff>] 0xffffffffffffffff
+> > > 
+> > > while kworker/u16:1 is stuck:
+> > > 
+> > > [<ffffffff815420b3>] call_rwsem_down_write_failed+0x13/0x20
+> > > [<ffffffff81172889>] deactivate_super+0x39/0x60
+> > > [<ffffffff812d56f1>] nfs_sb_deactive+0x21/0x30
+> > > [<ffffffff812d2ef9>] __put_nfs_open_context+0xc9/0x100
+> > > [<ffffffff812d2f3b>] put_nfs_open_context+0xb/0x10
+> > > [<ffffffff812ddd14>] nfs_commitdata_release+0x14/0x30
+> > > [<ffffffff812ddd4a>] nfs_commit_release+0x1a/0x20
+> > > [<ffffffff81a45a05>] rpc_free_task+0x25/0x70
+> > > [<ffffffff81a45fd8>] rpc_do_put_task+0x78/0x80
+> > > [<ffffffff81a45feb>] rpc_put_task+0xb/0x10
+> > > [<ffffffff812de3fe>] nfs_initiate_commit+0xce/0x110
+> > > [<ffffffff812df112>] nfs_commit_list+0x62/0x90
+> > > [<ffffffff812dfd26>] nfs_commit_inode+0xa6/0x170
+> > > [<ffffffff812dfe4d>] nfs_write_inode+0x5d/0xa0
+> > > [<ffffffff81300d69>] nfs4_write_inode+0x9/0x10
+> > > [<ffffffff811978ec>] __writeback_single_inode+0x10c/0x2c0
+> > > [<ffffffff811987ea>] writeback_sb_inodes+0x2ca/0x450
+> > > [<ffffffff81198b2c>] wb_writeback+0xec/0x320
+> > > [<ffffffff81199365>] bdi_writeback_workfn+0x115/0x4c0
+> > > [<ffffffff810a595b>] process_one_work+0x16b/0x430
+> > > [<ffffffff810a6619>] worker_thread+0x119/0x3a0
+> > > [<ffffffff810ac2bd>] kthread+0xcd/0xf0
+> > > [<ffffffff81aa457c>] ret_from_fork+0x7c/0xb0
+> > > [<ffffffffffffffff>] 0xffffffffffffffff
+> > > 
+> > > 
+> > > So sync is holding sb->s_umount, queued some bdi work on the filesystem
+> > > and is waiting for it to complete.  Mean while, that work has (I think)
+> > > submitted a 'commit' (via ->write_inode) and that commit wants to
+> > > deactivate_super and so needs to get ->s_umount.
+> > > 
+> > > I suspect this could happen even more easily with a lazy unmount.
+> > > 
+> > > It seems that this commit request is that last thing that is keeping
+> > > ->s_active elevated and it deadlocks trying to drop the last s_active.
+> > > 
+> > > I have no idea how to fix it....  help?
+> > > 
 > > 
-> > I think you are looking at this the wrong way - it's not the other
-> > filesystems that have to avoid memory reclaim recursion, it's the
-> > NFS client mount that is on loopback that needs to avoid recursion.
-> > 
-> > IMO, the fix should be that the NFS client cannot block on messages sent to the NFSD
-> > on the same host during memory reclaim. That is, nfs_release_page()
-> > cannot send commit messages to the server if the server is on
-> > localhost. Instead, it just tells memory reclaim that it can't
-> > reclaim that page.
-> > 
-> > If nfs_release_page() no longer blocks in memory reclaim, and all
-> > these nfsd-gets-blocked-in-GFP_KERNEL-memory-allocation recursion
-> > problems go away. Do the same for all the other memory reclaim
-> > operations in the NFS client, and you've got a solution that should
-> > work without needing to walk all over the rest of the kernel....
+> > The problem seems to be the use of iterate_supers(), which grabs a
+> > passive reference, and conflicts with our use of an active reference in
+> > the open context.
+>   Yeah, we cannot really do otherwise in iterate_supers() - we have to grab
+> some superblock reference and we don't really want to get an active one
+> since that would result in spurious EBUSY returns from umount.
 > 
-> Maybe.
-> It is nfs_release_page() today. I wonder if it could be other things another
-> day.  I want to be sure I have a solution that really makes sense.
+> Cannot we just punt the deactivate_super() call to a workqueue to avoid
+> this deadlock? It's a bit ugly but it should do the trick. Or is
+> nfs_sb_deactive() called too often and we'd see some adverse effects for
+> that? We could also offload it to workqueue only in the special case where
+> sb->s_active == 1. That should be really rare then but it's a bit ugly
+> poking in VFS internals.
 
-There could be other things, but in the absence of those things,
-I don't think that adding another layer to memory reclaim
-dependencies for this niche corner case makes a lot of sense. ;)
+The activate/deactivate super is basically there to save our bacon when
+NFS file state extends beyond the usual VFS path walk, open() and
+close(). Examples include sillyrename and NFSv4 delegations. Even
+ordinary read and write state can extend beyond close() if the user
+decides to 'kill -9' in the wrong places.
+In most of these situations, we need to keep a dentry around until we're
+finished, which means that we want to keep the super block alive too.
 
-> However ... the thing that nfs_release_page is doing it sending a COMMIT to
-> tell the server to flush to stable storage.  It does that so that if the
-> server crashes, then the client can re-send.
-> Of course when it is a loop-back mount the client is the server so the COMMIT
-> is completely pointless.  If the client notices that it is sending a COMMIT
-> to itself, it can simply assume a positive reply.
+>  BTW why is nfs_sb_active() safe doing just
+> atomic_inc() on s_active? grab_super() is more careful...
 
-Yes, that's very true. You might have to treat ->writepage
-specially, too, if that can block, say, on the number of outstanding
-requests that can be sent to the server.
+We're never grabbing a reference without already holding a reference via
+a struct path or a struct file passed down to us by the VFS. However we
+may want to keep the struct dentry around for longer than the lifetime
+of that struct path/file.
 
-> You are right, that would make the patch set a lot less intrusive.  I'll give
-> it some serious thought - thanks.
-
-No worries. :)
-
-Cheers,
-
-Dave.
 -- 
-Dave Chinner
-david@fromorbit.com
+Trond Myklebust
+Linux NFS client maintainer, PrimaryData
+trond.myklebust@primarydata.com
+
+
