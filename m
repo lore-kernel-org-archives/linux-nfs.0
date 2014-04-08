@@ -1,105 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:31635 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751178AbaDQVKB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 17 Apr 2014 17:10:01 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
-Subject: [PATCH 05/17] NFS: Move the write verifier into the nfs_pgio_header
-Date: Thu, 17 Apr 2014 17:09:29 -0400
-Message-ID: <1397768981-12856-6-git-send-email-Anna.Schumaker@Netapp.com>
-In-Reply-To: <1397768981-12856-1-git-send-email-Anna.Schumaker@Netapp.com>
-References: <1397768981-12856-1-git-send-email-Anna.Schumaker@Netapp.com>
+Received: from mail-pb0-f49.google.com ([209.85.160.49]:49865 "EHLO
+	mail-pb0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750768AbaDHFEY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Apr 2014 01:04:24 -0400
+Received: by mail-pb0-f49.google.com with SMTP id jt11so485226pbb.22
+        for <linux-nfs@vger.kernel.org>; Mon, 07 Apr 2014 22:04:23 -0700 (PDT)
+Message-ID: <53438341.5090705@gmail.com>
+Date: Tue, 08 Apr 2014 13:04:01 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain
+To: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Subject: [PATCH] NFSD: Use simple_read_from_buffer for coping data to userspace
+Content-Type: text/plain; charset=GB2312
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-
-The header had a pointer to the verifier that was set from the old write
-data struct.  We don't need to keep the pointer around now that we have
-shared structures.
-
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 ---
- fs/nfs/direct.c         | 4 ++--
- fs/nfs/write.c          | 7 +++----
- include/linux/nfs_xdr.h | 3 +--
- 3 files changed, 6 insertions(+), 8 deletions(-)
+ fs/nfsd/fault_inject.c | 15 ++-------------
+ 1 file changed, 2 insertions(+), 13 deletions(-)
 
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index bbe688e..164b016 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -813,12 +813,12 @@ static void nfs_direct_write_completion(struct nfs_pgio_header *hdr)
- 			if (dreq->flags == NFS_ODIRECT_RESCHED_WRITES)
- 				bit = NFS_IOHDR_NEED_RESCHED;
- 			else if (dreq->flags == 0) {
--				memcpy(&dreq->verf, hdr->verf,
-+				memcpy(&dreq->verf, &hdr->verf,
- 				       sizeof(dreq->verf));
- 				bit = NFS_IOHDR_NEED_COMMIT;
- 				dreq->flags = NFS_ODIRECT_DO_COMMIT;
- 			} else if (dreq->flags == NFS_ODIRECT_DO_COMMIT) {
--				if (memcmp(&dreq->verf, hdr->verf, sizeof(dreq->verf))) {
-+				if (memcmp(&dreq->verf, &hdr->verf, sizeof(dreq->verf))) {
- 					dreq->flags = NFS_ODIRECT_RESCHED_WRITES;
- 					bit = NFS_IOHDR_NEED_RESCHED;
- 				} else
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 37c4c98..321a791 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -82,7 +82,6 @@ struct nfs_rw_header *nfs_writehdr_alloc(void)
- 		INIT_LIST_HEAD(&hdr->rpc_list);
- 		spin_lock_init(&hdr->lock);
- 		atomic_set(&hdr->refcnt, 0);
--		hdr->verf = &p->verf;
- 	}
- 	return p;
+diff --git a/fs/nfsd/fault_inject.c b/fs/nfsd/fault_inject.c
+index d620e7f..2ed05c3 100644
+--- a/fs/nfsd/fault_inject.c
++++ b/fs/nfsd/fault_inject.c
+@@ -97,25 +97,14 @@ static ssize_t fault_inject_read(struct file *file,
+char __user *buf,
+ {
+ 	static u64 val;
+ 	char read_buf[25];
+-	size_t size, ret;
++	size_t size;
+ 	loff_t pos = *ppos;
+
+ 	if (!pos)
+ 		nfsd_inject_get(file_inode(file)->i_private, &val);
+ 	size = scnprintf(read_buf, sizeof(read_buf), "%llu\n", val);
+
+-	if (pos < 0)
+-		return -EINVAL;
+-	if (pos >= size || !len)
+-		return 0;
+-	if (len > size - pos)
+-		len = size - pos;
+-	ret = copy_to_user(buf, read_buf + pos, len);
+-	if (ret == len)
+-		return -EFAULT;
+-	len -= ret;
+-	*ppos = pos + len;
+-	return len;
++	return simple_read_from_buffer(buf, len, ppos, read_buf, size);
  }
-@@ -644,7 +643,7 @@ static void nfs_write_completion(struct nfs_pgio_header *hdr)
- 			goto next;
- 		}
- 		if (test_bit(NFS_IOHDR_NEED_COMMIT, &hdr->flags)) {
--			memcpy(&req->wb_verf, &hdr->verf->verifier, sizeof(req->wb_verf));
-+			memcpy(&req->wb_verf, &hdr->verf.verifier, sizeof(req->wb_verf));
- 			nfs_mark_request_commit(req, hdr->lseg, &cinfo);
- 			goto next;
- 		}
-@@ -1344,8 +1343,8 @@ static void nfs_writeback_release_common(void *calldata)
- 		if (test_bit(NFS_IOHDR_NEED_RESCHED, &hdr->flags))
- 			; /* Do nothing */
- 		else if (!test_and_set_bit(NFS_IOHDR_NEED_COMMIT, &hdr->flags))
--			memcpy(hdr->verf, &data->verf, sizeof(*hdr->verf));
--		else if (memcmp(hdr->verf, &data->verf, sizeof(*hdr->verf)))
-+			memcpy(&hdr->verf, &data->verf, sizeof(hdr->verf));
-+		else if (memcmp(&hdr->verf, &data->verf, sizeof(hdr->verf)))
- 			set_bit(NFS_IOHDR_NEED_RESCHED, &hdr->flags);
- 		spin_unlock(&hdr->lock);
- 	}
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index ff09384..4bbd6ad 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1262,7 +1262,7 @@ struct nfs_pgio_header {
- 	struct list_head	rpc_list;
- 	atomic_t		refcnt;
- 	struct nfs_page		*req;
--	struct nfs_writeverf	*verf;
-+	struct nfs_writeverf	verf;		/* Used for writes */
- 	struct pnfs_layout_segment *lseg;
- 	loff_t			io_start;
- 	const struct rpc_call_ops *mds_ops;
-@@ -1296,7 +1296,6 @@ struct nfs_pgio_data {
- struct nfs_rw_header {
- 	struct nfs_pgio_header	header;
- 	struct nfs_pgio_data	rpc_data;
--	struct nfs_writeverf	verf;
- };
- 
- struct nfs_mds_commit_info {
+
+ static ssize_t fault_inject_write(struct file *file, const char __user
+*buf,
 -- 
-1.9.2
+1.9.0
 
