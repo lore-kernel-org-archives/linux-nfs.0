@@ -1,94 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:40294 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:64445 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753606AbaDPGtu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Apr 2014 02:49:50 -0400
-Date: Wed, 16 Apr 2014 16:49:41 +1000
-From: NeilBrown <neilb@suse.de>
-To: Dave Chinner <david@fromorbit.com>
-Cc: linux-mm@kvack.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, xfs@oss.sgi.com
-Subject: Re: [PATCH 16/19] VFS: use GFP_NOFS rather than GFP_KERNEL in
- __d_alloc.
-Message-ID: <20140416164941.37587da6@notabene.brown>
-In-Reply-To: <20140416062520.GG15995@dastard>
-References: <20140416033623.10604.69237.stgit@notabene.brown>
-	<20140416040337.10604.61837.stgit@notabene.brown>
-	<20140416062520.GG15995@dastard>
+	id S1757726AbaDHSB2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Apr 2014 14:01:28 -0400
+Subject: Re: v4.0 CB_COMPOUND authentication failures
+From: Simo Sorce <simo@redhat.com>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Dr Fields James Bruce <bfields@fieldses.org>,
+        NFS <linux-nfs@vger.kernel.org>,
+        Adamson William Andros <androsadamson@gmail.com>,
+        Lever Charles Edward <chuck.lever@oracle.com>
+In-Reply-To: <20140408133040.3c149238@tlielax.poochiereds.net>
+References: <20140408082140.340c1328@tlielax.poochiereds.net>
+	 <20140408123501.GA3532@fieldses.org>
+	 <20140408094903.33e42de2@tlielax.poochiereds.net>
+	 <20140408140333.GD3882@fieldses.org>
+	 <6CC79B2A-8AE2-4A36-BB57-380C2F9813C0@primarydata.com>
+	 <20140408144652.GE3882@fieldses.org>
+	 <ECD8245B-CDEE-442E-A41A-BECE08BEEDA1@primarydata.com>
+	 <20140408124428.5152ae8b@tlielax.poochiereds.net>
+	 <1396978021.14203.163.camel@willson.li.ssimo.org>
+	 <20140408133040.3c149238@tlielax.poochiereds.net>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 08 Apr 2014 14:01:15 -0400
+Message-ID: <1396980075.14203.164.camel@willson.li.ssimo.org>
 Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/EPq.7eSTqOBYBZMF/T4NZ0K"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/EPq.7eSTqOBYBZMF/T4NZ0K
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+On Tue, 2014-04-08 at 13:30 -0400, Jeff Layton wrote:
+> On Tue, 08 Apr 2014 13:27:01 -0400
+> Simo Sorce <simo@redhat.com> wrote:
+> 
+> > On Tue, 2014-04-08 at 12:44 -0400, Jeff Layton wrote:
+> > > 
+> > > I think that's what happens. We only fall back to using AUTH_SYS if
+> > > nfs_create_rpc_client returns -EINVAL. In the event that the security
+> > > negotiation fails, we should get back -EACCES and that should bubble
+> > > back up to userland.
+> > > 
+> > > The real problem is that gssd (and also the krb5 libs themselves) will
+> > > try to canonicalize the name. The resulting host portion of the SPN
+> > > may bear no resemblance to the hostname in the device string. In fact,
+> > > if you mount using an IP address then you're pretty much SOL.
+> > 
+> > If you mount by IP do you really care about krb5 ? Probably not, maybe
+> > that's a clue we should not even try ...
+> > 
+> 
+> It's certainly possible that someone passes in an IP address but then
+> says "-o sec=krb5". It has worked in the past, so it's hard to know
+> whether and how many people actually depend on it.
+> 
+> > > I haven't tried it yet, but it looks reasonably trivial to fix gssd
+> > > not to bother with DNS at all and just rely on the hostname. That
+> > > won't stop the krb5 libs from doing their canonicalization though. I'm
+> > > not sure if there's some way to ask the krb5 libs to avoid doing that.
+> > 
+> > [libdefaults]
+> > rdns = false
+> > 
+> > And I think we change the default to false in Fedora/RHEL lately ...
+> > 
+> > Simo.
+> > 
+> 
+> That's a step in the right direction, but I think that the rdns just
+> makes it skip the reverse lookup. AFAIK, the MIT libs will still do
+> getaddrinfo and scrape out the ai_canonname and use that in preference
+> to the hostname you pass in.
 
-On Wed, 16 Apr 2014 16:25:20 +1000 Dave Chinner <david@fromorbit.com> wrote:
+That should happen only if you are using a CNAME, not for an A name.
 
-> On Wed, Apr 16, 2014 at 02:03:37PM +1000, NeilBrown wrote:
-> > __d_alloc can be called with i_mutex held, so it is safer to
-> > use GFP_NOFS.
-> >=20
-> > lockdep reports this can deadlock when loop-back NFS is in use,
-> > as nfsd may be required to write out for reclaim, and nfsd certainly
-> > takes i_mutex.
->=20
-> But not the same i_mutex as is currently held. To me, this seems
-> like a false positive? If you are holding the i_mutex on an inode,
-> then you have a reference to the inode and hence memory reclaim
-> won't ever take the i_mutex on that inode.
->=20
-> FWIW, this sort of false positive was a long stabding problem for
-> XFS - we managed to get rid of most of the false positives like this
-> by ensuring that only the ilock is taken within memory reclaim and
-> memory reclaim can't be entered while we hold the ilock.
->=20
-> You can't do that with the i_mutex, though....
->=20
-> Cheers,
->=20
-> Dave.
+We can open bugs if this is not the case though.
 
-I'm not sure this is a false positive.
-You can call __d_alloc when creating a file and so are holding i_mutex on t=
-he
-directory.
-nfsd might also want to access that directory.
+Simo.
 
-If there was only 1 nfsd thread, it would need to get i_mutex and do it's
-thing before replying to that request and so before it could handle the
-COMMIT which __d_alloc is waiting for.
 
-Obviously we would normally have multiple nfsd threads but if they were all
-blocked on an i_mutex which itself was blocked on nfs_release_page which was
-waiting for an nfsd thread to handling its COMMIT request, this could be a
-real deadlock.
 
-Thanks,
-NeilBrown
+-- 
+Simo Sorce * Red Hat, Inc * New York
 
---Sig_/EPq.7eSTqOBYBZMF/T4NZ0K
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.22 (GNU/Linux)
-
-iQIVAwUBU04oBTnsnt1WYoG5AQIv2A/+JHPHOXvvSEvBvND3/I/bvU7038Xt9P09
-ROQ9m01KrCbUdCBztnzYFBBQRHb+TGX7/oqNbgR5xz5xQp5udSIOGfW50DvPsmRj
-evA2RwwB24XWG4TpZcfAnZXNXNGmjNXYzKcSrrD3Jr1hh54BnYkSmvxk1rjZb77V
-lPAtmazM12wyG3OTAP9iKMeNohqzKmL8ZAF3NXBtA7VvAx3Q/bW5Ouk3NDO9sMjP
-fP9rvVgZqGBGraTBp/j7hAliuwMdR47OvUvtmlj2Yu8BLwWdmK4uLcgCtiASvhox
-IOCQQ/mKw8d0c/vC1kl759kwgXuK87rRQ136xBpcgogBd7g8ER9Z+WmfBHUVndg6
-9HjduCoAju0ruvnfHD3Ky4GcMEPPmbwe7nV7LMY8VkLTDjUBLLnoBROdgsbLL2bj
-at1fyaeJxQ/lRt3FzQ3ep0n4n366FM1kyHs84J3EiRMImrxAedb/wdZmDN7rQi0s
-g4ubAThts0zmUrYsTO+beqxVGNYqmnUdJVWMBX513HBGZ6kZ+sjFIpD2sBkCRIgK
-98bXu9ZEz2ZqAACq42uYdNvEIgPrcog80+yLZJQ7GJaPHsdfOWEMrAJPrO5iaSQH
-vUbfbjwe722ZicSNlEgw5b5ZWMGb9ssZVeP28fJt0i8k5XNBa13+svkK+6ITOoJz
-FZOwEWIhv2A=
-=6+ZP
------END PGP SIGNATURE-----
-
---Sig_/EPq.7eSTqOBYBZMF/T4NZ0K--
