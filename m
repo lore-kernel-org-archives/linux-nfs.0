@@ -1,95 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:52714 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756100AbaDWDsM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 Apr 2014 23:48:12 -0400
-From: NeilBrown <neilb@suse.de>
-To: Jan Kara <jack@suse.cz>, Jeff Layton <jlayton@redhat.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Dave Chinner <david@fromorbit.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Mel Gorman <mgorman@suse.com>,
-        Andrew Morton <akpm@linux-foundation.org>
-Date: Wed, 23 Apr 2014 12:40:58 +1000
-Subject: [PATCH/RFC 0/5] Support loop-back NFS mounts - take 2
-Cc: linux-mm@kvack.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Message-ID: <20140423022441.4725.89693.stgit@notabene.brown>
+Received: from mail-pd0-f169.google.com ([209.85.192.169]:49464 "EHLO
+	mail-pd0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750789AbaDHFGr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Apr 2014 01:06:47 -0400
+Received: by mail-pd0-f169.google.com with SMTP id fp1so482458pdb.28
+        for <linux-nfs@vger.kernel.org>; Mon, 07 Apr 2014 22:06:47 -0700 (PDT)
+Message-ID: <534383D4.50504@gmail.com>
+Date: Tue, 08 Apr 2014 13:06:28 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Subject: [PATCH] NFSD: Get rid of empty function nfs4_state_init
+Content-Type: text/plain; charset=GB2312
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is a somewhat shorter patchset for loop-back NFS support than
-last time, thanks to the excellent feedback and particularly to Dave
-Chinner.  Thanks.
-
-Avoiding the wait-for-congestion which can trigger a livelock is much
-the same, though I've reduced the cases in which the wait is
-by-passed.
-I did this using current->backing_dev_info which is otherwise serving
-no purpose on the current kernel.
-
-Avoiding the deadlocks has been turned on its head.
-Instead of nfsd checking if it is a loop-back mount and setting
-PF_FSTRANS, which then needs lots of changes too PF_FSTRANS and
-__GFP_FS handling, it is now NFS which checks for a loop-back
-filesystem.
-
-There is more verbosity in that patch (Fifth of Five) but the essence
-is that nfs_release_page will now not wait indefinitely for a COMMIT
-request to complete when sent to the local host.  It still waits a
-little while as some delay can be important. But it won't wait
-forever.
-The duration of "a little while" is currently 100ms, though I do
-wonder if a bigger number would serve just as well.
-
-Unlike the previous series, this set should remove deadlocks that
-could happen during the actual fail-over process.  This is achieved by
-having nfs_release_page monitor the connection and if it changes from
-a remote to a local connection, or just disconnects, then it will
-timeout.  It currently polls every second, though this probably could
-be longer too.  It only needs to be the same order of magnitude as the
-time it takes node failure to be detected and failover to happen, and
-I suspect that is closer to 1 minute.  So maybe a 10 or 20 second poll
-interval would be just as good.
-
-Implementing this timeout requires some horrible code as the
-wait_on_bit functions don't support timeouts.  If the general approach
-is found acceptable I'll explore ways to improve the timeout code.
-
-Comments, criticism, etc very welcome as always,
-
-Thanks,
-NeilBrown
-
-
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 ---
+ fs/nfsd/nfs4state.c | 7 -------
+ fs/nfsd/nfsctl.c    | 1 -
+ fs/nfsd/nfsd.h      | 2 --
+ 3 files changed, 10 deletions(-)
 
-NeilBrown (5):
-      MM: avoid throttling reclaim for loop-back nfsd threads.
-      SUNRPC: track whether a request is coming from a loop-back interface.
-      nfsd: Only set PF_LESS_THROTTLE when really needed.
-      SUNRPC: track when a client connection is routed to the local host.
-      NFS: avoid deadlocks with loop-back mounted NFS filesystems.
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 5a9588e..6e786a8 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4969,13 +4969,6 @@ struct nfs4_client *nfsd_find_client(struct
+sockaddr_storage *addr, size_t addr_
 
+ #endif /* CONFIG_NFSD_FAULT_INJECTION */
 
- fs/nfs/file.c                   |    2 +
- fs/nfs/write.c                  |   73 +++++++++++++++++++++++++++++++++++----
- fs/nfsd/nfssvc.c                |    6 ---
- fs/nfsd/vfs.c                   |   12 ++++++
- include/linux/freezer.h         |   10 +++++
- include/linux/sunrpc/clnt.h     |    1 +
- include/linux/sunrpc/svc.h      |    1 +
- include/linux/sunrpc/svc_xprt.h |    1 +
- include/linux/sunrpc/xprt.h     |    1 +
- include/uapi/linux/nfs_fs.h     |    3 ++
- mm/vmscan.c                     |   18 +++++++++-
- net/sunrpc/clnt.c               |   25 +++++++++++++
- net/sunrpc/svcsock.c            |   10 +++++
- net/sunrpc/xprtsock.c           |   17 +++++++++
- 14 files changed, 163 insertions(+), 17 deletions(-)
-
+-/* initialization to perform at module load time: */
+-
+-void
+-nfs4_state_init(void)
+-{
+-}
+-
+ /*
+  * Since the lifetime of a delegation isn't limited to that of an open, a
+  * client may quite reasonably hang on to a delegation as long as it has
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index 7f55517..493f3d4 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -1174,7 +1174,6 @@ static int __init init_nfsd(void)
+ 	retval = nfsd4_init_slabs();
+ 	if (retval)
+ 		goto out_unregister_pernet;
+-	nfs4_state_init();
+ 	retval = nfsd_fault_inject_init(); /* nfsd fault injection controls */
+ 	if (retval)
+ 		goto out_free_slabs;
+diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+index 30f34ab..22259f8 100644
+--- a/fs/nfsd/nfsd.h
++++ b/fs/nfsd/nfsd.h
+@@ -106,7 +106,6 @@ static inline int nfsd_v4client(struct svc_rqst *rq)
+  */
+ #ifdef CONFIG_NFSD_V4
+ extern unsigned long max_delegations;
+-void nfs4_state_init(void);
+ int nfsd4_init_slabs(void);
+ void nfsd4_free_slabs(void);
+ int nfs4_state_start(void);
+@@ -117,7 +116,6 @@ void nfs4_reset_lease(time_t leasetime);
+ int nfs4_reset_recoverydir(char *recdir);
+ char * nfs4_recoverydir(void);
+ #else
+-static inline void nfs4_state_init(void) { }
+ static inline int nfsd4_init_slabs(void) { return 0; }
+ static inline void nfsd4_free_slabs(void) { }
+ static inline int nfs4_state_start(void) { return 0; }
 -- 
-Signature
+1.9.0
 
