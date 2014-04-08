@@ -1,169 +1,138 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f169.google.com ([209.85.223.169]:56616 "EHLO
-	mail-ie0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751261AbaDVUHY convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Apr 2014 16:07:24 -0400
-Received: by mail-ie0-f169.google.com with SMTP id to1so5774819ieb.14
-        for <linux-nfs@vger.kernel.org>; Tue, 22 Apr 2014 13:07:23 -0700 (PDT)
-Content-Type: text/plain; charset=us-ascii
+Received: from mail-ie0-f182.google.com ([209.85.223.182]:38125 "EHLO
+	mail-ie0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756960AbaDHOXm convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Apr 2014 10:23:42 -0400
+Received: by mail-ie0-f182.google.com with SMTP id y20so977166ier.13
+        for <linux-nfs@vger.kernel.org>; Tue, 08 Apr 2014 07:23:41 -0700 (PDT)
+Content-Type: text/plain; charset=windows-1252
 Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
-Subject: Re: [PATCH v2] pnfs: fix race in filelayout commit path
-From: Weston Andros Adamson <dros@primarydata.com>
-In-Reply-To: <1398196925-67410-1-git-send-email-dros@primarydata.com>
-Date: Tue, 22 Apr 2014 16:07:57 -0400
-Cc: linux-nfs list <linux-nfs@vger.kernel.org>
-Message-Id: <4796568A-21CB-41BC-9FC3-BC5B4A7D2352@primarydata.com>
-References: <1398196925-67410-1-git-send-email-dros@primarydata.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: Re: v4.0 CB_COMPOUND authentication failures
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+In-Reply-To: <20140408140333.GD3882@fieldses.org>
+Date: Tue, 8 Apr 2014 10:23:37 -0400
+Cc: Layton Jeff <jlayton@redhat.com>, linux-nfs@vger.kernel.org,
+        Adamson William Andros <androsadamson@gmail.com>,
+        Lever Charles Edward <chuck.lever@oracle.com>
+Message-Id: <6CC79B2A-8AE2-4A36-BB57-380C2F9813C0@primarydata.com>
+References: <20140408082140.340c1328@tlielax.poochiereds.net> <20140408123501.GA3532@fieldses.org> <20140408094903.33e42de2@tlielax.poochiereds.net> <20140408140333.GD3882@fieldses.org>
+To: Dr Fields James Bruce <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Apr 22, 2014, at 4:02 PM, Weston Andros Adamson <dros@primarydata.com> wrote:
 
-> Hold the lock while modifying commit info dataserver buckets.
-> 
-> The following oops can be reproduced by running iozone for a while against
-> a 2 DS pynfs filelayout server.
-> 
-> general protection fault: 0000 [#1] SMP DEBUG_PAGEALLOC
-> Modules linked in: nfs_layout_nfsv41_files rpcsec_gss_krb5 nfsv4 nfs fscache
-> CPU: 0 PID: 903 Comm: iozone Not tainted 3.15.0-rc1-branch-dros_testing+ #44
-> Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference
-> task: ffff880078164480 ti: ffff88006e972000 task.ti: ffff88006e972000
-> RIP: 0010:[<ffffffffa01936e1>]  [<ffffffffa01936e1>] nfs_init_commit+0x22/0x
-> RSP: 0018:ffff88006e973d30  EFLAGS: 00010246
-> RAX: ffff88006e973e00 RBX: ffff88006e828800 RCX: ffff88006e973e10
-> RDX: 0000000000000000 RSI: ffff88006e973e00 RDI: dead4ead00000000
-> RBP: ffff88006e973d38 R08: ffff88006e8289d8 R09: 0000000000000000
-> R10: ffff88006e8289d8 R11: 0000000000016988 R12: ffff88006e973b98
-> R13: ffff88007a0a6648 R14: ffff88006e973e10 R15: ffff88006e828800
-> FS:  00007f2ce396b740(0000) GS:ffff88007f200000(0000) knlGS:0000000000000000
-> CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-> CR2: 00007f03278a1000 CR3: 0000000079043000 CR4: 00000000001407f0
-> Stack:
-> ffff88006e8289d8 ffff88006e973da8 ffffffffa00f144f ffff88006e9478c0
-> ffff88006e973e00 ffff88006de21080 0000000100000002 ffff880079be6c48
-> ffff88006e973d70 ffff88006e973d70 ffff88006e973e10 ffff88006de21080
-> Call Trace:
-> [<ffffffffa00f144f>] filelayout_commit_pagelist+0x1ae/0x34a [nfs_layout_nfsv
-> [<ffffffffa0194f72>] nfs_generic_commit_list+0x92/0xc4 [nfs]
-> [<ffffffffa0195053>] nfs_commit_inode+0xaf/0x114 [nfs]
-> [<ffffffffa01892bd>] nfs_file_fsync_commit+0x82/0xbe [nfs]
-> [<ffffffffa01ceb0d>] nfs4_file_fsync+0x59/0x9b [nfsv4]
-> [<ffffffff8114ee3c>] vfs_fsync_range+0x18/0x20
-> [<ffffffff8114ee60>] vfs_fsync+0x1c/0x1e
-> [<ffffffffa01891c2>] nfs_file_flush+0x7f/0x84 [nfs]
-> [<ffffffff81127a43>] filp_close+0x3c/0x72
-> [<ffffffff81140e12>] __close_fd+0x82/0x9a
-> [<ffffffff81127a9c>] SyS_close+0x23/0x4c
-> [<ffffffff814acd12>] system_call_fastpath+0x16/0x1b
-> Code: 5b 41 5c 41 5d 41 5e 5d c3 0f 1f 44 00 00 55 48 89 e5 53 48 89 fb 48 8
-> RIP  [<ffffffffa01936e1>] nfs_init_commit+0x22/0xe1 [nfs]
-> RSP <ffff88006e973d30>
-> ---[ end trace 732fe6419b235e2f ]---
-> 
-> Suggested-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
-> ---
-> 
-> Version 1 was still missing some locks around wlseg and clseg.
-> 
-> My testing hasn't been able to reproduce the oops now for over 4 hours of
-> iozone runs on two different setups. I'll keep testing...
-> 
-> I'm not sure if this is something we want to CC to stable, AFAIK no
-> vendors currently support filelayout with commit (which is why this
-> codepath is seemingly untested).
-> 
-> fs/nfs/nfs4filelayout.c | 20 ++++++++++++++++----
-> 1 file changed, 16 insertions(+), 4 deletions(-)
-> 
-> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-> index b9a35c0..b6fc8c1 100644
-> --- a/fs/nfs/nfs4filelayout.c
-> +++ b/fs/nfs/nfs4filelayout.c
-> @@ -1067,6 +1067,7 @@ filelayout_choose_commit_list(struct nfs_page *req,
-> 	 */
-> 	j = nfs4_fl_calc_j_index(lseg, req_offset(req));
-> 	i = select_bucket_index(fl, j);
-> +	spin_lock(cinfo->lock);
-> 	buckets = cinfo->ds->buckets;
-> 	list = &buckets[i].written;
-> 	if (list_empty(list)) {
-> @@ -1080,6 +1081,7 @@ filelayout_choose_commit_list(struct nfs_page *req,
-> 	}
-> 	set_bit(PG_COMMIT_TO_DS, &req->wb_flags);
+On Apr 8, 2014, at 10:03, J. Bruce Fields <bfields@fieldses.org> wrote:
 
-^^ I suppose this could be moved out of the spin lock.
+> On Tue, Apr 08, 2014 at 09:49:03AM -0400, Jeff Layton wrote:
+>> On Tue, 8 Apr 2014 08:35:01 -0400
+>> "J. Bruce Fields" <bfields@fieldses.org> wrote:
+>> 
+>>> On Tue, Apr 08, 2014 at 08:21:40AM -0400, Jeff Layton wrote:
+>>>> I've recently been hunting down some problems with delegation handling
+>>>> and have run across a problem with the client authenticates CB_COMPOUND
+>>>> requests. I could use some advice on how best to fix it.
+>>>> 
+>>>> Specifically, check_gss_callback_principal() tries to look up the
+>>>> callback client and then tries to compare the ticket in it against the
+>>>> clp->cl_hostname:
+>>>> 
+>>>>        /* Expect a GSS_C_NT_HOSTBASED_NAME like "nfs@serverhostname" */
+>>>> 
+>>>>        if (memcmp(p, "nfs@", 4) != 0)
+>>>>                return 0;
+>>>>        p += 4;
+>>>>        if (strcmp(p, clp->cl_hostname) != 0)
+>>>>                return 0;
+>>>>        return 1;
+>>>> 
+>>>> The problem is that there is no guarantee that those hostnames will be
+>>>> the same. If, for instance, I mount "foo:/" and the SPN is
+>>>> "nfs/foo.bar.baz" that strcmp will return true, and the CB_COMPOUND
+>>>> request will get tossed out [1]. Ditto if I happen to mount a CNAME of the
+>>>> server.
+>>> 
+>>> It sounds like a bug to me that the mount is succeeding without the name
+>>> matching.
+>>> 
+>>> The security provided by krb5 is much weaker if we don't check that the
+>>> name provided on the commandline matches what the server authenticates
+>>> as.
+>>> 
+>> 
+>> The logic in gssd for this is pretty awful.
+>> 
+>> It will basically trust DNS if there is no '.' in the hostname that was
+>> used at mount time. That'll make it take the address and
+>> reverse-resolve it.
+> 
+> Argh, OK, I guess this is the compromise Simo made in "Avoid DNS reverse
+> resolution for server names (take 3)".
+> 
+>> We could add yet another band-aid and make it so that DNS is never
+>> trusted. I'll note that for cifs, we took that route. You have to mount
+>> the canonical name of the server in order to use krb5.
+> 
+> I wish we could do that, but I suppose it's too harsh to break
+> already-working fstabs.  Maybe we could phase it in somehow.
+> 
+>>>> Now that we try to use krb5 on the callback channel even when sec=sys
+>>>> is specified, this is very problematic.
+>>> 
+>>> And similarly I think the attempt to opportunistically use krb5 for
+>>> state management should fail and fall back on auth_sys if the server's
+>>> name doesn't match.
+>>> 
 
-> 	cinfo->ds->nwritten++;
-> +	spin_unlock(cinfo->lock);
-> 	return list;
-> }
+This suggestion makes no sense to me at all. How does it help to fall back to using weak security when the strong security checks fail?
+
+>> Like Trond pointed out, the problem is that gssd doesn't give us that
+>> info currently. We could change it to do that of course, but that
+>> basically means revving the downcall.
 > 
-> @@ -1176,6 +1178,7 @@ transfer_commit_list(struct list_head *src, struct list_head *dst,
-> 	return ret;
-> }
+> It might be easier to rev the upcall so that the kernel could ask gssd
+> to do strict checking?  Since it's just a bunch of name=value pairs it
+> shouldn't be a huge pain to revise.
+
+So what would trigger the kernel to ask for strict checking? Do we add a mount option that says “fail if the server doesn’t authenticate itself”? That would be hard to combine with security negotiation, since it only makes sense for RPCSEC_GSS authentication.
+
+>>>> I think that the ideal thing would be to stash the SPN that we use to
+>>>> do the SETCLIENTID call and use that in the comparison above.
+>>>> Unfortunately, the rpc_cred doesn't really seem to carry this info and
+>>>> I don't see where we get enough information in the rpc.gssd downcall to
+>>>> figure out what that SPN should be.
+>>>> 
+>>>> Anyone have thoughts or should we just remove the above check until we
+>>>> come up with a better way to do this?
+>>>> 
+>>>> [1]: there's another bug that can cause the client to send a bogus
+>>>>     reply instead of dropping the request as intended, but that's
+>>>>     relatively simple to fix.
+>>> 
+>>> So I believe the matching really is a requirement and that it would be
+>>> wrong to weaken it.
+>>> 
+>>> It sounds like there's also a server bug here if it's giving out
+>>> delegations to a client that isn't responding to callbacks.
+>>> 
+>> 
+>> The server uses CB_NULL requests to probe the callback port, and those
+>> aren't affected by this problem. Worse, since CB_NULL requests don't
+>> even contain the callback_ident, we can't even use them to hook up the
+>> nfs_client with the SPN used in them.
 > 
-> +/* Note called with cinfo->lock held. */
-> static int
-> filelayout_scan_ds_commit_list(struct pnfs_commit_bucket *bucket,
-> 			       struct nfs_commit_info *cinfo,
-> @@ -1220,15 +1223,18 @@ static void filelayout_recover_commit_reqs(struct list_head *dst,
-> 					   struct nfs_commit_info *cinfo)
-> {
-> 	struct pnfs_commit_bucket *b;
-> +	struct pnfs_layout_segment *freeme;
-> 	int i;
+> Ah, got it.
 > 
-> +restart:
-> 	spin_lock(cinfo->lock);
-> 	for (i = 0, b = cinfo->ds->buckets; i < cinfo->ds->nbuckets; i++, b++) {
-> 		if (transfer_commit_list(&b->written, dst, cinfo, 0)) {
-> -			spin_unlock(cinfo->lock);
-> -			pnfs_put_lseg(b->wlseg);
-> +			freeme = b->wlseg;
-> 			b->wlseg = NULL;
-> -			spin_lock(cinfo->lock);
-> +			spin_unlock(cinfo->lock);
-> +			pnfs_put_lseg(freeme);
-> +			goto restart;
-> 		}
-> 	}
-> 	cinfo->ds->nwritten = 0;
-> @@ -1243,6 +1249,7 @@ alloc_ds_commits(struct nfs_commit_info *cinfo, struct list_head *list)
-> 	struct nfs_commit_data *data;
-> 	int i, j;
-> 	unsigned int nreq = 0;
-> +	struct pnfs_layout_segment *freeme;
+> The server should still stop delegations as soon as a CB_RECALL times
+> out, though, so at least the problem should clear up after that?
 > 
-> 	fl_cinfo = cinfo->ds;
-> 	bucket = fl_cinfo->buckets;
-> @@ -1253,8 +1260,10 @@ alloc_ds_commits(struct nfs_commit_info *cinfo, struct list_head *list)
-> 		if (!data)
-> 			break;
-> 		data->ds_commit_index = i;
-> +		spin_lock(cinfo->lock);
-> 		data->lseg = bucket->clseg;
-> 		bucket->clseg = NULL;
-> +		spin_unlock(cinfo->lock);
-> 		list_add(&data->pages, list);
-> 		nreq++;
-> 	}
-> @@ -1264,8 +1273,11 @@ alloc_ds_commits(struct nfs_commit_info *cinfo, struct list_head *list)
-> 		if (list_empty(&bucket->committing))
-> 			continue;
-> 		nfs_retry_commit(&bucket->committing, bucket->clseg, cinfo);
-> -		pnfs_put_lseg(bucket->clseg);
-> +		spin_lock(cinfo->lock);
-> +		freeme = bucket->clseg;
-> 		bucket->clseg = NULL;
-> +		spin_unlock(cinfo->lock);
-> +		pnfs_put_lseg(freeme);
-> 	}
-> 	/* Caller will clean up entries put on list */
-> 	return nreq;
-> -- 
-> 1.8.5.2 (Apple Git-48)
-> 
+> --b.
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+_________________________________
+Trond Myklebust
+Linux NFS client maintainer, PrimaryData
+trond.myklebust@primarydata.com
 
