@@ -1,145 +1,101 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f50.google.com ([209.85.220.50]:65266 "EHLO
-	mail-pa0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752490AbaDCQCy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Apr 2014 12:02:54 -0400
-Received: by mail-pa0-f50.google.com with SMTP id kq14so2053029pab.23
-        for <linux-nfs@vger.kernel.org>; Thu, 03 Apr 2014 09:02:53 -0700 (PDT)
-Message-ID: <533D8629.10907@gmail.com>
-Date: Thu, 03 Apr 2014 19:02:49 +0300
-From: Boaz Harrosh <openosd@gmail.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>, NeilBrown <neilb@suse.de>
-CC: NFS <linux-nfs@vger.kernel.org>
-Subject: Re: Should exportfs/mountd cope with case-insensitive directory names.
-References: <20140403164652.5d7770ad@notabene.brown> <20140403130909.GA24700@fieldses.org>
-In-Reply-To: <20140403130909.GA24700@fieldses.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-ie0-f179.google.com ([209.85.223.179]:34249 "EHLO
+	mail-ie0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757753AbaDHSDI convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Apr 2014 14:03:08 -0400
+Received: by mail-ie0-f179.google.com with SMTP id lx4so1327332iec.10
+        for <linux-nfs@vger.kernel.org>; Tue, 08 Apr 2014 11:03:07 -0700 (PDT)
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
+Subject: Re: v4.0 CB_COMPOUND authentication failures
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+In-Reply-To: <20140408135512.2397d97f@tlielax.poochiereds.net>
+Date: Tue, 8 Apr 2014 14:03:04 -0400
+Cc: Dr Fields James Bruce <bfields@fieldses.org>,
+        NFS <linux-nfs@vger.kernel.org>,
+        Adamson William Andros <androsadamson@gmail.com>,
+        Lever Charles Edward <chuck.lever@oracle.com>
+Message-Id: <61C732F7-A053-4293-AB54-07979E048F53@primarydata.com>
+References: <20140408082140.340c1328@tlielax.poochiereds.net> <20140408123501.GA3532@fieldses.org> <20140408094903.33e42de2@tlielax.poochiereds.net> <20140408140333.GD3882@fieldses.org> <6CC79B2A-8AE2-4A36-BB57-380C2F9813C0@primarydata.com> <20140408144652.GE3882@fieldses.org> <ECD8245B-CDEE-442E-A41A-BECE08BEEDA1@primarydata.com> <20140408164024.GH3882@fieldses.org> <8F132114-F44C-449B-8EA8-331C67FCE813@primarydata.com> <20140408135512.2397d97f@tlielax.poochiereds.net>
+To: Layton Jeff <jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 04/03/2014 04:09 PM, J. Bruce Fields wrote:
-> On Thu, Apr 03, 2014 at 04:46:52PM +1100, NeilBrown wrote:
->>
->> Hi,
->>  I came across an interesting issue recently.
->>
->> Suppose you have a filesystem which supports case-insensitive file names
->> (like VFAT, but in this particular case 'NSS' - Novell Storage Services).
->>
->> And support you export some subdirectory (or sub-volume) using a
->> non-canonical name.
->> i.e. you "mkdir /path/export", the put "/path/EXPORT" in /etc/exports and
->> mount  server:/path/EXPORT from some client.
->>
->> This all works until the export cache times out and the kernel asks mountd
->> if "/path/export" is exported.  mountd says "no" and suddenly all accesses
->> fail.
->>
->> I don't think much of case-insensitive file names, but I suspect we should
->> either make this work, it issue a warning as to why it is failing.
->> A simple work around is to export the canonical name and use it when
->> mounting.  But if the sysadmin doesn't know they need to, they are unlikely
->> to guess.
->>
->> I don't think there is any API to test if a name is canonical, or to get the
->> canonical name, so I cannot see any way in advance to see if this problem
->> situation has arisen.  So the only option I can think of is to fix it.
->>
->> The following patch (or something much like it for an older nfs-utils) seems
->> to do the trick.
->>
->> What do people think?  Is this a reasonable thing to do?  Is it likely to
->> have negative consequences that I haven't thought of?
-> 
-> Neat-o.
-> 
-> Are we adding a stat of every export in the export table where there
-> wasn't one before?  But those should typically be cached, so maybe
-> there's no problem.
-> 
-> I'm not super-fond of the combining the comparison of two paths and
-> truncating of one into the same function, though I see why it's
-> convenient.
-> 
-> --b.
-> 
->>
->> Thanks,
->> NeilBrown
->>
->>
->>
->> diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
->> index 9a1bb2767ac2..2d91db76b867 100644
->> --- a/utils/mountd/cache.c
->> +++ b/utils/mountd/cache.c
->> @@ -377,6 +377,28 @@ static char *next_mnt(void **v, char *p)
->>  	return me->mnt_dir;
->>  }
->>  
->> +static int same_path(char *child, char *parent, int len)
->> +{
->> +	static char p[PATH_MAX];
->> +	struct stat sc, sp;
->> +	if (len <= 0)
->> +		len = strlen(child);
->> +	strncpy(p, child, len);
->> +	p[len] = 0;
->> +	if (strcmp(p, parent) == 0)
->> +		return 1;
->> +
 
-Addressing Bruce concern, perhaps you would like to
-also  stricmp the names, so to not lstat on all export
-entries.
+On Apr 8, 2014, at 13:55, Jeff Layton <jlayton@redhat.com> wrote:
 
-+	if (stricmp(p, parent) =! 0)
-+		return 0;
-
->> +	if (lstat(p, &sc) != 0)
->> +		return 0;
->> +	if (lstat(parent, &sp) != 0)
->> +		return 0;
->> +	if (sc.st_dev != sp.st_dev)
->> +		return 0;
->> +	if (sc.st_ino != sp.st_ino)
->> +		return 0;
-
-Hard links on directories any one ? ;-)
-
-Thanks
-Boaz
-
->> +	return 1;
->> +}
->> +
->>  static int is_subdirectory(char *child, char *parent)
->>  {
->>  	/* Check is child is strictly a subdirectory of
->> @@ -387,7 +409,7 @@ static int is_subdirectory(char *child, char *parent)
->>  	if (strcmp(parent, "/") == 0 && child[1] != 0)
->>  		return 1;
->>  
->> -	return (strncmp(child, parent, l) == 0 && child[l] == '/');
->> +	return (same_path(child, parent, l) && child[l] == '/');
->>  }
->>  
->>  static int path_matches(nfs_export *exp, char *path)
->> @@ -396,7 +418,7 @@ static int path_matches(nfs_export *exp, char *path)
->>  	 * exact match, or does the export have CROSSMOUNT, and path
->>  	 * is a descendant?
->>  	 */
->> -	return strcmp(path, exp->m_export.e_path) == 0
->> +	return same_path(path, exp->m_export.e_path, 0)
->>  		|| ((exp->m_export.e_flags & NFSEXP_CROSSMOUNT)
->>  		    && is_subdirectory(path, exp->m_export.e_path));
->>  }
+> On Tue, 8 Apr 2014 13:30:21 -0400
+> Trond Myklebust <trond.myklebust@primarydata.com> wrote:
 > 
+>> 
+>> On Apr 8, 2014, at 12:40, Dr Fields James Bruce <bfields@fieldses.org> wrote:
+>>> 
+>>> On Tue, Apr 08, 2014 at 12:22:51PM -0400, Trond Myklebust wrote:
+>>>> How is it not better just to rip out that hostname comparison in the
+>>>> back channel?
+>>> 
+>>> Rip it out entirely?
+>>> 
+>>> At that point anyone who can get a credential in the right realm can
+>>> send a recall.  RFC made this requirement to prevent that.
+>>> 
+>> 
+>> OK. Let’s examine what RFC3530 and RFC3530bis actually says here:
+>> 
+>>   Regardless of what security mechanism under RPCSEC_GSS is being used,
+>>   the NFS server MUST identify itself in GSS-API via a
+>>   GSS_C_NT_HOSTBASED_SERVICE name type.  GSS_C_NT_HOSTBASED_SERVICE
+>>   names are of the form:
+>> 
+>>     service@hostname
+>> 
+>>   For NFS, the "service" element is
+>> 
+>>     nfs
+>> 
+>>   Implementations of security mechanisms will convert nfs@hostname to
+>>   various different forms.  For Kerberos V5, the following form is
+>>   RECOMMENDED:
+>> 
+>>   nfs/hostname
+>> 
+>>   For Kerberos V5, nfs/hostname would be a server principal in the
+>>   Kerberos Key Distribution Center database.  This is the same
+>>   principal the client acquired a GSS-API context for when it issued
+>>   the SETCLIENTID operation, therefore, the realm name for the server
+>>   principal must be the same for the callback as it was for the
+>>   SETCLIENTID.
+>> 
+>> 
+>> So as I read the above, technically the client is supposed to read off the principal name that the server uses to authenticate itself to the SETCLIENTID and check that in the callback. Am I wrong?
+>> 
+>> If so, then the steps are:
+>> 
+>> 1) Modify process_krb5_upcall() and have the call to gss_inquire_context() also request the context acceptor name
+>> 2) Modify the rpc.gssd downcall to pass that name to the kernel in some format that allow us to retrieve it in the SETCLIENTID call.
+>> 3) Modify the comparison in check_gss_callback_principal()
+>> 
+>> 
 > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Sounds about right, with #2 being the difficult part...
 > 
+> One possibility for that would be to add a new "acceptor" pipe in the
+> clnt?? dirs. Teach gssd to write to the acceptor name to that pipe
+> before doing the regular downcall.
+> 
+> The name written there could then be hung off of the clp. If userland
+> fails to write the name to the pipe before doing the downcall, we'll
+> simply do what we do today (use the cl_hostname).
+> 
+> Adding a new pipe is a bit of a pain, but it does sidestep the problem
+> of mismatched kernel and userland…
+> 
+
+As far as I can tell, the downcall can be extended. Even the security context is an opaque, so its length is known. If we wanted to append a field after that, we could do so without affecting backward compatibility.
+
+
+_________________________________
+Trond Myklebust
+Linux NFS client maintainer, PrimaryData
+trond.myklebust@primarydata.com
 
