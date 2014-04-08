@@ -1,115 +1,94 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f175.google.com ([209.85.213.175]:50220 "EHLO
-	mail-ig0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753696AbaDRSq7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Apr 2014 14:46:59 -0400
-Received: by mail-ig0-f175.google.com with SMTP id h3so442261igd.2
-        for <linux-nfs@vger.kernel.org>; Fri, 18 Apr 2014 11:46:58 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Bruce Fields <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 70/70] NFSd: Remove nfs4_lock_state(): reclaim_complete()
-Date: Fri, 18 Apr 2014 14:45:04 -0400
-Message-Id: <1397846704-14567-71-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1397846704-14567-70-git-send-email-trond.myklebust@primarydata.com>
-References: <1397846704-14567-1-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-2-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-3-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-4-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-5-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-6-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-7-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-8-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-9-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-10-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-11-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-12-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-13-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-14-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-15-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-16-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-17-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-18-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-19-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-20-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-21-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-22-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-23-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-24-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-25-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-26-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-27-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-28-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-29-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-30-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-31-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-32-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-33-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-34-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-35-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-36-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-37-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-38-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-39-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-40-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-41-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-42-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-43-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-44-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-45-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-46-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-47-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-48-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-49-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-50-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-51-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-52-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-53-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-54-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-55-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-56-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-57-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-58-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-59-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-60-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-61-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-62-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-63-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-64-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-65-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-66-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-67-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-68-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-69-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-70-git-send-email-trond.myklebust@primarydata.com>
+Received: from elasmtp-dupuy.atl.sa.earthlink.net ([209.86.89.62]:49636 "EHLO
+	elasmtp-dupuy.atl.sa.earthlink.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1756798AbaDHXbv convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Apr 2014 19:31:51 -0400
+From: "Frank Filz" <ffilzlnx@mindspring.com>
+To: "'Simo Sorce'" <simo@redhat.com>
+Cc: "'Jeff Layton'" <jlayton@redhat.com>,
+        "'Trond Myklebust'" <trond.myklebust@primarydata.com>,
+        "'Dr Fields James Bruce'" <bfields@fieldses.org>,
+        "'NFS'" <linux-nfs@vger.kernel.org>,
+        "'Adamson William Andros'" <androsadamson@gmail.com>,
+        "'Lever Charles Edward'" <chuck.lever@oracle.com>
+References: <20140408082140.340c1328@tlielax.poochiereds.net>	 <20140408123501.GA3532@fieldses.org>	 <20140408094903.33e42de2@tlielax.poochiereds.net>	 <20140408140333.GD3882@fieldses.org>	 <6CC79B2A-8AE2-4A36-BB57-380C2F9813C0@primarydata.com>	 <20140408144652.GE3882@fieldses.org>	 <ECD8245B-CDEE-442E-A41A-BECE08BEEDA1@primarydata.com>	 <20140408124428.5152ae8b@tlielax.poochiereds.net>	 <1396978021.14203.163.camel@willson.li.ssimo.org>	 <20140408133040.3c149238@tlielax.poochiereds.net>	 <09b701cf5351$707b2a10$51717e30$@mindspring.com>	 <1396980375.14203.167.camel@willson.li.ssimo.org>	 <09e001cf537c$29ed9580$7dc8c080$@mindspring.com> <1396997558.19767.22.camel@willson.li.ssimo.org>
+In-Reply-To: <1396997558.19767.22.camel@willson.li.ssimo.org>
+Subject: RE: v4.0 CB_COMPOUND authentication failures
+Date: Tue, 8 Apr 2014 16:31:37 -0700
+Message-ID: <09e101cf5382$b11bb270$13531750$@mindspring.com>
+MIME-Version: 1.0
+Content-Type: text/plain;
+	charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 2 --
- 1 file changed, 2 deletions(-)
+> On Tue, 2014-04-08 at 15:44 -0700, Frank Filz wrote:
+> > > On Tue, 2014-04-08 at 10:39 -0700, Frank Filz wrote:
+> > > > > > If you mount by IP do you really care about krb5 ? Probably
+> > > > > > not, maybe that's a clue we should not even try ...
+> > > > > >
+> > > > >
+> > > > > It's certainly possible that someone passes in an IP address but
+> > > > > then says
+> > > > "-o
+> > > > > sec=krb5". It has worked in the past, so it's hard to know
+> > > > > whether and how many people actually depend on it.
+> > > >
+> > > > Mount by ip is sometimes used with clustered servers, especially
+> > > > when they have all their IP addresses in the DNS record. Even
+> > > > using a FQDN that just specifies that one IP address probably
+> > > > won't work then (since it probably is NOT the hostname used in the
+> server credential).
+> > >
+> > > I do not understand this, using an IP address or a name that resolve
+> > > to said IP address is the same.
+> >
+> > But a name can resolve to a set of IP addresses, often in round-robin
+> > fashion. It would cause havoc with NFS server on a cluster if a v3
+> > client had locks on 192.168.0.10 (resolved from server.mycompany.com),
+> > and then rebooted, and resolved to 192.168.0.9 and sent SM_NOTIFY
+> > there). At least that isn't an issue with v4...
+> 
+> Sound you configured your DNS wrong, DNS round robin is not the right way
+> to do load balancing for NFSv3.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 36ccc79702dd..a71dbf2a7a61 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2568,7 +2568,6 @@ nfsd4_reclaim_complete(struct svc_rqst *rqstp, struct nfsd4_compound_state *csta
- 		 return nfs_ok;
- 	}
- 
--	nfs4_lock_state();
- 	status = nfserr_complete_already;
- 	if (test_and_set_bit(NFSD4_CLIENT_RECLAIM_COMPLETE,
- 			     &cstate->session->se_client->cl_flags))
-@@ -2588,7 +2587,6 @@ nfsd4_reclaim_complete(struct svc_rqst *rqstp, struct nfsd4_compound_state *csta
- 	status = nfs_ok;
- 	nfsd4_client_record_create(cstate->session->se_client);
- out:
--	nfs4_unlock_state();
- 	return status;
- }
- 
--- 
-1.9.0
+I should add that this is not something I ever set up, just something others have set up and then asked me as a server developer to deal with. I agree that it's not the greatest setup. It may be coming from an HTTP server mindset (where that setup maybe works reasonably).
+
+> Also if you are specifying an IP address you can as well specify an explicit
+> name instead, you can achieve that by using a RR CNAME and then make
+> sure the client sticks to the resolved A name for the life of the locks.
+> 
+> For a reboot situation you are screwed anyway unless you configure an
+> explicit address, in which case you do not have redundancy anyway.
+> You just use a DNS name that is resolved into a unique IP address.
+
+Yep, but getting redundancy for v3 is not trivial. It is partially solved by moving the IP address to a surviving cluster node, which has it's own pain points.
+
+> > Or worse, tcp connection is dropped due to inactivity, and new
+> > connection is made to a different server node. But this could still be
+> > an issue with v4...
+> 
+> Same as above.
+> 
+> > The workaround has been to specify specific IP address.
+> 
+> The workaround to what ? Why are you using RR names if client are going to
+> stick to a specific server anyway ? You are working around a problem you are
+> created yourself, fix the problem! (You can fix it also by setting an entry in
+> /etc/hosts, it is semantically identical to specifying an IP address on the
+> mount anyway).
+> 
+> > Now I haven't done enough with krb5 recently to know how well that
+> > works...
+> 
+> > I guess I'm just offering one reason IP addresses might have been
+> > specified on mount...
+> 
+> A bogus reason :-)
+
+But one that folks have done, and can't entirely be discounted, at least to the extent that it currently works...
+
+Frank
+
 
