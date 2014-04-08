@@ -1,93 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f174.google.com ([209.85.213.174]:64447 "EHLO
-	mail-ig0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757929AbaDVV25 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Apr 2014 17:28:57 -0400
-Received: by mail-ig0-f174.google.com with SMTP id h18so3547692igc.1
-        for <linux-nfs@vger.kernel.org>; Tue, 22 Apr 2014 14:28:56 -0700 (PDT)
-From: Weston Andros Adamson <dros@primarydata.com>
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
-Subject: [PATCH 00/17] nfs: support multiple requests per page
-Date: Tue, 22 Apr 2014 17:29:08 -0400
-Message-Id: <1398202165-78897-1-git-send-email-dros@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:42966 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756894AbaDHSU5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Apr 2014 14:20:57 -0400
+Date: Tue, 8 Apr 2014 13:59:59 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: "Frank Filz" <ffilzlnx@mindspring.com>
+Cc: "'Simo Sorce'" <simo@redhat.com>,
+        "'Trond Myklebust'" <trond.myklebust@primarydata.com>,
+        "'Dr Fields James Bruce'" <bfields@fieldses.org>,
+        "'NFS'" <linux-nfs@vger.kernel.org>,
+        "'Adamson William Andros'" <androsadamson@gmail.com>,
+        "'Lever Charles Edward'" <chuck.lever@oracle.com>
+Subject: Re: v4.0 CB_COMPOUND authentication failures
+Message-ID: <20140408135959.04021312@tlielax.poochiereds.net>
+In-Reply-To: <09b701cf5351$707b2a10$51717e30$@mindspring.com>
+References: <20140408082140.340c1328@tlielax.poochiereds.net>
+	<20140408123501.GA3532@fieldses.org>
+	<20140408094903.33e42de2@tlielax.poochiereds.net>
+	<20140408140333.GD3882@fieldses.org>
+	<6CC79B2A-8AE2-4A36-BB57-380C2F9813C0@primarydata.com>
+	<20140408144652.GE3882@fieldses.org>
+	<ECD8245B-CDEE-442E-A41A-BECE08BEEDA1@primarydata.com>
+	<20140408124428.5152ae8b@tlielax.poochiereds.net>
+	<1396978021.14203.163.camel@willson.li.ssimo.org>
+	<20140408133040.3c149238@tlielax.poochiereds.net>
+	<09b701cf5351$707b2a10$51717e30$@mindspring.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patchset changes the read and write paths to be more flexible in dealing
-with requests that are not page aligned. Until now there was a 1:1 mapping
-of struct nfs_page (referred to as "nfs requests") to struct page, which
-limited the client to page aligned I/O in several pNFS scenarios.
+On Tue, 8 Apr 2014 10:39:04 -0700
+"Frank Filz" <ffilzlnx@mindspring.com> wrote:
 
-This patchset allows multiple requests per page, loosely following
-the approach taken with struct buffer_head (part of kernel bio interface).
+> > > If you mount by IP do you really care about krb5 ? Probably not, maybe
+> > > that's a clue we should not even try ...
+> > >
+> > 
+> > It's certainly possible that someone passes in an IP address but then says
+> "-o
+> > sec=krb5". It has worked in the past, so it's hard to know whether and how
+> > many people actually depend on it.
+> 
+> Mount by ip is sometimes used with clustered servers, especially when they
+> have all their IP addresses in the DNS record. Even using a FQDN that just
+> specifies that one IP address probably won't work then (since it probably is
+> NOT the hostname used in the server credential).
+> 
+> Frank
+> 
 
-With this patchset the client now supports:
- - non-page-aligned O_DIRECT I/O to DSes (instead of reverting to MDS)
- - arbitrary pnfs layout segment boundaries
- - arbitrary pnfs filelayout stripe sizes
-
-This patchset also includes a lot of cleanup - notably we no longer need
-a separate code path to support rsize/wsize < PAGE_SIZE.
-
-This new approach opens the door to many optimizations, such as not having to
-flush a page on a non-contiguous write, but for the time being we are focusing
-on correctness -- this patchset touches the read and write path for *all*
-versions of NFS!
-
-This has been tested against v2, v3, v4.0 and v4.1 (no pnfs) servers with
-different rsize/wsize settings, and against pynfs filelayout servers hacked to
-have non page aligned stripe sizes.
-
-I had some code review already (with changes applied) and we've been testing
-this pretty extensively for the last month+ - focusing mostly on v2, v3, v4.x
-(no pnfs).
-
-The patchset applies against Trond's testing branch, but should also include
-the fix I posted earlier today: "pnfs: fix race in filelayout commit path"
-as the race seems to be easier to hit with this patchset applied.
-
-I'm pretty sure I didn't break anything in the object and block layouts, but
-some extra attention there would be helpful.
-
-I plan on sharing some performance numbers once I'm able to run some nfsometer
-workloads. Expect them soon.
-
- -dros
-
-Weston Andros Adamson (17):
-  nfs: clean up PG_* flags
-  nfs: remove unused arg from nfs_create_request
-  nfs: modify pg_test interface to return size_t
-  nfs: call nfs_can_coalesce_requests for every req
-  nfs: add support for multiple nfs reqs per page
-  nfs: page group syncing in read path
-  nfs: page group syncing in write path
-  nfs: page group support in nfs_mark_uptodate
-  pnfs: clean up filelayout_alloc_commit_info
-  nfs: allow coalescing of subpage requests
-  nfs: chain calls to pg_test
-  nfs: use > 1 request to handle bsize < PAGE_SIZE
-  nfs: remove list of [rw]data from pgio header
-  pnfs: support multiple verfs per direct req
-  pnfs: allow non page aligned pnfs layout segments
-  pnfs: filelayout: support non page aligned layouts
-  nfs: support page groups in nfs_read_completion
-
- fs/nfs/blocklayout/blocklayout.c |  16 ++-
- fs/nfs/direct.c                  |  93 ++++++++++---
- fs/nfs/nfs4filelayout.c          | 121 +++++++++--------
- fs/nfs/objlayout/objio_osd.c     |  20 ++-
- fs/nfs/pagelist.c                | 284 +++++++++++++++++++++++++++++++++------
- fs/nfs/pnfs.c                    |  77 +++++------
- fs/nfs/pnfs.h                    |   3 +-
- fs/nfs/read.c                    | 149 +++++++-------------
- fs/nfs/write.c                   | 217 +++++++++++++++---------------
- include/linux/nfs.h              |   5 +-
- include/linux/nfs_page.h         |  32 +++--
- include/linux/nfs_xdr.h          |  37 ++---
- 12 files changed, 650 insertions(+), 404 deletions(-)
+Well even if it works today, using IP addresses with krb5 requires a bit of
+cognitive dissonance. krb5 is set up to use hostnames, so if you don't
+provide them you end up using what DNS gives you. That effectively
+leaves you only as secure as your DNS resolution is. Simo's blog post
+outlines the potential danger of that approach.
 
 -- 
-1.8.5.2 (Apple Git-48)
-
+Jeff Layton <jlayton@redhat.com>
