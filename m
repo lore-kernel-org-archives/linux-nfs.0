@@ -1,130 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f52.google.com ([209.85.220.52]:46566 "EHLO
-	mail-pa0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753164AbaDQMqm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Apr 2014 08:46:42 -0400
-Received: by mail-pa0-f52.google.com with SMTP id rd3so344143pab.11
-        for <linux-nfs@vger.kernel.org>; Thu, 17 Apr 2014 05:46:42 -0700 (PDT)
-Message-ID: <534FCD13.303@gmail.com>
-Date: Thu, 17 Apr 2014 20:46:11 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:4315 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756382AbaDHMVt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Apr 2014 08:21:49 -0400
+Date: Tue, 8 Apr 2014 08:21:40 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: Andy Adamson <androsadamson@gmail.com>, chuck.lever@oracle.com,
+        trond.myklebust@primarydata.com
+Subject: v4.0 CB_COMPOUND authentication failures
+Message-ID: <20140408082140.340c1328@tlielax.poochiereds.net>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: linux-nfs@vger.kernel.org, Christoph Hellwig <hch@infradead.org>
-Subject: [PATCH] NFSD: Clear cached acl after setting a zero-length default
- posix acl:
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-After setting ACL for directory, I got two problems that caused
-by the cached zero-length default posix acl.
+I've recently been hunting down some problems with delegation handling
+and have run across a problem with the client authenticates CB_COMPOUND
+requests. I could use some advice on how best to fix it.
 
-This patch just clears the cached zero-length default posix acl
-after setting.
+Specifically, check_gss_callback_principal() tries to look up the
+callback client and then tries to compare the ticket in it against the
+clp->cl_hostname:
 
-First problem:
-# nfs4_setfacl -s A::OWNER@:RWX /mnt/123/; touch /mnt/123/test
-............ hang ...........
+        /* Expect a GSS_C_NT_HOSTBASED_NAME like "nfs@serverhostname" */
 
-Second problem:
-# nfs4_setfacl -s A::OWNER@:RWX /mnt/123/; nfs4_getfacl /mnt/123/
-[ 1610.167668] ------------[ cut here ]------------
-[ 1610.168320] kernel BUG at /root/nfs/linux/fs/nfsd/nfs4acl.c:239!
-[ 1610.168320] invalid opcode: 0000 [#1] SMP DEBUG_PAGEALLOC
-[ 1610.168320] Modules linked in: nfsv4(OE) nfs(OE) nfsd(OE) 
-rpcsec_gss_krb5 fscache ip6t_rpfilter ip6t_REJECT cfg80211 xt_conntrack 
-rfkill ebtable_nat ebtable_broute bridge stp llc ebtable_filter ebtables 
-ip6table_nat nf_conntrack_ipv6 nf_defrag_ipv6 nf_nat_ipv6 
-ip6table_mangle ip6table_security ip6table_raw ip6table_filter 
-ip6_tables iptable_nat nf_conntrack_ipv4 nf_defrag_ipv4 nf_nat_ipv4 
-nf_nat nf_conntrack iptable_mangle iptable_security iptable_raw 
-auth_rpcgss nfs_acl snd_intel8x0 ppdev lockd snd_ac97_codec ac97_bus 
-snd_pcm snd_timer e1000 pcspkr parport_pc snd parport serio_raw joydev 
-i2c_piix4 sunrpc(OE) microcode soundcore i2c_core ata_generic pata_acpi 
-[last unloaded: nfsd]
-[ 1610.168320] CPU: 0 PID: 27397 Comm: nfsd Tainted: G           OE 
-3.15.0-rc1+ #15
-[ 1610.168320] Hardware name: innotek GmbH VirtualBox/VirtualBox, BIOS 
-VirtualBox 12/01/2006
-[ 1610.168320] task: ffff88005ab653d0 ti: ffff88005a944000 task.ti: 
-ffff88005a944000
-[ 1610.168320] RIP: 0010:[<ffffffffa034d5ed>]  [<ffffffffa034d5ed>] 
-_posix_to_nfsv4_one+0x3cd/0x3d0 [nfsd]
-[ 1610.168320] RSP: 0018:ffff88005a945b00  EFLAGS: 00010293
-[ 1610.168320] RAX: 0000000000000001 RBX: ffff88006700bac0 RCX: 
-0000000000000000
-[ 1610.168320] RDX: 0000000000000000 RSI: ffff880067c83f00 RDI: 
-ffff880068233300
-[ 1610.168320] RBP: ffff88005a945b48 R08: ffffffff81c64830 R09: 
-0000000000000000
-[ 1610.168320] R10: ffff88004ea85be0 R11: 000000000000f475 R12: 
-ffff880068233300
-[ 1610.168320] R13: 0000000000000003 R14: 0000000000000002 R15: 
-ffff880068233300
-[ 1610.168320] FS:  0000000000000000(0000) GS:ffff880077800000(0000) 
-knlGS:0000000000000000
-[ 1610.168320] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-[ 1610.168320] CR2: 00007f5bcbd3b0b9 CR3: 0000000001c0f000 CR4: 
-00000000000006f0
-[ 1610.168320] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 
-0000000000000000
-[ 1610.168320] DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 
-0000000000000400
-[ 1610.168320] Stack:
-[ 1610.168320]  ffffffff00000000 0000000b67c83500 000000076700bac0 
-0000000000000000
-[ 1610.168320]  ffff88006700bac0 ffff880068233300 ffff88005a945c08 
-0000000000000002
-[ 1610.168320]  0000000000000000 ffff88005a945b88 ffffffffa034e2d5 
-000000065a945b68
-[ 1610.168320] Call Trace:
-[ 1610.168320]  [<ffffffffa034e2d5>] nfsd4_get_nfs4_acl+0x95/0x150 [nfsd]
-[ 1610.168320]  [<ffffffffa03400d6>] nfsd4_encode_fattr+0x646/0x1e70 [nfsd]
-[ 1610.168320]  [<ffffffff816a6e6e>] ? kmemleak_alloc+0x4e/0xb0
-[ 1610.168320]  [<ffffffffa0327962>] ? 
-nfsd_setuser_and_check_port+0x52/0x80 [nfsd]
-[ 1610.168320]  [<ffffffff812cd4bb>] ? selinux_cred_prepare+0x1b/0x30
-[ 1610.168320]  [<ffffffffa0341caa>] nfsd4_encode_getattr+0x5a/0x60 [nfsd]
-[ 1610.168320]  [<ffffffffa0341e07>] nfsd4_encode_operation+0x67/0x110 
-[nfsd]
-[ 1610.168320]  [<ffffffffa033844d>] nfsd4_proc_compound+0x21d/0x810 [nfsd]
-[ 1610.168320]  [<ffffffffa0324d9b>] nfsd_dispatch+0xbb/0x200 [nfsd]
-[ 1610.168320]  [<ffffffffa00850cd>] svc_process_common+0x46d/0x6d0 [sunrpc]
-[ 1610.168320]  [<ffffffffa0085433>] svc_process+0x103/0x170 [sunrpc]
-[ 1610.168320]  [<ffffffffa032472f>] nfsd+0xbf/0x130 [nfsd]
-[ 1610.168320]  [<ffffffffa0324670>] ? nfsd_destroy+0x80/0x80 [nfsd]
-[ 1610.168320]  [<ffffffff810a5202>] kthread+0xd2/0xf0
-[ 1610.168320]  [<ffffffff810a5130>] ? insert_kthread_work+0x40/0x40
-[ 1610.168320]  [<ffffffff816c1ebc>] ret_from_fork+0x7c/0xb0
-[ 1610.168320]  [<ffffffff810a5130>] ? insert_kthread_work+0x40/0x40
-[ 1610.168320] Code: 78 02 e9 e7 fc ff ff 31 c0 31 d2 31 c9 66 89 45 ce 
-41 8b 04 24 66 89 55 d0 66 89 4d d2 48 8d 04 80 49 8d 5c 84 04 e9 37 fd 
-ff ff <0f> 0b 90 0f 1f 44 00 00 55 8b 56 08 c7 07 00 00 00 00 8b 46 0c
-[ 1610.168320] RIP  [<ffffffffa034d5ed>] _posix_to_nfsv4_one+0x3cd/0x3d0 
-[nfsd]
-[ 1610.168320]  RSP <ffff88005a945b00>
-[ 1610.257313] ---[ end trace 838254e3e352285b ]---
+        if (memcmp(p, "nfs@", 4) != 0)
+                return 0;
+        p += 4;
+        if (strcmp(p, clp->cl_hostname) != 0)
+                return 0;
+        return 1;
 
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
----
-  fs/nfsd/nfs4acl.c | 2 ++
-  1 file changed, 2 insertions(+)
+The problem is that there is no guarantee that those hostnames will be
+the same. If, for instance, I mount "foo:/" and the SPN is
+"nfs/foo.bar.baz" that strcmp will return true, and the CB_COMPOUND
+request will get tossed out [1]. Ditto if I happen to mount a CNAME of the
+server.
 
-diff --git a/fs/nfsd/nfs4acl.c b/fs/nfsd/nfs4acl.c
-index de5d66b..4eb0a9f 100644
---- a/fs/nfsd/nfs4acl.c
-+++ b/fs/nfsd/nfs4acl.c
-@@ -834,6 +834,8 @@ nfsd4_set_nfs4_acl(struct svc_rqst *rqstp, struct 
-svc_fh *fhp,
-  	if (S_ISDIR(inode->i_mode)) {
-  		host_error = inode->i_op->set_acl(inode, dpacl,
-  						  ACL_TYPE_DEFAULT);
-+		if (!dpacl->a_count)
-+			forget_cached_acl(inode, ACL_TYPE_DEFAULT);
-  	}
+Now that we try to use krb5 on the callback channel even when sec=sys
+is specified, this is very problematic.
 
-  out_release:
+I think that the ideal thing would be to stash the SPN that we use to
+do the SETCLIENTID call and use that in the comparison above.
+Unfortunately, the rpc_cred doesn't really seem to carry this info and
+I don't see where we get enough information in the rpc.gssd downcall to
+figure out what that SPN should be.
+
+Anyone have thoughts or should we just remove the above check until we
+come up with a better way to do this?
+
+[1]: there's another bug that can cause the client to send a bogus
+     reply instead of dropping the request as intended, but that's
+     relatively simple to fix.
 -- 
-1.9.0
-
+Jeff Layton <jlayton@redhat.com>
