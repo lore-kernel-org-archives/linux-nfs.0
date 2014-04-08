@@ -1,94 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e9.ny.us.ibm.com ([32.97.182.139]:44027 "EHLO e9.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751910AbaDWW6B (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 23 Apr 2014 18:58:01 -0400
-Received: from /spool/local
-	by e9.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
-	Wed, 23 Apr 2014 18:58:00 -0400
-Received: from b01cxnp22034.gho.pok.ibm.com (b01cxnp22034.gho.pok.ibm.com [9.57.198.24])
-	by d01dlp01.pok.ibm.com (Postfix) with ESMTP id 1E35138C8046
-	for <linux-nfs@vger.kernel.org>; Wed, 23 Apr 2014 18:57:59 -0400 (EDT)
-Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
-	by b01cxnp22034.gho.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id s3NMvxb19961836
-	for <linux-nfs@vger.kernel.org>; Wed, 23 Apr 2014 22:57:59 GMT
-Received: from d01av02.pok.ibm.com (localhost [127.0.0.1])
-	by d01av02.pok.ibm.com (8.14.4/8.14.4/NCO v10.0 AVout) with ESMTP id s3NMvwnc025075
-	for <linux-nfs@vger.kernel.org>; Wed, 23 Apr 2014 18:57:58 -0400
-Date: Wed, 23 Apr 2014 17:57:57 -0500
-From: Malahal Naineni <malahal@us.ibm.com>
-To: Cedric Blancher <cedric.blancher@gmail.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: Tuning Linux NFSv4 for high latency connections?
-Message-ID: <20140423225757.GA17353@us.ibm.com>
-References: <CALXu0UcdfrvCajbAagGLV=dP=Kk3VWeR4VS5Wna44UroxM4JAQ@mail.gmail.com>
- <20140423202401.GA16168@us.ibm.com>
- <CALXu0UdVYtbKQqskETk9jEK3+=nFphUtFSP4i_ey=7WwZg3-XQ@mail.gmail.com>
- <20140423204405.GB16168@us.ibm.com>
- <CALXu0UdbSHfFM+tq2_zssMhiwZ1qMJdieNdvwtxz6k31CMWAUA@mail.gmail.com>
- <20140423211518.GA16506@us.ibm.com>
- <CALXu0UfjY288HZ_NHH_njs0iLhcY5Xn7NUJNYa9kL45m2YHfAw@mail.gmail.com>
+Received: from elasmtp-junco.atl.sa.earthlink.net ([209.86.89.63]:59429 "EHLO
+	elasmtp-junco.atl.sa.earthlink.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1756372AbaDHWpC convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Apr 2014 18:45:02 -0400
+From: "Frank Filz" <ffilzlnx@mindspring.com>
+To: "'Simo Sorce'" <simo@redhat.com>
+Cc: "'Jeff Layton'" <jlayton@redhat.com>,
+        "'Trond Myklebust'" <trond.myklebust@primarydata.com>,
+        "'Dr Fields James Bruce'" <bfields@fieldses.org>,
+        "'NFS'" <linux-nfs@vger.kernel.org>,
+        "'Adamson William Andros'" <androsadamson@gmail.com>,
+        "'Lever Charles Edward'" <chuck.lever@oracle.com>
+References: <20140408082140.340c1328@tlielax.poochiereds.net>	 <20140408123501.GA3532@fieldses.org>	 <20140408094903.33e42de2@tlielax.poochiereds.net>	 <20140408140333.GD3882@fieldses.org>	 <6CC79B2A-8AE2-4A36-BB57-380C2F9813C0@primarydata.com>	 <20140408144652.GE3882@fieldses.org>	 <ECD8245B-CDEE-442E-A41A-BECE08BEEDA1@primarydata.com>	 <20140408124428.5152ae8b@tlielax.poochiereds.net>	 <1396978021.14203.163.camel@willson.li.ssimo.org>	 <20140408133040.3c149238@tlielax.poochiereds.net>	 <09b701cf5351$707b2a10$51717e30$@mindspring.com> <1396980375.14203.167.camel@willson.li.ssimo.org>
+In-Reply-To: <1396980375.14203.167.camel@willson.li.ssimo.org>
+Subject: RE: v4.0 CB_COMPOUND authentication failures
+Date: Tue, 8 Apr 2014 15:44:53 -0700
+Message-ID: <09e001cf537c$29ed9580$7dc8c080$@mindspring.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CALXu0UfjY288HZ_NHH_njs0iLhcY5Xn7NUJNYa9kL45m2YHfAw@mail.gmail.com>
+Content-Type: text/plain;
+	charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Cedric Blancher [cedric.blancher@gmail.com] wrote:
-> On 23 April 2014 23:15, Malahal Naineni <malahal@us.ibm.com> wrote:
-> > Cedric Blancher [cedric.blancher@gmail.com] wrote:
-> >> On 23 April 2014 22:44, Malahal Naineni <malahal@us.ibm.com> wrote:
-> >> > Cedric Blancher [cedric.blancher@gmail.com] wrote:
-> >> >> On 23 April 2014 22:24, Malahal Naineni <malahal@us.ibm.com> wrote:
-> >> >> > Cedric Blancher [cedric.blancher@gmail.com] wrote:
-> >> >> >> Are there any options to improve the Linux NFSv4 performance over a
-> >> >> >> high latency connection?
-> >> >> >>
-> >> >> >> We currently use Solaris/Illumos as NFSv4 server and client over a
-> >> >> >> cross continental Internet connection. Latency is terrible (~220ms)
-> >> >> >> but the counter this by running work in parallel so the latency is
-> >> >> >> mostly mitigated.
-> >> >> >>
-> >> >> >> We now wish to migrate (short: Away from Oracle because support is
-> >> >> >> basically unbearable) to Linux (tested SuSE 13.1 and current Fedora)
-> >> >> >> and build times are 17 times (!!!) SLOWER than on Solaris/Illumos.
-> >> >> >>
-> >> >> >> Are there any tunables besides actimeo=300?
-> >> >> >
-> >> >> > rsize and wsize may help! You need to figure out if the read is the
-> >> >> > issue or the write before you dig further.
-> >> >>
-> >> >> I already tried to tune rsize/wsize, making them both smaller or the
-> >> >> maximum of 1048576 bytes, with no effect.
-> >> >>
-> >> >> One possible theory is that maybe something in Linux doesn't allow
-> >> >> multiple requests to be issued in parallel and waits for each request
-> >> >> to be completed before issuing the next one?
-> >> >
-> >> > Linux NFS client can issue I/Os in parallel. Should be limited by number
-> >> > of RPC slots though.
-> >>
-> >> What controls the number of RPC slots? is there a tunable? Is there
-> >> something to monitor the usage?
+> On Tue, 2014-04-08 at 10:39 -0700, Frank Filz wrote:
+> > > > If you mount by IP do you really care about krb5 ? Probably not,
+> > > > maybe that's a clue we should not even try ...
+> > > >
+> > >
+> > > It's certainly possible that someone passes in an IP address but
+> > > then says
+> > "-o
+> > > sec=krb5". It has worked in the past, so it's hard to know whether
+> > > and how many people actually depend on it.
 > >
-> > sysctl sunrpc.tcp_slot_table_entries (if you are using tcp)
+> > Mount by ip is sometimes used with clustered servers, especially when
+> > they have all their IP addresses in the DNS record. Even using a FQDN
+> > that just specifies that one IP address probably won't work then
+> > (since it probably is NOT the hostname used in the server credential).
 > 
-> Its 16
-> NFSv4 is tcp only
-> 
-> I tried to bump the value to 128 - without effect - but the change is
-> not persistent across reboots. Is there something like Solaris
-> /etc/system which the kernel reads to set these values?
+> I do not understand this, using an IP address or a name that resolve to said IP
+> address is the same.
 
-Probably depends on your distro. Look at /etc/sysctl.conf if you have
-that file.
+But a name can resolve to a set of IP addresses, often in round-robin fashion. It would cause havoc with NFS server on a cluster if a v3 client had locks on 192.168.0.10 (resolved from server.mycompany.com), and then rebooted, and resolved to 192.168.0.9 and sent SM_NOTIFY there). At least that isn't an issue with v4...
 
-> > Also, mountstats <mount-point> would be very helpful.
-> 
-> I don't have that command. likely my test machine is too old
+Or worse, tcp connection is dropped due to inactivity, and new connection is made to a different server node. But this could still be an issue with v4...
 
-Hmm, my RHEL6.4 has it. What nfs-utils package you have.
+The workaround has been to specify specific IP address.
 
-Regards, Malahal.
+Now I haven't done enough with krb5 recently to know how well that works...
+
+I guess I'm just offering one reason IP addresses might have been specified on mount...
+
+> As long as the server has a keytab with a key in that name it should just work
+> fine, even if the hostname on the actual machine is different.
+>
+> If this does not work it is a bug in rpc.svcgssd/gss-proxy, and should be fixed,
+> not something to try to work around using IP addresses.
+
+Frank
 
