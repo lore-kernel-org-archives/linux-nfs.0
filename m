@@ -1,167 +1,159 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:38773 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:16128 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751516AbaDPESD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Apr 2014 00:18:03 -0400
-From: NeilBrown <neilb@suse.de>
-To: linux-mm@kvack.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Date: Wed, 16 Apr 2014 14:03:36 +1000
-Subject: [PATCH 02/19] lockdep: lockdep_set_current_reclaim_state should
- save old value
-Cc: xfs@oss.sgi.com
-cc: Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>
-Message-ID: <20140416040336.10604.59714.stgit@notabene.brown>
-In-Reply-To: <20140416033623.10604.69237.stgit@notabene.brown>
-References: <20140416033623.10604.69237.stgit@notabene.brown>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+	id S1754579AbaDHRZP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Apr 2014 13:25:15 -0400
+Subject: Re: v4.0 CB_COMPOUND authentication failures
+From: Simo Sorce <simo@redhat.com>
+To: Dr Fields James Bruce <bfields@fieldses.org>
+Cc: Jeff Layton <jlayton@redhat.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs@vger.kernel.org,
+        Adamson William Andros <androsadamson@gmail.com>,
+        Lever Charles Edward <chuck.lever@oracle.com>
+In-Reply-To: <20140408151354.GG3882@fieldses.org>
+References: <20140408082140.340c1328@tlielax.poochiereds.net>
+	 <20140408123501.GA3532@fieldses.org>
+	 <20140408094903.33e42de2@tlielax.poochiereds.net>
+	 <20140408140333.GD3882@fieldses.org>
+	 <6CC79B2A-8AE2-4A36-BB57-380C2F9813C0@primarydata.com>
+	 <20140408144652.GE3882@fieldses.org>
+	 <20140408110420.62e060ef@tlielax.poochiereds.net>
+	 <20140408151354.GG3882@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 08 Apr 2014 13:25:04 -0400
+Message-ID: <1396977904.14203.161.camel@willson.li.ssimo.org>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Currently kswapd sets current->lockdep_reclaim_gfp but the first
-memory allocation call will clear it.  So the setting does no good.
-Thus the lockdep_set_current_reclaim_state call in kswapd() is
-ineffective.
+On Tue, 2014-04-08 at 11:13 -0400, Dr Fields James Bruce wrote:
+> On Tue, Apr 08, 2014 at 11:04:20AM -0400, Jeff Layton wrote:
+> > On Tue, 8 Apr 2014 10:46:52 -0400
+> > Dr Fields James Bruce <bfields@fieldses.org> wrote:
+> > 
+> > > On Tue, Apr 08, 2014 at 10:23:37AM -0400, Trond Myklebust wrote:
+> > > > 
+> > > > On Apr 8, 2014, at 10:03, J. Bruce Fields <bfields@fieldses.org> wrote:
+> > > > 
+> > > > > On Tue, Apr 08, 2014 at 09:49:03AM -0400, Jeff Layton wrote:
+> > > > >> On Tue, 8 Apr 2014 08:35:01 -0400
+> > > > >> "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > > > >> 
+> > > > >>> On Tue, Apr 08, 2014 at 08:21:40AM -0400, Jeff Layton wrote:
+> > > > >>>> I've recently been hunting down some problems with delegation handling
+> > > > >>>> and have run across a problem with the client authenticates CB_COMPOUND
+> > > > >>>> requests. I could use some advice on how best to fix it.
+> > > > >>>> 
+> > > > >>>> Specifically, check_gss_callback_principal() tries to look up the
+> > > > >>>> callback client and then tries to compare the ticket in it against the
+> > > > >>>> clp->cl_hostname:
+> > > > >>>> 
+> > > > >>>>        /* Expect a GSS_C_NT_HOSTBASED_NAME like "nfs@serverhostname" */
+> > > > >>>> 
+> > > > >>>>        if (memcmp(p, "nfs@", 4) != 0)
+> > > > >>>>                return 0;
+> > > > >>>>        p += 4;
+> > > > >>>>        if (strcmp(p, clp->cl_hostname) != 0)
+> > > > >>>>                return 0;
+> > > > >>>>        return 1;
+> > > > >>>> 
+> > > > >>>> The problem is that there is no guarantee that those hostnames will be
+> > > > >>>> the same. If, for instance, I mount "foo:/" and the SPN is
+> > > > >>>> "nfs/foo.bar.baz" that strcmp will return true, and the CB_COMPOUND
+> > > > >>>> request will get tossed out [1]. Ditto if I happen to mount a CNAME of the
+> > > > >>>> server.
+> > > > >>> 
+> > > > >>> It sounds like a bug to me that the mount is succeeding without the name
+> > > > >>> matching.
+> > > > >>> 
+> > > > >>> The security provided by krb5 is much weaker if we don't check that the
+> > > > >>> name provided on the commandline matches what the server authenticates
+> > > > >>> as.
+> > > > >>> 
+> > > > >> 
+> > > > >> The logic in gssd for this is pretty awful.
+> > > > >> 
+> > > > >> It will basically trust DNS if there is no '.' in the hostname that was
+> > > > >> used at mount time. That'll make it take the address and
+> > > > >> reverse-resolve it.
+> > > > > 
+> > > > > Argh, OK, I guess this is the compromise Simo made in "Avoid DNS reverse
+> > > > > resolution for server names (take 3)".
+> > > > > 
+> > > > >> We could add yet another band-aid and make it so that DNS is never
+> > > > >> trusted. I'll note that for cifs, we took that route. You have to mount
+> > > > >> the canonical name of the server in order to use krb5.
+> > > > > 
+> > > > > I wish we could do that, but I suppose it's too harsh to break
+> > > > > already-working fstabs.  Maybe we could phase it in somehow.
+> > > > > 
+> > > > >>>> Now that we try to use krb5 on the callback channel even when sec=sys
+> > > > >>>> is specified, this is very problematic.
+> > > > >>> 
+> > > > >>> And similarly I think the attempt to opportunistically use krb5 for
+> > > > >>> state management should fail and fall back on auth_sys if the server's
+> > > > >>> name doesn't match.
+> > > > >>> 
+> > > > 
+> > > > This suggestion makes no sense to me at all. How does it help to fall back to using weak security when the strong security checks fail?
+> > > 
+> > > It'd fix this particular problem.
+> > > 
+> > > But, I don't know, I'm frankly confused about our security design for
+> > > the NFSv4 state.
+> > > 
+> > > When we insist on krb5 (and checked the server name correctly), and
+> > > failed without it, then I feel like I understand what we're doing.  Once
+> > > we start trying it and then falling back (as I understand happens for
+> > > the krb5 state in the auth_sys case) I get confused.
+> > > 
+> > > > >> Like Trond pointed out, the problem is that gssd doesn't give us that
+> > > > >> info currently. We could change it to do that of course, but that
+> > > > >> basically means revving the downcall.
+> > > > > 
+> > > > > It might be easier to rev the upcall so that the kernel could ask gssd
+> > > > > to do strict checking?  Since it's just a bunch of name=value pairs it
+> > > > > shouldn't be a huge pain to revise.
+> > > > 
+> > > > So what would trigger the kernel to ask for strict checking? Do we add a mount option that says “fail if the server doesn’t authenticate itself”? That would be hard to combine with security negotiation, since it only makes sense for RPCSEC_GSS authentication.
+> > > 
+> > > I was thinking about only doing it in the state-establishment case.
+> > > (Since we won't know how to authenticate the callbacks in that case.)
+> > > 
+> > > But that would screw up krb5 mounts, I guess, never mind.
+> > > 
+> > > Using a fqdn implicitly requests strict checking so a mount option would
+> > > seem redundant.
+> > > 
+> > 
+> > So I guess we have two options to fix this:
+> > 
+> > 1) Change gssd to require the canonical fqdn and not rely on name
+> > resolution. Unfortunately, I think the MIT krb5 libs will still
+> > canonicalize the hostnames by default, so this might not actually fix
+> > anything. See:
+> > 
+> >     http://web.mit.edu/kerberos/krb5-devel/doc/admin/princ_dns.html
+> > 
+> > ...or...
+> > 
+> > 2) Loosen or somehow fix the check in check_gss_callback_principal().
+> > One possibility might be to do a dns_resolver upcall for the host
+> > portion of the SPN, and then compare the address with the server's
+> > address. Ugly, but since we already trust DNS implicitly I guess it's
+> > no less secure...
+> 
+> I thought Kerberos wasn't supposed to require trust in DNS.  So I feel
+> confused.  Cc'ing Simo in hopes he can set us all straight.
 
-With this patch we always save the old value and then restore it,
-so lockdep gets to properly check the locks that kswapd takes.
+RFC4120 indeed warns against relying on DNS.
+Here[1] is my old writeup about why it shouldn't be done, at least until
+DNSSEC gets deployed, then things may change.
 
-Signed-off-by: NeilBrown <neilb@suse.de>
----
- include/linux/lockdep.h  |    8 ++++----
- kernel/locking/lockdep.c |    8 +++++---
- mm/page_alloc.c          |    5 +++--
- mm/vmscan.c              |   10 ++++++----
- 4 files changed, 18 insertions(+), 13 deletions(-)
+Simo.
 
-diff --git a/include/linux/lockdep.h b/include/linux/lockdep.h
-index 92b1bfc5da60..18eedd692d16 100644
---- a/include/linux/lockdep.h
-+++ b/include/linux/lockdep.h
-@@ -351,8 +351,8 @@ static inline void lock_set_subclass(struct lockdep_map *lock,
- 	lock_set_class(lock, lock->name, lock->key, subclass, ip);
- }
- 
--extern void lockdep_set_current_reclaim_state(gfp_t gfp_mask);
--extern void lockdep_clear_current_reclaim_state(void);
-+extern gfp_t lockdep_set_current_reclaim_state(gfp_t gfp_mask);
-+extern void lockdep_restore_current_reclaim_state(gfp_t old_mask);
- extern void lockdep_trace_alloc(gfp_t mask);
- 
- # define INIT_LOCKDEP				.lockdep_recursion = 0, .lockdep_reclaim_gfp = 0,
-@@ -379,8 +379,8 @@ static inline void lockdep_on(void)
- # define lock_release(l, n, i)			do { } while (0)
- # define lock_set_class(l, n, k, s, i)		do { } while (0)
- # define lock_set_subclass(l, s, i)		do { } while (0)
--# define lockdep_set_current_reclaim_state(g)	do { } while (0)
--# define lockdep_clear_current_reclaim_state()	do { } while (0)
-+# define lockdep_set_current_reclaim_state(g)	(0)
-+# define lockdep_restore_current_reclaim_state(g) do { } while (0)
- # define lockdep_trace_alloc(g)			do { } while (0)
- # define lockdep_init()				do { } while (0)
- # define lockdep_info()				do { } while (0)
-diff --git a/kernel/locking/lockdep.c b/kernel/locking/lockdep.c
-index eb8a54783fa0..e05b82e92373 100644
---- a/kernel/locking/lockdep.c
-+++ b/kernel/locking/lockdep.c
-@@ -3645,14 +3645,16 @@ int lock_is_held(struct lockdep_map *lock)
- }
- EXPORT_SYMBOL_GPL(lock_is_held);
- 
--void lockdep_set_current_reclaim_state(gfp_t gfp_mask)
-+gfp_t lockdep_set_current_reclaim_state(gfp_t gfp_mask)
- {
-+	gfp_t old = current->lockdep_reclaim_gfp;
- 	current->lockdep_reclaim_gfp = gfp_mask;
-+	return old;
- }
- 
--void lockdep_clear_current_reclaim_state(void)
-+void lockdep_restore_current_reclaim_state(gfp_t gfp_mask)
- {
--	current->lockdep_reclaim_gfp = 0;
-+	current->lockdep_reclaim_gfp = gfp_mask;
- }
- 
- #ifdef CONFIG_LOCK_STAT
-diff --git a/mm/page_alloc.c b/mm/page_alloc.c
-index a3d1f5da2f21..ff8b91aa0b87 100644
---- a/mm/page_alloc.c
-+++ b/mm/page_alloc.c
-@@ -2327,20 +2327,21 @@ __perform_reclaim(gfp_t gfp_mask, unsigned int order, struct zonelist *zonelist,
- 	struct reclaim_state reclaim_state;
- 	int progress;
- 	unsigned int pflags;
-+	gfp_t old_mask;
- 
- 	cond_resched();
- 
- 	/* We now go into synchronous reclaim */
- 	cpuset_memory_pressure_bump();
- 	current_set_flags_nested(&pflags, PF_MEMALLOC);
--	lockdep_set_current_reclaim_state(gfp_mask);
-+	old_mask = lockdep_set_current_reclaim_state(gfp_mask);
- 	reclaim_state.reclaimed_slab = 0;
- 	current->reclaim_state = &reclaim_state;
- 
- 	progress = try_to_free_pages(zonelist, order, gfp_mask, nodemask);
- 
- 	current->reclaim_state = NULL;
--	lockdep_clear_current_reclaim_state();
-+	lockdep_restore_current_reclaim_state(old_mask);
- 	current_restore_flags_nested(&pflags, PF_MEMALLOC);
- 
- 	cond_resched();
-diff --git a/mm/vmscan.c b/mm/vmscan.c
-index 94acf53d9abf..67165f839936 100644
---- a/mm/vmscan.c
-+++ b/mm/vmscan.c
-@@ -3344,16 +3344,17 @@ unsigned long shrink_all_memory(unsigned long nr_to_reclaim)
- 	struct task_struct *p = current;
- 	unsigned long nr_reclaimed;
- 	unsigned int pflags;
-+	gfp_t old_mask;
- 
- 	current_set_flags_nested(&pflags, PF_MEMALLOC);
--	lockdep_set_current_reclaim_state(sc.gfp_mask);
-+	old_mask = lockdep_set_current_reclaim_state(sc.gfp_mask);
- 	reclaim_state.reclaimed_slab = 0;
- 	p->reclaim_state = &reclaim_state;
- 
- 	nr_reclaimed = do_try_to_free_pages(zonelist, &sc, &shrink);
- 
- 	p->reclaim_state = NULL;
--	lockdep_clear_current_reclaim_state();
-+	lockdep_restore_current_reclaim_state(old_mask);
- 	current_restore_flags_nested(&pflags, PF_MEMALLOC);
- 
- 	return nr_reclaimed;
-@@ -3532,6 +3533,7 @@ static int __zone_reclaim(struct zone *zone, gfp_t gfp_mask, unsigned int order)
- 	};
- 	unsigned long nr_slab_pages0, nr_slab_pages1;
- 	unsigned int pflags;
-+	gfp_t old_mask;
- 
- 	cond_resched();
- 	/*
-@@ -3540,7 +3542,7 @@ static int __zone_reclaim(struct zone *zone, gfp_t gfp_mask, unsigned int order)
- 	 * and RECLAIM_SWAP.
- 	 */
- 	current_set_flags_nested(&pflags, PF_MEMALLOC | PF_SWAPWRITE);
--	lockdep_set_current_reclaim_state(gfp_mask);
-+	old_mask = lockdep_set_current_reclaim_state(gfp_mask);
- 	reclaim_state.reclaimed_slab = 0;
- 	p->reclaim_state = &reclaim_state;
- 
-@@ -3590,7 +3592,7 @@ static int __zone_reclaim(struct zone *zone, gfp_t gfp_mask, unsigned int order)
- 
- 	p->reclaim_state = NULL;
- 	current_restore_flags_nested(&pflags, PF_MEMALLOC | PF_SWAPWRITE);
--	lockdep_clear_current_reclaim_state();
-+	lockdep_restore_current_reclaim_state(old_mask);
- 	return sc.nr_reclaimed >= nr_pages;
- }
- 
-
+[1] https://ssimo.org/blog/id_015.html
+-- 
+Simo Sorce * Red Hat, Inc * New York
 
