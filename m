@@ -1,72 +1,118 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:41376 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752432AbaD3Utu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Apr 2014 16:49:50 -0400
-Message-ID: <536161D0.3000600@oracle.com>
-Date: Wed, 30 Apr 2014 13:49:20 -0700
-From: Shirley Ma <shirley.ma@oracle.com>
+Received: from mx1.redhat.com ([209.132.183.28]:54677 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757584AbaDHSY2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Apr 2014 14:24:28 -0400
+Date: Tue, 8 Apr 2014 14:24:21 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Dr Fields James Bruce <bfields@fieldses.org>,
+        NFS <linux-nfs@vger.kernel.org>,
+        Adamson William Andros <androsadamson@gmail.com>,
+        Lever Charles Edward <chuck.lever@oracle.com>
+Subject: Re: v4.0 CB_COMPOUND authentication failures
+Message-ID: <20140408142421.2a26eeaa@tlielax.poochiereds.net>
+In-Reply-To: <61C732F7-A053-4293-AB54-07979E048F53@primarydata.com>
+References: <20140408082140.340c1328@tlielax.poochiereds.net>
+	<20140408123501.GA3532@fieldses.org>
+	<20140408094903.33e42de2@tlielax.poochiereds.net>
+	<20140408140333.GD3882@fieldses.org>
+	<6CC79B2A-8AE2-4A36-BB57-380C2F9813C0@primarydata.com>
+	<20140408144652.GE3882@fieldses.org>
+	<ECD8245B-CDEE-442E-A41A-BECE08BEEDA1@primarydata.com>
+	<20140408164024.GH3882@fieldses.org>
+	<8F132114-F44C-449B-8EA8-331C67FCE813@primarydata.com>
+	<20140408135512.2397d97f@tlielax.poochiereds.net>
+	<61C732F7-A053-4293-AB54-07979E048F53@primarydata.com>
 MIME-Version: 1.0
-To: Or Gerlitz <or.gerlitz@gmail.com>, Chuck Lever <chuck.lever@oracle.com>
-CC: Jeff Becker <jeffrey.c.becker@nasa.gov>,
-        "<yanb@mellanox.com>" <yanb@mellanox.com>,
-        "Cayton, Phil" <phil.cayton@intel.com>,
-        "Coulter, Susan K" <skc@lanl.gov>,
-        Anna Schumaker <Anna.Schumaker@netapp.com>,
-        "<Devesh.Sharma@emulex.com>" <Devesh.Sharma@emulex.com>,
-        Steve Wise <swise@opengridcomputing.com>,
-        Allen Andrews <Allen.Andrews@emulex.com>,
-        Jeff Layton <jlayton@redhat.com>,
-        linux-rdma <linux-rdma@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        "<emossman@iol.unh.edu>" <emossman@iol.unh.edu>
-Subject: Re: NFSoRDMA developers bi-weekly meeting announcement (4/30)
-References: <53614C03.80606@oracle.com>	<CAJZOPZJioYdcbDGsk7278sZS7kD9W1dcGEGtYfsFk=Mm7DW3fQ@mail.gmail.com>	<BBF761A6-2407-4457-92D5-8C2EC736BC9D@oracle.com> <CAJZOPZJgp-QdxR+PmwACWOSc4h_167J0iBjfmMrPX8sek600WA@mail.gmail.com>
-In-Reply-To: <CAJZOPZJgp-QdxR+PmwACWOSc4h_167J0iBjfmMrPX8sek600WA@mail.gmail.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 04/30/2014 01:00 PM, Or Gerlitz wrote:
-> On Wed, Apr 30, 2014 at 10:47 PM, Chuck Lever <chuck.lever@oracle.com>
->
->> If I understood Yan, he is trying to use NFS/RDMA in guests (kvm?).  We
->> are pretty sure that is not working at the moment,
-> can you provide a short 1-2 liner why/what is broken there? the only
-> thing which I can think of to be not-supported over mlx4 VFs is the
-> proprietary FMRs, but AFAIK, the nfs-rdma code doesn't even have a
-> mode which uses them, right?
-I've created Xen guest on DomU. Dom0 PF works which has no mtts been 
-enabled, however DomU I hit this problem by just mounting the file system:
-mlx4_core 0000:00:04.0: Failed to allocate mtts for 66 pages(order 7)
-mlx4_core 0000:00:04.0: Failed to allocate mtts for 4096 pages(order 12)
-mlx4_core 0000:00:04.0: Failed to allocate mtts for 4096 pages(order 12)
+On Tue, 8 Apr 2014 14:03:04 -0400
+Trond Myklebust <trond.myklebust@primarydata.com> wrote:
 
-RDMA microbenchmark perftest works ok. I enabled mtts scripts when 
-booting the Xen guest. cat /proc/mtrr:
+> 
+> On Apr 8, 2014, at 13:55, Jeff Layton <jlayton@redhat.com> wrote:
+> 
+> > On Tue, 8 Apr 2014 13:30:21 -0400
+> > Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+> > 
+> >> 
+> >> On Apr 8, 2014, at 12:40, Dr Fields James Bruce <bfields@fieldses.org> wrote:
+> >>> 
+> >>> On Tue, Apr 08, 2014 at 12:22:51PM -0400, Trond Myklebust wrote:
+> >>>> How is it not better just to rip out that hostname comparison in the
+> >>>> back channel?
+> >>> 
+> >>> Rip it out entirely?
+> >>> 
+> >>> At that point anyone who can get a credential in the right realm can
+> >>> send a recall.  RFC made this requirement to prevent that.
+> >>> 
+> >> 
+> >> OK. Let’s examine what RFC3530 and RFC3530bis actually says here:
+> >> 
+> >>   Regardless of what security mechanism under RPCSEC_GSS is being used,
+> >>   the NFS server MUST identify itself in GSS-API via a
+> >>   GSS_C_NT_HOSTBASED_SERVICE name type.  GSS_C_NT_HOSTBASED_SERVICE
+> >>   names are of the form:
+> >> 
+> >>     service@hostname
+> >> 
+> >>   For NFS, the "service" element is
+> >> 
+> >>     nfs
+> >> 
+> >>   Implementations of security mechanisms will convert nfs@hostname to
+> >>   various different forms.  For Kerberos V5, the following form is
+> >>   RECOMMENDED:
+> >> 
+> >>   nfs/hostname
+> >> 
+> >>   For Kerberos V5, nfs/hostname would be a server principal in the
+> >>   Kerberos Key Distribution Center database.  This is the same
+> >>   principal the client acquired a GSS-API context for when it issued
+> >>   the SETCLIENTID operation, therefore, the realm name for the server
+> >>   principal must be the same for the callback as it was for the
+> >>   SETCLIENTID.
+> >> 
+> >> 
+> >> So as I read the above, technically the client is supposed to read off the principal name that the server uses to authenticate itself to the SETCLIENTID and check that in the callback. Am I wrong?
+> >> 
+> >> If so, then the steps are:
+> >> 
+> >> 1) Modify process_krb5_upcall() and have the call to gss_inquire_context() also request the context acceptor name
+> >> 2) Modify the rpc.gssd downcall to pass that name to the kernel in some format that allow us to retrieve it in the SETCLIENTID call.
+> >> 3) Modify the comparison in check_gss_callback_principal()
+> >> 
+> >> 
+> > 
+> > Sounds about right, with #2 being the difficult part...
+> > 
+> > One possibility for that would be to add a new "acceptor" pipe in the
+> > clnt?? dirs. Teach gssd to write to the acceptor name to that pipe
+> > before doing the regular downcall.
+> > 
+> > The name written there could then be hung off of the clp. If userland
+> > fails to write the name to the pipe before doing the downcall, we'll
+> > simply do what we do today (use the cl_hostname).
+> > 
+> > Adding a new pipe is a bit of a pain, but it does sidestep the problem
+> > of mismatched kernel and userland…
+> > 
+> 
+> As far as I can tell, the downcall can be extended. Even the security context is an opaque, so its length is known. If we wanted to append a field after that, we could do so without affecting backward compatibility.
+> 
 
-[root@ca-nfsdev1vm1 log]# cat /proc/mtrr
-reg00: base=0x0f0000000 ( 3840MB), size=  128MB, count=1: uncachable
-reg01: base=0x0f8000000 ( 3968MB), size=   64MB, count=1: uncachable
+Yeah, I think you're right. It looks like gss_pipe_downcall will just
+ignore stuff that trails the security context. I'll have a look at
+see whether tacking a new field on is feasible.
 
-lspci -v
-00:04.0 InfiniBand: Mellanox Technologies MT25400 Family [ConnectX-2 
-Virtual Function] (rev b0)
-     Subsystem: Mellanox Technologies Device 61b0
-     Physical Slot: 4
-     Flags: bus master, fast devsel, latency 0
-     Memory at f0000000 (64-bit, prefetchable) [size=128M]
-     Capabilities: [60] Express Endpoint, MSI 00
-     Capabilities: [9c] MSI-X: Enable+ Count=4 Masked-
-     Kernel driver in use: mlx4_core
-     Kernel modules: mlx4_core
+So in nfs4_proc_setclientid after the call, we can add some code that
+copies the new acceptor field out of gss_cred->gss_cl_ctx, and attaches
+it to a new field in the nfs_client. Alternately, I wonder if we could
+get away with just replacing the clp->cl_hostname with that value?
 
-I will need to find another machine to try KVM guest. Yan might hit a 
-different problem.
-
-I have ConnectX-2, FW level is 2.11.2012. Yan has ConnectX-3, he tried 
-it on KVM guest.
->> but that is a priority
->> to get fixed. Shirley has a lab set up and has been looking into it.
-Shirley
+-- 
+Jeff Layton <jlayton@redhat.com>
