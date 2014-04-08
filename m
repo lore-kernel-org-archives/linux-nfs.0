@@ -1,55 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:38862 "EHLO mx2.suse.de"
+Received: from fieldses.org ([174.143.236.118]:51353 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754228AbaDPETo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Apr 2014 00:19:44 -0400
-From: NeilBrown <neilb@suse.de>
-To: linux-mm@kvack.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Date: Wed, 16 Apr 2014 14:03:37 +1000
-Subject: [PATCH 16/19] VFS: use GFP_NOFS rather than GFP_KERNEL in __d_alloc.
-Cc: xfs@oss.sgi.com
-Message-ID: <20140416040337.10604.61837.stgit@notabene.brown>
-In-Reply-To: <20140416033623.10604.69237.stgit@notabene.brown>
-References: <20140416033623.10604.69237.stgit@notabene.brown>
+	id S1756900AbaDHQkb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Apr 2014 12:40:31 -0400
+Date: Tue, 8 Apr 2014 12:40:24 -0400
+From: Dr Fields James Bruce <bfields@fieldses.org>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Layton Jeff <jlayton@redhat.com>, NFS <linux-nfs@vger.kernel.org>,
+        Adamson William Andros <androsadamson@gmail.com>,
+        Lever Charles Edward <chuck.lever@oracle.com>
+Subject: Re: v4.0 CB_COMPOUND authentication failures
+Message-ID: <20140408164024.GH3882@fieldses.org>
+References: <20140408082140.340c1328@tlielax.poochiereds.net>
+ <20140408123501.GA3532@fieldses.org>
+ <20140408094903.33e42de2@tlielax.poochiereds.net>
+ <20140408140333.GD3882@fieldses.org>
+ <6CC79B2A-8AE2-4A36-BB57-380C2F9813C0@primarydata.com>
+ <20140408144652.GE3882@fieldses.org>
+ <ECD8245B-CDEE-442E-A41A-BECE08BEEDA1@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <ECD8245B-CDEE-442E-A41A-BECE08BEEDA1@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-__d_alloc can be called with i_mutex held, so it is safer to
-use GFP_NOFS.
+> 
+> > But, I don't know, I'm frankly confused about our security design for
+> > the NFSv4 state.
+> > 
+> > When we insist on krb5 (and checked the server name correctly), and
+> > failed without it, then I feel like I understand what we're doing.  Once
+> > we start trying it and then falling back (as I understand happens for
+> > the krb5 state in the auth_sys case) I get confused.
+> 
+> Now you have me confused. I’m aware that we call nfs_create_rpc_client() with a krb5i argument and then fall back to auth_sys if the RPC layer says that we don’t have a running gss daemon or that we can’t load the rpcsec_gss_krb5 module. I’m not aware of us falling back if rpc.gssd is running and tells us that security negotiation failed; we should be returning a mount error in that case.
 
-lockdep reports this can deadlock when loop-back NFS is in use,
-as nfsd may be required to write out for reclaim, and nfsd certainly
-takes i_mutex.
+Oh, good, that sounds fine--I'd forgotten it worked that way.
 
-Signed-off-by: NeilBrown <neilb@suse.de>
----
- fs/dcache.c |    4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+So the problem occurs just because gssd and/or the kerberos libraries
+are allowing us to establish state using a different name and then we're
+not accepting it on the return.
 
-diff --git a/fs/dcache.c b/fs/dcache.c
-index ca02c13a84aa..3651ff6185b4 100644
---- a/fs/dcache.c
-+++ b/fs/dcache.c
-@@ -1483,7 +1483,7 @@ struct dentry *__d_alloc(struct super_block *sb, const struct qstr *name)
- 	struct dentry *dentry;
- 	char *dname;
- 
--	dentry = kmem_cache_alloc(dentry_cache, GFP_KERNEL);
-+	dentry = kmem_cache_alloc(dentry_cache, GFP_NOFS);
- 	if (!dentry)
- 		return NULL;
- 
-@@ -1495,7 +1495,7 @@ struct dentry *__d_alloc(struct super_block *sb, const struct qstr *name)
- 	 */
- 	dentry->d_iname[DNAME_INLINE_LEN-1] = 0;
- 	if (name->len > DNAME_INLINE_LEN-1) {
--		dname = kmalloc(name->len + 1, GFP_KERNEL);
-+		dname = kmalloc(name->len + 1, GFP_NOFS);
- 		if (!dname) {
- 			kmem_cache_free(dentry_cache, dentry); 
- 			return NULL;
+So:
 
+On Tue, Apr 08, 2014 at 12:22:51PM -0400, Trond Myklebust wrote:
+> How is it not better just to rip out that hostname comparison in the
+> back channel?
 
+Rip it out entirely?
+
+At that point anyone who can get a credential in the right realm can
+send a recall.  RFC made this requirement to prevent that.
+
+But we've already decided we don't care about that in the 4.1 case, so,
+hey, maybe.  I guess it wouldn't bother me.
+
+--b.
