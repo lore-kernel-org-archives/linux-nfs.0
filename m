@@ -1,238 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:21706 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754521AbaDKSfG convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 11 Apr 2014 14:35:06 -0400
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
-Subject: Re: [PATCH] xprtrdma: mind the device's max fast register page list depth
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20140410151325.28724.92004.stgit@build.ogc.int>
-Date: Fri, 11 Apr 2014 14:34:44 -0400
+Received: from mx1.redhat.com ([209.132.183.28]:63146 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756856AbaDHRau (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Apr 2014 13:30:50 -0400
+Date: Tue, 8 Apr 2014 13:30:40 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Simo Sorce <simo@redhat.com>
 Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-rdma@vger.kernel.org
-Message-Id: <577860CA-7ECC-4353-AED9-16C17A2B918D@oracle.com>
-References: <20140410151325.28724.92004.stgit@build.ogc.int>
-To: Steve Wise <swise@opengridcomputing.com>
+        Dr Fields James Bruce <bfields@fieldses.org>,
+        NFS <linux-nfs@vger.kernel.org>,
+        Adamson William Andros <androsadamson@gmail.com>,
+        Lever Charles Edward <chuck.lever@oracle.com>
+Subject: Re: v4.0 CB_COMPOUND authentication failures
+Message-ID: <20140408133040.3c149238@tlielax.poochiereds.net>
+In-Reply-To: <1396978021.14203.163.camel@willson.li.ssimo.org>
+References: <20140408082140.340c1328@tlielax.poochiereds.net>
+	<20140408123501.GA3532@fieldses.org>
+	<20140408094903.33e42de2@tlielax.poochiereds.net>
+	<20140408140333.GD3882@fieldses.org>
+	<6CC79B2A-8AE2-4A36-BB57-380C2F9813C0@primarydata.com>
+	<20140408144652.GE3882@fieldses.org>
+	<ECD8245B-CDEE-442E-A41A-BECE08BEEDA1@primarydata.com>
+	<20140408124428.5152ae8b@tlielax.poochiereds.net>
+	<1396978021.14203.163.camel@willson.li.ssimo.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Steve-
+On Tue, 08 Apr 2014 13:27:01 -0400
+Simo Sorce <simo@redhat.com> wrote:
 
-I reviewed and successfully tested this patch with mlx4 using FRMR and MTHCAFMR.
-A couple of cosmetic notes are below:
+> On Tue, 2014-04-08 at 12:44 -0400, Jeff Layton wrote:
+> > 
+> > I think that's what happens. We only fall back to using AUTH_SYS if
+> > nfs_create_rpc_client returns -EINVAL. In the event that the security
+> > negotiation fails, we should get back -EACCES and that should bubble
+> > back up to userland.
+> > 
+> > The real problem is that gssd (and also the krb5 libs themselves) will
+> > try to canonicalize the name. The resulting host portion of the SPN
+> > may bear no resemblance to the hostname in the device string. In fact,
+> > if you mount using an IP address then you're pretty much SOL.
+> 
+> If you mount by IP do you really care about krb5 ? Probably not, maybe
+> that's a clue we should not even try ...
+> 
 
+It's certainly possible that someone passes in an IP address but then
+says "-o sec=krb5". It has worked in the past, so it's hard to know
+whether and how many people actually depend on it.
 
-On Apr 10, 2014, at 11:13 AM, Steve Wise <swise@opengridcomputing.com> wrote:
+> > I haven't tried it yet, but it looks reasonably trivial to fix gssd
+> > not to bother with DNS at all and just rely on the hostname. That
+> > won't stop the krb5 libs from doing their canonicalization though. I'm
+> > not sure if there's some way to ask the krb5 libs to avoid doing that.
+> 
+> [libdefaults]
+> rdns = false
+> 
+> And I think we change the default to false in Fedora/RHEL lately ...
+> 
+> Simo.
+> 
 
-> Some rdma devices don't support a fast register page list depth of
-> at least RPCRDMA_MAX_DATA_SEGS.  So xprtrdma needs to chunk its fast
-> register regions according to the minimum of the device max supported
-> depth or RPCRDMA_MAX_DATA_SEGS.
-> 
-> Signed-off-by: Steve Wise <swise@opengridcomputing.com>
-> ---
-> 
-> net/sunrpc/xprtrdma/rpc_rdma.c  |    2 -
-> net/sunrpc/xprtrdma/verbs.c     |   64 ++++++++++++++++++++++++++++-----------
-> net/sunrpc/xprtrdma/xprt_rdma.h |    1 +
-> 3 files changed, 47 insertions(+), 20 deletions(-)
-> 
-> diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-> index 96ead52..14d7634 100644
-> --- a/net/sunrpc/xprtrdma/rpc_rdma.c
-> +++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-> @@ -249,8 +249,6 @@ rpcrdma_create_chunks(struct rpc_rqst *rqst, struct xdr_buf *target,
-> 	req->rl_nchunks = nchunks;
-> 
-> 	BUG_ON(nchunks == 0);
+That's a step in the right direction, but I think that the rdns just
+makes it skip the reverse lookup. AFAIK, the MIT libs will still do
+getaddrinfo and scrape out the ai_canonname and use that in preference
+to the hostname you pass in.
 
-I don’t see a path through rpcrdma_create_chunks() where nchunks can be 0 here. If you
-agree, can you remove the above BUG_ON as well, if you re-submit a new version of this
-patch?
-
-> -	BUG_ON((r_xprt->rx_ia.ri_memreg_strategy == RPCRDMA_FRMR)
-> -	       && (nchunks > 3));
-> 
-> 	/*
-> 	 * finish off header. If write, marshal discrim and nchunks.
-> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-> index 93726560..c08f193 100644
-> --- a/net/sunrpc/xprtrdma/verbs.c
-> +++ b/net/sunrpc/xprtrdma/verbs.c
-> @@ -539,6 +539,11 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
-> 				__func__);
-> 			memreg = RPCRDMA_REGISTER;
-> #endif
-> +		} else {
-> +			/* Mind the ia limit on FRMR page list depth */
-> +			ia->ri_max_frmr_depth = min_t(unsigned int,
-> +				RPCRDMA_MAX_DATA_SEGS,
-> +				devattr.max_fast_reg_page_list_len);
-> 		}
-> 		break;
-> 	}
-> @@ -659,24 +664,42 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
-> 	ep->rep_attr.srq = NULL;
-> 	ep->rep_attr.cap.max_send_wr = cdata->max_requests;
-> 	switch (ia->ri_memreg_strategy) {
-> -	case RPCRDMA_FRMR:
-> +	case RPCRDMA_FRMR: {
-> +		int depth = 7;
-> +
-> 		/* Add room for frmr register and invalidate WRs.
-> 		 * 1. FRMR reg WR for head
-> 		 * 2. FRMR invalidate WR for head
-> -		 * 3. FRMR reg WR for pagelist
-> -		 * 4. FRMR invalidate WR for pagelist
-> +		 * 3. N FRMR reg WRs for pagelist
-> +		 * 4. N FRMR invalidate WRs for pagelist
-> 		 * 5. FRMR reg WR for tail
-> 		 * 6. FRMR invalidate WR for tail
-> 		 * 7. The RDMA_SEND WR
-> 		 */
-> -		ep->rep_attr.cap.max_send_wr *= 7;
-> +
-> +		/* Calculate N if the device max FRMR depth is smaller than
-> +		 * RPCRDMA_MAX_DATA_SEGS.
-> +		 */
-> +		if (ia->ri_max_frmr_depth < RPCRDMA_MAX_DATA_SEGS) {
-> +			int delta = RPCRDMA_MAX_DATA_SEGS -
-> +				    ia->ri_max_frmr_depth;
-> +
-> +			do {
-> +				depth += 2; /* FRMR reg + invalidate */
-> +				delta -= ia->ri_max_frmr_depth;
-> +			} while (delta > 0);
-> +
-> +		}
-> +		ep->rep_attr.cap.max_send_wr *= depth;
-> 		if (ep->rep_attr.cap.max_send_wr > devattr.max_qp_wr) {
-> -			cdata->max_requests = devattr.max_qp_wr / 7;
-> +			cdata->max_requests = devattr.max_qp_wr / depth;
-> 			if (!cdata->max_requests)
-> 				return -EINVAL;
-> -			ep->rep_attr.cap.max_send_wr = cdata->max_requests * 7;
-> +			ep->rep_attr.cap.max_send_wr = cdata->max_requests *
-> +						       depth;
-> 		}
-> 		break;
-> +	}
-> 	case RPCRDMA_MEMWINDOWS_ASYNC:
-> 	case RPCRDMA_MEMWINDOWS:
-> 		/* Add room for mw_binds+unbinds - overkill! */
-> @@ -1043,16 +1066,16 @@ rpcrdma_buffer_create(struct rpcrdma_buffer *buf, struct rpcrdma_ep *ep,
-> 	case RPCRDMA_FRMR:
-> 		for (i = buf->rb_max_requests * RPCRDMA_MAX_SEGS; i; i--) {
-> 			r->r.frmr.fr_mr = ib_alloc_fast_reg_mr(ia->ri_pd,
-> -							 RPCRDMA_MAX_SEGS);
-> +						ia->ri_max_frmr_depth);
-> 			if (IS_ERR(r->r.frmr.fr_mr)) {
-> 				rc = PTR_ERR(r->r.frmr.fr_mr);
-> 				dprintk("RPC:       %s: ib_alloc_fast_reg_mr"
-> 					" failed %i\n", __func__, rc);
-> 				goto out;
-> 			}
-> -			r->r.frmr.fr_pgl =
-> -				ib_alloc_fast_reg_page_list(ia->ri_id->device,
-> -							    RPCRDMA_MAX_SEGS);
-> +			r->r.frmr.fr_pgl = ib_alloc_fast_reg_page_list(
-> +						ia->ri_id->device,
-> +						ia->ri_max_frmr_depth);
-> 			if (IS_ERR(r->r.frmr.fr_pgl)) {
-> 				rc = PTR_ERR(r->r.frmr.fr_pgl);
-> 				dprintk("RPC:       %s: "
-> @@ -1498,8 +1521,8 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
-> 	seg1->mr_offset -= pageoff;	/* start of page */
-> 	seg1->mr_len += pageoff;
-> 	len = -pageoff;
-> -	if (*nsegs > RPCRDMA_MAX_DATA_SEGS)
-> -		*nsegs = RPCRDMA_MAX_DATA_SEGS;
-> +	if (*nsegs > ia->ri_max_frmr_depth)
-> +		*nsegs = ia->ri_max_frmr_depth;
-> 	for (page_no = i = 0; i < *nsegs;) {
-> 		rpcrdma_map_one(ia, seg, writing);
-> 		pa = seg->mr_dma;
-> @@ -1796,6 +1819,7 @@ rpcrdma_register_external(struct rpcrdma_mr_seg *seg,
-> {
-> 	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
-> 	int rc = 0;
-> +	int tmp_nsegs = nsegs;
-
-I don’t understand what the changes to rpcrdma_register_external() do. As a test, I reverted
-these, and the patch behaves the same. Am I missing something?
-
-> 
-> 	switch (ia->ri_memreg_strategy) {
-> 
-> @@ -1805,35 +1829,39 @@ rpcrdma_register_external(struct rpcrdma_mr_seg *seg,
-> 		seg->mr_rkey = ia->ri_bind_mem->rkey;
-> 		seg->mr_base = seg->mr_dma;
-> 		seg->mr_nsegs = 1;
-> -		nsegs = 1;
-> +		tmp_nsegs = 1;
-> 		break;
-> #endif
-> 
-> 	/* Registration using frmr registration */
-> 	case RPCRDMA_FRMR:
-> -		rc = rpcrdma_register_frmr_external(seg, &nsegs, writing, ia, r_xprt);
-> +		rc = rpcrdma_register_frmr_external(seg, &tmp_nsegs, writing,
-> +						    ia, r_xprt);
-> 		break;
-> 
-> 	/* Registration using fmr memory registration */
-> 	case RPCRDMA_MTHCAFMR:
-> -		rc = rpcrdma_register_fmr_external(seg, &nsegs, writing, ia);
-> +		rc = rpcrdma_register_fmr_external(seg, &tmp_nsegs, writing,
-> +						   ia);
-> 		break;
-> 
-> 	/* Registration using memory windows */
-> 	case RPCRDMA_MEMWINDOWS_ASYNC:
-> 	case RPCRDMA_MEMWINDOWS:
-> -		rc = rpcrdma_register_memwin_external(seg, &nsegs, writing, ia, r_xprt);
-> +		rc = rpcrdma_register_memwin_external(seg, &tmp_nsegs, writing,
-> +						      ia, r_xprt);
-> 		break;
-> 
-> 	/* Default registration each time */
-> 	default:
-> -		rc = rpcrdma_register_default_external(seg, &nsegs, writing, ia);
-> +		rc = rpcrdma_register_default_external(seg, &tmp_nsegs, writing,
-> +						       ia);
-> 		break;
-> 	}
-> 	if (rc)
-> 		return -1;
-> 
-> -	return nsegs;
-> +	return tmp_nsegs;
-> }
-> 
-> int
-> diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-> index cc1445d..98340a3 100644
-> --- a/net/sunrpc/xprtrdma/xprt_rdma.h
-> +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-> @@ -66,6 +66,7 @@ struct rpcrdma_ia {
-> 	struct completion	ri_done;
-> 	int			ri_async_rc;
-> 	enum rpcrdma_memreg	ri_memreg_strategy;
-> +	unsigned int		ri_max_frmr_depth;
-> };
-> 
-> /*
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+-- 
+Jeff Layton <jlayton@redhat.com>
