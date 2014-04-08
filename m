@@ -1,55 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f48.google.com ([209.85.192.48]:55128 "EHLO
-	mail-qg0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S934020AbaDJUbJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Apr 2014 16:31:09 -0400
-Received: by mail-qg0-f48.google.com with SMTP id i50so4484414qgf.35
-        for <linux-nfs@vger.kernel.org>; Thu, 10 Apr 2014 13:31:09 -0700 (PDT)
-From: Jeff Layton <jlayton@redhat.com>
-To: steved@redhat.com
-Cc: trond.myklebust@primarydata.com, linux-nfs@vger.kernel.org
-Subject: [PATCH 1/5] gssd: handle malloc failure appropriately in do_downcall
-Date: Thu, 10 Apr 2014 16:30:59 -0400
-Message-Id: <1397161863-29266-2-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1397161863-29266-1-git-send-email-jlayton@redhat.com>
-References: <1397161863-29266-1-git-send-email-jlayton@redhat.com>
+Received: from fieldses.org ([174.143.236.118]:41664 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756036AbaDHMfD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Apr 2014 08:35:03 -0400
+Date: Tue, 8 Apr 2014 08:35:01 -0400
+To: Jeff Layton <jlayton@redhat.com>
+Cc: linux-nfs@vger.kernel.org, Andy Adamson <androsadamson@gmail.com>,
+        chuck.lever@oracle.com, trond.myklebust@primarydata.com
+Subject: Re: v4.0 CB_COMPOUND authentication failures
+Message-ID: <20140408123501.GA3532@fieldses.org>
+References: <20140408082140.340c1328@tlielax.poochiereds.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140408082140.340c1328@tlielax.poochiereds.net>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-...and get rid of some pointless NULL ptr checks.
+On Tue, Apr 08, 2014 at 08:21:40AM -0400, Jeff Layton wrote:
+> I've recently been hunting down some problems with delegation handling
+> and have run across a problem with the client authenticates CB_COMPOUND
+> requests. I could use some advice on how best to fix it.
+> 
+> Specifically, check_gss_callback_principal() tries to look up the
+> callback client and then tries to compare the ticket in it against the
+> clp->cl_hostname:
+> 
+>         /* Expect a GSS_C_NT_HOSTBASED_NAME like "nfs@serverhostname" */
+> 
+>         if (memcmp(p, "nfs@", 4) != 0)
+>                 return 0;
+>         p += 4;
+>         if (strcmp(p, clp->cl_hostname) != 0)
+>                 return 0;
+>         return 1;
+> 
+> The problem is that there is no guarantee that those hostnames will be
+> the same. If, for instance, I mount "foo:/" and the SPN is
+> "nfs/foo.bar.baz" that strcmp will return true, and the CB_COMPOUND
+> request will get tossed out [1]. Ditto if I happen to mount a CNAME of the
+> server.
 
-Signed-off-by: Jeff Layton <jlayton@redhat.com>
----
- utils/gssd/gssd_proc.c | 7 +++++--
- 1 file changed, 5 insertions(+), 2 deletions(-)
+It sounds like a bug to me that the mount is succeeding without the name
+matching.
 
-diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-index 33cfeb2afd2e..5f7fb32c41b5 100644
---- a/utils/gssd/gssd_proc.c
-+++ b/utils/gssd/gssd_proc.c
-@@ -694,6 +694,9 @@ do_downcall(int k5_fd, uid_t uid, struct authgss_private_data *pd,
- 		sizeof(pd->pd_ctx_hndl.length) + pd->pd_ctx_hndl.length +
- 		sizeof(context_token->length) + context_token->length;
- 	p = buf = malloc(buf_size);
-+	if (!buf)
-+		goto out_err;
-+
- 	end = buf + buf_size;
- 
- 	/* context_timeout set by -t option overrides context lifetime */
-@@ -706,10 +709,10 @@ do_downcall(int k5_fd, uid_t uid, struct authgss_private_data *pd,
- 	if (write_buffer(&p, end, context_token)) goto out_err;
- 
- 	if (write(k5_fd, buf, p - buf) < p - buf) goto out_err;
--	if (buf) free(buf);
-+	free(buf);
- 	return 0;
- out_err:
--	if (buf) free(buf);
-+	free(buf);
- 	printerr(1, "Failed to write downcall!\n");
- 	return -1;
- }
--- 
-1.9.0
+The security provided by krb5 is much weaker if we don't check that the
+name provided on the commandline matches what the server authenticates
+as.
 
+> Now that we try to use krb5 on the callback channel even when sec=sys
+> is specified, this is very problematic.
+
+And similarly I think the attempt to opportunistically use krb5 for
+state management should fail and fall back on auth_sys if the server's
+name doesn't match.
+
+> I think that the ideal thing would be to stash the SPN that we use to
+> do the SETCLIENTID call and use that in the comparison above.
+> Unfortunately, the rpc_cred doesn't really seem to carry this info and
+> I don't see where we get enough information in the rpc.gssd downcall to
+> figure out what that SPN should be.
+> 
+> Anyone have thoughts or should we just remove the above check until we
+> come up with a better way to do this?
+> 
+> [1]: there's another bug that can cause the client to send a bogus
+>      reply instead of dropping the request as intended, but that's
+>      relatively simple to fix.
+
+So I believe the matching really is a requirement and that it would be
+wrong to weaken it.
+
+It sounds like there's also a server bug here if it's giving out
+delegations to a client that isn't responding to callbacks.
+
+--b.
