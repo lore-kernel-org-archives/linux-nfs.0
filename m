@@ -1,168 +1,128 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f47.google.com ([209.85.220.47]:52468 "EHLO
-	mail-pa0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751259AbaDRDtX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Apr 2014 23:49:23 -0400
-Received: by mail-pa0-f47.google.com with SMTP id lj1so1057648pab.34
-        for <linux-nfs@vger.kernel.org>; Thu, 17 Apr 2014 20:49:23 -0700 (PDT)
-Message-ID: <5350A0A2.1020401@gmail.com>
-Date: Fri, 18 Apr 2014 11:48:50 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
-MIME-Version: 1.0
-To: Christoph Hellwig <hch@infradead.org>
-CC: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH v2] NFSD: Don't set default ACL if there are no ACE entries
-References: <534FCD13.303@gmail.com> <20140417143634.GA20857@infradead.org>
-In-Reply-To: <20140417143634.GA20857@infradead.org>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mail-ie0-f172.google.com ([209.85.223.172]:51227 "EHLO
+	mail-ie0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756832AbaDHQWz convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Apr 2014 12:22:55 -0400
+Received: by mail-ie0-f172.google.com with SMTP id as1so1172532iec.17
+        for <linux-nfs@vger.kernel.org>; Tue, 08 Apr 2014 09:22:55 -0700 (PDT)
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
+Subject: Re: v4.0 CB_COMPOUND authentication failures
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+In-Reply-To: <20140408144652.GE3882@fieldses.org>
+Date: Tue, 8 Apr 2014 12:22:51 -0400
+Cc: Layton Jeff <jlayton@redhat.com>, NFS <linux-nfs@vger.kernel.org>,
+        Adamson William Andros <androsadamson@gmail.com>,
+        Lever Charles Edward <chuck.lever@oracle.com>
+Message-Id: <ECD8245B-CDEE-442E-A41A-BECE08BEEDA1@primarydata.com>
+References: <20140408082140.340c1328@tlielax.poochiereds.net> <20140408123501.GA3532@fieldses.org> <20140408094903.33e42de2@tlielax.poochiereds.net> <20140408140333.GD3882@fieldses.org> <6CC79B2A-8AE2-4A36-BB57-380C2F9813C0@primarydata.com> <20140408144652.GE3882@fieldses.org>
+To: Dr Fields James Bruce <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-After setting ACL for directory, I got two problems that caused
-by the cached zero-length default posix acl.
 
-This patch make sure nfsd don't set a zero-length default
-posix ACL if there are no entries for the default ACL.
+On Apr 8, 2014, at 10:46, Dr Fields James Bruce <bfields@fieldses.org> wrote:
 
-Thanks for Christoph Hellwig's advice.
+> On Tue, Apr 08, 2014 at 10:23:37AM -0400, Trond Myklebust wrote:
+>> 
+>> On Apr 8, 2014, at 10:03, J. Bruce Fields <bfields@fieldses.org> wrote:
+>> 
+>>> On Tue, Apr 08, 2014 at 09:49:03AM -0400, Jeff Layton wrote:
+>>>> On Tue, 8 Apr 2014 08:35:01 -0400
+>>>> "J. Bruce Fields" <bfields@fieldses.org> wrote:
+>>>> 
+>>>>> On Tue, Apr 08, 2014 at 08:21:40AM -0400, Jeff Layton wrote:
+>>>>>> I've recently been hunting down some problems with delegation handling
+>>>>>> and have run across a problem with the client authenticates CB_COMPOUND
+>>>>>> requests. I could use some advice on how best to fix it.
+>>>>>> 
+>>>>>> Specifically, check_gss_callback_principal() tries to look up the
+>>>>>> callback client and then tries to compare the ticket in it against the
+>>>>>> clp->cl_hostname:
+>>>>>> 
+>>>>>>       /* Expect a GSS_C_NT_HOSTBASED_NAME like "nfs@serverhostname" */
+>>>>>> 
+>>>>>>       if (memcmp(p, "nfs@", 4) != 0)
+>>>>>>               return 0;
+>>>>>>       p += 4;
+>>>>>>       if (strcmp(p, clp->cl_hostname) != 0)
+>>>>>>               return 0;
+>>>>>>       return 1;
+>>>>>> 
+>>>>>> The problem is that there is no guarantee that those hostnames will be
+>>>>>> the same. If, for instance, I mount "foo:/" and the SPN is
+>>>>>> "nfs/foo.bar.baz" that strcmp will return true, and the CB_COMPOUND
+>>>>>> request will get tossed out [1]. Ditto if I happen to mount a CNAME of the
+>>>>>> server.
+>>>>> 
+>>>>> It sounds like a bug to me that the mount is succeeding without the name
+>>>>> matching.
+>>>>> 
+>>>>> The security provided by krb5 is much weaker if we don't check that the
+>>>>> name provided on the commandline matches what the server authenticates
+>>>>> as.
+>>>>> 
+>>>> 
+>>>> The logic in gssd for this is pretty awful.
+>>>> 
+>>>> It will basically trust DNS if there is no '.' in the hostname that was
+>>>> used at mount time. That'll make it take the address and
+>>>> reverse-resolve it.
+>>> 
+>>> Argh, OK, I guess this is the compromise Simo made in "Avoid DNS reverse
+>>> resolution for server names (take 3)".
+>>> 
+>>>> We could add yet another band-aid and make it so that DNS is never
+>>>> trusted. I'll note that for cifs, we took that route. You have to mount
+>>>> the canonical name of the server in order to use krb5.
+>>> 
+>>> I wish we could do that, but I suppose it's too harsh to break
+>>> already-working fstabs.  Maybe we could phase it in somehow.
+>>> 
+>>>>>> Now that we try to use krb5 on the callback channel even when sec=sys
+>>>>>> is specified, this is very problematic.
+>>>>> 
+>>>>> And similarly I think the attempt to opportunistically use krb5 for
+>>>>> state management should fail and fall back on auth_sys if the server's
+>>>>> name doesn't match.
+>>>>> 
+>> 
+>> This suggestion makes no sense to me at all. How does it help to fall back to using weak security when the strong security checks fail?
+> 
+> It'd fix this particular problem.
 
-v2:
-     drop calling forget_cached_acl(), just not set zero-length ACL
+It weakens the state management security for no good reason. How is it not better just to rip out that hostname comparison in the back channel?
 
-First problem:
-# nfs4_setfacl -s A::OWNER@:RWX /mnt/123/; touch /mnt/123/test
-............ hang ...........
+> But, I don't know, I'm frankly confused about our security design for
+> the NFSv4 state.
+> 
+> When we insist on krb5 (and checked the server name correctly), and
+> failed without it, then I feel like I understand what we're doing.  Once
+> we start trying it and then falling back (as I understand happens for
+> the krb5 state in the auth_sys case) I get confused.
 
-Second problem:
-# nfs4_setfacl -s A::OWNER@:RWX /mnt/123/; nfs4_getfacl /mnt/123/
-[ 1610.167668] ------------[ cut here ]------------
-[ 1610.168320] kernel BUG at /root/nfs/linux/fs/nfsd/nfs4acl.c:239!
-[ 1610.168320] invalid opcode: 0000 [#1] SMP DEBUG_PAGEALLOC
-[ 1610.168320] Modules linked in: nfsv4(OE) nfs(OE) nfsd(OE) 
-rpcsec_gss_krb5 fscache ip6t_rpfilter ip6t_REJECT cfg80211 xt_conntrack 
-rfkill ebtable_nat ebtable_broute bridge stp llc ebtable_filter ebtables 
-ip6table_nat nf_conntrack_ipv6 nf_defrag_ipv6 nf_nat_ipv6 
-ip6table_mangle ip6table_security ip6table_raw ip6table_filter 
-ip6_tables iptable_nat nf_conntrack_ipv4 nf_defrag_ipv4 nf_nat_ipv4 
-nf_nat nf_conntrack iptable_mangle iptable_security iptable_raw 
-auth_rpcgss nfs_acl snd_intel8x0 ppdev lockd snd_ac97_codec ac97_bus 
-snd_pcm snd_timer e1000 pcspkr parport_pc snd parport serio_raw joydev 
-i2c_piix4 sunrpc(OE) microcode soundcore i2c_core ata_generic pata_acpi 
-[last unloaded: nfsd]
-[ 1610.168320] CPU: 0 PID: 27397 Comm: nfsd Tainted: G           OE 
-3.15.0-rc1+ #15
-[ 1610.168320] Hardware name: innotek GmbH VirtualBox/VirtualBox, BIOS 
-VirtualBox 12/01/2006
-[ 1610.168320] task: ffff88005ab653d0 ti: ffff88005a944000 task.ti: 
-ffff88005a944000
-[ 1610.168320] RIP: 0010:[<ffffffffa034d5ed>]  [<ffffffffa034d5ed>] 
-_posix_to_nfsv4_one+0x3cd/0x3d0 [nfsd]
-[ 1610.168320] RSP: 0018:ffff88005a945b00  EFLAGS: 00010293
-[ 1610.168320] RAX: 0000000000000001 RBX: ffff88006700bac0 RCX: 
-0000000000000000
-[ 1610.168320] RDX: 0000000000000000 RSI: ffff880067c83f00 RDI: 
-ffff880068233300
-[ 1610.168320] RBP: ffff88005a945b48 R08: ffffffff81c64830 R09: 
-0000000000000000
-[ 1610.168320] R10: ffff88004ea85be0 R11: 000000000000f475 R12: 
-ffff880068233300
-[ 1610.168320] R13: 0000000000000003 R14: 0000000000000002 R15: 
-ffff880068233300
-[ 1610.168320] FS:  0000000000000000(0000) GS:ffff880077800000(0000) 
-knlGS:0000000000000000
-[ 1610.168320] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-[ 1610.168320] CR2: 00007f5bcbd3b0b9 CR3: 0000000001c0f000 CR4: 
-00000000000006f0
-[ 1610.168320] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 
-0000000000000000
-[ 1610.168320] DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 
-0000000000000400
-[ 1610.168320] Stack:
-[ 1610.168320]  ffffffff00000000 0000000b67c83500 000000076700bac0 
-0000000000000000
-[ 1610.168320]  ffff88006700bac0 ffff880068233300 ffff88005a945c08 
-0000000000000002
-[ 1610.168320]  0000000000000000 ffff88005a945b88 ffffffffa034e2d5 
-000000065a945b68
-[ 1610.168320] Call Trace:
-[ 1610.168320]  [<ffffffffa034e2d5>] nfsd4_get_nfs4_acl+0x95/0x150 [nfsd]
-[ 1610.168320]  [<ffffffffa03400d6>] nfsd4_encode_fattr+0x646/0x1e70 [nfsd]
-[ 1610.168320]  [<ffffffff816a6e6e>] ? kmemleak_alloc+0x4e/0xb0
-[ 1610.168320]  [<ffffffffa0327962>] ? 
-nfsd_setuser_and_check_port+0x52/0x80 [nfsd]
-[ 1610.168320]  [<ffffffff812cd4bb>] ? selinux_cred_prepare+0x1b/0x30
-[ 1610.168320]  [<ffffffffa0341caa>] nfsd4_encode_getattr+0x5a/0x60 [nfsd]
-[ 1610.168320]  [<ffffffffa0341e07>] nfsd4_encode_operation+0x67/0x110 
-[nfsd]
-[ 1610.168320]  [<ffffffffa033844d>] nfsd4_proc_compound+0x21d/0x810 [nfsd]
-[ 1610.168320]  [<ffffffffa0324d9b>] nfsd_dispatch+0xbb/0x200 [nfsd]
-[ 1610.168320]  [<ffffffffa00850cd>] svc_process_common+0x46d/0x6d0 [sunrpc]
-[ 1610.168320]  [<ffffffffa0085433>] svc_process+0x103/0x170 [sunrpc]
-[ 1610.168320]  [<ffffffffa032472f>] nfsd+0xbf/0x130 [nfsd]
-[ 1610.168320]  [<ffffffffa0324670>] ? nfsd_destroy+0x80/0x80 [nfsd]
-[ 1610.168320]  [<ffffffff810a5202>] kthread+0xd2/0xf0
-[ 1610.168320]  [<ffffffff810a5130>] ? insert_kthread_work+0x40/0x40
-[ 1610.168320]  [<ffffffff816c1ebc>] ret_from_fork+0x7c/0xb0
-[ 1610.168320]  [<ffffffff810a5130>] ? insert_kthread_work+0x40/0x40
-[ 1610.168320] Code: 78 02 e9 e7 fc ff ff 31 c0 31 d2 31 c9 66 89 45 ce 
-41 8b 04 24 66 89 55 d0 66 89 4d d2 48 8d 04 80 49 8d 5c 84 04 e9 37 fd 
-ff ff <0f> 0b 90 0f 1f 44 00 00 55 8b 56 08 c7 07 00 00 00 00 8b 46 0c
-[ 1610.168320] RIP  [<ffffffffa034d5ed>] _posix_to_nfsv4_one+0x3cd/0x3d0 
-[nfsd]
-[ 1610.168320]  RSP <ffff88005a945b00>
-[ 1610.257313] ---[ end trace 838254e3e352285b ]---
+Now you have me confused. I’m aware that we call nfs_create_rpc_client() with a krb5i argument and then fall back to auth_sys if the RPC layer says that we don’t have a running gss daemon or that we can’t load the rpcsec_gss_krb5 module. I’m not aware of us falling back if rpc.gssd is running and tells us that security negotiation failed; we should be returning a mount error in that case.
 
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
----
-  fs/nfsd/nfs4acl.c | 18 +++++++++---------
-  1 file changed, 9 insertions(+), 9 deletions(-)
+>>>> Like Trond pointed out, the problem is that gssd doesn't give us that
+>>>> info currently. We could change it to do that of course, but that
+>>>> basically means revving the downcall.
+>>> 
+>>> It might be easier to rev the upcall so that the kernel could ask gssd
+>>> to do strict checking?  Since it's just a bunch of name=value pairs it
+>>> shouldn't be a huge pain to revise.
+>> 
+>> So what would trigger the kernel to ask for strict checking? Do we add a mount option that says “fail if the server doesn’t authenticate itself”? That would be hard to combine with security negotiation, since it only makes sense for RPCSEC_GSS authentication.
+> 
+> I was thinking about only doing it in the state-establishment case.
+> (Since we won't know how to authenticate the callbacks in that case.)
+> 
+> But that would screw up krb5 mounts, I guess, never mind.
+> 
+> Using a fqdn implicitly requests strict checking so a mount option would
+> seem redundant.
 
-diff --git a/fs/nfsd/nfs4acl.c b/fs/nfsd/nfs4acl.c
-index de5d66b..fdd259e 100644
---- a/fs/nfsd/nfs4acl.c
-+++ b/fs/nfsd/nfs4acl.c
-@@ -395,8 +395,10 @@ sort_pacl(struct posix_acl *pacl)
-  	 * by uid/gid. */
-  	int i, j;
-
--	if (pacl->a_count <= 4)
--		return; /* no users or groups */
-+	/* no users or groups */
-+	if (!pacl || pacl->a_count <= 4)
-+		return;
-+
-  	i = 1;
-  	while (pacl->a_entries[i].e_tag == ACL_USER)
-  		i++;
-@@ -523,13 +525,11 @@ posix_state_to_acl(struct posix_acl_state *state, 
-unsigned int flags)
-
-  	/*
-  	 * ACLs with no ACEs are treated differently in the inheritable
--	 * and effective cases: when there are no inheritable ACEs, we
--	 * set a zero-length default posix acl:
-+	 * and effective cases.
-  	 */
--	if (state->empty && (flags & NFS4_ACL_TYPE_DEFAULT)) {
--		pacl = posix_acl_alloc(0, GFP_KERNEL);
--		return pacl ? pacl : ERR_PTR(-ENOMEM);
--	}
-+	if (state->empty && (flags & NFS4_ACL_TYPE_DEFAULT))
-+		return NULL;
-+
-  	/*
-  	 * When there are no effective ACEs, the following will end
-  	 * up setting a 3-element effective posix ACL with all
-@@ -831,7 +831,7 @@ nfsd4_set_nfs4_acl(struct svc_rqst *rqstp, struct 
-svc_fh *fhp,
-  	if (host_error < 0)
-  		goto out_release;
-
--	if (S_ISDIR(inode->i_mode)) {
-+	if (dpacl && S_ISDIR(inode->i_mode)) {
-  		host_error = inode->i_op->set_acl(inode, dpacl,
-  						  ACL_TYPE_DEFAULT);
-  	}
--- 
-1.9.0
+_________________________________
+Trond Myklebust
+Linux NFS client maintainer, PrimaryData
+trond.myklebust@primarydata.com
 
