@@ -1,113 +1,167 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:57023 "EHLO mx2.suse.de"
+Received: from mx1.redhat.com ([209.132.183.28]:53298 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754750AbaDQBua (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Apr 2014 21:50:30 -0400
-Date: Thu, 17 Apr 2014 11:50:18 +1000
-From: NeilBrown <neilb@suse.de>
-To: Dave Chinner <david@fromorbit.com>
-Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org,
-        Peter Zijlstra <peterz@infradead.org>, netdev@vger.kernel.org,
-        Ming Lei <ming.lei@canonical.com>, linux-kernel@vger.kernel.org,
-        xfs@oss.sgi.com, linux-mm@kvack.org, Ingo Molnar <mingo@redhat.com>
-Subject: Re: [PATCH/RFC 00/19] Support loop-back NFS mounts
-Message-ID: <20140417115018.460345d0@notabene.brown>
-In-Reply-To: <20140417012739.GU15995@dastard>
-References: <20140416033623.10604.69237.stgit@notabene.brown>
-	<20140416104207.75b044e8@tlielax.poochiereds.net>
-	<20140417102048.2fc8275c@notabene.brown>
-	<20140417012739.GU15995@dastard>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/aR.nJzAOWD3tAtDyjyGs6Ar"; protocol="application/pgp-signature"
+	id S1756856AbaDHR2Q convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Apr 2014 13:28:16 -0400
+Date: Tue, 8 Apr 2014 13:28:08 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Simo Sorce <simo@redhat.com>
+Cc: Dr Fields James Bruce <bfields@fieldses.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs@vger.kernel.org,
+        Adamson William Andros <androsadamson@gmail.com>,
+        Lever Charles Edward <chuck.lever@oracle.com>
+Subject: Re: v4.0 CB_COMPOUND authentication failures
+Message-ID: <20140408132808.278307e4@tlielax.poochiereds.net>
+In-Reply-To: <1396977904.14203.161.camel@willson.li.ssimo.org>
+References: <20140408082140.340c1328@tlielax.poochiereds.net>
+	<20140408123501.GA3532@fieldses.org>
+	<20140408094903.33e42de2@tlielax.poochiereds.net>
+	<20140408140333.GD3882@fieldses.org>
+	<6CC79B2A-8AE2-4A36-BB57-380C2F9813C0@primarydata.com>
+	<20140408144652.GE3882@fieldses.org>
+	<20140408110420.62e060ef@tlielax.poochiereds.net>
+	<20140408151354.GG3882@fieldses.org>
+	<1396977904.14203.161.camel@willson.li.ssimo.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/aR.nJzAOWD3tAtDyjyGs6Ar
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+On Tue, 08 Apr 2014 13:25:04 -0400
+Simo Sorce <simo@redhat.com> wrote:
 
-On Thu, 17 Apr 2014 11:27:39 +1000 Dave Chinner <david@fromorbit.com> wrote:
+> On Tue, 2014-04-08 at 11:13 -0400, Dr Fields James Bruce wrote:
+> > On Tue, Apr 08, 2014 at 11:04:20AM -0400, Jeff Layton wrote:
+> > > On Tue, 8 Apr 2014 10:46:52 -0400
+> > > Dr Fields James Bruce <bfields@fieldses.org> wrote:
+> > > 
+> > > > On Tue, Apr 08, 2014 at 10:23:37AM -0400, Trond Myklebust wrote:
+> > > > > 
+> > > > > On Apr 8, 2014, at 10:03, J. Bruce Fields <bfields@fieldses.org> wrote:
+> > > > > 
+> > > > > > On Tue, Apr 08, 2014 at 09:49:03AM -0400, Jeff Layton wrote:
+> > > > > >> On Tue, 8 Apr 2014 08:35:01 -0400
+> > > > > >> "J. Bruce Fields" <bfields@fieldses.org> wrote:
+> > > > > >> 
+> > > > > >>> On Tue, Apr 08, 2014 at 08:21:40AM -0400, Jeff Layton wrote:
+> > > > > >>>> I've recently been hunting down some problems with delegation handling
+> > > > > >>>> and have run across a problem with the client authenticates CB_COMPOUND
+> > > > > >>>> requests. I could use some advice on how best to fix it.
+> > > > > >>>> 
+> > > > > >>>> Specifically, check_gss_callback_principal() tries to look up the
+> > > > > >>>> callback client and then tries to compare the ticket in it against the
+> > > > > >>>> clp->cl_hostname:
+> > > > > >>>> 
+> > > > > >>>>        /* Expect a GSS_C_NT_HOSTBASED_NAME like "nfs@serverhostname" */
+> > > > > >>>> 
+> > > > > >>>>        if (memcmp(p, "nfs@", 4) != 0)
+> > > > > >>>>                return 0;
+> > > > > >>>>        p += 4;
+> > > > > >>>>        if (strcmp(p, clp->cl_hostname) != 0)
+> > > > > >>>>                return 0;
+> > > > > >>>>        return 1;
+> > > > > >>>> 
+> > > > > >>>> The problem is that there is no guarantee that those hostnames will be
+> > > > > >>>> the same. If, for instance, I mount "foo:/" and the SPN is
+> > > > > >>>> "nfs/foo.bar.baz" that strcmp will return true, and the CB_COMPOUND
+> > > > > >>>> request will get tossed out [1]. Ditto if I happen to mount a CNAME of the
+> > > > > >>>> server.
+> > > > > >>> 
+> > > > > >>> It sounds like a bug to me that the mount is succeeding without the name
+> > > > > >>> matching.
+> > > > > >>> 
+> > > > > >>> The security provided by krb5 is much weaker if we don't check that the
+> > > > > >>> name provided on the commandline matches what the server authenticates
+> > > > > >>> as.
+> > > > > >>> 
+> > > > > >> 
+> > > > > >> The logic in gssd for this is pretty awful.
+> > > > > >> 
+> > > > > >> It will basically trust DNS if there is no '.' in the hostname that was
+> > > > > >> used at mount time. That'll make it take the address and
+> > > > > >> reverse-resolve it.
+> > > > > > 
+> > > > > > Argh, OK, I guess this is the compromise Simo made in "Avoid DNS reverse
+> > > > > > resolution for server names (take 3)".
+> > > > > > 
+> > > > > >> We could add yet another band-aid and make it so that DNS is never
+> > > > > >> trusted. I'll note that for cifs, we took that route. You have to mount
+> > > > > >> the canonical name of the server in order to use krb5.
+> > > > > > 
+> > > > > > I wish we could do that, but I suppose it's too harsh to break
+> > > > > > already-working fstabs.  Maybe we could phase it in somehow.
+> > > > > > 
+> > > > > >>>> Now that we try to use krb5 on the callback channel even when sec=sys
+> > > > > >>>> is specified, this is very problematic.
+> > > > > >>> 
+> > > > > >>> And similarly I think the attempt to opportunistically use krb5 for
+> > > > > >>> state management should fail and fall back on auth_sys if the server's
+> > > > > >>> name doesn't match.
+> > > > > >>> 
+> > > > > 
+> > > > > This suggestion makes no sense to me at all. How does it help to fall back to using weak security when the strong security checks fail?
+> > > > 
+> > > > It'd fix this particular problem.
+> > > > 
+> > > > But, I don't know, I'm frankly confused about our security design for
+> > > > the NFSv4 state.
+> > > > 
+> > > > When we insist on krb5 (and checked the server name correctly), and
+> > > > failed without it, then I feel like I understand what we're doing.  Once
+> > > > we start trying it and then falling back (as I understand happens for
+> > > > the krb5 state in the auth_sys case) I get confused.
+> > > > 
+> > > > > >> Like Trond pointed out, the problem is that gssd doesn't give us that
+> > > > > >> info currently. We could change it to do that of course, but that
+> > > > > >> basically means revving the downcall.
+> > > > > > 
+> > > > > > It might be easier to rev the upcall so that the kernel could ask gssd
+> > > > > > to do strict checking?  Since it's just a bunch of name=value pairs it
+> > > > > > shouldn't be a huge pain to revise.
+> > > > > 
+> > > > > So what would trigger the kernel to ask for strict checking? Do we add a mount option that says “fail if the server doesn’t authenticate itself”? That would be hard to combine with security negotiation, since it only makes sense for RPCSEC_GSS authentication.
+> > > > 
+> > > > I was thinking about only doing it in the state-establishment case.
+> > > > (Since we won't know how to authenticate the callbacks in that case.)
+> > > > 
+> > > > But that would screw up krb5 mounts, I guess, never mind.
+> > > > 
+> > > > Using a fqdn implicitly requests strict checking so a mount option would
+> > > > seem redundant.
+> > > > 
+> > > 
+> > > So I guess we have two options to fix this:
+> > > 
+> > > 1) Change gssd to require the canonical fqdn and not rely on name
+> > > resolution. Unfortunately, I think the MIT krb5 libs will still
+> > > canonicalize the hostnames by default, so this might not actually fix
+> > > anything. See:
+> > > 
+> > >     http://web.mit.edu/kerberos/krb5-devel/doc/admin/princ_dns.html
+> > > 
+> > > ...or...
+> > > 
+> > > 2) Loosen or somehow fix the check in check_gss_callback_principal().
+> > > One possibility might be to do a dns_resolver upcall for the host
+> > > portion of the SPN, and then compare the address with the server's
+> > > address. Ugly, but since we already trust DNS implicitly I guess it's
+> > > no less secure...
+> > 
+> > I thought Kerberos wasn't supposed to require trust in DNS.  So I feel
+> > confused.  Cc'ing Simo in hopes he can set us all straight.
+> 
+> RFC4120 indeed warns against relying on DNS.
+> Here[1] is my old writeup about why it shouldn't be done, at least until
+> DNSSEC gets deployed, then things may change.
+> 
+> Simo.
+> 
+> [1] https://ssimo.org/blog/id_015.html
 
-> On Thu, Apr 17, 2014 at 10:20:48AM +1000, NeilBrown wrote:
-> > A good example is the deadlock with the flush-* threads.
-> > flush-* will lock a page, and  then call ->writepage.  If ->writepage
-> > allocates memory it can enter reclaim, call ->releasepage on NFS, and b=
-lock
-> > waiting for a COMMIT to complete.
-> > The COMMIT might already be running, performing fsync on that same file=
- that
-> > flush-* is flushing.  It locks each page in turn.  When it  gets to the=
- page
-> > that flush-* has locked, it will deadlock.
->=20
-> It's nfs_release_page() again....
->=20
-> > In general, if nfsd is allowed to block on local filesystem, and local
-> > filesystem is allowed to block on NFS, then a deadlock can happen.
-> > We would need a clear hierarchy
-> >=20
-> >    __GFP_NETFS > __GFP_FS > __GFP_IO
-> >=20
-> > for it to work.  I'm not sure the extra level really helps a lot and it=
- would
-> > be a lot of churn.
->=20
-> I think you are looking at this the wrong way - it's not the other
-> filesystems that have to avoid memory reclaim recursion, it's the
-> NFS client mount that is on loopback that needs to avoid recursion.
->=20
-> IMO, the fix should be that the NFS client cannot block on messages sent =
-to the NFSD
-> on the same host during memory reclaim. That is, nfs_release_page()
-> cannot send commit messages to the server if the server is on
-> localhost. Instead, it just tells memory reclaim that it can't
-> reclaim that page.
->=20
-> If nfs_release_page() no longer blocks in memory reclaim, and all
-> these nfsd-gets-blocked-in-GFP_KERNEL-memory-allocation recursion
-> problems go away. Do the same for all the other memory reclaim
-> operations in the NFS client, and you've got a solution that should
-> work without needing to walk all over the rest of the kernel....
+There's the additional problem that the MIT krb5 libs will silently
+canonicalize the name for you as well. Do you know of any way for a
+program to request that that *not* be done?
 
-Maybe.
-It is nfs_release_page() today. I wonder if it could be other things another
-day.  I want to be sure I have a solution that really makes sense.
-
-However ... the thing that nfs_release_page is doing it sending a COMMIT to
-tell the server to flush to stable storage.  It does that so that if the
-server crashes, then the client can re-send.
-Of course when it is a loop-back mount the client is the server so the COMM=
-IT
-is completely pointless.  If the client notices that it is sending a COMMIT
-to itself, it can simply assume a positive reply.
-
-You are right, that would make the patch set a lot less intrusive.  I'll gi=
-ve
-it some serious thought - thanks.
-
-NeilBrown
-
---Sig_/aR.nJzAOWD3tAtDyjyGs6Ar
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.22 (GNU/Linux)
-
-iQIVAwUBU08zWjnsnt1WYoG5AQKfQw//WIl8Mf1G0vzy816TBvi7fx3VCp6SUV7s
-jQeCJSD0IPRzCFmxH1ZJFzy3jIK8J3dbT8cSGjxXYegOq+kyyVjbHXOG2msC1riY
-ytOGUQnOS8MHscbcAOR7r61t/1t7FZiSJ51Th7pykepQmbm9QNEna+U0wzna3poK
-NNRDrs1J0eySpLTydegKoyg4w6KP6MLXqlYQm1FigvkreDEZ9mvBW7NrGycwDQF8
-NZgq8+dGCL3MAq+uZ7WMqAoCZwZUrusVZBc3zvXYWepSMFSW1FOmQP971QZ9DgI2
-KzarhdGOSFTbVHLhZafYV0X2k/hATVoIJpXh3Kl2ak0qdnuuUPJ/s64zxvQ3N4wo
-3zBU0/TvcEVs6toQfcT/Zi91rCIvVvl8BOssIosbwknfLyi/JEYtnDJ+MxWBlg1G
-xlaEF1pDaQYEix5Ocg1qyU7oroFv98+pZ4BZeDI7Y/A6gasVvR3NKBOFcadozYuo
-FBTuYO6ZTSVPZ1+ASqykb5hh3GGKO5oM4x7xX0dQRSADk4qo4FLfv6ONKK2OfjQo
-r6FBlpw9OU6su26F4XzDkFLPb3xUDgfY7gMG6vIZYmCS7JGOvTg2rpk6inZxzATb
-40mX+gFDXs5oE9XGaqz2Fl7Lw/BNluPNDEpkmWJX42+7cdClnc2XPSJyvpFx7nLH
-lfrN+yaHFBM=
-=c/XS
------END PGP SIGNATURE-----
-
---Sig_/aR.nJzAOWD3tAtDyjyGs6Ar--
+-- 
+Jeff Layton <jlayton@redhat.com>
