@@ -1,85 +1,103 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f54.google.com ([209.85.192.54]:53636 "EHLO
-	mail-qg0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932793AbaD2LL4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Apr 2014 07:11:56 -0400
-Received: by mail-qg0-f54.google.com with SMTP id q107so33104qgd.41
-        for <linux-nfs@vger.kernel.org>; Tue, 29 Apr 2014 04:11:56 -0700 (PDT)
-Date: Tue, 29 Apr 2014 07:11:53 -0400
-From: Jeff Layton <jlayton@poochiereds.net>
-To: "Michael Kerrisk (man-pages)" <mtk.manpages@gmail.com>
-Cc: Ganesha NFS List <nfs-ganesha-devel@lists.sourceforge.net>,
-        lkml <linux-kernel@vger.kernel.org>,
-        Linux-Fsdevel <linux-fsdevel@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@fys.uio.no>,
-        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
-        samba-technical@lists.samba.org, linux-nfs@vger.kernel.org
-Subject: Re: OFD ("file private") locks and NFS
-Message-ID: <20140429071153.176c7404@tlielax.poochiereds.net>
-In-Reply-To: <535F670B.4060704@gmail.com>
-References: <535F651E.6090204@gmail.com>
-	<535F670B.4060704@gmail.com>
+Received: from fieldses.org ([174.143.236.118]:35268 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756369AbaDHM6C (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Apr 2014 08:58:02 -0400
+Date: Tue, 8 Apr 2014 08:57:55 -0400
+From: Dr Fields James Bruce <bfields@fieldses.org>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Layton Jeff <jlayton@redhat.com>, linux-nfs@vger.kernel.org,
+        Adamson William Andros <androsadamson@gmail.com>,
+        Lever Charles Edward <chuck.lever@oracle.com>
+Subject: Re: v4.0 CB_COMPOUND authentication failures
+Message-ID: <20140408125755.GA3882@fieldses.org>
+References: <20140408082140.340c1328@tlielax.poochiereds.net>
+ <20140408123501.GA3532@fieldses.org>
+ <E9D3EBB8-1458-4CB5-8754-EAD525E27D6C@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <E9D3EBB8-1458-4CB5-8754-EAD525E27D6C@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 29 Apr 2014 10:47:07 +0200
-"Michael Kerrisk (man-pages)" <mtk.manpages@gmail.com> wrote:
-
-> [CC+= linux-nfs@]
+On Tue, Apr 08, 2014 at 08:42:10AM -0400, Trond Myklebust wrote:
 > 
-> On 04/29/2014 10:38 AM, Michael Kerrisk (man-pages) wrote:
-> > Hi Jeff,
+> On Apr 8, 2014, at 8:35, J. Bruce Fields <bfields@fieldses.org> wrote:
+> 
+> > On Tue, Apr 08, 2014 at 08:21:40AM -0400, Jeff Layton wrote:
+> >> I've recently been hunting down some problems with delegation handling
+> >> and have run across a problem with the client authenticates CB_COMPOUND
+> >> requests. I could use some advice on how best to fix it.
+> >> 
+> >> Specifically, check_gss_callback_principal() tries to look up the
+> >> callback client and then tries to compare the ticket in it against the
+> >> clp->cl_hostname:
+> >> 
+> >>        /* Expect a GSS_C_NT_HOSTBASED_NAME like "nfs@serverhostname" */
+> >> 
+> >>        if (memcmp(p, "nfs@", 4) != 0)
+> >>                return 0;
+> >>        p += 4;
+> >>        if (strcmp(p, clp->cl_hostname) != 0)
+> >>                return 0;
+> >>        return 1;
+> >> 
+> >> The problem is that there is no guarantee that those hostnames will be
+> >> the same. If, for instance, I mount "foo:/" and the SPN is
+> >> "nfs/foo.bar.baz" that strcmp will return true, and the CB_COMPOUND
+> >> request will get tossed out [1]. Ditto if I happen to mount a CNAME of the
+> >> server.
 > > 
-> > I've been looking a bit at the fcntl() documentation of traditional 
-> > (F_SETLK) record locking, and a question just jumped out at me. Is 
-> > it worth considering some future-proofing in the design of OFD locks
-> > ("open file description locks", formerly known as "file-private locks")?
+> > It sounds like a bug to me that the mount is succeeding without the name
+> > matching.
 > > 
-> > What I am thinking of here is that on some systems, the traditional
-> > 'struct flock' has a nonstandard field, l_sysid, that is used on F_GETLK 
-> > to identify the remote system on which a lock is held. Should the design
-> > of OFD locks allow for such a field (now, or in the future), which might 
-> > be useful in the context of locking on network file systems such as NFS.
+> > The security provided by krb5 is much weaker if we don't check that the
+> > name provided on the commandline matches what the server authenticates
+> > as.
+> 
+> Where would the client find that information? I don’t think that rpc.gssd passes that information down to us.
+
+gssd should get the server name passed on the commandline from the info
+file or the upcall, if I remember right, and then it's up to gssd to
+match names.
+
+I thought gssd was already doing that, but I guess not.
+
+So maybe I'm confused about how this all works.
+
+--b.
+
+> 
+> >> Now that we try to use krb5 on the callback channel even when sec=sys
+> >> is specified, this is very problematic.
 > > 
-> > Put more simply, should the new OFD locking system be using a new
-> > structure for describing locks, rather than the traditional 'struct
-> > flock'? Defining a new structure, might be useful to allow for
-> > future extensions to the API.
+> > And similarly I think the attempt to opportunistically use krb5 for
+> > state management should fail and fall back on auth_sys if the server's
+> > name doesn't match.
+> > 
+> >> I think that the ideal thing would be to stash the SPN that we use to
+> >> do the SETCLIENTID call and use that in the comparison above.
+> >> Unfortunately, the rpc_cred doesn't really seem to carry this info and
+> >> I don't see where we get enough information in the rpc.gssd downcall to
+> >> figure out what that SPN should be.
+> >> 
+> >> Anyone have thoughts or should we just remove the above check until we
+> >> come up with a better way to do this?
+> >> 
+> >> [1]: there's another bug that can cause the client to send a bogus
+> >>     reply instead of dropping the request as intended, but that's
+> >>     relatively simple to fix.
+> > 
+> > So I believe the matching really is a requirement and that it would be
+> > wrong to weaken it.
+> > 
+> > It sounds like there's also a server bug here if it's giving out
+> > delegations to a client that isn't responding to callbacks.
+> > 
+> > --b.
 > 
-> Just add one further detail here. What I'm thinking is, maybe instead there
-> should be something like:
+> _________________________________
+> Trond Myklebust
+> Linux NFS client maintainer, PrimaryData
+> trond.myklebust@primarydata.com
 > 
-> struct flockx {
->     int flags;
->     /* Other fields like 'struct flock' */
->     char reserved[32];	/* Or some suitable value */
-> }
-> 
-> That flags field might always be zero for now, but in the future it 
-> could be used on the setlk and getlk operations to indicate the presence
-> of additional fields in the structure.
-> 
-> Cheers,
-> 
-> Michael
-> 
-
-I considered that early on when I did this, but I don't think it's
-really helpful. I'm just not a fan of padding out structs when it's not
-clear what would eventually go in there.
-
-The problem is that once actually go to try to convert those from
-"reserved" to something usable, it becomes a nightmare for userland to
-figure that out. How do I know whether my kernel supports the stuff I
-put in those fields or will just ignore them?
-
-If we really find later that we need to do something like this, I think
-we'd be better off adding a new set of cmd values along with the
-"extended" struct, or possibly a new syscall. Some of the samba folks
-were interested in an async locking mechanism too, so something like
-that could be added in conjunction with such an interface.
-
--- 
-Jeff Layton <jlayton@poochiereds.net>
