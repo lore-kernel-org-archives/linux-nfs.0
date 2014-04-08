@@ -1,125 +1,119 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f174.google.com ([209.85.213.174]:41497 "EHLO
-	mail-ig0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753338AbaDRSqv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Apr 2014 14:46:51 -0400
-Received: by mail-ig0-f174.google.com with SMTP id h18so942558igc.7
-        for <linux-nfs@vger.kernel.org>; Fri, 18 Apr 2014 11:46:51 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Bruce Fields <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 65/70] NFSd: Remove nfs4_lock_state(): nfsd4_open_downgrade + nfsd4_close
-Date: Fri, 18 Apr 2014 14:44:59 -0400
-Message-Id: <1397846704-14567-66-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1397846704-14567-65-git-send-email-trond.myklebust@primarydata.com>
-References: <1397846704-14567-1-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-2-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-3-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-4-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-5-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-6-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-7-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-8-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-9-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-10-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-11-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-12-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-13-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-14-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-15-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-16-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-17-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-18-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-19-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-20-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-21-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-22-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-23-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-24-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-25-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-26-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-27-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-28-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-29-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-30-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-31-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-32-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-33-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-34-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-35-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-36-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-37-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-38-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-39-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-40-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-41-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-42-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-43-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-44-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-45-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-46-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-47-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-48-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-49-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-50-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-51-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-52-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-53-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-54-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-55-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-56-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-57-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-58-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-59-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-60-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-61-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-62-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-63-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-64-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-65-git-send-email-trond.myklebust@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:1817 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757834AbaDHSwI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 8 Apr 2014 14:52:08 -0400
+Subject: Re: v4.0 CB_COMPOUND authentication failures
+From: Simo Sorce <simo@redhat.com>
+To: Dr Fields James Bruce <bfields@fieldses.org>
+Cc: Jeff Layton <jlayton@redhat.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        NFS <linux-nfs@vger.kernel.org>,
+        Adamson William Andros <androsadamson@gmail.com>,
+        Lever Charles Edward <chuck.lever@oracle.com>
+In-Reply-To: <20140408181158.GE9457@fieldses.org>
+References: <20140408140333.GD3882@fieldses.org>
+	 <6CC79B2A-8AE2-4A36-BB57-380C2F9813C0@primarydata.com>
+	 <20140408144652.GE3882@fieldses.org>
+	 <ECD8245B-CDEE-442E-A41A-BECE08BEEDA1@primarydata.com>
+	 <20140408124428.5152ae8b@tlielax.poochiereds.net>
+	 <1396978021.14203.163.camel@willson.li.ssimo.org>
+	 <20140408133040.3c149238@tlielax.poochiereds.net>
+	 <1396980075.14203.164.camel@willson.li.ssimo.org>
+	 <20140408140447.51695274@tlielax.poochiereds.net>
+	 <1396980494.14203.169.camel@willson.li.ssimo.org>
+	 <20140408181158.GE9457@fieldses.org>
+Content-Type: text/plain; charset="UTF-8"
+Date: Tue, 08 Apr 2014 14:52:03 -0400
+Message-ID: <1396983123.14203.183.camel@willson.li.ssimo.org>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
----
- fs/nfsd/nfs4state.c | 4 ----
- 1 file changed, 4 deletions(-)
+On Tue, 2014-04-08 at 14:11 -0400, Dr Fields James Bruce wrote:
+> On Tue, Apr 08, 2014 at 02:08:14PM -0400, Simo Sorce wrote:
+> > On Tue, 2014-04-08 at 14:04 -0400, Jeff Layton wrote:
+> > > On Tue, 08 Apr 2014 14:01:15 -0400
+> > > Simo Sorce <simo@redhat.com> wrote:
+> > > 
+> > > > On Tue, 2014-04-08 at 13:30 -0400, Jeff Layton wrote:
+> > > > > On Tue, 08 Apr 2014 13:27:01 -0400
+> > > > > Simo Sorce <simo@redhat.com> wrote:
+> > > > > 
+> > > > > > On Tue, 2014-04-08 at 12:44 -0400, Jeff Layton wrote:
+> > > > > > > 
+> > > > > > > I think that's what happens. We only fall back to using AUTH_SYS if
+> > > > > > > nfs_create_rpc_client returns -EINVAL. In the event that the security
+> > > > > > > negotiation fails, we should get back -EACCES and that should bubble
+> > > > > > > back up to userland.
+> > > > > > > 
+> > > > > > > The real problem is that gssd (and also the krb5 libs themselves) will
+> > > > > > > try to canonicalize the name. The resulting host portion of the SPN
+> > > > > > > may bear no resemblance to the hostname in the device string. In fact,
+> > > > > > > if you mount using an IP address then you're pretty much SOL.
+> > > > > > 
+> > > > > > If you mount by IP do you really care about krb5 ? Probably not, maybe
+> > > > > > that's a clue we should not even try ...
+> > > > > > 
+> > > > > 
+> > > > > It's certainly possible that someone passes in an IP address but then
+> > > > > says "-o sec=krb5". It has worked in the past, so it's hard to know
+> > > > > whether and how many people actually depend on it.
+> > > > > 
+> > > > > > > I haven't tried it yet, but it looks reasonably trivial to fix gssd
+> > > > > > > not to bother with DNS at all and just rely on the hostname. That
+> > > > > > > won't stop the krb5 libs from doing their canonicalization though. I'm
+> > > > > > > not sure if there's some way to ask the krb5 libs to avoid doing that.
+> > > > > > 
+> > > > > > [libdefaults]
+> > > > > > rdns = false
+> > > > > > 
+> > > > > > And I think we change the default to false in Fedora/RHEL lately ...
+> > > > > > 
+> > > > > > Simo.
+> > > > > > 
+> > > > > 
+> > > > > That's a step in the right direction, but I think that the rdns just
+> > > > > makes it skip the reverse lookup. AFAIK, the MIT libs will still do
+> > > > > getaddrinfo and scrape out the ai_canonname and use that in preference
+> > > > > to the hostname you pass in.
+> > > > 
+> > > > That should happen only if you are using a CNAME, not for an A name.
+> > > > 
+> > > > We can open bugs if this is not the case though.
+> > > > 
+> > > 
+> > > That's still a problem for us then. The current code tries to compare
+> > > the host portion of the device string to the SPN that we get in the
+> > > callback request. If they don't match, it fails.
+> > > 
+> > > I think what we need to do is fix this the right way -- make rpc.gssd
+> > > pass down the acceptor name with the downcall.
+> > 
+> > Why do you need the comparison at all, pardon my ignorance, I do not
+> > know very well what its purpose is.
+> 
+> The NFS client wants to verify that a callback came from the server, so
+> it needs to know who it originally authenticated to.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 1e0f5301e2b3..681b25deac02 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4288,7 +4288,6 @@ nfsd4_open_downgrade(struct svc_rqst *rqstp,
- 		dprintk("NFSD: %s: od_deleg_want=0x%x ignored\n", __func__,
- 			od->od_deleg_want);
- 
--	nfs4_lock_state();
- 	status = nfs4_preprocess_confirmed_seqid_op(cstate, od->od_seqid,
- 					&od->od_stateid, &stp, nn);
- 	if (status)
-@@ -4315,7 +4314,6 @@ put_stateid:
- 	put_generic_stateid(stp);
- out:
- 	nfsd4_bump_seqid(cstate, status);
--	nfs4_unlock_state();
- 	return status;
- }
- 
-@@ -4341,7 +4339,6 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	dprintk("NFSD: nfsd4_close on file %pd\n", 
- 			cstate->current_fh.fh_dentry);
- 
--	nfs4_lock_state();
- 	status = nfs4_preprocess_seqid_op(cstate, close->cl_seqid,
- 					&close->cl_stateid,
- 					NFS4_OPEN_STID|NFS4_CLOSED_STID,
-@@ -4375,7 +4372,6 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 		}
- 	}
- out:
--	nfs4_unlock_state();
- 	return status;
- }
- 
+As Jeff said, the only good way at this point would be to have rpc.gssd
+pass down the acceptor name after it is done with the gssapi calls.
+
+Note that this may still fail, especially i clustered environments where
+servers have multiple credentials they can answer with (due to
+responding with multiple names). Unless the server is careful in always
+using the principal the client got tickets for when it calls back.
+
+Although the best solution is to quickly deprecate 4.0 callbacks and try
+as hard as possible to move on. 4.0 callbacks are just broken.
+
+> (Though honestly it's unlikely you can do much damage by spoofing
+> callbacks.)
+
+Better not finding out :)
+
+Simo.
+
 -- 
-1.9.0
+Simo Sorce * Red Hat, Inc * New York
 
