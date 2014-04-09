@@ -1,43 +1,113 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wg0-f47.google.com ([74.125.82.47]:35444 "EHLO
-	mail-wg0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751019AbaDQHGL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Apr 2014 03:06:11 -0400
-Received: by mail-wg0-f47.google.com with SMTP id x12so47220wgg.18
-        for <linux-nfs@vger.kernel.org>; Thu, 17 Apr 2014 00:06:09 -0700 (PDT)
-Message-ID: <534F7D5F.1090908@dev.mellanox.co.il>
-Date: Thu, 17 Apr 2014 10:06:07 +0300
-From: Sagi Grimberg <sagig@dev.mellanox.co.il>
+Received: from cmexedge1.ext.emulex.com ([138.239.224.99]:42286 "EHLO
+	CMEXEDGE1.ext.emulex.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S934158AbaDITMN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Apr 2014 15:12:13 -0400
+From: Devesh Sharma <devesh.sharma@emulex.com>
+To: <linux-nfs@vger.kernel.org>
+CC: <linux-rdma@vger.kernel.org>, <trond.myklebust@primarydata.com>,
+        "Devesh Sharma" <devesh.sharma@emulex.com>
+Subject: [PATCH V1] NFS-RDMA: fix qp pointer validation checks
+Date: Thu, 10 Apr 2014 00:10:08 +0530
 MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: Steve Wise <swise@opengridcomputing.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-rdma@vger.kernel.org
-Subject: Re: [PATCH 7/8] xprtrdma: Split the completion queue
-References: <20140414220041.20646.63991.stgit@manet.1015granger.net> <20140414222323.20646.66946.stgit@manet.1015granger.net> <534E7C1C.5070407@dev.mellanox.co.il> <534E8608.8030801@opengridcomputing.com> <E9B601B5-1984-40D8-914A-DDD1380E8183@oracle.com> <534EA06A.7090200@dev.mellanox.co.il> <FC61F219-ACA2-4CE8-BF02-1B8EE2464639@oracle.com>
-In-Reply-To: <FC61F219-ACA2-4CE8-BF02-1B8EE2464639@oracle.com>
-Content-Type: text/plain; charset=windows-1252; format=flowed
+Content-Type: text/plain
+Message-ID: <014738b6-698e-4ea1-82f9-287378bfec19@CMEXHTCAS2.ad.emulex.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 4/16/2014 9:21 PM, Chuck Lever wrote:
-> Passing a small array to ip_poll_cq() is actually easy to do, and is
-> exactly equivalent to a poll budget. The struct ib_wc should be taken
-> off the stack anyway, IMO.
->
-> The only other example I see in 3.15 right now is IPoIB, which seems
-> to do exactly this.
->
-> I’m testing a patch now. I’d like to start simple and make it more
-> complex only if we need to.
+If the rdma_create_qp fails to create qp due to device firmware being in invalid state
+xprtrdma still tries to destroy the non-existant qp and ends up in a NULL pointer reference
+crash.
+Adding proper checks for vaidating QP pointer avoids this to happen.
 
-What array size are you using? Note that if you use a small array it may 
-be an overkill since
-a lot more interrupts are invoked (-> more latency). I found that for a 
-high workload a budget
-of 256/512/1024 keeps fairness and doesn't increase latency.
+Signed-off-by: Devesh Sharma <devesh.sharma@emulex.com>
+---
+ net/sunrpc/xprtrdma/verbs.c |   29 +++++++++++++++++++++++++----
+ 1 files changed, 25 insertions(+), 4 deletions(-)
 
-Regardless, doing array-polling is a nice optimization reducing CQ 
-entrances.
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 9372656..902ac78 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -831,10 +831,12 @@ rpcrdma_ep_connect(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
+ 	if (ep->rep_connected != 0) {
+ 		struct rpcrdma_xprt *xprt;
+ retry:
+-		rc = rpcrdma_ep_disconnect(ep, ia);
+-		if (rc && rc != -ENOTCONN)
+-			dprintk("RPC:       %s: rpcrdma_ep_disconnect"
++		if (ia->ri_id->qp) {
++			rc = rpcrdma_ep_disconnect(ep, ia);
++			if (rc && rc != -ENOTCONN)
++				dprintk("RPC:       %s: rpcrdma_ep_disconnect"
+ 				" status %i\n", __func__, rc);
++		}
+ 		rpcrdma_clean_cq(ep->rep_cq);
+ 
+ 		xprt = container_of(ia, struct rpcrdma_xprt, rx_ia);
+@@ -859,7 +861,9 @@ retry:
+ 			goto out;
+ 		}
+ 		/* END TEMP */
+-		rdma_destroy_qp(ia->ri_id);
++		if (ia->ri_id->qp) {
++			rdma_destroy_qp(ia->ri_id);
++		}
+ 		rdma_destroy_id(ia->ri_id);
+ 		ia->ri_id = id;
+ 	}
+@@ -1557,6 +1561,13 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
+ 	frmr_wr.wr.fast_reg.rkey = seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey;
+ 	DECR_CQCOUNT(&r_xprt->rx_ep);
+ 
++	if (!ia->ri_is->qp) {
++		rc = -EINVAL;
++		while (i--)
++			rpcrdma_unmap_one(ia, --seg);
++		goto out;
++	}
++
+ 	rc = ib_post_send(ia->ri_id->qp, post_wr, &bad_wr);
+ 
+ 	if (rc) {
+@@ -1571,6 +1582,7 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
+ 		seg1->mr_len = len;
+ 	}
+ 	*nsegs = i;
++out:
+ 	return rc;
+ }
+ 
+@@ -1592,6 +1604,9 @@ rpcrdma_deregister_frmr_external(struct rpcrdma_mr_seg *seg,
+ 	invalidate_wr.ex.invalidate_rkey = seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey;
+ 	DECR_CQCOUNT(&r_xprt->rx_ep);
+ 
++	if (!ia->ri_id->qp)
++		return -EINVAL;
++
+ 	rc = ib_post_send(ia->ri_id->qp, &invalidate_wr, &bad_wr);
+ 	if (rc)
+ 		dprintk("RPC:       %s: failed ib_post_send for invalidate,"
+@@ -1923,6 +1938,9 @@ rpcrdma_ep_post(struct rpcrdma_ia *ia,
+ 		send_wr.send_flags = IB_SEND_SIGNALED;
+ 	}
+ 
++	if (!ia->ri_id->qp)
++		return -EINVAL;
++
+ 	rc = ib_post_send(ia->ri_id->qp, &send_wr, &send_wr_fail);
+ 	if (rc)
+ 		dprintk("RPC:       %s: ib_post_send returned %i\n", __func__,
+@@ -1951,6 +1969,9 @@ rpcrdma_ep_post_recv(struct rpcrdma_ia *ia,
+ 		rep->rr_iov.addr, rep->rr_iov.length, DMA_BIDIRECTIONAL);
+ 
+ 	DECR_CQCOUNT(ep);
++
++	if (!ia->ri_id->qp)
++		return -EINVAL;
+ 	rc = ib_post_recv(ia->ri_id->qp, &recv_wr, &recv_wr_fail);
+ 
+ 	if (rc)
+-- 
+1.7.1
 
-Sagi.
