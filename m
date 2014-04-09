@@ -1,137 +1,154 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pb0-f52.google.com ([209.85.160.52]:61898 "EHLO
-	mail-pb0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751278AbaDMOyR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 13 Apr 2014 10:54:17 -0400
-Received: by mail-pb0-f52.google.com with SMTP id rr13so7252471pbb.25
-        for <linux-nfs@vger.kernel.org>; Sun, 13 Apr 2014 07:54:16 -0700 (PDT)
-Message-ID: <534AA4FD.3060202@gmail.com>
-Date: Sun, 13 Apr 2014 22:53:49 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
+Received: from wsip-98-173-55-162.sd.sd.cox.net ([98.173.55.162]:42163 "EHLO
+	bilbo" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S932996AbaDIXLr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 9 Apr 2014 19:11:47 -0400
+From: Allen Andrews <allen.andrews@emulex.com>
+Subject: [PATCH] nfs-rdma: Fix for FMR leaks
+To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Cc: allen.andrews@emulex.com, linux-kernel@vger.kernel.org
+Date: Wed, 09 Apr 2014 15:10:41 -0700
+Message-ID: <20140409221041.16923.33487.stgit@bilbo>
 MIME-Version: 1.0
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-CC: linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: [PATCH] NFS: add FATTR4_WORD1_MODE flags for cache_consistency_bitmask
-References: <534A8CEF.6000609@gmail.com> <505345D4-4F7C-4970-9EBF-7CFC367575B2@primarydata.com>
-In-Reply-To: <505345D4-4F7C-4970-9EBF-7CFC367575B2@primarydata.com>
-Content-Type: text/plain; charset=GB2312
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Two memory region leaks iwere found during testing:
 
+1. rpcrdma_buffer_create: While allocating RPCRDMA_FRMR's
+ib_alloc_fast_reg_mr is called and then ib_alloc_fast_reg_page_list is
+called.  If ib_alloc_fast_reg_page_list returns an error it bails out of
+the routine dropping the last ib_alloc_fast_reg_mr frmr region creating a
+memory leak.  Added code to dereg the last frmr if
+ib_alloc_fast_reg_page_list fails.
 
-ÓÚ 2014/4/13 22:28, Trond Myklebust Ð´µÀ:
-> 
-> On Apr 13, 2014, at 9:11, Kinglong Mee <kinglongmee@gmail.com> wrote:
-> 
->> After writing data at NFS client, file's access mode is inconsistent
->> with server.
->> Because WRITE proceduce changes the S_ISUID and S_ISGID bits,
->> but client don't get it.
->>
->> #touch hello; chmod 06777 hello; stat hello;
->>   File: ¡®hello¡¯
->>   Size: 0               Blocks: 0          IO Block: 262144 regular
->> empty file
->> Device: 24h/36d Inode: 786434      Links: 1
->> Access: (6777/-rwsrwsrwx)  Uid: (    0/    root)   Gid: (    0/    root)
->> Context: system_u:object_r:nfs_t:s0
->> Access: 2014-04-13 21:00:44.996908708 +0800
->> Modify: 2014-04-13 21:00:44.996908708 +0800
->> Change: 2014-04-13 21:00:45.033908705 +0800
->> Birth: -
->>
->> #echo 12324 > hello; stat hello; stat /nfstest/hello
->>   File: ¡®hello¡¯
->>   Size: 6               Blocks: 0          IO Block: 262144 regular file
->> Device: 24h/36d Inode: 786434      Links: 1
->> Access: (6777/-rwsrwsrwx)  Uid: (    0/    root)   Gid: (    0/    root)
->>          ^^^^^ it should be 0777
->> Context: system_u:object_r:nfs_t:s0
->> Access: 2014-04-13 21:00:44.996908708 +0800
->> Modify: 2014-04-13 21:00:45.061908703 +0800
->> Change: 2014-04-13 21:00:45.061908703 +0800
->> Birth: -
->>   File: ¡®/nfstest/hello¡¯
->>   Size: 6               Blocks: 8          IO Block: 4096   regular file
->> Device: 803h/2051d      Inode: 786434      Links: 1
->> Access: (0777/-rwxrwxrwx)  Uid: (    0/    root)   Gid: (    0/    root)
->>          ^^^^^ bits on the server
->> Context: system_u:object_r:default_t:s0
->> Access: 2014-04-13 21:00:44.996908708 +0800
->> Modify: 2014-04-13 21:00:45.061908703 +0800
->> Change: 2014-04-13 21:00:45.061908703 +0800
->> Birth: -
->>
->> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
->> ---
->> fs/nfs/nfs4proc.c | 2 +-
->> 1 file changed, 1 insertion(+), 1 deletion(-)
->>
->> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
->> index 397be39..f234af7 100644
->> --- a/fs/nfs/nfs4proc.c
->> +++ b/fs/nfs/nfs4proc.c
->> @@ -2819,7 +2819,7 @@ static int _nfs4_server_capabilities(struct
->> nfs_server *server, struct nfs_fh *f
->>
->> 		memcpy(server->cache_consistency_bitmask, res.attr_bitmask,
->> sizeof(server->cache_consistency_bitmask));
->> 		server->cache_consistency_bitmask[0] &=
->> FATTR4_WORD0_CHANGE|FATTR4_WORD0_SIZE;
->> -		server->cache_consistency_bitmask[1] &=
->> FATTR4_WORD1_TIME_METADATA|FATTR4_WORD1_TIME_MODIFY;
->> +		server->cache_consistency_bitmask[1] &=
->> FATTR4_WORD1_MODE|FATTR4_WORD1_TIME_METADATA|FATTR4_WORD1_TIME_MODIFY;
->> 		server->cache_consistency_bitmask[2] = 0;
->> 		server->acl_bitmask = res.acl_bitmask;
->> 		server->fh_expire_type = res.fh_expire_type;
->> -- 
->> 1.9.0
->>
-> 
-> Instead of requesting a new attribute on each and every operation just in order to deal with an extremely rare corner case, is there any reason why we can¡¯t just do this by checking should_remove_suid(), clearing the mode bits ourselves, and then marking the attributes for revalidation?
+2. rpcrdma_buffer_destroy: While cleaning up, the routine will only free
+the MR's on the rb_mws list if there are rb_send_bufs present.  However, in
+rpcrdma_buffer_create while the rb_mws list is being built if one of the MR
+allocation requests fail after some MR's have been allocated on the rb_mws
+list the routine never gets to create any rb_send_bufs but instead jumps to
+the rpcrdma_buffer_destroy routine which will never free the MR's on rb_mws
+list because the rb_send_bufs were never created.   This leaks all the MR's
+on the rb_mws list that were created prior to one of the MR allocations
+failing.
 
-Right now, the suid/sgid should be cleared in nfs_setattr,
- 485 int
- 486 nfs_setattr(struct dentry *dentry, struct iattr *attr)
- 487 {
- ... ...
- 494         /* skip mode change if it's just for clearing setuid/setgid */
- 495         if (attr->ia_valid & (ATTR_KILL_SUID | ATTR_KILL_SGID))
- 496                 attr->ia_valid &= ~ATTR_MODE;
- 497
+Issue(2) was seen during testing. Our adapter had a finite number of MR's
+available and we created enough connections to where we saw an MR
+allocation failure on our Nth NFS connection request. After the kernel
+cleaned up the resources it had allocated for the Nth connection we noticed
+that FMR's had been leaked due to the coding error described above.
 
-but, NFS client can't pass ATTR_KILL_SUID/SGID to NFS server,
-NFS server just kill those bits in nfsd_vfs_write,
- 860 static void kill_suid(struct dentry *dentry)
- 861 {
- 862         struct iattr    ia;
- 863         ia.ia_valid = ATTR_KILL_SUID | ATTR_KILL_SGID | ATTR_KILL_PRIV;
- 864
- 865         mutex_lock(&dentry->d_inode->i_mutex);
- 866         /*
- 867          * Note we call this on write, so notify_change will not
- 868          * encounter any conflicting delegations:
- 869          */
- 870         notify_change(dentry, &ia, NULL);
- 871         mutex_unlock(&dentry->d_inode->i_mutex);
- 872 }
- ... ...
- 911 static __be32
- 912 nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp, struct
-file *file,
- 913                                 loff_t offset, struct kvec *vec,
-int vlen,
- 914                                 unsigned long *cnt, int *stablep)
- 915 {
- ... ...
- 945         /* clear setuid/setgid flag after write */
- 946         if (inode->i_mode & (S_ISUID | S_ISGID))
- 947                 kill_suid(dentry);
+Issue(1) was seen during a code review while debugging issue(2).
 
-IMO, client shoulds get all metadatas from server, so, adds the flag.
-I think should_remove_suid() should be called by nfsd, not NFS client.
+Signed-off-by: Allen Andrews <allen.andrews@emulex.com>
+---
 
-thanks,
-Kinglong Mee
+ net/sunrpc/xprtrdma/verbs.c |   79 ++++++++++++++++++++++++-------------------
+ 1 files changed, 44 insertions(+), 35 deletions(-)
+
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 9372656..54f592d 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -1058,6 +1058,14 @@ rpcrdma_buffer_create(struct rpcrdma_buffer *buf, struct rpcrdma_ep *ep,
+ 				dprintk("RPC:       %s: "
+ 					"ib_alloc_fast_reg_page_list "
+ 					"failed %i\n", __func__, rc);
++
++				rc = ib_dereg_mr(r->r.frmr.fr_mr);
++				if (rc)
++					dprintk("RPC:       %s:"
++						" ib_dereg_mr"
++						" failed %i\n",
++						__func__, rc);
++
+ 				goto out;
+ 			}
+ 			list_add(&r->mw_list, &buf->rb_mws);
+@@ -1194,41 +1202,6 @@ rpcrdma_buffer_destroy(struct rpcrdma_buffer *buf)
+ 			kfree(buf->rb_recv_bufs[i]);
+ 		}
+ 		if (buf->rb_send_bufs && buf->rb_send_bufs[i]) {
+-			while (!list_empty(&buf->rb_mws)) {
+-				r = list_entry(buf->rb_mws.next,
+-					struct rpcrdma_mw, mw_list);
+-				list_del(&r->mw_list);
+-				switch (ia->ri_memreg_strategy) {
+-				case RPCRDMA_FRMR:
+-					rc = ib_dereg_mr(r->r.frmr.fr_mr);
+-					if (rc)
+-						dprintk("RPC:       %s:"
+-							" ib_dereg_mr"
+-							" failed %i\n",
+-							__func__, rc);
+-					ib_free_fast_reg_page_list(r->r.frmr.fr_pgl);
+-					break;
+-				case RPCRDMA_MTHCAFMR:
+-					rc = ib_dealloc_fmr(r->r.fmr);
+-					if (rc)
+-						dprintk("RPC:       %s:"
+-							" ib_dealloc_fmr"
+-							" failed %i\n",
+-							__func__, rc);
+-					break;
+-				case RPCRDMA_MEMWINDOWS_ASYNC:
+-				case RPCRDMA_MEMWINDOWS:
+-					rc = ib_dealloc_mw(r->r.mw);
+-					if (rc)
+-						dprintk("RPC:       %s:"
+-							" ib_dealloc_mw"
+-							" failed %i\n",
+-							__func__, rc);
+-					break;
+-				default:
+-					break;
+-				}
+-			}
+ 			rpcrdma_deregister_internal(ia,
+ 					buf->rb_send_bufs[i]->rl_handle,
+ 					&buf->rb_send_bufs[i]->rl_iov);
+@@ -1236,6 +1209,42 @@ rpcrdma_buffer_destroy(struct rpcrdma_buffer *buf)
+ 		}
+ 	}
+ 
++	while (!list_empty(&buf->rb_mws)) {
++		r = list_entry(buf->rb_mws.next,
++			struct rpcrdma_mw, mw_list);
++		list_del(&r->mw_list);
++		switch (ia->ri_memreg_strategy) {
++		case RPCRDMA_FRMR:
++			rc = ib_dereg_mr(r->r.frmr.fr_mr);
++			if (rc)
++				dprintk("RPC:       %s:"
++					" ib_dereg_mr"
++					" failed %i\n",
++					__func__, rc);
++			ib_free_fast_reg_page_list(r->r.frmr.fr_pgl);
++			break;
++		case RPCRDMA_MTHCAFMR:
++			rc = ib_dealloc_fmr(r->r.fmr);
++			if (rc)
++				dprintk("RPC:       %s:"
++					" ib_dealloc_fmr"
++					" failed %i\n",
++					__func__, rc);
++			break;
++		case RPCRDMA_MEMWINDOWS_ASYNC:
++		case RPCRDMA_MEMWINDOWS:
++			rc = ib_dealloc_mw(r->r.mw);
++			if (rc)
++				dprintk("RPC:       %s:"
++					" ib_dealloc_mw"
++					" failed %i\n",
++					__func__, rc);
++			break;
++		default:
++			break;
++		}
++	}
++
+ 	kfree(buf->rb_pool);
+ }
+ 
+
