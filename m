@@ -1,162 +1,141 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([209.166.131.148]:59175 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754382AbaDWMUZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Apr 2014 08:20:25 -0400
-Message-ID: <5357AFFF.8030902@panasas.com>
-Date: Wed, 23 Apr 2014 15:20:15 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
-MIME-Version: 1.0
-To: Weston Andros Adamson <dros@primarydata.com>,
-        <trond.myklebust@primarydata.com>
-CC: <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 11/17] nfs: chain calls to pg_test
-References: <1398202165-78897-1-git-send-email-dros@primarydata.com> <1398202165-78897-12-git-send-email-dros@primarydata.com>
-In-Reply-To: <1398202165-78897-12-git-send-email-dros@primarydata.com>
-Content-Type: text/plain; charset="UTF-8"
+Received: from mail-ie0-f181.google.com ([209.85.223.181]:42834 "EHLO
+	mail-ie0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933741AbaDIUWb convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Apr 2014 16:22:31 -0400
+Received: by mail-ie0-f181.google.com with SMTP id tp5so2980791ieb.40
+        for <linux-nfs@vger.kernel.org>; Wed, 09 Apr 2014 13:22:31 -0700 (PDT)
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
+Subject: Re: [PATCH V1] NFS-RDMA: fix qp pointer validation checks
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+In-Reply-To: <014738b6-698e-4ea1-82f9-287378bfec19@CMEXHTCAS2.ad.emulex.com>
+Date: Wed, 9 Apr 2014 16:22:27 -0400
+Cc: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Message-Id: <D7AB2150-5F25-4BA2-80D9-94890AD11F8F@primarydata.com>
+References: <014738b6-698e-4ea1-82f9-287378bfec19@CMEXHTCAS2.ad.emulex.com>
+To: Devesh Sharma <devesh.sharma@emulex.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 04/23/2014 12:29 AM, Weston Andros Adamson wrote:
-> Now that pg_test can change the size of the request (by returning a non-zero
-> size smaller than the request), pg_test functions that call other
-> pg_test functions must return the minimum of the result - or 0 if any fail.
+Hi Devesh,
+
+This looks a lot better. I still have a couple of small suggestions, though.
+
+On Apr 9, 2014, at 14:40, Devesh Sharma <devesh.sharma@emulex.com> wrote:
+
+> If the rdma_create_qp fails to create qp due to device firmware being in invalid state
+> xprtrdma still tries to destroy the non-existant qp and ends up in a NULL pointer reference
+> crash.
+> Adding proper checks for vaidating QP pointer avoids this to happen.
 > 
-> Also clean up the logic of some pg_test functions so that all checks are
-> for contitions where coalescing is not possible.
-> 
-> Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+> Signed-off-by: Devesh Sharma <devesh.sharma@emulex.com>
 > ---
->  fs/nfs/nfs4filelayout.c      | 27 ++++++++++++++-------------
->  fs/nfs/objlayout/objio_osd.c | 12 ++++++++----
->  fs/nfs/pnfs.c                | 15 ++++++++++-----
->  3 files changed, 32 insertions(+), 22 deletions(-)
+> net/sunrpc/xprtrdma/verbs.c |   29 +++++++++++++++++++++++++----
+> 1 files changed, 25 insertions(+), 4 deletions(-)
 > 
-> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-> index 3b32c95..cfd76bd 100644
-> --- a/fs/nfs/nfs4filelayout.c
-> +++ b/fs/nfs/nfs4filelayout.c
-> @@ -930,26 +930,27 @@ static size_t
->  filelayout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
->  		   struct nfs_page *req)
->  {
-> +	unsigned int size;
->  	u64 p_stripe, r_stripe;
->  	u32 stripe_unit;
->  
-> -	if (!pnfs_generic_pg_test(pgio, prev, req) ||
-> -	    !nfs_generic_pg_test(pgio, prev, req))
-> +	/* calls nfs_generic_pg_test */
-> +	size = pnfs_generic_pg_test(pgio, prev, req);
-> +	if (!size)
->  		return 0;
->  
-> -	if (!prev)
-> -		return req->wb_bytes;
-> +	if (prev) {
-> +		p_stripe = (u64)req_offset(prev);
-> +		r_stripe = (u64)req_offset(req);
-> +		stripe_unit = FILELAYOUT_LSEG(pgio->pg_lseg)->stripe_unit;
->  
-> -	p_stripe = (u64)req_offset(prev);
-> -	r_stripe = (u64)req_offset(req);
-> -	stripe_unit = FILELAYOUT_LSEG(pgio->pg_lseg)->stripe_unit;
-> +		do_div(p_stripe, stripe_unit);
-> +		do_div(r_stripe, stripe_unit);
->  
-> -	do_div(p_stripe, stripe_unit);
-> -	do_div(r_stripe, stripe_unit);
-> -
-> -	if (p_stripe == r_stripe)
-> -		return req->wb_bytes;
-> -	return 0;
-> +		if (p_stripe != r_stripe)
-> +			return 0;
+> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+> index 9372656..902ac78 100644
+> --- a/net/sunrpc/xprtrdma/verbs.c
+> +++ b/net/sunrpc/xprtrdma/verbs.c
+> @@ -831,10 +831,12 @@ rpcrdma_ep_connect(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
+> 	if (ep->rep_connected != 0) {
+> 		struct rpcrdma_xprt *xprt;
+> retry:
+> -		rc = rpcrdma_ep_disconnect(ep, ia);
+> -		if (rc && rc != -ENOTCONN)
+> -			dprintk("RPC:       %s: rpcrdma_ep_disconnect"
+> +		if (ia->ri_id->qp) {
+> +			rc = rpcrdma_ep_disconnect(ep, ia);
+> +			if (rc && rc != -ENOTCONN)
+> +				dprintk("RPC:       %s: rpcrdma_ep_disconnect"
+> 				" status %i\n", __func__, rc);
+> +		}
+> 		rpcrdma_clean_cq(ep->rep_cq);
+> 
+> 		xprt = container_of(ia, struct rpcrdma_xprt, rx_ia);
+> @@ -859,7 +861,9 @@ retry:
+> 			goto out;
+> 		}
+> 		/* END TEMP */
+> -		rdma_destroy_qp(ia->ri_id);
+> +		if (ia->ri_id->qp) {
+> +			rdma_destroy_qp(ia->ri_id);
+> +		}
+
+Nit: No need for braces here.
+
+> 		rdma_destroy_id(ia->ri_id);
+> 		ia->ri_id = id;
+> 	}
+> @@ -1557,6 +1561,13 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
+> 	frmr_wr.wr.fast_reg.rkey = seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey;
+> 	DECR_CQCOUNT(&r_xprt->rx_ep);
+> 
+> +	if (!ia->ri_is->qp) {
+> +		rc = -EINVAL;
+> +		while (i--)
+> +			rpcrdma_unmap_one(ia, --seg);
+> +		goto out;
 > +	}
-> +	return min(size, req->wb_bytes);
->  }
->  
->  static void
-> diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-> index c20352a..31de29e 100644
-> --- a/fs/nfs/objlayout/objio_osd.c
-> +++ b/fs/nfs/objlayout/objio_osd.c
-> @@ -571,13 +571,17 @@ int objio_write_pagelist(struct nfs_write_data *wdata, int how)
->  static size_t objio_pg_test(struct nfs_pageio_descriptor *pgio,
->  			  struct nfs_page *prev, struct nfs_page *req)
->  {
-> -	if (!pnfs_generic_pg_test(pgio, prev, req))
-> +	unsigned int size;
+
+Instead of duplicating the rpcrdma_unmap_one() cleanup here, why not just do
+
+	if (ia->ri_is->qp)
+		rc = ib_post_send(…)
+	else
+		rc = -EINVAL;
+
+BTW: can we not simply test for ia->ri_is->qp before we even call rpcrdma_map_one() and hence bail out before we have to do any cleanup?
+
 > +
-> +	size = pnfs_generic_pg_test(pgio, prev, req);
-> +
-> +	if (!size)
->  		return 0;
->  
-> -	if (pgio->pg_count + req->wb_bytes <=
-> +	if (pgio->pg_count + req->wb_bytes >
->  	    (unsigned long)pgio->pg_layout_private)
-> -		return req->wb_bytes;
-> -	return 0;
-> +		return 0;
-
-objio_osd can enjoy the new facility by returning the
-remainder here:
-
-	max_io = (unsigned long)pgio->pg_layout_private);
-
-	wb_bytes = min(size, req->wb_bytes);
-
-	if (pgio->pg_count + req->wb_bytes > max_io)
-		wb_bytes = max_io - pgio->pg_count;
-
-	return wb_bytes;
-
-Which reminds me that this code sucks and I need to fix it. I will do
-so after you send your changes.
-
-[I promise to test these guys soon. Can you please put them on a public tree?]
-
-Thanks
-Boaz
-
-> +	return min(size, req->wb_bytes);
->  }
->  
->  static void objio_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
-> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-> index 6201bf6..7c89385 100644
-> --- a/fs/nfs/pnfs.c
-> +++ b/fs/nfs/pnfs.c
-> @@ -1469,8 +1469,12 @@ size_t
->  pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
->  		     struct nfs_page *req)
->  {
-> -	if (pgio->pg_lseg == NULL)
-> -		return nfs_generic_pg_test(pgio, prev, req);
-> +	unsigned int size;
-> +
-> +	size = nfs_generic_pg_test(pgio, prev, req);
-> +
-> +	if (!size)
-> +		return 0;
->  
->  	/*
->  	 * Test if a nfs_page is fully contained in the pnfs_layout_range.
-> @@ -1486,10 +1490,11 @@ pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
->  	 * first byte that lies outside the pnfs_layout_range. FIXME?
->  	 *
->  	 */
-> -	if (req_offset(req) < end_offset(pgio->pg_lseg->pls_range.offset,
-> +	if (req_offset(req) >= end_offset(pgio->pg_lseg->pls_range.offset,
->  					 pgio->pg_lseg->pls_range.length))
-> -		return req->wb_bytes;
-> -	return 0;
-> +		return 0;
-> +
-> +	return min(size, req->wb_bytes);
->  }
->  EXPORT_SYMBOL_GPL(pnfs_generic_pg_test);
->  
+> 	rc = ib_post_send(ia->ri_id->qp, post_wr, &bad_wr);
 > 
+> 	if (rc) {
+> @@ -1571,6 +1582,7 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
+> 		seg1->mr_len = len;
+> 	}
+> 	*nsegs = i;
+> +out:
+> 	return rc;
+> }
+> 
+> @@ -1592,6 +1604,9 @@ rpcrdma_deregister_frmr_external(struct rpcrdma_mr_seg *seg,
+> 	invalidate_wr.ex.invalidate_rkey = seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey;
+> 	DECR_CQCOUNT(&r_xprt->rx_ep);
+> 
+> +	if (!ia->ri_id->qp)
+> +		return -EINVAL;
+> +
+> 	rc = ib_post_send(ia->ri_id->qp, &invalidate_wr, &bad_wr);
+> 	if (rc)
+> 		dprintk("RPC:       %s: failed ib_post_send for invalidate,"
+> @@ -1923,6 +1938,9 @@ rpcrdma_ep_post(struct rpcrdma_ia *ia,
+> 		send_wr.send_flags = IB_SEND_SIGNALED;
+> 	}
+> 
+> +	if (!ia->ri_id->qp)
+> +		return -EINVAL;
+> +
+> 	rc = ib_post_send(ia->ri_id->qp, &send_wr, &send_wr_fail);
+> 	if (rc)
+> 		dprintk("RPC:       %s: ib_post_send returned %i\n", __func__,
+> @@ -1951,6 +1969,9 @@ rpcrdma_ep_post_recv(struct rpcrdma_ia *ia,
+> 		rep->rr_iov.addr, rep->rr_iov.length, DMA_BIDIRECTIONAL);
+> 
+> 	DECR_CQCOUNT(ep);
+> +
+> +	if (!ia->ri_id->qp)
+> +		return -EINVAL;
+> 	rc = ib_post_recv(ia->ri_id->qp, &recv_wr, &recv_wr_fail);
+> 
+> 	if (rc)
+> -- 
+> 1.7.1
+> 
+
+_________________________________
+Trond Myklebust
+Linux NFS client maintainer, PrimaryData
+trond.myklebust@primarydata.com
 
