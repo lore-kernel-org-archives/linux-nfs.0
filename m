@@ -1,75 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f169.google.com ([209.85.213.169]:35065 "EHLO
-	mail-ig0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932385AbaDXSQF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Apr 2014 14:16:05 -0400
-Received: by mail-ig0-f169.google.com with SMTP id h18so1355361igc.4
-        for <linux-nfs@vger.kernel.org>; Thu, 24 Apr 2014 11:16:05 -0700 (PDT)
-From: Weston Andros Adamson <dros@primarydata.com>
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
-Subject: [PATCH 18/18 v2] nfs: support page groups in nfs_read_completion
-Date: Thu, 24 Apr 2014 14:15:28 -0400
-Message-Id: <1398363328-7100-19-git-send-email-dros@primarydata.com>
-In-Reply-To: <1398363328-7100-1-git-send-email-dros@primarydata.com>
-References: <1398363328-7100-1-git-send-email-dros@primarydata.com>
+Received: from mailrelay008.isp.belgacom.be ([195.238.6.174]:44905 "EHLO
+	mailrelay008.isp.belgacom.be" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S932908AbaDIRbv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Apr 2014 13:31:51 -0400
+Date: Wed, 9 Apr 2014 19:31:48 +0200
+From: Fabian Frederick <fabf@skynet.be>
+To: linux-kernel <linux-kernel@vger.kernel.org>
+Cc: akpm <akpm@linux-foundation.org>, linux-nfs@vger.kernel.org
+Subject: [PATCH 1/1] NFSD: Remove NULL value assignments
+Message-Id: <20140409193148.548f7fc5f0356f61257b2f41@skynet.be>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-nfs_read_completion relied on the fact that there was a 1:1 mapping
-of page to nfs_request, but this has now changed.
+Static values are automatically initialized to NULL.
 
-Regions not covered by a request have already been zeroed elsewhere.
-
-Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+Cc: Andrew Morton <akpm@linux-foundation.org>
+Cc: linux-nfs@vger.kernel.org
+Signed-off-by: Fabian Frederick <fabf@skynet.be>
 ---
- fs/nfs/read.c | 24 +++++++++++++++++-------
- 1 file changed, 17 insertions(+), 7 deletions(-)
+ fs/nfsd/nfs4state.c | 10 +++++-----
+ fs/nfsd/nfssvc.c    |  2 +-
+ 2 files changed, 6 insertions(+), 6 deletions(-)
 
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index a889319..3ea06f0 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -130,7 +130,6 @@ static void nfs_page_group_set_uptodate(struct nfs_page *req)
- 		SetPageUptodate(req->wb_page);
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 3ba6597..c80097e 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -83,11 +83,11 @@ static DEFINE_MUTEX(client_mutex);
+  */
+ static DEFINE_SPINLOCK(recall_lock);
+ 
+-static struct kmem_cache *openowner_slab = NULL;
+-static struct kmem_cache *lockowner_slab = NULL;
+-static struct kmem_cache *file_slab = NULL;
+-static struct kmem_cache *stateid_slab = NULL;
+-static struct kmem_cache *deleg_slab = NULL;
++static struct kmem_cache *openowner_slab;
++static struct kmem_cache *lockowner_slab;
++static struct kmem_cache *file_slab;
++static struct kmem_cache *stateid_slab;
++static struct kmem_cache *deleg_slab;
+ 
+ void
+ nfs4_lock_state(void)
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index 9a4a5f9..04407a4 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -205,7 +205,7 @@ static int nfsd_init_socks(struct net *net)
+ 	return 0;
  }
  
--/* Note io was page aligned */
- static void nfs_read_completion(struct nfs_pgio_header *hdr)
- {
- 	unsigned long bytes = 0;
-@@ -140,14 +139,25 @@ static void nfs_read_completion(struct nfs_pgio_header *hdr)
- 	while (!list_empty(&hdr->pages)) {
- 		struct nfs_page *req = nfs_list_entry(hdr->pages.next);
- 		struct page *page = req->wb_page;
-+		unsigned long start = req->wb_pgbase;
-+		unsigned long end = req->wb_pgbase + req->wb_bytes;
+-static int nfsd_users = 0;
++static int nfsd_users;
  
- 		if (test_bit(NFS_IOHDR_EOF, &hdr->flags)) {
--			if (bytes > hdr->good_bytes)
--				zero_user(page, 0, PAGE_SIZE);
--			else if (hdr->good_bytes - bytes < PAGE_SIZE)
--				zero_user_segment(page,
--					hdr->good_bytes & ~PAGE_MASK,
--					PAGE_SIZE);
-+			/* note: regions of the page not covered by a
-+			 * request are zeroed in nfs_readpage_async /
-+			 * readpage_async_filler */
-+			if (bytes > hdr->good_bytes) {
-+				/* nothing in this request was good, so zero
-+				 * the full extent of the request */
-+				zero_user_segment(page, start, end);
-+
-+			} else if (hdr->good_bytes - bytes < req->wb_bytes) {
-+				/* part of this request has good bytes, but
-+				 * not all. zero the bad bytes */
-+				start += hdr->good_bytes - bytes;
-+				WARN_ON(start < req->wb_pgbase);
-+				zero_user_segment(page, start, end);
-+			}
- 		}
- 		bytes += req->wb_bytes;
- 		if (test_bit(NFS_IOHDR_ERROR, &hdr->flags)) {
--- 
-1.8.5.2 (Apple Git-48)
-
+ static int nfsd_startup_generic(int nrservs)
+ {
