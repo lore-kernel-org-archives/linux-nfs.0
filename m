@@ -1,130 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from szxga03-in.huawei.com ([119.145.14.66]:45475 "EHLO
-	szxga03-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752215AbaD3Cqr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Apr 2014 22:46:47 -0400
-From: Weng Meiling <wengmeiling.weng@huawei.com>
-To: <stable@vger.kernel.org>
-CC: <bfields@fieldses.org>, <greg@kroah.com>, <lizefan@huawei.com>,
-        <skinsbursky@parallels.com>, <h.huangqiang@huawei.com>,
-        <linux-nfs@vger.kernel.org>
-Subject: [PATCH v2 3.4 6/9] nfsd: pass net to __write_ports() and down
-Date: Wed, 30 Apr 2014 10:43:41 +0800
-Message-ID: <1398825824-6360-7-git-send-email-wengmeiling.weng@huawei.com>
-In-Reply-To: <1398825824-6360-1-git-send-email-wengmeiling.weng@huawei.com>
-References: <1398825824-6360-1-git-send-email-wengmeiling.weng@huawei.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+Received: from mail-qg0-f49.google.com ([209.85.192.49]:38731 "EHLO
+	mail-qg0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S934686AbaDJUbL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Apr 2014 16:31:11 -0400
+Received: by mail-qg0-f49.google.com with SMTP id e89so498792qgf.8
+        for <linux-nfs@vger.kernel.org>; Thu, 10 Apr 2014 13:31:10 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: steved@redhat.com
+Cc: trond.myklebust@primarydata.com, linux-nfs@vger.kernel.org
+Subject: [PATCH 2/5] gssd: make do_downcall a void return
+Date: Thu, 10 Apr 2014 16:31:00 -0400
+Message-Id: <1397161863-29266-3-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1397161863-29266-1-git-send-email-jlayton@redhat.com>
+References: <1397161863-29266-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+...since its return code is ignored anyway.
 
-commit 081603520b25f7b35ef63a363376a17c36ef74ed upstream.
-
-Precursor patch. Hard-coded "init_net" will be replaced by proper one in
-future.
-
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-[wengmeiling: backport to 3.4:
- - adjust context
- - add net_ns parameter to __write_ports_delxprt()]
-Signed-off-by: Weng Meiling <wengmeiling.weng@huawei.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nfsd/nfsctl.c | 22 +++++++++++-----------
- 1 file changed, 11 insertions(+), 11 deletions(-)
+ utils/gssd/gssd_proc.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index f58e0f9..1d74af2 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -650,11 +650,10 @@ static ssize_t __write_ports_names(char *buf)
-  * a socket of a supported family/protocol, and we use it as an
-  * nfsd listener.
-  */
--static ssize_t __write_ports_addfd(char *buf)
-+static ssize_t __write_ports_addfd(char *buf, struct net *net)
- {
- 	char *mesg = buf;
- 	int fd, err;
--	struct net *net = &init_net;
- 
- 	err = get_int(&mesg, &fd);
- 	if (err != 0 || fd < 0)
-@@ -698,12 +697,11 @@ static ssize_t __write_ports_delfd(char *buf)
-  * A transport listener is added by writing it's transport name and
-  * a port number.
-  */
--static ssize_t __write_ports_addxprt(char *buf)
-+static ssize_t __write_ports_addxprt(char *buf, struct net *net)
- {
- 	char transport[16];
- 	struct svc_xprt *xprt;
- 	int port, err;
--	struct net *net = &init_net;
- 
- 	if (sscanf(buf, "%15s %4u", transport, &port) != 2)
- 		return -EINVAL;
-@@ -743,7 +741,7 @@ out_err:
-  * A transport listener is removed by writing a "-", it's transport
-  * name, and it's port number.
-  */
--static ssize_t __write_ports_delxprt(char *buf)
-+static ssize_t __write_ports_delxprt(char *buf, struct net *net)
- {
- 	struct svc_xprt *xprt;
- 	char transport[16];
-@@ -755,7 +753,7 @@ static ssize_t __write_ports_delxprt(char *buf)
- 	if (port < 1 || port > USHRT_MAX || nfsd_serv == NULL)
- 		return -EINVAL;
- 
--	xprt = svc_find_xprt(nfsd_serv, transport, &init_net, AF_UNSPEC, port);
-+	xprt = svc_find_xprt(nfsd_serv, transport, net, AF_UNSPEC, port);
- 	if (xprt == NULL)
- 		return -ENOTCONN;
- 
-@@ -764,22 +762,23 @@ static ssize_t __write_ports_delxprt(char *buf)
+diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+index 5f7fb32c41b5..7387cce010cf 100644
+--- a/utils/gssd/gssd_proc.c
++++ b/utils/gssd/gssd_proc.c
+@@ -681,7 +681,7 @@ parse_enctypes(char *enctypes)
  	return 0;
  }
  
--static ssize_t __write_ports(struct file *file, char *buf, size_t size)
-+static ssize_t __write_ports(struct file *file, char *buf, size_t size,
-+				struct net *net)
+-static int
++static void
+ do_downcall(int k5_fd, uid_t uid, struct authgss_private_data *pd,
+ 	    gss_buffer_desc *context_token, OM_uint32 lifetime_rec)
  {
- 	if (size == 0)
- 		return __write_ports_names(buf);
+@@ -710,11 +710,11 @@ do_downcall(int k5_fd, uid_t uid, struct authgss_private_data *pd,
  
- 	if (isdigit(buf[0]))
--		return __write_ports_addfd(buf);
-+		return __write_ports_addfd(buf, net);
- 
- 	if (buf[0] == '-' && isdigit(buf[1]))
- 		return __write_ports_delfd(buf);
- 
- 	if (isalpha(buf[0]))
--		return __write_ports_addxprt(buf);
-+		return __write_ports_addxprt(buf, net);
- 
- 	if (buf[0] == '-' && isalpha(buf[1]))
--		return __write_ports_delxprt(buf);
-+		return __write_ports_delxprt(buf, net);
- 
- 	return -EINVAL;
+ 	if (write(k5_fd, buf, p - buf) < p - buf) goto out_err;
+ 	free(buf);
+-	return 0;
++	return;
+ out_err:
+ 	free(buf);
+ 	printerr(1, "Failed to write downcall!\n");
+-	return -1;
++	return;
  }
-@@ -858,9 +857,10 @@ static ssize_t __write_ports(struct file *file, char *buf, size_t size)
- static ssize_t write_ports(struct file *file, char *buf, size_t size)
- {
- 	ssize_t rv;
-+	struct net *net = &init_net;
  
- 	mutex_lock(&nfsd_mutex);
--	rv = __write_ports(file, buf, size);
-+	rv = __write_ports(file, buf, size, net);
- 	mutex_unlock(&nfsd_mutex);
- 	return rv;
- }
+ static int
 -- 
-1.8.2.2
-
+1.9.0
 
