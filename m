@@ -1,124 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f176.google.com ([209.85.223.176]:54240 "EHLO
-	mail-ie0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759308AbaD3T35 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Apr 2014 15:29:57 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH V3 03/17] xprtrdma: RPC/RDMA must invoke
-	xprt_wake_pending_tasks() in process context
-To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Cc: Anna.Schumaker@netapp.com
-Date: Wed, 30 Apr 2014 15:29:54 -0400
-Message-ID: <20140430192954.5663.59248.stgit@manet.1015granger.net>
-In-Reply-To: <20140430191433.5663.16217.stgit@manet.1015granger.net>
-References: <20140430191433.5663.16217.stgit@manet.1015granger.net>
+Received: from natasha.panasas.com ([209.166.131.148]:35604 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1030213AbaDJLCm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Apr 2014 07:02:42 -0400
+Message-ID: <53467A47.4090602@panasas.com>
+Date: Thu, 10 Apr 2014 14:02:31 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: open-osd <osd-dev@open-osd.org>, NFS list <linux-nfs@vger.kernel.org>,
+        Daniel Gryniewicz <dang@linuxbox.com>,
+        Elizabeth Ellenbogen Ziph <elizabeth@linuxbox.com>,
+        "Pathak, Santosh" <santoshp@panasas.com>
+CC: Benny Halevy <bhalevy@primarydata.com>,
+        Sachin bhamare <sachin.bhamare@gmail.com>
+Subject: Re: [osd-dev] [RFC 0/3] ore: raid6
+References: <53467667.3010304@panasas.com>
+In-Reply-To: <53467667.3010304@panasas.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-An IB provider can invoke rpcrdma_conn_func() in an IRQ context,
-thus rpcrdma_conn_func() cannot be allowed to directly invoke
-generic RPC functions like xprt_wake_pending_tasks().
+On 04/10/2014 01:45 PM, Boaz Harrosh wrote:
+> Hi all
+> 
+> proud to present some experimentation with raid6 in ORE.
+> 
+> These simple patches will enable raid6 using the Kernel's raid6_pq engine
+> for support under exofs and pnfs-objects. There is nothing needed to do
+> at exofs and pnfs-obj. Just fire your mkfs.exofs with --raid=6 (that was
+> already supported before) and off you go as usual. The ORE will pick up
+> the new map and will start writing two devices of redundancy bits.
+> 
+> Very RFC right now. Only lightly tested. Git clone linux and compile.
+> Only a very few parameters tested:
+> 	group_width=5 && group_width=6 s_unit=4*PAGES && s_unit=1*PAGE
+> Please have a try, report all the crashes.
+> 
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: Steve Wise <swise@opengridcomputing.com>
----
+Forgot to say if anyone wants to test here:
+	git clone git://git.open-osd.org/linux-open-osd.git raid6
 
- net/sunrpc/xprtrdma/rpc_rdma.c  |   22 +++++++++++++++-------
- net/sunrpc/xprtrdma/verbs.c     |    3 +++
- net/sunrpc/xprtrdma/xprt_rdma.h |    3 +++
- 3 files changed, 21 insertions(+), 7 deletions(-)
-
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index 400aa1b..c296468 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -676,15 +676,11 @@ rpcrdma_inline_fixup(struct rpc_rqst *rqst, char *srcp, int copy_len, int pad)
- 	rqst->rq_private_buf = rqst->rq_rcv_buf;
- }
- 
--/*
-- * This function is called when an async event is posted to
-- * the connection which changes the connection state. All it
-- * does at this point is mark the connection up/down, the rpc
-- * timers do the rest.
-- */
- void
--rpcrdma_conn_func(struct rpcrdma_ep *ep)
-+rpcrdma_connect_worker(struct work_struct *work)
- {
-+	struct rpcrdma_ep *ep =
-+		container_of(work, struct rpcrdma_ep, rep_connect_worker.work);
- 	struct rpc_xprt *xprt = ep->rep_xprt;
- 
- 	spin_lock_bh(&xprt->transport_lock);
-@@ -701,6 +697,18 @@ rpcrdma_conn_func(struct rpcrdma_ep *ep)
- }
- 
- /*
-+ * This function is called when an async event is posted to
-+ * the connection which changes the connection state. All it
-+ * does at this point is mark the connection up/down, the rpc
-+ * timers do the rest.
-+ */
-+void
-+rpcrdma_conn_func(struct rpcrdma_ep *ep)
-+{
-+	schedule_delayed_work(&ep->rep_connect_worker, 0);
-+}
-+
-+/*
-  * This function is called when memory window unbind which we are waiting
-  * for completes. Just use rr_func (zeroed by upcall) to signal completion.
-  */
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 8f9704e..9cb88f3 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -742,6 +742,7 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
- 	INIT_CQCOUNT(ep);
- 	ep->rep_ia = ia;
- 	init_waitqueue_head(&ep->rep_connect_wait);
-+	INIT_DELAYED_WORK(&ep->rep_connect_worker, rpcrdma_connect_worker);
- 
- 	/*
- 	 * Create a single cq for receive dto and mw_bind (only ever
-@@ -817,6 +818,8 @@ rpcrdma_ep_destroy(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
- 	dprintk("RPC:       %s: entering, connected is %d\n",
- 		__func__, ep->rep_connected);
- 
-+	cancel_delayed_work_sync(&ep->rep_connect_worker);
-+
- 	if (ia->ri_id->qp) {
- 		rc = rpcrdma_ep_disconnect(ep, ia);
- 		if (rc)
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 98340a3..c620d13 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -43,6 +43,7 @@
- #include <linux/wait.h> 		/* wait_queue_head_t, etc */
- #include <linux/spinlock.h> 		/* spinlock_t, etc */
- #include <linux/atomic.h>			/* atomic_t, etc */
-+#include <linux/workqueue.h>		/* struct work_struct */
- 
- #include <rdma/rdma_cm.h>		/* RDMA connection api */
- #include <rdma/ib_verbs.h>		/* RDMA verbs api */
-@@ -87,6 +88,7 @@ struct rpcrdma_ep {
- 	struct rpc_xprt		*rep_xprt;	/* for rep_func */
- 	struct rdma_conn_param	rep_remote_cma;
- 	struct sockaddr_storage	rep_remote_addr;
-+	struct delayed_work	rep_connect_worker;
- };
- 
- #define INIT_CQCOUNT(ep) atomic_set(&(ep)->rep_cqcount, (ep)->rep_cqinit)
-@@ -336,6 +338,7 @@ int rpcrdma_deregister_external(struct rpcrdma_mr_seg *,
- /*
-  * RPC/RDMA connection management calls - xprtrdma/rpc_rdma.c
-  */
-+void rpcrdma_connect_worker(struct work_struct *);
- void rpcrdma_conn_func(struct rpcrdma_ep *);
- void rpcrdma_reply_handler(struct rpcrdma_rep *);
- 
+> In the next iteration I would like to add some raid6-math documentation
+> which I think is needed for completeness.
+> 
+> I want to deeply thank Daniel Gryniewicz who found first all the
+> bugs in the old raid code, and inspired these patches.
+> 
+> list of patches:
+> [PATCH 1/4] ore: (trivial) reformat some code
+> [PATCH 2/4] ore: Remove redundant dev_order(), more cleanups
+> [PATCH 3/4] ore: Support for raid 6
+> 
+> Cheers
+> Boaz
 
