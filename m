@@ -1,94 +1,155 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ipmail04.adl6.internode.on.net ([150.101.137.141]:5656 "EHLO
-	ipmail04.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752002AbaD2AF6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Apr 2014 20:05:58 -0400
-Date: Tue, 29 Apr 2014 10:04:02 +1000
-From: Dave Chinner <david@fromorbit.com>
-To: Jeff Layton <jlayton@poochiereds.net>
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>, agruen@kernel.org,
-        bfields@fieldses.org, akpm@linux-foundation.org,
-        viro@zeniv.linux.org.uk, dhowells@redhat.com,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH -V1 05/22] vfs: Add new file and directory create
- permission flags
-Message-ID: <20140429000402.GO15995@dastard>
-References: <1398615293-22931-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
- <1398615293-22931-6-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
- <20140428072301.123674d4@tlielax.poochiereds.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140428072301.123674d4@tlielax.poochiereds.net>
+Received: from mail-qc0-f176.google.com ([209.85.216.176]:57242 "EHLO
+	mail-qc0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S934686AbaDJUaE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Apr 2014 16:30:04 -0400
+Received: by mail-qc0-f176.google.com with SMTP id m20so4921512qcx.21
+        for <linux-nfs@vger.kernel.org>; Thu, 10 Apr 2014 13:30:04 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: trond.myklebust@primarydata.com
+Cc: steved@redhat.com, linux-nfs@vger.kernel.org
+Subject: [PATCH 2/3] sunrpc: add a new "stringify_acceptor" rpc_credop
+Date: Thu, 10 Apr 2014 16:29:50 -0400
+Message-Id: <1397161791-29144-3-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1397161791-29144-1-git-send-email-jlayton@redhat.com>
+References: <1397161791-29144-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Apr 28, 2014 at 07:23:01AM -0400, Jeff Layton wrote:
-> On Sun, 27 Apr 2014 21:44:36 +0530
-> "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com> wrote:
-> 
-> > From: Andreas Gruenbacher <agruen@kernel.org>
-> > 
-> > Some permission models distinguish between the permission to create a
-> > non-directory and a directory.  Pass this information down to
-> > inode_permission() as mask flags
-> > 
-> > Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
-> > Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-> > ---
-> >  fs/namei.c         | 21 ++++++++++++---------
-> >  include/linux/fs.h |  2 ++
-> >  2 files changed, 14 insertions(+), 9 deletions(-)
-> > 
-> > diff --git a/fs/namei.c b/fs/namei.c
-> > index 7d93d195f0e5..028bc8bcf77c 100644
-> > --- a/fs/namei.c
-> > +++ b/fs/namei.c
-> > @@ -445,7 +445,8 @@ static int sb_permission(struct super_block *sb, struct inode *inode, int mask)
-> >   * this, letting us set arbitrary permissions for filesystem access without
-> >   * changing the "normal" UIDs which are used for other things.
-> >   *
-> > - * When checking for MAY_APPEND, MAY_WRITE must also be set in @mask.
-> > + * When checking for MAY_APPEND, MAY_CREATE_FILE, MAY_CREATE_DIR,
-> > + * MAY_WRITE must also be set in @mask.
-> >   */
-> >  int inode_permission(struct inode *inode, int mask)
-> >  {
-> > @@ -2444,14 +2445,16 @@ static int may_delete(struct inode *dir, struct dentry *victim, bool isdir)
-> >   *  3. We should have write and exec permissions on dir
-> >   *  4. We can't do it if dir is immutable (done in permission())
-> >   */
-> > -static inline int may_create(struct inode *dir, struct dentry *child)
-> > +static inline int may_create(struct inode *dir, struct dentry *child, bool isdir)
-> >  {
-> > +	int mask = isdir ? MAY_CREATE_DIR : MAY_CREATE_FILE;
-> > +
-> >  	audit_inode_child(dir, child, AUDIT_TYPE_CHILD_CREATE);
-> >  	if (child->d_inode)
-> >  		return -EEXIST;
-> >  	if (IS_DEADDIR(dir))
-> >  		return -ENOENT;
-> > -	return inode_permission(dir, MAY_WRITE | MAY_EXEC);
-> > +	return inode_permission(dir, MAY_WRITE | MAY_EXEC | mask);
-> >  }
-> >  
-> >  /*
-> > @@ -2501,7 +2504,7 @@ EXPORT_SYMBOL(unlock_rename);
-> >  int vfs_create(struct inode *dir, struct dentry *dentry, umode_t mode,
-> >  		bool want_excl)
-> >  {
-> > -	int error = may_create(dir, dentry);
-> > +	int error = may_create(dir, dentry, 0);
-> 
-> nit: since the third argument here is a bool, this should be "false"
-> and not "0". Ditto for all of the other calls of may_create.
+...and add an new rpc_auth function to call it when it exists. This
+is only applicable for AUTH_GSS mechanisms, so we only specify this
+for those sorts of credentials.
 
-IMO, the third argument should be MAY_CREATE_FILE or MAY_CREATE_DIR,
-which is what the boolean evaluates to in may_create()....
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ include/linux/sunrpc/auth.h    |  2 ++
+ net/sunrpc/auth.c              |  9 ++++++
+ net/sunrpc/auth_gss/auth_gss.c | 62 ++++++++++++++++++++++++++++--------------
+ 3 files changed, 53 insertions(+), 20 deletions(-)
 
-Cheers,
-
-Dave.
+diff --git a/include/linux/sunrpc/auth.h b/include/linux/sunrpc/auth.h
+index 790be1472792..c683b9a06913 100644
+--- a/include/linux/sunrpc/auth.h
++++ b/include/linux/sunrpc/auth.h
+@@ -140,6 +140,7 @@ struct rpc_credops {
+ 						void *, __be32 *, void *);
+ 	int			(*crkey_timeout)(struct rpc_cred *);
+ 	bool			(*crkey_to_expire)(struct rpc_cred *);
++	char *			(*crstringify_acceptor)(struct rpc_cred *);
+ };
+ 
+ extern const struct rpc_authops	authunix_ops;
+@@ -182,6 +183,7 @@ void			rpcauth_clear_credcache(struct rpc_cred_cache *);
+ int			rpcauth_key_timeout_notify(struct rpc_auth *,
+ 						struct rpc_cred *);
+ bool			rpcauth_cred_key_to_expire(struct rpc_cred *);
++char *			rpcauth_stringify_acceptor(struct rpc_cred *);
+ 
+ static inline
+ struct rpc_cred *	get_rpccred(struct rpc_cred *cred)
+diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
+index 5285ead196c0..ef51bb77c465 100644
+--- a/net/sunrpc/auth.c
++++ b/net/sunrpc/auth.c
+@@ -363,6 +363,15 @@ rpcauth_cred_key_to_expire(struct rpc_cred *cred)
+ }
+ EXPORT_SYMBOL_GPL(rpcauth_cred_key_to_expire);
+ 
++char *
++rpcauth_stringify_acceptor(struct rpc_cred *cred)
++{
++	if (!cred->cr_ops->crstringify_acceptor)
++		return NULL;
++	return cred->cr_ops->crstringify_acceptor(cred);
++}
++EXPORT_SYMBOL_GPL(rpcauth_stringify_acceptor);
++
+ /*
+  * Destroy a list of credentials
+  */
+diff --git a/net/sunrpc/auth_gss/auth_gss.c b/net/sunrpc/auth_gss/auth_gss.c
+index f341aabb92db..2f5b860f3491 100644
+--- a/net/sunrpc/auth_gss/auth_gss.c
++++ b/net/sunrpc/auth_gss/auth_gss.c
+@@ -1346,6 +1346,26 @@ gss_cred_init(struct rpc_auth *auth, struct rpc_cred *cred)
+ 	return err;
+ }
+ 
++static char *
++gss_stringify_acceptor(struct rpc_cred *cred)
++{
++	char *string;
++	struct gss_cred *gss_cred = container_of(cred, struct gss_cred, gc_base);
++	struct xdr_netobj *acceptor = &gss_cred->gc_ctx->gc_acceptor;
++
++	/* no point if there's no string */
++	if (!acceptor->len)
++		return NULL;
++
++	string = kmalloc(acceptor->len + 1, GFP_KERNEL);
++	if (!string)
++		return string;
++
++	memcpy(string, acceptor->data, acceptor->len);
++	string[acceptor->len] = '\0';
++	return string;
++}
++
+ /*
+  * Returns -EACCES if GSS context is NULL or will expire within the
+  * timeout (miliseconds)
+@@ -1923,29 +1943,31 @@ static const struct rpc_authops authgss_ops = {
+ };
+ 
+ static const struct rpc_credops gss_credops = {
+-	.cr_name	= "AUTH_GSS",
+-	.crdestroy	= gss_destroy_cred,
+-	.cr_init	= gss_cred_init,
+-	.crbind		= rpcauth_generic_bind_cred,
+-	.crmatch	= gss_match,
+-	.crmarshal	= gss_marshal,
+-	.crrefresh	= gss_refresh,
+-	.crvalidate	= gss_validate,
+-	.crwrap_req	= gss_wrap_req,
+-	.crunwrap_resp	= gss_unwrap_resp,
+-	.crkey_timeout	= gss_key_timeout,
++	.cr_name		= "AUTH_GSS",
++	.crdestroy		= gss_destroy_cred,
++	.cr_init		= gss_cred_init,
++	.crbind			= rpcauth_generic_bind_cred,
++	.crmatch		= gss_match,
++	.crmarshal		= gss_marshal,
++	.crrefresh		= gss_refresh,
++	.crvalidate		= gss_validate,
++	.crwrap_req		= gss_wrap_req,
++	.crunwrap_resp		= gss_unwrap_resp,
++	.crkey_timeout		= gss_key_timeout,
++	.crstringify_acceptor	= gss_stringify_acceptor,
+ };
+ 
+ static const struct rpc_credops gss_nullops = {
+-	.cr_name	= "AUTH_GSS",
+-	.crdestroy	= gss_destroy_nullcred,
+-	.crbind		= rpcauth_generic_bind_cred,
+-	.crmatch	= gss_match,
+-	.crmarshal	= gss_marshal,
+-	.crrefresh	= gss_refresh_null,
+-	.crvalidate	= gss_validate,
+-	.crwrap_req	= gss_wrap_req,
+-	.crunwrap_resp	= gss_unwrap_resp,
++	.cr_name		= "AUTH_GSS",
++	.crdestroy		= gss_destroy_nullcred,
++	.crbind			= rpcauth_generic_bind_cred,
++	.crmatch		= gss_match,
++	.crmarshal		= gss_marshal,
++	.crrefresh		= gss_refresh_null,
++	.crvalidate		= gss_validate,
++	.crwrap_req		= gss_wrap_req,
++	.crunwrap_resp		= gss_unwrap_resp,
++	.crstringify_acceptor	= gss_stringify_acceptor,
+ };
+ 
+ static const struct rpc_pipe_ops gss_upcall_ops_v0 = {
 -- 
-Dave Chinner
-david@fromorbit.com
+1.9.0
+
