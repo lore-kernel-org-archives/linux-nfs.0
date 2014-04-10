@@ -1,98 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:38838 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753794AbaDPETI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Apr 2014 00:19:08 -0400
-From: NeilBrown <neilb@suse.de>
-To: linux-mm@kvack.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Date: Wed, 16 Apr 2014 14:03:36 +1000
-Subject: [PATCH 11/19] FS: set PF_FSTRANS while holding mmap_sem in exec.c
-Cc: xfs@oss.sgi.com
-Message-ID: <20140416040336.10604.31309.stgit@notabene.brown>
-In-Reply-To: <20140416033623.10604.69237.stgit@notabene.brown>
-References: <20140416033623.10604.69237.stgit@notabene.brown>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-qa0-f41.google.com ([209.85.216.41]:37002 "EHLO
+	mail-qa0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753327AbaDJUhK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Apr 2014 16:37:10 -0400
+Received: by mail-qa0-f41.google.com with SMTP id j5so4455399qaq.14
+        for <linux-nfs@vger.kernel.org>; Thu, 10 Apr 2014 13:37:09 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: trond.myklebust@primarydata.com
+Cc: steved@redhat.com, linux-nfs@vger.kernel.org
+Subject: [PATCH 0/3] nfs: fix v4.0 callback channel auth failures
+Date: Thu, 10 Apr 2014 16:29:48 -0400
+Message-Id: <1397161791-29144-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Because mmap_sem is sometimes(*) taken while holding a sock lock,
-and the sock lock might be needed for reclaim (at least when loop-back
-NFS is active), we must not block on FS reclaim while mmap_sem is
-held.
+Earlier this week, we had a lively discussion about how to fix the
+bogus way that the callback channel tries to authenticate requests
+coming in. The consensus was that the right approach is to save off
+the acceptor name in a GSSAPI SETCLIENTID call, and then to compare
+that to the initiator name in the callback requests.
 
-exec.c allocates memory while holding mmap_sem, and so needs
-PF_FSTRANS protection.
+This patchset is the kernel portion of that change. There is also
+a companion patchset for gssd to make it pass the acceptor name
+to the kernel in the downcall.
 
-* lockdep reports:
-[   57.653355]    [<ffffffff810eb068>] lock_acquire+0xa8/0x1f0
-[   57.653355]    [<ffffffff811835a4>] might_fault+0x84/0xb0
-[   57.653355]    [<ffffffff81aec65d>] do_ip_setsockopt.isra.18+0x93d/0xed0
-[   57.653355]    [<ffffffff81aecc17>] ip_setsockopt+0x27/0x90
-[   57.653355]    [<ffffffff81b15146>] udp_setsockopt+0x16/0x30
-[   57.653355]    [<ffffffff81a913cf>] sock_common_setsockopt+0xf/0x20
-[   57.653355]    [<ffffffff81a9075e>] SyS_setsockopt+0x5e/0xc0
-[   57.653355]    [<ffffffff81c3d062>] system_call_fastpath+0x16/0x1b
+Jeff Layton (3):
+  auth_gss: fetch the acceptor name out of the downcall
+  sunrpc: add a new "stringify_acceptor" rpc_credop
+  nfs4: copy acceptor name from context to nfs_client
 
-to explain why mmap_sem might be taken while sock lock is held.
+ fs/nfs/callback.c               | 12 ++++++
+ fs/nfs/client.c                 |  1 +
+ fs/nfs/nfs4proc.c               | 30 ++++++++++++++-
+ include/linux/nfs_fs_sb.h       |  1 +
+ include/linux/nfs_xdr.h         |  1 +
+ include/linux/sunrpc/auth.h     |  2 +
+ include/linux/sunrpc/auth_gss.h |  1 +
+ net/sunrpc/auth.c               |  9 +++++
+ net/sunrpc/auth_gss/auth_gss.c  | 82 +++++++++++++++++++++++++++++------------
+ 9 files changed, 115 insertions(+), 24 deletions(-)
 
-Signed-off-by: NeilBrown <neilb@suse.de>
----
- fs/exec.c |    6 ++++++
- 1 file changed, 6 insertions(+)
-
-diff --git a/fs/exec.c b/fs/exec.c
-index 3d78fccdd723..2c70a03ddb2b 100644
---- a/fs/exec.c
-+++ b/fs/exec.c
-@@ -652,6 +652,7 @@ int setup_arg_pages(struct linux_binprm *bprm,
- 	unsigned long stack_size;
- 	unsigned long stack_expand;
- 	unsigned long rlim_stack;
-+	unsigned int pflags;
- 
- #ifdef CONFIG_STACK_GROWSUP
- 	/* Limit stack size to 1GB */
-@@ -688,6 +689,7 @@ int setup_arg_pages(struct linux_binprm *bprm,
- 
- 	down_write(&mm->mmap_sem);
- 	vm_flags = VM_STACK_FLAGS;
-+	current_set_flags_nested(&pflags, PF_FSTRANS);
- 
- 	/*
- 	 * Adjust stack execute permissions; explicitly enable for
-@@ -741,6 +743,7 @@ int setup_arg_pages(struct linux_binprm *bprm,
- 		ret = -EFAULT;
- 
- out_unlock:
-+	current_restore_flags_nested(&pflags, PF_FSTRANS);
- 	up_write(&mm->mmap_sem);
- 	return ret;
- }
-@@ -1369,6 +1372,7 @@ int search_binary_handler(struct linux_binprm *bprm)
- 	bool need_retry = IS_ENABLED(CONFIG_MODULES);
- 	struct linux_binfmt *fmt;
- 	int retval;
-+	unsigned int pflags;
- 
- 	/* This allows 4 levels of binfmt rewrites before failing hard. */
- 	if (bprm->recursion_depth > 5)
-@@ -1381,6 +1385,7 @@ int search_binary_handler(struct linux_binprm *bprm)
- 	retval = -ENOENT;
-  retry:
- 	read_lock(&binfmt_lock);
-+	current_set_flags_nested(&pflags, PF_FSTRANS);
- 	list_for_each_entry(fmt, &formats, lh) {
- 		if (!try_module_get(fmt->module))
- 			continue;
-@@ -1396,6 +1401,7 @@ int search_binary_handler(struct linux_binprm *bprm)
- 		read_lock(&binfmt_lock);
- 		put_binfmt(fmt);
- 	}
-+	current_restore_flags_nested(&pflags, PF_FSTRANS);
- 	read_unlock(&binfmt_lock);
- 
- 	if (need_retry && retval == -ENOEXEC) {
-
+-- 
+1.9.0
 
