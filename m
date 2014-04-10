@@ -1,120 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from [119.145.14.65] ([119.145.14.65]:30417 "EHLO
-	szxga02-in.huawei.com" rhost-flags-FAIL-FAIL-OK-OK) by vger.kernel.org
-	with ESMTP id S1753356AbaD3CrQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Apr 2014 22:47:16 -0400
-From: Weng Meiling <wengmeiling.weng@huawei.com>
-To: <stable@vger.kernel.org>
-CC: <bfields@fieldses.org>, <greg@kroah.com>, <lizefan@huawei.com>,
-        <skinsbursky@parallels.com>, <h.huangqiang@huawei.com>,
-        <linux-nfs@vger.kernel.org>
-Subject: [PATCH v2 3.4 2/9] nfsd: pass net to nfsd_startup() and nfsd_shutdown()
-Date: Wed, 30 Apr 2014 10:43:37 +0800
-Message-ID: <1398825824-6360-3-git-send-email-wengmeiling.weng@huawei.com>
-In-Reply-To: <1398825824-6360-1-git-send-email-wengmeiling.weng@huawei.com>
-References: <1398825824-6360-1-git-send-email-wengmeiling.weng@huawei.com>
+Received: from static-209-166-131-148.expedient.com ([209.166.131.148]:34552
+	"EHLO natasha.panasas.com" rhost-flags-OK-FAIL-OK-OK)
+	by vger.kernel.org with ESMTP id S965541AbaDJKqT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Apr 2014 06:46:19 -0400
+Message-ID: <53467667.3010304@panasas.com>
+Date: Thu, 10 Apr 2014 13:45:59 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-Content-Type: text/plain
+To: open-osd <osd-dev@open-osd.org>, NFS list <linux-nfs@vger.kernel.org>,
+        Daniel Gryniewicz <dang@linuxbox.com>,
+        Elizabeth Ellenbogen Ziph <elizabeth@linuxbox.com>,
+        "Pathak, Santosh" <santoshp@panasas.com>
+CC: Benny Halevy <bhalevy@primarydata.com>,
+        Sachin bhamare <sachin.bhamare@gmail.com>
+Subject: [RFC 0/3] ore: raid6
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Hi all
 
-commit db42d1a76a8dfcaba7a2dc9c591fa4e231db22b3 upstream.
+proud to present some experimentation with raid6 in ORE.
 
-Precursor patch. Hard-coded "init_net" will be replaced by proper one in
-future.
+These simple patches will enable raid6 using the Kernel's raid6_pq engine
+for support under exofs and pnfs-objects. There is nothing needed to do
+at exofs and pnfs-obj. Just fire your mkfs.exofs with --raid=6 (that was
+already supported before) and off you go as usual. The ORE will pick up
+the new map and will start writing two devices of redundancy bits.
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-[wengmeiling: backport to 3.4:
- - adjust context
- - one more parameter(int port) for nfsd_startup()
- - no net ns initialization in nfsd_shutdown()
- - pass @net to lockd_up() in nfsd_startup()
- - pass @net to lockd_down() in nfsd_shutdown()]
-Signed-off-by: Weng Meiling <wengmeiling.weng@huawei.com>
----
- fs/nfsd/nfssvc.c | 17 ++++++++---------
- 1 file changed, 8 insertions(+), 9 deletions(-)
+Very RFC right now. Only lightly tested. Git clone linux and compile.
+Only a very few parameters tested:
+	group_width=5 && group_width=6 s_unit=4*PAGES && s_unit=1*PAGE
+Please have a try, report all the crashes.
 
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index 517a883..f8dae75 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -203,10 +203,9 @@ static int nfsd_init_socks(int port, struct net *net)
- 
- static bool nfsd_up = false;
- 
--static int nfsd_startup(unsigned short port, int nrservs)
-+static int nfsd_startup(unsigned short port, int nrservs, struct net *net)
- {
- 	int ret;
--	struct net *net = &init_net;
- 
- 	if (nfsd_up)
- 		return 0;
-@@ -221,7 +220,7 @@ static int nfsd_startup(unsigned short port, int nrservs)
- 	ret = nfsd_init_socks(port, net);
- 	if (ret)
- 		goto out_racache;
--	ret = lockd_up(&init_net);
-+	ret = lockd_up(net);
- 	if (ret)
- 		goto out_racache;
- 	ret = nfs4_state_start();
-@@ -230,13 +229,13 @@ static int nfsd_startup(unsigned short port, int nrservs)
- 	nfsd_up = true;
- 	return 0;
- out_lockd:
--	lockd_down(&init_net);
-+	lockd_down(net);
- out_racache:
- 	nfsd_racache_shutdown();
- 	return ret;
- }
- 
--static void nfsd_shutdown(void)
-+static void nfsd_shutdown(struct net *net)
- {
- 	/*
- 	 * write_ports can create the server without actually starting
-@@ -247,14 +246,14 @@ static void nfsd_shutdown(void)
- 	if (!nfsd_up)
- 		return;
- 	nfs4_state_shutdown();
--	lockd_down(&init_net);
-+	lockd_down(net);
- 	nfsd_racache_shutdown();
- 	nfsd_up = false;
- }
- 
- static void nfsd_last_thread(struct svc_serv *serv, struct net *net)
- {
--	nfsd_shutdown();
-+	nfsd_shutdown(net);
- 
- 	svc_rpcb_cleanup(serv, net);
- 
-@@ -458,7 +457,7 @@ nfsd_svc(unsigned short port, int nrservs)
- 
- 	nfsd_up_before = nfsd_up;
- 
--	error = nfsd_startup(port, nrservs);
-+	error = nfsd_startup(port, nrservs, net);
- 	if (error)
- 		goto out_destroy;
- 	error = svc_set_num_threads(nfsd_serv, NULL, nrservs);
-@@ -471,7 +470,7 @@ nfsd_svc(unsigned short port, int nrservs)
- 	error = nfsd_serv->sv_nrthreads - 1;
- out_shutdown:
- 	if (error < 0 && !nfsd_up_before)
--		nfsd_shutdown();
-+		nfsd_shutdown(net);
- out_destroy:
- 	nfsd_destroy(net);		/* Release server */
- out:
--- 
-1.8.2.2
+In the next iteration I would like to add some raid6-math documentation
+which I think is needed for completeness.
 
+I want to deeply thank Daniel Gryniewicz who found first all the
+bugs in the old raid code, and inspired these patches.
 
+list of patches:
+[PATCH 1/4] ore: (trivial) reformat some code
+[PATCH 2/4] ore: Remove redundant dev_order(), more cleanups
+[PATCH 3/4] ore: Support for raid 6
+
+Cheers
+Boaz
