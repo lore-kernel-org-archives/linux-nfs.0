@@ -1,100 +1,207 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:48790 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932275AbaDHSL7 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 Apr 2014 14:11:59 -0400
-Date: Tue, 8 Apr 2014 14:11:58 -0400
-From: Dr Fields James Bruce <bfields@fieldses.org>
-To: Simo Sorce <simo@redhat.com>
-Cc: Jeff Layton <jlayton@redhat.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        NFS <linux-nfs@vger.kernel.org>,
-        Adamson William Andros <androsadamson@gmail.com>,
-        Lever Charles Edward <chuck.lever@oracle.com>
-Subject: Re: v4.0 CB_COMPOUND authentication failures
-Message-ID: <20140408181158.GE9457@fieldses.org>
-References: <20140408140333.GD3882@fieldses.org>
- <6CC79B2A-8AE2-4A36-BB57-380C2F9813C0@primarydata.com>
- <20140408144652.GE3882@fieldses.org>
- <ECD8245B-CDEE-442E-A41A-BECE08BEEDA1@primarydata.com>
- <20140408124428.5152ae8b@tlielax.poochiereds.net>
- <1396978021.14203.163.camel@willson.li.ssimo.org>
- <20140408133040.3c149238@tlielax.poochiereds.net>
- <1396980075.14203.164.camel@willson.li.ssimo.org>
- <20140408140447.51695274@tlielax.poochiereds.net>
- <1396980494.14203.169.camel@willson.li.ssimo.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1396980494.14203.169.camel@willson.li.ssimo.org>
+Received: from userp1040.oracle.com ([156.151.31.81]:21453 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932847AbaDJAfX convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Apr 2014 20:35:23 -0400
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
+Subject: Re: [PATCH V2] NFS-RDMA: fix qp pointer validation checks
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <f02a9959-4530-474f-8076-1139362aaea6@CMEXHTCAS1.ad.emulex.com>
+Date: Wed, 9 Apr 2014 20:35:16 -0400
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-rdma@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Message-Id: <22067556-CC9F-45B3-8597-C801231FC04F@oracle.com>
+References: <f02a9959-4530-474f-8076-1139362aaea6@CMEXHTCAS1.ad.emulex.com>
+To: Devesh Sharma <devesh.sharma@emulex.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Apr 08, 2014 at 02:08:14PM -0400, Simo Sorce wrote:
-> On Tue, 2014-04-08 at 14:04 -0400, Jeff Layton wrote:
-> > On Tue, 08 Apr 2014 14:01:15 -0400
-> > Simo Sorce <simo@redhat.com> wrote:
-> > 
-> > > On Tue, 2014-04-08 at 13:30 -0400, Jeff Layton wrote:
-> > > > On Tue, 08 Apr 2014 13:27:01 -0400
-> > > > Simo Sorce <simo@redhat.com> wrote:
-> > > > 
-> > > > > On Tue, 2014-04-08 at 12:44 -0400, Jeff Layton wrote:
-> > > > > > 
-> > > > > > I think that's what happens. We only fall back to using AUTH_SYS if
-> > > > > > nfs_create_rpc_client returns -EINVAL. In the event that the security
-> > > > > > negotiation fails, we should get back -EACCES and that should bubble
-> > > > > > back up to userland.
-> > > > > > 
-> > > > > > The real problem is that gssd (and also the krb5 libs themselves) will
-> > > > > > try to canonicalize the name. The resulting host portion of the SPN
-> > > > > > may bear no resemblance to the hostname in the device string. In fact,
-> > > > > > if you mount using an IP address then you're pretty much SOL.
-> > > > > 
-> > > > > If you mount by IP do you really care about krb5 ? Probably not, maybe
-> > > > > that's a clue we should not even try ...
-> > > > > 
-> > > > 
-> > > > It's certainly possible that someone passes in an IP address but then
-> > > > says "-o sec=krb5". It has worked in the past, so it's hard to know
-> > > > whether and how many people actually depend on it.
-> > > > 
-> > > > > > I haven't tried it yet, but it looks reasonably trivial to fix gssd
-> > > > > > not to bother with DNS at all and just rely on the hostname. That
-> > > > > > won't stop the krb5 libs from doing their canonicalization though. I'm
-> > > > > > not sure if there's some way to ask the krb5 libs to avoid doing that.
-> > > > > 
-> > > > > [libdefaults]
-> > > > > rdns = false
-> > > > > 
-> > > > > And I think we change the default to false in Fedora/RHEL lately ...
-> > > > > 
-> > > > > Simo.
-> > > > > 
-> > > > 
-> > > > That's a step in the right direction, but I think that the rdns just
-> > > > makes it skip the reverse lookup. AFAIK, the MIT libs will still do
-> > > > getaddrinfo and scrape out the ai_canonname and use that in preference
-> > > > to the hostname you pass in.
-> > > 
-> > > That should happen only if you are using a CNAME, not for an A name.
-> > > 
-> > > We can open bugs if this is not the case though.
-> > > 
-> > 
-> > That's still a problem for us then. The current code tries to compare
-> > the host portion of the device string to the SPN that we get in the
-> > callback request. If they don't match, it fails.
-> > 
-> > I think what we need to do is fix this the right way -- make rpc.gssd
-> > pass down the acceptor name with the downcall.
+Hi Devesh-
+
+
+On Apr 9, 2014, at 7:54 PM, Devesh Sharma <devesh.sharma@emulex.com> wrote:
+
+> If the rdma_create_qp fails to create qp due to device firmware being in invalid state
+> xprtrdma still tries to destroy the non-existant qp and ends up in a NULL pointer reference
+> crash.
+> Adding proper checks for vaidating QP pointer avoids this to happen.
 > 
-> Why do you need the comparison at all, pardon my ignorance, I do not
-> know very well what its purpose is.
+> V0: Using IS_ERR() to check validity of qp pointer.
+> V1: Use of IS_ERR() will not be able to catch NULL QP pointers as rdma_create_qp() returnes NULL in case
+>    ib_create_qp verb is failed. Therefore, changed from usage of IS_ERR to null pointer check.
+> V2: ib_post_send() should not abort after DECR_CQCOUNT() checking for NULL pointer was causing exit from functions
+>    after decrementing CQCOUNT(). Fixed this in V2.
+> 
+> Signed-off-by: Devesh Sharma <devesh.sharma@emulex.com>
+> ---
+> net/sunrpc/xprtrdma/verbs.c |   92 ++++++++++++++++++++++++++-----------------
+> 1 files changed, 56 insertions(+), 36 deletions(-)
+> 
+> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+> index 9372656..9e56baf 100644
+> --- a/net/sunrpc/xprtrdma/verbs.c
+> +++ b/net/sunrpc/xprtrdma/verbs.c
+> @@ -831,10 +831,12 @@ rpcrdma_ep_connect(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
+> 	if (ep->rep_connected != 0) {
+> 		struct rpcrdma_xprt *xprt;
+> retry:
+> -		rc = rpcrdma_ep_disconnect(ep, ia);
+> -		if (rc && rc != -ENOTCONN)
+> -			dprintk("RPC:       %s: rpcrdma_ep_disconnect"
+> +		if (ia->ri_id->qp) {
+> +			rc = rpcrdma_ep_disconnect(ep, ia);
+> +			if (rc && rc != -ENOTCONN)
+> +				dprintk("RPC:       %s: rpcrdma_ep_disconnect"
+> 				" status %i\n", __func__, rc);
+> +		}
+> 		rpcrdma_clean_cq(ep->rep_cq);
+> 
+> 		xprt = container_of(ia, struct rpcrdma_xprt, rx_ia);
+> @@ -859,7 +861,8 @@ retry:
+> 			goto out;
+> 		}
+> 		/* END TEMP */
+> -		rdma_destroy_qp(ia->ri_id);
+> +		if (ia->ri_id->qp)
+> +			rdma_destroy_qp(ia->ri_id);
+> 		rdma_destroy_id(ia->ri_id);
+> 		ia->ri_id = id;
+> 	}
 
-The NFS client wants to verify that a callback came from the server, so
-it needs to know who it originally authenticated to.
+Does your set up still panic if rpcrdma_ep_connect() is fixed as above, but the rest of these hunks are left unapplied?
 
-(Though honestly it's unlikely you can do much damage by spoofing
-callbacks.)
 
---b.
+> @@ -1555,22 +1558,30 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
+> 				IB_ACCESS_REMOTE_WRITE | IB_ACCESS_LOCAL_WRITE :
+> 				IB_ACCESS_REMOTE_READ);
+> 	frmr_wr.wr.fast_reg.rkey = seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey;
+> -	DECR_CQCOUNT(&r_xprt->rx_ep);
+> 
+> -	rc = ib_post_send(ia->ri_id->qp, post_wr, &bad_wr);
+> +	if (!ia->ri_is->qp) {
+
+You mean “if (ia->ri_id->qp) {”
+
+> +		DECR_CQCOUNT(&r_xprt->rx_ep);
+> +		rc = ib_post_send(ia->ri_id->qp, post_wr, &bad_wr);
+> 
+> -	if (rc) {
+> -		dprintk("RPC:       %s: failed ib_post_send for register,"
+> -			" status %i\n", __func__, rc);
+> -		while (i--)
+> -			rpcrdma_unmap_one(ia, --seg);
+> +		if (rc) {
+> +			dprintk("RPC:       %s: failed ib_post_send for register,"
+> +				" status %i\n", __func__, rc);
+> +			goto out;
+> +		} else {
+> +			seg1->mr_rkey = seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey;
+> +			seg1->mr_base = seg1->mr_dma + pageoff;
+> +			seg1->mr_nsegs = i;
+> +			seg1->mr_len = len;
+> +		}
+> 	} else {
+> -		seg1->mr_rkey = seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey;
+> -		seg1->mr_base = seg1->mr_dma + pageoff;
+> -		seg1->mr_nsegs = i;
+> -		seg1->mr_len = len;
+> +		rc = -EINVAL;
+> +		goto out;
+> 	}
+> +
+> 	*nsegs = i;
+> +out:
+> +	while (i--)
+> +		rpcrdma_unmap_one(ia, --seg);
+> 	return rc;
+> }
+> 
+> @@ -1590,12 +1601,16 @@ rpcrdma_deregister_frmr_external(struct rpcrdma_mr_seg *seg,
+> 	invalidate_wr.opcode = IB_WR_LOCAL_INV;
+> 	invalidate_wr.send_flags = IB_SEND_SIGNALED;
+> 	invalidate_wr.ex.invalidate_rkey = seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey;
+> -	DECR_CQCOUNT(&r_xprt->rx_ep);
+> 
+> -	rc = ib_post_send(ia->ri_id->qp, &invalidate_wr, &bad_wr);
+> -	if (rc)
+> -		dprintk("RPC:       %s: failed ib_post_send for invalidate,"
+> -			" status %i\n", __func__, rc);
+> +	if (ia->ri_id->qp) {
+> +		DECR_CQCOUNT(&r_xprt->rx_ep);
+> +		rc = ib_post_send(ia->ri_id->qp, &invalidate_wr, &bad_wr);
+> +		if (rc)
+> +			dprintk("RPC:       %s: failed ib_post_send for invalidate,"
+> +				" status %i\n", __func__, rc);
+> +	} else
+> +		rc = -EINVAL;
+> +
+> 	return rc;
+> }
+> 
+> @@ -1916,17 +1931,19 @@ rpcrdma_ep_post(struct rpcrdma_ia *ia,
+> 		req->rl_send_iov[0].addr, req->rl_send_iov[0].length,
+> 		DMA_TO_DEVICE);
+> 
+> -	if (DECR_CQCOUNT(ep) > 0)
+> -		send_wr.send_flags = 0;
+> -	else { /* Provider must take a send completion every now and then */
+> -		INIT_CQCOUNT(ep);
+> -		send_wr.send_flags = IB_SEND_SIGNALED;
+> -	}
+> -
+> -	rc = ib_post_send(ia->ri_id->qp, &send_wr, &send_wr_fail);
+> -	if (rc)
+> -		dprintk("RPC:       %s: ib_post_send returned %i\n", __func__,
+> -			rc);
+> +	if (ia->ri_id->qp) {
+> +		if (DECR_CQCOUNT(ep) > 0)
+> +			send_wr.send_flags = 0;
+> +		else { /* Provider must take a send completion every now and then */
+> +			INIT_CQCOUNT(ep);
+> +			send_wr.send_flags = IB_SEND_SIGNALED
+> +		}
+> +		rc = ib_post_send(ia->ri_id->qp, &send_wr, &send_wr_fail);
+> +		if (rc)
+> +			dprintk("RPC:       %s: ib_post_send returned %i\n", __func__,
+> +				rc);
+> +	} else
+> +		rc = -EINVAL;
+> out:
+> 	return rc;
+> }
+> @@ -1950,11 +1967,14 @@ rpcrdma_ep_post_recv(struct rpcrdma_ia *ia,
+> 	ib_dma_sync_single_for_cpu(ia->ri_id->device,
+> 		rep->rr_iov.addr, rep->rr_iov.length, DMA_BIDIRECTIONAL);
+> 
+> -	DECR_CQCOUNT(ep);
+> -	rc = ib_post_recv(ia->ri_id->qp, &recv_wr, &recv_wr_fail);
+> +	if (ia->ri_id->qp) {
+> +		DECR_CQCOUNT(ep);
+> +		rc = ib_post_recv(ia->ri_id->qp, &recv_wr, &recv_wr_fail);
+> +		if (rc)
+> +			dprintk("RPC:       %s: ib_post_recv returned %i\n", __func__,
+> +				rc);
+> +	} else
+> +		rc = -EINVAL;
+> 
+> -	if (rc)
+> -		dprintk("RPC:       %s: ib_post_recv returned %i\n", __func__,
+> -			rc);
+> 	return rc;
+> }
+> -- 
+> 1.7.1
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
