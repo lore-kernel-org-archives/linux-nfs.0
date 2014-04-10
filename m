@@ -1,90 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f172.google.com ([209.85.213.172]:59583 "EHLO
-	mail-ig0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932385AbaDXSQC (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Apr 2014 14:16:02 -0400
-Received: by mail-ig0-f172.google.com with SMTP id hn18so1224672igb.5
-        for <linux-nfs@vger.kernel.org>; Thu, 24 Apr 2014 11:16:01 -0700 (PDT)
-From: Weston Andros Adamson <dros@primarydata.com>
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
-Subject: [PATCH 16/18 v2] pnfs: allow non page aligned pnfs layout segments
-Date: Thu, 24 Apr 2014 14:15:26 -0400
-Message-Id: <1398363328-7100-17-git-send-email-dros@primarydata.com>
-In-Reply-To: <1398363328-7100-1-git-send-email-dros@primarydata.com>
-References: <1398363328-7100-1-git-send-email-dros@primarydata.com>
+Received: from mail-qc0-f170.google.com ([209.85.216.170]:62185 "EHLO
+	mail-qc0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S935777AbaDJUbP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Apr 2014 16:31:15 -0400
+Received: by mail-qc0-f170.google.com with SMTP id x13so5037514qcv.15
+        for <linux-nfs@vger.kernel.org>; Thu, 10 Apr 2014 13:31:14 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: steved@redhat.com
+Cc: trond.myklebust@primarydata.com, linux-nfs@vger.kernel.org
+Subject: [PATCH 4/5] gssd: add new routine for generating a hostbased principal in a gss_buffer_t
+Date: Thu, 10 Apr 2014 16:31:02 -0400
+Message-Id: <1397161863-29266-5-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1397161863-29266-1-git-send-email-jlayton@redhat.com>
+References: <1397161863-29266-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Remove alignment checks that would revert to MDS and change pg_test
-to return the max ammount left in the segment (or other pg_test call)
-up to size of passed request, or 0 if no space is left.
+We'll need a gss_buffer_t to pass to the downcall marshalling code.
 
-Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
- fs/nfs/pnfs.c | 25 ++++++++++---------------
- 1 file changed, 10 insertions(+), 15 deletions(-)
+ utils/gssd/gss_names.c | 15 +++++++++++++++
+ utils/gssd/gss_names.h |  2 ++
+ 2 files changed, 17 insertions(+)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 6ef108b..ce46a41 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1388,11 +1388,6 @@ pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *r
- 
- 	WARN_ON_ONCE(pgio->pg_lseg != NULL);
- 
--	if (req->wb_offset != req->wb_pgbase) {
--		nfs_pageio_reset_read_mds(pgio);
--		return;
--	}
--
- 	if (pgio->pg_dreq == NULL)
- 		rd_size = i_size_read(pgio->pg_inode) - req_offset(req);
- 	else
-@@ -1417,11 +1412,6 @@ pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio,
- {
- 	WARN_ON_ONCE(pgio->pg_lseg != NULL);
- 
--	if (req->wb_offset != req->wb_pgbase) {
--		nfs_pageio_reset_write_mds(pgio);
--		return;
--	}
--
- 	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
- 					   req->wb_context,
- 					   req_offset(req),
-@@ -1443,9 +1433,9 @@ pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
- 		     struct nfs_page *req)
- {
- 	unsigned int size;
-+	u64 end;
- 
- 	size = nfs_generic_pg_test(pgio, prev, req);
--
- 	if (!size)
- 		return 0;
- 
-@@ -1463,11 +1453,16 @@ pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
- 	 * first byte that lies outside the pnfs_layout_range. FIXME?
- 	 *
- 	 */
--	if (req_offset(req) >= end_offset(pgio->pg_lseg->pls_range.offset,
--					 pgio->pg_lseg->pls_range.length))
--		return 0;
-+	if (pgio->pg_lseg) {
-+		end = end_offset(pgio->pg_lseg->pls_range.offset,
-+				 pgio->pg_lseg->pls_range.length);
-+		WARN_ON_ONCE(req_offset(req) > end);
-+		if (req_offset(req) >= end)
-+			return 0;
-+		size = min((unsigned int)(end - req_offset(req)), size);
-+	}
- 
--	return min(size, req->wb_bytes);
-+	return size;
+diff --git a/utils/gssd/gss_names.c b/utils/gssd/gss_names.c
+index aa61e4d7a851..047069de1755 100644
+--- a/utils/gssd/gss_names.c
++++ b/utils/gssd/gss_names.c
+@@ -121,3 +121,18 @@ out_rel_buf:
+ out_err:
+ 	return res;
  }
- EXPORT_SYMBOL_GPL(pnfs_generic_pg_test);
++
++void
++get_hostbased_client_buffer(gss_name_t client_name, gss_OID mech,
++			    gss_buffer_t buf)
++{
++	char *hname;
++
++	if (!get_hostbased_client_name(client_name, mech, &hname)) {
++		buf->length = strlen(hname) + 1;
++		buf->value = hname;
++	} else {
++		buf->length = 0;
++		buf->value = NULL;
++	}
++}
+diff --git a/utils/gssd/gss_names.h b/utils/gssd/gss_names.h
+index 1d5f49c1c1d2..ce182f7985f3 100644
+--- a/utils/gssd/gss_names.h
++++ b/utils/gssd/gss_names.h
+@@ -32,3 +32,5 @@
  
+ extern int get_hostbased_client_name(gss_name_t client_name, gss_OID mech,
+ 					char **hostbased_name);
++extern void get_hostbased_client_buffer(gss_name_t client_name,
++			gss_OID mech, gss_buffer_t buf);
 -- 
-1.8.5.2 (Apple Git-48)
+1.9.0
 
