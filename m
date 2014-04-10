@@ -1,162 +1,135 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f175.google.com ([209.85.223.175]:41865 "EHLO
-	mail-ie0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754234AbaDRSq2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Apr 2014 14:46:28 -0400
-Received: by mail-ie0-f175.google.com with SMTP id to1so1883299ieb.34
-        for <linux-nfs@vger.kernel.org>; Fri, 18 Apr 2014 11:46:28 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Bruce Fields <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 53/70] NFSd: Ensure struct nfs4_client is unhashed before we try to destroy it
-Date: Fri, 18 Apr 2014 14:44:47 -0400
-Message-Id: <1397846704-14567-54-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1397846704-14567-53-git-send-email-trond.myklebust@primarydata.com>
-References: <1397846704-14567-1-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-2-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-3-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-4-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-5-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-6-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-7-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-8-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-9-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-10-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-11-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-12-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-13-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-14-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-15-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-16-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-17-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-18-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-19-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-20-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-21-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-22-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-23-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-24-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-25-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-26-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-27-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-28-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-29-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-30-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-31-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-32-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-33-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-34-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-35-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-36-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-37-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-38-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-39-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-40-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-41-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-42-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-43-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-44-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-45-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-46-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-47-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-48-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-49-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-50-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-51-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-52-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-53-git-send-email-trond.myklebust@primarydata.com>
+Received: from cmexedge1.ext.emulex.com ([138.239.224.99]:2590 "EHLO
+	CMEXEDGE1.ext.emulex.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752918AbaDJRyv convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Apr 2014 13:54:51 -0400
+From: Devesh Sharma <Devesh.Sharma@Emulex.Com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: RE: [PATCH V1] NFS-RDMA: fix qp pointer validation checks
+Date: Thu, 10 Apr 2014 17:54:50 +0000
+Message-ID: <EE7902D3F51F404C82415C4803930ACD3FDEB3DF@CMEXMB1.ad.emulex.com>
+References: <014738b6-698e-4ea1-82f9-287378bfec19@CMEXHTCAS2.ad.emulex.com>
+ <D7AB2150-5F25-4BA2-80D9-94890AD11F8F@primarydata.com>
+ <F1C70AD6-BDD4-4534-8DC4-61D2767581D9@oracle.com>
+ <EE7902D3F51F404C82415C4803930ACD3FDEAA43@CMEXMB1.ad.emulex.com>
+ <E66D006A-0D04-4602-8BF5-6834CACD2E24@oracle.com>
+ <EE7902D3F51F404C82415C4803930ACD3FDEB3B4@CMEXMB1.ad.emulex.com>
+ <BD7B05C0-4733-4DD1-83F3-B30B6B0EE48C@oracle.com>
+In-Reply-To: <BD7B05C0-4733-4DD1-83F3-B30B6B0EE48C@oracle.com>
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When we remove the nfs4_lock_state() protection, we will need to ensure
-that it can't be found by other threads while we're destroying it.
+Alright here it is:
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 43 +++++++++++++++++++++++++++++++++----------
- 1 file changed, 33 insertions(+), 10 deletions(-)
+<3>ocrdma_mbx_create_qp(0) rq_err
+<3>ocrdma_mbx_create_qp(0) sq_err
+<3>ocrdma_create_qp(0) error=-1
+<1>BUG: unable to handle kernel NULL pointer dereference at (null)
+<1>IP: [<ffffffffa078e8ac>] rpcrdma_deregister_frmr_external+0x9c/0xe0 [xprtrdma]
+<4>PGD 455942067 PUD 458356067 PMD 0
+<4>Oops: 0000 [#1] SMP
+<4>last sysfs file: /sys/devices/pci0000:80/0000:80:03.0/0000:8b:00.1/class
+<4>CPU 1
+<4>Modules linked in: nfs fscache xprtrdma(U) ocrdma(U) fuse ip6table_filter ip6_tables ebtable_nat ebtables ipt_MASQUERADE iptable_nat nf_nat nf_conntrack_ipv4 nf_defrag_ipv4 xt_state nf_conntrack ipt_REJECT xt_CHECKSUM iptable_mangle iptable_filter ip_tables bridge nfsd lockd nfs_acl auth_rpcgss exportfs autofs4 sunrpc target_core_iblock target_core_file target_core_pscsi target_core_mod configfs bnx2fc cnic uio fcoe libfcoe 8021q garp libfc stp llc rdma_ucm(U) rdma_cm(U) iw_cm(U) ib_addr(U) ib_ipoib(U) ib_cm(U) ib_sa(U) ipv6 ib_uverbs(U) ib_umad(U) iw_nes(U) libcrc32c iw_cxgb4(U) cxgb4(U) iw_cxgb3(U) cxgb3(U) mdio ib_qib(U) mlx4_en(U) mlx4_ib(U) mlx4_core(U) ib_mthca(U) ib_mad(U) ib_core(U) compat(U) vfat fat vhost_net macvtap macvlan tun kvm_intel kvm uinput sg cdc_ether usbnet mii microcode i2c_i801 i2c_core iTCO_wdt iTCO_vendor_support shpchp igb ptp pps_core ioatdma dca be2net(U) ext4 mbcache jbd2 sr_mod cdrom sd_mod crc_t10dif lpfc scsi_transport_fc scsi_tgt ahci wmi!
+  megaraid_sas dm_mirror dm_region_hash dm_log dm_mod [last unloaded: speedstep_lib]
+<4>
+<4>Pid: 9204, comm: ls Not tainted 2.6.32-358.el6.x86_64 #1 IBM System x3650 M4 -[7915AC1]-/00J6528
+<4>RIP: 0010:[<ffffffffa078e8ac>]  [<ffffffffa078e8ac>] rpcrdma_deregister_frmr_external+0x9c/0xe0 [xprtrdma]
+<4>RSP: 0018:ffff8804551877f8  EFLAGS: 00010217
+<4>RAX: ffff880462243800 RBX: ffff88045646a028 RCX: 0000000000000000
+<4>RDX: ffff880455187860 RSI: ffff8804551877f8 RDI: 0000000000000000
+<4>RBP: ffff880455187888 R08: 0000000000000000 R09: 0000000000000000
+<4>R10: 0000000000000000 R11: 0000000000000000 R12: ffff88047601c598
+<4>R13: ffff88047601c000 R14: ffff88045646a068 R15: 0000000000000000
+<4>FS:  00007fd669be07a0(0000) GS:ffff880028220000(0000) knlGS:0000000000000000
+<4>CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+<4>CR2: 0000000000000000 CR3: 00000004557de000 CR4: 00000000000407e0
+<4>DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
+<4>DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
+<4>Process ls (pid: 9204, threadinfo ffff880455186000, task ffff880456735540)
+<4>Stack:
+<4> 0000000000000000 ffff88045584a700 0000000000000000 0000000a00000000
+<4><d> 080424b400000002 0000000000000000 0000000000000000 0000000000000000
+<4><d> 0000000000000000 0000000000000000 0000000000000000 0000000000000000
+<4>Call Trace:
+<4> [<ffffffffa078ea03>] rpcrdma_deregister_external+0x113/0x2d0 [xprtrdma]
+<4> [<ffffffffa078c4fc>] xprt_rdma_free+0x8c/0x210 [xprtrdma]
+<4> [<ffffffff81082014>] ? mod_timer+0x144/0x220
+<4> [<ffffffffa07bba60>] xprt_release+0xc0/0x220 [sunrpc]
+<4> [<ffffffffa07c2f5d>] rpc_release_resources_task+0x1d/0x50 [sunrpc]
+<4> [<ffffffffa07c3a84>] __rpc_execute+0x174/0x350 [sunrpc]
+<4> [<ffffffff81096b47>] ? bit_waitqueue+0x17/0xd0
+<4> [<ffffffffa07c3cc1>] rpc_execute+0x61/0xa0 [sunrpc]
+<4> [<ffffffffa07ba3a5>] rpc_run_task+0x75/0x90 [sunrpc]
+<4> [<ffffffffa07ba4c2>] rpc_call_sync+0x42/0x70 [sunrpc]
+<4> [<ffffffffa08b6f6d>] nfs3_rpc_wrapper.clone.0+0x3d/0xd0 [nfs]
+<4> [<ffffffffa08b734c>] nfs3_proc_access+0xbc/0x180 [nfs]
+<4> [<ffffffffa089f1e9>] nfs_do_access+0x199/0x3c0 [nfs]
+<4> [<ffffffffa07c6305>] ? generic_lookup_cred+0x15/0x20 [sunrpc]
+<4> [<ffffffffa07c52e0>] ? rpcauth_lookupcred+0x70/0xc0 [sunrpc]
+<4> [<ffffffffa089f4b8>] nfs_permission+0xa8/0x1e0 [nfs]
+<4> [<ffffffff8119053d>] __link_path_walk+0xad/0x1030
+<4> [<ffffffff81143a17>] ? handle_pte_fault+0x487/0xb50
+<4> [<ffffffff8132b1fa>] ? copy_termios+0x6a/0x80
+<4> [<ffffffff8119174a>] path_walk+0x6a/0xe0
+<4> [<ffffffff8119191b>] do_path_lookup+0x5b/0xa0
+<4> [<ffffffff811925a7>] user_path_at+0x57/0xa0
+<4> [<ffffffff81194ed2>] ? vfs_ioctl+0x22/0xa0
+<4> [<ffffffff811869bc>] vfs_fstatat+0x3c/0x80
+<4> [<ffffffff81085151>] ? do_sigaction+0x91/0x1d0
+<4> [<ffffffff81186b2b>] vfs_stat+0x1b/0x20
+<4> [<ffffffff81186b54>] sys_newstat+0x24/0x50
+<4> [<ffffffff8151311e>] ? do_page_fault+0x3e/0xa0
+<4> [<ffffffff815104d5>] ? page_fault+0x25/0x30
+<4> [<ffffffff8100b072>] system_call_fastpath+0x16/0x1b
+<4>Code: 48 89 85 78 ff ff ff 48 8b 40 08 8b 40 1c 89 45 94 b8 ff ff ff ff f0 41 0f c1 85 e0 05 00 00 49 8b 04 24 48 8d 55 d8 48 8b 78 10 <48> 8b 07 ff 90 b0 01 00 00 85 c0 89 c3 74 09 80 3d 56 8d 05 00
+<1>RIP  [<ffffffffa078e8ac>] rpcrdma_deregister_frmr_external+0x9c/0xe0 [xprtrdma]
+<4> RSP <ffff8804551877f8>
+<4>CR2: 0000000000000000
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 1708f6b7e9e7..19f7739a156e 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1273,12 +1273,23 @@ free_client(struct nfs4_client *clp)
- }
- 
- /* must be called under the client_lock */
--static inline void
-+static void
- unhash_client_locked(struct nfs4_client *clp)
- {
-+	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
- 	struct nfsd4_session *ses;
- 
--	list_del(&clp->cl_lru);
-+	/* Mark the client as expired! */
-+	clp->cl_time = 0;
-+	/* Make it invisible */
-+	if (!list_empty(&clp->cl_idhash)) {
-+		list_del_init(&clp->cl_idhash);
-+		if (test_bit(NFSD4_CLIENT_CONFIRMED, &clp->cl_flags))
-+			rb_erase(&clp->cl_namenode, &nn->conf_name_tree);
-+		else
-+			rb_erase(&clp->cl_namenode, &nn->unconf_name_tree);
-+	}
-+	list_del_init(&clp->cl_lru);
- 	spin_lock(&clp->cl_lock);
- 	list_for_each_entry(ses, &clp->cl_sessions, se_perclnt)
- 		list_del_init(&ses->se_hash);
-@@ -1286,7 +1297,17 @@ unhash_client_locked(struct nfs4_client *clp)
- }
- 
- static void
--destroy_client(struct nfs4_client *clp)
-+unhash_client(struct nfs4_client *clp)
-+{
-+	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
-+
-+	spin_lock(&nn->client_lock);
-+	unhash_client_locked(clp);
-+	spin_unlock(&nn->client_lock);
-+}
-+
-+static void
-+__destroy_client(struct nfs4_client *clp)
- {
- 	struct nfs4_openowner *oo;
- 	struct nfs4_delegation *dp;
-@@ -1318,22 +1339,24 @@ destroy_client(struct nfs4_client *clp)
- 	nfsd4_shutdown_callback(clp);
- 	if (clp->cl_cb_conn.cb_xprt)
- 		svc_xprt_put(clp->cl_cb_conn.cb_xprt);
--	list_del(&clp->cl_idhash);
--	if (test_bit(NFSD4_CLIENT_CONFIRMED, &clp->cl_flags))
--		rb_erase(&clp->cl_namenode, &nn->conf_name_tree);
--	else
--		rb_erase(&clp->cl_namenode, &nn->unconf_name_tree);
- 	spin_lock(&nn->client_lock);
--	unhash_client_locked(clp);
- 	WARN_ON_ONCE(atomic_read(&clp->cl_refcount));
- 	free_client(clp);
- 	spin_unlock(&nn->client_lock);
- }
- 
-+static void
-+destroy_client(struct nfs4_client *clp)
-+{
-+	unhash_client(clp);
-+	__destroy_client(clp);
-+}
-+
- static void expire_client(struct nfs4_client *clp)
- {
-+	unhash_client(clp);
- 	nfsd4_client_record_remove(clp);
--	destroy_client(clp);
-+	__destroy_client(clp);
- }
- 
- static void copy_verf(struct nfs4_client *target, nfs4_verifier *source)
--- 
-1.9.0
-
+> -----Original Message-----
+> From: linux-rdma-owner@vger.kernel.org [mailto:linux-rdma-
+> owner@vger.kernel.org] On Behalf Of Chuck Lever
+> Sent: Thursday, April 10, 2014 11:21 PM
+> To: Devesh Sharma
+> Cc: Linux NFS Mailing List; linux-rdma@vger.kernel.org; Trond Myklebust
+> Subject: Re: [PATCH V1] NFS-RDMA: fix qp pointer validation checks
+> 
+> 
+> On Apr 10, 2014, at 1:42 PM, Devesh Sharma
+> <Devesh.Sharma@Emulex.Com> wrote:
+> 
+> >> However it seems to me the new (!ia->ri_id->qp) checks outside the
+> >> connect logic are unnecessary.
+> >>
+> >> Clearly, as you noticed, the ib_post_{send,recv} verbs do not check
+> >> that their "qp" argument is NULL before dereferencing it.
+> >>
+> >> But I don't understand how xprtrdma can post any operation if the
+> >> transport isn't connected. In other words, how would it be possible
+> >> to call
+> >> rpcrdma_ep_post_recv() if the connect had failed and there was no QP?
+> >>
+> >> If disconnect wipes ia->ri_id->qp while there are still operations in
+> >> progress, that would be the real bug.
+> > Yes!, But I have seen one more kernel oops where QP is destroyed and
+> > xprtrdma still try to post in LOCAL_INV WR on a NULL QP pointer and hence
+> system crashes. So, I think what you missioned is really happening.
+> 
+> I'd like to see the crash data (back trace, etc), if you've got it.
+> 
+> --
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
+> 
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in the
+> body of a message to majordomo@vger.kernel.org More majordomo info at
+> http://vger.kernel.org/majordomo-info.html
