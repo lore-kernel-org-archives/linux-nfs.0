@@ -1,82 +1,143 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f178.google.com ([209.85.213.178]:63956 "EHLO
-	mail-ig0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754220AbaDRSpu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Apr 2014 14:45:50 -0400
-Received: by mail-ig0-f178.google.com with SMTP id hn18so943946igb.5
-        for <linux-nfs@vger.kernel.org>; Fri, 18 Apr 2014 11:45:50 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Bruce Fields <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 29/70] NFSd: Add a struct nfs4_file field to struct nfs4_stid
-Date: Fri, 18 Apr 2014 14:44:23 -0400
-Message-Id: <1397846704-14567-30-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1397846704-14567-29-git-send-email-trond.myklebust@primarydata.com>
-References: <1397846704-14567-1-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-2-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-3-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-4-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-5-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-6-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-7-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-8-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-9-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-10-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-11-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-12-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-13-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-14-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-15-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-16-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-17-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-18-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-19-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-20-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-21-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-22-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-23-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-24-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-25-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-26-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-27-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-28-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-29-git-send-email-trond.myklebust@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:36514 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754290AbaDKLEs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 11 Apr 2014 07:04:48 -0400
+Date: Fri, 11 Apr 2014 07:04:45 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: steved@redhat.com, trond.myklebust@primarydata.com,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 5/5] gssd: scrape the acceptor name out of the context
+Message-ID: <20140411070445.0dba29c5@tlielax.poochiereds.net>
+In-Reply-To: <1397161863-29266-6-git-send-email-jlayton@redhat.com>
+References: <1397161863-29266-1-git-send-email-jlayton@redhat.com>
+	<1397161863-29266-6-git-send-email-jlayton@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-All stateids are associated with a nfs4_file. Let's consolidate...
+On Thu, 10 Apr 2014 16:31:03 -0400
+Jeff Layton <jlayton@redhat.com> wrote:
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 2 ++
- fs/nfsd/state.h     | 1 +
- 2 files changed, 3 insertions(+)
+> ...and pass it to the kernel in the downcall. Legacy kernels will just
+> ignore the extra data, but with a proposed kernel patch the kernel will
+> grab this info and use it to verify requests on the v4.0 callback
+> channel.
+> 
+> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> ---
+>  utils/gssd/gssd_proc.c | 39 ++++++++++++++++++++++++++++-----------
+>  1 file changed, 28 insertions(+), 11 deletions(-)
+> 
+> diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+> index 7387cce010cf..d95e39416c28 100644
+> --- a/utils/gssd/gssd_proc.c
+> +++ b/utils/gssd/gssd_proc.c
+> @@ -77,6 +77,7 @@
+>  #include "context.h"
+>  #include "nfsrpc.h"
+>  #include "nfslib.h"
+> +#include "gss_names.h"
+>  
+>  /*
+>   * pollarray:
+> @@ -683,16 +684,19 @@ parse_enctypes(char *enctypes)
+>  
+>  static void
+>  do_downcall(int k5_fd, uid_t uid, struct authgss_private_data *pd,
+> -	    gss_buffer_desc *context_token, OM_uint32 lifetime_rec)
+> +	    gss_buffer_desc *context_token, OM_uint32 lifetime_rec,
+> +	    gss_buffer_desc *acceptor)
+>  {
+>  	char    *buf = NULL, *p = NULL, *end = NULL;
+>  	unsigned int timeout = context_timeout;
+>  	unsigned int buf_size = 0;
+>  
+> -	printerr(1, "doing downcall lifetime_rec %u\n", lifetime_rec);
+> +	printerr(1, "doing downcall: lifetime_rec=%u acceptor=%.*s\n",
+> +		lifetime_rec, acceptor->length, acceptor->value);
+>  	buf_size = sizeof(uid) + sizeof(timeout) + sizeof(pd->pd_seq_win) +
+>  		sizeof(pd->pd_ctx_hndl.length) + pd->pd_ctx_hndl.length +
+> -		sizeof(context_token->length) + context_token->length;
+> +		sizeof(context_token->length) + context_token->length +
+> +		acceptor->length;
+>  	p = buf = malloc(buf_size);
+>  	if (!buf)
+>  		goto out_err;
+> @@ -707,6 +711,8 @@ do_downcall(int k5_fd, uid_t uid, struct authgss_private_data *pd,
+>  	if (WRITE_BYTES(&p, end, pd->pd_seq_win)) goto out_err;
+>  	if (write_buffer(&p, end, &pd->pd_ctx_hndl)) goto out_err;
+>  	if (write_buffer(&p, end, context_token)) goto out_err;
+> +	if (acceptor->length > 0 &&
+> +	    write_buffer(&p, end, acceptor)) goto out_err;
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 32ab3f1c83f8..5bbef4720e7c 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -474,6 +474,8 @@ static void remove_stid(struct nfs4_stid *s)
- 
- static void nfs4_free_stid(struct kmem_cache *slab, struct nfs4_stid *s)
- {
-+	if (s->sc_file)
-+		put_nfs4_file(s->sc_file);
- 	kmem_cache_free(slab, s);
- }
- 
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 9d0088c244a8..c6deef936693 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -85,6 +85,7 @@ struct nfs4_stid {
- 	unsigned char sc_type;
- 	stateid_t sc_stateid;
- 	struct nfs4_client *sc_client;
-+	struct nfs4_file *sc_file;
- };
- 
- struct nfs4_delegation {
+I think I'll need to make a minor change to this patch. In the event
+that the acceptor has zero length, then I think we still want to add
+the length to the downcall. That will allow us to extend the downcall
+format again in the future if needed.
+
+The only thing I'll need to do to fix that is to remove the
+"acceptor->length > 0" check above. I'll do that and send a v2 patch
+once I've given everyone a chance to comment on the set.
+
+>  
+>  	if (write(k5_fd, buf, p - buf) < p - buf) goto out_err;
+>  	free(buf);
+> @@ -1034,6 +1040,9 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
+>  	gss_cred_id_t		gss_cred;
+>  	OM_uint32		maj_stat, min_stat, lifetime_rec;
+>  	pid_t			pid;
+> +	gss_name_t		gacceptor;
+> +	gss_OID			mech;
+> +	gss_buffer_desc		acceptor  = {0};
+>  
+>  	pid = fork();
+>  	switch(pid) {
+> @@ -1174,15 +1183,22 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
+>  		goto out_return_error;
+>  	}
+>  
+> -	/* Grab the context lifetime to pass to the kernel. lifetime_rec
+> -	 * is set to zero on error */
+> -	maj_stat = gss_inquire_context(&min_stat, pd.pd_ctx, NULL, NULL,
+> -				       &lifetime_rec, NULL, NULL, NULL, NULL);
+> +	maj_stat = gss_inquire_context(&min_stat, pd.pd_ctx, NULL, &gacceptor,
+> +				       &lifetime_rec, &mech, NULL, NULL, NULL);
+>  
+> -	if (maj_stat)
+> -		printerr(1, "WARNING: Failed to inquire context for lifetme "
+> -			    "maj_stat %u\n", maj_stat);
+> +	if (maj_stat != GSS_S_COMPLETE) {
+> +		printerr(1, "WARNING: Failed to inquire context "
+> +			    "maj_stat (0x%x)\n", maj_stat);
+> +	} else {
+> +		get_hostbased_client_buffer(gacceptor, mech, &acceptor);
+> +		gss_release_name(&min_stat, &gacceptor);
+> +	}
+>  
+> +	/*
+> +	 * The serialization can mean turning the ctx into a lucid context. If
+> +	 * that happens then the original ctx is no longer valid, so we mustn't
+> +	 * try to use if after this point.
+> +	 */
+>  	if (serialize_context_for_kernel(&pd.pd_ctx, &token, &krb5oid, NULL)) {
+>  		printerr(0, "WARNING: Failed to serialize krb5 context for "
+>  			    "user with uid %d for server %s\n",
+> @@ -1190,9 +1206,10 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
+>  		goto out_return_error;
+>  	}
+>  
+> -	do_downcall(fd, uid, &pd, &token, lifetime_rec);
+> +	do_downcall(fd, uid, &pd, &token, lifetime_rec, &acceptor);
+>  
+>  out:
+> +	gss_release_buffer(&min_stat, &acceptor);
+>  	if (token.value)
+>  		free(token.value);
+>  #ifdef HAVE_AUTHGSS_FREE_PRIVATE_DATA
+
+
 -- 
-1.9.0
-
+Jeff Layton <jlayton@redhat.com>
