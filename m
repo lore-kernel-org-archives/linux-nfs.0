@@ -1,128 +1,177 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f172.google.com ([209.85.223.172]:51227 "EHLO
-	mail-ie0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756832AbaDHQWz convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Apr 2014 12:22:55 -0400
-Received: by mail-ie0-f172.google.com with SMTP id as1so1172532iec.17
-        for <linux-nfs@vger.kernel.org>; Tue, 08 Apr 2014 09:22:55 -0700 (PDT)
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
-Subject: Re: v4.0 CB_COMPOUND authentication failures
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-In-Reply-To: <20140408144652.GE3882@fieldses.org>
-Date: Tue, 8 Apr 2014 12:22:51 -0400
-Cc: Layton Jeff <jlayton@redhat.com>, NFS <linux-nfs@vger.kernel.org>,
-        Adamson William Andros <androsadamson@gmail.com>,
-        Lever Charles Edward <chuck.lever@oracle.com>
-Message-Id: <ECD8245B-CDEE-442E-A41A-BECE08BEEDA1@primarydata.com>
-References: <20140408082140.340c1328@tlielax.poochiereds.net> <20140408123501.GA3532@fieldses.org> <20140408094903.33e42de2@tlielax.poochiereds.net> <20140408140333.GD3882@fieldses.org> <6CC79B2A-8AE2-4A36-BB57-380C2F9813C0@primarydata.com> <20140408144652.GE3882@fieldses.org>
-To: Dr Fields James Bruce <bfields@fieldses.org>
+Received: from linode.aoot.com ([69.164.194.13]:43388 "EHLO linode.aoot.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750735AbaDKTLU (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 11 Apr 2014 15:11:20 -0400
+Message-ID: <53483E4E.9070607@opengridcomputing.com>
+Date: Fri, 11 Apr 2014 14:11:10 -0500
+From: Steve Wise <swise@opengridcomputing.com>
+MIME-Version: 1.0
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-rdma@vger.kernel.org
+Subject: Re: [PATCH] xprtrdma: mind the device's max fast register page list
+ depth
+References: <20140410151325.28724.92004.stgit@build.ogc.int> <577860CA-7ECC-4353-AED9-16C17A2B918D@oracle.com>
+In-Reply-To: <577860CA-7ECC-4353-AED9-16C17A2B918D@oracle.com>
+Content-Type: text/plain; charset=windows-1252; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On 4/11/2014 1:34 PM, Chuck Lever wrote:
+> Hi Steve-
+>
+> I reviewed and successfully tested this patch with mlx4 using FRMR and MTHCAFMR.
+> A couple of cosmetic notes are below:
+>
+>
+> On Apr 10, 2014, at 11:13 AM, Steve Wise <swise@opengridcomputing.com> wrote:
+>
+>> Some rdma devices don't support a fast register page list depth of
+>> at least RPCRDMA_MAX_DATA_SEGS.  So xprtrdma needs to chunk its fast
+>> register regions according to the minimum of the device max supported
+>> depth or RPCRDMA_MAX_DATA_SEGS.
+>>
+>> Signed-off-by: Steve Wise <swise@opengridcomputing.com>
+>> ---
+>>
+>> net/sunrpc/xprtrdma/rpc_rdma.c  |    2 -
+>> net/sunrpc/xprtrdma/verbs.c     |   64 ++++++++++++++++++++++++++++-----------
+>> net/sunrpc/xprtrdma/xprt_rdma.h |    1 +
+>> 3 files changed, 47 insertions(+), 20 deletions(-)
+>>
+>> diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+>> index 96ead52..14d7634 100644
+>> --- a/net/sunrpc/xprtrdma/rpc_rdma.c
+>> +++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+>> @@ -249,8 +249,6 @@ rpcrdma_create_chunks(struct rpc_rqst *rqst, struct xdr_buf *target,
+>> 	req->rl_nchunks = nchunks;
+>>
+>> 	BUG_ON(nchunks == 0);
+> I don’t see a path through rpcrdma_create_chunks() where nchunks can be 0 here. If you
+> agree, can you remove the above BUG_ON as well, if you re-submit a new version of this
+> patch?
 
-On Apr 8, 2014, at 10:46, Dr Fields James Bruce <bfields@fieldses.org> wrote:
+Sure.
 
-> On Tue, Apr 08, 2014 at 10:23:37AM -0400, Trond Myklebust wrote:
->> 
->> On Apr 8, 2014, at 10:03, J. Bruce Fields <bfields@fieldses.org> wrote:
->> 
->>> On Tue, Apr 08, 2014 at 09:49:03AM -0400, Jeff Layton wrote:
->>>> On Tue, 8 Apr 2014 08:35:01 -0400
->>>> "J. Bruce Fields" <bfields@fieldses.org> wrote:
->>>> 
->>>>> On Tue, Apr 08, 2014 at 08:21:40AM -0400, Jeff Layton wrote:
->>>>>> I've recently been hunting down some problems with delegation handling
->>>>>> and have run across a problem with the client authenticates CB_COMPOUND
->>>>>> requests. I could use some advice on how best to fix it.
->>>>>> 
->>>>>> Specifically, check_gss_callback_principal() tries to look up the
->>>>>> callback client and then tries to compare the ticket in it against the
->>>>>> clp->cl_hostname:
->>>>>> 
->>>>>>       /* Expect a GSS_C_NT_HOSTBASED_NAME like "nfs@serverhostname" */
->>>>>> 
->>>>>>       if (memcmp(p, "nfs@", 4) != 0)
->>>>>>               return 0;
->>>>>>       p += 4;
->>>>>>       if (strcmp(p, clp->cl_hostname) != 0)
->>>>>>               return 0;
->>>>>>       return 1;
->>>>>> 
->>>>>> The problem is that there is no guarantee that those hostnames will be
->>>>>> the same. If, for instance, I mount "foo:/" and the SPN is
->>>>>> "nfs/foo.bar.baz" that strcmp will return true, and the CB_COMPOUND
->>>>>> request will get tossed out [1]. Ditto if I happen to mount a CNAME of the
->>>>>> server.
->>>>> 
->>>>> It sounds like a bug to me that the mount is succeeding without the name
->>>>> matching.
->>>>> 
->>>>> The security provided by krb5 is much weaker if we don't check that the
->>>>> name provided on the commandline matches what the server authenticates
->>>>> as.
->>>>> 
->>>> 
->>>> The logic in gssd for this is pretty awful.
->>>> 
->>>> It will basically trust DNS if there is no '.' in the hostname that was
->>>> used at mount time. That'll make it take the address and
->>>> reverse-resolve it.
->>> 
->>> Argh, OK, I guess this is the compromise Simo made in "Avoid DNS reverse
->>> resolution for server names (take 3)".
->>> 
->>>> We could add yet another band-aid and make it so that DNS is never
->>>> trusted. I'll note that for cifs, we took that route. You have to mount
->>>> the canonical name of the server in order to use krb5.
->>> 
->>> I wish we could do that, but I suppose it's too harsh to break
->>> already-working fstabs.  Maybe we could phase it in somehow.
->>> 
->>>>>> Now that we try to use krb5 on the callback channel even when sec=sys
->>>>>> is specified, this is very problematic.
->>>>> 
->>>>> And similarly I think the attempt to opportunistically use krb5 for
->>>>> state management should fail and fall back on auth_sys if the server's
->>>>> name doesn't match.
->>>>> 
->> 
->> This suggestion makes no sense to me at all. How does it help to fall back to using weak security when the strong security checks fail?
-> 
-> It'd fix this particular problem.
+>> -	BUG_ON((r_xprt->rx_ia.ri_memreg_strategy == RPCRDMA_FRMR)
+>> -	       && (nchunks > 3));
+>>
+>> 	/*
+>> 	 * finish off header. If write, marshal discrim and nchunks.
+>> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+>> index 93726560..c08f193 100644
+>> --- a/net/sunrpc/xprtrdma/verbs.c
+>> +++ b/net/sunrpc/xprtrdma/verbs.c
+>> @@ -539,6 +539,11 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
+>> 				__func__);
+>> 			memreg = RPCRDMA_REGISTER;
+>> #endif
+>> +		} else {
+>> +			/* Mind the ia limit on FRMR page list depth */
+>> +			ia->ri_max_frmr_depth = min_t(unsigned int,
+>> +				RPCRDMA_MAX_DATA_SEGS,
+>> +				devattr.max_fast_reg_page_list_len);
+>> 		}
+>> 		break;
+>> 	}
+>> @@ -659,24 +664,42 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
+>> 	ep->rep_attr.srq = NULL;
+>> 	ep->rep_attr.cap.max_send_wr = cdata->max_requests;
+>> 	switch (ia->ri_memreg_strategy) {
+>> -	case RPCRDMA_FRMR:
+>> +	case RPCRDMA_FRMR: {
+>> +		int depth = 7;
+>> +
+>> 		/* Add room for frmr register and invalidate WRs.
+>> 		 * 1. FRMR reg WR for head
+>> 		 * 2. FRMR invalidate WR for head
+>> -		 * 3. FRMR reg WR for pagelist
+>> -		 * 4. FRMR invalidate WR for pagelist
+>> +		 * 3. N FRMR reg WRs for pagelist
+>> +		 * 4. N FRMR invalidate WRs for pagelist
+>> 		 * 5. FRMR reg WR for tail
+>> 		 * 6. FRMR invalidate WR for tail
+>> 		 * 7. The RDMA_SEND WR
+>> 		 */
+>> -		ep->rep_attr.cap.max_send_wr *= 7;
+>> +
+>> +		/* Calculate N if the device max FRMR depth is smaller than
+>> +		 * RPCRDMA_MAX_DATA_SEGS.
+>> +		 */
+>> +		if (ia->ri_max_frmr_depth < RPCRDMA_MAX_DATA_SEGS) {
+>> +			int delta = RPCRDMA_MAX_DATA_SEGS -
+>> +				    ia->ri_max_frmr_depth;
+>> +
+>> +			do {
+>> +				depth += 2; /* FRMR reg + invalidate */
+>> +				delta -= ia->ri_max_frmr_depth;
+>> +			} while (delta > 0);
+>> +
+>> +		}
+>> +		ep->rep_attr.cap.max_send_wr *= depth;
+>> 		if (ep->rep_attr.cap.max_send_wr > devattr.max_qp_wr) {
+>> -			cdata->max_requests = devattr.max_qp_wr / 7;
+>> +			cdata->max_requests = devattr.max_qp_wr / depth;
+>> 			if (!cdata->max_requests)
+>> 				return -EINVAL;
+>> -			ep->rep_attr.cap.max_send_wr = cdata->max_requests * 7;
+>> +			ep->rep_attr.cap.max_send_wr = cdata->max_requests *
+>> +						       depth;
+>> 		}
+>> 		break;
+>> +	}
+>> 	case RPCRDMA_MEMWINDOWS_ASYNC:
+>> 	case RPCRDMA_MEMWINDOWS:
+>> 		/* Add room for mw_binds+unbinds - overkill! */
+>> @@ -1043,16 +1066,16 @@ rpcrdma_buffer_create(struct rpcrdma_buffer *buf, struct rpcrdma_ep *ep,
+>> 	case RPCRDMA_FRMR:
+>> 		for (i = buf->rb_max_requests * RPCRDMA_MAX_SEGS; i; i--) {
+>> 			r->r.frmr.fr_mr = ib_alloc_fast_reg_mr(ia->ri_pd,
+>> -							 RPCRDMA_MAX_SEGS);
+>> +						ia->ri_max_frmr_depth);
+>> 			if (IS_ERR(r->r.frmr.fr_mr)) {
+>> 				rc = PTR_ERR(r->r.frmr.fr_mr);
+>> 				dprintk("RPC:       %s: ib_alloc_fast_reg_mr"
+>> 					" failed %i\n", __func__, rc);
+>> 				goto out;
+>> 			}
+>> -			r->r.frmr.fr_pgl =
+>> -				ib_alloc_fast_reg_page_list(ia->ri_id->device,
+>> -							    RPCRDMA_MAX_SEGS);
+>> +			r->r.frmr.fr_pgl = ib_alloc_fast_reg_page_list(
+>> +						ia->ri_id->device,
+>> +						ia->ri_max_frmr_depth);
+>> 			if (IS_ERR(r->r.frmr.fr_pgl)) {
+>> 				rc = PTR_ERR(r->r.frmr.fr_pgl);
+>> 				dprintk("RPC:       %s: "
+>> @@ -1498,8 +1521,8 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
+>> 	seg1->mr_offset -= pageoff;	/* start of page */
+>> 	seg1->mr_len += pageoff;
+>> 	len = -pageoff;
+>> -	if (*nsegs > RPCRDMA_MAX_DATA_SEGS)
+>> -		*nsegs = RPCRDMA_MAX_DATA_SEGS;
+>> +	if (*nsegs > ia->ri_max_frmr_depth)
+>> +		*nsegs = ia->ri_max_frmr_depth;
+>> 	for (page_no = i = 0; i < *nsegs;) {
+>> 		rpcrdma_map_one(ia, seg, writing);
+>> 		pa = seg->mr_dma;
+>> @@ -1796,6 +1819,7 @@ rpcrdma_register_external(struct rpcrdma_mr_seg *seg,
+>> {
+>> 	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
+>> 	int rc = 0;
+>> +	int tmp_nsegs = nsegs;
+> I don’t understand what the changes to rpcrdma_register_external() do. As a test, I reverted
+> these, and the patch behaves the same. Am I missing something?
 
-It weakens the state management security for no good reason. How is it not better just to rip out that hostname comparison in the back channel?
+I mistakenly thought rpcrdma_register_external() was changing the 
+callers nsegs variable.  But since its passed by value and not 
+reference, that's not possible.  I'll remove this and retest, then send 
+out V2 of the patch with the BUG_ON() removed as well.
 
-> But, I don't know, I'm frankly confused about our security design for
-> the NFSv4 state.
-> 
-> When we insist on krb5 (and checked the server name correctly), and
-> failed without it, then I feel like I understand what we're doing.  Once
-> we start trying it and then falling back (as I understand happens for
-> the krb5 state in the auth_sys case) I get confused.
 
-Now you have me confused. I’m aware that we call nfs_create_rpc_client() with a krb5i argument and then fall back to auth_sys if the RPC layer says that we don’t have a running gss daemon or that we can’t load the rpcsec_gss_krb5 module. I’m not aware of us falling back if rpc.gssd is running and tells us that security negotiation failed; we should be returning a mount error in that case.
+Thanks,
 
->>>> Like Trond pointed out, the problem is that gssd doesn't give us that
->>>> info currently. We could change it to do that of course, but that
->>>> basically means revving the downcall.
->>> 
->>> It might be easier to rev the upcall so that the kernel could ask gssd
->>> to do strict checking?  Since it's just a bunch of name=value pairs it
->>> shouldn't be a huge pain to revise.
->> 
->> So what would trigger the kernel to ask for strict checking? Do we add a mount option that says “fail if the server doesn’t authenticate itself”? That would be hard to combine with security negotiation, since it only makes sense for RPCSEC_GSS authentication.
-> 
-> I was thinking about only doing it in the state-establishment case.
-> (Since we won't know how to authenticate the callbacks in that case.)
-> 
-> But that would screw up krb5 mounts, I guess, never mind.
-> 
-> Using a fqdn implicitly requests strict checking so a mount option would
-> seem redundant.
-
-_________________________________
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
+Steve.
 
