@@ -1,156 +1,137 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:50283 "EHLO mx11.netapp.com"
+Received: from smtp-o-3.desy.de ([131.169.56.156]:60638 "EHLO smtp-o-3.desy.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751403AbaDQVKu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 17 Apr 2014 17:10:50 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
-Subject: [PATCH 16/17] NFS: Create a common generic_pg_pgios()
-Date: Thu, 17 Apr 2014 17:09:40 -0400
-Message-ID: <1397768981-12856-17-git-send-email-Anna.Schumaker@Netapp.com>
-In-Reply-To: <1397768981-12856-1-git-send-email-Anna.Schumaker@Netapp.com>
-References: <1397768981-12856-1-git-send-email-Anna.Schumaker@Netapp.com>
+	id S1754278AbaDKLMR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 11 Apr 2014 07:12:17 -0400
+Received: from smtp-map-1.desy.de (smtp-map-1.desy.de [131.169.56.66])
+	by smtp-o-3.desy.de (DESY-O-3) with ESMTP id 44C7A2800E4
+	for <linux-nfs@vger.kernel.org>; Fri, 11 Apr 2014 13:12:14 +0200 (CEST)
+Received: from ZITSWEEP1.win.desy.de (zitsweep1.win.desy.de [131.169.97.95])
+	by smtp-map-1.desy.de (DESY_MAP_1) with ESMTP id 076EF13EE3
+	for <linux-nfs@vger.kernel.org>; Fri, 11 Apr 2014 13:12:13 +0200 (MEST)
+Date: Fri, 11 Apr 2014 13:12:12 +0200 (CEST)
+From: "Mkrtchyan, Tigran" <tigran.mkrtchyan@desy.de>
+To: Boaz Harrosh <bharrosh@panasas.com>
+Cc: open-osd <osd-dev@open-osd.org>, NFS list <linux-nfs@vger.kernel.org>,
+        Daniel Gryniewicz <dang@linuxbox.com>,
+        Elizabeth Ellenbogen Ziph <elizabeth@linuxbox.com>,
+        Santosh Pathak <santoshp@panasas.com>,
+        Benny Halevy <bhalevy@primarydata.com>,
+        Sachin bhamare <sachin.bhamare@gmail.com>
+Message-ID: <148968805.223876.1397214732949.JavaMail.zimbra@desy.de>
+In-Reply-To: <53467757.40909@panasas.com>
+References: <53467667.3010304@panasas.com> <53467757.40909@panasas.com>
+Subject: Re: [PATCH 1/3] ore: (trivial) reformat some code
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
 
-What we have here is two functions that look identical.  Let's share
-some more code!
 
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
----
- fs/nfs/internal.h |  1 +
- fs/nfs/pageio.c   | 23 +++++++++++++++++++++++
- fs/nfs/read.c     | 25 +------------------------
- fs/nfs/write.c    | 26 +-------------------------
- 4 files changed, 26 insertions(+), 49 deletions(-)
+----- Original Message -----
+> From: "Boaz Harrosh" <bharrosh@panasas.com>
+> To: "open-osd" <osd-dev@open-osd.org>, "NFS list" <linux-nfs@vger.kernel.org>, "Daniel Gryniewicz"
+> <dang@linuxbox.com>, "Elizabeth Ellenbogen Ziph" <elizabeth@linuxbox.com>, "Santosh Pathak" <santoshp@panasas.com>
+> Cc: "Benny Halevy" <bhalevy@primarydata.com>, "Sachin bhamare" <sachin.bhamare@gmail.com>
+> Sent: Thursday, April 10, 2014 12:49:59 PM
+> Subject: [PATCH 1/3] ore: (trivial) reformat some code
+> 
+> 
+> rearrange some source lines. Nothing changed.
+> 
+> Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+> ---
+>  fs/exofs/ore.c      | 19 ++++++++-----------
+>  fs/exofs/ore_raid.c |  4 +---
+>  2 files changed, 9 insertions(+), 14 deletions(-)
+> 
+> diff --git a/fs/exofs/ore.c b/fs/exofs/ore.c
+> index dae8846..98f2137 100644
+> --- a/fs/exofs/ore.c
+> +++ b/fs/exofs/ore.c
+> @@ -675,8 +675,8 @@ static int _prepare_for_striping(struct ore_io_state
+> *ios)
+>  	si->cur_pg = si->unit_off / PAGE_SIZE;
+>  
+>  	while (length) {
+> -		unsigned comp = dev - first_dev;
+> -		struct ore_per_dev_state *per_dev = &ios->per_dev[comp];
+> +		struct ore_per_dev_state *per_dev =
+> +						&ios->per_dev[dev - first_dev];
+>  		unsigned cur_len, page_off = 0;
+>  
+>  		if (!per_dev->length) {
+> @@ -708,11 +708,9 @@ static int _prepare_for_striping(struct ore_io_state
+> *ios)
+>  		if (unlikely(ret))
+>  			goto out;
+>  
+> -		dev += mirrors_p1;
+> -		dev = (dev % devs_in_group) + first_dev;
+> -
+>  		length -= cur_len;
+>  
+> +		dev = ((dev + mirrors_p1) % devs_in_group) + first_dev;
+>  		si->cur_comp = (si->cur_comp + 1) % group_width;
+>  		if (unlikely((dev == si->par_dev) || (!length && ios->sp2d))) {
+>  			if (!length && ios->sp2d) {
+> @@ -721,11 +719,6 @@ static int _prepare_for_striping(struct ore_io_state
+> *ios)
+>  				 */
+>  				dev = si->par_dev;
+>  			}
+> -			if (ios->sp2d)
+> -				/* In writes cur_len just means if it's the
+> -				 * last one. See _ore_add_parity_unit.
+> -				 */
+> -				cur_len = length;
+>  			per_dev = &ios->per_dev[dev - first_dev];
+>  			if (!per_dev->length) {
+>  				/* Only/always the parity unit of the first
+> @@ -736,7 +729,11 @@ static int _prepare_for_striping(struct ore_io_state
+> *ios)
+>  				per_dev->offset = si->obj_offset - si->unit_off;
+>  			}
+>  
+> -			ret = _ore_add_parity_unit(ios, si, per_dev, cur_len);
+> +			/* In writes cur_len just means if it's the
+> +			 * last one. See _ore_add_parity_unit.
+> +			 */
+> +			ret = _ore_add_parity_unit(ios, si, per_dev,
+> +						   ios->sp2d : length : cur_len);
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 81c314c..0243825 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -403,6 +403,7 @@ extern int nfs_generic_pgio(struct nfs_pageio_descriptor *, struct nfs_pgio_head
- extern int nfs_initiate_pgio(struct rpc_clnt *, struct nfs_pgio_data *,
- 			     const struct rpc_call_ops *, int, int);
- extern int nfs_do_multiple_pgios(struct list_head *, const struct rpc_call_ops *, int);
-+extern int nfs_generic_pg_pgios(struct nfs_pageio_descriptor *);
- 
- /* read.c */
- extern void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
-diff --git a/fs/nfs/pageio.c b/fs/nfs/pageio.c
-index 4a98d54..da01458 100644
---- a/fs/nfs/pageio.c
-+++ b/fs/nfs/pageio.c
-@@ -312,6 +312,29 @@ int nfs_generic_pgio(struct nfs_pageio_descriptor *desc,
- }
- EXPORT_SYMBOL_GPL(nfs_generic_pgio);
- 
-+int nfs_generic_pg_pgios(struct nfs_pageio_descriptor *desc)
-+{
-+	struct nfs_rw_header *rw_hdr;
-+	struct nfs_pgio_header *hdr;
-+	int ret;
-+
-+	rw_hdr = nfs_rw_header_alloc(desc->pg_rw_ops);
-+	if (!rw_hdr) {
-+		desc->pg_completion_ops->error_cleanup(&desc->pg_list);
-+		return -ENOMEM;
-+	}
-+	hdr = &rw_hdr->header;
-+	nfs_pgheader_init(desc, hdr, nfs_rw_header_free);
-+	atomic_inc(&hdr->refcnt);
-+	ret = nfs_generic_pgio(desc, hdr);
-+	if (ret == 0)
-+		ret = nfs_do_multiple_pgios(&hdr->rpc_list,
-+					    desc->pg_rpc_callops, 0);
-+	if (atomic_dec_and_test(&hdr->refcnt))
-+		hdr->completion_ops->completion(hdr);
-+	return ret;
-+}
-+
- static void nfs_pgio_prepare(struct rpc_task *task, void *calldata)
- {
- 	struct nfs_pgio_data *data = calldata;
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index 9dd1aeb..8460795 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -178,32 +178,9 @@ static const struct nfs_pgio_completion_ops nfs_async_read_completion_ops = {
- 	.completion = nfs_read_completion,
- };
- 
--static int nfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc)
--{
--	struct nfs_rw_header *rhdr;
--	struct nfs_pgio_header *hdr;
--	int ret;
--
--	rhdr = nfs_rw_header_alloc(desc->pg_rw_ops);
--	if (!rhdr) {
--		desc->pg_completion_ops->error_cleanup(&desc->pg_list);
--		return -ENOMEM;
--	}
--	hdr = &rhdr->header;
--	nfs_pgheader_init(desc, hdr, nfs_rw_header_free);
--	atomic_inc(&hdr->refcnt);
--	ret = nfs_generic_pgio(desc, hdr);
--	if (ret == 0)
--		ret = nfs_do_multiple_pgios(&hdr->rpc_list,
--					    desc->pg_rpc_callops, 0);
--	if (atomic_dec_and_test(&hdr->refcnt))
--		hdr->completion_ops->completion(hdr);
--	return ret;
--}
--
- static const struct nfs_pageio_ops nfs_pageio_read_ops = {
- 	.pg_test = nfs_generic_pg_test,
--	.pg_doio = nfs_generic_pg_readpages,
-+	.pg_doio = nfs_generic_pg_pgios,
- };
- 
- /*
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 28fdde2..ebbb663 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -973,33 +973,9 @@ static const struct nfs_pgio_completion_ops nfs_async_write_completion_ops = {
- 	.completion = nfs_write_completion,
- };
- 
--static int nfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc)
--{
--	struct nfs_rw_header *whdr;
--	struct nfs_pgio_header *hdr;
--	int ret;
--
--	whdr = nfs_rw_header_alloc(desc->pg_rw_ops);
--	if (!whdr) {
--		desc->pg_completion_ops->error_cleanup(&desc->pg_list);
--		return -ENOMEM;
--	}
--	hdr = &whdr->header;
--	nfs_pgheader_init(desc, hdr, nfs_rw_header_free);
--	atomic_inc(&hdr->refcnt);
--	ret = nfs_generic_pgio(desc, hdr);
--	if (ret == 0)
--		ret = nfs_do_multiple_pgios(&hdr->rpc_list,
--					     desc->pg_rpc_callops,
--					     desc->pg_ioflags);
--	if (atomic_dec_and_test(&hdr->refcnt))
--		hdr->completion_ops->completion(hdr);
--	return ret;
--}
--
- static const struct nfs_pageio_ops nfs_pageio_write_ops = {
- 	.pg_test = nfs_generic_pg_test,
--	.pg_doio = nfs_generic_pg_writepages,
-+	.pg_doio = nfs_generic_pg_pgios,
- };
- 
- void nfs_pageio_init_write(struct nfs_pageio_descriptor *pgio,
--- 
-1.9.2
+Hi Boaz, 
 
+did you meant
+ 
+     ios->sp2d ? length : cur_len);
+
+Tigran.
+>  			if (unlikely(ret))
+>  					goto out;
+>  
+> diff --git a/fs/exofs/ore_raid.c b/fs/exofs/ore_raid.c
+> index 4e2c032..af417d3 100644
+> --- a/fs/exofs/ore_raid.c
+> +++ b/fs/exofs/ore_raid.c
+> @@ -226,9 +226,7 @@ static void _gen_xor_unit(struct __stripe_pages_2d *sp2d)
+>  
+>  		init_async_submit(&_1ps->submit,
+>  			ASYNC_TX_XOR_ZERO_DST | ASYNC_TX_ACK,
+> -			NULL,
+> -			NULL, NULL,
+> -			(addr_conv_t *)_1ps->scribble);
+> +			NULL, NULL, NULL, (addr_conv_t *)_1ps->scribble);
+>  
+>  		/* TODO: raid6 */
+>  		_1ps->tx = async_xor(_1ps->pages[sp2d->data_devs], _1ps->pages,
+> --
+> 1.9.0
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
