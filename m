@@ -1,106 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f171.google.com ([209.85.223.171]:53659 "EHLO
-	mail-ie0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932186AbaD3Ta6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Apr 2014 15:30:58 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH V3 10/17] xprtrdma: Make rpcrdma_ep_destroy() return void
-To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Cc: Anna.Schumaker@netapp.com
-Date: Wed, 30 Apr 2014 15:30:56 -0400
-Message-ID: <20140430193056.5663.72890.stgit@manet.1015granger.net>
-In-Reply-To: <20140430191433.5663.16217.stgit@manet.1015granger.net>
-References: <20140430191433.5663.16217.stgit@manet.1015granger.net>
+Received: from mail-pb0-f54.google.com ([209.85.160.54]:55110 "EHLO
+	mail-pb0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754557AbaDMNLg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 13 Apr 2014 09:11:36 -0400
+Received: by mail-pb0-f54.google.com with SMTP id ma3so7175396pbc.41
+        for <linux-nfs@vger.kernel.org>; Sun, 13 Apr 2014 06:11:36 -0700 (PDT)
+Message-ID: <534A8CEF.6000609@gmail.com>
+Date: Sun, 13 Apr 2014 21:11:11 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs@vger.kernel.org
+Subject: [PATCH] NFS: add FATTR4_WORD1_MODE flags for cache_consistency_bitmask
+Content-Type: text/plain; charset=GB2312
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: rpcrdma_ep_destroy() returns a value that is used
-only to print a debugging message. rpcrdma_ep_destroy() already
-prints debugging messages in all error cases.
+After writing data at NFS client, file's access mode is inconsistent
+with server.
+Because WRITE proceduce changes the S_ISUID and S_ISGID bits,
+but client don't get it.
 
-Make rpcrdma_ep_destroy() return void instead.
+#touch hello; chmod 06777 hello; stat hello;
+  File: ¡®hello¡¯
+  Size: 0               Blocks: 0          IO Block: 262144 regular
+empty file
+Device: 24h/36d Inode: 786434      Links: 1
+Access: (6777/-rwsrwsrwx)  Uid: (    0/    root)   Gid: (    0/    root)
+Context: system_u:object_r:nfs_t:s0
+Access: 2014-04-13 21:00:44.996908708 +0800
+Modify: 2014-04-13 21:00:44.996908708 +0800
+Change: 2014-04-13 21:00:45.033908705 +0800
+ Birth: -
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: Steve Wise <swise@opengridcomputing.com>
+#echo 12324 > hello; stat hello; stat /nfstest/hello
+  File: ¡®hello¡¯
+  Size: 6               Blocks: 0          IO Block: 262144 regular file
+Device: 24h/36d Inode: 786434      Links: 1
+Access: (6777/-rwsrwsrwx)  Uid: (    0/    root)   Gid: (    0/    root)
+         ^^^^^ it should be 0777
+Context: system_u:object_r:nfs_t:s0
+Access: 2014-04-13 21:00:44.996908708 +0800
+Modify: 2014-04-13 21:00:45.061908703 +0800
+Change: 2014-04-13 21:00:45.061908703 +0800
+ Birth: -
+  File: ¡®/nfstest/hello¡¯
+  Size: 6               Blocks: 8          IO Block: 4096   regular file
+Device: 803h/2051d      Inode: 786434      Links: 1
+Access: (0777/-rwxrwxrwx)  Uid: (    0/    root)   Gid: (    0/    root)
+         ^^^^^ bits on the server
+Context: system_u:object_r:default_t:s0
+Access: 2014-04-13 21:00:44.996908708 +0800
+Modify: 2014-04-13 21:00:45.061908703 +0800
+Change: 2014-04-13 21:00:45.061908703 +0800
+ Birth: -
+
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 ---
+ fs/nfs/nfs4proc.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
- net/sunrpc/xprtrdma/transport.c |    8 ++------
- net/sunrpc/xprtrdma/verbs.c     |    7 +------
- net/sunrpc/xprtrdma/xprt_rdma.h |    2 +-
- 3 files changed, 4 insertions(+), 13 deletions(-)
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 397be39..f234af7 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2819,7 +2819,7 @@ static int _nfs4_server_capabilities(struct
+nfs_server *server, struct nfs_fh *f
 
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 430cabb..d18b2a3 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -229,7 +229,6 @@ static void
- xprt_rdma_destroy(struct rpc_xprt *xprt)
- {
- 	struct rpcrdma_xprt *r_xprt = rpcx_to_rdmax(xprt);
--	int rc;
- 
- 	dprintk("RPC:       %s: called\n", __func__);
- 
-@@ -238,10 +237,7 @@ xprt_rdma_destroy(struct rpc_xprt *xprt)
- 	xprt_clear_connected(xprt);
- 
- 	rpcrdma_buffer_destroy(&r_xprt->rx_buf);
--	rc = rpcrdma_ep_destroy(&r_xprt->rx_ep, &r_xprt->rx_ia);
--	if (rc)
--		dprintk("RPC:       %s: rpcrdma_ep_destroy returned %i\n",
--			__func__, rc);
-+	rpcrdma_ep_destroy(&r_xprt->rx_ep, &r_xprt->rx_ia);
- 	rpcrdma_ia_close(&r_xprt->rx_ia);
- 
- 	xprt_rdma_free_addresses(xprt);
-@@ -391,7 +387,7 @@ out4:
- 	xprt_rdma_free_addresses(xprt);
- 	rc = -EINVAL;
- out3:
--	(void) rpcrdma_ep_destroy(new_ep, &new_xprt->rx_ia);
-+	rpcrdma_ep_destroy(new_ep, &new_xprt->rx_ia);
- out2:
- 	rpcrdma_ia_close(&new_xprt->rx_ia);
- out1:
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 0cbc83c..edc951e 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -748,11 +748,8 @@ out1:
-  * Disconnect and destroy endpoint. After this, the only
-  * valid operations on the ep are to free it (if dynamically
-  * allocated) or re-create it.
-- *
-- * The caller's error handling must be sure to not leak the endpoint
-- * if this function fails.
-  */
--int
-+void
- rpcrdma_ep_destroy(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
- {
- 	int rc;
-@@ -782,8 +779,6 @@ rpcrdma_ep_destroy(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
- 	if (rc)
- 		dprintk("RPC:       %s: ib_destroy_cq returned %i\n",
- 			__func__, rc);
--
--	return rc;
- }
- 
- /*
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 3f44d6a..362a19d 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -301,7 +301,7 @@ void rpcrdma_ia_close(struct rpcrdma_ia *);
-  */
- int rpcrdma_ep_create(struct rpcrdma_ep *, struct rpcrdma_ia *,
- 				struct rpcrdma_create_data_internal *);
--int rpcrdma_ep_destroy(struct rpcrdma_ep *, struct rpcrdma_ia *);
-+void rpcrdma_ep_destroy(struct rpcrdma_ep *, struct rpcrdma_ia *);
- int rpcrdma_ep_connect(struct rpcrdma_ep *, struct rpcrdma_ia *);
- int rpcrdma_ep_disconnect(struct rpcrdma_ep *, struct rpcrdma_ia *);
- 
+ 		memcpy(server->cache_consistency_bitmask, res.attr_bitmask,
+sizeof(server->cache_consistency_bitmask));
+ 		server->cache_consistency_bitmask[0] &=
+FATTR4_WORD0_CHANGE|FATTR4_WORD0_SIZE;
+-		server->cache_consistency_bitmask[1] &=
+FATTR4_WORD1_TIME_METADATA|FATTR4_WORD1_TIME_MODIFY;
++		server->cache_consistency_bitmask[1] &=
+FATTR4_WORD1_MODE|FATTR4_WORD1_TIME_METADATA|FATTR4_WORD1_TIME_MODIFY;
+ 		server->cache_consistency_bitmask[2] = 0;
+ 		server->acl_bitmask = res.acl_bitmask;
+ 		server->fh_expire_type = res.fh_expire_type;
+-- 
+1.9.0
 
