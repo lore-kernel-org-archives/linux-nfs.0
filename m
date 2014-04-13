@@ -1,88 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f177.google.com ([209.85.223.177]:44454 "EHLO
-	mail-ie0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756359AbaDHMmN convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Apr 2014 08:42:13 -0400
-Received: by mail-ie0-f177.google.com with SMTP id rl12so820924iec.36
-        for <linux-nfs@vger.kernel.org>; Tue, 08 Apr 2014 05:42:13 -0700 (PDT)
-Content-Type: text/plain; charset=windows-1252
+Received: from mail-ig0-f178.google.com ([209.85.213.178]:63753 "EHLO
+	mail-ig0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750991AbaDMO2I convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 13 Apr 2014 10:28:08 -0400
+Received: by mail-ig0-f178.google.com with SMTP id hn18so2496865igb.5
+        for <linux-nfs@vger.kernel.org>; Sun, 13 Apr 2014 07:28:08 -0700 (PDT)
+Content-Type: text/plain; charset=GB2312
 Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
-Subject: Re: v4.0 CB_COMPOUND authentication failures
+Subject: Re: [PATCH] NFS: add FATTR4_WORD1_MODE flags for cache_consistency_bitmask
 From: Trond Myklebust <trond.myklebust@primarydata.com>
-In-Reply-To: <20140408123501.GA3532@fieldses.org>
-Date: Tue, 8 Apr 2014 08:42:10 -0400
-Cc: Layton Jeff <jlayton@redhat.com>, linux-nfs@vger.kernel.org,
-        Adamson William Andros <androsadamson@gmail.com>,
-        Lever Charles Edward <chuck.lever@oracle.com>
-Message-Id: <E9D3EBB8-1458-4CB5-8754-EAD525E27D6C@primarydata.com>
-References: <20140408082140.340c1328@tlielax.poochiereds.net> <20140408123501.GA3532@fieldses.org>
-To: Dr Fields James Bruce <bfields@fieldses.org>
+In-Reply-To: <534A8CEF.6000609@gmail.com>
+Date: Sun, 13 Apr 2014 10:28:05 -0400
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <505345D4-4F7C-4970-9EBF-7CFC367575B2@primarydata.com>
+References: <534A8CEF.6000609@gmail.com>
+To: Kinglong Mee <kinglongmee@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On Apr 8, 2014, at 8:35, J. Bruce Fields <bfields@fieldses.org> wrote:
+On Apr 13, 2014, at 9:11, Kinglong Mee <kinglongmee@gmail.com> wrote:
 
-> On Tue, Apr 08, 2014 at 08:21:40AM -0400, Jeff Layton wrote:
->> I've recently been hunting down some problems with delegation handling
->> and have run across a problem with the client authenticates CB_COMPOUND
->> requests. I could use some advice on how best to fix it.
->> 
->> Specifically, check_gss_callback_principal() tries to look up the
->> callback client and then tries to compare the ticket in it against the
->> clp->cl_hostname:
->> 
->>        /* Expect a GSS_C_NT_HOSTBASED_NAME like "nfs@serverhostname" */
->> 
->>        if (memcmp(p, "nfs@", 4) != 0)
->>                return 0;
->>        p += 4;
->>        if (strcmp(p, clp->cl_hostname) != 0)
->>                return 0;
->>        return 1;
->> 
->> The problem is that there is no guarantee that those hostnames will be
->> the same. If, for instance, I mount "foo:/" and the SPN is
->> "nfs/foo.bar.baz" that strcmp will return true, and the CB_COMPOUND
->> request will get tossed out [1]. Ditto if I happen to mount a CNAME of the
->> server.
+> After writing data at NFS client, file's access mode is inconsistent
+> with server.
+> Because WRITE proceduce changes the S_ISUID and S_ISGID bits,
+> but client don't get it.
 > 
-> It sounds like a bug to me that the mount is succeeding without the name
-> matching.
+> #touch hello; chmod 06777 hello; stat hello;
+>  File: ¡®hello¡¯
+>  Size: 0               Blocks: 0          IO Block: 262144 regular
+> empty file
+> Device: 24h/36d Inode: 786434      Links: 1
+> Access: (6777/-rwsrwsrwx)  Uid: (    0/    root)   Gid: (    0/    root)
+> Context: system_u:object_r:nfs_t:s0
+> Access: 2014-04-13 21:00:44.996908708 +0800
+> Modify: 2014-04-13 21:00:44.996908708 +0800
+> Change: 2014-04-13 21:00:45.033908705 +0800
+> Birth: -
 > 
-> The security provided by krb5 is much weaker if we don't check that the
-> name provided on the commandline matches what the server authenticates
-> as.
+> #echo 12324 > hello; stat hello; stat /nfstest/hello
+>  File: ¡®hello¡¯
+>  Size: 6               Blocks: 0          IO Block: 262144 regular file
+> Device: 24h/36d Inode: 786434      Links: 1
+> Access: (6777/-rwsrwsrwx)  Uid: (    0/    root)   Gid: (    0/    root)
+>         ^^^^^ it should be 0777
+> Context: system_u:object_r:nfs_t:s0
+> Access: 2014-04-13 21:00:44.996908708 +0800
+> Modify: 2014-04-13 21:00:45.061908703 +0800
+> Change: 2014-04-13 21:00:45.061908703 +0800
+> Birth: -
+>  File: ¡®/nfstest/hello¡¯
+>  Size: 6               Blocks: 8          IO Block: 4096   regular file
+> Device: 803h/2051d      Inode: 786434      Links: 1
+> Access: (0777/-rwxrwxrwx)  Uid: (    0/    root)   Gid: (    0/    root)
+>         ^^^^^ bits on the server
+> Context: system_u:object_r:default_t:s0
+> Access: 2014-04-13 21:00:44.996908708 +0800
+> Modify: 2014-04-13 21:00:45.061908703 +0800
+> Change: 2014-04-13 21:00:45.061908703 +0800
+> Birth: -
+> 
+> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> ---
+> fs/nfs/nfs4proc.c | 2 +-
+> 1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 397be39..f234af7 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -2819,7 +2819,7 @@ static int _nfs4_server_capabilities(struct
+> nfs_server *server, struct nfs_fh *f
+> 
+> 		memcpy(server->cache_consistency_bitmask, res.attr_bitmask,
+> sizeof(server->cache_consistency_bitmask));
+> 		server->cache_consistency_bitmask[0] &=
+> FATTR4_WORD0_CHANGE|FATTR4_WORD0_SIZE;
+> -		server->cache_consistency_bitmask[1] &=
+> FATTR4_WORD1_TIME_METADATA|FATTR4_WORD1_TIME_MODIFY;
+> +		server->cache_consistency_bitmask[1] &=
+> FATTR4_WORD1_MODE|FATTR4_WORD1_TIME_METADATA|FATTR4_WORD1_TIME_MODIFY;
+> 		server->cache_consistency_bitmask[2] = 0;
+> 		server->acl_bitmask = res.acl_bitmask;
+> 		server->fh_expire_type = res.fh_expire_type;
+> -- 
+> 1.9.0
+> 
 
-Where would the client find that information? I don’t think that rpc.gssd passes that information down to us.
-
->> Now that we try to use krb5 on the callback channel even when sec=sys
->> is specified, this is very problematic.
-> 
-> And similarly I think the attempt to opportunistically use krb5 for
-> state management should fail and fall back on auth_sys if the server's
-> name doesn't match.
-> 
->> I think that the ideal thing would be to stash the SPN that we use to
->> do the SETCLIENTID call and use that in the comparison above.
->> Unfortunately, the rpc_cred doesn't really seem to carry this info and
->> I don't see where we get enough information in the rpc.gssd downcall to
->> figure out what that SPN should be.
->> 
->> Anyone have thoughts or should we just remove the above check until we
->> come up with a better way to do this?
->> 
->> [1]: there's another bug that can cause the client to send a bogus
->>     reply instead of dropping the request as intended, but that's
->>     relatively simple to fix.
-> 
-> So I believe the matching really is a requirement and that it would be
-> wrong to weaken it.
-> 
-> It sounds like there's also a server bug here if it's giving out
-> delegations to a client that isn't responding to callbacks.
-> 
-> --b.
+Instead of requesting a new attribute on each and every operation just in order to deal with an extremely rare corner case, is there any reason why we can¡¯t just do this by checking should_remove_suid(), clearing the mode bits ourselves, and then marking the attributes for revalidation?
 
 _________________________________
 Trond Myklebust
