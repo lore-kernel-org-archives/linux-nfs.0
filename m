@@ -1,137 +1,127 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f169.google.com ([209.85.223.169]:33947 "EHLO
-	mail-ie0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757883AbaDVV3W (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Apr 2014 17:29:22 -0400
-Received: by mail-ie0-f169.google.com with SMTP id to1so69762ieb.28
-        for <linux-nfs@vger.kernel.org>; Tue, 22 Apr 2014 14:29:22 -0700 (PDT)
-From: Weston Andros Adamson <dros@primarydata.com>
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
-Subject: [PATCH 16/17] pnfs: filelayout: support non page aligned layouts
-Date: Tue, 22 Apr 2014 17:29:24 -0400
-Message-Id: <1398202165-78897-17-git-send-email-dros@primarydata.com>
-In-Reply-To: <1398202165-78897-1-git-send-email-dros@primarydata.com>
-References: <1398202165-78897-1-git-send-email-dros@primarydata.com>
+Received: from mail-ig0-f176.google.com ([209.85.213.176]:51380 "EHLO
+	mail-ig0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751499AbaDMPYU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 13 Apr 2014 11:24:20 -0400
+Received: by mail-ig0-f176.google.com with SMTP id uy17so2524429igb.15
+        for <linux-nfs@vger.kernel.org>; Sun, 13 Apr 2014 08:24:19 -0700 (PDT)
+Message-ID: <1397402659.6306.5.camel@leira.trondhjem.org>
+Subject: Re: [PATCH] NFS: add FATTR4_WORD1_MODE flags for
+ cache_consistency_bitmask
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@fieldses.org>
+Date: Sun, 13 Apr 2014 11:24:19 -0400
+In-Reply-To: <534AA4FD.3060202@gmail.com>
+References: <534A8CEF.6000609@gmail.com>
+	 <505345D4-4F7C-4970-9EBF-7CFC367575B2@primarydata.com>
+	 <534AA4FD.3060202@gmail.com>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Use the new pg_test interface to adjust requests to fit in the current
-stripe / segment.
+On Sun, 2014-04-13 at 22:53 +0800, Kinglong Mee wrote:
+> 
+> 于 2014/4/13 22:28, Trond Myklebust 写道:
+> > 
+> > On Apr 13, 2014, at 9:11, Kinglong Mee <kinglongmee@gmail.com> wrote:
+> > 
+> >> After writing data at NFS client, file's access mode is inconsistent
+> >> with server.
+> >> Because WRITE proceduce changes the S_ISUID and S_ISGID bits,
+> >> but client don't get it.
+> >>
+> >> #touch hello; chmod 06777 hello; stat hello;
+> >>   File: ‘hello’
+> >>   Size: 0               Blocks: 0          IO Block: 262144 regular
+> >> empty file
+> >> Device: 24h/36d Inode: 786434      Links: 1
+> >> Access: (6777/-rwsrwsrwx)  Uid: (    0/    root)   Gid: (    0/    root)
+> >> Context: system_u:object_r:nfs_t:s0
+> >> Access: 2014-04-13 21:00:44.996908708 +0800
+> >> Modify: 2014-04-13 21:00:44.996908708 +0800
+> >> Change: 2014-04-13 21:00:45.033908705 +0800
+> >> Birth: -
+> >>
+> >> #echo 12324 > hello; stat hello; stat /nfstest/hello
+> >>   File: ‘hello’
+> >>   Size: 6               Blocks: 0          IO Block: 262144 regular file
+> >> Device: 24h/36d Inode: 786434      Links: 1
+> >> Access: (6777/-rwsrwsrwx)  Uid: (    0/    root)   Gid: (    0/    root)
+> >>          ^^^^^ it should be 0777
+> >> Context: system_u:object_r:nfs_t:s0
+> >> Access: 2014-04-13 21:00:44.996908708 +0800
+> >> Modify: 2014-04-13 21:00:45.061908703 +0800
+> >> Change: 2014-04-13 21:00:45.061908703 +0800
+> >> Birth: -
+> >>   File: ‘/nfstest/hello’
+> >>   Size: 6               Blocks: 8          IO Block: 4096   regular file
+> >> Device: 803h/2051d      Inode: 786434      Links: 1
+> >> Access: (0777/-rwxrwxrwx)  Uid: (    0/    root)   Gid: (    0/    root)
+> >>          ^^^^^ bits on the server
+> >> Context: system_u:object_r:default_t:s0
+> >> Access: 2014-04-13 21:00:44.996908708 +0800
+> >> Modify: 2014-04-13 21:00:45.061908703 +0800
+> >> Change: 2014-04-13 21:00:45.061908703 +0800
+> >> Birth: -
+> >>
+<snip>
+> > 
+> > Instead of requesting a new attribute on each and every operation just in order to deal with an extremely rare corner case, is there any reason why we can’t just do this by checking should_remove_suid(), clearing the mode bits ourselves, and then marking the attributes for revalidation?
+> 
+<snip>
+> IMO, client shoulds get all metadatas from server, so, adds the flag.
+> I think should_remove_suid() should be called by nfsd, not NFS client
 
-Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+I agree with 50% of that statement. Please see below.
+
+8<---------------------------------------------------------------------
+>From a7b05fc5fcb433e8cfca577c9275f2012b523ee8 Mon Sep 17 00:00:00 2001
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+Date: Sun, 13 Apr 2014 11:11:31 -0400
+Subject: [PATCH] NFS: Don't ignore suid/sgid bit changes after a successful
+ write
+
+If we suspect that the server may have cleared the suid/sgid bit,
+then mark the inode for revalidation.
+
+Reported-by: Kinglong Mee <kinglongmee@gmail.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/nfs4filelayout.c | 50 ++++++++++++++++++-------------------------------
- 1 file changed, 18 insertions(+), 32 deletions(-)
+ fs/nfs/write.c | 11 +++++++++--
+ 1 file changed, 9 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 9a91f4f..145944f 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -638,7 +638,6 @@ filelayout_check_layout(struct pnfs_layout_hdr *lo,
- 	struct nfs4_deviceid_node *d;
- 	struct nfs4_file_layout_dsaddr *dsaddr;
- 	int status = -EINVAL;
--	struct nfs_server *nfss = NFS_SERVER(lo->plh_inode);
- 
- 	dprintk("--> %s\n", __func__);
- 
-@@ -656,7 +655,7 @@ filelayout_check_layout(struct pnfs_layout_hdr *lo,
- 		goto out;
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 9a3b6a4cd6b9..80b03e064a09 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1401,9 +1401,16 @@ void nfs_writeback_done(struct rpc_task *task, struct nfs_write_data *data)
+ 		}
  	}
- 
--	if (!fl->stripe_unit || fl->stripe_unit % PAGE_SIZE) {
-+	if (!fl->stripe_unit) {
- 		dprintk("%s Invalid stripe unit (%u)\n",
- 			__func__, fl->stripe_unit);
- 		goto out;
-@@ -693,12 +692,6 @@ filelayout_check_layout(struct pnfs_layout_hdr *lo,
- 		goto out_put;
- 	}
- 
--	if (fl->stripe_unit % nfss->rsize || fl->stripe_unit % nfss->wsize) {
--		dprintk("%s Stripe unit (%u) not aligned with rsize %u "
--			"wsize %u\n", __func__, fl->stripe_unit, nfss->rsize,
--			nfss->wsize);
--	}
--
- 	status = 0;
- out:
- 	dprintk("--> %s returns %d\n", __func__, status);
-@@ -935,44 +928,40 @@ filelayout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
- {
- 	unsigned int size;
- 	u64 p_stripe, r_stripe;
--	u32 stripe_unit;
-+	u32 stripe_offset;
-+	u64 segment_offset = pgio->pg_lseg->pls_range.offset;
-+	u32 stripe_unit = FILELAYOUT_LSEG(pgio->pg_lseg)->stripe_unit;
- 
- 	/* calls nfs_generic_pg_test */
- 	size = pnfs_generic_pg_test(pgio, prev, req);
- 	if (!size)
- 		return 0;
- 
-+	/* see if req and prev are in the same stripe */
- 	if (prev) {
--		p_stripe = (u64)req_offset(prev);
--		r_stripe = (u64)req_offset(req);
--		stripe_unit = FILELAYOUT_LSEG(pgio->pg_lseg)->stripe_unit;
--
-+		p_stripe = (u64)req_offset(prev) - segment_offset;
-+		r_stripe = (u64)req_offset(req) - segment_offset;
- 		do_div(p_stripe, stripe_unit);
- 		do_div(r_stripe, stripe_unit);
- 
- 		if (p_stripe != r_stripe)
- 			return 0;
- 	}
--	return min(size, req->wb_bytes);
+ #endif
+-	if (task->tk_status < 0)
++	if (task->tk_status < 0) {
+ 		nfs_set_pgio_error(data->header, task->tk_status, argp->offset);
+-	else if (resp->count < argp->count) {
++		return;
++	}
 +
-+	/* calculate remaining bytes in the current stripe */
-+	stripe_offset = ((u64)req_offset(req) - segment_offset) % stripe_unit;
-+	WARN_ON_ONCE(stripe_offset > stripe_unit);
-+	if (stripe_offset >= stripe_unit)
-+		return 0;
-+	return min(stripe_unit - (unsigned int)stripe_offset, size);
- }
++	/* Deal with the suid/sgid bit corner case */
++	if (should_remove_suid(argp->context->dentry))
++		nfs_mark_for_revalidate(inode);
++
++	if (resp->count < argp->count) {
+ 		static unsigned long    complain;
  
- static void
- filelayout_pg_init_read(struct nfs_pageio_descriptor *pgio,
- 			struct nfs_page *req)
- {
--	WARN_ON_ONCE(pgio->pg_lseg != NULL);
--
--	if (req->wb_offset != req->wb_pgbase) {
--		/*
--		 * Handling unaligned pages is difficult, because have to
--		 * somehow split a req in two in certain cases in the
--		 * pg.test code.  Avoid this by just not using pnfs
--		 * in this case.
--		 */
--		nfs_pageio_reset_read_mds(pgio);
--		return;
--	}
--	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
-+	if (!pgio->pg_lseg)
-+		pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
- 					   req->wb_context,
- 					   0,
- 					   NFS4_MAX_UINT64,
-@@ -990,11 +979,8 @@ filelayout_pg_init_write(struct nfs_pageio_descriptor *pgio,
- 	struct nfs_commit_info cinfo;
- 	int status;
- 
--	WARN_ON_ONCE(pgio->pg_lseg != NULL);
--
--	if (req->wb_offset != req->wb_pgbase)
--		goto out_mds;
--	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
-+	if (!pgio->pg_lseg)
-+		pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
- 					   req->wb_context,
- 					   0,
- 					   NFS4_MAX_UINT64,
+ 		/* This a short write! */
 -- 
-1.8.5.2 (Apple Git-48)
+1.9.0
+
+
+-- 
+Trond Myklebust
+Linux NFS client maintainer, PrimaryData
+trond.myklebust@primarydata.com
+
 
