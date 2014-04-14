@@ -1,145 +1,103 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f177.google.com ([209.85.213.177]:51108 "EHLO
-	mail-ig0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753153AbaDRSqy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Apr 2014 14:46:54 -0400
-Received: by mail-ig0-f177.google.com with SMTP id h3so441698igd.4
-        for <linux-nfs@vger.kernel.org>; Fri, 18 Apr 2014 11:46:54 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Bruce Fields <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 67/70] NFSd: Remove nfs4_lock_state(): nfsd4_open and nfsd4_open_confirm
-Date: Fri, 18 Apr 2014 14:45:01 -0400
-Message-Id: <1397846704-14567-68-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1397846704-14567-67-git-send-email-trond.myklebust@primarydata.com>
-References: <1397846704-14567-1-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-2-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-3-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-4-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-5-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-6-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-7-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-8-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-9-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-10-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-11-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-12-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-13-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-14-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-15-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-16-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-17-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-18-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-19-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-20-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-21-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-22-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-23-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-24-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-25-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-26-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-27-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-28-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-29-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-30-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-31-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-32-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-33-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-34-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-35-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-36-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-37-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-38-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-39-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-40-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-41-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-42-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-43-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-44-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-45-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-46-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-47-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-48-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-49-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-50-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-51-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-52-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-53-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-54-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-55-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-56-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-57-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-58-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-59-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-60-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-61-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-62-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-63-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-64-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-65-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-66-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-67-git-send-email-trond.myklebust@primarydata.com>
+Received: from mail-ig0-f172.google.com ([209.85.213.172]:61248 "EHLO
+	mail-ig0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754339AbaDNWWn (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Apr 2014 18:22:43 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 2/8] xprtrdma: Remove BOUNCEBUFFERS memory registration mode
+To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Date: Mon, 14 Apr 2014 18:22:41 -0400
+Message-ID: <20140414222241.20646.23399.stgit@manet.1015granger.net>
+In-Reply-To: <20140414220041.20646.63991.stgit@manet.1015granger.net>
+References: <20140414220041.20646.63991.stgit@manet.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4proc.c  | 3 ---
- fs/nfsd/nfs4state.c | 6 ------
- 2 files changed, 9 deletions(-)
+Clean up: This memory registration mode is slow and was never
+meant for use in production environments. Remove it to reduce
+implementation complexity.
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 1101bf6b63c8..47aa08ed92aa 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -385,8 +385,6 @@ nfsd4_open(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	if (nfsd4_has_session(cstate))
- 		copy_clientid(&open->op_clientid, cstate->session);
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+
+ net/sunrpc/xprtrdma/rpc_rdma.c  |    8 --------
+ net/sunrpc/xprtrdma/transport.c |   13 -------------
+ net/sunrpc/xprtrdma/verbs.c     |    5 +----
+ 3 files changed, 1 insertions(+), 25 deletions(-)
+
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index c296468..b963e50 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -439,14 +439,6 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
+ 		wtype = rpcrdma_noch;
+ 	BUG_ON(rtype != rpcrdma_noch && wtype != rpcrdma_noch);
  
--	nfs4_lock_state();
+-	if (r_xprt->rx_ia.ri_memreg_strategy == RPCRDMA_BOUNCEBUFFERS &&
+-	    (rtype != rpcrdma_noch || wtype != rpcrdma_noch)) {
+-		/* forced to "pure inline"? */
+-		dprintk("RPC:       %s: too much data (%d/%d) for inline\n",
+-			__func__, rqst->rq_rcv_buf.len, rqst->rq_snd_buf.len);
+-		return -1;
+-	}
 -
- 	/* check seqid for replay. set nfs4_owner */
- 	resp = rqstp->rq_resp;
- 	status = nfsd4_process_open1(&resp->cstate, open, nn);
-@@ -474,7 +472,6 @@ out:
- 		nfsd4_cstate_assign_replay(cstate,
- 				&open->op_openowner->oo_owner);
- 	nfsd4_bump_seqid(cstate, status);
--	nfs4_unlock_state();
- 	return status;
- }
+ 	hdrlen = 28; /*sizeof *headerp;*/
+ 	padlen = 0;
  
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 5f0facdde981..188eb4cbea95 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -3494,9 +3494,6 @@ static void nfsd4_deleg_xgrade_none_ext(struct nfsd4_open *open,
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index 1eb9c46..8c5035a 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -503,18 +503,6 @@ xprt_rdma_allocate(struct rpc_task *task, size_t size)
+ 		 * If the allocation or registration fails, the RPC framework
+ 		 * will (doggedly) retry.
+ 		 */
+-		if (rpcx_to_rdmax(xprt)->rx_ia.ri_memreg_strategy ==
+-				RPCRDMA_BOUNCEBUFFERS) {
+-			/* forced to "pure inline" */
+-			dprintk("RPC:       %s: too much data (%zd) for inline "
+-					"(r/w max %d/%d)\n", __func__, size,
+-					rpcx_to_rdmad(xprt).inline_rsize,
+-					rpcx_to_rdmad(xprt).inline_wsize);
+-			size = req->rl_size;
+-			rpc_exit(task, -EIO);		/* fail the operation */
+-			rpcx_to_rdmax(xprt)->rx_stats.failed_marshal_count++;
+-			goto out;
+-		}
+ 		if (task->tk_flags & RPC_TASK_SWAPPER)
+ 			nreq = kmalloc(sizeof *req + size, GFP_ATOMIC);
+ 		else
+@@ -543,7 +531,6 @@ xprt_rdma_allocate(struct rpc_task *task, size_t size)
+ 		req = nreq;
+ 	}
+ 	dprintk("RPC:       %s: size %zd, request 0x%p\n", __func__, size, req);
+-out:
+ 	req->rl_connect_cookie = 0;	/* our reserved value */
+ 	return req->rl_xdr_buf;
+ 
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 422cf89..1fe554f 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -557,7 +557,6 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
+ 	 * adapter.
  	 */
- }
+ 	switch (memreg) {
+-	case RPCRDMA_BOUNCEBUFFERS:
+ 	case RPCRDMA_REGISTER:
+ 	case RPCRDMA_FRMR:
+ 		break;
+@@ -778,9 +777,7 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
  
--/*
-- * called with nfs4_lock_state() held.
-- */
- __be32
- nfsd4_process_open2(struct svc_rqst *rqstp, struct svc_fh *current_fh, struct nfsd4_open *open)
- {
-@@ -4208,8 +4205,6 @@ nfsd4_open_confirm(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	if (status)
- 		return status;
- 
--	nfs4_lock_state();
--
- 	status = nfs4_preprocess_seqid_op(cstate,
- 					oc->oc_seqid, &oc->oc_req_stateid,
- 					NFS4_OPEN_STID, &stp, nn);
-@@ -4231,7 +4226,6 @@ put_stateid:
- 	put_generic_stateid(stp);
- out:
- 	nfsd4_bump_seqid(cstate, status);
--	nfs4_unlock_state();
- 	return status;
- }
- 
--- 
-1.9.0
+ 	/* Client offers RDMA Read but does not initiate */
+ 	ep->rep_remote_cma.initiator_depth = 0;
+-	if (ia->ri_memreg_strategy == RPCRDMA_BOUNCEBUFFERS)
+-		ep->rep_remote_cma.responder_resources = 0;
+-	else if (devattr.max_qp_rd_atom > 32)	/* arbitrary but <= 255 */
++	if (devattr.max_qp_rd_atom > 32)	/* arbitrary but <= 255 */
+ 		ep->rep_remote_cma.responder_resources = 32;
+ 	else
+ 		ep->rep_remote_cma.responder_resources = devattr.max_qp_rd_atom;
 
