@@ -1,142 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e23smtp08.au.ibm.com ([202.81.31.141]:39704 "EHLO
-	e23smtp08.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753601AbaD0QQW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Apr 2014 12:16:22 -0400
-Received: from /spool/local
-	by e23smtp08.au.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <aneesh.kumar@linux.vnet.ibm.com>;
-	Mon, 28 Apr 2014 02:16:21 +1000
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
-        viro@zeniv.linux.org.uk, dhowells@redhat.com
-Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH -V1 22/22] ext4: Add Ext4 compat richacl feature flag
-Date: Sun, 27 Apr 2014 21:44:53 +0530
-Message-Id: <1398615293-22931-23-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-In-Reply-To: <1398615293-22931-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1398615293-22931-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from smtprelay0238.hostedemail.com ([216.40.44.238]:37566 "EHLO
+	smtprelay.hostedemail.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1754565AbaDNCGs (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 13 Apr 2014 22:06:48 -0400
+From: Joe Perches <joe@perches.com>
+To: Andrew Morton <akpm@linux-foundation.org>
+Cc: linux-arm-kernel@lists.infradead.org, linux-kernel@vger.kernel.org,
+        linux-ia64@vger.kernel.org, linux-scsi@vger.kernel.org,
+        codalist@TELEMANN.coda.cs.cmu.edu, linux-fsdevel@vger.kernel.org,
+        linux-cachefs@redhat.com, linux-nfs@vger.kernel.org,
+        linux-ntfs-dev@lists.sourceforge.net, keyrings@linux-nfs.org,
+        linux-mm@kvack.org, linux-security-module@vger.kernel.org
+Subject: [PATCH -next 3.16 00/19] treewide: Convert typedef ctl_table
+Date: Sun, 13 Apr 2014 18:55:32 -0700
+Message-Id: <cover.1397438826.git.joe@perches.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This feature flag can be used to enable richacl on
-the file system. Once enabled the "acl" mount option
-will enable richacl instead of posix acl
+Most all of these have been converted in the past, these
+are the stragglers.
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
----
- fs/ext4/ext4.h  |  3 ++-
- fs/ext4/super.c | 47 ++++++++++++++++++++++++++++++++++++++---------
- 2 files changed, 40 insertions(+), 10 deletions(-)
+Original submission:
+https://lkml.org/lkml/2013/6/13/650
 
-diff --git a/fs/ext4/ext4.h b/fs/ext4/ext4.h
-index 66946aa62127..17ff4a1cf91e 100644
---- a/fs/ext4/ext4.h
-+++ b/fs/ext4/ext4.h
-@@ -976,7 +976,7 @@ struct ext4_inode_info {
- #define EXT4_MOUNT_UPDATE_JOURNAL	0x01000	/* Update the journal format */
- #define EXT4_MOUNT_NO_UID32		0x02000  /* Disable 32-bit UIDs */
- #define EXT4_MOUNT_XATTR_USER		0x04000	/* Extended user attributes */
--#define EXT4_MOUNT_POSIX_ACL		0x08000	/* POSIX Access Control Lists */
-+#define EXT4_MOUNT_ACL			0x08000	/* Access Control Lists */
- #define EXT4_MOUNT_NO_AUTO_DA_ALLOC	0x10000	/* No auto delalloc mapping */
- #define EXT4_MOUNT_BARRIER		0x20000 /* Use block barriers */
- #define EXT4_MOUNT_QUOTA		0x80000 /* Some quota option set */
-@@ -1505,6 +1505,7 @@ static inline void ext4_clear_state_flags(struct ext4_inode_info *ei)
- #define EXT4_FEATURE_COMPAT_EXT_ATTR		0x0008
- #define EXT4_FEATURE_COMPAT_RESIZE_INODE	0x0010
- #define EXT4_FEATURE_COMPAT_DIR_INDEX		0x0020
-+#define EXT4_FEATURE_COMPAT_RICHACL		0x0200
- 
- #define EXT4_FEATURE_RO_COMPAT_SPARSE_SUPER	0x0001
- #define EXT4_FEATURE_RO_COMPAT_LARGE_FILE	0x0002
-diff --git a/fs/ext4/super.c b/fs/ext4/super.c
-index 6f9e6fadac04..2a0221652d79 100644
---- a/fs/ext4/super.c
-+++ b/fs/ext4/super.c
-@@ -1274,6 +1274,30 @@ static ext4_fsblk_t get_sb_block(void **data)
- 	return sb_block;
- }
- 
-+static void enable_acl(struct super_block *sb)
-+{
-+#if !defined(CONFIG_EXT4_FS_POSIX_ACL) && !defined(CONFIG_EXT4_FS_RICHACL)
-+	return;
-+#endif
-+	if (EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_RICHACL)) {
-+		sb->s_flags |= MS_RICHACL;
-+		sb->s_flags &= ~MS_POSIXACL;
-+	} else {
-+		sb->s_flags |= MS_POSIXACL;
-+		sb->s_flags &= ~MS_RICHACL;
-+	}
-+	return;
-+}
-+
-+static void disable_acl(struct super_block *sb)
-+{
-+#if !defined(CONFIG_EXT4_FS_POSIX_ACL) && !defined(CONFIG_EXT4_FS_RICHACL)
-+	return;
-+#endif
-+	sb->s_flags &= ~(MS_POSIXACL | MS_RICHACL);
-+	return;
-+}
-+
- #define DEFAULT_JOURNAL_IOPRIO (IOPRIO_PRIO_VALUE(IOPRIO_CLASS_BE, 3))
- static char deprecated_msg[] = "Mount option \"%s\" will be removed by %s\n"
- 	"Contact linux-ext4@vger.kernel.org if you think we should keep it.\n";
-@@ -1417,9 +1441,9 @@ static const struct mount_opts {
- 	 MOPT_NO_EXT2 | MOPT_DATAJ},
- 	{Opt_user_xattr, EXT4_MOUNT_XATTR_USER, MOPT_SET},
- 	{Opt_nouser_xattr, EXT4_MOUNT_XATTR_USER, MOPT_CLEAR},
--#ifdef CONFIG_EXT4_FS_POSIX_ACL
--	{Opt_acl, EXT4_MOUNT_POSIX_ACL, MOPT_SET},
--	{Opt_noacl, EXT4_MOUNT_POSIX_ACL, MOPT_CLEAR},
-+#if defined(CONFIG_EXT4_FS_POSIX_ACL) || defined(CONFIG_EXT4_FS_RICHACL)
-+	{Opt_acl, EXT4_MOUNT_ACL, MOPT_SET},
-+	{Opt_noacl, EXT4_MOUNT_ACL, MOPT_CLEAR},
- #else
- 	{Opt_acl, 0, MOPT_NOSUPPORT},
- 	{Opt_noacl, 0, MOPT_NOSUPPORT},
-@@ -3496,8 +3520,8 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 		set_opt(sb, NO_UID32);
- 	/* xattr user namespace & acls are now defaulted on */
- 	set_opt(sb, XATTR_USER);
--#ifdef CONFIG_EXT4_FS_POSIX_ACL
--	set_opt(sb, POSIX_ACL);
-+#if defined(CONFIG_EXT4_FS_POSIX_ACL) || defined(CONFIG_EXT4_FS_RICHACL)
-+	set_opt(sb, ACL);
- #endif
- 	if ((def_mount_opts & EXT4_DEFM_JMODE) == EXT4_DEFM_JMODE_DATA)
- 		set_opt(sb, JOURNAL_DATA);
-@@ -3569,8 +3593,12 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
- 			clear_opt(sb, DELALLOC);
- 	}
- 
--	sb->s_flags = (sb->s_flags & ~MS_POSIXACL) |
--		(test_opt(sb, POSIX_ACL) ? MS_POSIXACL : 0);
-+	/*
-+	 * clear ACL flags
-+	 */
-+	disable_acl(sb);
-+	if (test_opt(sb, ACL))
-+		enable_acl(sb);
- 
- 	if (le32_to_cpu(es->s_rev_level) == EXT4_GOOD_OLD_REV &&
- 	    (EXT4_HAS_COMPAT_FEATURE(sb, ~0U) ||
-@@ -4844,8 +4872,9 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
- 	if (sbi->s_mount_flags & EXT4_MF_FS_ABORTED)
- 		ext4_abort(sb, "Abort forced by user");
- 
--	sb->s_flags = (sb->s_flags & ~MS_POSIXACL) |
--		(test_opt(sb, POSIX_ACL) ? MS_POSIXACL : 0);
-+	disable_acl(sb);
-+	if (test_opt(sb, ACL))
-+		enable_acl(sb);
- 
- 	es = sbi->s_es;
- 
+trivial was cc'd previously,
+\
+Joe Perches (19):
+  arm: Convert use of typedef ctl_table to struct ctl_table
+  ia64: Convert use of typedef ctl_table to struct ctl_table
+  tile: Convert use of typedef ctl_table to struct ctl_table
+  cdrom: Convert use of typedef ctl_table to struct ctl_table
+  random: Convert use of typedef ctl_table to struct ctl_table
+  parport: Convert use of typedef ctl_table to struct ctl_table
+  scsi: Convert use of typedef ctl_table to struct ctl_table
+  coda: Convert use of typedef ctl_table to struct ctl_table
+  fscache: Convert use of typedef ctl_table to struct ctl_table
+  lockd: Convert use of typedef ctl_table to struct ctl_table
+  nfs: Convert use of typedef ctl_table to struct ctl_table
+  inotify: Convert use of typedef ctl_table to struct ctl_table
+  ntfs: Convert use of typedef ctl_table to struct ctl_table
+  fs: Convert use of typedef ctl_table to struct ctl_table
+  key: Convert use of typedef ctl_table to struct ctl_table
+  ipc: Convert use of typedef ctl_table to struct ctl_table
+  sysctl: Convert use of typedef ctl_table to struct ctl_table
+  mm: Convert use of typedef ctl_table to struct ctl_table
+  security: Convert use of typedef ctl_table to struct ctl_table
+
+ arch/arm/kernel/isa.c            |  6 ++---
+ arch/ia64/kernel/crash.c         |  4 +--
+ arch/ia64/kernel/perfmon.c       |  6 ++---
+ arch/tile/kernel/proc.c          |  4 +--
+ drivers/cdrom/cdrom.c            | 10 +++----
+ drivers/char/random.c            |  4 +--
+ drivers/parport/procfs.c         | 58 ++++++++++++++++++++--------------------
+ drivers/scsi/scsi_sysctl.c       |  6 ++---
+ fs/coda/sysctl.c                 |  4 +--
+ fs/dcache.c                      |  2 +-
+ fs/drop_caches.c                 |  2 +-
+ fs/eventpoll.c                   |  2 +-
+ fs/file_table.c                  |  4 +--
+ fs/fscache/main.c                |  4 +--
+ fs/inode.c                       |  2 +-
+ fs/lockd/svc.c                   |  6 ++---
+ fs/nfs/nfs4sysctl.c              |  6 ++---
+ fs/nfs/sysctl.c                  |  6 ++---
+ fs/notify/inotify/inotify_user.c |  2 +-
+ fs/ntfs/sysctl.c                 |  4 +--
+ include/linux/key.h              |  2 +-
+ ipc/ipc_sysctl.c                 | 14 +++++-----
+ ipc/mq_sysctl.c                  | 12 ++++-----
+ kernel/sysctl.c                  |  2 +-
+ kernel/utsname_sysctl.c          |  6 ++---
+ mm/page-writeback.c              |  2 +-
+ mm/page_alloc.c                  | 12 ++++-----
+ security/keys/sysctl.c           |  2 +-
+ 28 files changed, 97 insertions(+), 97 deletions(-)
+
 -- 
-1.9.1
+1.8.1.2.459.gbcd45b4.dirty
 
