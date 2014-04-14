@@ -1,29 +1,86 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:50406 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751314AbaDRODp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Apr 2014 10:03:45 -0400
-Date: Fri, 18 Apr 2014 07:03:44 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Anna Schumaker <Anna.Schumaker@netapp.com>
-Cc: Trond.Myklebust@primarydata.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 06/17] NFS: Create a common pgio_alloc and pgio_release
- function
-Message-ID: <20140418140344.GF20096@infradead.org>
-References: <1397768981-12856-1-git-send-email-Anna.Schumaker@Netapp.com>
- <1397768981-12856-7-git-send-email-Anna.Schumaker@Netapp.com>
+Received: from mx1.redhat.com ([209.132.183.28]:62352 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755026AbaDNQZX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 14 Apr 2014 12:25:23 -0400
+Date: Mon, 14 Apr 2014 12:25:18 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: steved@redhat.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/2] SUNRPC: Ensure that call_connect times out
+ correctly
+Message-ID: <20140414122518.6a3ca149@ipyr.poochiereds.net>
+In-Reply-To: <1395081645-11906-1-git-send-email-trond.myklebust@primarydata.com>
+References: <1395081645-11906-1-git-send-email-trond.myklebust@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1397768981-12856-7-git-send-email-Anna.Schumaker@Netapp.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 17, 2014 at 05:09:30PM -0400, Anna Schumaker wrote:
-> From: Anna Schumaker <Anna.Schumaker@netapp.com>
+On Mon, 17 Mar 2014 14:40:44 -0400
+Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+
+> When the server is unavailable due to a networking error, etc, we want
+> the RPC client to respect the timeout delays when attempting to reconnect.
 > 
-> These functions are identical for the read and write paths, so combine
-> them in a shared file.
+> Fixes: 561ec1603171 (SUNRPC: call_connect_status should recheck bind..)
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> ---
+>  net/sunrpc/clnt.c | 8 +++-----
+>  1 file changed, 3 insertions(+), 5 deletions(-)
+> 
+> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+> index 0edada973434..f22d3a115fda 100644
+> --- a/net/sunrpc/clnt.c
+> +++ b/net/sunrpc/clnt.c
+> @@ -1798,10 +1798,6 @@ call_connect_status(struct rpc_task *task)
+>  	trace_rpc_connect_status(task, status);
+>  	task->tk_status = 0;
+>  	switch (status) {
+> -		/* if soft mounted, test if we've timed out */
+> -	case -ETIMEDOUT:
+> -		task->tk_action = call_timeout;
+> -		return;
+>  	case -ECONNREFUSED:
+>  	case -ECONNRESET:
+>  	case -ECONNABORTED:
+> @@ -1812,7 +1808,9 @@ call_connect_status(struct rpc_task *task)
+>  		if (RPC_IS_SOFTCONN(task))
+>  			break;
+>  	case -EAGAIN:
+> -		task->tk_action = call_bind;
+> +	case -ETIMEDOUT:
+> +		/* Check if we've timed out before looping back to call_bind */
+> +		task->tk_action = call_timeout;
+>  		return;
+>  	case 0:
+>  		clnt->cl_stats->netreconn++;
 
-Looks good,
+I believe this patch may have broken the v4.0 callback channel
+establishment code in nfsd. I think what's happening is this:
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
+nfsd tries to create a RPC_TASK_SOFTCONN call to probe the cb channel
+with a CB_NULL. It queues the connect_worker to the workqueue. That
+establishes the socket and then gets a callback from the socket layer
+into xs_tcp_state_change for TCP_ESTABLISHED.
+
+That code does:
+
+    xprt_wake_pending_tasks(xprt, -EAGAIN);
+
+...that wakes the task up, and sets the tk_status to -EAGAIN, and it
+then moves on to call_timeout due to this patch. That code then does
+this:
+
+        if (RPC_IS_SOFTCONN(task)) {
+                rpc_exit(task, -ETIMEDOUT);
+                return;
+        }
+
+...and the callback ping then fails with an error. Reverting this patch
+seems to fix it. I see several ways that we could fix this, but I'm not
+clear on the right way. Maybe we shouldn't be waking up the tasks with
+-EAGAIN in the TCP_ESTABLISHED case?
+
+-- 
+Jeff Layton <jlayton@redhat.com>
