@@ -1,188 +1,163 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f169.google.com ([209.85.223.169]:51139 "EHLO
-	mail-ie0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752794AbaDRSpr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Apr 2014 14:45:47 -0400
-Received: by mail-ie0-f169.google.com with SMTP id to1so1906789ieb.0
-        for <linux-nfs@vger.kernel.org>; Fri, 18 Apr 2014 11:45:46 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Bruce Fields <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 26/70] NFSd: Fix delegation revocation
-Date: Fri, 18 Apr 2014 14:44:20 -0400
-Message-Id: <1397846704-14567-27-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1397846704-14567-26-git-send-email-trond.myklebust@primarydata.com>
-References: <1397846704-14567-1-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-2-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-3-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-4-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-5-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-6-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-7-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-8-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-9-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-10-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-11-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-12-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-13-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-14-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-15-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-16-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-17-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-18-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-19-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-20-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-21-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-22-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-23-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-24-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-25-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-26-git-send-email-trond.myklebust@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:30008 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754751AbaDNPs4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 14 Apr 2014 11:48:56 -0400
+Date: Mon, 14 Apr 2014 11:48:51 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: trond.myklebust@primarydata.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 5/5] gssd: scrape the acceptor name out of the context
+Message-ID: <20140414114851.40dcbcfe@ipyr.poochiereds.net>
+In-Reply-To: <534BF9B9.3000707@RedHat.com>
+References: <1397161863-29266-1-git-send-email-jlayton@redhat.com>
+	<1397161863-29266-6-git-send-email-jlayton@redhat.com>
+	<534BF9B9.3000707@RedHat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Ensure that the delegations cannot be found by the laundromat etc once
-we add them to the various 'revoke' lists.
+On Mon, 14 Apr 2014 11:07:37 -0400
+Steve Dickson <SteveD@redhat.com> wrote:
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 51 ++++++++++++++++++++++++++++++++-------------------
- 1 file changed, 32 insertions(+), 19 deletions(-)
+> Hey Jeff,
+> 
+> Just a couple nit.... 
+> 
+> On 04/10/2014 04:31 PM, Jeff Layton wrote:
+> > ...and pass it to the kernel in the downcall. Legacy kernels will just
+> > ignore the extra data, but with a proposed kernel patch the kernel will
+> > grab this info and use it to verify requests on the v4.0 callback
+> > channel.
+> > 
+> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > ---
+> >  utils/gssd/gssd_proc.c | 39 ++++++++++++++++++++++++++++-----------
+> >  1 file changed, 28 insertions(+), 11 deletions(-)
+> > 
+> > diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+> > index 7387cce010cf..d95e39416c28 100644
+> > --- a/utils/gssd/gssd_proc.c
+> > +++ b/utils/gssd/gssd_proc.c
+> > @@ -77,6 +77,7 @@
+> >  #include "context.h"
+> >  #include "nfsrpc.h"
+> >  #include "nfslib.h"
+> > +#include "gss_names.h"
+> >  
+> >  /*
+> >   * pollarray:
+> > @@ -683,16 +684,19 @@ parse_enctypes(char *enctypes)
+> >  
+> >  static void
+> >  do_downcall(int k5_fd, uid_t uid, struct authgss_private_data *pd,
+> > -	    gss_buffer_desc *context_token, OM_uint32 lifetime_rec)
+> > +	    gss_buffer_desc *context_token, OM_uint32 lifetime_rec,
+> > +	    gss_buffer_desc *acceptor)
+> >  {
+> >  	char    *buf = NULL, *p = NULL, *end = NULL;
+> >  	unsigned int timeout = context_timeout;
+> >  	unsigned int buf_size = 0;
+> >  
+> > -	printerr(1, "doing downcall lifetime_rec %u\n", lifetime_rec);
+> > +	printerr(1, "doing downcall: lifetime_rec=%u acceptor=%.*s\n",
+> > +		lifetime_rec, acceptor->length, acceptor->value);
+> >  	buf_size = sizeof(uid) + sizeof(timeout) + sizeof(pd->pd_seq_win) +
+> >  		sizeof(pd->pd_ctx_hndl.length) + pd->pd_ctx_hndl.length +
+> > -		sizeof(context_token->length) + context_token->length;
+> > +		sizeof(context_token->length) + context_token->length +
+> > +		acceptor->length;
+> >  	p = buf = malloc(buf_size);
+> >  	if (!buf)
+> >  		goto out_err;
+> > @@ -707,6 +711,8 @@ do_downcall(int k5_fd, uid_t uid, struct authgss_private_data *pd,
+> >  	if (WRITE_BYTES(&p, end, pd->pd_seq_win)) goto out_err;
+> >  	if (write_buffer(&p, end, &pd->pd_ctx_hndl)) goto out_err;
+> >  	if (write_buffer(&p, end, context_token)) goto out_err;
+> > +	if (acceptor->length > 0 &&
+> > +	    write_buffer(&p, end, acceptor)) goto out_err;
+> >  
+> >  	if (write(k5_fd, buf, p - buf) < p - buf) goto out_err;
+> >  	free(buf);
+> > @@ -1034,6 +1040,9 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
+> >  	gss_cred_id_t		gss_cred;
+> >  	OM_uint32		maj_stat, min_stat, lifetime_rec;
+> >  	pid_t			pid;
+> > +	gss_name_t		gacceptor;
+> > +	gss_OID			mech;
+> > +	gss_buffer_desc		acceptor  = {0};
+> >  
+> >  	pid = fork();
+> >  	switch(pid) {
+> > @@ -1174,15 +1183,22 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
+> >  		goto out_return_error;
+> >  	}
+> >  
+> > -	/* Grab the context lifetime to pass to the kernel. lifetime_rec
+> > -	 * is set to zero on error */
+> Why get rid of this comment instead of updating it? 
+> 
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 51ef179339ae..273bdddb2458 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -516,11 +516,10 @@ hash_delegation_locked(struct nfs4_delegation *dp, struct nfs4_file *fp)
- 
- /* Called under the state lock. */
- static void
--unhash_delegation(struct nfs4_delegation *dp)
-+unhash_delegation_locked(struct nfs4_delegation *dp)
- {
- 	struct nfs4_file *fp = dp->dl_file;
- 
--	spin_lock(&state_lock);
- 	spin_lock(&fp->fi_lock);
- 	list_del_init(&dp->dl_perclnt);
- 	list_del_init(&dp->dl_recall_lru);
-@@ -531,23 +530,32 @@ unhash_delegation(struct nfs4_delegation *dp)
- 	}
- 	nfs4_put_deleg_lease(fp);
- 	spin_unlock(&fp->fi_lock);
--	spin_unlock(&state_lock);
- }
- 
-+static void
-+unhash_delegation(struct nfs4_delegation *dp)
-+{
-+	spin_lock(&state_lock);
-+	unhash_delegation_locked(dp);
-+	spin_unlock(&state_lock);
-+}
- 
--
--static void destroy_revoked_delegation(struct nfs4_delegation *dp)
-+static void destroy_delegation(struct nfs4_delegation *dp)
- {
--	list_del_init(&dp->dl_recall_lru);
- 	remove_stid(&dp->dl_stid);
- 	nfs4_put_delegation(dp);
- }
- 
--static void destroy_delegation(struct nfs4_delegation *dp)
-+static void unhash_and_destroy_delegation(struct nfs4_delegation *dp)
- {
- 	unhash_delegation(dp);
--	remove_stid(&dp->dl_stid);
--	nfs4_put_delegation(dp);
-+	destroy_delegation(dp);
-+}
-+
-+static void destroy_revoked_delegation(struct nfs4_delegation *dp)
-+{
-+	list_del_init(&dp->dl_recall_lru);
-+	destroy_delegation(dp);
- }
- 
- static void revoke_delegation(struct nfs4_delegation *dp)
-@@ -555,11 +563,10 @@ static void revoke_delegation(struct nfs4_delegation *dp)
- 	struct nfs4_client *clp = dp->dl_stid.sc_client;
- 
- 	if (clp->cl_minorversion == 0)
--		destroy_delegation(dp);
-+		destroy_revoked_delegation(dp);
- 	else {
--		unhash_delegation(dp);
- 		dp->dl_stid.sc_type = NFS4_REVOKED_DELEG_STID;
--		list_add(&dp->dl_recall_lru, &clp->cl_revoked);
-+		list_move(&dp->dl_recall_lru, &clp->cl_revoked);
- 	}
- }
- 
-@@ -1278,12 +1285,13 @@ destroy_client(struct nfs4_client *clp)
- 	spin_lock(&state_lock);
- 	while (!list_empty(&clp->cl_delegations)) {
- 		dp = list_entry(clp->cl_delegations.next, struct nfs4_delegation, dl_perclnt);
--		list_del_init(&dp->dl_perclnt);
--		list_move(&dp->dl_recall_lru, &reaplist);
-+		unhash_delegation_locked(dp);
-+		list_add(&dp->dl_recall_lru, &reaplist);
- 	}
- 	spin_unlock(&state_lock);
- 	while (!list_empty(&reaplist)) {
- 		dp = list_entry(reaplist.next, struct nfs4_delegation, dl_recall_lru);
-+		list_del_init(&dp->dl_recall_lru);
- 		destroy_delegation(dp);
- 	}
- 	list_splice_init(&clp->cl_revoked, &reaplist);
-@@ -3612,7 +3620,8 @@ nfs4_laundromat(struct nfsd_net *nn)
- 				test_val = u;
- 			break;
- 		}
--		list_move(&dp->dl_recall_lru, &reaplist);
-+		unhash_delegation_locked(dp);
-+		list_add(&dp->dl_recall_lru, &reaplist);
- 	}
- 	spin_unlock(&state_lock);
- 	list_for_each_safe(pos, next, &reaplist) {
-@@ -4245,7 +4254,7 @@ nfsd4_delegreturn(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	if (status)
- 		goto out;
- 
--	destroy_delegation(dp);
-+	unhash_and_destroy_delegation(dp);
- out:
- 	nfs4_unlock_state();
- 
-@@ -5061,8 +5070,10 @@ static u64 nfsd_find_all_delegations(struct nfs4_client *clp, u64 max,
- 
- 	lockdep_assert_held(&state_lock);
- 	list_for_each_entry_safe(dp, next, &clp->cl_delegations, dl_perclnt) {
--		if (victims)
--			list_move(&dp->dl_recall_lru, victims);
-+		if (victims) {
-+			unhash_delegation_locked(dp);
-+			list_add(&dp->dl_recall_lru, victims);
-+		}
- 		if (++count == max)
- 			break;
- 	}
-@@ -5318,11 +5329,13 @@ nfs4_state_shutdown_net(struct net *net)
- 	spin_lock(&state_lock);
- 	list_for_each_safe(pos, next, &nn->del_recall_lru) {
- 		dp = list_entry (pos, struct nfs4_delegation, dl_recall_lru);
--		list_move(&dp->dl_recall_lru, &reaplist);
-+		unhash_delegation_locked(dp);
-+		list_add(&dp->dl_recall_lru, &reaplist);
- 	}
- 	spin_unlock(&state_lock);
- 	list_for_each_safe(pos, next, &reaplist) {
- 		dp = list_entry (pos, struct nfs4_delegation, dl_recall_lru);
-+		list_del_init(&dp->dl_recall_lru);
- 		destroy_delegation(dp);
- 	}
- 
+I suppose I could do that. Would you prefer I respin and update that
+comment instead?
+
+> > -	maj_stat = gss_inquire_context(&min_stat, pd.pd_ctx, NULL, NULL,
+> > -				       &lifetime_rec, NULL, NULL, NULL, NULL);
+> > +	maj_stat = gss_inquire_context(&min_stat, pd.pd_ctx, NULL, &gacceptor,
+> > +				       &lifetime_rec, &mech, NULL, NULL, NULL);
+> >  
+> > -	if (maj_stat)
+> > -		printerr(1, "WARNING: Failed to inquire context for lifetme "
+> > -			    "maj_stat %u\n", maj_stat);
+> > +	if (maj_stat != GSS_S_COMPLETE) {
+> > +		printerr(1, "WARNING: Failed to inquire context "
+> > +			    "maj_stat (0x%x)\n", maj_stat);
+> > +	} else {
+> > +		get_hostbased_client_buffer(gacceptor, mech, &acceptor);
+> > +		gss_release_name(&min_stat, &gacceptor);
+> > +	}
+> >  
+> > +	/*
+> > +	 * The serialization can mean turning the ctx into a lucid context. If
+> > +	 * that happens then the original ctx is no longer valid, so we mustn't
+> > +	 * try to use if after this point.
+> I'm not sure what you are trying to say here... 
+> 
+> steved.
+> 
+
+Just a semi-helpful context for posterity...
+
+On my initial attempt, I tried to change the code around to grab the
+lifetime and acceptor out of the context in do_downcall. That didn't
+work, because once you call serialize_context_for_kernel, the GSS
+context is turned into a "lucid context". At that point, things like
+gss_inquire_context no longer work on it.
+
+IOW, once you call serialize_context_for_kernel, you can't count on
+being able to do anything useful with pd.pd_ctx at all.
+
+
+> > +	 */
+> >  	if (serialize_context_for_kernel(&pd.pd_ctx, &token, &krb5oid, NULL)) {
+> >  		printerr(0, "WARNING: Failed to serialize krb5 context for "
+> >  			    "user with uid %d for server %s\n",
+> > @@ -1190,9 +1206,10 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
+> >  		goto out_return_error;
+> >  	}
+> >  
+> > -	do_downcall(fd, uid, &pd, &token, lifetime_rec);
+> > +	do_downcall(fd, uid, &pd, &token, lifetime_rec, &acceptor);
+> >  
+> >  out:
+> > +	gss_release_buffer(&min_stat, &acceptor);
+> >  	if (token.value)
+> >  		free(token.value);
+> >  #ifdef HAVE_AUTHGSS_FREE_PRIVATE_DATA
+> > 
+
+
+
 -- 
-1.9.0
-
+Jeff Layton <jlayton@redhat.com>
