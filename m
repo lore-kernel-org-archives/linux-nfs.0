@@ -1,171 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:57965 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751208AbaDQVK3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 17 Apr 2014 17:10:29 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
-Subject: [PATCH 12/17] NFS: Create a common pgio_error function
-Date: Thu, 17 Apr 2014 17:09:36 -0400
-Message-ID: <1397768981-12856-13-git-send-email-Anna.Schumaker@Netapp.com>
-In-Reply-To: <1397768981-12856-1-git-send-email-Anna.Schumaker@Netapp.com>
-References: <1397768981-12856-1-git-send-email-Anna.Schumaker@Netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+Received: from smtprelay0189.hostedemail.com ([216.40.44.189]:56362 "EHLO
+	smtprelay.hostedemail.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1753897AbaDNCFd (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 13 Apr 2014 22:05:33 -0400
+Received: from smtprelay.hostedemail.com (ff-bigip1 [10.5.19.254])
+	by smtpgrave01.hostedemail.com (Postfix) with ESMTP id 4B8A35D947
+	for <linux-nfs@vger.kernel.org>; Mon, 14 Apr 2014 01:57:06 +0000 (UTC)
+From: Joe Perches <joe@perches.com>
+To: Andrew Morton <akpm@linux-foundation.org>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [PATCH -next 3.16 11/19] nfs: Convert use of typedef ctl_table to struct ctl_table
+Date: Sun, 13 Apr 2014 18:55:43 -0700
+Message-Id: <b1fdb97c4cf51a478a593bf17f6ecb6a9a158c28.1397438826.git.joe@perches.com>
+In-Reply-To: <cover.1397438826.git.joe@perches.com>
+References: <cover.1397438826.git.joe@perches.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
+This typedef is unnecessary and should just be removed.
 
-At this point, the read and write versions of this function look
-identical so both should use the same function.
-
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Signed-off-by: Joe Perches <joe@perches.com>
 ---
- fs/nfs/internal.h |  1 +
- fs/nfs/pageio.c   | 15 +++++++++++++++
- fs/nfs/read.c     | 25 ++++---------------------
- fs/nfs/write.c    | 25 ++++---------------------
- 4 files changed, 24 insertions(+), 42 deletions(-)
+ fs/nfs/nfs4sysctl.c | 6 +++---
+ fs/nfs/sysctl.c     | 6 +++---
+ 2 files changed, 6 insertions(+), 6 deletions(-)
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 7bc36ee..383175e 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -401,6 +401,7 @@ extern struct nfs_rw_header *nfs_rw_header_alloc(const struct nfs_rw_ops *);
- extern void nfs_rw_header_free(struct nfs_pgio_header *);
- extern struct nfs_pgio_data *nfs_pgio_data_alloc(struct nfs_pgio_header *, unsigned int);
- extern void nfs_pgio_data_release(struct nfs_pgio_data *);
-+extern int nfs_pgio_error(struct nfs_pageio_descriptor *, struct nfs_pgio_header *);
- extern void nfs_pgio_rpcsetup(struct nfs_pgio_data *, unsigned int,
- 			      unsigned int, int, struct nfs_commit_info *);
+diff --git a/fs/nfs/nfs4sysctl.c b/fs/nfs/nfs4sysctl.c
+index 2628d92..b6ebe7e 100644
+--- a/fs/nfs/nfs4sysctl.c
++++ b/fs/nfs/nfs4sysctl.c
+@@ -16,7 +16,7 @@ static const int nfs_set_port_min = 0;
+ static const int nfs_set_port_max = 65535;
+ static struct ctl_table_header *nfs4_callback_sysctl_table;
  
-diff --git a/fs/nfs/pageio.c b/fs/nfs/pageio.c
-index fddb3e3..86f6f4d 100644
---- a/fs/nfs/pageio.c
-+++ b/fs/nfs/pageio.c
-@@ -123,6 +123,21 @@ void nfs_pgio_rpcsetup(struct nfs_pgio_data *data,
- 	nfs_fattr_init(&data->fattr);
- }
- 
-+int nfs_pgio_error(struct nfs_pageio_descriptor *desc,
-+			  struct nfs_pgio_header *hdr)
-+{
-+	struct nfs_pgio_data *data;
-+
-+	set_bit(NFS_IOHDR_REDO, &hdr->flags);
-+	while (!list_empty(&hdr->rpc_list)) {
-+		data = list_first_entry(&hdr->rpc_list, struct nfs_pgio_data, list);
-+		list_del(&data->list);
-+		nfs_pgio_data_release(data);
-+	}
-+	desc->pg_completion_ops->error_cleanup(&desc->pg_list);
-+	return -ENOMEM;
-+}
-+
- static void nfs_pgio_prepare(struct rpc_task *task, void *calldata)
- {
- 	struct nfs_pgio_data *data = calldata;
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index 2c33fc3..c623671 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -237,19 +237,6 @@ static const struct nfs_pgio_completion_ops nfs_async_read_completion_ops = {
- 	.completion = nfs_read_completion,
+-static ctl_table nfs4_cb_sysctls[] = {
++static struct ctl_table nfs4_cb_sysctls[] = {
+ 	{
+ 		.procname = "nfs_callback_tcpport",
+ 		.data = &nfs_callback_set_tcpport,
+@@ -36,7 +36,7 @@ static ctl_table nfs4_cb_sysctls[] = {
+ 	{ }
  };
  
--static void nfs_pagein_error(struct nfs_pageio_descriptor *desc,
--		struct nfs_pgio_header *hdr)
--{
--	set_bit(NFS_IOHDR_REDO, &hdr->flags);
--	while (!list_empty(&hdr->rpc_list)) {
--		struct nfs_pgio_data *data = list_first_entry(&hdr->rpc_list,
--				struct nfs_pgio_data, list);
--		list_del(&data->list);
--		nfs_pgio_data_release(data);
--	}
--	desc->pg_completion_ops->error_cleanup(&desc->pg_list);
--}
--
- /*
-  * Generate multiple requests to fill a single page.
-  *
-@@ -278,10 +265,8 @@ static int nfs_pagein_multi(struct nfs_pageio_descriptor *desc,
- 		size_t len = min(nbytes,rsize);
- 
- 		data = nfs_pgio_data_alloc(hdr, 1);
--		if (!data) {
--			nfs_pagein_error(desc, hdr);
--			return -ENOMEM;
--		}
-+		if (!data)
-+			return nfs_pgio_error(desc, hdr);
- 		data->pages.pagevec[0] = page;
- 		nfs_pgio_rpcsetup(data, len, offset, 0, NULL);
- 		list_add(&data->list, &hdr->rpc_list);
-@@ -305,10 +290,8 @@ static int nfs_pagein_one(struct nfs_pageio_descriptor *desc,
- 
- 	data = nfs_pgio_data_alloc(hdr, nfs_page_array_len(desc->pg_base,
- 							  desc->pg_count));
--	if (!data) {
--		nfs_pagein_error(desc, hdr);
--		return -ENOMEM;
--	}
-+	if (!data)
-+		return nfs_pgio_error(desc, hdr);
- 
- 	pages = data->pages.pagevec;
- 	while (!list_empty(head)) {
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 15f2ffc..1f98f31 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -1044,19 +1044,6 @@ static const struct nfs_pgio_completion_ops nfs_async_write_completion_ops = {
- 	.completion = nfs_write_completion,
+-static ctl_table nfs4_cb_sysctl_dir[] = {
++static struct ctl_table nfs4_cb_sysctl_dir[] = {
+ 	{
+ 		.procname = "nfs",
+ 		.mode = 0555,
+@@ -45,7 +45,7 @@ static ctl_table nfs4_cb_sysctl_dir[] = {
+ 	{ }
  };
  
--static void nfs_flush_error(struct nfs_pageio_descriptor *desc,
--		struct nfs_pgio_header *hdr)
--{
--	set_bit(NFS_IOHDR_REDO, &hdr->flags);
--	while (!list_empty(&hdr->rpc_list)) {
--		struct nfs_pgio_data *data = list_first_entry(&hdr->rpc_list,
--				struct nfs_pgio_data, list);
--		list_del(&data->list);
--		nfs_pgio_data_release(data);
--	}
--	desc->pg_completion_ops->error_cleanup(&desc->pg_list);
--}
--
- /*
-  * Generate multiple small requests to write out a single
-  * contiguous dirty area on one page.
-@@ -1086,10 +1073,8 @@ static int nfs_flush_multi(struct nfs_pageio_descriptor *desc,
- 		size_t len = min(nbytes, wsize);
+-static ctl_table nfs4_cb_sysctl_root[] = {
++static struct ctl_table nfs4_cb_sysctl_root[] = {
+ 	{
+ 		.procname = "fs",
+ 		.mode = 0555,
+diff --git a/fs/nfs/sysctl.c b/fs/nfs/sysctl.c
+index 6b3f253..bb6ed81 100644
+--- a/fs/nfs/sysctl.c
++++ b/fs/nfs/sysctl.c
+@@ -13,7 +13,7 @@
  
- 		data = nfs_pgio_data_alloc(hdr, 1);
--		if (!data) {
--			nfs_flush_error(desc, hdr);
--			return -ENOMEM;
--		}
-+		if (!data)
-+			return nfs_pgio_error(desc, hdr);
- 		data->pages.pagevec[0] = page;
- 		nfs_pgio_rpcsetup(data, len, offset, desc->pg_ioflags, &cinfo);
- 		list_add(&data->list, &hdr->rpc_list);
-@@ -1122,10 +1107,8 @@ static int nfs_flush_one(struct nfs_pageio_descriptor *desc,
+ static struct ctl_table_header *nfs_callback_sysctl_table;
  
- 	data = nfs_pgio_data_alloc(hdr, nfs_page_array_len(desc->pg_base,
- 							   desc->pg_count));
--	if (!data) {
--		nfs_flush_error(desc, hdr);
--		return -ENOMEM;
--	}
-+	if (!data)
-+		return nfs_pgio_error(desc, hdr);
+-static ctl_table nfs_cb_sysctls[] = {
++static struct ctl_table nfs_cb_sysctls[] = {
+ 	{
+ 		.procname	= "nfs_mountpoint_timeout",
+ 		.data		= &nfs_mountpoint_expiry_timeout,
+@@ -31,7 +31,7 @@ static ctl_table nfs_cb_sysctls[] = {
+ 	{ }
+ };
  
- 	nfs_init_cinfo(&cinfo, desc->pg_inode, desc->pg_dreq);
- 	pages = data->pages.pagevec;
+-static ctl_table nfs_cb_sysctl_dir[] = {
++static struct ctl_table nfs_cb_sysctl_dir[] = {
+ 	{
+ 		.procname = "nfs",
+ 		.mode = 0555,
+@@ -40,7 +40,7 @@ static ctl_table nfs_cb_sysctl_dir[] = {
+ 	{ }
+ };
+ 
+-static ctl_table nfs_cb_sysctl_root[] = {
++static struct ctl_table nfs_cb_sysctl_root[] = {
+ 	{
+ 		.procname = "fs",
+ 		.mode = 0555,
 -- 
-1.9.2
+1.8.1.2.459.gbcd45b4.dirty
 
