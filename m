@@ -1,270 +1,402 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f53.google.com ([209.85.216.53]:35063 "EHLO
-	mail-qa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751063AbaDYPxR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Apr 2014 11:53:17 -0400
-Received: by mail-qa0-f53.google.com with SMTP id w8so3792396qac.12
-        for <linux-nfs@vger.kernel.org>; Fri, 25 Apr 2014 08:53:16 -0700 (PDT)
-Message-ID: <535A84E9.6080707@gmail.com>
-Date: Fri, 25 Apr 2014 11:53:13 -0400
-From: Anna Schumaker <schumaker.anna@gmail.com>
+Received: from mail-ig0-f173.google.com ([209.85.213.173]:53822 "EHLO
+	mail-ig0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754930AbaDNWXY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Apr 2014 18:23:24 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 7/8] xprtrdma: Split the completion queue
+To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Date: Mon, 14 Apr 2014 18:23:23 -0400
+Message-ID: <20140414222323.20646.66946.stgit@manet.1015granger.net>
+In-Reply-To: <20140414220041.20646.63991.stgit@manet.1015granger.net>
+References: <20140414220041.20646.63991.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-To: Weston Andros Adamson <dros@primarydata.com>
-CC: Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-nfs list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 15/18 v2] pnfs: support multiple verfs per direct req
-References: <1398363328-7100-1-git-send-email-dros@primarydata.com> <1398363328-7100-16-git-send-email-dros@primarydata.com> <535A6DE9.1040109@gmail.com> <7192CB82-72A3-466B-88AD-061A8C998AB2@primarydata.com> <D0C62F9F-943D-4D92-A945-BCDB43E4D899@primarydata.com>
-In-Reply-To: <D0C62F9F-943D-4D92-A945-BCDB43E4D899@primarydata.com>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 04/25/2014 11:38 AM, Weston Andros Adamson wrote:
-> On Apr 25, 2014, at 11:12 AM, Weston Andros Adamson <dros@primarydata.com> wrote:
->
->> On Apr 25, 2014, at 10:15 AM, Anna Schumaker <schumaker.anna@gmail.com> wrote:
->>
->>> On 04/24/2014 02:15 PM, Weston Andros Adamson wrote:
->>>> Support direct requests that span multiple pnfs data servers by
->>>> comparing nfs_pgio_header->verf to a cached verf in pnfs_commit_bucket.
->>>> Continue to use dreq->verf if the MDS is used / non-pNFS.
->>>>
->>>> Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
->>>> ---
->>>> fs/nfs/direct.c         | 98 ++++++++++++++++++++++++++++++++++++++++++++++---
->>>> fs/nfs/nfs4filelayout.c |  6 +++
->>>> include/linux/nfs.h     |  5 ++-
->>>> include/linux/nfs_xdr.h |  2 +
->>>> 4 files changed, 105 insertions(+), 6 deletions(-)
->>>>
->>>> diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
->>>> index 2c0e08f..9349933 100644
->>>> --- a/fs/nfs/direct.c
->>>> +++ b/fs/nfs/direct.c
->>>> @@ -108,6 +108,93 @@ static inline int put_dreq(struct nfs_direct_req *dreq)
->>>> 	return atomic_dec_and_test(&dreq->io_count);
->>>> }
->>>>
->>>> +/*
->>>> + * nfs_direct_select_verf - select the right verifier
->>>> + * @dreq - direct request possibly spanning multiple servers
->>>> + * @ds_clp - nfs_client of data server or NULL if MDS / non-pnfs
->>>> + * @ds_idx - index of data server in data server list, only valid if ds_clp set
->>>> + *
->>>> + * returns the correct verifier to use given the role of the server
->>>> + */
->>>> +static struct nfs_writeverf *
->>>> +nfs_direct_select_verf(struct nfs_direct_req *dreq,
->>>> +		       struct nfs_client *ds_clp,
->>>> +		       int ds_idx)
->>>> +{
->>>> +	struct nfs_writeverf *verfp = &dreq->verf;
->>>> +
->>>> +	if (ds_clp) {
->>>> +		/* pNFS is in use, use the DS verf */
->>>> +		if (ds_idx >= 0 && ds_idx < dreq->ds_cinfo.nbuckets)
->>> The struct pnfs_ds_commit_info is empty if CONFIG_NFS_V4_1=n, so this won't compile.
->>>
->>> Anna
->> Good catch, I�ll iterate through the patchset and test with v4.1 disabled.
->>
->> Time to add some #ifdefs
->>
->> -dros
-> That was the only problem I found with 4.1 disabled.
->
-> Fixed and pushed.
+The current CQ handler uses the ib_wc.opcode field to distinguish
+between event types. However, the contents of that field are not
+reliable if the completion status is not IB_WC_SUCCESS.
 
-Thanks! I'm now getting a "defined but not used" error if just v2 is enabled:
+When an error completion occurs on a send event, the CQ handler
+schedules a tasklet with something that is not a struct rpcrdma_rep.
+This is never correct behavior, and sometimes it results in a panic.
 
-NFS_V4_2=n PNFS_OBJLAYOUT=n PNFS_BLOCK=n PNFS_FILE_LAYOUT=n NFS_V4_1=n NFS_V4=n NFS_V3=n NFS_V2=y
+To resolve this issue, split the completion queue into a send CQ and
+a receive CQ. The send CQ handler now handles only struct rpcrdma_mw
+wr_id's, and the receive CQ handler now handles only struct
+rpcrdma_rep wr_id's.
 
-fs/nfs/direct.c:189:12: error: ‘nfs_direct_cmp_commit_data_verf’ defined but not used [-Werror=unused-function]
-static int nfs_direct_cmp_commit_data_verf(struct nfs_direct_req *dreq,
+Fix suggested by Shirley Ma <shirley.ma@oracle.com>
 
-Anna
+Reported-by: Rafael Reiter <rafael.reiter@ims.co.at>
+Fixes: 5c635e09cec0feeeb310968e51dad01040244851
+BugLink: https://bugzilla.kernel.org/show_bug.cgi?id=73211
+Tested-by: Klemens Senn <klemens.senn@ims.co.at>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
->
-> -dros
->
->>>> +			verfp = &dreq->ds_cinfo.buckets[ds_idx].direct_verf;
->>>> +		else
->>>> +			WARN_ON_ONCE(1);
->>>> +	}
->>>> +	return verfp;
->>>> +}
->>>> +
->>>> +
->>>> +/*
->>>> + * nfs_direct_set_hdr_verf - set the write/commit verifier
->>>> + * @dreq - direct request possibly spanning multiple servers
->>>> + * @hdr - pageio header to validate against previously seen verfs
->>>> + *
->>>> + * Set the server's (MDS or DS) "seen" verifier
->>>> + */
->>>> +static void nfs_direct_set_hdr_verf(struct nfs_direct_req *dreq,
->>>> +				    struct nfs_pgio_header *hdr)
->>>> +{
->>>> +	struct nfs_writeverf *verfp;
->>>> +
->>>> +	verfp = nfs_direct_select_verf(dreq, hdr->data->ds_clp,
->>>> +				      hdr->data->ds_idx);
->>>> +	WARN_ON_ONCE(verfp->committed >= 0);
->>>> +	memcpy(verfp, &hdr->verf, sizeof(struct nfs_writeverf));
->>>> +	WARN_ON_ONCE(verfp->committed < 0);
->>>> +}
->>>> +
->>>> +/*
->>>> + * nfs_direct_cmp_hdr_verf - compare verifier for pgio header
->>>> + * @dreq - direct request possibly spanning multiple servers
->>>> + * @hdr - pageio header to validate against previously seen verf
->>>> + *
->>>> + * set the server's "seen" verf if not initialized.
->>>> + * returns result of comparison between @hdr->verf and the "seen"
->>>> + * verf of the server used by @hdr (DS or MDS)
->>>> + */
->>>> +static int nfs_direct_set_or_cmp_hdr_verf(struct nfs_direct_req *dreq,
->>>> +					  struct nfs_pgio_header *hdr)
->>>> +{
->>>> +	struct nfs_writeverf *verfp;
->>>> +
->>>> +	verfp = nfs_direct_select_verf(dreq, hdr->data->ds_clp,
->>>> +					 hdr->data->ds_idx);
->>>> +	if (verfp->committed < 0) {
->>>> +		nfs_direct_set_hdr_verf(dreq, hdr);
->>>> +		return 0;
->>>> +	}
->>>> +	return memcmp(verfp, &hdr->verf, sizeof(struct nfs_writeverf));
->>>> +}
->>>> +
->>>> +/*
->>>> + * nfs_direct_cmp_commit_data_verf - compare verifier for commit data
->>>> + * @dreq - direct request possibly spanning multiple servers
->>>> + * @data - commit data to validate against previously seen verf
->>>> + *
->>>> + * returns result of comparison between @data->verf and the verf of
->>>> + * the server used by @data (DS or MDS)
->>>> + */
->>>> +static int nfs_direct_cmp_commit_data_verf(struct nfs_direct_req *dreq,
->>>> +					   struct nfs_commit_data *data)
->>>> +{
->>>> +	struct nfs_writeverf *verfp;
->>>> +
->>>> +	verfp = nfs_direct_select_verf(dreq, data->ds_clp,
->>>> +					 data->ds_commit_index);
->>>> +	WARN_ON_ONCE(verfp->committed < 0);
->>>> +	return memcmp(verfp, &data->verf, sizeof(struct nfs_writeverf));
->>>> +}
->>>> +
->>>> /**
->>>> * nfs_direct_IO - NFS address space operation for direct I/O
->>>> * @rw: direction (read or write)
->>>> @@ -168,6 +255,7 @@ static inline struct nfs_direct_req *nfs_direct_req_alloc(void)
->>>> 	kref_get(&dreq->kref);
->>>> 	init_completion(&dreq->completion);
->>>> 	INIT_LIST_HEAD(&dreq->mds_cinfo.list);
->>>> +	dreq->verf.committed = NFS_INVALID_STABLE_HOW;	/* not set yet */
->>>> 	INIT_WORK(&dreq->work, nfs_direct_write_schedule_work);
->>>> 	spin_lock_init(&dreq->lock);
->>>>
->>>> @@ -602,7 +690,7 @@ static void nfs_direct_commit_complete(struct nfs_commit_data *data)
->>>> 		dprintk("NFS: %5u commit failed with error %d.\n",
->>>> 			data->task.tk_pid, status);
->>>> 		dreq->flags = NFS_ODIRECT_RESCHED_WRITES;
->>>> -	} else if (memcmp(&dreq->verf, &data->verf, sizeof(data->verf))) {
->>>> +	} else if (nfs_direct_cmp_commit_data_verf(dreq, data)) {
->>>> 		dprintk("NFS: %5u commit verify failed\n", data->task.tk_pid);
->>>> 		dreq->flags = NFS_ODIRECT_RESCHED_WRITES;
->>>> 	}
->>>> @@ -811,13 +899,13 @@ static void nfs_direct_write_completion(struct nfs_pgio_header *hdr)
->>>> 			if (dreq->flags == NFS_ODIRECT_RESCHED_WRITES)
->>>> 				bit = NFS_IOHDR_NEED_RESCHED;
->>>> 			else if (dreq->flags == 0) {
->>>> -				memcpy(&dreq->verf, &hdr->verf,
->>>> -				       sizeof(dreq->verf));
->>>> +				nfs_direct_set_hdr_verf(dreq, hdr);
->>>> 				bit = NFS_IOHDR_NEED_COMMIT;
->>>> 				dreq->flags = NFS_ODIRECT_DO_COMMIT;
->>>> 			} else if (dreq->flags == NFS_ODIRECT_DO_COMMIT) {
->>>> -				if (memcmp(&dreq->verf, &hdr->verf, sizeof(dreq->verf))) {
->>>> -					dreq->flags = NFS_ODIRECT_RESCHED_WRITES;
->>>> +				if (nfs_direct_set_or_cmp_hdr_verf(dreq, hdr)) {
->>>> +					dreq->flags =
->>>> +						NFS_ODIRECT_RESCHED_WRITES;
->>>> 					bit = NFS_IOHDR_NEED_RESCHED;
->>>> 				} else
->>>> 					bit = NFS_IOHDR_NEED_COMMIT;
->>>> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
->>>> index 7a665e0..0ebc521 100644
->>>> --- a/fs/nfs/nfs4filelayout.c
->>>> +++ b/fs/nfs/nfs4filelayout.c
->>>> @@ -560,6 +560,7 @@ filelayout_read_pagelist(struct nfs_pgio_data *data)
->>>> 	/* No multipath support. Use first DS */
->>>> 	atomic_inc(&ds->ds_clp->cl_count);
->>>> 	data->ds_clp = ds->ds_clp;
->>>> +	data->ds_idx = idx;
->>>> 	fh = nfs4_fl_select_ds_fh(lseg, j);
->>>> 	if (fh)
->>>> 		data->args.fh = fh;
->>>> @@ -603,6 +604,7 @@ filelayout_write_pagelist(struct nfs_pgio_data *data, int sync)
->>>> 	data->pgio_done_cb = filelayout_write_done_cb;
->>>> 	atomic_inc(&ds->ds_clp->cl_count);
->>>> 	data->ds_clp = ds->ds_clp;
->>>> +	data->ds_idx = idx;
->>>> 	fh = nfs4_fl_select_ds_fh(lseg, j);
->>>> 	if (fh)
->>>> 		data->args.fh = fh;
->>>> @@ -875,6 +877,8 @@ filelayout_alloc_commit_info(struct pnfs_layout_segment *lseg,
->>>> 	for (i = 0; i < size; i++) {
->>>> 		INIT_LIST_HEAD(&buckets[i].written);
->>>> 		INIT_LIST_HEAD(&buckets[i].committing);
->>>> +		/* mark direct verifier as unset */
->>>> +		buckets[i].direct_verf.committed = NFS_INVALID_STABLE_HOW;
->>>> 	}
->>>>
->>>> 	spin_lock(cinfo->lock);
->>>> @@ -885,6 +889,8 @@ filelayout_alloc_commit_info(struct pnfs_layout_segment *lseg,
->>>> 			    &buckets[i].written);
->>>> 		list_splice(&cinfo->ds->buckets[i].committing,
->>>> 			    &buckets[i].committing);
->>>> +		buckets[i].direct_verf.committed =
->>>> +			cinfo->ds->buckets[i].direct_verf.committed;
->>>> 		buckets[i].wlseg = cinfo->ds->buckets[i].wlseg;
->>>> 		buckets[i].clseg = cinfo->ds->buckets[i].clseg;
->>>> 	}
->>>> diff --git a/include/linux/nfs.h b/include/linux/nfs.h
->>>> index 3e794c1..610af51 100644
->>>> --- a/include/linux/nfs.h
->>>> +++ b/include/linux/nfs.h
->>>> @@ -46,6 +46,9 @@ static inline void nfs_copy_fh(struct nfs_fh *target, const struct nfs_fh *sourc
->>>> enum nfs3_stable_how {
->>>> 	NFS_UNSTABLE = 0,
->>>> 	NFS_DATA_SYNC = 1,
->>>> -	NFS_FILE_SYNC = 2
->>>> +	NFS_FILE_SYNC = 2,
->>>> +
->>>> +	/* used by direct.c to mark verf as invalid */
->>>> +	NFS_INVALID_STABLE_HOW = -1
->>>> };
->>>> #endif /* _LINUX_NFS_H */
->>>> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
->>>> index 29828c7..bb9fb88 100644
->>>> --- a/include/linux/nfs_xdr.h
->>>> +++ b/include/linux/nfs_xdr.h
->>>> @@ -1111,6 +1111,7 @@ struct pnfs_commit_bucket {
->>>> 	struct list_head committing;
->>>> 	struct pnfs_layout_segment *wlseg;
->>>> 	struct pnfs_layout_segment *clseg;
->>>> +	struct nfs_writeverf direct_verf;
->>>> };
->>>>
->>>> struct pnfs_ds_commit_info {
->>>> @@ -1294,6 +1295,7 @@ struct nfs_pgio_data {
->>>> 	__u64			mds_offset;	/* Filelayout dense stripe */
->>>> 	struct nfs_page_array	pages;
->>>> 	struct nfs_client	*ds_clp;	/* pNFS data server */
->>>> +	int			ds_idx;		/* ds index if ds_clp is set */
->>>> };
->>>>
->>>> struct nfs_rw_header {
+ net/sunrpc/xprtrdma/verbs.c     |  228 +++++++++++++++++++++++----------------
+ net/sunrpc/xprtrdma/xprt_rdma.h |    1 
+ 2 files changed, 135 insertions(+), 94 deletions(-)
+
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 0f8c22c..35f5ab6 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -142,96 +142,113 @@ rpcrdma_cq_async_error_upcall(struct ib_event *event, void *context)
+ 	}
+ }
+ 
+-static inline
+-void rpcrdma_event_process(struct ib_wc *wc)
++static void
++rpcrdma_send_event_process(struct ib_wc *wc)
+ {
+-	struct rpcrdma_mw *frmr;
+-	struct rpcrdma_rep *rep =
+-			(struct rpcrdma_rep *)(unsigned long) wc->wr_id;
++	struct rpcrdma_mw *frmr = (struct rpcrdma_mw *)(unsigned long)wc->wr_id;
+ 
+-	dprintk("RPC:       %s: event rep %p status %X opcode %X length %u\n",
+-		__func__, rep, wc->status, wc->opcode, wc->byte_len);
++	dprintk("RPC:       %s: frmr %p status %X opcode %d\n",
++		__func__, frmr, wc->status, wc->opcode);
+ 
+-	if (!rep) /* send completion that we don't care about */
++	if (wc->wr_id == 0ULL)
+ 		return;
+-
+-	if (IB_WC_SUCCESS != wc->status) {
+-		dprintk("RPC:       %s: WC opcode %d status %X, connection lost\n",
+-			__func__, wc->opcode, wc->status);
+-		rep->rr_len = ~0U;
+-		if (wc->opcode != IB_WC_FAST_REG_MR && wc->opcode != IB_WC_LOCAL_INV)
+-			rpcrdma_schedule_tasklet(rep);
++	if (wc->status != IB_WC_SUCCESS)
+ 		return;
+-	}
+ 
+-	switch (wc->opcode) {
+-	case IB_WC_FAST_REG_MR:
+-		frmr = (struct rpcrdma_mw *)(unsigned long)wc->wr_id;
++	if (wc->opcode == IB_WC_FAST_REG_MR)
+ 		frmr->r.frmr.state = FRMR_IS_VALID;
+-		break;
+-	case IB_WC_LOCAL_INV:
+-		frmr = (struct rpcrdma_mw *)(unsigned long)wc->wr_id;
++	else if (wc->opcode == IB_WC_LOCAL_INV)
+ 		frmr->r.frmr.state = FRMR_IS_INVALID;
+-		break;
+-	case IB_WC_RECV:
+-		rep->rr_len = wc->byte_len;
+-		ib_dma_sync_single_for_cpu(
+-			rdmab_to_ia(rep->rr_buffer)->ri_id->device,
+-			rep->rr_iov.addr, rep->rr_len, DMA_FROM_DEVICE);
+-		/* Keep (only) the most recent credits, after check validity */
+-		if (rep->rr_len >= 16) {
+-			struct rpcrdma_msg *p =
+-					(struct rpcrdma_msg *) rep->rr_base;
+-			unsigned int credits = ntohl(p->rm_credit);
+-			if (credits == 0) {
+-				dprintk("RPC:       %s: server"
+-					" dropped credits to 0!\n", __func__);
+-				/* don't deadlock */
+-				credits = 1;
+-			} else if (credits > rep->rr_buffer->rb_max_requests) {
+-				dprintk("RPC:       %s: server"
+-					" over-crediting: %d (%d)\n",
+-					__func__, credits,
+-					rep->rr_buffer->rb_max_requests);
+-				credits = rep->rr_buffer->rb_max_requests;
+-			}
+-			atomic_set(&rep->rr_buffer->rb_credits, credits);
+-		}
+-		rpcrdma_schedule_tasklet(rep);
+-		break;
+-	default:
+-		dprintk("RPC:       %s: unexpected WC event %X\n",
+-			__func__, wc->opcode);
+-		break;
+-	}
+ }
+ 
+-static inline int
+-rpcrdma_cq_poll(struct ib_cq *cq)
++static int
++rpcrdma_sendcq_poll(struct ib_cq *cq)
+ {
+ 	struct ib_wc wc;
+ 	int rc;
+ 
+-	for (;;) {
+-		rc = ib_poll_cq(cq, 1, &wc);
+-		if (rc < 0) {
+-			dprintk("RPC:       %s: ib_poll_cq failed %i\n",
+-				__func__, rc);
+-			return rc;
+-		}
+-		if (rc == 0)
+-			break;
++	while ((rc = ib_poll_cq(cq, 1, &wc)) == 1)
++		rpcrdma_send_event_process(&wc);
++	return rc;
++}
+ 
+-		rpcrdma_event_process(&wc);
++/*
++ * Handle send, fast_reg_mr, and local_inv completions.
++ *
++ * Send events are typically suppressed and thus do not result
++ * in an upcall. Occasionally one is signaled, however. This
++ * prevents the provider's completion queue from wrapping and
++ * losing a completion.
++ */
++static void
++rpcrdma_sendcq_upcall(struct ib_cq *cq, void *cq_context)
++{
++	int rc;
++
++	rc = rpcrdma_sendcq_poll(cq);
++	if (rc) {
++		dprintk("RPC:       %s: ib_poll_cq failed: %i\n",
++			__func__, rc);
++		return;
+ 	}
++	rc = ib_req_notify_cq(cq, IB_CQ_NEXT_COMP);
++	if (rc) {
++		dprintk("RPC:       %s: ib_req_notify_cq failed: %i\n",
++			__func__, rc);
++		return;
++	}
++	rpcrdma_sendcq_poll(cq);
++}
+ 
+-	return 0;
++static void
++rpcrdma_recv_event_process(struct ib_wc *wc)
++{
++	struct rpcrdma_rep *rep =
++			(struct rpcrdma_rep *)(unsigned long)wc->wr_id;
++
++	dprintk("RPC:       %s: rep %p status %X opcode %X length %u\n",
++		__func__, rep, wc->status, wc->opcode, wc->byte_len);
++
++	if (wc->status != IB_WC_SUCCESS) {
++		rep->rr_len = ~0U;
++		goto out_schedule;
++	}
++	if (wc->opcode != IB_WC_RECV)
++		return;
++
++	rep->rr_len = wc->byte_len;
++	ib_dma_sync_single_for_cpu(rdmab_to_ia(rep->rr_buffer)->ri_id->device,
++			rep->rr_iov.addr, rep->rr_len, DMA_FROM_DEVICE);
++
++	if (rep->rr_len >= 16) {
++		struct rpcrdma_msg *p = (struct rpcrdma_msg *)rep->rr_base;
++		unsigned int credits = ntohl(p->rm_credit);
++
++		if (credits == 0)
++			credits = 1;	/* don't deadlock */
++		else if (credits > rep->rr_buffer->rb_max_requests)
++			credits = rep->rr_buffer->rb_max_requests;
++		atomic_set(&rep->rr_buffer->rb_credits, credits);
++	}
++
++out_schedule:
++	rpcrdma_schedule_tasklet(rep);
++}
++
++static int
++rpcrdma_recvcq_poll(struct ib_cq *cq)
++{
++	struct ib_wc wc;
++	int rc;
++
++	while ((rc = ib_poll_cq(cq, 1, &wc)) == 1)
++		rpcrdma_recv_event_process(&wc);
++	return rc;
+ }
+ 
+ /*
+- * rpcrdma_cq_event_upcall
++ * Handle receive completions.
+  *
+- * This upcall handles recv and send events.
+  * It is reentrant but processes single events in order to maintain
+  * ordering of receives to keep server credits.
+  *
+@@ -240,26 +257,25 @@ rpcrdma_cq_poll(struct ib_cq *cq)
+  * connection shutdown. That is, the structures required for
+  * the completion of the reply handler must remain intact until
+  * all memory has been reclaimed.
+- *
+- * Note that send events are suppressed and do not result in an upcall.
+  */
+ static void
+-rpcrdma_cq_event_upcall(struct ib_cq *cq, void *context)
++rpcrdma_recvcq_upcall(struct ib_cq *cq, void *cq_context)
+ {
+ 	int rc;
+ 
+-	rc = rpcrdma_cq_poll(cq);
+-	if (rc)
++	rc = rpcrdma_recvcq_poll(cq);
++	if (rc) {
++		dprintk("RPC:       %s: ib_poll_cq failed: %i\n",
++			__func__, rc);
+ 		return;
+-
++	}
+ 	rc = ib_req_notify_cq(cq, IB_CQ_NEXT_COMP);
+ 	if (rc) {
+-		dprintk("RPC:       %s: ib_req_notify_cq failed %i\n",
++		dprintk("RPC:       %s: ib_req_notify_cq failed: %i\n",
+ 			__func__, rc);
+ 		return;
+ 	}
+-
+-	rpcrdma_cq_poll(cq);
++	rpcrdma_recvcq_poll(cq);
+ }
+ 
+ #ifdef RPC_DEBUG
+@@ -613,6 +629,7 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
+ 				struct rpcrdma_create_data_internal *cdata)
+ {
+ 	struct ib_device_attr devattr;
++	struct ib_cq *sendcq, *recvcq;
+ 	int rc, err;
+ 
+ 	rc = ib_query_device(ia->ri_id->device, &devattr);
+@@ -688,7 +705,7 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
+ 		ep->rep_attr.cap.max_recv_sge);
+ 
+ 	/* set trigger for requesting send completion */
+-	ep->rep_cqinit = ep->rep_attr.cap.max_send_wr/2 /*  - 1*/;
++	ep->rep_cqinit = ep->rep_attr.cap.max_send_wr/2 - 1;
+ 	if (ep->rep_cqinit <= 2)
+ 		ep->rep_cqinit = 0;
+ 	INIT_CQCOUNT(ep);
+@@ -696,26 +713,43 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
+ 	init_waitqueue_head(&ep->rep_connect_wait);
+ 	INIT_DELAYED_WORK(&ep->rep_connect_worker, rpcrdma_connect_worker);
+ 
+-	ep->rep_cq = ib_create_cq(ia->ri_id->device, rpcrdma_cq_event_upcall,
++	sendcq = ib_create_cq(ia->ri_id->device, rpcrdma_sendcq_upcall,
+ 				  rpcrdma_cq_async_error_upcall, NULL,
+-				  ep->rep_attr.cap.max_recv_wr +
+ 				  ep->rep_attr.cap.max_send_wr + 1, 0);
+-	if (IS_ERR(ep->rep_cq)) {
+-		rc = PTR_ERR(ep->rep_cq);
+-		dprintk("RPC:       %s: ib_create_cq failed: %i\n",
++	if (IS_ERR(sendcq)) {
++		rc = PTR_ERR(sendcq);
++		dprintk("RPC:       %s: failed to create send CQ: %i\n",
+ 			__func__, rc);
+ 		goto out1;
+ 	}
+ 
+-	rc = ib_req_notify_cq(ep->rep_cq, IB_CQ_NEXT_COMP);
++	rc = ib_req_notify_cq(sendcq, IB_CQ_NEXT_COMP);
+ 	if (rc) {
+ 		dprintk("RPC:       %s: ib_req_notify_cq failed: %i\n",
+ 			__func__, rc);
+ 		goto out2;
+ 	}
+ 
+-	ep->rep_attr.send_cq = ep->rep_cq;
+-	ep->rep_attr.recv_cq = ep->rep_cq;
++	recvcq = ib_create_cq(ia->ri_id->device, rpcrdma_recvcq_upcall,
++				  rpcrdma_cq_async_error_upcall, NULL,
++				  ep->rep_attr.cap.max_recv_wr + 1, 0);
++	if (IS_ERR(recvcq)) {
++		rc = PTR_ERR(recvcq);
++		dprintk("RPC:       %s: failed to create recv CQ: %i\n",
++			__func__, rc);
++		goto out2;
++	}
++
++	rc = ib_req_notify_cq(recvcq, IB_CQ_NEXT_COMP);
++	if (rc) {
++		dprintk("RPC:       %s: ib_req_notify_cq failed: %i\n",
++			__func__, rc);
++		ib_destroy_cq(recvcq);
++		goto out2;
++	}
++
++	ep->rep_attr.send_cq = sendcq;
++	ep->rep_attr.recv_cq = recvcq;
+ 
+ 	/* Initialize cma parameters */
+ 
+@@ -737,7 +771,7 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
+ 	return 0;
+ 
+ out2:
+-	err = ib_destroy_cq(ep->rep_cq);
++	err = ib_destroy_cq(sendcq);
+ 	if (err)
+ 		dprintk("RPC:       %s: ib_destroy_cq returned %i\n",
+ 			__func__, err);
+@@ -777,8 +811,14 @@ rpcrdma_ep_destroy(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
+ 		ep->rep_pad_mr = NULL;
+ 	}
+ 
+-	rpcrdma_clean_cq(ep->rep_cq);
+-	rc = ib_destroy_cq(ep->rep_cq);
++	rpcrdma_clean_cq(ep->rep_attr.recv_cq);
++	rc = ib_destroy_cq(ep->rep_attr.recv_cq);
++	if (rc)
++		dprintk("RPC:       %s: ib_destroy_cq returned %i\n",
++			__func__, rc);
++
++	rpcrdma_clean_cq(ep->rep_attr.send_cq);
++	rc = ib_destroy_cq(ep->rep_attr.send_cq);
+ 	if (rc)
+ 		dprintk("RPC:       %s: ib_destroy_cq returned %i\n",
+ 			__func__, rc);
+@@ -801,7 +841,9 @@ retry:
+ 		if (rc && rc != -ENOTCONN)
+ 			dprintk("RPC:       %s: rpcrdma_ep_disconnect"
+ 				" status %i\n", __func__, rc);
+-		rpcrdma_clean_cq(ep->rep_cq);
++
++		rpcrdma_clean_cq(ep->rep_attr.recv_cq);
++		rpcrdma_clean_cq(ep->rep_attr.send_cq);
+ 
+ 		xprt = container_of(ia, struct rpcrdma_xprt, rx_ia);
+ 		id = rpcrdma_create_id(xprt, ia,
+@@ -910,7 +952,8 @@ rpcrdma_ep_disconnect(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
+ {
+ 	int rc;
+ 
+-	rpcrdma_clean_cq(ep->rep_cq);
++	rpcrdma_clean_cq(ep->rep_attr.recv_cq);
++	rpcrdma_clean_cq(ep->rep_attr.send_cq);
+ 	rc = rdma_disconnect(ia->ri_id);
+ 	if (!rc) {
+ 		/* returns without wait if not connected */
+@@ -1793,7 +1836,6 @@ rpcrdma_ep_post_recv(struct rpcrdma_ia *ia,
+ 	ib_dma_sync_single_for_cpu(ia->ri_id->device,
+ 		rep->rr_iov.addr, rep->rr_iov.length, DMA_BIDIRECTIONAL);
+ 
+-	DECR_CQCOUNT(ep);
+ 	rc = ib_post_recv(ia->ri_id->qp, &recv_wr, &recv_wr_fail);
+ 
+ 	if (rc)
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index 362a19d..334ab6e 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -79,7 +79,6 @@ struct rpcrdma_ep {
+ 	int			rep_cqinit;
+ 	int			rep_connected;
+ 	struct rpcrdma_ia	*rep_ia;
+-	struct ib_cq		*rep_cq;
+ 	struct ib_qp_init_attr	rep_attr;
+ 	wait_queue_head_t 	rep_connect_wait;
+ 	struct ib_sge		rep_pad;	/* holds zeroed pad */
 
