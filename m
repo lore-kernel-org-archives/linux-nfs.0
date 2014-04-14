@@ -1,58 +1,104 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:42094 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752503AbaDWNvT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 23 Apr 2014 09:51:19 -0400
-Message-ID: <5357C554.8070500@netapp.com>
-Date: Wed, 23 Apr 2014 09:51:16 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
+Received: from mail-ie0-f173.google.com ([209.85.223.173]:33477 "EHLO
+	mail-ie0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754790AbaDNWXR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Apr 2014 18:23:17 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 6/8] xprtrdma: Make rpcrdma_ep_destroy() return void
+To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Date: Mon, 14 Apr 2014 18:23:15 -0400
+Message-ID: <20140414222314.20646.16206.stgit@manet.1015granger.net>
+In-Reply-To: <20140414220041.20646.63991.stgit@manet.1015granger.net>
+References: <20140414220041.20646.63991.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-To: Weston Andros Adamson <dros@primarydata.com>,
-        Boaz Harrosh <bharrosh@panasas.com>
-CC: Trond Myklebust <Trond.Myklebust@primarydata.com>,
-        linux-nfs list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 00/17] NFS: Create a common path used by reads and writes
-References: <1397768981-12856-1-git-send-email-Anna.Schumaker@Netapp.com> <5357B827.8040506@panasas.com> <5357BCD9.2@panasas.com> <21CDA162-DF2B-4C9F-A310-CCA7936817FA@primarydata.com>
-In-Reply-To: <21CDA162-DF2B-4C9F-A310-CCA7936817FA@primarydata.com>
-Content-Type: text/plain; charset="windows-1252"
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We'll make sure it works!  I'm about to look through Dros' patches, so I'll know more soon!
+Clean up: rpcrdma_ep_destroy() returns a value that is used
+only to print a debugging message. rpcrdma_ep_destroy() already
+prints debugging messages in all error cases.
 
-Anna
+Make rpcrdma_ep_destroy() return void instead.
 
-On 04/23/2014 09:42 AM, Weston Andros Adamson wrote:
-> Yeah there are bound to be some conflicts between these two patchsets, but
-> I don’t think it should be too nasty.
-> 
-> Anna and I can work together to get both sets into a branch once we get things 
-> reviewed.
-> 
-> The good news is that we can combine testing efforts - both of these patchsets
-> change the read and write path for all versions of NFS, so we really need to
-> make sure we didn’t break anything. Not that pnfs isn’t important ;)
-> 
-> -dros
-> 
-> On Apr 23, 2014, at 9:15 AM, Boaz Harrosh <bharrosh@panasas.com> wrote:
-> 
->> On 04/23/2014 03:55 PM, Boaz Harrosh wrote:
->>> On 04/18/2014 12:09 AM, Anna Schumaker wrote:
->> <>
->>> yes please keep
->>> it on a public tree for quick testing. Perhaps ask Trond to keep
->>> it on his tree in a branch. (So to get some coverage under the linux-next
->>> tree mongers from Intel)
->>>
->>
->> BTW: anyone tested how much this conflicts with dros's 17 patches?
->>     (Noticed how it is always 17 patches)
->>     If a brave sole can have both these merged on the same tree it
->>     would be easier for the testing.
->>
->> Thanks
->> Boaz
->>
-> 
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+
+ net/sunrpc/xprtrdma/transport.c |    8 ++------
+ net/sunrpc/xprtrdma/verbs.c     |    7 +------
+ net/sunrpc/xprtrdma/xprt_rdma.h |    2 +-
+ 3 files changed, 4 insertions(+), 13 deletions(-)
+
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index 430cabb..d18b2a3 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -229,7 +229,6 @@ static void
+ xprt_rdma_destroy(struct rpc_xprt *xprt)
+ {
+ 	struct rpcrdma_xprt *r_xprt = rpcx_to_rdmax(xprt);
+-	int rc;
+ 
+ 	dprintk("RPC:       %s: called\n", __func__);
+ 
+@@ -238,10 +237,7 @@ xprt_rdma_destroy(struct rpc_xprt *xprt)
+ 	xprt_clear_connected(xprt);
+ 
+ 	rpcrdma_buffer_destroy(&r_xprt->rx_buf);
+-	rc = rpcrdma_ep_destroy(&r_xprt->rx_ep, &r_xprt->rx_ia);
+-	if (rc)
+-		dprintk("RPC:       %s: rpcrdma_ep_destroy returned %i\n",
+-			__func__, rc);
++	rpcrdma_ep_destroy(&r_xprt->rx_ep, &r_xprt->rx_ia);
+ 	rpcrdma_ia_close(&r_xprt->rx_ia);
+ 
+ 	xprt_rdma_free_addresses(xprt);
+@@ -391,7 +387,7 @@ out4:
+ 	xprt_rdma_free_addresses(xprt);
+ 	rc = -EINVAL;
+ out3:
+-	(void) rpcrdma_ep_destroy(new_ep, &new_xprt->rx_ia);
++	rpcrdma_ep_destroy(new_ep, &new_xprt->rx_ia);
+ out2:
+ 	rpcrdma_ia_close(&new_xprt->rx_ia);
+ out1:
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 2b763a2..0f8c22c 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -751,11 +751,8 @@ out1:
+  * Disconnect and destroy endpoint. After this, the only
+  * valid operations on the ep are to free it (if dynamically
+  * allocated) or re-create it.
+- *
+- * The caller's error handling must be sure to not leak the endpoint
+- * if this function fails.
+  */
+-int
++void
+ rpcrdma_ep_destroy(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
+ {
+ 	int rc;
+@@ -785,8 +782,6 @@ rpcrdma_ep_destroy(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
+ 	if (rc)
+ 		dprintk("RPC:       %s: ib_destroy_cq returned %i\n",
+ 			__func__, rc);
+-
+-	return rc;
+ }
+ 
+ /*
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index 3f44d6a..362a19d 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -301,7 +301,7 @@ void rpcrdma_ia_close(struct rpcrdma_ia *);
+  */
+ int rpcrdma_ep_create(struct rpcrdma_ep *, struct rpcrdma_ia *,
+ 				struct rpcrdma_create_data_internal *);
+-int rpcrdma_ep_destroy(struct rpcrdma_ep *, struct rpcrdma_ia *);
++void rpcrdma_ep_destroy(struct rpcrdma_ep *, struct rpcrdma_ia *);
+ int rpcrdma_ep_connect(struct rpcrdma_ep *, struct rpcrdma_ia *);
+ int rpcrdma_ep_disconnect(struct rpcrdma_ep *, struct rpcrdma_ia *);
+ 
 
