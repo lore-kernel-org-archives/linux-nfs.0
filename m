@@ -1,94 +1,128 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:52724 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756289AbaDWDsV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 Apr 2014 23:48:21 -0400
-From: NeilBrown <neilb@suse.de>
-To: Jan Kara <jack@suse.cz>, Jeff Layton <jlayton@redhat.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Dave Chinner <david@fromorbit.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Mel Gorman <mgorman@suse.com>,
-        Andrew Morton <akpm@linux-foundation.org>
-Date: Wed, 23 Apr 2014 12:40:58 +1000
-Subject: [PATCH 1/5] MM: avoid throttling reclaim for loop-back nfsd threads.
-Cc: linux-mm@kvack.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Message-ID: <20140423024058.4725.71995.stgit@notabene.brown>
-In-Reply-To: <20140423022441.4725.89693.stgit@notabene.brown>
-References: <20140423022441.4725.89693.stgit@notabene.brown>
+Received: from mail-pd0-f175.google.com ([209.85.192.175]:39903 "EHLO
+	mail-pd0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753786AbaDNNAE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Apr 2014 09:00:04 -0400
+Received: by mail-pd0-f175.google.com with SMTP id x10so8038584pdj.20
+        for <linux-nfs@vger.kernel.org>; Mon, 14 Apr 2014 06:00:03 -0700 (PDT)
+Message-ID: <534BDBB6.5030306@gmail.com>
+Date: Mon, 14 Apr 2014 20:59:34 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+CC: linux-nfs@vger.kernel.org, "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: [PATCH] NFS: add FATTR4_WORD1_MODE flags for cache_consistency_bitmask
+References: <534A8CEF.6000609@gmail.com>	 <505345D4-4F7C-4970-9EBF-7CFC367575B2@primarydata.com>	 <534AA4FD.3060202@gmail.com> <1397402659.6306.5.camel@leira.trondhjem.org>
+In-Reply-To: <1397402659.6306.5.camel@leira.trondhjem.org>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When a loop-back NFS mount is active and the backing device for the
-NFS mount becomes congested, that can impose throttling delays on the
-nfsd threads.
-
-These delays significantly reduce throughput and so the NFS mount
-remains congested.
-
-This results in a live lock and the reduced throughput persists.
-
-This live lock has been found in testing with the 'wait_iff_congested'
-call, and could possibly be caused by the 'congestion_wait' call.
-
-This livelock is similar to the deadlock which justified the
-introduction of PF_LESS_THROTTLE, and the same flag can be used to
-remove this livelock.
-
-To minimise the impact of the change, we still throttle nfsd when the
-filesystem it is writing to is congested, but not when some separate
-filesystem (e.g. the NFS filesystem) is congested.
-
-Signed-off-by: NeilBrown <neilb@suse.de>
----
- mm/vmscan.c |   18 ++++++++++++++++--
- 1 file changed, 16 insertions(+), 2 deletions(-)
-
-diff --git a/mm/vmscan.c b/mm/vmscan.c
-index a9c74b409681..e011a646de95 100644
---- a/mm/vmscan.c
-+++ b/mm/vmscan.c
-@@ -1424,6 +1424,18 @@ putback_inactive_pages(struct lruvec *lruvec, struct list_head *page_list)
- 	list_splice(&pages_to_free, page_list);
- }
- 
-+/* If a kernel thread (such as nfsd for loop-back mounts) services
-+ * a backing device by writing to the page cache it sets PF_LESS_THROTTLE.
-+ * In that case we should only throttle if the backing device it is
-+ * writing to is congested.  In other cases it is safe to throttle.
-+ */
-+static int current_may_throttle(void)
-+{
-+	return !(current->flags & PF_LESS_THROTTLE) ||
-+		current->backing_dev_info == NULL ||
-+		bdi_write_congested(current->backing_dev_info);
-+}
-+
- /*
-  * shrink_inactive_list() is a helper for shrink_zone().  It returns the number
-  * of reclaimed pages
-@@ -1552,7 +1564,8 @@ shrink_inactive_list(unsigned long nr_to_scan, struct lruvec *lruvec,
- 		 * implies that pages are cycling through the LRU faster than
- 		 * they are written so also forcibly stall.
- 		 */
--		if (nr_unqueued_dirty == nr_taken || nr_immediate)
-+		if ((nr_unqueued_dirty == nr_taken || nr_immediate)
-+		    && current_may_throttle())
- 			congestion_wait(BLK_RW_ASYNC, HZ/10);
- 	}
- 
-@@ -1561,7 +1574,8 @@ shrink_inactive_list(unsigned long nr_to_scan, struct lruvec *lruvec,
- 	 * is congested. Allow kswapd to continue until it starts encountering
- 	 * unqueued dirty pages or cycling through the LRU too quickly.
- 	 */
--	if (!sc->hibernation_mode && !current_is_kswapd())
-+	if (!sc->hibernation_mode && !current_is_kswapd()
-+	    && current_may_throttle())
- 		wait_iff_congested(zone, BLK_RW_ASYNC, HZ/10);
- 
- 	trace_mm_vmscan_lru_shrink_inactive(zone->zone_pgdat->node_id,
 
 
+于 2014/4/13 23:24, Trond Myklebust 写道:
+> On Sun, 2014-04-13 at 22:53 +0800, Kinglong Mee wrote:
+>>
+>> 于 2014/4/13 22:28, Trond Myklebust 写道:
+>>>
+>>> On Apr 13, 2014, at 9:11, Kinglong Mee <kinglongmee@gmail.com> wrote:
+>>>
+>>>> After writing data at NFS client, file's access mode is inconsistent
+>>>> with server.
+>>>> Because WRITE proceduce changes the S_ISUID and S_ISGID bits,
+>>>> but client don't get it.
+>>>>
+>>>> #touch hello; chmod 06777 hello; stat hello;
+>>>>    File: ‘hello’
+>>>>    Size: 0               Blocks: 0          IO Block: 262144 regular
+>>>> empty file
+>>>> Device: 24h/36d Inode: 786434      Links: 1
+>>>> Access: (6777/-rwsrwsrwx)  Uid: (    0/    root)   Gid: (    0/    root)
+>>>> Context: system_u:object_r:nfs_t:s0
+>>>> Access: 2014-04-13 21:00:44.996908708 +0800
+>>>> Modify: 2014-04-13 21:00:44.996908708 +0800
+>>>> Change: 2014-04-13 21:00:45.033908705 +0800
+>>>> Birth: -
+>>>>
+>>>> #echo 12324 > hello; stat hello; stat /nfstest/hello
+>>>>    File: ‘hello’
+>>>>    Size: 6               Blocks: 0          IO Block: 262144 regular file
+>>>> Device: 24h/36d Inode: 786434      Links: 1
+>>>> Access: (6777/-rwsrwsrwx)  Uid: (    0/    root)   Gid: (    0/    root)
+>>>>           ^^^^^ it should be 0777
+>>>> Context: system_u:object_r:nfs_t:s0
+>>>> Access: 2014-04-13 21:00:44.996908708 +0800
+>>>> Modify: 2014-04-13 21:00:45.061908703 +0800
+>>>> Change: 2014-04-13 21:00:45.061908703 +0800
+>>>> Birth: -
+>>>>    File: ‘/nfstest/hello’
+>>>>    Size: 6               Blocks: 8          IO Block: 4096   regular file
+>>>> Device: 803h/2051d      Inode: 786434      Links: 1
+>>>> Access: (0777/-rwxrwxrwx)  Uid: (    0/    root)   Gid: (    0/    root)
+>>>>           ^^^^^ bits on the server
+>>>> Context: system_u:object_r:default_t:s0
+>>>> Access: 2014-04-13 21:00:44.996908708 +0800
+>>>> Modify: 2014-04-13 21:00:45.061908703 +0800
+>>>> Change: 2014-04-13 21:00:45.061908703 +0800
+>>>> Birth: -
+>>>>
+> <snip>
+>>>
+>>> Instead of requesting a new attribute on each and every operation just in order to deal with an extremely rare corner case, is there any reason why we can’t just do this by checking should_remove_suid(), clearing the mode bits ourselves, and then marking the attributes for revalidation?
+>>
+> <snip>
+>> IMO, client shoulds get all metadatas from server, so, adds the flag.
+>> I think should_remove_suid() should be called by nfsd, not NFS client
+>
+> I agree with 50% of that statement. Please see below.
+>
+> 8<---------------------------------------------------------------------
+>>From a7b05fc5fcb433e8cfca577c9275f2012b523ee8 Mon Sep 17 00:00:00 2001
+> From: Trond Myklebust <trond.myklebust@primarydata.com>
+> Date: Sun, 13 Apr 2014 11:11:31 -0400
+> Subject: [PATCH] NFS: Don't ignore suid/sgid bit changes after a successful
+>   write
+>
+> If we suspect that the server may have cleared the suid/sgid bit,
+> then mark the inode for revalidation.
+
+When testing with this patch, should_remove_suid() always return false
+at client, but return true at NFS server.
+
+So that, NFS server clears the suid/sgid bit, but client also remains.
+
+thanks,
+Kinglong Mee
+
+>
+> Reported-by: Kinglong Mee <kinglongmee@gmail.com>
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> ---
+>   fs/nfs/write.c | 11 +++++++++--
+>   1 file changed, 9 insertions(+), 2 deletions(-)
+>
+> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+> index 9a3b6a4cd6b9..80b03e064a09 100644
+> --- a/fs/nfs/write.c
+> +++ b/fs/nfs/write.c
+> @@ -1401,9 +1401,16 @@ void nfs_writeback_done(struct rpc_task *task, struct nfs_write_data *data)
+>   		}
+>   	}
+>   #endif
+> -	if (task->tk_status < 0)
+> +	if (task->tk_status < 0) {
+>   		nfs_set_pgio_error(data->header, task->tk_status, argp->offset);
+> -	else if (resp->count < argp->count) {
+> +		return;
+> +	}
+> +
+> +	/* Deal with the suid/sgid bit corner case */
+> +	if (should_remove_suid(argp->context->dentry))
+> +		nfs_mark_for_revalidate(inode);
+> +
+
+> +	if (resp->count < argp->count) {
+>   		static unsigned long    complain;
+>
+>   		/* This a short write! */
+>
