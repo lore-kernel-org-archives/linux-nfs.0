@@ -1,98 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:34165 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754981AbaDYU4R (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Apr 2014 16:56:17 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
-CC: <dros@primarydata.com>, <hch@infradead.org>
-Subject: [PATCH v2 00/17] NFS: Create a common path used by reads and writes
-Date: Fri, 25 Apr 2014 16:55:43 -0400
-Message-ID: <1398459360-2093-1-git-send-email-Anna.Schumaker@Netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+Received: from smtprelay0027.hostedemail.com ([216.40.44.27]:59898 "EHLO
+	smtprelay.hostedemail.com" rhost-flags-OK-OK-OK-FAIL)
+	by vger.kernel.org with ESMTP id S1754033AbaDNCEw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 13 Apr 2014 22:04:52 -0400
+Received: from smtprelay.hostedemail.com (ff-bigip1 [10.5.19.254])
+	by smtpgrave04.hostedemail.com (Postfix) with ESMTP id 9E786B1ABE
+	for <linux-nfs@vger.kernel.org>; Mon, 14 Apr 2014 01:57:10 +0000 (UTC)
+From: Joe Perches <joe@perches.com>
+To: Andrew Morton <akpm@linux-foundation.org>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: [PATCH -next 3.16 10/19] lockd: Convert use of typedef ctl_table to struct ctl_table
+Date: Sun, 13 Apr 2014 18:55:42 -0700
+Message-Id: <c69541c8e2b17be9ae9ecdaa001eea7f10cd7f26.1397438826.git.joe@perches.com>
+In-Reply-To: <cover.1397438826.git.joe@perches.com>
+References: <cover.1397438826.git.joe@perches.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I noticed that much of the read and write code was almost identical, with
-only minor differences in argument types and names.  These patches seek to
-unify these two codepaths wherever possible in order to make future changes
-easier.
+This typedef is unnecessary and should just be removed.
 
-Table of contents:
-	Patches 01 - 05: Set up common data structures.
-	Patches 06 - 10: Set up a shared rpc_call_ops struct.
-	Patches 11 - 15: Set up a shared nfs_pageio_ops struct.
+Signed-off-by: Joe Perches <joe@perches.com>
+---
+ fs/lockd/svc.c | 6 +++---
+ 1 file changed, 3 insertions(+), 3 deletions(-)
 
-Some of the commit setup was moved into common code, but I'm willing to
-move this back into write.c if this looks to be a problem.
-
-Future work:
-	I have rough pNFS patches to combine the read and write paths in
-	pnfs.c.  They apply on top of Dros' multiple requests work and
-	should get more testing before I submit.
-
-Testing:
-	I tested every version of NFS using the cthon and xfs tests without
-	hitting anything new.  Any extra testing would be great seeing how
-	the read and write paths are vitally important.
-
-Changes in v2:
-	Reorder data fields in the earlier patches to keep read-only and
-	write-only variables together.
-
-Questions?  Comments?  Thoughts?
-
-Anna
-
-
-Anna Schumaker (17):
-  NFS: Create a common argument structure for reads and writes
-  NFS: Create a common results structure for reads and writes
-  NFS: Create a common read and write data struct
-  NFS: Create a common read and write header struct
-  NFS: Move the write verifier into the nfs_pgio_header
-  NFS: Create a common pgio_alloc and pgio_release function
-  NFS: Create a common rw_header_alloc and rw_header_free function
-  NFS: Create a common pgio_rpc_prepare function
-  NFS: Create a common nfs_pgio_result_common function
-  NFS: Create a common rpc_call_ops struct
-  NFS: Create a common rpcsetup function for reads and writes
-  NFS: Create a common pgio_error function
-  NFS: Create a generic_pgio function
-  NFS: Create a common initiate_pgio() function
-  NFS: Create a common multiple_pgios() function
-  NFS: Create a common generic_pg_pgios()
-  NFS: Create a common nfs_pageio_ops struct
-
- fs/nfs/Makefile                  |   2 +-
- fs/nfs/blocklayout/blocklayout.c |  22 +-
- fs/nfs/direct.c                  |   4 +-
- fs/nfs/internal.h                |  31 ++-
- fs/nfs/nfs2xdr.c                 |  14 +-
- fs/nfs/nfs3proc.c                |  19 +-
- fs/nfs/nfs3xdr.c                 |  16 +-
- fs/nfs/nfs4_fs.h                 |   4 +-
- fs/nfs/nfs4filelayout.c          |  40 ++--
- fs/nfs/nfs4proc.c                |  52 ++---
- fs/nfs/nfs4trace.h               |   8 +-
- fs/nfs/nfs4xdr.c                 |  19 +-
- fs/nfs/objlayout/objio_osd.c     |   6 +-
- fs/nfs/objlayout/objlayout.c     |  16 +-
- fs/nfs/objlayout/objlayout.h     |   8 +-
- fs/nfs/pageio.c                  | 386 +++++++++++++++++++++++++++++++++++
- fs/nfs/pagelist.c                |   2 +
- fs/nfs/pnfs.c                    |  46 ++---
- fs/nfs/pnfs.h                    |  10 +-
- fs/nfs/proc.c                    |  19 +-
- fs/nfs/read.c                    | 348 +++-----------------------------
- fs/nfs/write.c                   | 425 +++++----------------------------------
- include/linux/nfs_fs.h           |   3 +-
- include/linux/nfs_page.h         |  13 ++
- include/linux/nfs_xdr.h          |  95 +++------
- 25 files changed, 662 insertions(+), 946 deletions(-)
- create mode 100644 fs/nfs/pageio.c
-
+diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+index 6bf06a0..de051cb1 100644
+--- a/fs/lockd/svc.c
++++ b/fs/lockd/svc.c
+@@ -436,7 +436,7 @@ EXPORT_SYMBOL_GPL(lockd_down);
+  * Sysctl parameters (same as module parameters, different interface).
+  */
+ 
+-static ctl_table nlm_sysctls[] = {
++static struct ctl_table nlm_sysctls[] = {
+ 	{
+ 		.procname	= "nlm_grace_period",
+ 		.data		= &nlm_grace_period,
+@@ -490,7 +490,7 @@ static ctl_table nlm_sysctls[] = {
+ 	{ }
+ };
+ 
+-static ctl_table nlm_sysctl_dir[] = {
++static struct ctl_table nlm_sysctl_dir[] = {
+ 	{
+ 		.procname	= "nfs",
+ 		.mode		= 0555,
+@@ -499,7 +499,7 @@ static ctl_table nlm_sysctl_dir[] = {
+ 	{ }
+ };
+ 
+-static ctl_table nlm_sysctl_root[] = {
++static struct ctl_table nlm_sysctl_root[] = {
+ 	{
+ 		.procname	= "fs",
+ 		.mode		= 0555,
 -- 
-1.9.2
+1.8.1.2.459.gbcd45b4.dirty
 
