@@ -1,82 +1,105 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from plane.gmane.org ([80.91.229.3]:39061 "EHLO plane.gmane.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752798AbaDRUKH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 18 Apr 2014 16:10:07 -0400
-Received: from list by plane.gmane.org with local (Exim 4.69)
-	(envelope-from <glN-linux-nfs@m.gmane.org>)
-	id 1WbF6q-0006Q3-Rh
-	for linux-nfs@vger.kernel.org; Fri, 18 Apr 2014 22:10:04 +0200
-Received: from 95-89-86-106-dynip.superkabel.de ([95.89.86.106])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Fri, 18 Apr 2014 22:10:04 +0200
-Received: from bernd.schubert by 95-89-86-106-dynip.superkabel.de with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Fri, 18 Apr 2014 22:10:04 +0200
-To: linux-nfs@vger.kernel.org
-From: Bernd Schubert <bernd.schubert@fastmail.fm>
-Subject: [PATCH] nfsd: nfsd4_decode_create: Fix a possible NULL pointer dereference
-Date: Fri, 18 Apr 2014 22:06:43 +0200
-Message-ID: <lis0kj$kaj$1@ger.gmane.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-pd0-f169.google.com ([209.85.192.169]:41082 "EHLO
+	mail-pd0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754077AbaDNNcG (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Apr 2014 09:32:06 -0400
+Received: by mail-pd0-f169.google.com with SMTP id fp1so8127429pdb.0
+        for <linux-nfs@vger.kernel.org>; Mon, 14 Apr 2014 06:32:05 -0700 (PDT)
+Message-ID: <534BE338.2030001@gmail.com>
+Date: Mon, 14 Apr 2014 21:31:36 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
+MIME-Version: 1.0
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+CC: linux-nfs@vger.kernel.org, Dr Fields James Bruce <bfields@fieldses.org>
+Subject: Re: [PATCH] NFS: add FATTR4_WORD1_MODE flags for cache_consistency_bitmask
+References: <534A8CEF.6000609@gmail.com>	 <505345D4-4F7C-4970-9EBF-7CFC367575B2@primarydata.com>	 <534AA4FD.3060202@gmail.com> <1397402659.6306.5.camel@leira.trondhjem.org> <534BDBB6.5030306@gmail.com> <4B0A3D7E-5DD0-47A2-B1C8-A2F64E37D781@primarydata.com>
+In-Reply-To: <4B0A3D7E-5DD0-47A2-B1C8-A2F64E37D781@primarydata.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-While running FhGFS-to-NFS stress tests, I noticed this bug (with a 
-RHEL 6.5 kernel, but I think it also in linux-git).
-
-[ 3428.087489] BUG: unable to handle kernel paging request at ffff880735fb8000
-[ 3428.094821] IP: [<ffffffffa038066e>] nfsd4_create+0x27e/0x380 [nfsd]
-
-gdb resolves this to
-
-(gdb) l *(nfsd4_create+0x27e)
-0x1469e is in nfsd4_create (fs/nfsd/nfs4proc.c:527).
-522                      * null-terminate by brute force, since at worst we
-523                      * will overwrite the first byte of the create namelen
-524                      * in the XDR buffer, which has already been extracted
-525                      * during XDR decode.
-526                      */
-527                     create->cr_linkname[create->cr_linklen] = 0;
-528
-529                     status = nfsd_symlink(rqstp, &cstate->current_fh,
-530                                           create->cr_name, create->cr_namelen,
-531                                           create->cr_linkname, create->cr_linklen,
 
 
-create->cr_linkname is set in nfsd4_decode_create and 
-even current .git does not check for the result of savemem 
-there.
+于 2014/4/14 21:12, Trond Myklebust 写道:
+>
+> On Apr 14, 2014, at 8:59, Kinglong Mee <kinglongmee@gmail.com> wrote:
+>
+>>
+>>
+>> 于 2014/4/13 23:24, Trond Myklebust 写道:
+>>> On Sun, 2014-04-13 at 22:53 +0800, Kinglong Mee wrote:
+>>>>
+>>>> 于 2014/4/13 22:28, Trond Myklebust 写道:
+>>>>>
+>>>>> On Apr 13, 2014, at 9:11, Kinglong Mee <kinglongmee@gmail.com> wrote:
+>>>>>
+>>>>>> After writing data at NFS client, file's access mode is inconsistent
+>>>>>> with server.
+>>>>>> Because WRITE proceduce changes the S_ISUID and S_ISGID bits,
+>>>>>> but client don't get it.
+>>>>>>
+>>>>>> #touch hello; chmod 06777 hello; stat hello;
+>>>>>>    File: ‘hello’
+>>>>>>    Size: 0               Blocks: 0          IO Block: 262144 regular
+>>>>>> empty file
+>>>>>> Device: 24h/36d Inode: 786434      Links: 1
+>>>>>> Access: (6777/-rwsrwsrwx)  Uid: (    0/    root)   Gid: (    0/    root)
+>>>>>> Context: system_u:object_r:nfs_t:s0
+>>>>>> Access: 2014-04-13 21:00:44.996908708 +0800
+>>>>>> Modify: 2014-04-13 21:00:44.996908708 +0800
+>>>>>> Change: 2014-04-13 21:00:45.033908705 +0800
+>>>>>> Birth: -
+>>>>>>
+>>>>>> #echo 12324 > hello; stat hello; stat /nfstest/hello
+>>>>>>    File: ‘hello’
+>>>>>>    Size: 6               Blocks: 0          IO Block: 262144 regular file
+>>>>>> Device: 24h/36d Inode: 786434      Links: 1
+>>>>>> Access: (6777/-rwsrwsrwx)  Uid: (    0/    root)   Gid: (    0/    root)
+>>>>>>           ^^^^^ it should be 0777
+>>>>>> Context: system_u:object_r:nfs_t:s0
+>>>>>> Access: 2014-04-13 21:00:44.996908708 +0800
+>>>>>> Modify: 2014-04-13 21:00:45.061908703 +0800
+>>>>>> Change: 2014-04-13 21:00:45.061908703 +0800
+>>>>>> Birth: -
+>>>>>>    File: ‘/nfstest/hello’
+>>>>>>    Size: 6               Blocks: 8          IO Block: 4096   regular file
+>>>>>> Device: 803h/2051d      Inode: 786434      Links: 1
+>>>>>> Access: (0777/-rwxrwxrwx)  Uid: (    0/    root)   Gid: (    0/    root)
+>>>>>>           ^^^^^ bits on the server
+>>>>>> Context: system_u:object_r:default_t:s0
+>>>>>> Access: 2014-04-13 21:00:44.996908708 +0800
+>>>>>> Modify: 2014-04-13 21:00:45.061908703 +0800
+>>>>>> Change: 2014-04-13 21:00:45.061908703 +0800
+>>>>>> Birth: -
+>>>>>>
+>>> <snip>
+>>>>>
+>>>>> Instead of requesting a new attribute on each and every operation just in order to deal with an extremely rare corner case, is there any reason why we can’t just do this by checking should_remove_suid(), clearing the mode bits ourselves, and then marking the attributes for revalidation?
+>>>>
+>>> <snip>
+>>>> IMO, client shoulds get all metadatas from server, so, adds the flag.
+>>>> I think should_remove_suid() should be called by nfsd, not NFS client
+>>>
+>>> I agree with 50% of that statement. Please see below.
+>>>
+>>> 8<---------------------------------------------------------------------
+>>>>  From a7b05fc5fcb433e8cfca577c9275f2012b523ee8 Mon Sep 17 00:00:00 2001
+>>> From: Trond Myklebust <trond.myklebust@primarydata.com>
+>>> Date: Sun, 13 Apr 2014 11:11:31 -0400
+>>> Subject: [PATCH] NFS: Don't ignore suid/sgid bit changes after a successful
+>>>   write
+>>>
+>>> If we suspect that the server may have cleared the suid/sgid bit,
+>>> then mark the inode for revalidation.
+>>
+>> When testing with this patch, should_remove_suid() always return false
+>> at client, but return true at NFS server.
+>>
+>> So that, NFS server clears the suid/sgid bit, but client also remains.
+>
+> Are you running the test as root? The only explanation I can see for should_remove_suid() failing is if the ‘CAP_FSETID’ capability is set.
 
---
-nfsd: nfsd4_decode_create: Fix a possible NULL pointer dereference
+I test it with non-root user, should_remove_suid() also return 0.
 
-From: Bernd Schubert <bernd.schubert@itwm.fraunhofer.de>
-
-create->cr_linkname was later used without any check if savemem()
-succeeded.
-
-
-Signed-off-by: Bernd Schubert <bernd.schubert@fastmail.fm>
----
- fs/nfsd/nfs4xdr.c |    4 ++++
- 1 file changed, 4 insertions(+)
-
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 2723c1b..eb65d1e 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -603,6 +603,10 @@ nfsd4_decode_create(struct nfsd4_compoundargs *argp, struct nfsd4_create *create
- 		READ32(create->cr_linklen);
- 		READ_BUF(create->cr_linklen);
- 		SAVEMEM(create->cr_linkname, create->cr_linklen);
-+		status = check_filename(create->cr_linkname,
-+					create->cr_linklen);
-+		if (status)
-+			return status;
- 		break;
- 	case NF4BLK:
- 	case NF4CHR:
-
+thanks,
+Kinglong Mee
