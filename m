@@ -1,84 +1,169 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from casper.infradead.org ([85.118.1.10]:57835 "EHLO
-	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751322AbaD2KcV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Apr 2014 06:32:21 -0400
-Date: Tue, 29 Apr 2014 12:32:17 +0200
-From: Peter Zijlstra <peterz@infradead.org>
-To: NeilBrown <neilb@suse.de>
-Cc: Ingo Molnar <mingo@redhat.com>, linux-kernel@vger.kernel.org,
-        NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH/RFC] SCHED: allow wait_on_bit functions to support a
- timeout.
-Message-ID: <20140429103217.GQ27561@twins.programming.kicks-ass.net>
-References: <20140429194406.06c580b8@notabene.brown>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140429194406.06c580b8@notabene.brown>
+Received: from mx1.redhat.com ([209.132.183.28]:2283 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754761AbaDNSp5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 14 Apr 2014 14:45:57 -0400
+Subject: Re: [PATCH 5/5] gssd: scrape the acceptor name out of the context
+From: Simo Sorce <simo@redhat.com>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: Steve Dickson <SteveD@redhat.com>, trond.myklebust@primarydata.com,
+        linux-nfs@vger.kernel.org
+In-Reply-To: <20140414144438.5afa19c9@ipyr.poochiereds.net>
+References: <1397161863-29266-1-git-send-email-jlayton@redhat.com>
+	 <1397161863-29266-6-git-send-email-jlayton@redhat.com>
+	 <534BF9B9.3000707@RedHat.com>
+	 <20140414114851.40dcbcfe@ipyr.poochiereds.net>
+	 <1397500594.19767.258.camel@willson.li.ssimo.org>
+	 <20140414144438.5afa19c9@ipyr.poochiereds.net>
+Content-Type: text/plain; charset="UTF-8"
+Date: Mon, 14 Apr 2014 14:45:54 -0400
+Message-ID: <1397501154.19767.263.camel@willson.li.ssimo.org>
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Apr 29, 2014 at 07:44:06PM +1000, NeilBrown wrote:
+On Mon, 2014-04-14 at 14:44 -0400, Jeff Layton wrote:
+> On Mon, 14 Apr 2014 14:36:34 -0400
+> Simo Sorce <simo@redhat.com> wrote:
 > 
+> > On Mon, 2014-04-14 at 11:48 -0400, Jeff Layton wrote:
+> > > On Mon, 14 Apr 2014 11:07:37 -0400
+> > > Steve Dickson <SteveD@redhat.com> wrote:
+> > > 
+> > > > Hey Jeff,
+> > > > 
+> > > > Just a couple nit.... 
+> > > > 
+> > > > On 04/10/2014 04:31 PM, Jeff Layton wrote:
+> > > > > ...and pass it to the kernel in the downcall. Legacy kernels will just
+> > > > > ignore the extra data, but with a proposed kernel patch the kernel will
+> > > > > grab this info and use it to verify requests on the v4.0 callback
+> > > > > channel.
+> > > > > 
+> > > > > Signed-off-by: Jeff Layton <jlayton@redhat.com>
+> > > > > ---
+> > > > >  utils/gssd/gssd_proc.c | 39 ++++++++++++++++++++++++++++-----------
+> > > > >  1 file changed, 28 insertions(+), 11 deletions(-)
+> > > > > 
+> > > > > diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+> > > > > index 7387cce010cf..d95e39416c28 100644
+> > > > > --- a/utils/gssd/gssd_proc.c
+> > > > > +++ b/utils/gssd/gssd_proc.c
+> > > > > @@ -77,6 +77,7 @@
+> > > > >  #include "context.h"
+> > > > >  #include "nfsrpc.h"
+> > > > >  #include "nfslib.h"
+> > > > > +#include "gss_names.h"
+> > > > >  
+> > > > >  /*
+> > > > >   * pollarray:
+> > > > > @@ -683,16 +684,19 @@ parse_enctypes(char *enctypes)
+> > > > >  
+> > > > >  static void
+> > > > >  do_downcall(int k5_fd, uid_t uid, struct authgss_private_data *pd,
+> > > > > -	    gss_buffer_desc *context_token, OM_uint32 lifetime_rec)
+> > > > > +	    gss_buffer_desc *context_token, OM_uint32 lifetime_rec,
+> > > > > +	    gss_buffer_desc *acceptor)
+> > > > >  {
+> > > > >  	char    *buf = NULL, *p = NULL, *end = NULL;
+> > > > >  	unsigned int timeout = context_timeout;
+> > > > >  	unsigned int buf_size = 0;
+> > > > >  
+> > > > > -	printerr(1, "doing downcall lifetime_rec %u\n", lifetime_rec);
+> > > > > +	printerr(1, "doing downcall: lifetime_rec=%u acceptor=%.*s\n",
+> > > > > +		lifetime_rec, acceptor->length, acceptor->value);
+> > > > >  	buf_size = sizeof(uid) + sizeof(timeout) + sizeof(pd->pd_seq_win) +
+> > > > >  		sizeof(pd->pd_ctx_hndl.length) + pd->pd_ctx_hndl.length +
+> > > > > -		sizeof(context_token->length) + context_token->length;
+> > > > > +		sizeof(context_token->length) + context_token->length +
+> > > > > +		acceptor->length;
+> > > > >  	p = buf = malloc(buf_size);
+> > > > >  	if (!buf)
+> > > > >  		goto out_err;
+> > > > > @@ -707,6 +711,8 @@ do_downcall(int k5_fd, uid_t uid, struct authgss_private_data *pd,
+> > > > >  	if (WRITE_BYTES(&p, end, pd->pd_seq_win)) goto out_err;
+> > > > >  	if (write_buffer(&p, end, &pd->pd_ctx_hndl)) goto out_err;
+> > > > >  	if (write_buffer(&p, end, context_token)) goto out_err;
+> > > > > +	if (acceptor->length > 0 &&
+> > > > > +	    write_buffer(&p, end, acceptor)) goto out_err;
+> > > > >  
+> > > > >  	if (write(k5_fd, buf, p - buf) < p - buf) goto out_err;
+> > > > >  	free(buf);
+> > > > > @@ -1034,6 +1040,9 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
+> > > > >  	gss_cred_id_t		gss_cred;
+> > > > >  	OM_uint32		maj_stat, min_stat, lifetime_rec;
+> > > > >  	pid_t			pid;
+> > > > > +	gss_name_t		gacceptor;
+> > > > > +	gss_OID			mech;
+> > > > > +	gss_buffer_desc		acceptor  = {0};
+> > > > >  
+> > > > >  	pid = fork();
+> > > > >  	switch(pid) {
+> > > > > @@ -1174,15 +1183,22 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
+> > > > >  		goto out_return_error;
+> > > > >  	}
+> > > > >  
+> > > > > -	/* Grab the context lifetime to pass to the kernel. lifetime_rec
+> > > > > -	 * is set to zero on error */
+> > > > Why get rid of this comment instead of updating it? 
+> > > > 
+> > > 
+> > > I suppose I could do that. Would you prefer I respin and update that
+> > > comment instead?
+> > > 
+> > > > > -	maj_stat = gss_inquire_context(&min_stat, pd.pd_ctx, NULL, NULL,
+> > > > > -				       &lifetime_rec, NULL, NULL, NULL, NULL);
+> > > > > +	maj_stat = gss_inquire_context(&min_stat, pd.pd_ctx, NULL, &gacceptor,
+> > > > > +				       &lifetime_rec, &mech, NULL, NULL, NULL);
+> > > > >  
+> > > > > -	if (maj_stat)
+> > > > > -		printerr(1, "WARNING: Failed to inquire context for lifetme "
+> > > > > -			    "maj_stat %u\n", maj_stat);
+> > > > > +	if (maj_stat != GSS_S_COMPLETE) {
+> > > > > +		printerr(1, "WARNING: Failed to inquire context "
+> > > > > +			    "maj_stat (0x%x)\n", maj_stat);
+> > > > > +	} else {
+> > > > > +		get_hostbased_client_buffer(gacceptor, mech, &acceptor);
+> > > > > +		gss_release_name(&min_stat, &gacceptor);
+> > > > > +	}
+> > > > >  
+> > > > > +	/*
+> > > > > +	 * The serialization can mean turning the ctx into a lucid context. If
+> > > > > +	 * that happens then the original ctx is no longer valid, so we mustn't
+> > > > > +	 * try to use if after this point.
+> > > > I'm not sure what you are trying to say here... 
+> > > > 
+> > > > steved.
+> > > > 
+> > > 
+> > > Just a semi-helpful context for posterity...
+> > > 
+> > > On my initial attempt, I tried to change the code around to grab the
+> > > lifetime and acceptor out of the context in do_downcall. That didn't
+> > > work, because once you call serialize_context_for_kernel, the GSS
+> > > context is turned into a "lucid context". At that point, things like
+> > > gss_inquire_context no longer work on it.
+> > > 
+> > > IOW, once you call serialize_context_for_kernel, you can't count on
+> > > being able to do anything useful with pd.pd_ctx at all.
+> > 
+> > This is on purpose, when you export the lucid context, the original
+> > context is destroyed, this is to avoid having 2 parties with a context
+> > for the same connection as the sequence numbers would get messed up and
+> > communication fail if 2 parties tried to use them at the same time
+> > anyway.
+> > 
 > 
-> It is currently not possible for various wait_on_bit functions to
-> implement a timeout.
-> While the "action" function that is called to do the waiting could
-> certainly use schedule_timeout(), there is no way to carry forward the
-> remaining timeout after a false wake-up.
-> As false-wakeups a clearly possible at least due to possible
-> hash collisions in bit_waitqueue(), this is a real problem.
-> 
-> The 'action' function is currently passed a pointer to the word
-> containing the bit being waited on.  Of the 27 currently defined
-> action functions, zero of them use this pointer.
-> So changing it to something else will be a little noisy but will have
-> no immediate effect.
-> 
-> This patch changes the 'action' function to take a pointer to the
-> "struct wait_bit_key", which contains a pointer to the word
-> containing the bit so nothing is really lost.
-> 
-> It also adds a 'private' field to "struct wait_bit_key", which is
-> initialized to zero.
-> 
-> An action function can now implement a timeout with something like
-> 
-> static int timed_out_waiter(struct wait_bit_key *key)
-> {
-> 	unsigned long waited;
-> 	if (key->private == 0) {
-> 		key->private = jiffies;
-> 		if (key->private == 0)
-> 			key->private -= 1;
-> 	}
-> 	waited = jiffies - key->private;
-> 	if (waited > 10 * HZ)
-> 		return -EAGAIN;
-> 	schedule_timeout(waited - 10 * HZ);
-> 	return 0;
-> }
-> 
-> If any other need for context in a waiter were found it would be easy
-> to use ->private for some other purpose, or even extend "struct
-> wait_bit_key".
-> 
-> My particular need is to support timeouts in nfs_release_page() to
-> avoid deadlocks with loopback mounted NFS.
+> Yes, I gathered that it's intentional behavior. You get back an error
+> that basically means that the context handle is no longer valid when
+> you try to use it. It's just not obvious that that's the case at this
+> point in the code, so I figured it warranted a comment.
 
-So I'm sure I'm not getting it; but why is all the wait_bit crap so
-entirely different from the normal wait stuff?
+Yes it is a good thing, or people that are unaware of the export
+semantic may get confused.
 
-Surely something like:
+Simo.
 
-	wait_event_timeout(&wq, test_bit(bit, word), timeout);
-
-Is pretty much the same, no? The only thing that's different is the wake
-function, but surely we can thread that into there somehow without all
-this silly repetition.
-
-Furthermore, I count about 23 action functions, of which there appear to
-be only like 4 actual variants. Surely such repetition sucks arse and
-should be avoided?
-
+-- 
+Simo Sorce * Red Hat, Inc * New York
 
