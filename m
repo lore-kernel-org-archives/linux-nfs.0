@@ -1,61 +1,122 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f178.google.com ([209.85.223.178]:35423 "EHLO
-	mail-ie0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752297AbaDDNvQ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 4 Apr 2014 09:51:16 -0400
-Received: by mail-ie0-f178.google.com with SMTP id lx4so3266172iec.23
-        for <linux-nfs@vger.kernel.org>; Fri, 04 Apr 2014 06:51:16 -0700 (PDT)
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
-Subject: Re: [PATCH] nfs: don't pass non-NULL-terminated string to pr_notice()
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-In-Reply-To: <1396605654-10108-1-git-send-email-jlayton@redhat.com>
-Date: Fri, 4 Apr 2014 09:51:11 -0400
-Cc: linux-nfs@vger.kernel.org, lmcilroy@redhat.com
-Message-Id: <5EC0B3CC-6647-4A6E-A44C-82A72CBEC490@primarydata.com>
-References: <1396605654-10108-1-git-send-email-jlayton@redhat.com>
-To: Layton Jeff <jlayton@redhat.com>
+Received: from mail-ie0-f174.google.com ([209.85.223.174]:60613 "EHLO
+	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754275AbaDNWWf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Apr 2014 18:22:35 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH 1/8] xprtrdma: RPC/RDMA must invoke xprt_wake_pending_tasks()
+	in process context
+To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Date: Mon, 14 Apr 2014 18:22:32 -0400
+Message-ID: <20140414222231.20646.12013.stgit@manet.1015granger.net>
+In-Reply-To: <20140414220041.20646.63991.stgit@manet.1015granger.net>
+References: <20140414220041.20646.63991.stgit@manet.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+An IB provider can invoke rpcrdma_conn_func() in an IRQ context,
+thus rpcrdma_conn_func() cannot be allowed to directly invoke
+generic RPC functions like xprt_wake_pending_tasks().
 
-On Apr 4, 2014, at 6:00, Jeff Layton <jlayton@redhat.com> wrote:
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-> There is no guarantee that the strings in the nfs_cache_array will be
-> NULL-terminated. In the event that we end up hitting a readdir loop, we
-> need to ensure that we pass the warning message a properly-terminated
-> string.
-> 
-> Reported-by: Lachlan McIlroy <lmcilroy@redhat.com>
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
-> fs/nfs/dir.c | 7 ++++---
-> 1 file changed, 4 insertions(+), 3 deletions(-)
-> 
-> diff --git a/fs/nfs/dir.c b/fs/nfs/dir.c
-> index 5c0b6ecc3a88..4689b125f9fe 100644
-> --- a/fs/nfs/dir.c
-> +++ b/fs/nfs/dir.c
-> @@ -304,12 +304,13 @@ int nfs_readdir_search_for_cookie(struct nfs_cache_array *array, nfs_readdir_des
-> 				if (ctx->duped > 0
-> 				    && ctx->dup_cookie == *desc->dir_cookie) {
-> 					if (printk_ratelimit()) {
-> +						char *name = kstrndup(array->array[i].string.name, array->array[i].string.len, GFP_KERNEL);
-> +
-> 						pr_notice("NFS: directory %pD2 contains a readdir loop."
-> 								"Please contact your server vendor.  "
-> 								"The file: %s has duplicate cookie %llu\n",
-> -								desc->file,
-> -								array->array[i].string.name,
-> -								*desc->dir_cookie);
-> +								desc->file, name, *desc->dir_cookie);
-> +						kfree(name);
-> 					}
+ net/sunrpc/xprtrdma/rpc_rdma.c  |   22 +++++++++++++++-------
+ net/sunrpc/xprtrdma/verbs.c     |    3 +++
+ net/sunrpc/xprtrdma/xprt_rdma.h |    3 +++
+ 3 files changed, 21 insertions(+), 7 deletions(-)
 
-Umm… Any reason why we couldn’t just use ‘%.*s’ ?
-
-_________________________________
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index 400aa1b..c296468 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -676,15 +676,11 @@ rpcrdma_inline_fixup(struct rpc_rqst *rqst, char *srcp, int copy_len, int pad)
+ 	rqst->rq_private_buf = rqst->rq_rcv_buf;
+ }
+ 
+-/*
+- * This function is called when an async event is posted to
+- * the connection which changes the connection state. All it
+- * does at this point is mark the connection up/down, the rpc
+- * timers do the rest.
+- */
+ void
+-rpcrdma_conn_func(struct rpcrdma_ep *ep)
++rpcrdma_connect_worker(struct work_struct *work)
+ {
++	struct rpcrdma_ep *ep =
++		container_of(work, struct rpcrdma_ep, rep_connect_worker.work);
+ 	struct rpc_xprt *xprt = ep->rep_xprt;
+ 
+ 	spin_lock_bh(&xprt->transport_lock);
+@@ -701,6 +697,18 @@ rpcrdma_conn_func(struct rpcrdma_ep *ep)
+ }
+ 
+ /*
++ * This function is called when an async event is posted to
++ * the connection which changes the connection state. All it
++ * does at this point is mark the connection up/down, the rpc
++ * timers do the rest.
++ */
++void
++rpcrdma_conn_func(struct rpcrdma_ep *ep)
++{
++	schedule_delayed_work(&ep->rep_connect_worker, 0);
++}
++
++/*
+  * This function is called when memory window unbind which we are waiting
+  * for completes. Just use rr_func (zeroed by upcall) to signal completion.
+  */
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 5c07d11..422cf89 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -742,6 +742,7 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
+ 	INIT_CQCOUNT(ep);
+ 	ep->rep_ia = ia;
+ 	init_waitqueue_head(&ep->rep_connect_wait);
++	INIT_DELAYED_WORK(&ep->rep_connect_worker, rpcrdma_connect_worker);
+ 
+ 	/*
+ 	 * Create a single cq for receive dto and mw_bind (only ever
+@@ -817,6 +818,8 @@ rpcrdma_ep_destroy(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
+ 	dprintk("RPC:       %s: entering, connected is %d\n",
+ 		__func__, ep->rep_connected);
+ 
++	cancel_delayed_work_sync(&ep->rep_connect_worker);
++
+ 	if (ia->ri_id->qp) {
+ 		rc = rpcrdma_ep_disconnect(ep, ia);
+ 		if (rc)
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index 98340a3..c620d13 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -43,6 +43,7 @@
+ #include <linux/wait.h> 		/* wait_queue_head_t, etc */
+ #include <linux/spinlock.h> 		/* spinlock_t, etc */
+ #include <linux/atomic.h>			/* atomic_t, etc */
++#include <linux/workqueue.h>		/* struct work_struct */
+ 
+ #include <rdma/rdma_cm.h>		/* RDMA connection api */
+ #include <rdma/ib_verbs.h>		/* RDMA verbs api */
+@@ -87,6 +88,7 @@ struct rpcrdma_ep {
+ 	struct rpc_xprt		*rep_xprt;	/* for rep_func */
+ 	struct rdma_conn_param	rep_remote_cma;
+ 	struct sockaddr_storage	rep_remote_addr;
++	struct delayed_work	rep_connect_worker;
+ };
+ 
+ #define INIT_CQCOUNT(ep) atomic_set(&(ep)->rep_cqcount, (ep)->rep_cqinit)
+@@ -336,6 +338,7 @@ int rpcrdma_deregister_external(struct rpcrdma_mr_seg *,
+ /*
+  * RPC/RDMA connection management calls - xprtrdma/rpc_rdma.c
+  */
++void rpcrdma_connect_worker(struct work_struct *);
+ void rpcrdma_conn_func(struct rpcrdma_ep *);
+ void rpcrdma_reply_handler(struct rpcrdma_rep *);
+ 
 
