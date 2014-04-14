@@ -1,133 +1,139 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f172.google.com ([209.85.213.172]:57981 "EHLO
-	mail-ig0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754232AbaDRSpw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Apr 2014 14:45:52 -0400
-Received: by mail-ig0-f172.google.com with SMTP id hn18so937889igb.11
-        for <linux-nfs@vger.kernel.org>; Fri, 18 Apr 2014 11:45:52 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Bruce Fields <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 30/70] NFSd: Replace delegation->dl_file with the dl_stid.sc_file
-Date: Fri, 18 Apr 2014 14:44:24 -0400
-Message-Id: <1397846704-14567-31-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1397846704-14567-30-git-send-email-trond.myklebust@primarydata.com>
-References: <1397846704-14567-1-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-2-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-3-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-4-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-5-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-6-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-7-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-8-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-9-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-10-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-11-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-12-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-13-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-14-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-15-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-16-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-17-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-18-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-19-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-20-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-21-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-22-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-23-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-24-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-25-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-26-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-27-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-28-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-29-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-30-git-send-email-trond.myklebust@primarydata.com>
+Received: from cmexedge2.ext.emulex.com ([138.239.224.100]:6471 "EHLO
+	CMEXEDGE2.ext.emulex.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751120AbaDNWqW convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Apr 2014 18:46:22 -0400
+From: Devesh Sharma <Devesh.Sharma@Emulex.Com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: RE: [PATCH V1] NFS-RDMA: fix qp pointer validation checks
+Date: Mon, 14 Apr 2014 22:46:09 +0000
+Message-ID: <EE7902D3F51F404C82415C4803930ACD3FDED915@CMEXMB1.ad.emulex.com>
+References: <014738b6-698e-4ea1-82f9-287378bfec19@CMEXHTCAS2.ad.emulex.com>
+ <D7AB2150-5F25-4BA2-80D9-94890AD11F8F@primarydata.com>
+ <F1C70AD6-BDD4-4534-8DC4-61D2767581D9@oracle.com>
+ <EE7902D3F51F404C82415C4803930ACD3FDEAA43@CMEXMB1.ad.emulex.com>
+ <E66D006A-0D04-4602-8BF5-6834CACD2E24@oracle.com>
+ <EE7902D3F51F404C82415C4803930ACD3FDEB3B4@CMEXMB1.ad.emulex.com>
+ <BD7B05C0-4733-4DD1-83F3-B30B6B0EE48C@oracle.com>
+ <EE7902D3F51F404C82415C4803930ACD3FDEB3DF@CMEXMB1.ad.emulex.com>
+ <56C87770-7940-4006-948C-FEF3C0EC4ACC@oracle.com>
+ <EE7902D3F51F404C82415C4803930ACD3FDEBD66@CMEXMB1.ad.emulex.com>
+ <5710A71F-C4D5-408B-9B41-07F21B5853F0@oracle.com>
+ <6837A427-B677-4CC7-A022-4FB9E52A3FC6@oracle.com>
+In-Reply-To: <6837A427-B677-4CC7-A022-4FB9E52A3FC6@oracle.com>
+Content-Type: text/plain; charset="us-ascii"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 13 +++++--------
- fs/nfsd/state.h     |  1 -
- 2 files changed, 5 insertions(+), 9 deletions(-)
+Hi Chuck
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 5bbef4720e7c..48979ee79888 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -454,7 +454,6 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *stp, struct sv
- 	INIT_LIST_HEAD(&dp->dl_perfile);
- 	INIT_LIST_HEAD(&dp->dl_perclnt);
- 	INIT_LIST_HEAD(&dp->dl_recall_lru);
--	dp->dl_file = NULL;
- 	dp->dl_type = NFS4_OPEN_DELEGATE_READ;
- 	fh_copy_shallow(&dp->dl_fh, &current_fh->fh_handle);
- 	dp->dl_time = 0;
-@@ -483,8 +482,6 @@ void
- nfs4_put_delegation(struct nfs4_delegation *dp)
- {
- 	if (atomic_dec_and_test(&dp->dl_stid.sc_count)) {
--		if (dp->dl_file)
--			put_nfs4_file(dp->dl_file);
- 		nfs4_free_stid(deleg_slab, &dp->dl_stid);
- 		num_delegations--;
- 	}
-@@ -520,7 +517,7 @@ hash_delegation_locked(struct nfs4_delegation *dp, struct nfs4_file *fp)
- static void
- unhash_delegation_locked(struct nfs4_delegation *dp)
- {
--	struct nfs4_file *fp = dp->dl_file;
-+	struct nfs4_file *fp = dp->dl_stid.sc_file;
- 
- 	spin_lock(&fp->fi_lock);
- 	list_del_init(&dp->dl_perclnt);
-@@ -3204,14 +3201,14 @@ static struct file_lock *nfs4_alloc_init_lease(struct nfs4_delegation *dp, int f
- 	fl->fl_flags = FL_DELEG;
- 	fl->fl_type = flag == NFS4_OPEN_DELEGATE_READ? F_RDLCK: F_WRLCK;
- 	fl->fl_end = OFFSET_MAX;
--	fl->fl_owner = (fl_owner_t)(dp->dl_file);
-+	fl->fl_owner = (fl_owner_t)(dp->dl_stid.sc_file);
- 	fl->fl_pid = current->tgid;
- 	return fl;
- }
- 
- static int nfs4_setlease(struct nfs4_delegation *dp)
- {
--	struct nfs4_file *fp = dp->dl_file;
-+	struct nfs4_file *fp = dp->dl_stid.sc_file;
- 	struct file_lock *fl;
- 	int status = 0;
- 
-@@ -3255,7 +3252,7 @@ static int nfs4_set_delegation(struct nfs4_delegation *dp, struct nfs4_file *fp)
- 	get_nfs4_file(fp);
- 	spin_lock(&state_lock);
- 	spin_lock(&fp->fi_lock);
--	dp->dl_file = fp;
-+	dp->dl_stid.sc_file = fp;
- 	if (!fp->fi_lease) {
- 		spin_unlock(&fp->fi_lock);
- 		spin_unlock(&state_lock);
-@@ -3877,7 +3874,7 @@ nfs4_preprocess_stateid_op(struct net *net, struct nfsd4_compound_state *cstate,
- 		if (status)
- 			goto out;
- 		if (filpp) {
--			file = dp->dl_file->fi_deleg_file;
-+			file = dp->dl_stid.sc_file->fi_deleg_file;
- 			if (!file) {
- 				WARN_ON_ONCE(1);
- 				status = nfserr_serverfault;
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index c6deef936693..de198600616b 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -93,7 +93,6 @@ struct nfs4_delegation {
- 	struct list_head	dl_perfile;
- 	struct list_head	dl_perclnt;
- 	struct list_head	dl_recall_lru;  /* delegation recalled */
--	struct nfs4_file	*dl_file;
- 	u32			dl_type;
- 	time_t			dl_time;
- /* For recall: */
--- 
-1.9.0
+> -----Original Message-----
+> From: Chuck Lever [mailto:chuck.lever@oracle.com]
+> Sent: Tuesday, April 15, 2014 2:24 AM
+> To: Devesh Sharma
+> Cc: Linux NFS Mailing List; linux-rdma@vger.kernel.org; Trond Myklebust
+> Subject: Re: [PATCH V1] NFS-RDMA: fix qp pointer validation checks
+> 
+> Hi Devesh-
+> 
+> 
+> On Apr 13, 2014, at 12:01 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+> 
+> >
+> > On Apr 11, 2014, at 7:51 PM, Devesh Sharma
+> <Devesh.Sharma@Emulex.Com> wrote:
+> >
+> >> Hi  Chuck,
+> >> Yes that is the case, Following is the trace I got.
+> >>
+> >> <4>RPC:   355 setting alarm for 60000 ms
+> >> <4>RPC:   355 sync task going to sleep
+> >> <4>RPC:       xprt_rdma_connect_worker: reconnect
+> >> <4>RPC:       rpcrdma_ep_disconnect: rdma_disconnect -1
+> >> <4>RPC:       rpcrdma_ep_connect: rpcrdma_ep_disconnect status -1
+> >> <3>ocrdma_mbx_create_qp(0) rq_err
+> >> <3>ocrdma_mbx_create_qp(0) sq_err
+> >> <3>ocrdma_create_qp(0) error=-1
+> >> <4>RPC:       rpcrdma_ep_connect: rdma_create_qp failed -1
+> >> <4>RPC:   355 __rpc_wake_up_task (now 4296956756)
+> >> <4>RPC:   355 disabling timer
+> >> <4>RPC:   355 removed from queue ffff880454578258 "xprt_pending"
+> >> <4>RPC:       __rpc_wake_up_task done
+> >> <4>RPC:       xprt_rdma_connect_worker: exit
+> >> <4>RPC:   355 sync task resuming
+> >> <4>RPC:   355 xprt_connect_status: error 1 connecting to server
+> 192.168.1.1
+> >
+> > xprtrdma's connect worker is returning "1" instead of a negative errno.
+> > That's the bug that triggers this chain of events.
+> 
+> rdma_create_qp() has returned -EPERM. There's very little xprtrdma can do
+> if the provider won't even create a QP. That seems like a rare and fatal
+> problem.
+> 
+> For the moment, I'm inclined to think that a panic is correct behavior, since
+> there are outstanding registered memory regions that cannot be cleaned up
+> without a QP (see below).
+Well, I think the system should still remain alive. This will definatly cause a memory leak. But QP create failure does not mean system should also crash.
+I think for the time being it is worth to put Null pointer checks to prevent system from crash.
+
+> 
+> 
+> > RPC tasks waiting for the reconnect are awoken. xprt_connect_status()
+> > doesn't recognize a tk_status of "1", so it turns it into -EIO, and
+> > kills each waiting RPC task.
+> 
+> >> <4>RPC:       wake_up_next(ffff880454578190 "xprt_sending")
+> >> <4>RPC:   355 call_connect_status (status -5)
+> >> <4>RPC:   355 return 0, status -5
+> >> <4>RPC:   355 release task
+> >> <4>RPC:       wake_up_next(ffff880454578190 "xprt_sending")
+> >> <4>RPC:       xprt_rdma_free: called on 0x(null)
+> >
+> > And as part of exiting, the RPC task has to free its buffer.
+> >
+> > Not exactly sure why req->rl_nchunks is not zero for an NFSv4 GETATTR.
+> > This is why rpcrdma_deregister_external() is invoked here.
+> >
+> > Eventually this gets around to attempting to post a LOCAL_INV WR with
+> > ->qp set to NULL, and the panic below occurs.
+> 
+> This is a somewhat different problem.
+> 
+> Not only do we need to have a good ->qp here, but it has to be connected
+> and in the ready-to-send state before LOCAL_INV work requests can be
+> posted.
+> 
+> The implication of this is that if a server disconnects (server crash or network
+> partition), the client is stuck waiting for the server to come back before it can
+> deregister memory and retire outstanding RPC requests.
+This is a real problem to solve. In the existing state of xprtrdma code. Even a Server reboot will cause
+Client to crash.
+> 
+> This is bad for ^C or soft timeouts or umount ... when the server is
+> unavailable.
+> 
+> So I feel we need better clean-up when the client cannot reconnect.
+Unreg old frmrs with the help of new QP? Until the new QP is created with same PD and FRMR is bound to PD and not to QP.
+> Probably deregistering RPC chunk MR's before finally tearing down the old
+> QP is what is necessary.
+
+We need a scheme that handles Memory registrations separately from connection establishment and do book-keeping of which region is Registered and which one is not.
+Once the new connection is back. Either start using old mem-regions as it is, or invalidate old and re-register on the new QP.
+What is the existing scheme xprtrdma is following? Is it the same?
+
+I think it is possible to create FRMR on qp->qp_num = x while invalidate on qp->qp_num = y until qpx.pd == qpy.pd
+> 
+> I'll play around with this idea.
+> 
+> 
+> --
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
+> 
+> 
 
