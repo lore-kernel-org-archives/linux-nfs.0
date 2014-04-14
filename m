@@ -1,92 +1,103 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:11624 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753139AbaDDOIE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 4 Apr 2014 10:08:04 -0400
-Date: Fri, 4 Apr 2014 10:07:55 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Mark Lord <mlord@pobox.com>, "J. Bruce Fields" <bfields@redhat.com>,
-        Albert Fluegel <af@muc.de>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: linux-3.14 nfsd regression
-Message-ID: <20140404100755.2a662cb1@tlielax.poochiereds.net>
-In-Reply-To: <20140404135842.GB17594@fieldses.org>
-References: <533D8D73.1090603@pobox.com>
-	<20140403171643.GB28790@pad.redhat.com>
-	<533D9F8A.6030001@pobox.com>
-	<20140403145504.3b04170e@tlielax.poochiereds.net>
-	<20140403201627.GC8343@fieldses.org>
-	<20140403192146.79679909@tlielax.poochiereds.net>
-	<20140404135842.GB17594@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-ig0-f181.google.com ([209.85.213.181]:60155 "EHLO
+	mail-ig0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751282AbaDNNMN convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Apr 2014 09:12:13 -0400
+Received: by mail-ig0-f181.google.com with SMTP id h18so3341543igc.8
+        for <linux-nfs@vger.kernel.org>; Mon, 14 Apr 2014 06:12:12 -0700 (PDT)
+Content-Type: text/plain; charset=utf-8
+Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
+Subject: Re: [PATCH] NFS: add FATTR4_WORD1_MODE flags for cache_consistency_bitmask
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+In-Reply-To: <534BDBB6.5030306@gmail.com>
+Date: Mon, 14 Apr 2014 09:12:08 -0400
+Cc: linux-nfs@vger.kernel.org, Dr Fields James Bruce <bfields@fieldses.org>
+Message-Id: <4B0A3D7E-5DD0-47A2-B1C8-A2F64E37D781@primarydata.com>
+References: <534A8CEF.6000609@gmail.com>	 <505345D4-4F7C-4970-9EBF-7CFC367575B2@primarydata.com>	 <534AA4FD.3060202@gmail.com> <1397402659.6306.5.camel@leira.trondhjem.org> <534BDBB6.5030306@gmail.com>
+To: Kinglong Mee <kinglongmee@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, 4 Apr 2014 09:58:43 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
 
-> On Thu, Apr 03, 2014 at 07:21:46PM -0400, Jeff Layton wrote:
-> > So according to the RFC you have to encode both the mode bits and the
-> > ftype for v2. The type bits seem to be removed from the mode in NFSv3
-> > though, so perhaps we should only be doing that masking in versions
-> > above v2?
-> 
-> Right, the problematic patch applied the same mask in both v2 and v3
-> cases, so I'm reverting just the v2 part (see below).
-> 
-> > With a quick check, it looks like the v3 code doesn't rely on those bits
-> > and I imagine v4 doesn't either.
-> > 
-> > It might also be nice to have the client v2 decode_fattr function to
-> > throw a warning if the server sends us mismatched type bits and ftype
-> > values. That would have helped us catch this sooner...
-> 
-> Yes, that might be a reasonable thing to do, though I don't know if it's
-> worth it.
-> 
-> --b.
-> 
-> commit 35a8dff14e76c00e5b52140290cfb498dc2454a0
-> Author: J. Bruce Fields <bfields@redhat.com>
-> Date:   Thu Apr 3 15:10:35 2014 -0400
-> 
->     nfsd: revert v2 half of "nfsd: don't return high mode bits"
->     
->     This reverts the part of commit 6e14b46b91fee8a049b0940333ce13a820beaaa5
->     that changes NFSv2 behavior.
->     
->     Mark Lord found that it broke nfs-root for Linux clients, because it
->     broke NFSv2.
->     
->     In fact, from RFC 1094:
->     
->     	"Notice that the file type is specified both in the mode bits
->     	and in the file type.  This is really a bug in the protocol and
->     	will be fixed in future versions."
->     
->     So NFSv2 clients really are expected to depend on the high bits of the
->     mode.
->     
->     Cc: stable@kernel.org
->     Reported-by: Mark Lord <mlord@pobox.com>
->     Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> 
-> diff --git a/fs/nfsd/nfsxdr.c b/fs/nfsd/nfsxdr.c
-> index b17d932..9c769a4 100644
-> --- a/fs/nfsd/nfsxdr.c
-> +++ b/fs/nfsd/nfsxdr.c
-> @@ -152,7 +152,7 @@ encode_fattr(struct svc_rqst *rqstp, __be32 *p, struct svc_fh *fhp,
->  	type = (stat->mode & S_IFMT);
->  
->  	*p++ = htonl(nfs_ftypes[type >> 12]);
-> -	*p++ = htonl((u32) (stat->mode & S_IALLUGO));
-> +	*p++ = htonl((u32) stat->mode);
->  	*p++ = htonl((u32) stat->nlink);
->  	*p++ = htonl((u32) from_kuid(&init_user_ns, stat->uid));
->  	*p++ = htonl((u32) from_kgid(&init_user_ns, stat->gid));
+On Apr 14, 2014, at 8:59, Kinglong Mee <kinglongmee@gmail.com> wrote:
 
-Looks right...
+> 
+> 
+> 于 2014/4/13 23:24, Trond Myklebust 写道:
+>> On Sun, 2014-04-13 at 22:53 +0800, Kinglong Mee wrote:
+>>> 
+>>> 于 2014/4/13 22:28, Trond Myklebust 写道:
+>>>> 
+>>>> On Apr 13, 2014, at 9:11, Kinglong Mee <kinglongmee@gmail.com> wrote:
+>>>> 
+>>>>> After writing data at NFS client, file's access mode is inconsistent
+>>>>> with server.
+>>>>> Because WRITE proceduce changes the S_ISUID and S_ISGID bits,
+>>>>> but client don't get it.
+>>>>> 
+>>>>> #touch hello; chmod 06777 hello; stat hello;
+>>>>>   File: ‘hello’
+>>>>>   Size: 0               Blocks: 0          IO Block: 262144 regular
+>>>>> empty file
+>>>>> Device: 24h/36d Inode: 786434      Links: 1
+>>>>> Access: (6777/-rwsrwsrwx)  Uid: (    0/    root)   Gid: (    0/    root)
+>>>>> Context: system_u:object_r:nfs_t:s0
+>>>>> Access: 2014-04-13 21:00:44.996908708 +0800
+>>>>> Modify: 2014-04-13 21:00:44.996908708 +0800
+>>>>> Change: 2014-04-13 21:00:45.033908705 +0800
+>>>>> Birth: -
+>>>>> 
+>>>>> #echo 12324 > hello; stat hello; stat /nfstest/hello
+>>>>>   File: ‘hello’
+>>>>>   Size: 6               Blocks: 0          IO Block: 262144 regular file
+>>>>> Device: 24h/36d Inode: 786434      Links: 1
+>>>>> Access: (6777/-rwsrwsrwx)  Uid: (    0/    root)   Gid: (    0/    root)
+>>>>>          ^^^^^ it should be 0777
+>>>>> Context: system_u:object_r:nfs_t:s0
+>>>>> Access: 2014-04-13 21:00:44.996908708 +0800
+>>>>> Modify: 2014-04-13 21:00:45.061908703 +0800
+>>>>> Change: 2014-04-13 21:00:45.061908703 +0800
+>>>>> Birth: -
+>>>>>   File: ‘/nfstest/hello’
+>>>>>   Size: 6               Blocks: 8          IO Block: 4096   regular file
+>>>>> Device: 803h/2051d      Inode: 786434      Links: 1
+>>>>> Access: (0777/-rwxrwxrwx)  Uid: (    0/    root)   Gid: (    0/    root)
+>>>>>          ^^^^^ bits on the server
+>>>>> Context: system_u:object_r:default_t:s0
+>>>>> Access: 2014-04-13 21:00:44.996908708 +0800
+>>>>> Modify: 2014-04-13 21:00:45.061908703 +0800
+>>>>> Change: 2014-04-13 21:00:45.061908703 +0800
+>>>>> Birth: -
+>>>>> 
+>> <snip>
+>>>> 
+>>>> Instead of requesting a new attribute on each and every operation just in order to deal with an extremely rare corner case, is there any reason why we can’t just do this by checking should_remove_suid(), clearing the mode bits ourselves, and then marking the attributes for revalidation?
+>>> 
+>> <snip>
+>>> IMO, client shoulds get all metadatas from server, so, adds the flag.
+>>> I think should_remove_suid() should be called by nfsd, not NFS client
+>> 
+>> I agree with 50% of that statement. Please see below.
+>> 
+>> 8<---------------------------------------------------------------------
+>>> From a7b05fc5fcb433e8cfca577c9275f2012b523ee8 Mon Sep 17 00:00:00 2001
+>> From: Trond Myklebust <trond.myklebust@primarydata.com>
+>> Date: Sun, 13 Apr 2014 11:11:31 -0400
+>> Subject: [PATCH] NFS: Don't ignore suid/sgid bit changes after a successful
+>>  write
+>> 
+>> If we suspect that the server may have cleared the suid/sgid bit,
+>> then mark the inode for revalidation.
+> 
+> When testing with this patch, should_remove_suid() always return false
+> at client, but return true at NFS server.
+> 
+> So that, NFS server clears the suid/sgid bit, but client also remains.
 
-Reviewed-by: Jeff Layton <jlayton@redhat.com>
+Are you running the test as root? The only explanation I can see for should_remove_suid() failing is if the ‘CAP_FSETID’ capability is set.
+
+_________________________________
+Trond Myklebust
+Linux NFS client maintainer, PrimaryData
+trond.myklebust@primarydata.com
+
