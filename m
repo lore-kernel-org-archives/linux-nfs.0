@@ -1,39 +1,198 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:58859 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751059AbaDSOly (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 19 Apr 2014 10:41:54 -0400
-Date: Sat, 19 Apr 2014 07:41:53 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Bruce Fields <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 35/70] NFSd: Slight cleanup of find_stateid()
-Message-ID: <20140419144153.GD25682@infradead.org>
-References: <1397846704-14567-27-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-28-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-29-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-30-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-31-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-32-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-33-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-34-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-35-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-36-git-send-email-trond.myklebust@primarydata.com>
+Received: from cmexedge2.ext.emulex.com ([138.239.224.100]:3151 "EHLO
+	CMEXEDGE2.ext.emulex.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754687AbaDOSZt convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Apr 2014 14:25:49 -0400
+From: Devesh Sharma <Devesh.Sharma@Emulex.Com>
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: RE: [PATCH V1] NFS-RDMA: fix qp pointer validation checks
+Date: Tue, 15 Apr 2014 18:25:47 +0000
+Message-ID: <EE7902D3F51F404C82415C4803930ACD3FDEE11F@CMEXMB1.ad.emulex.com>
+References: <014738b6-698e-4ea1-82f9-287378bfec19@CMEXHTCAS2.ad.emulex.com>
+ <D7AB2150-5F25-4BA2-80D9-94890AD11F8F@primarydata.com>
+ <F1C70AD6-BDD4-4534-8DC4-61D2767581D9@oracle.com>
+ <EE7902D3F51F404C82415C4803930ACD3FDEAA43@CMEXMB1.ad.emulex.com>
+ <E66D006A-0D04-4602-8BF5-6834CACD2E24@oracle.com>
+ <EE7902D3F51F404C82415C4803930ACD3FDEB3B4@CMEXMB1.ad.emulex.com>
+ <BD7B05C0-4733-4DD1-83F3-B30B6B0EE48C@oracle.com>
+ <EE7902D3F51F404C82415C4803930ACD3FDEB3DF@CMEXMB1.ad.emulex.com>
+ <56C87770-7940-4006-948C-FEF3C0EC4ACC@oracle.com>
+ <EE7902D3F51F404C82415C4803930ACD3FDEBD66@CMEXMB1.ad.emulex.com>
+ <5710A71F-C4D5-408B-9B41-07F21B5853F0@oracle.com>
+ <6837A427-B677-4CC7-A022-4FB9E52A3FC6@oracle.com>
+ <EE7902D3F51F404C82415C4803930ACD3FDED915@CMEXMB1.ad.emulex.com>
+ <C689AB91-46F6-4E96-A673-0DE76FE54CC4@oracle.com>
+In-Reply-To: <C689AB91-46F6-4E96-A673-0DE76FE54CC4@oracle.com>
+Content-Type: text/plain; charset="us-ascii"
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1397846704-14567-36-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> +static struct nfs4_stid *find_stateid_locked(struct nfs4_client *cl, stateid_t *t)
->  {
->  	struct nfs4_stid *ret;
->  
-> -	spin_lock(&cl->cl_lock);
->  	ret = idr_find(&cl->cl_stateids, t->si_opaque.so_id);
-> -	spin_unlock(&cl->cl_lock);
->  	if (!ret || !ret->sc_type)
->  		return NULL;
 
-Just curious, how can !ret->sc_type happen?
+
+> -----Original Message-----
+> From: Chuck Lever [mailto:chuck.lever@oracle.com]
+> Sent: Tuesday, April 15, 2014 6:10 AM
+> To: Devesh Sharma
+> Cc: Linux NFS Mailing List; linux-rdma@vger.kernel.org; Trond Myklebust
+> Subject: Re: [PATCH V1] NFS-RDMA: fix qp pointer validation checks
+> 
+> 
+> On Apr 14, 2014, at 6:46 PM, Devesh Sharma <devesh.sharma@emulex.com>
+> wrote:
+> 
+> > Hi Chuck
+> >
+> >> -----Original Message-----
+> >> From: Chuck Lever [mailto:chuck.lever@oracle.com]
+> >> Sent: Tuesday, April 15, 2014 2:24 AM
+> >> To: Devesh Sharma
+> >> Cc: Linux NFS Mailing List; linux-rdma@vger.kernel.org; Trond
+> >> Myklebust
+> >> Subject: Re: [PATCH V1] NFS-RDMA: fix qp pointer validation checks
+> >>
+> >> Hi Devesh-
+> >>
+> >>
+> >> On Apr 13, 2014, at 12:01 AM, Chuck Lever <chuck.lever@oracle.com>
+> wrote:
+> >>
+> >>>
+> >>> On Apr 11, 2014, at 7:51 PM, Devesh Sharma
+> >> <Devesh.Sharma@Emulex.Com> wrote:
+> >>>
+> >>>> Hi  Chuck,
+> >>>> Yes that is the case, Following is the trace I got.
+> >>>>
+> >>>> <4>RPC:   355 setting alarm for 60000 ms
+> >>>> <4>RPC:   355 sync task going to sleep
+> >>>> <4>RPC:       xprt_rdma_connect_worker: reconnect
+> >>>> <4>RPC:       rpcrdma_ep_disconnect: rdma_disconnect -1
+> >>>> <4>RPC:       rpcrdma_ep_connect: rpcrdma_ep_disconnect status -1
+> >>>> <3>ocrdma_mbx_create_qp(0) rq_err
+> >>>> <3>ocrdma_mbx_create_qp(0) sq_err
+> >>>> <3>ocrdma_create_qp(0) error=-1
+> >>>> <4>RPC:       rpcrdma_ep_connect: rdma_create_qp failed -1
+> >>>> <4>RPC:   355 __rpc_wake_up_task (now 4296956756)
+> >>>> <4>RPC:   355 disabling timer
+> >>>> <4>RPC:   355 removed from queue ffff880454578258 "xprt_pending"
+> >>>> <4>RPC:       __rpc_wake_up_task done
+> >>>> <4>RPC:       xprt_rdma_connect_worker: exit
+> >>>> <4>RPC:   355 sync task resuming
+> >>>> <4>RPC:   355 xprt_connect_status: error 1 connecting to server
+> >> 192.168.1.1
+> >>>
+> >>> xprtrdma's connect worker is returning "1" instead of a negative errno.
+> >>> That's the bug that triggers this chain of events.
+> >>
+> >> rdma_create_qp() has returned -EPERM. There's very little xprtrdma
+> >> can do if the provider won't even create a QP. That seems like a rare
+> >> and fatal problem.
+> >>
+> >> For the moment, I'm inclined to think that a panic is correct
+> >> behavior, since there are outstanding registered memory regions that
+> >> cannot be cleaned up without a QP (see below).
+> > Well, I think the system should still remain alive.
+> 
+> Sure, in the long run. I'm not suggesting we leave it this way.
+Okay, Agreed.
+> 
+> > This will definatly cause a memory leak. But QP create failure does not
+> mean system should also crash.
+> 
+> It's more than leaked memory.  A permanent QP creation failure can leave
+> pages in the page cache registered and pinned, as I understand it.
+Yes! true.
+> 
+> > I think for the time being it is worth to put Null pointer checks to prevent
+> system from crash.
+> 
+> Common practice in the Linux kernel is to avoid unnecessary NULL checks.
+> Work-around fixes are typically rejected, and not with a happy face either.
+> 
+> Once the connection tear-down code is fixed, it should be clear where NULL
+> checks need to go.
+Okay.
+> 
+> >>
+> >>> RPC tasks waiting for the reconnect are awoken.
+> >>> xprt_connect_status() doesn't recognize a tk_status of "1", so it
+> >>> turns it into -EIO, and kills each waiting RPC task.
+> >>
+> >>>> <4>RPC:       wake_up_next(ffff880454578190 "xprt_sending")
+> >>>> <4>RPC:   355 call_connect_status (status -5)
+> >>>> <4>RPC:   355 return 0, status -5
+> >>>> <4>RPC:   355 release task
+> >>>> <4>RPC:       wake_up_next(ffff880454578190 "xprt_sending")
+> >>>> <4>RPC:       xprt_rdma_free: called on 0x(null)
+> >>>
+> >>> And as part of exiting, the RPC task has to free its buffer.
+> >>>
+> >>> Not exactly sure why req->rl_nchunks is not zero for an NFSv4 GETATTR.
+> >>> This is why rpcrdma_deregister_external() is invoked here.
+> >>>
+> >>> Eventually this gets around to attempting to post a LOCAL_INV WR
+> >>> with
+> >>> ->qp set to NULL, and the panic below occurs.
+> >>
+> >> This is a somewhat different problem.
+> >>
+> >> Not only do we need to have a good ->qp here, but it has to be
+> >> connected and in the ready-to-send state before LOCAL_INV work
+> >> requests can be posted.
+> >>
+> >> The implication of this is that if a server disconnects (server crash
+> >> or network partition), the client is stuck waiting for the server to
+> >> come back before it can deregister memory and retire outstanding RPC
+> requests.
+> > This is a real problem to solve. In the existing state of xprtrdma
+> > code. Even a Server reboot will cause Client to crash.
+> 
+> I don't see how that can happen if the HCA/provider manages to create a
+> fresh QP successfully and then rdma_connect() succeeds.
+Okay yes, since QP creation will still succeed.
+> 
+> A soft timeout or a ^C while the server is rebooting might be a problem.
+> 
+> >>
+> >> This is bad for ^C or soft timeouts or umount ... when the server is
+> >> unavailable.
+> >>
+> >> So I feel we need better clean-up when the client cannot reconnect.
+> > Unreg old frmrs with the help of new QP? Until the new QP is created with
+> same PD and FRMR is bound to PD and not to QP.
+> >> Probably deregistering RPC chunk MR's before finally tearing down the
+> >> old QP is what is necessary.
+> >
+> > We need a scheme that handles Memory registrations separately from
+> connection establishment and do book-keeping of which region is Registered
+> and which one is not.
+> > Once the new connection is back. Either start using old mem-regions as it is,
+> or invalidate old and re-register on the new QP.
+> > What is the existing scheme xprtrdma is following? Is it the same?
+> 
+> This is what is going on now.  Clearly, when managing its own memory
+> resources, the client should never depend on the server ever coming back.
+> 
+> The proposal is to deregister _before_ the old QP is torn down, using
+> ib_dereg_mr() in the connect worker process. All RPC requests on that
+> connection should be sleeping waiting for the reconnect to complete.
+> 
+> If chunks are created and marshaled during xprt_transmit(), the waiting RPC
+> requests should simply re-register when they are ready to be sent again.
+> 
+Ok, I will try to change this and test, I may take a week's time to understand and rollout V3.
+
+> > I think it is possible to create FRMR on qp->qp_num = x while
+> > invalidate on qp->qp_num = y until qpx.pd == qpy.pd
+> 
+> --
+> Chuck Lever
+> chuck[dot]lever[at]oracle[dot]com
+> 
+> 
+> 
 
