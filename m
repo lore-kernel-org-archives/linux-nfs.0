@@ -1,119 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f177.google.com ([209.85.213.177]:63678 "EHLO
-	mail-ig0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754389AbaDRSqr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Apr 2014 14:46:47 -0400
-Received: by mail-ig0-f177.google.com with SMTP id h3so445810igd.16
-        for <linux-nfs@vger.kernel.org>; Fri, 18 Apr 2014 11:46:46 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Bruce Fields <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 62/70] NFSd: Remove nfs4_lock_state(): nfsd4_test_stateid/nfsd4_free_stateid
-Date: Fri, 18 Apr 2014 14:44:56 -0400
-Message-Id: <1397846704-14567-63-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1397846704-14567-62-git-send-email-trond.myklebust@primarydata.com>
-References: <1397846704-14567-1-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-2-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-3-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-4-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-5-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-6-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-7-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-8-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-9-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-10-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-11-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-12-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-13-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-14-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-15-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-16-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-17-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-18-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-19-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-20-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-21-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-22-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-23-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-24-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-25-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-26-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-27-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-28-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-29-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-30-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-31-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-32-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-33-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-34-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-35-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-36-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-37-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-38-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-39-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-40-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-41-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-42-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-43-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-44-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-45-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-46-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-47-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-48-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-49-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-50-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-51-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-52-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-53-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-54-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-55-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-56-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-57-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-58-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-59-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-60-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-61-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-62-git-send-email-trond.myklebust@primarydata.com>
+Received: from cantor2.suse.de ([195.135.220.15]:48699 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750873AbaDOHyd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 Apr 2014 03:54:33 -0400
+Date: Tue, 15 Apr 2014 17:54:24 +1000
+From: NeilBrown <neilb@suse.de>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: NFS <linux-nfs@vger.kernel.org>
+Subject: PATCH - nfs-utils] nfsdctltrack: ensure binary is installed in
+ /sbin
+Message-ID: <20140415175424.68a318e2@notabene.brown>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/g2_Z9Hbx8eji0wAx7snR8LH"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 4 ----
- 1 file changed, 4 deletions(-)
+--Sig_/g2_Z9Hbx8eji0wAx7snR8LH
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 67daa70dd9a2..6eac3ce68a8b 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4064,11 +4064,9 @@ nfsd4_test_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	struct nfsd4_test_stateid_id *stateid;
- 	struct nfs4_client *cl = cstate->session->se_client;
- 
--	nfs4_lock_state();
- 	list_for_each_entry(stateid, &test_stateid->ts_stateid_list, ts_id_list)
- 		stateid->ts_id_status =
- 			nfsd4_validate_stateid(cl, &stateid->ts_id_stateid);
--	nfs4_unlock_state();
- 
- 	return nfs_ok;
- }
-@@ -4083,7 +4081,6 @@ nfsd4_free_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	struct nfs4_client *cl = cstate->session->se_client;
- 	__be32 ret = nfserr_bad_stateid;
- 
--	nfs4_lock_state();
- 	s = find_stateid(cl, stateid);
- 	if (!s)
- 		goto out;
-@@ -4111,7 +4108,6 @@ nfsd4_free_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	}
- 	nfs4_put_stateid(s);
- out:
--	nfs4_unlock_state();
- 	return ret;
- }
- 
--- 
-1.9.0
 
+The kernel "knows" this lives in /sbin, so just like
+mount.nfs and osd_login, it must unconditionally be installed
+there.
+
+Signed-off-by: NeilBrown <neilb@suse.de>
+
+diff --git a/utils/nfsdcltrack/Makefile.am b/utils/nfsdcltrack/Makefile.am
+index a860ffb82e2c..7524295f394e 100644
+--- a/utils/nfsdcltrack/Makefile.am
++++ b/utils/nfsdcltrack/Makefile.am
+@@ -1,5 +1,9 @@
+ ## Process this file with automake to produce Makefile.in
+=20
++# These binaries go in /sbin (not /usr/sbin), and that cannot be
++# overridden at config time. The kernel "knows" the /sbin name.
++sbindir =3D /sbin
++
+ man8_MANS	=3D nfsdcltrack.man
+ EXTRA_DIST	=3D $(man8_MANS)
+=20
+
+--Sig_/g2_Z9Hbx8eji0wAx7snR8LH
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.22 (GNU/Linux)
+
+iQIVAwUBU0zlsTnsnt1WYoG5AQIWvQ/+NaU96LmmXReUbdRKcnUYNP+xBSzgP6Hz
+0cj2H4ea47REhj6M7ukv+dH2Sid5dfEdaEBoByhcpj+Ivwd/CnKyRwZAlVpt+TqP
+N9g01+gI09D4QRgnXsNaWzEqTHk8h+iLBP2H43bfTemYC6TfnpcUHi7u4lwd2Qpf
+T6ZTBnMXEdA3GO2+T6ZZuAcljkqtC4Gi3HeNNyNFAZjWm6aZ4/24va/cDJN0qSKj
+xKce0dSN5qU5SxqTHtWUTeeURhCZV7RSM1vY5vlF700c5FC0OGlwhCmOdxa8q++t
+8OGXnmgmcArrn48HZwW3D6ph+MbcZrkTERdfy+90ppQ7uds8zPRPxMn+tT2KBd7O
+QD/reS6H0Qsey+z3bnNYAc31eSI5gUOtUKntSIH0f+FSxID2BcOmfBJwkmH5oO7v
+7lp7JdyZDzS8MCzwFDeLAaTHaT+1M6Add5kY9Bm5TCEKtTHb/Y2nVX0VvC/VdgOR
+t9wAYM6ljWzv+6p2qPhOd6RKOS3WgimDn0v+Nq/DuQ79IXwEJUvod0KTw5mdimgM
+uhmeCD0MBzA6B+FWZHn5n134AnXKwTIQbSch8yB3RCwK0/r+nMp891J8Xpw4bIdD
+/qr8Jg59q/xyAlivyACEvJu+CXgwISm+O+YCdk0ALReXygzh/DcSv/LtiRaJlKRq
+Ml9YIOECLjY=
+=4aE2
+-----END PGP SIGNATURE-----
+
+--Sig_/g2_Z9Hbx8eji0wAx7snR8LH--
