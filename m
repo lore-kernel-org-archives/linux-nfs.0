@@ -1,98 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f170.google.com ([209.85.223.170]:46723 "EHLO
-	mail-ie0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932186AbaD3Tau (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Apr 2014 15:30:50 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH V3 09/17] xprtrdma: Simplify rpcrdma_deregister_external()
-	synopsis
-To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Cc: Anna.Schumaker@netapp.com
-Date: Wed, 30 Apr 2014 15:30:48 -0400
-Message-ID: <20140430193048.5663.98943.stgit@manet.1015granger.net>
-In-Reply-To: <20140430191433.5663.16217.stgit@manet.1015granger.net>
-References: <20140430191433.5663.16217.stgit@manet.1015granger.net>
+Received: from mail-pa0-f48.google.com ([209.85.220.48]:51567 "EHLO
+	mail-pa0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751403AbaDOJX2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Apr 2014 05:23:28 -0400
+Received: by mail-pa0-f48.google.com with SMTP id hz1so9369995pad.21
+        for <linux-nfs@vger.kernel.org>; Tue, 15 Apr 2014 02:23:28 -0700 (PDT)
+Message-ID: <534CFA73.4040801@gmail.com>
+Date: Tue, 15 Apr 2014 17:22:59 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: Trond Myklebust <trond.myklebust@primarydata.com>,
+        Alexander Viro <viro@zeniv.linux.org.uk>
+CC: linux-nfs@vger.kernel.org
+Subject: [PATCH] NFS: Fix memroy leak for double mounts
+Content-Type: text/plain; charset=GB2312
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: All remaining callers of rpcrdma_deregister_external()
-pass NULL as the last argument, so remove that argument.
+When double mounting same nfs filesystem, the devname saved in d_fsdata
+will be lost.The second mount should not change the devname that
+be saved in d_fsdata.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: Steve Wise <swise@opengridcomputing.com>
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 ---
+ fs/nfs/getroot.c | 3 ++-
+ 1 file changed, 2 insertions(+), 1 deletion(-)
 
- net/sunrpc/xprtrdma/rpc_rdma.c  |    2 +-
- net/sunrpc/xprtrdma/transport.c |    2 +-
- net/sunrpc/xprtrdma/verbs.c     |    8 +-------
- net/sunrpc/xprtrdma/xprt_rdma.h |    2 +-
- 4 files changed, 4 insertions(+), 10 deletions(-)
+diff --git a/fs/nfs/getroot.c b/fs/nfs/getroot.c
+index 66984a9..b94f804 100644
+--- a/fs/nfs/getroot.c
++++ b/fs/nfs/getroot.c
+@@ -120,7 +120,8 @@ struct dentry *nfs_get_root(struct super_block *sb,
+struct nfs_fh *mntfh,
 
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index a38efda..315417d 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -273,7 +273,7 @@ rpcrdma_create_chunks(struct rpc_rqst *rqst, struct xdr_buf *target,
- out:
- 	for (pos = 0; nchunks--;)
- 		pos += rpcrdma_deregister_external(
--				&req->rl_segments[pos], r_xprt, NULL);
-+				&req->rl_segments[pos], r_xprt);
- 	return 0;
- }
- 
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index c23b0c1..430cabb 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -575,7 +575,7 @@ xprt_rdma_free(void *buffer)
- 	for (i = 0; req->rl_nchunks;) {
- 		--req->rl_nchunks;
- 		i += rpcrdma_deregister_external(
--			&req->rl_segments[i], r_xprt, NULL);
-+			&req->rl_segments[i], r_xprt);
+ 	security_d_instantiate(ret, inode);
+ 	spin_lock(&ret->d_lock);
+-	if (IS_ROOT(ret) && !(ret->d_flags & DCACHE_NFSFS_RENAMED)) {
++	if (IS_ROOT(ret) && !ret->d_fsdata &&
++	    !(ret->d_flags & DCACHE_NFSFS_RENAMED)) {
+ 		ret->d_fsdata = name;
+ 		name = NULL;
  	}
- 
- 	if (req->rl_iov.length == 0) {	/* see allocate above */
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 7c7e9b4..0cbc83c 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -1632,7 +1632,7 @@ rpcrdma_register_external(struct rpcrdma_mr_seg *seg,
- 
- int
- rpcrdma_deregister_external(struct rpcrdma_mr_seg *seg,
--		struct rpcrdma_xprt *r_xprt, void *r)
-+		struct rpcrdma_xprt *r_xprt)
- {
- 	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
- 	int nsegs = seg->mr_nsegs, rc;
-@@ -1658,12 +1658,6 @@ rpcrdma_deregister_external(struct rpcrdma_mr_seg *seg,
- 	default:
- 		break;
- 	}
--	if (r) {
--		struct rpcrdma_rep *rep = r;
--		void (*func)(struct rpcrdma_rep *) = rep->rr_func;
--		rep->rr_func = NULL;
--		func(rep);	/* dereg done, callback now */
--	}
- 	return nsegs;
- }
- 
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index bf08ee0..3f44d6a 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -331,7 +331,7 @@ int rpcrdma_deregister_internal(struct rpcrdma_ia *,
- int rpcrdma_register_external(struct rpcrdma_mr_seg *,
- 				int, int, struct rpcrdma_xprt *);
- int rpcrdma_deregister_external(struct rpcrdma_mr_seg *,
--				struct rpcrdma_xprt *, void *);
-+				struct rpcrdma_xprt *);
- 
- /*
-  * RPC/RDMA connection management calls - xprtrdma/rpc_rdma.c
+-- 
+1.9.0
 
