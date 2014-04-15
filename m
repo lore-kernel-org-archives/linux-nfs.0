@@ -1,34 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.candelatech.com ([208.74.158.172]:41014 "EHLO
-	ns3.lanforge.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933194AbaDBVQj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 2 Apr 2014 17:16:39 -0400
-Received: from [107.17.32.114] ([107.17.32.114])
-	(authenticated bits=0)
-	by ns3.lanforge.com (8.14.2/8.14.2) with ESMTP id s32LGWJk008942
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES128-SHA bits=128 verify=NO)
-	for <linux-nfs@vger.kernel.org>; Wed, 2 Apr 2014 14:16:32 -0700
-Message-ID: <533C7E2F.7060201@candelatech.com>
-Date: Wed, 02 Apr 2014 14:16:31 -0700
-From: Ben Greear <greearb@candelatech.com>
-MIME-Version: 1.0
-To: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Quick way to check if file is on nfs?
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mail-qc0-f171.google.com ([209.85.216.171]:52309 "EHLO
+	mail-qc0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754703AbaDOPTl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Apr 2014 11:19:41 -0400
+Received: by mail-qc0-f171.google.com with SMTP id c9so10486240qcz.16
+        for <linux-nfs@vger.kernel.org>; Tue, 15 Apr 2014 08:19:40 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 1/6] gssd: handle malloc failure appropriately in do_downcall
+Date: Tue, 15 Apr 2014 11:19:27 -0400
+Message-Id: <1397575172-28377-2-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1397575172-28377-1-git-send-email-jlayton@redhat.com>
+References: <1397575172-28377-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Is there an efficient way to tell if a file we just opened is on
-NFS vs local disk?  We have reports of a bug where our program thinks
-it has mounted nfs and starts writing to the nfs file system, but later
-somehow local disk gets filled up instead.  I'd like to detect when
-we are no longer writing to the mount point so I can stop the test,
-gather logs, etc.
+...and get rid of some pointless NULL ptr checks.
 
-Thanks,
-Ben
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ utils/gssd/gssd_proc.c | 7 +++++--
+ 1 file changed, 5 insertions(+), 2 deletions(-)
 
+diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+index 33cfeb2afd2e..5f7fb32c41b5 100644
+--- a/utils/gssd/gssd_proc.c
++++ b/utils/gssd/gssd_proc.c
+@@ -694,6 +694,9 @@ do_downcall(int k5_fd, uid_t uid, struct authgss_private_data *pd,
+ 		sizeof(pd->pd_ctx_hndl.length) + pd->pd_ctx_hndl.length +
+ 		sizeof(context_token->length) + context_token->length;
+ 	p = buf = malloc(buf_size);
++	if (!buf)
++		goto out_err;
++
+ 	end = buf + buf_size;
+ 
+ 	/* context_timeout set by -t option overrides context lifetime */
+@@ -706,10 +709,10 @@ do_downcall(int k5_fd, uid_t uid, struct authgss_private_data *pd,
+ 	if (write_buffer(&p, end, context_token)) goto out_err;
+ 
+ 	if (write(k5_fd, buf, p - buf) < p - buf) goto out_err;
+-	if (buf) free(buf);
++	free(buf);
+ 	return 0;
+ out_err:
+-	if (buf) free(buf);
++	free(buf);
+ 	printerr(1, "Failed to write downcall!\n");
+ 	return -1;
+ }
 -- 
-Ben Greear <greearb@candelatech.com>
-Candela Technologies Inc  http://www.candelatech.com
+1.9.0
 
