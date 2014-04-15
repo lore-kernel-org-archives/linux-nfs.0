@@ -1,122 +1,127 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f174.google.com ([209.85.223.174]:60613 "EHLO
-	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754275AbaDNWWf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Apr 2014 18:22:35 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 1/8] xprtrdma: RPC/RDMA must invoke xprt_wake_pending_tasks()
-	in process context
-To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Date: Mon, 14 Apr 2014 18:22:32 -0400
-Message-ID: <20140414222231.20646.12013.stgit@manet.1015granger.net>
-In-Reply-To: <20140414220041.20646.63991.stgit@manet.1015granger.net>
-References: <20140414220041.20646.63991.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-qa0-f46.google.com ([209.85.216.46]:63428 "EHLO
+	mail-qa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754730AbaDOPTq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Apr 2014 11:19:46 -0400
+Received: by mail-qa0-f46.google.com with SMTP id i13so9546159qae.33
+        for <linux-nfs@vger.kernel.org>; Tue, 15 Apr 2014 08:19:45 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 6/6] gssd: scrape the acceptor name out of the context
+Date: Tue, 15 Apr 2014 11:19:32 -0400
+Message-Id: <1397575172-28377-7-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1397575172-28377-1-git-send-email-jlayton@redhat.com>
+References: <1397575172-28377-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-An IB provider can invoke rpcrdma_conn_func() in an IRQ context,
-thus rpcrdma_conn_func() cannot be allowed to directly invoke
-generic RPC functions like xprt_wake_pending_tasks().
+...and pass it to the kernel in the downcall. Legacy kernels will just
+ignore the extra data, but with a proposed kernel patch the kernel will
+grab this info and use it to verify requests on the v4.0 callback
+channel.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
 ---
+ utils/gssd/gssd_proc.c | 37 +++++++++++++++++++++++++++----------
+ 1 file changed, 27 insertions(+), 10 deletions(-)
 
- net/sunrpc/xprtrdma/rpc_rdma.c  |   22 +++++++++++++++-------
- net/sunrpc/xprtrdma/verbs.c     |    3 +++
- net/sunrpc/xprtrdma/xprt_rdma.h |    3 +++
- 3 files changed, 21 insertions(+), 7 deletions(-)
-
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index 400aa1b..c296468 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -676,15 +676,11 @@ rpcrdma_inline_fixup(struct rpc_rqst *rqst, char *srcp, int copy_len, int pad)
- 	rqst->rq_private_buf = rqst->rq_rcv_buf;
- }
+diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+index e26935dcfc8f..69bb3c6f11b3 100644
+--- a/utils/gssd/gssd_proc.c
++++ b/utils/gssd/gssd_proc.c
+@@ -77,6 +77,7 @@
+ #include "context.h"
+ #include "nfsrpc.h"
+ #include "nfslib.h"
++#include "gss_names.h"
  
--/*
-- * This function is called when an async event is posted to
-- * the connection which changes the connection state. All it
-- * does at this point is mark the connection up/down, the rpc
-- * timers do the rest.
-- */
- void
--rpcrdma_conn_func(struct rpcrdma_ep *ep)
-+rpcrdma_connect_worker(struct work_struct *work)
+ /*
+  * pollarray:
+@@ -683,16 +684,19 @@ parse_enctypes(char *enctypes)
+ 
+ static void
+ do_downcall(int k5_fd, uid_t uid, struct authgss_private_data *pd,
+-	    gss_buffer_desc *context_token, OM_uint32 lifetime_rec)
++	    gss_buffer_desc *context_token, OM_uint32 lifetime_rec,
++	    gss_buffer_desc *acceptor)
  {
-+	struct rpcrdma_ep *ep =
-+		container_of(work, struct rpcrdma_ep, rep_connect_worker.work);
- 	struct rpc_xprt *xprt = ep->rep_xprt;
+ 	char    *buf = NULL, *p = NULL, *end = NULL;
+ 	unsigned int timeout = context_timeout;
+ 	unsigned int buf_size = 0;
  
- 	spin_lock_bh(&xprt->transport_lock);
-@@ -701,6 +697,18 @@ rpcrdma_conn_func(struct rpcrdma_ep *ep)
- }
+-	printerr(1, "doing downcall lifetime_rec %u\n", lifetime_rec);
++	printerr(1, "doing downcall: lifetime_rec=%u acceptor=%.*s\n",
++		lifetime_rec, acceptor->length, acceptor->value);
+ 	buf_size = sizeof(uid) + sizeof(timeout) + sizeof(pd->pd_seq_win) +
+ 		sizeof(pd->pd_ctx_hndl.length) + pd->pd_ctx_hndl.length +
+-		sizeof(context_token->length) + context_token->length;
++		sizeof(context_token->length) + context_token->length +
++		acceptor->length;
+ 	p = buf = malloc(buf_size);
+ 	if (!buf)
+ 		goto out_err;
+@@ -707,6 +711,7 @@ do_downcall(int k5_fd, uid_t uid, struct authgss_private_data *pd,
+ 	if (WRITE_BYTES(&p, end, pd->pd_seq_win)) goto out_err;
+ 	if (write_buffer(&p, end, &pd->pd_ctx_hndl)) goto out_err;
+ 	if (write_buffer(&p, end, context_token)) goto out_err;
++	if (write_buffer(&p, end, acceptor)) goto out_err;
  
- /*
-+ * This function is called when an async event is posted to
-+ * the connection which changes the connection state. All it
-+ * does at this point is mark the connection up/down, the rpc
-+ * timers do the rest.
-+ */
-+void
-+rpcrdma_conn_func(struct rpcrdma_ep *ep)
-+{
-+	schedule_delayed_work(&ep->rep_connect_worker, 0);
-+}
-+
-+/*
-  * This function is called when memory window unbind which we are waiting
-  * for completes. Just use rr_func (zeroed by upcall) to signal completion.
-  */
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 5c07d11..422cf89 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -742,6 +742,7 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
- 	INIT_CQCOUNT(ep);
- 	ep->rep_ia = ia;
- 	init_waitqueue_head(&ep->rep_connect_wait);
-+	INIT_DELAYED_WORK(&ep->rep_connect_worker, rpcrdma_connect_worker);
+ 	if (write(k5_fd, buf, p - buf) < p - buf) goto out_err;
+ 	free(buf);
+@@ -1034,6 +1039,9 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
+ 	gss_cred_id_t		gss_cred;
+ 	OM_uint32		maj_stat, min_stat, lifetime_rec;
+ 	pid_t			pid;
++	gss_name_t		gacceptor = GSS_C_NO_NAME;
++	gss_OID			mech;
++	gss_buffer_desc		acceptor  = {0};
  
- 	/*
- 	 * Create a single cq for receive dto and mw_bind (only ever
-@@ -817,6 +818,8 @@ rpcrdma_ep_destroy(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
- 	dprintk("RPC:       %s: entering, connected is %d\n",
- 		__func__, ep->rep_connected);
+ 	pid = fork();
+ 	switch(pid) {
+@@ -1174,16 +1182,24 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
+ 		goto out_return_error;
+ 	}
  
-+	cancel_delayed_work_sync(&ep->rep_connect_worker);
-+
- 	if (ia->ri_id->qp) {
- 		rc = rpcrdma_ep_disconnect(ep, ia);
- 		if (rc)
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 98340a3..c620d13 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -43,6 +43,7 @@
- #include <linux/wait.h> 		/* wait_queue_head_t, etc */
- #include <linux/spinlock.h> 		/* spinlock_t, etc */
- #include <linux/atomic.h>			/* atomic_t, etc */
-+#include <linux/workqueue.h>		/* struct work_struct */
+-	/* Grab the context lifetime to pass to the kernel. */
+-	maj_stat = gss_inquire_context(&min_stat, pd.pd_ctx, NULL, NULL,
+-				       &lifetime_rec, NULL, NULL, NULL, NULL);
++	/* Grab the context lifetime and acceptor name out of the ctx. */
++	maj_stat = gss_inquire_context(&min_stat, pd.pd_ctx, NULL, &gacceptor,
++				       &lifetime_rec, &mech, NULL, NULL, NULL);
  
- #include <rdma/rdma_cm.h>		/* RDMA connection api */
- #include <rdma/ib_verbs.h>		/* RDMA verbs api */
-@@ -87,6 +88,7 @@ struct rpcrdma_ep {
- 	struct rpc_xprt		*rep_xprt;	/* for rep_func */
- 	struct rdma_conn_param	rep_remote_cma;
- 	struct sockaddr_storage	rep_remote_addr;
-+	struct delayed_work	rep_connect_worker;
- };
+-	if (maj_stat) {
+-		printerr(1, "WARNING: Failed to inquire context for lifetme "
+-			    "maj_stat %u\n", maj_stat);
++	if (maj_stat != GSS_S_COMPLETE) {
++		printerr(1, "WARNING: Failed to inquire context "
++			    "maj_stat (0x%x)\n", maj_stat);
+ 		lifetime_rec = 0;
++	} else {
++		get_hostbased_client_buffer(gacceptor, mech, &acceptor);
++		gss_release_name(&min_stat, &gacceptor);
+ 	}
  
- #define INIT_CQCOUNT(ep) atomic_set(&(ep)->rep_cqcount, (ep)->rep_cqinit)
-@@ -336,6 +338,7 @@ int rpcrdma_deregister_external(struct rpcrdma_mr_seg *,
- /*
-  * RPC/RDMA connection management calls - xprtrdma/rpc_rdma.c
-  */
-+void rpcrdma_connect_worker(struct work_struct *);
- void rpcrdma_conn_func(struct rpcrdma_ep *);
- void rpcrdma_reply_handler(struct rpcrdma_rep *);
++	/*
++	 * The serialization can mean turning pd.pd_ctx into a lucid context. If
++	 * that happens then the pd.pd_ctx will be unusable, so we must never
++	 * try to use it after this point.
++	 */
+ 	if (serialize_context_for_kernel(&pd.pd_ctx, &token, &krb5oid, NULL)) {
+ 		printerr(0, "WARNING: Failed to serialize krb5 context for "
+ 			    "user with uid %d for server %s\n",
+@@ -1191,9 +1207,10 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
+ 		goto out_return_error;
+ 	}
  
+-	do_downcall(fd, uid, &pd, &token, lifetime_rec);
++	do_downcall(fd, uid, &pd, &token, lifetime_rec, &acceptor);
+ 
+ out:
++	gss_release_buffer(&min_stat, &acceptor);
+ 	if (token.value)
+ 		free(token.value);
+ #ifdef HAVE_AUTHGSS_FREE_PRIVATE_DATA
+-- 
+1.9.0
 
