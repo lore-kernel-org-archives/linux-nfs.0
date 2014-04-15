@@ -1,173 +1,162 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ob0-f173.google.com ([209.85.214.173]:32978 "EHLO
-	mail-ob0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751037AbaDOOY4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Apr 2014 10:24:56 -0400
-Received: by mail-ob0-f173.google.com with SMTP id wn1so3275501obc.4
-        for <linux-nfs@vger.kernel.org>; Tue, 15 Apr 2014 07:24:55 -0700 (PDT)
-Message-ID: <1397571892.4709.1.camel@leira.trondhjem.org>
-Subject: Re: [PATCH] NFS: add FATTR4_WORD1_MODE flags for
- cache_consistency_bitmask
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: linux-nfs@vger.kernel.org, Dr Fields James Bruce <bfields@fieldses.org>
-Date: Tue, 15 Apr 2014 10:24:52 -0400
-In-Reply-To: <1FB7545D-81C5-46D5-9A42-322553F122D8@primarydata.com>
-References: <534A8CEF.6000609@gmail.com>
-			 <505345D4-4F7C-4970-9EBF-7CFC367575B2@primarydata.com>
-			 <534AA4FD.3060202@gmail.com>
-	 <1397402659.6306.5.camel@leira.trondhjem.org>	 <534BDBB6.5030306@gmail.com>
-		 <4B0A3D7E-5DD0-47A2-B1C8-A2F64E37D781@primarydata.com>
-		 <534BE338.2030001@gmail.com> <1397487639.7280.4.camel@leira.trondhjem.org>
-	 <534CBD76.1030109@gmail.com>
-	 <1FB7545D-81C5-46D5-9A42-322553F122D8@primarydata.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from userp1040.oracle.com ([156.151.31.81]:43261 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750880AbaDOAkH convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 14 Apr 2014 20:40:07 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
+Subject: Re: [PATCH V1] NFS-RDMA: fix qp pointer validation checks
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <EE7902D3F51F404C82415C4803930ACD3FDED915@CMEXMB1.ad.emulex.com>
+Date: Mon, 14 Apr 2014 20:39:58 -0400
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Message-Id: <C689AB91-46F6-4E96-A673-0DE76FE54CC4@oracle.com>
+References: <014738b6-698e-4ea1-82f9-287378bfec19@CMEXHTCAS2.ad.emulex.com> <D7AB2150-5F25-4BA2-80D9-94890AD11F8F@primarydata.com> <F1C70AD6-BDD4-4534-8DC4-61D2767581D9@oracle.com> <EE7902D3F51F404C82415C4803930ACD3FDEAA43@CMEXMB1.ad.emulex.com> <E66D006A-0D04-4602-8BF5-6834CACD2E24@oracle.com> <EE7902D3F51F404C82415C4803930ACD3FDEB3B4@CMEXMB1.ad.emulex.com> <BD7B05C0-4733-4DD1-83F3-B30B6B0EE48C@oracle.com> <EE7902D3F51F404C82415C4803930ACD3FDEB3DF@CMEXMB1.ad.emulex.com> <56C87770-7940-4006-948C-FEF3C0EC4ACC@oracle.com> <EE7902D3F51F404C82415C4803930ACD3FDEBD66@CMEXMB1.ad.emulex.com> <5710A71F-C4D5-408B-9B41-07F21B5853F0@oracle.com> <6837A427-B677-4CC7-A022-4FB9E52A3FC6@oracle.com> <EE7902D3F51F404C82415C4803930ACD3FDED915@CMEXMB1.ad.emulex.com>
+To: Devesh Sharma <devesh.sharma@emulex.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2014-04-15 at 09:22 -0400, Trond Myklebust wrote:
-> On Apr 15, 2014, at 1:02, Kinglong Mee <kinglongmee@gmail.com> wrote:
-> > Next, the "stat testfile" gets data from cache,
-> > because NFS_INO_INVALID_ATTR flags is cleared below.
-> > 
-> > Calltrace,
-> > [ 4883.997254] nfs4_proc_write_setup
-> > [ 4884.006885] NFS:  1365 nfs_writeback_done (status 11)
-> > [ 4884.008215] nfs4_write_done
-> > [ 4884.009273] nfs4_write_done_cb
-> > [ 4884.010013] nfs_post_op_update_inode_force_wcc
-> > [ 4884.011221] nfs_update_inode
-> > [ 4884.012001] nfs_update_inode
-> > [ 4884.012952] nfs_writeback_done: before nfs_should_remove_suid
-> > [ 4884.014722] nfs_writeback_done: in nfs_should_remove_suid
-> > [ 4884.016549] nfs4_close_done
-> > [ 4884.017614] nfs_refresh_inode
-> > [ 4884.018645] nfs_update_inode
-> > [ 4884.019693] nfs_update_inode
-> > 
-> > But, if getting status before close, the mode can be update to latest.
+
+On Apr 14, 2014, at 6:46 PM, Devesh Sharma <devesh.sharma@emulex.com> wrote:
+
+> Hi Chuck
 > 
-> Argh. That is a bug in nfs_update_inode(). It is not supposed to clear NFS_INO_INVALID_ATTR if nfs_fattr does not contain a complete set of attributes.
+>> -----Original Message-----
+>> From: Chuck Lever [mailto:chuck.lever@oracle.com]
+>> Sent: Tuesday, April 15, 2014 2:24 AM
+>> To: Devesh Sharma
+>> Cc: Linux NFS Mailing List; linux-rdma@vger.kernel.org; Trond Myklebust
+>> Subject: Re: [PATCH V1] NFS-RDMA: fix qp pointer validation checks
+>> 
+>> Hi Devesh-
+>> 
+>> 
+>> On Apr 13, 2014, at 12:01 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+>> 
+>>> 
+>>> On Apr 11, 2014, at 7:51 PM, Devesh Sharma
+>> <Devesh.Sharma@Emulex.Com> wrote:
+>>> 
+>>>> Hi  Chuck,
+>>>> Yes that is the case, Following is the trace I got.
+>>>> 
+>>>> <4>RPC:   355 setting alarm for 60000 ms
+>>>> <4>RPC:   355 sync task going to sleep
+>>>> <4>RPC:       xprt_rdma_connect_worker: reconnect
+>>>> <4>RPC:       rpcrdma_ep_disconnect: rdma_disconnect -1
+>>>> <4>RPC:       rpcrdma_ep_connect: rpcrdma_ep_disconnect status -1
+>>>> <3>ocrdma_mbx_create_qp(0) rq_err
+>>>> <3>ocrdma_mbx_create_qp(0) sq_err
+>>>> <3>ocrdma_create_qp(0) error=-1
+>>>> <4>RPC:       rpcrdma_ep_connect: rdma_create_qp failed -1
+>>>> <4>RPC:   355 __rpc_wake_up_task (now 4296956756)
+>>>> <4>RPC:   355 disabling timer
+>>>> <4>RPC:   355 removed from queue ffff880454578258 "xprt_pending"
+>>>> <4>RPC:       __rpc_wake_up_task done
+>>>> <4>RPC:       xprt_rdma_connect_worker: exit
+>>>> <4>RPC:   355 sync task resuming
+>>>> <4>RPC:   355 xprt_connect_status: error 1 connecting to server
+>> 192.168.1.1
+>>> 
+>>> xprtrdma's connect worker is returning "1" instead of a negative errno.
+>>> That's the bug that triggers this chain of events.
+>> 
+>> rdma_create_qp() has returned -EPERM. There's very little xprtrdma can do
+>> if the provider won't even create a QP. That seems like a rare and fatal
+>> problem.
+>> 
+>> For the moment, I'm inclined to think that a panic is correct behavior, since
+>> there are outstanding registered memory regions that cannot be cleaned up
+>> without a QP (see below).
+> Well, I think the system should still remain alive.
+
+Sure, in the long run. I'm not suggesting we leave it this way.
+
+> This will definatly cause a memory leak. But QP create failure does not mean system should also crash.
+
+It's more than leaked memory.  A permanent QP creation failure can
+leave pages in the page cache registered and pinned, as I understand
+it.
+
+> I think for the time being it is worth to put Null pointer checks to prevent system from crash.
+
+Common practice in the Linux kernel is to avoid unnecessary NULL
+checks.  Work-around fixes are typically rejected, and not with a
+happy face either.
+
+Once the connection tear-down code is fixed, it should be clear where
+NULL checks need to go.
+
+>> 
+>>> RPC tasks waiting for the reconnect are awoken. xprt_connect_status()
+>>> doesn't recognize a tk_status of "1", so it turns it into -EIO, and
+>>> kills each waiting RPC task.
+>> 
+>>>> <4>RPC:       wake_up_next(ffff880454578190 "xprt_sending")
+>>>> <4>RPC:   355 call_connect_status (status -5)
+>>>> <4>RPC:   355 return 0, status -5
+>>>> <4>RPC:   355 release task
+>>>> <4>RPC:       wake_up_next(ffff880454578190 "xprt_sending")
+>>>> <4>RPC:       xprt_rdma_free: called on 0x(null)
+>>> 
+>>> And as part of exiting, the RPC task has to free its buffer.
+>>> 
+>>> Not exactly sure why req->rl_nchunks is not zero for an NFSv4 GETATTR.
+>>> This is why rpcrdma_deregister_external() is invoked here.
+>>> 
+>>> Eventually this gets around to attempting to post a LOCAL_INV WR with
+>>> ->qp set to NULL, and the panic below occurs.
+>> 
+>> This is a somewhat different problem.
+>> 
+>> Not only do we need to have a good ->qp here, but it has to be connected
+>> and in the ready-to-send state before LOCAL_INV work requests can be
+>> posted.
+>> 
+>> The implication of this is that if a server disconnects (server crash or network
+>> partition), the client is stuck waiting for the server to come back before it can
+>> deregister memory and retire outstanding RPC requests.
+> This is a real problem to solve. In the existing state of xprtrdma code. Even a Server reboot will cause
+> Client to crash.
+
+I don't see how that can happen if the HCA/provider manages to create
+a fresh QP successfully and then rdma_connect() succeeds.
+
+A soft timeout or a ^C while the server is rebooting might be a problem.
+
+>> 
+>> This is bad for ^C or soft timeouts or umount ... when the server is
+>> unavailable.
+>> 
+>> So I feel we need better clean-up when the client cannot reconnect.
+> Unreg old frmrs with the help of new QP? Until the new QP is created with same PD and FRMR is bound to PD and not to QP.
+>> Probably deregistering RPC chunk MR's before finally tearing down the old
+>> QP is what is necessary.
 > 
-> Thanks for testing, Kinglong. This is extremely helpful...
+> We need a scheme that handles Memory registrations separately from connection establishment and do book-keeping of which region is Registered and which one is not.
+> Once the new connection is back. Either start using old mem-regions as it is, or invalidate old and re-register on the new QP.
+> What is the existing scheme xprtrdma is following? Is it the same?
 
-Can you please see if the following patch fixes the above issue?
-8<--------------------------------------------------------------
->From 12c9c63a005889d70fbcbdb746cd7e7d127b0f01 Mon Sep 17 00:00:00 2001
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-Date: Tue, 15 Apr 2014 10:07:57 -0400
-Subject: [PATCH] NFS: Don't declare inode uptodate unless all attributes were
- checked
+This is what is going on now.  Clearly, when managing its own memory
+resources, the client should never depend on the server ever coming
+back.
 
-Fix a bug, whereby nfs_update_inode() was declaring the inode to be
-up to date despite not having checked all the attributes.
-The bug occurs because the temporary variable in which we cache
-the validity information is 'sanitised' before reapplying to
-nfsi->cache_validity.
+The proposal is to deregister _before_ the old QP is torn down, using
+ib_dereg_mr() in the connect worker process.  All RPC requests on that
+connection should be sleeping waiting for the reconnect to complete.
 
-Reported-by: Kinglong Mee <kinglongmee@gmail.com>
-Cc: stable@vger.kernel.org # 3.5+
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/inode.c | 26 +++++++++++++++++---------
- 1 file changed, 17 insertions(+), 9 deletions(-)
+If chunks are created and marshaled during xprt_transmit(), the waiting
+RPC requests should simply re-register when they are ready to be sent
+again.
 
-diff --git a/fs/nfs/inode.c b/fs/nfs/inode.c
-index c0f7b1d0b814..a6f9c8581228 100644
---- a/fs/nfs/inode.c
-+++ b/fs/nfs/inode.c
-@@ -1581,18 +1581,20 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
- 			inode->i_version = fattr->change_attr;
- 		}
- 	} else if (server->caps & NFS_CAP_CHANGE_ATTR)
--		invalid |= save_cache_validity;
-+		nfsi->cache_validity |= save_cache_validity;
- 
- 	if (fattr->valid & NFS_ATTR_FATTR_MTIME) {
- 		memcpy(&inode->i_mtime, &fattr->mtime, sizeof(inode->i_mtime));
- 	} else if (server->caps & NFS_CAP_MTIME)
--		invalid |= save_cache_validity & (NFS_INO_INVALID_ATTR
-+		nfsi->cache_validity |= save_cache_validity &
-+				(NFS_INO_INVALID_ATTR
- 				| NFS_INO_REVAL_FORCED);
- 
- 	if (fattr->valid & NFS_ATTR_FATTR_CTIME) {
- 		memcpy(&inode->i_ctime, &fattr->ctime, sizeof(inode->i_ctime));
- 	} else if (server->caps & NFS_CAP_CTIME)
--		invalid |= save_cache_validity & (NFS_INO_INVALID_ATTR
-+		nfsi->cache_validity |= save_cache_validity &
-+				(NFS_INO_INVALID_ATTR
- 				| NFS_INO_REVAL_FORCED);
- 
- 	/* Check if our cached file size is stale */
-@@ -1614,7 +1616,8 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
- 					(long long)new_isize);
- 		}
- 	} else
--		invalid |= save_cache_validity & (NFS_INO_INVALID_ATTR
-+		nfsi->cache_validity |= save_cache_validity &
-+				(NFS_INO_INVALID_ATTR
- 				| NFS_INO_REVAL_PAGECACHE
- 				| NFS_INO_REVAL_FORCED);
- 
-@@ -1622,7 +1625,8 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
- 	if (fattr->valid & NFS_ATTR_FATTR_ATIME)
- 		memcpy(&inode->i_atime, &fattr->atime, sizeof(inode->i_atime));
- 	else if (server->caps & NFS_CAP_ATIME)
--		invalid |= save_cache_validity & (NFS_INO_INVALID_ATIME
-+		nfsi->cache_validity |= save_cache_validity &
-+				(NFS_INO_INVALID_ATIME
- 				| NFS_INO_REVAL_FORCED);
- 
- 	if (fattr->valid & NFS_ATTR_FATTR_MODE) {
-@@ -1633,7 +1637,8 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
- 			invalid |= NFS_INO_INVALID_ATTR|NFS_INO_INVALID_ACCESS|NFS_INO_INVALID_ACL;
- 		}
- 	} else if (server->caps & NFS_CAP_MODE)
--		invalid |= save_cache_validity & (NFS_INO_INVALID_ATTR
-+		nfsi->cache_validity |= save_cache_validity &
-+				(NFS_INO_INVALID_ATTR
- 				| NFS_INO_INVALID_ACCESS
- 				| NFS_INO_INVALID_ACL
- 				| NFS_INO_REVAL_FORCED);
-@@ -1644,7 +1649,8 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
- 			inode->i_uid = fattr->uid;
- 		}
- 	} else if (server->caps & NFS_CAP_OWNER)
--		invalid |= save_cache_validity & (NFS_INO_INVALID_ATTR
-+		nfsi->cache_validity |= save_cache_validity &
-+				(NFS_INO_INVALID_ATTR
- 				| NFS_INO_INVALID_ACCESS
- 				| NFS_INO_INVALID_ACL
- 				| NFS_INO_REVAL_FORCED);
-@@ -1655,7 +1661,8 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
- 			inode->i_gid = fattr->gid;
- 		}
- 	} else if (server->caps & NFS_CAP_OWNER_GROUP)
--		invalid |= save_cache_validity & (NFS_INO_INVALID_ATTR
-+		nfsi->cache_validity |= save_cache_validity &
-+				(NFS_INO_INVALID_ATTR
- 				| NFS_INO_INVALID_ACCESS
- 				| NFS_INO_INVALID_ACL
- 				| NFS_INO_REVAL_FORCED);
-@@ -1668,7 +1675,8 @@ static int nfs_update_inode(struct inode *inode, struct nfs_fattr *fattr)
- 			set_nlink(inode, fattr->nlink);
- 		}
- 	} else if (server->caps & NFS_CAP_NLINK)
--		invalid |= save_cache_validity & (NFS_INO_INVALID_ATTR
-+		nfsi->cache_validity |= save_cache_validity &
-+				(NFS_INO_INVALID_ATTR
- 				| NFS_INO_REVAL_FORCED);
- 
- 	if (fattr->valid & NFS_ATTR_FATTR_SPACE_USED) {
--- 
-1.9.0
-
+> I think it is possible to create FRMR on qp->qp_num = x while invalidate on qp->qp_num = y until qpx.pd == qpy.pd
 
 -- 
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
 
 
