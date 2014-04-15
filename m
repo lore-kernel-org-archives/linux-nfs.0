@@ -1,52 +1,148 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:44354 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751197AbaDRJKf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 18 Apr 2014 05:10:35 -0400
-Date: Fri, 18 Apr 2014 05:10:33 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: trond.myklebust@primarydata.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: set timeparms.to_maxval in setup_callback_client
-Message-ID: <20140418091033.GA18612@fieldses.org>
-References: <1397566308-16871-1-git-send-email-jlayton@redhat.com>
+Received: from wsip-98-173-55-162.sd.sd.cox.net ([98.173.55.162]:13894 "EHLO
+	bilbo" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1750917AbaDOUeg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 Apr 2014 16:34:36 -0400
+From: Allen Andrews <allen.andrews@emulex.com>
+Subject: [PATCH v2] nfs-rdma: Fix for FMR leaks
+To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Cc: allen.andrews@emulex.com, linux-kernel@vger.kernel.org
+Date: Tue, 15 Apr 2014 13:34:34 -0700
+Message-ID: <20140415203434.5492.31538.stgit@bilbo>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1397566308-16871-1-git-send-email-jlayton@redhat.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Apr 15, 2014 at 08:51:48AM -0400, Jeff Layton wrote:
-> ...otherwise the logic in the timeout handling doesn't work correctly.
-> 
-> Spotted-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
+Two memory region leaks were found during testing:
 
-Thanks, queueing up for 3.15 and stable.
+1. rpcrdma_buffer_create: While allocating RPCRDMA_FRMR's
+ib_alloc_fast_reg_mr is called and then ib_alloc_fast_reg_page_list is
+called.  If ib_alloc_fast_reg_page_list returns an error it bails out of
+the routine dropping the last ib_alloc_fast_reg_mr frmr region creating a
+memory leak.  Added code to dereg the last frmr if
+ib_alloc_fast_reg_page_list fails.
 
---b.
+2. rpcrdma_buffer_destroy: While cleaning up, the routine will only free
+the MR's on the rb_mws list if there are rb_send_bufs present.  However, in
+rpcrdma_buffer_create while the rb_mws list is being built if one of the MR
+allocation requests fail after some MR's have been allocated on the rb_mws
+list the routine never gets to create any rb_send_bufs but instead jumps to
+the rpcrdma_buffer_destroy routine which will never free the MR's on rb_mws
+list because the rb_send_bufs were never created.   This leaks all the MR's
+on the rb_mws list that were created prior to one of the MR allocations
+failing.
 
-> ---
->  fs/nfsd/nfs4callback.c | 4 +++-
->  1 file changed, 3 insertions(+), 1 deletion(-)
-> 
-> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-> index 39c8ef875f91..2c73cae9899d 100644
-> --- a/fs/nfsd/nfs4callback.c
-> +++ b/fs/nfsd/nfs4callback.c
-> @@ -654,9 +654,11 @@ static struct rpc_clnt *create_backchannel_client(struct rpc_create_args *args)
->  
->  static int setup_callback_client(struct nfs4_client *clp, struct nfs4_cb_conn *conn, struct nfsd4_session *ses)
->  {
-> +	int maxtime = max_cb_time(clp->net);
->  	struct rpc_timeout	timeparms = {
-> -		.to_initval	= max_cb_time(clp->net),
-> +		.to_initval	= maxtime,
->  		.to_retries	= 0,
-> +		.to_maxval	= maxtime,
->  	};
->  	struct rpc_create_args args = {
->  		.net		= clp->net,
-> -- 
-> 1.9.0
-> 
+Issue(2) was seen during testing. Our adapter had a finite number of MR's
+available and we created enough connections to where we saw an MR
+allocation failure on our Nth NFS connection request. After the kernel
+cleaned up the resources it had allocated for the Nth connection we noticed
+that FMR's had been leaked due to the coding error described above.
+
+Issue(1) was seen during a code review while debugging issue(2).
+
+Signed-off-by: Allen Andrews <allen.andrews@emulex.com>
+---
+
+ net/sunrpc/xprtrdma/verbs.c |   73 ++++++++++++++++++++++---------------------
+ 1 files changed, 38 insertions(+), 35 deletions(-)
+
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 9372656..1683e05 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -1058,6 +1058,8 @@ rpcrdma_buffer_create(struct rpcrdma_buffer *buf, struct rpcrdma_ep *ep,
+ 				dprintk("RPC:       %s: "
+ 					"ib_alloc_fast_reg_page_list "
+ 					"failed %i\n", __func__, rc);
++
++				ib_dereg_mr(r->r.frmr.fr_mr);
+ 				goto out;
+ 			}
+ 			list_add(&r->mw_list, &buf->rb_mws);
+@@ -1194,41 +1196,6 @@ rpcrdma_buffer_destroy(struct rpcrdma_buffer *buf)
+ 			kfree(buf->rb_recv_bufs[i]);
+ 		}
+ 		if (buf->rb_send_bufs && buf->rb_send_bufs[i]) {
+-			while (!list_empty(&buf->rb_mws)) {
+-				r = list_entry(buf->rb_mws.next,
+-					struct rpcrdma_mw, mw_list);
+-				list_del(&r->mw_list);
+-				switch (ia->ri_memreg_strategy) {
+-				case RPCRDMA_FRMR:
+-					rc = ib_dereg_mr(r->r.frmr.fr_mr);
+-					if (rc)
+-						dprintk("RPC:       %s:"
+-							" ib_dereg_mr"
+-							" failed %i\n",
+-							__func__, rc);
+-					ib_free_fast_reg_page_list(r->r.frmr.fr_pgl);
+-					break;
+-				case RPCRDMA_MTHCAFMR:
+-					rc = ib_dealloc_fmr(r->r.fmr);
+-					if (rc)
+-						dprintk("RPC:       %s:"
+-							" ib_dealloc_fmr"
+-							" failed %i\n",
+-							__func__, rc);
+-					break;
+-				case RPCRDMA_MEMWINDOWS_ASYNC:
+-				case RPCRDMA_MEMWINDOWS:
+-					rc = ib_dealloc_mw(r->r.mw);
+-					if (rc)
+-						dprintk("RPC:       %s:"
+-							" ib_dealloc_mw"
+-							" failed %i\n",
+-							__func__, rc);
+-					break;
+-				default:
+-					break;
+-				}
+-			}
+ 			rpcrdma_deregister_internal(ia,
+ 					buf->rb_send_bufs[i]->rl_handle,
+ 					&buf->rb_send_bufs[i]->rl_iov);
+@@ -1236,6 +1203,42 @@ rpcrdma_buffer_destroy(struct rpcrdma_buffer *buf)
+ 		}
+ 	}
+ 
++	while (!list_empty(&buf->rb_mws)) {
++		r = list_entry(buf->rb_mws.next,
++			struct rpcrdma_mw, mw_list);
++		list_del(&r->mw_list);
++		switch (ia->ri_memreg_strategy) {
++		case RPCRDMA_FRMR:
++			rc = ib_dereg_mr(r->r.frmr.fr_mr);
++			if (rc)
++				dprintk("RPC:       %s:"
++					" ib_dereg_mr"
++					" failed %i\n",
++					__func__, rc);
++			ib_free_fast_reg_page_list(r->r.frmr.fr_pgl);
++			break;
++		case RPCRDMA_MTHCAFMR:
++			rc = ib_dealloc_fmr(r->r.fmr);
++			if (rc)
++				dprintk("RPC:       %s:"
++					" ib_dealloc_fmr"
++					" failed %i\n",
++					__func__, rc);
++			break;
++		case RPCRDMA_MEMWINDOWS_ASYNC:
++		case RPCRDMA_MEMWINDOWS:
++			rc = ib_dealloc_mw(r->r.mw);
++			if (rc)
++				dprintk("RPC:       %s:"
++					" ib_dealloc_mw"
++					" failed %i\n",
++					__func__, rc);
++			break;
++		default:
++			break;
++		}
++	}
++
+ 	kfree(buf->rb_pool);
+ }
+ 
+
