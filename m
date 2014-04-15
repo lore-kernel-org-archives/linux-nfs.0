@@ -1,152 +1,168 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f174.google.com ([209.85.223.174]:54616 "EHLO
-	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751930AbaDRSqQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Apr 2014 14:46:16 -0400
-Received: by mail-ie0-f174.google.com with SMTP id rp18so1829758iec.5
-        for <linux-nfs@vger.kernel.org>; Fri, 18 Apr 2014 11:46:16 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Bruce Fields <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 46/70] NFSd: Migrate the stateid reference into nfs4_preprocess_seqid_op
-Date: Fri, 18 Apr 2014 14:44:40 -0400
-Message-Id: <1397846704-14567-47-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1397846704-14567-46-git-send-email-trond.myklebust@primarydata.com>
-References: <1397846704-14567-1-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-2-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-3-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-4-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-5-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-6-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-7-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-8-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-9-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-10-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-11-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-12-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-13-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-14-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-15-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-16-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-17-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-18-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-19-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-20-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-21-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-22-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-23-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-24-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-25-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-26-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-27-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-28-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-29-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-30-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-31-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-32-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-33-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-34-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-35-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-36-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-37-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-38-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-39-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-40-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-41-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-42-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-43-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-44-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-45-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-46-git-send-email-trond.myklebust@primarydata.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:18886 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751006AbaDOUgq convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Apr 2014 16:36:46 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
+Subject: Re: [PATCH v2] nfs-rdma: Fix for FMR leaks
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <20140415203434.5492.31538.stgit@bilbo>
+Date: Tue, 15 Apr 2014 16:36:33 -0400
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-rdma@vger.kernel.org, linux-kernel@vger.kernel.org
+Message-Id: <2649FF57-84A2-4848-BEAD-DCA7129E90D3@oracle.com>
+References: <20140415203434.5492.31538.stgit@bilbo>
+To: Allen Andrews <allen.andrews@emulex.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Allow nfs4_preprocess_seqid_op to take the stateid reference, instead
-of having all the callers do so.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 26 +++++++++++---------------
- 1 file changed, 11 insertions(+), 15 deletions(-)
+On Apr 15, 2014, at 4:34 PM, Allen Andrews <allen.andrews@emulex.com> wrote:
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index ce35edcef193..8e2e519f9b94 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4100,8 +4100,11 @@ nfs4_preprocess_seqid_op(struct nfsd4_compound_state *cstate, u32 seqid,
- 	nfsd4_cstate_assign_replay(cstate, stp->st_stateowner);
- 
- 	status = nfs4_seqid_op_checks(cstate, stateid, seqid, stp);
--	if (!status)
-+	if (!status) {
-+		/* FIXME: move into find_stateid_by_type */
-+		atomic_inc(&stp->st_stid.sc_count);
- 		*stpp = stp;
-+	}
- 	return status;
- }
- 
-@@ -4110,16 +4113,18 @@ static __be32 nfs4_preprocess_confirmed_seqid_op(struct nfsd4_compound_state *cs
- {
- 	__be32 status;
- 	struct nfs4_openowner *oo;
-+	struct nfs4_ol_stateid *stp;
- 
- 	status = nfs4_preprocess_seqid_op(cstate, seqid, stateid,
--						NFS4_OPEN_STID, stpp, nn);
-+						NFS4_OPEN_STID, &stp, nn);
- 	if (status)
- 		return status;
--	/* FIXME: move into nfs4_preprocess_seqid_op */
--	atomic_inc(&(*stpp)->st_stid.sc_count);
--	oo = openowner((*stpp)->st_stateowner);
--	if (!(oo->oo_flags & NFS4_OO_CONFIRMED))
-+	oo = openowner(stp->st_stateowner);
-+	if (!(oo->oo_flags & NFS4_OO_CONFIRMED)) {
-+		put_generic_stateid(stp);
- 		return nfserr_bad_stateid;
-+	}
-+	*stpp = stp;
- 	return nfs_ok;
- }
- 
-@@ -4146,8 +4151,6 @@ nfsd4_open_confirm(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 					NFS4_OPEN_STID, &stp, nn);
- 	if (status)
- 		goto out;
--	/* FIXME: move into nfs4_preprocess_seqid_op */
--	atomic_inc(&stp->st_stid.sc_count);
- 	oo = openowner(stp->st_stateowner);
- 	status = nfserr_bad_stateid;
- 	if (oo->oo_flags & NFS4_OO_CONFIRMED)
-@@ -4282,8 +4285,6 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	nfsd4_bump_seqid(cstate, status);
- 	if (status)
- 		goto out; 
--	/* FIXME: move into nfs4_preprocess_seqid_op */
--	atomic_inc(&stp->st_stid.sc_count);
- 	oo = openowner(stp->st_stateowner);
- 	update_stateid(&stp->st_stid.sc_stateid);
- 	memcpy(&close->cl_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
-@@ -4622,9 +4623,6 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 				       lock->lk_old_lock_seqid,
- 				       &lock->lk_old_lock_stateid,
- 				       NFS4_LOCK_STID, &lock_stp, nn);
--		/* FIXME: move into nfs4_preprocess_seqid_op */
--		if (!status)
--			atomic_inc(&lock_stp->st_stid.sc_count);
- 	}
- 	if (status)
- 		goto out;
-@@ -4847,8 +4845,6 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 					&stp, nn);
- 	if (status)
- 		goto out;
--	/* FIXME: move into nfs4_preprocess_seqid_op */
--	atomic_inc(&stp->st_stid.sc_count);
- 	filp = find_any_file(stp->st_stid.sc_file);
- 	if (!filp) {
- 		status = nfserr_lock_range;
--- 
-1.9.0
+> Two memory region leaks were found during testing:
+> 
+> 1. rpcrdma_buffer_create: While allocating RPCRDMA_FRMR's
+> ib_alloc_fast_reg_mr is called and then ib_alloc_fast_reg_page_list is
+> called.  If ib_alloc_fast_reg_page_list returns an error it bails out of
+> the routine dropping the last ib_alloc_fast_reg_mr frmr region creating a
+> memory leak.  Added code to dereg the last frmr if
+> ib_alloc_fast_reg_page_list fails.
+> 
+> 2. rpcrdma_buffer_destroy: While cleaning up, the routine will only free
+> the MR's on the rb_mws list if there are rb_send_bufs present.  However, in
+> rpcrdma_buffer_create while the rb_mws list is being built if one of the MR
+> allocation requests fail after some MR's have been allocated on the rb_mws
+> list the routine never gets to create any rb_send_bufs but instead jumps to
+> the rpcrdma_buffer_destroy routine which will never free the MR's on rb_mws
+> list because the rb_send_bufs were never created.   This leaks all the MR's
+> on the rb_mws list that were created prior to one of the MR allocations
+> failing.
+> 
+> Issue(2) was seen during testing. Our adapter had a finite number of MR's
+> available and we created enough connections to where we saw an MR
+> allocation failure on our Nth NFS connection request. After the kernel
+> cleaned up the resources it had allocated for the Nth connection we noticed
+> that FMR's had been leaked due to the coding error described above.
+> 
+> Issue(1) was seen during a code review while debugging issue(2).
+> 
+> Signed-off-by: Allen Andrews <allen.andrews@emulex.com>
+
+Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
+
+> ---
+> 
+> net/sunrpc/xprtrdma/verbs.c |   73 ++++++++++++++++++++++---------------------
+> 1 files changed, 38 insertions(+), 35 deletions(-)
+> 
+> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+> index 9372656..1683e05 100644
+> --- a/net/sunrpc/xprtrdma/verbs.c
+> +++ b/net/sunrpc/xprtrdma/verbs.c
+> @@ -1058,6 +1058,8 @@ rpcrdma_buffer_create(struct rpcrdma_buffer *buf, struct rpcrdma_ep *ep,
+> 				dprintk("RPC:       %s: "
+> 					"ib_alloc_fast_reg_page_list "
+> 					"failed %i\n", __func__, rc);
+> +
+> +				ib_dereg_mr(r->r.frmr.fr_mr);
+> 				goto out;
+> 			}
+> 			list_add(&r->mw_list, &buf->rb_mws);
+> @@ -1194,41 +1196,6 @@ rpcrdma_buffer_destroy(struct rpcrdma_buffer *buf)
+> 			kfree(buf->rb_recv_bufs[i]);
+> 		}
+> 		if (buf->rb_send_bufs && buf->rb_send_bufs[i]) {
+> -			while (!list_empty(&buf->rb_mws)) {
+> -				r = list_entry(buf->rb_mws.next,
+> -					struct rpcrdma_mw, mw_list);
+> -				list_del(&r->mw_list);
+> -				switch (ia->ri_memreg_strategy) {
+> -				case RPCRDMA_FRMR:
+> -					rc = ib_dereg_mr(r->r.frmr.fr_mr);
+> -					if (rc)
+> -						dprintk("RPC:       %s:"
+> -							" ib_dereg_mr"
+> -							" failed %i\n",
+> -							__func__, rc);
+> -					ib_free_fast_reg_page_list(r->r.frmr.fr_pgl);
+> -					break;
+> -				case RPCRDMA_MTHCAFMR:
+> -					rc = ib_dealloc_fmr(r->r.fmr);
+> -					if (rc)
+> -						dprintk("RPC:       %s:"
+> -							" ib_dealloc_fmr"
+> -							" failed %i\n",
+> -							__func__, rc);
+> -					break;
+> -				case RPCRDMA_MEMWINDOWS_ASYNC:
+> -				case RPCRDMA_MEMWINDOWS:
+> -					rc = ib_dealloc_mw(r->r.mw);
+> -					if (rc)
+> -						dprintk("RPC:       %s:"
+> -							" ib_dealloc_mw"
+> -							" failed %i\n",
+> -							__func__, rc);
+> -					break;
+> -				default:
+> -					break;
+> -				}
+> -			}
+> 			rpcrdma_deregister_internal(ia,
+> 					buf->rb_send_bufs[i]->rl_handle,
+> 					&buf->rb_send_bufs[i]->rl_iov);
+> @@ -1236,6 +1203,42 @@ rpcrdma_buffer_destroy(struct rpcrdma_buffer *buf)
+> 		}
+> 	}
+> 
+> +	while (!list_empty(&buf->rb_mws)) {
+> +		r = list_entry(buf->rb_mws.next,
+> +			struct rpcrdma_mw, mw_list);
+> +		list_del(&r->mw_list);
+> +		switch (ia->ri_memreg_strategy) {
+> +		case RPCRDMA_FRMR:
+> +			rc = ib_dereg_mr(r->r.frmr.fr_mr);
+> +			if (rc)
+> +				dprintk("RPC:       %s:"
+> +					" ib_dereg_mr"
+> +					" failed %i\n",
+> +					__func__, rc);
+> +			ib_free_fast_reg_page_list(r->r.frmr.fr_pgl);
+> +			break;
+> +		case RPCRDMA_MTHCAFMR:
+> +			rc = ib_dealloc_fmr(r->r.fmr);
+> +			if (rc)
+> +				dprintk("RPC:       %s:"
+> +					" ib_dealloc_fmr"
+> +					" failed %i\n",
+> +					__func__, rc);
+> +			break;
+> +		case RPCRDMA_MEMWINDOWS_ASYNC:
+> +		case RPCRDMA_MEMWINDOWS:
+> +			rc = ib_dealloc_mw(r->r.mw);
+> +			if (rc)
+> +				dprintk("RPC:       %s:"
+> +					" ib_dealloc_mw"
+> +					" failed %i\n",
+> +					__func__, rc);
+> +			break;
+> +		default:
+> +			break;
+> +		}
+> +	}
+> +
+> 	kfree(buf->rb_pool);
+> }
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
 
