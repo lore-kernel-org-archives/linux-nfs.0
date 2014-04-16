@@ -1,59 +1,38 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mout.gmx.net ([212.227.15.18]:55650 "EHLO mout.gmx.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753306AbaD0IeH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 27 Apr 2014 04:34:07 -0400
-Message-ID: <535CC0FC.8070403@gmx.de>
-Date: Sun, 27 Apr 2014 10:34:04 +0200
-From: =?UTF-8?B?VG9yYWxmIEbDtnJzdGVy?= <toralf.foerster@gmx.de>
+Received: from zeniv.linux.org.uk ([195.92.253.2]:55068 "EHLO
+	ZenIV.linux.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750919AbaDPEqW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Apr 2014 00:46:22 -0400
+Date: Wed, 16 Apr 2014 05:46:18 +0100
+From: Al Viro <viro@ZenIV.linux.org.uk>
+To: NeilBrown <neilb@suse.de>
+Cc: linux-mm@kvack.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, xfs@oss.sgi.com
+Subject: Re: [PATCH 17/19] VFS: set PF_FSTRANS while namespace_sem is held.
+Message-ID: <20140416044618.GX18016@ZenIV.linux.org.uk>
+References: <20140416033623.10604.69237.stgit@notabene.brown>
+ <20140416040337.10604.86740.stgit@notabene.brown>
 MIME-Version: 1.0
-To: Trond Myklebust <trondmy@gmail.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] fs/nfs/idmap.c: fix a Memory leak for variable desc
-References: <1398542157-20159-1-git-send-email-toralf.foerster@gmx.de> <CAABAsM5nm9eRJXF809TPLu5qNeVU0XLPPjtfnji37REQmYHqsQ@mail.gmail.com>
-In-Reply-To: <CAABAsM5nm9eRJXF809TPLu5qNeVU0XLPPjtfnji37REQmYHqsQ@mail.gmail.com>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140416040337.10604.86740.stgit@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 04/27/2014 02:10 AM, Trond Myklebust wrote:
-> On Sat, Apr 26, 2014 at 3:55 PM, Toralf Förster <toralf.foerster@gmx.de> wrote:
->> Signed-off-by: Toralf Förster <toralf.foerster@gmx.de>
->> ---
->>  fs/nfs/idmap.c | 4 +++-
->>  1 file changed, 3 insertions(+), 1 deletion(-)
->>
->> diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
->> index 567983d..8eb4954 100644
->> --- a/fs/nfs/idmap.c
->> +++ b/fs/nfs/idmap.c
->> @@ -272,8 +272,10 @@ static struct key *nfs_idmap_request_key(const char *name, size_t namelen,
->>         ssize_t ret;
->>
->>         ret = nfs_idmap_get_desc(name, namelen, type, strlen(type), &desc);
->> -       if (ret <= 0)
->> +       if (ret <= 0) {
->> +               kfree(desc);
->>                 return ERR_PTR(ret);
->> +       }
->>
->>         rkey = request_key(&key_type_id_resolver, desc, "");
->>         if (IS_ERR(rkey)) {
-> 
-> Hi Toralf,
-> 
-> As far as I can tell, the only error that nfs_idmap_get_desc() can
-> return is ret==-ENOMEM, in which case desc==NULL.
-> It cannot ever return ret==0, either, since the return value,
-> 'desclen', has a lower bound of '2'.                                   <-----------------
+On Wed, Apr 16, 2014 at 02:03:37PM +1000, NeilBrown wrote:
+> namespace_sem can be taken while various i_mutex locks are held, so we
+> need to avoid reclaim from blocking on an FS (particularly loop-back
+> NFS).
 
-Ick, that I was missing - sry for the noise.
+I would really prefer to deal with that differently - by explicit change of
+gfp_t arguments of allocators.
 
-> Cheers
->   Trond
-> 
+The thing is, namespace_sem is held *only* over allocations, and not a lot
+of them, at that - only mnt_alloc_id(), mnt_alloc_group_id(), alloc_vfsmnt()
+and new_mountpoint().  That is all that is allowed.
 
+Again, actual work with filesystems (setup, shutdown, remount, pathname
+resolution, etc.) is all done outside of namespace_sem; it's held only
+for manipulations of fs/{namespace,pnode}.c data structures and the only
+reason it isn't a spinlock is that we need to do some allocations.
 
--- 
-Toralf
-
+So I'd rather slap GFP_NOFS on those few allocations...
