@@ -1,37 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:42338 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752207AbaDYLEL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Apr 2014 07:04:11 -0400
-Date: Fri, 25 Apr 2014 04:04:09 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Ben Greear <greearb@candelatech.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        Christoph Hellwig <hch@infradead.org>
-Subject: Re: Crash in 3.14.0+ (plus hacks)
-Message-ID: <20140425110409.GA27561@infradead.org>
-References: <5346D22A.10102@candelatech.com>
- <20140425104803.GD22295@fieldses.org>
+Received: from cantor2.suse.de ([195.135.220.15]:38862 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754228AbaDPETo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Apr 2014 00:19:44 -0400
+From: NeilBrown <neilb@suse.de>
+To: linux-mm@kvack.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Date: Wed, 16 Apr 2014 14:03:37 +1000
+Subject: [PATCH 16/19] VFS: use GFP_NOFS rather than GFP_KERNEL in __d_alloc.
+Cc: xfs@oss.sgi.com
+Message-ID: <20140416040337.10604.61837.stgit@notabene.brown>
+In-Reply-To: <20140416033623.10604.69237.stgit@notabene.brown>
+References: <20140416033623.10604.69237.stgit@notabene.brown>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140425104803.GD22295@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Apr 25, 2014 at 06:48:03AM -0400, J. Bruce Fields wrote:
-> On Thu, Apr 10, 2014 at 10:17:30AM -0700, Ben Greear wrote:
-> > This could be related to some changes I made to nfs, but in case the
-> > problem is obvious, here's the stack trace.
-> 
-> There's also a report here:
-> 
-> 	https://bugzilla.kernel.org/show_bug.cgi?id=74721
-> 
-> While I'm travelling, I'm cc'ing Christoph in case this might be a
-> consequence of his recent ACL cleanup?
+__d_alloc can be called with i_mutex held, so it is safer to
+use GFP_NOFS.
 
-Chuck already sent a patch in reply to this bug report:
+lockdep reports this can deadlock when loop-back NFS is in use,
+as nfsd may be required to write out for reclaim, and nfsd certainly
+takes i_mutex.
 
-	[PATCH] tmpfs: Fix simple_set_acl()
+Signed-off-by: NeilBrown <neilb@suse.de>
+---
+ fs/dcache.c |    4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/fs/dcache.c b/fs/dcache.c
+index ca02c13a84aa..3651ff6185b4 100644
+--- a/fs/dcache.c
++++ b/fs/dcache.c
+@@ -1483,7 +1483,7 @@ struct dentry *__d_alloc(struct super_block *sb, const struct qstr *name)
+ 	struct dentry *dentry;
+ 	char *dname;
+ 
+-	dentry = kmem_cache_alloc(dentry_cache, GFP_KERNEL);
++	dentry = kmem_cache_alloc(dentry_cache, GFP_NOFS);
+ 	if (!dentry)
+ 		return NULL;
+ 
+@@ -1495,7 +1495,7 @@ struct dentry *__d_alloc(struct super_block *sb, const struct qstr *name)
+ 	 */
+ 	dentry->d_iname[DNAME_INLINE_LEN-1] = 0;
+ 	if (name->len > DNAME_INLINE_LEN-1) {
+-		dname = kmalloc(name->len + 1, GFP_KERNEL);
++		dname = kmalloc(name->len + 1, GFP_NOFS);
+ 		if (!dname) {
+ 			kmem_cache_free(dentry_cache, dentry); 
+ 			return NULL;
+
 
