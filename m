@@ -1,115 +1,441 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cmexedge1.ext.emulex.com ([138.239.224.99]:24333 "EHLO
-	CMEXEDGE1.ext.emulex.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754309AbaDHAHf convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Apr 2014 20:07:35 -0400
-From: Devesh Sharma <Devesh.Sharma@Emulex.Com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>
-Subject: RE: [PATCH] NFS-RDMA: fix qp pointer validation checks
-Date: Tue, 8 Apr 2014 00:07:34 +0000
-Message-ID: <EE7902D3F51F404C82415C4803930ACD3FDE9B21@CMEXMB1.ad.emulex.com>
-References: <d4afd436-8e14-4729-9bc1-71ab9079a246@CMEXHTCAS1.ad.emulex.com>
- <61E8946F-3722-4707-A948-065D395C365A@primarydata.com>
- <EE7902D3F51F404C82415C4803930ACD3FDE9AE4@CMEXMB1.ad.emulex.com>
- <20CBB511-EB06-485E-A2F9-B8D66806D5B6@primarydata.com>
-In-Reply-To: <20CBB511-EB06-485E-A2F9-B8D66806D5B6@primarydata.com>
-Content-Type: text/plain; charset="us-ascii"
+Received: from mail-we0-f171.google.com ([74.125.82.171]:44420 "EHLO
+	mail-we0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754343AbaDPMsc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Apr 2014 08:48:32 -0400
+Received: by mail-we0-f171.google.com with SMTP id t61so10884768wes.30
+        for <linux-nfs@vger.kernel.org>; Wed, 16 Apr 2014 05:48:30 -0700 (PDT)
+Message-ID: <534E7C1C.5070407@dev.mellanox.co.il>
+Date: Wed, 16 Apr 2014 15:48:28 +0300
+From: Sagi Grimberg <sagig@dev.mellanox.co.il>
 MIME-Version: 1.0
+To: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
+        linux-rdma@vger.kernel.org
+Subject: Re: [PATCH 7/8] xprtrdma: Split the completion queue
+References: <20140414220041.20646.63991.stgit@manet.1015granger.net> <20140414222323.20646.66946.stgit@manet.1015granger.net>
+In-Reply-To: <20140414222323.20646.66946.stgit@manet.1015granger.net>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is the stack trace seen during one of the test cases where rdma_create_qp() made to fail deliberately and nfs-rdma client ended up in Panic. 
+On 4/15/2014 1:23 AM, Chuck Lever wrote:
+> The current CQ handler uses the ib_wc.opcode field to distinguish
+> between event types. However, the contents of that field are not
+> reliable if the completion status is not IB_WC_SUCCESS.
+>
+> When an error completion occurs on a send event, the CQ handler
+> schedules a tasklet with something that is not a struct rpcrdma_rep.
+> This is never correct behavior, and sometimes it results in a panic.
+>
+> To resolve this issue, split the completion queue into a send CQ and
+> a receive CQ. The send CQ handler now handles only struct rpcrdma_mw
+> wr_id's, and the receive CQ handler now handles only struct
+> rpcrdma_rep wr_id's.
 
-<3>ocrdma_mbx_create_qp(0) rq_err
-<3>ocrdma_mbx_create_qp(0) sq_err
-<3>ocrdma_create_qp(0) error=-22
-<1>BUG: unable to handle kernel NULL pointer dereference at 0000000000000040
-<1>IP: [<ffffffffa0265451>] ib_destroy_qp+0x21/0x120 [ib_core]
-<4>PGD 46427d067 PUD 456244067 PMD 0
-<4>Oops: 0000 [#1] SMP
-<4>last sysfs file: /sys/kernel/mm/ksm/run
-<4>CPU 8
-<4>Modules linked in: nfs lockd fscache auth_rpcgss nfs_acl xprtrdma(U) ocrdma(U) be2net(U) ip6table_filter ip6_tables ebtable_nat ebtables ipt_MASQUERADE iptable_nat nf_nat nf_conntrack_ipv4 nf_defrag_ipv4 xt_state nf_conntrack ipt_REJECT xt_CHECKSUM iptable_mangle iptable_filter ip_tables bridge stp llc autofs4 des_generic ecb md4 nls_utf8 cifs sunrpc rdma_ucm(U) rdma_cm(U) iw_cm(U) ib_addr(U) ib_ipoib(U) ib_cm(U) ib_sa(U) ipv6 ib_uverbs(U) ib_umad(U) iw_nes(U) libcrc32c iw_cxgb4(U) cxgb4(U) iw_cxgb3(U) cxgb3(U) mdio ib_qib(U) mlx4_en(U) mlx4_ib(U) mlx4_core(U) ib_mthca(U) ib_mad(U) ib_core(U) compat(U) vhost_net macvtap macvlan tun kvm uinput power_meter sg microcode i2c_i801 i2c_core iTCO_wdt iTCO_vendor_support igb ptp pps_core ioatdma dca i7core_edac edac_core ext3 jbd mbcache sr_mod cdrom sd_mod crc_t10dif usb_storage pata_acpi ata_generic ata_piix mptsas mptscsih mptbase scsi_transport_sas dm_mirror dm_region_hash dm_log dm_mod [last unloaded: be2net]
-<4>
-<4>Pid: 1697, comm: events/8 Not tainted 2.6.32-358.el6.x86_64 #1 Cisco Systems Inc R210-2121605W/R210-2121605W
-<4>RIP: 0010:[<ffffffffa0265451>]  [<ffffffffa0265451>] ib_destroy_qp+0x21/0x120 [ib_core]
-<4>RSP: 0018:ffff880467731cb0  EFLAGS: 00010282
-<4>RAX: ffff880467730000 RBX: ffff88046811e000 RCX: ffff88046313a040
-<4>RDX: 0000000000000000 RSI: 0000000000000001 RDI: 0000000000000000
-<4>RBP: ffff880467731ce0 R08: ffff880467731c78 R09: 0000000000000000
-<4>R10: 0000000000000000 R11: 0000000000000000 R12: ffff88046811e210
-<4>R13: 0000000000000000 R14: ffff880466696400 R15: ffffe8ffffb01d08
-<4>FS:  0000000000000000(0000) GS:ffff880036900000(0000) knlGS:0000000000000000
-<4>CS:  0010 DS: 0018 ES: 0018 CR0: 000000008005003b
-<4>CR2: 0000000000000040 CR3: 00000004624b8000 CR4: 00000000000007e0
-<4>DR0: 0000000000000000 DR1: 0000000000000000 DR2: 0000000000000000
-<4>DR3: 0000000000000000 DR6: 00000000ffff0ff0 DR7: 0000000000000400
-<4>Process events/8 (pid: 1697, threadinfo ffff880467730000, task ffff88046313a040)
-<4>Stack:
-<4> ffff8804679cd5b8 ffff88046811e000 ffff88046811e210 0000000000000000
-<4><d> ffff880466696400 ffffe8ffffb01d08 ffff880467731d00 ffffffffa0588f51
-<4><d> ffff8804679cd5e0 ffff8804679cd598 ffff880467731e10 ffffffffa02e9e75
-<4>Call Trace:
-<4> [<ffffffffa0588f51>] rdma_destroy_qp+0x31/0x50 [rdma_cm]
-<4> [<ffffffffa02e9e75>] rpcrdma_ep_connect+0x135/0x3e0 [xprtrdma]
-<4> [<ffffffff8150d6e0>] ? thread_return+0x4e/0x76e
-<4> [<ffffffffa05d06ae>] ? rpc_wake_up_task_queue_locked+0x18e/0x270 [sunrpc]
-<4> [<ffffffffa02e6ff0>] ? xprt_rdma_connect_worker+0x0/0xc0 [xprtrdma]
-<4> [<ffffffffa02e7032>] xprt_rdma_connect_worker+0x42/0xc0 [xprtrdma]
-<4> [<ffffffff81090ac0>] worker_thread+0x170/0x2a0
-<4> [<ffffffff81096c80>] ? autoremove_wake_function+0x0/0x40
-<4> [<ffffffff81090950>] ? worker_thread+0x0/0x2a0
-<4> [<ffffffff81096916>] kthread+0x96/0xa0
-<4> [<ffffffff8100c0ca>] child_rip+0xa/0x20
-<4> [<ffffffff81096880>] ? kthread+0x0/0xa0
-<4> [<ffffffff8100c0c0>] ? child_rip+0x0/0x20
-<4>Code: 65 f0 4c 8b 6d f8 c9 c3 66 90 55 48 89 e5 48 83 ec 30 48 89 5d d8 4c 89 65 e0 4c 89 6d e8 4c 89 75 f0 4c 89 7d f8 0f 1f 44 00 00 <8b> 57 40 b8 f0 ff ff ff 49 89 fe 85 d2 75 39 4c 8b 67 58 49 39
-<1>RIP  [<ffffffffa0265451>] ib_destroy_qp+0x21/0x120 [ib_core]
-<4> RSP <ffff880467731cb0>
-<4>CR2: 0000000000000040
+Hey Chuck,
 
------Original Message-----
-From: Trond Myklebust [mailto:trond.myklebust@primarydata.com] 
-Sent: Tuesday, April 08, 2014 5:31 AM
-To: Devesh Sharma
-Cc: linux-nfs@vger.kernel.org; linux-rdma@vger.kernel.org
-Subject: Re: [PATCH] NFS-RDMA: fix qp pointer validation checks
+So 2 suggestions related (although not directly) to this one.
 
+1. I recommend suppressing Fastreg completions - no one cares that they 
+succeeded.
 
-On Apr 7, 2014, at 19:45, Devesh Sharma <Devesh.Sharma@Emulex.Com> wrote:
+2. If I understood correctly, I see that the CQs are loop-polled in an 
+interrupt context.
+     This may become problematic in stress workload where the CQ simply 
+never drains (imagine
+     some studios task keeps posting WRs as soon as IOs complete). This 
+will cause CQ poll loop
+     to go on forever. This situation may cause starvation of other CQs 
+that share the same EQ (CPU
+     is hogged by the endless poller).
+     This may be solved in 2 ways:
+     - Use blk-iopoll to maintain fairness - the downside will be moving 
+from interrupt context to soft-irq (slower).
+     - Set some configurable budget to CQ poller - after finishing the 
+budget, notify the CQ and bail.
+       If there is another CQ waiting to get in - it's only fair that it 
+will be given with a chance, else another interrupt
+       on that CQ will immediately come.
 
-> Hi
-> Inline Below:
-> 
-> -----Original Message-----
-> From: Trond Myklebust [mailto:trond.myklebust@primarydata.com]
-> Sent: Tuesday, April 08, 2014 4:58 AM
-> To: Devesh Sharma
-> Cc: linux-nfs@vger.kernel.org; linux-rdma@vger.kernel.org
-> Subject: Re: [PATCH] NFS-RDMA: fix qp pointer validation checks
-> 
-> 
-> On Apr 7, 2014, at 18:30, devesh.sharma@emulex.com wrote:
-> 
->> From: Devesh Sharma <devesh.sharma@emulex.com>
->> 
->> If the rdma_create_qp fails to create qp due to device firmware being 
->> in invalid state xprtrdma still tries to destroy the non-existant qp 
->> and ends up in a NULL pointer reference crash.
->> Adding proper checks for vaidating QP pointer avoids this to happen.
->> 
-> 
-> As far as I can see, rdma_create_qp() only sets id->qp on success. Otherwise it is left with the same value as it had on entry (i.e. NULL). What am I missing?
-> [DS]: If you focus on rpcrdma_ep_connect() function and assume that rdma_create_qp() has failed with some valid error code, then this callback function will return ep->rep_connected = some non-zero.
-> Eventually xprt_rdma_connect_worker() will call rpcrdma_ep_connect() 
-> again and rpcrdma_ep_connect will try to free-up all the resources, now rdma_destroy_qp() will be called with invalid QP (which is NULL) pointer And hence kernel will panic. Please correct me if I am worng.
-> 
+     I noticed that one with iSER which polls from tasklet context 
+(under heavy workload).
 
-AFAICS your patch does nothing to address that problem. Instead it adds tests for IS_ERR(ia->ri_id->qp), which can never happen because ia->ri_id->qp is either NULL or points to a valid structure.
+Sagi.
 
-_________________________________
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData trond.myklebust@primarydata.com
+> Fix suggested by Shirley Ma <shirley.ma@oracle.com>
+>
+> Reported-by: Rafael Reiter <rafael.reiter@ims.co.at>
+> Fixes: 5c635e09cec0feeeb310968e51dad01040244851
+> BugLink: https://bugzilla.kernel.org/show_bug.cgi?id=73211
+> Tested-by: Klemens Senn <klemens.senn@ims.co.at>
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+>
+>   net/sunrpc/xprtrdma/verbs.c     |  228 +++++++++++++++++++++++----------------
+>   net/sunrpc/xprtrdma/xprt_rdma.h |    1
+>   2 files changed, 135 insertions(+), 94 deletions(-)
+>
+> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+> index 0f8c22c..35f5ab6 100644
+> --- a/net/sunrpc/xprtrdma/verbs.c
+> +++ b/net/sunrpc/xprtrdma/verbs.c
+> @@ -142,96 +142,113 @@ rpcrdma_cq_async_error_upcall(struct ib_event *event, void *context)
+>   	}
+>   }
+>   
+> -static inline
+> -void rpcrdma_event_process(struct ib_wc *wc)
+> +static void
+> +rpcrdma_send_event_process(struct ib_wc *wc)
+>   {
+> -	struct rpcrdma_mw *frmr;
+> -	struct rpcrdma_rep *rep =
+> -			(struct rpcrdma_rep *)(unsigned long) wc->wr_id;
+> +	struct rpcrdma_mw *frmr = (struct rpcrdma_mw *)(unsigned long)wc->wr_id;
+>   
+> -	dprintk("RPC:       %s: event rep %p status %X opcode %X length %u\n",
+> -		__func__, rep, wc->status, wc->opcode, wc->byte_len);
+> +	dprintk("RPC:       %s: frmr %p status %X opcode %d\n",
+> +		__func__, frmr, wc->status, wc->opcode);
+>   
+> -	if (!rep) /* send completion that we don't care about */
+> +	if (wc->wr_id == 0ULL)
+>   		return;
+> -
+> -	if (IB_WC_SUCCESS != wc->status) {
+> -		dprintk("RPC:       %s: WC opcode %d status %X, connection lost\n",
+> -			__func__, wc->opcode, wc->status);
+> -		rep->rr_len = ~0U;
+> -		if (wc->opcode != IB_WC_FAST_REG_MR && wc->opcode != IB_WC_LOCAL_INV)
+> -			rpcrdma_schedule_tasklet(rep);
+> +	if (wc->status != IB_WC_SUCCESS)
+>   		return;
+> -	}
+>   
+> -	switch (wc->opcode) {
+> -	case IB_WC_FAST_REG_MR:
+> -		frmr = (struct rpcrdma_mw *)(unsigned long)wc->wr_id;
+> +	if (wc->opcode == IB_WC_FAST_REG_MR)
+>   		frmr->r.frmr.state = FRMR_IS_VALID;
+> -		break;
+> -	case IB_WC_LOCAL_INV:
+> -		frmr = (struct rpcrdma_mw *)(unsigned long)wc->wr_id;
+> +	else if (wc->opcode == IB_WC_LOCAL_INV)
+>   		frmr->r.frmr.state = FRMR_IS_INVALID;
+> -		break;
+> -	case IB_WC_RECV:
+> -		rep->rr_len = wc->byte_len;
+> -		ib_dma_sync_single_for_cpu(
+> -			rdmab_to_ia(rep->rr_buffer)->ri_id->device,
+> -			rep->rr_iov.addr, rep->rr_len, DMA_FROM_DEVICE);
+> -		/* Keep (only) the most recent credits, after check validity */
+> -		if (rep->rr_len >= 16) {
+> -			struct rpcrdma_msg *p =
+> -					(struct rpcrdma_msg *) rep->rr_base;
+> -			unsigned int credits = ntohl(p->rm_credit);
+> -			if (credits == 0) {
+> -				dprintk("RPC:       %s: server"
+> -					" dropped credits to 0!\n", __func__);
+> -				/* don't deadlock */
+> -				credits = 1;
+> -			} else if (credits > rep->rr_buffer->rb_max_requests) {
+> -				dprintk("RPC:       %s: server"
+> -					" over-crediting: %d (%d)\n",
+> -					__func__, credits,
+> -					rep->rr_buffer->rb_max_requests);
+> -				credits = rep->rr_buffer->rb_max_requests;
+> -			}
+> -			atomic_set(&rep->rr_buffer->rb_credits, credits);
+> -		}
+> -		rpcrdma_schedule_tasklet(rep);
+> -		break;
+> -	default:
+> -		dprintk("RPC:       %s: unexpected WC event %X\n",
+> -			__func__, wc->opcode);
+> -		break;
+> -	}
+>   }
+>   
+> -static inline int
+> -rpcrdma_cq_poll(struct ib_cq *cq)
+> +static int
+> +rpcrdma_sendcq_poll(struct ib_cq *cq)
+>   {
+>   	struct ib_wc wc;
+>   	int rc;
+>   
+> -	for (;;) {
+> -		rc = ib_poll_cq(cq, 1, &wc);
+> -		if (rc < 0) {
+> -			dprintk("RPC:       %s: ib_poll_cq failed %i\n",
+> -				__func__, rc);
+> -			return rc;
+> -		}
+> -		if (rc == 0)
+> -			break;
+> +	while ((rc = ib_poll_cq(cq, 1, &wc)) == 1)
+> +		rpcrdma_send_event_process(&wc);
+> +	return rc;
+> +}
+>   
+> -		rpcrdma_event_process(&wc);
+> +/*
+> + * Handle send, fast_reg_mr, and local_inv completions.
+> + *
+> + * Send events are typically suppressed and thus do not result
+> + * in an upcall. Occasionally one is signaled, however. This
+> + * prevents the provider's completion queue from wrapping and
+> + * losing a completion.
+> + */
+> +static void
+> +rpcrdma_sendcq_upcall(struct ib_cq *cq, void *cq_context)
+> +{
+> +	int rc;
+> +
+> +	rc = rpcrdma_sendcq_poll(cq);
+> +	if (rc) {
+> +		dprintk("RPC:       %s: ib_poll_cq failed: %i\n",
+> +			__func__, rc);
+> +		return;
+>   	}
+> +	rc = ib_req_notify_cq(cq, IB_CQ_NEXT_COMP);
+> +	if (rc) {
+> +		dprintk("RPC:       %s: ib_req_notify_cq failed: %i\n",
+> +			__func__, rc);
+> +		return;
+> +	}
+> +	rpcrdma_sendcq_poll(cq);
+> +}
+>   
+> -	return 0;
+> +static void
+> +rpcrdma_recv_event_process(struct ib_wc *wc)
+> +{
+> +	struct rpcrdma_rep *rep =
+> +			(struct rpcrdma_rep *)(unsigned long)wc->wr_id;
+> +
+> +	dprintk("RPC:       %s: rep %p status %X opcode %X length %u\n",
+> +		__func__, rep, wc->status, wc->opcode, wc->byte_len);
+> +
+> +	if (wc->status != IB_WC_SUCCESS) {
+> +		rep->rr_len = ~0U;
+> +		goto out_schedule;
+> +	}
+> +	if (wc->opcode != IB_WC_RECV)
+> +		return;
+> +
+> +	rep->rr_len = wc->byte_len;
+> +	ib_dma_sync_single_for_cpu(rdmab_to_ia(rep->rr_buffer)->ri_id->device,
+> +			rep->rr_iov.addr, rep->rr_len, DMA_FROM_DEVICE);
+> +
+> +	if (rep->rr_len >= 16) {
+> +		struct rpcrdma_msg *p = (struct rpcrdma_msg *)rep->rr_base;
+> +		unsigned int credits = ntohl(p->rm_credit);
+> +
+> +		if (credits == 0)
+> +			credits = 1;	/* don't deadlock */
+> +		else if (credits > rep->rr_buffer->rb_max_requests)
+> +			credits = rep->rr_buffer->rb_max_requests;
+> +		atomic_set(&rep->rr_buffer->rb_credits, credits);
+> +	}
+> +
+> +out_schedule:
+> +	rpcrdma_schedule_tasklet(rep);
+> +}
+> +
+> +static int
+> +rpcrdma_recvcq_poll(struct ib_cq *cq)
+> +{
+> +	struct ib_wc wc;
+> +	int rc;
+> +
+> +	while ((rc = ib_poll_cq(cq, 1, &wc)) == 1)
+> +		rpcrdma_recv_event_process(&wc);
+> +	return rc;
+>   }
+>   
+>   /*
+> - * rpcrdma_cq_event_upcall
+> + * Handle receive completions.
+>    *
+> - * This upcall handles recv and send events.
+>    * It is reentrant but processes single events in order to maintain
+>    * ordering of receives to keep server credits.
+>    *
+> @@ -240,26 +257,25 @@ rpcrdma_cq_poll(struct ib_cq *cq)
+>    * connection shutdown. That is, the structures required for
+>    * the completion of the reply handler must remain intact until
+>    * all memory has been reclaimed.
+> - *
+> - * Note that send events are suppressed and do not result in an upcall.
+>    */
+>   static void
+> -rpcrdma_cq_event_upcall(struct ib_cq *cq, void *context)
+> +rpcrdma_recvcq_upcall(struct ib_cq *cq, void *cq_context)
+>   {
+>   	int rc;
+>   
+> -	rc = rpcrdma_cq_poll(cq);
+> -	if (rc)
+> +	rc = rpcrdma_recvcq_poll(cq);
+> +	if (rc) {
+> +		dprintk("RPC:       %s: ib_poll_cq failed: %i\n",
+> +			__func__, rc);
+>   		return;
+> -
+> +	}
+>   	rc = ib_req_notify_cq(cq, IB_CQ_NEXT_COMP);
+>   	if (rc) {
+> -		dprintk("RPC:       %s: ib_req_notify_cq failed %i\n",
+> +		dprintk("RPC:       %s: ib_req_notify_cq failed: %i\n",
+>   			__func__, rc);
+>   		return;
+>   	}
+> -
+> -	rpcrdma_cq_poll(cq);
+> +	rpcrdma_recvcq_poll(cq);
+>   }
+>   
+>   #ifdef RPC_DEBUG
+> @@ -613,6 +629,7 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
+>   				struct rpcrdma_create_data_internal *cdata)
+>   {
+>   	struct ib_device_attr devattr;
+> +	struct ib_cq *sendcq, *recvcq;
+>   	int rc, err;
+>   
+>   	rc = ib_query_device(ia->ri_id->device, &devattr);
+> @@ -688,7 +705,7 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
+>   		ep->rep_attr.cap.max_recv_sge);
+>   
+>   	/* set trigger for requesting send completion */
+> -	ep->rep_cqinit = ep->rep_attr.cap.max_send_wr/2 /*  - 1*/;
+> +	ep->rep_cqinit = ep->rep_attr.cap.max_send_wr/2 - 1;
+>   	if (ep->rep_cqinit <= 2)
+>   		ep->rep_cqinit = 0;
+>   	INIT_CQCOUNT(ep);
+> @@ -696,26 +713,43 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
+>   	init_waitqueue_head(&ep->rep_connect_wait);
+>   	INIT_DELAYED_WORK(&ep->rep_connect_worker, rpcrdma_connect_worker);
+>   
+> -	ep->rep_cq = ib_create_cq(ia->ri_id->device, rpcrdma_cq_event_upcall,
+> +	sendcq = ib_create_cq(ia->ri_id->device, rpcrdma_sendcq_upcall,
+>   				  rpcrdma_cq_async_error_upcall, NULL,
+> -				  ep->rep_attr.cap.max_recv_wr +
+>   				  ep->rep_attr.cap.max_send_wr + 1, 0);
+> -	if (IS_ERR(ep->rep_cq)) {
+> -		rc = PTR_ERR(ep->rep_cq);
+> -		dprintk("RPC:       %s: ib_create_cq failed: %i\n",
+> +	if (IS_ERR(sendcq)) {
+> +		rc = PTR_ERR(sendcq);
+> +		dprintk("RPC:       %s: failed to create send CQ: %i\n",
+>   			__func__, rc);
+>   		goto out1;
+>   	}
+>   
+> -	rc = ib_req_notify_cq(ep->rep_cq, IB_CQ_NEXT_COMP);
+> +	rc = ib_req_notify_cq(sendcq, IB_CQ_NEXT_COMP);
+>   	if (rc) {
+>   		dprintk("RPC:       %s: ib_req_notify_cq failed: %i\n",
+>   			__func__, rc);
+>   		goto out2;
+>   	}
+>   
+> -	ep->rep_attr.send_cq = ep->rep_cq;
+> -	ep->rep_attr.recv_cq = ep->rep_cq;
+> +	recvcq = ib_create_cq(ia->ri_id->device, rpcrdma_recvcq_upcall,
+> +				  rpcrdma_cq_async_error_upcall, NULL,
+> +				  ep->rep_attr.cap.max_recv_wr + 1, 0);
+> +	if (IS_ERR(recvcq)) {
+> +		rc = PTR_ERR(recvcq);
+> +		dprintk("RPC:       %s: failed to create recv CQ: %i\n",
+> +			__func__, rc);
+> +		goto out2;
+> +	}
+> +
+> +	rc = ib_req_notify_cq(recvcq, IB_CQ_NEXT_COMP);
+> +	if (rc) {
+> +		dprintk("RPC:       %s: ib_req_notify_cq failed: %i\n",
+> +			__func__, rc);
+> +		ib_destroy_cq(recvcq);
+> +		goto out2;
+> +	}
+> +
+> +	ep->rep_attr.send_cq = sendcq;
+> +	ep->rep_attr.recv_cq = recvcq;
+>   
+>   	/* Initialize cma parameters */
+>   
+> @@ -737,7 +771,7 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
+>   	return 0;
+>   
+>   out2:
+> -	err = ib_destroy_cq(ep->rep_cq);
+> +	err = ib_destroy_cq(sendcq);
+>   	if (err)
+>   		dprintk("RPC:       %s: ib_destroy_cq returned %i\n",
+>   			__func__, err);
+> @@ -777,8 +811,14 @@ rpcrdma_ep_destroy(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
+>   		ep->rep_pad_mr = NULL;
+>   	}
+>   
+> -	rpcrdma_clean_cq(ep->rep_cq);
+> -	rc = ib_destroy_cq(ep->rep_cq);
+> +	rpcrdma_clean_cq(ep->rep_attr.recv_cq);
+> +	rc = ib_destroy_cq(ep->rep_attr.recv_cq);
+> +	if (rc)
+> +		dprintk("RPC:       %s: ib_destroy_cq returned %i\n",
+> +			__func__, rc);
+> +
+> +	rpcrdma_clean_cq(ep->rep_attr.send_cq);
+> +	rc = ib_destroy_cq(ep->rep_attr.send_cq);
+>   	if (rc)
+>   		dprintk("RPC:       %s: ib_destroy_cq returned %i\n",
+>   			__func__, rc);
+> @@ -801,7 +841,9 @@ retry:
+>   		if (rc && rc != -ENOTCONN)
+>   			dprintk("RPC:       %s: rpcrdma_ep_disconnect"
+>   				" status %i\n", __func__, rc);
+> -		rpcrdma_clean_cq(ep->rep_cq);
+> +
+> +		rpcrdma_clean_cq(ep->rep_attr.recv_cq);
+> +		rpcrdma_clean_cq(ep->rep_attr.send_cq);
+>   
+>   		xprt = container_of(ia, struct rpcrdma_xprt, rx_ia);
+>   		id = rpcrdma_create_id(xprt, ia,
+> @@ -910,7 +952,8 @@ rpcrdma_ep_disconnect(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
+>   {
+>   	int rc;
+>   
+> -	rpcrdma_clean_cq(ep->rep_cq);
+> +	rpcrdma_clean_cq(ep->rep_attr.recv_cq);
+> +	rpcrdma_clean_cq(ep->rep_attr.send_cq);
+>   	rc = rdma_disconnect(ia->ri_id);
+>   	if (!rc) {
+>   		/* returns without wait if not connected */
+> @@ -1793,7 +1836,6 @@ rpcrdma_ep_post_recv(struct rpcrdma_ia *ia,
+>   	ib_dma_sync_single_for_cpu(ia->ri_id->device,
+>   		rep->rr_iov.addr, rep->rr_iov.length, DMA_BIDIRECTIONAL);
+>   
+> -	DECR_CQCOUNT(ep);
+>   	rc = ib_post_recv(ia->ri_id->qp, &recv_wr, &recv_wr_fail);
+>   
+>   	if (rc)
+> diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+> index 362a19d..334ab6e 100644
+> --- a/net/sunrpc/xprtrdma/xprt_rdma.h
+> +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+> @@ -79,7 +79,6 @@ struct rpcrdma_ep {
+>   	int			rep_cqinit;
+>   	int			rep_connected;
+>   	struct rpcrdma_ia	*rep_ia;
+> -	struct ib_cq		*rep_cq;
+>   	struct ib_qp_init_attr	rep_attr;
+>   	wait_queue_head_t 	rep_connect_wait;
+>   	struct ib_sge		rep_pad;	/* holds zeroed pad */
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
