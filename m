@@ -1,194 +1,231 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e23smtp02.au.ibm.com ([202.81.31.144]:55917 "EHLO
-	e23smtp02.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753520AbaD0QQH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Apr 2014 12:16:07 -0400
-Received: from /spool/local
-	by e23smtp02.au.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <aneesh.kumar@linux.vnet.ibm.com>;
-	Mon, 28 Apr 2014 02:16:06 +1000
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
-        viro@zeniv.linux.org.uk, dhowells@redhat.com
-Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH -V1 17/22] richacl: Automatic Inheritance
-Date: Sun, 27 Apr 2014 21:44:48 +0530
-Message-Id: <1398615293-22931-18-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-In-Reply-To: <1398615293-22931-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1398615293-22931-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from casper.infradead.org ([85.118.1.10]:57762 "EHLO
+	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756126AbaDPNFP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Apr 2014 09:05:15 -0400
+From: Christoph Hellwig <hch@lst.de>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Anna Schumaker <Anna.Schumaker@netapp.com>, linux-nfs@vger.kernel.org
+Subject: [PATCH 1/2] nfs: remove ->write_pageio_init from rpc ops
+Date: Wed, 16 Apr 2014 15:07:21 +0200
+Message-Id: <1397653642-17833-2-git-send-email-hch@lst.de>
+In-Reply-To: <1397653642-17833-1-git-send-email-hch@lst.de>
+References: <1397653642-17833-1-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andreas Gruenbacher <agruen@kernel.org>
+The write_pageio_init method is just a very convoluted way to grab the
+right nfs_pageio_ops vector.  The vector to chose is not a choice of
+protocol version, but just a pNFS vs MDS I/O choice that can simply be
+done inside nfs_pageio_init_write based on the presence of a layout
+driver, and a new force_mds flag to the special case of falling back
+to MDS I/O on a pNFS-capable volume.
 
-Automatic Inheritance (AI) allows changes to the acl of a directory to
-recursively propagate down to files and directories in the directory.
-
-To implement this, the kernel keeps track of which permissions have been
-inherited, and makes sure that permission propagation is turned off when
-the file permission bits of a file are changed (upon create or chmod).
-
-The actual permission propagation is implemented in user space.
-
-AI works as follows:
-
- - When the ACL4_AUTO_INHERIT flag in the acl of a file is cleared, the
-   file is not affected by AI.
-
- - When the ACL4_AUTO_INHERIT flag in the acl of a directory is set and
-   a file or subdirectory is created in that directory, files created in
-   the directory will have the ACL4_AUTO_INHERIT flag set, and all
-   inherited aces will have the ACE4_INHERITED_ACE flag set.  This
-   allows user space to distinguish between aces which have been
-   inherited, and aces which have been explicitly added.
-
- - When the ACL4_PROTECTED acl flag in the acl of a file is set, AI will
-   not modify the acl of the file.  This does not affect propagation of
-   permissions from the file to its children (if the file is a
-   directory).
-
-Linux does not have a way of creating files without setting the file
-permission bits, so all files created inside a directory with
-ACL4_AUTO_INHERIT set will also have the ACL4_PROTECTED flag set.  This
-effectively disables AI.
-
-Protocols which support creating files without specifying permissions
-can explicitly clear the ACL4_PROTECTED flag after creating a file (and
-reset the file masks to "undo" applying the create mode; see
-richacl_compute_max_masks()).  This is a workaround; a per-create or
-per-process flag indicating to ignore the create mode when AI is in
-effect would fix this problem.
-
-Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/richacl_base.c       | 10 +++++++++-
- fs/richacl_inode.c      |  7 ++++++-
- include/linux/richacl.h | 23 ++++++++++++++++++++++-
- 3 files changed, 37 insertions(+), 3 deletions(-)
+ fs/nfs/direct.c         |    4 ++--
+ fs/nfs/internal.h       |    2 +-
+ fs/nfs/nfs3proc.c       |    1 -
+ fs/nfs/nfs4proc.c       |    1 -
+ fs/nfs/pnfs.c           |   16 +---------------
+ fs/nfs/pnfs.h           |    8 --------
+ fs/nfs/proc.c           |    1 -
+ fs/nfs/write.c          |   21 +++++++++++++--------
+ include/linux/nfs_xdr.h |    2 --
+ 9 files changed, 17 insertions(+), 39 deletions(-)
 
-diff --git a/fs/richacl_base.c b/fs/richacl_base.c
-index 5d777f6b8a61..d3beaacf6b9b 100644
---- a/fs/richacl_base.c
-+++ b/fs/richacl_base.c
-@@ -336,7 +336,8 @@ richacl_chmod(struct richacl *acl, mode_t mode)
- 	if (acl->a_owner_mask == owner_mask &&
- 	    acl->a_group_mask == group_mask &&
- 	    acl->a_other_mask == other_mask &&
--	    (acl->a_flags & ACL4_MASKED))
-+	    (acl->a_flags & ACL4_MASKED) &&
-+	    (!richacl_is_auto_inherit(acl) || richacl_is_protected(acl)))
- 		return acl;
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index b8797ae..6a31102 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -564,7 +564,7 @@ static void nfs_direct_write_reschedule(struct nfs_direct_req *dreq)
+ 	dreq->count = 0;
+ 	get_dreq(dreq);
  
- 	clone = richacl_clone(acl);
-@@ -348,6 +349,8 @@ richacl_chmod(struct richacl *acl, mode_t mode)
- 	clone->a_owner_mask = owner_mask;
- 	clone->a_group_mask = group_mask;
- 	clone->a_other_mask = other_mask;
-+	if (richacl_is_auto_inherit(clone))
-+		clone->a_flags |= ACL4_PROTECTED;
+-	NFS_PROTO(dreq->inode)->write_pageio_init(&desc, dreq->inode, FLUSH_STABLE,
++	nfs_pageio_init_write(&desc, dreq->inode, FLUSH_STABLE, false,
+ 			      &nfs_direct_write_completion_ops);
+ 	desc.pg_dreq = dreq;
  
- 	return clone;
+@@ -874,7 +874,7 @@ static ssize_t nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
+ 	size_t requested_bytes = 0;
+ 	unsigned long seg;
+ 
+-	NFS_PROTO(inode)->write_pageio_init(&desc, inode, FLUSH_COND_STABLE,
++	nfs_pageio_init_write(&desc, inode, FLUSH_COND_STABLE, false,
+ 			      &nfs_direct_write_completion_ops);
+ 	desc.pg_dreq = dreq;
+ 	get_dreq(dreq);
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index dd8bfc2..8431083 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -422,7 +422,7 @@ int nfs_remount(struct super_block *sb, int *flags, char *raw_data);
+ 
+ /* write.c */
+ extern void nfs_pageio_init_write(struct nfs_pageio_descriptor *pgio,
+-			struct inode *inode, int ioflags,
++			struct inode *inode, int ioflags, bool force_mds,
+ 			const struct nfs_pgio_completion_ops *compl_ops);
+ extern struct nfs_write_header *nfs_writehdr_alloc(void);
+ extern void nfs_writehdr_free(struct nfs_pgio_header *hdr);
+diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
+index db60149..e984880 100644
+--- a/fs/nfs/nfs3proc.c
++++ b/fs/nfs/nfs3proc.c
+@@ -951,7 +951,6 @@ const struct nfs_rpc_ops nfs_v3_clientops = {
+ 	.read_rpc_prepare = nfs3_proc_read_rpc_prepare,
+ 	.read_done	= nfs3_read_done,
+ 	.write_setup	= nfs3_proc_write_setup,
+-	.write_pageio_init = nfs_pageio_init_write,
+ 	.write_rpc_prepare = nfs3_proc_write_rpc_prepare,
+ 	.write_done	= nfs3_write_done,
+ 	.commit_setup	= nfs3_proc_commit_setup,
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 397be39..8da0c62 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -8437,7 +8437,6 @@ const struct nfs_rpc_ops nfs_v4_clientops = {
+ 	.read_rpc_prepare = nfs4_proc_read_rpc_prepare,
+ 	.read_done	= nfs4_read_done,
+ 	.write_setup	= nfs4_proc_write_setup,
+-	.write_pageio_init = pnfs_pageio_init_write,
+ 	.write_rpc_prepare = nfs4_proc_write_rpc_prepare,
+ 	.write_done	= nfs4_write_done,
+ 	.commit_setup	= nfs4_proc_commit_setup,
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index cb53d45..9edac9f 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1447,20 +1447,6 @@ pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio, struct inode *inode,
+ 		nfs_pageio_init(pgio, inode, ld->pg_read_ops, compl_ops, server->rsize, 0);
  }
-@@ -520,6 +523,11 @@ richacl_inherit(const struct richacl *dir_acl, int isdir)
- 			ace++;
- 		}
- 	}
-+	if (richacl_is_auto_inherit(dir_acl)) {
-+		acl->a_flags = ACL4_AUTO_INHERIT;
-+		richacl_for_each_entry(ace, acl)
-+			ace->e_flags |= ACE4_INHERITED_ACE;
-+	}
  
- 	return acl;
- }
-diff --git a/fs/richacl_inode.c b/fs/richacl_inode.c
-index f590fb526812..c1297ad909dc 100644
---- a/fs/richacl_inode.c
-+++ b/fs/richacl_inode.c
-@@ -37,9 +37,14 @@ richacl_inherit_inode(const struct richacl *dir_acl, struct inode *inode)
- 
- 	acl = richacl_inherit(dir_acl, S_ISDIR(inode->i_mode));
- 	if (acl) {
-+		/*
-+		 * We need to set ACL4_PROTECTED because we are
-+		 * doing an implicit chmod
-+		 */
-+		if (richacl_is_auto_inherit(acl))
-+			acl->a_flags |= ACL4_PROTECTED;
- 
- 		richacl_compute_max_masks(acl);
+-void
+-pnfs_pageio_init_write(struct nfs_pageio_descriptor *pgio, struct inode *inode,
+-		       int ioflags,
+-		       const struct nfs_pgio_completion_ops *compl_ops)
+-{
+-	struct nfs_server *server = NFS_SERVER(inode);
+-	struct pnfs_layoutdriver_type *ld = server->pnfs_curr_ld;
 -
- 		/*
- 		 * Ensure that the acl will not grant any permissions beyond
- 		 * the create mode.
-diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-index 7ac6587cb166..88f95d78b897 100644
---- a/include/linux/richacl.h
-+++ b/include/linux/richacl.h
-@@ -48,10 +48,16 @@ struct richacl {
- 	     _ace != _acl->a_entries - 1; \
- 	     _ace--)
+-	if (ld == NULL)
+-		nfs_pageio_init_write(pgio, inode, ioflags, compl_ops);
+-	else
+-		nfs_pageio_init(pgio, inode, ld->pg_write_ops, compl_ops, server->wsize, ioflags);
+-}
+-
+ bool
+ pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+ 		     struct nfs_page *req)
+@@ -1496,7 +1482,7 @@ int pnfs_write_done_resend_to_mds(struct inode *inode,
+ 	LIST_HEAD(failed);
  
-+/* a_flags values */
-+#define ACL4_AUTO_INHERIT		0x01
-+#define ACL4_PROTECTED			0x02
-+/* #define ACL4_DEFAULTED			0x04 */
- /* Flag values defined by rich-acl */
- #define ACL4_MASKED			0x80
+ 	/* Resend all requests through the MDS */
+-	nfs_pageio_init_write(&pgio, inode, FLUSH_STABLE, compl_ops);
++	nfs_pageio_init_write(&pgio, inode, FLUSH_STABLE, true, compl_ops);
+ 	pgio.pg_dreq = dreq;
+ 	while (!list_empty(head)) {
+ 		struct nfs_page *req = nfs_list_entry(head->next);
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 0237939..e9ac8fb 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -182,8 +182,6 @@ void pnfs_put_lseg(struct pnfs_layout_segment *lseg);
  
- #define ACL4_VALID_FLAGS (			\
-+		ACL4_AUTO_INHERIT |		\
-+		ACL4_PROTECTED |		\
- 		ACL4_MASKED)
+ void pnfs_pageio_init_read(struct nfs_pageio_descriptor *, struct inode *,
+ 			   const struct nfs_pgio_completion_ops *);
+-void pnfs_pageio_init_write(struct nfs_pageio_descriptor *, struct inode *,
+-			    int, const struct nfs_pgio_completion_ops *);
  
- /* e_type values */
-@@ -68,6 +74,7 @@ struct richacl {
- /*#define ACE4_SUCCESSFUL_ACCESS_ACE_FLAG	0x0010*/
- /*#define ACE4_FAILED_ACCESS_ACE_FLAG	0x0020*/
- #define ACE4_IDENTIFIER_GROUP		0x0040
-+#define ACE4_INHERITED_ACE		0x0080
- /* richacl specific flag values */
- #define ACE4_SPECIAL_WHO		0x4000
- 
-@@ -77,6 +84,7 @@ struct richacl {
- 	ACE4_NO_PROPAGATE_INHERIT_ACE |		\
- 	ACE4_INHERIT_ONLY_ACE |			\
- 	ACE4_IDENTIFIER_GROUP |			\
-+	ACE4_INHERITED_ACE |			\
- 	ACE4_SPECIAL_WHO)
- 
- /* e_mask bitflags */
-@@ -183,6 +191,18 @@ richacl_put(struct richacl *acl)
- 		kfree(acl);
+ void set_pnfs_layoutdriver(struct nfs_server *, const struct nfs_fh *, u32);
+ void unset_pnfs_layoutdriver(struct nfs_server *);
+@@ -467,12 +465,6 @@ static inline void pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio, str
+ 	nfs_pageio_init_read(pgio, inode, compl_ops);
  }
  
-+static inline int
-+richacl_is_auto_inherit(const struct richacl *acl)
-+{
-+	return acl->a_flags & ACL4_AUTO_INHERIT;
-+}
-+
-+static inline int
-+richacl_is_protected(const struct richacl *acl)
-+{
-+	return acl->a_flags & ACL4_PROTECTED;
-+}
-+
- /**
-  * richace_is_owner  -  check if @ace is an OWNER@ entry
-  */
-@@ -253,7 +273,8 @@ richace_clear_inheritance_flags(struct richace *ace)
- 	ace->e_flags &= ~(ACE4_FILE_INHERIT_ACE |
- 			  ACE4_DIRECTORY_INHERIT_ACE |
- 			  ACE4_NO_PROPAGATE_INHERIT_ACE |
--			  ACE4_INHERIT_ONLY_ACE);
-+			  ACE4_INHERIT_ONLY_ACE |
-+			  ACE4_INHERITED_ACE);
- }
+-static inline void pnfs_pageio_init_write(struct nfs_pageio_descriptor *pgio, struct inode *inode, int ioflags,
+-					  const struct nfs_pgio_completion_ops *compl_ops)
+-{
+-	nfs_pageio_init_write(pgio, inode, ioflags, compl_ops);
+-}
+-
+ static inline int
+ pnfs_commit_list(struct inode *inode, struct list_head *mds_pages, int how,
+ 		 struct nfs_commit_info *cinfo)
+diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
+index e55ce9e..f9cc295 100644
+--- a/fs/nfs/proc.c
++++ b/fs/nfs/proc.c
+@@ -739,7 +739,6 @@ const struct nfs_rpc_ops nfs_v2_clientops = {
+ 	.read_rpc_prepare = nfs_proc_read_rpc_prepare,
+ 	.read_done	= nfs_read_done,
+ 	.write_setup	= nfs_proc_write_setup,
+-	.write_pageio_init = nfs_pageio_init_write,
+ 	.write_rpc_prepare = nfs_proc_write_rpc_prepare,
+ 	.write_done	= nfs_write_done,
+ 	.commit_setup	= nfs_proc_commit_setup,
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 9a3b6a4..0bd1724 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -354,10 +354,8 @@ static int nfs_writepage_locked(struct page *page, struct writeback_control *wbc
+ 	struct nfs_pageio_descriptor pgio;
+ 	int err;
  
- /**
+-	NFS_PROTO(page_file_mapping(page)->host)->write_pageio_init(&pgio,
+-							  page->mapping->host,
+-							  wb_priority(wbc),
+-							  &nfs_async_write_completion_ops);
++	nfs_pageio_init_write(&pgio, page->mapping->host, wb_priority(wbc),
++				false, &nfs_async_write_completion_ops);
+ 	err = nfs_do_writepage(page, wbc, &pgio);
+ 	nfs_pageio_complete(&pgio);
+ 	if (err < 0)
+@@ -400,7 +398,8 @@ int nfs_writepages(struct address_space *mapping, struct writeback_control *wbc)
+ 
+ 	nfs_inc_stats(inode, NFSIOS_VFSWRITEPAGES);
+ 
+-	NFS_PROTO(inode)->write_pageio_init(&pgio, inode, wb_priority(wbc), &nfs_async_write_completion_ops);
++	nfs_pageio_init_write(&pgio, inode, wb_priority(wbc), false,
++				&nfs_async_write_completion_ops);
+ 	err = write_cache_pages(mapping, wbc, nfs_writepages_callback, &pgio);
+ 	nfs_pageio_complete(&pgio);
+ 
+@@ -1282,11 +1281,17 @@ static const struct nfs_pageio_ops nfs_pageio_write_ops = {
+ };
+ 
+ void nfs_pageio_init_write(struct nfs_pageio_descriptor *pgio,
+-			       struct inode *inode, int ioflags,
++			       struct inode *inode, int ioflags, bool force_mds,
+ 			       const struct nfs_pgio_completion_ops *compl_ops)
+ {
+-	nfs_pageio_init(pgio, inode, &nfs_pageio_write_ops, compl_ops,
+-				NFS_SERVER(inode)->wsize, ioflags);
++	struct nfs_server *server = NFS_SERVER(inode);
++	const struct nfs_pageio_ops *pg_ops = &nfs_pageio_write_ops;
++
++#ifdef CONFIG_NFS_V4_1
++	if (server->pnfs_curr_ld && !force_mds)
++		pg_ops = server->pnfs_curr_ld->pg_write_ops;
++#endif
++	nfs_pageio_init(pgio, inode, pg_ops, compl_ops, server->wsize, ioflags);
+ }
+ EXPORT_SYMBOL_GPL(nfs_pageio_init_write);
+ 
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 6fb5b23..78216f8 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1471,8 +1471,6 @@ struct nfs_rpc_ops {
+ 	int	(*read_rpc_prepare)(struct rpc_task *, struct nfs_read_data *);
+ 	int	(*read_done)  (struct rpc_task *, struct nfs_read_data *);
+ 	void	(*write_setup)  (struct nfs_write_data *, struct rpc_message *);
+-	void	(*write_pageio_init)(struct nfs_pageio_descriptor *, struct inode *, int,
+-				     const struct nfs_pgio_completion_ops *);
+ 	int	(*write_rpc_prepare)(struct rpc_task *, struct nfs_write_data *);
+ 	int	(*write_done)  (struct rpc_task *, struct nfs_write_data *);
+ 	void	(*commit_setup) (struct nfs_commit_data *, struct rpc_message *);
 -- 
-1.9.1
+1.7.10.4
 
