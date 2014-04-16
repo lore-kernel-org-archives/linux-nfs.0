@@ -1,54 +1,91 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ob0-f182.google.com ([209.85.214.182]:42132 "EHLO
-	mail-ob0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751185AbaDOO1T (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Apr 2014 10:27:19 -0400
-Received: by mail-ob0-f182.google.com with SMTP id uz6so10770067obc.41
-        for <linux-nfs@vger.kernel.org>; Tue, 15 Apr 2014 07:27:18 -0700 (PDT)
-Message-ID: <1397572034.4709.2.camel@leira.trondhjem.org>
-Subject: Re: [PATCH] NFS: Fix memroy leak for double mounts
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: Alexander Viro <viro@zeniv.linux.org.uk>, linux-nfs@vger.kernel.org
-Date: Tue, 15 Apr 2014 10:27:14 -0400
-In-Reply-To: <534CFA73.4040801@gmail.com>
-References: <534CFA73.4040801@gmail.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:37560 "EHLO
+	ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751413AbaDPFie (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Apr 2014 01:38:34 -0400
+Date: Wed, 16 Apr 2014 15:37:56 +1000
+From: Dave Chinner <david@fromorbit.com>
+To: NeilBrown <neilb@suse.de>
+Cc: linux-mm@kvack.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, Ming Lei <ming.lei@canonical.com>,
+        xfs@oss.sgi.com
+Subject: Re: [PATCH 04/19] Make effect of PF_FSTRANS to disable __GFP_FS
+ universal.
+Message-ID: <20140416053756.GC15995@dastard>
+References: <20140416033623.10604.69237.stgit@notabene.brown>
+ <20140416040336.10604.58240.stgit@notabene.brown>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140416040336.10604.58240.stgit@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2014-04-15 at 17:22 +0800, Kinglong Mee wrote:
-> When double mounting same nfs filesystem, the devname saved in d_fsdata
-> will be lost.The second mount should not change the devname that
-> be saved in d_fsdata.
+On Wed, Apr 16, 2014 at 02:03:36PM +1000, NeilBrown wrote:
+> Currently both xfs and nfs will handle PF_FSTRANS by disabling
+> __GFP_FS.
 > 
-> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-> ---
->  fs/nfs/getroot.c | 3 ++-
->  1 file changed, 2 insertions(+), 1 deletion(-)
+> Make this effect global by repurposing memalloc_noio_flags (which
+> does the same thing for PF_MEMALLOC_NOIO and __GFP_IO) to generally
+> impost the task flags on a gfp_t.
+> Due to this repurposing we change the name of memalloc_noio_flags
+> to gfp_from_current().
 > 
-> diff --git a/fs/nfs/getroot.c b/fs/nfs/getroot.c
-> index 66984a9..b94f804 100644
-> --- a/fs/nfs/getroot.c
-> +++ b/fs/nfs/getroot.c
-> @@ -120,7 +120,8 @@ struct dentry *nfs_get_root(struct super_block *sb,
-> struct nfs_fh *mntfh,
+> As PF_FSTRANS now uniformly removes __GFP_FS we can remove special
+> code for this from xfs and nfs.
 > 
->  	security_d_instantiate(ret, inode);
->  	spin_lock(&ret->d_lock);
-> -	if (IS_ROOT(ret) && !(ret->d_flags & DCACHE_NFSFS_RENAMED)) {
-> +	if (IS_ROOT(ret) && !ret->d_fsdata &&
-> +	    !(ret->d_flags & DCACHE_NFSFS_RENAMED)) {
->  		ret->d_fsdata = name;
->  		name = NULL;
+> As we can now expect other code to set PF_FSTRANS, its meaning is more
+> general, so the WARN_ON in xfs_vm_writepage() which checks PF_FSTRANS
+> is not set is no longer appropriate.  PF_FSTRANS may be set for other
+> reasons than an XFS transaction.
+
+So PF_FSTRANS no longer means "filesystem in transaction context".
+Are you going to rename to match whatever it's meaning is now?
+I'm not exactly clear on what it means now...
+
+
+> As lockdep cares about __GFP_FS, we need to translate PF_FSTRANS to
+> __GFP_FS before calling lockdep_alloc_trace() in various places.
+> 
+> Signed-off-by: NeilBrown <neilb@suse.de>
+....
+> diff --git a/fs/xfs/kmem.h b/fs/xfs/kmem.h
+> index 64db0e53edea..882b86270ebe 100644
+> --- a/fs/xfs/kmem.h
+> +++ b/fs/xfs/kmem.h
+> @@ -50,8 +50,6 @@ kmem_flags_convert(xfs_km_flags_t flags)
+>  		lflags = GFP_ATOMIC | __GFP_NOWARN;
+>  	} else {
+>  		lflags = GFP_KERNEL | __GFP_NOWARN;
+> -		if ((current->flags & PF_FSTRANS) || (flags & KM_NOFS))
+> -			lflags &= ~__GFP_FS;
 >  	}
 
-Applied. Thanks!
+I think KM_NOFS needs to remain here, as it has use outside of
+transaction contexts that set PF_FSTRANS....
 
+>  	if (flags & KM_ZERO)
+> diff --git a/fs/xfs/xfs_aops.c b/fs/xfs/xfs_aops.c
+> index db2cfb067d0b..207a7f86d5d7 100644
+> --- a/fs/xfs/xfs_aops.c
+> +++ b/fs/xfs/xfs_aops.c
+> @@ -952,13 +952,6 @@ xfs_vm_writepage(
+>  			PF_MEMALLOC))
+>  		goto redirty;
+>  
+> -	/*
+> -	 * Given that we do not allow direct reclaim to call us, we should
+> -	 * never be called while in a filesystem transaction.
+> -	 */
+> -	if (WARN_ON(current->flags & PF_FSTRANS))
+> -		goto redirty;
+
+We still need to ensure this rule isn't broken. If it is, the
+filesystem will silently deadlock in delayed allocation rather than
+gracefully handle the problem with a warning....
+
+Cheers,
+
+Dave.
 -- 
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
-
-
+Dave Chinner
+david@fromorbit.com
