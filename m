@@ -1,135 +1,98 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:55277 "EHLO mx2.suse.de"
+Received: from cantor2.suse.de ([195.135.220.15]:38838 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933021AbaDCFrB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 3 Apr 2014 01:47:01 -0400
-Received: from relay1.suse.de (charybdis-ext.suse.de [195.135.220.254])
-	by mx2.suse.de (Postfix) with ESMTP id 54775ACE0
-	for <linux-nfs@vger.kernel.org>; Thu,  3 Apr 2014 05:46:59 +0000 (UTC)
-Date: Thu, 3 Apr 2014 16:46:52 +1100
+	id S1753794AbaDPETI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Apr 2014 00:19:08 -0400
 From: NeilBrown <neilb@suse.de>
-To: NFS <linux-nfs@vger.kernel.org>
-Subject: Should exportfs/mountd cope with case-insensitive directory names.
-Message-ID: <20140403164652.5d7770ad@notabene.brown>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/aqCsD1AqdPbo=_Z_+/1bWQ1"; protocol="application/pgp-signature"
+To: linux-mm@kvack.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Date: Wed, 16 Apr 2014 14:03:36 +1000
+Subject: [PATCH 11/19] FS: set PF_FSTRANS while holding mmap_sem in exec.c
+Cc: xfs@oss.sgi.com
+Message-ID: <20140416040336.10604.31309.stgit@notabene.brown>
+In-Reply-To: <20140416033623.10604.69237.stgit@notabene.brown>
+References: <20140416033623.10604.69237.stgit@notabene.brown>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/aqCsD1AqdPbo=_Z_+/1bWQ1
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+Because mmap_sem is sometimes(*) taken while holding a sock lock,
+and the sock lock might be needed for reclaim (at least when loop-back
+NFS is active), we must not block on FS reclaim while mmap_sem is
+held.
 
+exec.c allocates memory while holding mmap_sem, and so needs
+PF_FSTRANS protection.
 
-Hi,
- I came across an interesting issue recently.
+* lockdep reports:
+[   57.653355]    [<ffffffff810eb068>] lock_acquire+0xa8/0x1f0
+[   57.653355]    [<ffffffff811835a4>] might_fault+0x84/0xb0
+[   57.653355]    [<ffffffff81aec65d>] do_ip_setsockopt.isra.18+0x93d/0xed0
+[   57.653355]    [<ffffffff81aecc17>] ip_setsockopt+0x27/0x90
+[   57.653355]    [<ffffffff81b15146>] udp_setsockopt+0x16/0x30
+[   57.653355]    [<ffffffff81a913cf>] sock_common_setsockopt+0xf/0x20
+[   57.653355]    [<ffffffff81a9075e>] SyS_setsockopt+0x5e/0xc0
+[   57.653355]    [<ffffffff81c3d062>] system_call_fastpath+0x16/0x1b
 
-Suppose you have a filesystem which supports case-insensitive file names
-(like VFAT, but in this particular case 'NSS' - Novell Storage Services).
+to explain why mmap_sem might be taken while sock lock is held.
 
-And support you export some subdirectory (or sub-volume) using a
-non-canonical name.
-i.e. you "mkdir /path/export", the put "/path/EXPORT" in /etc/exports and
-mount  server:/path/EXPORT from some client.
+Signed-off-by: NeilBrown <neilb@suse.de>
+---
+ fs/exec.c |    6 ++++++
+ 1 file changed, 6 insertions(+)
 
-This all works until the export cache times out and the kernel asks mountd
-if "/path/export" is exported.  mountd says "no" and suddenly all accesses
-fail.
-
-I don't think much of case-insensitive file names, but I suspect we should
-either make this work, it issue a warning as to why it is failing.
-A simple work around is to export the canonical name and use it when
-mounting.  But if the sysadmin doesn't know they need to, they are unlikely
-to guess.
-
-I don't think there is any API to test if a name is canonical, or to get the
-canonical name, so I cannot see any way in advance to see if this problem
-situation has arisen.  So the only option I can think of is to fix it.
-
-The following patch (or something much like it for an older nfs-utils) seems
-to do the trick.
-
-What do people think?  Is this a reasonable thing to do?  Is it likely to
-have negative consequences that I haven't thought of?
-
-Thanks,
-NeilBrown
-
-
-
-diff --git a/utils/mountd/cache.c b/utils/mountd/cache.c
-index 9a1bb2767ac2..2d91db76b867 100644
---- a/utils/mountd/cache.c
-+++ b/utils/mountd/cache.c
-@@ -377,6 +377,28 @@ static char *next_mnt(void **v, char *p)
- 	return me->mnt_dir;
+diff --git a/fs/exec.c b/fs/exec.c
+index 3d78fccdd723..2c70a03ddb2b 100644
+--- a/fs/exec.c
++++ b/fs/exec.c
+@@ -652,6 +652,7 @@ int setup_arg_pages(struct linux_binprm *bprm,
+ 	unsigned long stack_size;
+ 	unsigned long stack_expand;
+ 	unsigned long rlim_stack;
++	unsigned int pflags;
+ 
+ #ifdef CONFIG_STACK_GROWSUP
+ 	/* Limit stack size to 1GB */
+@@ -688,6 +689,7 @@ int setup_arg_pages(struct linux_binprm *bprm,
+ 
+ 	down_write(&mm->mmap_sem);
+ 	vm_flags = VM_STACK_FLAGS;
++	current_set_flags_nested(&pflags, PF_FSTRANS);
+ 
+ 	/*
+ 	 * Adjust stack execute permissions; explicitly enable for
+@@ -741,6 +743,7 @@ int setup_arg_pages(struct linux_binprm *bprm,
+ 		ret = -EFAULT;
+ 
+ out_unlock:
++	current_restore_flags_nested(&pflags, PF_FSTRANS);
+ 	up_write(&mm->mmap_sem);
+ 	return ret;
  }
-=20
-+static int same_path(char *child, char *parent, int len)
-+{
-+	static char p[PATH_MAX];
-+	struct stat sc, sp;
-+	if (len <=3D 0)
-+		len =3D strlen(child);
-+	strncpy(p, child, len);
-+	p[len] =3D 0;
-+	if (strcmp(p, parent) =3D=3D 0)
-+		return 1;
-+
-+	if (lstat(p, &sc) !=3D 0)
-+		return 0;
-+	if (lstat(parent, &sp) !=3D 0)
-+		return 0;
-+	if (sc.st_dev !=3D sp.st_dev)
-+		return 0;
-+	if (sc.st_ino !=3D sp.st_ino)
-+		return 0;
-+	return 1;
-+}
-+
- static int is_subdirectory(char *child, char *parent)
- {
- 	/* Check is child is strictly a subdirectory of
-@@ -387,7 +409,7 @@ static int is_subdirectory(char *child, char *parent)
- 	if (strcmp(parent, "/") =3D=3D 0 && child[1] !=3D 0)
- 		return 1;
-=20
--	return (strncmp(child, parent, l) =3D=3D 0 && child[l] =3D=3D '/');
-+	return (same_path(child, parent, l) && child[l] =3D=3D '/');
- }
-=20
- static int path_matches(nfs_export *exp, char *path)
-@@ -396,7 +418,7 @@ static int path_matches(nfs_export *exp, char *path)
- 	 * exact match, or does the export have CROSSMOUNT, and path
- 	 * is a descendant?
- 	 */
--	return strcmp(path, exp->m_export.e_path) =3D=3D 0
-+	return same_path(path, exp->m_export.e_path, 0)
- 		|| ((exp->m_export.e_flags & NFSEXP_CROSSMOUNT)
- 		    && is_subdirectory(path, exp->m_export.e_path));
- }
+@@ -1369,6 +1372,7 @@ int search_binary_handler(struct linux_binprm *bprm)
+ 	bool need_retry = IS_ENABLED(CONFIG_MODULES);
+ 	struct linux_binfmt *fmt;
+ 	int retval;
++	unsigned int pflags;
+ 
+ 	/* This allows 4 levels of binfmt rewrites before failing hard. */
+ 	if (bprm->recursion_depth > 5)
+@@ -1381,6 +1385,7 @@ int search_binary_handler(struct linux_binprm *bprm)
+ 	retval = -ENOENT;
+  retry:
+ 	read_lock(&binfmt_lock);
++	current_set_flags_nested(&pflags, PF_FSTRANS);
+ 	list_for_each_entry(fmt, &formats, lh) {
+ 		if (!try_module_get(fmt->module))
+ 			continue;
+@@ -1396,6 +1401,7 @@ int search_binary_handler(struct linux_binprm *bprm)
+ 		read_lock(&binfmt_lock);
+ 		put_binfmt(fmt);
+ 	}
++	current_restore_flags_nested(&pflags, PF_FSTRANS);
+ 	read_unlock(&binfmt_lock);
+ 
+ 	if (need_retry && retval == -ENOEXEC) {
 
---Sig_/aqCsD1AqdPbo=_Z_+/1bWQ1
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.22 (GNU/Linux)
-
-iQIVAwUBUzz1zTnsnt1WYoG5AQLwoRAAjwnQSmNXk/wY3lrv48hCAXS3oHAO8YmU
-Y7uHrmJ+abLVmBWxJr+cR8fOW4LX4qz2TvbMu0nqsVF0u76Gc/tZbjsZkjlJW7wg
-EvCXMxCaD62pgJxyCr2jvnK8w1wZ3P+lF6r4aqOEVdagddNdzQOjqhLqq+GnDyAP
-7xojbMGlNi8y6IG8QQb7d/VQW8z89upm6IKOKTVwThkKoFnjrgUIlZK2MjO85xM/
-/I8Ji/leurEbqWN6m7W0YI3/3jzZgOBGEb2GpmrTv32v4hS2Jq0Rj0wLxsmFMf3o
-kHGFsGlgkiBrt3RTquW/2JFH+pBj7Cs/8MyKHxSl5SzLAnH4IhqXYBeGlyS2fasZ
-oO64XbRPkvMysv78U8cakfcM8PZeZxbbCeawhqVQJESJkA3ERT71v0NHD/iAszuM
-7TL1amy/ofXPfcTPRHC+c1OiQbxd88UA1vqD5BewZwghERPJZ+gCy4nNpUc5K6rH
-8lS3z9IpnW/bzTiWnqG9I84eBhDHQral1f+lY38jRNE+Ffaj6fkLExnS4jV+BrlY
-hPOu3jcvtd33V2Qs8juHzSp6Psw3lMwG6TqospqeukqpcLjyK+7rpRES06UmjG2l
-tn0othG9puM7uVhr8k6MVhITNZe0lcGBfcvrLRYI73cTzCf0zXLlI/joSmsNm+sm
-Lbfq4lsp5qc=
-=fHXe
------END PGP SIGNATURE-----
-
---Sig_/aqCsD1AqdPbo=_Z_+/1bWQ1--
