@@ -1,105 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yh0-f41.google.com ([209.85.213.41]:65519 "EHLO
-	mail-yh0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752896AbaDUWBc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Apr 2014 18:01:32 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH V2 05/17] xprtrdma: Remove BOUNCEBUFFERS memory registration
-	mode
-To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Date: Mon, 21 Apr 2014 18:01:29 -0400
-Message-ID: <20140421220129.12569.14612.stgit@manet.1015granger.net>
-In-Reply-To: <20140421214442.12569.8950.stgit@manet.1015granger.net>
-References: <20140421214442.12569.8950.stgit@manet.1015granger.net>
+Received: from cantor2.suse.de ([195.135.220.15]:38816 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751554AbaDPESr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Apr 2014 00:18:47 -0400
+From: NeilBrown <neilb@suse.de>
+To: linux-mm@kvack.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Date: Wed, 16 Apr 2014 14:03:36 +1000
+Subject: [PATCH 08/19] Set PF_FSTRANS while write_cache_pages calls
+ ->writepage
+Cc: xfs@oss.sgi.com
+Message-ID: <20140416040336.10604.34673.stgit@notabene.brown>
+In-Reply-To: <20140416033623.10604.69237.stgit@notabene.brown>
+References: <20140416033623.10604.69237.stgit@notabene.brown>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: This memory registration mode is slow and was never
-meant for use in production environments. Remove it to reduce
-implementation complexity.
+It is normally safe for direct reclaim to enter filesystems
+even when a page is locked - as can happen if ->writepage
+allocates memory with GFP_KERNEL (which xfs does).
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: Steve Wise <swise@opengridcomputing.com>
+However if a localhost NFS mount is present, then a flush-*
+thread might hold a page locked and then in direct reclaim,
+ask nfs to commit an inode (nfs_release_page).  When nfsd
+performs the fsync it might try to lock the same page, which leads to
+a deadlock.
+
+A ->writepage should not allocate much memory, or do so very often, so
+it is safe to set PF_FSTRANS, and this removes the possible deadlock.
+
+This was not detected by lockdep as it doesn't monitor the page lock.
+It was found as a real deadlock in testing.
+
+Signed-off-by: NeilBrown  <neilb@suse.de>
 ---
+ mm/page-writeback.c |    3 +++
+ 1 file changed, 3 insertions(+)
 
- net/sunrpc/xprtrdma/rpc_rdma.c  |    8 --------
- net/sunrpc/xprtrdma/transport.c |   13 -------------
- net/sunrpc/xprtrdma/verbs.c     |    5 +----
- 3 files changed, 1 insertions(+), 25 deletions(-)
+diff --git a/mm/page-writeback.c b/mm/page-writeback.c
+index 7106cb1aca8e..572e70b9a3f7 100644
+--- a/mm/page-writeback.c
++++ b/mm/page-writeback.c
+@@ -1909,6 +1909,7 @@ retry:
+ 
+ 		for (i = 0; i < nr_pages; i++) {
+ 			struct page *page = pvec.pages[i];
++			unsigned int pflags;
+ 
+ 			/*
+ 			 * At this point, the page may be truncated or
+@@ -1960,8 +1961,10 @@ continue_unlock:
+ 			if (!clear_page_dirty_for_io(page))
+ 				goto continue_unlock;
+ 
++			current_set_flags_nested(&pflags, PF_FSTRANS);
+ 			trace_wbc_writepage(wbc, mapping->backing_dev_info);
+ 			ret = (*writepage)(page, wbc, data);
++			current_restore_flags_nested(&pflags, PF_FSTRANS);
+ 			if (unlikely(ret)) {
+ 				if (ret == AOP_WRITEPAGE_ACTIVATE) {
+ 					unlock_page(page);
 
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index c296468..b963e50 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -439,14 +439,6 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
- 		wtype = rpcrdma_noch;
- 	BUG_ON(rtype != rpcrdma_noch && wtype != rpcrdma_noch);
- 
--	if (r_xprt->rx_ia.ri_memreg_strategy == RPCRDMA_BOUNCEBUFFERS &&
--	    (rtype != rpcrdma_noch || wtype != rpcrdma_noch)) {
--		/* forced to "pure inline"? */
--		dprintk("RPC:       %s: too much data (%d/%d) for inline\n",
--			__func__, rqst->rq_rcv_buf.len, rqst->rq_snd_buf.len);
--		return -1;
--	}
--
- 	hdrlen = 28; /*sizeof *headerp;*/
- 	padlen = 0;
- 
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index f94a6c4..b4330b2 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -503,18 +503,6 @@ xprt_rdma_allocate(struct rpc_task *task, size_t size)
- 		 * If the allocation or registration fails, the RPC framework
- 		 * will (doggedly) retry.
- 		 */
--		if (rpcx_to_rdmax(xprt)->rx_ia.ri_memreg_strategy ==
--				RPCRDMA_BOUNCEBUFFERS) {
--			/* forced to "pure inline" */
--			dprintk("RPC:       %s: too much data (%zd) for inline "
--					"(r/w max %d/%d)\n", __func__, size,
--					rpcx_to_rdmad(xprt).inline_rsize,
--					rpcx_to_rdmad(xprt).inline_wsize);
--			size = req->rl_size;
--			rpc_exit(task, -EIO);		/* fail the operation */
--			rpcx_to_rdmax(xprt)->rx_stats.failed_marshal_count++;
--			goto out;
--		}
- 		if (task->tk_flags & RPC_TASK_SWAPPER)
- 			nreq = kmalloc(sizeof *req + size, GFP_ATOMIC);
- 		else
-@@ -543,7 +531,6 @@ xprt_rdma_allocate(struct rpc_task *task, size_t size)
- 		req = nreq;
- 	}
- 	dprintk("RPC:       %s: size %zd, request 0x%p\n", __func__, size, req);
--out:
- 	req->rl_connect_cookie = 0;	/* our reserved value */
- 	return req->rl_xdr_buf;
- 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 9cb88f3..4a4e4ea 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -557,7 +557,6 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
- 	 * adapter.
- 	 */
- 	switch (memreg) {
--	case RPCRDMA_BOUNCEBUFFERS:
- 	case RPCRDMA_REGISTER:
- 	case RPCRDMA_FRMR:
- 		break;
-@@ -778,9 +777,7 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
- 
- 	/* Client offers RDMA Read but does not initiate */
- 	ep->rep_remote_cma.initiator_depth = 0;
--	if (ia->ri_memreg_strategy == RPCRDMA_BOUNCEBUFFERS)
--		ep->rep_remote_cma.responder_resources = 0;
--	else if (devattr.max_qp_rd_atom > 32)	/* arbitrary but <= 255 */
-+	if (devattr.max_qp_rd_atom > 32)	/* arbitrary but <= 255 */
- 		ep->rep_remote_cma.responder_resources = 32;
- 	else
- 		ep->rep_remote_cma.responder_resources = devattr.max_qp_rd_atom;
 
