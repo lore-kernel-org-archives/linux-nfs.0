@@ -1,59 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e23smtp04.au.ibm.com ([202.81.31.146]:57628 "EHLO
-	e23smtp04.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751915AbaD0QPM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Apr 2014 12:15:12 -0400
-Received: from /spool/local
-	by e23smtp04.au.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <aneesh.kumar@linux.vnet.ibm.com>;
-	Mon, 28 Apr 2014 02:15:10 +1000
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
-        viro@zeniv.linux.org.uk, dhowells@redhat.com
-Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH -V1 00/22]  New ACL format for better NFSv4 acl interoperability
-Date: Sun, 27 Apr 2014 21:44:31 +0530
-Message-Id: <1398615293-22931-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from mx1.redhat.com ([209.132.183.28]:29067 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750919AbaDPAWr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 15 Apr 2014 20:22:47 -0400
+Message-ID: <534DCD52.5080202@RedHat.com>
+Date: Tue, 15 Apr 2014 20:22:42 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Ben Greear <greearb@candelatech.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        David Howells <dhowells@redhat.com>
+Subject: Re: Question on nfs-utils patch for 'keyctl_invalidate'.
+References: <534C7B70.9000500@candelatech.com>
+In-Reply-To: <534C7B70.9000500@candelatech.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi
 
-As per LSF/MM summit discussion I am reposting the richacl patchset for
-upstream inclusion. The patchset includes minimal changes required to implement
-a new acl model similar to NFSv4 ACL. The acl model selection is based on
-file system feature flag. 
 
-The following set of patches implements VFS and ext4 changes needed to implement
-a new acl model for linux. Rich ACLs are an implementation of NFSv4 ACLs,
-extended by file masks to fit into the standard POSIX file permission model.
-They are designed to work seamlessly locally as well as across the NFSv4 and
-CIFS/SMB2 network file system protocols.
+On 04/14/2014 08:21 PM, Ben Greear wrote:
+> It seems that key_invalidate is only available in quite recent
+> keyutils packages.
+> 
+> Anyone know if there is a relatively simple way to implement
+> the same behaviour using older keyutils packages?
+CC-ing the keyutils maintainer... David, when did that kernel 
+change go in that cause keyctl_revoke() to no longer work?
 
-A user-space utility for displaying and changing richacls is available at [1]
-(a number of examples can be found at http://acl.bestbits.at/richacl/examples.html).
+The nfs-utils commit is:
 
-[1] git://github.com/kvaneesh/richacl-tools.git master
+commit 2ae0763a618d30037ebb2520f6292f80d838a440
+Author: Steve Dickson <steved@redhat.com>
+Date:   Tue Mar 25 10:56:58 2014 -0400
 
-To test richacl on ext4, create the file sytem with richacl feature flag
-(mkfs.ext4 -O richacl or  tune2fs -O richacl). With richacl feature enabled
-using mount option "acl" will switch to using richacl instead of posixacl.
+    nfsidmap: Keys need to be invalidated instead of revoked
 
-More details regarding richacl can be found at
-http://acl.bestbits.at/richacl/
+It sound like we need to do some type of #ifdef kernel version.... 
 
-Previous posting of the patchset can be found at:
-http://mid.gmane.org/1319391835-5829-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com
-"[PATCH -V8 00/26]  New ACL format for better NFSv4 acl interoperability"
+steved.
 
-The complete patchset can also be found at:
-https://github.com/kvaneesh/linux/commits/richacl-for-upstream
-
-Since we are trying to get the changes merged upstream after a long time, I am
-posting this as V1 again. I Also dropped the Acked-by tag from
-David Howells <dhowells@redhat.com> and J. Bruce Fields <bfields@redhat.com>.
-Please let me know if I can add them back again.
-
--aneesh
-
+> 
+> The reason I ask is that I recently updated to latest nfs-utils
+> package and how build fails on many of my older systems...
+> 
+> Thanks,
+> Ben
+> 
