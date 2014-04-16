@@ -1,120 +1,128 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f176.google.com ([209.85.213.176]:57160 "EHLO
-	mail-ig0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754327AbaDRSp7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Apr 2014 14:45:59 -0400
-Received: by mail-ig0-f176.google.com with SMTP id uy17so957790igb.3
-        for <linux-nfs@vger.kernel.org>; Fri, 18 Apr 2014 11:45:59 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Bruce Fields <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 34/70] NFSd: Fix atomicity of delegation counter
-Date: Fri, 18 Apr 2014 14:44:28 -0400
-Message-Id: <1397846704-14567-35-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1397846704-14567-34-git-send-email-trond.myklebust@primarydata.com>
-References: <1397846704-14567-1-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-2-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-3-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-4-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-5-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-6-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-7-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-8-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-9-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-10-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-11-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-12-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-13-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-14-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-15-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-16-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-17-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-18-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-19-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-20-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-21-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-22-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-23-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-24-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-25-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-26-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-27-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-28-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-29-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-30-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-31-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-32-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-33-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-34-git-send-email-trond.myklebust@primarydata.com>
+Received: from cantor2.suse.de ([195.135.220.15]:39678 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752014AbaDPFwi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Apr 2014 01:52:38 -0400
+Date: Wed, 16 Apr 2014 15:52:30 +1000
+From: NeilBrown <neilb@suse.de>
+To: Al Viro <viro@ZenIV.linux.org.uk>
+Cc: linux-mm@kvack.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, xfs@oss.sgi.com
+Subject: Re: [PATCH 17/19] VFS: set PF_FSTRANS while namespace_sem is held.
+Message-ID: <20140416155230.4d02e4b9@notabene.brown>
+In-Reply-To: <20140416044618.GX18016@ZenIV.linux.org.uk>
+References: <20140416033623.10604.69237.stgit@notabene.brown>
+	<20140416040337.10604.86740.stgit@notabene.brown>
+	<20140416044618.GX18016@ZenIV.linux.org.uk>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/AHIx/=TRorm595oyDqzGVg8"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 21 ++++++++++++++-------
- 1 file changed, 14 insertions(+), 7 deletions(-)
+--Sig_/AHIx/=TRorm595oyDqzGVg8
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index f463aaf9cd13..87464802126a 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -304,7 +304,7 @@ static struct file *find_any_file(struct nfs4_file *f)
- 	return ret;
- }
- 
--static int num_delegations;
-+static atomic_long_t num_delegations;
- unsigned long max_delegations;
- 
- /*
-@@ -439,18 +439,19 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *stp, struct sv
- 	struct nfs4_delegation *dp;
- 
- 	dprintk("NFSD alloc_init_deleg\n");
--	if (num_delegations > max_delegations)
--		return NULL;
-+	atomic_long_inc(&num_delegations);
-+	smp_mb__after_atomic_inc();
-+	if (atomic_long_read(&num_delegations) > max_delegations)
-+		goto out_dec;
- 	dp = delegstateid(nfs4_alloc_stid(clp, deleg_slab));
- 	if (dp == NULL)
--		return dp;
-+		goto out_dec;
- 	/*
- 	 * delegation seqid's are never incremented.  The 4.1 special
- 	 * meaning of seqid 0 isn't meaningful, really, but let's avoid
- 	 * 0 anyway just for consistency and use 1:
- 	 */
- 	dp->dl_stid.sc_stateid.si_generation = 1;
--	num_delegations++;
- 	INIT_LIST_HEAD(&dp->dl_perfile);
- 	INIT_LIST_HEAD(&dp->dl_perclnt);
- 	INIT_LIST_HEAD(&dp->dl_recall_lru);
-@@ -459,6 +460,10 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *stp, struct sv
- 	dp->dl_time = 0;
- 	nfsd4_init_callback(&dp->dl_recall);
- 	return dp;
-+out_dec:
-+	atomic_long_dec(&num_delegations);
-+	smp_mb__after_atomic_dec();
-+	return NULL;
- }
- 
- static void remove_stid_locked(struct nfs4_client *clp, struct nfs4_stid *s)
-@@ -490,8 +495,10 @@ static bool nfs4_put_stid(struct kmem_cache *slab, struct nfs4_stid *s)
- void
- nfs4_put_delegation(struct nfs4_delegation *dp)
+On Wed, 16 Apr 2014 05:46:18 +0100 Al Viro <viro@ZenIV.linux.org.uk> wrote:
+
+> On Wed, Apr 16, 2014 at 02:03:37PM +1000, NeilBrown wrote:
+> > namespace_sem can be taken while various i_mutex locks are held, so we
+> > need to avoid reclaim from blocking on an FS (particularly loop-back
+> > NFS).
+>=20
+> I would really prefer to deal with that differently - by explicit change =
+of
+> gfp_t arguments of allocators.
+>=20
+> The thing is, namespace_sem is held *only* over allocations, and not a lot
+> of them, at that - only mnt_alloc_id(), mnt_alloc_group_id(), alloc_vfsmn=
+t()
+> and new_mountpoint().  That is all that is allowed.
+>=20
+> Again, actual work with filesystems (setup, shutdown, remount, pathname
+> resolution, etc.) is all done outside of namespace_sem; it's held only
+> for manipulations of fs/{namespace,pnode}.c data structures and the only
+> reason it isn't a spinlock is that we need to do some allocations.
+>=20
+> So I'd rather slap GFP_NOFS on those few allocations...
+
+So something like this?  I put that in to my testing instead.
+
+Thanks,
+NeilBrown
+
+diff --git a/fs/namespace.c b/fs/namespace.c
+index 83dcd5083dbb..8e103b8c8323 100644
+--- a/fs/namespace.c
++++ b/fs/namespace.c
+@@ -103,7 +103,7 @@ static int mnt_alloc_id(struct mount *mnt)
+ 	int res;
+=20
+ retry:
+-	ida_pre_get(&mnt_id_ida, GFP_KERNEL);
++	ida_pre_get(&mnt_id_ida, GFP_NOFS);
+ 	spin_lock(&mnt_id_lock);
+ 	res =3D ida_get_new_above(&mnt_id_ida, mnt_id_start, &mnt->mnt_id);
+ 	if (!res)
+@@ -134,7 +134,7 @@ static int mnt_alloc_group_id(struct mount *mnt)
  {
--	if (nfs4_put_stid(deleg_slab, &dp->dl_stid))
--		num_delegations--;
-+	if (nfs4_put_stid(deleg_slab, &dp->dl_stid)) {
-+		atomic_long_dec(&num_delegations);
-+		smp_mb__after_atomic_dec();
-+	}
- }
- 
- /* Call under fp->fi_lock */
--- 
-1.9.0
+ 	int res;
+=20
+-	if (!ida_pre_get(&mnt_group_ida, GFP_KERNEL))
++	if (!ida_pre_get(&mnt_group_ida, GFP_NOFS))
+ 		return -ENOMEM;
+=20
+ 	res =3D ida_get_new_above(&mnt_group_ida,
+@@ -193,7 +193,7 @@ unsigned int mnt_get_count(struct mount *mnt)
+=20
+ static struct mount *alloc_vfsmnt(const char *name)
+ {
+-	struct mount *mnt =3D kmem_cache_zalloc(mnt_cache, GFP_KERNEL);
++	struct mount *mnt =3D kmem_cache_zalloc(mnt_cache, GFP_NOFS);
+ 	if (mnt) {
+ 		int err;
+=20
+@@ -202,7 +202,7 @@ static struct mount *alloc_vfsmnt(const char *name)
+ 			goto out_free_cache;
+=20
+ 		if (name) {
+-			mnt->mnt_devname =3D kstrdup(name, GFP_KERNEL);
++			mnt->mnt_devname =3D kstrdup(name, GFP_NOFS);
+ 			if (!mnt->mnt_devname)
+ 				goto out_free_id;
+ 		}
+@@ -682,7 +682,7 @@ static struct mountpoint *new_mountpoint(struct dentry =
+*dentry)
+ 		}
+ 	}
+=20
+-	mp =3D kmalloc(sizeof(struct mountpoint), GFP_KERNEL);
++	mp =3D kmalloc(sizeof(struct mountpoint), GFP_NOFS);
+ 	if (!mp)
+ 		return ERR_PTR(-ENOMEM);
+=20
 
+--Sig_/AHIx/=TRorm595oyDqzGVg8
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.22 (GNU/Linux)
+
+iQIVAwUBU04anjnsnt1WYoG5AQIhrg/8CkSLV3X4c4pMegKcWjixLvjggV9C0nmD
+Ki7J2WYAcQLErKW3y+NMuIGWo5ZHNizwEeaSIFbqdzSiMzebtGI5lreK3Vgm6Kom
+yxHsQgu528mbaZj1W29ifjwd6qyaDjmx8hgIEkBZOz1/SrRJ0QiphaQS5/VaZF4j
+25qwbmPyTA92q75q7eOdy+n4y/hpZj6gPAAwjKOmLPFw7YnG1hajhUKReU7z86X1
+cLCX/9ppr+KM8sHpBQfNkzIdC7+PXsHSy38R+ZRLlsdNYuIIxKHJBu1M5EsZejI4
+uPAhNgws4bQohRmPQ0wDzjoiYPeYvPOM1lgln3w3JQuQ9H5/4Nr0EMRBx+BZuIAs
+iUNjLNSxh7I+5Xb+kTH5ea7O75mhmDg6h0KnsFIyL7585/ve872HwTeWnjqhkaRk
+B/gSXw7j6a6CUjGhk8Vpl6aKEgdyieoG0oxIU6xgkUzIjh7V54N+qRNbijGEIrXX
+XwExDi31ptdiBoX8OYTpL5dtKIpJFI3+M9brUs/OHEiMTGxP+gBBoZjygvqQnooD
+/UBY2sdOBQaDS843VQnYUlIhv4XpmwNGZrp7P+lgsTZmgnL39Mt2hfTC3iGvvw4o
+/9lAjXcUCg19a0llfGfqMWXNWEHH8Bjo5OovO4DpN7wWccy6GhXI6U+yd0WNI4k5
+Rte0ii4ppow=
+=vIwc
+-----END PGP SIGNATURE-----
+
+--Sig_/AHIx/=TRorm595oyDqzGVg8--
