@@ -1,207 +1,94 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.opengridcomputing.com ([72.48.136.20]:49352 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753007AbaDJPA7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Apr 2014 11:00:59 -0400
-Message-ID: <5346B22D.3060706@opengridcomputing.com>
-Date: Thu, 10 Apr 2014 10:01:01 -0500
-From: Steve Wise <swise@opengridcomputing.com>
+Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:61800 "EHLO
+	ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754284AbaDPJAy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Apr 2014 05:00:54 -0400
+Date: Wed, 16 Apr 2014 19:00:51 +1000
+From: Dave Chinner <david@fromorbit.com>
+To: NeilBrown <neilb@suse.de>
+Cc: linux-mm@kvack.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, xfs@oss.sgi.com
+Subject: Re: [PATCH 16/19] VFS: use GFP_NOFS rather than GFP_KERNEL in
+ __d_alloc.
+Message-ID: <20140416090051.GK15995@dastard>
+References: <20140416033623.10604.69237.stgit@notabene.brown>
+ <20140416040337.10604.61837.stgit@notabene.brown>
+ <20140416062520.GG15995@dastard>
+ <20140416164941.37587da6@notabene.brown>
 MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>,
-        Devesh Sharma <Devesh.Sharma@Emulex.Com>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: Re: [PATCH V1] NFS-RDMA: fix qp pointer validation checks
-References: <014738b6-698e-4ea1-82f9-287378bfec19@CMEXHTCAS2.ad.emulex.com> <D7AB2150-5F25-4BA2-80D9-94890AD11F8F@primarydata.com> <F1C70AD6-BDD4-4534-8DC4-61D2767581D9@oracle.com> <EE7902D3F51F404C82415C4803930ACD3FDEAA43@CMEXMB1.ad.emulex.com> <E66D006A-0D04-4602-8BF5-6834CACD2E24@oracle.com>
-In-Reply-To: <E66D006A-0D04-4602-8BF5-6834CACD2E24@oracle.com>
-Content-Type: text/plain; charset=windows-1252; format=flowed
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140416164941.37587da6@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 4/9/2014 7:26 PM, Chuck Lever wrote:
-> On Apr 9, 2014, at 7:56 PM, Devesh Sharma <Devesh.Sharma@Emulex.Com> wrote:
->
->> Hi Chuk and Trond
->>
->> I will resend a v2 for this.
->> What if ib_post_send() fails with immidate error, I that case also DECR_CQCOUNT() will be called but no completion will be reported. Will that not cause any problems?
-> We should investigate whether an error return from ib_post_{send,recv} means there will be no completion. But I’ve never seen these verbs fail in practice, so I’m not in a hurry to make work for anyone! ;-)
+On Wed, Apr 16, 2014 at 04:49:41PM +1000, NeilBrown wrote:
+> On Wed, 16 Apr 2014 16:25:20 +1000 Dave Chinner <david@fromorbit.com> wrote:
+> 
+> > On Wed, Apr 16, 2014 at 02:03:37PM +1000, NeilBrown wrote:
+> > > __d_alloc can be called with i_mutex held, so it is safer to
+> > > use GFP_NOFS.
+> > > 
+> > > lockdep reports this can deadlock when loop-back NFS is in use,
+> > > as nfsd may be required to write out for reclaim, and nfsd certainly
+> > > takes i_mutex.
+> > 
+> > But not the same i_mutex as is currently held. To me, this seems
+> > like a false positive? If you are holding the i_mutex on an inode,
+> > then you have a reference to the inode and hence memory reclaim
+> > won't ever take the i_mutex on that inode.
+> > 
+> > FWIW, this sort of false positive was a long stabding problem for
+> > XFS - we managed to get rid of most of the false positives like this
+> > by ensuring that only the ilock is taken within memory reclaim and
+> > memory reclaim can't be entered while we hold the ilock.
+> > 
+> > You can't do that with the i_mutex, though....
+> > 
+> > Cheers,
+> > 
+> > Dave.
+> 
+> I'm not sure this is a false positive.
+> You can call __d_alloc when creating a file and so are holding i_mutex on the
+> directory.
+> nfsd might also want to access that directory.
+> 
+> If there was only 1 nfsd thread, it would need to get i_mutex and do it's
+> thing before replying to that request and so before it could handle the
+> COMMIT which __d_alloc is waiting for.
 
-A synchronous failure from ib_post_* means the WR (or at least one of 
-them if there were > 1) failed and did not get submitted to HW.  So 
-there will be no completion for those that failed.
+That seems wrong - the NFS client in __d_alloc holds a mutex on a
+NFS client directory inode. The NFS server can't access that
+specific mutex - it's on the other side of the "network". The NFS
+server accesses mutexs from local filesystems, so __d_alloc would
+have to be blocked on a local filesystem inode i_mutex for the nfsd
+to get hung up behind it...
 
-> However it seems to me the new (!ia->ri_id->qp) checks outside the connect logic are unnecessary.
->
-> Clearly, as you noticed, the ib_post_{send,recv} verbs do not check that their “qp" argument is NULL before dereferencing it.
->
-> But I don’t understand how xprtrdma can post any operation if the transport isn’t connected. In other words, how would it be possible to call rpcrdma_ep_post_recv() if the connect had failed and there was no QP?
->
-> If disconnect wipes ia->ri_id->qp while there are still operations in progress, that would be the real bug.
->
->
->> Also in rpcrdma_register_frmr_external() I am seeing DECT_CQCOUNT is called twice
->> First at line 1538 (unlikely however) and second at line 1562. Shouldn't  it be only at 1562?
-> if (seg1->mr_chunk.rl_mw->r.frmr.state == FRMR_IS_VALID) then rpcrdma_register_frmr_external() posts two Work Requests (LOCAL_INV then FAST_REG_MR) with one ib_post_send(). Thus it is correct to DECR_CQCOUNT twice in that case because each WR will trigger a separate completion event.
->
->
->> -----Original Message-----
->> From: Chuck Lever [mailto:chuck.lever@oracle.com]
->> Sent: Thursday, April 10, 2014 1:57 AM
->> To: Devesh Sharma
->> Cc: Linux NFS Mailing List; linux-rdma@vger.kernel.org; Trond Myklebust
->> Subject: Re: [PATCH V1] NFS-RDMA: fix qp pointer validation checks
->>
->>
->> On Apr 9, 2014, at 4:22 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
->>
->>> Hi Devesh,
->>>
->>> This looks a lot better. I still have a couple of small suggestions, though.
->>>
->>> On Apr 9, 2014, at 14:40, Devesh Sharma <devesh.sharma@emulex.com> wrote:
->>>
->>>> If the rdma_create_qp fails to create qp due to device firmware being
->>>> in invalid state xprtrdma still tries to destroy the non-existant qp
->>>> and ends up in a NULL pointer reference crash.
->>>> Adding proper checks for vaidating QP pointer avoids this to happen.
->>>>
->>>> Signed-off-by: Devesh Sharma <devesh.sharma@emulex.com>
->>>> ---
->>>> net/sunrpc/xprtrdma/verbs.c |   29 +++++++++++++++++++++++++----
->>>> 1 files changed, 25 insertions(+), 4 deletions(-)
->>>>
->>>> diff --git a/net/sunrpc/xprtrdma/verbs.c
->>>> b/net/sunrpc/xprtrdma/verbs.c index 9372656..902ac78 100644
->>>> --- a/net/sunrpc/xprtrdma/verbs.c
->>>> +++ b/net/sunrpc/xprtrdma/verbs.c
->>>> @@ -831,10 +831,12 @@ rpcrdma_ep_connect(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
->>>> 	if (ep->rep_connected != 0) {
->>>> 		struct rpcrdma_xprt *xprt;
->>>> retry:
->>>> -		rc = rpcrdma_ep_disconnect(ep, ia);
->>>> -		if (rc && rc != -ENOTCONN)
->>>> -			dprintk("RPC:       %s: rpcrdma_ep_disconnect"
->>>> +		if (ia->ri_id->qp) {
->>>> +			rc = rpcrdma_ep_disconnect(ep, ia);
->>>> +			if (rc && rc != -ENOTCONN)
->>>> +				dprintk("RPC:       %s: rpcrdma_ep_disconnect"
->>>> 				" status %i\n", __func__, rc);
->>>> +		}
->>>> 		rpcrdma_clean_cq(ep->rep_cq);
->>>>
->>>> 		xprt = container_of(ia, struct rpcrdma_xprt, rx_ia); @@ -859,7
->>>> +861,9 @@ retry:
->>>> 			goto out;
->>>> 		}
->>>> 		/* END TEMP */
->>>> -		rdma_destroy_qp(ia->ri_id);
->>>> +		if (ia->ri_id->qp) {
->>>> +			rdma_destroy_qp(ia->ri_id);
->>>> +		}
->>> Nit: No need for braces here.
->>>
->>>> 		rdma_destroy_id(ia->ri_id);
->>>> 		ia->ri_id = id;
->>>> 	}
->>>> @@ -1557,6 +1561,13 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
->>>> 	frmr_wr.wr.fast_reg.rkey = seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey;
->>>> 	DECR_CQCOUNT(&r_xprt->rx_ep);
->> I don't think you can DECR_CQCOUNT, then exit without posting the send. That will screw up the completion counter and result in a transport hang, won't it?
->>
->>>> +	if (!ia->ri_is->qp) {
->>>> +		rc = -EINVAL;
->>>> +		while (i--)
->>>> +			rpcrdma_unmap_one(ia, --seg);
->>>> +		goto out;
->>>> +	}
->>> Instead of duplicating the rpcrdma_unmap_one() cleanup here, why not
->>> just do
->>>
->>> 	if (ia->ri_is->qp)
->>> 		rc = ib_post_send(...)
->>> 	else
->>> 		rc = -EINVAL;
->>>
->>> BTW: can we not simply test for ia->ri_is->qp before we even call rpcrdma_map_one() and hence bail out before we have to do any cleanup?
->>>
->>>> +
->>>> 	rc = ib_post_send(ia->ri_id->qp, post_wr, &bad_wr);
->>>>
->>>> 	if (rc) {
->>>> @@ -1571,6 +1582,7 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
->>>> 		seg1->mr_len = len;
->>>> 	}
->>>> 	*nsegs = i;
->>>> +out:
->>>> 	return rc;
->>>> }
->>>>
->>>> @@ -1592,6 +1604,9 @@ rpcrdma_deregister_frmr_external(struct rpcrdma_mr_seg *seg,
->>>> 	invalidate_wr.ex.invalidate_rkey = seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey;
->>>> 	DECR_CQCOUNT(&r_xprt->rx_ep);
->> Ditto.
->>
->>>> +	if (!ia->ri_id->qp)
->>>> +		return -EINVAL;
->>>> +
->>>> 	rc = ib_post_send(ia->ri_id->qp, &invalidate_wr, &bad_wr);
->>>> 	if (rc)
->>>> 		dprintk("RPC:       %s: failed ib_post_send for invalidate,"
->>>> @@ -1923,6 +1938,9 @@ rpcrdma_ep_post(struct rpcrdma_ia *ia,
->>>> 		send_wr.send_flags = IB_SEND_SIGNALED;
->>>> 	}
->> Ditto.
->>
->>>> +	if (!ia->ri_id->qp)
->>>> +		return -EINVAL;
->>>> +
->>>> 	rc = ib_post_send(ia->ri_id->qp, &send_wr, &send_wr_fail);
->>>> 	if (rc)
->>>> 		dprintk("RPC:       %s: ib_post_send returned %i\n", __func__,
->>>> @@ -1951,6 +1969,9 @@ rpcrdma_ep_post_recv(struct rpcrdma_ia *ia,
->>>> 		rep->rr_iov.addr, rep->rr_iov.length, DMA_BIDIRECTIONAL);
->>>>
->>>> 	DECR_CQCOUNT(ep);
->> And here.
->>
->>>> +
->>>> +	if (!ia->ri_id->qp)
->>>> +		return -EINVAL;
->>>> 	rc = ib_post_recv(ia->ri_id->qp, &recv_wr, &recv_wr_fail);
->>>>
->>>> 	if (rc)
->>>> --
->>>> 1.7.1
->>>>
->>> _________________________________
->>> Trond Myklebust
->>> Linux NFS client maintainer, PrimaryData
->>> trond.myklebust@primarydata.com
->>>
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs"
->>> in the body of a message to majordomo@vger.kernel.org More majordomo
->>> info at  http://vger.kernel.org/majordomo-info.html
->> --
->> Chuck Lever
->> chuck[dot]lever[at]oracle[dot]com
->>
->>
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> --
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
->
->
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+However, my confusion comes from the fact that we do GFP_KERNEL
+memory allocation with the i_mutex held all over the place. If the
+problem is:
 
+	local fs access -> i_mutex
+.....
+	nfsd -> i_mutex (blocked)
+.....
+	local fs access -> kmalloc(GFP_KERNEL)
+			-> direct reclaim
+			-> nfs_release_page
+			-> <send write/commit request to blocked nfsds>
+			   <deadlock>
+
+then why is it just __d_alloc that needs this fix?  Either this is a
+problem *everywhere* or it's not a problem at all.
+
+If it's a problem everywhere it means that we simply can't allow
+reclaim from localhost NFS mounts to run from contexts that could
+block an NFSD. i.e. you cannot run NFS client memory reclaim from
+filesystems that are NFS server exported filesystems.....
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
