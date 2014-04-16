@@ -1,228 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:49128 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758514AbaDJRns convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Apr 2014 13:43:48 -0400
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
-Subject: Re: [PATCH V1] NFS-RDMA: fix qp pointer validation checks
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <5346B22D.3060706@opengridcomputing.com>
-Date: Thu, 10 Apr 2014 13:43:33 -0400
-Cc: Devesh Sharma <Devesh.Sharma@Emulex.Com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Message-Id: <D7836AB3-FCB6-40EF-9954-B58A05A87791@oracle.com>
-References: <014738b6-698e-4ea1-82f9-287378bfec19@CMEXHTCAS2.ad.emulex.com> <D7AB2150-5F25-4BA2-80D9-94890AD11F8F@primarydata.com> <F1C70AD6-BDD4-4534-8DC4-61D2767581D9@oracle.com> <EE7902D3F51F404C82415C4803930ACD3FDEAA43@CMEXMB1.ad.emulex.com> <E66D006A-0D04-4602-8BF5-6834CACD2E24@oracle.com> <5346B22D.3060706@opengridcomputing.com>
-To: Steve Wise <swise@opengridcomputing.com>
+Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:28161 "EHLO
+	ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1754524AbaDPGSg (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Apr 2014 02:18:36 -0400
+Date: Wed, 16 Apr 2014 16:18:20 +1000
+From: Dave Chinner <david@fromorbit.com>
+To: NeilBrown <neilb@suse.de>
+Cc: linux-mm@kvack.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, xfs@oss.sgi.com
+Subject: Re: [PATCH 19/19] XFS: set PF_FSTRANS while ilock is held in
+ xfs_free_eofblocks
+Message-ID: <20140416061819.GF15995@dastard>
+References: <20140416033623.10604.69237.stgit@notabene.brown>
+ <20140416040337.10604.7488.stgit@notabene.brown>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140416040337.10604.7488.stgit@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Apr 10, 2014, at 11:01 AM, Steve Wise <swise@opengridcomputing.com> wrote:
-
-> On 4/9/2014 7:26 PM, Chuck Lever wrote:
->> On Apr 9, 2014, at 7:56 PM, Devesh Sharma <Devesh.Sharma@Emulex.Com> wrote:
->> 
->>> Hi Chuk and Trond
->>> 
->>> I will resend a v2 for this.
->>> What if ib_post_send() fails with immidate error, I that case also DECR_CQCOUNT() will be called but no completion will be reported. Will that not cause any problems?
->> We should investigate whether an error return from ib_post_{send,recv} means there will be no completion. But I’ve never seen these verbs fail in practice, so I’m not in a hurry to make work for anyone! ;-)
+On Wed, Apr 16, 2014 at 02:03:37PM +1000, NeilBrown wrote:
+> memory allocates can happen while the xfs ilock is held in
+> xfs_free_eofblocks, particularly
 > 
-> A synchronous failure from ib_post_* means the WR (or at least one of them if there were > 1) failed and did not get submitted to HW.  So there will be no completion for those that failed.
-
-OK.
-
-Our post operations are largely single WRs. Before we address CQCOUNT in error cases, we’d have to deal with chained WRs.
-
-Chained WRs are used only when rpcrdma_register_frmr_external() finds an MR that hasn’t been invalidated. That’s actually working around a FRMR re-use bug (commit 5c635e09). If the underlying re-use problem was fixed, we could get rid of the chained WR in register_frmr_external() (and we wouldn’t need completions at all for FAST_REG_MR).
-
-But at 100,000 feet, if a post operation fails, that seems like a very serious issue. I wonder whether we would be better off disconnecting and starting over in those cases.
-
+>   [<ffffffff813e6667>] kmem_zone_alloc+0x67/0xc0
+>   [<ffffffff813e5945>] xfs_trans_add_item+0x25/0x50
+>   [<ffffffff8143d64c>] xfs_trans_ijoin+0x2c/0x60
+>   [<ffffffff8142275e>] xfs_itruncate_extents+0xbe/0x400
+>   [<ffffffff813c72f4>] xfs_free_eofblocks+0x1c4/0x240
 > 
->> However it seems to me the new (!ia->ri_id->qp) checks outside the connect logic are unnecessary.
->> 
->> Clearly, as you noticed, the ib_post_{send,recv} verbs do not check that their “qp" argument is NULL before dereferencing it.
->> 
->> But I don’t understand how xprtrdma can post any operation if the transport isn’t connected. In other words, how would it be possible to call rpcrdma_ep_post_recv() if the connect had failed and there was no QP?
->> 
->> If disconnect wipes ia->ri_id->qp while there are still operations in progress, that would be the real bug.
->> 
->> 
->>> Also in rpcrdma_register_frmr_external() I am seeing DECT_CQCOUNT is called twice
->>> First at line 1538 (unlikely however) and second at line 1562. Shouldn't  it be only at 1562?
->> if (seg1->mr_chunk.rl_mw->r.frmr.state == FRMR_IS_VALID) then rpcrdma_register_frmr_external() posts two Work Requests (LOCAL_INV then FAST_REG_MR) with one ib_post_send(). Thus it is correct to DECR_CQCOUNT twice in that case because each WR will trigger a separate completion event.
->> 
->> 
->>> -----Original Message-----
->>> From: Chuck Lever [mailto:chuck.lever@oracle.com]
->>> Sent: Thursday, April 10, 2014 1:57 AM
->>> To: Devesh Sharma
->>> Cc: Linux NFS Mailing List; linux-rdma@vger.kernel.org; Trond Myklebust
->>> Subject: Re: [PATCH V1] NFS-RDMA: fix qp pointer validation checks
->>> 
->>> 
->>> On Apr 9, 2014, at 4:22 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
->>> 
->>>> Hi Devesh,
->>>> 
->>>> This looks a lot better. I still have a couple of small suggestions, though.
->>>> 
->>>> On Apr 9, 2014, at 14:40, Devesh Sharma <devesh.sharma@emulex.com> wrote:
->>>> 
->>>>> If the rdma_create_qp fails to create qp due to device firmware being
->>>>> in invalid state xprtrdma still tries to destroy the non-existant qp
->>>>> and ends up in a NULL pointer reference crash.
->>>>> Adding proper checks for vaidating QP pointer avoids this to happen.
->>>>> 
->>>>> Signed-off-by: Devesh Sharma <devesh.sharma@emulex.com>
->>>>> ---
->>>>> net/sunrpc/xprtrdma/verbs.c |   29 +++++++++++++++++++++++++----
->>>>> 1 files changed, 25 insertions(+), 4 deletions(-)
->>>>> 
->>>>> diff --git a/net/sunrpc/xprtrdma/verbs.c
->>>>> b/net/sunrpc/xprtrdma/verbs.c index 9372656..902ac78 100644
->>>>> --- a/net/sunrpc/xprtrdma/verbs.c
->>>>> +++ b/net/sunrpc/xprtrdma/verbs.c
->>>>> @@ -831,10 +831,12 @@ rpcrdma_ep_connect(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
->>>>> 	if (ep->rep_connected != 0) {
->>>>> 		struct rpcrdma_xprt *xprt;
->>>>> retry:
->>>>> -		rc = rpcrdma_ep_disconnect(ep, ia);
->>>>> -		if (rc && rc != -ENOTCONN)
->>>>> -			dprintk("RPC:       %s: rpcrdma_ep_disconnect"
->>>>> +		if (ia->ri_id->qp) {
->>>>> +			rc = rpcrdma_ep_disconnect(ep, ia);
->>>>> +			if (rc && rc != -ENOTCONN)
->>>>> +				dprintk("RPC:       %s: rpcrdma_ep_disconnect"
->>>>> 				" status %i\n", __func__, rc);
->>>>> +		}
->>>>> 		rpcrdma_clean_cq(ep->rep_cq);
->>>>> 
->>>>> 		xprt = container_of(ia, struct rpcrdma_xprt, rx_ia); @@ -859,7
->>>>> +861,9 @@ retry:
->>>>> 			goto out;
->>>>> 		}
->>>>> 		/* END TEMP */
->>>>> -		rdma_destroy_qp(ia->ri_id);
->>>>> +		if (ia->ri_id->qp) {
->>>>> +			rdma_destroy_qp(ia->ri_id);
->>>>> +		}
->>>> Nit: No need for braces here.
->>>> 
->>>>> 		rdma_destroy_id(ia->ri_id);
->>>>> 		ia->ri_id = id;
->>>>> 	}
->>>>> @@ -1557,6 +1561,13 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
->>>>> 	frmr_wr.wr.fast_reg.rkey = seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey;
->>>>> 	DECR_CQCOUNT(&r_xprt->rx_ep);
->>> I don't think you can DECR_CQCOUNT, then exit without posting the send. That will screw up the completion counter and result in a transport hang, won't it?
->>> 
->>>>> +	if (!ia->ri_is->qp) {
->>>>> +		rc = -EINVAL;
->>>>> +		while (i--)
->>>>> +			rpcrdma_unmap_one(ia, --seg);
->>>>> +		goto out;
->>>>> +	}
->>>> Instead of duplicating the rpcrdma_unmap_one() cleanup here, why not
->>>> just do
->>>> 
->>>> 	if (ia->ri_is->qp)
->>>> 		rc = ib_post_send(...)
->>>> 	else
->>>> 		rc = -EINVAL;
->>>> 
->>>> BTW: can we not simply test for ia->ri_is->qp before we even call rpcrdma_map_one() and hence bail out before we have to do any cleanup?
->>>> 
->>>>> +
->>>>> 	rc = ib_post_send(ia->ri_id->qp, post_wr, &bad_wr);
->>>>> 
->>>>> 	if (rc) {
->>>>> @@ -1571,6 +1582,7 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
->>>>> 		seg1->mr_len = len;
->>>>> 	}
->>>>> 	*nsegs = i;
->>>>> +out:
->>>>> 	return rc;
->>>>> }
->>>>> 
->>>>> @@ -1592,6 +1604,9 @@ rpcrdma_deregister_frmr_external(struct rpcrdma_mr_seg *seg,
->>>>> 	invalidate_wr.ex.invalidate_rkey = seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey;
->>>>> 	DECR_CQCOUNT(&r_xprt->rx_ep);
->>> Ditto.
->>> 
->>>>> +	if (!ia->ri_id->qp)
->>>>> +		return -EINVAL;
->>>>> +
->>>>> 	rc = ib_post_send(ia->ri_id->qp, &invalidate_wr, &bad_wr);
->>>>> 	if (rc)
->>>>> 		dprintk("RPC:       %s: failed ib_post_send for invalidate,"
->>>>> @@ -1923,6 +1938,9 @@ rpcrdma_ep_post(struct rpcrdma_ia *ia,
->>>>> 		send_wr.send_flags = IB_SEND_SIGNALED;
->>>>> 	}
->>> Ditto.
->>> 
->>>>> +	if (!ia->ri_id->qp)
->>>>> +		return -EINVAL;
->>>>> +
->>>>> 	rc = ib_post_send(ia->ri_id->qp, &send_wr, &send_wr_fail);
->>>>> 	if (rc)
->>>>> 		dprintk("RPC:       %s: ib_post_send returned %i\n", __func__,
->>>>> @@ -1951,6 +1969,9 @@ rpcrdma_ep_post_recv(struct rpcrdma_ia *ia,
->>>>> 		rep->rr_iov.addr, rep->rr_iov.length, DMA_BIDIRECTIONAL);
->>>>> 
->>>>> 	DECR_CQCOUNT(ep);
->>> And here.
->>> 
->>>>> +
->>>>> +	if (!ia->ri_id->qp)
->>>>> +		return -EINVAL;
->>>>> 	rc = ib_post_recv(ia->ri_id->qp, &recv_wr, &recv_wr_fail);
->>>>> 
->>>>> 	if (rc)
->>>>> --
->>>>> 1.7.1
->>>>> 
->>>> _________________________________
->>>> Trond Myklebust
->>>> Linux NFS client maintainer, PrimaryData
->>>> trond.myklebust@primarydata.com
->>>> 
->>>> --
->>>> To unsubscribe from this list: send the line "unsubscribe linux-nfs"
->>>> in the body of a message to majordomo@vger.kernel.org More majordomo
->>>> info at  http://vger.kernel.org/majordomo-info.html
->>> --
->>> Chuck Lever
->>> chuck[dot]lever[at]oracle[dot]com
->>> 
->>> 
->>> 
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> --
->> Chuck Lever
->> chuck[dot]lever[at]oracle[dot]com
->> 
->> 
->> 
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> So set PF_FSTRANS to avoid this causing a deadlock.
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+Another "You broke KM_NOFS" moment. You win a Kit Kat. ;)
 
+xfs_trans_add_item():
 
+	lidp = kmem_zone_zalloc(xfs_log_item_desc_zone, KM_SLEEP | KM_NOFS);
 
+KM_NOFS needs to work, otherwise XFS is just a huge steaming pile of
+memory reclaim deadlocks regardless of whether you are using
+loopback NFS or not.
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
