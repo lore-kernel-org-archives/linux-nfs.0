@@ -1,570 +1,227 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f178.google.com ([209.85.213.178]:53639 "EHLO
-	mail-ig0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758125AbaDXPXX convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Apr 2014 11:23:23 -0400
-Received: by mail-ig0-f178.google.com with SMTP id hn18so1021674igb.17
-        for <linux-nfs@vger.kernel.org>; Thu, 24 Apr 2014 08:23:22 -0700 (PDT)
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
-Subject: Re: [PATCH 05/17] nfs: add support for multiple nfs reqs per page
-From: Weston Andros Adamson <dros@primarydata.com>
-In-Reply-To: <20140424105000.665c159e@tlielax.poochiereds.net>
-Date: Thu, 24 Apr 2014 11:23:19 -0400
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-nfs list <linux-nfs@vger.kernel.org>
-Message-Id: <3DEC13E0-CC9B-498D-A97A-98D77628F672@primarydata.com>
-References: <1398202165-78897-1-git-send-email-dros@primarydata.com> <1398202165-78897-6-git-send-email-dros@primarydata.com> <20140424105000.665c159e@tlielax.poochiereds.net>
-To: Jeff Layton <jlayton@poochiereds.net>
+Received: from casper.infradead.org ([85.118.1.10]:57768 "EHLO
+	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756237AbaDPNFP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Apr 2014 09:05:15 -0400
+From: Christoph Hellwig <hch@lst.de>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Anna Schumaker <Anna.Schumaker@netapp.com>, linux-nfs@vger.kernel.org
+Subject: [PATCH 2/2] nfs: remove ->read_pageio_init from rpc ops
+Date: Wed, 16 Apr 2014 15:07:22 +0200
+Message-Id: <1397653642-17833-3-git-send-email-hch@lst.de>
+In-Reply-To: <1397653642-17833-1-git-send-email-hch@lst.de>
+References: <1397653642-17833-1-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Apr 24, 2014, at 10:50 AM, Jeff Layton <jlayton@poochiereds.net> wrote:
+The read_pageio_init method is just a very convoluted way to grab the
+right nfs_pageio_ops vector.  The vector to chose is not a choice of
+protocol version, but just a pNFS vs MDS I/O choice that can simply be
+done inside nfs_pageio_init_write based on the presence of a layout
+driver, and a new force_mds flag to the special case of falling back
+to MDS I/O on a pNFS-capable volume.
 
-> On Tue, 22 Apr 2014 17:29:13 -0400
-> Weston Andros Adamson <dros@primarydata.com> wrote:
-> 
->> Add "page groups" - a circular list of nfs requests (struct nfs_page)
->> that all reference the same page. This gives nfs read and write paths
->> the ability to account for sub-page regions independently.  This
->> somewhat follows the design of struct buffer_head's sub-page
->> accounting.
->> 
->> Only "head" requests are ever added/removed from the inode list in
->> the buffered write path. "head" and "sub" requests are treated the
->> same through the read path and the rest of the write/commit path.
->> Requests are given an extra reference across the life of the list.
->> 
->> Page groups are never rejoined after being split. If the read/write
->> request fails and the client falls back to another path (ie revert
->> to MDS in PNFS case), the already split requests are pushed through
->> the recoalescing code again, which may split them further and then
->> coalesce them into properly sized requests on the wire. Fragmentation
->> shouldn't be a problem with the current design, because we flush all
->> requests in page group when a non-contiguous request is added, so
->> the only time resplitting should occur is on a resend of a read or
->> write.
->> 
->> This patch lays the groundwork for sub-page splitting, but does not
->> actually do any splitting. For now all page groups have one request
->> as pg_test functions don't yet split pages. There are several related
->> patches that are needed support multiple requests per page group.
->> 
->> Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
->> ---
->> fs/nfs/direct.c          |   7 +-
->> fs/nfs/pagelist.c        | 218 ++++++++++++++++++++++++++++++++++++++++++++---
->> fs/nfs/read.c            |   4 +-
->> fs/nfs/write.c           |  12 ++-
->> include/linux/nfs_page.h |  12 ++-
->> 5 files changed, 231 insertions(+), 22 deletions(-)
->> 
->> diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
->> index a0c30c5..9d968ca 100644
->> --- a/fs/nfs/direct.c
->> +++ b/fs/nfs/direct.c
->> @@ -380,7 +380,7 @@ static ssize_t nfs_direct_read_schedule_segment(struct nfs_pageio_descriptor *de
->> 			struct nfs_page *req;
->> 			unsigned int req_len = min_t(size_t, bytes, PAGE_SIZE - pgbase);
->> 			/* XXX do we need to do the eof zeroing found in async_filler? */
->> -			req = nfs_create_request(dreq->ctx, pagevec[i],
->> +			req = nfs_create_request(dreq->ctx, pagevec[i], NULL,
->> 						 pgbase, req_len);
->> 			if (IS_ERR(req)) {
->> 				result = PTR_ERR(req);
->> @@ -749,7 +749,7 @@ static ssize_t nfs_direct_write_schedule_segment(struct nfs_pageio_descriptor *d
->> 			struct nfs_page *req;
->> 			unsigned int req_len = min_t(size_t, bytes, PAGE_SIZE - pgbase);
->> 
->> -			req = nfs_create_request(dreq->ctx, pagevec[i],
->> +			req = nfs_create_request(dreq->ctx, pagevec[i], NULL,
->> 						 pgbase, req_len);
->> 			if (IS_ERR(req)) {
->> 				result = PTR_ERR(req);
->> @@ -827,6 +827,8 @@ static void nfs_direct_write_completion(struct nfs_pgio_header *hdr)
->> 	spin_unlock(&dreq->lock);
->> 
->> 	while (!list_empty(&hdr->pages)) {
->> +		bool do_destroy = true;
->> +
->> 		req = nfs_list_entry(hdr->pages.next);
->> 		nfs_list_remove_request(req);
->> 		switch (bit) {
->> @@ -834,6 +836,7 @@ static void nfs_direct_write_completion(struct nfs_pgio_header *hdr)
->> 		case NFS_IOHDR_NEED_COMMIT:
->> 			kref_get(&req->wb_kref);
->> 			nfs_mark_request_commit(req, hdr->lseg, &cinfo);
->> +			do_destroy = false;
->> 		}
->> 		nfs_unlock_and_release_request(req);
->> 	}
->> diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
->> index ac4fb64..8cb8e14 100644
->> --- a/fs/nfs/pagelist.c
->> +++ b/fs/nfs/pagelist.c
->> @@ -26,6 +26,8 @@
->> 
->> static struct kmem_cache *nfs_page_cachep;
->> 
->> +static void nfs_free_request(struct nfs_page *);
->> +
->> bool nfs_pgarray_set(struct nfs_page_array *p, unsigned int pagecount)
->> {
->> 	p->npages = pagecount;
->> @@ -133,10 +135,145 @@ nfs_iocounter_wait(struct nfs_io_counter *c)
->> 	return __nfs_iocounter_wait(c);
->> }
->> 
->> +/*
->> + * nfs_page_group_lock - lock the head of the page group
->> + * @req - request in group that is to be locked
->> + *
->> + * this lock must be held if modifying the page group list
->> + */
->> +void
->> +nfs_page_group_lock(struct nfs_page *req)
->> +{
->> +	struct nfs_page *head = req->wb_head;
->> +	int err = -EAGAIN;
->> +
->> +	WARN_ON_ONCE(head != head->wb_head);
->> +
->> +	while (err)
->> +		err = wait_on_bit_lock(&head->wb_flags, PG_HEADLOCK,
->> +			nfs_wait_bit_killable, TASK_KILLABLE);
->> +}
->> +
->> +/*
->> + * nfs_page_group_unlock - unlock the head of the page group
->> + * @req - request in group that is to be unlocked
->> + */
->> +void
->> +nfs_page_group_unlock(struct nfs_page *req)
->> +{
->> +	struct nfs_page *head = req->wb_head;
->> +
->> +	WARN_ON_ONCE(head != head->wb_head);
->> +
->> +	smp_mb__before_clear_bit();
->> +	clear_bit(PG_HEADLOCK, &head->wb_flags);
->> +	smp_mb__after_clear_bit();
->> +	wake_up_bit(&head->wb_flags, PG_HEADLOCK);
->> +}
->> +
->> +/*
->> + * nfs_page_group_sync_on_bit_locked
->> + *
->> + * must be called with page group lock held
->> + */
->> +static bool
->> +nfs_page_group_sync_on_bit_locked(struct nfs_page *req, unsigned int bit)
->> +{
->> +	struct nfs_page *head = req->wb_head;
->> +	struct nfs_page *tmp;
->> +
->> +	WARN_ON_ONCE(!test_bit(PG_HEADLOCK, &head->wb_flags));
->> +	WARN_ON_ONCE(test_and_set_bit(bit, &req->wb_flags));
->> +
->> +	tmp = req->wb_this_page;
->> +	while (tmp != req) {
->> +		if (!test_bit(bit, &tmp->wb_flags))
->> +			return false;
->> +		tmp = tmp->wb_this_page;
->> +	}
->> +
->> +	/* true! reset all bits */
->> +	tmp = req;
->> +	do {
->> +		clear_bit(bit, &tmp->wb_flags);
->> +		tmp = tmp->wb_this_page;
->> +	} while (tmp != req);
->> +
->> +	return true;
->> +}
->> +
->> +/*
->> + * nfs_page_group_sync_on_bit - set bit on current request, but only
->> + *   return true if the bit is set for all requests in page group
->> + * @req - request in page group
->> + * @bit - PG_* bit that is used to sync page group
->> + */
->> +bool nfs_page_group_sync_on_bit(struct nfs_page *req, unsigned int bit)
->> +{
->> +	bool ret;
->> +
->> +	nfs_page_group_lock(req);
->> +	ret = nfs_page_group_sync_on_bit_locked(req, bit);
->> +	nfs_page_group_unlock(req);
->> +
->> +	return ret;
->> +}
->> +
->> +/*
->> + * nfs_page_group_init - Initialize the page group linkage for @req
->> + * @req - a new nfs request
->> + * @prev - the previous request in page group, or NULL if @req is the first
->> + *         or only request in the group (the head).
->> + */
->> +static inline void
->> +nfs_page_group_init(struct nfs_page *req, struct nfs_page *prev)
->> +{
->> +	WARN_ON_ONCE(prev == req);
->> +
->> +	if (!prev) {
->> +		req->wb_head = req;
->> +		req->wb_this_page = req;
->> +	} else {
->> +		WARN_ON_ONCE(prev->wb_this_page != prev->wb_head);
->> +		WARN_ON_ONCE(!test_bit(PG_HEADLOCK, &prev->wb_head->wb_flags));
->> +		req->wb_head = prev->wb_head;
->> +		req->wb_this_page = prev->wb_this_page;
->> +		prev->wb_this_page = req;
->> +	}
->> +}
->> +
->> +/*
->> + * nfs_page_group_destroy - sync the destruction of page groups
->> + * @req - request that no longer needs the page group
->> + *
->> + * releases the page group reference from each member once all
->> + * members have called this function.
->> + */
->> +static void
->> +nfs_page_group_destroy(struct kref *kref)
->> +{
->> +	struct nfs_page *req = container_of(kref, struct nfs_page, wb_kref);
->> +	struct nfs_page *tmp, *next;
->> +
->> +	if (!nfs_page_group_sync_on_bit(req, PG_TEARDOWN))
->> +		return;
->> +
->> +	tmp = req;
->> +	do {
->> +		next = tmp->wb_this_page;
->> +		/* unlink and free */
->> +		tmp->wb_this_page = tmp;
->> +		tmp->wb_head = tmp;
->> +		nfs_free_request(tmp);
->> +		tmp = next;
->> +	} while (tmp != req);
->> +}
->> +
->> /**
->>  * nfs_create_request - Create an NFS read/write request.
->>  * @ctx: open context to use
->>  * @page: page to write
->> + * @last: last nfs request created for this page group or NULL if head
->>  * @offset: starting offset within the page for the write
->>  * @count: number of bytes to read/write
->>  *
->> @@ -146,7 +283,8 @@ nfs_iocounter_wait(struct nfs_io_counter *c)
->>  */
->> struct nfs_page *
->> nfs_create_request(struct nfs_open_context *ctx, struct page *page,
->> -		   unsigned int offset, unsigned int count)
->> +		   struct nfs_page *last, unsigned int offset,
->> +		   unsigned int count)
->> {
->> 	struct nfs_page		*req;
->> 	struct nfs_lock_context *l_ctx;
->> @@ -178,6 +316,7 @@ nfs_create_request(struct nfs_open_context *ctx, struct page *page,
->> 	req->wb_bytes   = count;
->> 	req->wb_context = get_nfs_open_context(ctx);
->> 	kref_init(&req->wb_kref);
->> +	nfs_page_group_init(req, last);
->> 	return req;
->> }
->> 
->> @@ -235,16 +374,22 @@ static void nfs_clear_request(struct nfs_page *req)
->> 	}
->> }
->> 
->> -
->> /**
->>  * nfs_release_request - Release the count on an NFS read/write request
->>  * @req: request to release
->>  *
->>  * Note: Should never be called with the spinlock held!
->>  */
->> -static void nfs_free_request(struct kref *kref)
->> +static void nfs_free_request(struct nfs_page *req)
->> {
->> -	struct nfs_page *req = container_of(kref, struct nfs_page, wb_kref);
->> +	WARN_ON_ONCE(req->wb_this_page != req);
->> +
->> +	/* extra debug: make sure no sync bits are still set */
->> +	WARN_ON_ONCE(test_bit(PG_TEARDOWN, &req->wb_flags));
->> +	WARN_ON_ONCE(test_bit(PG_UNLOCKPAGE, &req->wb_flags));
->> +	WARN_ON_ONCE(test_bit(PG_UPTODATE, &req->wb_flags));
->> +	WARN_ON_ONCE(test_bit(PG_WB_END, &req->wb_flags));
->> +	WARN_ON_ONCE(test_bit(PG_REMOVE, &req->wb_flags));
->> 
->> 	/* Release struct file and open context */
->> 	nfs_clear_request(req);
->> @@ -253,7 +398,7 @@ static void nfs_free_request(struct kref *kref)
->> 
->> void nfs_release_request(struct nfs_page *req)
->> {
->> -	kref_put(&req->wb_kref, nfs_free_request);
->> +	kref_put(&req->wb_kref, nfs_page_group_destroy);
->> }
->> 
->> static int nfs_wait_bit_uninterruptible(void *word)
->> @@ -439,21 +584,66 @@ static void nfs_pageio_doio(struct nfs_pageio_descriptor *desc)
->>  * @desc: destination io descriptor
->>  * @req: request
->>  *
->> + * This may split a request into subrequests which are all part of the
->> + * same page group.
->> + *
->>  * Returns true if the request 'req' was successfully coalesced into the
->>  * existing list of pages 'desc'.
->>  */
->> static int __nfs_pageio_add_request(struct nfs_pageio_descriptor *desc,
->> 			   struct nfs_page *req)
->> {
->> -	while (!nfs_pageio_do_add_request(desc, req)) {
->> -		desc->pg_moreio = 1;
->> -		nfs_pageio_doio(desc);
->> -		if (desc->pg_error < 0)
->> -			return 0;
->> -		desc->pg_moreio = 0;
->> -		if (desc->pg_recoalesce)
->> -			return 0;
->> -	}
->> +	struct nfs_page *subreq;
->> +	unsigned int bytes_left = 0;
->> +	unsigned int offset, pgbase;
->> +
->> +	nfs_page_group_lock(req);
->> +
->> +	subreq = req;
->> +	bytes_left = subreq->wb_bytes;
->> +	offset = subreq->wb_offset;
->> +	pgbase = subreq->wb_pgbase;
->> +
->> +	do {
->> +		if (!nfs_pageio_do_add_request(desc, subreq)) {
->> +			/* make sure pg_test call(s) did nothing */
->> +			WARN_ON_ONCE(subreq->wb_bytes != bytes_left);
->> +			WARN_ON_ONCE(subreq->wb_offset != offset);
->> +			WARN_ON_ONCE(subreq->wb_pgbase != pgbase);
->> +
->> +			nfs_page_group_unlock(req);
->> +			desc->pg_moreio = 1;
->> +			nfs_pageio_doio(desc);
->> +			if (desc->pg_error < 0)
->> +				return 0;
->> +			desc->pg_moreio = 0;
->> +			if (desc->pg_recoalesce)
->> +				return 0;
->> +			/* retry add_request for this subreq */
->> +			nfs_page_group_lock(req);
->> +			continue;
->> +		}
->> +
->> +		/* check for buggy pg_test call(s) */
->> +		WARN_ON_ONCE(subreq->wb_bytes + subreq->wb_pgbase > PAGE_SIZE);
->> +		WARN_ON_ONCE(subreq->wb_bytes > bytes_left);
->> +		WARN_ON_ONCE(subreq->wb_bytes == 0);
->> +
->> +		bytes_left -= subreq->wb_bytes;
->> +		offset += subreq->wb_bytes;
->> +		pgbase += subreq->wb_bytes;
->> +
->> +		if (bytes_left) {
->> +			subreq = nfs_create_request(req->wb_context,
->> +					req->wb_page,
->> +					subreq, pgbase, bytes_left);
->> +			nfs_lock_request(subreq);
->> +			subreq->wb_offset  = offset;
->> +			subreq->wb_index = req->wb_index;
->> +		}
->> +	} while (bytes_left > 0);
->> +
->> +	nfs_page_group_unlock(req);
->> 	return 1;
->> }
->> 
->> diff --git a/fs/nfs/read.c b/fs/nfs/read.c
->> index 95a0855..ee0a3cd 100644
->> --- a/fs/nfs/read.c
->> +++ b/fs/nfs/read.c
->> @@ -139,7 +139,7 @@ int nfs_readpage_async(struct nfs_open_context *ctx, struct inode *inode,
->> 	len = nfs_page_length(page);
->> 	if (len == 0)
->> 		return nfs_return_empty_page(page);
->> -	new = nfs_create_request(ctx, page, 0, len);
->> +	new = nfs_create_request(ctx, page, NULL, 0, len);
->> 	if (IS_ERR(new)) {
->> 		unlock_page(page);
->> 		return PTR_ERR(new);
->> @@ -600,7 +600,7 @@ readpage_async_filler(void *data, struct page *page)
->> 	if (len == 0)
->> 		return nfs_return_empty_page(page);
->> 
->> -	new = nfs_create_request(desc->ctx, page, 0, len);
->> +	new = nfs_create_request(desc->ctx, page, NULL, 0, len);
->> 	if (IS_ERR(new))
->> 		goto out_error;
->> 
->> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
->> index ca20ec7..d1453f2 100644
->> --- a/fs/nfs/write.c
->> +++ b/fs/nfs/write.c
->> @@ -461,7 +461,7 @@ static void nfs_inode_remove_request(struct nfs_page *req)
->> 	}
->> 	nfsi->npages--;
->> 	spin_unlock(&inode->i_lock);
->> -	nfs_release_request(req);
->> +	nfs_release_request(head);
->> }
->> 
->> static void
->> @@ -625,6 +625,7 @@ static void nfs_write_completion(struct nfs_pgio_header *hdr)
->> {
->> 	struct nfs_commit_info cinfo;
->> 	unsigned long bytes = 0;
->> +	bool do_destroy;
->> 
->> 	if (test_bit(NFS_IOHDR_REDO, &hdr->flags))
->> 		goto out;
->> @@ -654,6 +655,7 @@ remove_req:
->> next:
->> 		nfs_unlock_request(req);
->> 		nfs_end_page_writeback(req->wb_page);
->> +		do_destroy = !test_bit(NFS_IOHDR_NEED_COMMIT, &hdr->flags);
->> 		nfs_release_request(req);
->> 	}
->> out:
->> @@ -758,6 +760,10 @@ static struct nfs_page *nfs_try_to_update_request(struct inode *inode,
->> 		if (req == NULL)
->> 			goto out_unlock;
->> 
->> +		/* should be handled by nfs_flush_incompatible */
->> +		WARN_ON_ONCE(req->wb_head != req);
->> +		WARN_ON_ONCE(req->wb_this_page != req);
->> +
->> 		rqend = req->wb_offset + req->wb_bytes;
->> 		/*
->> 		 * Tell the caller to flush out the request if
->> @@ -819,7 +825,7 @@ static struct nfs_page * nfs_setup_write_request(struct nfs_open_context* ctx,
->> 	req = nfs_try_to_update_request(inode, page, offset, bytes);
->> 	if (req != NULL)
->> 		goto out;
->> -	req = nfs_create_request(ctx, page, offset, bytes);
->> +	req = nfs_create_request(ctx, page, NULL, offset, bytes);
->> 	if (IS_ERR(req))
->> 		goto out;
->> 	nfs_inode_add_request(inode, req);
->> @@ -863,6 +869,8 @@ int nfs_flush_incompatible(struct file *file, struct page *page)
->> 			return 0;
->> 		l_ctx = req->wb_lock_context;
->> 		do_flush = req->wb_page != page || req->wb_context != ctx;
->> +		/* for now, flush if more than 1 request in page_group */
->> +		do_flush |= req->wb_this_page != req;
->> 		if (l_ctx && ctx->dentry->d_inode->i_flock != NULL) {
->> 			do_flush |= l_ctx->lockowner.l_owner != current->files
->> 				|| l_ctx->lockowner.l_pid != current->tgid;
->> diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
->> index 214e098..1fb161b 100644
->> --- a/include/linux/nfs_page.h
->> +++ b/include/linux/nfs_page.h
->> @@ -26,6 +26,8 @@ enum {
->> 	PG_MAPPED,		/* page private set for buffered io */
->> 	PG_CLEAN,		/* write succeeded */
->> 	PG_COMMIT_TO_DS,	/* used by pnfs layouts */
->> +	PG_HEADLOCK,		/* page group lock of wb_head */
->> +	PG_TEARDOWN,		/* page group sync for destroy */
->> };
->> 
->> struct nfs_inode;
->> @@ -41,6 +43,8 @@ struct nfs_page {
->> 	struct kref		wb_kref;	/* reference count */
->> 	unsigned long		wb_flags;
->> 	struct nfs_write_verifier	wb_verf;	/* Commit cookie */
->> +	struct nfs_page		*wb_this_page;  /* list of reqs for this page */
->> +	struct nfs_page		*wb_head;       /* head pointer for req list */
-> 
-> Hmm ok, so to make sure I understand...
-> 
-> So page->private will point to the "head" req (struct page_private).
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+---
+ fs/nfs/direct.c         |    2 +-
+ fs/nfs/internal.h       |    2 +-
+ fs/nfs/nfs3proc.c       |    1 -
+ fs/nfs/nfs4proc.c       |    1 -
+ fs/nfs/pnfs.c           |   15 +--------------
+ fs/nfs/pnfs.h           |    9 ---------
+ fs/nfs/proc.c           |    1 -
+ fs/nfs/read.c           |   19 ++++++++++++++-----
+ include/linux/nfs_xdr.h |    2 --
+ 9 files changed, 17 insertions(+), 35 deletions(-)
 
-Only in the buffered write case.  Page->private is not set for read path / direct i/o path.
-
-> Then we'll have a singly-linked list of reqs hanging off of
-> wb_this_page. Is that right?
-> 
-> If so, then it seems like it would be clearer to use a standard
-> list_head here. If you need to get to the wb_head, you could always do
-> something like this:
-> 
-> 	list_first_entry(&req->wb_page->wb_this_page);
-
-Well, wb_page is a struct page and doesn’t have wb_this_page (which is in struct
-nfs_page), but I see where you’re going with this.
-
-A strategy like this only works if we always have page->private pointing to the head
-request. We chose not to go that way because it messes with the buffered
-write path’s setting / clearing of page private which interacts with the swappable
-nfs pages code that everyone seems to be afraid to touch ;)
-
-So we decided to go this route (not messing with page_private) as a first step - we
-certainly could add it later, but the current approach makes things less complex.
-
-> 
-> ...and could even turn that into a macro or static inline for some
-> syntactic sugar. It's a little more pointer chasing to find the head,
-> but it seems like that would be clearer than using yet another
-> linked-list implementation.
-
-So, I’m not against using list_head.. I didn’t go that route initially because I was:
-
- 1) following the buffer_head example, which rolls it’s own list
-
- 2) trying to grow nfs_page as little as possible - but we might have room within
-     the allocator bucket it currently lives in…
-
- 3) not sure list_head is suitable for a circular list (I haven’t ever looked into it).
-
-and until we have a way to find the head request (via page private, etc) without
-walking the circular list (chicken / egg problem needing to grab head lock before walking
-list to find the head to lock it), we’ll still need the head pointer.
-
-Thoughts?
-
--dros
-
-> 
->> };
->> 
->> struct nfs_pageio_descriptor;
->> @@ -75,9 +79,10 @@ struct nfs_pageio_descriptor {
->> 
->> extern	struct nfs_page *nfs_create_request(struct nfs_open_context *ctx,
->> 					    struct page *page,
->> +					    struct nfs_page *last,
->> 					    unsigned int offset,
->> 					    unsigned int count);
->> -extern	void nfs_release_request(struct nfs_page *req);
->> +extern	void nfs_release_request(struct nfs_page *);
->> 
->> 
->> extern	void nfs_pageio_init(struct nfs_pageio_descriptor *desc,
->> @@ -95,7 +100,10 @@ extern size_t nfs_generic_pg_test(struct nfs_pageio_descriptor *desc,
->> 				struct nfs_page *req);
->> extern  int nfs_wait_on_request(struct nfs_page *);
->> extern	void nfs_unlock_request(struct nfs_page *req);
->> -extern	void nfs_unlock_and_release_request(struct nfs_page *req);
->> +extern	void nfs_unlock_and_release_request(struct nfs_page *);
->> +extern void nfs_page_group_lock(struct nfs_page *);
->> +extern void nfs_page_group_unlock(struct nfs_page *);
->> +extern bool nfs_page_group_sync_on_bit(struct nfs_page *, unsigned int);
->> 
->> /*
->>  * Lock the page of an asynchronous request
-> 
-> 
-> -- 
-> Jeff Layton <jlayton@poochiereds.net>
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index 6a31102..bbe688e 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -424,7 +424,7 @@ static ssize_t nfs_direct_read_schedule_iovec(struct nfs_direct_req *dreq,
+ 	size_t requested_bytes = 0;
+ 	unsigned long seg;
+ 
+-	NFS_PROTO(dreq->inode)->read_pageio_init(&desc, dreq->inode,
++	nfs_pageio_init_read(&desc, dreq->inode, false,
+ 			     &nfs_direct_read_completion_ops);
+ 	get_dreq(dreq);
+ 	desc.pg_dreq = dreq;
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 8431083..98fe618 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -398,7 +398,7 @@ struct nfs_pgio_completion_ops;
+ extern struct nfs_read_header *nfs_readhdr_alloc(void);
+ extern void nfs_readhdr_free(struct nfs_pgio_header *hdr);
+ extern void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
+-			struct inode *inode,
++			struct inode *inode, bool force_mds,
+ 			const struct nfs_pgio_completion_ops *compl_ops);
+ extern int nfs_initiate_read(struct rpc_clnt *clnt,
+ 			     struct nfs_read_data *data,
+diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
+index e984880..d873241 100644
+--- a/fs/nfs/nfs3proc.c
++++ b/fs/nfs/nfs3proc.c
+@@ -947,7 +947,6 @@ const struct nfs_rpc_ops nfs_v3_clientops = {
+ 	.pathconf	= nfs3_proc_pathconf,
+ 	.decode_dirent	= nfs3_decode_dirent,
+ 	.read_setup	= nfs3_proc_read_setup,
+-	.read_pageio_init = nfs_pageio_init_read,
+ 	.read_rpc_prepare = nfs3_proc_read_rpc_prepare,
+ 	.read_done	= nfs3_read_done,
+ 	.write_setup	= nfs3_proc_write_setup,
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 8da0c62..21cd1f2 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -8433,7 +8433,6 @@ const struct nfs_rpc_ops nfs_v4_clientops = {
+ 	.set_capabilities = nfs4_server_capabilities,
+ 	.decode_dirent	= nfs4_decode_dirent,
+ 	.read_setup	= nfs4_proc_read_setup,
+-	.read_pageio_init = pnfs_pageio_init_read,
+ 	.read_rpc_prepare = nfs4_proc_read_rpc_prepare,
+ 	.read_done	= nfs4_read_done,
+ 	.write_setup	= nfs4_proc_write_setup,
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 9edac9f..3d5bc2b 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1434,19 +1434,6 @@ pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio,
+ }
+ EXPORT_SYMBOL_GPL(pnfs_generic_pg_init_write);
+ 
+-void
+-pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio, struct inode *inode,
+-		      const struct nfs_pgio_completion_ops *compl_ops)
+-{
+-	struct nfs_server *server = NFS_SERVER(inode);
+-	struct pnfs_layoutdriver_type *ld = server->pnfs_curr_ld;
+-
+-	if (ld == NULL)
+-		nfs_pageio_init_read(pgio, inode, compl_ops);
+-	else
+-		nfs_pageio_init(pgio, inode, ld->pg_read_ops, compl_ops, server->rsize, 0);
+-}
+-
+ bool
+ pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+ 		     struct nfs_page *req)
+@@ -1641,7 +1628,7 @@ int pnfs_read_done_resend_to_mds(struct inode *inode,
+ 	LIST_HEAD(failed);
+ 
+ 	/* Resend all requests through the MDS */
+-	nfs_pageio_init_read(&pgio, inode, compl_ops);
++	nfs_pageio_init_read(&pgio, inode, true, compl_ops);
+ 	pgio.pg_dreq = dreq;
+ 	while (!list_empty(head)) {
+ 		struct nfs_page *req = nfs_list_entry(head->next);
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index e9ac8fb..94a9a18 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -180,9 +180,6 @@ extern int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp);
+ void pnfs_get_layout_hdr(struct pnfs_layout_hdr *lo);
+ void pnfs_put_lseg(struct pnfs_layout_segment *lseg);
+ 
+-void pnfs_pageio_init_read(struct nfs_pageio_descriptor *, struct inode *,
+-			   const struct nfs_pgio_completion_ops *);
+-
+ void set_pnfs_layoutdriver(struct nfs_server *, const struct nfs_fh *, u32);
+ void unset_pnfs_layoutdriver(struct nfs_server *);
+ void pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *, struct nfs_page *);
+@@ -459,12 +456,6 @@ static inline void unset_pnfs_layoutdriver(struct nfs_server *s)
+ {
+ }
+ 
+-static inline void pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio, struct inode *inode,
+-					 const struct nfs_pgio_completion_ops *compl_ops)
+-{
+-	nfs_pageio_init_read(pgio, inode, compl_ops);
+-}
+-
+ static inline int
+ pnfs_commit_list(struct inode *inode, struct list_head *mds_pages, int how,
+ 		 struct nfs_commit_info *cinfo)
+diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
+index f9cc295..8cc227f 100644
+--- a/fs/nfs/proc.c
++++ b/fs/nfs/proc.c
+@@ -735,7 +735,6 @@ const struct nfs_rpc_ops nfs_v2_clientops = {
+ 	.pathconf	= nfs_proc_pathconf,
+ 	.decode_dirent	= nfs2_decode_dirent,
+ 	.read_setup	= nfs_proc_read_setup,
+-	.read_pageio_init = nfs_pageio_init_read,
+ 	.read_rpc_prepare = nfs_proc_read_rpc_prepare,
+ 	.read_done	= nfs_read_done,
+ 	.write_setup	= nfs_proc_write_setup,
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index 411aedd..7f87461 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -24,6 +24,7 @@
+ #include "internal.h"
+ #include "iostat.h"
+ #include "fscache.h"
++#include "pnfs.h"
+ 
+ #define NFSDBG_FACILITY		NFSDBG_PAGECACHE
+ 
+@@ -114,11 +115,17 @@ int nfs_return_empty_page(struct page *page)
+ }
+ 
+ void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
+-			      struct inode *inode,
++			      struct inode *inode, bool force_mds,
+ 			      const struct nfs_pgio_completion_ops *compl_ops)
+ {
+-	nfs_pageio_init(pgio, inode, &nfs_pageio_read_ops, compl_ops,
+-			NFS_SERVER(inode)->rsize, 0);
++	struct nfs_server *server = NFS_SERVER(inode);
++	const struct nfs_pageio_ops *pg_ops = &nfs_pageio_read_ops;
++
++#ifdef CONFIG_NFS_V4_1
++	if (server->pnfs_curr_ld && !force_mds)
++		pg_ops = server->pnfs_curr_ld->pg_read_ops;
++#endif
++	nfs_pageio_init(pgio, inode, pg_ops, compl_ops, server->rsize, 0);
+ }
+ EXPORT_SYMBOL_GPL(nfs_pageio_init_read);
+ 
+@@ -147,7 +154,8 @@ int nfs_readpage_async(struct nfs_open_context *ctx, struct inode *inode,
+ 	if (len < PAGE_CACHE_SIZE)
+ 		zero_user_segment(page, len, PAGE_CACHE_SIZE);
+ 
+-	NFS_PROTO(inode)->read_pageio_init(&pgio, inode, &nfs_async_read_completion_ops);
++	nfs_pageio_init_read(&pgio, inode, false,
++			     &nfs_async_read_completion_ops);
+ 	nfs_pageio_add_request(&pgio, new);
+ 	nfs_pageio_complete(&pgio);
+ 	NFS_I(inode)->read_io += pgio.pg_bytes_written;
+@@ -654,7 +662,8 @@ int nfs_readpages(struct file *filp, struct address_space *mapping,
+ 	if (ret == 0)
+ 		goto read_complete; /* all pages were read */
+ 
+-	NFS_PROTO(inode)->read_pageio_init(&pgio, inode, &nfs_async_read_completion_ops);
++	nfs_pageio_init_read(&pgio, inode, false,
++			     &nfs_async_read_completion_ops);
+ 
+ 	ret = read_cache_pages(mapping, pages, readpage_async_filler, &desc);
+ 
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 78216f8..3e8fc1f 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1466,8 +1466,6 @@ struct nfs_rpc_ops {
+ 	int	(*set_capabilities)(struct nfs_server *, struct nfs_fh *);
+ 	int	(*decode_dirent)(struct xdr_stream *, struct nfs_entry *, int);
+ 	void	(*read_setup)   (struct nfs_read_data *, struct rpc_message *);
+-	void	(*read_pageio_init)(struct nfs_pageio_descriptor *, struct inode *,
+-				    const struct nfs_pgio_completion_ops *);
+ 	int	(*read_rpc_prepare)(struct rpc_task *, struct nfs_read_data *);
+ 	int	(*read_done)  (struct rpc_task *, struct nfs_read_data *);
+ 	void	(*write_setup)  (struct nfs_write_data *, struct rpc_message *);
+-- 
+1.7.10.4
 
