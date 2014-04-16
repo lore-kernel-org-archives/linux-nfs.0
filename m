@@ -1,227 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from casper.infradead.org ([85.118.1.10]:57768 "EHLO
-	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756237AbaDPNFP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Apr 2014 09:05:15 -0400
-From: Christoph Hellwig <hch@lst.de>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Anna Schumaker <Anna.Schumaker@netapp.com>, linux-nfs@vger.kernel.org
-Subject: [PATCH 2/2] nfs: remove ->read_pageio_init from rpc ops
-Date: Wed, 16 Apr 2014 15:07:22 +0200
-Message-Id: <1397653642-17833-3-git-send-email-hch@lst.de>
-In-Reply-To: <1397653642-17833-1-git-send-email-hch@lst.de>
-References: <1397653642-17833-1-git-send-email-hch@lst.de>
+Received: from mail-wg0-f43.google.com ([74.125.82.43]:50503 "EHLO
+	mail-wg0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1161469AbaDPPS2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Apr 2014 11:18:28 -0400
+Received: by mail-wg0-f43.google.com with SMTP id x13so10928891wgg.26
+        for <linux-nfs@vger.kernel.org>; Wed, 16 Apr 2014 08:18:26 -0700 (PDT)
+Message-ID: <534E9F40.8000905@dev.mellanox.co.il>
+Date: Wed, 16 Apr 2014 18:18:24 +0300
+From: Sagi Grimberg <sagig@dev.mellanox.co.il>
+MIME-Version: 1.0
+To: Steve Wise <swise@opengridcomputing.com>,
+        "'Chuck Lever'" <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
+        linux-rdma@vger.kernel.org
+Subject: Re: [PATCH 7/8] xprtrdma: Split the completion queue
+References: <20140414220041.20646.63991.stgit@manet.1015granger.net> <20140414222323.20646.66946.stgit@manet.1015granger.net> <534E7C1C.5070407@dev.mellanox.co.il> <534E8608.8030801@opengridcomputing.com> <534E8FCE.909@dev.mellanox.co.il> <003401cf597f$b0f8d590$12ea80b0$@opengridcomputing.com> <534E9534.9020004@dev.mellanox.co.il> <004a01cf5982$44793b50$cd6bb1f0$@opengridcomputing.com>
+In-Reply-To: <004a01cf5982$44793b50$cd6bb1f0$@opengridcomputing.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The read_pageio_init method is just a very convoluted way to grab the
-right nfs_pageio_ops vector.  The vector to chose is not a choice of
-protocol version, but just a pNFS vs MDS I/O choice that can simply be
-done inside nfs_pageio_init_write based on the presence of a layout
-driver, and a new force_mds flag to the special case of falling back
-to MDS I/O on a pNFS-capable volume.
+On 4/16/2014 5:43 PM, Steve Wise wrote:
+>>>> Hmm, But if either FASTREG or LINV failed the QP will go to error state
+>>>> and you *will* get the error wc (with a rain of FLUSH errors).
+>>>> AFAICT it is safe to assume that it succeeded as long as you don't get
+>>>> error completions.
+>>> But if an unsignaled FASTREG is posted and silently succeeds, then the next signaled work
+>> request fails, I believe the FASTREG will be completed with FLUSH status, yet the operation
+>> actually completed in the hw.
+>>
+>> Actually if (any) WR successfully completed and SW got it as FLUSH error
+>> it seems like a bug to me.
+>> Once the HW processed the WQ entry it should update the consumer index
+>> accordingly thus should not happen.
+> Aren't you assuming a specific hardware design/implementation?  For cxgb4, the fact that a work request was consumed by the HW from the host send queue in no way indicates it is complete.  Also, the RDMA specs specifically state that the rnic/hca implementation can only assume an unsignaled work request completes successfully (and make its slot in the SQ available for the ULP) when a subsequent signaled work request completes successfully.   So if the next signaled work request fails, I believe the completion status of prior unsignaled work requests is indeterminate.
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
----
- fs/nfs/direct.c         |    2 +-
- fs/nfs/internal.h       |    2 +-
- fs/nfs/nfs3proc.c       |    1 -
- fs/nfs/nfs4proc.c       |    1 -
- fs/nfs/pnfs.c           |   15 +--------------
- fs/nfs/pnfs.h           |    9 ---------
- fs/nfs/proc.c           |    1 -
- fs/nfs/read.c           |   19 ++++++++++++++-----
- include/linux/nfs_xdr.h |    2 --
- 9 files changed, 17 insertions(+), 35 deletions(-)
+Well actually I wasn't, I just assumed that FLUSH errors will come for 
+all WQ entries in the range {CI, PI}.
+I get it, if a suppressed WQe was consumed and QP went to error state 
+before a completion was placed, HW may flush it as well.
+I agree this may happen. Thanks!
 
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index 6a31102..bbe688e 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -424,7 +424,7 @@ static ssize_t nfs_direct_read_schedule_iovec(struct nfs_direct_req *dreq,
- 	size_t requested_bytes = 0;
- 	unsigned long seg;
- 
--	NFS_PROTO(dreq->inode)->read_pageio_init(&desc, dreq->inode,
-+	nfs_pageio_init_read(&desc, dreq->inode, false,
- 			     &nfs_direct_read_completion_ops);
- 	get_dreq(dreq);
- 	desc.pg_dreq = dreq;
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 8431083..98fe618 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -398,7 +398,7 @@ struct nfs_pgio_completion_ops;
- extern struct nfs_read_header *nfs_readhdr_alloc(void);
- extern void nfs_readhdr_free(struct nfs_pgio_header *hdr);
- extern void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
--			struct inode *inode,
-+			struct inode *inode, bool force_mds,
- 			const struct nfs_pgio_completion_ops *compl_ops);
- extern int nfs_initiate_read(struct rpc_clnt *clnt,
- 			     struct nfs_read_data *data,
-diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
-index e984880..d873241 100644
---- a/fs/nfs/nfs3proc.c
-+++ b/fs/nfs/nfs3proc.c
-@@ -947,7 +947,6 @@ const struct nfs_rpc_ops nfs_v3_clientops = {
- 	.pathconf	= nfs3_proc_pathconf,
- 	.decode_dirent	= nfs3_decode_dirent,
- 	.read_setup	= nfs3_proc_read_setup,
--	.read_pageio_init = nfs_pageio_init_read,
- 	.read_rpc_prepare = nfs3_proc_read_rpc_prepare,
- 	.read_done	= nfs3_read_done,
- 	.write_setup	= nfs3_proc_write_setup,
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 8da0c62..21cd1f2 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -8433,7 +8433,6 @@ const struct nfs_rpc_ops nfs_v4_clientops = {
- 	.set_capabilities = nfs4_server_capabilities,
- 	.decode_dirent	= nfs4_decode_dirent,
- 	.read_setup	= nfs4_proc_read_setup,
--	.read_pageio_init = pnfs_pageio_init_read,
- 	.read_rpc_prepare = nfs4_proc_read_rpc_prepare,
- 	.read_done	= nfs4_read_done,
- 	.write_setup	= nfs4_proc_write_setup,
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 9edac9f..3d5bc2b 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1434,19 +1434,6 @@ pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio,
- }
- EXPORT_SYMBOL_GPL(pnfs_generic_pg_init_write);
- 
--void
--pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio, struct inode *inode,
--		      const struct nfs_pgio_completion_ops *compl_ops)
--{
--	struct nfs_server *server = NFS_SERVER(inode);
--	struct pnfs_layoutdriver_type *ld = server->pnfs_curr_ld;
--
--	if (ld == NULL)
--		nfs_pageio_init_read(pgio, inode, compl_ops);
--	else
--		nfs_pageio_init(pgio, inode, ld->pg_read_ops, compl_ops, server->rsize, 0);
--}
--
- bool
- pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
- 		     struct nfs_page *req)
-@@ -1641,7 +1628,7 @@ int pnfs_read_done_resend_to_mds(struct inode *inode,
- 	LIST_HEAD(failed);
- 
- 	/* Resend all requests through the MDS */
--	nfs_pageio_init_read(&pgio, inode, compl_ops);
-+	nfs_pageio_init_read(&pgio, inode, true, compl_ops);
- 	pgio.pg_dreq = dreq;
- 	while (!list_empty(head)) {
- 		struct nfs_page *req = nfs_list_entry(head->next);
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index e9ac8fb..94a9a18 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -180,9 +180,6 @@ extern int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp);
- void pnfs_get_layout_hdr(struct pnfs_layout_hdr *lo);
- void pnfs_put_lseg(struct pnfs_layout_segment *lseg);
- 
--void pnfs_pageio_init_read(struct nfs_pageio_descriptor *, struct inode *,
--			   const struct nfs_pgio_completion_ops *);
--
- void set_pnfs_layoutdriver(struct nfs_server *, const struct nfs_fh *, u32);
- void unset_pnfs_layoutdriver(struct nfs_server *);
- void pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *, struct nfs_page *);
-@@ -459,12 +456,6 @@ static inline void unset_pnfs_layoutdriver(struct nfs_server *s)
- {
- }
- 
--static inline void pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio, struct inode *inode,
--					 const struct nfs_pgio_completion_ops *compl_ops)
--{
--	nfs_pageio_init_read(pgio, inode, compl_ops);
--}
--
- static inline int
- pnfs_commit_list(struct inode *inode, struct list_head *mds_pages, int how,
- 		 struct nfs_commit_info *cinfo)
-diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
-index f9cc295..8cc227f 100644
---- a/fs/nfs/proc.c
-+++ b/fs/nfs/proc.c
-@@ -735,7 +735,6 @@ const struct nfs_rpc_ops nfs_v2_clientops = {
- 	.pathconf	= nfs_proc_pathconf,
- 	.decode_dirent	= nfs2_decode_dirent,
- 	.read_setup	= nfs_proc_read_setup,
--	.read_pageio_init = nfs_pageio_init_read,
- 	.read_rpc_prepare = nfs_proc_read_rpc_prepare,
- 	.read_done	= nfs_read_done,
- 	.write_setup	= nfs_proc_write_setup,
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index 411aedd..7f87461 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -24,6 +24,7 @@
- #include "internal.h"
- #include "iostat.h"
- #include "fscache.h"
-+#include "pnfs.h"
- 
- #define NFSDBG_FACILITY		NFSDBG_PAGECACHE
- 
-@@ -114,11 +115,17 @@ int nfs_return_empty_page(struct page *page)
- }
- 
- void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
--			      struct inode *inode,
-+			      struct inode *inode, bool force_mds,
- 			      const struct nfs_pgio_completion_ops *compl_ops)
- {
--	nfs_pageio_init(pgio, inode, &nfs_pageio_read_ops, compl_ops,
--			NFS_SERVER(inode)->rsize, 0);
-+	struct nfs_server *server = NFS_SERVER(inode);
-+	const struct nfs_pageio_ops *pg_ops = &nfs_pageio_read_ops;
-+
-+#ifdef CONFIG_NFS_V4_1
-+	if (server->pnfs_curr_ld && !force_mds)
-+		pg_ops = server->pnfs_curr_ld->pg_read_ops;
-+#endif
-+	nfs_pageio_init(pgio, inode, pg_ops, compl_ops, server->rsize, 0);
- }
- EXPORT_SYMBOL_GPL(nfs_pageio_init_read);
- 
-@@ -147,7 +154,8 @@ int nfs_readpage_async(struct nfs_open_context *ctx, struct inode *inode,
- 	if (len < PAGE_CACHE_SIZE)
- 		zero_user_segment(page, len, PAGE_CACHE_SIZE);
- 
--	NFS_PROTO(inode)->read_pageio_init(&pgio, inode, &nfs_async_read_completion_ops);
-+	nfs_pageio_init_read(&pgio, inode, false,
-+			     &nfs_async_read_completion_ops);
- 	nfs_pageio_add_request(&pgio, new);
- 	nfs_pageio_complete(&pgio);
- 	NFS_I(inode)->read_io += pgio.pg_bytes_written;
-@@ -654,7 +662,8 @@ int nfs_readpages(struct file *filp, struct address_space *mapping,
- 	if (ret == 0)
- 		goto read_complete; /* all pages were read */
- 
--	NFS_PROTO(inode)->read_pageio_init(&pgio, inode, &nfs_async_read_completion_ops);
-+	nfs_pageio_init_read(&pgio, inode, false,
-+			     &nfs_async_read_completion_ops);
- 
- 	ret = read_cache_pages(mapping, pages, readpage_async_filler, &desc);
- 
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 78216f8..3e8fc1f 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1466,8 +1466,6 @@ struct nfs_rpc_ops {
- 	int	(*set_capabilities)(struct nfs_server *, struct nfs_fh *);
- 	int	(*decode_dirent)(struct xdr_stream *, struct nfs_entry *, int);
- 	void	(*read_setup)   (struct nfs_read_data *, struct rpc_message *);
--	void	(*read_pageio_init)(struct nfs_pageio_descriptor *, struct inode *,
--				    const struct nfs_pgio_completion_ops *);
- 	int	(*read_rpc_prepare)(struct rpc_task *, struct nfs_read_data *);
- 	int	(*read_done)  (struct rpc_task *, struct nfs_read_data *);
- 	void	(*write_setup)  (struct nfs_write_data *, struct rpc_message *);
--- 
-1.7.10.4
-
+Sagi.
