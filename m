@@ -1,99 +1,133 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-we0-f175.google.com ([74.125.82.175]:58868 "EHLO
-	mail-we0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752905AbaDWKPT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Apr 2014 06:15:19 -0400
-Received: by mail-we0-f175.google.com with SMTP id q58so636346wes.34
-        for <linux-nfs@vger.kernel.org>; Wed, 23 Apr 2014 03:15:17 -0700 (PDT)
-Message-ID: <535792B3.1070709@dev.mellanox.co.il>
-Date: Wed, 23 Apr 2014 13:15:15 +0300
-From: Sagi Grimberg <sagig@dev.mellanox.co.il>
-MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
-        linux-rdma@vger.kernel.org
-Subject: Re: [PATCH V2 16/17] xprtrdma: Limit work done by completion handler
-References: <20140421214442.12569.8950.stgit@manet.1015granger.net> <20140421220308.12569.43779.stgit@manet.1015granger.net>
-In-Reply-To: <20140421220308.12569.43779.stgit@manet.1015granger.net>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Received: from cantor2.suse.de ([195.135.220.15]:40074 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750998AbaDPG1y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Apr 2014 02:27:54 -0400
+Date: Wed, 16 Apr 2014 16:27:45 +1000
+From: NeilBrown <neilb@suse.de>
+To: Dave Chinner <david@fromorbit.com>
+Cc: linux-mm@kvack.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, xfs@oss.sgi.com
+Subject: Re: [PATCH 09/19] XFS: ensure xfs_file_*_read cannot deadlock in
+ memory allocation.
+Message-ID: <20140416162745.67442b07@notabene.brown>
+In-Reply-To: <20140416060459.GE15995@dastard>
+References: <20140416033623.10604.69237.stgit@notabene.brown>
+	<20140416040336.10604.90380.stgit@notabene.brown>
+	<20140416060459.GE15995@dastard>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/MvhSwDVhkQM3eTbru=iHpwX"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 4/22/2014 1:03 AM, Chuck Lever wrote:
-> Sagi Grimberg <sagig@dev.mellanox.co.il> points out that a steady
-> stream of CQ events could starve other work because of the boundless
-> loop pooling in rpcrdma_{send,recv}_poll().
->
-> Instead of a (potentially infinite) while loop, return after
-> collecting a budgeted number of completions.
->
-> Note that the total number of WCs that can be handled during one
-> upcall is RPCRDMA_WC_BUDGET * 2, since the handler polls once before
-> and once after re-enabling completion notifications.
->
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
->
->   net/sunrpc/xprtrdma/verbs.c     |   10 ++++++----
->   net/sunrpc/xprtrdma/xprt_rdma.h |    1 +
->   2 files changed, 7 insertions(+), 4 deletions(-)
->
-> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-> index abb8d8d..d46bdee 100644
-> --- a/net/sunrpc/xprtrdma/verbs.c
-> +++ b/net/sunrpc/xprtrdma/verbs.c
-> @@ -165,8 +165,9 @@ static int
->   rpcrdma_sendcq_poll(struct ib_cq *cq, struct rpcrdma_ep *ep)
->   {
->   	struct ib_wc *wcs;
-> -	int count, rc;
-> +	int budget, count, rc;
->   
-> +	budget = RPCRDMA_WC_BUDGET / RPCRDMA_POLLSIZE;
->   	do {
->   		wcs = ep->rep_send_wcs;
->   
-> @@ -177,7 +178,7 @@ rpcrdma_sendcq_poll(struct ib_cq *cq, struct rpcrdma_ep *ep)
->   		count = rc;
->   		while (count-- > 0)
->   			rpcrdma_sendcq_process_wc(wcs++);
-> -	} while (rc == RPCRDMA_POLLSIZE);
-> +	} while (rc == RPCRDMA_POLLSIZE && --budget);
->   	return 0;
->   }
->   
-> @@ -254,8 +255,9 @@ static int
->   rpcrdma_recvcq_poll(struct ib_cq *cq, struct rpcrdma_ep *ep)
->   {
->   	struct ib_wc *wcs;
-> -	int count, rc;
-> +	int budget, count, rc;
->   
-> +	budget = RPCRDMA_WC_BUDGET / RPCRDMA_POLLSIZE;
->   	do {
->   		wcs = ep->rep_recv_wcs;
->   
-> @@ -266,7 +268,7 @@ rpcrdma_recvcq_poll(struct ib_cq *cq, struct rpcrdma_ep *ep)
->   		count = rc;
->   		while (count-- > 0)
->   			rpcrdma_recvcq_process_wc(wcs++);
-> -	} while (rc == RPCRDMA_POLLSIZE);
-> +	} while (rc == RPCRDMA_POLLSIZE && --budget);
->   	return 0;
->   }
->   
-> diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-> index cb4c882..0c3b88e 100644
-> --- a/net/sunrpc/xprtrdma/xprt_rdma.h
-> +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-> @@ -74,6 +74,7 @@ struct rpcrdma_ia {
->    * RDMA Endpoint -- one per transport instance
->    */
->   
-> +#define RPCRDMA_WC_BUDGET	(128)
+--Sig_/MvhSwDVhkQM3eTbru=iHpwX
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-Would be nice to be able to configure that (modparam perhaps?)
+On Wed, 16 Apr 2014 16:04:59 +1000 Dave Chinner <david@fromorbit.com> wrote:
 
-Other than that, looks OK.
+> On Wed, Apr 16, 2014 at 02:03:36PM +1000, NeilBrown wrote:
+> > xfs_file_*_read holds an inode lock while calling a generic 'read'
+> > function.  These functions perform read-ahead and are quite likely to
+> > allocate memory.
+>=20
+> Yes, that's what reading data from disk requires.
+>=20
+> > So set PF_FSTRANS to ensure they avoid __GFP_FS and so don't recurse
+> > into a filesystem to free memory.
+>=20
+> We already have that protection via the
+> >=20
+> > This can be a problem with loop-back NFS mounts, if free_pages ends up
+> > wating in nfs_release_page(), and nfsd is blocked waiting for the lock
+> > that this code holds.
+> >=20
+> > This was found both by lockdep and as a real deadlock during testing.
+> >=20
+> > Signed-off-by: NeilBrown <neilb@suse.de>
+> > ---
+> >  fs/xfs/xfs_file.c |   12 ++++++++++++
+> >  1 file changed, 12 insertions(+)
+> >=20
+> > diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
+> > index 64b48eade91d..88b33ef64668 100644
+> > --- a/fs/xfs/xfs_file.c
+> > +++ b/fs/xfs/xfs_file.c
+> > @@ -243,6 +243,7 @@ xfs_file_aio_read(
+> >  	ssize_t			ret =3D 0;
+> >  	int			ioflags =3D 0;
+> >  	xfs_fsize_t		n;
+> > +	unsigned int		pflags;
+> > =20
+> >  	XFS_STATS_INC(xs_read_calls);
+> > =20
+> > @@ -290,6 +291,10 @@ xfs_file_aio_read(
+> >  	 * proceeed concurrently without serialisation.
+> >  	 */
+> >  	xfs_rw_ilock(ip, XFS_IOLOCK_SHARED);
+> > +	/* As we hold a lock, we must ensure that any allocation
+> > +	 * in generic_file_aio_read avoid __GFP_FS
+> > +	 */
+> > +	current_set_flags_nested(&pflags, PF_FSTRANS);
+>=20
+> Ugh. No. This is Simply Wrong.
+>=20
+> We handle the memory allocations in the IO path with
+> GFP_NOFS/KM_NOFS where necessary.
+>=20
+> We also do this when setting up regular file inodes in
+> xfs_setup_inode():
+>=20
+>         /*
+>          * Ensure all page cache allocations are done from GFP_NOFS conte=
+xt to
+>          * prevent direct reclaim recursion back into the filesystem and =
+blowing
+>          * stacks or deadlocking.
+>          */
+>         gfp_mask =3D mapping_gfp_mask(inode->i_mapping);
+>         mapping_set_gfp_mask(inode->i_mapping, (gfp_mask & ~(__GFP_FS)));
+>=20
+> Which handles all of the mapping allocations that occur within the
+> page cache read/write paths.
+>=20
+> Remember, you removed the KM_NOFS code from the XFS allocator that
+> caused it to clear __GFP_FS in an earlier patch - the read Io path
+> is one of the things you broke by doing that....
+>=20
+> If there are places where we don't use GFP_NOFS context allocations
+> that we should, then we need to fix them individually....
+>=20
+> Cheers,
+>=20
+> Dave.
 
-Acked-by: Sagi Grimberg <sagig@dev.mellanox.co.il>
+Thanks Dave.  Having fixed the KM_NOFS error I'll start retesting with all
+the other xfs patches removed.
 
+NeilBrown
+
+--Sig_/MvhSwDVhkQM3eTbru=iHpwX
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.22 (GNU/Linux)
+
+iQIVAwUBU04i4Tnsnt1WYoG5AQLIng//dBc4GkVWQndYfJfRIYKQW2/Qp2VQNTrH
+QwogU8BASNXT5qpc1XzaQYOxkK09+w+6QiWjUGdtmxeca4vNynxYEVsVosaUPzPY
+0YgVm+0k4xBCGRhZZ8y5YWqizoYR2chAlE6gIIzFaNRCHajzP8Xet09XxNTR9tYi
+EcxV88isRZ8zKGmXnu5emZxq+XdZmf3yjD9YsRlidhny2AnIs5bcjhDad87njled
+knLHfb2oDGwZqvjE6giqHoCRwUodRXHzPQ3yKG9YMuzvp6/DKe5Zp4R4byUcwWNk
+mngvZ9K82T1D8o6Q7t6GsiwszXF0VIhl4eP2Og4hlhPWd777WR/fCFqumJqrFCEW
+UyrRvTUoY2zr8b9SRIEXKaK5BslTkoaQxTBodLmb2x/BtnpyTWXmF8ProhEEgTcl
+rbS42PSuxrrjCvoxcM/PTeUeErwb4m16laziroWfx4WblVrtcKB1Zjvnt03N/zRf
+2sE9WOqxtP4nZmOiQaLyMeto7QOwUWTS1BcpzUQ1/bqh18u91odzQqFA5dozTg6a
+5kX2sujAyBb++B0ixYhBkjAaSTE6KgShEsCit+VcefOEYm3nHvOM4a7A+dIrlaes
+PN6E0STK5yi+ZOgKIQpU0uh1JNLOR0Rmu2/6/Hrizpt6OUGpMrtKAfnxRgpPg2Ha
+l67YsKqaHVI=
+=Ny7o
+-----END PGP SIGNATURE-----
+
+--Sig_/MvhSwDVhkQM3eTbru=iHpwX--
