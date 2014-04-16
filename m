@@ -1,53 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp-outbound-2.vmware.com ([208.91.2.13]:39537 "EHLO
-	smtp-outbound-2.vmware.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751144AbaDYPnM convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Apr 2014 11:43:12 -0400
-Subject: Re: NFS4ERR_STALE_STATEID from Linux 4.1 server
-Mime-Version: 1.0 (Apple Message framework v1085)
-Content-Type: text/plain; charset=us-ascii
-From: Glenn Skinner <gskinner@vmware.com>
-In-Reply-To: <20140425090158.GC2347@pad.redhat.com>
-Date: Fri, 25 Apr 2014 08:43:12 -0700
-Cc: linux-nfs@vger.kernel.org, Steve Dickson <steved@redhat.com>
-Message-Id: <9A1C2C2C-E1D6-46F6-8225-F5B95976CC2C@vmware.com>
-References: <2642778C-2AB4-4709-B2AB-04A0C4F28641@vmware.com> <20140418090428.GA8156@pad.redhat.com> <2E58AB5D-6AED-449F-959D-BC8D8973417F@vmware.com> <20140425090158.GC2347@pad.redhat.com>
-To: "J. Bruce Fields" <bfields@redhat.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:28175 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751290AbaDPSVy convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Apr 2014 14:21:54 -0400
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
+Subject: Re: [PATCH 7/8] xprtrdma: Split the completion queue
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <534EA06A.7090200@dev.mellanox.co.il>
+Date: Wed, 16 Apr 2014 14:21:33 -0400
+Cc: Steve Wise <swise@opengridcomputing.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-rdma@vger.kernel.org
+Message-Id: <FC61F219-ACA2-4CE8-BF02-1B8EE2464639@oracle.com>
+References: <20140414220041.20646.63991.stgit@manet.1015granger.net> <20140414222323.20646.66946.stgit@manet.1015granger.net> <534E7C1C.5070407@dev.mellanox.co.il> <534E8608.8030801@opengridcomputing.com> <E9B601B5-1984-40D8-914A-DDD1380E8183@oracle.com> <534EA06A.7090200@dev.mellanox.co.il>
+To: Sagi Grimberg <sagig@dev.mellanox.co.il>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Apr 25, 2014, at 2:01 AM, J. Bruce Fields wrote:
 
-> On Fri, Apr 18, 2014 at 09:54:28AM -0700, Glenn Skinner wrote:
->> See comments in line.
+On Apr 16, 2014, at 11:23 AM, Sagi Grimberg <sagig@dev.mellanox.co.il> wrote:
+
+> On 4/16/2014 6:08 PM, Chuck Lever wrote:
+>> Hi Sagi-
 >> 
->> On Apr 18, 2014, at 2:04 AM, J. Bruce Fields wrote:
+>> Thanks for the review! In-line replies below.
+> <SNIP>
 >> 
->>> Agreed that this sounds like a bug.
+>>>> 2. If I understood correctly, I see that the CQs are loop-polled in an interrupt context.
+>>>>    This may become problematic in stress workload where the CQ simply never drains (imagine
+>>>>    some studios task keeps posting WRs as soon as IOs complete). This will cause CQ poll loop
+>>>>    to go on forever. This situation may cause starvation of other CQs that share the same EQ (CPU
+>>>>    is hogged by the endless poller).
+>>>>    This may be solved in 2 ways:
+>>>>    - Use blk-iopoll to maintain fairness - the downside will be moving from interrupt context to soft-irq (slower).
+>>>>    - Set some configurable budget to CQ poller - after finishing the budget, notify the CQ and bail.
+>>>>      If there is another CQ waiting to get in - it's only fair that it will be given with a chance, else another interrupt
+>>>>      on that CQ will immediately come.
+>> I think it would be a reasonable change to pass an array of WC’s to
+>> ib_poll_cq() just once in rpcrdma_{send,recv}cq_poll(), instead of
+>> looping. Would that be enough?
 >> 
->> Thanks for looking at this.
->> 
->>> a8a7c6776f8d74780348bef639581421d85a4376 "nfsd: Don't return
->>> NFS4ERR_STALE_STATEID for NFSv4.1+", now in v3.15-rc1, prevents the
->>> stale_stateid return.  What are the symptoms on your client?  If this
->>> fixes a practical issue for users then we should probably get that
->>> backported to stable.
->> 
->> Let me ask a question in turn.  Does your fixed server return NFS4ERR_BAD_STATEID in circumstances where pre-fix it would return NFS4ERR_STALE_STATEID?
+>> To be clear, my patch merely cleans up the completion handler logic,
+>> which already did loop-polling. Should we consider this improvement
+>> for another patch?
 > 
-> Right.
+> Well, I wasn't suggesting passing an array, carrying it around (or on the stack for that manner) might be annoying...
+> I was suggesting a budget (poll loops or a time bound - jiffy is usually well behaved).
 
-Makes sense.  Just wanted to confirm.
+Passing a small array to ip_poll_cq() is actually easy to do, and is
+exactly equivalent to a poll budget. The struct ib_wc should be taken
+off the stack anyway, IMO.
 
->> I ask because (in production versions of ESX, which don't have assertions enabled) we return a lock lost error upward for the former, but an IO error for the latter.  This difference has consequences for higher-level software, such as our FT (fault tolerance) software feature where it will affect decisions on how quickly to fail over to another ESX instance.
->> 
->> For development versions of ESX encountering NFS4ERR_STALE_STATEID triggers an assertion failure, which forces the instance in question to crash.  That has definite practical consequences for our internal development and testing organizations.
-> 
-> So, our "fixed server" behavior is an improvement as far as your client
-> is concerned?
+The only other example I see in 3.15 right now is IPoIB, which seems
+to do exactly this.
 
-Yes, it is.  Thanks for fixing this bug.
+I’m testing a patch now. I’d like to start simple and make it more
+complex only if we need to.
 
-		-- Glenn
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
 
