@@ -1,153 +1,173 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f181.google.com ([209.85.213.181]:48966 "EHLO
-	mail-ig0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1759361AbaD3T3r (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Apr 2014 15:29:47 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH V3 02/17] nfs-rdma: Fix for FMR leaks
-To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Cc: Anna.Schumaker@netapp.com
-Date: Wed, 30 Apr 2014 15:29:45 -0400
-Message-ID: <20140430192945.5663.17135.stgit@manet.1015granger.net>
-In-Reply-To: <20140430191433.5663.16217.stgit@manet.1015granger.net>
-References: <20140430191433.5663.16217.stgit@manet.1015granger.net>
+Received: from cantor2.suse.de ([195.135.220.15]:38780 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752428AbaDPESK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Apr 2014 00:18:10 -0400
+From: NeilBrown <neilb@suse.de>
+To: linux-mm@kvack.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Date: Wed, 16 Apr 2014 14:03:36 +1000
+Subject: [PATCH 03/19] lockdep: improve scenario messages for RECLAIM_FS
+ errors.
+cc: Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>
+Cc: xfs@oss.sgi.com
+Message-ID: <20140416040336.10604.19304.stgit@notabene.brown>
+In-Reply-To: <20140416033623.10604.69237.stgit@notabene.brown>
+References: <20140416033623.10604.69237.stgit@notabene.brown>
 MIME-Version: 1.0
 Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Allen Andrews <allen.andrews@emulex.com>
+lockdep can check for locking problems involving reclaim using
+the same infrastructure as used for interrupts.
 
-Two memory region leaks were found during testing:
+However a number of the messages still refer to interrupts even
+if it was actually a reclaim-related problem.
 
-1. rpcrdma_buffer_create: While allocating RPCRDMA_FRMR's
-ib_alloc_fast_reg_mr is called and then ib_alloc_fast_reg_page_list is
-called.  If ib_alloc_fast_reg_page_list returns an error it bails out of
-the routine dropping the last ib_alloc_fast_reg_mr frmr region creating a
-memory leak.  Added code to dereg the last frmr if
-ib_alloc_fast_reg_page_list fails.
+So determine where the problem was caused by reclaim or irq and adjust
+messages accordingly.
 
-2. rpcrdma_buffer_destroy: While cleaning up, the routine will only free
-the MR's on the rb_mws list if there are rb_send_bufs present.  However, in
-rpcrdma_buffer_create while the rb_mws list is being built if one of the MR
-allocation requests fail after some MR's have been allocated on the rb_mws
-list the routine never gets to create any rb_send_bufs but instead jumps to
-the rpcrdma_buffer_destroy routine which will never free the MR's on rb_mws
-list because the rb_send_bufs were never created.   This leaks all the MR's
-on the rb_mws list that were created prior to one of the MR allocations
-failing.
-
-Issue(2) was seen during testing. Our adapter had a finite number of MR's
-available and we created enough connections to where we saw an MR
-allocation failure on our Nth NFS connection request. After the kernel
-cleaned up the resources it had allocated for the Nth connection we noticed
-that FMR's had been leaked due to the coding error described above.
-
-Issue(1) was seen during a code review while debugging issue(2).
-
-Signed-off-by: Allen Andrews <allen.andrews@emulex.com>
-Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: NeilBrown <neilb@suse.de>
 ---
+ kernel/locking/lockdep.c |   43 ++++++++++++++++++++++++++++++++-----------
+ 1 file changed, 32 insertions(+), 11 deletions(-)
 
- net/sunrpc/xprtrdma/verbs.c |   73 ++++++++++++++++++++++---------------------
- 1 files changed, 38 insertions(+), 35 deletions(-)
-
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 55fb09a..8f9704e 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -1081,6 +1081,8 @@ rpcrdma_buffer_create(struct rpcrdma_buffer *buf, struct rpcrdma_ep *ep,
- 				dprintk("RPC:       %s: "
- 					"ib_alloc_fast_reg_page_list "
- 					"failed %i\n", __func__, rc);
-+
-+				ib_dereg_mr(r->r.frmr.fr_mr);
- 				goto out;
- 			}
- 			list_add(&r->mw_list, &buf->rb_mws);
-@@ -1217,41 +1219,6 @@ rpcrdma_buffer_destroy(struct rpcrdma_buffer *buf)
- 			kfree(buf->rb_recv_bufs[i]);
- 		}
- 		if (buf->rb_send_bufs && buf->rb_send_bufs[i]) {
--			while (!list_empty(&buf->rb_mws)) {
--				r = list_entry(buf->rb_mws.next,
--					struct rpcrdma_mw, mw_list);
--				list_del(&r->mw_list);
--				switch (ia->ri_memreg_strategy) {
--				case RPCRDMA_FRMR:
--					rc = ib_dereg_mr(r->r.frmr.fr_mr);
--					if (rc)
--						dprintk("RPC:       %s:"
--							" ib_dereg_mr"
--							" failed %i\n",
--							__func__, rc);
--					ib_free_fast_reg_page_list(r->r.frmr.fr_pgl);
--					break;
--				case RPCRDMA_MTHCAFMR:
--					rc = ib_dealloc_fmr(r->r.fmr);
--					if (rc)
--						dprintk("RPC:       %s:"
--							" ib_dealloc_fmr"
--							" failed %i\n",
--							__func__, rc);
--					break;
--				case RPCRDMA_MEMWINDOWS_ASYNC:
--				case RPCRDMA_MEMWINDOWS:
--					rc = ib_dealloc_mw(r->r.mw);
--					if (rc)
--						dprintk("RPC:       %s:"
--							" ib_dealloc_mw"
--							" failed %i\n",
--							__func__, rc);
--					break;
--				default:
--					break;
--				}
--			}
- 			rpcrdma_deregister_internal(ia,
- 					buf->rb_send_bufs[i]->rl_handle,
- 					&buf->rb_send_bufs[i]->rl_iov);
-@@ -1259,6 +1226,42 @@ rpcrdma_buffer_destroy(struct rpcrdma_buffer *buf)
- 		}
+diff --git a/kernel/locking/lockdep.c b/kernel/locking/lockdep.c
+index e05b82e92373..33d2ac7519dc 100644
+--- a/kernel/locking/lockdep.c
++++ b/kernel/locking/lockdep.c
+@@ -1423,7 +1423,8 @@ static void
+ print_irq_lock_scenario(struct lock_list *safe_entry,
+ 			struct lock_list *unsafe_entry,
+ 			struct lock_class *prev_class,
+-			struct lock_class *next_class)
++			struct lock_class *next_class,
++			int reclaim)
+ {
+ 	struct lock_class *safe_class = safe_entry->class;
+ 	struct lock_class *unsafe_class = unsafe_entry->class;
+@@ -1455,20 +1456,27 @@ print_irq_lock_scenario(struct lock_list *safe_entry,
+ 		printk("\n\n");
  	}
  
-+	while (!list_empty(&buf->rb_mws)) {
-+		r = list_entry(buf->rb_mws.next,
-+			struct rpcrdma_mw, mw_list);
-+		list_del(&r->mw_list);
-+		switch (ia->ri_memreg_strategy) {
-+		case RPCRDMA_FRMR:
-+			rc = ib_dereg_mr(r->r.frmr.fr_mr);
-+			if (rc)
-+				dprintk("RPC:       %s:"
-+					" ib_dereg_mr"
-+					" failed %i\n",
-+					__func__, rc);
-+			ib_free_fast_reg_page_list(r->r.frmr.fr_pgl);
-+			break;
-+		case RPCRDMA_MTHCAFMR:
-+			rc = ib_dealloc_fmr(r->r.fmr);
-+			if (rc)
-+				dprintk("RPC:       %s:"
-+					" ib_dealloc_fmr"
-+					" failed %i\n",
-+					__func__, rc);
-+			break;
-+		case RPCRDMA_MEMWINDOWS_ASYNC:
-+		case RPCRDMA_MEMWINDOWS:
-+			rc = ib_dealloc_mw(r->r.mw);
-+			if (rc)
-+				dprintk("RPC:       %s:"
-+					" ib_dealloc_mw"
-+					" failed %i\n",
-+					__func__, rc);
-+			break;
-+		default:
-+			break;
-+		}
-+	}
+-	printk(" Possible interrupt unsafe locking scenario:\n\n");
++	if (reclaim)
++		printk(" Possible reclaim unsafe locking scenario:\n\n");
++	else
++		printk(" Possible interrupt unsafe locking scenario:\n\n");
+ 	printk("       CPU0                    CPU1\n");
+ 	printk("       ----                    ----\n");
+ 	printk("  lock(");
+ 	__print_lock_name(unsafe_class);
+ 	printk(");\n");
+-	printk("                               local_irq_disable();\n");
++	if (!reclaim)
++		printk("                               local_irq_disable();\n");
+ 	printk("                               lock(");
+ 	__print_lock_name(safe_class);
+ 	printk(");\n");
+ 	printk("                               lock(");
+ 	__print_lock_name(middle_class);
+ 	printk(");\n");
+-	printk("  <Interrupt>\n");
++	if (reclaim)
++		printk("  <Memory allocation/reclaim>\n");
++	else
++		printk("  <Interrupt>\n");
+ 	printk("    lock(");
+ 	__print_lock_name(safe_class);
+ 	printk(");\n");
+@@ -1487,6 +1495,8 @@ print_bad_irq_dependency(struct task_struct *curr,
+ 			 enum lock_usage_bit bit2,
+ 			 const char *irqclass)
+ {
++	int reclaim = strncmp(irqclass, "RECLAIM", 7) == 0;
 +
- 	kfree(buf->rb_pool);
+ 	if (!debug_locks_off_graph_unlock() || debug_locks_silent)
+ 		return 0;
+ 
+@@ -1528,7 +1538,7 @@ print_bad_irq_dependency(struct task_struct *curr,
+ 
+ 	printk("\nother info that might help us debug this:\n\n");
+ 	print_irq_lock_scenario(backwards_entry, forwards_entry,
+-				hlock_class(prev), hlock_class(next));
++				hlock_class(prev), hlock_class(next), reclaim);
+ 
+ 	lockdep_print_held_locks(curr);
+ 
+@@ -2200,7 +2210,7 @@ static void check_chain_key(struct task_struct *curr)
  }
  
+ static void
+-print_usage_bug_scenario(struct held_lock *lock)
++print_usage_bug_scenario(struct held_lock *lock, enum lock_usage_bit new_bit)
+ {
+ 	struct lock_class *class = hlock_class(lock);
+ 
+@@ -2210,7 +2220,11 @@ print_usage_bug_scenario(struct held_lock *lock)
+ 	printk("  lock(");
+ 	__print_lock_name(class);
+ 	printk(");\n");
+-	printk("  <Interrupt>\n");
++	if (new_bit == LOCK_USED_IN_RECLAIM_FS ||
++	    new_bit == LOCK_USED_IN_RECLAIM_FS_READ)
++		printk("  <Memory allocation/reclaim>\n");
++	else
++		printk("  <Interrupt>\n");
+ 	printk("    lock(");
+ 	__print_lock_name(class);
+ 	printk(");\n");
+@@ -2246,7 +2260,7 @@ print_usage_bug(struct task_struct *curr, struct held_lock *this,
+ 
+ 	print_irqtrace_events(curr);
+ 	printk("\nother info that might help us debug this:\n");
+-	print_usage_bug_scenario(this);
++	print_usage_bug_scenario(this, new_bit);
+ 
+ 	lockdep_print_held_locks(curr);
+ 
+@@ -2285,13 +2299,17 @@ print_irq_inversion_bug(struct task_struct *curr,
+ 	struct lock_list *entry = other;
+ 	struct lock_list *middle = NULL;
+ 	int depth;
++	int reclaim = strncmp(irqclass, "RECLAIM", 7) == 0;
+ 
+ 	if (!debug_locks_off_graph_unlock() || debug_locks_silent)
+ 		return 0;
+ 
+ 	printk("\n");
+ 	printk("=========================================================\n");
+-	printk("[ INFO: possible irq lock inversion dependency detected ]\n");
++	if (reclaim)
++		printk("[ INFO: possible memory reclaim lock inversion dependency detected ]\n");
++	else
++		printk("[ INFO: possible irq lock inversion dependency detected ]\n");
+ 	print_kernel_ident();
+ 	printk("---------------------------------------------------------\n");
+ 	printk("%s/%d just changed the state of lock:\n",
+@@ -2302,6 +2320,9 @@ print_irq_inversion_bug(struct task_struct *curr,
+ 	else
+ 		printk("but this lock was taken by another, %s-safe lock in the past:\n", irqclass);
+ 	print_lock_name(other->class);
++	if (reclaim)
++		printk("\n\nand memory reclaim could create inverse lock ordering between them.\n\n");
++	else
+ 	printk("\n\nand interrupts could create inverse lock ordering between them.\n\n");
+ 
+ 	printk("\nother info that might help us debug this:\n");
+@@ -2319,10 +2340,10 @@ print_irq_inversion_bug(struct task_struct *curr,
+ 	} while (entry && entry != root && (depth >= 0));
+ 	if (forwards)
+ 		print_irq_lock_scenario(root, other,
+-			middle ? middle->class : root->class, other->class);
++			middle ? middle->class : root->class, other->class, reclaim);
+ 	else
+ 		print_irq_lock_scenario(other, root,
+-			middle ? middle->class : other->class, root->class);
++			middle ? middle->class : other->class, root->class, reclaim);
+ 
+ 	lockdep_print_held_locks(curr);
+ 
+
 
