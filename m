@@ -1,139 +1,167 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f177.google.com ([209.85.223.177]:54256 "EHLO
-	mail-ie0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754261AbaDXSPf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Apr 2014 14:15:35 -0400
-Received: by mail-ie0-f177.google.com with SMTP id rl12so2632604iec.8
-        for <linux-nfs@vger.kernel.org>; Thu, 24 Apr 2014 11:15:35 -0700 (PDT)
-From: Weston Andros Adamson <dros@primarydata.com>
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
-Subject: [PATCH 00/18 v2] nfs: support multiple requests per page
-Date: Thu, 24 Apr 2014 14:15:10 -0400
-Message-Id: <1398363328-7100-1-git-send-email-dros@primarydata.com>
+Received: from cantor2.suse.de ([195.135.220.15]:38773 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751516AbaDPESD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Apr 2014 00:18:03 -0400
+From: NeilBrown <neilb@suse.de>
+To: linux-mm@kvack.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Date: Wed, 16 Apr 2014 14:03:36 +1000
+Subject: [PATCH 02/19] lockdep: lockdep_set_current_reclaim_state should
+ save old value
+Cc: xfs@oss.sgi.com
+cc: Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>
+Message-ID: <20140416040336.10604.59714.stgit@notabene.brown>
+In-Reply-To: <20140416033623.10604.69237.stgit@notabene.brown>
+References: <20140416033623.10604.69237.stgit@notabene.brown>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patchset changes the read and write paths to be more flexible in dealing
-with requests that are not page aligned. Until now there was a 1:1 mapping
-of struct nfs_page (referred to as "nfs requests") to struct page, which
-limited the client to page aligned I/O in several pNFS scenarios.
+Currently kswapd sets current->lockdep_reclaim_gfp but the first
+memory allocation call will clear it.  So the setting does no good.
+Thus the lockdep_set_current_reclaim_state call in kswapd() is
+ineffective.
 
-This patchset allows multiple requests per page, loosely following
-the approach taken with struct buffer_head (part of kernel bio interface).
+With this patch we always save the old value and then restore it,
+so lockdep gets to properly check the locks that kswapd takes.
 
-With this patchset the client now supports:
- - non-page-aligned O_DIRECT I/O to DSes (instead of reverting to MDS)
- - arbitrary pnfs layout segment boundaries
- - arbitrary pnfs filelayout stripe sizes
+Signed-off-by: NeilBrown <neilb@suse.de>
+---
+ include/linux/lockdep.h  |    8 ++++----
+ kernel/locking/lockdep.c |    8 +++++---
+ mm/page_alloc.c          |    5 +++--
+ mm/vmscan.c              |   10 ++++++----
+ 4 files changed, 18 insertions(+), 13 deletions(-)
 
-This patchset also includes a lot of cleanup - notably we no longer need
-a separate code path to support rsize/wsize < PAGE_SIZE.
+diff --git a/include/linux/lockdep.h b/include/linux/lockdep.h
+index 92b1bfc5da60..18eedd692d16 100644
+--- a/include/linux/lockdep.h
++++ b/include/linux/lockdep.h
+@@ -351,8 +351,8 @@ static inline void lock_set_subclass(struct lockdep_map *lock,
+ 	lock_set_class(lock, lock->name, lock->key, subclass, ip);
+ }
+ 
+-extern void lockdep_set_current_reclaim_state(gfp_t gfp_mask);
+-extern void lockdep_clear_current_reclaim_state(void);
++extern gfp_t lockdep_set_current_reclaim_state(gfp_t gfp_mask);
++extern void lockdep_restore_current_reclaim_state(gfp_t old_mask);
+ extern void lockdep_trace_alloc(gfp_t mask);
+ 
+ # define INIT_LOCKDEP				.lockdep_recursion = 0, .lockdep_reclaim_gfp = 0,
+@@ -379,8 +379,8 @@ static inline void lockdep_on(void)
+ # define lock_release(l, n, i)			do { } while (0)
+ # define lock_set_class(l, n, k, s, i)		do { } while (0)
+ # define lock_set_subclass(l, s, i)		do { } while (0)
+-# define lockdep_set_current_reclaim_state(g)	do { } while (0)
+-# define lockdep_clear_current_reclaim_state()	do { } while (0)
++# define lockdep_set_current_reclaim_state(g)	(0)
++# define lockdep_restore_current_reclaim_state(g) do { } while (0)
+ # define lockdep_trace_alloc(g)			do { } while (0)
+ # define lockdep_init()				do { } while (0)
+ # define lockdep_info()				do { } while (0)
+diff --git a/kernel/locking/lockdep.c b/kernel/locking/lockdep.c
+index eb8a54783fa0..e05b82e92373 100644
+--- a/kernel/locking/lockdep.c
++++ b/kernel/locking/lockdep.c
+@@ -3645,14 +3645,16 @@ int lock_is_held(struct lockdep_map *lock)
+ }
+ EXPORT_SYMBOL_GPL(lock_is_held);
+ 
+-void lockdep_set_current_reclaim_state(gfp_t gfp_mask)
++gfp_t lockdep_set_current_reclaim_state(gfp_t gfp_mask)
+ {
++	gfp_t old = current->lockdep_reclaim_gfp;
+ 	current->lockdep_reclaim_gfp = gfp_mask;
++	return old;
+ }
+ 
+-void lockdep_clear_current_reclaim_state(void)
++void lockdep_restore_current_reclaim_state(gfp_t gfp_mask)
+ {
+-	current->lockdep_reclaim_gfp = 0;
++	current->lockdep_reclaim_gfp = gfp_mask;
+ }
+ 
+ #ifdef CONFIG_LOCK_STAT
+diff --git a/mm/page_alloc.c b/mm/page_alloc.c
+index a3d1f5da2f21..ff8b91aa0b87 100644
+--- a/mm/page_alloc.c
++++ b/mm/page_alloc.c
+@@ -2327,20 +2327,21 @@ __perform_reclaim(gfp_t gfp_mask, unsigned int order, struct zonelist *zonelist,
+ 	struct reclaim_state reclaim_state;
+ 	int progress;
+ 	unsigned int pflags;
++	gfp_t old_mask;
+ 
+ 	cond_resched();
+ 
+ 	/* We now go into synchronous reclaim */
+ 	cpuset_memory_pressure_bump();
+ 	current_set_flags_nested(&pflags, PF_MEMALLOC);
+-	lockdep_set_current_reclaim_state(gfp_mask);
++	old_mask = lockdep_set_current_reclaim_state(gfp_mask);
+ 	reclaim_state.reclaimed_slab = 0;
+ 	current->reclaim_state = &reclaim_state;
+ 
+ 	progress = try_to_free_pages(zonelist, order, gfp_mask, nodemask);
+ 
+ 	current->reclaim_state = NULL;
+-	lockdep_clear_current_reclaim_state();
++	lockdep_restore_current_reclaim_state(old_mask);
+ 	current_restore_flags_nested(&pflags, PF_MEMALLOC);
+ 
+ 	cond_resched();
+diff --git a/mm/vmscan.c b/mm/vmscan.c
+index 94acf53d9abf..67165f839936 100644
+--- a/mm/vmscan.c
++++ b/mm/vmscan.c
+@@ -3344,16 +3344,17 @@ unsigned long shrink_all_memory(unsigned long nr_to_reclaim)
+ 	struct task_struct *p = current;
+ 	unsigned long nr_reclaimed;
+ 	unsigned int pflags;
++	gfp_t old_mask;
+ 
+ 	current_set_flags_nested(&pflags, PF_MEMALLOC);
+-	lockdep_set_current_reclaim_state(sc.gfp_mask);
++	old_mask = lockdep_set_current_reclaim_state(sc.gfp_mask);
+ 	reclaim_state.reclaimed_slab = 0;
+ 	p->reclaim_state = &reclaim_state;
+ 
+ 	nr_reclaimed = do_try_to_free_pages(zonelist, &sc, &shrink);
+ 
+ 	p->reclaim_state = NULL;
+-	lockdep_clear_current_reclaim_state();
++	lockdep_restore_current_reclaim_state(old_mask);
+ 	current_restore_flags_nested(&pflags, PF_MEMALLOC);
+ 
+ 	return nr_reclaimed;
+@@ -3532,6 +3533,7 @@ static int __zone_reclaim(struct zone *zone, gfp_t gfp_mask, unsigned int order)
+ 	};
+ 	unsigned long nr_slab_pages0, nr_slab_pages1;
+ 	unsigned int pflags;
++	gfp_t old_mask;
+ 
+ 	cond_resched();
+ 	/*
+@@ -3540,7 +3542,7 @@ static int __zone_reclaim(struct zone *zone, gfp_t gfp_mask, unsigned int order)
+ 	 * and RECLAIM_SWAP.
+ 	 */
+ 	current_set_flags_nested(&pflags, PF_MEMALLOC | PF_SWAPWRITE);
+-	lockdep_set_current_reclaim_state(gfp_mask);
++	old_mask = lockdep_set_current_reclaim_state(gfp_mask);
+ 	reclaim_state.reclaimed_slab = 0;
+ 	p->reclaim_state = &reclaim_state;
+ 
+@@ -3590,7 +3592,7 @@ static int __zone_reclaim(struct zone *zone, gfp_t gfp_mask, unsigned int order)
+ 
+ 	p->reclaim_state = NULL;
+ 	current_restore_flags_nested(&pflags, PF_MEMALLOC | PF_SWAPWRITE);
+-	lockdep_clear_current_reclaim_state();
++	lockdep_restore_current_reclaim_state(old_mask);
+ 	return sc.nr_reclaimed >= nr_pages;
+ }
+ 
 
-This new approach opens the door to many optimizations, such as not having to
-flush a page on a non-contiguous write, but for the time being we are focusing
-on correctness -- this patchset touches the read and write path for *all*
-versions of NFS!
-
-This has been tested against v2, v3, v4.0 and v4.1 (no pnfs) servers with
-different rsize/wsize settings, and against pynfs filelayout servers hacked to
-have non page aligned stripe sizes.
-
-I had some code review already (with changes applied) and we've been testing
-this pretty extensively for the last month+ - focusing mostly on v2, v3, v4.x
-(no pnfs).
-
-The patchset applies against Trond's testing branch, but should also include
-the fix I posted earlier today: "pnfs: fix race in filelayout commit path"
-as the race seems to be easier to hit with this patchset applied.
-
-I'm pretty sure I didn't break anything in the object and block layouts, but
-some extra attention there would be helpful.
-
-I plan on sharing some performance numbers once I'm able to run some nfsometer
-workloads. Expect them soon.
-
-Changes in V2:
- - now includes "pnfs: fix race in filelayout commit path" which was posted
-   separately, but is needed for testing
-
- - applied fixup to "nfs: add support for multiple nfs reqs per page"
-   to fix ref counting issues.
-
- - fixed "pnfs: support multiple verfs per direct req" to set dreq->flag
-   to _RESCHED_WRITES, just as before
-
- - applied comment from Boaz to "nfs: modify pg_test interface to return size_t"   and "nfs: chain calls to pg_test"
-
- - I also rebased on top of trond's testing branch with recent pgio patches
-   from Christoph and Anna applied first. the patches are:
-
-    % git log --oneline HEAD~37..HEAD~18
-    c1dac13 NFS: Create a common nfs_pageio_ops struct
-    a9f5822 NFS: Create a common generic_pg_pgios()
-    aab1abe NFS: Create a common multiple_pgios() function
-    60695af NFS: Create a common initiate_pgio() function
-    3e2e4ad NFS: Create a generic_pgio function
-    741d1af NFS: Create a common pgio_error function
-    087f8d8 NFS: Create a common rpcsetup function for reads and writes
-    fce97cb NFS: Create a common rpc_call_ops struct
-    c4c63d7 NFS: Create a common nfs_pgio_result_common function
-    fcc4ad0 NFS: Create a common pgio_rpc_prepare function
-    06a5f36 NFS: Create a common rw_header_alloc and rw_header_free function
-    d4aca41 NFS: Create a common pgio_alloc and pgio_release function
-    80afdb2 NFS: Move the write verifier into the nfs_pgio_header
-    4f1abf9 NFS: Create a common read and write header struct
-    fc7a26b NFS: Create a common read and write data struct
-    81ae1c0 NFS: Create a common results structure for reads and writes
-    f824d97 NFS: Create a common argument structure for reads and writes
-    0d08e1b nfs: remove ->read_pageio_init from rpc ops
-    9c4bc08 nfs: remove ->write_pageio_init from rpc ops
-
-    This can be found on my (new) public repo at:
-
-    git://git.linux-nfs.org/projects/dros/linux-nfs
-
-    on the branch "pgio".
-
- -dros
-
-
-
-Weston Andros Adamson (18):
-  pnfs: fix race in filelayout commit path
-  nfs: clean up PG_* flags
-  nfs: remove unused arg from nfs_create_request
-  nfs: modify pg_test interface to return size_t
-  nfs: call nfs_can_coalesce_requests for every req
-  nfs: add support for multiple nfs reqs per page
-  nfs: page group syncing in read path
-  nfs: page group syncing in write path
-  nfs: page group support in nfs_mark_uptodate
-  pnfs: clean up filelayout_alloc_commit_info
-  nfs: allow coalescing of subpage requests
-  nfs: chain calls to pg_test
-  nfs: use > 1 request to handle bsize < PAGE_SIZE
-  nfs: remove list of [rw]data from pgio header
-  pnfs: support multiple verfs per direct req
-  pnfs: allow non page aligned pnfs layout segments
-  pnfs: filelayout: support non page aligned layouts
-  nfs: support page groups in nfs_read_completion
-
- fs/nfs/blocklayout/blocklayout.c |  16 ++-
- fs/nfs/direct.c                  | 107 +++++++++++++--
- fs/nfs/nfs4filelayout.c          | 142 ++++++++++---------
- fs/nfs/objlayout/objio_osd.c     |  18 ++-
- fs/nfs/pageio.c                  |  91 +-----------
- fs/nfs/pagelist.c                | 290 +++++++++++++++++++++++++++++++++------
- fs/nfs/pnfs.c                    |  77 +++++------
- fs/nfs/pnfs.h                    |   3 +-
- fs/nfs/read.c                    |  51 +++++--
- fs/nfs/write.c                   | 119 +++++++++++++---
- include/linux/nfs.h              |   5 +-
- include/linux/nfs_page.h         |  33 +++--
- include/linux/nfs_xdr.h          |   6 +-
- 13 files changed, 659 insertions(+), 299 deletions(-)
-
--- 
-1.8.5.2 (Apple Git-48)
 
