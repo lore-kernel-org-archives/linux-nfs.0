@@ -1,148 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:15489 "EHLO mx11.netapp.com"
+Received: from cantor2.suse.de ([195.135.220.15]:38884 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932155AbaDYU4e (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Apr 2014 16:56:34 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
-CC: <dros@primarydata.com>, <hch@infradead.org>
-Subject: [PATCH v2 17/17] NFS: Create a common nfs_pageio_ops struct
-Date: Fri, 25 Apr 2014 16:56:00 -0400
-Message-ID: <1398459360-2093-18-git-send-email-Anna.Schumaker@Netapp.com>
-In-Reply-To: <1398459360-2093-1-git-send-email-Anna.Schumaker@Netapp.com>
-References: <1398459360-2093-1-git-send-email-Anna.Schumaker@Netapp.com>
+	id S1754323AbaDPET6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Apr 2014 00:19:58 -0400
+From: NeilBrown <neilb@suse.de>
+To: linux-mm@kvack.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Date: Wed, 16 Apr 2014 14:03:37 +1000
+Subject: [PATCH 18/19] nfsd: set PF_FSTRANS during nfsd4_do_callback_rpc.
+Cc: xfs@oss.sgi.com
+Message-ID: <20140416040337.10604.52860.stgit@notabene.brown>
+In-Reply-To: <20140416033623.10604.69237.stgit@notabene.brown>
+References: <20140416033623.10604.69237.stgit@notabene.brown>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-At this point the read and write structures look identical, so combine
-them into something shared by both.
+nfsd will sometimes call flush_workqueue on the workqueue running
+nfsd4_do_callback_rpc, so we must ensure that it doesn't block in
+filesystem reclaim.
+So set PF_FSTRANS.
 
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Signed-off-by: NeilBrown <neilb@suse.de>
 ---
- fs/nfs/internal.h |  2 +-
- fs/nfs/pageio.c   |  7 ++++++-
- fs/nfs/read.c     | 10 ++--------
- fs/nfs/write.c    |  9 ++-------
- 4 files changed, 11 insertions(+), 17 deletions(-)
+ fs/nfsd/nfs4callback.c |    5 +++++
+ 1 file changed, 5 insertions(+)
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 0243825..0c22142 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -396,6 +396,7 @@ extern int nfs4_get_rootfh(struct nfs_server *server, struct nfs_fh *mntfh, bool
- struct nfs_pgio_completion_ops;
- 
- /* pageio.c */
-+extern const struct nfs_pageio_ops nfs_pgio_rw_ops;
- extern struct nfs_rw_header *nfs_rw_header_alloc(const struct nfs_rw_ops *);
- extern void nfs_rw_header_free(struct nfs_pgio_header *);
- extern void nfs_pgio_data_release(struct nfs_pgio_data *);
-@@ -403,7 +404,6 @@ extern int nfs_generic_pgio(struct nfs_pageio_descriptor *, struct nfs_pgio_head
- extern int nfs_initiate_pgio(struct rpc_clnt *, struct nfs_pgio_data *,
- 			     const struct rpc_call_ops *, int, int);
- extern int nfs_do_multiple_pgios(struct list_head *, const struct rpc_call_ops *, int);
--extern int nfs_generic_pg_pgios(struct nfs_pageio_descriptor *);
- 
- /* read.c */
- extern void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
-diff --git a/fs/nfs/pageio.c b/fs/nfs/pageio.c
-index feac787..4c93611 100644
---- a/fs/nfs/pageio.c
-+++ b/fs/nfs/pageio.c
-@@ -312,7 +312,7 @@ int nfs_generic_pgio(struct nfs_pageio_descriptor *desc,
- }
- EXPORT_SYMBOL_GPL(nfs_generic_pgio);
- 
--int nfs_generic_pg_pgios(struct nfs_pageio_descriptor *desc)
-+static int nfs_generic_pg_pgios(struct nfs_pageio_descriptor *desc)
- {
- 	struct nfs_rw_header *rw_hdr;
- 	struct nfs_pgio_header *hdr;
-@@ -379,3 +379,8 @@ static const struct rpc_call_ops nfs_pgio_common_ops = {
- 	.rpc_call_done = nfs_pgio_result_common,
- 	.rpc_release = nfs_pgio_release_common,
- };
+diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+index 7f05cd140de3..7784b5d4edf0 100644
+--- a/fs/nfsd/nfs4callback.c
++++ b/fs/nfsd/nfs4callback.c
+@@ -997,6 +997,9 @@ static void nfsd4_do_callback_rpc(struct work_struct *w)
+ 	struct nfsd4_callback *cb = container_of(w, struct nfsd4_callback, cb_work);
+ 	struct nfs4_client *clp = cb->cb_clp;
+ 	struct rpc_clnt *clnt;
++	unsigned int pflags;
 +
-+const struct nfs_pageio_ops nfs_pgio_rw_ops = {
-+	.pg_test = nfs_generic_pg_test,
-+	.pg_doio = nfs_generic_pg_pgios,
-+};
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index 8460795..d7e9460 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -28,7 +28,6 @@
++	current_set_flags_nested(&pflags, PF_FSTRANS);
  
- #define NFSDBG_FACILITY		NFSDBG_PAGECACHE
- 
--static const struct nfs_pageio_ops nfs_pageio_read_ops;
- static const struct nfs_pgio_completion_ops nfs_async_read_completion_ops;
- static const struct nfs_rw_ops nfs_rw_read_ops;
- 
-@@ -58,7 +57,7 @@ void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
- 			      const struct nfs_pgio_completion_ops *compl_ops)
- {
- 	struct nfs_server *server = NFS_SERVER(inode);
--	const struct nfs_pageio_ops *pg_ops = &nfs_pageio_read_ops;
-+	const struct nfs_pageio_ops *pg_ops = &nfs_pgio_rw_ops;
- 
- #ifdef CONFIG_NFS_V4_1
- 	if (server->pnfs_curr_ld && !force_mds)
-@@ -71,7 +70,7 @@ EXPORT_SYMBOL_GPL(nfs_pageio_init_read);
- 
- void nfs_pageio_reset_read_mds(struct nfs_pageio_descriptor *pgio)
- {
--	pgio->pg_ops = &nfs_pageio_read_ops;
-+	pgio->pg_ops = &nfs_pgio_rw_ops;
- 	pgio->pg_bsize = NFS_SERVER(pgio->pg_inode)->rsize;
+ 	if (clp->cl_flags & NFSD4_CLIENT_CB_FLAG_MASK)
+ 		nfsd4_process_cb_update(cb);
+@@ -1005,11 +1008,13 @@ static void nfsd4_do_callback_rpc(struct work_struct *w)
+ 	if (!clnt) {
+ 		/* Callback channel broken, or client killed; give up: */
+ 		nfsd4_release_cb(cb);
++		current_restore_flags_nested(&pflags, PF_FSTRANS);
+ 		return;
+ 	}
+ 	cb->cb_msg.rpc_cred = clp->cl_cb_cred;
+ 	rpc_call_async(clnt, &cb->cb_msg, RPC_TASK_SOFT | RPC_TASK_SOFTCONN,
+ 			cb->cb_ops, cb);
++	current_restore_flags_nested(&pflags, PF_FSTRANS);
  }
- EXPORT_SYMBOL_GPL(nfs_pageio_reset_read_mds);
-@@ -178,11 +177,6 @@ static const struct nfs_pgio_completion_ops nfs_async_read_completion_ops = {
- 	.completion = nfs_read_completion,
- };
  
--static const struct nfs_pageio_ops nfs_pageio_read_ops = {
--	.pg_test = nfs_generic_pg_test,
--	.pg_doio = nfs_generic_pg_pgios,
--};
--
- /*
-  * This is the callback from RPC telling us whether a reply was
-  * received or some error occurred (timeout or socket shutdown).
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index ebbb663..3483dd4 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -973,17 +973,12 @@ static const struct nfs_pgio_completion_ops nfs_async_write_completion_ops = {
- 	.completion = nfs_write_completion,
- };
- 
--static const struct nfs_pageio_ops nfs_pageio_write_ops = {
--	.pg_test = nfs_generic_pg_test,
--	.pg_doio = nfs_generic_pg_pgios,
--};
--
- void nfs_pageio_init_write(struct nfs_pageio_descriptor *pgio,
- 			       struct inode *inode, int ioflags, bool force_mds,
- 			       const struct nfs_pgio_completion_ops *compl_ops)
- {
- 	struct nfs_server *server = NFS_SERVER(inode);
--	const struct nfs_pageio_ops *pg_ops = &nfs_pageio_write_ops;
-+	const struct nfs_pageio_ops *pg_ops = &nfs_pgio_rw_ops;
- 
- #ifdef CONFIG_NFS_V4_1
- 	if (server->pnfs_curr_ld && !force_mds)
-@@ -996,7 +991,7 @@ EXPORT_SYMBOL_GPL(nfs_pageio_init_write);
- 
- void nfs_pageio_reset_write_mds(struct nfs_pageio_descriptor *pgio)
- {
--	pgio->pg_ops = &nfs_pageio_write_ops;
-+	pgio->pg_ops = &nfs_pgio_rw_ops;
- 	pgio->pg_bsize = NFS_SERVER(pgio->pg_inode)->wsize;
- }
- EXPORT_SYMBOL_GPL(nfs_pageio_reset_write_mds);
--- 
-1.9.2
+ void nfsd4_init_callback(struct nfsd4_callback *cb)
+
 
