@@ -1,157 +1,168 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:15489 "EHLO mx11.netapp.com"
+Received: from cantor2.suse.de ([195.135.220.15]:56158 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932160AbaDYU4c (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Apr 2014 16:56:32 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
-CC: <dros@primarydata.com>, <hch@infradead.org>
-Subject: [PATCH v2 16/17] NFS: Create a common generic_pg_pgios()
-Date: Fri, 25 Apr 2014 16:55:59 -0400
-Message-ID: <1398459360-2093-17-git-send-email-Anna.Schumaker@Netapp.com>
-In-Reply-To: <1398459360-2093-1-git-send-email-Anna.Schumaker@Netapp.com>
-References: <1398459360-2093-1-git-send-email-Anna.Schumaker@Netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+	id S964772AbaDPXZW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Apr 2014 19:25:22 -0400
+Date: Thu, 17 Apr 2014 09:25:04 +1000
+From: NeilBrown <neilb@suse.de>
+To: Jeff Layton <jlayton@poochiereds.net>
+Cc: linux-mm@kvack.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, xfs@oss.sgi.com, netdev@vger.kernel.org
+Subject: Re: [PATCH 05/19] SUNRPC: track whether a request is coming from a
+ loop-back interface.
+Message-ID: <20140417092504.57a49f9d@notabene.brown>
+In-Reply-To: <20140416104702.264cde48@tlielax.poochiereds.net>
+References: <20140416033623.10604.69237.stgit@notabene.brown>
+	<20140416040336.10604.14822.stgit@notabene.brown>
+	<20140416104702.264cde48@tlielax.poochiereds.net>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/CcwxN46Oguly3bCuijnuqE3"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
+--Sig_/CcwxN46Oguly3bCuijnuqE3
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-What we have here is two functions that look identical.  Let's share
-some more code!
+On Wed, 16 Apr 2014 10:47:02 -0400 Jeff Layton <jlayton@poochiereds.net>
+wrote:
 
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
----
- fs/nfs/internal.h |  1 +
- fs/nfs/pageio.c   | 23 +++++++++++++++++++++++
- fs/nfs/read.c     | 25 +------------------------
- fs/nfs/write.c    | 26 +-------------------------
- 4 files changed, 26 insertions(+), 49 deletions(-)
+> On Wed, 16 Apr 2014 14:03:36 +1000
+> NeilBrown <neilb@suse.de> wrote:
+>=20
+> > If an incoming NFS request is coming from the local host, then
+> > nfsd will need to perform some special handling.  So detect that
+> > possibility and make the source visible in rq_local.
+> >=20
+> > Signed-off-by: NeilBrown <neilb@suse.de>
+> > ---
+> >  include/linux/sunrpc/svc.h      |    1 +
+> >  include/linux/sunrpc/svc_xprt.h |    1 +
+> >  net/sunrpc/svcsock.c            |   10 ++++++++++
+> >  3 files changed, 12 insertions(+)
+> >=20
+> > diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+> > index 04e763221246..a0dbbd1e00e9 100644
+> > --- a/include/linux/sunrpc/svc.h
+> > +++ b/include/linux/sunrpc/svc.h
+> > @@ -254,6 +254,7 @@ struct svc_rqst {
+> >  	u32			rq_prot;	/* IP protocol */
+> >  	unsigned short
+> >  				rq_secure  : 1;	/* secure port */
+> > +	unsigned short		rq_local   : 1;	/* local request */
+> > =20
+> >  	void *			rq_argp;	/* decoded arguments */
+> >  	void *			rq_resp;	/* xdr'd results */
+> > diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc=
+_xprt.h
+> > index b05963f09ebf..b99bdfb0fcf9 100644
+> > --- a/include/linux/sunrpc/svc_xprt.h
+> > +++ b/include/linux/sunrpc/svc_xprt.h
+> > @@ -63,6 +63,7 @@ struct svc_xprt {
+> >  #define	XPT_DETACHED	10		/* detached from tempsocks list */
+> >  #define XPT_LISTENER	11		/* listening endpoint */
+> >  #define XPT_CACHE_AUTH	12		/* cache auth info */
+> > +#define XPT_LOCAL	13		/* connection from loopback interface */
+> > =20
+> >  	struct svc_serv		*xpt_server;	/* service for transport */
+> >  	atomic_t    	    	xpt_reserved;	/* space on outq that is rsvd */
+> > diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+> > index b6e59f0a9475..193115fe968c 100644
+> > --- a/net/sunrpc/svcsock.c
+> > +++ b/net/sunrpc/svcsock.c
+> > @@ -811,6 +811,7 @@ static struct svc_xprt *svc_tcp_accept(struct svc_x=
+prt *xprt)
+> >  	struct socket	*newsock;
+> >  	struct svc_sock	*newsvsk;
+> >  	int		err, slen;
+> > +	struct dst_entry *dst;
+> >  	RPC_IFDEBUG(char buf[RPC_MAX_ADDRBUFLEN]);
+> > =20
+> >  	dprintk("svc: tcp_accept %p sock %p\n", svsk, sock);
+> > @@ -867,6 +868,14 @@ static struct svc_xprt *svc_tcp_accept(struct svc_=
+xprt *xprt)
+> >  	}
+> >  	svc_xprt_set_local(&newsvsk->sk_xprt, sin, slen);
+> > =20
+> > +	clear_bit(XPT_LOCAL, &newsvsk->sk_xprt.xpt_flags);
+> > +	rcu_read_lock();
+> > +	dst =3D rcu_dereference(newsock->sk->sk_dst_cache);
+> > +	if (dst && dst->dev &&
+> > +	    (dst->dev->features & NETIF_F_LOOPBACK))
+> > +		set_bit(XPT_LOCAL, &newsvsk->sk_xprt.xpt_flags);
+> > +	rcu_read_unlock();
+> > +
+>=20
+> In the use-case you describe, the client is unlikely to have mounted
+> "localhost", but is more likely to be mounting a floating address in
+> the cluster.
+>=20
+> Will this flag end up being set in such a situation? It looks like
+> NETIF_F_LOOPBACK isn't set on all adapters -- mostly on "lo" and a few
+> others that support MAC-LOOPBACK.
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 81c314c..0243825 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -403,6 +403,7 @@ extern int nfs_generic_pgio(struct nfs_pageio_descriptor *, struct nfs_pgio_head
- extern int nfs_initiate_pgio(struct rpc_clnt *, struct nfs_pgio_data *,
- 			     const struct rpc_call_ops *, int, int);
- extern int nfs_do_multiple_pgios(struct list_head *, const struct rpc_call_ops *, int);
-+extern int nfs_generic_pg_pgios(struct nfs_pageio_descriptor *);
- 
- /* read.c */
- extern void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
-diff --git a/fs/nfs/pageio.c b/fs/nfs/pageio.c
-index e985b0e..feac787 100644
---- a/fs/nfs/pageio.c
-+++ b/fs/nfs/pageio.c
-@@ -312,6 +312,29 @@ int nfs_generic_pgio(struct nfs_pageio_descriptor *desc,
- }
- EXPORT_SYMBOL_GPL(nfs_generic_pgio);
- 
-+int nfs_generic_pg_pgios(struct nfs_pageio_descriptor *desc)
-+{
-+	struct nfs_rw_header *rw_hdr;
-+	struct nfs_pgio_header *hdr;
-+	int ret;
-+
-+	rw_hdr = nfs_rw_header_alloc(desc->pg_rw_ops);
-+	if (!rw_hdr) {
-+		desc->pg_completion_ops->error_cleanup(&desc->pg_list);
-+		return -ENOMEM;
-+	}
-+	hdr = &rw_hdr->header;
-+	nfs_pgheader_init(desc, hdr, nfs_rw_header_free);
-+	atomic_inc(&hdr->refcnt);
-+	ret = nfs_generic_pgio(desc, hdr);
-+	if (ret == 0)
-+		ret = nfs_do_multiple_pgios(&hdr->rpc_list,
-+					    desc->pg_rpc_callops, 0);
-+	if (atomic_dec_and_test(&hdr->refcnt))
-+		hdr->completion_ops->completion(hdr);
-+	return ret;
-+}
-+
- static void nfs_pgio_prepare(struct rpc_task *task, void *calldata)
- {
- 	struct nfs_pgio_data *data = calldata;
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index 9dd1aeb..8460795 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -178,32 +178,9 @@ static const struct nfs_pgio_completion_ops nfs_async_read_completion_ops = {
- 	.completion = nfs_read_completion,
- };
- 
--static int nfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc)
--{
--	struct nfs_rw_header *rhdr;
--	struct nfs_pgio_header *hdr;
--	int ret;
--
--	rhdr = nfs_rw_header_alloc(desc->pg_rw_ops);
--	if (!rhdr) {
--		desc->pg_completion_ops->error_cleanup(&desc->pg_list);
--		return -ENOMEM;
--	}
--	hdr = &rhdr->header;
--	nfs_pgheader_init(desc, hdr, nfs_rw_header_free);
--	atomic_inc(&hdr->refcnt);
--	ret = nfs_generic_pgio(desc, hdr);
--	if (ret == 0)
--		ret = nfs_do_multiple_pgios(&hdr->rpc_list,
--					    desc->pg_rpc_callops, 0);
--	if (atomic_dec_and_test(&hdr->refcnt))
--		hdr->completion_ops->completion(hdr);
--	return ret;
--}
--
- static const struct nfs_pageio_ops nfs_pageio_read_ops = {
- 	.pg_test = nfs_generic_pg_test,
--	.pg_doio = nfs_generic_pg_readpages,
-+	.pg_doio = nfs_generic_pg_pgios,
- };
- 
- /*
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 28fdde2..ebbb663 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -973,33 +973,9 @@ static const struct nfs_pgio_completion_ops nfs_async_write_completion_ops = {
- 	.completion = nfs_write_completion,
- };
- 
--static int nfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc)
--{
--	struct nfs_rw_header *whdr;
--	struct nfs_pgio_header *hdr;
--	int ret;
--
--	whdr = nfs_rw_header_alloc(desc->pg_rw_ops);
--	if (!whdr) {
--		desc->pg_completion_ops->error_cleanup(&desc->pg_list);
--		return -ENOMEM;
--	}
--	hdr = &whdr->header;
--	nfs_pgheader_init(desc, hdr, nfs_rw_header_free);
--	atomic_inc(&hdr->refcnt);
--	ret = nfs_generic_pgio(desc, hdr);
--	if (ret == 0)
--		ret = nfs_do_multiple_pgios(&hdr->rpc_list,
--					     desc->pg_rpc_callops,
--					     desc->pg_ioflags);
--	if (atomic_dec_and_test(&hdr->refcnt))
--		hdr->completion_ops->completion(hdr);
--	return ret;
--}
--
- static const struct nfs_pageio_ops nfs_pageio_write_ops = {
- 	.pg_test = nfs_generic_pg_test,
--	.pg_doio = nfs_generic_pg_writepages,
-+	.pg_doio = nfs_generic_pg_pgios,
- };
- 
- void nfs_pageio_init_write(struct nfs_pageio_descriptor *pgio,
--- 
-1.9.2
+I was hoping someone on net-dev would have commented if it didn't work - I
+probably should have explicitly asked.
 
+My testing certainly suggests that this works if I use any local address to
+perform the mount, not just 127.0.0.1.
+I don't know enough about routing and neighbours and the dst cache to be
+certain but my shallow understanding was always that traffic to any local
+address was pseudo-routed through the lo interface and would never get
+anywhere near e.g. the eth0 interface.
+
+Can any network people confirm?
+
+Thanks,
+NeilBrown
+
+
+>=20
+>=20
+> >  	if (serv->sv_stats)
+> >  		serv->sv_stats->nettcpconn++;
+> > =20
+> > @@ -1112,6 +1121,7 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqst=
+p)
+> > =20
+> >  	rqstp->rq_xprt_ctxt   =3D NULL;
+> >  	rqstp->rq_prot	      =3D IPPROTO_TCP;
+> > +	rqstp->rq_local	      =3D !!test_bit(XPT_LOCAL, &svsk->sk_xprt.xpt_fl=
+ags);
+> > =20
+> >  	p =3D (__be32 *)rqstp->rq_arg.head[0].iov_base;
+> >  	calldir =3D p[1];
+> >=20
+> >=20
+> > --
+> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> > the body of a message to majordomo@vger.kernel.org
+> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>=20
+>=20
+
+
+--Sig_/CcwxN46Oguly3bCuijnuqE3
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.22 (GNU/Linux)
+
+iQIVAwUBU08RVznsnt1WYoG5AQIqlxAAqLL4IuhcC8p8k8jWdErxWKT7tbRpFrbD
+Wuek/KQQWWceJyhB6Px0x6PqyZcQki523xOvzVPDhwH1ox0i1B+N6gBB9yNbjejF
+9SB+2M5iIWaTLmlJ4ikbTRqnymOabVxrq/wp8E32bB+x88s8KPg7/XUUeEDWmf2D
+a/ls9dlVObBQXEHkaNor8p9VDG/4amI+Wrc/n4wcDHoUu1mgUd9fcEjuy15OHd58
+jgni/EmCgDaAlVE/+rhgFeLuHzLcfgPB4Sr3oK7mCQR2YDJR7nKsfLIe6uJSvIOS
+ZmcPo7SdRaQRn1YFt8fFRWxEeoJVayH5NmKqcqgoja7Bo5Tt+XDQ+F7XGQCvAkyX
+0LzyMrm5o3qEky6HcsfpY/6bygcN7O+yuopeEUqIdvkZ4TupRs7WrabeJkAID238
+c1trKdNVPVL5IvJijDv76BquDKTWNvLCpDV0wMWvavgy+KOEp94798xYMYm6cRaM
+ttgqxcmCfhIZK5HbKSMO6ynqpln9HOioePR5FdhINRLw7Z1fP/2sgizDGKOeImea
+nlmMdxJgYxSkGpmYOwmAJuL36Fl6jivQpZdq6EvdtJ0fxeO17CIS2ImU0tiPtH1e
+cfb71+ISEIP0Y4GlV7D9dlqTXbw0wrno/84BJLjCTfUtPSzrA0KcqAOg6t+DbfHI
+HB1epNHm5L8=
+=3z3m
+-----END PGP SIGNATURE-----
+
+--Sig_/CcwxN46Oguly3bCuijnuqE3--
