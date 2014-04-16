@@ -1,68 +1,117 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f172.google.com ([209.85.212.172]:39660 "EHLO
-	mail-wi0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1161180AbaDPOMe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Apr 2014 10:12:34 -0400
-Received: by mail-wi0-f172.google.com with SMTP id hi2so1440387wib.17
-        for <linux-nfs@vger.kernel.org>; Wed, 16 Apr 2014 07:12:32 -0700 (PDT)
-Message-ID: <534E8FCE.909@dev.mellanox.co.il>
-Date: Wed, 16 Apr 2014 17:12:30 +0300
-From: Sagi Grimberg <sagig@dev.mellanox.co.il>
+Received: from cantor2.suse.de ([195.135.220.15]:38800 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751181AbaDPESd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Apr 2014 00:18:33 -0400
+From: NeilBrown <neilb@suse.de>
+To: linux-mm@kvack.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Date: Wed, 16 Apr 2014 14:03:36 +1000
+Subject: [PATCH 06/19] nfsd: set PF_FSTRANS for nfsd threads.
+Cc: xfs@oss.sgi.com
+cc: Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>
+Message-ID: <20140416040336.10604.60493.stgit@notabene.brown>
+In-Reply-To: <20140416033623.10604.69237.stgit@notabene.brown>
+References: <20140416033623.10604.69237.stgit@notabene.brown>
 MIME-Version: 1.0
-To: Steve Wise <swise@opengridcomputing.com>,
-        Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
-        linux-rdma@vger.kernel.org
-Subject: Re: [PATCH 7/8] xprtrdma: Split the completion queue
-References: <20140414220041.20646.63991.stgit@manet.1015granger.net> <20140414222323.20646.66946.stgit@manet.1015granger.net> <534E7C1C.5070407@dev.mellanox.co.il> <534E8608.8030801@opengridcomputing.com>
-In-Reply-To: <534E8608.8030801@opengridcomputing.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 4/16/2014 4:30 PM, Steve Wise wrote:
-> On 4/16/2014 7:48 AM, Sagi Grimberg wrote:
->> On 4/15/2014 1:23 AM, Chuck Lever wrote:
->>> The current CQ handler uses the ib_wc.opcode field to distinguish
->>> between event types. However, the contents of that field are not
->>> reliable if the completion status is not IB_WC_SUCCESS.
->>>
->>> When an error completion occurs on a send event, the CQ handler
->>> schedules a tasklet with something that is not a struct rpcrdma_rep.
->>> This is never correct behavior, and sometimes it results in a panic.
->>>
->>> To resolve this issue, split the completion queue into a send CQ and
->>> a receive CQ. The send CQ handler now handles only struct rpcrdma_mw
->>> wr_id's, and the receive CQ handler now handles only struct
->>> rpcrdma_rep wr_id's.
->>
->> Hey Chuck,
->>
->> So 2 suggestions related (although not directly) to this one.
->>
->> 1. I recommend suppressing Fastreg completions - no one cares that 
->> they succeeded.
->>
->
-> Not true.  The nfsrdma client uses frmrs across re-connects for the 
-> same mount and needs to know at any point in time if a frmr is 
-> registered or invalid.  So completions of both fastreg and invalidate 
-> need to be signaled.  See:
->
-> commit 5c635e09cec0feeeb310968e51dad01040244851
-> Author: Tom Tucker <tom@ogc.us>
-> Date:   Wed Feb 9 19:45:34 2011 +0000
->
->     RPCRDMA: Fix FRMR registration/invalidate handling.
->
+If a localhost mount is present, then it is easy to deadlock NFS by
+nfsd entering direct reclaim and calling nfs_release_page() which
+requires nfsd to perform an fsync() (which it cannot do because it is
+reclaiming memory).
 
-Hmm, But if either FASTREG or LINV failed the QP will go to error state 
-and you *will* get the error wc (with a rain of FLUSH errors).
-AFAICT it is safe to assume that it succeeded as long as you don't get 
-error completions.
-Moreover, FASTREG on top of FASTREG are not allowed indeed, but AFAIK 
-LINV on top of LINV are allowed.
-It is OK to just always do LINV+FASTREG post-list each registration and 
-this way no need to account for successful completions.
+By setting PF_FSTRANS we stop the memory allocator from ever
+attempting any FS operation would could deadlock.
 
-Cheers,
-Sagi.
+We need this flag set for any thread which is handling a request from
+the local host, but we also need to always have it for at least 1 or 2
+threads so that we don't end up with all threads blocked in allocation.
+
+When we set PF_FSTRANS we also tell lockdep that we are handling
+reclaim so that it can detect deadlocks for us.
+
+Signed-off-by: NeilBrown <neilb@suse.de>
+---
+ fs/nfsd/nfssvc.c           |   18 ++++++++++++++++++
+ include/linux/sunrpc/svc.h |    1 +
+ net/sunrpc/svc.c           |    6 ++++++
+ 3 files changed, 25 insertions(+)
+
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index 9a4a5f9e7468..6af8bc2daf7d 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -565,6 +565,8 @@ nfsd(void *vrqstp)
+ 	struct svc_xprt *perm_sock = list_entry(rqstp->rq_server->sv_permsocks.next, typeof(struct svc_xprt), xpt_list);
+ 	struct net *net = perm_sock->xpt_net;
+ 	int err;
++	unsigned int pflags = 0;
++	gfp_t reclaim_state = 0;
+ 
+ 	/* Lock module and set up kernel thread */
+ 	mutex_lock(&nfsd_mutex);
+@@ -611,14 +613,30 @@ nfsd(void *vrqstp)
+ 			;
+ 		if (err == -EINTR)
+ 			break;
++		if (rqstp->rq_local && !current_test_flags(PF_FSTRANS)) {
++			current_set_flags_nested(&pflags, PF_FSTRANS);
++			atomic_inc(&rqstp->rq_pool->sp_nr_fstrans);
++			reclaim_state = lockdep_set_current_reclaim_state(GFP_KERNEL);
++		}
+ 		validate_process_creds();
+ 		svc_process(rqstp);
+ 		validate_process_creds();
++		if (current_test_flags(PF_FSTRANS) &&
++		    atomic_dec_if_positive(&rqstp->rq_pool->sp_nr_fstrans) >= 0) {
++			current_restore_flags_nested(&pflags, PF_FSTRANS);
++			lockdep_restore_current_reclaim_state(reclaim_state);
++		}
+ 	}
+ 
+ 	/* Clear signals before calling svc_exit_thread() */
+ 	flush_signals(current);
+ 
++	if (current_test_flags(PF_FSTRANS)) {
++		current_restore_flags_nested(&pflags, PF_FSTRANS);
++		lockdep_restore_current_reclaim_state(reclaim_state);
++		atomic_dec(&rqstp->rq_pool->sp_nr_fstrans);
++	}
++
+ 	mutex_lock(&nfsd_mutex);
+ 	nfsdstats.th_cnt --;
+ 
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index a0dbbd1e00e9..4b274aba51dd 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -48,6 +48,7 @@ struct svc_pool {
+ 	struct list_head	sp_threads;	/* idle server threads */
+ 	struct list_head	sp_sockets;	/* pending sockets */
+ 	unsigned int		sp_nrthreads;	/* # of threads in pool */
++	atomic_t		sp_nr_fstrans;	/* # threads with PF_FSTRANS */
+ 	struct list_head	sp_all_threads;	/* all server threads */
+ 	struct svc_pool_stats	sp_stats;	/* statistics on pool operation */
+ 	int			sp_task_pending;/* has pending task */
+diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
+index 5de6801cd924..8b13f35b6cbb 100644
+--- a/net/sunrpc/svc.c
++++ b/net/sunrpc/svc.c
+@@ -477,6 +477,12 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
+ 		INIT_LIST_HEAD(&pool->sp_threads);
+ 		INIT_LIST_HEAD(&pool->sp_sockets);
+ 		INIT_LIST_HEAD(&pool->sp_all_threads);
++		/* The number of threads with PF_FSTRANS set
++		 * should never be reduced below 2, except when
++		 * threads exit.  So we use atomic_dec_if_positive()
++		 * on this value.
++		 */
++		atomic_set(&pool->sp_nr_fstrans, -2);
+ 		spin_lock_init(&pool->sp_lock);
+ 	}
+ 
+
+
