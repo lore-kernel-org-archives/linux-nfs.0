@@ -1,147 +1,139 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:57965 "EHLO mx11.netapp.com"
+Received: from cantor2.suse.de ([195.135.220.15]:39982 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751235AbaDQVKe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 17 Apr 2014 17:10:34 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
-Subject: [PATCH 17/17] NFS: Create a common nfs_pageio_ops struct
-Date: Thu, 17 Apr 2014 17:09:41 -0400
-Message-ID: <1397768981-12856-18-git-send-email-Anna.Schumaker@Netapp.com>
-In-Reply-To: <1397768981-12856-1-git-send-email-Anna.Schumaker@Netapp.com>
-References: <1397768981-12856-1-git-send-email-Anna.Schumaker@Netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+	id S1753048AbaDPGRg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Apr 2014 02:17:36 -0400
+Date: Wed, 16 Apr 2014 16:17:26 +1000
+From: NeilBrown <neilb@suse.de>
+To: Dave Chinner <david@fromorbit.com>
+Cc: linux-mm@kvack.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, Ming Lei <ming.lei@canonical.com>,
+        xfs@oss.sgi.com
+Subject: Re: [PATCH 04/19] Make effect of PF_FSTRANS to disable __GFP_FS
+ universal.
+Message-ID: <20140416161726.51b506e2@notabene.brown>
+In-Reply-To: <20140416053756.GC15995@dastard>
+References: <20140416033623.10604.69237.stgit@notabene.brown>
+	<20140416040336.10604.58240.stgit@notabene.brown>
+	<20140416053756.GC15995@dastard>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/Oo0=qxWoYRMUFxVoAOmvLbc"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-At this point the read and write structures look identical, so combine
-them into something shared by both.
+--Sig_/Oo0=qxWoYRMUFxVoAOmvLbc
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
----
- fs/nfs/internal.h |  2 +-
- fs/nfs/pageio.c   |  7 ++++++-
- fs/nfs/read.c     | 10 ++--------
- fs/nfs/write.c    |  9 ++-------
- 4 files changed, 11 insertions(+), 17 deletions(-)
+On Wed, 16 Apr 2014 15:37:56 +1000 Dave Chinner <david@fromorbit.com> wrote:
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 0243825..0c22142 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -396,6 +396,7 @@ extern int nfs4_get_rootfh(struct nfs_server *server, struct nfs_fh *mntfh, bool
- struct nfs_pgio_completion_ops;
- 
- /* pageio.c */
-+extern const struct nfs_pageio_ops nfs_pgio_rw_ops;
- extern struct nfs_rw_header *nfs_rw_header_alloc(const struct nfs_rw_ops *);
- extern void nfs_rw_header_free(struct nfs_pgio_header *);
- extern void nfs_pgio_data_release(struct nfs_pgio_data *);
-@@ -403,7 +404,6 @@ extern int nfs_generic_pgio(struct nfs_pageio_descriptor *, struct nfs_pgio_head
- extern int nfs_initiate_pgio(struct rpc_clnt *, struct nfs_pgio_data *,
- 			     const struct rpc_call_ops *, int, int);
- extern int nfs_do_multiple_pgios(struct list_head *, const struct rpc_call_ops *, int);
--extern int nfs_generic_pg_pgios(struct nfs_pageio_descriptor *);
- 
- /* read.c */
- extern void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
-diff --git a/fs/nfs/pageio.c b/fs/nfs/pageio.c
-index da01458..b9d06c8 100644
---- a/fs/nfs/pageio.c
-+++ b/fs/nfs/pageio.c
-@@ -312,7 +312,7 @@ int nfs_generic_pgio(struct nfs_pageio_descriptor *desc,
- }
- EXPORT_SYMBOL_GPL(nfs_generic_pgio);
- 
--int nfs_generic_pg_pgios(struct nfs_pageio_descriptor *desc)
-+static int nfs_generic_pg_pgios(struct nfs_pageio_descriptor *desc)
- {
- 	struct nfs_rw_header *rw_hdr;
- 	struct nfs_pgio_header *hdr;
-@@ -379,3 +379,8 @@ static const struct rpc_call_ops nfs_pgio_common_ops = {
- 	.rpc_call_done = nfs_pgio_result_common,
- 	.rpc_release = nfs_pgio_release_common,
- };
-+
-+const struct nfs_pageio_ops nfs_pgio_rw_ops = {
-+	.pg_test = nfs_generic_pg_test,
-+	.pg_doio = nfs_generic_pg_pgios,
-+};
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index 8460795..d7e9460 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -28,7 +28,6 @@
- 
- #define NFSDBG_FACILITY		NFSDBG_PAGECACHE
- 
--static const struct nfs_pageio_ops nfs_pageio_read_ops;
- static const struct nfs_pgio_completion_ops nfs_async_read_completion_ops;
- static const struct nfs_rw_ops nfs_rw_read_ops;
- 
-@@ -58,7 +57,7 @@ void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
- 			      const struct nfs_pgio_completion_ops *compl_ops)
- {
- 	struct nfs_server *server = NFS_SERVER(inode);
--	const struct nfs_pageio_ops *pg_ops = &nfs_pageio_read_ops;
-+	const struct nfs_pageio_ops *pg_ops = &nfs_pgio_rw_ops;
- 
- #ifdef CONFIG_NFS_V4_1
- 	if (server->pnfs_curr_ld && !force_mds)
-@@ -71,7 +70,7 @@ EXPORT_SYMBOL_GPL(nfs_pageio_init_read);
- 
- void nfs_pageio_reset_read_mds(struct nfs_pageio_descriptor *pgio)
- {
--	pgio->pg_ops = &nfs_pageio_read_ops;
-+	pgio->pg_ops = &nfs_pgio_rw_ops;
- 	pgio->pg_bsize = NFS_SERVER(pgio->pg_inode)->rsize;
- }
- EXPORT_SYMBOL_GPL(nfs_pageio_reset_read_mds);
-@@ -178,11 +177,6 @@ static const struct nfs_pgio_completion_ops nfs_async_read_completion_ops = {
- 	.completion = nfs_read_completion,
- };
- 
--static const struct nfs_pageio_ops nfs_pageio_read_ops = {
--	.pg_test = nfs_generic_pg_test,
--	.pg_doio = nfs_generic_pg_pgios,
--};
--
- /*
-  * This is the callback from RPC telling us whether a reply was
-  * received or some error occurred (timeout or socket shutdown).
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index ebbb663..3483dd4 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -973,17 +973,12 @@ static const struct nfs_pgio_completion_ops nfs_async_write_completion_ops = {
- 	.completion = nfs_write_completion,
- };
- 
--static const struct nfs_pageio_ops nfs_pageio_write_ops = {
--	.pg_test = nfs_generic_pg_test,
--	.pg_doio = nfs_generic_pg_pgios,
--};
--
- void nfs_pageio_init_write(struct nfs_pageio_descriptor *pgio,
- 			       struct inode *inode, int ioflags, bool force_mds,
- 			       const struct nfs_pgio_completion_ops *compl_ops)
- {
- 	struct nfs_server *server = NFS_SERVER(inode);
--	const struct nfs_pageio_ops *pg_ops = &nfs_pageio_write_ops;
-+	const struct nfs_pageio_ops *pg_ops = &nfs_pgio_rw_ops;
- 
- #ifdef CONFIG_NFS_V4_1
- 	if (server->pnfs_curr_ld && !force_mds)
-@@ -996,7 +991,7 @@ EXPORT_SYMBOL_GPL(nfs_pageio_init_write);
- 
- void nfs_pageio_reset_write_mds(struct nfs_pageio_descriptor *pgio)
- {
--	pgio->pg_ops = &nfs_pageio_write_ops;
-+	pgio->pg_ops = &nfs_pgio_rw_ops;
- 	pgio->pg_bsize = NFS_SERVER(pgio->pg_inode)->wsize;
- }
- EXPORT_SYMBOL_GPL(nfs_pageio_reset_write_mds);
--- 
-1.9.2
+> On Wed, Apr 16, 2014 at 02:03:36PM +1000, NeilBrown wrote:
+> > Currently both xfs and nfs will handle PF_FSTRANS by disabling
+> > __GFP_FS.
+> >=20
+> > Make this effect global by repurposing memalloc_noio_flags (which
+> > does the same thing for PF_MEMALLOC_NOIO and __GFP_IO) to generally
+> > impost the task flags on a gfp_t.
+> > Due to this repurposing we change the name of memalloc_noio_flags
+> > to gfp_from_current().
+> >=20
+> > As PF_FSTRANS now uniformly removes __GFP_FS we can remove special
+> > code for this from xfs and nfs.
+> >=20
+> > As we can now expect other code to set PF_FSTRANS, its meaning is more
+> > general, so the WARN_ON in xfs_vm_writepage() which checks PF_FSTRANS
+> > is not set is no longer appropriate.  PF_FSTRANS may be set for other
+> > reasons than an XFS transaction.
+>=20
+> So PF_FSTRANS no longer means "filesystem in transaction context".
+> Are you going to rename to match whatever it's meaning is now?
+> I'm not exactly clear on what it means now...
 
+I did consider renaming it to "PF_MEMALLOC_NOFS" as it is similar to
+"PF_MEMALLOC_NOIO", except that it disables __GFP_FS rather than __GFP_IO.
+Maybe I should go ahead with that.
+
+>=20
+>=20
+> > As lockdep cares about __GFP_FS, we need to translate PF_FSTRANS to
+> > __GFP_FS before calling lockdep_alloc_trace() in various places.
+> >=20
+> > Signed-off-by: NeilBrown <neilb@suse.de>
+> ....
+> > diff --git a/fs/xfs/kmem.h b/fs/xfs/kmem.h
+> > index 64db0e53edea..882b86270ebe 100644
+> > --- a/fs/xfs/kmem.h
+> > +++ b/fs/xfs/kmem.h
+> > @@ -50,8 +50,6 @@ kmem_flags_convert(xfs_km_flags_t flags)
+> >  		lflags =3D GFP_ATOMIC | __GFP_NOWARN;
+> >  	} else {
+> >  		lflags =3D GFP_KERNEL | __GFP_NOWARN;
+> > -		if ((current->flags & PF_FSTRANS) || (flags & KM_NOFS))
+> > -			lflags &=3D ~__GFP_FS;
+> >  	}
+>=20
+> I think KM_NOFS needs to remain here, as it has use outside of
+> transaction contexts that set PF_FSTRANS....
+
+Argh, yes of course.
+I'll have to re-test the other xfs changes now to see if they are really
+needed.
+
+Thanks!
+
+
+>=20
+> >  	if (flags & KM_ZERO)
+> > diff --git a/fs/xfs/xfs_aops.c b/fs/xfs/xfs_aops.c
+> > index db2cfb067d0b..207a7f86d5d7 100644
+> > --- a/fs/xfs/xfs_aops.c
+> > +++ b/fs/xfs/xfs_aops.c
+> > @@ -952,13 +952,6 @@ xfs_vm_writepage(
+> >  			PF_MEMALLOC))
+> >  		goto redirty;
+> > =20
+> > -	/*
+> > -	 * Given that we do not allow direct reclaim to call us, we should
+> > -	 * never be called while in a filesystem transaction.
+> > -	 */
+> > -	if (WARN_ON(current->flags & PF_FSTRANS))
+> > -		goto redirty;
+>=20
+> We still need to ensure this rule isn't broken. If it is, the
+> filesystem will silently deadlock in delayed allocation rather than
+> gracefully handle the problem with a warning....
+
+Hmm... that might be tricky.  The 'new' PF_FSTRANS can definitely be set wh=
+en
+xfs_vm_writepage is called and we really want the write to happen.
+I don't suppose there is any other way to detect if a transaction is
+happening?
+
+Thanks,
+NeilBrown
+
+
+--Sig_/Oo0=qxWoYRMUFxVoAOmvLbc
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.22 (GNU/Linux)
+
+iQIVAwUBU04gdjnsnt1WYoG5AQJjow//evh86FCU/MZNvwJIfgaA7CJS8ZBO2vac
+JkRsYYSmmSyFY4gWC9gDQfRJD01TaQRR55toAqxbZg8L1HbbL5i4ZBEpJQVYel8Y
+pdI2N75oZ6GCufLuivZ0hw6TGotfcwtGQFXjewpcpBDrx2Dr0+yxhObkKAh8W1ae
+f5dvKrZ0sYAaEGYj+XHzPb6STEYspdmnflzOOzRXLsCWOeM/uKEt9Cv0l12TXvyr
+kBYoY3HBMnKCBsvJPakCGZB+eSyR9PKLL5t846/ZL0Pfwic8OdCU6nBTncGbf2w/
+TCWWLxF2trF2f1aMx9TZef+IulH2KdZm5s1HALZ/edGnto8Wz2wgMGNpoj95rhT1
+3n5Qn7+P+B491bBGNVbbw2ObPl+aB1k5FgDwy++M7wSBUVjqqGaGAjqEXcgQJ9RV
+zBM6mMZyICqnSqy/3h5ACDK9xmCcb/lVXscSMFuGlEIcqiz9ehnmZWWJrsWjvLa7
+gOpO51fbFepKaA6MbhGlyOiOLH3XOpwuGQcsvpxCgT6vRs8C2yRutFbtbtVliaPQ
+I+g/hpkMJEqUvsRu/Dk44ndA3U64gnQuoFzgcYxZoFdCbzq/xP7w5LH7MbNeSSvH
+SvgiEpGCVhHsOfP8Z1pt01kCsnONRkMTQP8KxGDycDLnKAEC1YPvWCFB0Za5acJ6
+YVnpDRofW5g=
+=0rPl
+-----END PGP SIGNATURE-----
+
+--Sig_/Oo0=qxWoYRMUFxVoAOmvLbc--
