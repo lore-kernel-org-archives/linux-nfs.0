@@ -1,66 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:60110 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754765AbaDXQeP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 24 Apr 2014 12:34:15 -0400
-Date: Thu, 24 Apr 2014 12:34:14 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Linus Torvalds <torvalds@linux-foundation.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Devel FS Linux <linux-fsdevel@vger.kernel.org>,
-        Linux Kernel mailing list <linux-kernel@vger.kernel.org>,
-        Layton Jeff <jlayton@redhat.com>
-Subject: Re: nfsd bug fixes for 3.15
-Message-ID: <20140424163414.GA16429@fieldses.org>
-References: <20140424062516.GA8891@fieldses.org>
- <CAHQdGtRfybuqsxiS=Hd4Stkm1ex13f6SeEk5XbQcy35UZStHRA@mail.gmail.com>
- <20140424153116.GA15459@fieldses.org>
+Received: from smtp.opengridcomputing.com ([72.48.136.20]:57822 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1755675AbaDPSfi (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Apr 2014 14:35:38 -0400
+From: Steve Wise <swise@opengridcomputing.com>
+Subject: [PATCH] xprtrdma: Set LOCAL_WRITE for memory regions with REMOTE_WRITE
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Date: Wed, 16 Apr 2014 13:35:38 -0500
+Message-ID: <20140416183538.23742.54560.stgit@build.ogc.int>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140424153116.GA15459@fieldses.org>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 24, 2014 at 11:31:16AM -0400, J. Bruce Fields wrote:
-> On Thu, Apr 24, 2014 at 06:51:03AM -0400, Trond Myklebust wrote:
-> > Hi Bruce,
-> > 
-> > On Thu, Apr 24, 2014 at 2:25 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > > Please pull the following bug fixes for 3.15 from:
-> > >
-> > >   git://linux-nfs.org/~bfields/linux.git for-3.15
-> > >
-> > > Three small nfsd bugfixes (including one locks.c fix for a bug triggered
-> > > only from nfsd).
-> > >
-> > > Jeff's patches are for long-existing problems that became easier to
-> > > trigger since the addition of vfs delegation support.
-> > >
-> > > --b.
-> > >
-> > > ----------------------------------------------------------------
-> > > J. Bruce Fields (1):
-> > >       Revert "nfsd4: fix nfs4err_resource in 4.1 case"
-> > >
-> > 
-> > Wait. Why?
-> 
-> Have you changed your mind since our previous discussion, or just
-> forgotten it?  (Or did I screw up and revert the wrong commit?)  See
-> 
-> 	http://mid.gmane.org/<BAD6904F-A82A-4FBC-807F-16560B2A23E0@primarydata.com>
-> 
-> > NFS4ERR_RESOURCE breaks the Linux client.
-> 
-> This returns us to pre-3.15 behavior so shouldn't introduce any new
-> breakage.
-> 
-> Fundamentally the problem is that we're returning an error in cases that
-> shouldn't succeed, and rather than replacing one incorrect error by
+The commit below enforces the requirement that MRs with REMOTE_WRITE
+must also have LOCAL_WRITE:
 
-s/shouldn't/should/, apologies!--b.
+commit 1c636f801615bdfc9b1d46904e8258c7a025670b
+Author: Eli Cohen <eli@dev.mellanox.co.il>
+Date:   Thu Oct 31 15:26:32 2013 +0200
 
-> another it seemed better to wait for a proper fix.
-> 
-> --b.
+   IB/core: Encorce MR access rights rules on kernel consumers
+
+Signed-off-by: Steve Wise <swise@opengridcomputing.com>
+---
+
+ net/sunrpc/xprtrdma/verbs.c |    3 ++-
+ 1 files changed, 2 insertions(+), 1 deletions(-)
+
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 9b038e1..65ce677 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -1637,7 +1637,8 @@ static int
+ rpcrdma_register_default_external(struct rpcrdma_mr_seg *seg,
+ 			int *nsegs, int writing, struct rpcrdma_ia *ia)
+ {
+-	int mem_priv = (writing ? IB_ACCESS_REMOTE_WRITE :
++	int mem_priv = (writing ? IB_ACCESS_REMOTE_WRITE |
++				  IB_ACCESS_LOCAL_WRITE :
+ 				  IB_ACCESS_REMOTE_READ);
+ 	struct rpcrdma_mr_seg *seg1 = seg;
+ 	struct ib_phys_buf ipb[RPCRDMA_MAX_DATA_SEGS];
+
