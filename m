@@ -1,151 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f175.google.com ([209.85.223.175]:54580 "EHLO
-	mail-ie0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754261AbaDXSPh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Apr 2014 14:15:37 -0400
-Received: by mail-ie0-f175.google.com with SMTP id to1so2769176ieb.34
-        for <linux-nfs@vger.kernel.org>; Thu, 24 Apr 2014 11:15:37 -0700 (PDT)
-From: Weston Andros Adamson <dros@primarydata.com>
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
-Subject: [PATCH 01/18 v2] pnfs: fix race in filelayout commit path
-Date: Thu, 24 Apr 2014 14:15:11 -0400
-Message-Id: <1398363328-7100-2-git-send-email-dros@primarydata.com>
-In-Reply-To: <1398363328-7100-1-git-send-email-dros@primarydata.com>
-References: <1398363328-7100-1-git-send-email-dros@primarydata.com>
+Received: from cantor2.suse.de ([195.135.220.15]:38854 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751041AbaDPETa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Apr 2014 00:19:30 -0400
+From: NeilBrown <neilb@suse.de>
+To: linux-mm@kvack.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Date: Wed, 16 Apr 2014 14:03:36 +1000
+Subject: [PATCH 14/19] driver core: set PF_FSTRANS while holding gdp_mutex
+Cc: xfs@oss.sgi.com
+Message-ID: <20140416040336.10604.223.stgit@notabene.brown>
+In-Reply-To: <20140416033623.10604.69237.stgit@notabene.brown>
+References: <20140416033623.10604.69237.stgit@notabene.brown>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hold the lock while modifying commit info dataserver buckets.
+lockdep reports a locking chain:
 
-The following oops can be reproduced by running iozone for a while against
-a 2 DS pynfs filelayout server.
+  sk_lock-AF_INET --> rtnl_mutex --> gdp_mutex
 
-general protection fault: 0000 [#1] SMP DEBUG_PAGEALLOC
-Modules linked in: nfs_layout_nfsv41_files rpcsec_gss_krb5 nfsv4 nfs fscache
-CPU: 0 PID: 903 Comm: iozone Not tainted 3.15.0-rc1-branch-dros_testing+ #44
-Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference
-task: ffff880078164480 ti: ffff88006e972000 task.ti: ffff88006e972000
-RIP: 0010:[<ffffffffa01936e1>]  [<ffffffffa01936e1>] nfs_init_commit+0x22/0x
-RSP: 0018:ffff88006e973d30  EFLAGS: 00010246
-RAX: ffff88006e973e00 RBX: ffff88006e828800 RCX: ffff88006e973e10
-RDX: 0000000000000000 RSI: ffff88006e973e00 RDI: dead4ead00000000
-RBP: ffff88006e973d38 R08: ffff88006e8289d8 R09: 0000000000000000
-R10: ffff88006e8289d8 R11: 0000000000016988 R12: ffff88006e973b98
-R13: ffff88007a0a6648 R14: ffff88006e973e10 R15: ffff88006e828800
-FS:  00007f2ce396b740(0000) GS:ffff88007f200000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-CR2: 00007f03278a1000 CR3: 0000000079043000 CR4: 00000000001407f0
-Stack:
-ffff88006e8289d8 ffff88006e973da8 ffffffffa00f144f ffff88006e9478c0
-ffff88006e973e00 ffff88006de21080 0000000100000002 ffff880079be6c48
-ffff88006e973d70 ffff88006e973d70 ffff88006e973e10 ffff88006de21080
-Call Trace:
-[<ffffffffa00f144f>] filelayout_commit_pagelist+0x1ae/0x34a [nfs_layout_nfsv
-[<ffffffffa0194f72>] nfs_generic_commit_list+0x92/0xc4 [nfs]
-[<ffffffffa0195053>] nfs_commit_inode+0xaf/0x114 [nfs]
-[<ffffffffa01892bd>] nfs_file_fsync_commit+0x82/0xbe [nfs]
-[<ffffffffa01ceb0d>] nfs4_file_fsync+0x59/0x9b [nfsv4]
-[<ffffffff8114ee3c>] vfs_fsync_range+0x18/0x20
-[<ffffffff8114ee60>] vfs_fsync+0x1c/0x1e
-[<ffffffffa01891c2>] nfs_file_flush+0x7f/0x84 [nfs]
-[<ffffffff81127a43>] filp_close+0x3c/0x72
-[<ffffffff81140e12>] __close_fd+0x82/0x9a
-[<ffffffff81127a9c>] SyS_close+0x23/0x4c
-[<ffffffff814acd12>] system_call_fastpath+0x16/0x1b
-Code: 5b 41 5c 41 5d 41 5e 5d c3 0f 1f 44 00 00 55 48 89 e5 53 48 89 fb 48 8
-RIP  [<ffffffffa01936e1>] nfs_init_commit+0x22/0xe1 [nfs]
-RSP <ffff88006e973d30>
----[ end trace 732fe6419b235e2f ]---
+As sk_lock can be needed for memory reclaim (when loop-back NFS is in
+use at least), any memory allocation under gdp_mutex needs to
+be protected by PF_FSTRANS.
 
-Suggested-by: Trond Myklebust <trond.myklebust@primarydata.com>
-Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+The path frome rtnl_mutex to gdp_mutex is
+
+    [<ffffffff81841ecc>] get_device_parent+0x4c/0x1f0
+    [<ffffffff81842496>] device_add+0xe6/0x610
+    [<ffffffff81ac5f2a>] netdev_register_kobject+0x7a/0x130
+    [<ffffffff81aaf5d4>] register_netdevice+0x354/0x550
+    [<ffffffff81aaf7e5>] register_netdev+0x15/0x30
+
+Signed-off-by: NeilBrown <neilb@suse.de>
 ---
- fs/nfs/nfs4filelayout.c | 20 ++++++++++++++++----
- 1 file changed, 16 insertions(+), 4 deletions(-)
+ drivers/base/core.c |    3 +++
+ 1 file changed, 3 insertions(+)
 
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 7954e16..9fd7ceb 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -1067,6 +1067,7 @@ filelayout_choose_commit_list(struct nfs_page *req,
- 	 */
- 	j = nfs4_fl_calc_j_index(lseg, req_offset(req));
- 	i = select_bucket_index(fl, j);
-+	spin_lock(cinfo->lock);
- 	buckets = cinfo->ds->buckets;
- 	list = &buckets[i].written;
- 	if (list_empty(list)) {
-@@ -1080,6 +1081,7 @@ filelayout_choose_commit_list(struct nfs_page *req,
- 	}
- 	set_bit(PG_COMMIT_TO_DS, &req->wb_flags);
- 	cinfo->ds->nwritten++;
-+	spin_unlock(cinfo->lock);
- 	return list;
- }
+diff --git a/drivers/base/core.c b/drivers/base/core.c
+index 2b567177ef78..1a2735237650 100644
+--- a/drivers/base/core.c
++++ b/drivers/base/core.c
+@@ -750,6 +750,7 @@ static struct kobject *get_device_parent(struct device *dev,
+ 		struct kobject *kobj = NULL;
+ 		struct kobject *parent_kobj;
+ 		struct kobject *k;
++		unsigned int pflags;
  
-@@ -1176,6 +1178,7 @@ transfer_commit_list(struct list_head *src, struct list_head *dst,
- 	return ret;
- }
- 
-+/* Note called with cinfo->lock held. */
- static int
- filelayout_scan_ds_commit_list(struct pnfs_commit_bucket *bucket,
- 			       struct nfs_commit_info *cinfo,
-@@ -1220,15 +1223,18 @@ static void filelayout_recover_commit_reqs(struct list_head *dst,
- 					   struct nfs_commit_info *cinfo)
- {
- 	struct pnfs_commit_bucket *b;
-+	struct pnfs_layout_segment *freeme;
- 	int i;
- 
-+restart:
- 	spin_lock(cinfo->lock);
- 	for (i = 0, b = cinfo->ds->buckets; i < cinfo->ds->nbuckets; i++, b++) {
- 		if (transfer_commit_list(&b->written, dst, cinfo, 0)) {
--			spin_unlock(cinfo->lock);
--			pnfs_put_lseg(b->wlseg);
-+			freeme = b->wlseg;
- 			b->wlseg = NULL;
--			spin_lock(cinfo->lock);
-+			spin_unlock(cinfo->lock);
-+			pnfs_put_lseg(freeme);
-+			goto restart;
+ #ifdef CONFIG_BLOCK
+ 		/* block disks show up in /sys/block */
+@@ -788,7 +789,9 @@ static struct kobject *get_device_parent(struct device *dev,
  		}
- 	}
- 	cinfo->ds->nwritten = 0;
-@@ -1243,6 +1249,7 @@ alloc_ds_commits(struct nfs_commit_info *cinfo, struct list_head *list)
- 	struct nfs_commit_data *data;
- 	int i, j;
- 	unsigned int nreq = 0;
-+	struct pnfs_layout_segment *freeme;
  
- 	fl_cinfo = cinfo->ds;
- 	bucket = fl_cinfo->buckets;
-@@ -1253,8 +1260,10 @@ alloc_ds_commits(struct nfs_commit_info *cinfo, struct list_head *list)
- 		if (!data)
- 			break;
- 		data->ds_commit_index = i;
-+		spin_lock(cinfo->lock);
- 		data->lseg = bucket->clseg;
- 		bucket->clseg = NULL;
-+		spin_unlock(cinfo->lock);
- 		list_add(&data->pages, list);
- 		nreq++;
- 	}
-@@ -1264,8 +1273,11 @@ alloc_ds_commits(struct nfs_commit_info *cinfo, struct list_head *list)
- 		if (list_empty(&bucket->committing))
- 			continue;
- 		nfs_retry_commit(&bucket->committing, bucket->clseg, cinfo);
--		pnfs_put_lseg(bucket->clseg);
-+		spin_lock(cinfo->lock);
-+		freeme = bucket->clseg;
- 		bucket->clseg = NULL;
-+		spin_unlock(cinfo->lock);
-+		pnfs_put_lseg(freeme);
- 	}
- 	/* Caller will clean up entries put on list */
- 	return nreq;
--- 
-1.8.5.2 (Apple Git-48)
+ 		/* or create a new class-directory at the parent device */
++		current_set_flags_nested(&pflags, PF_FSTRANS);
+ 		k = class_dir_create_and_add(dev->class, parent_kobj);
++		current_restore_flags_nested(&pflags, PF_FSTRANS);
+ 		/* do not emit an uevent for this simple "glue" directory */
+ 		mutex_unlock(&gdp_mutex);
+ 		return k;
+
 
