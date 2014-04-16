@@ -1,137 +1,102 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f177.google.com ([209.85.213.177]:59187 "EHLO
-	mail-ig0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932329AbaDXSPz (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Apr 2014 14:15:55 -0400
-Received: by mail-ig0-f177.google.com with SMTP id h3so1239681igd.4
-        for <linux-nfs@vger.kernel.org>; Thu, 24 Apr 2014 11:15:55 -0700 (PDT)
-From: Weston Andros Adamson <dros@primarydata.com>
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
-Subject: [PATCH 12/18 v2] nfs: chain calls to pg_test
-Date: Thu, 24 Apr 2014 14:15:22 -0400
-Message-Id: <1398363328-7100-13-git-send-email-dros@primarydata.com>
-In-Reply-To: <1398363328-7100-1-git-send-email-dros@primarydata.com>
-References: <1398363328-7100-1-git-send-email-dros@primarydata.com>
+Received: from cantor2.suse.de ([195.135.220.15]:39630 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754360AbaDPFr4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Apr 2014 01:47:56 -0400
+Date: Wed, 16 Apr 2014 15:47:46 +1000
+From: NeilBrown <neilb@suse.de>
+To: Eric Dumazet <eric.dumazet@gmail.com>
+Cc: linux-mm@kvack.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, xfs@oss.sgi.com, netdev@vger.kernel.org
+Subject: Re: [PATCH 10/19] NET: set PF_FSTRANS while holding sk_lock
+Message-ID: <20140416154746.7dbb4485@notabene.brown>
+In-Reply-To: <1397625226.4222.113.camel@edumazet-glaptop2.roam.corp.google.com>
+References: <20140416033623.10604.69237.stgit@notabene.brown>
+	<20140416040336.10604.96000.stgit@notabene.brown>
+	<1397625226.4222.113.camel@edumazet-glaptop2.roam.corp.google.com>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/YX/W05=F6X9qrxW7nKLwnOj"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Now that pg_test can change the size of the request (by returning a non-zero
-size smaller than the request), pg_test functions that call other
-pg_test functions must return the minimum of the result - or 0 if any fail.
+--Sig_/YX/W05=F6X9qrxW7nKLwnOj
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-Also clean up the logic of some pg_test functions so that all checks are
-for contitions where coalescing is not possible.
+On Tue, 15 Apr 2014 22:13:46 -0700 Eric Dumazet <eric.dumazet@gmail.com>
+wrote:
 
-Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
----
- fs/nfs/nfs4filelayout.c      | 27 ++++++++++++++-------------
- fs/nfs/objlayout/objio_osd.c |  9 ++++++---
- fs/nfs/pnfs.c                | 15 ++++++++++-----
- 3 files changed, 30 insertions(+), 21 deletions(-)
+> On Wed, 2014-04-16 at 14:03 +1000, NeilBrown wrote:
+> > sk_lock can be taken while reclaiming memory (in nfsd for loop-back
+> > NFS mounts, and presumably in nfs), and memory can be allocated while
+> > holding sk_lock, at least via:
+> >=20
+> >  inet_listen -> inet_csk_listen_start ->reqsk_queue_alloc
+> >=20
+> > So to avoid deadlocks, always set PF_FSTRANS while holding sk_lock.
+> >=20
+> > This deadlock was found by lockdep.
+>=20
+> Wow, this is adding expensive stuff in fast path, only for nfsd :(
 
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 9cea935..7a665e0 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -928,26 +928,27 @@ static size_t
- filelayout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
- 		   struct nfs_page *req)
- {
-+	unsigned int size;
- 	u64 p_stripe, r_stripe;
- 	u32 stripe_unit;
- 
--	if (!pnfs_generic_pg_test(pgio, prev, req) ||
--	    !nfs_generic_pg_test(pgio, prev, req))
-+	/* calls nfs_generic_pg_test */
-+	size = pnfs_generic_pg_test(pgio, prev, req);
-+	if (!size)
- 		return 0;
- 
--	if (!prev)
--		return req->wb_bytes;
-+	if (prev) {
-+		p_stripe = (u64)req_offset(prev);
-+		r_stripe = (u64)req_offset(req);
-+		stripe_unit = FILELAYOUT_LSEG(pgio->pg_lseg)->stripe_unit;
- 
--	p_stripe = (u64)req_offset(prev);
--	r_stripe = (u64)req_offset(req);
--	stripe_unit = FILELAYOUT_LSEG(pgio->pg_lseg)->stripe_unit;
-+		do_div(p_stripe, stripe_unit);
-+		do_div(r_stripe, stripe_unit);
- 
--	do_div(p_stripe, stripe_unit);
--	do_div(r_stripe, stripe_unit);
--
--	if (p_stripe == r_stripe)
--		return req->wb_bytes;
--	return 0;
-+		if (p_stripe != r_stripe)
-+			return 0;
-+	}
-+	return min(size, req->wb_bytes);
- }
- 
- static void
-diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-index 71b9c69..6113207 100644
---- a/fs/nfs/objlayout/objio_osd.c
-+++ b/fs/nfs/objlayout/objio_osd.c
-@@ -571,12 +571,15 @@ int objio_write_pagelist(struct nfs_pgio_data *wdata, int how)
- static size_t objio_pg_test(struct nfs_pageio_descriptor *pgio,
- 			  struct nfs_page *prev, struct nfs_page *req)
- {
--	if (!pnfs_generic_pg_test(pgio, prev, req) ||
--	    pgio->pg_count + req->wb_bytes >
-+	unsigned int size;
-+
-+	size = pnfs_generic_pg_test(pgio, prev, req);
-+
-+	if (!size || pgio->pg_count + req->wb_bytes >
- 	    (unsigned long)pgio->pg_layout_private)
- 		return 0;
- 
--	return req->wb_bytes;
-+	return min(size, req->wb_bytes);
- }
- 
- static void objio_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index de6eb16..354c53c 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1442,8 +1442,12 @@ size_t
- pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
- 		     struct nfs_page *req)
- {
--	if (pgio->pg_lseg == NULL)
--		return nfs_generic_pg_test(pgio, prev, req);
-+	unsigned int size;
-+
-+	size = nfs_generic_pg_test(pgio, prev, req);
-+
-+	if (!size)
-+		return 0;
- 
- 	/*
- 	 * Test if a nfs_page is fully contained in the pnfs_layout_range.
-@@ -1459,10 +1463,11 @@ pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
- 	 * first byte that lies outside the pnfs_layout_range. FIXME?
- 	 *
- 	 */
--	if (req_offset(req) < end_offset(pgio->pg_lseg->pls_range.offset,
-+	if (req_offset(req) >= end_offset(pgio->pg_lseg->pls_range.offset,
- 					 pgio->pg_lseg->pls_range.length))
--		return req->wb_bytes;
--	return 0;
-+		return 0;
-+
-+	return min(size, req->wb_bytes);
- }
- EXPORT_SYMBOL_GPL(pnfs_generic_pg_test);
- 
--- 
-1.8.5.2 (Apple Git-48)
+Yes, this was probably one part that I was least comfortable about.
 
+>=20
+> BTW, why should the current->flags should be saved on a socket field,
+> and not a current->save_flags. This really looks a thread property, not
+> a socket one.
+>=20
+> Why nfsd could not have PF_FSTRANS in its current->flags ?
+
+nfsd does have PF_FSTRANS set in current->flags.  But some other processes
+might not.
+
+If any process takes sk_lock, allocates memory, and then blocks in reclaim =
+it
+could be waiting for nfsd.  If nfsd waits for that sk_lock, it would cause a
+deadlock.
+
+Thinking a bit more carefully .... I suspect that any socket that nfsd
+created would only ever be locked by nfsd.  If that is the case then the
+problem can be resolved entirely within nfsd.  We would need to tell lockdep
+that there are two sorts of sk_locks, those which nfsd uses and all the
+rest.  That might get a little messy, but wouldn't impact performance.
+
+Is it justified to assume that sockets created by nfsd threads would only
+ever be locked by nfsd threads (and interrupts, which won't be allocating
+memory so don't matter), or might there be locked by other threads - e.g for
+'netstat -a' etc??
+
+
+>=20
+> For applications handling millions of sockets, this makes a difference.
+>=20
+
+Thanks,
+NeilBrown
+
+
+--Sig_/YX/W05=F6X9qrxW7nKLwnOj
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.22 (GNU/Linux)
+
+iQIVAwUBU04Zgjnsnt1WYoG5AQKvxBAAv9gDOMnc/LfCUMBQxzIaIokErrHkCKxM
+8u1W93ux2PFls2k6qTlSCVSBpO6chk1Avr9SWPyJZvTFYUnh98PiDV1tKVxJCek8
+42kflXGTxHUFXkSBV1ue21mOdn7gw0R3myuMZ8zXD/JFl9sDylwuUbg28hexfWky
+sPEu3OCd9DiKm+2uWSe+wlFDWDHkzknRw6g0Ym5/PfuiOl6SgNcHT4w97+Jp1hkd
+Xs/TQSIv3aRevVoBtFdtQ90vHE2lEakCOShqyH+oH2ryYmaCsAV2nJzOcpYxZTsL
+FTo3Xh+NqDIWUZEsulJtN1vrkOpAIEeJgRcGxwIEauYi/+mGEFF6O+Xo2QK8Dq0c
+/rJrDsNvzJ0EHkaIZACsYXQRHljRPzYGmRCoSnsSnnea/Uqda9sluxPzR7Gsxc0B
+DqyJd00t6fTQHwWGBG/XEvf1htts4s7rFwLysfBOnK5W5Rc3rih6/ue+i4Ebptmu
+tzekBzYicl83hb8KXhpUD4h+PkW1UtUJsbmP5qhMK8wRqzhnsyliil8yxJDY2YTo
+Z+qCD7lsacI2NtAvB0hwNQmXG1rq7oYn0rF7s/1vwl+AQSEaYHELWUm6cb9cE+42
+OhlnV7nle5yy/mPF93G54m+qwRDlFM8xM7PH7t9JoGdFRXDW/QMh7ma9k2HjVBH/
+jxxIu5TYBIw=
+=PGsl
+-----END PGP SIGNATURE-----
+
+--Sig_/YX/W05=F6X9qrxW7nKLwnOj--
