@@ -1,78 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f181.google.com ([209.85.213.181]:57129 "EHLO
-	mail-ig0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751269AbaDWWOH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Apr 2014 18:14:07 -0400
-Received: by mail-ig0-f181.google.com with SMTP id h18so167665igc.2
-        for <linux-nfs@vger.kernel.org>; Wed, 23 Apr 2014 15:14:07 -0700 (PDT)
+Received: from smtp.opengridcomputing.com ([72.48.136.20]:57507 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1161580AbaDPPqN convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Apr 2014 11:46:13 -0400
+From: "Steve Wise" <swise@opengridcomputing.com>
+To: "'Sagi Grimberg'" <sagig@dev.mellanox.co.il>,
+        "'Chuck Lever'" <chuck.lever@oracle.com>, <linux-nfs@vger.kernel.org>,
+        <linux-rdma@vger.kernel.org>
+References: <20140414220041.20646.63991.stgit@manet.1015granger.net> <20140414222323.20646.66946.stgit@manet.1015granger.net> <534E7C1C.5070407@dev.mellanox.co.il> <534E8608.8030801@opengridcomputing.com> <534E8FCE.909@dev.mellanox.co.il> <003401cf597f$b0f8d590$12ea80b0$@opengridcomputing.com> <534E9534.9020004@dev.mellanox.co.il> <004a01cf5982$44793b50$cd6bb1f0$@opengridcomputing.com> <534E9F40.8000905@dev.mellanox.co.il>
+In-Reply-To: <534E9F40.8000905@dev.mellanox.co.il>
+Subject: RE: [PATCH 7/8] xprtrdma: Split the completion queue
+Date: Wed, 16 Apr 2014 10:46:17 -0500
+Message-ID: <005201cf598b$016ab3d0$04401b70$@opengridcomputing.com>
 MIME-Version: 1.0
-In-Reply-To: <20140423211518.GA16506@us.ibm.com>
-References: <CALXu0UcdfrvCajbAagGLV=dP=Kk3VWeR4VS5Wna44UroxM4JAQ@mail.gmail.com>
-	<20140423202401.GA16168@us.ibm.com>
-	<CALXu0UdVYtbKQqskETk9jEK3+=nFphUtFSP4i_ey=7WwZg3-XQ@mail.gmail.com>
-	<20140423204405.GB16168@us.ibm.com>
-	<CALXu0UdbSHfFM+tq2_zssMhiwZ1qMJdieNdvwtxz6k31CMWAUA@mail.gmail.com>
-	<20140423211518.GA16506@us.ibm.com>
-Date: Thu, 24 Apr 2014 00:14:06 +0200
-Message-ID: <CALXu0UfjY288HZ_NHH_njs0iLhcY5Xn7NUJNYa9kL45m2YHfAw@mail.gmail.com>
-Subject: Re: Tuning Linux NFSv4 for high latency connections?
-From: Cedric Blancher <cedric.blancher@gmail.com>
-To: Cedric Blancher <cedric.blancher@gmail.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain;
+	charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 23 April 2014 23:15, Malahal Naineni <malahal@us.ibm.com> wrote:
-> Cedric Blancher [cedric.blancher@gmail.com] wrote:
->> On 23 April 2014 22:44, Malahal Naineni <malahal@us.ibm.com> wrote:
->> > Cedric Blancher [cedric.blancher@gmail.com] wrote:
->> >> On 23 April 2014 22:24, Malahal Naineni <malahal@us.ibm.com> wrote:
->> >> > Cedric Blancher [cedric.blancher@gmail.com] wrote:
->> >> >> Are there any options to improve the Linux NFSv4 performance over a
->> >> >> high latency connection?
->> >> >>
->> >> >> We currently use Solaris/Illumos as NFSv4 server and client over a
->> >> >> cross continental Internet connection. Latency is terrible (~220ms)
->> >> >> but the counter this by running work in parallel so the latency is
->> >> >> mostly mitigated.
->> >> >>
->> >> >> We now wish to migrate (short: Away from Oracle because support is
->> >> >> basically unbearable) to Linux (tested SuSE 13.1 and current Fedora)
->> >> >> and build times are 17 times (!!!) SLOWER than on Solaris/Illumos.
->> >> >>
->> >> >> Are there any tunables besides actimeo=300?
->> >> >
->> >> > rsize and wsize may help! You need to figure out if the read is the
->> >> > issue or the write before you dig further.
->> >>
->> >> I already tried to tune rsize/wsize, making them both smaller or the
->> >> maximum of 1048576 bytes, with no effect.
->> >>
->> >> One possible theory is that maybe something in Linux doesn't allow
->> >> multiple requests to be issued in parallel and waits for each request
->> >> to be completed before issuing the next one?
->> >
->> > Linux NFS client can issue I/Os in parallel. Should be limited by number
->> > of RPC slots though.
->>
->> What controls the number of RPC slots? is there a tunable? Is there
->> something to monitor the usage?
->
-> sysctl sunrpc.tcp_slot_table_entries (if you are using tcp)
 
-Its 16
-NFSv4 is tcp only
 
-I tried to bump the value to 128 - without effect - but the change is
-not persistent across reboots. Is there something like Solaris
-/etc/system which the kernel reads to set these values?
+> -----Original Message-----
+> From: Sagi Grimberg [mailto:sagig@dev.mellanox.co.il]
+> Sent: Wednesday, April 16, 2014 10:18 AM
+> To: Steve Wise; 'Chuck Lever'; linux-nfs@vger.kernel.org; linux-rdma@vger.kernel.org
+> Subject: Re: [PATCH 7/8] xprtrdma: Split the completion queue
+> 
+> On 4/16/2014 5:43 PM, Steve Wise wrote:
+> >>>> Hmm, But if either FASTREG or LINV failed the QP will go to error state
+> >>>> and you *will* get the error wc (with a rain of FLUSH errors).
+> >>>> AFAICT it is safe to assume that it succeeded as long as you don't get
+> >>>> error completions.
+> >>> But if an unsignaled FASTREG is posted and silently succeeds, then the next signaled work
+> >> request fails, I believe the FASTREG will be completed with FLUSH status, yet the operation
+> >> actually completed in the hw.
+> >>
+> >> Actually if (any) WR successfully completed and SW got it as FLUSH error
+> >> it seems like a bug to me.
+> >> Once the HW processed the WQ entry it should update the consumer index
+> >> accordingly thus should not happen.
+> > Aren't you assuming a specific hardware design/implementation?  For cxgb4, the fact that a
+> work request was consumed by the HW from the host send queue in no way indicates it is
+> complete.  Also, the RDMA specs specifically state that the rnic/hca implementation can only
+> assume an unsignaled work request completes successfully (and make its slot in the SQ
+> available for the ULP) when a subsequent signaled work request completes successfully.   So if
+> the next signaled work request fails, I believe the completion status of prior unsignaled work
+> requests is indeterminate.
+> 
+> Well actually I wasn't, I just assumed that FLUSH errors will come for
+> all WQ entries in the range {CI, PI}.
+> I get it, if a suppressed WQe was consumed and QP went to error state
+> before a completion was placed, HW may flush it as well.
+> I agree this may happen. Thanks!
+> 
 
-> Also, mountstats <mount-point> would be very helpful.
+Thank you! :)   In fact, chelsio HW doesn't do ANY flushing.  It is all done in software at the time the QP exits RTS...
 
-I don't have that command. likely my test machine is too old
+Stevo
 
-Ced
--- 
-Cedric Blancher <cedric.blancher@gmail.com>
-Institute Pasteur
