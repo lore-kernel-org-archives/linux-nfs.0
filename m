@@ -1,274 +1,53 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f169.google.com ([209.85.213.169]:37421 "EHLO
-	mail-ig0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757883AbaDVV3Q (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Apr 2014 17:29:16 -0400
-Received: by mail-ig0-f169.google.com with SMTP id h18so3388324igc.0
-        for <linux-nfs@vger.kernel.org>; Tue, 22 Apr 2014 14:29:15 -0700 (PDT)
-From: Weston Andros Adamson <dros@primarydata.com>
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
-Subject: [PATCH 12/17] nfs: use > 1 request to handle bsize < PAGE_SIZE
-Date: Tue, 22 Apr 2014 17:29:20 -0400
-Message-Id: <1398202165-78897-13-git-send-email-dros@primarydata.com>
-In-Reply-To: <1398202165-78897-1-git-send-email-dros@primarydata.com>
-References: <1398202165-78897-1-git-send-email-dros@primarydata.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:24694 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754172AbaDQNzb convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Apr 2014 09:55:31 -0400
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
+Subject: Re: [PATCH 7/8] xprtrdma: Split the completion queue
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <534F7D5F.1090908@dev.mellanox.co.il>
+Date: Thu, 17 Apr 2014 09:55:04 -0400
+Cc: Steve Wise <swise@opengridcomputing.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-rdma@vger.kernel.org
+Message-Id: <A7E4B101-BAF0-480C-95AE-26BB845EE2C3@oracle.com>
+References: <20140414220041.20646.63991.stgit@manet.1015granger.net> <20140414222323.20646.66946.stgit@manet.1015granger.net> <534E7C1C.5070407@dev.mellanox.co.il> <534E8608.8030801@opengridcomputing.com> <E9B601B5-1984-40D8-914A-DDD1380E8183@oracle.com> <534EA06A.7090200@dev.mellanox.co.il> <FC61F219-ACA2-4CE8-BF02-1B8EE2464639@oracle.com> <534F7D5F.1090908@dev.mellanox.co.il>
+To: Sagi Grimberg <sagig@dev.mellanox.co.il>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Use the newly added support for multiple requests per page for
-rsize/wsize < PAGE_SIZE, instead of having multiple read / write
-data structures per pageio header.
 
-This allows us to get rid of nfs_flush_multi and nfs_pagein_multi.
+On Apr 17, 2014, at 3:06 AM, Sagi Grimberg <sagig@dev.mellanox.co.il> wrote:
 
-Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
----
- fs/nfs/pagelist.c | 22 +++++++------------
- fs/nfs/read.c     | 63 ++++++------------------------------------------------
- fs/nfs/write.c    | 64 ++++++-------------------------------------------------
- 3 files changed, 22 insertions(+), 127 deletions(-)
+> On 4/16/2014 9:21 PM, Chuck Lever wrote:
+>> Passing a small array to ip_poll_cq() is actually easy to do, and is
+>> exactly equivalent to a poll budget. The struct ib_wc should be taken
+>> off the stack anyway, IMO.
+>> 
+>> The only other example I see in 3.15 right now is IPoIB, which seems
+>> to do exactly this.
+>> 
+>> I’m testing a patch now. I’d like to start simple and make it more
+>> complex only if we need to.
+> 
+> What array size are you using? Note that if you use a small array it may be an overkill since
+> a lot more interrupts are invoked (-> more latency). I found that for a high workload a budget
+> of 256/512/1024 keeps fairness and doesn't increase latency.
 
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index b5c4c13..e819b1b 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -434,21 +434,13 @@ nfs_wait_on_request(struct nfs_page *req)
- size_t nfs_generic_pg_test(struct nfs_pageio_descriptor *desc,
- 			   struct nfs_page *prev, struct nfs_page *req)
- {
--	if (!prev)
--		return req->wb_bytes;
--	/*
--	 * FIXME: ideally we should be able to coalesce all requests
--	 * that are not block boundary aligned, but currently this
--	 * is problematic for the case of bsize < PAGE_CACHE_SIZE,
--	 * since nfs_flush_multi and nfs_pagein_multi assume you
--	 * can have only one struct nfs_page.
--	 */
--	if (desc->pg_bsize < PAGE_SIZE)
-+	if (desc->pg_count > desc->pg_bsize) {
-+		/* should never happen */
-+		WARN_ON_ONCE(1);
- 		return 0;
-+	}
- 
--	if (desc->pg_count + req->wb_bytes <= desc->pg_bsize)
--		return req->wb_bytes;
--	return 0;
-+	return min(desc->pg_bsize - desc->pg_count, (size_t)req->wb_bytes);
- }
- EXPORT_SYMBOL_GPL(nfs_generic_pg_test);
- 
-@@ -526,7 +518,9 @@ static bool nfs_can_coalesce_requests(struct nfs_page *prev,
- 			return false;
- 	}
- 	size = pgio->pg_ops->pg_test(pgio, prev, req);
--	WARN_ON_ONCE(size && size != req->wb_bytes);
-+	WARN_ON_ONCE(size > req->wb_bytes);
-+	if (size && size < req->wb_bytes)
-+		req->wb_bytes = size;
- 	return size > 0;
- }
- 
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index c774810..daeff0c 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -336,56 +336,12 @@ static void nfs_pagein_error(struct nfs_pageio_descriptor *desc,
- 	desc->pg_completion_ops->error_cleanup(&desc->pg_list);
- }
- 
--/*
-- * Generate multiple requests to fill a single page.
-- *
-- * We optimize to reduce the number of read operations on the wire.  If we
-- * detect that we're reading a page, or an area of a page, that is past the
-- * end of file, we do not generate NFS read operations but just clear the
-- * parts of the page that would have come back zero from the server anyway.
-- *
-- * We rely on the cached value of i_size to make this determination; another
-- * client can fill pages on the server past our cached end-of-file, but we
-- * won't see the new data until our attribute cache is updated.  This is more
-- * or less conventional NFS client behavior.
-- */
--static int nfs_pagein_multi(struct nfs_pageio_descriptor *desc,
--			    struct nfs_pgio_header *hdr)
--{
--	struct nfs_page *req = hdr->req;
--	struct page *page = req->wb_page;
--	struct nfs_read_data *data;
--	size_t rsize = desc->pg_bsize, nbytes;
--	unsigned int offset;
--
--	offset = 0;
--	nbytes = desc->pg_count;
--	do {
--		size_t len = min(nbytes,rsize);
--
--		data = nfs_readdata_alloc(hdr, 1);
--		if (!data) {
--			nfs_pagein_error(desc, hdr);
--			return -ENOMEM;
--		}
--		data->pages.pagevec[0] = page;
--		nfs_read_rpcsetup(data, len, offset);
--		list_add(&data->list, &hdr->rpc_list);
--		nbytes -= len;
--		offset += len;
--	} while (nbytes != 0);
--
--	nfs_list_remove_request(req);
--	nfs_list_add_request(req, &hdr->pages);
--	desc->pg_rpc_callops = &nfs_read_common_ops;
--	return 0;
--}
--
--static int nfs_pagein_one(struct nfs_pageio_descriptor *desc,
--			  struct nfs_pgio_header *hdr)
-+int nfs_generic_pagein(struct nfs_pageio_descriptor *desc,
-+		       struct nfs_pgio_header *hdr)
- {
- 	struct nfs_page		*req;
- 	struct page		**pages;
-+	struct page		*last_page;
- 	struct nfs_read_data    *data;
- 	struct list_head *head = &desc->pg_list;
- 
-@@ -397,11 +353,14 @@ static int nfs_pagein_one(struct nfs_pageio_descriptor *desc,
- 	}
- 
- 	pages = data->pages.pagevec;
-+	last_page = NULL;
- 	while (!list_empty(head)) {
- 		req = nfs_list_entry(head->next);
- 		nfs_list_remove_request(req);
- 		nfs_list_add_request(req, &hdr->pages);
--		*pages++ = req->wb_page;
-+		if (last_page != req->wb_page)
-+			*pages++ = req->wb_page;
-+		last_page = req->wb_page;
- 	}
- 
- 	nfs_read_rpcsetup(data, desc->pg_count, 0);
-@@ -409,14 +368,6 @@ static int nfs_pagein_one(struct nfs_pageio_descriptor *desc,
- 	desc->pg_rpc_callops = &nfs_read_common_ops;
- 	return 0;
- }
--
--int nfs_generic_pagein(struct nfs_pageio_descriptor *desc,
--		       struct nfs_pgio_header *hdr)
--{
--	if (desc->pg_bsize < PAGE_CACHE_SIZE)
--		return nfs_pagein_multi(desc, hdr);
--	return nfs_pagein_one(desc, hdr);
--}
- EXPORT_SYMBOL_GPL(nfs_generic_pagein);
- 
- static int nfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc)
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 43892e0..f40db93 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -1233,52 +1233,6 @@ static void nfs_flush_error(struct nfs_pageio_descriptor *desc,
- }
- 
- /*
-- * Generate multiple small requests to write out a single
-- * contiguous dirty area on one page.
-- */
--static int nfs_flush_multi(struct nfs_pageio_descriptor *desc,
--			   struct nfs_pgio_header *hdr)
--{
--	struct nfs_page *req = hdr->req;
--	struct page *page = req->wb_page;
--	struct nfs_write_data *data;
--	size_t wsize = desc->pg_bsize, nbytes;
--	unsigned int offset;
--	int requests = 0;
--	struct nfs_commit_info cinfo;
--
--	nfs_init_cinfo(&cinfo, desc->pg_inode, desc->pg_dreq);
--
--	if ((desc->pg_ioflags & FLUSH_COND_STABLE) &&
--	    (desc->pg_moreio || nfs_reqs_to_commit(&cinfo) ||
--	     desc->pg_count > wsize))
--		desc->pg_ioflags &= ~FLUSH_COND_STABLE;
--
--
--	offset = 0;
--	nbytes = desc->pg_count;
--	do {
--		size_t len = min(nbytes, wsize);
--
--		data = nfs_writedata_alloc(hdr, 1);
--		if (!data) {
--			nfs_flush_error(desc, hdr);
--			return -ENOMEM;
--		}
--		data->pages.pagevec[0] = page;
--		nfs_write_rpcsetup(data, len, offset, desc->pg_ioflags, &cinfo);
--		list_add(&data->list, &hdr->rpc_list);
--		requests++;
--		nbytes -= len;
--		offset += len;
--	} while (nbytes != 0);
--	nfs_list_remove_request(req);
--	nfs_list_add_request(req, &hdr->pages);
--	desc->pg_rpc_callops = &nfs_write_common_ops;
--	return 0;
--}
--
--/*
-  * Create an RPC task for the given write request and kick it.
-  * The page must have been locked by the caller.
-  *
-@@ -1286,11 +1240,12 @@ static int nfs_flush_multi(struct nfs_pageio_descriptor *desc,
-  * This is the case if nfs_updatepage detects a conflicting request
-  * that has been written but not committed.
-  */
--static int nfs_flush_one(struct nfs_pageio_descriptor *desc,
--			 struct nfs_pgio_header *hdr)
-+int nfs_generic_flush(struct nfs_pageio_descriptor *desc,
-+		      struct nfs_pgio_header *hdr)
- {
- 	struct nfs_page		*req;
- 	struct page		**pages;
-+	struct page		*last_page;
- 	struct nfs_write_data	*data;
- 	struct list_head *head = &desc->pg_list;
- 	struct nfs_commit_info cinfo;
-@@ -1304,11 +1259,14 @@ static int nfs_flush_one(struct nfs_pageio_descriptor *desc,
- 
- 	nfs_init_cinfo(&cinfo, desc->pg_inode, desc->pg_dreq);
- 	pages = data->pages.pagevec;
-+	last_page = NULL;
- 	while (!list_empty(head)) {
- 		req = nfs_list_entry(head->next);
- 		nfs_list_remove_request(req);
- 		nfs_list_add_request(req, &hdr->pages);
--		*pages++ = req->wb_page;
-+		if (last_page != req->wb_page)
-+			*pages++ = req->wb_page;
-+		last_page = req->wb_page;
- 	}
- 
- 	if ((desc->pg_ioflags & FLUSH_COND_STABLE) &&
-@@ -1321,14 +1279,6 @@ static int nfs_flush_one(struct nfs_pageio_descriptor *desc,
- 	desc->pg_rpc_callops = &nfs_write_common_ops;
- 	return 0;
- }
--
--int nfs_generic_flush(struct nfs_pageio_descriptor *desc,
--		      struct nfs_pgio_header *hdr)
--{
--	if (desc->pg_bsize < PAGE_CACHE_SIZE)
--		return nfs_flush_multi(desc, hdr);
--	return nfs_flush_one(desc, hdr);
--}
- EXPORT_SYMBOL_GPL(nfs_generic_flush);
- 
- static int nfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc)
--- 
-1.8.5.2 (Apple Git-48)
+My array size is currently 4. It’s a macro that can be changed easily.
+
+By a very large majority, my workloads see only one WC per completion 
+upcall. However, I’m using an older card with simple synthetic benchmarks.
+
+I don’t want to make the array large because struct ib_wc is at least
+64 bytes on my systems — each WC array would be enormous and hardly ever
+used. But we can dial it in over time.
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
 
