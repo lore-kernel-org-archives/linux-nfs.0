@@ -1,109 +1,463 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx4-phx2.redhat.com ([209.132.183.25]:54114 "EHLO
-	mx4-phx2.redhat.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750760AbaD3X62 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Apr 2014 19:58:28 -0400
-Date: Wed, 30 Apr 2014 19:58:07 -0400 (EDT)
-From: Doug Ledford <dledford@redhat.com>
-To: Shirley Ma <shirley.ma@oracle.com>
-Cc: Jeff Becker <jeffrey.c.becker@nasa.gov>, yanb <yanb@mellanox.com>,
-        Phil Cayton <phil.cayton@intel.com>, Susan K Coulter <skc@lanl.gov>,
-        Anna Schumaker <Anna.Schumaker@netapp.com>,
-        "Devesh.Sharma" <Devesh.Sharma@emulex.com>,
-        Steve Wise <swise@opengridcomputing.com>,
-        Allen Andrews <Allen.Andrews@emulex.com>,
-        Jeff Layton <jlayton@redhat.com>,
-        linux-rdma <linux-rdma@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        emossman <emossman@iol.unh.edu>, Or Gerlitz <or.gerlitz@gmail.com>,
-        Chuck Lever <chuck.lever@oracle.com>
-Message-ID: <30686627.1636.1398902288314.JavaMail."Doug Ledford"@Phenom>
-In-Reply-To: <536161D0.3000600@oracle.com>
-References: <53614C03.80606@oracle.com> <CAJZOPZJioYdcbDGsk7278sZS7kD9W1dcGEGtYfsFk=Mm7DW3fQ@mail.gmail.com> <BBF761A6-2407-4457-92D5-8C2EC736BC9D@oracle.com> <CAJZOPZJgp-QdxR+PmwACWOSc4h_167J0iBjfmMrPX8sek600WA@mail.gmail.com> <536161D0.3000600@oracle.com>
-Subject: Re: NFSoRDMA developers bi-weekly meeting announcement (4/30)
+Received: from mx12.netapp.com ([216.240.18.77]:34982 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751224AbaDQVKa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 17 Apr 2014 17:10:30 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
+Subject: [PATCH 13/17] NFS: Create a generic_pgio function
+Date: Thu, 17 Apr 2014 17:09:37 -0400
+Message-ID: <1397768981-12856-14-git-send-email-Anna.Schumaker@Netapp.com>
+In-Reply-To: <1397768981-12856-1-git-send-email-Anna.Schumaker@Netapp.com>
+References: <1397768981-12856-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 04/302014 Shirley Ma wrote:
-> On 04/30/2014 01:00 PM, Or Gerlitz wrote:
-> > On Wed, Apr 30, 2014 at 10:47 PM, Chuck Lever
-> > <chuck.lever@oracle.com>
-> >
-> >> If I understood Yan, he is trying to use NFS/RDMA in guests
-> >> (kvm?).  We
-> >> are pretty sure that is not working at the moment,
-> > can you provide a short 1-2 liner why/what is broken there? the
-> > only
-> > thing which I can think of to be not-supported over mlx4 VFs is the
-> > proprietary FMRs, but AFAIK, the nfs-rdma code doesn't even have a
-> > mode which uses them, right?
-> I've created Xen guest on DomU. Dom0 PF works which has no mtts been
-> enabled, however DomU I hit this problem by just mounting the file
-> system:
-> mlx4_core 0000:00:04.0: Failed to allocate mtts for 66 pages(order 7)
-> mlx4_core 0000:00:04.0: Failed to allocate mtts for 4096 pages(order
-> 12)
-> mlx4_core 0000:00:04.0: Failed to allocate mtts for 4096 pages(order
-> 12)
-> 
-> RDMA microbenchmark perftest works ok. I enabled mtts scripts when
-> booting the Xen guest. cat /proc/mtrr:
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
 
-What OS/RDMA stack are you using?  I'm not familiar with any mtts
-scripts, however I know there is an mtrr fixup script I wrote for
-the RDMA stack in Fedora/RHEL (and so I assume it's in Oracle Linux
-too, but I haven't checked).  In fact, I assume that's the script
-you are referring to based on the fact that your next bit of your
-email cats the /proc/mtrr file.  But I don't believe whether there
-is an mtrr setting mixup or not that is should have any impact on
-the mtts allocations in the driver.  Even if your mtrr registers
-were set incorrectly, the problem then becomes either A) a serious
-performance bottleneck (in the case of Intel hardware that needs
-write combining in order to get more than about 50MByte/s of
-throughput on their cards) or B) failed operation because MMIO
-writes to the card are being cached/write combined when they should
-not be.
+These functions are almost identical on both the read and write side.
+FLUSH_COND_STABLE will never be set for the read path, so leaving it in
+the generic code won't hurt anything.
 
-I suspect this is more likely Xen related than mtts/mtrr related.
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+---
+ fs/nfs/internal.h |  10 +----
+ fs/nfs/pageio.c   | 108 +++++++++++++++++++++++++++++++++++++++++++++++++++---
+ fs/nfs/pnfs.c     |   4 +-
+ fs/nfs/read.c     |  81 +---------------------------------------
+ fs/nfs/write.c    |  97 +-----------------------------------------------
+ 5 files changed, 108 insertions(+), 192 deletions(-)
 
-> [root@ca-nfsdev1vm1 log]# cat /proc/mtrr
-> reg00: base=0x0f0000000 ( 3840MB), size=  128MB, count=1: uncachable
-> reg01: base=0x0f8000000 ( 3968MB), size=   64MB, count=1: uncachable
-> 
-> lspci -v
-> 00:04.0 InfiniBand: Mellanox Technologies MT25400 Family [ConnectX-2
-> Virtual Function] (rev b0)
->      Subsystem: Mellanox Technologies Device 61b0
->      Physical Slot: 4
->      Flags: bus master, fast devsel, latency 0
->      Memory at f0000000 (64-bit, prefetchable) [size=128M]
->      Capabilities: [60] Express Endpoint, MSI 00
->      Capabilities: [9c] MSI-X: Enable+ Count=4 Masked-
->      Kernel driver in use: mlx4_core
->      Kernel modules: mlx4_core
-> 
-> I will need to find another machine to try KVM guest. Yan might hit a
-> different problem.
-> 
-> I have ConnectX-2, FW level is 2.11.2012. Yan has ConnectX-3, he
-> tried
-> it on KVM guest.
-> >> but that is a priority
-> >> to get fixed. Shirley has a lab set up and has been looking into
-> >> it.
-> Shirley
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-rdma"
-> in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 383175e..6422b9d 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -396,14 +396,10 @@ extern int nfs4_get_rootfh(struct nfs_server *server, struct nfs_fh *mntfh, bool
+ struct nfs_pgio_completion_ops;
+ 
+ /* pageio.c */
+-extern const struct rpc_call_ops nfs_pgio_common_ops;
+ extern struct nfs_rw_header *nfs_rw_header_alloc(const struct nfs_rw_ops *);
+ extern void nfs_rw_header_free(struct nfs_pgio_header *);
+-extern struct nfs_pgio_data *nfs_pgio_data_alloc(struct nfs_pgio_header *, unsigned int);
+ extern void nfs_pgio_data_release(struct nfs_pgio_data *);
+-extern int nfs_pgio_error(struct nfs_pageio_descriptor *, struct nfs_pgio_header *);
+-extern void nfs_pgio_rpcsetup(struct nfs_pgio_data *, unsigned int,
+-			      unsigned int, int, struct nfs_commit_info *);
++extern int nfs_generic_pgio(struct nfs_pageio_descriptor *, struct nfs_pgio_header *);
+ 
+ /* read.c */
+ extern void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
+@@ -413,8 +409,6 @@ extern int nfs_initiate_read(struct rpc_clnt *clnt,
+ 			     struct nfs_pgio_data *data,
+ 			     const struct rpc_call_ops *call_ops, int flags);
+ extern void nfs_read_prepare(struct rpc_task *task, void *calldata);
+-extern int nfs_generic_pagein(struct nfs_pageio_descriptor *desc,
+-			      struct nfs_pgio_header *hdr);
+ extern void nfs_pageio_reset_read_mds(struct nfs_pageio_descriptor *pgio);
+ 
+ /* super.c */
+@@ -432,8 +426,6 @@ int nfs_remount(struct super_block *sb, int *flags, char *raw_data);
+ extern void nfs_pageio_init_write(struct nfs_pageio_descriptor *pgio,
+ 			struct inode *inode, int ioflags, bool force_mds,
+ 			const struct nfs_pgio_completion_ops *compl_ops);
+-extern int nfs_generic_flush(struct nfs_pageio_descriptor *desc,
+-			     struct nfs_pgio_header *hdr);
+ extern void nfs_pageio_reset_write_mds(struct nfs_pageio_descriptor *pgio);
+ extern void nfs_commit_free(struct nfs_commit_data *p);
+ extern int nfs_initiate_write(struct rpc_clnt *clnt,
+diff --git a/fs/nfs/pageio.c b/fs/nfs/pageio.c
+index 86f6f4d..093cb1d 100644
+--- a/fs/nfs/pageio.c
++++ b/fs/nfs/pageio.c
+@@ -13,6 +13,9 @@
+ 
+ #define NFSDBG_FACILITY		NFSDBG_PAGECACHE
+ 
++static const struct rpc_call_ops nfs_pgio_common_ops;
++
++
+ static inline struct nfs_rw_header *NFS_RW_HEADER(struct nfs_pgio_header *hdr)
+ {
+ 	return container_of(hdr, struct nfs_rw_header, header);
+@@ -41,8 +44,8 @@ void nfs_rw_header_free(struct nfs_pgio_header *hdr)
+ }
+ EXPORT_SYMBOL_GPL(nfs_rw_header_free);
+ 
+-struct nfs_pgio_data *nfs_pgio_data_alloc(struct nfs_pgio_header *hdr,
+-					  unsigned int pagecount)
++static struct nfs_pgio_data *nfs_pgio_data_alloc(struct nfs_pgio_header *hdr,
++						 unsigned int pagecount)
+ {
+ 	struct nfs_pgio_data *data, *prealloc;
+ 
+@@ -87,7 +90,7 @@ void nfs_pgio_data_release(struct nfs_pgio_data *data)
+ }
+ EXPORT_SYMBOL_GPL(nfs_pgio_data_release);
+ 
+-void nfs_pgio_rpcsetup(struct nfs_pgio_data *data,
++static void nfs_pgio_rpcsetup(struct nfs_pgio_data *data,
+ 			      unsigned int count, unsigned int offset,
+ 			      int how, struct nfs_commit_info *cinfo)
+ {
+@@ -123,7 +126,7 @@ void nfs_pgio_rpcsetup(struct nfs_pgio_data *data,
+ 	nfs_fattr_init(&data->fattr);
+ }
+ 
+-int nfs_pgio_error(struct nfs_pageio_descriptor *desc,
++static int nfs_pgio_error(struct nfs_pageio_descriptor *desc,
+ 			  struct nfs_pgio_header *hdr)
+ {
+ 	struct nfs_pgio_data *data;
+@@ -138,6 +141,101 @@ int nfs_pgio_error(struct nfs_pageio_descriptor *desc,
+ 	return -ENOMEM;
+ }
+ 
++/*
++ * Generate multiple small requests to read or write a single
++ * contiguous dirty on one page.
++ */
++static int nfs_pgio_multi(struct nfs_pageio_descriptor *desc,
++			  struct nfs_pgio_header *hdr)
++{
++	struct nfs_page *req = hdr->req;
++	struct page *page = req->wb_page;
++	struct nfs_pgio_data *data;
++	size_t wsize = desc->pg_bsize, nbytes;
++	unsigned int offset;
++	int requests = 0;
++	struct nfs_commit_info cinfo;
++
++	nfs_init_cinfo(&cinfo, desc->pg_inode, desc->pg_dreq);
++
++	if ((desc->pg_ioflags & FLUSH_COND_STABLE) &&
++	    (desc->pg_moreio || nfs_reqs_to_commit(&cinfo) ||
++	     desc->pg_count > wsize))
++		desc->pg_ioflags &= ~FLUSH_COND_STABLE;
++
++	offset = 0;
++	nbytes = desc->pg_count;
++	do {
++		size_t len = min(nbytes, wsize);
++
++		data = nfs_pgio_data_alloc(hdr, 1);
++		if (!data)
++			return nfs_pgio_error(desc, hdr);
++		data->pages.pagevec[0] = page;
++		nfs_pgio_rpcsetup(data, len, offset, desc->pg_ioflags, &cinfo);
++		list_add(&data->list, &hdr->rpc_list);
++		requests++;
++		nbytes -= len;
++		offset += len;
++	} while (nbytes != 0);
++
++	nfs_list_remove_request(req);
++	nfs_list_add_request(req, &hdr->pages);
++	desc->pg_rpc_callops = &nfs_pgio_common_ops;
++	return 0;
++}
++
++/*
++ * Create an RPC task for the given write request and kick it.
++ * The page must have been locked by the caller.
++ *
++ * It may happen that the page we're passed is not marked dirty.
++ * This is the case if nfs_updatepage detects a conflicting request
++ * that has been written but not committed.
++ */
++static int nfs_pgio_one(struct nfs_pageio_descriptor *desc,
++			struct nfs_pgio_header *hdr)
++{
++	struct nfs_page		*req;
++	struct page		**pages;
++	struct nfs_pgio_data	*data;
++	struct list_head *head = &desc->pg_list;
++	struct nfs_commit_info cinfo;
++
++	data = nfs_pgio_data_alloc(hdr, nfs_page_array_len(desc->pg_base,
++							   desc->pg_count));
++	if (!data)
++		return nfs_pgio_error(desc, hdr);
++
++	nfs_init_cinfo(&cinfo, desc->pg_inode, desc->pg_dreq);
++	pages = data->pages.pagevec;
++	while (!list_empty(head)) {
++		req = nfs_list_entry(head->next);
++		nfs_list_remove_request(req);
++		nfs_list_add_request(req, &hdr->pages);
++		*pages++ = req->wb_page;
++	}
++
++	if ((desc->pg_ioflags & FLUSH_COND_STABLE) &&
++	    (desc->pg_moreio || nfs_reqs_to_commit(&cinfo)))
++		desc->pg_ioflags &= ~FLUSH_COND_STABLE;
++
++	/* Set up the argument struct */
++	nfs_pgio_rpcsetup(data, desc->pg_count, 0, desc->pg_ioflags, &cinfo);
++	list_add(&data->list, &hdr->rpc_list);
++	desc->pg_rpc_callops = &nfs_pgio_common_ops;
++	return 0;
++}
++
++int nfs_generic_pgio(struct nfs_pageio_descriptor *desc,
++		     struct nfs_pgio_header *hdr)
++{
++	if (desc->pg_bsize < PAGE_CACHE_SIZE)
++		return nfs_pgio_multi(desc, hdr);
++	return nfs_pgio_one(desc, hdr);
++}
++EXPORT_SYMBOL_GPL(nfs_generic_pgio);
++
+ static void nfs_pgio_prepare(struct rpc_task *task, void *calldata)
+ {
+ 	struct nfs_pgio_data *data = calldata;
+@@ -177,7 +275,7 @@ static void nfs_pgio_result_common(struct rpc_task *task, void *calldata)
+ 		data->header->rw_ops->rw_result_common(task, data);
+ }
+ 
+-const struct rpc_call_ops nfs_pgio_common_ops = {
++static const struct rpc_call_ops nfs_pgio_common_ops = {
+ 	.rpc_call_prepare = nfs_pgio_prepare,
+ 	.rpc_call_done = nfs_pgio_result_common,
+ 	.rpc_release = nfs_pgio_release_common,
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 54c84c1..0fe6701 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1607,7 +1607,7 @@ pnfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc)
+ 	nfs_pgheader_init(desc, hdr, pnfs_writehdr_free);
+ 	hdr->lseg = pnfs_get_lseg(desc->pg_lseg);
+ 	atomic_inc(&hdr->refcnt);
+-	ret = nfs_generic_flush(desc, hdr);
++	ret = nfs_generic_pgio(desc, hdr);
+ 	if (ret != 0) {
+ 		pnfs_put_lseg(desc->pg_lseg);
+ 		desc->pg_lseg = NULL;
+@@ -1766,7 +1766,7 @@ pnfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc)
+ 	nfs_pgheader_init(desc, hdr, pnfs_readhdr_free);
+ 	hdr->lseg = pnfs_get_lseg(desc->pg_lseg);
+ 	atomic_inc(&hdr->refcnt);
+-	ret = nfs_generic_pagein(desc, hdr);
++	ret = nfs_generic_pgio(desc, hdr);
+ 	if (ret != 0) {
+ 		pnfs_put_lseg(desc->pg_lseg);
+ 		desc->pg_lseg = NULL;
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index c623671..07c21bd 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -237,85 +237,6 @@ static const struct nfs_pgio_completion_ops nfs_async_read_completion_ops = {
+ 	.completion = nfs_read_completion,
+ };
+ 
+-/*
+- * Generate multiple requests to fill a single page.
+- *
+- * We optimize to reduce the number of read operations on the wire.  If we
+- * detect that we're reading a page, or an area of a page, that is past the
+- * end of file, we do not generate NFS read operations but just clear the
+- * parts of the page that would have come back zero from the server anyway.
+- *
+- * We rely on the cached value of i_size to make this determination; another
+- * client can fill pages on the server past our cached end-of-file, but we
+- * won't see the new data until our attribute cache is updated.  This is more
+- * or less conventional NFS client behavior.
+- */
+-static int nfs_pagein_multi(struct nfs_pageio_descriptor *desc,
+-			    struct nfs_pgio_header *hdr)
+-{
+-	struct nfs_page *req = hdr->req;
+-	struct page *page = req->wb_page;
+-	struct nfs_pgio_data *data;
+-	size_t rsize = desc->pg_bsize, nbytes;
+-	unsigned int offset;
+-
+-	offset = 0;
+-	nbytes = desc->pg_count;
+-	do {
+-		size_t len = min(nbytes,rsize);
+-
+-		data = nfs_pgio_data_alloc(hdr, 1);
+-		if (!data)
+-			return nfs_pgio_error(desc, hdr);
+-		data->pages.pagevec[0] = page;
+-		nfs_pgio_rpcsetup(data, len, offset, 0, NULL);
+-		list_add(&data->list, &hdr->rpc_list);
+-		nbytes -= len;
+-		offset += len;
+-	} while (nbytes != 0);
+-
+-	nfs_list_remove_request(req);
+-	nfs_list_add_request(req, &hdr->pages);
+-	desc->pg_rpc_callops = &nfs_pgio_common_ops;
+-	return 0;
+-}
+-
+-static int nfs_pagein_one(struct nfs_pageio_descriptor *desc,
+-			  struct nfs_pgio_header *hdr)
+-{
+-	struct nfs_page		*req;
+-	struct page		**pages;
+-	struct nfs_pgio_data	*data;
+-	struct list_head *head = &desc->pg_list;
+-
+-	data = nfs_pgio_data_alloc(hdr, nfs_page_array_len(desc->pg_base,
+-							  desc->pg_count));
+-	if (!data)
+-		return nfs_pgio_error(desc, hdr);
+-
+-	pages = data->pages.pagevec;
+-	while (!list_empty(head)) {
+-		req = nfs_list_entry(head->next);
+-		nfs_list_remove_request(req);
+-		nfs_list_add_request(req, &hdr->pages);
+-		*pages++ = req->wb_page;
+-	}
+-
+-	nfs_pgio_rpcsetup(data, desc->pg_count, 0, 0, NULL);
+-	list_add(&data->list, &hdr->rpc_list);
+-	desc->pg_rpc_callops = &nfs_pgio_common_ops;
+-	return 0;
+-}
+-
+-int nfs_generic_pagein(struct nfs_pageio_descriptor *desc,
+-		       struct nfs_pgio_header *hdr)
+-{
+-	if (desc->pg_bsize < PAGE_CACHE_SIZE)
+-		return nfs_pagein_multi(desc, hdr);
+-	return nfs_pagein_one(desc, hdr);
+-}
+-EXPORT_SYMBOL_GPL(nfs_generic_pagein);
+-
+ static int nfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc)
+ {
+ 	struct nfs_rw_header *rhdr;
+@@ -330,7 +251,7 @@ static int nfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc)
+ 	hdr = &rhdr->header;
+ 	nfs_pgheader_init(desc, hdr, nfs_rw_header_free);
+ 	atomic_inc(&hdr->refcnt);
+-	ret = nfs_generic_pagein(desc, hdr);
++	ret = nfs_generic_pgio(desc, hdr);
+ 	if (ret == 0)
+ 		ret = nfs_do_multiple_reads(&hdr->rpc_list,
+ 					    desc->pg_rpc_callops);
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 1f98f31..8929e33 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1044,101 +1044,6 @@ static const struct nfs_pgio_completion_ops nfs_async_write_completion_ops = {
+ 	.completion = nfs_write_completion,
+ };
+ 
+-/*
+- * Generate multiple small requests to write out a single
+- * contiguous dirty area on one page.
+- */
+-static int nfs_flush_multi(struct nfs_pageio_descriptor *desc,
+-			   struct nfs_pgio_header *hdr)
+-{
+-	struct nfs_page *req = hdr->req;
+-	struct page *page = req->wb_page;
+-	struct nfs_pgio_data *data;
+-	size_t wsize = desc->pg_bsize, nbytes;
+-	unsigned int offset;
+-	int requests = 0;
+-	struct nfs_commit_info cinfo;
+-
+-	nfs_init_cinfo(&cinfo, desc->pg_inode, desc->pg_dreq);
+-
+-	if ((desc->pg_ioflags & FLUSH_COND_STABLE) &&
+-	    (desc->pg_moreio || nfs_reqs_to_commit(&cinfo) ||
+-	     desc->pg_count > wsize))
+-		desc->pg_ioflags &= ~FLUSH_COND_STABLE;
+-
+-
+-	offset = 0;
+-	nbytes = desc->pg_count;
+-	do {
+-		size_t len = min(nbytes, wsize);
+-
+-		data = nfs_pgio_data_alloc(hdr, 1);
+-		if (!data)
+-			return nfs_pgio_error(desc, hdr);
+-		data->pages.pagevec[0] = page;
+-		nfs_pgio_rpcsetup(data, len, offset, desc->pg_ioflags, &cinfo);
+-		list_add(&data->list, &hdr->rpc_list);
+-		requests++;
+-		nbytes -= len;
+-		offset += len;
+-	} while (nbytes != 0);
+-	nfs_list_remove_request(req);
+-	nfs_list_add_request(req, &hdr->pages);
+-	desc->pg_rpc_callops = &nfs_pgio_common_ops;
+-	return 0;
+-}
+-
+-/*
+- * Create an RPC task for the given write request and kick it.
+- * The page must have been locked by the caller.
+- *
+- * It may happen that the page we're passed is not marked dirty.
+- * This is the case if nfs_updatepage detects a conflicting request
+- * that has been written but not committed.
+- */
+-static int nfs_flush_one(struct nfs_pageio_descriptor *desc,
+-			 struct nfs_pgio_header *hdr)
+-{
+-	struct nfs_page		*req;
+-	struct page		**pages;
+-	struct nfs_pgio_data	*data;
+-	struct list_head *head = &desc->pg_list;
+-	struct nfs_commit_info cinfo;
+-
+-	data = nfs_pgio_data_alloc(hdr, nfs_page_array_len(desc->pg_base,
+-							   desc->pg_count));
+-	if (!data)
+-		return nfs_pgio_error(desc, hdr);
+-
+-	nfs_init_cinfo(&cinfo, desc->pg_inode, desc->pg_dreq);
+-	pages = data->pages.pagevec;
+-	while (!list_empty(head)) {
+-		req = nfs_list_entry(head->next);
+-		nfs_list_remove_request(req);
+-		nfs_list_add_request(req, &hdr->pages);
+-		*pages++ = req->wb_page;
+-	}
+-
+-	if ((desc->pg_ioflags & FLUSH_COND_STABLE) &&
+-	    (desc->pg_moreio || nfs_reqs_to_commit(&cinfo)))
+-		desc->pg_ioflags &= ~FLUSH_COND_STABLE;
+-
+-	/* Set up the argument struct */
+-	nfs_pgio_rpcsetup(data, desc->pg_count, 0, desc->pg_ioflags, &cinfo);
+-	list_add(&data->list, &hdr->rpc_list);
+-	desc->pg_rpc_callops = &nfs_pgio_common_ops;
+-	return 0;
+-}
+-
+-int nfs_generic_flush(struct nfs_pageio_descriptor *desc,
+-		      struct nfs_pgio_header *hdr)
+-{
+-	if (desc->pg_bsize < PAGE_CACHE_SIZE)
+-		return nfs_flush_multi(desc, hdr);
+-	return nfs_flush_one(desc, hdr);
+-}
+-EXPORT_SYMBOL_GPL(nfs_generic_flush);
+-
+ static int nfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc)
+ {
+ 	struct nfs_rw_header *whdr;
+@@ -1153,7 +1058,7 @@ static int nfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc)
+ 	hdr = &whdr->header;
+ 	nfs_pgheader_init(desc, hdr, nfs_rw_header_free);
+ 	atomic_inc(&hdr->refcnt);
+-	ret = nfs_generic_flush(desc, hdr);
++	ret = nfs_generic_pgio(desc, hdr);
+ 	if (ret == 0)
+ 		ret = nfs_do_multiple_writes(&hdr->rpc_list,
+ 					     desc->pg_rpc_callops,
 -- 
-Doug Ledford <dledford@redhat.com>
-              GPG KeyID: 0E572FDD
-	      http://people.redhat.com/dledford
+1.9.2
 
