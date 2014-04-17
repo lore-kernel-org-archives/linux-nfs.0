@@ -1,299 +1,130 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f181.google.com ([209.85.213.181]:53418 "EHLO
-	mail-ig0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753696AbaDRSpm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Apr 2014 14:45:42 -0400
-Received: by mail-ig0-f181.google.com with SMTP id h18so960009igc.14
-        for <linux-nfs@vger.kernel.org>; Fri, 18 Apr 2014 11:45:40 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Bruce Fields <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 23/70] NFSd: Don't get a session reference without a client reference
-Date: Fri, 18 Apr 2014 14:44:17 -0400
-Message-Id: <1397846704-14567-24-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1397846704-14567-23-git-send-email-trond.myklebust@primarydata.com>
-References: <1397846704-14567-1-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-2-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-3-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-4-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-5-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-6-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-7-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-8-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-9-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-10-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-11-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-12-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-13-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-14-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-15-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-16-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-17-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-18-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-19-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-20-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-21-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-22-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-23-git-send-email-trond.myklebust@primarydata.com>
+Received: from mail-pa0-f52.google.com ([209.85.220.52]:46566 "EHLO
+	mail-pa0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753164AbaDQMqm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Apr 2014 08:46:42 -0400
+Received: by mail-pa0-f52.google.com with SMTP id rd3so344143pab.11
+        for <linux-nfs@vger.kernel.org>; Thu, 17 Apr 2014 05:46:42 -0700 (PDT)
+Message-ID: <534FCD13.303@gmail.com>
+Date: Thu, 17 Apr 2014 20:46:11 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: linux-nfs@vger.kernel.org, Christoph Hellwig <hch@infradead.org>
+Subject: [PATCH] NFSD: Clear cached acl after setting a zero-length default
+ posix acl:
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If the client were to disappear from underneath us while we're holding
-a session reference, things would be bad. This cleanup ensures that
-it cannot.
+After setting ACL for directory, I got two problems that caused
+by the cached zero-length default posix acl.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+This patch just clears the cached zero-length default posix acl
+after setting.
+
+First problem:
+# nfs4_setfacl -s A::OWNER@:RWX /mnt/123/; touch /mnt/123/test
+............ hang ...........
+
+Second problem:
+# nfs4_setfacl -s A::OWNER@:RWX /mnt/123/; nfs4_getfacl /mnt/123/
+[ 1610.167668] ------------[ cut here ]------------
+[ 1610.168320] kernel BUG at /root/nfs/linux/fs/nfsd/nfs4acl.c:239!
+[ 1610.168320] invalid opcode: 0000 [#1] SMP DEBUG_PAGEALLOC
+[ 1610.168320] Modules linked in: nfsv4(OE) nfs(OE) nfsd(OE) 
+rpcsec_gss_krb5 fscache ip6t_rpfilter ip6t_REJECT cfg80211 xt_conntrack 
+rfkill ebtable_nat ebtable_broute bridge stp llc ebtable_filter ebtables 
+ip6table_nat nf_conntrack_ipv6 nf_defrag_ipv6 nf_nat_ipv6 
+ip6table_mangle ip6table_security ip6table_raw ip6table_filter 
+ip6_tables iptable_nat nf_conntrack_ipv4 nf_defrag_ipv4 nf_nat_ipv4 
+nf_nat nf_conntrack iptable_mangle iptable_security iptable_raw 
+auth_rpcgss nfs_acl snd_intel8x0 ppdev lockd snd_ac97_codec ac97_bus 
+snd_pcm snd_timer e1000 pcspkr parport_pc snd parport serio_raw joydev 
+i2c_piix4 sunrpc(OE) microcode soundcore i2c_core ata_generic pata_acpi 
+[last unloaded: nfsd]
+[ 1610.168320] CPU: 0 PID: 27397 Comm: nfsd Tainted: G           OE 
+3.15.0-rc1+ #15
+[ 1610.168320] Hardware name: innotek GmbH VirtualBox/VirtualBox, BIOS 
+VirtualBox 12/01/2006
+[ 1610.168320] task: ffff88005ab653d0 ti: ffff88005a944000 task.ti: 
+ffff88005a944000
+[ 1610.168320] RIP: 0010:[<ffffffffa034d5ed>]  [<ffffffffa034d5ed>] 
+_posix_to_nfsv4_one+0x3cd/0x3d0 [nfsd]
+[ 1610.168320] RSP: 0018:ffff88005a945b00  EFLAGS: 00010293
+[ 1610.168320] RAX: 0000000000000001 RBX: ffff88006700bac0 RCX: 
+0000000000000000
+[ 1610.168320] RDX: 0000000000000000 RSI: ffff880067c83f00 RDI: 
+ffff880068233300
+[ 1610.168320] RBP: ffff88005a945b48 R08: ffffffff81c64830 R09: 
+0000000000000000
+[ 1610.168320] R10: ffff88004ea85be0 R11: 000000000000f475 R12: 
+ffff880068233300
+[ 1610.168320] R13: 0000000000000003 R14: 0000000000000002 R15: 
+ffff880068233300
+[ 1610.168320] FS:  0000000000000000(0000) GS:ffff880077800000(0000) 
+knlGS:0000000000000000
+[ 1610.168320] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+[ 1610.168320] CR2: 00007f5bcbd3b0b9 CR3: 0000000001c0f000 CR4: 
+00000000000006f0
+[ 1610.168320] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 
+0000000000000000
+[ 1610.168320] DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 
+0000000000000400
+[ 1610.168320] Stack:
+[ 1610.168320]  ffffffff00000000 0000000b67c83500 000000076700bac0 
+0000000000000000
+[ 1610.168320]  ffff88006700bac0 ffff880068233300 ffff88005a945c08 
+0000000000000002
+[ 1610.168320]  0000000000000000 ffff88005a945b88 ffffffffa034e2d5 
+000000065a945b68
+[ 1610.168320] Call Trace:
+[ 1610.168320]  [<ffffffffa034e2d5>] nfsd4_get_nfs4_acl+0x95/0x150 [nfsd]
+[ 1610.168320]  [<ffffffffa03400d6>] nfsd4_encode_fattr+0x646/0x1e70 [nfsd]
+[ 1610.168320]  [<ffffffff816a6e6e>] ? kmemleak_alloc+0x4e/0xb0
+[ 1610.168320]  [<ffffffffa0327962>] ? 
+nfsd_setuser_and_check_port+0x52/0x80 [nfsd]
+[ 1610.168320]  [<ffffffff812cd4bb>] ? selinux_cred_prepare+0x1b/0x30
+[ 1610.168320]  [<ffffffffa0341caa>] nfsd4_encode_getattr+0x5a/0x60 [nfsd]
+[ 1610.168320]  [<ffffffffa0341e07>] nfsd4_encode_operation+0x67/0x110 
+[nfsd]
+[ 1610.168320]  [<ffffffffa033844d>] nfsd4_proc_compound+0x21d/0x810 [nfsd]
+[ 1610.168320]  [<ffffffffa0324d9b>] nfsd_dispatch+0xbb/0x200 [nfsd]
+[ 1610.168320]  [<ffffffffa00850cd>] svc_process_common+0x46d/0x6d0 [sunrpc]
+[ 1610.168320]  [<ffffffffa0085433>] svc_process+0x103/0x170 [sunrpc]
+[ 1610.168320]  [<ffffffffa032472f>] nfsd+0xbf/0x130 [nfsd]
+[ 1610.168320]  [<ffffffffa0324670>] ? nfsd_destroy+0x80/0x80 [nfsd]
+[ 1610.168320]  [<ffffffff810a5202>] kthread+0xd2/0xf0
+[ 1610.168320]  [<ffffffff810a5130>] ? insert_kthread_work+0x40/0x40
+[ 1610.168320]  [<ffffffff816c1ebc>] ret_from_fork+0x7c/0xb0
+[ 1610.168320]  [<ffffffff810a5130>] ? insert_kthread_work+0x40/0x40
+[ 1610.168320] Code: 78 02 e9 e7 fc ff ff 31 c0 31 d2 31 c9 66 89 45 ce 
+41 8b 04 24 66 89 55 d0 66 89 4d d2 48 8d 04 80 49 8d 5c 84 04 e9 37 fd 
+ff ff <0f> 0b 90 0f 1f 44 00 00 55 8b 56 08 c7 07 00 00 00 00 8b 46 0c
+[ 1610.168320] RIP  [<ffffffffa034d5ed>] _posix_to_nfsv4_one+0x3cd/0x3d0 
+[nfsd]
+[ 1610.168320]  RSP <ffff88005a945b00>
+[ 1610.257313] ---[ end trace 838254e3e352285b ]---
+
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 ---
- fs/nfsd/nfs4state.c | 112 +++++++++++++++++++++++++++++++---------------------
- fs/nfsd/state.h     |   2 -
- 2 files changed, 68 insertions(+), 46 deletions(-)
+  fs/nfsd/nfs4acl.c | 2 ++
+  1 file changed, 2 insertions(+)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 9421e56454a2..ab66f73643a9 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -102,12 +102,6 @@ static bool is_session_dead(struct nfsd4_session *ses)
- 	return ses->se_flags & NFS4_SESSION_DEAD;
- }
- 
--void nfsd4_put_session(struct nfsd4_session *ses)
--{
--	if (atomic_dec_and_test(&ses->se_ref) && is_session_dead(ses))
--		free_session(ses);
--}
--
- static __be32 mark_session_dead_locked(struct nfsd4_session *ses, int ref_held_by_me)
- {
- 	if (atomic_read(&ses->se_ref) > ref_held_by_me)
-@@ -116,14 +110,6 @@ static __be32 mark_session_dead_locked(struct nfsd4_session *ses, int ref_held_b
- 	return nfs_ok;
- }
- 
--static __be32 nfsd4_get_session_locked(struct nfsd4_session *ses)
--{
--	if (is_session_dead(ses))
--		return nfserr_badsession;
--	atomic_inc(&ses->se_ref);
--	return nfs_ok;
--}
--
- void
- nfs4_unlock_state(void)
- {
-@@ -202,6 +188,39 @@ static void put_client_renew_locked(struct nfs4_client *clp)
- 		renew_client_locked(clp);
- }
- 
-+static __be32 nfsd4_get_session_locked(struct nfsd4_session *ses)
-+{
-+	__be32 status;
-+
-+	if (is_session_dead(ses))
-+		return nfserr_badsession;
-+	status = get_client_locked(ses->se_client);
-+	if (status)
-+		return status;
-+	atomic_inc(&ses->se_ref);
-+	return nfs_ok;
-+}
-+
-+static void nfsd4_put_session_locked(struct nfsd4_session *ses)
-+{
-+	struct nfs4_client *clp = ses->se_client;
-+
-+	if (atomic_dec_and_test(&ses->se_ref) && is_session_dead(ses))
-+		free_session(ses);
-+	put_client_renew_locked(clp);
-+}
-+
-+static void nfsd4_put_session(struct nfsd4_session *ses)
-+{
-+	struct nfs4_client *clp = ses->se_client;
-+	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
-+
-+	spin_lock(&nn->client_lock);
-+	nfsd4_put_session_locked(ses);
-+	spin_unlock(&nn->client_lock);
-+}
-+
-+
- static inline u32
- opaque_hashval(const void *ptr, int nbytes)
- {
-@@ -1119,7 +1138,7 @@ static void init_session(struct svc_rqst *rqstp, struct nfsd4_session *new, stru
- 
- /* caller must hold client_lock */
- static struct nfsd4_session *
--find_in_sessionid_hashtbl(struct nfs4_sessionid *sessionid, struct net *net)
-+__find_in_sessionid_hashtbl(struct nfs4_sessionid *sessionid, struct net *net)
- {
- 	struct nfsd4_session *elem;
- 	int idx;
-@@ -1139,6 +1158,24 @@ find_in_sessionid_hashtbl(struct nfs4_sessionid *sessionid, struct net *net)
- 	return NULL;
- }
- 
-+static struct nfsd4_session *
-+find_in_sessionid_hashtbl(struct nfs4_sessionid *sessionid, struct net *net,
-+		__be32 *ret)
-+{
-+	struct nfsd4_session *session;
-+	__be32 status = nfserr_badsession;
-+
-+	session = __find_in_sessionid_hashtbl(sessionid, net);
-+	if (!session)
-+		goto out;
-+	status = nfsd4_get_session_locked(session);
-+	if (status)
-+		session = NULL;
-+out:
-+	*ret = status;
-+	return session;
-+}
-+
- /* caller must hold client_lock */
- static void
- unhash_session(struct nfsd4_session *ses)
-@@ -2152,17 +2189,17 @@ __be32 nfsd4_bind_conn_to_session(struct svc_rqst *rqstp,
- 	__be32 status;
- 	struct nfsd4_conn *conn;
- 	struct nfsd4_session *session;
--	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
-+	struct net *net = SVC_NET(rqstp);
-+	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
- 
- 	if (!nfsd4_last_compound_op(rqstp))
- 		return nfserr_not_only_op;
- 	nfs4_lock_state();
- 	spin_lock(&nn->client_lock);
--	session = find_in_sessionid_hashtbl(&bcts->sessionid, SVC_NET(rqstp));
-+	session = find_in_sessionid_hashtbl(&bcts->sessionid, net, &status);
- 	spin_unlock(&nn->client_lock);
--	status = nfserr_badsession;
- 	if (!session)
--		goto out;
-+		goto out_no_session;
- 	status = nfserr_wrong_cred;
- 	if (!mach_creds_match(session->se_client, rqstp))
- 		goto out;
-@@ -2176,6 +2213,8 @@ __be32 nfsd4_bind_conn_to_session(struct svc_rqst *rqstp,
- 	nfsd4_init_conn(rqstp, conn, session);
- 	status = nfs_ok;
- out:
-+	nfsd4_put_session(session);
-+out_no_session:
- 	nfs4_unlock_state();
- 	return status;
- }
-@@ -2195,7 +2234,8 @@ nfsd4_destroy_session(struct svc_rqst *r,
- 	struct nfsd4_session *ses;
- 	__be32 status;
- 	int ref_held_by_me = 0;
--	struct nfsd_net *nn = net_generic(SVC_NET(r), nfsd_net_id);
-+	struct net *net = SVC_NET(r);
-+	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
- 
- 	nfs4_lock_state();
- 	status = nfserr_not_only_op;
-@@ -2206,14 +2246,12 @@ nfsd4_destroy_session(struct svc_rqst *r,
- 	}
- 	dump_sessionid(__func__, &sessionid->sessionid);
- 	spin_lock(&nn->client_lock);
--	ses = find_in_sessionid_hashtbl(&sessionid->sessionid, SVC_NET(r));
--	status = nfserr_badsession;
-+	ses = find_in_sessionid_hashtbl(&sessionid->sessionid, net, &status);
- 	if (!ses)
- 		goto out_client_lock;
- 	status = nfserr_wrong_cred;
- 	if (!mach_creds_match(ses->se_client, r))
--		goto out_client_lock;
--	nfsd4_get_session_locked(ses);
-+		goto out_put_session;
- 	status = mark_session_dead_locked(ses, 1 + ref_held_by_me);
- 	if (status)
- 		goto out_put_session;
-@@ -2225,7 +2263,7 @@ nfsd4_destroy_session(struct svc_rqst *r,
- 	spin_lock(&nn->client_lock);
- 	status = nfs_ok;
- out_put_session:
--	nfsd4_put_session(ses);
-+	nfsd4_put_session_locked(ses);
- out_client_lock:
- 	spin_unlock(&nn->client_lock);
- out:
-@@ -2298,7 +2336,8 @@ nfsd4_sequence(struct svc_rqst *rqstp,
- 	struct nfsd4_slot *slot;
- 	struct nfsd4_conn *conn;
- 	__be32 status;
--	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
-+	struct net *net = SVC_NET(rqstp);
-+	struct nfsd_net *nn = net_generic(net, nfsd_net_id);
- 
- 	if (resp->opcnt != 1)
- 		return nfserr_sequence_pos;
-@@ -2312,17 +2351,10 @@ nfsd4_sequence(struct svc_rqst *rqstp,
- 		return nfserr_jukebox;
- 
- 	spin_lock(&nn->client_lock);
--	status = nfserr_badsession;
--	session = find_in_sessionid_hashtbl(&seq->sessionid, SVC_NET(rqstp));
-+	session = find_in_sessionid_hashtbl(&seq->sessionid, net, &status);
- 	if (!session)
- 		goto out_no_session;
- 	clp = session->se_client;
--	status = get_client_locked(clp);
--	if (status)
--		goto out_no_session;
--	status = nfsd4_get_session_locked(session);
--	if (status)
--		goto out_put_client;
- 
- 	status = nfserr_too_many_ops;
- 	if (nfsd4_session_too_many_ops(rqstp, session))
-@@ -2396,9 +2428,7 @@ out_no_session:
- 	spin_unlock(&nn->client_lock);
- 	return status;
- out_put_session:
--	nfsd4_put_session(session);
--out_put_client:
--	put_client_renew_locked(clp);
-+	nfsd4_put_session_locked(session);
- 	goto out_no_session;
- }
- 
-@@ -2408,18 +2438,12 @@ nfsd4_sequence_done(struct nfsd4_compoundres *resp)
- 	struct nfsd4_compound_state *cs = &resp->cstate;
- 
- 	if (nfsd4_has_session(cs)) {
--		struct nfs4_client *clp = cs->session->se_client;
--		struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
--
- 		if (cs->status != nfserr_replay_cache) {
- 			nfsd4_store_cache_entry(resp);
- 			cs->slot->sl_flags &= ~NFSD4_SLOT_INUSE;
- 		}
--		/* Renew the clientid on success and on replay */
--		spin_lock(&nn->client_lock);
-+		/* Drop session reference that was taken in nfsd4_sequence() */
- 		nfsd4_put_session(cs->session);
--		put_client_renew_locked(clp);
--		spin_unlock(&nn->client_lock);
- 	}
- }
- 
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index e5444e0aedad..559134675b5a 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -213,8 +213,6 @@ struct nfsd4_session {
- 	struct nfsd4_slot	*se_slots[];	/* forward channel slots */
- };
- 
--extern void nfsd4_put_session(struct nfsd4_session *ses);
--
- /* formatted contents of nfs4_sessionid */
- struct nfsd4_sessionid {
- 	clientid_t	clientid;
+diff --git a/fs/nfsd/nfs4acl.c b/fs/nfsd/nfs4acl.c
+index de5d66b..4eb0a9f 100644
+--- a/fs/nfsd/nfs4acl.c
++++ b/fs/nfsd/nfs4acl.c
+@@ -834,6 +834,8 @@ nfsd4_set_nfs4_acl(struct svc_rqst *rqstp, struct 
+svc_fh *fhp,
+  	if (S_ISDIR(inode->i_mode)) {
+  		host_error = inode->i_op->set_acl(inode, dpacl,
+  						  ACL_TYPE_DEFAULT);
++		if (!dpacl->a_count)
++			forget_cached_acl(inode, ACL_TYPE_DEFAULT);
+  	}
+
+  out_release:
 -- 
 1.9.0
 
