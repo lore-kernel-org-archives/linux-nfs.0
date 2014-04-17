@@ -1,133 +1,316 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:20302 "EHLO mx1.redhat.com"
+Received: from mx11.netapp.com ([216.240.18.76]:57965 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932541AbaDBRqj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 2 Apr 2014 13:46:39 -0400
-Date: Wed, 2 Apr 2014 13:46:33 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Steve Wise <swise@opengridcomputing.com>
-Cc: trond.myklebust@primarydata.com, bfields@fieldses.org,
-        linux-nfs@vger.kernel.org, tom@opengridcomputing.com
-Subject: Re: [PATCH] Fix regression errors in NFSRDMA
-Message-ID: <20140402134633.06ec5540@tlielax.poochiereds.net>
-In-Reply-To: <20140325145044.3559.95141.stgit@build.ogc.int>
-References: <20140325145044.3559.95141.stgit@build.ogc.int>
+	id S1751208AbaDQVKb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 17 Apr 2014 17:10:31 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
+Subject: [PATCH 14/17] NFS: Create a common initiate_pgio() function
+Date: Thu, 17 Apr 2014 17:09:38 -0400
+Message-ID: <1397768981-12856-15-git-send-email-Anna.Schumaker@Netapp.com>
+In-Reply-To: <1397768981-12856-1-git-send-email-Anna.Schumaker@Netapp.com>
+References: <1397768981-12856-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 25 Mar 2014 09:50:45 -0500
-Steve Wise <swise@opengridcomputing.com> wrote:
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
 
-> From: Tom Tucker <tom@ogc.us>
-> 
-> A few changes regressed the client and server transports for NFSRDMA.
-> 
-> The server regression was caused by the addition of rq_next_page
-> (afc59400d6c65bad66d4ad0b2daf879cbff8e23e). There were a few places that
-> were missed with the update of the rq_respages array.
-> 
-> The client regression was due to additional XDR sanity checking
-> (64bd577ea0021f5903505de061b3b7d8a785ee94) that exposed a latent bug in
-> the NFSRDMA client. The bug is that if there were inline data, then the
-> rpcrdma_fixup_inline function would would incorrectly set the XDR page_len
-> to zero. Since the decode_read3resok logic previously computed this
-> value from the reported len - header len, the bug was not symptomatic.
-> 
-> Signed-off-by: Tom Tucker <tom@ogc.us>
-> Tested-by: Steve Wise <swise@ogc.us>
-> ---
-> 
->  net/sunrpc/xprtrdma/rpc_rdma.c          |    3 +--
->  net/sunrpc/xprtrdma/svc_rdma_recvfrom.c |   12 ++++--------
->  net/sunrpc/xprtrdma/svc_rdma_sendto.c   |    1 +
->  3 files changed, 6 insertions(+), 10 deletions(-)
-> 
-> diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-> index e03725b..e811c40 100644
-> --- a/net/sunrpc/xprtrdma/rpc_rdma.c
-> +++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-> @@ -650,8 +650,7 @@ rpcrdma_inline_fixup(struct rpc_rqst *rqst, char *srcp, int copy_len, int pad)
->  			page_base = 0;
->  		}
->  		rqst->rq_rcv_buf.page_len = olen - copy_len;
-> -	} else
-> -		rqst->rq_rcv_buf.page_len = 0;
-> +	}
->  
->  	if (copy_len && rqst->rq_rcv_buf.tail[0].iov_len) {
->  		curlen = copy_len;
-> diff --git a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-> index 0ce7552..8d904e4 100644
-> --- a/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-> +++ b/net/sunrpc/xprtrdma/svc_rdma_recvfrom.c
-> @@ -90,6 +90,7 @@ static void rdma_build_arg_xdr(struct svc_rqst *rqstp,
->  		sge_no++;
->  	}
->  	rqstp->rq_respages = &rqstp->rq_pages[sge_no];
-> +	rqstp->rq_next_page = rqstp->rq_respages + 1;
->  
->  	/* We should never run out of SGE because the limit is defined to
->  	 * support the max allowed RPC data length
-> @@ -169,6 +170,7 @@ static int map_read_chunks(struct svcxprt_rdma *xprt,
->  		 */
->  		head->arg.pages[page_no] = rqstp->rq_arg.pages[page_no];
->  		rqstp->rq_respages = &rqstp->rq_arg.pages[page_no+1];
-> +		rqstp->rq_next_page = rqstp->rq_respages + 1;
->  
->  		byte_count -= sge_bytes;
->  		ch_bytes -= sge_bytes;
-> @@ -276,6 +278,7 @@ static int fast_reg_read_chunks(struct svcxprt_rdma *xprt,
->  
->  	/* rq_respages points one past arg pages */
->  	rqstp->rq_respages = &rqstp->rq_arg.pages[page_no];
-> +	rqstp->rq_next_page = rqstp->rq_respages + 1;
->  
->  	/* Create the reply and chunk maps */
->  	offset = 0;
-> @@ -520,13 +523,6 @@ next_sge:
->  	for (ch_no = 0; &rqstp->rq_pages[ch_no] < rqstp->rq_respages; ch_no++)
->  		rqstp->rq_pages[ch_no] = NULL;
->  
-> -	/*
-> -	 * Detach res pages. If svc_release sees any it will attempt to
-> -	 * put them.
-> -	 */
-> -	while (rqstp->rq_next_page != rqstp->rq_respages)
-> -		*(--rqstp->rq_next_page) = NULL;
-> -
->  	return err;
->  }
->  
-> @@ -550,7 +546,7 @@ static int rdma_read_complete(struct svc_rqst *rqstp,
->  
->  	/* rq_respages starts after the last arg page */
->  	rqstp->rq_respages = &rqstp->rq_arg.pages[page_no];
-> -	rqstp->rq_next_page = &rqstp->rq_arg.pages[page_no];
-> +	rqstp->rq_next_page = rqstp->rq_respages + 1;
->  
->  	/* Rebuild rq_arg head and tail. */
->  	rqstp->rq_arg.head[0] = head->arg.head[0];
-> diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-> index c1d124d..11e90f8 100644
-> --- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-> +++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
-> @@ -625,6 +625,7 @@ static int send_reply(struct svcxprt_rdma *rdma,
->  		if (page_no+1 >= sge_no)
->  			ctxt->sge[page_no+1].length = 0;
->  	}
-> +	rqstp->rq_next_page = rqstp->rq_respages + 1;
->  	BUG_ON(sge_no > rdma->sc_max_sge);
->  	memset(&send_wr, 0, sizeof send_wr);
->  	ctxt->wr_op = IB_WR_SEND;
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+Most of this code is the same for both the read and write paths, so
+combine everything and use the rw_ops when necessary.
 
-This seems to fix the oopses I was seeing when issuing NFS WRITEs to
-the server:
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+---
+ fs/nfs/internal.h        |  9 ++------
+ fs/nfs/nfs4filelayout.c  |  6 +++---
+ fs/nfs/pageio.c          | 47 +++++++++++++++++++++++++++++++++++++++++
+ fs/nfs/read.c            | 42 ++++++------------------------------
+ fs/nfs/write.c           | 55 ++++++------------------------------------------
+ include/linux/nfs_page.h |  2 ++
+ 6 files changed, 67 insertions(+), 94 deletions(-)
 
-Tested-by: Jeff Layton <jlayton@redhat.com>
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 6422b9d..027d72c 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -400,14 +400,13 @@ extern struct nfs_rw_header *nfs_rw_header_alloc(const struct nfs_rw_ops *);
+ extern void nfs_rw_header_free(struct nfs_pgio_header *);
+ extern void nfs_pgio_data_release(struct nfs_pgio_data *);
+ extern int nfs_generic_pgio(struct nfs_pageio_descriptor *, struct nfs_pgio_header *);
++extern int nfs_initiate_pgio(struct rpc_clnt *, struct nfs_pgio_data *,
++			     const struct rpc_call_ops *, int, int);
+ 
+ /* read.c */
+ extern void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
+ 			struct inode *inode, bool force_mds,
+ 			const struct nfs_pgio_completion_ops *compl_ops);
+-extern int nfs_initiate_read(struct rpc_clnt *clnt,
+-			     struct nfs_pgio_data *data,
+-			     const struct rpc_call_ops *call_ops, int flags);
+ extern void nfs_read_prepare(struct rpc_task *task, void *calldata);
+ extern void nfs_pageio_reset_read_mds(struct nfs_pageio_descriptor *pgio);
+ 
+@@ -428,10 +427,6 @@ extern void nfs_pageio_init_write(struct nfs_pageio_descriptor *pgio,
+ 			const struct nfs_pgio_completion_ops *compl_ops);
+ extern void nfs_pageio_reset_write_mds(struct nfs_pageio_descriptor *pgio);
+ extern void nfs_commit_free(struct nfs_commit_data *p);
+-extern int nfs_initiate_write(struct rpc_clnt *clnt,
+-			      struct nfs_pgio_data *data,
+-			      const struct rpc_call_ops *call_ops,
+-			      int how, int flags);
+ extern void nfs_write_prepare(struct rpc_task *task, void *calldata);
+ extern void nfs_commit_prepare(struct rpc_task *task, void *calldata);
+ extern int nfs_initiate_commit(struct rpc_clnt *clnt,
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index e693614..7954e16 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -568,8 +568,8 @@ filelayout_read_pagelist(struct nfs_pgio_data *data)
+ 	data->mds_offset = offset;
+ 
+ 	/* Perform an asynchronous read to ds */
+-	nfs_initiate_read(ds_clnt, data,
+-				  &filelayout_read_call_ops, RPC_TASK_SOFTCONN);
++	nfs_initiate_pgio(ds_clnt, data,
++			    &filelayout_read_call_ops, 0, RPC_TASK_SOFTCONN);
+ 	return PNFS_ATTEMPTED;
+ }
+ 
+@@ -613,7 +613,7 @@ filelayout_write_pagelist(struct nfs_pgio_data *data, int sync)
+ 	data->args.offset = filelayout_get_dserver_offset(lseg, offset);
+ 
+ 	/* Perform an asynchronous write */
+-	nfs_initiate_write(ds_clnt, data,
++	nfs_initiate_pgio(ds_clnt, data,
+ 				    &filelayout_write_call_ops, sync,
+ 				    RPC_TASK_SOFTCONN);
+ 	return PNFS_ATTEMPTED;
+diff --git a/fs/nfs/pageio.c b/fs/nfs/pageio.c
+index 093cb1d..c80e611 100644
+--- a/fs/nfs/pageio.c
++++ b/fs/nfs/pageio.c
+@@ -126,6 +126,53 @@ static void nfs_pgio_rpcsetup(struct nfs_pgio_data *data,
+ 	nfs_fattr_init(&data->fattr);
+ }
+ 
++int nfs_initiate_pgio(struct rpc_clnt *clnt, struct nfs_pgio_data *data,
++		      const struct rpc_call_ops *call_ops, int how, int flags)
++{
++	struct inode *inode = data->header->inode;
++	struct rpc_task *task;
++	struct rpc_message msg = {
++		.rpc_argp = &data->args,
++		.rpc_resp = &data->res,
++		.rpc_cred = data->header->cred,
++	};
++	struct rpc_task_setup task_setup_data = {
++		.rpc_client = clnt,
++		.task = &data->task,
++		.rpc_message = &msg,
++		.callback_ops = call_ops,
++		.callback_data = data,
++		.workqueue = nfsiod_workqueue,
++		.flags = RPC_TASK_ASYNC | flags,
++	};
++	int ret = 0;
++
++	data->header->rw_ops->rw_initiate(data, &msg, &task_setup_data, how);
++
++	dprintk("NFS: %5u initiated pgio call "
++		"(req %s/%llu, %u bytes @ offset %llu)\n",
++		data->task.tk_pid,
++		inode->i_sb->s_id,
++		(unsigned long long)NFS_FILEID(inode),
++		data->args.count,
++		(unsigned long long)data->args.offset);
++
++	task = rpc_run_task(&task_setup_data);
++	if (IS_ERR(task)) {
++		ret = PTR_ERR(task);
++		goto out;
++	}
++	if (how & FLUSH_SYNC) {
++		ret = rpc_wait_for_completion_task(task);
++		if (ret == 0)
++			ret = task->tk_status;
++	}
++	rpc_put_task(task);
++out:
++	return ret;
++}
++EXPORT_SYMBOL_GPL(nfs_initiate_pgio);
++
+ static int nfs_pgio_error(struct nfs_pageio_descriptor *desc,
+ 			  struct nfs_pgio_header *hdr)
+ {
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index 07c21bd..ebea335 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -151,53 +151,22 @@ out:
+ 	hdr->release(hdr);
+ }
+ 
+-int nfs_initiate_read(struct rpc_clnt *clnt,
+-		      struct nfs_pgio_data *data,
+-		      const struct rpc_call_ops *call_ops, int flags)
++static void nfs_initiate_read(struct nfs_pgio_data *data, struct rpc_message *msg,
++			      struct rpc_task_setup *task_setup_data, int how)
+ {
+ 	struct inode *inode = data->header->inode;
+ 	int swap_flags = IS_SWAPFILE(inode) ? NFS_RPC_SWAPFLAGS : 0;
+-	struct rpc_task *task;
+-	struct rpc_message msg = {
+-		.rpc_argp = &data->args,
+-		.rpc_resp = &data->res,
+-		.rpc_cred = data->header->cred,
+-	};
+-	struct rpc_task_setup task_setup_data = {
+-		.task = &data->task,
+-		.rpc_client = clnt,
+-		.rpc_message = &msg,
+-		.callback_ops = call_ops,
+-		.callback_data = data,
+-		.workqueue = nfsiod_workqueue,
+-		.flags = RPC_TASK_ASYNC | swap_flags | flags,
+-	};
+ 
+-	/* Set up the initial task struct. */
+-	NFS_PROTO(inode)->read_setup(data, &msg);
+-
+-	dprintk("NFS: %5u initiated read call (req %s/%llu, %u bytes @ "
+-			"offset %llu)\n",
+-			data->task.tk_pid,
+-			inode->i_sb->s_id,
+-			(unsigned long long)NFS_FILEID(inode),
+-			data->args.count,
+-			(unsigned long long)data->args.offset);
+-
+-	task = rpc_run_task(&task_setup_data);
+-	if (IS_ERR(task))
+-		return PTR_ERR(task);
+-	rpc_put_task(task);
+-	return 0;
++	task_setup_data->flags |= swap_flags;
++	NFS_PROTO(inode)->read_setup(data, msg);
+ }
+-EXPORT_SYMBOL_GPL(nfs_initiate_read);
+ 
+ static int nfs_do_read(struct nfs_pgio_data *data,
+ 		const struct rpc_call_ops *call_ops)
+ {
+ 	struct inode *inode = data->header->inode;
+ 
+-	return nfs_initiate_read(NFS_CLIENT(inode), data, call_ops, 0);
++	return nfs_initiate_pgio(NFS_CLIENT(inode), data, call_ops, 0, 0);
+ }
+ 
+ static int
+@@ -491,4 +460,5 @@ static const struct nfs_rw_ops nfs_rw_read_ops = {
+ 	.rw_free_header		= nfs_readhdr_free,
+ 	.rw_result		= nfs_readpage_result,
+ 	.rw_result_common	= nfs_readpage_result_common,
++	.rw_initiate		= nfs_initiate_read,
+ };
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 8929e33..4279f80 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -932,60 +932,18 @@ static int flush_task_priority(int how)
+ 	return RPC_PRIORITY_NORMAL;
+ }
+ 
+-int nfs_initiate_write(struct rpc_clnt *clnt,
+-		       struct nfs_pgio_data *data,
+-		       const struct rpc_call_ops *call_ops,
+-		       int how, int flags)
++static void nfs_initiate_write(struct nfs_pgio_data *data, struct rpc_message *msg,
++			       struct rpc_task_setup *task_setup_data, int how)
+ {
+ 	struct inode *inode = data->header->inode;
+ 	int priority = flush_task_priority(how);
+-	struct rpc_task *task;
+-	struct rpc_message msg = {
+-		.rpc_argp = &data->args,
+-		.rpc_resp = &data->res,
+-		.rpc_cred = data->header->cred,
+-	};
+-	struct rpc_task_setup task_setup_data = {
+-		.rpc_client = clnt,
+-		.task = &data->task,
+-		.rpc_message = &msg,
+-		.callback_ops = call_ops,
+-		.callback_data = data,
+-		.workqueue = nfsiod_workqueue,
+-		.flags = RPC_TASK_ASYNC | flags,
+-		.priority = priority,
+-	};
+-	int ret = 0;
+ 
+-	/* Set up the initial task struct.  */
+-	NFS_PROTO(inode)->write_setup(data, &msg);
+-
+-	dprintk("NFS: %5u initiated write call "
+-		"(req %s/%llu, %u bytes @ offset %llu)\n",
+-		data->task.tk_pid,
+-		inode->i_sb->s_id,
+-		(unsigned long long)NFS_FILEID(inode),
+-		data->args.count,
+-		(unsigned long long)data->args.offset);
++	task_setup_data->priority = priority;
++	NFS_PROTO(inode)->write_setup(data, msg);
+ 
+ 	nfs4_state_protect_write(NFS_SERVER(inode)->nfs_client,
+-				 &task_setup_data.rpc_client, &msg, data);
+-
+-	task = rpc_run_task(&task_setup_data);
+-	if (IS_ERR(task)) {
+-		ret = PTR_ERR(task);
+-		goto out;
+-	}
+-	if (how & FLUSH_SYNC) {
+-		ret = rpc_wait_for_completion_task(task);
+-		if (ret == 0)
+-			ret = task->tk_status;
+-	}
+-	rpc_put_task(task);
+-out:
+-	return ret;
++				 &task_setup_data->rpc_client, msg, data);
+ }
+-EXPORT_SYMBOL_GPL(nfs_initiate_write);
+ 
+ static int nfs_do_write(struct nfs_pgio_data *data,
+ 		const struct rpc_call_ops *call_ops,
+@@ -993,7 +951,7 @@ static int nfs_do_write(struct nfs_pgio_data *data,
+ {
+ 	struct inode *inode = data->header->inode;
+ 
+-	return nfs_initiate_write(NFS_CLIENT(inode), data, call_ops, how, 0);
++	return nfs_initiate_pgio(NFS_CLIENT(inode), data, call_ops, how, 0);
+ }
+ 
+ static int nfs_do_multiple_writes(struct list_head *head,
+@@ -1743,4 +1701,5 @@ static const struct nfs_rw_ops nfs_rw_write_ops = {
+ 	.rw_release		= nfs_writeback_release_common,
+ 	.rw_result		= nfs_writeback_result,
+ 	.rw_result_common	= nfs_writeback_result_common,
++	.rw_initiate		= nfs_initiate_write,
+ };
+diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
+index 9477d7a..dc5e71c 100644
+--- a/include/linux/nfs_page.h
++++ b/include/linux/nfs_page.h
+@@ -59,6 +59,8 @@ struct nfs_rw_ops {
+ 	void (*rw_release)(struct nfs_pgio_data *);
+ 	int  (*rw_result)(struct rpc_task *, struct nfs_pgio_data *, struct inode *);
+ 	void (*rw_result_common)(struct rpc_task *, struct nfs_pgio_data *);
++	void (*rw_initiate)(struct nfs_pgio_data *, struct rpc_message *,
++			    struct rpc_task_setup *, int);
+ };
+ 
+ struct nfs_pageio_descriptor {
+-- 
+1.9.2
+
