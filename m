@@ -1,99 +1,235 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qa0-f51.google.com ([209.85.216.51]:47105 "EHLO
-	mail-qa0-f51.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933004AbaD2LP5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Apr 2014 07:15:57 -0400
+Received: from mail-qc0-f176.google.com ([209.85.216.176]:35978 "EHLO
+	mail-qc0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750993AbaDQO6a (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Apr 2014 10:58:30 -0400
+Received: by mail-qc0-f176.google.com with SMTP id m20so526888qcx.7
+        for <linux-nfs@vger.kernel.org>; Thu, 17 Apr 2014 07:58:30 -0700 (PDT)
+Message-ID: <534FEA27.5060600@gmail.com>
+Date: Thu, 17 Apr 2014 10:50:15 -0400
+From: Anna Schumaker <schumaker.anna@gmail.com>
 MIME-Version: 1.0
-Reply-To: mtk.manpages@gmail.com
-In-Reply-To: <20140429071153.176c7404@tlielax.poochiereds.net>
-References: <535F651E.6090204@gmail.com> <535F670B.4060704@gmail.com> <20140429071153.176c7404@tlielax.poochiereds.net>
-From: "Michael Kerrisk (man-pages)" <mtk.manpages@gmail.com>
-Date: Tue, 29 Apr 2014 13:15:37 +0200
-Message-ID: <CAKgNAkgUbdKFaZrXGsWimEA214GDA94=gkAGDBUEdTX=mudM6w@mail.gmail.com>
-Subject: Re: OFD ("file private") locks and NFS
-To: Jeff Layton <jlayton@poochiereds.net>
-Cc: Ganesha NFS List <nfs-ganesha-devel@lists.sourceforge.net>,
-        lkml <linux-kernel@vger.kernel.org>,
-        Linux-Fsdevel <linux-fsdevel@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@fys.uio.no>,
-        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
-        samba-technical@lists.samba.org, linux-nfs <linux-nfs@vger.kernel.org>
+To: Christoph Hellwig <hch@lst.de>,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+CC: Anna Schumaker <Anna.Schumaker@netapp.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/2] nfs: remove ->read_pageio_init from rpc ops
+References: <1397653642-17833-1-git-send-email-hch@lst.de> <1397653642-17833-3-git-send-email-hch@lst.de>
+In-Reply-To: <1397653642-17833-3-git-send-email-hch@lst.de>
 Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Jeff,
-
-On Tue, Apr 29, 2014 at 1:11 PM, Jeff Layton <jlayton@poochiereds.net> wrote:
-> On Tue, 29 Apr 2014 10:47:07 +0200
-> "Michael Kerrisk (man-pages)" <mtk.manpages@gmail.com> wrote:
+On 04/16/2014 09:07 AM, Christoph Hellwig wrote:
+> The read_pageio_init method is just a very convoluted way to grab the
+> right nfs_pageio_ops vector.  The vector to chose is not a choice of
+> protocol version, but just a pNFS vs MDS I/O choice that can simply be
+> done inside nfs_pageio_init_write based on the presence of a layout
+> driver, and a new force_mds flag to the special case of falling back
+> to MDS I/O on a pNFS-capable volume.
 >
->> [CC+= linux-nfs@]
->>
->> On 04/29/2014 10:38 AM, Michael Kerrisk (man-pages) wrote:
->> > Hi Jeff,
->> >
->> > I've been looking a bit at the fcntl() documentation of traditional
->> > (F_SETLK) record locking, and a question just jumped out at me. Is
->> > it worth considering some future-proofing in the design of OFD locks
->> > ("open file description locks", formerly known as "file-private locks")?
->> >
->> > What I am thinking of here is that on some systems, the traditional
->> > 'struct flock' has a nonstandard field, l_sysid, that is used on F_GETLK
->> > to identify the remote system on which a lock is held. Should the design
->> > of OFD locks allow for such a field (now, or in the future), which might
->> > be useful in the context of locking on network file systems such as NFS.
->> >
->> > Put more simply, should the new OFD locking system be using a new
->> > structure for describing locks, rather than the traditional 'struct
->> > flock'? Defining a new structure, might be useful to allow for
->> > future extensions to the API.
->>
->> Just add one further detail here. What I'm thinking is, maybe instead there
->> should be something like:
->>
->> struct flockx {
->>     int flags;
->>     /* Other fields like 'struct flock' */
->>     char reserved[32];        /* Or some suitable value */
->> }
->>
->> That flags field might always be zero for now, but in the future it
->> could be used on the setlk and getlk operations to indicate the presence
->> of additional fields in the structure.
->>
->> Cheers,
->>
->> Michael
->>
+> Signed-off-by: Christoph Hellwig <hch@lst.de>
+The commit message for this patch needs to change "nfs_pageio_init_write" into "nfs_pageio_init_read".  I haven't had any problems with the code!
+
+Tested-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+
+> ---
+>  fs/nfs/direct.c         |    2 +-
+>  fs/nfs/internal.h       |    2 +-
+>  fs/nfs/nfs3proc.c       |    1 -
+>  fs/nfs/nfs4proc.c       |    1 -
+>  fs/nfs/pnfs.c           |   15 +--------------
+>  fs/nfs/pnfs.h           |    9 ---------
+>  fs/nfs/proc.c           |    1 -
+>  fs/nfs/read.c           |   19 ++++++++++++++-----
+>  include/linux/nfs_xdr.h |    2 --
+>  9 files changed, 17 insertions(+), 35 deletions(-)
 >
-> I considered that early on when I did this, but I don't think it's
-> really helpful. I'm just not a fan of padding out structs when it's not
-> clear what would eventually go in there.
+> diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+> index 6a31102..bbe688e 100644
+> --- a/fs/nfs/direct.c
+> +++ b/fs/nfs/direct.c
+> @@ -424,7 +424,7 @@ static ssize_t nfs_direct_read_schedule_iovec(struct nfs_direct_req *dreq,
+>  	size_t requested_bytes = 0;
+>  	unsigned long seg;
+>  
+> -	NFS_PROTO(dreq->inode)->read_pageio_init(&desc, dreq->inode,
+> +	nfs_pageio_init_read(&desc, dreq->inode, false,
+>  			     &nfs_direct_read_completion_ops);
+>  	get_dreq(dreq);
+>  	desc.pg_dreq = dreq;
+> diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+> index 8431083..98fe618 100644
+> --- a/fs/nfs/internal.h
+> +++ b/fs/nfs/internal.h
+> @@ -398,7 +398,7 @@ struct nfs_pgio_completion_ops;
+>  extern struct nfs_read_header *nfs_readhdr_alloc(void);
+>  extern void nfs_readhdr_free(struct nfs_pgio_header *hdr);
+>  extern void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
+> -			struct inode *inode,
+> +			struct inode *inode, bool force_mds,
+>  			const struct nfs_pgio_completion_ops *compl_ops);
+>  extern int nfs_initiate_read(struct rpc_clnt *clnt,
+>  			     struct nfs_read_data *data,
+> diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
+> index e984880..d873241 100644
+> --- a/fs/nfs/nfs3proc.c
+> +++ b/fs/nfs/nfs3proc.c
+> @@ -947,7 +947,6 @@ const struct nfs_rpc_ops nfs_v3_clientops = {
+>  	.pathconf	= nfs3_proc_pathconf,
+>  	.decode_dirent	= nfs3_decode_dirent,
+>  	.read_setup	= nfs3_proc_read_setup,
+> -	.read_pageio_init = nfs_pageio_init_read,
+>  	.read_rpc_prepare = nfs3_proc_read_rpc_prepare,
+>  	.read_done	= nfs3_read_done,
+>  	.write_setup	= nfs3_proc_write_setup,
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 8da0c62..21cd1f2 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -8433,7 +8433,6 @@ const struct nfs_rpc_ops nfs_v4_clientops = {
+>  	.set_capabilities = nfs4_server_capabilities,
+>  	.decode_dirent	= nfs4_decode_dirent,
+>  	.read_setup	= nfs4_proc_read_setup,
+> -	.read_pageio_init = pnfs_pageio_init_read,
+>  	.read_rpc_prepare = nfs4_proc_read_rpc_prepare,
+>  	.read_done	= nfs4_read_done,
+>  	.write_setup	= nfs4_proc_write_setup,
+> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> index 9edac9f..3d5bc2b 100644
+> --- a/fs/nfs/pnfs.c
+> +++ b/fs/nfs/pnfs.c
+> @@ -1434,19 +1434,6 @@ pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio,
+>  }
+>  EXPORT_SYMBOL_GPL(pnfs_generic_pg_init_write);
+>  
+> -void
+> -pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio, struct inode *inode,
+> -		      const struct nfs_pgio_completion_ops *compl_ops)
+> -{
+> -	struct nfs_server *server = NFS_SERVER(inode);
+> -	struct pnfs_layoutdriver_type *ld = server->pnfs_curr_ld;
+> -
+> -	if (ld == NULL)
+> -		nfs_pageio_init_read(pgio, inode, compl_ops);
+> -	else
+> -		nfs_pageio_init(pgio, inode, ld->pg_read_ops, compl_ops, server->rsize, 0);
+> -}
+> -
+>  bool
+>  pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+>  		     struct nfs_page *req)
+> @@ -1641,7 +1628,7 @@ int pnfs_read_done_resend_to_mds(struct inode *inode,
+>  	LIST_HEAD(failed);
+>  
+>  	/* Resend all requests through the MDS */
+> -	nfs_pageio_init_read(&pgio, inode, compl_ops);
+> +	nfs_pageio_init_read(&pgio, inode, true, compl_ops);
+>  	pgio.pg_dreq = dreq;
+>  	while (!list_empty(head)) {
+>  		struct nfs_page *req = nfs_list_entry(head->next);
+> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+> index e9ac8fb..94a9a18 100644
+> --- a/fs/nfs/pnfs.h
+> +++ b/fs/nfs/pnfs.h
+> @@ -180,9 +180,6 @@ extern int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp);
+>  void pnfs_get_layout_hdr(struct pnfs_layout_hdr *lo);
+>  void pnfs_put_lseg(struct pnfs_layout_segment *lseg);
+>  
+> -void pnfs_pageio_init_read(struct nfs_pageio_descriptor *, struct inode *,
+> -			   const struct nfs_pgio_completion_ops *);
+> -
+>  void set_pnfs_layoutdriver(struct nfs_server *, const struct nfs_fh *, u32);
+>  void unset_pnfs_layoutdriver(struct nfs_server *);
+>  void pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *, struct nfs_page *);
+> @@ -459,12 +456,6 @@ static inline void unset_pnfs_layoutdriver(struct nfs_server *s)
+>  {
+>  }
+>  
+> -static inline void pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio, struct inode *inode,
+> -					 const struct nfs_pgio_completion_ops *compl_ops)
+> -{
+> -	nfs_pageio_init_read(pgio, inode, compl_ops);
+> -}
+> -
+>  static inline int
+>  pnfs_commit_list(struct inode *inode, struct list_head *mds_pages, int how,
+>  		 struct nfs_commit_info *cinfo)
+> diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
+> index f9cc295..8cc227f 100644
+> --- a/fs/nfs/proc.c
+> +++ b/fs/nfs/proc.c
+> @@ -735,7 +735,6 @@ const struct nfs_rpc_ops nfs_v2_clientops = {
+>  	.pathconf	= nfs_proc_pathconf,
+>  	.decode_dirent	= nfs2_decode_dirent,
+>  	.read_setup	= nfs_proc_read_setup,
+> -	.read_pageio_init = nfs_pageio_init_read,
+>  	.read_rpc_prepare = nfs_proc_read_rpc_prepare,
+>  	.read_done	= nfs_read_done,
+>  	.write_setup	= nfs_proc_write_setup,
+> diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+> index 411aedd..7f87461 100644
+> --- a/fs/nfs/read.c
+> +++ b/fs/nfs/read.c
+> @@ -24,6 +24,7 @@
+>  #include "internal.h"
+>  #include "iostat.h"
+>  #include "fscache.h"
+> +#include "pnfs.h"
+>  
+>  #define NFSDBG_FACILITY		NFSDBG_PAGECACHE
+>  
+> @@ -114,11 +115,17 @@ int nfs_return_empty_page(struct page *page)
+>  }
+>  
+>  void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
+> -			      struct inode *inode,
+> +			      struct inode *inode, bool force_mds,
+>  			      const struct nfs_pgio_completion_ops *compl_ops)
+>  {
+> -	nfs_pageio_init(pgio, inode, &nfs_pageio_read_ops, compl_ops,
+> -			NFS_SERVER(inode)->rsize, 0);
+> +	struct nfs_server *server = NFS_SERVER(inode);
+> +	const struct nfs_pageio_ops *pg_ops = &nfs_pageio_read_ops;
+> +
+> +#ifdef CONFIG_NFS_V4_1
+> +	if (server->pnfs_curr_ld && !force_mds)
+> +		pg_ops = server->pnfs_curr_ld->pg_read_ops;
+> +#endif
+> +	nfs_pageio_init(pgio, inode, pg_ops, compl_ops, server->rsize, 0);
+>  }
+>  EXPORT_SYMBOL_GPL(nfs_pageio_init_read);
+>  
+> @@ -147,7 +154,8 @@ int nfs_readpage_async(struct nfs_open_context *ctx, struct inode *inode,
+>  	if (len < PAGE_CACHE_SIZE)
+>  		zero_user_segment(page, len, PAGE_CACHE_SIZE);
+>  
+> -	NFS_PROTO(inode)->read_pageio_init(&pgio, inode, &nfs_async_read_completion_ops);
+> +	nfs_pageio_init_read(&pgio, inode, false,
+> +			     &nfs_async_read_completion_ops);
+>  	nfs_pageio_add_request(&pgio, new);
+>  	nfs_pageio_complete(&pgio);
+>  	NFS_I(inode)->read_io += pgio.pg_bytes_written;
+> @@ -654,7 +662,8 @@ int nfs_readpages(struct file *filp, struct address_space *mapping,
+>  	if (ret == 0)
+>  		goto read_complete; /* all pages were read */
+>  
+> -	NFS_PROTO(inode)->read_pageio_init(&pgio, inode, &nfs_async_read_completion_ops);
+> +	nfs_pageio_init_read(&pgio, inode, false,
+> +			     &nfs_async_read_completion_ops);
+>  
+>  	ret = read_cache_pages(mapping, pages, readpage_async_filler, &desc);
+>  
+> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+> index 78216f8..3e8fc1f 100644
+> --- a/include/linux/nfs_xdr.h
+> +++ b/include/linux/nfs_xdr.h
+> @@ -1466,8 +1466,6 @@ struct nfs_rpc_ops {
+>  	int	(*set_capabilities)(struct nfs_server *, struct nfs_fh *);
+>  	int	(*decode_dirent)(struct xdr_stream *, struct nfs_entry *, int);
+>  	void	(*read_setup)   (struct nfs_read_data *, struct rpc_message *);
+> -	void	(*read_pageio_init)(struct nfs_pageio_descriptor *, struct inode *,
+> -				    const struct nfs_pgio_completion_ops *);
+>  	int	(*read_rpc_prepare)(struct rpc_task *, struct nfs_read_data *);
+>  	int	(*read_done)  (struct rpc_task *, struct nfs_read_data *);
+>  	void	(*write_setup)  (struct nfs_write_data *, struct rpc_message *);
 
-Okay.
-
-> The problem is that once actually go to try to convert those from
-> "reserved" to something usable, it becomes a nightmare for userland to
-> figure that out. How do I know whether my kernel supports the stuff I
-> put in those fields or will just ignore them?
-
-(That was my purpose with the "flags" field.)
-
-> If we really find later that we need to do something like this, I think
-> we'd be better off adding a new set of cmd values along with the
-> "extended" struct, or possibly a new syscall. Some of the samba folks
-> were interested in an async locking mechanism too, so something like
-> that could be added in conjunction with such an interface.
-
-Sounds reasonable. I just thought it worth checking. Thanks for the
-quick response.
-
-Cheers,
-
-Michael
-
--- 
-Michael Kerrisk
-Linux man-pages maintainer; http://www.kernel.org/doc/man-pages/
-Linux/UNIX System Programming Training: http://man7.org/training/
