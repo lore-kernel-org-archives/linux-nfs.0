@@ -1,161 +1,292 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.opengridcomputing.com ([72.48.136.20]:52074 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750810AbaDLOkJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 12 Apr 2014 10:40:09 -0400
-From: Steve Wise <swise@opengridcomputing.com>
-Subject: [PATCH V2] xprtrdma: mind the device's max fast register page list
-	depth
-To: trond.myklebust@primarydata.com
-Cc: linux-rdma@vger.kernel.org, linux-nfs@vger.kernel.org,
-        chuck.lever@oracle.com
-Date: Sat, 12 Apr 2014 09:40:08 -0500
-Message-ID: <20140412144008.4553.33418.stgit@build.ogc.int>
+Received: from mx11.netapp.com ([216.240.18.76]:40311 "EHLO mx11.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750983AbaDQVJu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 17 Apr 2014 17:09:50 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
+Subject: [PATCH 01/17] NFS: Create a common argument structure for reads and writes
+Date: Thu, 17 Apr 2014 17:09:25 -0400
+Message-ID: <1397768981-12856-2-git-send-email-Anna.Schumaker@Netapp.com>
+In-Reply-To: <1397768981-12856-1-git-send-email-Anna.Schumaker@Netapp.com>
+References: <1397768981-12856-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Some rdma devices don't support a fast register page list depth of
-at least RPCRDMA_MAX_DATA_SEGS.  So xprtrdma needs to chunk its fast
-register regions according to the minimum of the device max supported
-depth or RPCRDMA_MAX_DATA_SEGS.
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
 
-Changes since V1:
+Reads and writes have very similar arguments.  This patch combines them
+together and documents the few fields used only by write.
 
-- removed useless BUG_ON()
-- removed changes to rpcrdma_register_external() that were unnecessary
-
-Signed-off-by: Steve Wise <swise@opengridcomputing.com>
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
+ fs/nfs/nfs2xdr.c        |  8 ++++----
+ fs/nfs/nfs3xdr.c        |  8 ++++----
+ fs/nfs/nfs4proc.c       |  4 ++--
+ fs/nfs/nfs4xdr.c        | 10 ++++++----
+ fs/nfs/read.c           |  2 +-
+ fs/nfs/write.c          |  2 +-
+ include/linux/nfs_xdr.h | 47 +++++++++++++++++++----------------------------
+ 7 files changed, 37 insertions(+), 44 deletions(-)
 
- net/sunrpc/xprtrdma/rpc_rdma.c  |    4 ---
- net/sunrpc/xprtrdma/verbs.c     |   47 +++++++++++++++++++++++++++++----------
- net/sunrpc/xprtrdma/xprt_rdma.h |    1 +
- 3 files changed, 36 insertions(+), 16 deletions(-)
-
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index 96ead52..400aa1b 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -248,10 +248,6 @@ rpcrdma_create_chunks(struct rpc_rqst *rqst, struct xdr_buf *target,
- 	/* success. all failures return above */
- 	req->rl_nchunks = nchunks;
+diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
+index 62db136..461cd8b 100644
+--- a/fs/nfs/nfs2xdr.c
++++ b/fs/nfs/nfs2xdr.c
+@@ -613,7 +613,7 @@ static void nfs2_xdr_enc_readlinkargs(struct rpc_rqst *req,
+  *	};
+  */
+ static void encode_readargs(struct xdr_stream *xdr,
+-			    const struct nfs_readargs *args)
++			    const struct nfs_pgio_args *args)
+ {
+ 	u32 offset = args->offset;
+ 	u32 count = args->count;
+@@ -629,7 +629,7 @@ static void encode_readargs(struct xdr_stream *xdr,
  
--	BUG_ON(nchunks == 0);
--	BUG_ON((r_xprt->rx_ia.ri_memreg_strategy == RPCRDMA_FRMR)
--	       && (nchunks > 3));
+ static void nfs2_xdr_enc_readargs(struct rpc_rqst *req,
+ 				  struct xdr_stream *xdr,
+-				  const struct nfs_readargs *args)
++				  const struct nfs_pgio_args *args)
+ {
+ 	encode_readargs(xdr, args);
+ 	prepare_reply_buffer(req, args->pages, args->pgbase,
+@@ -649,7 +649,7 @@ static void nfs2_xdr_enc_readargs(struct rpc_rqst *req,
+  *	};
+  */
+ static void encode_writeargs(struct xdr_stream *xdr,
+-			     const struct nfs_writeargs *args)
++			     const struct nfs_pgio_args *args)
+ {
+ 	u32 offset = args->offset;
+ 	u32 count = args->count;
+@@ -669,7 +669,7 @@ static void encode_writeargs(struct xdr_stream *xdr,
+ 
+ static void nfs2_xdr_enc_writeargs(struct rpc_rqst *req,
+ 				   struct xdr_stream *xdr,
+-				   const struct nfs_writeargs *args)
++				   const struct nfs_pgio_args *args)
+ {
+ 	encode_writeargs(xdr, args);
+ 	xdr->buf->flags |= XDRBUF_WRITE;
+diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
+index fa6d721..02f16c2 100644
+--- a/fs/nfs/nfs3xdr.c
++++ b/fs/nfs/nfs3xdr.c
+@@ -953,7 +953,7 @@ static void nfs3_xdr_enc_readlink3args(struct rpc_rqst *req,
+  *	};
+  */
+ static void encode_read3args(struct xdr_stream *xdr,
+-			     const struct nfs_readargs *args)
++			     const struct nfs_pgio_args *args)
+ {
+ 	__be32 *p;
+ 
+@@ -966,7 +966,7 @@ static void encode_read3args(struct xdr_stream *xdr,
+ 
+ static void nfs3_xdr_enc_read3args(struct rpc_rqst *req,
+ 				   struct xdr_stream *xdr,
+-				   const struct nfs_readargs *args)
++				   const struct nfs_pgio_args *args)
+ {
+ 	encode_read3args(xdr, args);
+ 	prepare_reply_buffer(req, args->pages, args->pgbase,
+@@ -992,7 +992,7 @@ static void nfs3_xdr_enc_read3args(struct rpc_rqst *req,
+  *	};
+  */
+ static void encode_write3args(struct xdr_stream *xdr,
+-			      const struct nfs_writeargs *args)
++			      const struct nfs_pgio_args *args)
+ {
+ 	__be32 *p;
+ 
+@@ -1008,7 +1008,7 @@ static void encode_write3args(struct xdr_stream *xdr,
+ 
+ static void nfs3_xdr_enc_write3args(struct rpc_rqst *req,
+ 				    struct xdr_stream *xdr,
+-				    const struct nfs_writeargs *args)
++				    const struct nfs_pgio_args *args)
+ {
+ 	encode_write3args(xdr, args);
+ 	xdr->buf->flags |= XDRBUF_WRITE;
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 21cd1f2..4794ca6 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -4055,7 +4055,7 @@ static int nfs4_read_done_cb(struct rpc_task *task, struct nfs_read_data *data)
+ }
+ 
+ static bool nfs4_read_stateid_changed(struct rpc_task *task,
+-		struct nfs_readargs *args)
++		struct nfs_pgio_args *args)
+ {
+ 
+ 	if (!nfs4_error_stateid_expired(task->tk_status) ||
+@@ -4121,7 +4121,7 @@ static int nfs4_write_done_cb(struct rpc_task *task, struct nfs_write_data *data
+ }
+ 
+ static bool nfs4_write_stateid_changed(struct rpc_task *task,
+-		struct nfs_writeargs *args)
++		struct nfs_pgio_args *args)
+ {
+ 
+ 	if (!nfs4_error_stateid_expired(task->tk_status) ||
+diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+index 73ce8d4..032159c 100644
+--- a/fs/nfs/nfs4xdr.c
++++ b/fs/nfs/nfs4xdr.c
+@@ -1556,7 +1556,8 @@ static void encode_putrootfh(struct xdr_stream *xdr, struct compound_hdr *hdr)
+ 	encode_op_hdr(xdr, OP_PUTROOTFH, decode_putrootfh_maxsz, hdr);
+ }
+ 
+-static void encode_read(struct xdr_stream *xdr, const struct nfs_readargs *args, struct compound_hdr *hdr)
++static void encode_read(struct xdr_stream *xdr, const struct nfs_pgio_args *args,
++			struct compound_hdr *hdr)
+ {
+ 	__be32 *p;
+ 
+@@ -1701,7 +1702,8 @@ static void encode_setclientid_confirm(struct xdr_stream *xdr, const struct nfs4
+ 	encode_nfs4_verifier(xdr, &arg->confirm);
+ }
+ 
+-static void encode_write(struct xdr_stream *xdr, const struct nfs_writeargs *args, struct compound_hdr *hdr)
++static void encode_write(struct xdr_stream *xdr, const struct nfs_pgio_args *args,
++			 struct compound_hdr *hdr)
+ {
+ 	__be32 *p;
+ 
+@@ -2451,7 +2453,7 @@ static void nfs4_xdr_enc_readdir(struct rpc_rqst *req, struct xdr_stream *xdr,
+  * Encode a READ request
+  */
+ static void nfs4_xdr_enc_read(struct rpc_rqst *req, struct xdr_stream *xdr,
+-			      struct nfs_readargs *args)
++			      struct nfs_pgio_args *args)
+ {
+ 	struct compound_hdr hdr = {
+ 		.minorversion = nfs4_xdr_minorversion(&args->seq_args),
+@@ -2513,7 +2515,7 @@ static void nfs4_xdr_enc_getacl(struct rpc_rqst *req, struct xdr_stream *xdr,
+  * Encode a WRITE request
+  */
+ static void nfs4_xdr_enc_write(struct rpc_rqst *req, struct xdr_stream *xdr,
+-			       struct nfs_writeargs *args)
++			       struct nfs_pgio_args *args)
+ {
+ 	struct compound_hdr hdr = {
+ 		.minorversion = nfs4_xdr_minorversion(&args->seq_args),
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index 7f87461..46d5552 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -470,7 +470,7 @@ int nfs_readpage_result(struct rpc_task *task, struct nfs_read_data *data)
+ 
+ static void nfs_readpage_retry(struct rpc_task *task, struct nfs_read_data *data)
+ {
+-	struct nfs_readargs *argp = &data->args;
++	struct nfs_pgio_args *argp = &data->args;
+ 	struct nfs_readres *resp = &data->res;
+ 
+ 	/* This is a short read! */
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index ee6d46f..25ba383 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1388,7 +1388,7 @@ static int nfs_should_remove_suid(const struct inode *inode)
+  */
+ void nfs_writeback_done(struct rpc_task *task, struct nfs_write_data *data)
+ {
+-	struct nfs_writeargs	*argp = &data->args;
++	struct nfs_pgio_args	*argp = &data->args;
+ 	struct nfs_writeres	*resp = &data->res;
+ 	struct inode		*inode = data->header->inode;
+ 	int status;
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 3e8fc1f..9ce2a48 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -491,18 +491,6 @@ struct nfs4_delegreturnres {
+ /*
+  * Arguments to the read call.
+  */
+-struct nfs_readargs {
+-	struct nfs4_sequence_args	seq_args;
+-	struct nfs_fh *		fh;
+-	struct nfs_open_context *context;
+-	struct nfs_lock_context *lock_context;
+-	nfs4_stateid		stateid;
+-	__u64			offset;
+-	__u32			count;
+-	unsigned int		pgbase;
+-	struct page **		pages;
+-};
 -
- 	/*
- 	 * finish off header. If write, marshal discrim and nchunks.
- 	 */
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 93726560..55fb09a 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -539,6 +539,11 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
- 				__func__);
- 			memreg = RPCRDMA_REGISTER;
- #endif
-+		} else {
-+			/* Mind the ia limit on FRMR page list depth */
-+			ia->ri_max_frmr_depth = min_t(unsigned int,
-+				RPCRDMA_MAX_DATA_SEGS,
-+				devattr.max_fast_reg_page_list_len);
- 		}
- 		break;
- 	}
-@@ -659,24 +664,42 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
- 	ep->rep_attr.srq = NULL;
- 	ep->rep_attr.cap.max_send_wr = cdata->max_requests;
- 	switch (ia->ri_memreg_strategy) {
--	case RPCRDMA_FRMR:
-+	case RPCRDMA_FRMR: {
-+		int depth = 7;
-+
- 		/* Add room for frmr register and invalidate WRs.
- 		 * 1. FRMR reg WR for head
- 		 * 2. FRMR invalidate WR for head
--		 * 3. FRMR reg WR for pagelist
--		 * 4. FRMR invalidate WR for pagelist
-+		 * 3. N FRMR reg WRs for pagelist
-+		 * 4. N FRMR invalidate WRs for pagelist
- 		 * 5. FRMR reg WR for tail
- 		 * 6. FRMR invalidate WR for tail
- 		 * 7. The RDMA_SEND WR
- 		 */
--		ep->rep_attr.cap.max_send_wr *= 7;
-+
-+		/* Calculate N if the device max FRMR depth is smaller than
-+		 * RPCRDMA_MAX_DATA_SEGS.
-+		 */
-+		if (ia->ri_max_frmr_depth < RPCRDMA_MAX_DATA_SEGS) {
-+			int delta = RPCRDMA_MAX_DATA_SEGS -
-+				    ia->ri_max_frmr_depth;
-+
-+			do {
-+				depth += 2; /* FRMR reg + invalidate */
-+				delta -= ia->ri_max_frmr_depth;
-+			} while (delta > 0);
-+
-+		}
-+		ep->rep_attr.cap.max_send_wr *= depth;
- 		if (ep->rep_attr.cap.max_send_wr > devattr.max_qp_wr) {
--			cdata->max_requests = devattr.max_qp_wr / 7;
-+			cdata->max_requests = devattr.max_qp_wr / depth;
- 			if (!cdata->max_requests)
- 				return -EINVAL;
--			ep->rep_attr.cap.max_send_wr = cdata->max_requests * 7;
-+			ep->rep_attr.cap.max_send_wr = cdata->max_requests *
-+						       depth;
- 		}
- 		break;
-+	}
- 	case RPCRDMA_MEMWINDOWS_ASYNC:
- 	case RPCRDMA_MEMWINDOWS:
- 		/* Add room for mw_binds+unbinds - overkill! */
-@@ -1043,16 +1066,16 @@ rpcrdma_buffer_create(struct rpcrdma_buffer *buf, struct rpcrdma_ep *ep,
- 	case RPCRDMA_FRMR:
- 		for (i = buf->rb_max_requests * RPCRDMA_MAX_SEGS; i; i--) {
- 			r->r.frmr.fr_mr = ib_alloc_fast_reg_mr(ia->ri_pd,
--							 RPCRDMA_MAX_SEGS);
-+						ia->ri_max_frmr_depth);
- 			if (IS_ERR(r->r.frmr.fr_mr)) {
- 				rc = PTR_ERR(r->r.frmr.fr_mr);
- 				dprintk("RPC:       %s: ib_alloc_fast_reg_mr"
- 					" failed %i\n", __func__, rc);
- 				goto out;
- 			}
--			r->r.frmr.fr_pgl =
--				ib_alloc_fast_reg_page_list(ia->ri_id->device,
--							    RPCRDMA_MAX_SEGS);
-+			r->r.frmr.fr_pgl = ib_alloc_fast_reg_page_list(
-+						ia->ri_id->device,
-+						ia->ri_max_frmr_depth);
- 			if (IS_ERR(r->r.frmr.fr_pgl)) {
- 				rc = PTR_ERR(r->r.frmr.fr_pgl);
- 				dprintk("RPC:       %s: "
-@@ -1498,8 +1521,8 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
- 	seg1->mr_offset -= pageoff;	/* start of page */
- 	seg1->mr_len += pageoff;
- 	len = -pageoff;
--	if (*nsegs > RPCRDMA_MAX_DATA_SEGS)
--		*nsegs = RPCRDMA_MAX_DATA_SEGS;
-+	if (*nsegs > ia->ri_max_frmr_depth)
-+		*nsegs = ia->ri_max_frmr_depth;
- 	for (page_no = i = 0; i < *nsegs;) {
- 		rpcrdma_map_one(ia, seg, writing);
- 		pa = seg->mr_dma;
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index cc1445d..98340a3 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -66,6 +66,7 @@ struct rpcrdma_ia {
- 	struct completion	ri_done;
- 	int			ri_async_rc;
- 	enum rpcrdma_memreg	ri_memreg_strategy;
-+	unsigned int		ri_max_frmr_depth;
+ struct nfs_readres {
+ 	struct nfs4_sequence_res	seq_res;
+ 	struct nfs_fattr *	fattr;
+@@ -513,20 +501,6 @@ struct nfs_readres {
+ /*
+  * Arguments to the write call.
+  */
+-struct nfs_writeargs {
+-	struct nfs4_sequence_args	seq_args;
+-	struct nfs_fh *		fh;
+-	struct nfs_open_context *context;
+-	struct nfs_lock_context *lock_context;
+-	nfs4_stateid		stateid;
+-	__u64			offset;
+-	__u32			count;
+-	enum nfs3_stable_how	stable;
+-	unsigned int		pgbase;
+-	struct page **		pages;
+-	const u32 *		bitmask;
+-};
+-
+ struct nfs_write_verifier {
+ 	char			data[8];
+ };
+@@ -545,6 +519,23 @@ struct nfs_writeres {
  };
  
  /*
++ * Arguments shared by the read and write call.
++ */
++struct nfs_pgio_args {
++	struct nfs4_sequence_args	seq_args;
++	struct nfs_fh *		fh;
++	struct nfs_open_context *context;
++	struct nfs_lock_context *lock_context;
++	nfs4_stateid		stateid;
++	__u64			offset;
++	__u32			count;
++	enum nfs3_stable_how	stable;		/* used by write */
++	unsigned int		pgbase;
++	struct page **		pages;
++	const u32 *		bitmask;	/* used by write */
++};
++
++/*
+  * Arguments to the commit call.
+  */
+ struct nfs_commitargs {
+@@ -1269,7 +1260,7 @@ struct nfs_read_data {
+ 	struct list_head	list;
+ 	struct rpc_task		task;
+ 	struct nfs_fattr	fattr;	/* fattr storage */
+-	struct nfs_readargs args;
++	struct nfs_pgio_args	args;
+ 	struct nfs_readres  res;
+ 	unsigned long		timestamp;	/* For lease renewal */
+ 	int (*read_done_cb) (struct rpc_task *task, struct nfs_read_data *data);
+@@ -1321,7 +1312,7 @@ struct nfs_write_data {
+ 	struct rpc_task		task;
+ 	struct nfs_fattr	fattr;
+ 	struct nfs_writeverf	verf;
+-	struct nfs_writeargs	args;		/* argument struct */
++	struct nfs_pgio_args	args;		/* argument struct */
+ 	struct nfs_writeres	res;		/* result struct */
+ 	unsigned long		timestamp;	/* For lease renewal */
+ 	int (*write_done_cb) (struct rpc_task *task, struct nfs_write_data *data);
+-- 
+1.9.2
 
