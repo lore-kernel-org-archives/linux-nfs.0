@@ -1,47 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from static-209-166-131-148.expedient.com ([209.166.131.148]:35436
-	"EHLO natasha.panasas.com" rhost-flags-OK-FAIL-OK-OK)
-	by vger.kernel.org with ESMTP id S1751032AbaDCJnR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Apr 2014 05:43:17 -0400
-Message-ID: <533D2D24.40107@panasas.com>
-Date: Thu, 3 Apr 2014 12:43:00 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from mx11.netapp.com ([216.240.18.76]:19206 "EHLO mx11.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750838AbaDQVJt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 17 Apr 2014 17:09:49 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
+Subject: [PATCH 00/17] NFS: Create a common path used by reads and writes
+Date: Thu, 17 Apr 2014 17:09:24 -0400
+Message-ID: <1397768981-12856-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
-To: Jeff Layton <jlayton@redhat.com>, Tom Tucker <tom@opengridcomputing.com>
-CC: <bfields@fieldses.org>, <linux-nfs@vger.kernel.org>,
-        <swise@opengridcomputing.com>, Tom Talpey <tmtalpey@gmail.com>
-Subject: Re: [PATCH] svcrdma: fix offset calculation for non-page aligned
- sge entries
-References: <1394635867-19089-1-git-send-email-jlayton@redhat.com>	<5320C6DE.4090807@opengridcomputing.com> <20140312171832.33f04ee8@tlielax.poochiereds.net>
-In-Reply-To: <20140312171832.33f04ee8@tlielax.poochiereds.net>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 03/12/2014 11:18 PM, Jeff Layton wrote:
-> 
-> Ok, I may need to rejigger that logic to account for that case. I'll do
-> that and send a v2 once I test it out...
-> 
+I noticed that much of the read and write code was almost identical, with
+only minor differences in argument types and names.  These patches seek to
+unify these two codepaths wherever possible in order to make future changes
+easier.
 
-Hi Jeff in obj-layout we have this code:
+Table of contents:
+	Patches 01 - 05: Set up common data structures.
+	Patches 06 - 10: Set up a shared rpc_call_ops struct.
+	Patches 11 - 15: Set up a shared nfs_pageio_ops struct.
 
-	if (*p_pgbase > PAGE_SIZE) {
-		dprintk("%s: pgbase(0x%x) > PAGE_SIZE\n", __func__, *p_pgbase);
-		*p_pages += *p_pgbase >> PAGE_SHIFT;
-		*p_pgbase &= ~PAGE_MASK;
-	}
+Some of the commit setup was moved into common code, but I'm willing to
+move this back into write.c if this looks to be a problem.
 
-ie. advance the page_array pointer and keep the pgbase within page.
+Future work:
+	I have rough pNFS patches that don't currently apply.  They need
+	more testing, and I figured this was enough code churn already.
 
-if I recall correctly this case happens when you return a short read/write
-then the retry comes again with same page_array but with base jumping over
-the previous short IO, and length with the reminder.
+Testing:
+	I tested every version of NFS using the cthon and xfs tests without
+	hitting anything new.  Any extra testing would be great seeing how
+	the read and write paths are vitally important.
 
-I'm not sure what is the code path that feeds your xdr stuff but it
-might not filter out the way we do in obj-lo. the ORE is the same
-it assumes pgbase < PAGE_SIZE.
+Questions?  Comments?  Death threats?
 
-Cheers
-Boaz
+Anna
+
+
+Anna Schumaker (17):
+  NFS: Create a common argument structure for reads and writes
+  NFS: Create a common results structure for reads and writes
+  NFS: Create a common read and write data struct
+  NFS: Create a common read and write header struct
+  NFS: Move the write verifier into the nfs_pgio_header
+  NFS: Create a common pgio_alloc and pgio_release function
+  NFS: Create a common rw_header_alloc and rw_header_free function
+  NFS: Create a common pgio_rpc_prepare function
+  NFS: Create a common nfs_pgio_result_common function
+  NFS: Create a common pgio_common_ops struct
+  NFS: Create a common rpcsetup function for reads and writes
+  NFS: Create a common pgio_error function
+  NFS: Create a generic_pgio function
+  NFS: Create a common initiate_pgio() function
+  NFS: Create a common multiple_pgios() function
+  NFS: Create a common generic_pg_pgios()
+  NFS: Create a common nfs_pageio_ops instance
+
+ fs/nfs/Makefile                  |   2 +-
+ fs/nfs/blocklayout/blocklayout.c |  22 +-
+ fs/nfs/direct.c                  |   4 +-
+ fs/nfs/internal.h                |  31 ++-
+ fs/nfs/nfs2xdr.c                 |  14 +-
+ fs/nfs/nfs3proc.c                |  19 +-
+ fs/nfs/nfs3xdr.c                 |  16 +-
+ fs/nfs/nfs4_fs.h                 |   4 +-
+ fs/nfs/nfs4filelayout.c          |  40 ++--
+ fs/nfs/nfs4proc.c                |  52 ++---
+ fs/nfs/nfs4trace.h               |   8 +-
+ fs/nfs/nfs4xdr.c                 |  19 +-
+ fs/nfs/objlayout/objio_osd.c     |   6 +-
+ fs/nfs/objlayout/objlayout.c     |  16 +-
+ fs/nfs/objlayout/objlayout.h     |   8 +-
+ fs/nfs/pageio.c                  | 386 +++++++++++++++++++++++++++++++++++
+ fs/nfs/pagelist.c                |   2 +
+ fs/nfs/pnfs.c                    |  46 ++---
+ fs/nfs/pnfs.h                    |  10 +-
+ fs/nfs/proc.c                    |  19 +-
+ fs/nfs/read.c                    | 348 +++-----------------------------
+ fs/nfs/write.c                   | 425 +++++----------------------------------
+ include/linux/nfs_fs.h           |   3 +-
+ include/linux/nfs_page.h         |  13 ++
+ include/linux/nfs_xdr.h          |  94 +++------
+ 25 files changed, 661 insertions(+), 946 deletions(-)
+ create mode 100644 fs/nfs/pageio.c
+
+-- 
+1.9.2
 
