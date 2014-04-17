@@ -1,33 +1,184 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:51526 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753367AbaDSOiG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 19 Apr 2014 10:38:06 -0400
-Date: Sat, 19 Apr 2014 07:38:04 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Bruce Fields <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 21/70] NFSd: Get rid of the lockowner_ino_hashtbl
-Message-ID: <20140419143804.GB25682@infradead.org>
-References: <1397846704-14567-13-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-14-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-15-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-16-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-17-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-18-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-19-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-20-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-21-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-22-git-send-email-trond.myklebust@primarydata.com>
+Received: from mx12.netapp.com ([216.240.18.77]:9346 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751394AbaDQVKu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 17 Apr 2014 17:10:50 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
+Subject: [PATCH 15/17] NFS: Create a common multiple_pgios() function
+Date: Thu, 17 Apr 2014 17:09:39 -0400
+Message-ID: <1397768981-12856-16-git-send-email-Anna.Schumaker@Netapp.com>
+In-Reply-To: <1397768981-12856-1-git-send-email-Anna.Schumaker@Netapp.com>
+References: <1397768981-12856-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1397846704-14567-22-git-send-email-trond.myklebust@primarydata.com>
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Apr 18, 2014 at 02:44:15PM -0400, Trond Myklebust wrote:
-> It is no longer used.
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
 
-I think this should be folded into the previous patch, which is the
-reason why it is unused now.
+Once again, these two functions look identical in the read and write
+case.  Time to combine them together!
+
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+---
+ fs/nfs/internal.h |  1 +
+ fs/nfs/pageio.c   | 29 +++++++++++++++++++++++++++++
+ fs/nfs/read.c     | 32 ++------------------------------
+ fs/nfs/write.c    | 31 +------------------------------
+ 4 files changed, 33 insertions(+), 60 deletions(-)
+
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 027d72c..81c314c 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -402,6 +402,7 @@ extern void nfs_pgio_data_release(struct nfs_pgio_data *);
+ extern int nfs_generic_pgio(struct nfs_pageio_descriptor *, struct nfs_pgio_header *);
+ extern int nfs_initiate_pgio(struct rpc_clnt *, struct nfs_pgio_data *,
+ 			     const struct rpc_call_ops *, int, int);
++extern int nfs_do_multiple_pgios(struct list_head *, const struct rpc_call_ops *, int);
+ 
+ /* read.c */
+ extern void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
+diff --git a/fs/nfs/pageio.c b/fs/nfs/pageio.c
+index c80e611..4a98d54 100644
+--- a/fs/nfs/pageio.c
++++ b/fs/nfs/pageio.c
+@@ -173,6 +173,35 @@ out:
+ }
+ EXPORT_SYMBOL_GPL(nfs_initiate_pgio);
+ 
++static int nfs_do_pgio(struct nfs_pgio_data *data,
++		       const struct rpc_call_ops *call_ops,
++		       int how)
++{
++	struct inode *inode = data->header->inode;
++
++	return nfs_initiate_pgio(NFS_CLIENT(inode), data, call_ops, how, 0);
++}
++
++int nfs_do_multiple_pgios(struct list_head *head,
++				 const struct rpc_call_ops *call_ops,
++				 int how)
++{
++	struct nfs_pgio_data *data;
++	int ret = 0;
++
++	while (!list_empty(head)) {
++		int ret2;
++
++		data = list_first_entry(head, struct nfs_pgio_data, list);
++		list_del_init(&data->list);
++
++		ret2 = nfs_do_pgio(data, call_ops, how);
++		 if (ret == 0)
++			 ret = ret2;
++	}
++	return ret;
++}
++
+ static int nfs_pgio_error(struct nfs_pageio_descriptor *desc,
+ 			  struct nfs_pgio_header *hdr)
+ {
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index ebea335..9dd1aeb 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -161,34 +161,6 @@ static void nfs_initiate_read(struct nfs_pgio_data *data, struct rpc_message *ms
+ 	NFS_PROTO(inode)->read_setup(data, msg);
+ }
+ 
+-static int nfs_do_read(struct nfs_pgio_data *data,
+-		const struct rpc_call_ops *call_ops)
+-{
+-	struct inode *inode = data->header->inode;
+-
+-	return nfs_initiate_pgio(NFS_CLIENT(inode), data, call_ops, 0, 0);
+-}
+-
+-static int
+-nfs_do_multiple_reads(struct list_head *head,
+-		const struct rpc_call_ops *call_ops)
+-{
+-	struct nfs_pgio_data *data;
+-	int ret = 0;
+-
+-	while (!list_empty(head)) {
+-		int ret2;
+-
+-		data = list_first_entry(head, struct nfs_pgio_data, list);
+-		list_del_init(&data->list);
+-
+-		ret2 = nfs_do_read(data, call_ops);
+-		if (ret == 0)
+-			ret = ret2;
+-	}
+-	return ret;
+-}
+-
+ static void
+ nfs_async_read_error(struct list_head *head)
+ {
+@@ -222,8 +194,8 @@ static int nfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc)
+ 	atomic_inc(&hdr->refcnt);
+ 	ret = nfs_generic_pgio(desc, hdr);
+ 	if (ret == 0)
+-		ret = nfs_do_multiple_reads(&hdr->rpc_list,
+-					    desc->pg_rpc_callops);
++		ret = nfs_do_multiple_pgios(&hdr->rpc_list,
++					    desc->pg_rpc_callops, 0);
+ 	if (atomic_dec_and_test(&hdr->refcnt))
+ 		hdr->completion_ops->completion(hdr);
+ 	return ret;
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 4279f80..28fdde2 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -945,35 +945,6 @@ static void nfs_initiate_write(struct nfs_pgio_data *data, struct rpc_message *m
+ 				 &task_setup_data->rpc_client, msg, data);
+ }
+ 
+-static int nfs_do_write(struct nfs_pgio_data *data,
+-		const struct rpc_call_ops *call_ops,
+-		int how)
+-{
+-	struct inode *inode = data->header->inode;
+-
+-	return nfs_initiate_pgio(NFS_CLIENT(inode), data, call_ops, how, 0);
+-}
+-
+-static int nfs_do_multiple_writes(struct list_head *head,
+-		const struct rpc_call_ops *call_ops,
+-		int how)
+-{
+-	struct nfs_pgio_data *data;
+-	int ret = 0;
+-
+-	while (!list_empty(head)) {
+-		int ret2;
+-
+-		data = list_first_entry(head, struct nfs_pgio_data, list);
+-		list_del_init(&data->list);
+-		
+-		ret2 = nfs_do_write(data, call_ops, how);
+-		 if (ret == 0)
+-			 ret = ret2;
+-	}
+-	return ret;
+-}
+-
+ /* If a nfs_flush_* function fails, it should remove reqs from @head and
+  * call this on each, which will prepare them to be retried on next
+  * writeback using standard nfs.
+@@ -1018,7 +989,7 @@ static int nfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc)
+ 	atomic_inc(&hdr->refcnt);
+ 	ret = nfs_generic_pgio(desc, hdr);
+ 	if (ret == 0)
+-		ret = nfs_do_multiple_writes(&hdr->rpc_list,
++		ret = nfs_do_multiple_pgios(&hdr->rpc_list,
+ 					     desc->pg_rpc_callops,
+ 					     desc->pg_ioflags);
+ 	if (atomic_dec_and_test(&hdr->refcnt))
+-- 
+1.9.2
 
