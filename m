@@ -1,67 +1,170 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.linuxfoundation.org ([140.211.169.12]:48931 "EHLO
-	mail.linuxfoundation.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752533AbaD1TJd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Apr 2014 15:09:33 -0400
-Date: Mon, 28 Apr 2014 11:15:24 -0700
-From: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
-To: Jeff Layton <jlayton@poochiereds.net>
-Cc: linux-fsdevel@vger.kernel.org, Eric Van Hensbergen <ericvh@gmail.com>,
-        Ron Minnich <rminnich@sandia.gov>, Latchesar Ionkov <lucho@ionkov.net>,
-        David Howells <dhowells@redhat.com>, Sage Weil <sage@inktank.com>,
-        Miklos Szeredi <miklos@szeredi.hu>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Alexander Viro <viro@zeniv.linux.org.uk>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        "open list:STAGING SUBSYSTEM" <devel@driverdev.osuosl.org>,
-        open list <linux-kernel@vger.kernel.org>,
-        "open list:9P FILE SYSTEM" <v9fs-developer@lists.sourceforge.net>,
-        "open list:AFS FILESYSTEM &..." <linux-afs@lists.infradead.org>,
-        "open list:CEPH DISTRIBUTED..." <ceph-devel@vger.kernel.org>,
-        "open list:FUSE: FILESYSTEM..." <fuse-devel@lists.sourceforge.net>,
-        "open list:NFS, SUNRPC, AND..." <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] locks: ensure that fl_owner is always initialized
- properly in flock and lease codepaths
-Message-ID: <20140428181524.GA18775@kroah.com>
-References: <1398707413-32384-1-git-send-email-jlayton@poochiereds.net>
+Received: from mx11.netapp.com ([216.240.18.76]:57965 "EHLO mx11.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751208AbaDQVKZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 17 Apr 2014 17:10:25 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
+Subject: [PATCH 10/17] NFS: Create a common rpc_call_ops struct
+Date: Thu, 17 Apr 2014 17:09:34 -0400
+Message-ID: <1397768981-12856-11-git-send-email-Anna.Schumaker@Netapp.com>
+In-Reply-To: <1397768981-12856-1-git-send-email-Anna.Schumaker@Netapp.com>
+References: <1397768981-12856-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1398707413-32384-1-git-send-email-jlayton@poochiereds.net>
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Apr 28, 2014 at 01:50:13PM -0400, Jeff Layton wrote:
-> Currently, the fl_owner isn't set for flock locks. Some filesystems use
-> byte-range locks to simulate flock locks and there is a common idiom in
-> those that does:
-> 
->     fl->fl_owner = (fl_owner_t)filp;
->     fl->fl_start = 0;
->     fl->fl_end = OFFSET_MAX;
-> 
-> Since flock locks are generally "owned" by the open file description,
-> move this into the common flock lock setup code. The fl_start and fl_end
-> fields are already set appropriately, so remove the unneeded setting of
-> that in flock ops in those filesystems as well.
-> 
-> Finally, the lease code also sets the fl_owner as if they were owned by
-> the process and not the open file description. This is incorrect as
-> leases have the same ownership semantics as flock locks. Set them the
-> same way. The lease code doesn't actually use the fl_owner value for
-> anything, so this is more for consistency's sake than a bugfix.
-> 
-> Reported-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> Signed-off-by: Jeff Layton <jlayton@poochiereds.net>
-> ---
->  drivers/staging/lustre/lustre/llite/file.c | 17 ++++++-----------
->  fs/9p/vfs_file.c                           |  3 ---
->  fs/afs/flock.c                             |  4 ----
->  fs/ceph/locks.c                            | 10 ++--------
->  fs/fuse/file.c                             |  1 -
->  fs/locks.c                                 |  4 +++-
->  fs/nfs/file.c                              |  4 ----
->  7 files changed, 11 insertions(+), 32 deletions(-)
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
 
-Staging portion:
+The read and write paths set up this struct in exactly the same way, so
+create a single shared struct.
 
-Acked-by: Greg Kroah-Hartman <gregkh@linuxfoundation.org>
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+---
+ fs/nfs/internal.h |  4 +---
+ fs/nfs/pageio.c   | 10 ++++++++--
+ fs/nfs/read.c     | 11 ++---------
+ fs/nfs/write.c    | 11 ++---------
+ 4 files changed, 13 insertions(+), 23 deletions(-)
+
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index b18cca4..798eb47 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -396,13 +396,11 @@ extern int nfs4_get_rootfh(struct nfs_server *server, struct nfs_fh *mntfh, bool
+ struct nfs_pgio_completion_ops;
+ 
+ /* pageio.c */
++extern const struct rpc_call_ops nfs_pgio_common_ops;
+ extern struct nfs_rw_header *nfs_rw_header_alloc(const struct nfs_rw_ops *);
+ extern void nfs_rw_header_free(struct nfs_pgio_header *);
+ extern struct nfs_pgio_data *nfs_pgio_data_alloc(struct nfs_pgio_header *, unsigned int);
+ extern void nfs_pgio_data_release(struct nfs_pgio_data *);
+-extern void nfs_pgio_prepare(struct rpc_task *, void *);
+-extern void nfs_pgio_release_common(void *);
+-extern void nfs_pgio_result_common(struct rpc_task *, void *);
+ 
+ /* read.c */
+ extern void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
+diff --git a/fs/nfs/pageio.c b/fs/nfs/pageio.c
+index efbcc44..f64fd70 100644
+--- a/fs/nfs/pageio.c
++++ b/fs/nfs/pageio.c
+@@ -87,7 +87,7 @@ void nfs_pgio_data_release(struct nfs_pgio_data *data)
+ }
+ EXPORT_SYMBOL_GPL(nfs_pgio_data_release);
+ 
+-void nfs_pgio_prepare(struct rpc_task *task, void *calldata)
++static void nfs_pgio_prepare(struct rpc_task *task, void *calldata)
+ {
+ 	struct nfs_pgio_data *data = calldata;
+ 	int err;
+@@ -114,7 +114,7 @@ static int nfs_pgio_result(struct rpc_task *task, struct nfs_pgio_data *data)
+ 	return data->header->rw_ops->rw_result(task, data, inode);
+ }
+ 
+-void nfs_pgio_result_common(struct rpc_task *task, void *calldata)
++static void nfs_pgio_result_common(struct rpc_task *task, void *calldata)
+ {
+ 	struct nfs_pgio_data *data = calldata;
+ 
+@@ -125,3 +125,9 @@ void nfs_pgio_result_common(struct rpc_task *task, void *calldata)
+ 	else
+ 		data->header->rw_ops->rw_result_common(task, data);
+ }
++
++const struct rpc_call_ops nfs_pgio_common_ops = {
++	.rpc_call_prepare = nfs_pgio_prepare,
++	.rpc_call_done = nfs_pgio_result_common,
++	.rpc_release = nfs_pgio_release_common,
++};
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index 4f49507..98373ba 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -29,7 +29,6 @@
+ #define NFSDBG_FACILITY		NFSDBG_PAGECACHE
+ 
+ static const struct nfs_pageio_ops nfs_pageio_read_ops;
+-static const struct rpc_call_ops nfs_read_common_ops;
+ static const struct nfs_pgio_completion_ops nfs_async_read_completion_ops;
+ static const struct nfs_rw_ops nfs_rw_read_ops;
+ 
+@@ -314,7 +313,7 @@ static int nfs_pagein_multi(struct nfs_pageio_descriptor *desc,
+ 
+ 	nfs_list_remove_request(req);
+ 	nfs_list_add_request(req, &hdr->pages);
+-	desc->pg_rpc_callops = &nfs_read_common_ops;
++	desc->pg_rpc_callops = &nfs_pgio_common_ops;
+ 	return 0;
+ }
+ 
+@@ -343,7 +342,7 @@ static int nfs_pagein_one(struct nfs_pageio_descriptor *desc,
+ 
+ 	nfs_read_rpcsetup(data, desc->pg_count, 0);
+ 	list_add(&data->list, &hdr->rpc_list);
+-	desc->pg_rpc_callops = &nfs_read_common_ops;
++	desc->pg_rpc_callops = &nfs_pgio_common_ops;
+ 	return 0;
+ }
+ 
+@@ -443,12 +442,6 @@ static void nfs_readpage_result_common(struct rpc_task *task, struct nfs_pgio_da
+ 		nfs_readpage_retry(task, data);
+ }
+ 
+-static const struct rpc_call_ops nfs_read_common_ops = {
+-	.rpc_call_prepare = nfs_pgio_prepare,
+-	.rpc_call_done = nfs_pgio_result_common,
+-	.rpc_release = nfs_pgio_release_common,
+-};
+-
+ /*
+  * Read a page over NFS.
+  * We read the page synchronously in the following case:
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index d2351a1..e492537 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -42,7 +42,6 @@
+  * Local function declarations
+  */
+ static void nfs_redirty_request(struct nfs_page *req);
+-static const struct rpc_call_ops nfs_write_common_ops;
+ static const struct rpc_call_ops nfs_commit_ops;
+ static const struct nfs_pgio_completion_ops nfs_async_write_completion_ops;
+ static const struct nfs_commit_completion_ops nfs_commit_completion_ops;
+@@ -1138,7 +1137,7 @@ static int nfs_flush_multi(struct nfs_pageio_descriptor *desc,
+ 	} while (nbytes != 0);
+ 	nfs_list_remove_request(req);
+ 	nfs_list_add_request(req, &hdr->pages);
+-	desc->pg_rpc_callops = &nfs_write_common_ops;
++	desc->pg_rpc_callops = &nfs_pgio_common_ops;
+ 	return 0;
+ }
+ 
+@@ -1182,7 +1181,7 @@ static int nfs_flush_one(struct nfs_pageio_descriptor *desc,
+ 	/* Set up the argument struct */
+ 	nfs_write_rpcsetup(data, desc->pg_count, 0, desc->pg_ioflags, &cinfo);
+ 	list_add(&data->list, &hdr->rpc_list);
+-	desc->pg_rpc_callops = &nfs_write_common_ops;
++	desc->pg_rpc_callops = &nfs_pgio_common_ops;
+ 	return 0;
+ }
+ 
+@@ -1272,12 +1271,6 @@ static void nfs_writeback_release_common(struct nfs_pgio_data *data)
+ 	}
+ }
+ 
+-static const struct rpc_call_ops nfs_write_common_ops = {
+-	.rpc_call_prepare = nfs_pgio_prepare,
+-	.rpc_call_done = nfs_pgio_result_common,
+-	.rpc_release = nfs_pgio_release_common,
+-};
+-
+ /*
+  * Special version of should_remove_suid() that ignores capabilities.
+  */
+-- 
+1.9.2
+
