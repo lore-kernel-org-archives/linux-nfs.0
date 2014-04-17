@@ -1,184 +1,158 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:9346 "EHLO mx12.netapp.com"
+Received: from cantor2.suse.de ([195.135.220.15]:56712 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751394AbaDQVKu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 17 Apr 2014 17:10:50 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
-Subject: [PATCH 15/17] NFS: Create a common multiple_pgios() function
-Date: Thu, 17 Apr 2014 17:09:39 -0400
-Message-ID: <1397768981-12856-16-git-send-email-Anna.Schumaker@Netapp.com>
-In-Reply-To: <1397768981-12856-1-git-send-email-Anna.Schumaker@Netapp.com>
-References: <1397768981-12856-1-git-send-email-Anna.Schumaker@Netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+	id S1751217AbaDQAvP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Apr 2014 20:51:15 -0400
+Date: Thu, 17 Apr 2014 10:51:05 +1000
+From: NeilBrown <neilb@suse.de>
+To: Dave Chinner <david@fromorbit.com>
+Cc: linux-mm@kvack.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, xfs@oss.sgi.com
+Subject: Re: [PATCH 16/19] VFS: use GFP_NOFS rather than GFP_KERNEL in
+ __d_alloc.
+Message-ID: <20140417105105.7772d09d@notabene.brown>
+In-Reply-To: <20140416090051.GK15995@dastard>
+References: <20140416033623.10604.69237.stgit@notabene.brown>
+	<20140416040337.10604.61837.stgit@notabene.brown>
+	<20140416062520.GG15995@dastard>
+	<20140416164941.37587da6@notabene.brown>
+	<20140416090051.GK15995@dastard>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/IOui8nzd.ykBR2y_BhCeNCV"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
+--Sig_/IOui8nzd.ykBR2y_BhCeNCV
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-Once again, these two functions look identical in the read and write
-case.  Time to combine them together!
+On Wed, 16 Apr 2014 19:00:51 +1000 Dave Chinner <david@fromorbit.com> wrote:
 
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
----
- fs/nfs/internal.h |  1 +
- fs/nfs/pageio.c   | 29 +++++++++++++++++++++++++++++
- fs/nfs/read.c     | 32 ++------------------------------
- fs/nfs/write.c    | 31 +------------------------------
- 4 files changed, 33 insertions(+), 60 deletions(-)
+> On Wed, Apr 16, 2014 at 04:49:41PM +1000, NeilBrown wrote:
+> > On Wed, 16 Apr 2014 16:25:20 +1000 Dave Chinner <david@fromorbit.com> w=
+rote:
+> >=20
+> > > On Wed, Apr 16, 2014 at 02:03:37PM +1000, NeilBrown wrote:
+> > > > __d_alloc can be called with i_mutex held, so it is safer to
+> > > > use GFP_NOFS.
+> > > >=20
+> > > > lockdep reports this can deadlock when loop-back NFS is in use,
+> > > > as nfsd may be required to write out for reclaim, and nfsd certainly
+> > > > takes i_mutex.
+> > >=20
+> > > But not the same i_mutex as is currently held. To me, this seems
+> > > like a false positive? If you are holding the i_mutex on an inode,
+> > > then you have a reference to the inode and hence memory reclaim
+> > > won't ever take the i_mutex on that inode.
+> > >=20
+> > > FWIW, this sort of false positive was a long stabding problem for
+> > > XFS - we managed to get rid of most of the false positives like this
+> > > by ensuring that only the ilock is taken within memory reclaim and
+> > > memory reclaim can't be entered while we hold the ilock.
+> > >=20
+> > > You can't do that with the i_mutex, though....
+> > >=20
+> > > Cheers,
+> > >=20
+> > > Dave.
+> >=20
+> > I'm not sure this is a false positive.
+> > You can call __d_alloc when creating a file and so are holding i_mutex =
+on the
+> > directory.
+> > nfsd might also want to access that directory.
+> >=20
+> > If there was only 1 nfsd thread, it would need to get i_mutex and do it=
+'s
+> > thing before replying to that request and so before it could handle the
+> > COMMIT which __d_alloc is waiting for.
+>=20
+> That seems wrong - the NFS client in __d_alloc holds a mutex on a
+> NFS client directory inode. The NFS server can't access that
+> specific mutex - it's on the other side of the "network". The NFS
+> server accesses mutexs from local filesystems, so __d_alloc would
+> have to be blocked on a local filesystem inode i_mutex for the nfsd
+> to get hung up behind it...
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 027d72c..81c314c 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -402,6 +402,7 @@ extern void nfs_pgio_data_release(struct nfs_pgio_data *);
- extern int nfs_generic_pgio(struct nfs_pageio_descriptor *, struct nfs_pgio_header *);
- extern int nfs_initiate_pgio(struct rpc_clnt *, struct nfs_pgio_data *,
- 			     const struct rpc_call_ops *, int, int);
-+extern int nfs_do_multiple_pgios(struct list_head *, const struct rpc_call_ops *, int);
- 
- /* read.c */
- extern void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
-diff --git a/fs/nfs/pageio.c b/fs/nfs/pageio.c
-index c80e611..4a98d54 100644
---- a/fs/nfs/pageio.c
-+++ b/fs/nfs/pageio.c
-@@ -173,6 +173,35 @@ out:
- }
- EXPORT_SYMBOL_GPL(nfs_initiate_pgio);
- 
-+static int nfs_do_pgio(struct nfs_pgio_data *data,
-+		       const struct rpc_call_ops *call_ops,
-+		       int how)
-+{
-+	struct inode *inode = data->header->inode;
-+
-+	return nfs_initiate_pgio(NFS_CLIENT(inode), data, call_ops, how, 0);
-+}
-+
-+int nfs_do_multiple_pgios(struct list_head *head,
-+				 const struct rpc_call_ops *call_ops,
-+				 int how)
-+{
-+	struct nfs_pgio_data *data;
-+	int ret = 0;
-+
-+	while (!list_empty(head)) {
-+		int ret2;
-+
-+		data = list_first_entry(head, struct nfs_pgio_data, list);
-+		list_del_init(&data->list);
-+
-+		ret2 = nfs_do_pgio(data, call_ops, how);
-+		 if (ret == 0)
-+			 ret = ret2;
-+	}
-+	return ret;
-+}
-+
- static int nfs_pgio_error(struct nfs_pageio_descriptor *desc,
- 			  struct nfs_pgio_header *hdr)
- {
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index ebea335..9dd1aeb 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -161,34 +161,6 @@ static void nfs_initiate_read(struct nfs_pgio_data *data, struct rpc_message *ms
- 	NFS_PROTO(inode)->read_setup(data, msg);
- }
- 
--static int nfs_do_read(struct nfs_pgio_data *data,
--		const struct rpc_call_ops *call_ops)
--{
--	struct inode *inode = data->header->inode;
--
--	return nfs_initiate_pgio(NFS_CLIENT(inode), data, call_ops, 0, 0);
--}
--
--static int
--nfs_do_multiple_reads(struct list_head *head,
--		const struct rpc_call_ops *call_ops)
--{
--	struct nfs_pgio_data *data;
--	int ret = 0;
--
--	while (!list_empty(head)) {
--		int ret2;
--
--		data = list_first_entry(head, struct nfs_pgio_data, list);
--		list_del_init(&data->list);
--
--		ret2 = nfs_do_read(data, call_ops);
--		if (ret == 0)
--			ret = ret2;
--	}
--	return ret;
--}
--
- static void
- nfs_async_read_error(struct list_head *head)
- {
-@@ -222,8 +194,8 @@ static int nfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc)
- 	atomic_inc(&hdr->refcnt);
- 	ret = nfs_generic_pgio(desc, hdr);
- 	if (ret == 0)
--		ret = nfs_do_multiple_reads(&hdr->rpc_list,
--					    desc->pg_rpc_callops);
-+		ret = nfs_do_multiple_pgios(&hdr->rpc_list,
-+					    desc->pg_rpc_callops, 0);
- 	if (atomic_dec_and_test(&hdr->refcnt))
- 		hdr->completion_ops->completion(hdr);
- 	return ret;
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 4279f80..28fdde2 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -945,35 +945,6 @@ static void nfs_initiate_write(struct nfs_pgio_data *data, struct rpc_message *m
- 				 &task_setup_data->rpc_client, msg, data);
- }
- 
--static int nfs_do_write(struct nfs_pgio_data *data,
--		const struct rpc_call_ops *call_ops,
--		int how)
--{
--	struct inode *inode = data->header->inode;
--
--	return nfs_initiate_pgio(NFS_CLIENT(inode), data, call_ops, how, 0);
--}
--
--static int nfs_do_multiple_writes(struct list_head *head,
--		const struct rpc_call_ops *call_ops,
--		int how)
--{
--	struct nfs_pgio_data *data;
--	int ret = 0;
--
--	while (!list_empty(head)) {
--		int ret2;
--
--		data = list_first_entry(head, struct nfs_pgio_data, list);
--		list_del_init(&data->list);
--		
--		ret2 = nfs_do_write(data, call_ops, how);
--		 if (ret == 0)
--			 ret = ret2;
--	}
--	return ret;
--}
--
- /* If a nfs_flush_* function fails, it should remove reqs from @head and
-  * call this on each, which will prepare them to be retried on next
-  * writeback using standard nfs.
-@@ -1018,7 +989,7 @@ static int nfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc)
- 	atomic_inc(&hdr->refcnt);
- 	ret = nfs_generic_pgio(desc, hdr);
- 	if (ret == 0)
--		ret = nfs_do_multiple_writes(&hdr->rpc_list,
-+		ret = nfs_do_multiple_pgios(&hdr->rpc_list,
- 					     desc->pg_rpc_callops,
- 					     desc->pg_ioflags);
- 	if (atomic_dec_and_test(&hdr->refcnt))
--- 
-1.9.2
+I'm not thinking of mutexes on the NFS inodes but the local filesystem inod=
+es
+exactly as you describe below.
 
+>=20
+> However, my confusion comes from the fact that we do GFP_KERNEL
+> memory allocation with the i_mutex held all over the place.
+
+Do we?  Should we?  Isn't the whole point of GFP_NOFS to use it when holding
+any filesystem lock?
+
+>           If the
+> problem is:
+>=20
+> 	local fs access -> i_mutex
+> .....
+> 	nfsd -> i_mutex (blocked)
+> .....
+> 	local fs access -> kmalloc(GFP_KERNEL)
+> 			-> direct reclaim
+> 			-> nfs_release_page
+> 			-> <send write/commit request to blocked nfsds>
+> 			   <deadlock>
+>=20
+> then why is it just __d_alloc that needs this fix?  Either this is a
+> problem *everywhere* or it's not a problem at all.
+
+I think it is a problem everywhere that it is a problem :-)
+If you are holding an FS lock, then you should be using GFP_NOFS.
+Currently a given filesystem can get away with sometimes using GFP_KERNEL
+because that particular lock never causes contention during reclaim for that
+particular filesystem.
+
+Adding loop-back NFS into the mix broadens the number of locks which can
+cause a problem as it creates interdependencies between different filesyste=
+ms.
+
+>=20
+> If it's a problem everywhere it means that we simply can't allow
+> reclaim from localhost NFS mounts to run from contexts that could
+> block an NFSD. i.e. you cannot run NFS client memory reclaim from
+> filesystems that are NFS server exported filesystems.....
+
+Well.. you cannot allow NFS client memory reclaim *while holding locks in*
+filesystems that are NFS exported.
+
+I think this is most effectively generalised to:
+  you cannot allow FS memory reclaim while holding locks in filesystems whi=
+ch
+  can be NFS exported
+
+which I think is largely the case already - and lockdep can help us find
+those places where we currently do allow FS reclaim while holding an FS loc=
+k.
+
+Thanks,
+NeilBrown
+
+--Sig_/IOui8nzd.ykBR2y_BhCeNCV
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.22 (GNU/Linux)
+
+iQIVAwUBU08leTnsnt1WYoG5AQJQzA/8Cvoi/4unSULSSR/yD8Bso7yrf/66DY4Y
+5BknlIQnXLLRnQKRYFbTeMA/Vku/rPyQeWPbX22ealsi2+p7uStAhaqSnAJPPPj/
+e+nfkJilCswjWqbuvcwU3oPHGxOA234vHiueT1uIvGyylFUuXvOtL1vPgtaFjlPs
+KUYjS36XSD17u/UfTEm8jcTyV1z/QdEbu+jhGGB8/wNGqA9mQDar7ykdcUI37iPf
+4YJtGQuzU2NvX+JMVMZtbkRZBn4LPP983oo+2+JSFNDeIDeBlVxOfzErJ1QKLpNq
+CJYC86j+baIkf92M1mpOFEanXgIlvitHofxSCcJ29k0YQDhLZUF0DPrQhdKtSnoK
+kVcF5pnUwLbcu7jHkHT/8Uip1CijkpqSg920ZhYJAnMseLWM+er2gQIUXkXRzWJd
+062RpdhKK5/m0MTbXZJ8crAycFQFLep1vG++jrbYQ0VAQ7TzCF4+iREBxmLiH1sd
+Oh3l4DdIcDqXchSocKyDAiFA+O8CHCKoBPTyA3YKCNBtmmyIouWjylLOeGMiD4AD
+yuCks0tlZdtfvZMaqV43yxEkNUsLybnxf3StilD0zJFkQZtWAq43efcIt2XOeiR/
+R9BUs3QNOao2ockixg+9T1LV1l1G9RNvcSkrF+j6x0/9uINhcfffqrusqBK5V7FW
+4Oc/mEI+igY=
+=2sPU
+-----END PGP SIGNATURE-----
+
+--Sig_/IOui8nzd.ykBR2y_BhCeNCV--
