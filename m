@@ -1,62 +1,35 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from elasmtp-junco.atl.sa.earthlink.net ([209.86.89.63]:59429 "EHLO
-	elasmtp-junco.atl.sa.earthlink.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1756372AbaDHWpC convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 Apr 2014 18:45:02 -0400
-From: "Frank Filz" <ffilzlnx@mindspring.com>
-To: "'Simo Sorce'" <simo@redhat.com>
-Cc: "'Jeff Layton'" <jlayton@redhat.com>,
-        "'Trond Myklebust'" <trond.myklebust@primarydata.com>,
-        "'Dr Fields James Bruce'" <bfields@fieldses.org>,
-        "'NFS'" <linux-nfs@vger.kernel.org>,
-        "'Adamson William Andros'" <androsadamson@gmail.com>,
-        "'Lever Charles Edward'" <chuck.lever@oracle.com>
-References: <20140408082140.340c1328@tlielax.poochiereds.net>	 <20140408123501.GA3532@fieldses.org>	 <20140408094903.33e42de2@tlielax.poochiereds.net>	 <20140408140333.GD3882@fieldses.org>	 <6CC79B2A-8AE2-4A36-BB57-380C2F9813C0@primarydata.com>	 <20140408144652.GE3882@fieldses.org>	 <ECD8245B-CDEE-442E-A41A-BECE08BEEDA1@primarydata.com>	 <20140408124428.5152ae8b@tlielax.poochiereds.net>	 <1396978021.14203.163.camel@willson.li.ssimo.org>	 <20140408133040.3c149238@tlielax.poochiereds.net>	 <09b701cf5351$707b2a10$51717e30$@mindspring.com> <1396980375.14203.167.camel@willson.li.ssimo.org>
-In-Reply-To: <1396980375.14203.167.camel@willson.li.ssimo.org>
-Subject: RE: v4.0 CB_COMPOUND authentication failures
-Date: Tue, 8 Apr 2014 15:44:53 -0700
-Message-ID: <09e001cf537c$29ed9580$7dc8c080$@mindspring.com>
+Received: from mail-we0-f182.google.com ([74.125.82.182]:63944 "EHLO
+	mail-we0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751104AbaDQTL7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Apr 2014 15:11:59 -0400
+Received: by mail-we0-f182.google.com with SMTP id p61so841668wes.13
+        for <linux-nfs@vger.kernel.org>; Thu, 17 Apr 2014 12:11:58 -0700 (PDT)
+Message-ID: <5350277C.20608@dev.mellanox.co.il>
+Date: Thu, 17 Apr 2014 22:11:56 +0300
+From: Sagi Grimberg <sagig@dev.mellanox.co.il>
 MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="utf-8"
+To: Steve Wise <swise@opengridcomputing.com>,
+        "'Chuck Lever'" <chuck.lever@oracle.com>
+CC: "'Linux NFS Mailing List'" <linux-nfs@vger.kernel.org>,
+        linux-rdma@vger.kernel.org
+Subject: Re: [PATCH 7/8] xprtrdma: Split the completion queue
+References: <20140414220041.20646.63991.stgit@manet.1015granger.net> <20140414222323.20646.66946.stgit@manet.1015granger.net> <534E7C1C.5070407@dev.mellanox.co.il> <534E8608.8030801@opengridcomputing.com> <E9B601B5-1984-40D8-914A-DDD1380E8183@oracle.com> <534EA06A.7090200@dev.mellanox.co.il> <FC61F219-ACA2-4CE8-BF02-1B8EE2464639@oracle.com> <534F7D5F.1090908@dev.mellanox.co.il> <A7E4B101-BAF0-480C-95AE-26BB845EE2C3@oracle.com> <003001cf5a4a$1e3f5320$5abdf960$@opengridcomputing.com>
+In-Reply-To: <003001cf5a4a$1e3f5320$5abdf960$@opengridcomputing.com>
+Content-Type: text/plain; charset=windows-1252; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> On Tue, 2014-04-08 at 10:39 -0700, Frank Filz wrote:
-> > > > If you mount by IP do you really care about krb5 ? Probably not,
-> > > > maybe that's a clue we should not even try ...
-> > > >
-> > >
-> > > It's certainly possible that someone passes in an IP address but
-> > > then says
-> > "-o
-> > > sec=krb5". It has worked in the past, so it's hard to know whether
-> > > and how many people actually depend on it.
-> >
-> > Mount by ip is sometimes used with clustered servers, especially when
-> > they have all their IP addresses in the DNS record. Even using a FQDN
-> > that just specifies that one IP address probably won't work then
-> > (since it probably is NOT the hostname used in the server credential).
-> 
-> I do not understand this, using an IP address or a name that resolve to said IP
-> address is the same.
+On 4/17/2014 5:34 PM, Steve Wise wrote:
 
-But a name can resolve to a set of IP addresses, often in round-robin fashion. It would cause havoc with NFS server on a cluster if a v3 client had locks on 192.168.0.10 (resolved from server.mycompany.com), and then rebooted, and resolved to 192.168.0.9 and sent SM_NOTIFY there). At least that isn't an issue with v4...
+<SNIP>
+> You could use a small array combined with a loop and a budget count.  So the code would
+> grab, say, 4 at a time, and keep looping polling up to 4 until the CQ is empty or the
+> desired budget is reached...
 
-Or worse, tcp connection is dropped due to inactivity, and new connection is made to a different server node. But this could still be an issue with v4...
+Bingo... couldn't agree more.
 
-The workaround has been to specify specific IP address.
+Poll Arrays are a nice optimization, but large arrays will just burden 
+the stack (and might even make things worse in high workloads...)
 
-Now I haven't done enough with krb5 recently to know how well that works...
-
-I guess I'm just offering one reason IP addresses might have been specified on mount...
-
-> As long as the server has a keytab with a key in that name it should just work
-> fine, even if the hostname on the actual machine is different.
->
-> If this does not work it is a bug in rpc.svcgssd/gss-proxy, and should be fixed,
-> not something to try to work around using IP addresses.
-
-Frank
-
+Sagi.
