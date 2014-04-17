@@ -1,237 +1,100 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:34982 "EHLO mx12.netapp.com"
+Received: from cantor2.suse.de ([195.135.220.15]:56787 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751208AbaDQVKd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 17 Apr 2014 17:10:33 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
-Subject: [PATCH 11/17] NFS: Create a common rpcsetup function for reads and writes
-Date: Thu, 17 Apr 2014 17:09:35 -0400
-Message-ID: <1397768981-12856-12-git-send-email-Anna.Schumaker@Netapp.com>
-In-Reply-To: <1397768981-12856-1-git-send-email-Anna.Schumaker@Netapp.com>
-References: <1397768981-12856-1-git-send-email-Anna.Schumaker@Netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+	id S1750852AbaDQBEA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Apr 2014 21:04:00 -0400
+Date: Thu, 17 Apr 2014 11:03:50 +1000
+From: NeilBrown <neilb@suse.de>
+To: NeilBrown <neilb@suse.de>
+Cc: Dave Chinner <david@fromorbit.com>, linux-mm@kvack.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org,
+        Ming Lei <ming.lei@canonical.com>, xfs@oss.sgi.com
+Subject: Re: [PATCH 04/19] Make effect of PF_FSTRANS to disable __GFP_FS
+ universal.
+Message-ID: <20140417110350.0470feba@notabene.brown>
+In-Reply-To: <20140416161726.51b506e2@notabene.brown>
+References: <20140416033623.10604.69237.stgit@notabene.brown>
+	<20140416040336.10604.58240.stgit@notabene.brown>
+	<20140416053756.GC15995@dastard>
+	<20140416161726.51b506e2@notabene.brown>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/adF=M005=1pA2q4e/57yzVC"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
+--Sig_/adF=M005=1pA2q4e/57yzVC
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-Write adds a little bit of code dealing with flush flags, but since
-"how" will always be 0 when reading we can share the code.
+On Wed, 16 Apr 2014 16:17:26 +1000 NeilBrown <neilb@suse.de> wrote:
 
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
----
- fs/nfs/internal.h |  3 +++
- fs/nfs/pageio.c   | 36 ++++++++++++++++++++++++++++++++++++
- fs/nfs/read.c     | 26 ++------------------------
- fs/nfs/write.c    | 46 ++++------------------------------------------
- 4 files changed, 45 insertions(+), 66 deletions(-)
+> On Wed, 16 Apr 2014 15:37:56 +1000 Dave Chinner <david@fromorbit.com> wro=
+te:
+>=20
+> > On Wed, Apr 16, 2014 at 02:03:36PM +1000, NeilBrown wrote:
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 798eb47..7bc36ee 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -401,6 +401,8 @@ extern struct nfs_rw_header *nfs_rw_header_alloc(const struct nfs_rw_ops *);
- extern void nfs_rw_header_free(struct nfs_pgio_header *);
- extern struct nfs_pgio_data *nfs_pgio_data_alloc(struct nfs_pgio_header *, unsigned int);
- extern void nfs_pgio_data_release(struct nfs_pgio_data *);
-+extern void nfs_pgio_rpcsetup(struct nfs_pgio_data *, unsigned int,
-+			      unsigned int, int, struct nfs_commit_info *);
- 
- /* read.c */
- extern void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
-@@ -449,6 +451,7 @@ extern void nfs_init_commit(struct nfs_commit_data *data,
- 			    struct nfs_commit_info *cinfo);
- int nfs_scan_commit_list(struct list_head *src, struct list_head *dst,
- 			 struct nfs_commit_info *cinfo, int max);
-+unsigned long nfs_reqs_to_commit(struct nfs_commit_info *);
- int nfs_scan_commit(struct inode *inode, struct list_head *dst,
- 		    struct nfs_commit_info *cinfo);
- void nfs_mark_request_commit(struct nfs_page *req,
-diff --git a/fs/nfs/pageio.c b/fs/nfs/pageio.c
-index f64fd70..fddb3e3 100644
---- a/fs/nfs/pageio.c
-+++ b/fs/nfs/pageio.c
-@@ -87,6 +87,42 @@ void nfs_pgio_data_release(struct nfs_pgio_data *data)
- }
- EXPORT_SYMBOL_GPL(nfs_pgio_data_release);
- 
-+void nfs_pgio_rpcsetup(struct nfs_pgio_data *data,
-+			      unsigned int count, unsigned int offset,
-+			      int how, struct nfs_commit_info *cinfo)
-+{
-+	struct nfs_page *req = data->header->req;
-+
-+	/* Set up the RPC argument and reply structs
-+	 * NB: take care not to mess about with data->commit et al. */
-+
-+	data->args.fh     = NFS_FH(data->header->inode);
-+	data->args.offset = req_offset(req) + offset;
-+	/* pnfs_set_layoutcommit needs this */
-+	data->mds_offset = data->args.offset;
-+	data->args.pgbase = req->wb_pgbase + offset;
-+	data->args.pages  = data->pages.pagevec;
-+	data->args.count  = count;
-+	data->args.context = get_nfs_open_context(req->wb_context);
-+	data->args.lock_context = req->wb_lock_context;
-+	data->args.stable  = NFS_UNSTABLE;
-+	switch (how & (FLUSH_STABLE | FLUSH_COND_STABLE)) {
-+	case 0:
-+		break;
-+	case FLUSH_COND_STABLE:
-+		if (nfs_reqs_to_commit(cinfo))
-+			break;
-+	default:
-+		data->args.stable = NFS_FILE_SYNC;
-+	}
-+
-+	data->res.fattr   = &data->fattr;
-+	data->res.count   = count;
-+	data->res.eof     = 0;
-+	data->res.verf    = &data->verf;
-+	nfs_fattr_init(&data->fattr);
-+}
-+
- static void nfs_pgio_prepare(struct rpc_task *task, void *calldata)
- {
- 	struct nfs_pgio_data *data = calldata;
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index 98373ba..2c33fc3 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -192,28 +192,6 @@ int nfs_initiate_read(struct rpc_clnt *clnt,
- }
- EXPORT_SYMBOL_GPL(nfs_initiate_read);
- 
--/*
-- * Set up the NFS read request struct
-- */
--static void nfs_read_rpcsetup(struct nfs_pgio_data *data,
--		unsigned int count, unsigned int offset)
--{
--	struct nfs_page *req = data->header->req;
--
--	data->args.fh     = NFS_FH(data->header->inode);
--	data->args.offset = req_offset(req) + offset;
--	data->args.pgbase = req->wb_pgbase + offset;
--	data->args.pages  = data->pages.pagevec;
--	data->args.count  = count;
--	data->args.context = get_nfs_open_context(req->wb_context);
--	data->args.lock_context = req->wb_lock_context;
--
--	data->res.fattr   = &data->fattr;
--	data->res.count   = count;
--	data->res.eof     = 0;
--	nfs_fattr_init(&data->fattr);
--}
--
- static int nfs_do_read(struct nfs_pgio_data *data,
- 		const struct rpc_call_ops *call_ops)
- {
-@@ -305,7 +283,7 @@ static int nfs_pagein_multi(struct nfs_pageio_descriptor *desc,
- 			return -ENOMEM;
- 		}
- 		data->pages.pagevec[0] = page;
--		nfs_read_rpcsetup(data, len, offset);
-+		nfs_pgio_rpcsetup(data, len, offset, 0, NULL);
- 		list_add(&data->list, &hdr->rpc_list);
- 		nbytes -= len;
- 		offset += len;
-@@ -340,7 +318,7 @@ static int nfs_pagein_one(struct nfs_pageio_descriptor *desc,
- 		*pages++ = req->wb_page;
- 	}
- 
--	nfs_read_rpcsetup(data, desc->pg_count, 0);
-+	nfs_pgio_rpcsetup(data, desc->pg_count, 0, 0, NULL);
- 	list_add(&data->list, &hdr->rpc_list);
- 	desc->pg_rpc_callops = &nfs_pgio_common_ops;
- 	return 0;
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index e492537..15f2ffc 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -603,7 +603,7 @@ out:
- }
- 
- #if  IS_ENABLED(CONFIG_NFS_V3) || IS_ENABLED(CONFIG_NFS_V4)
--static unsigned long
-+unsigned long
- nfs_reqs_to_commit(struct nfs_commit_info *cinfo)
- {
- 	return cinfo->mds->ncommit;
-@@ -660,7 +660,7 @@ nfs_scan_commit(struct inode *inode, struct list_head *dst,
- }
- 
- #else
--static unsigned long nfs_reqs_to_commit(struct nfs_commit_info *cinfo)
-+unsigned long nfs_reqs_to_commit(struct nfs_commit_info *cinfo)
- {
- 	return 0;
- }
-@@ -987,44 +987,6 @@ out:
- }
- EXPORT_SYMBOL_GPL(nfs_initiate_write);
- 
--/*
-- * Set up the argument/result storage required for the RPC call.
-- */
--static void nfs_write_rpcsetup(struct nfs_pgio_data *data,
--		unsigned int count, unsigned int offset,
--		int how, struct nfs_commit_info *cinfo)
--{
--	struct nfs_page *req = data->header->req;
--
--	/* Set up the RPC argument and reply structs
--	 * NB: take care not to mess about with data->commit et al. */
--
--	data->args.fh     = NFS_FH(data->header->inode);
--	data->args.offset = req_offset(req) + offset;
--	/* pnfs_set_layoutcommit needs this */
--	data->mds_offset = data->args.offset;
--	data->args.pgbase = req->wb_pgbase + offset;
--	data->args.pages  = data->pages.pagevec;
--	data->args.count  = count;
--	data->args.context = get_nfs_open_context(req->wb_context);
--	data->args.lock_context = req->wb_lock_context;
--	data->args.stable  = NFS_UNSTABLE;
--	switch (how & (FLUSH_STABLE | FLUSH_COND_STABLE)) {
--	case 0:
--		break;
--	case FLUSH_COND_STABLE:
--		if (nfs_reqs_to_commit(cinfo))
--			break;
--	default:
--		data->args.stable = NFS_FILE_SYNC;
--	}
--
--	data->res.fattr   = &data->fattr;
--	data->res.count   = count;
--	data->res.verf    = &data->verf;
--	nfs_fattr_init(&data->fattr);
--}
--
- static int nfs_do_write(struct nfs_pgio_data *data,
- 		const struct rpc_call_ops *call_ops,
- 		int how)
-@@ -1129,7 +1091,7 @@ static int nfs_flush_multi(struct nfs_pageio_descriptor *desc,
- 			return -ENOMEM;
- 		}
- 		data->pages.pagevec[0] = page;
--		nfs_write_rpcsetup(data, len, offset, desc->pg_ioflags, &cinfo);
-+		nfs_pgio_rpcsetup(data, len, offset, desc->pg_ioflags, &cinfo);
- 		list_add(&data->list, &hdr->rpc_list);
- 		requests++;
- 		nbytes -= len;
-@@ -1179,7 +1141,7 @@ static int nfs_flush_one(struct nfs_pageio_descriptor *desc,
- 		desc->pg_ioflags &= ~FLUSH_COND_STABLE;
- 
- 	/* Set up the argument struct */
--	nfs_write_rpcsetup(data, desc->pg_count, 0, desc->pg_ioflags, &cinfo);
-+	nfs_pgio_rpcsetup(data, desc->pg_count, 0, desc->pg_ioflags, &cinfo);
- 	list_add(&data->list, &hdr->rpc_list);
- 	desc->pg_rpc_callops = &nfs_pgio_common_ops;
- 	return 0;
--- 
-1.9.2
+> > > -	/*
+> > > -	 * Given that we do not allow direct reclaim to call us, we should
+> > > -	 * never be called while in a filesystem transaction.
+> > > -	 */
+> > > -	if (WARN_ON(current->flags & PF_FSTRANS))
+> > > -		goto redirty;
+> >=20
+> > We still need to ensure this rule isn't broken. If it is, the
+> > filesystem will silently deadlock in delayed allocation rather than
+> > gracefully handle the problem with a warning....
+>=20
+> Hmm... that might be tricky.  The 'new' PF_FSTRANS can definitely be set =
+when
+> xfs_vm_writepage is called and we really want the write to happen.
+> I don't suppose there is any other way to detect if a transaction is
+> happening?
 
+I've been thinking about this some more....
+
+That code is in xfs_vm_writepage which is only called as ->writepage.
+xfs never calls that directly so it could only possibly be called during
+reclaim?
+
+We know that doesn't happen, but if it does then PF_MEMALLOC would be set,
+but PF_KSWAPD would not... and you already have a test for that.
+
+How about every time we set PF_FSTRANS, we store the corresponding
+xfs_trans_t in current->journal_info, and clear that field when PF_FSTRANS =
+is
+cleared.  Then xfs_vm_writepage can test for current->journal_info being
+clear.
+That is the field that several other filesystems use to keep track of the
+'current' transaction.
+??
+
+I don't know what xfs_trans_t we would use in xfs_bmapi_allocate_worker, but
+I suspect you do :-)
+
+Thanks,
+NeilBrown
+
+--Sig_/adF=M005=1pA2q4e/57yzVC
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.22 (GNU/Linux)
+
+iQIVAwUBU08odjnsnt1WYoG5AQKlChAAtwOt5vnmgGZoKPVxl0nE3BD+JkYt5gYE
+xPlrWpCzoazarfKoC66zfad9ldRYo6FjPlvoiKgO+hdQedc3C47rWrmuahe1S4Wl
+0Ernd5J8XmInWsL1pobaEQf8b9XnzZ0Bs4GfEnE0WuABblVF1T6hN8eBVqVev+gK
+uwT0QOmFxsoxaTvlS4Y9sKEJ98+k9zfg4rvYptEUCUkDwz6IoqqbtCzmsA6WhCUu
+p9ZzFa9CCPIvA8zoWFS6mOHgC8YWubWPfpbWg7TT4PnAtq597NhyV1k2LbS7aErR
+r7X3jr9hqpV+nz25Nqe4oNo+VCcDI5PypNr8uUdXpAWdRrexeRXCLyye21TFtKnS
+WY7VLyLFGyZD3G2t1rT23MN0BepEOErZNanTUoMJgxsbbQGoKKbnaJeWiQLzSH6F
+pgfRYuUAgYCnlrYKLxKVOSfjtfQVzBc9BzHRyWD1SdAmnbxxdCq2n9wyMCwx7yf8
+pYqru1nk67lPV8gvNgkpes0G3Ooxf6E0cu74DeUPsTrC16gK1iE/qs2LTmuAmT7f
+M1//LfAwyxLXaZ64ZQNObcG5J3gsqALtT3eiBUsAK2D8D80m5pR1LmSHgXy8qVs5
+I1FN9OvpV6toEw5iAX9bwagB2zzTiJvTS2qHHMeJ2AqQriN5jMrpeud4QasyBxCr
+KjIpmijtXwI=
+=OIdO
+-----END PGP SIGNATURE-----
+
+--Sig_/adF=M005=1pA2q4e/57yzVC--
