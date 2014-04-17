@@ -1,193 +1,147 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e23smtp09.au.ibm.com ([202.81.31.142]:60153 "EHLO
-	e23smtp09.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753391AbaD0QPt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Apr 2014 12:15:49 -0400
-Received: from /spool/local
-	by e23smtp09.au.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <aneesh.kumar@linux.vnet.ibm.com>;
-	Mon, 28 Apr 2014 02:15:48 +1000
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
-        viro@zeniv.linux.org.uk, dhowells@redhat.com
-Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH -V1 12/22] richacl: Compute maximum file masks from an acl
-Date: Sun, 27 Apr 2014 21:44:43 +0530
-Message-Id: <1398615293-22931-13-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-In-Reply-To: <1398615293-22931-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1398615293-22931-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from mx11.netapp.com ([216.240.18.76]:57965 "EHLO mx11.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751235AbaDQVKe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 17 Apr 2014 17:10:34 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
+Subject: [PATCH 17/17] NFS: Create a common nfs_pageio_ops struct
+Date: Thu, 17 Apr 2014 17:09:41 -0400
+Message-ID: <1397768981-12856-18-git-send-email-Anna.Schumaker@Netapp.com>
+In-Reply-To: <1397768981-12856-1-git-send-email-Anna.Schumaker@Netapp.com>
+References: <1397768981-12856-1-git-send-email-Anna.Schumaker@Netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andreas Gruenbacher <agruen@kernel.org>
+At this point the read and write structures look identical, so combine
+them into something shared by both.
 
-Compute upper bound owner, group, and other file masks with as few
-permissions as possible without denying any permissions that the NFSv4
-acl in a richacl grants.
-
-This algorithm is used when a file inherits an acl at create time and
-when an acl is set via a mechanism that does not specify file modes
-(such as via nfsd).  When user-space sets an acl, the file masks are
-passed in as part of the xattr.
-
-When setting a richacl, the file masks determine what the file
-permission bits will be set to; see richacl_masks_to_mode().
-
-Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
- fs/richacl_base.c       | 128 ++++++++++++++++++++++++++++++++++++++++++++++++
- include/linux/richacl.h |   1 +
- 2 files changed, 129 insertions(+)
+ fs/nfs/internal.h |  2 +-
+ fs/nfs/pageio.c   |  7 ++++++-
+ fs/nfs/read.c     | 10 ++--------
+ fs/nfs/write.c    |  9 ++-------
+ 4 files changed, 11 insertions(+), 17 deletions(-)
 
-diff --git a/fs/richacl_base.c b/fs/richacl_base.c
-index bca20936aed1..d73f1b0a9c5f 100644
---- a/fs/richacl_base.c
-+++ b/fs/richacl_base.c
-@@ -184,3 +184,131 @@ richace_is_same_identifier(const struct richace *a, const struct richace *b)
- 	return a->e_id == b->e_id;
- #undef WHO_FLAGS
- }
-+
-+/**
-+ * richacl_allowed_to_who  -  mask flags allowed to a specific who value
-+ *
-+ * Computes the mask values allowed to a specific who value, taking
-+ * EVERYONE@ entries into account.
-+ */
-+static unsigned int richacl_allowed_to_who(struct richacl *acl,
-+					   struct richace *who)
-+{
-+	struct richace *ace;
-+	unsigned int allowed = 0;
-+
-+	richacl_for_each_entry_reverse(ace, acl) {
-+		if (richace_is_inherit_only(ace))
-+			continue;
-+		if (richace_is_same_identifier(ace, who) ||
-+		    richace_is_everyone(ace)) {
-+			if (richace_is_allow(ace))
-+				allowed |= ace->e_mask;
-+			else if (richace_is_deny(ace))
-+				allowed &= ~ace->e_mask;
-+		}
-+	}
-+	return allowed;
-+}
-+
-+/**
-+ * richacl_group_class_allowed  -  maximum permissions the group class is allowed
-+ *
-+ * See richacl_compute_max_masks().
-+ */
-+static unsigned int richacl_group_class_allowed(struct richacl *acl)
-+{
-+	struct richace *ace;
-+	unsigned int everyone_allowed = 0, group_class_allowed = 0;
-+	int had_group_ace = 0;
-+
-+	richacl_for_each_entry_reverse(ace, acl) {
-+		if (richace_is_inherit_only(ace) ||
-+		    richace_is_owner(ace))
-+			continue;
-+
-+		if (richace_is_everyone(ace)) {
-+			if (richace_is_allow(ace))
-+				everyone_allowed |= ace->e_mask;
-+			else if (richace_is_deny(ace))
-+				everyone_allowed &= ~ace->e_mask;
-+		} else {
-+			group_class_allowed |=
-+				richacl_allowed_to_who(acl, ace);
-+
-+			if (richace_is_group(ace))
-+				had_group_ace = 1;
-+		}
-+	}
-+	if (!had_group_ace)
-+		group_class_allowed |= everyone_allowed;
-+	return group_class_allowed;
-+}
-+
-+/**
-+ * richacl_compute_max_masks  -  compute upper bound masks
-+ *
-+ * Computes upper bound owner, group, and other masks so that none of
-+ * the mask flags allowed by the acl are disabled (for any choice of the
-+ * file owner or group membership).
-+ */
-+void richacl_compute_max_masks(struct richacl *acl)
-+{
-+	unsigned int gmask = ~0;
-+	struct richace *ace;
-+
-+	/*
-+	 * @gmask contains all permissions which the group class is ever
-+	 * allowed.  We use it to avoid adding permissions to the group mask
-+	 * from everyone@ allow aces which the group class is always denied
-+	 * through other aces.  For example, the following acl would otherwise
-+	 * result in a group mask or rw:
-+	 *
-+	 *	group@:w::deny
-+	 *	everyone@:rw::allow
-+	 *
-+	 * Avoid computing @gmask for acls which do not include any group class
-+	 * deny aces: in such acls, the group class is never denied any
-+	 * permissions from everyone@ allow aces.
-+	 */
-+
-+restart:
-+	acl->a_owner_mask = 0;
-+	acl->a_group_mask = 0;
-+	acl->a_other_mask = 0;
-+
-+	richacl_for_each_entry_reverse(ace, acl) {
-+		if (richace_is_inherit_only(ace))
-+			continue;
-+
-+		if (richace_is_owner(ace)) {
-+			if (richace_is_allow(ace))
-+				acl->a_owner_mask |= ace->e_mask;
-+			else if (richace_is_deny(ace))
-+				acl->a_owner_mask &= ~ace->e_mask;
-+		} else if (richace_is_everyone(ace)) {
-+			if (richace_is_allow(ace)) {
-+				acl->a_owner_mask |= ace->e_mask;
-+				acl->a_group_mask |= ace->e_mask & gmask;
-+				acl->a_other_mask |= ace->e_mask;
-+			} else if (richace_is_deny(ace)) {
-+				acl->a_owner_mask &= ~ace->e_mask;
-+				acl->a_group_mask &= ~ace->e_mask;
-+				acl->a_other_mask &= ~ace->e_mask;
-+			}
-+		} else {
-+			if (richace_is_allow(ace)) {
-+				acl->a_owner_mask |= ace->e_mask & gmask;
-+				acl->a_group_mask |= ace->e_mask & gmask;
-+			} else if (richace_is_deny(ace) && gmask == ~0) {
-+				gmask = richacl_group_class_allowed(acl);
-+				if (likely(gmask != ~0))
-+					/* should always be true */
-+					goto restart;
-+			}
-+		}
-+	}
-+
-+	acl->a_flags &= ~ACL4_MASKED;
-+}
-+EXPORT_SYMBOL_GPL(richacl_compute_max_masks);
-diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-index fe875fe24636..14f18b597be3 100644
---- a/include/linux/richacl.h
-+++ b/include/linux/richacl.h
-@@ -280,5 +280,6 @@ extern int richace_is_same_identifier(const struct richace *,
- extern int richacl_masks_to_mode(const struct richacl *);
- extern unsigned int richacl_mode_to_mask(mode_t);
- extern unsigned int richacl_want_to_mask(unsigned int);
-+extern void richacl_compute_max_masks(struct richacl *);
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 0243825..0c22142 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -396,6 +396,7 @@ extern int nfs4_get_rootfh(struct nfs_server *server, struct nfs_fh *mntfh, bool
+ struct nfs_pgio_completion_ops;
  
- #endif /* __RICHACL_H */
+ /* pageio.c */
++extern const struct nfs_pageio_ops nfs_pgio_rw_ops;
+ extern struct nfs_rw_header *nfs_rw_header_alloc(const struct nfs_rw_ops *);
+ extern void nfs_rw_header_free(struct nfs_pgio_header *);
+ extern void nfs_pgio_data_release(struct nfs_pgio_data *);
+@@ -403,7 +404,6 @@ extern int nfs_generic_pgio(struct nfs_pageio_descriptor *, struct nfs_pgio_head
+ extern int nfs_initiate_pgio(struct rpc_clnt *, struct nfs_pgio_data *,
+ 			     const struct rpc_call_ops *, int, int);
+ extern int nfs_do_multiple_pgios(struct list_head *, const struct rpc_call_ops *, int);
+-extern int nfs_generic_pg_pgios(struct nfs_pageio_descriptor *);
+ 
+ /* read.c */
+ extern void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
+diff --git a/fs/nfs/pageio.c b/fs/nfs/pageio.c
+index da01458..b9d06c8 100644
+--- a/fs/nfs/pageio.c
++++ b/fs/nfs/pageio.c
+@@ -312,7 +312,7 @@ int nfs_generic_pgio(struct nfs_pageio_descriptor *desc,
+ }
+ EXPORT_SYMBOL_GPL(nfs_generic_pgio);
+ 
+-int nfs_generic_pg_pgios(struct nfs_pageio_descriptor *desc)
++static int nfs_generic_pg_pgios(struct nfs_pageio_descriptor *desc)
+ {
+ 	struct nfs_rw_header *rw_hdr;
+ 	struct nfs_pgio_header *hdr;
+@@ -379,3 +379,8 @@ static const struct rpc_call_ops nfs_pgio_common_ops = {
+ 	.rpc_call_done = nfs_pgio_result_common,
+ 	.rpc_release = nfs_pgio_release_common,
+ };
++
++const struct nfs_pageio_ops nfs_pgio_rw_ops = {
++	.pg_test = nfs_generic_pg_test,
++	.pg_doio = nfs_generic_pg_pgios,
++};
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index 8460795..d7e9460 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -28,7 +28,6 @@
+ 
+ #define NFSDBG_FACILITY		NFSDBG_PAGECACHE
+ 
+-static const struct nfs_pageio_ops nfs_pageio_read_ops;
+ static const struct nfs_pgio_completion_ops nfs_async_read_completion_ops;
+ static const struct nfs_rw_ops nfs_rw_read_ops;
+ 
+@@ -58,7 +57,7 @@ void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
+ 			      const struct nfs_pgio_completion_ops *compl_ops)
+ {
+ 	struct nfs_server *server = NFS_SERVER(inode);
+-	const struct nfs_pageio_ops *pg_ops = &nfs_pageio_read_ops;
++	const struct nfs_pageio_ops *pg_ops = &nfs_pgio_rw_ops;
+ 
+ #ifdef CONFIG_NFS_V4_1
+ 	if (server->pnfs_curr_ld && !force_mds)
+@@ -71,7 +70,7 @@ EXPORT_SYMBOL_GPL(nfs_pageio_init_read);
+ 
+ void nfs_pageio_reset_read_mds(struct nfs_pageio_descriptor *pgio)
+ {
+-	pgio->pg_ops = &nfs_pageio_read_ops;
++	pgio->pg_ops = &nfs_pgio_rw_ops;
+ 	pgio->pg_bsize = NFS_SERVER(pgio->pg_inode)->rsize;
+ }
+ EXPORT_SYMBOL_GPL(nfs_pageio_reset_read_mds);
+@@ -178,11 +177,6 @@ static const struct nfs_pgio_completion_ops nfs_async_read_completion_ops = {
+ 	.completion = nfs_read_completion,
+ };
+ 
+-static const struct nfs_pageio_ops nfs_pageio_read_ops = {
+-	.pg_test = nfs_generic_pg_test,
+-	.pg_doio = nfs_generic_pg_pgios,
+-};
+-
+ /*
+  * This is the callback from RPC telling us whether a reply was
+  * received or some error occurred (timeout or socket shutdown).
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index ebbb663..3483dd4 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -973,17 +973,12 @@ static const struct nfs_pgio_completion_ops nfs_async_write_completion_ops = {
+ 	.completion = nfs_write_completion,
+ };
+ 
+-static const struct nfs_pageio_ops nfs_pageio_write_ops = {
+-	.pg_test = nfs_generic_pg_test,
+-	.pg_doio = nfs_generic_pg_pgios,
+-};
+-
+ void nfs_pageio_init_write(struct nfs_pageio_descriptor *pgio,
+ 			       struct inode *inode, int ioflags, bool force_mds,
+ 			       const struct nfs_pgio_completion_ops *compl_ops)
+ {
+ 	struct nfs_server *server = NFS_SERVER(inode);
+-	const struct nfs_pageio_ops *pg_ops = &nfs_pageio_write_ops;
++	const struct nfs_pageio_ops *pg_ops = &nfs_pgio_rw_ops;
+ 
+ #ifdef CONFIG_NFS_V4_1
+ 	if (server->pnfs_curr_ld && !force_mds)
+@@ -996,7 +991,7 @@ EXPORT_SYMBOL_GPL(nfs_pageio_init_write);
+ 
+ void nfs_pageio_reset_write_mds(struct nfs_pageio_descriptor *pgio)
+ {
+-	pgio->pg_ops = &nfs_pageio_write_ops;
++	pgio->pg_ops = &nfs_pgio_rw_ops;
+ 	pgio->pg_bsize = NFS_SERVER(pgio->pg_inode)->wsize;
+ }
+ EXPORT_SYMBOL_GPL(nfs_pageio_reset_write_mds);
 -- 
-1.9.1
+1.9.2
 
