@@ -1,111 +1,138 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f182.google.com ([209.85.223.182]:63164 "EHLO
-	mail-ie0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754212AbaDRSpo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Apr 2014 14:45:44 -0400
-Received: by mail-ie0-f182.google.com with SMTP id y20so1904774ier.13
-        for <linux-nfs@vger.kernel.org>; Fri, 18 Apr 2014 11:45:44 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Bruce Fields <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 25/70] NFSd: Simplify stateid management
-Date: Fri, 18 Apr 2014 14:44:19 -0400
-Message-Id: <1397846704-14567-26-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1397846704-14567-25-git-send-email-trond.myklebust@primarydata.com>
-References: <1397846704-14567-1-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-2-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-3-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-4-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-5-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-6-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-7-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-8-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-9-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-10-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-11-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-12-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-13-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-14-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-15-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-16-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-17-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-18-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-19-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-20-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-21-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-22-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-23-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-24-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-25-git-send-email-trond.myklebust@primarydata.com>
+Received: from cantor2.suse.de ([195.135.220.15]:56546 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753240AbaDQAU6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Apr 2014 20:20:58 -0400
+Date: Thu, 17 Apr 2014 10:20:48 +1000
+From: NeilBrown <neilb@suse.de>
+To: Jeff Layton <jlayton@redhat.com>
+Cc: linux-mm@kvack.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, xfs@oss.sgi.com,
+        Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>,
+        Ming Lei <ming.lei@canonical.com>, netdev@vger.kernel.org
+Subject: Re: [PATCH/RFC 00/19] Support loop-back NFS mounts
+Message-ID: <20140417102048.2fc8275c@notabene.brown>
+In-Reply-To: <20140416104207.75b044e8@tlielax.poochiereds.net>
+References: <20140416033623.10604.69237.stgit@notabene.brown>
+	<20140416104207.75b044e8@tlielax.poochiereds.net>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/ZiKmG43mXH3JoeDwPbs7CZV"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Don't allow stateids to clear the open file pointer until they are
-being destroyed.
+--Sig_/ZiKmG43mXH3JoeDwPbs7CZV
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 12 +++++-------
- 1 file changed, 5 insertions(+), 7 deletions(-)
+On Wed, 16 Apr 2014 10:42:07 -0400 Jeff Layton <jlayton@redhat.com> wrote:
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index afb767319f66..51ef179339ae 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -394,7 +394,7 @@ kmem_cache *slab)
- 	struct nfs4_stid *stid;
- 	int new_id;
- 
--	stid = kmem_cache_alloc(slab, GFP_KERNEL);
-+	stid = kmem_cache_zalloc(slab, GFP_KERNEL);
- 	if (!stid)
- 		return NULL;
- 
-@@ -481,6 +481,8 @@ void
- nfs4_put_delegation(struct nfs4_delegation *dp)
- {
- 	if (atomic_dec_and_test(&dp->dl_stid.sc_count)) {
-+		if (dp->dl_file)
-+			put_nfs4_file(dp->dl_file);
- 		nfs4_free_stid(deleg_slab, &dp->dl_stid);
- 		num_delegations--;
- 	}
-@@ -528,10 +530,8 @@ unhash_delegation(struct nfs4_delegation *dp)
- 		spin_unlock(&fp->fi_inode->i_lock);
- 	}
- 	nfs4_put_deleg_lease(fp);
--	dp->dl_file = NULL;
- 	spin_unlock(&fp->fi_lock);
- 	spin_unlock(&state_lock);
--	put_nfs4_file(fp);
- }
- 
- 
-@@ -701,13 +701,13 @@ static void unhash_generic_stateid(struct nfs4_ol_stateid *stp)
- static void close_generic_stateid(struct nfs4_ol_stateid *stp)
- {
- 	release_all_access(stp);
--	put_nfs4_file(stp->st_file);
--	stp->st_file = NULL;
- }
- 
- static void free_generic_stateid(struct nfs4_ol_stateid *stp)
- {
- 	remove_stid(&stp->st_stid);
-+	if (stp->st_file)
-+		put_nfs4_file(stp->st_file);
- 	nfs4_free_stid(stateid_slab, &stp->st_stid);
- }
- 
-@@ -3265,8 +3265,6 @@ unlock_and_free:
- 	spin_unlock(&fp->fi_lock);
- 	spin_unlock(&state_lock);
- out_free:
--	put_nfs4_file(fp);
--	dp->dl_file = fp;
- 	return status;
- }
- 
--- 
-1.9.0
+> On Wed, 16 Apr 2014 14:03:35 +1000
+> NeilBrown <neilb@suse.de> wrote:
+>=20
 
+> > Comments, criticisms, etc most welcome.
+> >=20
+> > Thanks,
+> > NeilBrown
+> >=20
+>=20
+> I've only given this a once-over, but the basic concept seems a bit
+> flawed. IIUC, the basic idea is to disallow allocations done in knfsd
+> threads context from doing fs-based reclaim.
+>=20
+> This seems very heavy-handed, and like it could cause problems on a
+> busy NFS server. Those sorts of servers are likely to have a lot of
+> data in pagecache and thus we generally want to allow them to do do
+> writeback when memory is tight.
+>=20
+> It's generally acceptable for knfsd to recurse into local filesystem
+> code for writeback. What you want to avoid in this situation is reclaim
+> on NFS filesystems that happen to be from knfsd on the same box.
+>=20
+> If you really want to fix this, what may make more sense is trying to
+> plumb that information down more granularly. Maybe GFP_NONETFS and/or
+> PF_NETFSTRANS flags?
+
+Hi Jeff,
+ a few clarifications first:
+
+ 1/ These changes probably won't affect a "busy NFS server" at all.  The
+    PF_FSTRANS flag only get set in nfsd when it sees a request from the lo=
+cal
+    host.  Most busy NFS servers would never see that, and so would never s=
+et
+    PF_FSTRANS.
+
+ 2/ Setting PF_FSTRANS does not affect where writeback is done.  Direct
+    reclaim hasn't performed filesystem writeback since 3.2, it is all done
+    by kswapd (I think direct reclaim still writes to swap sometimes).
+    The main effects of setting PF_FSTRANS (as modified by this page set)
+    are:
+      - when reclaim calls ->releasepage  __GFP_FS is not set in the gfp_t =
+arg
+      - various caches like dcache, icache etc are not shrunk from
+        direct reclaim
+    There are other effects, but I'm less clear on exactly what they mean.
+
+A flag specific to network filesystems might make sense, but I don't think =
+it
+would solve all the deadlocks.
+
+A good example is the deadlock with the flush-* threads.
+flush-* will lock a page, and  then call ->writepage.  If ->writepage
+allocates memory it can enter reclaim, call ->releasepage on NFS, and block
+waiting for a COMMIT to complete.
+The COMMIT might already be running, performing fsync on that same file that
+flush-* is flushing.  It locks each page in turn.  When it  gets to the page
+that flush-* has locked, it will deadlock.
+
+xfs_vm_writepage does allocate memory with __GFP_FS set
+   xfs_vm_writepage -> xfs_setfilesize_trans_alloc -> xfs_trans_alloc ->
+   _xfs_trans_allo
+
+and I have had this deadlock happen.  To avoid this we need flush-* to ensu=
+re
+that no memory allocation blocks on NFS.  We could set a PF_NETFSTRANS ther=
+e,
+but as that code really has nothing to do with networks it would seem an odd
+place to put a network-fs-specific flag.
+
+In general, if nfsd is allowed to block on local filesystem, and local
+filesystem is allowed to block on NFS, then a deadlock can happen.
+We would need a clear hierarchy
+
+   __GFP_NETFS > __GFP_FS > __GFP_IO
+
+for it to work.  I'm not sure the extra level really helps a lot and it wou=
+ld
+be a lot of churn.
+
+
+Thanks,
+NeilBrown
+
+
+--Sig_/ZiKmG43mXH3JoeDwPbs7CZV
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.22 (GNU/Linux)
+
+iQIVAwUBU08eYDnsnt1WYoG5AQI3mQ//b09b32kYZg134oqC28wk4GuKXD4068sE
+Vcj1k1jm+zz0nHfY1XbLA2PYmLGeNc1bUSGwtOwVwNvbI1xrae4Da2J6sfQ600nO
+8ozsbNXA32Bwp9h4LySPfpvJFatGmW5Kad/88qFc0a9vxXFFjIlm2hmhCuIopTCt
+PnwHRuTudFWi+Uu2JeqvmNRzcCTt0udNsc7xXlEwk5IXlYj/Qj7WVat40NjQd84E
+We+y6vTsMkHd2G/yoGdBNTQQedOgrAwyiGudq3VHPUpXgbkpnrnU0tikA2dssL10
+XlY37WlZeuqS7NKCAhLJbrJijHI8Js+cUbAhb/zNGW3llCFddYXBjWzWHT07/ISv
+A8+vuItTa0f/PsI8VkXbJ5P1QMmMtkgsbE+UOJ573v3v9Z2CKemZVrUBmCuOX/x7
+iY8eSdU0SsBWTu6OO6TS4BvIu5yvX4PYdt3MvjF1LspLv6ggZ93LUr1+KV0TyUs2
+ugbsf9Mq7vrnDdYR3z4Xb38xnAwz+5OmDgaDHTaA67VMYA2Y5K9IoVxMwTdEwGQ5
+WOy/KviX2JBbOKLmwcQeZgiTaEpr4CRY6rDA6fIqORBysrGqkujiY1e2OkX8sd30
+yo+WHWp7DIeWiJXEUTaRXewa8CgcUY3CXATuj+bsilLTVOhxT28rK5FwtAq6y00N
+Go80SPlCYvY=
+=Ornx
+-----END PGP SIGNATURE-----
+
+--Sig_/ZiKmG43mXH3JoeDwPbs7CZV--
