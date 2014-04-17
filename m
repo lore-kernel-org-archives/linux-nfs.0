@@ -1,239 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f170.google.com ([209.85.213.170]:60649 "EHLO
-	mail-ig0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932329AbaDXSQA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Apr 2014 14:16:00 -0400
-Received: by mail-ig0-f170.google.com with SMTP id uq10so1350966igb.5
-        for <linux-nfs@vger.kernel.org>; Thu, 24 Apr 2014 11:16:00 -0700 (PDT)
-From: Weston Andros Adamson <dros@primarydata.com>
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
-Subject: [PATCH 15/18 v2] pnfs: support multiple verfs per direct req
-Date: Thu, 24 Apr 2014 14:15:25 -0400
-Message-Id: <1398363328-7100-16-git-send-email-dros@primarydata.com>
-In-Reply-To: <1398363328-7100-1-git-send-email-dros@primarydata.com>
-References: <1398363328-7100-1-git-send-email-dros@primarydata.com>
+Received: from smtp.opengridcomputing.com ([72.48.136.20]:58904 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751006AbaDQOeO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Apr 2014 10:34:14 -0400
+From: "Steve Wise" <swise@opengridcomputing.com>
+To: "'Chuck Lever'" <chuck.lever@oracle.com>,
+        "'Sagi Grimberg'" <sagig@dev.mellanox.co.il>
+Cc: "'Linux NFS Mailing List'" <linux-nfs@vger.kernel.org>,
+        <linux-rdma@vger.kernel.org>
+References: <20140414220041.20646.63991.stgit@manet.1015granger.net> <20140414222323.20646.66946.stgit@manet.1015granger.net> <534E7C1C.5070407@dev.mellanox.co.il> <534E8608.8030801@opengridcomputing.com> <E9B601B5-1984-40D8-914A-DDD1380E8183@oracle.com> <534EA06A.7090200@dev.mellanox.co.il> <FC61F219-ACA2-4CE8-BF02-1B8EE2464639@oracle.com> <534F7D5F.1090908@dev.mellanox.co.il> <A7E4B101-BAF0-480C-95AE-26BB845EE2C3@oracle.com>
+In-Reply-To: <A7E4B101-BAF0-480C-95AE-26BB845EE2C3@oracle.com>
+Subject: RE: [PATCH 7/8] xprtrdma: Split the completion queue
+Date: Thu, 17 Apr 2014 09:34:19 -0500
+Message-ID: <003001cf5a4a$1e3f5320$5abdf960$@opengridcomputing.com>
+MIME-Version: 1.0
+Content-Type: text/plain;
+	charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Support direct requests that span multiple pnfs data servers by
-comparing nfs_pgio_header->verf to a cached verf in pnfs_commit_bucket.
-Continue to use dreq->verf if the MDS is used / non-pNFS.
 
-Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
----
- fs/nfs/direct.c         | 98 ++++++++++++++++++++++++++++++++++++++++++++++---
- fs/nfs/nfs4filelayout.c |  6 +++
- include/linux/nfs.h     |  5 ++-
- include/linux/nfs_xdr.h |  2 +
- 4 files changed, 105 insertions(+), 6 deletions(-)
 
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index 2c0e08f..9349933 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -108,6 +108,93 @@ static inline int put_dreq(struct nfs_direct_req *dreq)
- 	return atomic_dec_and_test(&dreq->io_count);
- }
- 
-+/*
-+ * nfs_direct_select_verf - select the right verifier
-+ * @dreq - direct request possibly spanning multiple servers
-+ * @ds_clp - nfs_client of data server or NULL if MDS / non-pnfs
-+ * @ds_idx - index of data server in data server list, only valid if ds_clp set
-+ *
-+ * returns the correct verifier to use given the role of the server
-+ */
-+static struct nfs_writeverf *
-+nfs_direct_select_verf(struct nfs_direct_req *dreq,
-+		       struct nfs_client *ds_clp,
-+		       int ds_idx)
-+{
-+	struct nfs_writeverf *verfp = &dreq->verf;
-+
-+	if (ds_clp) {
-+		/* pNFS is in use, use the DS verf */
-+		if (ds_idx >= 0 && ds_idx < dreq->ds_cinfo.nbuckets)
-+			verfp = &dreq->ds_cinfo.buckets[ds_idx].direct_verf;
-+		else
-+			WARN_ON_ONCE(1);
-+	}
-+	return verfp;
-+}
-+
-+
-+/*
-+ * nfs_direct_set_hdr_verf - set the write/commit verifier
-+ * @dreq - direct request possibly spanning multiple servers
-+ * @hdr - pageio header to validate against previously seen verfs
-+ *
-+ * Set the server's (MDS or DS) "seen" verifier
-+ */
-+static void nfs_direct_set_hdr_verf(struct nfs_direct_req *dreq,
-+				    struct nfs_pgio_header *hdr)
-+{
-+	struct nfs_writeverf *verfp;
-+
-+	verfp = nfs_direct_select_verf(dreq, hdr->data->ds_clp,
-+				      hdr->data->ds_idx);
-+	WARN_ON_ONCE(verfp->committed >= 0);
-+	memcpy(verfp, &hdr->verf, sizeof(struct nfs_writeverf));
-+	WARN_ON_ONCE(verfp->committed < 0);
-+}
-+
-+/*
-+ * nfs_direct_cmp_hdr_verf - compare verifier for pgio header
-+ * @dreq - direct request possibly spanning multiple servers
-+ * @hdr - pageio header to validate against previously seen verf
-+ *
-+ * set the server's "seen" verf if not initialized.
-+ * returns result of comparison between @hdr->verf and the "seen"
-+ * verf of the server used by @hdr (DS or MDS)
-+ */
-+static int nfs_direct_set_or_cmp_hdr_verf(struct nfs_direct_req *dreq,
-+					  struct nfs_pgio_header *hdr)
-+{
-+	struct nfs_writeverf *verfp;
-+
-+	verfp = nfs_direct_select_verf(dreq, hdr->data->ds_clp,
-+					 hdr->data->ds_idx);
-+	if (verfp->committed < 0) {
-+		nfs_direct_set_hdr_verf(dreq, hdr);
-+		return 0;
-+	}
-+	return memcmp(verfp, &hdr->verf, sizeof(struct nfs_writeverf));
-+}
-+
-+/*
-+ * nfs_direct_cmp_commit_data_verf - compare verifier for commit data
-+ * @dreq - direct request possibly spanning multiple servers
-+ * @data - commit data to validate against previously seen verf
-+ *
-+ * returns result of comparison between @data->verf and the verf of
-+ * the server used by @data (DS or MDS)
-+ */
-+static int nfs_direct_cmp_commit_data_verf(struct nfs_direct_req *dreq,
-+					   struct nfs_commit_data *data)
-+{
-+	struct nfs_writeverf *verfp;
-+
-+	verfp = nfs_direct_select_verf(dreq, data->ds_clp,
-+					 data->ds_commit_index);
-+	WARN_ON_ONCE(verfp->committed < 0);
-+	return memcmp(verfp, &data->verf, sizeof(struct nfs_writeverf));
-+}
-+
- /**
-  * nfs_direct_IO - NFS address space operation for direct I/O
-  * @rw: direction (read or write)
-@@ -168,6 +255,7 @@ static inline struct nfs_direct_req *nfs_direct_req_alloc(void)
- 	kref_get(&dreq->kref);
- 	init_completion(&dreq->completion);
- 	INIT_LIST_HEAD(&dreq->mds_cinfo.list);
-+	dreq->verf.committed = NFS_INVALID_STABLE_HOW;	/* not set yet */
- 	INIT_WORK(&dreq->work, nfs_direct_write_schedule_work);
- 	spin_lock_init(&dreq->lock);
- 
-@@ -602,7 +690,7 @@ static void nfs_direct_commit_complete(struct nfs_commit_data *data)
- 		dprintk("NFS: %5u commit failed with error %d.\n",
- 			data->task.tk_pid, status);
- 		dreq->flags = NFS_ODIRECT_RESCHED_WRITES;
--	} else if (memcmp(&dreq->verf, &data->verf, sizeof(data->verf))) {
-+	} else if (nfs_direct_cmp_commit_data_verf(dreq, data)) {
- 		dprintk("NFS: %5u commit verify failed\n", data->task.tk_pid);
- 		dreq->flags = NFS_ODIRECT_RESCHED_WRITES;
- 	}
-@@ -811,13 +899,13 @@ static void nfs_direct_write_completion(struct nfs_pgio_header *hdr)
- 			if (dreq->flags == NFS_ODIRECT_RESCHED_WRITES)
- 				bit = NFS_IOHDR_NEED_RESCHED;
- 			else if (dreq->flags == 0) {
--				memcpy(&dreq->verf, &hdr->verf,
--				       sizeof(dreq->verf));
-+				nfs_direct_set_hdr_verf(dreq, hdr);
- 				bit = NFS_IOHDR_NEED_COMMIT;
- 				dreq->flags = NFS_ODIRECT_DO_COMMIT;
- 			} else if (dreq->flags == NFS_ODIRECT_DO_COMMIT) {
--				if (memcmp(&dreq->verf, &hdr->verf, sizeof(dreq->verf))) {
--					dreq->flags = NFS_ODIRECT_RESCHED_WRITES;
-+				if (nfs_direct_set_or_cmp_hdr_verf(dreq, hdr)) {
-+					dreq->flags =
-+						NFS_ODIRECT_RESCHED_WRITES;
- 					bit = NFS_IOHDR_NEED_RESCHED;
- 				} else
- 					bit = NFS_IOHDR_NEED_COMMIT;
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 7a665e0..0ebc521 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -560,6 +560,7 @@ filelayout_read_pagelist(struct nfs_pgio_data *data)
- 	/* No multipath support. Use first DS */
- 	atomic_inc(&ds->ds_clp->cl_count);
- 	data->ds_clp = ds->ds_clp;
-+	data->ds_idx = idx;
- 	fh = nfs4_fl_select_ds_fh(lseg, j);
- 	if (fh)
- 		data->args.fh = fh;
-@@ -603,6 +604,7 @@ filelayout_write_pagelist(struct nfs_pgio_data *data, int sync)
- 	data->pgio_done_cb = filelayout_write_done_cb;
- 	atomic_inc(&ds->ds_clp->cl_count);
- 	data->ds_clp = ds->ds_clp;
-+	data->ds_idx = idx;
- 	fh = nfs4_fl_select_ds_fh(lseg, j);
- 	if (fh)
- 		data->args.fh = fh;
-@@ -875,6 +877,8 @@ filelayout_alloc_commit_info(struct pnfs_layout_segment *lseg,
- 	for (i = 0; i < size; i++) {
- 		INIT_LIST_HEAD(&buckets[i].written);
- 		INIT_LIST_HEAD(&buckets[i].committing);
-+		/* mark direct verifier as unset */
-+		buckets[i].direct_verf.committed = NFS_INVALID_STABLE_HOW;
- 	}
- 
- 	spin_lock(cinfo->lock);
-@@ -885,6 +889,8 @@ filelayout_alloc_commit_info(struct pnfs_layout_segment *lseg,
- 			    &buckets[i].written);
- 		list_splice(&cinfo->ds->buckets[i].committing,
- 			    &buckets[i].committing);
-+		buckets[i].direct_verf.committed =
-+			cinfo->ds->buckets[i].direct_verf.committed;
- 		buckets[i].wlseg = cinfo->ds->buckets[i].wlseg;
- 		buckets[i].clseg = cinfo->ds->buckets[i].clseg;
- 	}
-diff --git a/include/linux/nfs.h b/include/linux/nfs.h
-index 3e794c1..610af51 100644
---- a/include/linux/nfs.h
-+++ b/include/linux/nfs.h
-@@ -46,6 +46,9 @@ static inline void nfs_copy_fh(struct nfs_fh *target, const struct nfs_fh *sourc
- enum nfs3_stable_how {
- 	NFS_UNSTABLE = 0,
- 	NFS_DATA_SYNC = 1,
--	NFS_FILE_SYNC = 2
-+	NFS_FILE_SYNC = 2,
-+
-+	/* used by direct.c to mark verf as invalid */
-+	NFS_INVALID_STABLE_HOW = -1
- };
- #endif /* _LINUX_NFS_H */
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 29828c7..bb9fb88 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1111,6 +1111,7 @@ struct pnfs_commit_bucket {
- 	struct list_head committing;
- 	struct pnfs_layout_segment *wlseg;
- 	struct pnfs_layout_segment *clseg;
-+	struct nfs_writeverf direct_verf;
- };
- 
- struct pnfs_ds_commit_info {
-@@ -1294,6 +1295,7 @@ struct nfs_pgio_data {
- 	__u64			mds_offset;	/* Filelayout dense stripe */
- 	struct nfs_page_array	pages;
- 	struct nfs_client	*ds_clp;	/* pNFS data server */
-+	int			ds_idx;		/* ds index if ds_clp is set */
- };
- 
- struct nfs_rw_header {
--- 
-1.8.5.2 (Apple Git-48)
+> -----Original Message-----
+> From: linux-rdma-owner@vger.kernel.org [mailto:linux-rdma-owner@vger.kernel.org] On
+> Behalf Of Chuck Lever
+> Sent: Thursday, April 17, 2014 8:55 AM
+> To: Sagi Grimberg
+> Cc: Steve Wise; Linux NFS Mailing List; linux-rdma@vger.kernel.org
+> Subject: Re: [PATCH 7/8] xprtrdma: Split the completion queue
+> 
+> 
+> On Apr 17, 2014, at 3:06 AM, Sagi Grimberg <sagig@dev.mellanox.co.il> wrote:
+> 
+> > On 4/16/2014 9:21 PM, Chuck Lever wrote:
+> >> Passing a small array to ip_poll_cq() is actually easy to do, and is
+> >> exactly equivalent to a poll budget. The struct ib_wc should be taken
+> >> off the stack anyway, IMO.
+> >>
+> >> The only other example I see in 3.15 right now is IPoIB, which seems
+> >> to do exactly this.
+> >>
+> >> I'm testing a patch now. I'd like to start simple and make it more
+> >> complex only if we need to.
+> >
+> > What array size are you using? Note that if you use a small array it may be an
+overkill since
+> > a lot more interrupts are invoked (-> more latency). I found that for a high workload
+a
+> budget
+> > of 256/512/1024 keeps fairness and doesn't increase latency.
+> 
+> My array size is currently 4. It's a macro that can be changed easily.
+> 
+> By a very large majority, my workloads see only one WC per completion
+> upcall. However, I'm using an older card with simple synthetic benchmarks.
+> 
+> I don't want to make the array large because struct ib_wc is at least
+> 64 bytes on my systems - each WC array would be enormous and hardly ever
+> used. But we can dial it in over time.
+
+You could use a small array combined with a loop and a budget count.  So the code would
+grab, say, 4 at a time, and keep looping polling up to 4 until the CQ is empty or the
+desired budget is reached...
+
+Stevo
 
