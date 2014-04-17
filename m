@@ -1,77 +1,100 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f182.google.com ([209.85.216.182]:61469 "EHLO
-	mail-qc0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755990AbaDXOdM (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Apr 2014 10:33:12 -0400
-Received: by mail-qc0-f182.google.com with SMTP id e16so2523927qcx.41
-        for <linux-nfs@vger.kernel.org>; Thu, 24 Apr 2014 07:33:11 -0700 (PDT)
-Date: Thu, 24 Apr 2014 10:25:35 -0400
-From: Jeff Layton <jlayton@poochiereds.net>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/3] nfs4: treat lock owners as opaque values
-Message-ID: <20140424102535.77f07c95@tlielax.poochiereds.net>
-In-Reply-To: <20140423150023.6b0956cb@tlielax.poochiereds.net>
-References: <1398277500-31575-1-git-send-email-jlayton@redhat.com>
-	<1398277500-31575-2-git-send-email-jlayton@redhat.com>
-	<1A139D9F-E986-4854-8C15-AB1332880E29@primarydata.com>
-	<20140423150023.6b0956cb@tlielax.poochiereds.net>
+Received: from ipmail04.adl6.internode.on.net ([150.101.137.141]:29136 "EHLO
+	ipmail04.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751478AbaDQEl4 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Apr 2014 00:41:56 -0400
+Date: Thu, 17 Apr 2014 14:41:52 +1000
+From: Dave Chinner <david@fromorbit.com>
+To: NeilBrown <neilb@suse.de>
+Cc: linux-mm@kvack.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, Ming Lei <ming.lei@canonical.com>,
+        xfs@oss.sgi.com
+Subject: Re: [PATCH 04/19] Make effect of PF_FSTRANS to disable __GFP_FS
+ universal.
+Message-ID: <20140417044152.GW15995@dastard>
+References: <20140416033623.10604.69237.stgit@notabene.brown>
+ <20140416040336.10604.58240.stgit@notabene.brown>
+ <20140416053756.GC15995@dastard>
+ <20140416161726.51b506e2@notabene.brown>
+ <20140417110350.0470feba@notabene.brown>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140417110350.0470feba@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 23 Apr 2014 15:00:23 -0400
-Jeff Layton <jlayton@redhat.com> wrote:
+On Thu, Apr 17, 2014 at 11:03:50AM +1000, NeilBrown wrote:
+> On Wed, 16 Apr 2014 16:17:26 +1000 NeilBrown <neilb@suse.de> wrote:
+> 
+> > On Wed, 16 Apr 2014 15:37:56 +1000 Dave Chinner <david@fromorbit.com> wrote:
+> > 
+> > > On Wed, Apr 16, 2014 at 02:03:36PM +1000, NeilBrown wrote:
+> 
+> > > > -	/*
+> > > > -	 * Given that we do not allow direct reclaim to call us, we should
+> > > > -	 * never be called while in a filesystem transaction.
+> > > > -	 */
+> > > > -	if (WARN_ON(current->flags & PF_FSTRANS))
+> > > > -		goto redirty;
+> > > 
+> > > We still need to ensure this rule isn't broken. If it is, the
+> > > filesystem will silently deadlock in delayed allocation rather than
+> > > gracefully handle the problem with a warning....
+> > 
+> > Hmm... that might be tricky.  The 'new' PF_FSTRANS can definitely be set when
+> > xfs_vm_writepage is called and we really want the write to happen.
+> > I don't suppose there is any other way to detect if a transaction is
+> > happening?
+> 
+> I've been thinking about this some more....
+> 
+> That code is in xfs_vm_writepage which is only called as ->writepage.
+> xfs never calls that directly so it could only possibly be called during
+> reclaim?
 
-> On Wed, 23 Apr 2014 14:48:08 -0400
-> Trond Myklebust <trond.myklebust@primarydata.com> wrote:
-> 
-> > 
-> > On Apr 23, 2014, at 14:24, Jeff Layton <jlayton@redhat.com> wrote:
-> > 
-> > > Do the following set of ops with a file on a NFSv4 mount:
-> > > 
-> > >    exec 3>>$1
-> > >    flock -x 3
-> > >    exec 3>&-
-> > > 
-> > > You'll see the LOCK request go across the wire, but no LOCKU when the
-> > > file is closed. This leads to
-> > > 
-> > > What happens is that the fd is passed across a fork, and the final close
-> > > is done in a different process than the opener. That makes
-> > > __nfs4_find_lock_state miss finding the correct lock state because it
-> > > uses the fl_pid as a search key. A new one is created, and the locking
-> > > code treats it as a delegation stateid (because NFS_LOCK_INITIALIZED
-> > > isn't set).
-> > > 
-> > > The root cause of this breakage seems to be commit 77041ed9b49a9e
-> > > (NFSv4: Ensure the lockowners are labelled using the fl_owner and/or
-> > > fl_pid).
-> > > 
-> > > That changed it so that flock lockowners are allocated based on the
-> > > fl_pid. I think this is incorrect. flock locks should be "owned" by the
-> > > struct file, and that is already accounted for in the fl_owner field of
-> > > the lock request when the vfs layer passes it down.
-> > 
-> > NACKed for now.
-> > 
-> > I'll grant you that there are several nice potential cleanups here, but as far as I can tell, flock_make_lock() never sets fl_owner, and neither does anything else in sys_flock().
-> > 
-> 
-> Ahh right...nfs_flock is what sets that currently. So this patch *does*
-> work, but I think you're right that we ought to have the generic flock
-> codepath universally set fl_owner instead.
-> 
-> I'll see if I can make that a bit more consistent for v3.16 and then we
-> can revisit this one.
-> 
+    __filemap_fdatawrite_range or __writeback_single_inode
+      do_writepages
+	->writepages
+	  xfs_vm_writepages
+	    write_cache_pages
+	      ->writepage
+	        xfs_vm_writepage
 
-BTW, any thoughts on the second patch in this series? It's not really
-dependent on the first, and it does fix a bug where we're trying to do
-a __GFP_WAIT allocation under a spinlock.
+So explicit data flushes or background writeback still end up in
+xfs_vm_writepage.
 
-Thanks,
+> We know that doesn't happen, but if it does then PF_MEMALLOC would be set,
+> but PF_KSWAPD would not... and you already have a test for that.
+> 
+> How about every time we set PF_FSTRANS, we store the corresponding
+> xfs_trans_t in current->journal_info, and clear that field when PF_FSTRANS is
+> cleared.  Then xfs_vm_writepage can test for current->journal_info being
+> clear.
+> That is the field that several other filesystems use to keep track of the
+> 'current' transaction.
+
+The difference is that we have an explicit transaction handle in XFS
+which defines the transaction context. i.e. we don't hide
+transactions in thread contexts - the transaction defines the atomic
+context of the modification being made.....
+
+> I don't know what xfs_trans_t we would use in
+> xfs_bmapi_allocate_worker, but I suspect you do :-)
+
+The same one we use now.
+
+But that's exactly my point.  i.e. the transaction handle belongs to
+the operation being executed, not the thread that is currently
+executing it.  We also hand transaction contexts to IO completion,
+do interesting things with log space reservations for operations
+that require multiple commits to complete and so pass state when
+handles are duplicated prior to commit, etc. We still need direct
+manipulation and control of the transaction structure, regardless of
+where it is stored.
+
+Cheers,
+
+Dave.
 -- 
-Jeff Layton <jlayton@poochiereds.net>
+Dave Chinner
+david@fromorbit.com
