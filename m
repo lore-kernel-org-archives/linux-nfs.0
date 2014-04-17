@@ -1,169 +1,372 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:40462 "EHLO mx1.redhat.com"
+Received: from mx12.netapp.com ([216.240.18.77]:31635 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751104AbaDNSJu (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 14 Apr 2014 14:09:50 -0400
-Message-ID: <534C246C.7060100@RedHat.com>
-Date: Mon, 14 Apr 2014 14:09:48 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S1751180AbaDQVKD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 17 Apr 2014 17:10:03 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
+Subject: [PATCH 06/17] NFS: Create a common pgio_alloc and pgio_release function
+Date: Thu, 17 Apr 2014 17:09:30 -0400
+Message-ID: <1397768981-12856-7-git-send-email-Anna.Schumaker@Netapp.com>
+In-Reply-To: <1397768981-12856-1-git-send-email-Anna.Schumaker@Netapp.com>
+References: <1397768981-12856-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
-To: Jeff Layton <jlayton@redhat.com>
-CC: trond.myklebust@primarydata.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 5/5] gssd: scrape the acceptor name out of the context
-References: <1397161863-29266-1-git-send-email-jlayton@redhat.com>	<1397161863-29266-6-git-send-email-jlayton@redhat.com>	<534BF9B9.3000707@RedHat.com> <20140414114851.40dcbcfe@ipyr.poochiereds.net>
-In-Reply-To: <20140414114851.40dcbcfe@ipyr.poochiereds.net>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
 
+These functions are identical for the read and write paths, so combine
+them in a shared file.
 
-On 04/14/2014 11:48 AM, Jeff Layton wrote:
-> On Mon, 14 Apr 2014 11:07:37 -0400
-> Steve Dickson <SteveD@redhat.com> wrote:
-> 
->> Hey Jeff,
->>
->> Just a couple nit.... 
->>
->> On 04/10/2014 04:31 PM, Jeff Layton wrote:
->>> ...and pass it to the kernel in the downcall. Legacy kernels will just
->>> ignore the extra data, but with a proposed kernel patch the kernel will
->>> grab this info and use it to verify requests on the v4.0 callback
->>> channel.
->>>
->>> Signed-off-by: Jeff Layton <jlayton@redhat.com>
->>> ---
->>>  utils/gssd/gssd_proc.c | 39 ++++++++++++++++++++++++++++-----------
->>>  1 file changed, 28 insertions(+), 11 deletions(-)
->>>
->>> diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
->>> index 7387cce010cf..d95e39416c28 100644
->>> --- a/utils/gssd/gssd_proc.c
->>> +++ b/utils/gssd/gssd_proc.c
->>> @@ -77,6 +77,7 @@
->>>  #include "context.h"
->>>  #include "nfsrpc.h"
->>>  #include "nfslib.h"
->>> +#include "gss_names.h"
->>>  
->>>  /*
->>>   * pollarray:
->>> @@ -683,16 +684,19 @@ parse_enctypes(char *enctypes)
->>>  
->>>  static void
->>>  do_downcall(int k5_fd, uid_t uid, struct authgss_private_data *pd,
->>> -	    gss_buffer_desc *context_token, OM_uint32 lifetime_rec)
->>> +	    gss_buffer_desc *context_token, OM_uint32 lifetime_rec,
->>> +	    gss_buffer_desc *acceptor)
->>>  {
->>>  	char    *buf = NULL, *p = NULL, *end = NULL;
->>>  	unsigned int timeout = context_timeout;
->>>  	unsigned int buf_size = 0;
->>>  
->>> -	printerr(1, "doing downcall lifetime_rec %u\n", lifetime_rec);
->>> +	printerr(1, "doing downcall: lifetime_rec=%u acceptor=%.*s\n",
->>> +		lifetime_rec, acceptor->length, acceptor->value);
->>>  	buf_size = sizeof(uid) + sizeof(timeout) + sizeof(pd->pd_seq_win) +
->>>  		sizeof(pd->pd_ctx_hndl.length) + pd->pd_ctx_hndl.length +
->>> -		sizeof(context_token->length) + context_token->length;
->>> +		sizeof(context_token->length) + context_token->length +
->>> +		acceptor->length;
->>>  	p = buf = malloc(buf_size);
->>>  	if (!buf)
->>>  		goto out_err;
->>> @@ -707,6 +711,8 @@ do_downcall(int k5_fd, uid_t uid, struct authgss_private_data *pd,
->>>  	if (WRITE_BYTES(&p, end, pd->pd_seq_win)) goto out_err;
->>>  	if (write_buffer(&p, end, &pd->pd_ctx_hndl)) goto out_err;
->>>  	if (write_buffer(&p, end, context_token)) goto out_err;
->>> +	if (acceptor->length > 0 &&
->>> +	    write_buffer(&p, end, acceptor)) goto out_err;
->>>  
->>>  	if (write(k5_fd, buf, p - buf) < p - buf) goto out_err;
->>>  	free(buf);
->>> @@ -1034,6 +1040,9 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
->>>  	gss_cred_id_t		gss_cred;
->>>  	OM_uint32		maj_stat, min_stat, lifetime_rec;
->>>  	pid_t			pid;
->>> +	gss_name_t		gacceptor;
->>> +	gss_OID			mech;
->>> +	gss_buffer_desc		acceptor  = {0};
->>>  
->>>  	pid = fork();
->>>  	switch(pid) {
->>> @@ -1174,15 +1183,22 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
->>>  		goto out_return_error;
->>>  	}
->>>  
->>> -	/* Grab the context lifetime to pass to the kernel. lifetime_rec
->>> -	 * is set to zero on error */
->> Why get rid of this comment instead of updating it? 
->>
-> 
-> I suppose I could do that. Would you prefer I respin and update that
-> comment instead?
-If you would not mind.... I may not get to it for a while... I'm
-going to be traveling this week...
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+---
+ fs/nfs/Makefile   |  2 +-
+ fs/nfs/internal.h |  7 +++++--
+ fs/nfs/pageio.c   | 63 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfs/pnfs.c     |  4 ++--
+ fs/nfs/read.c     | 54 ++++-------------------------------------------
+ fs/nfs/write.c    | 54 ++++-------------------------------------------
+ 6 files changed, 79 insertions(+), 105 deletions(-)
+ create mode 100644 fs/nfs/pageio.c
 
-thanks!
+diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
+index 03192a6..551d82a 100644
+--- a/fs/nfs/Makefile
++++ b/fs/nfs/Makefile
+@@ -7,7 +7,7 @@ obj-$(CONFIG_NFS_FS) += nfs.o
+ CFLAGS_nfstrace.o += -I$(src)
+ nfs-y 			:= client.o dir.o file.o getroot.o inode.o super.o \
+ 			   direct.o pagelist.o read.o symlink.o unlink.o \
+-			   write.o namespace.o mount_clnt.o nfstrace.o
++			   write.o namespace.o mount_clnt.o nfstrace.o pageio.o
+ nfs-$(CONFIG_ROOT_NFS)	+= nfsroot.o
+ nfs-$(CONFIG_SYSCTL)	+= sysctl.o
+ nfs-$(CONFIG_NFS_FSCACHE) += fscache.o fscache-index.o
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index b0e7a41..7f9d3c4 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -394,6 +394,11 @@ extern int nfs4_get_rootfh(struct nfs_server *server, struct nfs_fh *mntfh, bool
+ #endif
+ 
+ struct nfs_pgio_completion_ops;
++
++/* pageio.c */
++extern struct nfs_pgio_data *nfs_pgio_data_alloc(struct nfs_pgio_header *, unsigned int);
++extern void nfs_pgio_data_release(struct nfs_pgio_data *);
++
+ /* read.c */
+ extern struct nfs_rw_header *nfs_readhdr_alloc(void);
+ extern void nfs_readhdr_free(struct nfs_pgio_header *hdr);
+@@ -407,7 +412,6 @@ extern void nfs_read_prepare(struct rpc_task *task, void *calldata);
+ extern int nfs_generic_pagein(struct nfs_pageio_descriptor *desc,
+ 			      struct nfs_pgio_header *hdr);
+ extern void nfs_pageio_reset_read_mds(struct nfs_pageio_descriptor *pgio);
+-extern void nfs_readdata_release(struct nfs_pgio_data *rdata);
+ 
+ /* super.c */
+ void nfs_clone_super(struct super_block *, struct nfs_mount_info *);
+@@ -429,7 +433,6 @@ extern void nfs_writehdr_free(struct nfs_pgio_header *hdr);
+ extern int nfs_generic_flush(struct nfs_pageio_descriptor *desc,
+ 			     struct nfs_pgio_header *hdr);
+ extern void nfs_pageio_reset_write_mds(struct nfs_pageio_descriptor *pgio);
+-extern void nfs_writedata_release(struct nfs_pgio_data *wdata);
+ extern void nfs_commit_free(struct nfs_commit_data *p);
+ extern int nfs_initiate_write(struct rpc_clnt *clnt,
+ 			      struct nfs_pgio_data *data,
+diff --git a/fs/nfs/pageio.c b/fs/nfs/pageio.c
+new file mode 100644
+index 0000000..4b267b2
+--- /dev/null
++++ b/fs/nfs/pageio.c
+@@ -0,0 +1,63 @@
++/*
++ * linux/fs/nfs/pageio.c
++ *
++ * Generic pageio functions shared by read and write paths
++ *
++ * Copyright (c) 2014 Anna Schumaker <anna.schumaker@netapp.com>
++ */
++#include <linux/nfs_fs.h>
++#include <linux/nfs_xdr.h>
++
++#include "internal.h"
++
++
++static inline struct nfs_rw_header *NFS_RW_HEADER(struct nfs_pgio_header *hdr)
++{
++	return container_of(hdr, struct nfs_rw_header, header);
++}
++
++struct nfs_pgio_data *nfs_pgio_data_alloc(struct nfs_pgio_header *hdr,
++					  unsigned int pagecount)
++{
++	struct nfs_pgio_data *data, *prealloc;
++
++	prealloc = &NFS_RW_HEADER(hdr)->rpc_data;
++	if (prealloc->header == NULL)
++		data = prealloc;
++	else
++		data = kzalloc(sizeof(*data), GFP_KERNEL);
++	if (!data)
++		goto out;
++
++	if (nfs_pgarray_set(&data->pages, pagecount)) {
++		data->header = hdr;
++		atomic_inc(&hdr->refcnt);
++	} else {
++		if (data != prealloc)
++			kfree(data);
++		data = NULL;
++	}
++out:
++	return data;
++}
++
++void nfs_pgio_data_release(struct nfs_pgio_data *data)
++{
++	struct nfs_pgio_header *hdr = data->header;
++	struct nfs_rw_header *pageio_header = NFS_RW_HEADER(hdr);
++
++	put_nfs_open_context(data->args.context);
++	if (data->pages.pagevec != data->pages.page_array)
++		kfree(data->pages.pagevec);
++	if (data == &pageio_header->rpc_data) {
++		data->header = NULL;
++		data = NULL;
++	}
++	if (atomic_dec_and_test(&hdr->refcnt))
++		hdr->completion_ops->completion(hdr);
++	/* Note: we only free the rpc_task after callbacks are done.
++	 * See the comment in rpc_free_task() for why
++	 */
++	kfree(data);
++}
++EXPORT_SYMBOL_GPL(nfs_pgio_data_release);
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 43cfe11..e192ba6 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1536,7 +1536,7 @@ pnfs_write_through_mds(struct nfs_pageio_descriptor *desc,
+ 		nfs_pageio_reset_write_mds(desc);
+ 		desc->pg_recoalesce = 1;
+ 	}
+-	nfs_writedata_release(data);
++	nfs_pgio_data_release(data);
+ }
+ 
+ static enum pnfs_try_status
+@@ -1691,7 +1691,7 @@ pnfs_read_through_mds(struct nfs_pageio_descriptor *desc,
+ 		nfs_pageio_reset_read_mds(desc);
+ 		desc->pg_recoalesce = 1;
+ 	}
+-	nfs_readdata_release(data);
++	nfs_pgio_data_release(data);
+ }
+ 
+ /*
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index d29ca36..ab4c1a5 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -51,31 +51,6 @@ struct nfs_rw_header *nfs_readhdr_alloc(void)
+ }
+ EXPORT_SYMBOL_GPL(nfs_readhdr_alloc);
+ 
+-static struct nfs_pgio_data *nfs_readdata_alloc(struct nfs_pgio_header *hdr,
+-						unsigned int pagecount)
+-{
+-	struct nfs_pgio_data *data, *prealloc;
+-
+-	prealloc = &container_of(hdr, struct nfs_rw_header, header)->rpc_data;
+-	if (prealloc->header == NULL)
+-		data = prealloc;
+-	else
+-		data = kzalloc(sizeof(*data), GFP_KERNEL);
+-	if (!data)
+-		goto out;
+-
+-	if (nfs_pgarray_set(&data->pages, pagecount)) {
+-		data->header = hdr;
+-		atomic_inc(&hdr->refcnt);
+-	} else {
+-		if (data != prealloc)
+-			kfree(data);
+-		data = NULL;
+-	}
+-out:
+-	return data;
+-}
+-
+ void nfs_readhdr_free(struct nfs_pgio_header *hdr)
+ {
+ 	struct nfs_rw_header *rhdr = container_of(hdr, struct nfs_rw_header, header);
+@@ -84,27 +59,6 @@ void nfs_readhdr_free(struct nfs_pgio_header *hdr)
+ }
+ EXPORT_SYMBOL_GPL(nfs_readhdr_free);
+ 
+-void nfs_readdata_release(struct nfs_pgio_data *rdata)
+-{
+-	struct nfs_pgio_header *hdr = rdata->header;
+-	struct nfs_rw_header *read_header = container_of(hdr, struct nfs_rw_header, header);
+-
+-	put_nfs_open_context(rdata->args.context);
+-	if (rdata->pages.pagevec != rdata->pages.page_array)
+-		kfree(rdata->pages.pagevec);
+-	if (rdata == &read_header->rpc_data) {
+-		rdata->header = NULL;
+-		rdata = NULL;
+-	}
+-	if (atomic_dec_and_test(&hdr->refcnt))
+-		hdr->completion_ops->completion(hdr);
+-	/* Note: we only free the rpc_task after callbacks are done.
+-	 * See the comment in rpc_free_task() for why
+-	 */
+-	kfree(rdata);
+-}
+-EXPORT_SYMBOL_GPL(nfs_readdata_release);
+-
+ static
+ int nfs_return_empty_page(struct page *page)
+ {
+@@ -327,7 +281,7 @@ static void nfs_pagein_error(struct nfs_pageio_descriptor *desc,
+ 		struct nfs_pgio_data *data = list_first_entry(&hdr->rpc_list,
+ 				struct nfs_pgio_data, list);
+ 		list_del(&data->list);
+-		nfs_readdata_release(data);
++		nfs_pgio_data_release(data);
+ 	}
+ 	desc->pg_completion_ops->error_cleanup(&desc->pg_list);
+ }
+@@ -359,7 +313,7 @@ static int nfs_pagein_multi(struct nfs_pageio_descriptor *desc,
+ 	do {
+ 		size_t len = min(nbytes,rsize);
+ 
+-		data = nfs_readdata_alloc(hdr, 1);
++		data = nfs_pgio_data_alloc(hdr, 1);
+ 		if (!data) {
+ 			nfs_pagein_error(desc, hdr);
+ 			return -ENOMEM;
+@@ -385,7 +339,7 @@ static int nfs_pagein_one(struct nfs_pageio_descriptor *desc,
+ 	struct nfs_pgio_data	*data;
+ 	struct list_head *head = &desc->pg_list;
+ 
+-	data = nfs_readdata_alloc(hdr, nfs_page_array_len(desc->pg_base,
++	data = nfs_pgio_data_alloc(hdr, nfs_page_array_len(desc->pg_base,
+ 							  desc->pg_count));
+ 	if (!data) {
+ 		nfs_pagein_error(desc, hdr);
+@@ -515,7 +469,7 @@ static void nfs_readpage_result_common(struct rpc_task *task, void *calldata)
+ 
+ static void nfs_readpage_release_common(void *calldata)
+ {
+-	nfs_readdata_release(calldata);
++	nfs_pgio_data_release(calldata);
+ }
+ 
+ void nfs_read_prepare(struct rpc_task *task, void *calldata)
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 321a791..0dc4d6a 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -87,31 +87,6 @@ struct nfs_rw_header *nfs_writehdr_alloc(void)
+ }
+ EXPORT_SYMBOL_GPL(nfs_writehdr_alloc);
+ 
+-static struct nfs_pgio_data *nfs_writedata_alloc(struct nfs_pgio_header *hdr,
+-						  unsigned int pagecount)
+-{
+-	struct nfs_pgio_data *data, *prealloc;
+-
+-	prealloc = &container_of(hdr, struct nfs_rw_header, header)->rpc_data;
+-	if (prealloc->header == NULL)
+-		data = prealloc;
+-	else
+-		data = kzalloc(sizeof(*data), GFP_KERNEL);
+-	if (!data)
+-		goto out;
+-
+-	if (nfs_pgarray_set(&data->pages, pagecount)) {
+-		data->header = hdr;
+-		atomic_inc(&hdr->refcnt);
+-	} else {
+-		if (data != prealloc)
+-			kfree(data);
+-		data = NULL;
+-	}
+-out:
+-	return data;
+-}
+-
+ void nfs_writehdr_free(struct nfs_pgio_header *hdr)
+ {
+ 	struct nfs_rw_header *whdr = container_of(hdr, struct nfs_rw_header, header);
+@@ -119,27 +94,6 @@ void nfs_writehdr_free(struct nfs_pgio_header *hdr)
+ }
+ EXPORT_SYMBOL_GPL(nfs_writehdr_free);
+ 
+-void nfs_writedata_release(struct nfs_pgio_data *wdata)
+-{
+-	struct nfs_pgio_header *hdr = wdata->header;
+-	struct nfs_rw_header *write_header = container_of(hdr, struct nfs_rw_header, header);
+-
+-	put_nfs_open_context(wdata->args.context);
+-	if (wdata->pages.pagevec != wdata->pages.page_array)
+-		kfree(wdata->pages.pagevec);
+-	if (wdata == &write_header->rpc_data) {
+-		wdata->header = NULL;
+-		wdata = NULL;
+-	}
+-	if (atomic_dec_and_test(&hdr->refcnt))
+-		hdr->completion_ops->completion(hdr);
+-	/* Note: we only free the rpc_task after callbacks are done.
+-	 * See the comment in rpc_free_task() for why
+-	 */
+-	kfree(wdata);
+-}
+-EXPORT_SYMBOL_GPL(nfs_writedata_release);
+-
+ static void nfs_context_set_write_error(struct nfs_open_context *ctx, int error)
+ {
+ 	ctx->error = error;
+@@ -1146,7 +1100,7 @@ static void nfs_flush_error(struct nfs_pageio_descriptor *desc,
+ 		struct nfs_pgio_data *data = list_first_entry(&hdr->rpc_list,
+ 				struct nfs_pgio_data, list);
+ 		list_del(&data->list);
+-		nfs_writedata_release(data);
++		nfs_pgio_data_release(data);
+ 	}
+ 	desc->pg_completion_ops->error_cleanup(&desc->pg_list);
+ }
+@@ -1179,7 +1133,7 @@ static int nfs_flush_multi(struct nfs_pageio_descriptor *desc,
+ 	do {
+ 		size_t len = min(nbytes, wsize);
+ 
+-		data = nfs_writedata_alloc(hdr, 1);
++		data = nfs_pgio_data_alloc(hdr, 1);
+ 		if (!data) {
+ 			nfs_flush_error(desc, hdr);
+ 			return -ENOMEM;
+@@ -1214,7 +1168,7 @@ static int nfs_flush_one(struct nfs_pageio_descriptor *desc,
+ 	struct list_head *head = &desc->pg_list;
+ 	struct nfs_commit_info cinfo;
+ 
+-	data = nfs_writedata_alloc(hdr, nfs_page_array_len(desc->pg_base,
++	data = nfs_pgio_data_alloc(hdr, nfs_page_array_len(desc->pg_base,
+ 							   desc->pg_count));
+ 	if (!data) {
+ 		nfs_flush_error(desc, hdr);
+@@ -1348,7 +1302,7 @@ static void nfs_writeback_release_common(void *calldata)
+ 			set_bit(NFS_IOHDR_NEED_RESCHED, &hdr->flags);
+ 		spin_unlock(&hdr->lock);
+ 	}
+-	nfs_writedata_release(data);
++	nfs_pgio_data_release(data);
+ }
+ 
+ static const struct rpc_call_ops nfs_write_common_ops = {
+-- 
+1.9.2
 
-steved.
-
-> 
->>> -	maj_stat = gss_inquire_context(&min_stat, pd.pd_ctx, NULL, NULL,
->>> -				       &lifetime_rec, NULL, NULL, NULL, NULL);
->>> +	maj_stat = gss_inquire_context(&min_stat, pd.pd_ctx, NULL, &gacceptor,
->>> +				       &lifetime_rec, &mech, NULL, NULL, NULL);
->>>  
->>> -	if (maj_stat)
->>> -		printerr(1, "WARNING: Failed to inquire context for lifetme "
->>> -			    "maj_stat %u\n", maj_stat);
->>> +	if (maj_stat != GSS_S_COMPLETE) {
->>> +		printerr(1, "WARNING: Failed to inquire context "
->>> +			    "maj_stat (0x%x)\n", maj_stat);
->>> +	} else {
->>> +		get_hostbased_client_buffer(gacceptor, mech, &acceptor);
->>> +		gss_release_name(&min_stat, &gacceptor);
->>> +	}
->>>  
->>> +	/*
->>> +	 * The serialization can mean turning the ctx into a lucid context. If
->>> +	 * that happens then the original ctx is no longer valid, so we mustn't
->>> +	 * try to use if after this point.
->> I'm not sure what you are trying to say here... 
->>
->> steved.
->>
-> 
-> Just a semi-helpful context for posterity...
-> 
-> On my initial attempt, I tried to change the code around to grab the
-> lifetime and acceptor out of the context in do_downcall. That didn't
-> work, because once you call serialize_context_for_kernel, the GSS
-> context is turned into a "lucid context". At that point, things like
-> gss_inquire_context no longer work on it.
-> 
-> IOW, once you call serialize_context_for_kernel, you can't count on
-> being able to do anything useful with pd.pd_ctx at all.
-> 
-> 
->>> +	 */
->>>  	if (serialize_context_for_kernel(&pd.pd_ctx, &token, &krb5oid, NULL)) {
->>>  		printerr(0, "WARNING: Failed to serialize krb5 context for "
->>>  			    "user with uid %d for server %s\n",
->>> @@ -1190,9 +1206,10 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
->>>  		goto out_return_error;
->>>  	}
->>>  
->>> -	do_downcall(fd, uid, &pd, &token, lifetime_rec);
->>> +	do_downcall(fd, uid, &pd, &token, lifetime_rec, &acceptor);
->>>  
->>>  out:
->>> +	gss_release_buffer(&min_stat, &acceptor);
->>>  	if (token.value)
->>>  		free(token.value);
->>>  #ifdef HAVE_AUTHGSS_FREE_PRIVATE_DATA
->>>
-> 
-> 
-> 
