@@ -1,195 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ipmail04.adl6.internode.on.net ([150.101.137.141]:49421 "EHLO
-	ipmail04.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751852AbaDQF6U (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Apr 2014 01:58:20 -0400
-Date: Thu, 17 Apr 2014 15:58:11 +1000
-From: Dave Chinner <david@fromorbit.com>
-To: NeilBrown <neilb@suse.de>
-Cc: linux-mm@kvack.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, xfs@oss.sgi.com
-Subject: Re: [PATCH 16/19] VFS: use GFP_NOFS rather than GFP_KERNEL in
- __d_alloc.
-Message-ID: <20140417055811.GX15995@dastard>
+Received: from cantor2.suse.de ([195.135.220.15]:57246 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754390AbaDQCir (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 16 Apr 2014 22:38:47 -0400
+Date: Thu, 17 Apr 2014 12:38:37 +1000
+From: NeilBrown <neilb@suse.de>
+To: David Miller <davem@davemloft.net>
+Cc: eric.dumazet@gmail.com, linux-mm@kvack.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org, xfs@oss.sgi.com, netdev@vger.kernel.org
+Subject: Re: [PATCH 10/19] NET: set PF_FSTRANS while holding sk_lock
+Message-ID: <20140417123837.5987e5e9@notabene.brown>
+In-Reply-To: <20140416.090002.2186526865564557549.davem@davemloft.net>
 References: <20140416033623.10604.69237.stgit@notabene.brown>
- <20140416040337.10604.61837.stgit@notabene.brown>
- <20140416062520.GG15995@dastard>
- <20140416164941.37587da6@notabene.brown>
- <20140416090051.GK15995@dastard>
- <20140417105105.7772d09d@notabene.brown>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140417105105.7772d09d@notabene.brown>
+	<20140416040336.10604.96000.stgit@notabene.brown>
+	<1397625226.4222.113.camel@edumazet-glaptop2.roam.corp.google.com>
+	<20140416.090002.2186526865564557549.davem@davemloft.net>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/SSVtvNA+Qn7U/.GV8.0daYz"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 17, 2014 at 10:51:05AM +1000, NeilBrown wrote:
-> On Wed, 16 Apr 2014 19:00:51 +1000 Dave Chinner <david@fromorbit.com> wrote:
-> 
-> > On Wed, Apr 16, 2014 at 04:49:41PM +1000, NeilBrown wrote:
-> > > On Wed, 16 Apr 2014 16:25:20 +1000 Dave Chinner <david@fromorbit.com> wrote:
-> > > 
-> > > > On Wed, Apr 16, 2014 at 02:03:37PM +1000, NeilBrown wrote:
-> > > > > __d_alloc can be called with i_mutex held, so it is safer to
-> > > > > use GFP_NOFS.
-> > > > > 
-> > > > > lockdep reports this can deadlock when loop-back NFS is in use,
-> > > > > as nfsd may be required to write out for reclaim, and nfsd certainly
-> > > > > takes i_mutex.
-> > > > 
-> > > > But not the same i_mutex as is currently held. To me, this seems
-> > > > like a false positive? If you are holding the i_mutex on an inode,
-> > > > then you have a reference to the inode and hence memory reclaim
-> > > > won't ever take the i_mutex on that inode.
-> > > > 
-> > > > FWIW, this sort of false positive was a long stabding problem for
-> > > > XFS - we managed to get rid of most of the false positives like this
-> > > > by ensuring that only the ilock is taken within memory reclaim and
-> > > > memory reclaim can't be entered while we hold the ilock.
-> > > > 
-> > > > You can't do that with the i_mutex, though....
-> > > > 
-> > > > Cheers,
-> > > > 
-> > > > Dave.
-> > > 
-> > > I'm not sure this is a false positive.
-> > > You can call __d_alloc when creating a file and so are holding i_mutex on the
-> > > directory.
-> > > nfsd might also want to access that directory.
-> > > 
-> > > If there was only 1 nfsd thread, it would need to get i_mutex and do it's
-> > > thing before replying to that request and so before it could handle the
-> > > COMMIT which __d_alloc is waiting for.
-> > 
-> > That seems wrong - the NFS client in __d_alloc holds a mutex on a
-> > NFS client directory inode. The NFS server can't access that
-> > specific mutex - it's on the other side of the "network". The NFS
-> > server accesses mutexs from local filesystems, so __d_alloc would
-> > have to be blocked on a local filesystem inode i_mutex for the nfsd
-> > to get hung up behind it...
-> 
-> I'm not thinking of mutexes on the NFS inodes but the local filesystem inodes
-> exactly as you describe below.
-> 
-> > 
-> > However, my confusion comes from the fact that we do GFP_KERNEL
-> > memory allocation with the i_mutex held all over the place.
-> 
-> Do we? 
+--Sig_/SSVtvNA+Qn7U/.GV8.0daYz
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-Yes.
+On Wed, 16 Apr 2014 09:00:02 -0400 (EDT) David Miller <davem@davemloft.net>
+wrote:
 
-A simple example: fs/xattr.c. Setting or removing an xattr is done
-under the i_mutex, yet have a look and the simple_xattr_*
-implementation that in memory/psuedo filesystems can use. They use
-GFP_KERNEL for all their allocations....
+> From: Eric Dumazet <eric.dumazet@gmail.com>
+> Date: Tue, 15 Apr 2014 22:13:46 -0700
+>=20
+> > For applications handling millions of sockets, this makes a difference.
+>=20
+> Indeed, this really is not acceptable.
 
-> Should we?
+As you say...
+I've just discovered that I can get rid of the lockdep message (and hence
+presumably the deadlock risk) with a well placed:
 
-No, I don't think so, because it means that under heavy filesystem
-memory pressure workloads, direct reclaim can effectively shut off
-and only kswapd can free memory. 
+		newsock->sk->sk_allocation =3D GFP_NOFS;
 
-> Isn't the whole point of GFP_NOFS to use it when holding
-> any filesystem lock?
+which surprised me as it seemed to be an explicit GFP_KERNEL allocation that
+was mentioned in the lockdep trace.  Obviously these traces require quite
+some sophistication to understand.
 
-Not the way I understand it - we've always used it in XFS to prevent
-known deadlocks due to recursion, not as a big hammer that we hit
-everything with. Every filesystem has different recursion deadlock
-triggers, so use GFP_NOFS differently.  using t as a big hammer
-doesn't play well with memory reclaim on filesystem memory pressure
-generating workloads...
+So - thanks for the feedback, patch can be ignored.
 
-> >           If the
-> > problem is:
-> > 
-> > 	local fs access -> i_mutex
-> > .....
-> > 	nfsd -> i_mutex (blocked)
-> > .....
-> > 	local fs access -> kmalloc(GFP_KERNEL)
-> > 			-> direct reclaim
-> > 			-> nfs_release_page
-> > 			-> <send write/commit request to blocked nfsds>
-> > 			   <deadlock>
-> > 
-> > then why is it just __d_alloc that needs this fix?  Either this is a
-> > problem *everywhere* or it's not a problem at all.
-> 
-> I think it is a problem everywhere that it is a problem :-)
+Thanks,
+NeilBrown
 
-<head implosion>
+--Sig_/SSVtvNA+Qn7U/.GV8.0daYz
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
 
-> If you are holding an FS lock, then you should be using GFP_NOFS.
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.22 (GNU/Linux)
 
-Only if reclaim recursion can cause a deadlock.
+iQIVAwUBU08+rTnsnt1WYoG5AQLRZhAAw2OqHGStjcH4tCI4w3eDMVb87MK1AVtQ
+U3pUF/WbzPSl0yhxDaa3vIg6L2ogkASESK6Oiiu8PZbG3TunCNwq63XXTKvE6EIY
+nABc2yOb9u/cixXtIuMC9E8ydnZa/dEkIyFY9oMXBjuOwb3L/ugKFm0upzBUVokw
+VtyZs8rl9s9IwgvuErpFbDR3ZxEk0VaMdREFwGCpkUD6DjknMTpGdaUelPxe+DEd
+Ffy6B7fjrkdG/8B4vYZKlW2c5on1lLqc+hgY24LrLUpLxHwu4HCuIrAuhzILDex/
+X5hZbQQhj2reLB8rsqJWOjmKn19/y8EbapUwa6BUMkSVHDCf0voCUjkHI8dOYcvM
+TnrmEzJS3Ym/x5rbenUCr2hEOEbZ80UEcMbdbrVm3rhPoMDtSifdtU2LEKro8oCk
+GPoOR3fYSLyxXNGQTlGiG3vSuSAIxF8tznBLnuCPIAPXK8LtXIn3oIOxNsN1J/LK
+TxZJsdA+I9YmV5uIn7cJarNYKdXvhR6x0YPoxUFzQZkngChosN3ZkGOHQeG2moyA
+JewuEtWT5Z1n1as19big3XukdBNnhJ/B11DpyI3TlfhIYN0mROFEAQkvXuOYYO+o
+CqkHfQp765IaTt0WOiVFu9bibhdxWwt1jwfasn1TE9LtvVlwlUlbPVL/8NrMXnOa
+Nkz7UZ1IxWU=
+=WfY/
+-----END PGP SIGNATURE-----
 
-> Currently a given filesystem can get away with sometimes using GFP_KERNEL
-> because that particular lock never causes contention during reclaim for that
-> particular filesystem.
-
-Right, be cause we directly control what recursion can happen.
-
-What you are doing is changing the global reclaim recursion context.
-You're introducing recursion loops between filesystems *of different
-types*. IOWs, at no point is it safe for anyone to allow any
-recursion because we don't have the state available to determine if
-recursion is safe or not.
-
-> Adding loop-back NFS into the mix broadens the number of locks which can
-> cause a problem as it creates interdependencies between different filesystems.
-
-And that's a major architectural change to the memory reclaim
-heirarchy and that means we're going to be breaking assumptions all
-over the place, including in places we didn't know we had
-dependencies...
-
-> > If it's a problem everywhere it means that we simply can't allow
-> > reclaim from localhost NFS mounts to run from contexts that could
-> > block an NFSD. i.e. you cannot run NFS client memory reclaim from
-> > filesystems that are NFS server exported filesystems.....
-> 
-> Well.. you cannot allow NFS client memory reclaim *while holding locks in*
-> filesystems that are NFS exported.
->
-> I think this is most effectively generalised to:
->   you cannot allow FS memory reclaim while holding locks in filesystems which
->   can be NFS exported
-
-Yes, that's exactly what I said yesterday.
-
-> which I think is largely the case already
-
-It most definitely isn't.
-
-> - and lockdep can help us find
-> those places where we currently do allow FS reclaim while holding an FS lock.
-
-A pox on lockdep. Lockdep is not a crutch that we can to wave away
-problems a architectural change doesn't identify. We need to think
-about the architectural impact of the change - if we can't see all
-the assumptions we're breaking and the downstream impacts, then we
-nee dto think about the problem harder. We should not not wave away
-concerns by saying "lockdep will find the things we missed"...
-
-For example, if you make all filesystem allocations GFP_NOFS, then
-the only thing that will be able to do reclaim of inodes and
-dentries is kswapd, because the shrinkers don't run in GFP_NOFS
-context. Hence filesystem memory pressure (e.g. find) won't be able
-to directly reclaim the objects that it is generating, and that will
-significantly change the behaviour and performance of the system.
-
-IOWs, there are lots of nasty, subtle downstream affects of making a
-blanket "filesystems must use GFP_NOFS is they hold any lock" rule
-that I can see, so I really think thatwe shoul dbe looking to solve
-this problem in the NFS client and exhausting all possibilities
-there before we even consider changing something as fundamental as
-memory reclaim recursion heirarchies....
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
+--Sig_/SSVtvNA+Qn7U/.GV8.0daYz--
