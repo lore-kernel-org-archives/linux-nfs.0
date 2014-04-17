@@ -1,84 +1,94 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:3256 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753275AbaDCSzP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 3 Apr 2014 14:55:15 -0400
-Date: Thu, 3 Apr 2014 14:55:04 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Mark Lord <mlord@pobox.com>
-Cc: "J. Bruce Fields" <bfields@redhat.com>, Albert Fluegel <af@muc.de>,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: linux-3.14 nfsd regression
-Message-ID: <20140403145504.3b04170e@tlielax.poochiereds.net>
-In-Reply-To: <533D9F8A.6030001@pobox.com>
-References: <533D8D73.1090603@pobox.com>
-	<20140403171643.GB28790@pad.redhat.com>
-	<533D9F8A.6030001@pobox.com>
+Received: from ipmail04.adl6.internode.on.net ([150.101.137.141]:55474 "EHLO
+	ipmail04.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750981AbaDQEXU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Apr 2014 00:23:20 -0400
+Date: Thu, 17 Apr 2014 14:23:13 +1000
+From: Dave Chinner <david@fromorbit.com>
+To: NeilBrown <neilb@suse.de>
+Cc: Jeff Layton <jlayton@redhat.com>, linux-nfs@vger.kernel.org,
+        Peter Zijlstra <peterz@infradead.org>, netdev@vger.kernel.org,
+        Ming Lei <ming.lei@canonical.com>, linux-kernel@vger.kernel.org,
+        xfs@oss.sgi.com, linux-mm@kvack.org, Ingo Molnar <mingo@redhat.com>
+Subject: Re: [PATCH/RFC 00/19] Support loop-back NFS mounts
+Message-ID: <20140417042313.GV15995@dastard>
+References: <20140416033623.10604.69237.stgit@notabene.brown>
+ <20140416104207.75b044e8@tlielax.poochiereds.net>
+ <20140417102048.2fc8275c@notabene.brown>
+ <20140417012739.GU15995@dastard>
+ <20140417115018.460345d0@notabene.brown>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140417115018.460345d0@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 03 Apr 2014 13:51:06 -0400
-Mark Lord <mlord@pobox.com> wrote:
-
-> On 14-04-03 01:16 PM, J. Bruce Fields wrote:
-> > On Thu, Apr 03, 2014 at 12:33:55PM -0400, Mark Lord wrote:
-> >> This commit from linux-3.14 breaks our NFS-root clients here:
-> >>
-> >> https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=6e14b46b91fee8a049b0940333ce13a820beaaa5
-> >>
-> >>
-> >> - *p++ = htonl((u32) stat->mode);
-> >> + *p++ = htonl((u32) (stat->mode & S_IALLUGO));
-> >>
-> >>
-> >> Reverting the one-liner above (on the server) fixes it for us,
-> >> as does reverting back to linux-3.13.8 on the server.
-> >>
-> >> The NFS-root clients are on PowerPC (big-endian) architecture,
-> >> running linux-3.12.16. The NFS server is on an Intel PC running linux-3.14.
-> >>
-> >> ACL is completely disabled on server and client,
-> >> and we're using NFSv2/v3.  No support for v4.
-> >>
-> >> I instrumented the function to see what other bits were being cleared
-> >> by the (stat->mode & S_IALLUGO) masking.  The results are attached.
+On Thu, Apr 17, 2014 at 11:50:18AM +1000, NeilBrown wrote:
+> On Thu, 17 Apr 2014 11:27:39 +1000 Dave Chinner <david@fromorbit.com> wrote:
+> 
+> > On Thu, Apr 17, 2014 at 10:20:48AM +1000, NeilBrown wrote:
+> > > A good example is the deadlock with the flush-* threads.
+> > > flush-* will lock a page, and  then call ->writepage.  If ->writepage
+> > > allocates memory it can enter reclaim, call ->releasepage on NFS, and block
+> > > waiting for a COMMIT to complete.
+> > > The COMMIT might already be running, performing fsync on that same file that
+> > > flush-* is flushing.  It locks each page in turn.  When it  gets to the page
+> > > that flush-* has locked, it will deadlock.
 > > 
-> > Hm, it sounds like a bug in the client if it's depending on those high
-> > bits.
+> > It's nfs_release_page() again....
+> > 
+> > > In general, if nfsd is allowed to block on local filesystem, and local
+> > > filesystem is allowed to block on NFS, then a deadlock can happen.
+> > > We would need a clear hierarchy
+> > > 
+> > >    __GFP_NETFS > __GFP_FS > __GFP_IO
+> > > 
+> > > for it to work.  I'm not sure the extra level really helps a lot and it would
+> > > be a lot of churn.
+> > 
+> > I think you are looking at this the wrong way - it's not the other
+> > filesystems that have to avoid memory reclaim recursion, it's the
+> > NFS client mount that is on loopback that needs to avoid recursion.
+> > 
+> > IMO, the fix should be that the NFS client cannot block on messages sent to the NFSD
+> > on the same host during memory reclaim. That is, nfs_release_page()
+> > cannot send commit messages to the server if the server is on
+> > localhost. Instead, it just tells memory reclaim that it can't
+> > reclaim that page.
+> > 
+> > If nfs_release_page() no longer blocks in memory reclaim, and all
+> > these nfsd-gets-blocked-in-GFP_KERNEL-memory-allocation recursion
+> > problems go away. Do the same for all the other memory reclaim
+> > operations in the NFS client, and you've got a solution that should
+> > work without needing to walk all over the rest of the kernel....
 > 
-> But only for mounting / starting up from the nfsroot, it seems.
-> I wonder if there's an unusual code path for that in there?
-> The regular stuff looks mostly fine:
-> 
->         p = xdr_decode_ftype3(p, &fmode);
->         fattr->mode = (be32_to_cpup(p++) & ~S_IFMT) | fmode;
-> 
-> Except perhaps that second line ought to use the same mask
-> as the server side is using, just in case there are some other
-> stray high (higher than S_IFMT) bits in there now/someday.
-> 
-> > The original behavior was in practice harmless and changing it broke
-> > something, so I think we should definitely just revert this patch.
-> 
-> Yup.  Who?
-> 
-> > But the client may need fixing too.
-> 
-> Probably a good thing in the longer term, for better compatibility
-> with non-Linux servers.  But we'll still have to keep the revert
-> on the server (nfsd) code for backward compatibility, I think.
-> 
-> Cheers
-> 
+> Maybe.
+> It is nfs_release_page() today. I wonder if it could be other things another
+> day.  I want to be sure I have a solution that really makes sense.
 
-It would be good to understand where this is broken in the client.
+There could be other things, but in the absence of those things,
+I don't think that adding another layer to memory reclaim
+dependencies for this niche corner case makes a lot of sense. ;)
 
-It's incorrect for the client to interpret those bits, as I think that
-there's no guarantee that other OS's implement the type bits in the
-same way that Linux does. So if you end up mounting a different OS,
-it's possible that the client will get that wrong...
+> However ... the thing that nfs_release_page is doing it sending a COMMIT to
+> tell the server to flush to stable storage.  It does that so that if the
+> server crashes, then the client can re-send.
+> Of course when it is a loop-back mount the client is the server so the COMMIT
+> is completely pointless.  If the client notices that it is sending a COMMIT
+> to itself, it can simply assume a positive reply.
 
+Yes, that's very true. You might have to treat ->writepage
+specially, too, if that can block, say, on the number of outstanding
+requests that can be sent to the server.
+
+> You are right, that would make the patch set a lot less intrusive.  I'll give
+> it some serious thought - thanks.
+
+No worries. :)
+
+Cheers,
+
+Dave.
 -- 
-Jeff Layton <jlayton@redhat.com>
+Dave Chinner
+david@fromorbit.com
