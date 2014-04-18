@@ -1,40 +1,91 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:2526 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752822AbaDYNCm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Apr 2014 09:02:42 -0400
-Message-ID: <535A5CEE.30808@netapp.com>
-Date: Fri, 25 Apr 2014 09:02:38 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-MIME-Version: 1.0
-To: Christoph Hellwig <hch@infradead.org>,
-        Anna Schumaker <schumaker.anna@gmail.com>
-CC: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 07/17] NFS: Create a common rw_header_alloc and rw_header_free
- function
-References: <1397768981-12856-1-git-send-email-Anna.Schumaker@Netapp.com> <1397768981-12856-8-git-send-email-Anna.Schumaker@Netapp.com> <20140421133252.GA30954@infradead.org> <535522B2.9030401@gmail.com> <53554637.1080006@gmail.com> <20140425121200.GA22948@infradead.org>
-In-Reply-To: <20140425121200.GA22948@infradead.org>
-Content-Type: text/plain; charset="ISO-8859-1"
+Received: from mail-ie0-f172.google.com ([209.85.223.172]:56790 "EHLO
+	mail-ie0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754389AbaDRSqE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Apr 2014 14:46:04 -0400
+Received: by mail-ie0-f172.google.com with SMTP id as1so1900057iec.3
+        for <linux-nfs@vger.kernel.org>; Fri, 18 Apr 2014 11:46:04 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Bruce Fields <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 37/70] NFSd: nfs4_preprocess_seqid_op should only set *stpp on success
+Date: Fri, 18 Apr 2014 14:44:31 -0400
+Message-Id: <1397846704-14567-38-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1397846704-14567-37-git-send-email-trond.myklebust@primarydata.com>
+References: <1397846704-14567-1-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-2-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-3-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-4-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-5-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-6-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-7-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-8-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-9-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-10-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-11-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-12-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-13-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-14-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-15-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-16-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-17-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-18-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-19-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-20-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-21-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-22-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-23-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-24-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-25-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-26-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-27-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-28-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-29-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-30-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-31-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-32-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-33-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-34-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-35-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-36-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-37-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 04/25/2014 08:12 AM, Christoph Hellwig wrote:
-> On Mon, Apr 21, 2014 at 12:24:23PM -0400, Anna Schumaker wrote:
->>> Okay.  I'll rework everything into the pageio_ops and see how it looks!  Maybe I'll see what I can do about updating the pnfs patches while I'm at it.
->> I remember my issue with adding to the nfs_pageio_ops now.  The file, object and block layouts along with the generic pnfs code all have their own read and write pageio_ops.  Changing all of these seemed more tedious than adding a new struct  only in the read and write code.
-> 
-> Indeed, there's more instances in the pnfs code.  I was hoping your
-> pending pnfs patches were addressing that, and the general code
-> duplication between the pnfs and "classic" I/O code.
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 10 +++++++---
+ 1 file changed, 7 insertions(+), 3 deletions(-)
 
-Sorry, my pnfs patches only touch pnfs.c.  I'm hoping to get help from people who know more about each layout driver once they can take a look at what I did here.  My new plan is to put them on top of Dros' work.
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index b9d6da652fb1..03a3f51d2828 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4068,6 +4068,7 @@ nfs4_preprocess_seqid_op(struct nfsd4_compound_state *cstate, u32 seqid,
+ {
+ 	__be32 status;
+ 	struct nfs4_stid *s;
++	struct nfs4_ol_stateid *stp = NULL;
+ 
+ 	dprintk("NFSD: %s: seqid=%d stateid = " STATEID_FMT "\n", __func__,
+ 		seqid, STATEID_VAL(stateid));
+@@ -4077,10 +4078,13 @@ nfs4_preprocess_seqid_op(struct nfsd4_compound_state *cstate, u32 seqid,
+ 				      cstate->minorversion, nn);
+ 	if (status)
+ 		return status;
+-	*stpp = openlockstateid(s);
+-	nfsd4_cstate_assign_replay(cstate, (*stpp)->st_stateowner);
++	stp = openlockstateid(s);
++	nfsd4_cstate_assign_replay(cstate, stp->st_stateowner);
+ 
+-	return nfs4_seqid_op_checks(cstate, stateid, seqid, *stpp);
++	status = nfs4_seqid_op_checks(cstate, stateid, seqid, stp);
++	if (!status)
++		*stpp = stp;
++	return status;
+ }
+ 
+ static __be32 nfs4_preprocess_confirmed_seqid_op(struct nfsd4_compound_state *cstate, u32 seqid,
+-- 
+1.9.0
 
-> 
-> I guess it's best to put in your patches as-is for now, and maybe in the
-> future we can get rid of the pageio_ops once more code is shared with
-> the pnfs path.
-> 
-
-Sure.  I'll post a v2 later today that addresses rearranging variables in the combined structs.
-
-Anna
