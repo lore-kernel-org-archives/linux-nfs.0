@@ -1,168 +1,99 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:18886 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751006AbaDOUgq convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Apr 2014 16:36:46 -0400
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
-Subject: Re: [PATCH v2] nfs-rdma: Fix for FMR leaks
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20140415203434.5492.31538.stgit@bilbo>
-Date: Tue, 15 Apr 2014 16:36:33 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-rdma@vger.kernel.org, linux-kernel@vger.kernel.org
-Message-Id: <2649FF57-84A2-4848-BEAD-DCA7129E90D3@oracle.com>
-References: <20140415203434.5492.31538.stgit@bilbo>
-To: Allen Andrews <allen.andrews@emulex.com>
+Received: from mail-ie0-f182.google.com ([209.85.223.182]:53301 "EHLO
+	mail-ie0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753153AbaDRSpU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Apr 2014 14:45:20 -0400
+Received: by mail-ie0-f182.google.com with SMTP id y20so1904337ier.13
+        for <linux-nfs@vger.kernel.org>; Fri, 18 Apr 2014 11:45:19 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Bruce Fields <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 09/70] NFSd: Mark nfs4_free_lockowner and nfs4_free_openowner as static functions
+Date: Fri, 18 Apr 2014 14:44:03 -0400
+Message-Id: <1397846704-14567-10-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1397846704-14567-9-git-send-email-trond.myklebust@primarydata.com>
+References: <1397846704-14567-1-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-2-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-3-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-4-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-5-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-6-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-7-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-8-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-9-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+They do not need to be used outside fs/nfsd/nfs4state.c
 
-On Apr 15, 2014, at 4:34 PM, Allen Andrews <allen.andrews@emulex.com> wrote:
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 24 ++++++++++++------------
+ fs/nfsd/state.h     |  2 --
+ 2 files changed, 12 insertions(+), 14 deletions(-)
 
-> Two memory region leaks were found during testing:
-> 
-> 1. rpcrdma_buffer_create: While allocating RPCRDMA_FRMR's
-> ib_alloc_fast_reg_mr is called and then ib_alloc_fast_reg_page_list is
-> called.  If ib_alloc_fast_reg_page_list returns an error it bails out of
-> the routine dropping the last ib_alloc_fast_reg_mr frmr region creating a
-> memory leak.  Added code to dereg the last frmr if
-> ib_alloc_fast_reg_page_list fails.
-> 
-> 2. rpcrdma_buffer_destroy: While cleaning up, the routine will only free
-> the MR's on the rb_mws list if there are rb_send_bufs present.  However, in
-> rpcrdma_buffer_create while the rb_mws list is being built if one of the MR
-> allocation requests fail after some MR's have been allocated on the rb_mws
-> list the routine never gets to create any rb_send_bufs but instead jumps to
-> the rpcrdma_buffer_destroy routine which will never free the MR's on rb_mws
-> list because the rb_send_bufs were never created.   This leaks all the MR's
-> on the rb_mws list that were created prior to one of the MR allocations
-> failing.
-> 
-> Issue(2) was seen during testing. Our adapter had a finite number of MR's
-> available and we created enough connections to where we saw an MR
-> allocation failure on our Nth NFS connection request. After the kernel
-> cleaned up the resources it had allocated for the Nth connection we noticed
-> that FMR's had been leaked due to the coding error described above.
-> 
-> Issue(1) was seen during a code review while debugging issue(2).
-> 
-> Signed-off-by: Allen Andrews <allen.andrews@emulex.com>
-
-Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
-
-> ---
-> 
-> net/sunrpc/xprtrdma/verbs.c |   73 ++++++++++++++++++++++---------------------
-> 1 files changed, 38 insertions(+), 35 deletions(-)
-> 
-> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-> index 9372656..1683e05 100644
-> --- a/net/sunrpc/xprtrdma/verbs.c
-> +++ b/net/sunrpc/xprtrdma/verbs.c
-> @@ -1058,6 +1058,8 @@ rpcrdma_buffer_create(struct rpcrdma_buffer *buf, struct rpcrdma_ep *ep,
-> 				dprintk("RPC:       %s: "
-> 					"ib_alloc_fast_reg_page_list "
-> 					"failed %i\n", __func__, rc);
-> +
-> +				ib_dereg_mr(r->r.frmr.fr_mr);
-> 				goto out;
-> 			}
-> 			list_add(&r->mw_list, &buf->rb_mws);
-> @@ -1194,41 +1196,6 @@ rpcrdma_buffer_destroy(struct rpcrdma_buffer *buf)
-> 			kfree(buf->rb_recv_bufs[i]);
-> 		}
-> 		if (buf->rb_send_bufs && buf->rb_send_bufs[i]) {
-> -			while (!list_empty(&buf->rb_mws)) {
-> -				r = list_entry(buf->rb_mws.next,
-> -					struct rpcrdma_mw, mw_list);
-> -				list_del(&r->mw_list);
-> -				switch (ia->ri_memreg_strategy) {
-> -				case RPCRDMA_FRMR:
-> -					rc = ib_dereg_mr(r->r.frmr.fr_mr);
-> -					if (rc)
-> -						dprintk("RPC:       %s:"
-> -							" ib_dereg_mr"
-> -							" failed %i\n",
-> -							__func__, rc);
-> -					ib_free_fast_reg_page_list(r->r.frmr.fr_pgl);
-> -					break;
-> -				case RPCRDMA_MTHCAFMR:
-> -					rc = ib_dealloc_fmr(r->r.fmr);
-> -					if (rc)
-> -						dprintk("RPC:       %s:"
-> -							" ib_dealloc_fmr"
-> -							" failed %i\n",
-> -							__func__, rc);
-> -					break;
-> -				case RPCRDMA_MEMWINDOWS_ASYNC:
-> -				case RPCRDMA_MEMWINDOWS:
-> -					rc = ib_dealloc_mw(r->r.mw);
-> -					if (rc)
-> -						dprintk("RPC:       %s:"
-> -							" ib_dealloc_mw"
-> -							" failed %i\n",
-> -							__func__, rc);
-> -					break;
-> -				default:
-> -					break;
-> -				}
-> -			}
-> 			rpcrdma_deregister_internal(ia,
-> 					buf->rb_send_bufs[i]->rl_handle,
-> 					&buf->rb_send_bufs[i]->rl_iov);
-> @@ -1236,6 +1203,42 @@ rpcrdma_buffer_destroy(struct rpcrdma_buffer *buf)
-> 		}
-> 	}
-> 
-> +	while (!list_empty(&buf->rb_mws)) {
-> +		r = list_entry(buf->rb_mws.next,
-> +			struct rpcrdma_mw, mw_list);
-> +		list_del(&r->mw_list);
-> +		switch (ia->ri_memreg_strategy) {
-> +		case RPCRDMA_FRMR:
-> +			rc = ib_dereg_mr(r->r.frmr.fr_mr);
-> +			if (rc)
-> +				dprintk("RPC:       %s:"
-> +					" ib_dereg_mr"
-> +					" failed %i\n",
-> +					__func__, rc);
-> +			ib_free_fast_reg_page_list(r->r.frmr.fr_pgl);
-> +			break;
-> +		case RPCRDMA_MTHCAFMR:
-> +			rc = ib_dealloc_fmr(r->r.fmr);
-> +			if (rc)
-> +				dprintk("RPC:       %s:"
-> +					" ib_dealloc_fmr"
-> +					" failed %i\n",
-> +					__func__, rc);
-> +			break;
-> +		case RPCRDMA_MEMWINDOWS_ASYNC:
-> +		case RPCRDMA_MEMWINDOWS:
-> +			rc = ib_dealloc_mw(r->r.mw);
-> +			if (rc)
-> +				dprintk("RPC:       %s:"
-> +					" ib_dealloc_mw"
-> +					" failed %i\n",
-> +					__func__, rc);
-> +			break;
-> +		default:
-> +			break;
-> +		}
-> +	}
-> +
-> 	kfree(buf->rb_pool);
-> }
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 45c4b692e30d..6d691aa2bb27 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -659,6 +659,12 @@ static void unhash_lockowner(struct nfs4_lockowner *lo)
+ 	}
+ }
+ 
++static void nfs4_free_lockowner(struct nfs4_lockowner *lo)
++{
++	kfree(lo->lo_owner.so_owner.data);
++	kmem_cache_free(lockowner_slab, lo);
++}
++
+ static void release_lockowner(struct nfs4_lockowner *lo)
+ {
+ 	unhash_lockowner(lo);
+@@ -713,6 +719,12 @@ static void release_last_closed_stateid(struct nfs4_openowner *oo)
+ 	}
+ }
+ 
++static void nfs4_free_openowner(struct nfs4_openowner *oo)
++{
++	kfree(oo->oo_owner.so_owner.data);
++	kmem_cache_free(openowner_slab, oo);
++}
++
+ static void release_openowner(struct nfs4_openowner *oo)
+ {
+ 	unhash_openowner(oo);
+@@ -2571,18 +2583,6 @@ out_nomem:
+ 	return -ENOMEM;
+ }
+ 
+-void nfs4_free_openowner(struct nfs4_openowner *oo)
+-{
+-	kfree(oo->oo_owner.so_owner.data);
+-	kmem_cache_free(openowner_slab, oo);
+-}
+-
+-void nfs4_free_lockowner(struct nfs4_lockowner *lo)
+-{
+-	kfree(lo->lo_owner.so_owner.data);
+-	kmem_cache_free(lockowner_slab, lo);
+-}
+-
+ static void init_nfs4_replay(struct nfs4_replay *rp)
+ {
+ 	rp->rp_status = nfserr_serverfault;
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 424d8f5f2317..1aa22f39fc65 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -464,8 +464,6 @@ extern void nfs4_release_reclaim(struct nfsd_net *);
+ extern struct nfs4_client_reclaim *nfsd4_find_reclaim_client(const char *recdir,
+ 							struct nfsd_net *nn);
+ extern __be32 nfs4_check_open_reclaim(clientid_t *clid, bool sessions, struct nfsd_net *nn);
+-extern void nfs4_free_openowner(struct nfs4_openowner *);
+-extern void nfs4_free_lockowner(struct nfs4_lockowner *);
+ extern int set_callback_cred(void);
+ extern void nfsd4_init_callback(struct nfsd4_callback *);
+ extern void nfsd4_probe_callback(struct nfs4_client *clp);
+-- 
+1.9.0
 
