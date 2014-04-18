@@ -1,218 +1,200 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:31635 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751161AbaDQVKA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 17 Apr 2014 17:10:00 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
-Subject: [PATCH 04/17] NFS: Create a common read and write header struct
-Date: Thu, 17 Apr 2014 17:09:28 -0400
-Message-ID: <1397768981-12856-5-git-send-email-Anna.Schumaker@Netapp.com>
-In-Reply-To: <1397768981-12856-1-git-send-email-Anna.Schumaker@Netapp.com>
-References: <1397768981-12856-1-git-send-email-Anna.Schumaker@Netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+Received: from mail-ie0-f176.google.com ([209.85.223.176]:53708 "EHLO
+	mail-ie0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752794AbaDRSpc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Apr 2014 14:45:32 -0400
+Received: by mail-ie0-f176.google.com with SMTP id rd18so1922456iec.21
+        for <linux-nfs@vger.kernel.org>; Fri, 18 Apr 2014 11:45:31 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Bruce Fields <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 17/70] NFSd: Lock owners are not per open stateid
+Date: Fri, 18 Apr 2014 14:44:11 -0400
+Message-Id: <1397846704-14567-18-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1397846704-14567-17-git-send-email-trond.myklebust@primarydata.com>
+References: <1397846704-14567-1-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-2-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-3-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-4-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-5-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-6-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-7-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-8-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-9-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-10-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-11-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-12-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-13-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-14-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-15-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-16-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-17-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
+In the NFSv4 spec, lock stateids are per-file objects. Lockowners are not.
+This patch replaces the current list of lock owners in the open statids
+with a list of lock stateids.
 
-The only difference is the write verifier field, so I leave a comment
-saying that it's not used for reads.
-
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/internal.h       |  4 ++--
- fs/nfs/pnfs.c           |  4 ++--
- fs/nfs/read.c           | 14 +++++++-------
- fs/nfs/write.c          | 14 +++++++-------
- include/linux/nfs_xdr.h |  7 +------
- 5 files changed, 19 insertions(+), 24 deletions(-)
+ fs/nfsd/nfs4state.c | 48 +++++++++++++++++++++++++++++++-----------------
+ fs/nfsd/state.h     |  3 +--
+ 2 files changed, 32 insertions(+), 19 deletions(-)
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index af01b80..b0e7a41 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -395,7 +395,7 @@ extern int nfs4_get_rootfh(struct nfs_server *server, struct nfs_fh *mntfh, bool
- 
- struct nfs_pgio_completion_ops;
- /* read.c */
--extern struct nfs_read_header *nfs_readhdr_alloc(void);
-+extern struct nfs_rw_header *nfs_readhdr_alloc(void);
- extern void nfs_readhdr_free(struct nfs_pgio_header *hdr);
- extern void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
- 			struct inode *inode, bool force_mds,
-@@ -424,7 +424,7 @@ int nfs_remount(struct super_block *sb, int *flags, char *raw_data);
- extern void nfs_pageio_init_write(struct nfs_pageio_descriptor *pgio,
- 			struct inode *inode, int ioflags, bool force_mds,
- 			const struct nfs_pgio_completion_ops *compl_ops);
--extern struct nfs_write_header *nfs_writehdr_alloc(void);
-+extern struct nfs_rw_header *nfs_writehdr_alloc(void);
- extern void nfs_writehdr_free(struct nfs_pgio_header *hdr);
- extern int nfs_generic_flush(struct nfs_pageio_descriptor *desc,
- 			     struct nfs_pgio_header *hdr);
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index e9cea3a..43cfe11 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1592,7 +1592,7 @@ EXPORT_SYMBOL_GPL(pnfs_writehdr_free);
- int
- pnfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc)
- {
--	struct nfs_write_header *whdr;
-+	struct nfs_rw_header *whdr;
- 	struct nfs_pgio_header *hdr;
- 	int ret;
- 
-@@ -1750,7 +1750,7 @@ EXPORT_SYMBOL_GPL(pnfs_readhdr_free);
- int
- pnfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc)
- {
--	struct nfs_read_header *rhdr;
-+	struct nfs_rw_header *rhdr;
- 	struct nfs_pgio_header *hdr;
- 	int ret;
- 
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index 9e426cc..d29ca36 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -34,9 +34,9 @@ static const struct nfs_pgio_completion_ops nfs_async_read_completion_ops;
- 
- static struct kmem_cache *nfs_rdata_cachep;
- 
--struct nfs_read_header *nfs_readhdr_alloc(void)
-+struct nfs_rw_header *nfs_readhdr_alloc(void)
- {
--	struct nfs_read_header *rhdr;
-+	struct nfs_rw_header *rhdr;
- 
- 	rhdr = kmem_cache_zalloc(nfs_rdata_cachep, GFP_KERNEL);
- 	if (rhdr) {
-@@ -56,7 +56,7 @@ static struct nfs_pgio_data *nfs_readdata_alloc(struct nfs_pgio_header *hdr,
- {
- 	struct nfs_pgio_data *data, *prealloc;
- 
--	prealloc = &container_of(hdr, struct nfs_read_header, header)->rpc_data;
-+	prealloc = &container_of(hdr, struct nfs_rw_header, header)->rpc_data;
- 	if (prealloc->header == NULL)
- 		data = prealloc;
- 	else
-@@ -78,7 +78,7 @@ out:
- 
- void nfs_readhdr_free(struct nfs_pgio_header *hdr)
- {
--	struct nfs_read_header *rhdr = container_of(hdr, struct nfs_read_header, header);
-+	struct nfs_rw_header *rhdr = container_of(hdr, struct nfs_rw_header, header);
- 
- 	kmem_cache_free(nfs_rdata_cachep, rhdr);
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 5105dbc76888..8a12d59c8f36 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -704,10 +704,11 @@ static void free_generic_stateid(struct nfs4_ol_stateid *stp)
+ 	nfs4_free_stid(stateid_slab, &stp->st_stid);
  }
-@@ -87,7 +87,7 @@ EXPORT_SYMBOL_GPL(nfs_readhdr_free);
- void nfs_readdata_release(struct nfs_pgio_data *rdata)
- {
- 	struct nfs_pgio_header *hdr = rdata->header;
--	struct nfs_read_header *read_header = container_of(hdr, struct nfs_read_header, header);
-+	struct nfs_rw_header *read_header = container_of(hdr, struct nfs_rw_header, header);
  
- 	put_nfs_open_context(rdata->args.context);
- 	if (rdata->pages.pagevec != rdata->pages.page_array)
-@@ -417,7 +417,7 @@ EXPORT_SYMBOL_GPL(nfs_generic_pagein);
- 
- static int nfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc)
+-static void release_lock_stateid(struct nfs4_ol_stateid *stp)
++static void __release_lock_stateid(struct nfs4_ol_stateid *stp)
  {
--	struct nfs_read_header *rhdr;
-+	struct nfs_rw_header *rhdr;
- 	struct nfs_pgio_header *hdr;
- 	int ret;
+ 	struct file *file;
  
-@@ -680,7 +680,7 @@ out:
- int __init nfs_init_readpagecache(void)
- {
- 	nfs_rdata_cachep = kmem_cache_create("nfs_read_data",
--					     sizeof(struct nfs_read_header),
-+					     sizeof(struct nfs_rw_header),
- 					     0, SLAB_HWCACHE_ALIGN,
- 					     NULL);
- 	if (nfs_rdata_cachep == NULL)
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 3a2fc5c..37c4c98 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -70,9 +70,9 @@ void nfs_commit_free(struct nfs_commit_data *p)
++	list_del(&stp->st_locks);
+ 	unhash_generic_stateid(stp);
+ 	unhash_stid(&stp->st_stid);
+ 	file = find_any_file(stp->st_file);
+@@ -724,12 +725,11 @@ static void unhash_lockowner(struct nfs4_lockowner *lo)
+ 	struct nfs4_ol_stateid *stp;
+ 
+ 	list_del(&lo->lo_owner.so_strhash);
+-	list_del(&lo->lo_perstateid);
+ 	list_del(&lo->lo_owner_ino_hash);
+ 	while (!list_empty(&lo->lo_owner.so_stateids)) {
+ 		stp = list_first_entry(&lo->lo_owner.so_stateids,
+ 				struct nfs4_ol_stateid, st_perstateowner);
+-		release_lock_stateid(stp);
++		__release_lock_stateid(stp);
+ 	}
  }
- EXPORT_SYMBOL_GPL(nfs_commit_free);
  
--struct nfs_write_header *nfs_writehdr_alloc(void)
-+struct nfs_rw_header *nfs_writehdr_alloc(void)
- {
--	struct nfs_write_header *p = mempool_alloc(nfs_wdata_mempool, GFP_NOIO);
-+	struct nfs_rw_header *p = mempool_alloc(nfs_wdata_mempool, GFP_NOIO);
- 
- 	if (p) {
- 		struct nfs_pgio_header *hdr = &p->header;
-@@ -93,7 +93,7 @@ static struct nfs_pgio_data *nfs_writedata_alloc(struct nfs_pgio_header *hdr,
- {
- 	struct nfs_pgio_data *data, *prealloc;
- 
--	prealloc = &container_of(hdr, struct nfs_write_header, header)->rpc_data;
-+	prealloc = &container_of(hdr, struct nfs_rw_header, header)->rpc_data;
- 	if (prealloc->header == NULL)
- 		data = prealloc;
- 	else
-@@ -115,7 +115,7 @@ out:
- 
- void nfs_writehdr_free(struct nfs_pgio_header *hdr)
- {
--	struct nfs_write_header *whdr = container_of(hdr, struct nfs_write_header, header);
-+	struct nfs_rw_header *whdr = container_of(hdr, struct nfs_rw_header, header);
- 	mempool_free(whdr, nfs_wdata_mempool);
+@@ -745,22 +745,36 @@ static void release_lockowner(struct nfs4_lockowner *lo)
+ 	nfs4_free_lockowner(lo);
  }
- EXPORT_SYMBOL_GPL(nfs_writehdr_free);
-@@ -123,7 +123,7 @@ EXPORT_SYMBOL_GPL(nfs_writehdr_free);
- void nfs_writedata_release(struct nfs_pgio_data *wdata)
- {
- 	struct nfs_pgio_header *hdr = wdata->header;
--	struct nfs_write_header *write_header = container_of(hdr, struct nfs_write_header, header);
-+	struct nfs_rw_header *write_header = container_of(hdr, struct nfs_rw_header, header);
  
- 	put_nfs_open_context(wdata->args.context);
- 	if (wdata->pages.pagevec != wdata->pages.page_array)
-@@ -1253,7 +1253,7 @@ EXPORT_SYMBOL_GPL(nfs_generic_flush);
- 
- static int nfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc)
+-static void
+-release_stateid_lockowners(struct nfs4_ol_stateid *open_stp)
++static void release_lockowner_if_empty(struct nfs4_lockowner *lo)
++{
++	if (list_empty(&lo->lo_owner.so_stateids))
++		release_lockowner(lo);
++}
++
++static void release_lock_stateid(struct nfs4_ol_stateid *stp)
  {
--	struct nfs_write_header *whdr;
-+	struct nfs_rw_header *whdr;
- 	struct nfs_pgio_header *hdr;
- 	int ret;
+ 	struct nfs4_lockowner *lo;
  
-@@ -1910,7 +1910,7 @@ int nfs_migrate_page(struct address_space *mapping, struct page *newpage,
- int __init nfs_init_writepagecache(void)
+-	while (!list_empty(&open_stp->st_lockowners)) {
+-		lo = list_entry(open_stp->st_lockowners.next,
+-				struct nfs4_lockowner, lo_perstateid);
+-		release_lockowner(lo);
++	lo = lockowner(stp->st_stateowner);
++	__release_lock_stateid(stp);
++	release_lockowner_if_empty(lo);
++}
++
++static void release_open_stateid_locks(struct nfs4_ol_stateid *open_stp)
++{
++	struct nfs4_ol_stateid *stp;
++
++	while (!list_empty(&open_stp->st_locks)) {
++		stp = list_entry(open_stp->st_locks.next,
++				struct nfs4_ol_stateid, st_locks);
++		release_lock_stateid(stp);
+ 	}
+ }
+ 
+ static void unhash_open_stateid(struct nfs4_ol_stateid *stp)
  {
- 	nfs_wdata_cachep = kmem_cache_create("nfs_write_data",
--					     sizeof(struct nfs_write_header),
-+					     sizeof(struct nfs_rw_header),
- 					     0, SLAB_HWCACHE_ALIGN,
- 					     NULL);
- 	if (nfs_wdata_cachep == NULL)
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index e7d934a..ff09384 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1293,12 +1293,7 @@ struct nfs_pgio_data {
- 	struct nfs_client	*ds_clp;	/* pNFS data server */
+ 	unhash_generic_stateid(stp);
+-	release_stateid_lockowners(stp);
++	release_open_stateid_locks(stp);
+ 	close_generic_stateid(stp);
+ }
+ 
+@@ -2716,7 +2730,7 @@ static void init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_file *fp,
+ 	struct nfs4_openowner *oo = open->op_openowner;
+ 
+ 	stp->st_stid.sc_type = NFS4_OPEN_STID;
+-	INIT_LIST_HEAD(&stp->st_lockowners);
++	INIT_LIST_HEAD(&stp->st_locks);
+ 	list_add(&stp->st_perstateowner, &oo->oo_owner.so_stateids);
+ 	stp->st_stateowner = &oo->oo_owner;
+ 	get_nfs4_file(fp);
+@@ -4327,7 +4341,6 @@ static void hash_lockowner(struct nfs4_lockowner *lo, unsigned int strhashval, s
+ 
+ 	list_add(&lo->lo_owner.so_strhash, &nn->ownerstr_hashtbl[strhashval]);
+ 	list_add(&lo->lo_owner_ino_hash, &nn->lockowner_ino_hashtbl[inohash]);
+-	list_add(&lo->lo_perstateid, &open_stp->st_lockowners);
+ }
+ 
+ /*
+@@ -4371,6 +4384,7 @@ alloc_init_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp, struct
+ 	stp->st_access_bmap = 0;
+ 	stp->st_deny_bmap = open_stp->st_deny_bmap;
+ 	stp->st_openstp = open_stp;
++	list_add(&stp->st_locks, &open_stp->st_locks);
+ 	spin_lock(&fp->fi_lock);
+ 	list_add(&stp->st_perfile, &fp->fi_stateids);
+ 	spin_unlock(&fp->fi_lock);
+@@ -4962,18 +4976,18 @@ static void nfsd_print_count(struct nfs4_client *clp, unsigned int count,
+ 	printk(KERN_INFO "NFS Client: %s has %u %s\n", buf, count, type);
+ }
+ 
+-static u64 nfsd_foreach_client_lock(struct nfs4_client *clp, u64 max, void (*func)(struct nfs4_lockowner *))
++static u64 nfsd_foreach_client_lock(struct nfs4_client *clp, u64 max, void (*func)(struct nfs4_ol_stateid *))
+ {
+ 	struct nfs4_openowner *oop;
+-	struct nfs4_lockowner *lop, *lo_next;
+ 	struct nfs4_ol_stateid *stp, *st_next;
++	struct nfs4_ol_stateid *lst, *lst_next;
+ 	u64 count = 0;
+ 
+ 	list_for_each_entry(oop, &clp->cl_openowners, oo_perclient) {
+ 		list_for_each_entry_safe(stp, st_next, &oop->oo_owner.so_stateids, st_perstateowner) {
+-			list_for_each_entry_safe(lop, lo_next, &stp->st_lockowners, lo_perstateid) {
++			list_for_each_entry_safe(lst, lst_next, &stp->st_locks, st_locks) {
+ 				if (func)
+-					func(lop);
++					func(lst);
+ 				if (++count == max)
+ 					return count;
+ 			}
+@@ -4985,7 +4999,7 @@ static u64 nfsd_foreach_client_lock(struct nfs4_client *clp, u64 max, void (*fun
+ 
+ u64 nfsd_forget_client_locks(struct nfs4_client *clp, u64 max)
+ {
+-	return nfsd_foreach_client_lock(clp, max, release_lockowner);
++	return nfsd_foreach_client_lock(clp, max, release_lock_stateid);
+ }
+ 
+ u64 nfsd_print_client_locks(struct nfs4_client *clp, u64 max)
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 004733885cca..51df8df04d6a 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -367,7 +367,6 @@ struct nfs4_openowner {
+ struct nfs4_lockowner {
+ 	struct nfs4_stateowner	lo_owner; /* must be first element */
+ 	struct list_head	lo_owner_ino_hash; /* hash by owner,file */
+-	struct list_head        lo_perstateid;
+ 	struct list_head	lo_list; /* for temporary uses */
  };
  
--struct nfs_read_header {
--	struct nfs_pgio_header	header;
--	struct nfs_pgio_data	rpc_data;
--};
--
--struct nfs_write_header {
-+struct nfs_rw_header {
- 	struct nfs_pgio_header	header;
- 	struct nfs_pgio_data	rpc_data;
- 	struct nfs_writeverf	verf;
+@@ -410,7 +409,7 @@ struct nfs4_ol_stateid {
+ 	struct nfs4_stid    st_stid; /* must be first field */
+ 	struct list_head              st_perfile;
+ 	struct list_head              st_perstateowner;
+-	struct list_head              st_lockowners;
++	struct list_head              st_locks;
+ 	struct nfs4_stateowner      * st_stateowner;
+ 	struct nfs4_file            * st_file;
+ 	unsigned long                 st_access_bmap;
 -- 
-1.9.2
+1.9.0
 
