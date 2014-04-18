@@ -1,48 +1,119 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f175.google.com ([209.85.192.175]:61943 "EHLO
-	mail-pd0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751333AbaDYTa7 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Apr 2014 15:30:59 -0400
-Received: by mail-pd0-f175.google.com with SMTP id fp1so1301220pdb.6
-        for <linux-nfs@vger.kernel.org>; Fri, 25 Apr 2014 12:30:58 -0700 (PDT)
-Received: from hobbes.nimgs.com (wsip-184-188-181-148.sd.sd.cox.net. [184.188.181.148])
-        by mx.google.com with ESMTPSA id gy10sm17713969pbd.8.2014.04.25.12.30.56
-        for <linux-nfs@vger.kernel.org>
-        (version=TLSv1 cipher=ECDHE-RSA-RC4-SHA bits=128/128);
-        Fri, 25 Apr 2014 12:30:57 -0700 (PDT)
-From: Craig Yoshioka <craigyk@gmail.com>
-Content-Type: text/plain; charset=windows-1252
-Subject: idmap problems
-Message-Id: <1DC2D0D6-C964-47E9-8D6A-008A26201BC8@gmail.com>
-Date: Fri, 25 Apr 2014 12:30:52 -0700
-To: linux-nfs@vger.kernel.org
-Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
+Received: from mail-ig0-f179.google.com ([209.85.213.179]:56020 "EHLO
+	mail-ig0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754307AbaDRSp6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Apr 2014 14:45:58 -0400
+Received: by mail-ig0-f179.google.com with SMTP id hl10so937472igb.12
+        for <linux-nfs@vger.kernel.org>; Fri, 18 Apr 2014 11:45:58 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Bruce Fields <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 33/70] NFSd: Ensure atomicity of stateid destruction and idr tree removal
+Date: Fri, 18 Apr 2014 14:44:27 -0400
+Message-Id: <1397846704-14567-34-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1397846704-14567-33-git-send-email-trond.myklebust@primarydata.com>
+References: <1397846704-14567-1-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-2-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-3-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-4-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-5-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-6-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-7-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-8-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-9-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-10-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-11-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-12-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-13-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-14-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-15-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-16-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-17-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-18-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-19-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-20-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-21-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-22-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-23-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-24-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-25-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-26-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-27-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-28-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-29-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-30-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-31-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-32-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-33-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I have a FreeBSD server with several NFSv4 shares.
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 26 +++++++++++++++-----------
+ 1 file changed, 15 insertions(+), 11 deletions(-)
 
-I have several linux clients (Ubuntu 12.04) that connect just fine and are able to use the NFS shares with 0 problems.
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 7b897ff03a27..f463aaf9cd13 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -461,31 +461,37 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *stp, struct sv
+ 	return dp;
+ }
+ 
+-static void remove_stid(struct nfs4_stid *s)
++static void remove_stid_locked(struct nfs4_client *clp, struct nfs4_stid *s)
+ {
+-	struct nfs4_client *clp = s->sc_client;
+ 	struct idr *stateids = &clp->cl_stateids;
+ 
+-	spin_lock(&clp->cl_lock);
+ 	idr_remove(stateids, s->sc_stateid.si_opaque.so_id);
+-	spin_unlock(&clp->cl_lock);
+ }
+ 
+ static void nfs4_free_stid(struct kmem_cache *slab, struct nfs4_stid *s)
+ {
+-	remove_stid(s);
+ 	if (s->sc_file)
+ 		put_nfs4_file(s->sc_file);
+ 	kmem_cache_free(slab, s);
+ }
+ 
++static bool nfs4_put_stid(struct kmem_cache *slab, struct nfs4_stid *s)
++{
++	struct nfs4_client *clp = s->sc_client;
++
++	if (!atomic_dec_and_lock(&s->sc_count, &clp->cl_lock))
++		return false;
++	remove_stid_locked(clp, s);
++	spin_unlock(&clp->cl_lock);
++	nfs4_free_stid(slab, s);
++	return true;
++}
++
+ void
+ nfs4_put_delegation(struct nfs4_delegation *dp)
+ {
+-	if (atomic_dec_and_test(&dp->dl_stid.sc_count)) {
+-		nfs4_free_stid(deleg_slab, &dp->dl_stid);
++	if (nfs4_put_stid(deleg_slab, &dp->dl_stid))
+ 		num_delegations--;
+-	}
+ }
+ 
+ /* Call under fp->fi_lock */
+@@ -712,9 +718,7 @@ static void close_generic_stateid(struct nfs4_ol_stateid *stp)
+ 
+ static void put_generic_stateid(struct nfs4_ol_stateid *stp)
+ {
+-	if (!atomic_dec_and_test(&stp->st_stid.sc_count))
+-		return;
+-	nfs4_free_stid(stateid_slab, &stp->st_stid);
++	nfs4_put_stid(stateid_slab, &stp->st_stid);
+ }
+ 
+ static void __release_lock_stateid(struct nfs4_lockowner *lo,
+-- 
+1.9.0
 
-But I’ve run into idmap problems with some newer linux distros ( Mint 16, Ubuntu 14.04 ) where chown as root sets file ownership as nobody (the idmap operation fails).  Just to be clear, chown as root is working fine from the Ubuntu 12.04 machines.  This poses a problem since some desktop GUIs like to do this sort of thing when creating config files in user home directories, and so user GUI logins fail.
-
-the logs have a lot of this:
-
-Apr 25 12:17:51 server rpc.idmapd[433]: nfs4_name_to_uid: calling nsswitch->name_to_uid
-Apr 25 12:17:51 server rpc.idmapd[433]: nss_getpwnam: name 'craigyk@nimgs.com' domain 'nimgs.com': resulting localname 'craigyk'
-Apr 25 12:17:51 server rpc.idmapd[433]: nfs4_name_to_uid: nsswitch->name_to_uid returned 0
-Apr 25 12:17:51 server rpc.idmapd[433]: nfs4_name_to_uid: final return value is 0
-Apr 25 12:17:51 server rpc.idmapd[433]: Client 0: (user) name "craigyk@nimgs.com" -> id "11115"
-...
-Apr 25 12:18:03 server rpc.idmapd[433]: nfs4_name_to_uid: calling nsswitch->name_to_uid
-Apr 25 12:18:03 server rpc.idmapd[433]: nss_getpwnam: name '11115@nimgs.com' domain 'nimgs.com': resulting localname '11115'
-Apr 25 12:18:03 server rpc.idmapd[433]: nss_getpwnam: name '11115' not found in domain 'nimgs.com'
-Apr 25 12:18:03 server rpc.idmapd[433]: nfs4_name_to_uid: nsswitch->name_to_uid returned -2
-Apr 25 12:18:03 server rpc.idmapd[433]: nfs4_name_to_uid: final return value is -2
-Apr 25 12:18:03 server rpc.idmapd[433]: Client 0: (user) name "11115@nimgs.com" -> id "65534"
-
-I’ve tried almost everything I can think of.
-The users are being served from Samba4.
-The uid and gid are the same on all clients.
-
-Why is idmap trying to lookup the user id by it’s user id?
