@@ -1,17 +1,17 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f175.google.com ([209.85.223.175]:58169 "EHLO
-	mail-ie0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754415AbaDRSqH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Apr 2014 14:46:07 -0400
-Received: by mail-ie0-f175.google.com with SMTP id to1so1835256ieb.6
-        for <linux-nfs@vger.kernel.org>; Fri, 18 Apr 2014 11:46:07 -0700 (PDT)
+Received: from mail-ig0-f176.google.com ([209.85.213.176]:46641 "EHLO
+	mail-ig0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754525AbaDRSqa (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Apr 2014 14:46:30 -0400
+Received: by mail-ig0-f176.google.com with SMTP id uy17so942968igb.15
+        for <linux-nfs@vger.kernel.org>; Fri, 18 Apr 2014 11:46:29 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
 To: Bruce Fields <bfields@fieldses.org>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 39/70] NFSd: nfsd4_locku() must reference the lock stateid
-Date: Fri, 18 Apr 2014 14:44:33 -0400
-Message-Id: <1397846704-14567-40-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1397846704-14567-39-git-send-email-trond.myklebust@primarydata.com>
+Subject: [PATCH 54/70] NFSd: Ensure that the laundromat unhashes the client before releasing locks
+Date: Fri, 18 Apr 2014 14:44:48 -0400
+Message-Id: <1397846704-14567-55-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1397846704-14567-54-git-send-email-trond.myklebust@primarydata.com>
 References: <1397846704-14567-1-git-send-email-trond.myklebust@primarydata.com>
  <1397846704-14567-2-git-send-email-trond.myklebust@primarydata.com>
  <1397846704-14567-3-git-send-email-trond.myklebust@primarydata.com>
@@ -51,44 +51,54 @@ References: <1397846704-14567-1-git-send-email-trond.myklebust@primarydata.com>
  <1397846704-14567-37-git-send-email-trond.myklebust@primarydata.com>
  <1397846704-14567-38-git-send-email-trond.myklebust@primarydata.com>
  <1397846704-14567-39-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-40-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-41-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-42-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-43-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-44-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-45-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-46-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-47-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-48-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-49-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-50-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-51-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-52-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-53-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-54-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Ensure that nfsd4_locku() keeps a reference to the lock stateid
-until it is done working with it.
+If we leave the client on the confirmed/unconfirmed tables, and leave
+the sessions visible on the sessionid_hashtbl, then someone might
+find them before we've had a chance to destroy them.
 
 Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfsd/nfs4state.c | 6 +++++-
- 1 file changed, 5 insertions(+), 1 deletion(-)
+ fs/nfsd/nfs4state.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
 diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index d69d96a7d299..822eed0de95d 100644
+index 19f7739a156e..55a99ebaf6c9 100644
 --- a/fs/nfsd/nfs4state.c
 +++ b/fs/nfsd/nfs4state.c
-@@ -4815,10 +4815,12 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 					&stp, nn);
- 	if (status)
- 		goto out;
-+	/* FIXME: move into nfs4_preprocess_seqid_op */
-+	atomic_inc(&stp->st_stid.sc_count);
- 	filp = find_any_file(stp->st_stid.sc_file);
- 	if (!filp) {
- 		status = nfserr_lock_range;
--		goto out;
-+		goto put_stateid;
+@@ -3688,13 +3688,15 @@ nfs4_laundromat(struct nfsd_net *nn)
+ 		/* Hey, I'm busy with this guy! */
+ 		if (atomic_read(&clp->cl_refcount) != 0)
+ 			continue;
+-		list_move(&clp->cl_lru, &reaplist);
++		unhash_client_locked(clp);
++		list_add(&clp->cl_lru, &reaplist);
  	}
- 	file_lock = locks_alloc_lock();
- 	if (!file_lock) {
-@@ -4848,6 +4850,8 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	memcpy(&locku->lu_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
- fput:
- 	fput(filp);
-+put_stateid:
-+	put_generic_stateid(stp);
- out:
- 	nfsd4_bump_seqid(cstate, status);
- 	nfs4_unlock_state();
+ 	spin_unlock(&nn->client_lock);
+ 	list_for_each_safe(pos, next, &reaplist) {
+ 		clp = list_entry(pos, struct nfs4_client, cl_lru);
+ 		dprintk("NFSD: purging unused client (clientid %08x)\n",
+ 			clp->cl_clientid.cl_id);
++		list_del_init(&clp->cl_lru);
+ 		expire_client(clp);
+ 	}
+ 	spin_lock(&state_lock);
 -- 
 1.9.0
 
