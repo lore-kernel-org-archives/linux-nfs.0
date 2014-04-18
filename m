@@ -1,123 +1,133 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f171.google.com ([209.85.223.171]:53571 "EHLO
-	mail-ie0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932898AbaDIPwX convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Apr 2014 11:52:23 -0400
-Received: by mail-ie0-f171.google.com with SMTP id ar20so2632691iec.16
-        for <linux-nfs@vger.kernel.org>; Wed, 09 Apr 2014 08:52:23 -0700 (PDT)
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
-Subject: Re: commit 1bc49d83c37c (nfsd4: fix nfs4err_resource in 4.1 case)
+Received: from mail-ig0-f172.google.com ([209.85.213.172]:57981 "EHLO
+	mail-ig0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754232AbaDRSpw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Apr 2014 14:45:52 -0400
+Received: by mail-ig0-f172.google.com with SMTP id hn18so937889igb.11
+        for <linux-nfs@vger.kernel.org>; Fri, 18 Apr 2014 11:45:52 -0700 (PDT)
 From: Trond Myklebust <trond.myklebust@primarydata.com>
-In-Reply-To: <20140409152055.GB22938@fieldses.org>
-Date: Wed, 9 Apr 2014 11:52:20 -0400
-Cc: NFS <linux-nfs@vger.kernel.org>
-Message-Id: <BAD6904F-A82A-4FBC-807F-16560B2A23E0@primarydata.com>
-References: <ED8FB66B-E2A5-4BD5-95DE-160C9717D9AB@primarydata.com> <20140409135625.GA22938@fieldses.org> <924781E0-38DB-4623-821C-4FB7C9AF52C8@primarydata.com> <20140409152055.GB22938@fieldses.org>
-To: Dr Fields James Bruce <bfields@fieldses.org>
+To: Bruce Fields <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 30/70] NFSd: Replace delegation->dl_file with the dl_stid.sc_file
+Date: Fri, 18 Apr 2014 14:44:24 -0400
+Message-Id: <1397846704-14567-31-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1397846704-14567-30-git-send-email-trond.myklebust@primarydata.com>
+References: <1397846704-14567-1-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-2-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-3-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-4-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-5-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-6-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-7-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-8-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-9-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-10-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-11-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-12-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-13-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-14-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-15-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-16-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-17-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-18-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-19-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-20-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-21-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-22-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-23-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-24-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-25-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-26-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-27-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-28-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-29-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-30-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 13 +++++--------
+ fs/nfsd/state.h     |  1 -
+ 2 files changed, 5 insertions(+), 9 deletions(-)
 
-On Apr 9, 2014, at 11:20, Dr Fields James Bruce <bfields@fieldses.org> wrote:
-
-> On Wed, Apr 09, 2014 at 10:12:58AM -0400, Trond Myklebust wrote:
->> 
->> On Apr 9, 2014, at 9:56, Dr Fields James Bruce <bfields@fieldses.org> wrote:
->> 
->>> On Wed, Apr 09, 2014 at 09:41:28AM -0400, Trond Myklebust wrote:
->>>> According to RFC5661, NFS4ERR_REP_TOO_BIG/NFS4ERR_REP_TOO_BIG_TO_CACHE
->>>> are only appropriate if "The reply to a Compound would exceed the
->>>> channel's negotiated maximum response size.”.  Given that the callers
->>>> of nfsd4_encode_fattr appear to all pass in ‘buffer’ and ‘buflen’
->>>> arguments that are limited to single page, doesn’t this mean that you
->>>> can end up returning nfs4err_resource in cases where
->>>> nfserr_rep_too_big/nfserr_rep_too_big_to_cache are simply not
->>>> appropriate?
->>> 
->>> Yes, you're right.  This will be fixed by later patches which remove
->>> those arbitrary single-page limits, but for now it's a bug.
->>> 
->>> This was probably a bad way to sequence those patches.
->>> 
->>> That said, all that patch is doing in those cases is replacing one
->>> useless error by another, so in practice I don't think reverting the
->>> patch would help anyone--so I'm inclined to leave this alone and wait
->>> for the real bug to be fixed (which is that we're imposing limits other
->>> than the session limits).
->>> 
->>> Is this causing some problem right now?
->>> 
->> 
->> I’m not aware of any bug reports yet, but I did want to make sure that it was on your radar.
->> 
->> That said, one immediate consequence of this patch will be that NFSv4.1 clients will now report EIO instead of EREMOTEIO if they hit the problem. That may make debugging a little less obvious.
->> Another consequence will be that if we ever do try to add client side handling of NFS4ERR_REP_TOO_BIG, then we now have to deal with the “handle existing buggy server” syndrome.
-> 
-> Yeah, OK, I can see it would be annoying; maybe it's worth something
-> like the following for 3.15?
-> 
-> And then for 3.16 I'll delay this change till later in the xdr-encoding
-> series.
-
-On balance, that might be preferable…
-
-Cheers
-  Trond
-
-
-> --b.
-> 
-> commit a675223424673a6393fd291280af51fddd6a97ec
-> Author: J. Bruce Fields <bfields@redhat.com>
-> Date:   Wed Apr 9 11:07:01 2014 -0400
-> 
->    Revert "nfsd4: fix nfs4err_resource in 4.1 case"
-> 
->    Since we're still limiting attributes to a page, the result here is that
->    a large getattr result will return NFS4ERR_REP_TOO_BIG/TOO_BIG_TO_CACHE
->    instead of NFS4ERR_RESOURCE.
-> 
->    Both error returns are wrong, and the real bug here is the arbitrary
->    limit on getattr results, fixed by as-yet out-of-tree patches.  But at a
->    minimum we can make life easier for clients by sticking to one broken
->    behavior in released kernels instead of two....
-> 
->    Trond says:
-> 
->    	one immediate consequence of this patch will be that NFSv4.1
->    	clients will now report EIO instead of EREMOTEIO if they hit the
->    	problem. That may make debugging a little less obvious.
-> 
->    	Another consequence will be that if we ever do try to add client
->    	side handling of NFS4ERR_REP_TOO_BIG, then we now have to deal
->    	with the “handle existing buggy server” syndrome.
-> 
->    Reported-by: Trond Myklebust <trond.myklebust@primarydata.com>
->    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> 
-> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> index 2723c1b..18881f3 100644
-> --- a/fs/nfsd/nfs4xdr.c
-> +++ b/fs/nfsd/nfs4xdr.c
-> @@ -3627,14 +3627,6 @@ nfsd4_encode_operation(struct nfsd4_compoundres *resp, struct nfsd4_op *op)
-> 	/* nfsd4_check_resp_size guarantees enough room for error status */
-> 	if (!op->status)
-> 		op->status = nfsd4_check_resp_size(resp, 0);
-> -	if (op->status == nfserr_resource && nfsd4_has_session(&resp->cstate)) {
-> -		struct nfsd4_slot *slot = resp->cstate.slot;
-> -
-> -		if (slot->sl_flags & NFSD4_SLOT_CACHETHIS)
-> -			op->status = nfserr_rep_too_big_to_cache;
-> -		else
-> -			op->status = nfserr_rep_too_big;
-> -	}
-> 	if (so) {
-> 		so->so_replay.rp_status = op->status;
-> 		so->so_replay.rp_buflen = (char *)resp->p - (char *)(statp+1);
-
-_________________________________
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 5bbef4720e7c..48979ee79888 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -454,7 +454,6 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *stp, struct sv
+ 	INIT_LIST_HEAD(&dp->dl_perfile);
+ 	INIT_LIST_HEAD(&dp->dl_perclnt);
+ 	INIT_LIST_HEAD(&dp->dl_recall_lru);
+-	dp->dl_file = NULL;
+ 	dp->dl_type = NFS4_OPEN_DELEGATE_READ;
+ 	fh_copy_shallow(&dp->dl_fh, &current_fh->fh_handle);
+ 	dp->dl_time = 0;
+@@ -483,8 +482,6 @@ void
+ nfs4_put_delegation(struct nfs4_delegation *dp)
+ {
+ 	if (atomic_dec_and_test(&dp->dl_stid.sc_count)) {
+-		if (dp->dl_file)
+-			put_nfs4_file(dp->dl_file);
+ 		nfs4_free_stid(deleg_slab, &dp->dl_stid);
+ 		num_delegations--;
+ 	}
+@@ -520,7 +517,7 @@ hash_delegation_locked(struct nfs4_delegation *dp, struct nfs4_file *fp)
+ static void
+ unhash_delegation_locked(struct nfs4_delegation *dp)
+ {
+-	struct nfs4_file *fp = dp->dl_file;
++	struct nfs4_file *fp = dp->dl_stid.sc_file;
+ 
+ 	spin_lock(&fp->fi_lock);
+ 	list_del_init(&dp->dl_perclnt);
+@@ -3204,14 +3201,14 @@ static struct file_lock *nfs4_alloc_init_lease(struct nfs4_delegation *dp, int f
+ 	fl->fl_flags = FL_DELEG;
+ 	fl->fl_type = flag == NFS4_OPEN_DELEGATE_READ? F_RDLCK: F_WRLCK;
+ 	fl->fl_end = OFFSET_MAX;
+-	fl->fl_owner = (fl_owner_t)(dp->dl_file);
++	fl->fl_owner = (fl_owner_t)(dp->dl_stid.sc_file);
+ 	fl->fl_pid = current->tgid;
+ 	return fl;
+ }
+ 
+ static int nfs4_setlease(struct nfs4_delegation *dp)
+ {
+-	struct nfs4_file *fp = dp->dl_file;
++	struct nfs4_file *fp = dp->dl_stid.sc_file;
+ 	struct file_lock *fl;
+ 	int status = 0;
+ 
+@@ -3255,7 +3252,7 @@ static int nfs4_set_delegation(struct nfs4_delegation *dp, struct nfs4_file *fp)
+ 	get_nfs4_file(fp);
+ 	spin_lock(&state_lock);
+ 	spin_lock(&fp->fi_lock);
+-	dp->dl_file = fp;
++	dp->dl_stid.sc_file = fp;
+ 	if (!fp->fi_lease) {
+ 		spin_unlock(&fp->fi_lock);
+ 		spin_unlock(&state_lock);
+@@ -3877,7 +3874,7 @@ nfs4_preprocess_stateid_op(struct net *net, struct nfsd4_compound_state *cstate,
+ 		if (status)
+ 			goto out;
+ 		if (filpp) {
+-			file = dp->dl_file->fi_deleg_file;
++			file = dp->dl_stid.sc_file->fi_deleg_file;
+ 			if (!file) {
+ 				WARN_ON_ONCE(1);
+ 				status = nfserr_serverfault;
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index c6deef936693..de198600616b 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -93,7 +93,6 @@ struct nfs4_delegation {
+ 	struct list_head	dl_perfile;
+ 	struct list_head	dl_perclnt;
+ 	struct list_head	dl_recall_lru;  /* delegation recalled */
+-	struct nfs4_file	*dl_file;
+ 	u32			dl_type;
+ 	time_t			dl_time;
+ /* For recall: */
+-- 
+1.9.0
 
