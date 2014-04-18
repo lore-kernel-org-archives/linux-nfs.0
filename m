@@ -1,70 +1,31 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f175.google.com ([209.85.213.175]:50316 "EHLO
-	mail-ig0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751679AbaDYQw1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Apr 2014 12:52:27 -0400
-Received: by mail-ig0-f175.google.com with SMTP id h3so2422212igd.14
-        for <linux-nfs@vger.kernel.org>; Fri, 25 Apr 2014 09:52:26 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 2/2] nfs-iostat: Fix attribute cache statistics
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Date: Fri, 25 Apr 2014 12:52:20 -0400
-Message-ID: <20140425165220.30699.79542.stgit@manet.1015granger.net>
-In-Reply-To: <20140425165211.30699.73059.stgit@manet.1015granger.net>
-References: <20140425165211.30699.73059.stgit@manet.1015granger.net>
+Received: from bombadil.infradead.org ([198.137.202.9]:49159 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751197AbaDRN50 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Apr 2014 09:57:26 -0400
+Date: Fri, 18 Apr 2014 06:57:25 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Cc: Trond.Myklebust@primarydata.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 02/17] NFS: Create a common results structure for reads
+ and writes
+Message-ID: <20140418135725.GB20096@infradead.org>
+References: <1397768981-12856-1-git-send-email-Anna.Schumaker@Netapp.com>
+ <1397768981-12856-3-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1397768981-12856-3-git-send-email-Anna.Schumaker@Netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-"nfs-iostat.py --attr" was displaying nonsense (like negative
-counts and percentages).
+> +struct nfs_pgio_res {
+> +	struct nfs4_sequence_res	seq_res;
+> +	struct nfs_fattr *	fattr;
+> +	struct nfs_writeverf *	verf;		/* used by write */
+> +	const struct nfs_server *server;	/* used by write */
+> +	__u32			count;
+> +	int			eof;		/* used by read */
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-
- tools/nfs-iostat/nfs-iostat.py |   28 ++++++++--------------------
- 1 files changed, 8 insertions(+), 20 deletions(-)
-
-diff --git a/tools/nfs-iostat/nfs-iostat.py b/tools/nfs-iostat/nfs-iostat.py
-index 6831c12..b324cd8 100644
---- a/tools/nfs-iostat/nfs-iostat.py
-+++ b/tools/nfs-iostat/nfs-iostat.py
-@@ -243,27 +243,15 @@ class DeviceData:
-         """Print attribute cache efficiency stats
-         """
-         nfs_stats = self.__nfs_data
--        getattr_stats = self.__rpc_data['GETATTR']
--
--        if nfs_stats['inoderevalidates'] != 0:
--            getattr_ops = float(getattr_stats[1])
--            opens = float(nfs_stats['vfsopen'])
--            revalidates = float(nfs_stats['inoderevalidates']) - opens
--            if revalidates != 0:
--                ratio = ((revalidates - getattr_ops) * 100) / revalidates
--            else:
--                ratio = 0.0
--
--            data_invalidates = float(nfs_stats['datainvalidates'])
--            attr_invalidates = float(nfs_stats['attrinvalidates'])
- 
--            print()
--            print('%d inode revalidations, hitting in cache %4.2f%% of the time' % \
--                (revalidates, ratio))
--            print('%d open operations (mandatory GETATTR requests)' % opens)
--            if getattr_ops != 0:
--                print('%4.2f%% of GETATTRs resulted in data cache invalidations' % \
--                   ((data_invalidates * 100) / getattr_ops))
-+        print()
-+        print('%d VFS opens' % (nfs_stats['vfsopen']))
-+        print('%d inoderevalidates (forced GETATTRs)' % \
-+            (nfs_stats['inoderevalidates']))
-+        print('%d page cache invalidations' % \
-+            (nfs_stats['datainvalidates']))
-+        print('%d attribute cache invalidations' % \
-+            (nfs_stats['attrinvalidates']))
- 
-     def __print_dir_cache_stats(self, sample_time):
-         """Print directory stats
+Same comment as for the previous patch applies here.  Also maybe
+this should use a union to overlay the read/write only fields?
 
