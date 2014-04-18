@@ -1,19 +1,31 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from casper.infradead.org ([85.118.1.10]:57764 "EHLO
-	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756290AbaDPNFP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Apr 2014 09:05:15 -0400
-From: Christoph Hellwig <hch@lst.de>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Anna Schumaker <Anna.Schumaker@netapp.com>, linux-nfs@vger.kernel.org
-Subject: pageio_init simplifications, V2
-Date: Wed, 16 Apr 2014 15:07:20 +0200
-Message-Id: <1397653642-17833-1-git-send-email-hch@lst.de>
+Received: from bombadil.infradead.org ([198.137.202.9]:50243 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751352AbaDROCU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Apr 2014 10:02:20 -0400
+Date: Fri, 18 Apr 2014 07:02:20 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Cc: Trond.Myklebust@primarydata.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 05/17] NFS: Move the write verifier into the
+ nfs_pgio_header
+Message-ID: <20140418140220.GE20096@infradead.org>
+References: <1397768981-12856-1-git-send-email-Anna.Schumaker@Netapp.com>
+ <1397768981-12856-6-git-send-email-Anna.Schumaker@Netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1397768981-12856-6-git-send-email-Anna.Schumaker@Netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Changes since last version:
+On Thu, Apr 17, 2014 at 05:09:29PM -0400, Anna Schumaker wrote:
+> From: Anna Schumaker <Anna.Schumaker@netapp.com>
+> 
+> The header had a pointer to the verifier that was set from the old write
+> data struct.  We don't need to keep the pointer around now that we have
+> shared structures.
 
- - add the missing exports as pointed out by Anna
- - handle the pnfs fallback to MDS case correctly
+Looks good,
+
+Reviewed-by: Christoph Hellwig <hch@lst.de>
 
