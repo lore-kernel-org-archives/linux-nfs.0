@@ -1,97 +1,118 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:14649 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932546AbaDHRzT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 Apr 2014 13:55:19 -0400
-Date: Tue, 8 Apr 2014 13:55:12 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Dr Fields James Bruce <bfields@fieldses.org>,
-        NFS <linux-nfs@vger.kernel.org>,
-        Adamson William Andros <androsadamson@gmail.com>,
-        Lever Charles Edward <chuck.lever@oracle.com>
-Subject: Re: v4.0 CB_COMPOUND authentication failures
-Message-ID: <20140408135512.2397d97f@tlielax.poochiereds.net>
-In-Reply-To: <8F132114-F44C-449B-8EA8-331C67FCE813@primarydata.com>
-References: <20140408082140.340c1328@tlielax.poochiereds.net>
-	<20140408123501.GA3532@fieldses.org>
-	<20140408094903.33e42de2@tlielax.poochiereds.net>
-	<20140408140333.GD3882@fieldses.org>
-	<6CC79B2A-8AE2-4A36-BB57-380C2F9813C0@primarydata.com>
-	<20140408144652.GE3882@fieldses.org>
-	<ECD8245B-CDEE-442E-A41A-BECE08BEEDA1@primarydata.com>
-	<20140408164024.GH3882@fieldses.org>
-	<8F132114-F44C-449B-8EA8-331C67FCE813@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
+Received: from mail-ie0-f171.google.com ([209.85.223.171]:48161 "EHLO
+	mail-ie0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754445AbaDRSqL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Apr 2014 14:46:11 -0400
+Received: by mail-ie0-f171.google.com with SMTP id ar20so1904510iec.30
+        for <linux-nfs@vger.kernel.org>; Fri, 18 Apr 2014 11:46:10 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Bruce Fields <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 42/70] NFSd: nfsd4_process_open2() must reference the open stateid
+Date: Fri, 18 Apr 2014 14:44:36 -0400
+Message-Id: <1397846704-14567-43-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1397846704-14567-42-git-send-email-trond.myklebust@primarydata.com>
+References: <1397846704-14567-1-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-2-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-3-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-4-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-5-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-6-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-7-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-8-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-9-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-10-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-11-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-12-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-13-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-14-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-15-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-16-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-17-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-18-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-19-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-20-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-21-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-22-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-23-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-24-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-25-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-26-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-27-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-28-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-29-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-30-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-31-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-32-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-33-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-34-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-35-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-36-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-37-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-38-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-39-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-40-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-41-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-42-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 8 Apr 2014 13:30:21 -0400
-Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+Ensure that nfsd4_process_open2() keeps a reference to the open
+stateid until it is done working with it.
 
-> 
-> On Apr 8, 2014, at 12:40, Dr Fields James Bruce <bfields@fieldses.org> wrote:
-> > 
-> > On Tue, Apr 08, 2014 at 12:22:51PM -0400, Trond Myklebust wrote:
-> >> How is it not better just to rip out that hostname comparison in the
-> >> back channel?
-> > 
-> > Rip it out entirely?
-> > 
-> > At that point anyone who can get a credential in the right realm can
-> > send a recall.  RFC made this requirement to prevent that.
-> > 
-> 
-> OK. Let’s examine what RFC3530 and RFC3530bis actually says here:
-> 
->    Regardless of what security mechanism under RPCSEC_GSS is being used,
->    the NFS server MUST identify itself in GSS-API via a
->    GSS_C_NT_HOSTBASED_SERVICE name type.  GSS_C_NT_HOSTBASED_SERVICE
->    names are of the form:
-> 
->      service@hostname
-> 
->    For NFS, the "service" element is
-> 
->      nfs
-> 
->    Implementations of security mechanisms will convert nfs@hostname to
->    various different forms.  For Kerberos V5, the following form is
->    RECOMMENDED:
-> 
->    nfs/hostname
-> 
->    For Kerberos V5, nfs/hostname would be a server principal in the
->    Kerberos Key Distribution Center database.  This is the same
->    principal the client acquired a GSS-API context for when it issued
->    the SETCLIENTID operation, therefore, the realm name for the server
->    principal must be the same for the callback as it was for the
->    SETCLIENTID.
-> 
-> 
-> So as I read the above, technically the client is supposed to read off the principal name that the server uses to authenticate itself to the SETCLIENTID and check that in the callback. Am I wrong?
-> 
-> If so, then the steps are:
-> 
-> 1) Modify process_krb5_upcall() and have the call to gss_inquire_context() also request the context acceptor name
-> 2) Modify the rpc.gssd downcall to pass that name to the kernel in some format that allow us to retrieve it in the SETCLIENTID call.
-> 3) Modify the comparison in check_gss_callback_principal()
-> 
-> 
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 10 +++++++++-
+ 1 file changed, 9 insertions(+), 1 deletion(-)
 
-Sounds about right, with #2 being the difficult part...
-
-One possibility for that would be to add a new "acceptor" pipe in the
-clnt?? dirs. Teach gssd to write to the acceptor name to that pipe
-before doing the regular downcall.
-
-The name written there could then be hung off of the clp. If userland
-fails to write the name to the pipe before doing the downcall, we'll
-simply do what we do today (use the cl_hostname).
-
-Adding a new pipe is a bit of a pain, but it does sidestep the problem
-of mismatched kernel and userland...
-
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 634cd4de9d32..ec7cc90de03a 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -2806,6 +2806,7 @@ alloc_init_open_stateowner(unsigned int strhashval, struct nfs4_client *clp, str
+ static void init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_file *fp, struct nfsd4_open *open) {
+ 	struct nfs4_openowner *oo = open->op_openowner;
+ 
++	atomic_inc(&stp->st_stid.sc_count);
+ 	stp->st_stid.sc_type = NFS4_OPEN_STID;
+ 	INIT_LIST_HEAD(&stp->st_locks);
+ 	list_add(&stp->st_perstateowner, &oo->oo_owner.so_stateids);
+@@ -3111,6 +3112,7 @@ nfs4_check_open(struct nfs4_file *fp, struct nfsd4_open *open, struct nfs4_ol_st
+ {
+ 	struct nfs4_ol_stateid *local;
+ 	struct nfs4_openowner *oo = open->op_openowner;
++	struct nfs4_ol_stateid *ret = NULL;
+ 
+ 	spin_lock(&fp->fi_lock);
+ 	list_for_each_entry(local, &fp->fi_stateids, st_perfile) {
+@@ -3119,13 +3121,17 @@ nfs4_check_open(struct nfs4_file *fp, struct nfsd4_open *open, struct nfs4_ol_st
+ 			continue;
+ 		/* remember if we have seen this open owner */
+ 		if (local->st_stateowner == &oo->oo_owner)
+-			*stpp = local;
++			ret = local;
+ 		/* check for conflicting share reservations */
+ 		if (!test_share(local, open)) {
+ 			spin_unlock(&fp->fi_lock);
+ 			return nfserr_share_denied;
+ 		}
+ 	}
++	if (ret) {
++		atomic_inc(&ret->st_stid.sc_count);
++		*stpp = ret;
++	}
+ 	spin_unlock(&fp->fi_lock);
+ 	return nfs_ok;
+ }
+@@ -3536,6 +3542,8 @@ out:
+ 		open->op_rflags |= NFS4_OPEN_RESULT_CONFIRM;
+ 	if (dp)
+ 		nfs4_put_delegation(dp);
++	if (stp)
++		put_generic_stateid(stp);
+ 
+ 	return status;
+ }
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.9.0
+
