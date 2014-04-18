@@ -1,78 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f169.google.com ([209.85.192.169]:49464 "EHLO
-	mail-pd0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750789AbaDHFGr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Apr 2014 01:06:47 -0400
-Received: by mail-pd0-f169.google.com with SMTP id fp1so482458pdb.28
-        for <linux-nfs@vger.kernel.org>; Mon, 07 Apr 2014 22:06:47 -0700 (PDT)
-Message-ID: <534383D4.50504@gmail.com>
-Date: Tue, 08 Apr 2014 13:06:28 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
+Received: from smtp.opengridcomputing.com ([72.48.136.20]:60241 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751001AbaDROfz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Apr 2014 10:35:55 -0400
+From: "Steve Wise" <swise@opengridcomputing.com>
+To: <bfields@fieldses.org>
+Cc: <linux-nfs@vger.kernel.org>, <linux-rdma@vger.kernel.org>, <tom@ogc.us>
+References: <20140410183723.29724.18665.stgit@build.ogc.int> <006601cf5a66$c1576d10$44064730$@opengridcomputing.com>
+In-Reply-To: <006601cf5a66$c1576d10$44064730$@opengridcomputing.com>
+Subject: RE: [PATCH] svcrdma: refactor marshalling logic
+Date: Fri, 18 Apr 2014 09:36:02 -0500
+Message-ID: <000a01cf5b13$85e928b0$91bb7a10$@opengridcomputing.com>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH] NFSD: Get rid of empty function nfs4_state_init
-Content-Type: text/plain; charset=GB2312
+Content-Type: text/plain;
+	charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
----
- fs/nfsd/nfs4state.c | 7 -------
- fs/nfsd/nfsctl.c    | 1 -
- fs/nfsd/nfsd.h      | 2 --
- 3 files changed, 10 deletions(-)
+I know bruce is off-line, but does anyone else have comments?  Can anyone else test this?
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 5a9588e..6e786a8 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4969,13 +4969,6 @@ struct nfs4_client *nfsd_find_client(struct
-sockaddr_storage *addr, size_t addr_
+Thanks,
 
- #endif /* CONFIG_NFSD_FAULT_INJECTION */
+Steve.
 
--/* initialization to perform at module load time: */
--
--void
--nfs4_state_init(void)
--{
--}
--
- /*
-  * Since the lifetime of a delegation isn't limited to that of an open, a
-  * client may quite reasonably hang on to a delegation as long as it has
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index 7f55517..493f3d4 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -1174,7 +1174,6 @@ static int __init init_nfsd(void)
- 	retval = nfsd4_init_slabs();
- 	if (retval)
- 		goto out_unregister_pernet;
--	nfs4_state_init();
- 	retval = nfsd_fault_inject_init(); /* nfsd fault injection controls */
- 	if (retval)
- 		goto out_free_slabs;
-diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-index 30f34ab..22259f8 100644
---- a/fs/nfsd/nfsd.h
-+++ b/fs/nfsd/nfsd.h
-@@ -106,7 +106,6 @@ static inline int nfsd_v4client(struct svc_rqst *rq)
-  */
- #ifdef CONFIG_NFSD_V4
- extern unsigned long max_delegations;
--void nfs4_state_init(void);
- int nfsd4_init_slabs(void);
- void nfsd4_free_slabs(void);
- int nfs4_state_start(void);
-@@ -117,7 +116,6 @@ void nfs4_reset_lease(time_t leasetime);
- int nfs4_reset_recoverydir(char *recdir);
- char * nfs4_recoverydir(void);
- #else
--static inline void nfs4_state_init(void) { }
- static inline int nfsd4_init_slabs(void) { return 0; }
- static inline void nfsd4_free_slabs(void) { }
- static inline int nfs4_state_start(void) { return 0; }
--- 
-1.9.0
+> -----Original Message-----
+> From: linux-rdma-owner@vger.kernel.org [mailto:linux-rdma-owner@vger.kernel.org] On
+> Behalf Of Steve Wise
+> Sent: Thursday, April 17, 2014 12:59 PM
+> To: bfields@fieldses.org
+> Cc: linux-nfs@vger.kernel.org; linux-rdma@vger.kernel.org; tom@ogc.us
+> Subject: RE: [PATCH] svcrdma: refactor marshalling logic
+> 
+> Tested-by: Steve Wise <swise@opengridcomputing.com>
+> 
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
