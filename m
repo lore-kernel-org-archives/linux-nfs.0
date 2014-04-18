@@ -1,170 +1,115 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f175.google.com ([209.85.223.175]:43305 "EHLO
-	mail-ie0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755415AbaDWNhJ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Apr 2014 09:37:09 -0400
-Received: by mail-ie0-f175.google.com with SMTP id to1so867695ieb.6
-        for <linux-nfs@vger.kernel.org>; Wed, 23 Apr 2014 06:37:09 -0700 (PDT)
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
-Subject: Re: [PATCH 11/17] nfs: chain calls to pg_test
-From: Weston Andros Adamson <dros@primarydata.com>
-In-Reply-To: <5357AFFF.8030902@panasas.com>
-Date: Wed, 23 Apr 2014 09:37:09 -0400
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-nfs list <linux-nfs@vger.kernel.org>
-Message-Id: <A0BB3BBC-19AD-4FE9-9D79-BA9E832FB9B4@primarydata.com>
-References: <1398202165-78897-1-git-send-email-dros@primarydata.com> <1398202165-78897-12-git-send-email-dros@primarydata.com> <5357AFFF.8030902@panasas.com>
-To: Boaz Harrosh <bharrosh@panasas.com>
+Received: from mail-ig0-f175.google.com ([209.85.213.175]:50220 "EHLO
+	mail-ig0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753696AbaDRSq7 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Apr 2014 14:46:59 -0400
+Received: by mail-ig0-f175.google.com with SMTP id h3so442261igd.2
+        for <linux-nfs@vger.kernel.org>; Fri, 18 Apr 2014 11:46:58 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Bruce Fields <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 70/70] NFSd: Remove nfs4_lock_state(): reclaim_complete()
+Date: Fri, 18 Apr 2014 14:45:04 -0400
+Message-Id: <1397846704-14567-71-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1397846704-14567-70-git-send-email-trond.myklebust@primarydata.com>
+References: <1397846704-14567-1-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-2-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-3-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-4-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-5-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-6-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-7-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-8-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-9-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-10-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-11-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-12-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-13-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-14-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-15-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-16-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-17-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-18-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-19-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-20-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-21-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-22-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-23-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-24-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-25-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-26-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-27-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-28-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-29-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-30-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-31-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-32-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-33-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-34-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-35-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-36-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-37-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-38-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-39-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-40-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-41-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-42-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-43-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-44-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-45-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-46-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-47-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-48-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-49-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-50-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-51-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-52-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-53-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-54-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-55-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-56-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-57-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-58-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-59-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-60-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-61-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-62-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-63-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-64-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-65-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-66-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-67-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-68-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-69-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-70-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Apr 23, 2014, at 8:20 AM, Boaz Harrosh <bharrosh@panasas.com> wrote:
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 2 --
+ 1 file changed, 2 deletions(-)
 
-> On 04/23/2014 12:29 AM, Weston Andros Adamson wrote:
->> Now that pg_test can change the size of the request (by returning a non-zero
->> size smaller than the request), pg_test functions that call other
->> pg_test functions must return the minimum of the result - or 0 if any fail.
->> 
->> Also clean up the logic of some pg_test functions so that all checks are
->> for contitions where coalescing is not possible.
->> 
->> Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
->> ---
->> fs/nfs/nfs4filelayout.c      | 27 ++++++++++++++-------------
->> fs/nfs/objlayout/objio_osd.c | 12 ++++++++----
->> fs/nfs/pnfs.c                | 15 ++++++++++-----
->> 3 files changed, 32 insertions(+), 22 deletions(-)
->> 
->> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
->> index 3b32c95..cfd76bd 100644
->> --- a/fs/nfs/nfs4filelayout.c
->> +++ b/fs/nfs/nfs4filelayout.c
->> @@ -930,26 +930,27 @@ static size_t
->> filelayout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
->> 		   struct nfs_page *req)
->> {
->> +	unsigned int size;
->> 	u64 p_stripe, r_stripe;
->> 	u32 stripe_unit;
->> 
->> -	if (!pnfs_generic_pg_test(pgio, prev, req) ||
->> -	    !nfs_generic_pg_test(pgio, prev, req))
->> +	/* calls nfs_generic_pg_test */
->> +	size = pnfs_generic_pg_test(pgio, prev, req);
->> +	if (!size)
->> 		return 0;
->> 
->> -	if (!prev)
->> -		return req->wb_bytes;
->> +	if (prev) {
->> +		p_stripe = (u64)req_offset(prev);
->> +		r_stripe = (u64)req_offset(req);
->> +		stripe_unit = FILELAYOUT_LSEG(pgio->pg_lseg)->stripe_unit;
->> 
->> -	p_stripe = (u64)req_offset(prev);
->> -	r_stripe = (u64)req_offset(req);
->> -	stripe_unit = FILELAYOUT_LSEG(pgio->pg_lseg)->stripe_unit;
->> +		do_div(p_stripe, stripe_unit);
->> +		do_div(r_stripe, stripe_unit);
->> 
->> -	do_div(p_stripe, stripe_unit);
->> -	do_div(r_stripe, stripe_unit);
->> -
->> -	if (p_stripe == r_stripe)
->> -		return req->wb_bytes;
->> -	return 0;
->> +		if (p_stripe != r_stripe)
->> +			return 0;
->> +	}
->> +	return min(size, req->wb_bytes);
->> }
->> 
->> static void
->> diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
->> index c20352a..31de29e 100644
->> --- a/fs/nfs/objlayout/objio_osd.c
->> +++ b/fs/nfs/objlayout/objio_osd.c
->> @@ -571,13 +571,17 @@ int objio_write_pagelist(struct nfs_write_data *wdata, int how)
->> static size_t objio_pg_test(struct nfs_pageio_descriptor *pgio,
->> 			  struct nfs_page *prev, struct nfs_page *req)
->> {
->> -	if (!pnfs_generic_pg_test(pgio, prev, req))
->> +	unsigned int size;
->> +
->> +	size = pnfs_generic_pg_test(pgio, prev, req);
->> +
->> +	if (!size)
->> 		return 0;
->> 
->> -	if (pgio->pg_count + req->wb_bytes <=
->> +	if (pgio->pg_count + req->wb_bytes >
->> 	    (unsigned long)pgio->pg_layout_private)
->> -		return req->wb_bytes;
->> -	return 0;
->> +		return 0;
-> 
-> objio_osd can enjoy the new facility by returning the
-> remainder here:
-> 
-> 	max_io = (unsigned long)pgio->pg_layout_private);
-> 
-> 	wb_bytes = min(size, req->wb_bytes);
-> 
-> 	if (pgio->pg_count + req->wb_bytes > max_io)
-> 		wb_bytes = max_io - pgio->pg_count;
-> 
-> 	return wb_bytes;
-> 
-> Which reminds me that this code sucks and I need to fix it. I will do
-> so after you send your changes.
-> 
-> [I promise to test these guys soon. Can you please put them on a public tree?]
-
-Yes, I’ll put something up on linux-nfs.org.
-
-Thanks!
--dros
-
-> 
-> Thanks
-> Boaz
-> 
->> +	return min(size, req->wb_bytes);
->> }
->> 
->> static void objio_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
->> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
->> index 6201bf6..7c89385 100644
->> --- a/fs/nfs/pnfs.c
->> +++ b/fs/nfs/pnfs.c
->> @@ -1469,8 +1469,12 @@ size_t
->> pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
->> 		     struct nfs_page *req)
->> {
->> -	if (pgio->pg_lseg == NULL)
->> -		return nfs_generic_pg_test(pgio, prev, req);
->> +	unsigned int size;
->> +
->> +	size = nfs_generic_pg_test(pgio, prev, req);
->> +
->> +	if (!size)
->> +		return 0;
->> 
->> 	/*
->> 	 * Test if a nfs_page is fully contained in the pnfs_layout_range.
->> @@ -1486,10 +1490,11 @@ pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
->> 	 * first byte that lies outside the pnfs_layout_range. FIXME?
->> 	 *
->> 	 */
->> -	if (req_offset(req) < end_offset(pgio->pg_lseg->pls_range.offset,
->> +	if (req_offset(req) >= end_offset(pgio->pg_lseg->pls_range.offset,
->> 					 pgio->pg_lseg->pls_range.length))
->> -		return req->wb_bytes;
->> -	return 0;
->> +		return 0;
->> +
->> +	return min(size, req->wb_bytes);
->> }
->> EXPORT_SYMBOL_GPL(pnfs_generic_pg_test);
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 36ccc79702dd..a71dbf2a7a61 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -2568,7 +2568,6 @@ nfsd4_reclaim_complete(struct svc_rqst *rqstp, struct nfsd4_compound_state *csta
+ 		 return nfs_ok;
+ 	}
+ 
+-	nfs4_lock_state();
+ 	status = nfserr_complete_already;
+ 	if (test_and_set_bit(NFSD4_CLIENT_RECLAIM_COMPLETE,
+ 			     &cstate->session->se_client->cl_flags))
+@@ -2588,7 +2587,6 @@ nfsd4_reclaim_complete(struct svc_rqst *rqstp, struct nfsd4_compound_state *csta
+ 	status = nfs_ok;
+ 	nfsd4_client_record_create(cstate->session->se_client);
+ out:
+-	nfs4_unlock_state();
+ 	return status;
+ }
+ 
+-- 
+1.9.0
 
