@@ -1,149 +1,111 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:38469 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756884AbaDHOWM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 Apr 2014 10:22:12 -0400
-Date: Tue, 8 Apr 2014 10:22:00 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <androsadamson@gmail.com>,
-        chuck.lever@oracle.com, trond.myklebust@primarydata.com
-Subject: Re: v4.0 CB_COMPOUND authentication failures
-Message-ID: <20140408102200.566fbac2@tlielax.poochiereds.net>
-In-Reply-To: <20140408140333.GD3882@fieldses.org>
-References: <20140408082140.340c1328@tlielax.poochiereds.net>
-	<20140408123501.GA3532@fieldses.org>
-	<20140408094903.33e42de2@tlielax.poochiereds.net>
-	<20140408140333.GD3882@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-ig0-f172.google.com ([209.85.213.172]:58025 "EHLO
+	mail-ig0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754208AbaDRSpm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Apr 2014 14:45:42 -0400
+Received: by mail-ig0-f172.google.com with SMTP id hn18so949305igb.5
+        for <linux-nfs@vger.kernel.org>; Fri, 18 Apr 2014 11:45:42 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Bruce Fields <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 24/70] NFSd: Move the delegation reference counter into the struct nfs4_stid
+Date: Fri, 18 Apr 2014 14:44:18 -0400
+Message-Id: <1397846704-14567-25-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1397846704-14567-24-git-send-email-trond.myklebust@primarydata.com>
+References: <1397846704-14567-1-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-2-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-3-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-4-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-5-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-6-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-7-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-8-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-9-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-10-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-11-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-12-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-13-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-14-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-15-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-16-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-17-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-18-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-19-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-20-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-21-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-22-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-23-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-24-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 8 Apr 2014 10:03:33 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
+We will want to add reference counting to the lock stateid and open
+stateids too.
 
-> On Tue, Apr 08, 2014 at 09:49:03AM -0400, Jeff Layton wrote:
-> > On Tue, 8 Apr 2014 08:35:01 -0400
-> > "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > 
-> > > On Tue, Apr 08, 2014 at 08:21:40AM -0400, Jeff Layton wrote:
-> > > > I've recently been hunting down some problems with delegation handling
-> > > > and have run across a problem with the client authenticates CB_COMPOUND
-> > > > requests. I could use some advice on how best to fix it.
-> > > > 
-> > > > Specifically, check_gss_callback_principal() tries to look up the
-> > > > callback client and then tries to compare the ticket in it against the
-> > > > clp->cl_hostname:
-> > > > 
-> > > >         /* Expect a GSS_C_NT_HOSTBASED_NAME like "nfs@serverhostname" */
-> > > > 
-> > > >         if (memcmp(p, "nfs@", 4) != 0)
-> > > >                 return 0;
-> > > >         p += 4;
-> > > >         if (strcmp(p, clp->cl_hostname) != 0)
-> > > >                 return 0;
-> > > >         return 1;
-> > > > 
-> > > > The problem is that there is no guarantee that those hostnames will be
-> > > > the same. If, for instance, I mount "foo:/" and the SPN is
-> > > > "nfs/foo.bar.baz" that strcmp will return true, and the CB_COMPOUND
-> > > > request will get tossed out [1]. Ditto if I happen to mount a CNAME of the
-> > > > server.
-> > > 
-> > > It sounds like a bug to me that the mount is succeeding without the name
-> > > matching.
-> > > 
-> > > The security provided by krb5 is much weaker if we don't check that the
-> > > name provided on the commandline matches what the server authenticates
-> > > as.
-> > > 
-> > 
-> > The logic in gssd for this is pretty awful.
-> > 
-> > It will basically trust DNS if there is no '.' in the hostname that was
-> > used at mount time. That'll make it take the address and
-> > reverse-resolve it.
-> 
-> Argh, OK, I guess this is the compromise Simo made in "Avoid DNS reverse
-> resolution for server names (take 3)".
-> 
-> > We could add yet another band-aid and make it so that DNS is never
-> > trusted. I'll note that for cifs, we took that route. You have to mount
-> > the canonical name of the server in order to use krb5.
-> 
-> I wish we could do that, but I suppose it's too harsh to break
-> already-working fstabs.  Maybe we could phase it in somehow.
-> 
-> > > > Now that we try to use krb5 on the callback channel even when sec=sys
-> > > > is specified, this is very problematic.
-> > > 
-> > > And similarly I think the attempt to opportunistically use krb5 for
-> > > state management should fail and fall back on auth_sys if the server's
-> > > name doesn't match.
-> > > 
-> > 
-> > Like Trond pointed out, the problem is that gssd doesn't give us that
-> > info currently. We could change it to do that of course, but that
-> > basically means revving the downcall.
-> 
-> It might be easier to rev the upcall so that the kernel could ask gssd
-> to do strict checking?  Since it's just a bunch of name=value pairs it
-> shouldn't be a huge pain to revise.
-> 
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 6 +++---
+ fs/nfsd/state.h     | 2 +-
+ 2 files changed, 4 insertions(+), 4 deletions(-)
 
-Yeah, that might work, but it will definitely break anyone who's not
-mounting the canonical server name today.
-
-OTOH, if we're going to do that, then we don't really need to rev the
-upcall. Just fix gssd to do this strict checking by default (and maybe
-add a command-line option to allow it to trust DNS like it does today).
-
-> > > > I think that the ideal thing would be to stash the SPN that we use to
-> > > > do the SETCLIENTID call and use that in the comparison above.
-> > > > Unfortunately, the rpc_cred doesn't really seem to carry this info and
-> > > > I don't see where we get enough information in the rpc.gssd downcall to
-> > > > figure out what that SPN should be.
-> > > > 
-> > > > Anyone have thoughts or should we just remove the above check until we
-> > > > come up with a better way to do this?
-> > > > 
-> > > > [1]: there's another bug that can cause the client to send a bogus
-> > > >      reply instead of dropping the request as intended, but that's
-> > > >      relatively simple to fix.
-> > > 
-> > > So I believe the matching really is a requirement and that it would be
-> > > wrong to weaken it.
-> > > 
-> > > It sounds like there's also a server bug here if it's giving out
-> > > delegations to a client that isn't responding to callbacks.
-> > > 
-> > 
-> > The server uses CB_NULL requests to probe the callback port, and those
-> > aren't affected by this problem. Worse, since CB_NULL requests don't
-> > even contain the callback_ident, we can't even use them to hook up the
-> > nfs_client with the SPN used in them.
-> 
-> Ah, got it.
-> 
-> The server should still stop delegations as soon as a CB_RECALL times
-> out, though, so at least the problem should clear up after that?
-> 
-> --b.
-
-Yes, that seems to be what happens eventually. What I generally see is
-that we get a set of read delegations from the server, eventually the
-server sends a bunch of CB_RECALL requests, which are "dropped" (sort
-of -- I have a patch to really make those be dropped). Eventually ~60s
-later, the client returns the delegations.
-
-I'm a little unclear on what eventually triggers the DELEGRETURNs --
-maybe the server takes down the callback channel? I need to look a
-little closer at that piece...
-
-In any case, now that we have all sorts of server operations blocking on
-delegation callbacks this turns into a bit of a mess on the server and
-contributes to some softlockups that I'm seeing there.
-
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index ab66f73643a9..afb767319f66 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -411,6 +411,7 @@ kmem_cache *slab)
+ 	stid->sc_stateid.si_opaque.so_clid = cl->cl_clientid;
+ 	/* Will be incremented before return to client: */
+ 	stid->sc_stateid.si_generation = 0;
++	atomic_set(&stid->sc_count, 1);
+ 
+ 	/*
+ 	 * It shouldn't be a problem to reuse an opaque stateid value.
+@@ -457,7 +458,6 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *stp, struct sv
+ 	dp->dl_type = NFS4_OPEN_DELEGATE_READ;
+ 	fh_copy_shallow(&dp->dl_fh, &current_fh->fh_handle);
+ 	dp->dl_time = 0;
+-	atomic_set(&dp->dl_count, 1);
+ 	nfsd4_init_callback(&dp->dl_recall);
+ 	return dp;
+ }
+@@ -480,7 +480,7 @@ static void nfs4_free_stid(struct kmem_cache *slab, struct nfs4_stid *s)
+ void
+ nfs4_put_delegation(struct nfs4_delegation *dp)
+ {
+-	if (atomic_dec_and_test(&dp->dl_count)) {
++	if (atomic_dec_and_test(&dp->dl_stid.sc_count)) {
+ 		nfs4_free_stid(deleg_slab, &dp->dl_stid);
+ 		num_delegations--;
+ 	}
+@@ -2892,7 +2892,7 @@ static void nfsd_break_one_deleg(struct nfs4_delegation *dp)
+ 	 * callback (and since the lease code is serialized by the kernel
+ 	 * lock) we know the server hasn't removed the lease yet, we know
+ 	 * it's safe to take a reference: */
+-	atomic_inc(&dp->dl_count);
++	atomic_inc(&dp->dl_stid.sc_count);
+ 	nfsd4_cb_recall(dp);
+ }
+ 
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 559134675b5a..9d0088c244a8 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -74,6 +74,7 @@ struct nfsd4_callback {
+ };
+ 
+ struct nfs4_stid {
++	atomic_t sc_count;
+ #define NFS4_OPEN_STID 1
+ #define NFS4_LOCK_STID 2
+ #define NFS4_DELEG_STID 4
+@@ -91,7 +92,6 @@ struct nfs4_delegation {
+ 	struct list_head	dl_perfile;
+ 	struct list_head	dl_perclnt;
+ 	struct list_head	dl_recall_lru;  /* delegation recalled */
+-	atomic_t		dl_count;       /* ref count */
+ 	struct nfs4_file	*dl_file;
+ 	u32			dl_type;
+ 	time_t			dl_time;
 -- 
-Jeff Layton <jlayton@redhat.com>
+1.9.0
+
