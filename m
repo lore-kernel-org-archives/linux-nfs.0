@@ -1,83 +1,112 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:31572 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753348AbaDCTzR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 3 Apr 2014 15:55:17 -0400
-Date: Thu, 3 Apr 2014 15:30:24 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Mark Lord <mlord@pobox.com>
-Cc: Albert Fluegel <af@muc.de>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: linux-3.14 nfsd regression
-Message-ID: <20140403193024.GC28790@pad.redhat.com>
-References: <533D8D73.1090603@pobox.com>
- <20140403171643.GB28790@pad.redhat.com>
- <533D9F8A.6030001@pobox.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <533D9F8A.6030001@pobox.com>
+Received: from mail-ig0-f174.google.com ([209.85.213.174]:50622 "EHLO
+	mail-ig0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754100AbaDRSqB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Apr 2014 14:46:01 -0400
+Received: by mail-ig0-f174.google.com with SMTP id h18so938667igc.13
+        for <linux-nfs@vger.kernel.org>; Fri, 18 Apr 2014 11:46:00 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Bruce Fields <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 35/70] NFSd: Slight cleanup of find_stateid()
+Date: Fri, 18 Apr 2014 14:44:29 -0400
+Message-Id: <1397846704-14567-36-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1397846704-14567-35-git-send-email-trond.myklebust@primarydata.com>
+References: <1397846704-14567-1-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-2-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-3-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-4-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-5-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-6-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-7-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-8-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-9-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-10-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-11-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-12-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-13-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-14-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-15-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-16-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-17-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-18-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-19-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-20-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-21-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-22-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-23-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-24-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-25-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-26-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-27-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-28-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-29-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-30-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-31-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-32-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-33-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-34-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-35-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 03, 2014 at 01:51:06PM -0400, Mark Lord wrote:
-> On 14-04-03 01:16 PM, J. Bruce Fields wrote:
-> > On Thu, Apr 03, 2014 at 12:33:55PM -0400, Mark Lord wrote:
-> >> This commit from linux-3.14 breaks our NFS-root clients here:
-> >>
-> >> https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=6e14b46b91fee8a049b0940333ce13a820beaaa5
-> >>
-> >>
-> >> - *p++ = htonl((u32) stat->mode);
-> >> + *p++ = htonl((u32) (stat->mode & S_IALLUGO));
-> >>
-> >>
-> >> Reverting the one-liner above (on the server) fixes it for us,
-> >> as does reverting back to linux-3.13.8 on the server.
-> >>
-> >> The NFS-root clients are on PowerPC (big-endian) architecture,
-> >> running linux-3.12.16. The NFS server is on an Intel PC running linux-3.14.
-> >>
-> >> ACL is completely disabled on server and client,
-> >> and we're using NFSv2/v3.  No support for v4.
-> >>
-> >> I instrumented the function to see what other bits were being cleared
-> >> by the (stat->mode & S_IALLUGO) masking.  The results are attached.
-> > 
-> > Hm, it sounds like a bug in the client if it's depending on those high
-> > bits.
-> 
-> But only for mounting / starting up from the nfsroot, it seems.
-> I wonder if there's an unusual code path for that in there?
-> The regular stuff looks mostly fine:
-> 
->         p = xdr_decode_ftype3(p, &fmode);
->         fattr->mode = (be32_to_cpup(p++) & ~S_IFMT) | fmode;
+In preparation of reference counting...
 
-Hm, but that's in nfs3xdr.c; in nfs2xdr.c we have just
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 26 +++++++++++++++++---------
+ 1 file changed, 17 insertions(+), 9 deletions(-)
 
-	fattr->mode = be32_to_cpup(p+);
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 87464802126a..063ff9aba5d4 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1482,28 +1482,36 @@ static void gen_confirm(struct nfs4_client *clp)
+ 	memcpy(clp->cl_confirm.data, verf, sizeof(clp->cl_confirm.data));
+ }
+ 
+-static struct nfs4_stid *find_stateid(struct nfs4_client *cl, stateid_t *t)
++static struct nfs4_stid *find_stateid_locked(struct nfs4_client *cl, stateid_t *t)
+ {
+ 	struct nfs4_stid *ret;
+ 
+-	spin_lock(&cl->cl_lock);
+ 	ret = idr_find(&cl->cl_stateids, t->si_opaque.so_id);
+-	spin_unlock(&cl->cl_lock);
+ 	if (!ret || !ret->sc_type)
+ 		return NULL;
+ 	return ret;
+ }
+ 
++static struct nfs4_stid *find_stateid(struct nfs4_client *cl, stateid_t *t)
++{
++	struct nfs4_stid *ret;
++
++	spin_lock(&cl->cl_lock);
++	ret = find_stateid_locked(cl, t);
++	spin_unlock(&cl->cl_lock);
++	return ret;
++}
++
+ static struct nfs4_stid *find_stateid_by_type(struct nfs4_client *cl, stateid_t *t, char typemask)
+ {
+ 	struct nfs4_stid *s;
+ 
+-	s = find_stateid(cl, t);
+-	if (!s)
+-		return NULL;
+-	if (typemask & s->sc_type)
+-		return s;
+-	return NULL;
++	spin_lock(&cl->cl_lock);
++	s = find_stateid_locked(cl, t);
++	if (s != NULL && !(typemask & s->sc_type))
++		s = NULL;
++	spin_unlock(&cl->cl_lock);
++	return s;
+ }
+ 
+ static struct nfs4_client *create_client(struct xdr_netobj name,
+-- 
+1.9.0
 
-and NFSv2 is the default for nfsroot.  Do you have some reason to
-believe you're not using NFSv2?
-
---b.
-
-> 
-> Except perhaps that second line ought to use the same mask
-> as the server side is using, just in case there are some other
-> stray high (higher than S_IFMT) bits in there now/someday.
-> 
-> > The original behavior was in practice harmless and changing it broke
-> > something, so I think we should definitely just revert this patch.
-> 
-> Yup.  Who?
-> 
-> > But the client may need fixing too.
-> 
-> Probably a good thing in the longer term, for better compatibility
-> with non-Linux servers.  But we'll still have to keep the revert
-> on the server (nfsd) code for backward compatibility, I think.
-> 
-> Cheers
-> 
-> 
