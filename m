@@ -1,75 +1,114 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:57246 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754390AbaDQCir (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Apr 2014 22:38:47 -0400
-Date: Thu, 17 Apr 2014 12:38:37 +1000
-From: NeilBrown <neilb@suse.de>
-To: David Miller <davem@davemloft.net>
-Cc: eric.dumazet@gmail.com, linux-mm@kvack.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, xfs@oss.sgi.com, netdev@vger.kernel.org
-Subject: Re: [PATCH 10/19] NET: set PF_FSTRANS while holding sk_lock
-Message-ID: <20140417123837.5987e5e9@notabene.brown>
-In-Reply-To: <20140416.090002.2186526865564557549.davem@davemloft.net>
-References: <20140416033623.10604.69237.stgit@notabene.brown>
-	<20140416040336.10604.96000.stgit@notabene.brown>
-	<1397625226.4222.113.camel@edumazet-glaptop2.roam.corp.google.com>
-	<20140416.090002.2186526865564557549.davem@davemloft.net>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/SSVtvNA+Qn7U/.GV8.0daYz"; protocol="application/pgp-signature"
+Received: from mail-ig0-f179.google.com ([209.85.213.179]:41443 "EHLO
+	mail-ig0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752956AbaDRSpt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Apr 2014 14:45:49 -0400
+Received: by mail-ig0-f179.google.com with SMTP id hl10so943362igb.0
+        for <linux-nfs@vger.kernel.org>; Fri, 18 Apr 2014 11:45:48 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Bruce Fields <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 28/70] NFSd: Add reference counting to the lock and open stateids
+Date: Fri, 18 Apr 2014 14:44:22 -0400
+Message-Id: <1397846704-14567-29-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1397846704-14567-28-git-send-email-trond.myklebust@primarydata.com>
+References: <1397846704-14567-1-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-2-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-3-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-4-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-5-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-6-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-7-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-8-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-9-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-10-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-11-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-12-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-13-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-14-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-15-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-16-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-17-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-18-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-19-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-20-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-21-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-22-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-23-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-24-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-25-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-26-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-27-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-28-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/SSVtvNA+Qn7U/.GV8.0daYz
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 14 ++++++++------
+ 1 file changed, 8 insertions(+), 6 deletions(-)
 
-On Wed, 16 Apr 2014 09:00:02 -0400 (EDT) David Miller <davem@davemloft.net>
-wrote:
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 41314e493110..32ab3f1c83f8 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -710,8 +710,10 @@ static void close_generic_stateid(struct nfs4_ol_stateid *stp)
+ 	release_all_access(stp);
+ }
+ 
+-static void free_generic_stateid(struct nfs4_ol_stateid *stp)
++static void put_generic_stateid(struct nfs4_ol_stateid *stp)
+ {
++	if (!atomic_dec_and_test(&stp->st_stid.sc_count))
++		return;
+ 	remove_stid(&stp->st_stid);
+ 	if (stp->st_file)
+ 		put_nfs4_file(stp->st_file);
+@@ -730,7 +732,7 @@ static void __release_lock_stateid(struct nfs4_lockowner *lo,
+ 	if (file)
+ 		filp_close(file, (fl_owner_t)lo);
+ 	close_generic_stateid(stp);
+-	free_generic_stateid(stp);
++	put_generic_stateid(stp);
+ }
+ 
+ static void unhash_lockowner(struct nfs4_lockowner *lo)
+@@ -793,7 +795,7 @@ static void unhash_open_stateid(struct nfs4_ol_stateid *stp)
+ static void release_open_stateid(struct nfs4_ol_stateid *stp)
+ {
+ 	unhash_open_stateid(stp);
+-	free_generic_stateid(stp);
++	put_generic_stateid(stp);
+ }
+ 
+ static void unhash_openowner(struct nfs4_openowner *oo)
+@@ -814,7 +816,7 @@ static void release_last_closed_stateid(struct nfs4_openowner *oo)
+ 	struct nfs4_ol_stateid *s = oo->oo_last_closed_stid;
+ 
+ 	if (s) {
+-		free_generic_stateid(s);
++		put_generic_stateid(s);
+ 		oo->oo_last_closed_stid = NULL;
+ 	}
+ }
+@@ -3512,7 +3514,7 @@ void nfsd4_cleanup_open_state(struct nfsd4_open *open, __be32 status)
+ 	if (open->op_file)
+ 		nfsd4_free_file(open->op_file);
+ 	if (open->op_stp)
+-		free_generic_stateid(open->op_stp);
++		put_generic_stateid(open->op_stp);
+ }
+ 
+ static __be32 lookup_clientid(clientid_t *clid, bool session, struct nfsd_net *nn, struct nfs4_client **clp)
+@@ -4214,7 +4216,7 @@ nfsd4_close(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	nfsd4_close_open_stateid(stp);
+ 
+ 	if (cstate->minorversion)
+-		free_generic_stateid(stp);
++		put_generic_stateid(stp);
+ 	else
+ 		oo->oo_last_closed_stid = stp;
+ 
+-- 
+1.9.0
 
-> From: Eric Dumazet <eric.dumazet@gmail.com>
-> Date: Tue, 15 Apr 2014 22:13:46 -0700
->=20
-> > For applications handling millions of sockets, this makes a difference.
->=20
-> Indeed, this really is not acceptable.
-
-As you say...
-I've just discovered that I can get rid of the lockdep message (and hence
-presumably the deadlock risk) with a well placed:
-
-		newsock->sk->sk_allocation =3D GFP_NOFS;
-
-which surprised me as it seemed to be an explicit GFP_KERNEL allocation that
-was mentioned in the lockdep trace.  Obviously these traces require quite
-some sophistication to understand.
-
-So - thanks for the feedback, patch can be ignored.
-
-Thanks,
-NeilBrown
-
---Sig_/SSVtvNA+Qn7U/.GV8.0daYz
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.22 (GNU/Linux)
-
-iQIVAwUBU08+rTnsnt1WYoG5AQLRZhAAw2OqHGStjcH4tCI4w3eDMVb87MK1AVtQ
-U3pUF/WbzPSl0yhxDaa3vIg6L2ogkASESK6Oiiu8PZbG3TunCNwq63XXTKvE6EIY
-nABc2yOb9u/cixXtIuMC9E8ydnZa/dEkIyFY9oMXBjuOwb3L/ugKFm0upzBUVokw
-VtyZs8rl9s9IwgvuErpFbDR3ZxEk0VaMdREFwGCpkUD6DjknMTpGdaUelPxe+DEd
-Ffy6B7fjrkdG/8B4vYZKlW2c5on1lLqc+hgY24LrLUpLxHwu4HCuIrAuhzILDex/
-X5hZbQQhj2reLB8rsqJWOjmKn19/y8EbapUwa6BUMkSVHDCf0voCUjkHI8dOYcvM
-TnrmEzJS3Ym/x5rbenUCr2hEOEbZ80UEcMbdbrVm3rhPoMDtSifdtU2LEKro8oCk
-GPoOR3fYSLyxXNGQTlGiG3vSuSAIxF8tznBLnuCPIAPXK8LtXIn3oIOxNsN1J/LK
-TxZJsdA+I9YmV5uIn7cJarNYKdXvhR6x0YPoxUFzQZkngChosN3ZkGOHQeG2moyA
-JewuEtWT5Z1n1as19big3XukdBNnhJ/B11DpyI3TlfhIYN0mROFEAQkvXuOYYO+o
-CqkHfQp765IaTt0WOiVFu9bibhdxWwt1jwfasn1TE9LtvVlwlUlbPVL/8NrMXnOa
-Nkz7UZ1IxWU=
-=WfY/
------END PGP SIGNATURE-----
-
---Sig_/SSVtvNA+Qn7U/.GV8.0daYz--
