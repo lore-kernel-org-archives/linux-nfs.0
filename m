@@ -1,97 +1,102 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:38842 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753794AbaDPETQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Apr 2014 00:19:16 -0400
-From: NeilBrown <neilb@suse.de>
-To: linux-mm@kvack.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Date: Wed, 16 Apr 2014 14:03:36 +1000
-Subject: [PATCH 12/19] NET: set PF_FSTRANS while holding rtnl_lock
-Cc: xfs@oss.sgi.com
-Cc: netdev@vger.kernel.org
-Message-ID: <20140416040336.10604.81658.stgit@notabene.brown>
-In-Reply-To: <20140416033623.10604.69237.stgit@notabene.brown>
-References: <20140416033623.10604.69237.stgit@notabene.brown>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-ie0-f175.google.com ([209.85.223.175]:39681 "EHLO
+	mail-ie0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752956AbaDRSqY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Apr 2014 14:46:24 -0400
+Received: by mail-ie0-f175.google.com with SMTP id to1so1883238ieb.34
+        for <linux-nfs@vger.kernel.org>; Fri, 18 Apr 2014 11:46:24 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Bruce Fields <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 51/70] NFSd: Convert nfsd4_process_open1() to work with lookup_clientid()
+Date: Fri, 18 Apr 2014 14:44:45 -0400
+Message-Id: <1397846704-14567-52-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1397846704-14567-51-git-send-email-trond.myklebust@primarydata.com>
+References: <1397846704-14567-1-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-2-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-3-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-4-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-5-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-6-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-7-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-8-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-9-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-10-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-11-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-12-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-13-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-14-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-15-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-16-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-17-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-18-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-19-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-20-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-21-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-22-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-23-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-24-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-25-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-26-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-27-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-28-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-29-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-30-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-31-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-32-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-33-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-34-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-35-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-36-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-37-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-38-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-39-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-40-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-41-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-42-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-43-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-44-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-45-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-46-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-47-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-48-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-49-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-50-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-51-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-As rtnl_mutex can be taken while holding sk_lock, and sk_lock can be
-taken while performing memory reclaim (at least when loop-back NFS is
-active), any memory allocation under rtnl_mutex must avoid __GFP_FS,
-which is most easily done by setting PF_MEMALLOC.
-
-
-        CPU0                    CPU1
-        ----                    ----
-   lock(rtnl_mutex);
-                                lock(sk_lock-AF_INET);
-                                lock(rtnl_mutex);
-   <Memory allocation/reclaim>
-     lock(sk_lock-AF_INET);
-
-  *** DEADLOCK ***
-
-1/ rtnl_mutex is taken while holding sk_lock:
-
-    [<ffffffff81abb442>] rtnl_lock+0x12/0x20
-    [<ffffffff81b28c3a>] ip_mc_leave_group+0x2a/0x160
-    [<ffffffff81aec70b>] do_ip_setsockopt.isra.18+0x96b/0xed0
-    [<ffffffff81aecc97>] ip_setsockopt+0x27/0x90
-    [<ffffffff81b151c6>] udp_setsockopt+0x16/0x30
-    [<ffffffff81a9144f>] sock_common_setsockopt+0xf/0x20
-    [<ffffffff81a907de>] SyS_setsockopt+0x5e/0xc0
-
-2/ memory is allocated under rtnl_mutex:
-    [<ffffffff8166eb41>] kobject_set_name_vargs+0x21/0x70
-    [<ffffffff81840d92>] dev_set_name+0x42/0x50
-    [<ffffffff81ac5e97>] netdev_register_kobject+0x57/0x130
-    [<ffffffff81aaf574>] register_netdevice+0x354/0x550
-    [<ffffffff81aaf785>] register_netdev+0x15/0x30
-
-
-Signed-off-by: NeilBrown <neilb@suse.de>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- net/core/rtnetlink.c |    9 ++++++++-
- 1 file changed, 8 insertions(+), 1 deletion(-)
+ fs/nfsd/nfs4state.c | 8 ++++----
+ 1 file changed, 4 insertions(+), 4 deletions(-)
 
-diff --git a/net/core/rtnetlink.c b/net/core/rtnetlink.c
-index 120eecc0f5a4..6870211e93a6 100644
---- a/net/core/rtnetlink.c
-+++ b/net/core/rtnetlink.c
-@@ -61,15 +61,18 @@ struct rtnl_link {
- };
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 6e2d348d3367..d316fe10b9aa 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -70,6 +70,7 @@ static u64 current_sessionid = 1;
  
- static DEFINE_MUTEX(rtnl_mutex);
-+static int rtnl_pflags;
+ /* forward declarations */
+ static int check_for_locks(struct nfs4_file *filp, struct nfs4_lockowner *lowner);
++static __be32 lookup_clientid(clientid_t *clid, struct nfsd4_session *session, struct nfsd_net *nn, struct nfs4_client **clp);
  
- void rtnl_lock(void)
- {
- 	mutex_lock(&rtnl_mutex);
-+	current_set_flags_nested(&rtnl_pflags, PF_FSTRANS);
- }
- EXPORT_SYMBOL(rtnl_lock);
+ /* Locking: */
  
- void __rtnl_unlock(void)
- {
-+	current_restore_flags_nested(&rtnl_pflags, PF_FSTRANS);
- 	mutex_unlock(&rtnl_mutex);
- }
- 
-@@ -82,7 +85,11 @@ EXPORT_SYMBOL(rtnl_unlock);
- 
- int rtnl_trylock(void)
- {
--	return mutex_trylock(&rtnl_mutex);
-+	if (mutex_trylock(&rtnl_mutex)) {
-+		current_set_flags_nested(&rtnl_pflags, PF_FSTRANS);
-+		return 1;
-+	}
-+	return 0;
- }
- EXPORT_SYMBOL(rtnl_trylock);
- 
-
+@@ -3022,10 +3023,9 @@ nfsd4_process_open1(struct nfsd4_compound_state *cstate,
+ 	oo = find_openstateowner_str(strhashval, open, cstate->minorversion, nn);
+ 	open->op_openowner = oo;
+ 	if (!oo) {
+-		clp = find_confirmed_client(clientid, cstate->minorversion,
+-					    nn);
+-		if (clp == NULL)
+-			return nfserr_expired;
++		status = lookup_clientid(clientid, cstate->session, nn, &clp);
++		if (status)
++			return status;
+ 		goto new_owner;
+ 	}
+ 	if (!(oo->oo_flags & NFS4_OO_CONFIRMED)) {
+-- 
+1.9.0
 
