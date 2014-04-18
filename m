@@ -1,37 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from out2-smtp.messagingengine.com ([66.111.4.26]:58356 "EHLO
-	out2-smtp.messagingengine.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754420AbaDVKM1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Apr 2014 06:12:27 -0400
-Message-ID: <53563F16.80809@fastmail.fm>
-Date: Tue, 22 Apr 2014 12:06:14 +0200
-From: Bernd Schubert <bernd.schubert@fastmail.fm>
-MIME-Version: 1.0
-To: Kinglong Mee <kinglongmee@gmail.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: nfsd4_decode_create: Fix a possible NULL pointer
- dereference
-References: <lis0kj$kaj$1@ger.gmane.org> <53548EF2.40408@gmail.com>
-In-Reply-To: <53548EF2.40408@gmail.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-ie0-f173.google.com ([209.85.223.173]:62452 "EHLO
+	mail-ie0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752123AbaDRSpM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Apr 2014 14:45:12 -0400
+Received: by mail-ie0-f173.google.com with SMTP id rl12so1902016iec.4
+        for <linux-nfs@vger.kernel.org>; Fri, 18 Apr 2014 11:45:11 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Bruce Fields <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 04/70] NFSd: Remove 'inline' designation for free_client()
+Date: Fri, 18 Apr 2014 14:43:58 -0400
+Message-Id: <1397846704-14567-5-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1397846704-14567-4-git-send-email-trond.myklebust@primarydata.com>
+References: <1397846704-14567-1-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-2-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-3-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-4-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+It is large, it is used in more than one place, and it is not performance
+critical. Let gcc figure out whether it should be inlined...
 
-> cr_linkname maybe a path contains '/', or '.',
-> check_filename will return error nfserr_badname for those path.
-> 
-> IMO, just check whether the length is zero as,
-> 
-> if (create->cr_linklen == 0)
->     return nfserr_inval;
-> 
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 32b699bebb9c..841495aa9170 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1093,7 +1093,7 @@ static struct nfs4_client *alloc_client(struct xdr_netobj name)
+ 	return clp;
+ }
+ 
+-static inline void
++static void
+ free_client(struct nfs4_client *clp)
+ {
+ 	struct nfsd_net __maybe_unused *nn = net_generic(clp->net, nfsd_net_id);
+-- 
+1.9.0
 
-Hmm, right, checking for a '/' not right here. Checking if link-name is
-"." or ".." isn't required, but shouldn't hurt either. But on the other
-hand we can leave that to the underlying file system.
-
-
-Thanks for your review!
-
-Bernd
