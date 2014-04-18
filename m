@@ -1,88 +1,118 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.opengridcomputing.com ([72.48.136.20]:57333 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1161332AbaDPOZO convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Apr 2014 10:25:14 -0400
-From: "Steve Wise" <swise@opengridcomputing.com>
-To: "'Sagi Grimberg'" <sagig@dev.mellanox.co.il>,
-        "'Chuck Lever'" <chuck.lever@oracle.com>, <linux-nfs@vger.kernel.org>,
-        <linux-rdma@vger.kernel.org>
-References: <20140414220041.20646.63991.stgit@manet.1015granger.net> <20140414222323.20646.66946.stgit@manet.1015granger.net> <534E7C1C.5070407@dev.mellanox.co.il> <534E8608.8030801@opengridcomputing.com> <534E8FCE.909@dev.mellanox.co.il>
-In-Reply-To: <534E8FCE.909@dev.mellanox.co.il>
-Subject: RE: [PATCH 7/8] xprtrdma: Split the completion queue
-Date: Wed, 16 Apr 2014 09:25:18 -0500
-Message-ID: <003401cf597f$b0f8d590$12ea80b0$@opengridcomputing.com>
-MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="UTF-8"
+Received: from mail-ig0-f170.google.com ([209.85.213.170]:34773 "EHLO
+	mail-ig0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754100AbaDRSpf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Apr 2014 14:45:35 -0400
+Received: by mail-ig0-f170.google.com with SMTP id uq10so1223010igb.1
+        for <linux-nfs@vger.kernel.org>; Fri, 18 Apr 2014 11:45:34 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Bruce Fields <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 19/70] NFSd: Allow lockowners to hold several stateids
+Date: Fri, 18 Apr 2014 14:44:13 -0400
+Message-Id: <1397846704-14567-20-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1397846704-14567-19-git-send-email-trond.myklebust@primarydata.com>
+References: <1397846704-14567-1-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-2-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-3-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-4-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-5-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-6-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-7-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-8-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-9-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-10-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-11-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-12-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-13-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-14-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-15-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-16-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-17-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-18-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-19-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 46 +++++++++++++++++++++++++++++-----------------
+ 1 file changed, 29 insertions(+), 17 deletions(-)
 
-
-> -----Original Message-----
-> From: Sagi Grimberg [mailto:sagig@dev.mellanox.co.il]
-> Sent: Wednesday, April 16, 2014 9:13 AM
-> To: Steve Wise; Chuck Lever; linux-nfs@vger.kernel.org; linux-rdma@vger.kernel.org
-> Subject: Re: [PATCH 7/8] xprtrdma: Split the completion queue
-> 
-> On 4/16/2014 4:30 PM, Steve Wise wrote:
-> > On 4/16/2014 7:48 AM, Sagi Grimberg wrote:
-> >> On 4/15/2014 1:23 AM, Chuck Lever wrote:
-> >>> The current CQ handler uses the ib_wc.opcode field to distinguish
-> >>> between event types. However, the contents of that field are not
-> >>> reliable if the completion status is not IB_WC_SUCCESS.
-> >>>
-> >>> When an error completion occurs on a send event, the CQ handler
-> >>> schedules a tasklet with something that is not a struct rpcrdma_rep.
-> >>> This is never correct behavior, and sometimes it results in a panic.
-> >>>
-> >>> To resolve this issue, split the completion queue into a send CQ and
-> >>> a receive CQ. The send CQ handler now handles only struct rpcrdma_mw
-> >>> wr_id's, and the receive CQ handler now handles only struct
-> >>> rpcrdma_rep wr_id's.
-> >>
-> >> Hey Chuck,
-> >>
-> >> So 2 suggestions related (although not directly) to this one.
-> >>
-> >> 1. I recommend suppressing Fastreg completions - no one cares that
-> >> they succeeded.
-> >>
-> >
-> > Not true.  The nfsrdma client uses frmrs across re-connects for the
-> > same mount and needs to know at any point in time if a frmr is
-> > registered or invalid.  So completions of both fastreg and invalidate
-> > need to be signaled.  See:
-> >
-> > commit 5c635e09cec0feeeb310968e51dad01040244851
-> > Author: Tom Tucker <tom@ogc.us>
-> > Date:   Wed Feb 9 19:45:34 2011 +0000
-> >
-> >     RPCRDMA: Fix FRMR registration/invalidate handling.
-> >
-> 
-> Hmm, But if either FASTREG or LINV failed the QP will go to error state
-> and you *will* get the error wc (with a rain of FLUSH errors).
-> AFAICT it is safe to assume that it succeeded as long as you don't get
-> error completions.
-
-But if an unsignaled FASTREG is posted and silently succeeds, then the next signaled work request fails, I believe the FASTREG will be completed with FLUSH status, yet the operation actually completed in the hw.  So the driver would mark the frmr as INVALID, and a subsequent FASTREG for this frmr would fail because the frmr is in the VALID state. 
-
-> Moreover, FASTREG on top of FASTREG are not allowed indeed, but AFAIK
-> LINV on top of LINV are allowed.
-> It is OK to just always do LINV+FASTREG post-list each registration and
-> this way no need to account for successful completions.
-
-Perhaps always posting a LINV+FASTREG would do the trick.  
-
-Regardless, I recommend we don't muddle this particular patch which fixes a bug by using separate SQ and RQ CQs with tweaking how frmr registration is managed.  IE this should be a separate patch for review/testing/etc.  
-
-Steve.
-
-
-> 
-> Cheers,
-> Sagi.
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 0809e8355577..dad2f7b511b8 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -4390,6 +4390,19 @@ alloc_init_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp, struct
+ 	return stp;
+ }
+ 
++static struct nfs4_ol_stateid *
++find_lock_stateid(struct nfs4_lockowner *lo, struct inode *inode)
++{
++	struct nfs4_ol_stateid *lst;
++
++	list_for_each_entry(lst, &lo->lo_owner.so_stateids, st_perstateowner) {
++		if (lst->st_file->fi_inode == inode)
++			return lst;
++	}
++	return NULL;
++}
++
++
+ static int
+ check_lock_length(u64 offset, u64 length)
+ {
+@@ -4419,25 +4432,24 @@ static __be32 lookup_or_create_lock_state(struct nfsd4_compound_state *cstate, s
+ 
+ 	lo = find_lockowner_str(fi->fi_inode, &cl->cl_clientid,
+ 				&lock->v.new.owner, nn);
+-	if (lo) {
+-		if (!cstate->minorversion)
+-			return nfserr_bad_seqid;
+-		/* XXX: a lockowner always has exactly one stateid: */
+-		*lst = list_first_entry(&lo->lo_owner.so_stateids,
+-				struct nfs4_ol_stateid, st_perstateowner);
+-		return nfs_ok;
++	if (!lo) {
++		strhashval = ownerstr_hashval(cl->cl_clientid.cl_id,
++				&lock->v.new.owner);
++		lo = alloc_init_lock_stateowner(strhashval, cl, ost, lock);
++		if (lo == NULL)
++			return nfserr_jukebox;
+ 	}
+-	strhashval = ownerstr_hashval(cl->cl_clientid.cl_id,
+-			&lock->v.new.owner);
+-	lo = alloc_init_lock_stateowner(strhashval, cl, ost, lock);
+-	if (lo == NULL)
+-		return nfserr_jukebox;
+-	*lst = alloc_init_lock_stateid(lo, fi, ost);
++	if (!cstate->minorversion)
++		return nfserr_bad_seqid;
++	*lst = find_lock_stateid(lo, fi->fi_inode);
+ 	if (*lst == NULL) {
+-		release_lockowner(lo);
+-		return nfserr_jukebox;
++		*lst = alloc_init_lock_stateid(lo, fi, ost);
++		if (*lst == NULL) {
++			release_lockowner_if_empty(lo);
++			return nfserr_jukebox;
++		}
++		*new = true;
+ 	}
+-	*new = true;
+ 	return nfs_ok;
+ }
+ 
+@@ -4596,7 +4608,7 @@ out:
+ 	if (filp)
+ 		fput(filp);
+ 	if (status && new_state)
+-		release_lockowner(lock_sop);
++		release_lockowner_if_empty(lock_sop);
+ 	nfsd4_bump_seqid(cstate, status);
+ 	nfs4_unlock_state();
+ 	if (file_lock)
+-- 
+1.9.0
 
