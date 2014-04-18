@@ -1,65 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mga01.intel.com ([192.55.52.88]:15812 "EHLO mga01.intel.com"
+Received: from fieldses.org ([174.143.236.118]:39952 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933447AbaD2MQ6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 29 Apr 2014 08:16:58 -0400
-Date: Tue, 29 Apr 2014 08:16:35 -0400
-From: Matthew Wilcox <willy@linux.intel.com>
-To: Dave Chinner <david@fromorbit.com>
-Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>, agruen@kernel.org,
-        bfields@fieldses.org, akpm@linux-foundation.org,
-        viro@zeniv.linux.org.uk, dhowells@redhat.com,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH -V1 19/22] vfs: Cache richacl in struct inode
-Message-ID: <20140429121635.GC5929@linux.intel.com>
-References: <1398615293-22931-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
- <1398615293-22931-20-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
- <20140429005203.GT15995@dastard>
+	id S1751224AbaDRMN4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 18 Apr 2014 08:13:56 -0400
+Date: Fri, 18 Apr 2014 08:13:53 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Kinglong Mee <kinglongmee@gmail.com>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] NFSD: Clear cached acl after setting a zero-length
+ default posix acl:
+Message-ID: <20140418121353.GC18612@fieldses.org>
+References: <534FCD13.303@gmail.com>
+ <20140417143634.GA20857@infradead.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140429005203.GT15995@dastard>
+In-Reply-To: <20140417143634.GA20857@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Apr 29, 2014 at 10:52:04AM +1000, Dave Chinner wrote:
-> >  #ifdef CONFIG_FSNOTIFY
-> > @@ -240,10 +246,19 @@ void __destroy_inode(struct inode *inode)
-> >  	}
-> >  
-> >  #ifdef CONFIG_FS_POSIX_ACL
-> > -	if (inode->i_acl && inode->i_acl != ACL_NOT_CACHED)
-> > -		posix_acl_release(inode->i_acl);
-> > -	if (inode->i_default_acl && inode->i_default_acl != ACL_NOT_CACHED)
-> > -		posix_acl_release(inode->i_default_acl);
-> > +	if (IS_POSIXACL(inode)) {
-> > +		if (inode->i_acl && inode->i_acl != ACL_NOT_CACHED)
-> > +			posix_acl_release(inode->i_acl);
-> > +		if (inode->i_default_acl &&
-> > +		    inode->i_default_acl != ACL_NOT_CACHED)
-> > +			posix_acl_release(inode->i_default_acl);
-> > +	}
-> > +#endif
-> > +#ifdef CONFIG_FS_RICHACL
-> > +	if (IS_RICHACL(inode)) {
-> > +		if (inode->i_richacl && inode->i_richacl != ACL_NOT_CACHED)
-> > +			richacl_put(inode->i_richacl);
-> > +	}
-> >  #endif
+On Thu, Apr 17, 2014 at 07:36:34AM -0700, Christoph Hellwig wrote:
+> On Thu, Apr 17, 2014 at 08:46:11PM +0800, Kinglong Mee wrote:
+> > After setting ACL for directory, I got two problems that caused
+> > by the cached zero-length default posix acl.
+> > 
+> > This patch just clears the cached zero-length default posix acl
+> > after setting.
+> > 
+> > First problem:
+> > # nfs4_setfacl -s A::OWNER@:RWX /mnt/123/; touch /mnt/123/test
+> > ............ hang ...........
 > 
-> 	if (inode->i_acl && inode->i_acl != ACL_NOT_CACHED)
-> 		acl_release(inode->i_acl);
+> Nfsd must not call forget_cached_acl, that's the filesystems job.
+> I think the right fix is to make sure nfsd4_set_nfs4_acl calls ->set_acl
+> with a NULL ACL structure if there are no entries.
 > 
-> And all the mess of working out what acl needs releasing get taken
-> out of of this code.
+> Btw, it would be really good if we kept tests like this as a regression
+> test suite.  Is there one for NFS already?  If not we could add
+> nfs-specific tests to xfstests as well.
 
-Let's go further and have the API simply:
+I'd recommend pynfs for something like this.
 
-	inode_acl_release(inode);
+(It talks NFSv4 directly to the server, so won't depend on client
+acl-caching behavior, etc.)
 
-with inode_acl_release looking something like:
-
-	if (inode->i_acl && inode->i_acl != ACL_NOT_CACHED)
-		acl_release(inode->i_acl);
-	if (inode->i_default_acl && inode->i_default_acl != ACL_NOT_CACHED)
-		acl_release(inode->i_default_acl);
+--b.
