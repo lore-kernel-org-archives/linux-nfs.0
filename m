@@ -1,607 +1,186 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f46.google.com ([209.85.192.46]:33353 "EHLO
-	mail-qg0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758230AbaDXPpK (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Apr 2014 11:45:10 -0400
-Received: by mail-qg0-f46.google.com with SMTP id q107so2624024qgd.33
-        for <linux-nfs@vger.kernel.org>; Thu, 24 Apr 2014 08:45:09 -0700 (PDT)
-Date: Thu, 24 Apr 2014 11:45:07 -0400
-From: Jeff Layton <jlayton@poochiereds.net>
-To: Weston Andros Adamson <dros@primarydata.com>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-nfs list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 05/17] nfs: add support for multiple nfs reqs per page
-Message-ID: <20140424114507.39b24196@tlielax.poochiereds.net>
-In-Reply-To: <3DEC13E0-CC9B-498D-A97A-98D77628F672@primarydata.com>
-References: <1398202165-78897-1-git-send-email-dros@primarydata.com>
-	<1398202165-78897-6-git-send-email-dros@primarydata.com>
-	<20140424105000.665c159e@tlielax.poochiereds.net>
-	<3DEC13E0-CC9B-498D-A97A-98D77628F672@primarydata.com>
+Received: from mail-pa0-f47.google.com ([209.85.220.47]:34405 "EHLO
+	mail-pa0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751159AbaDRM5T (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Apr 2014 08:57:19 -0400
+Received: by mail-pa0-f47.google.com with SMTP id lj1so1442295pab.6
+        for <linux-nfs@vger.kernel.org>; Fri, 18 Apr 2014 05:57:18 -0700 (PDT)
+Message-ID: <5351210E.8020300@gmail.com>
+Date: Fri, 18 Apr 2014 20:56:46 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2] NFSD: Don't set default ACL if there are no ACE entries
+References: <534FCD13.303@gmail.com> <20140417143634.GA20857@infradead.org> <5350A0A2.1020401@gmail.com> <20140418121920.GD18612@fieldses.org>
+In-Reply-To: <20140418121920.GD18612@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 24 Apr 2014 11:23:19 -0400
-Weston Andros Adamson <dros@primarydata.com> wrote:
+On 2014/4/18 20:19, J. Bruce Fields wrote:
+> On Fri, Apr 18, 2014 at 11:48:50AM +0800, Kinglong Mee wrote:
+>> After setting ACL for directory, I got two problems that caused
+>> by the cached zero-length default posix acl.
+>>
+>> This patch make sure nfsd don't set a zero-length default
+>> posix ACL if there are no entries for the default ACL.
+>>
+>> Thanks for Christoph Hellwig's advice.
+>>
+>> v2:
+>>      drop calling forget_cached_acl(), just not set zero-length ACL
+>
+> I thought Christoph's suggestion was to actually call ->set_acl with a
+> NULL ACL?  Does that turn out to be unnecessary?
 
-> On Apr 24, 2014, at 10:50 AM, Jeff Layton <jlayton@poochiereds.net> wrote:
-> 
-> > On Tue, 22 Apr 2014 17:29:13 -0400
-> > Weston Andros Adamson <dros@primarydata.com> wrote:
-> > 
-> >> Add "page groups" - a circular list of nfs requests (struct nfs_page)
-> >> that all reference the same page. This gives nfs read and write paths
-> >> the ability to account for sub-page regions independently.  This
-> >> somewhat follows the design of struct buffer_head's sub-page
-> >> accounting.
-> >> 
-> >> Only "head" requests are ever added/removed from the inode list in
-> >> the buffered write path. "head" and "sub" requests are treated the
-> >> same through the read path and the rest of the write/commit path.
-> >> Requests are given an extra reference across the life of the list.
-> >> 
-> >> Page groups are never rejoined after being split. If the read/write
-> >> request fails and the client falls back to another path (ie revert
-> >> to MDS in PNFS case), the already split requests are pushed through
-> >> the recoalescing code again, which may split them further and then
-> >> coalesce them into properly sized requests on the wire. Fragmentation
-> >> shouldn't be a problem with the current design, because we flush all
-> >> requests in page group when a non-contiguous request is added, so
-> >> the only time resplitting should occur is on a resend of a read or
-> >> write.
-> >> 
-> >> This patch lays the groundwork for sub-page splitting, but does not
-> >> actually do any splitting. For now all page groups have one request
-> >> as pg_test functions don't yet split pages. There are several related
-> >> patches that are needed support multiple requests per page group.
-> >> 
-> >> Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
-> >> ---
-> >> fs/nfs/direct.c          |   7 +-
-> >> fs/nfs/pagelist.c        | 218 ++++++++++++++++++++++++++++++++++++++++++++---
-> >> fs/nfs/read.c            |   4 +-
-> >> fs/nfs/write.c           |  12 ++-
-> >> include/linux/nfs_page.h |  12 ++-
-> >> 5 files changed, 231 insertions(+), 22 deletions(-)
-> >> 
-> >> diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-> >> index a0c30c5..9d968ca 100644
-> >> --- a/fs/nfs/direct.c
-> >> +++ b/fs/nfs/direct.c
-> >> @@ -380,7 +380,7 @@ static ssize_t nfs_direct_read_schedule_segment(struct nfs_pageio_descriptor *de
-> >> 			struct nfs_page *req;
-> >> 			unsigned int req_len = min_t(size_t, bytes, PAGE_SIZE - pgbase);
-> >> 			/* XXX do we need to do the eof zeroing found in async_filler? */
-> >> -			req = nfs_create_request(dreq->ctx, pagevec[i],
-> >> +			req = nfs_create_request(dreq->ctx, pagevec[i], NULL,
-> >> 						 pgbase, req_len);
-> >> 			if (IS_ERR(req)) {
-> >> 				result = PTR_ERR(req);
-> >> @@ -749,7 +749,7 @@ static ssize_t nfs_direct_write_schedule_segment(struct nfs_pageio_descriptor *d
-> >> 			struct nfs_page *req;
-> >> 			unsigned int req_len = min_t(size_t, bytes, PAGE_SIZE - pgbase);
-> >> 
-> >> -			req = nfs_create_request(dreq->ctx, pagevec[i],
-> >> +			req = nfs_create_request(dreq->ctx, pagevec[i], NULL,
-> >> 						 pgbase, req_len);
-> >> 			if (IS_ERR(req)) {
-> >> 				result = PTR_ERR(req);
-> >> @@ -827,6 +827,8 @@ static void nfs_direct_write_completion(struct nfs_pgio_header *hdr)
-> >> 	spin_unlock(&dreq->lock);
-> >> 
-> >> 	while (!list_empty(&hdr->pages)) {
-> >> +		bool do_destroy = true;
-> >> +
-> >> 		req = nfs_list_entry(hdr->pages.next);
-> >> 		nfs_list_remove_request(req);
-> >> 		switch (bit) {
-> >> @@ -834,6 +836,7 @@ static void nfs_direct_write_completion(struct nfs_pgio_header *hdr)
-> >> 		case NFS_IOHDR_NEED_COMMIT:
-> >> 			kref_get(&req->wb_kref);
-> >> 			nfs_mark_request_commit(req, hdr->lseg, &cinfo);
-> >> +			do_destroy = false;
-> >> 		}
-> >> 		nfs_unlock_and_release_request(req);
-> >> 	}
-> >> diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-> >> index ac4fb64..8cb8e14 100644
-> >> --- a/fs/nfs/pagelist.c
-> >> +++ b/fs/nfs/pagelist.c
-> >> @@ -26,6 +26,8 @@
-> >> 
-> >> static struct kmem_cache *nfs_page_cachep;
-> >> 
-> >> +static void nfs_free_request(struct nfs_page *);
-> >> +
-> >> bool nfs_pgarray_set(struct nfs_page_array *p, unsigned int pagecount)
-> >> {
-> >> 	p->npages = pagecount;
-> >> @@ -133,10 +135,145 @@ nfs_iocounter_wait(struct nfs_io_counter *c)
-> >> 	return __nfs_iocounter_wait(c);
-> >> }
-> >> 
-> >> +/*
-> >> + * nfs_page_group_lock - lock the head of the page group
-> >> + * @req - request in group that is to be locked
-> >> + *
-> >> + * this lock must be held if modifying the page group list
-> >> + */
-> >> +void
-> >> +nfs_page_group_lock(struct nfs_page *req)
-> >> +{
-> >> +	struct nfs_page *head = req->wb_head;
-> >> +	int err = -EAGAIN;
-> >> +
-> >> +	WARN_ON_ONCE(head != head->wb_head);
-> >> +
-> >> +	while (err)
-> >> +		err = wait_on_bit_lock(&head->wb_flags, PG_HEADLOCK,
-> >> +			nfs_wait_bit_killable, TASK_KILLABLE);
-> >> +}
-> >> +
-> >> +/*
-> >> + * nfs_page_group_unlock - unlock the head of the page group
-> >> + * @req - request in group that is to be unlocked
-> >> + */
-> >> +void
-> >> +nfs_page_group_unlock(struct nfs_page *req)
-> >> +{
-> >> +	struct nfs_page *head = req->wb_head;
-> >> +
-> >> +	WARN_ON_ONCE(head != head->wb_head);
-> >> +
-> >> +	smp_mb__before_clear_bit();
-> >> +	clear_bit(PG_HEADLOCK, &head->wb_flags);
-> >> +	smp_mb__after_clear_bit();
-> >> +	wake_up_bit(&head->wb_flags, PG_HEADLOCK);
-> >> +}
-> >> +
-> >> +/*
-> >> + * nfs_page_group_sync_on_bit_locked
-> >> + *
-> >> + * must be called with page group lock held
-> >> + */
-> >> +static bool
-> >> +nfs_page_group_sync_on_bit_locked(struct nfs_page *req, unsigned int bit)
-> >> +{
-> >> +	struct nfs_page *head = req->wb_head;
-> >> +	struct nfs_page *tmp;
-> >> +
-> >> +	WARN_ON_ONCE(!test_bit(PG_HEADLOCK, &head->wb_flags));
-> >> +	WARN_ON_ONCE(test_and_set_bit(bit, &req->wb_flags));
-> >> +
-> >> +	tmp = req->wb_this_page;
-> >> +	while (tmp != req) {
-> >> +		if (!test_bit(bit, &tmp->wb_flags))
-> >> +			return false;
-> >> +		tmp = tmp->wb_this_page;
-> >> +	}
-> >> +
-> >> +	/* true! reset all bits */
-> >> +	tmp = req;
-> >> +	do {
-> >> +		clear_bit(bit, &tmp->wb_flags);
-> >> +		tmp = tmp->wb_this_page;
-> >> +	} while (tmp != req);
-> >> +
-> >> +	return true;
-> >> +}
-> >> +
-> >> +/*
-> >> + * nfs_page_group_sync_on_bit - set bit on current request, but only
-> >> + *   return true if the bit is set for all requests in page group
-> >> + * @req - request in page group
-> >> + * @bit - PG_* bit that is used to sync page group
-> >> + */
-> >> +bool nfs_page_group_sync_on_bit(struct nfs_page *req, unsigned int bit)
-> >> +{
-> >> +	bool ret;
-> >> +
-> >> +	nfs_page_group_lock(req);
-> >> +	ret = nfs_page_group_sync_on_bit_locked(req, bit);
-> >> +	nfs_page_group_unlock(req);
-> >> +
-> >> +	return ret;
-> >> +}
-> >> +
-> >> +/*
-> >> + * nfs_page_group_init - Initialize the page group linkage for @req
-> >> + * @req - a new nfs request
-> >> + * @prev - the previous request in page group, or NULL if @req is the first
-> >> + *         or only request in the group (the head).
-> >> + */
-> >> +static inline void
-> >> +nfs_page_group_init(struct nfs_page *req, struct nfs_page *prev)
-> >> +{
-> >> +	WARN_ON_ONCE(prev == req);
-> >> +
-> >> +	if (!prev) {
-> >> +		req->wb_head = req;
-> >> +		req->wb_this_page = req;
-> >> +	} else {
-> >> +		WARN_ON_ONCE(prev->wb_this_page != prev->wb_head);
-> >> +		WARN_ON_ONCE(!test_bit(PG_HEADLOCK, &prev->wb_head->wb_flags));
-> >> +		req->wb_head = prev->wb_head;
-> >> +		req->wb_this_page = prev->wb_this_page;
-> >> +		prev->wb_this_page = req;
-> >> +	}
-> >> +}
-> >> +
-> >> +/*
-> >> + * nfs_page_group_destroy - sync the destruction of page groups
-> >> + * @req - request that no longer needs the page group
-> >> + *
-> >> + * releases the page group reference from each member once all
-> >> + * members have called this function.
-> >> + */
-> >> +static void
-> >> +nfs_page_group_destroy(struct kref *kref)
-> >> +{
-> >> +	struct nfs_page *req = container_of(kref, struct nfs_page, wb_kref);
-> >> +	struct nfs_page *tmp, *next;
-> >> +
-> >> +	if (!nfs_page_group_sync_on_bit(req, PG_TEARDOWN))
-> >> +		return;
-> >> +
-> >> +	tmp = req;
-> >> +	do {
-> >> +		next = tmp->wb_this_page;
-> >> +		/* unlink and free */
-> >> +		tmp->wb_this_page = tmp;
-> >> +		tmp->wb_head = tmp;
-> >> +		nfs_free_request(tmp);
-> >> +		tmp = next;
-> >> +	} while (tmp != req);
-> >> +}
-> >> +
-> >> /**
-> >>  * nfs_create_request - Create an NFS read/write request.
-> >>  * @ctx: open context to use
-> >>  * @page: page to write
-> >> + * @last: last nfs request created for this page group or NULL if head
-> >>  * @offset: starting offset within the page for the write
-> >>  * @count: number of bytes to read/write
-> >>  *
-> >> @@ -146,7 +283,8 @@ nfs_iocounter_wait(struct nfs_io_counter *c)
-> >>  */
-> >> struct nfs_page *
-> >> nfs_create_request(struct nfs_open_context *ctx, struct page *page,
-> >> -		   unsigned int offset, unsigned int count)
-> >> +		   struct nfs_page *last, unsigned int offset,
-> >> +		   unsigned int count)
-> >> {
-> >> 	struct nfs_page		*req;
-> >> 	struct nfs_lock_context *l_ctx;
-> >> @@ -178,6 +316,7 @@ nfs_create_request(struct nfs_open_context *ctx, struct page *page,
-> >> 	req->wb_bytes   = count;
-> >> 	req->wb_context = get_nfs_open_context(ctx);
-> >> 	kref_init(&req->wb_kref);
-> >> +	nfs_page_group_init(req, last);
-> >> 	return req;
-> >> }
-> >> 
-> >> @@ -235,16 +374,22 @@ static void nfs_clear_request(struct nfs_page *req)
-> >> 	}
-> >> }
-> >> 
-> >> -
-> >> /**
-> >>  * nfs_release_request - Release the count on an NFS read/write request
-> >>  * @req: request to release
-> >>  *
-> >>  * Note: Should never be called with the spinlock held!
-> >>  */
-> >> -static void nfs_free_request(struct kref *kref)
-> >> +static void nfs_free_request(struct nfs_page *req)
-> >> {
-> >> -	struct nfs_page *req = container_of(kref, struct nfs_page, wb_kref);
-> >> +	WARN_ON_ONCE(req->wb_this_page != req);
-> >> +
-> >> +	/* extra debug: make sure no sync bits are still set */
-> >> +	WARN_ON_ONCE(test_bit(PG_TEARDOWN, &req->wb_flags));
-> >> +	WARN_ON_ONCE(test_bit(PG_UNLOCKPAGE, &req->wb_flags));
-> >> +	WARN_ON_ONCE(test_bit(PG_UPTODATE, &req->wb_flags));
-> >> +	WARN_ON_ONCE(test_bit(PG_WB_END, &req->wb_flags));
-> >> +	WARN_ON_ONCE(test_bit(PG_REMOVE, &req->wb_flags));
-> >> 
-> >> 	/* Release struct file and open context */
-> >> 	nfs_clear_request(req);
-> >> @@ -253,7 +398,7 @@ static void nfs_free_request(struct kref *kref)
-> >> 
-> >> void nfs_release_request(struct nfs_page *req)
-> >> {
-> >> -	kref_put(&req->wb_kref, nfs_free_request);
-> >> +	kref_put(&req->wb_kref, nfs_page_group_destroy);
-> >> }
-> >> 
-> >> static int nfs_wait_bit_uninterruptible(void *word)
-> >> @@ -439,21 +584,66 @@ static void nfs_pageio_doio(struct nfs_pageio_descriptor *desc)
-> >>  * @desc: destination io descriptor
-> >>  * @req: request
-> >>  *
-> >> + * This may split a request into subrequests which are all part of the
-> >> + * same page group.
-> >> + *
-> >>  * Returns true if the request 'req' was successfully coalesced into the
-> >>  * existing list of pages 'desc'.
-> >>  */
-> >> static int __nfs_pageio_add_request(struct nfs_pageio_descriptor *desc,
-> >> 			   struct nfs_page *req)
-> >> {
-> >> -	while (!nfs_pageio_do_add_request(desc, req)) {
-> >> -		desc->pg_moreio = 1;
-> >> -		nfs_pageio_doio(desc);
-> >> -		if (desc->pg_error < 0)
-> >> -			return 0;
-> >> -		desc->pg_moreio = 0;
-> >> -		if (desc->pg_recoalesce)
-> >> -			return 0;
-> >> -	}
-> >> +	struct nfs_page *subreq;
-> >> +	unsigned int bytes_left = 0;
-> >> +	unsigned int offset, pgbase;
-> >> +
-> >> +	nfs_page_group_lock(req);
-> >> +
-> >> +	subreq = req;
-> >> +	bytes_left = subreq->wb_bytes;
-> >> +	offset = subreq->wb_offset;
-> >> +	pgbase = subreq->wb_pgbase;
-> >> +
-> >> +	do {
-> >> +		if (!nfs_pageio_do_add_request(desc, subreq)) {
-> >> +			/* make sure pg_test call(s) did nothing */
-> >> +			WARN_ON_ONCE(subreq->wb_bytes != bytes_left);
-> >> +			WARN_ON_ONCE(subreq->wb_offset != offset);
-> >> +			WARN_ON_ONCE(subreq->wb_pgbase != pgbase);
-> >> +
-> >> +			nfs_page_group_unlock(req);
-> >> +			desc->pg_moreio = 1;
-> >> +			nfs_pageio_doio(desc);
-> >> +			if (desc->pg_error < 0)
-> >> +				return 0;
-> >> +			desc->pg_moreio = 0;
-> >> +			if (desc->pg_recoalesce)
-> >> +				return 0;
-> >> +			/* retry add_request for this subreq */
-> >> +			nfs_page_group_lock(req);
-> >> +			continue;
-> >> +		}
-> >> +
-> >> +		/* check for buggy pg_test call(s) */
-> >> +		WARN_ON_ONCE(subreq->wb_bytes + subreq->wb_pgbase > PAGE_SIZE);
-> >> +		WARN_ON_ONCE(subreq->wb_bytes > bytes_left);
-> >> +		WARN_ON_ONCE(subreq->wb_bytes == 0);
-> >> +
-> >> +		bytes_left -= subreq->wb_bytes;
-> >> +		offset += subreq->wb_bytes;
-> >> +		pgbase += subreq->wb_bytes;
-> >> +
-> >> +		if (bytes_left) {
-> >> +			subreq = nfs_create_request(req->wb_context,
-> >> +					req->wb_page,
-> >> +					subreq, pgbase, bytes_left);
-> >> +			nfs_lock_request(subreq);
-> >> +			subreq->wb_offset  = offset;
-> >> +			subreq->wb_index = req->wb_index;
-> >> +		}
-> >> +	} while (bytes_left > 0);
-> >> +
-> >> +	nfs_page_group_unlock(req);
-> >> 	return 1;
-> >> }
-> >> 
-> >> diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-> >> index 95a0855..ee0a3cd 100644
-> >> --- a/fs/nfs/read.c
-> >> +++ b/fs/nfs/read.c
-> >> @@ -139,7 +139,7 @@ int nfs_readpage_async(struct nfs_open_context *ctx, struct inode *inode,
-> >> 	len = nfs_page_length(page);
-> >> 	if (len == 0)
-> >> 		return nfs_return_empty_page(page);
-> >> -	new = nfs_create_request(ctx, page, 0, len);
-> >> +	new = nfs_create_request(ctx, page, NULL, 0, len);
-> >> 	if (IS_ERR(new)) {
-> >> 		unlock_page(page);
-> >> 		return PTR_ERR(new);
-> >> @@ -600,7 +600,7 @@ readpage_async_filler(void *data, struct page *page)
-> >> 	if (len == 0)
-> >> 		return nfs_return_empty_page(page);
-> >> 
-> >> -	new = nfs_create_request(desc->ctx, page, 0, len);
-> >> +	new = nfs_create_request(desc->ctx, page, NULL, 0, len);
-> >> 	if (IS_ERR(new))
-> >> 		goto out_error;
-> >> 
-> >> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-> >> index ca20ec7..d1453f2 100644
-> >> --- a/fs/nfs/write.c
-> >> +++ b/fs/nfs/write.c
-> >> @@ -461,7 +461,7 @@ static void nfs_inode_remove_request(struct nfs_page *req)
-> >> 	}
-> >> 	nfsi->npages--;
-> >> 	spin_unlock(&inode->i_lock);
-> >> -	nfs_release_request(req);
-> >> +	nfs_release_request(head);
-> >> }
-> >> 
-> >> static void
-> >> @@ -625,6 +625,7 @@ static void nfs_write_completion(struct nfs_pgio_header *hdr)
-> >> {
-> >> 	struct nfs_commit_info cinfo;
-> >> 	unsigned long bytes = 0;
-> >> +	bool do_destroy;
-> >> 
-> >> 	if (test_bit(NFS_IOHDR_REDO, &hdr->flags))
-> >> 		goto out;
-> >> @@ -654,6 +655,7 @@ remove_req:
-> >> next:
-> >> 		nfs_unlock_request(req);
-> >> 		nfs_end_page_writeback(req->wb_page);
-> >> +		do_destroy = !test_bit(NFS_IOHDR_NEED_COMMIT, &hdr->flags);
-> >> 		nfs_release_request(req);
-> >> 	}
-> >> out:
-> >> @@ -758,6 +760,10 @@ static struct nfs_page *nfs_try_to_update_request(struct inode *inode,
-> >> 		if (req == NULL)
-> >> 			goto out_unlock;
-> >> 
-> >> +		/* should be handled by nfs_flush_incompatible */
-> >> +		WARN_ON_ONCE(req->wb_head != req);
-> >> +		WARN_ON_ONCE(req->wb_this_page != req);
-> >> +
-> >> 		rqend = req->wb_offset + req->wb_bytes;
-> >> 		/*
-> >> 		 * Tell the caller to flush out the request if
-> >> @@ -819,7 +825,7 @@ static struct nfs_page * nfs_setup_write_request(struct nfs_open_context* ctx,
-> >> 	req = nfs_try_to_update_request(inode, page, offset, bytes);
-> >> 	if (req != NULL)
-> >> 		goto out;
-> >> -	req = nfs_create_request(ctx, page, offset, bytes);
-> >> +	req = nfs_create_request(ctx, page, NULL, offset, bytes);
-> >> 	if (IS_ERR(req))
-> >> 		goto out;
-> >> 	nfs_inode_add_request(inode, req);
-> >> @@ -863,6 +869,8 @@ int nfs_flush_incompatible(struct file *file, struct page *page)
-> >> 			return 0;
-> >> 		l_ctx = req->wb_lock_context;
-> >> 		do_flush = req->wb_page != page || req->wb_context != ctx;
-> >> +		/* for now, flush if more than 1 request in page_group */
-> >> +		do_flush |= req->wb_this_page != req;
-> >> 		if (l_ctx && ctx->dentry->d_inode->i_flock != NULL) {
-> >> 			do_flush |= l_ctx->lockowner.l_owner != current->files
-> >> 				|| l_ctx->lockowner.l_pid != current->tgid;
-> >> diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
-> >> index 214e098..1fb161b 100644
-> >> --- a/include/linux/nfs_page.h
-> >> +++ b/include/linux/nfs_page.h
-> >> @@ -26,6 +26,8 @@ enum {
-> >> 	PG_MAPPED,		/* page private set for buffered io */
-> >> 	PG_CLEAN,		/* write succeeded */
-> >> 	PG_COMMIT_TO_DS,	/* used by pnfs layouts */
-> >> +	PG_HEADLOCK,		/* page group lock of wb_head */
-> >> +	PG_TEARDOWN,		/* page group sync for destroy */
-> >> };
-> >> 
-> >> struct nfs_inode;
-> >> @@ -41,6 +43,8 @@ struct nfs_page {
-> >> 	struct kref		wb_kref;	/* reference count */
-> >> 	unsigned long		wb_flags;
-> >> 	struct nfs_write_verifier	wb_verf;	/* Commit cookie */
-> >> +	struct nfs_page		*wb_this_page;  /* list of reqs for this page */
-> >> +	struct nfs_page		*wb_head;       /* head pointer for req list */
-> > 
-> > Hmm ok, so to make sure I understand...
-> > 
-> > So page->private will point to the "head" req (struct page_private).
-> 
-> Only in the buffered write case.  Page->private is not set for read path / direct i/o path.
-> 
-> > Then we'll have a singly-linked list of reqs hanging off of
-> > wb_this_page. Is that right?
-> > 
-> > If so, then it seems like it would be clearer to use a standard
-> > list_head here. If you need to get to the wb_head, you could always do
-> > something like this:
-> > 
-> > 	list_first_entry(&req->wb_page->wb_this_page);
-> 
-> Well, wb_page is a struct page and doesn’t have wb_this_page (which is in struct
-> nfs_page), but I see where you’re going with this.
-> 
+I have test with two versions(call set_acl with NULL ACL
+and not call set_acl), test results are no different.
 
-Doh, right! Sorry, I threw that together in haste, but you get the
-idea. I was thinking you could go back to the page and dereference
-->private.
+Maybe calling set_acl with NULL ACL is better.
+The new version patch have be sent.
 
-> A strategy like this only works if we always have page->private pointing to the head
-> request. We chose not to go that way because it messes with the buffered
-> write path’s setting / clearing of page private which interacts with the swappable
-> nfs pages code that everyone seems to be afraid to touch ;)
-> 
-> So we decided to go this route (not messing with page_private) as a first step - we
-> certainly could add it later, but the current approach makes things less complex.
-> 
+thanks
+Kinglong Mee
 
-Ok, that makes sense. Thanks...
-
-> > 
-> > ...and could even turn that into a macro or static inline for some
-> > syntactic sugar. It's a little more pointer chasing to find the head,
-> > but it seems like that would be clearer than using yet another
-> > linked-list implementation.
-> 
-> So, I’m not against using list_head.. I didn’t go that route initially because I was:
-> 
->  1) following the buffer_head example, which rolls it’s own list
-> 
-
-I wouldn't be surprised if the buffer_head code predates the standard
-linked-list macros, so that probably explains why they did it that way.
-The file locking code has a similar construct in inode->i_flock list.
-
->  2) trying to grow nfs_page as little as possible - but we might have room within
->      the allocator bucket it currently lives in…
-> 
-
-nfs_page comes out of a dedicated slabcache, so that probably won't be the case.
-
->  3) not sure list_head is suitable for a circular list (I haven’t ever looked into it).
-> 
-> and until we have a way to find the head request (via page private, etc) without
-> walking the circular list (chicken / egg problem needing to grab head lock before walking
-> list to find the head to lock it), we’ll still need the head pointer.
-> 
-> Thoughts?
-> 
-> -dros
-> 
-
-If you can't rely on page->private pointing to the request, then that
-does make it tough to do what I was suggesting. struct list_head lists
-are doubly-linked and circular by nature, so that does seem to be a
-natural fit for what you're trying to do.
-
-The only problem is that struct list_head is two pointers instead of
-one, so it's not going to be as space-efficient as what you're doing
-here. If that's a large concern then you may have no choice but to do
-this after all.
-
-> > 
-> >> };
-> >> 
-> >> struct nfs_pageio_descriptor;
-> >> @@ -75,9 +79,10 @@ struct nfs_pageio_descriptor {
-> >> 
-> >> extern	struct nfs_page *nfs_create_request(struct nfs_open_context *ctx,
-> >> 					    struct page *page,
-> >> +					    struct nfs_page *last,
-> >> 					    unsigned int offset,
-> >> 					    unsigned int count);
-> >> -extern	void nfs_release_request(struct nfs_page *req);
-> >> +extern	void nfs_release_request(struct nfs_page *);
-> >> 
-> >> 
-> >> extern	void nfs_pageio_init(struct nfs_pageio_descriptor *desc,
-> >> @@ -95,7 +100,10 @@ extern size_t nfs_generic_pg_test(struct nfs_pageio_descriptor *desc,
-> >> 				struct nfs_page *req);
-> >> extern  int nfs_wait_on_request(struct nfs_page *);
-> >> extern	void nfs_unlock_request(struct nfs_page *req);
-> >> -extern	void nfs_unlock_and_release_request(struct nfs_page *req);
-> >> +extern	void nfs_unlock_and_release_request(struct nfs_page *);
-> >> +extern void nfs_page_group_lock(struct nfs_page *);
-> >> +extern void nfs_page_group_unlock(struct nfs_page *);
-> >> +extern bool nfs_page_group_sync_on_bit(struct nfs_page *, unsigned int);
-> >> 
-> >> /*
-> >>  * Lock the page of an asynchronous request
-> > 
-> > 
-> > -- 
-> > Jeff Layton <jlayton@poochiereds.net>
-> 
-
-
--- 
-Jeff Layton <jlayton@poochiereds.net>
+>>
+>> First problem:
+>> # nfs4_setfacl -s A::OWNER@:RWX /mnt/123/; touch /mnt/123/test
+>> ............ hang ...........
+>>
+>> Second problem:
+>> # nfs4_setfacl -s A::OWNER@:RWX /mnt/123/; nfs4_getfacl /mnt/123/
+>> [ 1610.167668] ------------[ cut here ]------------
+>> [ 1610.168320] kernel BUG at /root/nfs/linux/fs/nfsd/nfs4acl.c:239!
+>> [ 1610.168320] invalid opcode: 0000 [#1] SMP DEBUG_PAGEALLOC
+>> [ 1610.168320] Modules linked in: nfsv4(OE) nfs(OE) nfsd(OE)
+>> rpcsec_gss_krb5 fscache ip6t_rpfilter ip6t_REJECT cfg80211
+>> xt_conntrack rfkill ebtable_nat ebtable_broute bridge stp llc
+>> ebtable_filter ebtables ip6table_nat nf_conntrack_ipv6
+>> nf_defrag_ipv6 nf_nat_ipv6 ip6table_mangle ip6table_security
+>> ip6table_raw ip6table_filter ip6_tables iptable_nat
+>> nf_conntrack_ipv4 nf_defrag_ipv4 nf_nat_ipv4 nf_nat nf_conntrack
+>> iptable_mangle iptable_security iptable_raw auth_rpcgss nfs_acl
+>> snd_intel8x0 ppdev lockd snd_ac97_codec ac97_bus snd_pcm snd_timer
+>> e1000 pcspkr parport_pc snd parport serio_raw joydev i2c_piix4
+>> sunrpc(OE) microcode soundcore i2c_core ata_generic pata_acpi [last
+>> unloaded: nfsd]
+>> [ 1610.168320] CPU: 0 PID: 27397 Comm: nfsd Tainted: G           OE
+>> 3.15.0-rc1+ #15
+>> [ 1610.168320] Hardware name: innotek GmbH VirtualBox/VirtualBox,
+>> BIOS VirtualBox 12/01/2006
+>> [ 1610.168320] task: ffff88005ab653d0 ti: ffff88005a944000 task.ti:
+>> ffff88005a944000
+>> [ 1610.168320] RIP: 0010:[<ffffffffa034d5ed>]  [<ffffffffa034d5ed>]
+>> _posix_to_nfsv4_one+0x3cd/0x3d0 [nfsd]
+>> [ 1610.168320] RSP: 0018:ffff88005a945b00  EFLAGS: 00010293
+>> [ 1610.168320] RAX: 0000000000000001 RBX: ffff88006700bac0 RCX:
+>> 0000000000000000
+>> [ 1610.168320] RDX: 0000000000000000 RSI: ffff880067c83f00 RDI:
+>> ffff880068233300
+>> [ 1610.168320] RBP: ffff88005a945b48 R08: ffffffff81c64830 R09:
+>> 0000000000000000
+>> [ 1610.168320] R10: ffff88004ea85be0 R11: 000000000000f475 R12:
+>> ffff880068233300
+>> [ 1610.168320] R13: 0000000000000003 R14: 0000000000000002 R15:
+>> ffff880068233300
+>> [ 1610.168320] FS:  0000000000000000(0000) GS:ffff880077800000(0000)
+>> knlGS:0000000000000000
+>> [ 1610.168320] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+>> [ 1610.168320] CR2: 00007f5bcbd3b0b9 CR3: 0000000001c0f000 CR4:
+>> 00000000000006f0
+>> [ 1610.168320] DR0: 0000000000000000 DR1: 0000000000000000 DR2:
+>> 0000000000000000
+>> [ 1610.168320] DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7:
+>> 0000000000000400
+>> [ 1610.168320] Stack:
+>> [ 1610.168320]  ffffffff00000000 0000000b67c83500 000000076700bac0
+>> 0000000000000000
+>> [ 1610.168320]  ffff88006700bac0 ffff880068233300 ffff88005a945c08
+>> 0000000000000002
+>> [ 1610.168320]  0000000000000000 ffff88005a945b88 ffffffffa034e2d5
+>> 000000065a945b68
+>> [ 1610.168320] Call Trace:
+>> [ 1610.168320]  [<ffffffffa034e2d5>] nfsd4_get_nfs4_acl+0x95/0x150 [nfsd]
+>> [ 1610.168320]  [<ffffffffa03400d6>] nfsd4_encode_fattr+0x646/0x1e70 [nfsd]
+>> [ 1610.168320]  [<ffffffff816a6e6e>] ? kmemleak_alloc+0x4e/0xb0
+>> [ 1610.168320]  [<ffffffffa0327962>] ?
+>> nfsd_setuser_and_check_port+0x52/0x80 [nfsd]
+>> [ 1610.168320]  [<ffffffff812cd4bb>] ? selinux_cred_prepare+0x1b/0x30
+>> [ 1610.168320]  [<ffffffffa0341caa>] nfsd4_encode_getattr+0x5a/0x60 [nfsd]
+>> [ 1610.168320]  [<ffffffffa0341e07>]
+>> nfsd4_encode_operation+0x67/0x110 [nfsd]
+>> [ 1610.168320]  [<ffffffffa033844d>] nfsd4_proc_compound+0x21d/0x810 [nfsd]
+>> [ 1610.168320]  [<ffffffffa0324d9b>] nfsd_dispatch+0xbb/0x200 [nfsd]
+>> [ 1610.168320]  [<ffffffffa00850cd>] svc_process_common+0x46d/0x6d0 [sunrpc]
+>> [ 1610.168320]  [<ffffffffa0085433>] svc_process+0x103/0x170 [sunrpc]
+>> [ 1610.168320]  [<ffffffffa032472f>] nfsd+0xbf/0x130 [nfsd]
+>> [ 1610.168320]  [<ffffffffa0324670>] ? nfsd_destroy+0x80/0x80 [nfsd]
+>> [ 1610.168320]  [<ffffffff810a5202>] kthread+0xd2/0xf0
+>> [ 1610.168320]  [<ffffffff810a5130>] ? insert_kthread_work+0x40/0x40
+>> [ 1610.168320]  [<ffffffff816c1ebc>] ret_from_fork+0x7c/0xb0
+>> [ 1610.168320]  [<ffffffff810a5130>] ? insert_kthread_work+0x40/0x40
+>> [ 1610.168320] Code: 78 02 e9 e7 fc ff ff 31 c0 31 d2 31 c9 66 89 45
+>> ce 41 8b 04 24 66 89 55 d0 66 89 4d d2 48 8d 04 80 49 8d 5c 84 04 e9
+>> 37 fd ff ff <0f> 0b 90 0f 1f 44 00 00 55 8b 56 08 c7 07 00 00 00 00
+>> 8b 46 0c
+>> [ 1610.168320] RIP  [<ffffffffa034d5ed>]
+>> _posix_to_nfsv4_one+0x3cd/0x3d0 [nfsd]
+>> [ 1610.168320]  RSP <ffff88005a945b00>
+>> [ 1610.257313] ---[ end trace 838254e3e352285b ]---
+>>
+>> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+>> ---
+>>   fs/nfsd/nfs4acl.c | 18 +++++++++---------
+>>   1 file changed, 9 insertions(+), 9 deletions(-)
+>>
+>> diff --git a/fs/nfsd/nfs4acl.c b/fs/nfsd/nfs4acl.c
+>> index de5d66b..fdd259e 100644
+>> --- a/fs/nfsd/nfs4acl.c
+>> +++ b/fs/nfsd/nfs4acl.c
+>> @@ -395,8 +395,10 @@ sort_pacl(struct posix_acl *pacl)
+>>   	 * by uid/gid. */
+>>   	int i, j;
+>>
+>> -	if (pacl->a_count <= 4)
+>> -		return; /* no users or groups */
+>> +	/* no users or groups */
+>> +	if (!pacl || pacl->a_count <= 4)
+>> +		return;
+>> +
+>>   	i = 1;
+>>   	while (pacl->a_entries[i].e_tag == ACL_USER)
+>>   		i++;
+>> @@ -523,13 +525,11 @@ posix_state_to_acl(struct posix_acl_state
+>> *state, unsigned int flags)
+>>
+>>   	/*
+>>   	 * ACLs with no ACEs are treated differently in the inheritable
+>> -	 * and effective cases: when there are no inheritable ACEs, we
+>> -	 * set a zero-length default posix acl:
+>> +	 * and effective cases.
+>>   	 */
+>> -	if (state->empty && (flags & NFS4_ACL_TYPE_DEFAULT)) {
+>> -		pacl = posix_acl_alloc(0, GFP_KERNEL);
+>> -		return pacl ? pacl : ERR_PTR(-ENOMEM);
+>> -	}
+>> +	if (state->empty && (flags & NFS4_ACL_TYPE_DEFAULT))
+>> +		return NULL;
+>> +
+>>   	/*
+>>   	 * When there are no effective ACEs, the following will end
+>>   	 * up setting a 3-element effective posix ACL with all
+>> @@ -831,7 +831,7 @@ nfsd4_set_nfs4_acl(struct svc_rqst *rqstp,
+>> struct svc_fh *fhp,
+>>   	if (host_error < 0)
+>>   		goto out_release;
+>>
+>> -	if (S_ISDIR(inode->i_mode)) {
+>> +	if (dpacl && S_ISDIR(inode->i_mode)) {
+>>   		host_error = inode->i_op->set_acl(inode, dpacl,
+>>   						  ACL_TYPE_DEFAULT);
+>>   	}
+>> --
+>> 1.9.0
+>>
+>
