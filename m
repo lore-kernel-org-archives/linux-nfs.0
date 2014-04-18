@@ -1,188 +1,288 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f48.google.com ([209.85.192.48]:55621 "EHLO
-	mail-qg0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933682AbaD2Le6 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Apr 2014 07:34:58 -0400
-Received: by mail-qg0-f48.google.com with SMTP id q108so57710qgd.35
-        for <linux-nfs@vger.kernel.org>; Tue, 29 Apr 2014 04:34:57 -0700 (PDT)
-Date: Tue, 29 Apr 2014 07:34:54 -0400
-From: Jeff Layton <jlayton@poochiereds.net>
-To: "Michael Kerrisk (man-pages)" <mtk.manpages@gmail.com>
-Cc: NeilBrown <neilb@suse.de>, "Stefan (metze) Metzmacher" <metze@samba.org>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        lkml <linux-kernel@vger.kernel.org>,
-        Ganesha NFS List <nfs-ganesha-devel@lists.sourceforge.net>,
-        Suresh Jayaraman <sjayaraman@suse.de>,
-        Trond Myklebust <trond.myklebust@fys.uio.no>,
-        Christoph Hellwig <hch@infradead.org>,
-        linux-nfs <linux-nfs@vger.kernel.org>,
-        "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: flock() and NFS [Was: Re: [PATCH] locks: rename file-private
- locks to file-description locks]
-Message-ID: <20140429073454.220572a8@tlielax.poochiereds.net>
-In-Reply-To: <535F76A4.4090208@gmail.com>
-References: <1398087935-14001-1-git-send-email-jlayton@redhat.com>
-	<20140421140246.GB26358@brightrain.aerifal.cx>
-	<535529FA.8070709@gmail.com>
-	<20140421161004.GC26358@brightrain.aerifal.cx>
-	<5355644C.7000801@gmail.com>
-	<20140421184640.GD26358@brightrain.aerifal.cx>
-	<535573E0.9080106@gmail.com>
-	<20140421155520.3b33fbef@ipyr.poochiereds.net>
-	<53558A73.3010602@samba.org>
-	<5355F60C.8010004@gmail.com>
-	<20140427145125.21e7e6c6@notabene.brown>
-	<535CCAD2.4060304@gmail.com>
-	<20140427200431.426c98d1@notabene.brown>
-	<CAKgNAkgv5NqDRUNu0XtSABqmctd7=rpMMEYhhDQNzPssZuU5bA@mail.gmail.com>
-	<20140428072845.67f48d8e@notabene.brown>
-	<535F6BC4.2090601@gmail.com>
-	<20140429192458.641ebf1d@notabene.brown>
-	<535F76A4.4090208@gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-ig0-f173.google.com ([209.85.213.173]:53791 "EHLO
+	mail-ig0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752123AbaDRSp2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Apr 2014 14:45:28 -0400
+Received: by mail-ig0-f173.google.com with SMTP id hl10so937251igb.6
+        for <linux-nfs@vger.kernel.org>; Fri, 18 Apr 2014 11:45:28 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Bruce Fields <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 15/70] NFSd: Add locking to the nfs4_file->fi_fds[] array
+Date: Fri, 18 Apr 2014 14:44:09 -0400
+Message-Id: <1397846704-14567-16-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1397846704-14567-15-git-send-email-trond.myklebust@primarydata.com>
+References: <1397846704-14567-1-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-2-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-3-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-4-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-5-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-6-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-7-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-8-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-9-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-10-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-11-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-12-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-13-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-14-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-15-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 29 Apr 2014 11:53:40 +0200
-"Michael Kerrisk (man-pages)" <mtk.manpages@gmail.com> wrote:
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 107 ++++++++++++++++++++++++++++++++++++++++++++--------
+ fs/nfsd/state.h     |  26 -------------
+ 2 files changed, 91 insertions(+), 42 deletions(-)
 
-> On 04/29/2014 11:24 AM, NeilBrown wrote:
-> > On Tue, 29 Apr 2014 11:07:16 +0200 "Michael Kerrisk (man-pages)"
-> > <mtk.manpages@gmail.com> wrote:
-> > 
-> >> On 04/27/2014 11:28 PM, NeilBrown wrote:
-> >>> On Sun, 27 Apr 2014 13:11:33 +0200 "Michael Kerrisk (man-pages)"
-> >>> <mtk.manpages@gmail.com> wrote:
-> >>>
-> >>>> On Sun, Apr 27, 2014 at 12:04 PM, NeilBrown <neilb@suse.de> wrote:
-> >>>>> On Sun, 27 Apr 2014 11:16:02 +0200 "Michael Kerrisk (man-pages)"
-> >>>>> <mtk.manpages@gmail.com> wrote:
-> >>>>>
-> >>>>>> [Trimming some folk from CC, and adding various NFS people]
-> >>>>>>
-> >>>>>> On 04/27/2014 06:51 AM, NeilBrown wrote:
-> >>>>>>
-> >>>>>> [...]
-> >>>>>>
-> >>>>>>> Note to Michael: The text
-> >>>>>>>    flock() does not lock files over NFS.
-> >>>>>>> in flock(2) is no longer accurate.  The reality is ... complex.
-> >>>>>>> See nfs(5), and search for "local_lock".
-> >>>>>>
-> >>>>>> Ahhh -- I see:
-> >>>>>> http://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=5eebde23223aeb0ad2d9e3be6590ff8bbfab0fc2
-> >>>>>>
-> >>>>>> Thanks for the heads up.
-> >>>>>>
-> >>>>>> Just in general, it would be great if the flock(2) and fcntl(2) man pages
-> >>>>>> contained correct details for NFS, of course. So, for example, if there
-> >>>>>> are any current gotchas for NFS and fcntl() byte-range locking, I'd like
-> >>>>>> to add those to the fcntl(2) man page.
-> >>>>>
-> >>>>> The only peculiarities I can think of are:
-> >>>>>  - With NFS, locking or unlocking a region forces a flush of any cached data
-> >>>>>    for that file (or maybe for the region of the file).  I'm not sure if this
-> >>>>>    is worth mentioning.
-> >>>>
-> >>>> I agree that it's probably not necessary to mention.
-> >>>>
-> >>>>>  - With NFSv4 the client can lose a lock if it is out of contact with the
-> >>>>>    server for a period of time.  When this happens, any IO to the file by a
-> >>>>>    process which "thinks" it holds a lock will fail until that process closes
-> >>>>>    and re-opens the file.
-> >>>>>    This behaviour is since 3.12.  Prior to that the client might lose and
-> >>>>>    regain the lock without ever knowing thus potentially risking corruption
-> >>>>>    (but only if client and server lost contact for an extended period).
-> >>>>
-> >>>> Do you have a pointer for that commit to 3.12?
-> >>>>
-> >>>
-> >>> http://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=ef1820f9be27b6ad158f433ab38002ab8131db4d
-> >>>
-> >>> did most of the work while  the subsequent commit
-> >>>
-> >>> http://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=f6de7a39c181dfb8a2c534661a53c73afb3081cd
-> >>>
-> >>> changed some details, added some documentation, and inverted the default
-> >>> behaviour.
-> >>
-> >> Thanks for that detail. What do you think of the following text for the 
-> >> fcntl(2) man page:
-> >>
-> >>        Before  Linux 3.12, if an NFS client is out of contact with the
-> >>        server for a period of time, it might lose and  regain  a  lock
-> >>        without  ever  being  aware  of the fact.  This scenario poten‐
-> >>        tially risks  data  corruption,  since  another  process  might
-> >>        acquire  a lock in the intervening period and perform file I/O.
-> >>        Since Linux 3.12, if the client loses contact with the  server,
-> >>        any I/O to the file by a process which "thinks" it holds a lock
-> >>        will fail until that process closes and reopens  the  file.   A
-> >>        kernel  parameter,  nfs.recover_lost_locks,  can be set to 1 to
-> >>        obtain the pre-3.12 behavior, whereby the client  will  attempt
-> >>        to  recover  lost  locks when contact is reestablished with the
-> >>        server.  Because of the attendant risk of data corruption, this
-> >>        parameter defaults to 0 (disabled).
-> >>
-> > 
-> > Mostly good.
-> > 
-> > I'm just a little concerned about "if the client loses contact with the
-> > server" in the middle there.  It is no longer qualified and it isn't clear
-> > that the "for a period of time" qualification still applied.  And we should
-> > probably quantify the period of time - which defaults to 90 seconds.
-> > I don't remember just now the difference between
-> >    /proc/fs/nfsd/nfsv4{lease,grace}time
-> > but this 90 seconds is one of those.
-> > 
-> > Also this is NFSv4 specific.  With NFSv3 the failure mode is the reverse.  If
-> > the server loses contact with a client then any lock stays in place
-> > indefinitely ("why can't I read my mail"... I remember it well).
-> > 
-> >   Before Linux 3.12, if an NFSv4 client loses contact with the server
-> >   (defined as more than 90 seconds with no communication), it might lose
-> >   and regain ....
-> 
-> Thanks, Neil. Changed as you suggest. I'd quite like to mention
-> which of /proc/fs/nfsd/nfsv4{lease,grace}time is relevant here. I had a 
-> quick scan, but could not determine it with complete confidence. My suspicion, 
-> looking at fs/lockd/svcproc.c and fs/lockd/grace.c::locks_in_grace()
-> is that it is /proc/fs/nfsd/nfsv4gracetime that is relevant here. Can anyone
-> confirm?
-> 
-
-The difference here is subtle. The gracetime is how long after a reboot
-should knfsd allow clients to reclaim state (and deny the creation of
-new locks and opens). The leasetime is how long the NFSv4 lease period
-is. There is a relationship between the two that's illustrated in the
-comments above write_gracetime:
-
-/**
- * write_gracetime - Set or report current NFSv4 grace period time
- *
- * As above, but sets the time of the NFSv4 grace period.
- *
- * Note this should never be set to less than the *previous*
- * lease-period time, but we don't try to enforce this.  (In the common
- * case (a new boot), we don't know what the previous lease time was
- * anyway.)
- */
-
-The value you're interested in here is the nfsv4leasetime. If the
-client doesn't renew its lease within that period, then it's subject to
-the server giving up on it and dropping any state that it holds on that
-clients' behalf.
-
-Note that this is not a firm timeout. The server runs a job
-periodically to clean out expired stateful objects, and it's likely
-that there is some time (maybe even up to another whole lease period)
-between when the timeout expires and the job actually runs. If the
-client gets a RENEW in there within that window, its lease will be
-renewed and its state preserved.
-
-Also note that all of the above just applies to the Linux knfsd. There
-are many other servers in the field and they have different rules for
-dropping state held by clients that have gone AWOL.
-
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index ad7d21e06c36..73e7da308d37 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -249,6 +249,54 @@ get_nfs4_file(struct nfs4_file *fi)
+ 	atomic_inc(&fi->fi_ref);
+ }
+ 
++static struct file *__nfs4_get_fd(struct nfs4_file *f, int oflag)
++{
++	if (f->fi_fds[oflag])
++		return get_file(f->fi_fds[oflag]);
++	return NULL;
++}
++
++/* XXX: for first cut may fall back on returning file that doesn't work
++ * at all? */
++static struct file *find_writeable_file(struct nfs4_file *f)
++{
++	struct file *ret;
++
++	spin_lock(&f->fi_lock);
++	ret = __nfs4_get_fd(f, O_WRONLY);
++	if (!ret)
++		ret = __nfs4_get_fd(f, O_RDWR);
++	spin_unlock(&f->fi_lock);
++	return ret;
++}
++
++static struct file *find_readable_file(struct nfs4_file *f)
++{
++	struct file *ret;
++
++	spin_lock(&f->fi_lock);
++	ret = __nfs4_get_fd(f, O_RDONLY);
++	if (!ret)
++		ret = __nfs4_get_fd(f, O_RDWR);
++	spin_unlock(&f->fi_lock);
++	return ret;
++}
++
++static struct file *find_any_file(struct nfs4_file *f)
++{
++	struct file *ret;
++
++	spin_lock(&f->fi_lock);
++	ret = __nfs4_get_fd(f, O_RDWR);
++	if (!ret) {
++		ret = __nfs4_get_fd(f, O_WRONLY);
++		if (!ret)
++			ret = __nfs4_get_fd(f, O_RDONLY);
++	}
++	spin_unlock(&f->fi_lock);
++	return ret;
++}
++
+ static int num_delegations;
+ unsigned long max_delegations;
+ 
+@@ -297,20 +345,29 @@ static void nfs4_file_get_access(struct nfs4_file *fp, int oflag)
+ 		__nfs4_file_get_access(fp, oflag);
+ }
+ 
+-static void nfs4_file_put_fd(struct nfs4_file *fp, int oflag)
++static struct file *nfs4_file_put_fd(struct nfs4_file *fp, int oflag)
+ {
+-	if (fp->fi_fds[oflag]) {
+-		fput(fp->fi_fds[oflag]);
+-		fp->fi_fds[oflag] = NULL;
+-	}
++	struct file *filp;
++
++	filp = fp->fi_fds[oflag];
++	fp->fi_fds[oflag] = NULL;
++	return filp;
+ }
+ 
+ static void __nfs4_file_put_access(struct nfs4_file *fp, int oflag)
+ {
+-	if (atomic_dec_and_test(&fp->fi_access[oflag])) {
+-		nfs4_file_put_fd(fp, oflag);
++	if (atomic_dec_and_lock(&fp->fi_access[oflag], &fp->fi_lock)) {
++		struct file *f1 = NULL;
++		struct file *f2 = NULL;
++
++		f1 = nfs4_file_put_fd(fp, oflag);
+ 		if (atomic_read(&fp->fi_access[1 - oflag]) == 0)
+-			nfs4_file_put_fd(fp, O_RDWR);
++			f2 = nfs4_file_put_fd(fp, O_RDWR);
++		spin_unlock(&fp->fi_lock);
++		if (f1)
++			fput(f1);
++		if (f2)
++			fput(f2);
+ 	}
+ }
+ 
+@@ -651,8 +708,10 @@ static void release_lock_stateid(struct nfs4_ol_stateid *stp)
+ 	unhash_generic_stateid(stp);
+ 	unhash_stid(&stp->st_stid);
+ 	file = find_any_file(stp->st_file);
+-	if (file)
++	if (file) {
+ 		locks_remove_posix(file, (fl_owner_t)lockowner(stp->st_stateowner));
++		fput(file);
++	}
+ 	close_generic_stateid(stp);
+ 	free_generic_stateid(stp);
+ }
+@@ -2985,17 +3044,27 @@ static inline int nfs4_access_to_access(u32 nfs4_access)
+ static __be32 nfs4_get_vfs_file(struct svc_rqst *rqstp, struct nfs4_file *fp,
+ 		struct svc_fh *cur_fh, struct nfsd4_open *open)
+ {
++	struct file *filp = NULL;
+ 	__be32 status;
+ 	int oflag = nfs4_access_to_omode(open->op_share_access);
+ 	int access = nfs4_access_to_access(open->op_share_access);
+ 
++	spin_lock(&fp->fi_lock);
+ 	if (!fp->fi_fds[oflag]) {
+-		status = nfsd_open(rqstp, cur_fh, S_IFREG, access,
+-			&fp->fi_fds[oflag]);
++		spin_unlock(&fp->fi_lock);
++		status = nfsd_open(rqstp, cur_fh, S_IFREG, access, &filp);
+ 		if (status)
+ 			return status;
++		spin_lock(&fp->fi_lock);
++		if (!fp->fi_fds[oflag]) {
++			fp->fi_fds[oflag] = filp;
++			filp = NULL;
++		}
+ 	}
+ 	nfs4_file_get_access(fp, oflag);
++	spin_unlock(&fp->fi_lock);
++	if (filp)
++		fput(filp);
+ 
+ 	return nfs_ok;
+ }
+@@ -3094,13 +3163,15 @@ static int nfs4_setlease(struct nfs4_delegation *dp)
+ 	if (status)
+ 		goto out_free;
+ 	fp->fi_lease = fl;
+-	fp->fi_deleg_file = get_file(fl->fl_file);
++	fp->fi_deleg_file = fl->fl_file;
+ 	atomic_set(&fp->fi_delegees, 1);
+ 	spin_lock(&state_lock);
+ 	hash_delegation_locked(dp, fp);
+ 	spin_unlock(&state_lock);
+ 	return 0;
+ out_free:
++	if (fl->fl_file)
++		fput(fl->fl_file);
+ 	locks_free_lock(fl);
+ 	return status;
+ }
+@@ -3734,6 +3805,7 @@ nfs4_preprocess_stateid_op(struct net *net, struct nfsd4_compound_state *cstate,
+ 				status = nfserr_serverfault;
+ 				goto out;
+ 			}
++			get_file(file);
+ 		}
+ 		break;
+ 	case NFS4_OPEN_STID:
+@@ -3761,7 +3833,7 @@ nfs4_preprocess_stateid_op(struct net *net, struct nfsd4_compound_state *cstate,
+ 	}
+ 	status = nfs_ok;
+ 	if (file)
+-		*filpp = get_file(file);
++		*filpp = file;
+ out:
+ 	nfs4_unlock_state();
+ 	return status;
+@@ -4489,6 +4561,8 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 		break;
+ 	}
+ out:
++	if (filp)
++		fput(filp);
+ 	if (status && new_state)
+ 		release_lockowner(lock_sop);
+ 	nfsd4_bump_seqid(cstate, status);
+@@ -4630,7 +4704,7 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	if (!file_lock) {
+ 		dprintk("NFSD: %s: unable to allocate lock!\n", __func__);
+ 		status = nfserr_jukebox;
+-		goto out;
++		goto fput;
+ 	}
+ 	locks_init_lock(file_lock);
+ 	file_lock->fl_type = F_UNLCK;
+@@ -4652,7 +4726,8 @@ nfsd4_locku(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	}
+ 	update_stateid(&stp->st_stid.sc_stateid);
+ 	memcpy(&locku->lu_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
+-
++fput:
++	fput(filp);
+ out:
+ 	nfsd4_bump_seqid(cstate, status);
+ 	nfs4_unlock_state();
+@@ -4662,7 +4737,7 @@ out:
+ 
+ out_nfserr:
+ 	status = nfserrno(err);
+-	goto out;
++	goto fput;
+ }
+ 
+ /*
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 80789aa5b5b4..004733885cca 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -405,32 +405,6 @@ struct nfs4_file {
+ 	bool			fi_had_conflict;
+ };
+ 
+-/* XXX: for first cut may fall back on returning file that doesn't work
+- * at all? */
+-static inline struct file *find_writeable_file(struct nfs4_file *f)
+-{
+-	if (f->fi_fds[O_WRONLY])
+-		return f->fi_fds[O_WRONLY];
+-	return f->fi_fds[O_RDWR];
+-}
+-
+-static inline struct file *find_readable_file(struct nfs4_file *f)
+-{
+-	if (f->fi_fds[O_RDONLY])
+-		return f->fi_fds[O_RDONLY];
+-	return f->fi_fds[O_RDWR];
+-}
+-
+-static inline struct file *find_any_file(struct nfs4_file *f)
+-{
+-	if (f->fi_fds[O_RDWR])
+-		return f->fi_fds[O_RDWR];
+-	else if (f->fi_fds[O_WRONLY])
+-		return f->fi_fds[O_WRONLY];
+-	else
+-		return f->fi_fds[O_RDONLY];
+-}
+-
+ /* "ol" stands for "Open or Lock".  Better suggestions welcome. */
+ struct nfs4_ol_stateid {
+ 	struct nfs4_stid    st_stid; /* must be first field */
 -- 
-Jeff Layton <jlayton@poochiereds.net>
+1.9.0
+
