@@ -1,130 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f172.google.com ([209.85.223.172]:48139 "EHLO
-	mail-ie0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932084AbaDXSPu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Apr 2014 14:15:50 -0400
-Received: by mail-ie0-f172.google.com with SMTP id as1so2779688iec.31
-        for <linux-nfs@vger.kernel.org>; Thu, 24 Apr 2014 11:15:50 -0700 (PDT)
-From: Weston Andros Adamson <dros@primarydata.com>
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
-Subject: [PATCH 09/18 v2] nfs: page group support in nfs_mark_uptodate
-Date: Thu, 24 Apr 2014 14:15:19 -0400
-Message-Id: <1398363328-7100-10-git-send-email-dros@primarydata.com>
-In-Reply-To: <1398363328-7100-1-git-send-email-dros@primarydata.com>
-References: <1398363328-7100-1-git-send-email-dros@primarydata.com>
+Received: from fieldses.org ([174.143.236.118]:60311 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751034AbaDRNCV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 18 Apr 2014 09:02:21 -0400
+Date: Fri, 18 Apr 2014 09:02:20 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] NFSD: Checking whether kill_suid by should_remove_suid()
+Message-ID: <20140418130220.GF18612@fieldses.org>
+References: <534AA92B.8010805@gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <534AA92B.8010805@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Change how nfs_mark_uptodate checks to see if writes cover a whole page.
+On Sun, Apr 13, 2014 at 11:11:39PM +0800, Kinglong Mee wrote:
+> As local filesystem, writing data to the file by non-owner will
+> clears the SUID+SGID, owner will not.
 
-This patch should have no effect yet since all page groups currently
-have one request, but will come into play when pg_test functions are
-modified to split pages into sub-page regions.
+Are you sure about this?  (Do you have a test case that fails?)
 
-Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
----
- fs/nfs/write.c | 74 ++++++++++++++++++++++++++++++++++++++++++++++++++++------
- 1 file changed, 67 insertions(+), 7 deletions(-)
+I don't see an owner check in should_remove_suid.
 
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index a3e3065..eb1ab6a 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -154,18 +154,78 @@ static void nfs_set_pageerror(struct page *page)
- 	nfs_zap_mapping(page_file_mapping(page)->host, page_file_mapping(page));
- }
- 
-+/*
-+ * nfs_page_group_search_locked
-+ * @head - head request of page group
-+ * @page_offset - offset into page
-+ *
-+ * Search page group with head @head to find a request that contains the
-+ * page offset @page_offset.
-+ *
-+ * Returns a pointer to the first matching nfs request, or NULL if no
-+ * match is found.
-+ *
-+ * Must be called with the page group lock held
-+ */
-+static struct nfs_page *
-+nfs_page_group_search_locked(struct nfs_page *head, unsigned int page_offset)
-+{
-+	struct nfs_page *req;
-+
-+	WARN_ON_ONCE(head != head->wb_head);
-+	WARN_ON_ONCE(!test_bit(PG_HEADLOCK, &head->wb_head->wb_flags));
-+
-+	req = head;
-+	do {
-+		if (page_offset >= req->wb_pgbase &&
-+		    page_offset < (req->wb_pgbase + req->wb_bytes))
-+			return req;
-+
-+		req = req->wb_this_page;
-+	} while (req != head);
-+
-+	return NULL;
-+}
-+
-+/*
-+ * nfs_page_group_covers_page
-+ * @head - head request of page group
-+ *
-+ * Return true if the page group with head @head covers the whole page,
-+ * returns false otherwise
-+ */
-+static bool nfs_page_group_covers_page(struct nfs_page *req)
-+{
-+	struct nfs_page *tmp;
-+	unsigned int pos = 0;
-+	unsigned int len = nfs_page_length(req->wb_page);
-+
-+	nfs_page_group_lock(req);
-+
-+	do {
-+		tmp = nfs_page_group_search_locked(req->wb_head, pos);
-+		if (tmp) {
-+			/* no way this should happen */
-+			WARN_ON_ONCE(tmp->wb_pgbase != pos);
-+			pos += tmp->wb_bytes - (pos - tmp->wb_pgbase);
-+		}
-+	} while (tmp && pos < len);
-+
-+	nfs_page_group_unlock(req);
-+	WARN_ON_ONCE(pos > len);
-+	return pos == len;
-+}
-+
- /* We can set the PG_uptodate flag if we see that a write request
-  * covers the full page.
-  */
--static void nfs_mark_uptodate(struct page *page, unsigned int base, unsigned int count)
-+static void nfs_mark_uptodate(struct nfs_page *req)
- {
--	if (PageUptodate(page))
--		return;
--	if (base != 0)
-+	if (PageUptodate(req->wb_page))
- 		return;
--	if (count != nfs_page_length(page))
-+	if (!nfs_page_group_covers_page(req))
- 		return;
--	SetPageUptodate(page);
-+	SetPageUptodate(req->wb_page);
- }
- 
- static int wb_priority(struct writeback_control *wbc)
-@@ -796,7 +856,7 @@ static int nfs_writepage_setup(struct nfs_open_context *ctx, struct page *page,
- 		return PTR_ERR(req);
- 	/* Update file length */
- 	nfs_grow_file(page, offset, count);
--	nfs_mark_uptodate(page, req->wb_pgbase, req->wb_bytes);
-+	nfs_mark_uptodate(req);
- 	nfs_mark_request_dirty(req);
- 	nfs_unlock_and_release_request(req);
- 	return 0;
--- 
-1.8.5.2 (Apple Git-48)
+And I think that an nfsd thread will always have CAP_FSETID set (see
+cap_raise_nfsd_set and the definition of CAP_NFSD_SET), so that
+should_remove_suid() will always return 0.
 
+--b.
+
+> 
+> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> ---
+>  fs/nfsd/vfs.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> index 16f0673..19c0931 100644
+> --- a/fs/nfsd/vfs.c
+> +++ b/fs/nfsd/vfs.c
+> @@ -943,7 +943,7 @@ nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh
+> *fhp, struct file *file,
+>  	fsnotify_modify(file);
+> 
+>  	/* clear setuid/setgid flag after write */
+> -	if (inode->i_mode & (S_ISUID | S_ISGID))
+> +	if (should_remove_suid(dentry))
+>  		kill_suid(dentry);
+> 
+>  	if (stable) {
+> -- 
+> 1.9.0
+> 
