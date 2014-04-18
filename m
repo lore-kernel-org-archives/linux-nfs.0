@@ -1,37 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:36528 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753827AbaDPGui (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Apr 2014 02:50:38 -0400
-From: David Howells <dhowells@redhat.com>
-In-Reply-To: <534DCD52.5080202@RedHat.com>
-References: <534DCD52.5080202@RedHat.com> <534C7B70.9000500@candelatech.com>
-To: Steve Dickson <SteveD@redhat.com>
-Cc: dhowells@redhat.com, Ben Greear <greearb@candelatech.com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-Subject: Re: Question on nfs-utils patch for 'keyctl_invalidate'.
-Date: Wed, 16 Apr 2014 07:50:30 +0100
-Message-ID: <7417.1397631030@warthog.procyon.org.uk>
+Received: from mail-ig0-f180.google.com ([209.85.213.180]:62238 "EHLO
+	mail-ig0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752913AbaDRSpO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Apr 2014 14:45:14 -0400
+Received: by mail-ig0-f180.google.com with SMTP id c1so943231igq.7
+        for <linux-nfs@vger.kernel.org>; Fri, 18 Apr 2014 11:45:14 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Bruce Fields <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 06/70] nfsd4: use cl_lock to synchronize all stateid idr calls
+Date: Fri, 18 Apr 2014 14:44:00 -0400
+Message-Id: <1397846704-14567-7-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1397846704-14567-6-git-send-email-trond.myklebust@primarydata.com>
+References: <1397846704-14567-1-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-2-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-3-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-4-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-5-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-6-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Steve Dickson <SteveD@redhat.com> wrote:
+From: Benny Halevy <bhalevy@primarydata.com>
 
-> CC-ing the keyutils maintainer... David, when did that kernel 
-> change go in that cause keyctl_revoke() to no longer work?
+Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 15 +++++++++++++--
+ 1 file changed, 13 insertions(+), 2 deletions(-)
 
-I think this is what you are referring to:
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 34273ca482c3..626f310a74a8 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -334,7 +334,11 @@ kmem_cache *slab)
+ 	if (!stid)
+ 		return NULL;
+ 
+-	new_id = idr_alloc_cyclic(stateids, stid, 0, 0, GFP_KERNEL);
++	idr_preload(GFP_KERNEL);
++	spin_lock(&cl->cl_lock);
++	new_id = idr_alloc_cyclic(stateids, stid, 0, 0, GFP_NOWAIT);
++	spin_unlock(&cl->cl_lock);
++	idr_preload_end();
+ 	if (new_id < 0)
+ 		goto out_free;
+ 	stid->sc_client = cl;
+@@ -397,9 +401,12 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *stp, struct sv
+ 
+ static void remove_stid(struct nfs4_stid *s)
+ {
+-	struct idr *stateids = &s->sc_client->cl_stateids;
++	struct nfs4_client *clp = s->sc_client;
++	struct idr *stateids = &clp->cl_stateids;
+ 
++	spin_lock(&clp->cl_lock);
+ 	idr_remove(stateids, s->sc_stateid.si_opaque.so_id);
++	spin_unlock(&clp->cl_lock);
+ }
+ 
+ static void nfs4_free_stid(struct kmem_cache *slab, struct nfs4_stid *s)
+@@ -1110,7 +1117,9 @@ free_client(struct nfs4_client *clp)
+ 	rpc_destroy_wait_queue(&clp->cl_cb_waitq);
+ 	free_svc_cred(&clp->cl_cred);
+ 	kfree(clp->cl_name.data);
++	spin_lock(&clp->cl_lock);
+ 	idr_destroy(&clp->cl_stateids);
++	spin_unlock(&clp->cl_lock);
+ 	kfree(clp);
+ }
+ 
+@@ -1329,7 +1338,9 @@ static struct nfs4_stid *find_stateid(struct nfs4_client *cl, stateid_t *t)
+ {
+ 	struct nfs4_stid *ret;
+ 
++	spin_lock(&cl->cl_lock);
+ 	ret = idr_find(&cl->cl_stateids, t->si_opaque.so_id);
++	spin_unlock(&cl->cl_lock);
+ 	if (!ret || !ret->sc_type)
+ 		return NULL;
+ 	return ret;
+-- 
+1.9.0
 
-Committer: David Howells <dhowells@redhat.com>  2012-10-02 19:24:56
-Parent: 3a50597de8635cd05133bd12c95681c82fe7b878 (KEYS: Make the session and process keyrings per-thread)
-Child:  f8aa23a55f813c9bddec2a6176e0e67274e6e7c1 (KEYS: Use keyring_alloc() to create special keyrings)
-Branches: cred-fixes, master and many more (159)
-Follows: v3.6-rc7
-Precedes: fscache-fixes-20121220
-
-> It sound like we need to do some type of #ifdef kernel version.... 
-
-You could try keyctl_invalidate(), then if that doesn't work, call
-keyctl_revoke().
-
-David
