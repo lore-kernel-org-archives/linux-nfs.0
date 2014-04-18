@@ -1,51 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-yk0-f173.google.com ([209.85.160.173]:49692 "EHLO
-	mail-yk0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752896AbaDUWBO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Apr 2014 18:01:14 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH V2 03/17] xprtrdma: Enable RDMA pad optimization by default
-To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Date: Mon, 21 Apr 2014 18:01:11 -0400
-Message-ID: <20140421220111.12569.77783.stgit@manet.1015granger.net>
-In-Reply-To: <20140421214442.12569.8950.stgit@manet.1015granger.net>
-References: <20140421214442.12569.8950.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-ig0-f178.google.com ([209.85.213.178]:63956 "EHLO
+	mail-ig0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754220AbaDRSpu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Apr 2014 14:45:50 -0400
+Received: by mail-ig0-f178.google.com with SMTP id hn18so943946igb.5
+        for <linux-nfs@vger.kernel.org>; Fri, 18 Apr 2014 11:45:50 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Bruce Fields <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 29/70] NFSd: Add a struct nfs4_file field to struct nfs4_stid
+Date: Fri, 18 Apr 2014 14:44:23 -0400
+Message-Id: <1397846704-14567-30-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1397846704-14567-29-git-send-email-trond.myklebust@primarydata.com>
+References: <1397846704-14567-1-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-2-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-3-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-4-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-5-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-6-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-7-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-8-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-9-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-10-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-11-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-12-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-13-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-14-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-15-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-16-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-17-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-18-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-19-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-20-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-21-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-22-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-23-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-24-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-25-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-26-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-27-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-28-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-29-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Section 4 of RFC 5667 (NFS/RDMA) says:
+All stateids are associated with a nfs4_file. Let's consolidate...
 
-> The server MUST ignore any Read list for other NFS procedures,
-> as well as additional Read list entries beyond the first in the
-> list.
-
-Our XDR code adds a zero pad at the end of NFS WRITEs and SYMLINKs
-whose content is not a multiple of 4 octets long.  xprtrdma treats
-the tail buffer containing the zero pad as a separate read chunk,
-which the server ignores.
-
-Enable the pad optimization so our NFS client avoids sending zeroes
-the server is just going to ignore.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
+ fs/nfsd/nfs4state.c | 2 ++
+ fs/nfsd/state.h     | 1 +
+ 2 files changed, 3 insertions(+)
 
- net/sunrpc/xprtrdma/transport.c |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
-
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 1eb9c46..f94a6c4 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -73,7 +73,7 @@ static unsigned int xprt_rdma_max_inline_read = RPCRDMA_DEF_INLINE;
- static unsigned int xprt_rdma_max_inline_write = RPCRDMA_DEF_INLINE;
- static unsigned int xprt_rdma_inline_write_padding;
- static unsigned int xprt_rdma_memreg_strategy = RPCRDMA_FRMR;
--                int xprt_rdma_pad_optimize = 0;
-+int		    xprt_rdma_pad_optimize = 1;
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 32ab3f1c83f8..5bbef4720e7c 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -474,6 +474,8 @@ static void remove_stid(struct nfs4_stid *s)
  
- #ifdef RPC_DEBUG
+ static void nfs4_free_stid(struct kmem_cache *slab, struct nfs4_stid *s)
+ {
++	if (s->sc_file)
++		put_nfs4_file(s->sc_file);
+ 	kmem_cache_free(slab, s);
+ }
  
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 9d0088c244a8..c6deef936693 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -85,6 +85,7 @@ struct nfs4_stid {
+ 	unsigned char sc_type;
+ 	stateid_t sc_stateid;
+ 	struct nfs4_client *sc_client;
++	struct nfs4_file *sc_file;
+ };
+ 
+ struct nfs4_delegation {
+-- 
+1.9.0
 
