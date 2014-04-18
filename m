@@ -1,171 +1,163 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:34165 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932157AbaDYU4X (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Apr 2014 16:56:23 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
-CC: <dros@primarydata.com>, <hch@infradead.org>
-Subject: [PATCH v2 10/17] NFS: Create a common rpc_call_ops struct
-Date: Fri, 25 Apr 2014 16:55:53 -0400
-Message-ID: <1398459360-2093-11-git-send-email-Anna.Schumaker@Netapp.com>
-In-Reply-To: <1398459360-2093-1-git-send-email-Anna.Schumaker@Netapp.com>
-References: <1398459360-2093-1-git-send-email-Anna.Schumaker@Netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+Received: from mail-ig0-f171.google.com ([209.85.213.171]:43573 "EHLO
+	mail-ig0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754367AbaDRSqC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Apr 2014 14:46:02 -0400
+Received: by mail-ig0-f171.google.com with SMTP id c1so943198igq.4
+        for <linux-nfs@vger.kernel.org>; Fri, 18 Apr 2014 11:46:02 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Bruce Fields <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 36/70] NFSd: Add reference counting to find_stateid
+Date: Fri, 18 Apr 2014 14:44:30 -0400
+Message-Id: <1397846704-14567-37-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1397846704-14567-36-git-send-email-trond.myklebust@primarydata.com>
+References: <1397846704-14567-1-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-2-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-3-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-4-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-5-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-6-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-7-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-8-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-9-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-10-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-11-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-12-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-13-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-14-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-15-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-16-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-17-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-18-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-19-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-20-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-21-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-22-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-23-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-24-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-25-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-26-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-27-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-28-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-29-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-30-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-31-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-32-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-33-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-34-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-35-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-36-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
+Ensure the stateids won't be freed while we're inspecting them.
 
-The read and write paths set up this struct in exactly the same way, so
-create a single shared struct.
-
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/internal.h |  4 +---
- fs/nfs/pageio.c   | 10 ++++++++--
- fs/nfs/read.c     | 11 ++---------
- fs/nfs/write.c    | 11 ++---------
- 4 files changed, 13 insertions(+), 23 deletions(-)
+ fs/nfsd/nfs4state.c | 43 +++++++++++++++++++++++++++++++++++--------
+ 1 file changed, 35 insertions(+), 8 deletions(-)
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index b18cca4..798eb47 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -396,13 +396,11 @@ extern int nfs4_get_rootfh(struct nfs_server *server, struct nfs_fh *mntfh, bool
- struct nfs_pgio_completion_ops;
- 
- /* pageio.c */
-+extern const struct rpc_call_ops nfs_pgio_common_ops;
- extern struct nfs_rw_header *nfs_rw_header_alloc(const struct nfs_rw_ops *);
- extern void nfs_rw_header_free(struct nfs_pgio_header *);
- extern struct nfs_pgio_data *nfs_pgio_data_alloc(struct nfs_pgio_header *, unsigned int);
- extern void nfs_pgio_data_release(struct nfs_pgio_data *);
--extern void nfs_pgio_prepare(struct rpc_task *, void *);
--extern void nfs_pgio_release_common(void *);
--extern void nfs_pgio_result_common(struct rpc_task *, void *);
- 
- /* read.c */
- extern void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
-diff --git a/fs/nfs/pageio.c b/fs/nfs/pageio.c
-index 91c49cc..0ef8079 100644
---- a/fs/nfs/pageio.c
-+++ b/fs/nfs/pageio.c
-@@ -87,7 +87,7 @@ void nfs_pgio_data_release(struct nfs_pgio_data *data)
- }
- EXPORT_SYMBOL_GPL(nfs_pgio_data_release);
- 
--void nfs_pgio_prepare(struct rpc_task *task, void *calldata)
-+static void nfs_pgio_prepare(struct rpc_task *task, void *calldata)
- {
- 	struct nfs_pgio_data *data = calldata;
- 	int err;
-@@ -114,7 +114,7 @@ static int nfs_pgio_result(struct rpc_task *task, struct nfs_pgio_data *data)
- 	return data->header->rw_ops->rw_result(task, data, inode);
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 063ff9aba5d4..b9d6da652fb1 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1482,6 +1482,23 @@ static void gen_confirm(struct nfs4_client *clp)
+ 	memcpy(clp->cl_confirm.data, verf, sizeof(clp->cl_confirm.data));
  }
  
--void nfs_pgio_result_common(struct rpc_task *task, void *calldata)
-+static void nfs_pgio_result_common(struct rpc_task *task, void *calldata)
- {
- 	struct nfs_pgio_data *data = calldata;
- 
-@@ -125,3 +125,9 @@ void nfs_pgio_result_common(struct rpc_task *task, void *calldata)
- 	else
- 		data->header->rw_ops->rw_result_common(task, data);
- }
++static void nfs4_put_stateid(struct nfs4_stid *s)
++{
++	if (s == NULL)
++		return;
++	switch (s->sc_type) {
++	case NFS4_OPEN_STID:
++	case NFS4_LOCK_STID:
++	case NFS4_CLOSED_STID:
++		put_generic_stateid(openlockstateid(s));
++		break;
++	case NFS4_DELEG_STID:
++	case NFS4_REVOKED_DELEG_STID:
++	case NFS4_CLOSED_DELEG_STID:
++		nfs4_put_delegation(delegstateid(s));
++	}
++}
 +
-+const struct rpc_call_ops nfs_pgio_common_ops = {
-+	.rpc_call_prepare = nfs_pgio_prepare,
-+	.rpc_call_done = nfs_pgio_result_common,
-+	.rpc_release = nfs_pgio_release_common,
-+};
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index 4f49507..98373ba 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -29,7 +29,6 @@
- #define NFSDBG_FACILITY		NFSDBG_PAGECACHE
+ static struct nfs4_stid *find_stateid_locked(struct nfs4_client *cl, stateid_t *t)
+ {
+ 	struct nfs4_stid *ret;
+@@ -1498,6 +1515,8 @@ static struct nfs4_stid *find_stateid(struct nfs4_client *cl, stateid_t *t)
  
- static const struct nfs_pageio_ops nfs_pageio_read_ops;
--static const struct rpc_call_ops nfs_read_common_ops;
- static const struct nfs_pgio_completion_ops nfs_async_read_completion_ops;
- static const struct nfs_rw_ops nfs_rw_read_ops;
- 
-@@ -314,7 +313,7 @@ static int nfs_pagein_multi(struct nfs_pageio_descriptor *desc,
- 
- 	nfs_list_remove_request(req);
- 	nfs_list_add_request(req, &hdr->pages);
--	desc->pg_rpc_callops = &nfs_read_common_ops;
-+	desc->pg_rpc_callops = &nfs_pgio_common_ops;
- 	return 0;
+ 	spin_lock(&cl->cl_lock);
+ 	ret = find_stateid_locked(cl, t);
++	if (ret != NULL)
++		atomic_inc(&ret->sc_count);
+ 	spin_unlock(&cl->cl_lock);
+ 	return ret;
  }
- 
-@@ -343,7 +342,7 @@ static int nfs_pagein_one(struct nfs_pageio_descriptor *desc,
- 
- 	nfs_read_rpcsetup(data, desc->pg_count, 0);
- 	list_add(&data->list, &hdr->rpc_list);
--	desc->pg_rpc_callops = &nfs_read_common_ops;
-+	desc->pg_rpc_callops = &nfs_pgio_common_ops;
- 	return 0;
- }
- 
-@@ -443,12 +442,6 @@ static void nfs_readpage_result_common(struct rpc_task *task, struct nfs_pgio_da
- 		nfs_readpage_retry(task, data);
- }
- 
--static const struct rpc_call_ops nfs_read_common_ops = {
--	.rpc_call_prepare = nfs_pgio_prepare,
--	.rpc_call_done = nfs_pgio_result_common,
--	.rpc_release = nfs_pgio_release_common,
--};
--
- /*
-  * Read a page over NFS.
-  * We read the page synchronously in the following case:
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index d2351a1..e492537 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -42,7 +42,6 @@
-  * Local function declarations
-  */
- static void nfs_redirty_request(struct nfs_page *req);
--static const struct rpc_call_ops nfs_write_common_ops;
- static const struct rpc_call_ops nfs_commit_ops;
- static const struct nfs_pgio_completion_ops nfs_async_write_completion_ops;
- static const struct nfs_commit_completion_ops nfs_commit_completion_ops;
-@@ -1138,7 +1137,7 @@ static int nfs_flush_multi(struct nfs_pageio_descriptor *desc,
- 	} while (nbytes != 0);
- 	nfs_list_remove_request(req);
- 	nfs_list_add_request(req, &hdr->pages);
--	desc->pg_rpc_callops = &nfs_write_common_ops;
-+	desc->pg_rpc_callops = &nfs_pgio_common_ops;
- 	return 0;
- }
- 
-@@ -1182,7 +1181,7 @@ static int nfs_flush_one(struct nfs_pageio_descriptor *desc,
- 	/* Set up the argument struct */
- 	nfs_write_rpcsetup(data, desc->pg_count, 0, desc->pg_ioflags, &cinfo);
- 	list_add(&data->list, &hdr->rpc_list);
--	desc->pg_rpc_callops = &nfs_write_common_ops;
-+	desc->pg_rpc_callops = &nfs_pgio_common_ops;
- 	return 0;
- }
- 
-@@ -1272,12 +1271,6 @@ static void nfs_writeback_release_common(struct nfs_pgio_data *data)
+@@ -3804,26 +3823,33 @@ static __be32 nfsd4_validate_stateid(struct nfs4_client *cl, stateid_t *stateid)
+ 		return nfserr_bad_stateid;
+ 	status = check_stateid_generation(stateid, &s->sc_stateid, 1);
+ 	if (status)
+-		return status;
++		goto out_put_stid;
+ 	switch (s->sc_type) {
+ 	case NFS4_DELEG_STID:
+-		return nfs_ok;
++		status = nfs_ok;
++		break;
+ 	case NFS4_REVOKED_DELEG_STID:
+-		return nfserr_deleg_revoked;
++		status = nfserr_deleg_revoked;
++		break;
+ 	case NFS4_OPEN_STID:
+ 	case NFS4_LOCK_STID:
+ 		ols = openlockstateid(s);
+ 		if (ols->st_stateowner->so_is_open_owner
+ 	    			&& !(openowner(ols->st_stateowner)->oo_flags
+ 						& NFS4_OO_CONFIRMED))
+-			return nfserr_bad_stateid;
+-		return nfs_ok;
++			status = nfserr_bad_stateid;
++		else
++			status = nfs_ok;
++		break;
+ 	default:
+ 		printk("unknown stateid type %x\n", s->sc_type);
+ 	case NFS4_CLOSED_STID:
+ 	case NFS4_CLOSED_DELEG_STID:
+-		return nfserr_bad_stateid;
++		status = nfserr_bad_stateid;
  	}
++out_put_stid:
++	nfs4_put_stateid(s);
++	return status;
  }
  
--static const struct rpc_call_ops nfs_write_common_ops = {
--	.rpc_call_prepare = nfs_pgio_prepare,
--	.rpc_call_done = nfs_pgio_result_common,
--	.rpc_release = nfs_pgio_release_common,
--};
--
- /*
-  * Special version of should_remove_suid() that ignores capabilities.
-  */
+ static __be32 nfsd4_lookup_stateid(stateid_t *stateid, unsigned char typemask,
+@@ -3976,12 +4002,12 @@ nfsd4_free_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	switch (s->sc_type) {
+ 	case NFS4_DELEG_STID:
+ 		ret = nfserr_locks_held;
+-		goto out;
++		break;
+ 	case NFS4_OPEN_STID:
+ 	case NFS4_LOCK_STID:
+ 		ret = check_stateid_generation(stateid, &s->sc_stateid, 1);
+ 		if (ret)
+-			goto out;
++			break;
+ 		if (s->sc_type == NFS4_LOCK_STID)
+ 			ret = nfsd4_free_lock_stateid(openlockstateid(s));
+ 		else
+@@ -3995,6 +4021,7 @@ nfsd4_free_stateid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
+ 	default:
+ 		ret = nfserr_bad_stateid;
+ 	}
++	nfs4_put_stateid(s);
+ out:
+ 	nfs4_unlock_state();
+ 	return ret;
 -- 
-1.9.2
+1.9.0
 
