@@ -1,133 +1,178 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:40074 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750998AbaDPG1y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Apr 2014 02:27:54 -0400
-Date: Wed, 16 Apr 2014 16:27:45 +1000
-From: NeilBrown <neilb@suse.de>
-To: Dave Chinner <david@fromorbit.com>
-Cc: linux-mm@kvack.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, xfs@oss.sgi.com
-Subject: Re: [PATCH 09/19] XFS: ensure xfs_file_*_read cannot deadlock in
- memory allocation.
-Message-ID: <20140416162745.67442b07@notabene.brown>
-In-Reply-To: <20140416060459.GE15995@dastard>
-References: <20140416033623.10604.69237.stgit@notabene.brown>
-	<20140416040336.10604.90380.stgit@notabene.brown>
-	<20140416060459.GE15995@dastard>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/MvhSwDVhkQM3eTbru=iHpwX"; protocol="application/pgp-signature"
+Received: from mail-ig0-f174.google.com ([209.85.213.174]:65508 "EHLO
+	mail-ig0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753153AbaDRSpj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Apr 2014 14:45:39 -0400
+Received: by mail-ig0-f174.google.com with SMTP id h18so941677igc.7
+        for <linux-nfs@vger.kernel.org>; Fri, 18 Apr 2014 11:45:39 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Bruce Fields <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 22/70] NFSd: Cleanup nfs4svc_encode_compoundres
+Date: Fri, 18 Apr 2014 14:44:16 -0400
+Message-Id: <1397846704-14567-23-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1397846704-14567-22-git-send-email-trond.myklebust@primarydata.com>
+References: <1397846704-14567-1-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-2-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-3-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-4-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-5-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-6-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-7-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-8-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-9-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-10-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-11-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-12-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-13-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-14-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-15-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-16-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-17-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-18-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-19-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-20-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-21-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-22-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/MvhSwDVhkQM3eTbru=iHpwX
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+Move the slot return, put session etc into a helper in fs/nfsd/nfs4state.c
+instead of open coding in nfs4svc_encode_compoundres.
 
-On Wed, 16 Apr 2014 16:04:59 +1000 Dave Chinner <david@fromorbit.com> wrote:
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+---
+ fs/nfsd/nfs4state.c | 35 ++++++++++++++++++++++-------------
+ fs/nfsd/nfs4xdr.c   | 15 +--------------
+ fs/nfsd/state.h     |  1 -
+ fs/nfsd/xdr4.h      |  2 +-
+ 4 files changed, 24 insertions(+), 29 deletions(-)
 
-> On Wed, Apr 16, 2014 at 02:03:36PM +1000, NeilBrown wrote:
-> > xfs_file_*_read holds an inode lock while calling a generic 'read'
-> > function.  These functions perform read-ahead and are quite likely to
-> > allocate memory.
->=20
-> Yes, that's what reading data from disk requires.
->=20
-> > So set PF_FSTRANS to ensure they avoid __GFP_FS and so don't recurse
-> > into a filesystem to free memory.
->=20
-> We already have that protection via the
-> >=20
-> > This can be a problem with loop-back NFS mounts, if free_pages ends up
-> > wating in nfs_release_page(), and nfsd is blocked waiting for the lock
-> > that this code holds.
-> >=20
-> > This was found both by lockdep and as a real deadlock during testing.
-> >=20
-> > Signed-off-by: NeilBrown <neilb@suse.de>
-> > ---
-> >  fs/xfs/xfs_file.c |   12 ++++++++++++
-> >  1 file changed, 12 insertions(+)
-> >=20
-> > diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
-> > index 64b48eade91d..88b33ef64668 100644
-> > --- a/fs/xfs/xfs_file.c
-> > +++ b/fs/xfs/xfs_file.c
-> > @@ -243,6 +243,7 @@ xfs_file_aio_read(
-> >  	ssize_t			ret =3D 0;
-> >  	int			ioflags =3D 0;
-> >  	xfs_fsize_t		n;
-> > +	unsigned int		pflags;
-> > =20
-> >  	XFS_STATS_INC(xs_read_calls);
-> > =20
-> > @@ -290,6 +291,10 @@ xfs_file_aio_read(
-> >  	 * proceeed concurrently without serialisation.
-> >  	 */
-> >  	xfs_rw_ilock(ip, XFS_IOLOCK_SHARED);
-> > +	/* As we hold a lock, we must ensure that any allocation
-> > +	 * in generic_file_aio_read avoid __GFP_FS
-> > +	 */
-> > +	current_set_flags_nested(&pflags, PF_FSTRANS);
->=20
-> Ugh. No. This is Simply Wrong.
->=20
-> We handle the memory allocations in the IO path with
-> GFP_NOFS/KM_NOFS where necessary.
->=20
-> We also do this when setting up regular file inodes in
-> xfs_setup_inode():
->=20
->         /*
->          * Ensure all page cache allocations are done from GFP_NOFS conte=
-xt to
->          * prevent direct reclaim recursion back into the filesystem and =
-blowing
->          * stacks or deadlocking.
->          */
->         gfp_mask =3D mapping_gfp_mask(inode->i_mapping);
->         mapping_set_gfp_mask(inode->i_mapping, (gfp_mask & ~(__GFP_FS)));
->=20
-> Which handles all of the mapping allocations that occur within the
-> page cache read/write paths.
->=20
-> Remember, you removed the KM_NOFS code from the XFS allocator that
-> caused it to clear __GFP_FS in an earlier patch - the read Io path
-> is one of the things you broke by doing that....
->=20
-> If there are places where we don't use GFP_NOFS context allocations
-> that we should, then we need to fix them individually....
->=20
-> Cheers,
->=20
-> Dave.
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 38ca008c3d41..9421e56454a2 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -202,18 +202,6 @@ static void put_client_renew_locked(struct nfs4_client *clp)
+ 		renew_client_locked(clp);
+ }
+ 
+-void put_client_renew(struct nfs4_client *clp)
+-{
+-	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
+-
+-	if (!atomic_dec_and_lock(&clp->cl_refcount, &nn->client_lock))
+-		return;
+-	if (!is_client_expired(clp))
+-		renew_client_locked(clp);
+-	spin_unlock(&nn->client_lock);
+-}
+-
+-
+ static inline u32
+ opaque_hashval(const void *ptr, int nbytes)
+ {
+@@ -1657,7 +1645,7 @@ out_err:
+ /*
+  * Cache a reply. nfsd4_check_resp_size() has bounded the cache size.
+  */
+-void
++static void
+ nfsd4_store_cache_entry(struct nfsd4_compoundres *resp)
+ {
+ 	struct nfsd4_slot *slot = resp->cstate.slot;
+@@ -2414,6 +2402,27 @@ out_put_client:
+ 	goto out_no_session;
+ }
+ 
++void
++nfsd4_sequence_done(struct nfsd4_compoundres *resp)
++{
++	struct nfsd4_compound_state *cs = &resp->cstate;
++
++	if (nfsd4_has_session(cs)) {
++		struct nfs4_client *clp = cs->session->se_client;
++		struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
++
++		if (cs->status != nfserr_replay_cache) {
++			nfsd4_store_cache_entry(resp);
++			cs->slot->sl_flags &= ~NFSD4_SLOT_INUSE;
++		}
++		/* Renew the clientid on success and on replay */
++		spin_lock(&nn->client_lock);
++		nfsd4_put_session(cs->session);
++		put_client_renew_locked(clp);
++		spin_unlock(&nn->client_lock);
++	}
++}
++
+ __be32
+ nfsd4_destroy_clientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate, struct nfsd4_destroy_clientid *dc)
+ {
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 2723c1badd01..8f6e7a4dc8b0 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -3727,7 +3727,6 @@ nfs4svc_encode_compoundres(struct svc_rqst *rqstp, __be32 *p, struct nfsd4_compo
+ 	/*
+ 	 * All that remains is to write the tag and operation count...
+ 	 */
+-	struct nfsd4_compound_state *cs = &resp->cstate;
+ 	struct kvec *iov;
+ 	p = resp->tagp;
+ 	*p++ = htonl(resp->taglen);
+@@ -3741,19 +3740,7 @@ nfs4svc_encode_compoundres(struct svc_rqst *rqstp, __be32 *p, struct nfsd4_compo
+ 		iov = &rqstp->rq_res.head[0];
+ 	iov->iov_len = ((char*)resp->p) - (char*)iov->iov_base;
+ 	BUG_ON(iov->iov_len > PAGE_SIZE);
+-	if (nfsd4_has_session(cs)) {
+-		struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
+-		struct nfs4_client *clp = cs->session->se_client;
+-		if (cs->status != nfserr_replay_cache) {
+-			nfsd4_store_cache_entry(resp);
+-			cs->slot->sl_flags &= ~NFSD4_SLOT_INUSE;
+-		}
+-		/* Renew the clientid on success and on replay */
+-		spin_lock(&nn->client_lock);
+-		nfsd4_put_session(cs->session);
+-		spin_unlock(&nn->client_lock);
+-		put_client_renew(clp);
+-	}
++	nfsd4_sequence_done(resp);
+ 	return 1;
+ }
+ 
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 02fc6685ab3f..e5444e0aedad 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -452,7 +452,6 @@ extern void nfs4_put_delegation(struct nfs4_delegation *dp);
+ extern struct nfs4_client_reclaim *nfs4_client_to_reclaim(const char *name,
+ 							struct nfsd_net *nn);
+ extern bool nfs4_has_reclaimed_state(const char *name, struct nfsd_net *nn);
+-extern void put_client_renew(struct nfs4_client *clp);
+ 
+ /* nfs4recover operations */
+ extern int nfsd4_client_tracking_init(struct net *net);
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index 2f887c944048..a617f1a3ba83 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -592,7 +592,6 @@ extern __be32 nfsd4_setclientid(struct svc_rqst *rqstp,
+ extern __be32 nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
+ 		struct nfsd4_compound_state *,
+ 		struct nfsd4_setclientid_confirm *setclientid_confirm);
+-extern void nfsd4_store_cache_entry(struct nfsd4_compoundres *resp);
+ extern __be32 nfsd4_exchange_id(struct svc_rqst *rqstp,
+ 		struct nfsd4_compound_state *, struct nfsd4_exchange_id *);
+ extern __be32 nfsd4_backchannel_ctl(struct svc_rqst *, struct nfsd4_compound_state *, struct nfsd4_backchannel_ctl *);
+@@ -603,6 +602,7 @@ extern __be32 nfsd4_create_session(struct svc_rqst *,
+ extern __be32 nfsd4_sequence(struct svc_rqst *,
+ 		struct nfsd4_compound_state *,
+ 		struct nfsd4_sequence *);
++extern void nfsd4_sequence_done(struct nfsd4_compoundres *resp);
+ extern __be32 nfsd4_destroy_session(struct svc_rqst *,
+ 		struct nfsd4_compound_state *,
+ 		struct nfsd4_destroy_session *);
+-- 
+1.9.0
 
-Thanks Dave.  Having fixed the KM_NOFS error I'll start retesting with all
-the other xfs patches removed.
-
-NeilBrown
-
---Sig_/MvhSwDVhkQM3eTbru=iHpwX
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.22 (GNU/Linux)
-
-iQIVAwUBU04i4Tnsnt1WYoG5AQLIng//dBc4GkVWQndYfJfRIYKQW2/Qp2VQNTrH
-QwogU8BASNXT5qpc1XzaQYOxkK09+w+6QiWjUGdtmxeca4vNynxYEVsVosaUPzPY
-0YgVm+0k4xBCGRhZZ8y5YWqizoYR2chAlE6gIIzFaNRCHajzP8Xet09XxNTR9tYi
-EcxV88isRZ8zKGmXnu5emZxq+XdZmf3yjD9YsRlidhny2AnIs5bcjhDad87njled
-knLHfb2oDGwZqvjE6giqHoCRwUodRXHzPQ3yKG9YMuzvp6/DKe5Zp4R4byUcwWNk
-mngvZ9K82T1D8o6Q7t6GsiwszXF0VIhl4eP2Og4hlhPWd777WR/fCFqumJqrFCEW
-UyrRvTUoY2zr8b9SRIEXKaK5BslTkoaQxTBodLmb2x/BtnpyTWXmF8ProhEEgTcl
-rbS42PSuxrrjCvoxcM/PTeUeErwb4m16laziroWfx4WblVrtcKB1Zjvnt03N/zRf
-2sE9WOqxtP4nZmOiQaLyMeto7QOwUWTS1BcpzUQ1/bqh18u91odzQqFA5dozTg6a
-5kX2sujAyBb++B0ixYhBkjAaSTE6KgShEsCit+VcefOEYm3nHvOM4a7A+dIrlaes
-PN6E0STK5yi+ZOgKIQpU0uh1JNLOR0Rmu2/6/Hrizpt6OUGpMrtKAfnxRgpPg2Ha
-l67YsKqaHVI=
-=Ny7o
------END PGP SIGNATURE-----
-
---Sig_/MvhSwDVhkQM3eTbru=iHpwX--
