@@ -1,252 +1,168 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:10689 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754582AbaDYU4I (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Apr 2014 16:56:08 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
-CC: <dros@primarydata.com>, <hch@infradead.org>
-Subject: [PATCH v2 02/17] NFS: Create a common results structure for reads and writes
-Date: Fri, 25 Apr 2014 16:55:45 -0400
-Message-ID: <1398459360-2093-3-git-send-email-Anna.Schumaker@Netapp.com>
-In-Reply-To: <1398459360-2093-1-git-send-email-Anna.Schumaker@Netapp.com>
-References: <1398459360-2093-1-git-send-email-Anna.Schumaker@Netapp.com>
+Received: from mail-pa0-f47.google.com ([209.85.220.47]:52468 "EHLO
+	mail-pa0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751259AbaDRDtX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Apr 2014 23:49:23 -0400
+Received: by mail-pa0-f47.google.com with SMTP id lj1so1057648pab.34
+        for <linux-nfs@vger.kernel.org>; Thu, 17 Apr 2014 20:49:23 -0700 (PDT)
+Message-ID: <5350A0A2.1020401@gmail.com>
+Date: Fri, 18 Apr 2014 11:48:50 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain
+To: Christoph Hellwig <hch@infradead.org>
+CC: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Subject: [PATCH v2] NFSD: Don't set default ACL if there are no ACE entries
+References: <534FCD13.303@gmail.com> <20140417143634.GA20857@infradead.org>
+In-Reply-To: <20140417143634.GA20857@infradead.org>
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
+After setting ACL for directory, I got two problems that caused
+by the cached zero-length default posix acl.
 
-Reads and writes have very similar results.  This patch combines the two
-structs together with comments to show where the differing fields are
-used.
+This patch make sure nfsd don't set a zero-length default
+posix ACL if there are no entries for the default ACL.
 
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Thanks for Christoph Hellwig's advice.
 
 v2:
-- Move the write-only variables to the end of the struct
+     drop calling forget_cached_acl(), just not set zero-length ACL
 
-TODO:
-- Consider making a union for read and write variables
+First problem:
+# nfs4_setfacl -s A::OWNER@:RWX /mnt/123/; touch /mnt/123/test
+............ hang ...........
+
+Second problem:
+# nfs4_setfacl -s A::OWNER@:RWX /mnt/123/; nfs4_getfacl /mnt/123/
+[ 1610.167668] ------------[ cut here ]------------
+[ 1610.168320] kernel BUG at /root/nfs/linux/fs/nfsd/nfs4acl.c:239!
+[ 1610.168320] invalid opcode: 0000 [#1] SMP DEBUG_PAGEALLOC
+[ 1610.168320] Modules linked in: nfsv4(OE) nfs(OE) nfsd(OE) 
+rpcsec_gss_krb5 fscache ip6t_rpfilter ip6t_REJECT cfg80211 xt_conntrack 
+rfkill ebtable_nat ebtable_broute bridge stp llc ebtable_filter ebtables 
+ip6table_nat nf_conntrack_ipv6 nf_defrag_ipv6 nf_nat_ipv6 
+ip6table_mangle ip6table_security ip6table_raw ip6table_filter 
+ip6_tables iptable_nat nf_conntrack_ipv4 nf_defrag_ipv4 nf_nat_ipv4 
+nf_nat nf_conntrack iptable_mangle iptable_security iptable_raw 
+auth_rpcgss nfs_acl snd_intel8x0 ppdev lockd snd_ac97_codec ac97_bus 
+snd_pcm snd_timer e1000 pcspkr parport_pc snd parport serio_raw joydev 
+i2c_piix4 sunrpc(OE) microcode soundcore i2c_core ata_generic pata_acpi 
+[last unloaded: nfsd]
+[ 1610.168320] CPU: 0 PID: 27397 Comm: nfsd Tainted: G           OE 
+3.15.0-rc1+ #15
+[ 1610.168320] Hardware name: innotek GmbH VirtualBox/VirtualBox, BIOS 
+VirtualBox 12/01/2006
+[ 1610.168320] task: ffff88005ab653d0 ti: ffff88005a944000 task.ti: 
+ffff88005a944000
+[ 1610.168320] RIP: 0010:[<ffffffffa034d5ed>]  [<ffffffffa034d5ed>] 
+_posix_to_nfsv4_one+0x3cd/0x3d0 [nfsd]
+[ 1610.168320] RSP: 0018:ffff88005a945b00  EFLAGS: 00010293
+[ 1610.168320] RAX: 0000000000000001 RBX: ffff88006700bac0 RCX: 
+0000000000000000
+[ 1610.168320] RDX: 0000000000000000 RSI: ffff880067c83f00 RDI: 
+ffff880068233300
+[ 1610.168320] RBP: ffff88005a945b48 R08: ffffffff81c64830 R09: 
+0000000000000000
+[ 1610.168320] R10: ffff88004ea85be0 R11: 000000000000f475 R12: 
+ffff880068233300
+[ 1610.168320] R13: 0000000000000003 R14: 0000000000000002 R15: 
+ffff880068233300
+[ 1610.168320] FS:  0000000000000000(0000) GS:ffff880077800000(0000) 
+knlGS:0000000000000000
+[ 1610.168320] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
+[ 1610.168320] CR2: 00007f5bcbd3b0b9 CR3: 0000000001c0f000 CR4: 
+00000000000006f0
+[ 1610.168320] DR0: 0000000000000000 DR1: 0000000000000000 DR2: 
+0000000000000000
+[ 1610.168320] DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7: 
+0000000000000400
+[ 1610.168320] Stack:
+[ 1610.168320]  ffffffff00000000 0000000b67c83500 000000076700bac0 
+0000000000000000
+[ 1610.168320]  ffff88006700bac0 ffff880068233300 ffff88005a945c08 
+0000000000000002
+[ 1610.168320]  0000000000000000 ffff88005a945b88 ffffffffa034e2d5 
+000000065a945b68
+[ 1610.168320] Call Trace:
+[ 1610.168320]  [<ffffffffa034e2d5>] nfsd4_get_nfs4_acl+0x95/0x150 [nfsd]
+[ 1610.168320]  [<ffffffffa03400d6>] nfsd4_encode_fattr+0x646/0x1e70 [nfsd]
+[ 1610.168320]  [<ffffffff816a6e6e>] ? kmemleak_alloc+0x4e/0xb0
+[ 1610.168320]  [<ffffffffa0327962>] ? 
+nfsd_setuser_and_check_port+0x52/0x80 [nfsd]
+[ 1610.168320]  [<ffffffff812cd4bb>] ? selinux_cred_prepare+0x1b/0x30
+[ 1610.168320]  [<ffffffffa0341caa>] nfsd4_encode_getattr+0x5a/0x60 [nfsd]
+[ 1610.168320]  [<ffffffffa0341e07>] nfsd4_encode_operation+0x67/0x110 
+[nfsd]
+[ 1610.168320]  [<ffffffffa033844d>] nfsd4_proc_compound+0x21d/0x810 [nfsd]
+[ 1610.168320]  [<ffffffffa0324d9b>] nfsd_dispatch+0xbb/0x200 [nfsd]
+[ 1610.168320]  [<ffffffffa00850cd>] svc_process_common+0x46d/0x6d0 [sunrpc]
+[ 1610.168320]  [<ffffffffa0085433>] svc_process+0x103/0x170 [sunrpc]
+[ 1610.168320]  [<ffffffffa032472f>] nfsd+0xbf/0x130 [nfsd]
+[ 1610.168320]  [<ffffffffa0324670>] ? nfsd_destroy+0x80/0x80 [nfsd]
+[ 1610.168320]  [<ffffffff810a5202>] kthread+0xd2/0xf0
+[ 1610.168320]  [<ffffffff810a5130>] ? insert_kthread_work+0x40/0x40
+[ 1610.168320]  [<ffffffff816c1ebc>] ret_from_fork+0x7c/0xb0
+[ 1610.168320]  [<ffffffff810a5130>] ? insert_kthread_work+0x40/0x40
+[ 1610.168320] Code: 78 02 e9 e7 fc ff ff 31 c0 31 d2 31 c9 66 89 45 ce 
+41 8b 04 24 66 89 55 d0 66 89 4d d2 48 8d 04 80 49 8d 5c 84 04 e9 37 fd 
+ff ff <0f> 0b 90 0f 1f 44 00 00 55 8b 56 08 c7 07 00 00 00 00 8b 46 0c
+[ 1610.168320] RIP  [<ffffffffa034d5ed>] _posix_to_nfsv4_one+0x3cd/0x3d0 
+[nfsd]
+[ 1610.168320]  RSP <ffff88005a945b00>
+[ 1610.257313] ---[ end trace 838254e3e352285b ]---
+
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 ---
- fs/nfs/nfs2xdr.c        |  6 +++---
- fs/nfs/nfs3xdr.c        |  8 ++++----
- fs/nfs/nfs4xdr.c        |  9 +++++----
- fs/nfs/read.c           |  2 +-
- fs/nfs/write.c          |  2 +-
- include/linux/nfs_xdr.h | 32 ++++++++++++--------------------
- 6 files changed, 26 insertions(+), 33 deletions(-)
+  fs/nfsd/nfs4acl.c | 18 +++++++++---------
+  1 file changed, 9 insertions(+), 9 deletions(-)
 
-diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
-index 461cd8b..5f61b83 100644
---- a/fs/nfs/nfs2xdr.c
-+++ b/fs/nfs/nfs2xdr.c
-@@ -103,7 +103,7 @@ static void print_overflow_msg(const char *func, const struct xdr_stream *xdr)
- /*
-  *	typedef opaque	nfsdata<>;
-  */
--static int decode_nfsdata(struct xdr_stream *xdr, struct nfs_readres *result)
-+static int decode_nfsdata(struct xdr_stream *xdr, struct nfs_pgio_res *result)
- {
- 	u32 recvd, count;
- 	__be32 *p;
-@@ -857,7 +857,7 @@ out_default:
-  *	};
-  */
- static int nfs2_xdr_dec_readres(struct rpc_rqst *req, struct xdr_stream *xdr,
--				struct nfs_readres *result)
-+				struct nfs_pgio_res *result)
- {
- 	enum nfs_stat status;
- 	int error;
-@@ -878,7 +878,7 @@ out_default:
- }
- 
- static int nfs2_xdr_dec_writeres(struct rpc_rqst *req, struct xdr_stream *xdr,
--				 struct nfs_writeres *result)
-+				 struct nfs_pgio_res *result)
- {
- 	/* All NFSv2 writes are "file sync" writes */
- 	result->verf->committed = NFS_FILE_SYNC;
-diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
-index 02f16c2..8f4cbe7 100644
---- a/fs/nfs/nfs3xdr.c
-+++ b/fs/nfs/nfs3xdr.c
-@@ -1589,7 +1589,7 @@ out_default:
-  *	};
-  */
- static int decode_read3resok(struct xdr_stream *xdr,
--			     struct nfs_readres *result)
-+			     struct nfs_pgio_res *result)
- {
- 	u32 eof, count, ocount, recvd;
- 	__be32 *p;
-@@ -1625,7 +1625,7 @@ out_overflow:
- }
- 
- static int nfs3_xdr_dec_read3res(struct rpc_rqst *req, struct xdr_stream *xdr,
--				 struct nfs_readres *result)
-+				 struct nfs_pgio_res *result)
- {
- 	enum nfs_stat status;
- 	int error;
-@@ -1673,7 +1673,7 @@ out_status:
-  *	};
-  */
- static int decode_write3resok(struct xdr_stream *xdr,
--			      struct nfs_writeres *result)
-+			      struct nfs_pgio_res *result)
- {
- 	__be32 *p;
- 
-@@ -1697,7 +1697,7 @@ out_eio:
- }
- 
- static int nfs3_xdr_dec_write3res(struct rpc_rqst *req, struct xdr_stream *xdr,
--				  struct nfs_writeres *result)
-+				  struct nfs_pgio_res *result)
- {
- 	enum nfs_stat status;
- 	int error;
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 032159c..939ae60 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -5087,7 +5087,8 @@ static int decode_putrootfh(struct xdr_stream *xdr)
- 	return decode_op_hdr(xdr, OP_PUTROOTFH);
- }
- 
--static int decode_read(struct xdr_stream *xdr, struct rpc_rqst *req, struct nfs_readres *res)
-+static int decode_read(struct xdr_stream *xdr, struct rpc_rqst *req,
-+		       struct nfs_pgio_res *res)
- {
- 	__be32 *p;
- 	uint32_t count, eof, recvd;
-@@ -5341,7 +5342,7 @@ static int decode_setclientid_confirm(struct xdr_stream *xdr)
- 	return decode_op_hdr(xdr, OP_SETCLIENTID_CONFIRM);
- }
- 
--static int decode_write(struct xdr_stream *xdr, struct nfs_writeres *res)
-+static int decode_write(struct xdr_stream *xdr, struct nfs_pgio_res *res)
- {
- 	__be32 *p;
- 	int status;
-@@ -6638,7 +6639,7 @@ out:
-  * Decode Read response
-  */
- static int nfs4_xdr_dec_read(struct rpc_rqst *rqstp, struct xdr_stream *xdr,
--			     struct nfs_readres *res)
-+			     struct nfs_pgio_res *res)
- {
- 	struct compound_hdr hdr;
- 	int status;
-@@ -6663,7 +6664,7 @@ out:
-  * Decode WRITE response
-  */
- static int nfs4_xdr_dec_write(struct rpc_rqst *rqstp, struct xdr_stream *xdr,
--			      struct nfs_writeres *res)
-+			      struct nfs_pgio_res *res)
- {
- 	struct compound_hdr hdr;
- 	int status;
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index 46d5552..473bba3 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -471,7 +471,7 @@ int nfs_readpage_result(struct rpc_task *task, struct nfs_read_data *data)
- static void nfs_readpage_retry(struct rpc_task *task, struct nfs_read_data *data)
- {
- 	struct nfs_pgio_args *argp = &data->args;
--	struct nfs_readres *resp = &data->res;
-+	struct nfs_pgio_res  *resp = &data->res;
- 
- 	/* This is a short read! */
- 	nfs_inc_stats(data->header->inode, NFSIOS_SHORTREAD);
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 25ba383..d392a70 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -1389,7 +1389,7 @@ static int nfs_should_remove_suid(const struct inode *inode)
- void nfs_writeback_done(struct rpc_task *task, struct nfs_write_data *data)
- {
- 	struct nfs_pgio_args	*argp = &data->args;
--	struct nfs_writeres	*resp = &data->res;
-+	struct nfs_pgio_res	*resp = &data->res;
- 	struct inode		*inode = data->header->inode;
- 	int status;
- 
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 5875001..381f832 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -489,16 +489,6 @@ struct nfs4_delegreturnres {
- };
- 
- /*
-- * Arguments to the read call.
-- */
--struct nfs_readres {
--	struct nfs4_sequence_res	seq_res;
--	struct nfs_fattr *	fattr;
--	__u32			count;
--	int                     eof;
--};
--
--/*
-  * Arguments to the write call.
-  */
- struct nfs_write_verifier {
-@@ -510,14 +500,6 @@ struct nfs_writeverf {
- 	enum nfs3_stable_how	committed;
- };
- 
--struct nfs_writeres {
--	struct nfs4_sequence_res	seq_res;
--	struct nfs_fattr *	fattr;
--	struct nfs_writeverf *	verf;
--	__u32			count;
--	const struct nfs_server *server;
--};
--
- /*
-  * Arguments shared by the read and write call.
-  */
-@@ -535,6 +517,16 @@ struct nfs_pgio_args {
- 	enum nfs3_stable_how	stable;		/* used by write */
- };
- 
-+struct nfs_pgio_res {
-+	struct nfs4_sequence_res	seq_res;
-+	struct nfs_fattr *	fattr;
-+	__u32			count;
-+	int			eof;		/* used by read */
-+	struct nfs_writeverf *	verf;		/* used by write */
-+	const struct nfs_server *server;	/* used by write */
+diff --git a/fs/nfsd/nfs4acl.c b/fs/nfsd/nfs4acl.c
+index de5d66b..fdd259e 100644
+--- a/fs/nfsd/nfs4acl.c
++++ b/fs/nfsd/nfs4acl.c
+@@ -395,8 +395,10 @@ sort_pacl(struct posix_acl *pacl)
+  	 * by uid/gid. */
+  	int i, j;
+
+-	if (pacl->a_count <= 4)
+-		return; /* no users or groups */
++	/* no users or groups */
++	if (!pacl || pacl->a_count <= 4)
++		return;
 +
-+};
+  	i = 1;
+  	while (pacl->a_entries[i].e_tag == ACL_USER)
+  		i++;
+@@ -523,13 +525,11 @@ posix_state_to_acl(struct posix_acl_state *state, 
+unsigned int flags)
+
+  	/*
+  	 * ACLs with no ACEs are treated differently in the inheritable
+-	 * and effective cases: when there are no inheritable ACEs, we
+-	 * set a zero-length default posix acl:
++	 * and effective cases.
+  	 */
+-	if (state->empty && (flags & NFS4_ACL_TYPE_DEFAULT)) {
+-		pacl = posix_acl_alloc(0, GFP_KERNEL);
+-		return pacl ? pacl : ERR_PTR(-ENOMEM);
+-	}
++	if (state->empty && (flags & NFS4_ACL_TYPE_DEFAULT))
++		return NULL;
 +
- /*
-  * Arguments to the commit call.
-  */
-@@ -1261,7 +1253,7 @@ struct nfs_read_data {
- 	struct rpc_task		task;
- 	struct nfs_fattr	fattr;	/* fattr storage */
- 	struct nfs_pgio_args	args;
--	struct nfs_readres  res;
-+	struct nfs_pgio_res	res;
- 	unsigned long		timestamp;	/* For lease renewal */
- 	int (*read_done_cb) (struct rpc_task *task, struct nfs_read_data *data);
- 	__u64			mds_offset;
-@@ -1313,7 +1305,7 @@ struct nfs_write_data {
- 	struct nfs_fattr	fattr;
- 	struct nfs_writeverf	verf;
- 	struct nfs_pgio_args	args;		/* argument struct */
--	struct nfs_writeres	res;		/* result struct */
-+	struct nfs_pgio_res	res;		/* result struct */
- 	unsigned long		timestamp;	/* For lease renewal */
- 	int (*write_done_cb) (struct rpc_task *task, struct nfs_write_data *data);
- 	__u64			mds_offset;	/* Filelayout dense stripe */
+  	/*
+  	 * When there are no effective ACEs, the following will end
+  	 * up setting a 3-element effective posix ACL with all
+@@ -831,7 +831,7 @@ nfsd4_set_nfs4_acl(struct svc_rqst *rqstp, struct 
+svc_fh *fhp,
+  	if (host_error < 0)
+  		goto out_release;
+
+-	if (S_ISDIR(inode->i_mode)) {
++	if (dpacl && S_ISDIR(inode->i_mode)) {
+  		host_error = inode->i_op->set_acl(inode, dpacl,
+  						  ACL_TYPE_DEFAULT);
+  	}
 -- 
-1.9.2
+1.9.0
 
