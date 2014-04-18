@@ -1,99 +1,148 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f182.google.com ([209.85.213.182]:59625 "EHLO
-	mail-ig0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1758796AbaDVV3G (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Apr 2014 17:29:06 -0400
-Received: by mail-ig0-f182.google.com with SMTP id uy17so217125igb.15
-        for <linux-nfs@vger.kernel.org>; Tue, 22 Apr 2014 14:29:06 -0700 (PDT)
-From: Weston Andros Adamson <dros@primarydata.com>
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
-Subject: [PATCH 06/17] nfs: page group syncing in read path
-Date: Tue, 22 Apr 2014 17:29:14 -0400
-Message-Id: <1398202165-78897-7-git-send-email-dros@primarydata.com>
-In-Reply-To: <1398202165-78897-1-git-send-email-dros@primarydata.com>
-References: <1398202165-78897-1-git-send-email-dros@primarydata.com>
+Received: from mail-ie0-f170.google.com ([209.85.223.170]:33831 "EHLO
+	mail-ie0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751242AbaDRSpY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Apr 2014 14:45:24 -0400
+Received: by mail-ie0-f170.google.com with SMTP id rd18so1905304iec.29
+        for <linux-nfs@vger.kernel.org>; Fri, 18 Apr 2014 11:45:23 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Bruce Fields <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 12/70] NFSd: Add fine grained protection for the nfs4_file->fi_stateids list
+Date: Fri, 18 Apr 2014 14:44:06 -0400
+Message-Id: <1397846704-14567-13-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <1397846704-14567-12-git-send-email-trond.myklebust@primarydata.com>
+References: <1397846704-14567-1-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-2-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-3-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-4-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-5-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-6-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-7-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-8-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-9-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-10-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-11-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-12-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Operations that modify state for a whole page must be syncronized across
-all requests within a page group. In the read path, this is calling
-unlock_page and SetPageUptodate. Both of these functions should not be
-called until all requests in a page group have reached the point where
-they would call them.
-
-This patch should have no effect yet since all page groups currently
-have one request, but will come into play when pg_test functions are
-modified to split pages into sub-page regions.
-
-Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/read.c            | 22 +++++++++++++++++-----
- include/linux/nfs_page.h |  2 ++
- 2 files changed, 19 insertions(+), 5 deletions(-)
+ fs/nfsd/nfs4state.c | 21 ++++++++++++++++++---
+ fs/nfsd/state.h     |  1 +
+ 2 files changed, 19 insertions(+), 3 deletions(-)
 
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index ee0a3cd..c774810 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -158,10 +158,16 @@ static void nfs_readpage_release(struct nfs_page *req)
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 3656980b5d19..f77cc9206373 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -623,7 +623,11 @@ release_all_access(struct nfs4_ol_stateid *stp)
+ 
+ static void unhash_generic_stateid(struct nfs4_ol_stateid *stp)
  {
- 	struct inode *d_inode = req->wb_context->dentry->d_inode;
- 
--	if (PageUptodate(req->wb_page))
--		nfs_readpage_to_fscache(d_inode, req->wb_page, 0);
-+	dprintk("NFS: read done (%s/%llu %d@%lld)\n", d_inode->i_sb->s_id,
-+		(unsigned long long)NFS_FILEID(d_inode), req->wb_bytes,
-+		(long long)req_offset(req));
- 
--	unlock_page(req->wb_page);
-+	if (nfs_page_group_sync_on_bit(req, PG_UNLOCKPAGE)) {
-+		if (PageUptodate(req->wb_page))
-+			nfs_readpage_to_fscache(d_inode, req->wb_page, 0);
++	struct nfs4_file *fp = stp->st_file;
 +
-+		unlock_page(req->wb_page);
-+	}
- 
- 	dprintk("NFS: read done (%s/%Lu %d@%Ld)\n",
- 			req->wb_context->dentry->d_inode->i_sb->s_id,
-@@ -171,6 +177,12 @@ static void nfs_readpage_release(struct nfs_page *req)
- 	nfs_release_request(req);
++	spin_lock(&fp->fi_lock);
+ 	list_del(&stp->st_perfile);
++	spin_unlock(&fp->fi_lock);
+ 	list_del(&stp->st_perstateowner);
  }
  
-+static void nfs_page_group_set_uptodate(struct nfs_page *req)
-+{
-+	if (nfs_page_group_sync_on_bit(req, PG_UPTODATE))
-+		SetPageUptodate(req->wb_page);
-+}
-+
- /* Note io was page aligned */
- static void nfs_read_completion(struct nfs_pgio_header *hdr)
- {
-@@ -193,9 +205,9 @@ static void nfs_read_completion(struct nfs_pgio_header *hdr)
- 		bytes += req->wb_bytes;
- 		if (test_bit(NFS_IOHDR_ERROR, &hdr->flags)) {
- 			if (bytes <= hdr->good_bytes)
--				SetPageUptodate(page);
-+				nfs_page_group_set_uptodate(req);
- 		} else
--			SetPageUptodate(page);
-+			nfs_page_group_set_uptodate(req);
- 		nfs_list_remove_request(req);
- 		nfs_readpage_release(req);
- 	}
-diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
-index 1fb161b..56b1f1c 100644
---- a/include/linux/nfs_page.h
-+++ b/include/linux/nfs_page.h
-@@ -28,6 +28,8 @@ enum {
- 	PG_COMMIT_TO_DS,	/* used by pnfs layouts */
- 	PG_HEADLOCK,		/* page group lock of wb_head */
- 	PG_TEARDOWN,		/* page group sync for destroy */
-+	PG_UNLOCKPAGE,		/* page group sync bit in read path */
-+	PG_UPTODATE,		/* page group sync bit in read path */
- };
+@@ -2530,6 +2534,7 @@ static void nfsd4_init_file(struct nfs4_file *fp, struct inode *ino)
+ 	unsigned int hashval = file_hashval(ino);
  
- struct nfs_inode;
+ 	atomic_set(&fp->fi_ref, 1);
++	spin_lock_init(&fp->fi_lock);
+ 	INIT_LIST_HEAD(&fp->fi_stateids);
+ 	INIT_LIST_HEAD(&fp->fi_delegations);
+ 	fp->fi_inode = igrab(ino);
+@@ -2650,7 +2655,6 @@ static void init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_file *fp,
+ 	stp->st_stid.sc_type = NFS4_OPEN_STID;
+ 	INIT_LIST_HEAD(&stp->st_lockowners);
+ 	list_add(&stp->st_perstateowner, &oo->oo_owner.so_stateids);
+-	list_add(&stp->st_perfile, &fp->fi_stateids);
+ 	stp->st_stateowner = &oo->oo_owner;
+ 	get_nfs4_file(fp);
+ 	stp->st_file = fp;
+@@ -2659,6 +2663,9 @@ static void init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_file *fp,
+ 	set_access(open->op_share_access, stp);
+ 	set_deny(open->op_share_deny, stp);
+ 	stp->st_openstp = NULL;
++	spin_lock(&fp->fi_lock);
++	list_add(&stp->st_perfile, &fp->fi_stateids);
++	spin_unlock(&fp->fi_lock);
+ }
+ 
+ static void
+@@ -2740,6 +2747,7 @@ nfs4_share_conflict(struct svc_fh *current_fh, unsigned int deny_type)
+ 		return nfs_ok;
+ 	ret = nfserr_locked;
+ 	/* Search for conflicting share reservations */
++	spin_lock(&fp->fi_lock);
+ 	list_for_each_entry(stp, &fp->fi_stateids, st_perfile) {
+ 		if (test_deny(deny_type, stp) ||
+ 		    test_deny(NFS4_SHARE_DENY_BOTH, stp))
+@@ -2747,6 +2755,7 @@ nfs4_share_conflict(struct svc_fh *current_fh, unsigned int deny_type)
+ 	}
+ 	ret = nfs_ok;
+ out:
++	spin_unlock(&fp->fi_lock);
+ 	put_nfs4_file(fp);
+ 	return ret;
+ }
+@@ -2943,6 +2952,7 @@ nfs4_check_open(struct nfs4_file *fp, struct nfsd4_open *open, struct nfs4_ol_st
+ 	struct nfs4_ol_stateid *local;
+ 	struct nfs4_openowner *oo = open->op_openowner;
+ 
++	spin_lock(&fp->fi_lock);
+ 	list_for_each_entry(local, &fp->fi_stateids, st_perfile) {
+ 		/* ignore lock owners */
+ 		if (local->st_stateowner->so_is_open_owner == 0)
+@@ -2951,9 +2961,12 @@ nfs4_check_open(struct nfs4_file *fp, struct nfsd4_open *open, struct nfs4_ol_st
+ 		if (local->st_stateowner == &oo->oo_owner)
+ 			*stpp = local;
+ 		/* check for conflicting share reservations */
+-		if (!test_share(local, open))
++		if (!test_share(local, open)) {
++			spin_unlock(&fp->fi_lock);
+ 			return nfserr_share_denied;
++		}
+ 	}
++	spin_unlock(&fp->fi_lock);
+ 	return nfs_ok;
+ }
+ 
+@@ -4256,7 +4269,6 @@ alloc_init_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp, struct
+ 	if (stp == NULL)
+ 		return NULL;
+ 	stp->st_stid.sc_type = NFS4_LOCK_STID;
+-	list_add(&stp->st_perfile, &fp->fi_stateids);
+ 	list_add(&stp->st_perstateowner, &lo->lo_owner.so_stateids);
+ 	stp->st_stateowner = &lo->lo_owner;
+ 	get_nfs4_file(fp);
+@@ -4264,6 +4276,9 @@ alloc_init_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp, struct
+ 	stp->st_access_bmap = 0;
+ 	stp->st_deny_bmap = open_stp->st_deny_bmap;
+ 	stp->st_openstp = open_stp;
++	spin_lock(&fp->fi_lock);
++	list_add(&stp->st_perfile, &fp->fi_stateids);
++	spin_unlock(&fp->fi_lock);
+ 	return stp;
+ }
+ 
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index 02c5a203c738..83d9721d9644 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -383,6 +383,7 @@ static inline struct nfs4_lockowner * lockowner(struct nfs4_stateowner *so)
+ /* nfs4_file: a file opened by some number of (open) nfs4_stateowners. */
+ struct nfs4_file {
+ 	atomic_t		fi_ref;
++	spinlock_t		fi_lock;
+ 	struct hlist_node       fi_hash;    /* hash by "struct inode *" */
+ 	struct list_head        fi_stateids;
+ 	struct list_head	fi_delegations;
 -- 
-1.8.5.2 (Apple Git-48)
+1.9.0
 
