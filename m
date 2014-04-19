@@ -1,58 +1,147 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f177.google.com ([209.85.223.177]:47441 "EHLO
-	mail-ie0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755174AbaDHAAy convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Apr 2014 20:00:54 -0400
-Received: by mail-ie0-f177.google.com with SMTP id rl12so168253iec.8
-        for <linux-nfs@vger.kernel.org>; Mon, 07 Apr 2014 17:00:53 -0700 (PDT)
+Received: from fieldses.org ([174.143.236.118]:33296 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751236AbaDSU6Q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sat, 19 Apr 2014 16:58:16 -0400
+Date: Sat, 19 Apr 2014 16:58:15 -0400
+From: Bruce Fields <bfields@fieldses.org>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 00/70] NFSd lock scalability patches
+Message-ID: <20140419205815.GA1094@fieldses.org>
+References: <1397846704-14567-1-git-send-email-trond.myklebust@primarydata.com>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
-Subject: Re: [PATCH] NFS-RDMA: fix qp pointer validation checks
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-In-Reply-To: <EE7902D3F51F404C82415C4803930ACD3FDE9AE4@CMEXMB1.ad.emulex.com>
-Date: Mon, 7 Apr 2014 20:00:50 -0400
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>
-Message-Id: <20CBB511-EB06-485E-A2F9-B8D66806D5B6@primarydata.com>
-References: <d4afd436-8e14-4729-9bc1-71ab9079a246@CMEXHTCAS1.ad.emulex.com> <61E8946F-3722-4707-A948-065D395C365A@primarydata.com> <EE7902D3F51F404C82415C4803930ACD3FDE9AE4@CMEXMB1.ad.emulex.com>
-To: Devesh Sharma <Devesh.Sharma@Emulex.Com>
+In-Reply-To: <1397846704-14567-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Fri, Apr 18, 2014 at 02:43:54PM -0400, Trond Myklebust wrote:
+> In accordance with the traditional Good Friday theme of "suffering", here
+> is the first draft of the NFSd lock scalability patches for your perusal.
+> I've only done light testing so far, but since there is a total of 70
+> patches to review, I figured you might want to start sooner rather than
+> waiting for the QA folks to finish testing.
 
-On Apr 7, 2014, at 19:45, Devesh Sharma <Devesh.Sharma@Emulex.Com> wrote:
+Thanks!
 
-> Hi
-> Inline Below:
-> 
-> -----Original Message-----
-> From: Trond Myklebust [mailto:trond.myklebust@primarydata.com] 
-> Sent: Tuesday, April 08, 2014 4:58 AM
-> To: Devesh Sharma
-> Cc: linux-nfs@vger.kernel.org; linux-rdma@vger.kernel.org
-> Subject: Re: [PATCH] NFS-RDMA: fix qp pointer validation checks
-> 
-> 
-> On Apr 7, 2014, at 18:30, devesh.sharma@emulex.com wrote:
-> 
->> From: Devesh Sharma <devesh.sharma@emulex.com>
->> 
->> If the rdma_create_qp fails to create qp due to device firmware being 
->> in invalid state xprtrdma still tries to destroy the non-existant qp 
->> and ends up in a NULL pointer reference crash.
->> Adding proper checks for vaidating QP pointer avoids this to happen.
->> 
-> 
-> As far as I can see, rdma_create_qp() only sets id->qp on success. Otherwise it is left with the same value as it had on entry (i.e. NULL). What am I missing?
-> [DS]: If you focus on rpcrdma_ep_connect() function and assume that rdma_create_qp() has failed with some valid error code, then this callback function will return ep->rep_connected = some non-zero.
-> Eventually xprt_rdma_connect_worker() will call rpcrdma_ep_connect() again and rpcrdma_ep_connect will try to free-up all the resources, now rdma_destroy_qp() will be called with invalid QP (which is NULL) pointer
-> And hence kernel will panic. Please correct me if I am worng.
-> 
+Yeah, this sounds like too much suffering for vacation time, but I'll at
+least make a stab at merging the initial bug fixes next week, then try
+to plow through these (or any revised version (thanks, Christoph, for
+help reviewing!)) after I get back in a couple more weeks.
 
-AFAICS your patch does nothing to address that problem. Instead it adds tests for IS_ERR(ia->ri_id->qp), which can never happen because ia->ri_id->qp is either NULL or points to a valid structure.
+--b.
 
-_________________________________
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
-
+> 
+> During the process, I did notice a bug or two in the existing NFSd code,
+> and so the first 3 patches are bugfixes that you may want to apply
+> irrespectively.
+> 
+> In general, what I've tried to do is add reference counting wherever
+> there is a need to carry structures around outside locks, and to
+> ensure that we make structures invisible to lookups before we attempt
+> to free them.
+> 
+> There are still a few optimisations that might be worth considering in
+> order to reduce the frequency of global locks that are taken. Suggestions
+> include:
+> 1) Caching the nfs4_client in the struct nfsd4_compound_state
+> 2) Caching the current/save_stateid as references to the actual nfs4_stid in the struct nfsd4_compound_state
+> 3) Converting the stateid/sessionid/clientid global table lookups to use RCU.
+> 4) Converting the file_hashtbl lookups to use RCU
+> 
+> Cheers
+>   Trond
+> 
+> Benny Halevy (4):
+>   nfsd4: rename recall_lock to state_lock
+>   nfsd4: use cl_lock to synchronize all stateid idr calls
+>   nfsd4: hash deleg stateid only on successful nfs4_set_delegation
+>   nfsd4: use state_lock for delegation hashing
+> 
+> Trond Myklebust (66):
+>   NFSd: Ensure we clear the cstate->slot in nfsd4_proc_compound
+>   NFSd: Move default initialisers from create_client() to alloc_client()
+>   NFSd: call rpc_destroy_wait_queue() from free_client()
+>   NFSd: Remove 'inline' designation for free_client()
+>   NFSd: Mark nfs4_free_lockowner and nfs4_free_openowner as static
+>     functions
+>   NFSd: Avoid taking state_lock while holding inode lock in
+>     nfsd_break_one_deleg
+>   NFSd: Ensure delegation setup is safe w.r.t. break_lease()
+>   NFSd: Add fine grained protection for the nfs4_file->fi_stateids list
+>   NFSd: Clean up nfs4_preprocess_stateid_op
+>   NFSd: Add a mutex to protect the NFSv4.0 open owner replay cache
+>   NFSd: Add locking to the nfs4_file->fi_fds[] array
+>   NFSd: Protect the nfs4_file delegation fields using the fi_lock
+>   NFSd: Lock owners are not per open stateid
+>   NFSd: Clean up helper __release_lock_stateid
+>   NFSd: Allow lockowners to hold several stateids
+>   NFSd: NFSv4 lock-owners are not associated to a specific file
+>   NFSd: Get rid of the lockowner_ino_hashtbl
+>   NFSd: Cleanup nfs4svc_encode_compoundres
+>   NFSd: Don't get a session reference without a client reference
+>   NFSd: Move the delegation reference counter into the struct nfs4_stid
+>   NFSd: Simplify stateid management
+>   NFSd: Fix delegation revocation
+>   NFSd: Don't let the laundromat reap clients that are referenced
+>   NFSd: Add reference counting to the lock and open stateids
+>   NFSd: Add a struct nfs4_file field to struct nfs4_stid
+>   NFSd: Replace delegation->dl_file with the dl_stid.sc_file
+>   NFSd: Replace nfs4_ol_stateid->st_file with the st_stid.sc_file
+>   NFSd: Ensure stateids remain unique until they are freed
+>   NFSd: Ensure atomicity of stateid destruction and idr tree removal
+>   NFSd: Fix atomicity of delegation counter
+>   NFSd: Slight cleanup of find_stateid()
+>   NFSd: Add reference counting to find_stateid
+>   NFSd: nfs4_preprocess_seqid_op should only set *stpp on success
+>   NFSd: Add reference counting to lock stateids
+>   NFSd: nfsd4_locku() must reference the lock stateid
+>   NFSd: Ensure that nfs4_open_delegation() references the delegation
+>     stateid
+>   NFSd: nfsd4_process_open2() must reference the delegation stateid
+>   NFSd: nfsd4_process_open2() must reference the open stateid
+>   NFSd: Prepare nfsd4_close() for open stateid referencing
+>   NFSd: nfsd4_open_confirm() must reference the open stateid
+>   NFSd: Add reference counting to nfs4_preprocess_confirmed_seqid_op
+>   NFSd: Migrate the stateid reference into nfs4_preprocess_seqid_op
+>   NFSd: Migrate the stateid reference into nfs4_lookup_stateid()
+>   NFSd: Migrate the stateid reference into nfs4_find_stateid_by_type()
+>   NFSd: Cleanup - Let nfsd4_lookup_stateid() take a cstate argument
+>   NFSd: Use the session->se_client  in lookup_clientid()
+>   NFSd: Convert nfsd4_process_open1() to work with lookup_clientid()
+>   NFSd: Convert nfs4_check_open_reclaim() to work with lookup_clientid()
+>   NFSd: Ensure struct nfs4_client is unhashed before we try to destroy
+>     it
+>   NFSd: Ensure that the laundromat unhashes the client before releasing
+>     locks
+>   NFSd: Don't require client_lock in free_client
+>   NFSd: Move create_client() call outside the lock
+>   NFSd: Protect unconfirmed client creation using client_lock
+>   NFSd: Protect session creation and client confirm using client_lock
+>   NFSd: Protect nfsd4_destroy_clientid using client_lock
+>   NFSd: Ensure lookup_clientid() takes client_lock
+>   NFSd: Remove nfs4_lock_state(): nfs4_preprocess_stateid_op()
+>   NFSd: Remove nfs4_lock_state(): nfsd4_test_stateid/nfsd4_free_stateid
+>   NFSd: Remove nfs4_lock_state(): nfsd4_release_lockowner
+>   NFSd: Remove nfs4_lock_state(): nfsd4_lock/locku/lockt()
+>   NFSd: Remove nfs4_lock_state(): nfsd4_open_downgrade + nfsd4_close
+>   NFSd: Remove nfs4_lock_state(): nfsd4_delegreturn()
+>   NFSd: Remove nfs4_lock_state(): nfsd4_open and nfsd4_open_confirm
+>   NFSd: Remove nfs4_lock_state(): exchange_id, create/destroy_session()
+>   NFSd: Remove nfs4_lock_state(): setclientid, setclientid_confirm,
+>     renew
+>   NFSd: Remove nfs4_lock_state(): reclaim_complete()
+> 
+>  fs/nfsd/netns.h        |    4 -
+>  fs/nfsd/nfs4callback.c |   18 +-
+>  fs/nfsd/nfs4proc.c     |   28 +-
+>  fs/nfsd/nfs4state.c    | 1239 ++++++++++++++++++++++++++++++------------------
+>  fs/nfsd/nfs4xdr.c      |   15 +-
+>  fs/nfsd/state.h        |   46 +-
+>  fs/nfsd/xdr4.h         |   21 +-
+>  7 files changed, 819 insertions(+), 552 deletions(-)
+> 
+> -- 
+> 1.9.0
+> 
