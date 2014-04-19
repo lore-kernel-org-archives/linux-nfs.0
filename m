@@ -1,133 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cmexedge2.ext.emulex.com ([138.239.224.100]:22131 "EHLO
-	CMEXEDGE2.ext.emulex.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754988AbaDGXBm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Apr 2014 19:01:42 -0400
-From: <devesh.sharma@emulex.com>
-To: <linux-nfs@vger.kernel.org>
-CC: <linux-rdma@vger.kernel.org>, Devesh Sharma <devesh.sharma@emulex.com>
-Subject: [PATCH] NFS-RDMA: fix qp pointer validation checks
-Date: Tue, 8 Apr 2014 04:00:05 +0530
+Received: from bombadil.infradead.org ([198.137.202.9]:59452 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751132AbaDSOu1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 19 Apr 2014 10:50:27 -0400
+Date: Sat, 19 Apr 2014 07:50:26 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Bruce Fields <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 36/70] NFSd: Add reference counting to find_stateid
+Message-ID: <20140419145026.GE25682@infradead.org>
+References: <1397846704-14567-28-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-29-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-30-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-31-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-32-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-33-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-34-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-35-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-36-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-37-git-send-email-trond.myklebust@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain
-Message-ID: <d4afd436-8e14-4729-9bc1-71ab9079a246@CMEXHTCAS1.ad.emulex.com>
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1397846704-14567-37-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Devesh Sharma <devesh.sharma@emulex.com>
+> +static void nfs4_put_stateid(struct nfs4_stid *s)
+> +{
+> +	if (s == NULL)
+> +		return;
+> +	switch (s->sc_type) {
+> +	case NFS4_OPEN_STID:
+> +	case NFS4_LOCK_STID:
+> +	case NFS4_CLOSED_STID:
+> +		put_generic_stateid(openlockstateid(s));
+> +		break;
+> +	case NFS4_DELEG_STID:
+> +	case NFS4_REVOKED_DELEG_STID:
+> +	case NFS4_CLOSED_DELEG_STID:
+> +		nfs4_put_delegation(delegstateid(s));
+> +	}
+> +}
 
-If the rdma_create_qp fails to create qp due to device firmware being in invalid state
-xprtrdma still tries to destroy the non-existant qp and ends up in a NULL pointer reference
-crash.
-Adding proper checks for vaidating QP pointer avoids this to happen.
+I really don't like the way the inheritance for the stateids works,
+a pure put operation shouldn't need this.  I think all this can be
+fixed by adding a ->free function pointer to struct nfs4_stid.  At this
+point the braindamage of passing a kmem_cache pointer to various
+function can be removed (similar to how nfs4_alloc_stid should be
+replaced with a nfs4_init_stid that takes an already allocated stid),
+and nothing in the normal refcounting path should need these switches.
 
-Signed-off-by: Devesh Sharma <devesh.sharma@emulex.com>
----
- net/sunrpc/xprtrdma/verbs.c |   34 ++++++++++++++++++++++++++++------
- 1 files changed, 28 insertions(+), 6 deletions(-)
+> @@ -3804,26 +3823,33 @@ static __be32 nfsd4_validate_stateid(struct nfs4_client *cl, stateid_t *stateid)
+>  		return nfserr_bad_stateid;
+>  	status = check_stateid_generation(stateid, &s->sc_stateid, 1);
+>  	if (status)
+> -		return status;
+> +		goto out_put_stid;
+>  	switch (s->sc_type) {
+>  	case NFS4_DELEG_STID:
+> -		return nfs_ok;
+> +		status = nfs_ok;
+> +		break;
+>  	case NFS4_REVOKED_DELEG_STID:
+> -		return nfserr_deleg_revoked;
+> +		status = nfserr_deleg_revoked;
+> +		break;
+>  	case NFS4_OPEN_STID:
+>  	case NFS4_LOCK_STID:
+>  		ols = openlockstateid(s);
+>  		if (ols->st_stateowner->so_is_open_owner
+>  	    			&& !(openowner(ols->st_stateowner)->oo_flags
+>  						& NFS4_OO_CONFIRMED))
+> -			return nfserr_bad_stateid;
+> -		return nfs_ok;
+> +			status = nfserr_bad_stateid;
+> +		else
+> +			status = nfs_ok;
+> +		break;
 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 9372656..c01d91e 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -620,7 +620,7 @@ rpcrdma_ia_close(struct rpcrdma_ia *ia)
- 			__func__, rc);
- 	}
- 	if (ia->ri_id != NULL && !IS_ERR(ia->ri_id)) {
--		if (ia->ri_id->qp)
-+		if (!IS_ERR(ia->ri_id->qp))
- 			rdma_destroy_qp(ia->ri_id);
- 		rdma_destroy_id(ia->ri_id);
- 		ia->ri_id = NULL;
-@@ -794,7 +794,7 @@ rpcrdma_ep_destroy(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
- 	dprintk("RPC:       %s: entering, connected is %d\n",
- 		__func__, ep->rep_connected);
- 
--	if (ia->ri_id->qp) {
-+	if (!IS_ERR(ia->ri_id->qp)) {
- 		rc = rpcrdma_ep_disconnect(ep, ia);
- 		if (rc)
- 			dprintk("RPC:       %s: rpcrdma_ep_disconnect"
-@@ -831,10 +831,12 @@ rpcrdma_ep_connect(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
- 	if (ep->rep_connected != 0) {
- 		struct rpcrdma_xprt *xprt;
- retry:
--		rc = rpcrdma_ep_disconnect(ep, ia);
--		if (rc && rc != -ENOTCONN)
--			dprintk("RPC:       %s: rpcrdma_ep_disconnect"
-+		if (!IS_ERR(ia->ri_id->qp)) {
-+			rc = rpcrdma_ep_disconnect(ep, ia);
-+			if (rc && rc != -ENOTCONN)
-+				dprintk("RPC:       %s: rpcrdma_ep_disconnect"
- 				" status %i\n", __func__, rc);
-+		}
- 		rpcrdma_clean_cq(ep->rep_cq);
- 
- 		xprt = container_of(ia, struct rpcrdma_xprt, rx_ia);
-@@ -859,7 +861,9 @@ retry:
- 			goto out;
- 		}
- 		/* END TEMP */
--		rdma_destroy_qp(ia->ri_id);
-+		if (!IS_ERR(ia->ri_id->qp)) {
-+			rdma_destroy_qp(ia->ri_id);
-+		}
- 		rdma_destroy_id(ia->ri_id);
- 		ia->ri_id = id;
- 	}
-@@ -1557,6 +1561,13 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
- 	frmr_wr.wr.fast_reg.rkey = seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey;
- 	DECR_CQCOUNT(&r_xprt->rx_ep);
- 
-+	if (IS_ERR(ia->ri_is->qp)) {
-+		rc = PTR_ERR(ia->ri_is->qp);
-+		while (i--)
-+			rpcrdma_unmap_one(ia, --seg);
-+		goto out;
-+	}
-+
- 	rc = ib_post_send(ia->ri_id->qp, post_wr, &bad_wr);
- 
- 	if (rc) {
-@@ -1571,6 +1582,7 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
- 		seg1->mr_len = len;
- 	}
- 	*nsegs = i;
-+out:
- 	return rc;
- }
- 
-@@ -1592,6 +1604,10 @@ rpcrdma_deregister_frmr_external(struct rpcrdma_mr_seg *seg,
- 	invalidate_wr.ex.invalidate_rkey = seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey;
- 	DECR_CQCOUNT(&r_xprt->rx_ep);
- 
-+	if (IS_ERR(ia->ri_id->qp)) {
-+		return PTR_ERR(ia->ri_id->qp);
-+	}
-+
- 	rc = ib_post_send(ia->ri_id->qp, &invalidate_wr, &bad_wr);
- 	if (rc)
- 		dprintk("RPC:       %s: failed ib_post_send for invalidate,"
-@@ -1923,6 +1939,9 @@ rpcrdma_ep_post(struct rpcrdma_ia *ia,
- 		send_wr.send_flags = IB_SEND_SIGNALED;
- 	}
- 
-+	if (IS_ERR(ia->ri_id->qp))
-+		return PTR_ERR(ia->ri_id->qp);
-+
- 	rc = ib_post_send(ia->ri_id->qp, &send_wr, &send_wr_fail);
- 	if (rc)
- 		dprintk("RPC:       %s: ib_post_send returned %i\n", __func__,
-@@ -1951,6 +1970,9 @@ rpcrdma_ep_post_recv(struct rpcrdma_ia *ia,
- 		rep->rr_iov.addr, rep->rr_iov.length, DMA_BIDIRECTIONAL);
- 
- 	DECR_CQCOUNT(ep);
-+
-+	if (IS_ERR(ia->ri_id->qp))
-+		return PTR_ERR(ia->ri_id->qp);
- 	rc = ib_post_recv(ia->ri_id->qp, &recv_wr, &recv_wr_fail);
- 
- 	if (rc)
--- 
-1.7.1
+Not quite as urgent as for the refcounting, but I think moving more
+of these switches on the type into proper methods would improve the
+stateid code a lot.
 
