@@ -1,42 +1,123 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from xes-mad.com ([216.165.139.218]:65382 "EHLO xes-mad.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752709AbaDDSQP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 4 Apr 2014 14:16:15 -0400
-Date: Fri, 4 Apr 2014 13:15:57 -0500 (CDT)
-From: Andrew Martin <amartin@xes-inc.com>
-To: Dr Fields James Bruce <bfields@fieldses.org>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Jim Rees <rees@umich.edu>, bhawley@luminex.com,
-        Brown Neil <neilb@suse.de>, linux-nfs-owner@vger.kernel.org,
-        linux-nfs@vger.kernel.org
-Message-ID: <2145135764.439620.1396635357035.JavaMail.zimbra@xes-inc.com>
-In-Reply-To: <20140328220038.GK6041@fieldses.org>
-References: <1696396609.119284.1394040541217.JavaMail.zimbra@xes-inc.com> <2043391310.134091.1394135196565.JavaMail.zimbra@xes-inc.com> <76B038DA-3E86-4C46-BFB6-928BFB8202D8@primarydata.com> <521763040.159828.1394138758307.JavaMail.zimbra@xes-inc.com> <40C20DD8-9E8D-4625-B98C-A1E61D00AC17@primarydata.com> <693414378.60415.1395179429651.JavaMail.zimbra@xes-inc.com> <A95B7939-BDEB-4FFB-BCC0-6EAD9487E7D8@primarydata.com> <20140328220038.GK6041@fieldses.org>
-Subject: Re: Optimal NFS mount options to safely allow interrupts and
- timeouts on newer kernels
+Received: from mail-yh0-f46.google.com ([209.85.213.46]:55698 "EHLO
+	mail-yh0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752896AbaDUWBX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Apr 2014 18:01:23 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH V2 04/17] xprtrdma: RPC/RDMA must invoke
+	xprt_wake_pending_tasks() in process context
+To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Date: Mon, 21 Apr 2014 18:01:21 -0400
+Message-ID: <20140421220121.12569.75378.stgit@manet.1015granger.net>
+In-Reply-To: <20140421214442.12569.8950.stgit@manet.1015granger.net>
+References: <20140421214442.12569.8950.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Bruce,
+An IB provider can invoke rpcrdma_conn_func() in an IRQ context,
+thus rpcrdma_conn_func() cannot be allowed to directly invoke
+generic RPC functions like xprt_wake_pending_tasks().
 
------ Original Message -----
-> From: "Dr Fields James Bruce" <bfields@fieldses.org>
-> > Bruce, it looks like the above should have been fixed in Linux 2.6.35 with
-> > commit 9045b4b9f7f3 (nfsd4: remove probe task's reference on client), is
-> > that correct?
-> 
-> Yes, that definitely looks it would explain the bug.  And the sysrq
-> trace shows 2.6.32-57.
-> 
-> Andrew Martin, can you confirm that the problem is no longer
-> reproduceable on a kernel with that patch applied?
-I have upgraded to 3.0.0-32. Since this problem is intermittent, I'm not sure
-when I will be able to reproduce it (if ever), but I'll reply to this thread 
-if it ever reoccur.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Tested-by: Steve Wise <swise@opengridcomputing.com>
+---
 
-Thanks everyone for the help!
+ net/sunrpc/xprtrdma/rpc_rdma.c  |   22 +++++++++++++++-------
+ net/sunrpc/xprtrdma/verbs.c     |    3 +++
+ net/sunrpc/xprtrdma/xprt_rdma.h |    3 +++
+ 3 files changed, 21 insertions(+), 7 deletions(-)
 
-Andrew
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index 400aa1b..c296468 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -676,15 +676,11 @@ rpcrdma_inline_fixup(struct rpc_rqst *rqst, char *srcp, int copy_len, int pad)
+ 	rqst->rq_private_buf = rqst->rq_rcv_buf;
+ }
+ 
+-/*
+- * This function is called when an async event is posted to
+- * the connection which changes the connection state. All it
+- * does at this point is mark the connection up/down, the rpc
+- * timers do the rest.
+- */
+ void
+-rpcrdma_conn_func(struct rpcrdma_ep *ep)
++rpcrdma_connect_worker(struct work_struct *work)
+ {
++	struct rpcrdma_ep *ep =
++		container_of(work, struct rpcrdma_ep, rep_connect_worker.work);
+ 	struct rpc_xprt *xprt = ep->rep_xprt;
+ 
+ 	spin_lock_bh(&xprt->transport_lock);
+@@ -701,6 +697,18 @@ rpcrdma_conn_func(struct rpcrdma_ep *ep)
+ }
+ 
+ /*
++ * This function is called when an async event is posted to
++ * the connection which changes the connection state. All it
++ * does at this point is mark the connection up/down, the rpc
++ * timers do the rest.
++ */
++void
++rpcrdma_conn_func(struct rpcrdma_ep *ep)
++{
++	schedule_delayed_work(&ep->rep_connect_worker, 0);
++}
++
++/*
+  * This function is called when memory window unbind which we are waiting
+  * for completes. Just use rr_func (zeroed by upcall) to signal completion.
+  */
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 8f9704e..9cb88f3 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -742,6 +742,7 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
+ 	INIT_CQCOUNT(ep);
+ 	ep->rep_ia = ia;
+ 	init_waitqueue_head(&ep->rep_connect_wait);
++	INIT_DELAYED_WORK(&ep->rep_connect_worker, rpcrdma_connect_worker);
+ 
+ 	/*
+ 	 * Create a single cq for receive dto and mw_bind (only ever
+@@ -817,6 +818,8 @@ rpcrdma_ep_destroy(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
+ 	dprintk("RPC:       %s: entering, connected is %d\n",
+ 		__func__, ep->rep_connected);
+ 
++	cancel_delayed_work_sync(&ep->rep_connect_worker);
++
+ 	if (ia->ri_id->qp) {
+ 		rc = rpcrdma_ep_disconnect(ep, ia);
+ 		if (rc)
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index 98340a3..c620d13 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -43,6 +43,7 @@
+ #include <linux/wait.h> 		/* wait_queue_head_t, etc */
+ #include <linux/spinlock.h> 		/* spinlock_t, etc */
+ #include <linux/atomic.h>			/* atomic_t, etc */
++#include <linux/workqueue.h>		/* struct work_struct */
+ 
+ #include <rdma/rdma_cm.h>		/* RDMA connection api */
+ #include <rdma/ib_verbs.h>		/* RDMA verbs api */
+@@ -87,6 +88,7 @@ struct rpcrdma_ep {
+ 	struct rpc_xprt		*rep_xprt;	/* for rep_func */
+ 	struct rdma_conn_param	rep_remote_cma;
+ 	struct sockaddr_storage	rep_remote_addr;
++	struct delayed_work	rep_connect_worker;
+ };
+ 
+ #define INIT_CQCOUNT(ep) atomic_set(&(ep)->rep_cqcount, (ep)->rep_cqinit)
+@@ -336,6 +338,7 @@ int rpcrdma_deregister_external(struct rpcrdma_mr_seg *,
+ /*
+  * RPC/RDMA connection management calls - xprtrdma/rpc_rdma.c
+  */
++void rpcrdma_connect_worker(struct work_struct *);
+ void rpcrdma_conn_func(struct rpcrdma_ep *);
+ void rpcrdma_reply_handler(struct rpcrdma_rep *);
+ 
+
