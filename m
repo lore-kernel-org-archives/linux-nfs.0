@@ -1,111 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:37576 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753286AbaDCXV5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 3 Apr 2014 19:21:57 -0400
-Date: Thu, 3 Apr 2014 19:21:46 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Mark Lord <mlord@pobox.com>, "J. Bruce Fields" <bfields@redhat.com>,
-        Albert Fluegel <af@muc.de>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: linux-3.14 nfsd regression
-Message-ID: <20140403192146.79679909@tlielax.poochiereds.net>
-In-Reply-To: <20140403201627.GC8343@fieldses.org>
-References: <533D8D73.1090603@pobox.com>
-	<20140403171643.GB28790@pad.redhat.com>
-	<533D9F8A.6030001@pobox.com>
-	<20140403145504.3b04170e@tlielax.poochiereds.net>
-	<20140403201627.GC8343@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-ig0-f172.google.com ([209.85.213.172]:50420 "EHLO
+	mail-ig0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751982AbaDUNba (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Apr 2014 09:31:30 -0400
+Received: by mail-ig0-f172.google.com with SMTP id hn18so1757349igb.5
+        for <linux-nfs@vger.kernel.org>; Mon, 21 Apr 2014 06:31:29 -0700 (PDT)
+Message-ID: <1398087088.2891.16.camel@leira.trondhjem.org>
+Subject: Re: [PATCH 35/70] NFSd: Slight cleanup of find_stateid()
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Bruce Fields <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Date: Mon, 21 Apr 2014 09:31:28 -0400
+In-Reply-To: <20140419144153.GD25682@infradead.org>
+References: <1397846704-14567-27-git-send-email-trond.myklebust@primarydata.com>
+	 <1397846704-14567-28-git-send-email-trond.myklebust@primarydata.com>
+	 <1397846704-14567-29-git-send-email-trond.myklebust@primarydata.com>
+	 <1397846704-14567-30-git-send-email-trond.myklebust@primarydata.com>
+	 <1397846704-14567-31-git-send-email-trond.myklebust@primarydata.com>
+	 <1397846704-14567-32-git-send-email-trond.myklebust@primarydata.com>
+	 <1397846704-14567-33-git-send-email-trond.myklebust@primarydata.com>
+	 <1397846704-14567-34-git-send-email-trond.myklebust@primarydata.com>
+	 <1397846704-14567-35-git-send-email-trond.myklebust@primarydata.com>
+	 <1397846704-14567-36-git-send-email-trond.myklebust@primarydata.com>
+	 <20140419144153.GD25682@infradead.org>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 3 Apr 2014 16:16:27 -0400
-"J. Bruce Fields" <bfields@fieldses.org> wrote:
-
-> On Thu, Apr 03, 2014 at 02:55:04PM -0400, Jeff Layton wrote:
-> > On Thu, 03 Apr 2014 13:51:06 -0400
-> > Mark Lord <mlord@pobox.com> wrote:
-> > 
-> > > On 14-04-03 01:16 PM, J. Bruce Fields wrote:
-> > > > On Thu, Apr 03, 2014 at 12:33:55PM -0400, Mark Lord wrote:
-> > > >> This commit from linux-3.14 breaks our NFS-root clients here:
-> > > >>
-> > > >> https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=6e14b46b91fee8a049b0940333ce13a820beaaa5
-> > > >>
-> > > >>
-> > > >> - *p++ = htonl((u32) stat->mode);
-> > > >> + *p++ = htonl((u32) (stat->mode & S_IALLUGO));
-> > > >>
-> > > >>
-> > > >> Reverting the one-liner above (on the server) fixes it for us,
-> > > >> as does reverting back to linux-3.13.8 on the server.
-> > > >>
-> > > >> The NFS-root clients are on PowerPC (big-endian) architecture,
-> > > >> running linux-3.12.16. The NFS server is on an Intel PC running linux-3.14.
-> > > >>
-> > > >> ACL is completely disabled on server and client,
-> > > >> and we're using NFSv2/v3.  No support for v4.
-> > > >>
-> > > >> I instrumented the function to see what other bits were being cleared
-> > > >> by the (stat->mode & S_IALLUGO) masking.  The results are attached.
-> > > > 
-> > > > Hm, it sounds like a bug in the client if it's depending on those high
-> > > > bits.
-> > > 
-> > > But only for mounting / starting up from the nfsroot, it seems.
-> > > I wonder if there's an unusual code path for that in there?
-> > > The regular stuff looks mostly fine:
-> > > 
-> > >         p = xdr_decode_ftype3(p, &fmode);
-> > >         fattr->mode = (be32_to_cpup(p++) & ~S_IFMT) | fmode;
-> > > 
-> > > Except perhaps that second line ought to use the same mask
-> > > as the server side is using, just in case there are some other
-> > > stray high (higher than S_IFMT) bits in there now/someday.
-> > > 
-> > > > The original behavior was in practice harmless and changing it broke
-> > > > something, so I think we should definitely just revert this patch.
-> > > 
-> > > Yup.  Who?
-> > > 
-> > > > But the client may need fixing too.
-> > > 
-> > > Probably a good thing in the longer term, for better compatibility
-> > > with non-Linux servers.  But we'll still have to keep the revert
-> > > on the server (nfsd) code for backward compatibility, I think.
-> > > 
-> > > Cheers
-> > > 
-> > 
-> > It would be good to understand where this is broken in the client.
-> > 
-> > It's incorrect for the client to interpret those bits, as I think that
-> > there's no guarantee that other OS's implement the type bits in the
-> > same way that Linux does. So if you end up mounting a different OS,
-> > it's possible that the client will get that wrong...
+On Sat, 2014-04-19 at 07:41 -0700, Christoph Hellwig wrote:
+> > +static struct nfs4_stid *find_stateid_locked(struct nfs4_client *cl, stateid_t *t)
+> >  {
+> >  	struct nfs4_stid *ret;
+> >  
+> > -	spin_lock(&cl->cl_lock);
+> >  	ret = idr_find(&cl->cl_stateids, t->si_opaque.so_id);
+> > -	spin_unlock(&cl->cl_lock);
+> >  	if (!ret || !ret->sc_type)
+> >  		return NULL;
 > 
-> It turns out these bits actually are defined in rfc 1094, so this is
-> just an odd NFSv2-specific wart, and the nfsd change was just flat-out
-> wrong.
+> Just curious, how can !ret->sc_type happen?
 > 
-> --b.
 
-Ahh right -- I remember seeing that long ago.
-
-So according to the RFC you have to encode both the mode bits and the
-ftype for v2. The type bits seem to be removed from the mode in NFSv3
-though, so perhaps we should only be doing that masking in versions
-above v2?
-
-With a quick check, it looks like the v3 code doesn't rely on those bits
-and I imagine v4 doesn't either.
-
-It might also be nice to have the client v2 decode_fattr function to
-throw a warning if the server sends us mismatched type bits and ftype
-values. That would have helped us catch this sooner...
+At least for open and lock stateids, the ret->sc_type field isn't
+initialised until nfsd4_process_open2() and alloc_init_lock_stateid() so
+there is a small window where they are visible to the idr tree while not
+being fully initialised.
 
 -- 
-Jeff Layton <jlayton@redhat.com>
+Trond Myklebust
+Linux NFS client maintainer, PrimaryData
+trond.myklebust@primarydata.com
+
+
