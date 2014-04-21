@@ -1,231 +1,105 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from casper.infradead.org ([85.118.1.10]:57762 "EHLO
-	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756126AbaDPNFP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Apr 2014 09:05:15 -0400
-From: Christoph Hellwig <hch@lst.de>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Anna Schumaker <Anna.Schumaker@netapp.com>, linux-nfs@vger.kernel.org
-Subject: [PATCH 1/2] nfs: remove ->write_pageio_init from rpc ops
-Date: Wed, 16 Apr 2014 15:07:21 +0200
-Message-Id: <1397653642-17833-2-git-send-email-hch@lst.de>
-In-Reply-To: <1397653642-17833-1-git-send-email-hch@lst.de>
-References: <1397653642-17833-1-git-send-email-hch@lst.de>
+Received: from mail-yh0-f41.google.com ([209.85.213.41]:65519 "EHLO
+	mail-yh0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752896AbaDUWBc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Apr 2014 18:01:32 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH V2 05/17] xprtrdma: Remove BOUNCEBUFFERS memory registration
+	mode
+To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Date: Mon, 21 Apr 2014 18:01:29 -0400
+Message-ID: <20140421220129.12569.14612.stgit@manet.1015granger.net>
+In-Reply-To: <20140421214442.12569.8950.stgit@manet.1015granger.net>
+References: <20140421214442.12569.8950.stgit@manet.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The write_pageio_init method is just a very convoluted way to grab the
-right nfs_pageio_ops vector.  The vector to chose is not a choice of
-protocol version, but just a pNFS vs MDS I/O choice that can simply be
-done inside nfs_pageio_init_write based on the presence of a layout
-driver, and a new force_mds flag to the special case of falling back
-to MDS I/O on a pNFS-capable volume.
+Clean up: This memory registration mode is slow and was never
+meant for use in production environments. Remove it to reduce
+implementation complexity.
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Tested-by: Steve Wise <swise@opengridcomputing.com>
 ---
- fs/nfs/direct.c         |    4 ++--
- fs/nfs/internal.h       |    2 +-
- fs/nfs/nfs3proc.c       |    1 -
- fs/nfs/nfs4proc.c       |    1 -
- fs/nfs/pnfs.c           |   16 +---------------
- fs/nfs/pnfs.h           |    8 --------
- fs/nfs/proc.c           |    1 -
- fs/nfs/write.c          |   21 +++++++++++++--------
- include/linux/nfs_xdr.h |    2 --
- 9 files changed, 17 insertions(+), 39 deletions(-)
 
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index b8797ae..6a31102 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -564,7 +564,7 @@ static void nfs_direct_write_reschedule(struct nfs_direct_req *dreq)
- 	dreq->count = 0;
- 	get_dreq(dreq);
+ net/sunrpc/xprtrdma/rpc_rdma.c  |    8 --------
+ net/sunrpc/xprtrdma/transport.c |   13 -------------
+ net/sunrpc/xprtrdma/verbs.c     |    5 +----
+ 3 files changed, 1 insertions(+), 25 deletions(-)
+
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index c296468..b963e50 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -439,14 +439,6 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
+ 		wtype = rpcrdma_noch;
+ 	BUG_ON(rtype != rpcrdma_noch && wtype != rpcrdma_noch);
  
--	NFS_PROTO(dreq->inode)->write_pageio_init(&desc, dreq->inode, FLUSH_STABLE,
-+	nfs_pageio_init_write(&desc, dreq->inode, FLUSH_STABLE, false,
- 			      &nfs_direct_write_completion_ops);
- 	desc.pg_dreq = dreq;
- 
-@@ -874,7 +874,7 @@ static ssize_t nfs_direct_write_schedule_iovec(struct nfs_direct_req *dreq,
- 	size_t requested_bytes = 0;
- 	unsigned long seg;
- 
--	NFS_PROTO(inode)->write_pageio_init(&desc, inode, FLUSH_COND_STABLE,
-+	nfs_pageio_init_write(&desc, inode, FLUSH_COND_STABLE, false,
- 			      &nfs_direct_write_completion_ops);
- 	desc.pg_dreq = dreq;
- 	get_dreq(dreq);
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index dd8bfc2..8431083 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -422,7 +422,7 @@ int nfs_remount(struct super_block *sb, int *flags, char *raw_data);
- 
- /* write.c */
- extern void nfs_pageio_init_write(struct nfs_pageio_descriptor *pgio,
--			struct inode *inode, int ioflags,
-+			struct inode *inode, int ioflags, bool force_mds,
- 			const struct nfs_pgio_completion_ops *compl_ops);
- extern struct nfs_write_header *nfs_writehdr_alloc(void);
- extern void nfs_writehdr_free(struct nfs_pgio_header *hdr);
-diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
-index db60149..e984880 100644
---- a/fs/nfs/nfs3proc.c
-+++ b/fs/nfs/nfs3proc.c
-@@ -951,7 +951,6 @@ const struct nfs_rpc_ops nfs_v3_clientops = {
- 	.read_rpc_prepare = nfs3_proc_read_rpc_prepare,
- 	.read_done	= nfs3_read_done,
- 	.write_setup	= nfs3_proc_write_setup,
--	.write_pageio_init = nfs_pageio_init_write,
- 	.write_rpc_prepare = nfs3_proc_write_rpc_prepare,
- 	.write_done	= nfs3_write_done,
- 	.commit_setup	= nfs3_proc_commit_setup,
-diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-index 397be39..8da0c62 100644
---- a/fs/nfs/nfs4proc.c
-+++ b/fs/nfs/nfs4proc.c
-@@ -8437,7 +8437,6 @@ const struct nfs_rpc_ops nfs_v4_clientops = {
- 	.read_rpc_prepare = nfs4_proc_read_rpc_prepare,
- 	.read_done	= nfs4_read_done,
- 	.write_setup	= nfs4_proc_write_setup,
--	.write_pageio_init = pnfs_pageio_init_write,
- 	.write_rpc_prepare = nfs4_proc_write_rpc_prepare,
- 	.write_done	= nfs4_write_done,
- 	.commit_setup	= nfs4_proc_commit_setup,
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index cb53d45..9edac9f 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1447,20 +1447,6 @@ pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio, struct inode *inode,
- 		nfs_pageio_init(pgio, inode, ld->pg_read_ops, compl_ops, server->rsize, 0);
- }
- 
--void
--pnfs_pageio_init_write(struct nfs_pageio_descriptor *pgio, struct inode *inode,
--		       int ioflags,
--		       const struct nfs_pgio_completion_ops *compl_ops)
--{
--	struct nfs_server *server = NFS_SERVER(inode);
--	struct pnfs_layoutdriver_type *ld = server->pnfs_curr_ld;
+-	if (r_xprt->rx_ia.ri_memreg_strategy == RPCRDMA_BOUNCEBUFFERS &&
+-	    (rtype != rpcrdma_noch || wtype != rpcrdma_noch)) {
+-		/* forced to "pure inline"? */
+-		dprintk("RPC:       %s: too much data (%d/%d) for inline\n",
+-			__func__, rqst->rq_rcv_buf.len, rqst->rq_snd_buf.len);
+-		return -1;
+-	}
 -
--	if (ld == NULL)
--		nfs_pageio_init_write(pgio, inode, ioflags, compl_ops);
--	else
--		nfs_pageio_init(pgio, inode, ld->pg_write_ops, compl_ops, server->wsize, ioflags);
--}
--
- bool
- pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
- 		     struct nfs_page *req)
-@@ -1496,7 +1482,7 @@ int pnfs_write_done_resend_to_mds(struct inode *inode,
- 	LIST_HEAD(failed);
+ 	hdrlen = 28; /*sizeof *headerp;*/
+ 	padlen = 0;
  
- 	/* Resend all requests through the MDS */
--	nfs_pageio_init_write(&pgio, inode, FLUSH_STABLE, compl_ops);
-+	nfs_pageio_init_write(&pgio, inode, FLUSH_STABLE, true, compl_ops);
- 	pgio.pg_dreq = dreq;
- 	while (!list_empty(head)) {
- 		struct nfs_page *req = nfs_list_entry(head->next);
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 0237939..e9ac8fb 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -182,8 +182,6 @@ void pnfs_put_lseg(struct pnfs_layout_segment *lseg);
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index f94a6c4..b4330b2 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -503,18 +503,6 @@ xprt_rdma_allocate(struct rpc_task *task, size_t size)
+ 		 * If the allocation or registration fails, the RPC framework
+ 		 * will (doggedly) retry.
+ 		 */
+-		if (rpcx_to_rdmax(xprt)->rx_ia.ri_memreg_strategy ==
+-				RPCRDMA_BOUNCEBUFFERS) {
+-			/* forced to "pure inline" */
+-			dprintk("RPC:       %s: too much data (%zd) for inline "
+-					"(r/w max %d/%d)\n", __func__, size,
+-					rpcx_to_rdmad(xprt).inline_rsize,
+-					rpcx_to_rdmad(xprt).inline_wsize);
+-			size = req->rl_size;
+-			rpc_exit(task, -EIO);		/* fail the operation */
+-			rpcx_to_rdmax(xprt)->rx_stats.failed_marshal_count++;
+-			goto out;
+-		}
+ 		if (task->tk_flags & RPC_TASK_SWAPPER)
+ 			nreq = kmalloc(sizeof *req + size, GFP_ATOMIC);
+ 		else
+@@ -543,7 +531,6 @@ xprt_rdma_allocate(struct rpc_task *task, size_t size)
+ 		req = nreq;
+ 	}
+ 	dprintk("RPC:       %s: size %zd, request 0x%p\n", __func__, size, req);
+-out:
+ 	req->rl_connect_cookie = 0;	/* our reserved value */
+ 	return req->rl_xdr_buf;
  
- void pnfs_pageio_init_read(struct nfs_pageio_descriptor *, struct inode *,
- 			   const struct nfs_pgio_completion_ops *);
--void pnfs_pageio_init_write(struct nfs_pageio_descriptor *, struct inode *,
--			    int, const struct nfs_pgio_completion_ops *);
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 9cb88f3..4a4e4ea 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -557,7 +557,6 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
+ 	 * adapter.
+ 	 */
+ 	switch (memreg) {
+-	case RPCRDMA_BOUNCEBUFFERS:
+ 	case RPCRDMA_REGISTER:
+ 	case RPCRDMA_FRMR:
+ 		break;
+@@ -778,9 +777,7 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
  
- void set_pnfs_layoutdriver(struct nfs_server *, const struct nfs_fh *, u32);
- void unset_pnfs_layoutdriver(struct nfs_server *);
-@@ -467,12 +465,6 @@ static inline void pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio, str
- 	nfs_pageio_init_read(pgio, inode, compl_ops);
- }
- 
--static inline void pnfs_pageio_init_write(struct nfs_pageio_descriptor *pgio, struct inode *inode, int ioflags,
--					  const struct nfs_pgio_completion_ops *compl_ops)
--{
--	nfs_pageio_init_write(pgio, inode, ioflags, compl_ops);
--}
--
- static inline int
- pnfs_commit_list(struct inode *inode, struct list_head *mds_pages, int how,
- 		 struct nfs_commit_info *cinfo)
-diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
-index e55ce9e..f9cc295 100644
---- a/fs/nfs/proc.c
-+++ b/fs/nfs/proc.c
-@@ -739,7 +739,6 @@ const struct nfs_rpc_ops nfs_v2_clientops = {
- 	.read_rpc_prepare = nfs_proc_read_rpc_prepare,
- 	.read_done	= nfs_read_done,
- 	.write_setup	= nfs_proc_write_setup,
--	.write_pageio_init = nfs_pageio_init_write,
- 	.write_rpc_prepare = nfs_proc_write_rpc_prepare,
- 	.write_done	= nfs_write_done,
- 	.commit_setup	= nfs_proc_commit_setup,
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 9a3b6a4..0bd1724 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -354,10 +354,8 @@ static int nfs_writepage_locked(struct page *page, struct writeback_control *wbc
- 	struct nfs_pageio_descriptor pgio;
- 	int err;
- 
--	NFS_PROTO(page_file_mapping(page)->host)->write_pageio_init(&pgio,
--							  page->mapping->host,
--							  wb_priority(wbc),
--							  &nfs_async_write_completion_ops);
-+	nfs_pageio_init_write(&pgio, page->mapping->host, wb_priority(wbc),
-+				false, &nfs_async_write_completion_ops);
- 	err = nfs_do_writepage(page, wbc, &pgio);
- 	nfs_pageio_complete(&pgio);
- 	if (err < 0)
-@@ -400,7 +398,8 @@ int nfs_writepages(struct address_space *mapping, struct writeback_control *wbc)
- 
- 	nfs_inc_stats(inode, NFSIOS_VFSWRITEPAGES);
- 
--	NFS_PROTO(inode)->write_pageio_init(&pgio, inode, wb_priority(wbc), &nfs_async_write_completion_ops);
-+	nfs_pageio_init_write(&pgio, inode, wb_priority(wbc), false,
-+				&nfs_async_write_completion_ops);
- 	err = write_cache_pages(mapping, wbc, nfs_writepages_callback, &pgio);
- 	nfs_pageio_complete(&pgio);
- 
-@@ -1282,11 +1281,17 @@ static const struct nfs_pageio_ops nfs_pageio_write_ops = {
- };
- 
- void nfs_pageio_init_write(struct nfs_pageio_descriptor *pgio,
--			       struct inode *inode, int ioflags,
-+			       struct inode *inode, int ioflags, bool force_mds,
- 			       const struct nfs_pgio_completion_ops *compl_ops)
- {
--	nfs_pageio_init(pgio, inode, &nfs_pageio_write_ops, compl_ops,
--				NFS_SERVER(inode)->wsize, ioflags);
-+	struct nfs_server *server = NFS_SERVER(inode);
-+	const struct nfs_pageio_ops *pg_ops = &nfs_pageio_write_ops;
-+
-+#ifdef CONFIG_NFS_V4_1
-+	if (server->pnfs_curr_ld && !force_mds)
-+		pg_ops = server->pnfs_curr_ld->pg_write_ops;
-+#endif
-+	nfs_pageio_init(pgio, inode, pg_ops, compl_ops, server->wsize, ioflags);
- }
- EXPORT_SYMBOL_GPL(nfs_pageio_init_write);
- 
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 6fb5b23..78216f8 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1471,8 +1471,6 @@ struct nfs_rpc_ops {
- 	int	(*read_rpc_prepare)(struct rpc_task *, struct nfs_read_data *);
- 	int	(*read_done)  (struct rpc_task *, struct nfs_read_data *);
- 	void	(*write_setup)  (struct nfs_write_data *, struct rpc_message *);
--	void	(*write_pageio_init)(struct nfs_pageio_descriptor *, struct inode *, int,
--				     const struct nfs_pgio_completion_ops *);
- 	int	(*write_rpc_prepare)(struct rpc_task *, struct nfs_write_data *);
- 	int	(*write_done)  (struct rpc_task *, struct nfs_write_data *);
- 	void	(*commit_setup) (struct nfs_commit_data *, struct rpc_message *);
--- 
-1.7.10.4
+ 	/* Client offers RDMA Read but does not initiate */
+ 	ep->rep_remote_cma.initiator_depth = 0;
+-	if (ia->ri_memreg_strategy == RPCRDMA_BOUNCEBUFFERS)
+-		ep->rep_remote_cma.responder_resources = 0;
+-	else if (devattr.max_qp_rd_atom > 32)	/* arbitrary but <= 255 */
++	if (devattr.max_qp_rd_atom > 32)	/* arbitrary but <= 255 */
+ 		ep->rep_remote_cma.responder_resources = 32;
+ 	else
+ 		ep->rep_remote_cma.responder_resources = devattr.max_qp_rd_atom;
 
