@@ -1,97 +1,139 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f178.google.com ([209.85.223.178]:51402 "EHLO
-	mail-ie0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753030AbaDUQeD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Apr 2014 12:34:03 -0400
-Received: by mail-ie0-f178.google.com with SMTP id lx4so3957932iec.23
-        for <linux-nfs@vger.kernel.org>; Mon, 21 Apr 2014 09:34:02 -0700 (PDT)
-From: Weston Andros Adamson <dros@primarydata.com>
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
-Subject: [PATCH] pnfs: fix race in filelayout commit path
-Date: Mon, 21 Apr 2014 12:34:22 -0400
-Message-Id: <1398098062-48849-1-git-send-email-dros@primarydata.com>
+Received: from mail-yh0-f47.google.com ([209.85.213.47]:62638 "EHLO
+	mail-yh0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754027AbaDUWDT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Apr 2014 18:03:19 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH V2 17/17] xprtrdma: Reduce the number of hardway buffer
+	allocations
+To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Date: Mon, 21 Apr 2014 18:03:17 -0400
+Message-ID: <20140421220317.12569.52512.stgit@manet.1015granger.net>
+In-Reply-To: <20140421214442.12569.8950.stgit@manet.1015granger.net>
+References: <20140421214442.12569.8950.stgit@manet.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hold the lock while changing wlseg in filelayout_recover_commit_reqs.
+While marshaling an RPC/RDMA request, the inline_{rsize,wsize}
+settings determine whether an inline request is used, or whether
+read or write chunks lists are built. The current default value of
+these settings is 1024. Any RPC request smaller than 1024 bytes is
+sent to the NFS server completely inline.
 
-The following oops can be reproduced by running iozone for a while against
-a 2 DS pynfs filelayout server.
+rpcrdma_buffer_create() allocates and pre-registers a set of RPC
+buffers for each transport instance, also based on the inline rsize
+and wsize settings.
 
-general protection fault: 0000 [#1] SMP DEBUG_PAGEALLOC
-Modules linked in: nfs_layout_nfsv41_files rpcsec_gss_krb5 nfsv4 nfs fscache
-CPU: 0 PID: 903 Comm: iozone Not tainted 3.15.0-rc1-branch-dros_testing+ #44
-Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference
-task: ffff880078164480 ti: ffff88006e972000 task.ti: ffff88006e972000
-RIP: 0010:[<ffffffffa01936e1>]  [<ffffffffa01936e1>] nfs_init_commit+0x22/0x
-RSP: 0018:ffff88006e973d30  EFLAGS: 00010246
-RAX: ffff88006e973e00 RBX: ffff88006e828800 RCX: ffff88006e973e10
-RDX: 0000000000000000 RSI: ffff88006e973e00 RDI: dead4ead00000000
-RBP: ffff88006e973d38 R08: ffff88006e8289d8 R09: 0000000000000000
-R10: ffff88006e8289d8 R11: 0000000000016988 R12: ffff88006e973b98
-R13: ffff88007a0a6648 R14: ffff88006e973e10 R15: ffff88006e828800
-FS:  00007f2ce396b740(0000) GS:ffff88007f200000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-CR2: 00007f03278a1000 CR3: 0000000079043000 CR4: 00000000001407f0
-Stack:
-ffff88006e8289d8 ffff88006e973da8 ffffffffa00f144f ffff88006e9478c0
-ffff88006e973e00 ffff88006de21080 0000000100000002 ffff880079be6c48
-ffff88006e973d70 ffff88006e973d70 ffff88006e973e10 ffff88006de21080
-Call Trace:
-[<ffffffffa00f144f>] filelayout_commit_pagelist+0x1ae/0x34a [nfs_layout_nfsv
-[<ffffffffa0194f72>] nfs_generic_commit_list+0x92/0xc4 [nfs]
-[<ffffffffa0195053>] nfs_commit_inode+0xaf/0x114 [nfs]
-[<ffffffffa01892bd>] nfs_file_fsync_commit+0x82/0xbe [nfs]
-[<ffffffffa01ceb0d>] nfs4_file_fsync+0x59/0x9b [nfsv4]
-[<ffffffff8114ee3c>] vfs_fsync_range+0x18/0x20
-[<ffffffff8114ee60>] vfs_fsync+0x1c/0x1e
-[<ffffffffa01891c2>] nfs_file_flush+0x7f/0x84 [nfs]
-[<ffffffff81127a43>] filp_close+0x3c/0x72
-[<ffffffff81140e12>] __close_fd+0x82/0x9a
-[<ffffffff81127a9c>] SyS_close+0x23/0x4c
-[<ffffffff814acd12>] system_call_fastpath+0x16/0x1b
-Code: 5b 41 5c 41 5d 41 5e 5d c3 0f 1f 44 00 00 55 48 89 e5 53 48 89 fb 48 8
-RIP  [<ffffffffa01936e1>] nfs_init_commit+0x22/0xe1 [nfs]
-RSP <ffff88006e973d30>
----[ end trace 732fe6419b235e2f ]---
+RPC/RDMA requests and replies are built in these buffers. However,
+if an RPC/RDMA request is expected to be larger than 1024, a buffer
+has to be allocated and registered for that RPC, and deregistered
+and released when the RPC is complete. This is known has a
+"hardway allocation."
 
-Suggested-by: Trond Myklebust <trond.myklebust@primarydata.com>
-Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+Since the introduction of NFSv4, the size of RPC requests has become
+larger, and hardway allocations are thus more frequent. Hardway
+allocations are significant overhead, and they waste the existing
+RPC buffers pre-allocated by rpcrdma_buffer_create().
+
+We'd like fewer hardway allocations.
+
+Increasing the size of the pre-registered buffers is the most direct
+way to do this. However, a blanket increase of the inline thresholds
+has interoperability consequences.
+
+On my 64-bit system, rpcrdma_buffer_create() requests roughly 7000
+bytes for each RPC request buffer, using kmalloc(). Due to internal
+fragmentation, this wastes nearly 1200 bytes because kmalloc()
+already returns an 8192-byte piece of memory for a 7000-byte
+allocation request, though the extra space remains unused.
+
+So let's round up the size of the pre-allocated buffers, and make
+use of the unused space in the kmalloc'd memory.
+
+This change reduces the amount of hardway allocated memory for an
+NFSv4 general connectathon run from 1322092 to 9472 bytes (99%).
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Tested-by: Steve Wise <swise@opengridcomputing.com>
 ---
 
-Minor change applied to Trond's suggested fix. Should we add a signed-off-by
-line for Trond too?
+ net/sunrpc/xprtrdma/verbs.c |   25 +++++++++++++------------
+ 1 files changed, 13 insertions(+), 12 deletions(-)
 
- fs/nfs/nfs4filelayout.c | 9 ++++++---
- 1 file changed, 6 insertions(+), 3 deletions(-)
-
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index b9a35c0..aa9172d 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -1220,15 +1220,18 @@ static void filelayout_recover_commit_reqs(struct list_head *dst,
- 					   struct nfs_commit_info *cinfo)
- {
- 	struct pnfs_commit_bucket *b;
-+	struct pnfs_layout_segment *lseg;
- 	int i;
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index d46bdee..945aac3 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -50,6 +50,7 @@
+ #include <linux/interrupt.h>
+ #include <linux/pci.h>	/* for Tavor hack below */
+ #include <linux/slab.h>
++#include <asm/bitops.h>
  
-+restart:
- 	spin_lock(cinfo->lock);
- 	for (i = 0, b = cinfo->ds->buckets; i < cinfo->ds->nbuckets; i++, b++) {
- 		if (transfer_commit_list(&b->written, dst, cinfo, 0)) {
--			spin_unlock(cinfo->lock);
--			pnfs_put_lseg(b->wlseg);
-+			lseg = b->wlseg;
- 			b->wlseg = NULL;
--			spin_lock(cinfo->lock);
-+			spin_unlock(cinfo->lock);
-+			pnfs_put_lseg(lseg);
-+			goto restart;
- 		}
- 	}
- 	cinfo->ds->nwritten = 0;
--- 
-1.8.5.2 (Apple Git-48)
+ #include "xprt_rdma.h"
+ 
+@@ -1005,7 +1006,7 @@ rpcrdma_buffer_create(struct rpcrdma_buffer *buf, struct rpcrdma_ep *ep,
+ 	struct rpcrdma_ia *ia, struct rpcrdma_create_data_internal *cdata)
+ {
+ 	char *p;
+-	size_t len;
++	size_t len, rlen, wlen;
+ 	int i, rc;
+ 	struct rpcrdma_mw *r;
+ 
+@@ -1120,16 +1121,16 @@ rpcrdma_buffer_create(struct rpcrdma_buffer *buf, struct rpcrdma_ep *ep,
+ 	 * Allocate/init the request/reply buffers. Doing this
+ 	 * using kmalloc for now -- one for each buf.
+ 	 */
++	wlen = 1 << fls(cdata->inline_wsize + sizeof(struct rpcrdma_req));
++	rlen = 1 << fls(cdata->inline_rsize + sizeof(struct rpcrdma_rep));
++	dprintk("RPC:       %s: wlen = %zu, rlen = %zu\n",
++		__func__, wlen, rlen);
++
+ 	for (i = 0; i < buf->rb_max_requests; i++) {
+ 		struct rpcrdma_req *req;
+ 		struct rpcrdma_rep *rep;
+ 
+-		len = cdata->inline_wsize + sizeof(struct rpcrdma_req);
+-		/* RPC layer requests *double* size + 1K RPC_SLACK_SPACE! */
+-		/* Typical ~2400b, so rounding up saves work later */
+-		if (len < 4096)
+-			len = 4096;
+-		req = kmalloc(len, GFP_KERNEL);
++		req = kmalloc(wlen, GFP_KERNEL);
+ 		if (req == NULL) {
+ 			dprintk("RPC:       %s: request buffer %d alloc"
+ 				" failed\n", __func__, i);
+@@ -1141,16 +1142,16 @@ rpcrdma_buffer_create(struct rpcrdma_buffer *buf, struct rpcrdma_ep *ep,
+ 		buf->rb_send_bufs[i]->rl_buffer = buf;
+ 
+ 		rc = rpcrdma_register_internal(ia, req->rl_base,
+-				len - offsetof(struct rpcrdma_req, rl_base),
++				wlen - offsetof(struct rpcrdma_req, rl_base),
+ 				&buf->rb_send_bufs[i]->rl_handle,
+ 				&buf->rb_send_bufs[i]->rl_iov);
+ 		if (rc)
+ 			goto out;
+ 
+-		buf->rb_send_bufs[i]->rl_size = len-sizeof(struct rpcrdma_req);
++		buf->rb_send_bufs[i]->rl_size = wlen -
++						sizeof(struct rpcrdma_req);
+ 
+-		len = cdata->inline_rsize + sizeof(struct rpcrdma_rep);
+-		rep = kmalloc(len, GFP_KERNEL);
++		rep = kmalloc(rlen, GFP_KERNEL);
+ 		if (rep == NULL) {
+ 			dprintk("RPC:       %s: reply buffer %d alloc failed\n",
+ 				__func__, i);
+@@ -1162,7 +1163,7 @@ rpcrdma_buffer_create(struct rpcrdma_buffer *buf, struct rpcrdma_ep *ep,
+ 		buf->rb_recv_bufs[i]->rr_buffer = buf;
+ 
+ 		rc = rpcrdma_register_internal(ia, rep->rr_base,
+-				len - offsetof(struct rpcrdma_rep, rr_base),
++				rlen - offsetof(struct rpcrdma_rep, rr_base),
+ 				&buf->rb_recv_bufs[i]->rr_handle,
+ 				&buf->rb_recv_bufs[i]->rr_iov);
+ 		if (rc)
 
