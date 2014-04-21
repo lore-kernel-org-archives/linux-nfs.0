@@ -1,61 +1,50 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f174.google.com ([209.85.223.174]:46656 "EHLO
-	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753990AbaDWVEc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Apr 2014 17:04:32 -0400
-Received: by mail-ie0-f174.google.com with SMTP id rp18so1522513iec.33
-        for <linux-nfs@vger.kernel.org>; Wed, 23 Apr 2014 14:04:31 -0700 (PDT)
+Received: from mail-qc0-f172.google.com ([209.85.216.172]:57742 "EHLO
+	mail-qc0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752891AbaDUQY0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Apr 2014 12:24:26 -0400
+Received: by mail-qc0-f172.google.com with SMTP id i8so4168202qcq.17
+        for <linux-nfs@vger.kernel.org>; Mon, 21 Apr 2014 09:24:26 -0700 (PDT)
+Message-ID: <53554637.1080006@gmail.com>
+Date: Mon, 21 Apr 2014 12:24:23 -0400
+From: Anna Schumaker <schumaker.anna@gmail.com>
 MIME-Version: 1.0
-In-Reply-To: <20140423204405.GB16168@us.ibm.com>
-References: <CALXu0UcdfrvCajbAagGLV=dP=Kk3VWeR4VS5Wna44UroxM4JAQ@mail.gmail.com>
-	<20140423202401.GA16168@us.ibm.com>
-	<CALXu0UdVYtbKQqskETk9jEK3+=nFphUtFSP4i_ey=7WwZg3-XQ@mail.gmail.com>
-	<20140423204405.GB16168@us.ibm.com>
-Date: Wed, 23 Apr 2014 23:04:31 +0200
-Message-ID: <CALXu0UdbSHfFM+tq2_zssMhiwZ1qMJdieNdvwtxz6k31CMWAUA@mail.gmail.com>
-Subject: Re: Tuning Linux NFSv4 for high latency connections?
-From: Cedric Blancher <cedric.blancher@gmail.com>
-To: Cedric Blancher <cedric.blancher@gmail.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+To: Christoph Hellwig <hch@infradead.org>,
+        Anna Schumaker <Anna.Schumaker@netapp.com>
+CC: Trond.Myklebust@primarydata.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 07/17] NFS: Create a common rw_header_alloc and rw_header_free
+ function
+References: <1397768981-12856-1-git-send-email-Anna.Schumaker@Netapp.com> <1397768981-12856-8-git-send-email-Anna.Schumaker@Netapp.com> <20140421133252.GA30954@infradead.org> <535522B2.9030401@gmail.com>
+In-Reply-To: <535522B2.9030401@gmail.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 23 April 2014 22:44, Malahal Naineni <malahal@us.ibm.com> wrote:
-> Cedric Blancher [cedric.blancher@gmail.com] wrote:
->> On 23 April 2014 22:24, Malahal Naineni <malahal@us.ibm.com> wrote:
->> > Cedric Blancher [cedric.blancher@gmail.com] wrote:
->> >> Are there any options to improve the Linux NFSv4 performance over a
->> >> high latency connection?
->> >>
->> >> We currently use Solaris/Illumos as NFSv4 server and client over a
->> >> cross continental Internet connection. Latency is terrible (~220ms)
->> >> but the counter this by running work in parallel so the latency is
->> >> mostly mitigated.
->> >>
->> >> We now wish to migrate (short: Away from Oracle because support is
->> >> basically unbearable) to Linux (tested SuSE 13.1 and current Fedora)
->> >> and build times are 17 times (!!!) SLOWER than on Solaris/Illumos.
->> >>
->> >> Are there any tunables besides actimeo=300?
->> >
->> > rsize and wsize may help! You need to figure out if the read is the
->> > issue or the write before you dig further.
->>
->> I already tried to tune rsize/wsize, making them both smaller or the
->> maximum of 1048576 bytes, with no effect.
->>
->> One possible theory is that maybe something in Linux doesn't allow
->> multiple requests to be issued in parallel and waits for each request
->> to be completed before issuing the next one?
+On 04/21/2014 09:52 AM, Anna Schumaker wrote:
+> On 04/21/2014 09:32 AM, Christoph Hellwig wrote:
+>> On Thu, Apr 17, 2014 at 05:09:31PM -0400, Anna Schumaker wrote:
+>>> From: Anna Schumaker <Anna.Schumaker@netapp.com>
+>>>
+>>> I create a new struct nfs_rw_ops to decide the differences between reads
+>>> and writes.  This struct will be set when initializing a new
+>>> nfs_pgio_descriptor, and then passed on to the nfs_rw_header when a new
+>>> header is allocated.
+>> To me it seems like adding this new vector confuses things.  From a look
+>> at your whole tree it seems like all methods added to it could as well
+>> be added to nfs_pageio_ops.  In that case we'd still keep separate
+>> instances of nfs_pageio_ops for reads and writes, but most methods would
+>> be that same.  I'm also defintively curious what you have on your
+>> sleeves for pnfs.
+> Okay.  I'll rework everything into the pageio_ops and see how it looks!  Maybe I'll see what I can do about updating the pnfs patches while I'm at it.
+I remember my issue with adding to the nfs_pageio_ops now.  The file, object and block layouts along with the generic pnfs code all have their own read and write pageio_ops.  Changing all of these seemed more tedious than adding a new struct  only in the read and write code.
+
 >
-> Linux NFS client can issue I/Os in parallel. Should be limited by number
-> of RPC slots though.
+> Thanks for reviewing all of these!
+>
+> Anna
+>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-What controls the number of RPC slots? is there a tunable? Is there
-something to monitor the usage?
-
-Ced
--- 
-Cedric Blancher <cedric.blancher@gmail.com>
-Institute Pasteur
