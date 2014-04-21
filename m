@@ -1,340 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f46.google.com ([209.85.192.46]:51734 "EHLO
-	mail-qg0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754723AbaDWORB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Apr 2014 10:17:01 -0400
-Received: by mail-qg0-f46.google.com with SMTP id q107so870840qgd.19
-        for <linux-nfs@vger.kernel.org>; Wed, 23 Apr 2014 07:17:00 -0700 (PDT)
-Message-ID: <5357CB59.9060704@gmail.com>
-Date: Wed, 23 Apr 2014 10:16:57 -0400
-From: Anna Schumaker <schumaker.anna@gmail.com>
+Received: from mail-yh0-f45.google.com ([209.85.213.45]:40840 "EHLO
+	mail-yh0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754027AbaDUWDL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Apr 2014 18:03:11 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH V2 16/17] xprtrdma: Limit work done by completion handler
+To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Date: Mon, 21 Apr 2014 18:03:08 -0400
+Message-ID: <20140421220308.12569.43779.stgit@manet.1015granger.net>
+In-Reply-To: <20140421214442.12569.8950.stgit@manet.1015granger.net>
+References: <20140421214442.12569.8950.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-To: Weston Andros Adamson <dros@primarydata.com>,
-        trond.myklebust@primarydata.com
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 13/17] nfs: remove list of [rw]data from pgio header
-References: <1398202165-78897-1-git-send-email-dros@primarydata.com> <1398202165-78897-14-git-send-email-dros@primarydata.com>
-In-Reply-To: <1398202165-78897-14-git-send-email-dros@primarydata.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 04/22/2014 05:29 PM, Weston Andros Adamson wrote:
-> Since the ability to split pages into subpage requests has been added,
-> nfs_pgio_header->rpc_list only ever has one wdata/rdata.
->
-> Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
-> ---
->  fs/nfs/pnfs.c           | 41 +++++++++++++++--------------------------
->  fs/nfs/read.c           | 35 +++++------------------------------
->  fs/nfs/write.c          | 38 +++++++-------------------------------
->  include/linux/nfs_xdr.h | 35 ++++++++++++++++++-----------------
->  4 files changed, 45 insertions(+), 104 deletions(-)
->
-> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-> index 7c89385..3b3ec46 100644
-> --- a/fs/nfs/pnfs.c
-> +++ b/fs/nfs/pnfs.c
-> @@ -1600,23 +1600,18 @@ pnfs_try_to_write_data(struct nfs_write_data *wdata,
->  }
->  
->  static void
-> -pnfs_do_multiple_writes(struct nfs_pageio_descriptor *desc, struct list_head *head, int how)
-> +pnfs_do_write(struct nfs_pageio_descriptor *desc,
-> +	      struct nfs_pgio_header *hdr, int how)
->  {
-> -	struct nfs_write_data *data;
-> +	struct nfs_write_data *data = hdr->data.write;
->  	const struct rpc_call_ops *call_ops = desc->pg_rpc_callops;
->  	struct pnfs_layout_segment *lseg = desc->pg_lseg;
-> +	enum pnfs_try_status trypnfs;
->  
->  	desc->pg_lseg = NULL;
-> -	while (!list_empty(head)) {
-> -		enum pnfs_try_status trypnfs;
-> -
-> -		data = list_first_entry(head, struct nfs_write_data, list);
-> -		list_del_init(&data->list);
-> -
-> -		trypnfs = pnfs_try_to_write_data(data, call_ops, lseg, how);
-> -		if (trypnfs == PNFS_NOT_ATTEMPTED)
-> -			pnfs_write_through_mds(desc, data);
-> -	}
-> +	trypnfs = pnfs_try_to_write_data(data, call_ops, lseg, how);
-> +	if (trypnfs == PNFS_NOT_ATTEMPTED)
-> +		pnfs_write_through_mds(desc, data);
->  	pnfs_put_lseg(lseg);
->  }
->  
-> @@ -1650,7 +1645,7 @@ pnfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc)
->  		pnfs_put_lseg(desc->pg_lseg);
->  		desc->pg_lseg = NULL;
->  	} else
-> -		pnfs_do_multiple_writes(desc, &hdr->rpc_list, desc->pg_ioflags);
-> +		pnfs_do_write(desc, hdr, desc->pg_ioflags);
->  	if (atomic_dec_and_test(&hdr->refcnt))
->  		hdr->completion_ops->completion(hdr);
->  	return ret;
-> @@ -1758,23 +1753,17 @@ pnfs_try_to_read_data(struct nfs_read_data *rdata,
->  }
->  
->  static void
-> -pnfs_do_multiple_reads(struct nfs_pageio_descriptor *desc, struct list_head *head)
-> +pnfs_do_read(struct nfs_pageio_descriptor *desc, struct nfs_pgio_header *hdr)
->  {
-> -	struct nfs_read_data *data;
-> +	struct nfs_read_data *data = hdr->data.read;
->  	const struct rpc_call_ops *call_ops = desc->pg_rpc_callops;
->  	struct pnfs_layout_segment *lseg = desc->pg_lseg;
-> +	enum pnfs_try_status trypnfs;
->  
->  	desc->pg_lseg = NULL;
-> -	while (!list_empty(head)) {
-> -		enum pnfs_try_status trypnfs;
-> -
-> -		data = list_first_entry(head, struct nfs_read_data, list);
-> -		list_del_init(&data->list);
-> -
-> -		trypnfs = pnfs_try_to_read_data(data, call_ops, lseg);
-> -		if (trypnfs == PNFS_NOT_ATTEMPTED)
-> -			pnfs_read_through_mds(desc, data);
-> -	}
-> +	trypnfs = pnfs_try_to_read_data(data, call_ops, lseg);
-> +	if (trypnfs == PNFS_NOT_ATTEMPTED)
-> +		pnfs_read_through_mds(desc, data);
->  	pnfs_put_lseg(lseg);
->  }
->  
-> @@ -1809,7 +1798,7 @@ pnfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc)
->  		pnfs_put_lseg(desc->pg_lseg);
->  		desc->pg_lseg = NULL;
->  	} else
-> -		pnfs_do_multiple_reads(desc, &hdr->rpc_list);
-> +		pnfs_do_read(desc, hdr);
->  	if (atomic_dec_and_test(&hdr->refcnt))
->  		hdr->completion_ops->completion(hdr);
->  	return ret;
-> diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-> index daeff0c..c6b7dd0 100644
-> --- a/fs/nfs/read.c
-> +++ b/fs/nfs/read.c
-> @@ -42,7 +42,6 @@ struct nfs_read_header *nfs_readhdr_alloc(void)
->  		struct nfs_pgio_header *hdr = &rhdr->header;
->  
->  		INIT_LIST_HEAD(&hdr->pages);
-> -		INIT_LIST_HEAD(&hdr->rpc_list);
->  		spin_lock_init(&hdr->lock);
->  		atomic_set(&hdr->refcnt, 0);
->  	}
-> @@ -286,26 +285,6 @@ static int nfs_do_read(struct nfs_read_data *data,
->  	return nfs_initiate_read(NFS_CLIENT(inode), data, call_ops, 0);
->  }
->  
-> -static int
-> -nfs_do_multiple_reads(struct list_head *head,
-> -		const struct rpc_call_ops *call_ops)
-> -{
-> -	struct nfs_read_data *data;
-> -	int ret = 0;
-> -
-> -	while (!list_empty(head)) {
-> -		int ret2;
-> -
-> -		data = list_first_entry(head, struct nfs_read_data, list);
-> -		list_del_init(&data->list);
-> -
-> -		ret2 = nfs_do_read(data, call_ops);
-> -		if (ret == 0)
-> -			ret = ret2;
-> -	}
-> -	return ret;
-> -}
-> -
->  static void
->  nfs_async_read_error(struct list_head *head)
->  {
-> @@ -327,12 +306,8 @@ static void nfs_pagein_error(struct nfs_pageio_descriptor *desc,
->  		struct nfs_pgio_header *hdr)
->  {
->  	set_bit(NFS_IOHDR_REDO, &hdr->flags);
-> -	while (!list_empty(&hdr->rpc_list)) {
-> -		struct nfs_read_data *data = list_first_entry(&hdr->rpc_list,
-> -				struct nfs_read_data, list);
-> -		list_del(&data->list);
-> -		nfs_readdata_release(data);
-> -	}
-> +	nfs_readdata_release(hdr->data.read);
-> +	hdr->data.read = NULL;
->  	desc->pg_completion_ops->error_cleanup(&desc->pg_list);
->  }
->  
-> @@ -364,7 +339,8 @@ int nfs_generic_pagein(struct nfs_pageio_descriptor *desc,
->  	}
->  
->  	nfs_read_rpcsetup(data, desc->pg_count, 0);
-> -	list_add(&data->list, &hdr->rpc_list);
-> +	WARN_ON_ONCE(hdr->data.read);
-> +	hdr->data.read = data;
->  	desc->pg_rpc_callops = &nfs_read_common_ops;
->  	return 0;
->  }
-> @@ -386,8 +362,7 @@ static int nfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc)
->  	atomic_inc(&hdr->refcnt);
->  	ret = nfs_generic_pagein(desc, hdr);
->  	if (ret == 0)
-> -		ret = nfs_do_multiple_reads(&hdr->rpc_list,
-> -					    desc->pg_rpc_callops);
-> +		ret = nfs_do_read(hdr->data.read, desc->pg_rpc_callops);
->  	if (atomic_dec_and_test(&hdr->refcnt))
->  		hdr->completion_ops->completion(hdr);
->  	return ret;
-> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-> index f40db93..cd24a14 100644
-> --- a/fs/nfs/write.c
-> +++ b/fs/nfs/write.c
-> @@ -79,7 +79,6 @@ struct nfs_write_header *nfs_writehdr_alloc(void)
->  
->  		memset(p, 0, sizeof(*p));
->  		INIT_LIST_HEAD(&hdr->pages);
-> -		INIT_LIST_HEAD(&hdr->rpc_list);
->  		spin_lock_init(&hdr->lock);
->  		atomic_set(&hdr->refcnt, 0);
->  		hdr->verf = &p->verf;
-> @@ -1171,26 +1170,6 @@ static int nfs_do_write(struct nfs_write_data *data,
->  	return nfs_initiate_write(NFS_CLIENT(inode), data, call_ops, how, 0);
->  }
->  
-> -static int nfs_do_multiple_writes(struct list_head *head,
-> -		const struct rpc_call_ops *call_ops,
-> -		int how)
-> -{
-> -	struct nfs_write_data *data;
-> -	int ret = 0;
-> -
-> -	while (!list_empty(head)) {
-> -		int ret2;
-> -
-> -		data = list_first_entry(head, struct nfs_write_data, list);
-> -		list_del_init(&data->list);
-> -		
-> -		ret2 = nfs_do_write(data, call_ops, how);
-> -		 if (ret == 0)
-> -			 ret = ret2;
-> -	}
-> -	return ret;
-> -}
-> -
->  /* If a nfs_flush_* function fails, it should remove reqs from @head and
->   * call this on each, which will prepare them to be retried on next
->   * writeback using standard nfs.
-> @@ -1223,12 +1202,8 @@ static void nfs_flush_error(struct nfs_pageio_descriptor *desc,
->  		struct nfs_pgio_header *hdr)
->  {
->  	set_bit(NFS_IOHDR_REDO, &hdr->flags);
-> -	while (!list_empty(&hdr->rpc_list)) {
-> -		struct nfs_write_data *data = list_first_entry(&hdr->rpc_list,
-> -				struct nfs_write_data, list);
-> -		list_del(&data->list);
-> -		nfs_writedata_release(data);
-> -	}
-> +	nfs_writedata_release(hdr->data.write);
-> +	hdr->data.write = NULL;
->  	desc->pg_completion_ops->error_cleanup(&desc->pg_list);
->  }
->  
-> @@ -1275,7 +1250,8 @@ int nfs_generic_flush(struct nfs_pageio_descriptor *desc,
->  
->  	/* Set up the argument struct */
->  	nfs_write_rpcsetup(data, desc->pg_count, 0, desc->pg_ioflags, &cinfo);
-> -	list_add(&data->list, &hdr->rpc_list);
-> +	WARN_ON_ONCE(hdr->data.write);
-> +	hdr->data.write = data;
->  	desc->pg_rpc_callops = &nfs_write_common_ops;
->  	return 0;
->  }
-> @@ -1297,9 +1273,9 @@ static int nfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc)
->  	atomic_inc(&hdr->refcnt);
->  	ret = nfs_generic_flush(desc, hdr);
->  	if (ret == 0)
-> -		ret = nfs_do_multiple_writes(&hdr->rpc_list,
-> -					     desc->pg_rpc_callops,
-> -					     desc->pg_ioflags);
-> +		ret = nfs_do_write(hdr->data.write,
-> +				   desc->pg_rpc_callops,
-> +				   desc->pg_ioflags);
->  	if (atomic_dec_and_test(&hdr->refcnt))
->  		hdr->completion_ops->completion(hdr);
->  	return ret;
-> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-> index 6fb5b23..239274d 100644
-> --- a/include/linux/nfs_xdr.h
-> +++ b/include/linux/nfs_xdr.h
-> @@ -1266,7 +1266,6 @@ struct nfs_page_array {
->  
->  struct nfs_read_data {
->  	struct nfs_pgio_header	*header;
-> -	struct list_head	list;
->  	struct rpc_task		task;
->  	struct nfs_fattr	fattr;	/* fattr storage */
->  	struct nfs_readargs args;
-> @@ -1278,6 +1277,20 @@ struct nfs_read_data {
->  	struct nfs_client	*ds_clp;	/* pNFS data server */
->  };
->  
-> +struct nfs_write_data {
-> +	struct nfs_pgio_header	*header;
-> +	struct rpc_task		task;
-> +	struct nfs_fattr	fattr;
-> +	struct nfs_writeverf	verf;
-> +	struct nfs_writeargs	args;		/* argument struct */
-> +	struct nfs_writeres	res;		/* result struct */
-> +	unsigned long		timestamp;	/* For lease renewal */
-> +	int (*write_done_cb)(struct rpc_task *, struct nfs_write_data *);
-> +	__u64			mds_offset;	/* Filelayout dense stripe */
-> +	struct nfs_page_array	pages;
-> +	struct nfs_client	*ds_clp;	/* pNFS data server */
-> +};
-> +
->  /* used as flag bits in nfs_pgio_header */
->  enum {
->  	NFS_IOHDR_ERROR = 0,
-> @@ -1291,7 +1304,10 @@ struct nfs_pgio_header {
->  	struct inode		*inode;
->  	struct rpc_cred		*cred;
->  	struct list_head	pages;
-> -	struct list_head	rpc_list;
-> +	union {
-> +		struct nfs_read_data *read;
-> +		struct nfs_write_data *write;
-> +	}			data;
+Sagi Grimberg <sagig@dev.mellanox.co.il> points out that a steady
+stream of CQ events could starve other work because of the boundless
+loop pooling in rpcrdma_{send,recv}_poll().
 
-The first 5 patches in my series makes it so we can share all of these structs.  Would it be useful to put those in first?
+Instead of a (potentially infinite) while loop, return after
+collecting a budgeted number of completions.
 
-Anna
+Note that the total number of WCs that can be handled during one
+upcall is RPCRDMA_WC_BUDGET * 2, since the handler polls once before
+and once after re-enabling completion notifications.
 
->  	atomic_t		refcnt;
->  	struct nfs_page		*req;
->  	struct nfs_writeverf	*verf;
-> @@ -1315,21 +1331,6 @@ struct nfs_read_header {
->  	struct nfs_read_data	rpc_data;
->  };
->  
-> -struct nfs_write_data {
-> -	struct nfs_pgio_header	*header;
-> -	struct list_head	list;
-> -	struct rpc_task		task;
-> -	struct nfs_fattr	fattr;
-> -	struct nfs_writeverf	verf;
-> -	struct nfs_writeargs	args;		/* argument struct */
-> -	struct nfs_writeres	res;		/* result struct */
-> -	unsigned long		timestamp;	/* For lease renewal */
-> -	int (*write_done_cb) (struct rpc_task *task, struct nfs_write_data *data);
-> -	__u64			mds_offset;	/* Filelayout dense stripe */
-> -	struct nfs_page_array	pages;
-> -	struct nfs_client	*ds_clp;	/* pNFS data server */
-> -};
-> -
->  struct nfs_write_header {
->  	struct nfs_pgio_header	header;
->  	struct nfs_write_data	rpc_data;
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+
+ net/sunrpc/xprtrdma/verbs.c     |   10 ++++++----
+ net/sunrpc/xprtrdma/xprt_rdma.h |    1 +
+ 2 files changed, 7 insertions(+), 4 deletions(-)
+
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index abb8d8d..d46bdee 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -165,8 +165,9 @@ static int
+ rpcrdma_sendcq_poll(struct ib_cq *cq, struct rpcrdma_ep *ep)
+ {
+ 	struct ib_wc *wcs;
+-	int count, rc;
++	int budget, count, rc;
+ 
++	budget = RPCRDMA_WC_BUDGET / RPCRDMA_POLLSIZE;
+ 	do {
+ 		wcs = ep->rep_send_wcs;
+ 
+@@ -177,7 +178,7 @@ rpcrdma_sendcq_poll(struct ib_cq *cq, struct rpcrdma_ep *ep)
+ 		count = rc;
+ 		while (count-- > 0)
+ 			rpcrdma_sendcq_process_wc(wcs++);
+-	} while (rc == RPCRDMA_POLLSIZE);
++	} while (rc == RPCRDMA_POLLSIZE && --budget);
+ 	return 0;
+ }
+ 
+@@ -254,8 +255,9 @@ static int
+ rpcrdma_recvcq_poll(struct ib_cq *cq, struct rpcrdma_ep *ep)
+ {
+ 	struct ib_wc *wcs;
+-	int count, rc;
++	int budget, count, rc;
+ 
++	budget = RPCRDMA_WC_BUDGET / RPCRDMA_POLLSIZE;
+ 	do {
+ 		wcs = ep->rep_recv_wcs;
+ 
+@@ -266,7 +268,7 @@ rpcrdma_recvcq_poll(struct ib_cq *cq, struct rpcrdma_ep *ep)
+ 		count = rc;
+ 		while (count-- > 0)
+ 			rpcrdma_recvcq_process_wc(wcs++);
+-	} while (rc == RPCRDMA_POLLSIZE);
++	} while (rc == RPCRDMA_POLLSIZE && --budget);
+ 	return 0;
+ }
+ 
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index cb4c882..0c3b88e 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -74,6 +74,7 @@ struct rpcrdma_ia {
+  * RDMA Endpoint -- one per transport instance
+  */
+ 
++#define RPCRDMA_WC_BUDGET	(128)
+ #define RPCRDMA_POLLSIZE	(16)
+ 
+ struct rpcrdma_ep {
 
