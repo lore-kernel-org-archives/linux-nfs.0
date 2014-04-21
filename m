@@ -1,173 +1,99 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e23smtp06.au.ibm.com ([202.81.31.148]:40736 "EHLO
-	e23smtp06.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753350AbaD0QPg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Apr 2014 12:15:36 -0400
-Received: from /spool/local
-	by e23smtp06.au.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <aneesh.kumar@linux.vnet.ibm.com>;
-	Mon, 28 Apr 2014 02:15:35 +1000
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
-        viro@zeniv.linux.org.uk, dhowells@redhat.com
-Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH -V1 08/22] vfs: Add permission flags for setting file attributes
-Date: Sun, 27 Apr 2014 21:44:39 +0530
-Message-Id: <1398615293-22931-9-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-In-Reply-To: <1398615293-22931-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1398615293-22931-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from mail-ig0-f175.google.com ([209.85.213.175]:65475 "EHLO
+	mail-ig0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751805AbaDUPhr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Apr 2014 11:37:47 -0400
+Received: by mail-ig0-f175.google.com with SMTP id h3so1897455igd.8
+        for <linux-nfs@vger.kernel.org>; Mon, 21 Apr 2014 08:37:46 -0700 (PDT)
+Message-ID: <1398094663.2891.22.camel@leira.trondhjem.org>
+Subject: Re: [PATCH 36/70] NFSd: Add reference counting to find_stateid
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Bruce Fields <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Date: Mon, 21 Apr 2014 11:37:43 -0400
+In-Reply-To: <20140419145026.GE25682@infradead.org>
+References: <1397846704-14567-28-git-send-email-trond.myklebust@primarydata.com>
+	 <1397846704-14567-29-git-send-email-trond.myklebust@primarydata.com>
+	 <1397846704-14567-30-git-send-email-trond.myklebust@primarydata.com>
+	 <1397846704-14567-31-git-send-email-trond.myklebust@primarydata.com>
+	 <1397846704-14567-32-git-send-email-trond.myklebust@primarydata.com>
+	 <1397846704-14567-33-git-send-email-trond.myklebust@primarydata.com>
+	 <1397846704-14567-34-git-send-email-trond.myklebust@primarydata.com>
+	 <1397846704-14567-35-git-send-email-trond.myklebust@primarydata.com>
+	 <1397846704-14567-36-git-send-email-trond.myklebust@primarydata.com>
+	 <1397846704-14567-37-git-send-email-trond.myklebust@primarydata.com>
+	 <20140419145026.GE25682@infradead.org>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andreas Gruenbacher <agruen@kernel.org>
+On Sat, 2014-04-19 at 07:50 -0700, Christoph Hellwig wrote:
+> > +static void nfs4_put_stateid(struct nfs4_stid *s)
+> > +{
+> > +	if (s == NULL)
+> > +		return;
+> > +	switch (s->sc_type) {
+> > +	case NFS4_OPEN_STID:
+> > +	case NFS4_LOCK_STID:
+> > +	case NFS4_CLOSED_STID:
+> > +		put_generic_stateid(openlockstateid(s));
+> > +		break;
+> > +	case NFS4_DELEG_STID:
+> > +	case NFS4_REVOKED_DELEG_STID:
+> > +	case NFS4_CLOSED_DELEG_STID:
+> > +		nfs4_put_delegation(delegstateid(s));
+> > +	}
+> > +}
+> 
+> I really don't like the way the inheritance for the stateids works,
+> a pure put operation shouldn't need this.  I think all this can be
+> fixed by adding a ->free function pointer to struct nfs4_stid.  At this
+> point the braindamage of passing a kmem_cache pointer to various
+> function can be removed (similar to how nfs4_alloc_stid should be
+> replaced with a nfs4_init_stid that takes an already allocated stid),
+> and nothing in the normal refcounting path should need these switches.
 
-Some permission models can allow processes to take ownership of a file,
-change the file permissions, and set the file timestamps.  Introduce new
-permission mask flags and check for those permissions in
-inode_change_ok().
+Ack. I've added a free() pointer to nfs4_stid.
 
-Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
----
- fs/attr.c          | 68 ++++++++++++++++++++++++++++++++++++++++++++----------
- fs/namei.c         |  2 +-
- include/linux/fs.h |  4 ++++
- 3 files changed, 61 insertions(+), 13 deletions(-)
+> > @@ -3804,26 +3823,33 @@ static __be32 nfsd4_validate_stateid(struct nfs4_client *cl, stateid_t *stateid)
+> >  		return nfserr_bad_stateid;
+> >  	status = check_stateid_generation(stateid, &s->sc_stateid, 1);
+> >  	if (status)
+> > -		return status;
+> > +		goto out_put_stid;
+> >  	switch (s->sc_type) {
+> >  	case NFS4_DELEG_STID:
+> > -		return nfs_ok;
+> > +		status = nfs_ok;
+> > +		break;
+> >  	case NFS4_REVOKED_DELEG_STID:
+> > -		return nfserr_deleg_revoked;
+> > +		status = nfserr_deleg_revoked;
+> > +		break;
+> >  	case NFS4_OPEN_STID:
+> >  	case NFS4_LOCK_STID:
+> >  		ols = openlockstateid(s);
+> >  		if (ols->st_stateowner->so_is_open_owner
+> >  	    			&& !(openowner(ols->st_stateowner)->oo_flags
+> >  						& NFS4_OO_CONFIRMED))
+> > -			return nfserr_bad_stateid;
+> > -		return nfs_ok;
+> > +			status = nfserr_bad_stateid;
+> > +		else
+> > +			status = nfs_ok;
+> > +		break;
+> 
+> Not quite as urgent as for the refcounting, but I think moving more
+> of these switches on the type into proper methods would improve the
+> stateid code a lot.
 
-diff --git a/fs/attr.c b/fs/attr.c
-index 1d158c972442..e468d4f2dca8 100644
---- a/fs/attr.c
-+++ b/fs/attr.c
-@@ -16,6 +16,54 @@
- #include <linux/evm.h>
- #include <linux/ima.h>
- 
-+static int richacl_change_ok(struct inode *inode, int mask)
-+{
-+	if (!IS_RICHACL(inode))
-+		return -EPERM;
-+
-+	if (inode->i_op->permission)
-+		return inode->i_op->permission(inode, mask);
-+
-+	return check_acl(inode, mask);
-+}
-+
-+static bool inode_uid_change_ok(struct inode *inode, kuid_t ia_uid)
-+{
-+	if (uid_eq(current_fsuid(), inode->i_uid) &&
-+	    uid_eq(ia_uid, inode->i_uid))
-+		return true;
-+	if (uid_eq(current_fsuid(), ia_uid) &&
-+	    richacl_change_ok(inode, MAY_TAKE_OWNERSHIP) == 0)
-+		return true;
-+	if (capable(CAP_CHOWN))
-+		return true;
-+	return false;
-+}
-+
-+static bool inode_gid_change_ok(struct inode *inode, kgid_t ia_gid)
-+{
-+	int in_group = in_group_p(ia_gid);
-+	if (uid_eq(current_fsuid(), inode->i_uid) &&
-+	    (in_group || gid_eq(ia_gid, inode->i_gid)))
-+		return true;
-+	if (in_group && richacl_change_ok(inode, MAY_TAKE_OWNERSHIP) == 0)
-+		return true;
-+	if (capable(CAP_CHOWN))
-+		return true;
-+	return false;
-+}
-+
-+static bool inode_owner_permitted_or_capable(struct inode *inode, int mask)
-+{
-+	if (uid_eq(current_fsuid(), inode->i_uid))
-+		return true;
-+	if (richacl_change_ok(inode, mask) == 0)
-+		return true;
-+	if (inode_capable(inode, CAP_FOWNER))
-+		return true;
-+	return false;
-+}
-+
- /**
-  * inode_change_ok - check if attribute changes to an inode are allowed
-  * @inode:	inode to check
-@@ -47,22 +95,18 @@ int inode_change_ok(struct inode *inode, struct iattr *attr)
- 		return 0;
- 
- 	/* Make sure a caller can chown. */
--	if ((ia_valid & ATTR_UID) &&
--	    (!uid_eq(current_fsuid(), inode->i_uid) ||
--	     !uid_eq(attr->ia_uid, inode->i_uid)) &&
--	    !inode_capable(inode, CAP_CHOWN))
--		return -EPERM;
-+	if (ia_valid & ATTR_UID)
-+		if (!inode_uid_change_ok(inode, attr->ia_uid))
-+			return -EPERM;
- 
- 	/* Make sure caller can chgrp. */
--	if ((ia_valid & ATTR_GID) &&
--	    (!uid_eq(current_fsuid(), inode->i_uid) ||
--	    (!in_group_p(attr->ia_gid) && !gid_eq(attr->ia_gid, inode->i_gid))) &&
--	    !inode_capable(inode, CAP_CHOWN))
--		return -EPERM;
-+	if (ia_valid & ATTR_GID)
-+		if (!inode_gid_change_ok(inode, attr->ia_gid))
-+			return -EPERM;
- 
- 	/* Make sure a caller can chmod. */
- 	if (ia_valid & ATTR_MODE) {
--		if (!inode_owner_or_capable(inode))
-+		if (!inode_owner_permitted_or_capable(inode, MAY_CHMOD))
- 			return -EPERM;
- 		/* Also check the setgid bit! */
- 		if (!in_group_p((ia_valid & ATTR_GID) ? attr->ia_gid :
-@@ -73,7 +117,7 @@ int inode_change_ok(struct inode *inode, struct iattr *attr)
- 
- 	/* Check for setting the inode time. */
- 	if (ia_valid & (ATTR_MTIME_SET | ATTR_ATIME_SET | ATTR_TIMES_SET)) {
--		if (!inode_owner_or_capable(inode))
-+		if (!inode_owner_permitted_or_capable(inode, MAY_SET_TIMES))
- 			return -EPERM;
- 	}
- 
-diff --git a/fs/namei.c b/fs/namei.c
-index 56ac7613fbca..26b9a8212837 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -249,7 +249,7 @@ void putname(struct filename *name)
- }
- #endif
- 
--static int check_acl(struct inode *inode, int mask)
-+int check_acl(struct inode *inode, int mask)
- {
- #ifdef CONFIG_FS_POSIX_ACL
- 	struct posix_acl *acl;
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 33da154dd27d..22d85798b520 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -81,6 +81,9 @@ typedef void (dio_iodone_t)(struct kiocb *iocb, loff_t offset,
- #define MAY_CREATE_DIR		0x00000200
- #define MAY_DELETE_CHILD	0x00000400
- #define MAY_DELETE_SELF		0x00000800
-+#define MAY_TAKE_OWNERSHIP	0x00001000
-+#define MAY_CHMOD		0x00002000
-+#define MAY_SET_TIMES		0x00004000
- 
- /*
-  * flags in file.f_mode.  Note that FMODE_READ and FMODE_WRITE must correspond
-@@ -2248,6 +2251,7 @@ extern sector_t bmap(struct inode *, sector_t);
- extern int notify_change(struct dentry *, struct iattr *, struct inode **);
- extern int inode_permission(struct inode *, int);
- extern int generic_permission(struct inode *, int);
-+extern int check_acl(struct inode *, int);
- 
- static inline bool execute_ok(struct inode *inode)
- {
+Agreed, but I'm leaving that as an exercise for the reader (at least as
+far as this patch series is concerned).
+
 -- 
-1.9.1
+Trond Myklebust
+Linux NFS client maintainer, PrimaryData
+trond.myklebust@primarydata.com
+
 
