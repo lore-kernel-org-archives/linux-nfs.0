@@ -1,152 +1,201 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from szxga03-in.huawei.com ([119.145.14.66]:45535 "EHLO
-	szxga03-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751611AbaD3Cqx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Apr 2014 22:46:53 -0400
-From: Weng Meiling <wengmeiling.weng@huawei.com>
-To: <stable@vger.kernel.org>
-CC: <bfields@fieldses.org>, <greg@kroah.com>, <lizefan@huawei.com>,
-        <skinsbursky@parallels.com>, <h.huangqiang@huawei.com>,
-        <linux-nfs@vger.kernel.org>
-Subject: [PATCH v2 3.4 8/9] nfsd: containerize NFSd filesystem
-Date: Wed, 30 Apr 2014 10:43:43 +0800
-Message-ID: <1398825824-6360-9-git-send-email-wengmeiling.weng@huawei.com>
-In-Reply-To: <1398825824-6360-1-git-send-email-wengmeiling.weng@huawei.com>
-References: <1398825824-6360-1-git-send-email-wengmeiling.weng@huawei.com>
+Received: from mail-yk0-f175.google.com ([209.85.160.175]:50199 "EHLO
+	mail-yk0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752896AbaDUWJB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Apr 2014 18:09:01 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH V2 07/17] xprtrdma: Remove REGISTER memory registration mode
+To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Date: Mon, 21 Apr 2014 18:01:47 -0400
+Message-ID: <20140421220147.12569.95135.stgit@manet.1015granger.net>
+In-Reply-To: <20140421214442.12569.8950.stgit@manet.1015granger.net>
+References: <20140421214442.12569.8950.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+All kernel RDMA providers except amso1100 support either MTHCAFMR
+or FRMR, both of which are faster than REGISTER.  amso1100 can
+continue to use ALLPHYSICAL.
 
-note: this backport is just for the null pointer problem when
-start nfsd in none init netns. The nfsd is still not containerized.
+The only other ULP consumer in the kernel that uses the reg_phys_mr
+verb is Lustre.
 
-commit 11f779421a39b86da8a523d97e5fd3477878d44f upstream.
-
-This patch makes NFSD file system superblock to be created per net.
-This makes possible to get proper network namespace from superblock instead of
-using hard-coded "init_net".
-
-Note: NFSd fs super-block holds network namespace. This garantees, that
-network namespace won't disappear from underneath of it.
-This, obviously, means, that in case of kill of a container's "init" (which is not a mount
-namespace, but network namespace creator) netowrk namespace won't be
-destroyed.
-
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-[wengmeiling: backport to 3.4:
- - export cache not per netns
- - NFSD service structure not per netns]
-Signed-off-by: Weng Meiling <wengmeiling.weng@huawei.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfsctl.c | 30 +++++++++++++++++++++++-------
- fs/nfsd/nfssvc.c |  2 +-
- 2 files changed, 24 insertions(+), 8 deletions(-)
 
-diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-index 1d74af2..cebc9ef 100644
---- a/fs/nfsd/nfsctl.c
-+++ b/fs/nfsd/nfsctl.c
-@@ -213,6 +213,7 @@ static ssize_t write_unlock_ip(struct file *file, char *buf, size_t size)
- 	struct sockaddr *sap = (struct sockaddr *)&address;
- 	size_t salen = sizeof(address);
- 	char *fo_path;
-+	struct net *net = file->f_dentry->d_sb->s_fs_info;
- 
- 	/* sanity check */
- 	if (size == 0)
-@@ -225,7 +226,7 @@ static ssize_t write_unlock_ip(struct file *file, char *buf, size_t size)
- 	if (qword_get(&buf, fo_path, size) < 0)
- 		return -EINVAL;
- 
--	if (rpc_pton(&init_net, fo_path, size, sap, salen) == 0)
-+	if (rpc_pton(net, fo_path, size, sap, salen) == 0)
- 		return -EINVAL;
- 
- 	return nlmsvc_unlock_all_by_ip(sap);
-@@ -389,7 +390,7 @@ static ssize_t write_threads(struct file *file, char *buf, size_t size)
- {
- 	char *mesg = buf;
- 	int rv;
--	struct net *net = &init_net;
-+	struct net *net = file->f_dentry->d_sb->s_fs_info;
- 
- 	if (size > 0) {
- 		int newthreads;
-@@ -440,7 +441,7 @@ static ssize_t write_pool_threads(struct file *file, char *buf, size_t size)
- 	int len;
- 	int npools;
- 	int *nthreads;
--	struct net *net = &init_net;
-+	struct net *net = file->f_dentry->d_sb->s_fs_info;
- 
- 	mutex_lock(&nfsd_mutex);
- 	npools = nfsd_nrpools();
-@@ -857,7 +858,7 @@ static ssize_t __write_ports(struct file *file, char *buf, size_t size,
- static ssize_t write_ports(struct file *file, char *buf, size_t size)
- {
- 	ssize_t rv;
--	struct net *net = &init_net;
-+	struct net *net = file->f_dentry->d_sb->s_fs_info;
- 
- 	mutex_lock(&nfsd_mutex);
- 	rv = __write_ports(file, buf, size, net);
-@@ -1095,20 +1096,35 @@ static int nfsd_fill_super(struct super_block * sb, void * data, int silent)
- #endif
- 		/* last one */ {""}
- 	};
--	return simple_fill_super(sb, 0x6e667364, nfsd_files);
-+	struct net *net = data;
-+	int ret;
-+
-+	ret = simple_fill_super(sb, 0x6e667364, nfsd_files);
-+	if (ret)
-+		return ret;
-+	sb->s_fs_info = get_net(net);
-+	return 0;
+ net/sunrpc/xprtrdma/rpc_rdma.c |    3 -
+ net/sunrpc/xprtrdma/verbs.c    |   90 ++--------------------------------------
+ 2 files changed, 5 insertions(+), 88 deletions(-)
+
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index e4af26a..a38efda 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -479,8 +479,7 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
+ 			 * on receive. Therefore, we request a reply chunk
+ 			 * for non-writes wherever feasible and efficient.
+ 			 */
+-			if (wtype == rpcrdma_noch &&
+-			    r_xprt->rx_ia.ri_memreg_strategy > RPCRDMA_REGISTER)
++			if (wtype == rpcrdma_noch)
+ 				wtype = rpcrdma_replych;
+ 		}
+ 	}
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 304c7ad..6bb9a07 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -494,19 +494,11 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
+ 	switch (memreg) {
+ 	case RPCRDMA_MTHCAFMR:
+ 		if (!ia->ri_id->device->alloc_fmr) {
+-#if RPCRDMA_PERSISTENT_REGISTRATION
+ 			dprintk("RPC:       %s: MTHCAFMR registration "
+ 				"specified but not supported by adapter, "
+ 				"using riskier RPCRDMA_ALLPHYSICAL\n",
+ 				__func__);
+ 			memreg = RPCRDMA_ALLPHYSICAL;
+-#else
+-			dprintk("RPC:       %s: MTHCAFMR registration "
+-				"specified but not supported by adapter, "
+-				"using slower RPCRDMA_REGISTER\n",
+-				__func__);
+-			memreg = RPCRDMA_REGISTER;
+-#endif
+ 		}
+ 		break;
+ 	case RPCRDMA_FRMR:
+@@ -514,19 +506,11 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
+ 		if ((devattr.device_cap_flags &
+ 		     (IB_DEVICE_MEM_MGT_EXTENSIONS|IB_DEVICE_LOCAL_DMA_LKEY)) !=
+ 		    (IB_DEVICE_MEM_MGT_EXTENSIONS|IB_DEVICE_LOCAL_DMA_LKEY)) {
+-#if RPCRDMA_PERSISTENT_REGISTRATION
+ 			dprintk("RPC:       %s: FRMR registration "
+ 				"specified but not supported by adapter, "
+ 				"using riskier RPCRDMA_ALLPHYSICAL\n",
+ 				__func__);
+ 			memreg = RPCRDMA_ALLPHYSICAL;
+-#else
+-			dprintk("RPC:       %s: FRMR registration "
+-				"specified but not supported by adapter, "
+-				"using slower RPCRDMA_REGISTER\n",
+-				__func__);
+-			memreg = RPCRDMA_REGISTER;
+-#endif
+ 		} else {
+ 			/* Mind the ia limit on FRMR page list depth */
+ 			ia->ri_max_frmr_depth = min_t(unsigned int,
+@@ -545,7 +529,6 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
+ 	 * adapter.
+ 	 */
+ 	switch (memreg) {
+-	case RPCRDMA_REGISTER:
+ 	case RPCRDMA_FRMR:
+ 		break;
+ #if RPCRDMA_PERSISTENT_REGISTRATION
+@@ -565,11 +548,10 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
+ 		ia->ri_bind_mem = ib_get_dma_mr(ia->ri_pd, mem_priv);
+ 		if (IS_ERR(ia->ri_bind_mem)) {
+ 			printk(KERN_ALERT "%s: ib_get_dma_mr for "
+-				"phys register failed with %lX\n\t"
+-				"Will continue with degraded performance\n",
++				"phys register failed with %lX\n",
+ 				__func__, PTR_ERR(ia->ri_bind_mem));
+-			memreg = RPCRDMA_REGISTER;
+-			ia->ri_bind_mem = NULL;
++			rc = -ENOMEM;
++			goto out2;
+ 		}
+ 		break;
+ 	default:
+@@ -1611,67 +1593,6 @@ rpcrdma_deregister_fmr_external(struct rpcrdma_mr_seg *seg,
+ 	return rc;
  }
  
- static struct dentry *nfsd_mount(struct file_system_type *fs_type,
- 	int flags, const char *dev_name, void *data)
- {
--	return mount_single(fs_type, flags, data, nfsd_fill_super);
-+	return mount_ns(fs_type, flags, current->nsproxy->net_ns, nfsd_fill_super);
-+}
-+
-+static void nfsd_umount(struct super_block *sb)
-+{
-+	struct net *net = sb->s_fs_info;
-+
-+	kill_litter_super(sb);
-+	put_net(net);
- }
+-static int
+-rpcrdma_register_default_external(struct rpcrdma_mr_seg *seg,
+-			int *nsegs, int writing, struct rpcrdma_ia *ia)
+-{
+-	int mem_priv = (writing ? IB_ACCESS_REMOTE_WRITE :
+-				  IB_ACCESS_REMOTE_READ);
+-	struct rpcrdma_mr_seg *seg1 = seg;
+-	struct ib_phys_buf ipb[RPCRDMA_MAX_DATA_SEGS];
+-	int len, i, rc = 0;
+-
+-	if (*nsegs > RPCRDMA_MAX_DATA_SEGS)
+-		*nsegs = RPCRDMA_MAX_DATA_SEGS;
+-	for (len = 0, i = 0; i < *nsegs;) {
+-		rpcrdma_map_one(ia, seg, writing);
+-		ipb[i].addr = seg->mr_dma;
+-		ipb[i].size = seg->mr_len;
+-		len += seg->mr_len;
+-		++seg;
+-		++i;
+-		/* Check for holes */
+-		if ((i < *nsegs && offset_in_page(seg->mr_offset)) ||
+-		    offset_in_page((seg-1)->mr_offset+(seg-1)->mr_len))
+-			break;
+-	}
+-	seg1->mr_base = seg1->mr_dma;
+-	seg1->mr_chunk.rl_mr = ib_reg_phys_mr(ia->ri_pd,
+-				ipb, i, mem_priv, &seg1->mr_base);
+-	if (IS_ERR(seg1->mr_chunk.rl_mr)) {
+-		rc = PTR_ERR(seg1->mr_chunk.rl_mr);
+-		dprintk("RPC:       %s: failed ib_reg_phys_mr "
+-			"%u@0x%llx (%d)... status %i\n",
+-			__func__, len,
+-			(unsigned long long)seg1->mr_dma, i, rc);
+-		while (i--)
+-			rpcrdma_unmap_one(ia, --seg);
+-	} else {
+-		seg1->mr_rkey = seg1->mr_chunk.rl_mr->rkey;
+-		seg1->mr_nsegs = i;
+-		seg1->mr_len = len;
+-	}
+-	*nsegs = i;
+-	return rc;
+-}
+-
+-static int
+-rpcrdma_deregister_default_external(struct rpcrdma_mr_seg *seg,
+-			struct rpcrdma_ia *ia)
+-{
+-	struct rpcrdma_mr_seg *seg1 = seg;
+-	int rc;
+-
+-	rc = ib_dereg_mr(seg1->mr_chunk.rl_mr);
+-	seg1->mr_chunk.rl_mr = NULL;
+-	while (seg1->mr_nsegs--)
+-		rpcrdma_unmap_one(ia, seg++);
+-	if (rc)
+-		dprintk("RPC:       %s: failed ib_dereg_mr,"
+-			" status %i\n", __func__, rc);
+-	return rc;
+-}
+-
+ int
+ rpcrdma_register_external(struct rpcrdma_mr_seg *seg,
+ 			int nsegs, int writing, struct rpcrdma_xprt *r_xprt)
+@@ -1701,10 +1622,8 @@ rpcrdma_register_external(struct rpcrdma_mr_seg *seg,
+ 		rc = rpcrdma_register_fmr_external(seg, &nsegs, writing, ia);
+ 		break;
  
- static struct file_system_type nfsd_fs_type = {
- 	.owner		= THIS_MODULE,
- 	.name		= "nfsd",
- 	.mount		= nfsd_mount,
--	.kill_sb	= kill_litter_super,
-+	.kill_sb	= nfsd_umount,
- };
+-	/* Default registration each time */
+ 	default:
+-		rc = rpcrdma_register_default_external(seg, &nsegs, writing, ia);
+-		break;
++		return -1;
+ 	}
+ 	if (rc)
+ 		return -1;
+@@ -1738,7 +1657,6 @@ rpcrdma_deregister_external(struct rpcrdma_mr_seg *seg,
+ 		break;
  
- #ifdef CONFIG_PROC_FS
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index 5bc9380..ed8eedf 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -670,7 +670,7 @@ int nfsd_pool_stats_open(struct inode *inode, struct file *file)
- int nfsd_pool_stats_release(struct inode *inode, struct file *file)
- {
- 	int ret = seq_release(inode, file);
--	struct net *net = &init_net;
-+	struct net *net = inode->i_sb->s_fs_info;
- 
- 	mutex_lock(&nfsd_mutex);
- 	/* this function really, really should have been called svc_put() */
--- 
-1.8.2.2
-
+ 	default:
+-		rc = rpcrdma_deregister_default_external(seg, ia);
+ 		break;
+ 	}
+ 	if (r) {
 
