@@ -1,136 +1,97 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:24975 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751239AbaDNPIQ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 14 Apr 2014 11:08:16 -0400
-Message-ID: <534BF9B9.3000707@RedHat.com>
-Date: Mon, 14 Apr 2014 11:07:37 -0400
-From: Steve Dickson <SteveD@redhat.com>
+Received: from mail-yh0-f43.google.com ([209.85.213.43]:41882 "EHLO
+	mail-yh0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754027AbaDUWCZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Apr 2014 18:02:25 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH V2 11/17] xprtrdma: Simplify rpcrdma_deregister_external()
+	synopsis
+To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Date: Mon, 21 Apr 2014 18:02:22 -0400
+Message-ID: <20140421220222.12569.19405.stgit@manet.1015granger.net>
+In-Reply-To: <20140421214442.12569.8950.stgit@manet.1015granger.net>
+References: <20140421214442.12569.8950.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-To: Jeff Layton <jlayton@redhat.com>
-CC: trond.myklebust@primarydata.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 5/5] gssd: scrape the acceptor name out of the context
-References: <1397161863-29266-1-git-send-email-jlayton@redhat.com> <1397161863-29266-6-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1397161863-29266-6-git-send-email-jlayton@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hey Jeff,
+Clean up: All remaining callers of rpcrdma_deregister_external()
+pass NULL as the last argument, so remove that argument.
 
-Just a couple nit.... 
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Tested-by: Steve Wise <swise@opengridcomputing.com>
+---
 
-On 04/10/2014 04:31 PM, Jeff Layton wrote:
-> ...and pass it to the kernel in the downcall. Legacy kernels will just
-> ignore the extra data, but with a proposed kernel patch the kernel will
-> grab this info and use it to verify requests on the v4.0 callback
-> channel.
-> 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  utils/gssd/gssd_proc.c | 39 ++++++++++++++++++++++++++++-----------
->  1 file changed, 28 insertions(+), 11 deletions(-)
-> 
-> diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-> index 7387cce010cf..d95e39416c28 100644
-> --- a/utils/gssd/gssd_proc.c
-> +++ b/utils/gssd/gssd_proc.c
-> @@ -77,6 +77,7 @@
->  #include "context.h"
->  #include "nfsrpc.h"
->  #include "nfslib.h"
-> +#include "gss_names.h"
->  
->  /*
->   * pollarray:
-> @@ -683,16 +684,19 @@ parse_enctypes(char *enctypes)
->  
->  static void
->  do_downcall(int k5_fd, uid_t uid, struct authgss_private_data *pd,
-> -	    gss_buffer_desc *context_token, OM_uint32 lifetime_rec)
-> +	    gss_buffer_desc *context_token, OM_uint32 lifetime_rec,
-> +	    gss_buffer_desc *acceptor)
->  {
->  	char    *buf = NULL, *p = NULL, *end = NULL;
->  	unsigned int timeout = context_timeout;
->  	unsigned int buf_size = 0;
->  
-> -	printerr(1, "doing downcall lifetime_rec %u\n", lifetime_rec);
-> +	printerr(1, "doing downcall: lifetime_rec=%u acceptor=%.*s\n",
-> +		lifetime_rec, acceptor->length, acceptor->value);
->  	buf_size = sizeof(uid) + sizeof(timeout) + sizeof(pd->pd_seq_win) +
->  		sizeof(pd->pd_ctx_hndl.length) + pd->pd_ctx_hndl.length +
-> -		sizeof(context_token->length) + context_token->length;
-> +		sizeof(context_token->length) + context_token->length +
-> +		acceptor->length;
->  	p = buf = malloc(buf_size);
->  	if (!buf)
->  		goto out_err;
-> @@ -707,6 +711,8 @@ do_downcall(int k5_fd, uid_t uid, struct authgss_private_data *pd,
->  	if (WRITE_BYTES(&p, end, pd->pd_seq_win)) goto out_err;
->  	if (write_buffer(&p, end, &pd->pd_ctx_hndl)) goto out_err;
->  	if (write_buffer(&p, end, context_token)) goto out_err;
-> +	if (acceptor->length > 0 &&
-> +	    write_buffer(&p, end, acceptor)) goto out_err;
->  
->  	if (write(k5_fd, buf, p - buf) < p - buf) goto out_err;
->  	free(buf);
-> @@ -1034,6 +1040,9 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
->  	gss_cred_id_t		gss_cred;
->  	OM_uint32		maj_stat, min_stat, lifetime_rec;
->  	pid_t			pid;
-> +	gss_name_t		gacceptor;
-> +	gss_OID			mech;
-> +	gss_buffer_desc		acceptor  = {0};
->  
->  	pid = fork();
->  	switch(pid) {
-> @@ -1174,15 +1183,22 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
->  		goto out_return_error;
->  	}
->  
-> -	/* Grab the context lifetime to pass to the kernel. lifetime_rec
-> -	 * is set to zero on error */
-Why get rid of this comment instead of updating it? 
+ net/sunrpc/xprtrdma/rpc_rdma.c  |    2 +-
+ net/sunrpc/xprtrdma/transport.c |    2 +-
+ net/sunrpc/xprtrdma/verbs.c     |    8 +-------
+ net/sunrpc/xprtrdma/xprt_rdma.h |    2 +-
+ 4 files changed, 4 insertions(+), 10 deletions(-)
 
-> -	maj_stat = gss_inquire_context(&min_stat, pd.pd_ctx, NULL, NULL,
-> -				       &lifetime_rec, NULL, NULL, NULL, NULL);
-> +	maj_stat = gss_inquire_context(&min_stat, pd.pd_ctx, NULL, &gacceptor,
-> +				       &lifetime_rec, &mech, NULL, NULL, NULL);
->  
-> -	if (maj_stat)
-> -		printerr(1, "WARNING: Failed to inquire context for lifetme "
-> -			    "maj_stat %u\n", maj_stat);
-> +	if (maj_stat != GSS_S_COMPLETE) {
-> +		printerr(1, "WARNING: Failed to inquire context "
-> +			    "maj_stat (0x%x)\n", maj_stat);
-> +	} else {
-> +		get_hostbased_client_buffer(gacceptor, mech, &acceptor);
-> +		gss_release_name(&min_stat, &gacceptor);
-> +	}
->  
-> +	/*
-> +	 * The serialization can mean turning the ctx into a lucid context. If
-> +	 * that happens then the original ctx is no longer valid, so we mustn't
-> +	 * try to use if after this point.
-I'm not sure what you are trying to say here... 
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index a38efda..315417d 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -273,7 +273,7 @@ rpcrdma_create_chunks(struct rpc_rqst *rqst, struct xdr_buf *target,
+ out:
+ 	for (pos = 0; nchunks--;)
+ 		pos += rpcrdma_deregister_external(
+-				&req->rl_segments[pos], r_xprt, NULL);
++				&req->rl_segments[pos], r_xprt);
+ 	return 0;
+ }
+ 
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index 4607b62..6a47193 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -575,7 +575,7 @@ xprt_rdma_free(void *buffer)
+ 	for (i = 0; req->rl_nchunks;) {
+ 		--req->rl_nchunks;
+ 		i += rpcrdma_deregister_external(
+-			&req->rl_segments[i], r_xprt, NULL);
++			&req->rl_segments[i], r_xprt);
+ 	}
+ 
+ 	if (req->rl_iov.length == 0) {	/* see allocate above */
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 9b71896..7a8a1bf 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -1632,7 +1632,7 @@ rpcrdma_register_external(struct rpcrdma_mr_seg *seg,
+ 
+ int
+ rpcrdma_deregister_external(struct rpcrdma_mr_seg *seg,
+-		struct rpcrdma_xprt *r_xprt, void *r)
++		struct rpcrdma_xprt *r_xprt)
+ {
+ 	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
+ 	int nsegs = seg->mr_nsegs, rc;
+@@ -1658,12 +1658,6 @@ rpcrdma_deregister_external(struct rpcrdma_mr_seg *seg,
+ 	default:
+ 		break;
+ 	}
+-	if (r) {
+-		struct rpcrdma_rep *rep = r;
+-		void (*func)(struct rpcrdma_rep *) = rep->rr_func;
+-		rep->rr_func = NULL;
+-		func(rep);	/* dereg done, callback now */
+-	}
+ 	return nsegs;
+ }
+ 
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index bf08ee0..3f44d6a 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -331,7 +331,7 @@ int rpcrdma_deregister_internal(struct rpcrdma_ia *,
+ int rpcrdma_register_external(struct rpcrdma_mr_seg *,
+ 				int, int, struct rpcrdma_xprt *);
+ int rpcrdma_deregister_external(struct rpcrdma_mr_seg *,
+-				struct rpcrdma_xprt *, void *);
++				struct rpcrdma_xprt *);
+ 
+ /*
+  * RPC/RDMA connection management calls - xprtrdma/rpc_rdma.c
 
-steved.
-
-> +	 */
->  	if (serialize_context_for_kernel(&pd.pd_ctx, &token, &krb5oid, NULL)) {
->  		printerr(0, "WARNING: Failed to serialize krb5 context for "
->  			    "user with uid %d for server %s\n",
-> @@ -1190,9 +1206,10 @@ process_krb5_upcall(struct clnt_info *clp, uid_t uid, int fd, char *tgtname,
->  		goto out_return_error;
->  	}
->  
-> -	do_downcall(fd, uid, &pd, &token, lifetime_rec);
-> +	do_downcall(fd, uid, &pd, &token, lifetime_rec, &acceptor);
->  
->  out:
-> +	gss_release_buffer(&min_stat, &acceptor);
->  	if (token.value)
->  		free(token.value);
->  #ifdef HAVE_AUTHGSS_FREE_PRIVATE_DATA
-> 
