@@ -1,34 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f169.google.com ([209.85.213.169]:36877 "EHLO
-	mail-ig0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932826AbaDINld convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Apr 2014 09:41:33 -0400
-Received: by mail-ig0-f169.google.com with SMTP id h18so7084571igc.4
-        for <linux-nfs@vger.kernel.org>; Wed, 09 Apr 2014 06:41:32 -0700 (PDT)
+Received: from mail-ie0-f173.google.com ([209.85.223.173]:58201 "EHLO
+	mail-ie0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751134AbaDUNNo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Apr 2014 09:13:44 -0400
+Received: by mail-ie0-f173.google.com with SMTP id rl12so3878589iec.4
+        for <linux-nfs@vger.kernel.org>; Mon, 21 Apr 2014 06:13:44 -0700 (PDT)
+Message-ID: <1398086021.2891.10.camel@leira.trondhjem.org>
+Subject: Re: [PATCH 30/70] NFSd: Replace delegation->dl_file with the
+ dl_stid.sc_file
 From: Trond Myklebust <trond.myklebust@primarydata.com>
-Content-Type: text/plain; charset=windows-1252
-Subject: commit 1bc49d83c37c (nfsd4: fix nfs4err_resource in 4.1 case)
-Date: Wed, 9 Apr 2014 09:41:28 -0400
-Message-Id: <ED8FB66B-E2A5-4BD5-95DE-160C9717D9AB@primarydata.com>
-Cc: NFS <linux-nfs@vger.kernel.org>
-To: Dr Fields James Bruce <bfields@fieldses.org>
-Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
+To: Christoph Hellwig <hch@infradead.org>
+Cc: Bruce Fields <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Date: Mon, 21 Apr 2014 09:13:41 -0400
+In-Reply-To: <20140419144030.GC25682@infradead.org>
+References: <1397846704-14567-22-git-send-email-trond.myklebust@primarydata.com>
+	 <1397846704-14567-23-git-send-email-trond.myklebust@primarydata.com>
+	 <1397846704-14567-24-git-send-email-trond.myklebust@primarydata.com>
+	 <1397846704-14567-25-git-send-email-trond.myklebust@primarydata.com>
+	 <1397846704-14567-26-git-send-email-trond.myklebust@primarydata.com>
+	 <1397846704-14567-27-git-send-email-trond.myklebust@primarydata.com>
+	 <1397846704-14567-28-git-send-email-trond.myklebust@primarydata.com>
+	 <1397846704-14567-29-git-send-email-trond.myklebust@primarydata.com>
+	 <1397846704-14567-30-git-send-email-trond.myklebust@primarydata.com>
+	 <1397846704-14567-31-git-send-email-trond.myklebust@primarydata.com>
+	 <20140419144030.GC25682@infradead.org>
+Content-Type: text/plain; charset="UTF-8"
+Mime-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Bruce,
+On Sat, 2014-04-19 at 07:40 -0700, Christoph Hellwig wrote:
+> Instead of adding a mostly unused file field to the stid in the previous
+> patch and starting to use it here I'd recommend merging the two patches.
+> 
+Ack and done.
 
-I have a question about that patch.
-
-According to RFC5661, NFS4ERR_REP_TOO_BIG/NFS4ERR_REP_TOO_BIG_TO_CACHE are only appropriate if "The reply to a Compound would exceed the channel's negotiated maximum response size.”.
-Given that the callers of nfsd4_encode_fattr appear to all pass in ‘buffer’ and ‘buflen’ arguments that are limited to single page, doesn’t this mean that you can end up returning nfs4err_resource in cases where nfserr_rep_too_big/nfserr_rep_too_big_to_cache are simply not appropriate?
-
-Either way, the NFS client will handle this badly. There is no recovery for NFS4ERR_RESOURCE. and we do not ever expect to hit NFSERR_REP_TOO_BIG/TOO_BIG_TO_CACHE. The latter two can presumably only be recovered by renegotiating the session and then retrying the request, which won’t work here...
-
-Cheers
-  Trond
-_________________________________
+-- 
 Trond Myklebust
 Linux NFS client maintainer, PrimaryData
 trond.myklebust@primarydata.com
+
 
