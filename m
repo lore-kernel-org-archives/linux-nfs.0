@@ -1,56 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e23smtp06.au.ibm.com ([202.81.31.148]:40709 "EHLO
-	e23smtp06.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753308AbaD0QPZ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Apr 2014 12:15:25 -0400
-Received: from /spool/local
-	by e23smtp06.au.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <aneesh.kumar@linux.vnet.ibm.com>;
-	Mon, 28 Apr 2014 02:15:23 +1000
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
-        viro@zeniv.linux.org.uk, dhowells@redhat.com
-Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH -V1 04/22] vfs: check for directory early
-Date: Sun, 27 Apr 2014 21:44:35 +0530
-Message-Id: <1398615293-22931-5-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-In-Reply-To: <1398615293-22931-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1398615293-22931-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from mail-yh0-f46.google.com ([209.85.213.46]:48378 "EHLO
+	mail-yh0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754027AbaDUWCw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Apr 2014 18:02:52 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH V2 14/17] xprtrmda: Reduce lock contention in completion
+	handlers
+To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Date: Mon, 21 Apr 2014 18:02:50 -0400
+Message-ID: <20140421220250.12569.84913.stgit@manet.1015granger.net>
+In-Reply-To: <20140421214442.12569.8950.stgit@manet.1015granger.net>
+References: <20140421214442.12569.8950.stgit@manet.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andreas Gruenbacher <agruen@kernel.org>
+Skip the ib_poll_cq() after re-arming, if the provider knows there
+are no additional items waiting. (Have a look at commit ed23a727 for
+more details).
 
-Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/namei.c | 5 +++--
- 1 file changed, 3 insertions(+), 2 deletions(-)
 
-diff --git a/fs/namei.c b/fs/namei.c
-index c7fee619691f..7d93d195f0e5 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -3868,6 +3868,9 @@ int vfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_de
- 	if (!inode)
- 		return -ENOENT;
+ net/sunrpc/xprtrdma/verbs.c |   14 ++++++++++----
+ 1 files changed, 10 insertions(+), 4 deletions(-)
+
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index ce7b45f..81daf2b 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -192,8 +192,11 @@ rpcrdma_sendcq_upcall(struct ib_cq *cq, void *cq_context)
+ 		return;
+ 	}
  
-+	if (S_ISDIR(inode->i_mode))
-+		return -EPERM;
-+
- 	error = may_create(dir, new_dentry);
- 	if (error)
- 		return error;
-@@ -3882,8 +3885,6 @@ int vfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_de
- 		return -EPERM;
- 	if (!dir->i_op->link)
- 		return -EPERM;
--	if (S_ISDIR(inode->i_mode))
--		return -EPERM;
+-	rc = ib_req_notify_cq(cq, IB_CQ_NEXT_COMP);
+-	if (rc) {
++	rc = ib_req_notify_cq(cq,
++			IB_CQ_NEXT_COMP | IB_CQ_REPORT_MISSED_EVENTS);
++	if (rc == 0)
++		return;
++	if (rc < 0) {
+ 		dprintk("RPC:       %s: ib_req_notify_cq failed: %i\n",
+ 			__func__, rc);
+ 		return;
+@@ -272,8 +275,11 @@ rpcrdma_recvcq_upcall(struct ib_cq *cq, void *cq_context)
+ 		return;
+ 	}
  
- 	error = security_inode_link(old_dentry, dir, new_dentry);
- 	if (error)
--- 
-1.9.1
+-	rc = ib_req_notify_cq(cq, IB_CQ_NEXT_COMP);
+-	if (rc) {
++	rc = ib_req_notify_cq(cq,
++			IB_CQ_NEXT_COMP | IB_CQ_REPORT_MISSED_EVENTS);
++	if (rc == 0)
++		return;
++	if (rc < 0) {
+ 		dprintk("RPC:       %s: ib_req_notify_cq failed: %i\n",
+ 			__func__, rc);
+ 		return;
 
