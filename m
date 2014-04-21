@@ -1,84 +1,84 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:59586 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752449AbaDDN6r (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 4 Apr 2014 09:58:47 -0400
-Date: Fri, 4 Apr 2014 09:58:43 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Mark Lord <mlord@pobox.com>, "J. Bruce Fields" <bfields@redhat.com>,
-        Albert Fluegel <af@muc.de>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: linux-3.14 nfsd regression
-Message-ID: <20140404135842.GB17594@fieldses.org>
-References: <533D8D73.1090603@pobox.com>
- <20140403171643.GB28790@pad.redhat.com>
- <533D9F8A.6030001@pobox.com>
- <20140403145504.3b04170e@tlielax.poochiereds.net>
- <20140403201627.GC8343@fieldses.org>
- <20140403192146.79679909@tlielax.poochiereds.net>
+Received: from mail-yk0-f171.google.com ([209.85.160.171]:57556 "EHLO
+	mail-yk0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752896AbaDUWB6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Apr 2014 18:01:58 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH V2 08/17] xprtrdma: Fall back to MTHCAFMR when FRMR is not
+	supported
+To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Date: Mon, 21 Apr 2014 18:01:56 -0400
+Message-ID: <20140421220156.12569.83037.stgit@manet.1015granger.net>
+In-Reply-To: <20140421214442.12569.8950.stgit@manet.1015granger.net>
+References: <20140421214442.12569.8950.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140403192146.79679909@tlielax.poochiereds.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 03, 2014 at 07:21:46PM -0400, Jeff Layton wrote:
-> So according to the RFC you have to encode both the mode bits and the
-> ftype for v2. The type bits seem to be removed from the mode in NFSv3
-> though, so perhaps we should only be doing that masking in versions
-> above v2?
+An audit of in-kernel RDMA providers that do not support the FRMR
+memory registration shows that several of them support MTHCAFMR.
+Prefer MTHCAFMR when FRMR is not supported.
 
-Right, the problematic patch applied the same mask in both v2 and v3
-cases, so I'm reverting just the v2 part (see below).
+If MTHCAFMR is not supported, only then choose ALLPHYSICAL.
 
-> With a quick check, it looks like the v3 code doesn't rely on those bits
-> and I imagine v4 doesn't either.
-> 
-> It might also be nice to have the client v2 decode_fattr function to
-> throw a warning if the server sends us mismatched type bits and ftype
-> values. That would have helped us catch this sooner...
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-Yes, that might be a reasonable thing to do, though I don't know if it's
-worth it.
+ net/sunrpc/xprtrdma/verbs.c |   31 +++++++++++++++----------------
+ 1 files changed, 15 insertions(+), 16 deletions(-)
 
---b.
-
-commit 35a8dff14e76c00e5b52140290cfb498dc2454a0
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Thu Apr 3 15:10:35 2014 -0400
-
-    nfsd: revert v2 half of "nfsd: don't return high mode bits"
-    
-    This reverts the part of commit 6e14b46b91fee8a049b0940333ce13a820beaaa5
-    that changes NFSv2 behavior.
-    
-    Mark Lord found that it broke nfs-root for Linux clients, because it
-    broke NFSv2.
-    
-    In fact, from RFC 1094:
-    
-    	"Notice that the file type is specified both in the mode bits
-    	and in the file type.  This is really a bug in the protocol and
-    	will be fixed in future versions."
-    
-    So NFSv2 clients really are expected to depend on the high bits of the
-    mode.
-    
-    Cc: stable@kernel.org
-    Reported-by: Mark Lord <mlord@pobox.com>
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-diff --git a/fs/nfsd/nfsxdr.c b/fs/nfsd/nfsxdr.c
-index b17d932..9c769a4 100644
---- a/fs/nfsd/nfsxdr.c
-+++ b/fs/nfsd/nfsxdr.c
-@@ -152,7 +152,7 @@ encode_fattr(struct svc_rqst *rqstp, __be32 *p, struct svc_fh *fhp,
- 	type = (stat->mode & S_IFMT);
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 6bb9a07..a352798 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -491,33 +491,32 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
+ 		ia->ri_dma_lkey = ia->ri_id->device->local_dma_lkey;
+ 	}
  
- 	*p++ = htonl(nfs_ftypes[type >> 12]);
--	*p++ = htonl((u32) (stat->mode & S_IALLUGO));
-+	*p++ = htonl((u32) stat->mode);
- 	*p++ = htonl((u32) stat->nlink);
- 	*p++ = htonl((u32) from_kuid(&init_user_ns, stat->uid));
- 	*p++ = htonl((u32) from_kgid(&init_user_ns, stat->gid));
+-	switch (memreg) {
+-	case RPCRDMA_MTHCAFMR:
+-		if (!ia->ri_id->device->alloc_fmr) {
+-			dprintk("RPC:       %s: MTHCAFMR registration "
+-				"specified but not supported by adapter, "
+-				"using riskier RPCRDMA_ALLPHYSICAL\n",
+-				__func__);
+-			memreg = RPCRDMA_ALLPHYSICAL;
+-		}
+-		break;
+-	case RPCRDMA_FRMR:
++	if (memreg == RPCRDMA_FRMR) {
+ 		/* Requires both frmr reg and local dma lkey */
+ 		if ((devattr.device_cap_flags &
+ 		     (IB_DEVICE_MEM_MGT_EXTENSIONS|IB_DEVICE_LOCAL_DMA_LKEY)) !=
+ 		    (IB_DEVICE_MEM_MGT_EXTENSIONS|IB_DEVICE_LOCAL_DMA_LKEY)) {
+ 			dprintk("RPC:       %s: FRMR registration "
+-				"specified but not supported by adapter, "
+-				"using riskier RPCRDMA_ALLPHYSICAL\n",
+-				__func__);
+-			memreg = RPCRDMA_ALLPHYSICAL;
++				"not supported by HCA\n", __func__);
++			memreg = RPCRDMA_MTHCAFMR;
+ 		} else {
+ 			/* Mind the ia limit on FRMR page list depth */
+ 			ia->ri_max_frmr_depth = min_t(unsigned int,
+ 				RPCRDMA_MAX_DATA_SEGS,
+ 				devattr.max_fast_reg_page_list_len);
+ 		}
+-		break;
++	}
++	if (memreg == RPCRDMA_MTHCAFMR) {
++		if (!ia->ri_id->device->alloc_fmr) {
++			dprintk("RPC:       %s: MTHCAFMR registration "
++				"not supported by HCA\n", __func__);
++#if RPCRDMA_PERSISTENT_REGISTRATION
++			memreg = RPCRDMA_ALLPHYSICAL;
++#else
++			rc = -EINVAL;
++			goto out2;
++#endif
++		}
+ 	}
+ 
+ 	/*
+
