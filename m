@@ -1,82 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ee0-f54.google.com ([74.125.83.54]:53817 "EHLO
-	mail-ee0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753167AbaD0JQI (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Apr 2014 05:16:08 -0400
-Message-ID: <535CCAD2.4060304@gmail.com>
-Date: Sun, 27 Apr 2014 11:16:02 +0200
-From: "Michael Kerrisk (man-pages)" <mtk.manpages@gmail.com>
+Received: from mail-yh0-f43.google.com ([209.85.213.43]:36816 "EHLO
+	mail-yh0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754027AbaDUWAr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Apr 2014 18:00:47 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH V2 00/17] NFS/RDMA patches for review
+To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Date: Mon, 21 Apr 2014 18:00:45 -0400
+Message-ID: <20140421214442.12569.8950.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-To: NeilBrown <neilb@suse.de>
-CC: mtk.manpages@gmail.com, "Stefan (metze) Metzmacher" <metze@samba.org>,
-        Jeff Layton <jlayton@redhat.com>, linux-fsdevel@vger.kernel.org,
-        linux-kernel@vger.kernel.org,
-        Ganesha NFS List <nfs-ganesha-devel@lists.sourceforge.net>,
-        Suresh Jayaraman <sjayaraman@suse.de>,
-        Trond Myklebust <trond.myklebust@fys.uio.no>,
-        Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org,
-        "J. Bruce Fields" <bfields@fieldses.org>
-Subject: flock() and NFS [Was: Re: [PATCH] locks: rename file-private locks
- to file-description locks]
-References: <1398087935-14001-1-git-send-email-jlayton@redhat.com>	<20140421140246.GB26358@brightrain.aerifal.cx>	<535529FA.8070709@gmail.com>	<20140421161004.GC26358@brightrain.aerifal.cx>	<5355644C.7000801@gmail.com>	<20140421184640.GD26358@brightrain.aerifal.cx>	<535573E0.9080106@gmail.com>	<20140421155520.3b33fbef@ipyr.poochiereds.net>	<53558A73.3010602@samba.org>	<5355F60C.8010004@gmail.com> <20140427145125.21e7e6c6@notabene.brown>
-In-Reply-To: <20140427145125.21e7e6c6@notabene.brown>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-[Trimming some folk from CC, and adding various NFS people]
+After folks tried out RPCRDMA_REGISTER support as I requested in
+the cover letter of the last version of this series, existing
+problems were discovered already in the upstream kernel, starting
+with the problem addressed by Steve's LOCAL_WRITE patch from last
+week.
 
-On 04/27/2014 06:51 AM, NeilBrown wrote:
+Rather than address them, this series simply removes what is now an
+obsolete memory registration mode.  For some time, HCAs that do not
+support FRMR fall back on ALLPHYSICAL mode, leaving REGISTER to
+gather bit rot.
 
-[...]
+In addition I added three patches that implement improvements to
+the new split completion handler, based on suggestions from Sagi
+Grimberg.
 
-> Note to Michael: The text
->    flock() does not lock files over NFS.
-> in flock(2) is no longer accurate.  The reality is ... complex.
-> See nfs(5), and search for "local_lock".
+Test and review the "nfs-rdma-client" branch:
 
-Ahhh -- I see: 
-http://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=5eebde23223aeb0ad2d9e3be6590ff8bbfab0fc2
+  git://git.linux-nfs.org/projects/cel/cel-2.6.git
 
-Thanks for the heads up.
+Thanks!
 
-Just in general, it would be great if the flock(2) and fcntl(2) man pages
-contained correct details for NFS, of course. So, for example, if there 
-are any current gotchas for NFS and fcntl() byte-range locking, I'd like 
-to add those to the fcntl(2) man page.
+---
 
-Anyway, returning to your point about flock(), how would this text
-look for the flock(2) manual page:
+Allen Andrews (1):
+      nfs-rdma: Fix for FMR leaks
 
-    NOTES
-       Since  kernel  2.0,  flock() is implemented as a system call in
-       its own right rather than being emulated in the GNU  C  library
-       as  a  call  to fcntl(2).  This yields classical BSD semantics:
-       there is no interaction between the types  of  lock  placed  by
-       flock()  and  fcntl(2),  and  flock() does not detect deadlock.
-       (Note, however, that on some modern BSDs, flock() and  fcntl(2)
-       locks do interact with one another.)
+Chuck Lever (15):
+      xprtrdma: Reduce the number of hardway buffer allocations
+      xprtrdma: Limit work done by completion handler
+      xprtrmda: Reduce calls to ib_poll_cq() in completion handlers
+      xprtrmda: Reduce lock contention in completion handlers
+      xprtrdma: Split the completion queue
+      xprtrdma: Make rpcrdma_ep_destroy() return void
+      xprtrdma: Simplify rpcrdma_deregister_external() synopsis
+      xprtrdma: Add CONFIG setting that can disable ALLPHYSICAL
+      xprtrdma: mount reports "Invalid mount option" if memreg mode not supported
+      xprtrdma: Fall back to MTHCAFMR when FRMR is not supported
+      xprtrdma: Remove REGISTER memory registration mode
+      xprtrdma: Remove MEMWINDOWS registration modes
+      xprtrdma: Remove BOUNCEBUFFERS memory registration mode
+      xprtrdma: RPC/RDMA must invoke xprt_wake_pending_tasks() in process context
+      xprtrdma: Enable RDMA pad optimization by default
 
-       In Linux kernels up to 2.6.11, flock() does not lock files over
-       NFS (i.e., the scope of locks was limited to the local system).
-       Instead,  one could use fcntl(2) byte-range locking, which does
-       work over NFS, given a sufficiently recent version of Linux and
-       a  server  which  supports  locking.   Since  Linux 2.6.12, NFS
-       clients support flock() locks by emulating them  as  byte-range
-       locks on the entire file.  This means that fcntl(2) and flock()
-       locks do interact with  one  another  over  NFS.   Since  Linux
-       2.6.37,  the  kernel  supports a compatibility mode that allows
-       flock() locks (and also  fcntl(2)  byte  region  locks)  to  be
-       treated  as  local; see the discussion of the local_lock option
-       in nfs(5).
-?
+Steve Wise (1):
+      xprtrdma: mind the device's max fast register page list depth
 
-Thanks,
 
-Michael
-
+ include/linux/sunrpc/xprtrdma.h |    2 
+ net/sunrpc/Kconfig              |   14 +
+ net/sunrpc/xprtrdma/rpc_rdma.c  |   63 +---
+ net/sunrpc/xprtrdma/transport.c |   34 --
+ net/sunrpc/xprtrdma/verbs.c     |  694 +++++++++++++++------------------------
+ net/sunrpc/xprtrdma/xprt_rdma.h |   16 +
+ 6 files changed, 316 insertions(+), 507 deletions(-)
 
 -- 
-Michael Kerrisk
-Linux man-pages maintainer; http://www.kernel.org/doc/man-pages/
-Linux/UNIX System Programming Training: http://man7.org/training/
+Chuck Lever
