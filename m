@@ -1,90 +1,34 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pb0-f48.google.com ([209.85.160.48]:48891 "EHLO
-	mail-pb0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752973AbaDCRxv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Apr 2014 13:53:51 -0400
-Received: by mail-pb0-f48.google.com with SMTP id md12so2197343pbc.21
-        for <linux-nfs@vger.kernel.org>; Thu, 03 Apr 2014 10:53:51 -0700 (PDT)
-From: Andy Lutomirski <luto@amacapital.net>
-To: "H. Peter Anvin" <hpa@linux.intel.com>,
-        Markus Trippelsdorf <markus@trippelsdorf.de>
-Cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        Andy Lutomirski <luto@amacapital.net>
-Subject: [PATCH] x86, vdso: Make the vdso linker script compatible with Gold
-Date: Thu,  3 Apr 2014 10:53:43 -0700
-Message-Id: <243fa205098d112ec759c9b1b26785c09f399833.1396547532.git.luto@amacapital.net>
-In-Reply-To: <20140403174339.GA284@x4>
-References: <20140403174339.GA284@x4>
+Received: from bombadil.infradead.org ([198.137.202.9]:50102 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751982AbaDUNcx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Apr 2014 09:32:53 -0400
+Date: Mon, 21 Apr 2014 06:32:52 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Cc: Trond.Myklebust@primarydata.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 07/17] NFS: Create a common rw_header_alloc and
+ rw_header_free function
+Message-ID: <20140421133252.GA30954@infradead.org>
+References: <1397768981-12856-1-git-send-email-Anna.Schumaker@Netapp.com>
+ <1397768981-12856-8-git-send-email-Anna.Schumaker@Netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1397768981-12856-8-git-send-email-Anna.Schumaker@Netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Gold can't parse the script due to:
-https://sourceware.org/bugzilla/show_bug.cgi?id=16804
+On Thu, Apr 17, 2014 at 05:09:31PM -0400, Anna Schumaker wrote:
+> From: Anna Schumaker <Anna.Schumaker@netapp.com>
+> 
+> I create a new struct nfs_rw_ops to decide the differences between reads
+> and writes.  This struct will be set when initializing a new
+> nfs_pgio_descriptor, and then passed on to the nfs_rw_header when a new
+> header is allocated.
 
-With a workaround in place for that issue, Gold 2.23 crashes due to:
-https://sourceware.org/bugzilla/show_bug.cgi?id=15355
-
-This works around the former bug and avoids the second by removing
-the unnecessary vvar and hpet sections and segments.  The vdso and
-hpet symbols are still there, and nothing needed the sections or
-segments.
-
-Reported-by: Markus Trippelsdorf <markus@trippelsdorf.de>
-Signed-off-by: Andy Lutomirski <luto@amacapital.net>
----
- arch/x86/vdso/vdso-layout.lds.S | 19 ++++++++-----------
- 1 file changed, 8 insertions(+), 11 deletions(-)
-
-diff --git a/arch/x86/vdso/vdso-layout.lds.S b/arch/x86/vdso/vdso-layout.lds.S
-index 2e263f3..9df017a 100644
---- a/arch/x86/vdso/vdso-layout.lds.S
-+++ b/arch/x86/vdso/vdso-layout.lds.S
-@@ -9,12 +9,9 @@ SECTIONS
- #ifdef BUILD_VDSO32
- #include <asm/vdso32.h>
- 
--	.hpet_sect : {
--		hpet_page = . - VDSO_OFFSET(VDSO_HPET_PAGE);
--	} :text :hpet_sect
-+	hpet_page = . - VDSO_OFFSET(VDSO_HPET_PAGE);
- 
--	.vvar_sect : {
--		vvar = . - VDSO_OFFSET(VDSO_VVAR_PAGE);
-+	vvar = . - VDSO_OFFSET(VDSO_VVAR_PAGE);
- 
- 	/* Place all vvars at the offsets in asm/vvar.h. */
- #define EMIT_VVAR(name, offset) vvar_ ## name = vvar + offset;
-@@ -22,7 +19,6 @@ SECTIONS
- #include <asm/vvar.h>
- #undef __VVAR_KERNEL_LDS
- #undef EMIT_VVAR
--	} :text :vvar_sect
- #endif
- 	. = SIZEOF_HEADERS;
- 
-@@ -61,7 +57,12 @@ SECTIONS
- 	 */
- 	. = ALIGN(0x100);
- 
--	.text		: { *(.text*) }			:text	=0x90909090
-+	.text		: { *(.text*) }			:text	=0x90909090,
-+
-+	/*
-+	 * The comma above works around a bug in gold:
-+	 * https://sourceware.org/bugzilla/show_bug.cgi?id=16804
-+	 */
- 
- 	/DISCARD/ : {
- 		*(.discard)
-@@ -84,8 +85,4 @@ PHDRS
- 	dynamic		PT_DYNAMIC	FLAGS(4);		/* PF_R */
- 	note		PT_NOTE		FLAGS(4);		/* PF_R */
- 	eh_frame_hdr	PT_GNU_EH_FRAME;
--#ifdef BUILD_VDSO32
--	vvar_sect	PT_NULL		FLAGS(4);		/* PF_R */
--	hpet_sect	PT_NULL		FLAGS(4);		/* PF_R */
--#endif
- }
--- 
-1.9.0
-
+To me it seems like adding this new vector confuses things.  From a look
+at your whole tree it seems like all methods added to it could as well
+be added to nfs_pageio_ops.  In that case we'd still keep separate
+instances of nfs_pageio_ops for reads and writes, but most methods would
+be that same.  I'm also defintively curious what you have on your
+sleeves for pnfs.
