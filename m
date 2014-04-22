@@ -1,283 +1,169 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:34165 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932155AbaDYU4V (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Apr 2014 16:56:21 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
-CC: <dros@primarydata.com>, <hch@infradead.org>
-Subject: [PATCH v2 09/17] NFS: Create a common nfs_pgio_result_common function
-Date: Fri, 25 Apr 2014 16:55:52 -0400
-Message-ID: <1398459360-2093-10-git-send-email-Anna.Schumaker@Netapp.com>
-In-Reply-To: <1398459360-2093-1-git-send-email-Anna.Schumaker@Netapp.com>
-References: <1398459360-2093-1-git-send-email-Anna.Schumaker@Netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+Received: from mail-ie0-f169.google.com ([209.85.223.169]:56616 "EHLO
+	mail-ie0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751261AbaDVUHY convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Apr 2014 16:07:24 -0400
+Received: by mail-ie0-f169.google.com with SMTP id to1so5774819ieb.14
+        for <linux-nfs@vger.kernel.org>; Tue, 22 Apr 2014 13:07:23 -0700 (PDT)
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
+Subject: Re: [PATCH v2] pnfs: fix race in filelayout commit path
+From: Weston Andros Adamson <dros@primarydata.com>
+In-Reply-To: <1398196925-67410-1-git-send-email-dros@primarydata.com>
+Date: Tue, 22 Apr 2014 16:07:57 -0400
+Cc: linux-nfs list <linux-nfs@vger.kernel.org>
+Message-Id: <4796568A-21CB-41BC-9FC3-BC5B4A7D2352@primarydata.com>
+References: <1398196925-67410-1-git-send-email-dros@primarydata.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
+On Apr 22, 2014, at 4:02 PM, Weston Andros Adamson <dros@primarydata.com> wrote:
 
-Combining these functions will let me make a single nfs_rw_common_ops
-struct (see the next patch).
+> Hold the lock while modifying commit info dataserver buckets.
+> 
+> The following oops can be reproduced by running iozone for a while against
+> a 2 DS pynfs filelayout server.
+> 
+> general protection fault: 0000 [#1] SMP DEBUG_PAGEALLOC
+> Modules linked in: nfs_layout_nfsv41_files rpcsec_gss_krb5 nfsv4 nfs fscache
+> CPU: 0 PID: 903 Comm: iozone Not tainted 3.15.0-rc1-branch-dros_testing+ #44
+> Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference
+> task: ffff880078164480 ti: ffff88006e972000 task.ti: ffff88006e972000
+> RIP: 0010:[<ffffffffa01936e1>]  [<ffffffffa01936e1>] nfs_init_commit+0x22/0x
+> RSP: 0018:ffff88006e973d30  EFLAGS: 00010246
+> RAX: ffff88006e973e00 RBX: ffff88006e828800 RCX: ffff88006e973e10
+> RDX: 0000000000000000 RSI: ffff88006e973e00 RDI: dead4ead00000000
+> RBP: ffff88006e973d38 R08: ffff88006e8289d8 R09: 0000000000000000
+> R10: ffff88006e8289d8 R11: 0000000000016988 R12: ffff88006e973b98
+> R13: ffff88007a0a6648 R14: ffff88006e973e10 R15: ffff88006e828800
+> FS:  00007f2ce396b740(0000) GS:ffff88007f200000(0000) knlGS:0000000000000000
+> CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+> CR2: 00007f03278a1000 CR3: 0000000079043000 CR4: 00000000001407f0
+> Stack:
+> ffff88006e8289d8 ffff88006e973da8 ffffffffa00f144f ffff88006e9478c0
+> ffff88006e973e00 ffff88006de21080 0000000100000002 ffff880079be6c48
+> ffff88006e973d70 ffff88006e973d70 ffff88006e973e10 ffff88006de21080
+> Call Trace:
+> [<ffffffffa00f144f>] filelayout_commit_pagelist+0x1ae/0x34a [nfs_layout_nfsv
+> [<ffffffffa0194f72>] nfs_generic_commit_list+0x92/0xc4 [nfs]
+> [<ffffffffa0195053>] nfs_commit_inode+0xaf/0x114 [nfs]
+> [<ffffffffa01892bd>] nfs_file_fsync_commit+0x82/0xbe [nfs]
+> [<ffffffffa01ceb0d>] nfs4_file_fsync+0x59/0x9b [nfsv4]
+> [<ffffffff8114ee3c>] vfs_fsync_range+0x18/0x20
+> [<ffffffff8114ee60>] vfs_fsync+0x1c/0x1e
+> [<ffffffffa01891c2>] nfs_file_flush+0x7f/0x84 [nfs]
+> [<ffffffff81127a43>] filp_close+0x3c/0x72
+> [<ffffffff81140e12>] __close_fd+0x82/0x9a
+> [<ffffffff81127a9c>] SyS_close+0x23/0x4c
+> [<ffffffff814acd12>] system_call_fastpath+0x16/0x1b
+> Code: 5b 41 5c 41 5d 41 5e 5d c3 0f 1f 44 00 00 55 48 89 e5 53 48 89 fb 48 8
+> RIP  [<ffffffffa01936e1>] nfs_init_commit+0x22/0xe1 [nfs]
+> RSP <ffff88006e973d30>
+> ---[ end trace 732fe6419b235e2f ]---
+> 
+> Suggested-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+> ---
+> 
+> Version 1 was still missing some locks around wlseg and clseg.
+> 
+> My testing hasn't been able to reproduce the oops now for over 4 hours of
+> iozone runs on two different setups. I'll keep testing...
+> 
+> I'm not sure if this is something we want to CC to stable, AFAIK no
+> vendors currently support filelayout with commit (which is why this
+> codepath is seemingly untested).
+> 
+> fs/nfs/nfs4filelayout.c | 20 ++++++++++++++++----
+> 1 file changed, 16 insertions(+), 4 deletions(-)
+> 
+> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+> index b9a35c0..b6fc8c1 100644
+> --- a/fs/nfs/nfs4filelayout.c
+> +++ b/fs/nfs/nfs4filelayout.c
+> @@ -1067,6 +1067,7 @@ filelayout_choose_commit_list(struct nfs_page *req,
+> 	 */
+> 	j = nfs4_fl_calc_j_index(lseg, req_offset(req));
+> 	i = select_bucket_index(fl, j);
+> +	spin_lock(cinfo->lock);
+> 	buckets = cinfo->ds->buckets;
+> 	list = &buckets[i].written;
+> 	if (list_empty(list)) {
+> @@ -1080,6 +1081,7 @@ filelayout_choose_commit_list(struct nfs_page *req,
+> 	}
+> 	set_bit(PG_COMMIT_TO_DS, &req->wb_flags);
 
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
----
- fs/nfs/internal.h        |  1 +
- fs/nfs/pageio.c          | 23 ++++++++++++++++++++++
- fs/nfs/read.c            | 25 ++++++++----------------
- fs/nfs/write.c           | 51 +++++++++++++++++++-----------------------------
- include/linux/nfs_fs.h   |  1 -
- include/linux/nfs_page.h |  2 ++
- 6 files changed, 54 insertions(+), 49 deletions(-)
+^^ I suppose this could be moved out of the spin lock.
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 105e2b5..b18cca4 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -402,6 +402,7 @@ extern struct nfs_pgio_data *nfs_pgio_data_alloc(struct nfs_pgio_header *, unsig
- extern void nfs_pgio_data_release(struct nfs_pgio_data *);
- extern void nfs_pgio_prepare(struct rpc_task *, void *);
- extern void nfs_pgio_release_common(void *);
-+extern void nfs_pgio_result_common(struct rpc_task *, void *);
- 
- /* read.c */
- extern void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
-diff --git a/fs/nfs/pageio.c b/fs/nfs/pageio.c
-index 97a483e..91c49cc 100644
---- a/fs/nfs/pageio.c
-+++ b/fs/nfs/pageio.c
-@@ -11,6 +11,7 @@
- 
- #include "internal.h"
- 
-+#define NFSDBG_FACILITY		NFSDBG_PAGECACHE
- 
- static inline struct nfs_rw_header *NFS_RW_HEADER(struct nfs_pgio_header *hdr)
- {
-@@ -102,3 +103,25 @@ void nfs_pgio_release_common(void *calldata)
- 		data->header->rw_ops->rw_release(data);
- 	nfs_pgio_data_release(data);
- }
-+
-+static int nfs_pgio_result(struct rpc_task *task, struct nfs_pgio_data *data)
-+{
-+	struct inode *inode = data->header->inode;
-+
-+	dprintk("NFS: %s: %5u, (status %d)\n", __func__, task->tk_pid,
-+			task->tk_status);
-+
-+	return data->header->rw_ops->rw_result(task, data, inode);
-+}
-+
-+void nfs_pgio_result_common(struct rpc_task *task, void *calldata)
-+{
-+	struct nfs_pgio_data *data = calldata;
-+
-+	if (nfs_pgio_result(task, data) != 0)
-+		return;
-+	if (task->tk_status < 0)
-+		nfs_set_pgio_error(data->header, task->tk_status, data->args.offset);
-+	else
-+		data->header->rw_ops->rw_result_common(task, data);
-+}
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index 313835b..4f49507 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -388,15 +388,10 @@ static const struct nfs_pageio_ops nfs_pageio_read_ops = {
-  * This is the callback from RPC telling us whether a reply was
-  * received or some error occurred (timeout or socket shutdown).
-  */
--int nfs_readpage_result(struct rpc_task *task, struct nfs_pgio_data *data)
-+static int nfs_readpage_result(struct rpc_task *task, struct nfs_pgio_data *data,
-+			       struct inode *inode)
- {
--	struct inode *inode = data->header->inode;
--	int status;
--
--	dprintk("NFS: %s: %5u, (status %d)\n", __func__, task->tk_pid,
--			task->tk_status);
--
--	status = NFS_PROTO(inode)->read_done(task, data);
-+	int status = NFS_PROTO(inode)->read_done(task, data);
- 	if (status != 0)
- 		return status;
- 
-@@ -429,17 +424,11 @@ static void nfs_readpage_retry(struct rpc_task *task, struct nfs_pgio_data *data
- 	rpc_restart_call_prepare(task);
- }
- 
--static void nfs_readpage_result_common(struct rpc_task *task, void *calldata)
-+static void nfs_readpage_result_common(struct rpc_task *task, struct nfs_pgio_data *data)
- {
--	struct nfs_pgio_data *data = calldata;
- 	struct nfs_pgio_header *hdr = data->header;
- 
--	/* Note the only returns of nfs_readpage_result are 0 and -EAGAIN */
--	if (nfs_readpage_result(task, data) != 0)
--		return;
--	if (task->tk_status < 0)
--		nfs_set_pgio_error(hdr, task->tk_status, data->args.offset);
--	else if (data->res.eof) {
-+	if (data->res.eof) {
- 		loff_t bound;
- 
- 		bound = data->args.offset + data->res.count;
-@@ -456,7 +445,7 @@ static void nfs_readpage_result_common(struct rpc_task *task, void *calldata)
- 
- static const struct rpc_call_ops nfs_read_common_ops = {
- 	.rpc_call_prepare = nfs_pgio_prepare,
--	.rpc_call_done = nfs_readpage_result_common,
-+	.rpc_call_done = nfs_pgio_result_common,
- 	.rpc_release = nfs_pgio_release_common,
- };
- 
-@@ -625,4 +614,6 @@ static const struct nfs_rw_ops nfs_rw_read_ops = {
- 	.rw_mode		= FMODE_READ,
- 	.rw_alloc_header	= nfs_readhdr_alloc,
- 	.rw_free_header		= nfs_readhdr_free,
-+	.rw_result		= nfs_readpage_result,
-+	.rw_result_common	= nfs_readpage_result_common,
- };
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index b08fb7d..d2351a1 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -1255,20 +1255,6 @@ void nfs_commit_prepare(struct rpc_task *task, void *calldata)
- 	NFS_PROTO(data->inode)->commit_rpc_prepare(task, data);
- }
- 
--/*
-- * Handle a write reply that flushes a whole page.
-- *
-- * FIXME: There is an inherent race with invalidate_inode_pages and
-- *	  writebacks since the page->count is kept > 1 for as long
-- *	  as the page has a write request pending.
-- */
--static void nfs_writeback_done_common(struct rpc_task *task, void *calldata)
--{
--	struct nfs_pgio_data	*data = calldata;
--
--	nfs_writeback_done(task, data);
--}
--
- static void nfs_writeback_release_common(struct nfs_pgio_data *data)
- {
- 	struct nfs_pgio_header *hdr = data->header;
-@@ -1288,7 +1274,7 @@ static void nfs_writeback_release_common(struct nfs_pgio_data *data)
- 
- static const struct rpc_call_ops nfs_write_common_ops = {
- 	.rpc_call_prepare = nfs_pgio_prepare,
--	.rpc_call_done = nfs_writeback_done_common,
-+	.rpc_call_done = nfs_pgio_result_common,
- 	.rpc_release = nfs_pgio_release_common,
- };
- 
-@@ -1320,16 +1306,11 @@ static int nfs_should_remove_suid(const struct inode *inode)
- /*
-  * This function is called when the WRITE call is complete.
-  */
--void nfs_writeback_done(struct rpc_task *task, struct nfs_pgio_data *data)
-+static int nfs_writeback_result(struct rpc_task *task, struct nfs_pgio_data *data,
-+				struct inode *inode)
- {
--	struct nfs_pgio_args	*argp = &data->args;
--	struct nfs_pgio_res	*resp = &data->res;
--	struct inode		*inode = data->header->inode;
- 	int status;
- 
--	dprintk("NFS: %5u nfs_writeback_done (status %d)\n",
--		task->tk_pid, task->tk_status);
--
- 	/*
- 	 * ->write_done will attempt to use post-op attributes to detect
- 	 * conflicting writes by other clients.  A strict interpretation
-@@ -1339,11 +1320,11 @@ void nfs_writeback_done(struct rpc_task *task, struct nfs_pgio_data *data)
- 	 */
- 	status = NFS_PROTO(inode)->write_done(task, data);
- 	if (status != 0)
--		return;
--	nfs_add_stats(inode, NFSIOS_SERVERWRITTENBYTES, resp->count);
-+		return status;
-+	nfs_add_stats(inode, NFSIOS_SERVERWRITTENBYTES, data->res.count);
- 
- #if IS_ENABLED(CONFIG_NFS_V3) || IS_ENABLED(CONFIG_NFS_V4)
--	if (resp->verf->committed < argp->stable && task->tk_status >= 0) {
-+	if (data->res.verf->committed < data->args.stable && task->tk_status >= 0) {
- 		/* We tried a write call, but the server did not
- 		 * commit data to stable storage even though we
- 		 * requested it.
-@@ -1359,25 +1340,31 @@ void nfs_writeback_done(struct rpc_task *task, struct nfs_pgio_data *data)
- 			dprintk("NFS:       faulty NFS server %s:"
- 				" (committed = %d) != (stable = %d)\n",
- 				NFS_SERVER(inode)->nfs_client->cl_hostname,
--				resp->verf->committed, argp->stable);
-+				data->res.verf->committed, data->args.stable);
- 			complain = jiffies + 300 * HZ;
- 		}
- 	}
- #endif
--	if (task->tk_status < 0) {
--		nfs_set_pgio_error(data->header, task->tk_status, argp->offset);
--		return;
--	}
- 
- 	/* Deal with the suid/sgid bit corner case */
- 	if (nfs_should_remove_suid(inode))
- 		nfs_mark_for_revalidate(inode);
-+	return 0;
-+}
-+
-+/*
-+ * This function is called when the WRITE call is complete.
-+ */
-+static void nfs_writeback_result_common(struct rpc_task *task, struct nfs_pgio_data *data)
-+{
-+	struct nfs_pgio_args	*argp = &data->args;
-+	struct nfs_pgio_res	*resp = &data->res;
- 
- 	if (resp->count < argp->count) {
- 		static unsigned long    complain;
- 
- 		/* This a short write! */
--		nfs_inc_stats(inode, NFSIOS_SHORTWRITE);
-+		nfs_inc_stats(data->header->inode, NFSIOS_SHORTWRITE);
- 
- 		/* Has the server at least made some progress? */
- 		if (resp->count == 0) {
-@@ -1911,4 +1898,6 @@ static const struct nfs_rw_ops nfs_rw_write_ops = {
- 	.rw_alloc_header	= nfs_writehdr_alloc,
- 	.rw_free_header		= nfs_writehdr_free,
- 	.rw_release		= nfs_writeback_release_common,
-+	.rw_result		= nfs_writeback_result,
-+	.rw_result_common	= nfs_writeback_result_common,
- };
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 7e0db56..e12a1d6 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -553,7 +553,6 @@ nfs_have_writebacks(struct inode *inode)
- extern int  nfs_readpage(struct file *, struct page *);
- extern int  nfs_readpages(struct file *, struct address_space *,
- 		struct list_head *, unsigned);
--extern int  nfs_readpage_result(struct rpc_task *, struct nfs_pgio_data *);
- extern int  nfs_readpage_async(struct nfs_open_context *, struct inode *,
- 			       struct page *);
- 
-diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
-index da00a4d..9477d7a 100644
---- a/include/linux/nfs_page.h
-+++ b/include/linux/nfs_page.h
-@@ -57,6 +57,8 @@ struct nfs_rw_ops {
- 	struct nfs_rw_header *(*rw_alloc_header)(void);
- 	void (*rw_free_header)(struct nfs_rw_header *);
- 	void (*rw_release)(struct nfs_pgio_data *);
-+	int  (*rw_result)(struct rpc_task *, struct nfs_pgio_data *, struct inode *);
-+	void (*rw_result_common)(struct rpc_task *, struct nfs_pgio_data *);
- };
- 
- struct nfs_pageio_descriptor {
--- 
-1.9.2
+> 	cinfo->ds->nwritten++;
+> +	spin_unlock(cinfo->lock);
+> 	return list;
+> }
+> 
+> @@ -1176,6 +1178,7 @@ transfer_commit_list(struct list_head *src, struct list_head *dst,
+> 	return ret;
+> }
+> 
+> +/* Note called with cinfo->lock held. */
+> static int
+> filelayout_scan_ds_commit_list(struct pnfs_commit_bucket *bucket,
+> 			       struct nfs_commit_info *cinfo,
+> @@ -1220,15 +1223,18 @@ static void filelayout_recover_commit_reqs(struct list_head *dst,
+> 					   struct nfs_commit_info *cinfo)
+> {
+> 	struct pnfs_commit_bucket *b;
+> +	struct pnfs_layout_segment *freeme;
+> 	int i;
+> 
+> +restart:
+> 	spin_lock(cinfo->lock);
+> 	for (i = 0, b = cinfo->ds->buckets; i < cinfo->ds->nbuckets; i++, b++) {
+> 		if (transfer_commit_list(&b->written, dst, cinfo, 0)) {
+> -			spin_unlock(cinfo->lock);
+> -			pnfs_put_lseg(b->wlseg);
+> +			freeme = b->wlseg;
+> 			b->wlseg = NULL;
+> -			spin_lock(cinfo->lock);
+> +			spin_unlock(cinfo->lock);
+> +			pnfs_put_lseg(freeme);
+> +			goto restart;
+> 		}
+> 	}
+> 	cinfo->ds->nwritten = 0;
+> @@ -1243,6 +1249,7 @@ alloc_ds_commits(struct nfs_commit_info *cinfo, struct list_head *list)
+> 	struct nfs_commit_data *data;
+> 	int i, j;
+> 	unsigned int nreq = 0;
+> +	struct pnfs_layout_segment *freeme;
+> 
+> 	fl_cinfo = cinfo->ds;
+> 	bucket = fl_cinfo->buckets;
+> @@ -1253,8 +1260,10 @@ alloc_ds_commits(struct nfs_commit_info *cinfo, struct list_head *list)
+> 		if (!data)
+> 			break;
+> 		data->ds_commit_index = i;
+> +		spin_lock(cinfo->lock);
+> 		data->lseg = bucket->clseg;
+> 		bucket->clseg = NULL;
+> +		spin_unlock(cinfo->lock);
+> 		list_add(&data->pages, list);
+> 		nreq++;
+> 	}
+> @@ -1264,8 +1273,11 @@ alloc_ds_commits(struct nfs_commit_info *cinfo, struct list_head *list)
+> 		if (list_empty(&bucket->committing))
+> 			continue;
+> 		nfs_retry_commit(&bucket->committing, bucket->clseg, cinfo);
+> -		pnfs_put_lseg(bucket->clseg);
+> +		spin_lock(cinfo->lock);
+> +		freeme = bucket->clseg;
+> 		bucket->clseg = NULL;
+> +		spin_unlock(cinfo->lock);
+> +		pnfs_put_lseg(freeme);
+> 	}
+> 	/* Caller will clean up entries put on list */
+> 	return nreq;
+> -- 
+> 1.8.5.2 (Apple Git-48)
+> 
 
