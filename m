@@ -1,132 +1,272 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from merlin.infradead.org ([205.233.59.134]:56570 "EHLO
-	merlin.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751648AbaDPH2K (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Apr 2014 03:28:10 -0400
-Date: Wed, 16 Apr 2014 09:28:03 +0200
-From: Peter Zijlstra <peterz@infradead.org>
-To: NeilBrown <neilb@suse.de>
-Cc: linux-mm@kvack.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, xfs@oss.sgi.com,
-        Ingo Molnar <mingo@redhat.com>
-Subject: Re: [PATCH 06/19] nfsd: set PF_FSTRANS for nfsd threads.
-Message-ID: <20140416072803.GN26782@laptop.programming.kicks-ass.net>
-References: <20140416033623.10604.69237.stgit@notabene.brown>
- <20140416040336.10604.60493.stgit@notabene.brown>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140416040336.10604.60493.stgit@notabene.brown>
+Received: from mail-ie0-f173.google.com ([209.85.223.173]:43052 "EHLO
+	mail-ie0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758793AbaDVV3C (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Apr 2014 17:29:02 -0400
+Received: by mail-ie0-f173.google.com with SMTP id rl12so68252iec.32
+        for <linux-nfs@vger.kernel.org>; Tue, 22 Apr 2014 14:29:01 -0700 (PDT)
+From: Weston Andros Adamson <dros@primarydata.com>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
+Subject: [PATCH 03/17] nfs: modify pg_test interface to return size_t
+Date: Tue, 22 Apr 2014 17:29:11 -0400
+Message-Id: <1398202165-78897-4-git-send-email-dros@primarydata.com>
+In-Reply-To: <1398202165-78897-1-git-send-email-dros@primarydata.com>
+References: <1398202165-78897-1-git-send-email-dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Apr 16, 2014 at 02:03:36PM +1000, NeilBrown wrote:
-> If a localhost mount is present, then it is easy to deadlock NFS by
-> nfsd entering direct reclaim and calling nfs_release_page() which
-> requires nfsd to perform an fsync() (which it cannot do because it is
-> reclaiming memory).
-> 
-> By setting PF_FSTRANS we stop the memory allocator from ever
-> attempting any FS operation would could deadlock.
-> 
-> We need this flag set for any thread which is handling a request from
-> the local host, but we also need to always have it for at least 1 or 2
-> threads so that we don't end up with all threads blocked in allocation.
-> 
-> When we set PF_FSTRANS we also tell lockdep that we are handling
-> reclaim so that it can detect deadlocks for us.
-> 
-> Signed-off-by: NeilBrown <neilb@suse.de>
-> ---
->  fs/nfsd/nfssvc.c           |   18 ++++++++++++++++++
->  include/linux/sunrpc/svc.h |    1 +
->  net/sunrpc/svc.c           |    6 ++++++
->  3 files changed, 25 insertions(+)
-> 
-> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-> index 9a4a5f9e7468..6af8bc2daf7d 100644
-> --- a/fs/nfsd/nfssvc.c
-> +++ b/fs/nfsd/nfssvc.c
-> @@ -565,6 +565,8 @@ nfsd(void *vrqstp)
->  	struct svc_xprt *perm_sock = list_entry(rqstp->rq_server->sv_permsocks.next, typeof(struct svc_xprt), xpt_list);
->  	struct net *net = perm_sock->xpt_net;
->  	int err;
-> +	unsigned int pflags = 0;
-> +	gfp_t reclaim_state = 0;
->  
->  	/* Lock module and set up kernel thread */
->  	mutex_lock(&nfsd_mutex);
-> @@ -611,14 +613,30 @@ nfsd(void *vrqstp)
->  			;
->  		if (err == -EINTR)
->  			break;
-> +		if (rqstp->rq_local && !current_test_flags(PF_FSTRANS)) {
-> +			current_set_flags_nested(&pflags, PF_FSTRANS);
-> +			atomic_inc(&rqstp->rq_pool->sp_nr_fstrans);
-> +			reclaim_state = lockdep_set_current_reclaim_state(GFP_KERNEL);
-> +		}
->  		validate_process_creds();
->  		svc_process(rqstp);
->  		validate_process_creds();
-> +		if (current_test_flags(PF_FSTRANS) &&
-> +		    atomic_dec_if_positive(&rqstp->rq_pool->sp_nr_fstrans) >= 0) {
+This is a step toward allowing pg_test to inform the the
+coalescing code to reduce the size of requests so they may fit in
+whatever scheme the pg_test callback wants to define.
 
-Yuck, that function has horrible semantics :/ Not your fault though.
+For now, just return the size of the request if there is space, or 0
+if there is not.  This shouldn't change any behavior as it acts
+the same as when the pg_test functions returned bool.
 
-> +			current_restore_flags_nested(&pflags, PF_FSTRANS);
-> +			lockdep_restore_current_reclaim_state(reclaim_state);
-> +		}
+Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+---
+ fs/nfs/blocklayout/blocklayout.c | 16 ++++++++++++----
+ fs/nfs/nfs4filelayout.c          | 12 +++++++-----
+ fs/nfs/objlayout/objio_osd.c     | 14 ++++++++++----
+ fs/nfs/pagelist.c                | 22 +++++++++++++++++++---
+ fs/nfs/pnfs.c                    | 12 +++++++++---
+ fs/nfs/pnfs.h                    |  3 ++-
+ include/linux/nfs_page.h         |  5 +++--
+ 7 files changed, 62 insertions(+), 22 deletions(-)
 
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 65d849b..3867976 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -1189,13 +1189,17 @@ bl_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
+ 		pnfs_generic_pg_init_read(pgio, req);
+ }
+ 
+-static bool
++/*
++ * Return 0 if @req cannot be coalesced into @pgio, otherwise return the number
++ * of bytes (maximum @req->wb_bytes) that can be coalesced.
++ */
++static size_t
+ bl_pg_test_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+ 		struct nfs_page *req)
+ {
+ 	if (pgio->pg_dreq != NULL &&
+ 	    !is_aligned_req(req, SECTOR_SIZE))
+-		return false;
++		return 0;
+ 
+ 	return pnfs_generic_pg_test(pgio, prev, req);
+ }
+@@ -1241,13 +1245,17 @@ bl_pg_init_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
+ 	}
+ }
+ 
+-static bool
++/*
++ * Return 0 if @req cannot be coalesced into @pgio, otherwise return the number
++ * of bytes (maximum @req->wb_bytes) that can be coalesced.
++ */
++static size_t
+ bl_pg_test_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+ 		 struct nfs_page *req)
+ {
+ 	if (pgio->pg_dreq != NULL &&
+ 	    !is_aligned_req(req, PAGE_CACHE_SIZE))
+-		return false;
++		return 0;
+ 
+ 	return pnfs_generic_pg_test(pgio, prev, req);
+ }
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index b6fc8c1..dfc7282 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -915,10 +915,10 @@ filelayout_alloc_lseg(struct pnfs_layout_hdr *layoutid,
+ /*
+  * filelayout_pg_test(). Called by nfs_can_coalesce_requests()
+  *
+- * return true  : coalesce page
+- * return false : don't coalesce page
++ * Return 0 if @req cannot be coalesced into @pgio, otherwise return the number
++ * of bytes (maximum @req->wb_bytes) that can be coalesced.
+  */
+-static bool
++static size_t
+ filelayout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+ 		   struct nfs_page *req)
+ {
+@@ -927,7 +927,7 @@ filelayout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+ 
+ 	if (!pnfs_generic_pg_test(pgio, prev, req) ||
+ 	    !nfs_generic_pg_test(pgio, prev, req))
+-		return false;
++		return 0;
+ 
+ 	p_stripe = (u64)req_offset(prev);
+ 	r_stripe = (u64)req_offset(req);
+@@ -936,7 +936,9 @@ filelayout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+ 	do_div(p_stripe, stripe_unit);
+ 	do_div(r_stripe, stripe_unit);
+ 
+-	return (p_stripe == r_stripe);
++	if (p_stripe == r_stripe)
++		return req->wb_bytes;
++	return 0;
+ }
+ 
+ static void
+diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+index 5457745..c20352a 100644
+--- a/fs/nfs/objlayout/objio_osd.c
++++ b/fs/nfs/objlayout/objio_osd.c
+@@ -564,14 +564,20 @@ int objio_write_pagelist(struct nfs_write_data *wdata, int how)
+ 	return 0;
+ }
+ 
+-static bool objio_pg_test(struct nfs_pageio_descriptor *pgio,
++/*
++ * Return 0 if @req cannot be coalesced into @pgio, otherwise return the number
++ * of bytes (maximum @req->wb_bytes) that can be coalesced.
++ */
++static size_t objio_pg_test(struct nfs_pageio_descriptor *pgio,
+ 			  struct nfs_page *prev, struct nfs_page *req)
+ {
+ 	if (!pnfs_generic_pg_test(pgio, prev, req))
+-		return false;
++		return 0;
+ 
+-	return pgio->pg_count + req->wb_bytes <=
+-			(unsigned long)pgio->pg_layout_private;
++	if (pgio->pg_count + req->wb_bytes <=
++	    (unsigned long)pgio->pg_layout_private)
++		return req->wb_bytes;
++	return 0;
+ }
+ 
+ static void objio_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index ecd34b7..3c35b9e 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -277,7 +277,17 @@ nfs_wait_on_request(struct nfs_page *req)
+ 			TASK_UNINTERRUPTIBLE);
+ }
+ 
+-bool nfs_generic_pg_test(struct nfs_pageio_descriptor *desc, struct nfs_page *prev, struct nfs_page *req)
++/*
++ * nfs_generic_pg_test - determine if requests can be coalesced
++ * @desc: pointer to descriptor
++ * @prev: previous request in desc, or NULL
++ * @req: this request
++ *
++ * Returns zero if @req can be coalesced into @desc, otherwise it returns
++ * the size of the request.
++ */
++size_t nfs_generic_pg_test(struct nfs_pageio_descriptor *desc,
++			   struct nfs_page *prev, struct nfs_page *req)
+ {
+ 	/*
+ 	 * FIXME: ideally we should be able to coalesce all requests
+@@ -289,7 +299,9 @@ bool nfs_generic_pg_test(struct nfs_pageio_descriptor *desc, struct nfs_page *pr
+ 	if (desc->pg_bsize < PAGE_SIZE)
+ 		return 0;
+ 
+-	return desc->pg_count + req->wb_bytes <= desc->pg_bsize;
++	if (desc->pg_count + req->wb_bytes <= desc->pg_bsize)
++		return req->wb_bytes;
++	return 0;
+ }
+ EXPORT_SYMBOL_GPL(nfs_generic_pg_test);
+ 
+@@ -354,6 +366,8 @@ static bool nfs_can_coalesce_requests(struct nfs_page *prev,
+ 				      struct nfs_page *req,
+ 				      struct nfs_pageio_descriptor *pgio)
+ {
++	size_t size;
++
+ 	if (!nfs_match_open_context(req->wb_context, prev->wb_context))
+ 		return false;
+ 	if (req->wb_context->dentry->d_inode->i_flock != NULL &&
+@@ -365,7 +379,9 @@ static bool nfs_can_coalesce_requests(struct nfs_page *prev,
+ 		return false;
+ 	if (req_offset(req) != req_offset(prev) + prev->wb_bytes)
+ 		return false;
+-	return pgio->pg_ops->pg_test(pgio, prev, req);
++	size = pgio->pg_ops->pg_test(pgio, prev, req);
++	WARN_ON_ONCE(size && size != req->wb_bytes);
++	return size > 0;
+ }
+ 
+ /**
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index cb53d45..6201bf6 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1461,7 +1461,11 @@ pnfs_pageio_init_write(struct nfs_pageio_descriptor *pgio, struct inode *inode,
+ 		nfs_pageio_init(pgio, inode, ld->pg_write_ops, compl_ops, server->wsize, ioflags);
+ }
+ 
+-bool
++/*
++ * Return 0 if @req cannot be coalesced into @pgio, otherwise return the number
++ * of bytes (maximum @req->wb_bytes) that can be coalesced.
++ */
++size_t
+ pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+ 		     struct nfs_page *req)
+ {
+@@ -1482,8 +1486,10 @@ pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+ 	 * first byte that lies outside the pnfs_layout_range. FIXME?
+ 	 *
+ 	 */
+-	return req_offset(req) < end_offset(pgio->pg_lseg->pls_range.offset,
+-					 pgio->pg_lseg->pls_range.length);
++	if (req_offset(req) < end_offset(pgio->pg_lseg->pls_range.offset,
++					 pgio->pg_lseg->pls_range.length))
++		return req->wb_bytes;
++	return 0;
+ }
+ EXPORT_SYMBOL_GPL(pnfs_generic_pg_test);
+ 
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 0237939..0386d7c 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -192,7 +192,8 @@ int pnfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc);
+ void pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio,
+ 			        struct nfs_page *req, u64 wb_size);
+ int pnfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc);
+-bool pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev, struct nfs_page *req);
++size_t pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio,
++			    struct nfs_page *prev, struct nfs_page *req);
+ void pnfs_set_lo_fail(struct pnfs_layout_segment *lseg);
+ struct pnfs_layout_segment *pnfs_layout_process(struct nfs4_layoutget *lgp);
+ void pnfs_free_lseg_list(struct list_head *tmp_list);
+diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
+index 905809d..214e098 100644
+--- a/include/linux/nfs_page.h
++++ b/include/linux/nfs_page.h
+@@ -46,7 +46,8 @@ struct nfs_page {
+ struct nfs_pageio_descriptor;
+ struct nfs_pageio_ops {
+ 	void	(*pg_init)(struct nfs_pageio_descriptor *, struct nfs_page *);
+-	bool	(*pg_test)(struct nfs_pageio_descriptor *, struct nfs_page *, struct nfs_page *);
++	size_t	(*pg_test)(struct nfs_pageio_descriptor *, struct nfs_page *,
++			   struct nfs_page *);
+ 	int	(*pg_doio)(struct nfs_pageio_descriptor *);
+ };
+ 
+@@ -89,7 +90,7 @@ extern	int nfs_pageio_add_request(struct nfs_pageio_descriptor *,
+ 				   struct nfs_page *);
+ extern	void nfs_pageio_complete(struct nfs_pageio_descriptor *desc);
+ extern	void nfs_pageio_cond_complete(struct nfs_pageio_descriptor *, pgoff_t);
+-extern bool nfs_generic_pg_test(struct nfs_pageio_descriptor *desc,
++extern size_t nfs_generic_pg_test(struct nfs_pageio_descriptor *desc,
+ 				struct nfs_page *prev,
+ 				struct nfs_page *req);
+ extern  int nfs_wait_on_request(struct nfs_page *);
+-- 
+1.8.5.2 (Apple Git-48)
 
-Not really knowing much about NFS anymore (all I did know seems to have
-bitrotten) the above looks ok I suppose. Refcounting that task state in
-something !task_struct feels weird though.
-
->  	}
->  
->  	/* Clear signals before calling svc_exit_thread() */
->  	flush_signals(current);
->  
-> +	if (current_test_flags(PF_FSTRANS)) {
-> +		current_restore_flags_nested(&pflags, PF_FSTRANS);
-> +		lockdep_restore_current_reclaim_state(reclaim_state);
-> +		atomic_dec(&rqstp->rq_pool->sp_nr_fstrans);
-> +	}
-> +
->  	mutex_lock(&nfsd_mutex);
->  	nfsdstats.th_cnt --;
->  
-> diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-> index a0dbbd1e00e9..4b274aba51dd 100644
-> --- a/include/linux/sunrpc/svc.h
-> +++ b/include/linux/sunrpc/svc.h
-> @@ -48,6 +48,7 @@ struct svc_pool {
->  	struct list_head	sp_threads;	/* idle server threads */
->  	struct list_head	sp_sockets;	/* pending sockets */
->  	unsigned int		sp_nrthreads;	/* # of threads in pool */
-> +	atomic_t		sp_nr_fstrans;	/* # threads with PF_FSTRANS */
->  	struct list_head	sp_all_threads;	/* all server threads */
->  	struct svc_pool_stats	sp_stats;	/* statistics on pool operation */
->  	int			sp_task_pending;/* has pending task */
-> diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-> index 5de6801cd924..8b13f35b6cbb 100644
-> --- a/net/sunrpc/svc.c
-> +++ b/net/sunrpc/svc.c
-> @@ -477,6 +477,12 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
->  		INIT_LIST_HEAD(&pool->sp_threads);
->  		INIT_LIST_HEAD(&pool->sp_sockets);
->  		INIT_LIST_HEAD(&pool->sp_all_threads);
-> +		/* The number of threads with PF_FSTRANS set
-> +		 * should never be reduced below 2, except when
-> +		 * threads exit.  So we use atomic_dec_if_positive()
-> +		 * on this value.
-> +		 */
-> +		atomic_set(&pool->sp_nr_fstrans, -2);
-
-Its not my code, but that's not the recommended multi-line comment
-style.
-
->  		spin_lock_init(&pool->sp_lock);
->  	}
->  
-> 
-> 
