@@ -1,121 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wg0-f43.google.com ([74.125.82.43]:54068 "EHLO
-	mail-wg0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755051AbaDGWCT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Apr 2014 18:02:19 -0400
-Received: by mail-wg0-f43.google.com with SMTP id x13so69121wgg.14
-        for <linux-nfs@vger.kernel.org>; Mon, 07 Apr 2014 15:02:18 -0700 (PDT)
-Message-ID: <1396908136.5563.9.camel@leira.trondhjem.org>
-Subject: Re: NFS deadlock between 'sync' and commit after unmount....
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Jan Kara <jack@suse.cz>
-Cc: Brown Neil <neilb@suse.de>, Viro Alexander <viro@zeniv.linux.org.uk>,
-        NFS <linux-nfs@vger.kernel.org>
-Date: Mon, 07 Apr 2014 18:02:16 -0400
-In-Reply-To: <20140407202750.GE23670@quack.suse.cz>
-References: <20140407135001.56ef9f36@notabene.brown>
-	 <F59673DE-8047-4FE0-AFF9-6A3DC37348A5@primarydata.com>
-	 <20140407202750.GE23670@quack.suse.cz>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mail-ig0-f174.google.com ([209.85.213.174]:64447 "EHLO
+	mail-ig0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757929AbaDVV25 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Apr 2014 17:28:57 -0400
+Received: by mail-ig0-f174.google.com with SMTP id h18so3547692igc.1
+        for <linux-nfs@vger.kernel.org>; Tue, 22 Apr 2014 14:28:56 -0700 (PDT)
+From: Weston Andros Adamson <dros@primarydata.com>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
+Subject: [PATCH 00/17] nfs: support multiple requests per page
+Date: Tue, 22 Apr 2014 17:29:08 -0400
+Message-Id: <1398202165-78897-1-git-send-email-dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 2014-04-07 at 22:27 +0200, Jan Kara wrote:
->   Hello,
-> 
-> On Mon 07-04-14 10:10:27, Trond Myklebust wrote:
-> > On Apr 6, 2014, at 23:50, NeilBrown <neilb@suse.de> wrote:
-> > > I've just hit a deadlock in NFS that seems very strange.
-> > > The kernel is 3.14-rc8 which some local changes which shouldn't affect the
-> > > deadlocking code.
-> > > 
-> > > Shortly after umounting the NFS filesystem with "umount -f" (though I don't
-> > > think the -f is important), I ran "sync".
-> > > 
-> > > The sync is now stuck in
-> > > 
-> > > [<ffffffff81197fc1>] sync_inodes_sb+0xa1/0x1c0
-> > > [<ffffffff8119cd99>] sync_inodes_one_sb+0x19/0x20
-> > > [<ffffffff81173372>] iterate_supers+0xb2/0x110
-> > > [<ffffffff8119cfd0>] sys_sync+0x30/0x90
-> > > [<ffffffff81aa4622>] system_call_fastpath+0x16/0x1b
-> > > [<ffffffffffffffff>] 0xffffffffffffffff
-> > > 
-> > > while kworker/u16:1 is stuck:
-> > > 
-> > > [<ffffffff815420b3>] call_rwsem_down_write_failed+0x13/0x20
-> > > [<ffffffff81172889>] deactivate_super+0x39/0x60
-> > > [<ffffffff812d56f1>] nfs_sb_deactive+0x21/0x30
-> > > [<ffffffff812d2ef9>] __put_nfs_open_context+0xc9/0x100
-> > > [<ffffffff812d2f3b>] put_nfs_open_context+0xb/0x10
-> > > [<ffffffff812ddd14>] nfs_commitdata_release+0x14/0x30
-> > > [<ffffffff812ddd4a>] nfs_commit_release+0x1a/0x20
-> > > [<ffffffff81a45a05>] rpc_free_task+0x25/0x70
-> > > [<ffffffff81a45fd8>] rpc_do_put_task+0x78/0x80
-> > > [<ffffffff81a45feb>] rpc_put_task+0xb/0x10
-> > > [<ffffffff812de3fe>] nfs_initiate_commit+0xce/0x110
-> > > [<ffffffff812df112>] nfs_commit_list+0x62/0x90
-> > > [<ffffffff812dfd26>] nfs_commit_inode+0xa6/0x170
-> > > [<ffffffff812dfe4d>] nfs_write_inode+0x5d/0xa0
-> > > [<ffffffff81300d69>] nfs4_write_inode+0x9/0x10
-> > > [<ffffffff811978ec>] __writeback_single_inode+0x10c/0x2c0
-> > > [<ffffffff811987ea>] writeback_sb_inodes+0x2ca/0x450
-> > > [<ffffffff81198b2c>] wb_writeback+0xec/0x320
-> > > [<ffffffff81199365>] bdi_writeback_workfn+0x115/0x4c0
-> > > [<ffffffff810a595b>] process_one_work+0x16b/0x430
-> > > [<ffffffff810a6619>] worker_thread+0x119/0x3a0
-> > > [<ffffffff810ac2bd>] kthread+0xcd/0xf0
-> > > [<ffffffff81aa457c>] ret_from_fork+0x7c/0xb0
-> > > [<ffffffffffffffff>] 0xffffffffffffffff
-> > > 
-> > > 
-> > > So sync is holding sb->s_umount, queued some bdi work on the filesystem
-> > > and is waiting for it to complete.  Mean while, that work has (I think)
-> > > submitted a 'commit' (via ->write_inode) and that commit wants to
-> > > deactivate_super and so needs to get ->s_umount.
-> > > 
-> > > I suspect this could happen even more easily with a lazy unmount.
-> > > 
-> > > It seems that this commit request is that last thing that is keeping
-> > > ->s_active elevated and it deadlocks trying to drop the last s_active.
-> > > 
-> > > I have no idea how to fix it....  help?
-> > > 
-> > 
-> > The problem seems to be the use of iterate_supers(), which grabs a
-> > passive reference, and conflicts with our use of an active reference in
-> > the open context.
->   Yeah, we cannot really do otherwise in iterate_supers() - we have to grab
-> some superblock reference and we don't really want to get an active one
-> since that would result in spurious EBUSY returns from umount.
-> 
-> Cannot we just punt the deactivate_super() call to a workqueue to avoid
-> this deadlock? It's a bit ugly but it should do the trick. Or is
-> nfs_sb_deactive() called too often and we'd see some adverse effects for
-> that? We could also offload it to workqueue only in the special case where
-> sb->s_active == 1. That should be really rare then but it's a bit ugly
-> poking in VFS internals.
+This patchset changes the read and write paths to be more flexible in dealing
+with requests that are not page aligned. Until now there was a 1:1 mapping
+of struct nfs_page (referred to as "nfs requests") to struct page, which
+limited the client to page aligned I/O in several pNFS scenarios.
 
-The activate/deactivate super is basically there to save our bacon when
-NFS file state extends beyond the usual VFS path walk, open() and
-close(). Examples include sillyrename and NFSv4 delegations. Even
-ordinary read and write state can extend beyond close() if the user
-decides to 'kill -9' in the wrong places.
-In most of these situations, we need to keep a dentry around until we're
-finished, which means that we want to keep the super block alive too.
+This patchset allows multiple requests per page, loosely following
+the approach taken with struct buffer_head (part of kernel bio interface).
 
->  BTW why is nfs_sb_active() safe doing just
-> atomic_inc() on s_active? grab_super() is more careful...
+With this patchset the client now supports:
+ - non-page-aligned O_DIRECT I/O to DSes (instead of reverting to MDS)
+ - arbitrary pnfs layout segment boundaries
+ - arbitrary pnfs filelayout stripe sizes
 
-We're never grabbing a reference without already holding a reference via
-a struct path or a struct file passed down to us by the VFS. However we
-may want to keep the struct dentry around for longer than the lifetime
-of that struct path/file.
+This patchset also includes a lot of cleanup - notably we no longer need
+a separate code path to support rsize/wsize < PAGE_SIZE.
+
+This new approach opens the door to many optimizations, such as not having to
+flush a page on a non-contiguous write, but for the time being we are focusing
+on correctness -- this patchset touches the read and write path for *all*
+versions of NFS!
+
+This has been tested against v2, v3, v4.0 and v4.1 (no pnfs) servers with
+different rsize/wsize settings, and against pynfs filelayout servers hacked to
+have non page aligned stripe sizes.
+
+I had some code review already (with changes applied) and we've been testing
+this pretty extensively for the last month+ - focusing mostly on v2, v3, v4.x
+(no pnfs).
+
+The patchset applies against Trond's testing branch, but should also include
+the fix I posted earlier today: "pnfs: fix race in filelayout commit path"
+as the race seems to be easier to hit with this patchset applied.
+
+I'm pretty sure I didn't break anything in the object and block layouts, but
+some extra attention there would be helpful.
+
+I plan on sharing some performance numbers once I'm able to run some nfsometer
+workloads. Expect them soon.
+
+ -dros
+
+Weston Andros Adamson (17):
+  nfs: clean up PG_* flags
+  nfs: remove unused arg from nfs_create_request
+  nfs: modify pg_test interface to return size_t
+  nfs: call nfs_can_coalesce_requests for every req
+  nfs: add support for multiple nfs reqs per page
+  nfs: page group syncing in read path
+  nfs: page group syncing in write path
+  nfs: page group support in nfs_mark_uptodate
+  pnfs: clean up filelayout_alloc_commit_info
+  nfs: allow coalescing of subpage requests
+  nfs: chain calls to pg_test
+  nfs: use > 1 request to handle bsize < PAGE_SIZE
+  nfs: remove list of [rw]data from pgio header
+  pnfs: support multiple verfs per direct req
+  pnfs: allow non page aligned pnfs layout segments
+  pnfs: filelayout: support non page aligned layouts
+  nfs: support page groups in nfs_read_completion
+
+ fs/nfs/blocklayout/blocklayout.c |  16 ++-
+ fs/nfs/direct.c                  |  93 ++++++++++---
+ fs/nfs/nfs4filelayout.c          | 121 +++++++++--------
+ fs/nfs/objlayout/objio_osd.c     |  20 ++-
+ fs/nfs/pagelist.c                | 284 +++++++++++++++++++++++++++++++++------
+ fs/nfs/pnfs.c                    |  77 +++++------
+ fs/nfs/pnfs.h                    |   3 +-
+ fs/nfs/read.c                    | 149 +++++++-------------
+ fs/nfs/write.c                   | 217 +++++++++++++++---------------
+ include/linux/nfs.h              |   5 +-
+ include/linux/nfs_page.h         |  32 +++--
+ include/linux/nfs_xdr.h          |  37 ++---
+ 12 files changed, 650 insertions(+), 404 deletions(-)
 
 -- 
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
-
+1.8.5.2 (Apple Git-48)
 
