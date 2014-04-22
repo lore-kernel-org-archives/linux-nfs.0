@@ -1,59 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:38884 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754323AbaDPET6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Apr 2014 00:19:58 -0400
-From: NeilBrown <neilb@suse.de>
-To: linux-mm@kvack.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Date: Wed, 16 Apr 2014 14:03:37 +1000
-Subject: [PATCH 18/19] nfsd: set PF_FSTRANS during nfsd4_do_callback_rpc.
-Cc: xfs@oss.sgi.com
-Message-ID: <20140416040337.10604.52860.stgit@notabene.brown>
-In-Reply-To: <20140416033623.10604.69237.stgit@notabene.brown>
-References: <20140416033623.10604.69237.stgit@notabene.brown>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-ig0-f178.google.com ([209.85.213.178]:54882 "EHLO
+	mail-ig0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757973AbaDVV3Y (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Apr 2014 17:29:24 -0400
+Received: by mail-ig0-f178.google.com with SMTP id hn18so217399igb.11
+        for <linux-nfs@vger.kernel.org>; Tue, 22 Apr 2014 14:29:23 -0700 (PDT)
+From: Weston Andros Adamson <dros@primarydata.com>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
+Subject: [PATCH 17/17] nfs: support page groups in nfs_read_completion
+Date: Tue, 22 Apr 2014 17:29:25 -0400
+Message-Id: <1398202165-78897-18-git-send-email-dros@primarydata.com>
+In-Reply-To: <1398202165-78897-1-git-send-email-dros@primarydata.com>
+References: <1398202165-78897-1-git-send-email-dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-nfsd will sometimes call flush_workqueue on the workqueue running
-nfsd4_do_callback_rpc, so we must ensure that it doesn't block in
-filesystem reclaim.
-So set PF_FSTRANS.
+nfs_read_completion relied on the fact that there was a 1:1 mapping
+of page to nfs_request, but this has now changed.
 
-Signed-off-by: NeilBrown <neilb@suse.de>
+Regions not covered by a request have already been zeroed elsewhere.
+
+Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
 ---
- fs/nfsd/nfs4callback.c |    5 +++++
- 1 file changed, 5 insertions(+)
+ fs/nfs/read.c | 24 +++++++++++++++++-------
+ 1 file changed, 17 insertions(+), 7 deletions(-)
 
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 7f05cd140de3..7784b5d4edf0 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -997,6 +997,9 @@ static void nfsd4_do_callback_rpc(struct work_struct *w)
- 	struct nfsd4_callback *cb = container_of(w, struct nfsd4_callback, cb_work);
- 	struct nfs4_client *clp = cb->cb_clp;
- 	struct rpc_clnt *clnt;
-+	unsigned int pflags;
-+
-+	current_set_flags_nested(&pflags, PF_FSTRANS);
- 
- 	if (clp->cl_flags & NFSD4_CLIENT_CB_FLAG_MASK)
- 		nfsd4_process_cb_update(cb);
-@@ -1005,11 +1008,13 @@ static void nfsd4_do_callback_rpc(struct work_struct *w)
- 	if (!clnt) {
- 		/* Callback channel broken, or client killed; give up: */
- 		nfsd4_release_cb(cb);
-+		current_restore_flags_nested(&pflags, PF_FSTRANS);
- 		return;
- 	}
- 	cb->cb_msg.rpc_cred = clp->cl_cb_cred;
- 	rpc_call_async(clnt, &cb->cb_msg, RPC_TASK_SOFT | RPC_TASK_SOFTCONN,
- 			cb->cb_ops, cb);
-+	current_restore_flags_nested(&pflags, PF_FSTRANS);
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index c6b7dd0..e3613e2 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -182,7 +182,6 @@ static void nfs_page_group_set_uptodate(struct nfs_page *req)
+ 		SetPageUptodate(req->wb_page);
  }
  
- void nfsd4_init_callback(struct nfsd4_callback *cb)
-
+-/* Note io was page aligned */
+ static void nfs_read_completion(struct nfs_pgio_header *hdr)
+ {
+ 	unsigned long bytes = 0;
+@@ -192,14 +191,25 @@ static void nfs_read_completion(struct nfs_pgio_header *hdr)
+ 	while (!list_empty(&hdr->pages)) {
+ 		struct nfs_page *req = nfs_list_entry(hdr->pages.next);
+ 		struct page *page = req->wb_page;
++		unsigned long start = req->wb_pgbase;
++		unsigned long end = req->wb_pgbase + req->wb_bytes;
+ 
+ 		if (test_bit(NFS_IOHDR_EOF, &hdr->flags)) {
+-			if (bytes > hdr->good_bytes)
+-				zero_user(page, 0, PAGE_SIZE);
+-			else if (hdr->good_bytes - bytes < PAGE_SIZE)
+-				zero_user_segment(page,
+-					hdr->good_bytes & ~PAGE_MASK,
+-					PAGE_SIZE);
++			/* note: regions of the page not covered by a
++			 * request are zeroed in nfs_readpage_async /
++			 * readpage_async_filler */
++			if (bytes > hdr->good_bytes) {
++				/* nothing in this request was good, so zero
++				 * the full extent of the request */
++				zero_user_segment(page, start, end);
++
++			} else if (hdr->good_bytes - bytes < req->wb_bytes) {
++				/* part of this request has good bytes, but
++				 * not all. zero the bad bytes */
++				start += hdr->good_bytes - bytes;
++				WARN_ON(start < req->wb_pgbase);
++				zero_user_segment(page, start, end);
++			}
+ 		}
+ 		bytes += req->wb_bytes;
+ 		if (test_bit(NFS_IOHDR_ERROR, &hdr->flags)) {
+-- 
+1.8.5.2 (Apple Git-48)
 
