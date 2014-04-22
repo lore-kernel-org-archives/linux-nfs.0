@@ -1,149 +1,116 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f48.google.com ([209.85.192.48]:52666 "EHLO
-	mail-qg0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754440AbaD1LXG (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Apr 2014 07:23:06 -0400
-Received: by mail-qg0-f48.google.com with SMTP id q108so6672063qgd.7
-        for <linux-nfs@vger.kernel.org>; Mon, 28 Apr 2014 04:23:04 -0700 (PDT)
-Date: Mon, 28 Apr 2014 07:23:01 -0400
-From: Jeff Layton <jlayton@poochiereds.net>
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Cc: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
-        viro@zeniv.linux.org.uk, dhowells@redhat.com,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH -V1 05/22] vfs: Add new file and directory create
- permission flags
-Message-ID: <20140428072301.123674d4@tlielax.poochiereds.net>
-In-Reply-To: <1398615293-22931-6-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1398615293-22931-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-	<1398615293-22931-6-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-ig0-f172.google.com ([209.85.213.172]:60536 "EHLO
+	mail-ig0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758700AbaDVV3J (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Apr 2014 17:29:09 -0400
+Received: by mail-ig0-f172.google.com with SMTP id hn18so3549806igb.17
+        for <linux-nfs@vger.kernel.org>; Tue, 22 Apr 2014 14:29:08 -0700 (PDT)
+From: Weston Andros Adamson <dros@primarydata.com>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
+Subject: [PATCH 07/17] nfs: page group syncing in write path
+Date: Tue, 22 Apr 2014 17:29:15 -0400
+Message-Id: <1398202165-78897-8-git-send-email-dros@primarydata.com>
+In-Reply-To: <1398202165-78897-1-git-send-email-dros@primarydata.com>
+References: <1398202165-78897-1-git-send-email-dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, 27 Apr 2014 21:44:36 +0530
-"Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com> wrote:
+Operations that modify state for a whole page must be syncronized across
+all requests within a page group. In the write path, this is calling
+end_page_writeback and removing the head request from an inode.
+Both of these operations should not be called until all requests
+in a page group have reached the point where they would call them.
 
-> From: Andreas Gruenbacher <agruen@kernel.org>
-> 
-> Some permission models distinguish between the permission to create a
-> non-directory and a directory.  Pass this information down to
-> inode_permission() as mask flags
-> 
-> Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
-> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-> ---
->  fs/namei.c         | 21 ++++++++++++---------
->  include/linux/fs.h |  2 ++
->  2 files changed, 14 insertions(+), 9 deletions(-)
-> 
-> diff --git a/fs/namei.c b/fs/namei.c
-> index 7d93d195f0e5..028bc8bcf77c 100644
-> --- a/fs/namei.c
-> +++ b/fs/namei.c
-> @@ -445,7 +445,8 @@ static int sb_permission(struct super_block *sb, struct inode *inode, int mask)
->   * this, letting us set arbitrary permissions for filesystem access without
->   * changing the "normal" UIDs which are used for other things.
->   *
-> - * When checking for MAY_APPEND, MAY_WRITE must also be set in @mask.
-> + * When checking for MAY_APPEND, MAY_CREATE_FILE, MAY_CREATE_DIR,
-> + * MAY_WRITE must also be set in @mask.
->   */
->  int inode_permission(struct inode *inode, int mask)
->  {
-> @@ -2444,14 +2445,16 @@ static int may_delete(struct inode *dir, struct dentry *victim, bool isdir)
->   *  3. We should have write and exec permissions on dir
->   *  4. We can't do it if dir is immutable (done in permission())
->   */
-> -static inline int may_create(struct inode *dir, struct dentry *child)
-> +static inline int may_create(struct inode *dir, struct dentry *child, bool isdir)
->  {
-> +	int mask = isdir ? MAY_CREATE_DIR : MAY_CREATE_FILE;
-> +
->  	audit_inode_child(dir, child, AUDIT_TYPE_CHILD_CREATE);
->  	if (child->d_inode)
->  		return -EEXIST;
->  	if (IS_DEADDIR(dir))
->  		return -ENOENT;
-> -	return inode_permission(dir, MAY_WRITE | MAY_EXEC);
-> +	return inode_permission(dir, MAY_WRITE | MAY_EXEC | mask);
->  }
->  
->  /*
-> @@ -2501,7 +2504,7 @@ EXPORT_SYMBOL(unlock_rename);
->  int vfs_create(struct inode *dir, struct dentry *dentry, umode_t mode,
->  		bool want_excl)
->  {
-> -	int error = may_create(dir, dentry);
-> +	int error = may_create(dir, dentry, 0);
+This patch should have no effect yet since all page groups currently
+have one request, but will come into play when pg_test functions are
+modified to split pages into sub-page regions.
 
-nit: since the third argument here is a bool, this should be "false"
-and not "0". Ditto for all of the other calls of may_create.
+Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+---
+ fs/nfs/write.c           | 29 ++++++++++++++++++++---------
+ include/linux/nfs_page.h |  2 ++
+ 2 files changed, 22 insertions(+), 9 deletions(-)
 
->  	if (error)
->  		return error;
->  
-> @@ -3363,7 +3366,7 @@ EXPORT_SYMBOL(user_path_create);
->  
->  int vfs_mknod(struct inode *dir, struct dentry *dentry, umode_t mode, dev_t dev)
->  {
-> -	int error = may_create(dir, dentry);
-> +	int error = may_create(dir, dentry, 0);
->  
->  	if (error)
->  		return error;
-> @@ -3455,7 +3458,7 @@ SYSCALL_DEFINE3(mknod, const char __user *, filename, umode_t, mode, unsigned, d
->  
->  int vfs_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode)
->  {
-> -	int error = may_create(dir, dentry);
-> +	int error = may_create(dir, dentry, 1);
->  	unsigned max_links = dir->i_sb->s_max_links;
->  
->  	if (error)
-> @@ -3785,7 +3788,7 @@ SYSCALL_DEFINE1(unlink, const char __user *, pathname)
->  
->  int vfs_symlink(struct inode *dir, struct dentry *dentry, const char *oldname)
->  {
-> -	int error = may_create(dir, dentry);
-> +	int error = may_create(dir, dentry, 0);
->  
->  	if (error)
->  		return error;
-> @@ -3871,7 +3874,7 @@ int vfs_link(struct dentry *old_dentry, struct inode *dir, struct dentry *new_de
->  	if (S_ISDIR(inode->i_mode))
->  		return -EPERM;
->  
-> -	error = may_create(dir, new_dentry);
-> +	error = may_create(dir, new_dentry, 0);
->  	if (error)
->  		return error;
->  
-> @@ -4062,7 +4065,7 @@ int vfs_rename(struct inode *old_dir, struct dentry *old_dentry,
->  		return error;
->  
->  	if (!target) {
-> -		error = may_create(new_dir, new_dentry);
-> +		error = may_create(new_dir, new_dentry, is_dir);
->  	} else {
->  		new_is_dir = d_is_dir(new_dentry);
->  
-> diff --git a/include/linux/fs.h b/include/linux/fs.h
-> index 1f524b4b652d..da5521de04ab 100644
-> --- a/include/linux/fs.h
-> +++ b/include/linux/fs.h
-> @@ -77,6 +77,8 @@ typedef void (dio_iodone_t)(struct kiocb *iocb, loff_t offset,
->  #define MAY_CHDIR		0x00000040
->  /* called from RCU mode, don't block */
->  #define MAY_NOT_BLOCK		0x00000080
-> +#define MAY_CREATE_FILE		0x00000100
-> +#define MAY_CREATE_DIR		0x00000200
->  
->  /*
->   * flags in file.f_mode.  Note that FMODE_READ and FMODE_WRITE must correspond
-
-
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index d1453f2..c6f6449 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -258,12 +258,15 @@ static void nfs_set_page_writeback(struct page *page)
+ 	}
+ }
+ 
+-static void nfs_end_page_writeback(struct page *page)
++static void nfs_end_page_writeback(struct nfs_page *req)
+ {
+-	struct inode *inode = page_file_mapping(page)->host;
++	struct inode *inode = page_file_mapping(req->wb_page)->host;
+ 	struct nfs_server *nfss = NFS_SERVER(inode);
+ 
+-	end_page_writeback(page);
++	if (!nfs_page_group_sync_on_bit(req, PG_WB_END))
++		return;
++
++	end_page_writeback(req->wb_page);
+ 	if (atomic_long_dec_return(&nfss->writeback) < NFS_CONGESTION_OFF_THRESH)
+ 		clear_bdi_congested(&nfss->backing_dev_info, BLK_RW_ASYNC);
+ }
+@@ -452,12 +455,20 @@ static void nfs_inode_remove_request(struct nfs_page *req)
+ {
+ 	struct inode *inode = req->wb_context->dentry->d_inode;
+ 	struct nfs_inode *nfsi = NFS_I(inode);
++	struct nfs_page *head;
++
++	if (!nfs_page_group_sync_on_bit(req, PG_REMOVE))
++		return;
++
++	/* always operate on the *head* of the page group (it's what was
++	   referenced in _add_request) */
++	head = req->wb_head;
+ 
+ 	spin_lock(&inode->i_lock);
+-	if (likely(!PageSwapCache(req->wb_page))) {
+-		set_page_private(req->wb_page, 0);
+-		ClearPagePrivate(req->wb_page);
+-		clear_bit(PG_MAPPED, &req->wb_flags);
++	if (likely(!PageSwapCache(head->wb_page))) {
++		set_page_private(head->wb_page, 0);
++		ClearPagePrivate(head->wb_page);
++		clear_bit(PG_MAPPED, &head->wb_flags);
+ 	}
+ 	nfsi->npages--;
+ 	spin_unlock(&inode->i_lock);
+@@ -654,7 +665,7 @@ remove_req:
+ 		nfs_inode_remove_request(req);
+ next:
+ 		nfs_unlock_request(req);
+-		nfs_end_page_writeback(req->wb_page);
++		nfs_end_page_writeback(req);
+ 		do_destroy = !test_bit(NFS_IOHDR_NEED_COMMIT, &hdr->flags);
+ 		nfs_release_request(req);
+ 	}
+@@ -1128,7 +1139,7 @@ static void nfs_redirty_request(struct nfs_page *req)
+ {
+ 	nfs_mark_request_dirty(req);
+ 	nfs_unlock_request(req);
+-	nfs_end_page_writeback(req->wb_page);
++	nfs_end_page_writeback(req);
+ 	nfs_release_request(req);
+ }
+ 
+diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
+index 56b1f1c..41ce262 100644
+--- a/include/linux/nfs_page.h
++++ b/include/linux/nfs_page.h
+@@ -30,6 +30,8 @@ enum {
+ 	PG_TEARDOWN,		/* page group sync for destroy */
+ 	PG_UNLOCKPAGE,		/* page group sync bit in read path */
+ 	PG_UPTODATE,		/* page group sync bit in read path */
++	PG_WB_END,		/* page group sync bit in write path */
++	PG_REMOVE,		/* page group sync bit in write path */
+ };
+ 
+ struct nfs_inode;
 -- 
-Jeff Layton <jlayton@poochiereds.net>
+1.8.5.2 (Apple Git-48)
+
