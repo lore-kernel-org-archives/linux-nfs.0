@@ -1,170 +1,105 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f182.google.com ([209.85.213.182]:52054 "EHLO
-	mail-ig0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754100AbaDRSqo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Apr 2014 14:46:44 -0400
-Received: by mail-ig0-f182.google.com with SMTP id uy17so938407igb.15
-        for <linux-nfs@vger.kernel.org>; Fri, 18 Apr 2014 11:46:43 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Bruce Fields <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 60/70] NFSd: Ensure lookup_clientid() takes client_lock
-Date: Fri, 18 Apr 2014 14:44:54 -0400
-Message-Id: <1397846704-14567-61-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1397846704-14567-60-git-send-email-trond.myklebust@primarydata.com>
-References: <1397846704-14567-1-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-2-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-3-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-4-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-5-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-6-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-7-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-8-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-9-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-10-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-11-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-12-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-13-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-14-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-15-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-16-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-17-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-18-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-19-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-20-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-21-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-22-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-23-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-24-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-25-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-26-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-27-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-28-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-29-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-30-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-31-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-32-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-33-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-34-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-35-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-36-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-37-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-38-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-39-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-40-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-41-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-42-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-43-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-44-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-45-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-46-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-47-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-48-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-49-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-50-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-51-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-52-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-53-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-54-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-55-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-56-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-57-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-58-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-59-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-60-git-send-email-trond.myklebust@primarydata.com>
+Received: from mail-ig0-f173.google.com ([209.85.213.173]:50787 "EHLO
+	mail-ig0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757452AbaDVV3M (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Apr 2014 17:29:12 -0400
+Received: by mail-ig0-f173.google.com with SMTP id hl10so3546298igb.12
+        for <linux-nfs@vger.kernel.org>; Tue, 22 Apr 2014 14:29:11 -0700 (PDT)
+From: Weston Andros Adamson <dros@primarydata.com>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
+Subject: [PATCH 09/17] pnfs: clean up filelayout_alloc_commit_info
+Date: Tue, 22 Apr 2014 17:29:17 -0400
+Message-Id: <1398202165-78897-10-git-send-email-dros@primarydata.com>
+In-Reply-To: <1398202165-78897-1-git-send-email-dros@primarydata.com>
+References: <1398202165-78897-1-git-send-email-dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Ensure that the client lookup is done safely under the client_lock.
+Remove unneeded else statement and clean up how commit info
+dataserver buckets are replaced.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Suggested-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
 ---
- fs/nfsd/nfs4state.c | 35 +++++++++++++++++++++++++++++------
- 1 file changed, 29 insertions(+), 6 deletions(-)
+ fs/nfs/nfs4filelayout.c | 48 ++++++++++++++++++++++++++++--------------------
+ 1 file changed, 28 insertions(+), 20 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 6a0c201c670f..ad79dca31cc4 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -178,6 +178,15 @@ static void put_client_renew_locked(struct nfs4_client *clp)
- 		renew_client_locked(clp);
- }
- 
-+static void put_client_renew(struct nfs4_client *clp)
-+{
-+	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
-+
-+	spin_lock(&nn->client_lock);
-+	put_client_renew_locked(clp);
-+	spin_unlock(&nn->client_lock);
-+}
-+
- static __be32 nfsd4_get_session_locked(struct nfsd4_session *ses)
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 8f27847..3b32c95 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -850,11 +850,15 @@ filelayout_alloc_commit_info(struct pnfs_layout_segment *lseg,
  {
- 	__be32 status;
-@@ -3614,18 +3623,27 @@ static __be32 lookup_clientid(clientid_t *clid, struct nfsd4_session *session, s
- {
- 	struct nfs4_client *found;
+ 	struct nfs4_filelayout_segment *fl = FILELAYOUT_LSEG(lseg);
+ 	struct pnfs_commit_bucket *buckets;
+-	int size;
++	int size, i;
  
-+	spin_lock(&nn->client_lock);
- 	if (session != NULL) {
- 		found = session->se_client;
- 		if (!same_clid(&found->cl_clientid, clid))
--			return nfserr_stale_clientid;
-+			goto out_stale;
- 	} else {
- 		if (STALE_CLIENTID(clid, nn))
--			return nfserr_stale_clientid;
-+			goto out_stale;
- 		found = find_confirmed_client(clid, false, nn);
+ 	if (fl->commit_through_mds)
+ 		return 0;
+-	if (cinfo->ds->nbuckets != 0) {
++
++	size = (fl->stripe_type == STRIPE_SPARSE) ?
++		fl->dsaddr->ds_num : fl->dsaddr->stripe_count;
++
++	if (cinfo->ds->nbuckets >= size) {
+ 		/* This assumes there is only one IOMODE_RW lseg.  What
+ 		 * we really want to do is have a layout_hdr level
+ 		 * dictionary of <multipath_list4, fh> keys, each
+@@ -864,30 +868,34 @@ filelayout_alloc_commit_info(struct pnfs_layout_segment *lseg,
+ 		return 0;
  	}
--	if (clp)
--		*clp = found;
-+	if (clp) {
-+		if (get_client_locked(found) == nfs_ok)
-+			*clp = found;
-+		else
-+			found = NULL;
+ 
+-	size = (fl->stripe_type == STRIPE_SPARSE) ?
+-		fl->dsaddr->ds_num : fl->dsaddr->stripe_count;
+-
+ 	buckets = kcalloc(size, sizeof(struct pnfs_commit_bucket),
+ 			  gfp_flags);
+ 	if (!buckets)
+ 		return -ENOMEM;
+-	else {
+-		int i;
++	for (i = 0; i < size; i++) {
++		INIT_LIST_HEAD(&buckets[i].written);
++		INIT_LIST_HEAD(&buckets[i].committing);
 +	}
-+	spin_unlock(&nn->client_lock);
- 	return found ? nfs_ok : nfserr_expired;
-+out_stale:
-+	spin_unlock(&nn->client_lock);
-+	return nfserr_stale_clientid;
+ 
+-		spin_lock(cinfo->lock);
+-		if (cinfo->ds->nbuckets != 0)
+-			kfree(buckets);
+-		else {
+-			cinfo->ds->buckets = buckets;
+-			cinfo->ds->nbuckets = size;
+-			for (i = 0; i < size; i++) {
+-				INIT_LIST_HEAD(&buckets[i].written);
+-				INIT_LIST_HEAD(&buckets[i].committing);
+-			}
+-		}
+-		spin_unlock(cinfo->lock);
+-		return 0;
++	spin_lock(cinfo->lock);
++	if (cinfo->ds->nbuckets >= size)
++		goto out;
++	for (i = 0; i < cinfo->ds->nbuckets; i++) {
++		list_splice(&cinfo->ds->buckets[i].written,
++			    &buckets[i].written);
++		list_splice(&cinfo->ds->buckets[i].committing,
++			    &buckets[i].committing);
++		buckets[i].direct_verf.committed =
++			cinfo->ds->buckets[i].direct_verf.committed;
++		buckets[i].wlseg = cinfo->ds->buckets[i].wlseg;
++		buckets[i].clseg = cinfo->ds->buckets[i].clseg;
+ 	}
++	swap(cinfo->ds->buckets, buckets);
++	cinfo->ds->nbuckets = size;
++out:
++	spin_unlock(cinfo->lock);
++	kfree(buckets);
++	return 0;
  }
  
- __be32
-@@ -3645,8 +3663,10 @@ nfsd4_renew(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	status = nfserr_cb_path_down;
- 	if (!list_empty(&clp->cl_delegations)
- 			&& clp->cl_cb_state != NFSD4_CB_UP)
--		goto out;
-+		goto put_client;
- 	status = nfs_ok;
-+put_client:
-+	put_client_renew(clp);
- out:
- 	nfs4_unlock_state();
- 	return status;
-@@ -3939,6 +3959,7 @@ static __be32 nfsd4_lookup_stateid(struct nfsd4_compound_state *cstate,
- 	if (status)
- 		return status;
- 	*s = find_stateid_by_type(cl, stateid, typemask);
-+	put_client_renew(cl);
- 	if (!*s)
- 		return nfserr_bad_stateid;
- 	return nfs_ok;
-@@ -5119,7 +5140,9 @@ nfs4_check_open_reclaim(clientid_t *clid, struct nfsd4_session *session, struct
- 	if (status)
- 		return nfserr_reclaim_bad;
- 
--	return nfsd4_client_record_check(clp) ? nfserr_reclaim_bad : nfs_ok;
-+	status = nfsd4_client_record_check(clp) ? nfserr_reclaim_bad : nfs_ok;
-+	put_client_renew(clp);
-+	return status;
- }
- 
- #ifdef CONFIG_NFSD_FAULT_INJECTION
+ static struct pnfs_layout_segment *
 -- 
-1.9.0
+1.8.5.2 (Apple Git-48)
 
