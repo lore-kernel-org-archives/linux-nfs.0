@@ -1,170 +1,137 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:57965 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751208AbaDQVKZ (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 17 Apr 2014 17:10:25 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
-Subject: [PATCH 10/17] NFS: Create a common rpc_call_ops struct
-Date: Thu, 17 Apr 2014 17:09:34 -0400
-Message-ID: <1397768981-12856-11-git-send-email-Anna.Schumaker@Netapp.com>
-In-Reply-To: <1397768981-12856-1-git-send-email-Anna.Schumaker@Netapp.com>
-References: <1397768981-12856-1-git-send-email-Anna.Schumaker@Netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+Received: from mail-ie0-f169.google.com ([209.85.223.169]:33947 "EHLO
+	mail-ie0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1757883AbaDVV3W (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Apr 2014 17:29:22 -0400
+Received: by mail-ie0-f169.google.com with SMTP id to1so69762ieb.28
+        for <linux-nfs@vger.kernel.org>; Tue, 22 Apr 2014 14:29:22 -0700 (PDT)
+From: Weston Andros Adamson <dros@primarydata.com>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
+Subject: [PATCH 16/17] pnfs: filelayout: support non page aligned layouts
+Date: Tue, 22 Apr 2014 17:29:24 -0400
+Message-Id: <1398202165-78897-17-git-send-email-dros@primarydata.com>
+In-Reply-To: <1398202165-78897-1-git-send-email-dros@primarydata.com>
+References: <1398202165-78897-1-git-send-email-dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
+Use the new pg_test interface to adjust requests to fit in the current
+stripe / segment.
 
-The read and write paths set up this struct in exactly the same way, so
-create a single shared struct.
-
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
 ---
- fs/nfs/internal.h |  4 +---
- fs/nfs/pageio.c   | 10 ++++++++--
- fs/nfs/read.c     | 11 ++---------
- fs/nfs/write.c    | 11 ++---------
- 4 files changed, 13 insertions(+), 23 deletions(-)
+ fs/nfs/nfs4filelayout.c | 50 ++++++++++++++++++-------------------------------
+ 1 file changed, 18 insertions(+), 32 deletions(-)
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index b18cca4..798eb47 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -396,13 +396,11 @@ extern int nfs4_get_rootfh(struct nfs_server *server, struct nfs_fh *mntfh, bool
- struct nfs_pgio_completion_ops;
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 9a91f4f..145944f 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -638,7 +638,6 @@ filelayout_check_layout(struct pnfs_layout_hdr *lo,
+ 	struct nfs4_deviceid_node *d;
+ 	struct nfs4_file_layout_dsaddr *dsaddr;
+ 	int status = -EINVAL;
+-	struct nfs_server *nfss = NFS_SERVER(lo->plh_inode);
  
- /* pageio.c */
-+extern const struct rpc_call_ops nfs_pgio_common_ops;
- extern struct nfs_rw_header *nfs_rw_header_alloc(const struct nfs_rw_ops *);
- extern void nfs_rw_header_free(struct nfs_pgio_header *);
- extern struct nfs_pgio_data *nfs_pgio_data_alloc(struct nfs_pgio_header *, unsigned int);
- extern void nfs_pgio_data_release(struct nfs_pgio_data *);
--extern void nfs_pgio_prepare(struct rpc_task *, void *);
--extern void nfs_pgio_release_common(void *);
--extern void nfs_pgio_result_common(struct rpc_task *, void *);
+ 	dprintk("--> %s\n", __func__);
  
- /* read.c */
- extern void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
-diff --git a/fs/nfs/pageio.c b/fs/nfs/pageio.c
-index efbcc44..f64fd70 100644
---- a/fs/nfs/pageio.c
-+++ b/fs/nfs/pageio.c
-@@ -87,7 +87,7 @@ void nfs_pgio_data_release(struct nfs_pgio_data *data)
- }
- EXPORT_SYMBOL_GPL(nfs_pgio_data_release);
- 
--void nfs_pgio_prepare(struct rpc_task *task, void *calldata)
-+static void nfs_pgio_prepare(struct rpc_task *task, void *calldata)
- {
- 	struct nfs_pgio_data *data = calldata;
- 	int err;
-@@ -114,7 +114,7 @@ static int nfs_pgio_result(struct rpc_task *task, struct nfs_pgio_data *data)
- 	return data->header->rw_ops->rw_result(task, data, inode);
- }
- 
--void nfs_pgio_result_common(struct rpc_task *task, void *calldata)
-+static void nfs_pgio_result_common(struct rpc_task *task, void *calldata)
- {
- 	struct nfs_pgio_data *data = calldata;
- 
-@@ -125,3 +125,9 @@ void nfs_pgio_result_common(struct rpc_task *task, void *calldata)
- 	else
- 		data->header->rw_ops->rw_result_common(task, data);
- }
-+
-+const struct rpc_call_ops nfs_pgio_common_ops = {
-+	.rpc_call_prepare = nfs_pgio_prepare,
-+	.rpc_call_done = nfs_pgio_result_common,
-+	.rpc_release = nfs_pgio_release_common,
-+};
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index 4f49507..98373ba 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -29,7 +29,6 @@
- #define NFSDBG_FACILITY		NFSDBG_PAGECACHE
- 
- static const struct nfs_pageio_ops nfs_pageio_read_ops;
--static const struct rpc_call_ops nfs_read_common_ops;
- static const struct nfs_pgio_completion_ops nfs_async_read_completion_ops;
- static const struct nfs_rw_ops nfs_rw_read_ops;
- 
-@@ -314,7 +313,7 @@ static int nfs_pagein_multi(struct nfs_pageio_descriptor *desc,
- 
- 	nfs_list_remove_request(req);
- 	nfs_list_add_request(req, &hdr->pages);
--	desc->pg_rpc_callops = &nfs_read_common_ops;
-+	desc->pg_rpc_callops = &nfs_pgio_common_ops;
- 	return 0;
- }
- 
-@@ -343,7 +342,7 @@ static int nfs_pagein_one(struct nfs_pageio_descriptor *desc,
- 
- 	nfs_read_rpcsetup(data, desc->pg_count, 0);
- 	list_add(&data->list, &hdr->rpc_list);
--	desc->pg_rpc_callops = &nfs_read_common_ops;
-+	desc->pg_rpc_callops = &nfs_pgio_common_ops;
- 	return 0;
- }
- 
-@@ -443,12 +442,6 @@ static void nfs_readpage_result_common(struct rpc_task *task, struct nfs_pgio_da
- 		nfs_readpage_retry(task, data);
- }
- 
--static const struct rpc_call_ops nfs_read_common_ops = {
--	.rpc_call_prepare = nfs_pgio_prepare,
--	.rpc_call_done = nfs_pgio_result_common,
--	.rpc_release = nfs_pgio_release_common,
--};
--
- /*
-  * Read a page over NFS.
-  * We read the page synchronously in the following case:
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index d2351a1..e492537 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -42,7 +42,6 @@
-  * Local function declarations
-  */
- static void nfs_redirty_request(struct nfs_page *req);
--static const struct rpc_call_ops nfs_write_common_ops;
- static const struct rpc_call_ops nfs_commit_ops;
- static const struct nfs_pgio_completion_ops nfs_async_write_completion_ops;
- static const struct nfs_commit_completion_ops nfs_commit_completion_ops;
-@@ -1138,7 +1137,7 @@ static int nfs_flush_multi(struct nfs_pageio_descriptor *desc,
- 	} while (nbytes != 0);
- 	nfs_list_remove_request(req);
- 	nfs_list_add_request(req, &hdr->pages);
--	desc->pg_rpc_callops = &nfs_write_common_ops;
-+	desc->pg_rpc_callops = &nfs_pgio_common_ops;
- 	return 0;
- }
- 
-@@ -1182,7 +1181,7 @@ static int nfs_flush_one(struct nfs_pageio_descriptor *desc,
- 	/* Set up the argument struct */
- 	nfs_write_rpcsetup(data, desc->pg_count, 0, desc->pg_ioflags, &cinfo);
- 	list_add(&data->list, &hdr->rpc_list);
--	desc->pg_rpc_callops = &nfs_write_common_ops;
-+	desc->pg_rpc_callops = &nfs_pgio_common_ops;
- 	return 0;
- }
- 
-@@ -1272,12 +1271,6 @@ static void nfs_writeback_release_common(struct nfs_pgio_data *data)
+@@ -656,7 +655,7 @@ filelayout_check_layout(struct pnfs_layout_hdr *lo,
+ 		goto out;
  	}
+ 
+-	if (!fl->stripe_unit || fl->stripe_unit % PAGE_SIZE) {
++	if (!fl->stripe_unit) {
+ 		dprintk("%s Invalid stripe unit (%u)\n",
+ 			__func__, fl->stripe_unit);
+ 		goto out;
+@@ -693,12 +692,6 @@ filelayout_check_layout(struct pnfs_layout_hdr *lo,
+ 		goto out_put;
+ 	}
+ 
+-	if (fl->stripe_unit % nfss->rsize || fl->stripe_unit % nfss->wsize) {
+-		dprintk("%s Stripe unit (%u) not aligned with rsize %u "
+-			"wsize %u\n", __func__, fl->stripe_unit, nfss->rsize,
+-			nfss->wsize);
+-	}
+-
+ 	status = 0;
+ out:
+ 	dprintk("--> %s returns %d\n", __func__, status);
+@@ -935,44 +928,40 @@ filelayout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+ {
+ 	unsigned int size;
+ 	u64 p_stripe, r_stripe;
+-	u32 stripe_unit;
++	u32 stripe_offset;
++	u64 segment_offset = pgio->pg_lseg->pls_range.offset;
++	u32 stripe_unit = FILELAYOUT_LSEG(pgio->pg_lseg)->stripe_unit;
+ 
+ 	/* calls nfs_generic_pg_test */
+ 	size = pnfs_generic_pg_test(pgio, prev, req);
+ 	if (!size)
+ 		return 0;
+ 
++	/* see if req and prev are in the same stripe */
+ 	if (prev) {
+-		p_stripe = (u64)req_offset(prev);
+-		r_stripe = (u64)req_offset(req);
+-		stripe_unit = FILELAYOUT_LSEG(pgio->pg_lseg)->stripe_unit;
+-
++		p_stripe = (u64)req_offset(prev) - segment_offset;
++		r_stripe = (u64)req_offset(req) - segment_offset;
+ 		do_div(p_stripe, stripe_unit);
+ 		do_div(r_stripe, stripe_unit);
+ 
+ 		if (p_stripe != r_stripe)
+ 			return 0;
+ 	}
+-	return min(size, req->wb_bytes);
++
++	/* calculate remaining bytes in the current stripe */
++	stripe_offset = ((u64)req_offset(req) - segment_offset) % stripe_unit;
++	WARN_ON_ONCE(stripe_offset > stripe_unit);
++	if (stripe_offset >= stripe_unit)
++		return 0;
++	return min(stripe_unit - (unsigned int)stripe_offset, size);
  }
  
--static const struct rpc_call_ops nfs_write_common_ops = {
--	.rpc_call_prepare = nfs_pgio_prepare,
--	.rpc_call_done = nfs_pgio_result_common,
--	.rpc_release = nfs_pgio_release_common,
--};
+ static void
+ filelayout_pg_init_read(struct nfs_pageio_descriptor *pgio,
+ 			struct nfs_page *req)
+ {
+-	WARN_ON_ONCE(pgio->pg_lseg != NULL);
 -
- /*
-  * Special version of should_remove_suid() that ignores capabilities.
-  */
+-	if (req->wb_offset != req->wb_pgbase) {
+-		/*
+-		 * Handling unaligned pages is difficult, because have to
+-		 * somehow split a req in two in certain cases in the
+-		 * pg.test code.  Avoid this by just not using pnfs
+-		 * in this case.
+-		 */
+-		nfs_pageio_reset_read_mds(pgio);
+-		return;
+-	}
+-	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
++	if (!pgio->pg_lseg)
++		pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
+ 					   req->wb_context,
+ 					   0,
+ 					   NFS4_MAX_UINT64,
+@@ -990,11 +979,8 @@ filelayout_pg_init_write(struct nfs_pageio_descriptor *pgio,
+ 	struct nfs_commit_info cinfo;
+ 	int status;
+ 
+-	WARN_ON_ONCE(pgio->pg_lseg != NULL);
+-
+-	if (req->wb_offset != req->wb_pgbase)
+-		goto out_mds;
+-	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
++	if (!pgio->pg_lseg)
++		pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
+ 					   req->wb_context,
+ 					   0,
+ 					   NFS4_MAX_UINT64,
 -- 
-1.9.2
+1.8.5.2 (Apple Git-48)
 
