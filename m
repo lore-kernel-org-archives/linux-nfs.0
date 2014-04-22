@@ -1,317 +1,213 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:15489 "EHLO mx11.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932165AbaDYU43 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Apr 2014 16:56:29 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
-CC: <dros@primarydata.com>, <hch@infradead.org>
-Subject: [PATCH v2 14/17] NFS: Create a common initiate_pgio() function
-Date: Fri, 25 Apr 2014 16:55:57 -0400
-Message-ID: <1398459360-2093-15-git-send-email-Anna.Schumaker@Netapp.com>
-In-Reply-To: <1398459360-2093-1-git-send-email-Anna.Schumaker@Netapp.com>
-References: <1398459360-2093-1-git-send-email-Anna.Schumaker@Netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+Received: from mail-ig0-f175.google.com ([209.85.213.175]:37537 "EHLO
+	mail-ig0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758643AbaDVV3T (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Apr 2014 17:29:19 -0400
+Received: by mail-ig0-f175.google.com with SMTP id h3so3558293igd.8
+        for <linux-nfs@vger.kernel.org>; Tue, 22 Apr 2014 14:29:18 -0700 (PDT)
+From: Weston Andros Adamson <dros@primarydata.com>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
+Subject: [PATCH 14/17] pnfs: support multiple verfs per direct req
+Date: Tue, 22 Apr 2014 17:29:22 -0400
+Message-Id: <1398202165-78897-15-git-send-email-dros@primarydata.com>
+In-Reply-To: <1398202165-78897-1-git-send-email-dros@primarydata.com>
+References: <1398202165-78897-1-git-send-email-dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
+Support direct requests that span multiple pnfs data servers by
+comparing nfs_pgio_header->verf to a cached verf in pnfs_commit_bucket.
+Continue to use dreq->verf if the MDS is used / non-pNFS.
 
-Most of this code is the same for both the read and write paths, so
-combine everything and use the rw_ops when necessary.
-
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
 ---
- fs/nfs/internal.h        |  9 ++------
- fs/nfs/nfs4filelayout.c  |  6 +++---
- fs/nfs/pageio.c          | 47 +++++++++++++++++++++++++++++++++++++++++
- fs/nfs/read.c            | 42 ++++++------------------------------
- fs/nfs/write.c           | 55 ++++++------------------------------------------
- include/linux/nfs_page.h |  2 ++
- 6 files changed, 67 insertions(+), 94 deletions(-)
+ fs/nfs/direct.c         | 84 ++++++++++++++++++++++++++++++++++++++++++-------
+ fs/nfs/nfs4filelayout.c |  3 ++
+ include/linux/nfs.h     |  5 ++-
+ include/linux/nfs_xdr.h |  2 ++
+ 4 files changed, 82 insertions(+), 12 deletions(-)
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 6422b9d..027d72c 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -400,14 +400,13 @@ extern struct nfs_rw_header *nfs_rw_header_alloc(const struct nfs_rw_ops *);
- extern void nfs_rw_header_free(struct nfs_pgio_header *);
- extern void nfs_pgio_data_release(struct nfs_pgio_data *);
- extern int nfs_generic_pgio(struct nfs_pageio_descriptor *, struct nfs_pgio_header *);
-+extern int nfs_initiate_pgio(struct rpc_clnt *, struct nfs_pgio_data *,
-+			     const struct rpc_call_ops *, int, int);
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index 9d968ca..53b86e6 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -90,7 +90,7 @@ struct nfs_direct_req {
+ 	int			flags;
+ #define NFS_ODIRECT_DO_COMMIT		(1)	/* an unstable reply was received */
+ #define NFS_ODIRECT_RESCHED_WRITES	(2)	/* write verification failed */
+-	struct nfs_writeverf	verf;		/* unstable write verifier */
++	struct nfs_writeverf    verf;		/* unstable write verifier */
+ };
  
- /* read.c */
- extern void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
- 			struct inode *inode, bool force_mds,
- 			const struct nfs_pgio_completion_ops *compl_ops);
--extern int nfs_initiate_read(struct rpc_clnt *clnt,
--			     struct nfs_pgio_data *data,
--			     const struct rpc_call_ops *call_ops, int flags);
- extern void nfs_read_prepare(struct rpc_task *task, void *calldata);
- extern void nfs_pageio_reset_read_mds(struct nfs_pageio_descriptor *pgio);
+ static const struct nfs_pgio_completion_ops nfs_direct_write_completion_ops;
+@@ -108,6 +108,70 @@ static inline int put_dreq(struct nfs_direct_req *dreq)
+ 	return atomic_dec_and_test(&dreq->io_count);
+ }
  
-@@ -428,10 +427,6 @@ extern void nfs_pageio_init_write(struct nfs_pageio_descriptor *pgio,
- 			const struct nfs_pgio_completion_ops *compl_ops);
- extern void nfs_pageio_reset_write_mds(struct nfs_pageio_descriptor *pgio);
- extern void nfs_commit_free(struct nfs_commit_data *p);
--extern int nfs_initiate_write(struct rpc_clnt *clnt,
--			      struct nfs_pgio_data *data,
--			      const struct rpc_call_ops *call_ops,
--			      int how, int flags);
- extern void nfs_write_prepare(struct rpc_task *task, void *calldata);
- extern void nfs_commit_prepare(struct rpc_task *task, void *calldata);
- extern int nfs_initiate_commit(struct rpc_clnt *clnt,
++/*
++ * nfs_direct_set_or_cmp_hdr_verf - ensure that the same verifier is used
++ *				    for all requests (to each sever) in a
++ *				    direct io request.
++ * @dreq - direct request possibly spanning multiple servers
++ * @hdr - pageio header to validate against previously seen verfs
++ *
++ * If a verf has yet to be seen for the server associated with @hdr, set
++ * the verf for that server and return 0.
++ * If a verf has been seen for this server, compare @hdr->verf to it and
++ * return the result.
++ */
++static int nfs_direct_set_or_cmp_hdr_verf(struct nfs_direct_req *dreq,
++					  struct nfs_pgio_header *hdr)
++{
++	struct nfs_writeverf *ds_verf = &dreq->verf;
++	struct nfs_client *ds_clp = hdr->data.write->ds_clp;
++	int ds_idx = hdr->data.write->ds_idx;
++
++	if (ds_clp) {
++		/* pNFS is in use, use the DS verf */
++		if (ds_idx > dreq->ds_cinfo.nbuckets)
++			WARN_ON_ONCE(1);
++		else
++			ds_verf = &dreq->ds_cinfo.buckets[ds_idx].direct_verf;
++	}
++	if (ds_verf->committed < 0) {
++		memcpy(ds_verf, hdr->verf, sizeof(struct nfs_writeverf));
++		WARN_ON_ONCE(ds_verf->committed < 0);
++		return 0;
++	}
++	return memcmp(ds_verf, hdr->verf, sizeof(struct nfs_writeverf));
++}
++
++/*
++ * nfs_direct_cmp_commit_data_verf - check that a write verifier from a commit
++ *				     matches the verifier seen on write from
++ *				     the same server.
++ * @dreq - direct request possibly spanning multiple servers
++ * @hdr - pageio header to validate against previously seen verfs
++ *
++ * This function relies on nfs_direct_set_or_cmp_hdr_verf being called at least
++ * once to set the verf for this server - this is OK because both called (and
++ * only called) in the unstable write path.
++ *
++ * Compare @hdr->verf to it and return the result.
++ */
++static int nfs_direct_cmp_commit_data_verf(struct nfs_direct_req *dreq,
++					   struct nfs_commit_data *data)
++{
++	struct nfs_writeverf *ds_verf = &dreq->verf;
++	int ds_idx = data->ds_commit_index;
++
++	if (data->ds_clp) {
++		/* pNFS is in use, use the DS verf */
++		if (ds_idx > dreq->ds_cinfo.nbuckets)
++			WARN_ON_ONCE(1);
++		else
++			ds_verf = &dreq->ds_cinfo.buckets[ds_idx].direct_verf;
++	}
++	WARN_ON_ONCE(ds_verf->committed < 0);
++	return memcmp(ds_verf, &data->verf, sizeof(struct nfs_writeverf));
++}
++
+ /**
+  * nfs_direct_IO - NFS address space operation for direct I/O
+  * @rw: direction (read or write)
+@@ -168,6 +232,7 @@ static inline struct nfs_direct_req *nfs_direct_req_alloc(void)
+ 	kref_get(&dreq->kref);
+ 	init_completion(&dreq->completion);
+ 	INIT_LIST_HEAD(&dreq->mds_cinfo.list);
++	dreq->verf.committed = NFS_INVALID_STABLE_HOW;	/* not set yet */
+ 	INIT_WORK(&dreq->work, nfs_direct_write_schedule_work);
+ 	spin_lock_init(&dreq->lock);
+ 
+@@ -602,7 +667,7 @@ static void nfs_direct_commit_complete(struct nfs_commit_data *data)
+ 		dprintk("NFS: %5u commit failed with error %d.\n",
+ 			data->task.tk_pid, status);
+ 		dreq->flags = NFS_ODIRECT_RESCHED_WRITES;
+-	} else if (memcmp(&dreq->verf, &data->verf, sizeof(data->verf))) {
++	} else if (nfs_direct_cmp_commit_data_verf(dreq, data)) {
+ 		dprintk("NFS: %5u commit verify failed\n", data->task.tk_pid);
+ 		dreq->flags = NFS_ODIRECT_RESCHED_WRITES;
+ 	}
+@@ -810,16 +875,13 @@ static void nfs_direct_write_completion(struct nfs_pgio_header *hdr)
+ 		} else if (test_bit(NFS_IOHDR_NEED_COMMIT, &hdr->flags)) {
+ 			if (dreq->flags == NFS_ODIRECT_RESCHED_WRITES)
+ 				bit = NFS_IOHDR_NEED_RESCHED;
+-			else if (dreq->flags == 0) {
+-				memcpy(&dreq->verf, hdr->verf,
+-				       sizeof(dreq->verf));
+-				bit = NFS_IOHDR_NEED_COMMIT;
+-				dreq->flags = NFS_ODIRECT_DO_COMMIT;
+-			} else if (dreq->flags == NFS_ODIRECT_DO_COMMIT) {
+-				if (memcmp(&dreq->verf, hdr->verf, sizeof(dreq->verf))) {
+-					dreq->flags = NFS_ODIRECT_RESCHED_WRITES;
++			else {
++				if (dreq->flags == 0)
++					dreq->flags = NFS_ODIRECT_DO_COMMIT;
++
++				if (nfs_direct_set_or_cmp_hdr_verf(dreq, hdr))
+ 					bit = NFS_IOHDR_NEED_RESCHED;
+-				} else
++				else
+ 					bit = NFS_IOHDR_NEED_COMMIT;
+ 			}
+ 		}
 diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index e693614..7954e16 100644
+index cfd76bd..9a91f4f 100644
 --- a/fs/nfs/nfs4filelayout.c
 +++ b/fs/nfs/nfs4filelayout.c
-@@ -568,8 +568,8 @@ filelayout_read_pagelist(struct nfs_pgio_data *data)
- 	data->mds_offset = offset;
+@@ -603,6 +603,7 @@ filelayout_write_pagelist(struct nfs_write_data *data, int sync)
+ 	data->write_done_cb = filelayout_write_done_cb;
+ 	atomic_inc(&ds->ds_clp->cl_count);
+ 	data->ds_clp = ds->ds_clp;
++	data->ds_idx = idx;
+ 	fh = nfs4_fl_select_ds_fh(lseg, j);
+ 	if (fh)
+ 		data->args.fh = fh;
+@@ -875,6 +876,8 @@ filelayout_alloc_commit_info(struct pnfs_layout_segment *lseg,
+ 	for (i = 0; i < size; i++) {
+ 		INIT_LIST_HEAD(&buckets[i].written);
+ 		INIT_LIST_HEAD(&buckets[i].committing);
++		/* mark direct verifier as unset */
++		buckets[i].direct_verf.committed = NFS_INVALID_STABLE_HOW;
+ 	}
  
- 	/* Perform an asynchronous read to ds */
--	nfs_initiate_read(ds_clnt, data,
--				  &filelayout_read_call_ops, RPC_TASK_SOFTCONN);
-+	nfs_initiate_pgio(ds_clnt, data,
-+			    &filelayout_read_call_ops, 0, RPC_TASK_SOFTCONN);
- 	return PNFS_ATTEMPTED;
- }
- 
-@@ -613,7 +613,7 @@ filelayout_write_pagelist(struct nfs_pgio_data *data, int sync)
- 	data->args.offset = filelayout_get_dserver_offset(lseg, offset);
- 
- 	/* Perform an asynchronous write */
--	nfs_initiate_write(ds_clnt, data,
-+	nfs_initiate_pgio(ds_clnt, data,
- 				    &filelayout_write_call_ops, sync,
- 				    RPC_TASK_SOFTCONN);
- 	return PNFS_ATTEMPTED;
-diff --git a/fs/nfs/pageio.c b/fs/nfs/pageio.c
-index 70598a7..f07a132 100644
---- a/fs/nfs/pageio.c
-+++ b/fs/nfs/pageio.c
-@@ -126,6 +126,53 @@ static void nfs_pgio_rpcsetup(struct nfs_pgio_data *data,
- 	nfs_fattr_init(&data->fattr);
- }
- 
-+int nfs_initiate_pgio(struct rpc_clnt *clnt, struct nfs_pgio_data *data,
-+		      const struct rpc_call_ops *call_ops, int how, int flags)
-+{
-+	struct inode *inode = data->header->inode;
-+	struct rpc_task *task;
-+	struct rpc_message msg = {
-+		.rpc_argp = &data->args,
-+		.rpc_resp = &data->res,
-+		.rpc_cred = data->header->cred,
-+	};
-+	struct rpc_task_setup task_setup_data = {
-+		.rpc_client = clnt,
-+		.task = &data->task,
-+		.rpc_message = &msg,
-+		.callback_ops = call_ops,
-+		.callback_data = data,
-+		.workqueue = nfsiod_workqueue,
-+		.flags = RPC_TASK_ASYNC | flags,
-+	};
-+	int ret = 0;
+ 	spin_lock(cinfo->lock);
+diff --git a/include/linux/nfs.h b/include/linux/nfs.h
+index 3e794c1..610af51 100644
+--- a/include/linux/nfs.h
++++ b/include/linux/nfs.h
+@@ -46,6 +46,9 @@ static inline void nfs_copy_fh(struct nfs_fh *target, const struct nfs_fh *sourc
+ enum nfs3_stable_how {
+ 	NFS_UNSTABLE = 0,
+ 	NFS_DATA_SYNC = 1,
+-	NFS_FILE_SYNC = 2
++	NFS_FILE_SYNC = 2,
 +
-+	data->header->rw_ops->rw_initiate(data, &msg, &task_setup_data, how);
-+
-+	dprintk("NFS: %5u initiated pgio call "
-+		"(req %s/%llu, %u bytes @ offset %llu)\n",
-+		data->task.tk_pid,
-+		inode->i_sb->s_id,
-+		(unsigned long long)NFS_FILEID(inode),
-+		data->args.count,
-+		(unsigned long long)data->args.offset);
-+
-+	task = rpc_run_task(&task_setup_data);
-+	if (IS_ERR(task)) {
-+		ret = PTR_ERR(task);
-+		goto out;
-+	}
-+	if (how & FLUSH_SYNC) {
-+		ret = rpc_wait_for_completion_task(task);
-+		if (ret == 0)
-+			ret = task->tk_status;
-+	}
-+	rpc_put_task(task);
-+out:
-+	return ret;
-+}
-+EXPORT_SYMBOL_GPL(nfs_initiate_pgio);
-+
- static int nfs_pgio_error(struct nfs_pageio_descriptor *desc,
- 			  struct nfs_pgio_header *hdr)
- {
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index 07c21bd..ebea335 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -151,53 +151,22 @@ out:
- 	hdr->release(hdr);
- }
- 
--int nfs_initiate_read(struct rpc_clnt *clnt,
--		      struct nfs_pgio_data *data,
--		      const struct rpc_call_ops *call_ops, int flags)
-+static void nfs_initiate_read(struct nfs_pgio_data *data, struct rpc_message *msg,
-+			      struct rpc_task_setup *task_setup_data, int how)
- {
- 	struct inode *inode = data->header->inode;
- 	int swap_flags = IS_SWAPFILE(inode) ? NFS_RPC_SWAPFLAGS : 0;
--	struct rpc_task *task;
--	struct rpc_message msg = {
--		.rpc_argp = &data->args,
--		.rpc_resp = &data->res,
--		.rpc_cred = data->header->cred,
--	};
--	struct rpc_task_setup task_setup_data = {
--		.task = &data->task,
--		.rpc_client = clnt,
--		.rpc_message = &msg,
--		.callback_ops = call_ops,
--		.callback_data = data,
--		.workqueue = nfsiod_workqueue,
--		.flags = RPC_TASK_ASYNC | swap_flags | flags,
--	};
- 
--	/* Set up the initial task struct. */
--	NFS_PROTO(inode)->read_setup(data, &msg);
--
--	dprintk("NFS: %5u initiated read call (req %s/%llu, %u bytes @ "
--			"offset %llu)\n",
--			data->task.tk_pid,
--			inode->i_sb->s_id,
--			(unsigned long long)NFS_FILEID(inode),
--			data->args.count,
--			(unsigned long long)data->args.offset);
--
--	task = rpc_run_task(&task_setup_data);
--	if (IS_ERR(task))
--		return PTR_ERR(task);
--	rpc_put_task(task);
--	return 0;
-+	task_setup_data->flags |= swap_flags;
-+	NFS_PROTO(inode)->read_setup(data, msg);
- }
--EXPORT_SYMBOL_GPL(nfs_initiate_read);
- 
- static int nfs_do_read(struct nfs_pgio_data *data,
- 		const struct rpc_call_ops *call_ops)
- {
- 	struct inode *inode = data->header->inode;
- 
--	return nfs_initiate_read(NFS_CLIENT(inode), data, call_ops, 0);
-+	return nfs_initiate_pgio(NFS_CLIENT(inode), data, call_ops, 0, 0);
- }
- 
- static int
-@@ -491,4 +460,5 @@ static const struct nfs_rw_ops nfs_rw_read_ops = {
- 	.rw_free_header		= nfs_readhdr_free,
- 	.rw_result		= nfs_readpage_result,
- 	.rw_result_common	= nfs_readpage_result_common,
-+	.rw_initiate		= nfs_initiate_read,
++	/* used by direct.c to mark verf as invalid */
++	NFS_INVALID_STABLE_HOW = -1
  };
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 8929e33..4279f80 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -932,60 +932,18 @@ static int flush_task_priority(int how)
- 	return RPC_PRIORITY_NORMAL;
- }
- 
--int nfs_initiate_write(struct rpc_clnt *clnt,
--		       struct nfs_pgio_data *data,
--		       const struct rpc_call_ops *call_ops,
--		       int how, int flags)
-+static void nfs_initiate_write(struct nfs_pgio_data *data, struct rpc_message *msg,
-+			       struct rpc_task_setup *task_setup_data, int how)
- {
- 	struct inode *inode = data->header->inode;
- 	int priority = flush_task_priority(how);
--	struct rpc_task *task;
--	struct rpc_message msg = {
--		.rpc_argp = &data->args,
--		.rpc_resp = &data->res,
--		.rpc_cred = data->header->cred,
--	};
--	struct rpc_task_setup task_setup_data = {
--		.rpc_client = clnt,
--		.task = &data->task,
--		.rpc_message = &msg,
--		.callback_ops = call_ops,
--		.callback_data = data,
--		.workqueue = nfsiod_workqueue,
--		.flags = RPC_TASK_ASYNC | flags,
--		.priority = priority,
--	};
--	int ret = 0;
- 
--	/* Set up the initial task struct.  */
--	NFS_PROTO(inode)->write_setup(data, &msg);
--
--	dprintk("NFS: %5u initiated write call "
--		"(req %s/%llu, %u bytes @ offset %llu)\n",
--		data->task.tk_pid,
--		inode->i_sb->s_id,
--		(unsigned long long)NFS_FILEID(inode),
--		data->args.count,
--		(unsigned long long)data->args.offset);
-+	task_setup_data->priority = priority;
-+	NFS_PROTO(inode)->write_setup(data, msg);
- 
- 	nfs4_state_protect_write(NFS_SERVER(inode)->nfs_client,
--				 &task_setup_data.rpc_client, &msg, data);
--
--	task = rpc_run_task(&task_setup_data);
--	if (IS_ERR(task)) {
--		ret = PTR_ERR(task);
--		goto out;
--	}
--	if (how & FLUSH_SYNC) {
--		ret = rpc_wait_for_completion_task(task);
--		if (ret == 0)
--			ret = task->tk_status;
--	}
--	rpc_put_task(task);
--out:
--	return ret;
-+				 &task_setup_data->rpc_client, msg, data);
- }
--EXPORT_SYMBOL_GPL(nfs_initiate_write);
- 
- static int nfs_do_write(struct nfs_pgio_data *data,
- 		const struct rpc_call_ops *call_ops,
-@@ -993,7 +951,7 @@ static int nfs_do_write(struct nfs_pgio_data *data,
- {
- 	struct inode *inode = data->header->inode;
- 
--	return nfs_initiate_write(NFS_CLIENT(inode), data, call_ops, how, 0);
-+	return nfs_initiate_pgio(NFS_CLIENT(inode), data, call_ops, how, 0);
- }
- 
- static int nfs_do_multiple_writes(struct list_head *head,
-@@ -1743,4 +1701,5 @@ static const struct nfs_rw_ops nfs_rw_write_ops = {
- 	.rw_release		= nfs_writeback_release_common,
- 	.rw_result		= nfs_writeback_result,
- 	.rw_result_common	= nfs_writeback_result_common,
-+	.rw_initiate		= nfs_initiate_write,
- };
-diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
-index 9477d7a..dc5e71c 100644
---- a/include/linux/nfs_page.h
-+++ b/include/linux/nfs_page.h
-@@ -59,6 +59,8 @@ struct nfs_rw_ops {
- 	void (*rw_release)(struct nfs_pgio_data *);
- 	int  (*rw_result)(struct rpc_task *, struct nfs_pgio_data *, struct inode *);
- 	void (*rw_result_common)(struct rpc_task *, struct nfs_pgio_data *);
-+	void (*rw_initiate)(struct nfs_pgio_data *, struct rpc_message *,
-+			    struct rpc_task_setup *, int);
+ #endif /* _LINUX_NFS_H */
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 239274d..f94d804 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1129,6 +1129,7 @@ struct pnfs_commit_bucket {
+ 	struct list_head committing;
+ 	struct pnfs_layout_segment *wlseg;
+ 	struct pnfs_layout_segment *clseg;
++	struct nfs_writeverf direct_verf;
  };
  
- struct nfs_pageio_descriptor {
+ struct pnfs_ds_commit_info {
+@@ -1289,6 +1290,7 @@ struct nfs_write_data {
+ 	__u64			mds_offset;	/* Filelayout dense stripe */
+ 	struct nfs_page_array	pages;
+ 	struct nfs_client	*ds_clp;	/* pNFS data server */
++	int			ds_idx;		/* ds index if ds_clp is set */
+ };
+ 
+ /* used as flag bits in nfs_pgio_header */
 -- 
-1.9.2
+1.8.5.2 (Apple Git-48)
 
