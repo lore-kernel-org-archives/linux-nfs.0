@@ -1,133 +1,140 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f173.google.com ([209.85.223.173]:38108 "EHLO
-	mail-ie0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754261AbaDXSPk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Apr 2014 14:15:40 -0400
-Received: by mail-ie0-f173.google.com with SMTP id rl12so2764236iec.4
-        for <linux-nfs@vger.kernel.org>; Thu, 24 Apr 2014 11:15:40 -0700 (PDT)
+Received: from mail-ie0-f180.google.com ([209.85.223.180]:45577 "EHLO
+	mail-ie0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758804AbaDVV3O (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Apr 2014 17:29:14 -0400
+Received: by mail-ie0-f180.google.com with SMTP id as1so66766iec.39
+        for <linux-nfs@vger.kernel.org>; Tue, 22 Apr 2014 14:29:14 -0700 (PDT)
 From: Weston Andros Adamson <dros@primarydata.com>
 To: trond.myklebust@primarydata.com
 Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
-Subject: [PATCH 03/18 v2] nfs: remove unused arg from nfs_create_request
-Date: Thu, 24 Apr 2014 14:15:13 -0400
-Message-Id: <1398363328-7100-4-git-send-email-dros@primarydata.com>
-In-Reply-To: <1398363328-7100-1-git-send-email-dros@primarydata.com>
-References: <1398363328-7100-1-git-send-email-dros@primarydata.com>
+Subject: [PATCH 11/17] nfs: chain calls to pg_test
+Date: Tue, 22 Apr 2014 17:29:19 -0400
+Message-Id: <1398202165-78897-12-git-send-email-dros@primarydata.com>
+In-Reply-To: <1398202165-78897-1-git-send-email-dros@primarydata.com>
+References: <1398202165-78897-1-git-send-email-dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-@inode is passed but not used.
+Now that pg_test can change the size of the request (by returning a non-zero
+size smaller than the request), pg_test functions that call other
+pg_test functions must return the minimum of the result - or 0 if any fail.
+
+Also clean up the logic of some pg_test functions so that all checks are
+for contitions where coalescing is not possible.
 
 Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
 ---
- fs/nfs/direct.c          | 6 ++----
- fs/nfs/pagelist.c        | 4 +---
- fs/nfs/read.c            | 5 ++---
- fs/nfs/write.c           | 2 +-
- include/linux/nfs_page.h | 1 -
- 5 files changed, 6 insertions(+), 12 deletions(-)
+ fs/nfs/nfs4filelayout.c      | 27 ++++++++++++++-------------
+ fs/nfs/objlayout/objio_osd.c | 12 ++++++++----
+ fs/nfs/pnfs.c                | 15 ++++++++++-----
+ 3 files changed, 32 insertions(+), 22 deletions(-)
 
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index 164b016..1dd8c62 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -380,8 +380,7 @@ static ssize_t nfs_direct_read_schedule_segment(struct nfs_pageio_descriptor *de
- 			struct nfs_page *req;
- 			unsigned int req_len = min_t(size_t, bytes, PAGE_SIZE - pgbase);
- 			/* XXX do we need to do the eof zeroing found in async_filler? */
--			req = nfs_create_request(dreq->ctx, dreq->inode,
--						 pagevec[i],
-+			req = nfs_create_request(dreq->ctx, pagevec[i],
- 						 pgbase, req_len);
- 			if (IS_ERR(req)) {
- 				result = PTR_ERR(req);
-@@ -750,8 +749,7 @@ static ssize_t nfs_direct_write_schedule_segment(struct nfs_pageio_descriptor *d
- 			struct nfs_page *req;
- 			unsigned int req_len = min_t(size_t, bytes, PAGE_SIZE - pgbase);
- 
--			req = nfs_create_request(dreq->ctx, dreq->inode,
--						 pagevec[i],
-+			req = nfs_create_request(dreq->ctx, pagevec[i],
- 						 pgbase, req_len);
- 			if (IS_ERR(req)) {
- 				result = PTR_ERR(req);
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index 8221706..30c221c 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -136,7 +136,6 @@ nfs_iocounter_wait(struct nfs_io_counter *c)
- /**
-  * nfs_create_request - Create an NFS read/write request.
-  * @ctx: open context to use
-- * @inode: inode to which the request is attached
-  * @page: page to write
-  * @offset: starting offset within the page for the write
-  * @count: number of bytes to read/write
-@@ -146,8 +145,7 @@ nfs_iocounter_wait(struct nfs_io_counter *c)
-  * User should ensure it is safe to sleep in this function.
-  */
- struct nfs_page *
--nfs_create_request(struct nfs_open_context *ctx, struct inode *inode,
--		   struct page *page,
-+nfs_create_request(struct nfs_open_context *ctx, struct page *page,
- 		   unsigned int offset, unsigned int count)
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 3b32c95..cfd76bd 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -930,26 +930,27 @@ static size_t
+ filelayout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+ 		   struct nfs_page *req)
  {
- 	struct nfs_page		*req;
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index d7e9460..a48b909 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -85,7 +85,7 @@ int nfs_readpage_async(struct nfs_open_context *ctx, struct inode *inode,
- 	len = nfs_page_length(page);
- 	if (len == 0)
- 		return nfs_return_empty_page(page);
--	new = nfs_create_request(ctx, inode, page, 0, len);
-+	new = nfs_create_request(ctx, page, 0, len);
- 	if (IS_ERR(new)) {
- 		unlock_page(page);
- 		return PTR_ERR(new);
-@@ -303,7 +303,6 @@ static int
- readpage_async_filler(void *data, struct page *page)
++	unsigned int size;
+ 	u64 p_stripe, r_stripe;
+ 	u32 stripe_unit;
+ 
+-	if (!pnfs_generic_pg_test(pgio, prev, req) ||
+-	    !nfs_generic_pg_test(pgio, prev, req))
++	/* calls nfs_generic_pg_test */
++	size = pnfs_generic_pg_test(pgio, prev, req);
++	if (!size)
+ 		return 0;
+ 
+-	if (!prev)
+-		return req->wb_bytes;
++	if (prev) {
++		p_stripe = (u64)req_offset(prev);
++		r_stripe = (u64)req_offset(req);
++		stripe_unit = FILELAYOUT_LSEG(pgio->pg_lseg)->stripe_unit;
+ 
+-	p_stripe = (u64)req_offset(prev);
+-	r_stripe = (u64)req_offset(req);
+-	stripe_unit = FILELAYOUT_LSEG(pgio->pg_lseg)->stripe_unit;
++		do_div(p_stripe, stripe_unit);
++		do_div(r_stripe, stripe_unit);
+ 
+-	do_div(p_stripe, stripe_unit);
+-	do_div(r_stripe, stripe_unit);
+-
+-	if (p_stripe == r_stripe)
+-		return req->wb_bytes;
+-	return 0;
++		if (p_stripe != r_stripe)
++			return 0;
++	}
++	return min(size, req->wb_bytes);
+ }
+ 
+ static void
+diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+index c20352a..31de29e 100644
+--- a/fs/nfs/objlayout/objio_osd.c
++++ b/fs/nfs/objlayout/objio_osd.c
+@@ -571,13 +571,17 @@ int objio_write_pagelist(struct nfs_write_data *wdata, int how)
+ static size_t objio_pg_test(struct nfs_pageio_descriptor *pgio,
+ 			  struct nfs_page *prev, struct nfs_page *req)
  {
- 	struct nfs_readdesc *desc = (struct nfs_readdesc *)data;
--	struct inode *inode = page_file_mapping(page)->host;
- 	struct nfs_page *new;
- 	unsigned int len;
- 	int error;
-@@ -312,7 +311,7 @@ readpage_async_filler(void *data, struct page *page)
- 	if (len == 0)
- 		return nfs_return_empty_page(page);
+-	if (!pnfs_generic_pg_test(pgio, prev, req))
++	unsigned int size;
++
++	size = pnfs_generic_pg_test(pgio, prev, req);
++
++	if (!size)
+ 		return 0;
  
--	new = nfs_create_request(desc->ctx, inode, page, 0, len);
-+	new = nfs_create_request(desc->ctx, page, 0, len);
- 	if (IS_ERR(new))
- 		goto out_error;
+-	if (pgio->pg_count + req->wb_bytes <=
++	if (pgio->pg_count + req->wb_bytes >
+ 	    (unsigned long)pgio->pg_layout_private)
+-		return req->wb_bytes;
+-	return 0;
++		return 0;
++	return min(size, req->wb_bytes);
+ }
  
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 3483dd4..5f1c965 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -761,7 +761,7 @@ static struct nfs_page * nfs_setup_write_request(struct nfs_open_context* ctx,
- 	req = nfs_try_to_update_request(inode, page, offset, bytes);
- 	if (req != NULL)
- 		goto out;
--	req = nfs_create_request(ctx, inode, page, offset, bytes);
-+	req = nfs_create_request(ctx, page, offset, bytes);
- 	if (IS_ERR(req))
- 		goto out;
- 	nfs_inode_add_request(inode, req);
-diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
-index 91ac4d4..8cb2640 100644
---- a/include/linux/nfs_page.h
-+++ b/include/linux/nfs_page.h
-@@ -85,7 +85,6 @@ struct nfs_pageio_descriptor {
- #define NFS_WBACK_BUSY(req)	(test_bit(PG_BUSY,&(req)->wb_flags))
+ static void objio_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 6201bf6..7c89385 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1469,8 +1469,12 @@ size_t
+ pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+ 		     struct nfs_page *req)
+ {
+-	if (pgio->pg_lseg == NULL)
+-		return nfs_generic_pg_test(pgio, prev, req);
++	unsigned int size;
++
++	size = nfs_generic_pg_test(pgio, prev, req);
++
++	if (!size)
++		return 0;
  
- extern	struct nfs_page *nfs_create_request(struct nfs_open_context *ctx,
--					    struct inode *inode,
- 					    struct page *page,
- 					    unsigned int offset,
- 					    unsigned int count);
+ 	/*
+ 	 * Test if a nfs_page is fully contained in the pnfs_layout_range.
+@@ -1486,10 +1490,11 @@ pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+ 	 * first byte that lies outside the pnfs_layout_range. FIXME?
+ 	 *
+ 	 */
+-	if (req_offset(req) < end_offset(pgio->pg_lseg->pls_range.offset,
++	if (req_offset(req) >= end_offset(pgio->pg_lseg->pls_range.offset,
+ 					 pgio->pg_lseg->pls_range.length))
+-		return req->wb_bytes;
+-	return 0;
++		return 0;
++
++	return min(size, req->wb_bytes);
+ }
+ EXPORT_SYMBOL_GPL(pnfs_generic_pg_test);
+ 
 -- 
 1.8.5.2 (Apple Git-48)
 
