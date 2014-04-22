@@ -1,112 +1,113 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:40957 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756263AbaDIAKR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 Apr 2014 20:10:17 -0400
-Date: Tue, 8 Apr 2014 20:10:16 -0400
-To: Linus Torvalds <torvalds@linux-foundation.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: nfsd changes for 3.15
-Message-ID: <20140409001016.GG9457@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mail-ig0-f181.google.com ([209.85.213.181]:44364 "EHLO
+	mail-ig0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758796AbaDVV3E (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Apr 2014 17:29:04 -0400
+Received: by mail-ig0-f181.google.com with SMTP id h18so220365igc.8
+        for <linux-nfs@vger.kernel.org>; Tue, 22 Apr 2014 14:29:03 -0700 (PDT)
+From: Weston Andros Adamson <dros@primarydata.com>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
+Subject: [PATCH 04/17] nfs: call nfs_can_coalesce_requests for every req
+Date: Tue, 22 Apr 2014 17:29:12 -0400
+Message-Id: <1398202165-78897-5-git-send-email-dros@primarydata.com>
+In-Reply-To: <1398202165-78897-1-git-send-email-dros@primarydata.com>
+References: <1398202165-78897-1-git-send-email-dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Please pull nfsd changes for 3.15 from
+Call nfs_can_coalesce_requests for every request, even the first one.
+This is needed for future patches to give pg_test a way to inform
+add_request to reduce the size of the request.
 
-  git://linux-nfs.org/~bfields/linux.git for-3.15
+Now @prev can be null in nfs_can_coalesce_requests and pg_test functions.
 
-Highlights:
+Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+---
+ fs/nfs/nfs4filelayout.c |  3 +++
+ fs/nfs/pagelist.c       | 34 +++++++++++++++++++---------------
+ 2 files changed, 22 insertions(+), 15 deletions(-)
 
-	- server-side nfs/rdma fixes from Jeff Layton and Tom Tucker
-	- xdr fixes (a larger xdr rewrite has been posted but I decided
-	  it would be better to queue it up for 3.16).
-	- miscellaneous fixes and cleanup from all over (thanks
-	  especially to Kinglong Mee)
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index dfc7282..8f27847 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -929,6 +929,9 @@ filelayout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+ 	    !nfs_generic_pg_test(pgio, prev, req))
+ 		return 0;
+ 
++	if (!prev)
++		return req->wb_bytes;
++
+ 	p_stripe = (u64)req_offset(prev);
+ 	r_stripe = (u64)req_offset(req);
+ 	stripe_unit = FILELAYOUT_LSEG(pgio->pg_lseg)->stripe_unit;
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index 3c35b9e..ac4fb64 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -289,6 +289,8 @@ nfs_wait_on_request(struct nfs_page *req)
+ size_t nfs_generic_pg_test(struct nfs_pageio_descriptor *desc,
+ 			   struct nfs_page *prev, struct nfs_page *req)
+ {
++	if (!prev)
++		return req->wb_bytes;
+ 	/*
+ 	 * FIXME: ideally we should be able to coalesce all requests
+ 	 * that are not block boundary aligned, but currently this
+@@ -368,17 +370,20 @@ static bool nfs_can_coalesce_requests(struct nfs_page *prev,
+ {
+ 	size_t size;
+ 
+-	if (!nfs_match_open_context(req->wb_context, prev->wb_context))
+-		return false;
+-	if (req->wb_context->dentry->d_inode->i_flock != NULL &&
+-	    !nfs_match_lock_context(req->wb_lock_context, prev->wb_lock_context))
+-		return false;
+-	if (req->wb_pgbase != 0)
+-		return false;
+-	if (prev->wb_pgbase + prev->wb_bytes != PAGE_CACHE_SIZE)
+-		return false;
+-	if (req_offset(req) != req_offset(prev) + prev->wb_bytes)
+-		return false;
++	if (prev) {
++		if (!nfs_match_open_context(req->wb_context, prev->wb_context))
++			return false;
++		if (req->wb_context->dentry->d_inode->i_flock != NULL &&
++		    !nfs_match_lock_context(req->wb_lock_context,
++					    prev->wb_lock_context))
++			return false;
++		if (req->wb_pgbase != 0)
++			return false;
++		if (prev->wb_pgbase + prev->wb_bytes != PAGE_CACHE_SIZE)
++			return false;
++		if (req_offset(req) != req_offset(prev) + prev->wb_bytes)
++			return false;
++	}
+ 	size = pgio->pg_ops->pg_test(pgio, prev, req);
+ 	WARN_ON_ONCE(size && size != req->wb_bytes);
+ 	return size > 0;
+@@ -395,17 +400,16 @@ static bool nfs_can_coalesce_requests(struct nfs_page *prev,
+ static int nfs_pageio_do_add_request(struct nfs_pageio_descriptor *desc,
+ 				     struct nfs_page *req)
+ {
++	struct nfs_page *prev = NULL;
+ 	if (desc->pg_count != 0) {
+-		struct nfs_page *prev;
+-
+ 		prev = nfs_list_entry(desc->pg_list.prev);
+-		if (!nfs_can_coalesce_requests(prev, req, desc))
+-			return 0;
+ 	} else {
+ 		if (desc->pg_ops->pg_init)
+ 			desc->pg_ops->pg_init(desc, req);
+ 		desc->pg_base = req->wb_pgbase;
+ 	}
++	if (!nfs_can_coalesce_requests(prev, req, desc))
++		return 0;
+ 	nfs_list_remove_request(req);
+ 	nfs_list_add_request(req, &desc->pg_list);
+ 	desc->pg_count += req->wb_bytes;
+-- 
+1.8.5.2 (Apple Git-48)
 
---b.
-
-----------------------------------------------------------------
-J. Bruce Fields (17):
-      nfsd4: buffer-length check for SUPPATTR_EXCLCREAT
-      nfsd4: session needs room for following op to error out
-      nfsd4: make set of large acl return efbig, not resource
-      nfsd4: leave reply buffer space for failed setattr
-      nfsd4: fix test_stateid error reply encoding
-      nfsd: notify_change needs elevated write count
-      nfsd: typo in nfsd_rename comment
-      rpc: Allow xdr_buf_subsegment to operate in-place
-      nfsd4: update comments with obsolete function name
-      nfsd4: nfsd4_replay_cache_entry should be static
-      nfsd4: minor nfsd4_replay_cache_entry cleanup
-      nfsd4: use more generous NFS4_ACL_MAX
-      nfsd4: remove redundant check from nfsd4_check_resp_size
-      nfsd4: fix setclientid encode size
-      nfsd4: fix nfs4err_resource in 4.1 case
-      nfsd: revert v2 half of "nfsd: don't return high mode bits"
-      nfsd4: don't create unnecessary mask acl
-
-Jeff Layton (5):
-      svcrdma: fix printk when memory allocation fails
-      svcrpc: explicitly reject compounds that are not padded out to 4-byte multiple
-      lockd: ensure we tear down any live sockets when socket creation fails during lockd_up
-      xprtrdma: add separate Kconfig options for NFSoRDMA client and server support
-      svcrdma: fix offset calculation for non-page aligned sge entries
-
-Kinglong Mee (9):
-      NFSD: Traverse unconfirmed client through hash-table
-      NFSD: simplify saved/current fh uses in nfsd4_proc_compound
-      SUNRPC: fix memory leak of peer addresses in XPRT
-      NFSD: Using free_conn free connection
-      NFSD: Clear wcc data between compound ops
-      NFSD: Free backchannel xprt in bc_destroy
-      SUNRPC: New helper for creating client with rpc_xprt
-      NFSD/SUNRPC: Check rpc_xprt out of xs_setup_bc_tcp
-      SUNRPC: Clear xpt_bc_xprt if xs_setup_bc_tcp failed
-
-Rashika Kheria (1):
-      net: Mark functions as static in net/sunrpc/svc_xprt.c
-
-Stanislav Kinsbursky (1):
-      nfsd: check passed socket's net matches NFSd superblock's one
-
-Tom Tucker (1):
-      Fix regression in NFSRDMA server
-
-Trond Myklebust (1):
-      nfsd: Don't return NFS4ERR_STALE_STATEID for NFSv4.1+
-
-Yan, Zheng (1):
-      nfsd4: fix memory leak in nfsd4_encode_fattr()
-
- fs/lockd/svc.c                           |    1 +
- fs/nfsd/acl.h                            |   10 ++++--
- fs/nfsd/nfs4acl.c                        |   13 ++++---
- fs/nfsd/nfs4callback.c                   |   19 +++++++++-
- fs/nfsd/nfs4proc.c                       |   39 ++++++++++++--------
- fs/nfsd/nfs4state.c                      |   28 +++++++--------
- fs/nfsd/nfs4xdr.c                        |   30 ++++++++++++----
- fs/nfsd/nfsctl.c                         |    5 +++
- fs/nfsd/nfsd.h                           |    2 +-
- fs/nfsd/nfsfh.h                          |   14 +++++++-
- fs/nfsd/nfsxdr.c                         |    2 +-
- fs/nfsd/vfs.c                            |   15 ++++++--
- fs/nfsd/xdr4.h                           |    2 --
- include/linux/sunrpc/clnt.h              |    2 ++
- include/linux/sunrpc/svcsock.h           |    1 +
- include/linux/sunrpc/xprt.h              |   13 ++++++-
- net/sunrpc/Kconfig                       |   39 +++++++++++++-------
- net/sunrpc/Makefile                      |    3 +-
- net/sunrpc/clnt.c                        |   58 +++++++++++++++++-------------
- net/sunrpc/svc_xprt.c                    |    6 ++--
- net/sunrpc/svcsock.c                     |   16 +++++++++
- net/sunrpc/xdr.c                         |   22 ++++++++----
- net/sunrpc/xprt.c                        |   12 -------
- net/sunrpc/xprtrdma/Makefile             |    4 +--
- net/sunrpc/xprtrdma/svc_rdma_recvfrom.c  |   12 +++----
- net/sunrpc/xprtrdma/svc_rdma_sendto.c    |    2 ++
- net/sunrpc/xprtrdma/svc_rdma_transport.c |    3 +-
- net/sunrpc/xprtsock.c                    |   34 +++++++++---------
- 28 files changed, 267 insertions(+), 140 deletions(-)
