@@ -1,86 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from a-pb-sasl-quonix.pobox.com ([208.72.237.25]:36195 "EHLO
-	sasl.smtp.pobox.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752951AbaDCVc4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Apr 2014 17:32:56 -0400
-Message-ID: <533DD387.7070807@pobox.com>
-Date: Thu, 03 Apr 2014 17:32:55 -0400
-From: Mark Lord <mlord@pobox.com>
+Received: from mail-ie0-f174.google.com ([209.85.223.174]:46656 "EHLO
+	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753990AbaDWVEc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Apr 2014 17:04:32 -0400
+Received: by mail-ie0-f174.google.com with SMTP id rp18so1522513iec.33
+        for <linux-nfs@vger.kernel.org>; Wed, 23 Apr 2014 14:04:31 -0700 (PDT)
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@redhat.com>
-CC: Albert Fluegel <af@muc.de>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: linux-3.14 nfsd regression
-References: <533D8D73.1090603@pobox.com> <20140403171643.GB28790@pad.redhat.com> <533D9F8A.6030001@pobox.com> <20140403193024.GC28790@pad.redhat.com> <533DC90B.8050906@pobox.com> <20140403212841.GM28790@pad.redhat.com>
-In-Reply-To: <20140403212841.GM28790@pad.redhat.com>
+In-Reply-To: <20140423204405.GB16168@us.ibm.com>
+References: <CALXu0UcdfrvCajbAagGLV=dP=Kk3VWeR4VS5Wna44UroxM4JAQ@mail.gmail.com>
+	<20140423202401.GA16168@us.ibm.com>
+	<CALXu0UdVYtbKQqskETk9jEK3+=nFphUtFSP4i_ey=7WwZg3-XQ@mail.gmail.com>
+	<20140423204405.GB16168@us.ibm.com>
+Date: Wed, 23 Apr 2014 23:04:31 +0200
+Message-ID: <CALXu0UdbSHfFM+tq2_zssMhiwZ1qMJdieNdvwtxz6k31CMWAUA@mail.gmail.com>
+Subject: Re: Tuning Linux NFSv4 for high latency connections?
+From: Cedric Blancher <cedric.blancher@gmail.com>
+To: Cedric Blancher <cedric.blancher@gmail.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 14-04-03 05:28 PM, J. Bruce Fields wrote:
-> On Thu, Apr 03, 2014 at 04:48:11PM -0400, Mark Lord wrote:
->> On 14-04-03 03:30 PM, J. Bruce Fields wrote:
->>> On Thu, Apr 03, 2014 at 01:51:06PM -0400, Mark Lord wrote:
->>>> On 14-04-03 01:16 PM, J. Bruce Fields wrote:
->>>>> On Thu, Apr 03, 2014 at 12:33:55PM -0400, Mark Lord wrote:
->>>>>> This commit from linux-3.14 breaks our NFS-root clients here:
->>>>>>
->>>>>> https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=6e14b46b91fee8a049b0940333ce13a820beaaa5
->>>>>>
->>>>>>
->>>>>> - *p++ = htonl((u32) stat->mode);
->>>>>> + *p++ = htonl((u32) (stat->mode & S_IALLUGO));
->>>>>>
->>>>>>
->>>>>> Reverting the one-liner above (on the server) fixes it for us,
->>>>>> as does reverting back to linux-3.13.8 on the server.
->>>>>>
->>>>>> The NFS-root clients are on PowerPC (big-endian) architecture,
->>>>>> running linux-3.12.16. The NFS server is on an Intel PC running linux-3.14.
->>>>>>
->>>>>> ACL is completely disabled on server and client,
->>>>>> and we're using NFSv2/v3.  No support for v4.
->>>>>>
->>>>>> I instrumented the function to see what other bits were being cleared
->>>>>> by the (stat->mode & S_IALLUGO) masking.  The results are attached.
->>>>>
->>>>> Hm, it sounds like a bug in the client if it's depending on those high
->>>>> bits.
->>>>
->>>> But only for mounting / starting up from the nfsroot, it seems.
->>>> I wonder if there's an unusual code path for that in there?
->>>> The regular stuff looks mostly fine:
->>>>
->>>>         p = xdr_decode_ftype3(p, &fmode);
->>>>         fattr->mode = (be32_to_cpup(p++) & ~S_IFMT) | fmode;
->>>
->>> Hm, but that's in nfs3xdr.c; in nfs2xdr.c we have just
->>>
->>> 	fattr->mode = be32_to_cpup(p+);
->>>
->>> and NFSv2 is the default for nfsroot.  Do you have some reason to
->>> believe you're not using NFSv2?
+On 23 April 2014 22:44, Malahal Naineni <malahal@us.ibm.com> wrote:
+> Cedric Blancher [cedric.blancher@gmail.com] wrote:
+>> On 23 April 2014 22:24, Malahal Naineni <malahal@us.ibm.com> wrote:
+>> > Cedric Blancher [cedric.blancher@gmail.com] wrote:
+>> >> Are there any options to improve the Linux NFSv4 performance over a
+>> >> high latency connection?
+>> >>
+>> >> We currently use Solaris/Illumos as NFSv4 server and client over a
+>> >> cross continental Internet connection. Latency is terrible (~220ms)
+>> >> but the counter this by running work in parallel so the latency is
+>> >> mostly mitigated.
+>> >>
+>> >> We now wish to migrate (short: Away from Oracle because support is
+>> >> basically unbearable) to Linux (tested SuSE 13.1 and current Fedora)
+>> >> and build times are 17 times (!!!) SLOWER than on Solaris/Illumos.
+>> >>
+>> >> Are there any tunables besides actimeo=300?
+>> >
+>> > rsize and wsize may help! You need to figure out if the read is the
+>> > issue or the write before you dig further.
 >>
->> Oh, the client here was using NFS2, absolutely.
->> I just don't know my way around the code very well yet.  :)
+>> I already tried to tune rsize/wsize, making them both smaller or the
+>> maximum of 1048576 bytes, with no effect.
 >>
->> But that mask in nfs3xdr.c (client) doesn't match what the server side is using.
-> 
-> Not sure there's anything to see there.
-> 
-> Looking at include/uapi/linux/stat.h and include/linux/stat.h, if I'm
-> doing this right...
-> 
-> S_ISFMT is   0170000
-> S_IALLUGO is 0007777
-> 
-> So they're 16-bit complements.  And we're storing the result in a short?
+>> One possible theory is that maybe something in Linux doesn't allow
+>> multiple requests to be issued in parallel and waits for each request
+>> to be completed before issuing the next one?
+>
+> Linux NFS client can issue I/Os in parallel. Should be limited by number
+> of RPC slots though.
 
-Oh, is it a short?  I was just going by the be32_to_cpup() macro (not a short).
-But if the target field is, then okay for now, until someone expands it.
+What controls the number of RPC slots? is there a tunable? Is there
+something to monitor the usage?
 
-Cheers
+Ced
 -- 
-Mark Lord
-Real-Time Remedies Inc.
-mlord@pobox.com
+Cedric Blancher <cedric.blancher@gmail.com>
+Institute Pasteur
