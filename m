@@ -1,109 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f171.google.com ([209.85.213.171]:64191 "EHLO
-	mail-ig0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752913AbaDRSqs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Apr 2014 14:46:48 -0400
-Received: by mail-ig0-f171.google.com with SMTP id c1so943732igq.4
-        for <linux-nfs@vger.kernel.org>; Fri, 18 Apr 2014 11:46:48 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Bruce Fields <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 63/70] NFSd: Remove nfs4_lock_state(): nfsd4_release_lockowner
-Date: Fri, 18 Apr 2014 14:44:57 -0400
-Message-Id: <1397846704-14567-64-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1397846704-14567-63-git-send-email-trond.myklebust@primarydata.com>
-References: <1397846704-14567-1-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-2-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-3-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-4-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-5-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-6-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-7-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-8-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-9-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-10-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-11-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-12-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-13-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-14-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-15-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-16-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-17-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-18-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-19-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-20-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-21-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-22-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-23-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-24-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-25-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-26-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-27-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-28-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-29-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-30-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-31-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-32-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-33-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-34-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-35-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-36-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-37-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-38-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-39-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-40-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-41-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-42-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-43-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-44-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-45-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-46-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-47-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-48-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-49-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-50-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-51-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-52-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-53-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-54-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-55-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-56-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-57-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-58-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-59-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-60-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-61-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-62-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-63-git-send-email-trond.myklebust@primarydata.com>
+Received: from mx11.netapp.com ([216.240.18.76]:42094 "EHLO mx11.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752503AbaDWNvT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 23 Apr 2014 09:51:19 -0400
+Message-ID: <5357C554.8070500@netapp.com>
+Date: Wed, 23 Apr 2014 09:51:16 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+MIME-Version: 1.0
+To: Weston Andros Adamson <dros@primarydata.com>,
+        Boaz Harrosh <bharrosh@panasas.com>
+CC: Trond Myklebust <Trond.Myklebust@primarydata.com>,
+        linux-nfs list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 00/17] NFS: Create a common path used by reads and writes
+References: <1397768981-12856-1-git-send-email-Anna.Schumaker@Netapp.com> <5357B827.8040506@panasas.com> <5357BCD9.2@panasas.com> <21CDA162-DF2B-4C9F-A310-CCA7936817FA@primarydata.com>
+In-Reply-To: <21CDA162-DF2B-4C9F-A310-CCA7936817FA@primarydata.com>
+Content-Type: text/plain; charset="windows-1252"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 3 ---
- 1 file changed, 3 deletions(-)
+We'll make sure it works!  I'm about to look through Dros' patches, so I'll know more soon!
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 6eac3ce68a8b..67895511cc05 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4999,8 +4999,6 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
- 	dprintk("nfsd4_release_lockowner clientid: (%08x/%08x):\n",
- 		clid->cl_boot, clid->cl_id);
- 
--	nfs4_lock_state();
--
- 	status = lookup_clientid(clid, NULL, nn, NULL);
- 	if (status)
- 		goto out;
-@@ -5034,7 +5032,6 @@ nfsd4_release_lockowner(struct svc_rqst *rqstp,
- 		release_lockowner(lo);
- 	}
- out:
--	nfs4_unlock_state();
- 	return status;
- }
- 
--- 
-1.9.0
+Anna
+
+On 04/23/2014 09:42 AM, Weston Andros Adamson wrote:
+> Yeah there are bound to be some conflicts between these two patchsets, but
+> I don’t think it should be too nasty.
+> 
+> Anna and I can work together to get both sets into a branch once we get things 
+> reviewed.
+> 
+> The good news is that we can combine testing efforts - both of these patchsets
+> change the read and write path for all versions of NFS, so we really need to
+> make sure we didn’t break anything. Not that pnfs isn’t important ;)
+> 
+> -dros
+> 
+> On Apr 23, 2014, at 9:15 AM, Boaz Harrosh <bharrosh@panasas.com> wrote:
+> 
+>> On 04/23/2014 03:55 PM, Boaz Harrosh wrote:
+>>> On 04/18/2014 12:09 AM, Anna Schumaker wrote:
+>> <>
+>>> yes please keep
+>>> it on a public tree for quick testing. Perhaps ask Trond to keep
+>>> it on his tree in a branch. (So to get some coverage under the linux-next
+>>> tree mongers from Intel)
+>>>
+>>
+>> BTW: anyone tested how much this conflicts with dros's 17 patches?
+>>     (Noticed how it is always 17 patches)
+>>     If a brave sole can have both these merged on the same tree it
+>>     would be easier for the testing.
+>>
+>> Thanks
+>> Boaz
+>>
+> 
 
