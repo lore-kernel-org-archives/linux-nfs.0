@@ -1,74 +1,97 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:27724 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:52730 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S933742AbaD3QbP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 30 Apr 2014 12:31:15 -0400
-Message-ID: <53612551.8070509@RedHat.com>
-Date: Wed, 30 Apr 2014 12:31:13 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S1756290AbaDWDsa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 Apr 2014 23:48:30 -0400
+From: NeilBrown <neilb@suse.de>
+To: Jan Kara <jack@suse.cz>, Jeff Layton <jlayton@redhat.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Dave Chinner <david@fromorbit.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Mel Gorman <mgorman@suse.com>,
+        Andrew Morton <akpm@linux-foundation.org>
+Date: Wed, 23 Apr 2014 12:40:58 +1000
+Subject: [PATCH 2/5] SUNRPC: track whether a request is coming from a
+ loop-back interface.
+Cc: linux-mm@kvack.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Message-ID: <20140423024058.4725.71307.stgit@notabene.brown>
+In-Reply-To: <20140423022441.4725.89693.stgit@notabene.brown>
+References: <20140423022441.4725.89693.stgit@notabene.brown>
 MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/2] nfs-iostat: Fix attribute cache statistics
-References: <20140425165211.30699.73059.stgit@manet.1015granger.net> <20140425165220.30699.79542.stgit@manet.1015granger.net>
-In-Reply-To: <20140425165220.30699.79542.stgit@manet.1015granger.net>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+If an incoming NFS request is coming from the local host, then
+nfsd will need to perform some special handling.  So detect that
+possibility and make the source visible in rq_local.
+
+Signed-off-by: NeilBrown <neilb@suse.de>
+---
+ include/linux/sunrpc/svc.h      |    1 +
+ include/linux/sunrpc/svc_xprt.h |    1 +
+ net/sunrpc/svcsock.c            |   10 ++++++++++
+ 3 files changed, 12 insertions(+)
+
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index 04e763221246..a0dbbd1e00e9 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -254,6 +254,7 @@ struct svc_rqst {
+ 	u32			rq_prot;	/* IP protocol */
+ 	unsigned short
+ 				rq_secure  : 1;	/* secure port */
++	unsigned short		rq_local   : 1;	/* local request */
+ 
+ 	void *			rq_argp;	/* decoded arguments */
+ 	void *			rq_resp;	/* xdr'd results */
+diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
+index b05963f09ebf..b99bdfb0fcf9 100644
+--- a/include/linux/sunrpc/svc_xprt.h
++++ b/include/linux/sunrpc/svc_xprt.h
+@@ -63,6 +63,7 @@ struct svc_xprt {
+ #define	XPT_DETACHED	10		/* detached from tempsocks list */
+ #define XPT_LISTENER	11		/* listening endpoint */
+ #define XPT_CACHE_AUTH	12		/* cache auth info */
++#define XPT_LOCAL	13		/* connection from loopback interface */
+ 
+ 	struct svc_serv		*xpt_server;	/* service for transport */
+ 	atomic_t    	    	xpt_reserved;	/* space on outq that is rsvd */
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index b6e59f0a9475..193115fe968c 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -811,6 +811,7 @@ static struct svc_xprt *svc_tcp_accept(struct svc_xprt *xprt)
+ 	struct socket	*newsock;
+ 	struct svc_sock	*newsvsk;
+ 	int		err, slen;
++	struct dst_entry *dst;
+ 	RPC_IFDEBUG(char buf[RPC_MAX_ADDRBUFLEN]);
+ 
+ 	dprintk("svc: tcp_accept %p sock %p\n", svsk, sock);
+@@ -867,6 +868,14 @@ static struct svc_xprt *svc_tcp_accept(struct svc_xprt *xprt)
+ 	}
+ 	svc_xprt_set_local(&newsvsk->sk_xprt, sin, slen);
+ 
++	clear_bit(XPT_LOCAL, &newsvsk->sk_xprt.xpt_flags);
++	rcu_read_lock();
++	dst = rcu_dereference(newsock->sk->sk_dst_cache);
++	if (dst && dst->dev &&
++	    (dst->dev->features & NETIF_F_LOOPBACK))
++		set_bit(XPT_LOCAL, &newsvsk->sk_xprt.xpt_flags);
++	rcu_read_unlock();
++
+ 	if (serv->sv_stats)
+ 		serv->sv_stats->nettcpconn++;
+ 
+@@ -1112,6 +1121,7 @@ static int svc_tcp_recvfrom(struct svc_rqst *rqstp)
+ 
+ 	rqstp->rq_xprt_ctxt   = NULL;
+ 	rqstp->rq_prot	      = IPPROTO_TCP;
++	rqstp->rq_local	      = !!test_bit(XPT_LOCAL, &svsk->sk_xprt.xpt_flags);
+ 
+ 	p = (__be32 *)rqstp->rq_arg.head[0].iov_base;
+ 	calldir = p[1];
 
 
-On 04/25/2014 12:52 PM, Chuck Lever wrote:
-> "nfs-iostat.py --attr" was displaying nonsense (like negative
-> counts and percentages).
-> 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Committed... 
-
-steved.
-> ---
-> 
->  tools/nfs-iostat/nfs-iostat.py |   28 ++++++++--------------------
->  1 files changed, 8 insertions(+), 20 deletions(-)
-> 
-> diff --git a/tools/nfs-iostat/nfs-iostat.py b/tools/nfs-iostat/nfs-iostat.py
-> index 6831c12..b324cd8 100644
-> --- a/tools/nfs-iostat/nfs-iostat.py
-> +++ b/tools/nfs-iostat/nfs-iostat.py
-> @@ -243,27 +243,15 @@ class DeviceData:
->          """Print attribute cache efficiency stats
->          """
->          nfs_stats = self.__nfs_data
-> -        getattr_stats = self.__rpc_data['GETATTR']
-> -
-> -        if nfs_stats['inoderevalidates'] != 0:
-> -            getattr_ops = float(getattr_stats[1])
-> -            opens = float(nfs_stats['vfsopen'])
-> -            revalidates = float(nfs_stats['inoderevalidates']) - opens
-> -            if revalidates != 0:
-> -                ratio = ((revalidates - getattr_ops) * 100) / revalidates
-> -            else:
-> -                ratio = 0.0
-> -
-> -            data_invalidates = float(nfs_stats['datainvalidates'])
-> -            attr_invalidates = float(nfs_stats['attrinvalidates'])
->  
-> -            print()
-> -            print('%d inode revalidations, hitting in cache %4.2f%% of the time' % \
-> -                (revalidates, ratio))
-> -            print('%d open operations (mandatory GETATTR requests)' % opens)
-> -            if getattr_ops != 0:
-> -                print('%4.2f%% of GETATTRs resulted in data cache invalidations' % \
-> -                   ((data_invalidates * 100) / getattr_ops))
-> +        print()
-> +        print('%d VFS opens' % (nfs_stats['vfsopen']))
-> +        print('%d inoderevalidates (forced GETATTRs)' % \
-> +            (nfs_stats['inoderevalidates']))
-> +        print('%d page cache invalidations' % \
-> +            (nfs_stats['datainvalidates']))
-> +        print('%d attribute cache invalidations' % \
-> +            (nfs_stats['attrinvalidates']))
->  
->      def __print_dir_cache_stats(self, sample_time):
->          """Print directory stats
-> 
