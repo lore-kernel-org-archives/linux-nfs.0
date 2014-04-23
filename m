@@ -1,60 +1,94 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mailrelay008.isp.belgacom.be ([195.238.6.174]:44905 "EHLO
-	mailrelay008.isp.belgacom.be" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S932908AbaDIRbv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Apr 2014 13:31:51 -0400
-Date: Wed, 9 Apr 2014 19:31:48 +0200
-From: Fabian Frederick <fabf@skynet.be>
-To: linux-kernel <linux-kernel@vger.kernel.org>
-Cc: akpm <akpm@linux-foundation.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH 1/1] NFSD: Remove NULL value assignments
-Message-Id: <20140409193148.548f7fc5f0356f61257b2f41@skynet.be>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from cantor2.suse.de ([195.135.220.15]:52724 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756289AbaDWDsV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 Apr 2014 23:48:21 -0400
+From: NeilBrown <neilb@suse.de>
+To: Jan Kara <jack@suse.cz>, Jeff Layton <jlayton@redhat.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Dave Chinner <david@fromorbit.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Mel Gorman <mgorman@suse.com>,
+        Andrew Morton <akpm@linux-foundation.org>
+Date: Wed, 23 Apr 2014 12:40:58 +1000
+Subject: [PATCH 1/5] MM: avoid throttling reclaim for loop-back nfsd threads.
+Cc: linux-mm@kvack.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Message-ID: <20140423024058.4725.71995.stgit@notabene.brown>
+In-Reply-To: <20140423022441.4725.89693.stgit@notabene.brown>
+References: <20140423022441.4725.89693.stgit@notabene.brown>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Static values are automatically initialized to NULL.
+When a loop-back NFS mount is active and the backing device for the
+NFS mount becomes congested, that can impose throttling delays on the
+nfsd threads.
 
-Cc: Andrew Morton <akpm@linux-foundation.org>
-Cc: linux-nfs@vger.kernel.org
-Signed-off-by: Fabian Frederick <fabf@skynet.be>
+These delays significantly reduce throughput and so the NFS mount
+remains congested.
+
+This results in a live lock and the reduced throughput persists.
+
+This live lock has been found in testing with the 'wait_iff_congested'
+call, and could possibly be caused by the 'congestion_wait' call.
+
+This livelock is similar to the deadlock which justified the
+introduction of PF_LESS_THROTTLE, and the same flag can be used to
+remove this livelock.
+
+To minimise the impact of the change, we still throttle nfsd when the
+filesystem it is writing to is congested, but not when some separate
+filesystem (e.g. the NFS filesystem) is congested.
+
+Signed-off-by: NeilBrown <neilb@suse.de>
 ---
- fs/nfsd/nfs4state.c | 10 +++++-----
- fs/nfsd/nfssvc.c    |  2 +-
- 2 files changed, 6 insertions(+), 6 deletions(-)
+ mm/vmscan.c |   18 ++++++++++++++++--
+ 1 file changed, 16 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 3ba6597..c80097e 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -83,11 +83,11 @@ static DEFINE_MUTEX(client_mutex);
-  */
- static DEFINE_SPINLOCK(recall_lock);
- 
--static struct kmem_cache *openowner_slab = NULL;
--static struct kmem_cache *lockowner_slab = NULL;
--static struct kmem_cache *file_slab = NULL;
--static struct kmem_cache *stateid_slab = NULL;
--static struct kmem_cache *deleg_slab = NULL;
-+static struct kmem_cache *openowner_slab;
-+static struct kmem_cache *lockowner_slab;
-+static struct kmem_cache *file_slab;
-+static struct kmem_cache *stateid_slab;
-+static struct kmem_cache *deleg_slab;
- 
- void
- nfs4_lock_state(void)
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index 9a4a5f9..04407a4 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -205,7 +205,7 @@ static int nfsd_init_socks(struct net *net)
- 	return 0;
+diff --git a/mm/vmscan.c b/mm/vmscan.c
+index a9c74b409681..e011a646de95 100644
+--- a/mm/vmscan.c
++++ b/mm/vmscan.c
+@@ -1424,6 +1424,18 @@ putback_inactive_pages(struct lruvec *lruvec, struct list_head *page_list)
+ 	list_splice(&pages_to_free, page_list);
  }
  
--static int nfsd_users = 0;
-+static int nfsd_users;
++/* If a kernel thread (such as nfsd for loop-back mounts) services
++ * a backing device by writing to the page cache it sets PF_LESS_THROTTLE.
++ * In that case we should only throttle if the backing device it is
++ * writing to is congested.  In other cases it is safe to throttle.
++ */
++static int current_may_throttle(void)
++{
++	return !(current->flags & PF_LESS_THROTTLE) ||
++		current->backing_dev_info == NULL ||
++		bdi_write_congested(current->backing_dev_info);
++}
++
+ /*
+  * shrink_inactive_list() is a helper for shrink_zone().  It returns the number
+  * of reclaimed pages
+@@ -1552,7 +1564,8 @@ shrink_inactive_list(unsigned long nr_to_scan, struct lruvec *lruvec,
+ 		 * implies that pages are cycling through the LRU faster than
+ 		 * they are written so also forcibly stall.
+ 		 */
+-		if (nr_unqueued_dirty == nr_taken || nr_immediate)
++		if ((nr_unqueued_dirty == nr_taken || nr_immediate)
++		    && current_may_throttle())
+ 			congestion_wait(BLK_RW_ASYNC, HZ/10);
+ 	}
  
- static int nfsd_startup_generic(int nrservs)
- {
+@@ -1561,7 +1574,8 @@ shrink_inactive_list(unsigned long nr_to_scan, struct lruvec *lruvec,
+ 	 * is congested. Allow kswapd to continue until it starts encountering
+ 	 * unqueued dirty pages or cycling through the LRU too quickly.
+ 	 */
+-	if (!sc->hibernation_mode && !current_is_kswapd())
++	if (!sc->hibernation_mode && !current_is_kswapd()
++	    && current_may_throttle())
+ 		wait_iff_congested(zone, BLK_RW_ASYNC, HZ/10);
+ 
+ 	trace_mm_vmscan_lru_shrink_inactive(zone->zone_pgdat->node_id,
+
+
