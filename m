@@ -1,47 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f179.google.com ([209.85.192.179]:35625 "EHLO
-	mail-pd0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751223AbaD1FXP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Apr 2014 01:23:15 -0400
-Received: by mail-pd0-f179.google.com with SMTP id y10so342956pdj.10
-        for <linux-nfs@vger.kernel.org>; Sun, 27 Apr 2014 22:23:14 -0700 (PDT)
-Message-ID: <535DE5CE.7050600@gmail.com>
-Date: Sun, 27 Apr 2014 22:23:26 -0700
-From: Dean <seattleplus@gmail.com>
+Received: from natasha.panasas.com ([209.166.131.148]:32918 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752835AbaDWMzR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Apr 2014 08:55:17 -0400
+Message-ID: <5357B827.8040506@panasas.com>
+Date: Wed, 23 Apr 2014 15:55:03 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-To: Cedric Blancher <cedric.blancher@gmail.com>, Jim Rees <rees@umich.edu>,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: Tuning Linux NFSv4 for high latency connections?
-References: <CALXu0UcdfrvCajbAagGLV=dP=Kk3VWeR4VS5Wna44UroxM4JAQ@mail.gmail.com>	<20140424031216.GA18817@umich.edu> <CALXu0UdsUk2bSWUzOXLHJ1FKtnZMyo0OHJSj=0hQpwwHVu52zw@mail.gmail.com>
-In-Reply-To: <CALXu0UdsUk2bSWUzOXLHJ1FKtnZMyo0OHJSj=0hQpwwHVu52zw@mail.gmail.com>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+To: Anna Schumaker <Anna.Schumaker@netapp.com>,
+        <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 00/17] NFS: Create a common path used by reads and writes
+References: <1397768981-12856-1-git-send-email-Anna.Schumaker@Netapp.com>
+In-Reply-To: <1397768981-12856-1-git-send-email-Anna.Schumaker@Netapp.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On 04/18/2014 12:09 AM, Anna Schumaker wrote:
+> I noticed that much of the read and write code was almost identical, with
+> only minor differences in argument types and names.  These patches seek to
+> unify these two codepaths wherever possible in order to make future changes
+> easier.
+> 
+> Table of contents:
+> 	Patches 01 - 05: Set up common data structures.
+> 	Patches 06 - 10: Set up a shared rpc_call_ops struct.
+> 	Patches 11 - 15: Set up a shared nfs_pageio_ops struct.
+> 
+> Some of the commit setup was moved into common code, but I'm willing to
+> move this back into write.c if this looks to be a problem.
+> 
+> Future work:
+> 	I have rough pNFS patches that don't currently apply.  They need
+> 	more testing, and I figured this was enough code churn already.
+> 
+> Testing:
+> 	I tested every version of NFS using the cthon and xfs tests without
+> 	hitting anything new.  Any extra testing would be great seeing how
+> 	the read and write paths are vitally important.
+> 
+> Questions?  Comments?  Death threats?
+> 
+> Anna
 
+Good god. Anna did I already tell you that I like you a lot.
 
-On 4/24/14, 10:22 AM, Cedric Blancher wrote:
-> On 24 April 2014 05:12, Jim Rees <rees@umich.edu> wrote:
->> Cedric Blancher wrote:
->>
->>    Are there any options to improve the Linux NFSv4 performance over a
->>    high latency connection?
->>
->> We did some work along these lines at CITI years ago. As I remember, the
->> main thing was to increase net.ipv4.tcp_[rw]mem on the server side, because
->> tcp auto-tuning was being defeated. This may be less of an issue with your
->> work load, which sounds like many small files rather than one big one.  In
->> theory, NFSv4 delegations should help, but I don't know how well that works.
+This "Identical code but the name" bothered me so much, to no end,
+for so long. I envy you that you got to do it finally and so simple
+it is.
 
-Along with Jim's work, we followed up with a fair bit, but in general we 
-found that nfs clients just can't do well over large rtt due to the slow 
-window ramp up time and adverse reaction to packet loss.  Unfortunately 
-the only way to overcome these issues (other than using a custom udp 
-protocol which isn't supported) is to use multiple TCP connections, 
-which is what we do by  using multiple nodes....
+After you are done there is bunch of code coalescing to do at
+pnfs-objects as well. which will be real fun.
 
-I have some basic instructions here on what we do in our environments:
-http://researcher.watson.ibm.com/researcher/view_person_subpage.php?id=4427
+Thanks for doing this. Looks very good so far, yes please keep
+it on a public tree for quick testing. Perhaps ask Trond to keep
+it on his tree in a branch. (So to get some coverage under the linux-next
+tree mongers from Intel)
 
-Dean
+real real cool, spring day
+Boaz
+
