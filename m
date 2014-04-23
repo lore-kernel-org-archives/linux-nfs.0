@@ -1,69 +1,156 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:52971 "EHLO mx1.redhat.com"
+Received: from cantor2.suse.de ([195.135.220.15]:42814 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753180AbaD3RVn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 30 Apr 2014 13:21:43 -0400
-Received: from int-mx02.intmail.prod.int.phx2.redhat.com (int-mx02.intmail.prod.int.phx2.redhat.com [10.5.11.12])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s3UHLBWn007846
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Wed, 30 Apr 2014 13:21:42 -0400
-Message-ID: <53612518.5000401@RedHat.com>
-Date: Wed, 30 Apr 2014 12:30:16 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Jeff Layton <jlayton@redhat.com>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2 0/6] gssd: add the GSSAPI acceptor name to the info
- passed in downcall
-References: <1397575172-28377-1-git-send-email-jlayton@redhat.com>
-In-Reply-To: <1397575172-28377-1-git-send-email-jlayton@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+	id S1751126AbaDWWrw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 23 Apr 2014 18:47:52 -0400
+Date: Thu, 24 Apr 2014 08:47:40 +1000
+From: NeilBrown <neilb@suse.de>
+To: Andrew Morton <akpm@linux-foundation.org>
+Cc: Jan Kara <jack@suse.cz>, Jeff Layton <jlayton@redhat.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Dave Chinner <david@fromorbit.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Mel Gorman <mgorman@suse.com>, linux-mm@kvack.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH 1/5] MM: avoid throttling reclaim for loop-back nfsd
+ threads.
+Message-ID: <20140424084740.44a416e4@notabene.brown>
+In-Reply-To: <20140423150318.d4bcf234faa5bea7fcb57b9b@linux-foundation.org>
+References: <20140423022441.4725.89693.stgit@notabene.brown>
+	<20140423024058.4725.71995.stgit@notabene.brown>
+	<20140423150318.d4bcf234faa5bea7fcb57b9b@linux-foundation.org>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/gVq0EJx4uYNh11lkimZo1pT"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+--Sig_/gVq0EJx4uYNh11lkimZo1pT
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
+On Wed, 23 Apr 2014 15:03:18 -0700 Andrew Morton <akpm@linux-foundation.org>
+wrote:
 
-On 04/15/2014 11:19 AM, Jeff Layton wrote:
-> v2:
-> - add patch to reset lifetime_rec if gss_inquire_context fails
-> - ensure that we always send the length in the downcall, even if
->   there is no acceptor string.
-> - comment and error handling fixups (primarily in last patch)
-> 
-> Recently, I started a mailing list thread about some authentication
-> failures that I was seeing on the callback channel when krb5 was in use.
-> 
-> After a bit of discussion we determined that the right way to fix it
-> was to save off the GSSAPI acceptor name used in the SETCLIENT call,
-> and then ensure that the same principal is used in callback requests.
-> 
-> This patchset is the userland portion of that change. It basically
-> just adds the acceptor name to the downcall, immediately following
-> the context token. Older kernel will just ignore this data, so this
-> should be safe.
-> 
-> There is also a companion kernel patchset that will allow the kernel
-> to save off this info for later usage.
-> 
-> Jeff Layton (6):
->   gssd: handle malloc failure appropriately in do_downcall
->   gssd: make do_downcall a void return
->   gssd: move hostbased name routines into separate file
->   gssd: add new routine for generating a hostbased principal in a
->     gss_buffer_t
->   gssd: explicitly set lifetime_rec to 0 when gss_inquire_context fails
->   gssd: scrape the acceptor name out of the context
-> 
->  utils/gssd/Makefile.am    |   2 +
->  utils/gssd/gss_names.c    | 138 ++++++++++++++++++++++++++++++++++++++++++++++
->  utils/gssd/gss_names.h    |  36 ++++++++++++
->  utils/gssd/gssd_proc.c    |  53 ++++++++++++------
->  utils/gssd/svcgssd_proc.c |  66 +---------------------
->  5 files changed, 214 insertions(+), 81 deletions(-)
->  create mode 100644 utils/gssd/gss_names.c
->  create mode 100644 utils/gssd/gss_names.h
-> 
-Committed... All six patches...
+> On Wed, 23 Apr 2014 12:40:58 +1000 NeilBrown <neilb@suse.de> wrote:
+>=20
+> > When a loop-back NFS mount is active and the backing device for the
+> > NFS mount becomes congested, that can impose throttling delays on the
+> > nfsd threads.
+> >=20
+> > These delays significantly reduce throughput and so the NFS mount
+> > remains congested.
+> >=20
+> > This results in a live lock and the reduced throughput persists.
+> >=20
+> > This live lock has been found in testing with the 'wait_iff_congested'
+> > call, and could possibly be caused by the 'congestion_wait' call.
+> >=20
+> > This livelock is similar to the deadlock which justified the
+> > introduction of PF_LESS_THROTTLE, and the same flag can be used to
+> > remove this livelock.
+> >=20
+> > To minimise the impact of the change, we still throttle nfsd when the
+> > filesystem it is writing to is congested, but not when some separate
+> > filesystem (e.g. the NFS filesystem) is congested.
+> >=20
+> > Signed-off-by: NeilBrown <neilb@suse.de>
+> > ---
+> >  mm/vmscan.c |   18 ++++++++++++++++--
+> >  1 file changed, 16 insertions(+), 2 deletions(-)
+> >=20
+> > diff --git a/mm/vmscan.c b/mm/vmscan.c
+> > index a9c74b409681..e011a646de95 100644
+> > --- a/mm/vmscan.c
+> > +++ b/mm/vmscan.c
+> > @@ -1424,6 +1424,18 @@ putback_inactive_pages(struct lruvec *lruvec, st=
+ruct list_head *page_list)
+> >  	list_splice(&pages_to_free, page_list);
+> >  }
+> > =20
+> > +/* If a kernel thread (such as nfsd for loop-back mounts) services
+>=20
+> /*
+>  * If ...
+>=20
+> please
+>=20
+> > + * a backing device by writing to the page cache it sets PF_LESS_THROT=
+TLE.
+> > + * In that case we should only throttle if the backing device it is
+> > + * writing to is congested.  In other cases it is safe to throttle.
+> > + */
+> > +static int current_may_throttle(void)
+> > +{
+> > +	return !(current->flags & PF_LESS_THROTTLE) ||
+> > +		current->backing_dev_info =3D=3D NULL ||
+> > +		bdi_write_congested(current->backing_dev_info);
+> > +}
+> > +
+> >  /*
+> >   * shrink_inactive_list() is a helper for shrink_zone().  It returns t=
+he number
+> >   * of reclaimed pages
+> > @@ -1552,7 +1564,8 @@ shrink_inactive_list(unsigned long nr_to_scan, st=
+ruct lruvec *lruvec,
+> >  		 * implies that pages are cycling through the LRU faster than
+> >  		 * they are written so also forcibly stall.
+> >  		 */
+> > -		if (nr_unqueued_dirty =3D=3D nr_taken || nr_immediate)
+> > +		if ((nr_unqueued_dirty =3D=3D nr_taken || nr_immediate)
+> > +		    && current_may_throttle())
+>=20
+> 	foo &&
+> 	bar
+>=20
+> please.  As you did in in current_may_throttle().
+>=20
+> >  			congestion_wait(BLK_RW_ASYNC, HZ/10);
+> >  	}
+> > =20
+> > @@ -1561,7 +1574,8 @@ shrink_inactive_list(unsigned long nr_to_scan, st=
+ruct lruvec *lruvec,
+> >  	 * is congested. Allow kswapd to continue until it starts encountering
+> >  	 * unqueued dirty pages or cycling through the LRU too quickly.
+> >  	 */
+> > -	if (!sc->hibernation_mode && !current_is_kswapd())
+> > +	if (!sc->hibernation_mode && !current_is_kswapd()
+> > +	    && current_may_throttle())
+>=20
+> ditto
+>=20
+> >  		wait_iff_congested(zone, BLK_RW_ASYNC, HZ/10);
+> > =20
+> >  	trace_mm_vmscan_lru_shrink_inactive(zone->zone_pgdat->node_id,
+> >=20
 
-steved.
+Thanks.  I've made those changes and will resend just that patch.
+As it is quite independent of all the others can you take it and I'll funnel
+the others through other trees?
 
+Thanks
+NeilBrown
+
+--Sig_/gVq0EJx4uYNh11lkimZo1pT
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.22 (GNU/Linux)
+
+iQIVAwUBU1hDDDnsnt1WYoG5AQI9jA/+NXYdoiGvtJCey8EL55LIltoj0t/pgFUp
+HJ5LMxkQnY0AHZ6NarrHHPDmktCPlPjOjYpPEU/yWb8V5nZZQOQ7vv/LRsun14Ck
+vCMRG43Et2jJS5bALtp0FuePSp2vXQld+H4ol4fEbFQIkcJNVr58Z01aXinpPGUx
+YeNJpPMY6IJC72V646YaQ2ET8SOAYwaDqrOA0S+KNj5QMsycfPpI9Ww4Lkf418tc
+J/UGAbecXLvOTZFQB+fe9asg8QWZtL586XPkz8oN6de4YMcPEsNV15hyKfvpkvxG
+fgoipV7cwuRE18OiYuwdHt7ZG6PBBgEdpElaX4Indn+XFB8ThdRFhxlGJQ5mkVKB
+CFY/hl4vTL7BtjYLanHxyjbIhFLs7alDOLhrrw3Crd2j3PDGiMdGvSEec+khK4GE
+AaSHsWom14YpQe4qert6wm87jDSwxV5rzh9GdieaL+p39q4JUmPVo7WAEyBY7uvT
+DZHcbvBMz1aDn91D8Ay00O33RmH31hhfeqPUIPFpYcLSr51mjwfvOFeRmXEEbWWU
+fZlVCOUjXyZiUofxm9qIwGWq7dg1QmOouIpfrEO2Cv9wngSq4iLaCJ0pzvq+xLe1
+rn8YOSf5uyCVD8vkjRon7omxRDWX03ZlPrI4KC1kurszo9bzIR2sDh7KHZlgrBht
+qVoODT+cRGI=
+=i294
+-----END PGP SIGNATURE-----
+
+--Sig_/gVq0EJx4uYNh11lkimZo1pT--
