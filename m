@@ -1,191 +1,95 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cmexedge1.ext.emulex.com ([138.239.224.99]:39275 "EHLO
-	CMEXEDGE1.ext.emulex.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932820AbaDJA2x convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Apr 2014 20:28:53 -0400
-From: Devesh Sharma <Devesh.Sharma@Emulex.Com>
-To: Devesh Sharma <Devesh.Sharma@Emulex.Com>,
-        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-CC: "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
-        "trond.myklebust@primarydata.com" <trond.myklebust@primarydata.com>
-Subject: RE: [PATCH V2] NFS-RDMA: fix qp pointer validation checks
-Date: Thu, 10 Apr 2014 00:28:47 +0000
-Message-ID: <6a8ebf48-e1d8-4255-8b85-43b1cd42d175@CMEXHTCAS2.ad.emulex.com>
-References: <f02a9959-4530-474f-8076-1139362aaea6@CMEXHTCAS1.ad.emulex.com>
-In-Reply-To: <f02a9959-4530-474f-8076-1139362aaea6@CMEXHTCAS1.ad.emulex.com>
-Content-Type: text/plain; charset="us-ascii"
+Received: from cantor2.suse.de ([195.135.220.15]:52714 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756100AbaDWDsM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 22 Apr 2014 23:48:12 -0400
+From: NeilBrown <neilb@suse.de>
+To: Jan Kara <jack@suse.cz>, Jeff Layton <jlayton@redhat.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Dave Chinner <david@fromorbit.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Mel Gorman <mgorman@suse.com>,
+        Andrew Morton <akpm@linux-foundation.org>
+Date: Wed, 23 Apr 2014 12:40:58 +1000
+Subject: [PATCH/RFC 0/5] Support loop-back NFS mounts - take 2
+Cc: linux-mm@kvack.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Message-ID: <20140423022441.4725.89693.stgit@notabene.brown>
 MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Please ignore this mail. By mistake sent the wrong one.
+This is a somewhat shorter patchset for loop-back NFS support than
+last time, thanks to the excellent feedback and particularly to Dave
+Chinner.  Thanks.
 
------Original Message-----
-From: linux-rdma-owner@vger.kernel.org [mailto:linux-rdma-owner@vger.kernel.org] On Behalf Of Devesh Sharma
-Sent: Thursday, April 10, 2014 5:24 AM
-To: linux-nfs@vger.kernel.org
-Cc: linux-rdma@vger.kernel.org; trond.myklebust@primarydata.com; Devesh Sharma
-Subject: [PATCH V2] NFS-RDMA: fix qp pointer validation checks
+Avoiding the wait-for-congestion which can trigger a livelock is much
+the same, though I've reduced the cases in which the wait is
+by-passed.
+I did this using current->backing_dev_info which is otherwise serving
+no purpose on the current kernel.
 
-If the rdma_create_qp fails to create qp due to device firmware being in invalid state xprtrdma still tries to destroy the non-existant qp and ends up in a NULL pointer reference crash.
-Adding proper checks for vaidating QP pointer avoids this to happen.
+Avoiding the deadlocks has been turned on its head.
+Instead of nfsd checking if it is a loop-back mount and setting
+PF_FSTRANS, which then needs lots of changes too PF_FSTRANS and
+__GFP_FS handling, it is now NFS which checks for a loop-back
+filesystem.
 
-V0: Using IS_ERR() to check validity of qp pointer.
-V1: Use of IS_ERR() will not be able to catch NULL QP pointers as rdma_create_qp() returnes NULL in case
-    ib_create_qp verb is failed. Therefore, changed from usage of IS_ERR to null pointer check.
-V2: ib_post_send() should not abort after DECR_CQCOUNT() checking for NULL pointer was causing exit from functions
-    after decrementing CQCOUNT(). Fixed this in V2.
+There is more verbosity in that patch (Fifth of Five) but the essence
+is that nfs_release_page will now not wait indefinitely for a COMMIT
+request to complete when sent to the local host.  It still waits a
+little while as some delay can be important. But it won't wait
+forever.
+The duration of "a little while" is currently 100ms, though I do
+wonder if a bigger number would serve just as well.
 
-Signed-off-by: Devesh Sharma <devesh.sharma@emulex.com>
+Unlike the previous series, this set should remove deadlocks that
+could happen during the actual fail-over process.  This is achieved by
+having nfs_release_page monitor the connection and if it changes from
+a remote to a local connection, or just disconnects, then it will
+timeout.  It currently polls every second, though this probably could
+be longer too.  It only needs to be the same order of magnitude as the
+time it takes node failure to be detected and failover to happen, and
+I suspect that is closer to 1 minute.  So maybe a 10 or 20 second poll
+interval would be just as good.
+
+Implementing this timeout requires some horrible code as the
+wait_on_bit functions don't support timeouts.  If the general approach
+is found acceptable I'll explore ways to improve the timeout code.
+
+Comments, criticism, etc very welcome as always,
+
+Thanks,
+NeilBrown
+
+
 ---
- net/sunrpc/xprtrdma/verbs.c |   92 ++++++++++++++++++++++++++-----------------
- 1 files changed, 56 insertions(+), 36 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c index 9372656..9e56baf 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -831,10 +831,12 @@ rpcrdma_ep_connect(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
- 	if (ep->rep_connected != 0) {
- 		struct rpcrdma_xprt *xprt;
- retry:
--		rc = rpcrdma_ep_disconnect(ep, ia);
--		if (rc && rc != -ENOTCONN)
--			dprintk("RPC:       %s: rpcrdma_ep_disconnect"
-+		if (ia->ri_id->qp) {
-+			rc = rpcrdma_ep_disconnect(ep, ia);
-+			if (rc && rc != -ENOTCONN)
-+				dprintk("RPC:       %s: rpcrdma_ep_disconnect"
- 				" status %i\n", __func__, rc);
-+		}
- 		rpcrdma_clean_cq(ep->rep_cq);
- 
- 		xprt = container_of(ia, struct rpcrdma_xprt, rx_ia); @@ -859,7 +861,8 @@ retry:
- 			goto out;
- 		}
- 		/* END TEMP */
--		rdma_destroy_qp(ia->ri_id);
-+		if (ia->ri_id->qp)
-+			rdma_destroy_qp(ia->ri_id);
- 		rdma_destroy_id(ia->ri_id);
- 		ia->ri_id = id;
- 	}
-@@ -1555,22 +1558,30 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
- 				IB_ACCESS_REMOTE_WRITE | IB_ACCESS_LOCAL_WRITE :
- 				IB_ACCESS_REMOTE_READ);
- 	frmr_wr.wr.fast_reg.rkey = seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey;
--	DECR_CQCOUNT(&r_xprt->rx_ep);
- 
--	rc = ib_post_send(ia->ri_id->qp, post_wr, &bad_wr);
-+	if (!ia->ri_is->qp) {
-+		DECR_CQCOUNT(&r_xprt->rx_ep);
-+		rc = ib_post_send(ia->ri_id->qp, post_wr, &bad_wr);
- 
--	if (rc) {
--		dprintk("RPC:       %s: failed ib_post_send for register,"
--			" status %i\n", __func__, rc);
--		while (i--)
--			rpcrdma_unmap_one(ia, --seg);
-+		if (rc) {
-+			dprintk("RPC:       %s: failed ib_post_send for register,"
-+				" status %i\n", __func__, rc);
-+			goto out;
-+		} else {
-+			seg1->mr_rkey = seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey;
-+			seg1->mr_base = seg1->mr_dma + pageoff;
-+			seg1->mr_nsegs = i;
-+			seg1->mr_len = len;
-+		}
- 	} else {
--		seg1->mr_rkey = seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey;
--		seg1->mr_base = seg1->mr_dma + pageoff;
--		seg1->mr_nsegs = i;
--		seg1->mr_len = len;
-+		rc = -EINVAL;
-+		goto out;
- 	}
-+
- 	*nsegs = i;
-+out:
-+	while (i--)
-+		rpcrdma_unmap_one(ia, --seg);
- 	return rc;
- }
- 
-@@ -1590,12 +1601,16 @@ rpcrdma_deregister_frmr_external(struct rpcrdma_mr_seg *seg,
- 	invalidate_wr.opcode = IB_WR_LOCAL_INV;
- 	invalidate_wr.send_flags = IB_SEND_SIGNALED;
- 	invalidate_wr.ex.invalidate_rkey = seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey;
--	DECR_CQCOUNT(&r_xprt->rx_ep);
- 
--	rc = ib_post_send(ia->ri_id->qp, &invalidate_wr, &bad_wr);
--	if (rc)
--		dprintk("RPC:       %s: failed ib_post_send for invalidate,"
--			" status %i\n", __func__, rc);
-+	if (ia->ri_id->qp) {
-+		DECR_CQCOUNT(&r_xprt->rx_ep);
-+		rc = ib_post_send(ia->ri_id->qp, &invalidate_wr, &bad_wr);
-+		if (rc)
-+			dprintk("RPC:       %s: failed ib_post_send for invalidate,"
-+				" status %i\n", __func__, rc);
-+	} else
-+		rc = -EINVAL;
-+
- 	return rc;
- }
- 
-@@ -1916,17 +1931,19 @@ rpcrdma_ep_post(struct rpcrdma_ia *ia,
- 		req->rl_send_iov[0].addr, req->rl_send_iov[0].length,
- 		DMA_TO_DEVICE);
- 
--	if (DECR_CQCOUNT(ep) > 0)
--		send_wr.send_flags = 0;
--	else { /* Provider must take a send completion every now and then */
--		INIT_CQCOUNT(ep);
--		send_wr.send_flags = IB_SEND_SIGNALED;
--	}
--
--	rc = ib_post_send(ia->ri_id->qp, &send_wr, &send_wr_fail);
--	if (rc)
--		dprintk("RPC:       %s: ib_post_send returned %i\n", __func__,
--			rc);
-+	if (ia->ri_id->qp) {
-+		if (DECR_CQCOUNT(ep) > 0)
-+			send_wr.send_flags = 0;
-+		else { /* Provider must take a send completion every now and then */
-+			INIT_CQCOUNT(ep);
-+			send_wr.send_flags = IB_SEND_SIGNALED
-+		}
-+		rc = ib_post_send(ia->ri_id->qp, &send_wr, &send_wr_fail);
-+		if (rc)
-+			dprintk("RPC:       %s: ib_post_send returned %i\n", __func__,
-+				rc);
-+	} else
-+		rc = -EINVAL;
- out:
- 	return rc;
- }
-@@ -1950,11 +1967,14 @@ rpcrdma_ep_post_recv(struct rpcrdma_ia *ia,
- 	ib_dma_sync_single_for_cpu(ia->ri_id->device,
- 		rep->rr_iov.addr, rep->rr_iov.length, DMA_BIDIRECTIONAL);
- 
--	DECR_CQCOUNT(ep);
--	rc = ib_post_recv(ia->ri_id->qp, &recv_wr, &recv_wr_fail);
-+	if (ia->ri_id->qp) {
-+		DECR_CQCOUNT(ep);
-+		rc = ib_post_recv(ia->ri_id->qp, &recv_wr, &recv_wr_fail);
-+		if (rc)
-+			dprintk("RPC:       %s: ib_post_recv returned %i\n", __func__,
-+				rc);
-+	} else
-+		rc = -EINVAL;
- 
--	if (rc)
--		dprintk("RPC:       %s: ib_post_recv returned %i\n", __func__,
--			rc);
- 	return rc;
- }
---
-1.7.1
+NeilBrown (5):
+      MM: avoid throttling reclaim for loop-back nfsd threads.
+      SUNRPC: track whether a request is coming from a loop-back interface.
+      nfsd: Only set PF_LESS_THROTTLE when really needed.
+      SUNRPC: track when a client connection is routed to the local host.
+      NFS: avoid deadlocks with loop-back mounted NFS filesystems.
 
---
-To unsubscribe from this list: send the line "unsubscribe linux-rdma" in the body of a message to majordomo@vger.kernel.org More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
+ fs/nfs/file.c                   |    2 +
+ fs/nfs/write.c                  |   73 +++++++++++++++++++++++++++++++++++----
+ fs/nfsd/nfssvc.c                |    6 ---
+ fs/nfsd/vfs.c                   |   12 ++++++
+ include/linux/freezer.h         |   10 +++++
+ include/linux/sunrpc/clnt.h     |    1 +
+ include/linux/sunrpc/svc.h      |    1 +
+ include/linux/sunrpc/svc_xprt.h |    1 +
+ include/linux/sunrpc/xprt.h     |    1 +
+ include/uapi/linux/nfs_fs.h     |    3 ++
+ mm/vmscan.c                     |   18 +++++++++-
+ net/sunrpc/clnt.c               |   25 +++++++++++++
+ net/sunrpc/svcsock.c            |   10 +++++
+ net/sunrpc/xprtsock.c           |   17 +++++++++
+ 14 files changed, 163 insertions(+), 17 deletions(-)
+
+-- 
+Signature
+
