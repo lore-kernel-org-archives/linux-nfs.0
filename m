@@ -1,45 +1,100 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ud10.udmedia.de ([194.117.254.50]:38071 "EHLO
-	mail.ud10.udmedia.de" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752992AbaDCRnl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 3 Apr 2014 13:43:41 -0400
-Date: Thu, 3 Apr 2014 19:43:39 +0200
-From: Markus Trippelsdorf <markus@trippelsdorf.de>
-To: linux-nfs@vger.kernel.org
-Cc: Andy Lutomirski <luto@amacapital.net>,
-        "H. Peter Anvin" <hpa@linux.intel.com>
-Subject: [PATCH] x86, vdso: Fix vdso-layout linker script
-Message-ID: <20140403174339.GA284@x4>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
+Received: from mail-qc0-f176.google.com ([209.85.216.176]:53696 "EHLO
+	mail-qc0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756654AbaDWSZL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Apr 2014 14:25:11 -0400
+Received: by mail-qc0-f176.google.com with SMTP id x13so517836qcv.35
+        for <linux-nfs@vger.kernel.org>; Wed, 23 Apr 2014 11:25:11 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 3/3] nfs4: turn free_lock_state into a void return operation
+Date: Wed, 23 Apr 2014 14:25:00 -0400
+Message-Id: <1398277500-31575-4-git-send-email-jlayton@redhat.com>
+In-Reply-To: <1398277500-31575-1-git-send-email-jlayton@redhat.com>
+References: <1398277500-31575-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Commit 26f5ef2e3c3 added a /DISCARD/ section to the vdso-layout.lds.S
-linker script. This broke the build when using the gold linker:
+Nothing checks its return value, and these calls are generally
+best-effort anyway.
 
- ld: error: arch/x86/vdso/vdso.lds:79:12: syntax error, unexpected ':'
- ld: fatal error: unable to parse script file arch/x86/vdso/vdso.lds
+Signed-off-by: Jeff Layton <jlayton@redhat.com>
+---
+ fs/nfs/nfs4_fs.h  |  2 +-
+ fs/nfs/nfs4proc.c | 14 +++++++-------
+ 2 files changed, 8 insertions(+), 8 deletions(-)
 
-As Cary Coutant pointed out on the sourceware bugzilla: 
-https://sourceware.org/bugzilla/show_bug.cgi?id=16804  
-the problem is that the .text section directly above the /DISCARD/
-section should be terminated with an comma.
-
-Signed-off-by: Markus Trippelsdorf <markus@trippelsdorf.de>
-
-diff --git a/arch/x86/vdso/vdso-layout.lds.S b/arch/x86/vdso/vdso-layout.lds.S
-index 2e263f367b13..313bca59ddea 100644
---- a/arch/x86/vdso/vdso-layout.lds.S
-+++ b/arch/x86/vdso/vdso-layout.lds.S
-@@ -61,7 +61,7 @@ SECTIONS
- 	 */
- 	. = ALIGN(0x100);
+diff --git a/fs/nfs/nfs4_fs.h b/fs/nfs/nfs4_fs.h
+index 75aadf8c0429..f495ff306c4f 100644
+--- a/fs/nfs/nfs4_fs.h
++++ b/fs/nfs/nfs4_fs.h
+@@ -54,7 +54,7 @@ struct nfs4_minor_version_ops {
+ 			const nfs4_stateid *);
+ 	int	(*find_root_sec)(struct nfs_server *, struct nfs_fh *,
+ 			struct nfs_fsinfo *);
+-	int	(*free_lock_state)(struct nfs_server *,
++	void	(*free_lock_state)(struct nfs_server *,
+ 			struct nfs4_lock_state *);
+ 	const struct rpc_call_ops *call_sync_ops;
+ 	const struct nfs4_state_recovery_ops *reboot_recovery_ops;
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index cc6c3fe3e060..06c1e9e777ab 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -5915,7 +5915,8 @@ static const struct rpc_call_ops nfs4_release_lockowner_ops = {
+ 	.rpc_release = nfs4_release_lockowner_release,
+ };
  
--	.text		: { *(.text*) }			:text	=0x90909090
-+	.text		: { *(.text*) }			:text	=0x90909090,
+-static int nfs4_release_lockowner(struct nfs_server *server, struct nfs4_lock_state *lsp)
++static void
++nfs4_release_lockowner(struct nfs_server *server, struct nfs4_lock_state *lsp)
+ {
+ 	struct nfs_release_lockowner_data *data;
+ 	struct rpc_message msg = {
+@@ -5923,11 +5924,11 @@ static int nfs4_release_lockowner(struct nfs_server *server, struct nfs4_lock_st
+ 	};
  
- 	/DISCARD/ : {
- 		*(.discard)
+ 	if (server->nfs_client->cl_mvops->minor_version != 0)
+-		return -EINVAL;
++		return;
+ 
+ 	data = kmalloc(sizeof(*data), GFP_NOFS);
+ 	if (!data)
+-		return -ENOMEM;
++		return;
+ 	data->lsp = lsp;
+ 	data->server = server;
+ 	data->args.lock_owner.clientid = server->nfs_client->cl_clientid;
+@@ -5938,7 +5939,6 @@ static int nfs4_release_lockowner(struct nfs_server *server, struct nfs4_lock_st
+ 	msg.rpc_resp = &data->res;
+ 	nfs4_init_sequence(&data->args.seq_args, &data->res.seq_res, 0);
+ 	rpc_call_async(server->client, &msg, 0, &nfs4_release_lockowner_ops, data);
+-	return 0;
+ }
+ 
+ #define XATTR_NAME_NFSV4_ACL "system.nfs4_acl"
+@@ -8225,7 +8225,8 @@ static int nfs41_free_stateid(struct nfs_server *server,
+ 	return ret;
+ }
+ 
+-static int nfs41_free_lock_state(struct nfs_server *server, struct nfs4_lock_state *lsp)
++static void
++nfs41_free_lock_state(struct nfs_server *server, struct nfs4_lock_state *lsp)
+ {
+ 	struct rpc_task *task;
+ 	struct rpc_cred *cred = lsp->ls_state->owner->so_cred;
+@@ -8233,9 +8234,8 @@ static int nfs41_free_lock_state(struct nfs_server *server, struct nfs4_lock_sta
+ 	task = _nfs41_free_stateid(server, &lsp->ls_stateid, cred, false);
+ 	nfs4_free_lock_state(server, lsp);
+ 	if (IS_ERR(task))
+-		return PTR_ERR(task);
++		return;
+ 	rpc_put_task(task);
+-	return 0;
+ }
+ 
+ static bool nfs41_match_stateid(const nfs4_stateid *s1,
 -- 
-Markus
+1.9.0
+
