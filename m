@@ -1,135 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f176.google.com ([209.85.213.176]:51161 "EHLO
-	mail-ig0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754208AbaDRSqP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Apr 2014 14:46:15 -0400
-Received: by mail-ig0-f176.google.com with SMTP id uy17so957965igb.3
-        for <linux-nfs@vger.kernel.org>; Fri, 18 Apr 2014 11:46:14 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Bruce Fields <bfields@fieldses.org>
+Received: from mx1.redhat.com ([209.132.183.28]:19441 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1756082AbaDWTUx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 23 Apr 2014 15:20:53 -0400
+Date: Wed, 23 Apr 2014 15:00:23 -0400
+From: Jeff Layton <jlayton@redhat.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 45/70] NFSd: Add reference counting to nfs4_preprocess_confirmed_seqid_op
-Date: Fri, 18 Apr 2014 14:44:39 -0400
-Message-Id: <1397846704-14567-46-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1397846704-14567-45-git-send-email-trond.myklebust@primarydata.com>
-References: <1397846704-14567-1-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-2-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-3-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-4-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-5-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-6-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-7-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-8-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-9-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-10-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-11-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-12-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-13-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-14-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-15-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-16-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-17-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-18-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-19-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-20-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-21-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-22-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-23-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-24-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-25-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-26-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-27-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-28-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-29-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-30-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-31-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-32-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-33-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-34-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-35-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-36-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-37-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-38-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-39-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-40-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-41-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-42-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-43-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-44-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-45-git-send-email-trond.myklebust@primarydata.com>
+Subject: Re: [PATCH 1/3] nfs4: treat lock owners as opaque values
+Message-ID: <20140423150023.6b0956cb@tlielax.poochiereds.net>
+In-Reply-To: <1A139D9F-E986-4854-8C15-AB1332880E29@primarydata.com>
+References: <1398277500-31575-1-git-send-email-jlayton@redhat.com>
+	<1398277500-31575-2-git-send-email-jlayton@redhat.com>
+	<1A139D9F-E986-4854-8C15-AB1332880E29@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Ensure that all the callers put the open stateid after use.
+On Wed, 23 Apr 2014 14:48:08 -0400
+Trond Myklebust <trond.myklebust@primarydata.com> wrote:
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 13 +++++++++----
- 1 file changed, 9 insertions(+), 4 deletions(-)
+> 
+> On Apr 23, 2014, at 14:24, Jeff Layton <jlayton@redhat.com> wrote:
+> 
+> > Do the following set of ops with a file on a NFSv4 mount:
+> > 
+> >    exec 3>>$1
+> >    flock -x 3
+> >    exec 3>&-
+> > 
+> > You'll see the LOCK request go across the wire, but no LOCKU when the
+> > file is closed. This leads to
+> > 
+> > What happens is that the fd is passed across a fork, and the final close
+> > is done in a different process than the opener. That makes
+> > __nfs4_find_lock_state miss finding the correct lock state because it
+> > uses the fl_pid as a search key. A new one is created, and the locking
+> > code treats it as a delegation stateid (because NFS_LOCK_INITIALIZED
+> > isn't set).
+> > 
+> > The root cause of this breakage seems to be commit 77041ed9b49a9e
+> > (NFSv4: Ensure the lockowners are labelled using the fl_owner and/or
+> > fl_pid).
+> > 
+> > That changed it so that flock lockowners are allocated based on the
+> > fl_pid. I think this is incorrect. flock locks should be "owned" by the
+> > struct file, and that is already accounted for in the fl_owner field of
+> > the lock request when the vfs layer passes it down.
+> 
+> NACKed for now.
+> 
+> I'll grant you that there are several nice potential cleanups here, but as far as I can tell, flock_make_lock() never sets fl_owner, and neither does anything else in sys_flock().
+> 
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 517e08818df6..ce35edcef193 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4115,6 +4115,8 @@ static __be32 nfs4_preprocess_confirmed_seqid_op(struct nfsd4_compound_state *cs
- 						NFS4_OPEN_STID, stpp, nn);
- 	if (status)
- 		return status;
-+	/* FIXME: move into nfs4_preprocess_seqid_op */
-+	atomic_inc(&(*stpp)->st_stid.sc_count);
- 	oo = openowner((*stpp)->st_stateowner);
- 	if (!(oo->oo_flags & NFS4_OO_CONFIRMED))
- 		return nfserr_bad_stateid;
-@@ -4228,12 +4230,12 @@ nfsd4_open_downgrade(struct svc_rqst *rqstp,
- 	if (!test_access(od->od_share_access, stp)) {
- 		dprintk("NFSD: access not a subset current bitmap: 0x%lx, input access=%08x\n",
- 			stp->st_access_bmap, od->od_share_access);
--		goto out;
-+		goto put_stateid;
- 	}
- 	if (!test_deny(od->od_share_deny, stp)) {
- 		dprintk("NFSD:deny not a subset current bitmap: 0x%lx, input deny=%08x\n",
- 			stp->st_deny_bmap, od->od_share_deny);
--		goto out;
-+		goto put_stateid;
- 	}
- 	nfs4_stateid_downgrade(stp, od->od_share_access);
- 
-@@ -4242,6 +4244,8 @@ nfsd4_open_downgrade(struct svc_rqst *rqstp,
- 	update_stateid(&stp->st_stid.sc_stateid);
- 	memcpy(&od->od_stateid, &stp->st_stid.sc_stateid, sizeof(stateid_t));
- 	status = nfs_ok;
-+put_stateid:
-+	put_generic_stateid(stp);
- out:
- 	nfsd4_bump_seqid(cstate, status);
- 	nfs4_unlock_state();
-@@ -4562,6 +4566,7 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	struct nfs4_openowner *open_sop = NULL;
- 	struct nfs4_lockowner *lock_sop = NULL;
- 	struct nfs4_ol_stateid *lock_stp = NULL;
-+	struct nfs4_ol_stateid *open_stp = NULL;
- 	struct file *filp = NULL;
- 	struct file_lock *file_lock = NULL;
- 	struct file_lock *conflock = NULL;
-@@ -4588,8 +4593,6 @@ nfsd4_lock(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	nfs4_lock_state();
- 
- 	if (lock->lk_is_new) {
--		struct nfs4_ol_stateid *open_stp = NULL;
--
- 		if (nfsd4_has_session(cstate))
- 			/* See rfc 5661 18.10.3: given clientid is ignored: */
- 			memcpy(&lock->v.new.clientid,
-@@ -4712,6 +4715,8 @@ out:
- 		fput(filp);
- 	if (lock_stp)
- 		put_generic_stateid(lock_stp);
-+	if (open_stp)
-+		put_generic_stateid(open_stp);
- 	if (status && new_state)
- 		release_lockowner_if_empty(lock_sop);
- 	nfsd4_bump_seqid(cstate, status);
+Ahh right...nfs_flock is what sets that currently. So this patch *does*
+work, but I think you're right that we ought to have the generic flock
+codepath universally set fl_owner instead.
+
+I'll see if I can make that a bit more consistent for v3.16 and then we
+can revisit this one.
+
+Thanks,
 -- 
-1.9.0
-
+Jeff Layton <jlayton@redhat.com>
