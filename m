@@ -1,178 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:46496 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750857AbaDRMTW (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 18 Apr 2014 08:19:22 -0400
-Date: Fri, 18 Apr 2014 08:19:20 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2] NFSD: Don't set default ACL if there are no ACE
- entries
-Message-ID: <20140418121920.GD18612@fieldses.org>
-References: <534FCD13.303@gmail.com>
- <20140417143634.GA20857@infradead.org>
- <5350A0A2.1020401@gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <5350A0A2.1020401@gmail.com>
+Received: from mail-qc0-f175.google.com ([209.85.216.175]:48571 "EHLO
+	mail-qc0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756984AbaDWSZJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Apr 2014 14:25:09 -0400
+Received: by mail-qc0-f175.google.com with SMTP id e16so1385633qcx.34
+        for <linux-nfs@vger.kernel.org>; Wed, 23 Apr 2014 11:25:08 -0700 (PDT)
+From: Jeff Layton <jlayton@redhat.com>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH 0/3] nfs4: file locking fixes and cleanups
+Date: Wed, 23 Apr 2014 14:24:57 -0400
+Message-Id: <1398277500-31575-1-git-send-email-jlayton@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Apr 18, 2014 at 11:48:50AM +0800, Kinglong Mee wrote:
-> After setting ACL for directory, I got two problems that caused
-> by the cached zero-length default posix acl.
-> 
-> This patch make sure nfsd don't set a zero-length default
-> posix ACL if there are no entries for the default ACL.
-> 
-> Thanks for Christoph Hellwig's advice.
-> 
-> v2:
->     drop calling forget_cached_acl(), just not set zero-length ACL
+The impetus for this set was a bug report in Fedora about "sleeping in
+atomic context" warning that patch #2 fixes. While looking at that, I
+noticed that a LOCKU wasn't being sent in the reproducer provided so I
+tracked down and fixed that bug as well.
 
-I thought Christoph's suggestion was to actually call ->set_acl with a
-NULL ACL?  Does that turn out to be unnecessary?
+These are only lightly tested, and could probably use some soak time in
+linux-next. Also, I'm not 100% thrilled with queueing the
+free_lock_state job submission to a workqueue, but I don't see a better
+way to handle it so far.
 
---b.
+Jeff Layton (3):
+  nfs4: treat lock owners as opaque values
+  nfs4: queue free_lock_state job submission to nfsiod
+  nfs4: turn free_lock_state into a void return operation
 
-> 
-> First problem:
-> # nfs4_setfacl -s A::OWNER@:RWX /mnt/123/; touch /mnt/123/test
-> ............ hang ...........
-> 
-> Second problem:
-> # nfs4_setfacl -s A::OWNER@:RWX /mnt/123/; nfs4_getfacl /mnt/123/
-> [ 1610.167668] ------------[ cut here ]------------
-> [ 1610.168320] kernel BUG at /root/nfs/linux/fs/nfsd/nfs4acl.c:239!
-> [ 1610.168320] invalid opcode: 0000 [#1] SMP DEBUG_PAGEALLOC
-> [ 1610.168320] Modules linked in: nfsv4(OE) nfs(OE) nfsd(OE)
-> rpcsec_gss_krb5 fscache ip6t_rpfilter ip6t_REJECT cfg80211
-> xt_conntrack rfkill ebtable_nat ebtable_broute bridge stp llc
-> ebtable_filter ebtables ip6table_nat nf_conntrack_ipv6
-> nf_defrag_ipv6 nf_nat_ipv6 ip6table_mangle ip6table_security
-> ip6table_raw ip6table_filter ip6_tables iptable_nat
-> nf_conntrack_ipv4 nf_defrag_ipv4 nf_nat_ipv4 nf_nat nf_conntrack
-> iptable_mangle iptable_security iptable_raw auth_rpcgss nfs_acl
-> snd_intel8x0 ppdev lockd snd_ac97_codec ac97_bus snd_pcm snd_timer
-> e1000 pcspkr parport_pc snd parport serio_raw joydev i2c_piix4
-> sunrpc(OE) microcode soundcore i2c_core ata_generic pata_acpi [last
-> unloaded: nfsd]
-> [ 1610.168320] CPU: 0 PID: 27397 Comm: nfsd Tainted: G           OE
-> 3.15.0-rc1+ #15
-> [ 1610.168320] Hardware name: innotek GmbH VirtualBox/VirtualBox,
-> BIOS VirtualBox 12/01/2006
-> [ 1610.168320] task: ffff88005ab653d0 ti: ffff88005a944000 task.ti:
-> ffff88005a944000
-> [ 1610.168320] RIP: 0010:[<ffffffffa034d5ed>]  [<ffffffffa034d5ed>]
-> _posix_to_nfsv4_one+0x3cd/0x3d0 [nfsd]
-> [ 1610.168320] RSP: 0018:ffff88005a945b00  EFLAGS: 00010293
-> [ 1610.168320] RAX: 0000000000000001 RBX: ffff88006700bac0 RCX:
-> 0000000000000000
-> [ 1610.168320] RDX: 0000000000000000 RSI: ffff880067c83f00 RDI:
-> ffff880068233300
-> [ 1610.168320] RBP: ffff88005a945b48 R08: ffffffff81c64830 R09:
-> 0000000000000000
-> [ 1610.168320] R10: ffff88004ea85be0 R11: 000000000000f475 R12:
-> ffff880068233300
-> [ 1610.168320] R13: 0000000000000003 R14: 0000000000000002 R15:
-> ffff880068233300
-> [ 1610.168320] FS:  0000000000000000(0000) GS:ffff880077800000(0000)
-> knlGS:0000000000000000
-> [ 1610.168320] CS:  0010 DS: 0000 ES: 0000 CR0: 000000008005003b
-> [ 1610.168320] CR2: 00007f5bcbd3b0b9 CR3: 0000000001c0f000 CR4:
-> 00000000000006f0
-> [ 1610.168320] DR0: 0000000000000000 DR1: 0000000000000000 DR2:
-> 0000000000000000
-> [ 1610.168320] DR3: 0000000000000000 DR6: 00000000fffe0ff0 DR7:
-> 0000000000000400
-> [ 1610.168320] Stack:
-> [ 1610.168320]  ffffffff00000000 0000000b67c83500 000000076700bac0
-> 0000000000000000
-> [ 1610.168320]  ffff88006700bac0 ffff880068233300 ffff88005a945c08
-> 0000000000000002
-> [ 1610.168320]  0000000000000000 ffff88005a945b88 ffffffffa034e2d5
-> 000000065a945b68
-> [ 1610.168320] Call Trace:
-> [ 1610.168320]  [<ffffffffa034e2d5>] nfsd4_get_nfs4_acl+0x95/0x150 [nfsd]
-> [ 1610.168320]  [<ffffffffa03400d6>] nfsd4_encode_fattr+0x646/0x1e70 [nfsd]
-> [ 1610.168320]  [<ffffffff816a6e6e>] ? kmemleak_alloc+0x4e/0xb0
-> [ 1610.168320]  [<ffffffffa0327962>] ?
-> nfsd_setuser_and_check_port+0x52/0x80 [nfsd]
-> [ 1610.168320]  [<ffffffff812cd4bb>] ? selinux_cred_prepare+0x1b/0x30
-> [ 1610.168320]  [<ffffffffa0341caa>] nfsd4_encode_getattr+0x5a/0x60 [nfsd]
-> [ 1610.168320]  [<ffffffffa0341e07>]
-> nfsd4_encode_operation+0x67/0x110 [nfsd]
-> [ 1610.168320]  [<ffffffffa033844d>] nfsd4_proc_compound+0x21d/0x810 [nfsd]
-> [ 1610.168320]  [<ffffffffa0324d9b>] nfsd_dispatch+0xbb/0x200 [nfsd]
-> [ 1610.168320]  [<ffffffffa00850cd>] svc_process_common+0x46d/0x6d0 [sunrpc]
-> [ 1610.168320]  [<ffffffffa0085433>] svc_process+0x103/0x170 [sunrpc]
-> [ 1610.168320]  [<ffffffffa032472f>] nfsd+0xbf/0x130 [nfsd]
-> [ 1610.168320]  [<ffffffffa0324670>] ? nfsd_destroy+0x80/0x80 [nfsd]
-> [ 1610.168320]  [<ffffffff810a5202>] kthread+0xd2/0xf0
-> [ 1610.168320]  [<ffffffff810a5130>] ? insert_kthread_work+0x40/0x40
-> [ 1610.168320]  [<ffffffff816c1ebc>] ret_from_fork+0x7c/0xb0
-> [ 1610.168320]  [<ffffffff810a5130>] ? insert_kthread_work+0x40/0x40
-> [ 1610.168320] Code: 78 02 e9 e7 fc ff ff 31 c0 31 d2 31 c9 66 89 45
-> ce 41 8b 04 24 66 89 55 d0 66 89 4d d2 48 8d 04 80 49 8d 5c 84 04 e9
-> 37 fd ff ff <0f> 0b 90 0f 1f 44 00 00 55 8b 56 08 c7 07 00 00 00 00
-> 8b 46 0c
-> [ 1610.168320] RIP  [<ffffffffa034d5ed>]
-> _posix_to_nfsv4_one+0x3cd/0x3d0 [nfsd]
-> [ 1610.168320]  RSP <ffff88005a945b00>
-> [ 1610.257313] ---[ end trace 838254e3e352285b ]---
-> 
-> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-> ---
->  fs/nfsd/nfs4acl.c | 18 +++++++++---------
->  1 file changed, 9 insertions(+), 9 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4acl.c b/fs/nfsd/nfs4acl.c
-> index de5d66b..fdd259e 100644
-> --- a/fs/nfsd/nfs4acl.c
-> +++ b/fs/nfsd/nfs4acl.c
-> @@ -395,8 +395,10 @@ sort_pacl(struct posix_acl *pacl)
->  	 * by uid/gid. */
->  	int i, j;
-> 
-> -	if (pacl->a_count <= 4)
-> -		return; /* no users or groups */
-> +	/* no users or groups */
-> +	if (!pacl || pacl->a_count <= 4)
-> +		return;
-> +
->  	i = 1;
->  	while (pacl->a_entries[i].e_tag == ACL_USER)
->  		i++;
-> @@ -523,13 +525,11 @@ posix_state_to_acl(struct posix_acl_state
-> *state, unsigned int flags)
-> 
->  	/*
->  	 * ACLs with no ACEs are treated differently in the inheritable
-> -	 * and effective cases: when there are no inheritable ACEs, we
-> -	 * set a zero-length default posix acl:
-> +	 * and effective cases.
->  	 */
-> -	if (state->empty && (flags & NFS4_ACL_TYPE_DEFAULT)) {
-> -		pacl = posix_acl_alloc(0, GFP_KERNEL);
-> -		return pacl ? pacl : ERR_PTR(-ENOMEM);
-> -	}
-> +	if (state->empty && (flags & NFS4_ACL_TYPE_DEFAULT))
-> +		return NULL;
-> +
->  	/*
->  	 * When there are no effective ACEs, the following will end
->  	 * up setting a 3-element effective posix ACL with all
-> @@ -831,7 +831,7 @@ nfsd4_set_nfs4_acl(struct svc_rqst *rqstp,
-> struct svc_fh *fhp,
->  	if (host_error < 0)
->  		goto out_release;
-> 
-> -	if (S_ISDIR(inode->i_mode)) {
-> +	if (dpacl && S_ISDIR(inode->i_mode)) {
->  		host_error = inode->i_op->set_acl(inode, dpacl,
->  						  ACL_TYPE_DEFAULT);
->  	}
-> -- 
-> 1.9.0
-> 
+ fs/nfs/nfs4_fs.h   | 26 +++++++--------------
+ fs/nfs/nfs4proc.c  | 14 ++++++------
+ fs/nfs/nfs4state.c | 67 ++++++++++++++++++++++--------------------------------
+ 3 files changed, 42 insertions(+), 65 deletions(-)
+
+-- 
+1.9.0
+
