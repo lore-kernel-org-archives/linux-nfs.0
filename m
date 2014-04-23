@@ -1,31 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:57721 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751046AbaDSOkb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 19 Apr 2014 10:40:31 -0400
-Date: Sat, 19 Apr 2014 07:40:30 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Bruce Fields <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 30/70] NFSd: Replace delegation->dl_file with the
- dl_stid.sc_file
-Message-ID: <20140419144030.GC25682@infradead.org>
-References: <1397846704-14567-22-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-23-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-24-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-25-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-26-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-27-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-28-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-29-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-30-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-31-git-send-email-trond.myklebust@primarydata.com>
+Received: from mail-ig0-f182.google.com ([209.85.213.182]:54873 "EHLO
+	mail-ig0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753990AbaDWVDk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Apr 2014 17:03:40 -0400
+Received: by mail-ig0-f182.google.com with SMTP id uy17so97541igb.3
+        for <linux-nfs@vger.kernel.org>; Wed, 23 Apr 2014 14:03:39 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1397846704-14567-31-git-send-email-trond.myklebust@primarydata.com>
+Date: Wed, 23 Apr 2014 23:03:39 +0200
+Message-ID: <CALXu0UeS=8tCj13a6O=W8wVr8Ke+CLpd6fUNqB35dYB2kj4hmw@mail.gmail.com>
+Subject: NFSv4 delegations criteria? Fwd: Tuning Linux NFSv4 for high latency connections?
+From: Cedric Blancher <cedric.blancher@gmail.com>
+To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Instead of adding a mostly unused file field to the stid in the previous
-patch and starting to use it here I'd recommend merging the two patches.
+What are the criteria for grating a file delegation in NFSv4? Are file
+delegations retained even if a process closes a file and the next
+process in the chain opens it again (e.g. in a shell script)?
 
+Ced
+
+PS: Who again grants NFSv4 delegations? Server or client? Do
+delegations work when data are appended at the end of a file?
+
+---------- Forwarded message ----------
+From: Cedric Blancher <cedric.blancher@gmail.com>
+Date: 23 April 2014 20:01
+Subject: Tuning Linux NFSv4 for high latency connections?
+To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+
+
+Are there any options to improve the Linux NFSv4 performance over a
+high latency connection?
+
+We currently use Solaris/Illumos as NFSv4 server and client over a
+cross continental Internet connection. Latency is terrible (~220ms)
+but the counter this by running work in parallel so the latency is
+mostly mitigated.
+
+We now wish to migrate (short: Away from Oracle because support is
+basically unbearable) to Linux (tested SuSE 13.1 and current Fedora)
+and build times are 17 times (!!!) SLOWER than on Solaris/Illumos.
+
+Are there any tunables besides actimeo=300?
+
+Ced
+--
+Cedric Blancher <cedric.blancher@gmail.com>
+Institute Pasteur
+
+
+-- 
+Cedric Blancher <cedric.blancher@gmail.com>
+Institute Pasteur
