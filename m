@@ -1,77 +1,35 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:41664 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756036AbaDHMfD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 Apr 2014 08:35:03 -0400
-Date: Tue, 8 Apr 2014 08:35:01 -0400
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-nfs@vger.kernel.org, Andy Adamson <androsadamson@gmail.com>,
-        chuck.lever@oracle.com, trond.myklebust@primarydata.com
-Subject: Re: v4.0 CB_COMPOUND authentication failures
-Message-ID: <20140408123501.GA3532@fieldses.org>
-References: <20140408082140.340c1328@tlielax.poochiereds.net>
+Received: from mail-ie0-f180.google.com ([209.85.223.180]:35552 "EHLO
+	mail-ie0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750723AbaDWSBv (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Apr 2014 14:01:51 -0400
+Received: by mail-ie0-f180.google.com with SMTP id as1so1286874iec.11
+        for <linux-nfs@vger.kernel.org>; Wed, 23 Apr 2014 11:01:50 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140408082140.340c1328@tlielax.poochiereds.net>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Date: Wed, 23 Apr 2014 20:01:50 +0200
+Message-ID: <CALXu0UcdfrvCajbAagGLV=dP=Kk3VWeR4VS5Wna44UroxM4JAQ@mail.gmail.com>
+Subject: Tuning Linux NFSv4 for high latency connections?
+From: Cedric Blancher <cedric.blancher@gmail.com>
+To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Apr 08, 2014 at 08:21:40AM -0400, Jeff Layton wrote:
-> I've recently been hunting down some problems with delegation handling
-> and have run across a problem with the client authenticates CB_COMPOUND
-> requests. I could use some advice on how best to fix it.
-> 
-> Specifically, check_gss_callback_principal() tries to look up the
-> callback client and then tries to compare the ticket in it against the
-> clp->cl_hostname:
-> 
->         /* Expect a GSS_C_NT_HOSTBASED_NAME like "nfs@serverhostname" */
-> 
->         if (memcmp(p, "nfs@", 4) != 0)
->                 return 0;
->         p += 4;
->         if (strcmp(p, clp->cl_hostname) != 0)
->                 return 0;
->         return 1;
-> 
-> The problem is that there is no guarantee that those hostnames will be
-> the same. If, for instance, I mount "foo:/" and the SPN is
-> "nfs/foo.bar.baz" that strcmp will return true, and the CB_COMPOUND
-> request will get tossed out [1]. Ditto if I happen to mount a CNAME of the
-> server.
+Are there any options to improve the Linux NFSv4 performance over a
+high latency connection?
 
-It sounds like a bug to me that the mount is succeeding without the name
-matching.
+We currently use Solaris/Illumos as NFSv4 server and client over a
+cross continental Internet connection. Latency is terrible (~220ms)
+but the counter this by running work in parallel so the latency is
+mostly mitigated.
 
-The security provided by krb5 is much weaker if we don't check that the
-name provided on the commandline matches what the server authenticates
-as.
+We now wish to migrate (short: Away from Oracle because support is
+basically unbearable) to Linux (tested SuSE 13.1 and current Fedora)
+and build times are 17 times (!!!) SLOWER than on Solaris/Illumos.
 
-> Now that we try to use krb5 on the callback channel even when sec=sys
-> is specified, this is very problematic.
+Are there any tunables besides actimeo=300?
 
-And similarly I think the attempt to opportunistically use krb5 for
-state management should fail and fall back on auth_sys if the server's
-name doesn't match.
-
-> I think that the ideal thing would be to stash the SPN that we use to
-> do the SETCLIENTID call and use that in the comparison above.
-> Unfortunately, the rpc_cred doesn't really seem to carry this info and
-> I don't see where we get enough information in the rpc.gssd downcall to
-> figure out what that SPN should be.
-> 
-> Anyone have thoughts or should we just remove the above check until we
-> come up with a better way to do this?
-> 
-> [1]: there's another bug that can cause the client to send a bogus
->      reply instead of dropping the request as intended, but that's
->      relatively simple to fix.
-
-So I believe the matching really is a requirement and that it would be
-wrong to weaken it.
-
-It sounds like there's also a server bug here if it's giving out
-delegations to a client that isn't responding to callbacks.
-
---b.
+Ced
+-- 
+Cedric Blancher <cedric.blancher@gmail.com>
+Institute Pasteur
