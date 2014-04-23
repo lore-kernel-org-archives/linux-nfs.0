@@ -1,64 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:38854 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751041AbaDPETa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Apr 2014 00:19:30 -0400
-From: NeilBrown <neilb@suse.de>
-To: linux-mm@kvack.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Date: Wed, 16 Apr 2014 14:03:36 +1000
-Subject: [PATCH 14/19] driver core: set PF_FSTRANS while holding gdp_mutex
-Cc: xfs@oss.sgi.com
-Message-ID: <20140416040336.10604.223.stgit@notabene.brown>
-In-Reply-To: <20140416033623.10604.69237.stgit@notabene.brown>
-References: <20140416033623.10604.69237.stgit@notabene.brown>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-ie0-f175.google.com ([209.85.223.175]:34517 "EHLO
+	mail-ie0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754347AbaDWNmN convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Apr 2014 09:42:13 -0400
+Received: by mail-ie0-f175.google.com with SMTP id to1so899072ieb.34
+        for <linux-nfs@vger.kernel.org>; Wed, 23 Apr 2014 06:42:13 -0700 (PDT)
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
+Subject: Re: [PATCH 00/17] NFS: Create a common path used by reads and writes
+From: Weston Andros Adamson <dros@primarydata.com>
+In-Reply-To: <5357BCD9.2@panasas.com>
+Date: Wed, 23 Apr 2014 09:42:14 -0400
+Cc: Anna Schumaker <Anna.Schumaker@netapp.com>,
+        Trond Myklebust <Trond.Myklebust@primarydata.com>,
+        linux-nfs list <linux-nfs@vger.kernel.org>
+Message-Id: <21CDA162-DF2B-4C9F-A310-CCA7936817FA@primarydata.com>
+References: <1397768981-12856-1-git-send-email-Anna.Schumaker@Netapp.com> <5357B827.8040506@panasas.com> <5357BCD9.2@panasas.com>
+To: Boaz Harrosh <bharrosh@panasas.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-lockdep reports a locking chain:
+Yeah there are bound to be some conflicts between these two patchsets, but
+I don’t think it should be too nasty.
 
-  sk_lock-AF_INET --> rtnl_mutex --> gdp_mutex
+Anna and I can work together to get both sets into a branch once we get things 
+reviewed.
 
-As sk_lock can be needed for memory reclaim (when loop-back NFS is in
-use at least), any memory allocation under gdp_mutex needs to
-be protected by PF_FSTRANS.
+The good news is that we can combine testing efforts - both of these patchsets
+change the read and write path for all versions of NFS, so we really need to
+make sure we didn’t break anything. Not that pnfs isn’t important ;)
 
-The path frome rtnl_mutex to gdp_mutex is
+-dros
 
-    [<ffffffff81841ecc>] get_device_parent+0x4c/0x1f0
-    [<ffffffff81842496>] device_add+0xe6/0x610
-    [<ffffffff81ac5f2a>] netdev_register_kobject+0x7a/0x130
-    [<ffffffff81aaf5d4>] register_netdevice+0x354/0x550
-    [<ffffffff81aaf7e5>] register_netdev+0x15/0x30
+On Apr 23, 2014, at 9:15 AM, Boaz Harrosh <bharrosh@panasas.com> wrote:
 
-Signed-off-by: NeilBrown <neilb@suse.de>
----
- drivers/base/core.c |    3 +++
- 1 file changed, 3 insertions(+)
-
-diff --git a/drivers/base/core.c b/drivers/base/core.c
-index 2b567177ef78..1a2735237650 100644
---- a/drivers/base/core.c
-+++ b/drivers/base/core.c
-@@ -750,6 +750,7 @@ static struct kobject *get_device_parent(struct device *dev,
- 		struct kobject *kobj = NULL;
- 		struct kobject *parent_kobj;
- 		struct kobject *k;
-+		unsigned int pflags;
- 
- #ifdef CONFIG_BLOCK
- 		/* block disks show up in /sys/block */
-@@ -788,7 +789,9 @@ static struct kobject *get_device_parent(struct device *dev,
- 		}
- 
- 		/* or create a new class-directory at the parent device */
-+		current_set_flags_nested(&pflags, PF_FSTRANS);
- 		k = class_dir_create_and_add(dev->class, parent_kobj);
-+		current_restore_flags_nested(&pflags, PF_FSTRANS);
- 		/* do not emit an uevent for this simple "glue" directory */
- 		mutex_unlock(&gdp_mutex);
- 		return k;
-
+> On 04/23/2014 03:55 PM, Boaz Harrosh wrote:
+>> On 04/18/2014 12:09 AM, Anna Schumaker wrote:
+> <>
+>> yes please keep
+>> it on a public tree for quick testing. Perhaps ask Trond to keep
+>> it on his tree in a branch. (So to get some coverage under the linux-next
+>> tree mongers from Intel)
+>> 
+> 
+> BTW: anyone tested how much this conflicts with dros's 17 patches?
+>     (Noticed how it is always 17 patches)
+>     If a brave sole can have both these merged on the same tree it
+>     would be easier for the testing.
+> 
+> Thanks
+> Boaz
+> 
 
