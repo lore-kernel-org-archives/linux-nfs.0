@@ -1,111 +1,159 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pb0-f53.google.com ([209.85.160.53]:49315 "EHLO
-	mail-pb0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752795AbaDRNwH (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Apr 2014 09:52:07 -0400
-Received: by mail-pb0-f53.google.com with SMTP id rp16so1479167pbb.26
-        for <linux-nfs@vger.kernel.org>; Fri, 18 Apr 2014 06:52:06 -0700 (PDT)
-Message-ID: <53512DE5.7050907@gmail.com>
-Date: Fri, 18 Apr 2014 21:51:33 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
+Received: from mx11.netapp.com ([216.240.18.76]:57377 "EHLO mx11.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757080AbaDWNog (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 23 Apr 2014 09:44:36 -0400
+Message-ID: <5357C3AC.9090203@netapp.com>
+Date: Wed, 23 Apr 2014 09:44:12 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] NFSD: Checking whether kill_suid by should_remove_suid()
-References: <534AA92B.8010805@gmail.com> <20140418130220.GF18612@fieldses.org>
-In-Reply-To: <20140418130220.GF18612@fieldses.org>
-Content-Type: text/plain; charset=windows-1252; format=flowed
+To: NeilBrown <neilb@suse.de>, Jan Kara <jack@suse.cz>,
+        Jeff Layton <jlayton@redhat.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        "Dave Chinner" <david@fromorbit.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "Mel Gorman" <mgorman@suse.com>,
+        Andrew Morton <akpm@linux-foundation.org>
+CC: <linux-mm@kvack.org>, <linux-nfs@vger.kernel.org>,
+        <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH 4/5] SUNRPC: track when a client connection is routed
+ to the local host.
+References: <20140423022441.4725.89693.stgit@notabene.brown> <20140423024058.4725.7703.stgit@notabene.brown>
+In-Reply-To: <20140423024058.4725.7703.stgit@notabene.brown>
+Content-Type: text/plain; charset="ISO-8859-1"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2014/4/18 21:02, J. Bruce Fields wrote:
-> On Sun, Apr 13, 2014 at 11:11:39PM +0800, Kinglong Mee wrote:
->> As local filesystem, writing data to the file by non-owner will
->> clears the SUID+SGID, owner will not.
+On 04/22/2014 10:40 PM, NeilBrown wrote:
+> If requests are being sent to the local host, then NFS will
+> need to take care to avoid deadlocks.
 >
-> Are you sure about this?  (Do you have a test case that fails?)
-
-Sorry, maybe there are some fault of the comment,
-and also, there are some problems needs rechecking.
-Please ignore this patch.
-
-I test it using command line with (root, local ext4),
-touch test; chmod 4777 test; stat test; echo 1234 > test; stat test;
-   File: ‘test’
-   Size: 0               Blocks: 0          IO Block: 4096   regular 
-empty file
-Device: 803h/2051d      Inode: 1200137     Links: 1
-Access: (4777/-rwsrwxrwx)  Uid: (    0/    root)   Gid: (    0/    root)
-Context: unconfined_u:object_r:admin_home_t:s0
-Access: 2014-04-18 21:36:31.016029014 +0800
-Modify: 2014-04-18 21:36:31.016029014 +0800
-Change: 2014-04-18 21:36:31.026030285 +0800
-  Birth: -
-   File: ‘test’
-   Size: 5               Blocks: 8          IO Block: 4096   regular file
-Device: 803h/2051d      Inode: 1200137     Links: 1
-Access: (4777/-rwsrwxrwx)  Uid: (    0/    root)   Gid: (    0/    root)
-Context: unconfined_u:object_r:admin_home_t:s0
-Access: 2014-04-18 21:36:31.016029014 +0800
-Modify: 2014-04-18 21:36:31.040032065 +0800
-Change: 2014-04-18 21:36:31.040032065 +0800
-  Birth: -
-
-With no_root_squash, (root, remote ext4),
-should not change the sgid/suid, but got
-
-   File: ‘test’
-   Size: 0               Blocks: 0          IO Block: 262144 regular 
-empty file
-Device: 24h/36d Inode: 786439      Links: 1
-Access: (4777/-rwsrwxrwx)  Uid: ( 1000/    test)   Gid: ( 1000/    test)
-Context: system_u:object_r:nfs_t:s0
-Access: 2014-04-18 21:45:32.155805097 +0800
-Modify: 2014-04-18 21:45:32.155805097 +0800
-Change: 2014-04-18 21:45:32.168806749 +0800
-  Birth: -
-   File: ‘test’
-   Size: 5               Blocks: 8          IO Block: 262144 regular file
-Device: 24h/36d Inode: 786439      Links: 1
-Access: (0777/-rwxrwxrwx)  Uid: ( 1000/    test)   Gid: ( 1000/    test)
-Context: system_u:object_r:nfs_t:s0
-Access: 2014-04-18 21:45:32.155805097 +0800
-Modify: 2014-04-18 21:45:32.184808783 +0800
-Change: 2014-04-18 21:45:32.184808783 +0800
-  Birth: -
-
-thanks,
-Kinglong Mee
-
-> I don't see an owner check in should_remove_suid.
+> So keep track when accepting a connection or sending a UDP request
+> and set a flag in the svc_xprt when the peer connected to is local.
 >
-> And I think that an nfsd thread will always have CAP_FSETID set (see
-> cap_raise_nfsd_set and the definition of CAP_NFSD_SET), so that
-> should_remove_suid() will always return 0.
+> The interface rpc_is_foreign() is provided to check is a given client
+> is connected to a foreign server.  When it returns zero it is either
+> not connected or connected to a local server and in either case
+> greater care is needed.
 >
-> --b.
+> Signed-off-by: NeilBrown <neilb@suse.de>
+> ---
+>  include/linux/sunrpc/clnt.h |    1 +
+>  include/linux/sunrpc/xprt.h |    1 +
+>  net/sunrpc/clnt.c           |   25 +++++++++++++++++++++++++
+>  net/sunrpc/xprtsock.c       |   17 +++++++++++++++++
+>  4 files changed, 44 insertions(+)
 >
->>
->> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
->> ---
->>   fs/nfsd/vfs.c | 2 +-
->>   1 file changed, 1 insertion(+), 1 deletion(-)
->>
->> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
->> index 16f0673..19c0931 100644
->> --- a/fs/nfsd/vfs.c
->> +++ b/fs/nfsd/vfs.c
->> @@ -943,7 +943,7 @@ nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh
->> *fhp, struct file *file,
->>   	fsnotify_modify(file);
->>
->>   	/* clear setuid/setgid flag after write */
->> -	if (inode->i_mode & (S_ISUID | S_ISGID))
->> +	if (should_remove_suid(dentry))
->>   		kill_suid(dentry);
->>
->>   	if (stable) {
->> --
->> 1.9.0
->>
+> diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+> index 8af2804bab16..5d626cc5ab01 100644
+> --- a/include/linux/sunrpc/clnt.h
+> +++ b/include/linux/sunrpc/clnt.h
+> @@ -173,6 +173,7 @@ void		rpc_force_rebind(struct rpc_clnt *);
+>  size_t		rpc_peeraddr(struct rpc_clnt *, struct sockaddr *, size_t);
+>  const char	*rpc_peeraddr2str(struct rpc_clnt *, enum rpc_display_format_t);
+>  int		rpc_localaddr(struct rpc_clnt *, struct sockaddr *, size_t);
+> +int		rpc_is_foreign(struct rpc_clnt *);
+>  
+>  #endif /* __KERNEL__ */
+>  #endif /* _LINUX_SUNRPC_CLNT_H */
+> diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+> index 8097b9df6773..318ee37bc358 100644
+> --- a/include/linux/sunrpc/xprt.h
+> +++ b/include/linux/sunrpc/xprt.h
+> @@ -340,6 +340,7 @@ int			xs_swapper(struct rpc_xprt *xprt, int enable);
+>  #define XPRT_CONNECTION_ABORT	(7)
+>  #define XPRT_CONNECTION_CLOSE	(8)
+>  #define XPRT_CONGESTED		(9)
+> +#define XPRT_LOCAL		(10)
+>  
+>  static inline void xprt_set_connected(struct rpc_xprt *xprt)
+>  {
+> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+> index 0edada973434..454cea69b373 100644
+> --- a/net/sunrpc/clnt.c
+> +++ b/net/sunrpc/clnt.c
+> @@ -1109,6 +1109,31 @@ const char *rpc_peeraddr2str(struct rpc_clnt *clnt,
+>  }
+>  EXPORT_SYMBOL_GPL(rpc_peeraddr2str);
+>  
+> +/**
+> + * rpc_is_foreign - report is rpc client was recently connected to
+> + *                  remote host
+> + * @clnt: RPC client structure
+> + *
+> + * If the client is not connected, or connected to the local host
+> + * (any IP address), then return 0.  Only return non-zero if the
+> + * most recent state was a connection to a remote host.
+> + * For UDP the client always appears to be connected, and the
+> + * remoteness of the host is of the destination of the last transmission.
+> + */
+> +int rpc_is_foreign(struct rpc_clnt *clnt)
+> +{
+> +	struct rpc_xprt *xprt;
+> +	int conn_foreign;
+> +
+> +	rcu_read_lock();
+> +	xprt = rcu_dereference(clnt->cl_xprt);
+> +	conn_foreign = (xprt && xprt_connected(xprt)
+> +			&& !test_bit(XPRT_LOCAL, &xprt->state));
+> +	rcu_read_unlock();
+> +	return conn_foreign;
+> +}
+> +EXPORT_SYMBOL_GPL(rpc_is_foreign);
+> +
+>  static const struct sockaddr_in rpc_inaddr_loopback = {
+>  	.sin_family		= AF_INET,
+>  	.sin_addr.s_addr	= htonl(INADDR_ANY),
+> diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+> index 0addefca8e77..74796cf37d5b 100644
+> --- a/net/sunrpc/xprtsock.c
+> +++ b/net/sunrpc/xprtsock.c
+> @@ -642,6 +642,15 @@ static int xs_udp_send_request(struct rpc_task *task)
+>  			xdr->len - req->rq_bytes_sent, status);
+>  
+>  	if (status >= 0) {
+> +		struct dst_entry *dst;
+> +		rcu_read_lock();
+> +		dst = rcu_dereference(transport->sock->sk->sk_dst_cache);
+> +		if (dst && dst->dev && (dst->dev->features & NETIF_F_LOOPBACK))
+> +			set_bit(XPRT_LOCAL, &xprt->state);
+> +		else
+> +			clear_bit(XPRT_LOCAL, &xprt->state);
+> +		rcu_read_unlock();
+> +
+You repeat this block of code a bit later.  Can you please make it an inline helper function?
+
+Anna
+
+>  		req->rq_xmit_bytes_sent += status;
+>  		if (status >= req->rq_slen)
+>  			return 0;
+> @@ -1527,6 +1536,7 @@ static void xs_sock_mark_closed(struct rpc_xprt *xprt)
+>  static void xs_tcp_state_change(struct sock *sk)
+>  {
+>  	struct rpc_xprt *xprt;
+> +	struct dst_entry *dst;
+>  
+>  	read_lock_bh(&sk->sk_callback_lock);
+>  	if (!(xprt = xprt_from_sock(sk)))
+> @@ -1556,6 +1566,13 @@ static void xs_tcp_state_change(struct sock *sk)
+>  
+>  			xprt_wake_pending_tasks(xprt, -EAGAIN);
+>  		}
+> +		rcu_read_lock();
+> +		dst = rcu_dereference(sk->sk_dst_cache);
+> +		if (dst && dst->dev && (dst->dev->features & NETIF_F_LOOPBACK))
+> +			set_bit(XPRT_LOCAL, &xprt->state);
+> +		else
+> +			clear_bit(XPRT_LOCAL, &xprt->state);
+> +		rcu_read_unlock();
+>  		spin_unlock(&xprt->transport_lock);
+>  		break;
+>  	case TCP_FIN_WAIT1:
 >
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
