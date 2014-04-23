@@ -1,244 +1,184 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:25794 "EHLO mx12.netapp.com"
+Received: from cantor2.suse.de ([195.135.220.15]:43040 "EHLO mx2.suse.de"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750838AbaDQVJx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 17 Apr 2014 17:09:53 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
-Subject: [PATCH 02/17] NFS: Create a common results structure for reads and writes
-Date: Thu, 17 Apr 2014 17:09:26 -0400
-Message-ID: <1397768981-12856-3-git-send-email-Anna.Schumaker@Netapp.com>
-In-Reply-To: <1397768981-12856-1-git-send-email-Anna.Schumaker@Netapp.com>
-References: <1397768981-12856-1-git-send-email-Anna.Schumaker@Netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+	id S1751173AbaDWXOb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 23 Apr 2014 19:14:31 -0400
+Date: Thu, 24 Apr 2014 09:14:19 +1000
+From: NeilBrown <neilb@suse.de>
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Cc: Jan Kara <jack@suse.cz>, Jeff Layton <jlayton@redhat.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        "Dave Chinner" <david@fromorbit.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        "Mel Gorman" <mgorman@suse.com>,
+        Andrew Morton <akpm@linux-foundation.org>, <linux-mm@kvack.org>,
+        <linux-nfs@vger.kernel.org>, <linux-kernel@vger.kernel.org>
+Subject: Re: [PATCH 4/5] SUNRPC: track when a client connection is routed to
+ the local host.
+Message-ID: <20140424091419.0ba0cfd3@notabene.brown>
+In-Reply-To: <5357C3AC.9090203@netapp.com>
+References: <20140423022441.4725.89693.stgit@notabene.brown>
+	<20140423024058.4725.7703.stgit@notabene.brown>
+	<5357C3AC.9090203@netapp.com>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/cOLNjfjwl9x5Dua.BH=I80E"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
+--Sig_/cOLNjfjwl9x5Dua.BH=I80E
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-Reads and writes have very similar results.  This patch combines the two
-structs together with comments to show where the differing fields are
-used.
+On Wed, 23 Apr 2014 09:44:12 -0400 Anna Schumaker <Anna.Schumaker@netapp.co=
+m>
+wrote:
 
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
----
- fs/nfs/nfs2xdr.c        |  6 +++---
- fs/nfs/nfs3xdr.c        |  8 ++++----
- fs/nfs/nfs4xdr.c        |  9 +++++----
- fs/nfs/read.c           |  2 +-
- fs/nfs/write.c          |  2 +-
- include/linux/nfs_xdr.h | 31 +++++++++++--------------------
- 6 files changed, 25 insertions(+), 33 deletions(-)
+> On 04/22/2014 10:40 PM, NeilBrown wrote:
+> > If requests are being sent to the local host, then NFS will
+> > need to take care to avoid deadlocks.
+> >
+> > So keep track when accepting a connection or sending a UDP request
+> > and set a flag in the svc_xprt when the peer connected to is local.
+> >
+> > The interface rpc_is_foreign() is provided to check is a given client
+> > is connected to a foreign server.  When it returns zero it is either
+> > not connected or connected to a local server and in either case
+> > greater care is needed.
+> >
+> > Signed-off-by: NeilBrown <neilb@suse.de>
+> > ---
+> >  include/linux/sunrpc/clnt.h |    1 +
+> >  include/linux/sunrpc/xprt.h |    1 +
+> >  net/sunrpc/clnt.c           |   25 +++++++++++++++++++++++++
+> >  net/sunrpc/xprtsock.c       |   17 +++++++++++++++++
+> >  4 files changed, 44 insertions(+)
+> >
+> > diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
+> > index 8af2804bab16..5d626cc5ab01 100644
+> > --- a/include/linux/sunrpc/clnt.h
+> > +++ b/include/linux/sunrpc/clnt.h
+> > @@ -173,6 +173,7 @@ void		rpc_force_rebind(struct rpc_clnt *);
+> >  size_t		rpc_peeraddr(struct rpc_clnt *, struct sockaddr *, size_t);
+> >  const char	*rpc_peeraddr2str(struct rpc_clnt *, enum rpc_display_forma=
+t_t);
+> >  int		rpc_localaddr(struct rpc_clnt *, struct sockaddr *, size_t);
+> > +int		rpc_is_foreign(struct rpc_clnt *);
+> > =20
+> >  #endif /* __KERNEL__ */
+> >  #endif /* _LINUX_SUNRPC_CLNT_H */
+> > diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+> > index 8097b9df6773..318ee37bc358 100644
+> > --- a/include/linux/sunrpc/xprt.h
+> > +++ b/include/linux/sunrpc/xprt.h
+> > @@ -340,6 +340,7 @@ int			xs_swapper(struct rpc_xprt *xprt, int enable);
+> >  #define XPRT_CONNECTION_ABORT	(7)
+> >  #define XPRT_CONNECTION_CLOSE	(8)
+> >  #define XPRT_CONGESTED		(9)
+> > +#define XPRT_LOCAL		(10)
+> > =20
+> >  static inline void xprt_set_connected(struct rpc_xprt *xprt)
+> >  {
+> > diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
+> > index 0edada973434..454cea69b373 100644
+> > --- a/net/sunrpc/clnt.c
+> > +++ b/net/sunrpc/clnt.c
+> > @@ -1109,6 +1109,31 @@ const char *rpc_peeraddr2str(struct rpc_clnt *cl=
+nt,
+> >  }
+> >  EXPORT_SYMBOL_GPL(rpc_peeraddr2str);
+> > =20
+> > +/**
+> > + * rpc_is_foreign - report is rpc client was recently connected to
+> > + *                  remote host
+> > + * @clnt: RPC client structure
+> > + *
+> > + * If the client is not connected, or connected to the local host
+> > + * (any IP address), then return 0.  Only return non-zero if the
+> > + * most recent state was a connection to a remote host.
+> > + * For UDP the client always appears to be connected, and the
+> > + * remoteness of the host is of the destination of the last transmissi=
+on.
+> > + */
+> > +int rpc_is_foreign(struct rpc_clnt *clnt)
+> > +{
+> > +	struct rpc_xprt *xprt;
+> > +	int conn_foreign;
+> > +
+> > +	rcu_read_lock();
+> > +	xprt =3D rcu_dereference(clnt->cl_xprt);
+> > +	conn_foreign =3D (xprt && xprt_connected(xprt)
+> > +			&& !test_bit(XPRT_LOCAL, &xprt->state));
+> > +	rcu_read_unlock();
+> > +	return conn_foreign;
+> > +}
+> > +EXPORT_SYMBOL_GPL(rpc_is_foreign);
+> > +
+> >  static const struct sockaddr_in rpc_inaddr_loopback =3D {
+> >  	.sin_family		=3D AF_INET,
+> >  	.sin_addr.s_addr	=3D htonl(INADDR_ANY),
+> > diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
+> > index 0addefca8e77..74796cf37d5b 100644
+> > --- a/net/sunrpc/xprtsock.c
+> > +++ b/net/sunrpc/xprtsock.c
+> > @@ -642,6 +642,15 @@ static int xs_udp_send_request(struct rpc_task *ta=
+sk)
+> >  			xdr->len - req->rq_bytes_sent, status);
+> > =20
+> >  	if (status >=3D 0) {
+> > +		struct dst_entry *dst;
+> > +		rcu_read_lock();
+> > +		dst =3D rcu_dereference(transport->sock->sk->sk_dst_cache);
+> > +		if (dst && dst->dev && (dst->dev->features & NETIF_F_LOOPBACK))
+> > +			set_bit(XPRT_LOCAL, &xprt->state);
+> > +		else
+> > +			clear_bit(XPRT_LOCAL, &xprt->state);
+> > +		rcu_read_unlock();
+> > +
+> You repeat this block of code a bit later.  Can you please make it an inl=
+ine helper function?
 
-diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
-index 461cd8b..5f61b83 100644
---- a/fs/nfs/nfs2xdr.c
-+++ b/fs/nfs/nfs2xdr.c
-@@ -103,7 +103,7 @@ static void print_overflow_msg(const char *func, const struct xdr_stream *xdr)
- /*
-  *	typedef opaque	nfsdata<>;
-  */
--static int decode_nfsdata(struct xdr_stream *xdr, struct nfs_readres *result)
-+static int decode_nfsdata(struct xdr_stream *xdr, struct nfs_pgio_res *result)
- {
- 	u32 recvd, count;
- 	__be32 *p;
-@@ -857,7 +857,7 @@ out_default:
-  *	};
-  */
- static int nfs2_xdr_dec_readres(struct rpc_rqst *req, struct xdr_stream *xdr,
--				struct nfs_readres *result)
-+				struct nfs_pgio_res *result)
- {
- 	enum nfs_stat status;
- 	int error;
-@@ -878,7 +878,7 @@ out_default:
- }
- 
- static int nfs2_xdr_dec_writeres(struct rpc_rqst *req, struct xdr_stream *xdr,
--				 struct nfs_writeres *result)
-+				 struct nfs_pgio_res *result)
- {
- 	/* All NFSv2 writes are "file sync" writes */
- 	result->verf->committed = NFS_FILE_SYNC;
-diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
-index 02f16c2..8f4cbe7 100644
---- a/fs/nfs/nfs3xdr.c
-+++ b/fs/nfs/nfs3xdr.c
-@@ -1589,7 +1589,7 @@ out_default:
-  *	};
-  */
- static int decode_read3resok(struct xdr_stream *xdr,
--			     struct nfs_readres *result)
-+			     struct nfs_pgio_res *result)
- {
- 	u32 eof, count, ocount, recvd;
- 	__be32 *p;
-@@ -1625,7 +1625,7 @@ out_overflow:
- }
- 
- static int nfs3_xdr_dec_read3res(struct rpc_rqst *req, struct xdr_stream *xdr,
--				 struct nfs_readres *result)
-+				 struct nfs_pgio_res *result)
- {
- 	enum nfs_stat status;
- 	int error;
-@@ -1673,7 +1673,7 @@ out_status:
-  *	};
-  */
- static int decode_write3resok(struct xdr_stream *xdr,
--			      struct nfs_writeres *result)
-+			      struct nfs_pgio_res *result)
- {
- 	__be32 *p;
- 
-@@ -1697,7 +1697,7 @@ out_eio:
- }
- 
- static int nfs3_xdr_dec_write3res(struct rpc_rqst *req, struct xdr_stream *xdr,
--				  struct nfs_writeres *result)
-+				  struct nfs_pgio_res *result)
- {
- 	enum nfs_stat status;
- 	int error;
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 032159c..939ae60 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -5087,7 +5087,8 @@ static int decode_putrootfh(struct xdr_stream *xdr)
- 	return decode_op_hdr(xdr, OP_PUTROOTFH);
- }
- 
--static int decode_read(struct xdr_stream *xdr, struct rpc_rqst *req, struct nfs_readres *res)
-+static int decode_read(struct xdr_stream *xdr, struct rpc_rqst *req,
-+		       struct nfs_pgio_res *res)
- {
- 	__be32 *p;
- 	uint32_t count, eof, recvd;
-@@ -5341,7 +5342,7 @@ static int decode_setclientid_confirm(struct xdr_stream *xdr)
- 	return decode_op_hdr(xdr, OP_SETCLIENTID_CONFIRM);
- }
- 
--static int decode_write(struct xdr_stream *xdr, struct nfs_writeres *res)
-+static int decode_write(struct xdr_stream *xdr, struct nfs_pgio_res *res)
- {
- 	__be32 *p;
- 	int status;
-@@ -6638,7 +6639,7 @@ out:
-  * Decode Read response
-  */
- static int nfs4_xdr_dec_read(struct rpc_rqst *rqstp, struct xdr_stream *xdr,
--			     struct nfs_readres *res)
-+			     struct nfs_pgio_res *res)
- {
- 	struct compound_hdr hdr;
- 	int status;
-@@ -6663,7 +6664,7 @@ out:
-  * Decode WRITE response
-  */
- static int nfs4_xdr_dec_write(struct rpc_rqst *rqstp, struct xdr_stream *xdr,
--			      struct nfs_writeres *res)
-+			      struct nfs_pgio_res *res)
- {
- 	struct compound_hdr hdr;
- 	int status;
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index 46d5552..473bba3 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -471,7 +471,7 @@ int nfs_readpage_result(struct rpc_task *task, struct nfs_read_data *data)
- static void nfs_readpage_retry(struct rpc_task *task, struct nfs_read_data *data)
- {
- 	struct nfs_pgio_args *argp = &data->args;
--	struct nfs_readres *resp = &data->res;
-+	struct nfs_pgio_res  *resp = &data->res;
- 
- 	/* This is a short read! */
- 	nfs_inc_stats(data->header->inode, NFSIOS_SHORTREAD);
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 25ba383..d392a70 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -1389,7 +1389,7 @@ static int nfs_should_remove_suid(const struct inode *inode)
- void nfs_writeback_done(struct rpc_task *task, struct nfs_write_data *data)
- {
- 	struct nfs_pgio_args	*argp = &data->args;
--	struct nfs_writeres	*resp = &data->res;
-+	struct nfs_pgio_res	*resp = &data->res;
- 	struct inode		*inode = data->header->inode;
- 	int status;
- 
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 9ce2a48..64c0fd2 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -489,16 +489,6 @@ struct nfs4_delegreturnres {
- };
- 
- /*
-- * Arguments to the read call.
-- */
--struct nfs_readres {
--	struct nfs4_sequence_res	seq_res;
--	struct nfs_fattr *	fattr;
--	__u32			count;
--	int                     eof;
--};
--
--/*
-  * Arguments to the write call.
-  */
- struct nfs_write_verifier {
-@@ -510,14 +500,6 @@ struct nfs_writeverf {
- 	enum nfs3_stable_how	committed;
- };
- 
--struct nfs_writeres {
--	struct nfs4_sequence_res	seq_res;
--	struct nfs_fattr *	fattr;
--	struct nfs_writeverf *	verf;
--	__u32			count;
--	const struct nfs_server *server;
--};
--
- /*
-  * Arguments shared by the read and write call.
-  */
-@@ -535,6 +517,15 @@ struct nfs_pgio_args {
- 	const u32 *		bitmask;	/* used by write */
- };
- 
-+struct nfs_pgio_res {
-+	struct nfs4_sequence_res	seq_res;
-+	struct nfs_fattr *	fattr;
-+	struct nfs_writeverf *	verf;		/* used by write */
-+	const struct nfs_server *server;	/* used by write */
-+	__u32			count;
-+	int			eof;		/* used by read */
-+};
-+
- /*
-  * Arguments to the commit call.
-  */
-@@ -1261,7 +1252,7 @@ struct nfs_read_data {
- 	struct rpc_task		task;
- 	struct nfs_fattr	fattr;	/* fattr storage */
- 	struct nfs_pgio_args	args;
--	struct nfs_readres  res;
-+	struct nfs_pgio_res	res;
- 	unsigned long		timestamp;	/* For lease renewal */
- 	int (*read_done_cb) (struct rpc_task *task, struct nfs_read_data *data);
- 	__u64			mds_offset;
-@@ -1313,7 +1304,7 @@ struct nfs_write_data {
- 	struct nfs_fattr	fattr;
- 	struct nfs_writeverf	verf;
- 	struct nfs_pgio_args	args;		/* argument struct */
--	struct nfs_writeres	res;		/* result struct */
-+	struct nfs_pgio_res	res;		/* result struct */
- 	unsigned long		timestamp;	/* For lease renewal */
- 	int (*write_done_cb) (struct rpc_task *task, struct nfs_write_data *data);
- 	__u64			mds_offset;	/* Filelayout dense stripe */
--- 
-1.9.2
+Thanks for the suggestion.
+I've put
 
+static inline int sock_is_loopback(struct sock *sk)
+{
+	struct dst_entry *dst;
+	int loopback =3D 0;
+	rcu_read_lock();
+	dst =3D rcu_dereference(sk->sk_dst_cache);
+	if (dst && dst->dev &&
+	    (dst->dev->features & NETIF_F_LOOPBACK))
+		loopback =3D 1;
+	rcu_read_unlock();
+	return loopback;
+}
+
+
+in sunrpc.h, and used it for both the server-side and the client side.
+
+NeilBrown
+
+--Sig_/cOLNjfjwl9x5Dua.BH=I80E
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
+
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.22 (GNU/Linux)
+
+iQIVAwUBU1hJSznsnt1WYoG5AQIuPg/9EScpKqpA9AEORKfK9w/MreIQOaHAPItr
+2ZAoUbPa6N0aoSWZBLk4GA9oPZLvDMi/3gDbWpGjJoAR4osi+PSA8f078GNnSAFM
+JGsuO+xnP1HMQAd2QjEY3fDg+ns9si2BORfWtpebDmTqZNjxiP0VyeBJEvTfR97I
+w48aD4cJn8VGi4bs7kqa7fBPBktenUAD1/I9pQCK3gjfFuOkUjCDEGD8Uj+aWb12
+5hT+adr+Z1y/c35J45AG86YKQQDdUIib1nMELwQ/RwrJoC3qkaudkyJNROUqUot1
+tH1jHl5DClMvWzbIdEUNh2SRoQ13tbvile3N32oN3rDmRHiHM3eYOwc9GFgLFent
+xlLB73fbJLvO8lnRqsWdXwLtM9BCCN+t6yzDWnCHD1bTTxs+rMbfx+UWKI98bsPF
+NOUuVr0c0UD3HTM2GsKrR91lb7ZBZcTdwJIhswaSq0ZTjmkTiQC7Y7UC1MfXVBlA
+pO6PvEQUQXKcoVKVHBqv2VmZLD1ll2PDhh010dg4iwVTPLUCT+Zt/JkHbvV+rD9L
+sSiHXzdVGWPft5W1d1zZkRXwDA34e1cCp2JibBrsKIXMcUp7zksuN23kPwJFVdPl
+GznVzho/oGIanVF8QhHO219zD2/+x65OG8iDH27SFJjVvpcyRVfM3xOx7DqD6m9W
+LpXIcr1FmSE=
+=mIQG
+-----END PGP SIGNATURE-----
+
+--Sig_/cOLNjfjwl9x5Dua.BH=I80E--
