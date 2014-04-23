@@ -1,114 +1,162 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:57285 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755187AbaDGUvc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 7 Apr 2014 16:51:32 -0400
-Date: Mon, 7 Apr 2014 16:51:21 -0400
-To: Sage Weil <sage@inktank.com>
-Cc: Viro Alexander <viro@zeniv.linux.org.uk>,
-        "Yan, Zheng" <zheng.z.yan@intel.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        David Howells <dhowells@redhat.com>, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, ceph-devel@vger.kernel.org
-Subject: Re: [PATCH][RESEND] vfs: Make __d_materialise_dentry() set the
- materialised dentry name correctly
-Message-ID: <20140407205121.GA4426@fieldses.org>
-References: <1394115376-17109-1-git-send-email-zheng.z.yan@intel.com>
- <6487FCC2-FB5C-4A32-94EF-5D3352A39781@primarydata.com>
- <53392EDA.7000904@intel.com>
- <alpine.DEB.2.00.1404070655530.28550@cobra.newdream.net>
+Received: from natasha.panasas.com ([209.166.131.148]:59175 "EHLO
+	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754382AbaDWMUZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Apr 2014 08:20:25 -0400
+Message-ID: <5357AFFF.8030902@panasas.com>
+Date: Wed, 23 Apr 2014 15:20:15 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <alpine.DEB.2.00.1404070655530.28550@cobra.newdream.net>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Weston Andros Adamson <dros@primarydata.com>,
+        <trond.myklebust@primarydata.com>
+CC: <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 11/17] nfs: chain calls to pg_test
+References: <1398202165-78897-1-git-send-email-dros@primarydata.com> <1398202165-78897-12-git-send-email-dros@primarydata.com>
+In-Reply-To: <1398202165-78897-12-git-send-email-dros@primarydata.com>
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, Apr 07, 2014 at 06:56:28AM -0700, Sage Weil wrote:
-> Hi Al,
+On 04/23/2014 12:29 AM, Weston Andros Adamson wrote:
+> Now that pg_test can change the size of the request (by returning a non-zero
+> size smaller than the request), pg_test functions that call other
+> pg_test functions must return the minimum of the result - or 0 if any fail.
 > 
-> Can this go to Linus via your tree?
+> Also clean up the logic of some pg_test functions so that all checks are
+> for contitions where coalescing is not possible.
+> 
+> Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+> ---
+>  fs/nfs/nfs4filelayout.c      | 27 ++++++++++++++-------------
+>  fs/nfs/objlayout/objio_osd.c | 12 ++++++++----
+>  fs/nfs/pnfs.c                | 15 ++++++++++-----
+>  3 files changed, 32 insertions(+), 22 deletions(-)
+> 
+> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+> index 3b32c95..cfd76bd 100644
+> --- a/fs/nfs/nfs4filelayout.c
+> +++ b/fs/nfs/nfs4filelayout.c
+> @@ -930,26 +930,27 @@ static size_t
+>  filelayout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+>  		   struct nfs_page *req)
+>  {
+> +	unsigned int size;
+>  	u64 p_stripe, r_stripe;
+>  	u32 stripe_unit;
+>  
+> -	if (!pnfs_generic_pg_test(pgio, prev, req) ||
+> -	    !nfs_generic_pg_test(pgio, prev, req))
+> +	/* calls nfs_generic_pg_test */
+> +	size = pnfs_generic_pg_test(pgio, prev, req);
+> +	if (!size)
+>  		return 0;
+>  
+> -	if (!prev)
+> -		return req->wb_bytes;
+> +	if (prev) {
+> +		p_stripe = (u64)req_offset(prev);
+> +		r_stripe = (u64)req_offset(req);
+> +		stripe_unit = FILELAYOUT_LSEG(pgio->pg_lseg)->stripe_unit;
+>  
+> -	p_stripe = (u64)req_offset(prev);
+> -	r_stripe = (u64)req_offset(req);
+> -	stripe_unit = FILELAYOUT_LSEG(pgio->pg_lseg)->stripe_unit;
+> +		do_div(p_stripe, stripe_unit);
+> +		do_div(r_stripe, stripe_unit);
+>  
+> -	do_div(p_stripe, stripe_unit);
+> -	do_div(r_stripe, stripe_unit);
+> -
+> -	if (p_stripe == r_stripe)
+> -		return req->wb_bytes;
+> -	return 0;
+> +		if (p_stripe != r_stripe)
+> +			return 0;
+> +	}
+> +	return min(size, req->wb_bytes);
+>  }
+>  
+>  static void
+> diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+> index c20352a..31de29e 100644
+> --- a/fs/nfs/objlayout/objio_osd.c
+> +++ b/fs/nfs/objlayout/objio_osd.c
+> @@ -571,13 +571,17 @@ int objio_write_pagelist(struct nfs_write_data *wdata, int how)
+>  static size_t objio_pg_test(struct nfs_pageio_descriptor *pgio,
+>  			  struct nfs_page *prev, struct nfs_page *req)
+>  {
+> -	if (!pnfs_generic_pg_test(pgio, prev, req))
+> +	unsigned int size;
+> +
+> +	size = pnfs_generic_pg_test(pgio, prev, req);
+> +
+> +	if (!size)
+>  		return 0;
+>  
+> -	if (pgio->pg_count + req->wb_bytes <=
+> +	if (pgio->pg_count + req->wb_bytes >
+>  	    (unsigned long)pgio->pg_layout_private)
+> -		return req->wb_bytes;
+> -	return 0;
+> +		return 0;
 
-I believe this has been fixed by
-da1ce0670c14d8380e423a3239e562a1dc15fa9e "vfs: add cross-rename".
+objio_osd can enjoy the new facility by returning the
+remainder here:
 
-Though probably the patch should still go in, possibly with a changelog
-update.  We want it for stable kernels if nothing else.
+	max_io = (unsigned long)pgio->pg_layout_private);
 
---b.
+	wb_bytes = min(size, req->wb_bytes);
 
+	if (pgio->pg_count + req->wb_bytes > max_io)
+		wb_bytes = max_io - pgio->pg_count;
+
+	return wb_bytes;
+
+Which reminds me that this code sucks and I need to fix it. I will do
+so after you send your changes.
+
+[I promise to test these guys soon. Can you please put them on a public tree?]
+
+Thanks
+Boaz
+
+> +	return min(size, req->wb_bytes);
+>  }
+>  
+>  static void objio_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
+> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+> index 6201bf6..7c89385 100644
+> --- a/fs/nfs/pnfs.c
+> +++ b/fs/nfs/pnfs.c
+> @@ -1469,8 +1469,12 @@ size_t
+>  pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+>  		     struct nfs_page *req)
+>  {
+> -	if (pgio->pg_lseg == NULL)
+> -		return nfs_generic_pg_test(pgio, prev, req);
+> +	unsigned int size;
+> +
+> +	size = nfs_generic_pg_test(pgio, prev, req);
+> +
+> +	if (!size)
+> +		return 0;
+>  
+>  	/*
+>  	 * Test if a nfs_page is fully contained in the pnfs_layout_range.
+> @@ -1486,10 +1490,11 @@ pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+>  	 * first byte that lies outside the pnfs_layout_range. FIXME?
+>  	 *
+>  	 */
+> -	if (req_offset(req) < end_offset(pgio->pg_lseg->pls_range.offset,
+> +	if (req_offset(req) >= end_offset(pgio->pg_lseg->pls_range.offset,
+>  					 pgio->pg_lseg->pls_range.length))
+> -		return req->wb_bytes;
+> -	return 0;
+> +		return 0;
+> +
+> +	return min(size, req->wb_bytes);
+>  }
+>  EXPORT_SYMBOL_GPL(pnfs_generic_pg_test);
+>  
 > 
-> Thanks!
-> sage
-> 
-> 
-> On Mon, 31 Mar 2014, Yan, Zheng wrote:
-> 
-> > Hi Al,
-> > 
-> > Could you include this in 3.15
-> > 
-> > Regards
-> > Yan, Zheng
-> > 
-> > On 03/06/2014 10:35 PM, Trond Myklebust wrote:
-> > > 
-> > > On Mar 6, 2014, at 9:16, Yan, Zheng <zheng.z.yan@intel.com> wrote:
-> > > 
-> > >> From: David Howells <dhowells@redhat.com>
-> > >>
-> > >> Make __d_materialise_dentry() set the materialised dentry name correctly by
-> > >> flipping the arguments to switch_names().
-> > >>
-> > >> switch_names() is lazy: if both names are internal to their dentries, it'll
-> > >> overwrite that of the first dentry with that of the second, and won't update
-> > >> that of the second.
-> > >>
-> > >> In the case of __d_materialise_dentry(), the second is an already extant
-> > >> anonymous dentry that we want to insert into the tree in place of the dentry we
-> > >> just looked up[*].  However, the dentry we just looked up carries the name we
-> > >> actually want to use.
-> > >>
-> > >> [*] This is used by NFS to join a mount of a subtree into a mount of a tree
-> > >> nearer the root when the two meet, where both mounts share a superblock and
-> > >> thus a set of dentries.
-> > >>
-> > >> Signed-off-by: David Howells <dhowells@redhat.com>
-> > >> ---
-> > >> fs/dcache.c | 2 +-
-> > >> 1 file changed, 1 insertion(+), 1 deletion(-)
-> > >>
-> > >> diff --git a/fs/dcache.c b/fs/dcache.c
-> > >> index 265e0ce..ff779d4 100644
-> > >> --- a/fs/dcache.c
-> > >> +++ b/fs/dcache.c
-> > >> @@ -2698,7 +2698,7 @@ static void __d_materialise_dentry(struct dentry *dentry, struct dentry *anon)
-> > >>
-> > >> 	dparent = dentry->d_parent;
-> > >>
-> > >> -	switch_names(dentry, anon);
-> > >> +	switch_names(anon, dentry);
-> > >> 	swap(dentry->d_name.hash, anon->d_name.hash);
-> > >>
-> > >> 	dentry->d_parent = dentry;
-> > > 
-> > > Well spotted...
-> > > 
-> > > We ought to better document the fact that ?switch_names? is asymmetrical. Perhaps change it to ?update_target_name?, and then switch the argument names so that the ?target? really is the thing that gets updated?
-> > > 
-> > > _________________________________
-> > > Trond Myklebust
-> > > Linux NFS client maintainer, PrimaryData
-> > > trond.myklebust@primarydata.com
-> > > 
-> > 
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe ceph-devel" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> > 
-> > 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-fsdevel" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
