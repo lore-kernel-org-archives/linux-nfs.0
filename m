@@ -1,148 +1,371 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f170.google.com ([209.85.223.170]:33831 "EHLO
-	mail-ie0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751242AbaDRSpY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Apr 2014 14:45:24 -0400
-Received: by mail-ie0-f170.google.com with SMTP id rd18so1905304iec.29
-        for <linux-nfs@vger.kernel.org>; Fri, 18 Apr 2014 11:45:23 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Bruce Fields <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 12/70] NFSd: Add fine grained protection for the nfs4_file->fi_stateids list
-Date: Fri, 18 Apr 2014 14:44:06 -0400
-Message-Id: <1397846704-14567-13-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1397846704-14567-12-git-send-email-trond.myklebust@primarydata.com>
-References: <1397846704-14567-1-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-2-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-3-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-4-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-5-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-6-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-7-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-8-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-9-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-10-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-11-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-12-git-send-email-trond.myklebust@primarydata.com>
+Received: from mail-qa0-f45.google.com ([209.85.216.45]:47079 "EHLO
+	mail-qa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752302AbaDWRvw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Apr 2014 13:51:52 -0400
+Received: by mail-qa0-f45.google.com with SMTP id cm18so1143084qab.4
+        for <linux-nfs@vger.kernel.org>; Wed, 23 Apr 2014 10:51:51 -0700 (PDT)
+Message-ID: <5357FDB2.5010001@gmail.com>
+Date: Wed, 23 Apr 2014 13:51:46 -0400
+From: Anna Schumaker <schumaker.anna@gmail.com>
+MIME-Version: 1.0
+To: Weston Andros Adamson <dros@primarydata.com>
+CC: Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 13/17] nfs: remove list of [rw]data from pgio header
+References: <1398202165-78897-1-git-send-email-dros@primarydata.com> <1398202165-78897-14-git-send-email-dros@primarydata.com> <5357CB59.9060704@gmail.com> <777A277A-CC34-4BD4-993F-9756A6AF7943@primarydata.com> <5357CFD9.7010705@gmail.com> <4C64EB26-388C-4C90-A570-25BEE0A81E71@primarydata.com>
+In-Reply-To: <4C64EB26-388C-4C90-A570-25BEE0A81E71@primarydata.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 21 ++++++++++++++++++---
- fs/nfsd/state.h     |  1 +
- 2 files changed, 19 insertions(+), 3 deletions(-)
+On 04/23/2014 01:44 PM, Weston Andros Adamson wrote:
+> On Apr 23, 2014, at 10:36 AM, Anna Schumaker <schumaker.anna@gmail.com> wrote:
+>
+>> On 04/23/2014 10:31 AM, Weston Andros Adamson wrote:
+>>> On Apr 23, 2014, at 10:16 AM, Anna Schumaker <schumaker.anna@gmail.com> wrote:
+>>>
+>>>> On 04/22/2014 05:29 PM, Weston Andros Adamson wrote:
+>>>>> Since the ability to split pages into subpage requests has been added,
+>>>>> nfs_pgio_header->rpc_list only ever has one wdata/rdata.
+>>>>>
+>>>>> Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+>>>>> ---
+>>>>> fs/nfs/pnfs.c           | 41 +++++++++++++++--------------------------
+>>>>> fs/nfs/read.c           | 35 +++++------------------------------
+>>>>> fs/nfs/write.c          | 38 +++++++-------------------------------
+>>>>> include/linux/nfs_xdr.h | 35 ++++++++++++++++++-----------------
+>>>>> 4 files changed, 45 insertions(+), 104 deletions(-)
+>>>>>
+>>>>> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+>>>>> index 7c89385..3b3ec46 100644
+>>>>> --- a/fs/nfs/pnfs.c
+>>>>> +++ b/fs/nfs/pnfs.c
+>>>>> @@ -1600,23 +1600,18 @@ pnfs_try_to_write_data(struct nfs_write_data *wdata,
+>>>>> }
+>>>>>
+>>>>> static void
+>>>>> -pnfs_do_multiple_writes(struct nfs_pageio_descriptor *desc, struct list_head *head, int how)
+>>>>> +pnfs_do_write(struct nfs_pageio_descriptor *desc,
+>>>>> +	      struct nfs_pgio_header *hdr, int how)
+>>>>> {
+>>>>> -	struct nfs_write_data *data;
+>>>>> +	struct nfs_write_data *data = hdr->data.write;
+>>>>> 	const struct rpc_call_ops *call_ops = desc->pg_rpc_callops;
+>>>>> 	struct pnfs_layout_segment *lseg = desc->pg_lseg;
+>>>>> +	enum pnfs_try_status trypnfs;
+>>>>>
+>>>>> 	desc->pg_lseg = NULL;
+>>>>> -	while (!list_empty(head)) {
+>>>>> -		enum pnfs_try_status trypnfs;
+>>>>> -
+>>>>> -		data = list_first_entry(head, struct nfs_write_data, list);
+>>>>> -		list_del_init(&data->list);
+>>>>> -
+>>>>> -		trypnfs = pnfs_try_to_write_data(data, call_ops, lseg, how);
+>>>>> -		if (trypnfs == PNFS_NOT_ATTEMPTED)
+>>>>> -			pnfs_write_through_mds(desc, data);
+>>>>> -	}
+>>>>> +	trypnfs = pnfs_try_to_write_data(data, call_ops, lseg, how);
+>>>>> +	if (trypnfs == PNFS_NOT_ATTEMPTED)
+>>>>> +		pnfs_write_through_mds(desc, data);
+>>>>> 	pnfs_put_lseg(lseg);
+>>>>> }
+>>>>>
+>>>>> @@ -1650,7 +1645,7 @@ pnfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc)
+>>>>> 		pnfs_put_lseg(desc->pg_lseg);
+>>>>> 		desc->pg_lseg = NULL;
+>>>>> 	} else
+>>>>> -		pnfs_do_multiple_writes(desc, &hdr->rpc_list, desc->pg_ioflags);
+>>>>> +		pnfs_do_write(desc, hdr, desc->pg_ioflags);
+>>>>> 	if (atomic_dec_and_test(&hdr->refcnt))
+>>>>> 		hdr->completion_ops->completion(hdr);
+>>>>> 	return ret;
+>>>>> @@ -1758,23 +1753,17 @@ pnfs_try_to_read_data(struct nfs_read_data *rdata,
+>>>>> }
+>>>>>
+>>>>> static void
+>>>>> -pnfs_do_multiple_reads(struct nfs_pageio_descriptor *desc, struct list_head *head)
+>>>>> +pnfs_do_read(struct nfs_pageio_descriptor *desc, struct nfs_pgio_header *hdr)
+>>>>> {
+>>>>> -	struct nfs_read_data *data;
+>>>>> +	struct nfs_read_data *data = hdr->data.read;
+>>>>> 	const struct rpc_call_ops *call_ops = desc->pg_rpc_callops;
+>>>>> 	struct pnfs_layout_segment *lseg = desc->pg_lseg;
+>>>>> +	enum pnfs_try_status trypnfs;
+>>>>>
+>>>>> 	desc->pg_lseg = NULL;
+>>>>> -	while (!list_empty(head)) {
+>>>>> -		enum pnfs_try_status trypnfs;
+>>>>> -
+>>>>> -		data = list_first_entry(head, struct nfs_read_data, list);
+>>>>> -		list_del_init(&data->list);
+>>>>> -
+>>>>> -		trypnfs = pnfs_try_to_read_data(data, call_ops, lseg);
+>>>>> -		if (trypnfs == PNFS_NOT_ATTEMPTED)
+>>>>> -			pnfs_read_through_mds(desc, data);
+>>>>> -	}
+>>>>> +	trypnfs = pnfs_try_to_read_data(data, call_ops, lseg);
+>>>>> +	if (trypnfs == PNFS_NOT_ATTEMPTED)
+>>>>> +		pnfs_read_through_mds(desc, data);
+>>>>> 	pnfs_put_lseg(lseg);
+>>>>> }
+>>>>>
+>>>>> @@ -1809,7 +1798,7 @@ pnfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc)
+>>>>> 		pnfs_put_lseg(desc->pg_lseg);
+>>>>> 		desc->pg_lseg = NULL;
+>>>>> 	} else
+>>>>> -		pnfs_do_multiple_reads(desc, &hdr->rpc_list);
+>>>>> +		pnfs_do_read(desc, hdr);
+>>>>> 	if (atomic_dec_and_test(&hdr->refcnt))
+>>>>> 		hdr->completion_ops->completion(hdr);
+>>>>> 	return ret;
+>>>>> diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+>>>>> index daeff0c..c6b7dd0 100644
+>>>>> --- a/fs/nfs/read.c
+>>>>> +++ b/fs/nfs/read.c
+>>>>> @@ -42,7 +42,6 @@ struct nfs_read_header *nfs_readhdr_alloc(void)
+>>>>> 		struct nfs_pgio_header *hdr = &rhdr->header;
+>>>>>
+>>>>> 		INIT_LIST_HEAD(&hdr->pages);
+>>>>> -		INIT_LIST_HEAD(&hdr->rpc_list);
+>>>>> 		spin_lock_init(&hdr->lock);
+>>>>> 		atomic_set(&hdr->refcnt, 0);
+>>>>> 	}
+>>>>> @@ -286,26 +285,6 @@ static int nfs_do_read(struct nfs_read_data *data,
+>>>>> 	return nfs_initiate_read(NFS_CLIENT(inode), data, call_ops, 0);
+>>>>> }
+>>>>>
+>>>>> -static int
+>>>>> -nfs_do_multiple_reads(struct list_head *head,
+>>>>> -		const struct rpc_call_ops *call_ops)
+>>>>> -{
+>>>>> -	struct nfs_read_data *data;
+>>>>> -	int ret = 0;
+>>>>> -
+>>>>> -	while (!list_empty(head)) {
+>>>>> -		int ret2;
+>>>>> -
+>>>>> -		data = list_first_entry(head, struct nfs_read_data, list);
+>>>>> -		list_del_init(&data->list);
+>>>>> -
+>>>>> -		ret2 = nfs_do_read(data, call_ops);
+>>>>> -		if (ret == 0)
+>>>>> -			ret = ret2;
+>>>>> -	}
+>>>>> -	return ret;
+>>>>> -}
+>>>>> -
+>>>>> static void
+>>>>> nfs_async_read_error(struct list_head *head)
+>>>>> {
+>>>>> @@ -327,12 +306,8 @@ static void nfs_pagein_error(struct nfs_pageio_descriptor *desc,
+>>>>> 		struct nfs_pgio_header *hdr)
+>>>>> {
+>>>>> 	set_bit(NFS_IOHDR_REDO, &hdr->flags);
+>>>>> -	while (!list_empty(&hdr->rpc_list)) {
+>>>>> -		struct nfs_read_data *data = list_first_entry(&hdr->rpc_list,
+>>>>> -				struct nfs_read_data, list);
+>>>>> -		list_del(&data->list);
+>>>>> -		nfs_readdata_release(data);
+>>>>> -	}
+>>>>> +	nfs_readdata_release(hdr->data.read);
+>>>>> +	hdr->data.read = NULL;
+>>>>> 	desc->pg_completion_ops->error_cleanup(&desc->pg_list);
+>>>>> }
+>>>>>
+>>>>> @@ -364,7 +339,8 @@ int nfs_generic_pagein(struct nfs_pageio_descriptor *desc,
+>>>>> 	}
+>>>>>
+>>>>> 	nfs_read_rpcsetup(data, desc->pg_count, 0);
+>>>>> -	list_add(&data->list, &hdr->rpc_list);
+>>>>> +	WARN_ON_ONCE(hdr->data.read);
+>>>>> +	hdr->data.read = data;
+>>>>> 	desc->pg_rpc_callops = &nfs_read_common_ops;
+>>>>> 	return 0;
+>>>>> }
+>>>>> @@ -386,8 +362,7 @@ static int nfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc)
+>>>>> 	atomic_inc(&hdr->refcnt);
+>>>>> 	ret = nfs_generic_pagein(desc, hdr);
+>>>>> 	if (ret == 0)
+>>>>> -		ret = nfs_do_multiple_reads(&hdr->rpc_list,
+>>>>> -					    desc->pg_rpc_callops);
+>>>>> +		ret = nfs_do_read(hdr->data.read, desc->pg_rpc_callops);
+>>>>> 	if (atomic_dec_and_test(&hdr->refcnt))
+>>>>> 		hdr->completion_ops->completion(hdr);
+>>>>> 	return ret;
+>>>>> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+>>>>> index f40db93..cd24a14 100644
+>>>>> --- a/fs/nfs/write.c
+>>>>> +++ b/fs/nfs/write.c
+>>>>> @@ -79,7 +79,6 @@ struct nfs_write_header *nfs_writehdr_alloc(void)
+>>>>>
+>>>>> 		memset(p, 0, sizeof(*p));
+>>>>> 		INIT_LIST_HEAD(&hdr->pages);
+>>>>> -		INIT_LIST_HEAD(&hdr->rpc_list);
+>>>>> 		spin_lock_init(&hdr->lock);
+>>>>> 		atomic_set(&hdr->refcnt, 0);
+>>>>> 		hdr->verf = &p->verf;
+>>>>> @@ -1171,26 +1170,6 @@ static int nfs_do_write(struct nfs_write_data *data,
+>>>>> 	return nfs_initiate_write(NFS_CLIENT(inode), data, call_ops, how, 0);
+>>>>> }
+>>>>>
+>>>>> -static int nfs_do_multiple_writes(struct list_head *head,
+>>>>> -		const struct rpc_call_ops *call_ops,
+>>>>> -		int how)
+>>>>> -{
+>>>>> -	struct nfs_write_data *data;
+>>>>> -	int ret = 0;
+>>>>> -
+>>>>> -	while (!list_empty(head)) {
+>>>>> -		int ret2;
+>>>>> -
+>>>>> -		data = list_first_entry(head, struct nfs_write_data, list);
+>>>>> -		list_del_init(&data->list);
+>>>>> -		
+>>>>> -		ret2 = nfs_do_write(data, call_ops, how);
+>>>>> -		 if (ret == 0)
+>>>>> -			 ret = ret2;
+>>>>> -	}
+>>>>> -	return ret;
+>>>>> -}
+>>>>> -
+>>>>> /* If a nfs_flush_* function fails, it should remove reqs from @head and
+>>>>> * call this on each, which will prepare them to be retried on next
+>>>>> * writeback using standard nfs.
+>>>>> @@ -1223,12 +1202,8 @@ static void nfs_flush_error(struct nfs_pageio_descriptor *desc,
+>>>>> 		struct nfs_pgio_header *hdr)
+>>>>> {
+>>>>> 	set_bit(NFS_IOHDR_REDO, &hdr->flags);
+>>>>> -	while (!list_empty(&hdr->rpc_list)) {
+>>>>> -		struct nfs_write_data *data = list_first_entry(&hdr->rpc_list,
+>>>>> -				struct nfs_write_data, list);
+>>>>> -		list_del(&data->list);
+>>>>> -		nfs_writedata_release(data);
+>>>>> -	}
+>>>>> +	nfs_writedata_release(hdr->data.write);
+>>>>> +	hdr->data.write = NULL;
+>>>>> 	desc->pg_completion_ops->error_cleanup(&desc->pg_list);
+>>>>> }
+>>>>>
+>>>>> @@ -1275,7 +1250,8 @@ int nfs_generic_flush(struct nfs_pageio_descriptor *desc,
+>>>>>
+>>>>> 	/* Set up the argument struct */
+>>>>> 	nfs_write_rpcsetup(data, desc->pg_count, 0, desc->pg_ioflags, &cinfo);
+>>>>> -	list_add(&data->list, &hdr->rpc_list);
+>>>>> +	WARN_ON_ONCE(hdr->data.write);
+>>>>> +	hdr->data.write = data;
+>>>>> 	desc->pg_rpc_callops = &nfs_write_common_ops;
+>>>>> 	return 0;
+>>>>> }
+>>>>> @@ -1297,9 +1273,9 @@ static int nfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc)
+>>>>> 	atomic_inc(&hdr->refcnt);
+>>>>> 	ret = nfs_generic_flush(desc, hdr);
+>>>>> 	if (ret == 0)
+>>>>> -		ret = nfs_do_multiple_writes(&hdr->rpc_list,
+>>>>> -					     desc->pg_rpc_callops,
+>>>>> -					     desc->pg_ioflags);
+>>>>> +		ret = nfs_do_write(hdr->data.write,
+>>>>> +				   desc->pg_rpc_callops,
+>>>>> +				   desc->pg_ioflags);
+>>>>> 	if (atomic_dec_and_test(&hdr->refcnt))
+>>>>> 		hdr->completion_ops->completion(hdr);
+>>>>> 	return ret;
+>>>>> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+>>>>> index 6fb5b23..239274d 100644
+>>>>> --- a/include/linux/nfs_xdr.h
+>>>>> +++ b/include/linux/nfs_xdr.h
+>>>>> @@ -1266,7 +1266,6 @@ struct nfs_page_array {
+>>>>>
+>>>>> struct nfs_read_data {
+>>>>> 	struct nfs_pgio_header	*header;
+>>>>> -	struct list_head	list;
+>>>>> 	struct rpc_task		task;
+>>>>> 	struct nfs_fattr	fattr;	/* fattr storage */
+>>>>> 	struct nfs_readargs args;
+>>>>> @@ -1278,6 +1277,20 @@ struct nfs_read_data {
+>>>>> 	struct nfs_client	*ds_clp;	/* pNFS data server */
+>>>>> };
+>>>>>
+>>>>> +struct nfs_write_data {
+>>>>> +	struct nfs_pgio_header	*header;
+>>>>> +	struct rpc_task		task;
+>>>>> +	struct nfs_fattr	fattr;
+>>>>> +	struct nfs_writeverf	verf;
+>>>>> +	struct nfs_writeargs	args;		/* argument struct */
+>>>>> +	struct nfs_writeres	res;		/* result struct */
+>>>>> +	unsigned long		timestamp;	/* For lease renewal */
+>>>>> +	int (*write_done_cb)(struct rpc_task *, struct nfs_write_data *);
+>>>>> +	__u64			mds_offset;	/* Filelayout dense stripe */
+>>>>> +	struct nfs_page_array	pages;
+>>>>> +	struct nfs_client	*ds_clp;	/* pNFS data server */
+>>>>> +};
+>>>>> +
+>>>>> /* used as flag bits in nfs_pgio_header */
+>>>>> enum {
+>>>>> 	NFS_IOHDR_ERROR = 0,
+>>>>> @@ -1291,7 +1304,10 @@ struct nfs_pgio_header {
+>>>>> 	struct inode		*inode;
+>>>>> 	struct rpc_cred		*cred;
+>>>>> 	struct list_head	pages;
+>>>>> -	struct list_head	rpc_list;
+>>>>> +	union {
+>>>>> +		struct nfs_read_data *read;
+>>>>> +		struct nfs_write_data *write;
+>>>>> +	}			data;
+>>>> The first 5 patches in my series makes it so we can share all of these structs.  Would it be useful to put those in first?
+>>>>
+>>>> Anna
+>>>>
+>>> Yes, I think it makes sense to stage most (if not all) of your patches first then merge my patches in.
+>>>
+>>> I think I�ll just give it a shot and see how bad it is. I need to post a rebased version of my patchset anyway,
+>>> so I�ll see if I can also rebase on top of your changes.
+>>>
+>>> Any objections?
+>> No objections! As a reminder, I'm based off of Trond's [testing] branch with two extra pageio cleanups from Christoph. Shoot me an email if you need help!
+>>
+>> Anna
+> Great news - the merge was pretty easy!
+>
+> I ended up merging by hand - doing “git am --3way” on each patch so I could ensure
+> that they each build cleanly. When there were conflicts, I was able to compare the
+> old patch to the newly rebased patch to make sure I didn’t miss anything.
+>
+> This exercise also helped me find a few problems with my patchset ;)
+>
+> Now it’s time to test! I’ll share my branch on a public repo and repost my patchset
+> soon.
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 3656980b5d19..f77cc9206373 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -623,7 +623,11 @@ release_all_access(struct nfs4_ol_stateid *stp)
- 
- static void unhash_generic_stateid(struct nfs4_ol_stateid *stp)
- {
-+	struct nfs4_file *fp = stp->st_file;
-+
-+	spin_lock(&fp->fi_lock);
- 	list_del(&stp->st_perfile);
-+	spin_unlock(&fp->fi_lock);
- 	list_del(&stp->st_perstateowner);
- }
- 
-@@ -2530,6 +2534,7 @@ static void nfsd4_init_file(struct nfs4_file *fp, struct inode *ino)
- 	unsigned int hashval = file_hashval(ino);
- 
- 	atomic_set(&fp->fi_ref, 1);
-+	spin_lock_init(&fp->fi_lock);
- 	INIT_LIST_HEAD(&fp->fi_stateids);
- 	INIT_LIST_HEAD(&fp->fi_delegations);
- 	fp->fi_inode = igrab(ino);
-@@ -2650,7 +2655,6 @@ static void init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_file *fp,
- 	stp->st_stid.sc_type = NFS4_OPEN_STID;
- 	INIT_LIST_HEAD(&stp->st_lockowners);
- 	list_add(&stp->st_perstateowner, &oo->oo_owner.so_stateids);
--	list_add(&stp->st_perfile, &fp->fi_stateids);
- 	stp->st_stateowner = &oo->oo_owner;
- 	get_nfs4_file(fp);
- 	stp->st_file = fp;
-@@ -2659,6 +2663,9 @@ static void init_open_stateid(struct nfs4_ol_stateid *stp, struct nfs4_file *fp,
- 	set_access(open->op_share_access, stp);
- 	set_deny(open->op_share_deny, stp);
- 	stp->st_openstp = NULL;
-+	spin_lock(&fp->fi_lock);
-+	list_add(&stp->st_perfile, &fp->fi_stateids);
-+	spin_unlock(&fp->fi_lock);
- }
- 
- static void
-@@ -2740,6 +2747,7 @@ nfs4_share_conflict(struct svc_fh *current_fh, unsigned int deny_type)
- 		return nfs_ok;
- 	ret = nfserr_locked;
- 	/* Search for conflicting share reservations */
-+	spin_lock(&fp->fi_lock);
- 	list_for_each_entry(stp, &fp->fi_stateids, st_perfile) {
- 		if (test_deny(deny_type, stp) ||
- 		    test_deny(NFS4_SHARE_DENY_BOTH, stp))
-@@ -2747,6 +2755,7 @@ nfs4_share_conflict(struct svc_fh *current_fh, unsigned int deny_type)
- 	}
- 	ret = nfs_ok;
- out:
-+	spin_unlock(&fp->fi_lock);
- 	put_nfs4_file(fp);
- 	return ret;
- }
-@@ -2943,6 +2952,7 @@ nfs4_check_open(struct nfs4_file *fp, struct nfsd4_open *open, struct nfs4_ol_st
- 	struct nfs4_ol_stateid *local;
- 	struct nfs4_openowner *oo = open->op_openowner;
- 
-+	spin_lock(&fp->fi_lock);
- 	list_for_each_entry(local, &fp->fi_stateids, st_perfile) {
- 		/* ignore lock owners */
- 		if (local->st_stateowner->so_is_open_owner == 0)
-@@ -2951,9 +2961,12 @@ nfs4_check_open(struct nfs4_file *fp, struct nfsd4_open *open, struct nfs4_ol_st
- 		if (local->st_stateowner == &oo->oo_owner)
- 			*stpp = local;
- 		/* check for conflicting share reservations */
--		if (!test_share(local, open))
-+		if (!test_share(local, open)) {
-+			spin_unlock(&fp->fi_lock);
- 			return nfserr_share_denied;
-+		}
- 	}
-+	spin_unlock(&fp->fi_lock);
- 	return nfs_ok;
- }
- 
-@@ -4256,7 +4269,6 @@ alloc_init_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp, struct
- 	if (stp == NULL)
- 		return NULL;
- 	stp->st_stid.sc_type = NFS4_LOCK_STID;
--	list_add(&stp->st_perfile, &fp->fi_stateids);
- 	list_add(&stp->st_perstateowner, &lo->lo_owner.so_stateids);
- 	stp->st_stateowner = &lo->lo_owner;
- 	get_nfs4_file(fp);
-@@ -4264,6 +4276,9 @@ alloc_init_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp, struct
- 	stp->st_access_bmap = 0;
- 	stp->st_deny_bmap = open_stp->st_deny_bmap;
- 	stp->st_openstp = open_stp;
-+	spin_lock(&fp->fi_lock);
-+	list_add(&stp->st_perfile, &fp->fi_stateids);
-+	spin_unlock(&fp->fi_lock);
- 	return stp;
- }
- 
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 02c5a203c738..83d9721d9644 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -383,6 +383,7 @@ static inline struct nfs4_lockowner * lockowner(struct nfs4_stateowner *so)
- /* nfs4_file: a file opened by some number of (open) nfs4_stateowners. */
- struct nfs4_file {
- 	atomic_t		fi_ref;
-+	spinlock_t		fi_lock;
- 	struct hlist_node       fi_hash;    /* hash by "struct inode *" */
- 	struct list_head        fi_stateids;
- 	struct list_head	fi_delegations;
--- 
-1.9.0
+Great!  I'm glad it went smoothly!
+
+
+>
+> -dros
+>
+>>>>> 	atomic_t		refcnt;
+>>>>> 	struct nfs_page		*req;
+>>>>> 	struct nfs_writeverf	*verf;
+>>>>> @@ -1315,21 +1331,6 @@ struct nfs_read_header {
+>>>>> 	struct nfs_read_data	rpc_data;
+>>>>> };
+>>>>>
+>>>>> -struct nfs_write_data {
+>>>>> -	struct nfs_pgio_header	*header;
+>>>>> -	struct list_head	list;
+>>>>> -	struct rpc_task		task;
+>>>>> -	struct nfs_fattr	fattr;
+>>>>> -	struct nfs_writeverf	verf;
+>>>>> -	struct nfs_writeargs	args;		/* argument struct */
+>>>>> -	struct nfs_writeres	res;		/* result struct */
+>>>>> -	unsigned long		timestamp;	/* For lease renewal */
+>>>>> -	int (*write_done_cb) (struct rpc_task *task, struct nfs_write_data *data);
+>>>>> -	__u64			mds_offset;	/* Filelayout dense stripe */
+>>>>> -	struct nfs_page_array	pages;
+>>>>> -	struct nfs_client	*ds_clp;	/* pNFS data server */
+>>>>> -};
+>>>>> -
+>>>>> struct nfs_write_header {
+>>>>> 	struct nfs_pgio_header	header;
+>>>>> 	struct nfs_write_data	rpc_data;
 
