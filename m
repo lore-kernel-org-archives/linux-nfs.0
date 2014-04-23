@@ -1,173 +1,94 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:38761 "EHLO mx2.suse.de"
+Received: from e9.ny.us.ibm.com ([32.97.182.139]:44027 "EHLO e9.ny.us.ibm.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751113AbaDPERr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Apr 2014 00:17:47 -0400
-From: NeilBrown <neilb@suse.de>
-To: linux-mm@kvack.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Date: Wed, 16 Apr 2014 14:03:35 +1000
-Subject: [PATCH/RFC 00/19] Support loop-back NFS mounts
-Cc: xfs@oss.sgi.com
-cc: Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>
-cc: Ming Lei <ming.lei@canonical.com>
-Cc: netdev@vger.kernel.org
-Message-ID: <20140416033623.10604.69237.stgit@notabene.brown>
+	id S1751910AbaDWW6B (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 23 Apr 2014 18:58:01 -0400
+Received: from /spool/local
+	by e9.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
+	Wed, 23 Apr 2014 18:58:00 -0400
+Received: from b01cxnp22034.gho.pok.ibm.com (b01cxnp22034.gho.pok.ibm.com [9.57.198.24])
+	by d01dlp01.pok.ibm.com (Postfix) with ESMTP id 1E35138C8046
+	for <linux-nfs@vger.kernel.org>; Wed, 23 Apr 2014 18:57:59 -0400 (EDT)
+Received: from d01av02.pok.ibm.com (d01av02.pok.ibm.com [9.56.224.216])
+	by b01cxnp22034.gho.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id s3NMvxb19961836
+	for <linux-nfs@vger.kernel.org>; Wed, 23 Apr 2014 22:57:59 GMT
+Received: from d01av02.pok.ibm.com (localhost [127.0.0.1])
+	by d01av02.pok.ibm.com (8.14.4/8.14.4/NCO v10.0 AVout) with ESMTP id s3NMvwnc025075
+	for <linux-nfs@vger.kernel.org>; Wed, 23 Apr 2014 18:57:58 -0400
+Date: Wed, 23 Apr 2014 17:57:57 -0500
+From: Malahal Naineni <malahal@us.ibm.com>
+To: Cedric Blancher <cedric.blancher@gmail.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: Tuning Linux NFSv4 for high latency connections?
+Message-ID: <20140423225757.GA17353@us.ibm.com>
+References: <CALXu0UcdfrvCajbAagGLV=dP=Kk3VWeR4VS5Wna44UroxM4JAQ@mail.gmail.com>
+ <20140423202401.GA16168@us.ibm.com>
+ <CALXu0UdVYtbKQqskETk9jEK3+=nFphUtFSP4i_ey=7WwZg3-XQ@mail.gmail.com>
+ <20140423204405.GB16168@us.ibm.com>
+ <CALXu0UdbSHfFM+tq2_zssMhiwZ1qMJdieNdvwtxz6k31CMWAUA@mail.gmail.com>
+ <20140423211518.GA16506@us.ibm.com>
+ <CALXu0UfjY288HZ_NHH_njs0iLhcY5Xn7NUJNYa9kL45m2YHfAw@mail.gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <CALXu0UfjY288HZ_NHH_njs0iLhcY5Xn7NUJNYa9kL45m2YHfAw@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Loop-back NFS mounts are when the NFS client and server run on the
-same host.
+Cedric Blancher [cedric.blancher@gmail.com] wrote:
+> On 23 April 2014 23:15, Malahal Naineni <malahal@us.ibm.com> wrote:
+> > Cedric Blancher [cedric.blancher@gmail.com] wrote:
+> >> On 23 April 2014 22:44, Malahal Naineni <malahal@us.ibm.com> wrote:
+> >> > Cedric Blancher [cedric.blancher@gmail.com] wrote:
+> >> >> On 23 April 2014 22:24, Malahal Naineni <malahal@us.ibm.com> wrote:
+> >> >> > Cedric Blancher [cedric.blancher@gmail.com] wrote:
+> >> >> >> Are there any options to improve the Linux NFSv4 performance over a
+> >> >> >> high latency connection?
+> >> >> >>
+> >> >> >> We currently use Solaris/Illumos as NFSv4 server and client over a
+> >> >> >> cross continental Internet connection. Latency is terrible (~220ms)
+> >> >> >> but the counter this by running work in parallel so the latency is
+> >> >> >> mostly mitigated.
+> >> >> >>
+> >> >> >> We now wish to migrate (short: Away from Oracle because support is
+> >> >> >> basically unbearable) to Linux (tested SuSE 13.1 and current Fedora)
+> >> >> >> and build times are 17 times (!!!) SLOWER than on Solaris/Illumos.
+> >> >> >>
+> >> >> >> Are there any tunables besides actimeo=300?
+> >> >> >
+> >> >> > rsize and wsize may help! You need to figure out if the read is the
+> >> >> > issue or the write before you dig further.
+> >> >>
+> >> >> I already tried to tune rsize/wsize, making them both smaller or the
+> >> >> maximum of 1048576 bytes, with no effect.
+> >> >>
+> >> >> One possible theory is that maybe something in Linux doesn't allow
+> >> >> multiple requests to be issued in parallel and waits for each request
+> >> >> to be completed before issuing the next one?
+> >> >
+> >> > Linux NFS client can issue I/Os in parallel. Should be limited by number
+> >> > of RPC slots though.
+> >>
+> >> What controls the number of RPC slots? is there a tunable? Is there
+> >> something to monitor the usage?
+> >
+> > sysctl sunrpc.tcp_slot_table_entries (if you are using tcp)
+> 
+> Its 16
+> NFSv4 is tcp only
+> 
+> I tried to bump the value to 128 - without effect - but the change is
+> not persistent across reboots. Is there something like Solaris
+> /etc/system which the kernel reads to set these values?
 
-The use-case for this is a high availability cluster with shared
-storage.  The shared filesystem is mounted on any one machine and
-NFS-mounted on the others.
-If the nfs server fails, some other node will take over that service,
-and then it will have a loop-back NFS mount which needs to keep
-working.
+Probably depends on your distro. Look at /etc/sysctl.conf if you have
+that file.
 
-This patch set addresses the "keep working" bit and specifically
-addresses deadlocks and livelocks.
-Allowing the fail-over itself to be deadlock free is a separate
-challenge for another day.
+> > Also, mountstats <mount-point> would be very helpful.
+> 
+> I don't have that command. likely my test machine is too old
 
-The short description of how this works is:
+Hmm, my RHEL6.4 has it. What nfs-utils package you have.
 
-deadlocks:
-  - Elevate PF_FSTRANS to apply globally instead of just in NFS and XFS.
-    PF_FSTRANS disables __GFP_NS in the same way that PF_MEMALLOC_NOIO
-    disables __GFP_IO.
-  - Set PF_FSTRANS in nfsd when handling requests related to
-    memory reclaim, or requests which could block requests related
-    to memory reclaim.
-  - Use lockdep to find all consequent deadlocks from some other
-    thread allocating memory while holding a lock that nfsd might
-    want.
-  - Fix those other deadlocks by setting PF_FSTRANS or using GFP_NOFS
-    as appropriate.
-
-livelocks:
-  - identify throttling during reclaim and bypass it when
-    PF_LESS_THROTTLE is set
-  - only set PF_LESS_THROTTLE for nfsd when handling write requests
-    from the local host.
-
-The last 12 patches address various deadlocks due to locking chains.
-11 were found by lockdep, 2 by testing.  There is a reasonable chance
-that there are more, I just need to exercise more code while
-testing....
-
-There is one issue that lockdep reports which I haven't fixed (I've
-just hacked the code out for my testing).  That issue relates to
-freeze_super().
-I may not be interpreting the lockdep reports perfectly, but I think
-they are basically saying that if I were to freeze a filesystem that
-was exported to the local host, then we could end up deadlocking.
-This is to be expected.  The NFS filesystem would need to be frozen
-first.  I don't know how to tell lockdep that I know that is a problem
-and I don't want to be warned about it.  Suggestions welcome.
-Until this is addressed I cannot really ask others to test the code
-with lockdep enabled.
-
-There are more subsidiary places that I needed to add PF_FSTRANS than
-I would have liked.  The thought keeps crossing my mind that maybe we
-can get rid of __GFP_FS and require that memory reclaim never ever
-block on a filesystem.  Then most of these patches go away.
-
-Now that writeback doesn't happen from reclaim (but from kswapd) much
-of the calls from reclaim to FS are gone.
-The ->releasepage call is the only one that I *know* causes me
-problems so I'd like to just say that that must never block.  I don't
-really understand the consequences of that though.
-There are a couple of other places where __GFP_FS is used and I'd need
-to carefully analyze those.  But if someone just said "no, that is
-impossible", I could be happy and stick with the current approach....
-
-I've cc:ed Peter Zijlstra and Ingo Molnar only on the lockdep-related
-patches, Ming Lei only on the PF_MEMALLOC_NOIO related patches,
-and net-dev only on the network-related patches.
-There are probably other people I should CC.  Apologies if I missed you.
-I'll ensure better coverage if the nfs/mm/xfs people are reasonably happy.
-
-Comments, criticisms, etc most welcome.
-
-Thanks,
-NeilBrown
-
-
----
-
-NeilBrown (19):
-      Promote current_{set,restore}_flags_nested from xfs to global.
-      lockdep: lockdep_set_current_reclaim_state should save old value
-      lockdep: improve scenario messages for RECLAIM_FS errors.
-      Make effect of PF_FSTRANS to disable __GFP_FS universal.
-      SUNRPC: track whether a request is coming from a loop-back interface.
-      nfsd: set PF_FSTRANS for nfsd threads.
-      nfsd and VM: use PF_LESS_THROTTLE to avoid throttle in shrink_inactive_list.
-      Set PF_FSTRANS while write_cache_pages calls ->writepage
-      XFS: ensure xfs_file_*_read cannot deadlock in memory allocation.
-      NET: set PF_FSTRANS while holding sk_lock
-      FS: set PF_FSTRANS while holding mmap_sem in exec.c
-      NET: set PF_FSTRANS while holding rtnl_lock
-      MM: set PF_FSTRANS while allocating per-cpu memory to avoid deadlock.
-      driver core: set PF_FSTRANS while holding gdp_mutex
-      nfsd: set PF_FSTRANS when client_mutex is held.
-      VFS: use GFP_NOFS rather than GFP_KERNEL in __d_alloc.
-      VFS: set PF_FSTRANS while namespace_sem is held.
-      nfsd: set PF_FSTRANS during nfsd4_do_callback_rpc.
-      XFS: set PF_FSTRANS while ilock is held in xfs_free_eofblocks
-
-
- drivers/base/core.c             |    3 ++
- drivers/base/power/runtime.c    |    6 ++---
- drivers/block/nbd.c             |    6 ++---
- drivers/md/dm-bufio.c           |    6 ++---
- drivers/md/dm-ioctl.c           |    6 ++---
- drivers/mtd/nand/nandsim.c      |   28 ++++++---------------
- drivers/scsi/iscsi_tcp.c        |    6 ++---
- drivers/usb/core/hub.c          |    6 ++---
- fs/dcache.c                     |    4 ++-
- fs/exec.c                       |    6 +++++
- fs/fs-writeback.c               |    5 ++--
- fs/namespace.c                  |    4 +++
- fs/nfs/file.c                   |    3 +-
- fs/nfsd/nfs4callback.c          |    5 ++++
- fs/nfsd/nfs4state.c             |    3 ++
- fs/nfsd/nfssvc.c                |   24 ++++++++++++++----
- fs/nfsd/vfs.c                   |    6 +++++
- fs/xfs/kmem.h                   |    2 --
- fs/xfs/xfs_aops.c               |    7 -----
- fs/xfs/xfs_bmap_util.c          |    4 +++
- fs/xfs/xfs_file.c               |   12 +++++++++
- fs/xfs/xfs_linux.h              |    7 -----
- include/linux/lockdep.h         |    8 +++---
- include/linux/sched.h           |   32 +++++++++---------------
- include/linux/sunrpc/svc.h      |    2 ++
- include/linux/sunrpc/svc_xprt.h |    1 +
- include/net/sock.h              |    1 +
- kernel/locking/lockdep.c        |   51 ++++++++++++++++++++++++++++-----------
- kernel/softirq.c                |    6 ++---
- mm/migrate.c                    |    9 +++----
- mm/page-writeback.c             |    3 ++
- mm/page_alloc.c                 |   18 ++++++++------
- mm/percpu.c                     |    4 +++
- mm/slab.c                       |    2 ++
- mm/slob.c                       |    2 ++
- mm/slub.c                       |    1 +
- mm/vmscan.c                     |   31 +++++++++++++++---------
- net/core/dev.c                  |    6 ++---
- net/core/rtnetlink.c            |    9 ++++++-
- net/core/sock.c                 |    8 ++++--
- net/sunrpc/sched.c              |    5 ++--
- net/sunrpc/svc.c                |    6 +++++
- net/sunrpc/svcsock.c            |   10 ++++++++
- net/sunrpc/xprtrdma/transport.c |    5 ++--
- net/sunrpc/xprtsock.c           |   17 ++++++++-----
- 45 files changed, 247 insertions(+), 149 deletions(-)
-
--- 
-Signature
+Regards, Malahal.
 
