@@ -1,78 +1,111 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mout.gmx.net ([212.227.17.22]:52364 "EHLO mout.gmx.net"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752213AbaDEMRb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 5 Apr 2014 08:17:31 -0400
-Message-ID: <533FF457.5080907@gmx.de>
-Date: Sat, 05 Apr 2014 14:17:27 +0200
-From: =?UTF-8?B?VG9yYWxmIEbDtnJzdGVy?= <toralf.foerster@gmx.de>
-MIME-Version: 1.0
-To: Linux NFS mailing list <linux-nfs@vger.kernel.org>
-CC: Linux Kernel <linux-kernel@vger.kernel.org>
-Subject: Re: NFSv2 directory cannot longer be exported in 3.14, 3.13 works
- fine
-References: <533F2ABF.2030107@gmx.de>
-In-Reply-To: <533F2ABF.2030107@gmx.de>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail.linuxfoundation.org ([140.211.169.12]:59719 "EHLO
+	mail.linuxfoundation.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751633AbaDWWDU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Apr 2014 18:03:20 -0400
+Date: Wed, 23 Apr 2014 15:03:18 -0700
+From: Andrew Morton <akpm@linux-foundation.org>
+To: NeilBrown <neilb@suse.de>
+Cc: Jan Kara <jack@suse.cz>, Jeff Layton <jlayton@redhat.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Dave Chinner <david@fromorbit.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Mel Gorman <mgorman@suse.com>, linux-mm@kvack.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH 1/5] MM: avoid throttling reclaim for loop-back nfsd
+ threads.
+Message-Id: <20140423150318.d4bcf234faa5bea7fcb57b9b@linux-foundation.org>
+In-Reply-To: <20140423024058.4725.71995.stgit@notabene.brown>
+References: <20140423022441.4725.89693.stgit@notabene.brown>
+	<20140423024058.4725.71995.stgit@notabene.brown>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
------BEGIN PGP SIGNED MESSAGE-----
-Hash: SHA256
+On Wed, 23 Apr 2014 12:40:58 +1000 NeilBrown <neilb@suse.de> wrote:
 
-On 04/04/2014 11:57 PM, Toralf Förster wrote:
-> At a user mode linux image (32 bit Gentoo Linux) the recent kernel gives this error while trying to mount a NFSv2 directory:
-> mount.nfs: mount point /mnt/nfsv2 is not a directory
+> When a loop-back NFS mount is active and the backing device for the
+> NFS mount becomes congested, that can impose throttling delays on the
+> nfsd threads.
 > 
+> These delays significantly reduce throughput and so the NFS mount
+> remains congested.
+> 
+> This results in a live lock and the reduced throughput persists.
+> 
+> This live lock has been found in testing with the 'wait_iff_congested'
+> call, and could possibly be caused by the 'congestion_wait' call.
+> 
+> This livelock is similar to the deadlock which justified the
+> introduction of PF_LESS_THROTTLE, and the same flag can be used to
+> remove this livelock.
+> 
+> To minimise the impact of the change, we still throttle nfsd when the
+> filesystem it is writing to is congested, but not when some separate
+> filesystem (e.g. the NFS filesystem) is congested.
+> 
+> Signed-off-by: NeilBrown <neilb@suse.de>
+> ---
+>  mm/vmscan.c |   18 ++++++++++++++++--
+>  1 file changed, 16 insertions(+), 2 deletions(-)
+> 
+> diff --git a/mm/vmscan.c b/mm/vmscan.c
+> index a9c74b409681..e011a646de95 100644
+> --- a/mm/vmscan.c
+> +++ b/mm/vmscan.c
+> @@ -1424,6 +1424,18 @@ putback_inactive_pages(struct lruvec *lruvec, struct list_head *page_list)
+>  	list_splice(&pages_to_free, page_list);
+>  }
+>  
+> +/* If a kernel thread (such as nfsd for loop-back mounts) services
 
-A bisect points to :
+/*
+ * If ...
 
-6e14b46b91fee8a049b0940333ce13a820beaaa5 is the first bad commit
-commit 6e14b46b91fee8a049b0940333ce13a820beaaa5
-Author: Albert Fluegel <af@muc.de>
-Date:   Mon Nov 18 12:18:01 2013 -0500
+please
 
-    nfsd: don't return high mode bits
+> + * a backing device by writing to the page cache it sets PF_LESS_THROTTLE.
+> + * In that case we should only throttle if the backing device it is
+> + * writing to is congested.  In other cases it is safe to throttle.
+> + */
+> +static int current_may_throttle(void)
+> +{
+> +	return !(current->flags & PF_LESS_THROTTLE) ||
+> +		current->backing_dev_info == NULL ||
+> +		bdi_write_congested(current->backing_dev_info);
+> +}
+> +
+>  /*
+>   * shrink_inactive_list() is a helper for shrink_zone().  It returns the number
+>   * of reclaimed pages
+> @@ -1552,7 +1564,8 @@ shrink_inactive_list(unsigned long nr_to_scan, struct lruvec *lruvec,
+>  		 * implies that pages are cycling through the LRU faster than
+>  		 * they are written so also forcibly stall.
+>  		 */
+> -		if (nr_unqueued_dirty == nr_taken || nr_immediate)
+> +		if ((nr_unqueued_dirty == nr_taken || nr_immediate)
+> +		    && current_may_throttle())
 
-    The Linux NFS server replies among other things to a "Check access permission"
-    the following:
+	foo &&
+	bar
 
-    NFS:    File type = 2 (Directory)
-    NFS:    Mode = 040755
+please.  As you did in in current_may_throttle().
 
-    A netapp server replies here:
-    NFS:    File type = 2 (Directory)
-    NFS:    Mode = 0755
+>  			congestion_wait(BLK_RW_ASYNC, HZ/10);
+>  	}
+>  
+> @@ -1561,7 +1574,8 @@ shrink_inactive_list(unsigned long nr_to_scan, struct lruvec *lruvec,
+>  	 * is congested. Allow kswapd to continue until it starts encountering
+>  	 * unqueued dirty pages or cycling through the LRU too quickly.
+>  	 */
+> -	if (!sc->hibernation_mode && !current_is_kswapd())
+> +	if (!sc->hibernation_mode && !current_is_kswapd()
+> +	    && current_may_throttle())
 
-    The RFC 1813 i read:
-       fattr3
+ditto
 
-          struct fattr3 {
-             ftype3     type;
-             mode3      mode;
-             uint32     nlink;
-    ...
-    For the mode bits only the lowest 9 are defined in the RFC
-
-    As far as I can tell, knfsd has always done this, so apparently it's harmless.
-    Nevertheless, it appears to be wrong.
-
-    Note this is already correct in the NFSv4 case, only v2 and v3 need
-    fixing.
-
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-:040000 040000 a60e55f5a9749db3977e12e8baa08d45fadba225 b982c02ec1069c5d969ccb71197e5569fe93b075 M fs
-
-- -- 
-MfG/Sincerely
-Toralf Förster
-pgp finger print:1A37 6F99 4A9D 026F 13E2 4DCF C4EA CDDE 0076 E94E
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.22 (GNU/Linux)
-Comment: Using GnuPG with Thunderbird - http://www.enigmail.net/
-
-iF4EAREIAAYFAlM/9FcACgkQxOrN3gB26U5F1AD+JAP4cDM+rT9nk9Q8q681RywT
-Ejxq7d0tnVUfWyDFDTgA/1sIUtpv9GSK8SeAJFu7oAhMt4e6eeIdbpMT2qUEQv6q
-=Sles
------END PGP SIGNATURE-----
+>  		wait_iff_congested(zone, BLK_RW_ASYNC, HZ/10);
+>  
+>  	trace_mm_vmscan_lru_shrink_inactive(zone->zone_pgdat->node_id,
+> 
