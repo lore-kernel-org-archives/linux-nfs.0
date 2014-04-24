@@ -1,229 +1,156 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f182.google.com ([209.85.223.182]:36344 "EHLO
-	mail-ie0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751242AbaDRSpN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Apr 2014 14:45:13 -0400
-Received: by mail-ie0-f182.google.com with SMTP id y20so1904228ier.13
-        for <linux-nfs@vger.kernel.org>; Fri, 18 Apr 2014 11:45:13 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Bruce Fields <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 05/70] nfsd4: rename recall_lock to state_lock
-Date: Fri, 18 Apr 2014 14:43:59 -0400
-Message-Id: <1397846704-14567-6-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1397846704-14567-5-git-send-email-trond.myklebust@primarydata.com>
-References: <1397846704-14567-1-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-2-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-3-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-4-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-5-git-send-email-trond.myklebust@primarydata.com>
+Received: from mail-ie0-f172.google.com ([209.85.223.172]:60033 "EHLO
+	mail-ie0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754261AbaDXSP5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Apr 2014 14:15:57 -0400
+Received: by mail-ie0-f172.google.com with SMTP id as1so2810805iec.3
+        for <linux-nfs@vger.kernel.org>; Thu, 24 Apr 2014 11:15:56 -0700 (PDT)
+From: Weston Andros Adamson <dros@primarydata.com>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
+Subject: [PATCH 13/18 v2] nfs: use > 1 request to handle bsize < PAGE_SIZE
+Date: Thu, 24 Apr 2014 14:15:23 -0400
+Message-Id: <1398363328-7100-14-git-send-email-dros@primarydata.com>
+In-Reply-To: <1398363328-7100-1-git-send-email-dros@primarydata.com>
+References: <1398363328-7100-1-git-send-email-dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Benny Halevy <bhalevy@primarydata.com>
+Use the newly added support for multiple requests per page for
+rsize/wsize < PAGE_SIZE, instead of having multiple read / write
+data structures per pageio header.
 
-Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
+This allows us to get rid of nfs_pgio_multi.
+
+Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
 ---
- fs/nfsd/nfs4state.c | 55 +++++++++++++++++++++++++++--------------------------
- 1 file changed, 28 insertions(+), 27 deletions(-)
+ fs/nfs/pageio.c   | 56 ++-----------------------------------------------------
+ fs/nfs/pagelist.c | 22 ++++++++--------------
+ 2 files changed, 10 insertions(+), 68 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 841495aa9170..34273ca482c3 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -81,7 +81,7 @@ static DEFINE_MUTEX(client_mutex);
-  * effort to decrease the scope of the client_mutex, this spinlock may
-  * eventually cover more:
+diff --git a/fs/nfs/pageio.c b/fs/nfs/pageio.c
+index b9d06c8..1899977 100644
+--- a/fs/nfs/pageio.c
++++ b/fs/nfs/pageio.c
+@@ -218,50 +218,6 @@ static int nfs_pgio_error(struct nfs_pageio_descriptor *desc,
+ }
+ 
+ /*
+- * Generate multiple small requests to read or write a single
+- * contiguous dirty on one page.
+- */
+-static int nfs_pgio_multi(struct nfs_pageio_descriptor *desc,
+-			  struct nfs_pgio_header *hdr)
+-{
+-	struct nfs_page *req = hdr->req;
+-	struct page *page = req->wb_page;
+-	struct nfs_pgio_data *data;
+-	size_t wsize = desc->pg_bsize, nbytes;
+-	unsigned int offset;
+-	int requests = 0;
+-	struct nfs_commit_info cinfo;
+-
+-	nfs_init_cinfo(&cinfo, desc->pg_inode, desc->pg_dreq);
+-
+-	if ((desc->pg_ioflags & FLUSH_COND_STABLE) &&
+-	    (desc->pg_moreio || nfs_reqs_to_commit(&cinfo) ||
+-	     desc->pg_count > wsize))
+-		desc->pg_ioflags &= ~FLUSH_COND_STABLE;
+-
+-	offset = 0;
+-	nbytes = desc->pg_count;
+-	do {
+-		size_t len = min(nbytes, wsize);
+-
+-		data = nfs_pgio_data_alloc(hdr, 1);
+-		if (!data)
+-			return nfs_pgio_error(desc, hdr);
+-		data->pages.pagevec[0] = page;
+-		nfs_pgio_rpcsetup(data, len, offset, desc->pg_ioflags, &cinfo);
+-		list_add(&data->list, &hdr->rpc_list);
+-		requests++;
+-		nbytes -= len;
+-		offset += len;
+-	} while (nbytes != 0);
+-
+-	nfs_list_remove_request(req);
+-	nfs_list_add_request(req, &hdr->pages);
+-	desc->pg_rpc_callops = &nfs_pgio_common_ops;
+-	return 0;
+-}
+-
+-/*
+  * Create an RPC task for the given write request and kick it.
+  * The page must have been locked by the caller.
+  *
+@@ -269,8 +225,8 @@ static int nfs_pgio_multi(struct nfs_pageio_descriptor *desc,
+  * This is the case if nfs_updatepage detects a conflicting request
+  * that has been written but not committed.
   */
--static DEFINE_SPINLOCK(recall_lock);
-+static DEFINE_SPINLOCK(state_lock);
- 
- static struct kmem_cache *openowner_slab = NULL;
- static struct kmem_cache *lockowner_slab = NULL;
-@@ -235,9 +235,9 @@ static void nfsd4_free_file(struct nfs4_file *f)
- static inline void
- put_nfs4_file(struct nfs4_file *fi)
+-static int nfs_pgio_one(struct nfs_pageio_descriptor *desc,
+-			struct nfs_pgio_header *hdr)
++int nfs_generic_pgio(struct nfs_pageio_descriptor *desc,
++		     struct nfs_pgio_header *hdr)
  {
--	if (atomic_dec_and_lock(&fi->fi_ref, &recall_lock)) {
-+	if (atomic_dec_and_lock(&fi->fi_ref, &state_lock)) {
- 		hlist_del(&fi->fi_hash);
--		spin_unlock(&recall_lock);
-+		spin_unlock(&state_lock);
- 		iput(fi->fi_inode);
- 		nfsd4_free_file(fi);
- 	}
-@@ -436,10 +436,10 @@ static void
- unhash_delegation(struct nfs4_delegation *dp)
- {
- 	list_del_init(&dp->dl_perclnt);
--	spin_lock(&recall_lock);
-+	spin_lock(&state_lock);
- 	list_del_init(&dp->dl_perfile);
- 	list_del_init(&dp->dl_recall_lru);
--	spin_unlock(&recall_lock);
-+	spin_unlock(&state_lock);
- 	nfs4_put_deleg_lease(dp->dl_file);
- 	put_nfs4_file(dp->dl_file);
- 	dp->dl_file = NULL;
-@@ -1136,13 +1136,13 @@ destroy_client(struct nfs4_client *clp)
- 	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
- 
- 	INIT_LIST_HEAD(&reaplist);
--	spin_lock(&recall_lock);
-+	spin_lock(&state_lock);
- 	while (!list_empty(&clp->cl_delegations)) {
- 		dp = list_entry(clp->cl_delegations.next, struct nfs4_delegation, dl_perclnt);
- 		list_del_init(&dp->dl_perclnt);
- 		list_move(&dp->dl_recall_lru, &reaplist);
- 	}
--	spin_unlock(&recall_lock);
-+	spin_unlock(&state_lock);
- 	while (!list_empty(&reaplist)) {
- 		dp = list_entry(reaplist.next, struct nfs4_delegation, dl_recall_lru);
- 		destroy_delegation(dp);
-@@ -2499,9 +2499,9 @@ static void nfsd4_init_file(struct nfs4_file *fp, struct inode *ino)
- 	fp->fi_lease = NULL;
- 	memset(fp->fi_fds, 0, sizeof(fp->fi_fds));
- 	memset(fp->fi_access, 0, sizeof(fp->fi_access));
--	spin_lock(&recall_lock);
-+	spin_lock(&state_lock);
- 	hlist_add_head(&fp->fi_hash, &file_hashtbl[hashval]);
--	spin_unlock(&recall_lock);
-+	spin_unlock(&state_lock);
- }
- 
- static void
-@@ -2685,15 +2685,15 @@ find_file(struct inode *ino)
- 	unsigned int hashval = file_hashval(ino);
- 	struct nfs4_file *fp;
- 
--	spin_lock(&recall_lock);
-+	spin_lock(&state_lock);
- 	hlist_for_each_entry(fp, &file_hashtbl[hashval], fi_hash) {
- 		if (fp->fi_inode == ino) {
- 			get_nfs4_file(fp);
--			spin_unlock(&recall_lock);
-+			spin_unlock(&state_lock);
- 			return fp;
- 		}
- 	}
--	spin_unlock(&recall_lock);
-+	spin_unlock(&state_lock);
- 	return NULL;
- }
- 
-@@ -2730,6 +2730,7 @@ static void nfsd_break_one_deleg(struct nfs4_delegation *dp)
- 	struct nfs4_client *clp = dp->dl_stid.sc_client;
- 	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
- 
-+	lockdep_assert_held(&state_lock);
- 	/* We're assuming the state code never drops its reference
- 	 * without first removing the lease.  Since we're in this lease
- 	 * callback (and since the lease code is serialized by the kernel
-@@ -2766,11 +2767,11 @@ static void nfsd_break_deleg_cb(struct file_lock *fl)
- 	 */
- 	fl->fl_break_time = 0;
- 
--	spin_lock(&recall_lock);
-+	spin_lock(&state_lock);
- 	fp->fi_had_conflict = true;
- 	list_for_each_entry(dp, &fp->fi_delegations, dl_perfile)
- 		nfsd_break_one_deleg(dp);
--	spin_unlock(&recall_lock);
-+	spin_unlock(&state_lock);
- }
- 
- static
-@@ -3072,15 +3073,15 @@ static int nfs4_set_delegation(struct nfs4_delegation *dp, struct nfs4_file *fp)
- 			goto out_free;
- 		return 0;
- 	}
--	spin_lock(&recall_lock);
-+	spin_lock(&state_lock);
- 	if (fp->fi_had_conflict) {
--		spin_unlock(&recall_lock);
-+		spin_unlock(&state_lock);
- 		status = -EAGAIN;
- 		goto out_free;
- 	}
- 	atomic_inc(&fp->fi_delegees);
- 	list_add(&dp->dl_perfile, &fp->fi_delegations);
--	spin_unlock(&recall_lock);
-+	spin_unlock(&state_lock);
- 	list_add(&dp->dl_perclnt, &dp->dl_stid.sc_client->cl_delegations);
+ 	struct nfs_page		*req;
+ 	struct page		**pages;
+@@ -302,14 +258,6 @@ static int nfs_pgio_one(struct nfs_pageio_descriptor *desc,
+ 	desc->pg_rpc_callops = &nfs_pgio_common_ops;
  	return 0;
- out_free:
-@@ -3422,7 +3423,7 @@ nfs4_laundromat(struct nfsd_net *nn)
- 			clp->cl_clientid.cl_id);
- 		expire_client(clp);
- 	}
--	spin_lock(&recall_lock);
-+	spin_lock(&state_lock);
- 	list_for_each_safe(pos, next, &nn->del_recall_lru) {
- 		dp = list_entry (pos, struct nfs4_delegation, dl_recall_lru);
- 		if (net_generic(dp->dl_stid.sc_client->net, nfsd_net_id) != nn)
-@@ -3435,7 +3436,7 @@ nfs4_laundromat(struct nfsd_net *nn)
- 		}
- 		list_move(&dp->dl_recall_lru, &reaplist);
- 	}
--	spin_unlock(&recall_lock);
-+	spin_unlock(&state_lock);
- 	list_for_each_safe(pos, next, &reaplist) {
- 		dp = list_entry (pos, struct nfs4_delegation, dl_recall_lru);
- 		revoke_delegation(dp);
-@@ -4900,9 +4901,9 @@ u64 nfsd_forget_client_delegations(struct nfs4_client *clp, u64 max)
- 	LIST_HEAD(victims);
- 	u64 count;
- 
--	spin_lock(&recall_lock);
-+	spin_lock(&state_lock);
- 	count = nfsd_find_all_delegations(clp, max, &victims);
--	spin_unlock(&recall_lock);
-+	spin_unlock(&state_lock);
- 
- 	list_for_each_entry_safe(dp, next, &victims, dl_recall_lru)
- 		revoke_delegation(dp);
-@@ -4916,11 +4917,11 @@ u64 nfsd_recall_client_delegations(struct nfs4_client *clp, u64 max)
- 	LIST_HEAD(victims);
- 	u64 count;
- 
--	spin_lock(&recall_lock);
-+	spin_lock(&state_lock);
- 	count = nfsd_find_all_delegations(clp, max, &victims);
- 	list_for_each_entry_safe(dp, next, &victims, dl_recall_lru)
- 		nfsd_break_one_deleg(dp);
--	spin_unlock(&recall_lock);
-+	spin_unlock(&state_lock);
- 
- 	return count;
  }
-@@ -4929,9 +4930,9 @@ u64 nfsd_print_client_delegations(struct nfs4_client *clp, u64 max)
+-
+-int nfs_generic_pgio(struct nfs_pageio_descriptor *desc,
+-		     struct nfs_pgio_header *hdr)
+-{
+-	if (desc->pg_bsize < PAGE_CACHE_SIZE)
+-		return nfs_pgio_multi(desc, hdr);
+-	return nfs_pgio_one(desc, hdr);
+-}
+ EXPORT_SYMBOL_GPL(nfs_generic_pgio);
+ 
+ static int nfs_generic_pg_pgios(struct nfs_pageio_descriptor *desc)
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index 6257f31..78933ac 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -440,21 +440,13 @@ nfs_wait_on_request(struct nfs_page *req)
+ size_t nfs_generic_pg_test(struct nfs_pageio_descriptor *desc,
+ 			   struct nfs_page *prev, struct nfs_page *req)
  {
- 	u64 count = 0;
+-	if (!prev)
+-		return req->wb_bytes;
+-	/*
+-	 * FIXME: ideally we should be able to coalesce all requests
+-	 * that are not block boundary aligned, but currently this
+-	 * is problematic for the case of bsize < PAGE_CACHE_SIZE,
+-	 * since nfs_flush_multi and nfs_pagein_multi assume you
+-	 * can have only one struct nfs_page.
+-	 */
+-	if (desc->pg_bsize < PAGE_SIZE)
++	if (desc->pg_count > desc->pg_bsize) {
++		/* should never happen */
++		WARN_ON_ONCE(1);
+ 		return 0;
++	}
  
--	spin_lock(&recall_lock);
-+	spin_lock(&state_lock);
- 	count = nfsd_find_all_delegations(clp, max, NULL);
--	spin_unlock(&recall_lock);
-+	spin_unlock(&state_lock);
+-	if (desc->pg_count + req->wb_bytes <= desc->pg_bsize)
+-		return req->wb_bytes;
+-	return 0;
++	return min(desc->pg_bsize - desc->pg_count, (size_t)req->wb_bytes);
+ }
+ EXPORT_SYMBOL_GPL(nfs_generic_pg_test);
  
- 	nfsd_print_count(clp, count, "delegations");
- 	return count;
-@@ -5149,12 +5150,12 @@ nfs4_state_shutdown_net(struct net *net)
- 
- 	nfs4_lock_state();
- 	INIT_LIST_HEAD(&reaplist);
--	spin_lock(&recall_lock);
-+	spin_lock(&state_lock);
- 	list_for_each_safe(pos, next, &nn->del_recall_lru) {
- 		dp = list_entry (pos, struct nfs4_delegation, dl_recall_lru);
- 		list_move(&dp->dl_recall_lru, &reaplist);
+@@ -534,7 +526,9 @@ static bool nfs_can_coalesce_requests(struct nfs_page *prev,
+ 			return false;
  	}
--	spin_unlock(&recall_lock);
-+	spin_unlock(&state_lock);
- 	list_for_each_safe(pos, next, &reaplist) {
- 		dp = list_entry (pos, struct nfs4_delegation, dl_recall_lru);
- 		destroy_delegation(dp);
+ 	size = pgio->pg_ops->pg_test(pgio, prev, req);
+-	WARN_ON_ONCE(size && size != req->wb_bytes);
++	WARN_ON_ONCE(size > req->wb_bytes);
++	if (size && size < req->wb_bytes)
++		req->wb_bytes = size;
+ 	return size > 0;
+ }
+ 
 -- 
-1.9.0
+1.8.5.2 (Apple Git-48)
 
