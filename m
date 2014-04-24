@@ -1,93 +1,103 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ipmail04.adl6.internode.on.net ([150.101.137.141]:57108 "EHLO
-	ipmail04.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S932707AbaD2AZO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Apr 2014 20:25:14 -0400
-Date: Tue, 29 Apr 2014 10:24:57 +1000
-From: Dave Chinner <david@fromorbit.com>
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Cc: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
-        viro@zeniv.linux.org.uk, dhowells@redhat.com,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH -V1 10/22] richacl: In-memory representation and helper
- functions
-Message-ID: <20140429002457.GS15995@dastard>
-References: <1398615293-22931-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
- <1398615293-22931-11-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1398615293-22931-11-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from mail-ig0-f170.google.com ([209.85.213.170]:44669 "EHLO
+	mail-ig0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932084AbaDXSPw (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Apr 2014 14:15:52 -0400
+Received: by mail-ig0-f170.google.com with SMTP id uq10so1356687igb.3
+        for <linux-nfs@vger.kernel.org>; Thu, 24 Apr 2014 11:15:51 -0700 (PDT)
+From: Weston Andros Adamson <dros@primarydata.com>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
+Subject: [PATCH 10/18 v2] pnfs: clean up filelayout_alloc_commit_info
+Date: Thu, 24 Apr 2014 14:15:20 -0400
+Message-Id: <1398363328-7100-11-git-send-email-dros@primarydata.com>
+In-Reply-To: <1398363328-7100-1-git-send-email-dros@primarydata.com>
+References: <1398363328-7100-1-git-send-email-dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Apr 27, 2014 at 09:44:41PM +0530, Aneesh Kumar K.V wrote:
-> From: Andreas Gruenbacher <agruen@kernel.org>
-> 
-> A richacl consists of an NFSv4 acl and an owner, group, and other mask.
-> These three masks correspond to the owner, group, and other file
-> permission bits, but they contain NFSv4 permissions instead of POSIX
-> permissions.
-> 
-> Each entry in the NFSv4 acl applies to the file owner (OWNER@), the
-> owning group (GROUP@), literally everyone (EVERYONE@), or to a specific
-> uid or gid.
-> 
-> As in the standard POSIX file permission model, each process is the
-> owner, group, or other file class.  A richacl grants a requested access
-> only if the NFSv4 acl in the richacl grants the access (according to the
-> NFSv4 permission check algorithm), and the file mask that applies to the
-> process includes the requested permissions.
-> 
-> Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
-> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-....
-> +
-> +/**
-> + * richace_is_same_identifier  -  are both identifiers the same?
-> + */
-> +int
-> +richace_is_same_identifier(const struct richace *a, const struct richace *b)
-> +{
-> +#define WHO_FLAGS (ACE4_SPECIAL_WHO | ACE4_IDENTIFIER_GROUP)
-> +	if ((a->e_flags & WHO_FLAGS) != (b->e_flags & WHO_FLAGS))
-> +		return 0;
-> +	return a->e_id == b->e_id;
-> +#undef WHO_FLAGS
+Remove unneeded else statement and clean up how commit info
+dataserver buckets are replaced.
 
-Ugh.
+Suggested-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+---
+ fs/nfs/nfs4filelayout.c | 46 ++++++++++++++++++++++++++--------------------
+ 1 file changed, 26 insertions(+), 20 deletions(-)
 
-....
-
-> +#define richacl_for_each_entry(_ace, _acl) \
-> +	for (_ace = _acl->a_entries; \
-> +	     _ace != _acl->a_entries + _acl->a_count; \
-> +	     _ace++)
-> +
-> +#define richacl_for_each_entry_reverse(_ace, _acl) \
-> +	for (_ace = _acl->a_entries + _acl->a_count - 1; \
-> +	     _ace != _acl->a_entries - 1; \
-> +	     _ace--)
-
-somewhat lacking in ()...
-
-> +/* Flag values defined by rich-acl */
-> +#define ACL4_MASKED			0x80
-> +
-> +#define ACL4_VALID_FLAGS (			\
-> +		ACL4_MASKED)
-> +
-> +/* e_type values */
-> +#define ACE4_ACCESS_ALLOWED_ACE_TYPE	0x0000
-> +#define ACE4_ACCESS_DENIED_ACE_TYPE	0x0001
-> +/*#define ACE4_SYSTEM_AUDIT_ACE_TYPE	0x0002*/
-> +/*#define ACE4_SYSTEM_ALARM_ACE_TYPE	0x0003*/
-
-What's with all the commented out types?
-
-Cheers,
-
-Dave.
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 9319427..9cea935 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -850,11 +850,15 @@ filelayout_alloc_commit_info(struct pnfs_layout_segment *lseg,
+ {
+ 	struct nfs4_filelayout_segment *fl = FILELAYOUT_LSEG(lseg);
+ 	struct pnfs_commit_bucket *buckets;
+-	int size;
++	int size, i;
+ 
+ 	if (fl->commit_through_mds)
+ 		return 0;
+-	if (cinfo->ds->nbuckets != 0) {
++
++	size = (fl->stripe_type == STRIPE_SPARSE) ?
++		fl->dsaddr->ds_num : fl->dsaddr->stripe_count;
++
++	if (cinfo->ds->nbuckets >= size) {
+ 		/* This assumes there is only one IOMODE_RW lseg.  What
+ 		 * we really want to do is have a layout_hdr level
+ 		 * dictionary of <multipath_list4, fh> keys, each
+@@ -864,30 +868,32 @@ filelayout_alloc_commit_info(struct pnfs_layout_segment *lseg,
+ 		return 0;
+ 	}
+ 
+-	size = (fl->stripe_type == STRIPE_SPARSE) ?
+-		fl->dsaddr->ds_num : fl->dsaddr->stripe_count;
+-
+ 	buckets = kcalloc(size, sizeof(struct pnfs_commit_bucket),
+ 			  gfp_flags);
+ 	if (!buckets)
+ 		return -ENOMEM;
+-	else {
+-		int i;
++	for (i = 0; i < size; i++) {
++		INIT_LIST_HEAD(&buckets[i].written);
++		INIT_LIST_HEAD(&buckets[i].committing);
++	}
+ 
+-		spin_lock(cinfo->lock);
+-		if (cinfo->ds->nbuckets != 0)
+-			kfree(buckets);
+-		else {
+-			cinfo->ds->buckets = buckets;
+-			cinfo->ds->nbuckets = size;
+-			for (i = 0; i < size; i++) {
+-				INIT_LIST_HEAD(&buckets[i].written);
+-				INIT_LIST_HEAD(&buckets[i].committing);
+-			}
+-		}
+-		spin_unlock(cinfo->lock);
+-		return 0;
++	spin_lock(cinfo->lock);
++	if (cinfo->ds->nbuckets >= size)
++		goto out;
++	for (i = 0; i < cinfo->ds->nbuckets; i++) {
++		list_splice(&cinfo->ds->buckets[i].written,
++			    &buckets[i].written);
++		list_splice(&cinfo->ds->buckets[i].committing,
++			    &buckets[i].committing);
++		buckets[i].wlseg = cinfo->ds->buckets[i].wlseg;
++		buckets[i].clseg = cinfo->ds->buckets[i].clseg;
+ 	}
++	swap(cinfo->ds->buckets, buckets);
++	cinfo->ds->nbuckets = size;
++out:
++	spin_unlock(cinfo->lock);
++	kfree(buckets);
++	return 0;
+ }
+ 
+ static struct pnfs_layout_segment *
 -- 
-Dave Chinner
-david@fromorbit.com
+1.8.5.2 (Apple Git-48)
+
