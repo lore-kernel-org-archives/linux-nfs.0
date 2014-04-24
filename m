@@ -1,146 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f176.google.com ([209.85.213.176]:55420 "EHLO
-	mail-ig0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754577AbaDRSq5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Apr 2014 14:46:57 -0400
-Received: by mail-ig0-f176.google.com with SMTP id uy17so958448igb.3
-        for <linux-nfs@vger.kernel.org>; Fri, 18 Apr 2014 11:46:57 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Bruce Fields <bfields@fieldses.org>
+Received: from mail-qc0-f182.google.com ([209.85.216.182]:61469 "EHLO
+	mail-qc0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755990AbaDXOdM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Apr 2014 10:33:12 -0400
+Received: by mail-qc0-f182.google.com with SMTP id e16so2523927qcx.41
+        for <linux-nfs@vger.kernel.org>; Thu, 24 Apr 2014 07:33:11 -0700 (PDT)
+Date: Thu, 24 Apr 2014 10:25:35 -0400
+From: Jeff Layton <jlayton@poochiereds.net>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 69/70] NFSd: Remove nfs4_lock_state(): setclientid, setclientid_confirm, renew
-Date: Fri, 18 Apr 2014 14:45:03 -0400
-Message-Id: <1397846704-14567-70-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1397846704-14567-69-git-send-email-trond.myklebust@primarydata.com>
-References: <1397846704-14567-1-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-2-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-3-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-4-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-5-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-6-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-7-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-8-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-9-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-10-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-11-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-12-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-13-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-14-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-15-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-16-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-17-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-18-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-19-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-20-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-21-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-22-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-23-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-24-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-25-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-26-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-27-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-28-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-29-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-30-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-31-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-32-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-33-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-34-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-35-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-36-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-37-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-38-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-39-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-40-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-41-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-42-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-43-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-44-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-45-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-46-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-47-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-48-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-49-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-50-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-51-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-52-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-53-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-54-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-55-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-56-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-57-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-58-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-59-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-60-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-61-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-62-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-63-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-64-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-65-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-66-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-67-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-68-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-69-git-send-email-trond.myklebust@primarydata.com>
+Subject: Re: [PATCH 1/3] nfs4: treat lock owners as opaque values
+Message-ID: <20140424102535.77f07c95@tlielax.poochiereds.net>
+In-Reply-To: <20140423150023.6b0956cb@tlielax.poochiereds.net>
+References: <1398277500-31575-1-git-send-email-jlayton@redhat.com>
+	<1398277500-31575-2-git-send-email-jlayton@redhat.com>
+	<1A139D9F-E986-4854-8C15-AB1332880E29@primarydata.com>
+	<20140423150023.6b0956cb@tlielax.poochiereds.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 6 ------
- 1 file changed, 6 deletions(-)
+On Wed, 23 Apr 2014 15:00:23 -0400
+Jeff Layton <jlayton@redhat.com> wrote:
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 3a0a3e8c9982..36ccc79702dd 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2607,7 +2607,6 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	if (new == NULL)
- 		return nfserr_jukebox;
- 	/* Cases below refer to rfc 3530 section 14.2.33: */
--	nfs4_lock_state();
- 	spin_lock(&nn->client_lock);
- 	conf = find_confirmed_client_by_name(&clname, nn);
- 	if (conf) {
-@@ -2642,7 +2641,6 @@ nfsd4_setclientid(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	status = nfs_ok;
- out:
- 	spin_unlock(&nn->client_lock);
--	nfs4_unlock_state();
- 	if (new)
- 		free_client(new);
- 	if (unconf)
-@@ -2665,7 +2663,6 @@ nfsd4_setclientid_confirm(struct svc_rqst *rqstp,
- 
- 	if (STALE_CLIENTID(clid, nn))
- 		return nfserr_stale_clientid;
--	nfs4_lock_state();
- 
- 	spin_lock(&nn->client_lock);
- 	conf = find_confirmed_client(clid, false, nn);
-@@ -2714,7 +2711,6 @@ out:
- 	spin_unlock(&nn->client_lock);
- 	if (old)
- 		expire_client(old);
--	nfs4_unlock_state();
- 	return status;
- }
- 
-@@ -3640,7 +3636,6 @@ nfsd4_renew(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- 	__be32 status;
- 	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
- 
--	nfs4_lock_state();
- 	dprintk("process_renew(%08x/%08x): starting\n", 
- 			clid->cl_boot, clid->cl_id);
- 	status = lookup_clientid(clid, NULL, nn, &clp);
-@@ -3654,7 +3649,6 @@ nfsd4_renew(struct svc_rqst *rqstp, struct nfsd4_compound_state *cstate,
- put_client:
- 	put_client_renew(clp);
- out:
--	nfs4_unlock_state();
- 	return status;
- }
- 
+> On Wed, 23 Apr 2014 14:48:08 -0400
+> Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+> 
+> > 
+> > On Apr 23, 2014, at 14:24, Jeff Layton <jlayton@redhat.com> wrote:
+> > 
+> > > Do the following set of ops with a file on a NFSv4 mount:
+> > > 
+> > >    exec 3>>$1
+> > >    flock -x 3
+> > >    exec 3>&-
+> > > 
+> > > You'll see the LOCK request go across the wire, but no LOCKU when the
+> > > file is closed. This leads to
+> > > 
+> > > What happens is that the fd is passed across a fork, and the final close
+> > > is done in a different process than the opener. That makes
+> > > __nfs4_find_lock_state miss finding the correct lock state because it
+> > > uses the fl_pid as a search key. A new one is created, and the locking
+> > > code treats it as a delegation stateid (because NFS_LOCK_INITIALIZED
+> > > isn't set).
+> > > 
+> > > The root cause of this breakage seems to be commit 77041ed9b49a9e
+> > > (NFSv4: Ensure the lockowners are labelled using the fl_owner and/or
+> > > fl_pid).
+> > > 
+> > > That changed it so that flock lockowners are allocated based on the
+> > > fl_pid. I think this is incorrect. flock locks should be "owned" by the
+> > > struct file, and that is already accounted for in the fl_owner field of
+> > > the lock request when the vfs layer passes it down.
+> > 
+> > NACKed for now.
+> > 
+> > I'll grant you that there are several nice potential cleanups here, but as far as I can tell, flock_make_lock() never sets fl_owner, and neither does anything else in sys_flock().
+> > 
+> 
+> Ahh right...nfs_flock is what sets that currently. So this patch *does*
+> work, but I think you're right that we ought to have the generic flock
+> codepath universally set fl_owner instead.
+> 
+> I'll see if I can make that a bit more consistent for v3.16 and then we
+> can revisit this one.
+> 
+
+BTW, any thoughts on the second patch in this series? It's not really
+dependent on the first, and it does fix a bug where we're trying to do
+a __GFP_WAIT allocation under a spinlock.
+
+Thanks,
 -- 
-1.9.0
-
+Jeff Layton <jlayton@poochiereds.net>
