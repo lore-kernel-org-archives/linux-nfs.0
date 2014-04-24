@@ -1,69 +1,272 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:47366 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753142AbaDCWNd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 3 Apr 2014 18:13:33 -0400
-Date: Fri, 4 Apr 2014 09:13:24 +1100
-From: NeilBrown <neilb@suse.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Boaz Harrosh <openosd@gmail.com>, NFS <linux-nfs@vger.kernel.org>
-Subject: Re: Should exportfs/mountd cope with case-insensitive directory
- names.
-Message-ID: <20140404091324.699d0ba6@notabene.brown>
-In-Reply-To: <20140403213610.GF8343@fieldses.org>
-References: <20140403164652.5d7770ad@notabene.brown>
-	<20140403130909.GA24700@fieldses.org>
-	<533D8629.10907@gmail.com>
-	<20140403171625.GA5884@fieldses.org>
-	<20140403172431.GB5884@fieldses.org>
-	<20140404082154.4cfdab5a@notabene.brown>
-	<20140403213610.GF8343@fieldses.org>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/DB8IcIiNEhuM.JCsDWBmyfx"; protocol="application/pgp-signature"
+Received: from mail-ig0-f182.google.com ([209.85.213.182]:44919 "EHLO
+	mail-ig0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932084AbaDXSPm (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Apr 2014 14:15:42 -0400
+Received: by mail-ig0-f182.google.com with SMTP id uy17so1238633igb.3
+        for <linux-nfs@vger.kernel.org>; Thu, 24 Apr 2014 11:15:41 -0700 (PDT)
+From: Weston Andros Adamson <dros@primarydata.com>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
+Subject: [PATCH 04/18 v2] nfs: modify pg_test interface to return size_t
+Date: Thu, 24 Apr 2014 14:15:14 -0400
+Message-Id: <1398363328-7100-5-git-send-email-dros@primarydata.com>
+In-Reply-To: <1398363328-7100-1-git-send-email-dros@primarydata.com>
+References: <1398363328-7100-1-git-send-email-dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/DB8IcIiNEhuM.JCsDWBmyfx
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+This is a step toward allowing pg_test to inform the the
+coalescing code to reduce the size of requests so they may fit in
+whatever scheme the pg_test callback wants to define.
 
-On Thu, 3 Apr 2014 17:36:10 -0400 "J. Bruce Fields" <bfields@fieldses.org>
-wrote:
+For now, just return the size of the request if there is space, or 0
+if there is not.  This shouldn't change any behavior as it acts
+the same as when the pg_test functions returned bool.
 
-> (BTW:  I also noticed the other day that systemd is calling
-> name_to_handle_at to get a mount id.  Seems like overkill in both
-> cases--shouldn't there be a simpler way to get just the mount id?)
+Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+---
+ fs/nfs/blocklayout/blocklayout.c | 16 ++++++++++++----
+ fs/nfs/nfs4filelayout.c          | 12 +++++++-----
+ fs/nfs/objlayout/objio_osd.c     | 15 ++++++++++-----
+ fs/nfs/pagelist.c                | 22 +++++++++++++++++++---
+ fs/nfs/pnfs.c                    | 12 +++++++++---
+ fs/nfs/pnfs.h                    |  3 ++-
+ include/linux/nfs_page.h         |  5 +++--
+ 7 files changed, 62 insertions(+), 23 deletions(-)
 
-Yes, it is called "xstat" and is an extensible version of stat which even
-includes a 'query' bitmap to list which things you want.
+diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
+index 206cc68..9b431f4 100644
+--- a/fs/nfs/blocklayout/blocklayout.c
++++ b/fs/nfs/blocklayout/blocklayout.c
+@@ -1189,13 +1189,17 @@ bl_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
+ 		pnfs_generic_pg_init_read(pgio, req);
+ }
+ 
+-static bool
++/*
++ * Return 0 if @req cannot be coalesced into @pgio, otherwise return the number
++ * of bytes (maximum @req->wb_bytes) that can be coalesced.
++ */
++static size_t
+ bl_pg_test_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+ 		struct nfs_page *req)
+ {
+ 	if (pgio->pg_dreq != NULL &&
+ 	    !is_aligned_req(req, SECTOR_SIZE))
+-		return false;
++		return 0;
+ 
+ 	return pnfs_generic_pg_test(pgio, prev, req);
+ }
+@@ -1241,13 +1245,17 @@ bl_pg_init_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
+ 	}
+ }
+ 
+-static bool
++/*
++ * Return 0 if @req cannot be coalesced into @pgio, otherwise return the number
++ * of bytes (maximum @req->wb_bytes) that can be coalesced.
++ */
++static size_t
+ bl_pg_test_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+ 		 struct nfs_page *req)
+ {
+ 	if (pgio->pg_dreq != NULL &&
+ 	    !is_aligned_req(req, PAGE_CACHE_SIZE))
+-		return false;
++		return 0;
+ 
+ 	return pnfs_generic_pg_test(pgio, prev, req);
+ }
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 9fd7ceb..ba9a9aa 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -915,10 +915,10 @@ filelayout_alloc_lseg(struct pnfs_layout_hdr *layoutid,
+ /*
+  * filelayout_pg_test(). Called by nfs_can_coalesce_requests()
+  *
+- * return true  : coalesce page
+- * return false : don't coalesce page
++ * Return 0 if @req cannot be coalesced into @pgio, otherwise return the number
++ * of bytes (maximum @req->wb_bytes) that can be coalesced.
+  */
+-static bool
++static size_t
+ filelayout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+ 		   struct nfs_page *req)
+ {
+@@ -927,7 +927,7 @@ filelayout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+ 
+ 	if (!pnfs_generic_pg_test(pgio, prev, req) ||
+ 	    !nfs_generic_pg_test(pgio, prev, req))
+-		return false;
++		return 0;
+ 
+ 	p_stripe = (u64)req_offset(prev);
+ 	r_stripe = (u64)req_offset(req);
+@@ -936,7 +936,9 @@ filelayout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+ 	do_div(p_stripe, stripe_unit);
+ 	do_div(r_stripe, stripe_unit);
+ 
+-	return (p_stripe == r_stripe);
++	if (p_stripe == r_stripe)
++		return req->wb_bytes;
++	return 0;
+ }
+ 
+ static void
+diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
+index 426b366..71b9c69 100644
+--- a/fs/nfs/objlayout/objio_osd.c
++++ b/fs/nfs/objlayout/objio_osd.c
+@@ -564,14 +564,19 @@ int objio_write_pagelist(struct nfs_pgio_data *wdata, int how)
+ 	return 0;
+ }
+ 
+-static bool objio_pg_test(struct nfs_pageio_descriptor *pgio,
++/*
++ * Return 0 if @req cannot be coalesced into @pgio, otherwise return the number
++ * of bytes (maximum @req->wb_bytes) that can be coalesced.
++ */
++static size_t objio_pg_test(struct nfs_pageio_descriptor *pgio,
+ 			  struct nfs_page *prev, struct nfs_page *req)
+ {
+-	if (!pnfs_generic_pg_test(pgio, prev, req))
+-		return false;
++	if (!pnfs_generic_pg_test(pgio, prev, req) ||
++	    pgio->pg_count + req->wb_bytes >
++	    (unsigned long)pgio->pg_layout_private)
++		return 0;
+ 
+-	return pgio->pg_count + req->wb_bytes <=
+-			(unsigned long)pgio->pg_layout_private;
++	return req->wb_bytes;
+ }
+ 
+ static void objio_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index 30c221c..4cd7a2a 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -277,7 +277,17 @@ nfs_wait_on_request(struct nfs_page *req)
+ 			TASK_UNINTERRUPTIBLE);
+ }
+ 
+-bool nfs_generic_pg_test(struct nfs_pageio_descriptor *desc, struct nfs_page *prev, struct nfs_page *req)
++/*
++ * nfs_generic_pg_test - determine if requests can be coalesced
++ * @desc: pointer to descriptor
++ * @prev: previous request in desc, or NULL
++ * @req: this request
++ *
++ * Returns zero if @req can be coalesced into @desc, otherwise it returns
++ * the size of the request.
++ */
++size_t nfs_generic_pg_test(struct nfs_pageio_descriptor *desc,
++			   struct nfs_page *prev, struct nfs_page *req)
+ {
+ 	/*
+ 	 * FIXME: ideally we should be able to coalesce all requests
+@@ -289,7 +299,9 @@ bool nfs_generic_pg_test(struct nfs_pageio_descriptor *desc, struct nfs_page *pr
+ 	if (desc->pg_bsize < PAGE_SIZE)
+ 		return 0;
+ 
+-	return desc->pg_count + req->wb_bytes <= desc->pg_bsize;
++	if (desc->pg_count + req->wb_bytes <= desc->pg_bsize)
++		return req->wb_bytes;
++	return 0;
+ }
+ EXPORT_SYMBOL_GPL(nfs_generic_pg_test);
+ 
+@@ -356,6 +368,8 @@ static bool nfs_can_coalesce_requests(struct nfs_page *prev,
+ 				      struct nfs_page *req,
+ 				      struct nfs_pageio_descriptor *pgio)
+ {
++	size_t size;
++
+ 	if (!nfs_match_open_context(req->wb_context, prev->wb_context))
+ 		return false;
+ 	if (req->wb_context->dentry->d_inode->i_flock != NULL &&
+@@ -367,7 +381,9 @@ static bool nfs_can_coalesce_requests(struct nfs_page *prev,
+ 		return false;
+ 	if (req_offset(req) != req_offset(prev) + prev->wb_bytes)
+ 		return false;
+-	return pgio->pg_ops->pg_test(pgio, prev, req);
++	size = pgio->pg_ops->pg_test(pgio, prev, req);
++	WARN_ON_ONCE(size && size != req->wb_bytes);
++	return size > 0;
+ }
+ 
+ /**
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 0fe6701..de6eb16 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1434,7 +1434,11 @@ pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio,
+ }
+ EXPORT_SYMBOL_GPL(pnfs_generic_pg_init_write);
+ 
+-bool
++/*
++ * Return 0 if @req cannot be coalesced into @pgio, otherwise return the number
++ * of bytes (maximum @req->wb_bytes) that can be coalesced.
++ */
++size_t
+ pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+ 		     struct nfs_page *req)
+ {
+@@ -1455,8 +1459,10 @@ pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+ 	 * first byte that lies outside the pnfs_layout_range. FIXME?
+ 	 *
+ 	 */
+-	return req_offset(req) < end_offset(pgio->pg_lseg->pls_range.offset,
+-					 pgio->pg_lseg->pls_range.length);
++	if (req_offset(req) < end_offset(pgio->pg_lseg->pls_range.offset,
++					 pgio->pg_lseg->pls_range.length))
++		return req->wb_bytes;
++	return 0;
+ }
+ EXPORT_SYMBOL_GPL(pnfs_generic_pg_test);
+ 
+diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
+index 0031267..dccf182 100644
+--- a/fs/nfs/pnfs.h
++++ b/fs/nfs/pnfs.h
+@@ -187,7 +187,8 @@ int pnfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc);
+ void pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio,
+ 			        struct nfs_page *req, u64 wb_size);
+ int pnfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc);
+-bool pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev, struct nfs_page *req);
++size_t pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio,
++			    struct nfs_page *prev, struct nfs_page *req);
+ void pnfs_set_lo_fail(struct pnfs_layout_segment *lseg);
+ struct pnfs_layout_segment *pnfs_layout_process(struct nfs4_layoutget *lgp);
+ void pnfs_free_lseg_list(struct list_head *tmp_list);
+diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
+index 8cb2640..40faddd 100644
+--- a/include/linux/nfs_page.h
++++ b/include/linux/nfs_page.h
+@@ -46,7 +46,8 @@ struct nfs_page {
+ struct nfs_pageio_descriptor;
+ struct nfs_pageio_ops {
+ 	void	(*pg_init)(struct nfs_pageio_descriptor *, struct nfs_page *);
+-	bool	(*pg_test)(struct nfs_pageio_descriptor *, struct nfs_page *, struct nfs_page *);
++	size_t	(*pg_test)(struct nfs_pageio_descriptor *, struct nfs_page *,
++			   struct nfs_page *);
+ 	int	(*pg_doio)(struct nfs_pageio_descriptor *);
+ };
+ 
+@@ -102,7 +103,7 @@ extern	int nfs_pageio_add_request(struct nfs_pageio_descriptor *,
+ 				   struct nfs_page *);
+ extern	void nfs_pageio_complete(struct nfs_pageio_descriptor *desc);
+ extern	void nfs_pageio_cond_complete(struct nfs_pageio_descriptor *, pgoff_t);
+-extern bool nfs_generic_pg_test(struct nfs_pageio_descriptor *desc,
++extern size_t nfs_generic_pg_test(struct nfs_pageio_descriptor *desc,
+ 				struct nfs_page *prev,
+ 				struct nfs_page *req);
+ extern  int nfs_wait_on_request(struct nfs_page *);
+-- 
+1.8.5.2 (Apple Git-48)
 
-Unfortunately it never made it to mainline.  We should submit a patch to
-systemd to get it to use xstat instead of name_to_handle_at.  That would
-ensure that the kernel implemented it double-quick :-)
-
-NeilBrown
-
---Sig_/DB8IcIiNEhuM.JCsDWBmyfx
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.22 (GNU/Linux)
-
-iQIVAwUBUz3dBDnsnt1WYoG5AQKnug/7BT8Aeq/z3FBO8yMkBvVx8xhvI28ZlQC+
-v4reY0IEoVmnts7Nttfz4NQX469ybcz/aZmKfYjh4yLqRuHCZHVuIdYrdLwq3PX0
-noIg9F7uFm1fx+yfFWG50T/4+UdTHlfhg3Rk7pZqHMDIsCr/NYppMRZD5EflGPha
-fifZq5Taap5dvRDhVCA0Cgln0FnIaAGRsfTETupKuWZglJCPGTXSsZzDFI7v4Fuw
-pLfeVSqVuUKKH3kRgMUwum+Gw1fFJ3MJIgDPQfEHw/S9GjVqRnYjcjiWDahI0Hl7
-kgJR69NbZUn9x70KT/2iciksd6O9ZoEO38vGrC8LqJAmEWQ/3ObKEEDJpWe+9gRP
-6mtRHov7D5xE3R7QrxlGKFvmMSGYPTzvArQ+Qrmb+gLXtSmeJjt5wkMisvGWzUm4
-tAtTjvmOgrjYLIvt4PKgB2+xK10BGfm7vcOScc86qttr2kW5M2DYtSlS4mnpzR3d
-H4GGSey8GWpWuqsN7gJArWfQ/cLTZ1GPN7RqdxmQIzJvPbiU8lhTOYAVMFnP11CY
-6yWjfAoCk4KOFx0EtP3m4uP7u9qHl+k0hs6F2kfmligqz5xQUe1d1rR/Oj1KPpo4
-dsMO7WdwxdnGXaSNXo2QkZqBvyHqG0gGjnpF5nDUtIrGqAlEIv8NGJU/vy1o0TPR
-GPnYzu54c7s=
-=mfhN
------END PGP SIGNATURE-----
-
---Sig_/DB8IcIiNEhuM.JCsDWBmyfx--
