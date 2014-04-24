@@ -1,64 +1,133 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e23smtp08.au.ibm.com ([202.81.31.141]:39626 "EHLO
-	e23smtp08.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753340AbaD0QPe (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Apr 2014 12:15:34 -0400
-Received: from /spool/local
-	by e23smtp08.au.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <aneesh.kumar@linux.vnet.ibm.com>;
-	Mon, 28 Apr 2014 02:15:32 +1000
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
-        viro@zeniv.linux.org.uk, dhowells@redhat.com
-Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH -V1 07/22] vfs: Make the inode passed to inode_change_ok non-const
-Date: Sun, 27 Apr 2014 21:44:38 +0530
-Message-Id: <1398615293-22931-8-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-In-Reply-To: <1398615293-22931-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1398615293-22931-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from mail-ie0-f173.google.com ([209.85.223.173]:38108 "EHLO
+	mail-ie0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754261AbaDXSPk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Apr 2014 14:15:40 -0400
+Received: by mail-ie0-f173.google.com with SMTP id rl12so2764236iec.4
+        for <linux-nfs@vger.kernel.org>; Thu, 24 Apr 2014 11:15:40 -0700 (PDT)
+From: Weston Andros Adamson <dros@primarydata.com>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
+Subject: [PATCH 03/18 v2] nfs: remove unused arg from nfs_create_request
+Date: Thu, 24 Apr 2014 14:15:13 -0400
+Message-Id: <1398363328-7100-4-git-send-email-dros@primarydata.com>
+In-Reply-To: <1398363328-7100-1-git-send-email-dros@primarydata.com>
+References: <1398363328-7100-1-git-send-email-dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andreas Gruenbacher <agruen@kernel.org>
+@inode is passed but not used.
 
-We will need to call iop->permission and iop->get_acl from
-inode_change_ok() for additional permission checks, and both take a
-non-const inode.
-
-Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
 ---
- fs/attr.c          | 2 +-
- include/linux/fs.h | 2 +-
- 2 files changed, 2 insertions(+), 2 deletions(-)
+ fs/nfs/direct.c          | 6 ++----
+ fs/nfs/pagelist.c        | 4 +---
+ fs/nfs/read.c            | 5 ++---
+ fs/nfs/write.c           | 2 +-
+ include/linux/nfs_page.h | 1 -
+ 5 files changed, 6 insertions(+), 12 deletions(-)
 
-diff --git a/fs/attr.c b/fs/attr.c
-index 5d4e59d56e85..1d158c972442 100644
---- a/fs/attr.c
-+++ b/fs/attr.c
-@@ -28,7 +28,7 @@
-  * Should be called as the first thing in ->setattr implementations,
-  * possibly after taking additional locks.
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index 164b016..1dd8c62 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -380,8 +380,7 @@ static ssize_t nfs_direct_read_schedule_segment(struct nfs_pageio_descriptor *de
+ 			struct nfs_page *req;
+ 			unsigned int req_len = min_t(size_t, bytes, PAGE_SIZE - pgbase);
+ 			/* XXX do we need to do the eof zeroing found in async_filler? */
+-			req = nfs_create_request(dreq->ctx, dreq->inode,
+-						 pagevec[i],
++			req = nfs_create_request(dreq->ctx, pagevec[i],
+ 						 pgbase, req_len);
+ 			if (IS_ERR(req)) {
+ 				result = PTR_ERR(req);
+@@ -750,8 +749,7 @@ static ssize_t nfs_direct_write_schedule_segment(struct nfs_pageio_descriptor *d
+ 			struct nfs_page *req;
+ 			unsigned int req_len = min_t(size_t, bytes, PAGE_SIZE - pgbase);
+ 
+-			req = nfs_create_request(dreq->ctx, dreq->inode,
+-						 pagevec[i],
++			req = nfs_create_request(dreq->ctx, pagevec[i],
+ 						 pgbase, req_len);
+ 			if (IS_ERR(req)) {
+ 				result = PTR_ERR(req);
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index 8221706..30c221c 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -136,7 +136,6 @@ nfs_iocounter_wait(struct nfs_io_counter *c)
+ /**
+  * nfs_create_request - Create an NFS read/write request.
+  * @ctx: open context to use
+- * @inode: inode to which the request is attached
+  * @page: page to write
+  * @offset: starting offset within the page for the write
+  * @count: number of bytes to read/write
+@@ -146,8 +145,7 @@ nfs_iocounter_wait(struct nfs_io_counter *c)
+  * User should ensure it is safe to sleep in this function.
   */
--int inode_change_ok(const struct inode *inode, struct iattr *attr)
-+int inode_change_ok(struct inode *inode, struct iattr *attr)
+ struct nfs_page *
+-nfs_create_request(struct nfs_open_context *ctx, struct inode *inode,
+-		   struct page *page,
++nfs_create_request(struct nfs_open_context *ctx, struct page *page,
+ 		   unsigned int offset, unsigned int count)
  {
- 	unsigned int ia_valid = attr->ia_valid;
+ 	struct nfs_page		*req;
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index d7e9460..a48b909 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -85,7 +85,7 @@ int nfs_readpage_async(struct nfs_open_context *ctx, struct inode *inode,
+ 	len = nfs_page_length(page);
+ 	if (len == 0)
+ 		return nfs_return_empty_page(page);
+-	new = nfs_create_request(ctx, inode, page, 0, len);
++	new = nfs_create_request(ctx, page, 0, len);
+ 	if (IS_ERR(new)) {
+ 		unlock_page(page);
+ 		return PTR_ERR(new);
+@@ -303,7 +303,6 @@ static int
+ readpage_async_filler(void *data, struct page *page)
+ {
+ 	struct nfs_readdesc *desc = (struct nfs_readdesc *)data;
+-	struct inode *inode = page_file_mapping(page)->host;
+ 	struct nfs_page *new;
+ 	unsigned int len;
+ 	int error;
+@@ -312,7 +311,7 @@ readpage_async_filler(void *data, struct page *page)
+ 	if (len == 0)
+ 		return nfs_return_empty_page(page);
  
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 3f0ad0f2bce8..33da154dd27d 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -2618,7 +2618,7 @@ extern int buffer_migrate_page(struct address_space *,
- #define buffer_migrate_page NULL
- #endif
+-	new = nfs_create_request(desc->ctx, inode, page, 0, len);
++	new = nfs_create_request(desc->ctx, page, 0, len);
+ 	if (IS_ERR(new))
+ 		goto out_error;
  
--extern int inode_change_ok(const struct inode *, struct iattr *);
-+extern int inode_change_ok(struct inode *, struct iattr *);
- extern int inode_newsize_ok(const struct inode *, loff_t offset);
- extern void setattr_copy(struct inode *inode, const struct iattr *attr);
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 3483dd4..5f1c965 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -761,7 +761,7 @@ static struct nfs_page * nfs_setup_write_request(struct nfs_open_context* ctx,
+ 	req = nfs_try_to_update_request(inode, page, offset, bytes);
+ 	if (req != NULL)
+ 		goto out;
+-	req = nfs_create_request(ctx, inode, page, offset, bytes);
++	req = nfs_create_request(ctx, page, offset, bytes);
+ 	if (IS_ERR(req))
+ 		goto out;
+ 	nfs_inode_add_request(inode, req);
+diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
+index 91ac4d4..8cb2640 100644
+--- a/include/linux/nfs_page.h
++++ b/include/linux/nfs_page.h
+@@ -85,7 +85,6 @@ struct nfs_pageio_descriptor {
+ #define NFS_WBACK_BUSY(req)	(test_bit(PG_BUSY,&(req)->wb_flags))
  
+ extern	struct nfs_page *nfs_create_request(struct nfs_open_context *ctx,
+-					    struct inode *inode,
+ 					    struct page *page,
+ 					    unsigned int offset,
+ 					    unsigned int count);
 -- 
-1.9.1
+1.8.5.2 (Apple Git-48)
 
