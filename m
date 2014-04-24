@@ -1,103 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:38809 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751181AbaDPESk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Apr 2014 00:18:40 -0400
-From: NeilBrown <neilb@suse.de>
-To: linux-mm@kvack.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Date: Wed, 16 Apr 2014 14:03:36 +1000
-Subject: [PATCH 07/19] nfsd and VM: use PF_LESS_THROTTLE to avoid throttle
- in shrink_inactive_list.
-Cc: xfs@oss.sgi.com
-Message-ID: <20140416040336.10604.55772.stgit@notabene.brown>
-In-Reply-To: <20140416033623.10604.69237.stgit@notabene.brown>
-References: <20140416033623.10604.69237.stgit@notabene.brown>
+Received: from ipmail06.adl2.internode.on.net ([150.101.137.129]:57881 "EHLO
+	ipmail06.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752485AbaDXBVV (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Apr 2014 21:21:21 -0400
+Date: Thu, 24 Apr 2014 11:20:22 +1000
+From: Dave Chinner <david@fromorbit.com>
+To: NeilBrown <neilb@suse.de>
+Cc: Jan Kara <jack@suse.cz>, Jeff Layton <jlayton@redhat.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Mel Gorman <mgorman@suse.com>,
+        Andrew Morton <akpm@linux-foundation.org>, linux-mm@kvack.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH/RFC 0/5] Support loop-back NFS mounts - take 2
+Message-ID: <20140424012022.GX15995@dastard>
+References: <20140423022441.4725.89693.stgit@notabene.brown>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140423022441.4725.89693.stgit@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-nfsd already uses PF_LESS_THROTTLE (and is the only user) to avoid
-throttling while dirtying pages.  Use it also to avoid throttling while
-doing direct reclaim as this can stall nfsd in the same way.
+On Wed, Apr 23, 2014 at 12:40:58PM +1000, NeilBrown wrote:
+> This is a somewhat shorter patchset for loop-back NFS support than
+> last time, thanks to the excellent feedback and particularly to Dave
+> Chinner.  Thanks.
+> 
+> Avoiding the wait-for-congestion which can trigger a livelock is much
+> the same, though I've reduced the cases in which the wait is
+> by-passed.
+> I did this using current->backing_dev_info which is otherwise serving
+> no purpose on the current kernel.
+> 
+> Avoiding the deadlocks has been turned on its head.
+> Instead of nfsd checking if it is a loop-back mount and setting
+> PF_FSTRANS, which then needs lots of changes too PF_FSTRANS and
+> __GFP_FS handling, it is now NFS which checks for a loop-back
+> filesystem.
+> 
+> There is more verbosity in that patch (Fifth of Five) but the essence
+> is that nfs_release_page will now not wait indefinitely for a COMMIT
+> request to complete when sent to the local host.  It still waits a
+> little while as some delay can be important. But it won't wait
+> forever.
+> The duration of "a little while" is currently 100ms, though I do
+> wonder if a bigger number would serve just as well.
+> 
+> Unlike the previous series, this set should remove deadlocks that
+> could happen during the actual fail-over process.  This is achieved by
+> having nfs_release_page monitor the connection and if it changes from
+> a remote to a local connection, or just disconnects, then it will
+> timeout.  It currently polls every second, though this probably could
+> be longer too.  It only needs to be the same order of magnitude as the
+> time it takes node failure to be detected and failover to happen, and
+> I suspect that is closer to 1 minute.  So maybe a 10 or 20 second poll
+> interval would be just as good.
+> 
+> Implementing this timeout requires some horrible code as the
+> wait_on_bit functions don't support timeouts.  If the general approach
+> is found acceptable I'll explore ways to improve the timeout code.
+> 
+> Comments, criticism, etc very welcome as always,
 
-Also only set PF_LESS_THROTTLE when handling a 'write' request for a
-local connection.  This is the only time when the throttling can cause
-a problem.  In other cases we should throttle if the system is busy.
+Looks much less intrusive to me, and doesn't appear to affect any
+other filesystem or the recursion patterns of memory reclaim,
+so I like it very much more than the previous patchset. Nice work!
+:)
 
-Signed-off-by: NeilBrown <neilb@suse.de>
----
- fs/nfsd/nfssvc.c |    6 ------
- fs/nfsd/vfs.c    |    6 ++++++
- mm/vmscan.c      |    7 +++++--
- 3 files changed, 11 insertions(+), 8 deletions(-)
+The code changes are really outside my area of expertise now, so I
+don't really feel qualified to review the changes. However, consider
+the overall approach:
 
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index 6af8bc2daf7d..cd24aa76e58d 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -593,12 +593,6 @@ nfsd(void *vrqstp)
- 	nfsdstats.th_cnt++;
- 	mutex_unlock(&nfsd_mutex);
- 
--	/*
--	 * We want less throttling in balance_dirty_pages() so that nfs to
--	 * localhost doesn't cause nfsd to lock up due to all the client's
--	 * dirty pages.
--	 */
--	current->flags |= PF_LESS_THROTTLE;
- 	set_freezable();
- 
- 	/*
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index 6d7be3f80356..be2d7af3beee 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -913,6 +913,10 @@ nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file *file,
- 	int			stable = *stablep;
- 	int			use_wgather;
- 	loff_t			pos = offset;
-+	unsigned int		pflags;
-+
-+	if (rqstp->rq_local)
-+		current_set_flags_nested(&pflags, PF_LESS_THROTTLE);
- 
- 	dentry = file->f_path.dentry;
- 	inode = dentry->d_inode;
-@@ -950,6 +954,8 @@ out_nfserr:
- 		err = 0;
- 	else
- 		err = nfserrno(host_err);
-+	if (rqstp->rq_local)
-+		current_restore_flags_nested(&pflags, PF_LESS_THROTTLE);
- 	return err;
- }
- 
-diff --git a/mm/vmscan.c b/mm/vmscan.c
-index 05de3289d031..1b7c4e44f0a1 100644
---- a/mm/vmscan.c
-+++ b/mm/vmscan.c
-@@ -1552,7 +1552,8 @@ shrink_inactive_list(unsigned long nr_to_scan, struct lruvec *lruvec,
- 		 * implies that pages are cycling through the LRU faster than
- 		 * they are written so also forcibly stall.
- 		 */
--		if (nr_unqueued_dirty == nr_taken || nr_immediate)
-+		if ((nr_unqueued_dirty == nr_taken || nr_immediate)
-+		    && !current_test_flags(PF_LESS_THROTTLE))
- 			congestion_wait(BLK_RW_ASYNC, HZ/10);
- 	}
- 
-@@ -1561,7 +1562,9 @@ shrink_inactive_list(unsigned long nr_to_scan, struct lruvec *lruvec,
- 	 * is congested. Allow kswapd to continue until it starts encountering
- 	 * unqueued dirty pages or cycling through the LRU too quickly.
- 	 */
--	if (!sc->hibernation_mode && !current_is_kswapd())
-+	if (!sc->hibernation_mode &&
-+	    !current_is_kswapd() &&
-+	    !current_test_flags(PF_LESS_THROTTLE))
- 		wait_iff_congested(zone, BLK_RW_ASYNC, HZ/10);
- 
- 	trace_mm_vmscan_lru_shrink_inactive(zone->zone_pgdat->node_id,
+Acked-by: Dave Chinner <dchinner@redhat.com>
 
+Cheers,
 
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
