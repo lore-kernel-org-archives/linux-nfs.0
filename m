@@ -1,205 +1,86 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ee0-f52.google.com ([74.125.83.52]:54206 "EHLO
-	mail-ee0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S933447AbaD2MUO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Apr 2014 08:20:14 -0400
-Message-ID: <535F98F3.8070101@gmail.com>
-Date: Tue, 29 Apr 2014 14:20:03 +0200
-From: "Michael Kerrisk (man-pages)" <mtk.manpages@gmail.com>
+Received: from mail-vc0-f178.google.com ([209.85.220.178]:55486 "EHLO
+	mail-vc0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758379AbaDXQqh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Apr 2014 12:46:37 -0400
+Received: by mail-vc0-f178.google.com with SMTP id hu19so3261592vcb.37
+        for <linux-nfs@vger.kernel.org>; Thu, 24 Apr 2014 09:46:36 -0700 (PDT)
 MIME-Version: 1.0
-To: Jeff Layton <jlayton@poochiereds.net>
-CC: mtk.manpages@gmail.com, NeilBrown <neilb@suse.de>,
-        "Stefan (metze) Metzmacher" <metze@samba.org>,
-        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
-        lkml <linux-kernel@vger.kernel.org>,
-        Ganesha NFS List <nfs-ganesha-devel@lists.sourceforge.net>,
-        Suresh Jayaraman <sjayaraman@suse.de>,
-        Trond Myklebust <trond.myklebust@fys.uio.no>,
-        Christoph Hellwig <hch@infradead.org>,
-        linux-nfs <linux-nfs@vger.kernel.org>,
-        "J. Bruce Fields" <bfields@fieldses.org>
-Subject: Re: flock() and NFS [Was: Re: [PATCH] locks: rename file-private
- locks to file-description locks]
-References: <1398087935-14001-1-git-send-email-jlayton@redhat.com>	<20140421140246.GB26358@brightrain.aerifal.cx>	<535529FA.8070709@gmail.com>	<20140421161004.GC26358@brightrain.aerifal.cx>	<5355644C.7000801@gmail.com>	<20140421184640.GD26358@brightrain.aerifal.cx>	<535573E0.9080106@gmail.com>	<20140421155520.3b33fbef@ipyr.poochiereds.net>	<53558A73.3010602@samba.org>	<5355F60C.8010004@gmail.com>	<20140427145125.21e7e6c6@notabene.brown>	<535CCAD2.4060304@gmail.com>	<20140427200431.426c98d1@notabene.brown>	<CAKgNAkgv5NqDRUNu0XtSABqmctd7=rpMMEYhhDQNzPssZuU5bA@mail.gmail.com>	<20140428072845.67f48d8e@notabene.brown>	<535F6BC4.2090601@gmail.com>	<20140429192458.641ebf1d@notabene.brown>	<535F76A4.4090208@gmail.com> <20140429073454.220572a8@tlielax.poochiereds.net>
-In-Reply-To: <20140429073454.220572a8@tlielax.poochiereds.net>
+In-Reply-To: <20140424163414.GA16429@fieldses.org>
+References: <20140424062516.GA8891@fieldses.org>
+	<CAHQdGtRfybuqsxiS=Hd4Stkm1ex13f6SeEk5XbQcy35UZStHRA@mail.gmail.com>
+	<20140424153116.GA15459@fieldses.org>
+	<20140424163414.GA16429@fieldses.org>
+Date: Thu, 24 Apr 2014 12:46:36 -0400
+Message-ID: <CAHQdGtQ_WMRrEWb5Lq8zS7A6eeuN5_UrEtB9baOfciCbuNSLjA@mail.gmail.com>
+Subject: Re: nfsd bug fixes for 3.15
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Devel FS Linux <linux-fsdevel@vger.kernel.org>,
+        Linux Kernel mailing list <linux-kernel@vger.kernel.org>,
+        Layton Jeff <jlayton@redhat.com>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 04/29/2014 01:34 PM, Jeff Layton wrote:
-> On Tue, 29 Apr 2014 11:53:40 +0200
-> "Michael Kerrisk (man-pages)" <mtk.manpages@gmail.com> wrote:
-> 
->> On 04/29/2014 11:24 AM, NeilBrown wrote:
->>> On Tue, 29 Apr 2014 11:07:16 +0200 "Michael Kerrisk (man-pages)"
->>> <mtk.manpages@gmail.com> wrote:
->>>
->>>> On 04/27/2014 11:28 PM, NeilBrown wrote:
->>>>> On Sun, 27 Apr 2014 13:11:33 +0200 "Michael Kerrisk (man-pages)"
->>>>> <mtk.manpages@gmail.com> wrote:
->>>>>
->>>>>> On Sun, Apr 27, 2014 at 12:04 PM, NeilBrown <neilb@suse.de> wrote:
->>>>>>> On Sun, 27 Apr 2014 11:16:02 +0200 "Michael Kerrisk (man-pages)"
->>>>>>> <mtk.manpages@gmail.com> wrote:
->>>>>>>
->>>>>>>> [Trimming some folk from CC, and adding various NFS people]
->>>>>>>>
->>>>>>>> On 04/27/2014 06:51 AM, NeilBrown wrote:
->>>>>>>>
->>>>>>>> [...]
->>>>>>>>
->>>>>>>>> Note to Michael: The text
->>>>>>>>>    flock() does not lock files over NFS.
->>>>>>>>> in flock(2) is no longer accurate.  The reality is ... complex.
->>>>>>>>> See nfs(5), and search for "local_lock".
->>>>>>>>
->>>>>>>> Ahhh -- I see:
->>>>>>>> http://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=5eebde23223aeb0ad2d9e3be6590ff8bbfab0fc2
->>>>>>>>
->>>>>>>> Thanks for the heads up.
->>>>>>>>
->>>>>>>> Just in general, it would be great if the flock(2) and fcntl(2) man pages
->>>>>>>> contained correct details for NFS, of course. So, for example, if there
->>>>>>>> are any current gotchas for NFS and fcntl() byte-range locking, I'd like
->>>>>>>> to add those to the fcntl(2) man page.
->>>>>>>
->>>>>>> The only peculiarities I can think of are:
->>>>>>>  - With NFS, locking or unlocking a region forces a flush of any cached data
->>>>>>>    for that file (or maybe for the region of the file).  I'm not sure if this
->>>>>>>    is worth mentioning.
->>>>>>
->>>>>> I agree that it's probably not necessary to mention.
->>>>>>
->>>>>>>  - With NFSv4 the client can lose a lock if it is out of contact with the
->>>>>>>    server for a period of time.  When this happens, any IO to the file by a
->>>>>>>    process which "thinks" it holds a lock will fail until that process closes
->>>>>>>    and re-opens the file.
->>>>>>>    This behaviour is since 3.12.  Prior to that the client might lose and
->>>>>>>    regain the lock without ever knowing thus potentially risking corruption
->>>>>>>    (but only if client and server lost contact for an extended period).
->>>>>>
->>>>>> Do you have a pointer for that commit to 3.12?
->>>>>>
->>>>>
->>>>> http://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=ef1820f9be27b6ad158f433ab38002ab8131db4d
->>>>>
->>>>> did most of the work while  the subsequent commit
->>>>>
->>>>> http://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=f6de7a39c181dfb8a2c534661a53c73afb3081cd
->>>>>
->>>>> changed some details, added some documentation, and inverted the default
->>>>> behaviour.
->>>>
->>>> Thanks for that detail. What do you think of the following text for the 
->>>> fcntl(2) man page:
->>>>
->>>>        Before  Linux 3.12, if an NFS client is out of contact with the
->>>>        server for a period of time, it might lose and  regain  a  lock
->>>>        without  ever  being  aware  of the fact.  This scenario poten‐
->>>>        tially risks  data  corruption,  since  another  process  might
->>>>        acquire  a lock in the intervening period and perform file I/O.
->>>>        Since Linux 3.12, if the client loses contact with the  server,
->>>>        any I/O to the file by a process which "thinks" it holds a lock
->>>>        will fail until that process closes and reopens  the  file.   A
->>>>        kernel  parameter,  nfs.recover_lost_locks,  can be set to 1 to
->>>>        obtain the pre-3.12 behavior, whereby the client  will  attempt
->>>>        to  recover  lost  locks when contact is reestablished with the
->>>>        server.  Because of the attendant risk of data corruption, this
->>>>        parameter defaults to 0 (disabled).
->>>>
->>>
->>> Mostly good.
->>>
->>> I'm just a little concerned about "if the client loses contact with the
->>> server" in the middle there.  It is no longer qualified and it isn't clear
->>> that the "for a period of time" qualification still applied.  And we should
->>> probably quantify the period of time - which defaults to 90 seconds.
->>> I don't remember just now the difference between
->>>    /proc/fs/nfsd/nfsv4{lease,grace}time
->>> but this 90 seconds is one of those.
->>>
->>> Also this is NFSv4 specific.  With NFSv3 the failure mode is the reverse.  If
->>> the server loses contact with a client then any lock stays in place
->>> indefinitely ("why can't I read my mail"... I remember it well).
->>>
->>>   Before Linux 3.12, if an NFSv4 client loses contact with the server
->>>   (defined as more than 90 seconds with no communication), it might lose
->>>   and regain ....
+On Thu, Apr 24, 2014 at 12:34 PM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> On Thu, Apr 24, 2014 at 11:31:16AM -0400, J. Bruce Fields wrote:
+>> On Thu, Apr 24, 2014 at 06:51:03AM -0400, Trond Myklebust wrote:
+>> > Hi Bruce,
+>> >
+>> > On Thu, Apr 24, 2014 at 2:25 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+>> > > Please pull the following bug fixes for 3.15 from:
+>> > >
+>> > >   git://linux-nfs.org/~bfields/linux.git for-3.15
+>> > >
+>> > > Three small nfsd bugfixes (including one locks.c fix for a bug triggered
+>> > > only from nfsd).
+>> > >
+>> > > Jeff's patches are for long-existing problems that became easier to
+>> > > trigger since the addition of vfs delegation support.
+>> > >
+>> > > --b.
+>> > >
+>> > > ----------------------------------------------------------------
+>> > > J. Bruce Fields (1):
+>> > >       Revert "nfsd4: fix nfs4err_resource in 4.1 case"
+>> > >
+>> >
+>> > Wait. Why?
 >>
->> Thanks, Neil. Changed as you suggest. I'd quite like to mention
->> which of /proc/fs/nfsd/nfsv4{lease,grace}time is relevant here. I had a 
->> quick scan, but could not determine it with complete confidence. My suspicion, 
->> looking at fs/lockd/svcproc.c and fs/lockd/grace.c::locks_in_grace()
->> is that it is /proc/fs/nfsd/nfsv4gracetime that is relevant here. Can anyone
->> confirm?
+>> Have you changed your mind since our previous discussion, or just
+>> forgotten it?  (Or did I screw up and revert the wrong commit?)  See
 >>
-> 
-> The difference here is subtle. The gracetime is how long after a reboot
-> should knfsd allow clients to reclaim state (and deny the creation of
-> new locks and opens). The leasetime is how long the NFSv4 lease period
-> is. There is a relationship between the two that's illustrated in the
-> comments above write_gracetime:
-> 
-> /**
->  * write_gracetime - Set or report current NFSv4 grace period time
->  *
->  * As above, but sets the time of the NFSv4 grace period.
->  *
->  * Note this should never be set to less than the *previous*
->  * lease-period time, but we don't try to enforce this.  (In the common
->  * case (a new boot), we don't know what the previous lease time was
->  * anyway.)
->  */
-> 
-> The value you're interested in here is the nfsv4leasetime. If the
-> client doesn't renew its lease within that period, then it's subject to
-> the server giving up on it and dropping any state that it holds on that
-> clients' behalf.
-> 
-> Note that this is not a firm timeout. The server runs a job
-> periodically to clean out expired stateful objects, and it's likely
-> that there is some time (maybe even up to another whole lease period)
-> between when the timeout expires and the job actually runs. If the
-> client gets a RENEW in there within that window, its lease will be
-> renewed and its state preserved.
-> 
-> Also note that all of the above just applies to the Linux knfsd. There
-> are many other servers in the field and they have different rules for
-> dropping state held by clients that have gone AWOL.
+>>       http://mid.gmane.org/<BAD6904F-A82A-4FBC-807F-16560B2A23E0@primarydata.com>
+>>
+>> > NFS4ERR_RESOURCE breaks the Linux client.
+>>
+>> This returns us to pre-3.15 behavior so shouldn't introduce any new
+>> breakage.
+>>
+>> Fundamentally the problem is that we're returning an error in cases that
+>> shouldn't succeed, and rather than replacing one incorrect error by
+>
+> s/shouldn't/should/, apologies!--b.
+>
+>> another it seemed better to wait for a proper fix.
+>>
+>> --b.
 
-Thanks for the detailed explanation, Jeff. I've updated the draft text to
-mention nfsv4gracetime. I won't add the subtleties you mention above
-(but they'll go into the commit message).
+I really shouldn't try to read my email before 8am (or at least not
+before my third espresso). I was confusing this with the
+NFS4ERR_STALE_STATEID problem that was merged as part of the same
+pull.
+Reverting the NFS4ERR_RESOURCE patch is fine.
 
-The text is now:
-
-   Record locking and NFS
-       Before  Linux  3.12,  if an NFSv4 client loses contact with the
-       server for a period of time (defined as more  than  90  seconds
-       with no communication), it might lose and regain a lock without
-       ever being aware of the fact.  (The period of time after  which
-       contact is assumed lost is defined by /proc/fs/nfsd/nfsv4lease‐
-       time, which expresses the period in seconds.  The default value
-       for  this  file  is  90.)  This scenario potentially risks data
-       corruption, since another process might acquire a lock  in  the
-       intervening period and perform file I/O.
-
-       Since  Linux  3.12,  if  an NFSv4 client loses contact with the
-       server, any I/O to the file by  a  process  which  "thinks"  it
-       holds  a  lock  will fail until that process closes and reopens
-       the file.  A kernel parameter, nfs.recover_lost_locks,  can  be
-       set  to  1  to obtain the pre-3.12 behavior, whereby the client
-       will attempt to recover lost locks  when  contact  is  reestab‐
-       lished  with the server.  Because of the attendant risk of data
-       corruption, this parameter defaults to 0 (disabled).
-
-Cheers,
-
-Michael
-
-
+Apologies,
+  Trond
 
 -- 
-Michael Kerrisk
-Linux man-pages maintainer; http://www.kernel.org/doc/man-pages/
-Linux/UNIX System Programming Training: http://man7.org/training/
+Trond Myklebust
+
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
