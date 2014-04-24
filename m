@@ -1,64 +1,101 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:63557 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1756179AbaDHStN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 Apr 2014 14:49:13 -0400
-Date: Tue, 8 Apr 2014 14:49:02 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Dr Fields James Bruce <bfields@fieldses.org>,
-        NFS <linux-nfs@vger.kernel.org>,
-        Adamson William Andros <androsadamson@gmail.com>,
-        Lever Charles Edward <chuck.lever@oracle.com>
-Subject: Re: v4.0 CB_COMPOUND authentication failures
-Message-ID: <20140408144902.71d68536@tlielax.poochiereds.net>
-In-Reply-To: <D5788D48-DFEB-4323-BBCB-B9D4C4273F11@primarydata.com>
-References: <20140408082140.340c1328@tlielax.poochiereds.net>
-	<20140408123501.GA3532@fieldses.org>
-	<20140408094903.33e42de2@tlielax.poochiereds.net>
-	<20140408140333.GD3882@fieldses.org>
-	<6CC79B2A-8AE2-4A36-BB57-380C2F9813C0@primarydata.com>
-	<20140408144652.GE3882@fieldses.org>
-	<ECD8245B-CDEE-442E-A41A-BECE08BEEDA1@primarydata.com>
-	<20140408164024.GH3882@fieldses.org>
-	<8F132114-F44C-449B-8EA8-331C67FCE813@primarydata.com>
-	<20140408135512.2397d97f@tlielax.poochiereds.net>
-	<61C732F7-A053-4293-AB54-07979E048F53@primarydata.com>
-	<20140408142421.2a26eeaa@tlielax.poochiereds.net>
-	<D5788D48-DFEB-4323-BBCB-B9D4C4273F11@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=windows-1252
+Received: from userp1040.oracle.com ([156.151.31.81]:37479 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756972AbaDXRon convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Apr 2014 13:44:43 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
+Subject: Re: [PATCH V1] NFS-RDMA: fix qp pointer validation checks
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <EE7902D3F51F404C82415C4803930ACD3FDF4F83@CMEXMB1.ad.emulex.com>
+Date: Thu, 24 Apr 2014 13:44:31 -0400
+Cc: Sagi Grimberg <sagig@dev.mellanox.co.il>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Message-Id: <9E45FE8E-33B6-4FCB-8CCF-885657B74ED0@oracle.com>
+References: <014738b6-698e-4ea1-82f9-287378bfec19@CMEXHTCAS2.ad.emulex.com> <D7AB2150-5F25-4BA2-80D9-94890AD11F8F@primarydata.com> <F1C70AD6-BDD4-4534-8DC4-61D2767581D9@oracle.com> <EE7902D3F51F404C82415C4803930ACD3FDEAA43@CMEXMB1.ad.emulex.com> <E66D006A-0D04-4602-8BF5-6834CACD2E24@oracle.com> <EE7902D3F51F404C82415C4803930ACD3FDEB3B4@CMEXMB1.ad.emulex.com> <BD7B05C0-4733-4DD1-83F3-B30B6B0EE48C@oracle.com> <EE7902D3F51F404C82415C4803930ACD3FDEB3DF@CMEXMB1.ad.emulex.com> <56C87770-7940-4006-948C-FEF3C0EC4ACC@oracle.com> <EE7902D3F51F404C82415C4803930ACD3FDEBD66@CMEXMB1.ad.emulex.com> <5710A71F-C4D5-408B-9B41-07F21B5853F0@oracle.com> <6837A427-B677-4CC7-A022-4FB9E52A3FC6@oracle.com> <EE7902D3F51F404C82415C4803930ACD3FDED915@CMEXMB1.ad.emulex.com> <C689AB91-46F6-4E96-A673-0DE76FE54CC4@oracle.com> <EE7902D3F51F404C82415C4803930ACD3FDEE11F@CMEXMB1.ad.emulex.com> <1bab6615-60c4-4865-a6a0-c53bb1c32341@CMEXHTCAS1.ad.emulex.com> <5358B975.4020207@dev.mellanox.co.il> <B39C0B38-357F-4!
+ BDA-BDA7-048BD38853F7@oracle.com> <EE7902D3F51F404C82415C4803930ACD3FDF4F83@CMEXMB1.ad.emulex.com>
+To: Devesh Sharma <Devesh.Sharma@Emulex.Com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 8 Apr 2014 14:45:03 -0400
-Trond Myklebust <trond.myklebust@primarydata.com> wrote:
 
-> 
-> On Apr 8, 2014, at 14:24, Jeff Layton <jlayton@redhat.com> wrote:
-> 
-> > On Tue, 8 Apr 2014 14:03:04 -0400
-> > Trond Myklebust <trond.myklebust@primarydata.com> wrote:
-> > 
-> >> 
-> >> On Apr 8, 2014, at 13:55, Jeff Layton <jlayton@redhat.com> wrote:
-> >> 
-> >> As far as I can tell, the downcall can be extended. Even the security context is an opaque, so its length is known. If we wanted to append a field after that, we could do so without affecting backward compatibility.
-> >> 
-> > 
-> > Yeah, I think you're right. It looks like gss_pipe_downcall will just
-> > ignore stuff that trails the security context. I'll have a look at
-> > see whether tacking a new field on is feasible.
-> > 
-> > So in nfs4_proc_setclientid after the call, we can add some code that
-> > copies the new acceptor field out of gss_cred->gss_cl_ctx, and attaches
-> > it to a new field in the nfs_client. Alternately, I wonder if we could
-> > get away with just replacing the clp->cl_hostname with that value?
-> 
-> I don’t think we want to replace clp->cl_hostname. If someone wants to play around with the ‘-p’ option in rpc.svcgssd, then we may end up with some rather strange hostnames on the client...
-> 
+On Apr 24, 2014, at 11:48 AM, Devesh Sharma <Devesh.Sharma@Emulex.Com> wrote:
 
-Ok, fair enough. A new field it is...
+> Thanks Chuck for summarizing.
+> One more issue is being added to the list below.
+> 
+>> -----Original Message-----
+>> From: linux-rdma-owner@vger.kernel.org [mailto:linux-rdma-
+>> owner@vger.kernel.org] On Behalf Of Chuck Lever
+>> Sent: Thursday, April 24, 2014 8:31 PM
+>> To: Sagi Grimberg
+>> Cc: Devesh Sharma; Linux NFS Mailing List; linux-rdma@vger.kernel.org;
+>> Trond Myklebust
+>> Subject: Re: [PATCH V1] NFS-RDMA: fix qp pointer validation checks
+>> 
+>> 
+>> On Apr 24, 2014, at 3:12 AM, Sagi Grimberg <sagig@dev.mellanox.co.il>
+>> wrote:
+>> 
+>>> On 4/24/2014 2:30 AM, Devesh Sharma wrote:
+>>>> Hi Chuck
+>>>> 
+>>>> Following is the complete call trace of a typical NFS-RDMA transaction
+>> while mounting a share.
+>>>> It is unavoidable to stop calling post-send in case it is not
+>>>> created. Therefore, applying checks to the connection state is a must
+>> While registering/deregistering frmrs on-the-fly. The unconnected state of
+>> QP implies don't call  post_send/post_recv from any context.
+>>>> 
+>>> 
+>>> Long thread... didn't follow it all.
+>> 
+>> I think you got the gist of it.
+>> 
+>>> If I understand correctly this race comes only for *cleanup* (LINV) of FRMR
+>> registration while teardown flow destroyed the QP.
+>>> I think this might be disappear if for each registration you post LINV+FRMR.
+>>> This is assuming that a situation where trying to post Fastreg on a
+>>> "bad" QP can never happen (usually since teardown flow typically suspends
+>> outgoing commands).
+>> 
+>> That's typically true for "hard" NFS mounts. But "soft" NFS mounts wake
+>> RPCs after a timeout while the transport is disconnected, in order to kill
+>> them.  At that point, deregistration still needs to succeed somehow.
+>> 
+>> IMO there are three related problems.
+>> 
+>> 1.  rpcrdma_ep_connect() is allowing RPC tasks to be awoken while
+>>    there is no QP at all (->qp is NULL). The woken RPC tasks are
+>>    trying to deregister buffers that may include page cache pages,
+>>    and it's oopsing because ->qp is NULL.
+>> 
+>>    That's a logic bug in rpcrdma_ep_connect(), and I have an idea
+>>    how to address it.
+>> 
+>> 2.  If a QP is present but disconnected, posting LOCAL_INV won't work.
+>>    That leaves buffers (and page cache pages, potentially) registered.
+>>    That could be addressed with LINV+FRMR. But...
+>> 
+>> 3.  The client should not leave page cache pages registered indefinitely.
+>>    Both LINV+FRMR and our current approach depends on having a working
+>>    QP _at_ _some_ _point_ ... but the client simply can't depend on that.
+>>    What happens if an NFS server is, say, destroyed by fire while there
+>>    are active client mount points? What if the HCA's firmware is
+>>    permanently not allowing QP creation?
+> Addition to the list
+> 4. If rdma traffic is in progress and  the network link goes down and comes back up after some time (t > 10 secs ), 
+>    The rpcrdma_ep_connect() does not destroys the existing QP because rpcrdma_create_id fails (rdma_resolve_addr fails).
+>    Now, once the connect worker thread Gets rescheduled again, every time CM fails with establishment error. Finally, after multiple tries
+>    CM fails with rdma_cm_event = 15 and entire recovery thread sits silently forever and kernel reports user app is blocked for more than 120 secs.
 
--- 
-Jeff Layton <jlayton@redhat.com>
+I think I see that now. I should be able to address it with the fixes for 1.
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
+
+
