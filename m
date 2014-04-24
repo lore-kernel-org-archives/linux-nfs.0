@@ -1,68 +1,61 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pb0-f44.google.com ([209.85.160.44]:37694 "EHLO
-	mail-pb0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752062AbaDZQh1 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 26 Apr 2014 12:37:27 -0400
-Received: by mail-pb0-f44.google.com with SMTP id jt11so2566387pbb.31
-        for <linux-nfs@vger.kernel.org>; Sat, 26 Apr 2014 09:37:27 -0700 (PDT)
+Received: from fieldses.org ([174.143.236.118]:46411 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754569AbaDXPbS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 24 Apr 2014 11:31:18 -0400
+Date: Thu, 24 Apr 2014 11:31:16 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Linus Torvalds <torvalds@linux-foundation.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Devel FS Linux <linux-fsdevel@vger.kernel.org>,
+        Linux Kernel mailing list <linux-kernel@vger.kernel.org>,
+        Layton Jeff <jlayton@redhat.com>
+Subject: Re: nfsd bug fixes for 3.15
+Message-ID: <20140424153116.GA15459@fieldses.org>
+References: <20140424062516.GA8891@fieldses.org>
+ <CAHQdGtRfybuqsxiS=Hd4Stkm1ex13f6SeEk5XbQcy35UZStHRA@mail.gmail.com>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
-Subject: Re: Resolving the fate of FATTR4_CHANGE_SEC_LABEL
-From: Thomas Haynes <thomas.haynes@primarydata.com>
-In-Reply-To: <B05F63D2-8DB8-4FD3-92F9-C3A5B0A99D99@primarydata.com>
-Date: Sat, 26 Apr 2014 09:37:25 -0700
-Cc: "dpquigl@davequigley.com Quigley" <dpquigl@davequigley.com>
-Message-Id: <0C8D4618-0DD5-428A-A68D-863F8A60500C@primarydata.com>
-References: <B05F63D2-8DB8-4FD3-92F9-C3A5B0A99D99@primarydata.com>
-To: "nfsv4 list (nfsv4@ietf.org)" <nfsv4@ietf.org>,
-        Mailing List Linux NFS <linux-nfs@vger.kernel.org>
+In-Reply-To: <CAHQdGtRfybuqsxiS=Hd4Stkm1ex13f6SeEk5XbQcy35UZStHRA@mail.gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-In my issues file, I have:
+On Thu, Apr 24, 2014 at 06:51:03AM -0400, Trond Myklebust wrote:
+> Hi Bruce,
+> 
+> On Thu, Apr 24, 2014 at 2:25 AM, J. Bruce Fields <bfields@fieldses.org> wrote:
+> > Please pull the following bug fixes for 3.15 from:
+> >
+> >   git://linux-nfs.org/~bfields/linux.git for-3.15
+> >
+> > Three small nfsd bugfixes (including one locks.c fix for a bug triggered
+> > only from nfsd).
+> >
+> > Jeff's patches are for long-existing problems that became easier to
+> > trigger since the addition of vfs delegation support.
+> >
+> > --b.
+> >
+> > ----------------------------------------------------------------
+> > J. Bruce Fields (1):
+> >       Revert "nfsd4: fix nfs4err_resource in 4.1 case"
+> >
+> 
+> Wait. Why?
 
-4) Labeled NFS - FATTR4_CHANGE_SEC_LABEL - how big does it need to
-   be?  Is seLinux going to support it?
+Have you changed your mind since our previous discussion, or just
+forgotten it?  (Or did I screw up and revert the wrong commit?)  See
 
-   The Labeled NFS prototype in use does not currently support
-   change_sec_label.
+	http://mid.gmane.org/<BAD6904F-A82A-4FBC-807F-16560B2A23E0@primarydata.com>
 
-   In the past, we argued about how big it needed to be - we need
-   to close down on this.
+> NFS4ERR_RESOURCE breaks the Linux client.
 
-If we look at the current text in the NFSv4.2 draft, we see:
+This returns us to pre-3.15 behavior so shouldn't introduce any new
+breakage.
 
-      The second change is to provide methods for the client to
-      determine if the security label has changed. A client which
-      needs to know if a label is going to change SHOULD request a
-      delegation on that file. In order to change the security
-      label, the server will have to recall all delegations. This
-      will inform the client of the change. If a client wants to
-      detect if the label has changed, it MAY use VERIFY and NVERIFY
-      on FATTR4_CHANGE_SEC_LABEL to detect that the FATTR4_SEC_LABEL
-      has been modified.
+Fundamentally the problem is that we're returning an error in cases that
+shouldn't succeed, and rather than replacing one incorrect error by
+another it seemed better to wait for a proper fix.
 
-So the first question is do we need two methods for detecting that the label
-has changed?
-
-Section 8.3 of http://www.ietf.org/id/draft-ietf-nfsv4-minorversion2-21.txt covers
-how the client could use delegations to detect a label change.
-
-To quote Trond out of context:
-
-> but that is the only option I can see for implementing a cache
-> consistency model for labels. Without it, the choices are:
->
->   1) always fetch the label as part of every COMPOUND.
->   2) assume the label never changes on the server.
->
-> The main use cases that have been presented for Labeled NFS on Linux
-> would tend to push me towards door number 2, Monty please...
-
-So a client could assume that the label never changes the majority
-of the time. Once it decides it does need to start checking for a change
-in the label, it can get a delegation.
-
-If we do need the attribute, what size does it need to be?
-
-There has been mention of it being a hash or a timestamp.
+--b.
