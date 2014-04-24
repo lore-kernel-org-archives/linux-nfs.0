@@ -1,108 +1,139 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ipmail04.adl6.internode.on.net ([150.101.137.141]:57021 "EHLO
-	ipmail04.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751515AbaD2AR2 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Apr 2014 20:17:28 -0400
-Date: Tue, 29 Apr 2014 10:17:23 +1000
-From: Dave Chinner <david@fromorbit.com>
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Cc: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
-        viro@zeniv.linux.org.uk, dhowells@redhat.com,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH -V1 08/22] vfs: Add permission flags for setting file
- attributes
-Message-ID: <20140429001723.GQ15995@dastard>
-References: <1398615293-22931-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
- <1398615293-22931-9-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1398615293-22931-9-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from mail-ie0-f177.google.com ([209.85.223.177]:54256 "EHLO
+	mail-ie0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754261AbaDXSPf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Apr 2014 14:15:35 -0400
+Received: by mail-ie0-f177.google.com with SMTP id rl12so2632604iec.8
+        for <linux-nfs@vger.kernel.org>; Thu, 24 Apr 2014 11:15:35 -0700 (PDT)
+From: Weston Andros Adamson <dros@primarydata.com>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
+Subject: [PATCH 00/18 v2] nfs: support multiple requests per page
+Date: Thu, 24 Apr 2014 14:15:10 -0400
+Message-Id: <1398363328-7100-1-git-send-email-dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Apr 27, 2014 at 09:44:39PM +0530, Aneesh Kumar K.V wrote:
-> From: Andreas Gruenbacher <agruen@kernel.org>
-> 
-> Some permission models can allow processes to take ownership of a file,
-> change the file permissions, and set the file timestamps.  Introduce new
-> permission mask flags and check for those permissions in
-> inode_change_ok().
-> 
-> Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
-> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
-> ---
->  fs/attr.c          | 68 ++++++++++++++++++++++++++++++++++++++++++++----------
->  fs/namei.c         |  2 +-
->  include/linux/fs.h |  4 ++++
->  3 files changed, 61 insertions(+), 13 deletions(-)
-> 
-> diff --git a/fs/attr.c b/fs/attr.c
-> index 1d158c972442..e468d4f2dca8 100644
-> --- a/fs/attr.c
-> +++ b/fs/attr.c
-> @@ -16,6 +16,54 @@
->  #include <linux/evm.h>
->  #include <linux/ima.h>
->  
-> +static int richacl_change_ok(struct inode *inode, int mask)
-> +{
+This patchset changes the read and write paths to be more flexible in dealing
+with requests that are not page aligned. Until now there was a 1:1 mapping
+of struct nfs_page (referred to as "nfs requests") to struct page, which
+limited the client to page aligned I/O in several pNFS scenarios.
 
-acl_change_ok()
+This patchset allows multiple requests per page, loosely following
+the approach taken with struct buffer_head (part of kernel bio interface).
 
-> +	if (!IS_RICHACL(inode))
-> +		return -EPERM;
-> +
-> +	if (inode->i_op->permission)
-> +		return inode->i_op->permission(inode, mask);
-> +
-> +	return check_acl(inode, mask);
-> +}
-> +
-> +static bool inode_uid_change_ok(struct inode *inode, kuid_t ia_uid)
-> +{
-> +	if (uid_eq(current_fsuid(), inode->i_uid) &&
-> +	    uid_eq(ia_uid, inode->i_uid))
-> +		return true;
-> +	if (uid_eq(current_fsuid(), ia_uid) &&
-> +	    richacl_change_ok(inode, MAY_TAKE_OWNERSHIP) == 0)
-> +		return true;
-> +	if (capable(CAP_CHOWN))
-> +		return true;
-> +	return false;
-> +}
-> +
-> +static bool inode_gid_change_ok(struct inode *inode, kgid_t ia_gid)
-> +{
-> +	int in_group = in_group_p(ia_gid);
-> +	if (uid_eq(current_fsuid(), inode->i_uid) &&
-> +	    (in_group || gid_eq(ia_gid, inode->i_gid)))
-> +		return true;
-> +	if (in_group && richacl_change_ok(inode, MAY_TAKE_OWNERSHIP) == 0)
-> +		return true;
-> +	if (capable(CAP_CHOWN))
-> +		return true;
-> +	return false;
-> +}
-> +
-> +static bool inode_owner_permitted_or_capable(struct inode *inode, int mask)
-> +{
-> +	if (uid_eq(current_fsuid(), inode->i_uid))
-> +		return true;
-> +	if (richacl_change_ok(inode, mask) == 0)
-> +		return true;
-> +	if (inode_capable(inode, CAP_FOWNER))
-> +		return true;
-> +	return false;
-> +}
+With this patchset the client now supports:
+ - non-page-aligned O_DIRECT I/O to DSes (instead of reverting to MDS)
+ - arbitrary pnfs layout segment boundaries
+ - arbitrary pnfs filelayout stripe sizes
 
-Some comments on when and why these need to be used instead of
-inode_owner_or_capable() would be useful. I can see people getting
-this wrong in future.
+This patchset also includes a lot of cleanup - notably we no longer need
+a separate code path to support rsize/wsize < PAGE_SIZE.
 
-Cheers,
+This new approach opens the door to many optimizations, such as not having to
+flush a page on a non-contiguous write, but for the time being we are focusing
+on correctness -- this patchset touches the read and write path for *all*
+versions of NFS!
 
-Dave.
+This has been tested against v2, v3, v4.0 and v4.1 (no pnfs) servers with
+different rsize/wsize settings, and against pynfs filelayout servers hacked to
+have non page aligned stripe sizes.
+
+I had some code review already (with changes applied) and we've been testing
+this pretty extensively for the last month+ - focusing mostly on v2, v3, v4.x
+(no pnfs).
+
+The patchset applies against Trond's testing branch, but should also include
+the fix I posted earlier today: "pnfs: fix race in filelayout commit path"
+as the race seems to be easier to hit with this patchset applied.
+
+I'm pretty sure I didn't break anything in the object and block layouts, but
+some extra attention there would be helpful.
+
+I plan on sharing some performance numbers once I'm able to run some nfsometer
+workloads. Expect them soon.
+
+Changes in V2:
+ - now includes "pnfs: fix race in filelayout commit path" which was posted
+   separately, but is needed for testing
+
+ - applied fixup to "nfs: add support for multiple nfs reqs per page"
+   to fix ref counting issues.
+
+ - fixed "pnfs: support multiple verfs per direct req" to set dreq->flag
+   to _RESCHED_WRITES, just as before
+
+ - applied comment from Boaz to "nfs: modify pg_test interface to return size_t"   and "nfs: chain calls to pg_test"
+
+ - I also rebased on top of trond's testing branch with recent pgio patches
+   from Christoph and Anna applied first. the patches are:
+
+    % git log --oneline HEAD~37..HEAD~18
+    c1dac13 NFS: Create a common nfs_pageio_ops struct
+    a9f5822 NFS: Create a common generic_pg_pgios()
+    aab1abe NFS: Create a common multiple_pgios() function
+    60695af NFS: Create a common initiate_pgio() function
+    3e2e4ad NFS: Create a generic_pgio function
+    741d1af NFS: Create a common pgio_error function
+    087f8d8 NFS: Create a common rpcsetup function for reads and writes
+    fce97cb NFS: Create a common rpc_call_ops struct
+    c4c63d7 NFS: Create a common nfs_pgio_result_common function
+    fcc4ad0 NFS: Create a common pgio_rpc_prepare function
+    06a5f36 NFS: Create a common rw_header_alloc and rw_header_free function
+    d4aca41 NFS: Create a common pgio_alloc and pgio_release function
+    80afdb2 NFS: Move the write verifier into the nfs_pgio_header
+    4f1abf9 NFS: Create a common read and write header struct
+    fc7a26b NFS: Create a common read and write data struct
+    81ae1c0 NFS: Create a common results structure for reads and writes
+    f824d97 NFS: Create a common argument structure for reads and writes
+    0d08e1b nfs: remove ->read_pageio_init from rpc ops
+    9c4bc08 nfs: remove ->write_pageio_init from rpc ops
+
+    This can be found on my (new) public repo at:
+
+    git://git.linux-nfs.org/projects/dros/linux-nfs
+
+    on the branch "pgio".
+
+ -dros
+
+
+
+Weston Andros Adamson (18):
+  pnfs: fix race in filelayout commit path
+  nfs: clean up PG_* flags
+  nfs: remove unused arg from nfs_create_request
+  nfs: modify pg_test interface to return size_t
+  nfs: call nfs_can_coalesce_requests for every req
+  nfs: add support for multiple nfs reqs per page
+  nfs: page group syncing in read path
+  nfs: page group syncing in write path
+  nfs: page group support in nfs_mark_uptodate
+  pnfs: clean up filelayout_alloc_commit_info
+  nfs: allow coalescing of subpage requests
+  nfs: chain calls to pg_test
+  nfs: use > 1 request to handle bsize < PAGE_SIZE
+  nfs: remove list of [rw]data from pgio header
+  pnfs: support multiple verfs per direct req
+  pnfs: allow non page aligned pnfs layout segments
+  pnfs: filelayout: support non page aligned layouts
+  nfs: support page groups in nfs_read_completion
+
+ fs/nfs/blocklayout/blocklayout.c |  16 ++-
+ fs/nfs/direct.c                  | 107 +++++++++++++--
+ fs/nfs/nfs4filelayout.c          | 142 ++++++++++---------
+ fs/nfs/objlayout/objio_osd.c     |  18 ++-
+ fs/nfs/pageio.c                  |  91 +-----------
+ fs/nfs/pagelist.c                | 290 +++++++++++++++++++++++++++++++++------
+ fs/nfs/pnfs.c                    |  77 +++++------
+ fs/nfs/pnfs.h                    |   3 +-
+ fs/nfs/read.c                    |  51 +++++--
+ fs/nfs/write.c                   | 119 +++++++++++++---
+ include/linux/nfs.h              |   5 +-
+ include/linux/nfs_page.h         |  33 +++--
+ include/linux/nfs_xdr.h          |   6 +-
+ 13 files changed, 659 insertions(+), 299 deletions(-)
+
 -- 
-Dave Chinner
-david@fromorbit.com
+1.8.5.2 (Apple Git-48)
+
