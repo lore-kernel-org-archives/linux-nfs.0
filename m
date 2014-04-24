@@ -1,18 +1,18 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f178.google.com ([209.85.213.178]:54882 "EHLO
-	mail-ig0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757973AbaDVV3Y (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 22 Apr 2014 17:29:24 -0400
-Received: by mail-ig0-f178.google.com with SMTP id hn18so217399igb.11
-        for <linux-nfs@vger.kernel.org>; Tue, 22 Apr 2014 14:29:23 -0700 (PDT)
+Received: from mail-ig0-f169.google.com ([209.85.213.169]:35065 "EHLO
+	mail-ig0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932385AbaDXSQF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Apr 2014 14:16:05 -0400
+Received: by mail-ig0-f169.google.com with SMTP id h18so1355361igc.4
+        for <linux-nfs@vger.kernel.org>; Thu, 24 Apr 2014 11:16:05 -0700 (PDT)
 From: Weston Andros Adamson <dros@primarydata.com>
 To: trond.myklebust@primarydata.com
 Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
-Subject: [PATCH 17/17] nfs: support page groups in nfs_read_completion
-Date: Tue, 22 Apr 2014 17:29:25 -0400
-Message-Id: <1398202165-78897-18-git-send-email-dros@primarydata.com>
-In-Reply-To: <1398202165-78897-1-git-send-email-dros@primarydata.com>
-References: <1398202165-78897-1-git-send-email-dros@primarydata.com>
+Subject: [PATCH 18/18 v2] nfs: support page groups in nfs_read_completion
+Date: Thu, 24 Apr 2014 14:15:28 -0400
+Message-Id: <1398363328-7100-19-git-send-email-dros@primarydata.com>
+In-Reply-To: <1398363328-7100-1-git-send-email-dros@primarydata.com>
+References: <1398363328-7100-1-git-send-email-dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
@@ -27,10 +27,10 @@ Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
  1 file changed, 17 insertions(+), 7 deletions(-)
 
 diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index c6b7dd0..e3613e2 100644
+index a889319..3ea06f0 100644
 --- a/fs/nfs/read.c
 +++ b/fs/nfs/read.c
-@@ -182,7 +182,6 @@ static void nfs_page_group_set_uptodate(struct nfs_page *req)
+@@ -130,7 +130,6 @@ static void nfs_page_group_set_uptodate(struct nfs_page *req)
  		SetPageUptodate(req->wb_page);
  }
  
@@ -38,7 +38,7 @@ index c6b7dd0..e3613e2 100644
  static void nfs_read_completion(struct nfs_pgio_header *hdr)
  {
  	unsigned long bytes = 0;
-@@ -192,14 +191,25 @@ static void nfs_read_completion(struct nfs_pgio_header *hdr)
+@@ -140,14 +139,25 @@ static void nfs_read_completion(struct nfs_pgio_header *hdr)
  	while (!list_empty(&hdr->pages)) {
  		struct nfs_page *req = nfs_list_entry(hdr->pages.next);
  		struct page *page = req->wb_page;
