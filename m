@@ -1,21 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.opengridcomputing.com ([72.48.136.20]:56146 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1753121AbaDOUPo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 15 Apr 2014 16:15:44 -0400
-Message-ID: <534D9373.3050406@opengridcomputing.com>
-Date: Tue, 15 Apr 2014 15:15:47 -0500
-From: Steve Wise <swise@opengridcomputing.com>
+Received: from fieldses.org ([174.143.236.118]:51580 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751474AbaDXGZR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 24 Apr 2014 02:25:17 -0400
+Date: Thu, 24 Apr 2014 02:25:16 -0400
+To: Linus Torvalds <torvalds@linux-foundation.org>
+Cc: linux-nfs@vger.kernel.org, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org, jlayton@redhat.com
+Subject: nfsd bug fixes for 3.15
+Message-ID: <20140424062516.GA8891@fieldses.org>
 MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>, linux-nfs@vger.kernel.org,
-        linux-rdma@vger.kernel.org
-Subject: Re: [PATCH 0/8] NFS/RDMA patches for review
-References: <20140414220041.20646.63991.stgit@manet.1015granger.net>
-In-Reply-To: <20140414220041.20646.63991.stgit@manet.1015granger.net>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Type: text/plain; charset=us-ascii
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+Please pull the following bug fixes for 3.15 from:
 
-Tested-by: Steve Wise <swise@opengridcomputing.com>
+  git://linux-nfs.org/~bfields/linux.git for-3.15
 
+Three small nfsd bugfixes (including one locks.c fix for a bug triggered
+only from nfsd).
+
+Jeff's patches are for long-existing problems that became easier to
+trigger since the addition of vfs delegation support.
+
+--b.
+
+----------------------------------------------------------------
+J. Bruce Fields (1):
+      Revert "nfsd4: fix nfs4err_resource in 4.1 case"
+
+Jeff Layton (2):
+      locks: allow __break_lease to sleep even when break_time is 0
+      nfsd: set timeparms.to_maxval in setup_callback_client
+
+ fs/locks.c             | 7 +++----
+ fs/nfsd/nfs4callback.c | 4 +++-
+ fs/nfsd/nfs4xdr.c      | 8 --------
+ 3 files changed, 6 insertions(+), 13 deletions(-)
