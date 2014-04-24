@@ -1,97 +1,239 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:38819 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751554AbaDPESy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Apr 2014 00:18:54 -0400
-From: NeilBrown <neilb@suse.de>
-To: linux-mm@kvack.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Date: Wed, 16 Apr 2014 14:03:36 +1000
-Subject: [PATCH 09/19] XFS: ensure xfs_file_*_read cannot deadlock in memory
- allocation.
-Cc: xfs@oss.sgi.com
-Message-ID: <20140416040336.10604.90380.stgit@notabene.brown>
-In-Reply-To: <20140416033623.10604.69237.stgit@notabene.brown>
-References: <20140416033623.10604.69237.stgit@notabene.brown>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-ig0-f170.google.com ([209.85.213.170]:60649 "EHLO
+	mail-ig0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932329AbaDXSQA (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 24 Apr 2014 14:16:00 -0400
+Received: by mail-ig0-f170.google.com with SMTP id uq10so1350966igb.5
+        for <linux-nfs@vger.kernel.org>; Thu, 24 Apr 2014 11:16:00 -0700 (PDT)
+From: Weston Andros Adamson <dros@primarydata.com>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
+Subject: [PATCH 15/18 v2] pnfs: support multiple verfs per direct req
+Date: Thu, 24 Apr 2014 14:15:25 -0400
+Message-Id: <1398363328-7100-16-git-send-email-dros@primarydata.com>
+In-Reply-To: <1398363328-7100-1-git-send-email-dros@primarydata.com>
+References: <1398363328-7100-1-git-send-email-dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-xfs_file_*_read holds an inode lock while calling a generic 'read'
-function.  These functions perform read-ahead and are quite likely to
-allocate memory.
-So set PF_FSTRANS to ensure they avoid __GFP_FS and so don't recurse
-into a filesystem to free memory.
+Support direct requests that span multiple pnfs data servers by
+comparing nfs_pgio_header->verf to a cached verf in pnfs_commit_bucket.
+Continue to use dreq->verf if the MDS is used / non-pNFS.
 
-This can be a problem with loop-back NFS mounts, if free_pages ends up
-wating in nfs_release_page(), and nfsd is blocked waiting for the lock
-that this code holds.
-
-This was found both by lockdep and as a real deadlock during testing.
-
-Signed-off-by: NeilBrown <neilb@suse.de>
+Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
 ---
- fs/xfs/xfs_file.c |   12 ++++++++++++
- 1 file changed, 12 insertions(+)
+ fs/nfs/direct.c         | 98 ++++++++++++++++++++++++++++++++++++++++++++++---
+ fs/nfs/nfs4filelayout.c |  6 +++
+ include/linux/nfs.h     |  5 ++-
+ include/linux/nfs_xdr.h |  2 +
+ 4 files changed, 105 insertions(+), 6 deletions(-)
 
-diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
-index 64b48eade91d..88b33ef64668 100644
---- a/fs/xfs/xfs_file.c
-+++ b/fs/xfs/xfs_file.c
-@@ -243,6 +243,7 @@ xfs_file_aio_read(
- 	ssize_t			ret = 0;
- 	int			ioflags = 0;
- 	xfs_fsize_t		n;
-+	unsigned int		pflags;
- 
- 	XFS_STATS_INC(xs_read_calls);
- 
-@@ -290,6 +291,10 @@ xfs_file_aio_read(
- 	 * proceeed concurrently without serialisation.
- 	 */
- 	xfs_rw_ilock(ip, XFS_IOLOCK_SHARED);
-+	/* As we hold a lock, we must ensure that any allocation
-+	 * in generic_file_aio_read avoid __GFP_FS
-+	 */
-+	current_set_flags_nested(&pflags, PF_FSTRANS);
- 	if ((ioflags & IO_ISDIRECT) && inode->i_mapping->nrpages) {
- 		xfs_rw_iunlock(ip, XFS_IOLOCK_SHARED);
- 		xfs_rw_ilock(ip, XFS_IOLOCK_EXCL);
-@@ -313,6 +318,7 @@ xfs_file_aio_read(
- 	if (ret > 0)
- 		XFS_STATS_ADD(xs_read_bytes, ret);
- 
-+	current_restore_flags_nested(&pflags, PF_FSTRANS);
- 	xfs_rw_iunlock(ip, XFS_IOLOCK_SHARED);
- 	return ret;
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index 2c0e08f..9349933 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -108,6 +108,93 @@ static inline int put_dreq(struct nfs_direct_req *dreq)
+ 	return atomic_dec_and_test(&dreq->io_count);
  }
-@@ -328,6 +334,7 @@ xfs_file_splice_read(
- 	struct xfs_inode	*ip = XFS_I(infilp->f_mapping->host);
- 	int			ioflags = 0;
- 	ssize_t			ret;
-+	unsigned int		pflags;
  
- 	XFS_STATS_INC(xs_read_calls);
++/*
++ * nfs_direct_select_verf - select the right verifier
++ * @dreq - direct request possibly spanning multiple servers
++ * @ds_clp - nfs_client of data server or NULL if MDS / non-pnfs
++ * @ds_idx - index of data server in data server list, only valid if ds_clp set
++ *
++ * returns the correct verifier to use given the role of the server
++ */
++static struct nfs_writeverf *
++nfs_direct_select_verf(struct nfs_direct_req *dreq,
++		       struct nfs_client *ds_clp,
++		       int ds_idx)
++{
++	struct nfs_writeverf *verfp = &dreq->verf;
++
++	if (ds_clp) {
++		/* pNFS is in use, use the DS verf */
++		if (ds_idx >= 0 && ds_idx < dreq->ds_cinfo.nbuckets)
++			verfp = &dreq->ds_cinfo.buckets[ds_idx].direct_verf;
++		else
++			WARN_ON_ONCE(1);
++	}
++	return verfp;
++}
++
++
++/*
++ * nfs_direct_set_hdr_verf - set the write/commit verifier
++ * @dreq - direct request possibly spanning multiple servers
++ * @hdr - pageio header to validate against previously seen verfs
++ *
++ * Set the server's (MDS or DS) "seen" verifier
++ */
++static void nfs_direct_set_hdr_verf(struct nfs_direct_req *dreq,
++				    struct nfs_pgio_header *hdr)
++{
++	struct nfs_writeverf *verfp;
++
++	verfp = nfs_direct_select_verf(dreq, hdr->data->ds_clp,
++				      hdr->data->ds_idx);
++	WARN_ON_ONCE(verfp->committed >= 0);
++	memcpy(verfp, &hdr->verf, sizeof(struct nfs_writeverf));
++	WARN_ON_ONCE(verfp->committed < 0);
++}
++
++/*
++ * nfs_direct_cmp_hdr_verf - compare verifier for pgio header
++ * @dreq - direct request possibly spanning multiple servers
++ * @hdr - pageio header to validate against previously seen verf
++ *
++ * set the server's "seen" verf if not initialized.
++ * returns result of comparison between @hdr->verf and the "seen"
++ * verf of the server used by @hdr (DS or MDS)
++ */
++static int nfs_direct_set_or_cmp_hdr_verf(struct nfs_direct_req *dreq,
++					  struct nfs_pgio_header *hdr)
++{
++	struct nfs_writeverf *verfp;
++
++	verfp = nfs_direct_select_verf(dreq, hdr->data->ds_clp,
++					 hdr->data->ds_idx);
++	if (verfp->committed < 0) {
++		nfs_direct_set_hdr_verf(dreq, hdr);
++		return 0;
++	}
++	return memcmp(verfp, &hdr->verf, sizeof(struct nfs_writeverf));
++}
++
++/*
++ * nfs_direct_cmp_commit_data_verf - compare verifier for commit data
++ * @dreq - direct request possibly spanning multiple servers
++ * @data - commit data to validate against previously seen verf
++ *
++ * returns result of comparison between @data->verf and the verf of
++ * the server used by @data (DS or MDS)
++ */
++static int nfs_direct_cmp_commit_data_verf(struct nfs_direct_req *dreq,
++					   struct nfs_commit_data *data)
++{
++	struct nfs_writeverf *verfp;
++
++	verfp = nfs_direct_select_verf(dreq, data->ds_clp,
++					 data->ds_commit_index);
++	WARN_ON_ONCE(verfp->committed < 0);
++	return memcmp(verfp, &data->verf, sizeof(struct nfs_writeverf));
++}
++
+ /**
+  * nfs_direct_IO - NFS address space operation for direct I/O
+  * @rw: direction (read or write)
+@@ -168,6 +255,7 @@ static inline struct nfs_direct_req *nfs_direct_req_alloc(void)
+ 	kref_get(&dreq->kref);
+ 	init_completion(&dreq->completion);
+ 	INIT_LIST_HEAD(&dreq->mds_cinfo.list);
++	dreq->verf.committed = NFS_INVALID_STABLE_HOW;	/* not set yet */
+ 	INIT_WORK(&dreq->work, nfs_direct_write_schedule_work);
+ 	spin_lock_init(&dreq->lock);
  
-@@ -338,6 +345,10 @@ xfs_file_splice_read(
- 		return -EIO;
+@@ -602,7 +690,7 @@ static void nfs_direct_commit_complete(struct nfs_commit_data *data)
+ 		dprintk("NFS: %5u commit failed with error %d.\n",
+ 			data->task.tk_pid, status);
+ 		dreq->flags = NFS_ODIRECT_RESCHED_WRITES;
+-	} else if (memcmp(&dreq->verf, &data->verf, sizeof(data->verf))) {
++	} else if (nfs_direct_cmp_commit_data_verf(dreq, data)) {
+ 		dprintk("NFS: %5u commit verify failed\n", data->task.tk_pid);
+ 		dreq->flags = NFS_ODIRECT_RESCHED_WRITES;
+ 	}
+@@ -811,13 +899,13 @@ static void nfs_direct_write_completion(struct nfs_pgio_header *hdr)
+ 			if (dreq->flags == NFS_ODIRECT_RESCHED_WRITES)
+ 				bit = NFS_IOHDR_NEED_RESCHED;
+ 			else if (dreq->flags == 0) {
+-				memcpy(&dreq->verf, &hdr->verf,
+-				       sizeof(dreq->verf));
++				nfs_direct_set_hdr_verf(dreq, hdr);
+ 				bit = NFS_IOHDR_NEED_COMMIT;
+ 				dreq->flags = NFS_ODIRECT_DO_COMMIT;
+ 			} else if (dreq->flags == NFS_ODIRECT_DO_COMMIT) {
+-				if (memcmp(&dreq->verf, &hdr->verf, sizeof(dreq->verf))) {
+-					dreq->flags = NFS_ODIRECT_RESCHED_WRITES;
++				if (nfs_direct_set_or_cmp_hdr_verf(dreq, hdr)) {
++					dreq->flags =
++						NFS_ODIRECT_RESCHED_WRITES;
+ 					bit = NFS_IOHDR_NEED_RESCHED;
+ 				} else
+ 					bit = NFS_IOHDR_NEED_COMMIT;
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 7a665e0..0ebc521 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -560,6 +560,7 @@ filelayout_read_pagelist(struct nfs_pgio_data *data)
+ 	/* No multipath support. Use first DS */
+ 	atomic_inc(&ds->ds_clp->cl_count);
+ 	data->ds_clp = ds->ds_clp;
++	data->ds_idx = idx;
+ 	fh = nfs4_fl_select_ds_fh(lseg, j);
+ 	if (fh)
+ 		data->args.fh = fh;
+@@ -603,6 +604,7 @@ filelayout_write_pagelist(struct nfs_pgio_data *data, int sync)
+ 	data->pgio_done_cb = filelayout_write_done_cb;
+ 	atomic_inc(&ds->ds_clp->cl_count);
+ 	data->ds_clp = ds->ds_clp;
++	data->ds_idx = idx;
+ 	fh = nfs4_fl_select_ds_fh(lseg, j);
+ 	if (fh)
+ 		data->args.fh = fh;
+@@ -875,6 +877,8 @@ filelayout_alloc_commit_info(struct pnfs_layout_segment *lseg,
+ 	for (i = 0; i < size; i++) {
+ 		INIT_LIST_HEAD(&buckets[i].written);
+ 		INIT_LIST_HEAD(&buckets[i].committing);
++		/* mark direct verifier as unset */
++		buckets[i].direct_verf.committed = NFS_INVALID_STABLE_HOW;
+ 	}
  
- 	xfs_rw_ilock(ip, XFS_IOLOCK_SHARED);
-+	/* As we hold a lock, we must ensure that any allocation
-+	 * in generic_file_splice_read avoid __GFP_FS
-+	 */
-+	current_set_flags_nested(&pflags, PF_FSTRANS);
+ 	spin_lock(cinfo->lock);
+@@ -885,6 +889,8 @@ filelayout_alloc_commit_info(struct pnfs_layout_segment *lseg,
+ 			    &buckets[i].written);
+ 		list_splice(&cinfo->ds->buckets[i].committing,
+ 			    &buckets[i].committing);
++		buckets[i].direct_verf.committed =
++			cinfo->ds->buckets[i].direct_verf.committed;
+ 		buckets[i].wlseg = cinfo->ds->buckets[i].wlseg;
+ 		buckets[i].clseg = cinfo->ds->buckets[i].clseg;
+ 	}
+diff --git a/include/linux/nfs.h b/include/linux/nfs.h
+index 3e794c1..610af51 100644
+--- a/include/linux/nfs.h
++++ b/include/linux/nfs.h
+@@ -46,6 +46,9 @@ static inline void nfs_copy_fh(struct nfs_fh *target, const struct nfs_fh *sourc
+ enum nfs3_stable_how {
+ 	NFS_UNSTABLE = 0,
+ 	NFS_DATA_SYNC = 1,
+-	NFS_FILE_SYNC = 2
++	NFS_FILE_SYNC = 2,
++
++	/* used by direct.c to mark verf as invalid */
++	NFS_INVALID_STABLE_HOW = -1
+ };
+ #endif /* _LINUX_NFS_H */
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 29828c7..bb9fb88 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1111,6 +1111,7 @@ struct pnfs_commit_bucket {
+ 	struct list_head committing;
+ 	struct pnfs_layout_segment *wlseg;
+ 	struct pnfs_layout_segment *clseg;
++	struct nfs_writeverf direct_verf;
+ };
  
- 	trace_xfs_file_splice_read(ip, count, *ppos, ioflags);
+ struct pnfs_ds_commit_info {
+@@ -1294,6 +1295,7 @@ struct nfs_pgio_data {
+ 	__u64			mds_offset;	/* Filelayout dense stripe */
+ 	struct nfs_page_array	pages;
+ 	struct nfs_client	*ds_clp;	/* pNFS data server */
++	int			ds_idx;		/* ds index if ds_clp is set */
+ };
  
-@@ -345,6 +356,7 @@ xfs_file_splice_read(
- 	if (ret > 0)
- 		XFS_STATS_ADD(xs_read_bytes, ret);
- 
-+	current_restore_flags_nested(&pflags, PF_FSTRANS);
- 	xfs_rw_iunlock(ip, XFS_IOLOCK_SHARED);
- 	return ret;
- }
-
+ struct nfs_rw_header {
+-- 
+1.8.5.2 (Apple Git-48)
 
