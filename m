@@ -1,71 +1,246 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e23smtp02.au.ibm.com ([202.81.31.144]:55824 "EHLO
-	e23smtp02.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753288AbaD0QPU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Apr 2014 12:15:20 -0400
-Received: from /spool/local
-	by e23smtp02.au.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <aneesh.kumar@linux.vnet.ibm.com>;
-	Mon, 28 Apr 2014 02:15:17 +1000
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
-        viro@zeniv.linux.org.uk, dhowells@redhat.com
-Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH -V1 02/22] vfs: Add IS_RICHACL() test for richacl support
-Date: Sun, 27 Apr 2014 21:44:33 +0530
-Message-Id: <1398615293-22931-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-In-Reply-To: <1398615293-22931-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1398615293-22931-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from mail-qc0-f170.google.com ([209.85.216.170]:48949 "EHLO
+	mail-qc0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932078AbaDYOPJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Apr 2014 10:15:09 -0400
+Received: by mail-qc0-f170.google.com with SMTP id x13so4116633qcv.15
+        for <linux-nfs@vger.kernel.org>; Fri, 25 Apr 2014 07:15:08 -0700 (PDT)
+Message-ID: <535A6DE9.1040109@gmail.com>
+Date: Fri, 25 Apr 2014 10:15:05 -0400
+From: Anna Schumaker <schumaker.anna@gmail.com>
+MIME-Version: 1.0
+To: Weston Andros Adamson <dros@primarydata.com>,
+        trond.myklebust@primarydata.com
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 15/18 v2] pnfs: support multiple verfs per direct req
+References: <1398363328-7100-1-git-send-email-dros@primarydata.com> <1398363328-7100-16-git-send-email-dros@primarydata.com>
+In-Reply-To: <1398363328-7100-16-git-send-email-dros@primarydata.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andreas Gruenbacher <agruen@kernel.org>
+On 04/24/2014 02:15 PM, Weston Andros Adamson wrote:
+> Support direct requests that span multiple pnfs data servers by
+> comparing nfs_pgio_header->verf to a cached verf in pnfs_commit_bucket.
+> Continue to use dreq->verf if the MDS is used / non-pNFS.
+>
+> Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+> ---
+>  fs/nfs/direct.c         | 98 ++++++++++++++++++++++++++++++++++++++++++++++---
+>  fs/nfs/nfs4filelayout.c |  6 +++
+>  include/linux/nfs.h     |  5 ++-
+>  include/linux/nfs_xdr.h |  2 +
+>  4 files changed, 105 insertions(+), 6 deletions(-)
+>
+> diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+> index 2c0e08f..9349933 100644
+> --- a/fs/nfs/direct.c
+> +++ b/fs/nfs/direct.c
+> @@ -108,6 +108,93 @@ static inline int put_dreq(struct nfs_direct_req *dreq)
+>  	return atomic_dec_and_test(&dreq->io_count);
+>  }
+>  
+> +/*
+> + * nfs_direct_select_verf - select the right verifier
+> + * @dreq - direct request possibly spanning multiple servers
+> + * @ds_clp - nfs_client of data server or NULL if MDS / non-pnfs
+> + * @ds_idx - index of data server in data server list, only valid if ds_clp set
+> + *
+> + * returns the correct verifier to use given the role of the server
+> + */
+> +static struct nfs_writeverf *
+> +nfs_direct_select_verf(struct nfs_direct_req *dreq,
+> +		       struct nfs_client *ds_clp,
+> +		       int ds_idx)
+> +{
+> +	struct nfs_writeverf *verfp = &dreq->verf;
+> +
+> +	if (ds_clp) {
+> +		/* pNFS is in use, use the DS verf */
+> +		if (ds_idx >= 0 && ds_idx < dreq->ds_cinfo.nbuckets)
 
-Introduce a new MS_RICHACL super-block flag and a new IS_RICHACL() test
-which file systems like nfs can use.  IS_ACL() is true if IS_POSIXACL()
-or IS_RICHACL() is true.
+The struct pnfs_ds_commit_info is empty if CONFIG_NFS_V4_1=n, so this won't compile.
 
-Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
----
- include/linux/fs.h      | 3 ++-
- include/uapi/linux/fs.h | 1 +
- 2 files changed, 3 insertions(+), 1 deletion(-)
+Anna
 
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 9fb63b71a014..1a7fe920f956 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1601,6 +1601,7 @@ struct super_operations {
- #define IS_APPEND(inode)	((inode)->i_flags & S_APPEND)
- #define IS_IMMUTABLE(inode)	((inode)->i_flags & S_IMMUTABLE)
- #define IS_POSIXACL(inode)	__IS_FLG(inode, MS_POSIXACL)
-+#define IS_RICHACL(inode)	__IS_FLG(inode, MS_RICHACL)
- 
- #define IS_DEADDIR(inode)	((inode)->i_flags & S_DEAD)
- #define IS_NOCMTIME(inode)	((inode)->i_flags & S_NOCMTIME)
-@@ -1614,7 +1615,7 @@ struct super_operations {
-  * IS_ACL() tells the VFS to not apply the umask
-  * and use check_acl for acl permission checks when defined.
-  */
--#define IS_ACL(inode)		__IS_FLG(inode, MS_POSIXACL)
-+#define IS_ACL(inode)		__IS_FLG(inode, MS_POSIXACL | MS_RICHACL)
- 
- /*
-  * Inode state bits.  Protected by inode->i_lock
-diff --git a/include/uapi/linux/fs.h b/include/uapi/linux/fs.h
-index 1e14b9c82703..894fbc2bebb3 100644
---- a/include/uapi/linux/fs.h
-+++ b/include/uapi/linux/fs.h
-@@ -89,6 +89,7 @@ struct inodes_stat_t {
- #define MS_KERNMOUNT	(1<<22) /* this is a kern_mount call */
- #define MS_I_VERSION	(1<<23) /* Update inode I_version field */
- #define MS_STRICTATIME	(1<<24) /* Always perform atime updates */
-+#define MS_RICHACL	(1<<25) /* Supports richacls */
- 
- /* These sb flags are internal to the kernel */
- #define MS_NOSEC	(1<<28)
--- 
-1.9.1
+> +			verfp = &dreq->ds_cinfo.buckets[ds_idx].direct_verf;
+> +		else
+> +			WARN_ON_ONCE(1);
+> +	}
+> +	return verfp;
+> +}
+> +
+> +
+> +/*
+> + * nfs_direct_set_hdr_verf - set the write/commit verifier
+> + * @dreq - direct request possibly spanning multiple servers
+> + * @hdr - pageio header to validate against previously seen verfs
+> + *
+> + * Set the server's (MDS or DS) "seen" verifier
+> + */
+> +static void nfs_direct_set_hdr_verf(struct nfs_direct_req *dreq,
+> +				    struct nfs_pgio_header *hdr)
+> +{
+> +	struct nfs_writeverf *verfp;
+> +
+> +	verfp = nfs_direct_select_verf(dreq, hdr->data->ds_clp,
+> +				      hdr->data->ds_idx);
+> +	WARN_ON_ONCE(verfp->committed >= 0);
+> +	memcpy(verfp, &hdr->verf, sizeof(struct nfs_writeverf));
+> +	WARN_ON_ONCE(verfp->committed < 0);
+> +}
+> +
+> +/*
+> + * nfs_direct_cmp_hdr_verf - compare verifier for pgio header
+> + * @dreq - direct request possibly spanning multiple servers
+> + * @hdr - pageio header to validate against previously seen verf
+> + *
+> + * set the server's "seen" verf if not initialized.
+> + * returns result of comparison between @hdr->verf and the "seen"
+> + * verf of the server used by @hdr (DS or MDS)
+> + */
+> +static int nfs_direct_set_or_cmp_hdr_verf(struct nfs_direct_req *dreq,
+> +					  struct nfs_pgio_header *hdr)
+> +{
+> +	struct nfs_writeverf *verfp;
+> +
+> +	verfp = nfs_direct_select_verf(dreq, hdr->data->ds_clp,
+> +					 hdr->data->ds_idx);
+> +	if (verfp->committed < 0) {
+> +		nfs_direct_set_hdr_verf(dreq, hdr);
+> +		return 0;
+> +	}
+> +	return memcmp(verfp, &hdr->verf, sizeof(struct nfs_writeverf));
+> +}
+> +
+> +/*
+> + * nfs_direct_cmp_commit_data_verf - compare verifier for commit data
+> + * @dreq - direct request possibly spanning multiple servers
+> + * @data - commit data to validate against previously seen verf
+> + *
+> + * returns result of comparison between @data->verf and the verf of
+> + * the server used by @data (DS or MDS)
+> + */
+> +static int nfs_direct_cmp_commit_data_verf(struct nfs_direct_req *dreq,
+> +					   struct nfs_commit_data *data)
+> +{
+> +	struct nfs_writeverf *verfp;
+> +
+> +	verfp = nfs_direct_select_verf(dreq, data->ds_clp,
+> +					 data->ds_commit_index);
+> +	WARN_ON_ONCE(verfp->committed < 0);
+> +	return memcmp(verfp, &data->verf, sizeof(struct nfs_writeverf));
+> +}
+> +
+>  /**
+>   * nfs_direct_IO - NFS address space operation for direct I/O
+>   * @rw: direction (read or write)
+> @@ -168,6 +255,7 @@ static inline struct nfs_direct_req *nfs_direct_req_alloc(void)
+>  	kref_get(&dreq->kref);
+>  	init_completion(&dreq->completion);
+>  	INIT_LIST_HEAD(&dreq->mds_cinfo.list);
+> +	dreq->verf.committed = NFS_INVALID_STABLE_HOW;	/* not set yet */
+>  	INIT_WORK(&dreq->work, nfs_direct_write_schedule_work);
+>  	spin_lock_init(&dreq->lock);
+>  
+> @@ -602,7 +690,7 @@ static void nfs_direct_commit_complete(struct nfs_commit_data *data)
+>  		dprintk("NFS: %5u commit failed with error %d.\n",
+>  			data->task.tk_pid, status);
+>  		dreq->flags = NFS_ODIRECT_RESCHED_WRITES;
+> -	} else if (memcmp(&dreq->verf, &data->verf, sizeof(data->verf))) {
+> +	} else if (nfs_direct_cmp_commit_data_verf(dreq, data)) {
+>  		dprintk("NFS: %5u commit verify failed\n", data->task.tk_pid);
+>  		dreq->flags = NFS_ODIRECT_RESCHED_WRITES;
+>  	}
+> @@ -811,13 +899,13 @@ static void nfs_direct_write_completion(struct nfs_pgio_header *hdr)
+>  			if (dreq->flags == NFS_ODIRECT_RESCHED_WRITES)
+>  				bit = NFS_IOHDR_NEED_RESCHED;
+>  			else if (dreq->flags == 0) {
+> -				memcpy(&dreq->verf, &hdr->verf,
+> -				       sizeof(dreq->verf));
+> +				nfs_direct_set_hdr_verf(dreq, hdr);
+>  				bit = NFS_IOHDR_NEED_COMMIT;
+>  				dreq->flags = NFS_ODIRECT_DO_COMMIT;
+>  			} else if (dreq->flags == NFS_ODIRECT_DO_COMMIT) {
+> -				if (memcmp(&dreq->verf, &hdr->verf, sizeof(dreq->verf))) {
+> -					dreq->flags = NFS_ODIRECT_RESCHED_WRITES;
+> +				if (nfs_direct_set_or_cmp_hdr_verf(dreq, hdr)) {
+> +					dreq->flags =
+> +						NFS_ODIRECT_RESCHED_WRITES;
+>  					bit = NFS_IOHDR_NEED_RESCHED;
+>  				} else
+>  					bit = NFS_IOHDR_NEED_COMMIT;
+> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+> index 7a665e0..0ebc521 100644
+> --- a/fs/nfs/nfs4filelayout.c
+> +++ b/fs/nfs/nfs4filelayout.c
+> @@ -560,6 +560,7 @@ filelayout_read_pagelist(struct nfs_pgio_data *data)
+>  	/* No multipath support. Use first DS */
+>  	atomic_inc(&ds->ds_clp->cl_count);
+>  	data->ds_clp = ds->ds_clp;
+> +	data->ds_idx = idx;
+>  	fh = nfs4_fl_select_ds_fh(lseg, j);
+>  	if (fh)
+>  		data->args.fh = fh;
+> @@ -603,6 +604,7 @@ filelayout_write_pagelist(struct nfs_pgio_data *data, int sync)
+>  	data->pgio_done_cb = filelayout_write_done_cb;
+>  	atomic_inc(&ds->ds_clp->cl_count);
+>  	data->ds_clp = ds->ds_clp;
+> +	data->ds_idx = idx;
+>  	fh = nfs4_fl_select_ds_fh(lseg, j);
+>  	if (fh)
+>  		data->args.fh = fh;
+> @@ -875,6 +877,8 @@ filelayout_alloc_commit_info(struct pnfs_layout_segment *lseg,
+>  	for (i = 0; i < size; i++) {
+>  		INIT_LIST_HEAD(&buckets[i].written);
+>  		INIT_LIST_HEAD(&buckets[i].committing);
+> +		/* mark direct verifier as unset */
+> +		buckets[i].direct_verf.committed = NFS_INVALID_STABLE_HOW;
+>  	}
+>  
+>  	spin_lock(cinfo->lock);
+> @@ -885,6 +889,8 @@ filelayout_alloc_commit_info(struct pnfs_layout_segment *lseg,
+>  			    &buckets[i].written);
+>  		list_splice(&cinfo->ds->buckets[i].committing,
+>  			    &buckets[i].committing);
+> +		buckets[i].direct_verf.committed =
+> +			cinfo->ds->buckets[i].direct_verf.committed;
+>  		buckets[i].wlseg = cinfo->ds->buckets[i].wlseg;
+>  		buckets[i].clseg = cinfo->ds->buckets[i].clseg;
+>  	}
+> diff --git a/include/linux/nfs.h b/include/linux/nfs.h
+> index 3e794c1..610af51 100644
+> --- a/include/linux/nfs.h
+> +++ b/include/linux/nfs.h
+> @@ -46,6 +46,9 @@ static inline void nfs_copy_fh(struct nfs_fh *target, const struct nfs_fh *sourc
+>  enum nfs3_stable_how {
+>  	NFS_UNSTABLE = 0,
+>  	NFS_DATA_SYNC = 1,
+> -	NFS_FILE_SYNC = 2
+> +	NFS_FILE_SYNC = 2,
+> +
+> +	/* used by direct.c to mark verf as invalid */
+> +	NFS_INVALID_STABLE_HOW = -1
+>  };
+>  #endif /* _LINUX_NFS_H */
+> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+> index 29828c7..bb9fb88 100644
+> --- a/include/linux/nfs_xdr.h
+> +++ b/include/linux/nfs_xdr.h
+> @@ -1111,6 +1111,7 @@ struct pnfs_commit_bucket {
+>  	struct list_head committing;
+>  	struct pnfs_layout_segment *wlseg;
+>  	struct pnfs_layout_segment *clseg;
+> +	struct nfs_writeverf direct_verf;
+>  };
+>  
+>  struct pnfs_ds_commit_info {
+> @@ -1294,6 +1295,7 @@ struct nfs_pgio_data {
+>  	__u64			mds_offset;	/* Filelayout dense stripe */
+>  	struct nfs_page_array	pages;
+>  	struct nfs_client	*ds_clp;	/* pNFS data server */
+> +	int			ds_idx;		/* ds index if ds_clp is set */
+>  };
+>  
+>  struct nfs_rw_header {
 
