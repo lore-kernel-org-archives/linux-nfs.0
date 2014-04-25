@@ -1,86 +1,256 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:62352 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755026AbaDNQZX (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 14 Apr 2014 12:25:23 -0400
-Date: Mon, 14 Apr 2014 12:25:18 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: steved@redhat.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/2] SUNRPC: Ensure that call_connect times out
- correctly
-Message-ID: <20140414122518.6a3ca149@ipyr.poochiereds.net>
-In-Reply-To: <1395081645-11906-1-git-send-email-trond.myklebust@primarydata.com>
-References: <1395081645-11906-1-git-send-email-trond.myklebust@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-ie0-f174.google.com ([209.85.223.174]:63014 "EHLO
+	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752081AbaDYPMy convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Apr 2014 11:12:54 -0400
+Received: by mail-ie0-f174.google.com with SMTP id rp18so3948911iec.19
+        for <linux-nfs@vger.kernel.org>; Fri, 25 Apr 2014 08:12:53 -0700 (PDT)
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
+Subject: Re: [PATCH 15/18 v2] pnfs: support multiple verfs per direct req
+From: Weston Andros Adamson <dros@primarydata.com>
+In-Reply-To: <535A6DE9.1040109@gmail.com>
+Date: Fri, 25 Apr 2014 11:12:54 -0400
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs list <linux-nfs@vger.kernel.org>
+Message-Id: <7192CB82-72A3-466B-88AD-061A8C998AB2@primarydata.com>
+References: <1398363328-7100-1-git-send-email-dros@primarydata.com> <1398363328-7100-16-git-send-email-dros@primarydata.com> <535A6DE9.1040109@gmail.com>
+To: Anna Schumaker <schumaker.anna@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 17 Mar 2014 14:40:44 -0400
-Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+On Apr 25, 2014, at 10:15 AM, Anna Schumaker <schumaker.anna@gmail.com> wrote:
 
-> When the server is unavailable due to a networking error, etc, we want
-> the RPC client to respect the timeout delays when attempting to reconnect.
+> On 04/24/2014 02:15 PM, Weston Andros Adamson wrote:
+>> Support direct requests that span multiple pnfs data servers by
+>> comparing nfs_pgio_header->verf to a cached verf in pnfs_commit_bucket.
+>> Continue to use dreq->verf if the MDS is used / non-pNFS.
+>> 
+>> Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+>> ---
+>> fs/nfs/direct.c         | 98 ++++++++++++++++++++++++++++++++++++++++++++++---
+>> fs/nfs/nfs4filelayout.c |  6 +++
+>> include/linux/nfs.h     |  5 ++-
+>> include/linux/nfs_xdr.h |  2 +
+>> 4 files changed, 105 insertions(+), 6 deletions(-)
+>> 
+>> diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+>> index 2c0e08f..9349933 100644
+>> --- a/fs/nfs/direct.c
+>> +++ b/fs/nfs/direct.c
+>> @@ -108,6 +108,93 @@ static inline int put_dreq(struct nfs_direct_req *dreq)
+>> 	return atomic_dec_and_test(&dreq->io_count);
+>> }
+>> 
+>> +/*
+>> + * nfs_direct_select_verf - select the right verifier
+>> + * @dreq - direct request possibly spanning multiple servers
+>> + * @ds_clp - nfs_client of data server or NULL if MDS / non-pnfs
+>> + * @ds_idx - index of data server in data server list, only valid if ds_clp set
+>> + *
+>> + * returns the correct verifier to use given the role of the server
+>> + */
+>> +static struct nfs_writeverf *
+>> +nfs_direct_select_verf(struct nfs_direct_req *dreq,
+>> +		       struct nfs_client *ds_clp,
+>> +		       int ds_idx)
+>> +{
+>> +	struct nfs_writeverf *verfp = &dreq->verf;
+>> +
+>> +	if (ds_clp) {
+>> +		/* pNFS is in use, use the DS verf */
+>> +		if (ds_idx >= 0 && ds_idx < dreq->ds_cinfo.nbuckets)
 > 
-> Fixes: 561ec1603171 (SUNRPC: call_connect_status should recheck bind..)
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> ---
->  net/sunrpc/clnt.c | 8 +++-----
->  1 file changed, 3 insertions(+), 5 deletions(-)
+> The struct pnfs_ds_commit_info is empty if CONFIG_NFS_V4_1=n, so this won't compile.
 > 
-> diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-> index 0edada973434..f22d3a115fda 100644
-> --- a/net/sunrpc/clnt.c
-> +++ b/net/sunrpc/clnt.c
-> @@ -1798,10 +1798,6 @@ call_connect_status(struct rpc_task *task)
->  	trace_rpc_connect_status(task, status);
->  	task->tk_status = 0;
->  	switch (status) {
-> -		/* if soft mounted, test if we've timed out */
-> -	case -ETIMEDOUT:
-> -		task->tk_action = call_timeout;
-> -		return;
->  	case -ECONNREFUSED:
->  	case -ECONNRESET:
->  	case -ECONNABORTED:
-> @@ -1812,7 +1808,9 @@ call_connect_status(struct rpc_task *task)
->  		if (RPC_IS_SOFTCONN(task))
->  			break;
->  	case -EAGAIN:
-> -		task->tk_action = call_bind;
-> +	case -ETIMEDOUT:
-> +		/* Check if we've timed out before looping back to call_bind */
-> +		task->tk_action = call_timeout;
->  		return;
->  	case 0:
->  		clnt->cl_stats->netreconn++;
+> Anna
 
-I believe this patch may have broken the v4.0 callback channel
-establishment code in nfsd. I think what's happening is this:
+Good catch, I’ll iterate through the patchset and test with v4.1 disabled.
 
-nfsd tries to create a RPC_TASK_SOFTCONN call to probe the cb channel
-with a CB_NULL. It queues the connect_worker to the workqueue. That
-establishes the socket and then gets a callback from the socket layer
-into xs_tcp_state_change for TCP_ESTABLISHED.
+Time to add some #ifdefs
 
-That code does:
+-dros
 
-    xprt_wake_pending_tasks(xprt, -EAGAIN);
+> 
+>> +			verfp = &dreq->ds_cinfo.buckets[ds_idx].direct_verf;
+>> +		else
+>> +			WARN_ON_ONCE(1);
+>> +	}
+>> +	return verfp;
+>> +}
+>> +
+>> +
+>> +/*
+>> + * nfs_direct_set_hdr_verf - set the write/commit verifier
+>> + * @dreq - direct request possibly spanning multiple servers
+>> + * @hdr - pageio header to validate against previously seen verfs
+>> + *
+>> + * Set the server's (MDS or DS) "seen" verifier
+>> + */
+>> +static void nfs_direct_set_hdr_verf(struct nfs_direct_req *dreq,
+>> +				    struct nfs_pgio_header *hdr)
+>> +{
+>> +	struct nfs_writeverf *verfp;
+>> +
+>> +	verfp = nfs_direct_select_verf(dreq, hdr->data->ds_clp,
+>> +				      hdr->data->ds_idx);
+>> +	WARN_ON_ONCE(verfp->committed >= 0);
+>> +	memcpy(verfp, &hdr->verf, sizeof(struct nfs_writeverf));
+>> +	WARN_ON_ONCE(verfp->committed < 0);
+>> +}
+>> +
+>> +/*
+>> + * nfs_direct_cmp_hdr_verf - compare verifier for pgio header
+>> + * @dreq - direct request possibly spanning multiple servers
+>> + * @hdr - pageio header to validate against previously seen verf
+>> + *
+>> + * set the server's "seen" verf if not initialized.
+>> + * returns result of comparison between @hdr->verf and the "seen"
+>> + * verf of the server used by @hdr (DS or MDS)
+>> + */
+>> +static int nfs_direct_set_or_cmp_hdr_verf(struct nfs_direct_req *dreq,
+>> +					  struct nfs_pgio_header *hdr)
+>> +{
+>> +	struct nfs_writeverf *verfp;
+>> +
+>> +	verfp = nfs_direct_select_verf(dreq, hdr->data->ds_clp,
+>> +					 hdr->data->ds_idx);
+>> +	if (verfp->committed < 0) {
+>> +		nfs_direct_set_hdr_verf(dreq, hdr);
+>> +		return 0;
+>> +	}
+>> +	return memcmp(verfp, &hdr->verf, sizeof(struct nfs_writeverf));
+>> +}
+>> +
+>> +/*
+>> + * nfs_direct_cmp_commit_data_verf - compare verifier for commit data
+>> + * @dreq - direct request possibly spanning multiple servers
+>> + * @data - commit data to validate against previously seen verf
+>> + *
+>> + * returns result of comparison between @data->verf and the verf of
+>> + * the server used by @data (DS or MDS)
+>> + */
+>> +static int nfs_direct_cmp_commit_data_verf(struct nfs_direct_req *dreq,
+>> +					   struct nfs_commit_data *data)
+>> +{
+>> +	struct nfs_writeverf *verfp;
+>> +
+>> +	verfp = nfs_direct_select_verf(dreq, data->ds_clp,
+>> +					 data->ds_commit_index);
+>> +	WARN_ON_ONCE(verfp->committed < 0);
+>> +	return memcmp(verfp, &data->verf, sizeof(struct nfs_writeverf));
+>> +}
+>> +
+>> /**
+>>  * nfs_direct_IO - NFS address space operation for direct I/O
+>>  * @rw: direction (read or write)
+>> @@ -168,6 +255,7 @@ static inline struct nfs_direct_req *nfs_direct_req_alloc(void)
+>> 	kref_get(&dreq->kref);
+>> 	init_completion(&dreq->completion);
+>> 	INIT_LIST_HEAD(&dreq->mds_cinfo.list);
+>> +	dreq->verf.committed = NFS_INVALID_STABLE_HOW;	/* not set yet */
+>> 	INIT_WORK(&dreq->work, nfs_direct_write_schedule_work);
+>> 	spin_lock_init(&dreq->lock);
+>> 
+>> @@ -602,7 +690,7 @@ static void nfs_direct_commit_complete(struct nfs_commit_data *data)
+>> 		dprintk("NFS: %5u commit failed with error %d.\n",
+>> 			data->task.tk_pid, status);
+>> 		dreq->flags = NFS_ODIRECT_RESCHED_WRITES;
+>> -	} else if (memcmp(&dreq->verf, &data->verf, sizeof(data->verf))) {
+>> +	} else if (nfs_direct_cmp_commit_data_verf(dreq, data)) {
+>> 		dprintk("NFS: %5u commit verify failed\n", data->task.tk_pid);
+>> 		dreq->flags = NFS_ODIRECT_RESCHED_WRITES;
+>> 	}
+>> @@ -811,13 +899,13 @@ static void nfs_direct_write_completion(struct nfs_pgio_header *hdr)
+>> 			if (dreq->flags == NFS_ODIRECT_RESCHED_WRITES)
+>> 				bit = NFS_IOHDR_NEED_RESCHED;
+>> 			else if (dreq->flags == 0) {
+>> -				memcpy(&dreq->verf, &hdr->verf,
+>> -				       sizeof(dreq->verf));
+>> +				nfs_direct_set_hdr_verf(dreq, hdr);
+>> 				bit = NFS_IOHDR_NEED_COMMIT;
+>> 				dreq->flags = NFS_ODIRECT_DO_COMMIT;
+>> 			} else if (dreq->flags == NFS_ODIRECT_DO_COMMIT) {
+>> -				if (memcmp(&dreq->verf, &hdr->verf, sizeof(dreq->verf))) {
+>> -					dreq->flags = NFS_ODIRECT_RESCHED_WRITES;
+>> +				if (nfs_direct_set_or_cmp_hdr_verf(dreq, hdr)) {
+>> +					dreq->flags =
+>> +						NFS_ODIRECT_RESCHED_WRITES;
+>> 					bit = NFS_IOHDR_NEED_RESCHED;
+>> 				} else
+>> 					bit = NFS_IOHDR_NEED_COMMIT;
+>> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+>> index 7a665e0..0ebc521 100644
+>> --- a/fs/nfs/nfs4filelayout.c
+>> +++ b/fs/nfs/nfs4filelayout.c
+>> @@ -560,6 +560,7 @@ filelayout_read_pagelist(struct nfs_pgio_data *data)
+>> 	/* No multipath support. Use first DS */
+>> 	atomic_inc(&ds->ds_clp->cl_count);
+>> 	data->ds_clp = ds->ds_clp;
+>> +	data->ds_idx = idx;
+>> 	fh = nfs4_fl_select_ds_fh(lseg, j);
+>> 	if (fh)
+>> 		data->args.fh = fh;
+>> @@ -603,6 +604,7 @@ filelayout_write_pagelist(struct nfs_pgio_data *data, int sync)
+>> 	data->pgio_done_cb = filelayout_write_done_cb;
+>> 	atomic_inc(&ds->ds_clp->cl_count);
+>> 	data->ds_clp = ds->ds_clp;
+>> +	data->ds_idx = idx;
+>> 	fh = nfs4_fl_select_ds_fh(lseg, j);
+>> 	if (fh)
+>> 		data->args.fh = fh;
+>> @@ -875,6 +877,8 @@ filelayout_alloc_commit_info(struct pnfs_layout_segment *lseg,
+>> 	for (i = 0; i < size; i++) {
+>> 		INIT_LIST_HEAD(&buckets[i].written);
+>> 		INIT_LIST_HEAD(&buckets[i].committing);
+>> +		/* mark direct verifier as unset */
+>> +		buckets[i].direct_verf.committed = NFS_INVALID_STABLE_HOW;
+>> 	}
+>> 
+>> 	spin_lock(cinfo->lock);
+>> @@ -885,6 +889,8 @@ filelayout_alloc_commit_info(struct pnfs_layout_segment *lseg,
+>> 			    &buckets[i].written);
+>> 		list_splice(&cinfo->ds->buckets[i].committing,
+>> 			    &buckets[i].committing);
+>> +		buckets[i].direct_verf.committed =
+>> +			cinfo->ds->buckets[i].direct_verf.committed;
+>> 		buckets[i].wlseg = cinfo->ds->buckets[i].wlseg;
+>> 		buckets[i].clseg = cinfo->ds->buckets[i].clseg;
+>> 	}
+>> diff --git a/include/linux/nfs.h b/include/linux/nfs.h
+>> index 3e794c1..610af51 100644
+>> --- a/include/linux/nfs.h
+>> +++ b/include/linux/nfs.h
+>> @@ -46,6 +46,9 @@ static inline void nfs_copy_fh(struct nfs_fh *target, const struct nfs_fh *sourc
+>> enum nfs3_stable_how {
+>> 	NFS_UNSTABLE = 0,
+>> 	NFS_DATA_SYNC = 1,
+>> -	NFS_FILE_SYNC = 2
+>> +	NFS_FILE_SYNC = 2,
+>> +
+>> +	/* used by direct.c to mark verf as invalid */
+>> +	NFS_INVALID_STABLE_HOW = -1
+>> };
+>> #endif /* _LINUX_NFS_H */
+>> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+>> index 29828c7..bb9fb88 100644
+>> --- a/include/linux/nfs_xdr.h
+>> +++ b/include/linux/nfs_xdr.h
+>> @@ -1111,6 +1111,7 @@ struct pnfs_commit_bucket {
+>> 	struct list_head committing;
+>> 	struct pnfs_layout_segment *wlseg;
+>> 	struct pnfs_layout_segment *clseg;
+>> +	struct nfs_writeverf direct_verf;
+>> };
+>> 
+>> struct pnfs_ds_commit_info {
+>> @@ -1294,6 +1295,7 @@ struct nfs_pgio_data {
+>> 	__u64			mds_offset;	/* Filelayout dense stripe */
+>> 	struct nfs_page_array	pages;
+>> 	struct nfs_client	*ds_clp;	/* pNFS data server */
+>> +	int			ds_idx;		/* ds index if ds_clp is set */
+>> };
+>> 
+>> struct nfs_rw_header {
+> 
 
-...that wakes the task up, and sets the tk_status to -EAGAIN, and it
-then moves on to call_timeout due to this patch. That code then does
-this:
-
-        if (RPC_IS_SOFTCONN(task)) {
-                rpc_exit(task, -ETIMEDOUT);
-                return;
-        }
-
-...and the callback ping then fails with an error. Reverting this patch
-seems to fix it. I see several ways that we could fix this, but I'm not
-clear on the right way. Maybe we shouldn't be waking up the tasks with
--EAGAIN in the TCP_ESTABLISHED case?
-
--- 
-Jeff Layton <jlayton@redhat.com>
