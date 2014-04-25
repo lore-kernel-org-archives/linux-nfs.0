@@ -1,148 +1,106 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from wsip-98-173-55-162.sd.sd.cox.net ([98.173.55.162]:13894 "EHLO
-	bilbo" rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
-	id S1750917AbaDOUeg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 15 Apr 2014 16:34:36 -0400
-From: Allen Andrews <allen.andrews@emulex.com>
-Subject: [PATCH v2] nfs-rdma: Fix for FMR leaks
-To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Cc: allen.andrews@emulex.com, linux-kernel@vger.kernel.org
-Date: Tue, 15 Apr 2014 13:34:34 -0700
-Message-ID: <20140415203434.5492.31538.stgit@bilbo>
+Received: from mx11.netapp.com ([216.240.18.76]:31746 "EHLO mx11.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754985AbaDYU4S (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Apr 2014 16:56:18 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
+CC: <dros@primarydata.com>, <hch@infradead.org>
+Subject: [PATCH v2 05/17] NFS: Move the write verifier into the nfs_pgio_header
+Date: Fri, 25 Apr 2014 16:55:48 -0400
+Message-ID: <1398459360-2093-6-git-send-email-Anna.Schumaker@Netapp.com>
+In-Reply-To: <1398459360-2093-1-git-send-email-Anna.Schumaker@Netapp.com>
+References: <1398459360-2093-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Two memory region leaks were found during testing:
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
 
-1. rpcrdma_buffer_create: While allocating RPCRDMA_FRMR's
-ib_alloc_fast_reg_mr is called and then ib_alloc_fast_reg_page_list is
-called.  If ib_alloc_fast_reg_page_list returns an error it bails out of
-the routine dropping the last ib_alloc_fast_reg_mr frmr region creating a
-memory leak.  Added code to dereg the last frmr if
-ib_alloc_fast_reg_page_list fails.
+The header had a pointer to the verifier that was set from the old write
+data struct.  We don't need to keep the pointer around now that we have
+shared structures.
 
-2. rpcrdma_buffer_destroy: While cleaning up, the routine will only free
-the MR's on the rb_mws list if there are rb_send_bufs present.  However, in
-rpcrdma_buffer_create while the rb_mws list is being built if one of the MR
-allocation requests fail after some MR's have been allocated on the rb_mws
-list the routine never gets to create any rb_send_bufs but instead jumps to
-the rpcrdma_buffer_destroy routine which will never free the MR's on rb_mws
-list because the rb_send_bufs were never created.   This leaks all the MR's
-on the rb_mws list that were created prior to one of the MR allocations
-failing.
-
-Issue(2) was seen during testing. Our adapter had a finite number of MR's
-available and we created enough connections to where we saw an MR
-allocation failure on our Nth NFS connection request. After the kernel
-cleaned up the resources it had allocated for the Nth connection we noticed
-that FMR's had been leaked due to the coding error described above.
-
-Issue(1) was seen during a code review while debugging issue(2).
-
-Signed-off-by: Allen Andrews <allen.andrews@emulex.com>
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
+ fs/nfs/direct.c         | 4 ++--
+ fs/nfs/write.c          | 7 +++----
+ include/linux/nfs_xdr.h | 3 +--
+ 3 files changed, 6 insertions(+), 8 deletions(-)
 
- net/sunrpc/xprtrdma/verbs.c |   73 ++++++++++++++++++++++---------------------
- 1 files changed, 38 insertions(+), 35 deletions(-)
-
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 9372656..1683e05 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -1058,6 +1058,8 @@ rpcrdma_buffer_create(struct rpcrdma_buffer *buf, struct rpcrdma_ep *ep,
- 				dprintk("RPC:       %s: "
- 					"ib_alloc_fast_reg_page_list "
- 					"failed %i\n", __func__, rc);
-+
-+				ib_dereg_mr(r->r.frmr.fr_mr);
- 				goto out;
- 			}
- 			list_add(&r->mw_list, &buf->rb_mws);
-@@ -1194,41 +1196,6 @@ rpcrdma_buffer_destroy(struct rpcrdma_buffer *buf)
- 			kfree(buf->rb_recv_bufs[i]);
- 		}
- 		if (buf->rb_send_bufs && buf->rb_send_bufs[i]) {
--			while (!list_empty(&buf->rb_mws)) {
--				r = list_entry(buf->rb_mws.next,
--					struct rpcrdma_mw, mw_list);
--				list_del(&r->mw_list);
--				switch (ia->ri_memreg_strategy) {
--				case RPCRDMA_FRMR:
--					rc = ib_dereg_mr(r->r.frmr.fr_mr);
--					if (rc)
--						dprintk("RPC:       %s:"
--							" ib_dereg_mr"
--							" failed %i\n",
--							__func__, rc);
--					ib_free_fast_reg_page_list(r->r.frmr.fr_pgl);
--					break;
--				case RPCRDMA_MTHCAFMR:
--					rc = ib_dealloc_fmr(r->r.fmr);
--					if (rc)
--						dprintk("RPC:       %s:"
--							" ib_dealloc_fmr"
--							" failed %i\n",
--							__func__, rc);
--					break;
--				case RPCRDMA_MEMWINDOWS_ASYNC:
--				case RPCRDMA_MEMWINDOWS:
--					rc = ib_dealloc_mw(r->r.mw);
--					if (rc)
--						dprintk("RPC:       %s:"
--							" ib_dealloc_mw"
--							" failed %i\n",
--							__func__, rc);
--					break;
--				default:
--					break;
--				}
--			}
- 			rpcrdma_deregister_internal(ia,
- 					buf->rb_send_bufs[i]->rl_handle,
- 					&buf->rb_send_bufs[i]->rl_iov);
-@@ -1236,6 +1203,42 @@ rpcrdma_buffer_destroy(struct rpcrdma_buffer *buf)
- 		}
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index bbe688e..164b016 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -813,12 +813,12 @@ static void nfs_direct_write_completion(struct nfs_pgio_header *hdr)
+ 			if (dreq->flags == NFS_ODIRECT_RESCHED_WRITES)
+ 				bit = NFS_IOHDR_NEED_RESCHED;
+ 			else if (dreq->flags == 0) {
+-				memcpy(&dreq->verf, hdr->verf,
++				memcpy(&dreq->verf, &hdr->verf,
+ 				       sizeof(dreq->verf));
+ 				bit = NFS_IOHDR_NEED_COMMIT;
+ 				dreq->flags = NFS_ODIRECT_DO_COMMIT;
+ 			} else if (dreq->flags == NFS_ODIRECT_DO_COMMIT) {
+-				if (memcmp(&dreq->verf, hdr->verf, sizeof(dreq->verf))) {
++				if (memcmp(&dreq->verf, &hdr->verf, sizeof(dreq->verf))) {
+ 					dreq->flags = NFS_ODIRECT_RESCHED_WRITES;
+ 					bit = NFS_IOHDR_NEED_RESCHED;
+ 				} else
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 37c4c98..321a791 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -82,7 +82,6 @@ struct nfs_rw_header *nfs_writehdr_alloc(void)
+ 		INIT_LIST_HEAD(&hdr->rpc_list);
+ 		spin_lock_init(&hdr->lock);
+ 		atomic_set(&hdr->refcnt, 0);
+-		hdr->verf = &p->verf;
  	}
- 
-+	while (!list_empty(&buf->rb_mws)) {
-+		r = list_entry(buf->rb_mws.next,
-+			struct rpcrdma_mw, mw_list);
-+		list_del(&r->mw_list);
-+		switch (ia->ri_memreg_strategy) {
-+		case RPCRDMA_FRMR:
-+			rc = ib_dereg_mr(r->r.frmr.fr_mr);
-+			if (rc)
-+				dprintk("RPC:       %s:"
-+					" ib_dereg_mr"
-+					" failed %i\n",
-+					__func__, rc);
-+			ib_free_fast_reg_page_list(r->r.frmr.fr_pgl);
-+			break;
-+		case RPCRDMA_MTHCAFMR:
-+			rc = ib_dealloc_fmr(r->r.fmr);
-+			if (rc)
-+				dprintk("RPC:       %s:"
-+					" ib_dealloc_fmr"
-+					" failed %i\n",
-+					__func__, rc);
-+			break;
-+		case RPCRDMA_MEMWINDOWS_ASYNC:
-+		case RPCRDMA_MEMWINDOWS:
-+			rc = ib_dealloc_mw(r->r.mw);
-+			if (rc)
-+				dprintk("RPC:       %s:"
-+					" ib_dealloc_mw"
-+					" failed %i\n",
-+					__func__, rc);
-+			break;
-+		default:
-+			break;
-+		}
-+	}
-+
- 	kfree(buf->rb_pool);
+ 	return p;
  }
+@@ -644,7 +643,7 @@ static void nfs_write_completion(struct nfs_pgio_header *hdr)
+ 			goto next;
+ 		}
+ 		if (test_bit(NFS_IOHDR_NEED_COMMIT, &hdr->flags)) {
+-			memcpy(&req->wb_verf, &hdr->verf->verifier, sizeof(req->wb_verf));
++			memcpy(&req->wb_verf, &hdr->verf.verifier, sizeof(req->wb_verf));
+ 			nfs_mark_request_commit(req, hdr->lseg, &cinfo);
+ 			goto next;
+ 		}
+@@ -1344,8 +1343,8 @@ static void nfs_writeback_release_common(void *calldata)
+ 		if (test_bit(NFS_IOHDR_NEED_RESCHED, &hdr->flags))
+ 			; /* Do nothing */
+ 		else if (!test_and_set_bit(NFS_IOHDR_NEED_COMMIT, &hdr->flags))
+-			memcpy(hdr->verf, &data->verf, sizeof(*hdr->verf));
+-		else if (memcmp(hdr->verf, &data->verf, sizeof(*hdr->verf)))
++			memcpy(&hdr->verf, &data->verf, sizeof(hdr->verf));
++		else if (memcmp(&hdr->verf, &data->verf, sizeof(hdr->verf)))
+ 			set_bit(NFS_IOHDR_NEED_RESCHED, &hdr->flags);
+ 		spin_unlock(&hdr->lock);
+ 	}
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 2d34e0d..965c2aa 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1263,7 +1263,7 @@ struct nfs_pgio_header {
+ 	struct list_head	rpc_list;
+ 	atomic_t		refcnt;
+ 	struct nfs_page		*req;
+-	struct nfs_writeverf	*verf;
++	struct nfs_writeverf	verf;		/* Used for writes */
+ 	struct pnfs_layout_segment *lseg;
+ 	loff_t			io_start;
+ 	const struct rpc_call_ops *mds_ops;
+@@ -1297,7 +1297,6 @@ struct nfs_pgio_data {
+ struct nfs_rw_header {
+ 	struct nfs_pgio_header	header;
+ 	struct nfs_pgio_data	rpc_data;
+-	struct nfs_writeverf	verf;
+ };
  
+ struct nfs_mds_commit_info {
+-- 
+1.9.2
 
