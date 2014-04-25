@@ -1,191 +1,281 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e23smtp07.au.ibm.com ([202.81.31.140]:56983 "EHLO
-	e23smtp07.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753557AbaD0QQQ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Apr 2014 12:16:16 -0400
-Received: from /spool/local
-	by e23smtp07.au.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <aneesh.kumar@linux.vnet.ibm.com>;
-	Mon, 28 Apr 2014 02:16:14 +1000
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
-        viro@zeniv.linux.org.uk, dhowells@redhat.com
-Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH -V1 20/22] vfs: Add richacl permission check
-Date: Sun, 27 Apr 2014 21:44:51 +0530
-Message-Id: <1398615293-22931-21-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-In-Reply-To: <1398615293-22931-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1398615293-22931-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from mail-ie0-f175.google.com ([209.85.223.175]:39982 "EHLO
+	mail-ie0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751722AbaDYQEf convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Apr 2014 12:04:35 -0400
+Received: by mail-ie0-f175.google.com with SMTP id to1so4015653ieb.34
+        for <linux-nfs@vger.kernel.org>; Fri, 25 Apr 2014 09:04:34 -0700 (PDT)
+Content-Type: text/plain; charset=utf-8
+Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
+Subject: Re: [PATCH 15/18 v2] pnfs: support multiple verfs per direct req
+From: Weston Andros Adamson <dros@primarydata.com>
+In-Reply-To: <535A84E9.6080707@gmail.com>
+Date: Fri, 25 Apr 2014 12:04:34 -0400
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs list <linux-nfs@vger.kernel.org>
+Message-Id: <089F6EFA-C26C-4F12-A563-AA9DCC3B5FA7@primarydata.com>
+References: <1398363328-7100-1-git-send-email-dros@primarydata.com> <1398363328-7100-16-git-send-email-dros@primarydata.com> <535A6DE9.1040109@gmail.com> <7192CB82-72A3-466B-88AD-061A8C998AB2@primarydata.com> <D0C62F9F-943D-4D92-A945-BCDB43E4D899@primarydata.com> <535A84E9.6080707@gmail.com>
+To: Anna Schumaker <schumaker.anna@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
----
- fs/attr.c               |  6 ++++--
- fs/namei.c              | 13 +++++++++++-
- fs/richacl_base.c       | 54 +++++++++++++++++++++++++++++++++++++++++++++++++
- include/linux/fs.h      |  2 +-
- include/linux/richacl.h |  2 ++
- 5 files changed, 73 insertions(+), 4 deletions(-)
+On Apr 25, 2014, at 11:53 AM, Anna Schumaker <schumaker.anna@gmail.com> wrote:
 
-diff --git a/fs/attr.c b/fs/attr.c
-index e468d4f2dca8..c46f3ed82150 100644
---- a/fs/attr.c
-+++ b/fs/attr.c
-@@ -15,6 +15,7 @@
- #include <linux/security.h>
- #include <linux/evm.h>
- #include <linux/ima.h>
-+#include <linux/richacl.h>
- 
- static int richacl_change_ok(struct inode *inode, int mask)
- {
-@@ -23,8 +24,9 @@ static int richacl_change_ok(struct inode *inode, int mask)
- 
- 	if (inode->i_op->permission)
- 		return inode->i_op->permission(inode, mask);
--
--	return check_acl(inode, mask);
-+	if (inode->i_op->get_richacl)
-+		return check_richacl(inode, mask);
-+	return -EPERM;
- }
- 
- static bool inode_uid_change_ok(struct inode *inode, kuid_t ia_uid)
-diff --git a/fs/namei.c b/fs/namei.c
-index 06474553c08d..12010e06aedd 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -34,6 +34,7 @@
- #include <linux/device_cgroup.h>
- #include <linux/fs_struct.h>
- #include <linux/posix_acl.h>
-+#include <linux/richacl.h>
- #include <asm/uaccess.h>
- 
- #include "internal.h"
-@@ -249,7 +250,7 @@ void putname(struct filename *name)
- }
- #endif
- 
--int check_acl(struct inode *inode, int mask)
-+static int check_posix_acl(struct inode *inode, int mask)
- {
- #ifdef CONFIG_FS_POSIX_ACL
- 	struct posix_acl *acl;
-@@ -277,6 +278,16 @@ int check_acl(struct inode *inode, int mask)
- 	return -EAGAIN;
- }
- 
-+static int check_acl(struct inode *inode, int mask)
-+{
-+	if (IS_POSIXACL(inode))
-+		return check_posix_acl(inode, mask);
-+	else if (IS_RICHACL(inode))
-+		return check_richacl(inode, mask);
-+	else
-+		return -EAGAIN;
-+}
-+
- /*
-  * This does the basic permission checking
-  */
-diff --git a/fs/richacl_base.c b/fs/richacl_base.c
-index d3beaacf6b9b..7c42290ae0c4 100644
---- a/fs/richacl_base.c
-+++ b/fs/richacl_base.c
-@@ -585,3 +585,57 @@ richacl_equiv_mode(const struct richacl *acl, mode_t *mode_p)
- 	return 0;
- }
- EXPORT_SYMBOL_GPL(richacl_equiv_mode);
-+
-+int check_richacl(struct inode *inode, int want)
-+{
-+#ifdef CONFIG_FS_RICHACL
-+	struct richacl *acl;
-+	int richacl_mask = richacl_want_to_mask(want);
-+
-+	if (want & MAY_NOT_BLOCK) {
-+		acl = rcu_dereference(inode->i_richacl);
-+		if (!acl)
-+			return -EAGAIN;
-+		/* no ->get_acl() calls in RCU mode... */
-+		if (acl == ACL_NOT_CACHED)
-+			return -ECHILD;
-+		return richacl_permission(inode, acl, richacl_mask);
-+	}
-+	return richacl_check_acl(inode, richacl_mask);
-+#endif
-+	return -EAGAIN;
-+}
-+
-+int richacl_check_acl(struct inode *inode, int richacl_mask)
-+{
-+
-+#ifdef CONFIG_FS_RICHACL
-+	struct richacl *acl;
-+	acl = get_cached_richacl(inode);
-+	/*
-+	 * A filesystem can force a ACL callback by just never filling the
-+	 * ACL cache. But normally you'd fill the cache either at inode
-+	 * instantiation time, or on the first ->get_acl call.
-+	 *
-+	 * If the filesystem doesn't have a get_acl() function at all, we'll
-+	 * just create the negative cache entry.
-+	 */
-+	if (acl == ACL_NOT_CACHED) {
-+		if (inode->i_op->get_acl) {
-+			acl = inode->i_op->get_richacl(inode);
-+			if (IS_ERR(acl))
-+				return PTR_ERR(acl);
-+		} else {
-+			set_cached_richacl(inode, NULL);
-+			return -EAGAIN;
-+		}
-+	}
-+	if (acl) {
-+		int error = richacl_permission(inode, acl, richacl_mask);
-+		richacl_put(acl);
-+		return error;
-+	}
-+#endif
-+	return -EAGAIN;
-+}
-+EXPORT_SYMBOL_GPL(richacl_check_acl);
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index 95df64d21e55..77459b6656ac 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -1499,6 +1499,7 @@ struct inode_operations {
- 	void * (*follow_link) (struct dentry *, struct nameidata *);
- 	int (*permission) (struct inode *, int);
- 	struct posix_acl * (*get_acl)(struct inode *, int);
-+	struct richacl * (*get_richacl)(struct inode *);
- 
- 	int (*readlink) (struct dentry *, char __user *,int);
- 	void (*put_link) (struct dentry *, struct nameidata *, void *);
-@@ -2259,7 +2260,6 @@ extern sector_t bmap(struct inode *, sector_t);
- extern int notify_change(struct dentry *, struct iattr *, struct inode **);
- extern int inode_permission(struct inode *, int);
- extern int generic_permission(struct inode *, int);
--extern int check_acl(struct inode *, int);
- 
- static inline bool execute_ok(struct inode *inode)
- {
-diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-index a7db341e4ee9..17b58d470798 100644
---- a/include/linux/richacl.h
-+++ b/include/linux/richacl.h
-@@ -360,6 +360,8 @@ extern int richacl_permission(struct inode *, const struct richacl *,
- 			      unsigned int);
- extern struct richacl *richacl_inherit(const struct richacl *, int);
- extern int richacl_equiv_mode(const struct richacl *, mode_t *);
-+extern int check_richacl(struct inode *, int);
-+extern int richacl_check_acl(struct inode *, int);
- 
- /* richacl_inode.c */
- extern struct richacl *richacl_inherit_inode(const struct richacl *,
--- 
-1.9.1
+> On 04/25/2014 11:38 AM, Weston Andros Adamson wrote:
+>> On Apr 25, 2014, at 11:12 AM, Weston Andros Adamson <dros@primarydata.com> wrote:
+>> 
+>>> On Apr 25, 2014, at 10:15 AM, Anna Schumaker <schumaker.anna@gmail.com> wrote:
+>>> 
+>>>> On 04/24/2014 02:15 PM, Weston Andros Adamson wrote:
+>>>>> Support direct requests that span multiple pnfs data servers by
+>>>>> comparing nfs_pgio_header->verf to a cached verf in pnfs_commit_bucket.
+>>>>> Continue to use dreq->verf if the MDS is used / non-pNFS.
+>>>>> 
+>>>>> Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+>>>>> ---
+>>>>> fs/nfs/direct.c         | 98 ++++++++++++++++++++++++++++++++++++++++++++++---
+>>>>> fs/nfs/nfs4filelayout.c |  6 +++
+>>>>> include/linux/nfs.h     |  5 ++-
+>>>>> include/linux/nfs_xdr.h |  2 +
+>>>>> 4 files changed, 105 insertions(+), 6 deletions(-)
+>>>>> 
+>>>>> diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+>>>>> index 2c0e08f..9349933 100644
+>>>>> --- a/fs/nfs/direct.c
+>>>>> +++ b/fs/nfs/direct.c
+>>>>> @@ -108,6 +108,93 @@ static inline int put_dreq(struct nfs_direct_req *dreq)
+>>>>> 	return atomic_dec_and_test(&dreq->io_count);
+>>>>> }
+>>>>> 
+>>>>> +/*
+>>>>> + * nfs_direct_select_verf - select the right verifier
+>>>>> + * @dreq - direct request possibly spanning multiple servers
+>>>>> + * @ds_clp - nfs_client of data server or NULL if MDS / non-pnfs
+>>>>> + * @ds_idx - index of data server in data server list, only valid if ds_clp set
+>>>>> + *
+>>>>> + * returns the correct verifier to use given the role of the server
+>>>>> + */
+>>>>> +static struct nfs_writeverf *
+>>>>> +nfs_direct_select_verf(struct nfs_direct_req *dreq,
+>>>>> +		       struct nfs_client *ds_clp,
+>>>>> +		       int ds_idx)
+>>>>> +{
+>>>>> +	struct nfs_writeverf *verfp = &dreq->verf;
+>>>>> +
+>>>>> +	if (ds_clp) {
+>>>>> +		/* pNFS is in use, use the DS verf */
+>>>>> +		if (ds_idx >= 0 && ds_idx < dreq->ds_cinfo.nbuckets)
+>>>> The struct pnfs_ds_commit_info is empty if CONFIG_NFS_V4_1=n, so this won't compile.
+>>>> 
+>>>> Anna
+>>> Good catch, I�ll iterate through the patchset and test with v4.1 disabled.
+>>> 
+>>> Time to add some #ifdefs
+>>> 
+>>> -dros
+>> That was the only problem I found with 4.1 disabled.
+>> 
+>> Fixed and pushed.
+> 
+> Thanks! I'm now getting a "defined but not used" error if just v2 is enabled:
+> 
+> NFS_V4_2=n PNFS_OBJLAYOUT=n PNFS_BLOCK=n PNFS_FILE_LAYOUT=n NFS_V4_1=n NFS_V4=n NFS_V3=n NFS_V2=y
+> 
+> fs/nfs/direct.c:189:12: error: ‘nfs_direct_cmp_commit_data_verf’ defined but not used [-Werror=unused-function]
+> static int nfs_direct_cmp_commit_data_verf(struct nfs_direct_req *dreq,
+> 
+> Anna
+
+Oh, i didn’t find that because the direct commit path uses:
+
+IS_ENABLED(CONFIG_NFS_V3) || IS_ENABLED(CONFIG_NFS_V4)
+
+fixed and pushed.
+
+-dros
+
+> 
+>> 
+>> -dros
+>> 
+>>>>> +			verfp = &dreq->ds_cinfo.buckets[ds_idx].direct_verf;
+>>>>> +		else
+>>>>> +			WARN_ON_ONCE(1);
+>>>>> +	}
+>>>>> +	return verfp;
+>>>>> +}
+>>>>> +
+>>>>> +
+>>>>> +/*
+>>>>> + * nfs_direct_set_hdr_verf - set the write/commit verifier
+>>>>> + * @dreq - direct request possibly spanning multiple servers
+>>>>> + * @hdr - pageio header to validate against previously seen verfs
+>>>>> + *
+>>>>> + * Set the server's (MDS or DS) "seen" verifier
+>>>>> + */
+>>>>> +static void nfs_direct_set_hdr_verf(struct nfs_direct_req *dreq,
+>>>>> +				    struct nfs_pgio_header *hdr)
+>>>>> +{
+>>>>> +	struct nfs_writeverf *verfp;
+>>>>> +
+>>>>> +	verfp = nfs_direct_select_verf(dreq, hdr->data->ds_clp,
+>>>>> +				      hdr->data->ds_idx);
+>>>>> +	WARN_ON_ONCE(verfp->committed >= 0);
+>>>>> +	memcpy(verfp, &hdr->verf, sizeof(struct nfs_writeverf));
+>>>>> +	WARN_ON_ONCE(verfp->committed < 0);
+>>>>> +}
+>>>>> +
+>>>>> +/*
+>>>>> + * nfs_direct_cmp_hdr_verf - compare verifier for pgio header
+>>>>> + * @dreq - direct request possibly spanning multiple servers
+>>>>> + * @hdr - pageio header to validate against previously seen verf
+>>>>> + *
+>>>>> + * set the server's "seen" verf if not initialized.
+>>>>> + * returns result of comparison between @hdr->verf and the "seen"
+>>>>> + * verf of the server used by @hdr (DS or MDS)
+>>>>> + */
+>>>>> +static int nfs_direct_set_or_cmp_hdr_verf(struct nfs_direct_req *dreq,
+>>>>> +					  struct nfs_pgio_header *hdr)
+>>>>> +{
+>>>>> +	struct nfs_writeverf *verfp;
+>>>>> +
+>>>>> +	verfp = nfs_direct_select_verf(dreq, hdr->data->ds_clp,
+>>>>> +					 hdr->data->ds_idx);
+>>>>> +	if (verfp->committed < 0) {
+>>>>> +		nfs_direct_set_hdr_verf(dreq, hdr);
+>>>>> +		return 0;
+>>>>> +	}
+>>>>> +	return memcmp(verfp, &hdr->verf, sizeof(struct nfs_writeverf));
+>>>>> +}
+>>>>> +
+>>>>> +/*
+>>>>> + * nfs_direct_cmp_commit_data_verf - compare verifier for commit data
+>>>>> + * @dreq - direct request possibly spanning multiple servers
+>>>>> + * @data - commit data to validate against previously seen verf
+>>>>> + *
+>>>>> + * returns result of comparison between @data->verf and the verf of
+>>>>> + * the server used by @data (DS or MDS)
+>>>>> + */
+>>>>> +static int nfs_direct_cmp_commit_data_verf(struct nfs_direct_req *dreq,
+>>>>> +					   struct nfs_commit_data *data)
+>>>>> +{
+>>>>> +	struct nfs_writeverf *verfp;
+>>>>> +
+>>>>> +	verfp = nfs_direct_select_verf(dreq, data->ds_clp,
+>>>>> +					 data->ds_commit_index);
+>>>>> +	WARN_ON_ONCE(verfp->committed < 0);
+>>>>> +	return memcmp(verfp, &data->verf, sizeof(struct nfs_writeverf));
+>>>>> +}
+>>>>> +
+>>>>> /**
+>>>>> * nfs_direct_IO - NFS address space operation for direct I/O
+>>>>> * @rw: direction (read or write)
+>>>>> @@ -168,6 +255,7 @@ static inline struct nfs_direct_req *nfs_direct_req_alloc(void)
+>>>>> 	kref_get(&dreq->kref);
+>>>>> 	init_completion(&dreq->completion);
+>>>>> 	INIT_LIST_HEAD(&dreq->mds_cinfo.list);
+>>>>> +	dreq->verf.committed = NFS_INVALID_STABLE_HOW;	/* not set yet */
+>>>>> 	INIT_WORK(&dreq->work, nfs_direct_write_schedule_work);
+>>>>> 	spin_lock_init(&dreq->lock);
+>>>>> 
+>>>>> @@ -602,7 +690,7 @@ static void nfs_direct_commit_complete(struct nfs_commit_data *data)
+>>>>> 		dprintk("NFS: %5u commit failed with error %d.\n",
+>>>>> 			data->task.tk_pid, status);
+>>>>> 		dreq->flags = NFS_ODIRECT_RESCHED_WRITES;
+>>>>> -	} else if (memcmp(&dreq->verf, &data->verf, sizeof(data->verf))) {
+>>>>> +	} else if (nfs_direct_cmp_commit_data_verf(dreq, data)) {
+>>>>> 		dprintk("NFS: %5u commit verify failed\n", data->task.tk_pid);
+>>>>> 		dreq->flags = NFS_ODIRECT_RESCHED_WRITES;
+>>>>> 	}
+>>>>> @@ -811,13 +899,13 @@ static void nfs_direct_write_completion(struct nfs_pgio_header *hdr)
+>>>>> 			if (dreq->flags == NFS_ODIRECT_RESCHED_WRITES)
+>>>>> 				bit = NFS_IOHDR_NEED_RESCHED;
+>>>>> 			else if (dreq->flags == 0) {
+>>>>> -				memcpy(&dreq->verf, &hdr->verf,
+>>>>> -				       sizeof(dreq->verf));
+>>>>> +				nfs_direct_set_hdr_verf(dreq, hdr);
+>>>>> 				bit = NFS_IOHDR_NEED_COMMIT;
+>>>>> 				dreq->flags = NFS_ODIRECT_DO_COMMIT;
+>>>>> 			} else if (dreq->flags == NFS_ODIRECT_DO_COMMIT) {
+>>>>> -				if (memcmp(&dreq->verf, &hdr->verf, sizeof(dreq->verf))) {
+>>>>> -					dreq->flags = NFS_ODIRECT_RESCHED_WRITES;
+>>>>> +				if (nfs_direct_set_or_cmp_hdr_verf(dreq, hdr)) {
+>>>>> +					dreq->flags =
+>>>>> +						NFS_ODIRECT_RESCHED_WRITES;
+>>>>> 					bit = NFS_IOHDR_NEED_RESCHED;
+>>>>> 				} else
+>>>>> 					bit = NFS_IOHDR_NEED_COMMIT;
+>>>>> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+>>>>> index 7a665e0..0ebc521 100644
+>>>>> --- a/fs/nfs/nfs4filelayout.c
+>>>>> +++ b/fs/nfs/nfs4filelayout.c
+>>>>> @@ -560,6 +560,7 @@ filelayout_read_pagelist(struct nfs_pgio_data *data)
+>>>>> 	/* No multipath support. Use first DS */
+>>>>> 	atomic_inc(&ds->ds_clp->cl_count);
+>>>>> 	data->ds_clp = ds->ds_clp;
+>>>>> +	data->ds_idx = idx;
+>>>>> 	fh = nfs4_fl_select_ds_fh(lseg, j);
+>>>>> 	if (fh)
+>>>>> 		data->args.fh = fh;
+>>>>> @@ -603,6 +604,7 @@ filelayout_write_pagelist(struct nfs_pgio_data *data, int sync)
+>>>>> 	data->pgio_done_cb = filelayout_write_done_cb;
+>>>>> 	atomic_inc(&ds->ds_clp->cl_count);
+>>>>> 	data->ds_clp = ds->ds_clp;
+>>>>> +	data->ds_idx = idx;
+>>>>> 	fh = nfs4_fl_select_ds_fh(lseg, j);
+>>>>> 	if (fh)
+>>>>> 		data->args.fh = fh;
+>>>>> @@ -875,6 +877,8 @@ filelayout_alloc_commit_info(struct pnfs_layout_segment *lseg,
+>>>>> 	for (i = 0; i < size; i++) {
+>>>>> 		INIT_LIST_HEAD(&buckets[i].written);
+>>>>> 		INIT_LIST_HEAD(&buckets[i].committing);
+>>>>> +		/* mark direct verifier as unset */
+>>>>> +		buckets[i].direct_verf.committed = NFS_INVALID_STABLE_HOW;
+>>>>> 	}
+>>>>> 
+>>>>> 	spin_lock(cinfo->lock);
+>>>>> @@ -885,6 +889,8 @@ filelayout_alloc_commit_info(struct pnfs_layout_segment *lseg,
+>>>>> 			    &buckets[i].written);
+>>>>> 		list_splice(&cinfo->ds->buckets[i].committing,
+>>>>> 			    &buckets[i].committing);
+>>>>> +		buckets[i].direct_verf.committed =
+>>>>> +			cinfo->ds->buckets[i].direct_verf.committed;
+>>>>> 		buckets[i].wlseg = cinfo->ds->buckets[i].wlseg;
+>>>>> 		buckets[i].clseg = cinfo->ds->buckets[i].clseg;
+>>>>> 	}
+>>>>> diff --git a/include/linux/nfs.h b/include/linux/nfs.h
+>>>>> index 3e794c1..610af51 100644
+>>>>> --- a/include/linux/nfs.h
+>>>>> +++ b/include/linux/nfs.h
+>>>>> @@ -46,6 +46,9 @@ static inline void nfs_copy_fh(struct nfs_fh *target, const struct nfs_fh *sourc
+>>>>> enum nfs3_stable_how {
+>>>>> 	NFS_UNSTABLE = 0,
+>>>>> 	NFS_DATA_SYNC = 1,
+>>>>> -	NFS_FILE_SYNC = 2
+>>>>> +	NFS_FILE_SYNC = 2,
+>>>>> +
+>>>>> +	/* used by direct.c to mark verf as invalid */
+>>>>> +	NFS_INVALID_STABLE_HOW = -1
+>>>>> };
+>>>>> #endif /* _LINUX_NFS_H */
+>>>>> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+>>>>> index 29828c7..bb9fb88 100644
+>>>>> --- a/include/linux/nfs_xdr.h
+>>>>> +++ b/include/linux/nfs_xdr.h
+>>>>> @@ -1111,6 +1111,7 @@ struct pnfs_commit_bucket {
+>>>>> 	struct list_head committing;
+>>>>> 	struct pnfs_layout_segment *wlseg;
+>>>>> 	struct pnfs_layout_segment *clseg;
+>>>>> +	struct nfs_writeverf direct_verf;
+>>>>> };
+>>>>> 
+>>>>> struct pnfs_ds_commit_info {
+>>>>> @@ -1294,6 +1295,7 @@ struct nfs_pgio_data {
+>>>>> 	__u64			mds_offset;	/* Filelayout dense stripe */
+>>>>> 	struct nfs_page_array	pages;
+>>>>> 	struct nfs_client	*ds_clp;	/* pNFS data server */
+>>>>> +	int			ds_idx;		/* ds index if ds_clp is set */
+>>>>> };
+>>>>> 
+>>>>> struct nfs_rw_header {
 
