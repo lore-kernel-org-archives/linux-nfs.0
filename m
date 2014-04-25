@@ -1,180 +1,109 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e23smtp03.au.ibm.com ([202.81.31.145]:35359 "EHLO
-	e23smtp03.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753329AbaD0QPb (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Apr 2014 12:15:31 -0400
-Received: from /spool/local
-	by e23smtp03.au.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <aneesh.kumar@linux.vnet.ibm.com>;
-	Mon, 28 Apr 2014 02:15:29 +1000
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
-        viro@zeniv.linux.org.uk, dhowells@redhat.com
-Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH -V1 06/22] vfs: Add delete child and delete self permission flags
-Date: Sun, 27 Apr 2014 21:44:37 +0530
-Message-Id: <1398615293-22931-7-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-In-Reply-To: <1398615293-22931-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1398615293-22931-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from mail-ig0-f174.google.com ([209.85.213.174]:58517 "EHLO
+	mail-ig0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754411AbaDYOQX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Apr 2014 10:16:23 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH] xprtrdma: Ensure ia->ri_id->qp is not NULL when reconnecting
+To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Date: Fri, 25 Apr 2014 10:16:19 -0400
+Message-ID: <20140425141031.7926.89796.stgit@manet.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andreas Gruenbacher <agruen@kernel.org>
+Devesh Sharma <Devesh.Sharma@Emulex.Com> reports that after a
+disconnect, his HCA is failing to create a fresh QP, leaving
+ia_ri->ri_id->qp set to NULL. But xprtrdma still allows RPCs to
+wake up and post LOCAL_INV as they exit, causing an oops.
 
-Normally, deleting a file requires write access to the parent directory.
-Some permission models use a different permission on the parent
-directory to indicate delete access.  In addition, a process can have
-per-file delete access even without delete access on the parent
-directory.
+rpcrdma_ep_connect() is allowing the wake-up by leaking the QP
+creation error code (-EPERM in this case) to the RPC client's
+generic layer. xprt_connect_status() does not recognize -EPERM, so
+it kills pending RPC tasks immediately rather than retrying the
+connect.
 
-Introduce two new inode_permission() mask flags and use them in
-may_delete()
+Re-arrange the QP creation logic so that when it fails on reconnect,
+it leaves ->qp with the old QP rather than NULL.  If pending RPC
+tasks wake and exit, LOCAL_INV work requests will flush rather than
+oops.
 
-Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+On initial connect, leaving ->qp == NULL is OK, since there are no
+pending RPCs that might use ->qp. But be sure not to try to destroy
+a NULL QP when rpcrdma_ep_connect() is retried.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/namei.c         | 45 ++++++++++++++++++++++++++++++++++-----------
- include/linux/fs.h |  2 ++
- 2 files changed, 36 insertions(+), 11 deletions(-)
 
-diff --git a/fs/namei.c b/fs/namei.c
-index 028bc8bcf77c..56ac7613fbca 100644
---- a/fs/namei.c
-+++ b/fs/namei.c
-@@ -446,7 +446,7 @@ static int sb_permission(struct super_block *sb, struct inode *inode, int mask)
-  * changing the "normal" UIDs which are used for other things.
-  *
-  * When checking for MAY_APPEND, MAY_CREATE_FILE, MAY_CREATE_DIR,
-- * MAY_WRITE must also be set in @mask.
-+ * MAY_DELETE_CHILD, MAY_DELETE_SELF, MAY_WRITE must also be set in @mask.
-  */
- int inode_permission(struct inode *inode, int mask)
- {
-@@ -2366,11 +2366,25 @@ kern_path_mountpoint(int dfd, const char *name, struct path *path,
- }
- EXPORT_SYMBOL(kern_path_mountpoint);
- 
-+
-+/*
-+ * We should have exec permission on directory and MAY_DELETE_SELF
-+ * on the object being deleted.
-+ */
-+static int richacl_may_selfdelete(struct inode *dir,
-+				  struct inode *inode, int replace_mask)
-+{
-+	return (IS_RICHACL(inode) &&
-+		(inode_permission(dir, MAY_EXEC | replace_mask) == 0) &&
-+		(inode_permission(inode, MAY_DELETE_SELF) == 0));
-+}
-+
- /*
-  * It's inline, so penalty for filesystems that don't use sticky bit is
-  * minimal.
-  */
--static inline int check_sticky(struct inode *dir, struct inode *inode)
-+static inline int check_sticky(struct inode *dir,
-+			       struct inode *inode, int replace_mask)
- {
- 	kuid_t fsuid = current_fsuid();
- 
-@@ -2380,6 +2394,8 @@ static inline int check_sticky(struct inode *dir, struct inode *inode)
- 		return 0;
- 	if (uid_eq(dir->i_uid, fsuid))
- 		return 0;
-+	if (richacl_may_selfdelete(dir, inode, replace_mask))
-+		return 0;
- 	return !inode_capable(inode, CAP_FOWNER);
- }
- 
-@@ -2402,10 +2418,11 @@ static inline int check_sticky(struct inode *dir, struct inode *inode)
-  * 10. We don't allow removal of NFS sillyrenamed files; it's handled by
-  *     nfs_async_unlink().
-  */
--static int may_delete(struct inode *dir, struct dentry *victim, bool isdir)
-+static int may_delete(struct inode *dir, struct dentry *victim,
-+		      bool isdir, bool replace)
- {
- 	struct inode *inode = victim->d_inode;
--	int error;
-+	int error, mask, replace_mask = 0;
- 
- 	if (d_is_negative(victim))
- 		return -ENOENT;
-@@ -2414,13 +2431,19 @@ static int may_delete(struct inode *dir, struct dentry *victim, bool isdir)
- 	BUG_ON(victim->d_parent->d_inode != dir);
- 	audit_inode_child(dir, victim, AUDIT_TYPE_CHILD_DELETE);
- 
--	error = inode_permission(dir, MAY_WRITE | MAY_EXEC);
-+	mask = MAY_WRITE | MAY_EXEC | MAY_DELETE_CHILD;
-+	if (replace)
-+		replace_mask = S_ISDIR(inode->i_mode) ?
-+				MAY_CREATE_DIR : MAY_CREATE_FILE;
-+	error = inode_permission(dir, mask | replace_mask);
-+	if (error && richacl_may_selfdelete(dir, inode, replace_mask))
-+		error = 0;
- 	if (error)
- 		return error;
- 	if (IS_APPEND(dir))
- 		return -EPERM;
- 
--	if (check_sticky(dir, inode) || IS_APPEND(inode) ||
-+	if (check_sticky(dir, inode, replace_mask) || IS_APPEND(inode) ||
- 	    IS_IMMUTABLE(inode) || IS_SWAPFILE(inode))
- 		return -EPERM;
- 	if (isdir) {
-@@ -3539,7 +3562,7 @@ EXPORT_SYMBOL(dentry_unhash);
- 
- int vfs_rmdir(struct inode *dir, struct dentry *dentry)
- {
--	int error = may_delete(dir, dentry, 1);
-+	int error = may_delete(dir, dentry, 1, 0);
- 
- 	if (error)
- 		return error;
-@@ -3658,7 +3681,7 @@ SYSCALL_DEFINE1(rmdir, const char __user *, pathname)
- int vfs_unlink(struct inode *dir, struct dentry *dentry, struct inode **delegated_inode)
- {
- 	struct inode *target = dentry->d_inode;
--	int error = may_delete(dir, dentry, 0);
-+	int error = may_delete(dir, dentry, 0, 0);
- 
- 	if (error)
- 		return error;
-@@ -4060,7 +4083,7 @@ int vfs_rename(struct inode *old_dir, struct dentry *old_dentry,
- 	if (source == target)
- 		return 0;
- 
--	error = may_delete(old_dir, old_dentry, is_dir);
-+	error = may_delete(old_dir, old_dentry, is_dir, 0);
- 	if (error)
- 		return error;
- 
-@@ -4070,9 +4093,9 @@ int vfs_rename(struct inode *old_dir, struct dentry *old_dentry,
- 		new_is_dir = d_is_dir(new_dentry);
- 
- 		if (!(flags & RENAME_EXCHANGE))
--			error = may_delete(new_dir, new_dentry, is_dir);
-+			error = may_delete(new_dir, new_dentry, is_dir, 1);
- 		else
--			error = may_delete(new_dir, new_dentry, new_is_dir);
-+			error = may_delete(new_dir, new_dentry, new_is_dir, 1);
+
+Hi-
+
+I tested with fault injection, but I've probably missed a corner
+case or two. Please test and review.  Thanks!
+
+
+ net/sunrpc/xprtrdma/verbs.c |   29 ++++++++++++++++++++---------
+ 1 files changed, 20 insertions(+), 9 deletions(-)
+
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 85d4987..0f3ec65 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -867,6 +867,7 @@ rpcrdma_ep_connect(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
+ 	if (ep->rep_connected != 0) {
+ 		struct rpcrdma_xprt *xprt;
+ retry:
++		dprintk("RPC:       %s: reconnecting...\n", __func__);
+ 		rc = rpcrdma_ep_disconnect(ep, ia);
+ 		if (rc && rc != -ENOTCONN)
+ 			dprintk("RPC:       %s: rpcrdma_ep_disconnect"
+@@ -879,7 +880,7 @@ retry:
+ 		id = rpcrdma_create_id(xprt, ia,
+ 				(struct sockaddr *)&xprt->rx_data.addr);
+ 		if (IS_ERR(id)) {
+-			rc = PTR_ERR(id);
++			rc = -EHOSTUNREACH;
+ 			goto out;
+ 		}
+ 		/* TEMP TEMP TEMP - fail if new device:
+@@ -893,20 +894,30 @@ retry:
+ 			printk("RPC:       %s: can't reconnect on "
+ 				"different device!\n", __func__);
+ 			rdma_destroy_id(id);
+-			rc = -ENETDOWN;
++			rc = -ENETUNREACH;
+ 			goto out;
+ 		}
+ 		/* END TEMP */
++		rc = rdma_create_qp(id, ia->ri_pd, &ep->rep_attr);
++		if (rc) {
++			dprintk("RPC:       %s: rdma_create_qp failed %i\n",
++				__func__, rc);
++			rdma_destroy_id(id);
++			rc = -ENETUNREACH;
++			goto out;
++		}
+ 		rdma_destroy_qp(ia->ri_id);
+ 		rdma_destroy_id(ia->ri_id);
+ 		ia->ri_id = id;
+-	}
+-
+-	rc = rdma_create_qp(ia->ri_id, ia->ri_pd, &ep->rep_attr);
+-	if (rc) {
+-		dprintk("RPC:       %s: rdma_create_qp failed %i\n",
+-			__func__, rc);
+-		goto out;
++	} else {
++		dprintk("RPC:       %s: connecting...\n", __func__);
++		rc = rdma_create_qp(ia->ri_id, ia->ri_pd, &ep->rep_attr);
++		if (rc) {
++			dprintk("RPC:       %s: rdma_create_qp failed %i\n",
++				__func__, rc);
++			/* do not update ep->rep_connected */
++			return -ENETUNREACH;
++		}
  	}
- 	if (error)
- 		return error;
-diff --git a/include/linux/fs.h b/include/linux/fs.h
-index da5521de04ab..3f0ad0f2bce8 100644
---- a/include/linux/fs.h
-+++ b/include/linux/fs.h
-@@ -79,6 +79,8 @@ typedef void (dio_iodone_t)(struct kiocb *iocb, loff_t offset,
- #define MAY_NOT_BLOCK		0x00000080
- #define MAY_CREATE_FILE		0x00000100
- #define MAY_CREATE_DIR		0x00000200
-+#define MAY_DELETE_CHILD	0x00000400
-+#define MAY_DELETE_SELF		0x00000800
  
- /*
-  * flags in file.f_mode.  Note that FMODE_READ and FMODE_WRITE must correspond
--- 
-1.9.1
+ /* XXX Tavor device performs badly with 2K MTU! */
 
