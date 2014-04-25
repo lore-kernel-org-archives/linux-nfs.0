@@ -1,109 +1,185 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f174.google.com ([209.85.213.174]:58517 "EHLO
-	mail-ig0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754411AbaDYOQX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Apr 2014 10:16:23 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH] xprtrdma: Ensure ia->ri_id->qp is not NULL when reconnecting
-To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Date: Fri, 25 Apr 2014 10:16:19 -0400
-Message-ID: <20140425141031.7926.89796.stgit@manet.1015granger.net>
+Received: from mx12.netapp.com ([216.240.18.77]:18579 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932164AbaDYU4b (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Apr 2014 16:56:31 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
+CC: <dros@primarydata.com>, <hch@infradead.org>
+Subject: [PATCH v2 15/17] NFS: Create a common multiple_pgios() function
+Date: Fri, 25 Apr 2014 16:55:58 -0400
+Message-ID: <1398459360-2093-16-git-send-email-Anna.Schumaker@Netapp.com>
+In-Reply-To: <1398459360-2093-1-git-send-email-Anna.Schumaker@Netapp.com>
+References: <1398459360-2093-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Devesh Sharma <Devesh.Sharma@Emulex.Com> reports that after a
-disconnect, his HCA is failing to create a fresh QP, leaving
-ia_ri->ri_id->qp set to NULL. But xprtrdma still allows RPCs to
-wake up and post LOCAL_INV as they exit, causing an oops.
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
 
-rpcrdma_ep_connect() is allowing the wake-up by leaking the QP
-creation error code (-EPERM in this case) to the RPC client's
-generic layer. xprt_connect_status() does not recognize -EPERM, so
-it kills pending RPC tasks immediately rather than retrying the
-connect.
+Once again, these two functions look identical in the read and write
+case.  Time to combine them together!
 
-Re-arrange the QP creation logic so that when it fails on reconnect,
-it leaves ->qp with the old QP rather than NULL.  If pending RPC
-tasks wake and exit, LOCAL_INV work requests will flush rather than
-oops.
-
-On initial connect, leaving ->qp == NULL is OK, since there are no
-pending RPCs that might use ->qp. But be sure not to try to destroy
-a NULL QP when rpcrdma_ep_connect() is retried.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
+ fs/nfs/internal.h |  1 +
+ fs/nfs/pageio.c   | 29 +++++++++++++++++++++++++++++
+ fs/nfs/read.c     | 32 ++------------------------------
+ fs/nfs/write.c    | 31 +------------------------------
+ 4 files changed, 33 insertions(+), 60 deletions(-)
 
-
-Hi-
-
-I tested with fault injection, but I've probably missed a corner
-case or two. Please test and review.  Thanks!
-
-
- net/sunrpc/xprtrdma/verbs.c |   29 ++++++++++++++++++++---------
- 1 files changed, 20 insertions(+), 9 deletions(-)
-
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 85d4987..0f3ec65 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -867,6 +867,7 @@ rpcrdma_ep_connect(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
- 	if (ep->rep_connected != 0) {
- 		struct rpcrdma_xprt *xprt;
- retry:
-+		dprintk("RPC:       %s: reconnecting...\n", __func__);
- 		rc = rpcrdma_ep_disconnect(ep, ia);
- 		if (rc && rc != -ENOTCONN)
- 			dprintk("RPC:       %s: rpcrdma_ep_disconnect"
-@@ -879,7 +880,7 @@ retry:
- 		id = rpcrdma_create_id(xprt, ia,
- 				(struct sockaddr *)&xprt->rx_data.addr);
- 		if (IS_ERR(id)) {
--			rc = PTR_ERR(id);
-+			rc = -EHOSTUNREACH;
- 			goto out;
- 		}
- 		/* TEMP TEMP TEMP - fail if new device:
-@@ -893,20 +894,30 @@ retry:
- 			printk("RPC:       %s: can't reconnect on "
- 				"different device!\n", __func__);
- 			rdma_destroy_id(id);
--			rc = -ENETDOWN;
-+			rc = -ENETUNREACH;
- 			goto out;
- 		}
- 		/* END TEMP */
-+		rc = rdma_create_qp(id, ia->ri_pd, &ep->rep_attr);
-+		if (rc) {
-+			dprintk("RPC:       %s: rdma_create_qp failed %i\n",
-+				__func__, rc);
-+			rdma_destroy_id(id);
-+			rc = -ENETUNREACH;
-+			goto out;
-+		}
- 		rdma_destroy_qp(ia->ri_id);
- 		rdma_destroy_id(ia->ri_id);
- 		ia->ri_id = id;
--	}
--
--	rc = rdma_create_qp(ia->ri_id, ia->ri_pd, &ep->rep_attr);
--	if (rc) {
--		dprintk("RPC:       %s: rdma_create_qp failed %i\n",
--			__func__, rc);
--		goto out;
-+	} else {
-+		dprintk("RPC:       %s: connecting...\n", __func__);
-+		rc = rdma_create_qp(ia->ri_id, ia->ri_pd, &ep->rep_attr);
-+		if (rc) {
-+			dprintk("RPC:       %s: rdma_create_qp failed %i\n",
-+				__func__, rc);
-+			/* do not update ep->rep_connected */
-+			return -ENETUNREACH;
-+		}
- 	}
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 027d72c..81c314c 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -402,6 +402,7 @@ extern void nfs_pgio_data_release(struct nfs_pgio_data *);
+ extern int nfs_generic_pgio(struct nfs_pageio_descriptor *, struct nfs_pgio_header *);
+ extern int nfs_initiate_pgio(struct rpc_clnt *, struct nfs_pgio_data *,
+ 			     const struct rpc_call_ops *, int, int);
++extern int nfs_do_multiple_pgios(struct list_head *, const struct rpc_call_ops *, int);
  
- /* XXX Tavor device performs badly with 2K MTU! */
+ /* read.c */
+ extern void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
+diff --git a/fs/nfs/pageio.c b/fs/nfs/pageio.c
+index f07a132..e985b0e 100644
+--- a/fs/nfs/pageio.c
++++ b/fs/nfs/pageio.c
+@@ -173,6 +173,35 @@ out:
+ }
+ EXPORT_SYMBOL_GPL(nfs_initiate_pgio);
+ 
++static int nfs_do_pgio(struct nfs_pgio_data *data,
++		       const struct rpc_call_ops *call_ops,
++		       int how)
++{
++	struct inode *inode = data->header->inode;
++
++	return nfs_initiate_pgio(NFS_CLIENT(inode), data, call_ops, how, 0);
++}
++
++int nfs_do_multiple_pgios(struct list_head *head,
++				 const struct rpc_call_ops *call_ops,
++				 int how)
++{
++	struct nfs_pgio_data *data;
++	int ret = 0;
++
++	while (!list_empty(head)) {
++		int ret2;
++
++		data = list_first_entry(head, struct nfs_pgio_data, list);
++		list_del_init(&data->list);
++
++		ret2 = nfs_do_pgio(data, call_ops, how);
++		 if (ret == 0)
++			 ret = ret2;
++	}
++	return ret;
++}
++
+ static int nfs_pgio_error(struct nfs_pageio_descriptor *desc,
+ 			  struct nfs_pgio_header *hdr)
+ {
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index ebea335..9dd1aeb 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -161,34 +161,6 @@ static void nfs_initiate_read(struct nfs_pgio_data *data, struct rpc_message *ms
+ 	NFS_PROTO(inode)->read_setup(data, msg);
+ }
+ 
+-static int nfs_do_read(struct nfs_pgio_data *data,
+-		const struct rpc_call_ops *call_ops)
+-{
+-	struct inode *inode = data->header->inode;
+-
+-	return nfs_initiate_pgio(NFS_CLIENT(inode), data, call_ops, 0, 0);
+-}
+-
+-static int
+-nfs_do_multiple_reads(struct list_head *head,
+-		const struct rpc_call_ops *call_ops)
+-{
+-	struct nfs_pgio_data *data;
+-	int ret = 0;
+-
+-	while (!list_empty(head)) {
+-		int ret2;
+-
+-		data = list_first_entry(head, struct nfs_pgio_data, list);
+-		list_del_init(&data->list);
+-
+-		ret2 = nfs_do_read(data, call_ops);
+-		if (ret == 0)
+-			ret = ret2;
+-	}
+-	return ret;
+-}
+-
+ static void
+ nfs_async_read_error(struct list_head *head)
+ {
+@@ -222,8 +194,8 @@ static int nfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc)
+ 	atomic_inc(&hdr->refcnt);
+ 	ret = nfs_generic_pgio(desc, hdr);
+ 	if (ret == 0)
+-		ret = nfs_do_multiple_reads(&hdr->rpc_list,
+-					    desc->pg_rpc_callops);
++		ret = nfs_do_multiple_pgios(&hdr->rpc_list,
++					    desc->pg_rpc_callops, 0);
+ 	if (atomic_dec_and_test(&hdr->refcnt))
+ 		hdr->completion_ops->completion(hdr);
+ 	return ret;
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 4279f80..28fdde2 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -945,35 +945,6 @@ static void nfs_initiate_write(struct nfs_pgio_data *data, struct rpc_message *m
+ 				 &task_setup_data->rpc_client, msg, data);
+ }
+ 
+-static int nfs_do_write(struct nfs_pgio_data *data,
+-		const struct rpc_call_ops *call_ops,
+-		int how)
+-{
+-	struct inode *inode = data->header->inode;
+-
+-	return nfs_initiate_pgio(NFS_CLIENT(inode), data, call_ops, how, 0);
+-}
+-
+-static int nfs_do_multiple_writes(struct list_head *head,
+-		const struct rpc_call_ops *call_ops,
+-		int how)
+-{
+-	struct nfs_pgio_data *data;
+-	int ret = 0;
+-
+-	while (!list_empty(head)) {
+-		int ret2;
+-
+-		data = list_first_entry(head, struct nfs_pgio_data, list);
+-		list_del_init(&data->list);
+-		
+-		ret2 = nfs_do_write(data, call_ops, how);
+-		 if (ret == 0)
+-			 ret = ret2;
+-	}
+-	return ret;
+-}
+-
+ /* If a nfs_flush_* function fails, it should remove reqs from @head and
+  * call this on each, which will prepare them to be retried on next
+  * writeback using standard nfs.
+@@ -1018,7 +989,7 @@ static int nfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc)
+ 	atomic_inc(&hdr->refcnt);
+ 	ret = nfs_generic_pgio(desc, hdr);
+ 	if (ret == 0)
+-		ret = nfs_do_multiple_writes(&hdr->rpc_list,
++		ret = nfs_do_multiple_pgios(&hdr->rpc_list,
+ 					     desc->pg_rpc_callops,
+ 					     desc->pg_ioflags);
+ 	if (atomic_dec_and_test(&hdr->refcnt))
+-- 
+1.9.2
 
