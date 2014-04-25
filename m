@@ -1,66 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ee0-f41.google.com ([74.125.83.41]:56104 "EHLO
-	mail-ee0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751675AbaD2IrL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Apr 2014 04:47:11 -0400
-Message-ID: <535F670B.4060704@gmail.com>
-Date: Tue, 29 Apr 2014 10:47:07 +0200
-From: "Michael Kerrisk (man-pages)" <mtk.manpages@gmail.com>
-MIME-Version: 1.0
-To: Jeff Layton <jlayton@redhat.com>
-CC: mtk.manpages@gmail.com,
-        Ganesha NFS List <nfs-ganesha-devel@lists.sourceforge.net>,
-        lkml <linux-kernel@vger.kernel.org>,
-        Linux-Fsdevel <linux-fsdevel@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@fys.uio.no>,
-        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
-        samba-technical@lists.samba.org, linux-nfs@vger.kernel.org
-Subject: Re: OFD ("file private") locks and NFS
-References: <535F651E.6090204@gmail.com>
-In-Reply-To: <535F651E.6090204@gmail.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-pa0-f45.google.com ([209.85.220.45]:62553 "EHLO
+	mail-pa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752042AbaDYXBC convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Apr 2014 19:01:02 -0400
+Received: by mail-pa0-f45.google.com with SMTP id kq14so3027380pab.18
+        for <linux-nfs@vger.kernel.org>; Fri, 25 Apr 2014 16:01:01 -0700 (PDT)
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
+Subject: Re: nfs4 idmap problems
+From: Tom Haynes <thomas.haynes@primarydata.com>
+In-Reply-To: <361F79C4-BA41-4F6A-94C1-A4FE1C4A2D90@me.com>
+Date: Fri, 25 Apr 2014 16:01:02 -0700
+Cc: linux-nfs@vger.kernel.org
+Message-Id: <D6F60A65-99FC-47F2-948E-7D4969467DB0@primarydata.com>
+References: <361F79C4-BA41-4F6A-94C1-A4FE1C4A2D90@me.com>
+To: Craig Yoshioka <craigyk@me.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-[CC+= linux-nfs@]
 
-On 04/29/2014 10:38 AM, Michael Kerrisk (man-pages) wrote:
-> Hi Jeff,
+On Apr 25, 2014, at 1:35 PM, Craig Yoshioka <craigyk@me.com> wrote:
+
+> I have a FreeBSD server with several NFSv4 shares.
 > 
-> I've been looking a bit at the fcntl() documentation of traditional 
-> (F_SETLK) record locking, and a question just jumped out at me. Is 
-> it worth considering some future-proofing in the design of OFD locks
-> ("open file description locks", formerly known as "file-private locks")?
+> I have several linux clients (Ubuntu 12.04) that connect just fine and are able to use the NFS shares with 0 problems.
 > 
-> What I am thinking of here is that on some systems, the traditional
-> 'struct flock' has a nonstandard field, l_sysid, that is used on F_GETLK 
-> to identify the remote system on which a lock is held. Should the design
-> of OFD locks allow for such a field (now, or in the future), which might 
-> be useful in the context of locking on network file systems such as NFS.
+> But I’ve run into idmap problems with some newer linux distros ( Mint 16, Ubuntu 14.04 ) where chown as root sets file ownership as nobody (the idmap operation fails).  Just to be clear, chown as root is working fine from the Ubuntu 12.04 machines.  This poses a problem since some desktop GUIs like to do this sort of thing when creating config files in user home directories, and so user GUI logins fail.
 > 
-> Put more simply, should the new OFD locking system be using a new
-> structure for describing locks, rather than the traditional 'struct
-> flock'? Defining a new structure, might be useful to allow for
-> future extensions to the API.
+> the logs have a lot of this:
+> 
+> Apr 25 12:17:51 server rpc.idmapd[433]: nfs4_name_to_uid: calling nsswitch->name_to_uid
+> Apr 25 12:17:51 server rpc.idmapd[433]: nss_getpwnam: name 'craigyk@nimgs.com' domain 'nimgs.com': resulting localname 'craigyk'
+> Apr 25 12:17:51 server rpc.idmapd[433]: nfs4_name_to_uid: nsswitch->name_to_uid returned 0
+> Apr 25 12:17:51 server rpc.idmapd[433]: nfs4_name_to_uid: final return value is 0
+> Apr 25 12:17:51 server rpc.idmapd[433]: Client 0: (user) name "craigyk@nimgs.com" -> id "11115"
+> ...
+> Apr 25 12:18:03 server rpc.idmapd[433]: nfs4_name_to_uid: calling nsswitch->name_to_uid
+> Apr 25 12:18:03 server rpc.idmapd[433]: nss_getpwnam: name '11115@nimgs.com' domain 'nimgs.com': resulting localname '11115'
+> Apr 25 12:18:03 server rpc.idmapd[433]: nss_getpwnam: name '11115' not found in domain 'nimgs.com'
+> Apr 25 12:18:03 server rpc.idmapd[433]: nfs4_name_to_uid: nsswitch->name_to_uid returned -2
+> Apr 25 12:18:03 server rpc.idmapd[433]: nfs4_name_to_uid: final return value is -2
+> Apr 25 12:18:03 server rpc.idmapd[433]: Client 0: (user) name "11115@nimgs.com" -> id "65534"
+> 
+> I’ve tried almost everything I can think of.
+> The users are being served from Samba4.
+> The uid and gid are the same on all clients.
+> 
+> Why is idmap trying to lookup the user id by it’s user id?—
 
-Just add one further detail here. What I'm thinking is, maybe instead there
-should be something like:
+HI Craig,
 
-struct flockx {
-    int flags;
-    /* Other fields like 'struct flock' */
-    char reserved[32];	/* Or some suitable value */
-}
+If the id-mapping is not working via user names, the client will try to see if user ids will
+work. Since the client cannot send a numeric ID, it sends a string, in this case “11115”.
 
-That flags field might always be zero for now, but in the future it 
-could be used on the setlk and getlk operations to indicate the presence
-of additional fields in the structure.
+Check to make sure that id mapping is properly configured on both the server and client.
 
-Cheers,
-
-Michael
-
--- 
-Michael Kerrisk
-Linux man-pages maintainer; http://www.kernel.org/doc/man-pages/
-Linux/UNIX System Programming Training: http://man7.org/training/
+Thanks,
+Tom
