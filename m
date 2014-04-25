@@ -1,177 +1,171 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f180.google.com ([209.85.213.180]:57352 "EHLO
-	mail-ig0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1945938AbaD3TbX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Apr 2014 15:31:23 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH V3 13/17] xprtrmda: Reduce calls to ib_poll_cq() in completion
-	handlers
-To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Cc: Anna.Schumaker@netapp.com
-Date: Wed, 30 Apr 2014 15:31:21 -0400
-Message-ID: <20140430193121.5663.62284.stgit@manet.1015granger.net>
-In-Reply-To: <20140430191433.5663.16217.stgit@manet.1015granger.net>
-References: <20140430191433.5663.16217.stgit@manet.1015granger.net>
+Received: from mx12.netapp.com ([216.240.18.77]:34165 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932157AbaDYU4X (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Apr 2014 16:56:23 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
+CC: <dros@primarydata.com>, <hch@infradead.org>
+Subject: [PATCH v2 10/17] NFS: Create a common rpc_call_ops struct
+Date: Fri, 25 Apr 2014 16:55:53 -0400
+Message-ID: <1398459360-2093-11-git-send-email-Anna.Schumaker@Netapp.com>
+In-Reply-To: <1398459360-2093-1-git-send-email-Anna.Schumaker@Netapp.com>
+References: <1398459360-2093-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Change the completion handlers to grab up to 16 items per
-ib_poll_cq() call. No extra ib_poll_cq() is needed if fewer than 16
-items are returned.
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+The read and write paths set up this struct in exactly the same way, so
+create a single shared struct.
+
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
+ fs/nfs/internal.h |  4 +---
+ fs/nfs/pageio.c   | 10 ++++++++--
+ fs/nfs/read.c     | 11 ++---------
+ fs/nfs/write.c    | 11 ++---------
+ 4 files changed, 13 insertions(+), 23 deletions(-)
 
- net/sunrpc/xprtrdma/verbs.c     |   56 ++++++++++++++++++++++++++-------------
- net/sunrpc/xprtrdma/xprt_rdma.h |    4 +++
- 2 files changed, 42 insertions(+), 18 deletions(-)
-
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index c7d5281..b8caee9 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -162,14 +162,23 @@ rpcrdma_sendcq_process_wc(struct ib_wc *wc)
- }
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index b18cca4..798eb47 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -396,13 +396,11 @@ extern int nfs4_get_rootfh(struct nfs_server *server, struct nfs_fh *mntfh, bool
+ struct nfs_pgio_completion_ops;
  
- static int
--rpcrdma_sendcq_poll(struct ib_cq *cq)
-+rpcrdma_sendcq_poll(struct ib_cq *cq, struct rpcrdma_ep *ep)
+ /* pageio.c */
++extern const struct rpc_call_ops nfs_pgio_common_ops;
+ extern struct nfs_rw_header *nfs_rw_header_alloc(const struct nfs_rw_ops *);
+ extern void nfs_rw_header_free(struct nfs_pgio_header *);
+ extern struct nfs_pgio_data *nfs_pgio_data_alloc(struct nfs_pgio_header *, unsigned int);
+ extern void nfs_pgio_data_release(struct nfs_pgio_data *);
+-extern void nfs_pgio_prepare(struct rpc_task *, void *);
+-extern void nfs_pgio_release_common(void *);
+-extern void nfs_pgio_result_common(struct rpc_task *, void *);
+ 
+ /* read.c */
+ extern void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
+diff --git a/fs/nfs/pageio.c b/fs/nfs/pageio.c
+index 91c49cc..0ef8079 100644
+--- a/fs/nfs/pageio.c
++++ b/fs/nfs/pageio.c
+@@ -87,7 +87,7 @@ void nfs_pgio_data_release(struct nfs_pgio_data *data)
+ }
+ EXPORT_SYMBOL_GPL(nfs_pgio_data_release);
+ 
+-void nfs_pgio_prepare(struct rpc_task *task, void *calldata)
++static void nfs_pgio_prepare(struct rpc_task *task, void *calldata)
  {
--	struct ib_wc wc;
--	int rc;
-+	struct ib_wc *wcs;
-+	int count, rc;
- 
--	while ((rc = ib_poll_cq(cq, 1, &wc)) == 1)
--		rpcrdma_sendcq_process_wc(&wc);
--	return rc;
-+	do {
-+		wcs = ep->rep_send_wcs;
-+
-+		rc = ib_poll_cq(cq, RPCRDMA_POLLSIZE, wcs);
-+		if (rc <= 0)
-+			return rc;
-+
-+		count = rc;
-+		while (count-- > 0)
-+			rpcrdma_sendcq_process_wc(wcs++);
-+	} while (rc == RPCRDMA_POLLSIZE);
-+	return 0;
+ 	struct nfs_pgio_data *data = calldata;
+ 	int err;
+@@ -114,7 +114,7 @@ static int nfs_pgio_result(struct rpc_task *task, struct nfs_pgio_data *data)
+ 	return data->header->rw_ops->rw_result(task, data, inode);
  }
  
+-void nfs_pgio_result_common(struct rpc_task *task, void *calldata)
++static void nfs_pgio_result_common(struct rpc_task *task, void *calldata)
+ {
+ 	struct nfs_pgio_data *data = calldata;
+ 
+@@ -125,3 +125,9 @@ void nfs_pgio_result_common(struct rpc_task *task, void *calldata)
+ 	else
+ 		data->header->rw_ops->rw_result_common(task, data);
+ }
++
++const struct rpc_call_ops nfs_pgio_common_ops = {
++	.rpc_call_prepare = nfs_pgio_prepare,
++	.rpc_call_done = nfs_pgio_result_common,
++	.rpc_release = nfs_pgio_release_common,
++};
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index 4f49507..98373ba 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -29,7 +29,6 @@
+ #define NFSDBG_FACILITY		NFSDBG_PAGECACHE
+ 
+ static const struct nfs_pageio_ops nfs_pageio_read_ops;
+-static const struct rpc_call_ops nfs_read_common_ops;
+ static const struct nfs_pgio_completion_ops nfs_async_read_completion_ops;
+ static const struct nfs_rw_ops nfs_rw_read_ops;
+ 
+@@ -314,7 +313,7 @@ static int nfs_pagein_multi(struct nfs_pageio_descriptor *desc,
+ 
+ 	nfs_list_remove_request(req);
+ 	nfs_list_add_request(req, &hdr->pages);
+-	desc->pg_rpc_callops = &nfs_read_common_ops;
++	desc->pg_rpc_callops = &nfs_pgio_common_ops;
+ 	return 0;
+ }
+ 
+@@ -343,7 +342,7 @@ static int nfs_pagein_one(struct nfs_pageio_descriptor *desc,
+ 
+ 	nfs_read_rpcsetup(data, desc->pg_count, 0);
+ 	list_add(&data->list, &hdr->rpc_list);
+-	desc->pg_rpc_callops = &nfs_read_common_ops;
++	desc->pg_rpc_callops = &nfs_pgio_common_ops;
+ 	return 0;
+ }
+ 
+@@ -443,12 +442,6 @@ static void nfs_readpage_result_common(struct rpc_task *task, struct nfs_pgio_da
+ 		nfs_readpage_retry(task, data);
+ }
+ 
+-static const struct rpc_call_ops nfs_read_common_ops = {
+-	.rpc_call_prepare = nfs_pgio_prepare,
+-	.rpc_call_done = nfs_pgio_result_common,
+-	.rpc_release = nfs_pgio_release_common,
+-};
+-
  /*
-@@ -183,9 +192,10 @@ rpcrdma_sendcq_poll(struct ib_cq *cq)
- static void
- rpcrdma_sendcq_upcall(struct ib_cq *cq, void *cq_context)
- {
-+	struct rpcrdma_ep *ep = (struct rpcrdma_ep *)cq_context;
- 	int rc;
- 
--	rc = rpcrdma_sendcq_poll(cq);
-+	rc = rpcrdma_sendcq_poll(cq, ep);
- 	if (rc) {
- 		dprintk("RPC:       %s: ib_poll_cq failed: %i\n",
- 			__func__, rc);
-@@ -202,7 +212,7 @@ rpcrdma_sendcq_upcall(struct ib_cq *cq, void *cq_context)
- 		return;
- 	}
- 
--	rpcrdma_sendcq_poll(cq);
-+	rpcrdma_sendcq_poll(cq, ep);
- }
- 
- static void
-@@ -241,14 +251,23 @@ out_schedule:
- }
- 
- static int
--rpcrdma_recvcq_poll(struct ib_cq *cq)
-+rpcrdma_recvcq_poll(struct ib_cq *cq, struct rpcrdma_ep *ep)
- {
--	struct ib_wc wc;
--	int rc;
-+	struct ib_wc *wcs;
-+	int count, rc;
- 
--	while ((rc = ib_poll_cq(cq, 1, &wc)) == 1)
--		rpcrdma_recvcq_process_wc(&wc);
--	return rc;
-+	do {
-+		wcs = ep->rep_recv_wcs;
-+
-+		rc = ib_poll_cq(cq, RPCRDMA_POLLSIZE, wcs);
-+		if (rc <= 0)
-+			return rc;
-+
-+		count = rc;
-+		while (count-- > 0)
-+			rpcrdma_recvcq_process_wc(wcs++);
-+	} while (rc == RPCRDMA_POLLSIZE);
-+	return 0;
- }
- 
- /*
-@@ -266,9 +285,10 @@ rpcrdma_recvcq_poll(struct ib_cq *cq)
- static void
- rpcrdma_recvcq_upcall(struct ib_cq *cq, void *cq_context)
- {
-+	struct rpcrdma_ep *ep = (struct rpcrdma_ep *)cq_context;
- 	int rc;
- 
--	rc = rpcrdma_recvcq_poll(cq);
-+	rc = rpcrdma_recvcq_poll(cq, ep);
- 	if (rc) {
- 		dprintk("RPC:       %s: ib_poll_cq failed: %i\n",
- 			__func__, rc);
-@@ -285,7 +305,7 @@ rpcrdma_recvcq_upcall(struct ib_cq *cq, void *cq_context)
- 		return;
- 	}
- 
--	rpcrdma_recvcq_poll(cq);
-+	rpcrdma_recvcq_poll(cq, ep);
- }
- 
- #ifdef RPC_DEBUG
-@@ -721,7 +741,7 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
- 	INIT_DELAYED_WORK(&ep->rep_connect_worker, rpcrdma_connect_worker);
- 
- 	sendcq = ib_create_cq(ia->ri_id->device, rpcrdma_sendcq_upcall,
--				  rpcrdma_cq_async_error_upcall, NULL,
-+				  rpcrdma_cq_async_error_upcall, ep,
- 				  ep->rep_attr.cap.max_send_wr + 1, 0);
- 	if (IS_ERR(sendcq)) {
- 		rc = PTR_ERR(sendcq);
-@@ -738,7 +758,7 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
- 	}
- 
- 	recvcq = ib_create_cq(ia->ri_id->device, rpcrdma_recvcq_upcall,
--				  rpcrdma_cq_async_error_upcall, NULL,
-+				  rpcrdma_cq_async_error_upcall, ep,
- 				  ep->rep_attr.cap.max_recv_wr + 1, 0);
- 	if (IS_ERR(recvcq)) {
- 		rc = PTR_ERR(recvcq);
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 334ab6e..cb4c882 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -74,6 +74,8 @@ struct rpcrdma_ia {
-  * RDMA Endpoint -- one per transport instance
+  * Read a page over NFS.
+  * We read the page synchronously in the following case:
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index d2351a1..e492537 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -42,7 +42,6 @@
+  * Local function declarations
   */
+ static void nfs_redirty_request(struct nfs_page *req);
+-static const struct rpc_call_ops nfs_write_common_ops;
+ static const struct rpc_call_ops nfs_commit_ops;
+ static const struct nfs_pgio_completion_ops nfs_async_write_completion_ops;
+ static const struct nfs_commit_completion_ops nfs_commit_completion_ops;
+@@ -1138,7 +1137,7 @@ static int nfs_flush_multi(struct nfs_pageio_descriptor *desc,
+ 	} while (nbytes != 0);
+ 	nfs_list_remove_request(req);
+ 	nfs_list_add_request(req, &hdr->pages);
+-	desc->pg_rpc_callops = &nfs_write_common_ops;
++	desc->pg_rpc_callops = &nfs_pgio_common_ops;
+ 	return 0;
+ }
  
-+#define RPCRDMA_POLLSIZE	(16)
-+
- struct rpcrdma_ep {
- 	atomic_t		rep_cqcount;
- 	int			rep_cqinit;
-@@ -88,6 +90,8 @@ struct rpcrdma_ep {
- 	struct rdma_conn_param	rep_remote_cma;
- 	struct sockaddr_storage	rep_remote_addr;
- 	struct delayed_work	rep_connect_worker;
-+	struct ib_wc		rep_send_wcs[RPCRDMA_POLLSIZE];
-+	struct ib_wc		rep_recv_wcs[RPCRDMA_POLLSIZE];
- };
+@@ -1182,7 +1181,7 @@ static int nfs_flush_one(struct nfs_pageio_descriptor *desc,
+ 	/* Set up the argument struct */
+ 	nfs_write_rpcsetup(data, desc->pg_count, 0, desc->pg_ioflags, &cinfo);
+ 	list_add(&data->list, &hdr->rpc_list);
+-	desc->pg_rpc_callops = &nfs_write_common_ops;
++	desc->pg_rpc_callops = &nfs_pgio_common_ops;
+ 	return 0;
+ }
  
- #define INIT_CQCOUNT(ep) atomic_set(&(ep)->rep_cqcount, (ep)->rep_cqinit)
+@@ -1272,12 +1271,6 @@ static void nfs_writeback_release_common(struct nfs_pgio_data *data)
+ 	}
+ }
+ 
+-static const struct rpc_call_ops nfs_write_common_ops = {
+-	.rpc_call_prepare = nfs_pgio_prepare,
+-	.rpc_call_done = nfs_pgio_result_common,
+-	.rpc_release = nfs_pgio_release_common,
+-};
+-
+ /*
+  * Special version of should_remove_suid() that ignores capabilities.
+  */
+-- 
+1.9.2
 
