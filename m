@@ -1,50 +1,317 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cmexedge1.ext.emulex.com ([138.239.224.99]:24049 "EHLO
-	CMEXEDGE1.ext.emulex.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754988AbaDGXpk convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 7 Apr 2014 19:45:40 -0400
-From: Devesh Sharma <Devesh.Sharma@Emulex.Com>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-CC: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
-        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>
-Subject: RE: [PATCH] NFS-RDMA: fix qp pointer validation checks
-Date: Mon, 7 Apr 2014 23:45:38 +0000
-Message-ID: <EE7902D3F51F404C82415C4803930ACD3FDE9AE4@CMEXMB1.ad.emulex.com>
-References: <d4afd436-8e14-4729-9bc1-71ab9079a246@CMEXHTCAS1.ad.emulex.com>
- <61E8946F-3722-4707-A948-065D395C365A@primarydata.com>
-In-Reply-To: <61E8946F-3722-4707-A948-065D395C365A@primarydata.com>
-Content-Type: text/plain; charset="us-ascii"
+Received: from mx11.netapp.com ([216.240.18.76]:15489 "EHLO mx11.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932165AbaDYU43 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Apr 2014 16:56:29 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
+CC: <dros@primarydata.com>, <hch@infradead.org>
+Subject: [PATCH v2 14/17] NFS: Create a common initiate_pgio() function
+Date: Fri, 25 Apr 2014 16:55:57 -0400
+Message-ID: <1398459360-2093-15-git-send-email-Anna.Schumaker@Netapp.com>
+In-Reply-To: <1398459360-2093-1-git-send-email-Anna.Schumaker@Netapp.com>
+References: <1398459360-2093-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi
-Inline Below:
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
 
------Original Message-----
-From: Trond Myklebust [mailto:trond.myklebust@primarydata.com] 
-Sent: Tuesday, April 08, 2014 4:58 AM
-To: Devesh Sharma
-Cc: linux-nfs@vger.kernel.org; linux-rdma@vger.kernel.org
-Subject: Re: [PATCH] NFS-RDMA: fix qp pointer validation checks
+Most of this code is the same for both the read and write paths, so
+combine everything and use the rw_ops when necessary.
 
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+---
+ fs/nfs/internal.h        |  9 ++------
+ fs/nfs/nfs4filelayout.c  |  6 +++---
+ fs/nfs/pageio.c          | 47 +++++++++++++++++++++++++++++++++++++++++
+ fs/nfs/read.c            | 42 ++++++------------------------------
+ fs/nfs/write.c           | 55 ++++++------------------------------------------
+ include/linux/nfs_page.h |  2 ++
+ 6 files changed, 67 insertions(+), 94 deletions(-)
 
-On Apr 7, 2014, at 18:30, devesh.sharma@emulex.com wrote:
-
-> From: Devesh Sharma <devesh.sharma@emulex.com>
-> 
-> If the rdma_create_qp fails to create qp due to device firmware being 
-> in invalid state xprtrdma still tries to destroy the non-existant qp 
-> and ends up in a NULL pointer reference crash.
-> Adding proper checks for vaidating QP pointer avoids this to happen.
-> 
-
-As far as I can see, rdma_create_qp() only sets id->qp on success. Otherwise it is left with the same value as it had on entry (i.e. NULL). What am I missing?
-[DS]: If you focus on rpcrdma_ep_connect() function and assume that rdma_create_qp() has failed with some valid error code, then this callback function will return ep->rep_connected = some non-zero.
-Eventually xprt_rdma_connect_worker() will call rpcrdma_ep_connect() again and rpcrdma_ep_connect will try to free-up all the resources, now rdma_destroy_qp() will be called with invalid QP (which is NULL) pointer
-And hence kernel will panic. Please correct me if I am worng.
-
-_________________________________
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData trond.myklebust@primarydata.com
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 6422b9d..027d72c 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -400,14 +400,13 @@ extern struct nfs_rw_header *nfs_rw_header_alloc(const struct nfs_rw_ops *);
+ extern void nfs_rw_header_free(struct nfs_pgio_header *);
+ extern void nfs_pgio_data_release(struct nfs_pgio_data *);
+ extern int nfs_generic_pgio(struct nfs_pageio_descriptor *, struct nfs_pgio_header *);
++extern int nfs_initiate_pgio(struct rpc_clnt *, struct nfs_pgio_data *,
++			     const struct rpc_call_ops *, int, int);
+ 
+ /* read.c */
+ extern void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
+ 			struct inode *inode, bool force_mds,
+ 			const struct nfs_pgio_completion_ops *compl_ops);
+-extern int nfs_initiate_read(struct rpc_clnt *clnt,
+-			     struct nfs_pgio_data *data,
+-			     const struct rpc_call_ops *call_ops, int flags);
+ extern void nfs_read_prepare(struct rpc_task *task, void *calldata);
+ extern void nfs_pageio_reset_read_mds(struct nfs_pageio_descriptor *pgio);
+ 
+@@ -428,10 +427,6 @@ extern void nfs_pageio_init_write(struct nfs_pageio_descriptor *pgio,
+ 			const struct nfs_pgio_completion_ops *compl_ops);
+ extern void nfs_pageio_reset_write_mds(struct nfs_pageio_descriptor *pgio);
+ extern void nfs_commit_free(struct nfs_commit_data *p);
+-extern int nfs_initiate_write(struct rpc_clnt *clnt,
+-			      struct nfs_pgio_data *data,
+-			      const struct rpc_call_ops *call_ops,
+-			      int how, int flags);
+ extern void nfs_write_prepare(struct rpc_task *task, void *calldata);
+ extern void nfs_commit_prepare(struct rpc_task *task, void *calldata);
+ extern int nfs_initiate_commit(struct rpc_clnt *clnt,
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index e693614..7954e16 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -568,8 +568,8 @@ filelayout_read_pagelist(struct nfs_pgio_data *data)
+ 	data->mds_offset = offset;
+ 
+ 	/* Perform an asynchronous read to ds */
+-	nfs_initiate_read(ds_clnt, data,
+-				  &filelayout_read_call_ops, RPC_TASK_SOFTCONN);
++	nfs_initiate_pgio(ds_clnt, data,
++			    &filelayout_read_call_ops, 0, RPC_TASK_SOFTCONN);
+ 	return PNFS_ATTEMPTED;
+ }
+ 
+@@ -613,7 +613,7 @@ filelayout_write_pagelist(struct nfs_pgio_data *data, int sync)
+ 	data->args.offset = filelayout_get_dserver_offset(lseg, offset);
+ 
+ 	/* Perform an asynchronous write */
+-	nfs_initiate_write(ds_clnt, data,
++	nfs_initiate_pgio(ds_clnt, data,
+ 				    &filelayout_write_call_ops, sync,
+ 				    RPC_TASK_SOFTCONN);
+ 	return PNFS_ATTEMPTED;
+diff --git a/fs/nfs/pageio.c b/fs/nfs/pageio.c
+index 70598a7..f07a132 100644
+--- a/fs/nfs/pageio.c
++++ b/fs/nfs/pageio.c
+@@ -126,6 +126,53 @@ static void nfs_pgio_rpcsetup(struct nfs_pgio_data *data,
+ 	nfs_fattr_init(&data->fattr);
+ }
+ 
++int nfs_initiate_pgio(struct rpc_clnt *clnt, struct nfs_pgio_data *data,
++		      const struct rpc_call_ops *call_ops, int how, int flags)
++{
++	struct inode *inode = data->header->inode;
++	struct rpc_task *task;
++	struct rpc_message msg = {
++		.rpc_argp = &data->args,
++		.rpc_resp = &data->res,
++		.rpc_cred = data->header->cred,
++	};
++	struct rpc_task_setup task_setup_data = {
++		.rpc_client = clnt,
++		.task = &data->task,
++		.rpc_message = &msg,
++		.callback_ops = call_ops,
++		.callback_data = data,
++		.workqueue = nfsiod_workqueue,
++		.flags = RPC_TASK_ASYNC | flags,
++	};
++	int ret = 0;
++
++	data->header->rw_ops->rw_initiate(data, &msg, &task_setup_data, how);
++
++	dprintk("NFS: %5u initiated pgio call "
++		"(req %s/%llu, %u bytes @ offset %llu)\n",
++		data->task.tk_pid,
++		inode->i_sb->s_id,
++		(unsigned long long)NFS_FILEID(inode),
++		data->args.count,
++		(unsigned long long)data->args.offset);
++
++	task = rpc_run_task(&task_setup_data);
++	if (IS_ERR(task)) {
++		ret = PTR_ERR(task);
++		goto out;
++	}
++	if (how & FLUSH_SYNC) {
++		ret = rpc_wait_for_completion_task(task);
++		if (ret == 0)
++			ret = task->tk_status;
++	}
++	rpc_put_task(task);
++out:
++	return ret;
++}
++EXPORT_SYMBOL_GPL(nfs_initiate_pgio);
++
+ static int nfs_pgio_error(struct nfs_pageio_descriptor *desc,
+ 			  struct nfs_pgio_header *hdr)
+ {
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index 07c21bd..ebea335 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -151,53 +151,22 @@ out:
+ 	hdr->release(hdr);
+ }
+ 
+-int nfs_initiate_read(struct rpc_clnt *clnt,
+-		      struct nfs_pgio_data *data,
+-		      const struct rpc_call_ops *call_ops, int flags)
++static void nfs_initiate_read(struct nfs_pgio_data *data, struct rpc_message *msg,
++			      struct rpc_task_setup *task_setup_data, int how)
+ {
+ 	struct inode *inode = data->header->inode;
+ 	int swap_flags = IS_SWAPFILE(inode) ? NFS_RPC_SWAPFLAGS : 0;
+-	struct rpc_task *task;
+-	struct rpc_message msg = {
+-		.rpc_argp = &data->args,
+-		.rpc_resp = &data->res,
+-		.rpc_cred = data->header->cred,
+-	};
+-	struct rpc_task_setup task_setup_data = {
+-		.task = &data->task,
+-		.rpc_client = clnt,
+-		.rpc_message = &msg,
+-		.callback_ops = call_ops,
+-		.callback_data = data,
+-		.workqueue = nfsiod_workqueue,
+-		.flags = RPC_TASK_ASYNC | swap_flags | flags,
+-	};
+ 
+-	/* Set up the initial task struct. */
+-	NFS_PROTO(inode)->read_setup(data, &msg);
+-
+-	dprintk("NFS: %5u initiated read call (req %s/%llu, %u bytes @ "
+-			"offset %llu)\n",
+-			data->task.tk_pid,
+-			inode->i_sb->s_id,
+-			(unsigned long long)NFS_FILEID(inode),
+-			data->args.count,
+-			(unsigned long long)data->args.offset);
+-
+-	task = rpc_run_task(&task_setup_data);
+-	if (IS_ERR(task))
+-		return PTR_ERR(task);
+-	rpc_put_task(task);
+-	return 0;
++	task_setup_data->flags |= swap_flags;
++	NFS_PROTO(inode)->read_setup(data, msg);
+ }
+-EXPORT_SYMBOL_GPL(nfs_initiate_read);
+ 
+ static int nfs_do_read(struct nfs_pgio_data *data,
+ 		const struct rpc_call_ops *call_ops)
+ {
+ 	struct inode *inode = data->header->inode;
+ 
+-	return nfs_initiate_read(NFS_CLIENT(inode), data, call_ops, 0);
++	return nfs_initiate_pgio(NFS_CLIENT(inode), data, call_ops, 0, 0);
+ }
+ 
+ static int
+@@ -491,4 +460,5 @@ static const struct nfs_rw_ops nfs_rw_read_ops = {
+ 	.rw_free_header		= nfs_readhdr_free,
+ 	.rw_result		= nfs_readpage_result,
+ 	.rw_result_common	= nfs_readpage_result_common,
++	.rw_initiate		= nfs_initiate_read,
+ };
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 8929e33..4279f80 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -932,60 +932,18 @@ static int flush_task_priority(int how)
+ 	return RPC_PRIORITY_NORMAL;
+ }
+ 
+-int nfs_initiate_write(struct rpc_clnt *clnt,
+-		       struct nfs_pgio_data *data,
+-		       const struct rpc_call_ops *call_ops,
+-		       int how, int flags)
++static void nfs_initiate_write(struct nfs_pgio_data *data, struct rpc_message *msg,
++			       struct rpc_task_setup *task_setup_data, int how)
+ {
+ 	struct inode *inode = data->header->inode;
+ 	int priority = flush_task_priority(how);
+-	struct rpc_task *task;
+-	struct rpc_message msg = {
+-		.rpc_argp = &data->args,
+-		.rpc_resp = &data->res,
+-		.rpc_cred = data->header->cred,
+-	};
+-	struct rpc_task_setup task_setup_data = {
+-		.rpc_client = clnt,
+-		.task = &data->task,
+-		.rpc_message = &msg,
+-		.callback_ops = call_ops,
+-		.callback_data = data,
+-		.workqueue = nfsiod_workqueue,
+-		.flags = RPC_TASK_ASYNC | flags,
+-		.priority = priority,
+-	};
+-	int ret = 0;
+ 
+-	/* Set up the initial task struct.  */
+-	NFS_PROTO(inode)->write_setup(data, &msg);
+-
+-	dprintk("NFS: %5u initiated write call "
+-		"(req %s/%llu, %u bytes @ offset %llu)\n",
+-		data->task.tk_pid,
+-		inode->i_sb->s_id,
+-		(unsigned long long)NFS_FILEID(inode),
+-		data->args.count,
+-		(unsigned long long)data->args.offset);
++	task_setup_data->priority = priority;
++	NFS_PROTO(inode)->write_setup(data, msg);
+ 
+ 	nfs4_state_protect_write(NFS_SERVER(inode)->nfs_client,
+-				 &task_setup_data.rpc_client, &msg, data);
+-
+-	task = rpc_run_task(&task_setup_data);
+-	if (IS_ERR(task)) {
+-		ret = PTR_ERR(task);
+-		goto out;
+-	}
+-	if (how & FLUSH_SYNC) {
+-		ret = rpc_wait_for_completion_task(task);
+-		if (ret == 0)
+-			ret = task->tk_status;
+-	}
+-	rpc_put_task(task);
+-out:
+-	return ret;
++				 &task_setup_data->rpc_client, msg, data);
+ }
+-EXPORT_SYMBOL_GPL(nfs_initiate_write);
+ 
+ static int nfs_do_write(struct nfs_pgio_data *data,
+ 		const struct rpc_call_ops *call_ops,
+@@ -993,7 +951,7 @@ static int nfs_do_write(struct nfs_pgio_data *data,
+ {
+ 	struct inode *inode = data->header->inode;
+ 
+-	return nfs_initiate_write(NFS_CLIENT(inode), data, call_ops, how, 0);
++	return nfs_initiate_pgio(NFS_CLIENT(inode), data, call_ops, how, 0);
+ }
+ 
+ static int nfs_do_multiple_writes(struct list_head *head,
+@@ -1743,4 +1701,5 @@ static const struct nfs_rw_ops nfs_rw_write_ops = {
+ 	.rw_release		= nfs_writeback_release_common,
+ 	.rw_result		= nfs_writeback_result,
+ 	.rw_result_common	= nfs_writeback_result_common,
++	.rw_initiate		= nfs_initiate_write,
+ };
+diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
+index 9477d7a..dc5e71c 100644
+--- a/include/linux/nfs_page.h
++++ b/include/linux/nfs_page.h
+@@ -59,6 +59,8 @@ struct nfs_rw_ops {
+ 	void (*rw_release)(struct nfs_pgio_data *);
+ 	int  (*rw_result)(struct rpc_task *, struct nfs_pgio_data *, struct inode *);
+ 	void (*rw_result_common)(struct rpc_task *, struct nfs_pgio_data *);
++	void (*rw_initiate)(struct nfs_pgio_data *, struct rpc_message *,
++			    struct rpc_task_setup *, int);
+ };
+ 
+ struct nfs_pageio_descriptor {
+-- 
+1.9.2
 
