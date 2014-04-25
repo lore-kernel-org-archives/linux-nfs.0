@@ -1,62 +1,89 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtprelay0027.hostedemail.com ([216.40.44.27]:59898 "EHLO
-	smtprelay.hostedemail.com" rhost-flags-OK-OK-OK-FAIL)
-	by vger.kernel.org with ESMTP id S1754033AbaDNCEw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 13 Apr 2014 22:04:52 -0400
-Received: from smtprelay.hostedemail.com (ff-bigip1 [10.5.19.254])
-	by smtpgrave04.hostedemail.com (Postfix) with ESMTP id 9E786B1ABE
-	for <linux-nfs@vger.kernel.org>; Mon, 14 Apr 2014 01:57:10 +0000 (UTC)
-From: Joe Perches <joe@perches.com>
-To: Andrew Morton <akpm@linux-foundation.org>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: [PATCH -next 3.16 10/19] lockd: Convert use of typedef ctl_table to struct ctl_table
-Date: Sun, 13 Apr 2014 18:55:42 -0700
-Message-Id: <c69541c8e2b17be9ae9ecdaa001eea7f10cd7f26.1397438826.git.joe@perches.com>
-In-Reply-To: <cover.1397438826.git.joe@perches.com>
-References: <cover.1397438826.git.joe@perches.com>
+Received: from mx1.redhat.com ([209.132.183.28]:28864 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751529AbaDYJCB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Apr 2014 05:02:01 -0400
+Date: Fri, 25 Apr 2014 11:01:59 +0200
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: Glenn Skinner <gskinner@vmware.com>
+Cc: linux-nfs@vger.kernel.org, Steve Dickson <steved@redhat.com>
+Subject: Re: NFS4ERR_STALE_STATEID from Linux 4.1 server
+Message-ID: <20140425090158.GC2347@pad.redhat.com>
+References: <2642778C-2AB4-4709-B2AB-04A0C4F28641@vmware.com>
+ <20140418090428.GA8156@pad.redhat.com>
+ <2E58AB5D-6AED-449F-959D-BC8D8973417F@vmware.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <2E58AB5D-6AED-449F-959D-BC8D8973417F@vmware.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This typedef is unnecessary and should just be removed.
+On Fri, Apr 18, 2014 at 09:54:28AM -0700, Glenn Skinner wrote:
+> See comments in line.
+> 
+> On Apr 18, 2014, at 2:04 AM, J. Bruce Fields wrote:
+> 
+> > Agreed that this sounds like a bug.
+> 
+> Thanks for looking at this.
+> 
+> > a8a7c6776f8d74780348bef639581421d85a4376 "nfsd: Don't return
+> > NFS4ERR_STALE_STATEID for NFSv4.1+", now in v3.15-rc1, prevents the
+> > stale_stateid return.  What are the symptoms on your client?  If this
+> > fixes a practical issue for users then we should probably get that
+> > backported to stable.
+> 
+> Let me ask a question in turn.  Does your fixed server return NFS4ERR_BAD_STATEID in circumstances where pre-fix it would return NFS4ERR_STALE_STATEID?
 
-Signed-off-by: Joe Perches <joe@perches.com>
----
- fs/lockd/svc.c | 6 +++---
- 1 file changed, 3 insertions(+), 3 deletions(-)
+Right.
 
-diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
-index 6bf06a0..de051cb1 100644
---- a/fs/lockd/svc.c
-+++ b/fs/lockd/svc.c
-@@ -436,7 +436,7 @@ EXPORT_SYMBOL_GPL(lockd_down);
-  * Sysctl parameters (same as module parameters, different interface).
-  */
- 
--static ctl_table nlm_sysctls[] = {
-+static struct ctl_table nlm_sysctls[] = {
- 	{
- 		.procname	= "nlm_grace_period",
- 		.data		= &nlm_grace_period,
-@@ -490,7 +490,7 @@ static ctl_table nlm_sysctls[] = {
- 	{ }
- };
- 
--static ctl_table nlm_sysctl_dir[] = {
-+static struct ctl_table nlm_sysctl_dir[] = {
- 	{
- 		.procname	= "nfs",
- 		.mode		= 0555,
-@@ -499,7 +499,7 @@ static ctl_table nlm_sysctl_dir[] = {
- 	{ }
- };
- 
--static ctl_table nlm_sysctl_root[] = {
-+static struct ctl_table nlm_sysctl_root[] = {
- 	{
- 		.procname	= "fs",
- 		.mode		= 0555,
--- 
-1.8.1.2.459.gbcd45b4.dirty
+> I ask because (in production versions of ESX, which don't have assertions enabled) we return a lock lost error upward for the former, but an IO error for the latter.  This difference has consequences for higher-level software, such as our FT (fault tolerance) software feature where it will affect decisions on how quickly to fail over to another ESX instance.
+> 
+> For development versions of ESX encountering NFS4ERR_STALE_STATEID triggers an assertion failure, which forces the instance in question to crash.  That has definite practical consequences for our internal development and testing organizations.
 
+So, our "fixed server" behavior is an improvement as far as your client
+is concerned?
+
+--b.
+
+> 
+> > Could you also send this to linux-nfs@vger.kernel.org?  Among other
+> > things keeping that list cc'd increases the chance that you might still
+> > get a useful answer at times (like this one) when I'm traveling.
+> 
+> I've added that alias as a CC and have retained the original message below.
+> 
+> > --b.
+> > 
+> > On Sat, Apr 12, 2014 at 03:26:20PM -0700, Glenn Skinner wrote:
+> >> While running stress tests against the VMware NFS v4.1 client, I've seen the Linux server return NFS4ERR_STALE_STATEID a couple times now.  I've tried to catch the server in the act while doing a packet capture, but the behavior occurs rarely enough that so far I've not been able to do so.
+> >> 
+> >> According to section 15.1.16.5 of RFC 5661, "this error is moot in NFSv4.1 because all operations that take a stateid MUST be preceded by the SEQUENCE operation, and the earlier server instance is detected by the session infrastructure that supports SEQUENCE".
+> >> 
+> >> We have our client set to trigger an assertion failure when it encounters this error.  In debugging the resulting core dump, I've verified that the offending request did start with SEQUENCE and that the server returned NFS4_OK for that operation.
+> >> 
+> >> So something seems wrong on the server end.  I was running Fedora 20; uname -a on the server gives:
+> >> 
+> >>    Linux proma-1s-dhcp101.eng.vmware.com 3.11.10-301.fc20.x86_64 #1 SMP Thu Dec 5 14:01:17 UTC 2013 x86_64 x86_64 x86_64 GNU/Linux
+> >> 
+> >> On the client side I was running the following loop:
+> >> 
+> >> # while true; do cp VMware-VMvisor-Installer-6.0.0-00000.x86_64.iso xxx; diff VMware-VMvisor-Installer-6.0.0-00000.x86_64.iso xxx; rm xxx; done
+> >> 
+> >> (VMware-VMvisor-Installer-6.0.0-00000.x86_64.iso is a rather large file.)
+> >> 
+> >> On the server side I was running:
+> >> 
+> >> # while true; do systemctl restart nfs; sleep 10; done
+> >> 
+> >> I had v2 and v3 disabled:
+> >> 
+> >> # cat /proc/fs/nfsd/versions
+> >> -2 -3 +4 +4.1-4.2
+> >> #
+> >> 
+> >> Does this server behavior ring any bells?  Might it have something to do with straight version 4 being enabled along with 4.1?  (And is there any way to disable version 4.0 while leaving 4.1 enabled?)
+> 
+> 
+> 		-- Glenn
+> 
