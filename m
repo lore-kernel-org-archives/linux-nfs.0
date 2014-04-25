@@ -1,246 +1,1547 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f170.google.com ([209.85.216.170]:48949 "EHLO
-	mail-qc0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932078AbaDYOPJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Apr 2014 10:15:09 -0400
-Received: by mail-qc0-f170.google.com with SMTP id x13so4116633qcv.15
-        for <linux-nfs@vger.kernel.org>; Fri, 25 Apr 2014 07:15:08 -0700 (PDT)
-Message-ID: <535A6DE9.1040109@gmail.com>
-Date: Fri, 25 Apr 2014 10:15:05 -0400
-From: Anna Schumaker <schumaker.anna@gmail.com>
+Received: from icebox.esperi.org.uk ([81.187.191.129]:52675 "EHLO
+	mail.esperi.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750971AbaDYVZE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Apr 2014 17:25:04 -0400
+From: Nix <nix@esperi.org.uk>
+To: NFS list <linux-nfs@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+Subject: possible 3.14.1 lockd problem (?) causing nfsd hangs
+Date: Fri, 25 Apr 2014 21:37:20 +0100
+Message-ID: <87oazpp2m7.fsf@spindle.srvr.nix>
 MIME-Version: 1.0
-To: Weston Andros Adamson <dros@primarydata.com>,
-        trond.myklebust@primarydata.com
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 15/18 v2] pnfs: support multiple verfs per direct req
-References: <1398363328-7100-1-git-send-email-dros@primarydata.com> <1398363328-7100-16-git-send-email-dros@primarydata.com>
-In-Reply-To: <1398363328-7100-16-git-send-email-dros@primarydata.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 04/24/2014 02:15 PM, Weston Andros Adamson wrote:
-> Support direct requests that span multiple pnfs data servers by
-> comparing nfs_pgio_header->verf to a cached verf in pnfs_commit_bucket.
-> Continue to use dreq->verf if the MDS is used / non-pNFS.
->
-> Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
-> ---
->  fs/nfs/direct.c         | 98 ++++++++++++++++++++++++++++++++++++++++++++++---
->  fs/nfs/nfs4filelayout.c |  6 +++
->  include/linux/nfs.h     |  5 ++-
->  include/linux/nfs_xdr.h |  2 +
->  4 files changed, 105 insertions(+), 6 deletions(-)
->
-> diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-> index 2c0e08f..9349933 100644
-> --- a/fs/nfs/direct.c
-> +++ b/fs/nfs/direct.c
-> @@ -108,6 +108,93 @@ static inline int put_dreq(struct nfs_direct_req *dreq)
->  	return atomic_dec_and_test(&dreq->io_count);
->  }
->  
-> +/*
-> + * nfs_direct_select_verf - select the right verifier
-> + * @dreq - direct request possibly spanning multiple servers
-> + * @ds_clp - nfs_client of data server or NULL if MDS / non-pnfs
-> + * @ds_idx - index of data server in data server list, only valid if ds_clp set
-> + *
-> + * returns the correct verifier to use given the role of the server
-> + */
-> +static struct nfs_writeverf *
-> +nfs_direct_select_verf(struct nfs_direct_req *dreq,
-> +		       struct nfs_client *ds_clp,
-> +		       int ds_idx)
-> +{
-> +	struct nfs_writeverf *verfp = &dreq->verf;
-> +
-> +	if (ds_clp) {
-> +		/* pNFS is in use, use the DS verf */
-> +		if (ds_idx >= 0 && ds_idx < dreq->ds_cinfo.nbuckets)
+(This is extremely speculative: I don't really know how to debug
+problems like this, particularly not when the only machine I can
+reproduce the problem on is the headless one at the centre of my
+network, and with its NFS server stalled everything else blocks when
+accessing home directories, so my desktop hangs shortly afterwards.)
 
-The struct pnfs_ds_commit_info is empty if CONFIG_NFS_V4_1=n, so this won't compile.
+A few days ago I upgraded my local net to 3.14.1. A little over two days
+later my desktop and firewall both hung, reporting this in dmesg:
 
-Anna
+[65403.845099] xprt_adjust_timeout: rq_timeout = 0!
+[65403.845109] lockd: server spindle not responding, still trying
+[65403.845169] xprt_adjust_timeout: rq_timeout = 0!
+[65463.971767] xprt_adjust_timeout: rq_timeout = 0!
+[65463.971816] xprt_adjust_timeout: rq_timeout = 0!
+[65524.098447] xprt_adjust_timeout: rq_timeout = 0!
+[65524.098481] xprt_adjust_timeout: rq_timeout = 0!
+[65584.225157] xprt_adjust_timeout: rq_timeout = 0!
+[65644.351789] xprt_adjust_timeout: rq_timeout = 0!
+[65704.478477] xprt_adjust_timeout: rq_timeout = 0!
+[65722.388524] nfs: server spindle not responding, still trying
+[65735.917032] nfs: server spindle not responding, still trying
+[65735.920025] nfs: server spindle not responding, still trying
+[65752.227986] nfs: server spindle not responding, still trying
 
-> +			verfp = &dreq->ds_cinfo.buckets[ds_idx].direct_verf;
-> +		else
-> +			WARN_ON_ONCE(1);
-> +	}
-> +	return verfp;
-> +}
-> +
-> +
-> +/*
-> + * nfs_direct_set_hdr_verf - set the write/commit verifier
-> + * @dreq - direct request possibly spanning multiple servers
-> + * @hdr - pageio header to validate against previously seen verfs
-> + *
-> + * Set the server's (MDS or DS) "seen" verifier
-> + */
-> +static void nfs_direct_set_hdr_verf(struct nfs_direct_req *dreq,
-> +				    struct nfs_pgio_header *hdr)
-> +{
-> +	struct nfs_writeverf *verfp;
-> +
-> +	verfp = nfs_direct_select_verf(dreq, hdr->data->ds_clp,
-> +				      hdr->data->ds_idx);
-> +	WARN_ON_ONCE(verfp->committed >= 0);
-> +	memcpy(verfp, &hdr->verf, sizeof(struct nfs_writeverf));
-> +	WARN_ON_ONCE(verfp->committed < 0);
-> +}
-> +
-> +/*
-> + * nfs_direct_cmp_hdr_verf - compare verifier for pgio header
-> + * @dreq - direct request possibly spanning multiple servers
-> + * @hdr - pageio header to validate against previously seen verf
-> + *
-> + * set the server's "seen" verf if not initialized.
-> + * returns result of comparison between @hdr->verf and the "seen"
-> + * verf of the server used by @hdr (DS or MDS)
-> + */
-> +static int nfs_direct_set_or_cmp_hdr_verf(struct nfs_direct_req *dreq,
-> +					  struct nfs_pgio_header *hdr)
-> +{
-> +	struct nfs_writeverf *verfp;
-> +
-> +	verfp = nfs_direct_select_verf(dreq, hdr->data->ds_clp,
-> +					 hdr->data->ds_idx);
-> +	if (verfp->committed < 0) {
-> +		nfs_direct_set_hdr_verf(dreq, hdr);
-> +		return 0;
-> +	}
-> +	return memcmp(verfp, &hdr->verf, sizeof(struct nfs_writeverf));
-> +}
-> +
-> +/*
-> + * nfs_direct_cmp_commit_data_verf - compare verifier for commit data
-> + * @dreq - direct request possibly spanning multiple servers
-> + * @data - commit data to validate against previously seen verf
-> + *
-> + * returns result of comparison between @data->verf and the verf of
-> + * the server used by @data (DS or MDS)
-> + */
-> +static int nfs_direct_cmp_commit_data_verf(struct nfs_direct_req *dreq,
-> +					   struct nfs_commit_data *data)
-> +{
-> +	struct nfs_writeverf *verfp;
-> +
-> +	verfp = nfs_direct_select_verf(dreq, data->ds_clp,
-> +					 data->ds_commit_index);
-> +	WARN_ON_ONCE(verfp->committed < 0);
-> +	return memcmp(verfp, &data->verf, sizeof(struct nfs_writeverf));
-> +}
-> +
->  /**
->   * nfs_direct_IO - NFS address space operation for direct I/O
->   * @rw: direction (read or write)
-> @@ -168,6 +255,7 @@ static inline struct nfs_direct_req *nfs_direct_req_alloc(void)
->  	kref_get(&dreq->kref);
->  	init_completion(&dreq->completion);
->  	INIT_LIST_HEAD(&dreq->mds_cinfo.list);
-> +	dreq->verf.committed = NFS_INVALID_STABLE_HOW;	/* not set yet */
->  	INIT_WORK(&dreq->work, nfs_direct_write_schedule_work);
->  	spin_lock_init(&dreq->lock);
->  
-> @@ -602,7 +690,7 @@ static void nfs_direct_commit_complete(struct nfs_commit_data *data)
->  		dprintk("NFS: %5u commit failed with error %d.\n",
->  			data->task.tk_pid, status);
->  		dreq->flags = NFS_ODIRECT_RESCHED_WRITES;
-> -	} else if (memcmp(&dreq->verf, &data->verf, sizeof(data->verf))) {
-> +	} else if (nfs_direct_cmp_commit_data_verf(dreq, data)) {
->  		dprintk("NFS: %5u commit verify failed\n", data->task.tk_pid);
->  		dreq->flags = NFS_ODIRECT_RESCHED_WRITES;
->  	}
-> @@ -811,13 +899,13 @@ static void nfs_direct_write_completion(struct nfs_pgio_header *hdr)
->  			if (dreq->flags == NFS_ODIRECT_RESCHED_WRITES)
->  				bit = NFS_IOHDR_NEED_RESCHED;
->  			else if (dreq->flags == 0) {
-> -				memcpy(&dreq->verf, &hdr->verf,
-> -				       sizeof(dreq->verf));
-> +				nfs_direct_set_hdr_verf(dreq, hdr);
->  				bit = NFS_IOHDR_NEED_COMMIT;
->  				dreq->flags = NFS_ODIRECT_DO_COMMIT;
->  			} else if (dreq->flags == NFS_ODIRECT_DO_COMMIT) {
-> -				if (memcmp(&dreq->verf, &hdr->verf, sizeof(dreq->verf))) {
-> -					dreq->flags = NFS_ODIRECT_RESCHED_WRITES;
-> +				if (nfs_direct_set_or_cmp_hdr_verf(dreq, hdr)) {
-> +					dreq->flags =
-> +						NFS_ODIRECT_RESCHED_WRITES;
->  					bit = NFS_IOHDR_NEED_RESCHED;
->  				} else
->  					bit = NFS_IOHDR_NEED_COMMIT;
-> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-> index 7a665e0..0ebc521 100644
-> --- a/fs/nfs/nfs4filelayout.c
-> +++ b/fs/nfs/nfs4filelayout.c
-> @@ -560,6 +560,7 @@ filelayout_read_pagelist(struct nfs_pgio_data *data)
->  	/* No multipath support. Use first DS */
->  	atomic_inc(&ds->ds_clp->cl_count);
->  	data->ds_clp = ds->ds_clp;
-> +	data->ds_idx = idx;
->  	fh = nfs4_fl_select_ds_fh(lseg, j);
->  	if (fh)
->  		data->args.fh = fh;
-> @@ -603,6 +604,7 @@ filelayout_write_pagelist(struct nfs_pgio_data *data, int sync)
->  	data->pgio_done_cb = filelayout_write_done_cb;
->  	atomic_inc(&ds->ds_clp->cl_count);
->  	data->ds_clp = ds->ds_clp;
-> +	data->ds_idx = idx;
->  	fh = nfs4_fl_select_ds_fh(lseg, j);
->  	if (fh)
->  		data->args.fh = fh;
-> @@ -875,6 +877,8 @@ filelayout_alloc_commit_info(struct pnfs_layout_segment *lseg,
->  	for (i = 0; i < size; i++) {
->  		INIT_LIST_HEAD(&buckets[i].written);
->  		INIT_LIST_HEAD(&buckets[i].committing);
-> +		/* mark direct verifier as unset */
-> +		buckets[i].direct_verf.committed = NFS_INVALID_STABLE_HOW;
->  	}
->  
->  	spin_lock(cinfo->lock);
-> @@ -885,6 +889,8 @@ filelayout_alloc_commit_info(struct pnfs_layout_segment *lseg,
->  			    &buckets[i].written);
->  		list_splice(&cinfo->ds->buckets[i].committing,
->  			    &buckets[i].committing);
-> +		buckets[i].direct_verf.committed =
-> +			cinfo->ds->buckets[i].direct_verf.committed;
->  		buckets[i].wlseg = cinfo->ds->buckets[i].wlseg;
->  		buckets[i].clseg = cinfo->ds->buckets[i].clseg;
->  	}
-> diff --git a/include/linux/nfs.h b/include/linux/nfs.h
-> index 3e794c1..610af51 100644
-> --- a/include/linux/nfs.h
-> +++ b/include/linux/nfs.h
-> @@ -46,6 +46,9 @@ static inline void nfs_copy_fh(struct nfs_fh *target, const struct nfs_fh *sourc
->  enum nfs3_stable_how {
->  	NFS_UNSTABLE = 0,
->  	NFS_DATA_SYNC = 1,
-> -	NFS_FILE_SYNC = 2
-> +	NFS_FILE_SYNC = 2,
-> +
-> +	/* used by direct.c to mark verf as invalid */
-> +	NFS_INVALID_STABLE_HOW = -1
->  };
->  #endif /* _LINUX_NFS_H */
-> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-> index 29828c7..bb9fb88 100644
-> --- a/include/linux/nfs_xdr.h
-> +++ b/include/linux/nfs_xdr.h
-> @@ -1111,6 +1111,7 @@ struct pnfs_commit_bucket {
->  	struct list_head committing;
->  	struct pnfs_layout_segment *wlseg;
->  	struct pnfs_layout_segment *clseg;
-> +	struct nfs_writeverf direct_verf;
->  };
->  
->  struct pnfs_ds_commit_info {
-> @@ -1294,6 +1295,7 @@ struct nfs_pgio_data {
->  	__u64			mds_offset;	/* Filelayout dense stripe */
->  	struct nfs_page_array	pages;
->  	struct nfs_client	*ds_clp;	/* pNFS data server */
-> +	int			ds_idx;		/* ds index if ds_clp is set */
->  };
->  
->  struct nfs_rw_header {
+I cursed, rebooted the server into 3.13.6, where it had been happily
+running for a month plus with 3.13.x clients, and resolved to look at it
+further this weekend.
 
+A few minutes ago (a little over two days since that last reboot) the
+whole thing hung again. This time the hang started with my home cinema,
+an XBMC-on-Android box which accesses NFS from userspace via libnfs.
+However, a little investigation showed that access to everything else
+from every machine on the network was also hanging, little by little and
+export by export: access to my home directory from my desktop had
+already hung and other things were hanging piece by piece (quite
+possibly an artifact of caching, it is possible that everything hung at
+once). ps showed that all the nfsd threads on the server were blocked in
+one of svc_get_next_xprt, cache_wait_req.isra.9, poll_schedule_timeout,
+or unix_wait_for_peer (though this last I'm fairly sure is normal!).
+
+This is clearly not a 3.14 server bug -- it's more likely a bug
+triggered by something one of the 3.14 *clients* is doing. And one of
+the clients is doing something a little unusual: email delivery into
+home directories (using sendmail) via NFSv3, which means fairly heavy
+and bursty lockd use. I have no proof nor even evidence that this is
+implicated, but it makes my ears itch.
+
+This time I also got a hung task warning from one of the clients, though
+quite likely not the client that triggered the crash:
+
+[298275.185240] INFO: task tee:1312 blocked for more than 120 seconds.
+[298275.185252]       Not tainted 3.14.1-05371-gf2552aa-dirty #1
+[298275.185256] "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+[298275.185259] tee             D 0000000000000000     0  1312   1309 0x00000000
+[298275.185269]  ffff8804163f7b28 0000000000000082 ffff8804163f7fd8 ffff8804163d8000
+[298275.185282]  00000000000128c0 ffff8804163d8000 0000000000000000 0000000000000000
+[298275.185292]  0000000000000490 0000000100000001 0000000200000001 0000000000000000
+[298275.185302] Call Trace:
+[298275.185314]  [<ffffffff81234564>] ? nfs_free_request+0x94/0x94
+[298275.185321]  [<ffffffff81691a4f>] schedule+0x73/0x75
+[298275.185325]  [<ffffffff81691c49>] io_schedule+0x8f/0xd6
+[298275.185331]  [<ffffffff81234572>] nfs_wait_bit_uninterruptible+0xe/0x12
+[298275.185336]  [<ffffffff81691f54>] __wait_on_bit+0x48/0x7a
+[298275.185341]  [<ffffffff81692001>] out_of_line_wait_on_bit+0x7b/0x86
+[298275.185349]  [<ffffffff81234564>] ? nfs_free_request+0x94/0x94
+[298275.185355]  [<ffffffff810be608>] ? autoremove_wake_function+0x34/0x34
+[298275.185361]  [<ffffffff8123487e>] nfs_wait_on_request+0x2b/0x2d
+[298275.185366]  [<ffffffff8123899e>] nfs_updatepage+0x49b/0x522
+[298275.185370]  [<ffffffff8122cb95>] nfs_write_end+0xf8/0x269
+[298275.185378]  [<ffffffff8112d70e>] generic_file_buffered_write+0x173/0x23c
+[298275.185384]  [<ffffffff8112e49b>] __generic_file_aio_write+0x2a8/0x2e0
+[298275.185390]  [<ffffffff8112e52b>] generic_file_aio_write+0x58/0xc3
+[298275.185395]  [<ffffffff8122d2d3>] nfs_file_write+0xd1/0x14e
+[298275.185402]  [<ffffffff811714ee>] do_sync_write+0x59/0x78
+[298275.185407]  [<ffffffff81171a76>] vfs_write+0xc4/0x181
+[298275.185412]  [<ffffffff811722ae>] SyS_write+0x47/0x8b
+[298275.185419]  [<ffffffff816952e2>] system_call_fastpath+0x16/0x1b
+
+However, I suspect this is merely saying that all the server's nfsd
+threads were unresponsive, which, of course, we already knew.
+
+Advice on how to debug this would be appreciated. It's not
+*intermittent* as such, but waiting two days between crashes is
+tiresome.
+
+A few /proc/fs/nfs/exports lines for likely-implicated filesystems
+follow (though they're nearly all the same, the thing is lazily
+populated and the machine just rebooted so most haven't reappeared yet).
+All exported filesystems are ext4.
+
+/home/.spindle.srvr.nix fold.srvr.nix(rw,root_squash,async,wdelay,no_subtree_check,fsid=1,uuid=95bd22c2:253c456f:8e36b6cf:b9ecd4ef,sec=1)
+/usr/src        mutilate.wkstn.nix(rw,no_root_squash,async,wdelay,no_subtree_check,fsid=16,uuid=333950aa:8e3f440a:bc94d0cc:4adae198,sec=1)
+
+.config of the server and one of the clients follows. (Both are
+non-modular.)
+
+Server:
+
+CONFIG_64BIT=y
+CONFIG_X86_64=y
+CONFIG_X86=y
+CONFIG_INSTRUCTION_DECODER=y
+CONFIG_OUTPUT_FORMAT="elf64-x86-64"
+CONFIG_ARCH_DEFCONFIG="arch/x86/configs/x86_64_defconfig"
+CONFIG_LOCKDEP_SUPPORT=y
+CONFIG_STACKTRACE_SUPPORT=y
+CONFIG_HAVE_LATENCYTOP_SUPPORT=y
+CONFIG_MMU=y
+CONFIG_NEED_DMA_MAP_STATE=y
+CONFIG_NEED_SG_DMA_LENGTH=y
+CONFIG_GENERIC_ISA_DMA=y
+CONFIG_GENERIC_BUG=y
+CONFIG_GENERIC_BUG_RELATIVE_POINTERS=y
+CONFIG_GENERIC_HWEIGHT=y
+CONFIG_ARCH_MAY_HAVE_PC_FDC=y
+CONFIG_RWSEM_XCHGADD_ALGORITHM=y
+CONFIG_GENERIC_CALIBRATE_DELAY=y
+CONFIG_ARCH_HAS_CPU_RELAX=y
+CONFIG_ARCH_HAS_CACHE_LINE_SIZE=y
+CONFIG_ARCH_HAS_CPU_AUTOPROBE=y
+CONFIG_HAVE_SETUP_PER_CPU_AREA=y
+CONFIG_NEED_PER_CPU_EMBED_FIRST_CHUNK=y
+CONFIG_NEED_PER_CPU_PAGE_FIRST_CHUNK=y
+CONFIG_ARCH_HIBERNATION_POSSIBLE=y
+CONFIG_ARCH_SUSPEND_POSSIBLE=y
+CONFIG_ARCH_WANT_HUGE_PMD_SHARE=y
+CONFIG_ARCH_WANT_GENERAL_HUGETLB=y
+CONFIG_ZONE_DMA32=y
+CONFIG_AUDIT_ARCH=y
+CONFIG_ARCH_SUPPORTS_OPTIMIZED_INLINING=y
+CONFIG_ARCH_SUPPORTS_DEBUG_PAGEALLOC=y
+CONFIG_X86_64_SMP=y
+CONFIG_X86_HT=y
+CONFIG_ARCH_HWEIGHT_CFLAGS="-fcall-saved-rdi -fcall-saved-rsi -fcall-saved-rdx -fcall-saved-rcx -fcall-saved-r8 -fcall-saved-r9 -fcall-saved-r10 -fcall-saved-r11"
+CONFIG_ARCH_SUPPORTS_UPROBES=y
+CONFIG_DEFCONFIG_LIST="/lib/modules/$UNAME_RELEASE/.config"
+CONFIG_IRQ_WORK=y
+CONFIG_BUILDTIME_EXTABLE_SORT=y
+CONFIG_INIT_ENV_ARG_LIMIT=32
+CONFIG_CROSS_COMPILE=""
+CONFIG_LOCALVERSION=""
+CONFIG_LOCALVERSION_AUTO=y
+CONFIG_HAVE_KERNEL_GZIP=y
+CONFIG_HAVE_KERNEL_BZIP2=y
+CONFIG_HAVE_KERNEL_LZMA=y
+CONFIG_HAVE_KERNEL_XZ=y
+CONFIG_HAVE_KERNEL_LZO=y
+CONFIG_HAVE_KERNEL_LZ4=y
+CONFIG_KERNEL_LZMA=y
+CONFIG_DEFAULT_HOSTNAME="spindle"
+CONFIG_SWAP=y
+CONFIG_SYSVIPC=y
+CONFIG_SYSVIPC_SYSCTL=y
+CONFIG_POSIX_MQUEUE=y
+CONFIG_POSIX_MQUEUE_SYSCTL=y
+CONFIG_FHANDLE=y
+CONFIG_AUDIT=y
+CONFIG_GENERIC_IRQ_PROBE=y
+CONFIG_GENERIC_IRQ_SHOW=y
+CONFIG_GENERIC_PENDING_IRQ=y
+CONFIG_IRQ_DOMAIN=y
+CONFIG_IRQ_FORCED_THREADING=y
+CONFIG_SPARSE_IRQ=y
+CONFIG_CLOCKSOURCE_WATCHDOG=y
+CONFIG_ARCH_CLOCKSOURCE_DATA=y
+CONFIG_GENERIC_TIME_VSYSCALL=y
+CONFIG_GENERIC_CLOCKEVENTS=y
+CONFIG_GENERIC_CLOCKEVENTS_BUILD=y
+CONFIG_GENERIC_CLOCKEVENTS_BROADCAST=y
+CONFIG_GENERIC_CLOCKEVENTS_MIN_ADJUST=y
+CONFIG_GENERIC_CMOS_UPDATE=y
+CONFIG_TICK_ONESHOT=y
+CONFIG_NO_HZ_COMMON=y
+CONFIG_NO_HZ_IDLE=y
+CONFIG_NO_HZ=y
+CONFIG_HIGH_RES_TIMERS=y
+CONFIG_IRQ_TIME_ACCOUNTING=y
+CONFIG_BSD_PROCESS_ACCT=y
+CONFIG_TASKSTATS=y
+CONFIG_TASK_DELAY_ACCT=y
+CONFIG_TASK_XACCT=y
+CONFIG_TASK_IO_ACCOUNTING=y
+CONFIG_TREE_RCU=y
+CONFIG_RCU_STALL_COMMON=y
+CONFIG_RCU_FANOUT=8
+CONFIG_RCU_FANOUT_LEAF=8
+CONFIG_LOG_BUF_SHIFT=18
+CONFIG_HAVE_UNSTABLE_SCHED_CLOCK=y
+CONFIG_ARCH_SUPPORTS_NUMA_BALANCING=y
+CONFIG_ARCH_SUPPORTS_INT128=y
+CONFIG_ARCH_WANTS_PROT_NUMA_PROT_NONE=y
+CONFIG_CGROUPS=y
+CONFIG_CGROUP_SCHED=y
+CONFIG_FAIR_GROUP_SCHED=y
+CONFIG_NAMESPACES=y
+CONFIG_PID_NS=y
+CONFIG_NET_NS=y
+CONFIG_SCHED_AUTOGROUP=y
+CONFIG_RELAY=y
+CONFIG_BLK_DEV_INITRD=y
+CONFIG_INITRAMFS_SOURCE="usr/initramfs.spindle"
+CONFIG_INITRAMFS_ROOT_UID=99
+CONFIG_INITRAMFS_ROOT_GID=101
+CONFIG_RD_GZIP=y
+CONFIG_RD_BZIP2=y
+CONFIG_RD_LZMA=y
+CONFIG_RD_XZ=y
+CONFIG_RD_LZO=y
+CONFIG_RD_LZ4=y
+CONFIG_INITRAMFS_COMPRESSION_LZMA=y
+CONFIG_CC_OPTIMIZE_FOR_SIZE=y
+CONFIG_SYSCTL=y
+CONFIG_ANON_INODES=y
+CONFIG_HAVE_UID16=y
+CONFIG_SYSCTL_EXCEPTION_TRACE=y
+CONFIG_HAVE_PCSPKR_PLATFORM=y
+CONFIG_UID16=y
+CONFIG_KALLSYMS=y
+CONFIG_KALLSYMS_ALL=y
+CONFIG_PRINTK=y
+CONFIG_BUG=y
+CONFIG_ELF_CORE=y
+CONFIG_PCSPKR_PLATFORM=y
+CONFIG_BASE_FULL=y
+CONFIG_FUTEX=y
+CONFIG_EPOLL=y
+CONFIG_SIGNALFD=y
+CONFIG_TIMERFD=y
+CONFIG_EVENTFD=y
+CONFIG_SHMEM=y
+CONFIG_AIO=y
+CONFIG_PCI_QUIRKS=y
+CONFIG_HAVE_PERF_EVENTS=y
+CONFIG_PERF_EVENTS=y
+CONFIG_VM_EVENT_COUNTERS=y
+CONFIG_SLUB_DEBUG=y
+CONFIG_SLUB=y
+CONFIG_SLUB_CPU_PARTIAL=y
+CONFIG_TRACEPOINTS=y
+CONFIG_HAVE_OPROFILE=y
+CONFIG_OPROFILE_NMI_TIMER=y
+CONFIG_JUMP_LABEL=y
+CONFIG_HAVE_EFFICIENT_UNALIGNED_ACCESS=y
+CONFIG_ARCH_USE_BUILTIN_BSWAP=y
+CONFIG_USER_RETURN_NOTIFIER=y
+CONFIG_HAVE_IOREMAP_PROT=y
+CONFIG_HAVE_KPROBES=y
+CONFIG_HAVE_KRETPROBES=y
+CONFIG_HAVE_OPTPROBES=y
+CONFIG_HAVE_KPROBES_ON_FTRACE=y
+CONFIG_HAVE_ARCH_TRACEHOOK=y
+CONFIG_HAVE_DMA_ATTRS=y
+CONFIG_GENERIC_SMP_IDLE_THREAD=y
+CONFIG_HAVE_REGS_AND_STACK_ACCESS_API=y
+CONFIG_HAVE_DMA_API_DEBUG=y
+CONFIG_HAVE_HW_BREAKPOINT=y
+CONFIG_HAVE_MIXED_BREAKPOINTS_REGS=y
+CONFIG_HAVE_USER_RETURN_NOTIFIER=y
+CONFIG_HAVE_PERF_EVENTS_NMI=y
+CONFIG_HAVE_PERF_REGS=y
+CONFIG_HAVE_PERF_USER_STACK_DUMP=y
+CONFIG_HAVE_ARCH_JUMP_LABEL=y
+CONFIG_ARCH_HAVE_NMI_SAFE_CMPXCHG=y
+CONFIG_HAVE_ALIGNED_STRUCT_PAGE=y
+CONFIG_HAVE_CMPXCHG_LOCAL=y
+CONFIG_HAVE_CMPXCHG_DOUBLE=y
+CONFIG_ARCH_WANT_COMPAT_IPC_PARSE_VERSION=y
+CONFIG_ARCH_WANT_OLD_COMPAT_IPC=y
+CONFIG_HAVE_ARCH_SECCOMP_FILTER=y
+CONFIG_SECCOMP_FILTER=y
+CONFIG_HAVE_CC_STACKPROTECTOR=y
+CONFIG_CC_STACKPROTECTOR_NONE=y
+CONFIG_HAVE_CONTEXT_TRACKING=y
+CONFIG_HAVE_VIRT_CPU_ACCOUNTING_GEN=y
+CONFIG_HAVE_IRQ_TIME_ACCOUNTING=y
+CONFIG_HAVE_ARCH_TRANSPARENT_HUGEPAGE=y
+CONFIG_HAVE_ARCH_SOFT_DIRTY=y
+CONFIG_MODULES_USE_ELF_RELA=y
+CONFIG_HAVE_IRQ_EXIT_ON_IRQ_STACK=y
+CONFIG_OLD_SIGSUSPEND3=y
+CONFIG_COMPAT_OLD_SIGACTION=y
+CONFIG_SLABINFO=y
+CONFIG_RT_MUTEXES=y
+CONFIG_BASE_SMALL=0
+CONFIG_MODULES=y
+CONFIG_MODULE_UNLOAD=y
+CONFIG_STOP_MACHINE=y
+CONFIG_BLOCK=y
+CONFIG_BLK_DEV_BSG=y
+CONFIG_PARTITION_ADVANCED=y
+CONFIG_MSDOS_PARTITION=y
+CONFIG_BLOCK_COMPAT=y
+CONFIG_IOSCHED_NOOP=y
+CONFIG_IOSCHED_DEADLINE=m
+CONFIG_IOSCHED_CFQ=y
+CONFIG_DEFAULT_CFQ=y
+CONFIG_DEFAULT_IOSCHED="cfq"
+CONFIG_PREEMPT_NOTIFIERS=y
+CONFIG_INLINE_SPIN_UNLOCK_IRQ=y
+CONFIG_INLINE_READ_UNLOCK=y
+CONFIG_INLINE_READ_UNLOCK_IRQ=y
+CONFIG_INLINE_WRITE_UNLOCK=y
+CONFIG_INLINE_WRITE_UNLOCK_IRQ=y
+CONFIG_MUTEX_SPIN_ON_OWNER=y
+CONFIG_ZONE_DMA=y
+CONFIG_SMP=y
+CONFIG_X86_SUPPORTS_MEMORY_FAILURE=y
+CONFIG_SCHED_OMIT_FRAME_POINTER=y
+CONFIG_NO_BOOTMEM=y
+CONFIG_MCORE2=y
+CONFIG_X86_INTERNODE_CACHE_SHIFT=6
+CONFIG_X86_L1_CACHE_SHIFT=6
+CONFIG_X86_INTEL_USERCOPY=y
+CONFIG_X86_USE_PPRO_CHECKSUM=y
+CONFIG_X86_P6_NOP=y
+CONFIG_X86_TSC=y
+CONFIG_X86_CMPXCHG64=y
+CONFIG_X86_CMOV=y
+CONFIG_X86_MINIMUM_CPU_FAMILY=64
+CONFIG_X86_DEBUGCTLMSR=y
+CONFIG_CPU_SUP_INTEL=y
+CONFIG_CPU_SUP_AMD=y
+CONFIG_CPU_SUP_CENTAUR=y
+CONFIG_HPET_TIMER=y
+CONFIG_HPET_EMULATE_RTC=y
+CONFIG_DMI=y
+CONFIG_GART_IOMMU=y
+CONFIG_SWIOTLB=y
+CONFIG_IOMMU_HELPER=y
+CONFIG_NR_CPUS=8
+CONFIG_SCHED_SMT=y
+CONFIG_SCHED_MC=y
+CONFIG_PREEMPT_NONE=y
+CONFIG_X86_LOCAL_APIC=y
+CONFIG_X86_IO_APIC=y
+CONFIG_X86_MCE=y
+CONFIG_X86_MCE_INTEL=y
+CONFIG_X86_MCE_THRESHOLD=y
+CONFIG_X86_THERMAL_VECTOR=y
+CONFIG_MICROCODE=m
+CONFIG_MICROCODE_INTEL=y
+CONFIG_MICROCODE_OLD_INTERFACE=y
+CONFIG_X86_MSR=m
+CONFIG_X86_CPUID=y
+CONFIG_ARCH_PHYS_ADDR_T_64BIT=y
+CONFIG_ARCH_DMA_ADDR_T_64BIT=y
+CONFIG_DIRECT_GBPAGES=y
+CONFIG_ARCH_SPARSEMEM_ENABLE=y
+CONFIG_ARCH_SPARSEMEM_DEFAULT=y
+CONFIG_ARCH_SELECT_MEMORY_MODEL=y
+CONFIG_ILLEGAL_POINTER_VALUE=0xdead000000000000
+CONFIG_SELECT_MEMORY_MODEL=y
+CONFIG_SPARSEMEM_MANUAL=y
+CONFIG_SPARSEMEM=y
+CONFIG_HAVE_MEMORY_PRESENT=y
+CONFIG_SPARSEMEM_EXTREME=y
+CONFIG_SPARSEMEM_VMEMMAP_ENABLE=y
+CONFIG_SPARSEMEM_ALLOC_MEM_MAP_TOGETHER=y
+CONFIG_SPARSEMEM_VMEMMAP=y
+CONFIG_HAVE_MEMBLOCK=y
+CONFIG_HAVE_MEMBLOCK_NODE_MAP=y
+CONFIG_ARCH_DISCARD_MEMBLOCK=y
+CONFIG_PAGEFLAGS_EXTENDED=y
+CONFIG_SPLIT_PTLOCK_CPUS=4
+CONFIG_ARCH_ENABLE_SPLIT_PMD_PTLOCK=y
+CONFIG_BALLOON_COMPACTION=y
+CONFIG_COMPACTION=y
+CONFIG_MIGRATION=y
+CONFIG_PHYS_ADDR_T_64BIT=y
+CONFIG_ZONE_DMA_FLAG=1
+CONFIG_BOUNCE=y
+CONFIG_VIRT_TO_BUS=y
+CONFIG_MMU_NOTIFIER=y
+CONFIG_KSM=y
+CONFIG_DEFAULT_MMAP_MIN_ADDR=4096
+CONFIG_ARCH_SUPPORTS_MEMORY_FAILURE=y
+CONFIG_TRANSPARENT_HUGEPAGE=y
+CONFIG_TRANSPARENT_HUGEPAGE_ALWAYS=y
+CONFIG_CROSS_MEMORY_ATTACH=y
+CONFIG_X86_RESERVE_LOW=64
+CONFIG_MTRR=y
+CONFIG_X86_PAT=y
+CONFIG_ARCH_USES_PG_UNCACHED=y
+CONFIG_ARCH_RANDOM=y
+CONFIG_X86_SMAP=y
+CONFIG_SECCOMP=y
+CONFIG_HZ_100=y
+CONFIG_HZ=100
+CONFIG_SCHED_HRTICK=y
+CONFIG_PHYSICAL_START=0x1000000
+CONFIG_PHYSICAL_ALIGN=0x1000000
+CONFIG_ARCH_ENABLE_MEMORY_HOTPLUG=y
+CONFIG_PM_RUNTIME=y
+CONFIG_PM=y
+CONFIG_WQ_POWER_EFFICIENT_DEFAULT=y
+CONFIG_ACPI=y
+CONFIG_ACPI_BUTTON=y
+CONFIG_ACPI_FAN=y
+CONFIG_ACPI_DOCK=y
+CONFIG_ACPI_PROCESSOR=y
+CONFIG_ACPI_IPMI=m
+CONFIG_ACPI_THERMAL=y
+CONFIG_ACPI_CUSTOM_DSDT_FILE=""
+CONFIG_ACPI_PCI_SLOT=y
+CONFIG_X86_PM_TIMER=y
+CONFIG_CPU_FREQ=y
+CONFIG_CPU_FREQ_GOV_COMMON=y
+CONFIG_CPU_FREQ_STAT=y
+CONFIG_CPU_FREQ_STAT_DETAILS=y
+CONFIG_CPU_FREQ_DEFAULT_GOV_ONDEMAND=y
+CONFIG_CPU_FREQ_GOV_PERFORMANCE=y
+CONFIG_CPU_FREQ_GOV_ONDEMAND=y
+CONFIG_X86_ACPI_CPUFREQ=y
+CONFIG_CPU_IDLE=y
+CONFIG_CPU_IDLE_GOV_LADDER=y
+CONFIG_CPU_IDLE_GOV_MENU=y
+CONFIG_INTEL_IDLE=y
+CONFIG_I7300_IDLE_IOAT_CHANNEL=y
+CONFIG_I7300_IDLE=y
+CONFIG_PCI=y
+CONFIG_PCI_DIRECT=y
+CONFIG_PCI_MMCONFIG=y
+CONFIG_PCI_DOMAINS=y
+CONFIG_PCIEPORTBUS=y
+CONFIG_PCIEAER=y
+CONFIG_PCIEASPM=y
+CONFIG_PCIEASPM_DEFAULT=y
+CONFIG_PCIE_PME=y
+CONFIG_PCI_MSI=y
+CONFIG_PCI_ATS=y
+CONFIG_PCI_IOV=y
+CONFIG_PCI_IOAPIC=y
+CONFIG_PCI_LABEL=y
+CONFIG_ISA_DMA_API=y
+CONFIG_AMD_NB=y
+CONFIG_BINFMT_ELF=y
+CONFIG_COMPAT_BINFMT_ELF=y
+CONFIG_ARCH_BINFMT_ELF_RANDOMIZE_PIE=y
+CONFIG_CORE_DUMP_DEFAULT_ELF_HEADERS=y
+CONFIG_BINFMT_SCRIPT=y
+CONFIG_BINFMT_MISC=y
+CONFIG_COREDUMP=y
+CONFIG_IA32_EMULATION=y
+CONFIG_COMPAT=y
+CONFIG_COMPAT_FOR_U64_ALIGNMENT=y
+CONFIG_SYSVIPC_COMPAT=y
+CONFIG_KEYS_COMPAT=y
+CONFIG_X86_DEV_DMA_OPS=y
+CONFIG_NET=y
+CONFIG_PACKET=y
+CONFIG_PACKET_DIAG=y
+CONFIG_UNIX=y
+CONFIG_UNIX_DIAG=y
+CONFIG_INET=y
+CONFIG_IP_MULTICAST=y
+CONFIG_IP_ADVANCED_ROUTER=y
+CONFIG_IP_MULTIPLE_TABLES=y
+CONFIG_IP_PNP=y
+CONFIG_IP_MROUTE=y
+CONFIG_INET_LRO=y
+CONFIG_INET_DIAG=y
+CONFIG_INET_TCP_DIAG=y
+CONFIG_INET_UDP_DIAG=y
+CONFIG_TCP_CONG_CUBIC=y
+CONFIG_DEFAULT_TCP_CONG="cubic"
+CONFIG_IPV6=y
+CONFIG_IPV6_ROUTER_PREF=y
+CONFIG_NETFILTER=y
+CONFIG_NETFILTER_ADVANCED=y
+CONFIG_BRIDGE_NETFILTER=y
+CONFIG_NETFILTER_NETLINK=m
+CONFIG_NETFILTER_NETLINK_ACCT=m
+CONFIG_NETFILTER_XTABLES=y
+CONFIG_NETFILTER_XT_MARK=y
+CONFIG_NETFILTER_XT_TARGET_LOG=y
+CONFIG_NETFILTER_XT_MATCH_ECN=m
+CONFIG_NETFILTER_XT_MATCH_IPRANGE=y
+CONFIG_NETFILTER_XT_MATCH_MULTIPORT=y
+CONFIG_NETFILTER_XT_MATCH_NFACCT=m
+CONFIG_NETFILTER_XT_MATCH_OWNER=y
+CONFIG_IP_NF_IPTABLES=y
+CONFIG_IP_NF_MANGLE=y
+CONFIG_STP=y
+CONFIG_BRIDGE=y
+CONFIG_BRIDGE_IGMP_SNOOPING=y
+CONFIG_HAVE_NET_DSA=y
+CONFIG_LLC=y
+CONFIG_6LOWPAN_IPHC=y
+CONFIG_DNS_RESOLVER=y
+CONFIG_NETLINK_DIAG=y
+CONFIG_RPS=y
+CONFIG_RFS_ACCEL=y
+CONFIG_XPS=y
+CONFIG_NET_RX_BUSY_POLL=y
+CONFIG_BQL=y
+CONFIG_BPF_JIT=y
+CONFIG_NET_FLOW_LIMIT=y
+CONFIG_BT=y
+CONFIG_BT_RFCOMM=y
+CONFIG_BT_HCIBTUSB=y
+CONFIG_FIB_RULES=y
+CONFIG_HAVE_BPF_JIT=y
+CONFIG_UEVENT_HELPER_PATH=""
+CONFIG_PREVENT_FIRMWARE_BUILD=y
+CONFIG_FW_LOADER=y
+CONFIG_FIRMWARE_IN_KERNEL=y
+CONFIG_EXTRA_FIRMWARE=""
+CONFIG_FW_LOADER_USER_HELPER=y
+CONFIG_ARCH_MIGHT_HAVE_PC_PARPORT=y
+CONFIG_PNP=y
+CONFIG_PNPACPI=y
+CONFIG_BLK_DEV=y
+CONFIG_BLK_DEV_LOOP=y
+CONFIG_BLK_DEV_LOOP_MIN_COUNT=8
+CONFIG_BLK_DEV_CRYPTOLOOP=m
+CONFIG_BLK_DEV_NBD=m
+CONFIG_CDROM_PKTCDVD=y
+CONFIG_CDROM_PKTCDVD_BUFFERS=16
+CONFIG_HAVE_IDE=y
+CONFIG_SCSI_MOD=y
+CONFIG_SCSI=y
+CONFIG_SCSI_DMA=y
+CONFIG_SCSI_PROC_FS=y
+CONFIG_BLK_DEV_SD=y
+CONFIG_BLK_DEV_SR=y
+CONFIG_CHR_DEV_SG=y
+CONFIG_SCSI_MULTI_LUN=y
+CONFIG_SCSI_SCAN_ASYNC=y
+CONFIG_SCSI_LOWLEVEL=y
+CONFIG_SCSI_ARCMSR=y
+CONFIG_ATA=y
+CONFIG_ATA_VERBOSE_ERROR=y
+CONFIG_ATA_ACPI=y
+CONFIG_SATA_AHCI=y
+CONFIG_MD=y
+CONFIG_BLK_DEV_DM_BUILTIN=y
+CONFIG_BLK_DEV_DM=y
+CONFIG_DM_BUFIO=y
+CONFIG_DM_CRYPT=y
+CONFIG_DM_SNAPSHOT=y
+CONFIG_DM_MIRROR=y
+CONFIG_DM_ZERO=y
+CONFIG_FIREWIRE=m
+CONFIG_FIREWIRE_OHCI=m
+CONFIG_FIREWIRE_SBP2=m
+CONFIG_NETDEVICES=y
+CONFIG_NET_CORE=y
+CONFIG_DUMMY=m
+CONFIG_MACVLAN=y
+CONFIG_MACVTAP=y
+CONFIG_TUN=y
+CONFIG_VHOST_NET=y
+CONFIG_VHOST_RING=y
+CONFIG_VHOST=y
+CONFIG_ETHERNET=y
+CONFIG_NET_VENDOR_INTEL=y
+CONFIG_E1000E=y
+CONFIG_INPUT=y
+CONFIG_INPUT_MOUSEDEV=y
+CONFIG_INPUT_MOUSEDEV_SCREEN_X=1680
+CONFIG_INPUT_MOUSEDEV_SCREEN_Y=1050
+CONFIG_INPUT_EVDEV=y
+CONFIG_INPUT_KEYBOARD=y
+CONFIG_KEYBOARD_ATKBD=y
+CONFIG_INPUT_MOUSE=y
+CONFIG_MOUSE_PS2=y
+CONFIG_MOUSE_PS2_ALPS=y
+CONFIG_MOUSE_PS2_LOGIPS2PP=y
+CONFIG_MOUSE_PS2_SYNAPTICS=y
+CONFIG_MOUSE_PS2_CYPRESS=y
+CONFIG_MOUSE_PS2_LIFEBOOK=y
+CONFIG_MOUSE_PS2_TRACKPOINT=y
+CONFIG_INPUT_JOYSTICK=y
+CONFIG_JOYSTICK_ANALOG=y
+CONFIG_SERIO=y
+CONFIG_ARCH_MIGHT_HAVE_PC_SERIO=y
+CONFIG_SERIO_I8042=y
+CONFIG_SERIO_LIBPS2=y
+CONFIG_GAMEPORT=y
+CONFIG_TTY=y
+CONFIG_VT=y
+CONFIG_CONSOLE_TRANSLATIONS=y
+CONFIG_VT_CONSOLE=y
+CONFIG_HW_CONSOLE=y
+CONFIG_UNIX98_PTYS=y
+CONFIG_SERIAL_8250=y
+CONFIG_SERIAL_8250_PNP=y
+CONFIG_SERIAL_8250_CONSOLE=y
+CONFIG_FIX_EARLYCON_MEM=y
+CONFIG_SERIAL_8250_PCI=y
+CONFIG_SERIAL_8250_NR_UARTS=4
+CONFIG_SERIAL_8250_RUNTIME_UARTS=4
+CONFIG_SERIAL_CORE=y
+CONFIG_SERIAL_CORE_CONSOLE=y
+CONFIG_IPMI_HANDLER=m
+CONFIG_IPMI_PANIC_EVENT=y
+CONFIG_IPMI_DEVICE_INTERFACE=m
+CONFIG_IPMI_SI=m
+CONFIG_IPMI_POWEROFF=m
+CONFIG_NVRAM=m
+CONFIG_HPET=y
+CONFIG_HPET_MMAP=y
+CONFIG_HPET_MMAP_DEFAULT=y
+CONFIG_DEVPORT=y
+CONFIG_I2C=y
+CONFIG_I2C_BOARDINFO=y
+CONFIG_I2C_COMPAT=y
+CONFIG_I2C_CHARDEV=y
+CONFIG_I2C_MUX=y
+CONFIG_I2C_HELPER_AUTO=y
+CONFIG_I2C_I801=y
+CONFIG_PPS=y
+CONFIG_PTP_1588_CLOCK=y
+CONFIG_ARCH_WANT_OPTIONAL_GPIOLIB=y
+CONFIG_HWMON=y
+CONFIG_HWMON_VID=y
+CONFIG_SENSORS_W83793=y
+CONFIG_THERMAL=y
+CONFIG_THERMAL_HWMON=y
+CONFIG_THERMAL_DEFAULT_GOV_STEP_WISE=y
+CONFIG_THERMAL_GOV_STEP_WISE=y
+CONFIG_SSB_POSSIBLE=y
+CONFIG_BCMA_POSSIBLE=y
+CONFIG_MFD_CORE=y
+CONFIG_LPC_ICH=y
+CONFIG_MEDIA_SUPPORT=y
+CONFIG_MEDIA_CAMERA_SUPPORT=y
+CONFIG_VIDEO_DEV=y
+CONFIG_VIDEO_V4L2=y
+CONFIG_MEDIA_SUBDRV_AUTOSELECT=y
+CONFIG_VGA_ARB=y
+CONFIG_VGA_ARB_MAX_GPUS=1
+CONFIG_VGA_CONSOLE=y
+CONFIG_VGACON_SOFT_SCROLLBACK=y
+CONFIG_VGACON_SOFT_SCROLLBACK_SIZE=256
+CONFIG_DUMMY_CONSOLE=y
+CONFIG_SOUND=y
+CONFIG_SOUND_OSS_CORE=y
+CONFIG_SND=y
+CONFIG_SND_TIMER=y
+CONFIG_SND_PCM=y
+CONFIG_SND_JACK=y
+CONFIG_SND_SEQUENCER=y
+CONFIG_SND_SEQ_DUMMY=m
+CONFIG_SND_OSSEMUL=y
+CONFIG_SND_MIXER_OSS=y
+CONFIG_SND_PCM_OSS=y
+CONFIG_SND_PCM_OSS_PLUGINS=y
+CONFIG_SND_SEQUENCER_OSS=y
+CONFIG_SND_HRTIMER=y
+CONFIG_SND_SEQ_HRTIMER_DEFAULT=y
+CONFIG_SND_DYNAMIC_MINORS=y
+CONFIG_SND_MAX_CARDS=4
+CONFIG_SND_VERBOSE_PROCFS=y
+CONFIG_SND_VMASTER=y
+CONFIG_SND_KCTL_JACK=y
+CONFIG_SND_DMA_SGBUF=y
+CONFIG_SND_PCI=y
+CONFIG_SND_HDA_INTEL=y
+CONFIG_SND_HDA_PREALLOC_SIZE=64
+CONFIG_SND_HDA_INPUT_JACK=y
+CONFIG_SND_HDA_GENERIC=y
+CONFIG_SND_HDA_POWER_SAVE_DEFAULT=0
+CONFIG_HID=y
+CONFIG_HID_GENERIC=y
+CONFIG_HID_A4TECH=y
+CONFIG_HID_APPLE=y
+CONFIG_HID_BELKIN=y
+CONFIG_HID_CHERRY=y
+CONFIG_HID_CHICONY=y
+CONFIG_HID_CYPRESS=y
+CONFIG_HID_EZKEY=y
+CONFIG_HID_KYE=y
+CONFIG_HID_KENSINGTON=y
+CONFIG_HID_LOGITECH=y
+CONFIG_HID_MICROSOFT=y
+CONFIG_HID_MONTEREY=y
+CONFIG_USB_HID=y
+CONFIG_USB_OHCI_LITTLE_ENDIAN=y
+CONFIG_USB_SUPPORT=y
+CONFIG_USB_COMMON=y
+CONFIG_USB_ARCH_HAS_HCD=y
+CONFIG_USB=y
+CONFIG_USB_DEFAULT_PERSIST=y
+CONFIG_USB_DYNAMIC_MINORS=y
+CONFIG_USB_EHCI_HCD=y
+CONFIG_USB_EHCI_PCI=y
+CONFIG_USB_UHCI_HCD=y
+CONFIG_USB_ACM=y
+CONFIG_USB_STORAGE=y
+CONFIG_USB_SERIAL=y
+CONFIG_USB_SERIAL_PL2303=m
+CONFIG_EDAC=y
+CONFIG_EDAC_MM_EDAC=y
+CONFIG_EDAC_I7CORE=y
+CONFIG_RTC_LIB=y
+CONFIG_RTC_CLASS=y
+CONFIG_RTC_HCTOSYS=y
+CONFIG_RTC_SYSTOHC=y
+CONFIG_RTC_HCTOSYS_DEVICE="rtc0"
+CONFIG_RTC_INTF_SYSFS=y
+CONFIG_RTC_INTF_PROC=y
+CONFIG_RTC_INTF_DEV=y
+CONFIG_RTC_DRV_CMOS=y
+CONFIG_VIRT_DRIVERS=y
+CONFIG_VIRTIO=m
+CONFIG_VIRTIO_PCI=m
+CONFIG_VIRTIO_BALLOON=m
+CONFIG_CLKEVT_I8253=y
+CONFIG_I8253_LOCK=y
+CONFIG_CLKBLD_I8253=y
+CONFIG_IOMMU_SUPPORT=y
+CONFIG_MEMORY=y
+CONFIG_FIRMWARE_MEMMAP=y
+CONFIG_DMIID=y
+CONFIG_DMI_SCAN_MACHINE_NON_EFI_FALLBACK=y
+CONFIG_DCACHE_WORD_ACCESS=y
+CONFIG_EXT4_FS=y
+CONFIG_EXT4_USE_FOR_EXT23=y
+CONFIG_EXT4_FS_POSIX_ACL=y
+CONFIG_JBD2=y
+CONFIG_FS_MBCACHE=y
+CONFIG_FS_POSIX_ACL=y
+CONFIG_EXPORTFS=y
+CONFIG_FILE_LOCKING=y
+CONFIG_FSNOTIFY=y
+CONFIG_DNOTIFY=y
+CONFIG_INOTIFY_USER=y
+CONFIG_FANOTIFY=y
+CONFIG_QUOTA=y
+CONFIG_QUOTA_NETLINK_INTERFACE=y
+CONFIG_PRINT_QUOTA_WARNING=y
+CONFIG_QUOTA_TREE=y
+CONFIG_QFMT_V2=y
+CONFIG_QUOTACTL=y
+CONFIG_QUOTACTL_COMPAT=y
+CONFIG_FUSE_FS=y
+CONFIG_CUSE=y
+CONFIG_ISO9660_FS=y
+CONFIG_JOLIET=y
+CONFIG_UDF_FS=y
+CONFIG_UDF_NLS=y
+CONFIG_FAT_FS=m
+CONFIG_MSDOS_FS=m
+CONFIG_VFAT_FS=m
+CONFIG_FAT_DEFAULT_CODEPAGE=437
+CONFIG_FAT_DEFAULT_IOCHARSET="iso8859-1"
+CONFIG_PROC_FS=y
+CONFIG_PROC_SYSCTL=y
+CONFIG_PROC_PAGE_MONITOR=y
+CONFIG_SYSFS=y
+CONFIG_TMPFS=y
+CONFIG_TMPFS_POSIX_ACL=y
+CONFIG_TMPFS_XATTR=y
+CONFIG_HUGETLBFS=y
+CONFIG_HUGETLB_PAGE=y
+CONFIG_CONFIGFS_FS=y
+CONFIG_MISC_FILESYSTEMS=y
+CONFIG_SQUASHFS=m
+CONFIG_SQUASHFS_FILE_CACHE=y
+CONFIG_SQUASHFS_DECOMP_MULTI=y
+CONFIG_SQUASHFS_XATTR=y
+CONFIG_SQUASHFS_ZLIB=y
+CONFIG_SQUASHFS_LZO=y
+CONFIG_SQUASHFS_XZ=y
+CONFIG_SQUASHFS_FRAGMENT_CACHE_SIZE=3
+CONFIG_NETWORK_FILESYSTEMS=y
+CONFIG_NFS_FS=y
+CONFIG_NFS_V3=y
+CONFIG_NFS_V3_ACL=y
+CONFIG_NFS_V4=y
+CONFIG_NFS_USE_KERNEL_DNS=y
+CONFIG_NFSD=y
+CONFIG_NFSD_V2_ACL=y
+CONFIG_NFSD_V3=y
+CONFIG_NFSD_V3_ACL=y
+CONFIG_NFSD_V4=y
+CONFIG_LOCKD=y
+CONFIG_LOCKD_V4=y
+CONFIG_NFS_ACL_SUPPORT=y
+CONFIG_NFS_COMMON=y
+CONFIG_SUNRPC=y
+CONFIG_SUNRPC_GSS=y
+CONFIG_NLS=y
+CONFIG_NLS_DEFAULT="iso-8859-1"
+CONFIG_NLS_CODEPAGE_437=y
+CONFIG_NLS_ASCII=m
+CONFIG_NLS_ISO8859_1=y
+CONFIG_NLS_ISO8859_15=m
+CONFIG_NLS_UTF8=m
+CONFIG_TRACE_IRQFLAGS_SUPPORT=y
+CONFIG_PRINTK_TIME=y
+CONFIG_DEFAULT_MESSAGE_LOGLEVEL=4
+CONFIG_ENABLE_WARN_DEPRECATED=y
+CONFIG_ENABLE_MUST_CHECK=y
+CONFIG_FRAME_WARN=1024
+CONFIG_STRIP_ASM_SYMS=y
+CONFIG_DEBUG_FS=y
+CONFIG_ARCH_WANT_FRAME_POINTERS=y
+CONFIG_FRAME_POINTER=y
+CONFIG_MAGIC_SYSRQ=y
+CONFIG_MAGIC_SYSRQ_DEFAULT_ENABLE=0x1
+CONFIG_DEBUG_KERNEL=y
+CONFIG_HAVE_DEBUG_KMEMLEAK=y
+CONFIG_DEBUG_MEMORY_INIT=y
+CONFIG_HAVE_DEBUG_STACKOVERFLOW=y
+CONFIG_HAVE_ARCH_KMEMCHECK=y
+CONFIG_LOCKUP_DETECTOR=y
+CONFIG_HARDLOCKUP_DETECTOR=y
+CONFIG_BOOTPARAM_HARDLOCKUP_PANIC=y
+CONFIG_BOOTPARAM_HARDLOCKUP_PANIC_VALUE=1
+CONFIG_BOOTPARAM_SOFTLOCKUP_PANIC_VALUE=0
+CONFIG_DETECT_HUNG_TASK=y
+CONFIG_DEFAULT_HUNG_TASK_TIMEOUT=120
+CONFIG_BOOTPARAM_HUNG_TASK_PANIC_VALUE=0
+CONFIG_PANIC_ON_OOPS_VALUE=0
+CONFIG_PANIC_TIMEOUT=0
+CONFIG_SCHED_DEBUG=y
+CONFIG_SCHEDSTATS=y
+CONFIG_TIMER_STATS=y
+CONFIG_STACKTRACE=y
+CONFIG_DEBUG_BUGVERBOSE=y
+CONFIG_RCU_CPU_STALL_TIMEOUT=60
+CONFIG_LATENCYTOP=y
+CONFIG_ARCH_HAS_DEBUG_STRICT_USER_COPY_CHECKS=y
+CONFIG_DEBUG_STRICT_USER_COPY_CHECKS=y
+CONFIG_USER_STACKTRACE_SUPPORT=y
+CONFIG_NOP_TRACER=y
+CONFIG_HAVE_FUNCTION_TRACER=y
+CONFIG_HAVE_FUNCTION_GRAPH_TRACER=y
+CONFIG_HAVE_FUNCTION_GRAPH_FP_TEST=y
+CONFIG_HAVE_FUNCTION_TRACE_MCOUNT_TEST=y
+CONFIG_HAVE_DYNAMIC_FTRACE=y
+CONFIG_HAVE_DYNAMIC_FTRACE_WITH_REGS=y
+CONFIG_HAVE_FTRACE_MCOUNT_RECORD=y
+CONFIG_HAVE_SYSCALL_TRACEPOINTS=y
+CONFIG_HAVE_FENTRY=y
+CONFIG_HAVE_C_RECORDMCOUNT=y
+CONFIG_TRACE_CLOCK=y
+CONFIG_RING_BUFFER=y
+CONFIG_EVENT_TRACING=y
+CONFIG_CONTEXT_SWITCH_TRACER=y
+CONFIG_TRACING=y
+CONFIG_GENERIC_TRACER=y
+CONFIG_TRACING_SUPPORT=y
+CONFIG_FTRACE=y
+CONFIG_FUNCTION_TRACER=y
+CONFIG_BRANCH_PROFILE_NONE=y
+CONFIG_BLK_DEV_IO_TRACE=y
+CONFIG_DYNAMIC_FTRACE=y
+CONFIG_DYNAMIC_FTRACE_WITH_REGS=y
+CONFIG_FTRACE_MCOUNT_RECORD=y
+CONFIG_HAVE_ARCH_KGDB=y
+CONFIG_STRICT_DEVMEM=y
+CONFIG_X86_VERBOSE_BOOTUP=y
+CONFIG_EARLY_PRINTK=y
+CONFIG_DEBUG_RODATA=y
+CONFIG_DOUBLEFAULT=y
+CONFIG_HAVE_MMIOTRACE_SUPPORT=y
+CONFIG_IO_DELAY_TYPE_0X80=0
+CONFIG_IO_DELAY_TYPE_0XED=1
+CONFIG_IO_DELAY_TYPE_UDELAY=2
+CONFIG_IO_DELAY_TYPE_NONE=3
+CONFIG_IO_DELAY_0X80=y
+CONFIG_DEFAULT_IO_DELAY_TYPE=0
+CONFIG_KEYS=y
+CONFIG_SECURITY=y
+CONFIG_SECURITYFS=y
+CONFIG_SECURITY_NETWORK=y
+CONFIG_SECURITY_PATH=y
+CONFIG_SECURITY_APPARMOR=y
+CONFIG_SECURITY_APPARMOR_BOOTPARAM_VALUE=0
+CONFIG_SECURITY_APPARMOR_HASH=y
+CONFIG_DEFAULT_SECURITY_DAC=y
+CONFIG_DEFAULT_SECURITY=""
+CONFIG_CRYPTO=y
+CONFIG_CRYPTO_ALGAPI=y
+CONFIG_CRYPTO_ALGAPI2=y
+CONFIG_CRYPTO_AEAD2=y
+CONFIG_CRYPTO_BLKCIPHER=y
+CONFIG_CRYPTO_BLKCIPHER2=y
+CONFIG_CRYPTO_HASH=y
+CONFIG_CRYPTO_HASH2=y
+CONFIG_CRYPTO_RNG2=y
+CONFIG_CRYPTO_PCOMP2=y
+CONFIG_CRYPTO_MANAGER=y
+CONFIG_CRYPTO_MANAGER2=y
+CONFIG_CRYPTO_WORKQUEUE=y
+CONFIG_CRYPTO_CBC=y
+CONFIG_CRYPTO_ECB=y
+CONFIG_CRYPTO_CRC32C=y
+CONFIG_CRYPTO_SHA1=y
+CONFIG_CRYPTO_SHA256=y
+CONFIG_CRYPTO_AES=y
+CONFIG_CRYPTO_AES_X86_64=y
+CONFIG_HAVE_KVM=y
+CONFIG_HAVE_KVM_IRQCHIP=y
+CONFIG_HAVE_KVM_IRQ_ROUTING=y
+CONFIG_HAVE_KVM_EVENTFD=y
+CONFIG_KVM_APIC_ARCHITECTURE=y
+CONFIG_KVM_MMIO=y
+CONFIG_KVM_ASYNC_PF=y
+CONFIG_HAVE_KVM_MSI=y
+CONFIG_HAVE_KVM_CPU_RELAX_INTERCEPT=y
+CONFIG_KVM_VFIO=y
+CONFIG_VIRTUALIZATION=y
+CONFIG_KVM=y
+CONFIG_KVM_INTEL=y
+CONFIG_BINARY_PRINTF=y
+CONFIG_BITREVERSE=y
+CONFIG_GENERIC_STRNCPY_FROM_USER=y
+CONFIG_GENERIC_STRNLEN_USER=y
+CONFIG_GENERIC_NET_UTILS=y
+CONFIG_GENERIC_FIND_FIRST_BIT=y
+CONFIG_GENERIC_PCI_IOMAP=y
+CONFIG_GENERIC_IOMAP=y
+CONFIG_GENERIC_IO=y
+CONFIG_ARCH_USE_CMPXCHG_LOCKREF=y
+CONFIG_CRC16=y
+CONFIG_CRC_ITU_T=y
+CONFIG_CRC32=y
+CONFIG_CRC32_SLICEBY8=y
+CONFIG_ZLIB_INFLATE=y
+CONFIG_LZO_DECOMPRESS=y
+CONFIG_LZ4_DECOMPRESS=y
+CONFIG_XZ_DEC=y
+CONFIG_XZ_DEC_X86=y
+CONFIG_XZ_DEC_POWERPC=y
+CONFIG_XZ_DEC_IA64=y
+CONFIG_XZ_DEC_ARM=y
+CONFIG_XZ_DEC_ARMTHUMB=y
+CONFIG_XZ_DEC_SPARC=y
+CONFIG_XZ_DEC_BCJ=y
+CONFIG_DECOMPRESS_GZIP=y
+CONFIG_DECOMPRESS_BZIP2=y
+CONFIG_DECOMPRESS_LZMA=y
+CONFIG_DECOMPRESS_XZ=y
+CONFIG_DECOMPRESS_LZO=y
+CONFIG_DECOMPRESS_LZ4=y
+CONFIG_ASSOCIATIVE_ARRAY=y
+CONFIG_HAS_IOMEM=y
+CONFIG_HAS_IOPORT=y
+CONFIG_HAS_DMA=y
+CONFIG_CHECK_SIGNATURE=y
+CONFIG_CPU_RMAP=y
+CONFIG_DQL=y
+CONFIG_NLATTR=y
+CONFIG_ARCH_HAS_ATOMIC64_DEC_IF_POSITIVE=y
+CONFIG_OID_REGISTRY=y
+
+Client (the firewall whose lockd shenanigans I suspect without evidence
+of causing all this):
+
+CONFIG_X86_32=y
+CONFIG_X86=y
+CONFIG_INSTRUCTION_DECODER=y
+CONFIG_OUTPUT_FORMAT="elf32-i386"
+CONFIG_ARCH_DEFCONFIG="arch/x86/configs/i386_defconfig"
+CONFIG_LOCKDEP_SUPPORT=y
+CONFIG_STACKTRACE_SUPPORT=y
+CONFIG_HAVE_LATENCYTOP_SUPPORT=y
+CONFIG_MMU=y
+CONFIG_NEED_SG_DMA_LENGTH=y
+CONFIG_GENERIC_ISA_DMA=y
+CONFIG_GENERIC_BUG=y
+CONFIG_GENERIC_HWEIGHT=y
+CONFIG_ARCH_MAY_HAVE_PC_FDC=y
+CONFIG_RWSEM_XCHGADD_ALGORITHM=y
+CONFIG_GENERIC_CALIBRATE_DELAY=y
+CONFIG_ARCH_HAS_CPU_RELAX=y
+CONFIG_ARCH_HAS_CACHE_LINE_SIZE=y
+CONFIG_ARCH_HAS_CPU_AUTOPROBE=y
+CONFIG_HAVE_SETUP_PER_CPU_AREA=y
+CONFIG_NEED_PER_CPU_EMBED_FIRST_CHUNK=y
+CONFIG_NEED_PER_CPU_PAGE_FIRST_CHUNK=y
+CONFIG_ARCH_HIBERNATION_POSSIBLE=y
+CONFIG_ARCH_SUSPEND_POSSIBLE=y
+CONFIG_ARCH_WANT_HUGE_PMD_SHARE=y
+CONFIG_ARCH_WANT_GENERAL_HUGETLB=y
+CONFIG_ARCH_SUPPORTS_OPTIMIZED_INLINING=y
+CONFIG_ARCH_SUPPORTS_DEBUG_PAGEALLOC=y
+CONFIG_X86_32_LAZY_GS=y
+CONFIG_ARCH_HWEIGHT_CFLAGS="-fcall-saved-ecx -fcall-saved-edx"
+CONFIG_ARCH_SUPPORTS_UPROBES=y
+CONFIG_DEFCONFIG_LIST="/lib/modules/$UNAME_RELEASE/.config"
+CONFIG_IRQ_WORK=y
+CONFIG_BUILDTIME_EXTABLE_SORT=y
+CONFIG_BROKEN_ON_SMP=y
+CONFIG_INIT_ENV_ARG_LIMIT=32
+CONFIG_CROSS_COMPILE=""
+CONFIG_LOCALVERSION=""
+CONFIG_HAVE_KERNEL_GZIP=y
+CONFIG_HAVE_KERNEL_BZIP2=y
+CONFIG_HAVE_KERNEL_LZMA=y
+CONFIG_HAVE_KERNEL_XZ=y
+CONFIG_HAVE_KERNEL_LZO=y
+CONFIG_HAVE_KERNEL_LZ4=y
+CONFIG_KERNEL_GZIP=y
+CONFIG_DEFAULT_HOSTNAME="fold"
+CONFIG_SWAP=y
+CONFIG_SYSVIPC=y
+CONFIG_SYSVIPC_SYSCTL=y
+CONFIG_POSIX_MQUEUE=y
+CONFIG_POSIX_MQUEUE_SYSCTL=y
+CONFIG_FHANDLE=y
+CONFIG_GENERIC_IRQ_PROBE=y
+CONFIG_GENERIC_IRQ_SHOW=y
+CONFIG_IRQ_DOMAIN=y
+CONFIG_IRQ_FORCED_THREADING=y
+CONFIG_SPARSE_IRQ=y
+CONFIG_CLOCKSOURCE_WATCHDOG=y
+CONFIG_KTIME_SCALAR=y
+CONFIG_GENERIC_CLOCKEVENTS=y
+CONFIG_GENERIC_CLOCKEVENTS_BUILD=y
+CONFIG_GENERIC_CLOCKEVENTS_BROADCAST=y
+CONFIG_GENERIC_CLOCKEVENTS_MIN_ADJUST=y
+CONFIG_GENERIC_CMOS_UPDATE=y
+CONFIG_TICK_ONESHOT=y
+CONFIG_NO_HZ_COMMON=y
+CONFIG_NO_HZ_IDLE=y
+CONFIG_HIGH_RES_TIMERS=y
+CONFIG_TICK_CPU_ACCOUNTING=y
+CONFIG_BSD_PROCESS_ACCT=y
+CONFIG_TINY_RCU=y
+CONFIG_LOG_BUF_SHIFT=14
+CONFIG_HAVE_UNSTABLE_SCHED_CLOCK=y
+CONFIG_ARCH_SUPPORTS_NUMA_BALANCING=y
+CONFIG_ARCH_WANTS_PROT_NUMA_PROT_NONE=y
+CONFIG_CGROUPS=y
+CONFIG_CGROUP_SCHED=y
+CONFIG_FAIR_GROUP_SCHED=y
+CONFIG_SCHED_AUTOGROUP=y
+CONFIG_RELAY=y
+CONFIG_CC_OPTIMIZE_FOR_SIZE=y
+CONFIG_SYSCTL=y
+CONFIG_ANON_INODES=y
+CONFIG_HAVE_UID16=y
+CONFIG_SYSCTL_EXCEPTION_TRACE=y
+CONFIG_HAVE_PCSPKR_PLATFORM=y
+CONFIG_EXPERT=y
+CONFIG_UID16=y
+CONFIG_SYSCTL_SYSCALL=y
+CONFIG_KALLSYMS=y
+CONFIG_PRINTK=y
+CONFIG_BUG=y
+CONFIG_ELF_CORE=y
+CONFIG_BASE_FULL=y
+CONFIG_FUTEX=y
+CONFIG_EPOLL=y
+CONFIG_SIGNALFD=y
+CONFIG_TIMERFD=y
+CONFIG_EVENTFD=y
+CONFIG_SHMEM=y
+CONFIG_AIO=y
+CONFIG_PCI_QUIRKS=y
+CONFIG_EMBEDDED=y
+CONFIG_HAVE_PERF_EVENTS=y
+CONFIG_PERF_EVENTS=y
+CONFIG_VM_EVENT_COUNTERS=y
+CONFIG_SLUB_DEBUG=y
+CONFIG_SLUB=y
+CONFIG_HAVE_OPROFILE=y
+CONFIG_OPROFILE_NMI_TIMER=y
+CONFIG_JUMP_LABEL=y
+CONFIG_HAVE_EFFICIENT_UNALIGNED_ACCESS=y
+CONFIG_ARCH_USE_BUILTIN_BSWAP=y
+CONFIG_HAVE_IOREMAP_PROT=y
+CONFIG_HAVE_KPROBES=y
+CONFIG_HAVE_KRETPROBES=y
+CONFIG_HAVE_OPTPROBES=y
+CONFIG_HAVE_KPROBES_ON_FTRACE=y
+CONFIG_HAVE_ARCH_TRACEHOOK=y
+CONFIG_HAVE_DMA_ATTRS=y
+CONFIG_HAVE_DMA_CONTIGUOUS=y
+CONFIG_GENERIC_SMP_IDLE_THREAD=y
+CONFIG_HAVE_REGS_AND_STACK_ACCESS_API=y
+CONFIG_HAVE_DMA_API_DEBUG=y
+CONFIG_HAVE_HW_BREAKPOINT=y
+CONFIG_HAVE_MIXED_BREAKPOINTS_REGS=y
+CONFIG_HAVE_USER_RETURN_NOTIFIER=y
+CONFIG_HAVE_PERF_EVENTS_NMI=y
+CONFIG_HAVE_PERF_REGS=y
+CONFIG_HAVE_PERF_USER_STACK_DUMP=y
+CONFIG_HAVE_ARCH_JUMP_LABEL=y
+CONFIG_ARCH_HAVE_NMI_SAFE_CMPXCHG=y
+CONFIG_HAVE_ALIGNED_STRUCT_PAGE=y
+CONFIG_HAVE_CMPXCHG_LOCAL=y
+CONFIG_HAVE_CMPXCHG_DOUBLE=y
+CONFIG_ARCH_WANT_IPC_PARSE_VERSION=y
+CONFIG_HAVE_ARCH_SECCOMP_FILTER=y
+CONFIG_SECCOMP_FILTER=y
+CONFIG_HAVE_CC_STACKPROTECTOR=y
+CONFIG_CC_STACKPROTECTOR_NONE=y
+CONFIG_HAVE_IRQ_TIME_ACCOUNTING=y
+CONFIG_HAVE_ARCH_TRANSPARENT_HUGEPAGE=y
+CONFIG_HAVE_ARCH_SOFT_DIRTY=y
+CONFIG_MODULES_USE_ELF_REL=y
+CONFIG_CLONE_BACKWARDS=y
+CONFIG_OLD_SIGSUSPEND3=y
+CONFIG_OLD_SIGACTION=y
+CONFIG_HAVE_GENERIC_DMA_COHERENT=y
+CONFIG_SLABINFO=y
+CONFIG_RT_MUTEXES=y
+CONFIG_BASE_SMALL=0
+CONFIG_BLOCK=y
+CONFIG_BLK_DEV_BSG=y
+CONFIG_PARTITION_ADVANCED=y
+CONFIG_MSDOS_PARTITION=y
+CONFIG_IOSCHED_NOOP=y
+CONFIG_IOSCHED_DEADLINE=y
+CONFIG_DEFAULT_DEADLINE=y
+CONFIG_DEFAULT_IOSCHED="deadline"
+CONFIG_INLINE_SPIN_UNLOCK_IRQ=y
+CONFIG_INLINE_READ_UNLOCK=y
+CONFIG_INLINE_READ_UNLOCK_IRQ=y
+CONFIG_INLINE_WRITE_UNLOCK=y
+CONFIG_INLINE_WRITE_UNLOCK_IRQ=y
+CONFIG_ZONE_DMA=y
+CONFIG_X86_MPPARSE=y
+CONFIG_SCHED_OMIT_FRAME_POINTER=y
+CONFIG_NO_BOOTMEM=y
+CONFIG_MGEODE_LX=y
+CONFIG_X86_INTERNODE_CACHE_SHIFT=5
+CONFIG_X86_L1_CACHE_SHIFT=5
+CONFIG_X86_USE_PPRO_CHECKSUM=y
+CONFIG_X86_USE_3DNOW=y
+CONFIG_X86_TSC=y
+CONFIG_X86_CMOV=y
+CONFIG_X86_MINIMUM_CPU_FAMILY=4
+CONFIG_X86_DEBUGCTLMSR=y
+CONFIG_CPU_SUP_INTEL=y
+CONFIG_CPU_SUP_CYRIX_32=y
+CONFIG_CPU_SUP_AMD=y
+CONFIG_CPU_SUP_CENTAUR=y
+CONFIG_CPU_SUP_TRANSMETA_32=y
+CONFIG_CPU_SUP_UMC_32=y
+CONFIG_NR_CPUS=1
+CONFIG_PREEMPT_NONE=y
+CONFIG_X86_LOCAL_APIC=y
+CONFIG_X86_IO_APIC=y
+CONFIG_VM86=y
+CONFIG_X86_MSR=y
+CONFIG_X86_CPUID=y
+CONFIG_NOHIGHMEM=y
+CONFIG_VMSPLIT_3G=y
+CONFIG_PAGE_OFFSET=0xC0000000
+CONFIG_ARCH_FLATMEM_ENABLE=y
+CONFIG_ARCH_SPARSEMEM_ENABLE=y
+CONFIG_ARCH_SELECT_MEMORY_MODEL=y
+CONFIG_ILLEGAL_POINTER_VALUE=0
+CONFIG_SELECT_MEMORY_MODEL=y
+CONFIG_FLATMEM_MANUAL=y
+CONFIG_FLATMEM=y
+CONFIG_FLAT_NODE_MEM_MAP=y
+CONFIG_SPARSEMEM_STATIC=y
+CONFIG_HAVE_MEMBLOCK=y
+CONFIG_HAVE_MEMBLOCK_NODE_MAP=y
+CONFIG_ARCH_DISCARD_MEMBLOCK=y
+CONFIG_PAGEFLAGS_EXTENDED=y
+CONFIG_SPLIT_PTLOCK_CPUS=4
+CONFIG_ZONE_DMA_FLAG=1
+CONFIG_BOUNCE=y
+CONFIG_VIRT_TO_BUS=y
+CONFIG_DEFAULT_MMAP_MIN_ADDR=4096
+CONFIG_NEED_PER_CPU_KM=y
+CONFIG_ZSMALLOC=y
+CONFIG_X86_RESERVE_LOW=4
+CONFIG_SECCOMP=y
+CONFIG_HZ_100=y
+CONFIG_HZ=100
+CONFIG_SCHED_HRTICK=y
+CONFIG_PHYSICAL_START=0x100000
+CONFIG_PHYSICAL_ALIGN=0x100000
+CONFIG_PCI=y
+CONFIG_PCI_GOANY=y
+CONFIG_PCI_BIOS=y
+CONFIG_PCI_DIRECT=y
+CONFIG_PCI_DOMAINS=y
+CONFIG_PCI_MSI=y
+CONFIG_ISA_DMA_API=y
+CONFIG_SCx200=y
+CONFIG_SCx200HR_TIMER=y
+CONFIG_NET5501=y
+CONFIG_AMD_NB=y
+CONFIG_BINFMT_ELF=y
+CONFIG_ARCH_BINFMT_ELF_RANDOMIZE_PIE=y
+CONFIG_CORE_DUMP_DEFAULT_ELF_HEADERS=y
+CONFIG_BINFMT_SCRIPT=y
+CONFIG_HAVE_AOUT=y
+CONFIG_BINFMT_MISC=y
+CONFIG_COREDUMP=y
+CONFIG_HAVE_ATOMIC_IOMAP=y
+CONFIG_NET=y
+CONFIG_PACKET=y
+CONFIG_PACKET_DIAG=y
+CONFIG_UNIX=y
+CONFIG_UNIX_DIAG=y
+CONFIG_INET=y
+CONFIG_IP_MULTICAST=y
+CONFIG_IP_ADVANCED_ROUTER=y
+CONFIG_IP_MULTIPLE_TABLES=y
+CONFIG_IP_ROUTE_MULTIPATH=y
+CONFIG_IP_ROUTE_CLASSID=y
+CONFIG_NET_IP_TUNNEL=y
+CONFIG_SYN_COOKIES=y
+CONFIG_INET_TUNNEL=y
+CONFIG_INET_DIAG=y
+CONFIG_INET_TCP_DIAG=y
+CONFIG_INET_UDP_DIAG=y
+CONFIG_TCP_CONG_ADVANCED=y
+CONFIG_TCP_CONG_CUBIC=y
+CONFIG_DEFAULT_CUBIC=y
+CONFIG_DEFAULT_TCP_CONG="cubic"
+CONFIG_IPV6=y
+CONFIG_IPV6_SIT=y
+CONFIG_IPV6_NDISC_NODETYPE=y
+CONFIG_NETFILTER=y
+CONFIG_NETFILTER_ADVANCED=y
+CONFIG_NETFILTER_NETLINK=y
+CONFIG_NETFILTER_NETLINK_ACCT=y
+CONFIG_NF_CONNTRACK=y
+CONFIG_NF_CONNTRACK_MARK=y
+CONFIG_NF_CONNTRACK_TIMEOUT=y
+CONFIG_NF_CT_PROTO_DCCP=y
+CONFIG_NF_CT_PROTO_UDPLITE=y
+CONFIG_NF_CONNTRACK_FTP=y
+CONFIG_NF_CONNTRACK_IRC=y
+CONFIG_NF_CONNTRACK_BROADCAST=y
+CONFIG_NF_CONNTRACK_SNMP=y
+CONFIG_NF_CONNTRACK_SIP=y
+CONFIG_NF_CT_NETLINK=y
+CONFIG_NF_CT_NETLINK_TIMEOUT=y
+CONFIG_NF_NAT=y
+CONFIG_NF_NAT_NEEDED=y
+CONFIG_NF_NAT_PROTO_DCCP=y
+CONFIG_NF_NAT_PROTO_UDPLITE=y
+CONFIG_NF_NAT_FTP=y
+CONFIG_NF_NAT_IRC=y
+CONFIG_NF_NAT_SIP=y
+CONFIG_NETFILTER_XTABLES=y
+CONFIG_NETFILTER_XT_TARGET_CLASSIFY=y
+CONFIG_NETFILTER_XT_TARGET_DSCP=y
+CONFIG_NETFILTER_XT_TARGET_LOG=y
+CONFIG_NETFILTER_XT_TARGET_REDIRECT=y
+CONFIG_NETFILTER_XT_MATCH_CONNLIMIT=y
+CONFIG_NETFILTER_XT_MATCH_DSCP=y
+CONFIG_NETFILTER_XT_MATCH_HASHLIMIT=y
+CONFIG_NETFILTER_XT_MATCH_HELPER=y
+CONFIG_NETFILTER_XT_MATCH_IPRANGE=y
+CONFIG_NETFILTER_XT_MATCH_LIMIT=y
+CONFIG_NETFILTER_XT_MATCH_MULTIPORT=y
+CONFIG_NETFILTER_XT_MATCH_NFACCT=y
+CONFIG_NETFILTER_XT_MATCH_OWNER=y
+CONFIG_NETFILTER_XT_MATCH_PKTTYPE=y
+CONFIG_NETFILTER_XT_MATCH_QUOTA=y
+CONFIG_NETFILTER_XT_MATCH_STATE=y
+CONFIG_NF_DEFRAG_IPV4=y
+CONFIG_NF_CONNTRACK_IPV4=y
+CONFIG_IP_NF_IPTABLES=y
+CONFIG_IP_NF_FILTER=y
+CONFIG_IP_NF_TARGET_REJECT=y
+CONFIG_NF_NAT_IPV4=y
+CONFIG_IP_NF_TARGET_REDIRECT=y
+CONFIG_IP_NF_MANGLE=y
+CONFIG_NF_DEFRAG_IPV6=y
+CONFIG_NF_CONNTRACK_IPV6=y
+CONFIG_IP6_NF_IPTABLES=y
+CONFIG_IP6_NF_FILTER=y
+CONFIG_IP6_NF_TARGET_REJECT=y
+CONFIG_IP6_NF_MANGLE=y
+CONFIG_HAVE_NET_DSA=y
+CONFIG_NET_SCHED=y
+CONFIG_NET_SCH_CBQ=y
+CONFIG_NET_SCH_HTB=y
+CONFIG_NET_SCH_HFSC=y
+CONFIG_NET_SCH_PRIO=y
+CONFIG_NET_SCH_RED=y
+CONFIG_NET_SCH_SFQ=y
+CONFIG_NET_SCH_TEQL=y
+CONFIG_NET_SCH_TBF=y
+CONFIG_NET_SCH_GRED=y
+CONFIG_NET_SCH_DSMARK=y
+CONFIG_NET_SCH_INGRESS=y
+CONFIG_NET_CLS=y
+CONFIG_NET_CLS_BASIC=y
+CONFIG_NET_CLS_TCINDEX=y
+CONFIG_NET_CLS_ROUTE4=y
+CONFIG_NET_CLS_FW=y
+CONFIG_NET_CLS_U32=y
+CONFIG_CLS_U32_PERF=y
+CONFIG_CLS_U32_MARK=y
+CONFIG_NET_CLS_RSVP=y
+CONFIG_NET_EMATCH=y
+CONFIG_NET_EMATCH_STACK=32
+CONFIG_NET_EMATCH_CMP=y
+CONFIG_NET_EMATCH_NBYTE=y
+CONFIG_NET_EMATCH_U32=y
+CONFIG_NET_EMATCH_META=y
+CONFIG_NET_CLS_ACT=y
+CONFIG_NET_ACT_POLICE=y
+CONFIG_NET_ACT_GACT=y
+CONFIG_NET_ACT_PEDIT=y
+CONFIG_NET_SCH_FIFO=y
+CONFIG_NETLINK_DIAG=y
+CONFIG_NET_RX_BUSY_POLL=y
+CONFIG_BQL=y
+CONFIG_FIB_RULES=y
+CONFIG_UEVENT_HELPER_PATH="/sbin/hotplug"
+CONFIG_PREVENT_FIRMWARE_BUILD=y
+CONFIG_FW_LOADER=y
+CONFIG_FIRMWARE_IN_KERNEL=y
+CONFIG_EXTRA_FIRMWARE=""
+CONFIG_FW_LOADER_USER_HELPER=y
+CONFIG_ARCH_MIGHT_HAVE_PC_PARPORT=y
+CONFIG_BLK_DEV=y
+CONFIG_ZRAM=y
+CONFIG_BLK_DEV_LOOP=y
+CONFIG_BLK_DEV_LOOP_MIN_COUNT=8
+CONFIG_BLK_DEV_CRYPTOLOOP=y
+CONFIG_CS5535_MFGPT=y
+CONFIG_CS5535_MFGPT_DEFAULT_IRQ=7
+CONFIG_CS5535_CLOCK_EVENT_SRC=y
+CONFIG_HAVE_IDE=y
+CONFIG_SCSI_MOD=y
+CONFIG_SCSI=y
+CONFIG_SCSI_DMA=y
+CONFIG_BLK_DEV_SD=y
+CONFIG_CHR_DEV_SG=y
+CONFIG_SCSI_CONSTANTS=y
+CONFIG_SCSI_SCAN_ASYNC=y
+CONFIG_SCSI_SPI_ATTRS=y
+CONFIG_ATA=y
+CONFIG_ATA_VERBOSE_ERROR=y
+CONFIG_ATA_SFF=y
+CONFIG_ATA_BMDMA=y
+CONFIG_PATA_CS5536=y
+CONFIG_NETDEVICES=y
+CONFIG_MII=y
+CONFIG_NET_CORE=y
+CONFIG_DUMMY=y
+CONFIG_NETCONSOLE=y
+CONFIG_NETPOLL=y
+CONFIG_NET_POLL_CONTROLLER=y
+CONFIG_ETHERNET=y
+CONFIG_NET_VENDOR_VIA=y
+CONFIG_VIA_RHINE=y
+CONFIG_VIA_RHINE_MMIO=y
+CONFIG_ARCH_MIGHT_HAVE_PC_SERIO=y
+CONFIG_TTY=y
+CONFIG_UNIX98_PTYS=y
+CONFIG_SERIAL_8250=y
+CONFIG_SERIAL_8250_CONSOLE=y
+CONFIG_FIX_EARLYCON_MEM=y
+CONFIG_SERIAL_8250_PCI=y
+CONFIG_SERIAL_8250_NR_UARTS=1
+CONFIG_SERIAL_8250_RUNTIME_UARTS=1
+CONFIG_SERIAL_CORE=y
+CONFIG_SERIAL_CORE_CONSOLE=y
+CONFIG_HW_RANDOM=y
+CONFIG_HW_RANDOM_GEODE=y
+CONFIG_HANGCHECK_TIMER=y
+CONFIG_DEVPORT=y
+CONFIG_I2C=y
+CONFIG_I2C_BOARDINFO=y
+CONFIG_I2C_CHARDEV=y
+CONFIG_I2C_HELPER_AUTO=y
+CONFIG_SCx200_ACB=y
+CONFIG_ARCH_WANT_OPTIONAL_GPIOLIB=y
+CONFIG_GPIOLIB=y
+CONFIG_GPIO_DEVRES=y
+CONFIG_GPIO_SYSFS=y
+CONFIG_GPIO_CS5535=y
+CONFIG_HWMON=y
+CONFIG_HWMON_VID=y
+CONFIG_SENSORS_PC87360=y
+CONFIG_WATCHDOG=y
+CONFIG_WATCHDOG_CORE=y
+CONFIG_GEODE_WDT=y
+CONFIG_SSB_POSSIBLE=y
+CONFIG_BCMA_POSSIBLE=y
+CONFIG_MFD_CORE=y
+CONFIG_MFD_CS5535=y
+CONFIG_USB_OHCI_LITTLE_ENDIAN=y
+CONFIG_USB_SUPPORT=y
+CONFIG_USB_COMMON=y
+CONFIG_USB_ARCH_HAS_HCD=y
+CONFIG_USB=y
+CONFIG_USB_DEFAULT_PERSIST=y
+CONFIG_USB_DYNAMIC_MINORS=y
+CONFIG_USB_EHCI_HCD=y
+CONFIG_USB_EHCI_PCI=y
+CONFIG_USB_OHCI_HCD=y
+CONFIG_USB_OHCI_HCD_PCI=y
+CONFIG_USB_ACM=y
+CONFIG_USB_STORAGE=y
+CONFIG_RTC_LIB=y
+CONFIG_STAGING=y
+CONFIG_CLKSRC_I8253=y
+CONFIG_CLKEVT_I8253=y
+CONFIG_CLKBLD_I8253=y
+CONFIG_DCACHE_WORD_ACCESS=y
+CONFIG_EXT2_FS=y
+CONFIG_EXT2_FS_XATTR=y
+CONFIG_EXT2_FS_POSIX_ACL=y
+CONFIG_EXT2_FS_SECURITY=y
+CONFIG_FS_MBCACHE=y
+CONFIG_FS_POSIX_ACL=y
+CONFIG_EXPORTFS=y
+CONFIG_FILE_LOCKING=y
+CONFIG_FSNOTIFY=y
+CONFIG_DNOTIFY=y
+CONFIG_INOTIFY_USER=y
+CONFIG_QUOTA=y
+CONFIG_PRINT_QUOTA_WARNING=y
+CONFIG_QUOTA_TREE=y
+CONFIG_QFMT_V2=y
+CONFIG_QUOTACTL=y
+CONFIG_PROC_FS=y
+CONFIG_PROC_SYSCTL=y
+CONFIG_PROC_PAGE_MONITOR=y
+CONFIG_SYSFS=y
+CONFIG_TMPFS=y
+CONFIG_TMPFS_POSIX_ACL=y
+CONFIG_TMPFS_XATTR=y
+CONFIG_NETWORK_FILESYSTEMS=y
+CONFIG_NFS_FS=y
+CONFIG_NFS_V3=y
+CONFIG_NFS_V3_ACL=y
+CONFIG_NFS_SWAP=y
+CONFIG_LOCKD=y
+CONFIG_LOCKD_V4=y
+CONFIG_NFS_ACL_SUPPORT=y
+CONFIG_NFS_COMMON=y
+CONFIG_SUNRPC=y
+CONFIG_SUNRPC_SWAP=y
+CONFIG_NLS=y
+CONFIG_NLS_DEFAULT="utf8"
+CONFIG_NLS_CODEPAGE_437=y
+CONFIG_NLS_CODEPAGE_850=y
+CONFIG_NLS_CODEPAGE_852=y
+CONFIG_NLS_ASCII=y
+CONFIG_NLS_ISO8859_1=y
+CONFIG_NLS_ISO8859_2=y
+CONFIG_NLS_ISO8859_15=y
+CONFIG_NLS_UTF8=y
+CONFIG_TRACE_IRQFLAGS_SUPPORT=y
+CONFIG_PRINTK_TIME=y
+CONFIG_DEFAULT_MESSAGE_LOGLEVEL=4
+CONFIG_ENABLE_WARN_DEPRECATED=y
+CONFIG_ENABLE_MUST_CHECK=y
+CONFIG_FRAME_WARN=1024
+CONFIG_STRIP_ASM_SYMS=y
+CONFIG_ARCH_WANT_FRAME_POINTERS=y
+CONFIG_DEBUG_KERNEL=y
+CONFIG_HAVE_DEBUG_KMEMLEAK=y
+CONFIG_HAVE_DEBUG_STACKOVERFLOW=y
+CONFIG_HAVE_ARCH_KMEMCHECK=y
+CONFIG_DETECT_HUNG_TASK=y
+CONFIG_DEFAULT_HUNG_TASK_TIMEOUT=120
+CONFIG_BOOTPARAM_HUNG_TASK_PANIC_VALUE=0
+CONFIG_PANIC_ON_OOPS=y
+CONFIG_PANIC_ON_OOPS_VALUE=1
+CONFIG_PANIC_TIMEOUT=5
+CONFIG_DEBUG_BUGVERBOSE=y
+CONFIG_ARCH_HAS_DEBUG_STRICT_USER_COPY_CHECKS=y
+CONFIG_USER_STACKTRACE_SUPPORT=y
+CONFIG_HAVE_FUNCTION_TRACER=y
+CONFIG_HAVE_FUNCTION_GRAPH_TRACER=y
+CONFIG_HAVE_FUNCTION_GRAPH_FP_TEST=y
+CONFIG_HAVE_FUNCTION_TRACE_MCOUNT_TEST=y
+CONFIG_HAVE_DYNAMIC_FTRACE=y
+CONFIG_HAVE_DYNAMIC_FTRACE_WITH_REGS=y
+CONFIG_HAVE_FTRACE_MCOUNT_RECORD=y
+CONFIG_HAVE_SYSCALL_TRACEPOINTS=y
+CONFIG_HAVE_C_RECORDMCOUNT=y
+CONFIG_TRACING_SUPPORT=y
+CONFIG_HAVE_ARCH_KGDB=y
+CONFIG_STRICT_DEVMEM=y
+CONFIG_DEBUG_RODATA=y
+CONFIG_DOUBLEFAULT=y
+CONFIG_HAVE_MMIOTRACE_SUPPORT=y
+CONFIG_IO_DELAY_TYPE_0X80=0
+CONFIG_IO_DELAY_TYPE_0XED=1
+CONFIG_IO_DELAY_TYPE_UDELAY=2
+CONFIG_IO_DELAY_TYPE_NONE=3
+CONFIG_IO_DELAY_0X80=y
+CONFIG_DEFAULT_IO_DELAY_TYPE=0
+CONFIG_SECURITY_DMESG_RESTRICT=y
+CONFIG_SECURITY=y
+CONFIG_SECURITYFS=y
+CONFIG_SECURITY_PATH=y
+CONFIG_SECURITY_YAMA=y
+CONFIG_SECURITY_YAMA_STACKED=y
+CONFIG_DEFAULT_SECURITY_YAMA=y
+CONFIG_DEFAULT_SECURITY="yama"
+CONFIG_CRYPTO=y
+CONFIG_CRYPTO_ALGAPI=y
+CONFIG_CRYPTO_ALGAPI2=y
+CONFIG_CRYPTO_AEAD2=y
+CONFIG_CRYPTO_BLKCIPHER=y
+CONFIG_CRYPTO_BLKCIPHER2=y
+CONFIG_CRYPTO_HASH2=y
+CONFIG_CRYPTO_RNG2=y
+CONFIG_CRYPTO_PCOMP2=y
+CONFIG_CRYPTO_MANAGER=y
+CONFIG_CRYPTO_MANAGER2=y
+CONFIG_CRYPTO_MANAGER_DISABLE_TESTS=y
+CONFIG_CRYPTO_WORKQUEUE=y
+CONFIG_CRYPTO_CBC=y
+CONFIG_CRYPTO_AES=y
+CONFIG_CRYPTO_HW=y
+CONFIG_CRYPTO_DEV_GEODE=y
+CONFIG_HAVE_KVM=y
+CONFIG_BITREVERSE=y
+CONFIG_GENERIC_STRNCPY_FROM_USER=y
+CONFIG_GENERIC_STRNLEN_USER=y
+CONFIG_GENERIC_NET_UTILS=y
+CONFIG_GENERIC_FIND_FIRST_BIT=y
+CONFIG_GENERIC_PCI_IOMAP=y
+CONFIG_GENERIC_IOMAP=y
+CONFIG_GENERIC_IO=y
+CONFIG_CRC32=y
+CONFIG_CRC32_SLICEBY8=y
+CONFIG_LZO_COMPRESS=y
+CONFIG_LZO_DECOMPRESS=y
+CONFIG_HAS_IOMEM=y
+CONFIG_HAS_IOPORT=y
+CONFIG_HAS_DMA=y
+CONFIG_DQL=y
+CONFIG_NLATTR=y
+CONFIG_ARCH_HAS_ATOMIC64_DEC_IF_POSITIVE=y
