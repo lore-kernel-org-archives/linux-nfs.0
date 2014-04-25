@@ -1,111 +1,270 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f172.google.com ([209.85.213.172]:58025 "EHLO
-	mail-ig0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754208AbaDRSpm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Apr 2014 14:45:42 -0400
-Received: by mail-ig0-f172.google.com with SMTP id hn18so949305igb.5
-        for <linux-nfs@vger.kernel.org>; Fri, 18 Apr 2014 11:45:42 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Bruce Fields <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 24/70] NFSd: Move the delegation reference counter into the struct nfs4_stid
-Date: Fri, 18 Apr 2014 14:44:18 -0400
-Message-Id: <1397846704-14567-25-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1397846704-14567-24-git-send-email-trond.myklebust@primarydata.com>
-References: <1397846704-14567-1-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-2-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-3-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-4-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-5-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-6-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-7-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-8-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-9-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-10-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-11-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-12-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-13-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-14-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-15-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-16-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-17-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-18-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-19-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-20-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-21-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-22-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-23-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-24-git-send-email-trond.myklebust@primarydata.com>
+Received: from mail-qa0-f53.google.com ([209.85.216.53]:35063 "EHLO
+	mail-qa0-f53.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751063AbaDYPxR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Apr 2014 11:53:17 -0400
+Received: by mail-qa0-f53.google.com with SMTP id w8so3792396qac.12
+        for <linux-nfs@vger.kernel.org>; Fri, 25 Apr 2014 08:53:16 -0700 (PDT)
+Message-ID: <535A84E9.6080707@gmail.com>
+Date: Fri, 25 Apr 2014 11:53:13 -0400
+From: Anna Schumaker <schumaker.anna@gmail.com>
+MIME-Version: 1.0
+To: Weston Andros Adamson <dros@primarydata.com>
+CC: Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 15/18 v2] pnfs: support multiple verfs per direct req
+References: <1398363328-7100-1-git-send-email-dros@primarydata.com> <1398363328-7100-16-git-send-email-dros@primarydata.com> <535A6DE9.1040109@gmail.com> <7192CB82-72A3-466B-88AD-061A8C998AB2@primarydata.com> <D0C62F9F-943D-4D92-A945-BCDB43E4D899@primarydata.com>
+In-Reply-To: <D0C62F9F-943D-4D92-A945-BCDB43E4D899@primarydata.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We will want to add reference counting to the lock stateid and open
-stateids too.
+On 04/25/2014 11:38 AM, Weston Andros Adamson wrote:
+> On Apr 25, 2014, at 11:12 AM, Weston Andros Adamson <dros@primarydata.com> wrote:
+>
+>> On Apr 25, 2014, at 10:15 AM, Anna Schumaker <schumaker.anna@gmail.com> wrote:
+>>
+>>> On 04/24/2014 02:15 PM, Weston Andros Adamson wrote:
+>>>> Support direct requests that span multiple pnfs data servers by
+>>>> comparing nfs_pgio_header->verf to a cached verf in pnfs_commit_bucket.
+>>>> Continue to use dreq->verf if the MDS is used / non-pNFS.
+>>>>
+>>>> Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+>>>> ---
+>>>> fs/nfs/direct.c         | 98 ++++++++++++++++++++++++++++++++++++++++++++++---
+>>>> fs/nfs/nfs4filelayout.c |  6 +++
+>>>> include/linux/nfs.h     |  5 ++-
+>>>> include/linux/nfs_xdr.h |  2 +
+>>>> 4 files changed, 105 insertions(+), 6 deletions(-)
+>>>>
+>>>> diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+>>>> index 2c0e08f..9349933 100644
+>>>> --- a/fs/nfs/direct.c
+>>>> +++ b/fs/nfs/direct.c
+>>>> @@ -108,6 +108,93 @@ static inline int put_dreq(struct nfs_direct_req *dreq)
+>>>> 	return atomic_dec_and_test(&dreq->io_count);
+>>>> }
+>>>>
+>>>> +/*
+>>>> + * nfs_direct_select_verf - select the right verifier
+>>>> + * @dreq - direct request possibly spanning multiple servers
+>>>> + * @ds_clp - nfs_client of data server or NULL if MDS / non-pnfs
+>>>> + * @ds_idx - index of data server in data server list, only valid if ds_clp set
+>>>> + *
+>>>> + * returns the correct verifier to use given the role of the server
+>>>> + */
+>>>> +static struct nfs_writeverf *
+>>>> +nfs_direct_select_verf(struct nfs_direct_req *dreq,
+>>>> +		       struct nfs_client *ds_clp,
+>>>> +		       int ds_idx)
+>>>> +{
+>>>> +	struct nfs_writeverf *verfp = &dreq->verf;
+>>>> +
+>>>> +	if (ds_clp) {
+>>>> +		/* pNFS is in use, use the DS verf */
+>>>> +		if (ds_idx >= 0 && ds_idx < dreq->ds_cinfo.nbuckets)
+>>> The struct pnfs_ds_commit_info is empty if CONFIG_NFS_V4_1=n, so this won't compile.
+>>>
+>>> Anna
+>> Good catch, I�ll iterate through the patchset and test with v4.1 disabled.
+>>
+>> Time to add some #ifdefs
+>>
+>> -dros
+> That was the only problem I found with 4.1 disabled.
+>
+> Fixed and pushed.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 6 +++---
- fs/nfsd/state.h     | 2 +-
- 2 files changed, 4 insertions(+), 4 deletions(-)
+Thanks! I'm now getting a "defined but not used" error if just v2 is enabled:
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index ab66f73643a9..afb767319f66 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -411,6 +411,7 @@ kmem_cache *slab)
- 	stid->sc_stateid.si_opaque.so_clid = cl->cl_clientid;
- 	/* Will be incremented before return to client: */
- 	stid->sc_stateid.si_generation = 0;
-+	atomic_set(&stid->sc_count, 1);
- 
- 	/*
- 	 * It shouldn't be a problem to reuse an opaque stateid value.
-@@ -457,7 +458,6 @@ alloc_init_deleg(struct nfs4_client *clp, struct nfs4_ol_stateid *stp, struct sv
- 	dp->dl_type = NFS4_OPEN_DELEGATE_READ;
- 	fh_copy_shallow(&dp->dl_fh, &current_fh->fh_handle);
- 	dp->dl_time = 0;
--	atomic_set(&dp->dl_count, 1);
- 	nfsd4_init_callback(&dp->dl_recall);
- 	return dp;
- }
-@@ -480,7 +480,7 @@ static void nfs4_free_stid(struct kmem_cache *slab, struct nfs4_stid *s)
- void
- nfs4_put_delegation(struct nfs4_delegation *dp)
- {
--	if (atomic_dec_and_test(&dp->dl_count)) {
-+	if (atomic_dec_and_test(&dp->dl_stid.sc_count)) {
- 		nfs4_free_stid(deleg_slab, &dp->dl_stid);
- 		num_delegations--;
- 	}
-@@ -2892,7 +2892,7 @@ static void nfsd_break_one_deleg(struct nfs4_delegation *dp)
- 	 * callback (and since the lease code is serialized by the kernel
- 	 * lock) we know the server hasn't removed the lease yet, we know
- 	 * it's safe to take a reference: */
--	atomic_inc(&dp->dl_count);
-+	atomic_inc(&dp->dl_stid.sc_count);
- 	nfsd4_cb_recall(dp);
- }
- 
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 559134675b5a..9d0088c244a8 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -74,6 +74,7 @@ struct nfsd4_callback {
- };
- 
- struct nfs4_stid {
-+	atomic_t sc_count;
- #define NFS4_OPEN_STID 1
- #define NFS4_LOCK_STID 2
- #define NFS4_DELEG_STID 4
-@@ -91,7 +92,6 @@ struct nfs4_delegation {
- 	struct list_head	dl_perfile;
- 	struct list_head	dl_perclnt;
- 	struct list_head	dl_recall_lru;  /* delegation recalled */
--	atomic_t		dl_count;       /* ref count */
- 	struct nfs4_file	*dl_file;
- 	u32			dl_type;
- 	time_t			dl_time;
--- 
-1.9.0
+NFS_V4_2=n PNFS_OBJLAYOUT=n PNFS_BLOCK=n PNFS_FILE_LAYOUT=n NFS_V4_1=n NFS_V4=n NFS_V3=n NFS_V2=y
+
+fs/nfs/direct.c:189:12: error: ‘nfs_direct_cmp_commit_data_verf’ defined but not used [-Werror=unused-function]
+static int nfs_direct_cmp_commit_data_verf(struct nfs_direct_req *dreq,
+
+Anna
+
+>
+> -dros
+>
+>>>> +			verfp = &dreq->ds_cinfo.buckets[ds_idx].direct_verf;
+>>>> +		else
+>>>> +			WARN_ON_ONCE(1);
+>>>> +	}
+>>>> +	return verfp;
+>>>> +}
+>>>> +
+>>>> +
+>>>> +/*
+>>>> + * nfs_direct_set_hdr_verf - set the write/commit verifier
+>>>> + * @dreq - direct request possibly spanning multiple servers
+>>>> + * @hdr - pageio header to validate against previously seen verfs
+>>>> + *
+>>>> + * Set the server's (MDS or DS) "seen" verifier
+>>>> + */
+>>>> +static void nfs_direct_set_hdr_verf(struct nfs_direct_req *dreq,
+>>>> +				    struct nfs_pgio_header *hdr)
+>>>> +{
+>>>> +	struct nfs_writeverf *verfp;
+>>>> +
+>>>> +	verfp = nfs_direct_select_verf(dreq, hdr->data->ds_clp,
+>>>> +				      hdr->data->ds_idx);
+>>>> +	WARN_ON_ONCE(verfp->committed >= 0);
+>>>> +	memcpy(verfp, &hdr->verf, sizeof(struct nfs_writeverf));
+>>>> +	WARN_ON_ONCE(verfp->committed < 0);
+>>>> +}
+>>>> +
+>>>> +/*
+>>>> + * nfs_direct_cmp_hdr_verf - compare verifier for pgio header
+>>>> + * @dreq - direct request possibly spanning multiple servers
+>>>> + * @hdr - pageio header to validate against previously seen verf
+>>>> + *
+>>>> + * set the server's "seen" verf if not initialized.
+>>>> + * returns result of comparison between @hdr->verf and the "seen"
+>>>> + * verf of the server used by @hdr (DS or MDS)
+>>>> + */
+>>>> +static int nfs_direct_set_or_cmp_hdr_verf(struct nfs_direct_req *dreq,
+>>>> +					  struct nfs_pgio_header *hdr)
+>>>> +{
+>>>> +	struct nfs_writeverf *verfp;
+>>>> +
+>>>> +	verfp = nfs_direct_select_verf(dreq, hdr->data->ds_clp,
+>>>> +					 hdr->data->ds_idx);
+>>>> +	if (verfp->committed < 0) {
+>>>> +		nfs_direct_set_hdr_verf(dreq, hdr);
+>>>> +		return 0;
+>>>> +	}
+>>>> +	return memcmp(verfp, &hdr->verf, sizeof(struct nfs_writeverf));
+>>>> +}
+>>>> +
+>>>> +/*
+>>>> + * nfs_direct_cmp_commit_data_verf - compare verifier for commit data
+>>>> + * @dreq - direct request possibly spanning multiple servers
+>>>> + * @data - commit data to validate against previously seen verf
+>>>> + *
+>>>> + * returns result of comparison between @data->verf and the verf of
+>>>> + * the server used by @data (DS or MDS)
+>>>> + */
+>>>> +static int nfs_direct_cmp_commit_data_verf(struct nfs_direct_req *dreq,
+>>>> +					   struct nfs_commit_data *data)
+>>>> +{
+>>>> +	struct nfs_writeverf *verfp;
+>>>> +
+>>>> +	verfp = nfs_direct_select_verf(dreq, data->ds_clp,
+>>>> +					 data->ds_commit_index);
+>>>> +	WARN_ON_ONCE(verfp->committed < 0);
+>>>> +	return memcmp(verfp, &data->verf, sizeof(struct nfs_writeverf));
+>>>> +}
+>>>> +
+>>>> /**
+>>>> * nfs_direct_IO - NFS address space operation for direct I/O
+>>>> * @rw: direction (read or write)
+>>>> @@ -168,6 +255,7 @@ static inline struct nfs_direct_req *nfs_direct_req_alloc(void)
+>>>> 	kref_get(&dreq->kref);
+>>>> 	init_completion(&dreq->completion);
+>>>> 	INIT_LIST_HEAD(&dreq->mds_cinfo.list);
+>>>> +	dreq->verf.committed = NFS_INVALID_STABLE_HOW;	/* not set yet */
+>>>> 	INIT_WORK(&dreq->work, nfs_direct_write_schedule_work);
+>>>> 	spin_lock_init(&dreq->lock);
+>>>>
+>>>> @@ -602,7 +690,7 @@ static void nfs_direct_commit_complete(struct nfs_commit_data *data)
+>>>> 		dprintk("NFS: %5u commit failed with error %d.\n",
+>>>> 			data->task.tk_pid, status);
+>>>> 		dreq->flags = NFS_ODIRECT_RESCHED_WRITES;
+>>>> -	} else if (memcmp(&dreq->verf, &data->verf, sizeof(data->verf))) {
+>>>> +	} else if (nfs_direct_cmp_commit_data_verf(dreq, data)) {
+>>>> 		dprintk("NFS: %5u commit verify failed\n", data->task.tk_pid);
+>>>> 		dreq->flags = NFS_ODIRECT_RESCHED_WRITES;
+>>>> 	}
+>>>> @@ -811,13 +899,13 @@ static void nfs_direct_write_completion(struct nfs_pgio_header *hdr)
+>>>> 			if (dreq->flags == NFS_ODIRECT_RESCHED_WRITES)
+>>>> 				bit = NFS_IOHDR_NEED_RESCHED;
+>>>> 			else if (dreq->flags == 0) {
+>>>> -				memcpy(&dreq->verf, &hdr->verf,
+>>>> -				       sizeof(dreq->verf));
+>>>> +				nfs_direct_set_hdr_verf(dreq, hdr);
+>>>> 				bit = NFS_IOHDR_NEED_COMMIT;
+>>>> 				dreq->flags = NFS_ODIRECT_DO_COMMIT;
+>>>> 			} else if (dreq->flags == NFS_ODIRECT_DO_COMMIT) {
+>>>> -				if (memcmp(&dreq->verf, &hdr->verf, sizeof(dreq->verf))) {
+>>>> -					dreq->flags = NFS_ODIRECT_RESCHED_WRITES;
+>>>> +				if (nfs_direct_set_or_cmp_hdr_verf(dreq, hdr)) {
+>>>> +					dreq->flags =
+>>>> +						NFS_ODIRECT_RESCHED_WRITES;
+>>>> 					bit = NFS_IOHDR_NEED_RESCHED;
+>>>> 				} else
+>>>> 					bit = NFS_IOHDR_NEED_COMMIT;
+>>>> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+>>>> index 7a665e0..0ebc521 100644
+>>>> --- a/fs/nfs/nfs4filelayout.c
+>>>> +++ b/fs/nfs/nfs4filelayout.c
+>>>> @@ -560,6 +560,7 @@ filelayout_read_pagelist(struct nfs_pgio_data *data)
+>>>> 	/* No multipath support. Use first DS */
+>>>> 	atomic_inc(&ds->ds_clp->cl_count);
+>>>> 	data->ds_clp = ds->ds_clp;
+>>>> +	data->ds_idx = idx;
+>>>> 	fh = nfs4_fl_select_ds_fh(lseg, j);
+>>>> 	if (fh)
+>>>> 		data->args.fh = fh;
+>>>> @@ -603,6 +604,7 @@ filelayout_write_pagelist(struct nfs_pgio_data *data, int sync)
+>>>> 	data->pgio_done_cb = filelayout_write_done_cb;
+>>>> 	atomic_inc(&ds->ds_clp->cl_count);
+>>>> 	data->ds_clp = ds->ds_clp;
+>>>> +	data->ds_idx = idx;
+>>>> 	fh = nfs4_fl_select_ds_fh(lseg, j);
+>>>> 	if (fh)
+>>>> 		data->args.fh = fh;
+>>>> @@ -875,6 +877,8 @@ filelayout_alloc_commit_info(struct pnfs_layout_segment *lseg,
+>>>> 	for (i = 0; i < size; i++) {
+>>>> 		INIT_LIST_HEAD(&buckets[i].written);
+>>>> 		INIT_LIST_HEAD(&buckets[i].committing);
+>>>> +		/* mark direct verifier as unset */
+>>>> +		buckets[i].direct_verf.committed = NFS_INVALID_STABLE_HOW;
+>>>> 	}
+>>>>
+>>>> 	spin_lock(cinfo->lock);
+>>>> @@ -885,6 +889,8 @@ filelayout_alloc_commit_info(struct pnfs_layout_segment *lseg,
+>>>> 			    &buckets[i].written);
+>>>> 		list_splice(&cinfo->ds->buckets[i].committing,
+>>>> 			    &buckets[i].committing);
+>>>> +		buckets[i].direct_verf.committed =
+>>>> +			cinfo->ds->buckets[i].direct_verf.committed;
+>>>> 		buckets[i].wlseg = cinfo->ds->buckets[i].wlseg;
+>>>> 		buckets[i].clseg = cinfo->ds->buckets[i].clseg;
+>>>> 	}
+>>>> diff --git a/include/linux/nfs.h b/include/linux/nfs.h
+>>>> index 3e794c1..610af51 100644
+>>>> --- a/include/linux/nfs.h
+>>>> +++ b/include/linux/nfs.h
+>>>> @@ -46,6 +46,9 @@ static inline void nfs_copy_fh(struct nfs_fh *target, const struct nfs_fh *sourc
+>>>> enum nfs3_stable_how {
+>>>> 	NFS_UNSTABLE = 0,
+>>>> 	NFS_DATA_SYNC = 1,
+>>>> -	NFS_FILE_SYNC = 2
+>>>> +	NFS_FILE_SYNC = 2,
+>>>> +
+>>>> +	/* used by direct.c to mark verf as invalid */
+>>>> +	NFS_INVALID_STABLE_HOW = -1
+>>>> };
+>>>> #endif /* _LINUX_NFS_H */
+>>>> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+>>>> index 29828c7..bb9fb88 100644
+>>>> --- a/include/linux/nfs_xdr.h
+>>>> +++ b/include/linux/nfs_xdr.h
+>>>> @@ -1111,6 +1111,7 @@ struct pnfs_commit_bucket {
+>>>> 	struct list_head committing;
+>>>> 	struct pnfs_layout_segment *wlseg;
+>>>> 	struct pnfs_layout_segment *clseg;
+>>>> +	struct nfs_writeverf direct_verf;
+>>>> };
+>>>>
+>>>> struct pnfs_ds_commit_info {
+>>>> @@ -1294,6 +1295,7 @@ struct nfs_pgio_data {
+>>>> 	__u64			mds_offset;	/* Filelayout dense stripe */
+>>>> 	struct nfs_page_array	pages;
+>>>> 	struct nfs_client	*ds_clp;	/* pNFS data server */
+>>>> +	int			ds_idx;		/* ds index if ds_clp is set */
+>>>> };
+>>>>
+>>>> struct nfs_rw_header {
 
