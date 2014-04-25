@@ -1,116 +1,60 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f180.google.com ([209.85.213.180]:54689 "EHLO
-	mail-ig0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1422665AbaD3QJY convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Apr 2014 12:09:24 -0400
-Received: by mail-ig0-f180.google.com with SMTP id c1so1996367igq.7
-        for <linux-nfs@vger.kernel.org>; Wed, 30 Apr 2014 09:09:22 -0700 (PDT)
-Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
-Subject: Re: [PATCH v2 00/17] NFS: Create a common path used by reads and writes
-From: Weston Andros Adamson <dros@primarydata.com>
-In-Reply-To: <1398459360-2093-1-git-send-email-Anna.Schumaker@Netapp.com>
-Date: Wed, 30 Apr 2014 12:09:30 -0400
-Cc: Trond Myklebust <Trond.Myklebust@primarydata.com>,
-        linux-nfs list <linux-nfs@vger.kernel.org>, hch@infradead.org
-Message-Id: <737A757B-831D-423F-8559-318436CF25CB@primarydata.com>
-References: <1398459360-2093-1-git-send-email-Anna.Schumaker@Netapp.com>
-To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Received: from smarthost02.easyserver.at ([81.16.38.11]:46069 "EHLO
+	smarthost02.easyserver.at" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751635AbaDYKsf (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Apr 2014 06:48:35 -0400
+Received: from email03.easyserver.at (loadbalance01.backbone.easyserver.at [192.168.210.121])
+	by smarthost02.easyserver.at (8.14.4/8.14.4) with ESMTP id s3PABhHW014730
+	for <linux-nfs@vger.kernel.org>; Fri, 25 Apr 2014 12:11:44 +0200
+Received: from [192.168.80.175] (electra.aic.at [193.53.80.80])
+	(Authenticated sender: test@hangartest.aic.at)
+	by email03.easyserver.at (Postfix) with ESMTPSA id D6B8D23D02
+	for <linux-nfs@vger.kernel.org>; Fri, 25 Apr 2014 12:11:43 +0200 (CEST)
+Message-ID: <535A34DF.5010302@aic.at>
+Date: Fri, 25 Apr 2014 12:11:43 +0200
+From: Matthias Leopold <matthias@aic.at>
+MIME-Version: 1.0
+To: linux-nfs@vger.kernel.org
+Subject: multiple mounts of same share on one host?
+Content-Type: text/plain; charset=ISO-8859-15; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Apr 25, 2014, at 4:55 PM, Anna Schumaker <Anna.Schumaker@netapp.com> wrote:
+hi,
 
-> I noticed that much of the read and write code was almost identical, with
-> only minor differences in argument types and names.  These patches seek to
-> unify these two codepaths wherever possible in order to make future changes
-> easier.
-> 
-> Table of contents:
-> 	Patches 01 - 05: Set up common data structures.
-> 	Patches 06 - 10: Set up a shared rpc_call_ops struct.
-> 	Patches 11 - 15: Set up a shared nfs_pageio_ops struct.
-> 
-> Some of the commit setup was moved into common code, but I'm willing to
-> move this back into write.c if this looks to be a problem.
-> 
-> Future work:
-> 	I have rough pNFS patches to combine the read and write paths in
-> 	pnfs.c.  They apply on top of Dros' multiple requests work and
-> 	should get more testing before I submit.
+i've got a (probably rather basic) nfs usage question. i hope this is 
+the right place to ask, please tell me otherwise.
 
-Good! I was going to ask about that.  pnfs_generic_pg_writepages  / 
-pnfs_generic_pg_readpagescan are extremely similar to nfs_generic_pg_pgios.
+i'm moving webspace content to nfs shares. because of suexec 
+restrictions i have different paths to different subsets of the content 
+on the client, but i wonder if i can still have all of the content in 
+one path on one exported nfs share.
 
-> 
-> Testing:
-> 	I tested every version of NFS using the cthon and xfs tests without
-> 	hitting anything new.  Any extra testing would be great seeing how
-> 	the read and write paths are vitally important.
-> 
-> Changes in v2:
-> 	Reorder data fields in the earlier patches to keep read-only and
-> 	write-only variables together.
-> 
-> Questions?  Comments?  Thoughts?
+example:
 
-Why did you make a new file pageio.c? pagelist.c seems like the right place for
-all of these changes. Or maybe merge them both into pageio.c?
+i need
 
--dros
+/home/content/foo
 
-> 
-> Anna
-> 
-> 
-> Anna Schumaker (17):
->  NFS: Create a common argument structure for reads and writes
->  NFS: Create a common results structure for reads and writes
->  NFS: Create a common read and write data struct
->  NFS: Create a common read and write header struct
->  NFS: Move the write verifier into the nfs_pgio_header
->  NFS: Create a common pgio_alloc and pgio_release function
->  NFS: Create a common rw_header_alloc and rw_header_free function
->  NFS: Create a common pgio_rpc_prepare function
->  NFS: Create a common nfs_pgio_result_common function
->  NFS: Create a common rpc_call_ops struct
->  NFS: Create a common rpcsetup function for reads and writes
->  NFS: Create a common pgio_error function
->  NFS: Create a generic_pgio function
->  NFS: Create a common initiate_pgio() function
->  NFS: Create a common multiple_pgios() function
->  NFS: Create a common generic_pg_pgios()
->  NFS: Create a common nfs_pageio_ops struct
-> 
-> fs/nfs/Makefile                  |   2 +-
-> fs/nfs/blocklayout/blocklayout.c |  22 +-
-> fs/nfs/direct.c                  |   4 +-
-> fs/nfs/internal.h                |  31 ++-
-> fs/nfs/nfs2xdr.c                 |  14 +-
-> fs/nfs/nfs3proc.c                |  19 +-
-> fs/nfs/nfs3xdr.c                 |  16 +-
-> fs/nfs/nfs4_fs.h                 |   4 +-
-> fs/nfs/nfs4filelayout.c          |  40 ++--
-> fs/nfs/nfs4proc.c                |  52 ++---
-> fs/nfs/nfs4trace.h               |   8 +-
-> fs/nfs/nfs4xdr.c                 |  19 +-
-> fs/nfs/objlayout/objio_osd.c     |   6 +-
-> fs/nfs/objlayout/objlayout.c     |  16 +-
-> fs/nfs/objlayout/objlayout.h     |   8 +-
-> fs/nfs/pageio.c                  | 386 +++++++++++++++++++++++++++++++++++
-> fs/nfs/pagelist.c                |   2 +
-> fs/nfs/pnfs.c                    |  46 ++---
-> fs/nfs/pnfs.h                    |  10 +-
-> fs/nfs/proc.c                    |  19 +-
-> fs/nfs/read.c                    | 348 +++-----------------------------
-> fs/nfs/write.c                   | 425 +++++----------------------------------
-> include/linux/nfs_fs.h           |   3 +-
-> include/linux/nfs_page.h         |  13 ++
-> include/linux/nfs_xdr.h          |  95 +++------
-> 25 files changed, 662 insertions(+), 946 deletions(-)
-> create mode 100644 fs/nfs/pageio.c
-> 
-> -- 
-> 1.9.2
-> 
+and
+
+/var/www/content/bar
+
+exported share "/export" could have
+
+/export/foo
+/export/bar
+
+AFAICS there are three options:
+
+.) mounting /export twice on different paths on the nfs client
+.) mounting /export once and doing a bind mount
+.) put foo and bar in different directories and exporting/mounting them 
+separately
+
+which of these options would you recommend?
+
+thx very much for help
+matthias
+
 
