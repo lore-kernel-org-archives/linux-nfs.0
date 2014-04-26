@@ -1,101 +1,89 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:41781 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755187AbaDGU1w (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 7 Apr 2014 16:27:52 -0400
-Date: Mon, 7 Apr 2014 22:27:50 +0200
-From: Jan Kara <jack@suse.cz>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Brown Neil <neilb@suse.de>, Jan Kara <jack@suse.cz>,
-        Viro Alexander <viro@zeniv.linux.org.uk>,
-        NFS <linux-nfs@vger.kernel.org>
-Subject: Re: NFS deadlock between 'sync' and commit after unmount....
-Message-ID: <20140407202750.GE23670@quack.suse.cz>
-References: <20140407135001.56ef9f36@notabene.brown>
- <F59673DE-8047-4FE0-AFF9-6A3DC37348A5@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <F59673DE-8047-4FE0-AFF9-6A3DC37348A5@primarydata.com>
+Received: from st11p02mm-asmtpout002.mac.com ([17.172.220.237]:53685 "EHLO
+	st11p02mm-asmtp002.mac.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751048AbaDZACq convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 25 Apr 2014 20:02:46 -0400
+MIME-version: 1.0
+Content-type: text/plain; charset=windows-1252
+Received: from [192.168.1.17] ([75.80.98.195]) by st11p02mm-asmtp002.mac.com
+ (Oracle Communications Messaging Server 7u4-27.08(7.0.4.27.7) 64bit (built Aug
+ 22 2013)) with ESMTPSA id <0N4M00I5R2R3PM40@st11p02mm-asmtp002.mac.com> for
+ linux-nfs@vger.kernel.org; Sat, 26 Apr 2014 00:02:31 +0000 (GMT)
+Subject: Re: nfs4 idmap problems
+From: Craig Yoshioka <craigyk@me.com>
+In-reply-to: <D6F60A65-99FC-47F2-948E-7D4969467DB0@primarydata.com>
+Date: Fri, 25 Apr 2014 17:02:29 -0700
+Cc: linux-nfs@vger.kernel.org
+Message-id: <37FDB0FD-65FB-4FE9-8E75-8748371CFB5F@me.com>
+References: <361F79C4-BA41-4F6A-94C1-A4FE1C4A2D90@me.com>
+ <D6F60A65-99FC-47F2-948E-7D4969467DB0@primarydata.com>
+To: Tom Haynes <thomas.haynes@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-  Hello,
+It is as properly configured as I could figure out.
+I set verbosity to 5 and it lists the correct domain on start-up and doesn’t report any explicit errors.
 
-On Mon 07-04-14 10:10:27, Trond Myklebust wrote:
-> On Apr 6, 2014, at 23:50, NeilBrown <neilb@suse.de> wrote:
-> > I've just hit a deadlock in NFS that seems very strange.
-> > The kernel is 3.14-rc8 which some local changes which shouldn't affect the
-> > deadlocking code.
-> > 
-> > Shortly after umounting the NFS filesystem with "umount -f" (though I don't
-> > think the -f is important), I ran "sync".
-> > 
-> > The sync is now stuck in
-> > 
-> > [<ffffffff81197fc1>] sync_inodes_sb+0xa1/0x1c0
-> > [<ffffffff8119cd99>] sync_inodes_one_sb+0x19/0x20
-> > [<ffffffff81173372>] iterate_supers+0xb2/0x110
-> > [<ffffffff8119cfd0>] sys_sync+0x30/0x90
-> > [<ffffffff81aa4622>] system_call_fastpath+0x16/0x1b
-> > [<ffffffffffffffff>] 0xffffffffffffffff
-> > 
-> > while kworker/u16:1 is stuck:
-> > 
-> > [<ffffffff815420b3>] call_rwsem_down_write_failed+0x13/0x20
-> > [<ffffffff81172889>] deactivate_super+0x39/0x60
-> > [<ffffffff812d56f1>] nfs_sb_deactive+0x21/0x30
-> > [<ffffffff812d2ef9>] __put_nfs_open_context+0xc9/0x100
-> > [<ffffffff812d2f3b>] put_nfs_open_context+0xb/0x10
-> > [<ffffffff812ddd14>] nfs_commitdata_release+0x14/0x30
-> > [<ffffffff812ddd4a>] nfs_commit_release+0x1a/0x20
-> > [<ffffffff81a45a05>] rpc_free_task+0x25/0x70
-> > [<ffffffff81a45fd8>] rpc_do_put_task+0x78/0x80
-> > [<ffffffff81a45feb>] rpc_put_task+0xb/0x10
-> > [<ffffffff812de3fe>] nfs_initiate_commit+0xce/0x110
-> > [<ffffffff812df112>] nfs_commit_list+0x62/0x90
-> > [<ffffffff812dfd26>] nfs_commit_inode+0xa6/0x170
-> > [<ffffffff812dfe4d>] nfs_write_inode+0x5d/0xa0
-> > [<ffffffff81300d69>] nfs4_write_inode+0x9/0x10
-> > [<ffffffff811978ec>] __writeback_single_inode+0x10c/0x2c0
-> > [<ffffffff811987ea>] writeback_sb_inodes+0x2ca/0x450
-> > [<ffffffff81198b2c>] wb_writeback+0xec/0x320
-> > [<ffffffff81199365>] bdi_writeback_workfn+0x115/0x4c0
-> > [<ffffffff810a595b>] process_one_work+0x16b/0x430
-> > [<ffffffff810a6619>] worker_thread+0x119/0x3a0
-> > [<ffffffff810ac2bd>] kthread+0xcd/0xf0
-> > [<ffffffff81aa457c>] ret_from_fork+0x7c/0xb0
-> > [<ffffffffffffffff>] 0xffffffffffffffff
-> > 
-> > 
-> > So sync is holding sb->s_umount, queued some bdi work on the filesystem
-> > and is waiting for it to complete.  Mean while, that work has (I think)
-> > submitted a 'commit' (via ->write_inode) and that commit wants to
-> > deactivate_super and so needs to get ->s_umount.
-> > 
-> > I suspect this could happen even more easily with a lazy unmount.
-> > 
-> > It seems that this commit request is that last thing that is keeping
-> > ->s_active elevated and it deadlocks trying to drop the last s_active.
-> > 
-> > I have no idea how to fix it....  help?
-> > 
+On the non-functioning systems:
+
+(Fedora 20)
+  There is no explicit configuration for a Pipefs-Directory in idmapd.conf (but it looks like it is using /var/lib/nfs/rpc_pipefs).  I figured I should leave this as the system default.  
+  The version of libnfsidmap is 0.25
+                 nfs-utils   is 1.3.0
+
+(Ubuntu 14.04 and Mint 16)
+  has exact same idmapd.conf as working 12.04 machines
+  Version of libnfsidmap is 0.25-5
+             nfs-common  is 1.2.8-6ubuntu1
+
+The working systems (also CentOS 5.8 but I haven’t checked the versions there):
+(Ubuntu 12.04)
+ libnfsidmap 0.25-1ubuntu2
+ nfs-common  1.2.5-3ubuntu3.1
+
+On Apr 25, 2014, at 4:01 PM, Tom Haynes <thomas.haynes@primarydata.com> wrote:
+
 > 
-> The problem seems to be the use of iterate_supers(), which grabs a
-> passive reference, and conflicts with our use of an active reference in
-> the open context.
-  Yeah, we cannot really do otherwise in iterate_supers() - we have to grab
-some superblock reference and we don't really want to get an active one
-since that would result in spurious EBUSY returns from umount.
+> On Apr 25, 2014, at 1:35 PM, Craig Yoshioka <craigyk@me.com> wrote:
+> 
+>> I have a FreeBSD server with several NFSv4 shares.
+>> 
+>> I have several linux clients (Ubuntu 12.04) that connect just fine and are able to use the NFS shares with 0 problems.
+>> 
+>> But I’ve run into idmap problems with some newer linux distros ( Mint 16, Ubuntu 14.04 ) where chown as root sets file ownership as nobody (the idmap operation fails).  Just to be clear, chown as root is working fine from the Ubuntu 12.04 machines.  This poses a problem since some desktop GUIs like to do this sort of thing when creating config files in user home directories, and so user GUI logins fail.
+>> 
+>> the logs have a lot of this:
+>> 
+>> Apr 25 12:17:51 server rpc.idmapd[433]: nfs4_name_to_uid: calling nsswitch->name_to_uid
+>> Apr 25 12:17:51 server rpc.idmapd[433]: nss_getpwnam: name 'craigyk@nimgs.com' domain 'nimgs.com': resulting localname 'craigyk'
+>> Apr 25 12:17:51 server rpc.idmapd[433]: nfs4_name_to_uid: nsswitch->name_to_uid returned 0
+>> Apr 25 12:17:51 server rpc.idmapd[433]: nfs4_name_to_uid: final return value is 0
+>> Apr 25 12:17:51 server rpc.idmapd[433]: Client 0: (user) name "craigyk@nimgs.com" -> id "11115"
+>> ...
+>> Apr 25 12:18:03 server rpc.idmapd[433]: nfs4_name_to_uid: calling nsswitch->name_to_uid
+>> Apr 25 12:18:03 server rpc.idmapd[433]: nss_getpwnam: name '11115@nimgs.com' domain 'nimgs.com': resulting localname '11115'
+>> Apr 25 12:18:03 server rpc.idmapd[433]: nss_getpwnam: name '11115' not found in domain 'nimgs.com'
+>> Apr 25 12:18:03 server rpc.idmapd[433]: nfs4_name_to_uid: nsswitch->name_to_uid returned -2
+>> Apr 25 12:18:03 server rpc.idmapd[433]: nfs4_name_to_uid: final return value is -2
+>> Apr 25 12:18:03 server rpc.idmapd[433]: Client 0: (user) name "11115@nimgs.com" -> id "65534"
+>> 
+>> I’ve tried almost everything I can think of.
+>> The users are being served from Samba4.
+>> The uid and gid are the same on all clients.
+>> 
+>> Why is idmap trying to lookup the user id by it’s user id?—
+> 
+> HI Craig,
+> 
+> If the id-mapping is not working via user names, the client will try to see if user ids will
+> work. Since the client cannot send a numeric ID, it sends a string, in this case “11115”.
+> 
+> Check to make sure that id mapping is properly configured on both the server and client.
+> 
+> Thanks,
+> Tom--
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
-Cannot we just punt the deactivate_super() call to a workqueue to avoid
-this deadlock? It's a bit ugly but it should do the trick. Or is
-nfs_sb_deactive() called too often and we'd see some adverse effects for
-that? We could also offload it to workqueue only in the special case where
-sb->s_active == 1. That should be really rare then but it's a bit ugly
-poking in VFS internals. BTW why is nfs_sb_active() safe doing just
-atomic_inc() on s_active? grab_super() is more careful...
-
-								Honza
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
