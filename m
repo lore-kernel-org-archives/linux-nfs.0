@@ -1,84 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f169.google.com ([209.85.213.169]:53357 "EHLO
-	mail-ig0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752262AbaDUNBk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Apr 2014 09:01:40 -0400
-Received: by mail-ig0-f169.google.com with SMTP id h18so1685269igc.0
-        for <linux-nfs@vger.kernel.org>; Mon, 21 Apr 2014 06:01:40 -0700 (PDT)
-Message-ID: <1398085297.2891.8.camel@leira.trondhjem.org>
-Subject: Re: [PATCH 15/70] NFSd: Add locking to the nfs4_file->fi_fds[] array
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Bruce Fields <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-Date: Mon, 21 Apr 2014 09:01:37 -0400
-In-Reply-To: <20140419143549.GA25682@infradead.org>
-References: <1397846704-14567-7-git-send-email-trond.myklebust@primarydata.com>
-	 <1397846704-14567-8-git-send-email-trond.myklebust@primarydata.com>
-	 <1397846704-14567-9-git-send-email-trond.myklebust@primarydata.com>
-	 <1397846704-14567-10-git-send-email-trond.myklebust@primarydata.com>
-	 <1397846704-14567-11-git-send-email-trond.myklebust@primarydata.com>
-	 <1397846704-14567-12-git-send-email-trond.myklebust@primarydata.com>
-	 <1397846704-14567-13-git-send-email-trond.myklebust@primarydata.com>
-	 <1397846704-14567-14-git-send-email-trond.myklebust@primarydata.com>
-	 <1397846704-14567-15-git-send-email-trond.myklebust@primarydata.com>
-	 <1397846704-14567-16-git-send-email-trond.myklebust@primarydata.com>
-	 <20140419143549.GA25682@infradead.org>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from mail-pb0-f44.google.com ([209.85.160.44]:37694 "EHLO
+	mail-pb0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752062AbaDZQh1 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 26 Apr 2014 12:37:27 -0400
+Received: by mail-pb0-f44.google.com with SMTP id jt11so2566387pbb.31
+        for <linux-nfs@vger.kernel.org>; Sat, 26 Apr 2014 09:37:27 -0700 (PDT)
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
+Subject: Re: Resolving the fate of FATTR4_CHANGE_SEC_LABEL
+From: Thomas Haynes <thomas.haynes@primarydata.com>
+In-Reply-To: <B05F63D2-8DB8-4FD3-92F9-C3A5B0A99D99@primarydata.com>
+Date: Sat, 26 Apr 2014 09:37:25 -0700
+Cc: "dpquigl@davequigley.com Quigley" <dpquigl@davequigley.com>
+Message-Id: <0C8D4618-0DD5-428A-A68D-863F8A60500C@primarydata.com>
+References: <B05F63D2-8DB8-4FD3-92F9-C3A5B0A99D99@primarydata.com>
+To: "nfsv4 list (nfsv4@ietf.org)" <nfsv4@ietf.org>,
+        Mailing List Linux NFS <linux-nfs@vger.kernel.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Christoph,
+In my issues file, I have:
 
-Thanks for reviewing these!
+4) Labeled NFS - FATTR4_CHANGE_SEC_LABEL - how big does it need to
+   be?  Is seLinux going to support it?
 
-On Sat, 2014-04-19 at 07:35 -0700, Christoph Hellwig wrote:
-> > +/* XXX: for first cut may fall back on returning file that doesn't work
-> > + * at all? */
-> 
-> I think moving this code around might be a good opportunity to remove
-> this confusing comment.
+   The Labeled NFS prototype in use does not currently support
+   change_sec_label.
 
-Will do.
+   In the past, we argued about how big it needed to be - we need
+   to close down on this.
 
-> > +static struct file *find_writeable_file(struct nfs4_file *f)
-> > +{
-> > +	struct file *ret;
-> > +
-> > +	spin_lock(&f->fi_lock);
-> > +	ret = __nfs4_get_fd(f, O_WRONLY);
-> > +	if (!ret)
-> > +		ret = __nfs4_get_fd(f, O_RDWR);
-> > +	spin_unlock(&f->fi_lock);
-> > +	return ret;
-> > +}
-> > +
-> > +static struct file *find_readable_file(struct nfs4_file *f)
-> > +{
-> > +	struct file *ret;
-> > +
-> > +	spin_lock(&f->fi_lock);
-> > +	ret = __nfs4_get_fd(f, O_RDONLY);
-> > +	if (!ret)
-> > +		ret = __nfs4_get_fd(f, O_RDWR);
-> > +	spin_unlock(&f->fi_lock);
-> > +	return ret;
-> 
-> Seems like these two functions could be easily consolidated by passing
-> a single flags argument.
+If we look at the current text in the NFSv4.2 draft, we see:
 
-Yes, but we'd have to invent a new set of flags for just this function
-and so I'm not sure that the end result would be more readable.
-We can't reuse O_RDONLY/O_WRONLY/O_RDWR since they can't be bitwise ORed
-to produce the 'read or read/write', 'write or read/write' combinations
-that we need.
+      The second change is to provide methods for the client to
+      determine if the security label has changed. A client which
+      needs to know if a label is going to change SHOULD request a
+      delegation on that file. In order to change the security
+      label, the server will have to recall all delegations. This
+      will inform the client of the change. If a client wants to
+      detect if the label has changed, it MAY use VERIFY and NVERIFY
+      on FATTR4_CHANGE_SEC_LABEL to detect that the FATTR4_SEC_LABEL
+      has been modified.
 
-Cheers
-  Trond
+So the first question is do we need two methods for detecting that the label
+has changed?
 
--- 
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
+Section 8.3 of http://www.ietf.org/id/draft-ietf-nfsv4-minorversion2-21.txt covers
+how the client could use delegations to detect a label change.
 
+To quote Trond out of context:
 
+> but that is the only option I can see for implementing a cache
+> consistency model for labels. Without it, the choices are:
+>
+>   1) always fetch the label as part of every COMPOUND.
+>   2) assume the label never changes on the server.
+>
+> The main use cases that have been presented for Labeled NFS on Linux
+> would tend to push me towards door number 2, Monty please...
+
+So a client could assume that the label never changes the majority
+of the time. Once it decides it does need to start checking for a change
+in the label, it can get a delegation.
+
+If we do need the attribute, what size does it need to be?
+
+There has been mention of it being a hash or a timestamp.
