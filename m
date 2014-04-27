@@ -1,231 +1,115 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e23smtp06.au.ibm.com ([202.81.31.148]:40760 "EHLO
-	e23smtp06.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753388AbaD0QPq (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Apr 2014 12:15:46 -0400
-Received: from /spool/local
-	by e23smtp06.au.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <aneesh.kumar@linux.vnet.ibm.com>;
-	Mon, 28 Apr 2014 02:15:45 +1000
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
-        viro@zeniv.linux.org.uk, dhowells@redhat.com
-Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH -V1 11/22] richacl: Permission mapping functions
-Date: Sun, 27 Apr 2014 21:44:42 +0530
-Message-Id: <1398615293-22931-12-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-In-Reply-To: <1398615293-22931-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1398615293-22931-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from mail-qc0-f182.google.com ([209.85.216.182]:49434 "EHLO
+	mail-qc0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753321AbaD0LLy (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Apr 2014 07:11:54 -0400
+MIME-Version: 1.0
+Reply-To: mtk.manpages@gmail.com
+In-Reply-To: <20140427200431.426c98d1@notabene.brown>
+References: <1398087935-14001-1-git-send-email-jlayton@redhat.com>
+ <20140421140246.GB26358@brightrain.aerifal.cx> <535529FA.8070709@gmail.com>
+ <20140421161004.GC26358@brightrain.aerifal.cx> <5355644C.7000801@gmail.com>
+ <20140421184640.GD26358@brightrain.aerifal.cx> <535573E0.9080106@gmail.com>
+ <20140421155520.3b33fbef@ipyr.poochiereds.net> <53558A73.3010602@samba.org>
+ <5355F60C.8010004@gmail.com> <20140427145125.21e7e6c6@notabene.brown>
+ <535CCAD2.4060304@gmail.com> <20140427200431.426c98d1@notabene.brown>
+From: "Michael Kerrisk (man-pages)" <mtk.manpages@gmail.com>
+Date: Sun, 27 Apr 2014 13:11:33 +0200
+Message-ID: <CAKgNAkgv5NqDRUNu0XtSABqmctd7=rpMMEYhhDQNzPssZuU5bA@mail.gmail.com>
+Subject: Re: flock() and NFS [Was: Re: [PATCH] locks: rename file-private
+ locks to file-description locks]
+To: NeilBrown <neilb@suse.de>
+Cc: "Stefan (metze) Metzmacher" <metze@samba.org>,
+        Jeff Layton <jlayton@redhat.com>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        lkml <linux-kernel@vger.kernel.org>,
+        Ganesha NFS List <nfs-ganesha-devel@lists.sourceforge.net>,
+        Suresh Jayaraman <sjayaraman@suse.de>,
+        Trond Myklebust <trond.myklebust@fys.uio.no>,
+        Christoph Hellwig <hch@infradead.org>,
+        linux-nfs <linux-nfs@vger.kernel.org>,
+        "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andreas Gruenbacher <agruen@kernel.org>
+On Sun, Apr 27, 2014 at 12:04 PM, NeilBrown <neilb@suse.de> wrote:
+> On Sun, 27 Apr 2014 11:16:02 +0200 "Michael Kerrisk (man-pages)"
+> <mtk.manpages@gmail.com> wrote:
+>
+>> [Trimming some folk from CC, and adding various NFS people]
+>>
+>> On 04/27/2014 06:51 AM, NeilBrown wrote:
+>>
+>> [...]
+>>
+>> > Note to Michael: The text
+>> >    flock() does not lock files over NFS.
+>> > in flock(2) is no longer accurate.  The reality is ... complex.
+>> > See nfs(5), and search for "local_lock".
+>>
+>> Ahhh -- I see:
+>> http://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=5eebde23223aeb0ad2d9e3be6590ff8bbfab0fc2
+>>
+>> Thanks for the heads up.
+>>
+>> Just in general, it would be great if the flock(2) and fcntl(2) man pages
+>> contained correct details for NFS, of course. So, for example, if there
+>> are any current gotchas for NFS and fcntl() byte-range locking, I'd like
+>> to add those to the fcntl(2) man page.
+>
+> The only peculiarities I can think of are:
+>  - With NFS, locking or unlocking a region forces a flush of any cached data
+>    for that file (or maybe for the region of the file).  I'm not sure if this
+>    is worth mentioning.
 
-We need to map from POSIX permissions to NFSv4 permissions when a
-chmod() is done, from NFSv4 permissions to POSIX permissions when an acl
-is set (which implicitly sets the file permission bits), and from the
-MAY_READ/MAY_WRITE/MAY_EXEC/MAY_APPEND flags to NFSv4 permissions when
-doing an access check in a richacl.
+I agree that it's probably not necessary to mention.
 
-Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
----
- fs/richacl_base.c       | 117 ++++++++++++++++++++++++++++++++++++++++++++++++
- include/linux/richacl.h |  47 +++++++++++++++++++
- 2 files changed, 164 insertions(+)
+>  - With NFSv4 the client can lose a lock if it is out of contact with the
+>    server for a period of time.  When this happens, any IO to the file by a
+>    process which "thinks" it holds a lock will fail until that process closes
+>    and re-opens the file.
+>    This behaviour is since 3.12.  Prior to that the client might lose and
+>    regain the lock without ever knowing thus potentially risking corruption
+>    (but only if client and server lost contact for an extended period).
 
-diff --git a/fs/richacl_base.c b/fs/richacl_base.c
-index 689e1a6dace7..bca20936aed1 100644
---- a/fs/richacl_base.c
-+++ b/fs/richacl_base.c
-@@ -56,6 +56,123 @@ richacl_clone(const struct richacl *acl)
- }
- 
- /**
-+ * richacl_mask_to_mode  -  compute the file permission bits which correspond to @mask
-+ * @mask:	%ACE4_* permission mask
-+ *
-+ * See richacl_masks_to_mode().
-+ */
-+static int
-+richacl_mask_to_mode(unsigned int mask)
-+{
-+	int mode = 0;
-+
-+	if (mask & ACE4_POSIX_MODE_READ)
-+		mode |= MAY_READ;
-+	if (mask & ACE4_POSIX_MODE_WRITE)
-+		mode |= MAY_WRITE;
-+	if (mask & ACE4_POSIX_MODE_EXEC)
-+		mode |= MAY_EXEC;
-+
-+	return mode;
-+}
-+
-+/**
-+ * richacl_masks_to_mode  -  compute the file permission bits from the file masks
-+ *
-+ * When setting a richacl, we set the file permission bits to indicate maximum
-+ * permissions: for example, we set the Write permission when a mask contains
-+ * ACE4_APPEND_DATA even if it does not also contain ACE4_WRITE_DATA.
-+ *
-+ * Permissions which are not in ACE4_POSIX_MODE_READ, ACE4_POSIX_MODE_WRITE, or
-+ * ACE4_POSIX_MODE_EXEC cannot be represented in the file permission bits.
-+ * Such permissions can still be effective, but not for new files or after a
-+ * chmod(), and only if they were set explicitly, for example, by setting a
-+ * richacl.
-+ */
-+int
-+richacl_masks_to_mode(const struct richacl *acl)
-+{
-+	return richacl_mask_to_mode(acl->a_owner_mask) << 6 |
-+	       richacl_mask_to_mode(acl->a_group_mask) << 3 |
-+	       richacl_mask_to_mode(acl->a_other_mask);
-+}
-+EXPORT_SYMBOL_GPL(richacl_masks_to_mode);
-+
-+/**
-+ * richacl_mode_to_mask  - compute a file mask from the lowest three mode bits
-+ *
-+ * When the file permission bits of a file are set with chmod(), this specifies
-+ * the maximum permissions that processes will get.  All permissions beyond
-+ * that will be removed from the file masks, and become ineffective.
-+ *
-+ * We also add in the permissions which are always allowed no matter what the
-+ * acl says.
-+ */
-+unsigned int
-+richacl_mode_to_mask(mode_t mode)
-+{
-+	unsigned int mask = ACE4_POSIX_ALWAYS_ALLOWED;
-+
-+	if (mode & MAY_READ)
-+		mask |= ACE4_POSIX_MODE_READ;
-+	if (mode & MAY_WRITE)
-+		mask |= ACE4_POSIX_MODE_WRITE;
-+	if (mode & MAY_EXEC)
-+		mask |= ACE4_POSIX_MODE_EXEC;
-+
-+	return mask;
-+}
-+
-+/**
-+ * richacl_want_to_mask  - convert the iop->permission want argument to a mask
-+ * @want:	@want argument of the permission inode operation
-+ *
-+ * When checking for append, @want is (MAY_WRITE | MAY_APPEND).
-+ *
-+ * Richacls use the iop->may_create and iop->may_delete hooks which are
-+ * used for checking if creating and deleting files is allowed.  These hooks do
-+ * not use richacl_want_to_mask(), so we do not have to deal with mapping
-+ * MAY_WRITE to ACE4_ADD_FILE, ACE4_ADD_SUBDIRECTORY, and ACE4_DELETE_CHILD
-+ * here.
-+ */
-+unsigned int
-+richacl_want_to_mask(unsigned int want)
-+{
-+	unsigned int mask = 0;
-+
-+	if (want & MAY_READ)
-+		mask |= ACE4_READ_DATA;
-+	if (want & MAY_DELETE_SELF)
-+		mask |= ACE4_DELETE;
-+	if (want & MAY_TAKE_OWNERSHIP)
-+		mask |= ACE4_WRITE_OWNER;
-+	if (want & MAY_CHMOD)
-+		mask |= ACE4_WRITE_ACL;
-+	if (want & MAY_SET_TIMES)
-+		mask |= ACE4_WRITE_ATTRIBUTES;
-+	if (want & MAY_EXEC)
-+		mask |= ACE4_EXECUTE;
-+	/*
-+	 * differentiate MAY_WRITE from these request
-+	 */
-+	if (want & (MAY_APPEND |
-+		    MAY_CREATE_FILE | MAY_CREATE_DIR |
-+		    MAY_DELETE_CHILD)) {
-+		if (want & MAY_APPEND)
-+			mask |= ACE4_APPEND_DATA;
-+		if (want & MAY_CREATE_FILE)
-+			mask |= ACE4_ADD_FILE;
-+		if (want & MAY_CREATE_DIR)
-+			mask |= ACE4_ADD_SUBDIRECTORY;
-+		if (want & MAY_DELETE_CHILD)
-+			mask |= ACE4_DELETE_CHILD;
-+	} else if (want & MAY_WRITE)
-+		mask |= ACE4_WRITE_DATA;
-+	return mask;
-+}
-+EXPORT_SYMBOL_GPL(richacl_want_to_mask);
-+
-+/**
-  * richace_is_same_identifier  -  are both identifiers the same?
-  */
- int
-diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-index 51d6937651f1..fe875fe24636 100644
---- a/include/linux/richacl.h
-+++ b/include/linux/richacl.h
-@@ -119,6 +119,49 @@ struct richacl {
- 	ACE4_WRITE_OWNER |				\
- 	ACE4_SYNCHRONIZE)
- 
-+/*
-+ * The POSIX permissions are supersets of the following NFSv4 permissions:
-+ *
-+ *  - MAY_READ maps to READ_DATA or LIST_DIRECTORY, depending on the type
-+ *    of the file system object.
-+ *
-+ *  - MAY_WRITE maps to WRITE_DATA or ACE4_APPEND_DATA for files, and to
-+ *    ADD_FILE, ACE4_ADD_SUBDIRECTORY, or ACE4_DELETE_CHILD for directories.
-+ *
-+ *  - MAY_EXECUTE maps to ACE4_EXECUTE.
-+ *
-+ *  (Some of these NFSv4 permissions have the same bit values.)
-+ */
-+#define ACE4_POSIX_MODE_READ (			\
-+		ACE4_READ_DATA |		\
-+		ACE4_LIST_DIRECTORY)
-+#define ACE4_POSIX_MODE_WRITE (			\
-+		ACE4_WRITE_DATA |		\
-+		ACE4_ADD_FILE |			\
-+		ACE4_APPEND_DATA |		\
-+		ACE4_ADD_SUBDIRECTORY |		\
-+		ACE4_DELETE_CHILD)
-+#define ACE4_POSIX_MODE_EXEC ACE4_EXECUTE
-+#define ACE4_POSIX_MODE_ALL (			\
-+		ACE4_POSIX_MODE_READ |		\
-+		ACE4_POSIX_MODE_WRITE |		\
-+		ACE4_POSIX_MODE_EXEC)
-+/*
-+ * These permissions are always allowed
-+ * no matter what the acl says.
-+ */
-+#define ACE4_POSIX_ALWAYS_ALLOWED (	\
-+		ACE4_SYNCHRONIZE |	\
-+		ACE4_READ_ATTRIBUTES |	\
-+		ACE4_READ_ACL)
-+/*
-+ * The owner is implicitly granted
-+ * these permissions under POSIX.
-+ */
-+#define ACE4_POSIX_OWNER_ALLOWED (		\
-+		ACE4_WRITE_ATTRIBUTES |		\
-+		ACE4_WRITE_OWNER |		\
-+		ACE4_WRITE_ACL)
- /**
-  * richacl_get  -  grab another reference to a richacl handle
-  */
-@@ -234,4 +277,8 @@ richace_is_deny(const struct richace *ace)
- extern struct richacl *richacl_alloc(int);
- extern int richace_is_same_identifier(const struct richace *,
- 				      const struct richace *);
-+extern int richacl_masks_to_mode(const struct richacl *);
-+extern unsigned int richacl_mode_to_mask(mode_t);
-+extern unsigned int richacl_want_to_mask(unsigned int);
-+
- #endif /* __RICHACL_H */
+Do you have a pointer for that commit to 3.12?
+
+>> Anyway, returning to your point about flock(), how would this text
+>> look for the flock(2) manual page:
+>>
+>>     NOTES
+>>        Since  kernel  2.0,  flock() is implemented as a system call in
+>>        its own right rather than being emulated in the GNU  C  library
+>>        as  a  call  to fcntl(2).  This yields classical BSD semantics:
+>>        there is no interaction between the types  of  lock  placed  by
+>>        flock()  and  fcntl(2),  and  flock() does not detect deadlock.
+>>        (Note, however, that on some modern BSDs, flock() and  fcntl(2)
+>>        locks do interact with one another.)
+>>
+>>        In Linux kernels up to 2.6.11, flock() does not lock files over
+>>        NFS (i.e., the scope of locks was limited to the local system).
+>>        Instead,  one could use fcntl(2) byte-range locking, which does
+>>        work over NFS, given a sufficiently recent version of Linux and
+>>        a  server  which  supports  locking.   Since  Linux 2.6.12, NFS
+>>        clients support flock() locks by emulating them  as  byte-range
+>>        locks on the entire file.  This means that fcntl(2) and flock()
+>>        locks do interact with  one  another  over  NFS.   Since  Linux
+>>        2.6.37,  the  kernel  supports a compatibility mode that allows
+>>        flock() locks (and also  fcntl(2)  byte  region  locks)  to  be
+>>        treated  as  local; see the discussion of the local_lock option
+>>        in nfs(5).
+>> ?
+>
+> That seems to cover it quite well - thanks.
+
+Thanks for checking it.
+
+Cheers,
+
+Michael
+
 -- 
-1.9.1
-
+Michael Kerrisk
+Linux man-pages maintainer; http://www.kernel.org/doc/man-pages/
+Linux/UNIX System Programming Training: http://man7.org/training/
