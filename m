@@ -1,202 +1,231 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f182.google.com ([209.85.213.182]:53793 "EHLO
-	mail-ig0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1945910AbaD3TaX (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Apr 2014 15:30:23 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH V3 06/17] xprtrdma: Remove REGISTER memory registration mode
-To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Cc: Anna.Schumaker@netapp.com
-Date: Wed, 30 Apr 2014 15:30:20 -0400
-Message-ID: <20140430193020.5663.21226.stgit@manet.1015granger.net>
-In-Reply-To: <20140430191433.5663.16217.stgit@manet.1015granger.net>
-References: <20140430191433.5663.16217.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from e23smtp06.au.ibm.com ([202.81.31.148]:40760 "EHLO
+	e23smtp06.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753388AbaD0QPq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Apr 2014 12:15:46 -0400
+Received: from /spool/local
+	by e23smtp06.au.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <aneesh.kumar@linux.vnet.ibm.com>;
+	Mon, 28 Apr 2014 02:15:45 +1000
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
+        viro@zeniv.linux.org.uk, dhowells@redhat.com
+Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [PATCH -V1 11/22] richacl: Permission mapping functions
+Date: Sun, 27 Apr 2014 21:44:42 +0530
+Message-Id: <1398615293-22931-12-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+In-Reply-To: <1398615293-22931-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+References: <1398615293-22931-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-All kernel RDMA providers except amso1100 support either MTHCAFMR
-or FRMR, both of which are faster than REGISTER.  amso1100 can
-continue to use ALLPHYSICAL.
+From: Andreas Gruenbacher <agruen@kernel.org>
 
-The only other ULP consumer in the kernel that uses the reg_phys_mr
-verb is Lustre.
+We need to map from POSIX permissions to NFSv4 permissions when a
+chmod() is done, from NFSv4 permissions to POSIX permissions when an acl
+is set (which implicitly sets the file permission bits), and from the
+MAY_READ/MAY_WRITE/MAY_EXEC/MAY_APPEND flags to NFSv4 permissions when
+doing an access check in a richacl.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 ---
+ fs/richacl_base.c       | 117 ++++++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/richacl.h |  47 +++++++++++++++++++
+ 2 files changed, 164 insertions(+)
 
- net/sunrpc/xprtrdma/rpc_rdma.c |    3 -
- net/sunrpc/xprtrdma/verbs.c    |   90 ++--------------------------------------
- 2 files changed, 5 insertions(+), 88 deletions(-)
-
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index e4af26a..a38efda 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -479,8 +479,7 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
- 			 * on receive. Therefore, we request a reply chunk
- 			 * for non-writes wherever feasible and efficient.
- 			 */
--			if (wtype == rpcrdma_noch &&
--			    r_xprt->rx_ia.ri_memreg_strategy > RPCRDMA_REGISTER)
-+			if (wtype == rpcrdma_noch)
- 				wtype = rpcrdma_replych;
- 		}
- 	}
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 304c7ad..6bb9a07 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -494,19 +494,11 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
- 	switch (memreg) {
- 	case RPCRDMA_MTHCAFMR:
- 		if (!ia->ri_id->device->alloc_fmr) {
--#if RPCRDMA_PERSISTENT_REGISTRATION
- 			dprintk("RPC:       %s: MTHCAFMR registration "
- 				"specified but not supported by adapter, "
- 				"using riskier RPCRDMA_ALLPHYSICAL\n",
- 				__func__);
- 			memreg = RPCRDMA_ALLPHYSICAL;
--#else
--			dprintk("RPC:       %s: MTHCAFMR registration "
--				"specified but not supported by adapter, "
--				"using slower RPCRDMA_REGISTER\n",
--				__func__);
--			memreg = RPCRDMA_REGISTER;
--#endif
- 		}
- 		break;
- 	case RPCRDMA_FRMR:
-@@ -514,19 +506,11 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
- 		if ((devattr.device_cap_flags &
- 		     (IB_DEVICE_MEM_MGT_EXTENSIONS|IB_DEVICE_LOCAL_DMA_LKEY)) !=
- 		    (IB_DEVICE_MEM_MGT_EXTENSIONS|IB_DEVICE_LOCAL_DMA_LKEY)) {
--#if RPCRDMA_PERSISTENT_REGISTRATION
- 			dprintk("RPC:       %s: FRMR registration "
- 				"specified but not supported by adapter, "
- 				"using riskier RPCRDMA_ALLPHYSICAL\n",
- 				__func__);
- 			memreg = RPCRDMA_ALLPHYSICAL;
--#else
--			dprintk("RPC:       %s: FRMR registration "
--				"specified but not supported by adapter, "
--				"using slower RPCRDMA_REGISTER\n",
--				__func__);
--			memreg = RPCRDMA_REGISTER;
--#endif
- 		} else {
- 			/* Mind the ia limit on FRMR page list depth */
- 			ia->ri_max_frmr_depth = min_t(unsigned int,
-@@ -545,7 +529,6 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
- 	 * adapter.
- 	 */
- 	switch (memreg) {
--	case RPCRDMA_REGISTER:
- 	case RPCRDMA_FRMR:
- 		break;
- #if RPCRDMA_PERSISTENT_REGISTRATION
-@@ -565,11 +548,10 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
- 		ia->ri_bind_mem = ib_get_dma_mr(ia->ri_pd, mem_priv);
- 		if (IS_ERR(ia->ri_bind_mem)) {
- 			printk(KERN_ALERT "%s: ib_get_dma_mr for "
--				"phys register failed with %lX\n\t"
--				"Will continue with degraded performance\n",
-+				"phys register failed with %lX\n",
- 				__func__, PTR_ERR(ia->ri_bind_mem));
--			memreg = RPCRDMA_REGISTER;
--			ia->ri_bind_mem = NULL;
-+			rc = -ENOMEM;
-+			goto out2;
- 		}
- 		break;
- 	default:
-@@ -1611,67 +1593,6 @@ rpcrdma_deregister_fmr_external(struct rpcrdma_mr_seg *seg,
- 	return rc;
+diff --git a/fs/richacl_base.c b/fs/richacl_base.c
+index 689e1a6dace7..bca20936aed1 100644
+--- a/fs/richacl_base.c
++++ b/fs/richacl_base.c
+@@ -56,6 +56,123 @@ richacl_clone(const struct richacl *acl)
  }
  
--static int
--rpcrdma_register_default_external(struct rpcrdma_mr_seg *seg,
--			int *nsegs, int writing, struct rpcrdma_ia *ia)
--{
--	int mem_priv = (writing ? IB_ACCESS_REMOTE_WRITE :
--				  IB_ACCESS_REMOTE_READ);
--	struct rpcrdma_mr_seg *seg1 = seg;
--	struct ib_phys_buf ipb[RPCRDMA_MAX_DATA_SEGS];
--	int len, i, rc = 0;
--
--	if (*nsegs > RPCRDMA_MAX_DATA_SEGS)
--		*nsegs = RPCRDMA_MAX_DATA_SEGS;
--	for (len = 0, i = 0; i < *nsegs;) {
--		rpcrdma_map_one(ia, seg, writing);
--		ipb[i].addr = seg->mr_dma;
--		ipb[i].size = seg->mr_len;
--		len += seg->mr_len;
--		++seg;
--		++i;
--		/* Check for holes */
--		if ((i < *nsegs && offset_in_page(seg->mr_offset)) ||
--		    offset_in_page((seg-1)->mr_offset+(seg-1)->mr_len))
--			break;
--	}
--	seg1->mr_base = seg1->mr_dma;
--	seg1->mr_chunk.rl_mr = ib_reg_phys_mr(ia->ri_pd,
--				ipb, i, mem_priv, &seg1->mr_base);
--	if (IS_ERR(seg1->mr_chunk.rl_mr)) {
--		rc = PTR_ERR(seg1->mr_chunk.rl_mr);
--		dprintk("RPC:       %s: failed ib_reg_phys_mr "
--			"%u@0x%llx (%d)... status %i\n",
--			__func__, len,
--			(unsigned long long)seg1->mr_dma, i, rc);
--		while (i--)
--			rpcrdma_unmap_one(ia, --seg);
--	} else {
--		seg1->mr_rkey = seg1->mr_chunk.rl_mr->rkey;
--		seg1->mr_nsegs = i;
--		seg1->mr_len = len;
--	}
--	*nsegs = i;
--	return rc;
--}
--
--static int
--rpcrdma_deregister_default_external(struct rpcrdma_mr_seg *seg,
--			struct rpcrdma_ia *ia)
--{
--	struct rpcrdma_mr_seg *seg1 = seg;
--	int rc;
--
--	rc = ib_dereg_mr(seg1->mr_chunk.rl_mr);
--	seg1->mr_chunk.rl_mr = NULL;
--	while (seg1->mr_nsegs--)
--		rpcrdma_unmap_one(ia, seg++);
--	if (rc)
--		dprintk("RPC:       %s: failed ib_dereg_mr,"
--			" status %i\n", __func__, rc);
--	return rc;
--}
--
+ /**
++ * richacl_mask_to_mode  -  compute the file permission bits which correspond to @mask
++ * @mask:	%ACE4_* permission mask
++ *
++ * See richacl_masks_to_mode().
++ */
++static int
++richacl_mask_to_mode(unsigned int mask)
++{
++	int mode = 0;
++
++	if (mask & ACE4_POSIX_MODE_READ)
++		mode |= MAY_READ;
++	if (mask & ACE4_POSIX_MODE_WRITE)
++		mode |= MAY_WRITE;
++	if (mask & ACE4_POSIX_MODE_EXEC)
++		mode |= MAY_EXEC;
++
++	return mode;
++}
++
++/**
++ * richacl_masks_to_mode  -  compute the file permission bits from the file masks
++ *
++ * When setting a richacl, we set the file permission bits to indicate maximum
++ * permissions: for example, we set the Write permission when a mask contains
++ * ACE4_APPEND_DATA even if it does not also contain ACE4_WRITE_DATA.
++ *
++ * Permissions which are not in ACE4_POSIX_MODE_READ, ACE4_POSIX_MODE_WRITE, or
++ * ACE4_POSIX_MODE_EXEC cannot be represented in the file permission bits.
++ * Such permissions can still be effective, but not for new files or after a
++ * chmod(), and only if they were set explicitly, for example, by setting a
++ * richacl.
++ */
++int
++richacl_masks_to_mode(const struct richacl *acl)
++{
++	return richacl_mask_to_mode(acl->a_owner_mask) << 6 |
++	       richacl_mask_to_mode(acl->a_group_mask) << 3 |
++	       richacl_mask_to_mode(acl->a_other_mask);
++}
++EXPORT_SYMBOL_GPL(richacl_masks_to_mode);
++
++/**
++ * richacl_mode_to_mask  - compute a file mask from the lowest three mode bits
++ *
++ * When the file permission bits of a file are set with chmod(), this specifies
++ * the maximum permissions that processes will get.  All permissions beyond
++ * that will be removed from the file masks, and become ineffective.
++ *
++ * We also add in the permissions which are always allowed no matter what the
++ * acl says.
++ */
++unsigned int
++richacl_mode_to_mask(mode_t mode)
++{
++	unsigned int mask = ACE4_POSIX_ALWAYS_ALLOWED;
++
++	if (mode & MAY_READ)
++		mask |= ACE4_POSIX_MODE_READ;
++	if (mode & MAY_WRITE)
++		mask |= ACE4_POSIX_MODE_WRITE;
++	if (mode & MAY_EXEC)
++		mask |= ACE4_POSIX_MODE_EXEC;
++
++	return mask;
++}
++
++/**
++ * richacl_want_to_mask  - convert the iop->permission want argument to a mask
++ * @want:	@want argument of the permission inode operation
++ *
++ * When checking for append, @want is (MAY_WRITE | MAY_APPEND).
++ *
++ * Richacls use the iop->may_create and iop->may_delete hooks which are
++ * used for checking if creating and deleting files is allowed.  These hooks do
++ * not use richacl_want_to_mask(), so we do not have to deal with mapping
++ * MAY_WRITE to ACE4_ADD_FILE, ACE4_ADD_SUBDIRECTORY, and ACE4_DELETE_CHILD
++ * here.
++ */
++unsigned int
++richacl_want_to_mask(unsigned int want)
++{
++	unsigned int mask = 0;
++
++	if (want & MAY_READ)
++		mask |= ACE4_READ_DATA;
++	if (want & MAY_DELETE_SELF)
++		mask |= ACE4_DELETE;
++	if (want & MAY_TAKE_OWNERSHIP)
++		mask |= ACE4_WRITE_OWNER;
++	if (want & MAY_CHMOD)
++		mask |= ACE4_WRITE_ACL;
++	if (want & MAY_SET_TIMES)
++		mask |= ACE4_WRITE_ATTRIBUTES;
++	if (want & MAY_EXEC)
++		mask |= ACE4_EXECUTE;
++	/*
++	 * differentiate MAY_WRITE from these request
++	 */
++	if (want & (MAY_APPEND |
++		    MAY_CREATE_FILE | MAY_CREATE_DIR |
++		    MAY_DELETE_CHILD)) {
++		if (want & MAY_APPEND)
++			mask |= ACE4_APPEND_DATA;
++		if (want & MAY_CREATE_FILE)
++			mask |= ACE4_ADD_FILE;
++		if (want & MAY_CREATE_DIR)
++			mask |= ACE4_ADD_SUBDIRECTORY;
++		if (want & MAY_DELETE_CHILD)
++			mask |= ACE4_DELETE_CHILD;
++	} else if (want & MAY_WRITE)
++		mask |= ACE4_WRITE_DATA;
++	return mask;
++}
++EXPORT_SYMBOL_GPL(richacl_want_to_mask);
++
++/**
+  * richace_is_same_identifier  -  are both identifiers the same?
+  */
  int
- rpcrdma_register_external(struct rpcrdma_mr_seg *seg,
- 			int nsegs, int writing, struct rpcrdma_xprt *r_xprt)
-@@ -1701,10 +1622,8 @@ rpcrdma_register_external(struct rpcrdma_mr_seg *seg,
- 		rc = rpcrdma_register_fmr_external(seg, &nsegs, writing, ia);
- 		break;
+diff --git a/include/linux/richacl.h b/include/linux/richacl.h
+index 51d6937651f1..fe875fe24636 100644
+--- a/include/linux/richacl.h
++++ b/include/linux/richacl.h
+@@ -119,6 +119,49 @@ struct richacl {
+ 	ACE4_WRITE_OWNER |				\
+ 	ACE4_SYNCHRONIZE)
  
--	/* Default registration each time */
- 	default:
--		rc = rpcrdma_register_default_external(seg, &nsegs, writing, ia);
--		break;
-+		return -1;
- 	}
- 	if (rc)
- 		return -1;
-@@ -1738,7 +1657,6 @@ rpcrdma_deregister_external(struct rpcrdma_mr_seg *seg,
- 		break;
- 
- 	default:
--		rc = rpcrdma_deregister_default_external(seg, ia);
- 		break;
- 	}
- 	if (r) {
++/*
++ * The POSIX permissions are supersets of the following NFSv4 permissions:
++ *
++ *  - MAY_READ maps to READ_DATA or LIST_DIRECTORY, depending on the type
++ *    of the file system object.
++ *
++ *  - MAY_WRITE maps to WRITE_DATA or ACE4_APPEND_DATA for files, and to
++ *    ADD_FILE, ACE4_ADD_SUBDIRECTORY, or ACE4_DELETE_CHILD for directories.
++ *
++ *  - MAY_EXECUTE maps to ACE4_EXECUTE.
++ *
++ *  (Some of these NFSv4 permissions have the same bit values.)
++ */
++#define ACE4_POSIX_MODE_READ (			\
++		ACE4_READ_DATA |		\
++		ACE4_LIST_DIRECTORY)
++#define ACE4_POSIX_MODE_WRITE (			\
++		ACE4_WRITE_DATA |		\
++		ACE4_ADD_FILE |			\
++		ACE4_APPEND_DATA |		\
++		ACE4_ADD_SUBDIRECTORY |		\
++		ACE4_DELETE_CHILD)
++#define ACE4_POSIX_MODE_EXEC ACE4_EXECUTE
++#define ACE4_POSIX_MODE_ALL (			\
++		ACE4_POSIX_MODE_READ |		\
++		ACE4_POSIX_MODE_WRITE |		\
++		ACE4_POSIX_MODE_EXEC)
++/*
++ * These permissions are always allowed
++ * no matter what the acl says.
++ */
++#define ACE4_POSIX_ALWAYS_ALLOWED (	\
++		ACE4_SYNCHRONIZE |	\
++		ACE4_READ_ATTRIBUTES |	\
++		ACE4_READ_ACL)
++/*
++ * The owner is implicitly granted
++ * these permissions under POSIX.
++ */
++#define ACE4_POSIX_OWNER_ALLOWED (		\
++		ACE4_WRITE_ATTRIBUTES |		\
++		ACE4_WRITE_OWNER |		\
++		ACE4_WRITE_ACL)
+ /**
+  * richacl_get  -  grab another reference to a richacl handle
+  */
+@@ -234,4 +277,8 @@ richace_is_deny(const struct richace *ace)
+ extern struct richacl *richacl_alloc(int);
+ extern int richace_is_same_identifier(const struct richace *,
+ 				      const struct richace *);
++extern int richacl_masks_to_mode(const struct richacl *);
++extern unsigned int richacl_mode_to_mask(mode_t);
++extern unsigned int richacl_want_to_mask(unsigned int);
++
+ #endif /* __RICHACL_H */
+-- 
+1.9.1
 
