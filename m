@@ -1,111 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.linuxfoundation.org ([140.211.169.12]:59719 "EHLO
-	mail.linuxfoundation.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751633AbaDWWDU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Apr 2014 18:03:20 -0400
-Date: Wed, 23 Apr 2014 15:03:18 -0700
-From: Andrew Morton <akpm@linux-foundation.org>
-To: NeilBrown <neilb@suse.de>
-Cc: Jan Kara <jack@suse.cz>, Jeff Layton <jlayton@redhat.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Dave Chinner <david@fromorbit.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Mel Gorman <mgorman@suse.com>, linux-mm@kvack.org,
+Received: from e23smtp02.au.ibm.com ([202.81.31.144]:55824 "EHLO
+	e23smtp02.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753288AbaD0QPU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Apr 2014 12:15:20 -0400
+Received: from /spool/local
+	by e23smtp02.au.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <aneesh.kumar@linux.vnet.ibm.com>;
+	Mon, 28 Apr 2014 02:15:17 +1000
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
+        viro@zeniv.linux.org.uk, dhowells@redhat.com
+Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
         linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH 1/5] MM: avoid throttling reclaim for loop-back nfsd
- threads.
-Message-Id: <20140423150318.d4bcf234faa5bea7fcb57b9b@linux-foundation.org>
-In-Reply-To: <20140423024058.4725.71995.stgit@notabene.brown>
-References: <20140423022441.4725.89693.stgit@notabene.brown>
-	<20140423024058.4725.71995.stgit@notabene.brown>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Subject: [PATCH -V1 02/22] vfs: Add IS_RICHACL() test for richacl support
+Date: Sun, 27 Apr 2014 21:44:33 +0530
+Message-Id: <1398615293-22931-3-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+In-Reply-To: <1398615293-22931-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+References: <1398615293-22931-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 23 Apr 2014 12:40:58 +1000 NeilBrown <neilb@suse.de> wrote:
+From: Andreas Gruenbacher <agruen@kernel.org>
 
-> When a loop-back NFS mount is active and the backing device for the
-> NFS mount becomes congested, that can impose throttling delays on the
-> nfsd threads.
-> 
-> These delays significantly reduce throughput and so the NFS mount
-> remains congested.
-> 
-> This results in a live lock and the reduced throughput persists.
-> 
-> This live lock has been found in testing with the 'wait_iff_congested'
-> call, and could possibly be caused by the 'congestion_wait' call.
-> 
-> This livelock is similar to the deadlock which justified the
-> introduction of PF_LESS_THROTTLE, and the same flag can be used to
-> remove this livelock.
-> 
-> To minimise the impact of the change, we still throttle nfsd when the
-> filesystem it is writing to is congested, but not when some separate
-> filesystem (e.g. the NFS filesystem) is congested.
-> 
-> Signed-off-by: NeilBrown <neilb@suse.de>
-> ---
->  mm/vmscan.c |   18 ++++++++++++++++--
->  1 file changed, 16 insertions(+), 2 deletions(-)
-> 
-> diff --git a/mm/vmscan.c b/mm/vmscan.c
-> index a9c74b409681..e011a646de95 100644
-> --- a/mm/vmscan.c
-> +++ b/mm/vmscan.c
-> @@ -1424,6 +1424,18 @@ putback_inactive_pages(struct lruvec *lruvec, struct list_head *page_list)
->  	list_splice(&pages_to_free, page_list);
->  }
->  
-> +/* If a kernel thread (such as nfsd for loop-back mounts) services
+Introduce a new MS_RICHACL super-block flag and a new IS_RICHACL() test
+which file systems like nfs can use.  IS_ACL() is true if IS_POSIXACL()
+or IS_RICHACL() is true.
 
-/*
- * If ...
+Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+---
+ include/linux/fs.h      | 3 ++-
+ include/uapi/linux/fs.h | 1 +
+ 2 files changed, 3 insertions(+), 1 deletion(-)
 
-please
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 9fb63b71a014..1a7fe920f956 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1601,6 +1601,7 @@ struct super_operations {
+ #define IS_APPEND(inode)	((inode)->i_flags & S_APPEND)
+ #define IS_IMMUTABLE(inode)	((inode)->i_flags & S_IMMUTABLE)
+ #define IS_POSIXACL(inode)	__IS_FLG(inode, MS_POSIXACL)
++#define IS_RICHACL(inode)	__IS_FLG(inode, MS_RICHACL)
+ 
+ #define IS_DEADDIR(inode)	((inode)->i_flags & S_DEAD)
+ #define IS_NOCMTIME(inode)	((inode)->i_flags & S_NOCMTIME)
+@@ -1614,7 +1615,7 @@ struct super_operations {
+  * IS_ACL() tells the VFS to not apply the umask
+  * and use check_acl for acl permission checks when defined.
+  */
+-#define IS_ACL(inode)		__IS_FLG(inode, MS_POSIXACL)
++#define IS_ACL(inode)		__IS_FLG(inode, MS_POSIXACL | MS_RICHACL)
+ 
+ /*
+  * Inode state bits.  Protected by inode->i_lock
+diff --git a/include/uapi/linux/fs.h b/include/uapi/linux/fs.h
+index 1e14b9c82703..894fbc2bebb3 100644
+--- a/include/uapi/linux/fs.h
++++ b/include/uapi/linux/fs.h
+@@ -89,6 +89,7 @@ struct inodes_stat_t {
+ #define MS_KERNMOUNT	(1<<22) /* this is a kern_mount call */
+ #define MS_I_VERSION	(1<<23) /* Update inode I_version field */
+ #define MS_STRICTATIME	(1<<24) /* Always perform atime updates */
++#define MS_RICHACL	(1<<25) /* Supports richacls */
+ 
+ /* These sb flags are internal to the kernel */
+ #define MS_NOSEC	(1<<28)
+-- 
+1.9.1
 
-> + * a backing device by writing to the page cache it sets PF_LESS_THROTTLE.
-> + * In that case we should only throttle if the backing device it is
-> + * writing to is congested.  In other cases it is safe to throttle.
-> + */
-> +static int current_may_throttle(void)
-> +{
-> +	return !(current->flags & PF_LESS_THROTTLE) ||
-> +		current->backing_dev_info == NULL ||
-> +		bdi_write_congested(current->backing_dev_info);
-> +}
-> +
->  /*
->   * shrink_inactive_list() is a helper for shrink_zone().  It returns the number
->   * of reclaimed pages
-> @@ -1552,7 +1564,8 @@ shrink_inactive_list(unsigned long nr_to_scan, struct lruvec *lruvec,
->  		 * implies that pages are cycling through the LRU faster than
->  		 * they are written so also forcibly stall.
->  		 */
-> -		if (nr_unqueued_dirty == nr_taken || nr_immediate)
-> +		if ((nr_unqueued_dirty == nr_taken || nr_immediate)
-> +		    && current_may_throttle())
-
-	foo &&
-	bar
-
-please.  As you did in in current_may_throttle().
-
->  			congestion_wait(BLK_RW_ASYNC, HZ/10);
->  	}
->  
-> @@ -1561,7 +1574,8 @@ shrink_inactive_list(unsigned long nr_to_scan, struct lruvec *lruvec,
->  	 * is congested. Allow kswapd to continue until it starts encountering
->  	 * unqueued dirty pages or cycling through the LRU too quickly.
->  	 */
-> -	if (!sc->hibernation_mode && !current_is_kswapd())
-> +	if (!sc->hibernation_mode && !current_is_kswapd()
-> +	    && current_may_throttle())
-
-ditto
-
->  		wait_iff_congested(zone, BLK_RW_ASYNC, HZ/10);
->  
->  	trace_mm_vmscan_lru_shrink_inactive(zone->zone_pgdat->node_id,
-> 
