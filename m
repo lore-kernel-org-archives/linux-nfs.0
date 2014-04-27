@@ -1,65 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:59678 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751404AbaDRMkN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 18 Apr 2014 08:40:13 -0400
-Date: Fri, 18 Apr 2014 08:40:11 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        terry1@beam.ltd.uk
-Subject: Re: [PATCH] locks: allow __break_lease to sleep even when break_time
- is 0
-Message-ID: <20140418124011.GE18612@fieldses.org>
-References: <1397565852-16212-1-git-send-email-jlayton@redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1397565852-16212-1-git-send-email-jlayton@redhat.com>
+Received: from e23smtp09.au.ibm.com ([202.81.31.142]:60124 "EHLO
+	e23smtp09.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753305AbaD0QPU (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Apr 2014 12:15:20 -0400
+Received: from /spool/local
+	by e23smtp09.au.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <aneesh.kumar@linux.vnet.ibm.com>;
+	Mon, 28 Apr 2014 02:15:18 +1000
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
+        viro@zeniv.linux.org.uk, dhowells@redhat.com
+Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [PATCH -V1 03/22] vfs: Optimize out IS_RICHACL() if CONFIG_FS_RICHACL is not defined
+Date: Sun, 27 Apr 2014 21:44:34 +0530
+Message-Id: <1398615293-22931-4-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+In-Reply-To: <1398615293-22931-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+References: <1398615293-22931-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks, applying.--b.
+From: Andreas Gruenbacher <agruen@kernel.org>
 
-On Tue, Apr 15, 2014 at 08:44:12AM -0400, Jeff Layton wrote:
-> A fl->fl_break_time of 0 has a special meaning to the lease break code
-> that basically means "never break the lease". knfsd uses this to ensure
-> that leases don't disappear out from under it.
-> 
-> Unfortunately, the code in __break_lease can end up passing this value
-> to wait_event_interruptible as a timeout, which prevents it from going
-> to sleep at all. This causes __break_lease to spin in a tight loop and
-> causes soft lockups.
-> 
-> Fix this by ensuring that we pass a minimum value of 1 as a timeout
-> instead.
-> 
-> Cc: <stable@vger.kernel.org>
-> Cc: J. Bruce Fields <bfields@fieldses.org>
-> Reported-by: Terry Barnaby <terry1@beam.ltd.uk>
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  fs/locks.c | 7 +++----
->  1 file changed, 3 insertions(+), 4 deletions(-)
-> 
-> diff --git a/fs/locks.c b/fs/locks.c
-> index 13fc7a6d380a..b380f5543614 100644
-> --- a/fs/locks.c
-> +++ b/fs/locks.c
-> @@ -1391,11 +1391,10 @@ int __break_lease(struct inode *inode, unsigned int mode, unsigned int type)
->  
->  restart:
->  	break_time = flock->fl_break_time;
-> -	if (break_time != 0) {
-> +	if (break_time != 0)
->  		break_time -= jiffies;
-> -		if (break_time == 0)
-> -			break_time++;
-> -	}
-> +	if (break_time == 0)
-> +		break_time++;
->  	locks_insert_block(flock, new_fl);
->  	spin_unlock(&inode->i_lock);
->  	error = wait_event_interruptible_timeout(new_fl->fl_wait,
-> -- 
-> 1.9.0
-> 
+if CONFIG_FS_RICHACL is not defined optimize out
+the ACL check function.
+
+Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+---
+ fs/Kconfig         | 3 +++
+ include/linux/fs.h | 5 +++++
+ 2 files changed, 8 insertions(+)
+
+diff --git a/fs/Kconfig b/fs/Kconfig
+index 312393f32948..facd968f8e84 100644
+--- a/fs/Kconfig
++++ b/fs/Kconfig
+@@ -50,6 +50,9 @@ endif # BLOCK
+ config FS_POSIX_ACL
+ 	def_bool n
+ 
++config FS_RICHACL
++	def_bool n
++
+ config EXPORTFS
+ 	tristate
+ 
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 1a7fe920f956..1f524b4b652d 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1601,7 +1601,12 @@ struct super_operations {
+ #define IS_APPEND(inode)	((inode)->i_flags & S_APPEND)
+ #define IS_IMMUTABLE(inode)	((inode)->i_flags & S_IMMUTABLE)
+ #define IS_POSIXACL(inode)	__IS_FLG(inode, MS_POSIXACL)
++
++#ifdef CONFIG_FS_RICHACL
+ #define IS_RICHACL(inode)	__IS_FLG(inode, MS_RICHACL)
++#else
++#define IS_RICHACL(inode)	0
++#endif
+ 
+ #define IS_DEADDIR(inode)	((inode)->i_flags & S_DEAD)
+ #define IS_NOCMTIME(inode)	((inode)->i_flags & S_NOCMTIME)
+-- 
+1.9.1
+
