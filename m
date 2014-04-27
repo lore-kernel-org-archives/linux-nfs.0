@@ -1,207 +1,191 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:21453 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932847AbaDJAfX convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 9 Apr 2014 20:35:23 -0400
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
-Subject: Re: [PATCH V2] NFS-RDMA: fix qp pointer validation checks
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <f02a9959-4530-474f-8076-1139362aaea6@CMEXHTCAS1.ad.emulex.com>
-Date: Wed, 9 Apr 2014 20:35:16 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-rdma@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Message-Id: <22067556-CC9F-45B3-8597-C801231FC04F@oracle.com>
-References: <f02a9959-4530-474f-8076-1139362aaea6@CMEXHTCAS1.ad.emulex.com>
-To: Devesh Sharma <devesh.sharma@emulex.com>
+Received: from e23smtp07.au.ibm.com ([202.81.31.140]:56983 "EHLO
+	e23smtp07.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753557AbaD0QQQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Apr 2014 12:16:16 -0400
+Received: from /spool/local
+	by e23smtp07.au.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <aneesh.kumar@linux.vnet.ibm.com>;
+	Mon, 28 Apr 2014 02:16:14 +1000
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
+        viro@zeniv.linux.org.uk, dhowells@redhat.com
+Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [PATCH -V1 20/22] vfs: Add richacl permission check
+Date: Sun, 27 Apr 2014 21:44:51 +0530
+Message-Id: <1398615293-22931-21-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+In-Reply-To: <1398615293-22931-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+References: <1398615293-22931-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Devesh-
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+---
+ fs/attr.c               |  6 ++++--
+ fs/namei.c              | 13 +++++++++++-
+ fs/richacl_base.c       | 54 +++++++++++++++++++++++++++++++++++++++++++++++++
+ include/linux/fs.h      |  2 +-
+ include/linux/richacl.h |  2 ++
+ 5 files changed, 73 insertions(+), 4 deletions(-)
 
-
-On Apr 9, 2014, at 7:54 PM, Devesh Sharma <devesh.sharma@emulex.com> wrote:
-
-> If the rdma_create_qp fails to create qp due to device firmware being in invalid state
-> xprtrdma still tries to destroy the non-existant qp and ends up in a NULL pointer reference
-> crash.
-> Adding proper checks for vaidating QP pointer avoids this to happen.
-> 
-> V0: Using IS_ERR() to check validity of qp pointer.
-> V1: Use of IS_ERR() will not be able to catch NULL QP pointers as rdma_create_qp() returnes NULL in case
->    ib_create_qp verb is failed. Therefore, changed from usage of IS_ERR to null pointer check.
-> V2: ib_post_send() should not abort after DECR_CQCOUNT() checking for NULL pointer was causing exit from functions
->    after decrementing CQCOUNT(). Fixed this in V2.
-> 
-> Signed-off-by: Devesh Sharma <devesh.sharma@emulex.com>
-> ---
-> net/sunrpc/xprtrdma/verbs.c |   92 ++++++++++++++++++++++++++-----------------
-> 1 files changed, 56 insertions(+), 36 deletions(-)
-> 
-> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-> index 9372656..9e56baf 100644
-> --- a/net/sunrpc/xprtrdma/verbs.c
-> +++ b/net/sunrpc/xprtrdma/verbs.c
-> @@ -831,10 +831,12 @@ rpcrdma_ep_connect(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
-> 	if (ep->rep_connected != 0) {
-> 		struct rpcrdma_xprt *xprt;
-> retry:
-> -		rc = rpcrdma_ep_disconnect(ep, ia);
-> -		if (rc && rc != -ENOTCONN)
-> -			dprintk("RPC:       %s: rpcrdma_ep_disconnect"
-> +		if (ia->ri_id->qp) {
-> +			rc = rpcrdma_ep_disconnect(ep, ia);
-> +			if (rc && rc != -ENOTCONN)
-> +				dprintk("RPC:       %s: rpcrdma_ep_disconnect"
-> 				" status %i\n", __func__, rc);
-> +		}
-> 		rpcrdma_clean_cq(ep->rep_cq);
-> 
-> 		xprt = container_of(ia, struct rpcrdma_xprt, rx_ia);
-> @@ -859,7 +861,8 @@ retry:
-> 			goto out;
-> 		}
-> 		/* END TEMP */
-> -		rdma_destroy_qp(ia->ri_id);
-> +		if (ia->ri_id->qp)
-> +			rdma_destroy_qp(ia->ri_id);
-> 		rdma_destroy_id(ia->ri_id);
-> 		ia->ri_id = id;
-> 	}
-
-Does your set up still panic if rpcrdma_ep_connect() is fixed as above, but the rest of these hunks are left unapplied?
-
-
-> @@ -1555,22 +1558,30 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
-> 				IB_ACCESS_REMOTE_WRITE | IB_ACCESS_LOCAL_WRITE :
-> 				IB_ACCESS_REMOTE_READ);
-> 	frmr_wr.wr.fast_reg.rkey = seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey;
-> -	DECR_CQCOUNT(&r_xprt->rx_ep);
-> 
-> -	rc = ib_post_send(ia->ri_id->qp, post_wr, &bad_wr);
-> +	if (!ia->ri_is->qp) {
-
-You mean “if (ia->ri_id->qp) {”
-
-> +		DECR_CQCOUNT(&r_xprt->rx_ep);
-> +		rc = ib_post_send(ia->ri_id->qp, post_wr, &bad_wr);
-> 
-> -	if (rc) {
-> -		dprintk("RPC:       %s: failed ib_post_send for register,"
-> -			" status %i\n", __func__, rc);
-> -		while (i--)
-> -			rpcrdma_unmap_one(ia, --seg);
-> +		if (rc) {
-> +			dprintk("RPC:       %s: failed ib_post_send for register,"
-> +				" status %i\n", __func__, rc);
-> +			goto out;
-> +		} else {
-> +			seg1->mr_rkey = seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey;
-> +			seg1->mr_base = seg1->mr_dma + pageoff;
-> +			seg1->mr_nsegs = i;
-> +			seg1->mr_len = len;
-> +		}
-> 	} else {
-> -		seg1->mr_rkey = seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey;
-> -		seg1->mr_base = seg1->mr_dma + pageoff;
-> -		seg1->mr_nsegs = i;
-> -		seg1->mr_len = len;
-> +		rc = -EINVAL;
-> +		goto out;
-> 	}
-> +
-> 	*nsegs = i;
-> +out:
-> +	while (i--)
-> +		rpcrdma_unmap_one(ia, --seg);
-> 	return rc;
-> }
-> 
-> @@ -1590,12 +1601,16 @@ rpcrdma_deregister_frmr_external(struct rpcrdma_mr_seg *seg,
-> 	invalidate_wr.opcode = IB_WR_LOCAL_INV;
-> 	invalidate_wr.send_flags = IB_SEND_SIGNALED;
-> 	invalidate_wr.ex.invalidate_rkey = seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey;
-> -	DECR_CQCOUNT(&r_xprt->rx_ep);
-> 
-> -	rc = ib_post_send(ia->ri_id->qp, &invalidate_wr, &bad_wr);
-> -	if (rc)
-> -		dprintk("RPC:       %s: failed ib_post_send for invalidate,"
-> -			" status %i\n", __func__, rc);
-> +	if (ia->ri_id->qp) {
-> +		DECR_CQCOUNT(&r_xprt->rx_ep);
-> +		rc = ib_post_send(ia->ri_id->qp, &invalidate_wr, &bad_wr);
-> +		if (rc)
-> +			dprintk("RPC:       %s: failed ib_post_send for invalidate,"
-> +				" status %i\n", __func__, rc);
-> +	} else
-> +		rc = -EINVAL;
-> +
-> 	return rc;
-> }
-> 
-> @@ -1916,17 +1931,19 @@ rpcrdma_ep_post(struct rpcrdma_ia *ia,
-> 		req->rl_send_iov[0].addr, req->rl_send_iov[0].length,
-> 		DMA_TO_DEVICE);
-> 
-> -	if (DECR_CQCOUNT(ep) > 0)
-> -		send_wr.send_flags = 0;
-> -	else { /* Provider must take a send completion every now and then */
-> -		INIT_CQCOUNT(ep);
-> -		send_wr.send_flags = IB_SEND_SIGNALED;
-> -	}
-> -
-> -	rc = ib_post_send(ia->ri_id->qp, &send_wr, &send_wr_fail);
-> -	if (rc)
-> -		dprintk("RPC:       %s: ib_post_send returned %i\n", __func__,
-> -			rc);
-> +	if (ia->ri_id->qp) {
-> +		if (DECR_CQCOUNT(ep) > 0)
-> +			send_wr.send_flags = 0;
-> +		else { /* Provider must take a send completion every now and then */
-> +			INIT_CQCOUNT(ep);
-> +			send_wr.send_flags = IB_SEND_SIGNALED
-> +		}
-> +		rc = ib_post_send(ia->ri_id->qp, &send_wr, &send_wr_fail);
-> +		if (rc)
-> +			dprintk("RPC:       %s: ib_post_send returned %i\n", __func__,
-> +				rc);
-> +	} else
-> +		rc = -EINVAL;
-> out:
-> 	return rc;
-> }
-> @@ -1950,11 +1967,14 @@ rpcrdma_ep_post_recv(struct rpcrdma_ia *ia,
-> 	ib_dma_sync_single_for_cpu(ia->ri_id->device,
-> 		rep->rr_iov.addr, rep->rr_iov.length, DMA_BIDIRECTIONAL);
-> 
-> -	DECR_CQCOUNT(ep);
-> -	rc = ib_post_recv(ia->ri_id->qp, &recv_wr, &recv_wr_fail);
-> +	if (ia->ri_id->qp) {
-> +		DECR_CQCOUNT(ep);
-> +		rc = ib_post_recv(ia->ri_id->qp, &recv_wr, &recv_wr_fail);
-> +		if (rc)
-> +			dprintk("RPC:       %s: ib_post_recv returned %i\n", __func__,
-> +				rc);
-> +	} else
-> +		rc = -EINVAL;
-> 
-> -	if (rc)
-> -		dprintk("RPC:       %s: ib_post_recv returned %i\n", __func__,
-> -			rc);
-> 	return rc;
-> }
-> -- 
-> 1.7.1
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
+diff --git a/fs/attr.c b/fs/attr.c
+index e468d4f2dca8..c46f3ed82150 100644
+--- a/fs/attr.c
++++ b/fs/attr.c
+@@ -15,6 +15,7 @@
+ #include <linux/security.h>
+ #include <linux/evm.h>
+ #include <linux/ima.h>
++#include <linux/richacl.h>
+ 
+ static int richacl_change_ok(struct inode *inode, int mask)
+ {
+@@ -23,8 +24,9 @@ static int richacl_change_ok(struct inode *inode, int mask)
+ 
+ 	if (inode->i_op->permission)
+ 		return inode->i_op->permission(inode, mask);
+-
+-	return check_acl(inode, mask);
++	if (inode->i_op->get_richacl)
++		return check_richacl(inode, mask);
++	return -EPERM;
+ }
+ 
+ static bool inode_uid_change_ok(struct inode *inode, kuid_t ia_uid)
+diff --git a/fs/namei.c b/fs/namei.c
+index 06474553c08d..12010e06aedd 100644
+--- a/fs/namei.c
++++ b/fs/namei.c
+@@ -34,6 +34,7 @@
+ #include <linux/device_cgroup.h>
+ #include <linux/fs_struct.h>
+ #include <linux/posix_acl.h>
++#include <linux/richacl.h>
+ #include <asm/uaccess.h>
+ 
+ #include "internal.h"
+@@ -249,7 +250,7 @@ void putname(struct filename *name)
+ }
+ #endif
+ 
+-int check_acl(struct inode *inode, int mask)
++static int check_posix_acl(struct inode *inode, int mask)
+ {
+ #ifdef CONFIG_FS_POSIX_ACL
+ 	struct posix_acl *acl;
+@@ -277,6 +278,16 @@ int check_acl(struct inode *inode, int mask)
+ 	return -EAGAIN;
+ }
+ 
++static int check_acl(struct inode *inode, int mask)
++{
++	if (IS_POSIXACL(inode))
++		return check_posix_acl(inode, mask);
++	else if (IS_RICHACL(inode))
++		return check_richacl(inode, mask);
++	else
++		return -EAGAIN;
++}
++
+ /*
+  * This does the basic permission checking
+  */
+diff --git a/fs/richacl_base.c b/fs/richacl_base.c
+index d3beaacf6b9b..7c42290ae0c4 100644
+--- a/fs/richacl_base.c
++++ b/fs/richacl_base.c
+@@ -585,3 +585,57 @@ richacl_equiv_mode(const struct richacl *acl, mode_t *mode_p)
+ 	return 0;
+ }
+ EXPORT_SYMBOL_GPL(richacl_equiv_mode);
++
++int check_richacl(struct inode *inode, int want)
++{
++#ifdef CONFIG_FS_RICHACL
++	struct richacl *acl;
++	int richacl_mask = richacl_want_to_mask(want);
++
++	if (want & MAY_NOT_BLOCK) {
++		acl = rcu_dereference(inode->i_richacl);
++		if (!acl)
++			return -EAGAIN;
++		/* no ->get_acl() calls in RCU mode... */
++		if (acl == ACL_NOT_CACHED)
++			return -ECHILD;
++		return richacl_permission(inode, acl, richacl_mask);
++	}
++	return richacl_check_acl(inode, richacl_mask);
++#endif
++	return -EAGAIN;
++}
++
++int richacl_check_acl(struct inode *inode, int richacl_mask)
++{
++
++#ifdef CONFIG_FS_RICHACL
++	struct richacl *acl;
++	acl = get_cached_richacl(inode);
++	/*
++	 * A filesystem can force a ACL callback by just never filling the
++	 * ACL cache. But normally you'd fill the cache either at inode
++	 * instantiation time, or on the first ->get_acl call.
++	 *
++	 * If the filesystem doesn't have a get_acl() function at all, we'll
++	 * just create the negative cache entry.
++	 */
++	if (acl == ACL_NOT_CACHED) {
++		if (inode->i_op->get_acl) {
++			acl = inode->i_op->get_richacl(inode);
++			if (IS_ERR(acl))
++				return PTR_ERR(acl);
++		} else {
++			set_cached_richacl(inode, NULL);
++			return -EAGAIN;
++		}
++	}
++	if (acl) {
++		int error = richacl_permission(inode, acl, richacl_mask);
++		richacl_put(acl);
++		return error;
++	}
++#endif
++	return -EAGAIN;
++}
++EXPORT_SYMBOL_GPL(richacl_check_acl);
+diff --git a/include/linux/fs.h b/include/linux/fs.h
+index 95df64d21e55..77459b6656ac 100644
+--- a/include/linux/fs.h
++++ b/include/linux/fs.h
+@@ -1499,6 +1499,7 @@ struct inode_operations {
+ 	void * (*follow_link) (struct dentry *, struct nameidata *);
+ 	int (*permission) (struct inode *, int);
+ 	struct posix_acl * (*get_acl)(struct inode *, int);
++	struct richacl * (*get_richacl)(struct inode *);
+ 
+ 	int (*readlink) (struct dentry *, char __user *,int);
+ 	void (*put_link) (struct dentry *, struct nameidata *, void *);
+@@ -2259,7 +2260,6 @@ extern sector_t bmap(struct inode *, sector_t);
+ extern int notify_change(struct dentry *, struct iattr *, struct inode **);
+ extern int inode_permission(struct inode *, int);
+ extern int generic_permission(struct inode *, int);
+-extern int check_acl(struct inode *, int);
+ 
+ static inline bool execute_ok(struct inode *inode)
+ {
+diff --git a/include/linux/richacl.h b/include/linux/richacl.h
+index a7db341e4ee9..17b58d470798 100644
+--- a/include/linux/richacl.h
++++ b/include/linux/richacl.h
+@@ -360,6 +360,8 @@ extern int richacl_permission(struct inode *, const struct richacl *,
+ 			      unsigned int);
+ extern struct richacl *richacl_inherit(const struct richacl *, int);
+ extern int richacl_equiv_mode(const struct richacl *, mode_t *);
++extern int check_richacl(struct inode *, int);
++extern int richacl_check_acl(struct inode *, int);
+ 
+ /* richacl_inode.c */
+ extern struct richacl *richacl_inherit_inode(const struct richacl *,
+-- 
+1.9.1
 
