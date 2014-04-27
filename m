@@ -1,76 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f170.google.com ([209.85.213.170]:51153 "EHLO
-	mail-ig0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751679AbaDYQwO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 25 Apr 2014 12:52:14 -0400
-Received: by mail-ig0-f170.google.com with SMTP id uq10so2471228igb.5
-        for <linux-nfs@vger.kernel.org>; Fri, 25 Apr 2014 09:52:13 -0700 (PDT)
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH 1/2] nfs-iostat: Fix columnarization of RPC statistics
-To: steved@redhat.com
-Cc: linux-nfs@vger.kernel.org
-Date: Fri, 25 Apr 2014 12:52:11 -0400
-Message-ID: <20140425165211.30699.73059.stgit@manet.1015granger.net>
+Received: from mail-ee0-f54.google.com ([74.125.83.54]:53817 "EHLO
+	mail-ee0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753167AbaD0JQI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Apr 2014 05:16:08 -0400
+Message-ID: <535CCAD2.4060304@gmail.com>
+Date: Sun, 27 Apr 2014 11:16:02 +0200
+From: "Michael Kerrisk (man-pages)" <mtk.manpages@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: NeilBrown <neilb@suse.de>
+CC: mtk.manpages@gmail.com, "Stefan (metze) Metzmacher" <metze@samba.org>,
+        Jeff Layton <jlayton@redhat.com>, linux-fsdevel@vger.kernel.org,
+        linux-kernel@vger.kernel.org,
+        Ganesha NFS List <nfs-ganesha-devel@lists.sourceforge.net>,
+        Suresh Jayaraman <sjayaraman@suse.de>,
+        Trond Myklebust <trond.myklebust@fys.uio.no>,
+        Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org,
+        "J. Bruce Fields" <bfields@fieldses.org>
+Subject: flock() and NFS [Was: Re: [PATCH] locks: rename file-private locks
+ to file-description locks]
+References: <1398087935-14001-1-git-send-email-jlayton@redhat.com>	<20140421140246.GB26358@brightrain.aerifal.cx>	<535529FA.8070709@gmail.com>	<20140421161004.GC26358@brightrain.aerifal.cx>	<5355644C.7000801@gmail.com>	<20140421184640.GD26358@brightrain.aerifal.cx>	<535573E0.9080106@gmail.com>	<20140421155520.3b33fbef@ipyr.poochiereds.net>	<53558A73.3010602@samba.org>	<5355F60C.8010004@gmail.com> <20140427145125.21e7e6c6@notabene.brown>
+In-Reply-To: <20140427145125.21e7e6c6@notabene.brown>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Note: format() is new with Python 2.6
+[Trimming some folk from CC, and adding various NFS people]
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+On 04/27/2014 06:51 AM, NeilBrown wrote:
 
- tools/nfs-iostat/nfs-iostat.py |   31 +++++++++++++++++++------------
- 1 files changed, 19 insertions(+), 12 deletions(-)
+[...]
 
-diff --git a/tools/nfs-iostat/nfs-iostat.py b/tools/nfs-iostat/nfs-iostat.py
-index 341cdbf..6831c12 100644
---- a/tools/nfs-iostat/nfs-iostat.py
-+++ b/tools/nfs-iostat/nfs-iostat.py
-@@ -353,15 +353,21 @@ class DeviceData:
-             exe_per_op = 0.0
- 
-         op += ':'
--        print('%s' % op.lower().ljust(15), end='')
--        print('  ops/s\t\t   kB/s\t\t  kB/op\t\tretrans\t\tavg RTT (ms)\tavg exe (ms)')
--
--        print('\t\t%7.3f' % (ops / sample_time), end='')
--        print('\t%7.3f' % (kilobytes / sample_time), end='')
--        print('\t%7.3f' % kb_per_op, end='')
--        print(' %7d (%3.1f%%)' % (retrans, retrans_percent), end='')
--        print('\t%7.3f' % rtt_per_op, end='')
--        print('\t%7.3f' % exe_per_op)
-+        print(format(op.lower(), '<16s'), end='')
-+        print(format('ops/s', '>8s'), end='')
-+        print(format('kB/s', '>16s'), end='')
-+        print(format('kB/op', '>16s'), end='')
-+        print(format('retrans', '>16s'), end='')
-+        print(format('avg RTT (ms)', '>16s'), end='')
-+        print(format('avg exe (ms)', '>16s'))
-+
-+        print(format((ops / sample_time), '>24.3f'), end='')
-+        print(format((kilobytes / sample_time), '>16.3f'), end='')
-+        print(format(kb_per_op, '>16.3f'), end='')
-+        retransmits = '{0:>10.0f} ({1:>3.1f}%)'.format(retrans, retrans_percent).strip()
-+        print(format(retransmits, '>16'), end='')
-+        print(format(rtt_per_op, '>16.3f'), end='')
-+        print(format(exe_per_op, '>16.3f'))
- 
-     def ops(self, sample_time):
-         sends = float(self.__rpc_data['rpcsends'])
-@@ -391,9 +397,10 @@ class DeviceData:
-             (self.__nfs_data['export'], self.__nfs_data['mountpoint']))
-         print()
- 
--        print('   op/s\t\trpc bklog')
--        print('%7.2f' % (sends / sample_time), end='')
--        print('\t%7.2f' % backlog)
-+        print(format('ops/s', '>16') + format('rpc bklog', '>16'))
-+        print(format((sends / sample_time), '>16.3f'), end='')
-+        print(format(backlog, '>16.3f'))
-+        print()
- 
-         if which == 0:
-             self.__print_rpc_op_stats('READ', sample_time)
+> Note to Michael: The text
+>    flock() does not lock files over NFS.
+> in flock(2) is no longer accurate.  The reality is ... complex.
+> See nfs(5), and search for "local_lock".
 
+Ahhh -- I see: 
+http://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=5eebde23223aeb0ad2d9e3be6590ff8bbfab0fc2
+
+Thanks for the heads up.
+
+Just in general, it would be great if the flock(2) and fcntl(2) man pages
+contained correct details for NFS, of course. So, for example, if there 
+are any current gotchas for NFS and fcntl() byte-range locking, I'd like 
+to add those to the fcntl(2) man page.
+
+Anyway, returning to your point about flock(), how would this text
+look for the flock(2) manual page:
+
+    NOTES
+       Since  kernel  2.0,  flock() is implemented as a system call in
+       its own right rather than being emulated in the GNU  C  library
+       as  a  call  to fcntl(2).  This yields classical BSD semantics:
+       there is no interaction between the types  of  lock  placed  by
+       flock()  and  fcntl(2),  and  flock() does not detect deadlock.
+       (Note, however, that on some modern BSDs, flock() and  fcntl(2)
+       locks do interact with one another.)
+
+       In Linux kernels up to 2.6.11, flock() does not lock files over
+       NFS (i.e., the scope of locks was limited to the local system).
+       Instead,  one could use fcntl(2) byte-range locking, which does
+       work over NFS, given a sufficiently recent version of Linux and
+       a  server  which  supports  locking.   Since  Linux 2.6.12, NFS
+       clients support flock() locks by emulating them  as  byte-range
+       locks on the entire file.  This means that fcntl(2) and flock()
+       locks do interact with  one  another  over  NFS.   Since  Linux
+       2.6.37,  the  kernel  supports a compatibility mode that allows
+       flock() locks (and also  fcntl(2)  byte  region  locks)  to  be
+       treated  as  local; see the discussion of the local_lock option
+       in nfs(5).
+?
+
+Thanks,
+
+Michael
+
+
+-- 
+Michael Kerrisk
+Linux man-pages maintainer; http://www.kernel.org/doc/man-pages/
+Linux/UNIX System Programming Training: http://man7.org/training/
