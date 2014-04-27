@@ -1,372 +1,240 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:31635 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751180AbaDQVKD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 17 Apr 2014 17:10:03 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
-Subject: [PATCH 06/17] NFS: Create a common pgio_alloc and pgio_release function
-Date: Thu, 17 Apr 2014 17:09:30 -0400
-Message-ID: <1397768981-12856-7-git-send-email-Anna.Schumaker@Netapp.com>
-In-Reply-To: <1397768981-12856-1-git-send-email-Anna.Schumaker@Netapp.com>
-References: <1397768981-12856-1-git-send-email-Anna.Schumaker@Netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+Received: from e23smtp03.au.ibm.com ([202.81.31.145]:35430 "EHLO
+	e23smtp03.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753527AbaD0QQI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Apr 2014 12:16:08 -0400
+Received: from /spool/local
+	by e23smtp03.au.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <aneesh.kumar@linux.vnet.ibm.com>;
+	Mon, 28 Apr 2014 02:16:07 +1000
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
+        viro@zeniv.linux.org.uk, dhowells@redhat.com
+Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [PATCH -V1 18/22] richacl: xattr mapping functions
+Date: Sun, 27 Apr 2014 21:44:49 +0530
+Message-Id: <1398615293-22931-19-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+In-Reply-To: <1398615293-22931-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+References: <1398615293-22931-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
+From: Andreas Gruenbacher <agruen@kernel.org>
 
-These functions are identical for the read and write paths, so combine
-them in a shared file.
+Map between "system.richacl" xattrs and the in-kernel representation.
 
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
+Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
 ---
- fs/nfs/Makefile   |  2 +-
- fs/nfs/internal.h |  7 +++++--
- fs/nfs/pageio.c   | 63 +++++++++++++++++++++++++++++++++++++++++++++++++++++++
- fs/nfs/pnfs.c     |  4 ++--
- fs/nfs/read.c     | 54 ++++-------------------------------------------
- fs/nfs/write.c    | 54 ++++-------------------------------------------
- 6 files changed, 79 insertions(+), 105 deletions(-)
- create mode 100644 fs/nfs/pageio.c
+ fs/Makefile                   |   2 +-
+ fs/richacl_xattr.c            | 130 ++++++++++++++++++++++++++++++++++++++++++
+ include/linux/richacl_xattr.h |  46 +++++++++++++++
+ 3 files changed, 177 insertions(+), 1 deletion(-)
+ create mode 100644 fs/richacl_xattr.c
+ create mode 100644 include/linux/richacl_xattr.h
 
-diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
-index 03192a6..551d82a 100644
---- a/fs/nfs/Makefile
-+++ b/fs/nfs/Makefile
-@@ -7,7 +7,7 @@ obj-$(CONFIG_NFS_FS) += nfs.o
- CFLAGS_nfstrace.o += -I$(src)
- nfs-y 			:= client.o dir.o file.o getroot.o inode.o super.o \
- 			   direct.o pagelist.o read.o symlink.o unlink.o \
--			   write.o namespace.o mount_clnt.o nfstrace.o
-+			   write.o namespace.o mount_clnt.o nfstrace.o pageio.o
- nfs-$(CONFIG_ROOT_NFS)	+= nfsroot.o
- nfs-$(CONFIG_SYSCTL)	+= sysctl.o
- nfs-$(CONFIG_NFS_FSCACHE) += fscache.o fscache-index.o
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index b0e7a41..7f9d3c4 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -394,6 +394,11 @@ extern int nfs4_get_rootfh(struct nfs_server *server, struct nfs_fh *mntfh, bool
- #endif
+diff --git a/fs/Makefile b/fs/Makefile
+index bed5b8a623ba..6cb7e064189d 100644
+--- a/fs/Makefile
++++ b/fs/Makefile
+@@ -49,7 +49,7 @@ obj-$(CONFIG_SYSCTL)		+= drop_caches.o
  
- struct nfs_pgio_completion_ops;
-+
-+/* pageio.c */
-+extern struct nfs_pgio_data *nfs_pgio_data_alloc(struct nfs_pgio_header *, unsigned int);
-+extern void nfs_pgio_data_release(struct nfs_pgio_data *);
-+
- /* read.c */
- extern struct nfs_rw_header *nfs_readhdr_alloc(void);
- extern void nfs_readhdr_free(struct nfs_pgio_header *hdr);
-@@ -407,7 +412,6 @@ extern void nfs_read_prepare(struct rpc_task *task, void *calldata);
- extern int nfs_generic_pagein(struct nfs_pageio_descriptor *desc,
- 			      struct nfs_pgio_header *hdr);
- extern void nfs_pageio_reset_read_mds(struct nfs_pageio_descriptor *pgio);
--extern void nfs_readdata_release(struct nfs_pgio_data *rdata);
+ obj-$(CONFIG_FHANDLE)		+= fhandle.o
+ obj-$(CONFIG_FS_RICHACL)	+= richacl.o
+-richacl-y			:= richacl_base.o richacl_inode.o
++richacl-y			:= richacl_base.o richacl_inode.o richacl_xattr.o
  
- /* super.c */
- void nfs_clone_super(struct super_block *, struct nfs_mount_info *);
-@@ -429,7 +433,6 @@ extern void nfs_writehdr_free(struct nfs_pgio_header *hdr);
- extern int nfs_generic_flush(struct nfs_pageio_descriptor *desc,
- 			     struct nfs_pgio_header *hdr);
- extern void nfs_pageio_reset_write_mds(struct nfs_pageio_descriptor *pgio);
--extern void nfs_writedata_release(struct nfs_pgio_data *wdata);
- extern void nfs_commit_free(struct nfs_commit_data *p);
- extern int nfs_initiate_write(struct rpc_clnt *clnt,
- 			      struct nfs_pgio_data *data,
-diff --git a/fs/nfs/pageio.c b/fs/nfs/pageio.c
+ obj-y				+= quota/
+ 
+diff --git a/fs/richacl_xattr.c b/fs/richacl_xattr.c
 new file mode 100644
-index 0000000..4b267b2
+index 000000000000..e7a25e173275
 --- /dev/null
-+++ b/fs/nfs/pageio.c
-@@ -0,0 +1,63 @@
++++ b/fs/richacl_xattr.c
+@@ -0,0 +1,130 @@
 +/*
-+ * linux/fs/nfs/pageio.c
++ * Copyright (C) 2006, 2010  Novell, Inc.
++ * Written by Andreas Gruenbacher <agruen@kernel.org>
 + *
-+ * Generic pageio functions shared by read and write paths
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation; either version 2, or (at your option) any
++ * later version.
 + *
-+ * Copyright (c) 2014 Anna Schumaker <anna.schumaker@netapp.com>
++ * This program is distributed in the hope that it will be useful, but
++ * WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * General Public License for more details.
 + */
-+#include <linux/nfs_fs.h>
-+#include <linux/nfs_xdr.h>
 +
-+#include "internal.h"
++#include <linux/kernel.h>
++#include <linux/fs.h>
++#include <linux/slab.h>
++#include <linux/module.h>
++#include <linux/richacl_xattr.h>
 +
++MODULE_LICENSE("GPL");
 +
-+static inline struct nfs_rw_header *NFS_RW_HEADER(struct nfs_pgio_header *hdr)
++/**
++ * richacl_from_xattr  -  convert a richacl xattr into the in-memory representation
++ */
++struct richacl *
++richacl_from_xattr(const void *value, size_t size)
 +{
-+	return container_of(hdr, struct nfs_rw_header, header);
-+}
++	const struct richacl_xattr *xattr_acl = value;
++	const struct richace_xattr *xattr_ace = (void *)(xattr_acl + 1);
++	struct richacl *acl;
++	struct richace *ace;
++	int count;
 +
-+struct nfs_pgio_data *nfs_pgio_data_alloc(struct nfs_pgio_header *hdr,
-+					  unsigned int pagecount)
-+{
-+	struct nfs_pgio_data *data, *prealloc;
++	if (size < sizeof(struct richacl_xattr) ||
++	    xattr_acl->a_version != ACL4_XATTR_VERSION ||
++	    (xattr_acl->a_flags & ~ACL4_VALID_FLAGS))
++		return ERR_PTR(-EINVAL);
 +
-+	prealloc = &NFS_RW_HEADER(hdr)->rpc_data;
-+	if (prealloc->header == NULL)
-+		data = prealloc;
-+	else
-+		data = kzalloc(sizeof(*data), GFP_KERNEL);
-+	if (!data)
-+		goto out;
++	count = le16_to_cpu(xattr_acl->a_count);
++	if (count > ACL4_XATTR_MAX_COUNT)
++		return ERR_PTR(-EINVAL);
 +
-+	if (nfs_pgarray_set(&data->pages, pagecount)) {
-+		data->header = hdr;
-+		atomic_inc(&hdr->refcnt);
-+	} else {
-+		if (data != prealloc)
-+			kfree(data);
-+		data = NULL;
++	acl = richacl_alloc(count);
++	if (!acl)
++		return ERR_PTR(-ENOMEM);
++
++	acl->a_flags = xattr_acl->a_flags;
++	acl->a_owner_mask = le32_to_cpu(xattr_acl->a_owner_mask);
++	if (acl->a_owner_mask & ~ACE4_VALID_MASK)
++		goto fail_einval;
++	acl->a_group_mask = le32_to_cpu(xattr_acl->a_group_mask);
++	if (acl->a_group_mask & ~ACE4_VALID_MASK)
++		goto fail_einval;
++	acl->a_other_mask = le32_to_cpu(xattr_acl->a_other_mask);
++	if (acl->a_other_mask & ~ACE4_VALID_MASK)
++		goto fail_einval;
++
++	if (((void *)xattr_ace + count * sizeof(*xattr_ace)) > (value + size))
++		goto fail_einval;
++
++	richacl_for_each_entry(ace, acl) {
++
++		ace->e_type  = le16_to_cpu(xattr_ace->e_type);
++		ace->e_flags = le16_to_cpu(xattr_ace->e_flags);
++		ace->e_mask  = le32_to_cpu(xattr_ace->e_mask);
++		ace->e_id    = le32_to_cpu(xattr_ace->e_id);
++
++		if (ace->e_flags & ~ACE4_VALID_FLAGS)
++			goto fail_einval;
++		if (ace->e_type > ACE4_ACCESS_DENIED_ACE_TYPE ||
++		    (ace->e_mask & ~ACE4_VALID_MASK))
++			goto fail_einval;
++
++		xattr_ace++;
 +	}
-+out:
-+	return data;
-+}
 +
-+void nfs_pgio_data_release(struct nfs_pgio_data *data)
++	return acl;
++
++fail_einval:
++	richacl_put(acl);
++	return ERR_PTR(-EINVAL);
++}
++EXPORT_SYMBOL_GPL(richacl_from_xattr);
++
++/**
++ * richacl_xattr_size  -  compute the size of the xattr representation of @acl
++ */
++size_t
++richacl_xattr_size(const struct richacl *acl)
 +{
-+	struct nfs_pgio_header *hdr = data->header;
-+	struct nfs_rw_header *pageio_header = NFS_RW_HEADER(hdr);
++	size_t size = sizeof(struct richacl_xattr);
 +
-+	put_nfs_open_context(data->args.context);
-+	if (data->pages.pagevec != data->pages.page_array)
-+		kfree(data->pages.pagevec);
-+	if (data == &pageio_header->rpc_data) {
-+		data->header = NULL;
-+		data = NULL;
-+	}
-+	if (atomic_dec_and_test(&hdr->refcnt))
-+		hdr->completion_ops->completion(hdr);
-+	/* Note: we only free the rpc_task after callbacks are done.
-+	 * See the comment in rpc_free_task() for why
-+	 */
-+	kfree(data);
++	size += sizeof(struct richace_xattr) * acl->a_count;
++	return size;
 +}
-+EXPORT_SYMBOL_GPL(nfs_pgio_data_release);
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 43cfe11..e192ba6 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1536,7 +1536,7 @@ pnfs_write_through_mds(struct nfs_pageio_descriptor *desc,
- 		nfs_pageio_reset_write_mds(desc);
- 		desc->pg_recoalesce = 1;
- 	}
--	nfs_writedata_release(data);
-+	nfs_pgio_data_release(data);
- }
- 
- static enum pnfs_try_status
-@@ -1691,7 +1691,7 @@ pnfs_read_through_mds(struct nfs_pageio_descriptor *desc,
- 		nfs_pageio_reset_read_mds(desc);
- 		desc->pg_recoalesce = 1;
- 	}
--	nfs_readdata_release(data);
-+	nfs_pgio_data_release(data);
- }
- 
- /*
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index d29ca36..ab4c1a5 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -51,31 +51,6 @@ struct nfs_rw_header *nfs_readhdr_alloc(void)
- }
- EXPORT_SYMBOL_GPL(nfs_readhdr_alloc);
- 
--static struct nfs_pgio_data *nfs_readdata_alloc(struct nfs_pgio_header *hdr,
--						unsigned int pagecount)
--{
--	struct nfs_pgio_data *data, *prealloc;
--
--	prealloc = &container_of(hdr, struct nfs_rw_header, header)->rpc_data;
--	if (prealloc->header == NULL)
--		data = prealloc;
--	else
--		data = kzalloc(sizeof(*data), GFP_KERNEL);
--	if (!data)
--		goto out;
--
--	if (nfs_pgarray_set(&data->pages, pagecount)) {
--		data->header = hdr;
--		atomic_inc(&hdr->refcnt);
--	} else {
--		if (data != prealloc)
--			kfree(data);
--		data = NULL;
--	}
--out:
--	return data;
--}
--
- void nfs_readhdr_free(struct nfs_pgio_header *hdr)
- {
- 	struct nfs_rw_header *rhdr = container_of(hdr, struct nfs_rw_header, header);
-@@ -84,27 +59,6 @@ void nfs_readhdr_free(struct nfs_pgio_header *hdr)
- }
- EXPORT_SYMBOL_GPL(nfs_readhdr_free);
- 
--void nfs_readdata_release(struct nfs_pgio_data *rdata)
--{
--	struct nfs_pgio_header *hdr = rdata->header;
--	struct nfs_rw_header *read_header = container_of(hdr, struct nfs_rw_header, header);
--
--	put_nfs_open_context(rdata->args.context);
--	if (rdata->pages.pagevec != rdata->pages.page_array)
--		kfree(rdata->pages.pagevec);
--	if (rdata == &read_header->rpc_data) {
--		rdata->header = NULL;
--		rdata = NULL;
--	}
--	if (atomic_dec_and_test(&hdr->refcnt))
--		hdr->completion_ops->completion(hdr);
--	/* Note: we only free the rpc_task after callbacks are done.
--	 * See the comment in rpc_free_task() for why
--	 */
--	kfree(rdata);
--}
--EXPORT_SYMBOL_GPL(nfs_readdata_release);
--
- static
- int nfs_return_empty_page(struct page *page)
- {
-@@ -327,7 +281,7 @@ static void nfs_pagein_error(struct nfs_pageio_descriptor *desc,
- 		struct nfs_pgio_data *data = list_first_entry(&hdr->rpc_list,
- 				struct nfs_pgio_data, list);
- 		list_del(&data->list);
--		nfs_readdata_release(data);
-+		nfs_pgio_data_release(data);
- 	}
- 	desc->pg_completion_ops->error_cleanup(&desc->pg_list);
- }
-@@ -359,7 +313,7 @@ static int nfs_pagein_multi(struct nfs_pageio_descriptor *desc,
- 	do {
- 		size_t len = min(nbytes,rsize);
- 
--		data = nfs_readdata_alloc(hdr, 1);
-+		data = nfs_pgio_data_alloc(hdr, 1);
- 		if (!data) {
- 			nfs_pagein_error(desc, hdr);
- 			return -ENOMEM;
-@@ -385,7 +339,7 @@ static int nfs_pagein_one(struct nfs_pageio_descriptor *desc,
- 	struct nfs_pgio_data	*data;
- 	struct list_head *head = &desc->pg_list;
- 
--	data = nfs_readdata_alloc(hdr, nfs_page_array_len(desc->pg_base,
-+	data = nfs_pgio_data_alloc(hdr, nfs_page_array_len(desc->pg_base,
- 							  desc->pg_count));
- 	if (!data) {
- 		nfs_pagein_error(desc, hdr);
-@@ -515,7 +469,7 @@ static void nfs_readpage_result_common(struct rpc_task *task, void *calldata)
- 
- static void nfs_readpage_release_common(void *calldata)
- {
--	nfs_readdata_release(calldata);
-+	nfs_pgio_data_release(calldata);
- }
- 
- void nfs_read_prepare(struct rpc_task *task, void *calldata)
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 321a791..0dc4d6a 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -87,31 +87,6 @@ struct nfs_rw_header *nfs_writehdr_alloc(void)
- }
- EXPORT_SYMBOL_GPL(nfs_writehdr_alloc);
- 
--static struct nfs_pgio_data *nfs_writedata_alloc(struct nfs_pgio_header *hdr,
--						  unsigned int pagecount)
--{
--	struct nfs_pgio_data *data, *prealloc;
--
--	prealloc = &container_of(hdr, struct nfs_rw_header, header)->rpc_data;
--	if (prealloc->header == NULL)
--		data = prealloc;
--	else
--		data = kzalloc(sizeof(*data), GFP_KERNEL);
--	if (!data)
--		goto out;
--
--	if (nfs_pgarray_set(&data->pages, pagecount)) {
--		data->header = hdr;
--		atomic_inc(&hdr->refcnt);
--	} else {
--		if (data != prealloc)
--			kfree(data);
--		data = NULL;
--	}
--out:
--	return data;
--}
--
- void nfs_writehdr_free(struct nfs_pgio_header *hdr)
- {
- 	struct nfs_rw_header *whdr = container_of(hdr, struct nfs_rw_header, header);
-@@ -119,27 +94,6 @@ void nfs_writehdr_free(struct nfs_pgio_header *hdr)
- }
- EXPORT_SYMBOL_GPL(nfs_writehdr_free);
- 
--void nfs_writedata_release(struct nfs_pgio_data *wdata)
--{
--	struct nfs_pgio_header *hdr = wdata->header;
--	struct nfs_rw_header *write_header = container_of(hdr, struct nfs_rw_header, header);
--
--	put_nfs_open_context(wdata->args.context);
--	if (wdata->pages.pagevec != wdata->pages.page_array)
--		kfree(wdata->pages.pagevec);
--	if (wdata == &write_header->rpc_data) {
--		wdata->header = NULL;
--		wdata = NULL;
--	}
--	if (atomic_dec_and_test(&hdr->refcnt))
--		hdr->completion_ops->completion(hdr);
--	/* Note: we only free the rpc_task after callbacks are done.
--	 * See the comment in rpc_free_task() for why
--	 */
--	kfree(wdata);
--}
--EXPORT_SYMBOL_GPL(nfs_writedata_release);
--
- static void nfs_context_set_write_error(struct nfs_open_context *ctx, int error)
- {
- 	ctx->error = error;
-@@ -1146,7 +1100,7 @@ static void nfs_flush_error(struct nfs_pageio_descriptor *desc,
- 		struct nfs_pgio_data *data = list_first_entry(&hdr->rpc_list,
- 				struct nfs_pgio_data, list);
- 		list_del(&data->list);
--		nfs_writedata_release(data);
-+		nfs_pgio_data_release(data);
- 	}
- 	desc->pg_completion_ops->error_cleanup(&desc->pg_list);
- }
-@@ -1179,7 +1133,7 @@ static int nfs_flush_multi(struct nfs_pageio_descriptor *desc,
- 	do {
- 		size_t len = min(nbytes, wsize);
- 
--		data = nfs_writedata_alloc(hdr, 1);
-+		data = nfs_pgio_data_alloc(hdr, 1);
- 		if (!data) {
- 			nfs_flush_error(desc, hdr);
- 			return -ENOMEM;
-@@ -1214,7 +1168,7 @@ static int nfs_flush_one(struct nfs_pageio_descriptor *desc,
- 	struct list_head *head = &desc->pg_list;
- 	struct nfs_commit_info cinfo;
- 
--	data = nfs_writedata_alloc(hdr, nfs_page_array_len(desc->pg_base,
-+	data = nfs_pgio_data_alloc(hdr, nfs_page_array_len(desc->pg_base,
- 							   desc->pg_count));
- 	if (!data) {
- 		nfs_flush_error(desc, hdr);
-@@ -1348,7 +1302,7 @@ static void nfs_writeback_release_common(void *calldata)
- 			set_bit(NFS_IOHDR_NEED_RESCHED, &hdr->flags);
- 		spin_unlock(&hdr->lock);
- 	}
--	nfs_writedata_release(data);
-+	nfs_pgio_data_release(data);
- }
- 
- static const struct rpc_call_ops nfs_write_common_ops = {
++EXPORT_SYMBOL_GPL(richacl_xattr_size);
++
++/**
++ * richacl_to_xattr  -  convert @acl into its xattr representation
++ * @acl:	the richacl to convert
++ * @buffer:	buffer of size richacl_xattr_size(@acl) for the result
++ */
++void
++richacl_to_xattr(const struct richacl *acl, void *buffer)
++{
++	struct richacl_xattr *xattr_acl = buffer;
++	struct richace_xattr *xattr_ace;
++	const struct richace *ace;
++
++	xattr_acl->a_version = ACL4_XATTR_VERSION;
++	xattr_acl->a_flags = acl->a_flags;
++	xattr_acl->a_count = cpu_to_le16(acl->a_count);
++
++	xattr_acl->a_owner_mask = cpu_to_le32(acl->a_owner_mask);
++	xattr_acl->a_group_mask = cpu_to_le32(acl->a_group_mask);
++	xattr_acl->a_other_mask = cpu_to_le32(acl->a_other_mask);
++
++	xattr_ace = (void *)(xattr_acl + 1);
++	richacl_for_each_entry(ace, acl) {
++		xattr_ace->e_type = cpu_to_le16(ace->e_type);
++		xattr_ace->e_flags = cpu_to_le16(ace->e_flags &
++						 ACE4_VALID_FLAGS);
++		xattr_ace->e_mask = cpu_to_le32(ace->e_mask);
++		xattr_ace->e_id = cpu_to_le32(ace->e_id);
++		xattr_ace++;
++	}
++}
++EXPORT_SYMBOL_GPL(richacl_to_xattr);
+diff --git a/include/linux/richacl_xattr.h b/include/linux/richacl_xattr.h
+new file mode 100644
+index 000000000000..792abccce47b
+--- /dev/null
++++ b/include/linux/richacl_xattr.h
+@@ -0,0 +1,46 @@
++/*
++ * Copyright (C) 2006, 2010  Novell, Inc.
++ * Written by Andreas Gruenbacher <agruen@kernel.org>
++ *
++ * This program is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License as published by the
++ * Free Software Foundation; either version 2, or (at your option) any
++ * later version.
++ *
++ * This program is distributed in the hope that it will be useful, but
++ * WITHOUT ANY WARRANTY; without even the implied warranty of
++ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
++ * General Public License for more details.
++ */
++
++#ifndef __RICHACL_XATTR_H
++#define __RICHACL_XATTR_H
++
++#include <linux/richacl.h>
++
++#define RICHACL_XATTR "system.richacl"
++
++struct richace_xattr {
++	__le16		e_type;
++	__le16		e_flags;
++	__le32		e_mask;
++	__le32		e_id;
++};
++
++struct richacl_xattr {
++	unsigned char	a_version;
++	unsigned char	a_flags;
++	__le16		a_count;
++	__le32		a_owner_mask;
++	__le32		a_group_mask;
++	__le32		a_other_mask;
++};
++
++#define ACL4_XATTR_VERSION	0
++#define ACL4_XATTR_MAX_COUNT	1024
++
++extern struct richacl *richacl_from_xattr(const void *, size_t);
++extern size_t richacl_xattr_size(const struct richacl *acl);
++extern void richacl_to_xattr(const struct richacl *, void *);
++
++#endif /* __RICHACL_XATTR_H */
 -- 
-1.9.2
+1.9.1
 
