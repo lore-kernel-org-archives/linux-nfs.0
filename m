@@ -1,73 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([209.166.131.148]:37102 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752386AbaDWOAA (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Apr 2014 10:00:00 -0400
-Message-ID: <5357C74C.2050106@panasas.com>
-Date: Wed, 23 Apr 2014 16:59:40 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
-Reply-To: <bharrosh@panasas.com>
-MIME-Version: 1.0
-To: Anna Schumaker <Anna.Schumaker@netapp.com>,
-        Weston Andros Adamson <dros@primarydata.com>
-CC: Trond Myklebust <Trond.Myklebust@primarydata.com>,
-        linux-nfs list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 00/17] NFS: Create a common path used by reads and writes
-References: <1397768981-12856-1-git-send-email-Anna.Schumaker@Netapp.com> <5357B827.8040506@panasas.com> <5357BCD9.2@panasas.com> <21CDA162-DF2B-4C9F-A310-CCA7936817FA@primarydata.com> <5357C554.8070500@netapp.com>
-In-Reply-To: <5357C554.8070500@netapp.com>
-Content-Type: text/plain; charset="UTF-8"
+Received: from e23smtp04.au.ibm.com ([202.81.31.146]:57628 "EHLO
+	e23smtp04.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751915AbaD0QPM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Apr 2014 12:15:12 -0400
+Received: from /spool/local
+	by e23smtp04.au.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <aneesh.kumar@linux.vnet.ibm.com>;
+	Mon, 28 Apr 2014 02:15:10 +1000
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
+        viro@zeniv.linux.org.uk, dhowells@redhat.com
+Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: [PATCH -V1 00/22]  New ACL format for better NFSv4 acl interoperability
+Date: Sun, 27 Apr 2014 21:44:31 +0530
+Message-Id: <1398615293-22931-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks guys. once you have some combined tree I'll run some tests to help
-you out on the pnfs end. I'd test each one separately but if you are going
-to do this soon I can lazily just wait ;-)
+Hi
 
-Thanks
-Boaz
+As per LSF/MM summit discussion I am reposting the richacl patchset for
+upstream inclusion. The patchset includes minimal changes required to implement
+a new acl model similar to NFSv4 ACL. The acl model selection is based on
+file system feature flag. 
 
-On 04/23/2014 04:51 PM, Anna Schumaker wrote:
-> We'll make sure it works!  I'm about to look through Dros' patches, so I'll know more soon!
-> 
-> Anna
-> 
-> On 04/23/2014 09:42 AM, Weston Andros Adamson wrote:
->> Yeah there are bound to be some conflicts between these two patchsets, but
->> I don’t think it should be too nasty.
->>
->> Anna and I can work together to get both sets into a branch once we get things 
->> reviewed.
->>
->> The good news is that we can combine testing efforts - both of these patchsets
->> change the read and write path for all versions of NFS, so we really need to
->> make sure we didn’t break anything. Not that pnfs isn’t important ;)
->>
->> -dros
->>
->> On Apr 23, 2014, at 9:15 AM, Boaz Harrosh <bharrosh@panasas.com> wrote:
->>
->>> On 04/23/2014 03:55 PM, Boaz Harrosh wrote:
->>>> On 04/18/2014 12:09 AM, Anna Schumaker wrote:
->>> <>
->>>> yes please keep
->>>> it on a public tree for quick testing. Perhaps ask Trond to keep
->>>> it on his tree in a branch. (So to get some coverage under the linux-next
->>>> tree mongers from Intel)
->>>>
->>>
->>> BTW: anyone tested how much this conflicts with dros's 17 patches?
->>>     (Noticed how it is always 17 patches)
->>>     If a brave sole can have both these merged on the same tree it
->>>     would be easier for the testing.
->>>
->>> Thanks
->>> Boaz
->>>
->>
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
+The following set of patches implements VFS and ext4 changes needed to implement
+a new acl model for linux. Rich ACLs are an implementation of NFSv4 ACLs,
+extended by file masks to fit into the standard POSIX file permission model.
+They are designed to work seamlessly locally as well as across the NFSv4 and
+CIFS/SMB2 network file system protocols.
+
+A user-space utility for displaying and changing richacls is available at [1]
+(a number of examples can be found at http://acl.bestbits.at/richacl/examples.html).
+
+[1] git://github.com/kvaneesh/richacl-tools.git master
+
+To test richacl on ext4, create the file sytem with richacl feature flag
+(mkfs.ext4 -O richacl or  tune2fs -O richacl). With richacl feature enabled
+using mount option "acl" will switch to using richacl instead of posixacl.
+
+More details regarding richacl can be found at
+http://acl.bestbits.at/richacl/
+
+Previous posting of the patchset can be found at:
+http://mid.gmane.org/1319391835-5829-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com
+"[PATCH -V8 00/26]  New ACL format for better NFSv4 acl interoperability"
+
+The complete patchset can also be found at:
+https://github.com/kvaneesh/linux/commits/richacl-for-upstream
+
+Since we are trying to get the changes merged upstream after a long time, I am
+posting this as V1 again. I Also dropped the Acked-by tag from
+David Howells <dhowells@redhat.com> and J. Bruce Fields <bfields@redhat.com>.
+Please let me know if I can add them back again.
+
+-aneesh
 
