@@ -1,92 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:40014 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751232AbaDPGWL (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Apr 2014 02:22:11 -0400
-Date: Wed, 16 Apr 2014 16:22:01 +1000
-From: NeilBrown <neilb@suse.de>
-To: Dave Chinner <david@fromorbit.com>
-Cc: linux-mm@kvack.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, xfs@oss.sgi.com
-Subject: Re: [PATCH 13/19] MM: set PF_FSTRANS while allocating per-cpu
- memory to avoid deadlock.
-Message-ID: <20140416162201.5dc9ff5c@notabene.brown>
-In-Reply-To: <20140416054942.GD15995@dastard>
-References: <20140416033623.10604.69237.stgit@notabene.brown>
-	<20140416040336.10604.67456.stgit@notabene.brown>
-	<20140416054942.GD15995@dastard>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/TpJzKIhGobsDEwUger9I.iQ"; protocol="application/pgp-signature"
+Received: from mail-qa0-f54.google.com ([209.85.216.54]:63085 "EHLO
+	mail-qa0-f54.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752604AbaD0AKm convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sat, 26 Apr 2014 20:10:42 -0400
+Received: by mail-qa0-f54.google.com with SMTP id w8so5042505qac.13
+        for <linux-nfs@vger.kernel.org>; Sat, 26 Apr 2014 17:10:41 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <1398542157-20159-1-git-send-email-toralf.foerster@gmx.de>
+References: <1398542157-20159-1-git-send-email-toralf.foerster@gmx.de>
+Date: Sat, 26 Apr 2014 20:10:41 -0400
+Message-ID: <CAABAsM5nm9eRJXF809TPLu5qNeVU0XLPPjtfnji37REQmYHqsQ@mail.gmail.com>
+Subject: Re: [PATCH] fs/nfs/idmap.c: fix a Memory leak for variable desc
+From: Trond Myklebust <trondmy@gmail.com>
+To: =?UTF-8?Q?Toralf_F=C3=B6rster?= <toralf.foerster@gmx.de>
+Cc: linux-nfs@vger.kernel.org
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/TpJzKIhGobsDEwUger9I.iQ
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+On Sat, Apr 26, 2014 at 3:55 PM, Toralf Förster <toralf.foerster@gmx.de> wrote:
+> Signed-off-by: Toralf Förster <toralf.foerster@gmx.de>
+> ---
+>  fs/nfs/idmap.c | 4 +++-
+>  1 file changed, 3 insertions(+), 1 deletion(-)
+>
+> diff --git a/fs/nfs/idmap.c b/fs/nfs/idmap.c
+> index 567983d..8eb4954 100644
+> --- a/fs/nfs/idmap.c
+> +++ b/fs/nfs/idmap.c
+> @@ -272,8 +272,10 @@ static struct key *nfs_idmap_request_key(const char *name, size_t namelen,
+>         ssize_t ret;
+>
+>         ret = nfs_idmap_get_desc(name, namelen, type, strlen(type), &desc);
+> -       if (ret <= 0)
+> +       if (ret <= 0) {
+> +               kfree(desc);
+>                 return ERR_PTR(ret);
+> +       }
+>
+>         rkey = request_key(&key_type_id_resolver, desc, "");
+>         if (IS_ERR(rkey)) {
 
-On Wed, 16 Apr 2014 15:49:42 +1000 Dave Chinner <david@fromorbit.com> wrote:
+Hi Toralf,
 
-> On Wed, Apr 16, 2014 at 02:03:36PM +1000, NeilBrown wrote:
-> > lockdep reports a locking chain
-> >=20
-> >   sk_lock-AF_INET --> rtnl_mutex --> pcpu_alloc_mutex
-> >=20
-> > As sk_lock may be needed to reclaim memory, allowing that
-> > reclaim while pcu_alloc_mutex is held can lead to deadlock.
-> > So set PF_FSTRANS while it is help to avoid the FS reclaim.
-> >=20
-> > pcpu_alloc_mutex can be taken when rtnl_mutex is held:
-> >=20
-> >     [<ffffffff8117f979>] pcpu_alloc+0x49/0x960
-> >     [<ffffffff8118029b>] __alloc_percpu+0xb/0x10
-> >     [<ffffffff8193b9f7>] loopback_dev_init+0x17/0x60
-> >     [<ffffffff81aaf30c>] register_netdevice+0xec/0x550
-> >     [<ffffffff81aaf785>] register_netdev+0x15/0x30
-> >=20
-> > Signed-off-by: NeilBrown <neilb@suse.de>
->=20
-> This looks like a workaround to avoid passing a gfp mask around to
-> describe the context in which the allocation is taking place.
-> Whether or not that's the right solution, I can't say, but spreading
-> this "we can turn off all reclaim of filesystem objects" mechanism
-> all around the kernel doesn't sit well with me...
+As far as I can tell, the only error that nfs_idmap_get_desc() can
+return is ret==-ENOMEM, in which case desc==NULL.
+It cannot ever return ret==0, either, since the return value,
+'desclen', has a lower bound of '2'. What am I missing?
 
-We are (effectively) passing a gfp mask around, except that it lives in
-'current' rather than lots of other places.
-I actually like the idea of discarding PF_MEMALLOC, PF_FSTRANS and
-PF_MEMALLOC_NOIO, and just having current->gfp_allowed_mask (to match the
-global variable of the same name).
-
->=20
-> And, again, PF_FSTRANS looks plainly wrong in this code - it sure
-> isn't a fs transaction context we are worried about here...
-
-So would PF_MEMALLOC_NOFS work for you?
-
-NeilBrown
-
-
---Sig_/TpJzKIhGobsDEwUger9I.iQ
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.22 (GNU/Linux)
-
-iQIVAwUBU04hijnsnt1WYoG5AQKhaw//Yc1D4fJSwJa8YNO+4NafUYk50u9cMoRi
-WQjcopF1cKZmSifPbH/r5M3SKqOKf4kQklPb1pccCc6Nw2oPCD98rrpu2dePn6NM
-9FaxI6xOkkT0z7VpDjeP4VA1C7ekhxqqDGOLi1ezu0aWmqu4sBsHxGAojmA8y7IX
-A+VHECsFBgrz4sjLqfV0U/jml9sfGNoutZVzftRHpZJXCn1+vzMHKKp+6TdlriUZ
-anJHOj+URUenE6hv6/4JDkSAb0F0awvjyjXvblLMzvLWagF9KpGwMPP94fxOp+kI
-si2uP7CtQkhACfBPxhmuUXXB2k0Ueb20GIzguqGMp9Qj+mToGqcyBqmaBaP4NxKr
-x+jKgmq5l7OfJO2ERlBD+j/AnKKGZXeGyxh7ed2DhYR03nc2f6Lx6sMKzXlUrOc6
-a5GzSslT1EA/fmEPJ/D1oyoVnSXuPYGGC91DuDzV4SP13w6xdQoqMsShs+RxIKUr
-dRsfkuuDw3Euef4VE6y0G7Ird/kmS1pvLN/A4ZqRVmpgKAHD8wPJiPKd6TqgAUfX
-tq4usUTitBM1NRqHxagj+/MksyqC1sNZv0F8xlsicqM0/ygslKSUq6vpJlVLjk68
-43QZbKAAQIkXaZ/yxOvYKPrUOUejOQGUbrjIuISGcu8M78KKxaIXSxCnLlYwsomj
-YJ9hOBTRuiE=
-=Ofmb
------END PGP SIGNATURE-----
-
---Sig_/TpJzKIhGobsDEwUger9I.iQ--
+Cheers
+  Trond
