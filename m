@@ -1,127 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f173.google.com ([209.85.213.173]:35274 "EHLO
-	mail-ig0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754305AbaDRSp5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Apr 2014 14:45:57 -0400
-Received: by mail-ig0-f173.google.com with SMTP id hl10so937637igb.6
-        for <linux-nfs@vger.kernel.org>; Fri, 18 Apr 2014 11:45:56 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Bruce Fields <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 32/70] NFSd: Ensure stateids remain unique until they are freed
-Date: Fri, 18 Apr 2014 14:44:26 -0400
-Message-Id: <1397846704-14567-33-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1397846704-14567-32-git-send-email-trond.myklebust@primarydata.com>
-References: <1397846704-14567-1-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-2-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-3-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-4-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-5-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-6-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-7-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-8-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-9-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-10-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-11-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-12-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-13-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-14-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-15-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-16-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-17-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-18-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-19-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-20-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-21-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-22-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-23-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-24-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-25-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-26-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-27-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-28-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-29-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-30-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-31-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-32-git-send-email-trond.myklebust@primarydata.com>
+Received: from icebox.esperi.org.uk ([81.187.191.129]:42589 "EHLO
+	mail.esperi.org.uk" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756788AbaD1TZE (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Apr 2014 15:25:04 -0400
+From: Nix <nix@esperi.org.uk>
+To: NFS list <linux-nfs@vger.kernel.org>
+Cc: Linux-Netdev <netdev@vger.kernel.org>,
+        Linux Kernel Mailing List <linux-kernel@vger.kernel.org>
+Subject: Re: Unix-domain sockets hanging on 3.14.x (was Re: possible 3.14.1 lockd problem (?) causing nfsd hangs)
+References: <87oazpp2m7.fsf@spindle.srvr.nix>
+	<87ppk1sbzp.fsf@spindle.srvr.nix>
+	<20140428154648.GA31788@order.stressinduktion.org>
+Date: Mon, 28 Apr 2014 19:55:51 +0100
+In-Reply-To: <20140428154648.GA31788@order.stressinduktion.org> (Hannes
+	Frederic Sowa's message of "Mon, 28 Apr 2014 17:46:48 +0200")
+Message-ID: <87ha5dp9l4.fsf@spindle.srvr.nix>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Add an extra delegation state to allow the stateid to remain in the idr
-tree until the last reference has been released.
+On 28 Apr 2014, Hannes Frederic Sowa uttered the following:
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 8 ++++----
- fs/nfsd/state.h     | 1 +
- 2 files changed, 5 insertions(+), 4 deletions(-)
+> On Mon, Apr 28, 2014 at 04:35:38PM +0100, Nix wrote:
+>> /proc/$pid/stack of the two communicating ssh daemons was instructive:
+>> 
+>> [<ffffffff814e3512>] unix_wait_for_peer+0x9f/0xbc
+>> [<ffffffff814e5d48>] unix_dgram_sendmsg+0x41b/0x534
+>
+> This one is a dgram socket...
+>
+>> [<ffffffff8146618f>] sock_sendmsg+0x84/0x9e
+>> [<ffffffff81467f3d>] SyS_sendto+0x10e/0x13f
+>> [<ffffffff815770e2>] system_call_fastpath+0x16/0x1b
+>> [<ffffffffffffffff>] 0xffffffffffffffff
+>> spindle:/var/log.real/by-facility# cat /proc/5941/stack
+>> [<ffffffff814e493a>] unix_stream_recvmsg+0x289/0x6d5
+>
+> ...and that's a stream receiver.
+>
+>> [<ffffffff814673e0>] sock_aio_read.part.12+0xf0/0xff
+>> [<ffffffff8146740b>] sock_aio_read+0x1c/0x28
+>> [<ffffffff811388fd>] do_sync_read+0x59/0x78
+>> [<ffffffff81138d8b>] vfs_read+0xa2/0x13f
+>> [<ffffffff81139699>] SyS_read+0x47/0x8b
+>> [<ffffffff81577259>] tracesys+0xd0/0xd5
+>> [<ffffffffffffffff>] 0xffffffffffffffff
+>
+> Are you sure those are the communicating tasks?
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 2cb4124276d0..7b897ff03a27 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -473,6 +473,7 @@ static void remove_stid(struct nfs4_stid *s)
- 
- static void nfs4_free_stid(struct kmem_cache *slab, struct nfs4_stid *s)
- {
-+	remove_stid(s);
- 	if (s->sc_file)
- 		put_nfs4_file(s->sc_file);
- 	kmem_cache_free(slab, s);
-@@ -541,7 +542,7 @@ unhash_delegation(struct nfs4_delegation *dp)
- 
- static void destroy_delegation(struct nfs4_delegation *dp)
- {
--	remove_stid(&dp->dl_stid);
-+	dp->dl_stid.sc_type = NFS4_CLOSED_DELEG_STID;
- 	nfs4_put_delegation(dp);
- }
- 
-@@ -554,7 +555,7 @@ static void unhash_and_destroy_delegation(struct nfs4_delegation *dp)
- static void destroy_revoked_delegation(struct nfs4_delegation *dp)
- {
- 	list_del_init(&dp->dl_recall_lru);
--	destroy_delegation(dp);
-+	nfs4_put_delegation(dp);
- }
- 
- static void revoke_delegation(struct nfs4_delegation *dp)
-@@ -713,7 +714,6 @@ static void put_generic_stateid(struct nfs4_ol_stateid *stp)
- {
- 	if (!atomic_dec_and_test(&stp->st_stid.sc_count))
- 		return;
--	remove_stid(&stp->st_stid);
- 	nfs4_free_stid(stateid_slab, &stp->st_stid);
- }
- 
-@@ -3359,7 +3359,6 @@ nfs4_open_delegation(struct net *net, struct svc_fh *fh,
- 	open->op_delegate_type = NFS4_OPEN_DELEGATE_READ;
- 	return;
- out_free:
--	remove_stid(&dp->dl_stid);
- 	nfs4_put_delegation(dp);
- out_no_deleg:
- 	open->op_delegate_type = NFS4_OPEN_DELEGATE_NONE;
-@@ -3803,6 +3802,7 @@ static __be32 nfsd4_validate_stateid(struct nfs4_client *cl, stateid_t *stateid)
- 	default:
- 		printk("unknown stateid type %x\n", s->sc_type);
- 	case NFS4_CLOSED_STID:
-+	case NFS4_CLOSED_DELEG_STID:
- 		return nfserr_bad_stateid;
- 	}
- }
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 0539db97f7d3..a4ac75a0de21 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -82,6 +82,7 @@ struct nfs4_stid {
- #define NFS4_CLOSED_STID 8
- /* For a deleg stateid kept around only to process free_stateid's: */
- #define NFS4_REVOKED_DELEG_STID 16
-+#define NFS4_CLOSED_DELEG_STID 32
- 	unsigned char sc_type;
- 	stateid_t sc_stateid;
- 	struct nfs4_client *sc_client;
--- 
-1.9.0
+Normally I'd say yes. This time I'd say probably not. I am very much not
+at my best right now.
 
+I'll wait for it to implode and try the same thing again. On past form I
+won't have to wait very many days...
+
+(this time, there was a six-hour interval between boot and
+misbehaviour. Whatever the misbehaviour *is*.)
+
+One more instance I didn't share because I only have one end of it:
+starting up ISC dhcpd 4.2.4 also hung unexpectedly (which it did not
+after rebooting):
+
+[<ffffffff814e3512>] unix_wait_for_peer+0x9f/0xbc
+[<ffffffff814e5d48>] unix_dgram_sendmsg+0x41b/0x534
+[<ffffffff8146618f>] sock_sendmsg+0x84/0x9e
+[<ffffffff81467f3d>] SyS_sendto+0x10e/0x13f
+[<ffffffff815770e2>] system_call_fastpath+0x16/0x1b
+[<ffffffffffffffff>] 0xffffffffffffffff
+
+The common factor in these hangs is definitely unix_wait_for_peer. The
+question is, what are they talking to? (In theory this could be a
+userspace bug... but what common userspace factor is there between the
+NFS server, OpenSSH, and ISC dhcpd? If it helps, named pipes may well be
+suffering from the same malaise: /sbin/shutdown from sysvinit also hangs
+and I have to /sbin/reboot -f instead. I'll check next time it hits, but
+I'll bet it's trying to talk over /dev/initctl and getting nowhere.)
