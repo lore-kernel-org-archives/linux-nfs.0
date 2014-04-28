@@ -1,171 +1,104 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e23smtp09.au.ibm.com ([202.81.31.142]:60170 "EHLO
-	e23smtp09.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753415AbaD0QP5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Apr 2014 12:15:57 -0400
-Received: from /spool/local
-	by e23smtp09.au.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <aneesh.kumar@linux.vnet.ibm.com>;
-	Mon, 28 Apr 2014 02:15:55 +1000
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
-        viro@zeniv.linux.org.uk, dhowells@redhat.com
-Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH -V1 14/22] richacl: Permission check algorithm
-Date: Sun, 27 Apr 2014 21:44:45 +0530
-Message-Id: <1398615293-22931-15-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-In-Reply-To: <1398615293-22931-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1398615293-22931-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from mail-wi0-f172.google.com ([209.85.212.172]:46432 "EHLO
+	mail-wi0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753153AbaD1I6d (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Apr 2014 04:58:33 -0400
+Received: by mail-wi0-f172.google.com with SMTP id hi2so5283271wib.17
+        for <linux-nfs@vger.kernel.org>; Mon, 28 Apr 2014 01:58:32 -0700 (PDT)
+Message-ID: <535E1834.8080601@dev.mellanox.co.il>
+Date: Mon, 28 Apr 2014 11:58:28 +0300
+From: Sagi Grimberg <sagig@dev.mellanox.co.il>
+MIME-Version: 1.0
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: Devesh Sharma <Devesh.Sharma@Emulex.Com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>
+Subject: Re: [PATCH V1] NFS-RDMA: fix qp pointer validation checks
+References: <014738b6-698e-4ea1-82f9-287378bfec19@CMEXHTCAS2.ad.emulex.com> <E66D006A-0D04-4602-8BF5-6834CACD2E24@oracle.com> <EE7902D3F51F404C82415C4803930ACD3FDEB3B4@CMEXMB1.ad.emulex.com> <BD7B05C0-4733-4DD1-83F3-B30B6B0EE48C@oracle.com> <EE7902D3F51F404C82415C4803930ACD3FDEB3DF@CMEXMB1.ad.emulex.com> <56C87770-7940-4006-948C-FEF3C0EC4ACC@oracle.com> <EE7902D3F51F404C82415C4803930ACD3FDEBD66@CMEXMB1.ad.emulex.com> <5710A71F-C4D5-408B-9B41-07F21B5853F0@oracle.com> <6837A427-B677-4CC7-A022-4FB9E52A3FC6@oracle.com> <EE7902D3F51F404C82415C4803930ACD3FDED915@CMEXMB1.ad.emulex.com> <C689AB91-46F6-4E96-A673-0DE76FE54CC4@oracle.com> <EE7902D3F51F404C82415C4803930ACD3FDEE11F@CMEXMB1.ad.emulex.com> <1bab6615-60c4-4865-a6a0-c53bb1c32341@CMEXHTCAS1.ad.emulex.com> <5358B975.4020207@dev.mellanox.co.il> <B39C0B38-357F-4BDA-BDA7-048BD38853F7@oracle.com> <535CD819.3050508@dev! .mellanox.co.il> <4ACED3B0-CC8B-4F1F-8DB6-6C272AB17C99@oracle.com>
+In-Reply-To: <4ACED3B0-CC8B-4F1F-8DB6-6C272AB17C99@oracle.com>
+Content-Type: text/plain; charset=windows-1252; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andreas Gruenbacher <agruen@kernel.org>
+On 4/27/2014 3:37 PM, Chuck Lever wrote:
 
-As in the standard POSIX file permission model, each process is the
-owner, group, or other file class.  A process is
+<SNIP>
 
-  - in the owner file class if it owns the file,
-  - in the group file class if it is in the file's owning group or it
-    matches any of the user or group entries, and
-  - in the other file class otherwise.
+>> Why not first create a new id+qp and assign them - and then destroy the old id+qp?
+>> see SRP related section: ib_srp.x:srp_create_target_ib()
+>>
+>> Anyway it is indeed important to guarantee that no xmit flows happens concurrently to that,
+>> and cleanups are processed synchronously and in-order.
+> I posted a patch on Friday that should provide that serialization.
+>
+>>> 2.  If a QP is present but disconnected, posting LOCAL_INV won’t work.
+>>>      That leaves buffers (and page cache pages, potentially) registered.
+>>>      That could be addressed with LINV+FRMR. But...
+>>>
+>>> 3.  The client should not leave page cache pages registered indefinitely.
+>>>      Both LINV+FRMR and our current approach depends on having a working
+>>>      QP _at_ _some_ _point_ … but the client simply can’t depend on that.
+>>>      What happens if an NFS server is, say, destroyed by fire while there
+>>>      are active client mount points? What if the HCA’s firmware is
+>>>      permanently not allowing QP creation?
+>> Again, I don't understand why you can't dereg_mr().
+>>
+>> How about allocating the FRMR pool *after* the QP was successfully created/connected (makes sense as the FRMRs are
+>> not usable until then), and destroy/cleanup the pool before the QP is disconnected/destroyed. it also makes sense as they
+>> must match PDs.
+> It’s not about deregistration, but rather about invalidation, I was
+> confused.
 
-Each file class is associated with a file mask.
+OK got it.
 
-A richacl grants a requested access if the NFSv4 acl in the richacl
-grants the requested permissions (according to the NFSv4 permission
-check algorithm) and the file mask that applies to the process includes
-the requested permissions.
+> xprt_rdma_free() invalidates and then frees the chunks on RPC chunk
+> lists. We just need to see that those invalidations can be successful
+> while the transport is disconnected.
 
-Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
----
- fs/richacl_base.c       | 102 ++++++++++++++++++++++++++++++++++++++++++++++++
- include/linux/richacl.h |   2 +
- 2 files changed, 104 insertions(+)
+They can't be completed though. Can't you just skip invalidation? will 
+be done when FRMR is reused.
+Sorry to be difficult, but I still don't understand why invalidation 
+must occur in this case.
 
-diff --git a/fs/richacl_base.c b/fs/richacl_base.c
-index 41ff82d10d4d..baa61da691a4 100644
---- a/fs/richacl_base.c
-+++ b/fs/richacl_base.c
-@@ -352,3 +352,105 @@ richacl_chmod(struct richacl *acl, mode_t mode)
- 	return clone;
- }
- EXPORT_SYMBOL_GPL(richacl_chmod);
-+
-+/**
-+ * richacl_permission  -  richacl permission check algorithm
-+ * @inode:	inode to check
-+ * @acl:	rich acl of the inode
-+ * @mask:	requested access (ACE4_* bitmask)
-+ *
-+ * Checks if the current process is granted @mask flags in @acl.
-+ */
-+int
-+richacl_permission(struct inode *inode, const struct richacl *acl,
-+		   unsigned int mask)
-+{
-+	const struct richace *ace;
-+	unsigned int requested = mask, denied = 0;
-+	int in_owning_group = in_group_p(inode->i_gid);
-+	int in_owner_or_group_class = in_owning_group;
-+
-+	/*
-+	 * We don't need to know which class the process is in when the acl is
-+	 * not masked.
-+	 */
-+	if (!(acl->a_flags & ACL4_MASKED))
-+		in_owner_or_group_class = 1;
-+
-+	/*
-+	 * A process is
-+	 *   - in the owner file class if it owns the file,
-+	 *   - in the group file class if it is in the file's owning group or
-+	 *     it matches any of the user or group entries, and
-+	 *   - in the other file class otherwise.
-+	 */
-+
-+	/*
-+	 * Check if the acl grants the requested access and determine which
-+	 * file class the process is in.
-+	 */
-+	richacl_for_each_entry(ace, acl) {
-+		unsigned int ace_mask = ace->e_mask;
-+
-+		if (richace_is_inherit_only(ace))
-+			continue;
-+		if (richace_is_owner(ace)) {
-+			if (!uid_eq(current_fsuid(), inode->i_uid))
-+				continue;
-+			goto is_owner;
-+		} else if (richace_is_group(ace)) {
-+			if (!in_owning_group)
-+				continue;
-+		} else if (richace_is_unix_id(ace)) {
-+			if (ace->e_flags & ACE4_IDENTIFIER_GROUP) {
-+				if (!in_group_p(make_kgid(current_user_ns(),
-+							  ace->e_id)))
-+					continue;
-+			} else {
-+				if (!uid_eq(current_fsuid(),
-+					    make_kuid(current_user_ns(),
-+						     ace->e_id)))
-+					continue;
-+			}
-+		} else
-+			goto is_everyone;
-+
-+is_owner:
-+		/* The process is in the owner or group file class. */
-+		in_owner_or_group_class = 1;
-+
-+is_everyone:
-+		/* Check which mask flags the ACE allows or denies. */
-+		if (richace_is_deny(ace))
-+			denied |= ace_mask & mask;
-+		mask &= ~ace_mask;
-+
-+		/*
-+		 * Keep going until we know which file class
-+		 * the process is in.
-+		 */
-+		if (!mask && in_owner_or_group_class)
-+			break;
-+	}
-+	denied |= mask;
-+
-+	if (acl->a_flags & ACL4_MASKED) {
-+		unsigned int file_mask;
-+
-+		/*
-+		 * The file class a process is in determines which file mask
-+		 * applies.  Check if that file mask also grants the requested
-+		 * access.
-+		 */
-+		if (uid_eq(current_fsuid(), inode->i_uid))
-+			file_mask = acl->a_owner_mask;
-+		else if (in_owner_or_group_class)
-+			file_mask = acl->a_group_mask;
-+		else
-+			file_mask = acl->a_other_mask;
-+		denied |= requested & ~file_mask;
-+	}
-+
-+	return denied ? -EACCES : 0;
-+}
-+EXPORT_SYMBOL_GPL(richacl_permission);
-diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-index a1ff8a38409c..d43700a179d3 100644
---- a/include/linux/richacl.h
-+++ b/include/linux/richacl.h
-@@ -282,5 +282,7 @@ extern unsigned int richacl_mode_to_mask(mode_t);
- extern unsigned int richacl_want_to_mask(unsigned int);
- extern void richacl_compute_max_masks(struct richacl *);
- extern struct richacl *richacl_chmod(struct richacl *, mode_t);
-+extern int richacl_permission(struct inode *, const struct richacl *,
-+			      unsigned int);
- 
- #endif /* __RICHACL_H */
--- 
-1.9.1
+> I understand that even in the error state, a QP should allow consumers
+> to post send WRs to invalidate FRMRs…?
 
+Its allowed, they won't execute though (I'll be surprised if they will).
+AFAIK posting on a QP in error state has only one use-case - post a 
+colored WQE to know that FLUSH errors has ended.
+
+>
+> The other case is whether the consumer can _replace_ a QP with a fresh
+> one, and still have invalidations succeed, even if the transport remains
+> disconnected, once waiting RPCs are awoken.
+
+Which invalidations succeeded and which didn't are known - so I don't 
+see the problem here.
+The only thing is the corner case that Steve indicated wrt flush errors, 
+but if I recall correctly
+posting LINV on an invalidated MR is allowed.
+
+>
+> An alternative would be to invalidate all waiting RPC chunk lists on a
+> transport as soon as the QP goes to error state but before it is
+> destroyed, and fastreg the chunks again when waiting RPCs are
+> remarshalled.
+>
+> I think the goals are:
+>
+>    1.  Avoid fastreg on an FRMR that is already valid
+>
+>    2.  Avoid leaving FRMRs valid indefinitely (preferably just long enough
+>        to execute the RPC request, and no longer)
+
+(1) is a non-issue for INV+FASTREG.
+Can you please explain your concern on (2)? is it security (server can 
+keep doing RDMA)?
+because you have remote invalidate for that (server can implement 
+SEND+INVALIDATE).
+
+Having said that, I probably don't see the full picture here like you 
+guys so I might be missing some things.
+
+Sagi.
