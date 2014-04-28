@@ -1,49 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:28161 "EHLO
-	ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1754524AbaDPGSg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Apr 2014 02:18:36 -0400
-Date: Wed, 16 Apr 2014 16:18:20 +1000
-From: Dave Chinner <david@fromorbit.com>
-To: NeilBrown <neilb@suse.de>
-Cc: linux-mm@kvack.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, xfs@oss.sgi.com
-Subject: Re: [PATCH 19/19] XFS: set PF_FSTRANS while ilock is held in
- xfs_free_eofblocks
-Message-ID: <20140416061819.GF15995@dastard>
-References: <20140416033623.10604.69237.stgit@notabene.brown>
- <20140416040337.10604.7488.stgit@notabene.brown>
+Received: from bombadil.infradead.org ([198.137.202.9]:37034 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753656AbaD1JEC (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Apr 2014 05:04:02 -0400
+Date: Mon, 28 Apr 2014 02:03:56 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Cc: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
+        viro@zeniv.linux.org.uk, dhowells@redhat.com,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH -V1 00/22]  New ACL format for better NFSv4 acl
+ interoperability
+Message-ID: <20140428090356.GA20147@infradead.org>
+References: <1398615293-22931-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <20140428043909.GA26778@infradead.org>
+ <87wqeaatj3.fsf@linux.vnet.ibm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140416040337.10604.7488.stgit@notabene.brown>
+In-Reply-To: <87wqeaatj3.fsf@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Apr 16, 2014 at 02:03:37PM +1000, NeilBrown wrote:
-> memory allocates can happen while the xfs ilock is held in
-> xfs_free_eofblocks, particularly
+On Mon, Apr 28, 2014 at 11:24:08AM +0530, Aneesh Kumar K.V wrote:
+> We already do that with richacl. Richacl already have most of the
+> details implemented in common code. Comparing to recent posix acl
+> changes we could still simplify chmod and xattr bits. I will do that
+> in the next update. 
+
+There's still tons of duplication.  There should be no code in the
+filesystem except for a few callouts for the inode init and chmod path,
+and the attr set/get should also be mostly in a library.  If you need
+to add more than 20 lines to the filesystem you did something wrong.
+
 > 
->   [<ffffffff813e6667>] kmem_zone_alloc+0x67/0xc0
->   [<ffffffff813e5945>] xfs_trans_add_item+0x25/0x50
->   [<ffffffff8143d64c>] xfs_trans_ijoin+0x2c/0x60
->   [<ffffffff8142275e>] xfs_itruncate_extents+0xbe/0x400
->   [<ffffffff813c72f4>] xfs_free_eofblocks+0x1c4/0x240
+> >  - common data structure with Posix ACLs
+> >
 > 
-> So set PF_FSTRANS to avoid this causing a deadlock.
+> Can you explain this ?. Why do we want to do that ? 
 
-Another "You broke KM_NOFS" moment. You win a Kit Kat. ;)
+One acl structure implementing the Posix and NFSv4 acls and instead
+of a big pile of duplicate infrastructure.
 
-xfs_trans_add_item():
-
-	lidp = kmem_zone_zalloc(xfs_log_item_desc_zone, KM_SLEEP | KM_NOFS);
-
-KM_NOFS needs to work, otherwise XFS is just a huge steaming pile of
-memory reclaim deadlocks regardless of whether you are using
-loopback NFS or not.
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
