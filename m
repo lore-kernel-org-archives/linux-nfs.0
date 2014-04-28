@@ -1,235 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f176.google.com ([209.85.216.176]:35978 "EHLO
-	mail-qc0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750993AbaDQO6a (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 17 Apr 2014 10:58:30 -0400
-Received: by mail-qc0-f176.google.com with SMTP id m20so526888qcx.7
-        for <linux-nfs@vger.kernel.org>; Thu, 17 Apr 2014 07:58:30 -0700 (PDT)
-Message-ID: <534FEA27.5060600@gmail.com>
-Date: Thu, 17 Apr 2014 10:50:15 -0400
-From: Anna Schumaker <schumaker.anna@gmail.com>
+Received: from mail-pd0-f179.google.com ([209.85.192.179]:35625 "EHLO
+	mail-pd0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751223AbaD1FXP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Apr 2014 01:23:15 -0400
+Received: by mail-pd0-f179.google.com with SMTP id y10so342956pdj.10
+        for <linux-nfs@vger.kernel.org>; Sun, 27 Apr 2014 22:23:14 -0700 (PDT)
+Message-ID: <535DE5CE.7050600@gmail.com>
+Date: Sun, 27 Apr 2014 22:23:26 -0700
+From: Dean <seattleplus@gmail.com>
 MIME-Version: 1.0
-To: Christoph Hellwig <hch@lst.de>,
+To: Cedric Blancher <cedric.blancher@gmail.com>, Jim Rees <rees@umich.edu>,
         Trond Myklebust <trond.myklebust@primarydata.com>
-CC: Anna Schumaker <Anna.Schumaker@netapp.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 2/2] nfs: remove ->read_pageio_init from rpc ops
-References: <1397653642-17833-1-git-send-email-hch@lst.de> <1397653642-17833-3-git-send-email-hch@lst.de>
-In-Reply-To: <1397653642-17833-3-git-send-email-hch@lst.de>
-Content-Type: text/plain; charset=ISO-8859-1
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: Tuning Linux NFSv4 for high latency connections?
+References: <CALXu0UcdfrvCajbAagGLV=dP=Kk3VWeR4VS5Wna44UroxM4JAQ@mail.gmail.com>	<20140424031216.GA18817@umich.edu> <CALXu0UdsUk2bSWUzOXLHJ1FKtnZMyo0OHJSj=0hQpwwHVu52zw@mail.gmail.com>
+In-Reply-To: <CALXu0UdsUk2bSWUzOXLHJ1FKtnZMyo0OHJSj=0hQpwwHVu52zw@mail.gmail.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 04/16/2014 09:07 AM, Christoph Hellwig wrote:
-> The read_pageio_init method is just a very convoluted way to grab the
-> right nfs_pageio_ops vector.  The vector to chose is not a choice of
-> protocol version, but just a pNFS vs MDS I/O choice that can simply be
-> done inside nfs_pageio_init_write based on the presence of a layout
-> driver, and a new force_mds flag to the special case of falling back
-> to MDS I/O on a pNFS-capable volume.
->
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
-The commit message for this patch needs to change "nfs_pageio_init_write" into "nfs_pageio_init_read".  I haven't had any problems with the code!
 
-Tested-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 
-> ---
->  fs/nfs/direct.c         |    2 +-
->  fs/nfs/internal.h       |    2 +-
->  fs/nfs/nfs3proc.c       |    1 -
->  fs/nfs/nfs4proc.c       |    1 -
->  fs/nfs/pnfs.c           |   15 +--------------
->  fs/nfs/pnfs.h           |    9 ---------
->  fs/nfs/proc.c           |    1 -
->  fs/nfs/read.c           |   19 ++++++++++++++-----
->  include/linux/nfs_xdr.h |    2 --
->  9 files changed, 17 insertions(+), 35 deletions(-)
->
-> diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-> index 6a31102..bbe688e 100644
-> --- a/fs/nfs/direct.c
-> +++ b/fs/nfs/direct.c
-> @@ -424,7 +424,7 @@ static ssize_t nfs_direct_read_schedule_iovec(struct nfs_direct_req *dreq,
->  	size_t requested_bytes = 0;
->  	unsigned long seg;
->  
-> -	NFS_PROTO(dreq->inode)->read_pageio_init(&desc, dreq->inode,
-> +	nfs_pageio_init_read(&desc, dreq->inode, false,
->  			     &nfs_direct_read_completion_ops);
->  	get_dreq(dreq);
->  	desc.pg_dreq = dreq;
-> diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-> index 8431083..98fe618 100644
-> --- a/fs/nfs/internal.h
-> +++ b/fs/nfs/internal.h
-> @@ -398,7 +398,7 @@ struct nfs_pgio_completion_ops;
->  extern struct nfs_read_header *nfs_readhdr_alloc(void);
->  extern void nfs_readhdr_free(struct nfs_pgio_header *hdr);
->  extern void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
-> -			struct inode *inode,
-> +			struct inode *inode, bool force_mds,
->  			const struct nfs_pgio_completion_ops *compl_ops);
->  extern int nfs_initiate_read(struct rpc_clnt *clnt,
->  			     struct nfs_read_data *data,
-> diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
-> index e984880..d873241 100644
-> --- a/fs/nfs/nfs3proc.c
-> +++ b/fs/nfs/nfs3proc.c
-> @@ -947,7 +947,6 @@ const struct nfs_rpc_ops nfs_v3_clientops = {
->  	.pathconf	= nfs3_proc_pathconf,
->  	.decode_dirent	= nfs3_decode_dirent,
->  	.read_setup	= nfs3_proc_read_setup,
-> -	.read_pageio_init = nfs_pageio_init_read,
->  	.read_rpc_prepare = nfs3_proc_read_rpc_prepare,
->  	.read_done	= nfs3_read_done,
->  	.write_setup	= nfs3_proc_write_setup,
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 8da0c62..21cd1f2 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -8433,7 +8433,6 @@ const struct nfs_rpc_ops nfs_v4_clientops = {
->  	.set_capabilities = nfs4_server_capabilities,
->  	.decode_dirent	= nfs4_decode_dirent,
->  	.read_setup	= nfs4_proc_read_setup,
-> -	.read_pageio_init = pnfs_pageio_init_read,
->  	.read_rpc_prepare = nfs4_proc_read_rpc_prepare,
->  	.read_done	= nfs4_read_done,
->  	.write_setup	= nfs4_proc_write_setup,
-> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-> index 9edac9f..3d5bc2b 100644
-> --- a/fs/nfs/pnfs.c
-> +++ b/fs/nfs/pnfs.c
-> @@ -1434,19 +1434,6 @@ pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio,
->  }
->  EXPORT_SYMBOL_GPL(pnfs_generic_pg_init_write);
->  
-> -void
-> -pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio, struct inode *inode,
-> -		      const struct nfs_pgio_completion_ops *compl_ops)
-> -{
-> -	struct nfs_server *server = NFS_SERVER(inode);
-> -	struct pnfs_layoutdriver_type *ld = server->pnfs_curr_ld;
-> -
-> -	if (ld == NULL)
-> -		nfs_pageio_init_read(pgio, inode, compl_ops);
-> -	else
-> -		nfs_pageio_init(pgio, inode, ld->pg_read_ops, compl_ops, server->rsize, 0);
-> -}
-> -
->  bool
->  pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
->  		     struct nfs_page *req)
-> @@ -1641,7 +1628,7 @@ int pnfs_read_done_resend_to_mds(struct inode *inode,
->  	LIST_HEAD(failed);
->  
->  	/* Resend all requests through the MDS */
-> -	nfs_pageio_init_read(&pgio, inode, compl_ops);
-> +	nfs_pageio_init_read(&pgio, inode, true, compl_ops);
->  	pgio.pg_dreq = dreq;
->  	while (!list_empty(head)) {
->  		struct nfs_page *req = nfs_list_entry(head->next);
-> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-> index e9ac8fb..94a9a18 100644
-> --- a/fs/nfs/pnfs.h
-> +++ b/fs/nfs/pnfs.h
-> @@ -180,9 +180,6 @@ extern int nfs4_proc_layoutreturn(struct nfs4_layoutreturn *lrp);
->  void pnfs_get_layout_hdr(struct pnfs_layout_hdr *lo);
->  void pnfs_put_lseg(struct pnfs_layout_segment *lseg);
->  
-> -void pnfs_pageio_init_read(struct nfs_pageio_descriptor *, struct inode *,
-> -			   const struct nfs_pgio_completion_ops *);
-> -
->  void set_pnfs_layoutdriver(struct nfs_server *, const struct nfs_fh *, u32);
->  void unset_pnfs_layoutdriver(struct nfs_server *);
->  void pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *, struct nfs_page *);
-> @@ -459,12 +456,6 @@ static inline void unset_pnfs_layoutdriver(struct nfs_server *s)
->  {
->  }
->  
-> -static inline void pnfs_pageio_init_read(struct nfs_pageio_descriptor *pgio, struct inode *inode,
-> -					 const struct nfs_pgio_completion_ops *compl_ops)
-> -{
-> -	nfs_pageio_init_read(pgio, inode, compl_ops);
-> -}
-> -
->  static inline int
->  pnfs_commit_list(struct inode *inode, struct list_head *mds_pages, int how,
->  		 struct nfs_commit_info *cinfo)
-> diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
-> index f9cc295..8cc227f 100644
-> --- a/fs/nfs/proc.c
-> +++ b/fs/nfs/proc.c
-> @@ -735,7 +735,6 @@ const struct nfs_rpc_ops nfs_v2_clientops = {
->  	.pathconf	= nfs_proc_pathconf,
->  	.decode_dirent	= nfs2_decode_dirent,
->  	.read_setup	= nfs_proc_read_setup,
-> -	.read_pageio_init = nfs_pageio_init_read,
->  	.read_rpc_prepare = nfs_proc_read_rpc_prepare,
->  	.read_done	= nfs_read_done,
->  	.write_setup	= nfs_proc_write_setup,
-> diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-> index 411aedd..7f87461 100644
-> --- a/fs/nfs/read.c
-> +++ b/fs/nfs/read.c
-> @@ -24,6 +24,7 @@
->  #include "internal.h"
->  #include "iostat.h"
->  #include "fscache.h"
-> +#include "pnfs.h"
->  
->  #define NFSDBG_FACILITY		NFSDBG_PAGECACHE
->  
-> @@ -114,11 +115,17 @@ int nfs_return_empty_page(struct page *page)
->  }
->  
->  void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
-> -			      struct inode *inode,
-> +			      struct inode *inode, bool force_mds,
->  			      const struct nfs_pgio_completion_ops *compl_ops)
->  {
-> -	nfs_pageio_init(pgio, inode, &nfs_pageio_read_ops, compl_ops,
-> -			NFS_SERVER(inode)->rsize, 0);
-> +	struct nfs_server *server = NFS_SERVER(inode);
-> +	const struct nfs_pageio_ops *pg_ops = &nfs_pageio_read_ops;
-> +
-> +#ifdef CONFIG_NFS_V4_1
-> +	if (server->pnfs_curr_ld && !force_mds)
-> +		pg_ops = server->pnfs_curr_ld->pg_read_ops;
-> +#endif
-> +	nfs_pageio_init(pgio, inode, pg_ops, compl_ops, server->rsize, 0);
->  }
->  EXPORT_SYMBOL_GPL(nfs_pageio_init_read);
->  
-> @@ -147,7 +154,8 @@ int nfs_readpage_async(struct nfs_open_context *ctx, struct inode *inode,
->  	if (len < PAGE_CACHE_SIZE)
->  		zero_user_segment(page, len, PAGE_CACHE_SIZE);
->  
-> -	NFS_PROTO(inode)->read_pageio_init(&pgio, inode, &nfs_async_read_completion_ops);
-> +	nfs_pageio_init_read(&pgio, inode, false,
-> +			     &nfs_async_read_completion_ops);
->  	nfs_pageio_add_request(&pgio, new);
->  	nfs_pageio_complete(&pgio);
->  	NFS_I(inode)->read_io += pgio.pg_bytes_written;
-> @@ -654,7 +662,8 @@ int nfs_readpages(struct file *filp, struct address_space *mapping,
->  	if (ret == 0)
->  		goto read_complete; /* all pages were read */
->  
-> -	NFS_PROTO(inode)->read_pageio_init(&pgio, inode, &nfs_async_read_completion_ops);
-> +	nfs_pageio_init_read(&pgio, inode, false,
-> +			     &nfs_async_read_completion_ops);
->  
->  	ret = read_cache_pages(mapping, pages, readpage_async_filler, &desc);
->  
-> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-> index 78216f8..3e8fc1f 100644
-> --- a/include/linux/nfs_xdr.h
-> +++ b/include/linux/nfs_xdr.h
-> @@ -1466,8 +1466,6 @@ struct nfs_rpc_ops {
->  	int	(*set_capabilities)(struct nfs_server *, struct nfs_fh *);
->  	int	(*decode_dirent)(struct xdr_stream *, struct nfs_entry *, int);
->  	void	(*read_setup)   (struct nfs_read_data *, struct rpc_message *);
-> -	void	(*read_pageio_init)(struct nfs_pageio_descriptor *, struct inode *,
-> -				    const struct nfs_pgio_completion_ops *);
->  	int	(*read_rpc_prepare)(struct rpc_task *, struct nfs_read_data *);
->  	int	(*read_done)  (struct rpc_task *, struct nfs_read_data *);
->  	void	(*write_setup)  (struct nfs_write_data *, struct rpc_message *);
+On 4/24/14, 10:22 AM, Cedric Blancher wrote:
+> On 24 April 2014 05:12, Jim Rees <rees@umich.edu> wrote:
+>> Cedric Blancher wrote:
+>>
+>>    Are there any options to improve the Linux NFSv4 performance over a
+>>    high latency connection?
+>>
+>> We did some work along these lines at CITI years ago. As I remember, the
+>> main thing was to increase net.ipv4.tcp_[rw]mem on the server side, because
+>> tcp auto-tuning was being defeated. This may be less of an issue with your
+>> work load, which sounds like many small files rather than one big one.  In
+>> theory, NFSv4 delegations should help, but I don't know how well that works.
 
+Along with Jim's work, we followed up with a fair bit, but in general we 
+found that nfs clients just can't do well over large rtt due to the slow 
+window ramp up time and adverse reaction to packet loss.  Unfortunately 
+the only way to overcome these issues (other than using a custom udp 
+protocol which isn't supported) is to use multiple TCP connections, 
+which is what we do by  using multiple nodes....
+
+I have some basic instructions here on what we do in our environments:
+http://researcher.watson.ibm.com/researcher/view_person_subpage.php?id=4427
+
+Dean
