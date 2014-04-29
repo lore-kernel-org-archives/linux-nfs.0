@@ -1,101 +1,188 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f179.google.com ([209.85.223.179]:34249 "EHLO
-	mail-ie0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1757753AbaDHSDI convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Apr 2014 14:03:08 -0400
-Received: by mail-ie0-f179.google.com with SMTP id lx4so1327332iec.10
-        for <linux-nfs@vger.kernel.org>; Tue, 08 Apr 2014 11:03:07 -0700 (PDT)
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
-Subject: Re: v4.0 CB_COMPOUND authentication failures
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-In-Reply-To: <20140408135512.2397d97f@tlielax.poochiereds.net>
-Date: Tue, 8 Apr 2014 14:03:04 -0400
-Cc: Dr Fields James Bruce <bfields@fieldses.org>,
-        NFS <linux-nfs@vger.kernel.org>,
-        Adamson William Andros <androsadamson@gmail.com>,
-        Lever Charles Edward <chuck.lever@oracle.com>
-Message-Id: <61C732F7-A053-4293-AB54-07979E048F53@primarydata.com>
-References: <20140408082140.340c1328@tlielax.poochiereds.net> <20140408123501.GA3532@fieldses.org> <20140408094903.33e42de2@tlielax.poochiereds.net> <20140408140333.GD3882@fieldses.org> <6CC79B2A-8AE2-4A36-BB57-380C2F9813C0@primarydata.com> <20140408144652.GE3882@fieldses.org> <ECD8245B-CDEE-442E-A41A-BECE08BEEDA1@primarydata.com> <20140408164024.GH3882@fieldses.org> <8F132114-F44C-449B-8EA8-331C67FCE813@primarydata.com> <20140408135512.2397d97f@tlielax.poochiereds.net>
-To: Layton Jeff <jlayton@redhat.com>
+Received: from mail-qg0-f48.google.com ([209.85.192.48]:55621 "EHLO
+	mail-qg0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933682AbaD2Le6 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Apr 2014 07:34:58 -0400
+Received: by mail-qg0-f48.google.com with SMTP id q108so57710qgd.35
+        for <linux-nfs@vger.kernel.org>; Tue, 29 Apr 2014 04:34:57 -0700 (PDT)
+Date: Tue, 29 Apr 2014 07:34:54 -0400
+From: Jeff Layton <jlayton@poochiereds.net>
+To: "Michael Kerrisk (man-pages)" <mtk.manpages@gmail.com>
+Cc: NeilBrown <neilb@suse.de>, "Stefan (metze) Metzmacher" <metze@samba.org>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        lkml <linux-kernel@vger.kernel.org>,
+        Ganesha NFS List <nfs-ganesha-devel@lists.sourceforge.net>,
+        Suresh Jayaraman <sjayaraman@suse.de>,
+        Trond Myklebust <trond.myklebust@fys.uio.no>,
+        Christoph Hellwig <hch@infradead.org>,
+        linux-nfs <linux-nfs@vger.kernel.org>,
+        "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: flock() and NFS [Was: Re: [PATCH] locks: rename file-private
+ locks to file-description locks]
+Message-ID: <20140429073454.220572a8@tlielax.poochiereds.net>
+In-Reply-To: <535F76A4.4090208@gmail.com>
+References: <1398087935-14001-1-git-send-email-jlayton@redhat.com>
+	<20140421140246.GB26358@brightrain.aerifal.cx>
+	<535529FA.8070709@gmail.com>
+	<20140421161004.GC26358@brightrain.aerifal.cx>
+	<5355644C.7000801@gmail.com>
+	<20140421184640.GD26358@brightrain.aerifal.cx>
+	<535573E0.9080106@gmail.com>
+	<20140421155520.3b33fbef@ipyr.poochiereds.net>
+	<53558A73.3010602@samba.org>
+	<5355F60C.8010004@gmail.com>
+	<20140427145125.21e7e6c6@notabene.brown>
+	<535CCAD2.4060304@gmail.com>
+	<20140427200431.426c98d1@notabene.brown>
+	<CAKgNAkgv5NqDRUNu0XtSABqmctd7=rpMMEYhhDQNzPssZuU5bA@mail.gmail.com>
+	<20140428072845.67f48d8e@notabene.brown>
+	<535F6BC4.2090601@gmail.com>
+	<20140429192458.641ebf1d@notabene.brown>
+	<535F76A4.4090208@gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Tue, 29 Apr 2014 11:53:40 +0200
+"Michael Kerrisk (man-pages)" <mtk.manpages@gmail.com> wrote:
 
-On Apr 8, 2014, at 13:55, Jeff Layton <jlayton@redhat.com> wrote:
+> On 04/29/2014 11:24 AM, NeilBrown wrote:
+> > On Tue, 29 Apr 2014 11:07:16 +0200 "Michael Kerrisk (man-pages)"
+> > <mtk.manpages@gmail.com> wrote:
+> > 
+> >> On 04/27/2014 11:28 PM, NeilBrown wrote:
+> >>> On Sun, 27 Apr 2014 13:11:33 +0200 "Michael Kerrisk (man-pages)"
+> >>> <mtk.manpages@gmail.com> wrote:
+> >>>
+> >>>> On Sun, Apr 27, 2014 at 12:04 PM, NeilBrown <neilb@suse.de> wrote:
+> >>>>> On Sun, 27 Apr 2014 11:16:02 +0200 "Michael Kerrisk (man-pages)"
+> >>>>> <mtk.manpages@gmail.com> wrote:
+> >>>>>
+> >>>>>> [Trimming some folk from CC, and adding various NFS people]
+> >>>>>>
+> >>>>>> On 04/27/2014 06:51 AM, NeilBrown wrote:
+> >>>>>>
+> >>>>>> [...]
+> >>>>>>
+> >>>>>>> Note to Michael: The text
+> >>>>>>>    flock() does not lock files over NFS.
+> >>>>>>> in flock(2) is no longer accurate.  The reality is ... complex.
+> >>>>>>> See nfs(5), and search for "local_lock".
+> >>>>>>
+> >>>>>> Ahhh -- I see:
+> >>>>>> http://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=5eebde23223aeb0ad2d9e3be6590ff8bbfab0fc2
+> >>>>>>
+> >>>>>> Thanks for the heads up.
+> >>>>>>
+> >>>>>> Just in general, it would be great if the flock(2) and fcntl(2) man pages
+> >>>>>> contained correct details for NFS, of course. So, for example, if there
+> >>>>>> are any current gotchas for NFS and fcntl() byte-range locking, I'd like
+> >>>>>> to add those to the fcntl(2) man page.
+> >>>>>
+> >>>>> The only peculiarities I can think of are:
+> >>>>>  - With NFS, locking or unlocking a region forces a flush of any cached data
+> >>>>>    for that file (or maybe for the region of the file).  I'm not sure if this
+> >>>>>    is worth mentioning.
+> >>>>
+> >>>> I agree that it's probably not necessary to mention.
+> >>>>
+> >>>>>  - With NFSv4 the client can lose a lock if it is out of contact with the
+> >>>>>    server for a period of time.  When this happens, any IO to the file by a
+> >>>>>    process which "thinks" it holds a lock will fail until that process closes
+> >>>>>    and re-opens the file.
+> >>>>>    This behaviour is since 3.12.  Prior to that the client might lose and
+> >>>>>    regain the lock without ever knowing thus potentially risking corruption
+> >>>>>    (but only if client and server lost contact for an extended period).
+> >>>>
+> >>>> Do you have a pointer for that commit to 3.12?
+> >>>>
+> >>>
+> >>> http://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=ef1820f9be27b6ad158f433ab38002ab8131db4d
+> >>>
+> >>> did most of the work while  the subsequent commit
+> >>>
+> >>> http://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=f6de7a39c181dfb8a2c534661a53c73afb3081cd
+> >>>
+> >>> changed some details, added some documentation, and inverted the default
+> >>> behaviour.
+> >>
+> >> Thanks for that detail. What do you think of the following text for the 
+> >> fcntl(2) man page:
+> >>
+> >>        Before  Linux 3.12, if an NFS client is out of contact with the
+> >>        server for a period of time, it might lose and  regain  a  lock
+> >>        without  ever  being  aware  of the fact.  This scenario potenâ€
+> >>        tially risks  data  corruption,  since  another  process  might
+> >>        acquire  a lock in the intervening period and perform file I/O.
+> >>        Since Linux 3.12, if the client loses contact with the  server,
+> >>        any I/O to the file by a process which "thinks" it holds a lock
+> >>        will fail until that process closes and reopens  the  file.   A
+> >>        kernel  parameter,  nfs.recover_lost_locks,  can be set to 1 to
+> >>        obtain the pre-3.12 behavior, whereby the client  will  attempt
+> >>        to  recover  lost  locks when contact is reestablished with the
+> >>        server.  Because of the attendant risk of data corruption, this
+> >>        parameter defaults to 0 (disabled).
+> >>
+> > 
+> > Mostly good.
+> > 
+> > I'm just a little concerned about "if the client loses contact with the
+> > server" in the middle there.  It is no longer qualified and it isn't clear
+> > that the "for a period of time" qualification still applied.  And we should
+> > probably quantify the period of time - which defaults to 90 seconds.
+> > I don't remember just now the difference between
+> >    /proc/fs/nfsd/nfsv4{lease,grace}time
+> > but this 90 seconds is one of those.
+> > 
+> > Also this is NFSv4 specific.  With NFSv3 the failure mode is the reverse.  If
+> > the server loses contact with a client then any lock stays in place
+> > indefinitely ("why can't I read my mail"... I remember it well).
+> > 
+> >   Before Linux 3.12, if an NFSv4 client loses contact with the server
+> >   (defined as more than 90 seconds with no communication), it might lose
+> >   and regain ....
+> 
+> Thanks, Neil. Changed as you suggest. I'd quite like to mention
+> which of /proc/fs/nfsd/nfsv4{lease,grace}time is relevant here. I had a 
+> quick scan, but could not determine it with complete confidence. My suspicion, 
+> looking at fs/lockd/svcproc.c and fs/lockd/grace.c::locks_in_grace()
+> is that it is /proc/fs/nfsd/nfsv4gracetime that is relevant here. Can anyone
+> confirm?
+> 
 
-> On Tue, 8 Apr 2014 13:30:21 -0400
-> Trond Myklebust <trond.myklebust@primarydata.com> wrote:
-> 
->> 
->> On Apr 8, 2014, at 12:40, Dr Fields James Bruce <bfields@fieldses.org> wrote:
->>> 
->>> On Tue, Apr 08, 2014 at 12:22:51PM -0400, Trond Myklebust wrote:
->>>> How is it not better just to rip out that hostname comparison in the
->>>> back channel?
->>> 
->>> Rip it out entirely?
->>> 
->>> At that point anyone who can get a credential in the right realm can
->>> send a recall.  RFC made this requirement to prevent that.
->>> 
->> 
->> OK. Let’s examine what RFC3530 and RFC3530bis actually says here:
->> 
->>   Regardless of what security mechanism under RPCSEC_GSS is being used,
->>   the NFS server MUST identify itself in GSS-API via a
->>   GSS_C_NT_HOSTBASED_SERVICE name type.  GSS_C_NT_HOSTBASED_SERVICE
->>   names are of the form:
->> 
->>     service@hostname
->> 
->>   For NFS, the "service" element is
->> 
->>     nfs
->> 
->>   Implementations of security mechanisms will convert nfs@hostname to
->>   various different forms.  For Kerberos V5, the following form is
->>   RECOMMENDED:
->> 
->>   nfs/hostname
->> 
->>   For Kerberos V5, nfs/hostname would be a server principal in the
->>   Kerberos Key Distribution Center database.  This is the same
->>   principal the client acquired a GSS-API context for when it issued
->>   the SETCLIENTID operation, therefore, the realm name for the server
->>   principal must be the same for the callback as it was for the
->>   SETCLIENTID.
->> 
->> 
->> So as I read the above, technically the client is supposed to read off the principal name that the server uses to authenticate itself to the SETCLIENTID and check that in the callback. Am I wrong?
->> 
->> If so, then the steps are:
->> 
->> 1) Modify process_krb5_upcall() and have the call to gss_inquire_context() also request the context acceptor name
->> 2) Modify the rpc.gssd downcall to pass that name to the kernel in some format that allow us to retrieve it in the SETCLIENTID call.
->> 3) Modify the comparison in check_gss_callback_principal()
->> 
->> 
-> 
-> Sounds about right, with #2 being the difficult part...
-> 
-> One possibility for that would be to add a new "acceptor" pipe in the
-> clnt?? dirs. Teach gssd to write to the acceptor name to that pipe
-> before doing the regular downcall.
-> 
-> The name written there could then be hung off of the clp. If userland
-> fails to write the name to the pipe before doing the downcall, we'll
-> simply do what we do today (use the cl_hostname).
-> 
-> Adding a new pipe is a bit of a pain, but it does sidestep the problem
-> of mismatched kernel and userland…
-> 
+The difference here is subtle. The gracetime is how long after a reboot
+should knfsd allow clients to reclaim state (and deny the creation of
+new locks and opens). The leasetime is how long the NFSv4 lease period
+is. There is a relationship between the two that's illustrated in the
+comments above write_gracetime:
 
-As far as I can tell, the downcall can be extended. Even the security context is an opaque, so its length is known. If we wanted to append a field after that, we could do so without affecting backward compatibility.
+/**
+ * write_gracetime - Set or report current NFSv4 grace period time
+ *
+ * As above, but sets the time of the NFSv4 grace period.
+ *
+ * Note this should never be set to less than the *previous*
+ * lease-period time, but we don't try to enforce this.  (In the common
+ * case (a new boot), we don't know what the previous lease time was
+ * anyway.)
+ */
 
+The value you're interested in here is the nfsv4leasetime. If the
+client doesn't renew its lease within that period, then it's subject to
+the server giving up on it and dropping any state that it holds on that
+clients' behalf.
 
-_________________________________
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
+Note that this is not a firm timeout. The server runs a job
+periodically to clean out expired stateful objects, and it's likely
+that there is some time (maybe even up to another whole lease period)
+between when the timeout expires and the job actually runs. If the
+client gets a RENEW in there within that window, its lease will be
+renewed and its state preserved.
 
+Also note that all of the above just applies to the Linux knfsd. There
+are many other servers in the field and they have different rules for
+dropping state held by clients that have gone AWOL.
+
+-- 
+Jeff Layton <jlayton@poochiereds.net>
