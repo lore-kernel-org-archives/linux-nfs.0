@@ -1,117 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:38800 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751181AbaDPESd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Apr 2014 00:18:33 -0400
-From: NeilBrown <neilb@suse.de>
-To: linux-mm@kvack.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Date: Wed, 16 Apr 2014 14:03:36 +1000
-Subject: [PATCH 06/19] nfsd: set PF_FSTRANS for nfsd threads.
-Cc: xfs@oss.sgi.com
-cc: Peter Zijlstra <peterz@infradead.org>, Ingo Molnar <mingo@redhat.com>
-Message-ID: <20140416040336.10604.60493.stgit@notabene.brown>
-In-Reply-To: <20140416033623.10604.69237.stgit@notabene.brown>
-References: <20140416033623.10604.69237.stgit@notabene.brown>
+Received: from mail-ee0-f41.google.com ([74.125.83.41]:56104 "EHLO
+	mail-ee0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751675AbaD2IrL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Apr 2014 04:47:11 -0400
+Message-ID: <535F670B.4060704@gmail.com>
+Date: Tue, 29 Apr 2014 10:47:07 +0200
+From: "Michael Kerrisk (man-pages)" <mtk.manpages@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: Jeff Layton <jlayton@redhat.com>
+CC: mtk.manpages@gmail.com,
+        Ganesha NFS List <nfs-ganesha-devel@lists.sourceforge.net>,
+        lkml <linux-kernel@vger.kernel.org>,
+        Linux-Fsdevel <linux-fsdevel@vger.kernel.org>,
+        Trond Myklebust <trond.myklebust@fys.uio.no>,
+        "J. Bruce Fields" <bfields@fieldses.org>, Neil Brown <neilb@suse.de>,
+        samba-technical@lists.samba.org, linux-nfs@vger.kernel.org
+Subject: Re: OFD ("file private") locks and NFS
+References: <535F651E.6090204@gmail.com>
+In-Reply-To: <535F651E.6090204@gmail.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If a localhost mount is present, then it is easy to deadlock NFS by
-nfsd entering direct reclaim and calling nfs_release_page() which
-requires nfsd to perform an fsync() (which it cannot do because it is
-reclaiming memory).
+[CC+= linux-nfs@]
 
-By setting PF_FSTRANS we stop the memory allocator from ever
-attempting any FS operation would could deadlock.
+On 04/29/2014 10:38 AM, Michael Kerrisk (man-pages) wrote:
+> Hi Jeff,
+> 
+> I've been looking a bit at the fcntl() documentation of traditional 
+> (F_SETLK) record locking, and a question just jumped out at me. Is 
+> it worth considering some future-proofing in the design of OFD locks
+> ("open file description locks", formerly known as "file-private locks")?
+> 
+> What I am thinking of here is that on some systems, the traditional
+> 'struct flock' has a nonstandard field, l_sysid, that is used on F_GETLK 
+> to identify the remote system on which a lock is held. Should the design
+> of OFD locks allow for such a field (now, or in the future), which might 
+> be useful in the context of locking on network file systems such as NFS.
+> 
+> Put more simply, should the new OFD locking system be using a new
+> structure for describing locks, rather than the traditional 'struct
+> flock'? Defining a new structure, might be useful to allow for
+> future extensions to the API.
 
-We need this flag set for any thread which is handling a request from
-the local host, but we also need to always have it for at least 1 or 2
-threads so that we don't end up with all threads blocked in allocation.
+Just add one further detail here. What I'm thinking is, maybe instead there
+should be something like:
 
-When we set PF_FSTRANS we also tell lockdep that we are handling
-reclaim so that it can detect deadlocks for us.
+struct flockx {
+    int flags;
+    /* Other fields like 'struct flock' */
+    char reserved[32];	/* Or some suitable value */
+}
 
-Signed-off-by: NeilBrown <neilb@suse.de>
----
- fs/nfsd/nfssvc.c           |   18 ++++++++++++++++++
- include/linux/sunrpc/svc.h |    1 +
- net/sunrpc/svc.c           |    6 ++++++
- 3 files changed, 25 insertions(+)
+That flags field might always be zero for now, but in the future it 
+could be used on the setlk and getlk operations to indicate the presence
+of additional fields in the structure.
 
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index 9a4a5f9e7468..6af8bc2daf7d 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -565,6 +565,8 @@ nfsd(void *vrqstp)
- 	struct svc_xprt *perm_sock = list_entry(rqstp->rq_server->sv_permsocks.next, typeof(struct svc_xprt), xpt_list);
- 	struct net *net = perm_sock->xpt_net;
- 	int err;
-+	unsigned int pflags = 0;
-+	gfp_t reclaim_state = 0;
- 
- 	/* Lock module and set up kernel thread */
- 	mutex_lock(&nfsd_mutex);
-@@ -611,14 +613,30 @@ nfsd(void *vrqstp)
- 			;
- 		if (err == -EINTR)
- 			break;
-+		if (rqstp->rq_local && !current_test_flags(PF_FSTRANS)) {
-+			current_set_flags_nested(&pflags, PF_FSTRANS);
-+			atomic_inc(&rqstp->rq_pool->sp_nr_fstrans);
-+			reclaim_state = lockdep_set_current_reclaim_state(GFP_KERNEL);
-+		}
- 		validate_process_creds();
- 		svc_process(rqstp);
- 		validate_process_creds();
-+		if (current_test_flags(PF_FSTRANS) &&
-+		    atomic_dec_if_positive(&rqstp->rq_pool->sp_nr_fstrans) >= 0) {
-+			current_restore_flags_nested(&pflags, PF_FSTRANS);
-+			lockdep_restore_current_reclaim_state(reclaim_state);
-+		}
- 	}
- 
- 	/* Clear signals before calling svc_exit_thread() */
- 	flush_signals(current);
- 
-+	if (current_test_flags(PF_FSTRANS)) {
-+		current_restore_flags_nested(&pflags, PF_FSTRANS);
-+		lockdep_restore_current_reclaim_state(reclaim_state);
-+		atomic_dec(&rqstp->rq_pool->sp_nr_fstrans);
-+	}
-+
- 	mutex_lock(&nfsd_mutex);
- 	nfsdstats.th_cnt --;
- 
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index a0dbbd1e00e9..4b274aba51dd 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -48,6 +48,7 @@ struct svc_pool {
- 	struct list_head	sp_threads;	/* idle server threads */
- 	struct list_head	sp_sockets;	/* pending sockets */
- 	unsigned int		sp_nrthreads;	/* # of threads in pool */
-+	atomic_t		sp_nr_fstrans;	/* # threads with PF_FSTRANS */
- 	struct list_head	sp_all_threads;	/* all server threads */
- 	struct svc_pool_stats	sp_stats;	/* statistics on pool operation */
- 	int			sp_task_pending;/* has pending task */
-diff --git a/net/sunrpc/svc.c b/net/sunrpc/svc.c
-index 5de6801cd924..8b13f35b6cbb 100644
---- a/net/sunrpc/svc.c
-+++ b/net/sunrpc/svc.c
-@@ -477,6 +477,12 @@ __svc_create(struct svc_program *prog, unsigned int bufsize, int npools,
- 		INIT_LIST_HEAD(&pool->sp_threads);
- 		INIT_LIST_HEAD(&pool->sp_sockets);
- 		INIT_LIST_HEAD(&pool->sp_all_threads);
-+		/* The number of threads with PF_FSTRANS set
-+		 * should never be reduced below 2, except when
-+		 * threads exit.  So we use atomic_dec_if_positive()
-+		 * on this value.
-+		 */
-+		atomic_set(&pool->sp_nr_fstrans, -2);
- 		spin_lock_init(&pool->sp_lock);
- 	}
- 
+Cheers,
 
+Michael
 
+-- 
+Michael Kerrisk
+Linux man-pages maintainer; http://www.kernel.org/doc/man-pages/
+Linux/UNIX System Programming Training: http://man7.org/training/
