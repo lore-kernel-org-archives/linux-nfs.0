@@ -1,77 +1,90 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ipmail06.adl2.internode.on.net ([150.101.137.129]:57881 "EHLO
-	ipmail06.adl2.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752485AbaDXBVV (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 23 Apr 2014 21:21:21 -0400
-Date: Thu, 24 Apr 2014 11:20:22 +1000
+Received: from ipmail04.adl6.internode.on.net ([150.101.137.141]:5656 "EHLO
+	ipmail04.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1752002AbaD2AF6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Apr 2014 20:05:58 -0400
+Date: Tue, 29 Apr 2014 10:04:02 +1000
 From: Dave Chinner <david@fromorbit.com>
-To: NeilBrown <neilb@suse.de>
-Cc: Jan Kara <jack@suse.cz>, Jeff Layton <jlayton@redhat.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Mel Gorman <mgorman@suse.com>,
-        Andrew Morton <akpm@linux-foundation.org>, linux-mm@kvack.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH/RFC 0/5] Support loop-back NFS mounts - take 2
-Message-ID: <20140424012022.GX15995@dastard>
-References: <20140423022441.4725.89693.stgit@notabene.brown>
+To: Jeff Layton <jlayton@poochiereds.net>
+Cc: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>, agruen@kernel.org,
+        bfields@fieldses.org, akpm@linux-foundation.org,
+        viro@zeniv.linux.org.uk, dhowells@redhat.com,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH -V1 05/22] vfs: Add new file and directory create
+ permission flags
+Message-ID: <20140429000402.GO15995@dastard>
+References: <1398615293-22931-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1398615293-22931-6-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <20140428072301.123674d4@tlielax.poochiereds.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140423022441.4725.89693.stgit@notabene.brown>
+In-Reply-To: <20140428072301.123674d4@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Apr 23, 2014 at 12:40:58PM +1000, NeilBrown wrote:
-> This is a somewhat shorter patchset for loop-back NFS support than
-> last time, thanks to the excellent feedback and particularly to Dave
-> Chinner.  Thanks.
+On Mon, Apr 28, 2014 at 07:23:01AM -0400, Jeff Layton wrote:
+> On Sun, 27 Apr 2014 21:44:36 +0530
+> "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com> wrote:
 > 
-> Avoiding the wait-for-congestion which can trigger a livelock is much
-> the same, though I've reduced the cases in which the wait is
-> by-passed.
-> I did this using current->backing_dev_info which is otherwise serving
-> no purpose on the current kernel.
+> > From: Andreas Gruenbacher <agruen@kernel.org>
+> > 
+> > Some permission models distinguish between the permission to create a
+> > non-directory and a directory.  Pass this information down to
+> > inode_permission() as mask flags
+> > 
+> > Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
+> > Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+> > ---
+> >  fs/namei.c         | 21 ++++++++++++---------
+> >  include/linux/fs.h |  2 ++
+> >  2 files changed, 14 insertions(+), 9 deletions(-)
+> > 
+> > diff --git a/fs/namei.c b/fs/namei.c
+> > index 7d93d195f0e5..028bc8bcf77c 100644
+> > --- a/fs/namei.c
+> > +++ b/fs/namei.c
+> > @@ -445,7 +445,8 @@ static int sb_permission(struct super_block *sb, struct inode *inode, int mask)
+> >   * this, letting us set arbitrary permissions for filesystem access without
+> >   * changing the "normal" UIDs which are used for other things.
+> >   *
+> > - * When checking for MAY_APPEND, MAY_WRITE must also be set in @mask.
+> > + * When checking for MAY_APPEND, MAY_CREATE_FILE, MAY_CREATE_DIR,
+> > + * MAY_WRITE must also be set in @mask.
+> >   */
+> >  int inode_permission(struct inode *inode, int mask)
+> >  {
+> > @@ -2444,14 +2445,16 @@ static int may_delete(struct inode *dir, struct dentry *victim, bool isdir)
+> >   *  3. We should have write and exec permissions on dir
+> >   *  4. We can't do it if dir is immutable (done in permission())
+> >   */
+> > -static inline int may_create(struct inode *dir, struct dentry *child)
+> > +static inline int may_create(struct inode *dir, struct dentry *child, bool isdir)
+> >  {
+> > +	int mask = isdir ? MAY_CREATE_DIR : MAY_CREATE_FILE;
+> > +
+> >  	audit_inode_child(dir, child, AUDIT_TYPE_CHILD_CREATE);
+> >  	if (child->d_inode)
+> >  		return -EEXIST;
+> >  	if (IS_DEADDIR(dir))
+> >  		return -ENOENT;
+> > -	return inode_permission(dir, MAY_WRITE | MAY_EXEC);
+> > +	return inode_permission(dir, MAY_WRITE | MAY_EXEC | mask);
+> >  }
+> >  
+> >  /*
+> > @@ -2501,7 +2504,7 @@ EXPORT_SYMBOL(unlock_rename);
+> >  int vfs_create(struct inode *dir, struct dentry *dentry, umode_t mode,
+> >  		bool want_excl)
+> >  {
+> > -	int error = may_create(dir, dentry);
+> > +	int error = may_create(dir, dentry, 0);
 > 
-> Avoiding the deadlocks has been turned on its head.
-> Instead of nfsd checking if it is a loop-back mount and setting
-> PF_FSTRANS, which then needs lots of changes too PF_FSTRANS and
-> __GFP_FS handling, it is now NFS which checks for a loop-back
-> filesystem.
-> 
-> There is more verbosity in that patch (Fifth of Five) but the essence
-> is that nfs_release_page will now not wait indefinitely for a COMMIT
-> request to complete when sent to the local host.  It still waits a
-> little while as some delay can be important. But it won't wait
-> forever.
-> The duration of "a little while" is currently 100ms, though I do
-> wonder if a bigger number would serve just as well.
-> 
-> Unlike the previous series, this set should remove deadlocks that
-> could happen during the actual fail-over process.  This is achieved by
-> having nfs_release_page monitor the connection and if it changes from
-> a remote to a local connection, or just disconnects, then it will
-> timeout.  It currently polls every second, though this probably could
-> be longer too.  It only needs to be the same order of magnitude as the
-> time it takes node failure to be detected and failover to happen, and
-> I suspect that is closer to 1 minute.  So maybe a 10 or 20 second poll
-> interval would be just as good.
-> 
-> Implementing this timeout requires some horrible code as the
-> wait_on_bit functions don't support timeouts.  If the general approach
-> is found acceptable I'll explore ways to improve the timeout code.
-> 
-> Comments, criticism, etc very welcome as always,
+> nit: since the third argument here is a bool, this should be "false"
+> and not "0". Ditto for all of the other calls of may_create.
 
-Looks much less intrusive to me, and doesn't appear to affect any
-other filesystem or the recursion patterns of memory reclaim,
-so I like it very much more than the previous patchset. Nice work!
-:)
-
-The code changes are really outside my area of expertise now, so I
-don't really feel qualified to review the changes. However, consider
-the overall approach:
-
-Acked-by: Dave Chinner <dchinner@redhat.com>
+IMO, the third argument should be MAY_CREATE_FILE or MAY_CREATE_DIR,
+which is what the boolean evaluates to in may_create()....
 
 Cheers,
 
