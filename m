@@ -1,90 +1,200 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:60881 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753749AbaDCUQ3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 3 Apr 2014 16:16:29 -0400
-Date: Thu, 3 Apr 2014 16:16:27 -0400
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Mark Lord <mlord@pobox.com>, "J. Bruce Fields" <bfields@redhat.com>,
-        Albert Fluegel <af@muc.de>, linux-nfs@vger.kernel.org,
+Received: from ipmail04.adl6.internode.on.net ([150.101.137.141]:9064 "EHLO
+	ipmail04.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1756190AbaD2AwL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Apr 2014 20:52:11 -0400
+Date: Tue, 29 Apr 2014 10:52:04 +1000
+From: Dave Chinner <david@fromorbit.com>
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Cc: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
+        viro@zeniv.linux.org.uk, dhowells@redhat.com,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
         linux-kernel@vger.kernel.org
-Subject: Re: linux-3.14 nfsd regression
-Message-ID: <20140403201627.GC8343@fieldses.org>
-References: <533D8D73.1090603@pobox.com>
- <20140403171643.GB28790@pad.redhat.com>
- <533D9F8A.6030001@pobox.com>
- <20140403145504.3b04170e@tlielax.poochiereds.net>
+Subject: Re: [PATCH -V1 19/22] vfs: Cache richacl in struct inode
+Message-ID: <20140429005203.GT15995@dastard>
+References: <1398615293-22931-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1398615293-22931-20-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140403145504.3b04170e@tlielax.poochiereds.net>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+In-Reply-To: <1398615293-22931-20-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, Apr 03, 2014 at 02:55:04PM -0400, Jeff Layton wrote:
-> On Thu, 03 Apr 2014 13:51:06 -0400
-> Mark Lord <mlord@pobox.com> wrote:
+On Sun, Apr 27, 2014 at 09:44:50PM +0530, Aneesh Kumar K.V wrote:
+> From: Andreas Gruenbacher <agruen@kernel.org>
 > 
-> > On 14-04-03 01:16 PM, J. Bruce Fields wrote:
-> > > On Thu, Apr 03, 2014 at 12:33:55PM -0400, Mark Lord wrote:
-> > >> This commit from linux-3.14 breaks our NFS-root clients here:
-> > >>
-> > >> https://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=6e14b46b91fee8a049b0940333ce13a820beaaa5
-> > >>
-> > >>
-> > >> - *p++ = htonl((u32) stat->mode);
-> > >> + *p++ = htonl((u32) (stat->mode & S_IALLUGO));
-> > >>
-> > >>
-> > >> Reverting the one-liner above (on the server) fixes it for us,
-> > >> as does reverting back to linux-3.13.8 on the server.
-> > >>
-> > >> The NFS-root clients are on PowerPC (big-endian) architecture,
-> > >> running linux-3.12.16. The NFS server is on an Intel PC running linux-3.14.
-> > >>
-> > >> ACL is completely disabled on server and client,
-> > >> and we're using NFSv2/v3.  No support for v4.
-> > >>
-> > >> I instrumented the function to see what other bits were being cleared
-> > >> by the (stat->mode & S_IALLUGO) masking.  The results are attached.
-> > > 
-> > > Hm, it sounds like a bug in the client if it's depending on those high
-> > > bits.
-> > 
-> > But only for mounting / starting up from the nfsroot, it seems.
-> > I wonder if there's an unusual code path for that in there?
-> > The regular stuff looks mostly fine:
-> > 
-> >         p = xdr_decode_ftype3(p, &fmode);
-> >         fattr->mode = (be32_to_cpup(p++) & ~S_IFMT) | fmode;
-> > 
-> > Except perhaps that second line ought to use the same mask
-> > as the server side is using, just in case there are some other
-> > stray high (higher than S_IFMT) bits in there now/someday.
-> > 
-> > > The original behavior was in practice harmless and changing it broke
-> > > something, so I think we should definitely just revert this patch.
-> > 
-> > Yup.  Who?
-> > 
-> > > But the client may need fixing too.
-> > 
-> > Probably a good thing in the longer term, for better compatibility
-> > with non-Linux servers.  But we'll still have to keep the revert
-> > on the server (nfsd) code for backward compatibility, I think.
-> > 
-> > Cheers
-> > 
+> Cache richacls in struct inode so that this doesn't have to be done
+> individually in each filesystem.
 > 
-> It would be good to understand where this is broken in the client.
+> Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
+> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+> ---
+>  fs/inode.c              | 25 ++++++++++++++++++-----
+>  include/linux/fs.h      | 12 +++++++++--
+>  include/linux/richacl.h | 53 +++++++++++++++++++++++++++++++++++++++++++++++++
+>  3 files changed, 83 insertions(+), 7 deletions(-)
 > 
-> It's incorrect for the client to interpret those bits, as I think that
-> there's no guarantee that other OS's implement the type bits in the
-> same way that Linux does. So if you end up mounting a different OS,
-> it's possible that the client will get that wrong...
+> diff --git a/fs/inode.c b/fs/inode.c
+> index f96d2a6f88cc..b96a16d5c653 100644
+> --- a/fs/inode.c
+> +++ b/fs/inode.c
+> @@ -18,6 +18,7 @@
+>  #include <linux/buffer_head.h> /* for inode_has_buffers */
+>  #include <linux/ratelimit.h>
+>  #include <linux/list_lru.h>
+> +#include <linux/richacl.h>
+>  #include "internal.h"
+>  
+>  /*
+> @@ -185,7 +186,12 @@ int inode_init_always(struct super_block *sb, struct inode *inode)
+>  	inode->i_mapping = mapping;
+>  	INIT_HLIST_HEAD(&inode->i_dentry);	/* buggered by rcu freeing */
+>  #ifdef CONFIG_FS_POSIX_ACL
+> -	inode->i_acl = inode->i_default_acl = ACL_NOT_CACHED;
+> +	if (IS_POSIXACL(inode))
+> +		inode->i_acl = inode->i_default_acl = ACL_NOT_CACHED;
+> +#endif
+> +#ifdef CONFIG_FS_RICHACL
+> +	if (IS_RICHACL(inode))
+> +		inode->i_richacl = ACL_NOT_CACHED;
+>  #endif
 
-It turns out these bits actually are defined in rfc 1094, so this is
-just an odd NFSv2-specific wart, and the nfsd change was just flat-out
-wrong.
+That's just plain wrong. i think this is what Christoph didn't like.
+An inode can have either a POSIX ACL or a RICH ACL, so there is no
+need for multiple pointers in the inode for them.
 
---b.
+>  
+>  #ifdef CONFIG_FSNOTIFY
+> @@ -240,10 +246,19 @@ void __destroy_inode(struct inode *inode)
+>  	}
+>  
+>  #ifdef CONFIG_FS_POSIX_ACL
+> -	if (inode->i_acl && inode->i_acl != ACL_NOT_CACHED)
+> -		posix_acl_release(inode->i_acl);
+> -	if (inode->i_default_acl && inode->i_default_acl != ACL_NOT_CACHED)
+> -		posix_acl_release(inode->i_default_acl);
+> +	if (IS_POSIXACL(inode)) {
+> +		if (inode->i_acl && inode->i_acl != ACL_NOT_CACHED)
+> +			posix_acl_release(inode->i_acl);
+> +		if (inode->i_default_acl &&
+> +		    inode->i_default_acl != ACL_NOT_CACHED)
+> +			posix_acl_release(inode->i_default_acl);
+> +	}
+> +#endif
+> +#ifdef CONFIG_FS_RICHACL
+> +	if (IS_RICHACL(inode)) {
+> +		if (inode->i_richacl && inode->i_richacl != ACL_NOT_CACHED)
+> +			richacl_put(inode->i_richacl);
+> +	}
+>  #endif
+
+	if (inode->i_acl && inode->i_acl != ACL_NOT_CACHED)
+		acl_release(inode->i_acl);
+
+And all the mess of working out what acl needs releasing get taken
+out of of this code.
+
+> index 22d85798b520..95df64d21e55 100644
+> --- a/include/linux/fs.h
+> +++ b/include/linux/fs.h
+> @@ -492,6 +492,7 @@ static inline int mapping_writably_mapped(struct address_space *mapping)
+>  #endif
+>  
+>  struct posix_acl;
+> +struct richacl;
+>  #define ACL_NOT_CACHED ((void *)(-1))
+>  
+>  #define IOP_FASTPERM	0x0001
+> @@ -510,10 +511,17 @@ struct inode {
+>  	kgid_t			i_gid;
+>  	unsigned int		i_flags;
+>  
+> +	union {
+>  #ifdef CONFIG_FS_POSIX_ACL
+> -	struct posix_acl	*i_acl;
+> -	struct posix_acl	*i_default_acl;
+> +		struct {
+> +			struct posix_acl *i_acl;
+> +			struct posix_acl *i_default_acl;
+> +		};
+>  #endif
+> +#ifdef CONFIG_FS_RICHACL
+> +		struct richacl	*i_richacl;
+> +#endif
+> +	};
+
+>  
+>  	const struct inode_operations	*i_op;
+>  	struct super_block	*i_sb;
+> diff --git a/include/linux/richacl.h b/include/linux/richacl.h
+> index 88f95d78b897..a7db341e4ee9 100644
+> --- a/include/linux/richacl.h
+> +++ b/include/linux/richacl.h
+> @@ -191,6 +191,59 @@ richacl_put(struct richacl *acl)
+>  		kfree(acl);
+>  }
+>  
+> +#ifdef CONFIG_FS_RICHACL
+> +static inline struct richacl *get_cached_richacl(struct inode *inode)
+> +{
+> +	struct richacl **p, *acl;
+> +
+> +	p = &inode->i_richacl;
+> +	acl = ACCESS_ONCE(*p);
+> +	if (acl) {
+> +		spin_lock(&inode->i_lock);
+> +		acl = *p;
+> +		if (acl != ACL_NOT_CACHED)
+> +			acl = richacl_get(acl);
+> +		spin_unlock(&inode->i_lock);
+> +	}
+> +	return acl;
+> +}
+> +
+> +static inline void set_cached_richacl(struct inode *inode,
+> +				      struct richacl *acl)
+> +{
+> +	struct richacl *old = NULL;
+> +	spin_lock(&inode->i_lock);
+> +	old = inode->i_richacl;
+> +	inode->i_richacl = richacl_get(acl);
+> +	spin_unlock(&inode->i_lock);
+> +	if (old != ACL_NOT_CACHED)
+> +		richacl_put(old);
+> +}
+> +
+> +static inline void forget_cached_richacl(struct inode *inode)
+> +{
+> +	struct richacl *old = NULL;
+> +	spin_lock(&inode->i_lock);
+> +	old = inode->i_richacl;
+> +	inode->i_richacl = ACL_NOT_CACHED;
+> +	spin_unlock(&inode->i_lock);
+> +	if (old != ACL_NOT_CACHED)
+> +		richacl_put(old);
+> +}
+> +
+> +static inline int negative_cached_richacl(struct inode *inode)
+> +{
+> +	struct richacl **p, *acl;
+> +
+> +	p = &inode->i_richacl;
+> +	acl = ACCESS_ONCE(*p);
+> +	if (acl)
+> +		return 0;
+> +	return 1;
+> +}
+> +
+> +#endif
+
+This is all just copy-and-paste from the posix_acl code with the RCU
+path-walk awareness removed from it. There should only be a single
+RCU aware version of these functions that does not care what type of
+ACL is in use.
+
+Cheers,
+
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
