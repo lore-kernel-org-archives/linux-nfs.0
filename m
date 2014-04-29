@@ -1,154 +1,145 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:30904 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750740AbaD0MhV convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Apr 2014 08:37:21 -0400
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
-Subject: Re: [PATCH V1] NFS-RDMA: fix qp pointer validation checks
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <535CD819.3050508@dev.mellanox.co.il>
-Date: Sun, 27 Apr 2014 08:37:09 -0400
-Cc: Devesh Sharma <Devesh.Sharma@Emulex.Com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Message-Id: <4ACED3B0-CC8B-4F1F-8DB6-6C272AB17C99@oracle.com>
-References: <014738b6-698e-4ea1-82f9-287378bfec19@CMEXHTCAS2.ad.emulex.com> <F1C70AD6-BDD4-4534-8DC4-61D2767581D9@oracle.com> <EE7902D3F51F404C82415C4803930ACD3FDEAA43@CMEXMB1.ad.emulex.com> <E66D006A-0D04-4602-8BF5-6834CACD2E24@oracle.com> <EE7902D3F51F404C82415C4803930ACD3FDEB3B4@CMEXMB1.ad.emulex.com> <BD7B05C0-4733-4DD1-83F3-B30B6B0EE48C@oracle.com> <EE7902D3F51F404C82415C4803930ACD3FDEB3DF@CMEXMB1.ad.emulex.com> <56C87770-7940-4006-948C-FEF3C0EC4ACC@oracle.com> <EE7902D3F51F404C82415C4803930ACD3FDEBD66@CMEXMB1.ad.emulex.com> <5710A71F-C4D5-408B-9B41-07F21B5853F0@oracle.com> <6837A427-B677-4CC7-A022-4FB9E52A3FC6@oracle.com> <EE7902D3F51F404C82415C4803930ACD3FDED915@CMEXMB1.ad.emulex.com> <C689AB91-46F6-4E96-A673-0DE76FE54CC4@oracle.com> <EE7902D3F51F404C82415C4803930ACD3FDEE11F@CMEXMB1.ad.emulex.com> <1bab6615-60c4-4865-a6a0-c53bb1c32341@CMEXHTCAS1.ad.emulex.com> <5358B975.4020207@dev.mellanox.co.il> <B39C0B38-357F-4BDA-BDA7-048BD38853F7@oracle.com> <535CD819.3050508@dev!
- .mellanox.co.il>
-To: Sagi Grimberg <sagig@dev.mellanox.co.il>
+Received: from ipmail04.adl6.internode.on.net ([150.101.137.141]:48843 "EHLO
+	ipmail04.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1751515AbaD2AIY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Apr 2014 20:08:24 -0400
+Date: Tue, 29 Apr 2014 10:07:58 +1000
+From: Dave Chinner <david@fromorbit.com>
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Cc: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
+        viro@zeniv.linux.org.uk, dhowells@redhat.com,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH -V1 06/22] vfs: Add delete child and delete self
+ permission flags
+Message-ID: <20140429000758.GP15995@dastard>
+References: <1398615293-22931-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+ <1398615293-22931-7-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1398615293-22931-7-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On Apr 27, 2014, at 6:12 AM, Sagi Grimberg <sagig@dev.mellanox.co.il> wrote:
-
-> On 4/24/2014 6:01 PM, Chuck Lever wrote:
->> On Apr 24, 2014, at 3:12 AM, Sagi Grimberg <sagig@dev.mellanox.co.il> wrote:
->> 
->>> On 4/24/2014 2:30 AM, Devesh Sharma wrote:
->>>> Hi Chuck
->>>> 
->>>> Following is the complete call trace of a typical NFS-RDMA transaction while mounting a share.
->>>> It is unavoidable to stop calling post-send in case it is not created. Therefore, applying checks to the connection state is a must
->>>> While registering/deregistering frmrs on-the-fly. The unconnected state of QP implies don't call  post_send/post_recv from any context.
->>>> 
->>> Long thread... didn't follow it all.
->> I think you got the gist of it.
->> 
->>> If I understand correctly this race comes only for *cleanup* (LINV) of FRMR registration while teardown flow destroyed the QP.
->>> I think this might be disappear if for each registration you post LINV+FRMR.
->>> This is assuming that a situation where trying to post Fastreg on a "bad" QP can
->>> never happen (usually since teardown flow typically suspends outgoing commands).
->> That’s typically true for “hard” NFS mounts. But “soft” NFS mounts
->> wake RPCs after a timeout while the transport is disconnected, in
->> order to kill them.  At that point, deregistration still needs to
->> succeed somehow.
+On Sun, Apr 27, 2014 at 09:44:37PM +0530, Aneesh Kumar K.V wrote:
+> From: Andreas Gruenbacher <agruen@kernel.org>
 > 
-> Not sure I understand, Can you please explain why deregistration will not succeed?
-> AFAIK You are allowed to register FRMR and then deregister it without having to invalidate it.
+> Normally, deleting a file requires write access to the parent directory.
+> Some permission models use a different permission on the parent
+> directory to indicate delete access.  In addition, a process can have
+> per-file delete access even without delete access on the parent
+> directory.
 > 
-> Can you please explain why you logically connected LINV with deregistration?
-
-Confusion. Sorry.
-
+> Introduce two new inode_permission() mask flags and use them in
+> may_delete()
 > 
->> 
->> IMO there are three related problems.
->> 
->> 1.  rpcrdma_ep_connect() is allowing RPC tasks to be awoken while
->>     there is no QP at all (->qp is NULL). The woken RPC tasks are
->>     trying to deregister buffers that may include page cache pages,
->>     and it’s oopsing because ->qp is NULL.
->> 
->>     That’s a logic bug in rpcrdma_ep_connect(), and I have an idea
->>     how to address it.
+> Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
+> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+> ---
+>  fs/namei.c         | 45 ++++++++++++++++++++++++++++++++++-----------
+>  include/linux/fs.h |  2 ++
+>  2 files changed, 36 insertions(+), 11 deletions(-)
 > 
-> Why not first create a new id+qp and assign them - and then destroy the old id+qp?
-> see SRP related section: ib_srp.x:srp_create_target_ib()
-> 
-> Anyway it is indeed important to guarantee that no xmit flows happens concurrently to that,
-> and cleanups are processed synchronously and in-order.
+> diff --git a/fs/namei.c b/fs/namei.c
+> index 028bc8bcf77c..56ac7613fbca 100644
+> --- a/fs/namei.c
+> +++ b/fs/namei.c
+> @@ -446,7 +446,7 @@ static int sb_permission(struct super_block *sb, struct inode *inode, int mask)
+>   * changing the "normal" UIDs which are used for other things.
+>   *
+>   * When checking for MAY_APPEND, MAY_CREATE_FILE, MAY_CREATE_DIR,
+> - * MAY_WRITE must also be set in @mask.
+> + * MAY_DELETE_CHILD, MAY_DELETE_SELF, MAY_WRITE must also be set in @mask.
+>   */
+>  int inode_permission(struct inode *inode, int mask)
+>  {
+> @@ -2366,11 +2366,25 @@ kern_path_mountpoint(int dfd, const char *name, struct path *path,
+>  }
+>  EXPORT_SYMBOL(kern_path_mountpoint);
+>  
+> +
+> +/*
+> + * We should have exec permission on directory and MAY_DELETE_SELF
+> + * on the object being deleted.
+> + */
+> +static int richacl_may_selfdelete(struct inode *dir,
+> +				  struct inode *inode, int replace_mask)
+> +{
+> +	return (IS_RICHACL(inode) &&
+> +		(inode_permission(dir, MAY_EXEC | replace_mask) == 0) &&
+> +		(inode_permission(inode, MAY_DELETE_SELF) == 0));
+> +}
 
-I posted a patch on Friday that should provide that serialization.
-
-> 
->> 
->> 2.  If a QP is present but disconnected, posting LOCAL_INV won’t work.
->>     That leaves buffers (and page cache pages, potentially) registered.
->>     That could be addressed with LINV+FRMR. But...
->> 
->> 3.  The client should not leave page cache pages registered indefinitely.
->>     Both LINV+FRMR and our current approach depends on having a working
->>     QP _at_ _some_ _point_ … but the client simply can’t depend on that.
->>     What happens if an NFS server is, say, destroyed by fire while there
->>     are active client mount points? What if the HCA’s firmware is
->>     permanently not allowing QP creation?
-> 
-> Again, I don't understand why you can't dereg_mr().
-> 
-> How about allocating the FRMR pool *after* the QP was successfully created/connected (makes sense as the FRMRs are
-> not usable until then), and destroy/cleanup the pool before the QP is disconnected/destroyed. it also makes sense as they
-> must match PDs.
-
-It’s not about deregistration, but rather about invalidation, I was
-confused.
-
-xprt_rdma_free() invalidates and then frees the chunks on RPC chunk
-lists. We just need to see that those invalidations can be successful
-while the transport is disconnected.
-
-I understand that even in the error state, a QP should allow consumers
-to post send WRs to invalidate FRMRs…?
-
-The other case is whether the consumer can _replace_ a QP with a fresh
-one, and still have invalidations succeed, even if the transport remains
-disconnected, once waiting RPCs are awoken.
-
-An alternative would be to invalidate all waiting RPC chunk lists on a
-transport as soon as the QP goes to error state but before it is
-destroyed, and fastreg the chunks again when waiting RPCs are
-remarshalled.
-
-I think the goals are:
-
-  1.  Avoid fastreg on an FRMR that is already valid
-
-  2.  Avoid leaving FRMRs valid indefinitely (preferably just long enough
-      to execute the RPC request, and no longer)
+Can't say I like these "richacl" prefixes. Why not just "may_*"
+like all the other permission checks?
 
 
-> 
->> 
->> Here's a relevant comment in rpcrdma_ep_connect():
->> 
->>  815                 /* TEMP TEMP TEMP - fail if new device:
->>  816                  * Deregister/remarshal *all* requests!
->>  817                  * Close and recreate adapter, pd, etc!
->>  818                  * Re-determine all attributes still sane!
->>  819                  * More stuff I haven't thought of!
->>  820                  * Rrrgh!
->>  821                  */
->> 
->> xprtrdma does not do this today.
->> 
->> When a new device is created, all existing RPC requests could be
->> deregistered and re-marshalled.  As far as I can tell,
->> rpcrdma_ep_connect() is executing in a synchronous context (the connect
->> worker) and we can simply use dereg_mr, as long as later, when the RPCs
->> are re-driven, they know they need to re-marshal.
-> 
-> Agree.
-> 
-> Sagi.
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> @@ -2414,13 +2431,19 @@ static int may_delete(struct inode *dir, struct dentry *victim, bool isdir)
+>  	BUG_ON(victim->d_parent->d_inode != dir);
+>  	audit_inode_child(dir, victim, AUDIT_TYPE_CHILD_DELETE);
+>  
+> -	error = inode_permission(dir, MAY_WRITE | MAY_EXEC);
+> +	mask = MAY_WRITE | MAY_EXEC | MAY_DELETE_CHILD;
+> +	if (replace)
+> +		replace_mask = S_ISDIR(inode->i_mode) ?
+> +				MAY_CREATE_DIR : MAY_CREATE_FILE;
+> +	error = inode_permission(dir, mask | replace_mask);
+> +	if (error && richacl_may_selfdelete(dir, inode, replace_mask))
+> +		error = 0;
+>  	if (error)
+>  		return error;
+>  	if (IS_APPEND(dir))
+>  		return -EPERM;
+>  
+> -	if (check_sticky(dir, inode) || IS_APPEND(inode) ||
+> +	if (check_sticky(dir, inode, replace_mask) || IS_APPEND(inode) ||
+>  	    IS_IMMUTABLE(inode) || IS_SWAPFILE(inode))
+>  		return -EPERM;
+>  	if (isdir) {
+> @@ -3539,7 +3562,7 @@ EXPORT_SYMBOL(dentry_unhash);
+>  
+>  int vfs_rmdir(struct inode *dir, struct dentry *dentry)
+>  {
+> -	int error = may_delete(dir, dentry, 1);
+> +	int error = may_delete(dir, dentry, 1, 0);
+>  
+>  	if (error)
+>  		return error;
+> @@ -3658,7 +3681,7 @@ SYSCALL_DEFINE1(rmdir, const char __user *, pathname)
+>  int vfs_unlink(struct inode *dir, struct dentry *dentry, struct inode **delegated_inode)
+>  {
+>  	struct inode *target = dentry->d_inode;
+> -	int error = may_delete(dir, dentry, 0);
+> +	int error = may_delete(dir, dentry, 0, 0);
+>  
+>  	if (error)
+>  		return error;
+> @@ -4060,7 +4083,7 @@ int vfs_rename(struct inode *old_dir, struct dentry *old_dentry,
+>  	if (source == target)
+>  		return 0;
+>  
+> -	error = may_delete(old_dir, old_dentry, is_dir);
+> +	error = may_delete(old_dir, old_dentry, is_dir, 0);
+>  	if (error)
+>  		return error;
+>  
+> @@ -4070,9 +4093,9 @@ int vfs_rename(struct inode *old_dir, struct dentry *old_dentry,
+>  		new_is_dir = d_is_dir(new_dentry);
+>  
+>  		if (!(flags & RENAME_EXCHANGE))
+> -			error = may_delete(new_dir, new_dentry, is_dir);
+> +			error = may_delete(new_dir, new_dentry, is_dir, 1);
+>  		else
+> -			error = may_delete(new_dir, new_dentry, new_is_dir);
+> +			error = may_delete(new_dir, new_dentry, new_is_dir, 1);
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+Another boolean parameter that means nothing at the call site.  This
+should really be passing a flags field, not a bunch of booleans that
+are simply evaluated into flags...
 
+Cheers,
 
-
+Dave.
+-- 
+Dave Chinner
+david@fromorbit.com
