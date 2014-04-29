@@ -1,148 +1,140 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:52752 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755997AbaDWDst (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 22 Apr 2014 23:48:49 -0400
-From: NeilBrown <neilb@suse.de>
-To: Jan Kara <jack@suse.cz>, Jeff Layton <jlayton@redhat.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Dave Chinner <david@fromorbit.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Mel Gorman <mgorman@suse.com>,
-        Andrew Morton <akpm@linux-foundation.org>
-Date: Wed, 23 Apr 2014 12:40:58 +1000
-Subject: [PATCH 4/5] SUNRPC: track when a client connection is routed to the
- local host.
-Cc: linux-mm@kvack.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Message-ID: <20140423024058.4725.7703.stgit@notabene.brown>
-In-Reply-To: <20140423022441.4725.89693.stgit@notabene.brown>
-References: <20140423022441.4725.89693.stgit@notabene.brown>
+Received: from mail-ee0-f45.google.com ([74.125.83.45]:34595 "EHLO
+	mail-ee0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933313AbaD2Jxo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Apr 2014 05:53:44 -0400
+Message-ID: <535F76A4.4090208@gmail.com>
+Date: Tue, 29 Apr 2014 11:53:40 +0200
+From: "Michael Kerrisk (man-pages)" <mtk.manpages@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: NeilBrown <neilb@suse.de>
+CC: mtk.manpages@gmail.com, "Stefan (metze) Metzmacher" <metze@samba.org>,
+        Jeff Layton <jlayton@redhat.com>,
+        "linux-fsdevel@vger.kernel.org" <linux-fsdevel@vger.kernel.org>,
+        lkml <linux-kernel@vger.kernel.org>,
+        Ganesha NFS List <nfs-ganesha-devel@lists.sourceforge.net>,
+        Suresh Jayaraman <sjayaraman@suse.de>,
+        Trond Myklebust <trond.myklebust@fys.uio.no>,
+        Christoph Hellwig <hch@infradead.org>,
+        linux-nfs <linux-nfs@vger.kernel.org>,
+        "J. Bruce Fields" <bfields@fieldses.org>
+Subject: Re: flock() and NFS [Was: Re: [PATCH] locks: rename file-private
+ locks to file-description locks]
+References: <1398087935-14001-1-git-send-email-jlayton@redhat.com>	<20140421140246.GB26358@brightrain.aerifal.cx>	<535529FA.8070709@gmail.com>	<20140421161004.GC26358@brightrain.aerifal.cx>	<5355644C.7000801@gmail.com>	<20140421184640.GD26358@brightrain.aerifal.cx>	<535573E0.9080106@gmail.com>	<20140421155520.3b33fbef@ipyr.poochiereds.net>	<53558A73.3010602@samba.org>	<5355F60C.8010004@gmail.com>	<20140427145125.21e7e6c6@notabene.brown>	<535CCAD2.4060304@gmail.com>	<20140427200431.426c98d1@notabene.brown>	<CAKgNAkgv5NqDRUNu0XtSABqmctd7=rpMMEYhhDQNzPssZuU5bA@mail.gmail.com>	<20140428072845.67f48d8e@notabene.brown>	<535F6BC4.2090601@gmail.com> <20140429192458.641ebf1d@notabene.brown>
+In-Reply-To: <20140429192458.641ebf1d@notabene.brown>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If requests are being sent to the local host, then NFS will
-need to take care to avoid deadlocks.
+On 04/29/2014 11:24 AM, NeilBrown wrote:
+> On Tue, 29 Apr 2014 11:07:16 +0200 "Michael Kerrisk (man-pages)"
+> <mtk.manpages@gmail.com> wrote:
+> 
+>> On 04/27/2014 11:28 PM, NeilBrown wrote:
+>>> On Sun, 27 Apr 2014 13:11:33 +0200 "Michael Kerrisk (man-pages)"
+>>> <mtk.manpages@gmail.com> wrote:
+>>>
+>>>> On Sun, Apr 27, 2014 at 12:04 PM, NeilBrown <neilb@suse.de> wrote:
+>>>>> On Sun, 27 Apr 2014 11:16:02 +0200 "Michael Kerrisk (man-pages)"
+>>>>> <mtk.manpages@gmail.com> wrote:
+>>>>>
+>>>>>> [Trimming some folk from CC, and adding various NFS people]
+>>>>>>
+>>>>>> On 04/27/2014 06:51 AM, NeilBrown wrote:
+>>>>>>
+>>>>>> [...]
+>>>>>>
+>>>>>>> Note to Michael: The text
+>>>>>>>    flock() does not lock files over NFS.
+>>>>>>> in flock(2) is no longer accurate.  The reality is ... complex.
+>>>>>>> See nfs(5), and search for "local_lock".
+>>>>>>
+>>>>>> Ahhh -- I see:
+>>>>>> http://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=5eebde23223aeb0ad2d9e3be6590ff8bbfab0fc2
+>>>>>>
+>>>>>> Thanks for the heads up.
+>>>>>>
+>>>>>> Just in general, it would be great if the flock(2) and fcntl(2) man pages
+>>>>>> contained correct details for NFS, of course. So, for example, if there
+>>>>>> are any current gotchas for NFS and fcntl() byte-range locking, I'd like
+>>>>>> to add those to the fcntl(2) man page.
+>>>>>
+>>>>> The only peculiarities I can think of are:
+>>>>>  - With NFS, locking or unlocking a region forces a flush of any cached data
+>>>>>    for that file (or maybe for the region of the file).  I'm not sure if this
+>>>>>    is worth mentioning.
+>>>>
+>>>> I agree that it's probably not necessary to mention.
+>>>>
+>>>>>  - With NFSv4 the client can lose a lock if it is out of contact with the
+>>>>>    server for a period of time.  When this happens, any IO to the file by a
+>>>>>    process which "thinks" it holds a lock will fail until that process closes
+>>>>>    and re-opens the file.
+>>>>>    This behaviour is since 3.12.  Prior to that the client might lose and
+>>>>>    regain the lock without ever knowing thus potentially risking corruption
+>>>>>    (but only if client and server lost contact for an extended period).
+>>>>
+>>>> Do you have a pointer for that commit to 3.12?
+>>>>
+>>>
+>>> http://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=ef1820f9be27b6ad158f433ab38002ab8131db4d
+>>>
+>>> did most of the work while  the subsequent commit
+>>>
+>>> http://git.kernel.org/cgit/linux/kernel/git/torvalds/linux.git/commit/?id=f6de7a39c181dfb8a2c534661a53c73afb3081cd
+>>>
+>>> changed some details, added some documentation, and inverted the default
+>>> behaviour.
+>>
+>> Thanks for that detail. What do you think of the following text for the 
+>> fcntl(2) man page:
+>>
+>>        Before  Linux 3.12, if an NFS client is out of contact with the
+>>        server for a period of time, it might lose and  regain  a  lock
+>>        without  ever  being  aware  of the fact.  This scenario poten‐
+>>        tially risks  data  corruption,  since  another  process  might
+>>        acquire  a lock in the intervening period and perform file I/O.
+>>        Since Linux 3.12, if the client loses contact with the  server,
+>>        any I/O to the file by a process which "thinks" it holds a lock
+>>        will fail until that process closes and reopens  the  file.   A
+>>        kernel  parameter,  nfs.recover_lost_locks,  can be set to 1 to
+>>        obtain the pre-3.12 behavior, whereby the client  will  attempt
+>>        to  recover  lost  locks when contact is reestablished with the
+>>        server.  Because of the attendant risk of data corruption, this
+>>        parameter defaults to 0 (disabled).
+>>
+> 
+> Mostly good.
+> 
+> I'm just a little concerned about "if the client loses contact with the
+> server" in the middle there.  It is no longer qualified and it isn't clear
+> that the "for a period of time" qualification still applied.  And we should
+> probably quantify the period of time - which defaults to 90 seconds.
+> I don't remember just now the difference between
+>    /proc/fs/nfsd/nfsv4{lease,grace}time
+> but this 90 seconds is one of those.
+> 
+> Also this is NFSv4 specific.  With NFSv3 the failure mode is the reverse.  If
+> the server loses contact with a client then any lock stays in place
+> indefinitely ("why can't I read my mail"... I remember it well).
+> 
+>   Before Linux 3.12, if an NFSv4 client loses contact with the server
+>   (defined as more than 90 seconds with no communication), it might lose
+>   and regain ....
 
-So keep track when accepting a connection or sending a UDP request
-and set a flag in the svc_xprt when the peer connected to is local.
+Thanks, Neil. Changed as you suggest. I'd quite like to mention
+which of /proc/fs/nfsd/nfsv4{lease,grace}time is relevant here. I had a 
+quick scan, but could not determine it with complete confidence. My suspicion, 
+looking at fs/lockd/svcproc.c and fs/lockd/grace.c::locks_in_grace()
+is that it is /proc/fs/nfsd/nfsv4gracetime that is relevant here. Can anyone
+confirm?
 
-The interface rpc_is_foreign() is provided to check is a given client
-is connected to a foreign server.  When it returns zero it is either
-not connected or connected to a local server and in either case
-greater care is needed.
+Cheers,
 
-Signed-off-by: NeilBrown <neilb@suse.de>
----
- include/linux/sunrpc/clnt.h |    1 +
- include/linux/sunrpc/xprt.h |    1 +
- net/sunrpc/clnt.c           |   25 +++++++++++++++++++++++++
- net/sunrpc/xprtsock.c       |   17 +++++++++++++++++
- 4 files changed, 44 insertions(+)
-
-diff --git a/include/linux/sunrpc/clnt.h b/include/linux/sunrpc/clnt.h
-index 8af2804bab16..5d626cc5ab01 100644
---- a/include/linux/sunrpc/clnt.h
-+++ b/include/linux/sunrpc/clnt.h
-@@ -173,6 +173,7 @@ void		rpc_force_rebind(struct rpc_clnt *);
- size_t		rpc_peeraddr(struct rpc_clnt *, struct sockaddr *, size_t);
- const char	*rpc_peeraddr2str(struct rpc_clnt *, enum rpc_display_format_t);
- int		rpc_localaddr(struct rpc_clnt *, struct sockaddr *, size_t);
-+int		rpc_is_foreign(struct rpc_clnt *);
- 
- #endif /* __KERNEL__ */
- #endif /* _LINUX_SUNRPC_CLNT_H */
-diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
-index 8097b9df6773..318ee37bc358 100644
---- a/include/linux/sunrpc/xprt.h
-+++ b/include/linux/sunrpc/xprt.h
-@@ -340,6 +340,7 @@ int			xs_swapper(struct rpc_xprt *xprt, int enable);
- #define XPRT_CONNECTION_ABORT	(7)
- #define XPRT_CONNECTION_CLOSE	(8)
- #define XPRT_CONGESTED		(9)
-+#define XPRT_LOCAL		(10)
- 
- static inline void xprt_set_connected(struct rpc_xprt *xprt)
- {
-diff --git a/net/sunrpc/clnt.c b/net/sunrpc/clnt.c
-index 0edada973434..454cea69b373 100644
---- a/net/sunrpc/clnt.c
-+++ b/net/sunrpc/clnt.c
-@@ -1109,6 +1109,31 @@ const char *rpc_peeraddr2str(struct rpc_clnt *clnt,
- }
- EXPORT_SYMBOL_GPL(rpc_peeraddr2str);
- 
-+/**
-+ * rpc_is_foreign - report is rpc client was recently connected to
-+ *                  remote host
-+ * @clnt: RPC client structure
-+ *
-+ * If the client is not connected, or connected to the local host
-+ * (any IP address), then return 0.  Only return non-zero if the
-+ * most recent state was a connection to a remote host.
-+ * For UDP the client always appears to be connected, and the
-+ * remoteness of the host is of the destination of the last transmission.
-+ */
-+int rpc_is_foreign(struct rpc_clnt *clnt)
-+{
-+	struct rpc_xprt *xprt;
-+	int conn_foreign;
-+
-+	rcu_read_lock();
-+	xprt = rcu_dereference(clnt->cl_xprt);
-+	conn_foreign = (xprt && xprt_connected(xprt)
-+			&& !test_bit(XPRT_LOCAL, &xprt->state));
-+	rcu_read_unlock();
-+	return conn_foreign;
-+}
-+EXPORT_SYMBOL_GPL(rpc_is_foreign);
-+
- static const struct sockaddr_in rpc_inaddr_loopback = {
- 	.sin_family		= AF_INET,
- 	.sin_addr.s_addr	= htonl(INADDR_ANY),
-diff --git a/net/sunrpc/xprtsock.c b/net/sunrpc/xprtsock.c
-index 0addefca8e77..74796cf37d5b 100644
---- a/net/sunrpc/xprtsock.c
-+++ b/net/sunrpc/xprtsock.c
-@@ -642,6 +642,15 @@ static int xs_udp_send_request(struct rpc_task *task)
- 			xdr->len - req->rq_bytes_sent, status);
- 
- 	if (status >= 0) {
-+		struct dst_entry *dst;
-+		rcu_read_lock();
-+		dst = rcu_dereference(transport->sock->sk->sk_dst_cache);
-+		if (dst && dst->dev && (dst->dev->features & NETIF_F_LOOPBACK))
-+			set_bit(XPRT_LOCAL, &xprt->state);
-+		else
-+			clear_bit(XPRT_LOCAL, &xprt->state);
-+		rcu_read_unlock();
-+
- 		req->rq_xmit_bytes_sent += status;
- 		if (status >= req->rq_slen)
- 			return 0;
-@@ -1527,6 +1536,7 @@ static void xs_sock_mark_closed(struct rpc_xprt *xprt)
- static void xs_tcp_state_change(struct sock *sk)
- {
- 	struct rpc_xprt *xprt;
-+	struct dst_entry *dst;
- 
- 	read_lock_bh(&sk->sk_callback_lock);
- 	if (!(xprt = xprt_from_sock(sk)))
-@@ -1556,6 +1566,13 @@ static void xs_tcp_state_change(struct sock *sk)
- 
- 			xprt_wake_pending_tasks(xprt, -EAGAIN);
- 		}
-+		rcu_read_lock();
-+		dst = rcu_dereference(sk->sk_dst_cache);
-+		if (dst && dst->dev && (dst->dev->features & NETIF_F_LOOPBACK))
-+			set_bit(XPRT_LOCAL, &xprt->state);
-+		else
-+			clear_bit(XPRT_LOCAL, &xprt->state);
-+		rcu_read_unlock();
- 		spin_unlock(&xprt->transport_lock);
- 		break;
- 	case TCP_FIN_WAIT1:
+Michael
 
 
+-- 
+Michael Kerrisk
+Linux man-pages maintainer; http://www.kernel.org/doc/man-pages/
+Linux/UNIX System Programming Training: http://man7.org/training/
