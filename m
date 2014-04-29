@@ -1,85 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from szxga03-in.huawei.com ([119.145.14.66]:45488 "EHLO
-	szxga03-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753276AbaD3Cqs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Apr 2014 22:46:48 -0400
-From: Weng Meiling <wengmeiling.weng@huawei.com>
-To: <stable@vger.kernel.org>
-CC: <bfields@fieldses.org>, <greg@kroah.com>, <lizefan@huawei.com>,
-        <skinsbursky@parallels.com>, <h.huangqiang@huawei.com>,
-        <linux-nfs@vger.kernel.org>
-Subject: [PATCH v2 3.4 1/9] nfsd: pass net to nfsd_init_socks()
-Date: Wed, 30 Apr 2014 10:43:36 +0800
-Message-ID: <1398825824-6360-2-git-send-email-wengmeiling.weng@huawei.com>
-In-Reply-To: <1398825824-6360-1-git-send-email-wengmeiling.weng@huawei.com>
-References: <1398825824-6360-1-git-send-email-wengmeiling.weng@huawei.com>
+Received: from elasmtp-junco.atl.sa.earthlink.net ([209.86.89.63]:49907 "EHLO
+	elasmtp-junco.atl.sa.earthlink.net" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1757679AbaD2PMS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Apr 2014 11:12:18 -0400
+From: "Frank Filz" <ffilzlnx@mindspring.com>
+To: "'Jeff Layton'" <jlayton@poochiereds.net>,
+        "'Matt W. Benjamin'" <matt@linuxbox.com>
+Cc: "'Ganesha NFS List'" <nfs-ganesha-devel@lists.sourceforge.net>,
+        "'lkml'" <linux-kernel@vger.kernel.org>,
+        "'Linux-Fsdevel'" <linux-fsdevel@vger.kernel.org>,
+        "'Trond Myklebust'" <trond.myklebust@fys.uio.no>,
+        "'J. Bruce Fields'" <bfields@fieldses.org>,
+        "'Neil Brown'" <neilb@suse.de>, <samba-technical@lists.samba.org>,
+        <linux-nfs@vger.kernel.org>,
+        "'Michael Kerrisk \(man-pages\)'" <mtk.manpages@gmail.com>
+References: <20140429071153.176c7404@tlielax.poochiereds.net>	<1482413734.4.1398771608019.JavaMail.root@thunderbeast.private.linuxbox.com> <20140429075046.39fc9c3f@tlielax.poochiereds.net>
+In-Reply-To: <20140429075046.39fc9c3f@tlielax.poochiereds.net>
+Subject: RE: OFD ("file private") locks and NFS
+Date: Tue, 29 Apr 2014 08:11:27 -0700
+Message-ID: <030601cf63bd$4c635220$e529f660$@mindspring.com>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain;
+	charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Stanislav Kinsbursky <skinsbursky@parallels.com>
+> On Tue, 29 Apr 2014 07:40:08 -0400 (EDT) "Matt W. Benjamin"
+> <matt@linuxbox.com> wrote:
+> 
+> > Hi Jeff,
+> >
+> > Something which came up on the last Ganesha conn call is that we have
+> > a pretty strong need for some ability to wait on a set of locks, and
+> > perhaps receive events.  Frank Filz believed that you had made a
+> > proposal which would cover this.  Can you elaborate on that?
+> >
+> > Thanks,
+> >
+> > Matt
+> >
+> 
+> No, there's no mechanism to wait on a set of locks from within the context
+of
+> a single thread of execution or to receive "events". Again, that would be
+a
+> new API beyond what I've been proposing over the last several months.
 
-commit db6e182c17cb1a7069f7f8924721ce58ac05d9a3 upstream.
+Some kind of facility to enable one user space thread to wait on multiple
+blocked locks would definitely be helpful to user space servers.
 
-Precursor patch. Hard-coded "init_net" will be replaced by proper one in
-future.
+Our current plan is to have a pool of threads, and dispatch blocking locks
+to them. If that pool is exhausted, all further locks would be dispatched to
+a single thread that would poll for locks.
 
-Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-[wengmeiling: backport to 3.4:
- - adjust context
- - one more parameter(int port) for nfsd_init_socks()
- - net initialization in nfsd_startup()]
-Signed-off-by: Weng Meiling <wengmeiling.weng@huawei.com>
----
- fs/nfsd/nfssvc.c | 9 +++++----
- 1 file changed, 5 insertions(+), 4 deletions(-)
-
-diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
-index 25d839e..517a883 100644
---- a/fs/nfsd/nfssvc.c
-+++ b/fs/nfsd/nfssvc.c
-@@ -182,18 +182,18 @@ int nfsd_nrthreads(void)
- 	return rv;
- }
- 
--static int nfsd_init_socks(int port)
-+static int nfsd_init_socks(int port, struct net *net)
- {
- 	int error;
- 	if (!list_empty(&nfsd_serv->sv_permsocks))
- 		return 0;
- 
--	error = svc_create_xprt(nfsd_serv, "udp", &init_net, PF_INET, port,
-+	error = svc_create_xprt(nfsd_serv, "udp", net, PF_INET, port,
- 					SVC_SOCK_DEFAULTS);
- 	if (error < 0)
- 		return error;
- 
--	error = svc_create_xprt(nfsd_serv, "tcp", &init_net, PF_INET, port,
-+	error = svc_create_xprt(nfsd_serv, "tcp", net, PF_INET, port,
- 					SVC_SOCK_DEFAULTS);
- 	if (error < 0)
- 		return error;
-@@ -206,6 +206,7 @@ static bool nfsd_up = false;
- static int nfsd_startup(unsigned short port, int nrservs)
- {
- 	int ret;
-+	struct net *net = &init_net;
- 
- 	if (nfsd_up)
- 		return 0;
-@@ -217,7 +218,7 @@ static int nfsd_startup(unsigned short port, int nrservs)
- 	ret = nfsd_racache_init(2*nrservs);
- 	if (ret)
- 		return ret;
--	ret = nfsd_init_socks(port);
-+	ret = nfsd_init_socks(port, net);
- 	if (ret)
- 		goto out_racache;
- 	ret = lockd_up(&init_net);
--- 
-1.8.2.2
+Frank
 
 
