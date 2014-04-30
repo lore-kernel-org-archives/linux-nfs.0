@@ -1,143 +1,146 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:22567 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752644AbaDHPEb convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 8 Apr 2014 11:04:31 -0400
-Date: Tue, 8 Apr 2014 11:04:20 -0400
-From: Jeff Layton <jlayton@redhat.com>
-To: Dr Fields James Bruce <bfields@fieldses.org>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        linux-nfs@vger.kernel.org,
-        Adamson William Andros <androsadamson@gmail.com>,
-        Lever Charles Edward <chuck.lever@oracle.com>
-Subject: Re: v4.0 CB_COMPOUND authentication failures
-Message-ID: <20140408110420.62e060ef@tlielax.poochiereds.net>
-In-Reply-To: <20140408144652.GE3882@fieldses.org>
-References: <20140408082140.340c1328@tlielax.poochiereds.net>
-	<20140408123501.GA3532@fieldses.org>
-	<20140408094903.33e42de2@tlielax.poochiereds.net>
-	<20140408140333.GD3882@fieldses.org>
-	<6CC79B2A-8AE2-4A36-BB57-380C2F9813C0@primarydata.com>
-	<20140408144652.GE3882@fieldses.org>
+Received: from aserp1040.oracle.com ([141.146.126.69]:43879 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759299AbaD3TQ5 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Apr 2014 15:16:57 -0400
+Message-ID: <53614C03.80606@oracle.com>
+Date: Wed, 30 Apr 2014 12:16:19 -0700
+From: Shirley Ma <shirley.ma@oracle.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=utf-8
+To: Jeff Becker <jeffrey.c.becker@nasa.gov>,
+        "<yanb@mellanox.com>" <yanb@mellanox.com>,
+        "Cayton, Phil" <phil.cayton@intel.com>,
+        "Coulter, Susan K" <skc@lanl.gov>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        Anna Schumaker <Anna.Schumaker@netapp.com>,
+        "<Devesh.Sharma@emulex.com>" <Devesh.Sharma@emulex.com>,
+        Steve Wise <swise@opengridcomputing.com>,
+        Allen Andrews <Allen.Andrews@emulex.com>,
+        Jeff Layton <jlayton@redhat.com>, linux-rdma@vger.kernel.org,
+        linux-nfs@vger.kernel.org, trond.myklebust@primarydata.com,
+        "<emossman@iol.unh.edu>" <emossman@iol.unh.edu>
+Subject: NFSoRDMA developers bi-weekly meeting announcement (4/30)
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 8 Apr 2014 10:46:52 -0400
-Dr Fields James Bruce <bfields@fieldses.org> wrote:
+Attendees:
+Jeff Beck (NASA)
+Yan Burman (Mellanox)
+Phil Cayton (Intel)
+Susan Coulter (LANL)
+Chuck Lever (Oracle)
+Shirley Ma (Oracle)
+Anna Schumaker (Net App)
+Devesh Sharma (Emulex)
+Steve Wise (OpenGridComputing, Chelsio)
 
-> On Tue, Apr 08, 2014 at 10:23:37AM -0400, Trond Myklebust wrote:
-> > 
-> > On Apr 8, 2014, at 10:03, J. Bruce Fields <bfields@fieldses.org> wrote:
-> > 
-> > > On Tue, Apr 08, 2014 at 09:49:03AM -0400, Jeff Layton wrote:
-> > >> On Tue, 8 Apr 2014 08:35:01 -0400
-> > >> "J. Bruce Fields" <bfields@fieldses.org> wrote:
-> > >> 
-> > >>> On Tue, Apr 08, 2014 at 08:21:40AM -0400, Jeff Layton wrote:
-> > >>>> I've recently been hunting down some problems with delegation handling
-> > >>>> and have run across a problem with the client authenticates CB_COMPOUND
-> > >>>> requests. I could use some advice on how best to fix it.
-> > >>>> 
-> > >>>> Specifically, check_gss_callback_principal() tries to look up the
-> > >>>> callback client and then tries to compare the ticket in it against the
-> > >>>> clp->cl_hostname:
-> > >>>> 
-> > >>>>        /* Expect a GSS_C_NT_HOSTBASED_NAME like "nfs@serverhostname" */
-> > >>>> 
-> > >>>>        if (memcmp(p, "nfs@", 4) != 0)
-> > >>>>                return 0;
-> > >>>>        p += 4;
-> > >>>>        if (strcmp(p, clp->cl_hostname) != 0)
-> > >>>>                return 0;
-> > >>>>        return 1;
-> > >>>> 
-> > >>>> The problem is that there is no guarantee that those hostnames will be
-> > >>>> the same. If, for instance, I mount "foo:/" and the SPN is
-> > >>>> "nfs/foo.bar.baz" that strcmp will return true, and the CB_COMPOUND
-> > >>>> request will get tossed out [1]. Ditto if I happen to mount a CNAME of the
-> > >>>> server.
-> > >>> 
-> > >>> It sounds like a bug to me that the mount is succeeding without the name
-> > >>> matching.
-> > >>> 
-> > >>> The security provided by krb5 is much weaker if we don't check that the
-> > >>> name provided on the commandline matches what the server authenticates
-> > >>> as.
-> > >>> 
-> > >> 
-> > >> The logic in gssd for this is pretty awful.
-> > >> 
-> > >> It will basically trust DNS if there is no '.' in the hostname that was
-> > >> used at mount time. That'll make it take the address and
-> > >> reverse-resolve it.
-> > > 
-> > > Argh, OK, I guess this is the compromise Simo made in "Avoid DNS reverse
-> > > resolution for server names (take 3)".
-> > > 
-> > >> We could add yet another band-aid and make it so that DNS is never
-> > >> trusted. I'll note that for cifs, we took that route. You have to mount
-> > >> the canonical name of the server in order to use krb5.
-> > > 
-> > > I wish we could do that, but I suppose it's too harsh to break
-> > > already-working fstabs.  Maybe we could phase it in somehow.
-> > > 
-> > >>>> Now that we try to use krb5 on the callback channel even when sec=sys
-> > >>>> is specified, this is very problematic.
-> > >>> 
-> > >>> And similarly I think the attempt to opportunistically use krb5 for
-> > >>> state management should fail and fall back on auth_sys if the server's
-> > >>> name doesn't match.
-> > >>> 
-> > 
-> > This suggestion makes no sense to me at all. How does it help to fall back to using weak security when the strong security checks fail?
-> 
-> It'd fix this particular problem.
-> 
-> But, I don't know, I'm frankly confused about our security design for
-> the NFSv4 state.
-> 
-> When we insist on krb5 (and checked the server name correctly), and
-> failed without it, then I feel like I understand what we're doing.  Once
-> we start trying it and then falling back (as I understand happens for
-> the krb5 state in the auth_sys case) I get confused.
-> 
-> > >> Like Trond pointed out, the problem is that gssd doesn't give us that
-> > >> info currently. We could change it to do that of course, but that
-> > >> basically means revving the downcall.
-> > > 
-> > > It might be easier to rev the upcall so that the kernel could ask gssd
-> > > to do strict checking?  Since it's just a bunch of name=value pairs it
-> > > shouldn't be a huge pain to revise.
-> > 
-> > So what would trigger the kernel to ask for strict checking? Do we add a mount option that says “fail if the server doesn’t authenticate itself”? That would be hard to combine with security negotiation, since it only makes sense for RPCSEC_GSS authentication.
-> 
-> I was thinking about only doing it in the state-establishment case.
-> (Since we won't know how to authenticate the callbacks in that case.)
-> 
-> But that would screw up krb5 mounts, I guess, never mind.
-> 
-> Using a fqdn implicitly requests strict checking so a mount option would
-> seem redundant.
-> 
+Moderate:
+Shirley Ma (Oracle)
 
-So I guess we have two options to fix this:
+4/30/2014 meeting summaries:
+NFSoRDMA developers bi-weekly meeting is to help organizing NFSoRDMA 
+development and test effort from different resources to speed up 
+NFSoRDMA upstream kernel work and NFSoRDMA diagnosing/debugging tools 
+development. Hopefully the quality of NFSoRDMA upstream patches can be 
+improved by being tested by a quorum of HW vendors. The NFSoRDMA issues 
+can be tracked and followed up in time.
 
-1) Change gssd to require the canonical fqdn and not rely on name
-resolution. Unfortunately, I think the MIT krb5 libs will still
-canonicalize the hostnames by default, so this might not actually fix
-anything. See:
+Today's meeting covered:
+1. NFSoRDMA test strategy and plan:
+What NFS related software tools are available for functional and 
+performance test?
+Chuck has created a wiki page for NFSoRDMA test. The wiki page covers 
+NFSoRDMA functionality, stress and performance test. Here is the link to 
+the wiki:
 
-    http://web.mit.edu/kerberos/krb5-devel/doc/admin/princ_dns.html
+http://wiki.linux-nfs.org/wiki/index.php/NfsRdmaClient/Home#Submitting_patches 
 
-...or...
 
-2) Loosen or somehow fix the check in check_gss_callback_principal().
-One possibility might be to do a dns_resolver upcall for the host
-portion of the SPN, and then compare the address with the server's
-address. Ugly, but since we already trust DNS implicitly I guess it's
-no less secure...
+If you have any other test suggestions like scalability test, please 
+send to Chuck Lever.
 
--- 
-Jeff Layton <jlayton@redhat.com>
+How are we going to organize continuous testing resources:
+Each of us have our own lab with different configuration, thus we could 
+have a better test coverage without purchasing/installing all vendors 
+hardware.
+
+2. Helping others on problem report and follow up:
+How to get help from the communities?
+Problems should be reported on both linux-nfs and linux-rdma mailing 
+list. However some others found the problems they reported had been 
+ignored in the past. In order to better tracking NFSoRDMA bug report, we 
+have created NFSoRDMA linux-nfs.org bugzilla family, which will be 
+mirrored to liux-nfs, linux-rdma mailing list. Here is the link to 
+linux-nfs.org NFSoRDMA bugzilla:
+
+https://bugzilla.linux-nfs.org/enter_bug.cgi?product=kernel
+
+NFSoRDMA server component: svcrdma
+NFSoRDMA client component: xprtrdma
+
+Chuck Lever and Shirley Ma will help tracking issues on NFSoRDMA bugs. 
+This isn't guaranteed the bugs being assigned and fixed. Chuck Lever and 
+Shirley Ma will work on NFSoRDMA client side issues. But we still 
+couldn't locate resources to support NFSoRDMA server. This is an 
+outstanding issue.
+
+3. Upstream NFSoRDMA status:
+Anna Schumaker has created git tree to maintain all NFSoRDMA client 
+stable patches. It will be easy for maintainer to pull patches to 
+upstream. NFSoRDMA end users can use her git tree. Here is the link to 
+Anna's NFSoRDMA client git tree:
+
+git://git.linux-nfs.org/projects/anna/nfs-rdma.git
+
+Chuck Lever's NFSoRDMA linux-nfs.org git tree is for developers only. 
+All patches should be reviewed and tested before going to Anna's tree. 
+Here is link to Chuck Lever's git tree, check out nfs-rdma-client branch.
+
+git://git.linux-nfs.org/projects/cel/cel-2.6.git
+
+4. NFSoRDMA debugging and diagnosis tools:
+ibdump is a ConnectX sniffing tool, which can be used to monitor 
+InfiniBand packets on the fabrics. wireshark is able to interpret these 
+packets in IB but not NFSoRDMA layer. A dissector is needed for NFSoRDMA 
+protocol. Yan Burman will look at how much work to create NFSoRDMA 
+dissector for wireshark.
+
+Chelsio is also able to replicate packets to other interface for 
+wireshark to monitor. Steve Wise will help on finding how-to instruction.
+
+Next meeting topics proposal:
+1. Follow up the work has been discussed from this meeting.
+
+2. Walk through some of the stories on pivotal, link is as below:
+https://www.pivotaltracker.com/s/projects/958376
+
+3. Invite some of the developers to discuss some of their requirements 
+and features.
+
+Meeting time: one hour discussion every other Wed (next meeting will be 
+on 5/14). A reminder will be sent out to both linux-nfs and linux-rdma 
+mailing list:
+
+5/14/2014
+@8:00am PST
+@9:00am MST
+@10:00am CST
+@11:00am EST
+@Bangalore @9:00pm
+@Israel @6:00pm
+
+Duration: 1 hour
+
+Call-in number:
+Israel: +972 37219638
+Bangalore: +91 8039890080 (180030109800)
+US: 8666824770,  408-7744073
+Conference Code: 2308833
+Passcode: 63767362 (it's NFSoRDMA, in case you couldn't remember)
+
+Thanks everyone for joining the call and providing valuable inputs/work 
+to the community to make NFSoRDMA better. Anyone who are interested in 
+NFSoRDMA is welcome to join the incoming meetings on 5/14.
+
+Shirley
