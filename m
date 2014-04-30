@@ -1,99 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f175.google.com ([209.85.213.175]:65475 "EHLO
-	mail-ig0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751805AbaDUPhr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 21 Apr 2014 11:37:47 -0400
-Received: by mail-ig0-f175.google.com with SMTP id h3so1897455igd.8
-        for <linux-nfs@vger.kernel.org>; Mon, 21 Apr 2014 08:37:46 -0700 (PDT)
-Message-ID: <1398094663.2891.22.camel@leira.trondhjem.org>
-Subject: Re: [PATCH 36/70] NFSd: Add reference counting to find_stateid
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Bruce Fields <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-Date: Mon, 21 Apr 2014 11:37:43 -0400
-In-Reply-To: <20140419145026.GE25682@infradead.org>
-References: <1397846704-14567-28-git-send-email-trond.myklebust@primarydata.com>
-	 <1397846704-14567-29-git-send-email-trond.myklebust@primarydata.com>
-	 <1397846704-14567-30-git-send-email-trond.myklebust@primarydata.com>
-	 <1397846704-14567-31-git-send-email-trond.myklebust@primarydata.com>
-	 <1397846704-14567-32-git-send-email-trond.myklebust@primarydata.com>
-	 <1397846704-14567-33-git-send-email-trond.myklebust@primarydata.com>
-	 <1397846704-14567-34-git-send-email-trond.myklebust@primarydata.com>
-	 <1397846704-14567-35-git-send-email-trond.myklebust@primarydata.com>
-	 <1397846704-14567-36-git-send-email-trond.myklebust@primarydata.com>
-	 <1397846704-14567-37-git-send-email-trond.myklebust@primarydata.com>
-	 <20140419145026.GE25682@infradead.org>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from aserp1040.oracle.com ([141.146.126.69]:17253 "EHLO
+	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932186AbaD3TsY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Apr 2014 15:48:24 -0400
+Content-Type: text/plain; charset=us-ascii
+Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
+Subject: Re: NFSoRDMA developers bi-weekly meeting announcement (4/30)
+From: Chuck Lever <chuck.lever@oracle.com>
+In-Reply-To: <CAJZOPZJioYdcbDGsk7278sZS7kD9W1dcGEGtYfsFk=Mm7DW3fQ@mail.gmail.com>
+Date: Wed, 30 Apr 2014 15:47:57 -0400
+Cc: Shirley Ma <shirley.ma@oracle.com>,
+        Jeff Becker <jeffrey.c.becker@nasa.gov>,
+        "<yanb@mellanox.com>" <yanb@mellanox.com>,
+        "Cayton, Phil" <phil.cayton@intel.com>,
+        "Coulter, Susan K" <skc@lanl.gov>,
+        Anna Schumaker <Anna.Schumaker@netapp.com>,
+        "<Devesh.Sharma@emulex.com>" <Devesh.Sharma@emulex.com>,
+        Steve Wise <swise@opengridcomputing.com>,
+        Allen Andrews <Allen.Andrews@emulex.com>,
+        Jeff Layton <jlayton@redhat.com>,
+        linux-rdma <linux-rdma@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        "<emossman@iol.unh.edu>" <emossman@iol.unh.edu>
+Message-Id: <BBF761A6-2407-4457-92D5-8C2EC736BC9D@oracle.com>
+References: <53614C03.80606@oracle.com> <CAJZOPZJioYdcbDGsk7278sZS7kD9W1dcGEGtYfsFk=Mm7DW3fQ@mail.gmail.com>
+To: Or Gerlitz <or.gerlitz@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, 2014-04-19 at 07:50 -0700, Christoph Hellwig wrote:
-> > +static void nfs4_put_stateid(struct nfs4_stid *s)
-> > +{
-> > +	if (s == NULL)
-> > +		return;
-> > +	switch (s->sc_type) {
-> > +	case NFS4_OPEN_STID:
-> > +	case NFS4_LOCK_STID:
-> > +	case NFS4_CLOSED_STID:
-> > +		put_generic_stateid(openlockstateid(s));
-> > +		break;
-> > +	case NFS4_DELEG_STID:
-> > +	case NFS4_REVOKED_DELEG_STID:
-> > +	case NFS4_CLOSED_DELEG_STID:
-> > +		nfs4_put_delegation(delegstateid(s));
-> > +	}
-> > +}
+Hi Or-
+
+On Apr 30, 2014, at 3:39 PM, Or Gerlitz <or.gerlitz@gmail.com> wrote:
+
+> On Wed, Apr 30, 2014 at 10:16 PM, Shirley Ma <shirley.ma@oracle.com> wrote:
+> [...]
+>> 3. Upstream NFSoRDMA status:
 > 
-> I really don't like the way the inheritance for the stateids works,
-> a pure put operation shouldn't need this.  I think all this can be
-> fixed by adding a ->free function pointer to struct nfs4_stid.  At this
-> point the braindamage of passing a kmem_cache pointer to various
-> function can be removed (similar to how nfs4_alloc_stid should be
-> replaced with a nfs4_init_stid that takes an already allocated stid),
-> and nothing in the normal refcounting path should need these switches.
-
-Ack. I've added a free() pointer to nfs4_stid.
-
-> > @@ -3804,26 +3823,33 @@ static __be32 nfsd4_validate_stateid(struct nfs4_client *cl, stateid_t *stateid)
-> >  		return nfserr_bad_stateid;
-> >  	status = check_stateid_generation(stateid, &s->sc_stateid, 1);
-> >  	if (status)
-> > -		return status;
-> > +		goto out_put_stid;
-> >  	switch (s->sc_type) {
-> >  	case NFS4_DELEG_STID:
-> > -		return nfs_ok;
-> > +		status = nfs_ok;
-> > +		break;
-> >  	case NFS4_REVOKED_DELEG_STID:
-> > -		return nfserr_deleg_revoked;
-> > +		status = nfserr_deleg_revoked;
-> > +		break;
-> >  	case NFS4_OPEN_STID:
-> >  	case NFS4_LOCK_STID:
-> >  		ols = openlockstateid(s);
-> >  		if (ols->st_stateowner->so_is_open_owner
-> >  	    			&& !(openowner(ols->st_stateowner)->oo_flags
-> >  						& NFS4_OO_CONFIRMED))
-> > -			return nfserr_bad_stateid;
-> > -		return nfs_ok;
-> > +			status = nfserr_bad_stateid;
-> > +		else
-> > +			status = nfs_ok;
-> > +		break;
 > 
-> Not quite as urgent as for the refcounting, but I think moving more
-> of these switches on the type into proper methods would improve the
-> stateid code a lot.
+> So does it currently works...? I understand that Yan tried it out
+> today, and @ least one side just crashed.
+> 
+> Chuck, I assume there is a configuration which basically works for you
+> and allow you to develop the upstream patches, you send, right?  can
+> you send us your .config and exact NFS/rNFS options you use and works
+> basically OK?
 
-Agreed, but I'm leaving that as an exercise for the reader (at least as
-far as this patch series is concerned).
+If I understood Yan, he is trying to use NFS/RDMA in guests (kvm?).  We
+are pretty sure that is not working at the moment, but that is a priority
+to get fixed. Shirley has a lab set up and has been looking into it.
 
--- 
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
+So, first step would be to set up v3.15-rc3 on bare metal.
+
+I think the critical stability patches for both client and server are
+already upstream, unless you are exporting tmpfs.
+
+The patches I just posted fix some other issues, feel free to apply them.
+But the basics should be working now in v3.15-rc3.
+
+--
+Chuck Lever
+chuck[dot]lever[at]oracle[dot]com
+
 
 
