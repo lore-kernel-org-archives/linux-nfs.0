@@ -1,66 +1,140 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:28175 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751290AbaDPSVy convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Apr 2014 14:21:54 -0400
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
-Subject: Re: [PATCH 7/8] xprtrdma: Split the completion queue
+Received: from mail-ie0-f178.google.com ([209.85.223.178]:38008 "EHLO
+	mail-ie0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1945938AbaD3Tbl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Apr 2014 15:31:41 -0400
 From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <534EA06A.7090200@dev.mellanox.co.il>
-Date: Wed, 16 Apr 2014 14:21:33 -0400
-Cc: Steve Wise <swise@opengridcomputing.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-rdma@vger.kernel.org
-Message-Id: <FC61F219-ACA2-4CE8-BF02-1B8EE2464639@oracle.com>
-References: <20140414220041.20646.63991.stgit@manet.1015granger.net> <20140414222323.20646.66946.stgit@manet.1015granger.net> <534E7C1C.5070407@dev.mellanox.co.il> <534E8608.8030801@opengridcomputing.com> <E9B601B5-1984-40D8-914A-DDD1380E8183@oracle.com> <534EA06A.7090200@dev.mellanox.co.il>
-To: Sagi Grimberg <sagig@dev.mellanox.co.il>
+Subject: [PATCH V3 15/17] xprtrdma: Reduce the number of hardway buffer
+	allocations
+To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Cc: Anna.Schumaker@netapp.com
+Date: Wed, 30 Apr 2014 15:31:39 -0400
+Message-ID: <20140430193139.5663.84342.stgit@manet.1015granger.net>
+In-Reply-To: <20140430191433.5663.16217.stgit@manet.1015granger.net>
+References: <20140430191433.5663.16217.stgit@manet.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+While marshaling an RPC/RDMA request, the inline_{rsize,wsize}
+settings determine whether an inline request is used, or whether
+read or write chunks lists are built. The current default value of
+these settings is 1024. Any RPC request smaller than 1024 bytes is
+sent to the NFS server completely inline.
 
-On Apr 16, 2014, at 11:23 AM, Sagi Grimberg <sagig@dev.mellanox.co.il> wrote:
+rpcrdma_buffer_create() allocates and pre-registers a set of RPC
+buffers for each transport instance, also based on the inline rsize
+and wsize settings.
 
-> On 4/16/2014 6:08 PM, Chuck Lever wrote:
->> Hi Sagi-
->> 
->> Thanks for the review! In-line replies below.
-> <SNIP>
->> 
->>>> 2. If I understood correctly, I see that the CQs are loop-polled in an interrupt context.
->>>>    This may become problematic in stress workload where the CQ simply never drains (imagine
->>>>    some studios task keeps posting WRs as soon as IOs complete). This will cause CQ poll loop
->>>>    to go on forever. This situation may cause starvation of other CQs that share the same EQ (CPU
->>>>    is hogged by the endless poller).
->>>>    This may be solved in 2 ways:
->>>>    - Use blk-iopoll to maintain fairness - the downside will be moving from interrupt context to soft-irq (slower).
->>>>    - Set some configurable budget to CQ poller - after finishing the budget, notify the CQ and bail.
->>>>      If there is another CQ waiting to get in - it's only fair that it will be given with a chance, else another interrupt
->>>>      on that CQ will immediately come.
->> I think it would be a reasonable change to pass an array of WC’s to
->> ib_poll_cq() just once in rpcrdma_{send,recv}cq_poll(), instead of
->> looping. Would that be enough?
->> 
->> To be clear, my patch merely cleans up the completion handler logic,
->> which already did loop-polling. Should we consider this improvement
->> for another patch?
-> 
-> Well, I wasn't suggesting passing an array, carrying it around (or on the stack for that manner) might be annoying...
-> I was suggesting a budget (poll loops or a time bound - jiffy is usually well behaved).
+RPC/RDMA requests and replies are built in these buffers. However,
+if an RPC/RDMA request is expected to be larger than 1024, a buffer
+has to be allocated and registered for that RPC, and deregistered
+and released when the RPC is complete. This is known has a
+"hardway allocation."
 
-Passing a small array to ip_poll_cq() is actually easy to do, and is
-exactly equivalent to a poll budget. The struct ib_wc should be taken
-off the stack anyway, IMO.
+Since the introduction of NFSv4, the size of RPC requests has become
+larger, and hardway allocations are thus more frequent. Hardway
+allocations are significant overhead, and they waste the existing
+RPC buffers pre-allocated by rpcrdma_buffer_create().
 
-The only other example I see in 3.15 right now is IPoIB, which seems
-to do exactly this.
+We'd like fewer hardway allocations.
 
-I’m testing a patch now. I’d like to start simple and make it more
-complex only if we need to.
+Increasing the size of the pre-registered buffers is the most direct
+way to do this. However, a blanket increase of the inline thresholds
+has interoperability consequences.
 
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
+On my 64-bit system, rpcrdma_buffer_create() requests roughly 7000
+bytes for each RPC request buffer, using kmalloc(). Due to internal
+fragmentation, this wastes nearly 1200 bytes because kmalloc()
+already returns an 8192-byte piece of memory for a 7000-byte
+allocation request, though the extra space remains unused.
 
+So let's round up the size of the pre-allocated buffers, and make
+use of the unused space in the kmalloc'd memory.
 
+This change reduces the amount of hardway allocated memory for an
+NFSv4 general connectathon run from 1322092 to 9472 bytes (99%).
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Tested-by: Steve Wise <swise@opengridcomputing.com>
+---
+
+ net/sunrpc/xprtrdma/verbs.c |   25 +++++++++++++------------
+ 1 files changed, 13 insertions(+), 12 deletions(-)
+
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 1d08366..c80995a 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -50,6 +50,7 @@
+ #include <linux/interrupt.h>
+ #include <linux/pci.h>	/* for Tavor hack below */
+ #include <linux/slab.h>
++#include <asm/bitops.h>
+ 
+ #include "xprt_rdma.h"
+ 
+@@ -1005,7 +1006,7 @@ rpcrdma_buffer_create(struct rpcrdma_buffer *buf, struct rpcrdma_ep *ep,
+ 	struct rpcrdma_ia *ia, struct rpcrdma_create_data_internal *cdata)
+ {
+ 	char *p;
+-	size_t len;
++	size_t len, rlen, wlen;
+ 	int i, rc;
+ 	struct rpcrdma_mw *r;
+ 
+@@ -1120,16 +1121,16 @@ rpcrdma_buffer_create(struct rpcrdma_buffer *buf, struct rpcrdma_ep *ep,
+ 	 * Allocate/init the request/reply buffers. Doing this
+ 	 * using kmalloc for now -- one for each buf.
+ 	 */
++	wlen = 1 << fls(cdata->inline_wsize + sizeof(struct rpcrdma_req));
++	rlen = 1 << fls(cdata->inline_rsize + sizeof(struct rpcrdma_rep));
++	dprintk("RPC:       %s: wlen = %zu, rlen = %zu\n",
++		__func__, wlen, rlen);
++
+ 	for (i = 0; i < buf->rb_max_requests; i++) {
+ 		struct rpcrdma_req *req;
+ 		struct rpcrdma_rep *rep;
+ 
+-		len = cdata->inline_wsize + sizeof(struct rpcrdma_req);
+-		/* RPC layer requests *double* size + 1K RPC_SLACK_SPACE! */
+-		/* Typical ~2400b, so rounding up saves work later */
+-		if (len < 4096)
+-			len = 4096;
+-		req = kmalloc(len, GFP_KERNEL);
++		req = kmalloc(wlen, GFP_KERNEL);
+ 		if (req == NULL) {
+ 			dprintk("RPC:       %s: request buffer %d alloc"
+ 				" failed\n", __func__, i);
+@@ -1141,16 +1142,16 @@ rpcrdma_buffer_create(struct rpcrdma_buffer *buf, struct rpcrdma_ep *ep,
+ 		buf->rb_send_bufs[i]->rl_buffer = buf;
+ 
+ 		rc = rpcrdma_register_internal(ia, req->rl_base,
+-				len - offsetof(struct rpcrdma_req, rl_base),
++				wlen - offsetof(struct rpcrdma_req, rl_base),
+ 				&buf->rb_send_bufs[i]->rl_handle,
+ 				&buf->rb_send_bufs[i]->rl_iov);
+ 		if (rc)
+ 			goto out;
+ 
+-		buf->rb_send_bufs[i]->rl_size = len-sizeof(struct rpcrdma_req);
++		buf->rb_send_bufs[i]->rl_size = wlen -
++						sizeof(struct rpcrdma_req);
+ 
+-		len = cdata->inline_rsize + sizeof(struct rpcrdma_rep);
+-		rep = kmalloc(len, GFP_KERNEL);
++		rep = kmalloc(rlen, GFP_KERNEL);
+ 		if (rep == NULL) {
+ 			dprintk("RPC:       %s: reply buffer %d alloc failed\n",
+ 				__func__, i);
+@@ -1162,7 +1163,7 @@ rpcrdma_buffer_create(struct rpcrdma_buffer *buf, struct rpcrdma_ep *ep,
+ 		buf->rb_recv_bufs[i]->rr_buffer = buf;
+ 
+ 		rc = rpcrdma_register_internal(ia, rep->rr_base,
+-				len - offsetof(struct rpcrdma_rep, rr_base),
++				rlen - offsetof(struct rpcrdma_rep, rr_base),
+ 				&buf->rb_recv_bufs[i]->rr_handle,
+ 				&buf->rb_recv_bufs[i]->rr_iov);
+ 		if (rc)
 
