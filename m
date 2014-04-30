@@ -1,62 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f169.google.com ([209.85.213.169]:52691 "EHLO
-	mail-ig0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S964913AbaD3TbP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Apr 2014 15:31:15 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH V3 12/17] xprtrmda: Reduce lock contention in completion
-	handlers
-To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Cc: Anna.Schumaker@netapp.com
-Date: Wed, 30 Apr 2014 15:31:13 -0400
-Message-ID: <20140430193113.5663.89235.stgit@manet.1015granger.net>
-In-Reply-To: <20140430191433.5663.16217.stgit@manet.1015granger.net>
-References: <20140430191433.5663.16217.stgit@manet.1015granger.net>
+Received: from szxga02-in.huawei.com ([119.145.14.65]:30707 "EHLO
+	szxga02-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753647AbaD3CrT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Apr 2014 22:47:19 -0400
+From: Weng Meiling <wengmeiling.weng@huawei.com>
+To: <stable@vger.kernel.org>
+CC: <bfields@fieldses.org>, <greg@kroah.com>, <lizefan@huawei.com>,
+        <skinsbursky@parallels.com>, <h.huangqiang@huawei.com>,
+        <linux-nfs@vger.kernel.org>
+Subject: [PATCH v2 3.4 7/9] nfsd: pass proper net to nfsd_destroy() from NFSd kthreads
+Date: Wed, 30 Apr 2014 10:43:42 +0800
+Message-ID: <1398825824-6360-8-git-send-email-wengmeiling.weng@huawei.com>
+In-Reply-To: <1398825824-6360-1-git-send-email-wengmeiling.weng@huawei.com>
+References: <1398825824-6360-1-git-send-email-wengmeiling.weng@huawei.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Skip the ib_poll_cq() after re-arming, if the provider knows there
-are no additional items waiting. (Have a look at commit ed23a727 for
-more details).
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+commit 88c47666171989ed4c5b1a5687df09511e8c5e35 upstream.
+
+Since NFSd service is per-net now, we have to pass proper network
+context in nfsd_shutdown() from NFSd kthreads.
+
+The simplest way I found is to get proper net from one of transports
+with permanent sockets.
+
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+[wengmeiling: backport to 3.4: adjust context]
+Signed-off-by: Weng Meiling <wengmeiling.weng@huawei.com>
 ---
+ fs/nfsd/nfssvc.c | 4 +++-
+ 1 file changed, 3 insertions(+), 1 deletion(-)
 
- net/sunrpc/xprtrdma/verbs.c |   14 ++++++++++----
- 1 files changed, 10 insertions(+), 4 deletions(-)
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index 0974818..5bc9380 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -483,6 +483,8 @@ static int
+ nfsd(void *vrqstp)
+ {
+ 	struct svc_rqst *rqstp = (struct svc_rqst *) vrqstp;
++	struct svc_xprt *perm_sock = list_entry(rqstp->rq_server->sv_permsocks.next, typeof(struct svc_xprt), xpt_list);
++	struct net *net = perm_sock->xpt_net;
+ 	int err, preverr = 0;
+ 
+ 	/* Lock module and set up kernel thread */
+@@ -557,7 +559,7 @@ out:
+ 	/* Release the thread */
+ 	svc_exit_thread(rqstp);
+ 
+-	nfsd_destroy(&init_net);
++	nfsd_destroy(net);
+ 
+ 	/* Release module */
+ 	mutex_unlock(&nfsd_mutex);
+-- 
+1.8.2.2
 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index af2d097..c7d5281 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -192,8 +192,11 @@ rpcrdma_sendcq_upcall(struct ib_cq *cq, void *cq_context)
- 		return;
- 	}
- 
--	rc = ib_req_notify_cq(cq, IB_CQ_NEXT_COMP);
--	if (rc) {
-+	rc = ib_req_notify_cq(cq,
-+			IB_CQ_NEXT_COMP | IB_CQ_REPORT_MISSED_EVENTS);
-+	if (rc == 0)
-+		return;
-+	if (rc < 0) {
- 		dprintk("RPC:       %s: ib_req_notify_cq failed: %i\n",
- 			__func__, rc);
- 		return;
-@@ -272,8 +275,11 @@ rpcrdma_recvcq_upcall(struct ib_cq *cq, void *cq_context)
- 		return;
- 	}
- 
--	rc = ib_req_notify_cq(cq, IB_CQ_NEXT_COMP);
--	if (rc) {
-+	rc = ib_req_notify_cq(cq,
-+			IB_CQ_NEXT_COMP | IB_CQ_REPORT_MISSED_EVENTS);
-+	if (rc == 0)
-+		return;
-+	if (rc < 0) {
- 		dprintk("RPC:       %s: ib_req_notify_cq failed: %i\n",
- 			__func__, rc);
- 		return;
 
