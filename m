@@ -1,144 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f173.google.com ([209.85.223.173]:35590 "EHLO
-	mail-ie0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754022AbaDRSpa (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Apr 2014 14:45:30 -0400
-Received: by mail-ie0-f173.google.com with SMTP id rl12so1910243iec.18
-        for <linux-nfs@vger.kernel.org>; Fri, 18 Apr 2014 11:45:30 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Bruce Fields <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 16/70] NFSd: Protect the nfs4_file delegation fields using the fi_lock
-Date: Fri, 18 Apr 2014 14:44:10 -0400
-Message-Id: <1397846704-14567-17-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1397846704-14567-16-git-send-email-trond.myklebust@primarydata.com>
-References: <1397846704-14567-1-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-2-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-3-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-4-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-5-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-6-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-7-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-8-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-9-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-10-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-11-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-12-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-13-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-14-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-15-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-16-git-send-email-trond.myklebust@primarydata.com>
+Received: from mx1.redhat.com ([209.132.183.28]:1175 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933742AbaD3Qaz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 30 Apr 2014 12:30:55 -0400
+Message-ID: <5361253A.4010708@RedHat.com>
+Date: Wed, 30 Apr 2014 12:30:50 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 1/2] nfs-iostat: Fix columnarization of RPC statistics
+References: <20140425165211.30699.73059.stgit@manet.1015granger.net>
+In-Reply-To: <20140425165211.30699.73059.stgit@manet.1015granger.net>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 33 ++++++++++++++++++++++++++-------
- 1 file changed, 26 insertions(+), 7 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 73e7da308d37..5105dbc76888 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -479,6 +479,7 @@ nfs4_put_delegation(struct nfs4_delegation *dp)
- 	}
- }
- 
-+/* Call under fp->fi_lock */
- static void nfs4_put_deleg_lease(struct nfs4_file *fp)
- {
- 	if (atomic_dec_and_test(&fp->fi_delegees)) {
-@@ -511,6 +512,7 @@ unhash_delegation(struct nfs4_delegation *dp)
- 	struct nfs4_file *fp = dp->dl_file;
- 
- 	spin_lock(&state_lock);
-+	spin_lock(&fp->fi_lock);
- 	list_del_init(&dp->dl_perclnt);
- 	list_del_init(&dp->dl_recall_lru);
- 	if (!list_empty(&dp->dl_perfile)) {
-@@ -518,10 +520,11 @@ unhash_delegation(struct nfs4_delegation *dp)
- 		list_del_init(&dp->dl_perfile);
- 		spin_unlock(&fp->fi_inode->i_lock);
- 	}
--	spin_unlock(&state_lock);
- 	nfs4_put_deleg_lease(fp);
--	put_nfs4_file(fp);
- 	dp->dl_file = NULL;
-+	spin_unlock(&fp->fi_lock);
-+	spin_unlock(&state_lock);
-+	put_nfs4_file(fp);
- }
- 
- 
-@@ -3153,23 +3156,33 @@ static int nfs4_setlease(struct nfs4_delegation *dp)
- {
- 	struct nfs4_file *fp = dp->dl_file;
- 	struct file_lock *fl;
--	int status;
-+	int status = 0;
- 
- 	fl = nfs4_alloc_init_lease(dp, NFS4_OPEN_DELEGATE_READ);
- 	if (!fl)
- 		return -ENOMEM;
- 	fl->fl_file = find_readable_file(fp);
-+	spin_lock(&state_lock);
-+	spin_lock(&fp->fi_lock);
-+	/* Race breaker */
-+	if (fp->fi_lease) {
-+		atomic_inc(&fp->fi_delegees);
-+		hash_delegation_locked(dp, fp);
-+		goto out_free;
-+	}
- 	status = vfs_setlease(fl->fl_file, fl->fl_type, &fl);
- 	if (status)
- 		goto out_free;
- 	fp->fi_lease = fl;
- 	fp->fi_deleg_file = fl->fl_file;
- 	atomic_set(&fp->fi_delegees, 1);
--	spin_lock(&state_lock);
- 	hash_delegation_locked(dp, fp);
-+	spin_unlock(&fp->fi_lock);
- 	spin_unlock(&state_lock);
- 	return 0;
- out_free:
-+	spin_unlock(&fp->fi_lock);
-+	spin_unlock(&state_lock);
- 	if (fl->fl_file)
- 		fput(fl->fl_file);
- 	locks_free_lock(fl);
-@@ -3183,23 +3196,29 @@ static int nfs4_set_delegation(struct nfs4_delegation *dp, struct nfs4_file *fp)
- 	if (fp->fi_had_conflict)
- 		return -EAGAIN;
- 	get_nfs4_file(fp);
-+	spin_lock(&state_lock);
-+	spin_lock(&fp->fi_lock);
- 	dp->dl_file = fp;
- 	if (!fp->fi_lease) {
-+		spin_unlock(&fp->fi_lock);
-+		spin_unlock(&state_lock);
- 		status = nfs4_setlease(dp);
- 		if (status)
- 			goto out_free;
- 		return 0;
- 	}
--	spin_lock(&state_lock);
- 	if (fp->fi_had_conflict) {
--		spin_unlock(&state_lock);
- 		status = -EAGAIN;
--		goto out_free;
-+		goto unlock_and_free;
- 	}
- 	atomic_inc(&fp->fi_delegees);
- 	hash_delegation_locked(dp, fp);
-+	spin_unlock(&fp->fi_lock);
- 	spin_unlock(&state_lock);
- 	return 0;
-+unlock_and_free:
-+	spin_unlock(&fp->fi_lock);
-+	spin_unlock(&state_lock);
- out_free:
- 	put_nfs4_file(fp);
- 	dp->dl_file = fp;
--- 
-1.9.0
 
+On 04/25/2014 12:52 PM, Chuck Lever wrote:
+> Note: format() is new with Python 2.6
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Committed...
+
+steved.
+> ---
+> 
+>  tools/nfs-iostat/nfs-iostat.py |   31 +++++++++++++++++++------------
+>  1 files changed, 19 insertions(+), 12 deletions(-)
+> 
+> diff --git a/tools/nfs-iostat/nfs-iostat.py b/tools/nfs-iostat/nfs-iostat.py
+> index 341cdbf..6831c12 100644
+> --- a/tools/nfs-iostat/nfs-iostat.py
+> +++ b/tools/nfs-iostat/nfs-iostat.py
+> @@ -353,15 +353,21 @@ class DeviceData:
+>              exe_per_op = 0.0
+>  
+>          op += ':'
+> -        print('%s' % op.lower().ljust(15), end='')
+> -        print('  ops/s\t\t   kB/s\t\t  kB/op\t\tretrans\t\tavg RTT (ms)\tavg exe (ms)')
+> -
+> -        print('\t\t%7.3f' % (ops / sample_time), end='')
+> -        print('\t%7.3f' % (kilobytes / sample_time), end='')
+> -        print('\t%7.3f' % kb_per_op, end='')
+> -        print(' %7d (%3.1f%%)' % (retrans, retrans_percent), end='')
+> -        print('\t%7.3f' % rtt_per_op, end='')
+> -        print('\t%7.3f' % exe_per_op)
+> +        print(format(op.lower(), '<16s'), end='')
+> +        print(format('ops/s', '>8s'), end='')
+> +        print(format('kB/s', '>16s'), end='')
+> +        print(format('kB/op', '>16s'), end='')
+> +        print(format('retrans', '>16s'), end='')
+> +        print(format('avg RTT (ms)', '>16s'), end='')
+> +        print(format('avg exe (ms)', '>16s'))
+> +
+> +        print(format((ops / sample_time), '>24.3f'), end='')
+> +        print(format((kilobytes / sample_time), '>16.3f'), end='')
+> +        print(format(kb_per_op, '>16.3f'), end='')
+> +        retransmits = '{0:>10.0f} ({1:>3.1f}%)'.format(retrans, retrans_percent).strip()
+> +        print(format(retransmits, '>16'), end='')
+> +        print(format(rtt_per_op, '>16.3f'), end='')
+> +        print(format(exe_per_op, '>16.3f'))
+>  
+>      def ops(self, sample_time):
+>          sends = float(self.__rpc_data['rpcsends'])
+> @@ -391,9 +397,10 @@ class DeviceData:
+>              (self.__nfs_data['export'], self.__nfs_data['mountpoint']))
+>          print()
+>  
+> -        print('   op/s\t\trpc bklog')
+> -        print('%7.2f' % (sends / sample_time), end='')
+> -        print('\t%7.2f' % backlog)
+> +        print(format('ops/s', '>16') + format('rpc bklog', '>16'))
+> +        print(format((sends / sample_time), '>16.3f'), end='')
+> +        print(format(backlog, '>16.3f'))
+> +        print()
+>  
+>          if which == 0:
+>              self.__print_rpc_op_stats('READ', sample_time)
+> 
