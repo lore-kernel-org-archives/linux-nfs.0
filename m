@@ -1,84 +1,106 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:64445 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757726AbaDHSB2 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 8 Apr 2014 14:01:28 -0400
-Subject: Re: v4.0 CB_COMPOUND authentication failures
-From: Simo Sorce <simo@redhat.com>
-To: Jeff Layton <jlayton@redhat.com>
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
-        Dr Fields James Bruce <bfields@fieldses.org>,
-        NFS <linux-nfs@vger.kernel.org>,
-        Adamson William Andros <androsadamson@gmail.com>,
-        Lever Charles Edward <chuck.lever@oracle.com>
-In-Reply-To: <20140408133040.3c149238@tlielax.poochiereds.net>
-References: <20140408082140.340c1328@tlielax.poochiereds.net>
-	 <20140408123501.GA3532@fieldses.org>
-	 <20140408094903.33e42de2@tlielax.poochiereds.net>
-	 <20140408140333.GD3882@fieldses.org>
-	 <6CC79B2A-8AE2-4A36-BB57-380C2F9813C0@primarydata.com>
-	 <20140408144652.GE3882@fieldses.org>
-	 <ECD8245B-CDEE-442E-A41A-BECE08BEEDA1@primarydata.com>
-	 <20140408124428.5152ae8b@tlielax.poochiereds.net>
-	 <1396978021.14203.163.camel@willson.li.ssimo.org>
-	 <20140408133040.3c149238@tlielax.poochiereds.net>
-Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 08 Apr 2014 14:01:15 -0400
-Message-ID: <1396980075.14203.164.camel@willson.li.ssimo.org>
-Mime-Version: 1.0
+Received: from mail-ig0-f172.google.com ([209.85.213.172]:52544 "EHLO
+	mail-ig0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1759308AbaD3TaF (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Apr 2014 15:30:05 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH V3 04/17] xprtrdma: Remove BOUNCEBUFFERS memory registration
+	mode
+To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Cc: Anna.Schumaker@netapp.com
+Date: Wed, 30 Apr 2014 15:30:03 -0400
+Message-ID: <20140430193003.5663.60125.stgit@manet.1015granger.net>
+In-Reply-To: <20140430191433.5663.16217.stgit@manet.1015granger.net>
+References: <20140430191433.5663.16217.stgit@manet.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2014-04-08 at 13:30 -0400, Jeff Layton wrote:
-> On Tue, 08 Apr 2014 13:27:01 -0400
-> Simo Sorce <simo@redhat.com> wrote:
-> 
-> > On Tue, 2014-04-08 at 12:44 -0400, Jeff Layton wrote:
-> > > 
-> > > I think that's what happens. We only fall back to using AUTH_SYS if
-> > > nfs_create_rpc_client returns -EINVAL. In the event that the security
-> > > negotiation fails, we should get back -EACCES and that should bubble
-> > > back up to userland.
-> > > 
-> > > The real problem is that gssd (and also the krb5 libs themselves) will
-> > > try to canonicalize the name. The resulting host portion of the SPN
-> > > may bear no resemblance to the hostname in the device string. In fact,
-> > > if you mount using an IP address then you're pretty much SOL.
-> > 
-> > If you mount by IP do you really care about krb5 ? Probably not, maybe
-> > that's a clue we should not even try ...
-> > 
-> 
-> It's certainly possible that someone passes in an IP address but then
-> says "-o sec=krb5". It has worked in the past, so it's hard to know
-> whether and how many people actually depend on it.
-> 
-> > > I haven't tried it yet, but it looks reasonably trivial to fix gssd
-> > > not to bother with DNS at all and just rely on the hostname. That
-> > > won't stop the krb5 libs from doing their canonicalization though. I'm
-> > > not sure if there's some way to ask the krb5 libs to avoid doing that.
-> > 
-> > [libdefaults]
-> > rdns = false
-> > 
-> > And I think we change the default to false in Fedora/RHEL lately ...
-> > 
-> > Simo.
-> > 
-> 
-> That's a step in the right direction, but I think that the rdns just
-> makes it skip the reverse lookup. AFAIK, the MIT libs will still do
-> getaddrinfo and scrape out the ai_canonname and use that in preference
-> to the hostname you pass in.
+Clean up: This memory registration mode is slow and was never
+meant for use in production environments. Remove it to reduce
+implementation complexity.
 
-That should happen only if you are using a CNAME, not for an A name.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Tested-by: Steve Wise <swise@opengridcomputing.com>
+---
 
-We can open bugs if this is not the case though.
+ net/sunrpc/xprtrdma/rpc_rdma.c  |    8 --------
+ net/sunrpc/xprtrdma/transport.c |   13 -------------
+ net/sunrpc/xprtrdma/verbs.c     |    5 +----
+ 3 files changed, 1 insertions(+), 25 deletions(-)
 
-Simo.
-
-
-
--- 
-Simo Sorce * Red Hat, Inc * New York
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index c296468..b963e50 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -439,14 +439,6 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
+ 		wtype = rpcrdma_noch;
+ 	BUG_ON(rtype != rpcrdma_noch && wtype != rpcrdma_noch);
+ 
+-	if (r_xprt->rx_ia.ri_memreg_strategy == RPCRDMA_BOUNCEBUFFERS &&
+-	    (rtype != rpcrdma_noch || wtype != rpcrdma_noch)) {
+-		/* forced to "pure inline"? */
+-		dprintk("RPC:       %s: too much data (%d/%d) for inline\n",
+-			__func__, rqst->rq_rcv_buf.len, rqst->rq_snd_buf.len);
+-		return -1;
+-	}
+-
+ 	hdrlen = 28; /*sizeof *headerp;*/
+ 	padlen = 0;
+ 
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index 1eb9c46..8c5035a 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -503,18 +503,6 @@ xprt_rdma_allocate(struct rpc_task *task, size_t size)
+ 		 * If the allocation or registration fails, the RPC framework
+ 		 * will (doggedly) retry.
+ 		 */
+-		if (rpcx_to_rdmax(xprt)->rx_ia.ri_memreg_strategy ==
+-				RPCRDMA_BOUNCEBUFFERS) {
+-			/* forced to "pure inline" */
+-			dprintk("RPC:       %s: too much data (%zd) for inline "
+-					"(r/w max %d/%d)\n", __func__, size,
+-					rpcx_to_rdmad(xprt).inline_rsize,
+-					rpcx_to_rdmad(xprt).inline_wsize);
+-			size = req->rl_size;
+-			rpc_exit(task, -EIO);		/* fail the operation */
+-			rpcx_to_rdmax(xprt)->rx_stats.failed_marshal_count++;
+-			goto out;
+-		}
+ 		if (task->tk_flags & RPC_TASK_SWAPPER)
+ 			nreq = kmalloc(sizeof *req + size, GFP_ATOMIC);
+ 		else
+@@ -543,7 +531,6 @@ xprt_rdma_allocate(struct rpc_task *task, size_t size)
+ 		req = nreq;
+ 	}
+ 	dprintk("RPC:       %s: size %zd, request 0x%p\n", __func__, size, req);
+-out:
+ 	req->rl_connect_cookie = 0;	/* our reserved value */
+ 	return req->rl_xdr_buf;
+ 
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 9cb88f3..4a4e4ea 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -557,7 +557,6 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
+ 	 * adapter.
+ 	 */
+ 	switch (memreg) {
+-	case RPCRDMA_BOUNCEBUFFERS:
+ 	case RPCRDMA_REGISTER:
+ 	case RPCRDMA_FRMR:
+ 		break;
+@@ -778,9 +777,7 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
+ 
+ 	/* Client offers RDMA Read but does not initiate */
+ 	ep->rep_remote_cma.initiator_depth = 0;
+-	if (ia->ri_memreg_strategy == RPCRDMA_BOUNCEBUFFERS)
+-		ep->rep_remote_cma.responder_resources = 0;
+-	else if (devattr.max_qp_rd_atom > 32)	/* arbitrary but <= 255 */
++	if (devattr.max_qp_rd_atom > 32)	/* arbitrary but <= 255 */
+ 		ep->rep_remote_cma.responder_resources = 32;
+ 	else
+ 		ep->rep_remote_cma.responder_resources = devattr.max_qp_rd_atom;
 
