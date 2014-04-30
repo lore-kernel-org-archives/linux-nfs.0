@@ -1,7 +1,7 @@
 From: Doug Ledford <dledford@redhat.com>
 Subject: Re: NFSoRDMA developers bi-weekly meeting announcement (4/30)
 Date: Wed, 30 Apr 2014 19:58:07 -0400 (EDT)
-Message-ID: <4625.39785444296$1398902322@news.gmane.org>
+Message-ID: <7221.30496656082$1398902322@news.gmane.org>
 References: <53614C03.80606@oracle.com> <CAJZOPZJioYdcbDGsk7278sZS7kD9W1dcGEGtYfsFk=Mm7DW3fQ@mail.gmail.com> <BBF761A6-2407-4457-92D5-8C2EC736BC9D@oracle.com> <CAJZOPZJgp-QdxR+PmwACWOSc4h_167J0iBjfmMrPX8sek600WA@mail.gmail.com> <536161D0.3000600@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=utf-8
@@ -20,13 +20,9 @@ Cc: Jeff Becker <jeffrey.c.becker@nasa.gov>, yanb <yanb@mellanox.com>,
 	Or Gerlitz <or.gerlitz@gmail.com>,
 	Chuck Lever <chuck.lever@oracle.com>
 To: Shirley Ma <shirley.ma@oracle.com>
-Return-path: <linux-nfs-owner@vger.kernel.org>
-Received: from mx4-phx2.redhat.com ([209.132.183.25]:54114 "EHLO
-	mx4-phx2.redhat.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750760AbaD3X62 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Apr 2014 19:58:28 -0400
+Return-path: <linux-rdma-owner@vger.kernel.org>
 In-Reply-To: <536161D0.3000600@oracle.com>
-Sender: linux-nfs-owner@vger.kernel.org
+Sender: linux-rdma-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 On 04/302014 Shirley Ma wrote:
