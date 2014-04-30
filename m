@@ -1,62 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail.tpi.com ([74.45.170.26]:58382 "EHLO mail.tpi.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1753068AbaDRUKR (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 18 Apr 2014 16:10:17 -0400
-From: Tim Gardner <tim.gardner@canonical.com>
-To: linux-nfs@vger.kernel.org, netdev@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Cc: Tim Gardner <tim.gardner@canonical.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "David S. Miller" <davem@davemloft.net>
-Subject: [PATCH net-next] xprtrdma: rpcrdma_register_default_external: Silence frame size warning
-Date: Fri, 18 Apr 2014 13:50:25 -0600
-Message-Id: <1397850625-44074-1-git-send-email-tim.gardner@canonical.com>
+Received: from mail-ig0-f175.google.com ([209.85.213.175]:34165 "EHLO
+	mail-ig0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932186AbaD3Tal (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Apr 2014 15:30:41 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH V3 08/17] xprtrdma: mount reports "Invalid mount option" if
+	memreg mode not supported
+To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Cc: Anna.Schumaker@netapp.com
+Date: Wed, 30 Apr 2014 15:30:38 -0400
+Message-ID: <20140430193038.5663.63122.stgit@manet.1015granger.net>
+In-Reply-To: <20140430191433.5663.16217.stgit@manet.1015granger.net>
+References: <20140430191433.5663.16217.stgit@manet.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-net/sunrpc/xprtrdma/verbs.c: In function 'rpcrdma_register_default_external':
-net/sunrpc/xprtrdma/verbs.c:1774:1: warning: the frame size of 1048 bytes is larger than 1024 bytes [-Wframe-larger-than=]
+If the selected memory registration mode is not supported by the
+underlying provider/HCA, the NFS mount command reports that there was
+an invalid mount option, and fails. This is misleading.
 
-gcc version 4.8.2, x86_64-linux-gnu
+Reporting a problem allocating memory is a lot closer to the truth.
 
-Cc: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: "David S. Miller" <davem@davemloft.net>
-Signed-off-by: Tim Gardner <tim.gardner@canonical.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- net/sunrpc/xprtrdma/verbs.c |    8 +++++++-
- 1 file changed, 7 insertions(+), 1 deletion(-)
+
+ net/sunrpc/xprtrdma/verbs.c |    8 ++++----
+ 1 files changed, 4 insertions(+), 4 deletions(-)
 
 diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 93726560..8130349 100644
+index a352798..7c7e9b4 100644
 --- a/net/sunrpc/xprtrdma/verbs.c
 +++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -1736,9 +1736,13 @@ rpcrdma_register_default_external(struct rpcrdma_mr_seg *seg,
- 	int mem_priv = (writing ? IB_ACCESS_REMOTE_WRITE :
- 				  IB_ACCESS_REMOTE_READ);
- 	struct rpcrdma_mr_seg *seg1 = seg;
--	struct ib_phys_buf ipb[RPCRDMA_MAX_DATA_SEGS];
-+	struct ib_phys_buf *ipb;
- 	int len, i, rc = 0;
- 
-+	ipb = kmalloc(sizeof(*ipb) * RPCRDMA_MAX_DATA_SEGS, GFP_ATOMIC);
-+	if (!ipb)
-+		return -ENOMEM;
-+
- 	if (*nsegs > RPCRDMA_MAX_DATA_SEGS)
- 		*nsegs = RPCRDMA_MAX_DATA_SEGS;
- 	for (len = 0, i = 0; i < *nsegs;) {
-@@ -1770,6 +1774,8 @@ rpcrdma_register_default_external(struct rpcrdma_mr_seg *seg,
- 		seg1->mr_len = len;
+@@ -513,7 +513,7 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
+ #if RPCRDMA_PERSISTENT_REGISTRATION
+ 			memreg = RPCRDMA_ALLPHYSICAL;
+ #else
+-			rc = -EINVAL;
++			rc = -ENOMEM;
+ 			goto out2;
+ #endif
+ 		}
+@@ -554,9 +554,9 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
+ 		}
+ 		break;
+ 	default:
+-		printk(KERN_ERR "%s: invalid memory registration mode %d\n",
+-				__func__, memreg);
+-		rc = -EINVAL;
++		printk(KERN_ERR "RPC: Unsupported memory "
++				"registration mode: %d\n", memreg);
++		rc = -ENOMEM;
+ 		goto out2;
  	}
- 	*nsegs = i;
-+
-+	kfree(ipb);
- 	return rc;
- }
- 
--- 
-1.7.9.5
+ 	dprintk("RPC:       %s: memory registration strategy is %d\n",
 
