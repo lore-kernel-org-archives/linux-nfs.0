@@ -1,108 +1,74 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e23smtp03.au.ibm.com ([202.81.31.145]:35402 "EHLO
-	e23smtp03.au.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753405AbaD0QPy (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 27 Apr 2014 12:15:54 -0400
-Received: from /spool/local
-	by e23smtp03.au.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <aneesh.kumar@linux.vnet.ibm.com>;
-	Mon, 28 Apr 2014 02:15:52 +1000
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
-        viro@zeniv.linux.org.uk, dhowells@redhat.com
-Cc: aneesh.kumar@linux.vnet.ibm.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: [PATCH -V1 13/22] richacl: Update the file masks in chmod()
-Date: Sun, 27 Apr 2014 21:44:44 +0530
-Message-Id: <1398615293-22931-14-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-In-Reply-To: <1398615293-22931-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
-References: <1398615293-22931-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+Received: from mx1.redhat.com ([209.132.183.28]:27724 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S933742AbaD3QbP (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 30 Apr 2014 12:31:15 -0400
+Message-ID: <53612551.8070509@RedHat.com>
+Date: Wed, 30 Apr 2014 12:31:13 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 2/2] nfs-iostat: Fix attribute cache statistics
+References: <20140425165211.30699.73059.stgit@manet.1015granger.net> <20140425165220.30699.79542.stgit@manet.1015granger.net>
+In-Reply-To: <20140425165220.30699.79542.stgit@manet.1015granger.net>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Andreas Gruenbacher <agruen@kernel.org>
 
-Doing a chmod() sets the file mode, which includes the file permission
-bits.  When a file has a richacl, the permissions that the richacl
-grants need to be limited to what the new file permission bits allow.
 
-This is done by setting the file masks in the richacl to what the file
-permission bits map to.  The richacl access check algorithm takes the
-file masks into account, which ensures that the richacl cannot grant too
-many permissions.
+On 04/25/2014 12:52 PM, Chuck Lever wrote:
+> "nfs-iostat.py --attr" was displaying nonsense (like negative
+> counts and percentages).
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Committed... 
 
-It is possible to explicitly add permissions to the file masks which go
-beyond what the file permission bits can grant (like the ACE4_WRITE_ACL
-permission).  The POSIX.1 standard calls this an alternate file access
-control mechanism.  A subsequent chmod() would ensure that those
-permissions are disabled again.
-
-Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
-Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
----
- fs/richacl_base.c       | 40 ++++++++++++++++++++++++++++++++++++++++
- include/linux/richacl.h |  1 +
- 2 files changed, 41 insertions(+)
-
-diff --git a/fs/richacl_base.c b/fs/richacl_base.c
-index d73f1b0a9c5f..41ff82d10d4d 100644
---- a/fs/richacl_base.c
-+++ b/fs/richacl_base.c
-@@ -312,3 +312,43 @@ restart:
- 	acl->a_flags &= ~ACL4_MASKED;
- }
- EXPORT_SYMBOL_GPL(richacl_compute_max_masks);
-+
-+/**
-+ * richacl_chmod  -  update the file masks to reflect the new mode
-+ * @mode:	new file permission bits
-+ *
-+ * Return a copy of @acl where the file masks have been replaced by the file
-+ * masks corresponding to the file permission bits in @mode, or returns @acl
-+ * itself if the file masks are already up to date.  Takes over a reference
-+ * to @acl.
-+ */
-+struct richacl *
-+richacl_chmod(struct richacl *acl, mode_t mode)
-+{
-+	unsigned int owner_mask, group_mask, other_mask;
-+	struct richacl *clone;
-+
-+	owner_mask = richacl_mode_to_mask(mode >> 6) |
-+		     ACE4_POSIX_OWNER_ALLOWED;
-+	group_mask = richacl_mode_to_mask(mode >> 3);
-+	other_mask = richacl_mode_to_mask(mode);
-+
-+	if (acl->a_owner_mask == owner_mask &&
-+	    acl->a_group_mask == group_mask &&
-+	    acl->a_other_mask == other_mask &&
-+	    (acl->a_flags & ACL4_MASKED))
-+		return acl;
-+
-+	clone = richacl_clone(acl);
-+	richacl_put(acl);
-+	if (!clone)
-+		return ERR_PTR(-ENOMEM);
-+
-+	clone->a_flags |= ACL4_MASKED;
-+	clone->a_owner_mask = owner_mask;
-+	clone->a_group_mask = group_mask;
-+	clone->a_other_mask = other_mask;
-+
-+	return clone;
-+}
-+EXPORT_SYMBOL_GPL(richacl_chmod);
-diff --git a/include/linux/richacl.h b/include/linux/richacl.h
-index 14f18b597be3..a1ff8a38409c 100644
---- a/include/linux/richacl.h
-+++ b/include/linux/richacl.h
-@@ -281,5 +281,6 @@ extern int richacl_masks_to_mode(const struct richacl *);
- extern unsigned int richacl_mode_to_mask(mode_t);
- extern unsigned int richacl_want_to_mask(unsigned int);
- extern void richacl_compute_max_masks(struct richacl *);
-+extern struct richacl *richacl_chmod(struct richacl *, mode_t);
- 
- #endif /* __RICHACL_H */
--- 
-1.9.1
-
+steved.
+> ---
+> 
+>  tools/nfs-iostat/nfs-iostat.py |   28 ++++++++--------------------
+>  1 files changed, 8 insertions(+), 20 deletions(-)
+> 
+> diff --git a/tools/nfs-iostat/nfs-iostat.py b/tools/nfs-iostat/nfs-iostat.py
+> index 6831c12..b324cd8 100644
+> --- a/tools/nfs-iostat/nfs-iostat.py
+> +++ b/tools/nfs-iostat/nfs-iostat.py
+> @@ -243,27 +243,15 @@ class DeviceData:
+>          """Print attribute cache efficiency stats
+>          """
+>          nfs_stats = self.__nfs_data
+> -        getattr_stats = self.__rpc_data['GETATTR']
+> -
+> -        if nfs_stats['inoderevalidates'] != 0:
+> -            getattr_ops = float(getattr_stats[1])
+> -            opens = float(nfs_stats['vfsopen'])
+> -            revalidates = float(nfs_stats['inoderevalidates']) - opens
+> -            if revalidates != 0:
+> -                ratio = ((revalidates - getattr_ops) * 100) / revalidates
+> -            else:
+> -                ratio = 0.0
+> -
+> -            data_invalidates = float(nfs_stats['datainvalidates'])
+> -            attr_invalidates = float(nfs_stats['attrinvalidates'])
+>  
+> -            print()
+> -            print('%d inode revalidations, hitting in cache %4.2f%% of the time' % \
+> -                (revalidates, ratio))
+> -            print('%d open operations (mandatory GETATTR requests)' % opens)
+> -            if getattr_ops != 0:
+> -                print('%4.2f%% of GETATTRs resulted in data cache invalidations' % \
+> -                   ((data_invalidates * 100) / getattr_ops))
+> +        print()
+> +        print('%d VFS opens' % (nfs_stats['vfsopen']))
+> +        print('%d inoderevalidates (forced GETATTRs)' % \
+> +            (nfs_stats['inoderevalidates']))
+> +        print('%d page cache invalidations' % \
+> +            (nfs_stats['datainvalidates']))
+> +        print('%d attribute cache invalidations' % \
+> +            (nfs_stats['attrinvalidates']))
+>  
+>      def __print_dir_cache_stats(self, sample_time):
+>          """Print directory stats
+> 
