@@ -1,158 +1,113 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f171.google.com ([209.85.223.171]:54717 "EHLO
-	mail-ie0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754079AbaDFQ0W (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 6 Apr 2014 12:26:22 -0400
-Received: by mail-ie0-f171.google.com with SMTP id ar20so5306037iec.16
-        for <linux-nfs@vger.kernel.org>; Sun, 06 Apr 2014 09:26:21 -0700 (PDT)
-Message-ID: <1396801576.5625.3.camel@leira.trondhjem.org>
-Subject: [GIT PULL] Please pull NFS client changes for 3.15
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Torvalds Linus <torvalds@linux-foundation.org>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Linux Kernel mailing list <linux-kernel@vger.kernel.org>
-Date: Sun, 06 Apr 2014 12:26:16 -0400
-Content-Type: multipart/signed; micalg="pgp-sha1"; protocol="application/pgp-signature";
-	boundary="=-XM5AY5wIrOZrXhWCmBBs"
-Mime-Version: 1.0
+Received: from szxga03-in.huawei.com ([119.145.14.66]:51219 "EHLO
+	szxga03-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751994AbaD3C44 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Apr 2014 22:56:56 -0400
+From: Weng Meiling <wengmeiling.weng@huawei.com>
+To: <stable@vger.kernel.org>
+CC: <bfields@fieldses.org>, <greg@kroah.com>, <lizefan@huawei.com>,
+        <skinsbursky@parallels.com>, <h.huangqiang@huawei.com>,
+        <linux-nfs@vger.kernel.org>
+Subject: [PATCH v2 3.4 9/9] nfsd: check passed socket's net matches NFSd superblock's one
+Date: Wed, 30 Apr 2014 10:43:44 +0800
+Message-ID: <1398825824-6360-10-git-send-email-wengmeiling.weng@huawei.com>
+In-Reply-To: <1398825824-6360-1-git-send-email-wengmeiling.weng@huawei.com>
+References: <1398825824-6360-1-git-send-email-wengmeiling.weng@huawei.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
---=-XM5AY5wIrOZrXhWCmBBs
-Content-Type: text/plain; charset="UTF-8"
-Content-Transfer-Encoding: quoted-printable
+commit 3064639423c48d6e0eb9ecc27c512a58e38c6c57 upstream.
 
-Hi Linus,
+There could be a case, when NFSd file system is mounted in network, different
+to socket's one, like below:
 
-The following changes since commit 2ca310fc4160ed0420da65534a21ae77b24326a8=
-:
+"ip netns exec" creates new network and mount namespace, which duplicates NFSd
+mount point, created in init_net context. And thus NFS server stop in nested
+network context leads to RPCBIND client destruction in init_net.
+Then, on NFSd start in nested network context, rpc.nfsd process creates socket
+in nested net and passes it into "write_ports", which leads to RPCBIND sockets
+creation in init_net context because of the same reason (NFSd monut point was
+created in init_net context). An attempt to register passed socket in nested
+net leads to panic, because no RPCBIND client present in nexted network
+namespace.
 
-  SUNRPC: Fix oops when trace sunrpc_task events in nfs client (2014-03-07 =
-19:10:08 -0500)
+This patch add check that passed socket's net matches NFSd superblock's one.
+And returns -EINVAL error to user psace otherwise.
 
-are available in the git repository at:
+v2: Put socket on exit.
 
-  git://git.linux-nfs.org/projects/trondmy/linux-nfs.git tags/nfs-for-3.15-=
-1
+Reported-by: Weng Meiling <wengmeiling.weng@huawei.com>
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Cc: stable@vger.kernel.org
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+[wengmeiling: backport to 3.4: adjust context]
+Signed-off-by: Weng Meiling <wengmeiling.weng@huawei.com>
+---
+ fs/nfsd/nfsctl.c               |  5 +++++
+ include/linux/sunrpc/svcsock.h |  1 +
+ net/sunrpc/svcsock.c           | 16 ++++++++++++++++
+ 3 files changed, 22 insertions(+)
 
-for you to fetch changes up to 9581a4ae75517099bc87e1c43d1a8f35b55741b9:
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index cebc9ef..4db777d 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -660,6 +660,11 @@ static ssize_t __write_ports_addfd(char *buf, struct net *net)
+ 	if (err != 0 || fd < 0)
+ 		return -EINVAL;
+ 
++	if (svc_alien_sock(net, fd)) {
++		printk(KERN_ERR "%s: socket net is different to NFSd's one\n", __func__);
++		return -EINVAL;
++	}
++
+ 	err = nfsd_create_serv(net);
+ 	if (err != 0)
+ 		return err;
+diff --git a/include/linux/sunrpc/svcsock.h b/include/linux/sunrpc/svcsock.h
+index cb4ac69..e4c6cec 100644
+--- a/include/linux/sunrpc/svcsock.h
++++ b/include/linux/sunrpc/svcsock.h
+@@ -42,6 +42,7 @@ void		svc_sock_update_bufs(struct svc_serv *serv);
+ int		svc_sock_names(struct svc_serv *serv, char *buf,
+ 					const size_t buflen,
+ 					const char *toclose);
++bool		svc_alien_sock(struct net *net, int fd);
+ int		svc_addsock(struct svc_serv *serv, const int fd,
+ 					char *name_return, const size_t len);
+ void		svc_init_xprt_sock(void);
+diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+index f190ea9..4c23cfc 100644
+--- a/net/sunrpc/svcsock.c
++++ b/net/sunrpc/svcsock.c
+@@ -1441,6 +1441,22 @@ static struct svc_sock *svc_setup_socket(struct svc_serv *serv,
+ 	return svsk;
+ }
+ 
++bool svc_alien_sock(struct net *net, int fd)
++{
++	int err;
++	struct socket *sock = sockfd_lookup(fd, &err);
++	bool ret = false;
++
++	if (!sock)
++		goto out;
++	if (sock_net(sock->sk) != net)
++		ret = true;
++	sockfd_put(sock);
++out:
++	return ret;
++}
++EXPORT_SYMBOL_GPL(svc_alien_sock);
++
+ /**
+  * svc_addsock - add a listener socket to an RPC service
+  * @serv: pointer to RPC service to which to add a new listener
+-- 
+1.8.2.2
 
-  nfs: pass string length to pr_notice message about readdir loops (2014-04=
--05 09:25:42 -0400)
-
-----------------------------------------------------------------
-NFS client updates for Linux 3.15
-
-Highlights include:
-
-- Stable fix for a use after free issue in the NFSv4.1 open code
-- Fix the SUNRPC bi-directional RPC code to account for TCP segmentation
-- Optimise usage of readdirplus when confronted with 'ls -l' situations
-- Soft mount bugfixes
-- NFS over RDMA bugfixes
-- NFSv4 close locking fixes
-- Various NFSv4.x client state management optimisations
-- Rename/unlink code cleanups
-
-----------------------------------------------------------------
-Chuck Lever (4):
-      NFS: Clean up: revert increase in READDIR RPC buffer max size
-      SUNRPC: Fix large reads on NFS/RDMA
-      SUNRPC: remove KERN_INFO from dprintk() call sites
-      NFS: advertise only supported callback netids
-
-Jeff Layton (6):
-      nfs: abstract out code needed to complete a sillyrename
-      nfs: make nfs_async_rename non-static
-      nfs: convert nfs_rename to use async_rename infrastructure
-      nfs: remove synchronous rename code
-      nfs: emit a fsnotify_nameremove call in sillyrename codepath
-      nfs: pass string length to pr_notice message about readdir loops
-
-Steve Dickson (1):
-      SUNRPC: Ensure call_connect_status() deals correctly with SOFTCONN ta=
-sks
-
-Trond Myklebust (18):
-      SUNRPC: RPC callbacks may be split across several TCP segments
-      NFS: Be more aggressive in using readdirplus for 'ls -l' situations
-      NFSv4.1: Fix wraparound issues in pnfs_seqid_is_newer()
-      NFSv4: Don't update the open stateid unless it is newer than the old =
-one
-      NFSv4.1: Ensure that the layout recall callback matches layout statei=
-ds
-      NFSv4.1: Minor optimisation in get_layout_by_fh_locked()
-      NFSv4.1: Ensure that we free existing layout segments if we get a new=
- layout
-      NFSv4: Use correct locking when updating nfs4_state in nfs4_close_don=
-e
-      NFSv4: Clear the open state flags if the new stateid does not match
-      SUNRPC: Ensure that call_connect times out correctly
-      SUNRPC: Ensure that call_bind times out correctly
-      Merge branch 'devel' into linux-next
-      NFSv4: Schedule recovery if nfs40_walk_client_list() is interrupted
-      NFSv4: Ensure we respect soft mount timeouts during trunking discover=
-y
-      SUNRPC: Ensure call_status() deals correctly with SOFTCONN tasks
-      SUNRPC: Don't let rpc_delay() clobber non-timeout errors
-      SUNRPC: rpc_restart_call/rpc_restart_call_prepare should clear task->=
-tk_status
-      NFSv4: Fix a use-after-free problem in open()
-
- fs/nfs/callback_proc.c          |  19 ++--
- fs/nfs/dir.c                    |  62 +++++++++++--
- fs/nfs/inode.c                  |  34 +++++--
- fs/nfs/internal.h               |   8 ++
- fs/nfs/nfs3proc.c               |  36 --------
- fs/nfs/nfs4_fs.h                |  11 +++
- fs/nfs/nfs4client.c             |   7 ++
- fs/nfs/nfs4proc.c               | 197 +++++++++++++++++++++---------------=
-----
- fs/nfs/nfs4state.c              |   6 +-
- fs/nfs/nfs4xdr.c                |   3 +-
- fs/nfs/pnfs.c                   |  17 +++-
- fs/nfs/proc.c                   |  25 -----
- fs/nfs/unlink.c                 |  35 ++++++-
- include/linux/nfs_fs.h          |   2 +-
- include/linux/nfs_xdr.h         |   3 +-
- include/linux/sunrpc/bc_xprt.h  |   3 +-
- net/sunrpc/backchannel_rqst.c   |  93 +++++++++++++------
- net/sunrpc/clnt.c               |  23 +++--
- net/sunrpc/sched.c              |   3 +-
- net/sunrpc/xprtrdma/rpc_rdma.c  |   4 +-
- net/sunrpc/xprtrdma/transport.c |  10 +-
- net/sunrpc/xprtsock.c           |  28 ++----
- 22 files changed, 368 insertions(+), 261 deletions(-)
-
---=20
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
-
-
---=-XM5AY5wIrOZrXhWCmBBs
-Content-Type: application/pgp-signature; name="signature.asc"
-Content-Description: This is a digitally signed message part
-Content-Transfer-Encoding: 7bit
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.22 (GNU/Linux)
-
-iQIcBAABAgAGBQJTQYAuAAoJEGcL54qWCgDyorEQAKMURkuxM09OXoBORJCiIG7Q
-QAQAaKn6qpUhVXfwYHKB8MqEUcyBYtpEHSdAL5F4XIYFB9kdO5YQGDxD+QhdcRve
-7extJNdkefpKWM9tMwNwOBOQNXzr4yJvgzo6i05zPTP7PQxWkM+4Vb7JiXWcSbMC
-Fj3mWhsu+4EGVNWsrdJOmpr7uHRiOafVAoYiq7BfAPg+5iDmd2enC6UThsewc4De
-g62zTrcQqVLdwWjH28NJoFHiT5+q6JlYrO9iz2wRi3mW9paMtKA2VWmtJU+sH95u
-UHaig1rlZMQlWiIw2IcpvN2OoBYxLrNxQp+18T/Jg9Kaa86YGJ0TXaVDarY3Kh+7
-+mczHr0uke1xxr22rQ0qe5RbffqXGMKZeIC9J9AkvZDP0Whxg/k465bfi1DH/G/3
-JHgBSLYZ4outkzLQi2NbFOjKWOO16a8lKNI0HPK07Mn2XHUGzPSx428bFl9qeMIq
-YjuRdIbo3q+FeU6wK6K2zAAruSMLCGRkKNw/TwDOq76JPXEncuoNLOVJxVfVaP7P
-PUNXybMfMudOwFOt1cFH5dxqwKWy7k6/ZyjxyHfZnC4Eiv2f3CCL8Chlu2Ro3gM3
-+Pmvw+qyXUeH5WORdg1CjLJcdvIsHI6xiPs3iNUeCS5hQuTlZill7B5edUvQ+s3c
-PtqjJNQ20EtGC1vckXky
-=iI2a
------END PGP SIGNATURE-----
-
---=-XM5AY5wIrOZrXhWCmBBs--
 
