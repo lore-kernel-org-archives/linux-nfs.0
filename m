@@ -1,47 +1,106 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pb0-f42.google.com ([209.85.160.42]:43970 "EHLO
-	mail-pb0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754083AbaDMM44 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 13 Apr 2014 08:56:56 -0400
-Received: by mail-pb0-f42.google.com with SMTP id rr13so7245270pbb.15
-        for <linux-nfs@vger.kernel.org>; Sun, 13 Apr 2014 05:56:55 -0700 (PDT)
-Message-ID: <534A897E.10303@gmail.com>
-Date: Sun, 13 Apr 2014 20:56:30 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
+Received: from mail-ie0-f176.google.com ([209.85.223.176]:40117 "EHLO
+	mail-ie0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1945938AbaD3Tbt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Apr 2014 15:31:49 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH V3 16/17] xprtrdma: Ensure ia->ri_id->qp is not NULL when
+	reconnecting
+To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Cc: Anna.Schumaker@netapp.com
+Date: Wed, 30 Apr 2014 15:31:47 -0400
+Message-ID: <20140430193147.5663.13351.stgit@manet.1015granger.net>
+In-Reply-To: <20140430191433.5663.16217.stgit@manet.1015granger.net>
+References: <20140430191433.5663.16217.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-Subject: [PATCH 1/2] NFSD: Cleanup unused comments and codes in summarize_posix_acl
-Content-Type: text/plain; charset=GB2312
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+Devesh Sharma <Devesh.Sharma@Emulex.Com> reports that after a
+disconnect, his HCA is failing to create a fresh QP, leaving
+ia_ri->ri_id->qp set to NULL. But xprtrdma still allows RPCs to
+wake up and post LOCAL_INV as they exit, causing an oops.
+
+rpcrdma_ep_connect() is allowing the wake-up by leaking the QP
+creation error code (-EPERM in this case) to the RPC client's
+generic layer. xprt_connect_status() does not recognize -EPERM, so
+it kills pending RPC tasks immediately rather than retrying the
+connect.
+
+Re-arrange the QP creation logic so that when it fails on reconnect,
+it leaves ->qp with the old QP rather than NULL.  If pending RPC
+tasks wake and exit, LOCAL_INV work requests will flush rather than
+oops.
+
+On initial connect, leaving ->qp == NULL is OK, since there are no
+pending RPCs that might use ->qp. But be sure not to try to destroy
+a NULL QP when rpcrdma_ep_connect() is retried.
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfs4acl.c | 7 -------
- 1 file changed, 7 deletions(-)
 
-diff --git a/fs/nfsd/nfs4acl.c b/fs/nfsd/nfs4acl.c
-index 6f3f392..de5d66b 100644
---- a/fs/nfsd/nfs4acl.c
-+++ b/fs/nfsd/nfs4acl.c
-@@ -193,16 +193,9 @@ summarize_posix_acl(struct posix_acl *acl, struct
-posix_acl_summary *pas)
- {
- 	struct posix_acl_entry *pa, *pe;
+ net/sunrpc/xprtrdma/verbs.c |   29 ++++++++++++++++++++---------
+ 1 files changed, 20 insertions(+), 9 deletions(-)
 
--	/*
--	 * Only pas.users and pas.groups need initialization; previous
--	 * posix_acl_valid() calls ensure that the other fields will be
--	 * initialized in the following loop.  But, just to placate gcc:
--	 */
- 	memset(pas, 0, sizeof(*pas));
- 	pas->mask = 07;
-
--	pe = acl->a_entries + acl->a_count;
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index c80995a..54edf2a 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -867,6 +867,7 @@ rpcrdma_ep_connect(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
+ 	if (ep->rep_connected != 0) {
+ 		struct rpcrdma_xprt *xprt;
+ retry:
++		dprintk("RPC:       %s: reconnecting...\n", __func__);
+ 		rc = rpcrdma_ep_disconnect(ep, ia);
+ 		if (rc && rc != -ENOTCONN)
+ 			dprintk("RPC:       %s: rpcrdma_ep_disconnect"
+@@ -879,7 +880,7 @@ retry:
+ 		id = rpcrdma_create_id(xprt, ia,
+ 				(struct sockaddr *)&xprt->rx_data.addr);
+ 		if (IS_ERR(id)) {
+-			rc = PTR_ERR(id);
++			rc = -EHOSTUNREACH;
+ 			goto out;
+ 		}
+ 		/* TEMP TEMP TEMP - fail if new device:
+@@ -893,20 +894,30 @@ retry:
+ 			printk("RPC:       %s: can't reconnect on "
+ 				"different device!\n", __func__);
+ 			rdma_destroy_id(id);
+-			rc = -ENETDOWN;
++			rc = -ENETUNREACH;
+ 			goto out;
+ 		}
+ 		/* END TEMP */
++		rc = rdma_create_qp(id, ia->ri_pd, &ep->rep_attr);
++		if (rc) {
++			dprintk("RPC:       %s: rdma_create_qp failed %i\n",
++				__func__, rc);
++			rdma_destroy_id(id);
++			rc = -ENETUNREACH;
++			goto out;
++		}
+ 		rdma_destroy_qp(ia->ri_id);
+ 		rdma_destroy_id(ia->ri_id);
+ 		ia->ri_id = id;
+-	}
 -
- 	FOREACH_ACL_ENTRY(pa, acl, pe) {
- 		switch (pa->e_tag) {
- 			case ACL_USER_OBJ:
--- 
-1.9.0
+-	rc = rdma_create_qp(ia->ri_id, ia->ri_pd, &ep->rep_attr);
+-	if (rc) {
+-		dprintk("RPC:       %s: rdma_create_qp failed %i\n",
+-			__func__, rc);
+-		goto out;
++	} else {
++		dprintk("RPC:       %s: connecting...\n", __func__);
++		rc = rdma_create_qp(ia->ri_id, ia->ri_pd, &ep->rep_attr);
++		if (rc) {
++			dprintk("RPC:       %s: rdma_create_qp failed %i\n",
++				__func__, rc);
++			/* do not update ep->rep_connected */
++			return -ENETUNREACH;
++		}
+ 	}
+ 
+ /* XXX Tavor device performs badly with 2K MTU! */
 
