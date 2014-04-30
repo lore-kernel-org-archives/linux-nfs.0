@@ -1,104 +1,98 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wi0-f172.google.com ([209.85.212.172]:46432 "EHLO
-	mail-wi0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753153AbaD1I6d (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 28 Apr 2014 04:58:33 -0400
-Received: by mail-wi0-f172.google.com with SMTP id hi2so5283271wib.17
-        for <linux-nfs@vger.kernel.org>; Mon, 28 Apr 2014 01:58:32 -0700 (PDT)
-Message-ID: <535E1834.8080601@dev.mellanox.co.il>
-Date: Mon, 28 Apr 2014 11:58:28 +0300
-From: Sagi Grimberg <sagig@dev.mellanox.co.il>
+Received: from mail-ie0-f170.google.com ([209.85.223.170]:46723 "EHLO
+	mail-ie0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932186AbaD3Tau (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Apr 2014 15:30:50 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH V3 09/17] xprtrdma: Simplify rpcrdma_deregister_external()
+	synopsis
+To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Cc: Anna.Schumaker@netapp.com
+Date: Wed, 30 Apr 2014 15:30:48 -0400
+Message-ID: <20140430193048.5663.98943.stgit@manet.1015granger.net>
+In-Reply-To: <20140430191433.5663.16217.stgit@manet.1015granger.net>
+References: <20140430191433.5663.16217.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: Devesh Sharma <Devesh.Sharma@Emulex.Com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>,
-        Trond Myklebust <trond.myklebust@primarydata.com>
-Subject: Re: [PATCH V1] NFS-RDMA: fix qp pointer validation checks
-References: <014738b6-698e-4ea1-82f9-287378bfec19@CMEXHTCAS2.ad.emulex.com> <E66D006A-0D04-4602-8BF5-6834CACD2E24@oracle.com> <EE7902D3F51F404C82415C4803930ACD3FDEB3B4@CMEXMB1.ad.emulex.com> <BD7B05C0-4733-4DD1-83F3-B30B6B0EE48C@oracle.com> <EE7902D3F51F404C82415C4803930ACD3FDEB3DF@CMEXMB1.ad.emulex.com> <56C87770-7940-4006-948C-FEF3C0EC4ACC@oracle.com> <EE7902D3F51F404C82415C4803930ACD3FDEBD66@CMEXMB1.ad.emulex.com> <5710A71F-C4D5-408B-9B41-07F21B5853F0@oracle.com> <6837A427-B677-4CC7-A022-4FB9E52A3FC6@oracle.com> <EE7902D3F51F404C82415C4803930ACD3FDED915@CMEXMB1.ad.emulex.com> <C689AB91-46F6-4E96-A673-0DE76FE54CC4@oracle.com> <EE7902D3F51F404C82415C4803930ACD3FDEE11F@CMEXMB1.ad.emulex.com> <1bab6615-60c4-4865-a6a0-c53bb1c32341@CMEXHTCAS1.ad.emulex.com> <5358B975.4020207@dev.mellanox.co.il> <B39C0B38-357F-4BDA-BDA7-048BD38853F7@oracle.com> <535CD819.3050508@dev! .mellanox.co.il> <4ACED3B0-CC8B-4F1F-8DB6-6C272AB17C99@oracle.com>
-In-Reply-To: <4ACED3B0-CC8B-4F1F-8DB6-6C272AB17C99@oracle.com>
-Content-Type: text/plain; charset=windows-1252; format=flowed
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 4/27/2014 3:37 PM, Chuck Lever wrote:
+Clean up: All remaining callers of rpcrdma_deregister_external()
+pass NULL as the last argument, so remove that argument.
 
-<SNIP>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Tested-by: Steve Wise <swise@opengridcomputing.com>
+---
 
->> Why not first create a new id+qp and assign them - and then destroy the old id+qp?
->> see SRP related section: ib_srp.x:srp_create_target_ib()
->>
->> Anyway it is indeed important to guarantee that no xmit flows happens concurrently to that,
->> and cleanups are processed synchronously and in-order.
-> I posted a patch on Friday that should provide that serialization.
->
->>> 2.  If a QP is present but disconnected, posting LOCAL_INV won’t work.
->>>      That leaves buffers (and page cache pages, potentially) registered.
->>>      That could be addressed with LINV+FRMR. But...
->>>
->>> 3.  The client should not leave page cache pages registered indefinitely.
->>>      Both LINV+FRMR and our current approach depends on having a working
->>>      QP _at_ _some_ _point_ … but the client simply can’t depend on that.
->>>      What happens if an NFS server is, say, destroyed by fire while there
->>>      are active client mount points? What if the HCA’s firmware is
->>>      permanently not allowing QP creation?
->> Again, I don't understand why you can't dereg_mr().
->>
->> How about allocating the FRMR pool *after* the QP was successfully created/connected (makes sense as the FRMRs are
->> not usable until then), and destroy/cleanup the pool before the QP is disconnected/destroyed. it also makes sense as they
->> must match PDs.
-> It’s not about deregistration, but rather about invalidation, I was
-> confused.
+ net/sunrpc/xprtrdma/rpc_rdma.c  |    2 +-
+ net/sunrpc/xprtrdma/transport.c |    2 +-
+ net/sunrpc/xprtrdma/verbs.c     |    8 +-------
+ net/sunrpc/xprtrdma/xprt_rdma.h |    2 +-
+ 4 files changed, 4 insertions(+), 10 deletions(-)
 
-OK got it.
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index a38efda..315417d 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -273,7 +273,7 @@ rpcrdma_create_chunks(struct rpc_rqst *rqst, struct xdr_buf *target,
+ out:
+ 	for (pos = 0; nchunks--;)
+ 		pos += rpcrdma_deregister_external(
+-				&req->rl_segments[pos], r_xprt, NULL);
++				&req->rl_segments[pos], r_xprt);
+ 	return 0;
+ }
+ 
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index c23b0c1..430cabb 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -575,7 +575,7 @@ xprt_rdma_free(void *buffer)
+ 	for (i = 0; req->rl_nchunks;) {
+ 		--req->rl_nchunks;
+ 		i += rpcrdma_deregister_external(
+-			&req->rl_segments[i], r_xprt, NULL);
++			&req->rl_segments[i], r_xprt);
+ 	}
+ 
+ 	if (req->rl_iov.length == 0) {	/* see allocate above */
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 7c7e9b4..0cbc83c 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -1632,7 +1632,7 @@ rpcrdma_register_external(struct rpcrdma_mr_seg *seg,
+ 
+ int
+ rpcrdma_deregister_external(struct rpcrdma_mr_seg *seg,
+-		struct rpcrdma_xprt *r_xprt, void *r)
++		struct rpcrdma_xprt *r_xprt)
+ {
+ 	struct rpcrdma_ia *ia = &r_xprt->rx_ia;
+ 	int nsegs = seg->mr_nsegs, rc;
+@@ -1658,12 +1658,6 @@ rpcrdma_deregister_external(struct rpcrdma_mr_seg *seg,
+ 	default:
+ 		break;
+ 	}
+-	if (r) {
+-		struct rpcrdma_rep *rep = r;
+-		void (*func)(struct rpcrdma_rep *) = rep->rr_func;
+-		rep->rr_func = NULL;
+-		func(rep);	/* dereg done, callback now */
+-	}
+ 	return nsegs;
+ }
+ 
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index bf08ee0..3f44d6a 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -331,7 +331,7 @@ int rpcrdma_deregister_internal(struct rpcrdma_ia *,
+ int rpcrdma_register_external(struct rpcrdma_mr_seg *,
+ 				int, int, struct rpcrdma_xprt *);
+ int rpcrdma_deregister_external(struct rpcrdma_mr_seg *,
+-				struct rpcrdma_xprt *, void *);
++				struct rpcrdma_xprt *);
+ 
+ /*
+  * RPC/RDMA connection management calls - xprtrdma/rpc_rdma.c
 
-> xprt_rdma_free() invalidates and then frees the chunks on RPC chunk
-> lists. We just need to see that those invalidations can be successful
-> while the transport is disconnected.
-
-They can't be completed though. Can't you just skip invalidation? will 
-be done when FRMR is reused.
-Sorry to be difficult, but I still don't understand why invalidation 
-must occur in this case.
-
-> I understand that even in the error state, a QP should allow consumers
-> to post send WRs to invalidate FRMRs…?
-
-Its allowed, they won't execute though (I'll be surprised if they will).
-AFAIK posting on a QP in error state has only one use-case - post a 
-colored WQE to know that FLUSH errors has ended.
-
->
-> The other case is whether the consumer can _replace_ a QP with a fresh
-> one, and still have invalidations succeed, even if the transport remains
-> disconnected, once waiting RPCs are awoken.
-
-Which invalidations succeeded and which didn't are known - so I don't 
-see the problem here.
-The only thing is the corner case that Steve indicated wrt flush errors, 
-but if I recall correctly
-posting LINV on an invalidated MR is allowed.
-
->
-> An alternative would be to invalidate all waiting RPC chunk lists on a
-> transport as soon as the QP goes to error state but before it is
-> destroyed, and fastreg the chunks again when waiting RPCs are
-> remarshalled.
->
-> I think the goals are:
->
->    1.  Avoid fastreg on an FRMR that is already valid
->
->    2.  Avoid leaving FRMRs valid indefinitely (preferably just long enough
->        to execute the RPC request, and no longer)
-
-(1) is a non-issue for INV+FASTREG.
-Can you please explain your concern on (2)? is it security (server can 
-keep doing RDMA)?
-because you have remote invalidate for that (server can implement 
-SEND+INVALIDATE).
-
-Having said that, I probably don't see the full picture here like you 
-guys so I might be missing some things.
-
-Sagi.
