@@ -1,97 +1,116 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from ipmail06.adl6.internode.on.net ([150.101.137.145]:50616 "EHLO
-	ipmail06.adl6.internode.on.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1752917AbaDPGFC (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 16 Apr 2014 02:05:02 -0400
-Date: Wed, 16 Apr 2014 16:04:59 +1000
-From: Dave Chinner <david@fromorbit.com>
-To: NeilBrown <neilb@suse.de>
-Cc: linux-mm@kvack.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, xfs@oss.sgi.com
-Subject: Re: [PATCH 09/19] XFS: ensure xfs_file_*_read cannot deadlock in
- memory allocation.
-Message-ID: <20140416060459.GE15995@dastard>
-References: <20140416033623.10604.69237.stgit@notabene.brown>
- <20140416040336.10604.90380.stgit@notabene.brown>
-MIME-Version: 1.0
+Received: from mail-ig0-f180.google.com ([209.85.213.180]:54689 "EHLO
+	mail-ig0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1422665AbaD3QJY convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Apr 2014 12:09:24 -0400
+Received: by mail-ig0-f180.google.com with SMTP id c1so1996367igq.7
+        for <linux-nfs@vger.kernel.org>; Wed, 30 Apr 2014 09:09:22 -0700 (PDT)
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140416040336.10604.90380.stgit@notabene.brown>
+Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
+Subject: Re: [PATCH v2 00/17] NFS: Create a common path used by reads and writes
+From: Weston Andros Adamson <dros@primarydata.com>
+In-Reply-To: <1398459360-2093-1-git-send-email-Anna.Schumaker@Netapp.com>
+Date: Wed, 30 Apr 2014 12:09:30 -0400
+Cc: Trond Myklebust <Trond.Myklebust@primarydata.com>,
+        linux-nfs list <linux-nfs@vger.kernel.org>, hch@infradead.org
+Message-Id: <737A757B-831D-423F-8559-318436CF25CB@primarydata.com>
+References: <1398459360-2093-1-git-send-email-Anna.Schumaker@Netapp.com>
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, Apr 16, 2014 at 02:03:36PM +1000, NeilBrown wrote:
-> xfs_file_*_read holds an inode lock while calling a generic 'read'
-> function.  These functions perform read-ahead and are quite likely to
-> allocate memory.
+On Apr 25, 2014, at 4:55 PM, Anna Schumaker <Anna.Schumaker@netapp.com> wrote:
 
-Yes, that's what reading data from disk requires.
-
-> So set PF_FSTRANS to ensure they avoid __GFP_FS and so don't recurse
-> into a filesystem to free memory.
-
-We already have that protection via the
+> I noticed that much of the read and write code was almost identical, with
+> only minor differences in argument types and names.  These patches seek to
+> unify these two codepaths wherever possible in order to make future changes
+> easier.
 > 
-> This can be a problem with loop-back NFS mounts, if free_pages ends up
-> wating in nfs_release_page(), and nfsd is blocked waiting for the lock
-> that this code holds.
+> Table of contents:
+> 	Patches 01 - 05: Set up common data structures.
+> 	Patches 06 - 10: Set up a shared rpc_call_ops struct.
+> 	Patches 11 - 15: Set up a shared nfs_pageio_ops struct.
 > 
-> This was found both by lockdep and as a real deadlock during testing.
+> Some of the commit setup was moved into common code, but I'm willing to
+> move this back into write.c if this looks to be a problem.
 > 
-> Signed-off-by: NeilBrown <neilb@suse.de>
-> ---
->  fs/xfs/xfs_file.c |   12 ++++++++++++
->  1 file changed, 12 insertions(+)
+> Future work:
+> 	I have rough pNFS patches to combine the read and write paths in
+> 	pnfs.c.  They apply on top of Dros' multiple requests work and
+> 	should get more testing before I submit.
+
+Good! I was going to ask about that.  pnfs_generic_pg_writepages  / 
+pnfs_generic_pg_readpagescan are extremely similar to nfs_generic_pg_pgios.
+
 > 
-> diff --git a/fs/xfs/xfs_file.c b/fs/xfs/xfs_file.c
-> index 64b48eade91d..88b33ef64668 100644
-> --- a/fs/xfs/xfs_file.c
-> +++ b/fs/xfs/xfs_file.c
-> @@ -243,6 +243,7 @@ xfs_file_aio_read(
->  	ssize_t			ret = 0;
->  	int			ioflags = 0;
->  	xfs_fsize_t		n;
-> +	unsigned int		pflags;
->  
->  	XFS_STATS_INC(xs_read_calls);
->  
-> @@ -290,6 +291,10 @@ xfs_file_aio_read(
->  	 * proceeed concurrently without serialisation.
->  	 */
->  	xfs_rw_ilock(ip, XFS_IOLOCK_SHARED);
-> +	/* As we hold a lock, we must ensure that any allocation
-> +	 * in generic_file_aio_read avoid __GFP_FS
-> +	 */
-> +	current_set_flags_nested(&pflags, PF_FSTRANS);
+> Testing:
+> 	I tested every version of NFS using the cthon and xfs tests without
+> 	hitting anything new.  Any extra testing would be great seeing how
+> 	the read and write paths are vitally important.
+> 
+> Changes in v2:
+> 	Reorder data fields in the earlier patches to keep read-only and
+> 	write-only variables together.
+> 
+> Questions?  Comments?  Thoughts?
 
-Ugh. No. This is Simply Wrong.
+Why did you make a new file pageio.c? pagelist.c seems like the right place for
+all of these changes. Or maybe merge them both into pageio.c?
 
-We handle the memory allocations in the IO path with
-GFP_NOFS/KM_NOFS where necessary.
+-dros
 
-We also do this when setting up regular file inodes in
-xfs_setup_inode():
+> 
+> Anna
+> 
+> 
+> Anna Schumaker (17):
+>  NFS: Create a common argument structure for reads and writes
+>  NFS: Create a common results structure for reads and writes
+>  NFS: Create a common read and write data struct
+>  NFS: Create a common read and write header struct
+>  NFS: Move the write verifier into the nfs_pgio_header
+>  NFS: Create a common pgio_alloc and pgio_release function
+>  NFS: Create a common rw_header_alloc and rw_header_free function
+>  NFS: Create a common pgio_rpc_prepare function
+>  NFS: Create a common nfs_pgio_result_common function
+>  NFS: Create a common rpc_call_ops struct
+>  NFS: Create a common rpcsetup function for reads and writes
+>  NFS: Create a common pgio_error function
+>  NFS: Create a generic_pgio function
+>  NFS: Create a common initiate_pgio() function
+>  NFS: Create a common multiple_pgios() function
+>  NFS: Create a common generic_pg_pgios()
+>  NFS: Create a common nfs_pageio_ops struct
+> 
+> fs/nfs/Makefile                  |   2 +-
+> fs/nfs/blocklayout/blocklayout.c |  22 +-
+> fs/nfs/direct.c                  |   4 +-
+> fs/nfs/internal.h                |  31 ++-
+> fs/nfs/nfs2xdr.c                 |  14 +-
+> fs/nfs/nfs3proc.c                |  19 +-
+> fs/nfs/nfs3xdr.c                 |  16 +-
+> fs/nfs/nfs4_fs.h                 |   4 +-
+> fs/nfs/nfs4filelayout.c          |  40 ++--
+> fs/nfs/nfs4proc.c                |  52 ++---
+> fs/nfs/nfs4trace.h               |   8 +-
+> fs/nfs/nfs4xdr.c                 |  19 +-
+> fs/nfs/objlayout/objio_osd.c     |   6 +-
+> fs/nfs/objlayout/objlayout.c     |  16 +-
+> fs/nfs/objlayout/objlayout.h     |   8 +-
+> fs/nfs/pageio.c                  | 386 +++++++++++++++++++++++++++++++++++
+> fs/nfs/pagelist.c                |   2 +
+> fs/nfs/pnfs.c                    |  46 ++---
+> fs/nfs/pnfs.h                    |  10 +-
+> fs/nfs/proc.c                    |  19 +-
+> fs/nfs/read.c                    | 348 +++-----------------------------
+> fs/nfs/write.c                   | 425 +++++----------------------------------
+> include/linux/nfs_fs.h           |   3 +-
+> include/linux/nfs_page.h         |  13 ++
+> include/linux/nfs_xdr.h          |  95 +++------
+> 25 files changed, 662 insertions(+), 946 deletions(-)
+> create mode 100644 fs/nfs/pageio.c
+> 
+> -- 
+> 1.9.2
+> 
 
-        /*
-         * Ensure all page cache allocations are done from GFP_NOFS context to
-         * prevent direct reclaim recursion back into the filesystem and blowing
-         * stacks or deadlocking.
-         */
-        gfp_mask = mapping_gfp_mask(inode->i_mapping);
-        mapping_set_gfp_mask(inode->i_mapping, (gfp_mask & ~(__GFP_FS)));
-
-Which handles all of the mapping allocations that occur within the
-page cache read/write paths.
-
-Remember, you removed the KM_NOFS code from the XFS allocator that
-caused it to clear __GFP_FS in an earlier patch - the read Io path
-is one of the things you broke by doing that....
-
-If there are places where we don't use GFP_NOFS context allocations
-that we should, then we need to fix them individually....
-
-Cheers,
-
-Dave.
--- 
-Dave Chinner
-david@fromorbit.com
