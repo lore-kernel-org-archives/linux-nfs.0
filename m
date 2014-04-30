@@ -1,59 +1,95 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:43194 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751198AbaDSOfv (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 19 Apr 2014 10:35:51 -0400
-Date: Sat, 19 Apr 2014 07:35:49 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Bruce Fields <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 15/70] NFSd: Add locking to the nfs4_file->fi_fds[] array
-Message-ID: <20140419143549.GA25682@infradead.org>
-References: <1397846704-14567-7-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-8-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-9-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-10-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-11-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-12-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-13-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-14-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-15-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-16-git-send-email-trond.myklebust@primarydata.com>
+Received: from [119.145.14.65] ([119.145.14.65]:30411 "EHLO
+	szxga02-in.huawei.com" rhost-flags-FAIL-FAIL-OK-OK) by vger.kernel.org
+	with ESMTP id S1752215AbaD3CrQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Apr 2014 22:47:16 -0400
+From: Weng Meiling <wengmeiling.weng@huawei.com>
+To: <stable@vger.kernel.org>
+CC: <bfields@fieldses.org>, <greg@kroah.com>, <lizefan@huawei.com>,
+        <skinsbursky@parallels.com>, <h.huangqiang@huawei.com>,
+        <linux-nfs@vger.kernel.org>
+Subject: [PATCH v2 3.4 4/9] nfsd: pass net to nfsd_svc()
+Date: Wed, 30 Apr 2014 10:43:39 +0800
+Message-ID: <1398825824-6360-5-git-send-email-wengmeiling.weng@huawei.com>
+In-Reply-To: <1398825824-6360-1-git-send-email-wengmeiling.weng@huawei.com>
+References: <1398825824-6360-1-git-send-email-wengmeiling.weng@huawei.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1397846704-14567-16-git-send-email-trond.myklebust@primarydata.com>
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> +/* XXX: for first cut may fall back on returning file that doesn't work
-> + * at all? */
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-I think moving this code around might be a good opportunity to remove
-this confusing comment.
+commit d41a9417cd89a69f58a26935034b4264a2d882d6 upstream.
 
-> +static struct file *find_writeable_file(struct nfs4_file *f)
-> +{
-> +	struct file *ret;
-> +
-> +	spin_lock(&f->fi_lock);
-> +	ret = __nfs4_get_fd(f, O_WRONLY);
-> +	if (!ret)
-> +		ret = __nfs4_get_fd(f, O_RDWR);
-> +	spin_unlock(&f->fi_lock);
-> +	return ret;
-> +}
-> +
-> +static struct file *find_readable_file(struct nfs4_file *f)
-> +{
-> +	struct file *ret;
-> +
-> +	spin_lock(&f->fi_lock);
-> +	ret = __nfs4_get_fd(f, O_RDONLY);
-> +	if (!ret)
-> +		ret = __nfs4_get_fd(f, O_RDWR);
-> +	spin_unlock(&f->fi_lock);
-> +	return ret;
+Precursor patch. Hard-coded "init_net" will be replaced by proper one in
+future.
 
-Seems like these two functions could be easily consolidated by passing
-a single flags argument.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+[wengmeiling: backport to 3.4:
+ - adjust context
+ - one more parameter(int port) for nfsd_svc()]
+Signed-off-by: Weng Meiling <wengmeiling.weng@huawei.com>
+---
+ fs/nfsd/nfsctl.c | 4 +++-
+ fs/nfsd/nfsd.h   | 2 +-
+ fs/nfsd/nfssvc.c | 3 +--
+ 3 files changed, 5 insertions(+), 4 deletions(-)
+
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index e18f0a5..9463bc0 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -389,6 +389,8 @@ static ssize_t write_threads(struct file *file, char *buf, size_t size)
+ {
+ 	char *mesg = buf;
+ 	int rv;
++	struct net *net = &init_net;
++
+ 	if (size > 0) {
+ 		int newthreads;
+ 		rv = get_int(&mesg, &newthreads);
+@@ -396,7 +398,7 @@ static ssize_t write_threads(struct file *file, char *buf, size_t size)
+ 			return rv;
+ 		if (newthreads < 0)
+ 			return -EINVAL;
+-		rv = nfsd_svc(NFS_PORT, newthreads);
++		rv = nfsd_svc(NFS_PORT, newthreads, net);
+ 		if (rv < 0)
+ 			return rv;
+ 	} else
+diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
+index 356da43..5007654 100644
+--- a/fs/nfsd/nfsd.h
++++ b/fs/nfsd/nfsd.h
+@@ -65,7 +65,7 @@ extern const struct seq_operations nfs_exports_op;
+ /*
+  * Function prototypes.
+  */
+-int		nfsd_svc(unsigned short port, int nrservs);
++int		nfsd_svc(unsigned short port, int nrservs, struct net *net);
+ int		nfsd_dispatch(struct svc_rqst *rqstp, __be32 *statp);
+ 
+ int		nfsd_nrthreads(void);
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index 632d11e..b8aea64 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -434,11 +434,10 @@ int nfsd_set_nrthreads(int n, int *nthreads)
+  * this is the first time nrservs is nonzero.
+  */
+ int
+-nfsd_svc(unsigned short port, int nrservs)
++nfsd_svc(unsigned short port, int nrservs, struct net *net)
+ {
+ 	int	error;
+ 	bool	nfsd_up_before;
+-	struct net *net = &init_net;
+ 
+ 	mutex_lock(&nfsd_mutex);
+ 	dprintk("nfsd: creating service\n");
+-- 
+1.8.2.2
+
 
