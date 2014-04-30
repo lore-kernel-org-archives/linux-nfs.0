@@ -1,51 +1,106 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e8.ny.us.ibm.com ([32.97.182.138]:53825 "EHLO e8.ny.us.ibm.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755714AbaDWUYH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 23 Apr 2014 16:24:07 -0400
-Received: from /spool/local
-	by e8.ny.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <malahal@us.ibm.com>;
-	Wed, 23 Apr 2014 16:24:06 -0400
-Received: from b01cxnp22035.gho.pok.ibm.com (b01cxnp22035.gho.pok.ibm.com [9.57.198.25])
-	by d01dlp02.pok.ibm.com (Postfix) with ESMTP id 68C606E801C
-	for <linux-nfs@vger.kernel.org>; Wed, 23 Apr 2014 16:23:56 -0400 (EDT)
-Received: from d01av01.pok.ibm.com (d01av01.pok.ibm.com [9.56.224.215])
-	by b01cxnp22035.gho.pok.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id s3NKO3BC8192090
-	for <linux-nfs@vger.kernel.org>; Wed, 23 Apr 2014 20:24:03 GMT
-Received: from d01av01.pok.ibm.com (localhost [127.0.0.1])
-	by d01av01.pok.ibm.com (8.14.4/8.14.4/NCO v10.0 AVout) with ESMTP id s3NKO2Lw029602
-	for <linux-nfs@vger.kernel.org>; Wed, 23 Apr 2014 16:24:03 -0400
-Date: Wed, 23 Apr 2014 15:24:01 -0500
-From: Malahal Naineni <malahal@us.ibm.com>
-To: Cedric Blancher <cedric.blancher@gmail.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: Tuning Linux NFSv4 for high latency connections?
-Message-ID: <20140423202401.GA16168@us.ibm.com>
-References: <CALXu0UcdfrvCajbAagGLV=dP=Kk3VWeR4VS5Wna44UroxM4JAQ@mail.gmail.com>
+Received: from mail-ie0-f171.google.com ([209.85.223.171]:53659 "EHLO
+	mail-ie0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932186AbaD3Ta6 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Apr 2014 15:30:58 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH V3 10/17] xprtrdma: Make rpcrdma_ep_destroy() return void
+To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Cc: Anna.Schumaker@netapp.com
+Date: Wed, 30 Apr 2014 15:30:56 -0400
+Message-ID: <20140430193056.5663.72890.stgit@manet.1015granger.net>
+In-Reply-To: <20140430191433.5663.16217.stgit@manet.1015granger.net>
+References: <20140430191433.5663.16217.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <CALXu0UcdfrvCajbAagGLV=dP=Kk3VWeR4VS5Wna44UroxM4JAQ@mail.gmail.com>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Cedric Blancher [cedric.blancher@gmail.com] wrote:
-> Are there any options to improve the Linux NFSv4 performance over a
-> high latency connection?
-> 
-> We currently use Solaris/Illumos as NFSv4 server and client over a
-> cross continental Internet connection. Latency is terrible (~220ms)
-> but the counter this by running work in parallel so the latency is
-> mostly mitigated.
-> 
-> We now wish to migrate (short: Away from Oracle because support is
-> basically unbearable) to Linux (tested SuSE 13.1 and current Fedora)
-> and build times are 17 times (!!!) SLOWER than on Solaris/Illumos.
-> 
-> Are there any tunables besides actimeo=300?
+Clean up: rpcrdma_ep_destroy() returns a value that is used
+only to print a debugging message. rpcrdma_ep_destroy() already
+prints debugging messages in all error cases.
 
-rsize and wsize may help! You need to figure out if the read is the
-issue or the write before you dig further.
+Make rpcrdma_ep_destroy() return void instead.
 
-Regards, Malahal.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Tested-by: Steve Wise <swise@opengridcomputing.com>
+---
+
+ net/sunrpc/xprtrdma/transport.c |    8 ++------
+ net/sunrpc/xprtrdma/verbs.c     |    7 +------
+ net/sunrpc/xprtrdma/xprt_rdma.h |    2 +-
+ 3 files changed, 4 insertions(+), 13 deletions(-)
+
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index 430cabb..d18b2a3 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -229,7 +229,6 @@ static void
+ xprt_rdma_destroy(struct rpc_xprt *xprt)
+ {
+ 	struct rpcrdma_xprt *r_xprt = rpcx_to_rdmax(xprt);
+-	int rc;
+ 
+ 	dprintk("RPC:       %s: called\n", __func__);
+ 
+@@ -238,10 +237,7 @@ xprt_rdma_destroy(struct rpc_xprt *xprt)
+ 	xprt_clear_connected(xprt);
+ 
+ 	rpcrdma_buffer_destroy(&r_xprt->rx_buf);
+-	rc = rpcrdma_ep_destroy(&r_xprt->rx_ep, &r_xprt->rx_ia);
+-	if (rc)
+-		dprintk("RPC:       %s: rpcrdma_ep_destroy returned %i\n",
+-			__func__, rc);
++	rpcrdma_ep_destroy(&r_xprt->rx_ep, &r_xprt->rx_ia);
+ 	rpcrdma_ia_close(&r_xprt->rx_ia);
+ 
+ 	xprt_rdma_free_addresses(xprt);
+@@ -391,7 +387,7 @@ out4:
+ 	xprt_rdma_free_addresses(xprt);
+ 	rc = -EINVAL;
+ out3:
+-	(void) rpcrdma_ep_destroy(new_ep, &new_xprt->rx_ia);
++	rpcrdma_ep_destroy(new_ep, &new_xprt->rx_ia);
+ out2:
+ 	rpcrdma_ia_close(&new_xprt->rx_ia);
+ out1:
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 0cbc83c..edc951e 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -748,11 +748,8 @@ out1:
+  * Disconnect and destroy endpoint. After this, the only
+  * valid operations on the ep are to free it (if dynamically
+  * allocated) or re-create it.
+- *
+- * The caller's error handling must be sure to not leak the endpoint
+- * if this function fails.
+  */
+-int
++void
+ rpcrdma_ep_destroy(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
+ {
+ 	int rc;
+@@ -782,8 +779,6 @@ rpcrdma_ep_destroy(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
+ 	if (rc)
+ 		dprintk("RPC:       %s: ib_destroy_cq returned %i\n",
+ 			__func__, rc);
+-
+-	return rc;
+ }
+ 
+ /*
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index 3f44d6a..362a19d 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -301,7 +301,7 @@ void rpcrdma_ia_close(struct rpcrdma_ia *);
+  */
+ int rpcrdma_ep_create(struct rpcrdma_ep *, struct rpcrdma_ia *,
+ 				struct rpcrdma_create_data_internal *);
+-int rpcrdma_ep_destroy(struct rpcrdma_ep *, struct rpcrdma_ia *);
++void rpcrdma_ep_destroy(struct rpcrdma_ep *, struct rpcrdma_ia *);
+ int rpcrdma_ep_connect(struct rpcrdma_ep *, struct rpcrdma_ia *);
+ int rpcrdma_ep_disconnect(struct rpcrdma_ep *, struct rpcrdma_ia *);
+ 
 
