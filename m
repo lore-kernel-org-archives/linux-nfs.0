@@ -1,163 +1,202 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from static-209-166-131-148.expedient.com ([209.166.131.148]:34958
-	"EHLO natasha.panasas.com" rhost-flags-OK-FAIL-OK-OK)
-	by vger.kernel.org with ESMTP id S965541AbaDJKxW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 10 Apr 2014 06:53:22 -0400
-Message-ID: <53467815.5040500@panasas.com>
-Date: Thu, 10 Apr 2014 13:53:09 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from mail-ig0-f182.google.com ([209.85.213.182]:53793 "EHLO
+	mail-ig0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1945910AbaD3TaX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Apr 2014 15:30:23 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH V3 06/17] xprtrdma: Remove REGISTER memory registration mode
+To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Cc: Anna.Schumaker@netapp.com
+Date: Wed, 30 Apr 2014 15:30:20 -0400
+Message-ID: <20140430193020.5663.21226.stgit@manet.1015granger.net>
+In-Reply-To: <20140430191433.5663.16217.stgit@manet.1015granger.net>
+References: <20140430191433.5663.16217.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-To: open-osd <osd-dev@open-osd.org>, NFS list <linux-nfs@vger.kernel.org>,
-        Daniel Gryniewicz <dang@linuxbox.com>,
-        Elizabeth Ellenbogen Ziph <elizabeth@linuxbox.com>,
-        "Pathak, Santosh" <santoshp@panasas.com>
-CC: Benny Halevy <bhalevy@primarydata.com>,
-        Sachin bhamare <sachin.bhamare@gmail.com>
-Subject: [PATCH 2/3] ore: Remove redundant dev_order(), more cleanups
-References: <53467667.3010304@panasas.com>
-In-Reply-To: <53467667.3010304@panasas.com>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+All kernel RDMA providers except amso1100 support either MTHCAFMR
+or FRMR, both of which are faster than REGISTER.  amso1100 can
+continue to use ALLPHYSICAL.
 
-Two cleanups:
-* si->cur_comp, si->cur_pg where always calculated after
-  the call to ore_calc_stripe_info() with the help of
-  _dev_order(...). But these are already calculated by
-  ore_calc_stripe_info() and can be just set there.
-  (This is left over from the time that si->cur_comp, si->cur_pg
-   were only used by raid code, but now the main loop manages
-   them anyway even though they are ultimately not used in
-   none raid code)
+The only other ULP consumer in the kernel that uses the reg_phys_mr
+verb is Lustre.
 
-* si->cur_comp - For the very last stripe case, was set inside
-  _ore_add_parity_unit(). This is not clear and will be wrong
-  for coming raid6 so move this to only caller. Now si->cur_comp
-  is only manipulated within _prepare_for_striping(), always next
-  to the manipulation of cur_dev.
-  Which is much easier to understand and follow.
-
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/exofs/ore.c      | 10 ++++++----
- fs/exofs/ore_raid.c | 13 ++++---------
- fs/exofs/ore_raid.h | 18 ------------------
- 3 files changed, 10 insertions(+), 31 deletions(-)
 
-diff --git a/fs/exofs/ore.c b/fs/exofs/ore.c
-index 98f2137..2de488d 100644
---- a/fs/exofs/ore.c
-+++ b/fs/exofs/ore.c
-@@ -545,17 +545,19 @@ void ore_calc_stripe_info(struct ore_layout *layout, u64 file_offset,
+ net/sunrpc/xprtrdma/rpc_rdma.c |    3 -
+ net/sunrpc/xprtrdma/verbs.c    |   90 ++--------------------------------------
+ 2 files changed, 5 insertions(+), 88 deletions(-)
+
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index e4af26a..a38efda 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -479,8 +479,7 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
+ 			 * on receive. Therefore, we request a reply chunk
+ 			 * for non-writes wherever feasible and efficient.
+ 			 */
+-			if (wtype == rpcrdma_noch &&
+-			    r_xprt->rx_ia.ri_memreg_strategy > RPCRDMA_REGISTER)
++			if (wtype == rpcrdma_noch)
+ 				wtype = rpcrdma_replych;
+ 		}
+ 	}
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 304c7ad..6bb9a07 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -494,19 +494,11 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
+ 	switch (memreg) {
+ 	case RPCRDMA_MTHCAFMR:
+ 		if (!ia->ri_id->device->alloc_fmr) {
+-#if RPCRDMA_PERSISTENT_REGISTRATION
+ 			dprintk("RPC:       %s: MTHCAFMR registration "
+ 				"specified but not supported by adapter, "
+ 				"using riskier RPCRDMA_ALLPHYSICAL\n",
+ 				__func__);
+ 			memreg = RPCRDMA_ALLPHYSICAL;
+-#else
+-			dprintk("RPC:       %s: MTHCAFMR registration "
+-				"specified but not supported by adapter, "
+-				"using slower RPCRDMA_REGISTER\n",
+-				__func__);
+-			memreg = RPCRDMA_REGISTER;
+-#endif
+ 		}
+ 		break;
+ 	case RPCRDMA_FRMR:
+@@ -514,19 +506,11 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
+ 		if ((devattr.device_cap_flags &
+ 		     (IB_DEVICE_MEM_MGT_EXTENSIONS|IB_DEVICE_LOCAL_DMA_LKEY)) !=
+ 		    (IB_DEVICE_MEM_MGT_EXTENSIONS|IB_DEVICE_LOCAL_DMA_LKEY)) {
+-#if RPCRDMA_PERSISTENT_REGISTRATION
+ 			dprintk("RPC:       %s: FRMR registration "
+ 				"specified but not supported by adapter, "
+ 				"using riskier RPCRDMA_ALLPHYSICAL\n",
+ 				__func__);
+ 			memreg = RPCRDMA_ALLPHYSICAL;
+-#else
+-			dprintk("RPC:       %s: FRMR registration "
+-				"specified but not supported by adapter, "
+-				"using slower RPCRDMA_REGISTER\n",
+-				__func__);
+-			memreg = RPCRDMA_REGISTER;
+-#endif
+ 		} else {
+ 			/* Mind the ia limit on FRMR page list depth */
+ 			ia->ri_max_frmr_depth = min_t(unsigned int,
+@@ -545,7 +529,6 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
+ 	 * adapter.
+ 	 */
+ 	switch (memreg) {
+-	case RPCRDMA_REGISTER:
+ 	case RPCRDMA_FRMR:
+ 		break;
+ #if RPCRDMA_PERSISTENT_REGISTRATION
+@@ -565,11 +548,10 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
+ 		ia->ri_bind_mem = ib_get_dma_mr(ia->ri_pd, mem_priv);
+ 		if (IS_ERR(ia->ri_bind_mem)) {
+ 			printk(KERN_ALERT "%s: ib_get_dma_mr for "
+-				"phys register failed with %lX\n\t"
+-				"Will continue with degraded performance\n",
++				"phys register failed with %lX\n",
+ 				__func__, PTR_ERR(ia->ri_bind_mem));
+-			memreg = RPCRDMA_REGISTER;
+-			ia->ri_bind_mem = NULL;
++			rc = -ENOMEM;
++			goto out2;
+ 		}
+ 		break;
+ 	default:
+@@ -1611,67 +1593,6 @@ rpcrdma_deregister_fmr_external(struct rpcrdma_mr_seg *seg,
+ 	return rc;
+ }
  
- 	/* "H - (N * U)" is just "H % U" so it's bound to u32 */
- 	u32	C = (u32)(H - (N * U)) / stripe_unit + G * group_width;
-+	u32 first_dev = C - C % group_width;
- 
- 	div_u64_rem(file_offset, stripe_unit, &si->unit_off);
- 
- 	si->obj_offset = si->unit_off + (N * stripe_unit) +
- 				  (M * group_depth * stripe_unit);
-+	si->cur_comp = C - first_dev;
-+	si->cur_pg = si->unit_off / PAGE_SIZE;
- 
- 	if (parity) {
- 		u32 LCMdP = lcm(group_width, parity) / parity;
- 		/* R     = N % LCMdP; */
- 		u32 RxP   = (N % LCMdP) * parity;
--		u32 first_dev = C - C % group_width;
- 
- 		si->par_dev = (group_width + group_width - parity - RxP) %
- 			      group_width + first_dev;
-@@ -670,9 +672,7 @@ static int _prepare_for_striping(struct ore_io_state *ios)
- 
- 	BUG_ON(length > si->length);
- 
--	dev_order = _dev_order(devs_in_group, mirrors_p1, si->par_dev, dev);
--	si->cur_comp = dev_order;
--	si->cur_pg = si->unit_off / PAGE_SIZE;
-+	dev_order = si->cur_comp;
- 
- 	while (length) {
- 		struct ore_per_dev_state *per_dev =
-@@ -718,6 +718,8 @@ static int _prepare_for_striping(struct ore_io_state *ios)
- 				 * stripe. then operate on parity dev.
- 				 */
- 				dev = si->par_dev;
-+				/* If last stripe operate on parity comp */
-+				si->cur_comp = group_width - ios->layout->parity;
- 			}
- 			per_dev = &ios->per_dev[dev - first_dev];
- 			if (!per_dev->length) {
-diff --git a/fs/exofs/ore_raid.c b/fs/exofs/ore_raid.c
-index af417d3..d58a952 100644
---- a/fs/exofs/ore_raid.c
-+++ b/fs/exofs/ore_raid.c
-@@ -402,9 +402,8 @@ static int _add_to_r4w_last_page(struct ore_io_state *ios, u64 *offset)
- 
- 	ore_calc_stripe_info(ios->layout, *offset, 0, &si);
- 
--	p = si.unit_off / PAGE_SIZE;
--	c = _dev_order(ios->layout->group_width * ios->layout->mirrors_p1,
--		       ios->layout->mirrors_p1, si.par_dev, si.dev);
-+	p = si.cur_pg;
-+	c = si.cur_comp;
- 	page = ios->sp2d->_1p_stripes[p].pages[c];
- 
- 	pg_len = PAGE_SIZE - (si.unit_off % PAGE_SIZE);
-@@ -532,9 +531,8 @@ static int _read_4_write_last_stripe(struct ore_io_state *ios)
- 		goto read_it;
- 
- 	ore_calc_stripe_info(ios->layout, offset, 0, &read_si);
--	p = read_si.unit_off / PAGE_SIZE;
--	c = _dev_order(ios->layout->group_width * ios->layout->mirrors_p1,
--		       ios->layout->mirrors_p1, read_si.par_dev, read_si.dev);
-+	p = read_si.cur_pg;
-+	c = read_si.cur_comp;
- 
- 	if (min_p == sp2d->pages_in_unit) {
- 		/* Didn't do it yet */
-@@ -638,9 +636,6 @@ int _ore_add_parity_unit(struct ore_io_state *ios,
- 		si->cur_pg = _sp2d_min_pg(sp2d);
- 		num_pages  = _sp2d_max_pg(sp2d) + 1 - si->cur_pg;
- 
--		if (!cur_len) /* If last stripe operate on parity comp */
--			si->cur_comp = sp2d->data_devs;
--
- 		if (!per_dev->length) {
- 			per_dev->offset += si->cur_pg * PAGE_SIZE;
- 			/* If first stripe, Read in all read4write pages
-diff --git a/fs/exofs/ore_raid.h b/fs/exofs/ore_raid.h
-index 2ffd2c3..d365bda 100644
---- a/fs/exofs/ore_raid.h
-+++ b/fs/exofs/ore_raid.h
-@@ -31,24 +31,6 @@
- #define ORE_DBGMSG2(M...) do {} while (0)
- /* #define ORE_DBGMSG2 ORE_DBGMSG */
- 
--/* Calculate the component order in a stripe. eg the logical data unit
-- * address within the stripe of @dev given the @par_dev of this stripe.
-- */
--static inline unsigned _dev_order(unsigned devs_in_group, unsigned mirrors_p1,
--				  unsigned par_dev, unsigned dev)
+-static int
+-rpcrdma_register_default_external(struct rpcrdma_mr_seg *seg,
+-			int *nsegs, int writing, struct rpcrdma_ia *ia)
 -{
--	unsigned first_dev = dev - dev % devs_in_group;
+-	int mem_priv = (writing ? IB_ACCESS_REMOTE_WRITE :
+-				  IB_ACCESS_REMOTE_READ);
+-	struct rpcrdma_mr_seg *seg1 = seg;
+-	struct ib_phys_buf ipb[RPCRDMA_MAX_DATA_SEGS];
+-	int len, i, rc = 0;
 -
--	dev -= first_dev;
--	par_dev -= first_dev;
--
--	if (devs_in_group == par_dev) /* The raid 0 case */
--		return dev / mirrors_p1;
--	/* raid4/5/6 case */
--	return ((devs_in_group + dev - par_dev - mirrors_p1) % devs_in_group) /
--	       mirrors_p1;
+-	if (*nsegs > RPCRDMA_MAX_DATA_SEGS)
+-		*nsegs = RPCRDMA_MAX_DATA_SEGS;
+-	for (len = 0, i = 0; i < *nsegs;) {
+-		rpcrdma_map_one(ia, seg, writing);
+-		ipb[i].addr = seg->mr_dma;
+-		ipb[i].size = seg->mr_len;
+-		len += seg->mr_len;
+-		++seg;
+-		++i;
+-		/* Check for holes */
+-		if ((i < *nsegs && offset_in_page(seg->mr_offset)) ||
+-		    offset_in_page((seg-1)->mr_offset+(seg-1)->mr_len))
+-			break;
+-	}
+-	seg1->mr_base = seg1->mr_dma;
+-	seg1->mr_chunk.rl_mr = ib_reg_phys_mr(ia->ri_pd,
+-				ipb, i, mem_priv, &seg1->mr_base);
+-	if (IS_ERR(seg1->mr_chunk.rl_mr)) {
+-		rc = PTR_ERR(seg1->mr_chunk.rl_mr);
+-		dprintk("RPC:       %s: failed ib_reg_phys_mr "
+-			"%u@0x%llx (%d)... status %i\n",
+-			__func__, len,
+-			(unsigned long long)seg1->mr_dma, i, rc);
+-		while (i--)
+-			rpcrdma_unmap_one(ia, --seg);
+-	} else {
+-		seg1->mr_rkey = seg1->mr_chunk.rl_mr->rkey;
+-		seg1->mr_nsegs = i;
+-		seg1->mr_len = len;
+-	}
+-	*nsegs = i;
+-	return rc;
 -}
 -
- /* ios_raid.c stuff needed by ios.c */
- int _ore_post_alloc_raid_stuff(struct ore_io_state *ios);
- void _ore_free_raid_stuff(struct ore_io_state *ios);
--- 
-1.9.0
-
+-static int
+-rpcrdma_deregister_default_external(struct rpcrdma_mr_seg *seg,
+-			struct rpcrdma_ia *ia)
+-{
+-	struct rpcrdma_mr_seg *seg1 = seg;
+-	int rc;
+-
+-	rc = ib_dereg_mr(seg1->mr_chunk.rl_mr);
+-	seg1->mr_chunk.rl_mr = NULL;
+-	while (seg1->mr_nsegs--)
+-		rpcrdma_unmap_one(ia, seg++);
+-	if (rc)
+-		dprintk("RPC:       %s: failed ib_dereg_mr,"
+-			" status %i\n", __func__, rc);
+-	return rc;
+-}
+-
+ int
+ rpcrdma_register_external(struct rpcrdma_mr_seg *seg,
+ 			int nsegs, int writing, struct rpcrdma_xprt *r_xprt)
+@@ -1701,10 +1622,8 @@ rpcrdma_register_external(struct rpcrdma_mr_seg *seg,
+ 		rc = rpcrdma_register_fmr_external(seg, &nsegs, writing, ia);
+ 		break;
+ 
+-	/* Default registration each time */
+ 	default:
+-		rc = rpcrdma_register_default_external(seg, &nsegs, writing, ia);
+-		break;
++		return -1;
+ 	}
+ 	if (rc)
+ 		return -1;
+@@ -1738,7 +1657,6 @@ rpcrdma_deregister_external(struct rpcrdma_mr_seg *seg,
+ 		break;
+ 
+ 	default:
+-		rc = rpcrdma_deregister_default_external(seg, ia);
+ 		break;
+ 	}
+ 	if (r) {
 
