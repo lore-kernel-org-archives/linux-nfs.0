@@ -1,118 +1,152 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f170.google.com ([209.85.213.170]:34773 "EHLO
-	mail-ig0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754100AbaDRSpf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 18 Apr 2014 14:45:35 -0400
-Received: by mail-ig0-f170.google.com with SMTP id uq10so1223010igb.1
-        for <linux-nfs@vger.kernel.org>; Fri, 18 Apr 2014 11:45:34 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Bruce Fields <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 19/70] NFSd: Allow lockowners to hold several stateids
-Date: Fri, 18 Apr 2014 14:44:13 -0400
-Message-Id: <1397846704-14567-20-git-send-email-trond.myklebust@primarydata.com>
-In-Reply-To: <1397846704-14567-19-git-send-email-trond.myklebust@primarydata.com>
-References: <1397846704-14567-1-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-2-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-3-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-4-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-5-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-6-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-7-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-8-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-9-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-10-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-11-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-12-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-13-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-14-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-15-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-16-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-17-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-18-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-19-git-send-email-trond.myklebust@primarydata.com>
+Received: from szxga03-in.huawei.com ([119.145.14.66]:45535 "EHLO
+	szxga03-in.huawei.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751611AbaD3Cqx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Apr 2014 22:46:53 -0400
+From: Weng Meiling <wengmeiling.weng@huawei.com>
+To: <stable@vger.kernel.org>
+CC: <bfields@fieldses.org>, <greg@kroah.com>, <lizefan@huawei.com>,
+        <skinsbursky@parallels.com>, <h.huangqiang@huawei.com>,
+        <linux-nfs@vger.kernel.org>
+Subject: [PATCH v2 3.4 8/9] nfsd: containerize NFSd filesystem
+Date: Wed, 30 Apr 2014 10:43:43 +0800
+Message-ID: <1398825824-6360-9-git-send-email-wengmeiling.weng@huawei.com>
+In-Reply-To: <1398825824-6360-1-git-send-email-wengmeiling.weng@huawei.com>
+References: <1398825824-6360-1-git-send-email-wengmeiling.weng@huawei.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfsd/nfs4state.c | 46 +++++++++++++++++++++++++++++-----------------
- 1 file changed, 29 insertions(+), 17 deletions(-)
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 0809e8355577..dad2f7b511b8 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -4390,6 +4390,19 @@ alloc_init_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp, struct
- 	return stp;
+note: this backport is just for the null pointer problem when
+start nfsd in none init netns. The nfsd is still not containerized.
+
+commit 11f779421a39b86da8a523d97e5fd3477878d44f upstream.
+
+This patch makes NFSD file system superblock to be created per net.
+This makes possible to get proper network namespace from superblock instead of
+using hard-coded "init_net".
+
+Note: NFSd fs super-block holds network namespace. This garantees, that
+network namespace won't disappear from underneath of it.
+This, obviously, means, that in case of kill of a container's "init" (which is not a mount
+namespace, but network namespace creator) netowrk namespace won't be
+destroyed.
+
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+[wengmeiling: backport to 3.4:
+ - export cache not per netns
+ - NFSD service structure not per netns]
+Signed-off-by: Weng Meiling <wengmeiling.weng@huawei.com>
+---
+ fs/nfsd/nfsctl.c | 30 +++++++++++++++++++++++-------
+ fs/nfsd/nfssvc.c |  2 +-
+ 2 files changed, 24 insertions(+), 8 deletions(-)
+
+diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
+index 1d74af2..cebc9ef 100644
+--- a/fs/nfsd/nfsctl.c
++++ b/fs/nfsd/nfsctl.c
+@@ -213,6 +213,7 @@ static ssize_t write_unlock_ip(struct file *file, char *buf, size_t size)
+ 	struct sockaddr *sap = (struct sockaddr *)&address;
+ 	size_t salen = sizeof(address);
+ 	char *fo_path;
++	struct net *net = file->f_dentry->d_sb->s_fs_info;
+ 
+ 	/* sanity check */
+ 	if (size == 0)
+@@ -225,7 +226,7 @@ static ssize_t write_unlock_ip(struct file *file, char *buf, size_t size)
+ 	if (qword_get(&buf, fo_path, size) < 0)
+ 		return -EINVAL;
+ 
+-	if (rpc_pton(&init_net, fo_path, size, sap, salen) == 0)
++	if (rpc_pton(net, fo_path, size, sap, salen) == 0)
+ 		return -EINVAL;
+ 
+ 	return nlmsvc_unlock_all_by_ip(sap);
+@@ -389,7 +390,7 @@ static ssize_t write_threads(struct file *file, char *buf, size_t size)
+ {
+ 	char *mesg = buf;
+ 	int rv;
+-	struct net *net = &init_net;
++	struct net *net = file->f_dentry->d_sb->s_fs_info;
+ 
+ 	if (size > 0) {
+ 		int newthreads;
+@@ -440,7 +441,7 @@ static ssize_t write_pool_threads(struct file *file, char *buf, size_t size)
+ 	int len;
+ 	int npools;
+ 	int *nthreads;
+-	struct net *net = &init_net;
++	struct net *net = file->f_dentry->d_sb->s_fs_info;
+ 
+ 	mutex_lock(&nfsd_mutex);
+ 	npools = nfsd_nrpools();
+@@ -857,7 +858,7 @@ static ssize_t __write_ports(struct file *file, char *buf, size_t size,
+ static ssize_t write_ports(struct file *file, char *buf, size_t size)
+ {
+ 	ssize_t rv;
+-	struct net *net = &init_net;
++	struct net *net = file->f_dentry->d_sb->s_fs_info;
+ 
+ 	mutex_lock(&nfsd_mutex);
+ 	rv = __write_ports(file, buf, size, net);
+@@ -1095,20 +1096,35 @@ static int nfsd_fill_super(struct super_block * sb, void * data, int silent)
+ #endif
+ 		/* last one */ {""}
+ 	};
+-	return simple_fill_super(sb, 0x6e667364, nfsd_files);
++	struct net *net = data;
++	int ret;
++
++	ret = simple_fill_super(sb, 0x6e667364, nfsd_files);
++	if (ret)
++		return ret;
++	sb->s_fs_info = get_net(net);
++	return 0;
  }
  
-+static struct nfs4_ol_stateid *
-+find_lock_stateid(struct nfs4_lockowner *lo, struct inode *inode)
-+{
-+	struct nfs4_ol_stateid *lst;
-+
-+	list_for_each_entry(lst, &lo->lo_owner.so_stateids, st_perstateowner) {
-+		if (lst->st_file->fi_inode == inode)
-+			return lst;
-+	}
-+	return NULL;
+ static struct dentry *nfsd_mount(struct file_system_type *fs_type,
+ 	int flags, const char *dev_name, void *data)
+ {
+-	return mount_single(fs_type, flags, data, nfsd_fill_super);
++	return mount_ns(fs_type, flags, current->nsproxy->net_ns, nfsd_fill_super);
 +}
 +
++static void nfsd_umount(struct super_block *sb)
++{
++	struct net *net = sb->s_fs_info;
 +
- static int
- check_lock_length(u64 offset, u64 length)
- {
-@@ -4419,25 +4432,24 @@ static __be32 lookup_or_create_lock_state(struct nfsd4_compound_state *cstate, s
- 
- 	lo = find_lockowner_str(fi->fi_inode, &cl->cl_clientid,
- 				&lock->v.new.owner, nn);
--	if (lo) {
--		if (!cstate->minorversion)
--			return nfserr_bad_seqid;
--		/* XXX: a lockowner always has exactly one stateid: */
--		*lst = list_first_entry(&lo->lo_owner.so_stateids,
--				struct nfs4_ol_stateid, st_perstateowner);
--		return nfs_ok;
-+	if (!lo) {
-+		strhashval = ownerstr_hashval(cl->cl_clientid.cl_id,
-+				&lock->v.new.owner);
-+		lo = alloc_init_lock_stateowner(strhashval, cl, ost, lock);
-+		if (lo == NULL)
-+			return nfserr_jukebox;
- 	}
--	strhashval = ownerstr_hashval(cl->cl_clientid.cl_id,
--			&lock->v.new.owner);
--	lo = alloc_init_lock_stateowner(strhashval, cl, ost, lock);
--	if (lo == NULL)
--		return nfserr_jukebox;
--	*lst = alloc_init_lock_stateid(lo, fi, ost);
-+	if (!cstate->minorversion)
-+		return nfserr_bad_seqid;
-+	*lst = find_lock_stateid(lo, fi->fi_inode);
- 	if (*lst == NULL) {
--		release_lockowner(lo);
--		return nfserr_jukebox;
-+		*lst = alloc_init_lock_stateid(lo, fi, ost);
-+		if (*lst == NULL) {
-+			release_lockowner_if_empty(lo);
-+			return nfserr_jukebox;
-+		}
-+		*new = true;
- 	}
--	*new = true;
- 	return nfs_ok;
++	kill_litter_super(sb);
++	put_net(net);
  }
  
-@@ -4596,7 +4608,7 @@ out:
- 	if (filp)
- 		fput(filp);
- 	if (status && new_state)
--		release_lockowner(lock_sop);
-+		release_lockowner_if_empty(lock_sop);
- 	nfsd4_bump_seqid(cstate, status);
- 	nfs4_unlock_state();
- 	if (file_lock)
+ static struct file_system_type nfsd_fs_type = {
+ 	.owner		= THIS_MODULE,
+ 	.name		= "nfsd",
+ 	.mount		= nfsd_mount,
+-	.kill_sb	= kill_litter_super,
++	.kill_sb	= nfsd_umount,
+ };
+ 
+ #ifdef CONFIG_PROC_FS
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index 5bc9380..ed8eedf 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -670,7 +670,7 @@ int nfsd_pool_stats_open(struct inode *inode, struct file *file)
+ int nfsd_pool_stats_release(struct inode *inode, struct file *file)
+ {
+ 	int ret = seq_release(inode, file);
+-	struct net *net = &init_net;
++	struct net *net = inode->i_sb->s_fs_info;
+ 
+ 	mutex_lock(&nfsd_mutex);
+ 	/* this function really, really should have been called svc_put() */
 -- 
-1.9.0
+1.8.2.2
+
 
