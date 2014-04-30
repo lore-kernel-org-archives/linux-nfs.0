@@ -1,238 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:34165 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932157AbaDYU4Z (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 25 Apr 2014 16:56:25 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
-CC: <dros@primarydata.com>, <hch@infradead.org>
-Subject: [PATCH v2 11/17] NFS: Create a common rpcsetup function for reads and writes
-Date: Fri, 25 Apr 2014 16:55:54 -0400
-Message-ID: <1398459360-2093-12-git-send-email-Anna.Schumaker@Netapp.com>
-In-Reply-To: <1398459360-2093-1-git-send-email-Anna.Schumaker@Netapp.com>
-References: <1398459360-2093-1-git-send-email-Anna.Schumaker@Netapp.com>
+Received: from mail-qa0-f48.google.com ([209.85.216.48]:57035 "EHLO
+	mail-qa0-f48.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1945957AbaD3QaS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Apr 2014 12:30:18 -0400
+Received: by mail-qa0-f48.google.com with SMTP id j15so1864663qaq.7
+        for <linux-nfs@vger.kernel.org>; Wed, 30 Apr 2014 09:30:17 -0700 (PDT)
+Date: Wed, 30 Apr 2014 12:30:13 -0400
+From: Jeff Layton <jlayton@poochiereds.net>
+To: Steve Dickson <steved@redhat.com>
+Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] libnfsidmap: id_as_chars() fails zero value ids.
+Message-ID: <20140430123013.4c4cc8ec@tlielax.poochiereds.net>
+In-Reply-To: <1398871108-18213-1-git-send-email-steved@redhat.com>
+References: <1398871108-18213-1-git-send-email-steved@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
+On Wed, 30 Apr 2014 11:18:28 -0400
+Steve Dickson <steved@redhat.com> wrote:
 
-Write adds a little bit of code dealing with flush flags, but since
-"how" will always be 0 when reading we can share the code.
+> Root has a zero value id which is valid and
+> should not be mapped to nfsnobody
+> 
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+> ---
+>  libnfsidmap.c | 8 ++++++--
+>  1 file changed, 6 insertions(+), 2 deletions(-)
+> 
+> diff --git a/libnfsidmap.c b/libnfsidmap.c
+> index 641d766..92bc493 100644
+> --- a/libnfsidmap.c
+> +++ b/libnfsidmap.c
+> @@ -99,8 +99,12 @@ static char * toupper_str(char *s)
+>  static int id_as_chars(char *name, int *id)
+>  {
+>  	long int value = strtol(name, NULL, 10);
+> -	if (value == 0)
+> -		return 0;
+> +
+> +	if (value == 0) {
+> +		/* zero value ids are valid */
+> +		if (strcmp(name, "0") != 0)
+> +			return 0;
+> +	}
+>  	*id = (int)value;
+>  	return 1;
+>  }
 
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
----
- fs/nfs/internal.h |  3 +++
- fs/nfs/pageio.c   | 36 ++++++++++++++++++++++++++++++++++++
- fs/nfs/read.c     | 26 ++------------------------
- fs/nfs/write.c    | 46 ++++------------------------------------------
- 4 files changed, 45 insertions(+), 66 deletions(-)
+Well spotted. I think though that instead of doing the strcmp, you
+should instead just use the endptr value in the strtol call to determine
+whether the string was completely converted. If it isn't, we can just
+return 0 here. If it is completely converted then you know that you got
+a legit "0" string.
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 798eb47..7bc36ee 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -401,6 +401,8 @@ extern struct nfs_rw_header *nfs_rw_header_alloc(const struct nfs_rw_ops *);
- extern void nfs_rw_header_free(struct nfs_pgio_header *);
- extern struct nfs_pgio_data *nfs_pgio_data_alloc(struct nfs_pgio_header *, unsigned int);
- extern void nfs_pgio_data_release(struct nfs_pgio_data *);
-+extern void nfs_pgio_rpcsetup(struct nfs_pgio_data *, unsigned int,
-+			      unsigned int, int, struct nfs_commit_info *);
- 
- /* read.c */
- extern void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
-@@ -449,6 +451,7 @@ extern void nfs_init_commit(struct nfs_commit_data *data,
- 			    struct nfs_commit_info *cinfo);
- int nfs_scan_commit_list(struct list_head *src, struct list_head *dst,
- 			 struct nfs_commit_info *cinfo, int max);
-+unsigned long nfs_reqs_to_commit(struct nfs_commit_info *);
- int nfs_scan_commit(struct inode *inode, struct list_head *dst,
- 		    struct nfs_commit_info *cinfo);
- void nfs_mark_request_commit(struct nfs_page *req,
-diff --git a/fs/nfs/pageio.c b/fs/nfs/pageio.c
-index 0ef8079..26f558e 100644
---- a/fs/nfs/pageio.c
-+++ b/fs/nfs/pageio.c
-@@ -87,6 +87,42 @@ void nfs_pgio_data_release(struct nfs_pgio_data *data)
- }
- EXPORT_SYMBOL_GPL(nfs_pgio_data_release);
- 
-+void nfs_pgio_rpcsetup(struct nfs_pgio_data *data,
-+			      unsigned int count, unsigned int offset,
-+			      int how, struct nfs_commit_info *cinfo)
-+{
-+	struct nfs_page *req = data->header->req;
-+
-+	/* Set up the RPC argument and reply structs
-+	 * NB: take care not to mess about with data->commit et al. */
-+
-+	data->args.fh     = NFS_FH(data->header->inode);
-+	data->args.offset = req_offset(req) + offset;
-+	/* pnfs_set_layoutcommit needs this */
-+	data->mds_offset = data->args.offset;
-+	data->args.pgbase = req->wb_pgbase + offset;
-+	data->args.pages  = data->pages.pagevec;
-+	data->args.count  = count;
-+	data->args.context = get_nfs_open_context(req->wb_context);
-+	data->args.lock_context = req->wb_lock_context;
-+	data->args.stable  = NFS_UNSTABLE;
-+	switch (how & (FLUSH_STABLE | FLUSH_COND_STABLE)) {
-+	case 0:
-+		break;
-+	case FLUSH_COND_STABLE:
-+		if (nfs_reqs_to_commit(cinfo))
-+			break;
-+	default:
-+		data->args.stable = NFS_FILE_SYNC;
-+	}
-+
-+	data->res.fattr   = &data->fattr;
-+	data->res.count   = count;
-+	data->res.eof     = 0;
-+	data->res.verf    = &data->verf;
-+	nfs_fattr_init(&data->fattr);
-+}
-+
- static void nfs_pgio_prepare(struct rpc_task *task, void *calldata)
- {
- 	struct nfs_pgio_data *data = calldata;
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index 98373ba..2c33fc3 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -192,28 +192,6 @@ int nfs_initiate_read(struct rpc_clnt *clnt,
- }
- EXPORT_SYMBOL_GPL(nfs_initiate_read);
- 
--/*
-- * Set up the NFS read request struct
-- */
--static void nfs_read_rpcsetup(struct nfs_pgio_data *data,
--		unsigned int count, unsigned int offset)
--{
--	struct nfs_page *req = data->header->req;
--
--	data->args.fh     = NFS_FH(data->header->inode);
--	data->args.offset = req_offset(req) + offset;
--	data->args.pgbase = req->wb_pgbase + offset;
--	data->args.pages  = data->pages.pagevec;
--	data->args.count  = count;
--	data->args.context = get_nfs_open_context(req->wb_context);
--	data->args.lock_context = req->wb_lock_context;
--
--	data->res.fattr   = &data->fattr;
--	data->res.count   = count;
--	data->res.eof     = 0;
--	nfs_fattr_init(&data->fattr);
--}
--
- static int nfs_do_read(struct nfs_pgio_data *data,
- 		const struct rpc_call_ops *call_ops)
- {
-@@ -305,7 +283,7 @@ static int nfs_pagein_multi(struct nfs_pageio_descriptor *desc,
- 			return -ENOMEM;
- 		}
- 		data->pages.pagevec[0] = page;
--		nfs_read_rpcsetup(data, len, offset);
-+		nfs_pgio_rpcsetup(data, len, offset, 0, NULL);
- 		list_add(&data->list, &hdr->rpc_list);
- 		nbytes -= len;
- 		offset += len;
-@@ -340,7 +318,7 @@ static int nfs_pagein_one(struct nfs_pageio_descriptor *desc,
- 		*pages++ = req->wb_page;
- 	}
- 
--	nfs_read_rpcsetup(data, desc->pg_count, 0);
-+	nfs_pgio_rpcsetup(data, desc->pg_count, 0, 0, NULL);
- 	list_add(&data->list, &hdr->rpc_list);
- 	desc->pg_rpc_callops = &nfs_pgio_common_ops;
- 	return 0;
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index e492537..15f2ffc 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -603,7 +603,7 @@ out:
- }
- 
- #if  IS_ENABLED(CONFIG_NFS_V3) || IS_ENABLED(CONFIG_NFS_V4)
--static unsigned long
-+unsigned long
- nfs_reqs_to_commit(struct nfs_commit_info *cinfo)
- {
- 	return cinfo->mds->ncommit;
-@@ -660,7 +660,7 @@ nfs_scan_commit(struct inode *inode, struct list_head *dst,
- }
- 
- #else
--static unsigned long nfs_reqs_to_commit(struct nfs_commit_info *cinfo)
-+unsigned long nfs_reqs_to_commit(struct nfs_commit_info *cinfo)
- {
- 	return 0;
- }
-@@ -987,44 +987,6 @@ out:
- }
- EXPORT_SYMBOL_GPL(nfs_initiate_write);
- 
--/*
-- * Set up the argument/result storage required for the RPC call.
-- */
--static void nfs_write_rpcsetup(struct nfs_pgio_data *data,
--		unsigned int count, unsigned int offset,
--		int how, struct nfs_commit_info *cinfo)
--{
--	struct nfs_page *req = data->header->req;
--
--	/* Set up the RPC argument and reply structs
--	 * NB: take care not to mess about with data->commit et al. */
--
--	data->args.fh     = NFS_FH(data->header->inode);
--	data->args.offset = req_offset(req) + offset;
--	/* pnfs_set_layoutcommit needs this */
--	data->mds_offset = data->args.offset;
--	data->args.pgbase = req->wb_pgbase + offset;
--	data->args.pages  = data->pages.pagevec;
--	data->args.count  = count;
--	data->args.context = get_nfs_open_context(req->wb_context);
--	data->args.lock_context = req->wb_lock_context;
--	data->args.stable  = NFS_UNSTABLE;
--	switch (how & (FLUSH_STABLE | FLUSH_COND_STABLE)) {
--	case 0:
--		break;
--	case FLUSH_COND_STABLE:
--		if (nfs_reqs_to_commit(cinfo))
--			break;
--	default:
--		data->args.stable = NFS_FILE_SYNC;
--	}
--
--	data->res.fattr   = &data->fattr;
--	data->res.count   = count;
--	data->res.verf    = &data->verf;
--	nfs_fattr_init(&data->fattr);
--}
--
- static int nfs_do_write(struct nfs_pgio_data *data,
- 		const struct rpc_call_ops *call_ops,
- 		int how)
-@@ -1129,7 +1091,7 @@ static int nfs_flush_multi(struct nfs_pageio_descriptor *desc,
- 			return -ENOMEM;
- 		}
- 		data->pages.pagevec[0] = page;
--		nfs_write_rpcsetup(data, len, offset, desc->pg_ioflags, &cinfo);
-+		nfs_pgio_rpcsetup(data, len, offset, desc->pg_ioflags, &cinfo);
- 		list_add(&data->list, &hdr->rpc_list);
- 		requests++;
- 		nbytes -= len;
-@@ -1179,7 +1141,7 @@ static int nfs_flush_one(struct nfs_pageio_descriptor *desc,
- 		desc->pg_ioflags &= ~FLUSH_COND_STABLE;
- 
- 	/* Set up the argument struct */
--	nfs_write_rpcsetup(data, desc->pg_count, 0, desc->pg_ioflags, &cinfo);
-+	nfs_pgio_rpcsetup(data, desc->pg_count, 0, desc->pg_ioflags, &cinfo);
- 	list_add(&data->list, &hdr->rpc_list);
- 	desc->pg_rpc_callops = &nfs_pgio_common_ops;
- 	return 0;
 -- 
-1.9.2
-
+Jeff Layton <jlayton@poochiereds.net>
