@@ -1,128 +1,120 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:39678 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752014AbaDPFwi (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 16 Apr 2014 01:52:38 -0400
-Date: Wed, 16 Apr 2014 15:52:30 +1000
-From: NeilBrown <neilb@suse.de>
-To: Al Viro <viro@ZenIV.linux.org.uk>
-Cc: linux-mm@kvack.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org, xfs@oss.sgi.com
-Subject: Re: [PATCH 17/19] VFS: set PF_FSTRANS while namespace_sem is held.
-Message-ID: <20140416155230.4d02e4b9@notabene.brown>
-In-Reply-To: <20140416044618.GX18016@ZenIV.linux.org.uk>
-References: <20140416033623.10604.69237.stgit@notabene.brown>
-	<20140416040337.10604.86740.stgit@notabene.brown>
-	<20140416044618.GX18016@ZenIV.linux.org.uk>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/AHIx/=TRorm595oyDqzGVg8"; protocol="application/pgp-signature"
+Received: from [119.145.14.65] ([119.145.14.65]:30417 "EHLO
+	szxga02-in.huawei.com" rhost-flags-FAIL-FAIL-OK-OK) by vger.kernel.org
+	with ESMTP id S1753356AbaD3CrQ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 29 Apr 2014 22:47:16 -0400
+From: Weng Meiling <wengmeiling.weng@huawei.com>
+To: <stable@vger.kernel.org>
+CC: <bfields@fieldses.org>, <greg@kroah.com>, <lizefan@huawei.com>,
+        <skinsbursky@parallels.com>, <h.huangqiang@huawei.com>,
+        <linux-nfs@vger.kernel.org>
+Subject: [PATCH v2 3.4 2/9] nfsd: pass net to nfsd_startup() and nfsd_shutdown()
+Date: Wed, 30 Apr 2014 10:43:37 +0800
+Message-ID: <1398825824-6360-3-git-send-email-wengmeiling.weng@huawei.com>
+In-Reply-To: <1398825824-6360-1-git-send-email-wengmeiling.weng@huawei.com>
+References: <1398825824-6360-1-git-send-email-wengmeiling.weng@huawei.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/AHIx/=TRorm595oyDqzGVg8
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
+From: Stanislav Kinsbursky <skinsbursky@parallels.com>
 
-On Wed, 16 Apr 2014 05:46:18 +0100 Al Viro <viro@ZenIV.linux.org.uk> wrote:
+commit db42d1a76a8dfcaba7a2dc9c591fa4e231db22b3 upstream.
 
-> On Wed, Apr 16, 2014 at 02:03:37PM +1000, NeilBrown wrote:
-> > namespace_sem can be taken while various i_mutex locks are held, so we
-> > need to avoid reclaim from blocking on an FS (particularly loop-back
-> > NFS).
->=20
-> I would really prefer to deal with that differently - by explicit change =
-of
-> gfp_t arguments of allocators.
->=20
-> The thing is, namespace_sem is held *only* over allocations, and not a lot
-> of them, at that - only mnt_alloc_id(), mnt_alloc_group_id(), alloc_vfsmn=
-t()
-> and new_mountpoint().  That is all that is allowed.
->=20
-> Again, actual work with filesystems (setup, shutdown, remount, pathname
-> resolution, etc.) is all done outside of namespace_sem; it's held only
-> for manipulations of fs/{namespace,pnode}.c data structures and the only
-> reason it isn't a spinlock is that we need to do some allocations.
->=20
-> So I'd rather slap GFP_NOFS on those few allocations...
+Precursor patch. Hard-coded "init_net" will be replaced by proper one in
+future.
 
-So something like this?  I put that in to my testing instead.
+Signed-off-by: Stanislav Kinsbursky <skinsbursky@parallels.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+[wengmeiling: backport to 3.4:
+ - adjust context
+ - one more parameter(int port) for nfsd_startup()
+ - no net ns initialization in nfsd_shutdown()
+ - pass @net to lockd_up() in nfsd_startup()
+ - pass @net to lockd_down() in nfsd_shutdown()]
+Signed-off-by: Weng Meiling <wengmeiling.weng@huawei.com>
+---
+ fs/nfsd/nfssvc.c | 17 ++++++++---------
+ 1 file changed, 8 insertions(+), 9 deletions(-)
 
-Thanks,
-NeilBrown
-
-diff --git a/fs/namespace.c b/fs/namespace.c
-index 83dcd5083dbb..8e103b8c8323 100644
---- a/fs/namespace.c
-+++ b/fs/namespace.c
-@@ -103,7 +103,7 @@ static int mnt_alloc_id(struct mount *mnt)
- 	int res;
-=20
- retry:
--	ida_pre_get(&mnt_id_ida, GFP_KERNEL);
-+	ida_pre_get(&mnt_id_ida, GFP_NOFS);
- 	spin_lock(&mnt_id_lock);
- 	res =3D ida_get_new_above(&mnt_id_ida, mnt_id_start, &mnt->mnt_id);
- 	if (!res)
-@@ -134,7 +134,7 @@ static int mnt_alloc_group_id(struct mount *mnt)
+diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+index 517a883..f8dae75 100644
+--- a/fs/nfsd/nfssvc.c
++++ b/fs/nfsd/nfssvc.c
+@@ -203,10 +203,9 @@ static int nfsd_init_socks(int port, struct net *net)
+ 
+ static bool nfsd_up = false;
+ 
+-static int nfsd_startup(unsigned short port, int nrservs)
++static int nfsd_startup(unsigned short port, int nrservs, struct net *net)
  {
- 	int res;
-=20
--	if (!ida_pre_get(&mnt_group_ida, GFP_KERNEL))
-+	if (!ida_pre_get(&mnt_group_ida, GFP_NOFS))
- 		return -ENOMEM;
-=20
- 	res =3D ida_get_new_above(&mnt_group_ida,
-@@ -193,7 +193,7 @@ unsigned int mnt_get_count(struct mount *mnt)
-=20
- static struct mount *alloc_vfsmnt(const char *name)
+ 	int ret;
+-	struct net *net = &init_net;
+ 
+ 	if (nfsd_up)
+ 		return 0;
+@@ -221,7 +220,7 @@ static int nfsd_startup(unsigned short port, int nrservs)
+ 	ret = nfsd_init_socks(port, net);
+ 	if (ret)
+ 		goto out_racache;
+-	ret = lockd_up(&init_net);
++	ret = lockd_up(net);
+ 	if (ret)
+ 		goto out_racache;
+ 	ret = nfs4_state_start();
+@@ -230,13 +229,13 @@ static int nfsd_startup(unsigned short port, int nrservs)
+ 	nfsd_up = true;
+ 	return 0;
+ out_lockd:
+-	lockd_down(&init_net);
++	lockd_down(net);
+ out_racache:
+ 	nfsd_racache_shutdown();
+ 	return ret;
+ }
+ 
+-static void nfsd_shutdown(void)
++static void nfsd_shutdown(struct net *net)
  {
--	struct mount *mnt =3D kmem_cache_zalloc(mnt_cache, GFP_KERNEL);
-+	struct mount *mnt =3D kmem_cache_zalloc(mnt_cache, GFP_NOFS);
- 	if (mnt) {
- 		int err;
-=20
-@@ -202,7 +202,7 @@ static struct mount *alloc_vfsmnt(const char *name)
- 			goto out_free_cache;
-=20
- 		if (name) {
--			mnt->mnt_devname =3D kstrdup(name, GFP_KERNEL);
-+			mnt->mnt_devname =3D kstrdup(name, GFP_NOFS);
- 			if (!mnt->mnt_devname)
- 				goto out_free_id;
- 		}
-@@ -682,7 +682,7 @@ static struct mountpoint *new_mountpoint(struct dentry =
-*dentry)
- 		}
- 	}
-=20
--	mp =3D kmalloc(sizeof(struct mountpoint), GFP_KERNEL);
-+	mp =3D kmalloc(sizeof(struct mountpoint), GFP_NOFS);
- 	if (!mp)
- 		return ERR_PTR(-ENOMEM);
-=20
+ 	/*
+ 	 * write_ports can create the server without actually starting
+@@ -247,14 +246,14 @@ static void nfsd_shutdown(void)
+ 	if (!nfsd_up)
+ 		return;
+ 	nfs4_state_shutdown();
+-	lockd_down(&init_net);
++	lockd_down(net);
+ 	nfsd_racache_shutdown();
+ 	nfsd_up = false;
+ }
+ 
+ static void nfsd_last_thread(struct svc_serv *serv, struct net *net)
+ {
+-	nfsd_shutdown();
++	nfsd_shutdown(net);
+ 
+ 	svc_rpcb_cleanup(serv, net);
+ 
+@@ -458,7 +457,7 @@ nfsd_svc(unsigned short port, int nrservs)
+ 
+ 	nfsd_up_before = nfsd_up;
+ 
+-	error = nfsd_startup(port, nrservs);
++	error = nfsd_startup(port, nrservs, net);
+ 	if (error)
+ 		goto out_destroy;
+ 	error = svc_set_num_threads(nfsd_serv, NULL, nrservs);
+@@ -471,7 +470,7 @@ nfsd_svc(unsigned short port, int nrservs)
+ 	error = nfsd_serv->sv_nrthreads - 1;
+ out_shutdown:
+ 	if (error < 0 && !nfsd_up_before)
+-		nfsd_shutdown();
++		nfsd_shutdown(net);
+ out_destroy:
+ 	nfsd_destroy(net);		/* Release server */
+ out:
+-- 
+1.8.2.2
 
---Sig_/AHIx/=TRorm595oyDqzGVg8
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.22 (GNU/Linux)
-
-iQIVAwUBU04anjnsnt1WYoG5AQIhrg/8CkSLV3X4c4pMegKcWjixLvjggV9C0nmD
-Ki7J2WYAcQLErKW3y+NMuIGWo5ZHNizwEeaSIFbqdzSiMzebtGI5lreK3Vgm6Kom
-yxHsQgu528mbaZj1W29ifjwd6qyaDjmx8hgIEkBZOz1/SrRJ0QiphaQS5/VaZF4j
-25qwbmPyTA92q75q7eOdy+n4y/hpZj6gPAAwjKOmLPFw7YnG1hajhUKReU7z86X1
-cLCX/9ppr+KM8sHpBQfNkzIdC7+PXsHSy38R+ZRLlsdNYuIIxKHJBu1M5EsZejI4
-uPAhNgws4bQohRmPQ0wDzjoiYPeYvPOM1lgln3w3JQuQ9H5/4Nr0EMRBx+BZuIAs
-iUNjLNSxh7I+5Xb+kTH5ea7O75mhmDg6h0KnsFIyL7585/ve872HwTeWnjqhkaRk
-B/gSXw7j6a6CUjGhk8Vpl6aKEgdyieoG0oxIU6xgkUzIjh7V54N+qRNbijGEIrXX
-XwExDi31ptdiBoX8OYTpL5dtKIpJFI3+M9brUs/OHEiMTGxP+gBBoZjygvqQnooD
-/UBY2sdOBQaDS843VQnYUlIhv4XpmwNGZrp7P+lgsTZmgnL39Mt2hfTC3iGvvw4o
-/9lAjXcUCg19a0llfGfqMWXNWEHH8Bjo5OovO4DpN7wWccy6GhXI6U+yd0WNI4k5
-Rte0ii4ppow=
-=vIwc
------END PGP SIGNATURE-----
-
---Sig_/AHIx/=TRorm595oyDqzGVg8--
