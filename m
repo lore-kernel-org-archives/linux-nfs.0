@@ -1,76 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:3665 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751577AbaDAP5d (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 1 Apr 2014 11:57:33 -0400
-Received: from int-mx13.intmail.prod.int.phx2.redhat.com (int-mx13.intmail.prod.int.phx2.redhat.com [10.5.11.26])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s31FvWt8025563
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Tue, 1 Apr 2014 11:57:32 -0400
-Received: from spanjikk.pnq.redhat.com (spanjikk.pnq.redhat.com [10.65.222.100])
-	by int-mx13.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s31FvV30004106
-	for <linux-nfs@vger.kernel.org>; Tue, 1 Apr 2014 11:57:32 -0400
-Message-ID: <533AE1EA.4030103@redhat.com>
-Date: Tue, 01 Apr 2014 21:27:30 +0530
-From: Shijoe George <spanjikk@redhat.com>
+Received: from mail-ig0-f169.google.com ([209.85.213.169]:52691 "EHLO
+	mail-ig0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S964913AbaD3TbP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 30 Apr 2014 15:31:15 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH V3 12/17] xprtrmda: Reduce lock contention in completion
+	handlers
+To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Cc: Anna.Schumaker@netapp.com
+Date: Wed, 30 Apr 2014 15:31:13 -0400
+Message-ID: <20140430193113.5663.89235.stgit@manet.1015granger.net>
+In-Reply-To: <20140430191433.5663.16217.stgit@manet.1015granger.net>
+References: <20140430191433.5663.16217.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org
-Subject: [libnfsidmapd PATCH] nss: use strrchr() instead of strchr() to get
- the last occurrence of "@"
-Content-Type: multipart/mixed;
- boundary="------------020604080701000608020301"
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This is a multi-part message in MIME format.
---------------020604080701000608020301
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
-Content-Transfer-Encoding: 7bit
+Skip the ib_poll_cq() after re-arming, if the provider knows there
+are no additional items waiting. (Have a look at commit ed23a727 for
+more details).
 
-Issues with AD/IPA Trust works & how SSSD deals with AD users.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-Lets say we have a IPA domain linux.example.com & AD domain 
-win.example.com, We setup IPA/AD trust so that Windows domain users can 
-login into Linux, When we setup AD Trust with IPA, AD users login as 
-username@AD_REALM, With our example above, username will be 
-"user@win.example.com" Without @win.example.com that user will be 
-searched only in IPA domain not in AD domain. That is the reason @DOMAIN 
-part is important in SSSD when dealing with IPA-AD trust.
+ net/sunrpc/xprtrdma/verbs.c |   14 ++++++++++----
+ 1 files changed, 10 insertions(+), 4 deletions(-)
 
-With current behaviour the client-side code is stripping the domain off 
-based on the location of the first "@" character in the value returned 
-by the server. This results in UID/GID mappings failing and resulting in 
-ownership on the clients as "nobody".
-
-With the provided patch, we can accept fully qualified usernames.
-
---------------020604080701000608020301
-Content-Type: text/x-patch;
- name="nss.patch"
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
- filename="nss.patch"
-
-commit 7ff76ddf2e37d595732d9c8e534de8aa530eb57a
-Author: Shijoe Panjikkaran <spanjikk@redhat.com>
-Date:   Tue Apr 1 20:53:54 2014 +0530
-
-    nss: strrchr() instead of strchr() to get the last occurrence of "@"
-    
-    Signed-off-by: Shijoe Panjikkaran <spanjikk@redhat.com>
-
-diff --git a/nss.c b/nss.c
-index b2b1227..f8129fe 100644
---- a/nss.c
-+++ b/nss.c
-@@ -135,7 +135,7 @@ static char *strip_domain(const char *name, const char *domain)
- 	char *l = NULL;
- 	int len;
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index af2d097..c7d5281 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -192,8 +192,11 @@ rpcrdma_sendcq_upcall(struct ib_cq *cq, void *cq_context)
+ 		return;
+ 	}
  
--	c = strchr(name, '@');
-+	c = strrchr(name, '@');
- 	if (c == NULL && domain != NULL)
- 		goto out;
- 	if (c == NULL && domain == NULL) {
+-	rc = ib_req_notify_cq(cq, IB_CQ_NEXT_COMP);
+-	if (rc) {
++	rc = ib_req_notify_cq(cq,
++			IB_CQ_NEXT_COMP | IB_CQ_REPORT_MISSED_EVENTS);
++	if (rc == 0)
++		return;
++	if (rc < 0) {
+ 		dprintk("RPC:       %s: ib_req_notify_cq failed: %i\n",
+ 			__func__, rc);
+ 		return;
+@@ -272,8 +275,11 @@ rpcrdma_recvcq_upcall(struct ib_cq *cq, void *cq_context)
+ 		return;
+ 	}
+ 
+-	rc = ib_req_notify_cq(cq, IB_CQ_NEXT_COMP);
+-	if (rc) {
++	rc = ib_req_notify_cq(cq,
++			IB_CQ_NEXT_COMP | IB_CQ_REPORT_MISSED_EVENTS);
++	if (rc == 0)
++		return;
++	if (rc < 0) {
+ 		dprintk("RPC:       %s: ib_req_notify_cq failed: %i\n",
+ 			__func__, rc);
+ 		return;
 
---------------020604080701000608020301--
