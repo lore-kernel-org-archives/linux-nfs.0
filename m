@@ -1,88 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f177.google.com ([209.85.213.177]:61020 "EHLO
-	mail-ig0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750741AbaENOkE convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 May 2014 10:40:04 -0400
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
-Subject: Re: [PATCH V2 RFC 2/3] svcrdma: Recvfrom changes
-From: Chuck Lever <chucklever@gmail.com>
-In-Reply-To: <53737D15.6020902@opengridcomputing.com>
-Date: Wed, 14 May 2014 10:39:47 -0400
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-rdma <linux-rdma@vger.kernel.org>,
-        Tom Tucker <tom@opengridcomputing.com>
-Message-Id: <2AEECADA-4A40-4BF2-866E-7F178D016DDE@gmail.com>
-References: <20140506174621.18208.24242.stgit@build.ogc.int> <20140506174632.18208.28160.stgit@build.ogc.int> <F997E138-FB04-4149-811D-CE68608E8D6B@gmail.com> <00f901cf6eeb$2ff1f630$8fd5e290$@opengridcomputing.com> <3DAF95F3-22D5-4FC5-8C98-5A440E54DC2F@gmail.com> <53737D15.6020902@opengridcomputing.com>
-To: Steve Wise <swise@opengridcomputing.com>
+Received: from mx1.redhat.com ([209.132.183.28]:56372 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751298AbaEAOjH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 1 May 2014 10:39:07 -0400
+Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s41Ed7v2006754
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 1 May 2014 10:39:07 -0400
+Received: from smallhat.boston.devel.redhat.com (vpn-48-26.rdu2.redhat.com [10.10.48.26])
+	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id s41Ed6W9012008
+	for <linux-nfs@vger.kernel.org>; Thu, 1 May 2014 10:39:07 -0400
+Message-ID: <53625C8A.5090108@RedHat.com>
+Date: Thu, 01 May 2014 10:39:06 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] start-statd: rpc.statd's systemd unit changed names.
+References: <1398955020-18614-1-git-send-email-steved@redhat.com>
+In-Reply-To: <1398955020-18614-1-git-send-email-steved@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On May 14, 2014, at 10:26 AM, Steve Wise <swise@opengridcomputing.com> wrote:
 
-> On 5/13/2014 4:44 PM, Chuck Lever wrote:
->> 
->>> I'm not sure what "segment count” you are talking about?
->> AFAICT a chunk is a list of segments. Thus one chunk can reference
->> many pages, one per segment.
+On 05/01/2014 10:37 AM, Steve Dickson wrote:
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+> ---
+>  utils/statd/start-statd | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
 > 
-> Ok yes.  rdma_read_chunk_frmr()/rdma_read_chunk_lcl() walk the segments creating rdma read work requests to pull the data for this chunk.
+> diff --git a/utils/statd/start-statd b/utils/statd/start-statd
+> index 8ac3798..dcdaf77 100644
+> --- a/utils/statd/start-statd
+> +++ b/utils/statd/start-statd
+> @@ -5,7 +5,7 @@
+>  # It should run statd with whatever flags are apropriate for this
+>  # site.
+>  PATH="/sbin:/usr/sbin:/bin:/usr/bin"
+> -if systemctl start statd.service
+> +if systemctl start rpc-statd.service
+>  then :
+>  else
+>      exec rpc.statd --no-notify
 > 
->> If you print ch_count, it is 2 for NFS WRITEs from a Linux client,
->> no matter how large the write payload is. Therefore I think the check
->> as it is written is not particularly useful.
-> 
-> Why are there 2?
+Committed...
 
-The first chunk lists the pages the server is to read, and the second
-chunk has the zero pad for XDR alignment.
-
-If pad optimization is enabled on the client, there is just 1 chunk in
-the RPC’s Read list.
-
-> 
->> The returned ch_count here is not used beyond that check, after the
->> refactoring patch is applied. The returned byte_count includes all
->> chunks in the passed-in chunk list, whereas I think it should count
->> only the first chunk in the list.
-> 
-> So I'll investigate this more with the goal of only grabbing the first chunk.
-
-[ . . . snipped . . . ]
-
->>>> 
->>>> What I'm asking is:
->>>> 
->>>> Do you agree the server should be changed to comply with section 4 of 5667?
->>>> 
->>> I think it is complying and you are misinterpreting.  But I could be misinterpreting it
->>> too :)
->>> 
->>> But we should fix the pad thing.
->> That may be enough to support a client that does not send the
->> pad bytes in a separate chunk. However, I wonder how such a
->> server would behave with the current client.
->> 
->> True, this isn’t a regression, per se. The server is already
->> behaving incorrectly without the refactoring patch.
->> 
->> However, Tom’s refactoring rewrites all this logic anyway, and
->> it wouldn’t be much of a stretch to make the server comply with
->> RFC 5667, at this point.
-> 
-> Can we defer this until the refactor patch is in, then I'll work on a new patch for the pad stuff.
-
-Yes, we can defer it.
-
-A bug has been filed to track this issue:
-
- https://bugzilla.linux-nfs.org/show_bug.cgi?id=246
-
---
-Chuck Lever
-chucklever@gmail.com
-
-
-
+steved.
