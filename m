@@ -1,34 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f177.google.com ([209.85.213.177]:46491 "EHLO
-	mail-ig0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754235AbaESRGp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 May 2014 13:06:45 -0400
-Received: by mail-ig0-f177.google.com with SMTP id l13so3800988iga.4
-        for <linux-nfs@vger.kernel.org>; Mon, 19 May 2014 10:06:45 -0700 (PDT)
-Message-ID: <537A3A22.4080503@gmail.com>
-Date: Mon, 19 May 2014 13:06:42 -0400
-From: Anna Schumaker <schumaker.anna@gmail.com>
+Received: from mx1.redhat.com ([209.132.183.28]:58036 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750871AbaEAS6X (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 1 May 2014 14:58:23 -0400
+Message-ID: <5362994C.8010900@RedHat.com>
+Date: Thu, 01 May 2014 14:58:20 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-To: Christoph Hellwig <hch@infradead.org>
-CC: Weston Andros Adamson <dros@primarydata.com>,
-        trond.myklebust@primarydata.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 8/8] pnfs: merge identical functions
-References: <1400512508-7530-1-git-send-email-dros@primarydata.com> <1400512508-7530-9-git-send-email-dros@primarydata.com> <20140519153402.GB21345@infradead.org> <537A2D32.1020701@gmail.com> <20140519165732.GB663@infradead.org>
-In-Reply-To: <20140519165732.GB663@infradead.org>
-Content-Type: text/plain; charset=ISO-8859-1
+To: Craig Yoshioka <craigyk@me.com>, linux-nfs@vger.kernel.org
+Subject: Re: idmap problems with chown as root
+References: <2541339C-AF61-4ED7-8F50-E4B3CA2C924F@me.com>
+In-Reply-To: <2541339C-AF61-4ED7-8F50-E4B3CA2C924F@me.com>
+Content-Type: text/plain; charset=windows-1252
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 05/19/2014 12:57 PM, Christoph Hellwig wrote:
-> On Mon, May 19, 2014 at 12:11:30PM -0400, Anna Schumaker wrote:
->>> I think it should also be mossible to simply call pnfs_put_lseg
->>> from nfs_pgio_header_free.  pnfs_put_lseg handles a NULL argument fine,
->>> is stubbed out for the non-pnfs case, and the other callers should never
->>> have it set.
->> Every function in this area is identical to each other :).  I'm already working on a patch series that combines these functions (and more!).  It also needs more testing before I can submit, but I can update against these patches first to see if this unlocks other cleanups.
-> Yes, pnfs.c has lots of duplication of the classic I/O path.  I don't
-> think we need to rush out your patches, but it would be good to get them
-> out in the not too far future.
->
 
-Sure.  I won't rush anything, but I'll try not to take too long either.
+
+On 05/01/2014 12:21 PM, Craig Yoshioka wrote:
+> 
+> This is a followup to a previous post I made.
+> 
+> With Frank Filz’s helpful suggestions I was able to gather better data.
+> 
+> problem: when using chown as root on a nfs4 filesystem on newer linux releases file owners get sets to nobody.
+>          the user type doesn’t seem to matter (/etc/passwd, LDAP, Samba4)
+This should take care of the problem:
+
+commit 3226c06989186d9cd60ba146df4e2898fee5047b
+Author: Steve Dickson <steved@redhat.com>
+Date:   Wed Apr 30 11:14:22 2014 -0400
+
+    libnfsidmap: id_as_chars() fails zero value ids.
+    
+    Root has a zero value id which is valid and
+    should not be mapped to nfsnobody
+    
+    Signed-off-by: Steve Dickson <steved@redhat.com>
+
+steved.
+> 
+> setup: Server is FreeBSD 10 system with NFSv4 share.
+>        Server and clients are all configured with the same idmap domain
+>        Network users have consistent uid/gid on server and clients
+>        clients with older linux releases work OK (Ubuntu 12.04, CentOS 5 and 6)
+>        clients with newer linux releases do not work ( Fedora 20, Ubuntu 14.04, Mint 16 )
+> 
+> clues:
+> 
+> 1. working and non-working systems get to the same fchownat() system call with the same arguments (via strace).
+> 
+> example (identical on working and non-working client):
+> ...
+> fchownat(AT_FDCWD, "/mnt/test", 11111, 4294967295, 0) = 0
+> close(1)                                = 0
+> close(2)                                = 0
+> close(4)                                = 0
+> exit_group(0)                           = ?
+> +++ exited with 0 +++
+> 
+> 2. working system sends NFSV4 SETATTR request with owner set to: matlab@nimgs.com and non-working as 11111 (via wireshark)
+> 
+> 
+> 
+> 
+> 
+> 3. I can’t rule out misconfiguration.  but I’ve configured as identically as I could, and tried a lot of small vairations. these are my current settings (the pipefs setting is the distro default)
+> 
+> 
+> 
+> 
+> 
