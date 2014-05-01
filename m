@@ -1,74 +1,86 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f174.google.com ([209.85.192.174]:48993 "EHLO
-	mail-pd0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755468AbaEGJzx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 May 2014 05:55:53 -0400
-Received: by mail-pd0-f174.google.com with SMTP id w10so852278pde.5
-        for <linux-nfs@vger.kernel.org>; Wed, 07 May 2014 02:55:53 -0700 (PDT)
-Message-ID: <536A0312.2070303@gmail.com>
-Date: Wed, 07 May 2014 17:55:30 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
+Received: from mail-vc0-f170.google.com ([209.85.220.170]:62492 "EHLO
+	mail-vc0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750851AbaEATod convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 May 2014 15:44:33 -0400
+Received: by mail-vc0-f170.google.com with SMTP id hr9so4406394vcb.15
+        for <linux-nfs@vger.kernel.org>; Thu, 01 May 2014 12:44:32 -0700 (PDT)
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 1/3] NFS4.0: Case for linking to bad source patch with
- zero-length
-References: <5358EE2F.9070301@gmail.com> <20140506203453.GP18281@fieldses.org>
-In-Reply-To: <20140506203453.GP18281@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+In-Reply-To: <5362994C.8010900@RedHat.com>
+References: <2541339C-AF61-4ED7-8F50-E4B3CA2C924F@me.com>
+	<5362994C.8010900@RedHat.com>
+Date: Thu, 1 May 2014 15:44:32 -0400
+Message-ID: <CAHQdGtTFtJYYkhnnxmpgtY7MapL49A1+2w6NBNy3o8NOKvbXWA@mail.gmail.com>
+Subject: Re: idmap problems with chown as root
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Steve Dickson <SteveD@redhat.com>
+Cc: Craig Yoshioka <craigyk@me.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-
-On 5/7/2014 04:34, J. Bruce Fields wrote:
-> On Thu, Apr 24, 2014 at 06:57:51PM +0800, Kinglong Mee wrote:
->> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
->> ---
->>  nfs4.0/servertests/st_create.py | 13 +++++++++++++
->>  1 file changed, 13 insertions(+)
+On Thu, May 1, 2014 at 2:58 PM, Steve Dickson <SteveD@redhat.com> wrote:
+>
+>
+> On 05/01/2014 12:21 PM, Craig Yoshioka wrote:
 >>
->> diff --git a/nfs4.0/servertests/st_create.py b/nfs4.0/servertests/st_create.py
->> index d2d6701..09c80cc 100644
->> --- a/nfs4.0/servertests/st_create.py
->> +++ b/nfs4.0/servertests/st_create.py
->> @@ -161,6 +161,19 @@ def testZeroLength(t, env):
->>      res = c.create_obj(c.homedir + [''])
->>      check(res, NFS4ERR_INVAL, "CREATE with zero-length name")
->>  
->> +def testZeroLengthForLNK(t, env):
->> +    """CREATE with zero length name should return NFS4ERR_INVAL
-> 
-> Is it actually true that attempts to create symlinks with zero-length
-> content should fail with NFS4ERR_INVAL, and if so according to who?  (Is
-> there language in the RFC's?)
-
-This test is for Bernd Schubert's fix.
-http://www.spinics.net/lists/linux-nfs/msg42800.html
-
-According to rfc3530, 14.2.9, DESCRIPTION
-
-   If the newname has a length of 0 (zero), or if newname does not obey
-   the UTF-8 definition, the error NFS4ERR_INVAL will be returned.
-
-thanks,
-Kinglong Mee
-
->> +
->> +    FLAGS: create symlink all
->> +    CODE: CR9a
->> +    """
->> +    c = env.c1
->> +    ops = c.go_home()
->> +    objtype = createtype4(NF4LNK, **{'linkdata':''})
->> +    ops += [c.create_op(objtype, t.code, getDefaultAttr(c))]
->> +    res = c.compound(ops)
->> +    check(res, NFS4ERR_INVAL, "CREATE with zero-length name for SYMLINK")
->> +
->>  def testRegularFile(t, env):
->>      """CREATE should fail with NFS4ERR_BADTYPE for regular files
->>  
->> -- 
->> 1.9.0
+>> This is a followup to a previous post I made.
 >>
-> 
+>> With Frank Filz’s helpful suggestions I was able to gather better data.
+>>
+>> problem: when using chown as root on a nfs4 filesystem on newer linux releases file owners get sets to nobody.
+>>          the user type doesn’t seem to matter (/etc/passwd, LDAP, Samba4)
+> This should take care of the problem:
+>
+> commit 3226c06989186d9cd60ba146df4e2898fee5047b
+> Author: Steve Dickson <steved@redhat.com>
+> Date:   Wed Apr 30 11:14:22 2014 -0400
+>
+>     libnfsidmap: id_as_chars() fails zero value ids.
+>
+>     Root has a zero value id which is valid and
+>     should not be mapped to nfsnobody
+>
+>     Signed-off-by: Steve Dickson <steved@redhat.com>
+>
+> steved.
+>>
+>> setup: Server is FreeBSD 10 system with NFSv4 share.
+>>        Server and clients are all configured with the same idmap domain
+>>        Network users have consistent uid/gid on server and clients
+>>        clients with older linux releases work OK (Ubuntu 12.04, CentOS 5 and 6)
+>>        clients with newer linux releases do not work ( Fedora 20, Ubuntu 14.04, Mint 16 )
+>>
+>> clues:
+>>
+>> 1. working and non-working systems get to the same fchownat() system call with the same arguments (via strace).
+>>
+>> example (identical on working and non-working client):
+>> ...
+>> fchownat(AT_FDCWD, "/mnt/test", 11111, 4294967295, 0) = 0
+>> close(1)                                = 0
+>> close(2)                                = 0
+>> close(4)                                = 0
+>> exit_group(0)                           = ?
+>> +++ exited with 0 +++
+>>
+>> 2. working system sends NFSV4 SETATTR request with owner set to: matlab@nimgs.com and non-working as 11111 (via wireshark)
+>>
+>>
+>>
+>>
+>>
+>> 3. I can’t rule out misconfiguration.  but I’ve configured as identically as I could, and tried a lot of small vairations. these are my current settings (the pipefs setting is the distro default)
+>>
+
+Does the following help on the client?
+
+echo N >/sys/module/nfs/parameters/nfs4_disable_idmapping
+
+-- 
+Trond Myklebust
+
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
