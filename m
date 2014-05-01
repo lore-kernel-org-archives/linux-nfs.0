@@ -1,110 +1,104 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:38617 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757589AbaEKUxE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 11 May 2014 16:53:04 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 32/43] nfsd4: don't treat readlink like a zero-copy operation
-Date: Sun, 11 May 2014 16:52:37 -0400
-Message-Id: <1399841568-19716-33-git-send-email-bfields@redhat.com>
-In-Reply-To: <1399841568-19716-1-git-send-email-bfields@redhat.com>
-References: <1399841568-19716-1-git-send-email-bfields@redhat.com>
+Received: from userp1040.oracle.com ([156.151.31.81]:32263 "EHLO
+	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750810AbaEAFQh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 May 2014 01:16:37 -0400
+Message-ID: <5361D89F.4070503@oracle.com>
+Date: Wed, 30 Apr 2014 22:16:15 -0700
+From: Shirley Ma <shirley.ma@oracle.com>
+MIME-Version: 1.0
+To: Doug Ledford <dledford@redhat.com>
+CC: yanb <yanb@mellanox.com>, Phil Cayton <phil.cayton@intel.com>,
+        Susan K Coulter <skc@lanl.gov>,
+        Anna Schumaker <Anna.Schumaker@netapp.com>,
+        "Devesh.Sharma" <Devesh.Sharma@emulex.com>,
+        Steve Wise <swise@opengridcomputing.com>,
+        Allen Andrews <Allen.Andrews@emulex.com>,
+        linux-rdma <linux-rdma@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Or Gerlitz <or.gerlitz@gmail.com>,
+        Chuck Lever <chuck.lever@oracle.com>
+Subject: Re: NFSoRDMA developers bi-weekly meeting announcement (4/30)
+References: <53614C03.80606@oracle.com> <CAJZOPZJioYdcbDGsk7278sZS7kD9W1dcGEGtYfsFk=Mm7DW3fQ@mail.gmail.com> <BBF761A6-2407-4457-92D5-8C2EC736BC9D@oracle.com> <CAJZOPZJgp-QdxR+PmwACWOSc4h_167J0iBjfmMrPX8sek600WA@mail.gmail.com> <536161D0.3000600@oracle.com> <30686627.1636.1398902288314.JavaMail."Doug Ledford"@Phenom>
+In-Reply-To: <30686627.1636.1398902288314.JavaMail."Doug Ledford"@Phenom>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
 
-There's no advantage to this zero-copy-style readlink encoding, and it
-unnecessarily limits the kinds of compounds we can handle.  (In practice
-I can't see why a client would want e.g. multiple readlink calls in a
-comound, but it's probably a spec violation for us not to handle it.)
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4xdr.c |   44 +++++++++++++-------------------------------
- 1 file changed, 13 insertions(+), 31 deletions(-)
-
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 58717de..4dba311 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -3154,8 +3154,9 @@ static __be32
- nfsd4_encode_readlink(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_readlink *readlink)
- {
- 	int maxcount;
-+	__be32 wire_count;
-+	int zero = 0;
- 	struct xdr_stream *xdr = &resp->xdr;
--	char *page;
- 	int length_offset = xdr->buf->len;
- 	__be32 *p;
- 
-@@ -3165,51 +3166,32 @@ nfsd4_encode_readlink(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd
- 	p = xdr_reserve_space(xdr, 4);
- 	if (!p)
- 		return nfserr_resource;
--
--	if (resp->xdr.buf->page_len)
--		return nfserr_resource;
--	if (!*resp->rqstp->rq_next_page)
--		return nfserr_resource;
--
--	page = page_address(*(resp->rqstp->rq_next_page++));
--
- 	maxcount = PAGE_SIZE;
- 
--	if (xdr->end - xdr->p < 1)
-+	p = xdr_reserve_space(xdr, maxcount);
-+	if (!p)
- 		return nfserr_resource;
--
- 	/*
- 	 * XXX: By default, the ->readlink() VFS op will truncate symlinks
- 	 * if they would overflow the buffer.  Is this kosher in NFSv4?  If
- 	 * not, one easy fix is: if ->readlink() precisely fills the buffer,
- 	 * assume that truncation occurred, and return NFS4ERR_RESOURCE.
- 	 */
--	nfserr = nfsd_readlink(readlink->rl_rqstp, readlink->rl_fhp, page, &maxcount);
-+	nfserr = nfsd_readlink(readlink->rl_rqstp, readlink->rl_fhp, (void *)p, &maxcount);
-+
- 	if (nfserr == nfserr_isdir)
--		nfserr = nfserr_inval;
-+		nfserr= nfserr_inval;
- 	if (nfserr) {
- 		xdr_truncate_encode(xdr, length_offset);
- 		return nfserr;
- 	}
- 
--	WRITE32(maxcount);
--	resp->xdr.buf->head[0].iov_len = (char*)p
--				- (char*)resp->xdr.buf->head[0].iov_base;
--	resp->xdr.buf->page_len = maxcount;
--	xdr->buf->len += maxcount;
--	xdr->page_ptr += 1;
--	xdr->buf->buflen -= PAGE_SIZE;
--	xdr->iov = xdr->buf->tail;
--
--	/* Use rest of head for padding and remaining ops: */
--	resp->xdr.buf->tail[0].iov_base = p;
--	resp->xdr.buf->tail[0].iov_len = 0;
--	if (maxcount&3) {
--		p = xdr_reserve_space(xdr, 4);
--		WRITE32(0);
--		resp->xdr.buf->tail[0].iov_base += maxcount&3;
--		resp->xdr.buf->tail[0].iov_len = 4 - (maxcount&3);
--	}
-+	wire_count = htonl(maxcount);
-+	write_bytes_to_xdr_buf(xdr->buf, length_offset, &wire_count, 4);
-+	xdr_truncate_encode(xdr, length_offset + 4 + maxcount);
-+	if (maxcount & 3)
-+		write_bytes_to_xdr_buf(xdr->buf, length_offset + 4 + maxcount,
-+						&zero, 4 - (maxcount&3));
- 	return 0;
- }
- 
--- 
-1.7.9.5
+On 04/30/2014 04:58 PM, Doug Ledford wrote:
+> On 04/302014 Shirley Ma wrote:
+>> On 04/30/2014 01:00 PM, Or Gerlitz wrote:
+>>> On Wed, Apr 30, 2014 at 10:47 PM, Chuck Lever
+>>> <chuck.lever@oracle.com>
+>>>
+>>>> If I understood Yan, he is trying to use NFS/RDMA in guests
+>>>> (kvm?).  We
+>>>> are pretty sure that is not working at the moment,
+>>> can you provide a short 1-2 liner why/what is broken there? the
+>>> only
+>>> thing which I can think of to be not-supported over mlx4 VFs is the
+>>> proprietary FMRs, but AFAIK, the nfs-rdma code doesn't even have a
+>>> mode which uses them, right?
+>> I've created Xen guest on DomU. Dom0 PF works which has no mtts been
+>> enabled, however DomU I hit this problem by just mounting the file
+>> system:
+>> mlx4_core 0000:00:04.0: Failed to allocate mtts for 66 pages(order 7)
+>> mlx4_core 0000:00:04.0: Failed to allocate mtts for 4096 pages(order
+>> 12)
+>> mlx4_core 0000:00:04.0: Failed to allocate mtts for 4096 pages(order
+>> 12)
+>>
+>> RDMA microbenchmark perftest works ok. I enabled mtts scripts when
+>> booting the Xen guest. cat /proc/mtrr:
+> What OS/RDMA stack are you using?  I'm not familiar with any mtts
+> scripts, however I know there is an mtrr fixup script I wrote for
+> the RDMA stack in Fedora/RHEL (and so I assume it's in Oracle Linux
+> too, but I haven't checked).  In fact, I assume that's the script
+> you are referring to based on the fact that your next bit of your
+> email cats the /proc/mtrr file.  But I don't believe whether there
+> is an mtrr setting mixup or not that is should have any impact on
+> the mtts allocations in the driver.  Even if your mtrr registers
+> were set incorrectly, the problem then becomes either A) a serious
+> performance bottleneck (in the case of Intel hardware that needs
+> write combining in order to get more than about 50MByte/s of
+> throughput on their cards) or B) failed operation because MMIO
+> writes to the card are being cached/write combined when they should
+> not be.
+>
+> I suspect this is more likely Xen related than mtts/mtrr related.
+Yes. That's the script I used. I wonder whether it's possible to disable 
+mtrr on DomU guest to debug this. I am new to Xen.
+>> [root@ca-nfsdev1vm1 log]# cat /proc/mtrr
+>> reg00: base=0x0f0000000 ( 3840MB), size=  128MB, count=1: uncachable
+>> reg01: base=0x0f8000000 ( 3968MB), size=   64MB, count=1: uncachable
+>>
+>> lspci -v
+>> 00:04.0 InfiniBand: Mellanox Technologies MT25400 Family [ConnectX-2
+>> Virtual Function] (rev b0)
+>>       Subsystem: Mellanox Technologies Device 61b0
+>>       Physical Slot: 4
+>>       Flags: bus master, fast devsel, latency 0
+>>       Memory at f0000000 (64-bit, prefetchable) [size=128M]
+>>       Capabilities: [60] Express Endpoint, MSI 00
+>>       Capabilities: [9c] MSI-X: Enable+ Count=4 Masked-
+>>       Kernel driver in use: mlx4_core
+>>       Kernel modules: mlx4_core
+>>
+>> I will need to find another machine to try KVM guest. Yan might hit a
+>> different problem.
+>>
+>> I have ConnectX-2, FW level is 2.11.2012. Yan has ConnectX-3, he
+>> tried
+>> it on KVM guest.
+>>>> but that is a priority
+>>>> to get fixed. Shirley has a lab set up and has been looking into
+>>>> it.
+>> Shirley
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-rdma"
+>> in
+>> the body of a message to majordomo@vger.kernel.org
+>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+>>
 
