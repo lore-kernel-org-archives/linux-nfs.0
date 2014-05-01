@@ -1,53 +1,77 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wg0-f68.google.com ([74.125.82.68]:49506 "EHLO
-	mail-wg0-f68.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752084AbaEZSAu (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 26 May 2014 14:00:50 -0400
-Received: by mail-wg0-f68.google.com with SMTP id x12so2645467wgg.11
-        for <linux-nfs@vger.kernel.org>; Mon, 26 May 2014 11:00:49 -0700 (PDT)
+Received: from mail-we0-f172.google.com ([74.125.82.172]:58115 "EHLO
+	mail-we0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752251AbaEAHgY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 May 2014 03:36:24 -0400
+Received: by mail-we0-f172.google.com with SMTP id u57so2766370wes.31
+        for <linux-nfs@vger.kernel.org>; Thu, 01 May 2014 00:36:23 -0700 (PDT)
+Message-ID: <5361F973.20707@dev.mellanox.co.il>
+Date: Thu, 01 May 2014 03:36:19 -0400
+From: Hal Rosenstock <hal@dev.mellanox.co.il>
 MIME-Version: 1.0
-Reply-To: Husamalsayed@asia.com
-Date: Mon, 26 May 2014 22:00:48 +0400
-Message-ID: <CAKFyHyqE-jAV0G8GqYW7H_3cUYv2iXVQm5a6-m1VNZWRhKVXAg@mail.gmail.com>
-Subject: Your Urgent reply.
-From: HUSAM AL SAYED <Husamalsayed@asia.com>
-To: undisclosed-recipients:;
+To: Chuck Lever <chuck.lever@oracle.com>
+CC: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org,
+        Anna.Schumaker@netapp.com
+Subject: Re: [PATCH V3 17/17] xprtrdma: Remove Tavor MTU setting
+References: <20140430191433.5663.16217.stgit@manet.1015granger.net> <20140430193155.5663.86148.stgit@manet.1015granger.net>
+In-Reply-To: <20140430193155.5663.86148.stgit@manet.1015granger.net>
 Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Dear Friend,
+On 4/30/2014 3:31 PM, Chuck Lever wrote:
+> Clean up.  Remove HCA-specific clutter in xprtrdma, which is
+> supposed to be device-independent.
+> 
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> ---
+> 
+>  net/sunrpc/xprtrdma/verbs.c |   14 --------------
+>  1 files changed, 0 insertions(+), 14 deletions(-)
+> 
+> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+> index 54edf2a..515dfc1 100644
+> --- a/net/sunrpc/xprtrdma/verbs.c
+> +++ b/net/sunrpc/xprtrdma/verbs.c
+> @@ -48,7 +48,6 @@
+>   */
+>  
+>  #include <linux/interrupt.h>
+> -#include <linux/pci.h>	/* for Tavor hack below */
+>  #include <linux/slab.h>
+>  #include <asm/bitops.h>
+>  
+> @@ -920,19 +919,6 @@ retry:
+>  		}
+>  	}
+>  
+> -/* XXX Tavor device performs badly with 2K MTU! */
+> -if (strnicmp(ia->ri_id->device->dma_device->bus->name, "pci", 3) == 0) {
+> -	struct pci_dev *pcid = to_pci_dev(ia->ri_id->device->dma_device);
+> -	if (pcid->device == PCI_DEVICE_ID_MELLANOX_TAVOR &&
+> -	    (pcid->vendor == PCI_VENDOR_ID_MELLANOX ||
+> -	     pcid->vendor == PCI_VENDOR_ID_TOPSPIN)) {
+> -		struct ib_qp_attr attr = {
+> -			.path_mtu = IB_MTU_1024
+> -		};
+> -		rc = ib_modify_qp(ia->ri_id->qp, &attr, IB_QP_PATH_MTU);
 
+Note that there is OpenSM option (enable_quirks) to return 1K MTU in SA
+PathRecord responses for Tavor so that can be used for this. The default
+setting for enable_quirks is FALSE so that would need changing.
 
-Compliments of the day.This mail May be a surprise to you Because you
-did not give me the permission to do so and Neither do you know me but
-before I tell you about myself I want you to please forgive me for
-sending this mail without your permission I have been in search of
-someone with this last name so when I saw you online, I was pushed to
-contact you and see how best we can assist each other. I am Mr. Husam
-Al Sayed, a Bank Officer here in U.A.E. I believe it is the wish of
-God for me to come across you now. I am having an important business
-discussion I wish to share with you which I  believe will interest
-you, because it is in connection with your last name and you are going
-to benefit from it.
+-- Hal
 
-One Late peter who was among the death victims in the May 27 2006
-Earthquake disaster in Java, Indonesia that killed over 5,000 people.
-He was in Indonesia on a business trip and that was how he met his
-end. My bank management is yet to know about his death, I knew about
-it because he was my friend and I am his account officer.he did not
-mention any Next of Kin/ Heir when the account was opened, and he was
-not married and no children. Last week my Bank Management requested
-that he should give instructions on what to do about his funds,I know
-this will happen and that is why I have been looking for a means to
-handle the situation,
+> -	}
+> -}
+> -
+>  	ep->rep_connected = 0;
+>  
+>  	rc = rdma_connect(ia->ri_id, &ep->rep_remote_cma);
+> 
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
 
-If you are interested send me your private Email Address so that i can
-send you more details of the transaction,
-Thanks for your understanding
-
-I am waiting for your reply.
-
-Best regards,
-
-Mr. Husam Al Sayed
