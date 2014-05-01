@@ -1,246 +1,86 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.netapp.com ([216.240.18.38]:36025 "EHLO mx1.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755316AbaEGL0b (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 7 May 2014 07:26:31 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
-CC: <dros@primarydata.com>, <hch@infradead.org>
-Subject: [PATCH v3 02/17] NFS: Create a common results structure for reads and writes
-Date: Tue, 6 May 2014 09:12:25 -0400
-Message-ID: <1399381960-3019-3-git-send-email-Anna.Schumaker@Netapp.com>
-In-Reply-To: <1399381960-3019-1-git-send-email-Anna.Schumaker@Netapp.com>
-References: <1399381960-3019-1-git-send-email-Anna.Schumaker@Netapp.com>
+Received: from mx6-phx2.redhat.com ([209.132.183.39]:33070 "EHLO
+	mx6-phx2.redhat.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752154AbaEAQEN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 May 2014 12:04:13 -0400
+Date: Thu, 1 May 2014 12:03:41 -0400 (EDT)
+From: Doug Ledford <dledford@redhat.com>
+To: Shirley Ma <shirley.ma@oracle.com>
+Cc: yanb <yanb@mellanox.com>, Phil Cayton <phil.cayton@intel.com>,
+        Susan K Coulter <skc@lanl.gov>,
+        Anna Schumaker <Anna.Schumaker@netapp.com>,
+        "Devesh.Sharma" <Devesh.Sharma@emulex.com>,
+        Steve Wise <swise@opengridcomputing.com>,
+        Allen Andrews <Allen.Andrews@emulex.com>,
+        linux-rdma <linux-rdma@vger.kernel.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Or Gerlitz <or.gerlitz@gmail.com>,
+        Chuck Lever <chuck.lever@oracle.com>
+Message-ID: <8741333.1801.1398960224265.JavaMail."Doug Ledford"@Phenom>
+In-Reply-To: <5361D89F.4070503@oracle.com>
+References: <53614C03.80606@oracle.com> <CAJZOPZJioYdcbDGsk7278sZS7kD9W1dcGEGtYfsFk=Mm7DW3fQ@mail.gmail.com> <BBF761A6-2407-4457-92D5-8C2EC736BC9D@oracle.com> <CAJZOPZJgp-QdxR+PmwACWOSc4h_167J0iBjfmMrPX8sek600WA@mail.gmail.com> <536161D0.3000600@oracle.com> <"30686627.1636.1398902288314.JavaMail.Doug Ledford"@Phenom> <5361D89F.4070503@oracle.com>
+Subject: Re: NFSoRDMA developers bi-weekly meeting announcement (4/30)
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
+On 05/01/2014, Shirley Ma wrote: 
+> On 04/30/2014 04:58 PM, Doug Ledford wrote:
+> > On 04/302014 Shirley Ma wrote:
+> >> I've created Xen guest on DomU. Dom0 PF works which has no mtts
+> >> been
+> >> enabled, however DomU I hit this problem by just mounting the file
+> >> system:
+> >> mlx4_core 0000:00:04.0: Failed to allocate mtts for 66 pages(order
+> >> 7)
+> >> mlx4_core 0000:00:04.0: Failed to allocate mtts for 4096
+> >> pages(order
+> >> 12)
+> >> mlx4_core 0000:00:04.0: Failed to allocate mtts for 4096
+> >> pages(order
+> >> 12)
+> >>
+> >> RDMA microbenchmark perftest works ok. I enabled mtts scripts when
+> >> booting the Xen guest. cat /proc/mtrr:
+> > What OS/RDMA stack are you using?  I'm not familiar with any mtts
+> > scripts, however I know there is an mtrr fixup script I wrote for
+> > the RDMA stack in Fedora/RHEL (and so I assume it's in Oracle Linux
+> > too, but I haven't checked).  In fact, I assume that's the script
+> > you are referring to based on the fact that your next bit of your
+> > email cats the /proc/mtrr file.  But I don't believe whether there
+> > is an mtrr setting mixup or not that is should have any impact on
+> > the mtts allocations in the driver.  Even if your mtrr registers
+> > were set incorrectly, the problem then becomes either A) a serious
+> > performance bottleneck (in the case of Intel hardware that needs
+> > write combining in order to get more than about 50MByte/s of
+> > throughput on their cards) or B) failed operation because MMIO
+> > writes to the card are being cached/write combined when they should
+> > not be.
+> >
+> > I suspect this is more likely Xen related than mtts/mtrr related.
+> Yes. That's the script I used. I wonder whether it's possible to
+> disable
+> mtrr on DomU guest to debug this. I am new to Xen.
 
-Reads and writes have very similar results.  This patch combines the two
-structs together with comments to show where the differing fields are
-used.
+No, it's not possible to disable mtrr and expect any pass through
+PCI devices to work.  The mtrr registers merely indicate what
+portion of the memory map should be treated as normal memory (meaning
+cacheable) and what should be treated as MMIO memory (meaning generally
+non-cacheable).  That's all they do.  The mtts table allocation
+failures are actually totally different.  In the VF on DomU they
+are passed to the PF on Dom0 and the command is done there.  However,
+the number of mtts available for the slave are limited (check the
+code in resource_tracker.c).  In addition, the number of mtts
+allocated is proportionally related to memory size in the guest
+and inversely related to the log2_mtts_per_seg (probably both on
+Dom0 and DomU, which I suspect need to agree on the log2_mtts_per_seg
+module parameter).  I would try a combination of reducing the memory
+in the quest, or increasing the log2_mtts_per_seg, or both, and
+see if you can get it to work.
 
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
----
- fs/nfs/nfs2xdr.c        |  6 +++---
- fs/nfs/nfs3xdr.c        |  8 ++++----
- fs/nfs/nfs4xdr.c        |  9 +++++----
- fs/nfs/read.c           |  2 +-
- fs/nfs/write.c          |  2 +-
- include/linux/nfs_xdr.h | 32 ++++++++++++--------------------
- 6 files changed, 26 insertions(+), 33 deletions(-)
-
-diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
-index 461cd8b..5f61b83 100644
---- a/fs/nfs/nfs2xdr.c
-+++ b/fs/nfs/nfs2xdr.c
-@@ -103,7 +103,7 @@ static void print_overflow_msg(const char *func, const struct xdr_stream *xdr)
- /*
-  *	typedef opaque	nfsdata<>;
-  */
--static int decode_nfsdata(struct xdr_stream *xdr, struct nfs_readres *result)
-+static int decode_nfsdata(struct xdr_stream *xdr, struct nfs_pgio_res *result)
- {
- 	u32 recvd, count;
- 	__be32 *p;
-@@ -857,7 +857,7 @@ out_default:
-  *	};
-  */
- static int nfs2_xdr_dec_readres(struct rpc_rqst *req, struct xdr_stream *xdr,
--				struct nfs_readres *result)
-+				struct nfs_pgio_res *result)
- {
- 	enum nfs_stat status;
- 	int error;
-@@ -878,7 +878,7 @@ out_default:
- }
- 
- static int nfs2_xdr_dec_writeres(struct rpc_rqst *req, struct xdr_stream *xdr,
--				 struct nfs_writeres *result)
-+				 struct nfs_pgio_res *result)
- {
- 	/* All NFSv2 writes are "file sync" writes */
- 	result->verf->committed = NFS_FILE_SYNC;
-diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
-index 02f16c2..8f4cbe7 100644
---- a/fs/nfs/nfs3xdr.c
-+++ b/fs/nfs/nfs3xdr.c
-@@ -1589,7 +1589,7 @@ out_default:
-  *	};
-  */
- static int decode_read3resok(struct xdr_stream *xdr,
--			     struct nfs_readres *result)
-+			     struct nfs_pgio_res *result)
- {
- 	u32 eof, count, ocount, recvd;
- 	__be32 *p;
-@@ -1625,7 +1625,7 @@ out_overflow:
- }
- 
- static int nfs3_xdr_dec_read3res(struct rpc_rqst *req, struct xdr_stream *xdr,
--				 struct nfs_readres *result)
-+				 struct nfs_pgio_res *result)
- {
- 	enum nfs_stat status;
- 	int error;
-@@ -1673,7 +1673,7 @@ out_status:
-  *	};
-  */
- static int decode_write3resok(struct xdr_stream *xdr,
--			      struct nfs_writeres *result)
-+			      struct nfs_pgio_res *result)
- {
- 	__be32 *p;
- 
-@@ -1697,7 +1697,7 @@ out_eio:
- }
- 
- static int nfs3_xdr_dec_write3res(struct rpc_rqst *req, struct xdr_stream *xdr,
--				  struct nfs_writeres *result)
-+				  struct nfs_pgio_res *result)
- {
- 	enum nfs_stat status;
- 	int error;
-diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
-index 032159c..939ae60 100644
---- a/fs/nfs/nfs4xdr.c
-+++ b/fs/nfs/nfs4xdr.c
-@@ -5087,7 +5087,8 @@ static int decode_putrootfh(struct xdr_stream *xdr)
- 	return decode_op_hdr(xdr, OP_PUTROOTFH);
- }
- 
--static int decode_read(struct xdr_stream *xdr, struct rpc_rqst *req, struct nfs_readres *res)
-+static int decode_read(struct xdr_stream *xdr, struct rpc_rqst *req,
-+		       struct nfs_pgio_res *res)
- {
- 	__be32 *p;
- 	uint32_t count, eof, recvd;
-@@ -5341,7 +5342,7 @@ static int decode_setclientid_confirm(struct xdr_stream *xdr)
- 	return decode_op_hdr(xdr, OP_SETCLIENTID_CONFIRM);
- }
- 
--static int decode_write(struct xdr_stream *xdr, struct nfs_writeres *res)
-+static int decode_write(struct xdr_stream *xdr, struct nfs_pgio_res *res)
- {
- 	__be32 *p;
- 	int status;
-@@ -6638,7 +6639,7 @@ out:
-  * Decode Read response
-  */
- static int nfs4_xdr_dec_read(struct rpc_rqst *rqstp, struct xdr_stream *xdr,
--			     struct nfs_readres *res)
-+			     struct nfs_pgio_res *res)
- {
- 	struct compound_hdr hdr;
- 	int status;
-@@ -6663,7 +6664,7 @@ out:
-  * Decode WRITE response
-  */
- static int nfs4_xdr_dec_write(struct rpc_rqst *rqstp, struct xdr_stream *xdr,
--			      struct nfs_writeres *res)
-+			      struct nfs_pgio_res *res)
- {
- 	struct compound_hdr hdr;
- 	int status;
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index 46d5552..473bba3 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -471,7 +471,7 @@ int nfs_readpage_result(struct rpc_task *task, struct nfs_read_data *data)
- static void nfs_readpage_retry(struct rpc_task *task, struct nfs_read_data *data)
- {
- 	struct nfs_pgio_args *argp = &data->args;
--	struct nfs_readres *resp = &data->res;
-+	struct nfs_pgio_res  *resp = &data->res;
- 
- 	/* This is a short read! */
- 	nfs_inc_stats(data->header->inode, NFSIOS_SHORTREAD);
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 25ba383..d392a70 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -1389,7 +1389,7 @@ static int nfs_should_remove_suid(const struct inode *inode)
- void nfs_writeback_done(struct rpc_task *task, struct nfs_write_data *data)
- {
- 	struct nfs_pgio_args	*argp = &data->args;
--	struct nfs_writeres	*resp = &data->res;
-+	struct nfs_pgio_res	*resp = &data->res;
- 	struct inode		*inode = data->header->inode;
- 	int status;
- 
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 5875001..381f832 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -489,16 +489,6 @@ struct nfs4_delegreturnres {
- };
- 
- /*
-- * Arguments to the read call.
-- */
--struct nfs_readres {
--	struct nfs4_sequence_res	seq_res;
--	struct nfs_fattr *	fattr;
--	__u32			count;
--	int                     eof;
--};
--
--/*
-  * Arguments to the write call.
-  */
- struct nfs_write_verifier {
-@@ -510,14 +500,6 @@ struct nfs_writeverf {
- 	enum nfs3_stable_how	committed;
- };
- 
--struct nfs_writeres {
--	struct nfs4_sequence_res	seq_res;
--	struct nfs_fattr *	fattr;
--	struct nfs_writeverf *	verf;
--	__u32			count;
--	const struct nfs_server *server;
--};
--
- /*
-  * Arguments shared by the read and write call.
-  */
-@@ -535,6 +517,16 @@ struct nfs_pgio_args {
- 	enum nfs3_stable_how	stable;		/* used by write */
- };
- 
-+struct nfs_pgio_res {
-+	struct nfs4_sequence_res	seq_res;
-+	struct nfs_fattr *	fattr;
-+	__u32			count;
-+	int			eof;		/* used by read */
-+	struct nfs_writeverf *	verf;		/* used by write */
-+	const struct nfs_server *server;	/* used by write */
-+
-+};
-+
- /*
-  * Arguments to the commit call.
-  */
-@@ -1261,7 +1253,7 @@ struct nfs_read_data {
- 	struct rpc_task		task;
- 	struct nfs_fattr	fattr;	/* fattr storage */
- 	struct nfs_pgio_args	args;
--	struct nfs_readres  res;
-+	struct nfs_pgio_res	res;
- 	unsigned long		timestamp;	/* For lease renewal */
- 	int (*read_done_cb) (struct rpc_task *task, struct nfs_read_data *data);
- 	__u64			mds_offset;
-@@ -1313,7 +1305,7 @@ struct nfs_write_data {
- 	struct nfs_fattr	fattr;
- 	struct nfs_writeverf	verf;
- 	struct nfs_pgio_args	args;		/* argument struct */
--	struct nfs_writeres	res;		/* result struct */
-+	struct nfs_pgio_res	res;		/* result struct */
- 	unsigned long		timestamp;	/* For lease renewal */
- 	int (*write_done_cb) (struct rpc_task *task, struct nfs_write_data *data);
- 	__u64			mds_offset;	/* Filelayout dense stripe */
 -- 
-1.9.2
+Doug Ledford <dledford@redhat.com>
+              GPG KeyID: 0E572FDD
+	      http://people.redhat.com/dledford
 
