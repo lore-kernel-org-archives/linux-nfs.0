@@ -1,72 +1,106 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f181.google.com ([209.85.213.181]:59818 "EHLO
-	mail-ig0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753178AbaEVA5A (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 May 2014 20:57:00 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH v4 19/24] xprtrdma: Use macros for reconnection timeout
-	constants
-To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Date: Wed, 21 May 2014 20:56:59 -0400
-Message-ID: <20140522005659.27190.54314.stgit@manet.1015granger.net>
-In-Reply-To: <20140522004505.27190.58897.stgit@manet.1015granger.net>
-References: <20140522004505.27190.58897.stgit@manet.1015granger.net>
+Received: from e28smtp05.in.ibm.com ([122.248.162.5]:55185 "EHLO
+	e28smtp05.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755748AbaEAPmZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 May 2014 11:42:25 -0400
+Received: from /spool/local
+	by e28smtp05.in.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <aneesh.kumar@linux.vnet.ibm.com>;
+	Thu, 1 May 2014 21:12:24 +0530
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: Dave Chinner <david@fromorbit.com>
+Cc: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
+        viro@zeniv.linux.org.uk, dhowells@redhat.com,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH -V1 10/22] richacl: In-memory representation and helper functions
+In-Reply-To: <20140429002457.GS15995@dastard>
+References: <1398615293-22931-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1398615293-22931-11-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20140429002457.GS15995@dastard>
+Date: Thu, 01 May 2014 21:12:15 +0530
+Message-ID: <87d2fxbj54.fsf@linux.vnet.ibm.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: Ensure the same max and min constant values are used
-everywhere when setting reconnect timeouts.
+Dave Chinner <david@fromorbit.com> writes:
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+> On Sun, Apr 27, 2014 at 09:44:41PM +0530, Aneesh Kumar K.V wrote:
+>> From: Andreas Gruenbacher <agruen@kernel.org>
+>> 
+>> A richacl consists of an NFSv4 acl and an owner, group, and other mask.
+>> These three masks correspond to the owner, group, and other file
+>> permission bits, but they contain NFSv4 permissions instead of POSIX
+>> permissions.
+>> 
+>> Each entry in the NFSv4 acl applies to the file owner (OWNER@), the
+>> owning group (GROUP@), literally everyone (EVERYONE@), or to a specific
+>> uid or gid.
+>> 
+>> As in the standard POSIX file permission model, each process is the
+>> owner, group, or other file class.  A richacl grants a requested access
+>> only if the NFSv4 acl in the richacl grants the access (according to the
+>> NFSv4 permission check algorithm), and the file mask that applies to the
+>> process includes the requested permissions.
+>> 
+>> Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
+>> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
+> ....
+>> +
+>> +/**
+>> + * richace_is_same_identifier  -  are both identifiers the same?
+>> + */
+>> +int
+>> +richace_is_same_identifier(const struct richace *a, const struct richace *b)
+>> +{
+>> +#define WHO_FLAGS (ACE4_SPECIAL_WHO | ACE4_IDENTIFIER_GROUP)
+>> +	if ((a->e_flags & WHO_FLAGS) != (b->e_flags & WHO_FLAGS))
+>> +		return 0;
+>> +	return a->e_id == b->e_id;
+>> +#undef WHO_FLAGS
+>
+> Ugh.
+>
+> ....
 
- net/sunrpc/xprtrdma/transport.c |   19 ++++++++++++-------
- 1 files changed, 12 insertions(+), 7 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index d18b2a3..04b7452 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -149,6 +149,11 @@ static struct ctl_table sunrpc_table[] = {
- 
- #endif
- 
-+#define RPCRDMA_BIND_TO		(60U * HZ)
-+#define RPCRDMA_INIT_REEST_TO	(5U * HZ)
-+#define RPCRDMA_MAX_REEST_TO	(30U * HZ)
-+#define RPCRDMA_IDLE_DISC_TO	(5U * 60* HZ)
-+
- static struct rpc_xprt_ops xprt_rdma_procs;	/* forward reference */
- 
- static void
-@@ -285,9 +290,9 @@ xprt_setup_rdma(struct xprt_create *args)
- 
- 	/* 60 second timeout, no retries */
- 	xprt->timeout = &xprt_rdma_default_timeout;
--	xprt->bind_timeout = (60U * HZ);
--	xprt->reestablish_timeout = (5U * HZ);
--	xprt->idle_timeout = (5U * 60 * HZ);
-+	xprt->bind_timeout = RPCRDMA_BIND_TO;
-+	xprt->reestablish_timeout = RPCRDMA_INIT_REEST_TO;
-+	xprt->idle_timeout = RPCRDMA_IDLE_DISC_TO;
- 
- 	xprt->resvport = 0;		/* privileged port not needed */
- 	xprt->tsh_size = 0;		/* RPC-RDMA handles framing */
-@@ -432,10 +437,10 @@ xprt_rdma_connect(struct rpc_xprt *xprt, struct rpc_task *task)
- 		schedule_delayed_work(&r_xprt->rdma_connect,
- 			xprt->reestablish_timeout);
- 		xprt->reestablish_timeout <<= 1;
--		if (xprt->reestablish_timeout > (30 * HZ))
--			xprt->reestablish_timeout = (30 * HZ);
--		else if (xprt->reestablish_timeout < (5 * HZ))
--			xprt->reestablish_timeout = (5 * HZ);
-+		if (xprt->reestablish_timeout > RPCRDMA_MAX_REEST_TO)
-+			xprt->reestablish_timeout = RPCRDMA_MAX_REEST_TO;
-+		else if (xprt->reestablish_timeout < RPCRDMA_INIT_REEST_TO)
-+			xprt->reestablish_timeout = RPCRDMA_INIT_REEST_TO;
- 	} else {
- 		schedule_delayed_work(&r_xprt->rdma_connect, 0);
- 		if (!RPC_IS_ASYNC(task))
+Will remove.
+
+
+>
+>> +#define richacl_for_each_entry(_ace, _acl) \
+>> +	for (_ace = _acl->a_entries; \
+>> +	     _ace != _acl->a_entries + _acl->a_count; \
+>> +	     _ace++)
+>> +
+>> +#define richacl_for_each_entry_reverse(_ace, _acl) \
+>> +	for (_ace = _acl->a_entries + _acl->a_count - 1; \
+>> +	     _ace != _acl->a_entries - 1; \
+>> +	     _ace--)
+>
+> somewhat lacking in ()...
+
+
+Will add
+
+>
+>> +/* Flag values defined by rich-acl */
+>> +#define ACL4_MASKED			0x80
+>> +
+>> +#define ACL4_VALID_FLAGS (			\
+>> +		ACL4_MASKED)
+>> +
+>> +/* e_type values */
+>> +#define ACE4_ACCESS_ALLOWED_ACE_TYPE	0x0000
+>> +#define ACE4_ACCESS_DENIED_ACE_TYPE	0x0001
+>> +/*#define ACE4_SYSTEM_AUDIT_ACE_TYPE	0x0002*/
+>> +/*#define ACE4_SYSTEM_ALARM_ACE_TYPE	0x0003*/
+>
+> What's with all the commented out types?
+>
+
+These are NFSv4 ACL ACE types which we are not implementing. Just left
+it there for documentation.
+
+-aneesh
 
