@@ -1,52 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-oa0-f45.google.com ([209.85.219.45]:38811 "EHLO
-	mail-oa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751455AbaEQCSp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 16 May 2014 22:18:45 -0400
-Received: by mail-oa0-f45.google.com with SMTP id l6so3927164oag.18
-        for <linux-nfs@vger.kernel.org>; Fri, 16 May 2014 19:18:45 -0700 (PDT)
-Message-ID: <5376C6F8.4090904@gmail.com>
-Date: Sat, 17 May 2014 10:18:32 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: linux-nfs@vger.kernel.org, kinglongmee@gmail.com
-Subject: [PATCH 1/3 v2] NFS4.0: Case for linking to bad source path with zero-length
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-qg0-f52.google.com ([209.85.192.52]:50209 "EHLO
+	mail-qg0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751402AbaEAK2z (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 May 2014 06:28:55 -0400
+Received: by mail-qg0-f52.google.com with SMTP id j5so3113505qga.39
+        for <linux-nfs@vger.kernel.org>; Thu, 01 May 2014 03:28:54 -0700 (PDT)
+From: Jeff Layton <jlayton@poochiereds.net>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH v2 0/3] nfs4: file locking fixes and cleanups
+Date: Thu,  1 May 2014 06:28:44 -0400
+Message-Id: <1398940127-31150-1-git-send-email-jlayton@poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Same as v1.
+Hi Trond,
+This set is basically unchanged from the last one, aside from a bit
+more cleanup of unneeded arguments in patch #1.
 
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
----
- nfs4.0/servertests/st_create.py | 13 +++++++++++++
- 1 file changed, 13 insertions(+)
+I know that you basically NAKed this set earlier this week. The issue
+you saw was that the generic locking codepaths never set the fl_owner
+value for flock locks. That's true, but nfs_flock does set this for any
+file_lock request that comes through it, so patch #1 is safe to apply
+now if you see no other issue with it.
 
-diff --git a/nfs4.0/servertests/st_create.py b/nfs4.0/servertests/st_create.py
-index d2d6701..09c80cc 100644
---- a/nfs4.0/servertests/st_create.py
-+++ b/nfs4.0/servertests/st_create.py
-@@ -161,6 +161,19 @@ def testZeroLength(t, env):
-     res = c.create_obj(c.homedir + [''])
-     check(res, NFS4ERR_INVAL, "CREATE with zero-length name")
- 
-+def testZeroLengthForLNK(t, env):
-+    """CREATE with zero length name should return NFS4ERR_INVAL
-+
-+    FLAGS: create symlink all
-+    CODE: CR9a
-+    """
-+    c = env.c1
-+    ops = c.go_home()
-+    objtype = createtype4(NF4LNK, **{'linkdata':''})
-+    ops += [c.create_op(objtype, t.code, getDefaultAttr(c))]
-+    res = c.compound(ops)
-+    check(res, NFS4ERR_INVAL, "CREATE with zero-length name for SYMLINK")
-+
- def testRegularFile(t, env):
-     """CREATE should fail with NFS4ERR_BADTYPE for regular files
- 
+I have a patch queued for v3.16 that makes the generic flock codepaths
+set the fl_owner, but that's just cleanup and won't really affect how
+this works.
+
+The main problem that I think we need to fix soon though is the one that
+patch #2 fixes. An unprivileged user can trigger that BUG() and if
+panic_on_oops is set, then that's an unprivileged DoS at least.
+
+Jeff Layton (3):
+  nfs4: treat lock owners as opaque values
+  nfs4: queue free_lock_state job submission to nfsiod
+  nfs4: turn free_lock_state into a void return operation
+
+ fs/nfs/nfs4_fs.h   | 26 +++++++-------------
+ fs/nfs/nfs4proc.c  | 14 +++++------
+ fs/nfs/nfs4state.c | 69 +++++++++++++++++++++---------------------------------
+ 3 files changed, 42 insertions(+), 67 deletions(-)
+
 -- 
 1.9.0
 
