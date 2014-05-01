@@ -1,73 +1,127 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ob0-f178.google.com ([209.85.214.178]:41867 "EHLO
-	mail-ob0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751069AbaEWCwR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 May 2014 22:52:17 -0400
-Received: by mail-ob0-f178.google.com with SMTP id va2so4779589obc.37
-        for <linux-nfs@vger.kernel.org>; Thu, 22 May 2014 19:52:16 -0700 (PDT)
-Message-ID: <537EB7CE.4090600@gmail.com>
-Date: Fri, 23 May 2014 10:51:58 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
-MIME-Version: 1.0
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>, kinglongmee@gmail.com
-Subject: Re: Get "device is busy" when umounting nfsv4 file
-References: <537EAF05.2020900@gmail.com> <CAHQdGtQh0be=_tByxukQAPG3ZRJJ6UDWgRiH7Q+9Ry__5YxzaA@mail.gmail.com> <537EB673.3050302@gmail.com>
-In-Reply-To: <537EB673.3050302@gmail.com>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-pa0-f47.google.com ([209.85.220.47]:54812 "EHLO
+	mail-pa0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751486AbaEARxc (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 May 2014 13:53:32 -0400
+Received: by mail-pa0-f47.google.com with SMTP id fa1so3913460pad.34
+        for <linux-nfs@vger.kernel.org>; Thu, 01 May 2014 10:53:31 -0700 (PDT)
+Content-Type: multipart/signed; boundary="Apple-Mail=_4DBC8F08-F27A-4B21-841E-61525D6DE9B7"; protocol="application/pgp-signature"; micalg=pgp-sha1
+Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
+Subject: Re: [PATCH -V1 22/22] ext4: Add Ext4 compat richacl feature flag
+From: Andreas Dilger <adilger@dilger.ca>
+In-Reply-To: <877g65biu4.fsf@linux.vnet.ibm.com>
+Date: Thu, 1 May 2014 11:52:48 -0600
+Cc: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
+        viro@zeniv.linux.org.uk, dhowells@redhat.com,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Message-Id: <14876338-8D87-48CD-B8B9-B44F311BB329@dilger.ca>
+References: <1398615293-22931-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1398615293-22931-23-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <88FB2DB7-126A-400E-9B44-19E99A553B2B@dilger.ca> <877g65biu4.fsf@linux.vnet.ibm.com>
+To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 5/23/2014 10:46, Kinglong Mee wrote:
-> On 5/23/2014 10:18, Trond Myklebust wrote:
->>
->> On May 22, 2014 10:14 PM, "Kinglong Mee" <kinglongmee@gmail.com <mailto:kinglongmee@gmail.com>> wrote:
->>>
->>> When using NFSv4 on Fedora 20 with latest kernel (3.15.0-rc6+),
->>> I can't umount the mountpoint after only an 'ls' operation.
->>>
->>> [root@localhost ~]# cat /etc/exports
->>> /nfstest        *(rw,no_root_squash,no_subtree_check,insecure)
->>> [root@localhost ~]# mount -t nfs 127.0.0.1:/ /mnt/
->>> [root@localhost ~]# ls /mnt/
->>> nfstest
->>> [root@localhost ~]# umount /mnt/
->>> umount.nfs4: /mnt: device is busy
->>
->> Hi Kinglong
->>
->> Nothing springs out to me. Could you please bisect?
-> 
-> Trying it on rhel7 with 3.10.0-121.el7.x86_64, 
-> also got "device is busy".
-> [root@localhost ~]# umount /mnt/
-> umount.nfs4: /mnt: device is busy
-> 
-> Maybe this problem has exist a long time.
 
-I find thant -EBUSY errno is return at,
+--Apple-Mail=_4DBC8F08-F27A-4B21-841E-61525D6DE9B7
+Content-Transfer-Encoding: quoted-printable
+Content-Type: text/plain;
+	charset=us-ascii
 
-"fs/namespace.c"
-1284 static int do_umount(struct mount *mnt, int flags)
-1285 {
-1286         struct super_block *sb = mnt->mnt.mnt_sb;
-......
-1358         if (flags & MNT_DETACH) {
-1359                 if (!list_empty(&mnt->mnt_list))
-1360                         umount_tree(mnt, 2);
-1361                 retval = 0;
-1362         } else {
-1363                 shrink_submounts(mnt);
-1364                 retval = -EBUSY;
-1365                 if (!propagate_mount_busy(mnt, 2)) {
+On May 1, 2014, at 9:48 AM, Aneesh Kumar K.V =
+<aneesh.kumar@linux.vnet.ibm.com> wrote:
 
-propagate_mount_busy return 1 for mnt's refcnt is 3 (bigger than 2).
+> Andreas Dilger <adilger@dilger.ca> writes:
+>=20
+>> On Apr 27, 2014, at 10:14 AM, Aneesh Kumar K.V =
+<aneesh.kumar@linux.vnet.ibm.com> wrote:
+>>> This feature flag can be used to enable richacl on
+>>> the file system. Once enabled the "acl" mount option
+>>> will enable richacl instead of posix acl
+>>=20
+>>> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+>>> index 6f9e6fadac04..2a0221652d79 100644
+>>> --- a/fs/ext4/super.c
+>>> +++ b/fs/ext4/super.c
+>>> @@ -1274,6 +1274,30 @@ static ext4_fsblk_t get_sb_block(void **data)
+>>> 	return sb_block;
+>>> }
+>>>=20
+>>> +static void enable_acl(struct super_block *sb)
+>>> +{
+>>> +#if !defined(CONFIG_EXT4_FS_POSIX_ACL) && =
+!defined(CONFIG_EXT4_FS_RICHACL)
+>>> +	return;
+>>> +#endif
+>>> +	if (EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_RICHACL)) {
+>>> +		sb->s_flags |=3D MS_RICHACL;
+>>> +		sb->s_flags &=3D ~MS_POSIXACL;
+>>> +	} else {
+>>> +		sb->s_flags |=3D MS_POSIXACL;
+>>> +		sb->s_flags &=3D ~MS_RICHACL;
+>>> +	}
+>>=20
+>> This should put the #ifdef around the code that is being =
+enabled/disabled,
+>> otherwise it just becomes dead code:
+>>=20
+>> static int enable_acl(struct super_block *sb)
+>> {
+>> 	if (EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_RICHACL)) {
+>> #if defined(CONFIG_EXT4_FS_RICHACL)
+>> 		sb->s_flags |=3D MS_RICHACL;
+>> 		sb->s_flags &=3D ~MS_POSIXACL;
+>> #else
+>> 		return -EOPNOTSUPP;
+>> #endif
+>> 	} else {
+>> #if defined(CONFIG_EXT4_FS_POSIX_ACL)
+>> 		sb->s_flags |=3D MS_POSIXACL;
+>> 		sb->s_flags &=3D ~MS_RICHACL;
+>> #else
+>> 		return -EOPNOTSUPP;
+>> #endif
+>> 	}
+>> 	return 0;
+>> }
+>=20
+> That is too much #ifdef with no real benefit ?
 
-1366                         if (!list_empty(&mnt->mnt_list))
-1367                                 umount_tree(mnt, 1);
-1368                         retval = 0;
-1369                 }
-1370         }
+The benefit is that if neither CONFIG_EXT4_FS_RICHACL nor =
+CONFIG_EXT4_FS_POSIX_ACL are defined there isn't unreachable code
+after "return" at the start of the function.  Some static code
+analysis tools will complain about this.
 
-thanks,
-Kinglong Mee
+Cheers, Andreas
+
+
+
+
+
+
+--Apple-Mail=_4DBC8F08-F27A-4B21-841E-61525D6DE9B7
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+	filename=signature.asc
+Content-Type: application/pgp-signature;
+	name=signature.asc
+Content-Description: Message signed with OpenPGP using GPGMail
+
+-----BEGIN PGP SIGNATURE-----
+Comment: GPGTools - http://gpgtools.org
+
+iQIVAwUBU2KJ8XKl2rkXzB/gAQJVtg/8DahNWsnhNP8WqPHC2W3IExVCQkBn838r
+FlbvVYdLFbgpJwgXqi3gKW7mwcMJCIm1xIP9spYepYMHqDtNkdZloKbi+jz5HcK/
+T9Z/5TPsxwlLYh9y6w0MU9dR5QVPxKCEyRow4Frm8geGXeyWEFGwFVDXh9eJkRjd
+DBJRiosJUYycl776nF6+nrgYAuKbomSVm2gEYiYL7CrhXT2bfyjKFi8ocBPXTKXl
+UptXawH2cQa933Vesb9EvNv56IYmjnUpPA9gVBTOt9rAYvxf8Fgf+lbVe+/01Ec4
+q/ulu3RyyVkqZIxKvyKnQ1dKq5m98JpDJ9gf1edwReq7hcJ6fBZDhFEo6s6zXOPR
+v2Vxa6QmUnj4QC23JPbTaEgyr8JWSCgZimX2ry0GR6JhMO/a+60njg/+iiHNysZh
+9eTktCYyqm/r4oydKIS90wq2TNXRJb9AQpFfG3d3nmCeiyNyr/WPPvkDCcqmHLKs
+Ki2HgzbDmWps9GIABMV/lNs3XTQylnqc7E+45GRoJRX2KJkP6kehiTg3eK9ZXehG
+W/b1dcTrIIN3XDjknh+q2m3B3lCOt8hVUMVjJTHJNYCa7YkBc6QESDX9oDAqqe/L
+hWFoJseb2L6XlauDmNxhY5RAGjWdH3IzAow38soiiwaZI3pnrVwWH+CO+WflO08F
+s9P+0JpDPIQ=
+=PLXn
+-----END PGP SIGNATURE-----
+
+--Apple-Mail=_4DBC8F08-F27A-4B21-841E-61525D6DE9B7--
