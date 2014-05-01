@@ -1,93 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:37378 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751245AbaEWNPj (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 23 May 2014 09:15:39 -0400
-Date: Fri, 23 May 2014 09:15:36 -0400
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org,
-        Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 01/52] nfsd4: READ, READDIR, etc., are idempotent
-Message-ID: <20140523131536.GH25423@fieldses.org>
-References: <1400787148-25941-1-git-send-email-bfields@redhat.com>
- <1400787148-25941-2-git-send-email-bfields@redhat.com>
- <537EA2A2.2040907@gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <537EA2A2.2040907@gmail.com>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from mail-ie0-f180.google.com ([209.85.223.180]:42432 "EHLO
+	mail-ie0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751917AbaEAU4c convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 May 2014 16:56:32 -0400
+Received: by mail-ie0-f180.google.com with SMTP id as1so4143807iec.11
+        for <linux-nfs@vger.kernel.org>; Thu, 01 May 2014 13:56:31 -0700 (PDT)
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
+Subject: Re: [PATCH 2/3] nfs: rename members of nfs_pgio_data
+From: Weston Andros Adamson <dros@primarydata.com>
+In-Reply-To: <6E840B50-223E-462C-B9A7-BC48C6DC5906@primarydata.com>
+Date: Thu, 1 May 2014 16:56:49 -0400
+Cc: linux-nfs list <linux-nfs@vger.kernel.org>
+Message-Id: <B1C09779-BB74-433F-8925-B78F1B4B7CC7@primarydata.com>
+References: <1398971693-82399-1-git-send-email-dros@primarydata.com> <1398971693-82399-3-git-send-email-dros@primarydata.com> <6E840B50-223E-462C-B9A7-BC48C6DC5906@primarydata.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, May 23, 2014 at 09:21:38AM +0800, Kinglong Mee wrote:
-> On 5/23/2014 03:31, J. Bruce Fields wrote:
-> > From: "J. Bruce Fields" <bfields@redhat.com>
-> > 
-> > OP_MODIFIES_SOMETHING flags operations that we should be careful not to
-> > initiate without being sure we have the buffer space to encode a reply.
-> > 
-> > None of these ops fall into that category.
-> > 
-> > We could probably remove a few more, but this isn't a very important
-> > problem at least for ops whose reply size is easy to estimate.
-> > 
-> > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> > ---
-> >  fs/nfsd/nfs4proc.c | 13 +++----------
-> >  1 file changed, 3 insertions(+), 10 deletions(-)
-> > 
-> > diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> > index ac83778..4c4cd96 100644
-> > --- a/fs/nfsd/nfs4proc.c
-> > +++ b/fs/nfsd/nfs4proc.c
-> > @@ -1665,38 +1665,31 @@ static struct nfsd4_operation nfsd4_ops[] = {
-> >  	[OP_PUTFH] = {
-> >  		.op_func = (nfsd4op_func)nfsd4_putfh,
-> >  		.op_flags = ALLOWED_WITHOUT_FH | ALLOWED_ON_ABSENT_FS
-> > -				| OP_IS_PUTFH_LIKE | OP_MODIFIES_SOMETHING
-> > -				| OP_CLEAR_STATEID,
-> > +				| OP_IS_PUTFH_LIKE | OP_CLEAR_STATEID,
-> >  		.op_name = "OP_PUTFH",
-> >  		.op_rsize_bop = (nfsd4op_rsize)nfsd4_only_status_rsize,
-> >  	},
-> >  	[OP_PUTPUBFH] = {
-> >  		.op_func = (nfsd4op_func)nfsd4_putrootfh,
-> >  		.op_flags = ALLOWED_WITHOUT_FH | ALLOWED_ON_ABSENT_FS
-> > -				| OP_IS_PUTFH_LIKE | OP_MODIFIES_SOMETHING
-> > -				| OP_CLEAR_STATEID,
-> > +				| OP_IS_PUTFH_LIKE | OP_CLEAR_STATEID,
-> >  		.op_name = "OP_PUTPUBFH",
-> >  		.op_rsize_bop = (nfsd4op_rsize)nfsd4_only_status_rsize,
-> >  	},
-> >  	[OP_PUTROOTFH] = {
-> >  		.op_func = (nfsd4op_func)nfsd4_putrootfh,
-> >  		.op_flags = ALLOWED_WITHOUT_FH | ALLOWED_ON_ABSENT_FS
-> > -				| OP_IS_PUTFH_LIKE | OP_MODIFIES_SOMETHING
-> > -				| OP_CLEAR_STATEID,
-> > +				| OP_IS_PUTFH_LIKE | OP_CLEAR_STATEID,
-> >  		.op_name = "OP_PUTROOTFH",
-> >  		.op_rsize_bop = (nfsd4op_rsize)nfsd4_only_status_rsize,
-> >  	},
-> >  	[OP_READ] = {
-> >  		.op_func = (nfsd4op_func)nfsd4_read,
-> > -		.op_flags = OP_MODIFIES_SOMETHING,
-> > -		.op_name = "OP_READ",
-> 
-> Should not delete op_name.
-> 
-> >  		.op_rsize_bop = (nfsd4op_rsize)nfsd4_read_rsize,
-> >  		.op_get_currentstateid = (stateid_getter)nfsd4_get_readstateid,
-> >  	},
-> >  	[OP_READDIR] = {
-> >  		.op_func = (nfsd4op_func)nfsd4_readdir,
-> > -		.op_flags = OP_MODIFIES_SOMETHING,
-> > -		.op_name = "OP_READDIR",
-> 
-> Same as above.
-> 
-> Because "[PATCH 03/52] nfsd4: fill in some missing op_name's" re-adds them.
 
-Good grief--I should have checked when those op_name's diseappeared
-before making the new patch.  Thanks.
 
---b.
+On May 1, 2014, at 4:19 PM, Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+
+> 
+> On May 1, 2014, at 15:14, Weston Andros Adamson <dros@primarydata.com> wrote:
+> 
+>> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+>> index a7ccc8c..8564539 100644
+>> --- a/include/linux/nfs_xdr.h
+>> +++ b/include/linux/nfs_xdr.h
+>> @@ -1261,13 +1261,13 @@ struct nfs_pgio_data {
+>> 	struct list_head	list;
+>> 	struct rpc_task		task;
+>> 	struct nfs_fattr	fattr;
+>> -	struct nfs_writeverf	verf;		/* Used for writes */
+>> +	struct nfs_writeverf	rpc_verf;	/* Used for writes */
+> 
+> Can we just make this “writeverf"? It isn’t really an rpc object, so the ‘rpc_’ prefix seems a little misleading.
+
+yes, good point.
+
+-dros
+
+> 
+>> 	struct nfs_pgio_args	args;		/* argument struct */
+>> 	struct nfs_pgio_res	res;		/* result struct */
+>> 	unsigned long		timestamp;	/* For lease renewal */
+>> 	int (*pgio_done_cb)(struct rpc_task *task, struct nfs_pgio_data *data);
+>> 	__u64			mds_offset;	/* Filelayout dense stripe */
+>> -	struct nfs_page_array	pages;
+>> +	struct nfs_page_array	page_array;
+>> 	struct nfs_client	*ds_clp;	/* pNFS data server */
+>> 	int			ds_idx;		/* ds index if ds_clp is set */
+>> };
+>> -- 
+>> 1.8.5.2 (Apple Git-48)
+>> 
+> 
+> _________________________________
+> Trond Myklebust
+> Linux NFS client maintainer, PrimaryData
+> trond.myklebust@primarydata.com
+> 
+
