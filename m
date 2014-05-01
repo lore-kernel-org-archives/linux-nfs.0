@@ -1,59 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:18097 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750842AbaEVD21 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 May 2014 23:28:27 -0400
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.2\))
-Subject: Re: [PATCH v4 20/24] xprtrdma: Reset connection timeout after successful reconnect
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <CAABAsM5m_CT7qUv4Xbm+LKoSZaia55APO3kgnt7Ti1x24gsrbg@mail.gmail.com>
-Date: Wed, 21 May 2014 23:28:24 -0400
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-rdma@vger.kernel.org
-Message-Id: <D839BB6A-CDD2-47B6-B758-F89296F4A147@oracle.com>
-References: <20140522004505.27190.58897.stgit@manet.1015granger.net> <20140522005707.27190.2035.stgit@manet.1015granger.net> <CAABAsM5m_CT7qUv4Xbm+LKoSZaia55APO3kgnt7Ti1x24gsrbg@mail.gmail.com>
-To: Trond Myklebust <trondmy@gmail.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:60302 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752199AbaEAJbt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 May 2014 05:31:49 -0400
+Date: Thu, 1 May 2014 11:31:40 +0200
+From: Peter Zijlstra <peterz@infradead.org>
+To: NeilBrown <neilb@suse.de>
+Cc: Oleg Nesterov <oleg@redhat.com>, David Howells <dhowells@redhat.com>,
+        Steven Whitehouse <swhiteho@redhat.com>, dm-devel@redhat.com,
+        Chris Mason <clm@fb.com>, Josef Bacik <jbacik@fb.com>,
+        Steve French <sfrench@samba.org>, "Theodore Ts'o" <tytso@mit.edu>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Ingo Molnar <mingo@redhat.com>, Roland McGrath <roland@redhat.com>,
+        Andrew Morton <akpm@linux-foundation.org>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org
+Subject: Re: [PATCH] SCHED: remove proliferation of wait_on_bit action
+ functions.
+Message-ID: <20140501093140.GN11096@twins.programming.kicks-ass.net>
+References: <20140501123738.3e64b2d2@notabene.brown>
+ <20140501074257.GK11096@twins.programming.kicks-ass.net>
+ <20140501192605.6b5383f8@notabene.brown>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140501192605.6b5383f8@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-
-On May 21, 2014, at 10:07 PM, Trond Myklebust <trondmy@gmail.com> wrote:
-
-> On Wed, May 21, 2014 at 8:57 PM, Chuck Lever <chuck.lever@oracle.com> wrote:
->> If the new connection is able to make forward progress, reset the
->> re-establish timeout. Otherwise it keeps growing even if disconnect
->> events are rare.
->> 
->> The same behavior as TCP is adopted: reconnect immediately if the
->> transport instance has been able to make some forward progress.
->> 
->> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
->> ---
->> 
->> net/sunrpc/xprtrdma/rpc_rdma.c |    2 ++
->> 1 files changed, 2 insertions(+), 0 deletions(-)
->> 
->> diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
->> index dc4a826..1334646 100644
->> --- a/net/sunrpc/xprtrdma/rpc_rdma.c
->> +++ b/net/sunrpc/xprtrdma/rpc_rdma.c
->> @@ -770,6 +770,8 @@ repost:
->> 
->>        /* from here on, the reply is no longer an orphan */
->>        req->rl_reply = rep;
->> +       if (xprt->reestablish_timeout)
->> +               xprt->reestablish_timeout = 0;
+On Thu, May 01, 2014 at 07:26:05PM +1000, NeilBrown wrote:
+> On Thu, 1 May 2014 09:42:57 +0200 Peter Zijlstra <peterz@infradead.org> wrote:
 > 
-> What's the point of making this conditional?
+> > On Thu, May 01, 2014 at 12:37:38PM +1000, NeilBrown wrote:
+> > > +static inline int
+> > > +wait_on_bit(void *word, int bit, unsigned mode)
+> > > +{
+> > > +	if (!test_bit(bit, word))
+> > > +		return 0;
+> > > +	return out_of_line_wait_on_bit(word, bit,
+> > > +				       bit_wait,
+> > > +				       mode & 65535);
+> > > +}
+> > 
+> > Still puzzled by the 16 bit mask there ;-)
+> 
+> I clearly remember removing that!
+> And I've just done it again.
+> I hope it doesn't re-reappear!
+> :-)
+> NeilBrown
 
-Good catch. I’ll remove the conditional.
+Seems dead now, I'll hold out for a little while so that dhowells can
+explain this fscache thing.
 
-I copied this straight from xs_tcp_data_ready().
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
-
+Then I'll queue it. Ingo is currently enjoying a long weekend and is
+fighting (well I am now) a stability issue in -tip kernels, so it might
+be a little while before it actually shows up in the git tree.
