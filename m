@@ -1,71 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e28smtp05.in.ibm.com ([122.248.162.5]:43691 "EHLO
-	e28smtp05.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751016AbaEAPjd (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 May 2014 11:39:33 -0400
-Received: from /spool/local
-	by e28smtp05.in.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <aneesh.kumar@linux.vnet.ibm.com>;
-	Thu, 1 May 2014 21:09:31 +0530
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: Dave Chinner <david@fromorbit.com>
-Cc: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
-        viro@zeniv.linux.org.uk, dhowells@redhat.com,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH -V1 09/22] vfs: Make acl_permission_check() work for richacls
-In-Reply-To: <20140429002013.GR15995@dastard>
-References: <1398615293-22931-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1398615293-22931-10-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20140429002013.GR15995@dastard>
-Date: Thu, 01 May 2014 21:09:23 +0530
-Message-ID: <87fvktbj9w.fsf@linux.vnet.ibm.com>
+Received: from mx12.netapp.com ([216.240.18.77]:42432 "EHLO mx12.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751533AbaEATw4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 1 May 2014 15:52:56 -0400
+Message-ID: <5362A60C.7080805@netapp.com>
+Date: Thu, 1 May 2014 15:52:44 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain
+To: Weston Andros Adamson <dros@primarydata.com>,
+        <trond.myklebust@primarydata.com>
+CC: <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 0/3] nfs: get rid of nfs_pgio_data, related cleanup
+References: <1398971693-82399-1-git-send-email-dros@primarydata.com>
+In-Reply-To: <1398971693-82399-1-git-send-email-dros@primarydata.com>
+Content-Type: text/plain; charset="ISO-8859-1"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Dave Chinner <david@fromorbit.com> writes:
+I like the idea, and I don't have a problem with these at a glance.  I'll let you know if I hit anything whenever I get something set up for testing.
 
-> On Sun, Apr 27, 2014 at 09:44:40PM +0530, Aneesh Kumar K.V wrote:
->> From: Andreas Gruenbacher <agruen@kernel.org>
->> 
->> Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
->> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
->> ---
->>  fs/namei.c | 13 +++++++++++++
->>  1 file changed, 13 insertions(+)
->> 
->> diff --git a/fs/namei.c b/fs/namei.c
->> index 26b9a8212837..06474553c08d 100644
->> --- a/fs/namei.c
->> +++ b/fs/namei.c
->> @@ -284,6 +284,19 @@ static int acl_permission_check(struct inode *inode, int mask)
->>  {
->>  	unsigned int mode = inode->i_mode;
->>  
->> +	if (IS_RICHACL(inode)) {
->> +		int error = check_acl(inode, mask);
->> +		if (error != -EAGAIN)
->> +			return error;
->> +		if (mask & (MAY_DELETE_SELF | MAY_TAKE_OWNERSHIP |
->> +			    MAY_CHMOD | MAY_SET_TIMES)) {
->> +			/*
->> +			 * The file permission bit cannot grant these
->> +			 * permissions.
->> +			 */
->> +			return -EACCES;
->> +		}
->> +	}
->>  	if (likely(uid_eq(current_fsuid(), inode->i_uid)))
->>  		mode >>= 6;
->>  	else {
+On 05/01/2014 03:14 PM, Weston Andros Adamson wrote:
+> I'd like to know what people think of this proposed cleanup - it is to be
+> applied on top of the "pgio" branch at:
 >
-> why does this take priority over a simple uid match? Some comments
-> explaining this for people unfamiliar with richacls would be nice.
-> Not to mention the commit message should also explain the change...
+>  git://git.linux-nfs.org/projects/dros/linux-nfs.git
 >
-
-Richacl can have further limitation on file owner. Will add more
-comments around the function.
-
--aneesh
+> The basic idea is that we no longer need a separate nfs_pgio_data structure,
+> because the nfs_pgio_header structure always has one - and only one.
+>
+> I know this changes a lot of files, but I think now is the time to do this,
+> as we have to test everything anyways due to my subpage work and Anna's
+> pgio cleanup.
+>
+> I should note that there is little chance we'll ever go back to having more
+> than one nfs_pgio_data per nfs_pgio_header - since the nfs_page subpage
+> splitting work allows us to describe arbitrary ranges at that level.
+>
+> I think I can go a bit further by getting rid of the pgio_header refcnt.
+> I'll look closer at this soon...
+>
+>  -dros
+>
+> Weston Andros Adamson (3):
+>   nfs: move nfs_pgio_data and remove nfs_rw_header
+>   nfs: rename members of nfs_pgio_data
+>   nfs: merge nfs_pgio_data into _header
+>
+>  fs/nfs/blocklayout/blocklayout.c |  99 +++++++++++----------
+>  fs/nfs/direct.c                  |   8 +-
+>  fs/nfs/internal.h                |  10 +--
+>  fs/nfs/nfs3proc.c                |  21 +++--
+>  fs/nfs/nfs4_fs.h                 |   6 +-
+>  fs/nfs/nfs4filelayout.c          | 169 +++++++++++++++++------------------
+>  fs/nfs/nfs4proc.c                | 105 +++++++++++-----------
+>  fs/nfs/nfs4trace.h               |  28 +++---
+>  fs/nfs/objlayout/objio_osd.c     |  24 +++--
+>  fs/nfs/objlayout/objlayout.c     |  81 ++++++++---------
+>  fs/nfs/objlayout/objlayout.h     |   8 +-
+>  fs/nfs/pageio.c                  | 186 ++++++++++++++++-----------------------
+>  fs/nfs/pnfs.c                    |  96 ++++++++------------
+>  fs/nfs/pnfs.h                    |  10 +--
+>  fs/nfs/proc.c                    |  27 +++---
+>  fs/nfs/read.c                    |  48 +++++-----
+>  fs/nfs/write.c                   |  65 +++++++-------
+>  include/linux/nfs_fs.h           |   2 +-
+>  include/linux/nfs_page.h         |  13 +--
+>  include/linux/nfs_xdr.h          |  31 +++----
+>  20 files changed, 489 insertions(+), 548 deletions(-)
+>
 
