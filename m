@@ -1,49 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:45212 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751582AbaEOT0Y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 15 May 2014 15:26:24 -0400
-Received: from bfields by fieldses.org with local (Exim 4.76)
-	(envelope-from <bfields@fieldses.org>)
-	id 1Wl1IN-00049k-Pw
-	for linux-nfs@vger.kernel.org; Thu, 15 May 2014 15:26:23 -0400
-Date: Thu, 15 May 2014 15:26:23 -0400
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] nfsd4: fix corruption on setting an ACL.
-Message-ID: <20140515192623.GA15684@fieldses.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Received: from st11p02mm-asmtpout002.mac.com ([17.172.220.237]:50169 "EHLO
+	st11p02mm-asmtp002.mac.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750993AbaEAUDj convert rfc822-to-8bit
+	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 1 May 2014 16:03:39 -0400
+MIME-version: 1.0
+Content-type: text/plain; charset=windows-1252
+Received: from hobbes.nimgs.com ([184.188.181.148])
+ by st11p02mm-asmtp002.mac.com
+ (Oracle Communications Messaging Server 7u4-27.08(7.0.4.27.7) 64bit (built Aug
+ 22 2013)) with ESMTPSA id <0N4W00FIDVPZ15B0@st11p02mm-asmtp002.mac.com> for
+ linux-nfs@vger.kernel.org; Thu, 01 May 2014 20:03:37 +0000 (GMT)
+Subject: Re: idmap problems with chown as root
+From: Craig Yoshioka <craigyk@me.com>
+In-reply-to: <CAHQdGtTFtJYYkhnnxmpgtY7MapL49A1+2w6NBNy3o8NOKvbXWA@mail.gmail.com>
+Date: Thu, 01 May 2014 13:03:30 -0700
+Cc: Steve Dickson <SteveD@redhat.com>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Message-id: <7EBFCEF4-8C76-4BF2-B04A-B70F811DCF0A@me.com>
+References: <2541339C-AF61-4ED7-8F50-E4B3CA2C924F@me.com>
+ <5362994C.8010900@RedHat.com>
+ <CAHQdGtTFtJYYkhnnxmpgtY7MapL49A1+2w6NBNy3o8NOKvbXWA@mail.gmail.com>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+> Does the following help on the client?
+> 
+> echo N >/sys/module/nfs/parameters/nfs4_disable_idmapping
+> 
 
-As of 06f9cc12caa862f5bc86ebdb4f77568a4bef0167 "nfsd4: don't create
-unnecessary mask acl", any non-trivial ACL will be left with an
-unitialized entry, and a trivial ACL may write one entry beyond what's
-allocated.
+After restarting idmapd and remounting that did work.  Thanks.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4acl.c | 2 +-
- 1 file changed, 1 insertion(+), 1 deletion(-)
+It’s a good workaround until I can test the recent patch that stops mapping uid 0 to nobody.  
 
-I'll submit this for 3.15.
 
-diff --git a/fs/nfsd/nfs4acl.c b/fs/nfsd/nfs4acl.c
-index c06cad5e..f69f56b 100644
---- a/fs/nfsd/nfs4acl.c
-+++ b/fs/nfsd/nfs4acl.c
-@@ -590,7 +590,7 @@ posix_state_to_acl(struct posix_acl_state *state, unsigned int flags)
- 		add_to_mask(state, &state->groups->aces[i].perms);
- 	}
- 
--	if (!state->users->n && !state->groups->n) {
-+	if (state->users->n || state->groups->n) {
- 		pace++;
- 		pace->e_tag = ACL_MASK;
- 		low_mode_from_nfs4(state->mask.allow, &pace->e_perm, flags);
--- 
-1.9.0
+> -- 
+> Trond Myklebust
+> 
+> Linux NFS client maintainer, PrimaryData
+> 
+> trond.myklebust@primarydata.com
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
 
