@@ -1,104 +1,175 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f174.google.com ([209.85.213.174]:40459 "EHLO
-	mail-ig0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753178AbaEVA5Z (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 May 2014 20:57:25 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH v4 22/24] xprtrdma: Avoid deadlock when credit window is reset
-To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Date: Wed, 21 May 2014 20:57:23 -0400
-Message-ID: <20140522005723.27190.90796.stgit@manet.1015granger.net>
-In-Reply-To: <20140522004505.27190.58897.stgit@manet.1015granger.net>
-References: <20140522004505.27190.58897.stgit@manet.1015granger.net>
+Received: from e28smtp03.in.ibm.com ([122.248.162.3]:46912 "EHLO
+	e28smtp03.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752689AbaEAPtO (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 May 2014 11:49:14 -0400
+Received: from /spool/local
+	by e28smtp03.in.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <aneesh.kumar@linux.vnet.ibm.com>;
+	Thu, 1 May 2014 21:19:13 +0530
+From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+To: Andreas Dilger <adilger@dilger.ca>
+Cc: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
+        viro@zeniv.linux.org.uk, dhowells@redhat.com,
+        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        linux-kernel@vger.kernel.org
+Subject: Re: [PATCH -V1 22/22] ext4: Add Ext4 compat richacl feature flag
+In-Reply-To: <88FB2DB7-126A-400E-9B44-19E99A553B2B@dilger.ca>
+References: <1398615293-22931-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1398615293-22931-23-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <88FB2DB7-126A-400E-9B44-19E99A553B2B@dilger.ca>
+Date: Thu, 01 May 2014 21:18:51 +0530
+Message-ID: <877g65biu4.fsf@linux.vnet.ibm.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Update the cwnd from the server's reply before invoking
-__xprt_put_cong(). Otherwise the next task on the xprt_sending queue
-is still subject to the old credit window. Currently, no task is
-awoken if the old congestion window is still exceeded, even if the
-new window is larger, and a deadlock results.
+Andreas Dilger <adilger@dilger.ca> writes:
 
-This is an issue during a transport reconnect. Servers don't
-normally shrink the credit window, but the client does reset it to
-1 when reconnecting so the server can safely grow it again.
+> On Apr 27, 2014, at 10:14 AM, Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com> wrote:
+>> This feature flag can be used to enable richacl on
+>> the file system. Once enabled the "acl" mount option
+>> will enable richacl instead of posix acl
+>
+> I was going to complain about this patch, because re-using the "acl"
+> mount option to specify richacl instead of POSIX ACL would be very
+> confusing, since older kernels used the "acl" mount option to enable
+> POSIX ACLs.
+>
+> Looking closer, I see that "acl" and "noacl" just means enable or disable
+> the ACL functionality on the filesystem.  Please fix up the commit
+> comment.
 
-As a minor optimization, remove the hack of grabbing the initial
-cwnd size (which happens to be RPC_CWNDSCALE) and using that value
-as the congestion scaling factor. The scaling value is invariant,
-and we are better off without the multiplication operation.
+Will clarify in the commit message.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+>
+> Some more comments inline.
+>
+>> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
+>> index 6f9e6fadac04..2a0221652d79 100644
+>> --- a/fs/ext4/super.c
+>> +++ b/fs/ext4/super.c
+>> @@ -1274,6 +1274,30 @@ static ext4_fsblk_t get_sb_block(void **data)
+>> 	return sb_block;
+>> }
+>> 
+>> +static void enable_acl(struct super_block *sb)
+>> +{
+>> +#if !defined(CONFIG_EXT4_FS_POSIX_ACL) && !defined(CONFIG_EXT4_FS_RICHACL)
+>> +	return;
+>> +#endif
+>> +	if (EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_RICHACL)) {
+>> +		sb->s_flags |= MS_RICHACL;
+>> +		sb->s_flags &= ~MS_POSIXACL;
+>> +	} else {
+>> +		sb->s_flags |= MS_POSIXACL;
+>> +		sb->s_flags &= ~MS_RICHACL;
+>> +	}
+>
+> This should put the #ifdef around the code that is being enabled/disabled,
+> otherwise it just becomes dead code:
+>
+> static int enable_acl(struct super_block *sb)
+> {
+> 	if (EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_RICHACL)) {
+> #if defined(CONFIG_EXT4_FS_RICHACL)
+> 		sb->s_flags |= MS_RICHACL;
+> 		sb->s_flags &= ~MS_POSIXACL;
+> #else
+> 		return -EOPNOTSUPP;
+> #endif
+> 	} else {
+> #if defined(CONFIG_EXT4_FS_POSIX_ACL)
+> 		sb->s_flags |= MS_POSIXACL;
+> 		sb->s_flags &= ~MS_RICHACL;
+> #else
+> 		return -EOPNOTSUPP;
+> #endif
+> 	}
+> 	return 0;
+> }
 
- net/sunrpc/xprtrdma/rpc_rdma.c  |    3 +++
- net/sunrpc/xprtrdma/transport.c |   19 +------------------
- net/sunrpc/xprtrdma/xprt_rdma.h |    1 -
- 3 files changed, 4 insertions(+), 19 deletions(-)
+That is too much #ifdef with no real benefit ?
 
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index 1334646..82173c7 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -846,6 +846,9 @@ badheader:
- 		break;
- 	}
- 
-+	xprt->cwnd = atomic_read(&r_xprt->rx_buf.rb_credits) << RPC_CWNDSHIFT;
-+	xprt_release_rqst_cong(rqst->rq_task);
-+
- 	dprintk("RPC:       %s: xprt_complete_rqst(0x%p, 0x%p, %d)\n",
- 			__func__, xprt, rqst, status);
- 	xprt_complete_rqst(rqst->rq_task, status);
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 04b7452..65cfaca 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -448,23 +448,6 @@ xprt_rdma_connect(struct rpc_xprt *xprt, struct rpc_task *task)
- 	}
- }
- 
--static int
--xprt_rdma_reserve_xprt(struct rpc_xprt *xprt, struct rpc_task *task)
--{
--	struct rpcrdma_xprt *r_xprt = rpcx_to_rdmax(xprt);
--	int credits = atomic_read(&r_xprt->rx_buf.rb_credits);
--
--	/* == RPC_CWNDSCALE @ init, but *after* setup */
--	if (r_xprt->rx_buf.rb_cwndscale == 0UL) {
--		r_xprt->rx_buf.rb_cwndscale = xprt->cwnd;
--		dprintk("RPC:       %s: cwndscale %lu\n", __func__,
--			r_xprt->rx_buf.rb_cwndscale);
--		BUG_ON(r_xprt->rx_buf.rb_cwndscale <= 0);
--	}
--	xprt->cwnd = credits * r_xprt->rx_buf.rb_cwndscale;
--	return xprt_reserve_xprt_cong(xprt, task);
--}
--
- /*
-  * The RDMA allocate/free functions need the task structure as a place
-  * to hide the struct rpcrdma_req, which is necessary for the actual send/recv
-@@ -686,7 +669,7 @@ static void xprt_rdma_print_stats(struct rpc_xprt *xprt, struct seq_file *seq)
-  */
- 
- static struct rpc_xprt_ops xprt_rdma_procs = {
--	.reserve_xprt		= xprt_rdma_reserve_xprt,
-+	.reserve_xprt		= xprt_reserve_xprt_cong,
- 	.release_xprt		= xprt_release_xprt_cong, /* sunrpc/xprt.c */
- 	.alloc_slot		= xprt_alloc_slot,
- 	.release_request	= xprt_release_rqst_cong,       /* ditto */
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 0c3b88e..89e7cd4 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -212,7 +212,6 @@ struct rpcrdma_req {
- struct rpcrdma_buffer {
- 	spinlock_t	rb_lock;	/* protects indexes */
- 	atomic_t	rb_credits;	/* most recent server credits */
--	unsigned long	rb_cwndscale;	/* cached framework rpc_cwndscale */
- 	int		rb_max_requests;/* client max requests */
- 	struct list_head rb_mws;	/* optional memory windows/fmrs/frmrs */
- 	int		rb_send_index;
+>
+>> +
+>> +static void disable_acl(struct super_block *sb)
+>> +{
+>> +#if !defined(CONFIG_EXT4_FS_POSIX_ACL) && !defined(CONFIG_EXT4_FS_RICHACL)
+>> +	return;
+>> +#endif
+>> +	sb->s_flags &= ~(MS_POSIXACL | MS_RICHACL);
+>> +	return;
+>> +}
+>
+> "return" is not needed at the end of void functions. Same comment on
+> #ifdef:
+
+ok
+
+>
+> static void disable_acl(struct super_block *sb)
+> {
+> #if defined(CONFIG_EXT4_FS_POSIX_ACL) || defined(CONFIG_EXT4_FS_RICHACL)
+> 	sb->s_flags &= ~(MS_POSIXACL | MS_RICHACL);
+> #endif
+> }
+>
+>
+>> +
+>> #define DEFAULT_JOURNAL_IOPRIO (IOPRIO_PRIO_VALUE(IOPRIO_CLASS_BE, 3))
+>> static char deprecated_msg[] = "Mount option \"%s\" will be removed by %s\n"
+>> 	"Contact linux-ext4@vger.kernel.org if you think we should keep it.\n";
+>> @@ -1417,9 +1441,9 @@ static const struct mount_opts {
+>> 	 MOPT_NO_EXT2 | MOPT_DATAJ},
+>> 	{Opt_user_xattr, EXT4_MOUNT_XATTR_USER, MOPT_SET},
+>> 	{Opt_nouser_xattr, EXT4_MOUNT_XATTR_USER, MOPT_CLEAR},
+
+....
+
+>> 	if ((def_mount_opts & EXT4_DEFM_JMODE) == EXT4_DEFM_JMODE_DATA)
+>> 		set_opt(sb, JOURNAL_DATA);
+>> @@ -3569,8 +3593,12 @@ static int ext4_fill_super(struct super_block *sb, void *data, int silent)
+>> 			clear_opt(sb, DELALLOC);
+>> 	}
+>> 
+>> -	sb->s_flags = (sb->s_flags & ~MS_POSIXACL) |
+>> -		(test_opt(sb, POSIX_ACL) ? MS_POSIXACL : 0);
+>> +	/*
+>> +	 * clear ACL flags
+>> +	 */
+>> +	disable_acl(sb);
+>
+> Is there any expectation that the flags would be set on a newly mounted
+> filesystem?
+>
+>> +	if (test_opt(sb, ACL))
+>> +		enable_acl(sb);
+>> 
+>> 	if (le32_to_cpu(es->s_rev_level) == EXT4_GOOD_OLD_REV &&
+>> 	    (EXT4_HAS_COMPAT_FEATURE(sb, ~0U) ||
+>> @@ -4844,8 +4872,9 @@ static int ext4_remount(struct super_block *sb, int *flags, char *data)
+>> 	if (sbi->s_mount_flags & EXT4_MF_FS_ABORTED)
+>> 		ext4_abort(sb, "Abort forced by user");
+>> 
+>> -	sb->s_flags = (sb->s_flags & ~MS_POSIXACL) |
+>> -		(test_opt(sb, POSIX_ACL) ? MS_POSIXACL : 0);
+>> +	disable_acl(sb);
+>> +	if (test_opt(sb, ACL))
+>> +		enable_acl(sb);
+>
+> Similarly, it seems racy to me to disable ACL support and then re-enable
+> it here during remount, since that might cause some concurrent operations
+> to fail.  It seems like enable_acl() already handles clearing the flags
+> correctly, so something like the following would be better:
+>
+> 	if (test_opt(sb, ACL))
+> 		enable_acl(sb);
+> 	else
+> 		disable_acl(sb);
+>
+>
+
+ok
+
+-aneesh
 
