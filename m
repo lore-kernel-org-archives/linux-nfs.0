@@ -1,79 +1,108 @@
 From: Doug Ledford <dledford@redhat.com>
-Subject: Re: NFSoRDMA developers bi-weekly meeting announcement (4/30)
-Date: Thu, 1 May 2014 12:03:41 -0400 (EDT)
-Message-ID: <26724.841053556$1398960268@news.gmane.org>
-References: <53614C03.80606@oracle.com> <CAJZOPZJioYdcbDGsk7278sZS7kD9W1dcGEGtYfsFk=Mm7DW3fQ@mail.gmail.com> <BBF761A6-2407-4457-92D5-8C2EC736BC9D@oracle.com> <CAJZOPZJgp-QdxR+PmwACWOSc4h_167J0iBjfmMrPX8sek600WA@mail.gmail.com> <536161D0.3000600@oracle.com> <"30686627.1636.1398902288314.JavaMail.Doug Ledford"@Phenom> <5361D89F.4070503@oracle.com>
+Subject: Re: [PATCH V3 00/17] NFS/RDMA client-side patches
+Date: Fri, 2 May 2014 15:27:09 -0400 (EDT)
+Message-ID: <18388.1625686356$1399058843@news.gmane.org>
+References: <20140430191433.5663.16217.stgit@manet.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=utf-8
-Cc: yanb <yanb@mellanox.com>, Phil Cayton <phil.cayton@intel.com>,
-	Susan K Coulter <skc@lanl.gov>,
-	Anna Schumaker <Anna.Schumaker@netapp.com>,
-	"Devesh.Sharma" <Devesh.Sharma@emulex.com>,
-	Steve Wise <swise@opengridcomputing.com>,
-	Allen Andrews <Allen.Andrews@emulex.com>,
-	linux-rdma <linux-rdma@vger.kernel.org>,
-	Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-	Or Gerlitz <or.gerlitz@gmail.com>,
-	Chuck Lever <chuck.lever@oracle.com>
-To: Shirley Ma <shirley.ma@oracle.com>
+Cc: Anna Schumaker <Anna.Schumaker@netapp.com>,
+	linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org,
+	Roland Dreier <roland@purestorage.com>,
+	Allen Andrews <allen.andrews@emulex.com>
+To: Chuck Lever <chuck.lever@oracle.com>
 Return-path: <linux-rdma-owner@vger.kernel.org>
-In-Reply-To: <5361D89F.4070503@oracle.com>
+In-Reply-To: <20140430191433.5663.16217.stgit-FYjufvaPoItvLzlybtyyYzGyq/o6K9yX@public.gmane.org>
 Sender: linux-rdma-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 05/01/2014, Shirley Ma wrote: 
-> On 04/30/2014 04:58 PM, Doug Ledford wrote:
-> > On 04/302014 Shirley Ma wrote:
-> >> I've created Xen guest on DomU. Dom0 PF works which has no mtts
-> >> been
-> >> enabled, however DomU I hit this problem by just mounting the file
-> >> system:
-> >> mlx4_core 0000:00:04.0: Failed to allocate mtts for 66 pages(order
-> >> 7)
-> >> mlx4_core 0000:00:04.0: Failed to allocate mtts for 4096
-> >> pages(order
-> >> 12)
-> >> mlx4_core 0000:00:04.0: Failed to allocate mtts for 4096
-> >> pages(order
-> >> 12)
-> >>
-> >> RDMA microbenchmark perftest works ok. I enabled mtts scripts when
-> >> booting the Xen guest. cat /proc/mtrr:
-> > What OS/RDMA stack are you using?  I'm not familiar with any mtts
-> > scripts, however I know there is an mtrr fixup script I wrote for
-> > the RDMA stack in Fedora/RHEL (and so I assume it's in Oracle Linux
-> > too, but I haven't checked).  In fact, I assume that's the script
-> > you are referring to based on the fact that your next bit of your
-> > email cats the /proc/mtrr file.  But I don't believe whether there
-> > is an mtrr setting mixup or not that is should have any impact on
-> > the mtts allocations in the driver.  Even if your mtrr registers
-> > were set incorrectly, the problem then becomes either A) a serious
-> > performance bottleneck (in the case of Intel hardware that needs
-> > write combining in order to get more than about 50MByte/s of
-> > throughput on their cards) or B) failed operation because MMIO
-> > writes to the card are being cached/write combined when they should
-> > not be.
-> >
-> > I suspect this is more likely Xen related than mtts/mtrr related.
-> Yes. That's the script I used. I wonder whether it's possible to
-> disable
-> mtrr on DomU guest to debug this. I am new to Xen.
+----- Original Message -----
+> Changes since V2:
+> 
+>  - Rebased on v3.15-rc3
+> 
+>  - "enable pad optimization" dropped. Testing showed Linux NFS/RDMA
+>    server does not support pad optimization yet.
+> 
+>  - "ALLPHYSICAL CONFIG" dropped. There is a lack of consensus on
+>    this one. Christoph would like ALLPHYSICAL removed, but the HPC
+>    community prefers keeping a performance-at-all-costs option. And,
+>    with most other registration modes now removed, ALLPHYSICAL is
+>    the mode of last resort if an adapter does not support FRMR or
+>    MTHCAFMR, since ALLPHYSICAL is universally supported. We will
+>    very likely revisit this later. I'm erring on the side of less
+>    churn and dropping this until the community agrees on how to
+>    move forward.
+> 
+>  - Added a patch to ensure there is always a valid ->qp if RPCs
+>    might awaken while the transport is disconnected.
+> 
+>  - Added a patch to clean up an MTU settings hack for a very old
+>    adapter model.
+> 
+> Test and review the "nfs-rdma-client" branch:
+> 
+>  git://git.linux-nfs.org/projects/cel/cel-2.6.git
+> 
+> Thanks!
 
-No, it's not possible to disable mtrr and expect any pass through
-PCI devices to work.  The mtrr registers merely indicate what
-portion of the memory map should be treated as normal memory (meaning
-cacheable) and what should be treated as MMIO memory (meaning generally
-non-cacheable).  That's all they do.  The mtts table allocation
-failures are actually totally different.  In the VF on DomU they
-are passed to the PF on Dom0 and the command is done there.  However,
-the number of mtts available for the slave are limited (check the
-code in resource_tracker.c).  In addition, the number of mtts
-allocated is proportionally related to memory size in the guest
-and inversely related to the log2_mtts_per_seg (probably both on
-Dom0 and DomU, which I suspect need to agree on the log2_mtts_per_seg
-module parameter).  I would try a combination of reducing the memory
-in the quest, or increasing the log2_mtts_per_seg, or both, and
-see if you can get it to work.
+Hi Chuck,
+
+I've installed this in my cluster and ran a number of simple tests
+over a variety of hardware.  For the most part, it's looking much
+better than NFSoRDMA looked a kernel or two back, but I can still
+trip it up.  All tests were run with rhel7 + current upstream
+kernel.
+
+My server was using mlx4 hardware in both IB and RoCE modes.
+
+I tested from mlx4 client in both IB and RoCE modes -> not DOA
+I tested from mlx5 client in IB mode -> not DOA
+I tested from mthca client in IB mode -> not DOA
+I tested from qib client in IB mode -> not DOA
+I tested from ocrdma client in RoCE mode -> DOA (cpu soft lockup
+  on mount on the client)
+
+I tested nfsv3 -> not DOA
+I tested nfsv4 + rdma -> still DOA, but I think this is expected
+  as last I knew someone needs to write code for nfsv4 mountd
+  over rdma before this will work (as nfsv3 uses a tcp connection
+  to do mounting, and then switches to rdma for data transfers
+  and nfsv4 doesn't support that or something like that...this
+  is what I recall Jeff Layton telling me anyway)
+
+I tested nfsv3 in both IB and RoCE modes with rsize=32768 and
+wsize=32768 -> not DOA, reliable, did data verification and passed
+
+I tested nfsv3 in both IB and RoCE modes with rsize=65536 and
+wsize=65536 -> not DOA, but not reliable either, data transfers
+will stop after a certain amount has been transferred and the
+mount will have a soft hang
+
+My data verification was simple (but generally effective in
+lots of scenarios):
+
+I had a full linux kernel git repo, with a complete build in it
+(totaling a little over 9GB of disk space used) and I would run
+tar -cf - linus | tar -xvf - -C <tmpdir> to copy the tree
+around (I did copies both on the same mount and on a different
+mount that was also NFSoRDMA, including copying from an IB
+NFSoRDMA mount to a RoCE NFSoRDMA mount on different mlx4 ports),
+and then diff -uprN on the various tree locations to check for
+any data differences.
+
+So there's your testing report.  As I said in the beginning, it's
+definitely better than it was since it used to oops the server and
+I didn't encounter any server side problems this time, only client
+side problems.
+
+ToDo items that I see:
+
+Write NFSv4 rdma protocol mount support
+Fix client soft mount hangs when rsize/wsize > 32768
+Fix DOA of ocrdma driver
+
+Tested-by: Doug Ledford <dledford@redhat.com>
+
 
 -- 
 Doug Ledford <dledford@redhat.com>
