@@ -1,7 +1,7 @@
 From: Doug Ledford <dledford@redhat.com>
 Subject: Re: [PATCH V3 00/17] NFS/RDMA client-side patches
 Date: Fri, 2 May 2014 18:34:20 -0400 (EDT)
-Message-ID: <8781.92528985$1399070079@news.gmane.org>
+Message-ID: <24828.686429146$1399073526@news.gmane.org>
 References: <20140430191433.5663.16217.stgit@manet.1015granger.net> <5363f223.e39f420a.4af6.6fc9SMTPIN_ADDED_BROKEN@mx.google.com> <45067B04-660C-4971-B12F-AEC9F7D32785@oracle.com>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=utf-8
@@ -10,9 +10,13 @@ Cc: Anna Schumaker <Anna.Schumaker@netapp.com>,
 	linux-rdma@vger.kernel.org, Roland Dreier <roland@purestorage.com>,
 	Allen Andrews <allen.andrews@emulex.com>
 To: Chuck Lever <chuck.lever@oracle.com>
-Return-path: <linux-rdma-owner@vger.kernel.org>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx5-phx2.redhat.com ([209.132.183.37]:39816 "EHLO
+	mx5-phx2.redhat.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753130AbaEBXbp convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 May 2014 19:31:45 -0400
 In-Reply-To: <45067B04-660C-4971-B12F-AEC9F7D32785@oracle.com>
-Sender: linux-rdma-owner@vger.kernel.org
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 ----- Original Message -----
@@ -107,8 +111,3 @@ Doug Ledford <dledford@redhat.com>
               GPG KeyID: 0E572FDD
 	      http://people.redhat.com/dledford
 
---
-To unsubscribe from this list: send the line "unsubscribe linux-rdma" i=
-n
-the body of a message to majordomo@vger.kernel.org
-More majordomo info at  http://vger.kernel.org/majordomo-info.html
