@@ -1,103 +1,114 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:38574 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757609AbaEKUxA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 11 May 2014 16:53:00 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 19/43] nfsd4: remove redundant encode buffer size checking
-Date: Sun, 11 May 2014 16:52:24 -0400
-Message-Id: <1399841568-19716-20-git-send-email-bfields@redhat.com>
-In-Reply-To: <1399841568-19716-1-git-send-email-bfields@redhat.com>
-References: <1399841568-19716-1-git-send-email-bfields@redhat.com>
+Received: from mx3-phx2.redhat.com ([209.132.183.24]:58749 "EHLO
+	mx3-phx2.redhat.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750841AbaEBT1O (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 May 2014 15:27:14 -0400
+Date: Fri, 2 May 2014 15:27:09 -0400 (EDT)
+From: Doug Ledford <dledford@redhat.com>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Anna Schumaker <Anna.Schumaker@netapp.com>, linux-nfs@vger.kernel.org,
+        linux-rdma@vger.kernel.org, Roland Dreier <roland@purestorage.com>,
+        Allen Andrews <allen.andrews@emulex.com>
+Message-ID: <7483065.2423.1399058832943.JavaMail."Doug Ledford"@Phenom>
+In-Reply-To: <20140430191433.5663.16217.stgit@manet.1015granger.net>
+References: <20140430191433.5663.16217.stgit@manet.1015granger.net>
+Subject: Re: [PATCH V3 00/17] NFS/RDMA client-side patches
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+----- Original Message -----
+> Changes since V2:
+> 
+>  - Rebased on v3.15-rc3
+> 
+>  - "enable pad optimization" dropped. Testing showed Linux NFS/RDMA
+>    server does not support pad optimization yet.
+> 
+>  - "ALLPHYSICAL CONFIG" dropped. There is a lack of consensus on
+>    this one. Christoph would like ALLPHYSICAL removed, but the HPC
+>    community prefers keeping a performance-at-all-costs option. And,
+>    with most other registration modes now removed, ALLPHYSICAL is
+>    the mode of last resort if an adapter does not support FRMR or
+>    MTHCAFMR, since ALLPHYSICAL is universally supported. We will
+>    very likely revisit this later. I'm erring on the side of less
+>    churn and dropping this until the community agrees on how to
+>    move forward.
+> 
+>  - Added a patch to ensure there is always a valid ->qp if RPCs
+>    might awaken while the transport is disconnected.
+> 
+>  - Added a patch to clean up an MTU settings hack for a very old
+>    adapter model.
+> 
+> Test and review the "nfs-rdma-client" branch:
+> 
+>  git://git.linux-nfs.org/projects/cel/cel-2.6.git
+> 
+> Thanks!
 
-Now that all op encoders can handle running out of space, we no longer
-need to check the remaining size for every operation; only nonidempotent
-operations need that check, and that can be done by
-nfsd4_check_resp_size.
+Hi Chuck,
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4proc.c |   14 --------------
- fs/nfsd/nfs4xdr.c  |   22 +++++++++++++---------
- 2 files changed, 13 insertions(+), 23 deletions(-)
+I've installed this in my cluster and ran a number of simple tests
+over a variety of hardware.  For the most part, it's looking much
+better than NFSoRDMA looked a kernel or two back, but I can still
+trip it up.  All tests were run with rhel7 + current upstream
+kernel.
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index d9fe000..d50fc14 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1228,7 +1228,6 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
- 	struct nfsd4_compound_state *cstate = &resp->cstate;
- 	struct svc_fh *current_fh = &cstate->current_fh;
- 	struct svc_fh *save_fh = &cstate->save_fh;
--	int		slack_bytes;
- 	u32		plen = 0;
- 	__be32		status;
- 
-@@ -1282,19 +1281,6 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
- 			goto encode_op;
- 		}
- 
--		/* We must be able to encode a successful response to
--		 * this operation, with enough room left over to encode a
--		 * failed response to the next operation.  If we don't
--		 * have enough room, fail with ERR_RESOURCE.
--		 */
--		slack_bytes = (char *)resp->xdr.end - (char *)resp->xdr.p;
--		if (slack_bytes < COMPOUND_SLACK_SPACE
--				+ COMPOUND_ERR_SLACK_SPACE) {
--			BUG_ON(slack_bytes < COMPOUND_ERR_SLACK_SPACE);
--			op->status = nfserr_resource;
--			goto encode_op;
--		}
--
- 		opdesc = OPDESC(op);
- 
- 		if (!current_fh->fh_dentry) {
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 4c036eb..a330dd7 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -3736,20 +3736,24 @@ static nfsd4_enc nfsd4_enc_ops[] = {
- __be32 nfsd4_check_resp_size(struct nfsd4_compoundres *resp, u32 pad)
- {
- 	struct xdr_buf *buf = &resp->rqstp->rq_res;
--	struct nfsd4_session *session = NULL;
-+	struct nfsd4_session *session = resp->cstate.session;
- 	struct nfsd4_slot *slot = resp->cstate.slot;
-+	int slack_bytes = (char *)resp->xdr.end - (char *)resp->xdr.p;
- 
--	if (!nfsd4_has_session(&resp->cstate))
--		return 0;
-+	if (nfsd4_has_session(&resp->cstate)) {
- 
--	session = resp->cstate.session;
-+		if (buf->len + pad > session->se_fchannel.maxresp_sz)
-+			return nfserr_rep_too_big;
- 
--	if (buf->len + pad > session->se_fchannel.maxresp_sz)
--		return nfserr_rep_too_big;
-+		if ((slot->sl_flags & NFSD4_SLOT_CACHETHIS) &&
-+		    buf->len + pad > session->se_fchannel.maxresp_cached)
-+			return nfserr_rep_too_big_to_cache;
-+	}
- 
--	if ((slot->sl_flags & NFSD4_SLOT_CACHETHIS) &&
--	    buf->len + pad > session->se_fchannel.maxresp_cached)
--		return nfserr_rep_too_big_to_cache;
-+	if (pad > slack_bytes) {
-+		WARN_ON_ONCE(nfsd4_has_session(&resp->cstate));
-+		return nfserr_resource;
-+	}
- 
- 	return 0;
- }
+My server was using mlx4 hardware in both IB and RoCE modes.
+
+I tested from mlx4 client in both IB and RoCE modes -> not DOA
+I tested from mlx5 client in IB mode -> not DOA
+I tested from mthca client in IB mode -> not DOA
+I tested from qib client in IB mode -> not DOA
+I tested from ocrdma client in RoCE mode -> DOA (cpu soft lockup
+  on mount on the client)
+
+I tested nfsv3 -> not DOA
+I tested nfsv4 + rdma -> still DOA, but I think this is expected
+  as last I knew someone needs to write code for nfsv4 mountd
+  over rdma before this will work (as nfsv3 uses a tcp connection
+  to do mounting, and then switches to rdma for data transfers
+  and nfsv4 doesn't support that or something like that...this
+  is what I recall Jeff Layton telling me anyway)
+
+I tested nfsv3 in both IB and RoCE modes with rsize=32768 and
+wsize=32768 -> not DOA, reliable, did data verification and passed
+
+I tested nfsv3 in both IB and RoCE modes with rsize=65536 and
+wsize=65536 -> not DOA, but not reliable either, data transfers
+will stop after a certain amount has been transferred and the
+mount will have a soft hang
+
+My data verification was simple (but generally effective in
+lots of scenarios):
+
+I had a full linux kernel git repo, with a complete build in it
+(totaling a little over 9GB of disk space used) and I would run
+tar -cf - linus | tar -xvf - -C <tmpdir> to copy the tree
+around (I did copies both on the same mount and on a different
+mount that was also NFSoRDMA, including copying from an IB
+NFSoRDMA mount to a RoCE NFSoRDMA mount on different mlx4 ports),
+and then diff -uprN on the various tree locations to check for
+any data differences.
+
+So there's your testing report.  As I said in the beginning, it's
+definitely better than it was since it used to oops the server and
+I didn't encounter any server side problems this time, only client
+side problems.
+
+ToDo items that I see:
+
+Write NFSv4 rdma protocol mount support
+Fix client soft mount hangs when rsize/wsize > 32768
+Fix DOA of ocrdma driver
+
+Tested-by: Doug Ledford <dledford@redhat.com>
+
+
 -- 
-1.7.9.5
+Doug Ledford <dledford@redhat.com>
+              GPG KeyID: 0E572FDD
+	      http://people.redhat.com/dledford
 
