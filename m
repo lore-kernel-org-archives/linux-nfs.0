@@ -1,122 +1,305 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f176.google.com ([209.85.223.176]:58207 "EHLO
-	mail-ie0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751549AbaEMPVP convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 May 2014 11:21:15 -0400
-Received: by mail-ie0-f176.google.com with SMTP id ar20so476825iec.21
-        for <linux-nfs@vger.kernel.org>; Tue, 13 May 2014 08:21:15 -0700 (PDT)
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
-Subject: Re: [PATCH v3 00/17] NFS: Create a common path used by reads and writes
-From: Weston Andros Adamson <dros@primarydata.com>
-In-Reply-To: <46D51D46-54B4-4CE2-89F5-CF171E75509C@primarydata.com>
-Date: Tue, 13 May 2014 11:21:20 -0400
-Cc: Trond Myklebust <Trond.Myklebust@primarydata.com>,
-        linux-nfs list <linux-nfs@vger.kernel.org>, hch@infradead.org
-Message-Id: <A8E6B113-F44A-4605-B861-AD10A8F6B504@primarydata.com>
-References: <1399381960-3019-1-git-send-email-Anna.Schumaker@Netapp.com> <46D51D46-54B4-4CE2-89F5-CF171E75509C@primarydata.com>
+Received: from mail-qc0-f175.google.com ([209.85.216.175]:48763 "EHLO
+	mail-qc0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752108AbaEBNUX (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 May 2014 09:20:23 -0400
+Received: by mail-qc0-f175.google.com with SMTP id w7so3163631qcr.20
+        for <linux-nfs@vger.kernel.org>; Fri, 02 May 2014 06:20:22 -0700 (PDT)
+Date: Fri, 2 May 2014 09:20:20 -0400
+From: Jeff Layton <jlayton@poochiereds.net>
 To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Cc: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>,
+        <dros@primarydata.com>, <hch@infradead.org>
+Subject: Re: [PATCH v2 01/17] NFS: Create a common argument structure for
+ reads and writes
+Message-ID: <20140502092020.46b46b9e@tlielax.poochiereds.net>
+In-Reply-To: <1398459360-2093-2-git-send-email-Anna.Schumaker@Netapp.com>
+References: <1398459360-2093-1-git-send-email-Anna.Schumaker@Netapp.com>
+	<1398459360-2093-2-git-send-email-Anna.Schumaker@Netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On May 6, 2014, at 9:28 AM, Weston Andros Adamson <dros@primarydata.com> wrote:
+On Fri, 25 Apr 2014 16:55:44 -0400
+Anna Schumaker <Anna.Schumaker@netapp.com> wrote:
 
-> On May 6, 2014, at 9:12 AM, Anna Schumaker <Anna.Schumaker@netapp.com> wrote:
+> From: Anna Schumaker <Anna.Schumaker@netapp.com>
 > 
->> I noticed that much of the read and write code was almost identical, with
->> only minor differences in argument types and names.  These patches seek to
->> unify these two codepaths wherever possible in order to make future changes
->> easier.
->> 
->> Table of contents:
->> 	Patches 01 - 05: Set up common data structures.
->> 	Patches 06 - 10: Set up a shared rpc_call_ops struct.
->> 	Patches 11 - 15: Set up a shared nfs_pageio_ops struct.
->> 
->> Some of the commit setup was moved into common code, but I'm willing to
->> move this back into write.c if this looks to be a problem.
->> 
->> Future work:
->> 	I have rough pNFS patches to combine the read and write paths in
->> 	pnfs.c.  They apply on top of Dros' multiple requests work and
->> 	should get more testing before I submit.
->> 
->> Testing:
->> 	I tested every version of NFS using the cthon and xfs tests without
->> 	hitting anything new.  Any extra testing would be great seeing how
->> 	the read and write paths are vitally important.
->> 
->> Changes in v3:
->> 	Instead of creating a new "pageio.c" file, I now put the combined
->> 	code into pagelist.c (good luck, Dros!)
+> Reads and writes have very similar arguments.  This patch combines them
+> together and documents the few fields used only by write.
 > 
-> I’ll merge into my pgio branch later this week and repost my patchset.
+> Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 > 
-> Thanks!
-> -dros
-
-I’ve successfully merged my patches on top of your rebased patches, running tests since yesterday.
-
-I’ll post soon.
-
--dros
-
+> v2:
+> - Move the write-only variables to the end of the struct
+> ---
+>  fs/nfs/nfs2xdr.c        |  8 ++++----
+>  fs/nfs/nfs3xdr.c        |  8 ++++----
+>  fs/nfs/nfs4proc.c       |  4 ++--
+>  fs/nfs/nfs4xdr.c        | 10 ++++++----
+>  fs/nfs/read.c           |  2 +-
+>  fs/nfs/write.c          |  2 +-
+>  include/linux/nfs_xdr.h | 47 +++++++++++++++++++----------------------------
+>  7 files changed, 37 insertions(+), 44 deletions(-)
 > 
->> 
->> 	I also renamed a few functions, and did a better job checking what
->> 	pagelist.c functions can now be static.
->> 
->> Questions?  Comments?  Thoughts?
->> 
->> Anna
->> 
->> 
->> Anna Schumaker (17):
->> NFS: Create a common argument structure for reads and writes
->> NFS: Create a common results structure for reads and writes
->> NFS: Create a common read and write data struct
->> NFS: Create a common read and write header struct
->> NFS: Move the write verifier into the nfs_pgio_header
->> NFS: Create a common pgio_alloc and pgio_release function
->> NFS: Create a common rw_header_alloc and rw_header_free function
->> NFS: Create a common pgio_rpc_prepare function
->> NFS: Create a common nfs_pgio_result_common function
->> NFS: Create a common rpc_call_ops struct
->> NFS: Create a common rpcsetup function for reads and writes
->> NFS: Create a common pgio_error function
->> NFS: Create a generic_pgio function
->> NFS: Create a common initiate_pgio() function
->> NFS: Create a common multiple_pgios() function
->> NFS: Create a common generic_pg_pgios()
->> NFS: Create a common nfs_pageio_ops struct
->> 
->> fs/nfs/blocklayout/blocklayout.c |  22 +-
->> fs/nfs/direct.c                  |   4 +-
->> fs/nfs/internal.h                |  29 +--
->> fs/nfs/nfs2xdr.c                 |  14 +-
->> fs/nfs/nfs3proc.c                |  19 +-
->> fs/nfs/nfs3xdr.c                 |  16 +-
->> fs/nfs/nfs4_fs.h                 |   4 +-
->> fs/nfs/nfs4filelayout.c          |  40 ++--
->> fs/nfs/nfs4proc.c                |  52 ++---
->> fs/nfs/nfs4trace.h               |   8 +-
->> fs/nfs/nfs4xdr.c                 |  19 +-
->> fs/nfs/objlayout/objio_osd.c     |   6 +-
->> fs/nfs/objlayout/objlayout.c     |  16 +-
->> fs/nfs/objlayout/objlayout.h     |   8 +-
->> fs/nfs/pagelist.c                | 406 ++++++++++++++++++++++++++++++++++++-
->> fs/nfs/pnfs.c                    |  46 ++---
->> fs/nfs/pnfs.h                    |  10 +-
->> fs/nfs/proc.c                    |  19 +-
->> fs/nfs/read.c                    | 348 +++-----------------------------
->> fs/nfs/write.c                   | 425 +++++----------------------------------
->> include/linux/nfs_fs.h           |   2 -
->> include/linux/nfs_page.h         |  13 ++
->> include/linux/nfs_xdr.h          |  95 +++------
->> 23 files changed, 674 insertions(+), 947 deletions(-)
->> 
->> -- 
->> 1.9.2
->> 
-> 
+> diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
+> index 62db136..461cd8b 100644
+> --- a/fs/nfs/nfs2xdr.c
+> +++ b/fs/nfs/nfs2xdr.c
+> @@ -613,7 +613,7 @@ static void nfs2_xdr_enc_readlinkargs(struct rpc_rqst *req,
+>   *	};
+>   */
+>  static void encode_readargs(struct xdr_stream *xdr,
+> -			    const struct nfs_readargs *args)
+> +			    const struct nfs_pgio_args *args)
+>  {
+>  	u32 offset = args->offset;
+>  	u32 count = args->count;
+> @@ -629,7 +629,7 @@ static void encode_readargs(struct xdr_stream *xdr,
+>  
+>  static void nfs2_xdr_enc_readargs(struct rpc_rqst *req,
+>  				  struct xdr_stream *xdr,
+> -				  const struct nfs_readargs *args)
+> +				  const struct nfs_pgio_args *args)
+>  {
+>  	encode_readargs(xdr, args);
+>  	prepare_reply_buffer(req, args->pages, args->pgbase,
+> @@ -649,7 +649,7 @@ static void nfs2_xdr_enc_readargs(struct rpc_rqst *req,
+>   *	};
+>   */
+>  static void encode_writeargs(struct xdr_stream *xdr,
+> -			     const struct nfs_writeargs *args)
+> +			     const struct nfs_pgio_args *args)
+>  {
+>  	u32 offset = args->offset;
+>  	u32 count = args->count;
+> @@ -669,7 +669,7 @@ static void encode_writeargs(struct xdr_stream *xdr,
+>  
+>  static void nfs2_xdr_enc_writeargs(struct rpc_rqst *req,
+>  				   struct xdr_stream *xdr,
+> -				   const struct nfs_writeargs *args)
+> +				   const struct nfs_pgio_args *args)
+>  {
+>  	encode_writeargs(xdr, args);
+>  	xdr->buf->flags |= XDRBUF_WRITE;
+> diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
+> index fa6d721..02f16c2 100644
+> --- a/fs/nfs/nfs3xdr.c
+> +++ b/fs/nfs/nfs3xdr.c
+> @@ -953,7 +953,7 @@ static void nfs3_xdr_enc_readlink3args(struct rpc_rqst *req,
+>   *	};
+>   */
+>  static void encode_read3args(struct xdr_stream *xdr,
+> -			     const struct nfs_readargs *args)
+> +			     const struct nfs_pgio_args *args)
+>  {
+>  	__be32 *p;
+>  
+> @@ -966,7 +966,7 @@ static void encode_read3args(struct xdr_stream *xdr,
+>  
+>  static void nfs3_xdr_enc_read3args(struct rpc_rqst *req,
+>  				   struct xdr_stream *xdr,
+> -				   const struct nfs_readargs *args)
+> +				   const struct nfs_pgio_args *args)
+>  {
+>  	encode_read3args(xdr, args);
+>  	prepare_reply_buffer(req, args->pages, args->pgbase,
+> @@ -992,7 +992,7 @@ static void nfs3_xdr_enc_read3args(struct rpc_rqst *req,
+>   *	};
+>   */
+>  static void encode_write3args(struct xdr_stream *xdr,
+> -			      const struct nfs_writeargs *args)
+> +			      const struct nfs_pgio_args *args)
+>  {
+>  	__be32 *p;
+>  
+> @@ -1008,7 +1008,7 @@ static void encode_write3args(struct xdr_stream *xdr,
+>  
+>  static void nfs3_xdr_enc_write3args(struct rpc_rqst *req,
+>  				    struct xdr_stream *xdr,
+> -				    const struct nfs_writeargs *args)
+> +				    const struct nfs_pgio_args *args)
+>  {
+>  	encode_write3args(xdr, args);
+>  	xdr->buf->flags |= XDRBUF_WRITE;
+> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+> index 21cd1f2..4794ca6 100644
+> --- a/fs/nfs/nfs4proc.c
+> +++ b/fs/nfs/nfs4proc.c
+> @@ -4055,7 +4055,7 @@ static int nfs4_read_done_cb(struct rpc_task *task, struct nfs_read_data *data)
+>  }
+>  
+>  static bool nfs4_read_stateid_changed(struct rpc_task *task,
+> -		struct nfs_readargs *args)
+> +		struct nfs_pgio_args *args)
+>  {
+>  
+>  	if (!nfs4_error_stateid_expired(task->tk_status) ||
+> @@ -4121,7 +4121,7 @@ static int nfs4_write_done_cb(struct rpc_task *task, struct nfs_write_data *data
+>  }
+>  
+>  static bool nfs4_write_stateid_changed(struct rpc_task *task,
+> -		struct nfs_writeargs *args)
+> +		struct nfs_pgio_args *args)
+>  {
+>  
+>  	if (!nfs4_error_stateid_expired(task->tk_status) ||
+> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+> index 73ce8d4..032159c 100644
+> --- a/fs/nfs/nfs4xdr.c
+> +++ b/fs/nfs/nfs4xdr.c
+> @@ -1556,7 +1556,8 @@ static void encode_putrootfh(struct xdr_stream *xdr, struct compound_hdr *hdr)
+>  	encode_op_hdr(xdr, OP_PUTROOTFH, decode_putrootfh_maxsz, hdr);
+>  }
+>  
+> -static void encode_read(struct xdr_stream *xdr, const struct nfs_readargs *args, struct compound_hdr *hdr)
+> +static void encode_read(struct xdr_stream *xdr, const struct nfs_pgio_args *args,
+> +			struct compound_hdr *hdr)
+>  {
+>  	__be32 *p;
+>  
+> @@ -1701,7 +1702,8 @@ static void encode_setclientid_confirm(struct xdr_stream *xdr, const struct nfs4
+>  	encode_nfs4_verifier(xdr, &arg->confirm);
+>  }
+>  
+> -static void encode_write(struct xdr_stream *xdr, const struct nfs_writeargs *args, struct compound_hdr *hdr)
+> +static void encode_write(struct xdr_stream *xdr, const struct nfs_pgio_args *args,
+> +			 struct compound_hdr *hdr)
+>  {
+>  	__be32 *p;
+>  
+> @@ -2451,7 +2453,7 @@ static void nfs4_xdr_enc_readdir(struct rpc_rqst *req, struct xdr_stream *xdr,
+>   * Encode a READ request
+>   */
+>  static void nfs4_xdr_enc_read(struct rpc_rqst *req, struct xdr_stream *xdr,
+> -			      struct nfs_readargs *args)
+> +			      struct nfs_pgio_args *args)
+>  {
+>  	struct compound_hdr hdr = {
+>  		.minorversion = nfs4_xdr_minorversion(&args->seq_args),
+> @@ -2513,7 +2515,7 @@ static void nfs4_xdr_enc_getacl(struct rpc_rqst *req, struct xdr_stream *xdr,
+>   * Encode a WRITE request
+>   */
+>  static void nfs4_xdr_enc_write(struct rpc_rqst *req, struct xdr_stream *xdr,
+> -			       struct nfs_writeargs *args)
+> +			       struct nfs_pgio_args *args)
+>  {
+>  	struct compound_hdr hdr = {
+>  		.minorversion = nfs4_xdr_minorversion(&args->seq_args),
+> diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+> index 7f87461..46d5552 100644
+> --- a/fs/nfs/read.c
+> +++ b/fs/nfs/read.c
+> @@ -470,7 +470,7 @@ int nfs_readpage_result(struct rpc_task *task, struct nfs_read_data *data)
+>  
+>  static void nfs_readpage_retry(struct rpc_task *task, struct nfs_read_data *data)
+>  {
+> -	struct nfs_readargs *argp = &data->args;
+> +	struct nfs_pgio_args *argp = &data->args;
+>  	struct nfs_readres *resp = &data->res;
+>  
+>  	/* This is a short read! */
+> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+> index ee6d46f..25ba383 100644
+> --- a/fs/nfs/write.c
+> +++ b/fs/nfs/write.c
+> @@ -1388,7 +1388,7 @@ static int nfs_should_remove_suid(const struct inode *inode)
+>   */
+>  void nfs_writeback_done(struct rpc_task *task, struct nfs_write_data *data)
+>  {
+> -	struct nfs_writeargs	*argp = &data->args;
+> +	struct nfs_pgio_args	*argp = &data->args;
+>  	struct nfs_writeres	*resp = &data->res;
+>  	struct inode		*inode = data->header->inode;
+>  	int status;
+> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+> index 3e8fc1f..5875001 100644
+> --- a/include/linux/nfs_xdr.h
+> +++ b/include/linux/nfs_xdr.h
+> @@ -491,18 +491,6 @@ struct nfs4_delegreturnres {
+>  /*
+>   * Arguments to the read call.
+>   */
+> -struct nfs_readargs {
+> -	struct nfs4_sequence_args	seq_args;
+> -	struct nfs_fh *		fh;
+> -	struct nfs_open_context *context;
+> -	struct nfs_lock_context *lock_context;
+> -	nfs4_stateid		stateid;
+> -	__u64			offset;
+> -	__u32			count;
+> -	unsigned int		pgbase;
+> -	struct page **		pages;
+> -};
+> -
+>  struct nfs_readres {
+>  	struct nfs4_sequence_res	seq_res;
+>  	struct nfs_fattr *	fattr;
+> @@ -513,20 +501,6 @@ struct nfs_readres {
+>  /*
+>   * Arguments to the write call.
+>   */
+> -struct nfs_writeargs {
+> -	struct nfs4_sequence_args	seq_args;
+> -	struct nfs_fh *		fh;
+> -	struct nfs_open_context *context;
+> -	struct nfs_lock_context *lock_context;
+> -	nfs4_stateid		stateid;
+> -	__u64			offset;
+> -	__u32			count;
+> -	enum nfs3_stable_how	stable;
+> -	unsigned int		pgbase;
+> -	struct page **		pages;
+> -	const u32 *		bitmask;
+> -};
+> -
+>  struct nfs_write_verifier {
+>  	char			data[8];
+>  };
+> @@ -545,6 +519,23 @@ struct nfs_writeres {
+>  };
+>  
+>  /*
+> + * Arguments shared by the read and write call.
+> + */
+> +struct nfs_pgio_args {
+> +	struct nfs4_sequence_args	seq_args;
+> +	struct nfs_fh *		fh;
+> +	struct nfs_open_context *context;
+> +	struct nfs_lock_context *lock_context;
+> +	nfs4_stateid		stateid;
+> +	__u64			offset;
+> +	__u32			count;
+> +	unsigned int		pgbase;
+> +	struct page **		pages;
+> +	const u32 *		bitmask;	/* used by write */
+> +	enum nfs3_stable_how	stable;		/* used by write */
+> +};
+> +
+> +/*
+>   * Arguments to the commit call.
+>   */
+>  struct nfs_commitargs {
+> @@ -1269,7 +1260,7 @@ struct nfs_read_data {
+>  	struct list_head	list;
+>  	struct rpc_task		task;
+>  	struct nfs_fattr	fattr;	/* fattr storage */
+> -	struct nfs_readargs args;
+> +	struct nfs_pgio_args	args;
+>  	struct nfs_readres  res;
+>  	unsigned long		timestamp;	/* For lease renewal */
+>  	int (*read_done_cb) (struct rpc_task *task, struct nfs_read_data *data);
+> @@ -1321,7 +1312,7 @@ struct nfs_write_data {
+>  	struct rpc_task		task;
+>  	struct nfs_fattr	fattr;
+>  	struct nfs_writeverf	verf;
+> -	struct nfs_writeargs	args;		/* argument struct */
+> +	struct nfs_pgio_args	args;		/* argument struct */
+>  	struct nfs_writeres	res;		/* result struct */
+>  	unsigned long		timestamp;	/* For lease renewal */
+>  	int (*write_done_cb) (struct rpc_task *task, struct nfs_write_data *data);
 
+I like it.
+
+Reviewed-by: Jeff Layton <jlayton@poochiereds.net>
