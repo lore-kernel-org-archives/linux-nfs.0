@@ -1,7 +1,7 @@
 From: Doug Ledford <dledford@redhat.com>
 Subject: Re: [PATCH V3 00/17] NFS/RDMA client-side patches
 Date: Fri, 2 May 2014 15:27:09 -0400 (EDT)
-Message-ID: <18388.1625686356$1399058843@news.gmane.org>
+Message-ID: <26074.1548300304$1399058847@news.gmane.org>
 References: <20140430191433.5663.16217.stgit@manet.1015granger.net>
 Mime-Version: 1.0
 Content-Type: text/plain; charset=utf-8
@@ -10,9 +10,13 @@ Cc: Anna Schumaker <Anna.Schumaker@netapp.com>,
 	Roland Dreier <roland@purestorage.com>,
 	Allen Andrews <allen.andrews@emulex.com>
 To: Chuck Lever <chuck.lever@oracle.com>
-Return-path: <linux-rdma-owner@vger.kernel.org>
+Return-path: <linux-nfs-owner@vger.kernel.org>
+Received: from mx3-phx2.redhat.com ([209.132.183.24]:58749 "EHLO
+	mx3-phx2.redhat.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750841AbaEBT1O (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 May 2014 15:27:14 -0400
 In-Reply-To: <20140430191433.5663.16217.stgit-FYjufvaPoItvLzlybtyyYzGyq/o6K9yX@public.gmane.org>
-Sender: linux-rdma-owner@vger.kernel.org
+Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 ----- Original Message -----
