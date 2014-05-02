@@ -1,153 +1,263 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:59004 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751430AbaEVTzT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 May 2014 15:55:19 -0400
-Date: Thu, 22 May 2014 15:55:17 -0400
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: bfields@redhat.com, linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Subject: Re: [PATCH] NFSD: Ignore client's source port on RDMA transports
-Message-ID: <20140522195517.GD25423@fieldses.org>
-References: <20140519173258.2828.98254.stgit@klimt.1015granger.net>
+Received: from mail-qg0-f47.google.com ([209.85.192.47]:49186 "EHLO
+	mail-qg0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752004AbaEBNWr (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 2 May 2014 09:22:47 -0400
+Received: by mail-qg0-f47.google.com with SMTP id e89so4722053qgf.34
+        for <linux-nfs@vger.kernel.org>; Fri, 02 May 2014 06:22:46 -0700 (PDT)
+Date: Fri, 2 May 2014 09:22:44 -0400
+From: Jeff Layton <jlayton@poochiereds.net>
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Cc: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>,
+        <dros@primarydata.com>, <hch@infradead.org>
+Subject: Re: [PATCH v2 02/17] NFS: Create a common results structure for
+ reads and writes
+Message-ID: <20140502092244.6627496f@tlielax.poochiereds.net>
+In-Reply-To: <1398459360-2093-3-git-send-email-Anna.Schumaker@Netapp.com>
+References: <1398459360-2093-1-git-send-email-Anna.Schumaker@Netapp.com>
+	<1398459360-2093-3-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140519173258.2828.98254.stgit@klimt.1015granger.net>
-From: "J. Bruce Fields" <bfields@fieldses.org>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, May 19, 2014 at 01:40:22PM -0400, Chuck Lever wrote:
-> An NFS/RDMA client's source port is meaningless for RDMA transports.
-> The transport layer typically sets the source port value on the
-> connection to a random ephemeral port.
+On Fri, 25 Apr 2014 16:55:45 -0400
+Anna Schumaker <Anna.Schumaker@netapp.com> wrote:
+
+> From: Anna Schumaker <Anna.Schumaker@netapp.com>
 > 
-> Currently, NFS server administrators must specify the "insecure"
-> export option to enable clients to access exports via RDMA.
+> Reads and writes have very similar results.  This patch combines the two
+> structs together with comments to show where the differing fields are
+> used.
 > 
-> But this means NFS clients can access such an export via IP using an
-> ephemeral port, which may not be desirable.
+> Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 > 
-> This patch eliminates the need to specify the "insecure" export
-> option to allow NFS/RDMA clients access to an export.
+> v2:
+> - Move the write-only variables to the end of the struct
 > 
-> BugLink: https://bugzilla.linux-nfs.org/show_bug.cgi?id=250
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> TODO:
+> - Consider making a union for read and write variables
+
+ACK. That would reduce the size a little, but that cleanup could be done later.
+
 > ---
+>  fs/nfs/nfs2xdr.c        |  6 +++---
+>  fs/nfs/nfs3xdr.c        |  8 ++++----
+>  fs/nfs/nfs4xdr.c        |  9 +++++----
+>  fs/nfs/read.c           |  2 +-
+>  fs/nfs/write.c          |  2 +-
+>  include/linux/nfs_xdr.h | 32 ++++++++++++--------------------
+>  6 files changed, 26 insertions(+), 33 deletions(-)
 > 
-> Hi Bruce-
-> 
-> I've done some simple testing. "insecure" still behaves correctly
-> for IP-based clients, and is now unnecessary for RDMA-based clients.
-> Would you consider this for nfsd-next?
-
-Yes, looks god to me; applying for 3.16.
-
---b.
-
-> 
-> 
->  include/linux/sunrpc/svc_xprt.h          |    1 +
->  net/sunrpc/svc_xprt.c                    |    2 +-
->  net/sunrpc/svcsock.c                     |    9 +++++++++
->  net/sunrpc/xprtrdma/svc_rdma_transport.c |    7 +++++++
->  4 files changed, 18 insertions(+), 1 deletions(-)
-> 
-> diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-> index b05963f..0cec1b9 100644
-> --- a/include/linux/sunrpc/svc_xprt.h
-> +++ b/include/linux/sunrpc/svc_xprt.h
-> @@ -24,6 +24,7 @@ struct svc_xprt_ops {
->  	void		(*xpo_release_rqst)(struct svc_rqst *);
->  	void		(*xpo_detach)(struct svc_xprt *);
->  	void		(*xpo_free)(struct svc_xprt *);
-> +	int		(*xpo_secure_port)(struct svc_rqst *);
->  };
->  
->  struct svc_xprt_class {
-> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-> index 06c6ff0..614956f 100644
-> --- a/net/sunrpc/svc_xprt.c
-> +++ b/net/sunrpc/svc_xprt.c
-> @@ -793,7 +793,7 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
->  
->  	clear_bit(XPT_OLD, &xprt->xpt_flags);
->  
-> -	rqstp->rq_secure = svc_port_is_privileged(svc_addr(rqstp));
-> +	rqstp->rq_secure = xprt->xpt_ops->xpo_secure_port(rqstp);
->  	rqstp->rq_chandle.defer = svc_defer;
->  
->  	if (serv->sv_stats)
-> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-> index 43bcb46..0cb34f5 100644
-> --- a/net/sunrpc/svcsock.c
-> +++ b/net/sunrpc/svcsock.c
-> @@ -400,6 +400,12 @@ static void svc_sock_setbufsize(struct socket *sock, unsigned int snd,
->  	release_sock(sock->sk);
->  #endif
->  }
-> +
-> +static int svc_sock_secure_port(struct svc_rqst *rqstp)
-> +{
-> +	return svc_port_is_privileged(svc_addr(rqstp));
-> +}
-> +
+> diff --git a/fs/nfs/nfs2xdr.c b/fs/nfs/nfs2xdr.c
+> index 461cd8b..5f61b83 100644
+> --- a/fs/nfs/nfs2xdr.c
+> +++ b/fs/nfs/nfs2xdr.c
+> @@ -103,7 +103,7 @@ static void print_overflow_msg(const char *func, const struct xdr_stream *xdr)
 >  /*
->   * INET callback when data has been received on the socket.
+>   *	typedef opaque	nfsdata<>;
 >   */
-> @@ -678,6 +684,7 @@ static struct svc_xprt_ops svc_udp_ops = {
->  	.xpo_prep_reply_hdr = svc_udp_prep_reply_hdr,
->  	.xpo_has_wspace = svc_udp_has_wspace,
->  	.xpo_accept = svc_udp_accept,
-> +	.xpo_secure_port = svc_sock_secure_port,
->  };
->  
->  static struct svc_xprt_class svc_udp_class = {
-> @@ -1234,6 +1241,7 @@ static struct svc_xprt_ops svc_tcp_bc_ops = {
->  	.xpo_detach = svc_bc_tcp_sock_detach,
->  	.xpo_free = svc_bc_sock_free,
->  	.xpo_prep_reply_hdr = svc_tcp_prep_reply_hdr,
-> +	.xpo_secure_port = svc_sock_secure_port,
->  };
->  
->  static struct svc_xprt_class svc_tcp_bc_class = {
-> @@ -1272,6 +1280,7 @@ static struct svc_xprt_ops svc_tcp_ops = {
->  	.xpo_prep_reply_hdr = svc_tcp_prep_reply_hdr,
->  	.xpo_has_wspace = svc_tcp_has_wspace,
->  	.xpo_accept = svc_tcp_accept,
-> +	.xpo_secure_port = svc_sock_secure_port,
->  };
->  
->  static struct svc_xprt_class svc_tcp_class = {
-> diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-> index 25688fa..02db8d9 100644
-> --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-> +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-> @@ -65,6 +65,7 @@ static void dto_tasklet_func(unsigned long data);
->  static void svc_rdma_detach(struct svc_xprt *xprt);
->  static void svc_rdma_free(struct svc_xprt *xprt);
->  static int svc_rdma_has_wspace(struct svc_xprt *xprt);
-> +static int svc_rdma_secure_port(struct svc_rqst *);
->  static void rq_cq_reap(struct svcxprt_rdma *xprt);
->  static void sq_cq_reap(struct svcxprt_rdma *xprt);
->  
-> @@ -82,6 +83,7 @@ static struct svc_xprt_ops svc_rdma_ops = {
->  	.xpo_prep_reply_hdr = svc_rdma_prep_reply_hdr,
->  	.xpo_has_wspace = svc_rdma_has_wspace,
->  	.xpo_accept = svc_rdma_accept,
-> +	.xpo_secure_port = svc_rdma_secure_port,
->  };
->  
->  struct svc_xprt_class svc_rdma_class = {
-> @@ -1207,6 +1209,11 @@ static int svc_rdma_has_wspace(struct svc_xprt *xprt)
->  	return 1;
+> -static int decode_nfsdata(struct xdr_stream *xdr, struct nfs_readres *result)
+> +static int decode_nfsdata(struct xdr_stream *xdr, struct nfs_pgio_res *result)
+>  {
+>  	u32 recvd, count;
+>  	__be32 *p;
+> @@ -857,7 +857,7 @@ out_default:
+>   *	};
+>   */
+>  static int nfs2_xdr_dec_readres(struct rpc_rqst *req, struct xdr_stream *xdr,
+> -				struct nfs_readres *result)
+> +				struct nfs_pgio_res *result)
+>  {
+>  	enum nfs_stat status;
+>  	int error;
+> @@ -878,7 +878,7 @@ out_default:
 >  }
 >  
-> +static int svc_rdma_secure_port(struct svc_rqst *rqstp)
-> +{
-> +	return 1;
-> +}
+>  static int nfs2_xdr_dec_writeres(struct rpc_rqst *req, struct xdr_stream *xdr,
+> -				 struct nfs_writeres *result)
+> +				 struct nfs_pgio_res *result)
+>  {
+>  	/* All NFSv2 writes are "file sync" writes */
+>  	result->verf->committed = NFS_FILE_SYNC;
+> diff --git a/fs/nfs/nfs3xdr.c b/fs/nfs/nfs3xdr.c
+> index 02f16c2..8f4cbe7 100644
+> --- a/fs/nfs/nfs3xdr.c
+> +++ b/fs/nfs/nfs3xdr.c
+> @@ -1589,7 +1589,7 @@ out_default:
+>   *	};
+>   */
+>  static int decode_read3resok(struct xdr_stream *xdr,
+> -			     struct nfs_readres *result)
+> +			     struct nfs_pgio_res *result)
+>  {
+>  	u32 eof, count, ocount, recvd;
+>  	__be32 *p;
+> @@ -1625,7 +1625,7 @@ out_overflow:
+>  }
+>  
+>  static int nfs3_xdr_dec_read3res(struct rpc_rqst *req, struct xdr_stream *xdr,
+> -				 struct nfs_readres *result)
+> +				 struct nfs_pgio_res *result)
+>  {
+>  	enum nfs_stat status;
+>  	int error;
+> @@ -1673,7 +1673,7 @@ out_status:
+>   *	};
+>   */
+>  static int decode_write3resok(struct xdr_stream *xdr,
+> -			      struct nfs_writeres *result)
+> +			      struct nfs_pgio_res *result)
+>  {
+>  	__be32 *p;
+>  
+> @@ -1697,7 +1697,7 @@ out_eio:
+>  }
+>  
+>  static int nfs3_xdr_dec_write3res(struct rpc_rqst *req, struct xdr_stream *xdr,
+> -				  struct nfs_writeres *result)
+> +				  struct nfs_pgio_res *result)
+>  {
+>  	enum nfs_stat status;
+>  	int error;
+> diff --git a/fs/nfs/nfs4xdr.c b/fs/nfs/nfs4xdr.c
+> index 032159c..939ae60 100644
+> --- a/fs/nfs/nfs4xdr.c
+> +++ b/fs/nfs/nfs4xdr.c
+> @@ -5087,7 +5087,8 @@ static int decode_putrootfh(struct xdr_stream *xdr)
+>  	return decode_op_hdr(xdr, OP_PUTROOTFH);
+>  }
+>  
+> -static int decode_read(struct xdr_stream *xdr, struct rpc_rqst *req, struct nfs_readres *res)
+> +static int decode_read(struct xdr_stream *xdr, struct rpc_rqst *req,
+> +		       struct nfs_pgio_res *res)
+>  {
+>  	__be32 *p;
+>  	uint32_t count, eof, recvd;
+> @@ -5341,7 +5342,7 @@ static int decode_setclientid_confirm(struct xdr_stream *xdr)
+>  	return decode_op_hdr(xdr, OP_SETCLIENTID_CONFIRM);
+>  }
+>  
+> -static int decode_write(struct xdr_stream *xdr, struct nfs_writeres *res)
+> +static int decode_write(struct xdr_stream *xdr, struct nfs_pgio_res *res)
+>  {
+>  	__be32 *p;
+>  	int status;
+> @@ -6638,7 +6639,7 @@ out:
+>   * Decode Read response
+>   */
+>  static int nfs4_xdr_dec_read(struct rpc_rqst *rqstp, struct xdr_stream *xdr,
+> -			     struct nfs_readres *res)
+> +			     struct nfs_pgio_res *res)
+>  {
+>  	struct compound_hdr hdr;
+>  	int status;
+> @@ -6663,7 +6664,7 @@ out:
+>   * Decode WRITE response
+>   */
+>  static int nfs4_xdr_dec_write(struct rpc_rqst *rqstp, struct xdr_stream *xdr,
+> -			      struct nfs_writeres *res)
+> +			      struct nfs_pgio_res *res)
+>  {
+>  	struct compound_hdr hdr;
+>  	int status;
+> diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+> index 46d5552..473bba3 100644
+> --- a/fs/nfs/read.c
+> +++ b/fs/nfs/read.c
+> @@ -471,7 +471,7 @@ int nfs_readpage_result(struct rpc_task *task, struct nfs_read_data *data)
+>  static void nfs_readpage_retry(struct rpc_task *task, struct nfs_read_data *data)
+>  {
+>  	struct nfs_pgio_args *argp = &data->args;
+> -	struct nfs_readres *resp = &data->res;
+> +	struct nfs_pgio_res  *resp = &data->res;
+>  
+>  	/* This is a short read! */
+>  	nfs_inc_stats(data->header->inode, NFSIOS_SHORTREAD);
+> diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+> index 25ba383..d392a70 100644
+> --- a/fs/nfs/write.c
+> +++ b/fs/nfs/write.c
+> @@ -1389,7 +1389,7 @@ static int nfs_should_remove_suid(const struct inode *inode)
+>  void nfs_writeback_done(struct rpc_task *task, struct nfs_write_data *data)
+>  {
+>  	struct nfs_pgio_args	*argp = &data->args;
+> -	struct nfs_writeres	*resp = &data->res;
+> +	struct nfs_pgio_res	*resp = &data->res;
+>  	struct inode		*inode = data->header->inode;
+>  	int status;
+>  
+> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+> index 5875001..381f832 100644
+> --- a/include/linux/nfs_xdr.h
+> +++ b/include/linux/nfs_xdr.h
+> @@ -489,16 +489,6 @@ struct nfs4_delegreturnres {
+>  };
+>  
+>  /*
+> - * Arguments to the read call.
+> - */
+> -struct nfs_readres {
+> -	struct nfs4_sequence_res	seq_res;
+> -	struct nfs_fattr *	fattr;
+> -	__u32			count;
+> -	int                     eof;
+> -};
+> -
+> -/*
+>   * Arguments to the write call.
+>   */
+>  struct nfs_write_verifier {
+> @@ -510,14 +500,6 @@ struct nfs_writeverf {
+>  	enum nfs3_stable_how	committed;
+>  };
+>  
+> -struct nfs_writeres {
+> -	struct nfs4_sequence_res	seq_res;
+> -	struct nfs_fattr *	fattr;
+> -	struct nfs_writeverf *	verf;
+> -	__u32			count;
+> -	const struct nfs_server *server;
+> -};
+> -
+>  /*
+>   * Arguments shared by the read and write call.
+>   */
+> @@ -535,6 +517,16 @@ struct nfs_pgio_args {
+>  	enum nfs3_stable_how	stable;		/* used by write */
+>  };
+>  
+> +struct nfs_pgio_res {
+> +	struct nfs4_sequence_res	seq_res;
+> +	struct nfs_fattr *	fattr;
+> +	__u32			count;
+> +	int			eof;		/* used by read */
+> +	struct nfs_writeverf *	verf;		/* used by write */
+> +	const struct nfs_server *server;	/* used by write */
+> +
+> +};
 > +
 >  /*
->   * Attempt to register the kvec representing the RPC memory with the
->   * device.
-> 
+>   * Arguments to the commit call.
+>   */
+> @@ -1261,7 +1253,7 @@ struct nfs_read_data {
+>  	struct rpc_task		task;
+>  	struct nfs_fattr	fattr;	/* fattr storage */
+>  	struct nfs_pgio_args	args;
+> -	struct nfs_readres  res;
+> +	struct nfs_pgio_res	res;
+>  	unsigned long		timestamp;	/* For lease renewal */
+>  	int (*read_done_cb) (struct rpc_task *task, struct nfs_read_data *data);
+>  	__u64			mds_offset;
+> @@ -1313,7 +1305,7 @@ struct nfs_write_data {
+>  	struct nfs_fattr	fattr;
+>  	struct nfs_writeverf	verf;
+>  	struct nfs_pgio_args	args;		/* argument struct */
+> -	struct nfs_writeres	res;		/* result struct */
+> +	struct nfs_pgio_res	res;		/* result struct */
+>  	unsigned long		timestamp;	/* For lease renewal */
+>  	int (*write_done_cb) (struct rpc_task *task, struct nfs_write_data *data);
+>  	__u64			mds_offset;	/* Filelayout dense stripe */
+
+
+Reviewed-by: Jeff Layton <jlayton@poochiereds.net>
