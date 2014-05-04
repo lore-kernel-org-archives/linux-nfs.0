@@ -1,58 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:38651 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:49329 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757829AbaEKUxI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 11 May 2014 16:53:08 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 39/43] nfsd4: really fix nfs4err_resource in 4.1 case
-Date: Sun, 11 May 2014 16:52:44 -0400
-Message-Id: <1399841568-19716-40-git-send-email-bfields@redhat.com>
-In-Reply-To: <1399841568-19716-1-git-send-email-bfields@redhat.com>
-References: <1399841568-19716-1-git-send-email-bfields@redhat.com>
+	id S1753761AbaEDMbD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 4 May 2014 08:31:03 -0400
+Date: Sun, 4 May 2014 08:30:11 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Weng Meiling <wengmeiling.weng@huawei.com>
+Cc: stable@vger.kernel.org, greg@kroah.com, lizefan@huawei.com,
+        skinsbursky@parallels.com, h.huangqiang@huawei.com,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2 3.4 0/9] fix the NULL pointer when use nfs in diferent
+ net ns
+Message-ID: <20140504123011.GE21635@fieldses.org>
+References: <1398825824-6360-1-git-send-email-wengmeiling.weng@huawei.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1398825824-6360-1-git-send-email-wengmeiling.weng@huawei.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+ACK to these for stable.--b.
 
-encode_getattr, for example, can return nfserr_resource to indicate it
-ran out of buffer space.  That's not a legal error in the 4.1 case.
-And in the 4.1 case, if we ran out of buffer space, we should have
-exceeded a session limit too.
-
-(Note in 1bc49d83c37cfaf46be357757e592711e67f9809 "nfsd4: fix
-nfs4err_resource in 4.1 case" we originally tried fixing this error
-return before fixing the problem that we could error out while we still
-had lots of available space.  The result was to trade one illegal error
-for another in those cases.  We decided that was helpful, so reverted
-the change in fc208d026be0c7d60db9118583fc62f6ca97743d, and are only
-reinstating it now that we've elimited almost all of those cases.)
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4xdr.c |    7 +++++++
- 1 file changed, 7 insertions(+)
-
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 91a50a0..5ff7bea 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -3900,6 +3900,13 @@ nfsd4_encode_operation(struct nfsd4_compoundres *resp, struct nfsd4_op *op)
- 			space_needed = COMPOUND_ERR_SLACK_SPACE;
- 		op->status = nfsd4_check_resp_size(resp, space_needed);
- 	}
-+	if (op->status == nfserr_resource && nfsd4_has_session(&resp->cstate)) {
-+		struct nfsd4_slot *slot = resp->cstate.slot;
-+
-+		if (slot->sl_flags & NFSD4_SLOT_CACHETHIS)
-+			op->status = nfserr_rep_too_big_to_cache;
-+		else
-+			op->status = nfserr_rep_too_big;
- 	if (op->status == nfserr_resource ||
- 	    op->status == nfserr_rep_too_big ||
- 	    op->status == nfserr_rep_too_big_to_cache) {
--- 
-1.7.9.5
-
+On Wed, Apr 30, 2014 at 10:43:35AM +0800, Weng Meiling wrote:
+> After 3.4 stable apply commit f7fb86c6e639(nfsd: use "init_net"
+> for portmapper). When starting NFSd in a non init_net network 
+> namespace will trigger kernel panic. Because RPCBIND client 
+> will be NULL when register RPC service with the local portmapper
+> in svc_addsock(). This new bug also exists in 3.8, but disappears
+> after patch commit 11f779421a39("containerize NFSd filesystem") in
+> 3.9. 
+> 
+> So backport Stanislav's patches from 3.8 and 3.9 to cleanup init_net
+> reference, and get proper network namespace from superblock instead of 
+> using hard-coded "init_net" to make NFSd keep using a consistent network
+> namespace all the time to resolve the bug.
+> 
+> After this patchset, testing NFS in different network namespace will
+> not trigger kernel panic any more, and other NFS client can use the 
+> NFS server's shared files normally which was started in init_net namespace.
+> 
+> v1->v2:
+> - no commit 7fb86c6e639(nfsd: use "init_net" for portmapper) which has been
+>   apply to 3.4 stable in the first version
+> - one more fix patch commit 3064639423c4(nfsd: check passed socket's net matches
+>   NFSd superblock's one) for commit 11f779421a39("nfsd: containerize NFSd filesystem")
+> - fix build error for commit db6e182c17cb(nfsd: pass net to nfsd_init_socks())
+> 
+> Stanislav Kinsbursky (9):
+>   nfsd: pass net to nfsd_init_socks()
+>   nfsd: pass net to nfsd_startup() and nfsd_shutdown()
+>   nfsd: pass net to nfsd_create_serv()
+>   nfsd: pass net to nfsd_svc()
+>   nfsd: pass net to nfsd_set_nrthreads()
+>   nfsd: pass net to __write_ports() and down
+>   nfsd: pass proper net to nfsd_destroy() from NFSd kthreads
+>   nfsd: containerize NFSd filesystem
+>   nfsd: check passed socket's net matches NFSd superblock's one
+> 
+>  fs/nfsd/nfsctl.c               | 62 +++++++++++++++++++++++++++++-------------
+>  fs/nfsd/nfsd.h                 |  6 ++--
+>  fs/nfsd/nfssvc.c               | 41 ++++++++++++++--------------
+>  include/linux/sunrpc/svcsock.h |  1 +
+>  net/sunrpc/svcsock.c           | 16 +++++++++++
+>  5 files changed, 83 insertions(+), 43 deletions(-)
+> 
+> -- 
+> 1.8.2.2
+> 
+> 
