@@ -1,43 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f179.google.com ([209.85.223.179]:64377 "EHLO
-	mail-ie0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751506AbaERRun (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sun, 18 May 2014 13:50:43 -0400
-Received: by mail-ie0-f179.google.com with SMTP id rd18so1228721iec.10
-        for <linux-nfs@vger.kernel.org>; Sun, 18 May 2014 10:50:42 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Subject: [PATCH] SUNRPC: Fix a module reference issue in rpcsec_gss
-Date: Sun, 18 May 2014 13:50:40 -0400
-Message-Id: <1400435440-4518-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from fieldses.org ([174.143.236.118]:37134 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751372AbaEDMBK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 4 May 2014 08:01:10 -0400
+Date: Sun, 4 May 2014 08:01:08 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Kees Cook <keescook@chromium.org>
+Cc: linux-kernel@vger.kernel.org, Andrew Morton <akpm@linux-foundation.org>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] lockd: avoid warning when CONFIG_SYSCTL undefined
+Message-ID: <20140504120108.GB21635@fieldses.org>
+References: <20140501211502.GA31844@www.outflux.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <20140501211502.GA31844@www.outflux.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-We're not taking a reference in the case where _gss_mech_get_by_pseudoflavor
-loops without finding the correct rpcsec_gss flavour, so why are we
-releasing it?
+On Thu, May 01, 2014 at 02:15:02PM -0700, Kees Cook wrote:
+> When building without CONFIG_SYSCTL, the compiler saw an unused
+> label. This moves the label into the #ifdef it is used under.
 
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- net/sunrpc/auth_gss/gss_mech_switch.c | 4 +---
- 1 file changed, 1 insertion(+), 3 deletions(-)
+Thanks, applying.
 
-diff --git a/net/sunrpc/auth_gss/gss_mech_switch.c b/net/sunrpc/auth_gss/gss_mech_switch.c
-index 27ce26240932..92d5ab99fbf3 100644
---- a/net/sunrpc/auth_gss/gss_mech_switch.c
-+++ b/net/sunrpc/auth_gss/gss_mech_switch.c
-@@ -218,10 +218,8 @@ static struct gss_api_mech *_gss_mech_get_by_pseudoflavor(u32 pseudoflavor)
- 
- 	spin_lock(&registered_mechs_lock);
- 	list_for_each_entry(pos, &registered_mechs, gm_list) {
--		if (!mech_supports_pseudoflavor(pos, pseudoflavor)) {
--			module_put(pos->gm_owner);
-+		if (!mech_supports_pseudoflavor(pos, pseudoflavor))
- 			continue;
--		}
- 		if (try_module_get(pos->gm_owner))
- 			gm = pos;
- 		break;
--- 
-1.9.0
+--b.
 
+> 
+> fs/lockd/svc.c: In function ‘init_nlm’:
+> fs/lockd/svc.c:626:1: warning: label ‘err_sysctl’ defined but not used [-Wunused-label]
+> 
+> Signed-off-by: Kees Cook <keescook@chromium.org>
+> ---
+>  fs/lockd/svc.c |    2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/fs/lockd/svc.c b/fs/lockd/svc.c
+> index 6bf06a07f3e0..2b431f7266c3 100644
+> --- a/fs/lockd/svc.c
+> +++ b/fs/lockd/svc.c
+> @@ -622,8 +622,8 @@ static int __init init_nlm(void)
+>  err_pernet:
+>  #ifdef CONFIG_SYSCTL
+>  	unregister_sysctl_table(nlm_sysctl_table);
+> -#endif
+>  err_sysctl:
+> +#endif
+>  	return err;
+>  }
+>  
+> -- 
+> 1.7.9.5
+> 
+> 
+> -- 
+> Kees Cook
+> Chrome OS Security
