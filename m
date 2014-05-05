@@ -1,71 +1,34 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f172.google.com ([209.85.223.172]:33006 "EHLO
-	mail-ie0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751003AbaESPPP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 May 2014 11:15:15 -0400
-Received: by mail-ie0-f172.google.com with SMTP id tp5so2596472ieb.17
-        for <linux-nfs@vger.kernel.org>; Mon, 19 May 2014 08:15:15 -0700 (PDT)
-From: Weston Andros Adamson <dros@primarydata.com>
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
-Subject: [PATCH 0/8] more pgio cleanup
-Date: Mon, 19 May 2014 11:15:00 -0400
-Message-Id: <1400512508-7530-1-git-send-email-dros@primarydata.com>
+Received: from mail-pa0-f50.google.com ([209.85.220.50]:40541 "EHLO
+	mail-pa0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755458AbaEEJmj (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 May 2014 05:42:39 -0400
+Received: by mail-pa0-f50.google.com with SMTP id fb1so1914519pad.37
+        for <linux-nfs@vger.kernel.org>; Mon, 05 May 2014 02:42:38 -0700 (PDT)
+Date: Mon, 5 May 2014 02:42:35 -0700 (PDT)
+From: David Rientjes <rientjes@google.com>
+To: Marc Dietrich <marvin24@gmx.de>
+cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Mel Gorman <mgorman@suse.de>
+Subject: Re: nfs oom on 3.15
+In-Reply-To: <2562595.ix17LO7uqe@fb07-iapwap2>
+Message-ID: <alpine.DEB.2.02.1405050241180.11071@chino.kir.corp.google.com>
+References: <2562595.ix17LO7uqe@fb07-iapwap2>
+MIME-Version: 1.0
+Content-Type: TEXT/PLAIN; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This patchset is more cleanup related to the recent pgio changes.
+On Mon, 5 May 2014, Marc Dietrich wrote:
 
-These patches apply on top of my "pgio" branch at:
+> Hi,
+> 
+> this is spaming my log quite a bit.
+> 
+> Any idea?
+> 
 
- git://git.linux-nfs.org/projects/dros/linux-nfs
-
-Most of these patches are dealing with the merge of nfs_pgio_data into
-nfs_pgio_header. My recent patchset "[PATCH v3 00/18] nfs: support
-multiple requests per page" changes the pgio layer so that an
-nfs_pgio_header only ever has one nfs_pgio_data, which allows us to
-simplify a lot of things.
-
-I still have some testing to do, I'd appreciate any review, especially
-with the reference counting change.
-
-I'll add this patchset to the 'pgio' branch once I get some initial
-feedback.
-
-Thanks,
- -dros
-
-Weston Andros Adamson (8):
-  nfs: move nfs_pgio_data and remove nfs_rw_header
-  nfs: rename members of nfs_pgio_data
-  nfs: merge nfs_pgio_data into _header
-  nfs: remove unused writeverf code
-  nfs: remove pgio_header refcount, related cleanup
-  pnfs: clean up *_resend_to_mds
-  nfs: clean up function decls in nfs_page.h
-  pnfs: merge identical functions
-
- fs/nfs/blocklayout/blocklayout.c |  99 ++++++++-------
- fs/nfs/direct.c                  |  33 ++---
- fs/nfs/internal.h                |  11 +-
- fs/nfs/nfs3proc.c                |  21 ++--
- fs/nfs/nfs4_fs.h                 |   6 +-
- fs/nfs/nfs4filelayout.c          | 179 +++++++++++++--------------
- fs/nfs/nfs4proc.c                | 105 ++++++++--------
- fs/nfs/nfs4trace.h               |  28 ++---
- fs/nfs/objlayout/objio_osd.c     |  24 ++--
- fs/nfs/objlayout/objlayout.c     |  81 ++++++-------
- fs/nfs/objlayout/objlayout.h     |   8 +-
- fs/nfs/pagelist.c                | 254 ++++++++++++++++++---------------------
- fs/nfs/pnfs.c                    | 172 ++++++++------------------
- fs/nfs/pnfs.h                    |  18 ++-
- fs/nfs/proc.c                    |  27 +++--
- fs/nfs/read.c                    |  48 ++++----
- fs/nfs/write.c                   |  80 +++++-------
- include/linux/nfs_page.h         |  49 ++++----
- include/linux/nfs_xdr.h          |  33 ++---
- 19 files changed, 567 insertions(+), 709 deletions(-)
-
--- 
-1.8.5.2 (Apple Git-48)
-
+I think rpc_malloc() really wants to be __GFP_NOWARN so that the warnings 
+are suppressed, doing order-1 allocations with GFP_NOWAIT is never 
+guaranteed to succeed and will have difficulty if memory is fragmented.  
