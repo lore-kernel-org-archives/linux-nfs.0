@@ -1,86 +1,47 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:58377 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752245AbaEWOAn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 23 May 2014 10:00:43 -0400
-Date: Fri, 23 May 2014 10:00:42 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 3/4] NFSD: Adds macro EX_UUID_LEN for exports uuid's
- length
-Message-ID: <20140523140042.GM25423@fieldses.org>
-References: <537F3853.3090109@gmail.com>
+Received: from mail-qc0-f182.google.com ([209.85.216.182]:64183 "EHLO
+	mail-qc0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753222AbaEELPI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 May 2014 07:15:08 -0400
+Received: by mail-qc0-f182.google.com with SMTP id e16so5058795qcx.13
+        for <linux-nfs@vger.kernel.org>; Mon, 05 May 2014 04:15:07 -0700 (PDT)
+Date: Mon, 5 May 2014 07:08:12 -0400
+From: Jeff Layton <jlayton@poochiereds.net>
+To: David Rientjes <rientjes@google.com>
+Cc: Marc Dietrich <marvin24@gmx.de>, linux-kernel@vger.kernel.org,
+        linux-nfs@vger.kernel.org,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Mel Gorman <mgorman@suse.de>
+Subject: Re: nfs oom on 3.15
+Message-ID: <20140505070812.470c66bd@tlielax.poochiereds.net>
+In-Reply-To: <alpine.DEB.2.02.1405050241180.11071@chino.kir.corp.google.com>
+References: <2562595.ix17LO7uqe@fb07-iapwap2>
+	<alpine.DEB.2.02.1405050241180.11071@chino.kir.corp.google.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <537F3853.3090109@gmail.com>
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, May 23, 2014 at 08:00:19PM +0800, Kinglong Mee wrote:
-> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+On Mon, 5 May 2014 02:42:35 -0700 (PDT)
+David Rientjes <rientjes@google.com> wrote:
 
-Applying with some minor fixups after xdr encoding stuff.
-
---b.
-
-> ---
->  fs/nfsd/export.c  | 6 +++---
->  fs/nfsd/export.h  | 1 +
->  fs/nfsd/nfs4xdr.c | 2 +-
->  3 files changed, 5 insertions(+), 4 deletions(-)
+> On Mon, 5 May 2014, Marc Dietrich wrote:
 > 
-> diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
-> index 8771f41..90d37b6 100644
-> --- a/fs/nfsd/export.c
-> +++ b/fs/nfsd/export.c
-> @@ -487,10 +487,10 @@ uuid_parse(char **mesg, char *buf, unsigned char **puuid)
->  
->  	/* expect a 16 byte uuid encoded as \xXXXX... */
->  	len = qword_get(mesg, buf, PAGE_SIZE);
-> -	if (len != 16)
-> +	if (len != EX_UUID_LEN)
->  		return -EINVAL;
->  
-> -	*puuid = kmemdup(buf, 16, GFP_KERNEL);
-> +	*puuid = kmemdup(buf, EX_UUID_LEN, GFP_KERNEL);
->  	if (*puuid == NULL)
->  		return -ENOMEM;
->  
-> @@ -663,7 +663,7 @@ static int svc_export_show(struct seq_file *m,
->  		if (exp->ex_uuid) {
->  			int i;
->  			seq_puts(m, ",uuid=");
-> -			for (i=0; i<16; i++) {
-> +			for (i = 0; i < EX_UUID_LEN; i++) {
->  				if ((i&3) == 0 && i)
->  					seq_putc(m, ':');
->  				seq_printf(m, "%02x", exp->ex_uuid[i]);
-> diff --git a/fs/nfsd/export.h b/fs/nfsd/export.h
-> index d7939a6..c7d4ed0 100644
-> --- a/fs/nfsd/export.h
-> +++ b/fs/nfsd/export.h
-> @@ -37,6 +37,7 @@ struct nfsd4_fs_locations {
->   * spkm3i, and spkm3p (and using all 8 at once should be rare).
->   */
->  #define MAX_SECINFO_LIST	8
-> +#define EX_UUID_LEN		16
->  
->  struct exp_flavor_info {
->  	u32	pseudoflavor;
-> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> index 18881f3..071b0be 100644
-> --- a/fs/nfsd/nfs4xdr.c
-> +++ b/fs/nfsd/nfs4xdr.c
-> @@ -2250,7 +2250,7 @@ nfsd4_encode_fattr(struct svc_fh *fhp, struct svc_export *exp,
->  			WRITE32(MINOR(stat.dev));
->  			break;
->  		case FSIDSOURCE_UUID:
-> -			WRITEMEM(exp->ex_uuid, 16);
-> +			WRITEMEM(exp->ex_uuid, EX_UUID_LEN);
->  			break;
->  		}
->  	}
-> -- 
-> 1.9.0
+> > Hi,
+> > 
+> > this is spaming my log quite a bit.
+> > 
+> > Any idea?
+> > 
 > 
+> I think rpc_malloc() really wants to be __GFP_NOWARN so that the warnings 
+> are suppressed, doing order-1 allocations with GFP_NOWAIT is never 
+> guaranteed to succeed and will have difficulty if memory is fragmented.  
+
+
+Yes. We made a similar fix to xprt_alloc_slot a while back. The RPC
+engine has a mechanism to handle retrying these allocations, so this
+warning isn't particularly helpful.
+
+-- 
+Jeff Layton <jlayton@poochiereds.net>
