@@ -1,48 +1,63 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from st11p02mm-asmtpout002.mac.com ([17.172.220.237]:50169 "EHLO
-	st11p02mm-asmtp002.mac.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1750993AbaEAUDj convert rfc822-to-8bit
-	(ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 1 May 2014 16:03:39 -0400
-MIME-version: 1.0
-Content-type: text/plain; charset=windows-1252
-Received: from hobbes.nimgs.com ([184.188.181.148])
- by st11p02mm-asmtp002.mac.com
- (Oracle Communications Messaging Server 7u4-27.08(7.0.4.27.7) 64bit (built Aug
- 22 2013)) with ESMTPSA id <0N4W00FIDVPZ15B0@st11p02mm-asmtp002.mac.com> for
- linux-nfs@vger.kernel.org; Thu, 01 May 2014 20:03:37 +0000 (GMT)
-Subject: Re: idmap problems with chown as root
-From: Craig Yoshioka <craigyk@me.com>
-In-reply-to: <CAHQdGtTFtJYYkhnnxmpgtY7MapL49A1+2w6NBNy3o8NOKvbXWA@mail.gmail.com>
-Date: Thu, 01 May 2014 13:03:30 -0700
-Cc: Steve Dickson <SteveD@redhat.com>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-id: <7EBFCEF4-8C76-4BF2-B04A-B70F811DCF0A@me.com>
-References: <2541339C-AF61-4ED7-8F50-E4B3CA2C924F@me.com>
- <5362994C.8010900@RedHat.com>
- <CAHQdGtTFtJYYkhnnxmpgtY7MapL49A1+2w6NBNy3o8NOKvbXWA@mail.gmail.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:37069 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755146AbaEEIxW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 May 2014 04:53:22 -0400
+Date: Mon, 5 May 2014 01:53:16 -0700
+From: Christoph Hellwig <hch@infradead.org>
 To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: Bruce Fields <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 60/70] NFSd: Ensure lookup_clientid() takes client_lock
+Message-ID: <20140505085316.GA21789@infradead.org>
+References: <1397846704-14567-52-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-53-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-54-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-55-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-56-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-57-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-58-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-59-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-60-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-61-git-send-email-trond.myklebust@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1397846704-14567-61-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> Does the following help on the client?
-> 
-> echo N >/sys/module/nfs/parameters/nfs4_disable_idmapping
-> 
+>  static __be32 nfsd4_get_session_locked(struct nfsd4_session *ses)
+>  {
+>  	__be32 status;
+> @@ -3614,18 +3623,27 @@ static __be32 lookup_clientid(clientid_t *clid, struct nfsd4_session *session, s
+>  {
+>  	struct nfs4_client *found;
+>  
+> +	spin_lock(&nn->client_lock);
+>  	if (session != NULL) {
+>  		found = session->se_client;
+>  		if (!same_clid(&found->cl_clientid, clid))
+> -			return nfserr_stale_clientid;
+> +			goto out_stale;
 
-After restarting idmapd and remounting that did work.  Thanks.
+Do we really need the lock for the sessions case?  I don't tink
+se_client can change under us.
 
-It’s a good workaround until I can test the recent patch that stops mapping uid 0 to nobody.  
+Btw, I wonder if it makes sense to split the current lookup_clientid
+into two helpers for the sessions vs non-sessions case as all but one
+caller already have conditionals for 4.0 vs later anyway, so something
+like:
 
+static struct nfs4_client *client_from_session(struct nfsd4_session *session,
+		clientid_t *clid)
+{
+	if (!same_clid(&session->se_client->cl_clientid, clid))
+		return NULL;
+	return session->se_client;
+}
 
-> -- 
-> Trond Myklebust
-> 
-> Linux NFS client maintainer, PrimaryData
-> 
-> trond.myklebust@primarydata.com
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+static __be32 lookup_40_client(clientid_t *clid, struct nfsd_net *nn,
+	struct nfs4_client **clp)
+{
+	...
+}
 
