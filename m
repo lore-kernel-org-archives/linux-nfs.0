@@ -1,212 +1,122 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:18920 "EHLO mx12.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:48999 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750807AbaETSI0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 May 2014 14:08:26 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
-CC: <dros@primarydata.com>, <hch@infradead.org>
-Subject: [RFC 01/12] nfs: Create a common pnfs_pageio_reset_mds() function
-Date: Tue, 20 May 2014 14:08:08 -0400
-Message-ID: <1400609299-32558-2-git-send-email-Anna.Schumaker@Netapp.com>
-In-Reply-To: <1400609299-32558-1-git-send-email-Anna.Schumaker@Netapp.com>
-References: <1400609299-32558-1-git-send-email-Anna.Schumaker@Netapp.com>
+	id S1750782AbaEFVNH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 May 2014 17:13:07 -0400
+Date: Tue, 6 May 2014 17:13:06 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Steve Wise <swise@opengridcomputing.com>
+Cc: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org,
+        tom@opengridcomputing.com
+Subject: Re: [PATCH V2 RFC 1/3] svcrdma: Transport and header file changes
+Message-ID: <20140506211306.GR18281@fieldses.org>
+References: <20140506174621.18208.24242.stgit@build.ogc.int>
+ <20140506174626.18208.95519.stgit@build.ogc.int>
+ <20140506192157.GJ18281@fieldses.org>
+ <53694DF1.5010808@opengridcomputing.com>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <53694DF1.5010808@opengridcomputing.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-bsize never changes once it is set in the pageio descriptor, so we don't
-need to add extra code to reset it.  I also moved this function into
-pnfs.c because it is only called from pnfs.
+On Tue, May 06, 2014 at 04:02:41PM -0500, Steve Wise wrote:
+> On 5/6/2014 2:21 PM, J. Bruce Fields wrote:
+> >On Tue, May 06, 2014 at 12:46:27PM -0500, Steve Wise wrote:
+> >>From: Tom Tucker <tom@opengridcomputing.com>
+> >>
+> >>Change poll logic to grab up to 6 completions at a time.
+> >>
+> >>RDMA write and send completions no longer deal with fastreg objects.
+> >>
+> >>Set SVCRDMA_DEVCAP_FAST_REG and allocate a dma_mr based on the device
+> >>capabilities.
+> >>
+> >>Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+> >>Signed-off-by: Steve Wise <swise@opengridcomputing.com>
+> >>---
+> >>
+> >>  include/linux/sunrpc/svc_rdma.h          |    3 -
+> >>  net/sunrpc/xprtrdma/svc_rdma_transport.c |   62 +++++++++++++++++-------------
+> >>  2 files changed, 37 insertions(+), 28 deletions(-)
+> >>
+> >>diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
+> >>index 0b8e3e6..5cf99a0 100644
+> >>--- a/include/linux/sunrpc/svc_rdma.h
+> >>+++ b/include/linux/sunrpc/svc_rdma.h
+> >>@@ -115,14 +115,13 @@ struct svc_rdma_fastreg_mr {
+> >>  	struct list_head frmr_list;
+> >>  };
+> >>  struct svc_rdma_req_map {
+> >>-	struct svc_rdma_fastreg_mr *frmr;
+> >>  	unsigned long count;
+> >>  	union {
+> >>  		struct kvec sge[RPCSVC_MAXPAGES];
+> >>  		struct svc_rdma_chunk_sge ch[RPCSVC_MAXPAGES];
+> >>+		unsigned long lkey[RPCSVC_MAXPAGES];
+> >>  	};
+> >>  };
+> >>-#define RDMACTXT_F_FAST_UNREG	1
+> >>  #define RDMACTXT_F_LAST_CTXT	2
+> >>  #define	SVCRDMA_DEVCAP_FAST_REG		1	/* fast mr registration */
+> >>diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> >>index 25688fa..2c5b201 100644
+> >>--- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> >>+++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> >>@@ -1,4 +1,5 @@
+> >>  /*
+> >>+ * Copyright (c) 2014 Open Grid Computing, Inc. All rights reserved.
+> >>   * Copyright (c) 2005-2007 Network Appliance, Inc. All rights reserved.
+> >>   *
+> >>   * This software is available to you under a choice of one of two
+> >>@@ -160,7 +161,6 @@ struct svc_rdma_req_map *svc_rdma_get_req_map(void)
+> >>  		schedule_timeout_uninterruptible(msecs_to_jiffies(500));
+> >>  	}
+> >>  	map->count = 0;
+> >>-	map->frmr = NULL;
+> >>  	return map;
+> >>  }
+> >>@@ -336,22 +336,21 @@ static void process_context(struct svcxprt_rdma *xprt,
+> >>  	switch (ctxt->wr_op) {
+> >>  	case IB_WR_SEND:
+> >>-		if (test_bit(RDMACTXT_F_FAST_UNREG, &ctxt->flags))
+> >>-			svc_rdma_put_frmr(xprt, ctxt->frmr);
+> >>+		BUG_ON(ctxt->frmr);
+> >>  		svc_rdma_put_context(ctxt, 1);
+> >>  		break;
+> >>  	case IB_WR_RDMA_WRITE:
+> >>+		BUG_ON(ctxt->frmr);
+> >>  		svc_rdma_put_context(ctxt, 0);
+> >>  		break;
+> >>  	case IB_WR_RDMA_READ:
+> >>  	case IB_WR_RDMA_READ_WITH_INV:
+> >>+		svc_rdma_put_frmr(xprt, ctxt->frmr);
+> >>  		if (test_bit(RDMACTXT_F_LAST_CTXT, &ctxt->flags)) {
+> >>  			struct svc_rdma_op_ctxt *read_hdr = ctxt->read_hdr;
+> >>  			BUG_ON(!read_hdr);
+> >>-			if (test_bit(RDMACTXT_F_FAST_UNREG, &ctxt->flags))
+> >>-				svc_rdma_put_frmr(xprt, ctxt->frmr);
+> >>  			spin_lock_bh(&xprt->sc_rq_dto_lock);
+> >>  			set_bit(XPT_DATA, &xprt->sc_xprt.xpt_flags);
+> >>  			list_add_tail(&read_hdr->dto_q,
+> >>@@ -363,6 +362,7 @@ static void process_context(struct svcxprt_rdma *xprt,
+> >>  		break;
+> >>  	default:
+> >>+		BUG_ON(1);
+> >>  		printk(KERN_ERR "svcrdma: unexpected completion type, "
+> >>  		       "opcode=%d\n",
+> >>  		       ctxt->wr_op);
+> >Note the printk's unreachable now.  Should some of these BUG_ON()'s be
+> >WARN_ON()'s?
+> 
+> I'll remove the printk.  And if any of the new BUG_ON()'s can be
+> WARN_ON(), then I'll do that.  But only if proceeding after a
+> WARN_ON() results in a working server.
 
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
----
- fs/nfs/blocklayout/blocklayout.c |  4 ++--
- fs/nfs/internal.h                |  2 --
- fs/nfs/nfs4filelayout.c          |  4 ++--
- fs/nfs/pagelist.c                |  1 +
- fs/nfs/pnfs.c                    | 14 ++++++++++----
- fs/nfs/pnfs.h                    |  1 +
- fs/nfs/read.c                    |  7 -------
- fs/nfs/write.c                   |  8 --------
- 8 files changed, 16 insertions(+), 25 deletions(-)
+The other thing to keep in mind is what the consequences of the BUG
+might be--e.g. if we BUG while holding an important lock then that lock
+never gets dropped and the system can freeze pretty quickly--possibly
+before we get any useful information to the system logs.  On a quick
+check that doesn't look like the case here, though.
 
-diff --git a/fs/nfs/blocklayout/blocklayout.c b/fs/nfs/blocklayout/blocklayout.c
-index 04ac32b..eb0f5a7 100644
---- a/fs/nfs/blocklayout/blocklayout.c
-+++ b/fs/nfs/blocklayout/blocklayout.c
-@@ -1183,7 +1183,7 @@ bl_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
- {
- 	if (pgio->pg_dreq != NULL &&
- 	    !is_aligned_req(req, SECTOR_SIZE))
--		nfs_pageio_reset_read_mds(pgio);
-+		pnfs_pageio_reset_mds(pgio);
- 	else
- 		pnfs_generic_pg_init_read(pgio, req);
- }
-@@ -1231,7 +1231,7 @@ bl_pg_init_write(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
- {
- 	if (pgio->pg_dreq != NULL &&
- 	    !is_aligned_req(req, PAGE_CACHE_SIZE)) {
--		nfs_pageio_reset_write_mds(pgio);
-+		pnfs_pageio_reset_mds(pgio);
- 	} else {
- 		u64 wb_size;
- 		if (pgio->pg_dreq == NULL)
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index e0e2b6d..5b64177 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -406,7 +406,6 @@ extern void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
- 			struct inode *inode, bool force_mds,
- 			const struct nfs_pgio_completion_ops *compl_ops);
- extern void nfs_read_prepare(struct rpc_task *task, void *calldata);
--extern void nfs_pageio_reset_read_mds(struct nfs_pageio_descriptor *pgio);
- 
- /* super.c */
- void nfs_clone_super(struct super_block *, struct nfs_mount_info *);
-@@ -423,7 +422,6 @@ int nfs_remount(struct super_block *sb, int *flags, char *raw_data);
- extern void nfs_pageio_init_write(struct nfs_pageio_descriptor *pgio,
- 			struct inode *inode, int ioflags, bool force_mds,
- 			const struct nfs_pgio_completion_ops *compl_ops);
--extern void nfs_pageio_reset_write_mds(struct nfs_pageio_descriptor *pgio);
- extern void nfs_commit_free(struct nfs_commit_data *p);
- extern void nfs_write_prepare(struct rpc_task *task, void *calldata);
- extern void nfs_commit_prepare(struct rpc_task *task, void *calldata);
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 37e0b65..9586cfa 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -957,7 +957,7 @@ filelayout_pg_init_read(struct nfs_pageio_descriptor *pgio,
- 					   GFP_KERNEL);
- 	/* If no lseg, fall back to read through mds */
- 	if (pgio->pg_lseg == NULL)
--		nfs_pageio_reset_read_mds(pgio);
-+		pnfs_pageio_reset_mds(pgio);
- }
- 
- static void
-@@ -986,7 +986,7 @@ filelayout_pg_init_write(struct nfs_pageio_descriptor *pgio,
- 	}
- 	return;
- out_mds:
--	nfs_pageio_reset_write_mds(pgio);
-+	pnfs_pageio_reset_mds(pgio);
- }
- 
- static const struct nfs_pageio_ops filelayout_pg_read_ops = {
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index 0fcd34a..d1670a2 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -1040,3 +1040,4 @@ const struct nfs_pageio_ops nfs_pgio_rw_ops = {
- 	.pg_test = nfs_generic_pg_test,
- 	.pg_doio = nfs_generic_pg_pgios,
- };
-+EXPORT_SYMBOL_GPL(nfs_pgio_rw_ops);
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 79792a4..8da7ff6 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1381,6 +1381,12 @@ out_forget_reply:
- 	goto out;
- }
- 
-+void pnfs_pageio_reset_mds(struct nfs_pageio_descriptor *pgio)
-+{
-+	pgio->pg_ops = &nfs_pgio_rw_ops;
-+}
-+EXPORT_SYMBOL_GPL(pnfs_pageio_reset_mds);
-+
- void
- pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
- {
-@@ -1401,7 +1407,7 @@ pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *r
- 					   GFP_KERNEL);
- 	/* If no lseg, fall back to read through mds */
- 	if (pgio->pg_lseg == NULL)
--		nfs_pageio_reset_read_mds(pgio);
-+		pnfs_pageio_reset_mds(pgio);
- 
- }
- EXPORT_SYMBOL_GPL(pnfs_generic_pg_init_read);
-@@ -1420,7 +1426,7 @@ pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio,
- 					   GFP_NOFS);
- 	/* If no lseg, fall back to write through mds */
- 	if (pgio->pg_lseg == NULL)
--		nfs_pageio_reset_write_mds(pgio);
-+		pnfs_pageio_reset_mds(pgio);
- }
- EXPORT_SYMBOL_GPL(pnfs_generic_pg_init_write);
- 
-@@ -1510,7 +1516,7 @@ pnfs_write_through_mds(struct nfs_pageio_descriptor *desc,
- {
- 	if (!test_and_set_bit(NFS_IOHDR_REDO, &hdr->flags)) {
- 		list_splice_tail_init(&hdr->pages, &desc->pg_list);
--		nfs_pageio_reset_write_mds(desc);
-+		pnfs_pageio_reset_mds(desc);
- 		desc->pg_recoalesce = 1;
- 	}
- 	nfs_generic_pgio_reset(hdr);
-@@ -1627,7 +1633,7 @@ pnfs_read_through_mds(struct nfs_pageio_descriptor *desc,
- {
- 	if (!test_and_set_bit(NFS_IOHDR_REDO, &hdr->flags)) {
- 		list_splice_tail_init(&hdr->pages, &desc->pg_list);
--		nfs_pageio_reset_read_mds(desc);
-+		pnfs_pageio_reset_mds(desc);
- 		desc->pg_recoalesce = 1;
- 	}
- 	nfs_generic_pgio_reset(hdr);
-diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-index 552b2e9..52310df 100644
---- a/fs/nfs/pnfs.h
-+++ b/fs/nfs/pnfs.h
-@@ -186,6 +186,7 @@ void pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *, struct nfs_page *
- int pnfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc);
- void pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio,
- 			        struct nfs_page *req, u64 wb_size);
-+void pnfs_pageio_reset_mds(struct nfs_pageio_descriptor *pgio);
- int pnfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc);
- size_t pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio,
- 			    struct nfs_page *prev, struct nfs_page *req);
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index b1532b7..c9217e6 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -68,13 +68,6 @@ void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
- }
- EXPORT_SYMBOL_GPL(nfs_pageio_init_read);
- 
--void nfs_pageio_reset_read_mds(struct nfs_pageio_descriptor *pgio)
--{
--	pgio->pg_ops = &nfs_pgio_rw_ops;
--	pgio->pg_bsize = NFS_SERVER(pgio->pg_inode)->rsize;
--}
--EXPORT_SYMBOL_GPL(nfs_pageio_reset_read_mds);
--
- int nfs_readpage_async(struct nfs_open_context *ctx, struct inode *inode,
- 		       struct page *page)
- {
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 1baca45..2929648 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -1063,14 +1063,6 @@ void nfs_pageio_init_write(struct nfs_pageio_descriptor *pgio,
- }
- EXPORT_SYMBOL_GPL(nfs_pageio_init_write);
- 
--void nfs_pageio_reset_write_mds(struct nfs_pageio_descriptor *pgio)
--{
--	pgio->pg_ops = &nfs_pgio_rw_ops;
--	pgio->pg_bsize = NFS_SERVER(pgio->pg_inode)->wsize;
--}
--EXPORT_SYMBOL_GPL(nfs_pageio_reset_write_mds);
--
--
- void nfs_commit_prepare(struct rpc_task *task, void *calldata)
- {
- 	struct nfs_commit_data *data = calldata;
--- 
-1.9.2
-
+--b.
