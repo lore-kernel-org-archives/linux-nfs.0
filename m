@@ -1,276 +1,371 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:38516 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751663AbaEKUwy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 11 May 2014 16:52:54 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 01/43] nfsd4: embed xdr_stream in nfsd4_compoundres
-Date: Sun, 11 May 2014 16:52:06 -0400
-Message-Id: <1399841568-19716-2-git-send-email-bfields@redhat.com>
-In-Reply-To: <1399841568-19716-1-git-send-email-bfields@redhat.com>
-References: <1399841568-19716-1-git-send-email-bfields@redhat.com>
+Received: from smtp.opengridcomputing.com ([72.48.136.20]:54122 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750857AbaEFRqi (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 May 2014 13:46:38 -0400
+From: Steve Wise <swise@opengridcomputing.com>
+Subject: [PATCH V2 RFC 3/3] svcrdma: Sendto changes
+To: bfields@fieldses.org
+Cc: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org,
+        tom@opengridcomputing.com
+Date: Tue, 06 May 2014 12:46:37 -0500
+Message-ID: <20140506174637.18208.61344.stgit@build.ogc.int>
+In-Reply-To: <20140506174621.18208.24242.stgit@build.ogc.int>
+References: <20140506174621.18208.24242.stgit@build.ogc.int>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+From: Tom Tucker <tom@opengridcomputing.com>
 
-This is a mechanical transformation with no change in behavior.
+Don't use fast-register mrs for the source of RDMA writes and sends.
+Instead, use either a local dma lkey or a dma_mr lkey based on what the
+device supports.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+Signed-off-by: Steve Wise <swise@opengridcomputing.com>
 ---
- fs/nfsd/nfs4proc.c  |   12 +++++-----
- fs/nfsd/nfs4state.c |    8 +++----
- fs/nfsd/nfs4xdr.c   |   65 ++++++++++++++++++++++++++-------------------------
- fs/nfsd/xdr4.h      |    4 +---
- 4 files changed, 44 insertions(+), 45 deletions(-)
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 2c1ee70..46370f5 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1268,13 +1268,13 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
- 	u32		plen = 0;
- 	__be32		status;
+ net/sunrpc/xprtrdma/svc_rdma_sendto.c |  230 +++------------------------------
+ 1 files changed, 22 insertions(+), 208 deletions(-)
+
+diff --git a/net/sunrpc/xprtrdma/svc_rdma_sendto.c b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+index 7e024a5..49fd21a 100644
+--- a/net/sunrpc/xprtrdma/svc_rdma_sendto.c
++++ b/net/sunrpc/xprtrdma/svc_rdma_sendto.c
+@@ -1,4 +1,5 @@
+ /*
++ * Copyright (c) 2014 Open Grid Computing, Inc. All rights reserved.
+  * Copyright (c) 2005-2006 Network Appliance, Inc. All rights reserved.
+  *
+  * This software is available to you under a choice of one of two
+@@ -49,152 +50,6 @@
  
--	resp->xbuf = &rqstp->rq_res;
--	resp->p = rqstp->rq_res.head[0].iov_base +
-+	resp->xdr.buf = &rqstp->rq_res;
-+	resp->xdr.p = rqstp->rq_res.head[0].iov_base +
- 						rqstp->rq_res.head[0].iov_len;
--	resp->tagp = resp->p;
-+	resp->tagp = resp->xdr.p;
- 	/* reserve space for: taglen, tag, and opcnt */
--	resp->p += 2 + XDR_QUADLEN(args->taglen);
--	resp->end = rqstp->rq_res.head[0].iov_base + PAGE_SIZE;
-+	resp->xdr.p += 2 + XDR_QUADLEN(args->taglen);
-+	resp->xdr.end = rqstp->rq_res.head[0].iov_base + PAGE_SIZE;
- 	resp->taglen = args->taglen;
- 	resp->tag = args->tag;
- 	resp->opcnt = 0;
-@@ -1326,7 +1326,7 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
- 		 * failed response to the next operation.  If we don't
- 		 * have enough room, fail with ERR_RESOURCE.
- 		 */
--		slack_bytes = (char *)resp->end - (char *)resp->p;
-+		slack_bytes = (char *)resp->xdr.end - (char *)resp->xdr.p;
- 		if (slack_bytes < COMPOUND_SLACK_SPACE
- 				+ COMPOUND_ERR_SLACK_SPACE) {
- 			BUG_ON(slack_bytes < COMPOUND_ERR_SLACK_SPACE);
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index fac2683..05cc3eb 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1569,10 +1569,10 @@ nfsd4_store_cache_entry(struct nfsd4_compoundres *resp)
- 		slot->sl_datalen = 0;
- 		return;
- 	}
--	slot->sl_datalen = (char *)resp->p - (char *)resp->cstate.datap;
-+	slot->sl_datalen = (char *)resp->xdr.p - (char *)resp->cstate.datap;
- 	base = (char *)resp->cstate.datap -
--					(char *)resp->xbuf->head[0].iov_base;
--	if (read_bytes_from_xdr_buf(resp->xbuf, base, slot->sl_data,
-+					(char *)resp->xdr.buf->head[0].iov_base;
-+	if (read_bytes_from_xdr_buf(resp->xdr.buf, base, slot->sl_data,
- 				    slot->sl_datalen))
- 		WARN("%s: sessions DRC could not cache compound\n", __func__);
- 	return;
-@@ -1626,7 +1626,7 @@ nfsd4_replay_cache_entry(struct nfsd4_compoundres *resp,
- 	memcpy(resp->cstate.datap, slot->sl_data, slot->sl_datalen);
+ #define RPCDBG_FACILITY	RPCDBG_SVCXPRT
  
- 	resp->opcnt = slot->sl_opcnt;
--	resp->p = resp->cstate.datap + XDR_QUADLEN(slot->sl_datalen);
-+	resp->xdr.p = resp->cstate.datap + XDR_QUADLEN(slot->sl_datalen);
- 	status = slot->sl_status;
+-/* Encode an XDR as an array of IB SGE
+- *
+- * Assumptions:
+- * - head[0] is physically contiguous.
+- * - tail[0] is physically contiguous.
+- * - pages[] is not physically or virtually contiguous and consists of
+- *   PAGE_SIZE elements.
+- *
+- * Output:
+- * SGE[0]              reserved for RCPRDMA header
+- * SGE[1]              data from xdr->head[]
+- * SGE[2..sge_count-2] data from xdr->pages[]
+- * SGE[sge_count-1]    data from xdr->tail.
+- *
+- * The max SGE we need is the length of the XDR / pagesize + one for
+- * head + one for tail + one for RPCRDMA header. Since RPCSVC_MAXPAGES
+- * reserves a page for both the request and the reply header, and this
+- * array is only concerned with the reply we are assured that we have
+- * on extra page for the RPCRMDA header.
+- */
+-static int fast_reg_xdr(struct svcxprt_rdma *xprt,
+-			struct xdr_buf *xdr,
+-			struct svc_rdma_req_map *vec)
+-{
+-	int sge_no;
+-	u32 sge_bytes;
+-	u32 page_bytes;
+-	u32 page_off;
+-	int page_no = 0;
+-	u8 *frva;
+-	struct svc_rdma_fastreg_mr *frmr;
+-
+-	frmr = svc_rdma_get_frmr(xprt);
+-	if (IS_ERR(frmr))
+-		return -ENOMEM;
+-	vec->frmr = frmr;
+-
+-	/* Skip the RPCRDMA header */
+-	sge_no = 1;
+-
+-	/* Map the head. */
+-	frva = (void *)((unsigned long)(xdr->head[0].iov_base) & PAGE_MASK);
+-	vec->sge[sge_no].iov_base = xdr->head[0].iov_base;
+-	vec->sge[sge_no].iov_len = xdr->head[0].iov_len;
+-	vec->count = 2;
+-	sge_no++;
+-
+-	/* Map the XDR head */
+-	frmr->kva = frva;
+-	frmr->direction = DMA_TO_DEVICE;
+-	frmr->access_flags = 0;
+-	frmr->map_len = PAGE_SIZE;
+-	frmr->page_list_len = 1;
+-	page_off = (unsigned long)xdr->head[0].iov_base & ~PAGE_MASK;
+-	frmr->page_list->page_list[page_no] =
+-		ib_dma_map_page(xprt->sc_cm_id->device,
+-				virt_to_page(xdr->head[0].iov_base),
+-				page_off,
+-				PAGE_SIZE - page_off,
+-				DMA_TO_DEVICE);
+-	if (ib_dma_mapping_error(xprt->sc_cm_id->device,
+-				 frmr->page_list->page_list[page_no]))
+-		goto fatal_err;
+-	atomic_inc(&xprt->sc_dma_used);
+-
+-	/* Map the XDR page list */
+-	page_off = xdr->page_base;
+-	page_bytes = xdr->page_len + page_off;
+-	if (!page_bytes)
+-		goto encode_tail;
+-
+-	/* Map the pages */
+-	vec->sge[sge_no].iov_base = frva + frmr->map_len + page_off;
+-	vec->sge[sge_no].iov_len = page_bytes;
+-	sge_no++;
+-	while (page_bytes) {
+-		struct page *page;
+-
+-		page = xdr->pages[page_no++];
+-		sge_bytes = min_t(u32, page_bytes, (PAGE_SIZE - page_off));
+-		page_bytes -= sge_bytes;
+-
+-		frmr->page_list->page_list[page_no] =
+-			ib_dma_map_page(xprt->sc_cm_id->device,
+-					page, page_off,
+-					sge_bytes, DMA_TO_DEVICE);
+-		if (ib_dma_mapping_error(xprt->sc_cm_id->device,
+-					 frmr->page_list->page_list[page_no]))
+-			goto fatal_err;
+-
+-		atomic_inc(&xprt->sc_dma_used);
+-		page_off = 0; /* reset for next time through loop */
+-		frmr->map_len += PAGE_SIZE;
+-		frmr->page_list_len++;
+-	}
+-	vec->count++;
+-
+- encode_tail:
+-	/* Map tail */
+-	if (0 == xdr->tail[0].iov_len)
+-		goto done;
+-
+-	vec->count++;
+-	vec->sge[sge_no].iov_len = xdr->tail[0].iov_len;
+-
+-	if (((unsigned long)xdr->tail[0].iov_base & PAGE_MASK) ==
+-	    ((unsigned long)xdr->head[0].iov_base & PAGE_MASK)) {
+-		/*
+-		 * If head and tail use the same page, we don't need
+-		 * to map it again.
+-		 */
+-		vec->sge[sge_no].iov_base = xdr->tail[0].iov_base;
+-	} else {
+-		void *va;
+-
+-		/* Map another page for the tail */
+-		page_off = (unsigned long)xdr->tail[0].iov_base & ~PAGE_MASK;
+-		va = (void *)((unsigned long)xdr->tail[0].iov_base & PAGE_MASK);
+-		vec->sge[sge_no].iov_base = frva + frmr->map_len + page_off;
+-
+-		frmr->page_list->page_list[page_no] =
+-		    ib_dma_map_page(xprt->sc_cm_id->device, virt_to_page(va),
+-				    page_off,
+-				    PAGE_SIZE,
+-				    DMA_TO_DEVICE);
+-		if (ib_dma_mapping_error(xprt->sc_cm_id->device,
+-					 frmr->page_list->page_list[page_no]))
+-			goto fatal_err;
+-		atomic_inc(&xprt->sc_dma_used);
+-		frmr->map_len += PAGE_SIZE;
+-		frmr->page_list_len++;
+-	}
+-
+- done:
+-	if (svc_rdma_fastreg(xprt, frmr))
+-		goto fatal_err;
+-
+-	return 0;
+-
+- fatal_err:
+-	printk("svcrdma: Error fast registering memory for xprt %p\n", xprt);
+-	vec->frmr = NULL;
+-	svc_rdma_put_frmr(xprt, frmr);
+-	return -EIO;
+-}
+-
+ static int map_xdr(struct svcxprt_rdma *xprt,
+ 		   struct xdr_buf *xdr,
+ 		   struct svc_rdma_req_map *vec)
+@@ -208,9 +63,6 @@ static int map_xdr(struct svcxprt_rdma *xprt,
+ 	BUG_ON(xdr->len !=
+ 	       (xdr->head[0].iov_len + xdr->page_len + xdr->tail[0].iov_len));
  
- 	return status;
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 18881f3..ef65ffc 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1747,10 +1747,10 @@ static void write_cinfo(__be32 **p, struct nfsd4_change_info *c)
+-	if (xprt->sc_frmr_pg_list_len)
+-		return fast_reg_xdr(xprt, xdr, vec);
+-
+ 	/* Skip the first sge, this is for the RPCRDMA header */
+ 	sge_no = 1;
+ 
+@@ -282,8 +134,6 @@ static dma_addr_t dma_map_xdr(struct svcxprt_rdma *xprt,
  }
  
- #define RESERVE_SPACE(nbytes)	do {				\
--	p = resp->p;						\
--	BUG_ON(p + XDR_QUADLEN(nbytes) > resp->end);		\
-+	p = resp->xdr.p;						\
-+	BUG_ON(p + XDR_QUADLEN(nbytes) > resp->xdr.end);		\
- } while (0)
--#define ADJUST_ARGS()		resp->p = p
-+#define ADJUST_ARGS()		resp->xdr.p = p
+ /* Assumptions:
+- * - We are using FRMR
+- *     - or -
+  * - The specified write_len can be represented in sc_max_sge * PAGE_SIZE
+  */
+ static int send_write(struct svcxprt_rdma *xprt, struct svc_rqst *rqstp,
+@@ -327,23 +177,16 @@ static int send_write(struct svcxprt_rdma *xprt, struct svc_rqst *rqstp,
+ 		sge_bytes = min_t(size_t,
+ 			  bc, vec->sge[xdr_sge_no].iov_len-sge_off);
+ 		sge[sge_no].length = sge_bytes;
+-		if (!vec->frmr) {
+-			sge[sge_no].addr =
+-				dma_map_xdr(xprt, &rqstp->rq_res, xdr_off,
+-					    sge_bytes, DMA_TO_DEVICE);
+-			xdr_off += sge_bytes;
+-			if (ib_dma_mapping_error(xprt->sc_cm_id->device,
+-						 sge[sge_no].addr))
+-				goto err;
+-			atomic_inc(&xprt->sc_dma_used);
+-			sge[sge_no].lkey = xprt->sc_dma_lkey;
+-		} else {
+-			sge[sge_no].addr = (unsigned long)
+-				vec->sge[xdr_sge_no].iov_base + sge_off;
+-			sge[sge_no].lkey = vec->frmr->mr->lkey;
+-		}
++		sge[sge_no].addr =
++			dma_map_xdr(xprt, &rqstp->rq_res, xdr_off,
++				    sge_bytes, DMA_TO_DEVICE);
++		xdr_off += sge_bytes;
++		if (ib_dma_mapping_error(xprt->sc_cm_id->device,
++					 sge[sge_no].addr))
++			goto err;
++		atomic_inc(&xprt->sc_dma_used);
++		sge[sge_no].lkey = xprt->sc_dma_lkey;
+ 		ctxt->count++;
+-		ctxt->frmr = vec->frmr;
+ 		sge_off = 0;
+ 		sge_no++;
+ 		xdr_sge_no++;
+@@ -369,7 +212,6 @@ static int send_write(struct svcxprt_rdma *xprt, struct svc_rqst *rqstp,
+ 	return 0;
+  err:
+ 	svc_rdma_unmap_dma(ctxt);
+-	svc_rdma_put_frmr(xprt, vec->frmr);
+ 	svc_rdma_put_context(ctxt, 0);
+ 	/* Fatal error, close transport */
+ 	return -EIO;
+@@ -397,10 +239,7 @@ static int send_write_chunks(struct svcxprt_rdma *xprt,
+ 	res_ary = (struct rpcrdma_write_array *)
+ 		&rdma_resp->rm_body.rm_chunks[1];
  
- /* Encode as an array of strings the string given with components
-  * separated @sep, escaped with esc_enter and esc_exit.
-@@ -2751,9 +2751,9 @@ nfsd4_encode_getattr(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4
- 	if (nfserr)
- 		return nfserr;
+-	if (vec->frmr)
+-		max_write = vec->frmr->map_len;
+-	else
+-		max_write = xprt->sc_max_sge * PAGE_SIZE;
++	max_write = xprt->sc_max_sge * PAGE_SIZE;
  
--	buflen = resp->end - resp->p - (COMPOUND_ERR_SLACK_SPACE >> 2);
-+	buflen = resp->xdr.end - resp->xdr.p - (COMPOUND_ERR_SLACK_SPACE >> 2);
- 	nfserr = nfsd4_encode_fattr(fhp, fhp->fh_export, fhp->fh_dentry,
--				    &resp->p, buflen, getattr->ga_bmval,
-+				    &resp->xdr.p, buflen, getattr->ga_bmval,
- 				    resp->rqstp, 0);
- 	return nfserr;
+ 	/* Write chunks start at the pagelist */
+ 	for (xdr_off = rqstp->rq_res.head[0].iov_len, chunk_no = 0;
+@@ -472,10 +311,7 @@ static int send_reply_chunks(struct svcxprt_rdma *xprt,
+ 	res_ary = (struct rpcrdma_write_array *)
+ 		&rdma_resp->rm_body.rm_chunks[2];
+ 
+-	if (vec->frmr)
+-		max_write = vec->frmr->map_len;
+-	else
+-		max_write = xprt->sc_max_sge * PAGE_SIZE;
++	max_write = xprt->sc_max_sge * PAGE_SIZE;
+ 
+ 	/* xdr offset starts at RPC message */
+ 	nchunks = ntohl(arg_ary->wc_nchunks);
+@@ -545,7 +381,6 @@ static int send_reply(struct svcxprt_rdma *rdma,
+ 		      int byte_count)
+ {
+ 	struct ib_send_wr send_wr;
+-	struct ib_send_wr inv_wr;
+ 	int sge_no;
+ 	int sge_bytes;
+ 	int page_no;
+@@ -559,7 +394,6 @@ static int send_reply(struct svcxprt_rdma *rdma,
+ 		       "svcrdma: could not post a receive buffer, err=%d."
+ 		       "Closing transport %p.\n", ret, rdma);
+ 		set_bit(XPT_CLOSE, &rdma->sc_xprt.xpt_flags);
+-		svc_rdma_put_frmr(rdma, vec->frmr);
+ 		svc_rdma_put_context(ctxt, 0);
+ 		return -ENOTCONN;
+ 	}
+@@ -567,11 +401,6 @@ static int send_reply(struct svcxprt_rdma *rdma,
+ 	/* Prepare the context */
+ 	ctxt->pages[0] = page;
+ 	ctxt->count = 1;
+-	ctxt->frmr = vec->frmr;
+-	if (vec->frmr)
+-		set_bit(RDMACTXT_F_FAST_UNREG, &ctxt->flags);
+-	else
+-		clear_bit(RDMACTXT_F_FAST_UNREG, &ctxt->flags);
+ 
+ 	/* Prepare the SGE for the RPCRDMA Header */
+ 	ctxt->sge[0].lkey = rdma->sc_dma_lkey;
+@@ -590,21 +419,15 @@ static int send_reply(struct svcxprt_rdma *rdma,
+ 		int xdr_off = 0;
+ 		sge_bytes = min_t(size_t, vec->sge[sge_no].iov_len, byte_count);
+ 		byte_count -= sge_bytes;
+-		if (!vec->frmr) {
+-			ctxt->sge[sge_no].addr =
+-				dma_map_xdr(rdma, &rqstp->rq_res, xdr_off,
+-					    sge_bytes, DMA_TO_DEVICE);
+-			xdr_off += sge_bytes;
+-			if (ib_dma_mapping_error(rdma->sc_cm_id->device,
+-						 ctxt->sge[sge_no].addr))
+-				goto err;
+-			atomic_inc(&rdma->sc_dma_used);
+-			ctxt->sge[sge_no].lkey = rdma->sc_dma_lkey;
+-		} else {
+-			ctxt->sge[sge_no].addr = (unsigned long)
+-				vec->sge[sge_no].iov_base;
+-			ctxt->sge[sge_no].lkey = vec->frmr->mr->lkey;
+-		}
++		ctxt->sge[sge_no].addr =
++			dma_map_xdr(rdma, &rqstp->rq_res, xdr_off,
++				    sge_bytes, DMA_TO_DEVICE);
++		xdr_off += sge_bytes;
++		if (ib_dma_mapping_error(rdma->sc_cm_id->device,
++					 ctxt->sge[sge_no].addr))
++			goto err;
++		atomic_inc(&rdma->sc_dma_used);
++		ctxt->sge[sge_no].lkey = rdma->sc_dma_lkey;
+ 		ctxt->sge[sge_no].length = sge_bytes;
+ 	}
+ 	BUG_ON(byte_count != 0);
+@@ -627,6 +450,7 @@ static int send_reply(struct svcxprt_rdma *rdma,
+ 			ctxt->sge[page_no+1].length = 0;
+ 	}
+ 	rqstp->rq_next_page = rqstp->rq_respages + 1;
++
+ 	BUG_ON(sge_no > rdma->sc_max_sge);
+ 	memset(&send_wr, 0, sizeof send_wr);
+ 	ctxt->wr_op = IB_WR_SEND;
+@@ -635,15 +459,6 @@ static int send_reply(struct svcxprt_rdma *rdma,
+ 	send_wr.num_sge = sge_no;
+ 	send_wr.opcode = IB_WR_SEND;
+ 	send_wr.send_flags =  IB_SEND_SIGNALED;
+-	if (vec->frmr) {
+-		/* Prepare INVALIDATE WR */
+-		memset(&inv_wr, 0, sizeof inv_wr);
+-		inv_wr.opcode = IB_WR_LOCAL_INV;
+-		inv_wr.send_flags = IB_SEND_SIGNALED;
+-		inv_wr.ex.invalidate_rkey =
+-			vec->frmr->mr->lkey;
+-		send_wr.next = &inv_wr;
+-	}
+ 
+ 	ret = svc_rdma_send(rdma, &send_wr);
+ 	if (ret)
+@@ -653,7 +468,6 @@ static int send_reply(struct svcxprt_rdma *rdma,
+ 
+  err:
+ 	svc_rdma_unmap_dma(ctxt);
+-	svc_rdma_put_frmr(rdma, vec->frmr);
+ 	svc_rdma_put_context(ctxt, 1);
+ 	return -EIO;
  }
-@@ -2953,7 +2953,7 @@ nfsd4_encode_read(struct nfsd4_compoundres *resp, __be32 nfserr,
- 
- 	if (nfserr)
- 		return nfserr;
--	if (resp->xbuf->page_len)
-+	if (resp->xdr.buf->page_len)
- 		return nfserr_resource;
- 
- 	RESERVE_SPACE(8); /* eof flag and byte count */
-@@ -2991,18 +2991,18 @@ nfsd4_encode_read(struct nfsd4_compoundres *resp, __be32 nfserr,
- 	WRITE32(eof);
- 	WRITE32(maxcount);
- 	ADJUST_ARGS();
--	resp->xbuf->head[0].iov_len = (char*)p
--					- (char*)resp->xbuf->head[0].iov_base;
--	resp->xbuf->page_len = maxcount;
-+	resp->xdr.buf->head[0].iov_len = (char*)p
-+				- (char*)resp->xdr.buf->head[0].iov_base;
-+	resp->xdr.buf->page_len = maxcount;
- 
- 	/* Use rest of head for padding and remaining ops: */
--	resp->xbuf->tail[0].iov_base = p;
--	resp->xbuf->tail[0].iov_len = 0;
-+	resp->xdr.buf->tail[0].iov_base = p;
-+	resp->xdr.buf->tail[0].iov_len = 0;
- 	if (maxcount&3) {
- 		RESERVE_SPACE(4);
- 		WRITE32(0);
--		resp->xbuf->tail[0].iov_base += maxcount&3;
--		resp->xbuf->tail[0].iov_len = 4 - (maxcount&3);
-+		resp->xdr.buf->tail[0].iov_base += maxcount&3;
-+		resp->xdr.buf->tail[0].iov_len = 4 - (maxcount&3);
- 		ADJUST_ARGS();
- 	}
- 	return 0;
-@@ -3017,7 +3017,7 @@ nfsd4_encode_readlink(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd
- 
- 	if (nfserr)
- 		return nfserr;
--	if (resp->xbuf->page_len)
-+	if (resp->xdr.buf->page_len)
- 		return nfserr_resource;
- 	if (!*resp->rqstp->rq_next_page)
- 		return nfserr_resource;
-@@ -3041,18 +3041,18 @@ nfsd4_encode_readlink(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd
- 
- 	WRITE32(maxcount);
- 	ADJUST_ARGS();
--	resp->xbuf->head[0].iov_len = (char*)p
--				- (char*)resp->xbuf->head[0].iov_base;
--	resp->xbuf->page_len = maxcount;
-+	resp->xdr.buf->head[0].iov_len = (char*)p
-+				- (char*)resp->xdr.buf->head[0].iov_base;
-+	resp->xdr.buf->page_len = maxcount;
- 
- 	/* Use rest of head for padding and remaining ops: */
--	resp->xbuf->tail[0].iov_base = p;
--	resp->xbuf->tail[0].iov_len = 0;
-+	resp->xdr.buf->tail[0].iov_base = p;
-+	resp->xdr.buf->tail[0].iov_len = 0;
- 	if (maxcount&3) {
- 		RESERVE_SPACE(4);
- 		WRITE32(0);
--		resp->xbuf->tail[0].iov_base += maxcount&3;
--		resp->xbuf->tail[0].iov_len = 4 - (maxcount&3);
-+		resp->xdr.buf->tail[0].iov_base += maxcount&3;
-+		resp->xdr.buf->tail[0].iov_len = 4 - (maxcount&3);
- 		ADJUST_ARGS();
- 	}
- 	return 0;
-@@ -3068,7 +3068,7 @@ nfsd4_encode_readdir(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4
- 
- 	if (nfserr)
- 		return nfserr;
--	if (resp->xbuf->page_len)
-+	if (resp->xdr.buf->page_len)
- 		return nfserr_resource;
- 	if (!*resp->rqstp->rq_next_page)
- 		return nfserr_resource;
-@@ -3080,7 +3080,8 @@ nfsd4_encode_readdir(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4
- 	WRITE32(0);
- 	WRITE32(0);
- 	ADJUST_ARGS();
--	resp->xbuf->head[0].iov_len = ((char*)resp->p) - (char*)resp->xbuf->head[0].iov_base;
-+	resp->xdr.buf->head[0].iov_len = ((char*)resp->xdr.p)
-+				- (char*)resp->xdr.buf->head[0].iov_base;
- 	tailbase = p;
- 
- 	maxcount = PAGE_SIZE;
-@@ -3121,14 +3122,14 @@ nfsd4_encode_readdir(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4
- 	p = readdir->buffer;
- 	*p++ = 0;	/* no more entries */
- 	*p++ = htonl(readdir->common.err == nfserr_eof);
--	resp->xbuf->page_len = ((char*)p) -
-+	resp->xdr.buf->page_len = ((char*)p) -
- 		(char*)page_address(*(resp->rqstp->rq_next_page-1));
- 
- 	/* Use rest of head for padding and remaining ops: */
--	resp->xbuf->tail[0].iov_base = tailbase;
--	resp->xbuf->tail[0].iov_len = 0;
--	resp->p = resp->xbuf->tail[0].iov_base;
--	resp->end = resp->p + (PAGE_SIZE - resp->xbuf->head[0].iov_len)/4;
-+	resp->xdr.buf->tail[0].iov_base = tailbase;
-+	resp->xdr.buf->tail[0].iov_len = 0;
-+	resp->xdr.p = resp->xdr.buf->tail[0].iov_base;
-+	resp->xdr.end = resp->xdr.p + (PAGE_SIZE - resp->xdr.buf->head[0].iov_len)/4;
- 
- 	return 0;
- err_no_verf:
-@@ -3587,10 +3588,10 @@ __be32 nfsd4_check_resp_size(struct nfsd4_compoundres *resp, u32 pad)
- 	session = resp->cstate.session;
- 
- 	if (xb->page_len == 0) {
--		length = (char *)resp->p - (char *)xb->head[0].iov_base + pad;
-+		length = (char *)resp->xdr.p - (char *)xb->head[0].iov_base + pad;
- 	} else {
- 		if (xb->tail[0].iov_base && xb->tail[0].iov_len > 0)
--			tlen = (char *)resp->p - (char *)xb->tail[0].iov_base;
-+			tlen = (char *)resp->xdr.p - (char *)xb->tail[0].iov_base;
- 
- 		length = xb->head[0].iov_len + xb->page_len + tlen + pad;
- 	}
-@@ -3629,7 +3630,7 @@ nfsd4_encode_operation(struct nfsd4_compoundres *resp, struct nfsd4_op *op)
- 		op->status = nfsd4_check_resp_size(resp, 0);
- 	if (so) {
- 		so->so_replay.rp_status = op->status;
--		so->so_replay.rp_buflen = (char *)resp->p - (char *)(statp+1);
-+		so->so_replay.rp_buflen = (char *)resp->xdr.p - (char *)(statp+1);
- 		memcpy(so->so_replay.rp_buf, statp+1, so->so_replay.rp_buflen);
- 	}
- status:
-@@ -3731,7 +3732,7 @@ nfs4svc_encode_compoundres(struct svc_rqst *rqstp, __be32 *p, struct nfsd4_compo
- 		iov = &rqstp->rq_res.tail[0];
- 	else
- 		iov = &rqstp->rq_res.head[0];
--	iov->iov_len = ((char*)resp->p) - (char*)iov->iov_base;
-+	iov->iov_len = ((char*)resp->xdr.p) - (char*)iov->iov_base;
- 	BUG_ON(iov->iov_len > PAGE_SIZE);
- 	if (nfsd4_has_session(cs)) {
- 		struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index 5ea7df3..6884d70 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -506,9 +506,7 @@ struct nfsd4_compoundargs {
- 
- struct nfsd4_compoundres {
- 	/* scratch variables for XDR encode */
--	__be32 *			p;
--	__be32 *			end;
--	struct xdr_buf *		xbuf;
-+	struct xdr_stream		xdr;
- 	struct svc_rqst *		rqstp;
- 
- 	u32				taglen;
--- 
-1.7.9.5
 
