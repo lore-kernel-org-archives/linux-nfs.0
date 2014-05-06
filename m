@@ -1,14 +1,14 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from casper.infradead.org ([85.118.1.10]:33951 "EHLO
+Received: from casper.infradead.org ([85.118.1.10]:33949 "EHLO
 	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751337AbaEFRfD (ORCPT
+	with ESMTP id S1751252AbaEFRfD (ORCPT
 	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 May 2014 13:35:03 -0400
 From: Christoph Hellwig <hch@lst.de>
 To: "J. Bruce Fields" <bfields@fieldses.org>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 3/4] nfsd: move <linux/nfsd/stats.h> to fs/nfsd
-Date: Tue,  6 May 2014 19:37:15 +0200
-Message-Id: <1399397836-31948-4-git-send-email-hch@lst.de>
+Subject: [PATCH 2/4] nfsd: move <linux/nfsd/export.h> to fs/nfsd
+Date: Tue,  6 May 2014 19:37:14 +0200
+Message-Id: <1399397836-31948-3-git-send-email-hch@lst.de>
 In-Reply-To: <1399397836-31948-1-git-send-email-hch@lst.de>
 References: <1399397836-31948-1-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -18,140 +18,277 @@ There are no legitimate users outside of fs/nfsd, so move it there.
 
 Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/nfsd/nfsd.h             |    2 +-
- fs/nfsd/stats.c            |    1 -
- fs/nfsd/stats.h            |   43 ++++++++++++++++++++++++++++++++++++++++++
- include/linux/nfsd/stats.h |   45 --------------------------------------------
- 4 files changed, 44 insertions(+), 47 deletions(-)
- create mode 100644 fs/nfsd/stats.h
- delete mode 100644 include/linux/nfsd/stats.h
+ fs/lockd/svcsubs.c          |    1 -
+ fs/nfsd/export.h            |  109 +++++++++++++++++++++++++++++++++++++++++
+ fs/nfsd/nfsd.h              |    3 +-
+ include/linux/nfsd/export.h |  114 -------------------------------------------
+ 4 files changed, 111 insertions(+), 116 deletions(-)
+ create mode 100644 fs/nfsd/export.h
+ delete mode 100644 include/linux/nfsd/export.h
 
+diff --git a/fs/lockd/svcsubs.c b/fs/lockd/svcsubs.c
+index 7ec6b10..b6f3b84 100644
+--- a/fs/lockd/svcsubs.c
++++ b/fs/lockd/svcsubs.c
+@@ -14,7 +14,6 @@
+ #include <linux/mutex.h>
+ #include <linux/sunrpc/svc.h>
+ #include <linux/sunrpc/addr.h>
+-#include <linux/nfsd/export.h>
+ #include <linux/lockd/lockd.h>
+ #include <linux/lockd/share.h>
+ #include <linux/module.h>
+diff --git a/fs/nfsd/export.h b/fs/nfsd/export.h
+new file mode 100644
+index 0000000..d7939a6
+--- /dev/null
++++ b/fs/nfsd/export.h
+@@ -0,0 +1,109 @@
++/*
++ * Copyright (C) 1995-1997 Olaf Kirch <okir@monad.swb.de>
++ */
++#ifndef NFSD_EXPORT_H
++#define NFSD_EXPORT_H
++
++#include <linux/sunrpc/cache.h>
++#include <uapi/linux/nfsd/export.h>
++
++struct knfsd_fh;
++struct svc_fh;
++struct svc_rqst;
++
++/*
++ * FS Locations
++ */
++
++#define MAX_FS_LOCATIONS	128
++
++struct nfsd4_fs_location {
++	char *hosts; /* colon separated list of hosts */
++	char *path;  /* slash separated list of path components */
++};
++
++struct nfsd4_fs_locations {
++	uint32_t locations_count;
++	struct nfsd4_fs_location *locations;
++/* If we're not actually serving this data ourselves (only providing a
++ * list of replicas that do serve it) then we set "migrated": */
++	int migrated;
++};
++
++/*
++ * We keep an array of pseudoflavors with the export, in order from most
++ * to least preferred.  For the foreseeable future, we don't expect more
++ * than the eight pseudoflavors null, unix, krb5, krb5i, krb5p, skpm3,
++ * spkm3i, and spkm3p (and using all 8 at once should be rare).
++ */
++#define MAX_SECINFO_LIST	8
++
++struct exp_flavor_info {
++	u32	pseudoflavor;
++	u32	flags;
++};
++
++struct svc_export {
++	struct cache_head	h;
++	struct auth_domain *	ex_client;
++	int			ex_flags;
++	struct path		ex_path;
++	kuid_t			ex_anon_uid;
++	kgid_t			ex_anon_gid;
++	int			ex_fsid;
++	unsigned char *		ex_uuid; /* 16 byte fsid */
++	struct nfsd4_fs_locations ex_fslocs;
++	int			ex_nflavors;
++	struct exp_flavor_info	ex_flavors[MAX_SECINFO_LIST];
++	struct cache_detail	*cd;
++};
++
++/* an "export key" (expkey) maps a filehandlefragement to an
++ * svc_export for a given client.  There can be several per export,
++ * for the different fsid types.
++ */
++struct svc_expkey {
++	struct cache_head	h;
++
++	struct auth_domain *	ek_client;
++	int			ek_fsidtype;
++	u32			ek_fsid[6];
++
++	struct path		ek_path;
++};
++
++#define EX_ISSYNC(exp)		(!((exp)->ex_flags & NFSEXP_ASYNC))
++#define EX_NOHIDE(exp)		((exp)->ex_flags & NFSEXP_NOHIDE)
++#define EX_WGATHER(exp)		((exp)->ex_flags & NFSEXP_GATHERED_WRITES)
++
++int nfsexp_flags(struct svc_rqst *rqstp, struct svc_export *exp);
++__be32 check_nfsd_access(struct svc_export *exp, struct svc_rqst *rqstp);
++
++/*
++ * Function declarations
++ */
++int			nfsd_export_init(struct net *);
++void			nfsd_export_shutdown(struct net *);
++void			nfsd_export_flush(struct net *);
++struct svc_export *	rqst_exp_get_by_name(struct svc_rqst *,
++					     struct path *);
++struct svc_export *	rqst_exp_parent(struct svc_rqst *,
++					struct path *);
++struct svc_export *	rqst_find_fsidzero_export(struct svc_rqst *);
++int			exp_rootfh(struct net *, struct auth_domain *,
++					char *path, struct knfsd_fh *, int maxsize);
++__be32			exp_pseudoroot(struct svc_rqst *, struct svc_fh *);
++__be32			nfserrno(int errno);
++
++static inline void exp_put(struct svc_export *exp)
++{
++	cache_put(&exp->h, exp->cd);
++}
++
++static inline void exp_get(struct svc_export *exp)
++{
++	cache_get(&exp->h);
++}
++struct svc_export * rqst_exp_find(struct svc_rqst *, int, u32 *);
++
++#endif /* NFSD_EXPORT_H */
 diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-index 72004ca..7a07f9c 100644
+index 7d5c310..72004ca 100644
 --- a/fs/nfsd/nfsd.h
 +++ b/fs/nfsd/nfsd.h
-@@ -19,8 +19,8 @@
+@@ -19,9 +19,10 @@
  #include <linux/sunrpc/msg_prot.h>
  
  #include <linux/nfsd/debug.h>
--#include <linux/nfsd/stats.h>
+-#include <linux/nfsd/export.h>
+ #include <linux/nfsd/stats.h>
  
-+#include "stats.h"
- #include "export.h"
- 
++#include "export.h"
++
  /*
-diff --git a/fs/nfsd/stats.c b/fs/nfsd/stats.c
-index 6d4521f..cd90878 100644
---- a/fs/nfsd/stats.c
-+++ b/fs/nfsd/stats.c
-@@ -24,7 +24,6 @@
- #include <linux/seq_file.h>
- #include <linux/module.h>
- #include <linux/sunrpc/stats.h>
--#include <linux/nfsd/stats.h>
- #include <net/net_namespace.h>
- 
- #include "nfsd.h"
-diff --git a/fs/nfsd/stats.h b/fs/nfsd/stats.h
-new file mode 100644
-index 0000000..a5c944b
---- /dev/null
-+++ b/fs/nfsd/stats.h
-@@ -0,0 +1,43 @@
-+/*
-+ * Statistics for NFS server.
-+ *
-+ * Copyright (C) 1995, 1996 Olaf Kirch <okir@monad.swb.de>
-+ */
-+#ifndef _NFSD_STATS_H
-+#define _NFSD_STATS_H
-+
-+#include <uapi/linux/nfsd/stats.h>
-+
-+
-+struct nfsd_stats {
-+	unsigned int	rchits;		/* repcache hits */
-+	unsigned int	rcmisses;	/* repcache hits */
-+	unsigned int	rcnocache;	/* uncached reqs */
-+	unsigned int	fh_stale;	/* FH stale error */
-+	unsigned int	fh_lookup;	/* dentry cached */
-+	unsigned int	fh_anon;	/* anon file dentry returned */
-+	unsigned int	fh_nocache_dir;	/* filehandle not found in dcache */
-+	unsigned int	fh_nocache_nondir;	/* filehandle not found in dcache */
-+	unsigned int	io_read;	/* bytes returned to read requests */
-+	unsigned int	io_write;	/* bytes passed in write requests */
-+	unsigned int	th_cnt;		/* number of available threads */
-+	unsigned int	th_usage[10];	/* number of ticks during which n perdeciles
-+					 * of available threads were in use */
-+	unsigned int	th_fullcnt;	/* number of times last free thread was used */
-+	unsigned int	ra_size;	/* size of ra cache */
-+	unsigned int	ra_depth[11];	/* number of times ra entry was found that deep
-+					 * in the cache (10percentiles). [10] = not found */
-+#ifdef CONFIG_NFSD_V4
-+	unsigned int	nfs4_opcount[LAST_NFS4_OP + 1];	/* count of individual nfsv4 operations */
-+#endif
-+
-+};
-+
-+
-+extern struct nfsd_stats	nfsdstats;
-+extern struct svc_stat		nfsd_svcstats;
-+
-+void	nfsd_stat_init(void);
-+void	nfsd_stat_shutdown(void);
-+
-+#endif /* _NFSD_STATS_H */
-diff --git a/include/linux/nfsd/stats.h b/include/linux/nfsd/stats.h
+  * nfsd version
+  */
+diff --git a/include/linux/nfsd/export.h b/include/linux/nfsd/export.h
 deleted file mode 100644
-index e75b254..0000000
---- a/include/linux/nfsd/stats.h
+index b12c4e5..0000000
+--- a/include/linux/nfsd/export.h
 +++ /dev/null
-@@ -1,45 +0,0 @@
+@@ -1,114 +0,0 @@
 -/*
-- * linux/include/linux/nfsd/stats.h
+- * include/linux/nfsd/export.h
+- * 
+- * Public declarations for NFS exports. The definitions for the
+- * syscall interface are in nfsctl.h
 - *
-- * Statistics for NFS server.
-- *
-- * Copyright (C) 1995, 1996 Olaf Kirch <okir@monad.swb.de>
+- * Copyright (C) 1995-1997 Olaf Kirch <okir@monad.swb.de>
 - */
--#ifndef LINUX_NFSD_STATS_H
--#define LINUX_NFSD_STATS_H
+-#ifndef NFSD_EXPORT_H
+-#define NFSD_EXPORT_H
 -
--#include <uapi/linux/nfsd/stats.h>
+-#include <linux/sunrpc/cache.h>
+-#include <uapi/linux/nfsd/export.h>
 -
+-struct knfsd_fh;
+-struct svc_fh;
+-struct svc_rqst;
 -
--struct nfsd_stats {
--	unsigned int	rchits;		/* repcache hits */
--	unsigned int	rcmisses;	/* repcache hits */
--	unsigned int	rcnocache;	/* uncached reqs */
--	unsigned int	fh_stale;	/* FH stale error */
--	unsigned int	fh_lookup;	/* dentry cached */
--	unsigned int	fh_anon;	/* anon file dentry returned */
--	unsigned int	fh_nocache_dir;	/* filehandle not found in dcache */
--	unsigned int	fh_nocache_nondir;	/* filehandle not found in dcache */
--	unsigned int	io_read;	/* bytes returned to read requests */
--	unsigned int	io_write;	/* bytes passed in write requests */
--	unsigned int	th_cnt;		/* number of available threads */
--	unsigned int	th_usage[10];	/* number of ticks during which n perdeciles
--					 * of available threads were in use */
--	unsigned int	th_fullcnt;	/* number of times last free thread was used */
--	unsigned int	ra_size;	/* size of ra cache */
--	unsigned int	ra_depth[11];	/* number of times ra entry was found that deep
--					 * in the cache (10percentiles). [10] = not found */
--#ifdef CONFIG_NFSD_V4
--	unsigned int	nfs4_opcount[LAST_NFS4_OP + 1];	/* count of individual nfsv4 operations */
--#endif
+-/*
+- * FS Locations
+- */
 -
+-#define MAX_FS_LOCATIONS	128
+-
+-struct nfsd4_fs_location {
+-	char *hosts; /* colon separated list of hosts */
+-	char *path;  /* slash separated list of path components */
 -};
 -
+-struct nfsd4_fs_locations {
+-	uint32_t locations_count;
+-	struct nfsd4_fs_location *locations;
+-/* If we're not actually serving this data ourselves (only providing a
+- * list of replicas that do serve it) then we set "migrated": */
+-	int migrated;
+-};
 -
--extern struct nfsd_stats	nfsdstats;
--extern struct svc_stat		nfsd_svcstats;
+-/*
+- * We keep an array of pseudoflavors with the export, in order from most
+- * to least preferred.  For the foreseeable future, we don't expect more
+- * than the eight pseudoflavors null, unix, krb5, krb5i, krb5p, skpm3,
+- * spkm3i, and spkm3p (and using all 8 at once should be rare).
+- */
+-#define MAX_SECINFO_LIST	8
 -
--void	nfsd_stat_init(void);
--void	nfsd_stat_shutdown(void);
+-struct exp_flavor_info {
+-	u32	pseudoflavor;
+-	u32	flags;
+-};
 -
--#endif /* LINUX_NFSD_STATS_H */
+-struct svc_export {
+-	struct cache_head	h;
+-	struct auth_domain *	ex_client;
+-	int			ex_flags;
+-	struct path		ex_path;
+-	kuid_t			ex_anon_uid;
+-	kgid_t			ex_anon_gid;
+-	int			ex_fsid;
+-	unsigned char *		ex_uuid; /* 16 byte fsid */
+-	struct nfsd4_fs_locations ex_fslocs;
+-	int			ex_nflavors;
+-	struct exp_flavor_info	ex_flavors[MAX_SECINFO_LIST];
+-	struct cache_detail	*cd;
+-};
+-
+-/* an "export key" (expkey) maps a filehandlefragement to an
+- * svc_export for a given client.  There can be several per export,
+- * for the different fsid types.
+- */
+-struct svc_expkey {
+-	struct cache_head	h;
+-
+-	struct auth_domain *	ek_client;
+-	int			ek_fsidtype;
+-	u32			ek_fsid[6];
+-
+-	struct path		ek_path;
+-};
+-
+-#define EX_ISSYNC(exp)		(!((exp)->ex_flags & NFSEXP_ASYNC))
+-#define EX_NOHIDE(exp)		((exp)->ex_flags & NFSEXP_NOHIDE)
+-#define EX_WGATHER(exp)		((exp)->ex_flags & NFSEXP_GATHERED_WRITES)
+-
+-int nfsexp_flags(struct svc_rqst *rqstp, struct svc_export *exp);
+-__be32 check_nfsd_access(struct svc_export *exp, struct svc_rqst *rqstp);
+-
+-/*
+- * Function declarations
+- */
+-int			nfsd_export_init(struct net *);
+-void			nfsd_export_shutdown(struct net *);
+-void			nfsd_export_flush(struct net *);
+-struct svc_export *	rqst_exp_get_by_name(struct svc_rqst *,
+-					     struct path *);
+-struct svc_export *	rqst_exp_parent(struct svc_rqst *,
+-					struct path *);
+-struct svc_export *	rqst_find_fsidzero_export(struct svc_rqst *);
+-int			exp_rootfh(struct net *, struct auth_domain *,
+-					char *path, struct knfsd_fh *, int maxsize);
+-__be32			exp_pseudoroot(struct svc_rqst *, struct svc_fh *);
+-__be32			nfserrno(int errno);
+-
+-static inline void exp_put(struct svc_export *exp)
+-{
+-	cache_put(&exp->h, exp->cd);
+-}
+-
+-static inline void exp_get(struct svc_export *exp)
+-{
+-	cache_get(&exp->h);
+-}
+-struct svc_export * rqst_exp_find(struct svc_rqst *, int, u32 *);
+-
+-#endif /* NFSD_EXPORT_H */
 -- 
 1.7.10.4
 
