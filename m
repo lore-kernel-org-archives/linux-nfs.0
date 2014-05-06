@@ -1,44 +1,106 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:57305 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750775AbaEJFKU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 10 May 2014 01:10:20 -0400
-Date: Fri, 9 May 2014 22:10:17 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: Kinglong Mee <kinglongmee@gmail.com>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2] NFSD: Don't clear SUID/SGID after root writing data
-Message-ID: <20140510051017.GA23444@infradead.org>
-References: <534AA92B.8010805@gmail.com>
- <20140418130220.GF18612@fieldses.org>
- <53512DE5.7050907@gmail.com>
- <5351501B.1010507@gmail.com>
- <20140508161256.GC20976@fieldses.org>
- <536C89D7.6090902@gmail.com>
- <20140509214056.GC497@fieldses.org>
+Received: from mx11.netapp.com ([216.240.18.76]:32910 "EHLO mx11.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751709AbaEFNNE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 May 2014 09:13:04 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
+CC: <dros@primarydata.com>, <hch@infradead.org>
+Subject: [PATCH v3 05/17] NFS: Move the write verifier into the nfs_pgio_header
+Date: Tue, 6 May 2014 09:12:28 -0400
+Message-ID: <1399381960-3019-6-git-send-email-Anna.Schumaker@Netapp.com>
+In-Reply-To: <1399381960-3019-1-git-send-email-Anna.Schumaker@Netapp.com>
+References: <1399381960-3019-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140509214056.GC497@fieldses.org>
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, May 09, 2014 at 05:40:57PM -0400, J. Bruce Fields wrote:
-> On Fri, May 09, 2014 at 03:55:03PM +0800, Kinglong Mee wrote:
-> > On 5/9/2014 00:12, J. Bruce Fields wrote:
-> > > I'd like to apply this if only to remove the redundant code.
-> > > 
-> > > I'd like to understand, though, whether this is something that caused an
-> > > actual practical problem for someone, or if you just happened to notice
-> > > the inconsistency between nfs and ext4 behavior?
-> > 
-> > I test it with ext2,ext3,btrfs,xfs.
-> > Test result is same as ext4.
-> > So, we needs remove the redundant killing of suid/sgid.
-> 
-> Understood that this would make the behavior consistent with
-> filesystems.  But, you don't know of any cases of the current behavior
-> is actually causing a problem for anyone?
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
 
+The header had a pointer to the verifier that was set from the old write
+data struct.  We don't need to keep the pointer around now that we have
+shared structures.
 
-I thin this also is the root cause for xfstests generic/193 failing on
-NFS, but I haven't verified it yet.
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+---
+ fs/nfs/direct.c         | 4 ++--
+ fs/nfs/write.c          | 7 +++----
+ include/linux/nfs_xdr.h | 3 +--
+ 3 files changed, 6 insertions(+), 8 deletions(-)
+
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index bbe688e..164b016 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -813,12 +813,12 @@ static void nfs_direct_write_completion(struct nfs_pgio_header *hdr)
+ 			if (dreq->flags == NFS_ODIRECT_RESCHED_WRITES)
+ 				bit = NFS_IOHDR_NEED_RESCHED;
+ 			else if (dreq->flags == 0) {
+-				memcpy(&dreq->verf, hdr->verf,
++				memcpy(&dreq->verf, &hdr->verf,
+ 				       sizeof(dreq->verf));
+ 				bit = NFS_IOHDR_NEED_COMMIT;
+ 				dreq->flags = NFS_ODIRECT_DO_COMMIT;
+ 			} else if (dreq->flags == NFS_ODIRECT_DO_COMMIT) {
+-				if (memcmp(&dreq->verf, hdr->verf, sizeof(dreq->verf))) {
++				if (memcmp(&dreq->verf, &hdr->verf, sizeof(dreq->verf))) {
+ 					dreq->flags = NFS_ODIRECT_RESCHED_WRITES;
+ 					bit = NFS_IOHDR_NEED_RESCHED;
+ 				} else
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 37c4c98..321a791 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -82,7 +82,6 @@ struct nfs_rw_header *nfs_writehdr_alloc(void)
+ 		INIT_LIST_HEAD(&hdr->rpc_list);
+ 		spin_lock_init(&hdr->lock);
+ 		atomic_set(&hdr->refcnt, 0);
+-		hdr->verf = &p->verf;
+ 	}
+ 	return p;
+ }
+@@ -644,7 +643,7 @@ static void nfs_write_completion(struct nfs_pgio_header *hdr)
+ 			goto next;
+ 		}
+ 		if (test_bit(NFS_IOHDR_NEED_COMMIT, &hdr->flags)) {
+-			memcpy(&req->wb_verf, &hdr->verf->verifier, sizeof(req->wb_verf));
++			memcpy(&req->wb_verf, &hdr->verf.verifier, sizeof(req->wb_verf));
+ 			nfs_mark_request_commit(req, hdr->lseg, &cinfo);
+ 			goto next;
+ 		}
+@@ -1344,8 +1343,8 @@ static void nfs_writeback_release_common(void *calldata)
+ 		if (test_bit(NFS_IOHDR_NEED_RESCHED, &hdr->flags))
+ 			; /* Do nothing */
+ 		else if (!test_and_set_bit(NFS_IOHDR_NEED_COMMIT, &hdr->flags))
+-			memcpy(hdr->verf, &data->verf, sizeof(*hdr->verf));
+-		else if (memcmp(hdr->verf, &data->verf, sizeof(*hdr->verf)))
++			memcpy(&hdr->verf, &data->verf, sizeof(hdr->verf));
++		else if (memcmp(&hdr->verf, &data->verf, sizeof(hdr->verf)))
+ 			set_bit(NFS_IOHDR_NEED_RESCHED, &hdr->flags);
+ 		spin_unlock(&hdr->lock);
+ 	}
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 2d34e0d..965c2aa 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1263,7 +1263,7 @@ struct nfs_pgio_header {
+ 	struct list_head	rpc_list;
+ 	atomic_t		refcnt;
+ 	struct nfs_page		*req;
+-	struct nfs_writeverf	*verf;
++	struct nfs_writeverf	verf;		/* Used for writes */
+ 	struct pnfs_layout_segment *lseg;
+ 	loff_t			io_start;
+ 	const struct rpc_call_ops *mds_ops;
+@@ -1297,7 +1297,6 @@ struct nfs_pgio_data {
+ struct nfs_rw_header {
+ 	struct nfs_pgio_header	header;
+ 	struct nfs_pgio_data	rpc_data;
+-	struct nfs_writeverf	verf;
+ };
+ 
+ struct nfs_mds_commit_info {
+-- 
+1.9.2
+
