@@ -1,368 +1,204 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:32910 "EHLO mx11.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:44221 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751529AbaEFNNC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 May 2014 09:13:02 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
-CC: <dros@primarydata.com>, <hch@infradead.org>
-Subject: [PATCH v3 07/17] NFS: Create a common rw_header_alloc and rw_header_free function
-Date: Tue, 6 May 2014 09:12:30 -0400
-Message-ID: <1399381960-3019-8-git-send-email-Anna.Schumaker@Netapp.com>
-In-Reply-To: <1399381960-3019-1-git-send-email-Anna.Schumaker@Netapp.com>
-References: <1399381960-3019-1-git-send-email-Anna.Schumaker@Netapp.com>
+	id S1752525AbaEFTV6 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 May 2014 15:21:58 -0400
+Date: Tue, 6 May 2014 15:21:57 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Steve Wise <swise@opengridcomputing.com>
+Cc: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org,
+        tom@opengridcomputing.com
+Subject: Re: [PATCH V2 RFC 1/3] svcrdma: Transport and header file changes
+Message-ID: <20140506192157.GJ18281@fieldses.org>
+References: <20140506174621.18208.24242.stgit@build.ogc.int>
+ <20140506174626.18208.95519.stgit@build.ogc.int>
 MIME-Version: 1.0
-Content-Type: text/plain
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140506174626.18208.95519.stgit@build.ogc.int>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
+On Tue, May 06, 2014 at 12:46:27PM -0500, Steve Wise wrote:
+> From: Tom Tucker <tom@opengridcomputing.com>
+> 
+> Change poll logic to grab up to 6 completions at a time.
+> 
+> RDMA write and send completions no longer deal with fastreg objects.
+> 
+> Set SVCRDMA_DEVCAP_FAST_REG and allocate a dma_mr based on the device
+> capabilities.
+> 
+> Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
+> Signed-off-by: Steve Wise <swise@opengridcomputing.com>
+> ---
+> 
+>  include/linux/sunrpc/svc_rdma.h          |    3 -
+>  net/sunrpc/xprtrdma/svc_rdma_transport.c |   62 +++++++++++++++++-------------
+>  2 files changed, 37 insertions(+), 28 deletions(-)
+> 
+> diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
+> index 0b8e3e6..5cf99a0 100644
+> --- a/include/linux/sunrpc/svc_rdma.h
+> +++ b/include/linux/sunrpc/svc_rdma.h
+> @@ -115,14 +115,13 @@ struct svc_rdma_fastreg_mr {
+>  	struct list_head frmr_list;
+>  };
+>  struct svc_rdma_req_map {
+> -	struct svc_rdma_fastreg_mr *frmr;
+>  	unsigned long count;
+>  	union {
+>  		struct kvec sge[RPCSVC_MAXPAGES];
+>  		struct svc_rdma_chunk_sge ch[RPCSVC_MAXPAGES];
+> +		unsigned long lkey[RPCSVC_MAXPAGES];
+>  	};
+>  };
+> -#define RDMACTXT_F_FAST_UNREG	1
+>  #define RDMACTXT_F_LAST_CTXT	2
+>  
+>  #define	SVCRDMA_DEVCAP_FAST_REG		1	/* fast mr registration */
+> diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> index 25688fa..2c5b201 100644
+> --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> @@ -1,4 +1,5 @@
+>  /*
+> + * Copyright (c) 2014 Open Grid Computing, Inc. All rights reserved.
+>   * Copyright (c) 2005-2007 Network Appliance, Inc. All rights reserved.
+>   *
+>   * This software is available to you under a choice of one of two
+> @@ -160,7 +161,6 @@ struct svc_rdma_req_map *svc_rdma_get_req_map(void)
+>  		schedule_timeout_uninterruptible(msecs_to_jiffies(500));
+>  	}
+>  	map->count = 0;
+> -	map->frmr = NULL;
+>  	return map;
+>  }
+>  
+> @@ -336,22 +336,21 @@ static void process_context(struct svcxprt_rdma *xprt,
+>  
+>  	switch (ctxt->wr_op) {
+>  	case IB_WR_SEND:
+> -		if (test_bit(RDMACTXT_F_FAST_UNREG, &ctxt->flags))
+> -			svc_rdma_put_frmr(xprt, ctxt->frmr);
+> +		BUG_ON(ctxt->frmr);
+>  		svc_rdma_put_context(ctxt, 1);
+>  		break;
+>  
+>  	case IB_WR_RDMA_WRITE:
+> +		BUG_ON(ctxt->frmr);
+>  		svc_rdma_put_context(ctxt, 0);
+>  		break;
+>  
+>  	case IB_WR_RDMA_READ:
+>  	case IB_WR_RDMA_READ_WITH_INV:
+> +		svc_rdma_put_frmr(xprt, ctxt->frmr);
+>  		if (test_bit(RDMACTXT_F_LAST_CTXT, &ctxt->flags)) {
+>  			struct svc_rdma_op_ctxt *read_hdr = ctxt->read_hdr;
+>  			BUG_ON(!read_hdr);
+> -			if (test_bit(RDMACTXT_F_FAST_UNREG, &ctxt->flags))
+> -				svc_rdma_put_frmr(xprt, ctxt->frmr);
+>  			spin_lock_bh(&xprt->sc_rq_dto_lock);
+>  			set_bit(XPT_DATA, &xprt->sc_xprt.xpt_flags);
+>  			list_add_tail(&read_hdr->dto_q,
+> @@ -363,6 +362,7 @@ static void process_context(struct svcxprt_rdma *xprt,
+>  		break;
+>  
+>  	default:
+> +		BUG_ON(1);
+>  		printk(KERN_ERR "svcrdma: unexpected completion type, "
+>  		       "opcode=%d\n",
+>  		       ctxt->wr_op);
 
-I create a new struct nfs_rw_ops to decide the differences between reads
-and writes.  This struct will be set when initializing a new
-nfs_pgio_descriptor, and then passed on to the nfs_rw_header when a new
-header is allocated.
+Note the printk's unreachable now.  Should some of these BUG_ON()'s be
+WARN_ON()'s?
 
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
----
- fs/nfs/internal.h        |  6 ++----
- fs/nfs/pagelist.c        | 33 +++++++++++++++++++++++++++++++++
- fs/nfs/pnfs.c            |  8 ++++----
- fs/nfs/read.c            | 34 +++++++++++++---------------------
- fs/nfs/write.c           | 28 ++++++++++++----------------
- include/linux/nfs_page.h |  7 +++++++
- include/linux/nfs_xdr.h  |  1 +
- 7 files changed, 72 insertions(+), 45 deletions(-)
+> @@ -378,29 +378,42 @@ static void process_context(struct svcxprt_rdma *xprt,
+>  static void sq_cq_reap(struct svcxprt_rdma *xprt)
+>  {
+>  	struct svc_rdma_op_ctxt *ctxt = NULL;
+> -	struct ib_wc wc;
+> +	struct ib_wc wc_a[6];
+> +	struct ib_wc *wc;
+>  	struct ib_cq *cq = xprt->sc_sq_cq;
+>  	int ret;
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 5ddc142..9d6a40e 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -237,6 +237,8 @@ extern void nfs_pgheader_init(struct nfs_pageio_descriptor *desc,
- void nfs_set_pgio_error(struct nfs_pgio_header *hdr, int error, loff_t pos);
- int nfs_iocounter_wait(struct nfs_io_counter *c);
- 
-+struct nfs_rw_header *nfs_rw_header_alloc(const struct nfs_rw_ops *);
-+void nfs_rw_header_free(struct nfs_pgio_header *);
- struct nfs_pgio_data *nfs_pgio_data_alloc(struct nfs_pgio_header *, unsigned int);
- void nfs_pgio_data_release(struct nfs_pgio_data *);
- 
-@@ -397,8 +399,6 @@ extern int nfs4_get_rootfh(struct nfs_server *server, struct nfs_fh *mntfh, bool
- 
- struct nfs_pgio_completion_ops;
- /* read.c */
--extern struct nfs_rw_header *nfs_readhdr_alloc(void);
--extern void nfs_readhdr_free(struct nfs_pgio_header *hdr);
- extern void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
- 			struct inode *inode, bool force_mds,
- 			const struct nfs_pgio_completion_ops *compl_ops);
-@@ -425,8 +425,6 @@ int nfs_remount(struct super_block *sb, int *flags, char *raw_data);
- extern void nfs_pageio_init_write(struct nfs_pageio_descriptor *pgio,
- 			struct inode *inode, int ioflags, bool force_mds,
- 			const struct nfs_pgio_completion_ops *compl_ops);
--extern struct nfs_rw_header *nfs_writehdr_alloc(void);
--extern void nfs_writehdr_free(struct nfs_pgio_header *hdr);
- extern int nfs_generic_flush(struct nfs_pageio_descriptor *desc,
- 			     struct nfs_pgio_header *hdr);
- extern void nfs_pageio_reset_write_mds(struct nfs_pageio_descriptor *pgio);
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index a98ccf7..ca356fe 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -301,6 +301,37 @@ static inline struct nfs_rw_header *NFS_RW_HEADER(struct nfs_pgio_header *hdr)
- }
- 
- /**
-+ * nfs_rw_header_alloc - Allocate a header for a read or write
-+ * @ops: Read or write function vector
-+ */
-+struct nfs_rw_header *nfs_rw_header_alloc(const struct nfs_rw_ops *ops)
-+{
-+	struct nfs_rw_header *header = ops->rw_alloc_header();
-+
-+	if (header) {
-+		struct nfs_pgio_header *hdr = &header->header;
-+
-+		INIT_LIST_HEAD(&hdr->pages);
-+		INIT_LIST_HEAD(&hdr->rpc_list);
-+		spin_lock_init(&hdr->lock);
-+		atomic_set(&hdr->refcnt, 0);
-+		hdr->rw_ops = ops;
-+	}
-+	return header;
-+}
-+EXPORT_SYMBOL_GPL(nfs_rw_header_alloc);
-+
-+/*
-+ * nfs_rw_header_free - Free a read or write header
-+ * @hdr: The header to free
-+ */
-+void nfs_rw_header_free(struct nfs_pgio_header *hdr)
-+{
-+	hdr->rw_ops->rw_free_header(NFS_RW_HEADER(hdr));
-+}
-+EXPORT_SYMBOL_GPL(nfs_rw_header_free);
-+
-+/**
-  * nfs_pgio_data_alloc - Allocate pageio data
-  * @hdr: The header making a request
-  * @pagecount: Number of pages to create
-@@ -367,6 +398,7 @@ void nfs_pageio_init(struct nfs_pageio_descriptor *desc,
- 		     struct inode *inode,
- 		     const struct nfs_pageio_ops *pg_ops,
- 		     const struct nfs_pgio_completion_ops *compl_ops,
-+		     const struct nfs_rw_ops *rw_ops,
- 		     size_t bsize,
- 		     int io_flags)
- {
-@@ -380,6 +412,7 @@ void nfs_pageio_init(struct nfs_pageio_descriptor *desc,
- 	desc->pg_inode = inode;
- 	desc->pg_ops = pg_ops;
- 	desc->pg_completion_ops = compl_ops;
-+	desc->pg_rw_ops = rw_ops;
- 	desc->pg_ioflags = io_flags;
- 	desc->pg_error = 0;
- 	desc->pg_lseg = NULL;
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index e192ba6..54c84c1 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1585,7 +1585,7 @@ pnfs_do_multiple_writes(struct nfs_pageio_descriptor *desc, struct list_head *he
- static void pnfs_writehdr_free(struct nfs_pgio_header *hdr)
- {
- 	pnfs_put_lseg(hdr->lseg);
--	nfs_writehdr_free(hdr);
-+	nfs_rw_header_free(hdr);
- }
- EXPORT_SYMBOL_GPL(pnfs_writehdr_free);
- 
-@@ -1596,7 +1596,7 @@ pnfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc)
- 	struct nfs_pgio_header *hdr;
- 	int ret;
- 
--	whdr = nfs_writehdr_alloc();
-+	whdr = nfs_rw_header_alloc(desc->pg_rw_ops);
- 	if (!whdr) {
- 		desc->pg_completion_ops->error_cleanup(&desc->pg_list);
- 		pnfs_put_lseg(desc->pg_lseg);
-@@ -1743,7 +1743,7 @@ pnfs_do_multiple_reads(struct nfs_pageio_descriptor *desc, struct list_head *hea
- static void pnfs_readhdr_free(struct nfs_pgio_header *hdr)
- {
- 	pnfs_put_lseg(hdr->lseg);
--	nfs_readhdr_free(hdr);
-+	nfs_rw_header_free(hdr);
- }
- EXPORT_SYMBOL_GPL(pnfs_readhdr_free);
- 
-@@ -1754,7 +1754,7 @@ pnfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc)
- 	struct nfs_pgio_header *hdr;
- 	int ret;
- 
--	rhdr = nfs_readhdr_alloc();
-+	rhdr = nfs_rw_header_alloc(desc->pg_rw_ops);
- 	if (!rhdr) {
- 		desc->pg_completion_ops->error_cleanup(&desc->pg_list);
- 		ret = -ENOMEM;
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index ab4c1a5..4cf3577 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -31,33 +31,19 @@
- static const struct nfs_pageio_ops nfs_pageio_read_ops;
- static const struct rpc_call_ops nfs_read_common_ops;
- static const struct nfs_pgio_completion_ops nfs_async_read_completion_ops;
-+static const struct nfs_rw_ops nfs_rw_read_ops;
- 
- static struct kmem_cache *nfs_rdata_cachep;
- 
--struct nfs_rw_header *nfs_readhdr_alloc(void)
-+static struct nfs_rw_header *nfs_readhdr_alloc(void)
- {
--	struct nfs_rw_header *rhdr;
--
--	rhdr = kmem_cache_zalloc(nfs_rdata_cachep, GFP_KERNEL);
--	if (rhdr) {
--		struct nfs_pgio_header *hdr = &rhdr->header;
--
--		INIT_LIST_HEAD(&hdr->pages);
--		INIT_LIST_HEAD(&hdr->rpc_list);
--		spin_lock_init(&hdr->lock);
--		atomic_set(&hdr->refcnt, 0);
--	}
--	return rhdr;
-+	return kmem_cache_zalloc(nfs_rdata_cachep, GFP_KERNEL);
- }
--EXPORT_SYMBOL_GPL(nfs_readhdr_alloc);
- 
--void nfs_readhdr_free(struct nfs_pgio_header *hdr)
-+static void nfs_readhdr_free(struct nfs_rw_header *rhdr)
- {
--	struct nfs_rw_header *rhdr = container_of(hdr, struct nfs_rw_header, header);
--
- 	kmem_cache_free(nfs_rdata_cachep, rhdr);
- }
--EXPORT_SYMBOL_GPL(nfs_readhdr_free);
- 
- static
- int nfs_return_empty_page(struct page *page)
-@@ -79,7 +65,8 @@ void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
- 	if (server->pnfs_curr_ld && !force_mds)
- 		pg_ops = server->pnfs_curr_ld->pg_read_ops;
- #endif
--	nfs_pageio_init(pgio, inode, pg_ops, compl_ops, server->rsize, 0);
-+	nfs_pageio_init(pgio, inode, pg_ops, compl_ops, &nfs_rw_read_ops,
-+			server->rsize, 0);
- }
- EXPORT_SYMBOL_GPL(nfs_pageio_init_read);
- 
-@@ -375,13 +362,13 @@ static int nfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc)
- 	struct nfs_pgio_header *hdr;
- 	int ret;
- 
--	rhdr = nfs_readhdr_alloc();
-+	rhdr = nfs_rw_header_alloc(desc->pg_rw_ops);
- 	if (!rhdr) {
- 		desc->pg_completion_ops->error_cleanup(&desc->pg_list);
- 		return -ENOMEM;
- 	}
- 	hdr = &rhdr->header;
--	nfs_pgheader_init(desc, hdr, nfs_readhdr_free);
-+	nfs_pgheader_init(desc, hdr, nfs_rw_header_free);
- 	atomic_inc(&hdr->refcnt);
- 	ret = nfs_generic_pagein(desc, hdr);
- 	if (ret == 0)
-@@ -647,3 +634,8 @@ void nfs_destroy_readpagecache(void)
- {
- 	kmem_cache_destroy(nfs_rdata_cachep);
- }
-+
-+static const struct nfs_rw_ops nfs_rw_read_ops = {
-+	.rw_alloc_header	= nfs_readhdr_alloc,
-+	.rw_free_header		= nfs_readhdr_free,
-+};
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 0dc4d6a..9c5cde3 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -46,6 +46,7 @@ static const struct rpc_call_ops nfs_write_common_ops;
- static const struct rpc_call_ops nfs_commit_ops;
- static const struct nfs_pgio_completion_ops nfs_async_write_completion_ops;
- static const struct nfs_commit_completion_ops nfs_commit_completion_ops;
-+static const struct nfs_rw_ops nfs_rw_write_ops;
- 
- static struct kmem_cache *nfs_wdata_cachep;
- static mempool_t *nfs_wdata_mempool;
-@@ -70,29 +71,19 @@ void nfs_commit_free(struct nfs_commit_data *p)
- }
- EXPORT_SYMBOL_GPL(nfs_commit_free);
- 
--struct nfs_rw_header *nfs_writehdr_alloc(void)
-+static struct nfs_rw_header *nfs_writehdr_alloc(void)
- {
- 	struct nfs_rw_header *p = mempool_alloc(nfs_wdata_mempool, GFP_NOIO);
- 
--	if (p) {
--		struct nfs_pgio_header *hdr = &p->header;
--
-+	if (p)
- 		memset(p, 0, sizeof(*p));
--		INIT_LIST_HEAD(&hdr->pages);
--		INIT_LIST_HEAD(&hdr->rpc_list);
--		spin_lock_init(&hdr->lock);
--		atomic_set(&hdr->refcnt, 0);
--	}
- 	return p;
- }
--EXPORT_SYMBOL_GPL(nfs_writehdr_alloc);
- 
--void nfs_writehdr_free(struct nfs_pgio_header *hdr)
-+static void nfs_writehdr_free(struct nfs_rw_header *whdr)
- {
--	struct nfs_rw_header *whdr = container_of(hdr, struct nfs_rw_header, header);
- 	mempool_free(whdr, nfs_wdata_mempool);
- }
--EXPORT_SYMBOL_GPL(nfs_writehdr_free);
- 
- static void nfs_context_set_write_error(struct nfs_open_context *ctx, int error)
- {
-@@ -1210,13 +1201,13 @@ static int nfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc)
- 	struct nfs_pgio_header *hdr;
- 	int ret;
- 
--	whdr = nfs_writehdr_alloc();
-+	whdr = nfs_rw_header_alloc(desc->pg_rw_ops);
- 	if (!whdr) {
- 		desc->pg_completion_ops->error_cleanup(&desc->pg_list);
- 		return -ENOMEM;
- 	}
- 	hdr = &whdr->header;
--	nfs_pgheader_init(desc, hdr, nfs_writehdr_free);
-+	nfs_pgheader_init(desc, hdr, nfs_rw_header_free);
- 	atomic_inc(&hdr->refcnt);
- 	ret = nfs_generic_flush(desc, hdr);
- 	if (ret == 0)
-@@ -1244,7 +1235,8 @@ void nfs_pageio_init_write(struct nfs_pageio_descriptor *pgio,
- 	if (server->pnfs_curr_ld && !force_mds)
- 		pg_ops = server->pnfs_curr_ld->pg_write_ops;
- #endif
--	nfs_pageio_init(pgio, inode, pg_ops, compl_ops, server->wsize, ioflags);
-+	nfs_pageio_init(pgio, inode, pg_ops, compl_ops, &nfs_rw_write_ops,
-+			server->wsize, ioflags);
- }
- EXPORT_SYMBOL_GPL(nfs_pageio_init_write);
- 
-@@ -1925,3 +1917,7 @@ void nfs_destroy_writepagecache(void)
- 	kmem_cache_destroy(nfs_wdata_cachep);
- }
- 
-+static const struct nfs_rw_ops nfs_rw_write_ops = {
-+	.rw_alloc_header	= nfs_writehdr_alloc,
-+	.rw_free_header		= nfs_writehdr_free,
-+};
-diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
-index 92ce578..5948125 100644
---- a/include/linux/nfs_page.h
-+++ b/include/linux/nfs_page.h
-@@ -52,6 +52,11 @@ struct nfs_pageio_ops {
- 	int	(*pg_doio)(struct nfs_pageio_descriptor *);
- };
- 
-+struct nfs_rw_ops {
-+	struct nfs_rw_header *(*rw_alloc_header)(void);
-+	void (*rw_free_header)(struct nfs_rw_header *);
-+};
-+
- struct nfs_pageio_descriptor {
- 	struct list_head	pg_list;
- 	unsigned long		pg_bytes_written;
-@@ -63,6 +68,7 @@ struct nfs_pageio_descriptor {
- 
- 	struct inode		*pg_inode;
- 	const struct nfs_pageio_ops *pg_ops;
-+	const struct nfs_rw_ops *pg_rw_ops;
- 	int 			pg_ioflags;
- 	int			pg_error;
- 	const struct rpc_call_ops *pg_rpc_callops;
-@@ -86,6 +92,7 @@ extern	void nfs_pageio_init(struct nfs_pageio_descriptor *desc,
- 			     struct inode *inode,
- 			     const struct nfs_pageio_ops *pg_ops,
- 			     const struct nfs_pgio_completion_ops *compl_ops,
-+			     const struct nfs_rw_ops *rw_ops,
- 			     size_t bsize,
- 			     int how);
- extern	int nfs_pageio_add_request(struct nfs_pageio_descriptor *,
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 965c2aa..a1b91b6 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1269,6 +1269,7 @@ struct nfs_pgio_header {
- 	const struct rpc_call_ops *mds_ops;
- 	void (*release) (struct nfs_pgio_header *hdr);
- 	const struct nfs_pgio_completion_ops *completion_ops;
-+	const struct nfs_rw_ops	*rw_ops;
- 	struct nfs_direct_req	*dreq;
- 	void			*layout_private;
- 	spinlock_t		lock;
--- 
-1.9.2
+May want to keep an eye on the stack usage here?
 
+--b.
+
+>  
+> +	memset(wc_a, 0, sizeof(wc_a));
+> +
+>  	if (!test_and_clear_bit(RDMAXPRT_SQ_PENDING, &xprt->sc_flags))
+>  		return;
+>  
+>  	ib_req_notify_cq(xprt->sc_sq_cq, IB_CQ_NEXT_COMP);
+>  	atomic_inc(&rdma_stat_sq_poll);
+> -	while ((ret = ib_poll_cq(cq, 1, &wc)) > 0) {
+> -		if (wc.status != IB_WC_SUCCESS)
+> -			/* Close the transport */
+> -			set_bit(XPT_CLOSE, &xprt->sc_xprt.xpt_flags);
+> +	while ((ret = ib_poll_cq(cq, ARRAY_SIZE(wc_a), wc_a)) > 0) {
+> +		int i;
+>  
+> -		/* Decrement used SQ WR count */
+> -		atomic_dec(&xprt->sc_sq_count);
+> -		wake_up(&xprt->sc_send_wait);
+> +		for (i = 0; i < ret; i++) {
+> +			wc = &wc_a[i];
+> +			if (wc->status != IB_WC_SUCCESS) {
+> +				dprintk("svcrdma: sq wc err status %d\n",
+> +					wc->status);
+>  
+> -		ctxt = (struct svc_rdma_op_ctxt *)(unsigned long)wc.wr_id;
+> -		if (ctxt)
+> -			process_context(xprt, ctxt);
+> +				/* Close the transport */
+> +				set_bit(XPT_CLOSE, &xprt->sc_xprt.xpt_flags);
+> +			}
+>  
+> -		svc_xprt_put(&xprt->sc_xprt);
+> +			/* Decrement used SQ WR count */
+> +			atomic_dec(&xprt->sc_sq_count);
+> +			wake_up(&xprt->sc_send_wait);
+> +
+> +			ctxt = (struct svc_rdma_op_ctxt *)
+> +				(unsigned long)wc->wr_id;
+> +			if (ctxt)
+> +				process_context(xprt, ctxt);
+> +
+> +			svc_xprt_put(&xprt->sc_xprt);
+> +		}
+>  	}
+>  
+>  	if (ctxt)
+> @@ -993,7 +1006,11 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
+>  			need_dma_mr = 0;
+>  		break;
+>  	case RDMA_TRANSPORT_IB:
+> -		if (!(devattr.device_cap_flags & IB_DEVICE_LOCAL_DMA_LKEY)) {
+> +		if (!(newxprt->sc_dev_caps & SVCRDMA_DEVCAP_FAST_REG)) {
+> +			need_dma_mr = 1;
+> +			dma_mr_acc = IB_ACCESS_LOCAL_WRITE;
+> +		} else if (!(devattr.device_cap_flags &
+> +			     IB_DEVICE_LOCAL_DMA_LKEY)) {
+>  			need_dma_mr = 1;
+>  			dma_mr_acc = IB_ACCESS_LOCAL_WRITE;
+>  		} else
+> @@ -1190,14 +1207,7 @@ static int svc_rdma_has_wspace(struct svc_xprt *xprt)
+>  		container_of(xprt, struct svcxprt_rdma, sc_xprt);
+>  
+>  	/*
+> -	 * If there are fewer SQ WR available than required to send a
+> -	 * simple response, return false.
+> -	 */
+> -	if ((rdma->sc_sq_depth - atomic_read(&rdma->sc_sq_count) < 3))
+> -		return 0;
+> -
+> -	/*
+> -	 * ...or there are already waiters on the SQ,
+> +	 * If there are already waiters on the SQ,
+>  	 * return false.
+>  	 */
+>  	if (waitqueue_active(&rdma->sc_send_wait))
+> 
