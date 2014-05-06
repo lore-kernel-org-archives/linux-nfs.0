@@ -1,104 +1,246 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:32263 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750810AbaEAFQh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 May 2014 01:16:37 -0400
-Message-ID: <5361D89F.4070503@oracle.com>
-Date: Wed, 30 Apr 2014 22:16:15 -0700
-From: Shirley Ma <shirley.ma@oracle.com>
+Received: from mx2.netapp.com ([216.240.18.37]:36628 "EHLO mx2.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751337AbaEFNNA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 May 2014 09:13:00 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
+CC: <dros@primarydata.com>, <hch@infradead.org>
+Subject: [PATCH v3 11/17] NFS: Create a common rpcsetup function for reads and writes
+Date: Tue, 6 May 2014 09:12:34 -0400
+Message-ID: <1399381960-3019-12-git-send-email-Anna.Schumaker@Netapp.com>
+In-Reply-To: <1399381960-3019-1-git-send-email-Anna.Schumaker@Netapp.com>
+References: <1399381960-3019-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
-To: Doug Ledford <dledford@redhat.com>
-CC: yanb <yanb@mellanox.com>, Phil Cayton <phil.cayton@intel.com>,
-        Susan K Coulter <skc@lanl.gov>,
-        Anna Schumaker <Anna.Schumaker@netapp.com>,
-        "Devesh.Sharma" <Devesh.Sharma@emulex.com>,
-        Steve Wise <swise@opengridcomputing.com>,
-        Allen Andrews <Allen.Andrews@emulex.com>,
-        linux-rdma <linux-rdma@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Or Gerlitz <or.gerlitz@gmail.com>,
-        Chuck Lever <chuck.lever@oracle.com>
-Subject: Re: NFSoRDMA developers bi-weekly meeting announcement (4/30)
-References: <53614C03.80606@oracle.com> <CAJZOPZJioYdcbDGsk7278sZS7kD9W1dcGEGtYfsFk=Mm7DW3fQ@mail.gmail.com> <BBF761A6-2407-4457-92D5-8C2EC736BC9D@oracle.com> <CAJZOPZJgp-QdxR+PmwACWOSc4h_167J0iBjfmMrPX8sek600WA@mail.gmail.com> <536161D0.3000600@oracle.com> <30686627.1636.1398902288314.JavaMail."Doug Ledford"@Phenom>
-In-Reply-To: <30686627.1636.1398902288314.JavaMail."Doug Ledford"@Phenom>
-Content-Type: text/plain; charset=UTF-8; format=flowed
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
 
-On 04/30/2014 04:58 PM, Doug Ledford wrote:
-> On 04/302014 Shirley Ma wrote:
->> On 04/30/2014 01:00 PM, Or Gerlitz wrote:
->>> On Wed, Apr 30, 2014 at 10:47 PM, Chuck Lever
->>> <chuck.lever@oracle.com>
->>>
->>>> If I understood Yan, he is trying to use NFS/RDMA in guests
->>>> (kvm?).  We
->>>> are pretty sure that is not working at the moment,
->>> can you provide a short 1-2 liner why/what is broken there? the
->>> only
->>> thing which I can think of to be not-supported over mlx4 VFs is the
->>> proprietary FMRs, but AFAIK, the nfs-rdma code doesn't even have a
->>> mode which uses them, right?
->> I've created Xen guest on DomU. Dom0 PF works which has no mtts been
->> enabled, however DomU I hit this problem by just mounting the file
->> system:
->> mlx4_core 0000:00:04.0: Failed to allocate mtts for 66 pages(order 7)
->> mlx4_core 0000:00:04.0: Failed to allocate mtts for 4096 pages(order
->> 12)
->> mlx4_core 0000:00:04.0: Failed to allocate mtts for 4096 pages(order
->> 12)
->>
->> RDMA microbenchmark perftest works ok. I enabled mtts scripts when
->> booting the Xen guest. cat /proc/mtrr:
-> What OS/RDMA stack are you using?  I'm not familiar with any mtts
-> scripts, however I know there is an mtrr fixup script I wrote for
-> the RDMA stack in Fedora/RHEL (and so I assume it's in Oracle Linux
-> too, but I haven't checked).  In fact, I assume that's the script
-> you are referring to based on the fact that your next bit of your
-> email cats the /proc/mtrr file.  But I don't believe whether there
-> is an mtrr setting mixup or not that is should have any impact on
-> the mtts allocations in the driver.  Even if your mtrr registers
-> were set incorrectly, the problem then becomes either A) a serious
-> performance bottleneck (in the case of Intel hardware that needs
-> write combining in order to get more than about 50MByte/s of
-> throughput on their cards) or B) failed operation because MMIO
-> writes to the card are being cached/write combined when they should
-> not be.
->
-> I suspect this is more likely Xen related than mtts/mtrr related.
-Yes. That's the script I used. I wonder whether it's possible to disable 
-mtrr on DomU guest to debug this. I am new to Xen.
->> [root@ca-nfsdev1vm1 log]# cat /proc/mtrr
->> reg00: base=0x0f0000000 ( 3840MB), size=  128MB, count=1: uncachable
->> reg01: base=0x0f8000000 ( 3968MB), size=   64MB, count=1: uncachable
->>
->> lspci -v
->> 00:04.0 InfiniBand: Mellanox Technologies MT25400 Family [ConnectX-2
->> Virtual Function] (rev b0)
->>       Subsystem: Mellanox Technologies Device 61b0
->>       Physical Slot: 4
->>       Flags: bus master, fast devsel, latency 0
->>       Memory at f0000000 (64-bit, prefetchable) [size=128M]
->>       Capabilities: [60] Express Endpoint, MSI 00
->>       Capabilities: [9c] MSI-X: Enable+ Count=4 Masked-
->>       Kernel driver in use: mlx4_core
->>       Kernel modules: mlx4_core
->>
->> I will need to find another machine to try KVM guest. Yan might hit a
->> different problem.
->>
->> I have ConnectX-2, FW level is 2.11.2012. Yan has ConnectX-3, he
->> tried
->> it on KVM guest.
->>>> but that is a priority
->>>> to get fixed. Shirley has a lab set up and has been looking into
->>>> it.
->> Shirley
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-rdma"
->> in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->>
+Write adds a little bit of code dealing with flush flags, but since
+"how" will always be 0 when reading we can share the code.
+
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+---
+ fs/nfs/internal.h |  3 +++
+ fs/nfs/pagelist.c | 44 ++++++++++++++++++++++++++++++++++++++++++++
+ fs/nfs/read.c     | 26 ++------------------------
+ fs/nfs/write.c    | 46 ++++------------------------------------------
+ 4 files changed, 53 insertions(+), 66 deletions(-)
+
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index e34220f..519864b 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -242,6 +242,8 @@ struct nfs_rw_header *nfs_rw_header_alloc(const struct nfs_rw_ops *);
+ void nfs_rw_header_free(struct nfs_pgio_header *);
+ struct nfs_pgio_data *nfs_pgio_data_alloc(struct nfs_pgio_header *, unsigned int);
+ void nfs_pgio_data_release(struct nfs_pgio_data *);
++void nfs_pgio_rpcsetup(struct nfs_pgio_data *, unsigned int, unsigned int, int,
++		       struct nfs_commit_info *);
+ 
+ static inline void nfs_iocounter_init(struct nfs_io_counter *c)
+ {
+@@ -446,6 +448,7 @@ extern void nfs_init_commit(struct nfs_commit_data *data,
+ 			    struct nfs_commit_info *cinfo);
+ int nfs_scan_commit_list(struct list_head *src, struct list_head *dst,
+ 			 struct nfs_commit_info *cinfo, int max);
++unsigned long nfs_reqs_to_commit(struct nfs_commit_info *);
+ int nfs_scan_commit(struct inode *inode, struct list_head *dst,
+ 		    struct nfs_commit_info *cinfo);
+ void nfs_mark_request_commit(struct nfs_page *req,
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index aabff78..0ccd951 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -389,6 +389,50 @@ void nfs_pgio_data_release(struct nfs_pgio_data *data)
+ EXPORT_SYMBOL_GPL(nfs_pgio_data_release);
+ 
+ /**
++ * nfs_pgio_rpcsetup - Set up arguments for a pageio call
++ * @data: The pageio data
++ * @count: Number of bytes to read
++ * @offset: Initial offset
++ * @how: How to commit data (writes only)
++ * @cinfo: Commit information for the call (writes only)
++ */
++void nfs_pgio_rpcsetup(struct nfs_pgio_data *data,
++			      unsigned int count, unsigned int offset,
++			      int how, struct nfs_commit_info *cinfo)
++{
++	struct nfs_page *req = data->header->req;
++
++	/* Set up the RPC argument and reply structs
++	 * NB: take care not to mess about with data->commit et al. */
++
++	data->args.fh     = NFS_FH(data->header->inode);
++	data->args.offset = req_offset(req) + offset;
++	/* pnfs_set_layoutcommit needs this */
++	data->mds_offset = data->args.offset;
++	data->args.pgbase = req->wb_pgbase + offset;
++	data->args.pages  = data->pages.pagevec;
++	data->args.count  = count;
++	data->args.context = get_nfs_open_context(req->wb_context);
++	data->args.lock_context = req->wb_lock_context;
++	data->args.stable  = NFS_UNSTABLE;
++	switch (how & (FLUSH_STABLE | FLUSH_COND_STABLE)) {
++	case 0:
++		break;
++	case FLUSH_COND_STABLE:
++		if (nfs_reqs_to_commit(cinfo))
++			break;
++	default:
++		data->args.stable = NFS_FILE_SYNC;
++	}
++
++	data->res.fattr   = &data->fattr;
++	data->res.count   = count;
++	data->res.eof     = 0;
++	data->res.verf    = &data->verf;
++	nfs_fattr_init(&data->fattr);
++}
++
++/**
+  * nfs_pgio_prepare - Prepare pageio data to go over the wire
+  * @task: The current task
+  * @calldata: pageio data to prepare
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index a33490c..0c88c60 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -192,28 +192,6 @@ int nfs_initiate_read(struct rpc_clnt *clnt,
+ }
+ EXPORT_SYMBOL_GPL(nfs_initiate_read);
+ 
+-/*
+- * Set up the NFS read request struct
+- */
+-static void nfs_read_rpcsetup(struct nfs_pgio_data *data,
+-		unsigned int count, unsigned int offset)
+-{
+-	struct nfs_page *req = data->header->req;
+-
+-	data->args.fh     = NFS_FH(data->header->inode);
+-	data->args.offset = req_offset(req) + offset;
+-	data->args.pgbase = req->wb_pgbase + offset;
+-	data->args.pages  = data->pages.pagevec;
+-	data->args.count  = count;
+-	data->args.context = get_nfs_open_context(req->wb_context);
+-	data->args.lock_context = req->wb_lock_context;
+-
+-	data->res.fattr   = &data->fattr;
+-	data->res.count   = count;
+-	data->res.eof     = 0;
+-	nfs_fattr_init(&data->fattr);
+-}
+-
+ static int nfs_do_read(struct nfs_pgio_data *data,
+ 		const struct rpc_call_ops *call_ops)
+ {
+@@ -305,7 +283,7 @@ static int nfs_pagein_multi(struct nfs_pageio_descriptor *desc,
+ 			return -ENOMEM;
+ 		}
+ 		data->pages.pagevec[0] = page;
+-		nfs_read_rpcsetup(data, len, offset);
++		nfs_pgio_rpcsetup(data, len, offset, 0, NULL);
+ 		list_add(&data->list, &hdr->rpc_list);
+ 		nbytes -= len;
+ 		offset += len;
+@@ -340,7 +318,7 @@ static int nfs_pagein_one(struct nfs_pageio_descriptor *desc,
+ 		*pages++ = req->wb_page;
+ 	}
+ 
+-	nfs_read_rpcsetup(data, desc->pg_count, 0);
++	nfs_pgio_rpcsetup(data, desc->pg_count, 0, 0, NULL);
+ 	list_add(&data->list, &hdr->rpc_list);
+ 	desc->pg_rpc_callops = &nfs_pgio_common_ops;
+ 	return 0;
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index d877f15..0d367aa 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -603,7 +603,7 @@ out:
+ }
+ 
+ #if  IS_ENABLED(CONFIG_NFS_V3) || IS_ENABLED(CONFIG_NFS_V4)
+-static unsigned long
++unsigned long
+ nfs_reqs_to_commit(struct nfs_commit_info *cinfo)
+ {
+ 	return cinfo->mds->ncommit;
+@@ -660,7 +660,7 @@ nfs_scan_commit(struct inode *inode, struct list_head *dst,
+ }
+ 
+ #else
+-static unsigned long nfs_reqs_to_commit(struct nfs_commit_info *cinfo)
++unsigned long nfs_reqs_to_commit(struct nfs_commit_info *cinfo)
+ {
+ 	return 0;
+ }
+@@ -987,44 +987,6 @@ out:
+ }
+ EXPORT_SYMBOL_GPL(nfs_initiate_write);
+ 
+-/*
+- * Set up the argument/result storage required for the RPC call.
+- */
+-static void nfs_write_rpcsetup(struct nfs_pgio_data *data,
+-		unsigned int count, unsigned int offset,
+-		int how, struct nfs_commit_info *cinfo)
+-{
+-	struct nfs_page *req = data->header->req;
+-
+-	/* Set up the RPC argument and reply structs
+-	 * NB: take care not to mess about with data->commit et al. */
+-
+-	data->args.fh     = NFS_FH(data->header->inode);
+-	data->args.offset = req_offset(req) + offset;
+-	/* pnfs_set_layoutcommit needs this */
+-	data->mds_offset = data->args.offset;
+-	data->args.pgbase = req->wb_pgbase + offset;
+-	data->args.pages  = data->pages.pagevec;
+-	data->args.count  = count;
+-	data->args.context = get_nfs_open_context(req->wb_context);
+-	data->args.lock_context = req->wb_lock_context;
+-	data->args.stable  = NFS_UNSTABLE;
+-	switch (how & (FLUSH_STABLE | FLUSH_COND_STABLE)) {
+-	case 0:
+-		break;
+-	case FLUSH_COND_STABLE:
+-		if (nfs_reqs_to_commit(cinfo))
+-			break;
+-	default:
+-		data->args.stable = NFS_FILE_SYNC;
+-	}
+-
+-	data->res.fattr   = &data->fattr;
+-	data->res.count   = count;
+-	data->res.verf    = &data->verf;
+-	nfs_fattr_init(&data->fattr);
+-}
+-
+ static int nfs_do_write(struct nfs_pgio_data *data,
+ 		const struct rpc_call_ops *call_ops,
+ 		int how)
+@@ -1129,7 +1091,7 @@ static int nfs_flush_multi(struct nfs_pageio_descriptor *desc,
+ 			return -ENOMEM;
+ 		}
+ 		data->pages.pagevec[0] = page;
+-		nfs_write_rpcsetup(data, len, offset, desc->pg_ioflags, &cinfo);
++		nfs_pgio_rpcsetup(data, len, offset, desc->pg_ioflags, &cinfo);
+ 		list_add(&data->list, &hdr->rpc_list);
+ 		requests++;
+ 		nbytes -= len;
+@@ -1179,7 +1141,7 @@ static int nfs_flush_one(struct nfs_pageio_descriptor *desc,
+ 		desc->pg_ioflags &= ~FLUSH_COND_STABLE;
+ 
+ 	/* Set up the argument struct */
+-	nfs_write_rpcsetup(data, desc->pg_count, 0, desc->pg_ioflags, &cinfo);
++	nfs_pgio_rpcsetup(data, desc->pg_count, 0, desc->pg_ioflags, &cinfo);
+ 	list_add(&data->list, &hdr->rpc_list);
+ 	desc->pg_rpc_callops = &nfs_pgio_common_ops;
+ 	return 0;
+-- 
+1.9.2
 
