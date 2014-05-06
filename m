@@ -1,93 +1,112 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f178.google.com ([209.85.213.178]:58445 "EHLO
-	mail-ig0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750796AbaEVA5d (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 May 2014 20:57:33 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH v4 23/24] xprtrdma: Remove BUG_ON() call sites
-To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Date: Wed, 21 May 2014 20:57:32 -0400
-Message-ID: <20140522005731.27190.32294.stgit@manet.1015granger.net>
-In-Reply-To: <20140522004505.27190.58897.stgit@manet.1015granger.net>
-References: <20140522004505.27190.58897.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-ob0-f177.google.com ([209.85.214.177]:55061 "EHLO
+	mail-ob0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751464AbaEFN2W convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 May 2014 09:28:22 -0400
+Received: by mail-ob0-f177.google.com with SMTP id gq1so2405098obb.36
+        for <linux-nfs@vger.kernel.org>; Tue, 06 May 2014 06:28:22 -0700 (PDT)
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
+Subject: Re: [PATCH v3 00/17] NFS: Create a common path used by reads and writes
+From: Weston Andros Adamson <dros@primarydata.com>
+In-Reply-To: <1399381960-3019-1-git-send-email-Anna.Schumaker@Netapp.com>
+Date: Tue, 6 May 2014 09:28:19 -0400
+Cc: Trond Myklebust <Trond.Myklebust@primarydata.com>,
+        linux-nfs list <linux-nfs@vger.kernel.org>, hch@infradead.org
+Message-Id: <46D51D46-54B4-4CE2-89F5-CF171E75509C@primarydata.com>
+References: <1399381960-3019-1-git-send-email-Anna.Schumaker@Netapp.com>
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If an error occurs in the marshaling logic, fail the RPC request
-being processed, but leave the client running.
+On May 6, 2014, at 9:12 AM, Anna Schumaker <Anna.Schumaker@netapp.com> wrote:
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+> I noticed that much of the read and write code was almost identical, with
+> only minor differences in argument types and names.  These patches seek to
+> unify these two codepaths wherever possible in order to make future changes
+> easier.
+> 
+> Table of contents:
+> 	Patches 01 - 05: Set up common data structures.
+> 	Patches 06 - 10: Set up a shared rpc_call_ops struct.
+> 	Patches 11 - 15: Set up a shared nfs_pageio_ops struct.
+> 
+> Some of the commit setup was moved into common code, but I'm willing to
+> move this back into write.c if this looks to be a problem.
+> 
+> Future work:
+> 	I have rough pNFS patches to combine the read and write paths in
+> 	pnfs.c.  They apply on top of Dros' multiple requests work and
+> 	should get more testing before I submit.
+> 
+> Testing:
+> 	I tested every version of NFS using the cthon and xfs tests without
+> 	hitting anything new.  Any extra testing would be great seeing how
+> 	the read and write paths are vitally important.
+> 
+> Changes in v3:
+> 	Instead of creating a new "pageio.c" file, I now put the combined
+> 	code into pagelist.c (good luck, Dros!)
 
- net/sunrpc/xprtrdma/transport.c |    3 ++-
- net/sunrpc/xprtrdma/verbs.c     |   18 ++++++++++--------
- 2 files changed, 12 insertions(+), 9 deletions(-)
+I’ll merge into my pgio branch later this week and repost my patchset.
 
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 65cfaca..ad22fdc 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -463,7 +463,8 @@ xprt_rdma_allocate(struct rpc_task *task, size_t size)
- 	struct rpcrdma_req *req, *nreq;
- 
- 	req = rpcrdma_buffer_get(&rpcx_to_rdmax(xprt)->rx_buf);
--	BUG_ON(NULL == req);
-+	if (req == NULL)
-+		return NULL;
- 
- 	if (size > req->rl_size) {
- 		dprintk("RPC:       %s: size %zd too large for buffer[%zd]: "
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 515dfc1..13dbd1c 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -1302,7 +1302,6 @@ rpcrdma_buffer_put(struct rpcrdma_req *req)
- 	int i;
- 	unsigned long flags;
- 
--	BUG_ON(req->rl_nchunks != 0);
- 	spin_lock_irqsave(&buffers->rb_lock, flags);
- 	buffers->rb_send_bufs[--buffers->rb_send_index] = req;
- 	req->rl_niovs = 0;
-@@ -1535,10 +1534,6 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
- 	} else
- 		post_wr = &frmr_wr;
- 
--	/* Bump the key */
--	key = (u8)(seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey & 0x000000FF);
--	ib_update_fast_reg_key(seg1->mr_chunk.rl_mw->r.frmr.fr_mr, ++key);
--
- 	/* Prepare FRMR WR */
- 	memset(&frmr_wr, 0, sizeof frmr_wr);
- 	frmr_wr.wr_id = (unsigned long)(void *)seg1->mr_chunk.rl_mw;
-@@ -1549,7 +1544,16 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
- 	frmr_wr.wr.fast_reg.page_list_len = page_no;
- 	frmr_wr.wr.fast_reg.page_shift = PAGE_SHIFT;
- 	frmr_wr.wr.fast_reg.length = page_no << PAGE_SHIFT;
--	BUG_ON(frmr_wr.wr.fast_reg.length < len);
-+	if (frmr_wr.wr.fast_reg.length < len) {
-+		while (seg1->mr_nsegs--)
-+			rpcrdma_unmap_one(ia, seg++);
-+		return -EIO;
-+	}
-+
-+	/* Bump the key */
-+	key = (u8)(seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey & 0x000000FF);
-+	ib_update_fast_reg_key(seg1->mr_chunk.rl_mw->r.frmr.fr_mr, ++key);
-+
- 	frmr_wr.wr.fast_reg.access_flags = (writing ?
- 				IB_ACCESS_REMOTE_WRITE | IB_ACCESS_LOCAL_WRITE :
- 				IB_ACCESS_REMOTE_READ);
-@@ -1709,9 +1713,7 @@ rpcrdma_deregister_external(struct rpcrdma_mr_seg *seg,
- 
- #if RPCRDMA_PERSISTENT_REGISTRATION
- 	case RPCRDMA_ALLPHYSICAL:
--		BUG_ON(nsegs != 1);
- 		rpcrdma_unmap_one(ia, seg);
--		rc = 0;
- 		break;
- #endif
- 
+Thanks!
+-dros
+
+> 
+> 	I also renamed a few functions, and did a better job checking what
+> 	pagelist.c functions can now be static.
+> 
+> Questions?  Comments?  Thoughts?
+> 
+> Anna
+> 
+> 
+> Anna Schumaker (17):
+>  NFS: Create a common argument structure for reads and writes
+>  NFS: Create a common results structure for reads and writes
+>  NFS: Create a common read and write data struct
+>  NFS: Create a common read and write header struct
+>  NFS: Move the write verifier into the nfs_pgio_header
+>  NFS: Create a common pgio_alloc and pgio_release function
+>  NFS: Create a common rw_header_alloc and rw_header_free function
+>  NFS: Create a common pgio_rpc_prepare function
+>  NFS: Create a common nfs_pgio_result_common function
+>  NFS: Create a common rpc_call_ops struct
+>  NFS: Create a common rpcsetup function for reads and writes
+>  NFS: Create a common pgio_error function
+>  NFS: Create a generic_pgio function
+>  NFS: Create a common initiate_pgio() function
+>  NFS: Create a common multiple_pgios() function
+>  NFS: Create a common generic_pg_pgios()
+>  NFS: Create a common nfs_pageio_ops struct
+> 
+> fs/nfs/blocklayout/blocklayout.c |  22 +-
+> fs/nfs/direct.c                  |   4 +-
+> fs/nfs/internal.h                |  29 +--
+> fs/nfs/nfs2xdr.c                 |  14 +-
+> fs/nfs/nfs3proc.c                |  19 +-
+> fs/nfs/nfs3xdr.c                 |  16 +-
+> fs/nfs/nfs4_fs.h                 |   4 +-
+> fs/nfs/nfs4filelayout.c          |  40 ++--
+> fs/nfs/nfs4proc.c                |  52 ++---
+> fs/nfs/nfs4trace.h               |   8 +-
+> fs/nfs/nfs4xdr.c                 |  19 +-
+> fs/nfs/objlayout/objio_osd.c     |   6 +-
+> fs/nfs/objlayout/objlayout.c     |  16 +-
+> fs/nfs/objlayout/objlayout.h     |   8 +-
+> fs/nfs/pagelist.c                | 406 ++++++++++++++++++++++++++++++++++++-
+> fs/nfs/pnfs.c                    |  46 ++---
+> fs/nfs/pnfs.h                    |  10 +-
+> fs/nfs/proc.c                    |  19 +-
+> fs/nfs/read.c                    | 348 +++-----------------------------
+> fs/nfs/write.c                   | 425 +++++----------------------------------
+> include/linux/nfs_fs.h           |   2 -
+> include/linux/nfs_page.h         |  13 ++
+> include/linux/nfs_xdr.h          |  95 +++------
+> 23 files changed, 674 insertions(+), 947 deletions(-)
+> 
+> -- 
+> 1.9.2
+> 
 
