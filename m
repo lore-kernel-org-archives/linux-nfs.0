@@ -1,115 +1,179 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f182.google.com ([209.85.223.182]:51146 "EHLO
-	mail-ie0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753490AbaE1Oe7 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 May 2014 10:34:59 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH v5 22/24] xprtrdma: Avoid deadlock when credit window is reset
-To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Cc: Anna.Schumaker@netapp.com
-Date: Wed, 28 May 2014 10:34:57 -0400
-Message-ID: <20140528143457.23214.69527.stgit@manet.1015granger.net>
-In-Reply-To: <20140528142521.23214.39655.stgit@manet.1015granger.net>
-References: <20140528142521.23214.39655.stgit@manet.1015granger.net>
+Received: from mx11.netapp.com ([216.240.18.76]:32910 "EHLO mx11.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751291AbaEFNNE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 May 2014 09:13:04 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
+CC: <dros@primarydata.com>, <hch@infradead.org>
+Subject: [PATCH v3 10/17] NFS: Create a common rpc_call_ops struct
+Date: Tue, 6 May 2014 09:12:33 -0400
+Message-ID: <1399381960-3019-11-git-send-email-Anna.Schumaker@Netapp.com>
+In-Reply-To: <1399381960-3019-1-git-send-email-Anna.Schumaker@Netapp.com>
+References: <1399381960-3019-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Update the cwnd while processing the server's reply.  Otherwise the
-next task on the xprt_sending queue is still subject to the old
-credit window. Currently, no task is awoken if the old congestion
-window is still exceeded, even if the new window is larger, and a
-deadlock results.
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
 
-This is an issue during a transport reconnect. Servers don't
-normally shrink the credit window, but the client does reset it to
-1 when reconnecting so the server can safely grow it again.
+The read and write paths set up this struct in exactly the same way, so
+create a single shared struct.
 
-As a minor optimization, remove the hack of grabbing the initial
-cwnd size (which happens to be RPC_CWNDSCALE) and using that value
-as the congestion scaling factor. The scaling value is invariant,
-and we are better off without the multiplication operation.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
+ fs/nfs/internal.h |  4 +---
+ fs/nfs/pagelist.c | 11 ++++++++---
+ fs/nfs/read.c     | 11 ++---------
+ fs/nfs/write.c    | 11 ++---------
+ 4 files changed, 13 insertions(+), 24 deletions(-)
 
- net/sunrpc/xprtrdma/rpc_rdma.c  |    6 ++++++
- net/sunrpc/xprtrdma/transport.c |   19 +------------------
- net/sunrpc/xprtrdma/xprt_rdma.h |    1 -
- 3 files changed, 7 insertions(+), 19 deletions(-)
-
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index ac65b0c..77b84cf 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -716,6 +716,7 @@ rpcrdma_reply_handler(struct rpcrdma_rep *rep)
- 	struct rpcrdma_xprt *r_xprt = rpcx_to_rdmax(xprt);
- 	__be32 *iptr;
- 	int rdmalen, status;
-+	unsigned long cwnd;
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 7c0ae36..e34220f 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -237,13 +237,11 @@ extern void nfs_pgheader_init(struct nfs_pageio_descriptor *desc,
+ void nfs_set_pgio_error(struct nfs_pgio_header *hdr, int error, loff_t pos);
+ int nfs_iocounter_wait(struct nfs_io_counter *c);
  
- 	/* Check status. If bad, signal disconnect and return rep to pool */
- 	if (rep->rr_len == ~0U) {
-@@ -845,6 +846,11 @@ badheader:
- 		break;
- 	}
++extern const struct rpc_call_ops nfs_pgio_common_ops;
+ struct nfs_rw_header *nfs_rw_header_alloc(const struct nfs_rw_ops *);
+ void nfs_rw_header_free(struct nfs_pgio_header *);
+ struct nfs_pgio_data *nfs_pgio_data_alloc(struct nfs_pgio_header *, unsigned int);
+ void nfs_pgio_data_release(struct nfs_pgio_data *);
+-void nfs_pgio_prepare(struct rpc_task *, void *);
+-void nfs_pgio_release(void *);
+-void nfs_pgio_result(struct rpc_task *, void *);
  
-+	cwnd = xprt->cwnd;
-+	xprt->cwnd = atomic_read(&r_xprt->rx_buf.rb_credits) << RPC_CWNDSHIFT;
-+	if (xprt->cwnd > cwnd)
-+		xprt_release_rqst_cong(rqst->rq_task);
-+
- 	dprintk("RPC:       %s: xprt_complete_rqst(0x%p, 0x%p, %d)\n",
- 			__func__, xprt, rqst, status);
- 	xprt_complete_rqst(rqst->rq_task, status);
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 6b84d7d..187894b 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -448,23 +448,6 @@ xprt_rdma_connect(struct rpc_xprt *xprt, struct rpc_task *task)
+ static inline void nfs_iocounter_init(struct nfs_io_counter *c)
+ {
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index f74df87..aabff78 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -393,7 +393,7 @@ EXPORT_SYMBOL_GPL(nfs_pgio_data_release);
+  * @task: The current task
+  * @calldata: pageio data to prepare
+  */
+-void nfs_pgio_prepare(struct rpc_task *task, void *calldata)
++static void nfs_pgio_prepare(struct rpc_task *task, void *calldata)
+ {
+ 	struct nfs_pgio_data *data = calldata;
+ 	int err;
+@@ -406,7 +406,7 @@ void nfs_pgio_prepare(struct rpc_task *task, void *calldata)
+  * nfs_pgio_release - Release pageio data
+  * @calldata: The pageio data to release
+  */
+-void nfs_pgio_release(void *calldata)
++static void nfs_pgio_release(void *calldata)
+ {
+ 	struct nfs_pgio_data *data = calldata;
+ 	if (data->header->rw_ops->rw_release)
+@@ -454,7 +454,7 @@ EXPORT_SYMBOL_GPL(nfs_pageio_init);
+  * @task: The task that ran
+  * @calldata: Pageio data to check
+  */
+-void nfs_pgio_result(struct rpc_task *task, void *calldata)
++static void nfs_pgio_result(struct rpc_task *task, void *calldata)
+ {
+ 	struct nfs_pgio_data *data = calldata;
+ 	struct inode *inode = data->header->inode;
+@@ -677,3 +677,8 @@ void nfs_destroy_nfspagecache(void)
+ 	kmem_cache_destroy(nfs_page_cachep);
+ }
+ 
++const struct rpc_call_ops nfs_pgio_common_ops = {
++	.rpc_call_prepare = nfs_pgio_prepare,
++	.rpc_call_done = nfs_pgio_result,
++	.rpc_release = nfs_pgio_release,
++};
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index bc78bd2..a33490c 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -29,7 +29,6 @@
+ #define NFSDBG_FACILITY		NFSDBG_PAGECACHE
+ 
+ static const struct nfs_pageio_ops nfs_pageio_read_ops;
+-static const struct rpc_call_ops nfs_read_common_ops;
+ static const struct nfs_pgio_completion_ops nfs_async_read_completion_ops;
+ static const struct nfs_rw_ops nfs_rw_read_ops;
+ 
+@@ -314,7 +313,7 @@ static int nfs_pagein_multi(struct nfs_pageio_descriptor *desc,
+ 
+ 	nfs_list_remove_request(req);
+ 	nfs_list_add_request(req, &hdr->pages);
+-	desc->pg_rpc_callops = &nfs_read_common_ops;
++	desc->pg_rpc_callops = &nfs_pgio_common_ops;
+ 	return 0;
+ }
+ 
+@@ -343,7 +342,7 @@ static int nfs_pagein_one(struct nfs_pageio_descriptor *desc,
+ 
+ 	nfs_read_rpcsetup(data, desc->pg_count, 0);
+ 	list_add(&data->list, &hdr->rpc_list);
+-	desc->pg_rpc_callops = &nfs_read_common_ops;
++	desc->pg_rpc_callops = &nfs_pgio_common_ops;
+ 	return 0;
+ }
+ 
+@@ -443,12 +442,6 @@ static void nfs_readpage_result(struct rpc_task *task, struct nfs_pgio_data *dat
+ 		nfs_readpage_retry(task, data);
+ }
+ 
+-static const struct rpc_call_ops nfs_read_common_ops = {
+-	.rpc_call_prepare = nfs_pgio_prepare,
+-	.rpc_call_done = nfs_pgio_result,
+-	.rpc_release = nfs_pgio_release,
+-};
+-
+ /*
+  * Read a page over NFS.
+  * We read the page synchronously in the following case:
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 1d3e1d7..d877f15 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -42,7 +42,6 @@
+  * Local function declarations
+  */
+ static void nfs_redirty_request(struct nfs_page *req);
+-static const struct rpc_call_ops nfs_write_common_ops;
+ static const struct rpc_call_ops nfs_commit_ops;
+ static const struct nfs_pgio_completion_ops nfs_async_write_completion_ops;
+ static const struct nfs_commit_completion_ops nfs_commit_completion_ops;
+@@ -1138,7 +1137,7 @@ static int nfs_flush_multi(struct nfs_pageio_descriptor *desc,
+ 	} while (nbytes != 0);
+ 	nfs_list_remove_request(req);
+ 	nfs_list_add_request(req, &hdr->pages);
+-	desc->pg_rpc_callops = &nfs_write_common_ops;
++	desc->pg_rpc_callops = &nfs_pgio_common_ops;
+ 	return 0;
+ }
+ 
+@@ -1182,7 +1181,7 @@ static int nfs_flush_one(struct nfs_pageio_descriptor *desc,
+ 	/* Set up the argument struct */
+ 	nfs_write_rpcsetup(data, desc->pg_count, 0, desc->pg_ioflags, &cinfo);
+ 	list_add(&data->list, &hdr->rpc_list);
+-	desc->pg_rpc_callops = &nfs_write_common_ops;
++	desc->pg_rpc_callops = &nfs_pgio_common_ops;
+ 	return 0;
+ }
+ 
+@@ -1272,12 +1271,6 @@ static void nfs_writeback_release_common(struct nfs_pgio_data *data)
  	}
  }
  
--static int
--xprt_rdma_reserve_xprt(struct rpc_xprt *xprt, struct rpc_task *task)
--{
--	struct rpcrdma_xprt *r_xprt = rpcx_to_rdmax(xprt);
--	int credits = atomic_read(&r_xprt->rx_buf.rb_credits);
--
--	/* == RPC_CWNDSCALE @ init, but *after* setup */
--	if (r_xprt->rx_buf.rb_cwndscale == 0UL) {
--		r_xprt->rx_buf.rb_cwndscale = xprt->cwnd;
--		dprintk("RPC:       %s: cwndscale %lu\n", __func__,
--			r_xprt->rx_buf.rb_cwndscale);
--		BUG_ON(r_xprt->rx_buf.rb_cwndscale <= 0);
--	}
--	xprt->cwnd = credits * r_xprt->rx_buf.rb_cwndscale;
--	return xprt_reserve_xprt_cong(xprt, task);
--}
+-static const struct rpc_call_ops nfs_write_common_ops = {
+-	.rpc_call_prepare = nfs_pgio_prepare,
+-	.rpc_call_done = nfs_pgio_result,
+-	.rpc_release = nfs_pgio_release,
+-};
 -
  /*
-  * The RDMA allocate/free functions need the task structure as a place
-  * to hide the struct rpcrdma_req, which is necessary for the actual send/recv
-@@ -686,7 +669,7 @@ static void xprt_rdma_print_stats(struct rpc_xprt *xprt, struct seq_file *seq)
+  * Special version of should_remove_suid() that ignores capabilities.
   */
- 
- static struct rpc_xprt_ops xprt_rdma_procs = {
--	.reserve_xprt		= xprt_rdma_reserve_xprt,
-+	.reserve_xprt		= xprt_reserve_xprt_cong,
- 	.release_xprt		= xprt_release_xprt_cong, /* sunrpc/xprt.c */
- 	.alloc_slot		= xprt_alloc_slot,
- 	.release_request	= xprt_release_rqst_cong,       /* ditto */
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 0c3b88e..89e7cd4 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -212,7 +212,6 @@ struct rpcrdma_req {
- struct rpcrdma_buffer {
- 	spinlock_t	rb_lock;	/* protects indexes */
- 	atomic_t	rb_credits;	/* most recent server credits */
--	unsigned long	rb_cwndscale;	/* cached framework rpc_cwndscale */
- 	int		rb_max_requests;/* client max requests */
- 	struct list_head rb_mws;	/* optional memory windows/fmrs/frmrs */
- 	int		rb_send_index;
+-- 
+1.9.2
 
