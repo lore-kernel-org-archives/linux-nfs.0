@@ -1,267 +1,368 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from userp1040.oracle.com ([156.151.31.81]:22664 "EHLO
-	userp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751182AbaESRvv convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 May 2014 13:51:51 -0400
-Content-Type: text/plain; charset=US-ASCII
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.2\))
-Subject: Re: Soft lockup in unloading kernel modules
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <53724CF1.8030509@ims.co.at>
-Date: Mon, 19 May 2014 13:51:42 -0400
-Cc: linux-rdma <linux-rdma@vger.kernel.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Message-Id: <B8C78BF6-A287-4409-A504-76670A68C9A2@oracle.com>
-References: <lkg4ae$hj7$1@ger.gmane.org> <536BA9DE.2060702@gmail.com> <53724CF1.8030509@ims.co.at>
-To: Klemens Senn <klemens.senn@ims.co.at>
+Received: from mx11.netapp.com ([216.240.18.76]:32910 "EHLO mx11.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751529AbaEFNNC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 May 2014 09:13:02 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
+CC: <dros@primarydata.com>, <hch@infradead.org>
+Subject: [PATCH v3 07/17] NFS: Create a common rw_header_alloc and rw_header_free function
+Date: Tue, 6 May 2014 09:12:30 -0400
+Message-ID: <1399381960-3019-8-git-send-email-Anna.Schumaker@Netapp.com>
+In-Reply-To: <1399381960-3019-1-git-send-email-Anna.Schumaker@Netapp.com>
+References: <1399381960-3019-1-git-send-email-Anna.Schumaker@Netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi Klemens-
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
 
-On May 13, 2014, at 12:48 PM, Klemens Senn <klemens.senn@ims.co.at> wrote:
+I create a new struct nfs_rw_ops to decide the differences between reads
+and writes.  This struct will be set when initializing a new
+nfs_pgio_descriptor, and then passed on to the nfs_rw_header when a new
+header is allocated.
 
-> Hi Anna,
-> 
-> today I retried unloading the kernel modules with your updated kernel
-> and additionally I tried the nfsd-next kernel from J. Bruce Fields and
-> Chuck's nfs-rdma-client kernel.
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+---
+ fs/nfs/internal.h        |  6 ++----
+ fs/nfs/pagelist.c        | 33 +++++++++++++++++++++++++++++++++
+ fs/nfs/pnfs.c            |  8 ++++----
+ fs/nfs/read.c            | 34 +++++++++++++---------------------
+ fs/nfs/write.c           | 28 ++++++++++++----------------
+ include/linux/nfs_page.h |  7 +++++++
+ include/linux/nfs_xdr.h  |  1 +
+ 7 files changed, 72 insertions(+), 45 deletions(-)
 
-I filed
-
-  https://bugzilla.linux-nfs.org/show_bug.cgi?id=252
-
-to track this issue.
-
-
-> In short: None of these was able to unload the kernel modules with an
-> active connection.
-> 
-> In detail:
-> 
-> With your kernel I got following 3 faults:
->  o BUG: soft lockup - CPU#0 stuck for 22s! [modprobe:4615]
->  o BUG: unable to handle kernel NULL pointer dereference at
-> 0000000000000003
->  o BUG: unable to handle kernel paging request at 0000000000005b8c
-> 
-> With the nfsd-next kernel I got following results:
->  o BUG: soft lockup - CPU#0 stuck for 23s! [modprobe:4452]
->  o module unloading blocks forever, dmesg shows:
->    nfsd: last server has exited, flushing export cache
->    waiting module removal not supported: please upgrade
->  o Kernel keeps running but reports the following:
->    nfsd: last server has exited, flushing export cache
->    waiting module removal not supported: please upgrade
->    svc_xprt_enqueue: threads and transports both waiting??
->    INFO: task modprobe:4510 blocked for more than 480 seconds.
->          Not tainted 3.15.0-rc1-bfields-master+ #1
->    "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this
-> message.
->    modprobe        D ffff88087fc13440     0  4510   4458 0x00000000
->     ffff88105bb23c58 0000000000000086 ffff88105c14e690 0000000000013440
->     ffff88105bb23fd8 0000000000013440 ffffffff81a14480 ffff88105c14e690
->     0000000000000037 ffff88085d7f74d8 ffff88085d7f74e0 7fffffffffffffff
->    Call Trace:
->     [<ffffffff815a2424>] schedule+0x24/0x70
->     [<ffffffff815a18cc>] schedule_timeout+0x1ec/0x260
->     [<ffffffff8159a504>] ? printk+0x5c/0x5e
->     [<ffffffff815a3406>] wait_for_completion+0x96/0x100
->     [<ffffffff81080c90>] ? try_to_wake_up+0x2b0/0x2b0
->     [<ffffffffa0314039>] cma_remove_one+0x1a9/0x220 [rdma_cm]
->     [<ffffffffa01fea86>] ib_unregister_device+0x46/0x120 [ib_core]
->     [<ffffffffa02c5dc9>] mlx4_ib_remove+0x29/0x260 [mlx4_ib]
->     [<ffffffffa04319d0>] mlx4_remove_device+0xa0/0xc0 [mlx4_core]
->     [<ffffffffa0431a2b>] mlx4_unregister_interface+0x3b/0xa0 [mlx4_core]
->     [<ffffffffa02d74cc>] mlx4_ib_cleanup+0x10/0x23 [mlx4_ib]
->     [<ffffffff810bd612>] SyS_delete_module+0x152/0x220
->     [<ffffffff81149684>] ? vm_munmap+0x54/0x70
->     [<ffffffff815ad5a6>] system_call_fastpath+0x1a/0x1f
-> 
-> With the nfs-rdma-client I got following results:
->  o module unloading blocks forever, dmesg shows:
->    nfsd: last server has exited, flushing export cache
->    svc_xprt_enqueue: threads and transports both waiting??
->  o BUG: unable to handle kernel paging request at 0000000000004dec
->    IP: [<ffffffff815a63b5>] _raw_spin_lock_bh+0x15/0x40
->    PGD 107ba9a067 PUD 105c093067 PMD 0
->    Oops: 0002 [#1] SMP
->    Modules linked in: nfsd nfs_acl auth_rpcgss oid_registry svcrdma
-> dm_mod cpuid nfs fscache lockd sunrpc af_packet 8021q garp stp llc
-> rdma_ucm ib_ucm rdma_cm iw_cm ib_ipoib ib_cm ib_uverbs ib_umad mlx4_en
-> mlx4_ib(-) ib_sa ib_mad ib_core ib_addr sr_mod cdrom usb_storage joydev
-> mlx4_core usbhid x86_pkg_temp_thermal coretemp kvm_intel kvm
-> ghash_clmulni_intel aesni_intel ablk_helper cryptd lrw gf128mul
-> glue_helper ehci_pci aes_x86_64 ehci_hcd isci iTCO_wdt libsas pcspkr
-> iTCO_vendor_support igb i2c_algo_bit sb_edac lpc_ich edac_core ioatdma
-> usbcore tpm_tis ptp microcode i2c_i801 sg mfd_core scsi_transport_sas
-> ipmi_si usb_common tpm wmi pps_core dca ipmi_msghandler acpi_cpufreq
-> button edd autofs4 xfs libcrc32c crc32c_intel processor thermal_sys
-> scsi_dh_rdac scsi_dh_hp_sw scsi_dh_emc scsi_dh_alua scsi_dh
->    CPU: 14 PID: 4813 Comm: modprobe Not tainted
-> 3.15.0-rc5-cel-nfs-rdma-client-unpatched+ #2
->    Hardware name: Supermicro B9DRG-E/B9DRG-E, BIOS 3.0 09/04/2013
->    task: ffff88085bf96190 ti: ffff88085d42a000 task.ti: ffff88085d42a000
->    RIP: 0010:[<ffffffff815a63b5>]  [<ffffffff815a63b5>]
-> _raw_spin_lock_bh+0x15/0x40
->    RSP: 0018:ffff88085d42bd18  EFLAGS: 00010286
->    RAX: 0000000000010000 RBX: 0000000000004de8 RCX: 0000000000000000
->    RDX: 000000000000000b RSI: 000000000000000e RDI: 0000000000004dec
->    RBP: ffff88085d42bd18 R08: ffff88087c611f38 R09: 000000000000a140
->    R10: 000000000000002b R11: 0000000000000000 R12: ffff88085dcc3c00
->    R13: ffff88105ca13280 R14: 0000000000004dec R15: 0000000000004df0
->    FS:  00007f0e49fb5700(0000) GS:ffff88107fcc0000(0000)
-> knlGS:0000000000000000
->    CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
->    CR2: 0000000000004dec CR3: 000000105b027000 CR4: 00000000000407e0
->    Stack:
->     ffff88085d42bd58 ffffffffa03bd9f0 0000000001328b88 ffff88085dcc3c00
->     ffff88085dce8000 ffff88105ca13280 ffff88085dce8260 ffff88085dce81c8
->     ffff88085d42bd78 ffffffffa0441ce9 ffff88085dce8000 ffff88105ca13240
->    Call Trace:
->     [<ffffffffa03bd9f0>] svc_xprt_enqueue+0x50/0x220 [sunrpc]
->     [<ffffffffa0441ce9>] rdma_cma_handler+0x69/0x180 [svcrdma]
->     [<ffffffffa031a086>] cma_remove_one+0x1f6/0x220 [rdma_cm]
->     [<ffffffffa0261a86>] ib_unregister_device+0x46/0x120 [ib_core]
->     [<ffffffffa02b9dc9>] mlx4_ib_remove+0x29/0x260 [mlx4_ib]
->     [<ffffffffa02329d0>] mlx4_remove_device+0xa0/0xc0 [mlx4_core]
->     [<ffffffffa0232a2b>] mlx4_unregister_interface+0x3b/0xa0 [mlx4_core]
->     [<ffffffffa02cb4cc>] mlx4_ib_cleanup+0x10/0x23 [mlx4_ib]
->     [<ffffffff810bd6f0>] SyS_delete_module+0x170/0x1f0
->     [<ffffffff811497f4>] ? vm_munmap+0x54/0x70
->     [<ffffffff815ae426>] system_call_fastpath+0x1a/0x1f
->    Code: 5d c3 0f b7 17 66 39 ca 74 f6 f3 90 0f b7 17 66 39 d1 75 f6 5d
-> c3 55 65 81 04 25 20 b9 00 00 00 02 00 00 48 89 e5 b8 00 00 01 00 <f0>
-> 0f c1 07 89 c2 c1 ea 10 66 39 c2 75 04 5d c3 f3 90 0f b7 07
->    RIP  [<ffffffff815a63b5>] _raw_spin_lock_bh+0x15/0x40
->     RSP <ffff88085d42bd18>
->    CR2: 0000000000004dec
->    ---[ end trace bf1fd548a33cbfc4 ]---
->    Kernel panic - not syncing: Fatal exception in interrupt
->    Kernel Offset: 0x0 from 0xffffffff81000000 (relocation range:
-> 0xffffffff80000000-0xffffffff9fffffff)
->    ---[ end Kernel panic - not syncing: Fatal exception in interrupt
-> 
-> 
-> Regards,
-> Klemens
-> 
-> 
-> On 05/08/2014 05:59 PM, Anna Schumaker wrote:
->> I haven't applied Chuck's recent (v3) patches to that kernel yet (I've been waiting to see if people have comments).  I'll try to push something out today.
->> 
->> On 05/08/2014 10:28 AM, Senn Klemens wrote:
->>> Hi,
->>> 
->>> I am getting a soft lockup on the NFS server on its reboot if at least
->>> one client mount is established. I am using OpenSUSE 12.3 with the
->>> nfs-rdma kernel from Anna Schumaker
->>> (git://git.linux-nfs.org/projects/anna/nfs-rdma.git).
->>> 
->>> The export on the server side is done with
->>> /data	*(fsid=0,crossmnt,rw,mp,no_root_squash,sync,no_subtree_check,insecure)
->>> 
->>> Following command is used for mounting the NFSv4 share:
->>> mount -t nfs -o port=20049,rdma,vers=4.0,timeo=900 172.16.100.19:/ /mnt
->>> 
->>> The HCA is a Mellanox MT4099 on the server and the client.
->>> 
->>> The soft lockup can be reproduced by following steps:
->>>  o server: Start the nfs server
->>>  o client: Mount the share
->>>  o client: Do a "ls" in the mounted directory
->>>  o server: Stop the nfs server
->>>  o server: Unload the nfs and mlx4 modules or reboot the server (I used
->>> the openibd init script from the Mellanox driver without having the
->>> Mellanox stack installed)
->>> 
->>> The server reports a soft lockup
->>>  BUG: soft lockup - CPU#0 stuck for 22s! [modprobe:6146]
->>> most times.
->>> 
->>> Sometimes I get following kernel panic
->>> BUG: unable to handle kernel NULL pointer dereference at 0000000000000003
->>> IP: [<ffffffff815a5c35>] _raw_spin_lock_bh+0x15/0x40
->>> PGD 82a820067 PUD 857832067 PMD 0
->>> Oops: 0002 [#1] SMP
->>> Modules linked in: nfsd nfs_acl auth_rpcgss oid_registry nfnetlink_log
->>> nfnetlink bluetooth rfkill nfsv4 svcrdma dm_mod cpuid nfs fscache lockd
->>> sunrpc af_packet 8021q garp stp llc rdma_ucm ib_ucm rdma_cm iw_cm
->>> ib_ipoib ib_cm ib_uverbs ib_umad mlx4_en mlx4_ib(-) ib_sa ib_mad ib_core
->>> ib_addr sr_mod cdrom usb_storage joydev mlx4_core usbhid
->>> x86_pkg_temp_thermal coretemp kvm_intel kvm ghash_clmulni_intel
->>> aesni_intel ablk_helper cryptd iTCO_wdt lrw igb gf128mul
->>> iTCO_vendor_support ehci_pci glue_helper pcspkr i2c_algo_bit isci
->>> ehci_hcd aes_x86_64 ptp libsas ioatdma lpc_ich microcode sb_edac sg
->>> pps_core usbcore ipmi_si tpm_tis edac_core scsi_transport_sas i2c_i801
->>> mfd_core dca usb_common tpm ipmi_msghandler wmi acpi_cpufreq button edd
->>> autofs4 xfs libcrc32c crc32c_intel processor thermal_sys scsi_dh_rdac
->>> scsi_dh_hp_sw scsi_dh_emc scsi_dh_alua scsi_dh [last unloaded: oid_registry]
->>> CPU: 0 PID: 6603 Comm: modprobe Not tainted 3.15.0-rc2-anna-nfs-rdma+ #3
->>> Hardware name: Supermicro B9DRG-E/B9DRG-E, BIOS 3.0 09/04/2013
->>> task: ffff88105b8c6050 ti: ffff88105d814000 task.ti: ffff88105d814000
->>> RIP: 0010:[<ffffffff815a5c35>]  [<ffffffff815a5c35>]
->>> _raw_spin_lock_bh+0x15/0x40
->>> RSP: 0018:ffff88105d815d18  EFLAGS: 00010286
->>> RAX: 0000000000010000 RBX: ffffffffffffffff RCX: 0000000000000000
->>> RDX: 000000000000000b RSI: 0000000000000000 RDI: 0000000000000003
->>> RBP: ffff88105d815d18 R08: ffff88087c611f38 R09: 0000000000000001
->>> R10: 0000000000000000 R11: 0000000000000000 R12: ffff88087c3c9800
->>> R13: ffff88107b82ab00 R14: 0000000000000003 R15: 0000000000000007
->>> FS:  00007fef64612700(0000) GS:ffff88087fc00000(0000) knlGS:0000000000000000
->>> CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
->>> CR2: 0000000000000003 CR3: 000000087c2c7000 CR4: 00000000000407f0
->>> Stack:
->>> ffff88105d815d58 ffffffffa05199f0 ffff88105d815d88 ffff88087c3c9800
->>> ffff88087c3c9400 ffff88107b82ab00 ffff88087c3c9660 ffff88087c3c95c8
->>> ffff88105d815d78 ffffffffa0421ce9 ffff88087c3c9400 ffff88107b82aac0
->>> Call Trace:
->>> [<ffffffffa05199f0>] svc_xprt_enqueue+0x50/0x220 [sunrpc]
->>> [<ffffffffa0421ce9>] rdma_cma_handler+0x69/0x180 [svcrdma]
->>> [<ffffffffa039d086>] cma_remove_one+0x1f6/0x220 [rdma_cm]
->>> [<ffffffffa01dca86>] ib_unregister_device+0x46/0x120 [ib_core]
->>> [<ffffffffa032ddc9>] mlx4_ib_remove+0x29/0x260 [mlx4_ib]
->>> [<ffffffffa02fb9d0>] mlx4_remove_device+0xa0/0xc0 [mlx4_core]
->>> [<ffffffffa02fba2b>] mlx4_unregister_interface+0x3b/0xa0 [mlx4_core]
->>> [<ffffffffa033f4cc>] mlx4_ib_cleanup+0x10/0x23 [mlx4_ib]
->>> [<ffffffff810bd6b2>] SyS_delete_module+0x152/0x220
->>> [<ffffffff811496e4>] ? vm_munmap+0x54/0x70
->>> [<ffffffff815adca6>] system_call_fastpath+0x1a/0x1f
->>> Code: 5d c3 0f b7 17 66 39 ca 74 f6 f3 90 0f b7 17 66 39 d1 75 f6 5d c3
->>> 55 65 81 04 25 20 b9 00 00 00 02 00 00 48 89 e5 b8 00 00 01 00 <f0> 0f
->>> c1 07 89 c2 c1 ea 10 66 39 c2 75 04 5d c3 f3 90 0f b7 07
->>> RIP  [<ffffffff815a5c35>] _raw_spin_lock_bh+0x15/0x40
->>> RSP <ffff88105d815d18>
->>> CR2: 0000000000000003
->>> ---[ end trace 18e02ff413ac4b9b ]---
->>> Kernel panic - not syncing: Fatal exception in interrupt
->>> Kernel Offset: 0x0 from 0xffffffff81000000 (relocation range:
->>> 0xffffffff80000000-0xffffffff9fffffff)
->>> ---[ end Kernel panic - not syncing: Fatal exception in interrupt
->>> 
->>> Kind regards,
->>> Klemens
->>> 
->>> --
->>> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->>> the body of a message to majordomo@vger.kernel.org
->>> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> 
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> 
-> 
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 5ddc142..9d6a40e 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -237,6 +237,8 @@ extern void nfs_pgheader_init(struct nfs_pageio_descriptor *desc,
+ void nfs_set_pgio_error(struct nfs_pgio_header *hdr, int error, loff_t pos);
+ int nfs_iocounter_wait(struct nfs_io_counter *c);
+ 
++struct nfs_rw_header *nfs_rw_header_alloc(const struct nfs_rw_ops *);
++void nfs_rw_header_free(struct nfs_pgio_header *);
+ struct nfs_pgio_data *nfs_pgio_data_alloc(struct nfs_pgio_header *, unsigned int);
+ void nfs_pgio_data_release(struct nfs_pgio_data *);
+ 
+@@ -397,8 +399,6 @@ extern int nfs4_get_rootfh(struct nfs_server *server, struct nfs_fh *mntfh, bool
+ 
+ struct nfs_pgio_completion_ops;
+ /* read.c */
+-extern struct nfs_rw_header *nfs_readhdr_alloc(void);
+-extern void nfs_readhdr_free(struct nfs_pgio_header *hdr);
+ extern void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
+ 			struct inode *inode, bool force_mds,
+ 			const struct nfs_pgio_completion_ops *compl_ops);
+@@ -425,8 +425,6 @@ int nfs_remount(struct super_block *sb, int *flags, char *raw_data);
+ extern void nfs_pageio_init_write(struct nfs_pageio_descriptor *pgio,
+ 			struct inode *inode, int ioflags, bool force_mds,
+ 			const struct nfs_pgio_completion_ops *compl_ops);
+-extern struct nfs_rw_header *nfs_writehdr_alloc(void);
+-extern void nfs_writehdr_free(struct nfs_pgio_header *hdr);
+ extern int nfs_generic_flush(struct nfs_pageio_descriptor *desc,
+ 			     struct nfs_pgio_header *hdr);
+ extern void nfs_pageio_reset_write_mds(struct nfs_pageio_descriptor *pgio);
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index a98ccf7..ca356fe 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -301,6 +301,37 @@ static inline struct nfs_rw_header *NFS_RW_HEADER(struct nfs_pgio_header *hdr)
+ }
+ 
+ /**
++ * nfs_rw_header_alloc - Allocate a header for a read or write
++ * @ops: Read or write function vector
++ */
++struct nfs_rw_header *nfs_rw_header_alloc(const struct nfs_rw_ops *ops)
++{
++	struct nfs_rw_header *header = ops->rw_alloc_header();
++
++	if (header) {
++		struct nfs_pgio_header *hdr = &header->header;
++
++		INIT_LIST_HEAD(&hdr->pages);
++		INIT_LIST_HEAD(&hdr->rpc_list);
++		spin_lock_init(&hdr->lock);
++		atomic_set(&hdr->refcnt, 0);
++		hdr->rw_ops = ops;
++	}
++	return header;
++}
++EXPORT_SYMBOL_GPL(nfs_rw_header_alloc);
++
++/*
++ * nfs_rw_header_free - Free a read or write header
++ * @hdr: The header to free
++ */
++void nfs_rw_header_free(struct nfs_pgio_header *hdr)
++{
++	hdr->rw_ops->rw_free_header(NFS_RW_HEADER(hdr));
++}
++EXPORT_SYMBOL_GPL(nfs_rw_header_free);
++
++/**
+  * nfs_pgio_data_alloc - Allocate pageio data
+  * @hdr: The header making a request
+  * @pagecount: Number of pages to create
+@@ -367,6 +398,7 @@ void nfs_pageio_init(struct nfs_pageio_descriptor *desc,
+ 		     struct inode *inode,
+ 		     const struct nfs_pageio_ops *pg_ops,
+ 		     const struct nfs_pgio_completion_ops *compl_ops,
++		     const struct nfs_rw_ops *rw_ops,
+ 		     size_t bsize,
+ 		     int io_flags)
+ {
+@@ -380,6 +412,7 @@ void nfs_pageio_init(struct nfs_pageio_descriptor *desc,
+ 	desc->pg_inode = inode;
+ 	desc->pg_ops = pg_ops;
+ 	desc->pg_completion_ops = compl_ops;
++	desc->pg_rw_ops = rw_ops;
+ 	desc->pg_ioflags = io_flags;
+ 	desc->pg_error = 0;
+ 	desc->pg_lseg = NULL;
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index e192ba6..54c84c1 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1585,7 +1585,7 @@ pnfs_do_multiple_writes(struct nfs_pageio_descriptor *desc, struct list_head *he
+ static void pnfs_writehdr_free(struct nfs_pgio_header *hdr)
+ {
+ 	pnfs_put_lseg(hdr->lseg);
+-	nfs_writehdr_free(hdr);
++	nfs_rw_header_free(hdr);
+ }
+ EXPORT_SYMBOL_GPL(pnfs_writehdr_free);
+ 
+@@ -1596,7 +1596,7 @@ pnfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc)
+ 	struct nfs_pgio_header *hdr;
+ 	int ret;
+ 
+-	whdr = nfs_writehdr_alloc();
++	whdr = nfs_rw_header_alloc(desc->pg_rw_ops);
+ 	if (!whdr) {
+ 		desc->pg_completion_ops->error_cleanup(&desc->pg_list);
+ 		pnfs_put_lseg(desc->pg_lseg);
+@@ -1743,7 +1743,7 @@ pnfs_do_multiple_reads(struct nfs_pageio_descriptor *desc, struct list_head *hea
+ static void pnfs_readhdr_free(struct nfs_pgio_header *hdr)
+ {
+ 	pnfs_put_lseg(hdr->lseg);
+-	nfs_readhdr_free(hdr);
++	nfs_rw_header_free(hdr);
+ }
+ EXPORT_SYMBOL_GPL(pnfs_readhdr_free);
+ 
+@@ -1754,7 +1754,7 @@ pnfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc)
+ 	struct nfs_pgio_header *hdr;
+ 	int ret;
+ 
+-	rhdr = nfs_readhdr_alloc();
++	rhdr = nfs_rw_header_alloc(desc->pg_rw_ops);
+ 	if (!rhdr) {
+ 		desc->pg_completion_ops->error_cleanup(&desc->pg_list);
+ 		ret = -ENOMEM;
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index ab4c1a5..4cf3577 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -31,33 +31,19 @@
+ static const struct nfs_pageio_ops nfs_pageio_read_ops;
+ static const struct rpc_call_ops nfs_read_common_ops;
+ static const struct nfs_pgio_completion_ops nfs_async_read_completion_ops;
++static const struct nfs_rw_ops nfs_rw_read_ops;
+ 
+ static struct kmem_cache *nfs_rdata_cachep;
+ 
+-struct nfs_rw_header *nfs_readhdr_alloc(void)
++static struct nfs_rw_header *nfs_readhdr_alloc(void)
+ {
+-	struct nfs_rw_header *rhdr;
+-
+-	rhdr = kmem_cache_zalloc(nfs_rdata_cachep, GFP_KERNEL);
+-	if (rhdr) {
+-		struct nfs_pgio_header *hdr = &rhdr->header;
+-
+-		INIT_LIST_HEAD(&hdr->pages);
+-		INIT_LIST_HEAD(&hdr->rpc_list);
+-		spin_lock_init(&hdr->lock);
+-		atomic_set(&hdr->refcnt, 0);
+-	}
+-	return rhdr;
++	return kmem_cache_zalloc(nfs_rdata_cachep, GFP_KERNEL);
+ }
+-EXPORT_SYMBOL_GPL(nfs_readhdr_alloc);
+ 
+-void nfs_readhdr_free(struct nfs_pgio_header *hdr)
++static void nfs_readhdr_free(struct nfs_rw_header *rhdr)
+ {
+-	struct nfs_rw_header *rhdr = container_of(hdr, struct nfs_rw_header, header);
+-
+ 	kmem_cache_free(nfs_rdata_cachep, rhdr);
+ }
+-EXPORT_SYMBOL_GPL(nfs_readhdr_free);
+ 
+ static
+ int nfs_return_empty_page(struct page *page)
+@@ -79,7 +65,8 @@ void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
+ 	if (server->pnfs_curr_ld && !force_mds)
+ 		pg_ops = server->pnfs_curr_ld->pg_read_ops;
+ #endif
+-	nfs_pageio_init(pgio, inode, pg_ops, compl_ops, server->rsize, 0);
++	nfs_pageio_init(pgio, inode, pg_ops, compl_ops, &nfs_rw_read_ops,
++			server->rsize, 0);
+ }
+ EXPORT_SYMBOL_GPL(nfs_pageio_init_read);
+ 
+@@ -375,13 +362,13 @@ static int nfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc)
+ 	struct nfs_pgio_header *hdr;
+ 	int ret;
+ 
+-	rhdr = nfs_readhdr_alloc();
++	rhdr = nfs_rw_header_alloc(desc->pg_rw_ops);
+ 	if (!rhdr) {
+ 		desc->pg_completion_ops->error_cleanup(&desc->pg_list);
+ 		return -ENOMEM;
+ 	}
+ 	hdr = &rhdr->header;
+-	nfs_pgheader_init(desc, hdr, nfs_readhdr_free);
++	nfs_pgheader_init(desc, hdr, nfs_rw_header_free);
+ 	atomic_inc(&hdr->refcnt);
+ 	ret = nfs_generic_pagein(desc, hdr);
+ 	if (ret == 0)
+@@ -647,3 +634,8 @@ void nfs_destroy_readpagecache(void)
+ {
+ 	kmem_cache_destroy(nfs_rdata_cachep);
+ }
++
++static const struct nfs_rw_ops nfs_rw_read_ops = {
++	.rw_alloc_header	= nfs_readhdr_alloc,
++	.rw_free_header		= nfs_readhdr_free,
++};
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 0dc4d6a..9c5cde3 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -46,6 +46,7 @@ static const struct rpc_call_ops nfs_write_common_ops;
+ static const struct rpc_call_ops nfs_commit_ops;
+ static const struct nfs_pgio_completion_ops nfs_async_write_completion_ops;
+ static const struct nfs_commit_completion_ops nfs_commit_completion_ops;
++static const struct nfs_rw_ops nfs_rw_write_ops;
+ 
+ static struct kmem_cache *nfs_wdata_cachep;
+ static mempool_t *nfs_wdata_mempool;
+@@ -70,29 +71,19 @@ void nfs_commit_free(struct nfs_commit_data *p)
+ }
+ EXPORT_SYMBOL_GPL(nfs_commit_free);
+ 
+-struct nfs_rw_header *nfs_writehdr_alloc(void)
++static struct nfs_rw_header *nfs_writehdr_alloc(void)
+ {
+ 	struct nfs_rw_header *p = mempool_alloc(nfs_wdata_mempool, GFP_NOIO);
+ 
+-	if (p) {
+-		struct nfs_pgio_header *hdr = &p->header;
+-
++	if (p)
+ 		memset(p, 0, sizeof(*p));
+-		INIT_LIST_HEAD(&hdr->pages);
+-		INIT_LIST_HEAD(&hdr->rpc_list);
+-		spin_lock_init(&hdr->lock);
+-		atomic_set(&hdr->refcnt, 0);
+-	}
+ 	return p;
+ }
+-EXPORT_SYMBOL_GPL(nfs_writehdr_alloc);
+ 
+-void nfs_writehdr_free(struct nfs_pgio_header *hdr)
++static void nfs_writehdr_free(struct nfs_rw_header *whdr)
+ {
+-	struct nfs_rw_header *whdr = container_of(hdr, struct nfs_rw_header, header);
+ 	mempool_free(whdr, nfs_wdata_mempool);
+ }
+-EXPORT_SYMBOL_GPL(nfs_writehdr_free);
+ 
+ static void nfs_context_set_write_error(struct nfs_open_context *ctx, int error)
+ {
+@@ -1210,13 +1201,13 @@ static int nfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc)
+ 	struct nfs_pgio_header *hdr;
+ 	int ret;
+ 
+-	whdr = nfs_writehdr_alloc();
++	whdr = nfs_rw_header_alloc(desc->pg_rw_ops);
+ 	if (!whdr) {
+ 		desc->pg_completion_ops->error_cleanup(&desc->pg_list);
+ 		return -ENOMEM;
+ 	}
+ 	hdr = &whdr->header;
+-	nfs_pgheader_init(desc, hdr, nfs_writehdr_free);
++	nfs_pgheader_init(desc, hdr, nfs_rw_header_free);
+ 	atomic_inc(&hdr->refcnt);
+ 	ret = nfs_generic_flush(desc, hdr);
+ 	if (ret == 0)
+@@ -1244,7 +1235,8 @@ void nfs_pageio_init_write(struct nfs_pageio_descriptor *pgio,
+ 	if (server->pnfs_curr_ld && !force_mds)
+ 		pg_ops = server->pnfs_curr_ld->pg_write_ops;
+ #endif
+-	nfs_pageio_init(pgio, inode, pg_ops, compl_ops, server->wsize, ioflags);
++	nfs_pageio_init(pgio, inode, pg_ops, compl_ops, &nfs_rw_write_ops,
++			server->wsize, ioflags);
+ }
+ EXPORT_SYMBOL_GPL(nfs_pageio_init_write);
+ 
+@@ -1925,3 +1917,7 @@ void nfs_destroy_writepagecache(void)
+ 	kmem_cache_destroy(nfs_wdata_cachep);
+ }
+ 
++static const struct nfs_rw_ops nfs_rw_write_ops = {
++	.rw_alloc_header	= nfs_writehdr_alloc,
++	.rw_free_header		= nfs_writehdr_free,
++};
+diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
+index 92ce578..5948125 100644
+--- a/include/linux/nfs_page.h
++++ b/include/linux/nfs_page.h
+@@ -52,6 +52,11 @@ struct nfs_pageio_ops {
+ 	int	(*pg_doio)(struct nfs_pageio_descriptor *);
+ };
+ 
++struct nfs_rw_ops {
++	struct nfs_rw_header *(*rw_alloc_header)(void);
++	void (*rw_free_header)(struct nfs_rw_header *);
++};
++
+ struct nfs_pageio_descriptor {
+ 	struct list_head	pg_list;
+ 	unsigned long		pg_bytes_written;
+@@ -63,6 +68,7 @@ struct nfs_pageio_descriptor {
+ 
+ 	struct inode		*pg_inode;
+ 	const struct nfs_pageio_ops *pg_ops;
++	const struct nfs_rw_ops *pg_rw_ops;
+ 	int 			pg_ioflags;
+ 	int			pg_error;
+ 	const struct rpc_call_ops *pg_rpc_callops;
+@@ -86,6 +92,7 @@ extern	void nfs_pageio_init(struct nfs_pageio_descriptor *desc,
+ 			     struct inode *inode,
+ 			     const struct nfs_pageio_ops *pg_ops,
+ 			     const struct nfs_pgio_completion_ops *compl_ops,
++			     const struct nfs_rw_ops *rw_ops,
+ 			     size_t bsize,
+ 			     int how);
+ extern	int nfs_pageio_add_request(struct nfs_pageio_descriptor *,
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index 965c2aa..a1b91b6 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1269,6 +1269,7 @@ struct nfs_pgio_header {
+ 	const struct rpc_call_ops *mds_ops;
+ 	void (*release) (struct nfs_pgio_header *hdr);
+ 	const struct nfs_pgio_completion_ops *completion_ops;
++	const struct nfs_rw_ops	*rw_ops;
+ 	struct nfs_direct_req	*dreq;
+ 	void			*layout_private;
+ 	spinlock_t		lock;
+-- 
+1.9.2
 
