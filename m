@@ -1,102 +1,98 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:44140 "EHLO mx2.suse.de"
+Received: from mx12.netapp.com ([216.240.18.77]:4570 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751054AbaEMAmG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 12 May 2014 20:42:06 -0400
-Date: Tue, 13 May 2014 10:41:47 +1000
-From: NeilBrown <neilb@suse.de>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: NFS <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] NFS: revalidate on open if dcache is negative.
-Message-ID: <20140513104147.144ce93a@notabene.brown>
-In-Reply-To: <5C29EB03-6EF6-476C-AD25-97E0A3871C26@primarydata.com>
-References: <20140512135019.56e5c465@notabene.brown>
-	<5C29EB03-6EF6-476C-AD25-97E0A3871C26@primarydata.com>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/tSbqJ+i6h_pyBbWi=shMVRh"; protocol="application/pgp-signature"
+	id S1750811AbaEFNMo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 May 2014 09:12:44 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
+CC: <dros@primarydata.com>, <hch@infradead.org>
+Subject: [PATCH v3 00/17] NFS: Create a common path used by reads and writes
+Date: Tue, 6 May 2014 09:12:23 -0400
+Message-ID: <1399381960-3019-1-git-send-email-Anna.Schumaker@Netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/tSbqJ+i6h_pyBbWi=shMVRh
-Content-Type: text/plain; charset=UTF-8
-Content-Transfer-Encoding: quoted-printable
+I noticed that much of the read and write code was almost identical, with
+only minor differences in argument types and names.  These patches seek to
+unify these two codepaths wherever possible in order to make future changes
+easier.
 
-On Mon, 12 May 2014 13:58:59 -0700 Trond Myklebust
-<trond.myklebust@primarydata.com> wrote:
+Table of contents:
+	Patches 01 - 05: Set up common data structures.
+	Patches 06 - 10: Set up a shared rpc_call_ops struct.
+	Patches 11 - 15: Set up a shared nfs_pageio_ops struct.
 
->=20
-> On May 11, 2014, at 20:50, NeilBrown <neilb@suse.de> wrote:
->=20
-> >=20
-> >=20
-> > NFS CTO semantics require that (absent a delegation) the server
-> > must be contacted at each open.
-> >=20
-> > nfs_lookup_verify_inode() implements this when the dcache contains
-> > a positive cached entry.  However it is not called when the dcache
-> > contains a negative cached entry.  That path uses nfs_neg_need_reval()
-> > which doesn't impose CTO semantics.
-> >=20
-> > So a sequence like:
-> >=20
-> >   rm -f testfile
-> >   ls -l testfile
-> >   ssh $server touch testfile
-> >   cat testfile
-> >=20
-> > will fail:
-> >=20
-> >  cat: testfile: No such file or directory
-> >=20
-> > an 'strace' will confirm that this resulted from an 'open' system
-> > call.
-> >=20
-> > So add code to nfs_neg_need_reval implement CTO semantics much like
-> > that in nfs_lookup_verify_inode().
->=20
-> Hi Neil,
->=20
-> To me, close-to-open is about ensuring that the data and metadata caches =
-for the file (or directory) in question are revalidated correctly on open (=
-or opendir). Close-to-open semantics are enabled/disabled by the cto/nocto =
-mount options (with cto being the default).
->=20
-> The lookup semantics are about ensuring that the namespace cache is consi=
-stent with what is on the server. They are controlled by the =E2=80=98looku=
-pcache=E2=80=99 mount option, which defaults to the behaviour that you desc=
-ribe above (lookupcache=3Dall). I believe that we have discussed changing t=
-he default to be lookupcache=3Dpositive, which would give the semantics tha=
-t your patch enforces, but I believe the consensus was to keep the current =
-behaviour.
->=20
+Some of the commit setup was moved into common code, but I'm willing to
+move this back into write.c if this looks to be a problem.
 
-Yes - of course.  Thanks for clarifying that for me.
-I had in mind that lookup-for-open is special.  It is, but not that special.
+Future work:
+	I have rough pNFS patches to combine the read and write paths in
+	pnfs.c.  They apply on top of Dros' multiple requests work and
+	should get more testing before I submit.
 
-Thanks,
-NeilBrown
+Testing:
+	I tested every version of NFS using the cthon and xfs tests without
+	hitting anything new.  Any extra testing would be great seeing how
+	the read and write paths are vitally important.
 
---Sig_/tSbqJ+i6h_pyBbWi=shMVRh
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
+Changes in v3:
+	Instead of creating a new "pageio.c" file, I now put the combined
+	code into pagelist.c (good luck, Dros!)
 
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.22 (GNU/Linux)
+	I also renamed a few functions, and did a better job checking what
+	pagelist.c functions can now be static.
 
-iQIVAwUBU3FqSznsnt1WYoG5AQIBLQ//fUDoSShoQ4M4cLltho+0deZM84biFUGD
-Jv1hiHYpg+JsLEhSvgw3vN8hlX3T5x76f4km3Z0vgdHywvXBXVrnBwiY/3oEyeG/
-jU+qhpclBXGBQK985kKFtKKsrcF3AK+tATZt+q3qJd26mBcFeOVktZfG7QxtjZMA
-duMI2LH4rdvo35iYITokcGYOdMYqgehRvSP4Vjqku37fFCLbbkbePtcf9oIBnbJS
-o6DGlANnKleEy7AG4mHZwvmbVKcpW4YgTwlzikAst07uAXUU0YdqXWP+eiklaDID
-b/eIvw+BBxAYp55t1hjDnhXSLQDRtMXGv3JHALlTKyQCfUIYjdOlpGDsBGJRXHsJ
-vO93Ew7DNodxe+pYI+7kiV50FUh5rTPBjbZxkq3wsv82UJn2W7beiIrHDr+zW+ti
-3a58e2yumD7yskGEF4uRgmYLiwQJU+WOUZsB3GCaEuouD7Mt64Zu5keXQx018Dm0
-N+Zx7oCnXlVJjFp2zZku5guQ3ELc4RB0zHIKQbqLiLidHZmGU+J5y5h0vEYpkr24
-Bb38IAyEKQZFDMMh3W5R1sxoGavP/X+4BsY4DPcXjFbXqKWHsqequLpUZDbWidmM
-ljuvewXFKxm9wzG1pOcXmW+L7yq8TVTPnW/F0dUJWxxPDfLFiIYYyftt6BpWgw8f
-mW+ey2S2O5I=
-=+doO
------END PGP SIGNATURE-----
+Questions?  Comments?  Thoughts?
 
---Sig_/tSbqJ+i6h_pyBbWi=shMVRh--
+Anna
+
+
+Anna Schumaker (17):
+  NFS: Create a common argument structure for reads and writes
+  NFS: Create a common results structure for reads and writes
+  NFS: Create a common read and write data struct
+  NFS: Create a common read and write header struct
+  NFS: Move the write verifier into the nfs_pgio_header
+  NFS: Create a common pgio_alloc and pgio_release function
+  NFS: Create a common rw_header_alloc and rw_header_free function
+  NFS: Create a common pgio_rpc_prepare function
+  NFS: Create a common nfs_pgio_result_common function
+  NFS: Create a common rpc_call_ops struct
+  NFS: Create a common rpcsetup function for reads and writes
+  NFS: Create a common pgio_error function
+  NFS: Create a generic_pgio function
+  NFS: Create a common initiate_pgio() function
+  NFS: Create a common multiple_pgios() function
+  NFS: Create a common generic_pg_pgios()
+  NFS: Create a common nfs_pageio_ops struct
+
+ fs/nfs/blocklayout/blocklayout.c |  22 +-
+ fs/nfs/direct.c                  |   4 +-
+ fs/nfs/internal.h                |  29 +--
+ fs/nfs/nfs2xdr.c                 |  14 +-
+ fs/nfs/nfs3proc.c                |  19 +-
+ fs/nfs/nfs3xdr.c                 |  16 +-
+ fs/nfs/nfs4_fs.h                 |   4 +-
+ fs/nfs/nfs4filelayout.c          |  40 ++--
+ fs/nfs/nfs4proc.c                |  52 ++---
+ fs/nfs/nfs4trace.h               |   8 +-
+ fs/nfs/nfs4xdr.c                 |  19 +-
+ fs/nfs/objlayout/objio_osd.c     |   6 +-
+ fs/nfs/objlayout/objlayout.c     |  16 +-
+ fs/nfs/objlayout/objlayout.h     |   8 +-
+ fs/nfs/pagelist.c                | 406 ++++++++++++++++++++++++++++++++++++-
+ fs/nfs/pnfs.c                    |  46 ++---
+ fs/nfs/pnfs.h                    |  10 +-
+ fs/nfs/proc.c                    |  19 +-
+ fs/nfs/read.c                    | 348 +++-----------------------------
+ fs/nfs/write.c                   | 425 +++++----------------------------------
+ include/linux/nfs_fs.h           |   2 -
+ include/linux/nfs_page.h         |  13 ++
+ include/linux/nfs_xdr.h          |  95 +++------
+ 23 files changed, 674 insertions(+), 947 deletions(-)
+
+-- 
+1.9.2
+
