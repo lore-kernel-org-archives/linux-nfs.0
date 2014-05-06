@@ -1,110 +1,96 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f173.google.com ([209.85.223.173]:50706 "EHLO
-	mail-ie0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756246AbaE2PHF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 May 2014 11:07:05 -0400
-Received: by mail-ie0-f173.google.com with SMTP id lx4so410803iec.32
-        for <linux-nfs@vger.kernel.org>; Thu, 29 May 2014 08:07:04 -0700 (PDT)
-Message-ID: <1401376022.6543.3.camel@leira.trondhjem.org>
-Subject: Re: [nfs:devel 21/48] fs/nfs/pagelist.c:453: warning: unused
- variable 'inode'
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Anna Schumaker <Anna.Schumaker@netapp.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Date: Thu, 29 May 2014 11:07:02 -0400
-In-Reply-To: <538676fe.74/Y9ZfdJIRe5CAC%fengguang.wu@intel.com>
-References: <538676fe.74/Y9ZfdJIRe5CAC%fengguang.wu@intel.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from fieldses.org ([174.143.236.118]:50152 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754832AbaEFUy0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 May 2014 16:54:26 -0400
+Date: Tue, 6 May 2014 16:54:18 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: NeilBrown <neilb@suse.de>
+Cc: Jan Kara <jack@suse.cz>, Jeff Layton <jlayton@redhat.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Dave Chinner <david@fromorbit.com>, Mel Gorman <mgorman@suse.com>,
+        Andrew Morton <akpm@linux-foundation.org>, linux-mm@kvack.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH 3/5] nfsd: Only set PF_LESS_THROTTLE when really needed.
+Message-ID: <20140506205418.GQ18281@fieldses.org>
+References: <20140423022441.4725.89693.stgit@notabene.brown>
+ <20140423024058.4725.38098.stgit@notabene.brown>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140423024058.4725.38098.stgit@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2014-05-29 at 07:53 +0800, kbuild test robot wrote:
-> tree:   git://git.linux-nfs.org/projects/trondmy/linux-nfs.git devel
-> head:   c75c3b0bfffdb21daecb7dadbd30eb2e353fe66d
-> commit: 5aea6ba186d825973a1c3daf88dece597b8b54e3 [21/48] NFS: Create a common initiate_pgio() function
-> config: make ARCH=avr32 atngw100_defconfig
+On Wed, Apr 23, 2014 at 12:40:58PM +1000, NeilBrown wrote:
+> PF_LESS_THROTTLE has a very specific use case: to avoid deadlocks
+> and live-locks while writing to the page cache in a loop-back
+> NFS mount situation.
 > 
-> All warnings:
+> It therefore makes sense to *only* set PF_LESS_THROTTLE in this
+> situation.
+> We now know when a request came from the local-host so it could be a
+> loop-back mount.  We already know when we are handling write requests,
+> and when we are doing anything else.
 > 
->    fs/nfs/pagelist.c: In function 'nfs_initiate_pgio':
-> >> fs/nfs/pagelist.c:453: warning: unused variable 'inode'
+> So combine those two to allow nfsd to still be throttled (like any
+> other process) in every situation except when it is known to be
+> problematic.
+
+Looks simple enough, ACK.--b.
+
 > 
-> vim +/inode +453 fs/nfs/pagelist.c
-> 
->    437	 * nfs_pgio_prepare - Prepare pageio data to go over the wire
->    438	 * @task: The current task
->    439	 * @calldata: pageio data to prepare
->    440	 */
->    441	static void nfs_pgio_prepare(struct rpc_task *task, void *calldata)
->    442	{
->    443		struct nfs_pgio_data *data = calldata;
->    444		int err;
->    445		err = NFS_PROTO(data->header->inode)->pgio_rpc_prepare(task, data);
->    446		if (err)
->    447			rpc_exit(task, err);
->    448	}
->    449	
->    450	int nfs_initiate_pgio(struct rpc_clnt *clnt, struct nfs_pgio_data *data,
->    451			      const struct rpc_call_ops *call_ops, int how, int flags)
->    452	{
->  > 453		struct inode *inode = data->header->inode;
->    454		struct rpc_task *task;
->    455		struct rpc_message msg = {
->    456			.rpc_argp = &data->args,
->    457			.rpc_resp = &data->res,
->    458			.rpc_cred = data->header->cred,
->    459		};
->    460		struct rpc_task_setup task_setup_data = {
->    461			.rpc_client = clnt,
-> 
+> Signed-off-by: NeilBrown <neilb@suse.de>
 > ---
-> 0-DAY kernel build testing backend              Open Source Technology Center
-> http://lists.01.org/mailman/listinfo/kbuild                 Intel Corporation
-
-Fixing this up using:
-
->From 86e52bd318d0fda06c6c9829ec54f693bd669b30 Mon Sep 17 00:00:00 2001
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-Date: Thu, 29 May 2014 11:04:51 -0400
-Subject: [PATCH] fixup! NFS: Create a common initiate_pgio() function
-
----
- fs/nfs/pagelist.c | 5 ++---
- 1 file changed, 2 insertions(+), 3 deletions(-)
-
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index 0c4aac4c7ad9..fab78d13ee14 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -604,7 +604,6 @@ static void nfs_pgio_prepare(struct rpc_task *task, void *calldata)
- int nfs_initiate_pgio(struct rpc_clnt *clnt, struct nfs_pgio_data *data,
- 		      const struct rpc_call_ops *call_ops, int how, int flags)
- {
--	struct inode *inode = data->header->inode;
- 	struct rpc_task *task;
- 	struct rpc_message msg = {
- 		.rpc_argp = &data->args,
-@@ -627,8 +626,8 @@ int nfs_initiate_pgio(struct rpc_clnt *clnt, struct nfs_pgio_data *data,
- 	dprintk("NFS: %5u initiated pgio call "
- 		"(req %s/%llu, %u bytes @ offset %llu)\n",
- 		data->task.tk_pid,
--		inode->i_sb->s_id,
--		(unsigned long long)NFS_FILEID(inode),
-+		data->header->inode->i_sb->s_id,
-+		(unsigned long long)NFS_FILEID(data->header->inode),
- 		data->args.count,
- 		(unsigned long long)data->args.offset);
- 
--- 
-1.9.3
-
-
-
-
--- 
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
-
-
+>  fs/nfsd/nfssvc.c |    6 ------
+>  fs/nfsd/vfs.c    |   12 ++++++++++++
+>  2 files changed, 12 insertions(+), 6 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfssvc.c b/fs/nfsd/nfssvc.c
+> index 9a4a5f9e7468..1879e43f2868 100644
+> --- a/fs/nfsd/nfssvc.c
+> +++ b/fs/nfsd/nfssvc.c
+> @@ -591,12 +591,6 @@ nfsd(void *vrqstp)
+>  	nfsdstats.th_cnt++;
+>  	mutex_unlock(&nfsd_mutex);
+>  
+> -	/*
+> -	 * We want less throttling in balance_dirty_pages() so that nfs to
+> -	 * localhost doesn't cause nfsd to lock up due to all the client's
+> -	 * dirty pages.
+> -	 */
+> -	current->flags |= PF_LESS_THROTTLE;
+>  	set_freezable();
+>  
+>  	/*
+> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> index 6d7be3f80356..2acd00445ad0 100644
+> --- a/fs/nfsd/vfs.c
+> +++ b/fs/nfsd/vfs.c
+> @@ -913,6 +913,16 @@ nfsd_vfs_write(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file *file,
+>  	int			stable = *stablep;
+>  	int			use_wgather;
+>  	loff_t			pos = offset;
+> +	unsigned int		pflags = current->flags;
+> +
+> +	if (rqstp->rq_local)
+> +		/*
+> +		 * We want less throttling in balance_dirty_pages()
+> +		 * and shrink_inactive_list() so that nfs to
+> +		 * localhost doesn't cause nfsd to lock up due to all
+> +		 * the client's dirty pages or its congested queue.
+> +		 */
+> +		current->flags |= PF_LESS_THROTTLE;
+>  
+>  	dentry = file->f_path.dentry;
+>  	inode = dentry->d_inode;
+> @@ -950,6 +960,8 @@ out_nfserr:
+>  		err = 0;
+>  	else
+>  		err = nfserrno(host_err);
+> +	if (rqstp->rq_local)
+> +		tsk_restore_flags(current, pflags, PF_LESS_THROTTLE);
+>  	return err;
+>  }
+>  
+> 
+> 
