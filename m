@@ -1,123 +1,52 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f180.google.com ([209.85.223.180]:46913 "EHLO
-	mail-ie0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750965AbaEVAyo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 May 2014 20:54:44 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH v4 03/24] xprtrdma: RPC/RDMA must invoke
-	xprt_wake_pending_tasks() in process context
-To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Date: Wed, 21 May 2014 20:54:41 -0400
-Message-ID: <20140522005440.27190.13640.stgit@manet.1015granger.net>
-In-Reply-To: <20140522004505.27190.58897.stgit@manet.1015granger.net>
-References: <20140522004505.27190.58897.stgit@manet.1015granger.net>
+Received: from fieldses.org ([174.143.236.118]:52366 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751747AbaEFQkK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 6 May 2014 12:40:10 -0400
+Date: Tue, 6 May 2014 12:40:09 -0400
+From: Bruce Fields <bfields@fieldses.org>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 04/70] NFSd: Remove 'inline' designation for free_client()
+Message-ID: <20140506164009.GF18281@fieldses.org>
+References: <1397846704-14567-1-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-2-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-3-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-4-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-5-git-send-email-trond.myklebust@primarydata.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1397846704-14567-5-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-An IB provider can invoke rpcrdma_conn_func() in an IRQ context,
-thus rpcrdma_conn_func() cannot be allowed to directly invoke
-generic RPC functions like xprt_wake_pending_tasks().
+On Fri, Apr 18, 2014 at 02:43:58PM -0400, Trond Myklebust wrote:
+> It is large, it is used in more than one place, and it is not performance
+> critical. Let gcc figure out whether it should be inlined...
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: Steve Wise <swise@opengridcomputing.com>
----
+Thanks, applying for 3.16.
 
- net/sunrpc/xprtrdma/rpc_rdma.c  |   22 +++++++++++++++-------
- net/sunrpc/xprtrdma/verbs.c     |    3 +++
- net/sunrpc/xprtrdma/xprt_rdma.h |    3 +++
- 3 files changed, 21 insertions(+), 7 deletions(-)
+--b.
 
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index 400aa1b..c296468 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -676,15 +676,11 @@ rpcrdma_inline_fixup(struct rpc_rqst *rqst, char *srcp, int copy_len, int pad)
- 	rqst->rq_private_buf = rqst->rq_rcv_buf;
- }
- 
--/*
-- * This function is called when an async event is posted to
-- * the connection which changes the connection state. All it
-- * does at this point is mark the connection up/down, the rpc
-- * timers do the rest.
-- */
- void
--rpcrdma_conn_func(struct rpcrdma_ep *ep)
-+rpcrdma_connect_worker(struct work_struct *work)
- {
-+	struct rpcrdma_ep *ep =
-+		container_of(work, struct rpcrdma_ep, rep_connect_worker.work);
- 	struct rpc_xprt *xprt = ep->rep_xprt;
- 
- 	spin_lock_bh(&xprt->transport_lock);
-@@ -701,6 +697,18 @@ rpcrdma_conn_func(struct rpcrdma_ep *ep)
- }
- 
- /*
-+ * This function is called when an async event is posted to
-+ * the connection which changes the connection state. All it
-+ * does at this point is mark the connection up/down, the rpc
-+ * timers do the rest.
-+ */
-+void
-+rpcrdma_conn_func(struct rpcrdma_ep *ep)
-+{
-+	schedule_delayed_work(&ep->rep_connect_worker, 0);
-+}
-+
-+/*
-  * This function is called when memory window unbind which we are waiting
-  * for completes. Just use rr_func (zeroed by upcall) to signal completion.
-  */
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 8f9704e..9cb88f3 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -742,6 +742,7 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
- 	INIT_CQCOUNT(ep);
- 	ep->rep_ia = ia;
- 	init_waitqueue_head(&ep->rep_connect_wait);
-+	INIT_DELAYED_WORK(&ep->rep_connect_worker, rpcrdma_connect_worker);
- 
- 	/*
- 	 * Create a single cq for receive dto and mw_bind (only ever
-@@ -817,6 +818,8 @@ rpcrdma_ep_destroy(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
- 	dprintk("RPC:       %s: entering, connected is %d\n",
- 		__func__, ep->rep_connected);
- 
-+	cancel_delayed_work_sync(&ep->rep_connect_worker);
-+
- 	if (ia->ri_id->qp) {
- 		rc = rpcrdma_ep_disconnect(ep, ia);
- 		if (rc)
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 98340a3..c620d13 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -43,6 +43,7 @@
- #include <linux/wait.h> 		/* wait_queue_head_t, etc */
- #include <linux/spinlock.h> 		/* spinlock_t, etc */
- #include <linux/atomic.h>			/* atomic_t, etc */
-+#include <linux/workqueue.h>		/* struct work_struct */
- 
- #include <rdma/rdma_cm.h>		/* RDMA connection api */
- #include <rdma/ib_verbs.h>		/* RDMA verbs api */
-@@ -87,6 +88,7 @@ struct rpcrdma_ep {
- 	struct rpc_xprt		*rep_xprt;	/* for rep_func */
- 	struct rdma_conn_param	rep_remote_cma;
- 	struct sockaddr_storage	rep_remote_addr;
-+	struct delayed_work	rep_connect_worker;
- };
- 
- #define INIT_CQCOUNT(ep) atomic_set(&(ep)->rep_cqcount, (ep)->rep_cqinit)
-@@ -336,6 +338,7 @@ int rpcrdma_deregister_external(struct rpcrdma_mr_seg *,
- /*
-  * RPC/RDMA connection management calls - xprtrdma/rpc_rdma.c
-  */
-+void rpcrdma_connect_worker(struct work_struct *);
- void rpcrdma_conn_func(struct rpcrdma_ep *);
- void rpcrdma_reply_handler(struct rpcrdma_rep *);
- 
-
+> 
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> ---
+>  fs/nfsd/nfs4state.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 32b699bebb9c..841495aa9170 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -1093,7 +1093,7 @@ static struct nfs4_client *alloc_client(struct xdr_netobj name)
+>  	return clp;
+>  }
+>  
+> -static inline void
+> +static void
+>  free_client(struct nfs4_client *clp)
+>  {
+>  	struct nfsd_net __maybe_unused *nn = net_generic(clp->net, nfsd_net_id);
+> -- 
+> 1.9.0
+> 
