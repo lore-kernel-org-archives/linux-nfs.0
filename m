@@ -1,79 +1,351 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:59094 "EHLO mx1.redhat.com"
+Received: from mx1.netapp.com ([216.240.18.38]:36025 "EHLO mx1.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752719AbaE0UCp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 27 May 2014 16:02:45 -0400
-Subject: Re: [SSSD] [PATCH v2 0/5] NFSv4 rpc.idmapd plugin
-From: Simo Sorce <simo@redhat.com>
-To: Jakub Hrozek <jhrozek@redhat.com>
-Cc: Development of the System Security Services Daemon
-	<sssd-devel@lists.fedorahosted.org>,
-        Noam Meltzer <noam@primarydata.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-In-Reply-To: <20140527194624.GY6330@hendrix.brq.redhat.com>
-References: <1393918676-20865-1-git-send-email-noam@primarydata.com>
-	 <5321CDB6.7010803@RedHat.com>
-	 <1394729939.32465.231.camel@willson.li.ssimo.org>
-	 <20140313172531.GA7124@fieldses.org>
-	 <1394732462.32465.235.camel@willson.li.ssimo.org>
-	 <CAOoFWK_uNLEim7MH=K=Ojge_KjcJk6V7p1-LFcYNPC9=fZ90fQ@mail.gmail.com>
-	 <532AF1D1.7070400@RedHat.com>
-	 <20140527194624.GY6330@hendrix.brq.redhat.com>
-Content-Type: text/plain; charset="UTF-8"
-Date: Tue, 27 May 2014 16:02:36 -0400
-Message-ID: <1401220956.2598.36.camel@willson.li.ssimo.org>
-Mime-Version: 1.0
+	id S1755835AbaEGL0c (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 7 May 2014 07:26:32 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
+CC: <dros@primarydata.com>, <hch@infradead.org>
+Subject: [PATCH v3 08/17] NFS: Create a common pgio_rpc_prepare function
+Date: Tue, 6 May 2014 09:12:31 -0400
+Message-ID: <1399381960-3019-9-git-send-email-Anna.Schumaker@Netapp.com>
+In-Reply-To: <1399381960-3019-1-git-send-email-Anna.Schumaker@Netapp.com>
+References: <1399381960-3019-1-git-send-email-Anna.Schumaker@Netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 2014-05-27 at 21:46 +0200, Jakub Hrozek wrote:
-> On Thu, Mar 20, 2014 at 09:49:05AM -0400, Steve Dickson wrote:
-> > 
-> > 
-> > On 03/20/2014 03:33 AM, Noam Meltzer wrote:
-> > > 
-> > > 
-> > > 
-> > > On Thu, Mar 13, 2014 at 7:41 PM, Simo Sorce <simo@redhat.com <mailto:simo@redhat.com>> wrote:
-> > > 
-> > >     On Thu, 2014-03-13 at 13:25 -0400, J. Bruce Fields wrote:
-> > >     > On Thu, Mar 13, 2014 at 12:58:59PM -0400, Simo Sorce wrote:
-> > >     > > On Thu, 2014-03-13 at 11:24 -0400, Steve Dickson wrote:
-> > >     > >
-> > >     > > > V4 servers now have an option of returning a uid string (aka "3606")
-> > >     > > > where the NFS client just converts that into the uid.
-> > >     > >
-> > >     > > Can the client tell the server *not to do that* ?
-> > >     >
-> > >     > The client can use kerberos, in which case the server won't do that.
-> > > 
-> > >     This is sufficient, thanks.
-> > > 
-> > >     > Other than that, no, the behavior can only be controlled by server-side
-> > >     > configuration.
-> > > 
-> > >     A little sub-optimal if the server can do either but the client can have
-> > >     a choice, but ok.
-> > > 
-> > > 
-> > > Sorry for the late response. A misplaced email filtering rule had moved it away from my inbox.
-> > > How can we push this forward?
-> > > 
-> > Not sure since I don't maintain any of the code these patches change... 
-> > 
-> > steved.
-> 
-> Does the code work with the current NFS idmap implementation or are
-> there any changes on either side needed?
-> 
-> Simo, are there still any issues that would prevent us from merging the
-> code into SSSD?
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
 
-I am not aware of any issue, but I have not found any time to do any
-testing, sorry :-/
+The read and write paths do exactly the same thing for the rpc_prepare
+rpc_op.  This patch combines them together into a single function.
 
-Simo.
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+---
+ fs/nfs/internal.h        |  2 ++
+ fs/nfs/nfs3proc.c        | 11 ++---------
+ fs/nfs/nfs4proc.c        | 22 +++-------------------
+ fs/nfs/pagelist.c        | 26 ++++++++++++++++++++++++++
+ fs/nfs/proc.c            | 11 ++---------
+ fs/nfs/read.c            | 19 +++----------------
+ fs/nfs/write.c           | 19 +++++--------------
+ include/linux/nfs_page.h |  2 ++
+ include/linux/nfs_xdr.h  |  3 +--
+ 9 files changed, 46 insertions(+), 69 deletions(-)
 
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index 9d6a40e..1959260 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -241,6 +241,8 @@ struct nfs_rw_header *nfs_rw_header_alloc(const struct nfs_rw_ops *);
+ void nfs_rw_header_free(struct nfs_pgio_header *);
+ struct nfs_pgio_data *nfs_pgio_data_alloc(struct nfs_pgio_header *, unsigned int);
+ void nfs_pgio_data_release(struct nfs_pgio_data *);
++void nfs_pgio_prepare(struct rpc_task *, void *);
++void nfs_pgio_release(void *);
+ 
+ static inline void nfs_iocounter_init(struct nfs_io_counter *c)
+ {
+diff --git a/fs/nfs/nfs3proc.c b/fs/nfs/nfs3proc.c
+index d235369..e7daa42 100644
+--- a/fs/nfs/nfs3proc.c
++++ b/fs/nfs/nfs3proc.c
+@@ -812,7 +812,7 @@ static void nfs3_proc_read_setup(struct nfs_pgio_data *data, struct rpc_message
+ 	msg->rpc_proc = &nfs3_procedures[NFS3PROC_READ];
+ }
+ 
+-static int nfs3_proc_read_rpc_prepare(struct rpc_task *task, struct nfs_pgio_data *data)
++static int nfs3_proc_pgio_rpc_prepare(struct rpc_task *task, struct nfs_pgio_data *data)
+ {
+ 	rpc_call_start(task);
+ 	return 0;
+@@ -834,12 +834,6 @@ static void nfs3_proc_write_setup(struct nfs_pgio_data *data, struct rpc_message
+ 	msg->rpc_proc = &nfs3_procedures[NFS3PROC_WRITE];
+ }
+ 
+-static int nfs3_proc_write_rpc_prepare(struct rpc_task *task, struct nfs_pgio_data *data)
+-{
+-	rpc_call_start(task);
+-	return 0;
+-}
+-
+ static void nfs3_proc_commit_rpc_prepare(struct rpc_task *task, struct nfs_commit_data *data)
+ {
+ 	rpc_call_start(task);
+@@ -946,11 +940,10 @@ const struct nfs_rpc_ops nfs_v3_clientops = {
+ 	.fsinfo		= nfs3_proc_fsinfo,
+ 	.pathconf	= nfs3_proc_pathconf,
+ 	.decode_dirent	= nfs3_decode_dirent,
++	.pgio_rpc_prepare = nfs3_proc_pgio_rpc_prepare,
+ 	.read_setup	= nfs3_proc_read_setup,
+-	.read_rpc_prepare = nfs3_proc_read_rpc_prepare,
+ 	.read_done	= nfs3_read_done,
+ 	.write_setup	= nfs3_proc_write_setup,
+-	.write_rpc_prepare = nfs3_proc_write_rpc_prepare,
+ 	.write_done	= nfs3_write_done,
+ 	.commit_setup	= nfs3_proc_commit_setup,
+ 	.commit_rpc_prepare = nfs3_proc_commit_rpc_prepare,
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index e793aa9..44fb93a 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -4089,7 +4089,7 @@ static void nfs4_proc_read_setup(struct nfs_pgio_data *data, struct rpc_message
+ 	nfs4_init_sequence(&data->args.seq_args, &data->res.seq_res, 0);
+ }
+ 
+-static int nfs4_proc_read_rpc_prepare(struct rpc_task *task, struct nfs_pgio_data *data)
++static int nfs4_proc_pgio_rpc_prepare(struct rpc_task *task, struct nfs_pgio_data *data)
+ {
+ 	if (nfs4_setup_sequence(NFS_SERVER(data->header->inode),
+ 			&data->args.seq_args,
+@@ -4097,7 +4097,7 @@ static int nfs4_proc_read_rpc_prepare(struct rpc_task *task, struct nfs_pgio_dat
+ 			task))
+ 		return 0;
+ 	if (nfs4_set_rw_stateid(&data->args.stateid, data->args.context,
+-				data->args.lock_context, FMODE_READ) == -EIO)
++				data->args.lock_context, data->header->rw_ops->rw_mode) == -EIO)
+ 		return -EIO;
+ 	if (unlikely(test_bit(NFS_CONTEXT_BAD, &data->args.context->flags)))
+ 		return -EIO;
+@@ -4177,21 +4177,6 @@ static void nfs4_proc_write_setup(struct nfs_pgio_data *data, struct rpc_message
+ 	nfs4_init_sequence(&data->args.seq_args, &data->res.seq_res, 1);
+ }
+ 
+-static int nfs4_proc_write_rpc_prepare(struct rpc_task *task, struct nfs_pgio_data *data)
+-{
+-	if (nfs4_setup_sequence(NFS_SERVER(data->header->inode),
+-			&data->args.seq_args,
+-			&data->res.seq_res,
+-			task))
+-		return 0;
+-	if (nfs4_set_rw_stateid(&data->args.stateid, data->args.context,
+-				data->args.lock_context, FMODE_WRITE) == -EIO)
+-		return -EIO;
+-	if (unlikely(test_bit(NFS_CONTEXT_BAD, &data->args.context->flags)))
+-		return -EIO;
+-	return 0;
+-}
+-
+ static void nfs4_proc_commit_rpc_prepare(struct rpc_task *task, struct nfs_commit_data *data)
+ {
+ 	nfs4_setup_sequence(NFS_SERVER(data->inode),
+@@ -8432,11 +8417,10 @@ const struct nfs_rpc_ops nfs_v4_clientops = {
+ 	.pathconf	= nfs4_proc_pathconf,
+ 	.set_capabilities = nfs4_server_capabilities,
+ 	.decode_dirent	= nfs4_decode_dirent,
++	.pgio_rpc_prepare = nfs4_proc_pgio_rpc_prepare,
+ 	.read_setup	= nfs4_proc_read_setup,
+-	.read_rpc_prepare = nfs4_proc_read_rpc_prepare,
+ 	.read_done	= nfs4_read_done,
+ 	.write_setup	= nfs4_proc_write_setup,
+-	.write_rpc_prepare = nfs4_proc_write_rpc_prepare,
+ 	.write_done	= nfs4_write_done,
+ 	.commit_setup	= nfs4_proc_commit_setup,
+ 	.commit_rpc_prepare = nfs4_proc_commit_rpc_prepare,
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index ca356fe..0fa211d 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -387,6 +387,32 @@ void nfs_pgio_data_release(struct nfs_pgio_data *data)
+ EXPORT_SYMBOL_GPL(nfs_pgio_data_release);
+ 
+ /**
++ * nfs_pgio_prepare - Prepare pageio data to go over the wire
++ * @task: The current task
++ * @calldata: pageio data to prepare
++ */
++void nfs_pgio_prepare(struct rpc_task *task, void *calldata)
++{
++	struct nfs_pgio_data *data = calldata;
++	int err;
++	err = NFS_PROTO(data->header->inode)->pgio_rpc_prepare(task, data);
++	if (err)
++		rpc_exit(task, err);
++}
++
++/**
++ * nfs_pgio_release - Release pageio data
++ * @calldata: The pageio data to release
++ */
++void nfs_pgio_release(void *calldata)
++{
++	struct nfs_pgio_data *data = calldata;
++	if (data->header->rw_ops->rw_release)
++		data->header->rw_ops->rw_release(data);
++	nfs_pgio_data_release(data);
++}
++
++/**
+  * nfs_pageio_init - initialise a page io descriptor
+  * @desc: pointer to descriptor
+  * @inode: pointer to inode
+diff --git a/fs/nfs/proc.c b/fs/nfs/proc.c
+index c54829e..c171ce1 100644
+--- a/fs/nfs/proc.c
++++ b/fs/nfs/proc.c
+@@ -599,7 +599,7 @@ static void nfs_proc_read_setup(struct nfs_pgio_data *data, struct rpc_message *
+ 	msg->rpc_proc = &nfs_procedures[NFSPROC_READ];
+ }
+ 
+-static int nfs_proc_read_rpc_prepare(struct rpc_task *task, struct nfs_pgio_data *data)
++static int nfs_proc_pgio_rpc_prepare(struct rpc_task *task, struct nfs_pgio_data *data)
+ {
+ 	rpc_call_start(task);
+ 	return 0;
+@@ -621,12 +621,6 @@ static void nfs_proc_write_setup(struct nfs_pgio_data *data, struct rpc_message
+ 	msg->rpc_proc = &nfs_procedures[NFSPROC_WRITE];
+ }
+ 
+-static int nfs_proc_write_rpc_prepare(struct rpc_task *task, struct nfs_pgio_data *data)
+-{
+-	rpc_call_start(task);
+-	return 0;
+-}
+-
+ static void nfs_proc_commit_rpc_prepare(struct rpc_task *task, struct nfs_commit_data *data)
+ {
+ 	BUG();
+@@ -734,11 +728,10 @@ const struct nfs_rpc_ops nfs_v2_clientops = {
+ 	.fsinfo		= nfs_proc_fsinfo,
+ 	.pathconf	= nfs_proc_pathconf,
+ 	.decode_dirent	= nfs2_decode_dirent,
++	.pgio_rpc_prepare = nfs_proc_pgio_rpc_prepare,
+ 	.read_setup	= nfs_proc_read_setup,
+-	.read_rpc_prepare = nfs_proc_read_rpc_prepare,
+ 	.read_done	= nfs_read_done,
+ 	.write_setup	= nfs_proc_write_setup,
+-	.write_rpc_prepare = nfs_proc_write_rpc_prepare,
+ 	.write_done	= nfs_write_done,
+ 	.commit_setup	= nfs_proc_commit_setup,
+ 	.commit_rpc_prepare = nfs_proc_commit_rpc_prepare,
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index 4cf3577..cfa15e8 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -454,24 +454,10 @@ static void nfs_readpage_result_common(struct rpc_task *task, void *calldata)
+ 		nfs_readpage_retry(task, data);
+ }
+ 
+-static void nfs_readpage_release_common(void *calldata)
+-{
+-	nfs_pgio_data_release(calldata);
+-}
+-
+-void nfs_read_prepare(struct rpc_task *task, void *calldata)
+-{
+-	struct nfs_pgio_data *data = calldata;
+-	int err;
+-	err = NFS_PROTO(data->header->inode)->read_rpc_prepare(task, data);
+-	if (err)
+-		rpc_exit(task, err);
+-}
+-
+ static const struct rpc_call_ops nfs_read_common_ops = {
+-	.rpc_call_prepare = nfs_read_prepare,
++	.rpc_call_prepare = nfs_pgio_prepare,
+ 	.rpc_call_done = nfs_readpage_result_common,
+-	.rpc_release = nfs_readpage_release_common,
++	.rpc_release = nfs_pgio_release,
+ };
+ 
+ /*
+@@ -636,6 +622,7 @@ void nfs_destroy_readpagecache(void)
+ }
+ 
+ static const struct nfs_rw_ops nfs_rw_read_ops = {
++	.rw_mode		= FMODE_READ,
+ 	.rw_alloc_header	= nfs_readhdr_alloc,
+ 	.rw_free_header		= nfs_readhdr_free,
+ };
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 9c5cde3..ae799c9 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -1248,15 +1248,6 @@ void nfs_pageio_reset_write_mds(struct nfs_pageio_descriptor *pgio)
+ EXPORT_SYMBOL_GPL(nfs_pageio_reset_write_mds);
+ 
+ 
+-void nfs_write_prepare(struct rpc_task *task, void *calldata)
+-{
+-	struct nfs_pgio_data *data = calldata;
+-	int err;
+-	err = NFS_PROTO(data->header->inode)->write_rpc_prepare(task, data);
+-	if (err)
+-		rpc_exit(task, err);
+-}
+-
+ void nfs_commit_prepare(struct rpc_task *task, void *calldata)
+ {
+ 	struct nfs_commit_data *data = calldata;
+@@ -1278,9 +1269,8 @@ static void nfs_writeback_done_common(struct rpc_task *task, void *calldata)
+ 	nfs_writeback_done(task, data);
+ }
+ 
+-static void nfs_writeback_release_common(void *calldata)
++static void nfs_writeback_release_common(struct nfs_pgio_data *data)
+ {
+-	struct nfs_pgio_data	*data = calldata;
+ 	struct nfs_pgio_header *hdr = data->header;
+ 	int status = data->task.tk_status;
+ 
+@@ -1294,13 +1284,12 @@ static void nfs_writeback_release_common(void *calldata)
+ 			set_bit(NFS_IOHDR_NEED_RESCHED, &hdr->flags);
+ 		spin_unlock(&hdr->lock);
+ 	}
+-	nfs_pgio_data_release(data);
+ }
+ 
+ static const struct rpc_call_ops nfs_write_common_ops = {
+-	.rpc_call_prepare = nfs_write_prepare,
++	.rpc_call_prepare = nfs_pgio_prepare,
+ 	.rpc_call_done = nfs_writeback_done_common,
+-	.rpc_release = nfs_writeback_release_common,
++	.rpc_release = nfs_pgio_release,
+ };
+ 
+ /*
+@@ -1918,6 +1907,8 @@ void nfs_destroy_writepagecache(void)
+ }
+ 
+ static const struct nfs_rw_ops nfs_rw_write_ops = {
++	.rw_mode		= FMODE_WRITE,
+ 	.rw_alloc_header	= nfs_writehdr_alloc,
+ 	.rw_free_header		= nfs_writehdr_free,
++	.rw_release		= nfs_writeback_release_common,
+ };
+diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
+index 5948125..da00a4d 100644
+--- a/include/linux/nfs_page.h
++++ b/include/linux/nfs_page.h
+@@ -53,8 +53,10 @@ struct nfs_pageio_ops {
+ };
+ 
+ struct nfs_rw_ops {
++	const fmode_t rw_mode;
+ 	struct nfs_rw_header *(*rw_alloc_header)(void);
+ 	void (*rw_free_header)(struct nfs_rw_header *);
++	void (*rw_release)(struct nfs_pgio_data *);
+ };
+ 
+ struct nfs_pageio_descriptor {
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index a1b91b6..adef7bd 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1429,11 +1429,10 @@ struct nfs_rpc_ops {
+ 			     struct nfs_pathconf *);
+ 	int	(*set_capabilities)(struct nfs_server *, struct nfs_fh *);
+ 	int	(*decode_dirent)(struct xdr_stream *, struct nfs_entry *, int);
++	int	(*pgio_rpc_prepare)(struct rpc_task *, struct nfs_pgio_data *);
+ 	void	(*read_setup)   (struct nfs_pgio_data *, struct rpc_message *);
+-	int	(*read_rpc_prepare)(struct rpc_task *, struct nfs_pgio_data *);
+ 	int	(*read_done)  (struct rpc_task *, struct nfs_pgio_data *);
+ 	void	(*write_setup)  (struct nfs_pgio_data *, struct rpc_message *);
+-	int	(*write_rpc_prepare)(struct rpc_task *, struct nfs_pgio_data *);
+ 	int	(*write_done)  (struct rpc_task *, struct nfs_pgio_data *);
+ 	void	(*commit_setup) (struct nfs_commit_data *, struct rpc_message *);
+ 	void	(*commit_rpc_prepare)(struct rpc_task *, struct nfs_commit_data *);
 -- 
-Simo Sorce * Red Hat, Inc * New York
+1.9.2
 
