@@ -1,406 +1,346 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f181.google.com ([209.85.213.181]:48547 "EHLO
-	mail-ig0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932066AbaE1Od1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 May 2014 10:33:27 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH v5 11/24] xprtrdma: Split the completion queue
-To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Cc: Anna.Schumaker@netapp.com
-Date: Wed, 28 May 2014 10:33:25 -0400
-Message-ID: <20140528143325.23214.66636.stgit@manet.1015granger.net>
-In-Reply-To: <20140528142521.23214.39655.stgit@manet.1015granger.net>
-References: <20140528142521.23214.39655.stgit@manet.1015granger.net>
+Received: from mail-pa0-f44.google.com ([209.85.220.44]:64680 "EHLO
+	mail-pa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751297AbaEGPBT (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 May 2014 11:01:19 -0400
+Received: by mail-pa0-f44.google.com with SMTP id ld10so1288098pab.17
+        for <linux-nfs@vger.kernel.org>; Wed, 07 May 2014 08:01:19 -0700 (PDT)
+Message-ID: <536A4AA2.5030906@gmail.com>
+Date: Wed, 07 May 2014 23:00:50 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 3/3] NFS4.0: Add some test cases for nfsv4 acl
+References: <5358EEAD.4090501@gmail.com> <20140506202400.GO18281@fieldses.org>
+In-Reply-To: <20140506202400.GO18281@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The current CQ handler uses the ib_wc.opcode field to distinguish
-between event types. However, the contents of that field are not
-reliable if the completion status is not IB_WC_SUCCESS.
+On 5/7/2014 04:24, J. Bruce Fields wrote:
+> On Thu, Apr 24, 2014 at 06:59:57PM +0800, Kinglong Mee wrote:
+>> +def doTestGetACL(t, env, path):
+>> +    c = env.c1
+>> +    ops = c.use_obj(path) + [c.getattr([FATTR4_ACL])]
+>> +    res = c.compound(ops)
+>> +    check(res)
+>> +
+>> +    attrs = res.resarray[-1].obj_attributes
+>> +    if FATTR4_ACL not in attrs.keys():
+>> +        t.fail("Attributes not contains FATTR4_ACL")
+> ...
+>> +def testGetACLLink(t, env):
+>> +    """ Get ACL of symlink file
+>> +
+>> +    FLAGS: acl getattr symlink all
+>> +    DEPEND: ACLSUPP LOOKLINK
+>> +    CODE: ACL1a
+>> +    """
+>> +    doTestGetACL(t, env, env.opts.uselink)
+> 
+> Dumb question: does that actually work?
 
-When an error completion occurs on a send event, the CQ handler
-schedules a tasklet with something that is not a struct rpcrdma_rep.
-This is never correct behavior, and sometimes it results in a panic.
+Yes, it is.
 
-To resolve this issue, split the completion queue into a send CQ and
-a receive CQ. The send CQ handler now handles only struct rpcrdma_mw
-wr_id's, and the receive CQ handler now handles only struct
-rpcrdma_rep wr_id's.
+> 
+> Looks like a good set of tests to have, in any case.  What are the
+> results against a Linux server?
 
-Fix suggested by Shirley Ma <shirley.ma@oracle.com>
+With my last fix of BUG() for ACL, and exports as 
+#cat /etc/exports
+/nfstest        *(rw,no_root_squash,no_subtree_check,insecure,fsid=0)
+#./testserver.py 127.0.0.1:/ --maketree --rundeps acl
+**************************************************
+ACL1a    st_acl.testGetACLLink                                    : PASS
+ACL1b    st_acl.testGetACLBlock                                   : PASS
+ACL1c    st_acl.testGetACLChar                                    : PASS
+ACL1d    st_acl.testGetACLDir                                     : PASS
+ACL1f    st_acl.testGetACLFifo                                    : PASS
+ACL1r    st_acl.testGetACLFile                                    : PASS
+ACL1s    st_acl.testGetACLSocket                                  : PASS
+ACL2     st_acl.testWriteFileWithoutACL                           : PASS
+ACL3     st_acl.testReadFileWithoutACL                            : PASS
+ACL4     st_acl.testAppendFileWithoutACL                          : PASS
+ACL5     st_acl.testChownWithoutACL                               : PASS
+ACL6     st_acl.testSetACLWithoutACL                              : FAILURE
+           Trying to set acl without ACL should return
+           NFS4ERR_PERM, instead got NFS4_OK
+ACL7     st_acl.testCreateFileWithoutACL                          : PASS
+ACL8     st_acl.testListDirWithoutACL                             : PASS
+ACL9     st_acl.testMkdirWithoutACL                               : PASS
+ACL10    st_acl.testLookupFileWithoutACL                          : PASS
+ACL11    st_acl.testUnlinkFileWithoutACL                          : PASS
+ACLSUPP  st_acl.testCheckSupportedACL                             : PASS
+INIT     st_setclientid.testValid                                 : PASS
+LOOKBLK  st_lookup.testBlock                                      : PASS
+LOOKCHAR st_lookup.testChar                                       : PASS
+LOOKDIR  st_lookup.testDir                                        : PASS
+LOOKFIFO st_lookup.testFifo                                       : PASS
+LOOKFILE st_lookup.testFile                                       : PASS
+LOOKLINK st_lookup.testLink                                       : PASS
+LOOKSOCK st_lookup.testSocket                                     : PASS
+MKDIR    st_create.testDir                                        : PASS
+MKFILE   st_open.testOpen                                         : PASS
+**************************************************
 
-Reported-by: Rafael Reiter <rafael.reiter@ims.co.at>
-Fixes: 5c635e09cec0feeeb310968e51dad01040244851
-BugLink: https://bugzilla.kernel.org/show_bug.cgi?id=73211
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: Klemens Senn <klemens.senn@ims.co.at>
-Tested-by: Steve Wise <swise@opengridcomputing.com>
----
+thanks,
+Kinglong Mee
 
- net/sunrpc/xprtrdma/verbs.c     |  228 +++++++++++++++++++++++----------------
- net/sunrpc/xprtrdma/xprt_rdma.h |    1 
- 2 files changed, 137 insertions(+), 92 deletions(-)
-
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index edc951e..af2d097 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -142,96 +142,115 @@ rpcrdma_cq_async_error_upcall(struct ib_event *event, void *context)
- 	}
- }
- 
--static inline
--void rpcrdma_event_process(struct ib_wc *wc)
-+static void
-+rpcrdma_sendcq_process_wc(struct ib_wc *wc)
- {
--	struct rpcrdma_mw *frmr;
--	struct rpcrdma_rep *rep =
--			(struct rpcrdma_rep *)(unsigned long) wc->wr_id;
-+	struct rpcrdma_mw *frmr = (struct rpcrdma_mw *)(unsigned long)wc->wr_id;
- 
--	dprintk("RPC:       %s: event rep %p status %X opcode %X length %u\n",
--		__func__, rep, wc->status, wc->opcode, wc->byte_len);
-+	dprintk("RPC:       %s: frmr %p status %X opcode %d\n",
-+		__func__, frmr, wc->status, wc->opcode);
- 
--	if (!rep) /* send completion that we don't care about */
-+	if (wc->wr_id == 0ULL)
- 		return;
--
--	if (IB_WC_SUCCESS != wc->status) {
--		dprintk("RPC:       %s: WC opcode %d status %X, connection lost\n",
--			__func__, wc->opcode, wc->status);
--		rep->rr_len = ~0U;
--		if (wc->opcode != IB_WC_FAST_REG_MR && wc->opcode != IB_WC_LOCAL_INV)
--			rpcrdma_schedule_tasklet(rep);
-+	if (wc->status != IB_WC_SUCCESS)
- 		return;
--	}
- 
--	switch (wc->opcode) {
--	case IB_WC_FAST_REG_MR:
--		frmr = (struct rpcrdma_mw *)(unsigned long)wc->wr_id;
-+	if (wc->opcode == IB_WC_FAST_REG_MR)
- 		frmr->r.frmr.state = FRMR_IS_VALID;
--		break;
--	case IB_WC_LOCAL_INV:
--		frmr = (struct rpcrdma_mw *)(unsigned long)wc->wr_id;
-+	else if (wc->opcode == IB_WC_LOCAL_INV)
- 		frmr->r.frmr.state = FRMR_IS_INVALID;
--		break;
--	case IB_WC_RECV:
--		rep->rr_len = wc->byte_len;
--		ib_dma_sync_single_for_cpu(
--			rdmab_to_ia(rep->rr_buffer)->ri_id->device,
--			rep->rr_iov.addr, rep->rr_len, DMA_FROM_DEVICE);
--		/* Keep (only) the most recent credits, after check validity */
--		if (rep->rr_len >= 16) {
--			struct rpcrdma_msg *p =
--					(struct rpcrdma_msg *) rep->rr_base;
--			unsigned int credits = ntohl(p->rm_credit);
--			if (credits == 0) {
--				dprintk("RPC:       %s: server"
--					" dropped credits to 0!\n", __func__);
--				/* don't deadlock */
--				credits = 1;
--			} else if (credits > rep->rr_buffer->rb_max_requests) {
--				dprintk("RPC:       %s: server"
--					" over-crediting: %d (%d)\n",
--					__func__, credits,
--					rep->rr_buffer->rb_max_requests);
--				credits = rep->rr_buffer->rb_max_requests;
--			}
--			atomic_set(&rep->rr_buffer->rb_credits, credits);
--		}
--		rpcrdma_schedule_tasklet(rep);
--		break;
--	default:
--		dprintk("RPC:       %s: unexpected WC event %X\n",
--			__func__, wc->opcode);
--		break;
--	}
- }
- 
--static inline int
--rpcrdma_cq_poll(struct ib_cq *cq)
-+static int
-+rpcrdma_sendcq_poll(struct ib_cq *cq)
- {
- 	struct ib_wc wc;
- 	int rc;
- 
--	for (;;) {
--		rc = ib_poll_cq(cq, 1, &wc);
--		if (rc < 0) {
--			dprintk("RPC:       %s: ib_poll_cq failed %i\n",
--				__func__, rc);
--			return rc;
--		}
--		if (rc == 0)
--			break;
-+	while ((rc = ib_poll_cq(cq, 1, &wc)) == 1)
-+		rpcrdma_sendcq_process_wc(&wc);
-+	return rc;
-+}
- 
--		rpcrdma_event_process(&wc);
-+/*
-+ * Handle send, fast_reg_mr, and local_inv completions.
-+ *
-+ * Send events are typically suppressed and thus do not result
-+ * in an upcall. Occasionally one is signaled, however. This
-+ * prevents the provider's completion queue from wrapping and
-+ * losing a completion.
-+ */
-+static void
-+rpcrdma_sendcq_upcall(struct ib_cq *cq, void *cq_context)
-+{
-+	int rc;
-+
-+	rc = rpcrdma_sendcq_poll(cq);
-+	if (rc) {
-+		dprintk("RPC:       %s: ib_poll_cq failed: %i\n",
-+			__func__, rc);
-+		return;
- 	}
- 
--	return 0;
-+	rc = ib_req_notify_cq(cq, IB_CQ_NEXT_COMP);
-+	if (rc) {
-+		dprintk("RPC:       %s: ib_req_notify_cq failed: %i\n",
-+			__func__, rc);
-+		return;
-+	}
-+
-+	rpcrdma_sendcq_poll(cq);
-+}
-+
-+static void
-+rpcrdma_recvcq_process_wc(struct ib_wc *wc)
-+{
-+	struct rpcrdma_rep *rep =
-+			(struct rpcrdma_rep *)(unsigned long)wc->wr_id;
-+
-+	dprintk("RPC:       %s: rep %p status %X opcode %X length %u\n",
-+		__func__, rep, wc->status, wc->opcode, wc->byte_len);
-+
-+	if (wc->status != IB_WC_SUCCESS) {
-+		rep->rr_len = ~0U;
-+		goto out_schedule;
-+	}
-+	if (wc->opcode != IB_WC_RECV)
-+		return;
-+
-+	rep->rr_len = wc->byte_len;
-+	ib_dma_sync_single_for_cpu(rdmab_to_ia(rep->rr_buffer)->ri_id->device,
-+			rep->rr_iov.addr, rep->rr_len, DMA_FROM_DEVICE);
-+
-+	if (rep->rr_len >= 16) {
-+		struct rpcrdma_msg *p = (struct rpcrdma_msg *)rep->rr_base;
-+		unsigned int credits = ntohl(p->rm_credit);
-+
-+		if (credits == 0)
-+			credits = 1;	/* don't deadlock */
-+		else if (credits > rep->rr_buffer->rb_max_requests)
-+			credits = rep->rr_buffer->rb_max_requests;
-+		atomic_set(&rep->rr_buffer->rb_credits, credits);
-+	}
-+
-+out_schedule:
-+	rpcrdma_schedule_tasklet(rep);
-+}
-+
-+static int
-+rpcrdma_recvcq_poll(struct ib_cq *cq)
-+{
-+	struct ib_wc wc;
-+	int rc;
-+
-+	while ((rc = ib_poll_cq(cq, 1, &wc)) == 1)
-+		rpcrdma_recvcq_process_wc(&wc);
-+	return rc;
- }
- 
- /*
-- * rpcrdma_cq_event_upcall
-+ * Handle receive completions.
-  *
-- * This upcall handles recv and send events.
-  * It is reentrant but processes single events in order to maintain
-  * ordering of receives to keep server credits.
-  *
-@@ -240,26 +259,27 @@ rpcrdma_cq_poll(struct ib_cq *cq)
-  * connection shutdown. That is, the structures required for
-  * the completion of the reply handler must remain intact until
-  * all memory has been reclaimed.
-- *
-- * Note that send events are suppressed and do not result in an upcall.
-  */
- static void
--rpcrdma_cq_event_upcall(struct ib_cq *cq, void *context)
-+rpcrdma_recvcq_upcall(struct ib_cq *cq, void *cq_context)
- {
- 	int rc;
- 
--	rc = rpcrdma_cq_poll(cq);
--	if (rc)
-+	rc = rpcrdma_recvcq_poll(cq);
-+	if (rc) {
-+		dprintk("RPC:       %s: ib_poll_cq failed: %i\n",
-+			__func__, rc);
- 		return;
-+	}
- 
- 	rc = ib_req_notify_cq(cq, IB_CQ_NEXT_COMP);
- 	if (rc) {
--		dprintk("RPC:       %s: ib_req_notify_cq failed %i\n",
-+		dprintk("RPC:       %s: ib_req_notify_cq failed: %i\n",
- 			__func__, rc);
- 		return;
- 	}
- 
--	rpcrdma_cq_poll(cq);
-+	rpcrdma_recvcq_poll(cq);
- }
- 
- #ifdef RPC_DEBUG
-@@ -610,6 +630,7 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
- 				struct rpcrdma_create_data_internal *cdata)
- {
- 	struct ib_device_attr devattr;
-+	struct ib_cq *sendcq, *recvcq;
- 	int rc, err;
- 
- 	rc = ib_query_device(ia->ri_id->device, &devattr);
-@@ -685,7 +706,7 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
- 		ep->rep_attr.cap.max_recv_sge);
- 
- 	/* set trigger for requesting send completion */
--	ep->rep_cqinit = ep->rep_attr.cap.max_send_wr/2 /*  - 1*/;
-+	ep->rep_cqinit = ep->rep_attr.cap.max_send_wr/2 - 1;
- 	if (ep->rep_cqinit <= 2)
- 		ep->rep_cqinit = 0;
- 	INIT_CQCOUNT(ep);
-@@ -693,26 +714,43 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
- 	init_waitqueue_head(&ep->rep_connect_wait);
- 	INIT_DELAYED_WORK(&ep->rep_connect_worker, rpcrdma_connect_worker);
- 
--	ep->rep_cq = ib_create_cq(ia->ri_id->device, rpcrdma_cq_event_upcall,
-+	sendcq = ib_create_cq(ia->ri_id->device, rpcrdma_sendcq_upcall,
- 				  rpcrdma_cq_async_error_upcall, NULL,
--				  ep->rep_attr.cap.max_recv_wr +
- 				  ep->rep_attr.cap.max_send_wr + 1, 0);
--	if (IS_ERR(ep->rep_cq)) {
--		rc = PTR_ERR(ep->rep_cq);
--		dprintk("RPC:       %s: ib_create_cq failed: %i\n",
-+	if (IS_ERR(sendcq)) {
-+		rc = PTR_ERR(sendcq);
-+		dprintk("RPC:       %s: failed to create send CQ: %i\n",
- 			__func__, rc);
- 		goto out1;
- 	}
- 
--	rc = ib_req_notify_cq(ep->rep_cq, IB_CQ_NEXT_COMP);
-+	rc = ib_req_notify_cq(sendcq, IB_CQ_NEXT_COMP);
- 	if (rc) {
- 		dprintk("RPC:       %s: ib_req_notify_cq failed: %i\n",
- 			__func__, rc);
- 		goto out2;
- 	}
- 
--	ep->rep_attr.send_cq = ep->rep_cq;
--	ep->rep_attr.recv_cq = ep->rep_cq;
-+	recvcq = ib_create_cq(ia->ri_id->device, rpcrdma_recvcq_upcall,
-+				  rpcrdma_cq_async_error_upcall, NULL,
-+				  ep->rep_attr.cap.max_recv_wr + 1, 0);
-+	if (IS_ERR(recvcq)) {
-+		rc = PTR_ERR(recvcq);
-+		dprintk("RPC:       %s: failed to create recv CQ: %i\n",
-+			__func__, rc);
-+		goto out2;
-+	}
-+
-+	rc = ib_req_notify_cq(recvcq, IB_CQ_NEXT_COMP);
-+	if (rc) {
-+		dprintk("RPC:       %s: ib_req_notify_cq failed: %i\n",
-+			__func__, rc);
-+		ib_destroy_cq(recvcq);
-+		goto out2;
-+	}
-+
-+	ep->rep_attr.send_cq = sendcq;
-+	ep->rep_attr.recv_cq = recvcq;
- 
- 	/* Initialize cma parameters */
- 
-@@ -734,7 +772,7 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
- 	return 0;
- 
- out2:
--	err = ib_destroy_cq(ep->rep_cq);
-+	err = ib_destroy_cq(sendcq);
- 	if (err)
- 		dprintk("RPC:       %s: ib_destroy_cq returned %i\n",
- 			__func__, err);
-@@ -774,8 +812,14 @@ rpcrdma_ep_destroy(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
- 		ep->rep_pad_mr = NULL;
- 	}
- 
--	rpcrdma_clean_cq(ep->rep_cq);
--	rc = ib_destroy_cq(ep->rep_cq);
-+	rpcrdma_clean_cq(ep->rep_attr.recv_cq);
-+	rc = ib_destroy_cq(ep->rep_attr.recv_cq);
-+	if (rc)
-+		dprintk("RPC:       %s: ib_destroy_cq returned %i\n",
-+			__func__, rc);
-+
-+	rpcrdma_clean_cq(ep->rep_attr.send_cq);
-+	rc = ib_destroy_cq(ep->rep_attr.send_cq);
- 	if (rc)
- 		dprintk("RPC:       %s: ib_destroy_cq returned %i\n",
- 			__func__, rc);
-@@ -798,7 +842,9 @@ retry:
- 		if (rc && rc != -ENOTCONN)
- 			dprintk("RPC:       %s: rpcrdma_ep_disconnect"
- 				" status %i\n", __func__, rc);
--		rpcrdma_clean_cq(ep->rep_cq);
-+
-+		rpcrdma_clean_cq(ep->rep_attr.recv_cq);
-+		rpcrdma_clean_cq(ep->rep_attr.send_cq);
- 
- 		xprt = container_of(ia, struct rpcrdma_xprt, rx_ia);
- 		id = rpcrdma_create_id(xprt, ia,
-@@ -907,7 +953,8 @@ rpcrdma_ep_disconnect(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
- {
- 	int rc;
- 
--	rpcrdma_clean_cq(ep->rep_cq);
-+	rpcrdma_clean_cq(ep->rep_attr.recv_cq);
-+	rpcrdma_clean_cq(ep->rep_attr.send_cq);
- 	rc = rdma_disconnect(ia->ri_id);
- 	if (!rc) {
- 		/* returns without wait if not connected */
-@@ -1727,7 +1774,6 @@ rpcrdma_ep_post_recv(struct rpcrdma_ia *ia,
- 	ib_dma_sync_single_for_cpu(ia->ri_id->device,
- 		rep->rr_iov.addr, rep->rr_iov.length, DMA_BIDIRECTIONAL);
- 
--	DECR_CQCOUNT(ep);
- 	rc = ib_post_recv(ia->ri_id->qp, &recv_wr, &recv_wr_fail);
- 
- 	if (rc)
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 362a19d..334ab6e 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -79,7 +79,6 @@ struct rpcrdma_ep {
- 	int			rep_cqinit;
- 	int			rep_connected;
- 	struct rpcrdma_ia	*rep_ia;
--	struct ib_cq		*rep_cq;
- 	struct ib_qp_init_attr	rep_attr;
- 	wait_queue_head_t 	rep_connect_wait;
- 	struct ib_sge		rep_pad;	/* holds zeroed pad */
-
+> 
+> --b.
+> 
+>> +
+>> +def testGetACLSocket(t, env):
+>> +    """ Get ACL of socket file
+>> +
+>> +    FLAGS: acl getattr socket all
+>> +    DEPEND: ACLSUPP LOOKSOCK
+>> +    CODE: ACL1s
+>> +    """
+>> +    doTestGetACL(t, env, env.opts.usesocket)
+>> +
+>> +def testGetACLChar(t, env):
+>> +    """ Get ACL of char file
+>> +
+>> +    FLAGS: acl getattr char all
+>> +    DEPEND: ACLSUPP LOOKCHAR
+>> +    CODE: ACL1c
+>> +    """
+>> +    doTestGetACL(t, env, env.opts.usechar)
+>> +
+>> +def testGetACLBlock(t, env):
+>> +    """ Get ACL of block file
+>> +
+>> +    FLAGS: acl getattr block all
+>> +    DEPEND: ACLSUPP LOOKBLK
+>> +    CODE: ACL1b
+>> +    """
+>> +    doTestGetACL(t, env, env.opts.useblock)
+>> +
+>> +def doCheckACL(t, c, file, acl):
+>> +    res = c.compound(c.use_obj(file) + [c.getattr([FATTR4_ACL])])
+>> +    check(res)
+>> +
+>> +    attrs = res.resarray[-1].obj_attributes
+>> +    if FATTR4_ACL not in attrs.keys():
+>> +         t.fail("Attributes not contains FATTR4_ACL")
+>> +
+>> +#    print printableacl(acl)
+>> +#    print printableacl(attrs[FATTR4_ACL])
+>> +
+>> +def doSetACLEnv(t, env, type = NF4REG):
+>> +    c = env.c1
+>> +    path = c.homedir + [t.code]
+>> +    res = c.create_obj(path, attrs={FATTR4_MODE:0777})
+>> +    check(res)
+>> +
+>> +    c1 = clientWithSys(env, 9999, 9999);
+>> +    c1.init_connection()
+>> +
+>> +    path += [t.code]
+>> +    attrs = {FATTR4_MODE: 0777}
+>> +
+>> +    if type == NF4REG:
+>> +        fh, stateid = c1.create_confirm(t.code, path, attrs=attrs,
+>> +                                        deny=OPEN4_SHARE_DENY_NONE)
+>> +        return (c1, path, fh, stateid)
+>> +    else:
+>> +        res = c1.create_obj(path, attrs=attrs)
+>> +        check(res)
+>> +        return (c1, path)
+>> +
+>> +def testWriteFileWithoutACL(t, env):
+>> +    """ Check write file without write ACL
+>> +
+>> +    FLAGS: acl file all
+>> +    DEPEND: ACLSUPP MKFILE
+>> +    CODE: ACL2
+>> +    """
+>> +    c1, path, fh, stateid = doSetACLEnv(t, env)
+>> +
+>> +    testacl = [nfsace4(ALLOWED, 0, MASK_ALL_FILE & ~ACE4_WRITE_DATA, "OWNER@")]
+>> +    res = c1.compound(c1.use_obj(path) + [c1.setattr({FATTR4_ACL: testacl})])
+>> +    check(res)
+>> +
+>> +    doCheckACL(t, c1, fh, testacl)
+>> +
+>> +    res = c1.open_file(t.code, path, access=OPEN4_SHARE_ACCESS_WRITE)
+>> +    check(res, NFS4ERR_ACCESS, "Trying to OPEN file without write ACL")
+>> +
+>> +def testReadFileWithoutACL(t, env):
+>> +    """ Check read file without read ACL
+>> +
+>> +    FLAGS: acl file all
+>> +    DEPEND: ACLSUPP MKFILE
+>> +    CODE: ACL3
+>> +    """
+>> +    c1, path, fh, stateid = doSetACLEnv(t, env)
+>> +
+>> +    testacl = [nfsace4(ALLOWED, 0, MASK_ALL_FILE & ~ACE4_READ_DATA, "OWNER@")]
+>> +    res = c1.compound(c1.use_obj(path) + [c1.setattr({FATTR4_ACL: testacl})])
+>> +    check(res)
+>> +
+>> +    doCheckACL(t, c1, fh, testacl)
+>> +
+>> +    res = c1.open_file(t.code, path, deny = OPEN4_SHARE_DENY_READ)
+>> +    check(res, NFS4ERR_ACCESS, "Trying to OPEN file without read ACL")
+>> +
+>> +def testAppendFileWithoutACL(t, env):
+>> +    """ Check write file without append ACL
+>> +
+>> +    FLAGS: acl file all
+>> +    DEPEND: ACLSUPP MKFILE
+>> +    CODE: ACL4
+>> +    """
+>> +    c1, path, fh, stateid = doSetACLEnv(t, env)
+>> +
+>> +    testacl = [nfsace4(ALLOWED, 0, MASK_ALL_FILE & ~ACE4_APPEND_DATA, "OWNER@")]
+>> +    res = c1.compound(c1.use_obj(path) + [c1.setattr({FATTR4_ACL: testacl})])
+>> +    check(res)
+>> +
+>> +    doCheckACL(t, c1, fh, testacl)
+>> +
+>> +    res = c1.open_file(t.code, path, access=OPEN4_SHARE_ACCESS_WRITE)
+>> +    check(res, NFS4ERR_ACCESS, "Trying to OPEN file without append ACL")
+>> +
+>> +def testChownWithoutACL(t, env):
+>> +    """ Check change file's owner without WRITE OWNER ACL
+>> +
+>> +    FLAGS: acl file all
+>> +    DEPEND: ACLSUPP MKFILE
+>> +    CODE: ACL5
+>> +    """
+>> +    c1, path, fh, stateid = doSetACLEnv(t, env)
+>> +
+>> +    testacl = [nfsace4(ALLOWED, 0, MASK_ALL_FILE & ~ACE4_WRITE_OWNER, "OWNER@")]
+>> +    res = c1.compound(c1.use_obj(path) + [c1.setattr({FATTR4_ACL: testacl})])
+>> +    check(res)
+>> +
+>> +    doCheckACL(t, c1, fh, testacl)
+>> +
+>> +    res = c1.compound(c1.use_obj(path) + [c1.setattr({FATTR4_OWNER: "6666"})])
+>> +    check(res, NFS4ERR_PERM, "Trying to change file's owner without ACL")
+>> +
+>> +def testSetACLWithoutACL(t, env):
+>> +    """ Check set ACL without SETACL ACL
+>> +
+>> +    FLAGS: acl file all
+>> +    DEPEND: ACLSUPP MKFILE
+>> +    CODE: ACL6
+>> +    """
+>> +    c1, path, fh, stateid = doSetACLEnv(t, env)
+>> +
+>> +    testacl = [nfsace4(ALLOWED, 0, MASK_ALL_FILE & ~ACE4_WRITE_ACL, "OWNER@")]
+>> +    ops = c1.use_obj(path) + [c1.setattr({FATTR4_ACL: testacl})]
+>> +    res = c1.compound(ops)
+>> +    check(res)
+>> +
+>> +    doCheckACL(t, c1, fh, testacl)
+>> +
+>> +    res = c1.compound(ops)
+>> +    check(res, NFS4ERR_PERM, "Trying to set acl without ACL")
+>> +
+>> +def testCreateFileWithoutACL(t, env):
+>> +    """ Check create file in directory without ACL
+>> +
+>> +    FLAGS: acl dir all
+>> +    DEPEND: ACLSUPP MKDIR
+>> +    CODE: ACL7
+>> +    """
+>> +    c1, path = doSetACLEnv(t, env, type = NF4DIR)
+>> +
+>> +    testacl = [nfsace4(ALLOWED, 0, MASK_ALL_DIR & ~ACE4_ADD_FILE, "OWNER@")]
+>> +    res = c1.compound(c1.use_obj(path) + [c1.setattr({FATTR4_ACL: testacl})])
+>> +    check(res)
+>> +
+>> +    doCheckACL(t, c1, path, testacl)
+>> +
+>> +    path += [t.code]
+>> +    res = c1.create_obj(path)
+>> +    # NFSD's shortage, can not create sub-directory
+>> +    check(res, NFS4ERR_ACCESS)
+>> +
+>> +    res = c1.create_file(t.code, path)
+>> +    check(res, NFS4ERR_ACCESS, "Trying to create file without ACL")
+>> +
+>> +def testListDirWithoutACL(t, env):
+>> +    """ Check list directory without ACL
+>> +
+>> +    FLAGS: acl dir all
+>> +    DEPEND: ACLSUPP MKDIR
+>> +    CODE: ACL8
+>> +    """
+>> +    c1, path = doSetACLEnv(t, env, type = NF4DIR)
+>> +
+>> +    testacl = [nfsace4(ALLOWED, 0, MASK_ALL_DIR & ~ACE4_LIST_DIRECTORY, "OWNER@")]
+>> +    res = c1.compound(c1.use_obj(path) + [c1.setattr({FATTR4_ACL: testacl})])
+>> +    check(res)
+>> +
+>> +    doCheckACL(t, c1, path, testacl)
+>> +
+>> +    res = c1.compound(c1.use_obj(path) + [c1.readdir()])
+>> +    check(res, NFS4ERR_ACCESS, "Trying to list directory without ACL")
+>> +
+>> +def testMkdirWithoutACL(t, env):
+>> +    """ Check creat sub-directory without ACL
+>> +
+>> +    FLAGS: acl dir all
+>> +    DEPEND: ACLSUPP MKDIR
+>> +    CODE: ACL9
+>> +    """
+>> +    c1, path = doSetACLEnv(t, env, type = NF4DIR)
+>> +
+>> +    testacl = [nfsace4(ALLOWED, 0, MASK_ALL_DIR & ~ACE4_ADD_SUBDIRECTORY, "OWNER@")]
+>> +    res = c1.compound(c1.use_obj(path) + [c1.setattr({FATTR4_ACL: testacl})])
+>> +    check(res)
+>> +
+>> +    doCheckACL(t, c1, path, testacl)
+>> +
+>> +    path += [t.code]
+>> +    res = c1.create_file(t.code, path)
+>> +    # NFSD's shortage, can not create file
+>> +    check(res, NFS4ERR_ACCESS)
+>> +
+>> +    res = c1.create_obj(path)
+>> +    check(res, NFS4ERR_ACCESS, "Trying to create sub-directory without ACL")
+>> +
+>> +def testLookupFileWithoutACL(t, env):
+>> +    """ Check lookup file without ACL
+>> +
+>> +    FLAGS: acl dir all
+>> +    DEPEND: ACLSUPP MKDIR
+>> +    CODE: ACL10
+>> +    """
+>> +    c1, path = doSetACLEnv(t, env, type = NF4DIR)
+>> +
+>> +    testacl = [nfsace4(ALLOWED, 0, MASK_ALL_DIR & ~ACE4_EXECUTE, "OWNER@")]
+>> +    res = c1.compound(c1.use_obj(path) + [c1.setattr({FATTR4_ACL: testacl})])
+>> +    check(res)
+>> +
+>> +    doCheckACL(t, c1, path, testacl)
+>> +
+>> +    res = c1.compound(c1.use_obj(path) + c1.lookup_path([t.code]))
+>> +    check(res, NFS4ERR_ACCESS, "Trying to lookup sub-file without ACL")
+>> +
+>> +def testUnlinkFileWithoutACL(t, env):
+>> +    """ Check unlink sub-file without ACL
+>> +
+>> +    FLAGS: acl dir all
+>> +    DEPEND: ACLSUPP MKDIR
+>> +    CODE: ACL11
+>> +    """
+>> +    c1, path = doSetACLEnv(t, env, type = NF4DIR)
+>> +
+>> +    testacl = [nfsace4(ALLOWED, 0, MASK_ALL_DIR & ~ACE4_DELETE_CHILD, "OWNER@")]
+>> +    res = c1.compound(c1.use_obj(path) + [c1.setattr({FATTR4_ACL: testacl})])
+>> +    check(res)
+>> +
+>> +    doCheckACL(t, c1, path, testacl)
+>> +
+>> +    res = c1.compound(c1.use_obj(path) + [c1.remove_op(t.code)])
+>> +    check(res, NFS4ERR_ACCESS, "Trying to lookup sub-file without ACL")
+>> -- 
+>> 1.9.0
+>>
+> 
