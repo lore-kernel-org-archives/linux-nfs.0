@@ -1,82 +1,115 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:36048 "EHLO mx2.suse.de"
+Received: from fieldses.org ([174.143.236.118]:32998 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751297AbaELPcx (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Mon, 12 May 2014 11:32:53 -0400
-Date: Mon, 12 May 2014 17:32:50 +0200
-From: Jan Kara <jack@suse.cz>
-To: NeilBrown <neilb@suse.de>
-Cc: Rik van Riel <riel@redhat.com>, Jan Kara <jack@suse.cz>,
-        Jeff Layton <jlayton@redhat.com>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Dave Chinner <david@fromorbit.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        Mel Gorman <mgorman@suse.com>,
-        Andrew Morton <akpm@linux-foundation.org>, linux-mm@kvack.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH 3/5] nfsd: Only set PF_LESS_THROTTLE when really needed.
-Message-ID: <20140512153250.GB3685@quack.suse.cz>
-References: <20140423022441.4725.89693.stgit@notabene.brown>
- <20140423024058.4725.38098.stgit@notabene.brown>
- <53694E7D.6060706@redhat.com>
- <20140512110437.296846ad@notabene.brown>
+	id S1752072AbaEGPUH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 7 May 2014 11:20:07 -0400
+Date: Wed, 7 May 2014 11:20:06 -0400
+From: Bruce Fields <bfields@fieldses.org>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 19/70] NFSd: Allow lockowners to hold several stateids
+Message-ID: <20140507152006.GC4240@fieldses.org>
+References: <1397846704-14567-11-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-12-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-13-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-14-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-15-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-16-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-17-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-18-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-19-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-20-git-send-email-trond.myklebust@primarydata.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140512110437.296846ad@notabene.brown>
+In-Reply-To: <1397846704-14567-20-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon 12-05-14 11:04:37, NeilBrown wrote:
-> On Tue, 06 May 2014 17:05:01 -0400 Rik van Riel <riel@redhat.com> wrote:
-> 
-> > On 04/22/2014 10:40 PM, NeilBrown wrote:
-> > > PF_LESS_THROTTLE has a very specific use case: to avoid deadlocks
-> > > and live-locks while writing to the page cache in a loop-back
-> > > NFS mount situation.
-> > > 
-> > > It therefore makes sense to *only* set PF_LESS_THROTTLE in this
-> > > situation.
-> > > We now know when a request came from the local-host so it could be a
-> > > loop-back mount.  We already know when we are handling write requests,
-> > > and when we are doing anything else.
-> > > 
-> > > So combine those two to allow nfsd to still be throttled (like any
-> > > other process) in every situation except when it is known to be
-> > > problematic.
-> > 
-> > The FUSE code has something similar, but on the "client"
-> > side.
-> > 
-> > See BDI_CAP_STRICTLIMIT in mm/writeback.c
-> > 
-> > Would it make sense to use that flag on loopback-mounted
-> > NFS filesystems?
-> > 
-> 
-> I don't think so.
-> 
-> I don't fully understand BDI_CAP_STRICTLIMIT, but it seems to be very
-> fuse-specific and relates to NR_WRITEBACK_TEMP, which only fuse uses.  NFS
-> doesn't need any 'strict' limits.
-> i.e. it looks like fuse-specific code inside core-vm code, which I would
-> rather steer clear of.
-  It doesn't really relate to NR_WRITEBACK_TEMP. We have two dirty limits
-in the VM - the global one and a per bdi one (which is a fraction of a
-global one computed based on how much device has been writing back in the
-past). Normally until we have more than (dirty_limit +
-dirty_background_limit) / 2 dirty pages globally, the per bdi limit is
-ignored. And BDI_CAP_STRICTLIMIT means that the per-bdi dirty limit is
-always observed. Together with max_ratio and min_ratio this is useful for
-limiting amount of dirty pages for specific bdis. And FUSE uses it so that
-userspace filesystems cannot easily lockup the system by creating lots of
-dirty pages which cannot be written back.
+Then did "NFSd: Lock owners are not per open stateid" introduce a
+temporary regression?
 
-So I actually don't think BDI_CAP_STRICTLIMIT is a particularly good fit
-for your problem although I agree with Rik that FUSE faces a similar
-problem.
+--b.
 
-								Honza
-
--- 
-Jan Kara <jack@suse.cz>
-SUSE Labs, CR
+On Fri, Apr 18, 2014 at 02:44:13PM -0400, Trond Myklebust wrote:
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> ---
+>  fs/nfsd/nfs4state.c | 46 +++++++++++++++++++++++++++++-----------------
+>  1 file changed, 29 insertions(+), 17 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 0809e8355577..dad2f7b511b8 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -4390,6 +4390,19 @@ alloc_init_lock_stateid(struct nfs4_lockowner *lo, struct nfs4_file *fp, struct
+>  	return stp;
+>  }
+>  
+> +static struct nfs4_ol_stateid *
+> +find_lock_stateid(struct nfs4_lockowner *lo, struct inode *inode)
+> +{
+> +	struct nfs4_ol_stateid *lst;
+> +
+> +	list_for_each_entry(lst, &lo->lo_owner.so_stateids, st_perstateowner) {
+> +		if (lst->st_file->fi_inode == inode)
+> +			return lst;
+> +	}
+> +	return NULL;
+> +}
+> +
+> +
+>  static int
+>  check_lock_length(u64 offset, u64 length)
+>  {
+> @@ -4419,25 +4432,24 @@ static __be32 lookup_or_create_lock_state(struct nfsd4_compound_state *cstate, s
+>  
+>  	lo = find_lockowner_str(fi->fi_inode, &cl->cl_clientid,
+>  				&lock->v.new.owner, nn);
+> -	if (lo) {
+> -		if (!cstate->minorversion)
+> -			return nfserr_bad_seqid;
+> -		/* XXX: a lockowner always has exactly one stateid: */
+> -		*lst = list_first_entry(&lo->lo_owner.so_stateids,
+> -				struct nfs4_ol_stateid, st_perstateowner);
+> -		return nfs_ok;
+> +	if (!lo) {
+> +		strhashval = ownerstr_hashval(cl->cl_clientid.cl_id,
+> +				&lock->v.new.owner);
+> +		lo = alloc_init_lock_stateowner(strhashval, cl, ost, lock);
+> +		if (lo == NULL)
+> +			return nfserr_jukebox;
+>  	}
+> -	strhashval = ownerstr_hashval(cl->cl_clientid.cl_id,
+> -			&lock->v.new.owner);
+> -	lo = alloc_init_lock_stateowner(strhashval, cl, ost, lock);
+> -	if (lo == NULL)
+> -		return nfserr_jukebox;
+> -	*lst = alloc_init_lock_stateid(lo, fi, ost);
+> +	if (!cstate->minorversion)
+> +		return nfserr_bad_seqid;
+> +	*lst = find_lock_stateid(lo, fi->fi_inode);
+>  	if (*lst == NULL) {
+> -		release_lockowner(lo);
+> -		return nfserr_jukebox;
+> +		*lst = alloc_init_lock_stateid(lo, fi, ost);
+> +		if (*lst == NULL) {
+> +			release_lockowner_if_empty(lo);
+> +			return nfserr_jukebox;
+> +		}
+> +		*new = true;
+>  	}
+> -	*new = true;
+>  	return nfs_ok;
+>  }
+>  
+> @@ -4596,7 +4608,7 @@ out:
+>  	if (filp)
+>  		fput(filp);
+>  	if (status && new_state)
+> -		release_lockowner(lock_sop);
+> +		release_lockowner_if_empty(lock_sop);
+>  	nfsd4_bump_seqid(cstate, status);
+>  	nfs4_unlock_state();
+>  	if (file_lock)
+> -- 
+> 1.9.0
+> 
