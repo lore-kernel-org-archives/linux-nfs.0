@@ -1,49 +1,56 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wg0-f47.google.com ([74.125.82.47]:39291 "EHLO
-	mail-wg0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751106AbaEXAm3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 May 2014 20:42:29 -0400
-Received: by mail-wg0-f47.google.com with SMTP id x12so5367375wgg.18
-        for <linux-nfs@vger.kernel.org>; Fri, 23 May 2014 17:42:27 -0700 (PDT)
+Received: from fieldses.org ([174.143.236.118]:55199 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750884AbaEGTUG (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 7 May 2014 15:20:06 -0400
+Date: Wed, 7 May 2014 15:20:04 -0400
+From: Bruce Fields <bfields@fieldses.org>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 27/70] NFSd: Don't let the laundromat reap clients that
+ are referenced
+Message-ID: <20140507192004.GC8324@fieldses.org>
+References: <1397846704-14567-19-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-20-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-21-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-22-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-23-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-24-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-25-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-26-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-27-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-28-git-send-email-trond.myklebust@primarydata.com>
 MIME-Version: 1.0
-In-Reply-To: <53563F16.80809@fastmail.fm>
-References: <lis0kj$kaj$1@ger.gmane.org>
-	<53548EF2.40408@gmail.com>
-	<53563F16.80809@fastmail.fm>
-Date: Sat, 24 May 2014 08:42:27 +0800
-Message-ID: <CAB6yy355GCkjO8u0SVTUEUMJfTUjydNsEB87pwJG2h13T4uWKw@mail.gmail.com>
-Subject: Re: [PATCH] nfsd: nfsd4_decode_create: Fix a possible NULL pointer dereference
-From: Kinglong Mee <kinglongmee@gmail.com>
-To: Bernd Schubert <bernd.schubert@fastmail.fm>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1397846704-14567-28-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, Apr 22, 2014 at 6:06 PM, Bernd Schubert
-<bernd.schubert@fastmail.fm> wrote:
->
->> cr_linkname maybe a path contains '/', or '.',
->> check_filename will return error nfserr_badname for those path.
->>
->> IMO, just check whether the length is zero as,
->>
->> if (create->cr_linklen == 0)
->>     return nfserr_inval;
->>
-> Hmm, right, checking for a '/' not right here. Checking if link-name is
-> "." or ".." isn't required, but shouldn't hurt either. But on the other
-> hand we can leave that to the underlying file system.
+This looks redundant with the check just made in
+mark_client_expired_locked().
 
-According to rfc3530, 14.2.9, DESCRIPTION
+--b.
 
-   If the newname has a length of 0 (zero), or if newname does not obey
-   the UTF-8 definition, the error NFS4ERR_INVAL will be returned.
-
-The underlying filesystem will return -ENOENT not -EINVAL.
-So, NFSD needs checking it explicitly by-self.
-
-Can you sent the patch of v2?
-
-thanks,
-Kinglong Mee
+On Fri, Apr 18, 2014 at 02:44:21PM -0400, Trond Myklebust wrote:
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> ---
+>  fs/nfsd/nfs4state.c | 3 +++
+>  1 file changed, 3 insertions(+)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 273bdddb2458..41314e493110 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -3600,6 +3600,9 @@ nfs4_laundromat(struct nfsd_net *nn)
+>  				clp->cl_clientid.cl_id);
+>  			continue;
+>  		}
+> +		/* Hey, I'm busy with this guy! */
+> +		if (atomic_read(&clp->cl_refcount) != 0)
+> +			continue;
+>  		list_move(&clp->cl_lru, &reaplist);
+>  	}
+>  	spin_unlock(&nn->client_lock);
+> -- 
+> 1.9.0
+> 
