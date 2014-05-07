@@ -1,439 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:43492 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752671AbaEVTcq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 May 2014 15:32:46 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
+Received: from e36.co.us.ibm.com ([32.97.110.154]:48686 "EHLO
+	e36.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751351AbaEGVqL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 May 2014 17:46:11 -0400
+Received: from /spool/local
+	by e36.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <jvrao@linux.vnet.ibm.com>;
+	Wed, 7 May 2014 15:46:10 -0600
+Received: from b03cxnp08028.gho.boulder.ibm.com (b03cxnp08028.gho.boulder.ibm.com [9.17.130.20])
+	by d03dlp02.boulder.ibm.com (Postfix) with ESMTP id 677493E40045
+	for <linux-nfs@vger.kernel.org>; Wed,  7 May 2014 15:46:07 -0600 (MDT)
+Received: from d03av06.boulder.ibm.com (d03av06.boulder.ibm.com [9.17.195.245])
+	by b03cxnp08028.gho.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id s47Lk7ep1573142
+	for <linux-nfs@vger.kernel.org>; Wed, 7 May 2014 23:46:07 +0200
+Received: from d03av06.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av06.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id s47Lnvi5019478
+	for <linux-nfs@vger.kernel.org>; Wed, 7 May 2014 15:49:57 -0600
+Message-ID: <536AA99E.6070108@linux.vnet.ibm.com>
+Date: Wed, 07 May 2014 14:46:06 -0700
+From: Venkateswararao Jujjuri <jvrao@linux.vnet.ibm.com>
+Reply-To: jvrao@linux.vnet.ibm.com
+MIME-Version: 1.0
 To: linux-nfs@vger.kernel.org
-Cc: Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 43/52] nfsd4: separate splice and readv cases
-Date: Thu, 22 May 2014 15:32:18 -0400
-Message-Id: <1400787148-25941-44-git-send-email-bfields@redhat.com>
-In-Reply-To: <1400787148-25941-1-git-send-email-bfields@redhat.com>
-References: <1400787148-25941-1-git-send-email-bfields@redhat.com>
+CC: Rong Zeng <rongzeng@us.ibm.com>,
+        Steve Dickson <steved-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
+Subject: [PATCH] Adding a callback for incoming sm_notify.
+Content-Type: text/plain; charset=ISO-8859-1; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+From: rong zeng <rongzeng@oc1547780626.ibm.com>
 
-The splice and readv cases are actually quite different--for example the
-former case ignores the array of vectors we build up for the latter.
+1. "sm-notify"                  callout name
+2. monitored client name as in the SM_NOTIFY request
+3. IP of the sender of the SM_NOITFY request.
+4. state value in the SM_NOTIFY request
 
-It is probably clearer to separate the two cases entirely.
+This new interface can be used by different HA-NFS product
+in its specific configuration and environment to
+recover from the client crash and stale lock scenarios.
 
-There's some code duplication between the split out encoders, but this
-is only temporary and will be fixed by a later patch.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Rong Zeng <rongzeng@us.ibm.com>
+Signed-off-by: Venkateswararao Jujjuri "<jvrao@linux.vnet.ibm.com>
 ---
- fs/nfsd/nfs4xdr.c | 173 +++++++++++++++++++++++++++++++++++++++++-------------
- fs/nfsd/vfs.c     | 121 +++++++++++++++++++++++---------------
- fs/nfsd/vfs.h     |   8 +++
- 3 files changed, 214 insertions(+), 88 deletions(-)
+  utils/statd/callback.c |   13 ++++++++-----
+  1 files changed, 8 insertions(+), 5 deletions(-)
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 1ca547d..bf853fd 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -3069,41 +3069,84 @@ nfsd4_encode_open_downgrade(struct nfsd4_compoundres *resp, __be32 nfserr, struc
- 	return nfserr;
- }
- 
--static __be32
--nfsd4_encode_read(struct nfsd4_compoundres *resp, __be32 nfserr,
--		  struct nfsd4_read *read)
-+static __be32 nfsd4_encode_splice_read(
-+				struct nfsd4_compoundres *resp,
-+				struct nfsd4_read *read,
-+				struct file *file, unsigned long maxcount)
- {
--	u32 eof;
--	int v;
--	struct page *page;
--	unsigned long maxcount; 
- 	struct xdr_stream *xdr = &resp->xdr;
--	int starting_len = xdr->buf->len;
-+	u32 eof;
-+	int starting_len = xdr->buf->len - 8;
- 	int space_left;
--	long len;
-+	__be32 nfserr;
-+	__be32 tmp;
- 	__be32 *p;
- 
--	if (nfserr)
--		return nfserr;
+diff --git a/utils/statd/callback.c b/utils/statd/callback.c
+index d1cc139..58ba70b 100644
+--- a/utils/statd/callback.c
++++ b/utils/statd/callback.c
+@@ -15,6 +15,7 @@
+  #include "rpcmisc.h"
+  #include "statd.h"
+  #include "notlist.h"
++#include "ha-callout.h"
+
+  /* Callback notify list. */
+  /* notify_list *cbnl = NULL; ... never used */
+@@ -87,6 +88,13 @@ sm_notify_1_svc(struct stat_chge *argp, struct 
+svc_req *rqstp)
+           xlog(D_CALL, "Received SM_NOTIFY from %s, state: %d",
+                                      argp->mon_name, argp->state);
+
++         if (!statd_present_address(sap, ip_addr, sizeof(ip_addr))) {
++                  xlog_warn("Unrecognized sender address");
++                  return ((void *) &result);
++         }
++
++         ha_callout("sm-notify", argp->mon_name, ip_addr, argp->state);
++
+           /* quick check - don't bother if we're not monitoring anyone */
+           if (rtnl == NULL) {
+                    xlog_warn("SM_NOTIFY from %s while not monitoring 
+any hosts",
+@@ -94,11 +102,6 @@ sm_notify_1_svc(struct stat_chge *argp, struct 
+svc_req *rqstp)
+                    return ((void *) &result);
+           }
+
+-         if (!statd_present_address(sap, ip_addr, sizeof(ip_addr))) {
+-                  xlog_warn("Unrecognized sender address");
+-                  return ((void *) &result);
+-         }
 -
--	p = xdr_reserve_space(xdr, 8); /* eof flag and byte count */
--	if (!p) {
--		WARN_ON_ONCE(resp->rqstp->rq_splice_ok);
-+	/*
-+	 * Don't inline pages unless we know there's room for eof,
-+	 * count, and possible padding:
-+	 */
-+	if (xdr->end - xdr->p < 3)
- 		return nfserr_resource;
-+
-+	nfserr = nfsd_splice_read(read->rd_rqstp, file,
-+				  read->rd_offset, &maxcount);
-+	if (nfserr) {
-+		/*
-+		 * nfsd_splice_actor may have already messed with the
-+		 * page length; reset it so as not to confuse
-+		 * xdr_truncate_encode:
-+		 */
-+		xdr->buf->page_len = 0;
-+		return nfserr;
- 	}
- 
--	/* Make sure there will be room for padding if needed: */
--	if (xdr->end - xdr->p < 1)
--		return nfserr_resource;
-+	eof = (read->rd_offset + maxcount >=
-+	       read->rd_fhp->fh_dentry->d_inode->i_size);
- 
--	if (resp->xdr.buf->page_len) {
--		WARN_ON_ONCE(resp->rqstp->rq_splice_ok);
--		return nfserr_resource;
-+	tmp = htonl(eof);
-+	write_bytes_to_xdr_buf(xdr->buf, starting_len    , &tmp, 4);
-+	tmp = htonl(maxcount);
-+	write_bytes_to_xdr_buf(xdr->buf, starting_len + 4, &tmp, 4);
-+
-+	resp->xdr.buf->page_len = maxcount;
-+	xdr->buf->len += maxcount;
-+	xdr->page_ptr += (maxcount + PAGE_SIZE - 1) / PAGE_SIZE;
-+	xdr->iov = xdr->buf->tail;
-+
-+	/* Use rest of head for padding and remaining ops: */
-+	resp->xdr.buf->tail[0].iov_base = xdr->p;
-+	resp->xdr.buf->tail[0].iov_len = 0;
-+	if (maxcount&3) {
-+		p = xdr_reserve_space(xdr, 4);
-+		WRITE32(0);
-+		resp->xdr.buf->tail[0].iov_base += maxcount&3;
-+		resp->xdr.buf->tail[0].iov_len = 4 - (maxcount&3);
-+		xdr->buf->len -= (maxcount&3);
- 	}
- 
--	maxcount = svc_max_payload(resp->rqstp);
--	if (maxcount > read->rd_length)
--		maxcount = read->rd_length;
-+	space_left = min_t(int, (void *)xdr->end - (void *)xdr->p,
-+				xdr->buf->buflen - xdr->buf->len);
-+	xdr->buf->buflen = xdr->buf->len + space_left;
-+	xdr->end = (__be32 *)((void *)xdr->end + space_left);
-+
-+	return 0;
-+}
-+
-+static __be32 nfsd4_encode_readv(struct nfsd4_compoundres *resp,
-+				 struct nfsd4_read *read,
-+				 struct file *file, unsigned long maxcount)
-+{
-+	struct xdr_stream *xdr = &resp->xdr;
-+	u32 eof;
-+	int v;
-+	struct page *page;
-+	int starting_len = xdr->buf->len - 8;
-+	int space_left;
-+	long len;
-+	__be32 nfserr;
-+	__be32 tmp;
-+	__be32 *p;
- 
- 	len = maxcount;
- 	v = 0;
-@@ -3124,34 +3167,26 @@ nfsd4_encode_read(struct nfsd4_compoundres *resp, __be32 nfserr,
- 	}
- 	read->rd_vlen = v;
- 
--	nfserr = nfsd_read_file(read->rd_rqstp, read->rd_fhp, read->rd_filp,
--			read->rd_offset, resp->rqstp->rq_vec, read->rd_vlen,
--			&maxcount);
--
--	if (nfserr) {
--		/*
--		 * nfsd_splice_actor may have already messed with the
--		 * page length; reset it so as not to confuse
--		 * xdr_truncate_encode:
--		 */
--		xdr->buf->page_len = 0;
--		xdr_truncate_encode(xdr, starting_len);
-+	nfserr = nfsd_readv(file, read->rd_offset, resp->rqstp->rq_vec,
-+			read->rd_vlen, &maxcount);
-+	if (nfserr)
- 		return nfserr;
--	}
-+
- 	eof = (read->rd_offset + maxcount >=
- 	       read->rd_fhp->fh_dentry->d_inode->i_size);
- 
--	WRITE32(eof);
--	WRITE32(maxcount);
--	WARN_ON_ONCE(resp->xdr.buf->head[0].iov_len != (char *)p
--				- (char *)resp->xdr.buf->head[0].iov_base);
-+	tmp = htonl(eof);
-+	write_bytes_to_xdr_buf(xdr->buf, starting_len    , &tmp, 4);
-+	tmp = htonl(maxcount);
-+	write_bytes_to_xdr_buf(xdr->buf, starting_len + 4, &tmp, 4);
-+
- 	resp->xdr.buf->page_len = maxcount;
- 	xdr->buf->len += maxcount;
- 	xdr->page_ptr += v;
- 	xdr->iov = xdr->buf->tail;
- 
- 	/* Use rest of head for padding and remaining ops: */
--	resp->xdr.buf->tail[0].iov_base = p;
-+	resp->xdr.buf->tail[0].iov_base = xdr->p;
- 	resp->xdr.buf->tail[0].iov_len = 0;
- 	if (maxcount&3) {
- 		p = xdr_reserve_space(xdr, 4);
-@@ -3167,6 +3202,60 @@ nfsd4_encode_read(struct nfsd4_compoundres *resp, __be32 nfserr,
- 	xdr->end = (__be32 *)((void *)xdr->end + space_left);
- 
- 	return 0;
-+
-+}
-+
-+static __be32
-+nfsd4_encode_read(struct nfsd4_compoundres *resp, __be32 nfserr,
-+		  struct nfsd4_read *read)
-+{
-+	unsigned long maxcount;
-+	struct xdr_stream *xdr = &resp->xdr;
-+	struct file *file = read->rd_filp;
-+	int starting_len = xdr->buf->len;
-+	struct raparms *ra;
-+	__be32 *p;
-+	__be32 err;
-+
-+	if (nfserr)
-+		return nfserr;
-+
-+	p = xdr_reserve_space(xdr, 8); /* eof flag and byte count */
-+	if (!p) {
-+		WARN_ON_ONCE(resp->rqstp->rq_splice_ok);
-+		return nfserr_resource;
-+	}
-+
-+	if (resp->xdr.buf->page_len) {
-+		WARN_ON_ONCE(resp->rqstp->rq_splice_ok);
-+		return nfserr_resource;
-+	}
-+
-+	xdr_commit_encode(xdr);
-+
-+	maxcount = svc_max_payload(resp->rqstp);
-+	if (maxcount > read->rd_length)
-+		maxcount = read->rd_length;
-+
-+	if (!read->rd_filp) {
-+		err = nfsd_get_tmp_read_open(resp->rqstp, read->rd_fhp,
-+						&file, &ra);
-+		if (err)
-+			goto err_truncate;
-+	}
-+
-+	if (file->f_op->splice_read && resp->rqstp->rq_splice_ok)
-+		err = nfsd4_encode_splice_read(resp, read, file, maxcount);
-+	else
-+		err = nfsd4_encode_readv(resp, read, file, maxcount);
-+
-+	if (!read->rd_filp)
-+		nfsd_put_tmp_read_open(file, ra);
-+
-+err_truncate:
-+	if (err)
-+		xdr_truncate_encode(xdr, starting_len);
-+	return err;
- }
- 
- static __be32
-diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-index ce781da..c0fbe24 100644
---- a/fs/nfsd/vfs.c
-+++ b/fs/nfsd/vfs.c
-@@ -820,41 +820,54 @@ static int nfsd_direct_splice_actor(struct pipe_inode_info *pipe,
- 	return __splice_from_pipe(pipe, sd, nfsd_splice_actor);
- }
- 
--static __be32
--nfsd_vfs_read(struct svc_rqst *rqstp, struct file *file,
--              loff_t offset, struct kvec *vec, int vlen, unsigned long *count)
-+__be32 nfsd_finish_read(struct file *file, unsigned long *count, int host_err)
- {
--	mm_segment_t	oldfs;
--	__be32		err;
--	int		host_err;
--
--	err = nfserr_perm;
--
--	if (file->f_op->splice_read && rqstp->rq_splice_ok) {
--		struct splice_desc sd = {
--			.len		= 0,
--			.total_len	= *count,
--			.pos		= offset,
--			.u.data		= rqstp,
--		};
--
--		rqstp->rq_next_page = rqstp->rq_respages + 1;
--		host_err = splice_direct_to_actor(file, &sd, nfsd_direct_splice_actor);
--	} else {
--		oldfs = get_fs();
--		set_fs(KERNEL_DS);
--		host_err = vfs_readv(file, (struct iovec __user *)vec, vlen, &offset);
--		set_fs(oldfs);
--	}
--
- 	if (host_err >= 0) {
- 		nfsdstats.io_read += host_err;
- 		*count = host_err;
--		err = 0;
- 		fsnotify_access(file);
-+		return 0;
- 	} else 
--		err = nfserrno(host_err);
--	return err;
-+		return nfserrno(host_err);
-+}
-+
-+int nfsd_splice_read(struct svc_rqst *rqstp,
-+		     struct file *file, loff_t offset, unsigned long *count)
-+{
-+	struct splice_desc sd = {
-+		.len		= 0,
-+		.total_len	= *count,
-+		.pos		= offset,
-+		.u.data		= rqstp,
-+	};
-+	int host_err;
-+
-+	rqstp->rq_next_page = rqstp->rq_respages + 1;
-+	host_err = splice_direct_to_actor(file, &sd, nfsd_direct_splice_actor);
-+	return nfsd_finish_read(file, count, host_err);
-+}
-+
-+int nfsd_readv(struct file *file, loff_t offset, struct kvec *vec, int vlen,
-+		unsigned long *count)
-+{
-+	mm_segment_t oldfs;
-+	int host_err;
-+
-+	oldfs = get_fs();
-+	set_fs(KERNEL_DS);
-+	host_err = vfs_readv(file, (struct iovec __user *)vec, vlen, &offset);
-+	set_fs(oldfs);
-+	return nfsd_finish_read(file, count, host_err);
-+}
-+
-+static __be32
-+nfsd_vfs_read(struct svc_rqst *rqstp, struct file *file,
-+	      loff_t offset, struct kvec *vec, int vlen, unsigned long *count)
-+{
-+	if (file->f_op->splice_read && rqstp->rq_splice_ok)
-+		return nfsd_splice_read(rqstp, file, offset, count);
-+	else
-+		return nfsd_readv(file, offset, vec, vlen, count);
- }
- 
- /*
-@@ -944,33 +957,28 @@ out_nfserr:
- 	return err;
- }
- 
--/*
-- * Read data from a file. count must contain the requested read count
-- * on entry. On return, *count contains the number of bytes actually read.
-- * N.B. After this call fhp needs an fh_put
-- */
--__be32 nfsd_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
--	loff_t offset, struct kvec *vec, int vlen, unsigned long *count)
-+__be32 nfsd_get_tmp_read_open(struct svc_rqst *rqstp, struct svc_fh *fhp,
-+		struct file **file, struct raparms **ra)
- {
--	struct file *file;
- 	struct inode *inode;
--	struct raparms	*ra;
- 	__be32 err;
- 
--	err = nfsd_open(rqstp, fhp, S_IFREG, NFSD_MAY_READ, &file);
-+	err = nfsd_open(rqstp, fhp, S_IFREG, NFSD_MAY_READ, file);
- 	if (err)
- 		return err;
- 
--	inode = file_inode(file);
-+	inode = file_inode(*file);
- 
- 	/* Get readahead parameters */
--	ra = nfsd_get_raparms(inode->i_sb->s_dev, inode->i_ino);
--
--	if (ra && ra->p_set)
--		file->f_ra = ra->p_ra;
-+	*ra = nfsd_get_raparms(inode->i_sb->s_dev, inode->i_ino);
- 
--	err = nfsd_vfs_read(rqstp, file, offset, vec, vlen, count);
-+	if (*ra && (*ra)->p_set)
-+		(*file)->f_ra = (*ra)->p_ra;
-+	return nfs_ok;
-+}
- 
-+void nfsd_put_tmp_read_open(struct file *file, struct raparms *ra)
-+{
- 	/* Write back readahead params */
- 	if (ra) {
- 		struct raparm_hbucket *rab = &raparm_hash[ra->p_hindex];
-@@ -980,8 +988,29 @@ __be32 nfsd_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
- 		ra->p_count--;
- 		spin_unlock(&rab->pb_lock);
- 	}
--
- 	nfsd_close(file);
-+}
-+
-+/*
-+ * Read data from a file. count must contain the requested read count
-+ * on entry. On return, *count contains the number of bytes actually read.
-+ * N.B. After this call fhp needs an fh_put
-+ */
-+__be32 nfsd_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
-+	loff_t offset, struct kvec *vec, int vlen, unsigned long *count)
-+{
-+	struct file *file;
-+	struct raparms	*ra;
-+	__be32 err;
-+
-+	err = nfsd_get_tmp_read_open(rqstp, fhp, &file, &ra);
-+	if (err)
-+		return err;
-+
-+	err = nfsd_vfs_read(rqstp, file, offset, vec, vlen, count);
-+
-+	nfsd_put_tmp_read_open(file, ra);
-+
- 	return err;
- }
- 
-diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
-index fbe90bd..7441e96 100644
---- a/fs/nfsd/vfs.h
-+++ b/fs/nfsd/vfs.h
-@@ -70,6 +70,14 @@ __be32		nfsd_commit(struct svc_rqst *, struct svc_fh *,
- __be32		nfsd_open(struct svc_rqst *, struct svc_fh *, umode_t,
- 				int, struct file **);
- void		nfsd_close(struct file *);
-+struct raparms;
-+__be32		nfsd_get_tmp_read_open(struct svc_rqst *, struct svc_fh *,
-+				struct file **, struct raparms **);
-+void		nfsd_put_tmp_read_open(struct file *, struct raparms *);
-+int		nfsd_splice_read(struct svc_rqst *,
-+				struct file *, loff_t, unsigned long *);
-+int		nfsd_readv(struct file *, loff_t, struct kvec *, int,
-+				unsigned long *);
- __be32 		nfsd_read(struct svc_rqst *, struct svc_fh *,
- 				loff_t, struct kvec *, int, unsigned long *);
- __be32 		nfsd_read_file(struct svc_rqst *, struct svc_fh *, struct file *,
+           /* okir change: statd doesn't remove the remote host from its
+            * internal monitor list when receiving an SM_NOTIFY call from
+            * it. Lockd will want to continue monitoring the remote host
 -- 
-1.9.0
+1.7.1
+
 
