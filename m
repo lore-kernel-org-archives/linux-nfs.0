@@ -1,43 +1,35 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f176.google.com ([209.85.213.176]:40818 "EHLO
-	mail-ig0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755172AbaEOP5Z (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 May 2014 11:57:25 -0400
-Received: by mail-ig0-f176.google.com with SMTP id hl10so8102870igb.3
-        for <linux-nfs@vger.kernel.org>; Thu, 15 May 2014 08:57:24 -0700 (PDT)
-From: Weston Andros Adamson <dros@primarydata.com>
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
-Subject: [PATCH v3 11/18] nfs: allow coalescing of subpage requests
-Date: Thu, 15 May 2014 11:56:50 -0400
-Message-Id: <1400169417-28245-12-git-send-email-dros@primarydata.com>
-In-Reply-To: <1400169417-28245-1-git-send-email-dros@primarydata.com>
-References: <1400169417-28245-1-git-send-email-dros@primarydata.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:46431 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S933088AbaEGPCt (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 May 2014 11:02:49 -0400
+Date: Wed, 7 May 2014 08:02:46 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: Ben Greear <greearb@candelatech.com>,
+        Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: Crash in 3.14.0+ (plus hacks)
+Message-ID: <20140507150246.GA19702@infradead.org>
+References: <5346D22A.10102@candelatech.com>
+ <20140425104803.GD22295@fieldses.org>
+ <20140425110409.GA27561@infradead.org>
+ <2191C93E-A3D0-493B-8459-931CE9C59B53@oracle.com>
+ <536A386E.4070202@candelatech.com>
+ <0D281678-A961-45B0-B1D7-49BDE6B3FC5C@oracle.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <0D281678-A961-45B0-B1D7-49BDE6B3FC5C@oracle.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Remove check that the request covers a whole page.
+On Wed, May 07, 2014 at 10:31:10AM -0400, Chuck Lever wrote:
+> > Probably it should be submitted to stable??
+> 
+> Christoph has a broader fix for this issue, which affects more than
+> just tmpfs. Stay tuned.
 
-Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
----
- fs/nfs/pagelist.c | 4 ----
- 1 file changed, 4 deletions(-)
-
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index ce3faad..44aef5a 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -922,10 +922,6 @@ static bool nfs_can_coalesce_requests(struct nfs_page *prev,
- 		    !nfs_match_lock_context(req->wb_lock_context,
- 					    prev->wb_lock_context))
- 			return false;
--		if (req->wb_pgbase != 0)
--			return false;
--		if (prev->wb_pgbase + prev->wb_bytes != PAGE_CACHE_SIZE)
--			return false;
- 		if (req_offset(req) != req_offset(prev) + prev->wb_bytes)
- 			return false;
- 	}
--- 
-1.8.5.2 (Apple Git-48)
+The fix has just made it into Linus' tree.  I added a Cc: stable
+tag, so it should get picked up soon.
 
