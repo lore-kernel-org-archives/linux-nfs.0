@@ -1,193 +1,161 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f49.google.com ([209.85.192.49]:42408 "EHLO
-	mail-qg0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932498AbaE3NJ6 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 May 2014 09:09:58 -0400
-Received: by mail-qg0-f49.google.com with SMTP id a108so5113934qge.8
-        for <linux-nfs@vger.kernel.org>; Fri, 30 May 2014 06:09:57 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: trond.myklebust@primarydata.com, bhalevy@primarydata.com,
-        linux-nfs@vger.kernel.org
-Subject: [PATCH 9/9] NFSd: protect delegation setup with the i_lock
-Date: Fri, 30 May 2014 09:09:33 -0400
-Message-Id: <1401455373-18207-10-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1401455373-18207-1-git-send-email-jlayton@primarydata.com>
-References: <1401455373-18207-1-git-send-email-jlayton@primarydata.com>
+Received: from casper.infradead.org ([85.118.1.10]:37675 "EHLO
+	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755316AbaEGLr2 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 May 2014 07:47:28 -0400
+From: Christoph Hellwig <hch@lst.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] nfsd: clean up fh_auth usage
+Date: Wed,  7 May 2014 13:49:44 +0200
+Message-Id: <1399463384-4324-1-git-send-email-hch@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Trond Myklebust <trond.myklebust@primarydata.com>
+Use fh_fsid when reffering to the fsid part of the filehandle.  The
+variable length auth field envisioned in nfsfh wasn't ever implemented.
+Also clean up some lose ends around this and document the file handle
+format better.
 
-state_lock is a heavily contended global lock. We don't want to grab
-that while simultaneously holding the inode->i_lock. Avoid doing that in
-the delegation break callback by ensuring that we add/remove the
-dl_perfile under the inode->i_lock.
+Btw, why do we even export nfsfh.h to userspace?  The file handle very
+much is kernel private, and nothing in nfs-utils include the header
+either.
 
-This however, can cause an ABBA deadlock between the state_lock and the
-i_lock. Work around that by doing the list manipulation in the delegation
-recall from the workqueue context prior to starting the rpc call.
-
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
+Signed-off-by: Christoph Hellwig <hch@lst.de>
 ---
- fs/nfsd/nfs4callback.c | 18 ++++++++++++++++--
- fs/nfsd/nfs4state.c    | 41 +++++++++++++++++++++++++++--------------
- fs/nfsd/state.h        |  1 +
- 3 files changed, 44 insertions(+), 16 deletions(-)
+ fs/nfsd/nfsfh.c                 |   20 +++++++++-----------
+ include/uapi/linux/nfsd/nfsfh.h |   32 +++++++-------------------------
+ 2 files changed, 16 insertions(+), 36 deletions(-)
 
-diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
-index 2c73cae9899d..3d67bbf26cee 100644
---- a/fs/nfsd/nfs4callback.c
-+++ b/fs/nfsd/nfs4callback.c
-@@ -1011,9 +1011,8 @@ static void nfsd4_process_cb_update(struct nfsd4_callback *cb)
- 		run_nfsd4_cb(cb);
- }
- 
--static void nfsd4_do_callback_rpc(struct work_struct *w)
-+static void nfsd4_run_callback_rpc(struct nfsd4_callback *cb)
+diff --git a/fs/nfsd/nfsfh.c b/fs/nfsd/nfsfh.c
+index 3c37b16..a337106 100644
+--- a/fs/nfsd/nfsfh.c
++++ b/fs/nfsd/nfsfh.c
+@@ -169,8 +169,8 @@ static __be32 nfsd_set_fh_dentry(struct svc_rqst *rqstp, struct svc_fh *fhp)
+ 		data_left -= len;
+ 		if (data_left < 0)
+ 			return error;
+-		exp = rqst_exp_find(rqstp, fh->fh_fsid_type, fh->fh_auth);
+-		fid = (struct fid *)(fh->fh_auth + len);
++		exp = rqst_exp_find(rqstp, fh->fh_fsid_type, fh->fh_fsid);
++		fid = (struct fid *)(fh->fh_fsid + len);
+ 	} else {
+ 		__u32 tfh[2];
+ 		dev_t xdev;
+@@ -385,7 +385,7 @@ static void _fh_update(struct svc_fh *fhp, struct svc_export *exp,
  {
--	struct nfsd4_callback *cb = container_of(w, struct nfsd4_callback, cb_work);
- 	struct nfs4_client *clp = cb->cb_clp;
- 	struct rpc_clnt *clnt;
+ 	if (dentry != exp->ex_path.dentry) {
+ 		struct fid *fid = (struct fid *)
+-			(fhp->fh_handle.fh_auth + fhp->fh_handle.fh_size/4 - 1);
++			(fhp->fh_handle.fh_fsid + fhp->fh_handle.fh_size/4 - 1);
+ 		int maxsize = (fhp->fh_maxsize - fhp->fh_handle.fh_size)/4;
+ 		int subtreecheck = !(exp->ex_flags & NFSEXP_NOSUBTREECHECK);
  
-@@ -1031,11 +1030,25 @@ static void nfsd4_do_callback_rpc(struct work_struct *w)
- 			cb->cb_ops, cb);
- }
- 
-+static void nfsd4_do_callback_rpc(struct work_struct *w)
-+{
-+	struct nfsd4_callback *cb = container_of(w, struct nfsd4_callback, cb_work);
-+	nfsd4_run_callback_rpc(cb);
-+}
-+
- void nfsd4_init_callback(struct nfsd4_callback *cb)
- {
- 	INIT_WORK(&cb->cb_work, nfsd4_do_callback_rpc);
- }
- 
-+static void nfsd4_do_cb_recall(struct work_struct *w)
-+{
-+	struct nfsd4_callback *cb = container_of(w, struct nfsd4_callback, cb_work);
-+
-+	nfsd4_prepare_cb_recall(cb->cb_op);
-+	nfsd4_run_callback_rpc(cb);
-+}
-+
- void nfsd4_cb_recall(struct nfs4_delegation *dp)
- {
- 	struct nfsd4_callback *cb = &dp->dl_recall;
-@@ -1052,6 +1065,7 @@ void nfsd4_cb_recall(struct nfs4_delegation *dp)
- 
- 	INIT_LIST_HEAD(&cb->cb_per_client);
- 	cb->cb_done = true;
-+	INIT_WORK(&cb->cb_work, nfsd4_do_cb_recall);
- 
- 	run_nfsd4_cb(&dp->dl_recall);
- }
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 553c2d6d48dc..c249c5261640 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -438,7 +438,9 @@ hash_delegation_locked(struct nfs4_delegation *dp, struct nfs4_file *fp)
- 	lockdep_assert_held(&state_lock);
- 
- 	dp->dl_stid.sc_type = NFS4_DELEG_STID;
-+	spin_lock(&fp->fi_inode->i_lock);
- 	list_add(&dp->dl_perfile, &fp->fi_delegations);
-+	spin_unlock(&fp->fi_inode->i_lock);
- 	list_add(&dp->dl_perclnt, &dp->dl_stid.sc_client->cl_delegations);
- }
- 
-@@ -446,14 +448,20 @@ hash_delegation_locked(struct nfs4_delegation *dp, struct nfs4_file *fp)
- static void
- unhash_delegation(struct nfs4_delegation *dp)
- {
-+	struct nfs4_file *fp = dp->dl_file;
-+
- 	spin_lock(&state_lock);
- 	list_del_init(&dp->dl_perclnt);
--	list_del_init(&dp->dl_perfile);
- 	list_del_init(&dp->dl_recall_lru);
-+	if (!list_empty(&dp->dl_perfile)) {
-+		spin_lock(&fp->fi_inode->i_lock);
-+		list_del_init(&dp->dl_perfile);
-+		spin_unlock(&fp->fi_inode->i_lock);
-+	}
- 	spin_unlock(&state_lock);
--	if (dp->dl_file) {
--		nfs4_put_deleg_lease(dp->dl_file);
--		put_nfs4_file(dp->dl_file);
-+	if (fp) {
-+		nfs4_put_deleg_lease(fp);
-+		put_nfs4_file(fp);
- 		dp->dl_file = NULL;
- 	}
- }
-@@ -2766,24 +2774,31 @@ out:
- 	return ret;
- }
- 
--static void nfsd_break_one_deleg(struct nfs4_delegation *dp)
-+void nfsd4_prepare_cb_recall(struct nfs4_delegation *dp)
- {
- 	struct nfs4_client *clp = dp->dl_stid.sc_client;
- 	struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
- 
--	lockdep_assert_held(&state_lock);
-+	/*
-+	 * We can't do this in nfsd_break_deleg_cb because it is
-+	 * already holding inode->i_lock
-+	 */
-+	spin_lock(&state_lock);
-+	if (list_empty(&dp->dl_recall_lru)) {
-+		dp->dl_time = get_seconds();
-+		list_add_tail(&dp->dl_recall_lru, &nn->del_recall_lru);
-+	}
-+	spin_unlock(&state_lock);
-+}
-+
-+static void nfsd_break_one_deleg(struct nfs4_delegation *dp)
-+{
- 	/* We're assuming the state code never drops its reference
- 	 * without first removing the lease.  Since we're in this lease
- 	 * callback (and since the lease code is serialized by the kernel
- 	 * lock) we know the server hasn't removed the lease yet, we know
- 	 * it's safe to take a reference: */
- 	atomic_inc(&dp->dl_count);
--
--	list_add_tail(&dp->dl_recall_lru, &nn->del_recall_lru);
--
--	/* Only place dl_time is set; protected by i_lock: */
--	dp->dl_time = get_seconds();
--
- 	nfsd4_cb_recall(dp);
- }
- 
-@@ -2808,11 +2823,9 @@ static void nfsd_break_deleg_cb(struct file_lock *fl)
+@@ -513,7 +513,6 @@ fh_compose(struct svc_fh *fhp, struct svc_export *exp, struct dentry *dentry,
  	 */
- 	fl->fl_break_time = 0;
  
--	spin_lock(&state_lock);
- 	fp->fi_had_conflict = true;
- 	list_for_each_entry(dp, &fp->fi_delegations, dl_perfile)
- 		nfsd_break_one_deleg(dp);
--	spin_unlock(&state_lock);
- }
+ 	struct inode * inode = dentry->d_inode;
+-	__u32 *datap;
+ 	dev_t ex_dev = exp_sb(exp)->s_dev;
  
- static
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 374c66283ac5..aacccb2a476c 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -472,6 +472,7 @@ extern void nfsd4_cb_recall(struct nfs4_delegation *dp);
- extern int nfsd4_create_callback_queue(void);
- extern void nfsd4_destroy_callback_queue(void);
- extern void nfsd4_shutdown_callback(struct nfs4_client *);
-+extern void nfsd4_prepare_cb_recall(struct nfs4_delegation *dp);
- extern void nfs4_put_delegation(struct nfs4_delegation *dp);
- extern struct nfs4_client_reclaim *nfs4_client_to_reclaim(const char *name,
- 							struct nfsd_net *nn);
+ 	dprintk("nfsd: fh_compose(exp %02x:%02x/%ld %pd2, ino=%ld)\n",
+@@ -557,17 +556,16 @@ fh_compose(struct svc_fh *fhp, struct svc_export *exp, struct dentry *dentry,
+ 		if (inode)
+ 			_fh_update_old(dentry, exp, &fhp->fh_handle);
+ 	} else {
+-		int len;
++		fhp->fh_handle.fh_size =
++			key_len(fhp->fh_handle.fh_fsid_type) + 4;
+ 		fhp->fh_handle.fh_auth_type = 0;
+-		datap = fhp->fh_handle.fh_auth+0;
+-		mk_fsid(fhp->fh_handle.fh_fsid_type, datap, ex_dev,
++
++		mk_fsid(fhp->fh_handle.fh_fsid_type,
++			fhp->fh_handle.fh_fsid,
++			ex_dev,
+ 			exp->ex_path.dentry->d_inode->i_ino,
+ 			exp->ex_fsid, exp->ex_uuid);
+ 
+-		len = key_len(fhp->fh_handle.fh_fsid_type);
+-		datap += len/4;
+-		fhp->fh_handle.fh_size = 4 + len;
+-
+ 		if (inode)
+ 			_fh_update(fhp, exp, dentry);
+ 		if (fhp->fh_handle.fh_fileid_type == FILEID_INVALID) {
+diff --git a/include/uapi/linux/nfsd/nfsfh.h b/include/uapi/linux/nfsd/nfsfh.h
+index 616e3b3..2039123 100644
+--- a/include/uapi/linux/nfsd/nfsfh.h
++++ b/include/uapi/linux/nfsd/nfsfh.h
+@@ -1,13 +1,7 @@
+ /*
+- * include/linux/nfsd/nfsfh.h
+- *
+  * This file describes the layout of the file handles as passed
+  * over the wire.
+  *
+- * Earlier versions of knfsd used to sign file handles using keyed MD5
+- * or SHA. I've removed this code, because it doesn't give you more
+- * security than blocking external access to port 2049 on your firewall.
+- *
+  * Copyright (C) 1995, 1996, 1997 Olaf Kirch <okir@monad.swb.de>
+  */
+ 
+@@ -37,7 +31,7 @@ struct nfs_fhbase_old {
+ };
+ 
+ /*
+- * This is the new flexible, extensible style NFSv2/v3 file handle.
++ * This is the new flexible, extensible style NFSv2/v3/v4 file handle.
+  * by Neil Brown <neilb@cse.unsw.edu.au> - March 2000
+  *
+  * The file handle starts with a sequence of four-byte words.
+@@ -47,14 +41,7 @@ struct nfs_fhbase_old {
+  *
+  * All four-byte values are in host-byte-order.
+  *
+- * The auth_type field specifies how the filehandle can be authenticated
+- * This might allow a file to be confirmed to be in a writable part of a
+- * filetree without checking the path from it up to the root.
+- * Current values:
+- *     0  - No authentication.  fb_auth is 0 bytes long
+- * Possible future values:
+- *     1  - 4 bytes taken from MD5 hash of the remainer of the file handle
+- *          prefixed by a secret and with the important export flags.
++ * The auth_type field is deprecated and must be set to 0.
+  *
+  * The fsid_type identifies how the filesystem (or export point) is
+  *    encoded.
+@@ -71,14 +58,9 @@ struct nfs_fhbase_old {
+  *     7  - 8 byte inode number and 16 byte uuid
+  *
+  * The fileid_type identified how the file within the filesystem is encoded.
+- * This is (will be) passed to, and set by, the underlying filesystem if it supports
+- * filehandle operations.  The filesystem must not use the value '0' or '0xff' and may
+- * only use the values 1 and 2 as defined below:
+- *  Current values:
+- *    0   - The root, or export point, of the filesystem.  fb_fileid is 0 bytes.
+- *    1   - 32bit inode number, 32 bit generation number.
+- *    2   - 32bit inode number, 32 bit generation number, 32 bit parent directory inode number.
+- *
++ *   The values for this field are filesystem specific, exccept that
++ *   filesystems must not use the values '0' or '0xff'. 'See enum fid_type'
++ *   in include/linux/exportfs.h for currently registered values.
+  */
+ struct nfs_fhbase_new {
+ 	__u8		fb_version;	/* == 1, even => nfs_fhbase_old */
+@@ -114,9 +96,9 @@ struct knfsd_fh {
+ #define	fh_fsid_type		fh_base.fh_new.fb_fsid_type
+ #define	fh_auth_type		fh_base.fh_new.fb_auth_type
+ #define	fh_fileid_type		fh_base.fh_new.fb_fileid_type
+-#define	fh_auth			fh_base.fh_new.fb_auth
+ #define	fh_fsid			fh_base.fh_new.fb_auth
+ 
+-
++/* Do not use, provided for userspace compatiblity. */
++#define	fh_auth			fh_base.fh_new.fb_auth
+ 
+ #endif /* _UAPI_LINUX_NFSD_FH_H */
 -- 
-1.9.3
+1.7.10.4
 
