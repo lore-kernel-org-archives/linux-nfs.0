@@ -1,59 +1,70 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f47.google.com ([209.85.220.47]:57645 "EHLO
-	mail-pa0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932070AbaETDyh (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 May 2014 23:54:37 -0400
-Received: by mail-pa0-f47.google.com with SMTP id lf10so6669838pab.34
-        for <linux-nfs@vger.kernel.org>; Mon, 19 May 2014 20:54:36 -0700 (PDT)
-Message-ID: <537AD1E7.6080404@gmail.com>
-Date: Tue, 20 May 2014 11:54:15 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
+Received: from fieldses.org ([174.143.236.118]:50058 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751491AbaEGTZe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 7 May 2014 15:25:34 -0400
+Date: Wed, 7 May 2014 15:25:34 -0400
+From: Bruce Fields <bfields@fieldses.org>
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 29/70] NFSd: Add a struct nfs4_file field to struct
+ nfs4_stid
+Message-ID: <20140507192534.GD8324@fieldses.org>
+References: <1397846704-14567-21-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-22-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-23-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-24-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-25-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-26-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-27-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-28-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-29-git-send-email-trond.myklebust@primarydata.com>
+ <1397846704-14567-30-git-send-email-trond.myklebust@primarydata.com>
 MIME-Version: 1.0
-To: Steve Dickson <steved@redhat.com>
-CC: linux-nfs@vger.kernel.org, kinglongmee@gmail.com
-Subject: [PATCH] mount.nfs: print more useful error message
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1397846704-14567-30-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When mounting spec of a regular file, mount.nfs print error message as,
+We're adding a put without adding a corresponding get, so was there a
+leak before this patch?
 
-# mount -t nfs 127.0.0.1:/root/testfile /mnt/
-mount.nfs: mount point /mnt is not a directory
-# mount -t nfs 127.0.0.1:/root/testfile /mnt/testfile
-mount.nfs: mount point /mnt/testfile is not a directory
+--b.
 
-This patch lets mount.nfs print more useful message,
-
-# mount -t nfs 127.0.0.1:/root/testfile /mnt/
-mount.nfs: mount spec 127.0.0.1:/root/testfile or point /mnt is not a directory
-# mount -t nfs 127.0.0.1:/root/testfile /mnt/testfile
-mount.nfs: mount point /mnt/testfile is not a directory
-
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
----
- utils/mount/error.c | 8 ++++++--
- 1 file changed, 6 insertions(+), 2 deletions(-)
-
-diff --git a/utils/mount/error.c b/utils/mount/error.c
-index f8fc13f..e06f598 100644
---- a/utils/mount/error.c
-+++ b/utils/mount/error.c
-@@ -215,8 +215,12 @@ void mount_error(const char *spec, const char *mount_point, int error)
- 				progname);
- 		break;
- 	case ENOTDIR:
--		nfs_error(_("%s: mount point %s is not a directory"),
--				progname, mount_point);
-+		if (spec)
-+			nfs_error(_("%s: mount spec %s or point %s is not a "
-+				  "directory"),	progname, spec, mount_point);
-+		else
-+			nfs_error(_("%s: mount point %s is not a directory"),
-+				  progname, mount_point);
- 		break;
- 	case EBUSY:
- 		nfs_error(_("%s: %s is busy or already mounted"),
--- 
-1.9.0
-
+On Fri, Apr 18, 2014 at 02:44:23PM -0400, Trond Myklebust wrote:
+> All stateids are associated with a nfs4_file. Let's consolidate...
+> 
+> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+> ---
+>  fs/nfsd/nfs4state.c | 2 ++
+>  fs/nfsd/state.h     | 1 +
+>  2 files changed, 3 insertions(+)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 32ab3f1c83f8..5bbef4720e7c 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -474,6 +474,8 @@ static void remove_stid(struct nfs4_stid *s)
+>  
+>  static void nfs4_free_stid(struct kmem_cache *slab, struct nfs4_stid *s)
+>  {
+> +	if (s->sc_file)
+> +		put_nfs4_file(s->sc_file);
+>  	kmem_cache_free(slab, s);
+>  }
+>  
+> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+> index 9d0088c244a8..c6deef936693 100644
+> --- a/fs/nfsd/state.h
+> +++ b/fs/nfsd/state.h
+> @@ -85,6 +85,7 @@ struct nfs4_stid {
+>  	unsigned char sc_type;
+>  	stateid_t sc_stateid;
+>  	struct nfs4_client *sc_client;
+> +	struct nfs4_file *sc_file;
+>  };
+>  
+>  struct nfs4_delegation {
+> -- 
+> 1.9.0
+> 
