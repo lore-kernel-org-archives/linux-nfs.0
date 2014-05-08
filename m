@@ -1,199 +1,126 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from st11p02mm-asmtpout001.mac.com ([17.172.220.236]:62780 "EHLO
-	st11p02mm-asmtp001.mac.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751009AbaEAQVo (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 May 2014 12:21:44 -0400
-MIME-version: 1.0
-Content-type: multipart/mixed; boundary="Boundary_(ID_qlajL+jbnMKZ8fWv5EsUGQ)"
-Received: from hobbes.nimgs.com ([184.188.181.148])
- by st11p02mm-asmtp001.mac.com
- (Oracle Communications Messaging Server 7u4-27.08(7.0.4.27.7) 64bit (built Aug
- 22 2013)) with ESMTPSA id <0N4W00DGMLFD4M30@st11p02mm-asmtp001.mac.com> for
- linux-nfs@vger.kernel.org; Thu, 01 May 2014 16:21:14 +0000 (GMT)
-From: Craig Yoshioka <craigyk@me.com>
-Subject: idmap problems with chown as root
-Message-id: <2541339C-AF61-4ED7-8F50-E4B3CA2C924F@me.com>
-Date: Thu, 01 May 2014 09:21:11 -0700
-To: linux-nfs@vger.kernel.org
+Received: from fieldses.org ([174.143.236.118]:39154 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754849AbaEHQM4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 8 May 2014 12:12:56 -0400
+Date: Thu, 8 May 2014 12:12:56 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2] NFSD: Don't clear SUID/SGID after root writing data
+Message-ID: <20140508161256.GC20976@fieldses.org>
+References: <534AA92B.8010805@gmail.com>
+ <20140418130220.GF18612@fieldses.org>
+ <53512DE5.7050907@gmail.com>
+ <5351501B.1010507@gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+In-Reply-To: <5351501B.1010507@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Sat, Apr 19, 2014 at 12:17:31AM +0800, Kinglong Mee wrote:
+> SUID/SGID is not cleared after writing data with (root, local ext4),
+> #touch test; chmod 4777 test; stat test; echo 1234 > test; stat test;
+>   File: ‘test’
+>   Size: 0               Blocks: 0          IO Block: 4096   regular
+> empty file
+> Device: 803h/2051d      Inode: 1200137     Links: 1
+> Access: (4777/-rwsrwxrwx)  Uid: (    0/    root)   Gid: (    0/    root)
+> Context: unconfined_u:object_r:admin_home_t:s0
+> Access: 2014-04-18 21:36:31.016029014 +0800
+> Modify: 2014-04-18 21:36:31.016029014 +0800
+> Change: 2014-04-18 21:36:31.026030285 +0800
+>  Birth: -
+>   File: ‘test’
+>   Size: 5               Blocks: 8          IO Block: 4096   regular file
+> Device: 803h/2051d      Inode: 1200137     Links: 1
+> Access: (4777/-rwsrwxrwx)  Uid: (    0/    root)   Gid: (    0/    root)
+> Context: unconfined_u:object_r:admin_home_t:s0
+> Access: 2014-04-18 21:36:31.016029014 +0800
+> Modify: 2014-04-18 21:36:31.040032065 +0800
+> Change: 2014-04-18 21:36:31.040032065 +0800
+>  Birth: -
+> 
+> With no_root_squash, (root, remote ext4), SUID/SGID are cleared,
+> #touch test; chmod 4777 test; stat test; echo 1234 > test; stat test;
+>   File: ‘test’
+>   Size: 0               Blocks: 0          IO Block: 262144 regular
+> empty file
+> Device: 24h/36d Inode: 786439      Links: 1
+> Access: (4777/-rwsrwxrwx)  Uid: ( 1000/    test)   Gid: ( 1000/    test)
+> Context: system_u:object_r:nfs_t:s0
+> Access: 2014-04-18 21:45:32.155805097 +0800
+> Modify: 2014-04-18 21:45:32.155805097 +0800
+> Change: 2014-04-18 21:45:32.168806749 +0800
+>  Birth: -
+>   File: ‘test’
+>   Size: 5               Blocks: 8          IO Block: 262144 regular file
+> Device: 24h/36d Inode: 786439      Links: 1
+> Access: (0777/-rwxrwxrwx)  Uid: ( 1000/    test)   Gid: ( 1000/    test)
+> Context: system_u:object_r:nfs_t:s0
+> Access: 2014-04-18 21:45:32.155805097 +0800
+> Modify: 2014-04-18 21:45:32.184808783 +0800
+> Change: 2014-04-18 21:45:32.184808783 +0800
+>  Birth: -
+> 
+> This patch drops codes that kills SGID/SUID visibly,
+> because vfs_writev() can kills it if necessary.
+> 
+> With this patch, the above problem will not exist.
 
---Boundary_(ID_qlajL+jbnMKZ8fWv5EsUGQ)
-Content-type: text/plain; charset=windows-1252
-Content-transfer-encoding: quoted-printable
+I'd like to apply this if only to remove the redundant code.
 
+I'd like to understand, though, whether this is something that caused an
+actual practical problem for someone, or if you just happened to notice
+the inconsistency between nfs and ext4 behavior?
 
-This is a followup to a previous post I made.
+--b.
 
-With Frank Filz=92s helpful suggestions I was able to gather better =
-data.
-
-problem: when using chown as root on a nfs4 filesystem on newer linux =
-releases file owners get sets to nobody.
-         the user type doesn=92t seem to matter (/etc/passwd, LDAP, =
-Samba4)
-
-setup: Server is FreeBSD 10 system with NFSv4 share.
-       Server and clients are all configured with the same idmap domain
-       Network users have consistent uid/gid on server and clients
-       clients with older linux releases work OK (Ubuntu 12.04, CentOS 5 =
-and 6)
-       clients with newer linux releases do not work ( Fedora 20, Ubuntu =
-14.04, Mint 16 )
-
-clues:
-
-1. working and non-working systems get to the same fchownat() system =
-call with the same arguments (via strace).
-
-example (identical on working and non-working client):
-...
-fchownat(AT_FDCWD, "/mnt/test", 11111, 4294967295, 0) =3D 0
-close(1)                                =3D 0
-close(2)                                =3D 0
-close(4)                                =3D 0
-exit_group(0)                           =3D ?
-+++ exited with 0 +++
-
-2. working system sends NFSV4 SETATTR request with owner set to: =
-matlab@nimgs.com and non-working as 11111 (via wireshark)
-
-
---Boundary_(ID_qlajL+jbnMKZ8fWv5EsUGQ)
-Content-type: application/vnd.tcpdump.pcap; name=broken.cap
-Content-transfer-encoding: base64
-Content-disposition: attachment; filename=broken.cap
-
-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
-AAAAAAAAbAAAAA==
-
---Boundary_(ID_qlajL+jbnMKZ8fWv5EsUGQ)
-Content-type: application/vnd.tcpdump.pcap; name=working.cap
-Content-transfer-encoding: base64
-Content-disposition: attachment; filename=working.cap
-
-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
-LRA/7IAQAUuMOAAAAQEICgdpwz9u37HW
-
---Boundary_(ID_qlajL+jbnMKZ8fWv5EsUGQ)
-Content-type: text/plain; charset=windows-1252
-Content-transfer-encoding: quoted-printable
-
-
-
-3. I can=92t rule out misconfiguration.  but I=92ve configured as =
-identically as I could, and tried a lot of small vairations. these are =
-my current settings (the pipefs setting is the distro default)
-
-
---Boundary_(ID_qlajL+jbnMKZ8fWv5EsUGQ)
-Content-type: application/octet-stream; name=broken.idmapd.conf
-Content-transfer-encoding: 7bit
-Content-disposition: attachment; filename=broken.idmapd.conf
-
-[General]
-Verbosity = 3
-Pipefs-Directory = /var/lib/nfs/rpc_pipefs
-Domain = nimgs.com
-
-[Mapping]
-Nobody-User = nobody
-Nobody-Group = nobody
-
-[Translation]
-Method = nsswitch
-
-
---Boundary_(ID_qlajL+jbnMKZ8fWv5EsUGQ)
-Content-type: application/octet-stream; name=working.idmap.conf
-Content-transfer-encoding: 7bit
-Content-disposition: attachment; filename=working.idmap.conf
-
-[General]
-
-Verbosity = 4
-Pipefs-Directory = /run/rpc_pipefs
-Domain = nimgs.com
-
-[Mapping]
-
-Nobody-User = nobody
-Nobody-Group = nogroup
-
---Boundary_(ID_qlajL+jbnMKZ8fWv5EsUGQ)
-Content-type: text/plain; CHARSET=US-ASCII
-Content-transfer-encoding: 7BIT
-
-
-
-
---Boundary_(ID_qlajL+jbnMKZ8fWv5EsUGQ)--
+> 
+> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> ---
+>  fs/nfsd/vfs.c | 18 ------------------
+>  1 file changed, 18 deletions(-)
+> 
+> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
+> index 16f0673..6aaa305 100644
+> --- a/fs/nfsd/vfs.c
+> +++ b/fs/nfsd/vfs.c
+> @@ -857,20 +857,6 @@ nfsd_vfs_read(struct svc_rqst *rqstp, struct
+> svc_fh *fhp, struct file *file,
+>  	return err;
+>  }
+> 
+> -static void kill_suid(struct dentry *dentry)
+> -{
+> -	struct iattr	ia;
+> -	ia.ia_valid = ATTR_KILL_SUID | ATTR_KILL_SGID | ATTR_KILL_PRIV;
+> -
+> -	mutex_lock(&dentry->d_inode->i_mutex);
+> -	/*
+> -	 * Note we call this on write, so notify_change will not
+> -	 * encounter any conflicting delegations:
+> -	 */
+> -	notify_change(dentry, &ia, NULL);
+> -	mutex_unlock(&dentry->d_inode->i_mutex);
+> -}
+> -
+>  /*
+>   * Gathered writes: If another process is currently writing to the file,
+>   * there's a high chance this is another nfsd (triggered by a bulk write
+> @@ -942,10 +928,6 @@ nfsd_vfs_write(struct svc_rqst *rqstp, struct
+> svc_fh *fhp, struct file *file,
+>  	nfsdstats.io_write += host_err;
+>  	fsnotify_modify(file);
+> 
+> -	/* clear setuid/setgid flag after write */
+> -	if (inode->i_mode & (S_ISUID | S_ISGID))
+> -		kill_suid(dentry);
+> -
+>  	if (stable) {
+>  		if (use_wgather)
+>  			host_err = wait_for_concurrent_writes(file);
+> -- 
+> 1.9.0
+> 
