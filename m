@@ -1,106 +1,118 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f181.google.com ([209.85.223.181]:49949 "EHLO
-	mail-ie0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754271AbaE1OeJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 May 2014 10:34:09 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH v5 16/24] xprtrdma: Ensure ia->ri_id->qp is not NULL when
-	reconnecting
-To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Cc: Anna.Schumaker@netapp.com
-Date: Wed, 28 May 2014 10:34:07 -0400
-Message-ID: <20140528143407.23214.2601.stgit@manet.1015granger.net>
-In-Reply-To: <20140528142521.23214.39655.stgit@manet.1015granger.net>
-References: <20140528142521.23214.39655.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from plane.gmane.org ([80.91.229.3]:58155 "EHLO plane.gmane.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752606AbaEHO2q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 8 May 2014 10:28:46 -0400
+Received: from list by plane.gmane.org with local (Exim 4.69)
+	(envelope-from <glN-linux-nfs@m.gmane.org>)
+	id 1WiPJS-0006SK-U8
+	for linux-nfs@vger.kernel.org; Thu, 08 May 2014 16:28:42 +0200
+Received: from vpn.ims.co.at ([81.223.138.18])
+        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Thu, 08 May 2014 16:28:42 +0200
+Received: from klemens.senn by vpn.ims.co.at with local (Gmexim 0.1 (Debian))
+        id 1AlnuQ-0007hv-00
+        for <linux-nfs@vger.kernel.org>; Thu, 08 May 2014 16:28:42 +0200
+To: linux-nfs@vger.kernel.org
+From: Senn Klemens <klemens.senn@ims.co.at>
+Subject: Soft lockup in unloading kernel modules
+Date: Thu, 08 May 2014 16:28:30 +0200
+Message-ID: <lkg4ae$hj7$1@ger.gmane.org>
+Mime-Version: 1.0
+Content-Type: text/plain; charset=ISO-8859-1
+Cc: linux-rdma@vger.kernel.org
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Devesh Sharma <Devesh.Sharma@Emulex.Com> reports that after a
-disconnect, his HCA is failing to create a fresh QP, leaving
-ia_ri->ri_id->qp set to NULL. But xprtrdma still allows RPCs to
-wake up and post LOCAL_INV as they exit, causing an oops.
+Hi,
 
-rpcrdma_ep_connect() is allowing the wake-up by leaking the QP
-creation error code (-EPERM in this case) to the RPC client's
-generic layer. xprt_connect_status() does not recognize -EPERM, so
-it kills pending RPC tasks immediately rather than retrying the
-connect.
+I am getting a soft lockup on the NFS server on its reboot if at least
+one client mount is established. I am using OpenSUSE 12.3 with the
+nfs-rdma kernel from Anna Schumaker
+(git://git.linux-nfs.org/projects/anna/nfs-rdma.git).
 
-Re-arrange the QP creation logic so that when it fails on reconnect,
-it leaves ->qp with the old QP rather than NULL.  If pending RPC
-tasks wake and exit, LOCAL_INV work requests will flush rather than
-oops.
+The export on the server side is done with
+/data	*(fsid=0,crossmnt,rw,mp,no_root_squash,sync,no_subtree_check,insecure)
 
-On initial connect, leaving ->qp == NULL is OK, since there are no
-pending RPCs that might use ->qp. But be sure not to try to destroy
-a NULL QP when rpcrdma_ep_connect() is retried.
+Following command is used for mounting the NFSv4 share:
+mount -t nfs -o port=20049,rdma,vers=4.0,timeo=900 172.16.100.19:/ /mnt
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+The HCA is a Mellanox MT4099 on the server and the client.
 
- net/sunrpc/xprtrdma/verbs.c |   29 ++++++++++++++++++++---------
- 1 files changed, 20 insertions(+), 9 deletions(-)
+The soft lockup can be reproduced by following steps:
+  o server: Start the nfs server
+  o client: Mount the share
+  o client: Do a "ls" in the mounted directory
+  o server: Stop the nfs server
+  o server: Unload the nfs and mlx4 modules or reboot the server (I used
+the openibd init script from the Mellanox driver without having the
+Mellanox stack installed)
 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index c80995a..54edf2a 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -867,6 +867,7 @@ rpcrdma_ep_connect(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
- 	if (ep->rep_connected != 0) {
- 		struct rpcrdma_xprt *xprt;
- retry:
-+		dprintk("RPC:       %s: reconnecting...\n", __func__);
- 		rc = rpcrdma_ep_disconnect(ep, ia);
- 		if (rc && rc != -ENOTCONN)
- 			dprintk("RPC:       %s: rpcrdma_ep_disconnect"
-@@ -879,7 +880,7 @@ retry:
- 		id = rpcrdma_create_id(xprt, ia,
- 				(struct sockaddr *)&xprt->rx_data.addr);
- 		if (IS_ERR(id)) {
--			rc = PTR_ERR(id);
-+			rc = -EHOSTUNREACH;
- 			goto out;
- 		}
- 		/* TEMP TEMP TEMP - fail if new device:
-@@ -893,20 +894,30 @@ retry:
- 			printk("RPC:       %s: can't reconnect on "
- 				"different device!\n", __func__);
- 			rdma_destroy_id(id);
--			rc = -ENETDOWN;
-+			rc = -ENETUNREACH;
- 			goto out;
- 		}
- 		/* END TEMP */
-+		rc = rdma_create_qp(id, ia->ri_pd, &ep->rep_attr);
-+		if (rc) {
-+			dprintk("RPC:       %s: rdma_create_qp failed %i\n",
-+				__func__, rc);
-+			rdma_destroy_id(id);
-+			rc = -ENETUNREACH;
-+			goto out;
-+		}
- 		rdma_destroy_qp(ia->ri_id);
- 		rdma_destroy_id(ia->ri_id);
- 		ia->ri_id = id;
--	}
--
--	rc = rdma_create_qp(ia->ri_id, ia->ri_pd, &ep->rep_attr);
--	if (rc) {
--		dprintk("RPC:       %s: rdma_create_qp failed %i\n",
--			__func__, rc);
--		goto out;
-+	} else {
-+		dprintk("RPC:       %s: connecting...\n", __func__);
-+		rc = rdma_create_qp(ia->ri_id, ia->ri_pd, &ep->rep_attr);
-+		if (rc) {
-+			dprintk("RPC:       %s: rdma_create_qp failed %i\n",
-+				__func__, rc);
-+			/* do not update ep->rep_connected */
-+			return -ENETUNREACH;
-+		}
- 	}
- 
- /* XXX Tavor device performs badly with 2K MTU! */
+The server reports a soft lockup
+  BUG: soft lockup - CPU#0 stuck for 22s! [modprobe:6146]
+most times.
+
+Sometimes I get following kernel panic
+BUG: unable to handle kernel NULL pointer dereference at 0000000000000003
+IP: [<ffffffff815a5c35>] _raw_spin_lock_bh+0x15/0x40
+PGD 82a820067 PUD 857832067 PMD 0
+Oops: 0002 [#1] SMP
+Modules linked in: nfsd nfs_acl auth_rpcgss oid_registry nfnetlink_log
+nfnetlink bluetooth rfkill nfsv4 svcrdma dm_mod cpuid nfs fscache lockd
+sunrpc af_packet 8021q garp stp llc rdma_ucm ib_ucm rdma_cm iw_cm
+ib_ipoib ib_cm ib_uverbs ib_umad mlx4_en mlx4_ib(-) ib_sa ib_mad ib_core
+ib_addr sr_mod cdrom usb_storage joydev mlx4_core usbhid
+x86_pkg_temp_thermal coretemp kvm_intel kvm ghash_clmulni_intel
+aesni_intel ablk_helper cryptd iTCO_wdt lrw igb gf128mul
+iTCO_vendor_support ehci_pci glue_helper pcspkr i2c_algo_bit isci
+ehci_hcd aes_x86_64 ptp libsas ioatdma lpc_ich microcode sb_edac sg
+pps_core usbcore ipmi_si tpm_tis edac_core scsi_transport_sas i2c_i801
+mfd_core dca usb_common tpm ipmi_msghandler wmi acpi_cpufreq button edd
+autofs4 xfs libcrc32c crc32c_intel processor thermal_sys scsi_dh_rdac
+scsi_dh_hp_sw scsi_dh_emc scsi_dh_alua scsi_dh [last unloaded: oid_registry]
+CPU: 0 PID: 6603 Comm: modprobe Not tainted 3.15.0-rc2-anna-nfs-rdma+ #3
+Hardware name: Supermicro B9DRG-E/B9DRG-E, BIOS 3.0 09/04/2013
+task: ffff88105b8c6050 ti: ffff88105d814000 task.ti: ffff88105d814000
+RIP: 0010:[<ffffffff815a5c35>]  [<ffffffff815a5c35>]
+_raw_spin_lock_bh+0x15/0x40
+RSP: 0018:ffff88105d815d18  EFLAGS: 00010286
+RAX: 0000000000010000 RBX: ffffffffffffffff RCX: 0000000000000000
+RDX: 000000000000000b RSI: 0000000000000000 RDI: 0000000000000003
+RBP: ffff88105d815d18 R08: ffff88087c611f38 R09: 0000000000000001
+R10: 0000000000000000 R11: 0000000000000000 R12: ffff88087c3c9800
+R13: ffff88107b82ab00 R14: 0000000000000003 R15: 0000000000000007
+FS:  00007fef64612700(0000) GS:ffff88087fc00000(0000) knlGS:0000000000000000
+CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
+CR2: 0000000000000003 CR3: 000000087c2c7000 CR4: 00000000000407f0
+Stack:
+ ffff88105d815d58 ffffffffa05199f0 ffff88105d815d88 ffff88087c3c9800
+ ffff88087c3c9400 ffff88107b82ab00 ffff88087c3c9660 ffff88087c3c95c8
+ ffff88105d815d78 ffffffffa0421ce9 ffff88087c3c9400 ffff88107b82aac0
+Call Trace:
+ [<ffffffffa05199f0>] svc_xprt_enqueue+0x50/0x220 [sunrpc]
+ [<ffffffffa0421ce9>] rdma_cma_handler+0x69/0x180 [svcrdma]
+ [<ffffffffa039d086>] cma_remove_one+0x1f6/0x220 [rdma_cm]
+ [<ffffffffa01dca86>] ib_unregister_device+0x46/0x120 [ib_core]
+ [<ffffffffa032ddc9>] mlx4_ib_remove+0x29/0x260 [mlx4_ib]
+ [<ffffffffa02fb9d0>] mlx4_remove_device+0xa0/0xc0 [mlx4_core]
+ [<ffffffffa02fba2b>] mlx4_unregister_interface+0x3b/0xa0 [mlx4_core]
+ [<ffffffffa033f4cc>] mlx4_ib_cleanup+0x10/0x23 [mlx4_ib]
+ [<ffffffff810bd6b2>] SyS_delete_module+0x152/0x220
+ [<ffffffff811496e4>] ? vm_munmap+0x54/0x70
+ [<ffffffff815adca6>] system_call_fastpath+0x1a/0x1f
+Code: 5d c3 0f b7 17 66 39 ca 74 f6 f3 90 0f b7 17 66 39 d1 75 f6 5d c3
+55 65 81 04 25 20 b9 00 00 00 02 00 00 48 89 e5 b8 00 00 01 00 <f0> 0f
+c1 07 89 c2 c1 ea 10 66 39 c2 75 04 5d c3 f3 90 0f b7 07
+RIP  [<ffffffff815a5c35>] _raw_spin_lock_bh+0x15/0x40
+ RSP <ffff88105d815d18>
+CR2: 0000000000000003
+---[ end trace 18e02ff413ac4b9b ]---
+Kernel panic - not syncing: Fatal exception in interrupt
+Kernel Offset: 0x0 from 0xffffffff81000000 (relocation range:
+0xffffffff80000000-0xffffffff9fffffff)
+---[ end Kernel panic - not syncing: Fatal exception in interrupt
+
+Kind regards,
+Klemens
 
