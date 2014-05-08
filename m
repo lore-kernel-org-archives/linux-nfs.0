@@ -1,41 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f181.google.com ([209.85.213.181]:62647 "EHLO
-	mail-ig0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752137AbaESRop (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 May 2014 13:44:45 -0400
-Received: by mail-ig0-f181.google.com with SMTP id h3so3838841igd.14
-        for <linux-nfs@vger.kernel.org>; Mon, 19 May 2014 10:44:45 -0700 (PDT)
-Message-ID: <537A430A.40607@gmail.com>
-Date: Mon, 19 May 2014 13:44:42 -0400
-From: Anna Schumaker <schumaker.anna@gmail.com>
+Received: from fieldses.org ([174.143.236.118]:35486 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754663AbaEHP2y (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 8 May 2014 11:28:54 -0400
+Date: Thu, 8 May 2014 11:28:52 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Christoph Hellwig <hch@lst.de>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] nfsd: clean up fh_auth usage
+Message-ID: <20140508152852.GB20976@fieldses.org>
+References: <1399463384-4324-1-git-send-email-hch@lst.de>
+ <20140507160118.GD4240@fieldses.org>
+ <20140508062723.GA9437@lst.de>
 MIME-Version: 1.0
-To: Christoph Hellwig <hch@infradead.org>,
-        Weston Andros Adamson <dros@primarydata.com>
-CC: trond.myklebust@primarydata.com, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 8/8] pnfs: merge identical functions
-References: <1400512508-7530-1-git-send-email-dros@primarydata.com> <1400512508-7530-9-git-send-email-dros@primarydata.com> <20140519153402.GB21345@infradead.org>
-In-Reply-To: <20140519153402.GB21345@infradead.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140508062723.GA9437@lst.de>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 05/19/2014 11:34 AM, Christoph Hellwig wrote:
->> -static void pnfs_writehdr_free(struct nfs_pgio_header *hdr)
->> +static void pnfs_pgio_header_free(struct nfs_pgio_header *hdr)
->>  {
->>  	pnfs_put_lseg(hdr->lseg);
->>  	nfs_pgio_header_free(hdr);
->>  }
-> I think it should also be mossible to simply call pnfs_put_lseg
-> from nfs_pgio_header_free.  pnfs_put_lseg handles a NULL argument fine,
-> is stubbed out for the non-pnfs case, and the other callers should never
-> have it set.
+On Thu, May 08, 2014 at 08:27:23AM +0200, Christoph Hellwig wrote:
+> On Wed, May 07, 2014 at 12:01:18PM -0400, J. Bruce Fields wrote:
+> > On Wed, May 07, 2014 at 01:49:44PM +0200, Christoph Hellwig wrote:
+> > > Use fh_fsid when reffering to the fsid part of the filehandle.  The
+> > > variable length auth field envisioned in nfsfh wasn't ever implemented.
+> > > Also clean up some lose ends around this and document the file handle
+> > > format better.
+> > 
+> > Thanks.
+> > 
+> > > Btw, why do we even export nfsfh.h to userspace?  The file handle very
+> > > much is kernel private, and nothing in nfs-utils include the header
+> > > either.
+> > 
+> > Something like wireshark might use that information?  But anyway that
+> > doesn't mean it makes much sense to export.  I'm fine with moving that
+> > header.
+> 
+> Let's just put this version in for now,
 
-pnfs_put_lseg is compiled into the NFS v4 module, so depmod would complain about recursive module dependencies if it was called from the generic client.
+OK, doing that.
 
->
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> I'll do some research if the uapi <linux/nfsd/*.h> headers are used
+> anywhere at all, if not I'll send a series to kill them all.
 
+Thanks!
+
+--b.
