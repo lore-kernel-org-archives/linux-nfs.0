@@ -1,59 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:61993 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S932426AbaE2RZy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 29 May 2014 13:25:54 -0400
-From: Scott Mayhew <smayhew@redhat.com>
-To: trond.myklebust@primarydata.com
+Received: from mail-qc0-f179.google.com ([209.85.216.179]:63998 "EHLO
+	mail-qc0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755323AbaEHVGZ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 8 May 2014 17:06:25 -0400
+Received: by mail-qc0-f179.google.com with SMTP id x3so3509122qcv.38
+        for <linux-nfs@vger.kernel.org>; Thu, 08 May 2014 14:06:23 -0700 (PDT)
+Date: Thu, 8 May 2014 17:06:21 -0400
+From: Jeff Layton <jlayton@poochiereds.net>
+To: Thomas Haynes <thomas.haynes@primarydata.com>
 Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 0/1] nfs: Ensure NFS_MOUNT_TCP is correctly set for v4 mounts
-Date: Thu, 29 May 2014 13:25:50 -0400
-Message-Id: <1401384351-21993-1-git-send-email-smayhew@redhat.com>
+Subject: Re: [PATCH] Push the file layout driver into a subdirectory
+Message-ID: <20140508170621.2eccbafc@tlielax.poochiereds.net>
+In-Reply-To: <1582D06D-6663-49EC-A187-BF52FBCFAC39@primarydata.com>
+References: <1399560525-1913-1-git-send-email-Thomas.Haynes@primarydata.com>
+	<20140508134347.0c330f62@tlielax.poochiereds.net>
+	<1582D06D-6663-49EC-A187-BF52FBCFAC39@primarydata.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-When a 'mount -o remount...' is issued, the mount program reads the current
-mount options from /etc/mtab so that it can pass them to the helper program.  On
-newer distros where /etc/mtab is a symlink to /proc/mounts, this will result in
-a call to nfs_show_mount_options(), which has the following snippet:
+On Thu, 8 May 2014 14:04:12 -0700
+Thomas Haynes <thomas.haynes@primarydata.com> wrote:
 
-        seq_printf(m, ",proto=%s",
-	                   rpc_peeraddr2str(nfss->client, RPC_DISPLAY_NETID));
+> 
+> On May 8, 2014, at 10:43 AM, Jeff Layton <jlayton@poochiereds.net> wrote:
+> 
+> > 
+> > Erm, the diffstat looks nice, but where's the patch? ;)
+> 
+> It must still be in Chicago with my luggage.
+> 
+> Really strange, I see the email sitting in my mail folder for Primary Data.
+> 
+> I do not see it in my vanity domain mailbox.
+> 
+> Strange, I'll resend it.
+> 
 
-which in most cases will result in the mount program passing 'proto=tcp' to the
-mount.nfs4 program, which mount.nfs4 then passes in the data field of the mount
-syscall. 
-
-nfs_remount() calls nfs_parse_mount_options(), where the NFS_MOUNT_TCP flag will
-be set in the nfs_parsed_mount_data's flag field.  But nfs_remount() then calls
-nfs_compare_remount_data(), where we will fail the very first check:
-
-static int
-nfs_compare_remount_data(struct nfs_server *nfss,
-                         struct nfs_parsed_mount_data *data)
-{
-	        if (data->flags != nfss->flags ||
-...
-                return -EINVAL;
-...
-
-because NFS_MOUNT_TCP was never set in the nfs_server's flags field in the first
-place.
-
-As a result, the remount operation fails:
-# mount -o remount,ro /mnt/t
-mount.nfs4: an incorrect mount option was specified
-
-The following patch corrects that issue by having nfs4_validate_mount_flags()
-set the NFS_MOUNT_TCP flag when appropriate.
-
-
-Scott Mayhew (1):
-  nfs: Ensure NFS_MOUNT_TCP is correctly set for v4 mounts
-
- fs/nfs/super.c | 3 +++
- 1 file changed, 3 insertions(+)
+Maybe it hit some sort of size limitation? I didn't think linux-nfs had
+one of those, but some ml's do.
 
 -- 
-1.9.0
-
+Jeff Layton <jlayton@poochiereds.net>
