@@ -1,90 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f181.google.com ([209.85.223.181]:50965 "EHLO
-	mail-ie0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755202AbaEOP5e (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 May 2014 11:57:34 -0400
-Received: by mail-ie0-f181.google.com with SMTP id rl12so1214749iec.40
-        for <linux-nfs@vger.kernel.org>; Thu, 15 May 2014 08:57:34 -0700 (PDT)
-From: Weston Andros Adamson <dros@primarydata.com>
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
-Subject: [PATCH v3 16/18] pnfs: allow non page aligned pnfs layout segments
-Date: Thu, 15 May 2014 11:56:55 -0400
-Message-Id: <1400169417-28245-17-git-send-email-dros@primarydata.com>
-In-Reply-To: <1400169417-28245-1-git-send-email-dros@primarydata.com>
-References: <1400169417-28245-1-git-send-email-dros@primarydata.com>
+Received: from fieldses.org ([174.143.236.118]:35908 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754882AbaEHQsf (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 8 May 2014 12:48:35 -0400
+Date: Thu, 8 May 2014 12:48:34 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] SUNRPC: Fix printk that is not only for nfsd
+Message-ID: <20140508164834.GE20976@fieldses.org>
+References: <534CF854.30100@gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <534CF854.30100@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Remove alignment checks that would revert to MDS and change pg_test
-to return the max ammount left in the segment (or other pg_test call)
-up to size of passed request, or 0 if no space is left.
+Thanks, applying.  By the way, your mail client seems to be corrupting
+patches, e.g.:
 
-Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
----
- fs/nfs/pnfs.c | 25 ++++++++++---------------
- 1 file changed, 10 insertions(+), 15 deletions(-)
+On Tue, Apr 15, 2014 at 05:13:56PM +0800, Kinglong Mee wrote:
+> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> ---
+>  net/sunrpc/cache.c | 2 +-
+>  1 file changed, 1 insertion(+), 1 deletion(-)
+> 
+> diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+> index ae333c1..0663621 100644
+> --- a/net/sunrpc/cache.c
+> +++ b/net/sunrpc/cache.c
+> @@ -374,7 +374,7 @@ void sunrpc_destroy_cache_detail(struct cache_detail
+> *cd)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 6ef108b..ce46a41 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1388,11 +1388,6 @@ pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *r
- 
- 	WARN_ON_ONCE(pgio->pg_lseg != NULL);
- 
--	if (req->wb_offset != req->wb_pgbase) {
--		nfs_pageio_reset_read_mds(pgio);
--		return;
--	}
--
- 	if (pgio->pg_dreq == NULL)
- 		rd_size = i_size_read(pgio->pg_inode) - req_offset(req);
- 	else
-@@ -1417,11 +1412,6 @@ pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio,
- {
- 	WARN_ON_ONCE(pgio->pg_lseg != NULL);
- 
--	if (req->wb_offset != req->wb_pgbase) {
--		nfs_pageio_reset_write_mds(pgio);
--		return;
--	}
--
- 	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
- 					   req->wb_context,
- 					   req_offset(req),
-@@ -1443,9 +1433,9 @@ pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
- 		     struct nfs_page *req)
- {
- 	unsigned int size;
-+	u64 end;
- 
- 	size = nfs_generic_pg_test(pgio, prev, req);
--
- 	if (!size)
- 		return 0;
- 
-@@ -1463,11 +1453,16 @@ pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
- 	 * first byte that lies outside the pnfs_layout_range. FIXME?
- 	 *
- 	 */
--	if (req_offset(req) >= end_offset(pgio->pg_lseg->pls_range.offset,
--					 pgio->pg_lseg->pls_range.length))
--		return 0;
-+	if (pgio->pg_lseg) {
-+		end = end_offset(pgio->pg_lseg->pls_range.offset,
-+				 pgio->pg_lseg->pls_range.length);
-+		WARN_ON_ONCE(req_offset(req) > end);
-+		if (req_offset(req) >= end)
-+			return 0;
-+		size = min((unsigned int)(end - req_offset(req)), size);
-+	}
- 
--	return min(size, req->wb_bytes);
-+	return size;
- }
- EXPORT_SYMBOL_GPL(pnfs_generic_pg_test);
- 
--- 
-1.8.5.2 (Apple Git-48)
+... it wrapped that line.  So git-am complains and I have to fix up
+things by hand.
 
+Might check Documentation/email-clients.txt to see if there's any useful
+tips there.
+
+--b.
+
+>  	}
+>  	return;
+>  out:
+> -	printk(KERN_ERR "nfsd: failed to unregister %s cache\n", cd->name);
+> +	printk(KERN_ERR "RPC: failed to unregister %s cache\n", cd->name);
+>  }
+>  EXPORT_SYMBOL_GPL(sunrpc_destroy_cache_detail);
+> 
+> -- 
+> 1.9.0
+> 
