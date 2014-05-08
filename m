@@ -1,58 +1,72 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:43367 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752382AbaEVTce (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 May 2014 15:32:34 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 12/52] nfsd4: allow space for final error return
-Date: Thu, 22 May 2014 15:31:47 -0400
-Message-Id: <1400787148-25941-13-git-send-email-bfields@redhat.com>
-In-Reply-To: <1400787148-25941-1-git-send-email-bfields@redhat.com>
-References: <1400787148-25941-1-git-send-email-bfields@redhat.com>
+Received: from mail-ve0-f178.google.com ([209.85.128.178]:58655 "EHLO
+	mail-ve0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755453AbaEHUQp (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 8 May 2014 16:16:45 -0400
+Received: by mail-ve0-f178.google.com with SMTP id sa20so3975954veb.37
+        for <linux-nfs@vger.kernel.org>; Thu, 08 May 2014 13:16:44 -0700 (PDT)
+MIME-Version: 1.0
+In-Reply-To: <20140507202932.GD9710@fieldses.org>
+References: <1397846704-14567-1-git-send-email-trond.myklebust@primarydata.com>
+	<20140419205815.GA1094@fieldses.org>
+	<20140507202932.GD9710@fieldses.org>
+Date: Thu, 8 May 2014 16:16:44 -0400
+Message-ID: <CAHQdGtRcr51PcRKDpfCdotwSD6FguWrmq0a=U+cv40gJWwrtBA@mail.gmail.com>
+Subject: Re: [PATCH 00/70] NFSd lock scalability patches
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Bruce Fields <bfields@fieldses.org>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Wed, May 7, 2014 at 4:29 PM, Bruce Fields <bfields@fieldses.org> wrote:
+> On Sat, Apr 19, 2014 at 04:58:15PM -0400, Bruce Fields wrote:
+>> On Fri, Apr 18, 2014 at 02:43:54PM -0400, Trond Myklebust wrote:
+>> > In accordance with the traditional Good Friday theme of "suffering", here
+>> > is the first draft of the NFSd lock scalability patches for your perusal.
+>> > I've only done light testing so far, but since there is a total of 70
+>> > patches to review, I figured you might want to start sooner rather than
+>> > waiting for the QA folks to finish testing.
+>>
+>> Thanks!
+>>
+>> Yeah, this sounds like too much suffering for vacation time, but I'll at
+>> least make a stab at merging the initial bug fixes next week, then try
+>> to plow through these (or any revised version (thanks, Christoph, for
+>> help reviewing!)) after I get back in a couple more weeks.
 
-This post-encoding check should be taking into account the need to
-encode at least an out-of-space error to the following op (if any).
+Yes. Thanks very much Christoph! I was worried that I would not get
+enough reviewers for these patches.
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4xdr.c | 9 +++++++--
- 1 file changed, 7 insertions(+), 2 deletions(-)
+> I've at least skimmed through them all, and that's all the suffering I
+> can handle for now.  I'm assuming you'll send a new version soon.
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 24ba652..2ed8036 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -3636,6 +3636,7 @@ void
- nfsd4_encode_operation(struct nfsd4_compoundres *resp, struct nfsd4_op *op)
- {
- 	struct nfs4_stateowner *so = resp->cstate.replay_owner;
-+	struct svc_rqst *rqstp = resp->rqstp;
- 	__be32 *statp;
- 	nfsd4_enc encoder;
- 	__be32 *p;
-@@ -3652,8 +3653,12 @@ nfsd4_encode_operation(struct nfsd4_compoundres *resp, struct nfsd4_op *op)
- 	encoder = nfsd4_enc_ops[op->opnum];
- 	op->status = encoder(resp, op->status, &op->u);
- 	/* nfsd4_check_resp_size guarantees enough room for error status */
--	if (!op->status)
--		op->status = nfsd4_check_resp_size(resp, 0);
-+	if (!op->status) {
-+		int space_needed = 0;
-+		if (!nfsd4_last_compound_op(rqstp))
-+			space_needed = COMPOUND_ERR_SLACK_SPACE;
-+		op->status = nfsd4_check_resp_size(resp, space_needed);
-+	}
- 	if (op->status == nfserr_resource ||
- 	    op->status == nfserr_rep_too_big ||
- 	    op->status == nfserr_rep_too_big_to_cache) {
+In addition to the issues that you and Christoph have raised, I've
+also had to rethink some of the open() call. I'm not seeing how to
+avoid moving the open share/deny locks into do_nfsd_create() without
+getting into weird races, for instance.
+
+> I'm applying a few of these to my for-3.16 branch, could you rebase
+> future versions to that to avoid resending already-reviewed patches?
+
+OK.
+
+> How are you testing?
+
+Mainly through plenty of runs of Connectathon tests for now. I want to
+pass the code on to our QA folks for more extensive testing when it is
+ready.
+
+> Thanks again for taking on this difficult and long-overdue project....
+>
+> --b.
+
+
+
 -- 
-1.9.0
+Trond Myklebust
 
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
