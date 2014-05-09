@@ -1,64 +1,121 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from elasmtp-mealy.atl.sa.earthlink.net ([209.86.89.69]:50586 "EHLO
-	elasmtp-mealy.atl.sa.earthlink.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751503AbaEAQeU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 May 2014 12:34:20 -0400
-From: "Frank Filz" <ffilzlnx@mindspring.com>
-To: "'Craig Yoshioka'" <craigyk@me.com>, <linux-nfs@vger.kernel.org>
-References: <2541339C-AF61-4ED7-8F50-E4B3CA2C924F@me.com>
-In-Reply-To: <2541339C-AF61-4ED7-8F50-E4B3CA2C924F@me.com>
-Subject: RE: idmap problems with chown as root
-Date: Thu, 1 May 2014 09:34:18 -0700
-Message-ID: <03f201cf655b$33390d40$99ab27c0$@mindspring.com>
-MIME-Version: 1.0
-Content-Type: text/plain;
-	charset="us-ascii"
+Received: from mail-pd0-f169.google.com ([209.85.192.169]:48944 "EHLO
+	mail-pd0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752279AbaEIQCz (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 May 2014 12:02:55 -0400
+Received: by mail-pd0-f169.google.com with SMTP id z10so3913419pdj.0
+        for <linux-nfs@vger.kernel.org>; Fri, 09 May 2014 09:02:54 -0700 (PDT)
+From: Thomas Haynes <thomas.haynes@primarydata.com>
+To: linux-nfs@vger.kernel.org
+Cc: Tom Haynes <Thomas.Haynes@primarydata.com>
+Subject: [PATCH] Push the file layout driver into a subdirectory
+Date: Fri,  9 May 2014 09:02:43 -0700
+Message-Id: <1399651363-14482-1-git-send-email-Thomas.Haynes@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-There is a difference between your working and non-working idmapd.conf:
+From: Tom Haynes <Thomas.Haynes@primarydata.com>
 
-The working does not have:
+Went to the Makefile as requested by Jeff.
 
-[Translation]
-Method = nsswitch
+Signed-off-by: Tom Haynes <Thomas.Haynes@primarydata.com>
+---
+ fs/nfs/Makefile                                            |  4 +---
+ fs/nfs/filelayout/Makefile                                 |  5 +++++
+ fs/nfs/{nfs4filelayout.c => filelayout/filelayout.c}       | 10 +++++-----
+ fs/nfs/{nfs4filelayout.h => filelayout/filelayout.h}       |  2 +-
+ fs/nfs/{nfs4filelayoutdev.c => filelayout/filelayoutdev.c} |  6 +++---
+ 5 files changed, 15 insertions(+), 12 deletions(-)
+ create mode 100644 fs/nfs/filelayout/Makefile
+ rename fs/nfs/{nfs4filelayout.c => filelayout/filelayout.c} (99%)
+ rename fs/nfs/{nfs4filelayout.h => filelayout/filelayout.h} (99%)
+ rename fs/nfs/{nfs4filelayoutdev.c => filelayout/filelayoutdev.c} (99%)
 
-That may be what's catching you up.
-
-Frank
-
-> This is a followup to a previous post I made.
-> 
-> With Frank Filz's helpful suggestions I was able to gather better data.
-> 
-> problem: when using chown as root on a nfs4 filesystem on newer linux
-> releases file owners get sets to nobody.
->          the user type doesn't seem to matter (/etc/passwd, LDAP, Samba4)
-> 
-> setup: Server is FreeBSD 10 system with NFSv4 share.
->        Server and clients are all configured with the same idmap domain
->        Network users have consistent uid/gid on server and clients
->        clients with older linux releases work OK (Ubuntu 12.04, CentOS 5
-and 6)
->        clients with newer linux releases do not work ( Fedora 20, Ubuntu
-14.04,
-> Mint 16 )
-> 
-> clues:
-> 
-> 1. working and non-working systems get to the same fchownat() system call
-> with the same arguments (via strace).
-> 
-> example (identical on working and non-working client):
-> ...
-> fchownat(AT_FDCWD, "/mnt/test", 11111, 4294967295, 0) = 0
-> close(1)                                = 0
-> close(2)                                = 0
-> close(4)                                = 0
-> exit_group(0)                           = ?
-> +++ exited with 0 +++
-> 
-> 2. working system sends NFSV4 SETATTR request with owner set to:
-> matlab@nimgs.com and non-working as 11111 (via wireshark)
-
+diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
+index 551d82a..43058f7 100644
+--- a/fs/nfs/Makefile
++++ b/fs/nfs/Makefile
+@@ -29,8 +29,6 @@ nfsv4-$(CONFIG_NFS_USE_LEGACY_DNS) += cache_lib.o
+ nfsv4-$(CONFIG_SYSCTL)	+= nfs4sysctl.o
+ nfsv4-$(CONFIG_NFS_V4_1)	+= pnfs.o pnfs_dev.o
+ 
+-obj-$(CONFIG_PNFS_FILE_LAYOUT) += nfs_layout_nfsv41_files.o
+-nfs_layout_nfsv41_files-y := nfs4filelayout.o nfs4filelayoutdev.o
+-
++obj-$(CONFIG_PNFS_FILE_LAYOUT) += filelayout/
+ obj-$(CONFIG_PNFS_OBJLAYOUT) += objlayout/
+ obj-$(CONFIG_PNFS_BLOCK) += blocklayout/
+diff --git a/fs/nfs/filelayout/Makefile b/fs/nfs/filelayout/Makefile
+new file mode 100644
+index 0000000..8516cdf
+--- /dev/null
++++ b/fs/nfs/filelayout/Makefile
+@@ -0,0 +1,5 @@
++#
++# Makefile for the pNFS Files Layout Driver kernel module
++#
++obj-$(CONFIG_PNFS_FILE_LAYOUT) += nfs_layout_nfsv41_files.o
++nfs_layout_nfsv41_files-y := filelayout.o filelayoutdev.o
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/filelayout/filelayout.c
+similarity index 99%
+rename from fs/nfs/nfs4filelayout.c
+rename to fs/nfs/filelayout/filelayout.c
+index 7954e16..ffc2ed8 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/filelayout/filelayout.c
+@@ -35,11 +35,11 @@
+ 
+ #include <linux/sunrpc/metrics.h>
+ 
+-#include "nfs4session.h"
+-#include "internal.h"
+-#include "delegation.h"
+-#include "nfs4filelayout.h"
+-#include "nfs4trace.h"
++#include "../nfs4session.h"
++#include "../internal.h"
++#include "../delegation.h"
++#include "filelayout.h"
++#include "../nfs4trace.h"
+ 
+ #define NFSDBG_FACILITY         NFSDBG_PNFS_LD
+ 
+diff --git a/fs/nfs/nfs4filelayout.h b/fs/nfs/filelayout/filelayout.h
+similarity index 99%
+rename from fs/nfs/nfs4filelayout.h
+rename to fs/nfs/filelayout/filelayout.h
+index cebd20e..ffbddf2 100644
+--- a/fs/nfs/nfs4filelayout.h
++++ b/fs/nfs/filelayout/filelayout.h
+@@ -30,7 +30,7 @@
+ #ifndef FS_NFS_NFS4FILELAYOUT_H
+ #define FS_NFS_NFS4FILELAYOUT_H
+ 
+-#include "pnfs.h"
++#include "../pnfs.h"
+ 
+ /*
+  * Default data server connection timeout and retrans vaules.
+diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/filelayout/filelayoutdev.c
+similarity index 99%
+rename from fs/nfs/nfs4filelayoutdev.c
+rename to fs/nfs/filelayout/filelayoutdev.c
+index efac602..7c85390 100644
+--- a/fs/nfs/nfs4filelayoutdev.c
++++ b/fs/nfs/filelayout/filelayoutdev.c
+@@ -33,9 +33,9 @@
+ #include <linux/module.h>
+ #include <linux/sunrpc/addr.h>
+ 
+-#include "internal.h"
+-#include "nfs4session.h"
+-#include "nfs4filelayout.h"
++#include "../internal.h"
++#include "../nfs4session.h"
++#include "filelayout.h"
+ 
+ #define NFSDBG_FACILITY		NFSDBG_PNFS_LD
+ 
+-- 
+1.9.0
 
