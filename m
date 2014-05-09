@@ -1,54 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f45.google.com ([209.85.192.45]:35306 "EHLO
-	mail-qg0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752209AbaE0KXf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 27 May 2014 06:23:35 -0400
-Received: by mail-qg0-f45.google.com with SMTP id z60so13188527qgd.4
-        for <linux-nfs@vger.kernel.org>; Tue, 27 May 2014 03:23:35 -0700 (PDT)
-Date: Tue, 27 May 2014 06:23:31 -0400
-From: Jeff Layton <jlayton@poochiereds.net>
-To: Veli-Matti Lintu <veli-matti.lintu@opinsys.fi>
-Cc: steved@redhat.com, linux-nfs@vger.kernel.org,
-        Tuomas =?UTF-8?B?UsOk?= =?UTF-8?B?c8OkbmVu?=
-	<tuomas.rasanen@opinsys.fi>
-Subject: Re: [PATCH] gssd: Fix allocated buffer size for the scraped
- acceptor name  in do_downcall
-Message-ID: <20140527062331.0ccd43ad@poochiereds.net>
-In-Reply-To: <41011674.48947.1401180626967.JavaMail.zimbra@opinsys.fi>
-References: <454183694.48823.1401178027425.JavaMail.zimbra@opinsys.fi>
-	<41011674.48947.1401180626967.JavaMail.zimbra@opinsys.fi>
+Received: from mail-vc0-f171.google.com ([209.85.220.171]:43451 "EHLO
+	mail-vc0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751295AbaEIA4Y (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 8 May 2014 20:56:24 -0400
+Received: by mail-vc0-f171.google.com with SMTP id lc6so4321775vcb.2
+        for <linux-nfs@vger.kernel.org>; Thu, 08 May 2014 17:56:23 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+In-Reply-To: <20140506234136.GU18281@fieldses.org>
+References: <1397846704-14567-3-git-send-email-trond.myklebust@primarydata.com>
+	<1397846704-14567-4-git-send-email-trond.myklebust@primarydata.com>
+	<1397846704-14567-5-git-send-email-trond.myklebust@primarydata.com>
+	<1397846704-14567-6-git-send-email-trond.myklebust@primarydata.com>
+	<1397846704-14567-7-git-send-email-trond.myklebust@primarydata.com>
+	<1397846704-14567-8-git-send-email-trond.myklebust@primarydata.com>
+	<1397846704-14567-9-git-send-email-trond.myklebust@primarydata.com>
+	<1397846704-14567-10-git-send-email-trond.myklebust@primarydata.com>
+	<1397846704-14567-11-git-send-email-trond.myklebust@primarydata.com>
+	<1397846704-14567-12-git-send-email-trond.myklebust@primarydata.com>
+	<20140506234136.GU18281@fieldses.org>
+Date: Thu, 8 May 2014 20:56:23 -0400
+Message-ID: <CAHQdGtSipKUJ40xorFAh37zyqBpBAYiZb7vo_NsLDAd6GSC+sA@mail.gmail.com>
+Subject: Re: [PATCH 11/70] NFSd: Ensure delegation setup is safe w.r.t. break_lease()
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Bruce Fields <bfields@fieldses.org>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 27 May 2014 08:50:26 +0000 (UTC)
-Veli-Matti Lintu <veli-matti.lintu@opinsys.fi> wrote:
+On Tue, May 6, 2014 at 7:41 PM, Bruce Fields <bfields@fieldses.org> wrote:
+> On Fri, Apr 18, 2014 at 02:44:05PM -0400, Trond Myklebust wrote:
+>> Ensure that we add/remove the dl_perfile under the inode->i_lock
+>
+> Looks like maybe this addresses my question on the previous patch--in
+> which case it should really be merged with the previous patch for
+> bisectability?
+>
 
-> 
-> In commit 51fda07a "gssd: scrape the acceptor name out of the context"
-> the allocated buffer size is not large enough to hold the actual data
-> that is written to the buffer. This fixes the allocated buffer size.
-> 
-> Signed-off-by: Veli-Matti Lintu <veli-matti.lintu@opinsys.fi>
-> ---
->  utils/gssd/gssd_proc.c |    2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
-> index 69bb3c6..40ff188 100644
-> --- a/utils/gssd/gssd_proc.c
-> +++ b/utils/gssd/gssd_proc.c
-> @@ -696,7 +696,7 @@ do_downcall(int k5_fd, uid_t uid, struct authgss_private_data *pd,
->  	buf_size = sizeof(uid) + sizeof(timeout) + sizeof(pd->pd_seq_win) +
->  		sizeof(pd->pd_ctx_hndl.length) + pd->pd_ctx_hndl.length +
->  		sizeof(context_token->length) + context_token->length +
-> -		acceptor->length;
-> +		sizeof(acceptor->length) + acceptor->length;
->  	p = buf = malloc(buf_size);
->  	if (!buf)
->  		goto out_err;
+We could, but the client_mutex will continue to mask any conflicts. In
+the case where it doesn't, it would be because the existing code is
+already borken.
 
-Nice catch...
+It really is quite non-trivial to work out all the relationships that
+are at work here, and to order the patches in a sane way. I'm quite
+open to suggestions for improvements, but when in doubt, I'm relying
+on the 'big umbrella' being up there until it is removed...
 
-Reviewed-by: Jeff Layton <jlayton@poochiereds.net>
+
+-- 
+Trond Myklebust
+
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
