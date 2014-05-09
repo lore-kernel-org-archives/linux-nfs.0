@@ -1,93 +1,64 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e36.co.us.ibm.com ([32.97.110.154]:48686 "EHLO
-	e36.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751351AbaEGVqL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 May 2014 17:46:11 -0400
-Received: from /spool/local
-	by e36.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <jvrao@linux.vnet.ibm.com>;
-	Wed, 7 May 2014 15:46:10 -0600
-Received: from b03cxnp08028.gho.boulder.ibm.com (b03cxnp08028.gho.boulder.ibm.com [9.17.130.20])
-	by d03dlp02.boulder.ibm.com (Postfix) with ESMTP id 677493E40045
-	for <linux-nfs@vger.kernel.org>; Wed,  7 May 2014 15:46:07 -0600 (MDT)
-Received: from d03av06.boulder.ibm.com (d03av06.boulder.ibm.com [9.17.195.245])
-	by b03cxnp08028.gho.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id s47Lk7ep1573142
-	for <linux-nfs@vger.kernel.org>; Wed, 7 May 2014 23:46:07 +0200
-Received: from d03av06.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av06.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id s47Lnvi5019478
-	for <linux-nfs@vger.kernel.org>; Wed, 7 May 2014 15:49:57 -0600
-Message-ID: <536AA99E.6070108@linux.vnet.ibm.com>
-Date: Wed, 07 May 2014 14:46:06 -0700
-From: Venkateswararao Jujjuri <jvrao@linux.vnet.ibm.com>
-Reply-To: jvrao@linux.vnet.ibm.com
+Received: from mail-pa0-f49.google.com ([209.85.220.49]:57906 "EHLO
+	mail-pa0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750712AbaEIECu (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 9 May 2014 00:02:50 -0400
+Received: by mail-pa0-f49.google.com with SMTP id lj1so3783289pab.36
+        for <linux-nfs@vger.kernel.org>; Thu, 08 May 2014 21:02:50 -0700 (PDT)
+Message-ID: <536C534F.9010006@gmail.com>
+Date: Fri, 09 May 2014 12:02:23 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org
-CC: Rong Zeng <rongzeng@us.ibm.com>,
-        Steve Dickson <steved-H+wXaHxf7aLQT0dZR+AlfA@public.gmane.org>
-Subject: [PATCH] Adding a callback for incoming sm_notify.
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs@vger.kernel.org
+Subject: Re: [PATCH] SUNRPC: Fix printk that is not only for nfsd
+References: <534CF854.30100@gmail.com> <20140508164834.GE20976@fieldses.org>
+In-Reply-To: <20140508164834.GE20976@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: rong zeng <rongzeng@oc1547780626.ibm.com>
-
-1. "sm-notify"                  callout name
-2. monitored client name as in the SM_NOTIFY request
-3. IP of the sender of the SM_NOITFY request.
-4. state value in the SM_NOTIFY request
-
-This new interface can be used by different HA-NFS product
-in its specific configuration and environment to
-recover from the client crash and stale lock scenarios.
-
-Signed-off-by: Rong Zeng <rongzeng@us.ibm.com>
-Signed-off-by: Venkateswararao Jujjuri "<jvrao@linux.vnet.ibm.com>
----
-  utils/statd/callback.c |   13 ++++++++-----
-  1 files changed, 8 insertions(+), 5 deletions(-)
-
-diff --git a/utils/statd/callback.c b/utils/statd/callback.c
-index d1cc139..58ba70b 100644
---- a/utils/statd/callback.c
-+++ b/utils/statd/callback.c
-@@ -15,6 +15,7 @@
-  #include "rpcmisc.h"
-  #include "statd.h"
-  #include "notlist.h"
-+#include "ha-callout.h"
-
-  /* Callback notify list. */
-  /* notify_list *cbnl = NULL; ... never used */
-@@ -87,6 +88,13 @@ sm_notify_1_svc(struct stat_chge *argp, struct 
-svc_req *rqstp)
-           xlog(D_CALL, "Received SM_NOTIFY from %s, state: %d",
-                                      argp->mon_name, argp->state);
-
-+         if (!statd_present_address(sap, ip_addr, sizeof(ip_addr))) {
-+                  xlog_warn("Unrecognized sender address");
-+                  return ((void *) &result);
-+         }
-+
-+         ha_callout("sm-notify", argp->mon_name, ip_addr, argp->state);
-+
-           /* quick check - don't bother if we're not monitoring anyone */
-           if (rtnl == NULL) {
-                    xlog_warn("SM_NOTIFY from %s while not monitoring 
-any hosts",
-@@ -94,11 +102,6 @@ sm_notify_1_svc(struct stat_chge *argp, struct 
-svc_req *rqstp)
-                    return ((void *) &result);
-           }
-
--         if (!statd_present_address(sap, ip_addr, sizeof(ip_addr))) {
--                  xlog_warn("Unrecognized sender address");
--                  return ((void *) &result);
--         }
--
-           /* okir change: statd doesn't remove the remote host from its
-            * internal monitor list when receiving an SM_NOTIFY call from
-            * it. Lockd will want to continue monitoring the remote host
--- 
-1.7.1
 
 
+On 5/9/2014 00:48, J. Bruce Fields wrote:
+> Thanks, applying.  By the way, your mail client seems to be corrupting
+> patches, e.g.:
+> 
+> On Tue, Apr 15, 2014 at 05:13:56PM +0800, Kinglong Mee wrote:
+>> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+>> ---
+>>  net/sunrpc/cache.c | 2 +-
+>>  1 file changed, 1 insertion(+), 1 deletion(-)
+>>
+>> diff --git a/net/sunrpc/cache.c b/net/sunrpc/cache.c
+>> index ae333c1..0663621 100644
+>> --- a/net/sunrpc/cache.c
+>> +++ b/net/sunrpc/cache.c
+>> @@ -374,7 +374,7 @@ void sunrpc_destroy_cache_detail(struct cache_detail
+>> *cd)
+> 
+> ... it wrapped that line.  So git-am complains and I have to fix up
+> things by hand.
+> 
+> Might check Documentation/email-clients.txt to see if there's any useful
+> tips there.
+
+Sorry for my fault.
+
+thanks,
+Kinglong Mee
+
+> 
+>>  	}
+>>  	return;
+>>  out:
+>> -	printk(KERN_ERR "nfsd: failed to unregister %s cache\n", cd->name);
+>> +	printk(KERN_ERR "RPC: failed to unregister %s cache\n", cd->name);
+>>  }
+>>  EXPORT_SYMBOL_GPL(sunrpc_destroy_cache_detail);
+>>
+>> -- 
+>> 1.9.0
+>>
+> 
