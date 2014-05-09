@@ -1,193 +1,184 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from smtp.opengridcomputing.com ([72.48.136.20]:54114 "EHLO
-	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1751458AbaEFRq1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 May 2014 13:46:27 -0400
-From: Steve Wise <swise@opengridcomputing.com>
-Subject: [PATCH V2 RFC 1/3] svcrdma: Transport and header file changes
-To: bfields@fieldses.org
-Cc: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org,
-        tom@opengridcomputing.com
-Date: Tue, 06 May 2014 12:46:27 -0500
-Message-ID: <20140506174626.18208.95519.stgit@build.ogc.int>
-In-Reply-To: <20140506174621.18208.24242.stgit@build.ogc.int>
-References: <20140506174621.18208.24242.stgit@build.ogc.int>
+Received: from mail-ve0-f171.google.com ([209.85.128.171]:48922 "EHLO
+	mail-ve0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753520AbaEIAuN (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 8 May 2014 20:50:13 -0400
+Received: by mail-ve0-f171.google.com with SMTP id oz11so4305312veb.2
+        for <linux-nfs@vger.kernel.org>; Thu, 08 May 2014 17:50:12 -0700 (PDT)
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+In-Reply-To: <20140506234041.GT18281@fieldses.org>
+References: <1397846704-14567-2-git-send-email-trond.myklebust@primarydata.com>
+	<1397846704-14567-3-git-send-email-trond.myklebust@primarydata.com>
+	<1397846704-14567-4-git-send-email-trond.myklebust@primarydata.com>
+	<1397846704-14567-5-git-send-email-trond.myklebust@primarydata.com>
+	<1397846704-14567-6-git-send-email-trond.myklebust@primarydata.com>
+	<1397846704-14567-7-git-send-email-trond.myklebust@primarydata.com>
+	<1397846704-14567-8-git-send-email-trond.myklebust@primarydata.com>
+	<1397846704-14567-9-git-send-email-trond.myklebust@primarydata.com>
+	<1397846704-14567-10-git-send-email-trond.myklebust@primarydata.com>
+	<1397846704-14567-11-git-send-email-trond.myklebust@primarydata.com>
+	<20140506234041.GT18281@fieldses.org>
+Date: Thu, 8 May 2014 20:50:12 -0400
+Message-ID: <CAHQdGtQreOET+YzaOZ68g1WCDZXnQgqchHA4NPp2D_So0Fm42Q@mail.gmail.com>
+Subject: Re: [PATCH 10/70] NFSd: Avoid taking state_lock while holding inode
+ lock in nfsd_break_one_deleg
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Bruce Fields <bfields@fieldses.org>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Tom Tucker <tom@opengridcomputing.com>
+On Tue, May 6, 2014 at 7:40 PM, Bruce Fields <bfields@fieldses.org> wrote:
+> On Fri, Apr 18, 2014 at 02:44:04PM -0400, Trond Myklebust wrote:
+>> state_lock is a heavily contended global lock. We don't want to grab
+>> that while simultaneously holding the inode->i_lock
+>> Instead do the list manipulations from the work queue context prior to
+>> starting the rpc call.
+>>
+>> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
+>> ---
+>>  fs/nfsd/nfs4callback.c | 18 ++++++++++++++++--
+>>  fs/nfsd/nfs4state.c    | 25 +++++++++++++++----------
+>>  fs/nfsd/state.h        |  1 +
+>>  3 files changed, 32 insertions(+), 12 deletions(-)
+>>
+>> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
+>> index 39c8ef875f91..8626cd6af4d1 100644
+>> --- a/fs/nfsd/nfs4callback.c
+>> +++ b/fs/nfsd/nfs4callback.c
+>> @@ -1009,9 +1009,8 @@ static void nfsd4_process_cb_update(struct nfsd4_callback *cb)
+>>               run_nfsd4_cb(cb);
+>>  }
+>>
+>> -static void nfsd4_do_callback_rpc(struct work_struct *w)
+>> +static void nfsd4_run_callback_rpc(struct nfsd4_callback *cb)
+>>  {
+>> -     struct nfsd4_callback *cb = container_of(w, struct nfsd4_callback, cb_work);
+>>       struct nfs4_client *clp = cb->cb_clp;
+>>       struct rpc_clnt *clnt;
+>>
+>> @@ -1029,11 +1028,25 @@ static void nfsd4_do_callback_rpc(struct work_struct *w)
+>>                       cb->cb_ops, cb);
+>>  }
+>>
+>> +static void nfsd4_do_callback_rpc(struct work_struct *w)
+>> +{
+>> +     struct nfsd4_callback *cb = container_of(w, struct nfsd4_callback, cb_work);
+>> +     nfsd4_run_callback_rpc(cb);
+>> +}
+>> +
+>>  void nfsd4_init_callback(struct nfsd4_callback *cb)
+>>  {
+>>       INIT_WORK(&cb->cb_work, nfsd4_do_callback_rpc);
+>>  }
+>>
+>> +static void nfsd4_do_cb_recall(struct work_struct *w)
+>> +{
+>> +     struct nfsd4_callback *cb = container_of(w, struct nfsd4_callback, cb_work);
+>> +
+>> +     nfsd4_prepare_cb_recall(cb->cb_op);
+>> +     nfsd4_run_callback_rpc(cb);
+>> +}
+>> +
+>>  void nfsd4_cb_recall(struct nfs4_delegation *dp)
+>>  {
+>>       struct nfsd4_callback *cb = &dp->dl_recall;
+>> @@ -1050,6 +1063,7 @@ void nfsd4_cb_recall(struct nfs4_delegation *dp)
+>>
+>>       INIT_LIST_HEAD(&cb->cb_per_client);
+>>       cb->cb_done = true;
+>> +     INIT_WORK(&cb->cb_work, nfsd4_do_cb_recall);
+>>
+>>       run_nfsd4_cb(&dp->dl_recall);
+>>  }
+>> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+>> index 6d691aa2bb27..85fcbc9ebd40 100644
+>> --- a/fs/nfsd/nfs4state.c
+>> +++ b/fs/nfsd/nfs4state.c
+>> @@ -2743,24 +2743,31 @@ out:
+>>       return ret;
+>>  }
+>>
+>> -static void nfsd_break_one_deleg(struct nfs4_delegation *dp)
+>> +void nfsd4_prepare_cb_recall(struct nfs4_delegation *dp)
+>>  {
+>>       struct nfs4_client *clp = dp->dl_stid.sc_client;
+>>       struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
+>>
+>> -     lockdep_assert_held(&state_lock);
+>> +     /*
+>> +      * We can't do this in nfsd_break_deleg_cb because it is
+>> +      * already holding inode->i_lock
+>> +      */
+>> +     spin_lock(&state_lock);
+>> +     if (list_empty(&dp->dl_recall_lru)) {
+>> +             dp->dl_time = get_seconds();
+>> +             list_add_tail(&dp->dl_recall_lru, &nn->del_recall_lru);
+>> +     }
+>> +     spin_unlock(&state_lock);
+>> +}
+>> +
+>> +static void nfsd_break_one_deleg(struct nfs4_delegation *dp)
+>> +{
+>>       /* We're assuming the state code never drops its reference
+>>        * without first removing the lease.  Since we're in this lease
+>>        * callback (and since the lease code is serialized by the kernel
+>>        * lock) we know the server hasn't removed the lease yet, we know
+>>        * it's safe to take a reference: */
+>>       atomic_inc(&dp->dl_count);
+>> -
+>> -     list_add_tail(&dp->dl_recall_lru, &nn->del_recall_lru);
+>> -
+>> -     /* Only place dl_time is set; protected by i_lock: */
+>> -     dp->dl_time = get_seconds();
+>> -
+>>       nfsd4_cb_recall(dp);
+>>  }
+>>
+>> @@ -2785,11 +2792,9 @@ static void nfsd_break_deleg_cb(struct file_lock *fl)
+>>        */
+>>       fl->fl_break_time = 0;
+>>
+>> -     spin_lock(&state_lock);
+>>       fp->fi_had_conflict = true;
+>>       list_for_each_entry(dp, &fp->fi_delegations, dl_perfile)
+>>               nfsd_break_one_deleg(dp);
+>> -     spin_unlock(&state_lock);
+>
+> Why do we know it's safe to traverse this list without holding
+> state_lock?
 
-Change poll logic to grab up to 6 completions at a time.
+We're in a callback that is already holding the inode->i_lock, and so
+this is why we need to involve inode->i_lock when hashing/unhashing
+the delegation.
 
-RDMA write and send completions no longer deal with fastreg objects.
+> --b.
+>
+>>  }
+>>
+>>  static
+>> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+>> index 1aa22f39fc65..02c5a203c738 100644
+>> --- a/fs/nfsd/state.h
+>> +++ b/fs/nfsd/state.h
+>> @@ -473,6 +473,7 @@ extern void nfsd4_cb_recall(struct nfs4_delegation *dp);
+>>  extern int nfsd4_create_callback_queue(void);
+>>  extern void nfsd4_destroy_callback_queue(void);
+>>  extern void nfsd4_shutdown_callback(struct nfs4_client *);
+>> +extern void nfsd4_prepare_cb_recall(struct nfs4_delegation *dp);
+>>  extern void nfs4_put_delegation(struct nfs4_delegation *dp);
+>>  extern struct nfs4_client_reclaim *nfs4_client_to_reclaim(const char *name,
+>>                                                       struct nfsd_net *nn);
+>> --
+>> 1.9.0
+>>
 
-Set SVCRDMA_DEVCAP_FAST_REG and allocate a dma_mr based on the device
-capabilities.
 
-Signed-off-by: Tom Tucker <tom@opengridcomputing.com>
-Signed-off-by: Steve Wise <swise@opengridcomputing.com>
----
 
- include/linux/sunrpc/svc_rdma.h          |    3 -
- net/sunrpc/xprtrdma/svc_rdma_transport.c |   62 +++++++++++++++++-------------
- 2 files changed, 37 insertions(+), 28 deletions(-)
+-- 
+Trond Myklebust
 
-diff --git a/include/linux/sunrpc/svc_rdma.h b/include/linux/sunrpc/svc_rdma.h
-index 0b8e3e6..5cf99a0 100644
---- a/include/linux/sunrpc/svc_rdma.h
-+++ b/include/linux/sunrpc/svc_rdma.h
-@@ -115,14 +115,13 @@ struct svc_rdma_fastreg_mr {
- 	struct list_head frmr_list;
- };
- struct svc_rdma_req_map {
--	struct svc_rdma_fastreg_mr *frmr;
- 	unsigned long count;
- 	union {
- 		struct kvec sge[RPCSVC_MAXPAGES];
- 		struct svc_rdma_chunk_sge ch[RPCSVC_MAXPAGES];
-+		unsigned long lkey[RPCSVC_MAXPAGES];
- 	};
- };
--#define RDMACTXT_F_FAST_UNREG	1
- #define RDMACTXT_F_LAST_CTXT	2
- 
- #define	SVCRDMA_DEVCAP_FAST_REG		1	/* fast mr registration */
-diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-index 25688fa..2c5b201 100644
---- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-+++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-@@ -1,4 +1,5 @@
- /*
-+ * Copyright (c) 2014 Open Grid Computing, Inc. All rights reserved.
-  * Copyright (c) 2005-2007 Network Appliance, Inc. All rights reserved.
-  *
-  * This software is available to you under a choice of one of two
-@@ -160,7 +161,6 @@ struct svc_rdma_req_map *svc_rdma_get_req_map(void)
- 		schedule_timeout_uninterruptible(msecs_to_jiffies(500));
- 	}
- 	map->count = 0;
--	map->frmr = NULL;
- 	return map;
- }
- 
-@@ -336,22 +336,21 @@ static void process_context(struct svcxprt_rdma *xprt,
- 
- 	switch (ctxt->wr_op) {
- 	case IB_WR_SEND:
--		if (test_bit(RDMACTXT_F_FAST_UNREG, &ctxt->flags))
--			svc_rdma_put_frmr(xprt, ctxt->frmr);
-+		BUG_ON(ctxt->frmr);
- 		svc_rdma_put_context(ctxt, 1);
- 		break;
- 
- 	case IB_WR_RDMA_WRITE:
-+		BUG_ON(ctxt->frmr);
- 		svc_rdma_put_context(ctxt, 0);
- 		break;
- 
- 	case IB_WR_RDMA_READ:
- 	case IB_WR_RDMA_READ_WITH_INV:
-+		svc_rdma_put_frmr(xprt, ctxt->frmr);
- 		if (test_bit(RDMACTXT_F_LAST_CTXT, &ctxt->flags)) {
- 			struct svc_rdma_op_ctxt *read_hdr = ctxt->read_hdr;
- 			BUG_ON(!read_hdr);
--			if (test_bit(RDMACTXT_F_FAST_UNREG, &ctxt->flags))
--				svc_rdma_put_frmr(xprt, ctxt->frmr);
- 			spin_lock_bh(&xprt->sc_rq_dto_lock);
- 			set_bit(XPT_DATA, &xprt->sc_xprt.xpt_flags);
- 			list_add_tail(&read_hdr->dto_q,
-@@ -363,6 +362,7 @@ static void process_context(struct svcxprt_rdma *xprt,
- 		break;
- 
- 	default:
-+		BUG_ON(1);
- 		printk(KERN_ERR "svcrdma: unexpected completion type, "
- 		       "opcode=%d\n",
- 		       ctxt->wr_op);
-@@ -378,29 +378,42 @@ static void process_context(struct svcxprt_rdma *xprt,
- static void sq_cq_reap(struct svcxprt_rdma *xprt)
- {
- 	struct svc_rdma_op_ctxt *ctxt = NULL;
--	struct ib_wc wc;
-+	struct ib_wc wc_a[6];
-+	struct ib_wc *wc;
- 	struct ib_cq *cq = xprt->sc_sq_cq;
- 	int ret;
- 
-+	memset(wc_a, 0, sizeof(wc_a));
-+
- 	if (!test_and_clear_bit(RDMAXPRT_SQ_PENDING, &xprt->sc_flags))
- 		return;
- 
- 	ib_req_notify_cq(xprt->sc_sq_cq, IB_CQ_NEXT_COMP);
- 	atomic_inc(&rdma_stat_sq_poll);
--	while ((ret = ib_poll_cq(cq, 1, &wc)) > 0) {
--		if (wc.status != IB_WC_SUCCESS)
--			/* Close the transport */
--			set_bit(XPT_CLOSE, &xprt->sc_xprt.xpt_flags);
-+	while ((ret = ib_poll_cq(cq, ARRAY_SIZE(wc_a), wc_a)) > 0) {
-+		int i;
- 
--		/* Decrement used SQ WR count */
--		atomic_dec(&xprt->sc_sq_count);
--		wake_up(&xprt->sc_send_wait);
-+		for (i = 0; i < ret; i++) {
-+			wc = &wc_a[i];
-+			if (wc->status != IB_WC_SUCCESS) {
-+				dprintk("svcrdma: sq wc err status %d\n",
-+					wc->status);
- 
--		ctxt = (struct svc_rdma_op_ctxt *)(unsigned long)wc.wr_id;
--		if (ctxt)
--			process_context(xprt, ctxt);
-+				/* Close the transport */
-+				set_bit(XPT_CLOSE, &xprt->sc_xprt.xpt_flags);
-+			}
- 
--		svc_xprt_put(&xprt->sc_xprt);
-+			/* Decrement used SQ WR count */
-+			atomic_dec(&xprt->sc_sq_count);
-+			wake_up(&xprt->sc_send_wait);
-+
-+			ctxt = (struct svc_rdma_op_ctxt *)
-+				(unsigned long)wc->wr_id;
-+			if (ctxt)
-+				process_context(xprt, ctxt);
-+
-+			svc_xprt_put(&xprt->sc_xprt);
-+		}
- 	}
- 
- 	if (ctxt)
-@@ -993,7 +1006,11 @@ static struct svc_xprt *svc_rdma_accept(struct svc_xprt *xprt)
- 			need_dma_mr = 0;
- 		break;
- 	case RDMA_TRANSPORT_IB:
--		if (!(devattr.device_cap_flags & IB_DEVICE_LOCAL_DMA_LKEY)) {
-+		if (!(newxprt->sc_dev_caps & SVCRDMA_DEVCAP_FAST_REG)) {
-+			need_dma_mr = 1;
-+			dma_mr_acc = IB_ACCESS_LOCAL_WRITE;
-+		} else if (!(devattr.device_cap_flags &
-+			     IB_DEVICE_LOCAL_DMA_LKEY)) {
- 			need_dma_mr = 1;
- 			dma_mr_acc = IB_ACCESS_LOCAL_WRITE;
- 		} else
-@@ -1190,14 +1207,7 @@ static int svc_rdma_has_wspace(struct svc_xprt *xprt)
- 		container_of(xprt, struct svcxprt_rdma, sc_xprt);
- 
- 	/*
--	 * If there are fewer SQ WR available than required to send a
--	 * simple response, return false.
--	 */
--	if ((rdma->sc_sq_depth - atomic_read(&rdma->sc_sq_count) < 3))
--		return 0;
--
--	/*
--	 * ...or there are already waiters on the SQ,
-+	 * If there are already waiters on the SQ,
- 	 * return false.
- 	 */
- 	if (waitqueue_active(&rdma->sc_send_wait))
+Linux NFS client maintainer, PrimaryData
 
+trond.myklebust@primarydata.com
