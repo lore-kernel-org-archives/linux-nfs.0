@@ -1,105 +1,144 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f179.google.com ([209.85.213.179]:36471 "EHLO
-	mail-ig0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752528AbaEVAzl (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 May 2014 20:55:41 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH v4 10/24] xprtrdma: Make rpcrdma_ep_destroy() return void
-To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Date: Wed, 21 May 2014 20:55:40 -0400
-Message-ID: <20140522005540.27190.83625.stgit@manet.1015granger.net>
-In-Reply-To: <20140522004505.27190.58897.stgit@manet.1015granger.net>
-References: <20140522004505.27190.58897.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from fieldses.org ([174.143.236.118]:38659 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757859AbaEKUxI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 11 May 2014 16:53:08 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 43/43] nfsd4: kill write32, write64
+Date: Sun, 11 May 2014 16:52:48 -0400
+Message-Id: <1399841568-19716-44-git-send-email-bfields@redhat.com>
+In-Reply-To: <1399841568-19716-1-git-send-email-bfields@redhat.com>
+References: <1399841568-19716-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: rpcrdma_ep_destroy() returns a value that is used
-only to print a debugging message. rpcrdma_ep_destroy() already
-prints debugging messages in all error cases.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Make rpcrdma_ep_destroy() return void instead.
+And switch a couple other functions from the encode(&p,...) convention
+to the p = encode(p,...) convention mostly used elsewhere.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: Steve Wise <swise@opengridcomputing.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
+ fs/nfsd/nfs4xdr.c |   51 +++++++++++++++++++++------------------------------
+ 1 file changed, 21 insertions(+), 30 deletions(-)
 
- net/sunrpc/xprtrdma/transport.c |    8 ++------
- net/sunrpc/xprtrdma/verbs.c     |    7 +------
- net/sunrpc/xprtrdma/xprt_rdma.h |    2 +-
- 3 files changed, 4 insertions(+), 13 deletions(-)
-
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 430cabb..d18b2a3 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -229,7 +229,6 @@ static void
- xprt_rdma_destroy(struct rpc_xprt *xprt)
- {
- 	struct rpcrdma_xprt *r_xprt = rpcx_to_rdmax(xprt);
--	int rc;
- 
- 	dprintk("RPC:       %s: called\n", __func__);
- 
-@@ -238,10 +237,7 @@ xprt_rdma_destroy(struct rpc_xprt *xprt)
- 	xprt_clear_connected(xprt);
- 
- 	rpcrdma_buffer_destroy(&r_xprt->rx_buf);
--	rc = rpcrdma_ep_destroy(&r_xprt->rx_ep, &r_xprt->rx_ia);
--	if (rc)
--		dprintk("RPC:       %s: rpcrdma_ep_destroy returned %i\n",
--			__func__, rc);
-+	rpcrdma_ep_destroy(&r_xprt->rx_ep, &r_xprt->rx_ia);
- 	rpcrdma_ia_close(&r_xprt->rx_ia);
- 
- 	xprt_rdma_free_addresses(xprt);
-@@ -391,7 +387,7 @@ out4:
- 	xprt_rdma_free_addresses(xprt);
- 	rc = -EINVAL;
- out3:
--	(void) rpcrdma_ep_destroy(new_ep, &new_xprt->rx_ia);
-+	rpcrdma_ep_destroy(new_ep, &new_xprt->rx_ia);
- out2:
- 	rpcrdma_ia_close(&new_xprt->rx_ia);
- out1:
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 0cbc83c..edc951e 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -748,11 +748,8 @@ out1:
-  * Disconnect and destroy endpoint. After this, the only
-  * valid operations on the ep are to free it (if dynamically
-  * allocated) or re-create it.
-- *
-- * The caller's error handling must be sure to not leak the endpoint
-- * if this function fails.
-  */
--int
-+void
- rpcrdma_ep_destroy(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
- {
- 	int rc;
-@@ -782,8 +779,6 @@ rpcrdma_ep_destroy(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
- 	if (rc)
- 		dprintk("RPC:       %s: ib_destroy_cq returned %i\n",
- 			__func__, rc);
--
--	return rc;
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index f875bda..2956e66 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -1699,39 +1699,30 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
+ 	DECODE_TAIL;
  }
  
- /*
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 3f44d6a..362a19d 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -301,7 +301,7 @@ void rpcrdma_ia_close(struct rpcrdma_ia *);
-  */
- int rpcrdma_ep_create(struct rpcrdma_ep *, struct rpcrdma_ia *,
- 				struct rpcrdma_create_data_internal *);
--int rpcrdma_ep_destroy(struct rpcrdma_ep *, struct rpcrdma_ia *);
-+void rpcrdma_ep_destroy(struct rpcrdma_ep *, struct rpcrdma_ia *);
- int rpcrdma_ep_connect(struct rpcrdma_ep *, struct rpcrdma_ia *);
- int rpcrdma_ep_disconnect(struct rpcrdma_ep *, struct rpcrdma_ia *);
+-static void write32(__be32 **p, u32 n)
+-{
+-	*(*p)++ = htonl(n);
+-}
+-
+-static void write64(__be32 **p, u64 n)
+-{
+-	write32(p, (n >> 32));
+-	write32(p, (u32)n);
+-}
+-
+-static void write_change(__be32 **p, struct kstat *stat, struct inode *inode)
++static __be32 *encode_change(__be32 *p, struct kstat *stat, struct inode *inode)
+ {
+ 	if (IS_I_VERSION(inode)) {
+-		write64(p, inode->i_version);
++		p = xdr_encode_hyper(p, inode->i_version);
+ 	} else {
+-		write32(p, stat->ctime.tv_sec);
+-		write32(p, stat->ctime.tv_nsec);
++		*p++ = cpu_to_be32(stat->ctime.tv_sec);
++		*p++ = cpu_to_be32(stat->ctime.tv_nsec);
+ 	}
++	return p;
+ }
  
+-static void write_cinfo(__be32 **p, struct nfsd4_change_info *c)
++static __be32 *encode_cinfo(__be32 *p, struct nfsd4_change_info *c)
+ {
+-	write32(p, c->atomic);
++	*p++ = cpu_to_be32(c->atomic);
+ 	if (c->change_supported) {
+-		write64(p, c->before_change);
+-		write64(p, c->after_change);
++		p = xdr_encode_hyper(p, c->before_change);
++		p = xdr_encode_hyper(p, c->after_change);
+ 	} else {
+-		write32(p, c->before_ctime_sec);
+-		write32(p, c->before_ctime_nsec);
+-		write32(p, c->after_ctime_sec);
+-		write32(p, c->after_ctime_nsec);
++		*p++ = cpu_to_be32(c->before_ctime_sec);
++		*p++ = cpu_to_be32(c->before_ctime_nsec);
++		*p++ = cpu_to_be32(c->after_ctime_sec);
++		*p++ = cpu_to_be32(c->after_ctime_nsec);
+ 	}
++	return p;
+ }
+ 
+ /* Encode as an array of strings the string given with components
+@@ -2189,7 +2180,7 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp, struct svc_export
+ 		p = xdr_reserve_space(xdr, 8);
+ 		if (!p)
+ 			goto out_resource;
+-		write_change(&p, &stat, dentry->d_inode);
++		p = encode_change(p, &stat, dentry->d_inode);
+ 	}
+ 	if (bmval0 & FATTR4_WORD0_SIZE) {
+ 		p = xdr_reserve_space(xdr, 8);
+@@ -2815,7 +2806,7 @@ nfsd4_encode_create(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_
+ 		p = xdr_reserve_space(xdr, 32);
+ 		if (!p)
+ 			return nfserr_resource;
+-		write_cinfo(&p, &create->cr_cinfo);
++		p = encode_cinfo(p, &create->cr_cinfo);
+ 		*p++ = cpu_to_be32(2);
+ 		*p++ = cpu_to_be32(create->cr_bmval[0]);
+ 		*p++ = cpu_to_be32(create->cr_bmval[1]);
+@@ -2938,7 +2929,7 @@ nfsd4_encode_link(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_li
+ 		p = xdr_reserve_space(xdr, 20);
+ 		if (!p)
+ 			return nfserr_resource;
+-		write_cinfo(&p, &link->li_cinfo);
++		p = encode_cinfo(p, &link->li_cinfo);
+ 	}
+ 	return nfserr;
+ }
+@@ -2959,7 +2950,7 @@ nfsd4_encode_open(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_op
+ 	p = xdr_reserve_space(xdr, 40);
+ 	if (!p)
+ 		return nfserr_resource;
+-	write_cinfo(&p, &open->op_cinfo);
++	p = encode_cinfo(p, &open->op_cinfo);
+ 	*p++ = cpu_to_be32(open->op_rflags);
+ 	*p++ = cpu_to_be32(2);
+ 	*p++ = cpu_to_be32(open->op_bmval[0]);
+@@ -3378,7 +3369,7 @@ nfsd4_encode_remove(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_
+ 		p = xdr_reserve_space(xdr, 20);
+ 		if (!p)
+ 			return nfserr_resource;
+-		write_cinfo(&p, &remove->rm_cinfo);
++		p = encode_cinfo(p, &remove->rm_cinfo);
+ 	}
+ 	return nfserr;
+ }
+@@ -3393,8 +3384,8 @@ nfsd4_encode_rename(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_
+ 		p = xdr_reserve_space(xdr, 40);
+ 		if (!p)
+ 			return nfserr_resource;
+-		write_cinfo(&p, &rename->rn_sinfo);
+-		write_cinfo(&p, &rename->rn_tinfo);
++		p = encode_cinfo(p, &rename->rn_sinfo);
++		p = encode_cinfo(p, &rename->rn_tinfo);
+ 	}
+ 	return nfserr;
+ }
+-- 
+1.7.9.5
 
