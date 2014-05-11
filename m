@@ -1,85 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-oa0-f45.google.com ([209.85.219.45]:38680 "EHLO
-	mail-oa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754060AbaEPHbY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 16 May 2014 03:31:24 -0400
-Received: by mail-oa0-f45.google.com with SMTP id l6so2563251oag.4
-        for <linux-nfs@vger.kernel.org>; Fri, 16 May 2014 00:31:23 -0700 (PDT)
-Message-ID: <5375BEBD.50805@gmail.com>
-Date: Fri, 16 May 2014 15:31:09 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
-MIME-Version: 1.0
-To: Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@fieldses.org>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH v2] NFSD: Don't clear SUID/SGID after root writing data
-References: <534AA92B.8010805@gmail.com> <20140418130220.GF18612@fieldses.org> <53512DE5.7050907@gmail.com> <5351501B.1010507@gmail.com> <20140508161256.GC20976@fieldses.org> <536C89D7.6090902@gmail.com> <20140509214056.GC497@fieldses.org> <20140510051017.GA23444@infradead.org>
-In-Reply-To: <20140510051017.GA23444@infradead.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from fieldses.org ([174.143.236.118]:38601 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757711AbaEKUxC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 11 May 2014 16:53:02 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 27/43] rpc: define xdr_restrict_buflen
+Date: Sun, 11 May 2014 16:52:32 -0400
+Message-Id: <1399841568-19716-28-git-send-email-bfields@redhat.com>
+In-Reply-To: <1399841568-19716-1-git-send-email-bfields@redhat.com>
+References: <1399841568-19716-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-On 5/10/2014 13:10, Christoph Hellwig wrote:
-> On Fri, May 09, 2014 at 05:40:57PM -0400, J. Bruce Fields wrote:
->> On Fri, May 09, 2014 at 03:55:03PM +0800, Kinglong Mee wrote:
->>> On 5/9/2014 00:12, J. Bruce Fields wrote:
->>>> I'd like to apply this if only to remove the redundant code.
->>>>
->>>> I'd like to understand, though, whether this is something that caused an
->>>> actual practical problem for someone, or if you just happened to notice
->>>> the inconsistency between nfs and ext4 behavior?
->>>
->>> I test it with ext2,ext3,btrfs,xfs.
->>> Test result is same as ext4.
->>> So, we needs remove the redundant killing of suid/sgid.
->>
->> Understood that this would make the behavior consistent with
->> filesystems.  But, you don't know of any cases of the current behavior
->> is actually causing a problem for anyone? 
-> 
-> I thin this also is the root cause for xfstests generic/193 failing on
-> NFS, but I haven't verified it yet.
+With this xdr_reserve_space can help us enforce various limits.
 
-xfstests generic/193 only tests non-root user truncating file
-with root setting SGID/SUID mode. generic/193 will not fail.
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ include/linux/sunrpc/xdr.h |    1 +
+ net/sunrpc/xdr.c           |   29 +++++++++++++++++++++++++++++
+ 2 files changed, 30 insertions(+)
 
-236 _create_files
-237 # Now test out the clear of suid/sgid for truncate
-238 #
-239 echo "check that suid/sgid bits are cleared after successful truncate..."
-240
-241 echo "with no exec perm"
-242 echo frobnozzle >> $test_user
-243 chmod ug+s $test_user
-244 echo -n "before: "; stat -c '%A' $test_user
-245 su ${qa_user} -c "echo > $test_user"
-246 echo -n "after:  "; stat -c '%A' $test_user
-247
-248 echo "with user exec perm"
-249 echo frobnozzle >> $test_user
-250 chmod ug+s $test_user
-251 chmod u+x $test_user
-252 echo -n "before: "; stat -c '%A' $test_user
-253 su ${qa_user} -c "echo > $test_user"
-254 echo -n "after:  "; stat -c '%A' $test_user
-255
-256 echo "with group exec perm"
-257 echo frobnozzle >> $test_user
-258 chmod ug+s $test_user
-259 chmod g+x $test_user
-260 chmod u-x $test_user
-261 echo -n "before: "; stat -c '%A' $test_user
-262 su ${qa_user} -c "echo > $test_user"
-263 echo -n "after:  "; stat -c '%A' $test_user
-264
-265 echo "with user+group exec perm"
-266 echo frobnozzle >> $test_user
-267 chmod ug+s $test_user
-268 chmod ug+x $test_user
-269 echo -n "before: "; stat -c '%A' $test_user
-270 su ${qa_user} -c "echo > $test_user"
-271 echo -n "after:  "; stat -c '%A' $test_user
+diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
+index b23d69f..70c6b92 100644
+--- a/include/linux/sunrpc/xdr.h
++++ b/include/linux/sunrpc/xdr.h
+@@ -217,6 +217,7 @@ extern void xdr_init_encode(struct xdr_stream *xdr, struct xdr_buf *buf, __be32
+ extern __be32 *xdr_reserve_space(struct xdr_stream *xdr, size_t nbytes);
+ extern void xdr_commit_encode(struct xdr_stream *xdr);
+ extern void xdr_truncate_encode(struct xdr_stream *xdr, size_t len);
++extern int xdr_restrict_buflen(struct xdr_stream *xdr, int newbuflen);
+ extern void xdr_write_pages(struct xdr_stream *xdr, struct page **pages,
+ 		unsigned int base, unsigned int len);
+ extern unsigned int xdr_stream_pos(const struct xdr_stream *xdr);
+diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
+index e65d6b6..f97e3df 100644
+--- a/net/sunrpc/xdr.c
++++ b/net/sunrpc/xdr.c
+@@ -650,6 +650,35 @@ void xdr_truncate_encode(struct xdr_stream *xdr, size_t len)
+ EXPORT_SYMBOL(xdr_truncate_encode);
+ 
+ /**
++ * xdr_restrict_buflen - decrease available buffer space
++ * @xdr: pointer to xdr_stream
++ * @newbuflen: new maximum number of bytes available
++ *
++ * Adjust our idea of how much space is available in the buffer.
++ * If we've already used too much space in the buffer, returns -1.
++ * If the available space is already smaller than newbuflen, returns 0
++ * and does nothing.  Otherwise, adjusts xdr->buf->buflen to newbuflen
++ * and ensures xdr->end is set at most offset newbuflen from the start
++ * of the buffer.
++ */
++int xdr_restrict_buflen(struct xdr_stream *xdr, int newbuflen)
++{
++	struct xdr_buf *buf = xdr->buf;
++	int left_in_this_buf = (void *)xdr->end - (void *)xdr->p;
++	int end_offset = buf->len + left_in_this_buf;
++
++	if (newbuflen < 0 || newbuflen < buf->len)
++		return -1;
++	if (newbuflen > buf->buflen)
++		return 0;
++	if (newbuflen < end_offset)
++		xdr->end = (void *)xdr->end + newbuflen - end_offset;
++	buf->buflen = newbuflen;
++	return 0;
++}
++EXPORT_SYMBOL(xdr_restrict_buflen);
++
++/**
+  * xdr_write_pages - Insert a list of pages into an XDR buffer for sending
+  * @xdr: pointer to xdr_stream
+  * @pages: list of pages
+-- 
+1.7.9.5
 
-thanks,
-Kinglong Mee
