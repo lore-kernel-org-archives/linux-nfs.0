@@ -1,159 +1,103 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:43358 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:38574 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752323AbaEVTce (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 May 2014 15:32:34 -0400
+	id S1757609AbaEKUxA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 11 May 2014 16:53:00 -0400
 From: "J. Bruce Fields" <bfields@redhat.com>
 To: linux-nfs@vger.kernel.org
 Cc: Christoph Hellwig <hch@infradead.org>,
         "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 20/52] nfsd4: "backfill" using write_bytes_to_xdr_buf
-Date: Thu, 22 May 2014 15:31:55 -0400
-Message-Id: <1400787148-25941-21-git-send-email-bfields@redhat.com>
-In-Reply-To: <1400787148-25941-1-git-send-email-bfields@redhat.com>
-References: <1400787148-25941-1-git-send-email-bfields@redhat.com>
+Subject: [PATCH 19/43] nfsd4: remove redundant encode buffer size checking
+Date: Sun, 11 May 2014 16:52:24 -0400
+Message-Id: <1399841568-19716-20-git-send-email-bfields@redhat.com>
+In-Reply-To: <1399841568-19716-1-git-send-email-bfields@redhat.com>
+References: <1399841568-19716-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: "J. Bruce Fields" <bfields@redhat.com>
 
-Normally xdr encoding proceeds in a single pass from start of a buffer
-to end, but sometimes we have to write a few bytes to an earlier
-position.
-
-Use write_bytes_to_xdr_buf for these cases rather than saving a pointer
-to write to.  We plan to rewrite xdr_reserve_space to handle encoding
-across page boundaries using a scratch buffer, and don't want to risk
-writing to a pointer that was contained in a scratch buffer.
-
-Also it will no longer be safe to calculate lengths by subtracting two
-pointers, so use xdr_buf offsets instead.
+Now that all op encoders can handle running out of space, we no longer
+need to check the remaining size for every operation; only nonidempotent
+operations need that check, and that can be done by
+nfsd4_check_resp_size.
 
 Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfsd/nfs4xdr.c | 45 ++++++++++++++++++++++++++-------------------
- 1 file changed, 26 insertions(+), 19 deletions(-)
+ fs/nfsd/nfs4proc.c |   14 --------------
+ fs/nfsd/nfs4xdr.c  |   22 +++++++++++++---------
+ 2 files changed, 13 insertions(+), 23 deletions(-)
 
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index d9fe000..d50fc14 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1228,7 +1228,6 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
+ 	struct nfsd4_compound_state *cstate = &resp->cstate;
+ 	struct svc_fh *current_fh = &cstate->current_fh;
+ 	struct svc_fh *save_fh = &cstate->save_fh;
+-	int		slack_bytes;
+ 	u32		plen = 0;
+ 	__be32		status;
+ 
+@@ -1282,19 +1281,6 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
+ 			goto encode_op;
+ 		}
+ 
+-		/* We must be able to encode a successful response to
+-		 * this operation, with enough room left over to encode a
+-		 * failed response to the next operation.  If we don't
+-		 * have enough room, fail with ERR_RESOURCE.
+-		 */
+-		slack_bytes = (char *)resp->xdr.end - (char *)resp->xdr.p;
+-		if (slack_bytes < COMPOUND_SLACK_SPACE
+-				+ COMPOUND_ERR_SLACK_SPACE) {
+-			BUG_ON(slack_bytes < COMPOUND_ERR_SLACK_SPACE);
+-			op->status = nfserr_resource;
+-			goto encode_op;
+-		}
+-
+ 		opdesc = OPDESC(op);
+ 
+ 		if (!current_fh->fh_dentry) {
 diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index c8435ba..14efc5d 100644
+index 4c036eb..a330dd7 100644
 --- a/fs/nfsd/nfs4xdr.c
 +++ b/fs/nfsd/nfs4xdr.c
-@@ -1759,16 +1759,19 @@ static __be32 nfsd4_encode_components_esc(struct xdr_stream *xdr, char sep,
- 					  char esc_exit)
+@@ -3736,20 +3736,24 @@ static nfsd4_enc nfsd4_enc_ops[] = {
+ __be32 nfsd4_check_resp_size(struct nfsd4_compoundres *resp, u32 pad)
  {
- 	__be32 *p;
--	__be32 *countp;
-+	__be32 pathlen;
-+	int pathlen_offset;
- 	int strlen, count=0;
- 	char *str, *end, *next;
+ 	struct xdr_buf *buf = &resp->rqstp->rq_res;
+-	struct nfsd4_session *session = NULL;
++	struct nfsd4_session *session = resp->cstate.session;
+ 	struct nfsd4_slot *slot = resp->cstate.slot;
++	int slack_bytes = (char *)resp->xdr.end - (char *)resp->xdr.p;
  
- 	dprintk("nfsd4_encode_components(%s)\n", components);
-+
-+	pathlen_offset = xdr->buf->len;
- 	p = xdr_reserve_space(xdr, 4);
- 	if (!p)
- 		return nfserr_resource;
--	countp = p;
--	WRITE32(0); /* We will fill this in with @count later */
-+	p++; /* We will fill this in with @count later */
-+
- 	end = str = components;
- 	while (*end) {
- 		bool found_esc = false;
-@@ -1801,8 +1804,8 @@ static __be32 nfsd4_encode_components_esc(struct xdr_stream *xdr, char sep,
- 			end++;
- 		str = end;
- 	}
--	p = countp;
--	WRITE32(count);
-+	pathlen = htonl(xdr->buf->len - pathlen_offset);
-+	write_bytes_to_xdr_buf(xdr->buf, pathlen_offset, &pathlen, 4);
+-	if (!nfsd4_has_session(&resp->cstate))
+-		return 0;
++	if (nfsd4_has_session(&resp->cstate)) {
+ 
+-	session = resp->cstate.session;
++		if (buf->len + pad > session->se_fchannel.maxresp_sz)
++			return nfserr_rep_too_big;
+ 
+-	if (buf->len + pad > session->se_fchannel.maxresp_sz)
+-		return nfserr_rep_too_big;
++		if ((slot->sl_flags & NFSD4_SLOT_CACHETHIS) &&
++		    buf->len + pad > session->se_fchannel.maxresp_cached)
++			return nfserr_rep_too_big_to_cache;
++	}
+ 
+-	if ((slot->sl_flags & NFSD4_SLOT_CACHETHIS) &&
+-	    buf->len + pad > session->se_fchannel.maxresp_cached)
+-		return nfserr_rep_too_big_to_cache;
++	if (pad > slack_bytes) {
++		WARN_ON_ONCE(nfsd4_has_session(&resp->cstate));
++		return nfserr_resource;
++	}
+ 
  	return 0;
  }
- 
-@@ -2054,7 +2057,8 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
- 	struct kstatfs statfs;
- 	__be32 *p;
- 	int starting_len = xdr->buf->len;
--	__be32 *attrlenp;
-+	int attrlen_offset;
-+	__be32 attrlen;
- 	u32 dummy;
- 	u64 dummy64;
- 	u32 rdattr_err = 0;
-@@ -2159,10 +2163,12 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
- 		WRITE32(1);
- 		WRITE32(bmval0);
- 	}
-+
-+	attrlen_offset = xdr->buf->len;
- 	p = xdr_reserve_space(xdr, 4);
- 	if (!p)
- 		goto out_resource;
--	attrlenp = p++;                /* to be backfilled later */
-+	p++;                /* to be backfilled later */
- 
- 	if (bmval0 & FATTR4_WORD0_SUPPORTED_ATTRS) {
- 		u32 word0 = nfsd_suppattrs0(minorversion);
-@@ -2534,7 +2540,8 @@ out_acl:
- 		WRITE32(NFSD_SUPPATTR_EXCLCREAT_WORD2);
- 	}
- 
--	*attrlenp = htonl((char *)xdr->p - (char *)attrlenp - 4);
-+	attrlen = htonl(xdr->buf->len - attrlen_offset - 4);
-+	write_bytes_to_xdr_buf(xdr->buf, attrlen_offset, &attrlen, 4);
- 	status = nfs_ok;
- 
- out:
-@@ -3664,15 +3671,16 @@ __be32 nfsd4_check_resp_size(struct nfsd4_compoundres *resp, u32 pad)
- void
- nfsd4_encode_operation(struct nfsd4_compoundres *resp, struct nfsd4_op *op)
- {
-+	struct xdr_stream *xdr = &resp->xdr;
- 	struct nfs4_stateowner *so = resp->cstate.replay_owner;
- 	struct svc_rqst *rqstp = resp->rqstp;
--	__be32 *statp;
-+	int post_err_offset;
- 	nfsd4_enc encoder;
- 	__be32 *p;
- 
- 	RESERVE_SPACE(8);
- 	WRITE32(op->opnum);
--	statp = p++;	/* to be backfilled at the end */
-+	post_err_offset = xdr->buf->len;
- 
- 	if (op->opnum == OP_ILLEGAL)
- 		goto status;
-@@ -3698,20 +3706,19 @@ nfsd4_encode_operation(struct nfsd4_compoundres *resp, struct nfsd4_op *op)
- 		 * bug if we had to do this on a non-idempotent op:
- 		 */
- 		warn_on_nonidempotent_op(op);
--		resp->xdr.p = statp + 1;
-+		xdr_truncate_encode(xdr, post_err_offset);
- 	}
- 	if (so) {
-+		int len = xdr->buf->len - post_err_offset;
-+
- 		so->so_replay.rp_status = op->status;
--		so->so_replay.rp_buflen = (char *)resp->xdr.p
--						- (char *)(statp+1);
--		memcpy(so->so_replay.rp_buf, statp+1, so->so_replay.rp_buflen);
-+		so->so_replay.rp_buflen = len;
-+		read_bytes_from_xdr_buf(xdr->buf, post_err_offset,
-+						so->so_replay.rp_buf, len);
- 	}
- status:
--	/*
--	 * Note: We write the status directly, instead of using WRITE32(),
--	 * since it is already in network byte order.
--	 */
--	*statp = op->status;
-+	/* Note that op->status is already in network byte order: */
-+	write_bytes_to_xdr_buf(xdr->buf, post_err_offset - 4, &op->status, 4);
- }
- 
- /* 
 -- 
-1.9.0
+1.7.9.5
 
