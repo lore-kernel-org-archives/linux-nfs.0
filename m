@@ -1,67 +1,94 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f182.google.com ([209.85.220.182]:34139 "EHLO
-	mail-vc0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752613AbaEWNzE (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 May 2014 09:55:04 -0400
-Received: by mail-vc0-f182.google.com with SMTP id la4so6289505vcb.13
-        for <linux-nfs@vger.kernel.org>; Fri, 23 May 2014 06:55:03 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <1400851379-34474-1-git-send-email-andros@netapp.com>
-References: <1400851379-34474-1-git-send-email-andros@netapp.com>
-Date: Fri, 23 May 2014 09:55:03 -0400
-Message-ID: <CAHQdGtR8A=O75V-oQnU8w9iTeFFrTMuFCTJgC_uGn6iZmOjeKA@mail.gmail.com>
-Subject: Re: [PATCH 1/1] NFSv4: Use error handler on failed GETATTR with
- successful OPEN
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Adamson William Andros <andros@netapp.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from fieldses.org ([174.143.236.118]:38589 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1755717AbaEKUxC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 11 May 2014 16:53:02 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 23/43] nfsd4: don't try to encode conflicting owner if low on space
+Date: Sun, 11 May 2014 16:52:28 -0400
+Message-Id: <1399841568-19716-24-git-send-email-bfields@redhat.com>
+In-Reply-To: <1399841568-19716-1-git-send-email-bfields@redhat.com>
+References: <1399841568-19716-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, May 23, 2014 at 9:22 AM,  <andros@netapp.com> wrote:
-> From: Andy Adamson <andros@netapp.com>
->
-> Place the call to resend the failed GETATTR under the error handler so that
-> when appropriate, the GETATTR is retried more than once.
->
-> The server can fail the GETATTR op in the OPEN compound with a recoverable
-> error such as NFS4ERR_DELAY. In the case of an O_EXCL open, the server has
-> created the file, so a retrans of the OPEN call will fail with NFS4ERR_EXIST.
->
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Why would the client retransmit the open in this case? We don't use
-the return value from the getattr call, so the callers of
-_nfs4_proc_open() will never see the NFS4ERR_DELAY.
+I ran into this corner case in testing: in theory clients can provide
+state owners up to 1024 bytes long.  In the sessions case there might be
+a risk of this pushing us over the DRC slot size.
 
+The conflicting owner isn't really that important, so let's humor a
+client that provides a small maxresponsize_cached by allowing ourselves
+to return without the conflicting owner instead of outright failing the
+operation.
 
-> Signed-off-by: Andy Adamson <andros@netapp.com>
-> ---
->  fs/nfs/nfs4proc.c | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
->
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 397be39..be1b305 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -2027,7 +2027,7 @@ static int _nfs4_proc_open(struct nfs4_opendata *data)
->                         return status;
->         }
->         if (!(o_res->f_attr->valid & NFS_ATTR_FATTR))
-> -               _nfs4_proc_getattr(server, &o_res->fh, o_res->f_attr, o_res->f_label);
-> +               nfs4_proc_getattr(server, &o_res->fh, o_res->f_attr, o_res->f_label);
->         return 0;
->  }
->
-> --
-> 1.8.3.1
->
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4proc.c |    3 ++-
+ fs/nfsd/nfs4xdr.c  |   16 +++++++++++++---
+ 2 files changed, 15 insertions(+), 4 deletions(-)
 
-
-
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 787aa9f..be638c1 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1381,7 +1381,8 @@ out:
+ #define op_encode_change_info_maxsz	(5)
+ #define nfs4_fattr_bitmap_maxsz		(4)
+ 
+-#define op_encode_lockowner_maxsz	(1 + XDR_QUADLEN(IDMAP_NAMESZ))
++/* We'll fall back on returning no lockowner if run out of space: */
++#define op_encode_lockowner_maxsz	(0)
+ #define op_encode_lock_denied_maxsz	(8 + op_encode_lockowner_maxsz)
+ 
+ #define nfs4_owner_maxsz		(1 + XDR_QUADLEN(IDMAP_NAMESZ))
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 6c3ac43..d418d7e 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -2862,9 +2862,20 @@ nfsd4_encode_lock_denied(struct xdr_stream *xdr, struct nfsd4_lock_denied *ld)
+ 	struct xdr_netobj *conf = &ld->ld_owner;
+ 	__be32 *p;
+ 
++again:
+ 	p = xdr_reserve_space(xdr, 32 + XDR_LEN(conf->len));
+-	if (!p)
++	if (!p) {
++		/*
++		 * Don't fail to return the result just because we can't
++		 * return the conflicting open:
++		 */
++		if (conf->len) {
++			conf->len = 0;
++			conf->data = NULL;
++			goto again;
++		}
+ 		return nfserr_resource;
++	}
+ 	WRITE64(ld->ld_start);
+ 	WRITE64(ld->ld_length);
+ 	WRITE32(ld->ld_type);
+@@ -2872,7 +2883,6 @@ nfsd4_encode_lock_denied(struct xdr_stream *xdr, struct nfsd4_lock_denied *ld)
+ 		WRITEMEM(&ld->ld_clientid, 8);
+ 		WRITE32(conf->len);
+ 		WRITEMEM(conf->data, conf->len);
+-		kfree(conf->data);
+ 	}  else {  /* non - nfsv4 lock in conflict, no clientid nor owner */
+ 		WRITE64((u64)0); /* clientid */
+ 		WRITE32(0); /* length of owner name */
+@@ -2889,7 +2899,7 @@ nfsd4_encode_lock(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_lo
+ 		nfserr = nfsd4_encode_stateid(xdr, &lock->lk_resp_stateid);
+ 	else if (nfserr == nfserr_denied)
+ 		nfserr = nfsd4_encode_lock_denied(xdr, &lock->lk_denied);
+-
++	kfree(lock->lk_denied.ld_owner.data);
+ 	return nfserr;
+ }
+ 
 -- 
-Trond Myklebust
+1.7.9.5
 
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
