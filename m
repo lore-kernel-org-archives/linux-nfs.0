@@ -1,58 +1,83 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-we0-f173.google.com ([74.125.82.173]:33788 "EHLO
-	mail-we0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751329AbaEaSXO (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 31 May 2014 14:23:14 -0400
-Date: Sat, 31 May 2014 20:22:37 +0200
-From: Richard Cochran <richardcochran@gmail.com>
-To: Arnd Bergmann <arnd@arndb.de>
-Cc: linux-kernel@vger.kernel.org, hch@infradead.org,
-        linux-mtd@lists.infradead.org, hpa@zytor.com, logfs@logfs.org,
-        linux-afs@lists.infradead.org, joseph@codesourcery.com,
-        linux-arch@vger.kernel.org, linux-cifs@vger.kernel.org,
-        linux-scsi@vger.kernel.org, ceph-devel@vger.kernel.org,
-        codalist@TELEMANN.coda.cs.cmu.edu, cluster-devel@redhat.com,
-        coda@cs.cmu.edu, geert@linux-m68k.org, linux-ext4@vger.kernel.org,
-        fuse-devel@lists.sourceforge.net, reiserfs-devel@vger.kernel.org,
-        xfs@oss.sgi.com, john.stultz@linaro.org, tglx@linutronix.de,
-        linux-nfs@vger.kernel.org, linux-ntfs-dev@lists.sourceforge.net,
-        samba-technical@lists.samba.org,
-        linux-f2fs-devel@lists.sourceforge.net, ocfs2-devel@oss.oracle.com,
-        linux-fsdevel@vger.kernel.org, lftan@altera.com,
-        linux-btrfs@vger.kernel.org
-Subject: Re: [RFC 00/32] making inode time stamps y2038 ready
-Message-ID: <20140531182237.GA5382@localhost.localdomain>
-References: <1401480116-1973111-1-git-send-email-arnd@arndb.de>
- <20140531145114.GA3721@localhost.localdomain>
- <6347520.8jMPlVsFjM@wuerfel>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <6347520.8jMPlVsFjM@wuerfel>
+Received: from fieldses.org ([174.143.236.118]:38592 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757651AbaEKUxC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 11 May 2014 16:53:02 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 24/43] nfsd4: more precise nfsd4_max_reply
+Date: Sun, 11 May 2014 16:52:29 -0400
+Message-Id: <1399841568-19716-25-git-send-email-bfields@redhat.com>
+In-Reply-To: <1399841568-19716-1-git-send-email-bfields@redhat.com>
+References: <1399841568-19716-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, May 31, 2014 at 05:23:02PM +0200, Arnd Bergmann wrote:
-> 
-> It's an approximation:
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-(Approximately never ;)
+---
+ fs/nfsd/nfs4xdr.c |   27 ++++++++-------------------
+ 1 file changed, 8 insertions(+), 19 deletions(-)
 
-> with 64-bit timestamps, you can represent close to 300 billion
-> years, which is way past the time that our planet can sustain
-> life of any form[1].
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index d418d7e..19071d7 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -1614,22 +1614,12 @@ nfsd4_opnum_in_range(struct nfsd4_compoundargs *argp, struct nfsd4_op *op)
+  * use pages beyond the first one, so the maximum possible length is the
+  * maximum over these values, not the sum.
+  */
+-static int nfsd4_max_reply(u32 opnum)
++static int nfsd4_max_reply(struct svc_rqst *rqstp, struct nfsd4_op *op)
+ {
+-	switch (opnum) {
+-	case OP_READLINK:
+-	case OP_READDIR:
+-		/*
+-		 * Both of these ops take a single page for data and put
+-		 * the head and tail in another page:
+-		 */
+-		return 2 * PAGE_SIZE;
+-	case OP_GETATTR:
+-	case OP_READ:
+-		return INT_MAX;
+-	default:
+-		return PAGE_SIZE;
+-	}
++	struct nfsd4_operation *opdesc = OPDESC(op);
++	nfsd4op_rsize estimator = opdesc->op_rsize_bop;
++
++	return estimator ? estimator(rqstp, op) : PAGE_SIZE;
+ }
+ 
+ static __be32
+@@ -1638,7 +1628,7 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
+ 	DECODE_HEAD;
+ 	struct nfsd4_op *op;
+ 	bool cachethis = false;
+-	int max_reply = PAGE_SIZE;
++	int max_reply = 2 * RPC_MAX_AUTH_SIZE; /* uh, kind of a guess */
+ 	int i;
+ 
+ 	READ_BUF(4);
+@@ -1689,13 +1679,12 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
+ 		 */
+ 		cachethis |= nfsd4_cache_this_op(op);
+ 
+-		max_reply = max(max_reply, nfsd4_max_reply(op->opnum));
++		max_reply += nfsd4_max_reply(argp->rqstp, op);
+ 	}
+ 	/* Sessions make the DRC unnecessary: */
+ 	if (argp->minorversion)
+ 		cachethis = false;
+-	if (max_reply != INT_MAX)
+-		svc_reserve(argp->rqstp, max_reply);
++	svc_reserve(argp->rqstp, max_reply);
+ 	argp->rqstp->rq_cachetype = cachethis ? RC_REPLBUFF : RC_NOCACHE;
+ 
+ 	DECODE_TAIL;
+-- 
+1.7.9.5
 
-Did you mean mean 64 bits worth of seconds?
-
-  2^64 / (3600*24*365) = 584,942,417,355
-
-That is more than 300 billion years, and still, it is not quite the
-same as "never".
-
-In any case, that term is not too helpful in the comparison table,
-IMHO. One could think that some sort of clever running count relative
-to the last mount time was implied.
-
-Thanks,
-Richard
-
-[1] You are forgetting the immortal robotic overlords.
