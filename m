@@ -1,48 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:43434 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:38523 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751039AbaEVTcm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 May 2014 15:32:42 -0400
+	id S1754931AbaEKUwz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 11 May 2014 16:52:55 -0400
 From: "J. Bruce Fields" <bfields@redhat.com>
 To: linux-nfs@vger.kernel.org
 Cc: Christoph Hellwig <hch@infradead.org>,
         "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 31/52] nfsd4: nfsd4_check_resp_size should check against whole buffer
-Date: Thu, 22 May 2014 15:32:06 -0400
-Message-Id: <1400787148-25941-32-git-send-email-bfields@redhat.com>
-In-Reply-To: <1400787148-25941-1-git-send-email-bfields@redhat.com>
-References: <1400787148-25941-1-git-send-email-bfields@redhat.com>
+Subject: [PATCH 03/43] nfsd4: move proc_compound xdr encode init to helper
+Date: Sun, 11 May 2014 16:52:08 -0400
+Message-Id: <1399841568-19716-4-git-send-email-bfields@redhat.com>
+In-Reply-To: <1399841568-19716-1-git-send-email-bfields@redhat.com>
+References: <1399841568-19716-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: "J. Bruce Fields" <bfields@redhat.com>
 
+Mechanical transformation with no change of behavior.
+
 Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfsd/nfs4xdr.c | 3 +--
- 1 file changed, 1 insertion(+), 2 deletions(-)
+ fs/nfsd/nfs4proc.c |   16 ++++++++++++----
+ 1 file changed, 12 insertions(+), 4 deletions(-)
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 741aab2..91d0b9a 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -3762,7 +3762,6 @@ __be32 nfsd4_check_resp_size(struct nfsd4_compoundres *resp, u32 respsize)
- {
- 	struct xdr_buf *buf = &resp->rqstp->rq_res;
- 	struct nfsd4_session *session = resp->cstate.session;
--	int slack_bytes = (char *)resp->xdr.end - (char *)resp->xdr.p;
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 1499aa4..6c049c4 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1251,6 +1251,17 @@ static bool need_wrongsec_check(struct svc_rqst *rqstp)
+ 	return !(nextd->op_flags & OP_HANDLES_WRONGSEC);
+ }
  
- 	if (nfsd4_has_session(&resp->cstate)) {
- 		struct nfsd4_slot *slot = resp->cstate.slot;
-@@ -3775,7 +3774,7 @@ __be32 nfsd4_check_resp_size(struct nfsd4_compoundres *resp, u32 respsize)
- 			return nfserr_rep_too_big_to_cache;
- 	}
++static void svcxdr_init_encode(struct svc_rqst *rqstp, struct nfsd4_compoundres *resp)
++{
++	struct xdr_stream *xdr = &resp->xdr;
++	struct xdr_buf *buf = &rqstp->rq_res;
++	struct kvec *head = buf->head;
++
++	xdr->buf = buf;
++	xdr->p   = head->iov_base + head->iov_len;
++	xdr->end = head->iov_base + PAGE_SIZE;
++}
++
+ /*
+  * COMPOUND call.
+  */
+@@ -1268,13 +1279,10 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
+ 	u32		plen = 0;
+ 	__be32		status;
  
--	if (respsize > slack_bytes) {
-+	if (buf->len + respsize > buf->buflen) {
- 		WARN_ON_ONCE(nfsd4_has_session(&resp->cstate));
- 		return nfserr_resource;
- 	}
+-	resp->xdr.buf = &rqstp->rq_res;
+-	resp->xdr.p = rqstp->rq_res.head[0].iov_base +
+-						rqstp->rq_res.head[0].iov_len;
++	svcxdr_init_encode(rqstp, resp);
+ 	resp->tagp = resp->xdr.p;
+ 	/* reserve space for: taglen, tag, and opcnt */
+ 	resp->xdr.p += 2 + XDR_QUADLEN(args->taglen);
+-	resp->xdr.end = rqstp->rq_res.head[0].iov_base + PAGE_SIZE;
+ 	resp->taglen = args->taglen;
+ 	resp->tag = args->tag;
+ 	resp->opcnt = 0;
 -- 
-1.9.0
+1.7.9.5
 
