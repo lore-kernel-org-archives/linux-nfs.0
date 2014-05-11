@@ -1,81 +1,217 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ve0-f175.google.com ([209.85.128.175]:63075 "EHLO
-	mail-ve0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751128AbaE1XAJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 May 2014 19:00:09 -0400
-Received: by mail-ve0-f175.google.com with SMTP id jw12so13179678veb.6
-        for <linux-nfs@vger.kernel.org>; Wed, 28 May 2014 16:00:08 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <20140527160044.GA17587@infradead.org>
-References: <20140421172917.GA20036@infradead.org>
-	<20140505065624.GA32658@infradead.org>
-	<20140527160044.GA17587@infradead.org>
-Date: Wed, 28 May 2014 19:00:08 -0400
-Message-ID: <CAHQdGtSKHRt3DZad9ezvF0Wx+i5SfQuJTHzHUOOwdgi1GoscKw@mail.gmail.com>
-Subject: Re: [PATCH] nfs: commit layouts in fdatasync
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Christoph Hellwig <hch@infradead.org>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from fieldses.org ([174.143.236.118]:38655 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757592AbaEKUxI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 11 May 2014 16:53:08 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 41/43] nfsd4: kill WRITE64
+Date: Sun, 11 May 2014 16:52:46 -0400
+Message-Id: <1399841568-19716-42-git-send-email-bfields@redhat.com>
+In-Reply-To: <1399841568-19716-1-git-send-email-bfields@redhat.com>
+References: <1399841568-19716-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, May 27, 2014 at 12:00 PM, Christoph Hellwig <hch@infradead.org> wrote:
-> On Sun, May 04, 2014 at 11:56:24PM -0700, Christoph Hellwig wrote:
->> ping?  This is a fairly serious data integrity issue for pnfs users.
->
-> ping^2
->
-> without this fdatasync and O_DSYNC writes on pnfs are more or less
-> noops, so at least getting a review would be helpful, nevermind
-> forwarding it to Linus and -stable.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Applied for 3.16. Not sure about -stable eligibility, since this only
-affects pnfs blocks for now (files and objects should both be able to
-recover in case of client failure). Are you seeing this in production
-environments?
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4xdr.c |   52 ++++++++++++++++++++++++----------------------------
+ 1 file changed, 24 insertions(+), 28 deletions(-)
 
-Cheers
-  Trond
-
->> On Mon, Apr 21, 2014 at 10:29:17AM -0700, Christoph Hellwig wrote:
->> > >From fdatasync(2):
->> >
->> >  "fdatasync() is similar to fsync(), but does not flush modified metadata
->> >   unless that metadata is needed in order  to  allow  a  subsequent  data
->> >   retrieval to be correctly handled."
->> >
->> > We absolutely need to commit the layouts to be able to retrieve the data
->> > in case either the client, the server or the storage subsystem go down.
->> >
->> > Signed-off-by: Christoph Hellwig <hch@lst.de>
->> >
->> > diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
->> > index 8de3407..464db9d 100644
->> > --- a/fs/nfs/nfs4file.c
->> > +++ b/fs/nfs/nfs4file.c
->> > @@ -100,8 +100,7 @@ nfs4_file_fsync(struct file *file, loff_t start, loff_t end, int datasync)
->> >                     break;
->> >             mutex_lock(&inode->i_mutex);
->> >             ret = nfs_file_fsync_commit(file, start, end, datasync);
->> > -           if (!ret && !datasync)
->> > -                   /* application has asked for meta-data sync */
->> > +           if (!ret)
->> >                     ret = pnfs_layoutcommit_inode(inode, true);
->> >             mutex_unlock(&inode->i_mutex);
->> >             /*
->> > --
->> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> > the body of a message to majordomo@vger.kernel.org
->> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
->> ---end quoted text---
-> ---end quoted text---
-
-
-
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index db4c53c..a2e34f5 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -1699,10 +1699,6 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
+ 	DECODE_TAIL;
+ }
+ 
+-#define WRITE64(n)               do {				\
+-	*p++ = htonl((u32)((n) >> 32));				\
+-	*p++ = htonl((u32)(n));					\
+-} while (0)
+ #define WRITEMEM(ptr,nbytes)     do { if (nbytes > 0) {		\
+ 	*(p + XDR_QUADLEN(nbytes) -1) = 0;                      \
+ 	memcpy(p, ptr, nbytes);					\
+@@ -2207,7 +2203,7 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp, struct svc_export
+ 		p = xdr_reserve_space(xdr, 8);
+ 		if (!p)
+ 			goto out_resource;
+-		WRITE64(stat.size);
++		p = xdr_encode_hyper(p, stat.size);
+ 	}
+ 	if (bmval0 & FATTR4_WORD0_LINK_SUPPORT) {
+ 		p = xdr_reserve_space(xdr, 4);
+@@ -2232,12 +2228,12 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp, struct svc_export
+ 		if (!p)
+ 			goto out_resource;
+ 		if (exp->ex_fslocs.migrated) {
+-			WRITE64(NFS4_REFERRAL_FSID_MAJOR);
+-			WRITE64(NFS4_REFERRAL_FSID_MINOR);
++			p = xdr_encode_hyper(p, NFS4_REFERRAL_FSID_MAJOR);
++			p = xdr_encode_hyper(p, NFS4_REFERRAL_FSID_MINOR);
+ 		} else switch(fsid_source(fhp)) {
+ 		case FSIDSOURCE_FSID:
+-			WRITE64((u64)exp->ex_fsid);
+-			WRITE64((u64)0);
++			p = xdr_encode_hyper(p, (u64)exp->ex_fsid);
++			p = xdr_encode_hyper(p, (u64)0);
+ 			break;
+ 		case FSIDSOURCE_DEV:
+ 			*p++ = cpu_to_be32(0);
+@@ -2339,25 +2335,25 @@ out_acl:
+ 		p = xdr_reserve_space(xdr, 8);
+ 		if (!p)
+ 			goto out_resource;
+-		WRITE64(stat.ino);
++		p = xdr_encode_hyper(p, stat.ino);
+ 	}
+ 	if (bmval0 & FATTR4_WORD0_FILES_AVAIL) {
+ 		p = xdr_reserve_space(xdr, 8);
+ 		if (!p)
+ 			goto out_resource;
+-		WRITE64((u64) statfs.f_ffree);
++		p = xdr_encode_hyper(p, (u64) statfs.f_ffree);
+ 	}
+ 	if (bmval0 & FATTR4_WORD0_FILES_FREE) {
+ 		p = xdr_reserve_space(xdr, 8);
+ 		if (!p)
+ 			goto out_resource;
+-		WRITE64((u64) statfs.f_ffree);
++		p = xdr_encode_hyper(p, (u64) statfs.f_ffree);
+ 	}
+ 	if (bmval0 & FATTR4_WORD0_FILES_TOTAL) {
+ 		p = xdr_reserve_space(xdr, 8);
+ 		if (!p)
+ 			goto out_resource;
+-		WRITE64((u64) statfs.f_files);
++		p = xdr_encode_hyper(p, (u64) statfs.f_files);
+ 	}
+ 	if (bmval0 & FATTR4_WORD0_FS_LOCATIONS) {
+ 		status = nfsd4_encode_fs_locations(xdr, rqstp, exp);
+@@ -2374,7 +2370,7 @@ out_acl:
+ 		p = xdr_reserve_space(xdr, 8);
+ 		if (!p)
+ 			goto out_resource;
+-		WRITE64(exp->ex_path.mnt->mnt_sb->s_maxbytes);
++		p = xdr_encode_hyper(p, exp->ex_path.mnt->mnt_sb->s_maxbytes);
+ 	}
+ 	if (bmval0 & FATTR4_WORD0_MAXLINK) {
+ 		p = xdr_reserve_space(xdr, 4);
+@@ -2392,13 +2388,13 @@ out_acl:
+ 		p = xdr_reserve_space(xdr, 8);
+ 		if (!p)
+ 			goto out_resource;
+-		WRITE64((u64) svc_max_payload(rqstp));
++		p = xdr_encode_hyper(p, (u64) svc_max_payload(rqstp));
+ 	}
+ 	if (bmval0 & FATTR4_WORD0_MAXWRITE) {
+ 		p = xdr_reserve_space(xdr, 8);
+ 		if (!p)
+ 			goto out_resource;
+-		WRITE64((u64) svc_max_payload(rqstp));
++		p = xdr_encode_hyper(p, (u64) svc_max_payload(rqstp));
+ 	}
+ 	if (bmval1 & FATTR4_WORD1_MODE) {
+ 		p = xdr_reserve_space(xdr, 4);
+@@ -2440,34 +2436,34 @@ out_acl:
+ 		if (!p)
+ 			goto out_resource;
+ 		dummy64 = (u64)statfs.f_bavail * (u64)statfs.f_bsize;
+-		WRITE64(dummy64);
++		p = xdr_encode_hyper(p, dummy64);
+ 	}
+ 	if (bmval1 & FATTR4_WORD1_SPACE_FREE) {
+ 		p = xdr_reserve_space(xdr, 8);
+ 		if (!p)
+ 			goto out_resource;
+ 		dummy64 = (u64)statfs.f_bfree * (u64)statfs.f_bsize;
+-		WRITE64(dummy64);
++		p = xdr_encode_hyper(p, dummy64);
+ 	}
+ 	if (bmval1 & FATTR4_WORD1_SPACE_TOTAL) {
+ 		p = xdr_reserve_space(xdr, 8);
+ 		if (!p)
+ 			goto out_resource;
+ 		dummy64 = (u64)statfs.f_blocks * (u64)statfs.f_bsize;
+-		WRITE64(dummy64);
++		p = xdr_encode_hyper(p, dummy64);
+ 	}
+ 	if (bmval1 & FATTR4_WORD1_SPACE_USED) {
+ 		p = xdr_reserve_space(xdr, 8);
+ 		if (!p)
+ 			goto out_resource;
+ 		dummy64 = (u64)stat.blocks << 9;
+-		WRITE64(dummy64);
++		p = xdr_encode_hyper(p, dummy64);
+ 	}
+ 	if (bmval1 & FATTR4_WORD1_TIME_ACCESS) {
+ 		p = xdr_reserve_space(xdr, 12);
+ 		if (!p)
+ 			goto out_resource;
+-		WRITE64((s64)stat.atime.tv_sec);
++		p = xdr_encode_hyper(p, (s64)stat.atime.tv_sec);
+ 		*p++ = cpu_to_be32(stat.atime.tv_nsec);
+ 	}
+ 	if (bmval1 & FATTR4_WORD1_TIME_DELTA) {
+@@ -2482,14 +2478,14 @@ out_acl:
+ 		p = xdr_reserve_space(xdr, 12);
+ 		if (!p)
+ 			goto out_resource;
+-		WRITE64((s64)stat.ctime.tv_sec);
++		p = xdr_encode_hyper(p, (s64)stat.ctime.tv_sec);
+ 		*p++ = cpu_to_be32(stat.ctime.tv_nsec);
+ 	}
+ 	if (bmval1 & FATTR4_WORD1_TIME_MODIFY) {
+ 		p = xdr_reserve_space(xdr, 12);
+ 		if (!p)
+ 			goto out_resource;
+-		WRITE64((s64)stat.mtime.tv_sec);
++		p = xdr_encode_hyper(p, (s64)stat.mtime.tv_sec);
+ 		*p++ = cpu_to_be32(stat.mtime.tv_nsec);
+ 	}
+ 	if (bmval1 & FATTR4_WORD1_MOUNTED_ON_FILEID) {
+@@ -2503,7 +2499,7 @@ out_acl:
+ 		if (ignore_crossmnt == 0 &&
+ 		    dentry == exp->ex_path.mnt->mnt_root)
+ 			get_parent_attributes(exp, &stat);
+-		WRITE64(stat.ino);
++		p = xdr_encode_hyper(p, stat.ino);
+ 	}
+ 	if (bmval2 & FATTR4_WORD2_SECURITY_LABEL) {
+ 		status = nfsd4_encode_security_label(xdr, rqstp, context, contextlen);
+@@ -2890,15 +2886,15 @@ again:
+ 		}
+ 		return nfserr_resource;
+ 	}
+-	WRITE64(ld->ld_start);
+-	WRITE64(ld->ld_length);
++	p = xdr_encode_hyper(p, ld->ld_start);
++	p = xdr_encode_hyper(p, ld->ld_length);
+ 	*p++ = cpu_to_be32(ld->ld_type);
+ 	if (conf->len) {
+ 		WRITEMEM(&ld->ld_clientid, 8);
+ 		*p++ = cpu_to_be32(conf->len);
+ 		WRITEMEM(conf->data, conf->len);
+ 	}  else {  /* non - nfsv4 lock in conflict, no clientid nor owner */
+-		WRITE64((u64)0); /* clientid */
++		p = xdr_encode_hyper(p, (u64)0); /* clientid */
+ 		*p++ = cpu_to_be32(0); /* length of owner name */
+ 	}
+ 	return nfserr_denied;
+@@ -3646,7 +3642,7 @@ nfsd4_encode_exchange_id(struct nfsd4_compoundres *resp, __be32 nfserr,
+ 		return nfserr_resource;
+ 
+ 	/* The server_owner struct */
+-	WRITE64(minor_id);      /* Minor id */
++	p = xdr_encode_hyper(p, minor_id);      /* Minor id */
+ 	/* major id */
+ 	*p++ = cpu_to_be32(major_id_sz);
+ 	WRITEMEM(major_id, major_id_sz);
 -- 
-Trond Myklebust
+1.7.9.5
 
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
