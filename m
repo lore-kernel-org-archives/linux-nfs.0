@@ -1,53 +1,102 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:39820 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:38517 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751355AbaE1TgB (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 28 May 2014 15:36:01 -0400
-Date: Wed, 28 May 2014 15:35:55 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Christoph Hellwig <hch@lst.de>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: getattr for FATTR4_WORD0_FILES_AVAIL needs the
- statfs buffer
-Message-ID: <20140528193555.GD22210@fieldses.org>
-References: <1401266773-19048-1-git-send-email-hch@lst.de>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1401266773-19048-1-git-send-email-hch@lst.de>
+	id S1753793AbaEKUwy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 11 May 2014 16:52:54 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 09/43] nfsd4: use xdr_stream throughout compound encoding
+Date: Sun, 11 May 2014 16:52:14 -0400
+Message-Id: <1399841568-19716-10-git-send-email-bfields@redhat.com>
+In-Reply-To: <1399841568-19716-1-git-send-email-bfields@redhat.com>
+References: <1399841568-19716-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks, applying for 3.16 and stable.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-But, I don't get it: we've been returning random uninitialized data in
-FILES_AVAIL since forever, and nobody's noticed till now?
+Note this makes ADJUST_ARGS useless; we'll remove it in the following
+patch.
 
-Oh, I see: probably every client requests at least one other thing on
-that list at the same time it requests FILES_AVAIL.
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4proc.c |    2 +-
+ fs/nfsd/nfs4xdr.c  |   23 +++++++++++++++--------
+ 2 files changed, 16 insertions(+), 9 deletions(-)
 
---b.
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index b0f01df..7c45172 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1233,7 +1233,7 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
+ 	svcxdr_init_encode(rqstp, resp);
+ 	resp->tagp = resp->xdr.p;
+ 	/* reserve space for: taglen, tag, and opcnt */
+-	resp->xdr.p += 2 + XDR_QUADLEN(args->taglen);
++	xdr_reserve_space(&resp->xdr, 8 + args->taglen);
+ 	resp->taglen = args->taglen;
+ 	resp->tag = args->tag;
+ 	resp->opcnt = 0;
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index e337321..53de2db 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -1747,10 +1747,10 @@ static void write_cinfo(__be32 **p, struct nfsd4_change_info *c)
+ }
+ 
+ #define RESERVE_SPACE(nbytes)	do {				\
+-	p = resp->xdr.p;						\
+-	BUG_ON(p + XDR_QUADLEN(nbytes) > resp->xdr.end);		\
++	p = xdr_reserve_space(&resp->xdr, nbytes);		\
++	BUG_ON(!p);						\
+ } while (0)
+-#define ADJUST_ARGS()		resp->xdr.p = p
++#define ADJUST_ARGS()		WARN_ON_ONCE(p != resp->xdr.p)	\
+ 
+ /* Encode as an array of strings the string given with components
+  * separated @sep, escaped with esc_enter and esc_exit.
+@@ -3041,8 +3041,11 @@ nfsd4_encode_read(struct nfsd4_compoundres *resp, __be32 nfserr,
+ 			read->rd_offset, resp->rqstp->rq_vec, read->rd_vlen,
+ 			&maxcount);
+ 
+-	if (nfserr)
++	if (nfserr) {
++		xdr->p -= 2;
++		xdr->iov->iov_len -= 8;
+ 		return nfserr;
++	}
+ 	eof = (read->rd_offset + maxcount >=
+ 	       read->rd_fhp->fh_dentry->d_inode->i_size);
+ 
+@@ -3095,9 +3098,12 @@ nfsd4_encode_readlink(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd
+ 	 */
+ 	nfserr = nfsd_readlink(readlink->rl_rqstp, readlink->rl_fhp, page, &maxcount);
+ 	if (nfserr == nfserr_isdir)
+-		return nfserr_inval;
+-	if (nfserr)
++		nfserr = nfserr_inval;
++	if (nfserr) {
++		xdr->p--;
++		xdr->iov->iov_len -= 4;
+ 		return nfserr;
++	}
+ 
+ 	WRITE32(maxcount);
+ 	ADJUST_ARGS();
+@@ -3197,8 +3203,9 @@ nfsd4_encode_readdir(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4
+ 
+ 	return 0;
+ err_no_verf:
+-	p = savep;
+-	ADJUST_ARGS();
++	xdr->p = savep;
++	xdr->iov->iov_len = ((char *)resp->xdr.p)
++				- (char *)resp->xdr.buf->head[0].iov_base;
+ 	return nfserr;
+ }
+ 
+-- 
+1.7.9.5
 
-On Wed, May 28, 2014 at 10:46:13AM +0200, Christoph Hellwig wrote:
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
-> ---
->  fs/nfsd/nfs4xdr.c |    4 ++--
->  1 file changed, 2 insertions(+), 2 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-> index d23412e..4bfe880c 100644
-> --- a/fs/nfsd/nfs4xdr.c
-> +++ b/fs/nfsd/nfs4xdr.c
-> @@ -2049,8 +2049,8 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
->  	err = vfs_getattr(&path, &stat);
->  	if (err)
->  		goto out_nfserr;
-> -	if ((bmval0 & (FATTR4_WORD0_FILES_FREE | FATTR4_WORD0_FILES_TOTAL |
-> -			FATTR4_WORD0_MAXNAME)) ||
-> +	if ((bmval0 & (FATTR4_WORD0_FILES_AVAIL | FATTR4_WORD0_FILES_FREE |
-> +			FATTR4_WORD0_FILES_TOTAL | FATTR4_WORD0_MAXNAME)) ||
->  	    (bmval1 & (FATTR4_WORD1_SPACE_AVAIL | FATTR4_WORD1_SPACE_FREE |
->  		       FATTR4_WORD1_SPACE_TOTAL))) {
->  		err = vfs_statfs(&path, &statfs);
-> -- 
-> 1.7.10.4
-> 
