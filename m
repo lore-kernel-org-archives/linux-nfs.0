@@ -1,62 +1,130 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f176.google.com ([209.85.223.176]:47157 "EHLO
-	mail-ie0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753689AbaE1Odg (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 May 2014 10:33:36 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH v5 12/24] xprtrmda: Reduce lock contention in completion
-	handlers
-To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Cc: Anna.Schumaker@netapp.com
-Date: Wed, 28 May 2014 10:33:34 -0400
-Message-ID: <20140528143334.23214.74603.stgit@manet.1015granger.net>
-In-Reply-To: <20140528142521.23214.39655.stgit@manet.1015granger.net>
-References: <20140528142521.23214.39655.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from fieldses.org ([174.143.236.118]:38542 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757481AbaEKUw5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 11 May 2014 16:52:57 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 14/43] nfsd4: use xdr_truncate_encode
+Date: Sun, 11 May 2014 16:52:19 -0400
+Message-Id: <1399841568-19716-15-git-send-email-bfields@redhat.com>
+In-Reply-To: <1399841568-19716-1-git-send-email-bfields@redhat.com>
+References: <1399841568-19716-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Skip the ib_poll_cq() after re-arming, if the provider knows there
-are no additional items waiting. (Have a look at commit ed23a727 for
-more details).
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Now that lengths are reliable, we can use xdr_truncate instead of
+open-coding it everywhere.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
+ fs/nfsd/nfs4xdr.c |   33 ++++++++++++++++-----------------
+ 1 file changed, 16 insertions(+), 17 deletions(-)
 
- net/sunrpc/xprtrdma/verbs.c |   14 ++++++++++----
- 1 files changed, 10 insertions(+), 4 deletions(-)
-
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index af2d097..c7d5281 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -192,8 +192,11 @@ rpcrdma_sendcq_upcall(struct ib_cq *cq, void *cq_context)
- 		return;
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 2f16a80..da6b43d 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -2041,7 +2041,7 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp, struct svc_export
+ 	struct svc_fh *tempfh = NULL;
+ 	struct kstatfs statfs;
+ 	__be32 *p;
+-	__be32 *start = xdr->p;
++	int starting_len = xdr->buf->len;
+ 	__be32 *attrlenp;
+ 	u32 dummy;
+ 	u64 dummy64;
+@@ -2534,13 +2534,8 @@ out:
+ 		fh_put(tempfh);
+ 		kfree(tempfh);
+ 	}
+-	if (status) {
+-		int nbytes = (char *)xdr->p - (char *)start;
+-		/* open code what *should* be xdr_truncate(xdr, len); */
+-		xdr->iov->iov_len -= nbytes;
+-		xdr->buf->len -= nbytes;
+-		xdr->p = start;
+-	}
++	if (status)
++		xdr_truncate_encode(xdr, starting_len);
+ 	return status;
+ out_nfserr:
+ 	status = nfserrno(err);
+@@ -2993,6 +2988,7 @@ nfsd4_encode_read(struct nfsd4_compoundres *resp, __be32 nfserr,
+ 	struct page *page;
+ 	unsigned long maxcount; 
+ 	struct xdr_stream *xdr = &resp->xdr;
++	int starting_len = xdr->buf->len;
+ 	long len;
+ 	__be32 *p;
+ 
+@@ -3029,8 +3025,13 @@ nfsd4_encode_read(struct nfsd4_compoundres *resp, __be32 nfserr,
+ 			&maxcount);
+ 
+ 	if (nfserr) {
+-		xdr->p -= 2;
+-		xdr->iov->iov_len -= 8;
++		/*
++		 * nfsd_splice_actor may have already messed with the
++		 * page length; reset it so as not to confuse
++		 * xdr_truncate_encode:
++		 */
++		xdr->buf->page_len = 0;
++		xdr_truncate_encode(xdr, starting_len);
+ 		return nfserr;
+ 	}
+ 	eof = (read->rd_offset + maxcount >=
+@@ -3063,6 +3064,7 @@ nfsd4_encode_readlink(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd
+ 	int maxcount;
+ 	struct xdr_stream *xdr = &resp->xdr;
+ 	char *page;
++	int length_offset = xdr->buf->len;
+ 	__be32 *p;
+ 
+ 	if (nfserr)
+@@ -3087,8 +3089,7 @@ nfsd4_encode_readlink(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd
+ 	if (nfserr == nfserr_isdir)
+ 		nfserr = nfserr_inval;
+ 	if (nfserr) {
+-		xdr->p--;
+-		xdr->iov->iov_len -= 4;
++		xdr_truncate_encode(xdr, length_offset);
+ 		return nfserr;
  	}
  
--	rc = ib_req_notify_cq(cq, IB_CQ_NEXT_COMP);
--	if (rc) {
-+	rc = ib_req_notify_cq(cq,
-+			IB_CQ_NEXT_COMP | IB_CQ_REPORT_MISSED_EVENTS);
-+	if (rc == 0)
-+		return;
-+	if (rc < 0) {
- 		dprintk("RPC:       %s: ib_req_notify_cq failed: %i\n",
- 			__func__, rc);
- 		return;
-@@ -272,8 +275,11 @@ rpcrdma_recvcq_upcall(struct ib_cq *cq, void *cq_context)
- 		return;
- 	}
+@@ -3117,7 +3118,8 @@ nfsd4_encode_readdir(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4
+ 	int maxcount;
+ 	loff_t offset;
+ 	struct xdr_stream *xdr = &resp->xdr;
+-	__be32 *page, *savep, *tailbase;
++	int starting_len = xdr->buf->len;
++	__be32 *page, *tailbase;
+ 	__be32 *p;
  
--	rc = ib_req_notify_cq(cq, IB_CQ_NEXT_COMP);
--	if (rc) {
-+	rc = ib_req_notify_cq(cq,
-+			IB_CQ_NEXT_COMP | IB_CQ_REPORT_MISSED_EVENTS);
-+	if (rc == 0)
-+		return;
-+	if (rc < 0) {
- 		dprintk("RPC:       %s: ib_req_notify_cq failed: %i\n",
- 			__func__, rc);
- 		return;
+ 	if (nfserr)
+@@ -3128,7 +3130,6 @@ nfsd4_encode_readdir(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4
+ 		return nfserr_resource;
+ 
+ 	RESERVE_SPACE(NFS4_VERIFIER_SIZE);
+-	savep = p;
+ 
+ 	/* XXX: Following NFSv3, we ignore the READDIR verifier for now. */
+ 	WRITE32(0);
+@@ -3189,9 +3190,7 @@ nfsd4_encode_readdir(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4
+ 
+ 	return 0;
+ err_no_verf:
+-	xdr->p = savep;
+-	xdr->iov->iov_len = ((char *)resp->xdr.p)
+-				- (char *)resp->xdr.buf->head[0].iov_base;
++	xdr_truncate_encode(xdr, starting_len);
+ 	return nfserr;
+ }
+ 
+-- 
+1.7.9.5
 
