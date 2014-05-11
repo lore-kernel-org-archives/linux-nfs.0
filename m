@@ -1,127 +1,125 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f47.google.com ([209.85.220.47]:54812 "EHLO
-	mail-pa0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751486AbaEARxc (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 May 2014 13:53:32 -0400
-Received: by mail-pa0-f47.google.com with SMTP id fa1so3913460pad.34
-        for <linux-nfs@vger.kernel.org>; Thu, 01 May 2014 10:53:31 -0700 (PDT)
-Content-Type: multipart/signed; boundary="Apple-Mail=_4DBC8F08-F27A-4B21-841E-61525D6DE9B7"; protocol="application/pgp-signature"; micalg=pgp-sha1
-Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
-Subject: Re: [PATCH -V1 22/22] ext4: Add Ext4 compat richacl feature flag
-From: Andreas Dilger <adilger@dilger.ca>
-In-Reply-To: <877g65biu4.fsf@linux.vnet.ibm.com>
-Date: Thu, 1 May 2014 11:52:48 -0600
-Cc: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
-        viro@zeniv.linux.org.uk, dhowells@redhat.com,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Message-Id: <14876338-8D87-48CD-B8B9-B44F311BB329@dilger.ca>
-References: <1398615293-22931-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1398615293-22931-23-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <88FB2DB7-126A-400E-9B44-19E99A553B2B@dilger.ca> <877g65biu4.fsf@linux.vnet.ibm.com>
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
+Received: from fieldses.org ([174.143.236.118]:38579 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757622AbaEKUxA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 11 May 2014 16:53:00 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 22/43] nfsd4: convert 4.1 replay encoding
+Date: Sun, 11 May 2014 16:52:27 -0400
+Message-Id: <1399841568-19716-23-git-send-email-bfields@redhat.com>
+In-Reply-To: <1399841568-19716-1-git-send-email-bfields@redhat.com>
+References: <1399841568-19716-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: "J. Bruce Fields" <bfields@redhat.com>
 
---Apple-Mail=_4DBC8F08-F27A-4B21-841E-61525D6DE9B7
-Content-Transfer-Encoding: quoted-printable
-Content-Type: text/plain;
-	charset=us-ascii
+Limits on maxresp_sz mean that we only ever need to replay rpc's that
+are contained entirely in the head.
 
-On May 1, 2014, at 9:48 AM, Aneesh Kumar K.V =
-<aneesh.kumar@linux.vnet.ibm.com> wrote:
+The one exception is very small zero-copy reads.  That's an odd corner
+case as clients wouldn't normally ask those to be cached.
 
-> Andreas Dilger <adilger@dilger.ca> writes:
->=20
->> On Apr 27, 2014, at 10:14 AM, Aneesh Kumar K.V =
-<aneesh.kumar@linux.vnet.ibm.com> wrote:
->>> This feature flag can be used to enable richacl on
->>> the file system. Once enabled the "acl" mount option
->>> will enable richacl instead of posix acl
->>=20
->>> diff --git a/fs/ext4/super.c b/fs/ext4/super.c
->>> index 6f9e6fadac04..2a0221652d79 100644
->>> --- a/fs/ext4/super.c
->>> +++ b/fs/ext4/super.c
->>> @@ -1274,6 +1274,30 @@ static ext4_fsblk_t get_sb_block(void **data)
->>> 	return sb_block;
->>> }
->>>=20
->>> +static void enable_acl(struct super_block *sb)
->>> +{
->>> +#if !defined(CONFIG_EXT4_FS_POSIX_ACL) && =
-!defined(CONFIG_EXT4_FS_RICHACL)
->>> +	return;
->>> +#endif
->>> +	if (EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_RICHACL)) {
->>> +		sb->s_flags |=3D MS_RICHACL;
->>> +		sb->s_flags &=3D ~MS_POSIXACL;
->>> +	} else {
->>> +		sb->s_flags |=3D MS_POSIXACL;
->>> +		sb->s_flags &=3D ~MS_RICHACL;
->>> +	}
->>=20
->> This should put the #ifdef around the code that is being =
-enabled/disabled,
->> otherwise it just becomes dead code:
->>=20
->> static int enable_acl(struct super_block *sb)
->> {
->> 	if (EXT4_HAS_COMPAT_FEATURE(sb, EXT4_FEATURE_COMPAT_RICHACL)) {
->> #if defined(CONFIG_EXT4_FS_RICHACL)
->> 		sb->s_flags |=3D MS_RICHACL;
->> 		sb->s_flags &=3D ~MS_POSIXACL;
->> #else
->> 		return -EOPNOTSUPP;
->> #endif
->> 	} else {
->> #if defined(CONFIG_EXT4_FS_POSIX_ACL)
->> 		sb->s_flags |=3D MS_POSIXACL;
->> 		sb->s_flags &=3D ~MS_RICHACL;
->> #else
->> 		return -EOPNOTSUPP;
->> #endif
->> 	}
->> 	return 0;
->> }
->=20
-> That is too much #ifdef with no real benefit ?
+in any case, this seems a little more robust.
 
-The benefit is that if neither CONFIG_EXT4_FS_RICHACL nor =
-CONFIG_EXT4_FS_POSIX_ACL are defined there isn't unreachable code
-after "return" at the start of the function.  Some static code
-analysis tools will complain about this.
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4state.c |   28 ++++++++++++++--------------
+ fs/nfsd/nfs4xdr.c   |    2 +-
+ fs/nfsd/xdr4.h      |    2 +-
+ 3 files changed, 16 insertions(+), 16 deletions(-)
 
-Cheers, Andreas
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index d4c9683..dd7efe9 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -1556,6 +1556,7 @@ out_err:
+ void
+ nfsd4_store_cache_entry(struct nfsd4_compoundres *resp)
+ {
++	struct xdr_buf *buf = resp->xdr.buf;
+ 	struct nfsd4_slot *slot = resp->cstate.slot;
+ 	unsigned int base;
+ 
+@@ -1569,11 +1570,9 @@ nfsd4_store_cache_entry(struct nfsd4_compoundres *resp)
+ 		slot->sl_datalen = 0;
+ 		return;
+ 	}
+-	slot->sl_datalen = (char *)resp->xdr.p - (char *)resp->cstate.datap;
+-	base = (char *)resp->cstate.datap -
+-					(char *)resp->xdr.buf->head[0].iov_base;
+-	if (read_bytes_from_xdr_buf(resp->xdr.buf, base, slot->sl_data,
+-				    slot->sl_datalen))
++	base = resp->cstate.data_offset;
++	slot->sl_datalen = buf->len - base;
++	if (read_bytes_from_xdr_buf(buf, base, slot->sl_data, slot->sl_datalen))
+ 		WARN("%s: sessions DRC could not cache compound\n", __func__);
+ 	return;
+ }
+@@ -1614,7 +1613,8 @@ nfsd4_replay_cache_entry(struct nfsd4_compoundres *resp,
+ 			 struct nfsd4_sequence *seq)
+ {
+ 	struct nfsd4_slot *slot = resp->cstate.slot;
+-	struct kvec *head = resp->xdr.iov;
++	struct xdr_stream *xdr = &resp->xdr;
++	__be32 *p;
+ 	__be32 status;
+ 
+ 	dprintk("--> %s slot %p\n", __func__, slot);
+@@ -1623,16 +1623,16 @@ nfsd4_replay_cache_entry(struct nfsd4_compoundres *resp,
+ 	if (status)
+ 		return status;
+ 
+-	/* The sequence operation has been encoded, cstate->datap set. */
+-	memcpy(resp->cstate.datap, slot->sl_data, slot->sl_datalen);
++	p = xdr_reserve_space(xdr, slot->sl_datalen);
++	if (!p) {
++		WARN_ON_ONCE(1);
++		return nfserr_serverfault;
++	}
++	xdr_encode_opaque_fixed(p, slot->sl_data, slot->sl_datalen);
++	xdr_commit_encode(xdr);
+ 
+ 	resp->opcnt = slot->sl_opcnt;
+-	resp->xdr.p = resp->cstate.datap + XDR_QUADLEN(slot->sl_datalen);
+-	head->iov_len = (void *)resp->xdr.p - head->iov_base;
+-	resp->xdr.buf->len = head->iov_len;
+-	status = slot->sl_status;
+-
+-	return status;
++	return slot->sl_status;
+ }
+ 
+ /*
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index aedf19a..6c3ac43 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -3641,7 +3641,7 @@ nfsd4_encode_sequence(struct nfsd4_compoundres *resp, __be32 nfserr,
+ 	WRITE32(seq->maxslots - 1); /* sr_target_highest_slotid */
+ 	WRITE32(seq->status_flags);
+ 
+-	resp->cstate.datap = p; /* DRC cache data pointer */
++	resp->cstate.data_offset = xdr->buf->len; /* DRC cache data pointer */
+ 	return 0;
+ }
+ 
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index 19bf3fc..d1c6e21 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -58,7 +58,7 @@ struct nfsd4_compound_state {
+ 	/* For sessions DRC */
+ 	struct nfsd4_session	*session;
+ 	struct nfsd4_slot	*slot;
+-	__be32			*datap;
++	int			data_offset;
+ 	size_t			iovlen;
+ 	u32			minorversion;
+ 	__be32			status;
+-- 
+1.7.9.5
 
-
-
-
-
-
---Apple-Mail=_4DBC8F08-F27A-4B21-841E-61525D6DE9B7
-Content-Transfer-Encoding: 7bit
-Content-Disposition: attachment;
-	filename=signature.asc
-Content-Type: application/pgp-signature;
-	name=signature.asc
-Content-Description: Message signed with OpenPGP using GPGMail
-
------BEGIN PGP SIGNATURE-----
-Comment: GPGTools - http://gpgtools.org
-
-iQIVAwUBU2KJ8XKl2rkXzB/gAQJVtg/8DahNWsnhNP8WqPHC2W3IExVCQkBn838r
-FlbvVYdLFbgpJwgXqi3gKW7mwcMJCIm1xIP9spYepYMHqDtNkdZloKbi+jz5HcK/
-T9Z/5TPsxwlLYh9y6w0MU9dR5QVPxKCEyRow4Frm8geGXeyWEFGwFVDXh9eJkRjd
-DBJRiosJUYycl776nF6+nrgYAuKbomSVm2gEYiYL7CrhXT2bfyjKFi8ocBPXTKXl
-UptXawH2cQa933Vesb9EvNv56IYmjnUpPA9gVBTOt9rAYvxf8Fgf+lbVe+/01Ec4
-q/ulu3RyyVkqZIxKvyKnQ1dKq5m98JpDJ9gf1edwReq7hcJ6fBZDhFEo6s6zXOPR
-v2Vxa6QmUnj4QC23JPbTaEgyr8JWSCgZimX2ry0GR6JhMO/a+60njg/+iiHNysZh
-9eTktCYyqm/r4oydKIS90wq2TNXRJb9AQpFfG3d3nmCeiyNyr/WPPvkDCcqmHLKs
-Ki2HgzbDmWps9GIABMV/lNs3XTQylnqc7E+45GRoJRX2KJkP6kehiTg3eK9ZXehG
-W/b1dcTrIIN3XDjknh+q2m3B3lCOt8hVUMVjJTHJNYCa7YkBc6QESDX9oDAqqe/L
-hWFoJseb2L6XlauDmNxhY5RAGjWdH3IzAow38soiiwaZI3pnrVwWH+CO+WflO08F
-s9P+0JpDPIQ=
-=PLXn
------END PGP SIGNATURE-----
-
---Apple-Mail=_4DBC8F08-F27A-4B21-841E-61525D6DE9B7--
