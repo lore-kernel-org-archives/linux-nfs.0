@@ -1,126 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pb0-f50.google.com ([209.85.160.50]:64668 "EHLO
-	mail-pb0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751143AbaELVgJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 May 2014 17:36:09 -0400
-Received: by mail-pb0-f50.google.com with SMTP id ma3so121138pbc.9
-        for <linux-nfs@vger.kernel.org>; Mon, 12 May 2014 14:36:08 -0700 (PDT)
-From: Thomas Haynes <thomas.haynes@primarydata.com>
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org, Tom Haynes <Thomas.Haynes@primarydata.com>
-Subject: [PATCH] Push the file layout driver into a subdirectory
-Date: Mon, 12 May 2014 14:35:52 -0700
-Message-Id: <1399930552-20890-1-git-send-email-Thomas.Haynes@primarydata.com>
+Received: from fieldses.org ([174.143.236.118]:38519 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754226AbaEKUwy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 11 May 2014 16:52:54 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 04/43] nfsd4: reserve head space for krb5 integ/priv info
+Date: Sun, 11 May 2014 16:52:09 -0400
+Message-Id: <1399841568-19716-5-git-send-email-bfields@redhat.com>
+In-Reply-To: <1399841568-19716-1-git-send-email-bfields@redhat.com>
+References: <1399841568-19716-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Tom Haynes <Thomas.Haynes@primarydata.com>
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-The object and block layouts already exist in their own
-subdirectories. This patch completes the set!
+Currently if the nfs-level part of a reply would be too large, we'll
+return an error to the client.  But if the nfs-level part fits and
+leaves no room for krb5p or krb5i stuff, then we just drop the request
+entirely.
 
-Note that as a layout denotes nfs4 already, I stripped
-that prefix out of the file names.
+That's no good.  Instead, reserve some slack space at the end of the
+buffer and make sure we fail outright if we'd come close.
 
-Signed-off-by: Tom Haynes <Thomas.Haynes@primarydata.com>
-Acked-by: Jeff Layton <jlayton@poochiereds.net>
+The slack space here is a massive overstimate of what's required, we
+should probably try for a tighter limit at some point.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfs/Makefile                                            |  4 +---
- fs/nfs/filelayout/Makefile                                 |  5 +++++
- fs/nfs/{nfs4filelayout.c => filelayout/filelayout.c}       | 10 +++++-----
- fs/nfs/{nfs4filelayout.h => filelayout/filelayout.h}       |  2 +-
- fs/nfs/{nfs4filelayoutdev.c => filelayout/filelayoutdev.c} |  6 +++---
- 5 files changed, 15 insertions(+), 12 deletions(-)
- create mode 100644 fs/nfs/filelayout/Makefile
- rename fs/nfs/{nfs4filelayout.c => filelayout/filelayout.c} (99%)
- rename fs/nfs/{nfs4filelayout.h => filelayout/filelayout.h} (99%)
- rename fs/nfs/{nfs4filelayoutdev.c => filelayout/filelayoutdev.c} (99%)
+ fs/nfsd/nfs4proc.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
-index 551d82a..43058f7 100644
---- a/fs/nfs/Makefile
-+++ b/fs/nfs/Makefile
-@@ -29,8 +29,6 @@ nfsv4-$(CONFIG_NFS_USE_LEGACY_DNS) += cache_lib.o
- nfsv4-$(CONFIG_SYSCTL)	+= nfs4sysctl.o
- nfsv4-$(CONFIG_NFS_V4_1)	+= pnfs.o pnfs_dev.o
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 6c049c4..3d4b044 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1259,7 +1259,7 @@ static void svcxdr_init_encode(struct svc_rqst *rqstp, struct nfsd4_compoundres
  
--obj-$(CONFIG_PNFS_FILE_LAYOUT) += nfs_layout_nfsv41_files.o
--nfs_layout_nfsv41_files-y := nfs4filelayout.o nfs4filelayoutdev.o
--
-+obj-$(CONFIG_PNFS_FILE_LAYOUT) += filelayout/
- obj-$(CONFIG_PNFS_OBJLAYOUT) += objlayout/
- obj-$(CONFIG_PNFS_BLOCK) += blocklayout/
-diff --git a/fs/nfs/filelayout/Makefile b/fs/nfs/filelayout/Makefile
-new file mode 100644
-index 0000000..8516cdf
---- /dev/null
-+++ b/fs/nfs/filelayout/Makefile
-@@ -0,0 +1,5 @@
-+#
-+# Makefile for the pNFS Files Layout Driver kernel module
-+#
-+obj-$(CONFIG_PNFS_FILE_LAYOUT) += nfs_layout_nfsv41_files.o
-+nfs_layout_nfsv41_files-y := filelayout.o filelayoutdev.o
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/filelayout/filelayout.c
-similarity index 99%
-rename from fs/nfs/nfs4filelayout.c
-rename to fs/nfs/filelayout/filelayout.c
-index 7954e16..ffc2ed8 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/filelayout/filelayout.c
-@@ -35,11 +35,11 @@
- 
- #include <linux/sunrpc/metrics.h>
- 
--#include "nfs4session.h"
--#include "internal.h"
--#include "delegation.h"
--#include "nfs4filelayout.h"
--#include "nfs4trace.h"
-+#include "../nfs4session.h"
-+#include "../internal.h"
-+#include "../delegation.h"
-+#include "filelayout.h"
-+#include "../nfs4trace.h"
- 
- #define NFSDBG_FACILITY         NFSDBG_PNFS_LD
- 
-diff --git a/fs/nfs/nfs4filelayout.h b/fs/nfs/filelayout/filelayout.h
-similarity index 99%
-rename from fs/nfs/nfs4filelayout.h
-rename to fs/nfs/filelayout/filelayout.h
-index cebd20e..ffbddf2 100644
---- a/fs/nfs/nfs4filelayout.h
-+++ b/fs/nfs/filelayout/filelayout.h
-@@ -30,7 +30,7 @@
- #ifndef FS_NFS_NFS4FILELAYOUT_H
- #define FS_NFS_NFS4FILELAYOUT_H
- 
--#include "pnfs.h"
-+#include "../pnfs.h"
+ 	xdr->buf = buf;
+ 	xdr->p   = head->iov_base + head->iov_len;
+-	xdr->end = head->iov_base + PAGE_SIZE;
++	xdr->end = head->iov_base + PAGE_SIZE - 2 * RPC_MAX_AUTH_SIZE;
+ }
  
  /*
-  * Default data server connection timeout and retrans vaules.
-diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/filelayout/filelayoutdev.c
-similarity index 99%
-rename from fs/nfs/nfs4filelayoutdev.c
-rename to fs/nfs/filelayout/filelayoutdev.c
-index efac602..7c85390 100644
---- a/fs/nfs/nfs4filelayoutdev.c
-+++ b/fs/nfs/filelayout/filelayoutdev.c
-@@ -33,9 +33,9 @@
- #include <linux/module.h>
- #include <linux/sunrpc/addr.h>
- 
--#include "internal.h"
--#include "nfs4session.h"
--#include "nfs4filelayout.h"
-+#include "../internal.h"
-+#include "../nfs4session.h"
-+#include "filelayout.h"
- 
- #define NFSDBG_FACILITY		NFSDBG_PNFS_LD
- 
 -- 
-1.9.0
+1.7.9.5
 
