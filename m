@@ -1,106 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f171.google.com ([209.85.223.171]:39474 "EHLO
-	mail-ie0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932066AbaE1OdT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 May 2014 10:33:19 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH v5 10/24] xprtrdma: Make rpcrdma_ep_destroy() return void
-To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Cc: Anna.Schumaker@netapp.com
-Date: Wed, 28 May 2014 10:33:16 -0400
-Message-ID: <20140528143316.23214.61390.stgit@manet.1015granger.net>
-In-Reply-To: <20140528142521.23214.39655.stgit@manet.1015granger.net>
-References: <20140528142521.23214.39655.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from fieldses.org ([174.143.236.118]:38598 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1757703AbaEKUxC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 11 May 2014 16:53:02 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 26/43] nfsd4: nfsd4_check_resp_size should check against whole buffer
+Date: Sun, 11 May 2014 16:52:31 -0400
+Message-Id: <1399841568-19716-27-git-send-email-bfields@redhat.com>
+In-Reply-To: <1399841568-19716-1-git-send-email-bfields@redhat.com>
+References: <1399841568-19716-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: rpcrdma_ep_destroy() returns a value that is used
-only to print a debugging message. rpcrdma_ep_destroy() already
-prints debugging messages in all error cases.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Make rpcrdma_ep_destroy() return void instead.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: Steve Wise <swise@opengridcomputing.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
+ fs/nfsd/nfs4xdr.c |    3 +--
+ 1 file changed, 1 insertion(+), 2 deletions(-)
 
- net/sunrpc/xprtrdma/transport.c |    8 ++------
- net/sunrpc/xprtrdma/verbs.c     |    7 +------
- net/sunrpc/xprtrdma/xprt_rdma.h |    2 +-
- 3 files changed, 4 insertions(+), 13 deletions(-)
-
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 430cabb..d18b2a3 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -229,7 +229,6 @@ static void
- xprt_rdma_destroy(struct rpc_xprt *xprt)
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index eb1694d..4751fd4 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -3760,7 +3760,6 @@ __be32 nfsd4_check_resp_size(struct nfsd4_compoundres *resp, u32 respsize)
  {
- 	struct rpcrdma_xprt *r_xprt = rpcx_to_rdmax(xprt);
--	int rc;
+ 	struct xdr_buf *buf = &resp->rqstp->rq_res;
+ 	struct nfsd4_session *session = resp->cstate.session;
+-	int slack_bytes = (char *)resp->xdr.end - (char *)resp->xdr.p;
  
- 	dprintk("RPC:       %s: called\n", __func__);
+ 	if (nfsd4_has_session(&resp->cstate)) {
+ 		struct nfsd4_slot *slot = resp->cstate.slot;
+@@ -3773,7 +3772,7 @@ __be32 nfsd4_check_resp_size(struct nfsd4_compoundres *resp, u32 respsize)
+ 			return nfserr_rep_too_big_to_cache;
+ 	}
  
-@@ -238,10 +237,7 @@ xprt_rdma_destroy(struct rpc_xprt *xprt)
- 	xprt_clear_connected(xprt);
- 
- 	rpcrdma_buffer_destroy(&r_xprt->rx_buf);
--	rc = rpcrdma_ep_destroy(&r_xprt->rx_ep, &r_xprt->rx_ia);
--	if (rc)
--		dprintk("RPC:       %s: rpcrdma_ep_destroy returned %i\n",
--			__func__, rc);
-+	rpcrdma_ep_destroy(&r_xprt->rx_ep, &r_xprt->rx_ia);
- 	rpcrdma_ia_close(&r_xprt->rx_ia);
- 
- 	xprt_rdma_free_addresses(xprt);
-@@ -391,7 +387,7 @@ out4:
- 	xprt_rdma_free_addresses(xprt);
- 	rc = -EINVAL;
- out3:
--	(void) rpcrdma_ep_destroy(new_ep, &new_xprt->rx_ia);
-+	rpcrdma_ep_destroy(new_ep, &new_xprt->rx_ia);
- out2:
- 	rpcrdma_ia_close(&new_xprt->rx_ia);
- out1:
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 0cbc83c..edc951e 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -748,11 +748,8 @@ out1:
-  * Disconnect and destroy endpoint. After this, the only
-  * valid operations on the ep are to free it (if dynamically
-  * allocated) or re-create it.
-- *
-- * The caller's error handling must be sure to not leak the endpoint
-- * if this function fails.
-  */
--int
-+void
- rpcrdma_ep_destroy(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
- {
- 	int rc;
-@@ -782,8 +779,6 @@ rpcrdma_ep_destroy(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
- 	if (rc)
- 		dprintk("RPC:       %s: ib_destroy_cq returned %i\n",
- 			__func__, rc);
--
--	return rc;
- }
- 
- /*
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index 3f44d6a..362a19d 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -301,7 +301,7 @@ void rpcrdma_ia_close(struct rpcrdma_ia *);
-  */
- int rpcrdma_ep_create(struct rpcrdma_ep *, struct rpcrdma_ia *,
- 				struct rpcrdma_create_data_internal *);
--int rpcrdma_ep_destroy(struct rpcrdma_ep *, struct rpcrdma_ia *);
-+void rpcrdma_ep_destroy(struct rpcrdma_ep *, struct rpcrdma_ia *);
- int rpcrdma_ep_connect(struct rpcrdma_ep *, struct rpcrdma_ia *);
- int rpcrdma_ep_disconnect(struct rpcrdma_ep *, struct rpcrdma_ia *);
- 
+-	if (respsize > slack_bytes) {
++	if (buf->len + respsize > buf->buflen) {
+ 		WARN_ON_ONCE(nfsd4_has_session(&resp->cstate));
+ 		return nfserr_resource;
+ 	}
+-- 
+1.7.9.5
 
