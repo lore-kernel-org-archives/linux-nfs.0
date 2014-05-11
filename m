@@ -1,94 +1,108 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:43414 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:38606 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752421AbaEVTck (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 May 2014 15:32:40 -0400
+	id S1757738AbaEKUxD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 11 May 2014 16:53:03 -0400
 From: "J. Bruce Fields" <bfields@redhat.com>
 To: linux-nfs@vger.kernel.org
 Cc: Christoph Hellwig <hch@infradead.org>,
         "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 28/52] nfsd4: don't try to encode conflicting owner if low on space
-Date: Thu, 22 May 2014 15:32:03 -0400
-Message-Id: <1400787148-25941-29-git-send-email-bfields@redhat.com>
-In-Reply-To: <1400787148-25941-1-git-send-email-bfields@redhat.com>
-References: <1400787148-25941-1-git-send-email-bfields@redhat.com>
+Subject: [PATCH 28/43] nfsd4: adjust buflen to session channel limit
+Date: Sun, 11 May 2014 16:52:33 -0400
+Message-Id: <1399841568-19716-29-git-send-email-bfields@redhat.com>
+In-Reply-To: <1399841568-19716-1-git-send-email-bfields@redhat.com>
+References: <1399841568-19716-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: "J. Bruce Fields" <bfields@redhat.com>
 
-I ran into this corner case in testing: in theory clients can provide
-state owners up to 1024 bytes long.  In the sessions case there might be
-a risk of this pushing us over the DRC slot size.
+We can simplify session limit enforcement by restricting the xdr buflen
+to the session size.
 
-The conflicting owner isn't really that important, so let's humor a
-client that provides a small maxresponsize_cached by allowing ourselves
-to return without the conflicting owner instead of outright failing the
-operation.
+Also fix a preexisting bug: we should really have been taking into
+account the auth-required space when comparing against session limits,
+which are limits on the size of the entire rpc reply, including any krb5
+overhead.
 
 Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfsd/nfs4proc.c |  3 ++-
- fs/nfsd/nfs4xdr.c  | 16 +++++++++++++---
- 2 files changed, 15 insertions(+), 4 deletions(-)
+ fs/nfsd/nfs4state.c |   11 +++++++++++
+ fs/nfsd/nfs4xdr.c   |   24 ++++++++----------------
+ 2 files changed, 19 insertions(+), 16 deletions(-)
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 2517e0b..1326a0b 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1434,7 +1434,8 @@ out:
- #define op_encode_change_info_maxsz	(5)
- #define nfs4_fattr_bitmap_maxsz		(4)
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index dd7efe9..620d240 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -2204,11 +2204,13 @@ nfsd4_sequence(struct svc_rqst *rqstp,
+ 	       struct nfsd4_sequence *seq)
+ {
+ 	struct nfsd4_compoundres *resp = rqstp->rq_resp;
++	struct xdr_stream *xdr = &resp->xdr;
+ 	struct nfsd4_session *session;
+ 	struct nfs4_client *clp;
+ 	struct nfsd4_slot *slot;
+ 	struct nfsd4_conn *conn;
+ 	__be32 status;
++	int buflen;
+ 	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
  
--#define op_encode_lockowner_maxsz	(1 + XDR_QUADLEN(IDMAP_NAMESZ))
-+/* We'll fall back on returning no lockowner if run out of space: */
-+#define op_encode_lockowner_maxsz	(0)
- #define op_encode_lock_denied_maxsz	(8 + op_encode_lockowner_maxsz)
+ 	if (resp->opcnt != 1)
+@@ -2277,6 +2279,15 @@ nfsd4_sequence(struct svc_rqst *rqstp,
+ 	if (status)
+ 		goto out_put_session;
  
- #define nfs4_owner_maxsz		(1 + XDR_QUADLEN(IDMAP_NAMESZ))
++	buflen = (seq->cachethis) ?
++			session->se_fchannel.maxresp_cached :
++			session->se_fchannel.maxresp_sz;
++	status = (seq->cachethis) ? nfserr_rep_too_big_to_cache :
++				    nfserr_rep_too_big;
++	if (xdr_restrict_buflen(xdr, buflen - 2 * RPC_MAX_AUTH_SIZE))
++		goto out_put_session;
++
++	status = nfs_ok;
+ 	/* Success! bump slot seqid */
+ 	slot->sl_seqid = seq->seqid;
+ 	slot->sl_flags |= NFSD4_SLOT_INUSE;
 diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 19df1c2..4c2f866 100644
+index 4751fd4..0d8a18d 100644
 --- a/fs/nfsd/nfs4xdr.c
 +++ b/fs/nfsd/nfs4xdr.c
-@@ -2878,9 +2878,20 @@ nfsd4_encode_lock_denied(struct xdr_stream *xdr, struct nfsd4_lock_denied *ld)
- 	struct xdr_netobj *conf = &ld->ld_owner;
- 	__be32 *p;
+@@ -3759,25 +3759,17 @@ static nfsd4_enc nfsd4_enc_ops[] = {
+ __be32 nfsd4_check_resp_size(struct nfsd4_compoundres *resp, u32 respsize)
+ {
+ 	struct xdr_buf *buf = &resp->rqstp->rq_res;
+-	struct nfsd4_session *session = resp->cstate.session;
++	struct nfsd4_slot *slot = resp->cstate.slot;
  
-+again:
- 	p = xdr_reserve_space(xdr, 32 + XDR_LEN(conf->len));
--	if (!p)
-+	if (!p) {
-+		/*
-+		 * Don't fail to return the result just because we can't
-+		 * return the conflicting open:
-+		 */
-+		if (conf->len) {
-+			conf->len = 0;
-+			conf->data = NULL;
-+			goto again;
-+		}
- 		return nfserr_resource;
-+	}
- 	WRITE64(ld->ld_start);
- 	WRITE64(ld->ld_length);
- 	WRITE32(ld->ld_type);
-@@ -2888,7 +2899,6 @@ nfsd4_encode_lock_denied(struct xdr_stream *xdr, struct nfsd4_lock_denied *ld)
- 		WRITEMEM(&ld->ld_clientid, 8);
- 		WRITE32(conf->len);
- 		WRITEMEM(conf->data, conf->len);
--		kfree(conf->data);
- 	}  else {  /* non - nfsv4 lock in conflict, no clientid nor owner */
- 		WRITE64((u64)0); /* clientid */
- 		WRITE32(0); /* length of owner name */
-@@ -2905,7 +2915,7 @@ nfsd4_encode_lock(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_lo
- 		nfserr = nfsd4_encode_stateid(xdr, &lock->lk_resp_stateid);
- 	else if (nfserr == nfserr_denied)
- 		nfserr = nfsd4_encode_lock_denied(xdr, &lock->lk_denied);
+-	if (nfsd4_has_session(&resp->cstate)) {
+-		struct nfsd4_slot *slot = resp->cstate.slot;
 -
-+	kfree(lock->lk_denied.ld_owner.data);
- 	return nfserr;
+-		if (buf->len + respsize > session->se_fchannel.maxresp_sz)
+-			return nfserr_rep_too_big;
+-
+-		if ((slot->sl_flags & NFSD4_SLOT_CACHETHIS) &&
+-		    buf->len + respsize > session->se_fchannel.maxresp_cached)
+-			return nfserr_rep_too_big_to_cache;
+-	}
+-
+-	if (buf->len + respsize > buf->buflen) {
+-		WARN_ON_ONCE(nfsd4_has_session(&resp->cstate));
++	if (buf->len + respsize <= buf->buflen)
++		return nfs_ok;
++	if (!nfsd4_has_session(&resp->cstate))
+ 		return nfserr_resource;
++	if (slot->sl_flags & NFSD4_SLOT_CACHETHIS) {
++		WARN_ON_ONCE(1);
++		return nfserr_rep_too_big_to_cache;
+ 	}
+-
+-	return 0;
++	return nfserr_rep_too_big;
  }
  
+ void
 -- 
-1.9.0
+1.7.9.5
 
