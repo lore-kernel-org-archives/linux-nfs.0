@@ -1,68 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:43325 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:38534 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751039AbaEVTcc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 May 2014 15:32:32 -0400
+	id S1757341AbaEKUwz (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 11 May 2014 16:52:55 -0400
 From: "J. Bruce Fields" <bfields@redhat.com>
 To: linux-nfs@vger.kernel.org
 Cc: Christoph Hellwig <hch@infradead.org>,
         "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 09/52] nfsd4: move proc_compound xdr encode init to helper
-Date: Thu, 22 May 2014 15:31:44 -0400
-Message-Id: <1400787148-25941-10-git-send-email-bfields@redhat.com>
-In-Reply-To: <1400787148-25941-1-git-send-email-bfields@redhat.com>
-References: <1400787148-25941-1-git-send-email-bfields@redhat.com>
+Subject: [PATCH 07/43] nfsd4: allow space for final error return
+Date: Sun, 11 May 2014 16:52:12 -0400
+Message-Id: <1399841568-19716-8-git-send-email-bfields@redhat.com>
+In-Reply-To: <1399841568-19716-1-git-send-email-bfields@redhat.com>
+References: <1399841568-19716-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: "J. Bruce Fields" <bfields@redhat.com>
 
-Mechanical transformation with no change of behavior.
+This post-encoding check should be taking into account the need to
+encode at least an out-of-space error to the following op (if any).
 
-Reviewed-by: Christoph Hellwig <hch@lst.de>
 Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfsd/nfs4proc.c | 17 +++++++++++++----
- 1 file changed, 13 insertions(+), 4 deletions(-)
+ fs/nfsd/nfs4xdr.c |    9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 94ef528..f809aa8 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1253,6 +1253,18 @@ static bool need_wrongsec_check(struct svc_rqst *rqstp)
- 	return !(nextd->op_flags & OP_HANDLES_WRONGSEC);
- }
- 
-+static void svcxdr_init_encode(struct svc_rqst *rqstp,
-+			       struct nfsd4_compoundres *resp)
-+{
-+	struct xdr_stream *xdr = &resp->xdr;
-+	struct xdr_buf *buf = &rqstp->rq_res;
-+	struct kvec *head = buf->head;
-+
-+	xdr->buf = buf;
-+	xdr->p   = head->iov_base + head->iov_len;
-+	xdr->end = head->iov_base + PAGE_SIZE;
-+}
-+
- /*
-  * COMPOUND call.
-  */
-@@ -1270,13 +1282,10 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
- 	u32		plen = 0;
- 	__be32		status;
- 
--	resp->xdr.buf = &rqstp->rq_res;
--	resp->xdr.p = rqstp->rq_res.head[0].iov_base +
--						rqstp->rq_res.head[0].iov_len;
-+	svcxdr_init_encode(rqstp, resp);
- 	resp->tagp = resp->xdr.p;
- 	/* reserve space for: taglen, tag, and opcnt */
- 	resp->xdr.p += 2 + XDR_QUADLEN(args->taglen);
--	resp->xdr.end = rqstp->rq_res.head[0].iov_base + PAGE_SIZE;
- 	resp->taglen = args->taglen;
- 	resp->tag = args->tag;
- 	resp->opcnt = 0;
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index fb40dd1..e915bb1 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -3632,6 +3632,7 @@ void
+ nfsd4_encode_operation(struct nfsd4_compoundres *resp, struct nfsd4_op *op)
+ {
+ 	struct nfs4_stateowner *so = resp->cstate.replay_owner;
++	struct svc_rqst *rqstp = resp->rqstp;
+ 	__be32 *statp;
+ 	nfsd4_enc encoder;
+ 	__be32 *p;
+@@ -3648,8 +3649,12 @@ nfsd4_encode_operation(struct nfsd4_compoundres *resp, struct nfsd4_op *op)
+ 	encoder = nfsd4_enc_ops[op->opnum];
+ 	op->status = encoder(resp, op->status, &op->u);
+ 	/* nfsd4_check_resp_size guarantees enough room for error status */
+-	if (!op->status)
+-		op->status = nfsd4_check_resp_size(resp, 0);
++	if (!op->status) {
++		int space_needed = 0;
++		if (!nfsd4_last_compound_op(rqstp))
++			space_needed = COMPOUND_ERR_SLACK_SPACE;
++		op->status = nfsd4_check_resp_size(resp, space_needed);
++	}
+ 	if (op->status == nfserr_resource ||
+ 	    op->status == nfserr_rep_too_big ||
+ 	    op->status == nfserr_rep_too_big_to_cache) {
 -- 
-1.9.0
+1.7.9.5
 
