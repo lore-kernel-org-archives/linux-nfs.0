@@ -1,72 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f170.google.com ([209.85.213.170]:56211 "EHLO
-	mail-ig0-f170.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753230AbaE1Oby (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 May 2014 10:31:54 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH v5 00/24] Series short description
-To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Cc: Anna.Schumaker@netapp.com
-Date: Wed, 28 May 2014 10:31:51 -0400
-Message-ID: <20140528142521.23214.39655.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from cantor2.suse.de ([195.135.220.15]:47504 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750897AbaELBGH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Sun, 11 May 2014 21:06:07 -0400
+Date: Mon, 12 May 2014 11:05:57 +1000
+From: NeilBrown <neilb@suse.de>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: Jan Kara <jack@suse.cz>, Jeff Layton <jlayton@redhat.com>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Dave Chinner <david@fromorbit.com>, Mel Gorman <mgorman@suse.com>,
+        Andrew Morton <akpm@linux-foundation.org>, linux-mm@kvack.org,
+        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
+Subject: Re: [PATCH 3/5] nfsd: Only set PF_LESS_THROTTLE when really needed.
+Message-ID: <20140512110557.67f2028e@notabene.brown>
+In-Reply-To: <20140506205418.GQ18281@fieldses.org>
+References: <20140423022441.4725.89693.stgit@notabene.brown>
+	<20140423024058.4725.38098.stgit@notabene.brown>
+	<20140506205418.GQ18281@fieldses.org>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/_V4z.i1JTXug8PX71jSjKud"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Updates since v4:
+--Sig_/_V4z.i1JTXug8PX71jSjKud
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-- Rebased on v3.15-rc7
-- Addressed Trond's review comment in "Reset connection timeout..."
-- Wake up RPC tasks only when cwnd is growing in "Avoid deadlock when..."
-- Fix patch description of "Remove MEMWINDOWS registration modes"
+On Tue, 6 May 2014 16:54:18 -0400 "J. Bruce Fields" <bfields@fieldses.org>
+wrote:
 
-Pull from the "nfs-rdma-client" branch of my git repo:
+> On Wed, Apr 23, 2014 at 12:40:58PM +1000, NeilBrown wrote:
+> > PF_LESS_THROTTLE has a very specific use case: to avoid deadlocks
+> > and live-locks while writing to the page cache in a loop-back
+> > NFS mount situation.
+> >=20
+> > It therefore makes sense to *only* set PF_LESS_THROTTLE in this
+> > situation.
+> > We now know when a request came from the local-host so it could be a
+> > loop-back mount.  We already know when we are handling write requests,
+> > and when we are doing anything else.
+> >=20
+> > So combine those two to allow nfsd to still be throttled (like any
+> > other process) in every situation except when it is known to be
+> > problematic.
+>=20
+> Looks simple enough, ACK.--b.
+>=20
 
-  git://git.linux-nfs.org/projects/cel/cel-2.6.git
+Thanks.
+I'll resend the bits need for just this.
 
----
+The NFS side need to wait for wait_on_bit improvements which seem to be on a
+slow path at the moment.
 
-Allen Andrews (1):
-      nfs-rdma: Fix for FMR leaks
+Thanks,
+NeilBrown
 
-Chuck Lever (21):
-      xprtrdma: Disconnect on registration failure
-      xprtrdma: Remove BUG_ON() call sites
-      xprtrdma: Avoid deadlock when credit window is reset
-      SUNRPC: Move congestion window constants to header file
-      xprtrdma: Reset connection timeout after successful reconnect
-      xprtrdma: Use macros for reconnection timeout constants
-      xprtrdma: Remove Tavor MTU setting
-      xprtrdma: Ensure ia->ri_id->qp is not NULL when reconnecting
-      xprtrdma: Reduce the number of hardway buffer allocations
-      xprtrdma: Limit work done by completion handler
-      xprtrmda: Reduce calls to ib_poll_cq() in completion handlers
-      xprtrmda: Reduce lock contention in completion handlers
-      xprtrdma: Split the completion queue
-      xprtrdma: Make rpcrdma_ep_destroy() return void
-      xprtrdma: Simplify rpcrdma_deregister_external() synopsis
-      xprtrdma: mount reports "Invalid mount option" if memreg mode not supported
-      xprtrdma: Fall back to MTHCAFMR when FRMR is not supported
-      xprtrdma: Remove REGISTER memory registration mode
-      xprtrdma: Remove MEMWINDOWS registration modes
-      xprtrdma: Remove BOUNCEBUFFERS memory registration mode
-      xprtrdma: RPC/RDMA must invoke xprt_wake_pending_tasks() in process context
+--Sig_/_V4z.i1JTXug8PX71jSjKud
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
 
-Shirley Ma (1):
-      xprtrdma: Allocate missing pagelist
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.22 (GNU/Linux)
 
-Steve Wise (1):
-      xprtrdma: mind the device's max fast register page list depth
+iQIVAwUBU3AedTnsnt1WYoG5AQLtVQ//ca3F1FKgZ1bg4vldC4AC0h6yeS6OW2kb
+71BlpBNF69xL/yY56j2JTOtxf/SDJxf/UGPjChxpaIpcf/npZPPT4mfUL+7AruNm
+pBbLtenwSnU0GRvCuDednJwt33mZ33minfW7Gzhsc1Uj2s0Rd0yaUnio7DTNBpgI
+KuIgcN/LKuEz+u+ItEpcQ3fCE0uOS8/W9prYPcyZvHH+DrwyLwpHFz2CV2WNsdRZ
+zpwRb8aQNXTnJKuTDgUieZOIB9/eSK5+uznhzd7VwcRhdAU4edduI26gVNxjkgZb
+zDggyM55TyNxtDK/hSTWpmHYybI9dznUDNkQs3FVzGyw/dGKxLHxY2X2FkNLleUr
+yqpqMla309OOm4/gAL/vCaLUTVtyirOqJbyn6Qtv3qFccG2HnRp4qvk+YLMIZuyF
+5cxg56+3KXGRvES08KJchzk+RP9lpShyhAuyUJEZV2DmyvAFDUbMrKakkVEyeUnj
+F69+uEccPX3qZ3E0Z4Yo5ryaZGcndeevVYgFDTQn0GvKleLNK3oclVtIM+d68Duq
+jzeh/Ejj0j2TGgzPs0clQ1EDLCC81ka/GHEeBkVLaejV0Yd9b/MovwxFf4UZQbkJ
+8AqoHzmWrj4k3qe7uHwXRzi4AlzFBbt3/nqXy3ROkNJCdbMVblzJxsihv7bGX+tf
+29nSQoHbuT4=
+=epl8
+-----END PGP SIGNATURE-----
 
-
- include/linux/sunrpc/xprt.h     |    6 
- net/sunrpc/xprt.c               |   28 -
- net/sunrpc/xprtrdma/rpc_rdma.c  |  119 +++---
- net/sunrpc/xprtrdma/transport.c |   90 ++---
- net/sunrpc/xprtrdma/verbs.c     |  753 ++++++++++++++++-----------------------
- net/sunrpc/xprtrdma/xprt_rdma.h |   17 +
- 6 files changed, 411 insertions(+), 602 deletions(-)
-
--- 
-Chuck Lever
+--Sig_/_V4z.i1JTXug8PX71jSjKud--
