@@ -1,142 +1,131 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-oa0-f46.google.com ([209.85.219.46]:55773 "EHLO
-	mail-oa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752814AbaEQCUr (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 16 May 2014 22:20:47 -0400
-Received: by mail-oa0-f46.google.com with SMTP id i4so3915336oah.33
-        for <linux-nfs@vger.kernel.org>; Fri, 16 May 2014 19:20:46 -0700 (PDT)
-Message-ID: <5376C773.5090400@gmail.com>
-Date: Sat, 17 May 2014 10:20:35 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: linux-nfs@vger.kernel.org, kinglongmee@gmail.com
-Subject: [PATCH 2/3 v2] NFS4.0: Cases for SGID/SUID status after writing
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from e35.co.us.ibm.com ([32.97.110.153]:54635 "EHLO
+	e35.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751302AbaESSVB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 May 2014 14:21:01 -0400
+Received: from /spool/local
+	by e35.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
+	for <linux-nfs@vger.kernel.org> from <jvrao@linux.vnet.ibm.com>;
+	Mon, 19 May 2014 12:21:00 -0600
+Received: from b03cxnp08027.gho.boulder.ibm.com (b03cxnp08027.gho.boulder.ibm.com [9.17.130.19])
+	by d03dlp01.boulder.ibm.com (Postfix) with ESMTP id 0217B1FF003F
+	for <linux-nfs@vger.kernel.org>; Mon, 19 May 2014 12:20:58 -0600 (MDT)
+Received: from d03av06.boulder.ibm.com (d03av06.boulder.ibm.com [9.17.195.245])
+	by b03cxnp08027.gho.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id s4JIK5NT66060372
+	for <linux-nfs@vger.kernel.org>; Mon, 19 May 2014 20:20:05 +0200
+Received: from d03av06.boulder.ibm.com (loopback [127.0.0.1])
+	by d03av06.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id s4JIOhdv020815
+	for <linux-nfs@vger.kernel.org>; Mon, 19 May 2014 12:24:52 -0600
+From: rongzeng@us.ibm.com
+To: jvrao@linux.vnet.ibm.com
+Cc: rongzeng@us.ibm.com, rong zeng <rongzeng@oc1547780626.ibm.com>
+Subject: [PATCH] Adding a callback for incoming sm_notify to better handle
+ stale lock issue in client crash recovery in HA-NFS environment. The callout
+ parameters are:
+Date: Tue, 13 May 2014 11:26:44 -0700
+Message-Id: <1400005604-23016-1-git-send-email-rongzeng@us.ibm.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Adds Environment.c3.
+From: rong zeng <rongzeng@oc1547780626.ibm.com>
 
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+1. "sm-notify" - callout name
+2. monitored client name as in the SM_NOTIFY request
+3. IP of the sender of the SM_NOITFY request.
+4. state value in the SM_NOTIFY request
+
+This new interface can be used by different HA-NFS product
+in its specific configuration and environment to
+recover from the client crash and stale lock scenarios.
+
+Signed-off-by: Rong Zeng <rongzeng@us.ibm.com>
 ---
- nfs4.0/servertests/environment.py |  4 ++
- nfs4.0/servertests/st_write.py    | 84 +++++++++++++++++++++++++++++++++++++++
- 2 files changed, 88 insertions(+)
+ utils/statd/callback.c |   13 ++++++++-----
+ utils/statd/statd.man  |   20 ++++++++++++++++----
+ 2 files changed, 24 insertions(+), 9 deletions(-)
 
-diff --git a/nfs4.0/servertests/environment.py b/nfs4.0/servertests/environment.py
-index 993320d..4b6e725 100644
---- a/nfs4.0/servertests/environment.py
-+++ b/nfs4.0/servertests/environment.py
-@@ -104,12 +104,16 @@ class Environment(testmod.Environment):
-         sec1, sec2 = self._get_security(opts)
- #        authsys1 = rpc.SecAuthSys(0, opts.machinename, opts.uid, opts.gid, [])
-         authsys2 = rpc.SecAuthSys(0, opts.machinename, opts.uid+1, opts.gid+1, [])
-+        authsys3 = rpc.SecAuthSys(0, opts.machinename, opts.uid+2, opts.gid+2, [])
-         self.c1 = NFS4Client('client1_pid%i' % os.getpid(),
-                              opts.server, opts.port, opts.path,
-                              sec_list=[sec1], opts=opts)
-         self.c2 = NFS4Client('client2_pid%i' % os.getpid(),
-                              opts.server, opts.port, opts.path,
-                              sec_list=[authsys2], opts=opts)
-+        self.c3 = NFS4Client('client3_pid%i' % os.getpid(),
-+                             opts.server, opts.port, opts.path,
-+                             sec_list=[authsys3], opts=opts)
-         self.longname = "a"*512
-         self.uid = 0
-         self.gid = 0
-diff --git a/nfs4.0/servertests/st_write.py b/nfs4.0/servertests/st_write.py
-index 1a4deaf..4e55135 100644
---- a/nfs4.0/servertests/st_write.py
-+++ b/nfs4.0/servertests/st_write.py
-@@ -384,3 +384,87 @@ def testSizes(t, env):
-         ops += [c.getattr([FATTR4_SIZE]), c.getattr([FATTR4_SIZE])]
-         res = c.compound(ops)
-         check(res, msg="length %d WRITE" % i)
+diff --git a/utils/statd/callback.c b/utils/statd/callback.c
+index d1cc139..58ba70b 100644
+--- a/utils/statd/callback.c
++++ b/utils/statd/callback.c
+@@ -15,6 +15,7 @@
+ #include "rpcmisc.h"
+ #include "statd.h"
+ #include "notlist.h"
++#include "ha-callout.h"
+
+ /* Callback notify list. */
+ /* notify_list *cbnl = NULL; ... never used */
+@@ -87,6 +88,13 @@ sm_notify_1_svc(struct stat_chge *argp, struct svc_req *rqstp)
+ 	xlog(D_CALL, "Received SM_NOTIFY from %s, state: %d",
+ 				argp->mon_name, argp->state);
+
++	if (!statd_present_address(sap, ip_addr, sizeof(ip_addr))) {
++		xlog_warn("Unrecognized sender address");
++		return ((void *) &result);
++	}
 +
-+def doCheckMode(t, c, fh, mode):
-+    ops = c.use_obj(fh)
-+    ops += [c.getattr([FATTR4_MODE, FATTR4_OWNER, FATTR4_OWNER_GROUP])]
-+    res = c.compound(ops)
-+    check(res)
++	ha_callout("sm-notify", argp->mon_name, ip_addr, argp->state);
 +
-+    attrs = res.resarray[-1].obj_attributes
-+    if FATTR4_MODE not in attrs.keys():
-+         t.fail("Attributes not contains FATTR4_MODE")
-+    resmode = attrs[FATTR4_MODE]
-+    if resmode != mode:
-+         t.fail("Mode is %o, not expected %o" % (resmode, mode))
+ 	/* quick check - don't bother if we're not monitoring anyone */
+ 	if (rtnl == NULL) {
+ 		xlog_warn("SM_NOTIFY from %s while not monitoring any hosts",
+@@ -94,11 +102,6 @@ sm_notify_1_svc(struct stat_chge *argp, struct svc_req *rqstp)
+ 		return ((void *) &result);
+ 	}
+
+-	if (!statd_present_address(sap, ip_addr, sizeof(ip_addr))) {
+-		xlog_warn("Unrecognized sender address");
+-		return ((void *) &result);
+-	}
+-
+ 	/* okir change: statd doesn't remove the remote host from its
+ 	 * internal monitor list when receiving an SM_NOTIFY call from
+ 	 * it. Lockd will want to continue monitoring the remote host
+diff --git a/utils/statd/statd.man b/utils/statd/statd.man
+index 896c2f8..1e5520c 100644
+--- a/utils/statd/statd.man
++++ b/utils/statd/statd.man
+@@ -346,7 +346,8 @@ points due to inactivity.
+ .SS High-availability callouts
+ .B rpc.statd
+ can exec a special callout program during processing of
+-successful SM_MON, SM_UNMON, and SM_UNMON_ALL requests.
++successful SM_MON, SM_UNMON, and SM_UNMON_ALL requests,
++or when it receives SM_NOTIFY.
+ Such a program may be used in High Availability NFS (HA-NFS)
+ environments to track lock state that may need to be migrated after
+ a system reboot.
+@@ -357,15 +358,26 @@ option.
+ The program is run with 3 arguments:
+ The first is either
+ .B add-client
+-or
+ .B del-client
++or
++.B sm-notify
+ depending on the reason for the callout.
+ The second is the
+ .I mon_name
+ of the monitored peer.
+ The third is the
+-.I caller_name
+-of the requesting lock manager.
++.I caller_name 
++of the requesting lock manager for
++.B add-client
++or
++.B del-client
++, otherwise it is
++.I IP_address 
++of the caller sending SM_NOTIFY.
++The forth is the
++.I state_value
++in the SM_NOTIFY request.
 +
-+def doCheckSGUID(t, env, cc, cw, cmode = 06777):
-+    c = env.c1
-+    path = c.homedir + [t.code]
-+    res = c.create_obj(path, attrs={FATTR4_MODE:0777})
-+    check(res)
-+
-+    cc.init_connection()
-+    attrs = {FATTR4_SIZE: 32, FATTR4_MODE: 06777}
-+    path += [t.code]
-+    fh, stateid = cc.create_confirm(t.code, path, attrs=attrs,
-+                                   deny=OPEN4_SHARE_DENY_NONE)
-+    doCheckMode(t, cc, fh, 06777)
-+
-+    cw.init_connection()
-+    ops = cw.use_obj(fh)
-+    ops += [cw.write_op(stateid4(0, ''), 0, UNSTABLE4, 'for test')]
-+    res = cw.compound(ops)
-+    check(res)
-+
-+    doCheckMode(t, cw, fh, cmode)
-+
-+def testSGUIDRootRoot(t, env):
-+    """ root writing data to file (blongs to root)
-+        will not clear the SUID/SGID mode
-+
-+    FLAGS: wrtie file all
-+    DEPEND: MODE MKFILE
-+    CODE: WRT16a
-+    """
-+    doCheckSGUID(t, env, env.c1, env.c1)
-+
-+def testSGUIDRootNoRoot(t, env):
-+    """ root writing data to file (blongs to no-root)
-+        will not clear the SUID/SGID mode
-+
-+    FLAGS: wrtie file all
-+    DEPEND: MODE MKFILE
-+    CODE: WRT16b
-+    """
-+    doCheckSGUID(t, env, env.c2, env.c1)
-+
-+def testSGUIDNoRootSelf(t, env):
-+    """ no-root writing data to file (blongs to self)
-+        will clear the SUID/SGID mode
-+
-+    FLAGS: wrtie file all
-+    DEPEND: MODE MKFILE
-+    CODE: WRT16c
-+    """
-+    doCheckSGUID(t, env, env.c2, env.c2, 0777)
-+
-+def testSGUIDNoRootRoot(t, env):
-+    """ no-root writing data to file (blongs to root)
-+        will clear the SUID/SGID mode
-+
-+    FLAGS: wrtie file all
-+    DEPEND: MODE MKFILE
-+    CODE: WRT16d
-+    """
-+    doCheckSGUID(t, env, env.c1, env.c2, 0777)
-+
-+def testSGUIDNoRootNoRoot(t, env):
-+    """ no-root writing data to file (blongs to no-root)
-+        will clear the SUID/SGID mode
-+
-+    FLAGS: wrtie file all
-+    DEPEND: MODE MKFILE
-+    CODE: WRT16e
-+    """
-+    doCheckSGUID(t, env, env.c2, env.c3, 0777)
+ .SS IPv6 and TI-RPC support
+ TI-RPC is a pre-requisite for supporting NFS on IPv6.
+ If TI-RPC support is built into
 -- 
-1.9.0
+1.7.1
 
