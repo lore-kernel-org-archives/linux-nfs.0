@@ -1,45 +1,28 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f180.google.com ([209.85.223.180]:42629 "EHLO
-	mail-ie0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932133AbaE1Oen (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 May 2014 10:34:43 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH v5 20/24] xprtrdma: Reset connection timeout after successful
-	reconnect
-To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Cc: Anna.Schumaker@netapp.com
-Date: Wed, 28 May 2014 10:34:41 -0400
-Message-ID: <20140528143441.23214.36316.stgit@manet.1015granger.net>
-In-Reply-To: <20140528142521.23214.39655.stgit@manet.1015granger.net>
-References: <20140528142521.23214.39655.stgit@manet.1015granger.net>
+Received: from bombadil.infradead.org ([198.137.202.9]:50989 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751171AbaEMFFx (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 May 2014 01:05:53 -0400
+Date: Mon, 12 May 2014 22:05:53 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 04/43] nfsd4: reserve head space for krb5 integ/priv info
+Message-ID: <20140513050553.GA5056@infradead.org>
+References: <1399841568-19716-1-git-send-email-bfields@redhat.com>
+ <1399841568-19716-5-git-send-email-bfields@redhat.com>
+ <20140512053727.GE29134@infradead.org>
+ <20140512214545.GA11493@pad.redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140512214545.GA11493@pad.redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If the new connection is able to make forward progress, reset the
-re-establish timeout. Otherwise it keeps growing even if disconnect
-events are rare.
+On Mon, May 12, 2014 at 05:45:45PM -0400, J. Bruce Fields wrote:
+> Yes.  At the end of this series we have RPC_MAX_AUTH_SIZE scattered
+> around in a few different places.  Rather than have each place have some
+> flavor-specific logic I think I'd like the auth code to set an
+> rq_auth_slack field in the struct svc_rqst for code like this to use.
 
-The same behavior as TCP is adopted: reconnect immediately if the
-transport instance has been able to make some forward progress.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
-
- net/sunrpc/xprtrdma/rpc_rdma.c |    1 +
- 1 files changed, 1 insertions(+), 0 deletions(-)
-
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index dc4a826..ac65b0c 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -770,6 +770,7 @@ repost:
- 
- 	/* from here on, the reply is no longer an orphan */
- 	req->rl_reply = rep;
-+	xprt->reestablish_timeout = 0;
- 
- 	/* check for expected message types */
- 	/* The order of some of these tests is important. */
-
+That sounds pretty reasonable to me.
