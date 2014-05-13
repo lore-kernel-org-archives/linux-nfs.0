@@ -1,89 +1,49 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-oa0-f44.google.com ([209.85.219.44]:49613 "EHLO
-	mail-oa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750945AbaEWBV5 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 May 2014 21:21:57 -0400
-Received: by mail-oa0-f44.google.com with SMTP id o6so4925048oag.31
-        for <linux-nfs@vger.kernel.org>; Thu, 22 May 2014 18:21:57 -0700 (PDT)
-Message-ID: <537EA2A2.2040907@gmail.com>
-Date: Fri, 23 May 2014 09:21:38 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
-CC: Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 01/52] nfsd4: READ, READDIR, etc., are idempotent
-References: <1400787148-25941-1-git-send-email-bfields@redhat.com> <1400787148-25941-2-git-send-email-bfields@redhat.com>
-In-Reply-To: <1400787148-25941-2-git-send-email-bfields@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mx1.redhat.com ([209.132.183.28]:57258 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750916AbaEMQJ3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 13 May 2014 12:09:29 -0400
+From: David Howells <dhowells@redhat.com>
+In-Reply-To: <20140501123738.3e64b2d2@notabene.brown>
+References: <20140501123738.3e64b2d2@notabene.brown>
+To: NeilBrown <neilb@suse.de>
+Cc: dhowells@redhat.com, Peter Zijlstra <peterz@infradead.org>,
+        Oleg Nesterov <oleg@redhat.com>,
+        Steven Whitehouse <swhiteho@redhat.com>, dm-devel@redhat.com,
+        Chris Mason <clm@fb.com>, Josef Bacik <jbacik@fb.com>,
+        Steve French <sfrench@samba.org>, "Theodore Ts'o" <tytso@mit.edu>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Ingo Molnar <mingo@redhat.com>,
+        Andrew Morton <akpm@linux-foundation.org>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org
+Subject: Re: [PATCH] SCHED: remove proliferation of wait_on_bit action functions.
+Date: Tue, 13 May 2014 17:08:46 +0100
+Message-ID: <30874.1399997326@warthog.procyon.org.uk>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 5/23/2014 03:31, J. Bruce Fields wrote:
-> From: "J. Bruce Fields" <bfields@redhat.com>
-> 
-> OP_MODIFIES_SOMETHING flags operations that we should be careful not to
-> initiate without being sure we have the buffer space to encode a reply.
-> 
-> None of these ops fall into that category.
-> 
-> We could probably remove a few more, but this isn't a very important
-> problem at least for ops whose reply size is easy to estimate.
-> 
-> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> ---
->  fs/nfsd/nfs4proc.c | 13 +++----------
->  1 file changed, 3 insertions(+), 10 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-> index ac83778..4c4cd96 100644
-> --- a/fs/nfsd/nfs4proc.c
-> +++ b/fs/nfsd/nfs4proc.c
-> @@ -1665,38 +1665,31 @@ static struct nfsd4_operation nfsd4_ops[] = {
->  	[OP_PUTFH] = {
->  		.op_func = (nfsd4op_func)nfsd4_putfh,
->  		.op_flags = ALLOWED_WITHOUT_FH | ALLOWED_ON_ABSENT_FS
-> -				| OP_IS_PUTFH_LIKE | OP_MODIFIES_SOMETHING
-> -				| OP_CLEAR_STATEID,
-> +				| OP_IS_PUTFH_LIKE | OP_CLEAR_STATEID,
->  		.op_name = "OP_PUTFH",
->  		.op_rsize_bop = (nfsd4op_rsize)nfsd4_only_status_rsize,
->  	},
->  	[OP_PUTPUBFH] = {
->  		.op_func = (nfsd4op_func)nfsd4_putrootfh,
->  		.op_flags = ALLOWED_WITHOUT_FH | ALLOWED_ON_ABSENT_FS
-> -				| OP_IS_PUTFH_LIKE | OP_MODIFIES_SOMETHING
-> -				| OP_CLEAR_STATEID,
-> +				| OP_IS_PUTFH_LIKE | OP_CLEAR_STATEID,
->  		.op_name = "OP_PUTPUBFH",
->  		.op_rsize_bop = (nfsd4op_rsize)nfsd4_only_status_rsize,
->  	},
->  	[OP_PUTROOTFH] = {
->  		.op_func = (nfsd4op_func)nfsd4_putrootfh,
->  		.op_flags = ALLOWED_WITHOUT_FH | ALLOWED_ON_ABSENT_FS
-> -				| OP_IS_PUTFH_LIKE | OP_MODIFIES_SOMETHING
-> -				| OP_CLEAR_STATEID,
-> +				| OP_IS_PUTFH_LIKE | OP_CLEAR_STATEID,
->  		.op_name = "OP_PUTROOTFH",
->  		.op_rsize_bop = (nfsd4op_rsize)nfsd4_only_status_rsize,
->  	},
->  	[OP_READ] = {
->  		.op_func = (nfsd4op_func)nfsd4_read,
-> -		.op_flags = OP_MODIFIES_SOMETHING,
-> -		.op_name = "OP_READ",
+NeilBrown <neilb@suse.de> wrote:
 
-Should not delete op_name.
+> The current "wait_on_bit" interface requires an 'action' function
+> to be provided which does the actual waiting.
+> There are over 20 such functions, many of them identical.
+> Most cases can be satisfied by one of just two functions, one
+> which uses io_schedule() and one which just uses schedule().
+> 
+> So:
+>  Rename wait_on_bit and        wait_on_bit_lock to
+>         wait_on_bit_action and wait_on_bit_lock_action
+>  to make it explicit that they need an action function.
+> 
+>  Introduce new wait_on_bit{,_lock} and wait_on_bit{,_lock}_io
+>  which are *not* given an action function but implicitly use
+>  a standard one.
+>  The decision to error-out if a signal is pending is now made
+>  based on the 'mode' argument rather than being encoded in the action
+>  function.
 
->  		.op_rsize_bop = (nfsd4op_rsize)nfsd4_read_rsize,
->  		.op_get_currentstateid = (stateid_getter)nfsd4_get_readstateid,
->  	},
->  	[OP_READDIR] = {
->  		.op_func = (nfsd4op_func)nfsd4_readdir,
-> -		.op_flags = OP_MODIFIES_SOMETHING,
-> -		.op_name = "OP_READDIR",
+Yay!  About time!  This is something I've wanted to do for ages, but never
+quite got around to.
 
-Same as above.
-
-Because "[PATCH 03/52] nfsd4: fill in some missing op_name's" re-adds them.
-
-thanks,
-Kinglong Mee
+Acked-by: David Howells <dhowells@redhat.com>
