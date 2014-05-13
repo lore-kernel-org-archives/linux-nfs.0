@@ -1,57 +1,55 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:60302 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752199AbaEAJbt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 May 2014 05:31:49 -0400
-Date: Thu, 1 May 2014 11:31:40 +0200
-From: Peter Zijlstra <peterz@infradead.org>
-To: NeilBrown <neilb@suse.de>
-Cc: Oleg Nesterov <oleg@redhat.com>, David Howells <dhowells@redhat.com>,
-        Steven Whitehouse <swhiteho@redhat.com>, dm-devel@redhat.com,
-        Chris Mason <clm@fb.com>, Josef Bacik <jbacik@fb.com>,
-        Steve French <sfrench@samba.org>, "Theodore Ts'o" <tytso@mit.edu>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Ingo Molnar <mingo@redhat.com>, Roland McGrath <roland@redhat.com>,
-        Andrew Morton <akpm@linux-foundation.org>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org
-Subject: Re: [PATCH] SCHED: remove proliferation of wait_on_bit action
- functions.
-Message-ID: <20140501093140.GN11096@twins.programming.kicks-ass.net>
-References: <20140501123738.3e64b2d2@notabene.brown>
- <20140501074257.GK11096@twins.programming.kicks-ass.net>
- <20140501192605.6b5383f8@notabene.brown>
+Received: from fieldses.org ([174.143.236.118]:53391 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754046AbaEMVd1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 13 May 2014 17:33:27 -0400
+Date: Tue, 13 May 2014 17:33:21 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org
+Subject: Re: nfsd4 xdr encoding fixes v2
+Message-ID: <20140513213321.GG5222@fieldses.org>
+References: <1399841568-19716-1-git-send-email-bfields@redhat.com>
+ <20140512082059.GC14194@infradead.org>
+ <20140512160740.GE2633@pad.redhat.com>
+ <20140512161128.GA1591@infradead.org>
+ <20140513110945.GA9461@infradead.org>
+ <20140513144826.GB17206@pad.redhat.com>
+ <20140513211841.GF5222@fieldses.org>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140501192605.6b5383f8@notabene.brown>
+In-Reply-To: <20140513211841.GF5222@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, May 01, 2014 at 07:26:05PM +1000, NeilBrown wrote:
-> On Thu, 1 May 2014 09:42:57 +0200 Peter Zijlstra <peterz@infradead.org> wrote:
-> 
-> > On Thu, May 01, 2014 at 12:37:38PM +1000, NeilBrown wrote:
-> > > +static inline int
-> > > +wait_on_bit(void *word, int bit, unsigned mode)
-> > > +{
-> > > +	if (!test_bit(bit, word))
-> > > +		return 0;
-> > > +	return out_of_line_wait_on_bit(word, bit,
-> > > +				       bit_wait,
-> > > +				       mode & 65535);
-> > > +}
+On Tue, May 13, 2014 at 05:18:41PM -0400, bfields wrote:
+> On Tue, May 13, 2014 at 10:48:26AM -0400, J. Bruce Fields wrote:
+> > On Tue, May 13, 2014 at 04:09:45AM -0700, Christoph Hellwig wrote:
+> > > On Mon, May 12, 2014 at 09:11:28AM -0700, Christoph Hellwig wrote:
+> > > > On Mon, May 12, 2014 at 12:07:41PM -0400, J. Bruce Fields wrote:
+> > > > > On Mon, May 12, 2014 at 01:20:59AM -0700, Christoph Hellwig wrote:
+> > > > > > This series seem to cause hangs during xfstests against a server on the
+> > > > > > same VM.  The trace is fairly similar every the hang happens, but the
+> > > > > > point at which it happens differs:
+> > > > > 
+> > > > > Ouch, OK, and you're sure it starts with this series?
+> > > > > 
+> > > > > I guess I should try to replicate it here.  Might take a copule days.
+> > > 
+> > > Seems lile "nfsd4: allow exotic read compounds" is the culprit.
 > > 
-> > Still puzzled by the 16 bit mask there ;-)
+> > OK, it makes sense that the problem would be there.  Looking....
 > 
-> I clearly remember removing that!
-> And I've just done it again.
-> I hope it doesn't re-reappear!
-> :-)
-> NeilBrown
+> I got xfstests set up and can reproduce some problems (a hang, the
+> nfs4svc_encode_compoundres WARN, and some allocation failures), though
+> not exactly what you reported.
+> 
+> I also notice that commit ("nfsd4: allow exotic read compounds") has a
+> lot of extraneous cleanup that I should split out.
 
-Seems dead now, I'll hold out for a little while so that dhowells can
-explain this fscache thing.
+In fact, the change to handle multiple reads per compound *should* only
+affect the nfsd4_encode_readv() case.  Whereas you're probably
+exercising only the nfsd4_encode_splice_read() case.  So probably some
+of the extraneous cleanup in that patch is bogus.
 
-Then I'll queue it. Ingo is currently enjoying a long weekend and is
-fighting (well I am now) a stability issue in -tip kernels, so it might
-be a little while before it actually shows up in the git tree.
+--b.
