@@ -1,105 +1,36 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from natasha.panasas.com ([209.166.131.148]:57711 "EHLO
-	natasha.panasas.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752592AbaEVNIB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 May 2014 09:08:01 -0400
-Message-ID: <537DF69A.5020602@panasas.com>
-Date: Thu, 22 May 2014 16:07:38 +0300
-From: Boaz Harrosh <bharrosh@panasas.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:39612 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1758830AbaEMLJq (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 13 May 2014 07:09:46 -0400
+Date: Tue, 13 May 2014 04:09:45 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org
+Subject: Re: nfsd4 xdr encoding fixes v2
+Message-ID: <20140513110945.GA9461@infradead.org>
+References: <1399841568-19716-1-git-send-email-bfields@redhat.com>
+ <20140512082059.GC14194@infradead.org>
+ <20140512160740.GE2633@pad.redhat.com>
+ <20140512161128.GA1591@infradead.org>
 MIME-Version: 1.0
-To: open-osd <osd-dev@open-osd.org>, NFS list <linux-nfs@vger.kernel.org>,
-        Daniel Gryniewicz <dang@linuxbox.com>,
-        Elizabeth Ellenbogen Ziph <elizabeth@linuxbox.com>,
-        "Pathak, Santosh" <santoshp@panasas.com>,
-        linux-fsdevel <linux-fsdevel@vger.kernel.org>
-CC: Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>,
-        Benny Halevy <bhalevy@primarydata.com>,
-        Sachin bhamare <sachin.bhamare@gmail.com>
-Subject: [PATCH 1/3] ore: (trivial) reformat some code
-References: <537DF5B4.4070001@panasas.com>
-In-Reply-To: <537DF5B4.4070001@panasas.com>
-Content-Type: text/plain; charset="UTF-8"
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140512161128.GA1591@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Mon, May 12, 2014 at 09:11:28AM -0700, Christoph Hellwig wrote:
+> On Mon, May 12, 2014 at 12:07:41PM -0400, J. Bruce Fields wrote:
+> > On Mon, May 12, 2014 at 01:20:59AM -0700, Christoph Hellwig wrote:
+> > > This series seem to cause hangs during xfstests against a server on the
+> > > same VM.  The trace is fairly similar every the hang happens, but the
+> > > point at which it happens differs:
+> > 
+> > Ouch, OK, and you're sure it starts with this series?
+> > 
+> > I guess I should try to replicate it here.  Might take a copule days.
 
-rearrange some source lines. Nothing changed.
+Seems lile "nfsd4: allow exotic read compounds" is the culprit.
 
-Signed-off-by: Boaz Harrosh <bharrosh@panasas.com>
----
- fs/exofs/ore.c      | 19 ++++++++-----------
- fs/exofs/ore_raid.c |  4 +---
- 2 files changed, 9 insertions(+), 14 deletions(-)
-
-diff --git a/fs/exofs/ore.c b/fs/exofs/ore.c
-index dae8846..92157b6 100644
---- a/fs/exofs/ore.c
-+++ b/fs/exofs/ore.c
-@@ -675,8 +675,8 @@ static int _prepare_for_striping(struct ore_io_state *ios)
- 	si->cur_pg = si->unit_off / PAGE_SIZE;
- 
- 	while (length) {
--		unsigned comp = dev - first_dev;
--		struct ore_per_dev_state *per_dev = &ios->per_dev[comp];
-+		struct ore_per_dev_state *per_dev =
-+						&ios->per_dev[dev - first_dev];
- 		unsigned cur_len, page_off = 0;
- 
- 		if (!per_dev->length) {
-@@ -708,11 +708,9 @@ static int _prepare_for_striping(struct ore_io_state *ios)
- 		if (unlikely(ret))
- 			goto out;
- 
--		dev += mirrors_p1;
--		dev = (dev % devs_in_group) + first_dev;
--
- 		length -= cur_len;
- 
-+		dev = ((dev + mirrors_p1) % devs_in_group) + first_dev;
- 		si->cur_comp = (si->cur_comp + 1) % group_width;
- 		if (unlikely((dev == si->par_dev) || (!length && ios->sp2d))) {
- 			if (!length && ios->sp2d) {
-@@ -721,11 +719,6 @@ static int _prepare_for_striping(struct ore_io_state *ios)
- 				 */
- 				dev = si->par_dev;
- 			}
--			if (ios->sp2d)
--				/* In writes cur_len just means if it's the
--				 * last one. See _ore_add_parity_unit.
--				 */
--				cur_len = length;
- 			per_dev = &ios->per_dev[dev - first_dev];
- 			if (!per_dev->length) {
- 				/* Only/always the parity unit of the first
-@@ -736,7 +729,11 @@ static int _prepare_for_striping(struct ore_io_state *ios)
- 				per_dev->offset = si->obj_offset - si->unit_off;
- 			}
- 
--			ret = _ore_add_parity_unit(ios, si, per_dev, cur_len);
-+			/* In writes cur_len just means if it's the
-+			 * last one. See _ore_add_parity_unit.
-+			 */
-+			ret = _ore_add_parity_unit(ios, si, per_dev,
-+						ios->sp2d ? length : cur_len);
- 			if (unlikely(ret))
- 					goto out;
- 
-diff --git a/fs/exofs/ore_raid.c b/fs/exofs/ore_raid.c
-index 4e2c032..af417d3 100644
---- a/fs/exofs/ore_raid.c
-+++ b/fs/exofs/ore_raid.c
-@@ -226,9 +226,7 @@ static void _gen_xor_unit(struct __stripe_pages_2d *sp2d)
- 
- 		init_async_submit(&_1ps->submit,
- 			ASYNC_TX_XOR_ZERO_DST | ASYNC_TX_ACK,
--			NULL,
--			NULL, NULL,
--			(addr_conv_t *)_1ps->scribble);
-+			NULL, NULL, NULL, (addr_conv_t *)_1ps->scribble);
- 
- 		/* TODO: raid6 */
- 		_1ps->tx = async_xor(_1ps->pages[sp2d->data_devs], _1ps->pages,
--- 
-1.9.0
-
+That patch is also missing a signoff while we're at it.
 
