@@ -1,102 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:43333 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:6987 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751546AbaEVTcd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 May 2014 15:32:33 -0400
+	id S932999AbaEMOst (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 13 May 2014 10:48:49 -0400
+Date: Tue, 13 May 2014 10:48:27 -0400
 From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 14/52] nfsd4: use xdr_stream throughout compound encoding
-Date: Thu, 22 May 2014 15:31:49 -0400
-Message-Id: <1400787148-25941-15-git-send-email-bfields@redhat.com>
-In-Reply-To: <1400787148-25941-1-git-send-email-bfields@redhat.com>
-References: <1400787148-25941-1-git-send-email-bfields@redhat.com>
+To: Christoph Hellwig <hch@infradead.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: nfsd4 xdr encoding fixes v2
+Message-ID: <20140513144826.GB17206@pad.redhat.com>
+References: <1399841568-19716-1-git-send-email-bfields@redhat.com>
+ <20140512082059.GC14194@infradead.org>
+ <20140512160740.GE2633@pad.redhat.com>
+ <20140512161128.GA1591@infradead.org>
+ <20140513110945.GA9461@infradead.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140513110945.GA9461@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Tue, May 13, 2014 at 04:09:45AM -0700, Christoph Hellwig wrote:
+> On Mon, May 12, 2014 at 09:11:28AM -0700, Christoph Hellwig wrote:
+> > On Mon, May 12, 2014 at 12:07:41PM -0400, J. Bruce Fields wrote:
+> > > On Mon, May 12, 2014 at 01:20:59AM -0700, Christoph Hellwig wrote:
+> > > > This series seem to cause hangs during xfstests against a server on the
+> > > > same VM.  The trace is fairly similar every the hang happens, but the
+> > > > point at which it happens differs:
+> > > 
+> > > Ouch, OK, and you're sure it starts with this series?
+> > > 
+> > > I guess I should try to replicate it here.  Might take a copule days.
+> 
+> Seems lile "nfsd4: allow exotic read compounds" is the culprit.
 
-Note this makes ADJUST_ARGS useless; we'll remove it in the following
-patch.
+OK, it makes sense that the problem would be there.  Looking....
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4proc.c |  2 +-
- fs/nfsd/nfs4xdr.c  | 23 +++++++++++++++--------
- 2 files changed, 16 insertions(+), 9 deletions(-)
-
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 1433854..969a7b3 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1286,7 +1286,7 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
- 	svcxdr_init_encode(rqstp, resp);
- 	resp->tagp = resp->xdr.p;
- 	/* reserve space for: taglen, tag, and opcnt */
--	resp->xdr.p += 2 + XDR_QUADLEN(args->taglen);
-+	xdr_reserve_space(&resp->xdr, 8 + args->taglen);
- 	resp->taglen = args->taglen;
- 	resp->tag = args->tag;
- 	resp->opcnt = 0;
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 0ab7aae..bc8c9e0 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1747,10 +1747,10 @@ static void write_cinfo(__be32 **p, struct nfsd4_change_info *c)
- }
- 
- #define RESERVE_SPACE(nbytes)	do {				\
--	p = resp->xdr.p;						\
--	BUG_ON(p + XDR_QUADLEN(nbytes) > resp->xdr.end);		\
-+	p = xdr_reserve_space(&resp->xdr, nbytes);		\
-+	BUG_ON(!p);						\
- } while (0)
--#define ADJUST_ARGS()		resp->xdr.p = p
-+#define ADJUST_ARGS()		WARN_ON_ONCE(p != resp->xdr.p)	\
- 
- /* Encode as an array of strings the string given with components
-  * separated @sep, escaped with esc_enter and esc_exit.
-@@ -3056,8 +3056,11 @@ nfsd4_encode_read(struct nfsd4_compoundres *resp, __be32 nfserr,
- 			read->rd_offset, resp->rqstp->rq_vec, read->rd_vlen,
- 			&maxcount);
- 
--	if (nfserr)
-+	if (nfserr) {
-+		xdr->p -= 2;
-+		xdr->iov->iov_len -= 8;
- 		return nfserr;
-+	}
- 	eof = (read->rd_offset + maxcount >=
- 	       read->rd_fhp->fh_dentry->d_inode->i_size);
- 
-@@ -3110,9 +3113,12 @@ nfsd4_encode_readlink(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd
- 	 */
- 	nfserr = nfsd_readlink(readlink->rl_rqstp, readlink->rl_fhp, page, &maxcount);
- 	if (nfserr == nfserr_isdir)
--		return nfserr_inval;
--	if (nfserr)
-+		nfserr = nfserr_inval;
-+	if (nfserr) {
-+		xdr->p--;
-+		xdr->iov->iov_len -= 4;
- 		return nfserr;
-+	}
- 
- 	WRITE32(maxcount);
- 	ADJUST_ARGS();
-@@ -3213,8 +3219,9 @@ nfsd4_encode_readdir(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4
- 
- 	return 0;
- err_no_verf:
--	p = savep;
--	ADJUST_ARGS();
-+	xdr->p = savep;
-+	xdr->iov->iov_len = ((char *)resp->xdr.p)
-+				- (char *)resp->xdr.buf->head[0].iov_base;
- 	return nfserr;
- }
- 
--- 
-1.9.0
-
+--b.
