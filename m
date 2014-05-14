@@ -1,29 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:47462 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751328AbaELFdR (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 May 2014 01:33:17 -0400
-Date: Sun, 11 May 2014 22:33:17 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: linux-nfs@vger.kernel.org, Christoph Hellwig <hch@infradead.org>
-Subject: Re: [PATCH 39/43] nfsd4: really fix nfs4err_resource in 4.1 case
-Message-ID: <20140512053317.GA29134@infradead.org>
-References: <1399841568-19716-1-git-send-email-bfields@redhat.com>
- <1399841568-19716-40-git-send-email-bfields@redhat.com>
+Received: from smtp.opengridcomputing.com ([72.48.136.20]:37583 "EHLO
+	smtp.opengridcomputing.com" rhost-flags-OK-OK-OK-OK)
+	by vger.kernel.org with ESMTP id S1750838AbaENSLh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 May 2014 14:11:37 -0400
+From: "Steve Wise" <swise@opengridcomputing.com>
+To: "'Chuck Lever'" <chucklever@gmail.com>
+Cc: "'J. Bruce Fields'" <bfields@fieldses.org>,
+        "'Linux NFS Mailing List'" <linux-nfs@vger.kernel.org>,
+        "'linux-rdma'" <linux-rdma@vger.kernel.org>,
+        "'Tom Tucker'" <tom@opengridcomputing.com>
+References: <20140506174621.18208.24242.stgit@build.ogc.int> <20140506174632.18208.28160.stgit@build.ogc.int> <F997E138-FB04-4149-811D-CE68608E8D6B@gmail.com> <00f901cf6eeb$2ff1f630$8fd5e290$@opengridcomputing.com> <3DAF95F3-22D5-4FC5-8C98-5A440E54DC2F@gmail.com> <53737D15.6020902@opengridcomputing.com> <2AEECADA-4A40-4BF2-866E-7F178D016DDE@gmail.com>
+In-Reply-To: <2AEECADA-4A40-4BF2-866E-7F178D016DDE@gmail.com>
+Subject: RE: [PATCH V2 RFC 2/3] svcrdma: Recvfrom changes
+Date: Wed, 14 May 2014 13:11:40 -0500
+Message-ID: <009601cf6f9f$f47b2cb0$dd718610$@opengridcomputing.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1399841568-19716-40-git-send-email-bfields@redhat.com>
+Content-Type: text/plain;
+	charset="us-ascii"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-> +	if (op->status == nfserr_resource && nfsd4_has_session(&resp->cstate)) {
-> +		struct nfsd4_slot *slot = resp->cstate.slot;
-> +
-> +		if (slot->sl_flags & NFSD4_SLOT_CACHETHIS)
-> +			op->status = nfserr_rep_too_big_to_cache;
-> +		else
-> +			op->status = nfserr_rep_too_big;
 
-There is a closing brace missing here, which breaks the compile for me.
+> >
+> >> If you print ch_count, it is 2 for NFS WRITEs from a Linux client,
+> >> no matter how large the write payload is. Therefore I think the check
+> >> as it is written is not particularly useful.
+> >
+> > Why are there 2?
+> 
+> The first chunk lists the pages the server is to read, and the second
+> chunk has the zero pad for XDR alignment.
+> 
+> If pad optimization is enabled on the client, there is just 1 chunk in
+> the RPC's Read list.
+> 
+
+So the code as it stands violates the RFC by sending 2 chunks?  And if I change the server
+to only consume 1, then everything unaligned will break?
+
+
 
