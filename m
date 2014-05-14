@@ -1,78 +1,54 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:43397 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:11524 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752382AbaEVTch (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 May 2014 15:32:37 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 22/52] nfsd4: reserve space before inlining 0-copy pages
-Date: Thu, 22 May 2014 15:31:57 -0400
-Message-Id: <1400787148-25941-23-git-send-email-bfields@redhat.com>
-In-Reply-To: <1400787148-25941-1-git-send-email-bfields@redhat.com>
-References: <1400787148-25941-1-git-send-email-bfields@redhat.com>
+	id S1755875AbaENQmy (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 14 May 2014 12:42:54 -0400
+Received: from int-mx13.intmail.prod.int.phx2.redhat.com (int-mx13.intmail.prod.int.phx2.redhat.com [10.5.11.26])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s4EGgqxp008954
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Wed, 14 May 2014 12:42:53 -0400
+Received: from smallhat.boston.devel.redhat.com (smallhat.boston.devel.redhat.com [10.19.60.65])
+	by int-mx13.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s4EGgqVQ014381
+	for <linux-nfs@vger.kernel.org>; Wed, 14 May 2014 12:42:52 -0400
+Message-ID: <53739D0C.1090100@RedHat.com>
+Date: Wed, 14 May 2014 12:42:52 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Linux NFS Town Hall  meeting: Thur 04/15/14
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+Hello,
 
-Once we've included page-cache pages in the encoding it's difficult to
-remove them and restart encoding.  (xdr_truncate_encode doesn't handle
-that case.)  So, make sure we'll have adequate space to finish the
-operation first.
-
-For now COMPOUND_SLACK_SPACE checks should prevent this case happening,
-but we want to remove those checks.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4xdr.c | 11 +++++++----
- 1 file changed, 7 insertions(+), 4 deletions(-)
-
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 9c532eb..9fb1b1a 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -3071,6 +3071,10 @@ nfsd4_encode_read(struct nfsd4_compoundres *resp, __be32 nfserr,
- 	if (!p)
- 		return nfserr_resource;
+We have not had one of these for a while and there
+has been some churn lately... 
  
-+	/* Make sure there will be room for padding if needed: */
-+	if (xdr->end - xdr->p < 1)
-+		return nfserr_resource;
-+
- 	maxcount = svc_max_payload(resp->rqstp);
- 	if (maxcount > read->rd_length)
- 		maxcount = read->rd_length;
-@@ -3122,8 +3126,6 @@ nfsd4_encode_read(struct nfsd4_compoundres *resp, __be32 nfserr,
- 	resp->xdr.buf->tail[0].iov_len = 0;
- 	if (maxcount&3) {
- 		p = xdr_reserve_space(xdr, 4);
--		if (!p)
--			return nfserr_resource;
- 		WRITE32(0);
- 		resp->xdr.buf->tail[0].iov_base += maxcount&3;
- 		resp->xdr.buf->tail[0].iov_len = 4 - (maxcount&3);
-@@ -3156,6 +3158,9 @@ nfsd4_encode_readlink(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd
- 	if (!p)
- 		return nfserr_resource;
- 
-+	if (xdr->end - xdr->p < 1)
-+		return nfserr_resource;
-+
- 	/*
- 	 * XXX: By default, the ->readlink() VFS op will truncate symlinks
- 	 * if they would overflow the buffer.  Is this kosher in NFSv4?  If
-@@ -3182,8 +3187,6 @@ nfsd4_encode_readlink(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd
- 	resp->xdr.buf->tail[0].iov_len = 0;
- 	if (maxcount&3) {
- 		p = xdr_reserve_space(xdr, 4);
--		if  (!p)
--			return nfserr_resource;
- 		WRITE32(0);
- 		resp->xdr.buf->tail[0].iov_base += maxcount&3;
- 		resp->xdr.buf->tail[0].iov_len = 4 - (maxcount&3);
--- 
-1.9.0
+The Linux NFS town hall meeting is tomorrow
+*Thur May 15 at 01:00 pm EST (10:00am PST)*
+
+The usual agenda will apply. The maintainers will give
+a quick status of what is happening in their worlds.
+
+Next we'll get updates from major contributors on what
+they have been doing and are planing on doing.
+  
+Finally, we'll open the floor to questions, comments, 
+concerns from the community.  
+
+Generally the meeting lasts between 30 to 45 mins, with 
+a very hard stop at 60mins. 
+
+Please feel to attend and participate!
+
+Time: 10:00 am PST (01:00 pm EST)
+
+The call in numbers are:
+U.S. and Canada: (800) 451-8679
+International dial-in number: (212) 729-5016
+Israel Toll-Free: 1-809-462-557
+Conference code: 564.272.1552
+
+steved.
 
