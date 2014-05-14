@@ -1,301 +1,88 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from casper.infradead.org ([85.118.1.10]:33947 "EHLO
-	casper.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751086AbaEFRfC (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 6 May 2014 13:35:02 -0400
-From: Christoph Hellwig <hch@lst.de>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: linux-nfs@vger.kernel.org
-Subject: [PATCH 1/4] nfsd: remove <linux/nfsd/nfsfh.h>
-Date: Tue,  6 May 2014 19:37:13 +0200
-Message-Id: <1399397836-31948-2-git-send-email-hch@lst.de>
-In-Reply-To: <1399397836-31948-1-git-send-email-hch@lst.de>
-References: <1399397836-31948-1-git-send-email-hch@lst.de>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-ig0-f177.google.com ([209.85.213.177]:61020 "EHLO
+	mail-ig0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750741AbaENOkE convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 May 2014 10:40:04 -0400
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
+Subject: Re: [PATCH V2 RFC 2/3] svcrdma: Recvfrom changes
+From: Chuck Lever <chucklever@gmail.com>
+In-Reply-To: <53737D15.6020902@opengridcomputing.com>
+Date: Wed, 14 May 2014 10:39:47 -0400
+Cc: "J. Bruce Fields" <bfields@fieldses.org>,
+        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        linux-rdma <linux-rdma@vger.kernel.org>,
+        Tom Tucker <tom@opengridcomputing.com>
+Message-Id: <2AEECADA-4A40-4BF2-866E-7F178D016DDE@gmail.com>
+References: <20140506174621.18208.24242.stgit@build.ogc.int> <20140506174632.18208.28160.stgit@build.ogc.int> <F997E138-FB04-4149-811D-CE68608E8D6B@gmail.com> <00f901cf6eeb$2ff1f630$8fd5e290$@opengridcomputing.com> <3DAF95F3-22D5-4FC5-8C98-5A440E54DC2F@gmail.com> <53737D15.6020902@opengridcomputing.com>
+To: Steve Wise <swise@opengridcomputing.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-The only real user of this header is fs/nfsd/nfsfh.h, so merge the
-two.  Various lock—ï source files used it to indirectly get other
-sunrpc or nfs headers, so fix those up.
 
-Signed-off-by: Christoph Hellwig <hch@lst.de>
----
- fs/lockd/clnt4xdr.c         |    2 ++
- fs/lockd/clntxdr.c          |    2 ++
- fs/lockd/svcsubs.c          |    2 +-
- fs/lockd/xdr.c              |    2 ++
- fs/nfsd/nfsd.h              |    1 +
- fs/nfsd/nfsfh.h             |   59 ++++++++++++++++++++++++++++++++++++----
- fs/nfsd/state.h             |    1 -
- include/linux/lockd/lockd.h |    2 +-
- include/linux/nfsd/export.h |    6 ++++-
- include/linux/nfsd/nfsfh.h  |   63 -------------------------------------------
- 10 files changed, 68 insertions(+), 72 deletions(-)
- delete mode 100644 include/linux/nfsd/nfsfh.h
+On May 14, 2014, at 10:26 AM, Steve Wise <swise@opengridcomputing.com> wrote:
 
-diff --git a/fs/lockd/clnt4xdr.c b/fs/lockd/clnt4xdr.c
-index 00ec0b9..d3e40db 100644
---- a/fs/lockd/clnt4xdr.c
-+++ b/fs/lockd/clnt4xdr.c
-@@ -14,6 +14,8 @@
- #include <linux/sunrpc/stats.h>
- #include <linux/lockd/lockd.h>
- 
-+#include <uapi/linux/nfs3.h>
-+
- #define NLMDBG_FACILITY		NLMDBG_XDR
- 
- #if (NLMCLNT_OHSIZE > XDR_MAX_NETOBJ)
-diff --git a/fs/lockd/clntxdr.c b/fs/lockd/clntxdr.c
-index 9a55797..3e9f787 100644
---- a/fs/lockd/clntxdr.c
-+++ b/fs/lockd/clntxdr.c
-@@ -15,6 +15,8 @@
- #include <linux/sunrpc/stats.h>
- #include <linux/lockd/lockd.h>
- 
-+#include <uapi/linux/nfs2.h>
-+
- #define NLMDBG_FACILITY		NLMDBG_XDR
- 
- #if (NLMCLNT_OHSIZE > XDR_MAX_NETOBJ)
-diff --git a/fs/lockd/svcsubs.c b/fs/lockd/svcsubs.c
-index dc5c759..7ec6b10 100644
---- a/fs/lockd/svcsubs.c
-+++ b/fs/lockd/svcsubs.c
-@@ -14,12 +14,12 @@
- #include <linux/mutex.h>
- #include <linux/sunrpc/svc.h>
- #include <linux/sunrpc/addr.h>
--#include <linux/nfsd/nfsfh.h>
- #include <linux/nfsd/export.h>
- #include <linux/lockd/lockd.h>
- #include <linux/lockd/share.h>
- #include <linux/module.h>
- #include <linux/mount.h>
-+#include <uapi/linux/nfs2.h>
- 
- #define NLMDBG_FACILITY		NLMDBG_SVCSUBS
- 
-diff --git a/fs/lockd/xdr.c b/fs/lockd/xdr.c
-index 964666c..9340e7e 100644
---- a/fs/lockd/xdr.c
-+++ b/fs/lockd/xdr.c
-@@ -16,6 +16,8 @@
- #include <linux/sunrpc/stats.h>
- #include <linux/lockd/lockd.h>
- 
-+#include <uapi/linux/nfs2.h>
-+
- #define NLMDBG_FACILITY		NLMDBG_XDR
- 
- 
-diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-index 479eb68..7d5c310 100644
---- a/fs/nfsd/nfsd.h
-+++ b/fs/nfsd/nfsd.h
-@@ -15,6 +15,7 @@
- #include <linux/nfs2.h>
- #include <linux/nfs3.h>
- #include <linux/nfs4.h>
-+#include <linux/sunrpc/svc.h>
- #include <linux/sunrpc/msg_prot.h>
- 
- #include <linux/nfsd/debug.h>
-diff --git a/fs/nfsd/nfsfh.h b/fs/nfsd/nfsfh.h
-index ad67964..2e89e70 100644
---- a/fs/nfsd/nfsfh.h
-+++ b/fs/nfsd/nfsfh.h
-@@ -1,9 +1,58 @@
--/* Copyright (C) 1995, 1996, 1997 Olaf Kirch <okir@monad.swb.de> */
-+/*
-+ * Copyright (C) 1995, 1996, 1997 Olaf Kirch <okir@monad.swb.de>
-+ *
-+ * This file describes the layout of the file handles as passed
-+ * over the wire.
-+ */
-+#ifndef _LINUX_NFSD_NFSFH_H
-+#define _LINUX_NFSD_NFSFH_H
-+
-+#include <linux/sunrpc/svc.h>
-+#include <uapi/linux/nfsd/nfsfh.h>
-+
-+static inline __u32 ino_t_to_u32(ino_t ino)
-+{
-+	return (__u32) ino;
-+}
-+
-+static inline ino_t u32_to_ino_t(__u32 uino)
-+{
-+	return (ino_t) uino;
-+}
- 
--#ifndef _LINUX_NFSD_FH_INT_H
--#define _LINUX_NFSD_FH_INT_H
-+/*
-+ * This is the internal representation of an NFS handle used in knfsd.
-+ * pre_mtime/post_version will be used to support wcc_attr's in NFSv3.
-+ */
-+typedef struct svc_fh {
-+	struct knfsd_fh		fh_handle;	/* FH data */
-+	struct dentry *		fh_dentry;	/* validated dentry */
-+	struct svc_export *	fh_export;	/* export pointer */
-+	int			fh_maxsize;	/* max size for fh_handle */
-+
-+	unsigned char		fh_locked;	/* inode locked by us */
-+	unsigned char		fh_want_write;	/* remount protection taken */
-+
-+#ifdef CONFIG_NFSD_V3
-+	unsigned char		fh_post_saved;	/* post-op attrs saved */
-+	unsigned char		fh_pre_saved;	/* pre-op attrs saved */
-+
-+	/* Pre-op attributes saved during fh_lock */
-+	__u64			fh_pre_size;	/* size before operation */
-+	struct timespec		fh_pre_mtime;	/* mtime before oper */
-+	struct timespec		fh_pre_ctime;	/* ctime before oper */
-+	/*
-+	 * pre-op nfsv4 change attr: note must check IS_I_VERSION(inode)
-+	 *  to find out if it is valid.
-+	 */
-+	u64			fh_pre_change;
-+
-+	/* Post-op attributes saved in fh_unlock */
-+	struct kstat		fh_post_attr;	/* full attrs after operation */
-+	u64			fh_post_change; /* nfsv4 change; see above */
-+#endif /* CONFIG_NFSD_V3 */
- 
--#include <linux/nfsd/nfsfh.h>
-+} svc_fh;
- 
- enum nfsd_fsid {
- 	FSID_DEV = 0,
-@@ -215,4 +264,4 @@ fh_unlock(struct svc_fh *fhp)
- 	}
- }
- 
--#endif /* _LINUX_NFSD_FH_INT_H */
-+#endif /* _LINUX_NFSD_NFSFH_H */
-diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
-index 424d8f5..5b3bbf2 100644
---- a/fs/nfsd/state.h
-+++ b/fs/nfsd/state.h
-@@ -37,7 +37,6 @@
- 
- #include <linux/idr.h>
- #include <linux/sunrpc/svc_xprt.h>
--#include <linux/nfsd/nfsfh.h>
- #include "nfsfh.h"
- 
- typedef struct {
-diff --git a/include/linux/lockd/lockd.h b/include/linux/lockd/lockd.h
-index dcaad79..219d796 100644
---- a/include/linux/lockd/lockd.h
-+++ b/include/linux/lockd/lockd.h
-@@ -17,13 +17,13 @@
- #include <linux/fs.h>
- #include <linux/kref.h>
- #include <linux/utsname.h>
--#include <linux/nfsd/nfsfh.h>
- #include <linux/lockd/bind.h>
- #include <linux/lockd/xdr.h>
- #ifdef CONFIG_LOCKD_V4
- #include <linux/lockd/xdr4.h>
- #endif
- #include <linux/lockd/debug.h>
-+#include <linux/sunrpc/svc.h>
- 
- /*
-  * Version string
-diff --git a/include/linux/nfsd/export.h b/include/linux/nfsd/export.h
-index 7898c99..b12c4e5 100644
---- a/include/linux/nfsd/export.h
-+++ b/include/linux/nfsd/export.h
-@@ -9,9 +9,13 @@
- #ifndef NFSD_EXPORT_H
- #define NFSD_EXPORT_H
- 
--# include <linux/nfsd/nfsfh.h>
-+#include <linux/sunrpc/cache.h>
- #include <uapi/linux/nfsd/export.h>
- 
-+struct knfsd_fh;
-+struct svc_fh;
-+struct svc_rqst;
-+
- /*
-  * FS Locations
-  */
-diff --git a/include/linux/nfsd/nfsfh.h b/include/linux/nfsd/nfsfh.h
-deleted file mode 100644
-index a93593f..0000000
---- a/include/linux/nfsd/nfsfh.h
-+++ /dev/null
-@@ -1,63 +0,0 @@
--/*
-- * include/linux/nfsd/nfsfh.h
-- *
-- * This file describes the layout of the file handles as passed
-- * over the wire.
-- *
-- * Earlier versions of knfsd used to sign file handles using keyed MD5
-- * or SHA. I've removed this code, because it doesn't give you more
-- * security than blocking external access to port 2049 on your firewall.
-- *
-- * Copyright (C) 1995, 1996, 1997 Olaf Kirch <okir@monad.swb.de>
-- */
--#ifndef _LINUX_NFSD_FH_H
--#define _LINUX_NFSD_FH_H
--
--# include <linux/sunrpc/svc.h>
--#include <uapi/linux/nfsd/nfsfh.h>
--
--static inline __u32 ino_t_to_u32(ino_t ino)
--{
--	return (__u32) ino;
--}
--
--static inline ino_t u32_to_ino_t(__u32 uino)
--{
--	return (ino_t) uino;
--}
--
--/*
-- * This is the internal representation of an NFS handle used in knfsd.
-- * pre_mtime/post_version will be used to support wcc_attr's in NFSv3.
-- */
--typedef struct svc_fh {
--	struct knfsd_fh		fh_handle;	/* FH data */
--	struct dentry *		fh_dentry;	/* validated dentry */
--	struct svc_export *	fh_export;	/* export pointer */
--	int			fh_maxsize;	/* max size for fh_handle */
--
--	unsigned char		fh_locked;	/* inode locked by us */
--	unsigned char		fh_want_write;	/* remount protection taken */
--
--#ifdef CONFIG_NFSD_V3
--	unsigned char		fh_post_saved;	/* post-op attrs saved */
--	unsigned char		fh_pre_saved;	/* pre-op attrs saved */
--
--	/* Pre-op attributes saved during fh_lock */
--	__u64			fh_pre_size;	/* size before operation */
--	struct timespec		fh_pre_mtime;	/* mtime before oper */
--	struct timespec		fh_pre_ctime;	/* ctime before oper */
--	/*
--	 * pre-op nfsv4 change attr: note must check IS_I_VERSION(inode)
--	 *  to find out if it is valid.
--	 */
--	u64			fh_pre_change;
--
--	/* Post-op attributes saved in fh_unlock */
--	struct kstat		fh_post_attr;	/* full attrs after operation */
--	u64			fh_post_change; /* nfsv4 change; see above */
--#endif /* CONFIG_NFSD_V3 */
--
--} svc_fh;
--
--#endif /* _LINUX_NFSD_FH_H */
--- 
-1.7.10.4
+> On 5/13/2014 4:44 PM, Chuck Lever wrote:
+>> 
+>>> I'm not sure what "segment countî you are talking about?
+>> AFAICT a chunk is a list of segments. Thus one chunk can reference
+>> many pages, one per segment.
+> 
+> Ok yes.  rdma_read_chunk_frmr()/rdma_read_chunk_lcl() walk the segments creating rdma read work requests to pull the data for this chunk.
+> 
+>> If you print ch_count, it is 2 for NFS WRITEs from a Linux client,
+>> no matter how large the write payload is. Therefore I think the check
+>> as it is written is not particularly useful.
+> 
+> Why are there 2?
+
+The first chunk lists the pages the server is to read, and the second
+chunk has the zero pad for XDR alignment.
+
+If pad optimization is enabled on the client, there is just 1 chunk in
+the RPCís Read list.
+
+> 
+>> The returned ch_count here is not used beyond that check, after the
+>> refactoring patch is applied. The returned byte_count includes all
+>> chunks in the passed-in chunk list, whereas I think it should count
+>> only the first chunk in the list.
+> 
+> So I'll investigate this more with the goal of only grabbing the first chunk.
+
+[ . . . snipped . . . ]
+
+>>>> 
+>>>> What I'm asking is:
+>>>> 
+>>>> Do you agree the server should be changed to comply with section 4 of 5667?
+>>>> 
+>>> I think it is complying and you are misinterpreting.  But I could be misinterpreting it
+>>> too :)
+>>> 
+>>> But we should fix the pad thing.
+>> That may be enough to support a client that does not send the
+>> pad bytes in a separate chunk. However, I wonder how such a
+>> server would behave with the current client.
+>> 
+>> True, this isnít a regression, per se. The server is already
+>> behaving incorrectly without the refactoring patch.
+>> 
+>> However, Tomís refactoring rewrites all this logic anyway, and
+>> it wouldnít be much of a stretch to make the server comply with
+>> RFC 5667, at this point.
+> 
+> Can we defer this until the refactor patch is in, then I'll work on a new patch for the pad stuff.
+
+Yes, we can defer it.
+
+A bug has been filed to track this issue:
+
+ https://bugzilla.linux-nfs.org/show_bug.cgi?id=246
+
+--
+Chuck Lever
+chucklever@gmail.com
+
+
 
