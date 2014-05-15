@@ -1,59 +1,43 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f173.google.com ([209.85.216.173]:39981 "EHLO
-	mail-qc0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751249AbaEOWHC convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 May 2014 18:07:02 -0400
-MIME-Version: 1.0
-In-Reply-To: <1400190998-28153-1-git-send-email-rickard_strandqvist@spectrumdigital.se>
-References: <1400190998-28153-1-git-send-email-rickard_strandqvist@spectrumdigital.se>
-Date: Thu, 15 May 2014 18:07:01 -0400
-Message-ID: <CAABAsM69JO2F95+uVzbSzOSbnNz2ae0kdffy8m-pGDRr_QR=+g@mail.gmail.com>
-Subject: Re: [PATCH] Fix for possible null pointer dereference in auth.c
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Rickard Strandqvist <rickard_strandqvist@spectrumdigital.se>
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        "David S. Miller" <davem@davemloft.net>, linux-nfs@vger.kernel.org,
-        netdev@vger.kernel.org, linux-kernel@vger.kernel.org
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-ig0-f176.google.com ([209.85.213.176]:40818 "EHLO
+	mail-ig0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755172AbaEOP5Z (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 May 2014 11:57:25 -0400
+Received: by mail-ig0-f176.google.com with SMTP id hl10so8102870igb.3
+        for <linux-nfs@vger.kernel.org>; Thu, 15 May 2014 08:57:24 -0700 (PDT)
+From: Weston Andros Adamson <dros@primarydata.com>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
+Subject: [PATCH v3 11/18] nfs: allow coalescing of subpage requests
+Date: Thu, 15 May 2014 11:56:50 -0400
+Message-Id: <1400169417-28245-12-git-send-email-dros@primarydata.com>
+In-Reply-To: <1400169417-28245-1-git-send-email-dros@primarydata.com>
+References: <1400169417-28245-1-git-send-email-dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, May 15, 2014 at 5:56 PM, Rickard Strandqvist
-<rickard_strandqvist@spectrumdigital.se> wrote:
-> There is otherwise a risk of a possible null pointer dereference.
->
-> Was largely found by using a static code analysis program called cppcheck.
->
-> Signed-off-by: Rickard Strandqvist <rickard_strandqvist@spectrumdigital.se>
-> ---
->  net/sunrpc/auth.c |   10 +++++++---
->  1 fil ändrad, 7 tillägg(+), 3 borttagningar(-)
->
-> diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
-> index 5285ead..3a55698 100644
-> --- a/net/sunrpc/auth.c
-> +++ b/net/sunrpc/auth.c
-> @@ -801,10 +801,14 @@ rpcauth_invalcred(struct rpc_task *task)
->  {
->         struct rpc_cred *cred = task->tk_rqstp->rq_cred;
->
-> -       dprintk("RPC: %5u invalidating %s cred %p\n",
-> -               task->tk_pid, cred->cr_auth->au_ops->au_name, cred);
-> -       if (cred)
-> +       if (cred) {
-> +               dprintk("RPC: %5u invalidating %s cred %p\n",
-> +                       task->tk_pid, cred->cr_auth->au_ops->au_name, cred);
-> +
->                 clear_bit(RPCAUTH_CRED_UPTODATE, &cred->cr_flags);
-> +       }
-> +       else
-> +               dprintk("RPC: %5u invalidating is NULL\n", task->tk_pid);
->  }
->
->
+Remove check that the request covers a whole page.
 
-Can you please explain how we can get to rpcauth_invalcred() without a
-valid cred pointer? I'm not seeing it...
+Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+---
+ fs/nfs/pagelist.c | 4 ----
+ 1 file changed, 4 deletions(-)
 
-Cheers
-  Trond
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index ce3faad..44aef5a 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -922,10 +922,6 @@ static bool nfs_can_coalesce_requests(struct nfs_page *prev,
+ 		    !nfs_match_lock_context(req->wb_lock_context,
+ 					    prev->wb_lock_context))
+ 			return false;
+-		if (req->wb_pgbase != 0)
+-			return false;
+-		if (prev->wb_pgbase + prev->wb_bytes != PAGE_CACHE_SIZE)
+-			return false;
+ 		if (req_offset(req) != req_offset(prev) + prev->wb_bytes)
+ 			return false;
+ 	}
+-- 
+1.8.5.2 (Apple Git-48)
+
