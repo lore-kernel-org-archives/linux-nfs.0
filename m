@@ -1,125 +1,133 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f178.google.com ([209.85.192.178]:44777 "EHLO
-	mail-pd0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754809AbaEHVbN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 8 May 2014 17:31:13 -0400
-Received: by mail-pd0-f178.google.com with SMTP id r10so2818686pdi.9
-        for <linux-nfs@vger.kernel.org>; Thu, 08 May 2014 14:31:12 -0700 (PDT)
-From: Thomas Haynes <thomas.haynes@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Cc: Tom Haynes <Thomas.Haynes@primarydata.com>
-Subject: [PATCH] Push the file layout driver into a subdirectory
-Date: Thu,  8 May 2014 14:31:02 -0700
-Message-Id: <1399584662-1913-1-git-send-email-Thomas.Haynes@primarydata.com>
+Received: from mail-ig0-f180.google.com ([209.85.213.180]:41168 "EHLO
+	mail-ig0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755107AbaEOP5J (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 May 2014 11:57:09 -0400
+Received: by mail-ig0-f180.google.com with SMTP id c1so1173196igq.1
+        for <linux-nfs@vger.kernel.org>; Thu, 15 May 2014 08:57:09 -0700 (PDT)
+From: Weston Andros Adamson <dros@primarydata.com>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
+Subject: [PATCH v3 03/18] nfs: remove unused arg from nfs_create_request
+Date: Thu, 15 May 2014 11:56:42 -0400
+Message-Id: <1400169417-28245-4-git-send-email-dros@primarydata.com>
+In-Reply-To: <1400169417-28245-1-git-send-email-dros@primarydata.com>
+References: <1400169417-28245-1-git-send-email-dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Tom Haynes <Thomas.Haynes@primarydata.com>
+@inode is passed but not used.
 
-The object and block layouts already exist in their own
-subdirectories. This patch completes the set!
-
-Note that as a layout denotes nfs4 already, I stripped
-that prefix out of the file names.
-
-Signed-off-by: Tom Haynes <Thomas.Haynes@primarydata.com>
+Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
 ---
- fs/nfs/Makefile                                            |  4 +---
- fs/nfs/filelayout/Kbuild                                   |  5 +++++
- fs/nfs/{nfs4filelayout.c => filelayout/filelayout.c}       | 10 +++++-----
- fs/nfs/{nfs4filelayout.h => filelayout/filelayout.h}       |  2 +-
- fs/nfs/{nfs4filelayoutdev.c => filelayout/filelayoutdev.c} |  6 +++---
- 5 files changed, 15 insertions(+), 12 deletions(-)
- create mode 100644 fs/nfs/filelayout/Kbuild
- rename fs/nfs/{nfs4filelayout.c => filelayout/filelayout.c} (99%)
- rename fs/nfs/{nfs4filelayout.h => filelayout/filelayout.h} (99%)
- rename fs/nfs/{nfs4filelayoutdev.c => filelayout/filelayoutdev.c} (99%)
+ fs/nfs/direct.c          | 6 ++----
+ fs/nfs/pagelist.c        | 4 +---
+ fs/nfs/read.c            | 5 ++---
+ fs/nfs/write.c           | 2 +-
+ include/linux/nfs_page.h | 1 -
+ 5 files changed, 6 insertions(+), 12 deletions(-)
 
-diff --git a/fs/nfs/Makefile b/fs/nfs/Makefile
-index 551d82a..43058f7 100644
---- a/fs/nfs/Makefile
-+++ b/fs/nfs/Makefile
-@@ -29,8 +29,6 @@ nfsv4-$(CONFIG_NFS_USE_LEGACY_DNS) += cache_lib.o
- nfsv4-$(CONFIG_SYSCTL)	+= nfs4sysctl.o
- nfsv4-$(CONFIG_NFS_V4_1)	+= pnfs.o pnfs_dev.o
+diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
+index 164b016..1dd8c62 100644
+--- a/fs/nfs/direct.c
++++ b/fs/nfs/direct.c
+@@ -380,8 +380,7 @@ static ssize_t nfs_direct_read_schedule_segment(struct nfs_pageio_descriptor *de
+ 			struct nfs_page *req;
+ 			unsigned int req_len = min_t(size_t, bytes, PAGE_SIZE - pgbase);
+ 			/* XXX do we need to do the eof zeroing found in async_filler? */
+-			req = nfs_create_request(dreq->ctx, dreq->inode,
+-						 pagevec[i],
++			req = nfs_create_request(dreq->ctx, pagevec[i],
+ 						 pgbase, req_len);
+ 			if (IS_ERR(req)) {
+ 				result = PTR_ERR(req);
+@@ -750,8 +749,7 @@ static ssize_t nfs_direct_write_schedule_segment(struct nfs_pageio_descriptor *d
+ 			struct nfs_page *req;
+ 			unsigned int req_len = min_t(size_t, bytes, PAGE_SIZE - pgbase);
  
--obj-$(CONFIG_PNFS_FILE_LAYOUT) += nfs_layout_nfsv41_files.o
--nfs_layout_nfsv41_files-y := nfs4filelayout.o nfs4filelayoutdev.o
--
-+obj-$(CONFIG_PNFS_FILE_LAYOUT) += filelayout/
- obj-$(CONFIG_PNFS_OBJLAYOUT) += objlayout/
- obj-$(CONFIG_PNFS_BLOCK) += blocklayout/
-diff --git a/fs/nfs/filelayout/Kbuild b/fs/nfs/filelayout/Kbuild
-new file mode 100644
-index 0000000..8516cdf
---- /dev/null
-+++ b/fs/nfs/filelayout/Kbuild
-@@ -0,0 +1,5 @@
-+#
-+# Makefile for the pNFS Files Layout Driver kernel module
-+#
-+obj-$(CONFIG_PNFS_FILE_LAYOUT) += nfs_layout_nfsv41_files.o
-+nfs_layout_nfsv41_files-y := filelayout.o filelayoutdev.o
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/filelayout/filelayout.c
-similarity index 99%
-rename from fs/nfs/nfs4filelayout.c
-rename to fs/nfs/filelayout/filelayout.c
-index 7954e16..ffc2ed8 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/filelayout/filelayout.c
-@@ -35,11 +35,11 @@
+-			req = nfs_create_request(dreq->ctx, dreq->inode,
+-						 pagevec[i],
++			req = nfs_create_request(dreq->ctx, pagevec[i],
+ 						 pgbase, req_len);
+ 			if (IS_ERR(req)) {
+ 				result = PTR_ERR(req);
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index 88b6442..22b0f51 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -139,7 +139,6 @@ nfs_iocounter_wait(struct nfs_io_counter *c)
+ /**
+  * nfs_create_request - Create an NFS read/write request.
+  * @ctx: open context to use
+- * @inode: inode to which the request is attached
+  * @page: page to write
+  * @offset: starting offset within the page for the write
+  * @count: number of bytes to read/write
+@@ -149,8 +148,7 @@ nfs_iocounter_wait(struct nfs_io_counter *c)
+  * User should ensure it is safe to sleep in this function.
+  */
+ struct nfs_page *
+-nfs_create_request(struct nfs_open_context *ctx, struct inode *inode,
+-		   struct page *page,
++nfs_create_request(struct nfs_open_context *ctx, struct page *page,
+ 		   unsigned int offset, unsigned int count)
+ {
+ 	struct nfs_page		*req;
+diff --git a/fs/nfs/read.c b/fs/nfs/read.c
+index 3986668..46d9044 100644
+--- a/fs/nfs/read.c
++++ b/fs/nfs/read.c
+@@ -85,7 +85,7 @@ int nfs_readpage_async(struct nfs_open_context *ctx, struct inode *inode,
+ 	len = nfs_page_length(page);
+ 	if (len == 0)
+ 		return nfs_return_empty_page(page);
+-	new = nfs_create_request(ctx, inode, page, 0, len);
++	new = nfs_create_request(ctx, page, 0, len);
+ 	if (IS_ERR(new)) {
+ 		unlock_page(page);
+ 		return PTR_ERR(new);
+@@ -303,7 +303,6 @@ static int
+ readpage_async_filler(void *data, struct page *page)
+ {
+ 	struct nfs_readdesc *desc = (struct nfs_readdesc *)data;
+-	struct inode *inode = page_file_mapping(page)->host;
+ 	struct nfs_page *new;
+ 	unsigned int len;
+ 	int error;
+@@ -312,7 +311,7 @@ readpage_async_filler(void *data, struct page *page)
+ 	if (len == 0)
+ 		return nfs_return_empty_page(page);
  
- #include <linux/sunrpc/metrics.h>
+-	new = nfs_create_request(desc->ctx, inode, page, 0, len);
++	new = nfs_create_request(desc->ctx, page, 0, len);
+ 	if (IS_ERR(new))
+ 		goto out_error;
  
--#include "nfs4session.h"
--#include "internal.h"
--#include "delegation.h"
--#include "nfs4filelayout.h"
--#include "nfs4trace.h"
-+#include "../nfs4session.h"
-+#include "../internal.h"
-+#include "../delegation.h"
-+#include "filelayout.h"
-+#include "../nfs4trace.h"
+diff --git a/fs/nfs/write.c b/fs/nfs/write.c
+index 2680f29..e773df2 100644
+--- a/fs/nfs/write.c
++++ b/fs/nfs/write.c
+@@ -761,7 +761,7 @@ static struct nfs_page * nfs_setup_write_request(struct nfs_open_context* ctx,
+ 	req = nfs_try_to_update_request(inode, page, offset, bytes);
+ 	if (req != NULL)
+ 		goto out;
+-	req = nfs_create_request(ctx, inode, page, offset, bytes);
++	req = nfs_create_request(ctx, page, offset, bytes);
+ 	if (IS_ERR(req))
+ 		goto out;
+ 	nfs_inode_add_request(inode, req);
+diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
+index eb2eb63..be0b098 100644
+--- a/include/linux/nfs_page.h
++++ b/include/linux/nfs_page.h
+@@ -85,7 +85,6 @@ struct nfs_pageio_descriptor {
+ #define NFS_WBACK_BUSY(req)	(test_bit(PG_BUSY,&(req)->wb_flags))
  
- #define NFSDBG_FACILITY         NFSDBG_PNFS_LD
- 
-diff --git a/fs/nfs/nfs4filelayout.h b/fs/nfs/filelayout/filelayout.h
-similarity index 99%
-rename from fs/nfs/nfs4filelayout.h
-rename to fs/nfs/filelayout/filelayout.h
-index cebd20e..ffbddf2 100644
---- a/fs/nfs/nfs4filelayout.h
-+++ b/fs/nfs/filelayout/filelayout.h
-@@ -30,7 +30,7 @@
- #ifndef FS_NFS_NFS4FILELAYOUT_H
- #define FS_NFS_NFS4FILELAYOUT_H
- 
--#include "pnfs.h"
-+#include "../pnfs.h"
- 
- /*
-  * Default data server connection timeout and retrans vaules.
-diff --git a/fs/nfs/nfs4filelayoutdev.c b/fs/nfs/filelayout/filelayoutdev.c
-similarity index 99%
-rename from fs/nfs/nfs4filelayoutdev.c
-rename to fs/nfs/filelayout/filelayoutdev.c
-index efac602..7c85390 100644
---- a/fs/nfs/nfs4filelayoutdev.c
-+++ b/fs/nfs/filelayout/filelayoutdev.c
-@@ -33,9 +33,9 @@
- #include <linux/module.h>
- #include <linux/sunrpc/addr.h>
- 
--#include "internal.h"
--#include "nfs4session.h"
--#include "nfs4filelayout.h"
-+#include "../internal.h"
-+#include "../nfs4session.h"
-+#include "filelayout.h"
- 
- #define NFSDBG_FACILITY		NFSDBG_PNFS_LD
- 
+ extern	struct nfs_page *nfs_create_request(struct nfs_open_context *ctx,
+-					    struct inode *inode,
+ 					    struct page *page,
+ 					    unsigned int offset,
+ 					    unsigned int count);
 -- 
-1.9.0
+1.8.5.2 (Apple Git-48)
 
