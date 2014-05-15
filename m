@@ -1,64 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f52.google.com ([209.85.220.52]:55800 "EHLO
-	mail-pa0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1756047AbaELU7D convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 May 2014 16:59:03 -0400
-Received: by mail-pa0-f52.google.com with SMTP id fa1so5263244pad.11
-        for <linux-nfs@vger.kernel.org>; Mon, 12 May 2014 13:59:02 -0700 (PDT)
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
-Subject: Re: [PATCH] NFS: revalidate on open if dcache is negative.
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-In-Reply-To: <20140512135019.56e5c465@notabene.brown>
-Date: Mon, 12 May 2014 13:58:59 -0700
-Cc: NFS <linux-nfs@vger.kernel.org>
-Message-Id: <5C29EB03-6EF6-476C-AD25-97E0A3871C26@primarydata.com>
-References: <20140512135019.56e5c465@notabene.brown>
-To: Brown Neil <neilb@suse.de>
+Received: from mx1.redhat.com ([209.132.183.28]:31751 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1753269AbaEOQuh (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 15 May 2014 12:50:37 -0400
+Received: from int-mx13.intmail.prod.int.phx2.redhat.com (int-mx13.intmail.prod.int.phx2.redhat.com [10.5.11.26])
+	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s4FGobOU005571
+	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-GCM-SHA384 bits=256 verify=OK)
+	for <linux-nfs@vger.kernel.org>; Thu, 15 May 2014 12:50:37 -0400
+Received: from smallhat.boston.devel.redhat.com (vpn-55-182.rdu2.redhat.com [10.10.55.182])
+	by int-mx13.intmail.prod.int.phx2.redhat.com (8.14.4/8.14.4) with ESMTP id s4FGoah2010679
+	for <linux-nfs@vger.kernel.org>; Thu, 15 May 2014 12:50:37 -0400
+Message-ID: <5374F05C.7090306@RedHat.com>
+Date: Thu, 15 May 2014 12:50:36 -0400
+From: Steve Dickson <SteveD@redhat.com>
+MIME-Version: 1.0
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+Subject: Re: Linux NFS Town Hall  meeting: Thur 04/15/14
+References: <53739D0C.1090100@RedHat.com>
+In-Reply-To: <53739D0C.1090100@RedHat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+A quick reminder... This meeting going to start in 10 or so
+minutes... If interested... 
 
-On May 11, 2014, at 20:50, NeilBrown <neilb@suse.de> wrote:
+steved. 
 
+On 05/14/2014 12:42 PM, Steve Dickson wrote:
+> Hello,
 > 
+> We have not had one of these for a while and there
+> has been some churn lately... 
+>  
+> The Linux NFS town hall meeting is tomorrow
+> *Thur May 15 at 01:00 pm EST (10:00am PST)*
 > 
-> NFS CTO semantics require that (absent a delegation) the server
-> must be contacted at each open.
+> The usual agenda will apply. The maintainers will give
+> a quick status of what is happening in their worlds.
 > 
-> nfs_lookup_verify_inode() implements this when the dcache contains
-> a positive cached entry.  However it is not called when the dcache
-> contains a negative cached entry.  That path uses nfs_neg_need_reval()
-> which doesn't impose CTO semantics.
+> Next we'll get updates from major contributors on what
+> they have been doing and are planing on doing.
+>   
+> Finally, we'll open the floor to questions, comments, 
+> concerns from the community.  
 > 
-> So a sequence like:
+> Generally the meeting lasts between 30 to 45 mins, with 
+> a very hard stop at 60mins. 
 > 
->   rm -f testfile
->   ls -l testfile
->   ssh $server touch testfile
->   cat testfile
+> Please feel to attend and participate!
 > 
-> will fail:
+> Time: 10:00 am PST (01:00 pm EST)
 > 
->  cat: testfile: No such file or directory
+> The call in numbers are:
+> U.S. and Canada: (800) 451-8679
+> International dial-in number: (212) 729-5016
+> Israel Toll-Free: 1-809-462-557
+> Conference code: 564.272.1552
 > 
-> an 'strace' will confirm that this resulted from an 'open' system
-> call.
+> steved.
 > 
-> So add code to nfs_neg_need_reval implement CTO semantics much like
-> that in nfs_lookup_verify_inode().
-
-Hi Neil,
-
-To me, close-to-open is about ensuring that the data and metadata caches for the file (or directory) in question are revalidated correctly on open (or opendir). Close-to-open semantics are enabled/disabled by the cto/nocto mount options (with cto being the default).
-
-The lookup semantics are about ensuring that the namespace cache is consistent with what is on the server. They are controlled by the ‘lookupcache’ mount option, which defaults to the behaviour that you describe above (lookupcache=all). I believe that we have discussed changing the default to be lookupcache=positive, which would give the semantics that your patch enforces, but I believe the consensus was to keep the current behaviour.
-
-Cheers
-  Trond
-
-_________________________________
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
-
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> 
