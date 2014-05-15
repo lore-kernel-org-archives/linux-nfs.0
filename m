@@ -1,52 +1,90 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from elasmtp-masked.atl.sa.earthlink.net ([209.86.89.68]:42226 "EHLO
-	elasmtp-masked.atl.sa.earthlink.net" rhost-flags-OK-OK-OK-OK)
-	by vger.kernel.org with ESMTP id S1755265AbaE2Jp0 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 May 2014 05:45:26 -0400
-Received: from [24.144.107.66] (helo=[192.168.0.11])
-	by elasmtp-masked.atl.sa.earthlink.net with esmtpa (Exim 4.67)
-	(envelope-from <mrmazda@earthlink.net>)
-	id 1Wpwtp-0000lB-BO
-	for linux-nfs@vger.kernel.org; Thu, 29 May 2014 05:45:25 -0400
-Message-ID: <538701B4.6030207@earthlink.net>
-Date: Thu, 29 May 2014 05:45:24 -0400
-From: Felix Miata <mrmazda@earthlink.net>
-MIME-Version: 1.0
-To: linux-nfs@vger.kernel.org
-Subject: Re: system updating routinely umounts "manual" nfs mounts
-References: <53823B52.2080201@earthlink.net> <20140527205527.GC32160@fieldses.org>
-In-Reply-To: <20140527205527.GC32160@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1; format=flowed
+Received: from mail-ie0-f181.google.com ([209.85.223.181]:50965 "EHLO
+	mail-ie0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755202AbaEOP5e (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 May 2014 11:57:34 -0400
+Received: by mail-ie0-f181.google.com with SMTP id rl12so1214749iec.40
+        for <linux-nfs@vger.kernel.org>; Thu, 15 May 2014 08:57:34 -0700 (PDT)
+From: Weston Andros Adamson <dros@primarydata.com>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
+Subject: [PATCH v3 16/18] pnfs: allow non page aligned pnfs layout segments
+Date: Thu, 15 May 2014 11:56:55 -0400
+Message-Id: <1400169417-28245-17-git-send-email-dros@primarydata.com>
+In-Reply-To: <1400169417-28245-1-git-send-email-dros@primarydata.com>
+References: <1400169417-28245-1-git-send-email-dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 2014-05-27 16:55 (GMT-0400) J. Bruce Fields composed:
+Remove alignment checks that would revert to MDS and change pg_test
+to return the max ammount left in the segment (or other pg_test call)
+up to size of passed request, or 0 if no space is left.
 
-> On Sun, May 25, 2014 at 02:49:54PM -0400, Felix Miata wrote:
+Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+---
+ fs/nfs/pnfs.c | 25 ++++++++++---------------
+ 1 file changed, 10 insertions(+), 15 deletions(-)
 
->> This has been happening here for several months or more in devel
->> distro versions Factory and IIRC Cauldron and Rawhide.
-
->> Maybe others' manual nfs mounts are more "manual" than mine are.
->> Mine are actually a group of noauto fstab entries I enable via
->> script when I want them active. All of my installations are on real
->> x86 hardware, some 32 and others 64 bit. I'm guessing what's going
->> on is systemd updates syncing /proc/mounts to fstab, oblivious to
->> the manual post-init mount processes having taken place, but this
->> certainly could be nfs evolutionary fallout or something else I know
->> nothing about. Is this happening to others? Expected? My search of
->> nfs component @bugzilla.kernel.org produced nothing on apparent
->> point.
-
-> The kernel certainly isn't going to unmount things for you like this, so
-> this is a question for the distro or systemd maintainers or something.
-
-Couldn't make it happen in Cauldron or Rawhide, so filed openSUSE bug:
-https://bugzilla.novell.com/show_bug.cgi?id=880208
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 6ef108b..ce46a41 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1388,11 +1388,6 @@ pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *r
+ 
+ 	WARN_ON_ONCE(pgio->pg_lseg != NULL);
+ 
+-	if (req->wb_offset != req->wb_pgbase) {
+-		nfs_pageio_reset_read_mds(pgio);
+-		return;
+-	}
+-
+ 	if (pgio->pg_dreq == NULL)
+ 		rd_size = i_size_read(pgio->pg_inode) - req_offset(req);
+ 	else
+@@ -1417,11 +1412,6 @@ pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio,
+ {
+ 	WARN_ON_ONCE(pgio->pg_lseg != NULL);
+ 
+-	if (req->wb_offset != req->wb_pgbase) {
+-		nfs_pageio_reset_write_mds(pgio);
+-		return;
+-	}
+-
+ 	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
+ 					   req->wb_context,
+ 					   req_offset(req),
+@@ -1443,9 +1433,9 @@ pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+ 		     struct nfs_page *req)
+ {
+ 	unsigned int size;
++	u64 end;
+ 
+ 	size = nfs_generic_pg_test(pgio, prev, req);
+-
+ 	if (!size)
+ 		return 0;
+ 
+@@ -1463,11 +1453,16 @@ pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+ 	 * first byte that lies outside the pnfs_layout_range. FIXME?
+ 	 *
+ 	 */
+-	if (req_offset(req) >= end_offset(pgio->pg_lseg->pls_range.offset,
+-					 pgio->pg_lseg->pls_range.length))
+-		return 0;
++	if (pgio->pg_lseg) {
++		end = end_offset(pgio->pg_lseg->pls_range.offset,
++				 pgio->pg_lseg->pls_range.length);
++		WARN_ON_ONCE(req_offset(req) > end);
++		if (req_offset(req) >= end)
++			return 0;
++		size = min((unsigned int)(end - req_offset(req)), size);
++	}
+ 
+-	return min(size, req->wb_bytes);
++	return size;
+ }
+ EXPORT_SYMBOL_GPL(pnfs_generic_pg_test);
+ 
 -- 
-"The wise are known for their understanding, and pleasant
-words are persuasive." Proverbs 16:21 (New Living Translation)
+1.8.5.2 (Apple Git-48)
 
-  Team OS/2 ** Reg. Linux User #211409 ** a11y rocks!
-
-Felix Miata  ***  http://fm.no-ip.com/
