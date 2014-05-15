@@ -1,211 +1,137 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-oa0-f43.google.com ([209.85.219.43]:49271 "EHLO
-	mail-oa0-f43.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932261AbaEQKrS (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 17 May 2014 06:47:18 -0400
-Received: by mail-oa0-f43.google.com with SMTP id l6so4204823oag.16
-        for <linux-nfs@vger.kernel.org>; Sat, 17 May 2014 03:47:18 -0700 (PDT)
-Message-ID: <53773E28.5010206@gmail.com>
-Date: Sat, 17 May 2014 18:47:04 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: linux-nfs@vger.kernel.org, kinglongmee@gmail.com
-Subject: [PATCH] NFS4.0: Add IPv6 support
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from mail-ig0-f180.google.com ([209.85.213.180]:36153 "EHLO
+	mail-ig0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755202AbaEOP5g (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 May 2014 11:57:36 -0400
+Received: by mail-ig0-f180.google.com with SMTP id c1so1166666igq.13
+        for <linux-nfs@vger.kernel.org>; Thu, 15 May 2014 08:57:35 -0700 (PDT)
+From: Weston Andros Adamson <dros@primarydata.com>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
+Subject: [PATCH v3 17/18] pnfs: filelayout: support non page aligned layouts
+Date: Thu, 15 May 2014 11:56:56 -0400
+Message-Id: <1400169417-28245-18-git-send-email-dros@primarydata.com>
+In-Reply-To: <1400169417-28245-1-git-send-email-dros@primarydata.com>
+References: <1400169417-28245-1-git-send-email-dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
----
- nfs4.0/lib/rpc/rpc.py | 15 ++++++++-----
- nfs4.0/nfs4lib.py     | 61 +++++++++++++++++++++++++++++++++++++++++++++++++++
- nfs4.0/testserver.py  | 26 +++++-----------------
- 3 files changed, 77 insertions(+), 25 deletions(-)
+Use the new pg_test interface to adjust requests to fit in the current
+stripe / segment.
 
-diff --git a/nfs4.0/lib/rpc/rpc.py b/nfs4.0/lib/rpc/rpc.py
-index 60f70bd..8b39df4 100644
---- a/nfs4.0/lib/rpc/rpc.py
-+++ b/nfs4.0/lib/rpc/rpc.py
-@@ -188,6 +188,9 @@ class RPCClient(object):
-         self.debug = 0
-         t = threading.currentThread()
-         self.lock = threading.Lock()
-+        self.af = socket.AF_INET;
-+        if host.find(':') != -1:
-+            self.af = socket.AF_INET6;
-         self.remotehost = host
-         self.remoteport = port
-         self.timeout = timeout
-@@ -207,6 +210,7 @@ class RPCClient(object):
-         self._init_security(self.sec_list) # Note this can make calls
-         self.security = sec_list[0]
+Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+---
+ fs/nfs/nfs4filelayout.c | 50 ++++++++++++++++++-------------------------------
+ 1 file changed, 18 insertions(+), 32 deletions(-)
+
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 0ebc521..9419061 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -639,7 +639,6 @@ filelayout_check_layout(struct pnfs_layout_hdr *lo,
+ 	struct nfs4_deviceid_node *d;
+ 	struct nfs4_file_layout_dsaddr *dsaddr;
+ 	int status = -EINVAL;
+-	struct nfs_server *nfss = NFS_SERVER(lo->plh_inode);
  
-+
-     def _init_security(self, list):
-         # Each element of list must have functions:
-         # initialize, secure_data, make_cred, make_verf
-@@ -235,8 +239,7 @@ class RPCClient(object):
-         if t in self._socket:
-             out = self._socket[t]
-         else:
--            out = self._socket[t] = socket.socket(socket.AF_INET,
--                                                  socket.SOCK_STREAM)
-+            out = self._socket[t] = socket.socket(self.af, socket.SOCK_STREAM)
-             if self.uselowport:
-                 self.bindsocket(out)
-             out.connect((self.remotehost, self.remoteport))
-@@ -301,8 +304,7 @@ class RPCClient(object):
-         t = threading.currentThread()
-         self.lock.acquire()
-         self._socket[t].close()
--        out = self._socket[t] = socket.socket(socket.AF_INET,
--                                              socket.SOCK_STREAM)
-+        out = self._socket[t] = socket.socket(self.af, socket.SOCK_STREAM)
-         # out.bind
-         out.connect((self.remotehost, self.remoteport))
-         out.settimeout(self.timeout)
-@@ -454,7 +456,10 @@ class RPCClient(object):
+ 	dprintk("--> %s\n", __func__);
  
- class Server(object):
-     def __init__(self, host='', port=51423, name="SERVER"):
--        self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-+        try:
-+            self.s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
-+        except:
-+            self.s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-         self.s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-         self.s.bind((host, port))
-         self.port = self.s.getsockname()[1]
-diff --git a/nfs4.0/nfs4lib.py b/nfs4.0/nfs4lib.py
-index 5fc7bf3..994e0e1 100644
---- a/nfs4.0/nfs4lib.py
-+++ b/nfs4.0/nfs4lib.py
-@@ -39,6 +39,7 @@ import time
- import struct
- import socket
- import sys
-+import re
+@@ -657,7 +656,7 @@ filelayout_check_layout(struct pnfs_layout_hdr *lo,
+ 		goto out;
+ 	}
  
- class NFSException(rpc.RPCError):
-     pass
-@@ -1013,4 +1014,64 @@ def bitmap2list(bitmap):
-         bitmap >>= 1
-     return out
+-	if (!fl->stripe_unit || fl->stripe_unit % PAGE_SIZE) {
++	if (!fl->stripe_unit) {
+ 		dprintk("%s Invalid stripe unit (%u)\n",
+ 			__func__, fl->stripe_unit);
+ 		goto out;
+@@ -694,12 +693,6 @@ filelayout_check_layout(struct pnfs_layout_hdr *lo,
+ 		goto out_put;
+ 	}
  
-+def path_components(path, use_dots=True):
-+    """Convert a string '/a/b/c' into an array ['a', 'b', 'c']"""
-+    out = []
-+    for c in path.split('/'):
-+        if c == '':
-+            pass
-+        elif use_dots and c == '.':
-+            pass
-+        elif use_dots and c == '..':
-+            del out[-1]
-+
-+def parse_nfs_url(url):
-+    """Parse [nfs://]host:port/path, format taken from rfc 2224
-+       multipath addr:port pair are as such:
-+
-+      $ip1:$port1,$ip2:$port2..
-+
-+    Returns triple server, port, path.
-+    """
-+    p = re.compile(r"""
-+    (?:nfs://)?               # Ignore an optionally prepended 'nfs://'
-+    (?P<servers>[^/]+)
-+    (?P<path>/.*)?            # set path=everything else, must start with /
-+    $
-+    """, re.VERBOSE)
-+
-+    m = p.match(url)
-+    if m:
-+        servers = m.group('servers')
-+        server_list = []
-+
-+        for server in servers.split(','):
-+            server = server.strip()
-+
-+            idx = server.rfind(':')
-+            bracket_idx = server.rfind(']')
-+
-+            # the first : is before ipv6 addr ] -> no port specified
-+            if bracket_idx > idx:
-+                idx = -1
-+
-+            if idx >= 0:
-+                host = server[:idx]
-+                port = server[idx+1:]
-+            else:
-+                host = server
-+                port = None
-+
-+            # remove brackets around IPv6 addrs, if they exist
-+            if host.startswith('[') and host.endswith(']'):
-+                host = host[1:-1]
-+
-+            port = (2049 if not port else int(port))
-+            server_list.append((host, port))
- 
-+        path = m.group('path')
-+        path = (path_components(path) if path else [])
-+
-+        return tuple(server_list), path
-+    else:
-+        raise ValueError("Error parsing NFS URL: %s" % url)
-diff --git a/nfs4.0/testserver.py b/nfs4.0/testserver.py
-index 606e2f0..41be74a 100755
---- a/nfs4.0/testserver.py
-+++ b/nfs4.0/testserver.py
-@@ -35,7 +35,6 @@ if  __name__ == "__main__":
-     if os.path.isfile(os.path.join(sys.path[0], 'lib', 'testmod.py')):
-         sys.path.insert(1, os.path.join(sys.path[0], 'lib'))
- 
--import re
- import nfs4lib
- import testmod
- from optparse import OptionParser, OptionGroup, IndentedHelpFormatter
-@@ -57,23 +56,6 @@ if not hasattr(os, "getgid"):
- else:
-     GID = os.getgid()
- 
+-	if (fl->stripe_unit % nfss->rsize || fl->stripe_unit % nfss->wsize) {
+-		dprintk("%s Stripe unit (%u) not aligned with rsize %u "
+-			"wsize %u\n", __func__, fl->stripe_unit, nfss->rsize,
+-			nfss->wsize);
+-	}
 -
--def parse_url(url):
--    """Parse [nfs://]host:port/path"""
--    p = re.compile(r"""
--    (?:nfs://)?      # Ignore an optionally prepended 'nfs://'
--    (?P<host>[^:]+)  # set host=everything up to next :
--    :?
--    (?P<port>[^/]*)  # set port=everything up to next /
--    (?P<path>/.*$|$) # set path=everything else
--    """, re.VERBOSE)
+ 	status = 0;
+ out:
+ 	dprintk("--> %s returns %d\n", __func__, status);
+@@ -936,44 +929,40 @@ filelayout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+ {
+ 	unsigned int size;
+ 	u64 p_stripe, r_stripe;
+-	u32 stripe_unit;
++	u32 stripe_offset;
++	u64 segment_offset = pgio->pg_lseg->pls_range.offset;
++	u32 stripe_unit = FILELAYOUT_LSEG(pgio->pg_lseg)->stripe_unit;
+ 
+ 	/* calls nfs_generic_pg_test */
+ 	size = pnfs_generic_pg_test(pgio, prev, req);
+ 	if (!size)
+ 		return 0;
+ 
++	/* see if req and prev are in the same stripe */
+ 	if (prev) {
+-		p_stripe = (u64)req_offset(prev);
+-		r_stripe = (u64)req_offset(req);
+-		stripe_unit = FILELAYOUT_LSEG(pgio->pg_lseg)->stripe_unit;
 -
--    m = p.match(url)
--    if m:
--        return m.group('host'), m.group('port'), m.group('path')
--    else:
--        return None, None, None
--        
- def unixpath2comps(str, pathcomps=None):
-     if pathcomps is None or str[0] == '/':
-         pathcomps = []
-@@ -284,9 +266,13 @@ def main():
-     if not args:
-         p.error("Need a server")
-     url = args.pop(0)
--    opt.server, opt.port, opt.path = parse_url(url)
--    if not opt.server:
-+    server_list, opt.path = nfs4lib.parse_nfs_url(url)
++		p_stripe = (u64)req_offset(prev) - segment_offset;
++		r_stripe = (u64)req_offset(req) - segment_offset;
+ 		do_div(p_stripe, stripe_unit);
+ 		do_div(r_stripe, stripe_unit);
+ 
+ 		if (p_stripe != r_stripe)
+ 			return 0;
+ 	}
+-	return min(size, req->wb_bytes);
 +
-+    if not server_list:
-         p.error("%s not a valid server name" % url)
-+
-+    opt.server, opt.port = server_list[0]
-+
-     if not opt.port:
-         opt.port = 2049
-     else:
++	/* calculate remaining bytes in the current stripe */
++	stripe_offset = ((u64)req_offset(req) - segment_offset) % stripe_unit;
++	WARN_ON_ONCE(stripe_offset > stripe_unit);
++	if (stripe_offset >= stripe_unit)
++		return 0;
++	return min(stripe_unit - (unsigned int)stripe_offset, size);
+ }
+ 
+ static void
+ filelayout_pg_init_read(struct nfs_pageio_descriptor *pgio,
+ 			struct nfs_page *req)
+ {
+-	WARN_ON_ONCE(pgio->pg_lseg != NULL);
+-
+-	if (req->wb_offset != req->wb_pgbase) {
+-		/*
+-		 * Handling unaligned pages is difficult, because have to
+-		 * somehow split a req in two in certain cases in the
+-		 * pg.test code.  Avoid this by just not using pnfs
+-		 * in this case.
+-		 */
+-		nfs_pageio_reset_read_mds(pgio);
+-		return;
+-	}
+-	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
++	if (!pgio->pg_lseg)
++		pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
+ 					   req->wb_context,
+ 					   0,
+ 					   NFS4_MAX_UINT64,
+@@ -991,11 +980,8 @@ filelayout_pg_init_write(struct nfs_pageio_descriptor *pgio,
+ 	struct nfs_commit_info cinfo;
+ 	int status;
+ 
+-	WARN_ON_ONCE(pgio->pg_lseg != NULL);
+-
+-	if (req->wb_offset != req->wb_pgbase)
+-		goto out_mds;
+-	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
++	if (!pgio->pg_lseg)
++		pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
+ 					   req->wb_context,
+ 					   0,
+ 					   NFS4_MAX_UINT64,
 -- 
-1.9.0
+1.8.5.2 (Apple Git-48)
 
