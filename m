@@ -1,63 +1,36 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:37069 "EHLO
+Received: from bombadil.infradead.org ([198.137.202.9]:58169 "EHLO
 	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755146AbaEEIxW (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 May 2014 04:53:22 -0400
-Date: Mon, 5 May 2014 01:53:16 -0700
+	with ESMTP id S1751249AbaEOPdI (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 May 2014 11:33:08 -0400
+Date: Thu, 15 May 2014 08:33:07 -0700
 From: Christoph Hellwig <hch@infradead.org>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Bruce Fields <bfields@fieldses.org>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 60/70] NFSd: Ensure lookup_clientid() takes client_lock
-Message-ID: <20140505085316.GA21789@infradead.org>
-References: <1397846704-14567-52-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-53-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-54-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-55-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-56-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-57-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-58-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-59-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-60-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-61-git-send-email-trond.myklebust@primarydata.com>
+To: JA Magall??n <jamagallon@ono.com>
+Cc: Linux Kernel <linux-kernel@vger.kernel.org>, linux-nfs@vger.kernel.org
+Subject: Re: NFSACL broken from 3.13 to 3.14
+Message-ID: <20140515153307.GA9016@infradead.org>
+References: <5374CE6B.6030905@ono.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1397846704-14567-61-git-send-email-trond.myklebust@primarydata.com>
+In-Reply-To: <5374CE6B.6030905@ono.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
->  static __be32 nfsd4_get_session_locked(struct nfsd4_session *ses)
->  {
->  	__be32 status;
-> @@ -3614,18 +3623,27 @@ static __be32 lookup_clientid(clientid_t *clid, struct nfsd4_session *session, s
->  {
->  	struct nfs4_client *found;
->  
-> +	spin_lock(&nn->client_lock);
->  	if (session != NULL) {
->  		found = session->se_client;
->  		if (!same_clid(&found->cl_clientid, clid))
-> -			return nfserr_stale_clientid;
-> +			goto out_stale;
+On Thu, May 15, 2014 at 04:25:47PM +0200, JA Magall??n wrote:
+> I mount homes from a Solaris 10 server, via NFSv3. Solaris nfs has a special
+> sideband server on a port for NFS to check ACLs. With previous version of
+> kernel (3.13.10 was the latest I check), I need no special option to mount
+> Solaris shares. With 3.14, it began to give errors, directories created
+> with mkdir returned error, files got created but truncated to 0 size...
+> (now I have 3.14.3).
+> 
+> I solved it adding the 'noacl' option to Solaris mount entries in autofs,
+> so the linux clients don't use the sideband protocol.
+> 
+> As I have read, NFSACL usage is negotitated between client and server.
+> Something has changed and the negotiation fails, perhaps ?
 
-Do we really need the lock for the sessions case?  I don't tink
-se_client can change under us.
-
-Btw, I wonder if it makes sense to split the current lookup_clientid
-into two helpers for the sessions vs non-sessions case as all but one
-caller already have conditionals for 4.0 vs later anyway, so something
-like:
-
-static struct nfs4_client *client_from_session(struct nfsd4_session *session,
-		clientid_t *clid)
-{
-	if (!same_clid(&session->se_client->cl_clientid, clid))
-		return NULL;
-	return session->se_client;
-}
-
-static __be32 lookup_40_client(clientid_t *clid, struct nfsd_net *nn,
-	struct nfs4_client **clp)
-{
-	...
-}
-
+We have some pretty bug ACL changes in 3.14.  I've tested it against a
+Linux server, but don't have a Solaris server available.  Do you have
+something like strace or wireshark traces to show differences between
+the versions?
