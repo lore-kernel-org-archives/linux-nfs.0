@@ -1,184 +1,103 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ve0-f171.google.com ([209.85.128.171]:48922 "EHLO
-	mail-ve0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753520AbaEIAuN (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 8 May 2014 20:50:13 -0400
-Received: by mail-ve0-f171.google.com with SMTP id oz11so4305312veb.2
-        for <linux-nfs@vger.kernel.org>; Thu, 08 May 2014 17:50:12 -0700 (PDT)
-MIME-Version: 1.0
-In-Reply-To: <20140506234041.GT18281@fieldses.org>
-References: <1397846704-14567-2-git-send-email-trond.myklebust@primarydata.com>
-	<1397846704-14567-3-git-send-email-trond.myklebust@primarydata.com>
-	<1397846704-14567-4-git-send-email-trond.myklebust@primarydata.com>
-	<1397846704-14567-5-git-send-email-trond.myklebust@primarydata.com>
-	<1397846704-14567-6-git-send-email-trond.myklebust@primarydata.com>
-	<1397846704-14567-7-git-send-email-trond.myklebust@primarydata.com>
-	<1397846704-14567-8-git-send-email-trond.myklebust@primarydata.com>
-	<1397846704-14567-9-git-send-email-trond.myklebust@primarydata.com>
-	<1397846704-14567-10-git-send-email-trond.myklebust@primarydata.com>
-	<1397846704-14567-11-git-send-email-trond.myklebust@primarydata.com>
-	<20140506234041.GT18281@fieldses.org>
-Date: Thu, 8 May 2014 20:50:12 -0400
-Message-ID: <CAHQdGtQreOET+YzaOZ68g1WCDZXnQgqchHA4NPp2D_So0Fm42Q@mail.gmail.com>
-Subject: Re: [PATCH 10/70] NFSd: Avoid taking state_lock while holding inode
- lock in nfsd_break_one_deleg
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Bruce Fields <bfields@fieldses.org>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-ig0-f177.google.com ([209.85.213.177]:63262 "EHLO
+	mail-ig0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755107AbaEOP5X (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 May 2014 11:57:23 -0400
+Received: by mail-ig0-f177.google.com with SMTP id l13so1164183iga.4
+        for <linux-nfs@vger.kernel.org>; Thu, 15 May 2014 08:57:22 -0700 (PDT)
+From: Weston Andros Adamson <dros@primarydata.com>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
+Subject: [PATCH v3 10/18] pnfs: clean up filelayout_alloc_commit_info
+Date: Thu, 15 May 2014 11:56:49 -0400
+Message-Id: <1400169417-28245-11-git-send-email-dros@primarydata.com>
+In-Reply-To: <1400169417-28245-1-git-send-email-dros@primarydata.com>
+References: <1400169417-28245-1-git-send-email-dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, May 6, 2014 at 7:40 PM, Bruce Fields <bfields@fieldses.org> wrote:
-> On Fri, Apr 18, 2014 at 02:44:04PM -0400, Trond Myklebust wrote:
->> state_lock is a heavily contended global lock. We don't want to grab
->> that while simultaneously holding the inode->i_lock
->> Instead do the list manipulations from the work queue context prior to
->> starting the rpc call.
->>
->> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
->> ---
->>  fs/nfsd/nfs4callback.c | 18 ++++++++++++++++--
->>  fs/nfsd/nfs4state.c    | 25 +++++++++++++++----------
->>  fs/nfsd/state.h        |  1 +
->>  3 files changed, 32 insertions(+), 12 deletions(-)
->>
->> diff --git a/fs/nfsd/nfs4callback.c b/fs/nfsd/nfs4callback.c
->> index 39c8ef875f91..8626cd6af4d1 100644
->> --- a/fs/nfsd/nfs4callback.c
->> +++ b/fs/nfsd/nfs4callback.c
->> @@ -1009,9 +1009,8 @@ static void nfsd4_process_cb_update(struct nfsd4_callback *cb)
->>               run_nfsd4_cb(cb);
->>  }
->>
->> -static void nfsd4_do_callback_rpc(struct work_struct *w)
->> +static void nfsd4_run_callback_rpc(struct nfsd4_callback *cb)
->>  {
->> -     struct nfsd4_callback *cb = container_of(w, struct nfsd4_callback, cb_work);
->>       struct nfs4_client *clp = cb->cb_clp;
->>       struct rpc_clnt *clnt;
->>
->> @@ -1029,11 +1028,25 @@ static void nfsd4_do_callback_rpc(struct work_struct *w)
->>                       cb->cb_ops, cb);
->>  }
->>
->> +static void nfsd4_do_callback_rpc(struct work_struct *w)
->> +{
->> +     struct nfsd4_callback *cb = container_of(w, struct nfsd4_callback, cb_work);
->> +     nfsd4_run_callback_rpc(cb);
->> +}
->> +
->>  void nfsd4_init_callback(struct nfsd4_callback *cb)
->>  {
->>       INIT_WORK(&cb->cb_work, nfsd4_do_callback_rpc);
->>  }
->>
->> +static void nfsd4_do_cb_recall(struct work_struct *w)
->> +{
->> +     struct nfsd4_callback *cb = container_of(w, struct nfsd4_callback, cb_work);
->> +
->> +     nfsd4_prepare_cb_recall(cb->cb_op);
->> +     nfsd4_run_callback_rpc(cb);
->> +}
->> +
->>  void nfsd4_cb_recall(struct nfs4_delegation *dp)
->>  {
->>       struct nfsd4_callback *cb = &dp->dl_recall;
->> @@ -1050,6 +1063,7 @@ void nfsd4_cb_recall(struct nfs4_delegation *dp)
->>
->>       INIT_LIST_HEAD(&cb->cb_per_client);
->>       cb->cb_done = true;
->> +     INIT_WORK(&cb->cb_work, nfsd4_do_cb_recall);
->>
->>       run_nfsd4_cb(&dp->dl_recall);
->>  }
->> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
->> index 6d691aa2bb27..85fcbc9ebd40 100644
->> --- a/fs/nfsd/nfs4state.c
->> +++ b/fs/nfsd/nfs4state.c
->> @@ -2743,24 +2743,31 @@ out:
->>       return ret;
->>  }
->>
->> -static void nfsd_break_one_deleg(struct nfs4_delegation *dp)
->> +void nfsd4_prepare_cb_recall(struct nfs4_delegation *dp)
->>  {
->>       struct nfs4_client *clp = dp->dl_stid.sc_client;
->>       struct nfsd_net *nn = net_generic(clp->net, nfsd_net_id);
->>
->> -     lockdep_assert_held(&state_lock);
->> +     /*
->> +      * We can't do this in nfsd_break_deleg_cb because it is
->> +      * already holding inode->i_lock
->> +      */
->> +     spin_lock(&state_lock);
->> +     if (list_empty(&dp->dl_recall_lru)) {
->> +             dp->dl_time = get_seconds();
->> +             list_add_tail(&dp->dl_recall_lru, &nn->del_recall_lru);
->> +     }
->> +     spin_unlock(&state_lock);
->> +}
->> +
->> +static void nfsd_break_one_deleg(struct nfs4_delegation *dp)
->> +{
->>       /* We're assuming the state code never drops its reference
->>        * without first removing the lease.  Since we're in this lease
->>        * callback (and since the lease code is serialized by the kernel
->>        * lock) we know the server hasn't removed the lease yet, we know
->>        * it's safe to take a reference: */
->>       atomic_inc(&dp->dl_count);
->> -
->> -     list_add_tail(&dp->dl_recall_lru, &nn->del_recall_lru);
->> -
->> -     /* Only place dl_time is set; protected by i_lock: */
->> -     dp->dl_time = get_seconds();
->> -
->>       nfsd4_cb_recall(dp);
->>  }
->>
->> @@ -2785,11 +2792,9 @@ static void nfsd_break_deleg_cb(struct file_lock *fl)
->>        */
->>       fl->fl_break_time = 0;
->>
->> -     spin_lock(&state_lock);
->>       fp->fi_had_conflict = true;
->>       list_for_each_entry(dp, &fp->fi_delegations, dl_perfile)
->>               nfsd_break_one_deleg(dp);
->> -     spin_unlock(&state_lock);
->
-> Why do we know it's safe to traverse this list without holding
-> state_lock?
+Remove unneeded else statement and clean up how commit info
+dataserver buckets are replaced.
 
-We're in a callback that is already holding the inode->i_lock, and so
-this is why we need to involve inode->i_lock when hashing/unhashing
-the delegation.
+Suggested-by: Trond Myklebust <trond.myklebust@primarydata.com>
+Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+---
+ fs/nfs/nfs4filelayout.c | 46 ++++++++++++++++++++++++++--------------------
+ 1 file changed, 26 insertions(+), 20 deletions(-)
 
-> --b.
->
->>  }
->>
->>  static
->> diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
->> index 1aa22f39fc65..02c5a203c738 100644
->> --- a/fs/nfsd/state.h
->> +++ b/fs/nfsd/state.h
->> @@ -473,6 +473,7 @@ extern void nfsd4_cb_recall(struct nfs4_delegation *dp);
->>  extern int nfsd4_create_callback_queue(void);
->>  extern void nfsd4_destroy_callback_queue(void);
->>  extern void nfsd4_shutdown_callback(struct nfs4_client *);
->> +extern void nfsd4_prepare_cb_recall(struct nfs4_delegation *dp);
->>  extern void nfs4_put_delegation(struct nfs4_delegation *dp);
->>  extern struct nfs4_client_reclaim *nfs4_client_to_reclaim(const char *name,
->>                                                       struct nfsd_net *nn);
->> --
->> 1.9.0
->>
-
-
-
+diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
+index 9319427..9cea935 100644
+--- a/fs/nfs/nfs4filelayout.c
++++ b/fs/nfs/nfs4filelayout.c
+@@ -850,11 +850,15 @@ filelayout_alloc_commit_info(struct pnfs_layout_segment *lseg,
+ {
+ 	struct nfs4_filelayout_segment *fl = FILELAYOUT_LSEG(lseg);
+ 	struct pnfs_commit_bucket *buckets;
+-	int size;
++	int size, i;
+ 
+ 	if (fl->commit_through_mds)
+ 		return 0;
+-	if (cinfo->ds->nbuckets != 0) {
++
++	size = (fl->stripe_type == STRIPE_SPARSE) ?
++		fl->dsaddr->ds_num : fl->dsaddr->stripe_count;
++
++	if (cinfo->ds->nbuckets >= size) {
+ 		/* This assumes there is only one IOMODE_RW lseg.  What
+ 		 * we really want to do is have a layout_hdr level
+ 		 * dictionary of <multipath_list4, fh> keys, each
+@@ -864,30 +868,32 @@ filelayout_alloc_commit_info(struct pnfs_layout_segment *lseg,
+ 		return 0;
+ 	}
+ 
+-	size = (fl->stripe_type == STRIPE_SPARSE) ?
+-		fl->dsaddr->ds_num : fl->dsaddr->stripe_count;
+-
+ 	buckets = kcalloc(size, sizeof(struct pnfs_commit_bucket),
+ 			  gfp_flags);
+ 	if (!buckets)
+ 		return -ENOMEM;
+-	else {
+-		int i;
++	for (i = 0; i < size; i++) {
++		INIT_LIST_HEAD(&buckets[i].written);
++		INIT_LIST_HEAD(&buckets[i].committing);
++	}
+ 
+-		spin_lock(cinfo->lock);
+-		if (cinfo->ds->nbuckets != 0)
+-			kfree(buckets);
+-		else {
+-			cinfo->ds->buckets = buckets;
+-			cinfo->ds->nbuckets = size;
+-			for (i = 0; i < size; i++) {
+-				INIT_LIST_HEAD(&buckets[i].written);
+-				INIT_LIST_HEAD(&buckets[i].committing);
+-			}
+-		}
+-		spin_unlock(cinfo->lock);
+-		return 0;
++	spin_lock(cinfo->lock);
++	if (cinfo->ds->nbuckets >= size)
++		goto out;
++	for (i = 0; i < cinfo->ds->nbuckets; i++) {
++		list_splice(&cinfo->ds->buckets[i].written,
++			    &buckets[i].written);
++		list_splice(&cinfo->ds->buckets[i].committing,
++			    &buckets[i].committing);
++		buckets[i].wlseg = cinfo->ds->buckets[i].wlseg;
++		buckets[i].clseg = cinfo->ds->buckets[i].clseg;
+ 	}
++	swap(cinfo->ds->buckets, buckets);
++	cinfo->ds->nbuckets = size;
++out:
++	spin_unlock(cinfo->lock);
++	kfree(buckets);
++	return 0;
+ }
+ 
+ static struct pnfs_layout_segment *
 -- 
-Trond Myklebust
+1.8.5.2 (Apple Git-48)
 
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
