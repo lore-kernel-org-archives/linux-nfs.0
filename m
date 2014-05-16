@@ -1,110 +1,132 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from cantor2.suse.de ([195.135.220.15]:35306 "EHLO mx2.suse.de"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754455AbaEVJvM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 May 2014 05:51:12 -0400
-Date: Thu, 22 May 2014 19:50:56 +1000
-From: NeilBrown <neilb@suse.de>
-To: Ingo Molnar <mingo@kernel.org>
-Cc: Peter Zijlstra <peterz@infradead.org>, Oleg Nesterov <oleg@redhat.com>,
-        David Howells <dhowells@redhat.com>,
-        Steven Whitehouse <swhiteho@redhat.com>, dm-devel@redhat.com,
-        Chris Mason <clm@fb.com>, Josef Bacik <jbacik@fb.com>,
-        Steve French <sfrench@samba.org>, "Theodore Ts'o" <tytso@mit.edu>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Ingo Molnar <mingo@redhat.com>, Roland McGrath <roland@redhat.com>,
-        Andrew Morton <akpm@linux-foundation.org>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org
-Subject: Re: [PATCH] SCHED: remove proliferation of wait_on_bit action
- functions.
-Message-ID: <20140522195056.445f2dcb@notabene.brown>
-In-Reply-To: <20140522090502.GB30094@gmail.com>
-References: <20140501123738.3e64b2d2@notabene.brown>
-	<20140522090502.GB30094@gmail.com>
-Mime-Version: 1.0
-Content-Type: multipart/signed; micalg=PGP-SHA1;
- boundary="Sig_/SLj=Ra/Rg+8ROWmpsMdvvlW"; protocol="application/pgp-signature"
+Received: from cmexedge2.ext.emulex.com ([138.239.224.100]:47435 "EHLO
+	CMEXEDGE2.ext.emulex.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1755191AbaEPHIR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 16 May 2014 03:08:17 -0400
+From: Devesh Sharma <Devesh.Sharma@Emulex.Com>
+To: Chuck Lever <chuck.lever@oracle.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>
+CC: "Anna.Schumaker@netapp.com" <Anna.Schumaker@netapp.com>
+Subject: RE: [PATCH V3 01/17] xprtrdma: mind the device's max fast register
+ page	list depth
+Date: Fri, 16 May 2014 07:08:15 +0000
+Message-ID: <EE7902D3F51F404C82415C4803930ACD3FDFBDA9@CMEXMB1.ad.emulex.com>
+References: <20140430191433.5663.16217.stgit@manet.1015granger.net>
+ <20140430192936.5663.66537.stgit@manet.1015granger.net>
+In-Reply-To: <20140430192936.5663.66537.stgit@manet.1015granger.net>
+Content-Type: text/plain; charset="utf-8"
+MIME-Version: 1.0
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
---Sig_/SLj=Ra/Rg+8ROWmpsMdvvlW
-Content-Type: text/plain; charset=US-ASCII
-Content-Transfer-Encoding: quoted-printable
-
-On Thu, 22 May 2014 11:05:02 +0200 Ingo Molnar <mingo@kernel.org> wrote:
-
->=20
-> * NeilBrown <neilb@suse.de> wrote:
->=20
-> > [[ get_maintainer.pl suggested 61 email address for this patch.
-> >    I've trimmed that list somewhat.  Hope I didn't miss anyone
-> >    important...
-> >    I'm hoping it will go in through the scheduler tree, but would
-> >    particularly like an Acked-by for the fscache parts.  Other acks
-> >    welcome.
-> > ]]
-> >=20
-> > The current "wait_on_bit" interface requires an 'action' function
-> > to be provided which does the actual waiting.
-> > There are over 20 such functions, many of them identical.
-> > Most cases can be satisfied by one of just two functions, one
-> > which uses io_schedule() and one which just uses schedule().
-> >=20
-> > So:
-> >  Rename wait_on_bit and        wait_on_bit_lock to
-> >         wait_on_bit_action and wait_on_bit_lock_action
-> >  to make it explicit that they need an action function.
-> >=20
-> >  Introduce new wait_on_bit{,_lock} and wait_on_bit{,_lock}_io
-> >  which are *not* given an action function but implicitly use
-> >  a standard one.
-> >  The decision to error-out if a signal is pending is now made
-> >  based on the 'mode' argument rather than being encoded in the action
-> >  function.
->=20
-> this patch fails to build on x86-32 allyesconfigs.
-
-Could you share the build errors?
-
->=20
-> Could we keep the old names for a while, and remove them in the next=20
-> cycle or so?
-
-I don't see how changing the names later rather than now will reduce the
-chance of errors... maybe I'm missing something.
-
-Thanks,
-NeilBrown
-
-
-
->=20
-> Thanks,
->=20
-> 	Ingo
-
-
---Sig_/SLj=Ra/Rg+8ROWmpsMdvvlW
-Content-Type: application/pgp-signature; name=signature.asc
-Content-Disposition: attachment; filename=signature.asc
-
------BEGIN PGP SIGNATURE-----
-Version: GnuPG v2.0.22 (GNU/Linux)
-
-iQIVAwUBU33IgDnsnt1WYoG5AQL4zg/9EwXq3ga0dXQf8DsKuJ5gg0PFSywVLg53
-ov/ah4ODfC2IL9Cjq/vrfQ9hoV5XwIhpvr9Ooz1dvuHkJn2OKJU/C9+hD+vJmRlN
-0iJQBNkkdBj7XwEon+QXYgeeKIQNI6ErxHHIXN/FEtSZa4eWElBiUplTMcFY/TeJ
-erB7cJDQxk3jm7q3em4F1Scg1cc6q+rJb98WIXdSpfQCzZhC3xbke2dlAetjNgzY
-ea6yAhGIy0LcBevl8IGucX7FC9C6uOlxw4KhJ+i1LyaMMzwyZZ2zsipKEwSkdCug
-aN2b4MYE/6/1C0gME8FjpfxGFlw6/2a/KCmKQaxWowPtJa69xozl62ZVNZ1JrTV6
-0T8R+C4xsVzTn03KjgMdN5tUbQYT9RbF67ld0rGSfKowmtS+mP7SZnNRKib4PhAn
-0ZEayg4T4uq9z5SuJEhUKpyj7GEyeehW+luYJTVt8LTuH79qEi1GBTdCSZ2YkS/F
-zK5lRIUhzmlDd1RkvOrQaPzSjY6hxR2QEJZtY6r9i6W1QWYWJAMAxTTbYc8UYiGt
-qAmhwKe8neKmznogq85iNg5A+88v4JUiVwz1/jWP3PTwOGOo+F8d5Y+youB+TotD
-ZvZVSUwSfJfc8rn3cUCotypxfbkbsrP7fGIDkrD8/EfvY9YWtVdbGFWZzW8shFOA
-ief4BXTLFCg=
-=qy8/
------END PGP SIGNATURE-----
-
---Sig_/SLj=Ra/Rg+8ROWmpsMdvvlW--
+Q2h1Y2sNCg0KVGhpcyBwYXRjaCBpcyBjYXVzaW5nIGEgQ1BVIHNvZnQtbG9ja3VwIGlmIHVuZGVy
+bHlpbmcgdmVuZG9yIHJlcG9ydHMgZGV2YXR0ci5tYXhfZmFzdF9yZWdfcGFncl9saXN0X2xlbiA9
+IDAgYW5kIGlhLT5yaV9tZW1yZWdfc3RyYXRlZ3kgPSBGUk1SIChEZWZhdWx0IG9wdGlvbikuDQpJ
+IHRoaW5rIHRoZXJlIGlzIG5lZWQgdG8gcmVmZXIgdG8gZGV2aWNlIGNhcGFiaWxpdHkgZmxhZ3Mu
+IElmIHN0cmF0ZWd5ID0gRlJNUiBpcyBmb3JjZWQgYW5kIGRldmF0dHIubWF4X2Zhc3RfcmVnX3Bh
+Z3JfbGlzdF9sZW49MCB0aGVuIGZsYXNoIGFuIGVycm9yIGFuZCBmYWlsIFJQQyB3aXRoIC1FSU8u
+DQoNClNlZSBpbmxpbmU6DQoNCj4gLS0tLS1PcmlnaW5hbCBNZXNzYWdlLS0tLS0NCj4gRnJvbTog
+bGludXgtcmRtYS1vd25lckB2Z2VyLmtlcm5lbC5vcmcgW21haWx0bzpsaW51eC1yZG1hLQ0KPiBv
+d25lckB2Z2VyLmtlcm5lbC5vcmddIE9uIEJlaGFsZiBPZiBDaHVjayBMZXZlcg0KPiBTZW50OiBU
+aHVyc2RheSwgTWF5IDAxLCAyMDE0IDE6MDAgQU0NCj4gVG86IGxpbnV4LW5mc0B2Z2VyLmtlcm5l
+bC5vcmc7IGxpbnV4LXJkbWFAdmdlci5rZXJuZWwub3JnDQo+IENjOiBBbm5hLlNjaHVtYWtlckBu
+ZXRhcHAuY29tDQo+IFN1YmplY3Q6IFtQQVRDSCBWMyAwMS8xN10geHBydHJkbWE6IG1pbmQgdGhl
+IGRldmljZSdzIG1heCBmYXN0IHJlZ2lzdGVyDQo+IHBhZ2UgbGlzdCBkZXB0aA0KPiANCj4gRnJv
+bTogU3RldmUgV2lzZSA8c3dpc2VAb3BlbmdyaWRjb21wdXRpbmcuY29tPg0KPiANCj4gU29tZSBy
+ZG1hIGRldmljZXMgZG9uJ3Qgc3VwcG9ydCBhIGZhc3QgcmVnaXN0ZXIgcGFnZSBsaXN0IGRlcHRo
+IG9mIGF0IGxlYXN0DQo+IFJQQ1JETUFfTUFYX0RBVEFfU0VHUy4gIFNvIHhwcnRyZG1hIG5lZWRz
+IHRvIGNodW5rIGl0cyBmYXN0IHJlZ2lzdGVyDQo+IHJlZ2lvbnMgYWNjb3JkaW5nIHRvIHRoZSBt
+aW5pbXVtIG9mIHRoZSBkZXZpY2UgbWF4IHN1cHBvcnRlZCBkZXB0aCBvcg0KPiBSUENSRE1BX01B
+WF9EQVRBX1NFR1MuDQo+IA0KPiBTaWduZWQtb2ZmLWJ5OiBTdGV2ZSBXaXNlIDxzd2lzZUBvcGVu
+Z3JpZGNvbXB1dGluZy5jb20+DQo+IFJldmlld2VkLWJ5OiBDaHVjayBMZXZlciA8Y2h1Y2subGV2
+ZXJAb3JhY2xlLmNvbT4NCj4gLS0tDQo+IA0KPiAgbmV0L3N1bnJwYy94cHJ0cmRtYS9ycGNfcmRt
+YS5jICB8ICAgIDQgLS0tDQo+ICBuZXQvc3VucnBjL3hwcnRyZG1hL3ZlcmJzLmMgICAgIHwgICA0
+NyArKysrKysrKysrKysrKysrKysrKysrKysrKysrKy0NCj4gLS0tLS0tLS0tDQo+ICBuZXQvc3Vu
+cnBjL3hwcnRyZG1hL3hwcnRfcmRtYS5oIHwgICAgMSArDQo+ICAzIGZpbGVzIGNoYW5nZWQsIDM2
+IGluc2VydGlvbnMoKyksIDE2IGRlbGV0aW9ucygtKQ0KPiANCj4gZGlmZiAtLWdpdCBhL25ldC9z
+dW5ycGMveHBydHJkbWEvcnBjX3JkbWEuYw0KPiBiL25ldC9zdW5ycGMveHBydHJkbWEvcnBjX3Jk
+bWEuYyBpbmRleCA5NmVhZDUyLi40MDBhYTFiIDEwMDY0NA0KPiAtLS0gYS9uZXQvc3VucnBjL3hw
+cnRyZG1hL3JwY19yZG1hLmMNCj4gKysrIGIvbmV0L3N1bnJwYy94cHJ0cmRtYS9ycGNfcmRtYS5j
+DQo+IEBAIC0yNDgsMTAgKzI0OCw2IEBAIHJwY3JkbWFfY3JlYXRlX2NodW5rcyhzdHJ1Y3QgcnBj
+X3Jxc3QgKnJxc3QsIHN0cnVjdA0KPiB4ZHJfYnVmICp0YXJnZXQsDQo+ICAJLyogc3VjY2Vzcy4g
+YWxsIGZhaWx1cmVzIHJldHVybiBhYm92ZSAqLw0KPiAgCXJlcS0+cmxfbmNodW5rcyA9IG5jaHVu
+a3M7DQo+IA0KPiAtCUJVR19PTihuY2h1bmtzID09IDApOw0KPiAtCUJVR19PTigocl94cHJ0LT5y
+eF9pYS5yaV9tZW1yZWdfc3RyYXRlZ3kgPT0gUlBDUkRNQV9GUk1SKQ0KPiAtCSAgICAgICAmJiAo
+bmNodW5rcyA+IDMpKTsNCj4gLQ0KPiAgCS8qDQo+ICAJICogZmluaXNoIG9mZiBoZWFkZXIuIElm
+IHdyaXRlLCBtYXJzaGFsIGRpc2NyaW0gYW5kIG5jaHVua3MuDQo+ICAJICovDQo+IGRpZmYgLS1n
+aXQgYS9uZXQvc3VucnBjL3hwcnRyZG1hL3ZlcmJzLmMgYi9uZXQvc3VucnBjL3hwcnRyZG1hL3Zl
+cmJzLmMNCj4gaW5kZXggOTM3MjY1Ni4uNTVmYjA5YSAxMDA2NDQNCj4gLS0tIGEvbmV0L3N1bnJw
+Yy94cHJ0cmRtYS92ZXJicy5jDQo+ICsrKyBiL25ldC9zdW5ycGMveHBydHJkbWEvdmVyYnMuYw0K
+PiBAQCAtNTM5LDYgKzUzOSwxMSBAQCBycGNyZG1hX2lhX29wZW4oc3RydWN0IHJwY3JkbWFfeHBy
+dCAqeHBydCwgc3RydWN0DQo+IHNvY2thZGRyICphZGRyLCBpbnQgbWVtcmVnKQ0KPiAgCQkJCV9f
+ZnVuY19fKTsNCj4gIAkJCW1lbXJlZyA9IFJQQ1JETUFfUkVHSVNURVI7DQo+ICAjZW5kaWYNCj4g
+KwkJfSBlbHNlIHsNCj4gKwkJCS8qIE1pbmQgdGhlIGlhIGxpbWl0IG9uIEZSTVIgcGFnZSBsaXN0
+IGRlcHRoICovDQo+ICsJCQlpYS0+cmlfbWF4X2ZybXJfZGVwdGggPSBtaW5fdCh1bnNpZ25lZCBp
+bnQsDQo+ICsJCQkJUlBDUkRNQV9NQVhfREFUQV9TRUdTLA0KPiArCQkJCWRldmF0dHIubWF4X2Zh
+c3RfcmVnX3BhZ2VfbGlzdF9sZW4pOw0KPiAgCQl9DQo+ICAJCWJyZWFrOw0KPiAgCX0NCj4gQEAg
+LTY1OSwyNCArNjY0LDQyIEBAIHJwY3JkbWFfZXBfY3JlYXRlKHN0cnVjdCBycGNyZG1hX2VwICpl
+cCwgc3RydWN0DQo+IHJwY3JkbWFfaWEgKmlhLA0KPiAgCWVwLT5yZXBfYXR0ci5zcnEgPSBOVUxM
+Ow0KPiAgCWVwLT5yZXBfYXR0ci5jYXAubWF4X3NlbmRfd3IgPSBjZGF0YS0+bWF4X3JlcXVlc3Rz
+Ow0KPiAgCXN3aXRjaCAoaWEtPnJpX21lbXJlZ19zdHJhdGVneSkgew0KPiAtCWNhc2UgUlBDUkRN
+QV9GUk1SOg0KPiArCWNhc2UgUlBDUkRNQV9GUk1SOiB7DQo+ICsJCWludCBkZXB0aCA9IDc7DQo+
+ICsNCj4gIAkJLyogQWRkIHJvb20gZm9yIGZybXIgcmVnaXN0ZXIgYW5kIGludmFsaWRhdGUgV1Jz
+Lg0KPiAgCQkgKiAxLiBGUk1SIHJlZyBXUiBmb3IgaGVhZA0KPiAgCQkgKiAyLiBGUk1SIGludmFs
+aWRhdGUgV1IgZm9yIGhlYWQNCj4gLQkJICogMy4gRlJNUiByZWcgV1IgZm9yIHBhZ2VsaXN0DQo+
+IC0JCSAqIDQuIEZSTVIgaW52YWxpZGF0ZSBXUiBmb3IgcGFnZWxpc3QNCj4gKwkJICogMy4gTiBG
+Uk1SIHJlZyBXUnMgZm9yIHBhZ2VsaXN0DQo+ICsJCSAqIDQuIE4gRlJNUiBpbnZhbGlkYXRlIFdS
+cyBmb3IgcGFnZWxpc3QNCj4gIAkJICogNS4gRlJNUiByZWcgV1IgZm9yIHRhaWwNCj4gIAkJICog
+Ni4gRlJNUiBpbnZhbGlkYXRlIFdSIGZvciB0YWlsDQo+ICAJCSAqIDcuIFRoZSBSRE1BX1NFTkQg
+V1INCj4gIAkJICovDQo+IC0JCWVwLT5yZXBfYXR0ci5jYXAubWF4X3NlbmRfd3IgKj0gNzsNCj4g
+Kw0KPiArCQkvKiBDYWxjdWxhdGUgTiBpZiB0aGUgZGV2aWNlIG1heCBGUk1SIGRlcHRoIGlzIHNt
+YWxsZXIgdGhhbg0KPiArCQkgKiBSUENSRE1BX01BWF9EQVRBX1NFR1MuDQo+ICsJCSAqLw0KPiAr
+CQlpZiAoaWEtPnJpX21heF9mcm1yX2RlcHRoIDwgUlBDUkRNQV9NQVhfREFUQV9TRUdTKSB7DQo+
+ICsJCQlpbnQgZGVsdGEgPSBSUENSRE1BX01BWF9EQVRBX1NFR1MgLQ0KPiArCQkJCSAgICBpYS0+
+cmlfbWF4X2ZybXJfZGVwdGg7DQo+ICsNCj4gKwkJCWRvIHsNCj4gKwkJCQlkZXB0aCArPSAyOyAv
+KiBGUk1SIHJlZyArIGludmFsaWRhdGUgKi8NCj4gKwkJCQlkZWx0YSAtPSBpYS0+cmlfbWF4X2Zy
+bXJfZGVwdGg7DQoNCklmIGlhLT5yaV9tYXhfZnJtcl9kZXB0aCBpcyA9IDAuIFRoaXMgbG9vcCBi
+ZWNvbWVzIGluZmluaXRlIGxvb3AuDQoNCj4gKwkJCX0gd2hpbGUgKGRlbHRhID4gMCk7DQo+ICsN
+Cj4gKwkJfQ0KPiArCQllcC0+cmVwX2F0dHIuY2FwLm1heF9zZW5kX3dyICo9IGRlcHRoOw0KPiAg
+CQlpZiAoZXAtPnJlcF9hdHRyLmNhcC5tYXhfc2VuZF93ciA+IGRldmF0dHIubWF4X3FwX3dyKSB7
+DQo+IC0JCQljZGF0YS0+bWF4X3JlcXVlc3RzID0gZGV2YXR0ci5tYXhfcXBfd3IgLyA3Ow0KPiAr
+CQkJY2RhdGEtPm1heF9yZXF1ZXN0cyA9IGRldmF0dHIubWF4X3FwX3dyIC8gZGVwdGg7DQo+ICAJ
+CQlpZiAoIWNkYXRhLT5tYXhfcmVxdWVzdHMpDQo+ICAJCQkJcmV0dXJuIC1FSU5WQUw7DQo+IC0J
+CQllcC0+cmVwX2F0dHIuY2FwLm1heF9zZW5kX3dyID0gY2RhdGEtDQo+ID5tYXhfcmVxdWVzdHMg
+KiA3Ow0KPiArCQkJZXAtPnJlcF9hdHRyLmNhcC5tYXhfc2VuZF93ciA9IGNkYXRhLQ0KPiA+bWF4
+X3JlcXVlc3RzICoNCj4gKwkJCQkJCSAgICAgICBkZXB0aDsNCj4gIAkJfQ0KPiAgCQlicmVhazsN
+Cj4gKwl9DQo+ICAJY2FzZSBSUENSRE1BX01FTVdJTkRPV1NfQVNZTkM6DQo+ICAJY2FzZSBSUENS
+RE1BX01FTVdJTkRPV1M6DQo+ICAJCS8qIEFkZCByb29tIGZvciBtd19iaW5kcyt1bmJpbmRzIC0g
+b3ZlcmtpbGwhICovIEBAIC0NCj4gMTA0MywxNiArMTA2NiwxNiBAQCBycGNyZG1hX2J1ZmZlcl9j
+cmVhdGUoc3RydWN0IHJwY3JkbWFfYnVmZmVyICpidWYsDQo+IHN0cnVjdCBycGNyZG1hX2VwICpl
+cCwNCj4gIAljYXNlIFJQQ1JETUFfRlJNUjoNCj4gIAkJZm9yIChpID0gYnVmLT5yYl9tYXhfcmVx
+dWVzdHMgKiBSUENSRE1BX01BWF9TRUdTOyBpOyBpLS0NCj4gKSB7DQo+ICAJCQlyLT5yLmZybXIu
+ZnJfbXIgPSBpYl9hbGxvY19mYXN0X3JlZ19tcihpYS0+cmlfcGQsDQo+IC0NCj4gUlBDUkRNQV9N
+QVhfU0VHUyk7DQo+ICsJCQkJCQlpYS0+cmlfbWF4X2ZybXJfZGVwdGgpOw0KPiAgCQkJaWYgKElT
+X0VSUihyLT5yLmZybXIuZnJfbXIpKSB7DQo+ICAJCQkJcmMgPSBQVFJfRVJSKHItPnIuZnJtci5m
+cl9tcik7DQo+ICAJCQkJZHByaW50aygiUlBDOiAgICAgICAlczogaWJfYWxsb2NfZmFzdF9yZWdf
+bXIiDQo+ICAJCQkJCSIgZmFpbGVkICVpXG4iLCBfX2Z1bmNfXywgcmMpOw0KPiAgCQkJCWdvdG8g
+b3V0Ow0KPiAgCQkJfQ0KPiAtCQkJci0+ci5mcm1yLmZyX3BnbCA9DQo+IC0JCQkJaWJfYWxsb2Nf
+ZmFzdF9yZWdfcGFnZV9saXN0KGlhLT5yaV9pZC0NCj4gPmRldmljZSwNCj4gLQ0KPiBSUENSRE1B
+X01BWF9TRUdTKTsNCj4gKwkJCXItPnIuZnJtci5mcl9wZ2wgPSBpYl9hbGxvY19mYXN0X3JlZ19w
+YWdlX2xpc3QoDQo+ICsJCQkJCQlpYS0+cmlfaWQtPmRldmljZSwNCj4gKwkJCQkJCWlhLT5yaV9t
+YXhfZnJtcl9kZXB0aCk7DQo+ICAJCQlpZiAoSVNfRVJSKHItPnIuZnJtci5mcl9wZ2wpKSB7DQo+
+ICAJCQkJcmMgPSBQVFJfRVJSKHItPnIuZnJtci5mcl9wZ2wpOw0KPiAgCQkJCWRwcmludGsoIlJQ
+QzogICAgICAgJXM6ICINCj4gQEAgLTE0OTgsOCArMTUyMSw4IEBAIHJwY3JkbWFfcmVnaXN0ZXJf
+ZnJtcl9leHRlcm5hbChzdHJ1Y3QNCj4gcnBjcmRtYV9tcl9zZWcgKnNlZywNCj4gIAlzZWcxLT5t
+cl9vZmZzZXQgLT0gcGFnZW9mZjsJLyogc3RhcnQgb2YgcGFnZSAqLw0KPiAgCXNlZzEtPm1yX2xl
+biArPSBwYWdlb2ZmOw0KPiAgCWxlbiA9IC1wYWdlb2ZmOw0KPiAtCWlmICgqbnNlZ3MgPiBSUENS
+RE1BX01BWF9EQVRBX1NFR1MpDQo+IC0JCSpuc2VncyA9IFJQQ1JETUFfTUFYX0RBVEFfU0VHUzsN
+Cj4gKwlpZiAoKm5zZWdzID4gaWEtPnJpX21heF9mcm1yX2RlcHRoKQ0KPiArCQkqbnNlZ3MgPSBp
+YS0+cmlfbWF4X2ZybXJfZGVwdGg7DQo+ICAJZm9yIChwYWdlX25vID0gaSA9IDA7IGkgPCAqbnNl
+Z3M7KSB7DQo+ICAJCXJwY3JkbWFfbWFwX29uZShpYSwgc2VnLCB3cml0aW5nKTsNCj4gIAkJcGEg
+PSBzZWctPm1yX2RtYTsNCj4gZGlmZiAtLWdpdCBhL25ldC9zdW5ycGMveHBydHJkbWEveHBydF9y
+ZG1hLmgNCj4gYi9uZXQvc3VucnBjL3hwcnRyZG1hL3hwcnRfcmRtYS5oIGluZGV4IGNjMTQ0NWQu
+Ljk4MzQwYTMgMTAwNjQ0DQo+IC0tLSBhL25ldC9zdW5ycGMveHBydHJkbWEveHBydF9yZG1hLmgN
+Cj4gKysrIGIvbmV0L3N1bnJwYy94cHJ0cmRtYS94cHJ0X3JkbWEuaA0KPiBAQCAtNjYsNiArNjYs
+NyBAQCBzdHJ1Y3QgcnBjcmRtYV9pYSB7DQo+ICAJc3RydWN0IGNvbXBsZXRpb24JcmlfZG9uZTsN
+Cj4gIAlpbnQJCQlyaV9hc3luY19yYzsNCj4gIAllbnVtIHJwY3JkbWFfbWVtcmVnCXJpX21lbXJl
+Z19zdHJhdGVneTsNCj4gKwl1bnNpZ25lZCBpbnQJCXJpX21heF9mcm1yX2RlcHRoOw0KPiAgfTsN
+Cj4gDQo+ICAvKg0KPiANCj4gLS0NCj4gVG8gdW5zdWJzY3JpYmUgZnJvbSB0aGlzIGxpc3Q6IHNl
+bmQgdGhlIGxpbmUgInVuc3Vic2NyaWJlIGxpbnV4LXJkbWEiIGluIHRoZQ0KPiBib2R5IG9mIGEg
+bWVzc2FnZSB0byBtYWpvcmRvbW9Admdlci5rZXJuZWwub3JnIE1vcmUgbWFqb3Jkb21vIGluZm8g
+YXQNCj4gaHR0cDovL3ZnZXIua2VybmVsLm9yZy9tYWpvcmRvbW8taW5mby5odG1sDQo=
