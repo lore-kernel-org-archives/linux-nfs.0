@@ -1,61 +1,284 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f180.google.com ([209.85.223.180]:47973 "EHLO
-	mail-ie0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752126AbaEVA4C (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 May 2014 20:56:02 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH v4 12/24] xprtrmda: Reduce lock contention in completion
-	handlers
-To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Date: Wed, 21 May 2014 20:55:56 -0400
-Message-ID: <20140522005556.27190.55959.stgit@manet.1015granger.net>
-In-Reply-To: <20140522004505.27190.58897.stgit@manet.1015granger.net>
-References: <20140522004505.27190.58897.stgit@manet.1015granger.net>
+Received: from mail-oa0-f46.google.com ([209.85.219.46]:56991 "EHLO
+	mail-oa0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1756600AbaEPJ6e (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 16 May 2014 05:58:34 -0400
+Received: by mail-oa0-f46.google.com with SMTP id i4so2736579oah.19
+        for <linux-nfs@vger.kernel.org>; Fri, 16 May 2014 02:58:34 -0700 (PDT)
+Message-ID: <5375E13D.8060508@gmail.com>
+Date: Fri, 16 May 2014 17:58:21 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: "J. Bruce Fields" <bfields@redhat.com>, linux-nfs@vger.kernel.org
+CC: Christoph Hellwig <hch@infradead.org>
+Subject: Re: [PATCH 01/43] nfsd4: embed xdr_stream in nfsd4_compoundres
+References: <1399841568-19716-1-git-send-email-bfields@redhat.com> <1399841568-19716-2-git-send-email-bfields@redhat.com>
+In-Reply-To: <1399841568-19716-2-git-send-email-bfields@redhat.com>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Skip the ib_poll_cq() after re-arming, if the provider knows there
-are no additional items waiting. (Have a look at commit ed23a727 for
-more details).
+On 5/12/2014 04:52, J. Bruce Fields wrote:
+> From: "J. Bruce Fields" <bfields@redhat.com>
+> 
+> This is a mechanical transformation with no change in behavior.
+> 
+> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> ---
+>  fs/nfsd/nfs4proc.c  |   12 +++++-----
+>  fs/nfsd/nfs4state.c |    8 +++----
+>  fs/nfsd/nfs4xdr.c   |   65 ++++++++++++++++++++++++++-------------------------
+>  fs/nfsd/xdr4.h      |    4 +---
+>  4 files changed, 44 insertions(+), 45 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+> index 2c1ee70..46370f5 100644
+> --- a/fs/nfsd/nfs4proc.c
+> +++ b/fs/nfsd/nfs4proc.c
+> @@ -1268,13 +1268,13 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
+>  	u32		plen = 0;
+>  	__be32		status;
+>  
+> -	resp->xbuf = &rqstp->rq_res;
+> -	resp->p = rqstp->rq_res.head[0].iov_base +
+> +	resp->xdr.buf = &rqstp->rq_res;
+> +	resp->xdr.p = rqstp->rq_res.head[0].iov_base +
+>  						rqstp->rq_res.head[0].iov_len;
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+I'd like using a temp pointer as (struct xdr_stream *resp_xdr = &resp->xdr;).
 
- net/sunrpc/xprtrdma/verbs.c |   14 ++++++++++----
- 1 files changed, 10 insertions(+), 4 deletions(-)
+thanks,
+Kinglong Mee
 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index af2d097..c7d5281 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -192,8 +192,11 @@ rpcrdma_sendcq_upcall(struct ib_cq *cq, void *cq_context)
- 		return;
- 	}
- 
--	rc = ib_req_notify_cq(cq, IB_CQ_NEXT_COMP);
--	if (rc) {
-+	rc = ib_req_notify_cq(cq,
-+			IB_CQ_NEXT_COMP | IB_CQ_REPORT_MISSED_EVENTS);
-+	if (rc == 0)
-+		return;
-+	if (rc < 0) {
- 		dprintk("RPC:       %s: ib_req_notify_cq failed: %i\n",
- 			__func__, rc);
- 		return;
-@@ -272,8 +275,11 @@ rpcrdma_recvcq_upcall(struct ib_cq *cq, void *cq_context)
- 		return;
- 	}
- 
--	rc = ib_req_notify_cq(cq, IB_CQ_NEXT_COMP);
--	if (rc) {
-+	rc = ib_req_notify_cq(cq,
-+			IB_CQ_NEXT_COMP | IB_CQ_REPORT_MISSED_EVENTS);
-+	if (rc == 0)
-+		return;
-+	if (rc < 0) {
- 		dprintk("RPC:       %s: ib_req_notify_cq failed: %i\n",
- 			__func__, rc);
- 		return;
-
+> -	resp->tagp = resp->p;
+> +	resp->tagp = resp->xdr.p;
+>  	/* reserve space for: taglen, tag, and opcnt */
+> -	resp->p += 2 + XDR_QUADLEN(args->taglen);
+> -	resp->end = rqstp->rq_res.head[0].iov_base + PAGE_SIZE;
+> +	resp->xdr.p += 2 + XDR_QUADLEN(args->taglen);
+> +	resp->xdr.end = rqstp->rq_res.head[0].iov_base + PAGE_SIZE;
+>  	resp->taglen = args->taglen;
+>  	resp->tag = args->tag;
+>  	resp->opcnt = 0;
+> @@ -1326,7 +1326,7 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
+>  		 * failed response to the next operation.  If we don't
+>  		 * have enough room, fail with ERR_RESOURCE.
+>  		 */
+> -		slack_bytes = (char *)resp->end - (char *)resp->p;
+> +		slack_bytes = (char *)resp->xdr.end - (char *)resp->xdr.p;
+>  		if (slack_bytes < COMPOUND_SLACK_SPACE
+>  				+ COMPOUND_ERR_SLACK_SPACE) {
+>  			BUG_ON(slack_bytes < COMPOUND_ERR_SLACK_SPACE);
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index fac2683..05cc3eb 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -1569,10 +1569,10 @@ nfsd4_store_cache_entry(struct nfsd4_compoundres *resp)
+>  		slot->sl_datalen = 0;
+>  		return;
+>  	}
+> -	slot->sl_datalen = (char *)resp->p - (char *)resp->cstate.datap;
+> +	slot->sl_datalen = (char *)resp->xdr.p - (char *)resp->cstate.datap;
+>  	base = (char *)resp->cstate.datap -
+> -					(char *)resp->xbuf->head[0].iov_base;
+> -	if (read_bytes_from_xdr_buf(resp->xbuf, base, slot->sl_data,
+> +					(char *)resp->xdr.buf->head[0].iov_base;
+> +	if (read_bytes_from_xdr_buf(resp->xdr.buf, base, slot->sl_data,
+>  				    slot->sl_datalen))
+>  		WARN("%s: sessions DRC could not cache compound\n", __func__);
+>  	return;
+> @@ -1626,7 +1626,7 @@ nfsd4_replay_cache_entry(struct nfsd4_compoundres *resp,
+>  	memcpy(resp->cstate.datap, slot->sl_data, slot->sl_datalen);
+>  
+>  	resp->opcnt = slot->sl_opcnt;
+> -	resp->p = resp->cstate.datap + XDR_QUADLEN(slot->sl_datalen);
+> +	resp->xdr.p = resp->cstate.datap + XDR_QUADLEN(slot->sl_datalen);
+>  	status = slot->sl_status;
+>  
+>  	return status;
+> diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+> index 18881f3..ef65ffc 100644
+> --- a/fs/nfsd/nfs4xdr.c
+> +++ b/fs/nfsd/nfs4xdr.c
+> @@ -1747,10 +1747,10 @@ static void write_cinfo(__be32 **p, struct nfsd4_change_info *c)
+>  }
+>  
+>  #define RESERVE_SPACE(nbytes)	do {				\
+> -	p = resp->p;						\
+> -	BUG_ON(p + XDR_QUADLEN(nbytes) > resp->end);		\
+> +	p = resp->xdr.p;						\
+> +	BUG_ON(p + XDR_QUADLEN(nbytes) > resp->xdr.end);		\
+>  } while (0)
+> -#define ADJUST_ARGS()		resp->p = p
+> +#define ADJUST_ARGS()		resp->xdr.p = p
+>  
+>  /* Encode as an array of strings the string given with components
+>   * separated @sep, escaped with esc_enter and esc_exit.
+> @@ -2751,9 +2751,9 @@ nfsd4_encode_getattr(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4
+>  	if (nfserr)
+>  		return nfserr;
+>  
+> -	buflen = resp->end - resp->p - (COMPOUND_ERR_SLACK_SPACE >> 2);
+> +	buflen = resp->xdr.end - resp->xdr.p - (COMPOUND_ERR_SLACK_SPACE >> 2);
+>  	nfserr = nfsd4_encode_fattr(fhp, fhp->fh_export, fhp->fh_dentry,
+> -				    &resp->p, buflen, getattr->ga_bmval,
+> +				    &resp->xdr.p, buflen, getattr->ga_bmval,
+>  				    resp->rqstp, 0);
+>  	return nfserr;
+>  }
+> @@ -2953,7 +2953,7 @@ nfsd4_encode_read(struct nfsd4_compoundres *resp, __be32 nfserr,
+>  
+>  	if (nfserr)
+>  		return nfserr;
+> -	if (resp->xbuf->page_len)
+> +	if (resp->xdr.buf->page_len)
+>  		return nfserr_resource;
+>  
+>  	RESERVE_SPACE(8); /* eof flag and byte count */
+> @@ -2991,18 +2991,18 @@ nfsd4_encode_read(struct nfsd4_compoundres *resp, __be32 nfserr,
+>  	WRITE32(eof);
+>  	WRITE32(maxcount);
+>  	ADJUST_ARGS();
+> -	resp->xbuf->head[0].iov_len = (char*)p
+> -					- (char*)resp->xbuf->head[0].iov_base;
+> -	resp->xbuf->page_len = maxcount;
+> +	resp->xdr.buf->head[0].iov_len = (char*)p
+> +				- (char*)resp->xdr.buf->head[0].iov_base;
+> +	resp->xdr.buf->page_len = maxcount;
+>  
+>  	/* Use rest of head for padding and remaining ops: */
+> -	resp->xbuf->tail[0].iov_base = p;
+> -	resp->xbuf->tail[0].iov_len = 0;
+> +	resp->xdr.buf->tail[0].iov_base = p;
+> +	resp->xdr.buf->tail[0].iov_len = 0;
+>  	if (maxcount&3) {
+>  		RESERVE_SPACE(4);
+>  		WRITE32(0);
+> -		resp->xbuf->tail[0].iov_base += maxcount&3;
+> -		resp->xbuf->tail[0].iov_len = 4 - (maxcount&3);
+> +		resp->xdr.buf->tail[0].iov_base += maxcount&3;
+> +		resp->xdr.buf->tail[0].iov_len = 4 - (maxcount&3);
+>  		ADJUST_ARGS();
+>  	}
+>  	return 0;
+> @@ -3017,7 +3017,7 @@ nfsd4_encode_readlink(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd
+>  
+>  	if (nfserr)
+>  		return nfserr;
+> -	if (resp->xbuf->page_len)
+> +	if (resp->xdr.buf->page_len)
+>  		return nfserr_resource;
+>  	if (!*resp->rqstp->rq_next_page)
+>  		return nfserr_resource;
+> @@ -3041,18 +3041,18 @@ nfsd4_encode_readlink(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd
+>  
+>  	WRITE32(maxcount);
+>  	ADJUST_ARGS();
+> -	resp->xbuf->head[0].iov_len = (char*)p
+> -				- (char*)resp->xbuf->head[0].iov_base;
+> -	resp->xbuf->page_len = maxcount;
+> +	resp->xdr.buf->head[0].iov_len = (char*)p
+> +				- (char*)resp->xdr.buf->head[0].iov_base;
+> +	resp->xdr.buf->page_len = maxcount;
+>  
+>  	/* Use rest of head for padding and remaining ops: */
+> -	resp->xbuf->tail[0].iov_base = p;
+> -	resp->xbuf->tail[0].iov_len = 0;
+> +	resp->xdr.buf->tail[0].iov_base = p;
+> +	resp->xdr.buf->tail[0].iov_len = 0;
+>  	if (maxcount&3) {
+>  		RESERVE_SPACE(4);
+>  		WRITE32(0);
+> -		resp->xbuf->tail[0].iov_base += maxcount&3;
+> -		resp->xbuf->tail[0].iov_len = 4 - (maxcount&3);
+> +		resp->xdr.buf->tail[0].iov_base += maxcount&3;
+> +		resp->xdr.buf->tail[0].iov_len = 4 - (maxcount&3);
+>  		ADJUST_ARGS();
+>  	}
+>  	return 0;
+> @@ -3068,7 +3068,7 @@ nfsd4_encode_readdir(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4
+>  
+>  	if (nfserr)
+>  		return nfserr;
+> -	if (resp->xbuf->page_len)
+> +	if (resp->xdr.buf->page_len)
+>  		return nfserr_resource;
+>  	if (!*resp->rqstp->rq_next_page)
+>  		return nfserr_resource;
+> @@ -3080,7 +3080,8 @@ nfsd4_encode_readdir(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4
+>  	WRITE32(0);
+>  	WRITE32(0);
+>  	ADJUST_ARGS();
+> -	resp->xbuf->head[0].iov_len = ((char*)resp->p) - (char*)resp->xbuf->head[0].iov_base;
+> +	resp->xdr.buf->head[0].iov_len = ((char*)resp->xdr.p)
+> +				- (char*)resp->xdr.buf->head[0].iov_base;
+>  	tailbase = p;
+>  
+>  	maxcount = PAGE_SIZE;
+> @@ -3121,14 +3122,14 @@ nfsd4_encode_readdir(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4
+>  	p = readdir->buffer;
+>  	*p++ = 0;	/* no more entries */
+>  	*p++ = htonl(readdir->common.err == nfserr_eof);
+> -	resp->xbuf->page_len = ((char*)p) -
+> +	resp->xdr.buf->page_len = ((char*)p) -
+>  		(char*)page_address(*(resp->rqstp->rq_next_page-1));
+>  
+>  	/* Use rest of head for padding and remaining ops: */
+> -	resp->xbuf->tail[0].iov_base = tailbase;
+> -	resp->xbuf->tail[0].iov_len = 0;
+> -	resp->p = resp->xbuf->tail[0].iov_base;
+> -	resp->end = resp->p + (PAGE_SIZE - resp->xbuf->head[0].iov_len)/4;
+> +	resp->xdr.buf->tail[0].iov_base = tailbase;
+> +	resp->xdr.buf->tail[0].iov_len = 0;
+> +	resp->xdr.p = resp->xdr.buf->tail[0].iov_base;
+> +	resp->xdr.end = resp->xdr.p + (PAGE_SIZE - resp->xdr.buf->head[0].iov_len)/4;
+>  
+>  	return 0;
+>  err_no_verf:
+> @@ -3587,10 +3588,10 @@ __be32 nfsd4_check_resp_size(struct nfsd4_compoundres *resp, u32 pad)
+>  	session = resp->cstate.session;
+>  
+>  	if (xb->page_len == 0) {
+> -		length = (char *)resp->p - (char *)xb->head[0].iov_base + pad;
+> +		length = (char *)resp->xdr.p - (char *)xb->head[0].iov_base + pad;
+>  	} else {
+>  		if (xb->tail[0].iov_base && xb->tail[0].iov_len > 0)
+> -			tlen = (char *)resp->p - (char *)xb->tail[0].iov_base;
+> +			tlen = (char *)resp->xdr.p - (char *)xb->tail[0].iov_base;
+>  
+>  		length = xb->head[0].iov_len + xb->page_len + tlen + pad;
+>  	}
+> @@ -3629,7 +3630,7 @@ nfsd4_encode_operation(struct nfsd4_compoundres *resp, struct nfsd4_op *op)
+>  		op->status = nfsd4_check_resp_size(resp, 0);
+>  	if (so) {
+>  		so->so_replay.rp_status = op->status;
+> -		so->so_replay.rp_buflen = (char *)resp->p - (char *)(statp+1);
+> +		so->so_replay.rp_buflen = (char *)resp->xdr.p - (char *)(statp+1);
+>  		memcpy(so->so_replay.rp_buf, statp+1, so->so_replay.rp_buflen);
+>  	}
+>  status:
+> @@ -3731,7 +3732,7 @@ nfs4svc_encode_compoundres(struct svc_rqst *rqstp, __be32 *p, struct nfsd4_compo
+>  		iov = &rqstp->rq_res.tail[0];
+>  	else
+>  		iov = &rqstp->rq_res.head[0];
+> -	iov->iov_len = ((char*)resp->p) - (char*)iov->iov_base;
+> +	iov->iov_len = ((char*)resp->xdr.p) - (char*)iov->iov_base;
+>  	BUG_ON(iov->iov_len > PAGE_SIZE);
+>  	if (nfsd4_has_session(cs)) {
+>  		struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
+> diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+> index 5ea7df3..6884d70 100644
+> --- a/fs/nfsd/xdr4.h
+> +++ b/fs/nfsd/xdr4.h
+> @@ -506,9 +506,7 @@ struct nfsd4_compoundargs {
+>  
+>  struct nfsd4_compoundres {
+>  	/* scratch variables for XDR encode */
+> -	__be32 *			p;
+> -	__be32 *			end;
+> -	struct xdr_buf *		xbuf;
+> +	struct xdr_stream		xdr;
+>  	struct svc_rqst *		rqstp;
+>  
+>  	u32				taglen;
+> 
