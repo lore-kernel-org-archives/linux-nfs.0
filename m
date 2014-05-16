@@ -1,98 +1,85 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f49.google.com ([209.85.192.49]:51906 "EHLO
-	mail-qg0-f49.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752186AbaE3NJs (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 30 May 2014 09:09:48 -0400
-Received: by mail-qg0-f49.google.com with SMTP id a108so5099728qge.36
-        for <linux-nfs@vger.kernel.org>; Fri, 30 May 2014 06:09:48 -0700 (PDT)
-From: Jeff Layton <jlayton@primarydata.com>
-To: bfields@fieldses.org
-Cc: trond.myklebust@primarydata.com, bhalevy@primarydata.com,
-        linux-nfs@vger.kernel.org
-Subject: [PATCH 3/9] nfsd4: use recall_lock for delegation hashing
-Date: Fri, 30 May 2014 09:09:27 -0400
-Message-Id: <1401455373-18207-4-git-send-email-jlayton@primarydata.com>
-In-Reply-To: <1401455373-18207-1-git-send-email-jlayton@primarydata.com>
-References: <1401455373-18207-1-git-send-email-jlayton@primarydata.com>
+Received: from mail-oa0-f45.google.com ([209.85.219.45]:38680 "EHLO
+	mail-oa0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754060AbaEPHbY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 16 May 2014 03:31:24 -0400
+Received: by mail-oa0-f45.google.com with SMTP id l6so2563251oag.4
+        for <linux-nfs@vger.kernel.org>; Fri, 16 May 2014 00:31:23 -0700 (PDT)
+Message-ID: <5375BEBD.50805@gmail.com>
+Date: Fri, 16 May 2014 15:31:09 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
+MIME-Version: 1.0
+To: Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@fieldses.org>
+CC: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH v2] NFSD: Don't clear SUID/SGID after root writing data
+References: <534AA92B.8010805@gmail.com> <20140418130220.GF18612@fieldses.org> <53512DE5.7050907@gmail.com> <5351501B.1010507@gmail.com> <20140508161256.GC20976@fieldses.org> <536C89D7.6090902@gmail.com> <20140509214056.GC497@fieldses.org> <20140510051017.GA23444@infradead.org>
+In-Reply-To: <20140510051017.GA23444@infradead.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Benny Halevy <bhalevy@primarydata.com>
 
-This fixes a bug in the handling of the fi_delegations list.
+On 5/10/2014 13:10, Christoph Hellwig wrote:
+> On Fri, May 09, 2014 at 05:40:57PM -0400, J. Bruce Fields wrote:
+>> On Fri, May 09, 2014 at 03:55:03PM +0800, Kinglong Mee wrote:
+>>> On 5/9/2014 00:12, J. Bruce Fields wrote:
+>>>> I'd like to apply this if only to remove the redundant code.
+>>>>
+>>>> I'd like to understand, though, whether this is something that caused an
+>>>> actual practical problem for someone, or if you just happened to notice
+>>>> the inconsistency between nfs and ext4 behavior?
+>>>
+>>> I test it with ext2,ext3,btrfs,xfs.
+>>> Test result is same as ext4.
+>>> So, we needs remove the redundant killing of suid/sgid.
+>>
+>> Understood that this would make the behavior consistent with
+>> filesystems.  But, you don't know of any cases of the current behavior
+>> is actually causing a problem for anyone? 
+> 
+> I thin this also is the root cause for xfstests generic/193 failing on
+> NFS, but I haven't verified it yet.
 
-nfs4_setlease does not hold the recall_lock when adding to it. The
-client_mutex is held, which prevents against concurrent list changes,
-but nfsd_break_deleg_cb does not hold while walking it. New delegations
-could theoretically creep onto the list while we're walking it there.
+xfstests generic/193 only tests non-root user truncating file
+with root setting SGID/SUID mode. generic/193 will not fail.
 
-Signed-off-by: Benny Halevy <bhalevy@primarydata.com>
-Signed-off-by: Jeff Layton <jlayton@primarydata.com>
----
- fs/nfsd/nfs4state.c | 20 +++++++++++++++-----
- 1 file changed, 15 insertions(+), 5 deletions(-)
+236 _create_files
+237 # Now test out the clear of suid/sgid for truncate
+238 #
+239 echo "check that suid/sgid bits are cleared after successful truncate..."
+240
+241 echo "with no exec perm"
+242 echo frobnozzle >> $test_user
+243 chmod ug+s $test_user
+244 echo -n "before: "; stat -c '%A' $test_user
+245 su ${qa_user} -c "echo > $test_user"
+246 echo -n "after:  "; stat -c '%A' $test_user
+247
+248 echo "with user exec perm"
+249 echo frobnozzle >> $test_user
+250 chmod ug+s $test_user
+251 chmod u+x $test_user
+252 echo -n "before: "; stat -c '%A' $test_user
+253 su ${qa_user} -c "echo > $test_user"
+254 echo -n "after:  "; stat -c '%A' $test_user
+255
+256 echo "with group exec perm"
+257 echo frobnozzle >> $test_user
+258 chmod ug+s $test_user
+259 chmod g+x $test_user
+260 chmod u-x $test_user
+261 echo -n "before: "; stat -c '%A' $test_user
+262 su ${qa_user} -c "echo > $test_user"
+263 echo -n "after:  "; stat -c '%A' $test_user
+264
+265 echo "with user+group exec perm"
+266 echo frobnozzle >> $test_user
+267 chmod ug+s $test_user
+268 chmod ug+x $test_user
+269 echo -n "before: "; stat -c '%A' $test_user
+270 su ${qa_user} -c "echo > $test_user"
+271 echo -n "after:  "; stat -c '%A' $test_user
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index be6199cc8711..96bdd90b96b1 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -433,12 +433,21 @@ static void unhash_stid(struct nfs4_stid *s)
- 	s->sc_type = 0;
- }
- 
-+static void
-+hash_delegation_locked(struct nfs4_delegation *dp, struct nfs4_file *fp)
-+{
-+	lockdep_assert_held(&recall_lock);
-+
-+	list_add(&dp->dl_perfile, &fp->fi_delegations);
-+	list_add(&dp->dl_perclnt, &dp->dl_stid.sc_client->cl_delegations);
-+}
-+
- /* Called under the state lock. */
- static void
- unhash_delegation(struct nfs4_delegation *dp)
- {
--	list_del_init(&dp->dl_perclnt);
- 	spin_lock(&recall_lock);
-+	list_del_init(&dp->dl_perclnt);
- 	list_del_init(&dp->dl_perfile);
- 	list_del_init(&dp->dl_recall_lru);
- 	spin_unlock(&recall_lock);
-@@ -3053,11 +3062,12 @@ static int nfs4_setlease(struct nfs4_delegation *dp)
- 	status = vfs_setlease(fl->fl_file, fl->fl_type, &fl);
- 	if (status)
- 		goto out_free;
--	list_add(&dp->dl_perclnt, &dp->dl_stid.sc_client->cl_delegations);
- 	fp->fi_lease = fl;
- 	fp->fi_deleg_file = get_file(fl->fl_file);
- 	atomic_set(&fp->fi_delegees, 1);
--	list_add(&dp->dl_perfile, &fp->fi_delegations);
-+	spin_lock(&recall_lock);
-+	hash_delegation_locked(dp, fp);
-+	spin_unlock(&recall_lock);
- 	return 0;
- out_free:
- 	locks_free_lock(fl);
-@@ -3078,9 +3088,8 @@ static int nfs4_set_delegation(struct nfs4_delegation *dp, struct nfs4_file *fp)
- 		spin_unlock(&recall_lock);
- 		return -EAGAIN;
- 	}
--	list_add(&dp->dl_perfile, &fp->fi_delegations);
-+	hash_delegation_locked(dp, fp);
- 	spin_unlock(&recall_lock);
--	list_add(&dp->dl_perclnt, &dp->dl_stid.sc_client->cl_delegations);
- 	return 0;
- }
- 
-@@ -4891,6 +4900,7 @@ static u64 nfsd_find_all_delegations(struct nfs4_client *clp, u64 max,
- 	struct nfs4_delegation *dp, *next;
- 	u64 count = 0;
- 
-+	lockdep_assert_held(&recall_lock);
- 	list_for_each_entry_safe(dp, next, &clp->cl_delegations, dl_perclnt) {
- 		if (victims)
- 			list_move(&dp->dl_recall_lru, victims);
--- 
-1.9.3
-
+thanks,
+Kinglong Mee
