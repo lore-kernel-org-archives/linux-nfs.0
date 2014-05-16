@@ -1,176 +1,205 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f176.google.com ([209.85.223.176]:45534 "EHLO
-	mail-ie0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752853AbaE1Vjf (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 May 2014 17:39:35 -0400
-Received: by mail-ie0-f176.google.com with SMTP id rl12so10987687iec.35
-        for <linux-nfs@vger.kernel.org>; Wed, 28 May 2014 14:39:34 -0700 (PDT)
-Message-ID: <1401313172.7778.2.camel@leira.trondhjem.org>
-Subject: Re: [PATCH 3/3] nfs4: copy acceptor name from context to nfs_client
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Jeffrey Layton <jeff.layton@primarydata.com>
-Cc: steved@redhat.com, linux-nfs@vger.kernel.org
-Date: Wed, 28 May 2014 17:39:32 -0400
-In-Reply-To: <1397161791-29144-4-git-send-email-jlayton@redhat.com>
-References: <1397161791-29144-1-git-send-email-jlayton@redhat.com>
-	 <1397161791-29144-4-git-send-email-jlayton@redhat.com>
-Content-Type: text/plain; charset="UTF-8"
-Mime-Version: 1.0
+Received: from linode.aoot.com ([69.164.194.13]:45024 "EHLO linode.aoot.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S932769AbaEPOKt (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 16 May 2014 10:10:49 -0400
+Message-ID: <53761C63.4050908@opengridcomputing.com>
+Date: Fri, 16 May 2014 09:10:43 -0500
+From: Steve Wise <swise@opengridcomputing.com>
+MIME-Version: 1.0
+To: Devesh Sharma <Devesh.Sharma@Emulex.Com>,
+        Chuck Lever <chuck.lever@oracle.com>,
+        "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>,
+        "linux-rdma@vger.kernel.org" <linux-rdma@vger.kernel.org>
+CC: "Anna.Schumaker@netapp.com" <Anna.Schumaker@netapp.com>
+Subject: Re: [PATCH V3 01/17] xprtrdma: mind the device's max fast register
+ page	list depth
+References: <20140430191433.5663.16217.stgit@manet.1015granger.net> <20140430192936.5663.66537.stgit@manet.1015granger.net> <EE7902D3F51F404C82415C4803930ACD3FDFBDA9@CMEXMB1.ad.emulex.com>
+In-Reply-To: <EE7902D3F51F404C82415C4803930ACD3FDFBDA9@CMEXMB1.ad.emulex.com>
+Content-Type: text/plain; charset=UTF-8; format=flowed
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, 2014-04-10 at 16:29 -0400, Jeff Layton wrote:
-> The current CB_COMPOUND handling code tries to compare the principal
-> name of the request with the cl_hostname in the client. This is not
-> guaranteed to ever work, particularly if the client happened to mount
-> a CNAME of the server or a non-fqdn.
-> 
-> Fix this by instead comparing the cr_principal string with the acceptor
-> name that we get from gssd. In the event that gssd didn't send one
-> down (i.e. it was too old), then we fall back to trying to use the
-> cl_hostname as we do today.
-> 
-> Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> ---
->  fs/nfs/callback.c         | 12 ++++++++++++
->  fs/nfs/client.c           |  1 +
->  fs/nfs/nfs4proc.c         | 30 +++++++++++++++++++++++++++++-
->  include/linux/nfs_fs_sb.h |  1 +
->  include/linux/nfs_xdr.h   |  1 +
->  5 files changed, 44 insertions(+), 1 deletion(-)
-> 
-> diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-> index 073b4cf67ed9..54de482143cc 100644
-> --- a/fs/nfs/callback.c
-> +++ b/fs/nfs/callback.c
-> @@ -428,6 +428,18 @@ check_gss_callback_principal(struct nfs_client *clp, struct svc_rqst *rqstp)
->  	if (p == NULL)
->  		return 0;
->  
-> +	/*
-> +	 * Did we get the acceptor from userland during the SETCLIENID
-> +	 * negotiation?
-> +	 */
-> +	if (clp->cl_acceptor)
-> +		return !strcmp(p, clp->cl_acceptor);
-> +
-> +	/*
-> +	 * Otherwise try to verify it using the cl_hostname. Note that this
-> +	 * doesn't work if a non-canonical hostname was used in the devname.
-> +	 */
-> +
->  	/* Expect a GSS_C_NT_HOSTBASED_NAME like "nfs@serverhostname" */
->  
->  	if (memcmp(p, "nfs@", 4) != 0)
-> diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-> index 1d09289c8f0e..6a461378fcf2 100644
-> --- a/fs/nfs/client.c
-> +++ b/fs/nfs/client.c
-> @@ -252,6 +252,7 @@ void nfs_free_client(struct nfs_client *clp)
->  	put_net(clp->cl_net);
->  	put_nfs_version(clp->cl_nfs_mod);
->  	kfree(clp->cl_hostname);
-> +	kfree(clp->cl_acceptor);
->  	kfree(clp);
->  
->  	dprintk("<-- nfs_free_client()\n");
-> diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> index 397be39c6dc8..cc6c3fe3e060 100644
-> --- a/fs/nfs/nfs4proc.c
-> +++ b/fs/nfs/nfs4proc.c
-> @@ -4896,6 +4896,18 @@ nfs4_init_callback_netid(const struct nfs_client *clp, char *buf, size_t len)
->  		return scnprintf(buf, len, "tcp");
->  }
->  
-> +static void nfs4_setclientid_done(struct rpc_task *task, void *calldata)
-> +{
-> +	struct nfs4_setclientid *sc = calldata;
-> +
-> +	if (task->tk_status == 0)
-> +		*sc->sc_acceptor = rpcauth_stringify_acceptor(task->tk_rqstp->rq_cred);
+I guess the client code doesn't verify that the device supports the 
+chosen memreg mode.  That's not good.   Lemme fix this and respin this 
+patch.
 
-We can't call a GFP_KERNEL memory allocator from within a RPC callback
-function. This needs to be done outside the RPC call.
 
-> +}
-> +
-> +static const struct rpc_call_ops nfs4_setclientid_ops = {
-> +	.rpc_call_done = nfs4_setclientid_done,
-> +};
-> +
->  /**
->   * nfs4_proc_setclientid - Negotiate client ID
->   * @clp: state data structure
-> @@ -4915,6 +4927,7 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
->  		.sc_verifier = &sc_verifier,
->  		.sc_prog = program,
->  		.sc_cb_ident = clp->cl_cb_ident,
-> +		.sc_acceptor = &clp->cl_acceptor,
->  	};
->  	struct rpc_message msg = {
->  		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_SETCLIENTID],
-> @@ -4922,6 +4935,14 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
->  		.rpc_resp = res,
->  		.rpc_cred = cred,
->  	};
-> +	struct rpc_task *task;
-> +	struct rpc_task_setup task_setup_data = {
-> +		.rpc_client = clp->cl_rpcclient,
-> +		.rpc_message = &msg,
-> +		.callback_ops = &nfs4_setclientid_ops,
-> +		.callback_data = &setclientid,
-> +		.flags = RPC_TASK_TIMEOUT,
-> +	};
->  	int status;
->  
->  	/* nfs_client_id4 */
-> @@ -4948,7 +4969,14 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
->  	dprintk("NFS call  setclientid auth=%s, '%.*s'\n",
->  		clp->cl_rpcclient->cl_auth->au_ops->au_name,
->  		setclientid.sc_name_len, setclientid.sc_name);
-> -	status = rpc_call_sync(clp->cl_rpcclient, &msg, RPC_TASK_TIMEOUT);
-> +	task = rpc_run_task(&task_setup_data);
-> +	if (IS_ERR(task)) {
-> +		status = PTR_ERR(task);
-> +		goto out;
-> +	}
-> +	status = task->tk_status;
-
-Why not just do it here?
-
-> +	rpc_put_task(task);
-> +out:
->  	trace_nfs4_setclientid(clp, status);
->  	dprintk("NFS reply setclientid: %d\n", status);
->  	return status;
-> diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-> index 1150ea41b626..922be2e050f5 100644
-> --- a/include/linux/nfs_fs_sb.h
-> +++ b/include/linux/nfs_fs_sb.h
-> @@ -45,6 +45,7 @@ struct nfs_client {
->  	struct sockaddr_storage	cl_addr;	/* server identifier */
->  	size_t			cl_addrlen;
->  	char *			cl_hostname;	/* hostname of server */
-> +	char *			cl_acceptor;	/* GSSAPI acceptor name */
->  	struct list_head	cl_share_link;	/* link in global client list */
->  	struct list_head	cl_superblocks;	/* List of nfs_server structs */
->  
-> diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-> index 6fb5b2335b59..5945d88a26e2 100644
-> --- a/include/linux/nfs_xdr.h
-> +++ b/include/linux/nfs_xdr.h
-> @@ -1010,6 +1010,7 @@ struct nfs4_setclientid {
->  	unsigned int			sc_uaddr_len;
->  	char				sc_uaddr[RPCBIND_MAXUADDRLEN + 1];
->  	u32				sc_cb_ident;
-> +	char				**sc_acceptor;
->  };
->  
->  struct nfs4_setclientid_res {
-
--- 
-Trond Myklebust
-Linux NFS client maintainer, PrimaryData
-trond.myklebust@primarydata.com
-
+On 5/16/2014 2:08 AM, Devesh Sharma wrote:
+> Chuck
+>
+> This patch is causing a CPU soft-lockup if underlying vendor reports devattr.max_fast_reg_pagr_list_len = 0 and ia->ri_memreg_strategy = FRMR (Default option).
+> I think there is need to refer to device capability flags. If strategy = FRMR is forced and devattr.max_fast_reg_pagr_list_len=0 then flash an error and fail RPC with -EIO.
+>
+> See inline:
+>
+>> -----Original Message-----
+>> From: linux-rdma-owner@vger.kernel.org [mailto:linux-rdma-
+>> owner@vger.kernel.org] On Behalf Of Chuck Lever
+>> Sent: Thursday, May 01, 2014 1:00 AM
+>> To: linux-nfs@vger.kernel.org; linux-rdma@vger.kernel.org
+>> Cc: Anna.Schumaker@netapp.com
+>> Subject: [PATCH V3 01/17] xprtrdma: mind the device's max fast register
+>> page list depth
+>>
+>> From: Steve Wise <swise@opengridcomputing.com>
+>>
+>> Some rdma devices don't support a fast register page list depth of at least
+>> RPCRDMA_MAX_DATA_SEGS.  So xprtrdma needs to chunk its fast register
+>> regions according to the minimum of the device max supported depth or
+>> RPCRDMA_MAX_DATA_SEGS.
+>>
+>> Signed-off-by: Steve Wise <swise@opengridcomputing.com>
+>> Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
+>> ---
+>>
+>>   net/sunrpc/xprtrdma/rpc_rdma.c  |    4 ---
+>>   net/sunrpc/xprtrdma/verbs.c     |   47 +++++++++++++++++++++++++++++-
+>> ---------
+>>   net/sunrpc/xprtrdma/xprt_rdma.h |    1 +
+>>   3 files changed, 36 insertions(+), 16 deletions(-)
+>>
+>> diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c
+>> b/net/sunrpc/xprtrdma/rpc_rdma.c index 96ead52..400aa1b 100644
+>> --- a/net/sunrpc/xprtrdma/rpc_rdma.c
+>> +++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+>> @@ -248,10 +248,6 @@ rpcrdma_create_chunks(struct rpc_rqst *rqst, struct
+>> xdr_buf *target,
+>>   	/* success. all failures return above */
+>>   	req->rl_nchunks = nchunks;
+>>
+>> -	BUG_ON(nchunks == 0);
+>> -	BUG_ON((r_xprt->rx_ia.ri_memreg_strategy == RPCRDMA_FRMR)
+>> -	       && (nchunks > 3));
+>> -
+>>   	/*
+>>   	 * finish off header. If write, marshal discrim and nchunks.
+>>   	 */
+>> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+>> index 9372656..55fb09a 100644
+>> --- a/net/sunrpc/xprtrdma/verbs.c
+>> +++ b/net/sunrpc/xprtrdma/verbs.c
+>> @@ -539,6 +539,11 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct
+>> sockaddr *addr, int memreg)
+>>   				__func__);
+>>   			memreg = RPCRDMA_REGISTER;
+>>   #endif
+>> +		} else {
+>> +			/* Mind the ia limit on FRMR page list depth */
+>> +			ia->ri_max_frmr_depth = min_t(unsigned int,
+>> +				RPCRDMA_MAX_DATA_SEGS,
+>> +				devattr.max_fast_reg_page_list_len);
+>>   		}
+>>   		break;
+>>   	}
+>> @@ -659,24 +664,42 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct
+>> rpcrdma_ia *ia,
+>>   	ep->rep_attr.srq = NULL;
+>>   	ep->rep_attr.cap.max_send_wr = cdata->max_requests;
+>>   	switch (ia->ri_memreg_strategy) {
+>> -	case RPCRDMA_FRMR:
+>> +	case RPCRDMA_FRMR: {
+>> +		int depth = 7;
+>> +
+>>   		/* Add room for frmr register and invalidate WRs.
+>>   		 * 1. FRMR reg WR for head
+>>   		 * 2. FRMR invalidate WR for head
+>> -		 * 3. FRMR reg WR for pagelist
+>> -		 * 4. FRMR invalidate WR for pagelist
+>> +		 * 3. N FRMR reg WRs for pagelist
+>> +		 * 4. N FRMR invalidate WRs for pagelist
+>>   		 * 5. FRMR reg WR for tail
+>>   		 * 6. FRMR invalidate WR for tail
+>>   		 * 7. The RDMA_SEND WR
+>>   		 */
+>> -		ep->rep_attr.cap.max_send_wr *= 7;
+>> +
+>> +		/* Calculate N if the device max FRMR depth is smaller than
+>> +		 * RPCRDMA_MAX_DATA_SEGS.
+>> +		 */
+>> +		if (ia->ri_max_frmr_depth < RPCRDMA_MAX_DATA_SEGS) {
+>> +			int delta = RPCRDMA_MAX_DATA_SEGS -
+>> +				    ia->ri_max_frmr_depth;
+>> +
+>> +			do {
+>> +				depth += 2; /* FRMR reg + invalidate */
+>> +				delta -= ia->ri_max_frmr_depth;
+> If ia->ri_max_frmr_depth is = 0. This loop becomes infinite loop.
+>
+>> +			} while (delta > 0);
+>> +
+>> +		}
+>> +		ep->rep_attr.cap.max_send_wr *= depth;
+>>   		if (ep->rep_attr.cap.max_send_wr > devattr.max_qp_wr) {
+>> -			cdata->max_requests = devattr.max_qp_wr / 7;
+>> +			cdata->max_requests = devattr.max_qp_wr / depth;
+>>   			if (!cdata->max_requests)
+>>   				return -EINVAL;
+>> -			ep->rep_attr.cap.max_send_wr = cdata-
+>>> max_requests * 7;
+>> +			ep->rep_attr.cap.max_send_wr = cdata-
+>>> max_requests *
+>> +						       depth;
+>>   		}
+>>   		break;
+>> +	}
+>>   	case RPCRDMA_MEMWINDOWS_ASYNC:
+>>   	case RPCRDMA_MEMWINDOWS:
+>>   		/* Add room for mw_binds+unbinds - overkill! */ @@ -
+>> 1043,16 +1066,16 @@ rpcrdma_buffer_create(struct rpcrdma_buffer *buf,
+>> struct rpcrdma_ep *ep,
+>>   	case RPCRDMA_FRMR:
+>>   		for (i = buf->rb_max_requests * RPCRDMA_MAX_SEGS; i; i--
+>> ) {
+>>   			r->r.frmr.fr_mr = ib_alloc_fast_reg_mr(ia->ri_pd,
+>> -
+>> RPCRDMA_MAX_SEGS);
+>> +						ia->ri_max_frmr_depth);
+>>   			if (IS_ERR(r->r.frmr.fr_mr)) {
+>>   				rc = PTR_ERR(r->r.frmr.fr_mr);
+>>   				dprintk("RPC:       %s: ib_alloc_fast_reg_mr"
+>>   					" failed %i\n", __func__, rc);
+>>   				goto out;
+>>   			}
+>> -			r->r.frmr.fr_pgl =
+>> -				ib_alloc_fast_reg_page_list(ia->ri_id-
+>>> device,
+>> -
+>> RPCRDMA_MAX_SEGS);
+>> +			r->r.frmr.fr_pgl = ib_alloc_fast_reg_page_list(
+>> +						ia->ri_id->device,
+>> +						ia->ri_max_frmr_depth);
+>>   			if (IS_ERR(r->r.frmr.fr_pgl)) {
+>>   				rc = PTR_ERR(r->r.frmr.fr_pgl);
+>>   				dprintk("RPC:       %s: "
+>> @@ -1498,8 +1521,8 @@ rpcrdma_register_frmr_external(struct
+>> rpcrdma_mr_seg *seg,
+>>   	seg1->mr_offset -= pageoff;	/* start of page */
+>>   	seg1->mr_len += pageoff;
+>>   	len = -pageoff;
+>> -	if (*nsegs > RPCRDMA_MAX_DATA_SEGS)
+>> -		*nsegs = RPCRDMA_MAX_DATA_SEGS;
+>> +	if (*nsegs > ia->ri_max_frmr_depth)
+>> +		*nsegs = ia->ri_max_frmr_depth;
+>>   	for (page_no = i = 0; i < *nsegs;) {
+>>   		rpcrdma_map_one(ia, seg, writing);
+>>   		pa = seg->mr_dma;
+>> diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h
+>> b/net/sunrpc/xprtrdma/xprt_rdma.h index cc1445d..98340a3 100644
+>> --- a/net/sunrpc/xprtrdma/xprt_rdma.h
+>> +++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+>> @@ -66,6 +66,7 @@ struct rpcrdma_ia {
+>>   	struct completion	ri_done;
+>>   	int			ri_async_rc;
+>>   	enum rpcrdma_memreg	ri_memreg_strategy;
+>> +	unsigned int		ri_max_frmr_depth;
+>>   };
+>>
+>>   /*
+>>
+>> --
+>> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in the
+>> body of a message to majordomo@vger.kernel.org More majordomo info at
+>> http://vger.kernel.org/majordomo-info.html
+> N�����r��y���b�X��ǧv�^�)޺{.n�+����{���"��^n�r���z���h����&���G���h�(�階�ݢj"���m�����z�ޖ���f���h���~�mml==
 
