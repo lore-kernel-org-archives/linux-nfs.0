@@ -1,106 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:16546 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750868AbaETSI1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 May 2014 14:08:27 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
-CC: <dros@primarydata.com>, <hch@infradead.org>
-Subject: [RFC 03/12] nfs: Create a common pnfs_ld_handle_rw_error() function
-Date: Tue, 20 May 2014 14:08:10 -0400
-Message-ID: <1400609299-32558-4-git-send-email-Anna.Schumaker@Netapp.com>
-In-Reply-To: <1400609299-32558-1-git-send-email-Anna.Schumaker@Netapp.com>
-References: <1400609299-32558-1-git-send-email-Anna.Schumaker@Netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+Received: from mail-ig0-f176.google.com ([209.85.213.176]:57326 "EHLO
+	mail-ig0-f176.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750743AbaERSFY (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Sun, 18 May 2014 14:05:24 -0400
+Received: by mail-ig0-f176.google.com with SMTP id hl10so2631732igb.3
+        for <linux-nfs@vger.kernel.org>; Sun, 18 May 2014 11:05:24 -0700 (PDT)
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Bruce Fields <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] SUNRPC: Fix a module reference leak in svc_handle_xprt
+Date: Sun, 18 May 2014 14:05:22 -0400
+Message-Id: <1400436322-5014-1-git-send-email-trond.myklebust@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I use a simple function pointer to handle the difference between the
-read and write paths.
+If the accept() call fails, we need to put the module reference.
 
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
 ---
- fs/nfs/pnfs.c | 38 +++++++++++++-------------------------
- 1 file changed, 13 insertions(+), 25 deletions(-)
+ net/sunrpc/svc_xprt.c | 2 ++
+ 1 file changed, 2 insertions(+)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 4d57003..4eaf74a 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1446,6 +1446,17 @@ pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
- }
- EXPORT_SYMBOL_GPL(pnfs_generic_pg_test);
- 
-+static void pnfs_ld_handle_rw_error(struct nfs_pgio_header *hdr,
-+			int (*resend_to_mds)(struct nfs_pgio_header *))
-+{
-+	if (NFS_SERVER(hdr->inode)->pnfs_curr_ld->flags &
-+	    PNFS_LAYOUTRET_ON_ERROR) {
-+		pnfs_return_layout(hdr->inode);
-+	}
-+	if (!test_and_set_bit(NFS_IOHDR_REDO, &hdr->flags))
-+		hdr->task.tk_status = resend_to_mds(hdr);
-+}
-+
- void
- pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio,
- 			   struct nfs_page *req, u64 wb_size)
-@@ -1465,18 +1476,6 @@ int pnfs_write_done_resend_to_mds(struct nfs_pgio_header *hdr)
- }
- EXPORT_SYMBOL_GPL(pnfs_write_done_resend_to_mds);
- 
--static void pnfs_ld_handle_write_error(struct nfs_pgio_header *hdr)
--{
--
--	dprintk("pnfs write error = %d\n", hdr->pnfs_error);
--	if (NFS_SERVER(hdr->inode)->pnfs_curr_ld->flags &
--	    PNFS_LAYOUTRET_ON_ERROR) {
--		pnfs_return_layout(hdr->inode);
--	}
--	if (!test_and_set_bit(NFS_IOHDR_REDO, &hdr->flags))
--		hdr->task.tk_status = pnfs_write_done_resend_to_mds(hdr);
--}
--
- /*
-  * Called by non rpc-based layout drivers
-  */
-@@ -1487,7 +1486,7 @@ void pnfs_ld_write_done(struct nfs_pgio_header *hdr)
- 		pnfs_set_layoutcommit(hdr);
- 		hdr->mds_ops->rpc_call_done(&hdr->task, hdr);
- 	} else
--		pnfs_ld_handle_write_error(hdr);
-+		pnfs_ld_handle_rw_error(hdr, pnfs_write_done_resend_to_mds);
- 	hdr->mds_ops->rpc_release(hdr);
- }
- EXPORT_SYMBOL_GPL(pnfs_ld_write_done);
-@@ -1596,17 +1595,6 @@ int pnfs_read_done_resend_to_mds(struct nfs_pgio_header *hdr)
- }
- EXPORT_SYMBOL_GPL(pnfs_read_done_resend_to_mds);
- 
--static void pnfs_ld_handle_read_error(struct nfs_pgio_header *hdr)
--{
--	dprintk("pnfs read error = %d\n", hdr->pnfs_error);
--	if (NFS_SERVER(hdr->inode)->pnfs_curr_ld->flags &
--	    PNFS_LAYOUTRET_ON_ERROR) {
--		pnfs_return_layout(hdr->inode);
--	}
--	if (!test_and_set_bit(NFS_IOHDR_REDO, &hdr->flags))
--		hdr->task.tk_status = pnfs_read_done_resend_to_mds(hdr);
--}
--
- /*
-  * Called by non rpc-based layout drivers
-  */
-@@ -1617,7 +1605,7 @@ void pnfs_ld_read_done(struct nfs_pgio_header *hdr)
- 		__nfs4_read_done_cb(hdr);
- 		hdr->mds_ops->rpc_call_done(&hdr->task, hdr);
- 	} else
--		pnfs_ld_handle_read_error(hdr);
-+		pnfs_ld_handle_rw_error(hdr, pnfs_read_done_resend_to_mds);
- 	hdr->mds_ops->rpc_release(hdr);
- }
- EXPORT_SYMBOL_GPL(pnfs_ld_read_done);
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index 06c6ff0cb911..a4acaf2bcf18 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -730,6 +730,8 @@ static int svc_handle_xprt(struct svc_rqst *rqstp, struct svc_xprt *xprt)
+ 		newxpt = xprt->xpt_ops->xpo_accept(xprt);
+ 		if (newxpt)
+ 			svc_add_new_temp_xprt(serv, newxpt);
++		else
++			module_put(xprt->xpt_class->xcl_owner);
+ 	} else if (xprt->xpt_ops->xpo_has_wspace(xprt)) {
+ 		/* XPT_DATA|XPT_DEFERRED case: */
+ 		dprintk("svc: server %p, pool %u, transport %p, inuse=%d\n",
 -- 
-1.9.2
+1.9.0
 
