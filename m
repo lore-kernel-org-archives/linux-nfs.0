@@ -1,72 +1,35 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ve0-f178.google.com ([209.85.128.178]:58655 "EHLO
-	mail-ve0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755453AbaEHUQp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 8 May 2014 16:16:45 -0400
-Received: by mail-ve0-f178.google.com with SMTP id sa20so3975954veb.37
-        for <linux-nfs@vger.kernel.org>; Thu, 08 May 2014 13:16:44 -0700 (PDT)
+Received: from bombadil.infradead.org ([198.137.202.9]:49869 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932310AbaESQ5e (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 May 2014 12:57:34 -0400
+Date: Mon, 19 May 2014 09:57:32 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: Anna Schumaker <schumaker.anna@gmail.com>
+Cc: Christoph Hellwig <hch@infradead.org>,
+        Weston Andros Adamson <dros@primarydata.com>,
+        trond.myklebust@primarydata.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 8/8] pnfs: merge identical functions
+Message-ID: <20140519165732.GB663@infradead.org>
+References: <1400512508-7530-1-git-send-email-dros@primarydata.com>
+ <1400512508-7530-9-git-send-email-dros@primarydata.com>
+ <20140519153402.GB21345@infradead.org>
+ <537A2D32.1020701@gmail.com>
 MIME-Version: 1.0
-In-Reply-To: <20140507202932.GD9710@fieldses.org>
-References: <1397846704-14567-1-git-send-email-trond.myklebust@primarydata.com>
-	<20140419205815.GA1094@fieldses.org>
-	<20140507202932.GD9710@fieldses.org>
-Date: Thu, 8 May 2014 16:16:44 -0400
-Message-ID: <CAHQdGtRcr51PcRKDpfCdotwSD6FguWrmq0a=U+cv40gJWwrtBA@mail.gmail.com>
-Subject: Re: [PATCH 00/70] NFSd lock scalability patches
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Bruce Fields <bfields@fieldses.org>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <537A2D32.1020701@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, May 7, 2014 at 4:29 PM, Bruce Fields <bfields@fieldses.org> wrote:
-> On Sat, Apr 19, 2014 at 04:58:15PM -0400, Bruce Fields wrote:
->> On Fri, Apr 18, 2014 at 02:43:54PM -0400, Trond Myklebust wrote:
->> > In accordance with the traditional Good Friday theme of "suffering", here
->> > is the first draft of the NFSd lock scalability patches for your perusal.
->> > I've only done light testing so far, but since there is a total of 70
->> > patches to review, I figured you might want to start sooner rather than
->> > waiting for the QA folks to finish testing.
->>
->> Thanks!
->>
->> Yeah, this sounds like too much suffering for vacation time, but I'll at
->> least make a stab at merging the initial bug fixes next week, then try
->> to plow through these (or any revised version (thanks, Christoph, for
->> help reviewing!)) after I get back in a couple more weeks.
+On Mon, May 19, 2014 at 12:11:30PM -0400, Anna Schumaker wrote:
+> > I think it should also be mossible to simply call pnfs_put_lseg
+> > from nfs_pgio_header_free.  pnfs_put_lseg handles a NULL argument fine,
+> > is stubbed out for the non-pnfs case, and the other callers should never
+> > have it set.
+> 
+> Every function in this area is identical to each other :).  I'm already working on a patch series that combines these functions (and more!).  It also needs more testing before I can submit, but I can update against these patches first to see if this unlocks other cleanups.
 
-Yes. Thanks very much Christoph! I was worried that I would not get
-enough reviewers for these patches.
+Yes, pnfs.c has lots of duplication of the classic I/O path.  I don't
+think we need to rush out your patches, but it would be good to get them
+out in the not too far future.
 
-> I've at least skimmed through them all, and that's all the suffering I
-> can handle for now.  I'm assuming you'll send a new version soon.
-
-In addition to the issues that you and Christoph have raised, I've
-also had to rethink some of the open() call. I'm not seeing how to
-avoid moving the open share/deny locks into do_nfsd_create() without
-getting into weird races, for instance.
-
-> I'm applying a few of these to my for-3.16 branch, could you rebase
-> future versions to that to avoid resending already-reviewed patches?
-
-OK.
-
-> How are you testing?
-
-Mainly through plenty of runs of Connectathon tests for now. I want to
-pass the code on to our QA folks for more extensive testing when it is
-ready.
-
-> Thanks again for taking on this difficult and long-overdue project....
->
-> --b.
-
-
-
--- 
-Trond Myklebust
-
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
