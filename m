@@ -1,144 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:43423 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752653AbaEVTcl (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 May 2014 15:32:41 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 29/52] nfsd4: more precise nfsd4_max_reply
-Date: Thu, 22 May 2014 15:32:04 -0400
-Message-Id: <1400787148-25941-30-git-send-email-bfields@redhat.com>
-In-Reply-To: <1400787148-25941-1-git-send-email-bfields@redhat.com>
-References: <1400787148-25941-1-git-send-email-bfields@redhat.com>
+Received: from mail-ie0-f175.google.com ([209.85.223.175]:60339 "EHLO
+	mail-ie0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932143AbaESQZE convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 May 2014 12:25:04 -0400
+Received: by mail-ie0-f175.google.com with SMTP id y20so5577639ier.20
+        for <linux-nfs@vger.kernel.org>; Mon, 19 May 2014 09:25:04 -0700 (PDT)
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.2\))
+Subject: Re: [PATCH 7/8] nfs: clean up function decls in nfs_page.h
+From: Weston Andros Adamson <dros@primarydata.com>
+In-Reply-To: <20140519152919.GA9712@umich.edu>
+Date: Mon, 19 May 2014 12:25:01 -0400
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs list <linux-nfs@vger.kernel.org>
+Message-Id: <689E72F2-F0AA-4DA1-A8E0-C9B8F78292F3@primarydata.com>
+References: <1400512508-7530-1-git-send-email-dros@primarydata.com> <1400512508-7530-8-git-send-email-dros@primarydata.com> <20140519152919.GA9712@umich.edu>
+To: Jim Rees <rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On May 19, 2014, at 11:29 AM, Jim Rees <rees@umich.edu> wrote:
 
-It will turn out to be useful to have a more accurate estimate of reply
-size; so, piggyback on the existing op reply-size estimators.
+> Weston Andros Adamson wrote:
+> 
+>  For consistency, remove argument names in function declarations
+> 
+> This conflicts with the style guide:
 
-Also move nfsd4_max_reply to nfs4proc.c to get easier access to struct
-nfsd4_operation and friends.  (Thanks to Christoph Hellwig for pointing
-out that simplification.)
+Well, then so do many (most?) function declarations in nfs-land.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4proc.c | 12 ++++++++++++
- fs/nfsd/nfs4xdr.c  | 35 ++++-------------------------------
- fs/nfsd/xdr4.h     |  1 +
- 3 files changed, 17 insertions(+), 31 deletions(-)
+> 
+> Chapter 6: Functions
+> 
+> In function prototypes, include parameter names with their data types.
+> Although this is not required by the C language, it is preferred in Linux
+> because it is a simple way to add valuable information for the reader.
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 1326a0b..e1196ed 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1856,6 +1856,18 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 	},
- };
- 
-+int nfsd4_max_reply(struct svc_rqst *rqstp, struct nfsd4_op *op)
-+{
-+	struct nfsd4_operation *opdesc;
-+	nfsd4op_rsize estimator;
-+
-+	if (op->opnum == OP_ILLEGAL)
-+		return op_encode_hdr_size;
-+	opdesc = OPDESC(op);
-+	estimator = opdesc->op_rsize_bop;
-+	return estimator ? estimator(rqstp, op) : PAGE_SIZE;
-+}
-+
- void warn_on_nonidempotent_op(struct nfsd4_op *op)
- {
- 	if (OPDESC(op)->op_flags & OP_MODIFIES_SOMETHING) {
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 4c2f866..4877abb 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1605,40 +1605,13 @@ nfsd4_opnum_in_range(struct nfsd4_compoundargs *argp, struct nfsd4_op *op)
- 	return true;
- }
- 
--/*
-- * Return a rough estimate of the maximum possible reply size.  Note the
-- * estimate includes rpc headers so is meant to be passed to
-- * svc_reserve, not svc_reserve_auth.
-- *
-- * Also note the current compound encoding permits only one operation to
-- * use pages beyond the first one, so the maximum possible length is the
-- * maximum over these values, not the sum.
-- */
--static int nfsd4_max_reply(u32 opnum)
--{
--	switch (opnum) {
--	case OP_READLINK:
--	case OP_READDIR:
--		/*
--		 * Both of these ops take a single page for data and put
--		 * the head and tail in another page:
--		 */
--		return 2 * PAGE_SIZE;
--	case OP_GETATTR:
--	case OP_READ:
--		return INT_MAX;
--	default:
--		return PAGE_SIZE;
--	}
--}
--
- static __be32
- nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
- {
- 	DECODE_HEAD;
- 	struct nfsd4_op *op;
- 	bool cachethis = false;
--	int max_reply = PAGE_SIZE;
-+	int max_reply = 2 * RPC_MAX_AUTH_SIZE + 8; /* opcnt, status */
- 	int i;
- 
- 	READ_BUF(4);
-@@ -1647,6 +1620,7 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
- 	SAVEMEM(argp->tag, argp->taglen);
- 	READ32(argp->minorversion);
- 	READ32(argp->opcnt);
-+	max_reply += 4 + (XDR_QUADLEN(argp->taglen) << 2);
- 
- 	if (argp->taglen > NFSD4_MAX_TAGLEN)
- 		goto xdr_error;
-@@ -1684,7 +1658,7 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
- 		 */
- 		cachethis |= nfsd4_cache_this_op(op);
- 
--		max_reply = max(max_reply, nfsd4_max_reply(op->opnum));
-+		max_reply += nfsd4_max_reply(argp->rqstp, op);
- 
- 		if (op->status) {
- 			argp->opcnt = i+1;
-@@ -1694,8 +1668,7 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
- 	/* Sessions make the DRC unnecessary: */
- 	if (argp->minorversion)
- 		cachethis = false;
--	if (max_reply != INT_MAX)
--		svc_reserve(argp->rqstp, max_reply);
-+	svc_reserve(argp->rqstp, max_reply);
- 	argp->rqstp->rq_cachetype = cachethis ? RC_REPLBUFF : RC_NOCACHE;
- 
- 	DECODE_TAIL;
-diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
-index ee9ffdc..41e5229 100644
---- a/fs/nfsd/xdr4.h
-+++ b/fs/nfsd/xdr4.h
-@@ -536,6 +536,7 @@ static inline bool nfsd4_last_compound_op(struct svc_rqst *rqstp)
- 	return argp->opcnt == resp->opcnt;
- }
- 
-+int nfsd4_max_reply(struct svc_rqst *rqstp, struct nfsd4_op *op);
- void warn_on_nonidempotent_op(struct nfsd4_op *op);
- 
- #define NFS4_SVC_XDRSIZE		sizeof(struct nfsd4_compoundargs)
--- 
-1.9.0
 
+I personally disagree that function names provide “valuable information”.
+“struct page *page” -> “oh, it’s a page!” ;)
+
+I can just drop this patch if people don’t like it...
+
+-dros
