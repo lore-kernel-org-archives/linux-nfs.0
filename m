@@ -1,77 +1,82 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:38544 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757560AbaEKUw5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 11 May 2014 16:52:57 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 11/43] nfsd4: no need for encode_compoundres to adjust lengths
-Date: Sun, 11 May 2014 16:52:16 -0400
-Message-Id: <1399841568-19716-12-git-send-email-bfields@redhat.com>
-In-Reply-To: <1399841568-19716-1-git-send-email-bfields@redhat.com>
-References: <1399841568-19716-1-git-send-email-bfields@redhat.com>
+Received: from mail-ig0-f171.google.com ([209.85.213.171]:39588 "EHLO
+	mail-ig0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1754441AbaESPP0 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 May 2014 11:15:26 -0400
+Received: by mail-ig0-f171.google.com with SMTP id c1so3602589igq.10
+        for <linux-nfs@vger.kernel.org>; Mon, 19 May 2014 08:15:26 -0700 (PDT)
+From: Weston Andros Adamson <dros@primarydata.com>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
+Subject: [PATCH 7/8] nfs: clean up function decls in nfs_page.h
+Date: Mon, 19 May 2014 11:15:07 -0400
+Message-Id: <1400512508-7530-8-git-send-email-dros@primarydata.com>
+In-Reply-To: <1400512508-7530-1-git-send-email-dros@primarydata.com>
+References: <1400512508-7530-1-git-send-email-dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+For consistency, remove argument names in function declarations
 
-xdr_reserve_space should now be calculating the length correctly as we
-go, so there's no longer any need to fix it up here.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
 ---
- fs/nfsd/nfs4state.c |    3 +++
- fs/nfsd/nfs4xdr.c   |    8 +-------
- 2 files changed, 4 insertions(+), 7 deletions(-)
+ include/linux/nfs_page.h | 34 +++++++++++++++++-----------------
+ 1 file changed, 17 insertions(+), 17 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 05cc3eb..d4c9683 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -1614,6 +1614,7 @@ nfsd4_replay_cache_entry(struct nfsd4_compoundres *resp,
- 			 struct nfsd4_sequence *seq)
- {
- 	struct nfsd4_slot *slot = resp->cstate.slot;
-+	struct kvec *head = resp->xdr.iov;
- 	__be32 status;
+diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
+index 4b48548..09ffb6a 100644
+--- a/include/linux/nfs_page.h
++++ b/include/linux/nfs_page.h
+@@ -95,32 +95,32 @@ struct nfs_pageio_descriptor {
  
- 	dprintk("--> %s slot %p\n", __func__, slot);
-@@ -1627,6 +1628,8 @@ nfsd4_replay_cache_entry(struct nfsd4_compoundres *resp,
+ #define NFS_WBACK_BUSY(req)	(test_bit(PG_BUSY,&(req)->wb_flags))
  
- 	resp->opcnt = slot->sl_opcnt;
- 	resp->xdr.p = resp->cstate.datap + XDR_QUADLEN(slot->sl_datalen);
-+	head->iov_len = (void *)resp->xdr.p - head->iov_base;
-+	resp->xdr.buf->len = head->iov_len;
- 	status = slot->sl_status;
+-extern	struct nfs_page *nfs_create_request(struct nfs_open_context *ctx,
+-					    struct page *page,
+-					    struct nfs_page *last,
+-					    unsigned int offset,
+-					    unsigned int count);
++extern	struct nfs_page *nfs_create_request(struct nfs_open_context *,
++					    struct page *,
++					    struct nfs_page *,
++					    unsigned int,
++					    unsigned int);
+ extern	void nfs_release_request(struct nfs_page *);
  
- 	return status;
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 53708ce..38a78a5 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -3777,19 +3777,13 @@ nfs4svc_encode_compoundres(struct svc_rqst *rqstp, __be32 *p, struct nfsd4_compo
- 	 * All that remains is to write the tag and operation count...
- 	 */
- 	struct nfsd4_compound_state *cs = &resp->cstate;
--	struct kvec *iov;
-+
- 	p = resp->tagp;
- 	*p++ = htonl(resp->taglen);
- 	memcpy(p, resp->tag, resp->taglen);
- 	p += XDR_QUADLEN(resp->taglen);
- 	*p++ = htonl(resp->opcnt);
  
--	if (rqstp->rq_res.page_len) 
--		iov = &rqstp->rq_res.tail[0];
--	else
--		iov = &rqstp->rq_res.head[0];
--	iov->iov_len = ((char*)resp->xdr.p) - (char*)iov->iov_base;
--	BUG_ON(iov->iov_len > PAGE_SIZE);
- 	if (nfsd4_has_session(cs)) {
- 		struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
- 		struct nfs4_client *clp = cs->session->se_client;
+-extern	void nfs_pageio_init(struct nfs_pageio_descriptor *desc,
+-			     struct inode *inode,
+-			     const struct nfs_pageio_ops *pg_ops,
+-			     const struct nfs_pgio_completion_ops *compl_ops,
+-			     const struct nfs_rw_ops *rw_ops,
+-			     size_t bsize,
+-			     int how);
++extern	void nfs_pageio_init(struct nfs_pageio_descriptor *,
++			     struct inode *,
++			     const struct nfs_pageio_ops *,
++			     const struct nfs_pgio_completion_ops *,
++			     const struct nfs_rw_ops *,
++			     size_t,
++			     int);
+ extern	int nfs_pageio_add_request(struct nfs_pageio_descriptor *,
+ 				   struct nfs_page *);
+ extern  int nfs_pageio_resend(struct nfs_pageio_descriptor *,
+ 			      struct nfs_pgio_header *);
+-extern	void nfs_pageio_complete(struct nfs_pageio_descriptor *desc);
++extern	void nfs_pageio_complete(struct nfs_pageio_descriptor *);
+ extern	void nfs_pageio_cond_complete(struct nfs_pageio_descriptor *, pgoff_t);
+-extern size_t nfs_generic_pg_test(struct nfs_pageio_descriptor *desc,
+-				struct nfs_page *prev,
+-				struct nfs_page *req);
++extern size_t nfs_generic_pg_test(struct nfs_pageio_descriptor *,
++				struct nfs_page *,
++				struct nfs_page *);
+ extern  int nfs_wait_on_request(struct nfs_page *);
+-extern	void nfs_unlock_request(struct nfs_page *req);
++extern	void nfs_unlock_request(struct nfs_page *);
+ extern	void nfs_unlock_and_release_request(struct nfs_page *);
+ extern void nfs_page_group_lock(struct nfs_page *);
+ extern void nfs_page_group_unlock(struct nfs_page *);
 -- 
-1.7.9.5
+1.8.5.2 (Apple Git-48)
 
