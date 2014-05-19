@@ -1,68 +1,39 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:43439 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752546AbaEVTcn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 May 2014 15:32:43 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 32/52] nfsd4: fix buflen calculation after read encoding
-Date: Thu, 22 May 2014 15:32:07 -0400
-Message-Id: <1400787148-25941-33-git-send-email-bfields@redhat.com>
-In-Reply-To: <1400787148-25941-1-git-send-email-bfields@redhat.com>
-References: <1400787148-25941-1-git-send-email-bfields@redhat.com>
+Received: from mail-ie0-f171.google.com ([209.85.223.171]:53308 "EHLO
+	mail-ie0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932164AbaESQU7 convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 May 2014 12:20:59 -0400
+Received: by mail-ie0-f171.google.com with SMTP id rp18so2851825iec.16
+        for <linux-nfs@vger.kernel.org>; Mon, 19 May 2014 09:20:59 -0700 (PDT)
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.2\))
+Subject: Re: [PATCH v3 00/18] nfs: support multiple requests per page
+From: Weston Andros Adamson <dros@primarydata.com>
+In-Reply-To: <20140519153739.GA1163@infradead.org>
+Date: Mon, 19 May 2014 12:20:56 -0400
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs list <linux-nfs@vger.kernel.org>
+Message-Id: <5D146F7D-5086-4E86-A28C-1B22BC62C8E2@primarydata.com>
+References: <1400169417-28245-1-git-send-email-dros@primarydata.com> <20140519153739.GA1163@infradead.org>
+To: Christoph Hellwig <hch@infradead.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
 
-We don't necessarily want to assume that the buflen is the same
-as the number of bytes available in the pages.  We may have some reason
-to set it to something less (for example, later patches will use a
-smaller buflen to enforce session limits).
+On May 19, 2014, at 11:37 AM, Christoph Hellwig <hch@infradead.org> wrote:
 
-So, calculate the buflen relative to the previous buflen instead of
-recalculating it from scratch.
+> On Thu, May 15, 2014 at 11:56:39AM -0400, Weston Andros Adamson wrote:
+>> This patchset changes the read and write paths to be more flexible in dealing
+>> with requests that are not page aligned. Until now there was a 1:1 mapping
+>> of struct nfs_page (referred to as "nfs requests") to struct page, which
+> 
+> Any chance you could throw in a rename nfs_page to nfs_request patch
+> at the end of the series?  The nfs_page name is highly confusing,
+> and gets even more so with the series.
+> 
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4xdr.c | 8 +++++++-
- 1 file changed, 7 insertions(+), 1 deletion(-)
+I was thinking the same thing! It will be a huge change, but now is the time - we’re
+changing everything else…
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 91d0b9a..ad594f2 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -3053,6 +3053,7 @@ nfsd4_encode_read(struct nfsd4_compoundres *resp, __be32 nfserr,
- 	unsigned long maxcount; 
- 	struct xdr_stream *xdr = &resp->xdr;
- 	int starting_len = xdr->buf->len;
-+	int space_left;
- 	long len;
- 	__be32 *p;
- 
-@@ -3117,7 +3118,6 @@ nfsd4_encode_read(struct nfsd4_compoundres *resp, __be32 nfserr,
- 	resp->xdr.buf->page_len = maxcount;
- 	xdr->buf->len += maxcount;
- 	xdr->page_ptr += v;
--	xdr->buf->buflen = maxcount + PAGE_SIZE - 2 * RPC_MAX_AUTH_SIZE;
- 	xdr->iov = xdr->buf->tail;
- 
- 	/* Use rest of head for padding and remaining ops: */
-@@ -3130,6 +3130,12 @@ nfsd4_encode_read(struct nfsd4_compoundres *resp, __be32 nfserr,
- 		resp->xdr.buf->tail[0].iov_len = 4 - (maxcount&3);
- 		xdr->buf->len -= (maxcount&3);
- 	}
-+
-+	space_left = min_t(int, (void *)xdr->end - (void *)xdr->p,
-+				xdr->buf->buflen - xdr->buf->len);
-+	xdr->buf->buflen = xdr->buf->len + space_left;
-+	xdr->end = (__be32 *)((void *)xdr->end + space_left);
-+
- 	return 0;
- }
- 
--- 
-1.9.0
-
+I’ll post in v2 of this patchset.
+-dros
