@@ -1,195 +1,234 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f41.google.com ([209.85.192.41]:37376 "EHLO
-	mail-qg0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752714AbaE1XU4 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 May 2014 19:20:56 -0400
-Received: by mail-qg0-f41.google.com with SMTP id j5so20211707qga.28
-        for <linux-nfs@vger.kernel.org>; Wed, 28 May 2014 16:20:56 -0700 (PDT)
-From: Jeff Layton <jeff.layton@primarydata.com>
-Date: Wed, 28 May 2014 19:20:53 -0400
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: Jeffrey Layton <jeff.layton@primarydata.com>, steved@redhat.com,
-        linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 3/3] nfs4: copy acceptor name from context to nfs_client
-Message-ID: <20140528192053.29eeced8@tlielax.poochiereds.net>
-In-Reply-To: <1401313172.7778.2.camel@leira.trondhjem.org>
-References: <1397161791-29144-1-git-send-email-jlayton@redhat.com>
-	<1397161791-29144-4-git-send-email-jlayton@redhat.com>
-	<1401313172.7778.2.camel@leira.trondhjem.org>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=US-ASCII
+Received: from mail-ig0-f174.google.com ([209.85.213.174]:42948 "EHLO
+	mail-ig0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932072AbaESPPW (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 May 2014 11:15:22 -0400
+Received: by mail-ig0-f174.google.com with SMTP id h3so3609676igd.1
+        for <linux-nfs@vger.kernel.org>; Mon, 19 May 2014 08:15:21 -0700 (PDT)
+From: Weston Andros Adamson <dros@primarydata.com>
+To: trond.myklebust@primarydata.com
+Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
+Subject: [PATCH 5/8] nfs: remove pgio_header refcount, related cleanup
+Date: Mon, 19 May 2014 11:15:05 -0400
+Message-Id: <1400512508-7530-6-git-send-email-dros@primarydata.com>
+In-Reply-To: <1400512508-7530-1-git-send-email-dros@primarydata.com>
+References: <1400512508-7530-1-git-send-email-dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, 28 May 2014 17:39:32 -0400
-Trond Myklebust <trond.myklebust@primarydata.com> wrote:
+The refcounting on nfs_pgio_header was related to there being (possibly)
+more than one nfs_pgio_data. Now that nfs_pgio_data has been merged into
+nfs_pgio_header, there is no reason to do this ref counting.  Just call
+the completion callback on nfs_pgio_release/nfs_pgio_error.
 
-> On Thu, 2014-04-10 at 16:29 -0400, Jeff Layton wrote:
-> > The current CB_COMPOUND handling code tries to compare the principal
-> > name of the request with the cl_hostname in the client. This is not
-> > guaranteed to ever work, particularly if the client happened to mount
-> > a CNAME of the server or a non-fqdn.
-> > 
-> > Fix this by instead comparing the cr_principal string with the acceptor
-> > name that we get from gssd. In the event that gssd didn't send one
-> > down (i.e. it was too old), then we fall back to trying to use the
-> > cl_hostname as we do today.
-> > 
-> > Signed-off-by: Jeff Layton <jlayton@redhat.com>
-> > ---
-> >  fs/nfs/callback.c         | 12 ++++++++++++
-> >  fs/nfs/client.c           |  1 +
-> >  fs/nfs/nfs4proc.c         | 30 +++++++++++++++++++++++++++++-
-> >  include/linux/nfs_fs_sb.h |  1 +
-> >  include/linux/nfs_xdr.h   |  1 +
-> >  5 files changed, 44 insertions(+), 1 deletion(-)
-> > 
-> > diff --git a/fs/nfs/callback.c b/fs/nfs/callback.c
-> > index 073b4cf67ed9..54de482143cc 100644
-> > --- a/fs/nfs/callback.c
-> > +++ b/fs/nfs/callback.c
-> > @@ -428,6 +428,18 @@ check_gss_callback_principal(struct nfs_client *clp, struct svc_rqst *rqstp)
-> >  	if (p == NULL)
-> >  		return 0;
-> >  
-> > +	/*
-> > +	 * Did we get the acceptor from userland during the SETCLIENID
-> > +	 * negotiation?
-> > +	 */
-> > +	if (clp->cl_acceptor)
-> > +		return !strcmp(p, clp->cl_acceptor);
-> > +
-> > +	/*
-> > +	 * Otherwise try to verify it using the cl_hostname. Note that this
-> > +	 * doesn't work if a non-canonical hostname was used in the devname.
-> > +	 */
-> > +
-> >  	/* Expect a GSS_C_NT_HOSTBASED_NAME like "nfs@serverhostname" */
-> >  
-> >  	if (memcmp(p, "nfs@", 4) != 0)
-> > diff --git a/fs/nfs/client.c b/fs/nfs/client.c
-> > index 1d09289c8f0e..6a461378fcf2 100644
-> > --- a/fs/nfs/client.c
-> > +++ b/fs/nfs/client.c
-> > @@ -252,6 +252,7 @@ void nfs_free_client(struct nfs_client *clp)
-> >  	put_net(clp->cl_net);
-> >  	put_nfs_version(clp->cl_nfs_mod);
-> >  	kfree(clp->cl_hostname);
-> > +	kfree(clp->cl_acceptor);
-> >  	kfree(clp);
-> >  
-> >  	dprintk("<-- nfs_free_client()\n");
-> > diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
-> > index 397be39c6dc8..cc6c3fe3e060 100644
-> > --- a/fs/nfs/nfs4proc.c
-> > +++ b/fs/nfs/nfs4proc.c
-> > @@ -4896,6 +4896,18 @@ nfs4_init_callback_netid(const struct nfs_client *clp, char *buf, size_t len)
-> >  		return scnprintf(buf, len, "tcp");
-> >  }
-> >  
-> > +static void nfs4_setclientid_done(struct rpc_task *task, void *calldata)
-> > +{
-> > +	struct nfs4_setclientid *sc = calldata;
-> > +
-> > +	if (task->tk_status == 0)
-> > +		*sc->sc_acceptor = rpcauth_stringify_acceptor(task->tk_rqstp->rq_cred);
-> 
-> We can't call a GFP_KERNEL memory allocator from within a RPC callback
-> function. This needs to be done outside the RPC call.
-> 
+Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+---
+ fs/nfs/internal.h       |  2 +-
+ fs/nfs/pagelist.c       | 61 +++++++++++++++++++------------------------------
+ fs/nfs/pnfs.c           | 10 ++------
+ include/linux/nfs_xdr.h |  1 -
+ 4 files changed, 27 insertions(+), 47 deletions(-)
 
-Ahh right...I should know that by now. Sorry...
-
-> > +}
-> > +
-> > +static const struct rpc_call_ops nfs4_setclientid_ops = {
-> > +	.rpc_call_done = nfs4_setclientid_done,
-> > +};
-> > +
-> >  /**
-> >   * nfs4_proc_setclientid - Negotiate client ID
-> >   * @clp: state data structure
-> > @@ -4915,6 +4927,7 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
-> >  		.sc_verifier = &sc_verifier,
-> >  		.sc_prog = program,
-> >  		.sc_cb_ident = clp->cl_cb_ident,
-> > +		.sc_acceptor = &clp->cl_acceptor,
-> >  	};
-> >  	struct rpc_message msg = {
-> >  		.rpc_proc = &nfs4_procedures[NFSPROC4_CLNT_SETCLIENTID],
-> > @@ -4922,6 +4935,14 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
-> >  		.rpc_resp = res,
-> >  		.rpc_cred = cred,
-> >  	};
-> > +	struct rpc_task *task;
-> > +	struct rpc_task_setup task_setup_data = {
-> > +		.rpc_client = clp->cl_rpcclient,
-> > +		.rpc_message = &msg,
-> > +		.callback_ops = &nfs4_setclientid_ops,
-> > +		.callback_data = &setclientid,
-> > +		.flags = RPC_TASK_TIMEOUT,
-> > +	};
-> >  	int status;
-> >  
-> >  	/* nfs_client_id4 */
-> > @@ -4948,7 +4969,14 @@ int nfs4_proc_setclientid(struct nfs_client *clp, u32 program,
-> >  	dprintk("NFS call  setclientid auth=%s, '%.*s'\n",
-> >  		clp->cl_rpcclient->cl_auth->au_ops->au_name,
-> >  		setclientid.sc_name_len, setclientid.sc_name);
-> > -	status = rpc_call_sync(clp->cl_rpcclient, &msg, RPC_TASK_TIMEOUT);
-> > +	task = rpc_run_task(&task_setup_data);
-> > +	if (IS_ERR(task)) {
-> > +		status = PTR_ERR(task);
-> > +		goto out;
-> > +	}
-> > +	status = task->tk_status;
-> 
-> Why not just do it here?
-> 
-
-It's been a while since I've looked at this set, but I think I tried
-that initially. At this point, the rq_cred has been destroyed, so it's
-too late to call rpcauth_stringify_acceptor on it.
-
-I guess what I can do is turn the sc_acceptor field into an rpc_cred
-pointer, and have nfs4_setclientid_done bump the refcount on it and
-set the pointer. Then I can call rpcauth_stringify_acceptor on it here,
-and put the cred.
-
-I'll do that once I have a chance to respin and retest. It may be a bit
-as I have some other priorities at the moment. ;)
-
-> > +	rpc_put_task(task);
-> > +out:
-> >  	trace_nfs4_setclientid(clp, status);
-> >  	dprintk("NFS reply setclientid: %d\n", status);
-> >  	return status;
-> > diff --git a/include/linux/nfs_fs_sb.h b/include/linux/nfs_fs_sb.h
-> > index 1150ea41b626..922be2e050f5 100644
-> > --- a/include/linux/nfs_fs_sb.h
-> > +++ b/include/linux/nfs_fs_sb.h
-> > @@ -45,6 +45,7 @@ struct nfs_client {
-> >  	struct sockaddr_storage	cl_addr;	/* server identifier */
-> >  	size_t			cl_addrlen;
-> >  	char *			cl_hostname;	/* hostname of server */
-> > +	char *			cl_acceptor;	/* GSSAPI acceptor name */
-> >  	struct list_head	cl_share_link;	/* link in global client list */
-> >  	struct list_head	cl_superblocks;	/* List of nfs_server structs */
-> >  
-> > diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-> > index 6fb5b2335b59..5945d88a26e2 100644
-> > --- a/include/linux/nfs_xdr.h
-> > +++ b/include/linux/nfs_xdr.h
-> > @@ -1010,6 +1010,7 @@ struct nfs4_setclientid {
-> >  	unsigned int			sc_uaddr_len;
-> >  	char				sc_uaddr[RPCBIND_MAXUADDRLEN + 1];
-> >  	u32				sc_cb_ident;
-> > +	char				**sc_acceptor;
-> >  };
-> >  
-> >  struct nfs4_setclientid_res {
-> 
-
-
+diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
+index f3b672b..e0e2b6d 100644
+--- a/fs/nfs/internal.h
++++ b/fs/nfs/internal.h
+@@ -240,8 +240,8 @@ int nfs_iocounter_wait(struct nfs_io_counter *c);
+ extern const struct nfs_pageio_ops nfs_pgio_rw_ops;
+ struct nfs_pgio_header *nfs_pgio_header_alloc(const struct nfs_rw_ops *);
+ void nfs_pgio_header_free(struct nfs_pgio_header *);
+-void nfs_pgio_data_destroy(struct nfs_pgio_header *);
+ int nfs_generic_pgio(struct nfs_pageio_descriptor *, struct nfs_pgio_header *);
++void nfs_generic_pgio_reset(struct nfs_pgio_header *);
+ int nfs_initiate_pgio(struct rpc_clnt *, struct nfs_pgio_header *,
+ 		      const struct rpc_call_ops *, int, int);
+ 
+diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
+index f2280eb..8f029ed 100644
+--- a/fs/nfs/pagelist.c
++++ b/fs/nfs/pagelist.c
+@@ -460,7 +460,6 @@ struct nfs_pgio_header *nfs_pgio_header_alloc(const struct nfs_rw_ops *ops)
+ 	if (hdr) {
+ 		INIT_LIST_HEAD(&hdr->pages);
+ 		spin_lock_init(&hdr->lock);
+-		atomic_set(&hdr->refcnt, 0);
+ 		hdr->rw_ops = ops;
+ 	}
+ 	return hdr;
+@@ -478,35 +477,6 @@ void nfs_pgio_header_free(struct nfs_pgio_header *hdr)
+ EXPORT_SYMBOL_GPL(nfs_pgio_header_free);
+ 
+ /**
+- * nfs_pgio_data_alloc - Allocate pageio data
+- * @hdr: The header making a request
+- * @pagecount: Number of pages to create
+- */
+-static bool nfs_pgio_data_init(struct nfs_pgio_header *hdr,
+-			       unsigned int pagecount)
+-{
+-	if (nfs_pgarray_set(&hdr->page_array, pagecount)) {
+-		atomic_inc(&hdr->refcnt);
+-		return true;
+-	}
+-	return false;
+-}
+-
+-/**
+- * nfs_pgio_data_destroy - Properly release pageio data
+- * @hdr: The header with data to destroy
+- */
+-void nfs_pgio_data_destroy(struct nfs_pgio_header *hdr)
+-{
+-	put_nfs_open_context(hdr->args.context);
+-	if (hdr->page_array.pagevec != hdr->page_array.page_array)
+-		kfree(hdr->page_array.pagevec);
+-	if (atomic_dec_and_test(&hdr->refcnt))
+-		hdr->completion_ops->completion(hdr);
+-}
+-EXPORT_SYMBOL_GPL(nfs_pgio_data_destroy);
+-
+-/**
+  * nfs_pgio_rpcsetup - Set up arguments for a pageio call
+  * @hdr: The pageio hdr
+  * @count: Number of bytes to read
+@@ -620,7 +590,8 @@ static int nfs_pgio_error(struct nfs_pageio_descriptor *desc,
+ 			  struct nfs_pgio_header *hdr)
+ {
+ 	set_bit(NFS_IOHDR_REDO, &hdr->flags);
+-	nfs_pgio_data_destroy(hdr);
++	nfs_generic_pgio_reset(hdr);
++	hdr->completion_ops->completion(hdr);
+ 	desc->pg_completion_ops->error_cleanup(&desc->pg_list);
+ 	return -ENOMEM;
+ }
+@@ -634,7 +605,8 @@ static void nfs_pgio_release(void *calldata)
+ 	struct nfs_pgio_header *hdr = calldata;
+ 	if (hdr->rw_ops->rw_release)
+ 		hdr->rw_ops->rw_release(hdr);
+-	nfs_pgio_data_destroy(hdr);
++	nfs_generic_pgio_reset(hdr);
++	hdr->completion_ops->completion(hdr);
+ }
+ 
+ /**
+@@ -708,9 +680,10 @@ int nfs_generic_pgio(struct nfs_pageio_descriptor *desc,
+ 	struct page		**pages;
+ 	struct list_head *head = &desc->pg_list;
+ 	struct nfs_commit_info cinfo;
++	unsigned int pagecount;
+ 
+-	if (!nfs_pgio_data_init(hdr, nfs_page_array_len(desc->pg_base,
+-			   desc->pg_count)))
++	pagecount = nfs_page_array_len(desc->pg_base, desc->pg_count);
++	if (!nfs_pgarray_set(&hdr->page_array, pagecount))
+ 		return nfs_pgio_error(desc, hdr);
+ 
+ 	nfs_init_cinfo(&cinfo, desc->pg_inode, desc->pg_dreq);
+@@ -733,6 +706,23 @@ int nfs_generic_pgio(struct nfs_pageio_descriptor *desc,
+ }
+ EXPORT_SYMBOL_GPL(nfs_generic_pgio);
+ 
++/**
++ * nfs_generic_pgio_reset - make @hdr suitable for reuse
++ *
++ * Frees memory and releases refs from nfs_generic_pgio, so that it may
++ * be called again.
++ *
++ * @hdr: A header that has had nfs_generic_pgio called
++ */
++void nfs_generic_pgio_reset(struct nfs_pgio_header *hdr)
++{
++	put_nfs_open_context(hdr->args.context);
++	if (hdr->page_array.pagevec != hdr->page_array.page_array)
++		kfree(hdr->page_array.pagevec);
++}
++EXPORT_SYMBOL_GPL(nfs_generic_pgio_reset);
++
++
+ static int nfs_generic_pg_pgios(struct nfs_pageio_descriptor *desc)
+ {
+ 	struct nfs_pgio_header *hdr;
+@@ -744,14 +734,11 @@ static int nfs_generic_pg_pgios(struct nfs_pageio_descriptor *desc)
+ 		return -ENOMEM;
+ 	}
+ 	nfs_pgheader_init(desc, hdr, nfs_pgio_header_free);
+-	atomic_inc(&hdr->refcnt);
+ 	ret = nfs_generic_pgio(desc, hdr);
+ 	if (ret == 0)
+ 		ret = nfs_initiate_pgio(NFS_CLIENT(hdr->inode),
+ 					hdr, desc->pg_rpc_callops,
+ 					desc->pg_ioflags, 0);
+-	if (atomic_dec_and_test(&hdr->refcnt))
+-		hdr->completion_ops->completion(hdr);
+ 	return ret;
+ }
+ 
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 1b7da44..902783ab 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1537,7 +1537,7 @@ pnfs_write_through_mds(struct nfs_pageio_descriptor *desc,
+ 		nfs_pageio_reset_write_mds(desc);
+ 		desc->pg_recoalesce = 1;
+ 	}
+-	nfs_pgio_data_destroy(hdr);
++	nfs_generic_pgio_reset(hdr);
+ }
+ 
+ static enum pnfs_try_status
+@@ -1598,15 +1598,12 @@ pnfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc)
+ 	}
+ 	nfs_pgheader_init(desc, hdr, pnfs_writehdr_free);
+ 	hdr->lseg = pnfs_get_lseg(desc->pg_lseg);
+-	atomic_inc(&hdr->refcnt);
+ 	ret = nfs_generic_pgio(desc, hdr);
+ 	if (ret != 0) {
+ 		pnfs_put_lseg(desc->pg_lseg);
+ 		desc->pg_lseg = NULL;
+ 	} else
+ 		pnfs_do_write(desc, hdr, desc->pg_ioflags);
+-	if (atomic_dec_and_test(&hdr->refcnt))
+-		hdr->completion_ops->completion(hdr);
+ 	return ret;
+ }
+ EXPORT_SYMBOL_GPL(pnfs_generic_pg_writepages);
+@@ -1677,7 +1674,7 @@ pnfs_read_through_mds(struct nfs_pageio_descriptor *desc,
+ 		nfs_pageio_reset_read_mds(desc);
+ 		desc->pg_recoalesce = 1;
+ 	}
+-	nfs_pgio_data_destroy(hdr);
++	nfs_generic_pgio_reset(hdr);
+ }
+ 
+ /*
+@@ -1741,15 +1738,12 @@ pnfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc)
+ 	}
+ 	nfs_pgheader_init(desc, hdr, pnfs_readhdr_free);
+ 	hdr->lseg = pnfs_get_lseg(desc->pg_lseg);
+-	atomic_inc(&hdr->refcnt);
+ 	ret = nfs_generic_pgio(desc, hdr);
+ 	if (ret != 0) {
+ 		pnfs_put_lseg(desc->pg_lseg);
+ 		desc->pg_lseg = NULL;
+ 	} else
+ 		pnfs_do_read(desc, hdr);
+-	if (atomic_dec_and_test(&hdr->refcnt))
+-		hdr->completion_ops->completion(hdr);
+ 	return ret;
+ }
+ EXPORT_SYMBOL_GPL(pnfs_generic_pg_readpages);
+diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
+index e1b7b3b..81cbbf31 100644
+--- a/include/linux/nfs_xdr.h
++++ b/include/linux/nfs_xdr.h
+@@ -1259,7 +1259,6 @@ struct nfs_pgio_header {
+ 	struct inode		*inode;
+ 	struct rpc_cred		*cred;
+ 	struct list_head	pages;
+-	atomic_t		refcnt;
+ 	struct nfs_page		*req;
+ 	struct nfs_writeverf	verf;		/* Used for writes */
+ 	struct pnfs_layout_segment *lseg;
 -- 
-Jeff Layton <jlayton@primarydata.com>
+1.8.5.2 (Apple Git-48)
+
