@@ -1,65 +1,38 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f179.google.com ([209.85.223.179]:46362 "EHLO
-	mail-ie0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753029AbaEVA4o (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 May 2014 20:56:44 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH v4 17/24] xprtrdma: Remove Tavor MTU setting
-To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Date: Wed, 21 May 2014 20:56:42 -0400
-Message-ID: <20140522005642.27190.68081.stgit@manet.1015granger.net>
-In-Reply-To: <20140522004505.27190.58897.stgit@manet.1015granger.net>
-References: <20140522004505.27190.58897.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from mail-ie0-f177.google.com ([209.85.223.177]:38271 "EHLO
+	mail-ie0-f177.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932145AbaESQ4P convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 May 2014 12:56:15 -0400
+Received: by mail-ie0-f177.google.com with SMTP id y20so2908492ier.36
+        for <linux-nfs@vger.kernel.org>; Mon, 19 May 2014 09:56:14 -0700 (PDT)
+Content-Type: text/plain; charset=windows-1252
+Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.2\))
+Subject: Re: [PATCH 7/8] nfs: clean up function decls in nfs_page.h
+From: Weston Andros Adamson <dros@primarydata.com>
+In-Reply-To: <20140519163620.GA10271@umich.edu>
+Date: Mon, 19 May 2014 12:56:11 -0400
+Cc: Trond Myklebust <trond.myklebust@primarydata.com>,
+        linux-nfs list <linux-nfs@vger.kernel.org>
+Message-Id: <84EC0D4A-968C-4002-B0BF-849D4F41F145@primarydata.com>
+References: <1400512508-7530-1-git-send-email-dros@primarydata.com> <1400512508-7530-8-git-send-email-dros@primarydata.com> <20140519152919.GA9712@umich.edu> <689E72F2-F0AA-4DA1-A8E0-C9B8F78292F3@primarydata.com> <20140519163620.GA10271@umich.edu>
+To: Jim Rees <rees@umich.edu>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up.  Remove HCA-specific clutter in xprtrdma, which is
-supposed to be device-independent.
+On May 19, 2014, at 12:36 PM, Jim Rees <rees@umich.edu> wrote:
 
-Hal Rosenstock <hal@dev.mellanox.co.il> observes:
-> Note that there is OpenSM option (enable_quirks) to return 1K MTU
-> in SA PathRecord responses for Tavor so that can be used for this.
-> The default setting for enable_quirks is FALSE so that would need
-> changing.
+> Consistency often trumps style guidelines, and I have no strong objection to
+> this change. Just wanted to point it out.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
----
+Right and I appreciate you pointing it out. I mistakenly thought I was following the
+guidelines!
 
- net/sunrpc/xprtrdma/verbs.c |   14 --------------
- 1 files changed, 0 insertions(+), 14 deletions(-)
+So, I can see how it’d be useful to have names when using basic types or when
+passing several arguments of the same type. Maybe we could just remove
+super redundant names (i.e. “struct page *page”)?
 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 54edf2a..515dfc1 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -48,7 +48,6 @@
-  */
- 
- #include <linux/interrupt.h>
--#include <linux/pci.h>	/* for Tavor hack below */
- #include <linux/slab.h>
- #include <asm/bitops.h>
- 
-@@ -920,19 +919,6 @@ retry:
- 		}
- 	}
- 
--/* XXX Tavor device performs badly with 2K MTU! */
--if (strnicmp(ia->ri_id->device->dma_device->bus->name, "pci", 3) == 0) {
--	struct pci_dev *pcid = to_pci_dev(ia->ri_id->device->dma_device);
--	if (pcid->device == PCI_DEVICE_ID_MELLANOX_TAVOR &&
--	    (pcid->vendor == PCI_VENDOR_ID_MELLANOX ||
--	     pcid->vendor == PCI_VENDOR_ID_TOPSPIN)) {
--		struct ib_qp_attr attr = {
--			.path_mtu = IB_MTU_1024
--		};
--		rc = ib_modify_qp(ia->ri_id->qp, &attr, IB_QP_PATH_MTU);
--	}
--}
--
- 	ep->rep_connected = 0;
- 
- 	rc = rdma_connect(ia->ri_id, &ep->rep_remote_cma);
+On the other hand, maybe we don’t open this can of worms and I just drop this
+patch from the patchset..
+
+-dros
 
