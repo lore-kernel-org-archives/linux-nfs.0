@@ -1,75 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:60271 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751432AbaE1Tlb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 28 May 2014 15:41:31 -0400
-Date: Wed, 28 May 2014 15:41:30 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Christoph Hellwig <hch@lst.de>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfsd: remove unused function nfsd_read_file
-Message-ID: <20140528194130.GE22210@fieldses.org>
-References: <1401266792-19086-1-git-send-email-hch@lst.de>
+Received: from mail-ig0-f181.google.com ([209.85.213.181]:62647 "EHLO
+	mail-ig0-f181.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752137AbaESRop (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 May 2014 13:44:45 -0400
+Received: by mail-ig0-f181.google.com with SMTP id h3so3838841igd.14
+        for <linux-nfs@vger.kernel.org>; Mon, 19 May 2014 10:44:45 -0700 (PDT)
+Message-ID: <537A430A.40607@gmail.com>
+Date: Mon, 19 May 2014 13:44:42 -0400
+From: Anna Schumaker <schumaker.anna@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1401266792-19086-1-git-send-email-hch@lst.de>
+To: Christoph Hellwig <hch@infradead.org>,
+        Weston Andros Adamson <dros@primarydata.com>
+CC: trond.myklebust@primarydata.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 8/8] pnfs: merge identical functions
+References: <1400512508-7530-1-git-send-email-dros@primarydata.com> <1400512508-7530-9-git-send-email-dros@primarydata.com> <20140519153402.GB21345@infradead.org>
+In-Reply-To: <20140519153402.GB21345@infradead.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Wed, May 28, 2014 at 10:46:32AM +0200, Christoph Hellwig wrote:
-> Signed-off-by: Christoph Hellwig <hch@lst.de>
+On 05/19/2014 11:34 AM, Christoph Hellwig wrote:
+>> -static void pnfs_writehdr_free(struct nfs_pgio_header *hdr)
+>> +static void pnfs_pgio_header_free(struct nfs_pgio_header *hdr)
+>>  {
+>>  	pnfs_put_lseg(hdr->lseg);
+>>  	nfs_pgio_header_free(hdr);
+>>  }
+> I think it should also be mossible to simply call pnfs_put_lseg
+> from nfs_pgio_header_free.  pnfs_put_lseg handles a NULL argument fine,
+> is stubbed out for the non-pnfs case, and the other callers should never
+> have it set.
 
-Oops, thanks.--b.
+pnfs_put_lseg is compiled into the NFS v4 module, so depmod would complain about recursive module dependencies if it was called from the generic client.
 
-> ---
->  fs/nfsd/vfs.c |   20 --------------------
->  fs/nfsd/vfs.h |    2 --
->  2 files changed, 22 deletions(-)
-> 
-> diff --git a/fs/nfsd/vfs.c b/fs/nfsd/vfs.c
-> index b7d35a4..140c496 100644
-> --- a/fs/nfsd/vfs.c
-> +++ b/fs/nfsd/vfs.c
-> @@ -1026,26 +1026,6 @@ __be32 nfsd_read(struct svc_rqst *rqstp, struct svc_fh *fhp,
->  	return err;
->  }
->  
-> -/* As above, but use the provided file descriptor. */
-> -__be32
-> -nfsd_read_file(struct svc_rqst *rqstp, struct svc_fh *fhp, struct file *file,
-> -		loff_t offset, struct kvec *vec, int vlen,
-> -		unsigned long *count)
-> -{
-> -	__be32		err;
-> -
-> -	if (file) {
-> -		err = nfsd_permission(rqstp, fhp->fh_export, fhp->fh_dentry,
-> -				NFSD_MAY_READ|NFSD_MAY_OWNER_OVERRIDE);
-> -		if (err)
-> -			goto out;
-> -		err = nfsd_vfs_read(rqstp, file, offset, vec, vlen, count);
-> -	} else /* Note file may still be NULL in NFSv4 special stateid case: */
-> -		err = nfsd_read(rqstp, fhp, offset, vec, vlen, count);
-> -out:
-> -	return err;
-> -}
-> -
->  /*
->   * Write data to a file.
->   * The stable flag requests synchronous writes.
-> diff --git a/fs/nfsd/vfs.h b/fs/nfsd/vfs.h
-> index 7441e96..91b6ae3 100644
-> --- a/fs/nfsd/vfs.h
-> +++ b/fs/nfsd/vfs.h
-> @@ -80,8 +80,6 @@ int		nfsd_readv(struct file *, loff_t, struct kvec *, int,
->  				unsigned long *);
->  __be32 		nfsd_read(struct svc_rqst *, struct svc_fh *,
->  				loff_t, struct kvec *, int, unsigned long *);
-> -__be32 		nfsd_read_file(struct svc_rqst *, struct svc_fh *, struct file *,
-> -				loff_t, struct kvec *, int, unsigned long *);
->  __be32 		nfsd_write(struct svc_rqst *, struct svc_fh *,struct file *,
->  				loff_t, struct kvec *,int, unsigned long *, int *);
->  __be32		nfsd_readlink(struct svc_rqst *, struct svc_fh *,
-> -- 
-> 1.7.10.4
-> 
+>
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+
