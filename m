@@ -1,51 +1,30 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f178.google.com ([209.85.216.178]:50079 "EHLO
-	mail-qc0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751445AbaEWMyF (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 May 2014 08:54:05 -0400
-Received: by mail-qc0-f178.google.com with SMTP id l6so7904294qcy.23
-        for <linux-nfs@vger.kernel.org>; Fri, 23 May 2014 05:54:05 -0700 (PDT)
-Message-ID: <537F44D8.2060606@gmail.com>
-Date: Fri, 23 May 2014 20:53:44 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
+Received: from mout.perfora.net ([74.208.4.194]:56093 "EHLO mout.perfora.net"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752251AbaESP33 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Mon, 19 May 2014 11:29:29 -0400
+Date: Mon, 19 May 2014 11:29:19 -0400
+From: Jim Rees <rees@umich.edu>
+To: Weston Andros Adamson <dros@primarydata.com>
+Cc: trond.myklebust@primarydata.com, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 7/8] nfs: clean up function decls in nfs_page.h
+Message-ID: <20140519152919.GA9712@umich.edu>
+References: <1400512508-7530-1-git-send-email-dros@primarydata.com>
+ <1400512508-7530-8-git-send-email-dros@primarydata.com>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>, kinglongmee@gmail.com
-Subject: [PATCH 2/5] NFSD: Cleanup unused variable in nfsd_setuser()
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <1400512508-7530-8-git-send-email-dros@primarydata.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-commit 8f6c5ffc8987f4f5b5a3e9d557d94bbf3a9bf216 have remove
-the last using of "ret", just remove it right now.
+Weston Andros Adamson wrote:
 
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
----
- fs/nfsd/auth.c | 4 +---
- 1 file changed, 1 insertion(+), 3 deletions(-)
+  For consistency, remove argument names in function declarations
 
-diff --git a/fs/nfsd/auth.c b/fs/nfsd/auth.c
-index 1042325..72f4482 100644
---- a/fs/nfsd/auth.c
-+++ b/fs/nfsd/auth.c
-@@ -24,7 +24,6 @@ int nfsd_setuser(struct svc_rqst *rqstp, struct svc_export *exp)
- 	struct cred *new;
- 	int i;
- 	int flags = nfsexp_flags(rqstp, exp);
--	int ret;
- 
- 	validate_process_creds();
- 
-@@ -85,8 +84,7 @@ int nfsd_setuser(struct svc_rqst *rqstp, struct svc_export *exp)
- 	return 0;
- 
- oom:
--	ret = -ENOMEM;
- 	abort_creds(new);
--	return ret;
-+	return -ENOMEM;
- }
- 
--- 
-1.9.3
+This conflicts with the style guide:
 
+Chapter 6: Functions
+
+In function prototypes, include parameter names with their data types.
+Although this is not required by the C language, it is preferred in Linux
+because it is a simple way to add valuable information for the reader.
