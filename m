@@ -1,125 +1,91 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from aserp1040.oracle.com ([141.146.126.69]:39311 "EHLO
-	aserp1040.oracle.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751217AbaE1XPs convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 May 2014 19:15:48 -0400
-Content-Type: text/plain; charset=windows-1252
-Mime-Version: 1.0 (Mac OS X Mail 7.3 \(1878.2\))
-Subject: Re: [PATCH v5 00/24] Series short description
-From: Chuck Lever <chuck.lever@oracle.com>
-In-Reply-To: <20140528142521.23214.39655.stgit@manet.1015granger.net>
-Date: Wed, 28 May 2014 19:15:44 -0400
-Cc: Anna.Schumaker@netapp.com
-Message-Id: <B50B248D-901F-41FE-B6B1-A99A6F22E1CC@oracle.com>
-References: <20140528142521.23214.39655.stgit@manet.1015granger.net>
-To: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-rdma@vger.kernel.org
+Received: from mx11.netapp.com ([216.240.18.76]:53894 "EHLO mx11.netapp.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751411AbaETSId (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 May 2014 14:08:33 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
+CC: <dros@primarydata.com>, <hch@infradead.org>
+Subject: [RFC 09/12] nfs: create a common pnfs_pgiohdr_free function
+Date: Tue, 20 May 2014 14:08:16 -0400
+Message-ID: <1400609299-32558-10-git-send-email-Anna.Schumaker@Netapp.com>
+In-Reply-To: <1400609299-32558-1-git-send-email-Anna.Schumaker@Netapp.com>
+References: <1400609299-32558-1-git-send-email-Anna.Schumaker@Netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Test results:
+This function is exactly the same for reads and writes.
 
-On May 28, 2014, at 10:31 AM, Chuck Lever <chuck.lever@oracle.com> wrote:
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+---
+ fs/nfs/pnfs.c | 24 ++++++++----------------
+ 1 file changed, 8 insertions(+), 16 deletions(-)
 
-> Updates since v4:
-> 
-> - Rebased on v3.15-rc7
-> - Addressed Trond's review comment in "Reset connection timeout..."
-> - Wake up RPC tasks only when cwnd is growing in "Avoid deadlock when..."
-> - Fix patch description of "Remove MEMWINDOWS registration modes"
-> 
-> Pull from the "nfs-rdma-client" branch of my git repo:
-> 
->  git://git.linux-nfs.org/projects/cel/cel-2.6.git
-
-Client:
-v3.15-rc7 with my 24 patches applied.
-ConnectX-2 adapter (mlx4)
-
-Server:
-Solaris 11.2 beta
-ConnectX-2 adapter
-
-Server:
-stock Linux v3.15-rc7
-InfiniHost III adapter (mthca)
-
-
-
-Connectathon tests: “./server -a -N30” with NFSv3 and NFSv4 against
-Solaris and Linux servers. All passed. No hangs, stalls, or crashes.
-
-Client tested in FRMR, FMR, and PHYSICAL memory registration modes.
-
-With Linux server, added “rsize=32768” mount option for PHYSICAL.
-
-With Solaris server, added “rsize=131072,wsize=65536” mount options
-for PHYSICAL.
-
-
-
-xfstests: “sudo ./check -nfs” with NFSv3 and NFSv4 against Linux
-server. Test failure rate same as over TCP. No hangs, stalls, or
-crashes.
-
-Client ran in FRMR, FMR, and PHYSICAL memory registration modes.
-PHYSICAL registration added “rsize=32768” mount option
-
-
-
-> ---
-> 
-> Allen Andrews (1):
->      nfs-rdma: Fix for FMR leaks
-> 
-> Chuck Lever (21):
->      xprtrdma: Disconnect on registration failure
->      xprtrdma: Remove BUG_ON() call sites
->      xprtrdma: Avoid deadlock when credit window is reset
->      SUNRPC: Move congestion window constants to header file
->      xprtrdma: Reset connection timeout after successful reconnect
->      xprtrdma: Use macros for reconnection timeout constants
->      xprtrdma: Remove Tavor MTU setting
->      xprtrdma: Ensure ia->ri_id->qp is not NULL when reconnecting
->      xprtrdma: Reduce the number of hardway buffer allocations
->      xprtrdma: Limit work done by completion handler
->      xprtrmda: Reduce calls to ib_poll_cq() in completion handlers
->      xprtrmda: Reduce lock contention in completion handlers
->      xprtrdma: Split the completion queue
->      xprtrdma: Make rpcrdma_ep_destroy() return void
->      xprtrdma: Simplify rpcrdma_deregister_external() synopsis
->      xprtrdma: mount reports "Invalid mount option" if memreg mode not supported
->      xprtrdma: Fall back to MTHCAFMR when FRMR is not supported
->      xprtrdma: Remove REGISTER memory registration mode
->      xprtrdma: Remove MEMWINDOWS registration modes
->      xprtrdma: Remove BOUNCEBUFFERS memory registration mode
->      xprtrdma: RPC/RDMA must invoke xprt_wake_pending_tasks() in process context
-> 
-> Shirley Ma (1):
->      xprtrdma: Allocate missing pagelist
-> 
-> Steve Wise (1):
->      xprtrdma: mind the device's max fast register page list depth
-> 
-> 
-> include/linux/sunrpc/xprt.h     |    6 
-> net/sunrpc/xprt.c               |   28 -
-> net/sunrpc/xprtrdma/rpc_rdma.c  |  119 +++---
-> net/sunrpc/xprtrdma/transport.c |   90 ++---
-> net/sunrpc/xprtrdma/verbs.c     |  753 ++++++++++++++++-----------------------
-> net/sunrpc/xprtrdma/xprt_rdma.h |   17 +
-> 6 files changed, 411 insertions(+), 602 deletions(-)
-> 
-> -- 
-> Chuck Lever
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-
---
-Chuck Lever
-chuck[dot]lever[at]oracle[dot]com
-
-
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 69751d4..b6ebea8 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1499,6 +1499,12 @@ pnfs_do_rw(struct nfs_pageio_descriptor *desc, struct nfs_pgio_header *hdr,
+ 	return ret;
+ }
+ 
++static void pnfs_pgiohdr_free(struct nfs_pgio_header *hdr)
++{
++	pnfs_put_lseg(hdr->lseg);
++	nfs_pgio_header_free(hdr);
++}
++
+ void
+ pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio,
+ 			   struct nfs_page *req, u64 wb_size)
+@@ -1541,13 +1547,6 @@ pnfs_do_write(struct nfs_pageio_descriptor *desc, struct nfs_pgio_header *hdr)
+ 		nfs_inc_stats(hdr->inode, NFSIOS_PNFS_WRITE);
+ }
+ 
+-static void pnfs_writehdr_free(struct nfs_pgio_header *hdr)
+-{
+-	pnfs_put_lseg(hdr->lseg);
+-	nfs_pgio_header_free(hdr);
+-}
+-EXPORT_SYMBOL_GPL(pnfs_writehdr_free);
+-
+ int
+ pnfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc)
+ {
+@@ -1561,7 +1560,7 @@ pnfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc)
+ 		desc->pg_lseg = NULL;
+ 		return -ENOMEM;
+ 	}
+-	nfs_pgheader_init(desc, hdr, pnfs_writehdr_free);
++	nfs_pgheader_init(desc, hdr, pnfs_pgiohdr_free);
+ 	hdr->lseg = pnfs_get_lseg(desc->pg_lseg);
+ 	ret = nfs_generic_pgio(desc, hdr);
+ 	if (ret != 0) {
+@@ -1623,13 +1622,6 @@ pnfs_do_read(struct nfs_pageio_descriptor *desc, struct nfs_pgio_header *hdr)
+ 		nfs_inc_stats(hdr->inode, NFSIOS_PNFS_READ);
+ }
+ 
+-static void pnfs_readhdr_free(struct nfs_pgio_header *hdr)
+-{
+-	pnfs_put_lseg(hdr->lseg);
+-	nfs_pgio_header_free(hdr);
+-}
+-EXPORT_SYMBOL_GPL(pnfs_readhdr_free);
+-
+ int
+ pnfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc)
+ {
+@@ -1644,7 +1636,7 @@ pnfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc)
+ 		desc->pg_lseg = NULL;
+ 		return ret;
+ 	}
+-	nfs_pgheader_init(desc, hdr, pnfs_readhdr_free);
++	nfs_pgheader_init(desc, hdr, pnfs_pgiohdr_free);
+ 	hdr->lseg = pnfs_get_lseg(desc->pg_lseg);
+ 	ret = nfs_generic_pgio(desc, hdr);
+ 	if (ret != 0) {
+-- 
+1.9.2
 
