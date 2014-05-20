@@ -1,14 +1,14 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:53894 "EHLO mx11.netapp.com"
+Received: from mx12.netapp.com ([216.240.18.77]:16546 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751411AbaETSId (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 May 2014 14:08:33 -0400
+	id S1750758AbaETSI0 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 May 2014 14:08:26 -0400
 From: Anna Schumaker <Anna.Schumaker@netapp.com>
 To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
 CC: <dros@primarydata.com>, <hch@infradead.org>
-Subject: [RFC 09/12] nfs: create a common pnfs_pgiohdr_free function
-Date: Tue, 20 May 2014 14:08:16 -0400
-Message-ID: <1400609299-32558-10-git-send-email-Anna.Schumaker@Netapp.com>
+Subject: [RFC 02/12] nfs: Create a common pnfs_generic_pg_init() function
+Date: Tue, 20 May 2014 14:08:09 -0400
+Message-ID: <1400609299-32558-3-git-send-email-Anna.Schumaker@Netapp.com>
 In-Reply-To: <1400609299-32558-1-git-send-email-Anna.Schumaker@Netapp.com>
 References: <1400609299-32558-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
@@ -16,76 +16,110 @@ Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This function is exactly the same for reads and writes.
+Most of this code can be shared.  There are some differences with
+calculating bsize, but that needs to be changed in the layout drivers
+that call the read and write versions of this function.
 
 Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
- fs/nfs/pnfs.c | 24 ++++++++----------------
- 1 file changed, 8 insertions(+), 16 deletions(-)
+ fs/nfs/pnfs.c | 61 +++++++++++++++++++++++++++--------------------------------
+ 1 file changed, 28 insertions(+), 33 deletions(-)
 
 diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index 69751d4..b6ebea8 100644
+index 8da7ff6..4d57003 100644
 --- a/fs/nfs/pnfs.c
 +++ b/fs/nfs/pnfs.c
-@@ -1499,6 +1499,12 @@ pnfs_do_rw(struct nfs_pageio_descriptor *desc, struct nfs_pgio_header *hdr,
- 	return ret;
+@@ -1387,48 +1387,22 @@ void pnfs_pageio_reset_mds(struct nfs_pageio_descriptor *pgio)
  }
+ EXPORT_SYMBOL_GPL(pnfs_pageio_reset_mds);
  
-+static void pnfs_pgiohdr_free(struct nfs_pgio_header *hdr)
+-void
+-pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
+-{
+-	u64 rd_size = req->wb_bytes;
+-
+-	WARN_ON_ONCE(pgio->pg_lseg != NULL);
+-
+-	if (pgio->pg_dreq == NULL)
+-		rd_size = i_size_read(pgio->pg_inode) - req_offset(req);
+-	else
+-		rd_size = nfs_dreq_bytes_left(pgio->pg_dreq);
+-
+-	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
+-					   req->wb_context,
+-					   req_offset(req),
+-					   rd_size,
+-					   IOMODE_READ,
+-					   GFP_KERNEL);
+-	/* If no lseg, fall back to read through mds */
+-	if (pgio->pg_lseg == NULL)
+-		pnfs_pageio_reset_mds(pgio);
+-
+-}
+-EXPORT_SYMBOL_GPL(pnfs_generic_pg_init_read);
+-
+-void
+-pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio,
+-			   struct nfs_page *req, u64 wb_size)
++static void pnfs_generic_pg_init(struct nfs_pageio_descriptor *pgio,
++				 struct nfs_page *req, u64 bsize,
++				 enum pnfs_iomode iomode, gfp_t gfp_flags)
+ {
+ 	WARN_ON_ONCE(pgio->pg_lseg != NULL);
+ 
+ 	pgio->pg_lseg = pnfs_update_layout(pgio->pg_inode,
+ 					   req->wb_context,
+ 					   req_offset(req),
+-					   wb_size,
+-					   IOMODE_RW,
+-					   GFP_NOFS);
+-	/* If no lseg, fall back to write through mds */
++					   bsize,
++					   iomode,
++					   gfp_flags);
++	/* If no lseg, fall back to IO through mds */
+ 	if (pgio->pg_lseg == NULL)
+ 		pnfs_pageio_reset_mds(pgio);
+ }
+-EXPORT_SYMBOL_GPL(pnfs_generic_pg_init_write);
+ 
+ /*
+  * Return 0 if @req cannot be coalesced into @pgio, otherwise return the number
+@@ -1472,6 +1446,14 @@ pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
+ }
+ EXPORT_SYMBOL_GPL(pnfs_generic_pg_test);
+ 
++void
++pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio,
++			   struct nfs_page *req, u64 wb_size)
 +{
-+	pnfs_put_lseg(hdr->lseg);
-+	nfs_pgio_header_free(hdr);
++	pnfs_generic_pg_init(pgio, req, wb_size, IOMODE_RW, GFP_NOFS);
 +}
++EXPORT_SYMBOL_GPL(pnfs_generic_pg_init_write);
 +
- void
- pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio,
- 			   struct nfs_page *req, u64 wb_size)
-@@ -1541,13 +1547,6 @@ pnfs_do_write(struct nfs_pageio_descriptor *desc, struct nfs_pgio_header *hdr)
- 		nfs_inc_stats(hdr->inode, NFSIOS_PNFS_WRITE);
- }
- 
--static void pnfs_writehdr_free(struct nfs_pgio_header *hdr)
--{
--	pnfs_put_lseg(hdr->lseg);
--	nfs_pgio_header_free(hdr);
--}
--EXPORT_SYMBOL_GPL(pnfs_writehdr_free);
--
- int
- pnfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc)
+ int pnfs_write_done_resend_to_mds(struct nfs_pgio_header *hdr)
  {
-@@ -1561,7 +1560,7 @@ pnfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc)
- 		desc->pg_lseg = NULL;
- 		return -ENOMEM;
- 	}
--	nfs_pgheader_init(desc, hdr, pnfs_writehdr_free);
-+	nfs_pgheader_init(desc, hdr, pnfs_pgiohdr_free);
- 	hdr->lseg = pnfs_get_lseg(desc->pg_lseg);
- 	ret = nfs_generic_pgio(desc, hdr);
- 	if (ret != 0) {
-@@ -1623,13 +1622,6 @@ pnfs_do_read(struct nfs_pageio_descriptor *desc, struct nfs_pgio_header *hdr)
- 		nfs_inc_stats(hdr->inode, NFSIOS_PNFS_READ);
+ 	struct nfs_pageio_descriptor pgio;
+@@ -1590,6 +1572,19 @@ pnfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc)
  }
+ EXPORT_SYMBOL_GPL(pnfs_generic_pg_writepages);
  
--static void pnfs_readhdr_free(struct nfs_pgio_header *hdr)
--{
--	pnfs_put_lseg(hdr->lseg);
--	nfs_pgio_header_free(hdr);
--}
--EXPORT_SYMBOL_GPL(pnfs_readhdr_free);
--
- int
- pnfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc)
++void
++pnfs_generic_pg_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
++{
++	u64 rd_size;
++	if (pgio->pg_dreq == NULL)
++		rd_size = i_size_read(pgio->pg_inode) - req_offset(req);
++	else
++		rd_size = nfs_dreq_bytes_left(pgio->pg_dreq);
++
++	pnfs_generic_pg_init(pgio, req, rd_size, IOMODE_READ, GFP_KERNEL);
++}
++EXPORT_SYMBOL_GPL(pnfs_generic_pg_init_read);
++
+ int pnfs_read_done_resend_to_mds(struct nfs_pgio_header *hdr)
  {
-@@ -1644,7 +1636,7 @@ pnfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc)
- 		desc->pg_lseg = NULL;
- 		return ret;
- 	}
--	nfs_pgheader_init(desc, hdr, pnfs_readhdr_free);
-+	nfs_pgheader_init(desc, hdr, pnfs_pgiohdr_free);
- 	hdr->lseg = pnfs_get_lseg(desc->pg_lseg);
- 	ret = nfs_generic_pgio(desc, hdr);
- 	if (ret != 0) {
+ 	struct nfs_pageio_descriptor pgio;
 -- 
 1.9.2
 
