@@ -1,43 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from plane.gmane.org ([80.91.229.3]:37412 "EHLO plane.gmane.org"
+Received: from mx12.netapp.com ([216.240.18.77]:16546 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751552AbaE0XVk (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 27 May 2014 19:21:40 -0400
-Received: from list by plane.gmane.org with local (Exim 4.69)
-	(envelope-from <glN-linux-nfs@m.gmane.org>)
-	id 1WpQga-0005UG-MT
-	for linux-nfs@vger.kernel.org; Wed, 28 May 2014 01:21:36 +0200
-Received: from bitis.umrk.nl ([82.95.126.201])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Wed, 28 May 2014 01:21:36 +0200
-Received: from jwinius by bitis.umrk.nl with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Wed, 28 May 2014 01:21:36 +0200
-To: linux-nfs@vger.kernel.org
-From: Jaap <jwinius@umrk.nl>
-Subject: Re: NFSv4 with Kerberos and no_root_squash
-Date: Tue, 27 May 2014 23:21:24 +0000 (UTC)
-Message-ID: <lm36lj$bbb$1@ger.gmane.org>
-References: <llqgta$3d3$1@ger.gmane.org>
-	<20140527205407.GB32160@fieldses.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+	id S1751039AbaETSI1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 May 2014 14:08:27 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
+CC: <dros@primarydata.com>, <hch@infradead.org>
+Subject: [RFC 04/12] nfs: Create a common pnfs_ld_rw_done()
+Date: Tue, 20 May 2014 14:08:11 -0400
+Message-ID: <1400609299-32558-5-git-send-email-Anna.Schumaker@Netapp.com>
+In-Reply-To: <1400609299-32558-1-git-send-email-Anna.Schumaker@Netapp.com>
+References: <1400609299-32558-1-git-send-email-Anna.Schumaker@Netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, 27 May 2014 16:54:07 -0400, J. Bruce Fields wrote:
+The read and write paths run mostly the same code, so it makes sense to
+combine them.
 
-> You may want to look at "Credentials for UID 0" in the rpc.gssd man
-> page?
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+---
+ fs/nfs/pnfs.c | 26 ++++++++++++++------------
+ 1 file changed, 14 insertions(+), 12 deletions(-)
 
-If you mean that I should run rpc.gssd with the "-n" option, in that case 
-I still get "Permission denied" when attempting to write to one of the 
-"no_root_squash" exports as root. I even tried using the machine 
-credentials "root/<hostname>@<REALM>" instead of "host/..." , but to no 
-avail.
-
-Thanks anyway,
-
-Jaap
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 4eaf74a..5976b87 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1457,6 +1457,18 @@ static void pnfs_ld_handle_rw_error(struct nfs_pgio_header *hdr,
+ 		hdr->task.tk_status = resend_to_mds(hdr);
+ }
+ 
++static void pnfs_ld_rw_done(struct nfs_pgio_header *hdr,
++			    void (*cb)(struct nfs_pgio_header *),
++			    int (*resend_to_mds)(struct nfs_pgio_header *))
++{
++	if (!hdr->pnfs_error) {
++		cb(hdr);
++		hdr->mds_ops->rpc_call_done(&hdr->task, hdr);
++	} else
++		pnfs_ld_handle_rw_error(hdr, resend_to_mds);
++	hdr->mds_ops->rpc_release(hdr);
++}
++
+ void
+ pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio,
+ 			   struct nfs_page *req, u64 wb_size)
+@@ -1482,12 +1494,7 @@ EXPORT_SYMBOL_GPL(pnfs_write_done_resend_to_mds);
+ void pnfs_ld_write_done(struct nfs_pgio_header *hdr)
+ {
+ 	trace_nfs4_pnfs_write(hdr, hdr->pnfs_error);
+-	if (!hdr->pnfs_error) {
+-		pnfs_set_layoutcommit(hdr);
+-		hdr->mds_ops->rpc_call_done(&hdr->task, hdr);
+-	} else
+-		pnfs_ld_handle_rw_error(hdr, pnfs_write_done_resend_to_mds);
+-	hdr->mds_ops->rpc_release(hdr);
++	pnfs_ld_rw_done(hdr, pnfs_set_layoutcommit, pnfs_write_done_resend_to_mds);
+ }
+ EXPORT_SYMBOL_GPL(pnfs_ld_write_done);
+ 
+@@ -1601,12 +1608,7 @@ EXPORT_SYMBOL_GPL(pnfs_read_done_resend_to_mds);
+ void pnfs_ld_read_done(struct nfs_pgio_header *hdr)
+ {
+ 	trace_nfs4_pnfs_read(hdr, hdr->pnfs_error);
+-	if (likely(!hdr->pnfs_error)) {
+-		__nfs4_read_done_cb(hdr);
+-		hdr->mds_ops->rpc_call_done(&hdr->task, hdr);
+-	} else
+-		pnfs_ld_handle_rw_error(hdr, pnfs_read_done_resend_to_mds);
+-	hdr->mds_ops->rpc_release(hdr);
++	pnfs_ld_rw_done(hdr, __nfs4_read_done_cb, pnfs_read_done_resend_to_mds);
+ }
+ EXPORT_SYMBOL_GPL(pnfs_ld_read_done);
+ 
+-- 
+1.9.2
 
