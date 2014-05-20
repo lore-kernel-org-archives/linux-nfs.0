@@ -1,37 +1,105 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:37436 "EHLO fieldses.org"
+Received: from mx11.netapp.com ([216.240.18.76]:53894 "EHLO mx11.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751269AbaEAT7r (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 1 May 2014 15:59:47 -0400
-Date: Thu, 1 May 2014 15:59:44 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Mark Lord <mlord@pobox.com>
-Cc: Jeff Layton <jlayton@redhat.com>, "J. Bruce Fields" <bfields@redhat.com>,
-        Albert Fluegel <af@muc.de>, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: linux-3.14 nfsd regression
-Message-ID: <20140501195944.GA14625@fieldses.org>
-References: <533D8D73.1090603@pobox.com>
- <20140403171643.GB28790@pad.redhat.com>
- <533D9F8A.6030001@pobox.com>
- <20140403145504.3b04170e@tlielax.poochiereds.net>
- <20140403201627.GC8343@fieldses.org>
- <20140403192146.79679909@tlielax.poochiereds.net>
- <20140404135842.GB17594@fieldses.org>
- <5362350A.6040402@pobox.com>
+	id S1750807AbaETSI3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 May 2014 14:08:29 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
+CC: <dros@primarydata.com>, <hch@infradead.org>
+Subject: [RFC 05/12] nfs: Create a common pnfs_through_mds() function
+Date: Tue, 20 May 2014 14:08:12 -0400
+Message-ID: <1400609299-32558-6-git-send-email-Anna.Schumaker@Netapp.com>
+In-Reply-To: <1400609299-32558-1-git-send-email-Anna.Schumaker@Netapp.com>
+References: <1400609299-32558-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <5362350A.6040402@pobox.com>
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, May 01, 2014 at 07:50:34AM -0400, Mark Lord wrote:
-> Still a regression in 3.14.2 now.
-> Anyone got plans to push this patch out to mainline, as well as +stable ?
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+---
+ fs/nfs/pnfs.c | 40 ++++++++++++++--------------------------
+ 1 file changed, 14 insertions(+), 26 deletions(-)
 
-This is upstream as 082f31a2169bd639785e45bf252f3d5bce0303c6 "nfsd:
-revert v2 half of "nfsd: don't return high mode bits"", with a cc to
-stable@kernel.org, so I assume it's just taking a little time for stable
-to pick it up.
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 5976b87..a0eee54 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1469,6 +1469,18 @@ static void pnfs_ld_rw_done(struct nfs_pgio_header *hdr,
+ 	hdr->mds_ops->rpc_release(hdr);
+ }
+ 
++static void
++pnfs_through_mds(struct nfs_pageio_descriptor *desc,
++		 struct nfs_pgio_header *hdr)
++{
++	if (!test_and_set_bit(NFS_IOHDR_REDO, &hdr->flags)) {
++		list_splice_tail_init(&hdr->pages, &desc->pg_list);
++		pnfs_pageio_reset_mds(desc);
++		desc->pg_recoalesce = 1;
++	}
++	nfs_generic_pgio_reset(hdr);
++}
++
+ void
+ pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio,
+ 			   struct nfs_page *req, u64 wb_size)
+@@ -1498,18 +1510,6 @@ void pnfs_ld_write_done(struct nfs_pgio_header *hdr)
+ }
+ EXPORT_SYMBOL_GPL(pnfs_ld_write_done);
+ 
+-static void
+-pnfs_write_through_mds(struct nfs_pageio_descriptor *desc,
+-		struct nfs_pgio_header *hdr)
+-{
+-	if (!test_and_set_bit(NFS_IOHDR_REDO, &hdr->flags)) {
+-		list_splice_tail_init(&hdr->pages, &desc->pg_list);
+-		pnfs_pageio_reset_mds(desc);
+-		desc->pg_recoalesce = 1;
+-	}
+-	nfs_generic_pgio_reset(hdr);
+-}
+-
+ static enum pnfs_try_status
+ pnfs_try_to_write_data(struct nfs_pgio_header *hdr,
+ 			const struct rpc_call_ops *call_ops,
+@@ -1542,7 +1542,7 @@ pnfs_do_write(struct nfs_pageio_descriptor *desc,
+ 	desc->pg_lseg = NULL;
+ 	trypnfs = pnfs_try_to_write_data(hdr, call_ops, lseg, how);
+ 	if (trypnfs == PNFS_NOT_ATTEMPTED)
+-		pnfs_write_through_mds(desc, hdr);
++		pnfs_through_mds(desc, hdr);
+ 	pnfs_put_lseg(lseg);
+ }
+ 
+@@ -1612,18 +1612,6 @@ void pnfs_ld_read_done(struct nfs_pgio_header *hdr)
+ }
+ EXPORT_SYMBOL_GPL(pnfs_ld_read_done);
+ 
+-static void
+-pnfs_read_through_mds(struct nfs_pageio_descriptor *desc,
+-		struct nfs_pgio_header *hdr)
+-{
+-	if (!test_and_set_bit(NFS_IOHDR_REDO, &hdr->flags)) {
+-		list_splice_tail_init(&hdr->pages, &desc->pg_list);
+-		pnfs_pageio_reset_mds(desc);
+-		desc->pg_recoalesce = 1;
+-	}
+-	nfs_generic_pgio_reset(hdr);
+-}
+-
+ /*
+  * Call the appropriate parallel I/O subsystem read function.
+  */
+@@ -1658,7 +1646,7 @@ pnfs_do_read(struct nfs_pageio_descriptor *desc, struct nfs_pgio_header *hdr)
+ 	desc->pg_lseg = NULL;
+ 	trypnfs = pnfs_try_to_read_data(hdr, call_ops, lseg);
+ 	if (trypnfs == PNFS_NOT_ATTEMPTED)
+-		pnfs_read_through_mds(desc, hdr);
++		pnfs_through_mds(desc, hdr);
+ 	pnfs_put_lseg(lseg);
+ }
+ 
+-- 
+1.9.2
 
---b.
