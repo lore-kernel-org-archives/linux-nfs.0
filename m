@@ -1,94 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:38619 "EHLO fieldses.org"
+Received: from mx12.netapp.com ([216.240.18.77]:16546 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757778AbaEKUxE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 11 May 2014 16:53:04 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 33/43] nfsd4: better estimate of getattr response size
-Date: Sun, 11 May 2014 16:52:38 -0400
-Message-Id: <1399841568-19716-34-git-send-email-bfields@redhat.com>
-In-Reply-To: <1399841568-19716-1-git-send-email-bfields@redhat.com>
-References: <1399841568-19716-1-git-send-email-bfields@redhat.com>
+	id S1750807AbaETSIb (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 May 2014 14:08:31 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
+CC: <dros@primarydata.com>, <hch@infradead.org>
+Subject: [RFC 07/12] nfs: merge pnfs_try_to_read_data() and pnfs_do_read()
+Date: Tue, 20 May 2014 14:08:14 -0400
+Message-ID: <1400609299-32558-8-git-send-email-Anna.Schumaker@Netapp.com>
+In-Reply-To: <1400609299-32558-1-git-send-email-Anna.Schumaker@Netapp.com>
+References: <1400609299-32558-1-git-send-email-Anna.Schumaker@Netapp.com>
+MIME-Version: 1.0
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+This makes these functions look neater in preparation for combining with
+their write equivilents.
 
-We plan to use this estimate to decide whether or not to allow zero-copy
-reads.  Currently we're assuming all getattr's are a page, which can be
-both too small (ACLs e.g. may be arbitrarily long) and too large (after
-an upcoming read patch this will unnecessarily prevent zero copy reads
-in any read compound also containing a getattr).
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
 ---
- fs/nfsd/nfs4proc.c |   43 +++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 43 insertions(+)
+ fs/nfs/pnfs.c | 28 +++++++---------------------
+ 1 file changed, 7 insertions(+), 21 deletions(-)
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 0ab65ae..edd2eb1 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1414,6 +1414,48 @@ static inline u32 nfsd4_create_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op
- 		+ nfs4_fattr_bitmap_maxsz) * sizeof(__be32);
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index 355cd41..293e970 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1602,37 +1602,23 @@ EXPORT_SYMBOL_GPL(pnfs_ld_read_done);
+  * Call the appropriate parallel I/O subsystem read function.
+  */
+ static enum pnfs_try_status
+-pnfs_try_to_read_data(struct nfs_pgio_header *hdr,
+-		       const struct rpc_call_ops *call_ops,
+-		       struct pnfs_layout_segment *lseg)
++pnfs_try_to_read_data(struct nfs_pgio_header *hdr)
+ {
+-	struct inode *inode = hdr->inode;
+-	struct nfs_server *nfss = NFS_SERVER(inode);
+-	enum pnfs_try_status trypnfs;
+-
+-	hdr->mds_ops = call_ops;
+-
+-	dprintk("%s: Reading ino:%lu %u@%llu\n",
+-		__func__, inode->i_ino, hdr->args.count, hdr->args.offset);
+-
+-	trypnfs = nfss->pnfs_curr_ld->read_pagelist(hdr);
+-	if (trypnfs != PNFS_NOT_ATTEMPTED)
+-		nfs_inc_stats(inode, NFSIOS_PNFS_READ);
+-	dprintk("%s End (trypnfs:%d)\n", __func__, trypnfs);
+-	return trypnfs;
++	return NFS_SERVER(hdr->inode)->pnfs_curr_ld->read_pagelist(hdr);
  }
  
-+/*
-+ * Note since this is an idempotent operation we won't insist on failing
-+ * the op prematurely if the estimate is too large.  We may turn off splice
-+ * reads unnecessarily.
-+ */
-+static inline u32 nfsd4_getattr_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op)
-+{
-+	u32 *bmap = op->u.getattr.ga_bmval;
-+	u32 bmap0 = bmap[0], bmap1 = bmap[1], bmap2 = bmap[2];
-+	u32 ret = 0;
-+
-+	if (bmap0 & FATTR4_WORD0_ACL)
-+		return svc_max_payload(rqstp);
-+	if (bmap0 & FATTR4_WORD0_FS_LOCATIONS)
-+		return svc_max_payload(rqstp);
-+
-+	if (bmap1 & FATTR4_WORD1_OWNER) {
-+		ret += IDMAP_NAMESZ + 4;
-+		bmap1 &= ~FATTR4_WORD1_OWNER;
-+	}
-+	if (bmap1 & FATTR4_WORD1_OWNER_GROUP) {
-+		ret += IDMAP_NAMESZ + 4;
-+		bmap1 &= ~FATTR4_WORD1_OWNER_GROUP;
-+	}
-+	if (bmap0 & FATTR4_WORD0_FILEHANDLE) {
-+		ret += NFS4_FHSIZE + 4;
-+		bmap0 &= ~FATTR4_WORD0_FILEHANDLE;
-+	}
-+	if (bmap2 & FATTR4_WORD2_SECURITY_LABEL) {
-+		ret += NFSD4_MAX_SEC_LABEL_LEN + 12;
-+		bmap2 &= ~FATTR4_WORD2_SECURITY_LABEL;
-+	}
-+	/*
-+	 * Largest of remaining attributes are 16 bytes (e.g.,
-+	 * supported_attributes)
-+	 */
-+	ret += 16 * (hweight32(bmap0) + hweight32(bmap1) + hweight32(bmap2));
-+	/* bitmask, length */
-+	ret += 20;
-+	return ret;
-+}
-+
- static inline u32 nfsd4_link_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op)
+ static void
+ pnfs_do_read(struct nfs_pageio_descriptor *desc, struct nfs_pgio_header *hdr)
  {
- 	return (op_encode_hdr_size + op_encode_change_info_maxsz)
-@@ -1548,6 +1590,7 @@ static struct nfsd4_operation nfsd4_ops[] = {
- 	[OP_GETATTR] = {
- 		.op_func = (nfsd4op_func)nfsd4_getattr,
- 		.op_flags = ALLOWED_ON_ABSENT_FS,
-+		.op_rsize_bop = nfsd4_getattr_rsize,
- 		.op_name = "OP_GETATTR",
- 	},
- 	[OP_GETFH] = {
+-	const struct rpc_call_ops *call_ops = desc->pg_rpc_callops;
+ 	struct pnfs_layout_segment *lseg = desc->pg_lseg;
+-	enum pnfs_try_status trypnfs;
+ 
++	hdr->mds_ops = desc->pg_rpc_callops;
+ 	desc->pg_lseg = NULL;
+-	trypnfs = pnfs_try_to_read_data(hdr, call_ops, lseg);
+-	if (trypnfs == PNFS_NOT_ATTEMPTED)
++
++	if (pnfs_try_to_read_data(hdr) == PNFS_NOT_ATTEMPTED)
+ 		pnfs_through_mds(desc, hdr);
++	else
++		nfs_inc_stats(hdr->inode, NFSIOS_PNFS_READ);
+ 	pnfs_put_lseg(lseg);
+ }
+ 
 -- 
-1.7.9.5
+1.9.2
 
