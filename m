@@ -1,80 +1,79 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:33110 "EHLO mx1.redhat.com"
+Received: from mx12.netapp.com ([216.240.18.77]:16546 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1755340AbaEAPRs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 1 May 2014 11:17:48 -0400
-Message-ID: <53626599.7070606@RedHat.com>
-Date: Thu, 01 May 2014 11:17:45 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S1750807AbaETSIg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 May 2014 14:08:36 -0400
+From: Anna Schumaker <Anna.Schumaker@netapp.com>
+To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
+CC: <dros@primarydata.com>, <hch@infradead.org>
+Subject: [RFC 12/12] nfs: Create a common pnfs_generic_rwpages() function
+Date: Tue, 20 May 2014 14:08:19 -0400
+Message-ID: <1400609299-32558-13-git-send-email-Anna.Schumaker@Netapp.com>
+In-Reply-To: <1400609299-32558-1-git-send-email-Anna.Schumaker@Netapp.com>
+References: <1400609299-32558-1-git-send-email-Anna.Schumaker@Netapp.com>
 MIME-Version: 1.0
-To: Jeff Layton <jlayton@poochiereds.net>
-CC: linux-nfs@vger.kernel.org, Jeff Law <law@redhat.com>,
-        Jakub Jelinek <jakub@redhat.com>
-Subject: Re: [PATCH] mountd: fix segfault in add_name with newer gcc compilers
-References: <1398886759-29090-1-git-send-email-jlayton@poochiereds.net>
-In-Reply-To: <1398886759-29090-1-git-send-email-jlayton@poochiereds.net>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+This code is almost identical, so it might as well be combined.
 
+Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+---
+ fs/nfs/pnfs.c | 26 ++++++++++++++------------
+ 1 file changed, 14 insertions(+), 12 deletions(-)
 
-On 04/30/2014 03:39 PM, Jeff Layton wrote:
-> I hit a segfault in add_name with a mountd built with gcc-4.9.0. Some
-> NULL pointer checks got reordered such that a pointer was dereferenced
-> before checking to see whether it was NULL. The problem was due to
-> nfs-utils relying on undefined behavior, which tricked gcc into assuming
-> that the pointer would never be NULL.
-> 
-> At first I assumed that this was a compiler bug, but Jakub Jelinek and
-> Jeff Law pointed out:
-> 
-> "If old is NULL, then:
-> 
-> 	strncpy(new, old, cp-old);
-> 
-> is undefined behavior (even when cp == old == NULL in that case),
-> therefore gcc assumes that old is never NULL, as otherwise it would be
-> invalid.
-> 
-> Just guard
-> 	strncpy(new, old, cp-old);
-> 	new[cp-old] = 0;
-> with if (old) { ... }."
-> 
-> This patch does that. If old is NULL though, then we still need to
-> ensure that new is NULL terminated, lest the subsequent strcats walk off
-> the end of it.
-> 
-> Cc: Jeff Law <law@redhat.com>
-> Cc: Jakub Jelinek <jakub@redhat.com>
-> Signed-off-by: Jeff Layton <jlayton@poochiereds.net>
-Committed...
+diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
+index df07832..6f1fd5e 100644
+--- a/fs/nfs/pnfs.c
++++ b/fs/nfs/pnfs.c
+@@ -1505,6 +1505,18 @@ static void pnfs_pgiohdr_free(struct nfs_pgio_header *hdr)
+ 	nfs_pgio_header_free(hdr);
+ }
+ 
++static int pnfs_generic_pg_rwpages(struct nfs_pageio_descriptor *desc,
++			int (*do_pgio)(struct nfs_pageio_descriptor *,
++				       struct nfs_pgio_header *))
++{
++	int ret = nfs_generic_pgios_common(desc, pnfs_pgiohdr_free, do_pgio);
++	if (ret != 0) {
++		pnfs_put_lseg(desc->pg_lseg);
++		desc->pg_lseg = NULL;
++	}
++	return ret;
++}
++
+ void
+ pnfs_generic_pg_init_write(struct nfs_pageio_descriptor *pgio,
+ 			   struct nfs_page *req, u64 wb_size)
+@@ -1551,12 +1563,7 @@ pnfs_do_write(struct nfs_pageio_descriptor *desc, struct nfs_pgio_header *hdr)
+ int
+ pnfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc)
+ {
+-	int ret = nfs_generic_pgios_common(desc, pnfs_pgiohdr_free, pnfs_do_write);
+-	if (ret != 0) {
+-		pnfs_put_lseg(desc->pg_lseg);
+-		desc->pg_lseg = NULL;
+-	}
+-	return ret;
++	return pnfs_generic_pg_rwpages(desc, pnfs_do_write);
+ }
+ EXPORT_SYMBOL_GPL(pnfs_generic_pg_writepages);
+ 
+@@ -1614,12 +1621,7 @@ pnfs_do_read(struct nfs_pageio_descriptor *desc, struct nfs_pgio_header *hdr)
+ int
+ pnfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc)
+ {
+-	int ret = nfs_generic_pgios_common(desc, pnfs_pgiohdr_free, pnfs_do_read);
+-	if (ret != 0) {
+-		pnfs_put_lseg(desc->pg_lseg);
+-		desc->pg_lseg = NULL;
+-	}
+-	return ret;
++	return pnfs_generic_pg_rwpages(desc, pnfs_do_read);
+ }
+ EXPORT_SYMBOL_GPL(pnfs_generic_pg_readpages);
+ 
+-- 
+1.9.2
 
-steved.
-
-> ---
->  support/export/client.c | 8 ++++++--
->  1 file changed, 6 insertions(+), 2 deletions(-)
-> 
-> diff --git a/support/export/client.c b/support/export/client.c
-> index dbf47b966522..f85e11c8b535 100644
-> --- a/support/export/client.c
-> +++ b/support/export/client.c
-> @@ -482,8 +482,12 @@ add_name(char *old, const char *add)
->  		else
->  			cp = cp + strlen(cp);
->  	}
-> -	strncpy(new, old, cp-old);
-> -	new[cp-old] = 0;
-> +	if (old) {
-> +		strncpy(new, old, cp-old);
-> +		new[cp-old] = 0;
-> +	} else {
-> +		new[0] = 0;
-> +	}
->  	if (cp != old && !*cp)
->  		strcat(new, ",");
->  	strcat(new, add);
-> -- 1.9.0
-> 
