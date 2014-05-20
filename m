@@ -1,67 +1,123 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:42191 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:51140 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751207AbaEFUPc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 May 2014 16:15:32 -0400
-Date: Tue, 6 May 2014 16:15:03 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-Cc: agruen@kernel.org, akpm@linux-foundation.org, viro@zeniv.linux.org.uk,
-        dhowells@redhat.com, linux-fsdevel@vger.kernel.org,
-        linux-nfs@vger.kernel.org, linux-kernel@vger.kernel.org
-Subject: Re: [PATCH -V1 00/22]  New ACL format for better NFSv4 acl
- interoperability
-Message-ID: <20140506201503.GN18281@fieldses.org>
-References: <1398615293-22931-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+	id S1751161AbaETMCo (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 20 May 2014 08:02:44 -0400
+Message-ID: <537B445A.60707@RedHat.com>
+Date: Tue, 20 May 2014 08:02:34 -0400
+From: Steve Dickson <SteveD@redhat.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1398615293-22931-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com>
+To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+CC: jvrao@linux.vnet.ibm.com, rongzeng@us.ibm.com,
+        rong zeng <rongzeng@oc1547780626.ibm.com>
+Subject: [PATCH] Adding a callback for incoming sm_notify to better handle
+ stale lock issue in client crash recovery in HA-NFS environment. The callout
+ parameters are:
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, Apr 27, 2014 at 09:44:31PM +0530, Aneesh Kumar K.V wrote:
-> As per LSF/MM summit discussion I am reposting the richacl patchset for
-> upstream inclusion. The patchset includes minimal changes required to implement
-> a new acl model similar to NFSv4 ACL. The acl model selection is based on
-> file system feature flag. 
+[ Forwarding this on to the mailing list ] 
 
-It'd also be nice to see the nfsd bits, as that (along with samba) is
-one of the main users.
+From: rong zeng <rongzeng@oc1547780626.ibm.com>
 
-(And the richacl->NFSv4 acl mapping is tricky thanks to the mask bits.)
+1. "sm-notify" - callout name
+2. monitored client name as in the SM_NOTIFY request
+3. IP of the sender of the SM_NOITFY request.
+4. state value in the SM_NOTIFY request
 
---b.
+This new interface can be used by different HA-NFS product
+in its specific configuration and environment to
+recover from the client crash and stale lock scenarios.
 
-> 
-> The following set of patches implements VFS and ext4 changes needed to implement
-> a new acl model for linux. Rich ACLs are an implementation of NFSv4 ACLs,
-> extended by file masks to fit into the standard POSIX file permission model.
-> They are designed to work seamlessly locally as well as across the NFSv4 and
-> CIFS/SMB2 network file system protocols.
-> 
-> A user-space utility for displaying and changing richacls is available at [1]
-> (a number of examples can be found at http://acl.bestbits.at/richacl/examples.html).
-> 
-> [1] git://github.com/kvaneesh/richacl-tools.git master
-> 
-> To test richacl on ext4, create the file sytem with richacl feature flag
-> (mkfs.ext4 -O richacl or  tune2fs -O richacl). With richacl feature enabled
-> using mount option "acl" will switch to using richacl instead of posixacl.
-> 
-> More details regarding richacl can be found at
-> http://acl.bestbits.at/richacl/
-> 
-> Previous posting of the patchset can be found at:
-> http://mid.gmane.org/1319391835-5829-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com
-> "[PATCH -V8 00/26]  New ACL format for better NFSv4 acl interoperability"
-> 
-> The complete patchset can also be found at:
-> https://github.com/kvaneesh/linux/commits/richacl-for-upstream
-> 
-> Since we are trying to get the changes merged upstream after a long time, I am
-> posting this as V1 again. I Also dropped the Acked-by tag from
-> David Howells <dhowells@redhat.com> and J. Bruce Fields <bfields@redhat.com>.
-> Please let me know if I can add them back again.
-> 
-> -aneesh
-> 
+Signed-off-by: Rong Zeng <rongzeng@us.ibm.com>
+---
+ utils/statd/callback.c |   13 ++++++++-----
+ utils/statd/statd.man  |   20 ++++++++++++++++----
+ 2 files changed, 24 insertions(+), 9 deletions(-)
+
+diff --git a/utils/statd/callback.c b/utils/statd/callback.c
+index d1cc139..58ba70b 100644
+--- a/utils/statd/callback.c
++++ b/utils/statd/callback.c
+@@ -15,6 +15,7 @@
+ #include "rpcmisc.h"
+ #include "statd.h"
+ #include "notlist.h"
++#include "ha-callout.h"
+
+ /* Callback notify list. */
+ /* notify_list *cbnl = NULL; ... never used */
+@@ -87,6 +88,13 @@ sm_notify_1_svc(struct stat_chge *argp, struct svc_req *rqstp)
+ 	xlog(D_CALL, "Received SM_NOTIFY from %s, state: %d",
+ 				argp->mon_name, argp->state);
+
++	if (!statd_present_address(sap, ip_addr, sizeof(ip_addr))) {
++		xlog_warn("Unrecognized sender address");
++		return ((void *) &result);
++	}
++
++	ha_callout("sm-notify", argp->mon_name, ip_addr, argp->state);
++
+ 	/* quick check - don't bother if we're not monitoring anyone */
+ 	if (rtnl == NULL) {
+ 		xlog_warn("SM_NOTIFY from %s while not monitoring any hosts",
+@@ -94,11 +102,6 @@ sm_notify_1_svc(struct stat_chge *argp, struct svc_req *rqstp)
+ 		return ((void *) &result);
+ 	}
+
+-	if (!statd_present_address(sap, ip_addr, sizeof(ip_addr))) {
+-		xlog_warn("Unrecognized sender address");
+-		return ((void *) &result);
+-	}
+-
+ 	/* okir change: statd doesn't remove the remote host from its
+ 	 * internal monitor list when receiving an SM_NOTIFY call from
+ 	 * it. Lockd will want to continue monitoring the remote host
+diff --git a/utils/statd/statd.man b/utils/statd/statd.man
+index 896c2f8..1e5520c 100644
+--- a/utils/statd/statd.man
++++ b/utils/statd/statd.man
+@@ -346,7 +346,8 @@ points due to inactivity.
+ .SS High-availability callouts
+ .B rpc.statd
+ can exec a special callout program during processing of
+-successful SM_MON, SM_UNMON, and SM_UNMON_ALL requests.
++successful SM_MON, SM_UNMON, and SM_UNMON_ALL requests,
++or when it receives SM_NOTIFY.
+ Such a program may be used in High Availability NFS (HA-NFS)
+ environments to track lock state that may need to be migrated after
+ a system reboot.
+@@ -357,15 +358,26 @@ option.
+ The program is run with 3 arguments:
+ The first is either
+ .B add-client
+-or
+ .B del-client
++or
++.B sm-notify
+ depending on the reason for the callout.
+ The second is the
+ .I mon_name
+ of the monitored peer.
+ The third is the
+-.I caller_name
+-of the requesting lock manager.
++.I caller_name 
++of the requesting lock manager for
++.B add-client
++or
++.B del-client
++, otherwise it is
++.I IP_address 
++of the caller sending SM_NOTIFY.
++The forth is the
++.I state_value
++in the SM_NOTIFY request.
++
+ .SS IPv6 and TI-RPC support
+ TI-RPC is a pre-requisite for supporting NFS on IPv6.
+ If TI-RPC support is built into
+-- 
+1.7.1
+
