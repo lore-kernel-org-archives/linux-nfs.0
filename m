@@ -1,75 +1,113 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:54121 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754130AbaE1QQK (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 28 May 2014 12:16:10 -0400
-From: Steve Dickson <steved@redhat.com>
-To: Libtirpc-devel Mailing List <libtirpc-devel@lists.sourceforge.net>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH] Avoid buffer overruns by allocating buffer in svcauth_gss_validate()
-Date: Wed, 28 May 2014 12:15:58 -0400
-Message-Id: <1401293758-8506-1-git-send-email-steved@redhat.com>
+Received: from bombadil.infradead.org ([198.137.202.9]:39407 "EHLO
+	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752139AbaEUOnD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 May 2014 10:43:03 -0400
+Date: Wed, 21 May 2014 07:43:03 -0700
+From: Christoph Hellwig <hch@infradead.org>
+To: "J. Bruce Fields" <bfields@fieldses.org>
+Cc: linux-nfs@vger.kernel.org
+Subject: [PATCH] nfsd: remove nfsd4_free_slab
+Message-ID: <20140521144303.GA30815@infradead.org>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- src/svc_auth_gss.c |   16 ++++++++++++----
- 1 files changed, 12 insertions(+), 4 deletions(-)
+No need for a kmem_cache_destroy wrapper in nfsd, just do proper
+goto based unwinding.
 
-diff --git a/src/svc_auth_gss.c b/src/svc_auth_gss.c
-index 601a691..e31010f 100644
---- a/src/svc_auth_gss.c
-+++ b/src/svc_auth_gss.c
-@@ -280,29 +280,35 @@ svcauth_gss_accept_sec_context(struct svc_req *rqst,
- 	return (TRUE);
+Signed-off-by: Christoph Hellwig <hch@lst.de>
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index fac2683..59698ec 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -83,11 +83,11 @@ static DEFINE_MUTEX(client_mutex);
+  */
+ static DEFINE_SPINLOCK(recall_lock);
+ 
+-static struct kmem_cache *openowner_slab = NULL;
+-static struct kmem_cache *lockowner_slab = NULL;
+-static struct kmem_cache *file_slab = NULL;
+-static struct kmem_cache *stateid_slab = NULL;
+-static struct kmem_cache *deleg_slab = NULL;
++static struct kmem_cache *openowner_slab;
++static struct kmem_cache *lockowner_slab;
++static struct kmem_cache *file_slab;
++static struct kmem_cache *stateid_slab;
++static struct kmem_cache *deleg_slab;
+ 
+ void
+ nfs4_lock_state(void)
+@@ -2516,23 +2516,14 @@ static void nfsd4_init_file(struct nfs4_file *fp, struct inode *ino)
+ 	spin_unlock(&recall_lock);
  }
  
-+#ifndef RPCHDRSZ
-+#define RPCHDRSZ 128
-+#endif
-+
- static bool_t
- svcauth_gss_validate(struct svc_rpc_gss_data *gd, struct rpc_msg *msg)
- {
- 	struct opaque_auth	*oa;
- 	gss_buffer_desc		 rpcbuf, checksum;
- 	OM_uint32		 maj_stat, min_stat, qop_state;
--	u_char			 rpchdr[128];
-+	u_char			 *rpchdr;
- 	int32_t			*buf;
- 
- 	gss_log_debug("in svcauth_gss_validate()");
- 
--	memset(rpchdr, 0, sizeof(rpchdr));
+-static void
+-nfsd4_free_slab(struct kmem_cache **slab)
+-{
+-	if (*slab == NULL)
+-		return;
+-	kmem_cache_destroy(*slab);
+-	*slab = NULL;
+-}
 -
- 	/* XXX - Reconstruct RPC header for signing (from xdr_callmsg). */
- 	oa = &msg->rm_call.cb_cred;
- 	if (oa->oa_length > MAX_AUTH_BYTES)
- 		return (FALSE);
- 	
- 	/* 8 XDR units from the IXDR macro calls. */
--	if (sizeof(rpchdr) < (8 * BYTES_PER_XDR_UNIT +
-+	if (RPCHDRSZ < (8 * BYTES_PER_XDR_UNIT +
- 			RNDUP(oa->oa_length)))
- 		return (FALSE);
+ void
+ nfsd4_free_slabs(void)
+ {
+-	nfsd4_free_slab(&openowner_slab);
+-	nfsd4_free_slab(&lockowner_slab);
+-	nfsd4_free_slab(&file_slab);
+-	nfsd4_free_slab(&stateid_slab);
+-	nfsd4_free_slab(&deleg_slab);
++	kmem_cache_destroy(openowner_slab);
++	kmem_cache_destroy(lockowner_slab);
++	kmem_cache_destroy(file_slab);
++	kmem_cache_destroy(stateid_slab);
++	kmem_cache_destroy(deleg_slab);
+ }
  
-+	rpchdr = (u_char *)calloc(RPCHDRSZ+MAX_AUTH_BYTES, 1);
-+	if (rpchdr == NULL)
-+		return (FALSE);
+ int
+@@ -2541,26 +2532,34 @@ nfsd4_init_slabs(void)
+ 	openowner_slab = kmem_cache_create("nfsd4_openowners",
+ 			sizeof(struct nfs4_openowner), 0, 0, NULL);
+ 	if (openowner_slab == NULL)
+-		goto out_nomem;
++		goto out;
+ 	lockowner_slab = kmem_cache_create("nfsd4_lockowners",
+ 			sizeof(struct nfs4_lockowner), 0, 0, NULL);
+ 	if (lockowner_slab == NULL)
+-		goto out_nomem;
++		goto out_free_openowner_slab;
+ 	file_slab = kmem_cache_create("nfsd4_files",
+ 			sizeof(struct nfs4_file), 0, 0, NULL);
+ 	if (file_slab == NULL)
+-		goto out_nomem;
++		goto out_free_lockowner_slab;
+ 	stateid_slab = kmem_cache_create("nfsd4_stateids",
+ 			sizeof(struct nfs4_ol_stateid), 0, 0, NULL);
+ 	if (stateid_slab == NULL)
+-		goto out_nomem;
++		goto out_free_file_slab;
+ 	deleg_slab = kmem_cache_create("nfsd4_delegations",
+ 			sizeof(struct nfs4_delegation), 0, 0, NULL);
+ 	if (deleg_slab == NULL)
+-		goto out_nomem;
++		goto out_free_stateid_slab;
+ 	return 0;
+-out_nomem:
+-	nfsd4_free_slabs();
 +
- 	buf = (int32_t *)rpchdr;
- 	IXDR_PUT_LONG(buf, msg->rm_xid);
- 	IXDR_PUT_ENUM(buf, msg->rm_direction);
-@@ -325,6 +331,8 @@ svcauth_gss_validate(struct svc_rpc_gss_data *gd, struct rpc_msg *msg)
- 	maj_stat = gss_verify_mic(&min_stat, gd->ctx, &rpcbuf, &checksum,
- 				  &qop_state);
- 
-+	free(rpchdr);
-+
- 	if (maj_stat != GSS_S_COMPLETE) {
- 		gss_log_status("gss_verify_mic", maj_stat, min_stat);
- 		return (FALSE);
--- 
-1.7.1
-
++out_free_stateid_slab:
++	kmem_cache_destroy(stateid_slab);
++out_free_file_slab:
++	kmem_cache_destroy(file_slab);
++out_free_lockowner_slab:
++	kmem_cache_destroy(lockowner_slab);
++out_free_openowner_slab:
++	kmem_cache_destroy(openowner_slab);
++out:
+ 	dprintk("nfsd4: out of memory while initializing nfsv4\n");
+ 	return -ENOMEM;
+ }
