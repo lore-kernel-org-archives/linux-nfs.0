@@ -1,82 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:43441 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752642AbaEVTcn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 May 2014 15:32:43 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 33/52] rpc: define xdr_restrict_buflen
-Date: Thu, 22 May 2014 15:32:08 -0400
-Message-Id: <1400787148-25941-34-git-send-email-bfields@redhat.com>
-In-Reply-To: <1400787148-25941-1-git-send-email-bfields@redhat.com>
-References: <1400787148-25941-1-git-send-email-bfields@redhat.com>
+Received: from mail-qg0-f47.google.com ([209.85.192.47]:37176 "EHLO
+	mail-qg0-f47.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753196AbaEUTOh (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 May 2014 15:14:37 -0400
+Received: by mail-qg0-f47.google.com with SMTP id j107so3979358qga.34
+        for <linux-nfs@vger.kernel.org>; Wed, 21 May 2014 12:14:36 -0700 (PDT)
+Date: Wed, 21 May 2014 15:14:34 -0400
+From: Jeff Layton <jeff.layton@primarydata.com>
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 0/2] fix for find_lockowner_str crash
+Message-ID: <20140521151434.3230b9d6@tlielax.poochiereds.net>
+In-Reply-To: <1400688325-5345-1-git-send-email-bfields@redhat.com>
+References: <1400688325-5345-1-git-send-email-bfields@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Wed, 21 May 2014 12:05:23 -0400
+"J. Bruce Fields" <bfields@redhat.com> wrote:
 
-With this xdr_reserve_space can help us enforce various limits.
+> From: "J. Bruce Fields" <bfields@redhat.com>
+> 
+> This is for 3.15 and stable.
+> 
+> Jeff, cc'ing you since I seem to recall Trond's series changes to using
+> a single lockowner.  I think the following is the quicker fix for
+> stable, but you could convince me otherwise.
+> 
+> J. Bruce Fields (2):
+>   nfsd4: remove lockowner when removing lock stateid
+>   nfsd4: warn on finding lockowner without stateid's
+> 
+>  fs/nfsd/nfs4state.c | 15 +++++++++++++--
+>  1 file changed, 13 insertions(+), 2 deletions(-)
+> 
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- include/linux/sunrpc/xdr.h |  1 +
- net/sunrpc/xdr.c           | 29 +++++++++++++++++++++++++++++
- 2 files changed, 30 insertions(+)
+Looks reasonable as a less invasive fix for stable. I'm still getting
+comfortable with the nfsd locking overhaul, so I won't suggest anything
+else just yet.
 
-diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
-index b23d69f..70c6b92 100644
---- a/include/linux/sunrpc/xdr.h
-+++ b/include/linux/sunrpc/xdr.h
-@@ -217,6 +217,7 @@ extern void xdr_init_encode(struct xdr_stream *xdr, struct xdr_buf *buf, __be32
- extern __be32 *xdr_reserve_space(struct xdr_stream *xdr, size_t nbytes);
- extern void xdr_commit_encode(struct xdr_stream *xdr);
- extern void xdr_truncate_encode(struct xdr_stream *xdr, size_t len);
-+extern int xdr_restrict_buflen(struct xdr_stream *xdr, int newbuflen);
- extern void xdr_write_pages(struct xdr_stream *xdr, struct page **pages,
- 		unsigned int base, unsigned int len);
- extern unsigned int xdr_stream_pos(const struct xdr_stream *xdr);
-diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
-index 40198c5..aa4eb70 100644
---- a/net/sunrpc/xdr.c
-+++ b/net/sunrpc/xdr.c
-@@ -650,6 +650,35 @@ void xdr_truncate_encode(struct xdr_stream *xdr, size_t len)
- EXPORT_SYMBOL(xdr_truncate_encode);
- 
- /**
-+ * xdr_restrict_buflen - decrease available buffer space
-+ * @xdr: pointer to xdr_stream
-+ * @newbuflen: new maximum number of bytes available
-+ *
-+ * Adjust our idea of how much space is available in the buffer.
-+ * If we've already used too much space in the buffer, returns -1.
-+ * If the available space is already smaller than newbuflen, returns 0
-+ * and does nothing.  Otherwise, adjusts xdr->buf->buflen to newbuflen
-+ * and ensures xdr->end is set at most offset newbuflen from the start
-+ * of the buffer.
-+ */
-+int xdr_restrict_buflen(struct xdr_stream *xdr, int newbuflen)
-+{
-+	struct xdr_buf *buf = xdr->buf;
-+	int left_in_this_buf = (void *)xdr->end - (void *)xdr->p;
-+	int end_offset = buf->len + left_in_this_buf;
-+
-+	if (newbuflen < 0 || newbuflen < buf->len)
-+		return -1;
-+	if (newbuflen > buf->buflen)
-+		return 0;
-+	if (newbuflen < end_offset)
-+		xdr->end = (void *)xdr->end + newbuflen - end_offset;
-+	buf->buflen = newbuflen;
-+	return 0;
-+}
-+EXPORT_SYMBOL(xdr_restrict_buflen);
-+
-+/**
-  * xdr_write_pages - Insert a list of pages into an XDR buffer for sending
-  * @xdr: pointer to xdr_stream
-  * @pages: list of pages
 -- 
-1.9.0
-
+Jeff Layton <jlayton@primarydata.com>
