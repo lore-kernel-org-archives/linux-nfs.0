@@ -1,226 +1,110 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e28smtp08.in.ibm.com ([122.248.162.8]:42855 "EHLO
-	e28smtp08.in.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751016AbaEAPpU (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 May 2014 11:45:20 -0400
-Received: from /spool/local
-	by e28smtp08.in.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <aneesh.kumar@linux.vnet.ibm.com>;
-	Thu, 1 May 2014 21:15:18 +0530
-From: "Aneesh Kumar K.V" <aneesh.kumar@linux.vnet.ibm.com>
-To: Dave Chinner <david@fromorbit.com>
-Cc: agruen@kernel.org, bfields@fieldses.org, akpm@linux-foundation.org,
-        viro@zeniv.linux.org.uk, dhowells@redhat.com,
-        linux-fsdevel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        linux-kernel@vger.kernel.org
-Subject: Re: [PATCH -V1 19/22] vfs: Cache richacl in struct inode
-In-Reply-To: <20140429005203.GT15995@dastard>
-References: <1398615293-22931-1-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <1398615293-22931-20-git-send-email-aneesh.kumar@linux.vnet.ibm.com> <20140429005203.GT15995@dastard>
-Date: Thu, 01 May 2014 21:15:11 +0530
-Message-ID: <87a9b1bj08.fsf@linux.vnet.ibm.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+Received: from cantor2.suse.de ([195.135.220.15]:35306 "EHLO mx2.suse.de"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1754455AbaEVJvM (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 May 2014 05:51:12 -0400
+Date: Thu, 22 May 2014 19:50:56 +1000
+From: NeilBrown <neilb@suse.de>
+To: Ingo Molnar <mingo@kernel.org>
+Cc: Peter Zijlstra <peterz@infradead.org>, Oleg Nesterov <oleg@redhat.com>,
+        David Howells <dhowells@redhat.com>,
+        Steven Whitehouse <swhiteho@redhat.com>, dm-devel@redhat.com,
+        Chris Mason <clm@fb.com>, Josef Bacik <jbacik@fb.com>,
+        Steve French <sfrench@samba.org>, "Theodore Ts'o" <tytso@mit.edu>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Ingo Molnar <mingo@redhat.com>, Roland McGrath <roland@redhat.com>,
+        Andrew Morton <akpm@linux-foundation.org>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org
+Subject: Re: [PATCH] SCHED: remove proliferation of wait_on_bit action
+ functions.
+Message-ID: <20140522195056.445f2dcb@notabene.brown>
+In-Reply-To: <20140522090502.GB30094@gmail.com>
+References: <20140501123738.3e64b2d2@notabene.brown>
+	<20140522090502.GB30094@gmail.com>
+Mime-Version: 1.0
+Content-Type: multipart/signed; micalg=PGP-SHA1;
+ boundary="Sig_/SLj=Ra/Rg+8ROWmpsMdvvlW"; protocol="application/pgp-signature"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Dave Chinner <david@fromorbit.com> writes:
+--Sig_/SLj=Ra/Rg+8ROWmpsMdvvlW
+Content-Type: text/plain; charset=US-ASCII
+Content-Transfer-Encoding: quoted-printable
 
-> On Sun, Apr 27, 2014 at 09:44:50PM +0530, Aneesh Kumar K.V wrote:
->> From: Andreas Gruenbacher <agruen@kernel.org>
->> 
->> Cache richacls in struct inode so that this doesn't have to be done
->> individually in each filesystem.
->> 
->> Signed-off-by: Andreas Gruenbacher <agruen@kernel.org>
->> Signed-off-by: Aneesh Kumar K.V <aneesh.kumar@linux.vnet.ibm.com>
->> ---
->>  fs/inode.c              | 25 ++++++++++++++++++-----
->>  include/linux/fs.h      | 12 +++++++++--
->>  include/linux/richacl.h | 53 +++++++++++++++++++++++++++++++++++++++++++++++++
->>  3 files changed, 83 insertions(+), 7 deletions(-)
->> 
->> diff --git a/fs/inode.c b/fs/inode.c
->> index f96d2a6f88cc..b96a16d5c653 100644
->> --- a/fs/inode.c
->> +++ b/fs/inode.c
->> @@ -18,6 +18,7 @@
->>  #include <linux/buffer_head.h> /* for inode_has_buffers */
->>  #include <linux/ratelimit.h>
->>  #include <linux/list_lru.h>
->> +#include <linux/richacl.h>
->>  #include "internal.h"
->>  
->>  /*
->> @@ -185,7 +186,12 @@ int inode_init_always(struct super_block *sb, struct inode *inode)
->>  	inode->i_mapping = mapping;
->>  	INIT_HLIST_HEAD(&inode->i_dentry);	/* buggered by rcu freeing */
->>  #ifdef CONFIG_FS_POSIX_ACL
->> -	inode->i_acl = inode->i_default_acl = ACL_NOT_CACHED;
->> +	if (IS_POSIXACL(inode))
->> +		inode->i_acl = inode->i_default_acl = ACL_NOT_CACHED;
->> +#endif
->> +#ifdef CONFIG_FS_RICHACL
->> +	if (IS_RICHACL(inode))
->> +		inode->i_richacl = ACL_NOT_CACHED;
->>  #endif
->
-> That's just plain wrong. i think this is what Christoph didn't like.
-> An inode can have either a POSIX ACL or a RICH ACL, so there is no
-> need for multiple pointers in the inode for them.
+On Thu, 22 May 2014 11:05:02 +0200 Ingo Molnar <mingo@kernel.org> wrote:
 
-We don't really have multiple pointers
+>=20
+> * NeilBrown <neilb@suse.de> wrote:
+>=20
+> > [[ get_maintainer.pl suggested 61 email address for this patch.
+> >    I've trimmed that list somewhat.  Hope I didn't miss anyone
+> >    important...
+> >    I'm hoping it will go in through the scheduler tree, but would
+> >    particularly like an Acked-by for the fscache parts.  Other acks
+> >    welcome.
+> > ]]
+> >=20
+> > The current "wait_on_bit" interface requires an 'action' function
+> > to be provided which does the actual waiting.
+> > There are over 20 such functions, many of them identical.
+> > Most cases can be satisfied by one of just two functions, one
+> > which uses io_schedule() and one which just uses schedule().
+> >=20
+> > So:
+> >  Rename wait_on_bit and        wait_on_bit_lock to
+> >         wait_on_bit_action and wait_on_bit_lock_action
+> >  to make it explicit that they need an action function.
+> >=20
+> >  Introduce new wait_on_bit{,_lock} and wait_on_bit{,_lock}_io
+> >  which are *not* given an action function but implicitly use
+> >  a standard one.
+> >  The decision to error-out if a signal is pending is now made
+> >  based on the 'mode' argument rather than being encoded in the action
+> >  function.
+>=20
+> this patch fails to build on x86-32 allyesconfigs.
 
-	union {
-#ifdef CONFIG_FS_POSIX_ACL
-		struct {
-			struct posix_acl *i_acl;
-			struct posix_acl *i_default_acl;
-		};
-#endif
-#ifdef CONFIG_FS_RICHACL
-		struct richacl	*i_richacl;
-#endif
-	};
+Could you share the build errors?
+
+>=20
+> Could we keep the old names for a while, and remove them in the next=20
+> cycle or so?
+
+I don't see how changing the names later rather than now will reduce the
+chance of errors... maybe I'm missing something.
+
+Thanks,
+NeilBrown
 
 
-But I understand what you are suggesting here. Will try to rework and
-see how much easy/simpler it makes the code. 
 
->
->>  
->>  #ifdef CONFIG_FSNOTIFY
->> @@ -240,10 +246,19 @@ void __destroy_inode(struct inode *inode)
->>  	}
->>  
->>  #ifdef CONFIG_FS_POSIX_ACL
->> -	if (inode->i_acl && inode->i_acl != ACL_NOT_CACHED)
->> -		posix_acl_release(inode->i_acl);
->> -	if (inode->i_default_acl && inode->i_default_acl != ACL_NOT_CACHED)
->> -		posix_acl_release(inode->i_default_acl);
->> +	if (IS_POSIXACL(inode)) {
->> +		if (inode->i_acl && inode->i_acl != ACL_NOT_CACHED)
->> +			posix_acl_release(inode->i_acl);
->> +		if (inode->i_default_acl &&
->> +		    inode->i_default_acl != ACL_NOT_CACHED)
->> +			posix_acl_release(inode->i_default_acl);
->> +	}
->> +#endif
->> +#ifdef CONFIG_FS_RICHACL
->> +	if (IS_RICHACL(inode)) {
->> +		if (inode->i_richacl && inode->i_richacl != ACL_NOT_CACHED)
->> +			richacl_put(inode->i_richacl);
->> +	}
->>  #endif
->
-> 	if (inode->i_acl && inode->i_acl != ACL_NOT_CACHED)
-> 		acl_release(inode->i_acl);
->
-> And all the mess of working out what acl needs releasing get taken
-> out of of this code.
+>=20
+> Thanks,
+>=20
+> 	Ingo
 
-Understood. Will try to see how much I can simplify.
 
->
->> index 22d85798b520..95df64d21e55 100644
->> --- a/include/linux/fs.h
->> +++ b/include/linux/fs.h
->> @@ -492,6 +492,7 @@ static inline int mapping_writably_mapped(struct address_space *mapping)
->>  #endif
->>  
->>  struct posix_acl;
->> +struct richacl;
->>  #define ACL_NOT_CACHED ((void *)(-1))
->>  
->>  #define IOP_FASTPERM	0x0001
->> @@ -510,10 +511,17 @@ struct inode {
->>  	kgid_t			i_gid;
->>  	unsigned int		i_flags;
->>  
->> +	union {
->>  #ifdef CONFIG_FS_POSIX_ACL
->> -	struct posix_acl	*i_acl;
->> -	struct posix_acl	*i_default_acl;
->> +		struct {
->> +			struct posix_acl *i_acl;
->> +			struct posix_acl *i_default_acl;
->> +		};
->>  #endif
->> +#ifdef CONFIG_FS_RICHACL
->> +		struct richacl	*i_richacl;
->> +#endif
->> +	};
->
->>  
->>  	const struct inode_operations	*i_op;
->>  	struct super_block	*i_sb;
->> diff --git a/include/linux/richacl.h b/include/linux/richacl.h
->> index 88f95d78b897..a7db341e4ee9 100644
->> --- a/include/linux/richacl.h
->> +++ b/include/linux/richacl.h
->> @@ -191,6 +191,59 @@ richacl_put(struct richacl *acl)
->>  		kfree(acl);
->>  }
->>  
->> +#ifdef CONFIG_FS_RICHACL
->> +static inline struct richacl *get_cached_richacl(struct inode *inode)
->> +{
->> +	struct richacl **p, *acl;
->> +
->> +	p = &inode->i_richacl;
->> +	acl = ACCESS_ONCE(*p);
->> +	if (acl) {
->> +		spin_lock(&inode->i_lock);
->> +		acl = *p;
->> +		if (acl != ACL_NOT_CACHED)
->> +			acl = richacl_get(acl);
->> +		spin_unlock(&inode->i_lock);
->> +	}
->> +	return acl;
->> +}
->> +
->> +static inline void set_cached_richacl(struct inode *inode,
->> +				      struct richacl *acl)
->> +{
->> +	struct richacl *old = NULL;
->> +	spin_lock(&inode->i_lock);
->> +	old = inode->i_richacl;
->> +	inode->i_richacl = richacl_get(acl);
->> +	spin_unlock(&inode->i_lock);
->> +	if (old != ACL_NOT_CACHED)
->> +		richacl_put(old);
->> +}
->> +
->> +static inline void forget_cached_richacl(struct inode *inode)
->> +{
->> +	struct richacl *old = NULL;
->> +	spin_lock(&inode->i_lock);
->> +	old = inode->i_richacl;
->> +	inode->i_richacl = ACL_NOT_CACHED;
->> +	spin_unlock(&inode->i_lock);
->> +	if (old != ACL_NOT_CACHED)
->> +		richacl_put(old);
->> +}
->> +
->> +static inline int negative_cached_richacl(struct inode *inode)
->> +{
->> +	struct richacl **p, *acl;
->> +
->> +	p = &inode->i_richacl;
->> +	acl = ACCESS_ONCE(*p);
->> +	if (acl)
->> +		return 0;
->> +	return 1;
->> +}
->> +
->> +#endif
->
-> This is all just copy-and-paste from the posix_acl code with the RCU
-> path-walk awareness removed from it. There should only be a single
-> RCU aware version of these functions that does not care what type of
-> ACL is in use.
->
+--Sig_/SLj=Ra/Rg+8ROWmpsMdvvlW
+Content-Type: application/pgp-signature; name=signature.asc
+Content-Disposition: attachment; filename=signature.asc
 
-Ok.
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v2.0.22 (GNU/Linux)
 
--aneesh
+iQIVAwUBU33IgDnsnt1WYoG5AQL4zg/9EwXq3ga0dXQf8DsKuJ5gg0PFSywVLg53
+ov/ah4ODfC2IL9Cjq/vrfQ9hoV5XwIhpvr9Ooz1dvuHkJn2OKJU/C9+hD+vJmRlN
+0iJQBNkkdBj7XwEon+QXYgeeKIQNI6ErxHHIXN/FEtSZa4eWElBiUplTMcFY/TeJ
+erB7cJDQxk3jm7q3em4F1Scg1cc6q+rJb98WIXdSpfQCzZhC3xbke2dlAetjNgzY
+ea6yAhGIy0LcBevl8IGucX7FC9C6uOlxw4KhJ+i1LyaMMzwyZZ2zsipKEwSkdCug
+aN2b4MYE/6/1C0gME8FjpfxGFlw6/2a/KCmKQaxWowPtJa69xozl62ZVNZ1JrTV6
+0T8R+C4xsVzTn03KjgMdN5tUbQYT9RbF67ld0rGSfKowmtS+mP7SZnNRKib4PhAn
+0ZEayg4T4uq9z5SuJEhUKpyj7GEyeehW+luYJTVt8LTuH79qEi1GBTdCSZ2YkS/F
+zK5lRIUhzmlDd1RkvOrQaPzSjY6hxR2QEJZtY6r9i6W1QWYWJAMAxTTbYc8UYiGt
+qAmhwKe8neKmznogq85iNg5A+88v4JUiVwz1/jWP3PTwOGOo+F8d5Y+youB+TotD
+ZvZVSUwSfJfc8rn3cUCotypxfbkbsrP7fGIDkrD8/EfvY9YWtVdbGFWZzW8shFOA
+ief4BXTLFCg=
+=qy8/
+-----END PGP SIGNATURE-----
 
+--Sig_/SLj=Ra/Rg+8ROWmpsMdvvlW--
