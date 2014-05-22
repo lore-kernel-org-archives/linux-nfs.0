@@ -1,346 +1,225 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f44.google.com ([209.85.220.44]:64680 "EHLO
-	mail-pa0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751297AbaEGPBT (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 7 May 2014 11:01:19 -0400
-Received: by mail-pa0-f44.google.com with SMTP id ld10so1288098pab.17
-        for <linux-nfs@vger.kernel.org>; Wed, 07 May 2014 08:01:19 -0700 (PDT)
-Message-ID: <536A4AA2.5030906@gmail.com>
-Date: Wed, 07 May 2014 23:00:50 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
+Received: from mail-ie0-f182.google.com ([209.85.223.182]:35961 "EHLO
+	mail-ie0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753178AbaEVA5m (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 May 2014 20:57:42 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH v4 24/24] xprtrdma: Disconnect on registration failure
+To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Date: Wed, 21 May 2014 20:57:40 -0400
+Message-ID: <20140522005740.27190.63869.stgit@manet.1015granger.net>
+In-Reply-To: <20140522004505.27190.58897.stgit@manet.1015granger.net>
+References: <20140522004505.27190.58897.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 3/3] NFS4.0: Add some test cases for nfsv4 acl
-References: <5358EEAD.4090501@gmail.com> <20140506202400.GO18281@fieldses.org>
-In-Reply-To: <20140506202400.GO18281@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 5/7/2014 04:24, J. Bruce Fields wrote:
-> On Thu, Apr 24, 2014 at 06:59:57PM +0800, Kinglong Mee wrote:
->> +def doTestGetACL(t, env, path):
->> +    c = env.c1
->> +    ops = c.use_obj(path) + [c.getattr([FATTR4_ACL])]
->> +    res = c.compound(ops)
->> +    check(res)
->> +
->> +    attrs = res.resarray[-1].obj_attributes
->> +    if FATTR4_ACL not in attrs.keys():
->> +        t.fail("Attributes not contains FATTR4_ACL")
-> ...
->> +def testGetACLLink(t, env):
->> +    """ Get ACL of symlink file
->> +
->> +    FLAGS: acl getattr symlink all
->> +    DEPEND: ACLSUPP LOOKLINK
->> +    CODE: ACL1a
->> +    """
->> +    doTestGetACL(t, env, env.opts.uselink)
-> 
-> Dumb question: does that actually work?
+If rpcrdma_register_external() fails during request marshaling, the
+current RPC request is killed. Instead, this RPC should be retried
+after reconnecting the transport instance.
 
-Yes, it is.
+The most likely reason for registration failure with FRMR is a
+failed post_send, which would be due to a remote transport
+disconnect or memory exhaustion. These issues can be recovered
+by a retry.
 
-> 
-> Looks like a good set of tests to have, in any case.  What are the
-> results against a Linux server?
+Problems encountered in the marshaling logic itself will not be
+corrected by trying again, so these should still kill a request.
 
-With my last fix of BUG() for ACL, and exports as 
-#cat /etc/exports
-/nfstest        *(rw,no_root_squash,no_subtree_check,insecure,fsid=0)
-#./testserver.py 127.0.0.1:/ --maketree --rundeps acl
-**************************************************
-ACL1a    st_acl.testGetACLLink                                    : PASS
-ACL1b    st_acl.testGetACLBlock                                   : PASS
-ACL1c    st_acl.testGetACLChar                                    : PASS
-ACL1d    st_acl.testGetACLDir                                     : PASS
-ACL1f    st_acl.testGetACLFifo                                    : PASS
-ACL1r    st_acl.testGetACLFile                                    : PASS
-ACL1s    st_acl.testGetACLSocket                                  : PASS
-ACL2     st_acl.testWriteFileWithoutACL                           : PASS
-ACL3     st_acl.testReadFileWithoutACL                            : PASS
-ACL4     st_acl.testAppendFileWithoutACL                          : PASS
-ACL5     st_acl.testChownWithoutACL                               : PASS
-ACL6     st_acl.testSetACLWithoutACL                              : FAILURE
-           Trying to set acl without ACL should return
-           NFS4ERR_PERM, instead got NFS4_OK
-ACL7     st_acl.testCreateFileWithoutACL                          : PASS
-ACL8     st_acl.testListDirWithoutACL                             : PASS
-ACL9     st_acl.testMkdirWithoutACL                               : PASS
-ACL10    st_acl.testLookupFileWithoutACL                          : PASS
-ACL11    st_acl.testUnlinkFileWithoutACL                          : PASS
-ACLSUPP  st_acl.testCheckSupportedACL                             : PASS
-INIT     st_setclientid.testValid                                 : PASS
-LOOKBLK  st_lookup.testBlock                                      : PASS
-LOOKCHAR st_lookup.testChar                                       : PASS
-LOOKDIR  st_lookup.testDir                                        : PASS
-LOOKFIFO st_lookup.testFifo                                       : PASS
-LOOKFILE st_lookup.testFile                                       : PASS
-LOOKLINK st_lookup.testLink                                       : PASS
-LOOKSOCK st_lookup.testSocket                                     : PASS
-MKDIR    st_create.testDir                                        : PASS
-MKFILE   st_open.testOpen                                         : PASS
-**************************************************
+Now that we've added a clean exit for marshaling errors, take the
+opportunity to defang some BUG_ON's.
 
-thanks,
-Kinglong Mee
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-> 
-> --b.
-> 
->> +
->> +def testGetACLSocket(t, env):
->> +    """ Get ACL of socket file
->> +
->> +    FLAGS: acl getattr socket all
->> +    DEPEND: ACLSUPP LOOKSOCK
->> +    CODE: ACL1s
->> +    """
->> +    doTestGetACL(t, env, env.opts.usesocket)
->> +
->> +def testGetACLChar(t, env):
->> +    """ Get ACL of char file
->> +
->> +    FLAGS: acl getattr char all
->> +    DEPEND: ACLSUPP LOOKCHAR
->> +    CODE: ACL1c
->> +    """
->> +    doTestGetACL(t, env, env.opts.usechar)
->> +
->> +def testGetACLBlock(t, env):
->> +    """ Get ACL of block file
->> +
->> +    FLAGS: acl getattr block all
->> +    DEPEND: ACLSUPP LOOKBLK
->> +    CODE: ACL1b
->> +    """
->> +    doTestGetACL(t, env, env.opts.useblock)
->> +
->> +def doCheckACL(t, c, file, acl):
->> +    res = c.compound(c.use_obj(file) + [c.getattr([FATTR4_ACL])])
->> +    check(res)
->> +
->> +    attrs = res.resarray[-1].obj_attributes
->> +    if FATTR4_ACL not in attrs.keys():
->> +         t.fail("Attributes not contains FATTR4_ACL")
->> +
->> +#    print printableacl(acl)
->> +#    print printableacl(attrs[FATTR4_ACL])
->> +
->> +def doSetACLEnv(t, env, type = NF4REG):
->> +    c = env.c1
->> +    path = c.homedir + [t.code]
->> +    res = c.create_obj(path, attrs={FATTR4_MODE:0777})
->> +    check(res)
->> +
->> +    c1 = clientWithSys(env, 9999, 9999);
->> +    c1.init_connection()
->> +
->> +    path += [t.code]
->> +    attrs = {FATTR4_MODE: 0777}
->> +
->> +    if type == NF4REG:
->> +        fh, stateid = c1.create_confirm(t.code, path, attrs=attrs,
->> +                                        deny=OPEN4_SHARE_DENY_NONE)
->> +        return (c1, path, fh, stateid)
->> +    else:
->> +        res = c1.create_obj(path, attrs=attrs)
->> +        check(res)
->> +        return (c1, path)
->> +
->> +def testWriteFileWithoutACL(t, env):
->> +    """ Check write file without write ACL
->> +
->> +    FLAGS: acl file all
->> +    DEPEND: ACLSUPP MKFILE
->> +    CODE: ACL2
->> +    """
->> +    c1, path, fh, stateid = doSetACLEnv(t, env)
->> +
->> +    testacl = [nfsace4(ALLOWED, 0, MASK_ALL_FILE & ~ACE4_WRITE_DATA, "OWNER@")]
->> +    res = c1.compound(c1.use_obj(path) + [c1.setattr({FATTR4_ACL: testacl})])
->> +    check(res)
->> +
->> +    doCheckACL(t, c1, fh, testacl)
->> +
->> +    res = c1.open_file(t.code, path, access=OPEN4_SHARE_ACCESS_WRITE)
->> +    check(res, NFS4ERR_ACCESS, "Trying to OPEN file without write ACL")
->> +
->> +def testReadFileWithoutACL(t, env):
->> +    """ Check read file without read ACL
->> +
->> +    FLAGS: acl file all
->> +    DEPEND: ACLSUPP MKFILE
->> +    CODE: ACL3
->> +    """
->> +    c1, path, fh, stateid = doSetACLEnv(t, env)
->> +
->> +    testacl = [nfsace4(ALLOWED, 0, MASK_ALL_FILE & ~ACE4_READ_DATA, "OWNER@")]
->> +    res = c1.compound(c1.use_obj(path) + [c1.setattr({FATTR4_ACL: testacl})])
->> +    check(res)
->> +
->> +    doCheckACL(t, c1, fh, testacl)
->> +
->> +    res = c1.open_file(t.code, path, deny = OPEN4_SHARE_DENY_READ)
->> +    check(res, NFS4ERR_ACCESS, "Trying to OPEN file without read ACL")
->> +
->> +def testAppendFileWithoutACL(t, env):
->> +    """ Check write file without append ACL
->> +
->> +    FLAGS: acl file all
->> +    DEPEND: ACLSUPP MKFILE
->> +    CODE: ACL4
->> +    """
->> +    c1, path, fh, stateid = doSetACLEnv(t, env)
->> +
->> +    testacl = [nfsace4(ALLOWED, 0, MASK_ALL_FILE & ~ACE4_APPEND_DATA, "OWNER@")]
->> +    res = c1.compound(c1.use_obj(path) + [c1.setattr({FATTR4_ACL: testacl})])
->> +    check(res)
->> +
->> +    doCheckACL(t, c1, fh, testacl)
->> +
->> +    res = c1.open_file(t.code, path, access=OPEN4_SHARE_ACCESS_WRITE)
->> +    check(res, NFS4ERR_ACCESS, "Trying to OPEN file without append ACL")
->> +
->> +def testChownWithoutACL(t, env):
->> +    """ Check change file's owner without WRITE OWNER ACL
->> +
->> +    FLAGS: acl file all
->> +    DEPEND: ACLSUPP MKFILE
->> +    CODE: ACL5
->> +    """
->> +    c1, path, fh, stateid = doSetACLEnv(t, env)
->> +
->> +    testacl = [nfsace4(ALLOWED, 0, MASK_ALL_FILE & ~ACE4_WRITE_OWNER, "OWNER@")]
->> +    res = c1.compound(c1.use_obj(path) + [c1.setattr({FATTR4_ACL: testacl})])
->> +    check(res)
->> +
->> +    doCheckACL(t, c1, fh, testacl)
->> +
->> +    res = c1.compound(c1.use_obj(path) + [c1.setattr({FATTR4_OWNER: "6666"})])
->> +    check(res, NFS4ERR_PERM, "Trying to change file's owner without ACL")
->> +
->> +def testSetACLWithoutACL(t, env):
->> +    """ Check set ACL without SETACL ACL
->> +
->> +    FLAGS: acl file all
->> +    DEPEND: ACLSUPP MKFILE
->> +    CODE: ACL6
->> +    """
->> +    c1, path, fh, stateid = doSetACLEnv(t, env)
->> +
->> +    testacl = [nfsace4(ALLOWED, 0, MASK_ALL_FILE & ~ACE4_WRITE_ACL, "OWNER@")]
->> +    ops = c1.use_obj(path) + [c1.setattr({FATTR4_ACL: testacl})]
->> +    res = c1.compound(ops)
->> +    check(res)
->> +
->> +    doCheckACL(t, c1, fh, testacl)
->> +
->> +    res = c1.compound(ops)
->> +    check(res, NFS4ERR_PERM, "Trying to set acl without ACL")
->> +
->> +def testCreateFileWithoutACL(t, env):
->> +    """ Check create file in directory without ACL
->> +
->> +    FLAGS: acl dir all
->> +    DEPEND: ACLSUPP MKDIR
->> +    CODE: ACL7
->> +    """
->> +    c1, path = doSetACLEnv(t, env, type = NF4DIR)
->> +
->> +    testacl = [nfsace4(ALLOWED, 0, MASK_ALL_DIR & ~ACE4_ADD_FILE, "OWNER@")]
->> +    res = c1.compound(c1.use_obj(path) + [c1.setattr({FATTR4_ACL: testacl})])
->> +    check(res)
->> +
->> +    doCheckACL(t, c1, path, testacl)
->> +
->> +    path += [t.code]
->> +    res = c1.create_obj(path)
->> +    # NFSD's shortage, can not create sub-directory
->> +    check(res, NFS4ERR_ACCESS)
->> +
->> +    res = c1.create_file(t.code, path)
->> +    check(res, NFS4ERR_ACCESS, "Trying to create file without ACL")
->> +
->> +def testListDirWithoutACL(t, env):
->> +    """ Check list directory without ACL
->> +
->> +    FLAGS: acl dir all
->> +    DEPEND: ACLSUPP MKDIR
->> +    CODE: ACL8
->> +    """
->> +    c1, path = doSetACLEnv(t, env, type = NF4DIR)
->> +
->> +    testacl = [nfsace4(ALLOWED, 0, MASK_ALL_DIR & ~ACE4_LIST_DIRECTORY, "OWNER@")]
->> +    res = c1.compound(c1.use_obj(path) + [c1.setattr({FATTR4_ACL: testacl})])
->> +    check(res)
->> +
->> +    doCheckACL(t, c1, path, testacl)
->> +
->> +    res = c1.compound(c1.use_obj(path) + [c1.readdir()])
->> +    check(res, NFS4ERR_ACCESS, "Trying to list directory without ACL")
->> +
->> +def testMkdirWithoutACL(t, env):
->> +    """ Check creat sub-directory without ACL
->> +
->> +    FLAGS: acl dir all
->> +    DEPEND: ACLSUPP MKDIR
->> +    CODE: ACL9
->> +    """
->> +    c1, path = doSetACLEnv(t, env, type = NF4DIR)
->> +
->> +    testacl = [nfsace4(ALLOWED, 0, MASK_ALL_DIR & ~ACE4_ADD_SUBDIRECTORY, "OWNER@")]
->> +    res = c1.compound(c1.use_obj(path) + [c1.setattr({FATTR4_ACL: testacl})])
->> +    check(res)
->> +
->> +    doCheckACL(t, c1, path, testacl)
->> +
->> +    path += [t.code]
->> +    res = c1.create_file(t.code, path)
->> +    # NFSD's shortage, can not create file
->> +    check(res, NFS4ERR_ACCESS)
->> +
->> +    res = c1.create_obj(path)
->> +    check(res, NFS4ERR_ACCESS, "Trying to create sub-directory without ACL")
->> +
->> +def testLookupFileWithoutACL(t, env):
->> +    """ Check lookup file without ACL
->> +
->> +    FLAGS: acl dir all
->> +    DEPEND: ACLSUPP MKDIR
->> +    CODE: ACL10
->> +    """
->> +    c1, path = doSetACLEnv(t, env, type = NF4DIR)
->> +
->> +    testacl = [nfsace4(ALLOWED, 0, MASK_ALL_DIR & ~ACE4_EXECUTE, "OWNER@")]
->> +    res = c1.compound(c1.use_obj(path) + [c1.setattr({FATTR4_ACL: testacl})])
->> +    check(res)
->> +
->> +    doCheckACL(t, c1, path, testacl)
->> +
->> +    res = c1.compound(c1.use_obj(path) + c1.lookup_path([t.code]))
->> +    check(res, NFS4ERR_ACCESS, "Trying to lookup sub-file without ACL")
->> +
->> +def testUnlinkFileWithoutACL(t, env):
->> +    """ Check unlink sub-file without ACL
->> +
->> +    FLAGS: acl dir all
->> +    DEPEND: ACLSUPP MKDIR
->> +    CODE: ACL11
->> +    """
->> +    c1, path = doSetACLEnv(t, env, type = NF4DIR)
->> +
->> +    testacl = [nfsace4(ALLOWED, 0, MASK_ALL_DIR & ~ACE4_DELETE_CHILD, "OWNER@")]
->> +    res = c1.compound(c1.use_obj(path) + [c1.setattr({FATTR4_ACL: testacl})])
->> +    check(res)
->> +
->> +    doCheckACL(t, c1, path, testacl)
->> +
->> +    res = c1.compound(c1.use_obj(path) + [c1.remove_op(t.code)])
->> +    check(res, NFS4ERR_ACCESS, "Trying to lookup sub-file without ACL")
->> -- 
->> 1.9.0
->>
-> 
+ net/sunrpc/xprtrdma/rpc_rdma.c  |   48 +++++++++++++++++++++++++--------------
+ net/sunrpc/xprtrdma/transport.c |   17 +++++++++-----
+ 2 files changed, 42 insertions(+), 23 deletions(-)
+
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index 82173c7..e6a01e1 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -77,6 +77,8 @@ static const char transfertypes[][12] = {
+  * Prepare the passed-in xdr_buf into representation as RPC/RDMA chunk
+  * elements. Segments are then coalesced when registered, if possible
+  * within the selected memreg mode.
++ *
++ * Returns positive number of segments converted, or a negative errno.
+  */
+ 
+ static int
+@@ -103,12 +105,13 @@ rpcrdma_convert_iovs(struct xdr_buf *xdrbuf, unsigned int pos,
+ 			/* alloc the pagelist for receiving buffer */
+ 			ppages[p] = alloc_page(GFP_ATOMIC);
+ 			if (!ppages[p])
+-				return 0;
++				return -ENOMEM;
+ 		}
+ 		seg[n].mr_page = ppages[p];
+ 		seg[n].mr_offset = (void *)(unsigned long) page_base;
+ 		seg[n].mr_len = min_t(u32, PAGE_SIZE - page_base, len);
+-		BUG_ON(seg[n].mr_len > PAGE_SIZE);
++		if (seg[n].mr_len > PAGE_SIZE)
++			return -EIO;
+ 		len -= seg[n].mr_len;
+ 		++n;
+ 		++p;
+@@ -117,7 +120,7 @@ rpcrdma_convert_iovs(struct xdr_buf *xdrbuf, unsigned int pos,
+ 
+ 	/* Message overflows the seg array */
+ 	if (len && n == nsegs)
+-		return 0;
++		return -EIO;
+ 
+ 	if (xdrbuf->tail[0].iov_len) {
+ 		/* the rpcrdma protocol allows us to omit any trailing
+@@ -126,7 +129,7 @@ rpcrdma_convert_iovs(struct xdr_buf *xdrbuf, unsigned int pos,
+ 			return n;
+ 		if (n == nsegs)
+ 			/* Tail remains, but we're out of segments */
+-			return 0;
++			return -EIO;
+ 		seg[n].mr_page = NULL;
+ 		seg[n].mr_offset = xdrbuf->tail[0].iov_base;
+ 		seg[n].mr_len = xdrbuf->tail[0].iov_len;
+@@ -167,15 +170,17 @@ rpcrdma_convert_iovs(struct xdr_buf *xdrbuf, unsigned int pos,
+  *  Reply chunk (a counted array):
+  *   N elements:
+  *    1 - N - HLOO - HLOO - ... - HLOO
++ *
++ * Returns positive RPC/RDMA header size, or negative errno.
+  */
+ 
+-static unsigned int
++static ssize_t
+ rpcrdma_create_chunks(struct rpc_rqst *rqst, struct xdr_buf *target,
+ 		struct rpcrdma_msg *headerp, enum rpcrdma_chunktype type)
+ {
+ 	struct rpcrdma_req *req = rpcr_to_rdmar(rqst);
+ 	struct rpcrdma_xprt *r_xprt = rpcx_to_rdmax(rqst->rq_xprt);
+-	int nsegs, nchunks = 0;
++	int n, nsegs, nchunks = 0;
+ 	unsigned int pos;
+ 	struct rpcrdma_mr_seg *seg = req->rl_segments;
+ 	struct rpcrdma_read_chunk *cur_rchunk = NULL;
+@@ -201,11 +206,11 @@ rpcrdma_create_chunks(struct rpc_rqst *rqst, struct xdr_buf *target,
+ 		pos = target->head[0].iov_len;
+ 
+ 	nsegs = rpcrdma_convert_iovs(target, pos, type, seg, RPCRDMA_MAX_SEGS);
+-	if (nsegs == 0)
+-		return 0;
++	if (nsegs < 0)
++		return nsegs;
+ 
+ 	do {
+-		int n = rpcrdma_register_external(seg, nsegs,
++		n = rpcrdma_register_external(seg, nsegs,
+ 						cur_wchunk != NULL, r_xprt);
+ 		if (n <= 0)
+ 			goto out;
+@@ -277,7 +282,7 @@ out:
+ 	for (pos = 0; nchunks--;)
+ 		pos += rpcrdma_deregister_external(
+ 				&req->rl_segments[pos], r_xprt);
+-	return 0;
++	return n;
+ }
+ 
+ /*
+@@ -359,6 +364,8 @@ rpcrdma_inline_pullup(struct rpc_rqst *rqst, int pad)
+  *  [1] -- the RPC header/data, marshaled by RPC and the NFS protocol.
+  *  [2] -- optional padding.
+  *  [3] -- if padded, header only in [1] and data here.
++ *
++ * Returns zero on success, otherwise a negative errno.
+  */
+ 
+ int
+@@ -368,7 +375,8 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
+ 	struct rpcrdma_xprt *r_xprt = rpcx_to_rdmax(xprt);
+ 	struct rpcrdma_req *req = rpcr_to_rdmar(rqst);
+ 	char *base;
+-	size_t hdrlen, rpclen, padlen;
++	size_t rpclen, padlen;
++	ssize_t hdrlen;
+ 	enum rpcrdma_chunktype rtype, wtype;
+ 	struct rpcrdma_msg *headerp;
+ 
+@@ -439,7 +447,11 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
+ 	/* The following simplification is not true forever */
+ 	if (rtype != rpcrdma_noch && wtype == rpcrdma_replych)
+ 		wtype = rpcrdma_noch;
+-	BUG_ON(rtype != rpcrdma_noch && wtype != rpcrdma_noch);
++	if (rtype != rpcrdma_noch && wtype != rpcrdma_noch) {
++		dprintk("RPC:       %s: cannot marshal multiple "
++			"chunk lists\n", __func__);
++		return -EIO;
++	}
+ 
+ 	hdrlen = 28; /*sizeof *headerp;*/
+ 	padlen = 0;
+@@ -464,8 +476,11 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
+ 			headerp->rm_body.rm_padded.rm_pempty[1] = xdr_zero;
+ 			headerp->rm_body.rm_padded.rm_pempty[2] = xdr_zero;
+ 			hdrlen += 2 * sizeof(u32); /* extra words in padhdr */
+-			BUG_ON(wtype != rpcrdma_noch);
+-
++			if (wtype != rpcrdma_noch) {
++				dprintk("RPC:       %s: invalid chunk list\n",
++					__func__);
++				return -EIO;
++			}
+ 		} else {
+ 			headerp->rm_body.rm_nochunks.rm_empty[0] = xdr_zero;
+ 			headerp->rm_body.rm_nochunks.rm_empty[1] = xdr_zero;
+@@ -500,9 +515,8 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
+ 		hdrlen = rpcrdma_create_chunks(rqst,
+ 					&rqst->rq_rcv_buf, headerp, wtype);
+ 	}
+-
+-	if (hdrlen == 0)
+-		return -1;
++	if (hdrlen < 0)
++		return hdrlen;
+ 
+ 	dprintk("RPC:       %s: %s: hdrlen %zd rpclen %zd padlen %zd"
+ 		" headerp 0x%p base 0x%p lkey 0x%x\n",
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index ad22fdc..1ba05bc 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -595,13 +595,12 @@ xprt_rdma_send_request(struct rpc_task *task)
+ 	struct rpc_xprt *xprt = rqst->rq_xprt;
+ 	struct rpcrdma_req *req = rpcr_to_rdmar(rqst);
+ 	struct rpcrdma_xprt *r_xprt = rpcx_to_rdmax(xprt);
++	int rc;
+ 
+-	/* marshal the send itself */
+-	if (req->rl_niovs == 0 && rpcrdma_marshal_req(rqst) != 0) {
+-		r_xprt->rx_stats.failed_marshal_count++;
+-		dprintk("RPC:       %s: rpcrdma_marshal_req failed\n",
+-			__func__);
+-		return -EIO;
++	if (req->rl_niovs == 0) {
++		rc = rpcrdma_marshal_req(rqst);
++		if (rc < 0)
++			goto failed_marshal;
+ 	}
+ 
+ 	if (req->rl_reply == NULL) 		/* e.g. reconnection */
+@@ -625,6 +624,12 @@ xprt_rdma_send_request(struct rpc_task *task)
+ 	rqst->rq_bytes_sent = 0;
+ 	return 0;
+ 
++failed_marshal:
++	r_xprt->rx_stats.failed_marshal_count++;
++	dprintk("RPC:       %s: rpcrdma_marshal_req failed, status %i\n",
++		__func__, rc);
++	if (rc == -EIO)
++		return -EIO;
+ drop_connection:
+ 	xprt_disconnect_done(xprt);
+ 	return -ENOTCONN;	/* implies disconnect */
+
