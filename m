@@ -1,56 +1,78 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:38632 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:43397 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757791AbaEKUxF (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 11 May 2014 16:53:05 -0400
+	id S1752382AbaEVTch (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 May 2014 15:32:37 -0400
 From: "J. Bruce Fields" <bfields@redhat.com>
 To: linux-nfs@vger.kernel.org
 Cc: Christoph Hellwig <hch@infradead.org>,
         "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 31/43] nfsd4: enforce rd_dircount
-Date: Sun, 11 May 2014 16:52:36 -0400
-Message-Id: <1399841568-19716-32-git-send-email-bfields@redhat.com>
-In-Reply-To: <1399841568-19716-1-git-send-email-bfields@redhat.com>
-References: <1399841568-19716-1-git-send-email-bfields@redhat.com>
+Subject: [PATCH 22/52] nfsd4: reserve space before inlining 0-copy pages
+Date: Thu, 22 May 2014 15:31:57 -0400
+Message-Id: <1400787148-25941-23-git-send-email-bfields@redhat.com>
+In-Reply-To: <1400787148-25941-1-git-send-email-bfields@redhat.com>
+References: <1400787148-25941-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: "J. Bruce Fields" <bfields@redhat.com>
 
-As long as we're here, let's enforce the protocol's limit on the number
-of directory entries to return in a readdir.
+Once we've included page-cache pages in the encoding it's difficult to
+remove them and restart encoding.  (xdr_truncate_encode doesn't handle
+that case.)  So, make sure we'll have adequate space to finish the
+operation first.
 
-I don't think anyone's ever noticed our lack of enforcement, but maybe
-there's more of a chance they will now that we allow larger readdirs.
+For now COMPOUND_SLACK_SPACE checks should prevent this case happening,
+but we want to remove those checks.
 
 Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfsd/nfs4xdr.c |    5 ++++-
- 1 file changed, 4 insertions(+), 1 deletion(-)
+ fs/nfsd/nfs4xdr.c | 11 +++++++----
+ 1 file changed, 7 insertions(+), 4 deletions(-)
 
 diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 731587c..58717de 100644
+index 9c532eb..9fb1b1a 100644
 --- a/fs/nfsd/nfs4xdr.c
 +++ b/fs/nfsd/nfs4xdr.c
-@@ -1033,7 +1033,7 @@ nfsd4_decode_readdir(struct nfsd4_compoundargs *argp, struct nfsd4_readdir *read
- 	READ_BUF(24);
- 	READ64(readdir->rd_cookie);
- 	COPYMEM(readdir->rd_verf.data, sizeof(readdir->rd_verf.data));
--	READ32(readdir->rd_dircount);    /* just in case you needed a useless field... */
-+	READ32(readdir->rd_dircount);
- 	READ32(readdir->rd_maxcount);
- 	if ((status = nfsd4_decode_bitmap(argp, readdir->rd_bmval)))
- 		goto out;
-@@ -2720,6 +2720,9 @@ nfsd4_encode_dirent(void *ccdv, const char *name, int namlen,
- 	if (entry_bytes > cd->rd_maxcount)
- 		goto fail;
- 	cd->rd_maxcount -= entry_bytes;
-+	if (!cd->rd_dircount)
-+		goto fail;
-+	cd->rd_dircount--;
- 	cd->cookie_offset = cookie_offset;
- skip_entry:
- 	cd->common.err = nfs_ok;
+@@ -3071,6 +3071,10 @@ nfsd4_encode_read(struct nfsd4_compoundres *resp, __be32 nfserr,
+ 	if (!p)
+ 		return nfserr_resource;
+ 
++	/* Make sure there will be room for padding if needed: */
++	if (xdr->end - xdr->p < 1)
++		return nfserr_resource;
++
+ 	maxcount = svc_max_payload(resp->rqstp);
+ 	if (maxcount > read->rd_length)
+ 		maxcount = read->rd_length;
+@@ -3122,8 +3126,6 @@ nfsd4_encode_read(struct nfsd4_compoundres *resp, __be32 nfserr,
+ 	resp->xdr.buf->tail[0].iov_len = 0;
+ 	if (maxcount&3) {
+ 		p = xdr_reserve_space(xdr, 4);
+-		if (!p)
+-			return nfserr_resource;
+ 		WRITE32(0);
+ 		resp->xdr.buf->tail[0].iov_base += maxcount&3;
+ 		resp->xdr.buf->tail[0].iov_len = 4 - (maxcount&3);
+@@ -3156,6 +3158,9 @@ nfsd4_encode_readlink(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd
+ 	if (!p)
+ 		return nfserr_resource;
+ 
++	if (xdr->end - xdr->p < 1)
++		return nfserr_resource;
++
+ 	/*
+ 	 * XXX: By default, the ->readlink() VFS op will truncate symlinks
+ 	 * if they would overflow the buffer.  Is this kosher in NFSv4?  If
+@@ -3182,8 +3187,6 @@ nfsd4_encode_readlink(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd
+ 	resp->xdr.buf->tail[0].iov_len = 0;
+ 	if (maxcount&3) {
+ 		p = xdr_reserve_space(xdr, 4);
+-		if  (!p)
+-			return nfserr_resource;
+ 		WRITE32(0);
+ 		resp->xdr.buf->tail[0].iov_base += maxcount&3;
+ 		resp->xdr.buf->tail[0].iov_len = 4 - (maxcount&3);
 -- 
-1.7.9.5
+1.9.0
 
