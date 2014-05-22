@@ -1,118 +1,367 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from plane.gmane.org ([80.91.229.3]:58155 "EHLO plane.gmane.org"
+Received: from fieldses.org ([174.143.236.118]:43409 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752606AbaEHO2q (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 8 May 2014 10:28:46 -0400
-Received: from list by plane.gmane.org with local (Exim 4.69)
-	(envelope-from <glN-linux-nfs@m.gmane.org>)
-	id 1WiPJS-0006SK-U8
-	for linux-nfs@vger.kernel.org; Thu, 08 May 2014 16:28:42 +0200
-Received: from vpn.ims.co.at ([81.223.138.18])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Thu, 08 May 2014 16:28:42 +0200
-Received: from klemens.senn by vpn.ims.co.at with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Thu, 08 May 2014 16:28:42 +0200
+	id S1752415AbaEVTck (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 May 2014 15:32:40 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
 To: linux-nfs@vger.kernel.org
-From: Senn Klemens <klemens.senn@ims.co.at>
-Subject: Soft lockup in unloading kernel modules
-Date: Thu, 08 May 2014 16:28:30 +0200
-Message-ID: <lkg4ae$hj7$1@ger.gmane.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=ISO-8859-1
-Cc: linux-rdma@vger.kernel.org
+Cc: Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 26/52] nfsd4: allow encoding across page boundaries
+Date: Thu, 22 May 2014 15:32:01 -0400
+Message-Id: <1400787148-25941-27-git-send-email-bfields@redhat.com>
+In-Reply-To: <1400787148-25941-1-git-send-email-bfields@redhat.com>
+References: <1400787148-25941-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi,
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-I am getting a soft lockup on the NFS server on its reboot if at least
-one client mount is established. I am using OpenSUSE 12.3 with the
-nfs-rdma kernel from Anna Schumaker
-(git://git.linux-nfs.org/projects/anna/nfs-rdma.git).
+After this we can handle for example getattr of very large ACLs.
 
-The export on the server side is done with
-/data	*(fsid=0,crossmnt,rw,mp,no_root_squash,sync,no_subtree_check,insecure)
+Read, readdir, readlink are still special cases with their own limits.
 
-Following command is used for mounting the NFSv4 share:
-mount -t nfs -o port=20049,rdma,vers=4.0,timeo=900 172.16.100.19:/ /mnt
+Also we can't handle a new operation starting close to the end of a
+page.
 
-The HCA is a Mellanox MT4099 on the server and the client.
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4proc.c         |  4 +++
+ fs/nfsd/nfs4xdr.c          | 60 +++++++++++++++++++++++++----------
+ include/linux/sunrpc/svc.h |  1 +
+ include/linux/sunrpc/xdr.h |  1 +
+ net/sunrpc/svc_xprt.c      |  1 +
+ net/sunrpc/xdr.c           | 78 ++++++++++++++++++++++++++++++++++++++++++++--
+ 6 files changed, 126 insertions(+), 19 deletions(-)
 
-The soft lockup can be reproduced by following steps:
-  o server: Start the nfs server
-  o client: Mount the share
-  o client: Do a "ls" in the mounted directory
-  o server: Stop the nfs server
-  o server: Unload the nfs and mlx4 modules or reboot the server (I used
-the openibd init script from the Mellanox driver without having the
-Mellanox stack installed)
-
-The server reports a soft lockup
-  BUG: soft lockup - CPU#0 stuck for 22s! [modprobe:6146]
-most times.
-
-Sometimes I get following kernel panic
-BUG: unable to handle kernel NULL pointer dereference at 0000000000000003
-IP: [<ffffffff815a5c35>] _raw_spin_lock_bh+0x15/0x40
-PGD 82a820067 PUD 857832067 PMD 0
-Oops: 0002 [#1] SMP
-Modules linked in: nfsd nfs_acl auth_rpcgss oid_registry nfnetlink_log
-nfnetlink bluetooth rfkill nfsv4 svcrdma dm_mod cpuid nfs fscache lockd
-sunrpc af_packet 8021q garp stp llc rdma_ucm ib_ucm rdma_cm iw_cm
-ib_ipoib ib_cm ib_uverbs ib_umad mlx4_en mlx4_ib(-) ib_sa ib_mad ib_core
-ib_addr sr_mod cdrom usb_storage joydev mlx4_core usbhid
-x86_pkg_temp_thermal coretemp kvm_intel kvm ghash_clmulni_intel
-aesni_intel ablk_helper cryptd iTCO_wdt lrw igb gf128mul
-iTCO_vendor_support ehci_pci glue_helper pcspkr i2c_algo_bit isci
-ehci_hcd aes_x86_64 ptp libsas ioatdma lpc_ich microcode sb_edac sg
-pps_core usbcore ipmi_si tpm_tis edac_core scsi_transport_sas i2c_i801
-mfd_core dca usb_common tpm ipmi_msghandler wmi acpi_cpufreq button edd
-autofs4 xfs libcrc32c crc32c_intel processor thermal_sys scsi_dh_rdac
-scsi_dh_hp_sw scsi_dh_emc scsi_dh_alua scsi_dh [last unloaded: oid_registry]
-CPU: 0 PID: 6603 Comm: modprobe Not tainted 3.15.0-rc2-anna-nfs-rdma+ #3
-Hardware name: Supermicro B9DRG-E/B9DRG-E, BIOS 3.0 09/04/2013
-task: ffff88105b8c6050 ti: ffff88105d814000 task.ti: ffff88105d814000
-RIP: 0010:[<ffffffff815a5c35>]  [<ffffffff815a5c35>]
-_raw_spin_lock_bh+0x15/0x40
-RSP: 0018:ffff88105d815d18  EFLAGS: 00010286
-RAX: 0000000000010000 RBX: ffffffffffffffff RCX: 0000000000000000
-RDX: 000000000000000b RSI: 0000000000000000 RDI: 0000000000000003
-RBP: ffff88105d815d18 R08: ffff88087c611f38 R09: 0000000000000001
-R10: 0000000000000000 R11: 0000000000000000 R12: ffff88087c3c9800
-R13: ffff88107b82ab00 R14: 0000000000000003 R15: 0000000000000007
-FS:  00007fef64612700(0000) GS:ffff88087fc00000(0000) knlGS:0000000000000000
-CS:  0010 DS: 0000 ES: 0000 CR0: 0000000080050033
-CR2: 0000000000000003 CR3: 000000087c2c7000 CR4: 00000000000407f0
-Stack:
- ffff88105d815d58 ffffffffa05199f0 ffff88105d815d88 ffff88087c3c9800
- ffff88087c3c9400 ffff88107b82ab00 ffff88087c3c9660 ffff88087c3c95c8
- ffff88105d815d78 ffffffffa0421ce9 ffff88087c3c9400 ffff88107b82aac0
-Call Trace:
- [<ffffffffa05199f0>] svc_xprt_enqueue+0x50/0x220 [sunrpc]
- [<ffffffffa0421ce9>] rdma_cma_handler+0x69/0x180 [svcrdma]
- [<ffffffffa039d086>] cma_remove_one+0x1f6/0x220 [rdma_cm]
- [<ffffffffa01dca86>] ib_unregister_device+0x46/0x120 [ib_core]
- [<ffffffffa032ddc9>] mlx4_ib_remove+0x29/0x260 [mlx4_ib]
- [<ffffffffa02fb9d0>] mlx4_remove_device+0xa0/0xc0 [mlx4_core]
- [<ffffffffa02fba2b>] mlx4_unregister_interface+0x3b/0xa0 [mlx4_core]
- [<ffffffffa033f4cc>] mlx4_ib_cleanup+0x10/0x23 [mlx4_ib]
- [<ffffffff810bd6b2>] SyS_delete_module+0x152/0x220
- [<ffffffff811496e4>] ? vm_munmap+0x54/0x70
- [<ffffffff815adca6>] system_call_fastpath+0x1a/0x1f
-Code: 5d c3 0f b7 17 66 39 ca 74 f6 f3 90 0f b7 17 66 39 d1 75 f6 5d c3
-55 65 81 04 25 20 b9 00 00 00 02 00 00 48 89 e5 b8 00 00 01 00 <f0> 0f
-c1 07 89 c2 c1 ea 10 66 39 c2 75 04 5d c3 f3 90 0f b7 07
-RIP  [<ffffffff815a5c35>] _raw_spin_lock_bh+0x15/0x40
- RSP <ffff88105d815d18>
-CR2: 0000000000000003
----[ end trace 18e02ff413ac4b9b ]---
-Kernel panic - not syncing: Fatal exception in interrupt
-Kernel Offset: 0x0 from 0xffffffff81000000 (relocation range:
-0xffffffff80000000-0xffffffff9fffffff)
----[ end Kernel panic - not syncing: Fatal exception in interrupt
-
-Kind regards,
-Klemens
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index f8e7472..2517e0b 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1266,6 +1266,10 @@ static void svcxdr_init_encode(struct svc_rqst *rqstp,
+ 	xdr->end = head->iov_base + PAGE_SIZE - 2 * RPC_MAX_AUTH_SIZE;
+ 	/* Tail and page_len should be zero at this point: */
+ 	buf->len = buf->head[0].iov_len;
++	xdr->scratch.iov_len = 0;
++	xdr->page_ptr = buf->pages;
++	buf->buflen = PAGE_SIZE * (1 + rqstp->rq_page_end - buf->pages)
++		- 2 * RPC_MAX_AUTH_SIZE;
+ }
+ 
+ /*
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index f1a9716..1bac000 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -1624,6 +1624,7 @@ static int nfsd4_max_reply(u32 opnum)
+ 		 * the head and tail in another page:
+ 		 */
+ 		return 2 * PAGE_SIZE;
++	case OP_GETATTR:
+ 	case OP_READ:
+ 		return INT_MAX;
+ 	default:
+@@ -2560,21 +2561,31 @@ out_resource:
+ 	goto out;
+ }
+ 
++static void svcxdr_init_encode_from_buffer(struct xdr_stream *xdr,
++				struct xdr_buf *buf, __be32 *p, int bytes)
++{
++	xdr->scratch.iov_len = 0;
++	memset(buf, 0, sizeof(struct xdr_buf));
++	buf->head[0].iov_base = p;
++	buf->head[0].iov_len = 0;
++	buf->len = 0;
++	xdr->buf = buf;
++	xdr->iov = buf->head;
++	xdr->p = p;
++	xdr->end = (void *)p + bytes;
++	buf->buflen = bytes;
++}
++
+ __be32 nfsd4_encode_fattr_to_buf(__be32 **p, int words,
+ 			struct svc_fh *fhp, struct svc_export *exp,
+ 			struct dentry *dentry, u32 *bmval,
+ 			struct svc_rqst *rqstp, int ignore_crossmnt)
+ {
+-	struct xdr_buf dummy = {
+-			.head[0] = {
+-				.iov_base = *p,
+-			},
+-			.buflen = words << 2,
+-		};
++	struct xdr_buf dummy;
+ 	struct xdr_stream xdr;
+ 	__be32 ret;
+ 
+-	xdr_init_encode(&xdr, &dummy, NULL);
++	svcxdr_init_encode_from_buffer(&xdr, &dummy, *p, words << 2);
+ 	ret = nfsd4_encode_fattr(&xdr, fhp, exp, dentry, bmval, rqstp,
+ 							ignore_crossmnt);
+ 	*p = xdr.p;
+@@ -3064,8 +3075,6 @@ nfsd4_encode_read(struct nfsd4_compoundres *resp, __be32 nfserr,
+ 
+ 	if (nfserr)
+ 		return nfserr;
+-	if (resp->xdr.buf->page_len)
+-		return nfserr_resource;
+ 
+ 	p = xdr_reserve_space(xdr, 8); /* eof flag and byte count */
+ 	if (!p)
+@@ -3075,6 +3084,9 @@ nfsd4_encode_read(struct nfsd4_compoundres *resp, __be32 nfserr,
+ 	if (xdr->end - xdr->p < 1)
+ 		return nfserr_resource;
+ 
++	if (resp->xdr.buf->page_len)
++		return nfserr_resource;
++
+ 	maxcount = svc_max_payload(resp->rqstp);
+ 	if (maxcount > read->rd_length)
+ 		maxcount = read->rd_length;
+@@ -3119,6 +3131,8 @@ nfsd4_encode_read(struct nfsd4_compoundres *resp, __be32 nfserr,
+ 				- (char *)resp->xdr.buf->head[0].iov_base);
+ 	resp->xdr.buf->page_len = maxcount;
+ 	xdr->buf->len += maxcount;
++	xdr->page_ptr += v;
++	xdr->buf->buflen = maxcount + PAGE_SIZE - 2 * RPC_MAX_AUTH_SIZE;
+ 	xdr->iov = xdr->buf->tail;
+ 
+ 	/* Use rest of head for padding and remaining ops: */
+@@ -3145,6 +3159,11 @@ nfsd4_encode_readlink(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd
+ 
+ 	if (nfserr)
+ 		return nfserr;
++
++	p = xdr_reserve_space(xdr, 4);
++	if (!p)
++		return nfserr_resource;
++
+ 	if (resp->xdr.buf->page_len)
+ 		return nfserr_resource;
+ 	if (!*resp->rqstp->rq_next_page)
+@@ -3154,10 +3173,6 @@ nfsd4_encode_readlink(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd
+ 
+ 	maxcount = PAGE_SIZE;
+ 
+-	p = xdr_reserve_space(xdr, 4);
+-	if (!p)
+-		return nfserr_resource;
+-
+ 	if (xdr->end - xdr->p < 1)
+ 		return nfserr_resource;
+ 
+@@ -3180,6 +3195,8 @@ nfsd4_encode_readlink(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd
+ 				- (char *)resp->xdr.buf->head[0].iov_base;
+ 	resp->xdr.buf->page_len = maxcount;
+ 	xdr->buf->len += maxcount;
++	xdr->page_ptr += 1;
++	xdr->buf->buflen -= PAGE_SIZE;
+ 	xdr->iov = xdr->buf->tail;
+ 
+ 	/* Use rest of head for padding and remaining ops: */
+@@ -3206,15 +3223,16 @@ nfsd4_encode_readdir(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4
+ 
+ 	if (nfserr)
+ 		return nfserr;
+-	if (resp->xdr.buf->page_len)
+-		return nfserr_resource;
+-	if (!*resp->rqstp->rq_next_page)
+-		return nfserr_resource;
+ 
+ 	p = xdr_reserve_space(xdr, NFS4_VERIFIER_SIZE);
+ 	if (!p)
+ 		return nfserr_resource;
+ 
++	if (resp->xdr.buf->page_len)
++		return nfserr_resource;
++	if (!*resp->rqstp->rq_next_page)
++		return nfserr_resource;
++
+ 	/* XXX: Following NFSv3, we ignore the READDIR verifier for now. */
+ 	WRITE32(0);
+ 	WRITE32(0);
+@@ -3266,6 +3284,10 @@ nfsd4_encode_readdir(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4
+ 
+ 	xdr->iov = xdr->buf->tail;
+ 
++	xdr->page_ptr++;
++	xdr->buf->buflen -= PAGE_SIZE;
++	xdr->iov = xdr->buf->tail;
++
+ 	/* Use rest of head for padding and remaining ops: */
+ 	resp->xdr.buf->tail[0].iov_base = tailbase;
+ 	resp->xdr.buf->tail[0].iov_len = 0;
+@@ -3800,6 +3822,8 @@ nfsd4_encode_operation(struct nfsd4_compoundres *resp, struct nfsd4_op *op)
+ 	       !nfsd4_enc_ops[op->opnum]);
+ 	encoder = nfsd4_enc_ops[op->opnum];
+ 	op->status = encoder(resp, op->status, &op->u);
++	xdr_commit_encode(xdr);
++
+ 	/* nfsd4_check_resp_size guarantees enough room for error status */
+ 	if (!op->status) {
+ 		int space_needed = 0;
+@@ -3919,6 +3943,8 @@ nfs4svc_encode_compoundres(struct svc_rqst *rqstp, __be32 *p, struct nfsd4_compo
+ 	WARN_ON_ONCE(buf->len != buf->head[0].iov_len + buf->page_len +
+ 				 buf->tail[0].iov_len);
+ 
++	rqstp->rq_next_page = resp->xdr.page_ptr + 1;
++
+ 	p = resp->tagp;
+ 	*p++ = htonl(resp->taglen);
+ 	memcpy(p, resp->tag, resp->taglen);
+diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
+index 04e7632..39c50e1 100644
+--- a/include/linux/sunrpc/svc.h
++++ b/include/linux/sunrpc/svc.h
+@@ -244,6 +244,7 @@ struct svc_rqst {
+ 	struct page *		rq_pages[RPCSVC_MAXPAGES];
+ 	struct page *		*rq_respages;	/* points into rq_pages */
+ 	struct page *		*rq_next_page; /* next reply page to use */
++	struct page *		*rq_page_end;  /* one past the last page */
+ 
+ 	struct kvec		rq_vec[RPCSVC_MAXPAGES]; /* generally useful.. */
+ 
+diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
+index e7bb2e3..b23d69f 100644
+--- a/include/linux/sunrpc/xdr.h
++++ b/include/linux/sunrpc/xdr.h
+@@ -215,6 +215,7 @@ typedef int	(*kxdrdproc_t)(void *rqstp, struct xdr_stream *xdr, void *obj);
+ 
+ extern void xdr_init_encode(struct xdr_stream *xdr, struct xdr_buf *buf, __be32 *p);
+ extern __be32 *xdr_reserve_space(struct xdr_stream *xdr, size_t nbytes);
++extern void xdr_commit_encode(struct xdr_stream *xdr);
+ extern void xdr_truncate_encode(struct xdr_stream *xdr, size_t len);
+ extern void xdr_write_pages(struct xdr_stream *xdr, struct page **pages,
+ 		unsigned int base, unsigned int len);
+diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+index 06c6ff0..baec792 100644
+--- a/net/sunrpc/svc_xprt.c
++++ b/net/sunrpc/svc_xprt.c
+@@ -597,6 +597,7 @@ static int svc_alloc_arg(struct svc_rqst *rqstp)
+ 			}
+ 			rqstp->rq_pages[i] = p;
+ 		}
++	rqstp->rq_page_end = &rqstp->rq_pages[i];
+ 	rqstp->rq_pages[i++] = NULL; /* this might be seen in nfs_read_actor */
+ 
+ 	/* Make arg->head point to first page and arg->pages point to rest */
+diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
+index 8ae8ee7..40198c5 100644
+--- a/net/sunrpc/xdr.c
++++ b/net/sunrpc/xdr.c
+@@ -462,6 +462,7 @@ void xdr_init_encode(struct xdr_stream *xdr, struct xdr_buf *buf, __be32 *p)
+ 	struct kvec *iov = buf->head;
+ 	int scratch_len = buf->buflen - buf->page_len - buf->tail[0].iov_len;
+ 
++	xdr_set_scratch_buffer(xdr, NULL, 0);
+ 	BUG_ON(scratch_len < 0);
+ 	xdr->buf = buf;
+ 	xdr->iov = iov;
+@@ -482,6 +483,74 @@ void xdr_init_encode(struct xdr_stream *xdr, struct xdr_buf *buf, __be32 *p)
+ EXPORT_SYMBOL_GPL(xdr_init_encode);
+ 
+ /**
++ * xdr_commit_encode - Ensure all data is written to buffer
++ * @xdr: pointer to xdr_stream
++ *
++ * We handle encoding across page boundaries by giving the caller a
++ * temporary location to write to, then later copying the data into
++ * place; xdr_commit_encode does that copying.
++ *
++ * Normally the caller doesn't need to call this directly, as the
++ * following xdr_reserve_space will do it.  But an explicit call may be
++ * required at the end of encoding, or any other time when the xdr_buf
++ * data might be read.
++ */
++void xdr_commit_encode(struct xdr_stream *xdr)
++{
++	int shift = xdr->scratch.iov_len;
++	void *page;
++
++	if (shift == 0)
++		return;
++	page = page_address(*xdr->page_ptr);
++	memcpy(xdr->scratch.iov_base, page, shift);
++	memmove(page, page + shift, (void *)xdr->p - page);
++	xdr->scratch.iov_len = 0;
++}
++EXPORT_SYMBOL_GPL(xdr_commit_encode);
++
++__be32 *xdr_get_next_encode_buffer(struct xdr_stream *xdr, size_t nbytes)
++{
++	static __be32 *p;
++	int space_left;
++	int frag1bytes, frag2bytes;
++
++	if (nbytes > PAGE_SIZE)
++		return NULL; /* Bigger buffers require special handling */
++	if (xdr->buf->len + nbytes > xdr->buf->buflen)
++		return NULL; /* Sorry, we're totally out of space */
++	frag1bytes = (xdr->end - xdr->p) << 2;
++	frag2bytes = nbytes - frag1bytes;
++	if (xdr->iov)
++		xdr->iov->iov_len += frag1bytes;
++	else {
++		xdr->buf->page_len += frag1bytes;
++		xdr->page_ptr++;
++	}
++	xdr->iov = NULL;
++	/*
++	 * If the last encode didn't end exactly on a page boundary, the
++	 * next one will straddle boundaries.  Encode into the next
++	 * page, then copy it back later in xdr_commit_encode.  We use
++	 * the "scratch" iov to track any temporarily unused fragment of
++	 * space at the end of the previous buffer:
++	 */
++	xdr->scratch.iov_base = xdr->p;
++	xdr->scratch.iov_len = frag1bytes;
++	p = page_address(*xdr->page_ptr);
++	/*
++	 * Note this is where the next encode will start after we've
++	 * shifted this one back:
++	 */
++	xdr->p = (void *)p + frag2bytes;
++	space_left = xdr->buf->buflen - xdr->buf->len;
++	xdr->end = (void *)p + min_t(int, space_left, PAGE_SIZE);
++	xdr->buf->page_len += frag2bytes;
++	xdr->buf->len += nbytes;
++	return p;
++}
++
++/**
+  * xdr_reserve_space - Reserve buffer space for sending
+  * @xdr: pointer to xdr_stream
+  * @nbytes: number of bytes to reserve
+@@ -495,14 +564,18 @@ __be32 * xdr_reserve_space(struct xdr_stream *xdr, size_t nbytes)
+ 	__be32 *p = xdr->p;
+ 	__be32 *q;
+ 
++	xdr_commit_encode(xdr);
+ 	/* align nbytes on the next 32-bit boundary */
+ 	nbytes += 3;
+ 	nbytes &= ~3;
+ 	q = p + (nbytes >> 2);
+ 	if (unlikely(q > xdr->end || q < p))
+-		return NULL;
++		return xdr_get_next_encode_buffer(xdr, nbytes);
+ 	xdr->p = q;
+-	xdr->iov->iov_len += nbytes;
++	if (xdr->iov)
++		xdr->iov->iov_len += nbytes;
++	else
++		xdr->buf->page_len += nbytes;
+ 	xdr->buf->len += nbytes;
+ 	return p;
+ }
+@@ -539,6 +612,7 @@ void xdr_truncate_encode(struct xdr_stream *xdr, size_t len)
+ 		WARN_ON_ONCE(1);
+ 		return;
+ 	}
++	xdr_commit_encode(xdr);
+ 
+ 	fraglen = min_t(int, buf->len - len, tail->iov_len);
+ 	tail->iov_len -= fraglen;
+-- 
+1.9.0
 
