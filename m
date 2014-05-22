@@ -1,73 +1,107 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:58036 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:43362 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750871AbaEAS6X (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 1 May 2014 14:58:23 -0400
-Message-ID: <5362994C.8010900@RedHat.com>
-Date: Thu, 01 May 2014 14:58:20 -0400
-From: Steve Dickson <SteveD@redhat.com>
-MIME-Version: 1.0
-To: Craig Yoshioka <craigyk@me.com>, linux-nfs@vger.kernel.org
-Subject: Re: idmap problems with chown as root
-References: <2541339C-AF61-4ED7-8F50-E4B3CA2C924F@me.com>
-In-Reply-To: <2541339C-AF61-4ED7-8F50-E4B3CA2C924F@me.com>
-Content-Type: text/plain; charset=windows-1252
+	id S1751039AbaEVTce (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 May 2014 15:32:34 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 11/52] nfsd4: fix encoding of out-of-space replies
+Date: Thu, 22 May 2014 15:31:46 -0400
+Message-Id: <1400787148-25941-12-git-send-email-bfields@redhat.com>
+In-Reply-To: <1400787148-25941-1-git-send-email-bfields@redhat.com>
+References: <1400787148-25941-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+From: "J. Bruce Fields" <bfields@redhat.com>
 
+If nfsd4_check_resp_size() returns an error then we should really be
+truncating the reply here, otherwise we may leave extra garbage at the
+end of the rpc reply.
 
-On 05/01/2014 12:21 PM, Craig Yoshioka wrote:
-> 
-> This is a followup to a previous post I made.
-> 
-> With Frank Filz’s helpful suggestions I was able to gather better data.
-> 
-> problem: when using chown as root on a nfs4 filesystem on newer linux releases file owners get sets to nobody.
->          the user type doesn’t seem to matter (/etc/passwd, LDAP, Samba4)
-This should take care of the problem:
+Also add a warning to catch any cases where our reply-size estimates may
+be wrong in the case of a non-idempotent operation.
 
-commit 3226c06989186d9cd60ba146df4e2898fee5047b
-Author: Steve Dickson <steved@redhat.com>
-Date:   Wed Apr 30 11:14:22 2014 -0400
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4proc.c |  9 +++++++++
+ fs/nfsd/nfs4xdr.c  | 17 ++++++++++++++++-
+ fs/nfsd/xdr4.h     |  2 ++
+ 3 files changed, 27 insertions(+), 1 deletion(-)
 
-    libnfsidmap: id_as_chars() fails zero value ids.
-    
-    Root has a zero value id which is valid and
-    should not be mapped to nfsnobody
-    
-    Signed-off-by: Steve Dickson <steved@redhat.com>
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 747d6a8..db14965 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1859,6 +1859,15 @@ static struct nfsd4_operation nfsd4_ops[] = {
+ 	},
+ };
+ 
++void warn_on_nonidempotent_op(struct nfsd4_op *op)
++{
++	if (OPDESC(op)->op_flags & OP_MODIFIES_SOMETHING) {
++		pr_err("unable to encode reply to nonidempotent op %d (%s)\n",
++			op->opnum, nfsd4_op_name(op->opnum));
++		WARN_ON_ONCE(1);
++	}
++}
++
+ #ifdef NFSD_DEBUG
+ static const char *nfsd4_op_name(unsigned opnum)
+ {
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 1879250..24ba652 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -3637,6 +3637,7 @@ nfsd4_encode_operation(struct nfsd4_compoundres *resp, struct nfsd4_op *op)
+ {
+ 	struct nfs4_stateowner *so = resp->cstate.replay_owner;
+ 	__be32 *statp;
++	nfsd4_enc encoder;
+ 	__be32 *p;
+ 
+ 	RESERVE_SPACE(8);
+@@ -3648,10 +3649,24 @@ nfsd4_encode_operation(struct nfsd4_compoundres *resp, struct nfsd4_op *op)
+ 		goto status;
+ 	BUG_ON(op->opnum < 0 || op->opnum >= ARRAY_SIZE(nfsd4_enc_ops) ||
+ 	       !nfsd4_enc_ops[op->opnum]);
+-	op->status = nfsd4_enc_ops[op->opnum](resp, op->status, &op->u);
++	encoder = nfsd4_enc_ops[op->opnum];
++	op->status = encoder(resp, op->status, &op->u);
+ 	/* nfsd4_check_resp_size guarantees enough room for error status */
+ 	if (!op->status)
+ 		op->status = nfsd4_check_resp_size(resp, 0);
++	if (op->status == nfserr_resource ||
++	    op->status == nfserr_rep_too_big ||
++	    op->status == nfserr_rep_too_big_to_cache) {
++		/*
++		 * The operation may have already been encoded or
++		 * partially encoded.  No op returns anything additional
++		 * in the case of one of these three errors, so we can
++		 * just truncate back to after the status.  But it's a
++		 * bug if we had to do this on a non-idempotent op:
++		 */
++		warn_on_nonidempotent_op(op);
++		resp->xdr.p = statp + 1;
++	}
+ 	if (so) {
+ 		so->so_replay.rp_status = op->status;
+ 		so->so_replay.rp_buflen = (char *)resp->xdr.p
+diff --git a/fs/nfsd/xdr4.h b/fs/nfsd/xdr4.h
+index f62a055..15ca477 100644
+--- a/fs/nfsd/xdr4.h
++++ b/fs/nfsd/xdr4.h
+@@ -536,6 +536,8 @@ static inline bool nfsd4_last_compound_op(struct svc_rqst *rqstp)
+ 	return argp->opcnt == resp->opcnt;
+ }
+ 
++void warn_on_nonidempotent_op(struct nfsd4_op *op);
++
+ #define NFS4_SVC_XDRSIZE		sizeof(struct nfsd4_compoundargs)
+ 
+ static inline void
+-- 
+1.9.0
 
-steved.
-> 
-> setup: Server is FreeBSD 10 system with NFSv4 share.
->        Server and clients are all configured with the same idmap domain
->        Network users have consistent uid/gid on server and clients
->        clients with older linux releases work OK (Ubuntu 12.04, CentOS 5 and 6)
->        clients with newer linux releases do not work ( Fedora 20, Ubuntu 14.04, Mint 16 )
-> 
-> clues:
-> 
-> 1. working and non-working systems get to the same fchownat() system call with the same arguments (via strace).
-> 
-> example (identical on working and non-working client):
-> ...
-> fchownat(AT_FDCWD, "/mnt/test", 11111, 4294967295, 0) = 0
-> close(1)                                = 0
-> close(2)                                = 0
-> close(4)                                = 0
-> exit_group(0)                           = ?
-> +++ exited with 0 +++
-> 
-> 2. working system sends NFSV4 SETATTR request with owner set to: matlab@nimgs.com and non-working as 11111 (via wireshark)
-> 
-> 
-> 
-> 
-> 
-> 3. I can’t rule out misconfiguration.  but I’ve configured as identically as I could, and tried a lot of small vairations. these are my current settings (the pipefs setting is the distro default)
-> 
-> 
-> 
-> 
-> 
