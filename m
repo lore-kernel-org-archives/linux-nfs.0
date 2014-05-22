@@ -1,56 +1,160 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f172.google.com ([209.85.213.172]:49677 "EHLO
-	mail-ig0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1750722AbaENSVZ convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 14 May 2014 14:21:25 -0400
+Received: from fieldses.org ([174.143.236.118]:59007 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752368AbaEVTzq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 May 2014 15:55:46 -0400
+Date: Thu, 22 May 2014 15:55:40 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Subject: Re: [PATCH] NFSD: Ignore client's source port on RDMA transports
+Message-ID: <20140522195540.GE25423@fieldses.org>
+References: <20140519173258.2828.98254.stgit@klimt.1015granger.net>
+ <20140522195517.GD25423@fieldses.org>
+MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-Mime-Version: 1.0 (Mac OS X Mail 7.2 \(1874\))
-Subject: Re: [PATCH V2 RFC 2/3] svcrdma: Recvfrom changes
-From: Chuck Lever <chucklever@gmail.com>
-In-Reply-To: <009601cf6f9f$f47b2cb0$dd718610$@opengridcomputing.com>
-Date: Wed, 14 May 2014 14:21:07 -0400
-Cc: "J. Bruce Fields" <bfields@fieldses.org>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        linux-rdma <linux-rdma@vger.kernel.org>,
-        Tom Tucker <tom@opengridcomputing.com>
-Message-Id: <639CE8CC-46CE-4EC9-A97B-2F146BA045C4@gmail.com>
-References: <20140506174621.18208.24242.stgit@build.ogc.int> <20140506174632.18208.28160.stgit@build.ogc.int> <F997E138-FB04-4149-811D-CE68608E8D6B@gmail.com> <00f901cf6eeb$2ff1f630$8fd5e290$@opengridcomputing.com> <3DAF95F3-22D5-4FC5-8C98-5A440E54DC2F@gmail.com> <53737D15.6020902@opengridcomputing.com> <2AEECADA-4A40-4BF2-866E-7F178D016DDE@gmail.com> <009601cf6f9f$f47b2cb0$dd718610$@opengridcomputing.com>
-To: Steve Wise <swise@opengridcomputing.com>
+In-Reply-To: <20140522195517.GD25423@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Thu, May 22, 2014 at 03:55:17PM -0400, bfields wrote:
+> On Mon, May 19, 2014 at 01:40:22PM -0400, Chuck Lever wrote:
+> > An NFS/RDMA client's source port is meaningless for RDMA transports.
+> > The transport layer typically sets the source port value on the
+> > connection to a random ephemeral port.
+> > 
+> > Currently, NFS server administrators must specify the "insecure"
+> > export option to enable clients to access exports via RDMA.
+> > 
+> > But this means NFS clients can access such an export via IP using an
+> > ephemeral port, which may not be desirable.
+> > 
+> > This patch eliminates the need to specify the "insecure" export
+> > option to allow NFS/RDMA clients access to an export.
+> > 
+> > BugLink: https://bugzilla.linux-nfs.org/show_bug.cgi?id=250
+> > Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+> > ---
+> > 
+> > Hi Bruce-
+> > 
+> > I've done some simple testing. "insecure" still behaves correctly
+> > for IP-based clients, and is now unnecessary for RDMA-based clients.
+> > Would you consider this for nfsd-next?
+> 
+> Yes, looks god to me; applying for 3.16.
 
-On May 14, 2014, at 2:11 PM, Steve Wise <swise@opengridcomputing.com> wrote:
+Um, you know what I meant.
+
+--b.
 
 > 
->>> 
->>>> If you print ch_count, it is 2 for NFS WRITEs from a Linux client,
->>>> no matter how large the write payload is. Therefore I think the check
->>>> as it is written is not particularly useful.
->>> 
->>> Why are there 2?
->> 
->> The first chunk lists the pages the server is to read, and the second
->> chunk has the zero pad for XDR alignment.
->> 
->> If pad optimization is enabled on the client, there is just 1 chunk in
->> the RPC's Read list.
->> 
+> --b.
 > 
-> So the code as it stands violates the RFC by sending 2 chunks?
-
-The Linux client is non-compliant because it sends two chunks. A compliant server ignores the second chunk, so this is functionally harmless (but a waste of resources).
-
-The Linux server is non-compliant because it _requires_ the XDR pad chunk. A compliant client (eg. Linux with pad optimization enabled) does not interoperate with it.
-
-> And if I change the server
-> to only consume 1, then everything unaligned will break?
-
-If you change the server to consume only the first chunk, but do not also make it deal with XDR padding as recommended in chapter 3 of RFC 5666, then WRITEs with a length that is not a multiple of four will fail. SYMLINKs with a large payload will also have this problem.
-
---
-Chuck Lever
-chucklever@gmail.com
-
-
-
+> > 
+> > 
+> >  include/linux/sunrpc/svc_xprt.h          |    1 +
+> >  net/sunrpc/svc_xprt.c                    |    2 +-
+> >  net/sunrpc/svcsock.c                     |    9 +++++++++
+> >  net/sunrpc/xprtrdma/svc_rdma_transport.c |    7 +++++++
+> >  4 files changed, 18 insertions(+), 1 deletions(-)
+> > 
+> > diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
+> > index b05963f..0cec1b9 100644
+> > --- a/include/linux/sunrpc/svc_xprt.h
+> > +++ b/include/linux/sunrpc/svc_xprt.h
+> > @@ -24,6 +24,7 @@ struct svc_xprt_ops {
+> >  	void		(*xpo_release_rqst)(struct svc_rqst *);
+> >  	void		(*xpo_detach)(struct svc_xprt *);
+> >  	void		(*xpo_free)(struct svc_xprt *);
+> > +	int		(*xpo_secure_port)(struct svc_rqst *);
+> >  };
+> >  
+> >  struct svc_xprt_class {
+> > diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+> > index 06c6ff0..614956f 100644
+> > --- a/net/sunrpc/svc_xprt.c
+> > +++ b/net/sunrpc/svc_xprt.c
+> > @@ -793,7 +793,7 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
+> >  
+> >  	clear_bit(XPT_OLD, &xprt->xpt_flags);
+> >  
+> > -	rqstp->rq_secure = svc_port_is_privileged(svc_addr(rqstp));
+> > +	rqstp->rq_secure = xprt->xpt_ops->xpo_secure_port(rqstp);
+> >  	rqstp->rq_chandle.defer = svc_defer;
+> >  
+> >  	if (serv->sv_stats)
+> > diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+> > index 43bcb46..0cb34f5 100644
+> > --- a/net/sunrpc/svcsock.c
+> > +++ b/net/sunrpc/svcsock.c
+> > @@ -400,6 +400,12 @@ static void svc_sock_setbufsize(struct socket *sock, unsigned int snd,
+> >  	release_sock(sock->sk);
+> >  #endif
+> >  }
+> > +
+> > +static int svc_sock_secure_port(struct svc_rqst *rqstp)
+> > +{
+> > +	return svc_port_is_privileged(svc_addr(rqstp));
+> > +}
+> > +
+> >  /*
+> >   * INET callback when data has been received on the socket.
+> >   */
+> > @@ -678,6 +684,7 @@ static struct svc_xprt_ops svc_udp_ops = {
+> >  	.xpo_prep_reply_hdr = svc_udp_prep_reply_hdr,
+> >  	.xpo_has_wspace = svc_udp_has_wspace,
+> >  	.xpo_accept = svc_udp_accept,
+> > +	.xpo_secure_port = svc_sock_secure_port,
+> >  };
+> >  
+> >  static struct svc_xprt_class svc_udp_class = {
+> > @@ -1234,6 +1241,7 @@ static struct svc_xprt_ops svc_tcp_bc_ops = {
+> >  	.xpo_detach = svc_bc_tcp_sock_detach,
+> >  	.xpo_free = svc_bc_sock_free,
+> >  	.xpo_prep_reply_hdr = svc_tcp_prep_reply_hdr,
+> > +	.xpo_secure_port = svc_sock_secure_port,
+> >  };
+> >  
+> >  static struct svc_xprt_class svc_tcp_bc_class = {
+> > @@ -1272,6 +1280,7 @@ static struct svc_xprt_ops svc_tcp_ops = {
+> >  	.xpo_prep_reply_hdr = svc_tcp_prep_reply_hdr,
+> >  	.xpo_has_wspace = svc_tcp_has_wspace,
+> >  	.xpo_accept = svc_tcp_accept,
+> > +	.xpo_secure_port = svc_sock_secure_port,
+> >  };
+> >  
+> >  static struct svc_xprt_class svc_tcp_class = {
+> > diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> > index 25688fa..02db8d9 100644
+> > --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> > +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> > @@ -65,6 +65,7 @@ static void dto_tasklet_func(unsigned long data);
+> >  static void svc_rdma_detach(struct svc_xprt *xprt);
+> >  static void svc_rdma_free(struct svc_xprt *xprt);
+> >  static int svc_rdma_has_wspace(struct svc_xprt *xprt);
+> > +static int svc_rdma_secure_port(struct svc_rqst *);
+> >  static void rq_cq_reap(struct svcxprt_rdma *xprt);
+> >  static void sq_cq_reap(struct svcxprt_rdma *xprt);
+> >  
+> > @@ -82,6 +83,7 @@ static struct svc_xprt_ops svc_rdma_ops = {
+> >  	.xpo_prep_reply_hdr = svc_rdma_prep_reply_hdr,
+> >  	.xpo_has_wspace = svc_rdma_has_wspace,
+> >  	.xpo_accept = svc_rdma_accept,
+> > +	.xpo_secure_port = svc_rdma_secure_port,
+> >  };
+> >  
+> >  struct svc_xprt_class svc_rdma_class = {
+> > @@ -1207,6 +1209,11 @@ static int svc_rdma_has_wspace(struct svc_xprt *xprt)
+> >  	return 1;
+> >  }
+> >  
+> > +static int svc_rdma_secure_port(struct svc_rqst *rqstp)
+> > +{
+> > +	return 1;
+> > +}
+> > +
+> >  /*
+> >   * Attempt to register the kvec representing the RPC memory with the
+> >   * device.
+> > 
