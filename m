@@ -1,65 +1,71 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ve0-f173.google.com ([209.85.128.173]:60523 "EHLO
-	mail-ve0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751198AbaE1XCP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 May 2014 19:02:15 -0400
-Received: by mail-ve0-f173.google.com with SMTP id pa12so13451362veb.32
-        for <linux-nfs@vger.kernel.org>; Wed, 28 May 2014 16:02:14 -0700 (PDT)
+Received: from fieldses.org ([174.143.236.118]:34155 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751473AbaEVTSH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 May 2014 15:18:07 -0400
+Date: Thu, 22 May 2014 15:17:50 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org
+Subject: Re: nfsd4 xdr encoding fixes v2
+Message-ID: <20140522191750.GA25423@fieldses.org>
+References: <1399841568-19716-1-git-send-email-bfields@redhat.com>
+ <20140512082059.GC14194@infradead.org>
+ <20140512160740.GE2633@pad.redhat.com>
+ <20140512161128.GA1591@infradead.org>
+ <20140513110945.GA9461@infradead.org>
+ <20140513144826.GB17206@pad.redhat.com>
+ <20140513211841.GF5222@fieldses.org>
+ <20140513213321.GG5222@fieldses.org>
 MIME-Version: 1.0
-In-Reply-To: <1399381960-3019-1-git-send-email-Anna.Schumaker@Netapp.com>
-References: <1399381960-3019-1-git-send-email-Anna.Schumaker@Netapp.com>
-Date: Wed, 28 May 2014 19:02:14 -0400
-Message-ID: <CAHQdGtTEceDpfjnUMotTgqkwMoTQaRYgSwWGLXudTsg0U+opDA@mail.gmail.com>
-Subject: Re: [PATCH v3 00/17] NFS: Create a common path used by reads and writes
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Anna Schumaker <Anna.Schumaker@netapp.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        Weston Andros Adamson <dros@primarydata.com>,
-        Christoph Hellwig <hch@infradead.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140513213321.GG5222@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, May 6, 2014 at 9:12 AM, Anna Schumaker
-<Anna.Schumaker@netapp.com> wrote:
-> I noticed that much of the read and write code was almost identical, with
-> only minor differences in argument types and names.  These patches seek to
-> unify these two codepaths wherever possible in order to make future changes
-> easier.
->
-> Table of contents:
->         Patches 01 - 05: Set up common data structures.
->         Patches 06 - 10: Set up a shared rpc_call_ops struct.
->         Patches 11 - 15: Set up a shared nfs_pageio_ops struct.
->
-> Some of the commit setup was moved into common code, but I'm willing to
-> move this back into write.c if this looks to be a problem.
->
-> Future work:
->         I have rough pNFS patches to combine the read and write paths in
->         pnfs.c.  They apply on top of Dros' multiple requests work and
->         should get more testing before I submit.
->
-> Testing:
->         I tested every version of NFS using the cthon and xfs tests without
->         hitting anything new.  Any extra testing would be great seeing how
->         the read and write paths are vitally important.
->
-> Changes in v3:
->         Instead of creating a new "pageio.c" file, I now put the combined
->         code into pagelist.c (good luck, Dros!)
->
->         I also renamed a few functions, and did a better job checking what
->         pagelist.c functions can now be static.
->
-> Questions?  Comments?  Thoughts?
->
+On Tue, May 13, 2014 at 05:33:21PM -0400, J. Bruce Fields wrote:
+> On Tue, May 13, 2014 at 05:18:41PM -0400, bfields wrote:
+> > On Tue, May 13, 2014 at 10:48:26AM -0400, J. Bruce Fields wrote:
+> > > On Tue, May 13, 2014 at 04:09:45AM -0700, Christoph Hellwig wrote:
+> > > > On Mon, May 12, 2014 at 09:11:28AM -0700, Christoph Hellwig wrote:
+> > > > > On Mon, May 12, 2014 at 12:07:41PM -0400, J. Bruce Fields wrote:
+> > > > > > On Mon, May 12, 2014 at 01:20:59AM -0700, Christoph Hellwig wrote:
+> > > > > > > This series seem to cause hangs during xfstests against a server on the
+> > > > > > > same VM.  The trace is fairly similar every the hang happens, but the
+> > > > > > > point at which it happens differs:
+> > > > > > 
+> > > > > > Ouch, OK, and you're sure it starts with this series?
+> > > > > > 
+> > > > > > I guess I should try to replicate it here.  Might take a copule days.
+> > > > 
+> > > > Seems lile "nfsd4: allow exotic read compounds" is the culprit.
+> > > 
+> > > OK, it makes sense that the problem would be there.  Looking....
+> > 
+> > I got xfstests set up and can reproduce some problems (a hang, the
+> > nfs4svc_encode_compoundres WARN, and some allocation failures), though
+> > not exactly what you reported.
+> > 
+> > I also notice that commit ("nfsd4: allow exotic read compounds") has a
+> > lot of extraneous cleanup that I should split out.
+> 
+> In fact, the change to handle multiple reads per compound *should* only
+> affect the nfsd4_encode_readv() case.  Whereas you're probably
+> exercising only the nfsd4_encode_splice_read() case.  So probably some
+> of the extraneous cleanup in that patch is bogus.
 
-Thanks for working on this! Applied...
+Yes, this removal:
 
--- 
-Trond Myklebust
+	-	xdr->page_ptr += (maxcount + PAGE_SIZE - 1) / PAGE_SIZE;
 
-Linux NFS client maintainer, PrimaryData
+buried in that cleanup is bogus and seems like it could result in
+freeing a page twice.  I've fixed that and split the confusing "cleanup"
+out into separate patches.  I can't get any hangs by running xfstests
+any more.
 
-trond.myklebust@primarydata.com
+On the other hand, I never saw exactly what you did, so more testing
+wouldn't hurt.
+
+I'll send out a v3 soon.
+
+--b.
