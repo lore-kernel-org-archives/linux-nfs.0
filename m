@@ -1,116 +1,44 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f172.google.com ([209.85.223.172]:59928 "EHLO
-	mail-ie0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753918AbaE1Oc1 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 May 2014 10:32:27 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH v5 04/24] xprtrdma: Remove BOUNCEBUFFERS memory registration
-	mode
-To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Cc: Anna.Schumaker@netapp.com
-Date: Wed, 28 May 2014 10:32:26 -0400
-Message-ID: <20140528143225.23214.81898.stgit@manet.1015granger.net>
-In-Reply-To: <20140528142521.23214.39655.stgit@manet.1015granger.net>
-References: <20140528142521.23214.39655.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from fieldses.org ([174.143.236.118]:43338 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751057AbaEVTcd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 May 2014 15:32:33 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 02/52] nfsd4: allow larger 4.1 session drc slots
+Date: Thu, 22 May 2014 15:31:37 -0400
+Message-Id: <1400787148-25941-3-git-send-email-bfields@redhat.com>
+In-Reply-To: <1400787148-25941-1-git-send-email-bfields@redhat.com>
+References: <1400787148-25941-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Clean up: This memory registration mode is slow and was never
-meant for use in production environments. Remove it to reduce
-implementation complexity.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: Steve Wise <swise@opengridcomputing.com>
+The client is actually asking for 2532 bytes.  I suspect that's a
+mistake.  But maybe we can allow some more.  In theory lock needs more
+if it might return a maximum-length lockowner in the denied case.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
+ fs/nfsd/state.h | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
- net/sunrpc/xprtrdma/rpc_rdma.c  |   11 -----------
- net/sunrpc/xprtrdma/transport.c |   13 -------------
- net/sunrpc/xprtrdma/verbs.c     |    5 +----
- 3 files changed, 1 insertions(+), 28 deletions(-)
-
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index c296468..02b2941 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -77,9 +77,6 @@ static const char transfertypes[][12] = {
-  * Prepare the passed-in xdr_buf into representation as RPC/RDMA chunk
-  * elements. Segments are then coalesced when registered, if possible
-  * within the selected memreg mode.
-- *
-- * Note, this routine is never called if the connection's memory
-- * registration strategy is 0 (bounce buffers).
-  */
- 
- static int
-@@ -439,14 +436,6 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
- 		wtype = rpcrdma_noch;
- 	BUG_ON(rtype != rpcrdma_noch && wtype != rpcrdma_noch);
- 
--	if (r_xprt->rx_ia.ri_memreg_strategy == RPCRDMA_BOUNCEBUFFERS &&
--	    (rtype != rpcrdma_noch || wtype != rpcrdma_noch)) {
--		/* forced to "pure inline"? */
--		dprintk("RPC:       %s: too much data (%d/%d) for inline\n",
--			__func__, rqst->rq_rcv_buf.len, rqst->rq_snd_buf.len);
--		return -1;
--	}
--
- 	hdrlen = 28; /*sizeof *headerp;*/
- 	padlen = 0;
- 
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index 1eb9c46..8c5035a 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -503,18 +503,6 @@ xprt_rdma_allocate(struct rpc_task *task, size_t size)
- 		 * If the allocation or registration fails, the RPC framework
- 		 * will (doggedly) retry.
- 		 */
--		if (rpcx_to_rdmax(xprt)->rx_ia.ri_memreg_strategy ==
--				RPCRDMA_BOUNCEBUFFERS) {
--			/* forced to "pure inline" */
--			dprintk("RPC:       %s: too much data (%zd) for inline "
--					"(r/w max %d/%d)\n", __func__, size,
--					rpcx_to_rdmad(xprt).inline_rsize,
--					rpcx_to_rdmad(xprt).inline_wsize);
--			size = req->rl_size;
--			rpc_exit(task, -EIO);		/* fail the operation */
--			rpcx_to_rdmax(xprt)->rx_stats.failed_marshal_count++;
--			goto out;
--		}
- 		if (task->tk_flags & RPC_TASK_SWAPPER)
- 			nreq = kmalloc(sizeof *req + size, GFP_ATOMIC);
- 		else
-@@ -543,7 +531,6 @@ xprt_rdma_allocate(struct rpc_task *task, size_t size)
- 		req = nreq;
- 	}
- 	dprintk("RPC:       %s: size %zd, request 0x%p\n", __func__, size, req);
--out:
- 	req->rl_connect_cookie = 0;	/* our reserved value */
- 	return req->rl_xdr_buf;
- 
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 9cb88f3..4a4e4ea 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -557,7 +557,6 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
- 	 * adapter.
- 	 */
- 	switch (memreg) {
--	case RPCRDMA_BOUNCEBUFFERS:
- 	case RPCRDMA_REGISTER:
- 	case RPCRDMA_FRMR:
- 		break;
-@@ -778,9 +777,7 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
- 
- 	/* Client offers RDMA Read but does not initiate */
- 	ep->rep_remote_cma.initiator_depth = 0;
--	if (ia->ri_memreg_strategy == RPCRDMA_BOUNCEBUFFERS)
--		ep->rep_remote_cma.responder_resources = 0;
--	else if (devattr.max_qp_rd_atom > 32)	/* arbitrary but <= 255 */
-+	if (devattr.max_qp_rd_atom > 32)	/* arbitrary but <= 255 */
- 		ep->rep_remote_cma.responder_resources = 32;
- 	else
- 		ep->rep_remote_cma.responder_resources = devattr.max_qp_rd_atom;
+diff --git a/fs/nfsd/state.h b/fs/nfsd/state.h
+index fda9ce2..374c662 100644
+--- a/fs/nfsd/state.h
++++ b/fs/nfsd/state.h
+@@ -122,7 +122,7 @@ static inline struct nfs4_delegation *delegstateid(struct nfs4_stid *s)
+ /* Maximum number of operations per session compound */
+ #define NFSD_MAX_OPS_PER_COMPOUND	16
+ /* Maximum  session per slot cache size */
+-#define NFSD_SLOT_CACHE_SIZE		1024
++#define NFSD_SLOT_CACHE_SIZE		2048
+ /* Maximum number of NFSD_SLOT_CACHE_SIZE slots per session */
+ #define NFSD_CACHE_SIZE_SLOTS_PER_SESSION	32
+ #define NFSD_MAX_MEM_PER_SESSION  \
+-- 
+1.9.0
 
