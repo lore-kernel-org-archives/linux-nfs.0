@@ -1,97 +1,108 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx5.framestore.com ([193.203.83.15]:35767 "EHLO
-	mx5.framestore.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753127AbaETQzm (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 20 May 2014 12:55:42 -0400
-Subject: Re: NFS (or RPC) batching of calls over TCP results in 'unmatched'
- replies?
-From: Jim Vanns <james.vanns@framestore.com>
-To: "J. Bruce Fields" <bfields@fieldses.org>
-Cc: "linux-nfs@vger.kernel.org" <linux-nfs@vger.kernel.org>
-In-Reply-To: <1400603652.13140.32.camel@sys304.ldn.framestore.com>
-References: <1400588966.13140.22.camel@sys304.ldn.framestore.com>
-	 <20140520152654.GB4513@fieldses.org>
-	 <1400603652.13140.32.camel@sys304.ldn.framestore.com>
-Content-Type: text/plain; charset="ISO-8859-1"
-Date: Tue, 20 May 2014 17:55:29 +0100
-Message-ID: <1400604929.13140.35.camel@sys304.ldn.framestore.com>
-Mime-Version: 1.0
+Received: from fieldses.org ([174.143.236.118]:43443 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752650AbaEVTcn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 May 2014 15:32:43 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 34/52] nfsd4: adjust buflen to session channel limit
+Date: Thu, 22 May 2014 15:32:09 -0400
+Message-Id: <1400787148-25941-35-git-send-email-bfields@redhat.com>
+In-Reply-To: <1400787148-25941-1-git-send-email-bfields@redhat.com>
+References: <1400787148-25941-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-<snip>
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-> > My suspicion is that tshark is missing some replies.  Either the packet
-> > loss counters are wrong, or tshark is failing to identify RPC replies
-> > that start in the middle of a tcp segment?  I seem to recall seeing that
-> > before.
-> 
-> Yes - I had wondered about that and I will modify my own code to verify
-> if this is the case.
-> 
-> I *assumed* that tcpdump or wireshark already did this! I guess it just
-> expects application protocols to be aligned to the TCP boundary.
+We can simplify session limit enforcement by restricting the xdr buflen
+to the session size.
 
-I have (rather rushed to be honest) written some code that scans the
-entire TCP segment captured for a record fragment marker and I still see
-the same results - very few replies for a great many calls.
+Also fix a preexisting bug: we should really have been taking into
+account the auth-required space when comparing against session limits,
+which are limits on the size of the entire rpc reply, including any krb5
+overhead.
 
-Still at a loss (pun intended ;)
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4state.c | 11 +++++++++++
+ fs/nfsd/nfs4xdr.c   | 24 ++++++++----------------
+ 2 files changed, 19 insertions(+), 16 deletions(-)
 
-Jim
-
-> Thanks for your help so far.
-> 
-> Jim
-> 
-> > --b.
-> > 
-> > > The IBM and Oracle websites also have some
-> > > info but not much. I have found nothing that enables
-> > > me to identify batched requests (or rather the replies for a batch) in
-> > > the protocol itself. Wireshark seems unable to do this also.
-> > > 
-> > > I realise this is a bit off-topic but I was hoping someone might be able
-> > > to point me in the right direction? Am I barking up the wrong tree? Is
-> > > this behaviour expected - am I unable to match calls to replies when
-> > > batching is used? The IBM website suggests;
-> > > 
-> > > 'Batching assumes the following:
-> > > 
-> > > Each remote procedure call in the pipeline requires no response from the
-> > > server, and the server does not send a response message.'
-> > > 
-> > > This sounds a bit awkward! It then goes on to suggest that;
-> > > 
-> > > 'The remote procedure call's time out must be 0'
-> > > 
-> > > For batched calls. But there is no call timeout in the RPC protocol
-> > > right? Again, this must be up to the client implementation I suspect?
-> > > 
-> > > Any help appreciated.
-> > > 
-> > > Regards,
-> > > 
-> > > Jim
-> > > 
-> > > PS. I may well join the Linux RPC mailing list and direct this question
-> > > at them instead.
-> > > 
-> > > -- 
-> > > Senior Software Engineer
-> > > Systems Development
-> > > Framestore
-> > > 
-> > > 
-> > > --
-> > > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > > the body of a message to majordomo@vger.kernel.org
-> > > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index e936d9f..09be2e0 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -2208,11 +2208,13 @@ nfsd4_sequence(struct svc_rqst *rqstp,
+ 	       struct nfsd4_sequence *seq)
+ {
+ 	struct nfsd4_compoundres *resp = rqstp->rq_resp;
++	struct xdr_stream *xdr = &resp->xdr;
+ 	struct nfsd4_session *session;
+ 	struct nfs4_client *clp;
+ 	struct nfsd4_slot *slot;
+ 	struct nfsd4_conn *conn;
+ 	__be32 status;
++	int buflen;
+ 	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
+ 
+ 	if (resp->opcnt != 1)
+@@ -2281,6 +2283,15 @@ nfsd4_sequence(struct svc_rqst *rqstp,
+ 	if (status)
+ 		goto out_put_session;
+ 
++	buflen = (seq->cachethis) ?
++			session->se_fchannel.maxresp_cached :
++			session->se_fchannel.maxresp_sz;
++	status = (seq->cachethis) ? nfserr_rep_too_big_to_cache :
++				    nfserr_rep_too_big;
++	if (xdr_restrict_buflen(xdr, buflen - 2 * RPC_MAX_AUTH_SIZE))
++		goto out_put_session;
++
++	status = nfs_ok;
+ 	/* Success! bump slot seqid */
+ 	slot->sl_seqid = seq->seqid;
+ 	slot->sl_flags |= NFSD4_SLOT_INUSE;
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index ad594f2..311e281 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -3767,25 +3767,17 @@ static nfsd4_enc nfsd4_enc_ops[] = {
+ __be32 nfsd4_check_resp_size(struct nfsd4_compoundres *resp, u32 respsize)
+ {
+ 	struct xdr_buf *buf = &resp->rqstp->rq_res;
+-	struct nfsd4_session *session = resp->cstate.session;
++	struct nfsd4_slot *slot = resp->cstate.slot;
+ 
+-	if (nfsd4_has_session(&resp->cstate)) {
+-		struct nfsd4_slot *slot = resp->cstate.slot;
+-
+-		if (buf->len + respsize > session->se_fchannel.maxresp_sz)
+-			return nfserr_rep_too_big;
+-
+-		if ((slot->sl_flags & NFSD4_SLOT_CACHETHIS) &&
+-		    buf->len + respsize > session->se_fchannel.maxresp_cached)
+-			return nfserr_rep_too_big_to_cache;
+-	}
+-
+-	if (buf->len + respsize > buf->buflen) {
+-		WARN_ON_ONCE(nfsd4_has_session(&resp->cstate));
++	if (buf->len + respsize <= buf->buflen)
++		return nfs_ok;
++	if (!nfsd4_has_session(&resp->cstate))
+ 		return nfserr_resource;
++	if (slot->sl_flags & NFSD4_SLOT_CACHETHIS) {
++		WARN_ON_ONCE(1);
++		return nfserr_rep_too_big_to_cache;
+ 	}
+-
+-	return 0;
++	return nfserr_rep_too_big;
+ }
+ 
+ void
 -- 
-Software Engineer
-Systems Development
-Framestore
-
+1.9.0
 
