@@ -1,34 +1,89 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pa0-f50.google.com ([209.85.220.50]:40541 "EHLO
-	mail-pa0-f50.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755458AbaEEJmj (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 5 May 2014 05:42:39 -0400
-Received: by mail-pa0-f50.google.com with SMTP id fb1so1914519pad.37
-        for <linux-nfs@vger.kernel.org>; Mon, 05 May 2014 02:42:38 -0700 (PDT)
-Date: Mon, 5 May 2014 02:42:35 -0700 (PDT)
-From: David Rientjes <rientjes@google.com>
-To: Marc Dietrich <marvin24@gmx.de>
-cc: linux-kernel@vger.kernel.org, linux-nfs@vger.kernel.org,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Mel Gorman <mgorman@suse.de>
-Subject: Re: nfs oom on 3.15
-In-Reply-To: <2562595.ix17LO7uqe@fb07-iapwap2>
-Message-ID: <alpine.DEB.2.02.1405050241180.11071@chino.kir.corp.google.com>
-References: <2562595.ix17LO7uqe@fb07-iapwap2>
+Received: from mail-ig0-f182.google.com ([209.85.213.182]:36700 "EHLO
+	mail-ig0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752126AbaEVA4T (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 May 2014 20:56:19 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH v4 14/24] xprtrdma: Limit work done by completion handler
+To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Date: Wed, 21 May 2014 20:56:17 -0400
+Message-ID: <20140522005617.27190.95984.stgit@manet.1015granger.net>
+In-Reply-To: <20140522004505.27190.58897.stgit@manet.1015granger.net>
+References: <20140522004505.27190.58897.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-Content-Type: TEXT/PLAIN; charset=US-ASCII
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, 5 May 2014, Marc Dietrich wrote:
+Sagi Grimberg <sagig@dev.mellanox.co.il> points out that a steady
+stream of CQ events could starve other work because of the boundless
+loop pooling in rpcrdma_{send,recv}_poll().
 
-> Hi,
-> 
-> this is spaming my log quite a bit.
-> 
-> Any idea?
-> 
+Instead of a (potentially infinite) while loop, return after
+collecting a budgeted number of completions.
 
-I think rpc_malloc() really wants to be __GFP_NOWARN so that the warnings 
-are suppressed, doing order-1 allocations with GFP_NOWAIT is never 
-guaranteed to succeed and will have difficulty if memory is fragmented.  
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Acked-by: Sagi Grimberg <sagig@dev.mellanox.co.il>
+---
+
+ net/sunrpc/xprtrdma/verbs.c     |   10 ++++++----
+ net/sunrpc/xprtrdma/xprt_rdma.h |    1 +
+ 2 files changed, 7 insertions(+), 4 deletions(-)
+
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index b8caee9..1d08366 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -165,8 +165,9 @@ static int
+ rpcrdma_sendcq_poll(struct ib_cq *cq, struct rpcrdma_ep *ep)
+ {
+ 	struct ib_wc *wcs;
+-	int count, rc;
++	int budget, count, rc;
+ 
++	budget = RPCRDMA_WC_BUDGET / RPCRDMA_POLLSIZE;
+ 	do {
+ 		wcs = ep->rep_send_wcs;
+ 
+@@ -177,7 +178,7 @@ rpcrdma_sendcq_poll(struct ib_cq *cq, struct rpcrdma_ep *ep)
+ 		count = rc;
+ 		while (count-- > 0)
+ 			rpcrdma_sendcq_process_wc(wcs++);
+-	} while (rc == RPCRDMA_POLLSIZE);
++	} while (rc == RPCRDMA_POLLSIZE && --budget);
+ 	return 0;
+ }
+ 
+@@ -254,8 +255,9 @@ static int
+ rpcrdma_recvcq_poll(struct ib_cq *cq, struct rpcrdma_ep *ep)
+ {
+ 	struct ib_wc *wcs;
+-	int count, rc;
++	int budget, count, rc;
+ 
++	budget = RPCRDMA_WC_BUDGET / RPCRDMA_POLLSIZE;
+ 	do {
+ 		wcs = ep->rep_recv_wcs;
+ 
+@@ -266,7 +268,7 @@ rpcrdma_recvcq_poll(struct ib_cq *cq, struct rpcrdma_ep *ep)
+ 		count = rc;
+ 		while (count-- > 0)
+ 			rpcrdma_recvcq_process_wc(wcs++);
+-	} while (rc == RPCRDMA_POLLSIZE);
++	} while (rc == RPCRDMA_POLLSIZE && --budget);
+ 	return 0;
+ }
+ 
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index cb4c882..0c3b88e 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -74,6 +74,7 @@ struct rpcrdma_ia {
+  * RDMA Endpoint -- one per transport instance
+  */
+ 
++#define RPCRDMA_WC_BUDGET	(128)
+ #define RPCRDMA_POLLSIZE	(16)
+ 
+ struct rpcrdma_ep {
+
