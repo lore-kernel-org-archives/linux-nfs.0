@@ -1,35 +1,79 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-pd0-f182.google.com ([209.85.192.182]:50455 "EHLO
-	mail-pd0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753994AbaEHViP (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 8 May 2014 17:38:15 -0400
-Received: by mail-pd0-f182.google.com with SMTP id v10so2829257pde.27
-        for <linux-nfs@vger.kernel.org>; Thu, 08 May 2014 14:38:15 -0700 (PDT)
-Date: Thu, 8 May 2014 14:38:11 -0700
-From: Tom Haynes <thomas.haynes@primarydata.com>
-To: Jeff Layton <jlayton@poochiereds.net>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] Push the file layout driver into a subdirectory
-Message-ID: <20140508213811.GA1953@kitty.kitty>
-References: <1399560525-1913-1-git-send-email-Thomas.Haynes@primarydata.com>
- <20140508134347.0c330f62@tlielax.poochiereds.net>
- <1582D06D-6663-49EC-A187-BF52FBCFAC39@primarydata.com>
- <20140508170621.2eccbafc@tlielax.poochiereds.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140508170621.2eccbafc@tlielax.poochiereds.net>
+Received: from fieldses.org ([174.143.236.118]:43324 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1750870AbaEVTcc (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 May 2014 15:32:32 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 04/52] nfsd4: decoding errors can still be cached and require space
+Date: Thu, 22 May 2014 15:31:39 -0400
+Message-Id: <1400787148-25941-5-git-send-email-bfields@redhat.com>
+In-Reply-To: <1400787148-25941-1-git-send-email-bfields@redhat.com>
+References: <1400787148-25941-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, May 08, 2014 at 05:06:21PM -0400, Jeff Layton wrote:
-> > 
-> > Strange, I'll resend it.
-> > 
-> 
-> Maybe it hit some sort of size limitation? I didn't think linux-nfs had
-> one of those, but some ml's do.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Yes, that was it. "git format -M" solved it for me.
+Currently a non-idempotent op reply may be cached if it fails in the
+proc code but not if it fails at xdr decoding.  I doubt there are any
+xdr-decoding-time errors that would make this a problem in practice, so
+this probably isn't a serious bug.
 
-Thanks.
+The space estimates should also take into account space required for
+encoding of error returns.  Again, not a practical problem, though it
+would become one after future patches which will tighten the space
+estimates.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4proc.c |  2 ++
+ fs/nfsd/nfs4xdr.c  | 10 +++++-----
+ 2 files changed, 7 insertions(+), 5 deletions(-)
+
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 2c1ee70..26995a5 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1215,6 +1215,8 @@ static inline struct nfsd4_operation *OPDESC(struct nfsd4_op *op)
+ 
+ bool nfsd4_cache_this_op(struct nfsd4_op *op)
+ {
++	if (op->opnum == OP_ILLEGAL)
++		return false;
+ 	return OPDESC(op)->op_flags & OP_CACHEME;
+ }
+ 
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 18881f3..e866a06 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -1677,11 +1677,6 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
+ 			op->opnum = OP_ILLEGAL;
+ 			op->status = nfserr_op_illegal;
+ 		}
+-
+-		if (op->status) {
+-			argp->opcnt = i+1;
+-			break;
+-		}
+ 		/*
+ 		 * We'll try to cache the result in the DRC if any one
+ 		 * op in the compound wants to be cached:
+@@ -1689,6 +1684,11 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
+ 		cachethis |= nfsd4_cache_this_op(op);
+ 
+ 		max_reply = max(max_reply, nfsd4_max_reply(op->opnum));
++
++		if (op->status) {
++			argp->opcnt = i+1;
++			break;
++		}
+ 	}
+ 	/* Sessions make the DRC unnecessary: */
+ 	if (argp->minorversion)
+-- 
+1.9.0
 
