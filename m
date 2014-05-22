@@ -1,49 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:57258 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750916AbaEMQJ3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 13 May 2014 12:09:29 -0400
-From: David Howells <dhowells@redhat.com>
-In-Reply-To: <20140501123738.3e64b2d2@notabene.brown>
-References: <20140501123738.3e64b2d2@notabene.brown>
-To: NeilBrown <neilb@suse.de>
-Cc: dhowells@redhat.com, Peter Zijlstra <peterz@infradead.org>,
-        Oleg Nesterov <oleg@redhat.com>,
-        Steven Whitehouse <swhiteho@redhat.com>, dm-devel@redhat.com,
-        Chris Mason <clm@fb.com>, Josef Bacik <jbacik@fb.com>,
-        Steve French <sfrench@samba.org>, "Theodore Ts'o" <tytso@mit.edu>,
-        Trond Myklebust <trond.myklebust@primarydata.com>,
-        Ingo Molnar <mingo@redhat.com>,
-        Andrew Morton <akpm@linux-foundation.org>, linux-nfs@vger.kernel.org,
-        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
-        linux-mm@kvack.org
-Subject: Re: [PATCH] SCHED: remove proliferation of wait_on_bit action functions.
-Date: Tue, 13 May 2014 17:08:46 +0100
-Message-ID: <30874.1399997326@warthog.procyon.org.uk>
+Received: from mail-ig0-f178.google.com ([209.85.213.178]:58445 "EHLO
+	mail-ig0-f178.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750796AbaEVA5d (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 May 2014 20:57:33 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH v4 23/24] xprtrdma: Remove BUG_ON() call sites
+To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Date: Wed, 21 May 2014 20:57:32 -0400
+Message-ID: <20140522005731.27190.32294.stgit@manet.1015granger.net>
+In-Reply-To: <20140522004505.27190.58897.stgit@manet.1015granger.net>
+References: <20140522004505.27190.58897.stgit@manet.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-NeilBrown <neilb@suse.de> wrote:
+If an error occurs in the marshaling logic, fail the RPC request
+being processed, but leave the client running.
 
-> The current "wait_on_bit" interface requires an 'action' function
-> to be provided which does the actual waiting.
-> There are over 20 such functions, many of them identical.
-> Most cases can be satisfied by one of just two functions, one
-> which uses io_schedule() and one which just uses schedule().
-> 
-> So:
->  Rename wait_on_bit and        wait_on_bit_lock to
->         wait_on_bit_action and wait_on_bit_lock_action
->  to make it explicit that they need an action function.
-> 
->  Introduce new wait_on_bit{,_lock} and wait_on_bit{,_lock}_io
->  which are *not* given an action function but implicitly use
->  a standard one.
->  The decision to error-out if a signal is pending is now made
->  based on the 'mode' argument rather than being encoded in the action
->  function.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-Yay!  About time!  This is something I've wanted to do for ages, but never
-quite got around to.
+ net/sunrpc/xprtrdma/transport.c |    3 ++-
+ net/sunrpc/xprtrdma/verbs.c     |   18 ++++++++++--------
+ 2 files changed, 12 insertions(+), 9 deletions(-)
 
-Acked-by: David Howells <dhowells@redhat.com>
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index 65cfaca..ad22fdc 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -463,7 +463,8 @@ xprt_rdma_allocate(struct rpc_task *task, size_t size)
+ 	struct rpcrdma_req *req, *nreq;
+ 
+ 	req = rpcrdma_buffer_get(&rpcx_to_rdmax(xprt)->rx_buf);
+-	BUG_ON(NULL == req);
++	if (req == NULL)
++		return NULL;
+ 
+ 	if (size > req->rl_size) {
+ 		dprintk("RPC:       %s: size %zd too large for buffer[%zd]: "
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 515dfc1..13dbd1c 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -1302,7 +1302,6 @@ rpcrdma_buffer_put(struct rpcrdma_req *req)
+ 	int i;
+ 	unsigned long flags;
+ 
+-	BUG_ON(req->rl_nchunks != 0);
+ 	spin_lock_irqsave(&buffers->rb_lock, flags);
+ 	buffers->rb_send_bufs[--buffers->rb_send_index] = req;
+ 	req->rl_niovs = 0;
+@@ -1535,10 +1534,6 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
+ 	} else
+ 		post_wr = &frmr_wr;
+ 
+-	/* Bump the key */
+-	key = (u8)(seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey & 0x000000FF);
+-	ib_update_fast_reg_key(seg1->mr_chunk.rl_mw->r.frmr.fr_mr, ++key);
+-
+ 	/* Prepare FRMR WR */
+ 	memset(&frmr_wr, 0, sizeof frmr_wr);
+ 	frmr_wr.wr_id = (unsigned long)(void *)seg1->mr_chunk.rl_mw;
+@@ -1549,7 +1544,16 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
+ 	frmr_wr.wr.fast_reg.page_list_len = page_no;
+ 	frmr_wr.wr.fast_reg.page_shift = PAGE_SHIFT;
+ 	frmr_wr.wr.fast_reg.length = page_no << PAGE_SHIFT;
+-	BUG_ON(frmr_wr.wr.fast_reg.length < len);
++	if (frmr_wr.wr.fast_reg.length < len) {
++		while (seg1->mr_nsegs--)
++			rpcrdma_unmap_one(ia, seg++);
++		return -EIO;
++	}
++
++	/* Bump the key */
++	key = (u8)(seg1->mr_chunk.rl_mw->r.frmr.fr_mr->rkey & 0x000000FF);
++	ib_update_fast_reg_key(seg1->mr_chunk.rl_mw->r.frmr.fr_mr, ++key);
++
+ 	frmr_wr.wr.fast_reg.access_flags = (writing ?
+ 				IB_ACCESS_REMOTE_WRITE | IB_ACCESS_LOCAL_WRITE :
+ 				IB_ACCESS_REMOTE_READ);
+@@ -1709,9 +1713,7 @@ rpcrdma_deregister_external(struct rpcrdma_mr_seg *seg,
+ 
+ #if RPCRDMA_PERSISTENT_REGISTRATION
+ 	case RPCRDMA_ALLPHYSICAL:
+-		BUG_ON(nsegs != 1);
+ 		rpcrdma_unmap_one(ia, seg);
+-		rc = 0;
+ 		break;
+ #endif
+ 
+
