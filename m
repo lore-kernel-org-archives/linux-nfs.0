@@ -1,202 +1,59 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f173.google.com ([209.85.213.173]:35431 "EHLO
-	mail-ig0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1754648AbaE1Oco (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 May 2014 10:32:44 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH v5 06/24] xprtrdma: Remove REGISTER memory registration mode
-To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Cc: Anna.Schumaker@netapp.com
-Date: Wed, 28 May 2014 10:32:43 -0400
-Message-ID: <20140528143242.23214.52604.stgit@manet.1015granger.net>
-In-Reply-To: <20140528142521.23214.39655.stgit@manet.1015granger.net>
-References: <20140528142521.23214.39655.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from fieldses.org ([174.143.236.118]:43510 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752816AbaEVTcs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 May 2014 15:32:48 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 47/52] nfsd4: really fix nfs4err_resource in 4.1 case
+Date: Thu, 22 May 2014 15:32:22 -0400
+Message-Id: <1400787148-25941-48-git-send-email-bfields@redhat.com>
+In-Reply-To: <1400787148-25941-1-git-send-email-bfields@redhat.com>
+References: <1400787148-25941-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-All kernel RDMA providers except amso1100 support either MTHCAFMR
-or FRMR, both of which are faster than REGISTER.  amso1100 can
-continue to use ALLPHYSICAL.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-The only other ULP consumer in the kernel that uses the reg_phys_mr
-verb is Lustre.
+encode_getattr, for example, can return nfserr_resource to indicate it
+ran out of buffer space.  That's not a legal error in the 4.1 case.
+And in the 4.1 case, if we ran out of buffer space, we should have
+exceeded a session limit too.
 
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+(Note in 1bc49d83c37cfaf46be357757e592711e67f9809 "nfsd4: fix
+nfs4err_resource in 4.1 case" we originally tried fixing this error
+return before fixing the problem that we could error out while we still
+had lots of available space.  The result was to trade one illegal error
+for another in those cases.  We decided that was helpful, so reverted
+the change in fc208d026be0c7d60db9118583fc62f6ca97743d, and are only
+reinstating it now that we've elimited almost all of those cases.)
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
+ fs/nfsd/nfs4xdr.c | 8 ++++++++
+ 1 file changed, 8 insertions(+)
 
- net/sunrpc/xprtrdma/rpc_rdma.c |    3 -
- net/sunrpc/xprtrdma/verbs.c    |   90 ++--------------------------------------
- 2 files changed, 5 insertions(+), 88 deletions(-)
-
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index 46b5172..aae1726 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -476,8 +476,7 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
- 			 * on receive. Therefore, we request a reply chunk
- 			 * for non-writes wherever feasible and efficient.
- 			 */
--			if (wtype == rpcrdma_noch &&
--			    r_xprt->rx_ia.ri_memreg_strategy > RPCRDMA_REGISTER)
-+			if (wtype == rpcrdma_noch)
- 				wtype = rpcrdma_replych;
- 		}
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index f3eb7fa..5fc3ba0 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -3903,6 +3903,14 @@ nfsd4_encode_operation(struct nfsd4_compoundres *resp, struct nfsd4_op *op)
+ 			space_needed = COMPOUND_ERR_SLACK_SPACE;
+ 		op->status = nfsd4_check_resp_size(resp, space_needed);
  	}
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 304c7ad..6bb9a07 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -494,19 +494,11 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
- 	switch (memreg) {
- 	case RPCRDMA_MTHCAFMR:
- 		if (!ia->ri_id->device->alloc_fmr) {
--#if RPCRDMA_PERSISTENT_REGISTRATION
- 			dprintk("RPC:       %s: MTHCAFMR registration "
- 				"specified but not supported by adapter, "
- 				"using riskier RPCRDMA_ALLPHYSICAL\n",
- 				__func__);
- 			memreg = RPCRDMA_ALLPHYSICAL;
--#else
--			dprintk("RPC:       %s: MTHCAFMR registration "
--				"specified but not supported by adapter, "
--				"using slower RPCRDMA_REGISTER\n",
--				__func__);
--			memreg = RPCRDMA_REGISTER;
--#endif
- 		}
- 		break;
- 	case RPCRDMA_FRMR:
-@@ -514,19 +506,11 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
- 		if ((devattr.device_cap_flags &
- 		     (IB_DEVICE_MEM_MGT_EXTENSIONS|IB_DEVICE_LOCAL_DMA_LKEY)) !=
- 		    (IB_DEVICE_MEM_MGT_EXTENSIONS|IB_DEVICE_LOCAL_DMA_LKEY)) {
--#if RPCRDMA_PERSISTENT_REGISTRATION
- 			dprintk("RPC:       %s: FRMR registration "
- 				"specified but not supported by adapter, "
- 				"using riskier RPCRDMA_ALLPHYSICAL\n",
- 				__func__);
- 			memreg = RPCRDMA_ALLPHYSICAL;
--#else
--			dprintk("RPC:       %s: FRMR registration "
--				"specified but not supported by adapter, "
--				"using slower RPCRDMA_REGISTER\n",
--				__func__);
--			memreg = RPCRDMA_REGISTER;
--#endif
- 		} else {
- 			/* Mind the ia limit on FRMR page list depth */
- 			ia->ri_max_frmr_depth = min_t(unsigned int,
-@@ -545,7 +529,6 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
- 	 * adapter.
- 	 */
- 	switch (memreg) {
--	case RPCRDMA_REGISTER:
- 	case RPCRDMA_FRMR:
- 		break;
- #if RPCRDMA_PERSISTENT_REGISTRATION
-@@ -565,11 +548,10 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
- 		ia->ri_bind_mem = ib_get_dma_mr(ia->ri_pd, mem_priv);
- 		if (IS_ERR(ia->ri_bind_mem)) {
- 			printk(KERN_ALERT "%s: ib_get_dma_mr for "
--				"phys register failed with %lX\n\t"
--				"Will continue with degraded performance\n",
-+				"phys register failed with %lX\n",
- 				__func__, PTR_ERR(ia->ri_bind_mem));
--			memreg = RPCRDMA_REGISTER;
--			ia->ri_bind_mem = NULL;
-+			rc = -ENOMEM;
-+			goto out2;
- 		}
- 		break;
- 	default:
-@@ -1611,67 +1593,6 @@ rpcrdma_deregister_fmr_external(struct rpcrdma_mr_seg *seg,
- 	return rc;
- }
- 
--static int
--rpcrdma_register_default_external(struct rpcrdma_mr_seg *seg,
--			int *nsegs, int writing, struct rpcrdma_ia *ia)
--{
--	int mem_priv = (writing ? IB_ACCESS_REMOTE_WRITE :
--				  IB_ACCESS_REMOTE_READ);
--	struct rpcrdma_mr_seg *seg1 = seg;
--	struct ib_phys_buf ipb[RPCRDMA_MAX_DATA_SEGS];
--	int len, i, rc = 0;
--
--	if (*nsegs > RPCRDMA_MAX_DATA_SEGS)
--		*nsegs = RPCRDMA_MAX_DATA_SEGS;
--	for (len = 0, i = 0; i < *nsegs;) {
--		rpcrdma_map_one(ia, seg, writing);
--		ipb[i].addr = seg->mr_dma;
--		ipb[i].size = seg->mr_len;
--		len += seg->mr_len;
--		++seg;
--		++i;
--		/* Check for holes */
--		if ((i < *nsegs && offset_in_page(seg->mr_offset)) ||
--		    offset_in_page((seg-1)->mr_offset+(seg-1)->mr_len))
--			break;
--	}
--	seg1->mr_base = seg1->mr_dma;
--	seg1->mr_chunk.rl_mr = ib_reg_phys_mr(ia->ri_pd,
--				ipb, i, mem_priv, &seg1->mr_base);
--	if (IS_ERR(seg1->mr_chunk.rl_mr)) {
--		rc = PTR_ERR(seg1->mr_chunk.rl_mr);
--		dprintk("RPC:       %s: failed ib_reg_phys_mr "
--			"%u@0x%llx (%d)... status %i\n",
--			__func__, len,
--			(unsigned long long)seg1->mr_dma, i, rc);
--		while (i--)
--			rpcrdma_unmap_one(ia, --seg);
--	} else {
--		seg1->mr_rkey = seg1->mr_chunk.rl_mr->rkey;
--		seg1->mr_nsegs = i;
--		seg1->mr_len = len;
--	}
--	*nsegs = i;
--	return rc;
--}
--
--static int
--rpcrdma_deregister_default_external(struct rpcrdma_mr_seg *seg,
--			struct rpcrdma_ia *ia)
--{
--	struct rpcrdma_mr_seg *seg1 = seg;
--	int rc;
--
--	rc = ib_dereg_mr(seg1->mr_chunk.rl_mr);
--	seg1->mr_chunk.rl_mr = NULL;
--	while (seg1->mr_nsegs--)
--		rpcrdma_unmap_one(ia, seg++);
--	if (rc)
--		dprintk("RPC:       %s: failed ib_dereg_mr,"
--			" status %i\n", __func__, rc);
--	return rc;
--}
--
- int
- rpcrdma_register_external(struct rpcrdma_mr_seg *seg,
- 			int nsegs, int writing, struct rpcrdma_xprt *r_xprt)
-@@ -1701,10 +1622,8 @@ rpcrdma_register_external(struct rpcrdma_mr_seg *seg,
- 		rc = rpcrdma_register_fmr_external(seg, &nsegs, writing, ia);
- 		break;
- 
--	/* Default registration each time */
- 	default:
--		rc = rpcrdma_register_default_external(seg, &nsegs, writing, ia);
--		break;
-+		return -1;
- 	}
- 	if (rc)
- 		return -1;
-@@ -1738,7 +1657,6 @@ rpcrdma_deregister_external(struct rpcrdma_mr_seg *seg,
- 		break;
- 
- 	default:
--		rc = rpcrdma_deregister_default_external(seg, ia);
- 		break;
- 	}
- 	if (r) {
++	if (op->status == nfserr_resource && nfsd4_has_session(&resp->cstate)) {
++		struct nfsd4_slot *slot = resp->cstate.slot;
++
++		if (slot->sl_flags & NFSD4_SLOT_CACHETHIS)
++			op->status = nfserr_rep_too_big_to_cache;
++		else
++			op->status = nfserr_rep_too_big;
++	}
+ 	if (op->status == nfserr_resource ||
+ 	    op->status == nfserr_rep_too_big ||
+ 	    op->status == nfserr_rep_too_big_to_cache) {
+-- 
+1.9.0
 
