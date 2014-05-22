@@ -1,58 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f46.google.com ([209.85.192.46]:53284 "EHLO
-	mail-qg0-f46.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751397AbaEWMCJ (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 May 2014 08:02:09 -0400
-Received: by mail-qg0-f46.google.com with SMTP id q108so7634119qgd.5
-        for <linux-nfs@vger.kernel.org>; Fri, 23 May 2014 05:02:08 -0700 (PDT)
-Message-ID: <537F38AB.10102@gmail.com>
-Date: Fri, 23 May 2014 20:01:47 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
+Received: from mail-ee0-f45.google.com ([74.125.83.45]:61053 "EHLO
+	mail-ee0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751435AbaEVJFM (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 May 2014 05:05:12 -0400
+Date: Thu, 22 May 2014 11:05:02 +0200
+From: Ingo Molnar <mingo@kernel.org>
+To: NeilBrown <neilb@suse.de>
+Cc: Peter Zijlstra <peterz@infradead.org>, Oleg Nesterov <oleg@redhat.com>,
+        David Howells <dhowells@redhat.com>,
+        Steven Whitehouse <swhiteho@redhat.com>, dm-devel@redhat.com,
+        Chris Mason <clm@fb.com>, Josef Bacik <jbacik@fb.com>,
+        Steve French <sfrench@samba.org>, "Theodore Ts'o" <tytso@mit.edu>,
+        Trond Myklebust <trond.myklebust@primarydata.com>,
+        Ingo Molnar <mingo@redhat.com>, Roland McGrath <roland@redhat.com>,
+        Andrew Morton <akpm@linux-foundation.org>, linux-nfs@vger.kernel.org,
+        linux-fsdevel@vger.kernel.org, linux-kernel@vger.kernel.org,
+        linux-mm@kvack.org
+Subject: Re: [PATCH] SCHED: remove proliferation of wait_on_bit action
+ functions.
+Message-ID: <20140522090502.GB30094@gmail.com>
+References: <20140501123738.3e64b2d2@notabene.brown>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>, kinglongmee@gmail.com
-Subject: [PATCH 4/4] NFSD: Ignore and warn once for more fslocs or more uuids
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140501123738.3e64b2d2@notabene.brown>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If mountd writes more fslocs or more uuids, just ignore and warn once.
 
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
----
- fs/nfsd/export.c | 12 ++++++++++++
- 1 file changed, 12 insertions(+)
+* NeilBrown <neilb@suse.de> wrote:
 
-diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
-index 90d37b6..1d56ae3 100644
---- a/fs/nfsd/export.c
-+++ b/fs/nfsd/export.c
-@@ -394,6 +394,12 @@ fsloc_parse(char **mesg, char *buf, struct nfsd4_fs_locations *fsloc)
- 	int len;
- 	int migrated, i, err;
- 
-+	/* utils writes more fslocs than one */
-+	if (fsloc->locations) {
-+		WARN_ON_ONCE(1);
-+		return 0;
-+	}
-+
- 	/* listsize */
- 	err = get_uint(mesg, &fsloc->locations_count);
- 	if (err)
-@@ -485,6 +491,12 @@ uuid_parse(char **mesg, char *buf, unsigned char **puuid)
- {
- 	int len;
- 
-+	/* utils writes more uuid than one */
-+	if (*puuid) {
-+		WARN_ON_ONCE(1);
-+		return 0;
-+	}
-+
- 	/* expect a 16 byte uuid encoded as \xXXXX... */
- 	len = qword_get(mesg, buf, PAGE_SIZE);
- 	if (len != EX_UUID_LEN)
--- 
-1.9.0
+> [[ get_maintainer.pl suggested 61 email address for this patch.
+>    I've trimmed that list somewhat.  Hope I didn't miss anyone
+>    important...
+>    I'm hoping it will go in through the scheduler tree, but would
+>    particularly like an Acked-by for the fscache parts.  Other acks
+>    welcome.
+> ]]
+> 
+> The current "wait_on_bit" interface requires an 'action' function
+> to be provided which does the actual waiting.
+> There are over 20 such functions, many of them identical.
+> Most cases can be satisfied by one of just two functions, one
+> which uses io_schedule() and one which just uses schedule().
+> 
+> So:
+>  Rename wait_on_bit and        wait_on_bit_lock to
+>         wait_on_bit_action and wait_on_bit_lock_action
+>  to make it explicit that they need an action function.
+> 
+>  Introduce new wait_on_bit{,_lock} and wait_on_bit{,_lock}_io
+>  which are *not* given an action function but implicitly use
+>  a standard one.
+>  The decision to error-out if a signal is pending is now made
+>  based on the 'mode' argument rather than being encoded in the action
+>  function.
 
+this patch fails to build on x86-32 allyesconfigs.
+
+Could we keep the old names for a while, and remove them in the next 
+cycle or so?
+
+Thanks,
+
+	Ingo
