@@ -1,338 +1,201 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:43339 "EHLO fieldses.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750870AbaEVTcd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 May 2014 15:32:33 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 15/52] nfsd4: remove ADJUST_ARGS
-Date: Thu, 22 May 2014 15:31:50 -0400
-Message-Id: <1400787148-25941-16-git-send-email-bfields@redhat.com>
-In-Reply-To: <1400787148-25941-1-git-send-email-bfields@redhat.com>
-References: <1400787148-25941-1-git-send-email-bfields@redhat.com>
+Received: from mail-ig0-f169.google.com ([209.85.213.169]:41260 "EHLO
+	mail-ig0-f169.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751710AbaEVAzJ (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 May 2014 20:55:09 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH v4 06/24] xprtrdma: Remove REGISTER memory registration mode
+To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Date: Wed, 21 May 2014 20:55:07 -0400
+Message-ID: <20140522005507.27190.96418.stgit@manet.1015granger.net>
+In-Reply-To: <20140522004505.27190.58897.stgit@manet.1015granger.net>
+References: <20140522004505.27190.58897.stgit@manet.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+All kernel RDMA providers except amso1100 support either MTHCAFMR
+or FRMR, both of which are faster than REGISTER.  amso1100 can
+continue to use ALLPHYSICAL.
 
-It's just uninteresting debugging code at this point.
+The only other ULP consumer in the kernel that uses the reg_phys_mr
+verb is Lustre.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 ---
- fs/nfsd/nfs4xdr.c | 40 ----------------------------------------
- 1 file changed, 40 deletions(-)
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index bc8c9e0..865a2c2 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1750,7 +1750,6 @@ static void write_cinfo(__be32 **p, struct nfsd4_change_info *c)
- 	p = xdr_reserve_space(&resp->xdr, nbytes);		\
- 	BUG_ON(!p);						\
- } while (0)
--#define ADJUST_ARGS()		WARN_ON_ONCE(p != resp->xdr.p)	\
- 
- /* Encode as an array of strings the string given with components
-  * separated @sep, escaped with esc_enter and esc_exit.
-@@ -2744,7 +2743,6 @@ nfsd4_encode_stateid(struct nfsd4_compoundres *resp, stateid_t *sid)
- 	RESERVE_SPACE(sizeof(stateid_t));
- 	WRITE32(sid->si_generation);
- 	WRITEMEM(&sid->si_opaque, sizeof(stateid_opaque_t));
--	ADJUST_ARGS();
- }
- 
- static __be32
-@@ -2756,7 +2754,6 @@ nfsd4_encode_access(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_
- 		RESERVE_SPACE(8);
- 		WRITE32(access->ac_supported);
- 		WRITE32(access->ac_resp_access);
--		ADJUST_ARGS();
- 	}
- 	return nfserr;
- }
-@@ -2771,7 +2768,6 @@ static __be32 nfsd4_encode_bind_conn_to_session(struct nfsd4_compoundres *resp,
- 		WRITE32(bcts->dir);
- 		/* Sorry, we do not yet support RDMA over 4.1: */
- 		WRITE32(0);
--		ADJUST_ARGS();
- 	}
- 	return nfserr;
- }
-@@ -2794,7 +2790,6 @@ nfsd4_encode_commit(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_
- 	if (!nfserr) {
- 		RESERVE_SPACE(NFS4_VERIFIER_SIZE);
- 		WRITEMEM(commit->co_verf.data, NFS4_VERIFIER_SIZE);
--		ADJUST_ARGS();
- 	}
- 	return nfserr;
- }
-@@ -2810,7 +2805,6 @@ nfsd4_encode_create(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_
- 		WRITE32(2);
- 		WRITE32(create->cr_bmval[0]);
- 		WRITE32(create->cr_bmval[1]);
--		ADJUST_ARGS();
- 	}
- 	return nfserr;
- }
-@@ -2842,7 +2836,6 @@ nfsd4_encode_getfh(struct nfsd4_compoundres *resp, __be32 nfserr, struct svc_fh
- 		RESERVE_SPACE(len + 4);
- 		WRITE32(len);
- 		WRITEMEM(&fhp->fh_handle.fh_base, len);
--		ADJUST_ARGS();
- 	}
- 	return nfserr;
- }
-@@ -2870,7 +2863,6 @@ nfsd4_encode_lock_denied(struct nfsd4_compoundres *resp, struct nfsd4_lock_denie
- 		WRITE64((u64)0); /* clientid */
- 		WRITE32(0); /* length of owner name */
- 	}
--	ADJUST_ARGS();
- }
- 
- static __be32
-@@ -2910,7 +2902,6 @@ nfsd4_encode_link(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_li
- 	if (!nfserr) {
- 		RESERVE_SPACE(20);
- 		write_cinfo(&p, &link->li_cinfo);
--		ADJUST_ARGS();
- 	}
- 	return nfserr;
- }
-@@ -2932,7 +2923,6 @@ nfsd4_encode_open(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_op
- 	WRITE32(open->op_bmval[0]);
- 	WRITE32(open->op_bmval[1]);
- 	WRITE32(open->op_delegate_type);
--	ADJUST_ARGS();
- 
- 	switch (open->op_delegate_type) {
- 	case NFS4_OPEN_DELEGATE_NONE:
-@@ -2949,7 +2939,6 @@ nfsd4_encode_open(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_op
- 		WRITE32(0);
- 		WRITE32(0);
- 		WRITE32(0);   /* XXX: is NULL principal ok? */
--		ADJUST_ARGS();
- 		break;
- 	case NFS4_OPEN_DELEGATE_WRITE:
- 		nfsd4_encode_stateid(resp, &open->op_delegate_stateid);
-@@ -2970,7 +2959,6 @@ nfsd4_encode_open(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_op
- 		WRITE32(0);
- 		WRITE32(0);
- 		WRITE32(0);   /* XXX: is NULL principal ok? */
--		ADJUST_ARGS();
- 		break;
- 	case NFS4_OPEN_DELEGATE_NONE_EXT: /* 4.1 */
- 		switch (open->op_why_no_deleg) {
-@@ -2984,7 +2972,6 @@ nfsd4_encode_open(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_op
- 			RESERVE_SPACE(4);
- 			WRITE32(open->op_why_no_deleg);
+ net/sunrpc/xprtrdma/rpc_rdma.c |    3 -
+ net/sunrpc/xprtrdma/verbs.c    |   90 ++--------------------------------------
+ 2 files changed, 5 insertions(+), 88 deletions(-)
+
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index 46b5172..aae1726 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -476,8 +476,7 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
+ 			 * on receive. Therefore, we request a reply chunk
+ 			 * for non-writes wherever feasible and efficient.
+ 			 */
+-			if (wtype == rpcrdma_noch &&
+-			    r_xprt->rx_ia.ri_memreg_strategy > RPCRDMA_REGISTER)
++			if (wtype == rpcrdma_noch)
+ 				wtype = rpcrdma_replych;
  		}
--		ADJUST_ARGS();
+ 	}
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 304c7ad..6bb9a07 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -494,19 +494,11 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
+ 	switch (memreg) {
+ 	case RPCRDMA_MTHCAFMR:
+ 		if (!ia->ri_id->device->alloc_fmr) {
+-#if RPCRDMA_PERSISTENT_REGISTRATION
+ 			dprintk("RPC:       %s: MTHCAFMR registration "
+ 				"specified but not supported by adapter, "
+ 				"using riskier RPCRDMA_ALLPHYSICAL\n",
+ 				__func__);
+ 			memreg = RPCRDMA_ALLPHYSICAL;
+-#else
+-			dprintk("RPC:       %s: MTHCAFMR registration "
+-				"specified but not supported by adapter, "
+-				"using slower RPCRDMA_REGISTER\n",
+-				__func__);
+-			memreg = RPCRDMA_REGISTER;
+-#endif
+ 		}
  		break;
- 	default:
- 		BUG();
-@@ -3066,7 +3053,6 @@ nfsd4_encode_read(struct nfsd4_compoundres *resp, __be32 nfserr,
- 
- 	WRITE32(eof);
- 	WRITE32(maxcount);
--	ADJUST_ARGS();
- 	resp->xdr.buf->head[0].iov_len = (char *)p
- 				- (char *)resp->xdr.buf->head[0].iov_base;
- 	resp->xdr.buf->page_len = maxcount;
-@@ -3080,7 +3066,6 @@ nfsd4_encode_read(struct nfsd4_compoundres *resp, __be32 nfserr,
- 		WRITE32(0);
- 		resp->xdr.buf->tail[0].iov_base += maxcount&3;
- 		resp->xdr.buf->tail[0].iov_len = 4 - (maxcount&3);
--		ADJUST_ARGS();
- 	}
- 	return 0;
- }
-@@ -3121,7 +3106,6 @@ nfsd4_encode_readlink(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd
- 	}
- 
- 	WRITE32(maxcount);
--	ADJUST_ARGS();
- 	resp->xdr.buf->head[0].iov_len = (char *)p
- 				- (char *)resp->xdr.buf->head[0].iov_base;
- 	resp->xdr.buf->page_len = maxcount;
-@@ -3135,7 +3119,6 @@ nfsd4_encode_readlink(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd
- 		WRITE32(0);
- 		resp->xdr.buf->tail[0].iov_base += maxcount&3;
- 		resp->xdr.buf->tail[0].iov_len = 4 - (maxcount&3);
--		ADJUST_ARGS();
- 	}
- 	return 0;
- }
-@@ -3162,7 +3145,6 @@ nfsd4_encode_readdir(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4
- 	/* XXX: Following NFSv3, we ignore the READDIR verifier for now. */
- 	WRITE32(0);
- 	WRITE32(0);
--	ADJUST_ARGS();
- 	resp->xdr.buf->head[0].iov_len = ((char *)resp->xdr.p)
- 				- (char *)resp->xdr.buf->head[0].iov_base;
- 	tailbase = p;
-@@ -3233,7 +3215,6 @@ nfsd4_encode_remove(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_
- 	if (!nfserr) {
- 		RESERVE_SPACE(20);
- 		write_cinfo(&p, &remove->rm_cinfo);
--		ADJUST_ARGS();
- 	}
- 	return nfserr;
- }
-@@ -3247,7 +3228,6 @@ nfsd4_encode_rename(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_
- 		RESERVE_SPACE(40);
- 		write_cinfo(&p, &rename->rn_sinfo);
- 		write_cinfo(&p, &rename->rn_tinfo);
--		ADJUST_ARGS();
- 	}
- 	return nfserr;
- }
-@@ -3287,7 +3267,6 @@ nfsd4_do_encode_secinfo(struct nfsd4_compoundres *resp,
- 	supported = 0;
- 	RESERVE_SPACE(4);
- 	flavorsp = p++;		/* to be backfilled later */
--	ADJUST_ARGS();
- 
- 	for (i = 0; i < nflavs; i++) {
- 		rpc_authflavor_t pf = flavs[i].pseudoflavor;
-@@ -3301,12 +3280,10 @@ nfsd4_do_encode_secinfo(struct nfsd4_compoundres *resp,
- 			WRITEMEM(info.oid.data, info.oid.len);
- 			WRITE32(info.qop);
- 			WRITE32(info.service);
--			ADJUST_ARGS();
- 		} else if (pf < RPC_AUTH_MAXFLAVOR) {
- 			supported++;
- 			RESERVE_SPACE(4);
- 			WRITE32(pf);
--			ADJUST_ARGS();
+ 	case RPCRDMA_FRMR:
+@@ -514,19 +506,11 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
+ 		if ((devattr.device_cap_flags &
+ 		     (IB_DEVICE_MEM_MGT_EXTENSIONS|IB_DEVICE_LOCAL_DMA_LKEY)) !=
+ 		    (IB_DEVICE_MEM_MGT_EXTENSIONS|IB_DEVICE_LOCAL_DMA_LKEY)) {
+-#if RPCRDMA_PERSISTENT_REGISTRATION
+ 			dprintk("RPC:       %s: FRMR registration "
+ 				"specified but not supported by adapter, "
+ 				"using riskier RPCRDMA_ALLPHYSICAL\n",
+ 				__func__);
+ 			memreg = RPCRDMA_ALLPHYSICAL;
+-#else
+-			dprintk("RPC:       %s: FRMR registration "
+-				"specified but not supported by adapter, "
+-				"using slower RPCRDMA_REGISTER\n",
+-				__func__);
+-			memreg = RPCRDMA_REGISTER;
+-#endif
  		} else {
- 			if (report)
- 				pr_warn("NFS: SECINFO: security flavor %u "
-@@ -3360,7 +3337,6 @@ nfsd4_encode_setattr(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4
- 		WRITE32(setattr->sa_bmval[1]);
- 		WRITE32(setattr->sa_bmval[2]);
- 	}
--	ADJUST_ARGS();
- 	return nfserr;
- }
- 
-@@ -3373,13 +3349,11 @@ nfsd4_encode_setclientid(struct nfsd4_compoundres *resp, __be32 nfserr, struct n
- 		RESERVE_SPACE(8 + NFS4_VERIFIER_SIZE);
- 		WRITEMEM(&scd->se_clientid, 8);
- 		WRITEMEM(&scd->se_confirm, NFS4_VERIFIER_SIZE);
--		ADJUST_ARGS();
- 	}
- 	else if (nfserr == nfserr_clid_inuse) {
- 		RESERVE_SPACE(8);
- 		WRITE32(0);
- 		WRITE32(0);
--		ADJUST_ARGS();
- 	}
- 	return nfserr;
- }
-@@ -3394,7 +3368,6 @@ nfsd4_encode_write(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_w
- 		WRITE32(write->wr_bytes_written);
- 		WRITE32(write->wr_how_written);
- 		WRITEMEM(write->wr_verifier.data, NFS4_VERIFIER_SIZE);
--		ADJUST_ARGS();
- 	}
- 	return nfserr;
- }
-@@ -3437,7 +3410,6 @@ nfsd4_encode_exchange_id(struct nfsd4_compoundres *resp, __be32 nfserr,
- 	WRITE32(exid->flags);
- 
- 	WRITE32(exid->spa_how);
--	ADJUST_ARGS();
- 
- 	switch (exid->spa_how) {
- 	case SP4_NONE:
-@@ -3453,7 +3425,6 @@ nfsd4_encode_exchange_id(struct nfsd4_compoundres *resp, __be32 nfserr,
- 		/* empty spo_must_allow bitmap: */
- 		WRITE32(0);
- 
--		ADJUST_ARGS();
+ 			/* Mind the ia limit on FRMR page list depth */
+ 			ia->ri_max_frmr_depth = min_t(unsigned int,
+@@ -545,7 +529,6 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
+ 	 * adapter.
+ 	 */
+ 	switch (memreg) {
+-	case RPCRDMA_REGISTER:
+ 	case RPCRDMA_FRMR:
+ 		break;
+ #if RPCRDMA_PERSISTENT_REGISTRATION
+@@ -565,11 +548,10 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
+ 		ia->ri_bind_mem = ib_get_dma_mr(ia->ri_pd, mem_priv);
+ 		if (IS_ERR(ia->ri_bind_mem)) {
+ 			printk(KERN_ALERT "%s: ib_get_dma_mr for "
+-				"phys register failed with %lX\n\t"
+-				"Will continue with degraded performance\n",
++				"phys register failed with %lX\n",
+ 				__func__, PTR_ERR(ia->ri_bind_mem));
+-			memreg = RPCRDMA_REGISTER;
+-			ia->ri_bind_mem = NULL;
++			rc = -ENOMEM;
++			goto out2;
+ 		}
  		break;
  	default:
- 		WARN_ON_ONCE(1);
-@@ -3479,7 +3450,6 @@ nfsd4_encode_exchange_id(struct nfsd4_compoundres *resp, __be32 nfserr,
- 
- 	/* Implementation id */
- 	WRITE32(0);	/* zero length nfs_impl_id4 array */
--	ADJUST_ARGS();
- 	return 0;
+@@ -1611,67 +1593,6 @@ rpcrdma_deregister_fmr_external(struct rpcrdma_mr_seg *seg,
+ 	return rc;
  }
  
-@@ -3496,7 +3466,6 @@ nfsd4_encode_create_session(struct nfsd4_compoundres *resp, __be32 nfserr,
- 	WRITEMEM(sess->sessionid.data, NFS4_MAX_SESSIONID_LEN);
- 	WRITE32(sess->seqid);
- 	WRITE32(sess->flags);
--	ADJUST_ARGS();
- 
- 	RESERVE_SPACE(28);
- 	WRITE32(0); /* headerpadsz */
-@@ -3506,12 +3475,10 @@ nfsd4_encode_create_session(struct nfsd4_compoundres *resp, __be32 nfserr,
- 	WRITE32(sess->fore_channel.maxops);
- 	WRITE32(sess->fore_channel.maxreqs);
- 	WRITE32(sess->fore_channel.nr_rdma_attrs);
--	ADJUST_ARGS();
- 
- 	if (sess->fore_channel.nr_rdma_attrs) {
- 		RESERVE_SPACE(4);
- 		WRITE32(sess->fore_channel.rdma_attrs);
--		ADJUST_ARGS();
- 	}
- 
- 	RESERVE_SPACE(28);
-@@ -3522,12 +3489,10 @@ nfsd4_encode_create_session(struct nfsd4_compoundres *resp, __be32 nfserr,
- 	WRITE32(sess->back_channel.maxops);
- 	WRITE32(sess->back_channel.maxreqs);
- 	WRITE32(sess->back_channel.nr_rdma_attrs);
--	ADJUST_ARGS();
- 
- 	if (sess->back_channel.nr_rdma_attrs) {
- 		RESERVE_SPACE(4);
- 		WRITE32(sess->back_channel.rdma_attrs);
--		ADJUST_ARGS();
- 	}
- 	return 0;
- }
-@@ -3550,7 +3515,6 @@ nfsd4_encode_sequence(struct nfsd4_compoundres *resp, __be32 nfserr,
- 	WRITE32(seq->maxslots - 1); /* sr_target_highest_slotid */
- 	WRITE32(seq->status_flags);
- 
--	ADJUST_ARGS();
- 	resp->cstate.datap = p; /* DRC cache data pointer */
- 	return 0;
- }
-@@ -3572,7 +3536,6 @@ nfsd4_encode_test_stateid(struct nfsd4_compoundres *resp, __be32 nfserr,
- 		*p++ = stateid->ts_id_status;
- 	}
- 
--	ADJUST_ARGS();
- 	return nfserr;
- }
- 
-@@ -3707,7 +3670,6 @@ nfsd4_encode_operation(struct nfsd4_compoundres *resp, struct nfsd4_op *op)
- 	RESERVE_SPACE(8);
- 	WRITE32(op->opnum);
- 	statp = p++;	/* to be backfilled at the end */
--	ADJUST_ARGS();
- 
- 	if (op->opnum == OP_ILLEGAL)
- 		goto status;
-@@ -3768,11 +3730,9 @@ nfsd4_encode_replay(struct nfsd4_compoundres *resp, struct nfsd4_op *op)
- 	RESERVE_SPACE(8);
- 	WRITE32(op->opnum);
- 	*p++ = rp->rp_status;  /* already xdr'ed */
--	ADJUST_ARGS();
- 
- 	RESERVE_SPACE(rp->rp_buflen);
- 	WRITEMEM(rp->rp_buf, rp->rp_buflen);
--	ADJUST_ARGS();
- }
- 
+-static int
+-rpcrdma_register_default_external(struct rpcrdma_mr_seg *seg,
+-			int *nsegs, int writing, struct rpcrdma_ia *ia)
+-{
+-	int mem_priv = (writing ? IB_ACCESS_REMOTE_WRITE :
+-				  IB_ACCESS_REMOTE_READ);
+-	struct rpcrdma_mr_seg *seg1 = seg;
+-	struct ib_phys_buf ipb[RPCRDMA_MAX_DATA_SEGS];
+-	int len, i, rc = 0;
+-
+-	if (*nsegs > RPCRDMA_MAX_DATA_SEGS)
+-		*nsegs = RPCRDMA_MAX_DATA_SEGS;
+-	for (len = 0, i = 0; i < *nsegs;) {
+-		rpcrdma_map_one(ia, seg, writing);
+-		ipb[i].addr = seg->mr_dma;
+-		ipb[i].size = seg->mr_len;
+-		len += seg->mr_len;
+-		++seg;
+-		++i;
+-		/* Check for holes */
+-		if ((i < *nsegs && offset_in_page(seg->mr_offset)) ||
+-		    offset_in_page((seg-1)->mr_offset+(seg-1)->mr_len))
+-			break;
+-	}
+-	seg1->mr_base = seg1->mr_dma;
+-	seg1->mr_chunk.rl_mr = ib_reg_phys_mr(ia->ri_pd,
+-				ipb, i, mem_priv, &seg1->mr_base);
+-	if (IS_ERR(seg1->mr_chunk.rl_mr)) {
+-		rc = PTR_ERR(seg1->mr_chunk.rl_mr);
+-		dprintk("RPC:       %s: failed ib_reg_phys_mr "
+-			"%u@0x%llx (%d)... status %i\n",
+-			__func__, len,
+-			(unsigned long long)seg1->mr_dma, i, rc);
+-		while (i--)
+-			rpcrdma_unmap_one(ia, --seg);
+-	} else {
+-		seg1->mr_rkey = seg1->mr_chunk.rl_mr->rkey;
+-		seg1->mr_nsegs = i;
+-		seg1->mr_len = len;
+-	}
+-	*nsegs = i;
+-	return rc;
+-}
+-
+-static int
+-rpcrdma_deregister_default_external(struct rpcrdma_mr_seg *seg,
+-			struct rpcrdma_ia *ia)
+-{
+-	struct rpcrdma_mr_seg *seg1 = seg;
+-	int rc;
+-
+-	rc = ib_dereg_mr(seg1->mr_chunk.rl_mr);
+-	seg1->mr_chunk.rl_mr = NULL;
+-	while (seg1->mr_nsegs--)
+-		rpcrdma_unmap_one(ia, seg++);
+-	if (rc)
+-		dprintk("RPC:       %s: failed ib_dereg_mr,"
+-			" status %i\n", __func__, rc);
+-	return rc;
+-}
+-
  int
--- 
-1.9.0
+ rpcrdma_register_external(struct rpcrdma_mr_seg *seg,
+ 			int nsegs, int writing, struct rpcrdma_xprt *r_xprt)
+@@ -1701,10 +1622,8 @@ rpcrdma_register_external(struct rpcrdma_mr_seg *seg,
+ 		rc = rpcrdma_register_fmr_external(seg, &nsegs, writing, ia);
+ 		break;
+ 
+-	/* Default registration each time */
+ 	default:
+-		rc = rpcrdma_register_default_external(seg, &nsegs, writing, ia);
+-		break;
++		return -1;
+ 	}
+ 	if (rc)
+ 		return -1;
+@@ -1738,7 +1657,6 @@ rpcrdma_deregister_external(struct rpcrdma_mr_seg *seg,
+ 		break;
+ 
+ 	default:
+-		rc = rpcrdma_deregister_default_external(seg, ia);
+ 		break;
+ 	}
+ 	if (r) {
 
