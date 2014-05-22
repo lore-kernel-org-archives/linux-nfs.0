@@ -1,108 +1,92 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:38606 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:43495 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757738AbaEKUxD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 11 May 2014 16:53:03 -0400
+	id S1752697AbaEVTcq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 May 2014 15:32:46 -0400
 From: "J. Bruce Fields" <bfields@redhat.com>
 To: linux-nfs@vger.kernel.org
 Cc: Christoph Hellwig <hch@infradead.org>,
         "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 28/43] nfsd4: adjust buflen to session channel limit
-Date: Sun, 11 May 2014 16:52:33 -0400
-Message-Id: <1399841568-19716-29-git-send-email-bfields@redhat.com>
-In-Reply-To: <1399841568-19716-1-git-send-email-bfields@redhat.com>
-References: <1399841568-19716-1-git-send-email-bfields@redhat.com>
+Subject: [PATCH 44/52] nfsd4: read encoding cleanup
+Date: Thu, 22 May 2014 15:32:19 -0400
+Message-Id: <1400787148-25941-45-git-send-email-bfields@redhat.com>
+In-Reply-To: <1400787148-25941-1-git-send-email-bfields@redhat.com>
+References: <1400787148-25941-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 From: "J. Bruce Fields" <bfields@redhat.com>
 
-We can simplify session limit enforcement by restricting the xdr buflen
-to the session size.
-
-Also fix a preexisting bug: we should really have been taking into
-account the auth-required space when comparing against session limits,
-which are limits on the size of the entire rpc reply, including any krb5
-overhead.
+Trivial cleanup, no change in functionality.
 
 Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfsd/nfs4state.c |   11 +++++++++++
- fs/nfsd/nfs4xdr.c   |   24 ++++++++----------------
- 2 files changed, 19 insertions(+), 16 deletions(-)
+ fs/nfsd/nfs4xdr.c | 27 ++++++++++++++-------------
+ 1 file changed, 14 insertions(+), 13 deletions(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index dd7efe9..620d240 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2204,11 +2204,13 @@ nfsd4_sequence(struct svc_rqst *rqstp,
- 	       struct nfsd4_sequence *seq)
- {
- 	struct nfsd4_compoundres *resp = rqstp->rq_resp;
-+	struct xdr_stream *xdr = &resp->xdr;
- 	struct nfsd4_session *session;
- 	struct nfs4_client *clp;
- 	struct nfsd4_slot *slot;
- 	struct nfsd4_conn *conn;
- 	__be32 status;
-+	int buflen;
- 	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
- 
- 	if (resp->opcnt != 1)
-@@ -2277,6 +2279,15 @@ nfsd4_sequence(struct svc_rqst *rqstp,
- 	if (status)
- 		goto out_put_session;
- 
-+	buflen = (seq->cachethis) ?
-+			session->se_fchannel.maxresp_cached :
-+			session->se_fchannel.maxresp_sz;
-+	status = (seq->cachethis) ? nfserr_rep_too_big_to_cache :
-+				    nfserr_rep_too_big;
-+	if (xdr_restrict_buflen(xdr, buflen - 2 * RPC_MAX_AUTH_SIZE))
-+		goto out_put_session;
-+
-+	status = nfs_ok;
- 	/* Success! bump slot seqid */
- 	slot->sl_seqid = seq->seqid;
- 	slot->sl_flags |= NFSD4_SLOT_INUSE;
 diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 4751fd4..0d8a18d 100644
+index bf853fd..b8be187 100644
 --- a/fs/nfsd/nfs4xdr.c
 +++ b/fs/nfsd/nfs4xdr.c
-@@ -3759,25 +3759,17 @@ static nfsd4_enc nfsd4_enc_ops[] = {
- __be32 nfsd4_check_resp_size(struct nfsd4_compoundres *resp, u32 respsize)
+@@ -3075,6 +3075,7 @@ static __be32 nfsd4_encode_splice_read(
+ 				struct file *file, unsigned long maxcount)
  {
- 	struct xdr_buf *buf = &resp->rqstp->rq_res;
--	struct nfsd4_session *session = resp->cstate.session;
-+	struct nfsd4_slot *slot = resp->cstate.slot;
- 
--	if (nfsd4_has_session(&resp->cstate)) {
--		struct nfsd4_slot *slot = resp->cstate.slot;
--
--		if (buf->len + respsize > session->se_fchannel.maxresp_sz)
--			return nfserr_rep_too_big;
--
--		if ((slot->sl_flags & NFSD4_SLOT_CACHETHIS) &&
--		    buf->len + respsize > session->se_fchannel.maxresp_cached)
--			return nfserr_rep_too_big_to_cache;
--	}
--
--	if (buf->len + respsize > buf->buflen) {
--		WARN_ON_ONCE(nfsd4_has_session(&resp->cstate));
-+	if (buf->len + respsize <= buf->buflen)
-+		return nfs_ok;
-+	if (!nfsd4_has_session(&resp->cstate))
- 		return nfserr_resource;
-+	if (slot->sl_flags & NFSD4_SLOT_CACHETHIS) {
-+		WARN_ON_ONCE(1);
-+		return nfserr_rep_too_big_to_cache;
+ 	struct xdr_stream *xdr = &resp->xdr;
++	struct xdr_buf *buf = xdr->buf;
+ 	u32 eof;
+ 	int starting_len = xdr->buf->len - 8;
+ 	int space_left;
+@@ -3097,7 +3098,7 @@ static __be32 nfsd4_encode_splice_read(
+ 		 * page length; reset it so as not to confuse
+ 		 * xdr_truncate_encode:
+ 		 */
+-		xdr->buf->page_len = 0;
++		buf->page_len = 0;
+ 		return nfserr;
  	}
--
--	return 0;
-+	return nfserr_rep_too_big;
- }
  
- void
+@@ -3105,29 +3106,29 @@ static __be32 nfsd4_encode_splice_read(
+ 	       read->rd_fhp->fh_dentry->d_inode->i_size);
+ 
+ 	tmp = htonl(eof);
+-	write_bytes_to_xdr_buf(xdr->buf, starting_len    , &tmp, 4);
++	write_bytes_to_xdr_buf(buf, starting_len    , &tmp, 4);
+ 	tmp = htonl(maxcount);
+-	write_bytes_to_xdr_buf(xdr->buf, starting_len + 4, &tmp, 4);
++	write_bytes_to_xdr_buf(buf, starting_len + 4, &tmp, 4);
+ 
+-	resp->xdr.buf->page_len = maxcount;
+-	xdr->buf->len += maxcount;
++	buf->page_len = maxcount;
++	buf->len += maxcount;
+ 	xdr->page_ptr += (maxcount + PAGE_SIZE - 1) / PAGE_SIZE;
+-	xdr->iov = xdr->buf->tail;
++	xdr->iov = buf->tail;
+ 
+ 	/* Use rest of head for padding and remaining ops: */
+-	resp->xdr.buf->tail[0].iov_base = xdr->p;
+-	resp->xdr.buf->tail[0].iov_len = 0;
++	buf->tail[0].iov_base = xdr->p;
++	buf->tail[0].iov_len = 0;
+ 	if (maxcount&3) {
+ 		p = xdr_reserve_space(xdr, 4);
+ 		WRITE32(0);
+-		resp->xdr.buf->tail[0].iov_base += maxcount&3;
+-		resp->xdr.buf->tail[0].iov_len = 4 - (maxcount&3);
+-		xdr->buf->len -= (maxcount&3);
++		buf->tail[0].iov_base += maxcount&3;
++		buf->tail[0].iov_len = 4 - (maxcount&3);
++		buf->len -= (maxcount&3);
+ 	}
+ 
+ 	space_left = min_t(int, (void *)xdr->end - (void *)xdr->p,
+-				xdr->buf->buflen - xdr->buf->len);
+-	xdr->buf->buflen = xdr->buf->len + space_left;
++				buf->buflen - buf->len);
++	buf->buflen = buf->len + space_left;
+ 	xdr->end = (__be32 *)((void *)xdr->end + space_left);
+ 
+ 	return 0;
 -- 
-1.7.9.5
+1.9.0
 
