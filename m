@@ -1,61 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:48152 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752664AbaE0QAp (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Tue, 27 May 2014 12:00:45 -0400
-Date: Tue, 27 May 2014 09:00:44 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] nfs: commit layouts in fdatasync
-Message-ID: <20140527160044.GA17587@infradead.org>
-References: <20140421172917.GA20036@infradead.org>
- <20140505065624.GA32658@infradead.org>
+Received: from mail-ie0-f179.google.com ([209.85.223.179]:46362 "EHLO
+	mail-ie0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753029AbaEVA4o (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 May 2014 20:56:44 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH v4 17/24] xprtrdma: Remove Tavor MTU setting
+To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Date: Wed, 21 May 2014 20:56:42 -0400
+Message-ID: <20140522005642.27190.68081.stgit@manet.1015granger.net>
+In-Reply-To: <20140522004505.27190.58897.stgit@manet.1015granger.net>
+References: <20140522004505.27190.58897.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140505065624.GA32658@infradead.org>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sun, May 04, 2014 at 11:56:24PM -0700, Christoph Hellwig wrote:
-> ping?  This is a fairly serious data integrity issue for pnfs users.
+Clean up.  Remove HCA-specific clutter in xprtrdma, which is
+supposed to be device-independent.
 
-ping^2
+Hal Rosenstock <hal@dev.mellanox.co.il> observes:
+> Note that there is OpenSM option (enable_quirks) to return 1K MTU
+> in SA PathRecord responses for Tavor so that can be used for this.
+> The default setting for enable_quirks is FALSE so that would need
+> changing.
 
-without this fdatasync and O_DSYNC writes on pnfs are more or less
-noops, so at least getting a review would be helpful, nevermind
-forwarding it to Linus and -stable.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
-> 
-> On Mon, Apr 21, 2014 at 10:29:17AM -0700, Christoph Hellwig wrote:
-> > >From fdatasync(2):
-> > 
-> >  "fdatasync() is similar to fsync(), but does not flush modified metadata
-> >   unless that metadata is needed in order  to  allow  a  subsequent  data
-> >   retrieval to be correctly handled."
-> > 
-> > We absolutely need to commit the layouts to be able to retrieve the data
-> > in case either the client, the server or the storage subsystem go down.
-> > 
-> > Signed-off-by: Christoph Hellwig <hch@lst.de>
-> > 
-> > diff --git a/fs/nfs/nfs4file.c b/fs/nfs/nfs4file.c
-> > index 8de3407..464db9d 100644
-> > --- a/fs/nfs/nfs4file.c
-> > +++ b/fs/nfs/nfs4file.c
-> > @@ -100,8 +100,7 @@ nfs4_file_fsync(struct file *file, loff_t start, loff_t end, int datasync)
-> >  			break;
-> >  		mutex_lock(&inode->i_mutex);
-> >  		ret = nfs_file_fsync_commit(file, start, end, datasync);
-> > -		if (!ret && !datasync)
-> > -			/* application has asked for meta-data sync */
-> > +		if (!ret)
-> >  			ret = pnfs_layoutcommit_inode(inode, true);
-> >  		mutex_unlock(&inode->i_mutex);
-> >  		/*
-> > --
-> > To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
-> > the body of a message to majordomo@vger.kernel.org
-> > More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> ---end quoted text---
----end quoted text---
+ net/sunrpc/xprtrdma/verbs.c |   14 --------------
+ 1 files changed, 0 insertions(+), 14 deletions(-)
+
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 54edf2a..515dfc1 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -48,7 +48,6 @@
+  */
+ 
+ #include <linux/interrupt.h>
+-#include <linux/pci.h>	/* for Tavor hack below */
+ #include <linux/slab.h>
+ #include <asm/bitops.h>
+ 
+@@ -920,19 +919,6 @@ retry:
+ 		}
+ 	}
+ 
+-/* XXX Tavor device performs badly with 2K MTU! */
+-if (strnicmp(ia->ri_id->device->dma_device->bus->name, "pci", 3) == 0) {
+-	struct pci_dev *pcid = to_pci_dev(ia->ri_id->device->dma_device);
+-	if (pcid->device == PCI_DEVICE_ID_MELLANOX_TAVOR &&
+-	    (pcid->vendor == PCI_VENDOR_ID_MELLANOX ||
+-	     pcid->vendor == PCI_VENDOR_ID_TOPSPIN)) {
+-		struct ib_qp_attr attr = {
+-			.path_mtu = IB_MTU_1024
+-		};
+-		rc = ib_modify_qp(ia->ri_id->qp, &attr, IB_QP_PATH_MTU);
+-	}
+-}
+-
+ 	ep->rep_connected = 0;
+ 
+ 	rc = rdma_connect(ia->ri_id, &ep->rep_remote_cma);
+
