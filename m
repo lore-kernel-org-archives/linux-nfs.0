@@ -1,91 +1,80 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:45377 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:43350 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750889AbaEFQhS (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 May 2014 12:37:18 -0400
-Date: Tue, 6 May 2014 12:37:17 -0400
-From: Bruce Fields <bfields@fieldses.org>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 02/70] NFSd: Move default initialisers from
- create_client() to alloc_client()
-Message-ID: <20140506163717.GD18281@fieldses.org>
-References: <1397846704-14567-1-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-2-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-3-git-send-email-trond.myklebust@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1397846704-14567-3-git-send-email-trond.myklebust@primarydata.com>
+	id S1752027AbaEVTcd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 May 2014 15:32:33 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: Christoph Hellwig <hch@infradead.org>
+Subject: xdr encoding fixes (v3)
+Date: Thu, 22 May 2014 15:31:35 -0400
+Message-Id: <1400787148-25941-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Apr 18, 2014 at 02:43:56PM -0400, Trond Myklebust wrote:
-> Aside from making it clearer what is non-trivial in create_client(), it
-> also fixes a bug whereby we can call free_client() before idr_init()
-> has been called.
+Changes since the previous posting include:
 
-Thanks, applying for 3.15 and stable.
+	- fix for a bug in "allow exotic read compounds" that appears to
+	  have been the cause for xfstests hangs
+	- tighten the estimate of space required for
+	  checksumming/encryption (in particular it can be zero in the
+	  non-krb5i/krb5p case).
+	- fix some sloppy reply size estimates uncovered by the previous
+	  change.
+
+I'll soon start merging at least the first patches for 3.16.
+
+Original introduction follows:
+
+This is a collection of fixes for the NFS server's encoding of NFSv4
+compounds, along with a few tangentially related cleanups and bugfixes I
+noticed along the way.
+
+The basic problem is that we've always assumed an rpc reply is either
+
+	- "small" (much less than a page), or
+	- looks like a read (a bunch of data with a little bit at the
+	  beginning and the end).
+
+That assumption has allowed us to cover the most important cases without
+having to deal with some annoying details like how to encode arbitrary
+data across a page boundary, but: 
+
+	- The inability to encode attributes of more than a page annoys
+	  some people who would like to get and set extraordinarily long
+	  ACLs.
+
+	- The inability to encode attributes that cross page boundaries
+	  also means we can't return more than a page of readdir data at
+	  a time, limiting readdir performance on large directories.
+
+	- The NFSv4 protocol doesn't really allow us to place these
+	  sorts of arbitrary limits on the types of compounds we handle.
+	  (Well, 4.0 is a bit fuzzy on this point, but 4.1 I think
+	  definitely considers it a bug if a server won't handle, e.g.,
+	  multiple read ops in a compound.)  This hasn't been an issue
+	  because most of these exotic compounds aren't really useful to
+	  clients.  But maybe future clients will find a use for some of
+	  them--in which case we'd prefer not to make the work around a
+	  server that doesn't meet the spec.
+
+So, the main goal is to fix those limitations.  We also get to share a
+little more code with the client.
+
+Further work may include:
+
+	- writing more pynfs tests for exotic compounds and odd corner
+	  cases,
+	- auditing the annoying nfsd4_*_rsize() functions, which we now
+	  depend on for more things,
+	- improving our (currently very sloppy) estimate of how much
+	  space we need for krb5i/krb5p to checksum/encrypt the result.
+	- sharing some of this with the v2/v3 code (especially in the
+	  read and readdir cases),
+	- allow rpc's whose call and reply are both very large (our one
+	  remaining dubious limit on compounds, though again something
+	  clients seem unlikely to notice for now),
+	- on the decode side, eliminating the existing macros and
+	  sharing more helpers with the client.
 
 --b.
-
-> 
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> ---
->  fs/nfsd/nfs4state.c | 24 ++++++++++++------------
->  1 file changed, 12 insertions(+), 12 deletions(-)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 3ba65979a3cd..230d21cb1717 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -1078,6 +1078,18 @@ static struct nfs4_client *alloc_client(struct xdr_netobj name)
->  		return NULL;
->  	}
->  	clp->cl_name.len = name.len;
-> +	INIT_LIST_HEAD(&clp->cl_sessions);
-> +	idr_init(&clp->cl_stateids);
-> +	atomic_set(&clp->cl_refcount, 0);
-> +	clp->cl_cb_state = NFSD4_CB_UNKNOWN;
-> +	INIT_LIST_HEAD(&clp->cl_idhash);
-> +	INIT_LIST_HEAD(&clp->cl_openowners);
-> +	INIT_LIST_HEAD(&clp->cl_delegations);
-> +	INIT_LIST_HEAD(&clp->cl_lru);
-> +	INIT_LIST_HEAD(&clp->cl_callbacks);
-> +	INIT_LIST_HEAD(&clp->cl_revoked);
-> +	spin_lock_init(&clp->cl_lock);
-> +	rpc_init_wait_queue(&clp->cl_cb_waitq, "Backchannel slot table");
->  	return clp;
->  }
->  
-> @@ -1347,7 +1359,6 @@ static struct nfs4_client *create_client(struct xdr_netobj name,
->  	if (clp == NULL)
->  		return NULL;
->  
-> -	INIT_LIST_HEAD(&clp->cl_sessions);
->  	ret = copy_cred(&clp->cl_cred, &rqstp->rq_cred);
->  	if (ret) {
->  		spin_lock(&nn->client_lock);
-> @@ -1355,20 +1366,9 @@ static struct nfs4_client *create_client(struct xdr_netobj name,
->  		spin_unlock(&nn->client_lock);
->  		return NULL;
->  	}
-> -	idr_init(&clp->cl_stateids);
-> -	atomic_set(&clp->cl_refcount, 0);
-> -	clp->cl_cb_state = NFSD4_CB_UNKNOWN;
-> -	INIT_LIST_HEAD(&clp->cl_idhash);
-> -	INIT_LIST_HEAD(&clp->cl_openowners);
-> -	INIT_LIST_HEAD(&clp->cl_delegations);
-> -	INIT_LIST_HEAD(&clp->cl_lru);
-> -	INIT_LIST_HEAD(&clp->cl_callbacks);
-> -	INIT_LIST_HEAD(&clp->cl_revoked);
-> -	spin_lock_init(&clp->cl_lock);
->  	nfsd4_init_callback(&clp->cl_cb_null);
->  	clp->cl_time = get_seconds();
->  	clear_bit(0, &clp->cl_cb_slot_busy);
-> -	rpc_init_wait_queue(&clp->cl_cb_waitq, "Backchannel slot table");
->  	copy_verf(clp, verf);
->  	rpc_copy_addr((struct sockaddr *) &clp->cl_addr, sa);
->  	gen_confirm(clp);
-> -- 
-> 1.9.0
-> 
