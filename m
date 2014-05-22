@@ -1,79 +1,81 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qc0-f171.google.com ([209.85.216.171]:49149 "EHLO
-	mail-qc0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751398AbaEWMAk (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 May 2014 08:00:40 -0400
-Received: by mail-qc0-f171.google.com with SMTP id x13so7895024qcv.2
-        for <linux-nfs@vger.kernel.org>; Fri, 23 May 2014 05:00:40 -0700 (PDT)
-Message-ID: <537F3853.3090109@gmail.com>
-Date: Fri, 23 May 2014 20:00:19 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
-MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>, kinglongmee@gmail.com
-Subject: [PATCH 3/4] NFSD: Adds macro EX_UUID_LEN for exports uuid's length
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from fieldses.org ([174.143.236.118]:43501 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752708AbaEVTcr (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 May 2014 15:32:47 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 45/52] nfsd4: more read encoding cleanup
+Date: Thu, 22 May 2014 15:32:20 -0400
+Message-Id: <1400787148-25941-46-git-send-email-bfields@redhat.com>
+In-Reply-To: <1400787148-25941-1-git-send-email-bfields@redhat.com>
+References: <1400787148-25941-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
----
- fs/nfsd/export.c  | 6 +++---
- fs/nfsd/export.h  | 1 +
- fs/nfsd/nfs4xdr.c | 2 +-
- 3 files changed, 5 insertions(+), 4 deletions(-)
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
-index 8771f41..90d37b6 100644
---- a/fs/nfsd/export.c
-+++ b/fs/nfsd/export.c
-@@ -487,10 +487,10 @@ uuid_parse(char **mesg, char *buf, unsigned char **puuid)
- 
- 	/* expect a 16 byte uuid encoded as \xXXXX... */
- 	len = qword_get(mesg, buf, PAGE_SIZE);
--	if (len != 16)
-+	if (len != EX_UUID_LEN)
- 		return -EINVAL;
- 
--	*puuid = kmemdup(buf, 16, GFP_KERNEL);
-+	*puuid = kmemdup(buf, EX_UUID_LEN, GFP_KERNEL);
- 	if (*puuid == NULL)
- 		return -ENOMEM;
- 
-@@ -663,7 +663,7 @@ static int svc_export_show(struct seq_file *m,
- 		if (exp->ex_uuid) {
- 			int i;
- 			seq_puts(m, ",uuid=");
--			for (i=0; i<16; i++) {
-+			for (i = 0; i < EX_UUID_LEN; i++) {
- 				if ((i&3) == 0 && i)
- 					seq_putc(m, ':');
- 				seq_printf(m, "%02x", exp->ex_uuid[i]);
-diff --git a/fs/nfsd/export.h b/fs/nfsd/export.h
-index d7939a6..c7d4ed0 100644
---- a/fs/nfsd/export.h
-+++ b/fs/nfsd/export.h
-@@ -37,6 +37,7 @@ struct nfsd4_fs_locations {
-  * spkm3i, and spkm3p (and using all 8 at once should be rare).
-  */
- #define MAX_SECINFO_LIST	8
-+#define EX_UUID_LEN		16
- 
- struct exp_flavor_info {
- 	u32	pseudoflavor;
+More cleanup, no change in functionality.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4xdr.c | 22 ++++++++++------------
+ 1 file changed, 10 insertions(+), 12 deletions(-)
+
 diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 18881f3..071b0be 100644
+index b8be187..fec9e13 100644
 --- a/fs/nfsd/nfs4xdr.c
 +++ b/fs/nfsd/nfs4xdr.c
-@@ -2250,7 +2250,7 @@ nfsd4_encode_fattr(struct svc_fh *fhp, struct svc_export *exp,
- 			WRITE32(MINOR(stat.dev));
- 			break;
- 		case FSIDSOURCE_UUID:
--			WRITEMEM(exp->ex_uuid, 16);
-+			WRITEMEM(exp->ex_uuid, EX_UUID_LEN);
- 			break;
- 		}
+@@ -3077,11 +3077,9 @@ static __be32 nfsd4_encode_splice_read(
+ 	struct xdr_stream *xdr = &resp->xdr;
+ 	struct xdr_buf *buf = xdr->buf;
+ 	u32 eof;
+-	int starting_len = xdr->buf->len - 8;
+ 	int space_left;
+ 	__be32 nfserr;
+-	__be32 tmp;
+-	__be32 *p;
++	__be32 *p = xdr->p - 2;
+ 
+ 	/*
+ 	 * Don't inline pages unless we know there's room for eof,
+@@ -3105,25 +3103,25 @@ static __be32 nfsd4_encode_splice_read(
+ 	eof = (read->rd_offset + maxcount >=
+ 	       read->rd_fhp->fh_dentry->d_inode->i_size);
+ 
+-	tmp = htonl(eof);
+-	write_bytes_to_xdr_buf(buf, starting_len    , &tmp, 4);
+-	tmp = htonl(maxcount);
+-	write_bytes_to_xdr_buf(buf, starting_len + 4, &tmp, 4);
++	*(p++) = htonl(eof);
++	*(p++) = htonl(maxcount);
+ 
+ 	buf->page_len = maxcount;
+ 	buf->len += maxcount;
+ 	xdr->page_ptr += (maxcount + PAGE_SIZE - 1) / PAGE_SIZE;
+-	xdr->iov = buf->tail;
+ 
+ 	/* Use rest of head for padding and remaining ops: */
+ 	buf->tail[0].iov_base = xdr->p;
+ 	buf->tail[0].iov_len = 0;
++	xdr->iov = buf->tail;
+ 	if (maxcount&3) {
+-		p = xdr_reserve_space(xdr, 4);
+-		WRITE32(0);
++		int pad = 4 - (maxcount&3);
++
++		*(xdr->p++) = 0;
++
+ 		buf->tail[0].iov_base += maxcount&3;
+-		buf->tail[0].iov_len = 4 - (maxcount&3);
+-		buf->len -= (maxcount&3);
++		buf->tail[0].iov_len = pad;
++		buf->len += pad;
  	}
+ 
+ 	space_left = min_t(int, (void *)xdr->end - (void *)xdr->p,
 -- 
 1.9.0
 
