@@ -1,46 +1,57 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f175.google.com ([209.85.213.175]:54687 "EHLO
-	mail-ig0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751158AbaE3A3b (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 29 May 2014 20:29:31 -0400
-Received: by mail-ig0-f175.google.com with SMTP id uq10so204032igb.2
-        for <linux-nfs@vger.kernel.org>; Thu, 29 May 2014 17:29:30 -0700 (PDT)
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: linux-nfs@vger.kernel.org
-Cc: Boaz Harrosh <bharrosh@panasas.com>
-Subject: [PATCH] pNFS: Handle allocation errors correctly in objlayout_alloc_layout_hdr()
-Date: Thu, 29 May 2014 20:29:18 -0400
-Message-Id: <1401409758-8035-1-git-send-email-trond.myklebust@primarydata.com>
+Received: from static-209-166-131-148.expedient.com ([209.166.131.148]:57487
+	"EHLO natasha.panasas.com" rhost-flags-OK-FAIL-OK-OK)
+	by vger.kernel.org with ESMTP id S1752362AbaEVNFD (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 May 2014 09:05:03 -0400
+Message-ID: <537DF5B4.4070001@panasas.com>
+Date: Thu, 22 May 2014 16:03:48 +0300
+From: Boaz Harrosh <bharrosh@panasas.com>
+MIME-Version: 1.0
+To: open-osd <osd-dev@open-osd.org>, NFS list <linux-nfs@vger.kernel.org>,
+        Daniel Gryniewicz <dang@linuxbox.com>,
+        Elizabeth Ellenbogen Ziph <elizabeth@linuxbox.com>,
+        "Pathak, Santosh" <santoshp@panasas.com>,
+        linux-fsdevel <linux-fsdevel@vger.kernel.org>
+CC: Benny Halevy <bhalevy@primarydata.com>,
+        Sachin bhamare <sachin.bhamare@gmail.com>,
+        Tigran Mkrtchyan <tigran.mkrtchyan@desy.de>
+Subject: [PACHSET 0/3] ore: raid6
+Content-Type: text/plain; charset="UTF-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Return the NULL pointer when the allocation fails.
+Hi all
 
-Cc: Boaz Harrosh <bharrosh@panasas.com>
-Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
----
- fs/nfs/objlayout/objlayout.c | 8 ++++----
- 1 file changed, 4 insertions(+), 4 deletions(-)
+proud to present support for raid6 in ORE.
 
-diff --git a/fs/nfs/objlayout/objlayout.c b/fs/nfs/objlayout/objlayout.c
-index 2f955f671003..765d3f54e986 100644
---- a/fs/nfs/objlayout/objlayout.c
-+++ b/fs/nfs/objlayout/objlayout.c
-@@ -53,10 +53,10 @@ objlayout_alloc_layout_hdr(struct inode *inode, gfp_t gfp_flags)
- 	struct objlayout *objlay;
- 
- 	objlay = kzalloc(sizeof(struct objlayout), gfp_flags);
--	if (objlay) {
--		spin_lock_init(&objlay->lock);
--		INIT_LIST_HEAD(&objlay->err_list);
--	}
-+	if (!objlay)
-+		return NULL;
-+	spin_lock_init(&objlay->lock);
-+	INIT_LIST_HEAD(&objlay->err_list);
- 	dprintk("%s: Return %p\n", __func__, objlay);
- 	return &objlay->pnfs_layout;
- }
--- 
-1.9.3
+changes since RFC:
+  Nothing changed. one checkpatch fix. And this time all patches actually
+  compile (thanks to Tigran)
 
+  I have by now tested better. RAID6 code was not actually tested heavily
+  but RAID5 was, and there are no known regressions to RAID5 so I'm pushing
+  this for next merge.
+  .I.E: Yes I did run all tests on RAID6 but user-mode utils do not support
+      scrubbing and checking of RAID6 yet. So I'm not confident that it is
+      100% cosher. But I do have a XOR checker and RAID5 is just as good as
+      current code. So I'm pushing this now and any RAID6 specific problems
+      can be fixed when they are found.
+
+These simple patches will enable raid6 using the Kernel's raid6_pq engine
+for support under exofs and pnfs-objects. There is nothing needed to do
+at exofs and pnfs-obj. Just fire your mkfs.exofs with --raid=6 (that was
+already supported before) and off you go as usual. The ORE will pick up
+the new map and will start writing two devices of redundancy bits.
+Including the pNFS server code and pnfs-export bits at exofs, they all
+work supporting raid6 without any code modifications.
+
+I want to deeply thank Daniel Gryniewicz who found first all the
+bugs in the old raid code, and inspired these patches.
+
+list of patches:
+[PATCH 1/4] ore: (trivial) reformat some code
+[PATCH 2/4] ore: Remove redundant dev_order(), more cleanups
+[PATCH 3/4] ore: Support for raid 6
+
+Cheers
+Boaz
