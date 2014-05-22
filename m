@@ -1,137 +1,42 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f171.google.com ([209.85.213.171]:63160 "EHLO
-	mail-ig0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753375AbaEOP51 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 May 2014 11:57:27 -0400
-Received: by mail-ig0-f171.google.com with SMTP id c1so8095817igq.4
-        for <linux-nfs@vger.kernel.org>; Thu, 15 May 2014 08:57:26 -0700 (PDT)
-From: Weston Andros Adamson <dros@primarydata.com>
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
-Subject: [PATCH v3 12/18] nfs: chain calls to pg_test
-Date: Thu, 15 May 2014 11:56:51 -0400
-Message-Id: <1400169417-28245-13-git-send-email-dros@primarydata.com>
-In-Reply-To: <1400169417-28245-1-git-send-email-dros@primarydata.com>
-References: <1400169417-28245-1-git-send-email-dros@primarydata.com>
+Received: from fieldses.org ([174.143.236.118]:43369 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752369AbaEVTce (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 May 2014 15:32:34 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 06/52] nfsd4: fix write reply size estimate
+Date: Thu, 22 May 2014 15:31:41 -0400
+Message-Id: <1400787148-25941-7-git-send-email-bfields@redhat.com>
+In-Reply-To: <1400787148-25941-1-git-send-email-bfields@redhat.com>
+References: <1400787148-25941-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Now that pg_test can change the size of the request (by returning a non-zero
-size smaller than the request), pg_test functions that call other
-pg_test functions must return the minimum of the result - or 0 if any fail.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Also clean up the logic of some pg_test functions so that all checks are
-for contitions where coalescing is not possible.
+The write reply also includes count and stable_how.
 
-Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfs/nfs4filelayout.c      | 27 ++++++++++++++-------------
- fs/nfs/objlayout/objio_osd.c |  9 ++++++---
- fs/nfs/pnfs.c                | 15 ++++++++++-----
- 3 files changed, 30 insertions(+), 21 deletions(-)
+ fs/nfsd/nfs4proc.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-index 9cea935..7a665e0 100644
---- a/fs/nfs/nfs4filelayout.c
-+++ b/fs/nfs/nfs4filelayout.c
-@@ -928,26 +928,27 @@ static size_t
- filelayout_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
- 		   struct nfs_page *req)
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 44cd477..b0e075c 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1530,7 +1530,7 @@ static inline u32 nfsd4_setclientid_rsize(struct svc_rqst *rqstp, struct nfsd4_o
+ 
+ static inline u32 nfsd4_write_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op)
  {
-+	unsigned int size;
- 	u64 p_stripe, r_stripe;
- 	u32 stripe_unit;
- 
--	if (!pnfs_generic_pg_test(pgio, prev, req) ||
--	    !nfs_generic_pg_test(pgio, prev, req))
-+	/* calls nfs_generic_pg_test */
-+	size = pnfs_generic_pg_test(pgio, prev, req);
-+	if (!size)
- 		return 0;
- 
--	if (!prev)
--		return req->wb_bytes;
-+	if (prev) {
-+		p_stripe = (u64)req_offset(prev);
-+		r_stripe = (u64)req_offset(req);
-+		stripe_unit = FILELAYOUT_LSEG(pgio->pg_lseg)->stripe_unit;
- 
--	p_stripe = (u64)req_offset(prev);
--	r_stripe = (u64)req_offset(req);
--	stripe_unit = FILELAYOUT_LSEG(pgio->pg_lseg)->stripe_unit;
-+		do_div(p_stripe, stripe_unit);
-+		do_div(r_stripe, stripe_unit);
- 
--	do_div(p_stripe, stripe_unit);
--	do_div(r_stripe, stripe_unit);
--
--	if (p_stripe == r_stripe)
--		return req->wb_bytes;
--	return 0;
-+		if (p_stripe != r_stripe)
-+			return 0;
-+	}
-+	return min(size, req->wb_bytes);
+-	return (op_encode_hdr_size + op_encode_verifier_maxsz) * sizeof(__be32);
++	return (op_encode_hdr_size + 2 + op_encode_verifier_maxsz) * sizeof(__be32);
  }
  
- static void
-diff --git a/fs/nfs/objlayout/objio_osd.c b/fs/nfs/objlayout/objio_osd.c
-index 71b9c69..6113207 100644
---- a/fs/nfs/objlayout/objio_osd.c
-+++ b/fs/nfs/objlayout/objio_osd.c
-@@ -571,12 +571,15 @@ int objio_write_pagelist(struct nfs_pgio_data *wdata, int how)
- static size_t objio_pg_test(struct nfs_pageio_descriptor *pgio,
- 			  struct nfs_page *prev, struct nfs_page *req)
- {
--	if (!pnfs_generic_pg_test(pgio, prev, req) ||
--	    pgio->pg_count + req->wb_bytes >
-+	unsigned int size;
-+
-+	size = pnfs_generic_pg_test(pgio, prev, req);
-+
-+	if (!size || pgio->pg_count + req->wb_bytes >
- 	    (unsigned long)pgio->pg_layout_private)
- 		return 0;
- 
--	return req->wb_bytes;
-+	return min(size, req->wb_bytes);
- }
- 
- static void objio_init_read(struct nfs_pageio_descriptor *pgio, struct nfs_page *req)
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index de6eb16..354c53c 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1442,8 +1442,12 @@ size_t
- pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
- 		     struct nfs_page *req)
- {
--	if (pgio->pg_lseg == NULL)
--		return nfs_generic_pg_test(pgio, prev, req);
-+	unsigned int size;
-+
-+	size = nfs_generic_pg_test(pgio, prev, req);
-+
-+	if (!size)
-+		return 0;
- 
- 	/*
- 	 * Test if a nfs_page is fully contained in the pnfs_layout_range.
-@@ -1459,10 +1463,11 @@ pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
- 	 * first byte that lies outside the pnfs_layout_range. FIXME?
- 	 *
- 	 */
--	if (req_offset(req) < end_offset(pgio->pg_lseg->pls_range.offset,
-+	if (req_offset(req) >= end_offset(pgio->pg_lseg->pls_range.offset,
- 					 pgio->pg_lseg->pls_range.length))
--		return req->wb_bytes;
--	return 0;
-+		return 0;
-+
-+	return min(size, req->wb_bytes);
- }
- EXPORT_SYMBOL_GPL(pnfs_generic_pg_test);
- 
+ static inline u32 nfsd4_exchange_id_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op)
 -- 
-1.8.5.2 (Apple Git-48)
+1.9.0
 
