@@ -1,50 +1,113 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f172.google.com ([209.85.223.172]:57564 "EHLO
-	mail-ie0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752993AbaEOP5I (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 May 2014 11:57:08 -0400
-Received: by mail-ie0-f172.google.com with SMTP id as1so1220896iec.31
-        for <linux-nfs@vger.kernel.org>; Thu, 15 May 2014 08:57:07 -0700 (PDT)
-From: Weston Andros Adamson <dros@primarydata.com>
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
-Subject: [PATCH v3 02/18] nfs: clean up PG_* flags
-Date: Thu, 15 May 2014 11:56:41 -0400
-Message-Id: <1400169417-28245-3-git-send-email-dros@primarydata.com>
-In-Reply-To: <1400169417-28245-1-git-send-email-dros@primarydata.com>
-References: <1400169417-28245-1-git-send-email-dros@primarydata.com>
+Received: from fieldses.org ([174.143.236.118]:43407 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752369AbaEVTck (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 May 2014 15:32:40 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 25/52] nfsd4: size-checking cleanup
+Date: Thu, 22 May 2014 15:32:00 -0400
+Message-Id: <1400787148-25941-26-git-send-email-bfields@redhat.com>
+In-Reply-To: <1400787148-25941-1-git-send-email-bfields@redhat.com>
+References: <1400787148-25941-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Remove unused flags PG_NEED_COMMIT and PG_NEED_RESCHED.
-Add comments describing how each flag is used.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
+Better variable name, some comments, etc.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- include/linux/nfs_page.h | 10 ++++------
- 1 file changed, 4 insertions(+), 6 deletions(-)
+ fs/nfsd/nfs4proc.c |  9 ++++++---
+ fs/nfsd/nfs4xdr.c  | 29 +++++++++++++++--------------
+ 2 files changed, 21 insertions(+), 17 deletions(-)
 
-diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
-index c6a587f..eb2eb63 100644
---- a/include/linux/nfs_page.h
-+++ b/include/linux/nfs_page.h
-@@ -22,12 +22,10 @@
-  * Valid flags for a dirty buffer
-  */
- enum {
--	PG_BUSY = 0,
--	PG_MAPPED,
--	PG_CLEAN,
--	PG_NEED_COMMIT,
--	PG_NEED_RESCHED,
--	PG_COMMIT_TO_DS,
-+	PG_BUSY = 0,		/* nfs_{un}lock_request */
-+	PG_MAPPED,		/* page private set for buffered io */
-+	PG_CLEAN,		/* write succeeded */
-+	PG_COMMIT_TO_DS,	/* used by pnfs layouts */
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 9b57894..f8e7472 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1281,7 +1281,6 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
+ 	struct nfsd4_compound_state *cstate = &resp->cstate;
+ 	struct svc_fh *current_fh = &cstate->current_fh;
+ 	struct svc_fh *save_fh = &cstate->save_fh;
+-	u32		plen = 0;
+ 	__be32		status;
+ 
+ 	svcxdr_init_encode(rqstp, resp);
+@@ -1351,9 +1350,13 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
+ 
+ 		/* If op is non-idempotent */
+ 		if (opdesc->op_flags & OP_MODIFIES_SOMETHING) {
+-			plen = opdesc->op_rsize_bop(rqstp, op);
+ 			/*
+-			 * If there's still another operation, make sure
++			 * Don't execute this op if we couldn't encode a
++			 * succesful reply:
++			 */
++			u32 plen = opdesc->op_rsize_bop(rqstp, op);
++			/*
++			 * Plus if there's another operation, make sure
+ 			 * we'll have space to at least encode an error:
+ 			 */
+ 			if (resp->opcnt < args->opcnt)
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 86caa98..f1a9716 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -3739,35 +3739,36 @@ static nfsd4_enc nfsd4_enc_ops[] = {
  };
  
- struct nfs_inode;
+ /*
+- * Calculate the total amount of memory that the compound response has taken
+- * after encoding the current operation with pad.
++ * Calculate whether we still have space to encode repsize bytes.
++ * There are two considerations:
++ *     - For NFS versions >=4.1, the size of the reply must stay within
++ *       session limits
++ *     - For all NFS versions, we must stay within limited preallocated
++ *       buffer space.
+  *
+- * pad: if operation is non-idempotent, pad was calculate by op_rsize_bop()
+- *      which was specified at nfsd4_operation, else pad is zero.
+- *
+- * Compare this length to the session se_fmaxresp_sz and se_fmaxresp_cached.
+- *
+- * Our se_fmaxresp_cached will always be a multiple of PAGE_SIZE, and so
+- * will be at least a page and will therefore hold the xdr_buf head.
++ * This is called before the operation is processed, so can only provide
++ * an upper estimate.  For some nonidempotent operations (such as
++ * getattr), it's not necessarily a problem if that estimate is wrong,
++ * as we can fail it after processing without significant side effects.
+  */
+-__be32 nfsd4_check_resp_size(struct nfsd4_compoundres *resp, u32 pad)
++__be32 nfsd4_check_resp_size(struct nfsd4_compoundres *resp, u32 respsize)
+ {
+ 	struct xdr_buf *buf = &resp->rqstp->rq_res;
+ 	struct nfsd4_session *session = resp->cstate.session;
+-	struct nfsd4_slot *slot = resp->cstate.slot;
+ 	int slack_bytes = (char *)resp->xdr.end - (char *)resp->xdr.p;
+ 
+ 	if (nfsd4_has_session(&resp->cstate)) {
++		struct nfsd4_slot *slot = resp->cstate.slot;
+ 
+-		if (buf->len + pad > session->se_fchannel.maxresp_sz)
++		if (buf->len + respsize > session->se_fchannel.maxresp_sz)
+ 			return nfserr_rep_too_big;
+ 
+ 		if ((slot->sl_flags & NFSD4_SLOT_CACHETHIS) &&
+-		    buf->len + pad > session->se_fchannel.maxresp_cached)
++		    buf->len + respsize > session->se_fchannel.maxresp_cached)
+ 			return nfserr_rep_too_big_to_cache;
+ 	}
+ 
+-	if (pad > slack_bytes) {
++	if (respsize > slack_bytes) {
+ 		WARN_ON_ONCE(nfsd4_has_session(&resp->cstate));
+ 		return nfserr_resource;
+ 	}
 -- 
-1.8.5.2 (Apple Git-48)
+1.9.0
 
