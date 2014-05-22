@@ -1,52 +1,94 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:47660 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:43414 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751637AbaEWOS4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Fri, 23 May 2014 10:18:56 -0400
-Date: Fri, 23 May 2014 10:18:56 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/5] NFSD: Cleanup unneeded including
- linux/user_namespace.h
-Message-ID: <20140523141855.GN25423@fieldses.org>
-References: <537F44B1.6080507@gmail.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <537F44B1.6080507@gmail.com>
+	id S1752421AbaEVTck (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 May 2014 15:32:40 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 28/52] nfsd4: don't try to encode conflicting owner if low on space
+Date: Thu, 22 May 2014 15:32:03 -0400
+Message-Id: <1400787148-25941-29-git-send-email-bfields@redhat.com>
+In-Reply-To: <1400787148-25941-1-git-send-email-bfields@redhat.com>
+References: <1400787148-25941-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks, applied all five.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-On Fri, May 23, 2014 at 08:53:05PM +0800, Kinglong Mee wrote:
-> commit 4c1e1b34d5c800ad3ac9a7e2805b0bea70ad2278 using kuid/kgid for
+I ran into this corner case in testing: in theory clients can provide
+state owners up to 1024 bytes long.  In the sessions case there might be
+a risk of this pushing us over the DRC slot size.
 
-In future, when referring to another commit, could you also include the
-summary line?  E.g.: Commit 8f6c5ffc8987 ("kernel/groups.c: remove
-return value of set_groups") removed the last use of "ret"....
+The conflicting owner isn't really that important, so let's humor a
+client that provides a small maxresponsize_cached by allowing ourselves
+to return without the conflicting owner instead of outright failing the
+operation.
 
---b.
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4proc.c |  3 ++-
+ fs/nfsd/nfs4xdr.c  | 16 +++++++++++++---
+ 2 files changed, 15 insertions(+), 4 deletions(-)
 
-> ex_anon_uid/ex_anon_gid, user_namespace.h is not needed now, clean it.
-> 
-> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
-> ---
->  fs/nfsd/auth.c | 1 -
->  1 file changed, 1 deletion(-)
-> 
-> diff --git a/fs/nfsd/auth.c b/fs/nfsd/auth.c
-> index 2645be4..1042325 100644
-> --- a/fs/nfsd/auth.c
-> +++ b/fs/nfsd/auth.c
-> @@ -1,7 +1,6 @@
->  /* Copyright (C) 1995, 1996 Olaf Kirch <okir@monad.swb.de> */
->  
->  #include <linux/sched.h>
-> -#include <linux/user_namespace.h>
->  #include "nfsd.h"
->  #include "auth.h"
->  
-> -- 
-> 1.9.3
-> 
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 2517e0b..1326a0b 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1434,7 +1434,8 @@ out:
+ #define op_encode_change_info_maxsz	(5)
+ #define nfs4_fattr_bitmap_maxsz		(4)
+ 
+-#define op_encode_lockowner_maxsz	(1 + XDR_QUADLEN(IDMAP_NAMESZ))
++/* We'll fall back on returning no lockowner if run out of space: */
++#define op_encode_lockowner_maxsz	(0)
+ #define op_encode_lock_denied_maxsz	(8 + op_encode_lockowner_maxsz)
+ 
+ #define nfs4_owner_maxsz		(1 + XDR_QUADLEN(IDMAP_NAMESZ))
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 19df1c2..4c2f866 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -2878,9 +2878,20 @@ nfsd4_encode_lock_denied(struct xdr_stream *xdr, struct nfsd4_lock_denied *ld)
+ 	struct xdr_netobj *conf = &ld->ld_owner;
+ 	__be32 *p;
+ 
++again:
+ 	p = xdr_reserve_space(xdr, 32 + XDR_LEN(conf->len));
+-	if (!p)
++	if (!p) {
++		/*
++		 * Don't fail to return the result just because we can't
++		 * return the conflicting open:
++		 */
++		if (conf->len) {
++			conf->len = 0;
++			conf->data = NULL;
++			goto again;
++		}
+ 		return nfserr_resource;
++	}
+ 	WRITE64(ld->ld_start);
+ 	WRITE64(ld->ld_length);
+ 	WRITE32(ld->ld_type);
+@@ -2888,7 +2899,6 @@ nfsd4_encode_lock_denied(struct xdr_stream *xdr, struct nfsd4_lock_denied *ld)
+ 		WRITEMEM(&ld->ld_clientid, 8);
+ 		WRITE32(conf->len);
+ 		WRITEMEM(conf->data, conf->len);
+-		kfree(conf->data);
+ 	}  else {  /* non - nfsv4 lock in conflict, no clientid nor owner */
+ 		WRITE64((u64)0); /* clientid */
+ 		WRITE32(0); /* length of owner name */
+@@ -2905,7 +2915,7 @@ nfsd4_encode_lock(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_lo
+ 		nfserr = nfsd4_encode_stateid(xdr, &lock->lk_resp_stateid);
+ 	else if (nfserr == nfserr_denied)
+ 		nfserr = nfsd4_encode_lock_denied(xdr, &lock->lk_denied);
+-
++	kfree(lock->lk_denied.ld_owner.data);
+ 	return nfserr;
+ }
+ 
+-- 
+1.9.0
+
