@@ -1,225 +1,109 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f182.google.com ([209.85.223.182]:35961 "EHLO
-	mail-ie0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753178AbaEVA5m (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 May 2014 20:57:42 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH v4 24/24] xprtrdma: Disconnect on registration failure
-To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Date: Wed, 21 May 2014 20:57:40 -0400
-Message-ID: <20140522005740.27190.63869.stgit@manet.1015granger.net>
-In-Reply-To: <20140522004505.27190.58897.stgit@manet.1015granger.net>
-References: <20140522004505.27190.58897.stgit@manet.1015granger.net>
-MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+Received: from fieldses.org ([174.143.236.118]:43463 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752708AbaEVTcp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 May 2014 15:32:45 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 38/52] nfsd4: don't treat readlink like a zero-copy operation
+Date: Thu, 22 May 2014 15:32:13 -0400
+Message-Id: <1400787148-25941-39-git-send-email-bfields@redhat.com>
+In-Reply-To: <1400787148-25941-1-git-send-email-bfields@redhat.com>
+References: <1400787148-25941-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-If rpcrdma_register_external() fails during request marshaling, the
-current RPC request is killed. Instead, this RPC should be retried
-after reconnecting the transport instance.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-The most likely reason for registration failure with FRMR is a
-failed post_send, which would be due to a remote transport
-disconnect or memory exhaustion. These issues can be recovered
-by a retry.
+There's no advantage to this zero-copy-style readlink encoding, and it
+unnecessarily limits the kinds of compounds we can handle.  (In practice
+I can't see why a client would want e.g. multiple readlink calls in a
+comound, but it's probably a spec violation for us not to handle it.)
 
-Problems encountered in the marshaling logic itself will not be
-corrected by trying again, so these should still kill a request.
-
-Now that we've added a clean exit for marshaling errors, take the
-opportunity to defang some BUG_ON's.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
+ fs/nfsd/nfs4xdr.c | 42 ++++++++++++------------------------------
+ 1 file changed, 12 insertions(+), 30 deletions(-)
 
- net/sunrpc/xprtrdma/rpc_rdma.c  |   48 +++++++++++++++++++++++++--------------
- net/sunrpc/xprtrdma/transport.c |   17 +++++++++-----
- 2 files changed, 42 insertions(+), 23 deletions(-)
-
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index 82173c7..e6a01e1 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -77,6 +77,8 @@ static const char transfertypes[][12] = {
-  * Prepare the passed-in xdr_buf into representation as RPC/RDMA chunk
-  * elements. Segments are then coalesced when registered, if possible
-  * within the selected memreg mode.
-+ *
-+ * Returns positive number of segments converted, or a negative errno.
-  */
- 
- static int
-@@ -103,12 +105,13 @@ rpcrdma_convert_iovs(struct xdr_buf *xdrbuf, unsigned int pos,
- 			/* alloc the pagelist for receiving buffer */
- 			ppages[p] = alloc_page(GFP_ATOMIC);
- 			if (!ppages[p])
--				return 0;
-+				return -ENOMEM;
- 		}
- 		seg[n].mr_page = ppages[p];
- 		seg[n].mr_offset = (void *)(unsigned long) page_base;
- 		seg[n].mr_len = min_t(u32, PAGE_SIZE - page_base, len);
--		BUG_ON(seg[n].mr_len > PAGE_SIZE);
-+		if (seg[n].mr_len > PAGE_SIZE)
-+			return -EIO;
- 		len -= seg[n].mr_len;
- 		++n;
- 		++p;
-@@ -117,7 +120,7 @@ rpcrdma_convert_iovs(struct xdr_buf *xdrbuf, unsigned int pos,
- 
- 	/* Message overflows the seg array */
- 	if (len && n == nsegs)
--		return 0;
-+		return -EIO;
- 
- 	if (xdrbuf->tail[0].iov_len) {
- 		/* the rpcrdma protocol allows us to omit any trailing
-@@ -126,7 +129,7 @@ rpcrdma_convert_iovs(struct xdr_buf *xdrbuf, unsigned int pos,
- 			return n;
- 		if (n == nsegs)
- 			/* Tail remains, but we're out of segments */
--			return 0;
-+			return -EIO;
- 		seg[n].mr_page = NULL;
- 		seg[n].mr_offset = xdrbuf->tail[0].iov_base;
- 		seg[n].mr_len = xdrbuf->tail[0].iov_len;
-@@ -167,15 +170,17 @@ rpcrdma_convert_iovs(struct xdr_buf *xdrbuf, unsigned int pos,
-  *  Reply chunk (a counted array):
-  *   N elements:
-  *    1 - N - HLOO - HLOO - ... - HLOO
-+ *
-+ * Returns positive RPC/RDMA header size, or negative errno.
-  */
- 
--static unsigned int
-+static ssize_t
- rpcrdma_create_chunks(struct rpc_rqst *rqst, struct xdr_buf *target,
- 		struct rpcrdma_msg *headerp, enum rpcrdma_chunktype type)
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 97a25a7..a3cfb89 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -3160,8 +3160,9 @@ static __be32
+ nfsd4_encode_readlink(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_readlink *readlink)
  {
- 	struct rpcrdma_req *req = rpcr_to_rdmar(rqst);
- 	struct rpcrdma_xprt *r_xprt = rpcx_to_rdmax(rqst->rq_xprt);
--	int nsegs, nchunks = 0;
-+	int n, nsegs, nchunks = 0;
- 	unsigned int pos;
- 	struct rpcrdma_mr_seg *seg = req->rl_segments;
- 	struct rpcrdma_read_chunk *cur_rchunk = NULL;
-@@ -201,11 +206,11 @@ rpcrdma_create_chunks(struct rpc_rqst *rqst, struct xdr_buf *target,
- 		pos = target->head[0].iov_len;
+ 	int maxcount;
++	__be32 wire_count;
++	int zero = 0;
+ 	struct xdr_stream *xdr = &resp->xdr;
+-	char *page;
+ 	int length_offset = xdr->buf->len;
+ 	__be32 *p;
  
- 	nsegs = rpcrdma_convert_iovs(target, pos, type, seg, RPCRDMA_MAX_SEGS);
--	if (nsegs == 0)
--		return 0;
-+	if (nsegs < 0)
-+		return nsegs;
+@@ -3171,26 +3172,19 @@ nfsd4_encode_readlink(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd
+ 	p = xdr_reserve_space(xdr, 4);
+ 	if (!p)
+ 		return nfserr_resource;
+-
+-	if (resp->xdr.buf->page_len)
+-		return nfserr_resource;
+-	if (!*resp->rqstp->rq_next_page)
+-		return nfserr_resource;
+-
+-	page = page_address(*(resp->rqstp->rq_next_page++));
+-
+ 	maxcount = PAGE_SIZE;
  
- 	do {
--		int n = rpcrdma_register_external(seg, nsegs,
-+		n = rpcrdma_register_external(seg, nsegs,
- 						cur_wchunk != NULL, r_xprt);
- 		if (n <= 0)
- 			goto out;
-@@ -277,7 +282,7 @@ out:
- 	for (pos = 0; nchunks--;)
- 		pos += rpcrdma_deregister_external(
- 				&req->rl_segments[pos], r_xprt);
--	return 0;
-+	return n;
+-	if (xdr->end - xdr->p < 1)
++	p = xdr_reserve_space(xdr, maxcount);
++	if (!p)
+ 		return nfserr_resource;
+-
+ 	/*
+ 	 * XXX: By default, the ->readlink() VFS op will truncate symlinks
+ 	 * if they would overflow the buffer.  Is this kosher in NFSv4?  If
+ 	 * not, one easy fix is: if ->readlink() precisely fills the buffer,
+ 	 * assume that truncation occurred, and return NFS4ERR_RESOURCE.
+ 	 */
+-	nfserr = nfsd_readlink(readlink->rl_rqstp, readlink->rl_fhp, page, &maxcount);
++	nfserr = nfsd_readlink(readlink->rl_rqstp, readlink->rl_fhp,
++						(char *)p, &maxcount);
+ 	if (nfserr == nfserr_isdir)
+ 		nfserr = nfserr_inval;
+ 	if (nfserr) {
+@@ -3198,24 +3192,12 @@ nfsd4_encode_readlink(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd
+ 		return nfserr;
+ 	}
+ 
+-	WRITE32(maxcount);
+-	resp->xdr.buf->head[0].iov_len = (char *)p
+-				- (char *)resp->xdr.buf->head[0].iov_base;
+-	resp->xdr.buf->page_len = maxcount;
+-	xdr->buf->len += maxcount;
+-	xdr->page_ptr += 1;
+-	xdr->buf->buflen -= PAGE_SIZE;
+-	xdr->iov = xdr->buf->tail;
+-
+-	/* Use rest of head for padding and remaining ops: */
+-	resp->xdr.buf->tail[0].iov_base = p;
+-	resp->xdr.buf->tail[0].iov_len = 0;
+-	if (maxcount&3) {
+-		p = xdr_reserve_space(xdr, 4);
+-		WRITE32(0);
+-		resp->xdr.buf->tail[0].iov_base += maxcount&3;
+-		resp->xdr.buf->tail[0].iov_len = 4 - (maxcount&3);
+-	}
++	wire_count = htonl(maxcount);
++	write_bytes_to_xdr_buf(xdr->buf, length_offset, &wire_count, 4);
++	xdr_truncate_encode(xdr, length_offset + 4 + maxcount);
++	if (maxcount & 3)
++		write_bytes_to_xdr_buf(xdr->buf, length_offset + 4 + maxcount,
++						&zero, 4 - (maxcount&3));
+ 	return 0;
  }
  
- /*
-@@ -359,6 +364,8 @@ rpcrdma_inline_pullup(struct rpc_rqst *rqst, int pad)
-  *  [1] -- the RPC header/data, marshaled by RPC and the NFS protocol.
-  *  [2] -- optional padding.
-  *  [3] -- if padded, header only in [1] and data here.
-+ *
-+ * Returns zero on success, otherwise a negative errno.
-  */
- 
- int
-@@ -368,7 +375,8 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
- 	struct rpcrdma_xprt *r_xprt = rpcx_to_rdmax(xprt);
- 	struct rpcrdma_req *req = rpcr_to_rdmar(rqst);
- 	char *base;
--	size_t hdrlen, rpclen, padlen;
-+	size_t rpclen, padlen;
-+	ssize_t hdrlen;
- 	enum rpcrdma_chunktype rtype, wtype;
- 	struct rpcrdma_msg *headerp;
- 
-@@ -439,7 +447,11 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
- 	/* The following simplification is not true forever */
- 	if (rtype != rpcrdma_noch && wtype == rpcrdma_replych)
- 		wtype = rpcrdma_noch;
--	BUG_ON(rtype != rpcrdma_noch && wtype != rpcrdma_noch);
-+	if (rtype != rpcrdma_noch && wtype != rpcrdma_noch) {
-+		dprintk("RPC:       %s: cannot marshal multiple "
-+			"chunk lists\n", __func__);
-+		return -EIO;
-+	}
- 
- 	hdrlen = 28; /*sizeof *headerp;*/
- 	padlen = 0;
-@@ -464,8 +476,11 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
- 			headerp->rm_body.rm_padded.rm_pempty[1] = xdr_zero;
- 			headerp->rm_body.rm_padded.rm_pempty[2] = xdr_zero;
- 			hdrlen += 2 * sizeof(u32); /* extra words in padhdr */
--			BUG_ON(wtype != rpcrdma_noch);
--
-+			if (wtype != rpcrdma_noch) {
-+				dprintk("RPC:       %s: invalid chunk list\n",
-+					__func__);
-+				return -EIO;
-+			}
- 		} else {
- 			headerp->rm_body.rm_nochunks.rm_empty[0] = xdr_zero;
- 			headerp->rm_body.rm_nochunks.rm_empty[1] = xdr_zero;
-@@ -500,9 +515,8 @@ rpcrdma_marshal_req(struct rpc_rqst *rqst)
- 		hdrlen = rpcrdma_create_chunks(rqst,
- 					&rqst->rq_rcv_buf, headerp, wtype);
- 	}
--
--	if (hdrlen == 0)
--		return -1;
-+	if (hdrlen < 0)
-+		return hdrlen;
- 
- 	dprintk("RPC:       %s: %s: hdrlen %zd rpclen %zd padlen %zd"
- 		" headerp 0x%p base 0x%p lkey 0x%x\n",
-diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
-index ad22fdc..1ba05bc 100644
---- a/net/sunrpc/xprtrdma/transport.c
-+++ b/net/sunrpc/xprtrdma/transport.c
-@@ -595,13 +595,12 @@ xprt_rdma_send_request(struct rpc_task *task)
- 	struct rpc_xprt *xprt = rqst->rq_xprt;
- 	struct rpcrdma_req *req = rpcr_to_rdmar(rqst);
- 	struct rpcrdma_xprt *r_xprt = rpcx_to_rdmax(xprt);
-+	int rc;
- 
--	/* marshal the send itself */
--	if (req->rl_niovs == 0 && rpcrdma_marshal_req(rqst) != 0) {
--		r_xprt->rx_stats.failed_marshal_count++;
--		dprintk("RPC:       %s: rpcrdma_marshal_req failed\n",
--			__func__);
--		return -EIO;
-+	if (req->rl_niovs == 0) {
-+		rc = rpcrdma_marshal_req(rqst);
-+		if (rc < 0)
-+			goto failed_marshal;
- 	}
- 
- 	if (req->rl_reply == NULL) 		/* e.g. reconnection */
-@@ -625,6 +624,12 @@ xprt_rdma_send_request(struct rpc_task *task)
- 	rqst->rq_bytes_sent = 0;
- 	return 0;
- 
-+failed_marshal:
-+	r_xprt->rx_stats.failed_marshal_count++;
-+	dprintk("RPC:       %s: rpcrdma_marshal_req failed, status %i\n",
-+		__func__, rc);
-+	if (rc == -EIO)
-+		return -EIO;
- drop_connection:
- 	xprt_disconnect_done(xprt);
- 	return -ENOTCONN;	/* implies disconnect */
+-- 
+1.9.0
 
