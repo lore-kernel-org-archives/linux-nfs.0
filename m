@@ -1,46 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from bombadil.infradead.org ([198.137.202.9]:51757 "EHLO
-	bombadil.infradead.org" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752044AbaELQL3 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 12 May 2014 12:11:29 -0400
-Date: Mon, 12 May 2014 09:11:28 -0700
-From: Christoph Hellwig <hch@infradead.org>
-To: "J. Bruce Fields" <bfields@redhat.com>
-Cc: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org
-Subject: Re: nfsd4 xdr encoding fixes v2
-Message-ID: <20140512161128.GA1591@infradead.org>
-References: <1399841568-19716-1-git-send-email-bfields@redhat.com>
- <20140512082059.GC14194@infradead.org>
- <20140512160740.GE2633@pad.redhat.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140512160740.GE2633@pad.redhat.com>
+Received: from fieldses.org ([174.143.236.118]:43367 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752382AbaEVTce (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 May 2014 15:32:34 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 12/52] nfsd4: allow space for final error return
+Date: Thu, 22 May 2014 15:31:47 -0400
+Message-Id: <1400787148-25941-13-git-send-email-bfields@redhat.com>
+In-Reply-To: <1400787148-25941-1-git-send-email-bfields@redhat.com>
+References: <1400787148-25941-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Mon, May 12, 2014 at 12:07:41PM -0400, J. Bruce Fields wrote:
-> On Mon, May 12, 2014 at 01:20:59AM -0700, Christoph Hellwig wrote:
-> > This series seem to cause hangs during xfstests against a server on the
-> > same VM.  The trace is fairly similar every the hang happens, but the
-> > point at which it happens differs:
-> 
-> Ouch, OK, and you're sure it starts with this series?
-> 
-> I guess I should try to replicate it here.  Might take a copule days.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Taking your branch and resetting it to
-9fa1959e976f7a6ae84f616ca669359028070c61 didn't reproduce it after
-multiple runs.  I tried a bisect, but it it instead produces a different
-warn on on the first iteration, which then continues to be around, but
-it gone with the whole series applied:
+This post-encoding check should be taking into account the need to
+encode at least an out-of-space error to the following op (if any).
 
+Reviewed-by: Christoph Hellwig <hch@lst.de>
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4xdr.c | 9 +++++++--
+ 1 file changed, 7 insertions(+), 2 deletions(-)
 
-[  171.070621] ------------[ cut here ]------------
-[  171.071611] WARNING: CPU: 1 PID: 3784 at /work/hch/linux/fs/nfsd/nfs4xdr.c:3907 nfs4svc_encode_compoundres+0x16d/0x180()
-[  171.074170] Modules linked in:
-[  171.074959] CPU: 1 PID: 3784 Comm: nfsd Not tainted 3.15.0-rc1+ #23
-[  171.076582] Hardware name: Bochs Bochs, BIOS Bochs 01/01/2007
-[  171.078117]  0000000000000009 ffff880000167cc8 ffffffff81cdfd4a 0000000000000000
-[  171.080377]  0000000000000000 ffff880000167d08 ffffffff810ab6e7 ffff88007ac611a8
-[  171.082631]  ffff88007ac61000[  171.083271] ------------[ cut here ]------------
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 24ba652..2ed8036 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -3636,6 +3636,7 @@ void
+ nfsd4_encode_operation(struct nfsd4_compoundres *resp, struct nfsd4_op *op)
+ {
+ 	struct nfs4_stateowner *so = resp->cstate.replay_owner;
++	struct svc_rqst *rqstp = resp->rqstp;
+ 	__be32 *statp;
+ 	nfsd4_enc encoder;
+ 	__be32 *p;
+@@ -3652,8 +3653,12 @@ nfsd4_encode_operation(struct nfsd4_compoundres *resp, struct nfsd4_op *op)
+ 	encoder = nfsd4_enc_ops[op->opnum];
+ 	op->status = encoder(resp, op->status, &op->u);
+ 	/* nfsd4_check_resp_size guarantees enough room for error status */
+-	if (!op->status)
+-		op->status = nfsd4_check_resp_size(resp, 0);
++	if (!op->status) {
++		int space_needed = 0;
++		if (!nfsd4_last_compound_op(rqstp))
++			space_needed = COMPOUND_ERR_SLACK_SPACE;
++		op->status = nfsd4_check_resp_size(resp, space_needed);
++	}
+ 	if (op->status == nfserr_resource ||
+ 	    op->status == nfserr_rep_too_big ||
+ 	    op->status == nfserr_rep_too_big_to_cache) {
+-- 
+1.9.0
 
