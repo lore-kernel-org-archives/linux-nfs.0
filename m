@@ -1,179 +1,159 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx11.netapp.com ([216.240.18.76]:32910 "EHLO mx11.netapp.com"
+Received: from fieldses.org ([174.143.236.118]:43358 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751291AbaEFNNE (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 May 2014 09:13:04 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
-CC: <dros@primarydata.com>, <hch@infradead.org>
-Subject: [PATCH v3 10/17] NFS: Create a common rpc_call_ops struct
-Date: Tue, 6 May 2014 09:12:33 -0400
-Message-ID: <1399381960-3019-11-git-send-email-Anna.Schumaker@Netapp.com>
-In-Reply-To: <1399381960-3019-1-git-send-email-Anna.Schumaker@Netapp.com>
-References: <1399381960-3019-1-git-send-email-Anna.Schumaker@Netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+	id S1752323AbaEVTce (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 May 2014 15:32:34 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 20/52] nfsd4: "backfill" using write_bytes_to_xdr_buf
+Date: Thu, 22 May 2014 15:31:55 -0400
+Message-Id: <1400787148-25941-21-git-send-email-bfields@redhat.com>
+In-Reply-To: <1400787148-25941-1-git-send-email-bfields@redhat.com>
+References: <1400787148-25941-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-The read and write paths set up this struct in exactly the same way, so
-create a single shared struct.
+Normally xdr encoding proceeds in a single pass from start of a buffer
+to end, but sometimes we have to write a few bytes to an earlier
+position.
 
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Use write_bytes_to_xdr_buf for these cases rather than saving a pointer
+to write to.  We plan to rewrite xdr_reserve_space to handle encoding
+across page boundaries using a scratch buffer, and don't want to risk
+writing to a pointer that was contained in a scratch buffer.
+
+Also it will no longer be safe to calculate lengths by subtracting two
+pointers, so use xdr_buf offsets instead.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfs/internal.h |  4 +---
- fs/nfs/pagelist.c | 11 ++++++++---
- fs/nfs/read.c     | 11 ++---------
- fs/nfs/write.c    | 11 ++---------
- 4 files changed, 13 insertions(+), 24 deletions(-)
+ fs/nfsd/nfs4xdr.c | 45 ++++++++++++++++++++++++++-------------------
+ 1 file changed, 26 insertions(+), 19 deletions(-)
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 7c0ae36..e34220f 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -237,13 +237,11 @@ extern void nfs_pgheader_init(struct nfs_pageio_descriptor *desc,
- void nfs_set_pgio_error(struct nfs_pgio_header *hdr, int error, loff_t pos);
- int nfs_iocounter_wait(struct nfs_io_counter *c);
- 
-+extern const struct rpc_call_ops nfs_pgio_common_ops;
- struct nfs_rw_header *nfs_rw_header_alloc(const struct nfs_rw_ops *);
- void nfs_rw_header_free(struct nfs_pgio_header *);
- struct nfs_pgio_data *nfs_pgio_data_alloc(struct nfs_pgio_header *, unsigned int);
- void nfs_pgio_data_release(struct nfs_pgio_data *);
--void nfs_pgio_prepare(struct rpc_task *, void *);
--void nfs_pgio_release(void *);
--void nfs_pgio_result(struct rpc_task *, void *);
- 
- static inline void nfs_iocounter_init(struct nfs_io_counter *c)
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index c8435ba..14efc5d 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -1759,16 +1759,19 @@ static __be32 nfsd4_encode_components_esc(struct xdr_stream *xdr, char sep,
+ 					  char esc_exit)
  {
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index f74df87..aabff78 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -393,7 +393,7 @@ EXPORT_SYMBOL_GPL(nfs_pgio_data_release);
-  * @task: The current task
-  * @calldata: pageio data to prepare
-  */
--void nfs_pgio_prepare(struct rpc_task *task, void *calldata)
-+static void nfs_pgio_prepare(struct rpc_task *task, void *calldata)
- {
- 	struct nfs_pgio_data *data = calldata;
- 	int err;
-@@ -406,7 +406,7 @@ void nfs_pgio_prepare(struct rpc_task *task, void *calldata)
-  * nfs_pgio_release - Release pageio data
-  * @calldata: The pageio data to release
-  */
--void nfs_pgio_release(void *calldata)
-+static void nfs_pgio_release(void *calldata)
- {
- 	struct nfs_pgio_data *data = calldata;
- 	if (data->header->rw_ops->rw_release)
-@@ -454,7 +454,7 @@ EXPORT_SYMBOL_GPL(nfs_pageio_init);
-  * @task: The task that ran
-  * @calldata: Pageio data to check
-  */
--void nfs_pgio_result(struct rpc_task *task, void *calldata)
-+static void nfs_pgio_result(struct rpc_task *task, void *calldata)
- {
- 	struct nfs_pgio_data *data = calldata;
- 	struct inode *inode = data->header->inode;
-@@ -677,3 +677,8 @@ void nfs_destroy_nfspagecache(void)
- 	kmem_cache_destroy(nfs_page_cachep);
- }
+ 	__be32 *p;
+-	__be32 *countp;
++	__be32 pathlen;
++	int pathlen_offset;
+ 	int strlen, count=0;
+ 	char *str, *end, *next;
  
-+const struct rpc_call_ops nfs_pgio_common_ops = {
-+	.rpc_call_prepare = nfs_pgio_prepare,
-+	.rpc_call_done = nfs_pgio_result,
-+	.rpc_release = nfs_pgio_release,
-+};
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index bc78bd2..a33490c 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -29,7 +29,6 @@
- #define NFSDBG_FACILITY		NFSDBG_PAGECACHE
- 
- static const struct nfs_pageio_ops nfs_pageio_read_ops;
--static const struct rpc_call_ops nfs_read_common_ops;
- static const struct nfs_pgio_completion_ops nfs_async_read_completion_ops;
- static const struct nfs_rw_ops nfs_rw_read_ops;
- 
-@@ -314,7 +313,7 @@ static int nfs_pagein_multi(struct nfs_pageio_descriptor *desc,
- 
- 	nfs_list_remove_request(req);
- 	nfs_list_add_request(req, &hdr->pages);
--	desc->pg_rpc_callops = &nfs_read_common_ops;
-+	desc->pg_rpc_callops = &nfs_pgio_common_ops;
- 	return 0;
- }
- 
-@@ -343,7 +342,7 @@ static int nfs_pagein_one(struct nfs_pageio_descriptor *desc,
- 
- 	nfs_read_rpcsetup(data, desc->pg_count, 0);
- 	list_add(&data->list, &hdr->rpc_list);
--	desc->pg_rpc_callops = &nfs_read_common_ops;
-+	desc->pg_rpc_callops = &nfs_pgio_common_ops;
- 	return 0;
- }
- 
-@@ -443,12 +442,6 @@ static void nfs_readpage_result(struct rpc_task *task, struct nfs_pgio_data *dat
- 		nfs_readpage_retry(task, data);
- }
- 
--static const struct rpc_call_ops nfs_read_common_ops = {
--	.rpc_call_prepare = nfs_pgio_prepare,
--	.rpc_call_done = nfs_pgio_result,
--	.rpc_release = nfs_pgio_release,
--};
--
- /*
-  * Read a page over NFS.
-  * We read the page synchronously in the following case:
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 1d3e1d7..d877f15 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -42,7 +42,6 @@
-  * Local function declarations
-  */
- static void nfs_redirty_request(struct nfs_page *req);
--static const struct rpc_call_ops nfs_write_common_ops;
- static const struct rpc_call_ops nfs_commit_ops;
- static const struct nfs_pgio_completion_ops nfs_async_write_completion_ops;
- static const struct nfs_commit_completion_ops nfs_commit_completion_ops;
-@@ -1138,7 +1137,7 @@ static int nfs_flush_multi(struct nfs_pageio_descriptor *desc,
- 	} while (nbytes != 0);
- 	nfs_list_remove_request(req);
- 	nfs_list_add_request(req, &hdr->pages);
--	desc->pg_rpc_callops = &nfs_write_common_ops;
-+	desc->pg_rpc_callops = &nfs_pgio_common_ops;
- 	return 0;
- }
- 
-@@ -1182,7 +1181,7 @@ static int nfs_flush_one(struct nfs_pageio_descriptor *desc,
- 	/* Set up the argument struct */
- 	nfs_write_rpcsetup(data, desc->pg_count, 0, desc->pg_ioflags, &cinfo);
- 	list_add(&data->list, &hdr->rpc_list);
--	desc->pg_rpc_callops = &nfs_write_common_ops;
-+	desc->pg_rpc_callops = &nfs_pgio_common_ops;
- 	return 0;
- }
- 
-@@ -1272,12 +1271,6 @@ static void nfs_writeback_release_common(struct nfs_pgio_data *data)
+ 	dprintk("nfsd4_encode_components(%s)\n", components);
++
++	pathlen_offset = xdr->buf->len;
+ 	p = xdr_reserve_space(xdr, 4);
+ 	if (!p)
+ 		return nfserr_resource;
+-	countp = p;
+-	WRITE32(0); /* We will fill this in with @count later */
++	p++; /* We will fill this in with @count later */
++
+ 	end = str = components;
+ 	while (*end) {
+ 		bool found_esc = false;
+@@ -1801,8 +1804,8 @@ static __be32 nfsd4_encode_components_esc(struct xdr_stream *xdr, char sep,
+ 			end++;
+ 		str = end;
  	}
+-	p = countp;
+-	WRITE32(count);
++	pathlen = htonl(xdr->buf->len - pathlen_offset);
++	write_bytes_to_xdr_buf(xdr->buf, pathlen_offset, &pathlen, 4);
+ 	return 0;
  }
  
--static const struct rpc_call_ops nfs_write_common_ops = {
--	.rpc_call_prepare = nfs_pgio_prepare,
--	.rpc_call_done = nfs_pgio_result,
--	.rpc_release = nfs_pgio_release,
--};
--
- /*
-  * Special version of should_remove_suid() that ignores capabilities.
-  */
+@@ -2054,7 +2057,8 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
+ 	struct kstatfs statfs;
+ 	__be32 *p;
+ 	int starting_len = xdr->buf->len;
+-	__be32 *attrlenp;
++	int attrlen_offset;
++	__be32 attrlen;
+ 	u32 dummy;
+ 	u64 dummy64;
+ 	u32 rdattr_err = 0;
+@@ -2159,10 +2163,12 @@ nfsd4_encode_fattr(struct xdr_stream *xdr, struct svc_fh *fhp,
+ 		WRITE32(1);
+ 		WRITE32(bmval0);
+ 	}
++
++	attrlen_offset = xdr->buf->len;
+ 	p = xdr_reserve_space(xdr, 4);
+ 	if (!p)
+ 		goto out_resource;
+-	attrlenp = p++;                /* to be backfilled later */
++	p++;                /* to be backfilled later */
+ 
+ 	if (bmval0 & FATTR4_WORD0_SUPPORTED_ATTRS) {
+ 		u32 word0 = nfsd_suppattrs0(minorversion);
+@@ -2534,7 +2540,8 @@ out_acl:
+ 		WRITE32(NFSD_SUPPATTR_EXCLCREAT_WORD2);
+ 	}
+ 
+-	*attrlenp = htonl((char *)xdr->p - (char *)attrlenp - 4);
++	attrlen = htonl(xdr->buf->len - attrlen_offset - 4);
++	write_bytes_to_xdr_buf(xdr->buf, attrlen_offset, &attrlen, 4);
+ 	status = nfs_ok;
+ 
+ out:
+@@ -3664,15 +3671,16 @@ __be32 nfsd4_check_resp_size(struct nfsd4_compoundres *resp, u32 pad)
+ void
+ nfsd4_encode_operation(struct nfsd4_compoundres *resp, struct nfsd4_op *op)
+ {
++	struct xdr_stream *xdr = &resp->xdr;
+ 	struct nfs4_stateowner *so = resp->cstate.replay_owner;
+ 	struct svc_rqst *rqstp = resp->rqstp;
+-	__be32 *statp;
++	int post_err_offset;
+ 	nfsd4_enc encoder;
+ 	__be32 *p;
+ 
+ 	RESERVE_SPACE(8);
+ 	WRITE32(op->opnum);
+-	statp = p++;	/* to be backfilled at the end */
++	post_err_offset = xdr->buf->len;
+ 
+ 	if (op->opnum == OP_ILLEGAL)
+ 		goto status;
+@@ -3698,20 +3706,19 @@ nfsd4_encode_operation(struct nfsd4_compoundres *resp, struct nfsd4_op *op)
+ 		 * bug if we had to do this on a non-idempotent op:
+ 		 */
+ 		warn_on_nonidempotent_op(op);
+-		resp->xdr.p = statp + 1;
++		xdr_truncate_encode(xdr, post_err_offset);
+ 	}
+ 	if (so) {
++		int len = xdr->buf->len - post_err_offset;
++
+ 		so->so_replay.rp_status = op->status;
+-		so->so_replay.rp_buflen = (char *)resp->xdr.p
+-						- (char *)(statp+1);
+-		memcpy(so->so_replay.rp_buf, statp+1, so->so_replay.rp_buflen);
++		so->so_replay.rp_buflen = len;
++		read_bytes_from_xdr_buf(xdr->buf, post_err_offset,
++						so->so_replay.rp_buf, len);
+ 	}
+ status:
+-	/*
+-	 * Note: We write the status directly, instead of using WRITE32(),
+-	 * since it is already in network byte order.
+-	 */
+-	*statp = op->status;
++	/* Note that op->status is already in network byte order: */
++	write_bytes_to_xdr_buf(xdr->buf, post_err_offset - 4, &op->status, 4);
+ }
+ 
+ /* 
 -- 
-1.9.2
+1.9.0
 
