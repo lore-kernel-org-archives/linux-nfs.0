@@ -1,15 +1,15 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:43407 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:43339 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752369AbaEVTck (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 May 2014 15:32:40 -0400
+	id S1750870AbaEVTcd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 May 2014 15:32:33 -0400
 From: "J. Bruce Fields" <bfields@redhat.com>
 To: linux-nfs@vger.kernel.org
 Cc: Christoph Hellwig <hch@infradead.org>,
         "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 25/52] nfsd4: size-checking cleanup
-Date: Thu, 22 May 2014 15:32:00 -0400
-Message-Id: <1400787148-25941-26-git-send-email-bfields@redhat.com>
+Subject: [PATCH 15/52] nfsd4: remove ADJUST_ARGS
+Date: Thu, 22 May 2014 15:31:50 -0400
+Message-Id: <1400787148-25941-16-git-send-email-bfields@redhat.com>
 In-Reply-To: <1400787148-25941-1-git-send-email-bfields@redhat.com>
 References: <1400787148-25941-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -17,97 +17,322 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: "J. Bruce Fields" <bfields@redhat.com>
 
-Better variable name, some comments, etc.
+It's just uninteresting debugging code at this point.
 
 Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfsd/nfs4proc.c |  9 ++++++---
- fs/nfsd/nfs4xdr.c  | 29 +++++++++++++++--------------
- 2 files changed, 21 insertions(+), 17 deletions(-)
+ fs/nfsd/nfs4xdr.c | 40 ----------------------------------------
+ 1 file changed, 40 deletions(-)
 
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 9b57894..f8e7472 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1281,7 +1281,6 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
- 	struct nfsd4_compound_state *cstate = &resp->cstate;
- 	struct svc_fh *current_fh = &cstate->current_fh;
- 	struct svc_fh *save_fh = &cstate->save_fh;
--	u32		plen = 0;
- 	__be32		status;
- 
- 	svcxdr_init_encode(rqstp, resp);
-@@ -1351,9 +1350,13 @@ nfsd4_proc_compound(struct svc_rqst *rqstp,
- 
- 		/* If op is non-idempotent */
- 		if (opdesc->op_flags & OP_MODIFIES_SOMETHING) {
--			plen = opdesc->op_rsize_bop(rqstp, op);
- 			/*
--			 * If there's still another operation, make sure
-+			 * Don't execute this op if we couldn't encode a
-+			 * succesful reply:
-+			 */
-+			u32 plen = opdesc->op_rsize_bop(rqstp, op);
-+			/*
-+			 * Plus if there's another operation, make sure
- 			 * we'll have space to at least encode an error:
- 			 */
- 			if (resp->opcnt < args->opcnt)
 diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index 86caa98..f1a9716 100644
+index bc8c9e0..865a2c2 100644
 --- a/fs/nfsd/nfs4xdr.c
 +++ b/fs/nfsd/nfs4xdr.c
-@@ -3739,35 +3739,36 @@ static nfsd4_enc nfsd4_enc_ops[] = {
- };
+@@ -1750,7 +1750,6 @@ static void write_cinfo(__be32 **p, struct nfsd4_change_info *c)
+ 	p = xdr_reserve_space(&resp->xdr, nbytes);		\
+ 	BUG_ON(!p);						\
+ } while (0)
+-#define ADJUST_ARGS()		WARN_ON_ONCE(p != resp->xdr.p)	\
  
- /*
-- * Calculate the total amount of memory that the compound response has taken
-- * after encoding the current operation with pad.
-+ * Calculate whether we still have space to encode repsize bytes.
-+ * There are two considerations:
-+ *     - For NFS versions >=4.1, the size of the reply must stay within
-+ *       session limits
-+ *     - For all NFS versions, we must stay within limited preallocated
-+ *       buffer space.
-  *
-- * pad: if operation is non-idempotent, pad was calculate by op_rsize_bop()
-- *      which was specified at nfsd4_operation, else pad is zero.
-- *
-- * Compare this length to the session se_fmaxresp_sz and se_fmaxresp_cached.
-- *
-- * Our se_fmaxresp_cached will always be a multiple of PAGE_SIZE, and so
-- * will be at least a page and will therefore hold the xdr_buf head.
-+ * This is called before the operation is processed, so can only provide
-+ * an upper estimate.  For some nonidempotent operations (such as
-+ * getattr), it's not necessarily a problem if that estimate is wrong,
-+ * as we can fail it after processing without significant side effects.
-  */
--__be32 nfsd4_check_resp_size(struct nfsd4_compoundres *resp, u32 pad)
-+__be32 nfsd4_check_resp_size(struct nfsd4_compoundres *resp, u32 respsize)
- {
- 	struct xdr_buf *buf = &resp->rqstp->rq_res;
- 	struct nfsd4_session *session = resp->cstate.session;
--	struct nfsd4_slot *slot = resp->cstate.slot;
- 	int slack_bytes = (char *)resp->xdr.end - (char *)resp->xdr.p;
+ /* Encode as an array of strings the string given with components
+  * separated @sep, escaped with esc_enter and esc_exit.
+@@ -2744,7 +2743,6 @@ nfsd4_encode_stateid(struct nfsd4_compoundres *resp, stateid_t *sid)
+ 	RESERVE_SPACE(sizeof(stateid_t));
+ 	WRITE32(sid->si_generation);
+ 	WRITEMEM(&sid->si_opaque, sizeof(stateid_opaque_t));
+-	ADJUST_ARGS();
+ }
  
- 	if (nfsd4_has_session(&resp->cstate)) {
-+		struct nfsd4_slot *slot = resp->cstate.slot;
+ static __be32
+@@ -2756,7 +2754,6 @@ nfsd4_encode_access(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_
+ 		RESERVE_SPACE(8);
+ 		WRITE32(access->ac_supported);
+ 		WRITE32(access->ac_resp_access);
+-		ADJUST_ARGS();
+ 	}
+ 	return nfserr;
+ }
+@@ -2771,7 +2768,6 @@ static __be32 nfsd4_encode_bind_conn_to_session(struct nfsd4_compoundres *resp,
+ 		WRITE32(bcts->dir);
+ 		/* Sorry, we do not yet support RDMA over 4.1: */
+ 		WRITE32(0);
+-		ADJUST_ARGS();
+ 	}
+ 	return nfserr;
+ }
+@@ -2794,7 +2790,6 @@ nfsd4_encode_commit(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_
+ 	if (!nfserr) {
+ 		RESERVE_SPACE(NFS4_VERIFIER_SIZE);
+ 		WRITEMEM(commit->co_verf.data, NFS4_VERIFIER_SIZE);
+-		ADJUST_ARGS();
+ 	}
+ 	return nfserr;
+ }
+@@ -2810,7 +2805,6 @@ nfsd4_encode_create(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_
+ 		WRITE32(2);
+ 		WRITE32(create->cr_bmval[0]);
+ 		WRITE32(create->cr_bmval[1]);
+-		ADJUST_ARGS();
+ 	}
+ 	return nfserr;
+ }
+@@ -2842,7 +2836,6 @@ nfsd4_encode_getfh(struct nfsd4_compoundres *resp, __be32 nfserr, struct svc_fh
+ 		RESERVE_SPACE(len + 4);
+ 		WRITE32(len);
+ 		WRITEMEM(&fhp->fh_handle.fh_base, len);
+-		ADJUST_ARGS();
+ 	}
+ 	return nfserr;
+ }
+@@ -2870,7 +2863,6 @@ nfsd4_encode_lock_denied(struct nfsd4_compoundres *resp, struct nfsd4_lock_denie
+ 		WRITE64((u64)0); /* clientid */
+ 		WRITE32(0); /* length of owner name */
+ 	}
+-	ADJUST_ARGS();
+ }
  
--		if (buf->len + pad > session->se_fchannel.maxresp_sz)
-+		if (buf->len + respsize > session->se_fchannel.maxresp_sz)
- 			return nfserr_rep_too_big;
+ static __be32
+@@ -2910,7 +2902,6 @@ nfsd4_encode_link(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_li
+ 	if (!nfserr) {
+ 		RESERVE_SPACE(20);
+ 		write_cinfo(&p, &link->li_cinfo);
+-		ADJUST_ARGS();
+ 	}
+ 	return nfserr;
+ }
+@@ -2932,7 +2923,6 @@ nfsd4_encode_open(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_op
+ 	WRITE32(open->op_bmval[0]);
+ 	WRITE32(open->op_bmval[1]);
+ 	WRITE32(open->op_delegate_type);
+-	ADJUST_ARGS();
  
- 		if ((slot->sl_flags & NFSD4_SLOT_CACHETHIS) &&
--		    buf->len + pad > session->se_fchannel.maxresp_cached)
-+		    buf->len + respsize > session->se_fchannel.maxresp_cached)
- 			return nfserr_rep_too_big_to_cache;
+ 	switch (open->op_delegate_type) {
+ 	case NFS4_OPEN_DELEGATE_NONE:
+@@ -2949,7 +2939,6 @@ nfsd4_encode_open(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_op
+ 		WRITE32(0);
+ 		WRITE32(0);
+ 		WRITE32(0);   /* XXX: is NULL principal ok? */
+-		ADJUST_ARGS();
+ 		break;
+ 	case NFS4_OPEN_DELEGATE_WRITE:
+ 		nfsd4_encode_stateid(resp, &open->op_delegate_stateid);
+@@ -2970,7 +2959,6 @@ nfsd4_encode_open(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_op
+ 		WRITE32(0);
+ 		WRITE32(0);
+ 		WRITE32(0);   /* XXX: is NULL principal ok? */
+-		ADJUST_ARGS();
+ 		break;
+ 	case NFS4_OPEN_DELEGATE_NONE_EXT: /* 4.1 */
+ 		switch (open->op_why_no_deleg) {
+@@ -2984,7 +2972,6 @@ nfsd4_encode_open(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_op
+ 			RESERVE_SPACE(4);
+ 			WRITE32(open->op_why_no_deleg);
+ 		}
+-		ADJUST_ARGS();
+ 		break;
+ 	default:
+ 		BUG();
+@@ -3066,7 +3053,6 @@ nfsd4_encode_read(struct nfsd4_compoundres *resp, __be32 nfserr,
+ 
+ 	WRITE32(eof);
+ 	WRITE32(maxcount);
+-	ADJUST_ARGS();
+ 	resp->xdr.buf->head[0].iov_len = (char *)p
+ 				- (char *)resp->xdr.buf->head[0].iov_base;
+ 	resp->xdr.buf->page_len = maxcount;
+@@ -3080,7 +3066,6 @@ nfsd4_encode_read(struct nfsd4_compoundres *resp, __be32 nfserr,
+ 		WRITE32(0);
+ 		resp->xdr.buf->tail[0].iov_base += maxcount&3;
+ 		resp->xdr.buf->tail[0].iov_len = 4 - (maxcount&3);
+-		ADJUST_ARGS();
+ 	}
+ 	return 0;
+ }
+@@ -3121,7 +3106,6 @@ nfsd4_encode_readlink(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd
  	}
  
--	if (pad > slack_bytes) {
-+	if (respsize > slack_bytes) {
- 		WARN_ON_ONCE(nfsd4_has_session(&resp->cstate));
- 		return nfserr_resource;
+ 	WRITE32(maxcount);
+-	ADJUST_ARGS();
+ 	resp->xdr.buf->head[0].iov_len = (char *)p
+ 				- (char *)resp->xdr.buf->head[0].iov_base;
+ 	resp->xdr.buf->page_len = maxcount;
+@@ -3135,7 +3119,6 @@ nfsd4_encode_readlink(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd
+ 		WRITE32(0);
+ 		resp->xdr.buf->tail[0].iov_base += maxcount&3;
+ 		resp->xdr.buf->tail[0].iov_len = 4 - (maxcount&3);
+-		ADJUST_ARGS();
  	}
+ 	return 0;
+ }
+@@ -3162,7 +3145,6 @@ nfsd4_encode_readdir(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4
+ 	/* XXX: Following NFSv3, we ignore the READDIR verifier for now. */
+ 	WRITE32(0);
+ 	WRITE32(0);
+-	ADJUST_ARGS();
+ 	resp->xdr.buf->head[0].iov_len = ((char *)resp->xdr.p)
+ 				- (char *)resp->xdr.buf->head[0].iov_base;
+ 	tailbase = p;
+@@ -3233,7 +3215,6 @@ nfsd4_encode_remove(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_
+ 	if (!nfserr) {
+ 		RESERVE_SPACE(20);
+ 		write_cinfo(&p, &remove->rm_cinfo);
+-		ADJUST_ARGS();
+ 	}
+ 	return nfserr;
+ }
+@@ -3247,7 +3228,6 @@ nfsd4_encode_rename(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_
+ 		RESERVE_SPACE(40);
+ 		write_cinfo(&p, &rename->rn_sinfo);
+ 		write_cinfo(&p, &rename->rn_tinfo);
+-		ADJUST_ARGS();
+ 	}
+ 	return nfserr;
+ }
+@@ -3287,7 +3267,6 @@ nfsd4_do_encode_secinfo(struct nfsd4_compoundres *resp,
+ 	supported = 0;
+ 	RESERVE_SPACE(4);
+ 	flavorsp = p++;		/* to be backfilled later */
+-	ADJUST_ARGS();
+ 
+ 	for (i = 0; i < nflavs; i++) {
+ 		rpc_authflavor_t pf = flavs[i].pseudoflavor;
+@@ -3301,12 +3280,10 @@ nfsd4_do_encode_secinfo(struct nfsd4_compoundres *resp,
+ 			WRITEMEM(info.oid.data, info.oid.len);
+ 			WRITE32(info.qop);
+ 			WRITE32(info.service);
+-			ADJUST_ARGS();
+ 		} else if (pf < RPC_AUTH_MAXFLAVOR) {
+ 			supported++;
+ 			RESERVE_SPACE(4);
+ 			WRITE32(pf);
+-			ADJUST_ARGS();
+ 		} else {
+ 			if (report)
+ 				pr_warn("NFS: SECINFO: security flavor %u "
+@@ -3360,7 +3337,6 @@ nfsd4_encode_setattr(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4
+ 		WRITE32(setattr->sa_bmval[1]);
+ 		WRITE32(setattr->sa_bmval[2]);
+ 	}
+-	ADJUST_ARGS();
+ 	return nfserr;
+ }
+ 
+@@ -3373,13 +3349,11 @@ nfsd4_encode_setclientid(struct nfsd4_compoundres *resp, __be32 nfserr, struct n
+ 		RESERVE_SPACE(8 + NFS4_VERIFIER_SIZE);
+ 		WRITEMEM(&scd->se_clientid, 8);
+ 		WRITEMEM(&scd->se_confirm, NFS4_VERIFIER_SIZE);
+-		ADJUST_ARGS();
+ 	}
+ 	else if (nfserr == nfserr_clid_inuse) {
+ 		RESERVE_SPACE(8);
+ 		WRITE32(0);
+ 		WRITE32(0);
+-		ADJUST_ARGS();
+ 	}
+ 	return nfserr;
+ }
+@@ -3394,7 +3368,6 @@ nfsd4_encode_write(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4_w
+ 		WRITE32(write->wr_bytes_written);
+ 		WRITE32(write->wr_how_written);
+ 		WRITEMEM(write->wr_verifier.data, NFS4_VERIFIER_SIZE);
+-		ADJUST_ARGS();
+ 	}
+ 	return nfserr;
+ }
+@@ -3437,7 +3410,6 @@ nfsd4_encode_exchange_id(struct nfsd4_compoundres *resp, __be32 nfserr,
+ 	WRITE32(exid->flags);
+ 
+ 	WRITE32(exid->spa_how);
+-	ADJUST_ARGS();
+ 
+ 	switch (exid->spa_how) {
+ 	case SP4_NONE:
+@@ -3453,7 +3425,6 @@ nfsd4_encode_exchange_id(struct nfsd4_compoundres *resp, __be32 nfserr,
+ 		/* empty spo_must_allow bitmap: */
+ 		WRITE32(0);
+ 
+-		ADJUST_ARGS();
+ 		break;
+ 	default:
+ 		WARN_ON_ONCE(1);
+@@ -3479,7 +3450,6 @@ nfsd4_encode_exchange_id(struct nfsd4_compoundres *resp, __be32 nfserr,
+ 
+ 	/* Implementation id */
+ 	WRITE32(0);	/* zero length nfs_impl_id4 array */
+-	ADJUST_ARGS();
+ 	return 0;
+ }
+ 
+@@ -3496,7 +3466,6 @@ nfsd4_encode_create_session(struct nfsd4_compoundres *resp, __be32 nfserr,
+ 	WRITEMEM(sess->sessionid.data, NFS4_MAX_SESSIONID_LEN);
+ 	WRITE32(sess->seqid);
+ 	WRITE32(sess->flags);
+-	ADJUST_ARGS();
+ 
+ 	RESERVE_SPACE(28);
+ 	WRITE32(0); /* headerpadsz */
+@@ -3506,12 +3475,10 @@ nfsd4_encode_create_session(struct nfsd4_compoundres *resp, __be32 nfserr,
+ 	WRITE32(sess->fore_channel.maxops);
+ 	WRITE32(sess->fore_channel.maxreqs);
+ 	WRITE32(sess->fore_channel.nr_rdma_attrs);
+-	ADJUST_ARGS();
+ 
+ 	if (sess->fore_channel.nr_rdma_attrs) {
+ 		RESERVE_SPACE(4);
+ 		WRITE32(sess->fore_channel.rdma_attrs);
+-		ADJUST_ARGS();
+ 	}
+ 
+ 	RESERVE_SPACE(28);
+@@ -3522,12 +3489,10 @@ nfsd4_encode_create_session(struct nfsd4_compoundres *resp, __be32 nfserr,
+ 	WRITE32(sess->back_channel.maxops);
+ 	WRITE32(sess->back_channel.maxreqs);
+ 	WRITE32(sess->back_channel.nr_rdma_attrs);
+-	ADJUST_ARGS();
+ 
+ 	if (sess->back_channel.nr_rdma_attrs) {
+ 		RESERVE_SPACE(4);
+ 		WRITE32(sess->back_channel.rdma_attrs);
+-		ADJUST_ARGS();
+ 	}
+ 	return 0;
+ }
+@@ -3550,7 +3515,6 @@ nfsd4_encode_sequence(struct nfsd4_compoundres *resp, __be32 nfserr,
+ 	WRITE32(seq->maxslots - 1); /* sr_target_highest_slotid */
+ 	WRITE32(seq->status_flags);
+ 
+-	ADJUST_ARGS();
+ 	resp->cstate.datap = p; /* DRC cache data pointer */
+ 	return 0;
+ }
+@@ -3572,7 +3536,6 @@ nfsd4_encode_test_stateid(struct nfsd4_compoundres *resp, __be32 nfserr,
+ 		*p++ = stateid->ts_id_status;
+ 	}
+ 
+-	ADJUST_ARGS();
+ 	return nfserr;
+ }
+ 
+@@ -3707,7 +3670,6 @@ nfsd4_encode_operation(struct nfsd4_compoundres *resp, struct nfsd4_op *op)
+ 	RESERVE_SPACE(8);
+ 	WRITE32(op->opnum);
+ 	statp = p++;	/* to be backfilled at the end */
+-	ADJUST_ARGS();
+ 
+ 	if (op->opnum == OP_ILLEGAL)
+ 		goto status;
+@@ -3768,11 +3730,9 @@ nfsd4_encode_replay(struct nfsd4_compoundres *resp, struct nfsd4_op *op)
+ 	RESERVE_SPACE(8);
+ 	WRITE32(op->opnum);
+ 	*p++ = rp->rp_status;  /* already xdr'ed */
+-	ADJUST_ARGS();
+ 
+ 	RESERVE_SPACE(rp->rp_buflen);
+ 	WRITEMEM(rp->rp_buf, rp->rp_buflen);
+-	ADJUST_ARGS();
+ }
+ 
+ int
 -- 
 1.9.0
 
