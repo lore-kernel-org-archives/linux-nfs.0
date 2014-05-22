@@ -1,50 +1,51 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:45379 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:43365 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750942AbaEFQhe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 May 2014 12:37:34 -0400
-Date: Tue, 6 May 2014 12:37:34 -0400
-From: Bruce Fields <bfields@fieldses.org>
-To: Trond Myklebust <trond.myklebust@primarydata.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 03/70] NFSd: call rpc_destroy_wait_queue() from
- free_client()
-Message-ID: <20140506163734.GE18281@fieldses.org>
-References: <1397846704-14567-1-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-2-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-3-git-send-email-trond.myklebust@primarydata.com>
- <1397846704-14567-4-git-send-email-trond.myklebust@primarydata.com>
-MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1397846704-14567-4-git-send-email-trond.myklebust@primarydata.com>
+	id S1751430AbaEVTce (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 May 2014 15:32:34 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 10/52] nfsd4: reserve head space for krb5 integ/priv info
+Date: Thu, 22 May 2014 15:31:45 -0400
+Message-Id: <1400787148-25941-11-git-send-email-bfields@redhat.com>
+In-Reply-To: <1400787148-25941-1-git-send-email-bfields@redhat.com>
+References: <1400787148-25941-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, Apr 18, 2014 at 02:43:57PM -0400, Trond Myklebust wrote:
-> Mainly to ensure that we don't leave any hanging timers.
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Thanks, applying for 3.15 and stable.
+Currently if the nfs-level part of a reply would be too large, we'll
+return an error to the client.  But if the nfs-level part fits and
+leaves no room for krb5p or krb5i stuff, then we just drop the request
+entirely.
 
---b.
+That's no good.  Instead, reserve some slack space at the end of the
+buffer and make sure we fail outright if we'd come close.
 
-> 
-> Signed-off-by: Trond Myklebust <trond.myklebust@primarydata.com>
-> ---
->  fs/nfsd/nfs4state.c | 1 +
->  1 file changed, 1 insertion(+)
-> 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 230d21cb1717..32b699bebb9c 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -1107,6 +1107,7 @@ free_client(struct nfs4_client *clp)
->  		WARN_ON_ONCE(atomic_read(&ses->se_ref));
->  		free_session(ses);
->  	}
-> +	rpc_destroy_wait_queue(&clp->cl_cb_waitq);
->  	free_svc_cred(&clp->cl_cred);
->  	kfree(clp->cl_name.data);
->  	idr_destroy(&clp->cl_stateids);
-> -- 
-> 1.9.0
-> 
+The slack space here is a massive overstimate of what's required, we
+should probably try for a tighter limit at some point.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4proc.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index f809aa8..747d6a8 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1262,7 +1262,7 @@ static void svcxdr_init_encode(struct svc_rqst *rqstp,
+ 
+ 	xdr->buf = buf;
+ 	xdr->p   = head->iov_base + head->iov_len;
+-	xdr->end = head->iov_base + PAGE_SIZE;
++	xdr->end = head->iov_base + PAGE_SIZE - 2 * RPC_MAX_AUTH_SIZE;
+ }
+ 
+ /*
+-- 
+1.9.0
+
