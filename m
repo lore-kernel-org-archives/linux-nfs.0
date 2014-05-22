@@ -1,15 +1,15 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:43443 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:43331 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752650AbaEVTcn (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 May 2014 15:32:43 -0400
+	id S1751158AbaEVTcd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 May 2014 15:32:33 -0400
 From: "J. Bruce Fields" <bfields@redhat.com>
 To: linux-nfs@vger.kernel.org
 Cc: Christoph Hellwig <hch@infradead.org>,
         "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 34/52] nfsd4: adjust buflen to session channel limit
-Date: Thu, 22 May 2014 15:32:09 -0400
-Message-Id: <1400787148-25941-35-git-send-email-bfields@redhat.com>
+Subject: [PATCH 05/52] nfsd4: read size estimate should include padding
+Date: Thu, 22 May 2014 15:31:40 -0400
+Message-Id: <1400787148-25941-6-git-send-email-bfields@redhat.com>
 In-Reply-To: <1400787148-25941-1-git-send-email-bfields@redhat.com>
 References: <1400787148-25941-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
@@ -17,92 +17,24 @@ List-ID: <linux-nfs.vger.kernel.org>
 
 From: "J. Bruce Fields" <bfields@redhat.com>
 
-We can simplify session limit enforcement by restricting the xdr buflen
-to the session size.
-
-Also fix a preexisting bug: we should really have been taking into
-account the auth-required space when comparing against session limits,
-which are limits on the size of the entire rpc reply, including any krb5
-overhead.
-
 Signed-off-by: J. Bruce Fields <bfields@redhat.com>
 ---
- fs/nfsd/nfs4state.c | 11 +++++++++++
- fs/nfsd/nfs4xdr.c   | 24 ++++++++----------------
- 2 files changed, 19 insertions(+), 16 deletions(-)
+ fs/nfsd/nfs4proc.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index e936d9f..09be2e0 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -2208,11 +2208,13 @@ nfsd4_sequence(struct svc_rqst *rqstp,
- 	       struct nfsd4_sequence *seq)
- {
- 	struct nfsd4_compoundres *resp = rqstp->rq_resp;
-+	struct xdr_stream *xdr = &resp->xdr;
- 	struct nfsd4_session *session;
- 	struct nfs4_client *clp;
- 	struct nfsd4_slot *slot;
- 	struct nfsd4_conn *conn;
- 	__be32 status;
-+	int buflen;
- 	struct nfsd_net *nn = net_generic(SVC_NET(rqstp), nfsd_net_id);
+diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
+index 26995a5..44cd477 100644
+--- a/fs/nfsd/nfs4proc.c
++++ b/fs/nfsd/nfs4proc.c
+@@ -1491,7 +1491,7 @@ static inline u32 nfsd4_read_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op)
+ 	if (rlen > maxcount)
+ 		rlen = maxcount;
  
- 	if (resp->opcnt != 1)
-@@ -2281,6 +2283,15 @@ nfsd4_sequence(struct svc_rqst *rqstp,
- 	if (status)
- 		goto out_put_session;
- 
-+	buflen = (seq->cachethis) ?
-+			session->se_fchannel.maxresp_cached :
-+			session->se_fchannel.maxresp_sz;
-+	status = (seq->cachethis) ? nfserr_rep_too_big_to_cache :
-+				    nfserr_rep_too_big;
-+	if (xdr_restrict_buflen(xdr, buflen - 2 * RPC_MAX_AUTH_SIZE))
-+		goto out_put_session;
-+
-+	status = nfs_ok;
- 	/* Success! bump slot seqid */
- 	slot->sl_seqid = seq->seqid;
- 	slot->sl_flags |= NFSD4_SLOT_INUSE;
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index ad594f2..311e281 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -3767,25 +3767,17 @@ static nfsd4_enc nfsd4_enc_ops[] = {
- __be32 nfsd4_check_resp_size(struct nfsd4_compoundres *resp, u32 respsize)
- {
- 	struct xdr_buf *buf = &resp->rqstp->rq_res;
--	struct nfsd4_session *session = resp->cstate.session;
-+	struct nfsd4_slot *slot = resp->cstate.slot;
- 
--	if (nfsd4_has_session(&resp->cstate)) {
--		struct nfsd4_slot *slot = resp->cstate.slot;
--
--		if (buf->len + respsize > session->se_fchannel.maxresp_sz)
--			return nfserr_rep_too_big;
--
--		if ((slot->sl_flags & NFSD4_SLOT_CACHETHIS) &&
--		    buf->len + respsize > session->se_fchannel.maxresp_cached)
--			return nfserr_rep_too_big_to_cache;
--	}
--
--	if (buf->len + respsize > buf->buflen) {
--		WARN_ON_ONCE(nfsd4_has_session(&resp->cstate));
-+	if (buf->len + respsize <= buf->buflen)
-+		return nfs_ok;
-+	if (!nfsd4_has_session(&resp->cstate))
- 		return nfserr_resource;
-+	if (slot->sl_flags & NFSD4_SLOT_CACHETHIS) {
-+		WARN_ON_ONCE(1);
-+		return nfserr_rep_too_big_to_cache;
- 	}
--
--	return 0;
-+	return nfserr_rep_too_big;
+-	return (op_encode_hdr_size + 2) * sizeof(__be32) + rlen;
++	return (op_encode_hdr_size + 2 + XDR_QUADLEN(rlen)) * sizeof(__be32);
  }
  
- void
+ static inline u32 nfsd4_readdir_rsize(struct svc_rqst *rqstp, struct nfsd4_op *op)
 -- 
 1.9.0
 
