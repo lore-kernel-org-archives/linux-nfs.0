@@ -1,131 +1,123 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from e35.co.us.ibm.com ([32.97.110.153]:54635 "EHLO
-	e35.co.us.ibm.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751302AbaESSVB (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 May 2014 14:21:01 -0400
-Received: from /spool/local
-	by e35.co.us.ibm.com with IBM ESMTP SMTP Gateway: Authorized Use Only! Violators will be prosecuted
-	for <linux-nfs@vger.kernel.org> from <jvrao@linux.vnet.ibm.com>;
-	Mon, 19 May 2014 12:21:00 -0600
-Received: from b03cxnp08027.gho.boulder.ibm.com (b03cxnp08027.gho.boulder.ibm.com [9.17.130.19])
-	by d03dlp01.boulder.ibm.com (Postfix) with ESMTP id 0217B1FF003F
-	for <linux-nfs@vger.kernel.org>; Mon, 19 May 2014 12:20:58 -0600 (MDT)
-Received: from d03av06.boulder.ibm.com (d03av06.boulder.ibm.com [9.17.195.245])
-	by b03cxnp08027.gho.boulder.ibm.com (8.13.8/8.13.8/NCO v10.0) with ESMTP id s4JIK5NT66060372
-	for <linux-nfs@vger.kernel.org>; Mon, 19 May 2014 20:20:05 +0200
-Received: from d03av06.boulder.ibm.com (loopback [127.0.0.1])
-	by d03av06.boulder.ibm.com (8.14.4/8.13.1/NCO v10.0 AVout) with ESMTP id s4JIOhdv020815
-	for <linux-nfs@vger.kernel.org>; Mon, 19 May 2014 12:24:52 -0600
-From: rongzeng@us.ibm.com
-To: jvrao@linux.vnet.ibm.com
-Cc: rongzeng@us.ibm.com, rong zeng <rongzeng@oc1547780626.ibm.com>
-Subject: [PATCH] Adding a callback for incoming sm_notify to better handle
- stale lock issue in client crash recovery in HA-NFS environment. The callout
- parameters are:
-Date: Tue, 13 May 2014 11:26:44 -0700
-Message-Id: <1400005604-23016-1-git-send-email-rongzeng@us.ibm.com>
+Received: from mail-ie0-f180.google.com ([209.85.223.180]:46913 "EHLO
+	mail-ie0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1750965AbaEVAyo (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 May 2014 20:54:44 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH v4 03/24] xprtrdma: RPC/RDMA must invoke
+	xprt_wake_pending_tasks() in process context
+To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Date: Wed, 21 May 2014 20:54:41 -0400
+Message-ID: <20140522005440.27190.13640.stgit@manet.1015granger.net>
+In-Reply-To: <20140522004505.27190.58897.stgit@manet.1015granger.net>
+References: <20140522004505.27190.58897.stgit@manet.1015granger.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: rong zeng <rongzeng@oc1547780626.ibm.com>
+An IB provider can invoke rpcrdma_conn_func() in an IRQ context,
+thus rpcrdma_conn_func() cannot be allowed to directly invoke
+generic RPC functions like xprt_wake_pending_tasks().
 
-1. "sm-notify" - callout name
-2. monitored client name as in the SM_NOTIFY request
-3. IP of the sender of the SM_NOITFY request.
-4. state value in the SM_NOTIFY request
-
-This new interface can be used by different HA-NFS product
-in its specific configuration and environment to
-recover from the client crash and stale lock scenarios.
-
-Signed-off-by: Rong Zeng <rongzeng@us.ibm.com>
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Tested-by: Steve Wise <swise@opengridcomputing.com>
 ---
- utils/statd/callback.c |   13 ++++++++-----
- utils/statd/statd.man  |   20 ++++++++++++++++----
- 2 files changed, 24 insertions(+), 9 deletions(-)
 
-diff --git a/utils/statd/callback.c b/utils/statd/callback.c
-index d1cc139..58ba70b 100644
---- a/utils/statd/callback.c
-+++ b/utils/statd/callback.c
-@@ -15,6 +15,7 @@
- #include "rpcmisc.h"
- #include "statd.h"
- #include "notlist.h"
-+#include "ha-callout.h"
+ net/sunrpc/xprtrdma/rpc_rdma.c  |   22 +++++++++++++++-------
+ net/sunrpc/xprtrdma/verbs.c     |    3 +++
+ net/sunrpc/xprtrdma/xprt_rdma.h |    3 +++
+ 3 files changed, 21 insertions(+), 7 deletions(-)
 
- /* Callback notify list. */
- /* notify_list *cbnl = NULL; ... never used */
-@@ -87,6 +88,13 @@ sm_notify_1_svc(struct stat_chge *argp, struct svc_req *rqstp)
- 	xlog(D_CALL, "Received SM_NOTIFY from %s, state: %d",
- 				argp->mon_name, argp->state);
-
-+	if (!statd_present_address(sap, ip_addr, sizeof(ip_addr))) {
-+		xlog_warn("Unrecognized sender address");
-+		return ((void *) &result);
-+	}
+diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
+index 400aa1b..c296468 100644
+--- a/net/sunrpc/xprtrdma/rpc_rdma.c
++++ b/net/sunrpc/xprtrdma/rpc_rdma.c
+@@ -676,15 +676,11 @@ rpcrdma_inline_fixup(struct rpc_rqst *rqst, char *srcp, int copy_len, int pad)
+ 	rqst->rq_private_buf = rqst->rq_rcv_buf;
+ }
+ 
+-/*
+- * This function is called when an async event is posted to
+- * the connection which changes the connection state. All it
+- * does at this point is mark the connection up/down, the rpc
+- * timers do the rest.
+- */
+ void
+-rpcrdma_conn_func(struct rpcrdma_ep *ep)
++rpcrdma_connect_worker(struct work_struct *work)
+ {
++	struct rpcrdma_ep *ep =
++		container_of(work, struct rpcrdma_ep, rep_connect_worker.work);
+ 	struct rpc_xprt *xprt = ep->rep_xprt;
+ 
+ 	spin_lock_bh(&xprt->transport_lock);
+@@ -701,6 +697,18 @@ rpcrdma_conn_func(struct rpcrdma_ep *ep)
+ }
+ 
+ /*
++ * This function is called when an async event is posted to
++ * the connection which changes the connection state. All it
++ * does at this point is mark the connection up/down, the rpc
++ * timers do the rest.
++ */
++void
++rpcrdma_conn_func(struct rpcrdma_ep *ep)
++{
++	schedule_delayed_work(&ep->rep_connect_worker, 0);
++}
 +
-+	ha_callout("sm-notify", argp->mon_name, ip_addr, argp->state);
++/*
+  * This function is called when memory window unbind which we are waiting
+  * for completes. Just use rr_func (zeroed by upcall) to signal completion.
+  */
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 8f9704e..9cb88f3 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -742,6 +742,7 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
+ 	INIT_CQCOUNT(ep);
+ 	ep->rep_ia = ia;
+ 	init_waitqueue_head(&ep->rep_connect_wait);
++	INIT_DELAYED_WORK(&ep->rep_connect_worker, rpcrdma_connect_worker);
+ 
+ 	/*
+ 	 * Create a single cq for receive dto and mw_bind (only ever
+@@ -817,6 +818,8 @@ rpcrdma_ep_destroy(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
+ 	dprintk("RPC:       %s: entering, connected is %d\n",
+ 		__func__, ep->rep_connected);
+ 
++	cancel_delayed_work_sync(&ep->rep_connect_worker);
 +
- 	/* quick check - don't bother if we're not monitoring anyone */
- 	if (rtnl == NULL) {
- 		xlog_warn("SM_NOTIFY from %s while not monitoring any hosts",
-@@ -94,11 +102,6 @@ sm_notify_1_svc(struct stat_chge *argp, struct svc_req *rqstp)
- 		return ((void *) &result);
- 	}
-
--	if (!statd_present_address(sap, ip_addr, sizeof(ip_addr))) {
--		xlog_warn("Unrecognized sender address");
--		return ((void *) &result);
--	}
--
- 	/* okir change: statd doesn't remove the remote host from its
- 	 * internal monitor list when receiving an SM_NOTIFY call from
- 	 * it. Lockd will want to continue monitoring the remote host
-diff --git a/utils/statd/statd.man b/utils/statd/statd.man
-index 896c2f8..1e5520c 100644
---- a/utils/statd/statd.man
-+++ b/utils/statd/statd.man
-@@ -346,7 +346,8 @@ points due to inactivity.
- .SS High-availability callouts
- .B rpc.statd
- can exec a special callout program during processing of
--successful SM_MON, SM_UNMON, and SM_UNMON_ALL requests.
-+successful SM_MON, SM_UNMON, and SM_UNMON_ALL requests,
-+or when it receives SM_NOTIFY.
- Such a program may be used in High Availability NFS (HA-NFS)
- environments to track lock state that may need to be migrated after
- a system reboot.
-@@ -357,15 +358,26 @@ option.
- The program is run with 3 arguments:
- The first is either
- .B add-client
--or
- .B del-client
-+or
-+.B sm-notify
- depending on the reason for the callout.
- The second is the
- .I mon_name
- of the monitored peer.
- The third is the
--.I caller_name
--of the requesting lock manager.
-+.I caller_name 
-+of the requesting lock manager for
-+.B add-client
-+or
-+.B del-client
-+, otherwise it is
-+.I IP_address 
-+of the caller sending SM_NOTIFY.
-+The forth is the
-+.I state_value
-+in the SM_NOTIFY request.
-+
- .SS IPv6 and TI-RPC support
- TI-RPC is a pre-requisite for supporting NFS on IPv6.
- If TI-RPC support is built into
--- 
-1.7.1
+ 	if (ia->ri_id->qp) {
+ 		rc = rpcrdma_ep_disconnect(ep, ia);
+ 		if (rc)
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index 98340a3..c620d13 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -43,6 +43,7 @@
+ #include <linux/wait.h> 		/* wait_queue_head_t, etc */
+ #include <linux/spinlock.h> 		/* spinlock_t, etc */
+ #include <linux/atomic.h>			/* atomic_t, etc */
++#include <linux/workqueue.h>		/* struct work_struct */
+ 
+ #include <rdma/rdma_cm.h>		/* RDMA connection api */
+ #include <rdma/ib_verbs.h>		/* RDMA verbs api */
+@@ -87,6 +88,7 @@ struct rpcrdma_ep {
+ 	struct rpc_xprt		*rep_xprt;	/* for rep_func */
+ 	struct rdma_conn_param	rep_remote_cma;
+ 	struct sockaddr_storage	rep_remote_addr;
++	struct delayed_work	rep_connect_worker;
+ };
+ 
+ #define INIT_CQCOUNT(ep) atomic_set(&(ep)->rep_cqcount, (ep)->rep_cqinit)
+@@ -336,6 +338,7 @@ int rpcrdma_deregister_external(struct rpcrdma_mr_seg *,
+ /*
+  * RPC/RDMA connection management calls - xprtrdma/rpc_rdma.c
+  */
++void rpcrdma_connect_worker(struct work_struct *);
+ void rpcrdma_conn_func(struct rpcrdma_ep *);
+ void rpcrdma_reply_handler(struct rpcrdma_rep *);
+ 
 
