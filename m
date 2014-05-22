@@ -1,96 +1,105 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:61099 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751711AbaE0P27 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 27 May 2014 11:28:59 -0400
-Date: Tue, 27 May 2014 11:28:57 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: Jeff Layton <jeff.layton@primarydata.com>
-Cc: linux-nfs@vger.kernel.org, stable@vger.kernel.org
-Subject: Re: [PATCH 1/2] nfsd4: remove lockowner when removing lock stateid
-Message-ID: <20140527152857.GB2312@pad.redhat.com>
-References: <1400688325-5345-1-git-send-email-bfields@redhat.com>
- <1400688325-5345-2-git-send-email-bfields@redhat.com>
- <20140527085007.7beb02ec@tlielax.poochiereds.net>
+Received: from mail-ig0-f179.google.com ([209.85.213.179]:36471 "EHLO
+	mail-ig0-f179.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752528AbaEVAzl (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 May 2014 20:55:41 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH v4 10/24] xprtrdma: Make rpcrdma_ep_destroy() return void
+To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Date: Wed, 21 May 2014 20:55:40 -0400
+Message-ID: <20140522005540.27190.83625.stgit@manet.1015granger.net>
+In-Reply-To: <20140522004505.27190.58897.stgit@manet.1015granger.net>
+References: <20140522004505.27190.58897.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140527085007.7beb02ec@tlielax.poochiereds.net>
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, May 27, 2014 at 08:50:07AM -0400, Jeff Layton wrote:
-> On Wed, 21 May 2014 12:05:24 -0400
-> "J. Bruce Fields" <bfields@redhat.com> wrote:
-> 
-> > From: "J. Bruce Fields" <bfields@redhat.com>
-> > 
-> > The nfsv4 state code has always assumed a one-to-one correspondance
-> > between lock stateid's and lockowners even if it appears not to in some
-> > places.
-> > 
-> > We may actually change that, but for now when FREE_STATEID releases a
-> > lock stateid it also needs to release the parent lockowner.
-> > 
-> > Symptoms were a subsequent LOCK crashing in find_lockowner_str when it
-> > calls same_lockowner_ino on a lockowner that unexpectedly has an empty
-> > so_stateids list.
-> > 
-> > Cc: stable@vger.kernel.org
-> > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-> > ---
-> >  fs/nfsd/nfs4state.c | 11 +++++++++--
-> >  1 file changed, 9 insertions(+), 2 deletions(-)
-> > 
-> > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> > index 32b699b..89e4240 100644
-> > --- a/fs/nfsd/nfs4state.c
-> > +++ b/fs/nfsd/nfs4state.c
-> > @@ -3717,9 +3717,16 @@ out:
-> >  static __be32
-> >  nfsd4_free_lock_stateid(struct nfs4_ol_stateid *stp)
-> >  {
-> > -	if (check_for_locks(stp->st_file, lockowner(stp->st_stateowner)))
-> > +	struct nfs4_lockowner *lo = lockowner(stp->st_stateowner);
-> > +
-> > +	if (check_for_locks(stp->st_file, lo))
-> >  		return nfserr_locks_held;
-> > -	release_lock_stateid(stp);
-> > +	/*
-> > +	 * Currently there's a 1-1 lock stateid<->lockowner
-> > +	 * correspondance, and we have to delete the lockowner when we
-> > +	 * delete the lock stateid:
-> > +	 */
-> > +	unhash_lockowner(lo);
-> 
-> Shouldn't this be release_lockowner(lo) ? If not, what's going to free
-> the lockowner afterward?
+Clean up: rpcrdma_ep_destroy() returns a value that is used
+only to print a debugging message. rpcrdma_ep_destroy() already
+prints debugging messages in all error cases.
 
-Yes, thank you!  I'll probably send along the following soon....
+Make rpcrdma_ep_destroy() return void instead.
 
---b.
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Tested-by: Steve Wise <swise@opengridcomputing.com>
+---
 
-commit bc0336505f20
-Author: J. Bruce Fields <bfields@redhat.com>
-Date:   Tue May 27 11:14:26 2014 -0400
+ net/sunrpc/xprtrdma/transport.c |    8 ++------
+ net/sunrpc/xprtrdma/verbs.c     |    7 +------
+ net/sunrpc/xprtrdma/xprt_rdma.h |    2 +-
+ 3 files changed, 4 insertions(+), 13 deletions(-)
 
-    nfsd4: fix FREE_STATEID lockowner leak
-    
-    27b11428b7de ("nfsd4: remove lockowner when removing lock stateid")
-    introduced a memory leak.
-    
-    Reported-by: Jeff Layton <jeff.layton@primarydata.com>
-    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
-
-diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-index 9a77a5a21557..6134ee283798 100644
---- a/fs/nfsd/nfs4state.c
-+++ b/fs/nfsd/nfs4state.c
-@@ -3726,7 +3726,7 @@ nfsd4_free_lock_stateid(struct nfs4_ol_stateid *stp)
- 	 * correspondance, and we have to delete the lockowner when we
- 	 * delete the lock stateid:
- 	 */
--	unhash_lockowner(lo);
-+	release_lockowner(lo);
- 	return nfs_ok;
+diff --git a/net/sunrpc/xprtrdma/transport.c b/net/sunrpc/xprtrdma/transport.c
+index 430cabb..d18b2a3 100644
+--- a/net/sunrpc/xprtrdma/transport.c
++++ b/net/sunrpc/xprtrdma/transport.c
+@@ -229,7 +229,6 @@ static void
+ xprt_rdma_destroy(struct rpc_xprt *xprt)
+ {
+ 	struct rpcrdma_xprt *r_xprt = rpcx_to_rdmax(xprt);
+-	int rc;
+ 
+ 	dprintk("RPC:       %s: called\n", __func__);
+ 
+@@ -238,10 +237,7 @@ xprt_rdma_destroy(struct rpc_xprt *xprt)
+ 	xprt_clear_connected(xprt);
+ 
+ 	rpcrdma_buffer_destroy(&r_xprt->rx_buf);
+-	rc = rpcrdma_ep_destroy(&r_xprt->rx_ep, &r_xprt->rx_ia);
+-	if (rc)
+-		dprintk("RPC:       %s: rpcrdma_ep_destroy returned %i\n",
+-			__func__, rc);
++	rpcrdma_ep_destroy(&r_xprt->rx_ep, &r_xprt->rx_ia);
+ 	rpcrdma_ia_close(&r_xprt->rx_ia);
+ 
+ 	xprt_rdma_free_addresses(xprt);
+@@ -391,7 +387,7 @@ out4:
+ 	xprt_rdma_free_addresses(xprt);
+ 	rc = -EINVAL;
+ out3:
+-	(void) rpcrdma_ep_destroy(new_ep, &new_xprt->rx_ia);
++	rpcrdma_ep_destroy(new_ep, &new_xprt->rx_ia);
+ out2:
+ 	rpcrdma_ia_close(&new_xprt->rx_ia);
+ out1:
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 0cbc83c..edc951e 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -748,11 +748,8 @@ out1:
+  * Disconnect and destroy endpoint. After this, the only
+  * valid operations on the ep are to free it (if dynamically
+  * allocated) or re-create it.
+- *
+- * The caller's error handling must be sure to not leak the endpoint
+- * if this function fails.
+  */
+-int
++void
+ rpcrdma_ep_destroy(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
+ {
+ 	int rc;
+@@ -782,8 +779,6 @@ rpcrdma_ep_destroy(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia)
+ 	if (rc)
+ 		dprintk("RPC:       %s: ib_destroy_cq returned %i\n",
+ 			__func__, rc);
+-
+-	return rc;
  }
  
+ /*
+diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
+index 3f44d6a..362a19d 100644
+--- a/net/sunrpc/xprtrdma/xprt_rdma.h
++++ b/net/sunrpc/xprtrdma/xprt_rdma.h
+@@ -301,7 +301,7 @@ void rpcrdma_ia_close(struct rpcrdma_ia *);
+  */
+ int rpcrdma_ep_create(struct rpcrdma_ep *, struct rpcrdma_ia *,
+ 				struct rpcrdma_create_data_internal *);
+-int rpcrdma_ep_destroy(struct rpcrdma_ep *, struct rpcrdma_ia *);
++void rpcrdma_ep_destroy(struct rpcrdma_ep *, struct rpcrdma_ia *);
+ int rpcrdma_ep_connect(struct rpcrdma_ep *, struct rpcrdma_ia *);
+ int rpcrdma_ep_disconnect(struct rpcrdma_ep *, struct rpcrdma_ia *);
+ 
+
