@@ -1,245 +1,113 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f174.google.com ([209.85.223.174]:44411 "EHLO
-	mail-ie0-f174.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932072AbaESTZt (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Mon, 19 May 2014 15:25:49 -0400
-Received: by mail-ie0-f174.google.com with SMTP id lx4so2811021iec.19
-        for <linux-nfs@vger.kernel.org>; Mon, 19 May 2014 12:25:48 -0700 (PDT)
-Message-ID: <537A5ABA.7070808@gmail.com>
-Date: Mon, 19 May 2014 15:25:46 -0400
-From: Anna Schumaker <schumaker.anna@gmail.com>
-MIME-Version: 1.0
-To: Weston Andros Adamson <dros@primarydata.com>,
-        trond.myklebust@primarydata.com
-CC: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 6/8] pnfs: clean up *_resend_to_mds
-References: <1400512508-7530-1-git-send-email-dros@primarydata.com> <1400512508-7530-7-git-send-email-dros@primarydata.com>
-In-Reply-To: <1400512508-7530-7-git-send-email-dros@primarydata.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Received: from fieldses.org ([174.143.236.118]:43479 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752710AbaEVTcp (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 May 2014 15:32:45 -0400
+From: "J. Bruce Fields" <bfields@redhat.com>
+To: linux-nfs@vger.kernel.org
+Cc: Christoph Hellwig <hch@infradead.org>,
+        "J. Bruce Fields" <bfields@redhat.com>
+Subject: [PATCH 41/52] nfsd4: turn off zero-copy-read in exotic cases
+Date: Thu, 22 May 2014 15:32:16 -0400
+Message-Id: <1400787148-25941-42-git-send-email-bfields@redhat.com>
+In-Reply-To: <1400787148-25941-1-git-send-email-bfields@redhat.com>
+References: <1400787148-25941-1-git-send-email-bfields@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 05/19/2014 11:15 AM, Weston Andros Adamson wrote:
-> Clean up pnfs_read_done_resend_to_mds and pnfs_write_done_resend_to_mds:
->  - instead of passing all arguments from a nfs_pgio_header, just pass the header
->  - share the common code
->
-> Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
-> ---
->  fs/nfs/nfs4filelayout.c  | 10 ++------
->  fs/nfs/pagelist.c        | 32 +++++++++++++++++++++++++
->  fs/nfs/pnfs.c            | 62 +++++++-----------------------------------------
->  fs/nfs/pnfs.h            |  8 ++-----
->  include/linux/nfs_page.h |  2 ++
->  5 files changed, 47 insertions(+), 67 deletions(-)
->
-> diff --git a/fs/nfs/nfs4filelayout.c b/fs/nfs/nfs4filelayout.c
-> index e7f21b4..37e0b65 100644
-> --- a/fs/nfs/nfs4filelayout.c
-> +++ b/fs/nfs/nfs4filelayout.c
-> @@ -97,10 +97,7 @@ static void filelayout_reset_write(struct nfs_pgio_header *hdr)
->  			hdr->args.count,
->  			(unsigned long long)hdr->args.offset);
->  
-> -		task->tk_status = pnfs_write_done_resend_to_mds(hdr->inode,
-> -							&hdr->pages,
-> -							hdr->completion_ops,
-> -							hdr->dreq);
-> +		task->tk_status = pnfs_write_done_resend_to_mds(hdr);
->  	}
->  }
->  
-> @@ -117,10 +114,7 @@ static void filelayout_reset_read(struct nfs_pgio_header *hdr)
->  			hdr->args.count,
->  			(unsigned long long)hdr->args.offset);
->  
-> -		task->tk_status = pnfs_read_done_resend_to_mds(hdr->inode,
-> -							&hdr->pages,
-> -							hdr->completion_ops,
-> -							hdr->dreq);
-> +		task->tk_status = pnfs_read_done_resend_to_mds(hdr);
->  	}
->  }
->  
-> diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-> index 8f029ed..0fcd34a 100644
-> --- a/fs/nfs/pagelist.c
-> +++ b/fs/nfs/pagelist.c
-> @@ -945,6 +945,38 @@ int nfs_pageio_add_request(struct nfs_pageio_descriptor *desc,
->  }
->  EXPORT_SYMBOL_GPL(nfs_pageio_add_request);
->  
-> +/*
-> + * nfs_pageio_resend - Transfer requests to new descriptor and resend
-> + * @hdr - the pgio header to move request from
-> + * @desc - the pageio descriptor to add requests to
-> + *
-> + * Try to move each request (nfs_page) from @hdr to @desc then attempt
-> + * to send them.
-> + *
-> + * Returns 0 on success and < 0 on error.
-> + */
-> +int nfs_pageio_resend(struct nfs_pageio_descriptor *desc,
-> +		      struct nfs_pgio_header *hdr)
-> +{
-> +	LIST_HEAD(failed);
-> +
-> +	desc->pg_dreq = hdr->dreq;
-> +	while (!list_empty(&hdr->pages)) {
-> +		struct nfs_page *req = nfs_list_entry(hdr->pages.next);
-> +
-> +		nfs_list_remove_request(req);
-> +		if (!nfs_pageio_add_request(desc, req))
-> +			nfs_list_add_request(req, &failed);
-> +	}
-> +	nfs_pageio_complete(desc);
-> +	if (!list_empty(&failed)) {
-> +		list_move(&failed, &hdr->pages);
-> +		return -EIO;
-> +	}
-> +	return 0;
-> +}
-> +EXPORT_SYMBOL_GPL(nfs_pageio_resend);
-> +
->  /**
->   * nfs_pageio_complete - Complete I/O on an nfs_pageio_descriptor
->   * @desc: pointer to io descriptor
-> diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-> index 902783ab..79792a4 100644
-> --- a/fs/nfs/pnfs.c
-> +++ b/fs/nfs/pnfs.c
-> @@ -1466,35 +1466,14 @@ pnfs_generic_pg_test(struct nfs_pageio_descriptor *pgio, struct nfs_page *prev,
->  }
->  EXPORT_SYMBOL_GPL(pnfs_generic_pg_test);
->  
-> -int pnfs_write_done_resend_to_mds(struct inode *inode,
-> -				struct list_head *head,
-> -				const struct nfs_pgio_completion_ops *compl_ops,
-> -				struct nfs_direct_req *dreq)
-> +int pnfs_write_done_resend_to_mds(struct nfs_pgio_header *hdr)
->  {
->  	struct nfs_pageio_descriptor pgio;
-> -	LIST_HEAD(failed);
->  
->  	/* Resend all requests through the MDS */
-> -	nfs_pageio_init_write(&pgio, inode, FLUSH_STABLE, true, compl_ops);
-> -	pgio.pg_dreq = dreq;
-> -	while (!list_empty(head)) {
-> -		struct nfs_page *req = nfs_list_entry(head->next);
-> -
-> -		nfs_list_remove_request(req);
-> -		if (!nfs_pageio_add_request(&pgio, req))
-> -			nfs_list_add_request(req, &failed);
-> -	}
-> -	nfs_pageio_complete(&pgio);
-> -
-> -	if (!list_empty(&failed)) {
-> -		/* For some reason our attempt to resend pages. Mark the
-> -		 * overall send request as having failed, and let
-> -		 * nfs_writeback_release_full deal with the error.
-> -		 */
-> -		list_move(&failed, head);
-> -		return -EIO;
-> -	}
-> -	return 0;
-> +	nfs_pageio_init_write(&pgio, hdr->inode, FLUSH_STABLE, true,
-> +			      hdr->completion_ops);
-> +	return nfs_pageio_resend(&pgio, hdr);
->  }
->  EXPORT_SYMBOL_GPL(pnfs_write_done_resend_to_mds);
->  
-> @@ -1507,10 +1486,7 @@ static void pnfs_ld_handle_write_error(struct nfs_pgio_header *hdr)
->  		pnfs_return_layout(hdr->inode);
->  	}
->  	if (!test_and_set_bit(NFS_IOHDR_REDO, &hdr->flags))
-> -		hdr->task.tk_status = pnfs_write_done_resend_to_mds(hdr->inode,
-> -							&hdr->pages,
-> -							hdr->completion_ops,
-> -							hdr->dreq);
-> +		hdr->task.tk_status = pnfs_write_done_resend_to_mds(hdr);
->  }
->  
->  /*
-> @@ -1608,30 +1584,13 @@ pnfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc)
->  }
->  EXPORT_SYMBOL_GPL(pnfs_generic_pg_writepages);
->  
-> -int pnfs_read_done_resend_to_mds(struct inode *inode,
-> -				struct list_head *head,
-> -				const struct nfs_pgio_completion_ops *compl_ops,
-> -				struct nfs_direct_req *dreq)
-> +int pnfs_read_done_resend_to_mds(struct nfs_pgio_header *hdr)
->  {
->  	struct nfs_pageio_descriptor pgio;
-> -	LIST_HEAD(failed);
->  
->  	/* Resend all requests through the MDS */
-> -	nfs_pageio_init_read(&pgio, inode, true, compl_ops);
-> -	pgio.pg_dreq = dreq;
-> -	while (!list_empty(head)) {
-> -		struct nfs_page *req = nfs_list_entry(head->next);
-> -
-> -		nfs_list_remove_request(req);
-> -		if (!nfs_pageio_add_request(&pgio, req))
-> -			nfs_list_add_request(req, &failed);
-> -	}
-> -	nfs_pageio_complete(&pgio);
-> -
-> -	if (!list_empty(&failed)) {
-> -		list_move(&failed, head);
-> -		return -EIO;
-> -	}
-> +	nfs_pageio_init_read(&pgio, hdr->inode, true, hdr->completion_ops);
-> +	nfs_pageio_resend(&pgio, hdr);
->  	return 0;
->  }
+From: "J. Bruce Fields" <bfields@redhat.com>
 
-Write returns the value of nfs_pageio_resend().  Why does read always return 0?
+We currently allow only one read per compound, with operations before
+and after whose responses will require no more than about a page to
+encode.
 
-Anna
->  EXPORT_SYMBOL_GPL(pnfs_read_done_resend_to_mds);
-> @@ -1644,10 +1603,7 @@ static void pnfs_ld_handle_read_error(struct nfs_pgio_header *hdr)
->  		pnfs_return_layout(hdr->inode);
->  	}
->  	if (!test_and_set_bit(NFS_IOHDR_REDO, &hdr->flags))
-> -		hdr->task.tk_status = pnfs_read_done_resend_to_mds(hdr->inode,
-> -							&hdr->pages,
-> -							hdr->completion_ops,
-> -							hdr->dreq);
-> +		hdr->task.tk_status = pnfs_read_done_resend_to_mds(hdr);
->  }
->  
->  /*
-> diff --git a/fs/nfs/pnfs.h b/fs/nfs/pnfs.h
-> index f385afa..552b2e9 100644
-> --- a/fs/nfs/pnfs.h
-> +++ b/fs/nfs/pnfs.h
-> @@ -228,12 +228,8 @@ struct pnfs_layout_segment *pnfs_update_layout(struct inode *ino,
->  					       gfp_t gfp_flags);
->  
->  void nfs4_deviceid_mark_client_invalid(struct nfs_client *clp);
-> -int pnfs_read_done_resend_to_mds(struct inode *inode, struct list_head *head,
-> -			const struct nfs_pgio_completion_ops *compl_ops,
-> -			struct nfs_direct_req *dreq);
-> -int pnfs_write_done_resend_to_mds(struct inode *inode, struct list_head *head,
-> -			const struct nfs_pgio_completion_ops *compl_ops,
-> -			struct nfs_direct_req *dreq);
-> +int pnfs_read_done_resend_to_mds(struct nfs_pgio_header *);
-> +int pnfs_write_done_resend_to_mds(struct nfs_pgio_header *);
->  struct nfs4_threshold *pnfs_mdsthreshold_alloc(void);
->  
->  /* nfs4_deviceid_flags */
-> diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
-> index d0fae7b..4b48548 100644
-> --- a/include/linux/nfs_page.h
-> +++ b/include/linux/nfs_page.h
-> @@ -112,6 +112,8 @@ extern	void nfs_pageio_init(struct nfs_pageio_descriptor *desc,
->  			     int how);
->  extern	int nfs_pageio_add_request(struct nfs_pageio_descriptor *,
->  				   struct nfs_page *);
-> +extern  int nfs_pageio_resend(struct nfs_pageio_descriptor *,
-> +			      struct nfs_pgio_header *);
->  extern	void nfs_pageio_complete(struct nfs_pageio_descriptor *desc);
->  extern	void nfs_pageio_cond_complete(struct nfs_pageio_descriptor *, pgoff_t);
->  extern size_t nfs_generic_pg_test(struct nfs_pageio_descriptor *desc,
+While we don't expect clients to violate those limits any time soon,
+this limitation isn't really condoned by the spec, so to future proof
+the server we should lift the limitation.
+
+At the same time we'd like to continue to support zero-copy reads.
+
+Supporting multiple zero-copy-reads per compound would require a new
+data structure to replace struct xdr_buf, which can represent only one
+set of included pages.
+
+So for now we plan to modify encode_read() to support either zero-copy
+or non-zero-copy reads, and use some heuristics at the start of the
+compound processing to decide whether a zero-copy read will work.
+
+This will allow us to support more exotic compounds without introducing
+a performance regression in the normal case.
+
+Later patches handle those "exotic compounds", this one just makes sure
+zero-copy is turned off in those cases.
+
+Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+---
+ fs/nfsd/nfs4xdr.c | 21 +++++++++++++++++----
+ 1 file changed, 17 insertions(+), 4 deletions(-)
+
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index a3cfb89..1ca547d 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -1612,6 +1612,8 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
+ 	struct nfsd4_op *op;
+ 	bool cachethis = false;
+ 	int max_reply = 2 * RPC_MAX_AUTH_SIZE + 8; /* opcnt, status */
++	int readcount = 0;
++	int readbytes = 0;
+ 	int i;
+ 
+ 	READ_BUF(4);
+@@ -1658,7 +1660,11 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
+ 		 */
+ 		cachethis |= nfsd4_cache_this_op(op);
+ 
+-		max_reply += nfsd4_max_reply(argp->rqstp, op);
++		if (op->opnum == OP_READ) {
++			readcount++;
++			readbytes += nfsd4_max_reply(argp->rqstp, op);
++		} else
++			max_reply += nfsd4_max_reply(argp->rqstp, op);
+ 
+ 		if (op->status) {
+ 			argp->opcnt = i+1;
+@@ -1668,9 +1674,12 @@ nfsd4_decode_compound(struct nfsd4_compoundargs *argp)
+ 	/* Sessions make the DRC unnecessary: */
+ 	if (argp->minorversion)
+ 		cachethis = false;
+-	svc_reserve(argp->rqstp, max_reply);
++	svc_reserve(argp->rqstp, max_reply + readbytes);
+ 	argp->rqstp->rq_cachetype = cachethis ? RC_REPLBUFF : RC_NOCACHE;
+ 
++	if (readcount > 1 || max_reply > PAGE_SIZE - 2*RPC_MAX_AUTH_SIZE)
++		argp->rqstp->rq_splice_ok = false;
++
+ 	DECODE_TAIL;
+ }
+ 
+@@ -3078,15 +3087,19 @@ nfsd4_encode_read(struct nfsd4_compoundres *resp, __be32 nfserr,
+ 		return nfserr;
+ 
+ 	p = xdr_reserve_space(xdr, 8); /* eof flag and byte count */
+-	if (!p)
++	if (!p) {
++		WARN_ON_ONCE(resp->rqstp->rq_splice_ok);
+ 		return nfserr_resource;
++	}
+ 
+ 	/* Make sure there will be room for padding if needed: */
+ 	if (xdr->end - xdr->p < 1)
+ 		return nfserr_resource;
+ 
+-	if (resp->xdr.buf->page_len)
++	if (resp->xdr.buf->page_len) {
++		WARN_ON_ONCE(resp->rqstp->rq_splice_ok);
+ 		return nfserr_resource;
++	}
+ 
+ 	maxcount = svc_max_payload(resp->rqstp);
+ 	if (maxcount > read->rd_length)
+-- 
+1.9.0
 
