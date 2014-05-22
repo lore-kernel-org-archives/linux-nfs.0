@@ -1,82 +1,153 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:50056 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:59004 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1754995AbaEHRGH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 8 May 2014 13:06:07 -0400
-Date: Thu, 8 May 2014 13:06:06 -0400
-From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Kinglong Mee <kinglongmee@gmail.com>
-Cc: linux-nfs@vger.kernel.org
-Subject: Re: [PATCH] NFSD: Get rid of empty function nfs4_state_init
-Message-ID: <20140508170606.GH20976@fieldses.org>
-References: <534383D4.50504@gmail.com>
+	id S1751430AbaEVTzT (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Thu, 22 May 2014 15:55:19 -0400
+Date: Thu, 22 May 2014 15:55:17 -0400
+To: Chuck Lever <chuck.lever@oracle.com>
+Cc: bfields@redhat.com, linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Subject: Re: [PATCH] NFSD: Ignore client's source port on RDMA transports
+Message-ID: <20140522195517.GD25423@fieldses.org>
+References: <20140519173258.2828.98254.stgit@klimt.1015granger.net>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <534383D4.50504@gmail.com>
+In-Reply-To: <20140519173258.2828.98254.stgit@klimt.1015granger.net>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Thanks, applying.--b.
-
-On Tue, Apr 08, 2014 at 01:06:28PM +0800, Kinglong Mee wrote:
-> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+On Mon, May 19, 2014 at 01:40:22PM -0400, Chuck Lever wrote:
+> An NFS/RDMA client's source port is meaningless for RDMA transports.
+> The transport layer typically sets the source port value on the
+> connection to a random ephemeral port.
+> 
+> Currently, NFS server administrators must specify the "insecure"
+> export option to enable clients to access exports via RDMA.
+> 
+> But this means NFS clients can access such an export via IP using an
+> ephemeral port, which may not be desirable.
+> 
+> This patch eliminates the need to specify the "insecure" export
+> option to allow NFS/RDMA clients access to an export.
+> 
+> BugLink: https://bugzilla.linux-nfs.org/show_bug.cgi?id=250
+> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
 > ---
->  fs/nfsd/nfs4state.c | 7 -------
->  fs/nfsd/nfsctl.c    | 1 -
->  fs/nfsd/nfsd.h      | 2 --
->  3 files changed, 10 deletions(-)
 > 
-> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
-> index 5a9588e..6e786a8 100644
-> --- a/fs/nfsd/nfs4state.c
-> +++ b/fs/nfsd/nfs4state.c
-> @@ -4969,13 +4969,6 @@ struct nfs4_client *nfsd_find_client(struct
-> sockaddr_storage *addr, size_t addr_
+> Hi Bruce-
 > 
->  #endif /* CONFIG_NFSD_FAULT_INJECTION */
+> I've done some simple testing. "insecure" still behaves correctly
+> for IP-based clients, and is now unnecessary for RDMA-based clients.
+> Would you consider this for nfsd-next?
+
+Yes, looks god to me; applying for 3.16.
+
+--b.
+
 > 
-> -/* initialization to perform at module load time: */
-> -
-> -void
-> -nfs4_state_init(void)
-> -{
-> -}
-> -
+> 
+>  include/linux/sunrpc/svc_xprt.h          |    1 +
+>  net/sunrpc/svc_xprt.c                    |    2 +-
+>  net/sunrpc/svcsock.c                     |    9 +++++++++
+>  net/sunrpc/xprtrdma/svc_rdma_transport.c |    7 +++++++
+>  4 files changed, 18 insertions(+), 1 deletions(-)
+> 
+> diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
+> index b05963f..0cec1b9 100644
+> --- a/include/linux/sunrpc/svc_xprt.h
+> +++ b/include/linux/sunrpc/svc_xprt.h
+> @@ -24,6 +24,7 @@ struct svc_xprt_ops {
+>  	void		(*xpo_release_rqst)(struct svc_rqst *);
+>  	void		(*xpo_detach)(struct svc_xprt *);
+>  	void		(*xpo_free)(struct svc_xprt *);
+> +	int		(*xpo_secure_port)(struct svc_rqst *);
+>  };
+>  
+>  struct svc_xprt_class {
+> diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
+> index 06c6ff0..614956f 100644
+> --- a/net/sunrpc/svc_xprt.c
+> +++ b/net/sunrpc/svc_xprt.c
+> @@ -793,7 +793,7 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
+>  
+>  	clear_bit(XPT_OLD, &xprt->xpt_flags);
+>  
+> -	rqstp->rq_secure = svc_port_is_privileged(svc_addr(rqstp));
+> +	rqstp->rq_secure = xprt->xpt_ops->xpo_secure_port(rqstp);
+>  	rqstp->rq_chandle.defer = svc_defer;
+>  
+>  	if (serv->sv_stats)
+> diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
+> index 43bcb46..0cb34f5 100644
+> --- a/net/sunrpc/svcsock.c
+> +++ b/net/sunrpc/svcsock.c
+> @@ -400,6 +400,12 @@ static void svc_sock_setbufsize(struct socket *sock, unsigned int snd,
+>  	release_sock(sock->sk);
+>  #endif
+>  }
+> +
+> +static int svc_sock_secure_port(struct svc_rqst *rqstp)
+> +{
+> +	return svc_port_is_privileged(svc_addr(rqstp));
+> +}
+> +
 >  /*
->   * Since the lifetime of a delegation isn't limited to that of an open, a
->   * client may quite reasonably hang on to a delegation as long as it has
-> diff --git a/fs/nfsd/nfsctl.c b/fs/nfsd/nfsctl.c
-> index 7f55517..493f3d4 100644
-> --- a/fs/nfsd/nfsctl.c
-> +++ b/fs/nfsd/nfsctl.c
-> @@ -1174,7 +1174,6 @@ static int __init init_nfsd(void)
->  	retval = nfsd4_init_slabs();
->  	if (retval)
->  		goto out_unregister_pernet;
-> -	nfs4_state_init();
->  	retval = nfsd_fault_inject_init(); /* nfsd fault injection controls */
->  	if (retval)
->  		goto out_free_slabs;
-> diff --git a/fs/nfsd/nfsd.h b/fs/nfsd/nfsd.h
-> index 30f34ab..22259f8 100644
-> --- a/fs/nfsd/nfsd.h
-> +++ b/fs/nfsd/nfsd.h
-> @@ -106,7 +106,6 @@ static inline int nfsd_v4client(struct svc_rqst *rq)
+>   * INET callback when data has been received on the socket.
 >   */
->  #ifdef CONFIG_NFSD_V4
->  extern unsigned long max_delegations;
-> -void nfs4_state_init(void);
->  int nfsd4_init_slabs(void);
->  void nfsd4_free_slabs(void);
->  int nfs4_state_start(void);
-> @@ -117,7 +116,6 @@ void nfs4_reset_lease(time_t leasetime);
->  int nfs4_reset_recoverydir(char *recdir);
->  char * nfs4_recoverydir(void);
->  #else
-> -static inline void nfs4_state_init(void) { }
->  static inline int nfsd4_init_slabs(void) { return 0; }
->  static inline void nfsd4_free_slabs(void) { }
->  static inline int nfs4_state_start(void) { return 0; }
-> -- 
-> 1.9.0
+> @@ -678,6 +684,7 @@ static struct svc_xprt_ops svc_udp_ops = {
+>  	.xpo_prep_reply_hdr = svc_udp_prep_reply_hdr,
+>  	.xpo_has_wspace = svc_udp_has_wspace,
+>  	.xpo_accept = svc_udp_accept,
+> +	.xpo_secure_port = svc_sock_secure_port,
+>  };
+>  
+>  static struct svc_xprt_class svc_udp_class = {
+> @@ -1234,6 +1241,7 @@ static struct svc_xprt_ops svc_tcp_bc_ops = {
+>  	.xpo_detach = svc_bc_tcp_sock_detach,
+>  	.xpo_free = svc_bc_sock_free,
+>  	.xpo_prep_reply_hdr = svc_tcp_prep_reply_hdr,
+> +	.xpo_secure_port = svc_sock_secure_port,
+>  };
+>  
+>  static struct svc_xprt_class svc_tcp_bc_class = {
+> @@ -1272,6 +1280,7 @@ static struct svc_xprt_ops svc_tcp_ops = {
+>  	.xpo_prep_reply_hdr = svc_tcp_prep_reply_hdr,
+>  	.xpo_has_wspace = svc_tcp_has_wspace,
+>  	.xpo_accept = svc_tcp_accept,
+> +	.xpo_secure_port = svc_sock_secure_port,
+>  };
+>  
+>  static struct svc_xprt_class svc_tcp_class = {
+> diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> index 25688fa..02db8d9 100644
+> --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
+> @@ -65,6 +65,7 @@ static void dto_tasklet_func(unsigned long data);
+>  static void svc_rdma_detach(struct svc_xprt *xprt);
+>  static void svc_rdma_free(struct svc_xprt *xprt);
+>  static int svc_rdma_has_wspace(struct svc_xprt *xprt);
+> +static int svc_rdma_secure_port(struct svc_rqst *);
+>  static void rq_cq_reap(struct svcxprt_rdma *xprt);
+>  static void sq_cq_reap(struct svcxprt_rdma *xprt);
+>  
+> @@ -82,6 +83,7 @@ static struct svc_xprt_ops svc_rdma_ops = {
+>  	.xpo_prep_reply_hdr = svc_rdma_prep_reply_hdr,
+>  	.xpo_has_wspace = svc_rdma_has_wspace,
+>  	.xpo_accept = svc_rdma_accept,
+> +	.xpo_secure_port = svc_rdma_secure_port,
+>  };
+>  
+>  struct svc_xprt_class svc_rdma_class = {
+> @@ -1207,6 +1209,11 @@ static int svc_rdma_has_wspace(struct svc_xprt *xprt)
+>  	return 1;
+>  }
+>  
+> +static int svc_rdma_secure_port(struct svc_rqst *rqstp)
+> +{
+> +	return 1;
+> +}
+> +
+>  /*
+>   * Attempt to register the kvec representing the RPC memory with the
+>   * device.
 > 
