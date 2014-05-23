@@ -1,299 +1,41 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:44519 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751337AbaEFNM5 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 May 2014 09:12:57 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
-CC: <dros@primarydata.com>, <hch@infradead.org>
-Subject: [PATCH v3 09/17] NFS: Create a common nfs_pgio_result_common function
-Date: Tue, 6 May 2014 09:12:32 -0400
-Message-ID: <1399381960-3019-10-git-send-email-Anna.Schumaker@Netapp.com>
-In-Reply-To: <1399381960-3019-1-git-send-email-Anna.Schumaker@Netapp.com>
-References: <1399381960-3019-1-git-send-email-Anna.Schumaker@Netapp.com>
+Received: from mail-qc0-f182.google.com ([209.85.216.182]:35098 "EHLO
+	mail-qc0-f182.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753232AbaEWMx1 (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 May 2014 08:53:27 -0400
+Received: by mail-qc0-f182.google.com with SMTP id e16so7900228qcx.41
+        for <linux-nfs@vger.kernel.org>; Fri, 23 May 2014 05:53:26 -0700 (PDT)
+Message-ID: <537F44B1.6080507@gmail.com>
+Date: Fri, 23 May 2014 20:53:05 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>, kinglongmee@gmail.com
+Subject: [PATCH 1/5] NFSD: Cleanup unneeded including linux/user_namespace.h
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
+commit 4c1e1b34d5c800ad3ac9a7e2805b0bea70ad2278 using kuid/kgid for
+ex_anon_uid/ex_anon_gid, user_namespace.h is not needed now, clean it.
 
-Combining these functions will let me make a single nfs_rw_common_ops
-struct (see the next patch).
-
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 ---
-v3:
-- Rename function pointers
-- Combine nfs_pgio_result and nfs_pgio_result_common
-- Rename nfs_pgio_result_common to nfs_pgio_result
----
- fs/nfs/internal.h        |  1 +
- fs/nfs/pagelist.c        | 23 ++++++++++++++++++++++
- fs/nfs/read.c            | 25 ++++++++----------------
- fs/nfs/write.c           | 51 +++++++++++++++++++-----------------------------
- include/linux/nfs_fs.h   |  2 --
- include/linux/nfs_page.h |  2 ++
- 6 files changed, 54 insertions(+), 50 deletions(-)
+ fs/nfsd/auth.c | 1 -
+ 1 file changed, 1 deletion(-)
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index 1959260..7c0ae36 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -243,6 +243,7 @@ struct nfs_pgio_data *nfs_pgio_data_alloc(struct nfs_pgio_header *, unsigned int
- void nfs_pgio_data_release(struct nfs_pgio_data *);
- void nfs_pgio_prepare(struct rpc_task *, void *);
- void nfs_pgio_release(void *);
-+void nfs_pgio_result(struct rpc_task *, void *);
+diff --git a/fs/nfsd/auth.c b/fs/nfsd/auth.c
+index 2645be4..1042325 100644
+--- a/fs/nfsd/auth.c
++++ b/fs/nfsd/auth.c
+@@ -1,7 +1,6 @@
+ /* Copyright (C) 1995, 1996 Olaf Kirch <okir@monad.swb.de> */
  
- static inline void nfs_iocounter_init(struct nfs_io_counter *c)
- {
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index 0fa211d..f74df87 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -24,6 +24,8 @@
- #include "internal.h"
- #include "pnfs.h"
+ #include <linux/sched.h>
+-#include <linux/user_namespace.h>
+ #include "nfsd.h"
+ #include "auth.h"
  
-+#define NFSDBG_FACILITY		NFSDBG_PAGECACHE
-+
- static struct kmem_cache *nfs_page_cachep;
- 
- static bool nfs_pgarray_set(struct nfs_page_array *p, unsigned int pagecount)
-@@ -447,6 +449,27 @@ void nfs_pageio_init(struct nfs_pageio_descriptor *desc,
- }
- EXPORT_SYMBOL_GPL(nfs_pageio_init);
- 
-+/**
-+ * nfs_pgio_result - Basic pageio error handling
-+ * @task: The task that ran
-+ * @calldata: Pageio data to check
-+ */
-+void nfs_pgio_result(struct rpc_task *task, void *calldata)
-+{
-+	struct nfs_pgio_data *data = calldata;
-+	struct inode *inode = data->header->inode;
-+
-+	dprintk("NFS: %s: %5u, (status %d)\n", __func__,
-+		task->tk_pid, task->tk_status);
-+
-+	if (data->header->rw_ops->rw_done(task, data, inode) != 0)
-+		return;
-+	if (task->tk_status < 0)
-+		nfs_set_pgio_error(data->header, task->tk_status, data->args.offset);
-+	else
-+		data->header->rw_ops->rw_result(task, data);
-+}
-+
- static bool nfs_match_open_context(const struct nfs_open_context *ctx1,
- 		const struct nfs_open_context *ctx2)
- {
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index cfa15e8..bc78bd2 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -388,15 +388,10 @@ static const struct nfs_pageio_ops nfs_pageio_read_ops = {
-  * This is the callback from RPC telling us whether a reply was
-  * received or some error occurred (timeout or socket shutdown).
-  */
--int nfs_readpage_result(struct rpc_task *task, struct nfs_pgio_data *data)
-+static int nfs_readpage_done(struct rpc_task *task, struct nfs_pgio_data *data,
-+			     struct inode *inode)
- {
--	struct inode *inode = data->header->inode;
--	int status;
--
--	dprintk("NFS: %s: %5u, (status %d)\n", __func__, task->tk_pid,
--			task->tk_status);
--
--	status = NFS_PROTO(inode)->read_done(task, data);
-+	int status = NFS_PROTO(inode)->read_done(task, data);
- 	if (status != 0)
- 		return status;
- 
-@@ -429,17 +424,11 @@ static void nfs_readpage_retry(struct rpc_task *task, struct nfs_pgio_data *data
- 	rpc_restart_call_prepare(task);
- }
- 
--static void nfs_readpage_result_common(struct rpc_task *task, void *calldata)
-+static void nfs_readpage_result(struct rpc_task *task, struct nfs_pgio_data *data)
- {
--	struct nfs_pgio_data *data = calldata;
- 	struct nfs_pgio_header *hdr = data->header;
- 
--	/* Note the only returns of nfs_readpage_result are 0 and -EAGAIN */
--	if (nfs_readpage_result(task, data) != 0)
--		return;
--	if (task->tk_status < 0)
--		nfs_set_pgio_error(hdr, task->tk_status, data->args.offset);
--	else if (data->res.eof) {
-+	if (data->res.eof) {
- 		loff_t bound;
- 
- 		bound = data->args.offset + data->res.count;
-@@ -456,7 +445,7 @@ static void nfs_readpage_result_common(struct rpc_task *task, void *calldata)
- 
- static const struct rpc_call_ops nfs_read_common_ops = {
- 	.rpc_call_prepare = nfs_pgio_prepare,
--	.rpc_call_done = nfs_readpage_result_common,
-+	.rpc_call_done = nfs_pgio_result,
- 	.rpc_release = nfs_pgio_release,
- };
- 
-@@ -625,4 +614,6 @@ static const struct nfs_rw_ops nfs_rw_read_ops = {
- 	.rw_mode		= FMODE_READ,
- 	.rw_alloc_header	= nfs_readhdr_alloc,
- 	.rw_free_header		= nfs_readhdr_free,
-+	.rw_done		= nfs_readpage_done,
-+	.rw_result		= nfs_readpage_result,
- };
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index ae799c9..1d3e1d7 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -1255,20 +1255,6 @@ void nfs_commit_prepare(struct rpc_task *task, void *calldata)
- 	NFS_PROTO(data->inode)->commit_rpc_prepare(task, data);
- }
- 
--/*
-- * Handle a write reply that flushes a whole page.
-- *
-- * FIXME: There is an inherent race with invalidate_inode_pages and
-- *	  writebacks since the page->count is kept > 1 for as long
-- *	  as the page has a write request pending.
-- */
--static void nfs_writeback_done_common(struct rpc_task *task, void *calldata)
--{
--	struct nfs_pgio_data	*data = calldata;
--
--	nfs_writeback_done(task, data);
--}
--
- static void nfs_writeback_release_common(struct nfs_pgio_data *data)
- {
- 	struct nfs_pgio_header *hdr = data->header;
-@@ -1288,7 +1274,7 @@ static void nfs_writeback_release_common(struct nfs_pgio_data *data)
- 
- static const struct rpc_call_ops nfs_write_common_ops = {
- 	.rpc_call_prepare = nfs_pgio_prepare,
--	.rpc_call_done = nfs_writeback_done_common,
-+	.rpc_call_done = nfs_pgio_result,
- 	.rpc_release = nfs_pgio_release,
- };
- 
-@@ -1320,16 +1306,11 @@ static int nfs_should_remove_suid(const struct inode *inode)
- /*
-  * This function is called when the WRITE call is complete.
-  */
--void nfs_writeback_done(struct rpc_task *task, struct nfs_pgio_data *data)
-+static int nfs_writeback_done(struct rpc_task *task, struct nfs_pgio_data *data,
-+			      struct inode *inode)
- {
--	struct nfs_pgio_args	*argp = &data->args;
--	struct nfs_pgio_res	*resp = &data->res;
--	struct inode		*inode = data->header->inode;
- 	int status;
- 
--	dprintk("NFS: %5u nfs_writeback_done (status %d)\n",
--		task->tk_pid, task->tk_status);
--
- 	/*
- 	 * ->write_done will attempt to use post-op attributes to detect
- 	 * conflicting writes by other clients.  A strict interpretation
-@@ -1339,11 +1320,11 @@ void nfs_writeback_done(struct rpc_task *task, struct nfs_pgio_data *data)
- 	 */
- 	status = NFS_PROTO(inode)->write_done(task, data);
- 	if (status != 0)
--		return;
--	nfs_add_stats(inode, NFSIOS_SERVERWRITTENBYTES, resp->count);
-+		return status;
-+	nfs_add_stats(inode, NFSIOS_SERVERWRITTENBYTES, data->res.count);
- 
- #if IS_ENABLED(CONFIG_NFS_V3) || IS_ENABLED(CONFIG_NFS_V4)
--	if (resp->verf->committed < argp->stable && task->tk_status >= 0) {
-+	if (data->res.verf->committed < data->args.stable && task->tk_status >= 0) {
- 		/* We tried a write call, but the server did not
- 		 * commit data to stable storage even though we
- 		 * requested it.
-@@ -1359,25 +1340,31 @@ void nfs_writeback_done(struct rpc_task *task, struct nfs_pgio_data *data)
- 			dprintk("NFS:       faulty NFS server %s:"
- 				" (committed = %d) != (stable = %d)\n",
- 				NFS_SERVER(inode)->nfs_client->cl_hostname,
--				resp->verf->committed, argp->stable);
-+				data->res.verf->committed, data->args.stable);
- 			complain = jiffies + 300 * HZ;
- 		}
- 	}
- #endif
--	if (task->tk_status < 0) {
--		nfs_set_pgio_error(data->header, task->tk_status, argp->offset);
--		return;
--	}
- 
- 	/* Deal with the suid/sgid bit corner case */
- 	if (nfs_should_remove_suid(inode))
- 		nfs_mark_for_revalidate(inode);
-+	return 0;
-+}
-+
-+/*
-+ * This function is called when the WRITE call is complete.
-+ */
-+static void nfs_writeback_result(struct rpc_task *task, struct nfs_pgio_data *data)
-+{
-+	struct nfs_pgio_args	*argp = &data->args;
-+	struct nfs_pgio_res	*resp = &data->res;
- 
- 	if (resp->count < argp->count) {
- 		static unsigned long    complain;
- 
- 		/* This a short write! */
--		nfs_inc_stats(inode, NFSIOS_SHORTWRITE);
-+		nfs_inc_stats(data->header->inode, NFSIOS_SHORTWRITE);
- 
- 		/* Has the server at least made some progress? */
- 		if (resp->count == 0) {
-@@ -1911,4 +1898,6 @@ static const struct nfs_rw_ops nfs_rw_write_ops = {
- 	.rw_alloc_header	= nfs_writehdr_alloc,
- 	.rw_free_header		= nfs_writehdr_free,
- 	.rw_release		= nfs_writeback_release_common,
-+	.rw_done		= nfs_writeback_done,
-+	.rw_result		= nfs_writeback_result,
- };
-diff --git a/include/linux/nfs_fs.h b/include/linux/nfs_fs.h
-index 7e0db56..919576b 100644
---- a/include/linux/nfs_fs.h
-+++ b/include/linux/nfs_fs.h
-@@ -520,7 +520,6 @@ extern int  nfs_writepage(struct page *page, struct writeback_control *wbc);
- extern int  nfs_writepages(struct address_space *, struct writeback_control *);
- extern int  nfs_flush_incompatible(struct file *file, struct page *page);
- extern int  nfs_updatepage(struct file *, struct page *, unsigned int, unsigned int);
--extern void nfs_writeback_done(struct rpc_task *, struct nfs_pgio_data *);
- 
- /*
-  * Try to write back everything synchronously (but check the
-@@ -553,7 +552,6 @@ nfs_have_writebacks(struct inode *inode)
- extern int  nfs_readpage(struct file *, struct page *);
- extern int  nfs_readpages(struct file *, struct address_space *,
- 		struct list_head *, unsigned);
--extern int  nfs_readpage_result(struct rpc_task *, struct nfs_pgio_data *);
- extern int  nfs_readpage_async(struct nfs_open_context *, struct inode *,
- 			       struct page *);
- 
-diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
-index da00a4d..01aa29c 100644
---- a/include/linux/nfs_page.h
-+++ b/include/linux/nfs_page.h
-@@ -57,6 +57,8 @@ struct nfs_rw_ops {
- 	struct nfs_rw_header *(*rw_alloc_header)(void);
- 	void (*rw_free_header)(struct nfs_rw_header *);
- 	void (*rw_release)(struct nfs_pgio_data *);
-+	int  (*rw_done)(struct rpc_task *, struct nfs_pgio_data *, struct inode *);
-+	void (*rw_result)(struct rpc_task *, struct nfs_pgio_data *);
- };
- 
- struct nfs_pageio_descriptor {
 -- 
-1.9.2
+1.9.3
 
