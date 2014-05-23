@@ -1,133 +1,62 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ig0-f180.google.com ([209.85.213.180]:41168 "EHLO
-	mail-ig0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755107AbaEOP5J (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 15 May 2014 11:57:09 -0400
-Received: by mail-ig0-f180.google.com with SMTP id c1so1173196igq.1
-        for <linux-nfs@vger.kernel.org>; Thu, 15 May 2014 08:57:09 -0700 (PDT)
-From: Weston Andros Adamson <dros@primarydata.com>
-To: trond.myklebust@primarydata.com
-Cc: linux-nfs@vger.kernel.org, Weston Andros Adamson <dros@primarydata.com>
-Subject: [PATCH v3 03/18] nfs: remove unused arg from nfs_create_request
-Date: Thu, 15 May 2014 11:56:42 -0400
-Message-Id: <1400169417-28245-4-git-send-email-dros@primarydata.com>
-In-Reply-To: <1400169417-28245-1-git-send-email-dros@primarydata.com>
-References: <1400169417-28245-1-git-send-email-dros@primarydata.com>
+Received: from mail-qg0-f44.google.com ([209.85.192.44]:36383 "EHLO
+	mail-qg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752428AbaEWOVL (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 May 2014 10:21:11 -0400
+Received: by mail-qg0-f44.google.com with SMTP id i50so8269566qgf.31
+        for <linux-nfs@vger.kernel.org>; Fri, 23 May 2014 07:21:10 -0700 (PDT)
+Message-ID: <537F5940.7060908@gmail.com>
+Date: Fri, 23 May 2014 22:20:48 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 1/5] NFSD: Cleanup unneeded including linux/user_namespace.h
+References: <537F44B1.6080507@gmail.com> <20140523141855.GN25423@fieldses.org>
+In-Reply-To: <20140523141855.GN25423@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-@inode is passed but not used.
 
-Signed-off-by: Weston Andros Adamson <dros@primarydata.com>
----
- fs/nfs/direct.c          | 6 ++----
- fs/nfs/pagelist.c        | 4 +---
- fs/nfs/read.c            | 5 ++---
- fs/nfs/write.c           | 2 +-
- include/linux/nfs_page.h | 1 -
- 5 files changed, 6 insertions(+), 12 deletions(-)
+On 5/23/2014 22:18, J. Bruce Fields wrote:
+> Thanks, applied all five.
+> 
+> On Fri, May 23, 2014 at 08:53:05PM +0800, Kinglong Mee wrote:
+>> commit 4c1e1b34d5c800ad3ac9a7e2805b0bea70ad2278 using kuid/kgid for
+> 
+> In future, when referring to another commit, could you also include the
+> summary line?  E.g.: Commit 8f6c5ffc8987 ("kernel/groups.c: remove
+> return value of set_groups") removed the last use of "ret"....
 
-diff --git a/fs/nfs/direct.c b/fs/nfs/direct.c
-index 164b016..1dd8c62 100644
---- a/fs/nfs/direct.c
-+++ b/fs/nfs/direct.c
-@@ -380,8 +380,7 @@ static ssize_t nfs_direct_read_schedule_segment(struct nfs_pageio_descriptor *de
- 			struct nfs_page *req;
- 			unsigned int req_len = min_t(size_t, bytes, PAGE_SIZE - pgbase);
- 			/* XXX do we need to do the eof zeroing found in async_filler? */
--			req = nfs_create_request(dreq->ctx, dreq->inode,
--						 pagevec[i],
-+			req = nfs_create_request(dreq->ctx, pagevec[i],
- 						 pgbase, req_len);
- 			if (IS_ERR(req)) {
- 				result = PTR_ERR(req);
-@@ -750,8 +749,7 @@ static ssize_t nfs_direct_write_schedule_segment(struct nfs_pageio_descriptor *d
- 			struct nfs_page *req;
- 			unsigned int req_len = min_t(size_t, bytes, PAGE_SIZE - pgbase);
- 
--			req = nfs_create_request(dreq->ctx, dreq->inode,
--						 pagevec[i],
-+			req = nfs_create_request(dreq->ctx, pagevec[i],
- 						 pgbase, req_len);
- 			if (IS_ERR(req)) {
- 				result = PTR_ERR(req);
-diff --git a/fs/nfs/pagelist.c b/fs/nfs/pagelist.c
-index 88b6442..22b0f51 100644
---- a/fs/nfs/pagelist.c
-+++ b/fs/nfs/pagelist.c
-@@ -139,7 +139,6 @@ nfs_iocounter_wait(struct nfs_io_counter *c)
- /**
-  * nfs_create_request - Create an NFS read/write request.
-  * @ctx: open context to use
-- * @inode: inode to which the request is attached
-  * @page: page to write
-  * @offset: starting offset within the page for the write
-  * @count: number of bytes to read/write
-@@ -149,8 +148,7 @@ nfs_iocounter_wait(struct nfs_io_counter *c)
-  * User should ensure it is safe to sleep in this function.
-  */
- struct nfs_page *
--nfs_create_request(struct nfs_open_context *ctx, struct inode *inode,
--		   struct page *page,
-+nfs_create_request(struct nfs_open_context *ctx, struct page *page,
- 		   unsigned int offset, unsigned int count)
- {
- 	struct nfs_page		*req;
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index 3986668..46d9044 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -85,7 +85,7 @@ int nfs_readpage_async(struct nfs_open_context *ctx, struct inode *inode,
- 	len = nfs_page_length(page);
- 	if (len == 0)
- 		return nfs_return_empty_page(page);
--	new = nfs_create_request(ctx, inode, page, 0, len);
-+	new = nfs_create_request(ctx, page, 0, len);
- 	if (IS_ERR(new)) {
- 		unlock_page(page);
- 		return PTR_ERR(new);
-@@ -303,7 +303,6 @@ static int
- readpage_async_filler(void *data, struct page *page)
- {
- 	struct nfs_readdesc *desc = (struct nfs_readdesc *)data;
--	struct inode *inode = page_file_mapping(page)->host;
- 	struct nfs_page *new;
- 	unsigned int len;
- 	int error;
-@@ -312,7 +311,7 @@ readpage_async_filler(void *data, struct page *page)
- 	if (len == 0)
- 		return nfs_return_empty_page(page);
- 
--	new = nfs_create_request(desc->ctx, inode, page, 0, len);
-+	new = nfs_create_request(desc->ctx, page, 0, len);
- 	if (IS_ERR(new))
- 		goto out_error;
- 
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 2680f29..e773df2 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -761,7 +761,7 @@ static struct nfs_page * nfs_setup_write_request(struct nfs_open_context* ctx,
- 	req = nfs_try_to_update_request(inode, page, offset, bytes);
- 	if (req != NULL)
- 		goto out;
--	req = nfs_create_request(ctx, inode, page, offset, bytes);
-+	req = nfs_create_request(ctx, page, offset, bytes);
- 	if (IS_ERR(req))
- 		goto out;
- 	nfs_inode_add_request(inode, req);
-diff --git a/include/linux/nfs_page.h b/include/linux/nfs_page.h
-index eb2eb63..be0b098 100644
---- a/include/linux/nfs_page.h
-+++ b/include/linux/nfs_page.h
-@@ -85,7 +85,6 @@ struct nfs_pageio_descriptor {
- #define NFS_WBACK_BUSY(req)	(test_bit(PG_BUSY,&(req)->wb_flags))
- 
- extern	struct nfs_page *nfs_create_request(struct nfs_open_context *ctx,
--					    struct inode *inode,
- 					    struct page *page,
- 					    unsigned int offset,
- 					    unsigned int count);
--- 
-1.8.5.2 (Apple Git-48)
+Got it, i will do that in the future.
 
+thanks,
+Kinglong Mee
+
+> 
+> --b.
+> 
+>> ex_anon_uid/ex_anon_gid, user_namespace.h is not needed now, clean it.
+>>
+>> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+>> ---
+>>  fs/nfsd/auth.c | 1 -
+>>  1 file changed, 1 deletion(-)
+>>
+>> diff --git a/fs/nfsd/auth.c b/fs/nfsd/auth.c
+>> index 2645be4..1042325 100644
+>> --- a/fs/nfsd/auth.c
+>> +++ b/fs/nfsd/auth.c
+>> @@ -1,7 +1,6 @@
+>>  /* Copyright (C) 1995, 1996 Olaf Kirch <okir@monad.swb.de> */
+>>  
+>>  #include <linux/sched.h>
+>> -#include <linux/user_namespace.h>
+>>  #include "nfsd.h"
+>>  #include "auth.h"
+>>  
+>> -- 
+>> 1.9.3
+>>
+> 
