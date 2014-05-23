@@ -1,60 +1,48 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f52.google.com ([209.85.192.52]:37485 "EHLO
-	mail-qg0-f52.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S932168AbaE1O1P (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 May 2014 10:27:15 -0400
-Received: by mail-qg0-f52.google.com with SMTP id a108so18220072qge.11
-        for <linux-nfs@vger.kernel.org>; Wed, 28 May 2014 07:27:14 -0700 (PDT)
-Message-ID: <5385F239.30007@gmail.com>
-Date: Wed, 28 May 2014 10:27:05 -0400
-From: Anna Schumaker <schumaker.anna@gmail.com>
+Received: from mail-oa0-f42.google.com ([209.85.219.42]:55614 "EHLO
+	mail-oa0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751069AbaEWCqa (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Thu, 22 May 2014 22:46:30 -0400
+Received: by mail-oa0-f42.google.com with SMTP id j17so4946339oag.15
+        for <linux-nfs@vger.kernel.org>; Thu, 22 May 2014 19:46:30 -0700 (PDT)
+Message-ID: <537EB673.3050302@gmail.com>
+Date: Fri, 23 May 2014 10:46:11 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@redhat.com>
-CC: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org
-Subject: Re: [PATCH 41/52] nfsd4: turn off zero-copy-read in exotic cases
-References: <1400787148-25941-1-git-send-email-bfields@redhat.com> <1400787148-25941-42-git-send-email-bfields@redhat.com> <20140528080945.GA6797@infradead.org> <20140528140151.GB13012@pad.redhat.com> <5385EEF5.9050904@gmail.com> <20140528142320.GC13012@pad.redhat.com>
-In-Reply-To: <20140528142320.GC13012@pad.redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+To: Trond Myklebust <trond.myklebust@primarydata.com>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>, kinglongmee@gmail.com
+Subject: Re: Get "device is busy" when umounting nfsv4 file
+References: <537EAF05.2020900@gmail.com> <CAHQdGtQh0be=_tByxukQAPG3ZRJJ6UDWgRiH7Q+9Ry__5YxzaA@mail.gmail.com>
+In-Reply-To: <CAHQdGtQh0be=_tByxukQAPG3ZRJJ6UDWgRiH7Q+9Ry__5YxzaA@mail.gmail.com>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 05/28/2014 10:23 AM, J. Bruce Fields wrote:
-> On Wed, May 28, 2014 at 10:13:09AM -0400, Anna Schumaker wrote:
->> On 05/28/2014 10:01 AM, J. Bruce Fields wrote:
->>> On Wed, May 28, 2014 at 01:09:45AM -0700, Christoph Hellwig wrote:
->>>> On Thu, May 22, 2014 at 03:32:16PM -0400, J. Bruce Fields wrote:
->>>>> Later patches handle those "exotic compounds", this one just makes
->>>>> sure zero-copy is turned off in those cases.
->>>> How did you test these exotic compounds?
->>> I have is a pynfs test that sends a compound with multiple reads in
->>> it.
->>>
->>> I don't think that's pushed out to my regular pynfs tree, I'll try
->>> to do that today.
->>>
->>> I could really use more of those.  Maybe I'm wrong, but I'm worried
->>> less about this case than the more finicky out-of-reply-space cases,
->>> where I do have patches puporting to fix problems that I haven't
->>> really verified.
->> I'll eventually be using this case for READ_PLUS.  I'll be sure to
->> send problems your way! :)
-> Great, thanks.
->
-> Actually my main question there is how to handle 4.2 in pynfs.
->
-> 4.1 and 4.0 are entirely separate codebases.  We definitely don't want
-> to do that again.
+On 5/23/2014 10:18, Trond Myklebust wrote:
+> 
+> On May 22, 2014 10:14 PM, "Kinglong Mee" <kinglongmee@gmail.com <mailto:kinglongmee@gmail.com>> wrote:
+>>
+>> When using NFSv4 on Fedora 20 with latest kernel (3.15.0-rc6+),
+>> I can't umount the mountpoint after only an 'ls' operation.
+>>
+>> [root@localhost ~]# cat /etc/exports
+>> /nfstest        *(rw,no_root_squash,no_subtree_check,insecure)
+>> [root@localhost ~]# mount -t nfs 127.0.0.1:/ /mnt/
+>> [root@localhost ~]# ls /mnt/
+>> nfstest
+>> [root@localhost ~]# umount /mnt/
+>> umount.nfs4: /mnt: device is busy
+> 
+> Hi Kinglong
+> 
+> Nothing springs out to me. Could you please bisect?
 
-Can you make v4.2 a new file that uses the v4.1 functions?  That way all the v4.2 stuff is kept together.  I want to try doing something similar on the client for functions in nfs4proc.c and nfs4xdr.c.
+Trying it on rhel7 with 3.10.0-121.el7.x86_64, 
+also got "device is busy".
+[root@localhost ~]# umount /mnt/
+umount.nfs4: /mnt: device is busy
 
-Anna
->
-> There's not much point re-running all the 4.1 tests over 4.2.  Maybe all
-> we may need is to say "use minor version 2 on this compound" in tests of
-> the new features.
->
-> But I haven't even tried to figure out how to tell pynfs about the new
-> .x files.
->
-> --b.
+Maybe this problem has exist a long time.
 
+thanks,
+Kinglong Mee
