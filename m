@@ -1,85 +1,79 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f171.google.com ([209.85.223.171]:39698 "EHLO
-	mail-ie0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1753801AbaE1Ocx (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 May 2014 10:32:53 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH v5 07/24] xprtrdma: Fall back to MTHCAFMR when FRMR is not
-	supported
-To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Cc: Anna.Schumaker@netapp.com
-Date: Wed, 28 May 2014 10:32:51 -0400
-Message-ID: <20140528143251.23214.68022.stgit@manet.1015granger.net>
-In-Reply-To: <20140528142521.23214.39655.stgit@manet.1015granger.net>
-References: <20140528142521.23214.39655.stgit@manet.1015granger.net>
+Received: from mail-qc0-f171.google.com ([209.85.216.171]:49149 "EHLO
+	mail-qc0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751398AbaEWMAk (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 May 2014 08:00:40 -0400
+Received: by mail-qc0-f171.google.com with SMTP id x13so7895024qcv.2
+        for <linux-nfs@vger.kernel.org>; Fri, 23 May 2014 05:00:40 -0700 (PDT)
+Message-ID: <537F3853.3090109@gmail.com>
+Date: Fri, 23 May 2014 20:00:19 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>, kinglongmee@gmail.com
+Subject: [PATCH 3/4] NFSD: Adds macro EX_UUID_LEN for exports uuid's length
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-An audit of in-kernel RDMA providers that do not support the FRMR
-memory registration shows that several of them support MTHCAFMR.
-Prefer MTHCAFMR when FRMR is not supported.
-
-If MTHCAFMR is not supported, only then choose ALLPHYSICAL.
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 ---
+ fs/nfsd/export.c  | 6 +++---
+ fs/nfsd/export.h  | 1 +
+ fs/nfsd/nfs4xdr.c | 2 +-
+ 3 files changed, 5 insertions(+), 4 deletions(-)
 
- net/sunrpc/xprtrdma/verbs.c |   31 +++++++++++++++----------------
- 1 files changed, 15 insertions(+), 16 deletions(-)
-
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 6bb9a07..a352798 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -491,33 +491,32 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
- 		ia->ri_dma_lkey = ia->ri_id->device->local_dma_lkey;
- 	}
+diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+index 8771f41..90d37b6 100644
+--- a/fs/nfsd/export.c
++++ b/fs/nfsd/export.c
+@@ -487,10 +487,10 @@ uuid_parse(char **mesg, char *buf, unsigned char **puuid)
  
--	switch (memreg) {
--	case RPCRDMA_MTHCAFMR:
--		if (!ia->ri_id->device->alloc_fmr) {
--			dprintk("RPC:       %s: MTHCAFMR registration "
--				"specified but not supported by adapter, "
--				"using riskier RPCRDMA_ALLPHYSICAL\n",
--				__func__);
--			memreg = RPCRDMA_ALLPHYSICAL;
--		}
--		break;
--	case RPCRDMA_FRMR:
-+	if (memreg == RPCRDMA_FRMR) {
- 		/* Requires both frmr reg and local dma lkey */
- 		if ((devattr.device_cap_flags &
- 		     (IB_DEVICE_MEM_MGT_EXTENSIONS|IB_DEVICE_LOCAL_DMA_LKEY)) !=
- 		    (IB_DEVICE_MEM_MGT_EXTENSIONS|IB_DEVICE_LOCAL_DMA_LKEY)) {
- 			dprintk("RPC:       %s: FRMR registration "
--				"specified but not supported by adapter, "
--				"using riskier RPCRDMA_ALLPHYSICAL\n",
--				__func__);
--			memreg = RPCRDMA_ALLPHYSICAL;
-+				"not supported by HCA\n", __func__);
-+			memreg = RPCRDMA_MTHCAFMR;
- 		} else {
- 			/* Mind the ia limit on FRMR page list depth */
- 			ia->ri_max_frmr_depth = min_t(unsigned int,
- 				RPCRDMA_MAX_DATA_SEGS,
- 				devattr.max_fast_reg_page_list_len);
+ 	/* expect a 16 byte uuid encoded as \xXXXX... */
+ 	len = qword_get(mesg, buf, PAGE_SIZE);
+-	if (len != 16)
++	if (len != EX_UUID_LEN)
+ 		return -EINVAL;
+ 
+-	*puuid = kmemdup(buf, 16, GFP_KERNEL);
++	*puuid = kmemdup(buf, EX_UUID_LEN, GFP_KERNEL);
+ 	if (*puuid == NULL)
+ 		return -ENOMEM;
+ 
+@@ -663,7 +663,7 @@ static int svc_export_show(struct seq_file *m,
+ 		if (exp->ex_uuid) {
+ 			int i;
+ 			seq_puts(m, ",uuid=");
+-			for (i=0; i<16; i++) {
++			for (i = 0; i < EX_UUID_LEN; i++) {
+ 				if ((i&3) == 0 && i)
+ 					seq_putc(m, ':');
+ 				seq_printf(m, "%02x", exp->ex_uuid[i]);
+diff --git a/fs/nfsd/export.h b/fs/nfsd/export.h
+index d7939a6..c7d4ed0 100644
+--- a/fs/nfsd/export.h
++++ b/fs/nfsd/export.h
+@@ -37,6 +37,7 @@ struct nfsd4_fs_locations {
+  * spkm3i, and spkm3p (and using all 8 at once should be rare).
+  */
+ #define MAX_SECINFO_LIST	8
++#define EX_UUID_LEN		16
+ 
+ struct exp_flavor_info {
+ 	u32	pseudoflavor;
+diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
+index 18881f3..071b0be 100644
+--- a/fs/nfsd/nfs4xdr.c
++++ b/fs/nfsd/nfs4xdr.c
+@@ -2250,7 +2250,7 @@ nfsd4_encode_fattr(struct svc_fh *fhp, struct svc_export *exp,
+ 			WRITE32(MINOR(stat.dev));
+ 			break;
+ 		case FSIDSOURCE_UUID:
+-			WRITEMEM(exp->ex_uuid, 16);
++			WRITEMEM(exp->ex_uuid, EX_UUID_LEN);
+ 			break;
  		}
--		break;
-+	}
-+	if (memreg == RPCRDMA_MTHCAFMR) {
-+		if (!ia->ri_id->device->alloc_fmr) {
-+			dprintk("RPC:       %s: MTHCAFMR registration "
-+				"not supported by HCA\n", __func__);
-+#if RPCRDMA_PERSISTENT_REGISTRATION
-+			memreg = RPCRDMA_ALLPHYSICAL;
-+#else
-+			rc = -EINVAL;
-+			goto out2;
-+#endif
-+		}
  	}
- 
- 	/*
+-- 
+1.9.0
 
