@@ -1,366 +1,247 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:38572 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:53229 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1757592AbaEKUxA (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sun, 11 May 2014 16:53:00 -0400
-From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 21/43] nfsd4: allow encoding across page boundaries
-Date: Sun, 11 May 2014 16:52:26 -0400
-Message-Id: <1399841568-19716-22-git-send-email-bfields@redhat.com>
-In-Reply-To: <1399841568-19716-1-git-send-email-bfields@redhat.com>
-References: <1399841568-19716-1-git-send-email-bfields@redhat.com>
+	id S1750981AbaEWNjN (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 23 May 2014 09:39:13 -0400
+Date: Fri, 23 May 2014 09:39:08 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Richard Weinberger <richard@nod.at>
+Cc: Linux NFS mailing list <linux-nfs@vger.kernel.org>,
+        trond.myklebust@primarydata.com, NeilBrown <neilb@suse.de>,
+        LKML <linux-kernel@vger.kernel.org>, David Gstir <david@sigma-star.at>
+Subject: Re: NFS issue while copying huge file
+Message-ID: <20140523133907.GJ25423@fieldses.org>
+References: <CAFLxGvw_7=AuBqxNhAHpQAXq2aTqc8Afa6Z62=YCsFXcJx0Hug@mail.gmail.com>
+ <CAFLxGvxm43MaOqv1JQ8vxkn4s50uHZ8Js6A-Ec+O_sjvFszehQ@mail.gmail.com>
+ <20140523115655.GA14074@fieldses.org>
+ <537F40C0.7030403@nod.at>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <537F40C0.7030403@nod.at>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Fri, May 23, 2014 at 02:36:16PM +0200, Richard Weinberger wrote:
+> Am 23.05.2014 13:56, schrieb J. Bruce Fields:
+> > It's not a known issue, and finding out where the problem was introduced
+> > could indeed by helpful.
+> > 
+> > I'm not sure how to interpret the statistics from the oom killer.  I'll
+> > dig around.
+> > 
+> > Knowing where the nfsd threads are spinning might also be interesting.
+> > "perf top" might give a quick idea?  Or maybe just "for p in $(pidof
+> > nfsd); do echo $p; cat /proc/$p/stack; done"
+> > 
+> > --b.
+> > 
+> 
+> Just booted 3.12.x on my client and sent a huge file to the NFS server (2.6.32-431.17.1.el6.x86_64)
+> After a few minutes the load reached 8 on the NFS server and I saw more and more nfsd's in top.
+> After some more time the nfsd's decreased but came again later.
+> I see this pattern until the NFS clients aborts with -EIO.
+> 
+> I can try to upgrade the kernel on my NFS server.
+> But as this is out main backup server in production I'd like to avoid it first.
+> 
+> Here the output of perf top and /proc/<pid>/stack on the server while many nfd's consumed 100%
+> CPU for a while.
+> 
+> perf top:
+>  19.81%  [kernel]             [k] _spin_lock
+>  12.55%  [kernel]             [k] mem_cgroup_lru_del_list
+>  10.73%  [kernel]             [k] shrink_page_list.clone.3
+>   7.90%  [kernel]             [k] isolate_lru_pages.clone.0
+>   7.28%  [kernel]             [k] __isolate_lru_page
+>   6.99%  [kernel]             [k] shrink_inactive_list
+>   3.82%  [kernel]             [k] page_waitqueue
+>   3.29%  [kernel]             [k] unlock_page
+>   2.84%  [kernel]             [k] mem_cgroup_lru_add_list
+>   2.51%  [kernel]             [k] __list_add
+>   2.36%  [kernel]             [k] page_evictable
+>   2.33%  [kernel]             [k] __wake_up_bit
+>   2.31%  [kernel]             [k] mem_cgroup_lru_del
+>   2.00%  [kernel]             [k] release_pages
+>   1.85%  [kernel]             [k] __mod_zone_page_state
+>   1.51%  [kernel]             [k] list_del
+>   1.40%  [kernel]             [k] lookup_page_cgroup
+>   1.25%  [kernel]             [k] _spin_lock_irq
+>   0.76%  [kernel]             [k] page_referenced
+>   0.46%  [xor]                [k] xor_sse_4
+>   0.36%  [kernel]             [k] _cond_resched
+> 
+> [root@gimli ~]# for p in $(pidof nfsd); do echo $p; cat /proc/$p/stack; done
+> 1438
+> [<ffffffffa02a5568>] xfs_file_buffered_aio_write+0x58/0x1b0 [xfs]
+> [<ffffffffa02a57bf>] xfs_file_aio_write+0xff/0x190 [xfs]
+> [<ffffffff811887fb>] do_sync_readv_writev+0xfb/0x140
+> [<ffffffff81189786>] do_readv_writev+0xd6/0x1f0
+> [<ffffffff811898e6>] vfs_writev+0x46/0x60
+> [<ffffffffa04f8085>] nfsd_vfs_write+0x105/0x430 [nfsd]
+> [<ffffffffa04fa0d9>] nfsd_write+0x99/0x100 [nfsd]
+> [<ffffffffa0505b20>] nfsd4_write+0x100/0x130 [nfsd]
+> [<ffffffffa0506458>] nfsd4_proc_compound+0x3d8/0x490 [nfsd]
+> [<ffffffffa04f3425>] nfsd_dispatch+0xe5/0x230 [nfsd]
+> [<ffffffffa047a844>] svc_process_common+0x344/0x640 [sunrpc]
+> [<ffffffffa047ae80>] svc_process+0x110/0x160 [sunrpc]
+> [<ffffffffa04f3b52>] nfsd+0xc2/0x160 [nfsd]
+> [<ffffffff8109ab56>] kthread+0x96/0xa0
+> [<ffffffff8100c20a>] child_rip+0xa/0x20
+> [<ffffffffffffffff>] 0xffffffffffffffff
+> 1437
+> [<ffffffffa02a5568>] xfs_file_buffered_aio_write+0x58/0x1b0 [xfs]
+> [<ffffffffa02a57bf>] xfs_file_aio_write+0xff/0x190 [xfs]
+> [<ffffffff811887fb>] do_sync_readv_writev+0xfb/0x140
+> [<ffffffff81189786>] do_readv_writev+0xd6/0x1f0
+> [<ffffffff811898e6>] vfs_writev+0x46/0x60
+> [<ffffffffa04f8085>] nfsd_vfs_write+0x105/0x430 [nfsd]
+> [<ffffffffa04fa0d9>] nfsd_write+0x99/0x100 [nfsd]
+> [<ffffffffa0505b20>] nfsd4_write+0x100/0x130 [nfsd]
+> [<ffffffffa0506458>] nfsd4_proc_compound+0x3d8/0x490 [nfsd]
+> [<ffffffffa04f3425>] nfsd_dispatch+0xe5/0x230 [nfsd]
+> [<ffffffffa047a844>] svc_process_common+0x344/0x640 [sunrpc]
+> [<ffffffffa047ae80>] svc_process+0x110/0x160 [sunrpc]
+> [<ffffffffa04f3b52>] nfsd+0xc2/0x160 [nfsd]
+> [<ffffffff8109ab56>] kthread+0x96/0xa0
+> [<ffffffff8100c20a>] child_rip+0xa/0x20
+> [<ffffffffffffffff>] 0xffffffffffffffff
+> 1436
+> [<ffffffffa02a5568>] xfs_file_buffered_aio_write+0x58/0x1b0 [xfs]
+> [<ffffffffa02a57bf>] xfs_file_aio_write+0xff/0x190 [xfs]
+> [<ffffffff811887fb>] do_sync_readv_writev+0xfb/0x140
+> [<ffffffff81189786>] do_readv_writev+0xd6/0x1f0
+> [<ffffffff811898e6>] vfs_writev+0x46/0x60
+> [<ffffffffa04f8085>] nfsd_vfs_write+0x105/0x430 [nfsd]
+> [<ffffffffa04fa0d9>] nfsd_write+0x99/0x100 [nfsd]
+> [<ffffffffa0505b20>] nfsd4_write+0x100/0x130 [nfsd]
+> [<ffffffffa0506458>] nfsd4_proc_compound+0x3d8/0x490 [nfsd]
+> [<ffffffffa04f3425>] nfsd_dispatch+0xe5/0x230 [nfsd]
+> [<ffffffffa047a844>] svc_process_common+0x344/0x640 [sunrpc]
+> [<ffffffffa047ae80>] svc_process+0x110/0x160 [sunrpc]
+> [<ffffffffa04f3b52>] nfsd+0xc2/0x160 [nfsd]
+> [<ffffffff8109ab56>] kthread+0x96/0xa0
+> [<ffffffff8100c20a>] child_rip+0xa/0x20
+> [<ffffffffffffffff>] 0xffffffffffffffff
+> 1435
+> [<ffffffffa02a5568>] xfs_file_buffered_aio_write+0x58/0x1b0 [xfs]
+> [<ffffffffa02a57bf>] xfs_file_aio_write+0xff/0x190 [xfs]
+> [<ffffffff811887fb>] do_sync_readv_writev+0xfb/0x140
+> [<ffffffff81189786>] do_readv_writev+0xd6/0x1f0
+> [<ffffffff811898e6>] vfs_writev+0x46/0x60
+> [<ffffffffa04f8085>] nfsd_vfs_write+0x105/0x430 [nfsd]
+> [<ffffffffa04fa0d9>] nfsd_write+0x99/0x100 [nfsd]
+> [<ffffffffa0505b20>] nfsd4_write+0x100/0x130 [nfsd]
+> [<ffffffffa0506458>] nfsd4_proc_compound+0x3d8/0x490 [nfsd]
+> [<ffffffffa04f3425>] nfsd_dispatch+0xe5/0x230 [nfsd]
+> [<ffffffffa047a844>] svc_process_common+0x344/0x640 [sunrpc]
+> [<ffffffffa047ae80>] svc_process+0x110/0x160 [sunrpc]
+> [<ffffffffa04f3b52>] nfsd+0xc2/0x160 [nfsd]
+> [<ffffffff8109ab56>] kthread+0x96/0xa0
+> [<ffffffff8100c20a>] child_rip+0xa/0x20
+> [<ffffffffffffffff>] 0xffffffffffffffff
+> 1434
+> [<ffffffffa02a5568>] xfs_file_buffered_aio_write+0x58/0x1b0 [xfs]
+> [<ffffffffa02a57bf>] xfs_file_aio_write+0xff/0x190 [xfs]
+> [<ffffffff811887fb>] do_sync_readv_writev+0xfb/0x140
+> [<ffffffff81189786>] do_readv_writev+0xd6/0x1f0
+> [<ffffffff811898e6>] vfs_writev+0x46/0x60
+> [<ffffffffa04f8085>] nfsd_vfs_write+0x105/0x430 [nfsd]
+> [<ffffffffa04fa0d9>] nfsd_write+0x99/0x100 [nfsd]
+> [<ffffffffa0505b20>] nfsd4_write+0x100/0x130 [nfsd]
+> [<ffffffffa0506458>] nfsd4_proc_compound+0x3d8/0x490 [nfsd]
+> [<ffffffffa04f3425>] nfsd_dispatch+0xe5/0x230 [nfsd]
+> [<ffffffffa047a844>] svc_process_common+0x344/0x640 [sunrpc]
+> [<ffffffffa047ae80>] svc_process+0x110/0x160 [sunrpc]
+> [<ffffffffa04f3b52>] nfsd+0xc2/0x160 [nfsd]
+> [<ffffffff8109ab56>] kthread+0x96/0xa0
+> [<ffffffff8100c20a>] child_rip+0xa/0x20
+> [<ffffffffffffffff>] 0xffffffffffffffff
+> 1433
+> [<ffffffffffffffff>] 0xffffffffffffffff
+> 1432
+> [<ffffffffa02a5568>] xfs_file_buffered_aio_write+0x58/0x1b0 [xfs]
+> [<ffffffffa02a57bf>] xfs_file_aio_write+0xff/0x190 [xfs]
+> [<ffffffff811887fb>] do_sync_readv_writev+0xfb/0x140
+> [<ffffffff81189786>] do_readv_writev+0xd6/0x1f0
+> [<ffffffff811898e6>] vfs_writev+0x46/0x60
+> [<ffffffffa04f8085>] nfsd_vfs_write+0x105/0x430 [nfsd]
+> [<ffffffffa04fa0d9>] nfsd_write+0x99/0x100 [nfsd]
+> [<ffffffffa0505b20>] nfsd4_write+0x100/0x130 [nfsd]
+> [<ffffffffa0506458>] nfsd4_proc_compound+0x3d8/0x490 [nfsd]
+> [<ffffffffa04f3425>] nfsd_dispatch+0xe5/0x230 [nfsd]
+> [<ffffffffa047a844>] svc_process_common+0x344/0x640 [sunrpc]
+> [<ffffffffa047ae80>] svc_process+0x110/0x160 [sunrpc]
+> [<ffffffffa04f3b52>] nfsd+0xc2/0x160 [nfsd]
+> [<ffffffff8109ab56>] kthread+0x96/0xa0
+> [<ffffffff8100c20a>] child_rip+0xa/0x20
+> [<ffffffffffffffff>] 0xffffffffffffffff
+> 1431
+> [<ffffffffa02a5568>] xfs_file_buffered_aio_write+0x58/0x1b0 [xfs]
+> [<ffffffffa02a57bf>] xfs_file_aio_write+0xff/0x190 [xfs]
+> [<ffffffff811887fb>] do_sync_readv_writev+0xfb/0x140
+> [<ffffffff81189786>] do_readv_writev+0xd6/0x1f0
+> [<ffffffff811898e6>] vfs_writev+0x46/0x60
+> [<ffffffffa04f8085>] nfsd_vfs_write+0x105/0x430 [nfsd]
+> [<ffffffffa04fa0d9>] nfsd_write+0x99/0x100 [nfsd]
+> [<ffffffffa0505b20>] nfsd4_write+0x100/0x130 [nfsd]
+> [<ffffffffa0506458>] nfsd4_proc_compound+0x3d8/0x490 [nfsd]
+> [<ffffffffa04f3425>] nfsd_dispatch+0xe5/0x230 [nfsd]
+> [<ffffffffa047a844>] svc_process_common+0x344/0x640 [sunrpc]
+> [<ffffffffa047ae80>] svc_process+0x110/0x160 [sunrpc]
+> [<ffffffffa04f3b52>] nfsd+0xc2/0x160 [nfsd]
+> [<ffffffff8109ab56>] kthread+0x96/0xa0
+> [<ffffffff8100c20a>] child_rip+0xa/0x20
+> [<ffffffffffffffff>] 0xffffffffffffffff
+> 
+> To me this looks like a lock contention.
 
-After this we can handle for example getattr of very large ACLs.
+And like the lock contention may be in xfs....  So ideally you'd get
+someone who knows the CentOS/RHEL6 xfs code to look at it first.
 
-Read, readdir, readlink are still special cases with their own limits.
+--b.
 
-Also we can't handle a new operation starting close to the end of a
-page.
-
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4proc.c         |    4 +++
- fs/nfsd/nfs4xdr.c          |   59 +++++++++++++++++++++++----------
- include/linux/sunrpc/svc.h |    1 +
- include/linux/sunrpc/xdr.h |    1 +
- net/sunrpc/svc_xprt.c      |    1 +
- net/sunrpc/xdr.c           |   78 ++++++++++++++++++++++++++++++++++++++++++--
- 6 files changed, 125 insertions(+), 19 deletions(-)
-
-diff --git a/fs/nfsd/nfs4proc.c b/fs/nfsd/nfs4proc.c
-index 18063e0..787aa9f 100644
---- a/fs/nfsd/nfs4proc.c
-+++ b/fs/nfsd/nfs4proc.c
-@@ -1213,6 +1213,10 @@ static void svcxdr_init_encode(struct svc_rqst *rqstp, struct nfsd4_compoundres
- 	xdr->end = head->iov_base + PAGE_SIZE - 2 * RPC_MAX_AUTH_SIZE;
- 	/* Tail and page_len should be zero at this point: */
- 	buf->len = buf->head[0].iov_len;
-+	xdr->scratch.iov_len = 0;
-+	xdr->page_ptr = buf->pages;
-+	buf->buflen = PAGE_SIZE * (1 + rqstp->rq_page_end - buf->pages)
-+		- 2 * RPC_MAX_AUTH_SIZE;
- }
- 
- /*
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index def2ceb..aedf19a 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -1624,6 +1624,7 @@ static int nfsd4_max_reply(u32 opnum)
- 		 * the head and tail in another page:
- 		 */
- 		return 2 * PAGE_SIZE;
-+	case OP_GETATTR:
- 	case OP_READ:
- 		return INT_MAX;
- 	default:
-@@ -2547,21 +2548,30 @@ out_resource:
- 	goto out;
- }
- 
-+static void svcxdr_init_encode_from_buffer(struct xdr_stream *xdr, struct xdr_buf *buf, __be32 *p, int bytes)
-+{
-+	xdr->scratch.iov_len = 0;
-+	memset(buf, 0, sizeof(struct xdr_buf));
-+	buf->head[0].iov_base = p;
-+	buf->head[0].iov_len = 0;
-+	buf->len = 0;
-+	xdr->buf = buf;
-+	xdr->iov = buf->head;
-+	xdr->p = p;
-+	xdr->end = (void *)p + bytes;
-+	buf->buflen = bytes;
-+}
-+
- __be32 nfsd4_encode_fattr_to_buf(__be32 **p, int words,
- 			struct svc_fh *fhp, struct svc_export *exp,
- 			struct dentry *dentry, u32 *bmval,
- 	                struct svc_rqst *rqstp, int ignore_crossmnt)
- {
--	struct xdr_buf dummy = {
--			.head[0] = {
--				.iov_base = *p,
--			},
--			.buflen = words << 2,
--		};
-+	struct xdr_buf dummy;
- 	struct xdr_stream xdr;
- 	__be32 ret;
- 
--	xdr_init_encode(&xdr, &dummy, NULL);
-+	svcxdr_init_encode_from_buffer(&xdr, &dummy, *p, words << 2);
- 	ret = nfsd4_encode_fattr(&xdr, fhp, exp, dentry, bmval, rqstp, ignore_crossmnt);
- 	*p = xdr.p;
- 	return ret;
-@@ -3049,8 +3059,6 @@ nfsd4_encode_read(struct nfsd4_compoundres *resp, __be32 nfserr,
- 
- 	if (nfserr)
- 		return nfserr;
--	if (resp->xdr.buf->page_len)
--		return nfserr_resource;
- 
- 	p = xdr_reserve_space(xdr, 8); /* eof flag and byte count */
- 	if (!p)
-@@ -3060,6 +3068,9 @@ nfsd4_encode_read(struct nfsd4_compoundres *resp, __be32 nfserr,
- 	if (xdr->end - xdr->p < 1)
- 		return nfserr_resource;
- 
-+	if (resp->xdr.buf->page_len)
-+		return nfserr_resource;
-+
- 	maxcount = svc_max_payload(resp->rqstp);
- 	if (maxcount > read->rd_length)
- 		maxcount = read->rd_length;
-@@ -3104,6 +3115,8 @@ nfsd4_encode_read(struct nfsd4_compoundres *resp, __be32 nfserr,
- 				- (char *)resp->xdr.buf->head[0].iov_base);
- 	resp->xdr.buf->page_len = maxcount;
- 	xdr->buf->len += maxcount;
-+	xdr->page_ptr += v;
-+	xdr->buf->buflen = maxcount + PAGE_SIZE - 2 * RPC_MAX_AUTH_SIZE;
- 	xdr->iov = xdr->buf->tail;
- 
- 	/* Use rest of head for padding and remaining ops: */
-@@ -3130,6 +3143,11 @@ nfsd4_encode_readlink(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd
- 
- 	if (nfserr)
- 		return nfserr;
-+
-+	p = xdr_reserve_space(xdr, 4);
-+	if (!p)
-+		return nfserr_resource;
-+
- 	if (resp->xdr.buf->page_len)
- 		return nfserr_resource;
- 	if (!*resp->rqstp->rq_next_page)
-@@ -3139,10 +3157,6 @@ nfsd4_encode_readlink(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd
- 
- 	maxcount = PAGE_SIZE;
- 
--	p = xdr_reserve_space(xdr, 4);
--	if (!p)
--		return nfserr_resource;
--
- 	if (xdr->end - xdr->p < 1)
- 		return nfserr_resource;
- 
-@@ -3165,6 +3179,8 @@ nfsd4_encode_readlink(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd
- 				- (char*)resp->xdr.buf->head[0].iov_base;
- 	resp->xdr.buf->page_len = maxcount;
- 	xdr->buf->len += maxcount;
-+	xdr->page_ptr += 1;
-+	xdr->buf->buflen -= PAGE_SIZE;
- 	xdr->iov = xdr->buf->tail;
- 
- 	/* Use rest of head for padding and remaining ops: */
-@@ -3191,15 +3207,16 @@ nfsd4_encode_readdir(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4
- 
- 	if (nfserr)
- 		return nfserr;
--	if (resp->xdr.buf->page_len)
--		return nfserr_resource;
--	if (!*resp->rqstp->rq_next_page)
--		return nfserr_resource;
- 
- 	p = xdr_reserve_space(xdr, NFS4_VERIFIER_SIZE);
- 	if (!p)
- 		return nfserr_resource;
- 
-+	if (resp->xdr.buf->page_len)
-+		return nfserr_resource;
-+	if (!*resp->rqstp->rq_next_page)
-+		return nfserr_resource;
-+
- 	/* XXX: Following NFSv3, we ignore the READDIR verifier for now. */
- 	WRITE32(0);
- 	WRITE32(0);
-@@ -3251,6 +3268,10 @@ nfsd4_encode_readdir(struct nfsd4_compoundres *resp, __be32 nfserr, struct nfsd4
- 
- 	xdr->iov = xdr->buf->tail;
- 
-+	xdr->page_ptr++;
-+	xdr->buf->buflen -= PAGE_SIZE;
-+	xdr->iov = xdr->buf->tail;
-+
- 	/* Use rest of head for padding and remaining ops: */
- 	resp->xdr.buf->tail[0].iov_base = tailbase;
- 	resp->xdr.buf->tail[0].iov_len = 0;
-@@ -3783,6 +3804,8 @@ nfsd4_encode_operation(struct nfsd4_compoundres *resp, struct nfsd4_op *op)
- 	       !nfsd4_enc_ops[op->opnum]);
- 	encoder = nfsd4_enc_ops[op->opnum];
- 	op->status = encoder(resp, op->status, &op->u);
-+	xdr_commit_encode(xdr);
-+
- 	/* nfsd4_check_resp_size guarantees enough room for error status */
- 	if (!op->status) {
- 		int space_needed = 0;
-@@ -3907,6 +3930,8 @@ nfs4svc_encode_compoundres(struct svc_rqst *rqstp, __be32 *p, struct nfsd4_compo
- 	WARN_ON_ONCE(buf->len != buf->head[0].iov_len + buf->page_len +
- 				 buf->tail[0].iov_len);
- 
-+	rqstp->rq_next_page = resp->xdr.page_ptr + 1;
-+
- 	p = resp->tagp;
- 	*p++ = htonl(resp->taglen);
- 	memcpy(p, resp->tag, resp->taglen);
-diff --git a/include/linux/sunrpc/svc.h b/include/linux/sunrpc/svc.h
-index 04e7632..39c50e1 100644
---- a/include/linux/sunrpc/svc.h
-+++ b/include/linux/sunrpc/svc.h
-@@ -244,6 +244,7 @@ struct svc_rqst {
- 	struct page *		rq_pages[RPCSVC_MAXPAGES];
- 	struct page *		*rq_respages;	/* points into rq_pages */
- 	struct page *		*rq_next_page; /* next reply page to use */
-+	struct page *		*rq_page_end;  /* one past the last page */
- 
- 	struct kvec		rq_vec[RPCSVC_MAXPAGES]; /* generally useful.. */
- 
-diff --git a/include/linux/sunrpc/xdr.h b/include/linux/sunrpc/xdr.h
-index e7bb2e3..b23d69f 100644
---- a/include/linux/sunrpc/xdr.h
-+++ b/include/linux/sunrpc/xdr.h
-@@ -215,6 +215,7 @@ typedef int	(*kxdrdproc_t)(void *rqstp, struct xdr_stream *xdr, void *obj);
- 
- extern void xdr_init_encode(struct xdr_stream *xdr, struct xdr_buf *buf, __be32 *p);
- extern __be32 *xdr_reserve_space(struct xdr_stream *xdr, size_t nbytes);
-+extern void xdr_commit_encode(struct xdr_stream *xdr);
- extern void xdr_truncate_encode(struct xdr_stream *xdr, size_t len);
- extern void xdr_write_pages(struct xdr_stream *xdr, struct page **pages,
- 		unsigned int base, unsigned int len);
-diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-index 06c6ff0..baec792 100644
---- a/net/sunrpc/svc_xprt.c
-+++ b/net/sunrpc/svc_xprt.c
-@@ -597,6 +597,7 @@ static int svc_alloc_arg(struct svc_rqst *rqstp)
- 			}
- 			rqstp->rq_pages[i] = p;
- 		}
-+	rqstp->rq_page_end = &rqstp->rq_pages[i];
- 	rqstp->rq_pages[i++] = NULL; /* this might be seen in nfs_read_actor */
- 
- 	/* Make arg->head point to first page and arg->pages point to rest */
-diff --git a/net/sunrpc/xdr.c b/net/sunrpc/xdr.c
-index 8ae8ee7..e65d6b6 100644
---- a/net/sunrpc/xdr.c
-+++ b/net/sunrpc/xdr.c
-@@ -462,6 +462,7 @@ void xdr_init_encode(struct xdr_stream *xdr, struct xdr_buf *buf, __be32 *p)
- 	struct kvec *iov = buf->head;
- 	int scratch_len = buf->buflen - buf->page_len - buf->tail[0].iov_len;
- 
-+	xdr_set_scratch_buffer(xdr, NULL, 0);
- 	BUG_ON(scratch_len < 0);
- 	xdr->buf = buf;
- 	xdr->iov = iov;
-@@ -482,6 +483,74 @@ void xdr_init_encode(struct xdr_stream *xdr, struct xdr_buf *buf, __be32 *p)
- EXPORT_SYMBOL_GPL(xdr_init_encode);
- 
- /**
-+ * xdr_commit_encode - Ensure all data is written to buffer
-+ * @xdr: pointer to xdr_stream
-+ *
-+ * We handle encoding across page boundaries by giving the caller a
-+ * temporary location to write to, then later copying the data into
-+ * place; xdr_commit_encode does that copying.
-+ *
-+ * Normally the caller doesn't need to call this directly, as the
-+ * following xdr_reserve_space will do it.  But an explicit call may be
-+ * required at the end of encoding, or any other time when the xdr_buf
-+ * data might be read.
-+ */
-+void xdr_commit_encode(struct xdr_stream *xdr)
-+{
-+	int shift = xdr->scratch.iov_len;
-+	void *page;
-+
-+	if (shift == 0)
-+		return;
-+	page = page_address(*xdr->page_ptr);
-+	memcpy(xdr->scratch.iov_base, page, shift);
-+	memmove(page, page + shift, (void *)xdr->p - page);
-+	xdr->scratch.iov_len = 0;
-+}
-+EXPORT_SYMBOL_GPL(xdr_commit_encode);
-+
-+__be32 * xdr_get_next_encode_buffer(struct xdr_stream *xdr, size_t nbytes)
-+{
-+	static __be32 *p;
-+	int space_left;
-+	int frag1bytes, frag2bytes;
-+
-+	if (nbytes > PAGE_SIZE)
-+		return NULL; /* Bigger buffers require special handling */
-+	if (xdr->buf->len + nbytes > xdr->buf->buflen)
-+		return NULL; /* Sorry, we're totally out of space */
-+	frag1bytes = (xdr->end - xdr->p) << 2;
-+	frag2bytes = nbytes - frag1bytes;
-+	if (xdr->iov)
-+		xdr->iov->iov_len += frag1bytes;
-+	else {
-+		xdr->buf->page_len += frag1bytes;
-+		xdr->page_ptr++;
-+	}
-+	xdr->iov = NULL;
-+	/*
-+	 * If the last encode didn't end exactly on a page boundary, the
-+	 * next one will straddle boundaries.  Encode into the next
-+	 * page, then copy it back later in xdr_commit_encode.  We use
-+	 * the "scratch" iov to track any temporarily unused fragment of
-+	 * space at the end of the previous buffer:
-+	 */
-+	xdr->scratch.iov_base = xdr->p;
-+	xdr->scratch.iov_len = frag1bytes;
-+	p = page_address(*xdr->page_ptr);
-+	/*
-+	 * Note this is where the next encode will start after we've
-+	 * shifted this one back:
-+	 */
-+	xdr->p = (void *)p + frag2bytes;
-+	space_left = xdr->buf->buflen - xdr->buf->len;
-+	xdr->end = (void *)p + min_t(int, space_left, PAGE_SIZE);
-+	xdr->buf->page_len += frag2bytes;
-+	xdr->buf->len += nbytes;
-+	return p;
-+}
-+
-+/**
-  * xdr_reserve_space - Reserve buffer space for sending
-  * @xdr: pointer to xdr_stream
-  * @nbytes: number of bytes to reserve
-@@ -495,14 +564,18 @@ __be32 * xdr_reserve_space(struct xdr_stream *xdr, size_t nbytes)
- 	__be32 *p = xdr->p;
- 	__be32 *q;
- 
-+	xdr_commit_encode(xdr);
- 	/* align nbytes on the next 32-bit boundary */
- 	nbytes += 3;
- 	nbytes &= ~3;
- 	q = p + (nbytes >> 2);
- 	if (unlikely(q > xdr->end || q < p))
--		return NULL;
-+		return xdr_get_next_encode_buffer(xdr, nbytes);
- 	xdr->p = q;
--	xdr->iov->iov_len += nbytes;
-+	if (xdr->iov)
-+		xdr->iov->iov_len += nbytes;
-+	else
-+		xdr->buf->page_len += nbytes;
- 	xdr->buf->len += nbytes;
- 	return p;
- }
-@@ -539,6 +612,7 @@ void xdr_truncate_encode(struct xdr_stream *xdr, size_t len)
- 		WARN_ON_ONCE(1);
- 		return;
- 	}
-+	xdr_commit_encode(xdr);
- 
- 	fraglen = min_t(int, buf->len - len, tail->iov_len);
- 	tail->iov_len -= fraglen;
--- 
-1.7.9.5
-
+> This time also the hung task detector triggered on my client:
+> 
+> INFO: task cat:2289 blocked for more than 120 seconds.
+>       Tainted: GF            3.12.17 #3
+> "echo 0 > /proc/sys/kernel/hung_task_timeout_secs" disables this message.
+> cat             D ffffffff81613440     0  2289   2266 0x00000080
+>  ffff880851c09978 0000000000000082 ffff880851c09fd8 0000000000012d40
+>  ffff880851c08010 0000000000012d40 0000000000012d40 0000000000012d40
+>  ffff880851c09fd8 0000000000012d40 ffff880851d5f500 ffff88087c610080
+> Call Trace:
+>  [<ffffffffa05c9d20>] ? nfs_wait_on_request+0x40/0x40 [nfs]
+>  [<ffffffff81561cb9>] schedule+0x29/0x70
+>  [<ffffffff81561d8c>] io_schedule+0x8c/0xd0
+>  [<ffffffffa05c9d2e>] nfs_wait_bit_uninterruptible+0xe/0x20 [nfs]
+>  [<ffffffff8155fa12>] __wait_on_bit+0x62/0x90
+>  [<ffffffffa05c9d20>] ? nfs_wait_on_request+0x40/0x40 [nfs]
+>  [<ffffffff8155fab8>] out_of_line_wait_on_bit+0x78/0x90
+>  [<ffffffff810709d0>] ? wake_atomic_t_function+0x40/0x40
+>  [<ffffffffa05c9d16>] nfs_wait_on_request+0x36/0x40 [nfs]
+>  [<ffffffffa05ceff3>] nfs_try_to_update_request+0x93/0x140 [nfs]
+>  [<ffffffffa05cf0f3>] nfs_setup_write_request+0x53/0x1a0 [nfs]
+>  [<ffffffffa05c2c90>] ? nfs_evict_inode+0x40/0x40 [nfs]
+>  [<ffffffffa05cf26f>] nfs_writepage_setup+0x2f/0x1f0 [nfs]
+>  [<ffffffff811210eb>] ? find_lock_page+0x3b/0x80
+>  [<ffffffffa05cf499>] nfs_updatepage+0x69/0x250 [nfs]
+>  [<ffffffffa05c10a1>] nfs_write_end+0x161/0x320 [nfs]
+>  [<ffffffff8111faea>] generic_perform_write+0x12a/0x200
+>  [<ffffffff8111fc23>] generic_file_buffered_write+0x63/0xa0
+>  [<ffffffff8112252f>] __generic_file_aio_write+0x1bf/0x3b0
+>  [<ffffffff81181d93>] ? __sb_end_write+0x33/0x70
+>  [<ffffffff81122784>] generic_file_aio_write+0x64/0xb0
+>  [<ffffffffa05c05a1>] nfs_file_write+0xc1/0x1d0 [nfs]
+>  [<ffffffff8117f2df>] do_sync_write+0x5f/0xa0
+>  [<ffffffff8117f6c8>] vfs_write+0xc8/0x170
+>  [<ffffffff8119c0a1>] ? fget_light+0x21/0xc0
+>  [<ffffffff8117fcdf>] SyS_write+0x5f/0xb0
+>  [<ffffffff8156be92>] system_call_fastpath+0x16/0x1b
+> nfs: server 10.42.0.1 not responding, timed out
+> 
+> Thanks,
+> //richard
+> --
+> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
+> the body of a message to majordomo@vger.kernel.org
+> More majordomo info at  http://vger.kernel.org/majordomo-info.html
