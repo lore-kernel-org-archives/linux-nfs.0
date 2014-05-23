@@ -1,160 +1,103 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:59007 "EHLO fieldses.org"
+Received: from fieldses.org ([174.143.236.118]:37972 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752368AbaEVTzq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 May 2014 15:55:46 -0400
-Date: Thu, 22 May 2014 15:55:40 -0400
+	id S1751182AbaEWOl3 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 23 May 2014 10:41:29 -0400
+Date: Fri, 23 May 2014 10:41:28 -0400
 From: "J. Bruce Fields" <bfields@fieldses.org>
-To: Chuck Lever <chuck.lever@oracle.com>
-Cc: bfields@redhat.com, linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Subject: Re: [PATCH] NFSD: Ignore client's source port on RDMA transports
-Message-ID: <20140522195540.GE25423@fieldses.org>
-References: <20140519173258.2828.98254.stgit@klimt.1015granger.net>
- <20140522195517.GD25423@fieldses.org>
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH 4/4] NFSD: Ignore and warn once for more fslocs or more
+ uuids
+Message-ID: <20140523144128.GO25423@fieldses.org>
+References: <537F38AB.10102@gmail.com>
+ <20140523135435.GK25423@fieldses.org>
+ <537F5A1A.9000005@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <20140522195517.GD25423@fieldses.org>
+In-Reply-To: <537F5A1A.9000005@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Thu, May 22, 2014 at 03:55:17PM -0400, bfields wrote:
-> On Mon, May 19, 2014 at 01:40:22PM -0400, Chuck Lever wrote:
-> > An NFS/RDMA client's source port is meaningless for RDMA transports.
-> > The transport layer typically sets the source port value on the
-> > connection to a random ephemeral port.
+On Fri, May 23, 2014 at 10:24:26PM +0800, Kinglong Mee wrote:
+> On 5/23/2014 21:54, J. Bruce Fields wrote:
+> > On Fri, May 23, 2014 at 08:01:47PM +0800, Kinglong Mee wrote:
+> >> If mountd writes more fslocs or more uuids, just ignore and warn once.
 > > 
-> > Currently, NFS server administrators must specify the "insecure"
-> > export option to enable clients to access exports via RDMA.
-> > 
-> > But this means NFS clients can access such an export via IP using an
-> > ephemeral port, which may not be desirable.
-> > 
-> > This patch eliminates the need to specify the "insecure" export
-> > option to allow NFS/RDMA clients access to an export.
-> > 
-> > BugLink: https://bugzilla.linux-nfs.org/show_bug.cgi?id=250
-> > Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> > ---
-> > 
-> > Hi Bruce-
-> > 
-> > I've done some simple testing. "insecure" still behaves correctly
-> > for IP-based clients, and is now unnecessary for RDMA-based clients.
-> > Would you consider this for nfsd-next?
+> > So the current behavior is a leak?
 > 
-> Yes, looks god to me; applying for 3.16.
+> Yes, there is a memory leak for more fslocs or more uuids.
+> 
+> > 
+> > Have you observed any version of mountd actually writing more than one
+> > of these?
+> 
+> Sorry, i don't checkout it.
+> I just review the codes, and rewrit nfs-utils to writing more fslocs or uuids.
+> 
+> > 
+> > If not, I'd prefer to return an error.
+> 
+> You mean return -EINVAL instead of ignoring it with return 0? 
 
-Um, you know what I meant.
+Right.  If somebody introduces weird mountd behavior I'd rather they see
+it fail right away.  And also I think it's a little easier to extend
+these calls later if we error out on invalid input.
+
+Also, remove the WARN_ON_ONCE.  We usually reserve BUG or WARN for cases
+where we believe the kernel itself has a bug, and avoid them in cases
+where they could be triggered by userland.  (Admittedly mountd is very
+special userland, but still I'd rather it not be able to trigger these.)
 
 --b.
 
 > 
-> --b.
+> Although, i miss checking the more "secinfo" in secinfo_parse() right now,
+> for no memory leak. I will adds it after decides how to fix above.
+> 
+> thanks,
+> Kinglong Mee
 > 
 > > 
+> > --b.
 > > 
-> >  include/linux/sunrpc/svc_xprt.h          |    1 +
-> >  net/sunrpc/svc_xprt.c                    |    2 +-
-> >  net/sunrpc/svcsock.c                     |    9 +++++++++
-> >  net/sunrpc/xprtrdma/svc_rdma_transport.c |    7 +++++++
-> >  4 files changed, 18 insertions(+), 1 deletions(-)
-> > 
-> > diff --git a/include/linux/sunrpc/svc_xprt.h b/include/linux/sunrpc/svc_xprt.h
-> > index b05963f..0cec1b9 100644
-> > --- a/include/linux/sunrpc/svc_xprt.h
-> > +++ b/include/linux/sunrpc/svc_xprt.h
-> > @@ -24,6 +24,7 @@ struct svc_xprt_ops {
-> >  	void		(*xpo_release_rqst)(struct svc_rqst *);
-> >  	void		(*xpo_detach)(struct svc_xprt *);
-> >  	void		(*xpo_free)(struct svc_xprt *);
-> > +	int		(*xpo_secure_port)(struct svc_rqst *);
-> >  };
-> >  
-> >  struct svc_xprt_class {
-> > diff --git a/net/sunrpc/svc_xprt.c b/net/sunrpc/svc_xprt.c
-> > index 06c6ff0..614956f 100644
-> > --- a/net/sunrpc/svc_xprt.c
-> > +++ b/net/sunrpc/svc_xprt.c
-> > @@ -793,7 +793,7 @@ int svc_recv(struct svc_rqst *rqstp, long timeout)
-> >  
-> >  	clear_bit(XPT_OLD, &xprt->xpt_flags);
-> >  
-> > -	rqstp->rq_secure = svc_port_is_privileged(svc_addr(rqstp));
-> > +	rqstp->rq_secure = xprt->xpt_ops->xpo_secure_port(rqstp);
-> >  	rqstp->rq_chandle.defer = svc_defer;
-> >  
-> >  	if (serv->sv_stats)
-> > diff --git a/net/sunrpc/svcsock.c b/net/sunrpc/svcsock.c
-> > index 43bcb46..0cb34f5 100644
-> > --- a/net/sunrpc/svcsock.c
-> > +++ b/net/sunrpc/svcsock.c
-> > @@ -400,6 +400,12 @@ static void svc_sock_setbufsize(struct socket *sock, unsigned int snd,
-> >  	release_sock(sock->sk);
-> >  #endif
-> >  }
-> > +
-> > +static int svc_sock_secure_port(struct svc_rqst *rqstp)
-> > +{
-> > +	return svc_port_is_privileged(svc_addr(rqstp));
-> > +}
-> > +
-> >  /*
-> >   * INET callback when data has been received on the socket.
-> >   */
-> > @@ -678,6 +684,7 @@ static struct svc_xprt_ops svc_udp_ops = {
-> >  	.xpo_prep_reply_hdr = svc_udp_prep_reply_hdr,
-> >  	.xpo_has_wspace = svc_udp_has_wspace,
-> >  	.xpo_accept = svc_udp_accept,
-> > +	.xpo_secure_port = svc_sock_secure_port,
-> >  };
-> >  
-> >  static struct svc_xprt_class svc_udp_class = {
-> > @@ -1234,6 +1241,7 @@ static struct svc_xprt_ops svc_tcp_bc_ops = {
-> >  	.xpo_detach = svc_bc_tcp_sock_detach,
-> >  	.xpo_free = svc_bc_sock_free,
-> >  	.xpo_prep_reply_hdr = svc_tcp_prep_reply_hdr,
-> > +	.xpo_secure_port = svc_sock_secure_port,
-> >  };
-> >  
-> >  static struct svc_xprt_class svc_tcp_bc_class = {
-> > @@ -1272,6 +1280,7 @@ static struct svc_xprt_ops svc_tcp_ops = {
-> >  	.xpo_prep_reply_hdr = svc_tcp_prep_reply_hdr,
-> >  	.xpo_has_wspace = svc_tcp_has_wspace,
-> >  	.xpo_accept = svc_tcp_accept,
-> > +	.xpo_secure_port = svc_sock_secure_port,
-> >  };
-> >  
-> >  static struct svc_xprt_class svc_tcp_class = {
-> > diff --git a/net/sunrpc/xprtrdma/svc_rdma_transport.c b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-> > index 25688fa..02db8d9 100644
-> > --- a/net/sunrpc/xprtrdma/svc_rdma_transport.c
-> > +++ b/net/sunrpc/xprtrdma/svc_rdma_transport.c
-> > @@ -65,6 +65,7 @@ static void dto_tasklet_func(unsigned long data);
-> >  static void svc_rdma_detach(struct svc_xprt *xprt);
-> >  static void svc_rdma_free(struct svc_xprt *xprt);
-> >  static int svc_rdma_has_wspace(struct svc_xprt *xprt);
-> > +static int svc_rdma_secure_port(struct svc_rqst *);
-> >  static void rq_cq_reap(struct svcxprt_rdma *xprt);
-> >  static void sq_cq_reap(struct svcxprt_rdma *xprt);
-> >  
-> > @@ -82,6 +83,7 @@ static struct svc_xprt_ops svc_rdma_ops = {
-> >  	.xpo_prep_reply_hdr = svc_rdma_prep_reply_hdr,
-> >  	.xpo_has_wspace = svc_rdma_has_wspace,
-> >  	.xpo_accept = svc_rdma_accept,
-> > +	.xpo_secure_port = svc_rdma_secure_port,
-> >  };
-> >  
-> >  struct svc_xprt_class svc_rdma_class = {
-> > @@ -1207,6 +1209,11 @@ static int svc_rdma_has_wspace(struct svc_xprt *xprt)
-> >  	return 1;
-> >  }
-> >  
-> > +static int svc_rdma_secure_port(struct svc_rqst *rqstp)
-> > +{
-> > +	return 1;
-> > +}
-> > +
-> >  /*
-> >   * Attempt to register the kvec representing the RPC memory with the
-> >   * device.
+> >>
+> >> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> >> ---
+> >>  fs/nfsd/export.c | 12 ++++++++++++
+> >>  1 file changed, 12 insertions(+)
+> >>
+> >> diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+> >> index 90d37b6..1d56ae3 100644
+> >> --- a/fs/nfsd/export.c
+> >> +++ b/fs/nfsd/export.c
+> >> @@ -394,6 +394,12 @@ fsloc_parse(char **mesg, char *buf, struct nfsd4_fs_locations *fsloc)
+> >>  	int len;
+> >>  	int migrated, i, err;
+> >>  
+> >> +	/* utils writes more fslocs than one */
+> >> +	if (fsloc->locations) {
+> >> +		WARN_ON_ONCE(1);
+> >> +		return 0;
+> >> +	}
+> >> +
+> >>  	/* listsize */
+> >>  	err = get_uint(mesg, &fsloc->locations_count);
+> >>  	if (err)
+> >> @@ -485,6 +491,12 @@ uuid_parse(char **mesg, char *buf, unsigned char **puuid)
+> >>  {
+> >>  	int len;
+> >>  
+> >> +	/* utils writes more uuid than one */
+> >> +	if (*puuid) {
+> >> +		WARN_ON_ONCE(1);
+> >> +		return 0;
+> >> +	}
+> >> +
+> >>  	/* expect a 16 byte uuid encoded as \xXXXX... */
+> >>  	len = qword_get(mesg, buf, PAGE_SIZE);
+> >>  	if (len != EX_UUID_LEN)
+> >> -- 
+> >> 1.9.0
+> >>
 > > 
