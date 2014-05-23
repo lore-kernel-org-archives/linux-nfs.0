@@ -1,219 +1,46 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:44519 "EHLO mx12.netapp.com"
+Received: from mx12.netapp.com ([216.240.18.77]:53752 "EHLO mx12.netapp.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751376AbaEFNMw (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 6 May 2014 09:12:52 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
-CC: <dros@primarydata.com>, <hch@infradead.org>
-Subject: [PATCH v3 04/17] NFS: Create a common read and write header struct
-Date: Tue, 6 May 2014 09:12:27 -0400
-Message-ID: <1399381960-3019-5-git-send-email-Anna.Schumaker@Netapp.com>
-In-Reply-To: <1399381960-3019-1-git-send-email-Anna.Schumaker@Netapp.com>
-References: <1399381960-3019-1-git-send-email-Anna.Schumaker@Netapp.com>
+	id S1752638AbaEWNXV (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Fri, 23 May 2014 09:23:21 -0400
+From: <andros@netapp.com>
+To: <trond.myklebust@primarydata.com>
+CC: <linux-nfs@vger.kernel.org>, Andy Adamson <andros@netapp.com>
+Subject: [PATCH 1/1] NFSv4: Use error handler on failed GETATTR with successful OPEN
+Date: Fri, 23 May 2014 06:22:59 -0700
+Message-ID: <1400851379-34474-1-git-send-email-andros@netapp.com>
 MIME-Version: 1.0
 Content-Type: text/plain
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
+From: Andy Adamson <andros@netapp.com>
 
-The only difference is the write verifier field, but we can keep that
-for a little bit longer.
+Place the call to resend the failed GETATTR under the error handler so that
+when appropriate, the GETATTR is retried more than once.
 
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
+The server can fail the GETATTR op in the OPEN compound with a recoverable
+error such as NFS4ERR_DELAY. In the case of an O_EXCL open, the server has
+created the file, so a retrans of the OPEN call will fail with NFS4ERR_EXIST.
+
+Signed-off-by: Andy Adamson <andros@netapp.com>
 ---
- fs/nfs/internal.h       |  4 ++--
- fs/nfs/pnfs.c           |  4 ++--
- fs/nfs/read.c           | 14 +++++++-------
- fs/nfs/write.c          | 14 +++++++-------
- include/linux/nfs_xdr.h |  7 +------
- 5 files changed, 19 insertions(+), 24 deletions(-)
+ fs/nfs/nfs4proc.c | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/fs/nfs/internal.h b/fs/nfs/internal.h
-index af01b80..b0e7a41 100644
---- a/fs/nfs/internal.h
-+++ b/fs/nfs/internal.h
-@@ -395,7 +395,7 @@ extern int nfs4_get_rootfh(struct nfs_server *server, struct nfs_fh *mntfh, bool
- 
- struct nfs_pgio_completion_ops;
- /* read.c */
--extern struct nfs_read_header *nfs_readhdr_alloc(void);
-+extern struct nfs_rw_header *nfs_readhdr_alloc(void);
- extern void nfs_readhdr_free(struct nfs_pgio_header *hdr);
- extern void nfs_pageio_init_read(struct nfs_pageio_descriptor *pgio,
- 			struct inode *inode, bool force_mds,
-@@ -424,7 +424,7 @@ int nfs_remount(struct super_block *sb, int *flags, char *raw_data);
- extern void nfs_pageio_init_write(struct nfs_pageio_descriptor *pgio,
- 			struct inode *inode, int ioflags, bool force_mds,
- 			const struct nfs_pgio_completion_ops *compl_ops);
--extern struct nfs_write_header *nfs_writehdr_alloc(void);
-+extern struct nfs_rw_header *nfs_writehdr_alloc(void);
- extern void nfs_writehdr_free(struct nfs_pgio_header *hdr);
- extern int nfs_generic_flush(struct nfs_pageio_descriptor *desc,
- 			     struct nfs_pgio_header *hdr);
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index e9cea3a..43cfe11 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1592,7 +1592,7 @@ EXPORT_SYMBOL_GPL(pnfs_writehdr_free);
- int
- pnfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc)
- {
--	struct nfs_write_header *whdr;
-+	struct nfs_rw_header *whdr;
- 	struct nfs_pgio_header *hdr;
- 	int ret;
- 
-@@ -1750,7 +1750,7 @@ EXPORT_SYMBOL_GPL(pnfs_readhdr_free);
- int
- pnfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc)
- {
--	struct nfs_read_header *rhdr;
-+	struct nfs_rw_header *rhdr;
- 	struct nfs_pgio_header *hdr;
- 	int ret;
- 
-diff --git a/fs/nfs/read.c b/fs/nfs/read.c
-index 9e426cc..d29ca36 100644
---- a/fs/nfs/read.c
-+++ b/fs/nfs/read.c
-@@ -34,9 +34,9 @@ static const struct nfs_pgio_completion_ops nfs_async_read_completion_ops;
- 
- static struct kmem_cache *nfs_rdata_cachep;
- 
--struct nfs_read_header *nfs_readhdr_alloc(void)
-+struct nfs_rw_header *nfs_readhdr_alloc(void)
- {
--	struct nfs_read_header *rhdr;
-+	struct nfs_rw_header *rhdr;
- 
- 	rhdr = kmem_cache_zalloc(nfs_rdata_cachep, GFP_KERNEL);
- 	if (rhdr) {
-@@ -56,7 +56,7 @@ static struct nfs_pgio_data *nfs_readdata_alloc(struct nfs_pgio_header *hdr,
- {
- 	struct nfs_pgio_data *data, *prealloc;
- 
--	prealloc = &container_of(hdr, struct nfs_read_header, header)->rpc_data;
-+	prealloc = &container_of(hdr, struct nfs_rw_header, header)->rpc_data;
- 	if (prealloc->header == NULL)
- 		data = prealloc;
- 	else
-@@ -78,7 +78,7 @@ out:
- 
- void nfs_readhdr_free(struct nfs_pgio_header *hdr)
- {
--	struct nfs_read_header *rhdr = container_of(hdr, struct nfs_read_header, header);
-+	struct nfs_rw_header *rhdr = container_of(hdr, struct nfs_rw_header, header);
- 
- 	kmem_cache_free(nfs_rdata_cachep, rhdr);
+diff --git a/fs/nfs/nfs4proc.c b/fs/nfs/nfs4proc.c
+index 397be39..be1b305 100644
+--- a/fs/nfs/nfs4proc.c
++++ b/fs/nfs/nfs4proc.c
+@@ -2027,7 +2027,7 @@ static int _nfs4_proc_open(struct nfs4_opendata *data)
+ 			return status;
+ 	}
+ 	if (!(o_res->f_attr->valid & NFS_ATTR_FATTR))
+-		_nfs4_proc_getattr(server, &o_res->fh, o_res->f_attr, o_res->f_label);
++		nfs4_proc_getattr(server, &o_res->fh, o_res->f_attr, o_res->f_label);
+ 	return 0;
  }
-@@ -87,7 +87,7 @@ EXPORT_SYMBOL_GPL(nfs_readhdr_free);
- void nfs_readdata_release(struct nfs_pgio_data *rdata)
- {
- 	struct nfs_pgio_header *hdr = rdata->header;
--	struct nfs_read_header *read_header = container_of(hdr, struct nfs_read_header, header);
-+	struct nfs_rw_header *read_header = container_of(hdr, struct nfs_rw_header, header);
  
- 	put_nfs_open_context(rdata->args.context);
- 	if (rdata->pages.pagevec != rdata->pages.page_array)
-@@ -417,7 +417,7 @@ EXPORT_SYMBOL_GPL(nfs_generic_pagein);
- 
- static int nfs_generic_pg_readpages(struct nfs_pageio_descriptor *desc)
- {
--	struct nfs_read_header *rhdr;
-+	struct nfs_rw_header *rhdr;
- 	struct nfs_pgio_header *hdr;
- 	int ret;
- 
-@@ -680,7 +680,7 @@ out:
- int __init nfs_init_readpagecache(void)
- {
- 	nfs_rdata_cachep = kmem_cache_create("nfs_read_data",
--					     sizeof(struct nfs_read_header),
-+					     sizeof(struct nfs_rw_header),
- 					     0, SLAB_HWCACHE_ALIGN,
- 					     NULL);
- 	if (nfs_rdata_cachep == NULL)
-diff --git a/fs/nfs/write.c b/fs/nfs/write.c
-index 3a2fc5c..37c4c98 100644
---- a/fs/nfs/write.c
-+++ b/fs/nfs/write.c
-@@ -70,9 +70,9 @@ void nfs_commit_free(struct nfs_commit_data *p)
- }
- EXPORT_SYMBOL_GPL(nfs_commit_free);
- 
--struct nfs_write_header *nfs_writehdr_alloc(void)
-+struct nfs_rw_header *nfs_writehdr_alloc(void)
- {
--	struct nfs_write_header *p = mempool_alloc(nfs_wdata_mempool, GFP_NOIO);
-+	struct nfs_rw_header *p = mempool_alloc(nfs_wdata_mempool, GFP_NOIO);
- 
- 	if (p) {
- 		struct nfs_pgio_header *hdr = &p->header;
-@@ -93,7 +93,7 @@ static struct nfs_pgio_data *nfs_writedata_alloc(struct nfs_pgio_header *hdr,
- {
- 	struct nfs_pgio_data *data, *prealloc;
- 
--	prealloc = &container_of(hdr, struct nfs_write_header, header)->rpc_data;
-+	prealloc = &container_of(hdr, struct nfs_rw_header, header)->rpc_data;
- 	if (prealloc->header == NULL)
- 		data = prealloc;
- 	else
-@@ -115,7 +115,7 @@ out:
- 
- void nfs_writehdr_free(struct nfs_pgio_header *hdr)
- {
--	struct nfs_write_header *whdr = container_of(hdr, struct nfs_write_header, header);
-+	struct nfs_rw_header *whdr = container_of(hdr, struct nfs_rw_header, header);
- 	mempool_free(whdr, nfs_wdata_mempool);
- }
- EXPORT_SYMBOL_GPL(nfs_writehdr_free);
-@@ -123,7 +123,7 @@ EXPORT_SYMBOL_GPL(nfs_writehdr_free);
- void nfs_writedata_release(struct nfs_pgio_data *wdata)
- {
- 	struct nfs_pgio_header *hdr = wdata->header;
--	struct nfs_write_header *write_header = container_of(hdr, struct nfs_write_header, header);
-+	struct nfs_rw_header *write_header = container_of(hdr, struct nfs_rw_header, header);
- 
- 	put_nfs_open_context(wdata->args.context);
- 	if (wdata->pages.pagevec != wdata->pages.page_array)
-@@ -1253,7 +1253,7 @@ EXPORT_SYMBOL_GPL(nfs_generic_flush);
- 
- static int nfs_generic_pg_writepages(struct nfs_pageio_descriptor *desc)
- {
--	struct nfs_write_header *whdr;
-+	struct nfs_rw_header *whdr;
- 	struct nfs_pgio_header *hdr;
- 	int ret;
- 
-@@ -1910,7 +1910,7 @@ int nfs_migrate_page(struct address_space *mapping, struct page *newpage,
- int __init nfs_init_writepagecache(void)
- {
- 	nfs_wdata_cachep = kmem_cache_create("nfs_write_data",
--					     sizeof(struct nfs_write_header),
-+					     sizeof(struct nfs_rw_header),
- 					     0, SLAB_HWCACHE_ALIGN,
- 					     NULL);
- 	if (nfs_wdata_cachep == NULL)
-diff --git a/include/linux/nfs_xdr.h b/include/linux/nfs_xdr.h
-index 64f6f14..2d34e0d 100644
---- a/include/linux/nfs_xdr.h
-+++ b/include/linux/nfs_xdr.h
-@@ -1294,12 +1294,7 @@ struct nfs_pgio_data {
- 	struct nfs_client	*ds_clp;	/* pNFS data server */
- };
- 
--struct nfs_read_header {
--	struct nfs_pgio_header	header;
--	struct nfs_pgio_data	rpc_data;
--};
--
--struct nfs_write_header {
-+struct nfs_rw_header {
- 	struct nfs_pgio_header	header;
- 	struct nfs_pgio_data	rpc_data;
- 	struct nfs_writeverf	verf;
 -- 
-1.9.2
+1.8.3.1
 
