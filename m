@@ -1,47 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from plane.gmane.org ([80.91.229.3]:58360 "EHLO plane.gmane.org"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1750882AbaEXQVI (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Sat, 24 May 2014 12:21:08 -0400
-Received: from list by plane.gmane.org with local (Exim 4.69)
-	(envelope-from <glN-linux-nfs@m.gmane.org>)
-	id 1WoEgz-0001RF-Ne
-	for linux-nfs@vger.kernel.org; Sat, 24 May 2014 18:21:05 +0200
-Received: from bitis.umrk.nl ([82.95.126.201])
-        by main.gmane.org with esmtp (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Sat, 24 May 2014 18:21:05 +0200
-Received: from jwinius by bitis.umrk.nl with local (Gmexim 0.1 (Debian))
-        id 1AlnuQ-0007hv-00
-        for <linux-nfs@vger.kernel.org>; Sat, 24 May 2014 18:21:05 +0200
-To: linux-nfs@vger.kernel.org
-From: Jaap <jwinius@umrk.nl>
-Subject: NFSv4 with Kerberos and no_root_squash
-Date: Sat, 24 May 2014 16:20:58 +0000 (UTC)
-Message-ID: <llqgta$3d3$1@ger.gmane.org>
-Mime-Version: 1.0
-Content-Type: text/plain; charset=UTF-8
+Received: from mail-qg0-f45.google.com ([209.85.192.45]:64060 "EHLO
+	mail-qg0-f45.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751404AbaEWL6O (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 May 2014 07:58:14 -0400
+Received: by mail-qg0-f45.google.com with SMTP id z60so7633784qgd.4
+        for <linux-nfs@vger.kernel.org>; Fri, 23 May 2014 04:58:14 -0700 (PDT)
+Message-ID: <537F37BD.9070005@gmail.com>
+Date: Fri, 23 May 2014 19:57:49 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
+MIME-Version: 1.0
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>, kinglongmee@gmail.com
+Subject: [PATCH 1/4] NFS4: Avoid NULL reference or double free in nfsd4_fslocs_free()
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Hi folks,
+If fsloc_parse() failed at kzalloc(), fs/nfsd/export.c
+ 411
+ 412         fsloc->locations = kzalloc(fsloc->locations_count
+ 413                         * sizeof(struct nfsd4_fs_location), GFP_KERNEL);
+ 414         if (!fsloc->locations)
+ 415                 return -ENOMEM;
 
-Not long ago I managed to get NFSv4 to work together with Kerberos (gss/
-krb5i or gss/krb5p), but apparently there's a limitation. It has to do 
-with exports that include the "no_root_squash" option and then attempting 
-to allow root on the clients to write to them; this always results in a 
-"Permission denied" error.
+svc_export_parse() will call nfsd4_fslocs_free() with fsloc->locations = NULL,
+so that, "kfree(fsloc->locations[i].path);" will cause a crash.
 
-Is there a solution for this, or a workaround?
+If fsloc_parse() failed after that, fsloc_parse() will call nfsd4_fslocs_free(),
+and svc_export_parse() will call it again, so that, a double free is caused.
 
-For me this is important, because one of the sites I maintain uses NFS 
-for home directories and the workstations have an elaborate logout script 
-in /etc/X11/Xreset.d/ that runs as root (the script contains many sudo 
-commands to make changes to the user's home directories). Therefore, one 
-solution would be to avoid running the logout script as root, but AFAIK 
-that's not possible.
+This patch checks the fsloc->locations, and set to NULL after it be freed.
 
-Thanks,
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+---
+ fs/nfsd/export.c | 12 +++++++++---
+ 1 file changed, 9 insertions(+), 3 deletions(-)
 
-Jaap
+diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+index 8513c59..9a41d3d 100644
+--- a/fs/nfsd/export.c
++++ b/fs/nfsd/export.c
+@@ -295,13 +295,19 @@ svc_expkey_update(struct cache_detail *cd, struct svc_expkey *new,
+ 
+ static void nfsd4_fslocs_free(struct nfsd4_fs_locations *fsloc)
+ {
++	struct nfsd4_fs_location *locations = fsloc->locations;
+ 	int i;
+ 
++	if (!locations)
++		return;
++
+ 	for (i = 0; i < fsloc->locations_count; i++) {
+-		kfree(fsloc->locations[i].path);
+-		kfree(fsloc->locations[i].hosts);
++		kfree(locations[i].path);
++		kfree(locations[i].hosts);
+ 	}
+-	kfree(fsloc->locations);
++
++	kfree(locations);
++	fsloc->locations = NULL;
+ }
+ 
+ static void svc_export_put(struct kref *ref)
+-- 
+1.9.0
 
