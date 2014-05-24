@@ -1,139 +1,68 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f171.google.com ([209.85.223.171]:58387 "EHLO
-	mail-ie0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752092AbaEVA41 (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 21 May 2014 20:56:27 -0400
-From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH v4 15/24] xprtrdma: Reduce the number of hardway buffer
-	allocations
-To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
-Date: Wed, 21 May 2014 20:56:25 -0400
-Message-ID: <20140522005625.27190.64480.stgit@manet.1015granger.net>
-In-Reply-To: <20140522004505.27190.58897.stgit@manet.1015granger.net>
-References: <20140522004505.27190.58897.stgit@manet.1015granger.net>
+Received: from mail-oa0-f42.google.com ([209.85.219.42]:43339 "EHLO
+	mail-oa0-f42.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751151AbaEXDUS (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 May 2014 23:20:18 -0400
+Received: by mail-oa0-f42.google.com with SMTP id j17so6483914oag.29
+        for <linux-nfs@vger.kernel.org>; Fri, 23 May 2014 20:20:17 -0700 (PDT)
+Message-ID: <53800FDD.7030001@gmail.com>
+Date: Sat, 24 May 2014 11:19:57 +0800
+From: Kinglong Mee <kinglongmee@gmail.com>
 MIME-Version: 1.0
-Content-Type: text/plain; charset="utf-8"
+To: "J. Bruce Fields" <bfields@fieldses.org>
+CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>, kinglongmee@gmail.com
+Subject: [PATCH v2] NFSD: Error out when getting more than one fsloc/secinfo/uuid
+References: <537F38AB.10102@gmail.com> <20140523135435.GK25423@fieldses.org> <537F5A1A.9000005@gmail.com> <20140523144128.GO25423@fieldses.org>
+In-Reply-To: <20140523144128.GO25423@fieldses.org>
+Content-Type: text/plain; charset=ISO-8859-1
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-While marshaling an RPC/RDMA request, the inline_{rsize,wsize}
-settings determine whether an inline request is used, or whether
-read or write chunks lists are built. The current default value of
-these settings is 1024. Any RPC request smaller than 1024 bytes is
-sent to the NFS server completely inline.
+v2:
+remove WARN_ON_ONCE(1) and return -EINVAL instead of ignoring it. 
 
-rpcrdma_buffer_create() allocates and pre-registers a set of RPC
-buffers for each transport instance, also based on the inline rsize
-and wsize settings.
-
-RPC/RDMA requests and replies are built in these buffers. However,
-if an RPC/RDMA request is expected to be larger than 1024, a buffer
-has to be allocated and registered for that RPC, and deregistered
-and released when the RPC is complete. This is known has a
-"hardway allocation."
-
-Since the introduction of NFSv4, the size of RPC requests has become
-larger, and hardway allocations are thus more frequent. Hardway
-allocations are significant overhead, and they waste the existing
-RPC buffers pre-allocated by rpcrdma_buffer_create().
-
-We'd like fewer hardway allocations.
-
-Increasing the size of the pre-registered buffers is the most direct
-way to do this. However, a blanket increase of the inline thresholds
-has interoperability consequences.
-
-On my 64-bit system, rpcrdma_buffer_create() requests roughly 7000
-bytes for each RPC request buffer, using kmalloc(). Due to internal
-fragmentation, this wastes nearly 1200 bytes because kmalloc()
-already returns an 8192-byte piece of memory for a 7000-byte
-allocation request, though the extra space remains unused.
-
-So let's round up the size of the pre-allocated buffers, and make
-use of the unused space in the kmalloc'd memory.
-
-This change reduces the amount of hardway allocated memory for an
-NFSv4 general connectathon run from 1322092 to 9472 bytes (99%).
-
-Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-Tested-by: Steve Wise <swise@opengridcomputing.com>
+Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
 ---
+ fs/nfsd/export.c | 12 ++++++++++++
+ 1 file changed, 12 insertions(+)
 
- net/sunrpc/xprtrdma/verbs.c |   25 +++++++++++++------------
- 1 files changed, 13 insertions(+), 12 deletions(-)
-
-diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 1d08366..c80995a 100644
---- a/net/sunrpc/xprtrdma/verbs.c
-+++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -50,6 +50,7 @@
- #include <linux/interrupt.h>
- #include <linux/pci.h>	/* for Tavor hack below */
- #include <linux/slab.h>
-+#include <asm/bitops.h>
+diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+index 7884051..13b85f9 100644
+--- a/fs/nfsd/export.c
++++ b/fs/nfsd/export.c
+@@ -389,6 +389,10 @@ fsloc_parse(char **mesg, char *buf, struct nfsd4_fs_locations *fsloc)
+ 	int len;
+ 	int migrated, i, err;
  
- #include "xprt_rdma.h"
- 
-@@ -1005,7 +1006,7 @@ rpcrdma_buffer_create(struct rpcrdma_buffer *buf, struct rpcrdma_ep *ep,
- 	struct rpcrdma_ia *ia, struct rpcrdma_create_data_internal *cdata)
- {
- 	char *p;
--	size_t len;
-+	size_t len, rlen, wlen;
- 	int i, rc;
- 	struct rpcrdma_mw *r;
- 
-@@ -1120,16 +1121,16 @@ rpcrdma_buffer_create(struct rpcrdma_buffer *buf, struct rpcrdma_ep *ep,
- 	 * Allocate/init the request/reply buffers. Doing this
- 	 * using kmalloc for now -- one for each buf.
- 	 */
-+	wlen = 1 << fls(cdata->inline_wsize + sizeof(struct rpcrdma_req));
-+	rlen = 1 << fls(cdata->inline_rsize + sizeof(struct rpcrdma_rep));
-+	dprintk("RPC:       %s: wlen = %zu, rlen = %zu\n",
-+		__func__, wlen, rlen);
++	/* more than one fsloc */
++	if (fsloc->locations)
++		return -EINVAL;
 +
- 	for (i = 0; i < buf->rb_max_requests; i++) {
- 		struct rpcrdma_req *req;
- 		struct rpcrdma_rep *rep;
+ 	/* listsize */
+ 	err = get_uint(mesg, &fsloc->locations_count);
+ 	if (err)
+@@ -442,6 +446,10 @@ static int secinfo_parse(char **mesg, char *buf, struct svc_export *exp)
+ 	u32 listsize;
+ 	int err;
  
--		len = cdata->inline_wsize + sizeof(struct rpcrdma_req);
--		/* RPC layer requests *double* size + 1K RPC_SLACK_SPACE! */
--		/* Typical ~2400b, so rounding up saves work later */
--		if (len < 4096)
--			len = 4096;
--		req = kmalloc(len, GFP_KERNEL);
-+		req = kmalloc(wlen, GFP_KERNEL);
- 		if (req == NULL) {
- 			dprintk("RPC:       %s: request buffer %d alloc"
- 				" failed\n", __func__, i);
-@@ -1141,16 +1142,16 @@ rpcrdma_buffer_create(struct rpcrdma_buffer *buf, struct rpcrdma_ep *ep,
- 		buf->rb_send_bufs[i]->rl_buffer = buf;
++	/* more than one secinfo */
++	if (exp->ex_nflavors)
++		return -EINVAL;
++
+ 	err = get_uint(mesg, &listsize);
+ 	if (err)
+ 		return err;
+@@ -481,6 +489,10 @@ uuid_parse(char **mesg, char *buf, unsigned char **puuid)
+ {
+ 	int len;
  
- 		rc = rpcrdma_register_internal(ia, req->rl_base,
--				len - offsetof(struct rpcrdma_req, rl_base),
-+				wlen - offsetof(struct rpcrdma_req, rl_base),
- 				&buf->rb_send_bufs[i]->rl_handle,
- 				&buf->rb_send_bufs[i]->rl_iov);
- 		if (rc)
- 			goto out;
- 
--		buf->rb_send_bufs[i]->rl_size = len-sizeof(struct rpcrdma_req);
-+		buf->rb_send_bufs[i]->rl_size = wlen -
-+						sizeof(struct rpcrdma_req);
- 
--		len = cdata->inline_rsize + sizeof(struct rpcrdma_rep);
--		rep = kmalloc(len, GFP_KERNEL);
-+		rep = kmalloc(rlen, GFP_KERNEL);
- 		if (rep == NULL) {
- 			dprintk("RPC:       %s: reply buffer %d alloc failed\n",
- 				__func__, i);
-@@ -1162,7 +1163,7 @@ rpcrdma_buffer_create(struct rpcrdma_buffer *buf, struct rpcrdma_ep *ep,
- 		buf->rb_recv_bufs[i]->rr_buffer = buf;
- 
- 		rc = rpcrdma_register_internal(ia, rep->rr_base,
--				len - offsetof(struct rpcrdma_rep, rr_base),
-+				rlen - offsetof(struct rpcrdma_rep, rr_base),
- 				&buf->rb_recv_bufs[i]->rr_handle,
- 				&buf->rb_recv_bufs[i]->rr_iov);
- 		if (rc)
++	/* more than one uuid */
++	if (*puuid)
++		return -EINVAL;
++
+ 	/* expect a 16 byte uuid encoded as \xXXXX... */
+ 	len = qword_get(mesg, buf, PAGE_SIZE);
+ 	if (len != EX_UUID_LEN)
+-- 
+1.9.3
 
