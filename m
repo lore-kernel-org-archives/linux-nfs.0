@@ -1,62 +1,45 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-qg0-f44.google.com ([209.85.192.44]:36383 "EHLO
-	mail-qg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752428AbaEWOVL (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Fri, 23 May 2014 10:21:11 -0400
-Received: by mail-qg0-f44.google.com with SMTP id i50so8269566qgf.31
-        for <linux-nfs@vger.kernel.org>; Fri, 23 May 2014 07:21:10 -0700 (PDT)
-Message-ID: <537F5940.7060908@gmail.com>
-Date: Fri, 23 May 2014 22:20:48 +0800
-From: Kinglong Mee <kinglongmee@gmail.com>
+Received: from api.opinsys.fi ([217.112.254.4]:58689 "EHLO mail.opinsys.fi"
+	rhost-flags-OK-OK-OK-FAIL) by vger.kernel.org with ESMTP
+	id S1751406AbaE0Itg (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 27 May 2014 04:49:36 -0400
+Date: Tue, 27 May 2014 08:50:26 +0000 (UTC)
+From: Veli-Matti Lintu <veli-matti.lintu@opinsys.fi>
+To: steved@redhat.com
+Cc: linux-nfs@vger.kernel.org,
+        Tuomas =?utf-8?B?UsOkc8OkbmVu?= <tuomas.rasanen@opinsys.fi>,
+        Jeff Layton <jlayton@poochiereds.net>
+Message-ID: <41011674.48947.1401180626967.JavaMail.zimbra@opinsys.fi>
+In-Reply-To: <454183694.48823.1401178027425.JavaMail.zimbra@opinsys.fi>
+Subject: [PATCH] gssd: Fix allocated buffer size for the scraped acceptor
+ name  in do_downcall
 MIME-Version: 1.0
-To: "J. Bruce Fields" <bfields@fieldses.org>
-CC: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 1/5] NFSD: Cleanup unneeded including linux/user_namespace.h
-References: <537F44B1.6080507@gmail.com> <20140523141855.GN25423@fieldses.org>
-In-Reply-To: <20140523141855.GN25423@fieldses.org>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=utf-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
 
-On 5/23/2014 22:18, J. Bruce Fields wrote:
-> Thanks, applied all five.
-> 
-> On Fri, May 23, 2014 at 08:53:05PM +0800, Kinglong Mee wrote:
->> commit 4c1e1b34d5c800ad3ac9a7e2805b0bea70ad2278 using kuid/kgid for
-> 
-> In future, when referring to another commit, could you also include the
-> summary line?  E.g.: Commit 8f6c5ffc8987 ("kernel/groups.c: remove
-> return value of set_groups") removed the last use of "ret"....
+In commit 51fda07a "gssd: scrape the acceptor name out of the context"
+the allocated buffer size is not large enough to hold the actual data
+that is written to the buffer. This fixes the allocated buffer size.
 
-Got it, i will do that in the future.
+Signed-off-by: Veli-Matti Lintu <veli-matti.lintu@opinsys.fi>
+---
+ utils/gssd/gssd_proc.c |    2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-thanks,
-Kinglong Mee
-
-> 
-> --b.
-> 
->> ex_anon_uid/ex_anon_gid, user_namespace.h is not needed now, clean it.
->>
->> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
->> ---
->>  fs/nfsd/auth.c | 1 -
->>  1 file changed, 1 deletion(-)
->>
->> diff --git a/fs/nfsd/auth.c b/fs/nfsd/auth.c
->> index 2645be4..1042325 100644
->> --- a/fs/nfsd/auth.c
->> +++ b/fs/nfsd/auth.c
->> @@ -1,7 +1,6 @@
->>  /* Copyright (C) 1995, 1996 Olaf Kirch <okir@monad.swb.de> */
->>  
->>  #include <linux/sched.h>
->> -#include <linux/user_namespace.h>
->>  #include "nfsd.h"
->>  #include "auth.h"
->>  
->> -- 
->> 1.9.3
->>
-> 
+diff --git a/utils/gssd/gssd_proc.c b/utils/gssd/gssd_proc.c
+index 69bb3c6..40ff188 100644
+--- a/utils/gssd/gssd_proc.c
++++ b/utils/gssd/gssd_proc.c
+@@ -696,7 +696,7 @@ do_downcall(int k5_fd, uid_t uid, struct authgss_private_data *pd,
+ 	buf_size = sizeof(uid) + sizeof(timeout) + sizeof(pd->pd_seq_win) +
+ 		sizeof(pd->pd_ctx_hndl.length) + pd->pd_ctx_hndl.length +
+ 		sizeof(context_token->length) + context_token->length +
+-		acceptor->length;
++		sizeof(acceptor->length) + acceptor->length;
+ 	p = buf = malloc(buf_size);
+ 	if (!buf)
+ 		goto out_err;
+-- 
+1.7.10.4
