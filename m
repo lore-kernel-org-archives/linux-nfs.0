@@ -1,79 +1,73 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:16546 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751291AbaETSIa (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Tue, 20 May 2014 14:08:30 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
-To: <Trond.Myklebust@primarydata.com>, <linux-nfs@vger.kernel.org>
-CC: <dros@primarydata.com>, <hch@infradead.org>
-Subject: [RFC 06/12] nfs: merge pnfs_try_to_write_data() and pnfs_do_write()
-Date: Tue, 20 May 2014 14:08:13 -0400
-Message-ID: <1400609299-32558-7-git-send-email-Anna.Schumaker@Netapp.com>
-In-Reply-To: <1400609299-32558-1-git-send-email-Anna.Schumaker@Netapp.com>
-References: <1400609299-32558-1-git-send-email-Anna.Schumaker@Netapp.com>
-MIME-Version: 1.0
-Content-Type: text/plain
+Received: from mail-ie0-f175.google.com ([209.85.223.175]:34877 "EHLO
+	mail-ie0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1752954AbaE0ShG convert rfc822-to-8bit (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 27 May 2014 14:37:06 -0400
+Received: by mail-ie0-f175.google.com with SMTP id y20so9265002ier.34
+        for <linux-nfs@vger.kernel.org>; Tue, 27 May 2014 11:37:05 -0700 (PDT)
+References: <1401214719-8882-1-git-send-email-steved@redhat.com>
+Mime-Version: 1.0 (1.0)
+In-Reply-To: <1401214719-8882-1-git-send-email-steved@redhat.com>
+Content-Type: text/plain;
+	charset=us-ascii
+Message-Id: <3B5A58F2-25AB-4F5E-8901-A9CFADBA959D@gmail.com>
+Cc: Libtirpc-devel Mailing List
+	<libtirpc-devel@lists.sourceforge.net>,
+        Linux NFS Mailing list <linux-nfs@vger.kernel.org>
+From: Chuck Lever <chucklever@gmail.com>
+Subject: Re: [Libtirpc-devel] [PATCH v2] Make IPv6 enabled by default
+Date: Tue, 27 May 2014 14:37:05 -0400
+To: Steve Dickson <steved@redhat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-This makes these functions look neater in preparation for combining with
-their read equivalents.
 
-Signed-off-by: Anna Schumaker <Anna.Schumaker@Netapp.com>
----
- fs/nfs/pnfs.c | 28 +++++++---------------------
- 1 file changed, 7 insertions(+), 21 deletions(-)
 
-diff --git a/fs/nfs/pnfs.c b/fs/nfs/pnfs.c
-index a0eee54..355cd41 100644
---- a/fs/nfs/pnfs.c
-+++ b/fs/nfs/pnfs.c
-@@ -1511,38 +1511,24 @@ void pnfs_ld_write_done(struct nfs_pgio_header *hdr)
- EXPORT_SYMBOL_GPL(pnfs_ld_write_done);
- 
- static enum pnfs_try_status
--pnfs_try_to_write_data(struct nfs_pgio_header *hdr,
--			const struct rpc_call_ops *call_ops,
--			struct pnfs_layout_segment *lseg,
--			int how)
-+pnfs_try_to_write_data(struct nfs_pgio_header *hdr, int how)
- {
--	struct inode *inode = hdr->inode;
--	enum pnfs_try_status trypnfs;
--	struct nfs_server *nfss = NFS_SERVER(inode);
--
--	hdr->mds_ops = call_ops;
--
--	dprintk("%s: Writing ino:%lu %u@%llu (how %d)\n", __func__,
--		inode->i_ino, hdr->args.count, hdr->args.offset, how);
--	trypnfs = nfss->pnfs_curr_ld->write_pagelist(hdr, how);
--	if (trypnfs != PNFS_NOT_ATTEMPTED)
--		nfs_inc_stats(inode, NFSIOS_PNFS_WRITE);
--	dprintk("%s End (trypnfs:%d)\n", __func__, trypnfs);
--	return trypnfs;
-+	return NFS_SERVER(hdr->inode)->pnfs_curr_ld->write_pagelist(hdr, how);
- }
- 
- static void
- pnfs_do_write(struct nfs_pageio_descriptor *desc,
- 	      struct nfs_pgio_header *hdr, int how)
- {
--	const struct rpc_call_ops *call_ops = desc->pg_rpc_callops;
- 	struct pnfs_layout_segment *lseg = desc->pg_lseg;
--	enum pnfs_try_status trypnfs;
- 
-+	hdr->mds_ops = desc->pg_rpc_callops;
- 	desc->pg_lseg = NULL;
--	trypnfs = pnfs_try_to_write_data(hdr, call_ops, lseg, how);
--	if (trypnfs == PNFS_NOT_ATTEMPTED)
-+
-+	if (pnfs_try_to_write_data(hdr, how) == PNFS_NOT_ATTEMPTED)
- 		pnfs_through_mds(desc, hdr);
-+	else
-+		nfs_inc_stats(hdr->inode, NFSIOS_PNFS_WRITE);
- 	pnfs_put_lseg(lseg);
- }
- 
--- 
-1.9.2
+> On May 27, 2014, at 2:18 PM, Steve Dickson <steved@redhat.com> wrote:
+> 
+> From: Mike Frysinger <vapier@gentoo.org>
+> 
+> Added a --disable-ipv6 configuration flag to allow the
+> disabling of the IPv6 support.
 
+If I may ask, who needs to disable it?
+
+
+> 
+> Signed-off-by: Steve Dickson <steved@redhat.com>
+> ---
+> configure.ac | 7 +++++++
+> 1 file changed, 7 insertions(+)
+> 
+> diff --git a/configure.ac b/configure.ac
+> index 7ff80a4..a99c5d6 100644
+> --- a/configure.ac
+> +++ b/configure.ac
+> @@ -15,6 +15,13 @@ if test x$gss = xtrue; then
+>    PKG_CHECK_MODULES(GSSGLUE, libgssglue, [],
+>    AC_MSG_ERROR([Unable to locate information required to use libgssglue.]))
+> fi
+> +AC_ARG_ENABLE(ipv6,
+> +    [AC_HELP_STRING([--disable-ipv6], [Disable IPv6 support @<:@default=no@:>@])],
+> +    [],[enable_ipv6=yes])
+> +AM_CONDITIONAL(INET6, test "x$disable_ipv6" != xno)
+> +if test "x$enable_ipv6" != xno; then
+> +    AC_DEFINE(INET6, 1, [Define to 1 if IPv6 is available])
+> +fi
+> 
+> AC_PROG_CC
+> AM_CONFIG_HEADER(config.h)
+> -- 
+> 1.7.11.7
+> 
+> 
+> ------------------------------------------------------------------------------
+> The best possible search technologies are now affordable for all companies.
+> Download your FREE open source Enterprise Search Engine today!
+> Our experts will assist you in its installation for $59/mo, no commitment.
+> Test it for FREE on our Cloud platform anytime!
+> http://pubads.g.doubleclick.net/gampad/clk?id=145328191&iu=/4140/ostg.clktrk
+> _______________________________________________
+> Libtirpc-devel mailing list
+> Libtirpc-devel@lists.sourceforge.net
+> https://lists.sourceforge.net/lists/listinfo/libtirpc-devel
