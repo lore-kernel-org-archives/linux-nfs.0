@@ -1,112 +1,67 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ve0-f175.google.com ([209.85.128.175]:34705 "EHLO
-	mail-ve0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S964865AbaEQRR3 convert rfc822-to-8bit (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 17 May 2014 13:17:29 -0400
-Received: by mail-ve0-f175.google.com with SMTP id jw12so4547101veb.6
-        for <linux-nfs@vger.kernel.org>; Sat, 17 May 2014 10:17:28 -0700 (PDT)
+Received: from mx1.redhat.com ([209.132.183.28]:51788 "EHLO mx1.redhat.com"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1752494AbaE0Tqe (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 27 May 2014 15:46:34 -0400
+Date: Tue, 27 May 2014 21:46:24 +0200
+From: Jakub Hrozek <jhrozek@redhat.com>
+To: Development of the System Security Services Daemon
+	<sssd-devel@lists.fedorahosted.org>
+Cc: Noam Meltzer <noam@primarydata.com>, Simo Sorce <simo@redhat.com>,
+        "J. Bruce Fields" <bfields@fieldses.org>, linux-nfs@vger.kernel.org
+Subject: Re: [SSSD] [PATCH v2 0/5] NFSv4 rpc.idmapd plugin
+Message-ID: <20140527194624.GY6330@hendrix.brq.redhat.com>
+References: <1393918676-20865-1-git-send-email-noam@primarydata.com>
+ <5321CDB6.7010803@RedHat.com>
+ <1394729939.32465.231.camel@willson.li.ssimo.org>
+ <20140313172531.GA7124@fieldses.org>
+ <1394732462.32465.235.camel@willson.li.ssimo.org>
+ <CAOoFWK_uNLEim7MH=K=Ojge_KjcJk6V7p1-LFcYNPC9=fZ90fQ@mail.gmail.com>
+ <532AF1D1.7070400@RedHat.com>
 MIME-Version: 1.0
-In-Reply-To: <CAFo99gatLzLpOu92N23bMQ=a25BTnK3QK2rAzoQJcU3oxMuMgA@mail.gmail.com>
-References: <1400190998-28153-1-git-send-email-rickard_strandqvist@spectrumdigital.se>
-	<5376025B.6010202@cogentembedded.com>
-	<CAFo99gatLzLpOu92N23bMQ=a25BTnK3QK2rAzoQJcU3oxMuMgA@mail.gmail.com>
-Date: Sat, 17 May 2014 13:17:28 -0400
-Message-ID: <CAHQdGtRd-uKvRU8DD9zK-MEF0B10=rESrQAPJoQ8hTunwG883A@mail.gmail.com>
-Subject: Re: [PATCH] Fix for possible null pointer dereference in auth.c
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Rickard Strandqvist <rickard_strandqvist@spectrumdigital.se>
-Cc: Sergei Shtylyov <sergei.shtylyov@cogentembedded.com>,
-        "J. Bruce Fields" <bfields@fieldses.org>,
-        "David S. Miller" <davem@davemloft.net>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
-        "netdev@vger.kernel.org" <netdev@vger.kernel.org>,
-        Linux Kernel mailing list <linux-kernel@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <532AF1D1.7070400@RedHat.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Sat, May 17, 2014 at 12:36 PM, Rickard Strandqvist
-<rickard_strandqvist@spectrumdigital.se> wrote:
-> Hi
->
-> I have made a new patch according Sergei specification.
->
+On Thu, Mar 20, 2014 at 09:49:05AM -0400, Steve Dickson wrote:
+> 
+> 
+> On 03/20/2014 03:33 AM, Noam Meltzer wrote:
+> > 
+> > 
+> > 
+> > On Thu, Mar 13, 2014 at 7:41 PM, Simo Sorce <simo@redhat.com <mailto:simo@redhat.com>> wrote:
+> > 
+> >     On Thu, 2014-03-13 at 13:25 -0400, J. Bruce Fields wrote:
+> >     > On Thu, Mar 13, 2014 at 12:58:59PM -0400, Simo Sorce wrote:
+> >     > > On Thu, 2014-03-13 at 11:24 -0400, Steve Dickson wrote:
+> >     > >
+> >     > > > V4 servers now have an option of returning a uid string (aka "3606")
+> >     > > > where the NFS client just converts that into the uid.
+> >     > >
+> >     > > Can the client tell the server *not to do that* ?
+> >     >
+> >     > The client can use kerberos, in which case the server won't do that.
+> > 
+> >     This is sufficient, thanks.
+> > 
+> >     > Other than that, no, the behavior can only be controlled by server-side
+> >     > configuration.
+> > 
+> >     A little sub-optimal if the server can do either but the client can have
+> >     a choice, but ok.
+> > 
+> > 
+> > Sorry for the late response. A misplaced email filtering rule had moved it away from my inbox.
+> > How can we push this forward?
+> > 
+> Not sure since I don't maintain any of the code these patches change... 
+> 
+> steved.
 
-I'll be happy to apply this patch once someone explains to me why we
-can't just remove that check for cred != NULL, however I'm not
-applying a patch purely in order to silence a warning from cppcheck.
+Does the code work with the current NFS idmap implementation or are
+there any changes on either side needed?
 
-Cheers,
-   Trond
-
-> But there remains Tronds question though.
->
-> Best regards
-> Rickard Strandqvist
->
->
-> 2014-05-16 14:19 GMT+02:00 Sergei Shtylyov <sergei.shtylyov@cogentembedded.com>:
->> Hello.
->>
->>
->> On 16-05-2014 1:56, Rickard Strandqvist wrote:
->>
->>> There is otherwise a risk of a possible null pointer dereference.
->>
->>
->>> Was largely found by using a static code analysis program called cppcheck.
->>
->>
->>> Signed-off-by: Rickard Strandqvist
->>> <rickard_strandqvist@spectrumdigital.se>
->>> ---
->>>   net/sunrpc/auth.c |   10 +++++++---
->>>   1 fil ändrad, 7 tillägg(+), 3 borttagningar(-)
->>
->>
->>> diff --git a/net/sunrpc/auth.c b/net/sunrpc/auth.c
->>> index 5285ead..3a55698 100644
->>> --- a/net/sunrpc/auth.c
->>> +++ b/net/sunrpc/auth.c
->>> @@ -801,10 +801,14 @@ rpcauth_invalcred(struct rpc_task *task)
->>>   {
->>>         struct rpc_cred *cred = task->tk_rqstp->rq_cred;
->>>
->>> -       dprintk("RPC: %5u invalidating %s cred %p\n",
->>> -               task->tk_pid, cred->cr_auth->au_ops->au_name, cred);
->>> -       if (cred)
->>> +       if (cred) {
->>> +               dprintk("RPC: %5u invalidating %s cred %p\n",
->>> +                       task->tk_pid, cred->cr_auth->au_ops->au_name,
->>> cred);
->>> +
->>>                 clear_bit(RPCAUTH_CRED_UPTODATE, &cred->cr_flags);
->>> +       }
->>> +       else
->>
->>
->>    } and *else* should be on the same line, and there should be {} in the
->> *else* arm since there's {} in the *if* arm already, according to
->> Documentation/CodingStyle.
->>
->>
->>> +               dprintk("RPC: %5u invalidating is NULL\n", task->tk_pid);
->>
->>
->>    That's not a proper English, I'm afraid.
->>
->>>   }
->>
->>
->> WBR, Sergei
->>
->>
-
-
-
--- 
-Trond Myklebust
-
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
+Simo, are there still any issues that would prevent us from merging the
+code into SSSD?
