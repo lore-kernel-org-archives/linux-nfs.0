@@ -1,91 +1,69 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:37183 "EHLO mx1.redhat.com"
+Received: from fieldses.org ([174.143.236.118]:50937 "EHLO fieldses.org"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751833AbaE1VZD (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 28 May 2014 17:25:03 -0400
-Message-ID: <53865423.4060905@RedHat.com>
-Date: Wed, 28 May 2014 17:24:51 -0400
-From: Steve Dickson <SteveD@redhat.com>
+	id S1751831AbaE0PrC (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 27 May 2014 11:47:02 -0400
+Date: Tue, 27 May 2014 11:47:00 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH] NFSD: Using type of uint32_t for ex_nflavors instead of
+ int
+Message-ID: <20140527154700.GB21989@fieldses.org>
+References: <53801179.8080502@gmail.com>
 MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: libtirpc List <libtirpc-devel@lists.sourceforge.net>,
-        Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH v3] Avoid buffer overruns by allocating buffer in svcauth_gss_validate()
-References: <1401304171-12231-1-git-send-email-steved@redhat.com> <B43A996B-5DB8-470B-926C-27FF30445D7D@oracle.com>
-In-Reply-To: <B43A996B-5DB8-470B-926C-27FF30445D7D@oracle.com>
-Content-Type: text/plain; charset=ISO-8859-1
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <53801179.8080502@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Sat, May 24, 2014 at 11:26:49AM +0800, Kinglong Mee wrote:
+> ex_nflavors can't be negative number, just defined by uint32_t.
 
-
-On 05/28/2014 03:11 PM, Chuck Lever wrote:
-> 
-> On May 28, 2014, at 3:09 PM, Steve Dickson <steved@redhat.com> wrote:
-> 
->> Signed-off-by: Steve Dickson <steved@redhat.com>
-> 
-> Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
-Thank you... For your time! 
-
-steved.
+OK, applying for 3.16.--b.
 
 > 
->> ---
->> src/svc_auth_gss.c |   14 +++++++-------
->> 1 files changed, 7 insertions(+), 7 deletions(-)
->>
->> diff --git a/src/svc_auth_gss.c b/src/svc_auth_gss.c
->> index 601a691..26c1065 100644
->> --- a/src/svc_auth_gss.c
->> +++ b/src/svc_auth_gss.c
->> @@ -286,21 +286,19 @@ svcauth_gss_validate(struct svc_rpc_gss_data *gd, struct rpc_msg *msg)
->> 	struct opaque_auth	*oa;
->> 	gss_buffer_desc		 rpcbuf, checksum;
->> 	OM_uint32		 maj_stat, min_stat, qop_state;
->> -	u_char			 rpchdr[128];
->> +	u_char			 *rpchdr;
->> 	int32_t			*buf;
->>
->> 	gss_log_debug("in svcauth_gss_validate()");
->>
->> -	memset(rpchdr, 0, sizeof(rpchdr));
->> -
->> 	/* XXX - Reconstruct RPC header for signing (from xdr_callmsg). */
->> 	oa = &msg->rm_call.cb_cred;
->> 	if (oa->oa_length > MAX_AUTH_BYTES)
->> 		return (FALSE);
->> -	
->> -	/* 8 XDR units from the IXDR macro calls. */
->> -	if (sizeof(rpchdr) < (8 * BYTES_PER_XDR_UNIT +
->> -			RNDUP(oa->oa_length)))
->> +
->> +	rpchdr = (u_char *)calloc(((8 * BYTES_PER_XDR_UNIT) + 
->> +			RNDUP(oa->oa_length)), 1);
->> +	if (rpchdr == NULL)
->> 		return (FALSE);
->>
->> 	buf = (int32_t *)rpchdr;
->> @@ -325,6 +323,8 @@ svcauth_gss_validate(struct svc_rpc_gss_data *gd, struct rpc_msg *msg)
->> 	maj_stat = gss_verify_mic(&min_stat, gd->ctx, &rpcbuf, &checksum,
->> 				  &qop_state);
->>
->> +	free(rpchdr);
->> +
->> 	if (maj_stat != GSS_S_COMPLETE) {
->> 		gss_log_status("gss_verify_mic", maj_stat, min_stat);
->> 		return (FALSE);
->> -- 
->> 1.7.1
->>
->> --
->> To unsubscribe from this list: send the line "unsubscribe linux-nfs" in
->> the body of a message to majordomo@vger.kernel.org
->> More majordomo info at  http://vger.kernel.org/majordomo-info.html
+> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> ---
+>  fs/nfsd/export.c | 7 ++++---
+>  fs/nfsd/export.h | 2 +-
+>  2 files changed, 5 insertions(+), 4 deletions(-)
 > 
-> --
-> Chuck Lever
-> chuck[dot]lever[at]oracle[dot]com
-> 
-> 
+> diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+> index 8513c59..9343ae2 100644
+> --- a/fs/nfsd/export.c
+> +++ b/fs/nfsd/export.c
+> @@ -437,13 +437,14 @@ out_free_all:
+>  
+>  static int secinfo_parse(char **mesg, char *buf, struct svc_export *exp)
+>  {
+> -	int listsize, err;
+>  	struct exp_flavor_info *f;
+> +	u32 listsize;
+> +	int err;
+>  
+> -	err = get_int(mesg, &listsize);
+> +	err = get_uint(mesg, &listsize);
+>  	if (err)
+>  		return err;
+> -	if (listsize < 0 || listsize > MAX_SECINFO_LIST)
+> +	if (listsize > MAX_SECINFO_LIST)
+>  		return -EINVAL;
+>  
+>  	for (f = exp->ex_flavors; f < exp->ex_flavors + listsize; f++) {
+> diff --git a/fs/nfsd/export.h b/fs/nfsd/export.h
+> index d7939a6..11d03b9 100644
+> --- a/fs/nfsd/export.h
+> +++ b/fs/nfsd/export.h
+> @@ -53,7 +53,7 @@ struct svc_export {
+>  	int			ex_fsid;
+>  	unsigned char *		ex_uuid; /* 16 byte fsid */
+>  	struct nfsd4_fs_locations ex_fslocs;
+> -	int			ex_nflavors;
+> +	uint32_t		ex_nflavors;
+>  	struct exp_flavor_info	ex_flavors[MAX_SECINFO_LIST];
+>  	struct cache_detail	*cd;
+>  };
+> -- 
+> 1.9.3
 > 
