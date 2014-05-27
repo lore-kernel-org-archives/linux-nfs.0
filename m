@@ -1,80 +1,96 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:43350 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:61099 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752027AbaEVTcd (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 May 2014 15:32:33 -0400
+	id S1751711AbaE0P27 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 27 May 2014 11:28:59 -0400
+Date: Tue, 27 May 2014 11:28:57 -0400
 From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: Christoph Hellwig <hch@infradead.org>
-Subject: xdr encoding fixes (v3)
-Date: Thu, 22 May 2014 15:31:35 -0400
-Message-Id: <1400787148-25941-1-git-send-email-bfields@redhat.com>
+To: Jeff Layton <jeff.layton@primarydata.com>
+Cc: linux-nfs@vger.kernel.org, stable@vger.kernel.org
+Subject: Re: [PATCH 1/2] nfsd4: remove lockowner when removing lock stateid
+Message-ID: <20140527152857.GB2312@pad.redhat.com>
+References: <1400688325-5345-1-git-send-email-bfields@redhat.com>
+ <1400688325-5345-2-git-send-email-bfields@redhat.com>
+ <20140527085007.7beb02ec@tlielax.poochiereds.net>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <20140527085007.7beb02ec@tlielax.poochiereds.net>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Changes since the previous posting include:
+On Tue, May 27, 2014 at 08:50:07AM -0400, Jeff Layton wrote:
+> On Wed, 21 May 2014 12:05:24 -0400
+> "J. Bruce Fields" <bfields@redhat.com> wrote:
+> 
+> > From: "J. Bruce Fields" <bfields@redhat.com>
+> > 
+> > The nfsv4 state code has always assumed a one-to-one correspondance
+> > between lock stateid's and lockowners even if it appears not to in some
+> > places.
+> > 
+> > We may actually change that, but for now when FREE_STATEID releases a
+> > lock stateid it also needs to release the parent lockowner.
+> > 
+> > Symptoms were a subsequent LOCK crashing in find_lockowner_str when it
+> > calls same_lockowner_ino on a lockowner that unexpectedly has an empty
+> > so_stateids list.
+> > 
+> > Cc: stable@vger.kernel.org
+> > Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> > ---
+> >  fs/nfsd/nfs4state.c | 11 +++++++++--
+> >  1 file changed, 9 insertions(+), 2 deletions(-)
+> > 
+> > diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> > index 32b699b..89e4240 100644
+> > --- a/fs/nfsd/nfs4state.c
+> > +++ b/fs/nfsd/nfs4state.c
+> > @@ -3717,9 +3717,16 @@ out:
+> >  static __be32
+> >  nfsd4_free_lock_stateid(struct nfs4_ol_stateid *stp)
+> >  {
+> > -	if (check_for_locks(stp->st_file, lockowner(stp->st_stateowner)))
+> > +	struct nfs4_lockowner *lo = lockowner(stp->st_stateowner);
+> > +
+> > +	if (check_for_locks(stp->st_file, lo))
+> >  		return nfserr_locks_held;
+> > -	release_lock_stateid(stp);
+> > +	/*
+> > +	 * Currently there's a 1-1 lock stateid<->lockowner
+> > +	 * correspondance, and we have to delete the lockowner when we
+> > +	 * delete the lock stateid:
+> > +	 */
+> > +	unhash_lockowner(lo);
+> 
+> Shouldn't this be release_lockowner(lo) ? If not, what's going to free
+> the lockowner afterward?
 
-	- fix for a bug in "allow exotic read compounds" that appears to
-	  have been the cause for xfstests hangs
-	- tighten the estimate of space required for
-	  checksumming/encryption (in particular it can be zero in the
-	  non-krb5i/krb5p case).
-	- fix some sloppy reply size estimates uncovered by the previous
-	  change.
-
-I'll soon start merging at least the first patches for 3.16.
-
-Original introduction follows:
-
-This is a collection of fixes for the NFS server's encoding of NFSv4
-compounds, along with a few tangentially related cleanups and bugfixes I
-noticed along the way.
-
-The basic problem is that we've always assumed an rpc reply is either
-
-	- "small" (much less than a page), or
-	- looks like a read (a bunch of data with a little bit at the
-	  beginning and the end).
-
-That assumption has allowed us to cover the most important cases without
-having to deal with some annoying details like how to encode arbitrary
-data across a page boundary, but: 
-
-	- The inability to encode attributes of more than a page annoys
-	  some people who would like to get and set extraordinarily long
-	  ACLs.
-
-	- The inability to encode attributes that cross page boundaries
-	  also means we can't return more than a page of readdir data at
-	  a time, limiting readdir performance on large directories.
-
-	- The NFSv4 protocol doesn't really allow us to place these
-	  sorts of arbitrary limits on the types of compounds we handle.
-	  (Well, 4.0 is a bit fuzzy on this point, but 4.1 I think
-	  definitely considers it a bug if a server won't handle, e.g.,
-	  multiple read ops in a compound.)  This hasn't been an issue
-	  because most of these exotic compounds aren't really useful to
-	  clients.  But maybe future clients will find a use for some of
-	  them--in which case we'd prefer not to make the work around a
-	  server that doesn't meet the spec.
-
-So, the main goal is to fix those limitations.  We also get to share a
-little more code with the client.
-
-Further work may include:
-
-	- writing more pynfs tests for exotic compounds and odd corner
-	  cases,
-	- auditing the annoying nfsd4_*_rsize() functions, which we now
-	  depend on for more things,
-	- improving our (currently very sloppy) estimate of how much
-	  space we need for krb5i/krb5p to checksum/encrypt the result.
-	- sharing some of this with the v2/v3 code (especially in the
-	  read and readdir cases),
-	- allow rpc's whose call and reply are both very large (our one
-	  remaining dubious limit on compounds, though again something
-	  clients seem unlikely to notice for now),
-	- on the decode side, eliminating the existing macros and
-	  sharing more helpers with the client.
+Yes, thank you!  I'll probably send along the following soon....
 
 --b.
+
+commit bc0336505f20
+Author: J. Bruce Fields <bfields@redhat.com>
+Date:   Tue May 27 11:14:26 2014 -0400
+
+    nfsd4: fix FREE_STATEID lockowner leak
+    
+    27b11428b7de ("nfsd4: remove lockowner when removing lock stateid")
+    introduced a memory leak.
+    
+    Reported-by: Jeff Layton <jeff.layton@primarydata.com>
+    Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+
+diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+index 9a77a5a21557..6134ee283798 100644
+--- a/fs/nfsd/nfs4state.c
++++ b/fs/nfsd/nfs4state.c
+@@ -3726,7 +3726,7 @@ nfsd4_free_lock_stateid(struct nfs4_ol_stateid *stp)
+ 	 * correspondance, and we have to delete the lockowner when we
+ 	 * delete the lock stateid:
+ 	 */
+-	unhash_lockowner(lo);
++	release_lockowner(lo);
+ 	return nfs_ok;
+ }
+ 
