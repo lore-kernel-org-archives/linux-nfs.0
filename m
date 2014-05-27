@@ -1,77 +1,37 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-we0-f172.google.com ([74.125.82.172]:58115 "EHLO
-	mail-we0-f172.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752251AbaEAHgY (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 1 May 2014 03:36:24 -0400
-Received: by mail-we0-f172.google.com with SMTP id u57so2766370wes.31
-        for <linux-nfs@vger.kernel.org>; Thu, 01 May 2014 00:36:23 -0700 (PDT)
-Message-ID: <5361F973.20707@dev.mellanox.co.il>
-Date: Thu, 01 May 2014 03:36:19 -0400
-From: Hal Rosenstock <hal@dev.mellanox.co.il>
+Received: from fieldses.org ([174.143.236.118]:44435 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751434AbaE0Uz1 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 27 May 2014 16:55:27 -0400
+Date: Tue, 27 May 2014 16:55:27 -0400
+To: Felix Miata <mrmazda@earthlink.net>
+Cc: linux-nfs@vger.kernel.org
+Subject: Re: system updating routinely umounts "manual" nfs mounts
+Message-ID: <20140527205527.GC32160@fieldses.org>
+References: <53823B52.2080201@earthlink.net>
 MIME-Version: 1.0
-To: Chuck Lever <chuck.lever@oracle.com>
-CC: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org,
-        Anna.Schumaker@netapp.com
-Subject: Re: [PATCH V3 17/17] xprtrdma: Remove Tavor MTU setting
-References: <20140430191433.5663.16217.stgit@manet.1015granger.net> <20140430193155.5663.86148.stgit@manet.1015granger.net>
-In-Reply-To: <20140430193155.5663.86148.stgit@manet.1015granger.net>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <53823B52.2080201@earthlink.net>
+From: "J. Bruce Fields" <bfields@fieldses.org>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On 4/30/2014 3:31 PM, Chuck Lever wrote:
-> Clean up.  Remove HCA-specific clutter in xprtrdma, which is
-> supposed to be device-independent.
+On Sun, May 25, 2014 at 02:49:54PM -0400, Felix Miata wrote:
+> This has been happening here for several months or more in devel
+> distro versions Factory and IIRC Cauldron and Rawhide.
 > 
-> Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
-> ---
-> 
->  net/sunrpc/xprtrdma/verbs.c |   14 --------------
->  1 files changed, 0 insertions(+), 14 deletions(-)
-> 
-> diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-> index 54edf2a..515dfc1 100644
-> --- a/net/sunrpc/xprtrdma/verbs.c
-> +++ b/net/sunrpc/xprtrdma/verbs.c
-> @@ -48,7 +48,6 @@
->   */
->  
->  #include <linux/interrupt.h>
-> -#include <linux/pci.h>	/* for Tavor hack below */
->  #include <linux/slab.h>
->  #include <asm/bitops.h>
->  
-> @@ -920,19 +919,6 @@ retry:
->  		}
->  	}
->  
-> -/* XXX Tavor device performs badly with 2K MTU! */
-> -if (strnicmp(ia->ri_id->device->dma_device->bus->name, "pci", 3) == 0) {
-> -	struct pci_dev *pcid = to_pci_dev(ia->ri_id->device->dma_device);
-> -	if (pcid->device == PCI_DEVICE_ID_MELLANOX_TAVOR &&
-> -	    (pcid->vendor == PCI_VENDOR_ID_MELLANOX ||
-> -	     pcid->vendor == PCI_VENDOR_ID_TOPSPIN)) {
-> -		struct ib_qp_attr attr = {
-> -			.path_mtu = IB_MTU_1024
-> -		};
-> -		rc = ib_modify_qp(ia->ri_id->qp, &attr, IB_QP_PATH_MTU);
+> Maybe others' manual nfs mounts are more "manual" than mine are.
+> Mine are actually a group of noauto fstab entries I enable via
+> script when I want them active. All of my installations are on real
+> x86 hardware, some 32 and others 64 bit. I'm guessing what's going
+> on is systemd updates syncing /proc/mounts to fstab, oblivious to
+> the manual post-init mount processes having taken place, but this
+> certainly could be nfs evolutionary fallout or something else I know
+> nothing about. Is this happening to others? Expected? My search of
+> nfs component @bugzilla.kernel.org produced nothing on apparent
+> point.
 
-Note that there is OpenSM option (enable_quirks) to return 1K MTU in SA
-PathRecord responses for Tavor so that can be used for this. The default
-setting for enable_quirks is FALSE so that would need changing.
+The kernel certainly isn't going to unmount things for you like this, so
+this is a question for the distro or systemd maintainers or something.
 
--- Hal
-
-> -	}
-> -}
-> -
->  	ep->rep_connected = 0;
->  
->  	rc = rdma_connect(ia->ri_id, &ep->rep_remote_cma);
-> 
-> --
-> To unsubscribe from this list: send the line "unsubscribe linux-rdma" in
-> the body of a message to majordomo@vger.kernel.org
-> More majordomo info at  http://vger.kernel.org/majordomo-info.html
-> 
-
+--b.
