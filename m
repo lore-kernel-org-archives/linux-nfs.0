@@ -1,62 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:43257 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751338AbaE1TJm (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Wed, 28 May 2014 15:09:42 -0400
-From: Steve Dickson <steved@redhat.com>
-To: Libtirpc-devel Mailing List <libtirpc-devel@lists.sourceforge.net>
-Cc: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: [PATCH v3] Avoid buffer overruns by allocating buffer in svcauth_gss_validate()
-Date: Wed, 28 May 2014 15:09:31 -0400
-Message-Id: <1401304171-12231-1-git-send-email-steved@redhat.com>
+Received: from mail-qg0-f41.google.com ([209.85.192.41]:49886 "EHLO
+	mail-qg0-f41.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751748AbaE0MuK (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Tue, 27 May 2014 08:50:10 -0400
+Received: by mail-qg0-f41.google.com with SMTP id j5so13811830qga.14
+        for <linux-nfs@vger.kernel.org>; Tue, 27 May 2014 05:50:09 -0700 (PDT)
+From: Jeff Layton <jeff.layton@primarydata.com>
+Date: Tue, 27 May 2014 08:50:07 -0400
+To: "J. Bruce Fields" <bfields@redhat.com>
+Cc: linux-nfs@vger.kernel.org, Jeff Layton <jeff.layton@primarydata.com>,
+        stable@vger.kernel.org
+Subject: Re: [PATCH 1/2] nfsd4: remove lockowner when removing lock stateid
+Message-ID: <20140527085007.7beb02ec@tlielax.poochiereds.net>
+In-Reply-To: <1400688325-5345-2-git-send-email-bfields@redhat.com>
+References: <1400688325-5345-1-git-send-email-bfields@redhat.com>
+	<1400688325-5345-2-git-send-email-bfields@redhat.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=US-ASCII
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-Signed-off-by: Steve Dickson <steved@redhat.com>
----
- src/svc_auth_gss.c |   14 +++++++-------
- 1 files changed, 7 insertions(+), 7 deletions(-)
+On Wed, 21 May 2014 12:05:24 -0400
+"J. Bruce Fields" <bfields@redhat.com> wrote:
 
-diff --git a/src/svc_auth_gss.c b/src/svc_auth_gss.c
-index 601a691..26c1065 100644
---- a/src/svc_auth_gss.c
-+++ b/src/svc_auth_gss.c
-@@ -286,21 +286,19 @@ svcauth_gss_validate(struct svc_rpc_gss_data *gd, struct rpc_msg *msg)
- 	struct opaque_auth	*oa;
- 	gss_buffer_desc		 rpcbuf, checksum;
- 	OM_uint32		 maj_stat, min_stat, qop_state;
--	u_char			 rpchdr[128];
-+	u_char			 *rpchdr;
- 	int32_t			*buf;
- 
- 	gss_log_debug("in svcauth_gss_validate()");
- 
--	memset(rpchdr, 0, sizeof(rpchdr));
--
- 	/* XXX - Reconstruct RPC header for signing (from xdr_callmsg). */
- 	oa = &msg->rm_call.cb_cred;
- 	if (oa->oa_length > MAX_AUTH_BYTES)
- 		return (FALSE);
--	
--	/* 8 XDR units from the IXDR macro calls. */
--	if (sizeof(rpchdr) < (8 * BYTES_PER_XDR_UNIT +
--			RNDUP(oa->oa_length)))
-+
-+	rpchdr = (u_char *)calloc(((8 * BYTES_PER_XDR_UNIT) + 
-+			RNDUP(oa->oa_length)), 1);
-+	if (rpchdr == NULL)
- 		return (FALSE);
- 
- 	buf = (int32_t *)rpchdr;
-@@ -325,6 +323,8 @@ svcauth_gss_validate(struct svc_rpc_gss_data *gd, struct rpc_msg *msg)
- 	maj_stat = gss_verify_mic(&min_stat, gd->ctx, &rpcbuf, &checksum,
- 				  &qop_state);
- 
-+	free(rpchdr);
-+
- 	if (maj_stat != GSS_S_COMPLETE) {
- 		gss_log_status("gss_verify_mic", maj_stat, min_stat);
- 		return (FALSE);
+> From: "J. Bruce Fields" <bfields@redhat.com>
+> 
+> The nfsv4 state code has always assumed a one-to-one correspondance
+> between lock stateid's and lockowners even if it appears not to in some
+> places.
+> 
+> We may actually change that, but for now when FREE_STATEID releases a
+> lock stateid it also needs to release the parent lockowner.
+> 
+> Symptoms were a subsequent LOCK crashing in find_lockowner_str when it
+> calls same_lockowner_ino on a lockowner that unexpectedly has an empty
+> so_stateids list.
+> 
+> Cc: stable@vger.kernel.org
+> Signed-off-by: J. Bruce Fields <bfields@redhat.com>
+> ---
+>  fs/nfsd/nfs4state.c | 11 +++++++++--
+>  1 file changed, 9 insertions(+), 2 deletions(-)
+> 
+> diff --git a/fs/nfsd/nfs4state.c b/fs/nfsd/nfs4state.c
+> index 32b699b..89e4240 100644
+> --- a/fs/nfsd/nfs4state.c
+> +++ b/fs/nfsd/nfs4state.c
+> @@ -3717,9 +3717,16 @@ out:
+>  static __be32
+>  nfsd4_free_lock_stateid(struct nfs4_ol_stateid *stp)
+>  {
+> -	if (check_for_locks(stp->st_file, lockowner(stp->st_stateowner)))
+> +	struct nfs4_lockowner *lo = lockowner(stp->st_stateowner);
+> +
+> +	if (check_for_locks(stp->st_file, lo))
+>  		return nfserr_locks_held;
+> -	release_lock_stateid(stp);
+> +	/*
+> +	 * Currently there's a 1-1 lock stateid<->lockowner
+> +	 * correspondance, and we have to delete the lockowner when we
+> +	 * delete the lock stateid:
+> +	 */
+> +	unhash_lockowner(lo);
+
+Shouldn't this be release_lockowner(lo) ? If not, what's going to free
+the lockowner afterward?
+
+>  	return nfs_ok;
+>  }
+>  
+
+
 -- 
-1.7.1
-
+Jeff Layton <jlayton@primarydata.com>
