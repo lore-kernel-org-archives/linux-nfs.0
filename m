@@ -1,42 +1,75 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-wg0-f44.google.com ([74.125.82.44]:33917 "EHLO
-	mail-wg0-f44.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1755272AbaEaOvw (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Sat, 31 May 2014 10:51:52 -0400
-Date: Sat, 31 May 2014 16:51:15 +0200
-From: Richard Cochran <richardcochran@gmail.com>
-To: Arnd Bergmann <arnd@arndb.de>
-Cc: linux-kernel@vger.kernel.org, hch@infradead.org,
-        linux-mtd@lists.infradead.org, hpa@zytor.com, logfs@logfs.org,
-        linux-afs@lists.infradead.org, joseph@codesourcery.com,
-        linux-arch@vger.kernel.org, linux-cifs@vger.kernel.org,
-        linux-scsi@vger.kernel.org, ceph-devel@vger.kernel.org,
-        codalist@TELEMANN.coda.cs.cmu.edu, cluster-devel@redhat.com,
-        coda@cs.cmu.edu, geert@linux-m68k.org, linux-ext4@vger.kernel.org,
-        fuse-devel@lists.sourceforge.net, reiserfs-devel@vger.kernel.org,
-        xfs@oss.sgi.com, john.stultz@linaro.org, tglx@linutronix.de,
-        linux-nfs@vger.kernel.org, linux-ntfs-dev@lists.sourceforge.net,
-        samba-technical@lists.samba.org,
-        linux-f2fs-devel@lists.sourceforge.net, ocfs2-devel@oss.oracle.com,
-        linux-fsdevel@vger.kernel.org, lftan@altera.com,
-        linux-btrfs@vger.kernel.org
-Subject: Re: [RFC 00/32] making inode time stamps y2038 ready
-Message-ID: <20140531145114.GA3721@localhost.localdomain>
-References: <1401480116-1973111-1-git-send-email-arnd@arndb.de>
+Received: from fieldses.org ([174.143.236.118]:50939 "EHLO fieldses.org"
+	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
+	id S1751831AbaE0PrO (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Tue, 27 May 2014 11:47:14 -0400
+Date: Tue, 27 May 2014 11:47:13 -0400
+From: "J. Bruce Fields" <bfields@fieldses.org>
+To: Kinglong Mee <kinglongmee@gmail.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
+Subject: Re: [PATCH v2] NFSD: Error out when getting more than one
+ fsloc/secinfo/uuid
+Message-ID: <20140527154713.GC21989@fieldses.org>
+References: <537F38AB.10102@gmail.com>
+ <20140523135435.GK25423@fieldses.org>
+ <537F5A1A.9000005@gmail.com>
+ <20140523144128.GO25423@fieldses.org>
+ <53800FDD.7030001@gmail.com>
 MIME-Version: 1.0
 Content-Type: text/plain; charset=us-ascii
-In-Reply-To: <1401480116-1973111-1-git-send-email-arnd@arndb.de>
+In-Reply-To: <53800FDD.7030001@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Fri, May 30, 2014 at 10:01:24PM +0200, Arnd Bergmann wrote:
+On Sat, May 24, 2014 at 11:19:57AM +0800, Kinglong Mee wrote:
+> v2:
+> remove WARN_ON_ONCE(1) and return -EINVAL instead of ignoring it. 
+
+Thanks, applying.--b.
+
 > 
-> I picked this because it is a fairly isolated problem, as the
-> inode time stamps are rarely assigned to any other time values.
-> As a byproduct of this work, I documented for each of the file
-> systems we support how long the on-disk format can work[1].
-
-Why are some of the time stamp expiration dates marked as "never"?
-
-Thanks,
-Richard
+> Signed-off-by: Kinglong Mee <kinglongmee@gmail.com>
+> ---
+>  fs/nfsd/export.c | 12 ++++++++++++
+>  1 file changed, 12 insertions(+)
+> 
+> diff --git a/fs/nfsd/export.c b/fs/nfsd/export.c
+> index 7884051..13b85f9 100644
+> --- a/fs/nfsd/export.c
+> +++ b/fs/nfsd/export.c
+> @@ -389,6 +389,10 @@ fsloc_parse(char **mesg, char *buf, struct nfsd4_fs_locations *fsloc)
+>  	int len;
+>  	int migrated, i, err;
+>  
+> +	/* more than one fsloc */
+> +	if (fsloc->locations)
+> +		return -EINVAL;
+> +
+>  	/* listsize */
+>  	err = get_uint(mesg, &fsloc->locations_count);
+>  	if (err)
+> @@ -442,6 +446,10 @@ static int secinfo_parse(char **mesg, char *buf, struct svc_export *exp)
+>  	u32 listsize;
+>  	int err;
+>  
+> +	/* more than one secinfo */
+> +	if (exp->ex_nflavors)
+> +		return -EINVAL;
+> +
+>  	err = get_uint(mesg, &listsize);
+>  	if (err)
+>  		return err;
+> @@ -481,6 +489,10 @@ uuid_parse(char **mesg, char *buf, unsigned char **puuid)
+>  {
+>  	int len;
+>  
+> +	/* more than one uuid */
+> +	if (*puuid)
+> +		return -EINVAL;
+> +
+>  	/* expect a 16 byte uuid encoded as \xXXXX... */
+>  	len = qword_get(mesg, buf, PAGE_SIZE);
+>  	if (len != EX_UUID_LEN)
+> -- 
+> 1.9.3
+> 
