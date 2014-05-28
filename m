@@ -1,15 +1,15 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-ie0-f173.google.com ([209.85.223.173]:41264 "EHLO
-	mail-ie0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1752909AbaE1OcD (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 May 2014 10:32:03 -0400
+Received: from mail-ie0-f171.google.com ([209.85.223.171]:49811 "EHLO
+	mail-ie0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1753627AbaE1OeB (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 May 2014 10:34:01 -0400
 From: Chuck Lever <chuck.lever@oracle.com>
-Subject: [PATCH v5 01/24] xprtrdma: mind the device's max fast register page
-	list depth
+Subject: [PATCH v5 15/24] xprtrdma: Reduce the number of hardway buffer
+	allocations
 To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
 Cc: Anna.Schumaker@netapp.com
-Date: Wed, 28 May 2014 10:32:00 -0400
-Message-ID: <20140528143200.23214.62949.stgit@manet.1015granger.net>
+Date: Wed, 28 May 2014 10:33:59 -0400
+Message-ID: <20140528143359.23214.1560.stgit@manet.1015granger.net>
 In-Reply-To: <20140528142521.23214.39655.stgit@manet.1015granger.net>
 References: <20140528142521.23214.39655.stgit@manet.1015granger.net>
 MIME-Version: 1.0
@@ -17,144 +17,124 @@ Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: Steve Wise <swise@opengridcomputing.com>
+While marshaling an RPC/RDMA request, the inline_{rsize,wsize}
+settings determine whether an inline request is used, or whether
+read or write chunks lists are built. The current default value of
+these settings is 1024. Any RPC request smaller than 1024 bytes is
+sent to the NFS server completely inline.
 
-Some rdma devices don't support a fast register page list depth of
-at least RPCRDMA_MAX_DATA_SEGS.  So xprtrdma needs to chunk its fast
-register regions according to the minimum of the device max supported
-depth or RPCRDMA_MAX_DATA_SEGS.
+rpcrdma_buffer_create() allocates and pre-registers a set of RPC
+buffers for each transport instance, also based on the inline rsize
+and wsize settings.
 
-Signed-off-by: Steve Wise <swise@opengridcomputing.com>
-Reviewed-by: Chuck Lever <chuck.lever@oracle.com>
+RPC/RDMA requests and replies are built in these buffers. However,
+if an RPC/RDMA request is expected to be larger than 1024, a buffer
+has to be allocated and registered for that RPC, and deregistered
+and released when the RPC is complete. This is known has a
+"hardway allocation."
+
+Since the introduction of NFSv4, the size of RPC requests has become
+larger, and hardway allocations are thus more frequent. Hardway
+allocations are significant overhead, and they waste the existing
+RPC buffers pre-allocated by rpcrdma_buffer_create().
+
+We'd like fewer hardway allocations.
+
+Increasing the size of the pre-registered buffers is the most direct
+way to do this. However, a blanket increase of the inline thresholds
+has interoperability consequences.
+
+On my 64-bit system, rpcrdma_buffer_create() requests roughly 7000
+bytes for each RPC request buffer, using kmalloc(). Due to internal
+fragmentation, this wastes nearly 1200 bytes because kmalloc()
+already returns an 8192-byte piece of memory for a 7000-byte
+allocation request, though the extra space remains unused.
+
+So let's round up the size of the pre-allocated buffers, and make
+use of the unused space in the kmalloc'd memory.
+
+This change reduces the amount of hardway allocated memory for an
+NFSv4 general connectathon run from 1322092 to 9472 bytes (99%).
+
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+Tested-by: Steve Wise <swise@opengridcomputing.com>
 ---
 
- net/sunrpc/xprtrdma/rpc_rdma.c  |    4 ---
- net/sunrpc/xprtrdma/verbs.c     |   47 +++++++++++++++++++++++++++++----------
- net/sunrpc/xprtrdma/xprt_rdma.h |    1 +
- 3 files changed, 36 insertions(+), 16 deletions(-)
+ net/sunrpc/xprtrdma/verbs.c |   25 +++++++++++++------------
+ 1 files changed, 13 insertions(+), 12 deletions(-)
 
-diff --git a/net/sunrpc/xprtrdma/rpc_rdma.c b/net/sunrpc/xprtrdma/rpc_rdma.c
-index 96ead52..400aa1b 100644
---- a/net/sunrpc/xprtrdma/rpc_rdma.c
-+++ b/net/sunrpc/xprtrdma/rpc_rdma.c
-@@ -248,10 +248,6 @@ rpcrdma_create_chunks(struct rpc_rqst *rqst, struct xdr_buf *target,
- 	/* success. all failures return above */
- 	req->rl_nchunks = nchunks;
- 
--	BUG_ON(nchunks == 0);
--	BUG_ON((r_xprt->rx_ia.ri_memreg_strategy == RPCRDMA_FRMR)
--	       && (nchunks > 3));
--
- 	/*
- 	 * finish off header. If write, marshal discrim and nchunks.
- 	 */
 diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
-index 9372656..55fb09a 100644
+index 1d08366..c80995a 100644
 --- a/net/sunrpc/xprtrdma/verbs.c
 +++ b/net/sunrpc/xprtrdma/verbs.c
-@@ -539,6 +539,11 @@ rpcrdma_ia_open(struct rpcrdma_xprt *xprt, struct sockaddr *addr, int memreg)
- 				__func__);
- 			memreg = RPCRDMA_REGISTER;
- #endif
-+		} else {
-+			/* Mind the ia limit on FRMR page list depth */
-+			ia->ri_max_frmr_depth = min_t(unsigned int,
-+				RPCRDMA_MAX_DATA_SEGS,
-+				devattr.max_fast_reg_page_list_len);
- 		}
- 		break;
- 	}
-@@ -659,24 +664,42 @@ rpcrdma_ep_create(struct rpcrdma_ep *ep, struct rpcrdma_ia *ia,
- 	ep->rep_attr.srq = NULL;
- 	ep->rep_attr.cap.max_send_wr = cdata->max_requests;
- 	switch (ia->ri_memreg_strategy) {
--	case RPCRDMA_FRMR:
-+	case RPCRDMA_FRMR: {
-+		int depth = 7;
-+
- 		/* Add room for frmr register and invalidate WRs.
- 		 * 1. FRMR reg WR for head
- 		 * 2. FRMR invalidate WR for head
--		 * 3. FRMR reg WR for pagelist
--		 * 4. FRMR invalidate WR for pagelist
-+		 * 3. N FRMR reg WRs for pagelist
-+		 * 4. N FRMR invalidate WRs for pagelist
- 		 * 5. FRMR reg WR for tail
- 		 * 6. FRMR invalidate WR for tail
- 		 * 7. The RDMA_SEND WR
- 		 */
--		ep->rep_attr.cap.max_send_wr *= 7;
-+
-+		/* Calculate N if the device max FRMR depth is smaller than
-+		 * RPCRDMA_MAX_DATA_SEGS.
-+		 */
-+		if (ia->ri_max_frmr_depth < RPCRDMA_MAX_DATA_SEGS) {
-+			int delta = RPCRDMA_MAX_DATA_SEGS -
-+				    ia->ri_max_frmr_depth;
-+
-+			do {
-+				depth += 2; /* FRMR reg + invalidate */
-+				delta -= ia->ri_max_frmr_depth;
-+			} while (delta > 0);
-+
-+		}
-+		ep->rep_attr.cap.max_send_wr *= depth;
- 		if (ep->rep_attr.cap.max_send_wr > devattr.max_qp_wr) {
--			cdata->max_requests = devattr.max_qp_wr / 7;
-+			cdata->max_requests = devattr.max_qp_wr / depth;
- 			if (!cdata->max_requests)
- 				return -EINVAL;
--			ep->rep_attr.cap.max_send_wr = cdata->max_requests * 7;
-+			ep->rep_attr.cap.max_send_wr = cdata->max_requests *
-+						       depth;
- 		}
- 		break;
-+	}
- 	case RPCRDMA_MEMWINDOWS_ASYNC:
- 	case RPCRDMA_MEMWINDOWS:
- 		/* Add room for mw_binds+unbinds - overkill! */
-@@ -1043,16 +1066,16 @@ rpcrdma_buffer_create(struct rpcrdma_buffer *buf, struct rpcrdma_ep *ep,
- 	case RPCRDMA_FRMR:
- 		for (i = buf->rb_max_requests * RPCRDMA_MAX_SEGS; i; i--) {
- 			r->r.frmr.fr_mr = ib_alloc_fast_reg_mr(ia->ri_pd,
--							 RPCRDMA_MAX_SEGS);
-+						ia->ri_max_frmr_depth);
- 			if (IS_ERR(r->r.frmr.fr_mr)) {
- 				rc = PTR_ERR(r->r.frmr.fr_mr);
- 				dprintk("RPC:       %s: ib_alloc_fast_reg_mr"
- 					" failed %i\n", __func__, rc);
- 				goto out;
- 			}
--			r->r.frmr.fr_pgl =
--				ib_alloc_fast_reg_page_list(ia->ri_id->device,
--							    RPCRDMA_MAX_SEGS);
-+			r->r.frmr.fr_pgl = ib_alloc_fast_reg_page_list(
-+						ia->ri_id->device,
-+						ia->ri_max_frmr_depth);
- 			if (IS_ERR(r->r.frmr.fr_pgl)) {
- 				rc = PTR_ERR(r->r.frmr.fr_pgl);
- 				dprintk("RPC:       %s: "
-@@ -1498,8 +1521,8 @@ rpcrdma_register_frmr_external(struct rpcrdma_mr_seg *seg,
- 	seg1->mr_offset -= pageoff;	/* start of page */
- 	seg1->mr_len += pageoff;
- 	len = -pageoff;
--	if (*nsegs > RPCRDMA_MAX_DATA_SEGS)
--		*nsegs = RPCRDMA_MAX_DATA_SEGS;
-+	if (*nsegs > ia->ri_max_frmr_depth)
-+		*nsegs = ia->ri_max_frmr_depth;
- 	for (page_no = i = 0; i < *nsegs;) {
- 		rpcrdma_map_one(ia, seg, writing);
- 		pa = seg->mr_dma;
-diff --git a/net/sunrpc/xprtrdma/xprt_rdma.h b/net/sunrpc/xprtrdma/xprt_rdma.h
-index cc1445d..98340a3 100644
---- a/net/sunrpc/xprtrdma/xprt_rdma.h
-+++ b/net/sunrpc/xprtrdma/xprt_rdma.h
-@@ -66,6 +66,7 @@ struct rpcrdma_ia {
- 	struct completion	ri_done;
- 	int			ri_async_rc;
- 	enum rpcrdma_memreg	ri_memreg_strategy;
-+	unsigned int		ri_max_frmr_depth;
- };
+@@ -50,6 +50,7 @@
+ #include <linux/interrupt.h>
+ #include <linux/pci.h>	/* for Tavor hack below */
+ #include <linux/slab.h>
++#include <asm/bitops.h>
  
- /*
+ #include "xprt_rdma.h"
+ 
+@@ -1005,7 +1006,7 @@ rpcrdma_buffer_create(struct rpcrdma_buffer *buf, struct rpcrdma_ep *ep,
+ 	struct rpcrdma_ia *ia, struct rpcrdma_create_data_internal *cdata)
+ {
+ 	char *p;
+-	size_t len;
++	size_t len, rlen, wlen;
+ 	int i, rc;
+ 	struct rpcrdma_mw *r;
+ 
+@@ -1120,16 +1121,16 @@ rpcrdma_buffer_create(struct rpcrdma_buffer *buf, struct rpcrdma_ep *ep,
+ 	 * Allocate/init the request/reply buffers. Doing this
+ 	 * using kmalloc for now -- one for each buf.
+ 	 */
++	wlen = 1 << fls(cdata->inline_wsize + sizeof(struct rpcrdma_req));
++	rlen = 1 << fls(cdata->inline_rsize + sizeof(struct rpcrdma_rep));
++	dprintk("RPC:       %s: wlen = %zu, rlen = %zu\n",
++		__func__, wlen, rlen);
++
+ 	for (i = 0; i < buf->rb_max_requests; i++) {
+ 		struct rpcrdma_req *req;
+ 		struct rpcrdma_rep *rep;
+ 
+-		len = cdata->inline_wsize + sizeof(struct rpcrdma_req);
+-		/* RPC layer requests *double* size + 1K RPC_SLACK_SPACE! */
+-		/* Typical ~2400b, so rounding up saves work later */
+-		if (len < 4096)
+-			len = 4096;
+-		req = kmalloc(len, GFP_KERNEL);
++		req = kmalloc(wlen, GFP_KERNEL);
+ 		if (req == NULL) {
+ 			dprintk("RPC:       %s: request buffer %d alloc"
+ 				" failed\n", __func__, i);
+@@ -1141,16 +1142,16 @@ rpcrdma_buffer_create(struct rpcrdma_buffer *buf, struct rpcrdma_ep *ep,
+ 		buf->rb_send_bufs[i]->rl_buffer = buf;
+ 
+ 		rc = rpcrdma_register_internal(ia, req->rl_base,
+-				len - offsetof(struct rpcrdma_req, rl_base),
++				wlen - offsetof(struct rpcrdma_req, rl_base),
+ 				&buf->rb_send_bufs[i]->rl_handle,
+ 				&buf->rb_send_bufs[i]->rl_iov);
+ 		if (rc)
+ 			goto out;
+ 
+-		buf->rb_send_bufs[i]->rl_size = len-sizeof(struct rpcrdma_req);
++		buf->rb_send_bufs[i]->rl_size = wlen -
++						sizeof(struct rpcrdma_req);
+ 
+-		len = cdata->inline_rsize + sizeof(struct rpcrdma_rep);
+-		rep = kmalloc(len, GFP_KERNEL);
++		rep = kmalloc(rlen, GFP_KERNEL);
+ 		if (rep == NULL) {
+ 			dprintk("RPC:       %s: reply buffer %d alloc failed\n",
+ 				__func__, i);
+@@ -1162,7 +1163,7 @@ rpcrdma_buffer_create(struct rpcrdma_buffer *buf, struct rpcrdma_ep *ep,
+ 		buf->rb_recv_bufs[i]->rr_buffer = buf;
+ 
+ 		rc = rpcrdma_register_internal(ia, rep->rr_base,
+-				len - offsetof(struct rpcrdma_rep, rr_base),
++				rlen - offsetof(struct rpcrdma_rep, rr_base),
+ 				&buf->rb_recv_bufs[i]->rr_handle,
+ 				&buf->rb_recv_bufs[i]->rr_iov);
+ 		if (rc)
 
