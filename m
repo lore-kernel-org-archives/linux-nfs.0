@@ -1,55 +1,66 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mail-vc0-f171.google.com ([209.85.220.171]:43451 "EHLO
-	mail-vc0-f171.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
-	with ESMTP id S1751295AbaEIA4Y (ORCPT
-	<rfc822;linux-nfs@vger.kernel.org>); Thu, 8 May 2014 20:56:24 -0400
-Received: by mail-vc0-f171.google.com with SMTP id lc6so4321775vcb.2
-        for <linux-nfs@vger.kernel.org>; Thu, 08 May 2014 17:56:23 -0700 (PDT)
+Received: from mail-ie0-f180.google.com ([209.85.223.180]:43987 "EHLO
+	mail-ie0-f180.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932129AbaE1OeR (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 May 2014 10:34:17 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH v5 17/24] xprtrdma: Remove Tavor MTU setting
+To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Cc: Anna.Schumaker@netapp.com
+Date: Wed, 28 May 2014 10:34:16 -0400
+Message-ID: <20140528143416.23214.47621.stgit@manet.1015granger.net>
+In-Reply-To: <20140528142521.23214.39655.stgit@manet.1015granger.net>
+References: <20140528142521.23214.39655.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-In-Reply-To: <20140506234136.GU18281@fieldses.org>
-References: <1397846704-14567-3-git-send-email-trond.myklebust@primarydata.com>
-	<1397846704-14567-4-git-send-email-trond.myklebust@primarydata.com>
-	<1397846704-14567-5-git-send-email-trond.myklebust@primarydata.com>
-	<1397846704-14567-6-git-send-email-trond.myklebust@primarydata.com>
-	<1397846704-14567-7-git-send-email-trond.myklebust@primarydata.com>
-	<1397846704-14567-8-git-send-email-trond.myklebust@primarydata.com>
-	<1397846704-14567-9-git-send-email-trond.myklebust@primarydata.com>
-	<1397846704-14567-10-git-send-email-trond.myklebust@primarydata.com>
-	<1397846704-14567-11-git-send-email-trond.myklebust@primarydata.com>
-	<1397846704-14567-12-git-send-email-trond.myklebust@primarydata.com>
-	<20140506234136.GU18281@fieldses.org>
-Date: Thu, 8 May 2014 20:56:23 -0400
-Message-ID: <CAHQdGtSipKUJ40xorFAh37zyqBpBAYiZb7vo_NsLDAd6GSC+sA@mail.gmail.com>
-Subject: Re: [PATCH 11/70] NFSd: Ensure delegation setup is safe w.r.t. break_lease()
-From: Trond Myklebust <trond.myklebust@primarydata.com>
-To: Bruce Fields <bfields@fieldses.org>
-Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>
-Content-Type: text/plain; charset=UTF-8
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-On Tue, May 6, 2014 at 7:41 PM, Bruce Fields <bfields@fieldses.org> wrote:
-> On Fri, Apr 18, 2014 at 02:44:05PM -0400, Trond Myklebust wrote:
->> Ensure that we add/remove the dl_perfile under the inode->i_lock
->
-> Looks like maybe this addresses my question on the previous patch--in
-> which case it should really be merged with the previous patch for
-> bisectability?
->
+Clean up.  Remove HCA-specific clutter in xprtrdma, which is
+supposed to be device-independent.
 
-We could, but the client_mutex will continue to mask any conflicts. In
-the case where it doesn't, it would be because the existing code is
-already borken.
+Hal Rosenstock <hal@dev.mellanox.co.il> observes:
+> Note that there is OpenSM option (enable_quirks) to return 1K MTU
+> in SA PathRecord responses for Tavor so that can be used for this.
+> The default setting for enable_quirks is FALSE so that would need
+> changing.
 
-It really is quite non-trivial to work out all the relationships that
-are at work here, and to order the patches in a sane way. I'm quite
-open to suggestions for improvements, but when in doubt, I'm relying
-on the 'big umbrella' being up there until it is removed...
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
 
+ net/sunrpc/xprtrdma/verbs.c |   14 --------------
+ 1 files changed, 0 insertions(+), 14 deletions(-)
 
--- 
-Trond Myklebust
+diff --git a/net/sunrpc/xprtrdma/verbs.c b/net/sunrpc/xprtrdma/verbs.c
+index 54edf2a..515dfc1 100644
+--- a/net/sunrpc/xprtrdma/verbs.c
++++ b/net/sunrpc/xprtrdma/verbs.c
+@@ -48,7 +48,6 @@
+  */
+ 
+ #include <linux/interrupt.h>
+-#include <linux/pci.h>	/* for Tavor hack below */
+ #include <linux/slab.h>
+ #include <asm/bitops.h>
+ 
+@@ -920,19 +919,6 @@ retry:
+ 		}
+ 	}
+ 
+-/* XXX Tavor device performs badly with 2K MTU! */
+-if (strnicmp(ia->ri_id->device->dma_device->bus->name, "pci", 3) == 0) {
+-	struct pci_dev *pcid = to_pci_dev(ia->ri_id->device->dma_device);
+-	if (pcid->device == PCI_DEVICE_ID_MELLANOX_TAVOR &&
+-	    (pcid->vendor == PCI_VENDOR_ID_MELLANOX ||
+-	     pcid->vendor == PCI_VENDOR_ID_TOPSPIN)) {
+-		struct ib_qp_attr attr = {
+-			.path_mtu = IB_MTU_1024
+-		};
+-		rc = ib_modify_qp(ia->ri_id->qp, &attr, IB_QP_PATH_MTU);
+-	}
+-}
+-
+ 	ep->rep_connected = 0;
+ 
+ 	rc = rdma_connect(ia->ri_id, &ep->rep_remote_cma);
 
-Linux NFS client maintainer, PrimaryData
-
-trond.myklebust@primarydata.com
