@@ -1,59 +1,58 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from fieldses.org ([174.143.236.118]:43510 "EHLO fieldses.org"
+Received: from mx1.redhat.com ([209.132.183.28]:57004 "EHLO mx1.redhat.com"
 	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1752816AbaEVTcs (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 22 May 2014 15:32:48 -0400
+	id S1752044AbaE1OXq (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
+	Wed, 28 May 2014 10:23:46 -0400
+Date: Wed, 28 May 2014 10:23:20 -0400
 From: "J. Bruce Fields" <bfields@redhat.com>
-To: linux-nfs@vger.kernel.org
-Cc: Christoph Hellwig <hch@infradead.org>,
-        "J. Bruce Fields" <bfields@redhat.com>
-Subject: [PATCH 47/52] nfsd4: really fix nfs4err_resource in 4.1 case
-Date: Thu, 22 May 2014 15:32:22 -0400
-Message-Id: <1400787148-25941-48-git-send-email-bfields@redhat.com>
-In-Reply-To: <1400787148-25941-1-git-send-email-bfields@redhat.com>
+To: Anna Schumaker <schumaker.anna@gmail.com>
+Cc: Christoph Hellwig <hch@infradead.org>, linux-nfs@vger.kernel.org
+Subject: Re: [PATCH 41/52] nfsd4: turn off zero-copy-read in exotic cases
+Message-ID: <20140528142320.GC13012@pad.redhat.com>
 References: <1400787148-25941-1-git-send-email-bfields@redhat.com>
+ <1400787148-25941-42-git-send-email-bfields@redhat.com>
+ <20140528080945.GA6797@infradead.org>
+ <20140528140151.GB13012@pad.redhat.com>
+ <5385EEF5.9050904@gmail.com>
+MIME-Version: 1.0
+Content-Type: text/plain; charset=us-ascii
+In-Reply-To: <5385EEF5.9050904@gmail.com>
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-From: "J. Bruce Fields" <bfields@redhat.com>
+On Wed, May 28, 2014 at 10:13:09AM -0400, Anna Schumaker wrote:
+> On 05/28/2014 10:01 AM, J. Bruce Fields wrote:
+> > On Wed, May 28, 2014 at 01:09:45AM -0700, Christoph Hellwig wrote:
+> >> On Thu, May 22, 2014 at 03:32:16PM -0400, J. Bruce Fields wrote:
+> >>> Later patches handle those "exotic compounds", this one just makes
+> >>> sure zero-copy is turned off in those cases.
+> >> How did you test these exotic compounds?
+> > I have is a pynfs test that sends a compound with multiple reads in
+> > it.
+> >
+> > I don't think that's pushed out to my regular pynfs tree, I'll try
+> > to do that today.
+> >
+> > I could really use more of those.  Maybe I'm wrong, but I'm worried
+> > less about this case than the more finicky out-of-reply-space cases,
+> > where I do have patches puporting to fix problems that I haven't
+> > really verified.
+> 
+> I'll eventually be using this case for READ_PLUS.  I'll be sure to
+> send problems your way! :)
 
-encode_getattr, for example, can return nfserr_resource to indicate it
-ran out of buffer space.  That's not a legal error in the 4.1 case.
-And in the 4.1 case, if we ran out of buffer space, we should have
-exceeded a session limit too.
+Great, thanks.
 
-(Note in 1bc49d83c37cfaf46be357757e592711e67f9809 "nfsd4: fix
-nfs4err_resource in 4.1 case" we originally tried fixing this error
-return before fixing the problem that we could error out while we still
-had lots of available space.  The result was to trade one illegal error
-for another in those cases.  We decided that was helpful, so reverted
-the change in fc208d026be0c7d60db9118583fc62f6ca97743d, and are only
-reinstating it now that we've elimited almost all of those cases.)
+Actually my main question there is how to handle 4.2 in pynfs.
 
-Signed-off-by: J. Bruce Fields <bfields@redhat.com>
----
- fs/nfsd/nfs4xdr.c | 8 ++++++++
- 1 file changed, 8 insertions(+)
+4.1 and 4.0 are entirely separate codebases.  We definitely don't want
+to do that again.
 
-diff --git a/fs/nfsd/nfs4xdr.c b/fs/nfsd/nfs4xdr.c
-index f3eb7fa..5fc3ba0 100644
---- a/fs/nfsd/nfs4xdr.c
-+++ b/fs/nfsd/nfs4xdr.c
-@@ -3903,6 +3903,14 @@ nfsd4_encode_operation(struct nfsd4_compoundres *resp, struct nfsd4_op *op)
- 			space_needed = COMPOUND_ERR_SLACK_SPACE;
- 		op->status = nfsd4_check_resp_size(resp, space_needed);
- 	}
-+	if (op->status == nfserr_resource && nfsd4_has_session(&resp->cstate)) {
-+		struct nfsd4_slot *slot = resp->cstate.slot;
-+
-+		if (slot->sl_flags & NFSD4_SLOT_CACHETHIS)
-+			op->status = nfserr_rep_too_big_to_cache;
-+		else
-+			op->status = nfserr_rep_too_big;
-+	}
- 	if (op->status == nfserr_resource ||
- 	    op->status == nfserr_rep_too_big ||
- 	    op->status == nfserr_rep_too_big_to_cache) {
--- 
-1.9.0
+There's not much point re-running all the 4.1 tests over 4.2.  Maybe all
+we may need is to say "use minor version 2 on this compound" in tests of
+the new features.
 
+But I haven't even tried to figure out how to tell pynfs about the new
+.x files.
+
+--b.
