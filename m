@@ -1,71 +1,93 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx12.netapp.com ([216.240.18.77]:42432 "EHLO mx12.netapp.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751533AbaEATw4 (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 1 May 2014 15:52:56 -0400
-Message-ID: <5362A60C.7080805@netapp.com>
-Date: Thu, 1 May 2014 15:52:44 -0400
-From: Anna Schumaker <Anna.Schumaker@netapp.com>
+Received: from mail-ig0-f175.google.com ([209.85.213.175]:54017 "EHLO
+	mail-ig0-f175.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S932133AbaE1Oev (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 May 2014 10:34:51 -0400
+From: Chuck Lever <chuck.lever@oracle.com>
+Subject: [PATCH v5 21/24] SUNRPC: Move congestion window constants to header
+	file
+To: linux-nfs@vger.kernel.org, linux-rdma@vger.kernel.org
+Cc: Anna.Schumaker@netapp.com
+Date: Wed, 28 May 2014 10:34:49 -0400
+Message-ID: <20140528143449.23214.29020.stgit@manet.1015granger.net>
+In-Reply-To: <20140528142521.23214.39655.stgit@manet.1015granger.net>
+References: <20140528142521.23214.39655.stgit@manet.1015granger.net>
 MIME-Version: 1.0
-To: Weston Andros Adamson <dros@primarydata.com>,
-        <trond.myklebust@primarydata.com>
-CC: <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH 0/3] nfs: get rid of nfs_pgio_data, related cleanup
-References: <1398971693-82399-1-git-send-email-dros@primarydata.com>
-In-Reply-To: <1398971693-82399-1-git-send-email-dros@primarydata.com>
-Content-Type: text/plain; charset="ISO-8859-1"
+Content-Type: text/plain; charset="utf-8"
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
-I like the idea, and I don't have a problem with these at a glance.  I'll let you know if I hit anything whenever I get something set up for testing.
+I would like to use one of the RPC client's congestion algorithm
+constants in transport-specific code.
 
-On 05/01/2014 03:14 PM, Weston Andros Adamson wrote:
-> I'd like to know what people think of this proposed cleanup - it is to be
-> applied on top of the "pgio" branch at:
->
->  git://git.linux-nfs.org/projects/dros/linux-nfs.git
->
-> The basic idea is that we no longer need a separate nfs_pgio_data structure,
-> because the nfs_pgio_header structure always has one - and only one.
->
-> I know this changes a lot of files, but I think now is the time to do this,
-> as we have to test everything anyways due to my subpage work and Anna's
-> pgio cleanup.
->
-> I should note that there is little chance we'll ever go back to having more
-> than one nfs_pgio_data per nfs_pgio_header - since the nfs_page subpage
-> splitting work allows us to describe arbitrary ranges at that level.
->
-> I think I can go a bit further by getting rid of the pgio_header refcnt.
-> I'll look closer at this soon...
->
->  -dros
->
-> Weston Andros Adamson (3):
->   nfs: move nfs_pgio_data and remove nfs_rw_header
->   nfs: rename members of nfs_pgio_data
->   nfs: merge nfs_pgio_data into _header
->
->  fs/nfs/blocklayout/blocklayout.c |  99 +++++++++++----------
->  fs/nfs/direct.c                  |   8 +-
->  fs/nfs/internal.h                |  10 +--
->  fs/nfs/nfs3proc.c                |  21 +++--
->  fs/nfs/nfs4_fs.h                 |   6 +-
->  fs/nfs/nfs4filelayout.c          | 169 +++++++++++++++++------------------
->  fs/nfs/nfs4proc.c                | 105 +++++++++++-----------
->  fs/nfs/nfs4trace.h               |  28 +++---
->  fs/nfs/objlayout/objio_osd.c     |  24 +++--
->  fs/nfs/objlayout/objlayout.c     |  81 ++++++++---------
->  fs/nfs/objlayout/objlayout.h     |   8 +-
->  fs/nfs/pageio.c                  | 186 ++++++++++++++++-----------------------
->  fs/nfs/pnfs.c                    |  96 ++++++++------------
->  fs/nfs/pnfs.h                    |  10 +--
->  fs/nfs/proc.c                    |  27 +++---
->  fs/nfs/read.c                    |  48 +++++-----
->  fs/nfs/write.c                   |  65 +++++++-------
->  include/linux/nfs_fs.h           |   2 +-
->  include/linux/nfs_page.h         |  13 +--
->  include/linux/nfs_xdr.h          |  31 +++----
->  20 files changed, 489 insertions(+), 548 deletions(-)
->
+Signed-off-by: Chuck Lever <chuck.lever@oracle.com>
+---
+
+ include/linux/sunrpc/xprt.h |    6 ++++++
+ net/sunrpc/xprt.c           |   28 +++++++++-------------------
+ 2 files changed, 15 insertions(+), 19 deletions(-)
+
+diff --git a/include/linux/sunrpc/xprt.h b/include/linux/sunrpc/xprt.h
+index 3e5efb2..5903d2c 100644
+--- a/include/linux/sunrpc/xprt.h
++++ b/include/linux/sunrpc/xprt.h
+@@ -24,6 +24,12 @@
+ #define RPC_MAX_SLOT_TABLE_LIMIT	(65536U)
+ #define RPC_MAX_SLOT_TABLE	RPC_MAX_SLOT_TABLE_LIMIT
+ 
++#define RPC_CWNDSHIFT		(8U)
++#define RPC_CWNDSCALE		(1U << RPC_CWNDSHIFT)
++#define RPC_INITCWND		RPC_CWNDSCALE
++#define RPC_MAXCWND(xprt)	((xprt)->max_reqs << RPC_CWNDSHIFT)
++#define RPCXPRT_CONGESTED(xprt) ((xprt)->cong >= (xprt)->cwnd)
++
+ /*
+  * This describes a timeout strategy
+  */
+diff --git a/net/sunrpc/xprt.c b/net/sunrpc/xprt.c
+index d173f79..2d1d5a6 100644
+--- a/net/sunrpc/xprt.c
++++ b/net/sunrpc/xprt.c
+@@ -71,24 +71,6 @@ static void	 xprt_destroy(struct rpc_xprt *xprt);
+ static DEFINE_SPINLOCK(xprt_list_lock);
+ static LIST_HEAD(xprt_list);
+ 
+-/*
+- * The transport code maintains an estimate on the maximum number of out-
+- * standing RPC requests, using a smoothed version of the congestion
+- * avoidance implemented in 44BSD. This is basically the Van Jacobson
+- * congestion algorithm: If a retransmit occurs, the congestion window is
+- * halved; otherwise, it is incremented by 1/cwnd when
+- *
+- *	-	a reply is received and
+- *	-	a full number of requests are outstanding and
+- *	-	the congestion window hasn't been updated recently.
+- */
+-#define RPC_CWNDSHIFT		(8U)
+-#define RPC_CWNDSCALE		(1U << RPC_CWNDSHIFT)
+-#define RPC_INITCWND		RPC_CWNDSCALE
+-#define RPC_MAXCWND(xprt)	((xprt)->max_reqs << RPC_CWNDSHIFT)
+-
+-#define RPCXPRT_CONGESTED(xprt) ((xprt)->cong >= (xprt)->cwnd)
+-
+ /**
+  * xprt_register_transport - register a transport implementation
+  * @transport: transport to register
+@@ -446,7 +428,15 @@ EXPORT_SYMBOL_GPL(xprt_release_rqst_cong);
+  * @task: recently completed RPC request used to adjust window
+  * @result: result code of completed RPC request
+  *
+- * We use a time-smoothed congestion estimator to avoid heavy oscillation.
++ * The transport code maintains an estimate on the maximum number of out-
++ * standing RPC requests, using a smoothed version of the congestion
++ * avoidance implemented in 44BSD. This is basically the Van Jacobson
++ * congestion algorithm: If a retransmit occurs, the congestion window is
++ * halved; otherwise, it is incremented by 1/cwnd when
++ *
++ *	-	a reply is received and
++ *	-	a full number of requests are outstanding and
++ *	-	the congestion window hasn't been updated recently.
+  */
+ void xprt_adjust_cwnd(struct rpc_xprt *xprt, struct rpc_task *task, int result)
+ {
 
