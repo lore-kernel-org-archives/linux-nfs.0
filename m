@@ -1,49 +1,65 @@
 Return-Path: linux-nfs-owner@vger.kernel.org
-Received: from mx1.redhat.com ([209.132.183.28]:56372 "EHLO mx1.redhat.com"
-	rhost-flags-OK-OK-OK-OK) by vger.kernel.org with ESMTP
-	id S1751298AbaEAOjH (ORCPT <rfc822;linux-nfs@vger.kernel.org>);
-	Thu, 1 May 2014 10:39:07 -0400
-Received: from int-mx01.intmail.prod.int.phx2.redhat.com (int-mx01.intmail.prod.int.phx2.redhat.com [10.5.11.11])
-	by mx1.redhat.com (8.14.4/8.14.4) with ESMTP id s41Ed7v2006754
-	(version=TLSv1/SSLv3 cipher=DHE-RSA-AES256-SHA bits=256 verify=OK)
-	for <linux-nfs@vger.kernel.org>; Thu, 1 May 2014 10:39:07 -0400
-Received: from smallhat.boston.devel.redhat.com (vpn-48-26.rdu2.redhat.com [10.10.48.26])
-	by int-mx01.intmail.prod.int.phx2.redhat.com (8.13.8/8.13.8) with ESMTP id s41Ed6W9012008
-	for <linux-nfs@vger.kernel.org>; Thu, 1 May 2014 10:39:07 -0400
-Message-ID: <53625C8A.5090108@RedHat.com>
-Date: Thu, 01 May 2014 10:39:06 -0400
-From: Steve Dickson <SteveD@redhat.com>
+Received: from mail-ve0-f173.google.com ([209.85.128.173]:60523 "EHLO
+	mail-ve0-f173.google.com" rhost-flags-OK-OK-OK-OK) by vger.kernel.org
+	with ESMTP id S1751198AbaE1XCP (ORCPT
+	<rfc822;linux-nfs@vger.kernel.org>); Wed, 28 May 2014 19:02:15 -0400
+Received: by mail-ve0-f173.google.com with SMTP id pa12so13451362veb.32
+        for <linux-nfs@vger.kernel.org>; Wed, 28 May 2014 16:02:14 -0700 (PDT)
 MIME-Version: 1.0
-To: Linux NFS Mailing list <linux-nfs@vger.kernel.org>
-Subject: Re: [PATCH] start-statd: rpc.statd's systemd unit changed names.
-References: <1398955020-18614-1-git-send-email-steved@redhat.com>
-In-Reply-To: <1398955020-18614-1-git-send-email-steved@redhat.com>
-Content-Type: text/plain; charset=ISO-8859-1
+In-Reply-To: <1399381960-3019-1-git-send-email-Anna.Schumaker@Netapp.com>
+References: <1399381960-3019-1-git-send-email-Anna.Schumaker@Netapp.com>
+Date: Wed, 28 May 2014 19:02:14 -0400
+Message-ID: <CAHQdGtTEceDpfjnUMotTgqkwMoTQaRYgSwWGLXudTsg0U+opDA@mail.gmail.com>
+Subject: Re: [PATCH v3 00/17] NFS: Create a common path used by reads and writes
+From: Trond Myklebust <trond.myklebust@primarydata.com>
+To: Anna Schumaker <Anna.Schumaker@netapp.com>
+Cc: Linux NFS Mailing List <linux-nfs@vger.kernel.org>,
+        Weston Andros Adamson <dros@primarydata.com>,
+        Christoph Hellwig <hch@infradead.org>
+Content-Type: text/plain; charset=UTF-8
 Sender: linux-nfs-owner@vger.kernel.org
 List-ID: <linux-nfs.vger.kernel.org>
 
+On Tue, May 6, 2014 at 9:12 AM, Anna Schumaker
+<Anna.Schumaker@netapp.com> wrote:
+> I noticed that much of the read and write code was almost identical, with
+> only minor differences in argument types and names.  These patches seek to
+> unify these two codepaths wherever possible in order to make future changes
+> easier.
+>
+> Table of contents:
+>         Patches 01 - 05: Set up common data structures.
+>         Patches 06 - 10: Set up a shared rpc_call_ops struct.
+>         Patches 11 - 15: Set up a shared nfs_pageio_ops struct.
+>
+> Some of the commit setup was moved into common code, but I'm willing to
+> move this back into write.c if this looks to be a problem.
+>
+> Future work:
+>         I have rough pNFS patches to combine the read and write paths in
+>         pnfs.c.  They apply on top of Dros' multiple requests work and
+>         should get more testing before I submit.
+>
+> Testing:
+>         I tested every version of NFS using the cthon and xfs tests without
+>         hitting anything new.  Any extra testing would be great seeing how
+>         the read and write paths are vitally important.
+>
+> Changes in v3:
+>         Instead of creating a new "pageio.c" file, I now put the combined
+>         code into pagelist.c (good luck, Dros!)
+>
+>         I also renamed a few functions, and did a better job checking what
+>         pagelist.c functions can now be static.
+>
+> Questions?  Comments?  Thoughts?
+>
 
+Thanks for working on this! Applied...
 
-On 05/01/2014 10:37 AM, Steve Dickson wrote:
-> Signed-off-by: Steve Dickson <steved@redhat.com>
-> ---
->  utils/statd/start-statd | 2 +-
->  1 file changed, 1 insertion(+), 1 deletion(-)
-> 
-> diff --git a/utils/statd/start-statd b/utils/statd/start-statd
-> index 8ac3798..dcdaf77 100644
-> --- a/utils/statd/start-statd
-> +++ b/utils/statd/start-statd
-> @@ -5,7 +5,7 @@
->  # It should run statd with whatever flags are apropriate for this
->  # site.
->  PATH="/sbin:/usr/sbin:/bin:/usr/bin"
-> -if systemctl start statd.service
-> +if systemctl start rpc-statd.service
->  then :
->  else
->      exec rpc.statd --no-notify
-> 
-Committed...
+-- 
+Trond Myklebust
 
-steved.
+Linux NFS client maintainer, PrimaryData
+
+trond.myklebust@primarydata.com
